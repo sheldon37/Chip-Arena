@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         private KitScene kitScene;private KitSink kitSink;private Snapshot kitSnapshot;private float kitClock;
         private sealed class DecoyRig{public CapturedAnimation.Player Rig;public float Until;public Actor Pose;}
         private readonly Dictionary<int,DecoyRig> decoys=new Dictionary<int,DecoyRig>();private readonly List<int> staleDecoys=new List<int>();
-        private sealed class DashGhost{public GhostPose Pose=new GhostPose();public float At;public string Weapon;public Color Tint;public bool Live;}
+        private sealed class DashGhost{public GhostPose Pose=new GhostPose();public float At;public string Weapon,Body;public Color Tint;public bool Live;}
         private readonly DashGhost[] dashGhosts=new DashGhost[NativeMeleeKitFx.DashGhostSlots];private int dashNext;
         private readonly Dictionary<int,(Vector3 At,float Cast)> dashLast=new Dictionary<int,(Vector3,float)>();
 
@@ -36,10 +36,11 @@ namespace ChipArena.UnityConversion
         // daggers' violet at kit.Afterimage for the decoy's life (NativeMeleeKitFx.DecoyOpacity).
         private void Decoys(Snapshot s,float time)
         {
-            string pilot=Ghost("pilot");
             foreach(var a in s.Actors)
             {
-                var k=a?.MeleeKit;float opacity=NativeMeleeKitFx.DecoyOpacity(k,time);if(opacity<=0||pilot==null)continue;
+                var k=a?.MeleeKit;float opacity=NativeMeleeKitFx.DecoyOpacity(k,time);if(opacity<=0)continue;
+                // The caster's own body skin (NativeBodySkinPresentation.cs) at the decoy's distance.
+                string pilot=Ghost(BodyModel(BodySkin(a.Id),BodyTier(new Vector3(k.Afterimage.x,k.Afterimage.y,k.Afterimage.z),false)));if(pilot==null)continue;
                 if(!decoys.TryGetValue(a.Id,out var d)||d.Until!=k.AfterimageUntil)
                 {
                     if(d==null){d=new DecoyRig{Rig=captured.Create(transform,-700-a.Id)};decoys[a.Id]=d;}
@@ -60,7 +61,7 @@ namespace ChipArena.UnityConversion
         // Flash Step and Bulwark Charge leave accent ghosts of the dashing rig every DashGhostSpacing metres (as the roll afterimages).
         private void DashGhosts(Snapshot s,float time)
         {
-            string pilot=Ghost("pilot");if(pilot==null||!TrailsEnabled)return;float q=WeaponEffectsQuality;
+            if(Ghost(NativeBodySkins.PrototypeModel)==null||!TrailsEnabled)return;float q=WeaponEffectsQuality;
             foreach(var a in s.Actors)
             {
                 if(a==null||!a.Alive||FirstPerson&&a.Id==LocalId||!rigs.TryGetValue(a.Id,out var rig)||!NativeMeleeKitFx.Dashing(a,time))continue;
@@ -69,14 +70,14 @@ namespace ChipArena.UnityConversion
                 if(Vector3.Distance(root,last.At)<NativeMeleeKitFx.DashGhostSpacing*(q<.5f?1.6f:1))continue;dashLast[a.Id]=(root,cast);
                 var g=dashGhosts[dashNext]??(dashGhosts[dashNext]=new DashGhost());dashNext=(dashNext+1)%dashGhosts.Length;
                 g.Pose.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)g.Pose.Bones[b]=rig.Bones[b].localToWorldMatrix;
-                g.Weapon=!a.WeaponAway?Ghost(SkinnedHeld(a)):null;g.Pose.Armed=g.Weapon!=null;
+                g.Weapon=!a.WeaponAway?Ghost(SkinnedHeld(a)):null;g.Pose.Armed=g.Weapon!=null;g.Body=Ghost(BodyModel(BodySkin(a.Id),BodyTier(root,false)));
                 if(g.Pose.Armed){float reach=WeaponReach(rig,a,time);for(int b=0;b<22&&b<rig.Bones.Length;b++)g.Pose.Weapon[b]=SourceWeaponBone(rig,a,time,false,b,reach);}
                 g.At=time;g.Live=true;g.Tint=NativeWeaponFxShapes.Fx(NativeMeleeKitFx.DashTint(a.SourceSpec,LoadoutPilot(a.Id)?.Weapon!=null?(int)LoadoutPilot(a.Id).Weapon.color:0));
             }
             foreach(var g in dashGhosts)
             {
                 if(g==null||!g.Live)continue;float opacity=NativeMeleeKitFx.DashGhostFade(time-g.At);if(opacity<=0){g.Live=false;continue;}
-                sourceModels.Queue(pilot,g.Pose.Root,g.Pose.Bone,null,0,null,g.Tint,null,opacity);
+                sourceModels.Queue(g.Body??Ghost(NativeBodySkins.PrototypeModel),g.Pose.Root,g.Pose.Bone,null,0,null,g.Tint,null,opacity);
                 if(g.Pose.Armed)sourceModels.Queue(g.Weapon,g.Pose.Root,g.Pose.WeaponBone,null,0,null,g.Tint,null,opacity);
             }
         }

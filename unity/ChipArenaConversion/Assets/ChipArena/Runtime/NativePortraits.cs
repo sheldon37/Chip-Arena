@@ -15,7 +15,9 @@ namespace ChipArena.UnityConversion
         public string Spec,Pose,Hat,HatColor;public int Body,Accent;public float Yaw;
         /// <summary>The weapon's skin key (Core/NativeWeaponSkins.cs; null or unknown: Standard).</summary>
         public string Skin;
-        public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent&&Skin==o.Skin&&HatColor==o.HatColor;
+        /// <summary>The body skin key (Core/NativeBodySkins.cs; null or unknown: Standard).</summary>
+        public string BodySkin;
+        public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent&&Skin==o.Skin&&HatColor==o.HatColor&&BodySkin==o.BodySkin;
     }
     // The live 3D pilot portraits of the menu, lobby and results cards (client/menu-portraits.ts MenuPortraits at 05950ea):
     // the pilot's own source model in its colours, with its hat (the Auditor halo: the arena's shared animated drawer,
@@ -40,14 +42,16 @@ namespace ChipArena.UnityConversion
             public int Key=int.MinValue,W,H,Frame=-10,TopPose=-1;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public bool Ready;public RenderTexture Texture;
             public readonly MeleeRig Rig=new MeleeRig();public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();
             // Derived once per look (no per-frame strings or colour maths): model ids, the idle clip and the colour tints.
-            public string Spec="pistol",Hat="none",WeaponModel,HatModel,HatColor="",IdleClip;public Vector4 BodyTint,AccentTint,EdgeTint,FlexTint,HatTint;
+            public string Spec="pistol",Hat="none",WeaponModel,HatModel,HatColor="",IdleClip,BodyModel=NativeBodySkins.PrototypeModel;public Vector4 BodyTint,AccentTint,EdgeTint,FlexTint,HatTint;
             public void Derive(in PortraitLook look)
             {
                 Look=look;Spec=string.IsNullOrEmpty(look.Spec)?"pistol":look.Spec;Hat=Spec=="siren"||string.IsNullOrEmpty(look.Hat)?"none":look.Hat;
                 // A picked hat colour: the bank's tintable twin with the colour as its body tint (Auto: the authored hat, untinted).
                 string color=NativeHatLooks.Normalize(look.HatColor);int tint=NativeHatLooks.Tint(Hat,color);HatColor=color;
                 WeaponModel=NativeWeaponSkins.Model(NativeWeaponSkins.PrototypeHeld(Spec),look.Skin==NativeWeaponSkins.Prototype?NativeWeaponSkins.PrototypeIndex:NativeWeaponSkins.StandardIndex);HatModel=NativeHatLooks.Model(Hat,color)??"hat-none";HatTint=tint<0?Vector4.one:V4(NativePortraitRules.Linear(tint));IdleClip=Spec=="siren"?"siren-idle-melee":Spec+"-idle";TopPose=-1;
-                BodyTint=V4(NativePortraitRules.BodyTint(look.Body));AccentTint=V4(NativePortraitRules.AccentTint(look.Accent));EdgeTint=V4(NativePortraitRules.EdgeTint(look.Body));FlexTint=V4(NativePortraitRules.FlexTint(look.Body));
+                // The body skin at Full detail; the Sheldon Clothes' seams glow in the Sheldon Head's / hat colour.
+                int body=NativeBodySkins.Index(look.BodySkin);BodyModel=NativeBodySkins.Model(body,NativeBodySkins.Full);
+                BodyTint=V4(NativePortraitRules.BodyTint(look.Body));AccentTint=V4(NativePortraitRules.AccentTint(body==NativeBodySkins.SheldonIndex?NativeBodySkins.SheldonGlowRgb(Hat,color,look.Accent):look.Accent));EdgeTint=V4(NativePortraitRules.EdgeTint(look.Body));FlexTint=V4(NativePortraitRules.FlexTint(look.Body));
             }
         }
         private struct Part {public Mesh Mesh;public int Bone,Class,Joint;public bool Transparent,DoubleSide;public float Ink;public Texture Texture;public Vector4 St;}
@@ -149,9 +153,9 @@ namespace ChipArena.UnityConversion
             for(int i=0,n=models.PortraitPartCount(id);i<n;i++)
             {
                 models.PortraitPart(id,i,out var mesh,out int bone,out string name,out var material);if(mesh==null||material==null)continue;
-                int cls=id=="pilot"?NativePortraitRules.PartClass(name):NativePortraitRules.PartOther;if(cls==NativePortraitRules.PartHidden)continue;
+                bool pilot=NativeBodySkins.IsBody(id);int cls=pilot?NativePortraitRules.PartClass(name):NativePortraitRules.PartOther;if(cls==NativePortraitRules.PartHidden)continue;
                 var tex=material.mainTexture;var scale=material.mainTextureScale;var offset=material.mainTextureOffset;
-                found.Add(new Part{Mesh=mesh,Bone=bone,Class=cls,Joint=id=="pilot"&&NativeLobbyPoses.Cover(name,out int joint)?joint:-1,Transparent=material.renderQueue>=3000,DoubleSide=material.GetFloat("_Cull")==0,Ink=material.GetFloat("_Ink"),Texture=tex,St=new Vector4(scale.x,scale.y,offset.x,offset.y)});
+                found.Add(new Part{Mesh=mesh,Bone=bone,Class=cls,Joint=pilot&&NativeLobbyPoses.Cover(name,out int joint)?joint:-1,Transparent=material.renderQueue>=3000,DoubleSide=material.GetFloat("_Cull")==0,Ink=material.GetFloat("_Ink"),Texture=tex,St=new Vector4(scale.x,scale.y,offset.x,offset.y)});
             }
             list=found.ToArray();parts[id]=list;return list;
         }
@@ -184,7 +188,8 @@ namespace ChipArena.UnityConversion
             // Scene: the podium, the chair when sitting, the pilot, its hat or halo, the held weapons.
             Basic(podium,spin*Matrix4x4.TRS(origin+Vector3.up*NativePortraitRules.PodiumY,Quaternion.identity,Vector3.one),NativePortraitRules.PodiumColor,0,opaque);
             if(pose==NativeLobbyPoses.Chair)foreach(var piece in NativePortraitRules.Chair)Basic(box,spin*Matrix4x4.TRS(origin+CapturedAnimation.Vec(CapturedRig.Mirror(piece.Position)),Quaternion.identity,CapturedAnimation.Vec(piece.Size)),piece.Color,0,opaque);
-            foreach(var p in Parts(siren?"siren":"pilot"))
+            var bodyParts=siren?Parts("siren"):Parts(s.BodyModel);if(!siren&&bodyParts.Length==0)bodyParts=Parts(NativeBodySkins.PrototypeModel);
+            foreach(var p in bodyParts)
             {
                 var m=p.Bone>=0&&p.Bone<22?bones[p.Bone]:rootMatrix;if(p.Joint>=0)m*=Matrix4x4.Rotate(CapturedAnimation.Quat(CapturedRig.Mirror(MeleeMath.AxisAngle(MeleeMath.X,NativeLobbyPoses.CoverAngle(s.Rig,p.Joint)))));
                 var scene=p.Class==NativePortraitRules.PartEdge?s.EdgeTint:p.Class==NativePortraitRules.PartFlex?s.FlexTint:Vector4.one;

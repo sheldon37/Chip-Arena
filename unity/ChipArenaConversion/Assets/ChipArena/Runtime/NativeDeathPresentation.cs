@@ -234,7 +234,8 @@ namespace ChipArena.UnityConversion
             if(!soul&&alpha>.001f)
             {
                 // ragdoll.ts copies the rig with copyVoxelPart (castShadow off): the body, hat and weapon cast no shadow.
-                string model=(death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering):death.model;bool recolored=false;Color ice=Color.white;
+                // A pilot's body skin at the corpse's distance (death.model "pilot" names the pilot rig, not the skin).
+                int bodySkin=NativeBodySkins.StandardIndex;string model=(death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering,BodyAt(death.id,center,out bodySkin)):death.model;bool recolored=false;Color ice=Color.white;
                 if(frost)
                 {
                     // Frostbreak after 1.1 s: every mesh icy with the source's emissive.
@@ -248,7 +249,7 @@ namespace ChipArena.UnityConversion
                 }
                 if(!recolored)
                 {
-                    sourceModels.QueueShadowless(model,Matrix4x4.identity,corpse.PresentedBone,corpse.ShownBone,BodyTint(death.actor?.BodyColor),AccentTint(death.actor?.AccentColor),alpha);
+                    sourceModels.QueueShadowless(model,Matrix4x4.identity,corpse.PresentedBone,corpse.ShownBone,BodyTint(death.actor?.BodyColor),BodyAccent(bodySkin,death.actor?.AccentColor,death.actor?.Hat,death.actor?.HatColor),alpha);
                     if(hat&&!AuditorHalo(death.actor?.Hat,corpse.PresentedBone(CapturedRig.Head),clock,alpha,HaloReduced,0,null,color:death.actor?.HatColor))sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,HatBody(death.actor?.Hat,death.actor?.HatColor),null,alpha);
                     // A thrown or crushed head takes the Sheldon Head's hood with it; its mantle and drapes stay on the body.
                     else if(!hat&&corpse.HatModel!=null&&death.actor?.Hat==NativeSheldonHead.Hat)sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,SheldonBody,HatBody(death.actor.Hat,death.actor.HatColor),null,alpha);if(weapon)sourceModels.QueueShadowless(corpse.LooseModel,drop.Value,null,null,null,null,alpha);

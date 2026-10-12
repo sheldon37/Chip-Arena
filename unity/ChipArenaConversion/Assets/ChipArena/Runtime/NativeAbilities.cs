@@ -140,13 +140,17 @@ namespace ChipArena.UnityConversion
         // the authority's own ray meets a live pilot or minion there (not the caster), the ray stops at that body. The report
         // only picks a depth on the authority's own ray, so it cannot pass a wall or the range. Classic's crosshair ray never
         // lies on the eye ray and bots keep AuthorityAim, so both are unchanged. No wire change; guests do not predict it.
-        private readonly RaycastHit[] abilityAimHits=new RaycastHit[16];
+        private RaycastHit[] abilityAimHits=new RaycastHit[16];
         private Vector3 AimedAbilityPoint(NativePilot p,float range)
         {
             Vector3 point=AuthorityAim(p,range);if(p.Seat.bot||p.Input.AbilityTarget.Length<.01f)return point;
             Vector3 eye=p.Body.position+Vector3.up*.52f,look=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)).normalized;float world=Vector3.Distance(eye,point);var report=p.Input.AbilityTarget;
             if(!NativeAimConvergence.OnLook(new System.Numerics.Vector3(eye.x,eye.y,eye.z),new System.Numerics.Vector3(look.x,look.y,look.z),new System.Numerics.Vector3(report.x,report.y,report.z),world,out float along))return point;
-            int count=root.scene.GetPhysicsScene().Raycast(eye,look,abilityAimHits,world,ShotMask,QueryTriggerInteraction.Ignore);float body=-1;Vector3 at=point;
+            var physics=root.scene.GetPhysicsScene();int count;
+            // A full nonalloc query may omit the nearest body; match MeleeVisible's saturation handling.
+            while((count=physics.Raycast(eye,look,abilityAimHits,world,ShotMask,QueryTriggerInteraction.Ignore))==abilityAimHits.Length)
+                Array.Resize(ref abilityAimHits,abilityAimHits.Length*2);
+            float body=-1;Vector3 at=point;
             for(int i=0;i<count;i++)
             {
                 var hit=abilityAimHits[i];var q=hit.collider.GetComponent<NativePilotBody>()?.Pilot;var m=hit.collider.GetComponent<NativeMinionBody>()?.Minion;
@@ -156,7 +160,7 @@ namespace ChipArena.UnityConversion
         }
         private void Slow(NativePilot p,float factor,float duration)
         {
-            if(p.Seat.spec=="siren"||SirenArmor(p)||Time<p.SlowImmune)return;
+            if(KernelLocked(p)||p.Seat.spec=="siren"||SirenArmor(p)||Time<p.SlowImmune)return;
             if(Time>=p.SlowEnd)p.SlowFactor=1;
             p.SlowFactor=Math.Min(p.SlowFactor,factor);p.SlowEnd=Math.Max(p.SlowEnd,Time+duration);
         }

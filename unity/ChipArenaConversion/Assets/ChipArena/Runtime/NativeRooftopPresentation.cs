@@ -8,7 +8,7 @@ using NVector4=System.Numerics.Vector4;
 namespace ChipArena.UnityConversion
 {
     /// <summary>The player's look on the home screen's rooftop: the weapon id (its source spec), hat and colours (prefs).</summary>
-    public struct RooftopPilot {public string Spec,Hat,Body,Accent,HatColor;}
+    public struct RooftopPilot {public string Spec,Hat,Body,Accent,HatColor;public int BodySkin;}
     /// <summary>
     /// The home screen's background, "Pilot's Rooftop" (owner 2026-10-12; Core NativeRooftopCity, NativeRooftopActors,
     /// NativeRooftopArt): the deterministic cyber city built once per quality tier into a handful of meshes and drawn for the
@@ -236,7 +236,7 @@ namespace ChipArena.UnityConversion
         {
             public readonly int Count;public readonly NativeRooftopActors.Look[] Looks;public readonly NativeRooftopActors.State[] States;
             public readonly Matrix4x4[][] Bones;public readonly Matrix4x4[] Group;public readonly Func<int,Matrix4x4>[] Bone,Held;public readonly Func<int,bool>[] HeldShown;
-            public readonly Color[] Body,Accent;public string SeatKey;public float SeatY;public Matrix4x4 Prop;public int PropBone;public bool PropShown;
+            public readonly Color[] Body,Accent;public string SeatKey;public float SeatY;public int BodySkin=-1;public string HatColor;public Matrix4x4 Prop;public int PropBone;public bool PropShown;
             public readonly Func<int,Matrix4x4> PropMatrix;public readonly Func<int,bool> PropPart;
             public RooftopCast()
             {
@@ -275,7 +275,7 @@ namespace ChipArena.UnityConversion
         {
             var cast=rooftopCast??=new RooftopCast();var you=cast.Looks[0];
             string spec=string.IsNullOrEmpty(pilot.Spec)?"pistol":pilot.Spec,hat=string.IsNullOrEmpty(pilot.Hat)?"none":pilot.Hat;
-            if(you.Spec!=spec||you.Hat!=hat||you.Body!=pilot.Body||you.Accent!=pilot.Accent||cast.SeatKey==null){you.Spec=spec;you.Hat=hat;you.Body=pilot.Body;you.Accent=pilot.Accent;cast.Body[0]=BodyTint(pilot.Body);cast.Accent[0]=AccentTint(pilot.Accent);}
+            if(you.Spec!=spec||you.Hat!=hat||you.Body!=pilot.Body||you.Accent!=pilot.Accent||cast.BodySkin!=pilot.BodySkin||cast.HatColor!=pilot.HatColor||cast.SeatKey==null){you.Spec=spec;you.Hat=hat;you.Body=pilot.Body;you.Accent=pilot.Accent;cast.BodySkin=pilot.BodySkin;cast.HatColor=pilot.HatColor;cast.Body[0]=BodyTint(pilot.Body);cast.Accent[0]=BodyAccent(pilot.BodySkin,pilot.Accent,hat,pilot.HatColor);}
             // The seat height once per spec (the chair pose at t=0), so the pilot never bobs on the lip.
             if(cast.SeatKey!=spec){cast.SeatKey=spec;NativeRooftopActors.Sample(you,cast.States[0],0);cast.SeatY=NativeRooftopActors.SeatHeight(cast.States[0]);}
             sourceModels.Begin();var sites=rooftop.World.Sites;
@@ -288,7 +288,9 @@ namespace ChipArena.UnityConversion
                 var root=Matrix4x4.TRS(new Vector3(-feet.X,feet.Y,feet.Z),Quaternion.Euler(0,-yaw*Mathf.Rad2Deg,0),Vector3.one);var group=cast.Group[i]=root*Matrix4x4.Translate(new Vector3(0,NativePortraitRules.GroupY,0));
                 var bones=cast.Bones[i];var p=s.Pose;for(int b=0;b<bones.Length;b++)bones[b]=group*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(p.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(p.WorldRotation[b])),Vector3.one);
                 bool siren=look.Spec=="siren";
-                sourceModels.Queue(siren?"siren":"pilot",group,cast.Bone[i],null,0,camera,cast.Body[i],cast.Accent[i],look:siren?SirenStill(reduced?0:time):null);
+                // Your pilot in its body skin; the crowd in the Standard body at its distance (NativeBodySkinPresentation.cs).
+                string body=siren?"siren":BodyModel(i==0?pilot.BodySkin:NativeBodySkins.StandardIndex,NativeBodySkins.Tier(LowGraphics,reduced?.3f:1,i==0?0:Vector3.Distance(camera.transform.position,group.GetColumn(3)),false));
+                sourceModels.Queue(body,group,cast.Bone[i],null,0,camera,cast.Body[i],cast.Accent[i],look:siren?SirenStill(reduced?0:time):null);
                 // Your pilot's hat in its colour, the Sheldon Head animated (NativeHatPresentation.cs); the crowd keeps Auto.
                 string hatColor=i==0?pilot.HatColor:null;
                 if(!siren&&look.Hat!="none"&&!AuditorHalo(look.Hat,bones[CapturedRig.Head],time,1,reduced,0,camera,camera,hatColor)&&!SheldonStill(look.Hat,hatColor,group,cast.Bone[i],bones[CapturedRig.Head],time,i,reduced,0,camera))sourceModels.Queue(HatModel(look.Hat,hatColor),group,cast.Bone[i],null,0,camera,body:HatBody(look.Hat,hatColor));

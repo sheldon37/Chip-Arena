@@ -92,8 +92,9 @@ namespace ChipArena.UnityConversion
             sourceModels.Queue("death-siren-crush",root,dropSceneBone,dropSceneShown,layer:layer,camera:only,opacity:fade,partOpacity:dropSceneOpacity,partTint:dropSceneTint);
             // The body arrives charred by the hold. The crushed head (and its hat) is gone. The weapon, hidden in the hold, falls out
             // of the opening hand at the release as the body's loose weapon (NativeCorpse's dropped weapon) and shrinks with it.
-            Color ink=NativeArena.ColorOf(0x0c0a10),bodyTint=Color.Lerp(BodyTint(death.actor?.BodyColor),ink,.85f),accentTint=Color.Lerp(AccentTint(death.actor?.AccentColor),ink,.85f);
-            sourceModels.Queue(sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering),root,dropVictimBone,dropVictimShown,layer,only,body:bodyTint,accent:accentTint,opacity:fade);
+            string victimBody=BodyAt(death.id,death.position,out int bodySkin);
+            Color ink=NativeArena.ColorOf(0x0c0a10),bodyTint=Color.Lerp(BodyTint(death.actor?.BodyColor),ink,.85f),accentTint=Color.Lerp(BodyAccent(bodySkin,death.actor?.AccentColor,death.actor?.Hat,death.actor?.HatColor),ink,.85f);
+            sourceModels.Queue(sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering,victimBody),root,dropVictimBone,dropVictimShown,layer,only,body:bodyTint,accent:accentTint,opacity:fade);
             if(dropFallen&&body.LooseModel!=null&&body.PresentedWeapon is Matrix4x4 loose)sourceModels.Queue(body.LooseModel,DropShrink(loose),layer:layer,camera:only,opacity:fade);
             return true;
         }

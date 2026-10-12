@@ -11,7 +11,9 @@ namespace ChipArena.UnityConversion
     // (only non-default picks, in weapon order, unknown weapons and skins dropped). It is saved in prefs.weaponSkins and the
     // account cosmetics (NativeCosmetics.weaponSkins) and carried in the seat frames like lobbyBack, so every client draws the
     // owner's skin; a missing or malformed value (older clients, old saves, bots) reads as Standard everywhere.
-    // Presentation only: a skin never changes reach, hit volumes, timing or any rule.
+    // Presentation only: a skin never changes reach, hit volumes, timing or any rule. The map also carries the pilot's body
+    // skin as one more entry after the weapons ("body:prototype", "body:sheldon"; Core/NativeBodySkins.cs), so the body pick
+    // travels on exactly the same path; an older client drops the entry it does not know and draws its own body.
     public static class NativeWeaponSkins
     {
         public const string Standard="standard",Prototype="prototype";
@@ -21,56 +23,63 @@ namespace ChipArena.UnityConversion
         public const int StandardIndex=0,PrototypeIndex=1,Count=2;
         /// <summary>The weapons that carry skins (every weapon with a model; the Siren has none), in content order.</summary>
         public static readonly string[] Weapons={"pistol","rifle","machinegun","fire","water","lightning","darkness","sword","daggers","shield","greatsword","emperor","ansatsuken","leet"};
-        /// <summary>The longest normalized map (every weapon on the Prototype Series) is 249 characters; frames refuse longer.</summary>
+        /// <summary>The longest normalized map (every weapon on the Prototype Series, the body on the Prototype) is 264 characters; frames refuse longer.</summary>
         public const int MaxLength=320;
         public static bool Skinned(string spec)=>spec!=null&&Array.IndexOf(Weapons,spec)>=0;
         public static int SkinIndex(string skin)=>skin==Prototype?PrototypeIndex:skin==Standard?StandardIndex:-1;
+        /// <summary>Every entry the map carries, in its canonical order: the weapons, then the pilot's body.</summary>
+        public static readonly string[] Entries=Join(Weapons,NativeBodySkins.Entry);
+        private static string[] Join(string[] a,string b){var o=new string[a.Length+1];Array.Copy(a,o,a.Length);o[a.Length]=b;return o;}
+        /// <summary>The skin keys an entry accepts: a weapon's two finishes, or the body's three skins.</summary>
+        private static string[] KeysOf(string entry)=>entry==NativeBodySkins.Entry?NativeBodySkins.Keys:Keys;
+        private static int SkinIndex(string entry,string skin){var keys=KeysOf(entry);for(int k=0;k<keys.Length;k++)if(keys[k]==skin)return k;return -1;}
 
-        /// <summary>The skin picked for `spec` in a map (StandardIndex when absent or malformed). Allocation free.</summary>
+        /// <summary>The skin picked for `spec` (a weapon, or the body entry) in a map (StandardIndex when absent or malformed). Allocation free.</summary>
         public static int Index(string map,string spec)
         {
             if(string.IsNullOrEmpty(map)||string.IsNullOrEmpty(spec))return StandardIndex;
-            int i=0,n=map.Length,result=StandardIndex;
+            int i=0,n=map.Length,result=StandardIndex;var keys=KeysOf(spec);
             while(i<n)
             {
                 int end=map.IndexOf(',',i);if(end<0)end=n;int colon=map.IndexOf(':',i,end-i);
                 if(colon>i&&colon-i==spec.Length&&string.CompareOrdinal(map,i,spec,0,spec.Length)==0)
                 {
                     int len=end-colon-1;
-                    for(int k=0;k<Count;k++)if(Keys[k].Length==len&&string.CompareOrdinal(map,colon+1,Keys[k],0,len)==0){result=k;break;}
+                    for(int k=0;k<keys.Length;k++)if(keys[k].Length==len&&string.CompareOrdinal(map,colon+1,keys[k],0,len)==0){result=k;break;}
                 }
                 i=end+1;
             }
             return result;
         }
-        public static string Of(string map,string spec)=>Keys[Index(map,spec)];
+        public static string Of(string map,string spec)=>KeysOf(spec)[Index(map,spec)];
         /// <summary>
-        /// The canonical form: entries "spec:skin" for known weapons on a non-default known skin, in Weapons order, each weapon
-        /// once (the last entry for a weapon wins), joined by commas; "" when every weapon is Standard. Never longer than MaxLength.
+        /// The canonical form: entries "spec:skin" for known entries (the weapons, then the body) on a non-default skin that entry
+        /// accepts, in Entries order, each once (the last entry wins), joined by commas; "" when everything is Standard. Never
+        /// longer than MaxLength. A non-DEV account's Sheldon Clothes is dropped separately (NativeBodySkins.Gate).
         /// </summary>
         public static string Normalize(string map)
         {
             if(string.IsNullOrEmpty(map))return "";
             if(map.Length>4096)map=map.Substring(0,4096);
-            var picks=new int[Weapons.Length];
+            var picks=new int[Entries.Length];
             foreach(var entry in map.Split(','))
             {
                 int colon=entry.IndexOf(':');if(colon<=0)continue;string spec=entry.Substring(0,colon).Trim(),skin=entry.Substring(colon+1).Trim();
-                int w=Array.IndexOf(Weapons,spec),k=SkinIndex(skin);if(w<0||k<0)continue;picks[w]=k;
+                int w=Array.IndexOf(Entries,spec);if(w<0)continue;int k=SkinIndex(spec,skin);if(k<0)continue;picks[w]=k;
             }
             return Join(picks);
         }
         private static string Join(int[] picks)
         {
             var sb=new StringBuilder();
-            for(int w=0;w<Weapons.Length;w++)if(picks[w]!=StandardIndex){if(sb.Length>0)sb.Append(',');sb.Append(Weapons[w]).Append(':').Append(Keys[picks[w]]);}
+            for(int w=0;w<Entries.Length;w++)if(picks[w]!=StandardIndex){if(sb.Length>0)sb.Append(',');sb.Append(Entries[w]).Append(':').Append(KeysOf(Entries[w])[picks[w]]);}
             return sb.ToString();
         }
-        /// <summary>The map with `spec` set to `skin` (normalized).</summary>
+        /// <summary>The map with `spec` (a weapon or the body entry) set to `skin` (normalized).</summary>
         public static string With(string map,string spec,string skin)
         {
-            int w=Array.IndexOf(Weapons,spec),k=SkinIndex(skin);if(w<0||k<0)return Normalize(map);
-            var picks=new int[Weapons.Length];for(int i=0;i<Weapons.Length;i++)picks[i]=Index(map,Weapons[i]);picks[w]=k;return Join(picks);
+            int w=Array.IndexOf(Entries,spec),k=w<0?-1:SkinIndex(spec,skin);if(w<0||k<0)return Normalize(map);
+            var picks=new int[Entries.Length];for(int i=0;i<Entries.Length;i++)picks[i]=Index(map,Entries[i]);picks[w]=k;return Join(picks);
         }
 
         // ---- model ids (cached strings: drawing allocates nothing) ----

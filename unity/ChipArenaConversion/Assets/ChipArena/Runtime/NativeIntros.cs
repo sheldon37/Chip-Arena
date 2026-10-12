@@ -100,7 +100,8 @@ namespace ChipArena.UnityConversion
         }
         private void EntranceGhosts(NativeEntranceScript script,string style,float t)
         {
-            string model=sourceModels.EntranceGhost("pilot");if(model==null)return;string weapon=IntroModel(NativeIntroRules.IntroWeapon(style));string weaponGhost=weapon!=null?sourceModels.EntranceGhost(weapon):null;
+            // The entrance's afterimages and hologram are the pilot's own body (the Sheldon Intro's: its Sheldon Clothes).
+            string model=sourceModels.EntranceGhost(BodyModel(script is NativeSheldonIntroScript?NativeBodySkins.SheldonIndex:BodySkin(introActor),BodyCloseTier));if(model==null)return;string weapon=IntroModel(NativeIntroRules.IntroWeapon(style));string weaponGhost=weapon!=null?sourceModels.EntranceGhost(weapon):null;
             entranceGhostBone??=b=>b>=0&&b<22?entranceGhostBones[b]:Matrix4x4.identity;entranceGhostWeapon??=b=>(b>=0&&b<22?entranceGhostBones[b]:Matrix4x4.identity)*introGrip;
             int n=script.Ghosts(t,entranceGhosts);bool holo=script.Holo(t,out var hc,out float ho,out var hoff);
             for(int i=0;i<n+(holo?1:0);i++)
