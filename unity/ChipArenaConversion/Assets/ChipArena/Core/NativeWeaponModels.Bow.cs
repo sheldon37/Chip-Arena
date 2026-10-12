@@ -170,7 +170,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i+1<keys.Length;i++)
                 {
                     var a=LimbPath[keys[i]];var c=LimbPath[keys[i+1]];var mid=(a+c)*.5f;var d=c-a;float len=d.Length(),ang=(float)Math.Atan2(d.Z,d.Y);
-                    k.Box(i==keys.Length-2?steel:dark,mid,V(.03f-.004f*i,len+.006f,.013f-.0015f*i),0,-ang);
+                    k.Box(i==keys.Length-2?steel:dark,mid,V(.03f-.004f*i,len+.006f,.013f-.0015f*i),0,ang);
                 }
                 k.Box(steel,V(0,NativeBow.TipY,NativeBow.TipZ+.004f),V(.014f,.012f,.012f));
                 if(!top)k.Pop();

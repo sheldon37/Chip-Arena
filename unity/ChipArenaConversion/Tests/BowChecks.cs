@@ -25,7 +25,7 @@ internal static class BowChecks
     private static float Reach(in NativeBowPose.Frame f)=>Math.Max(f.BowReach,f.DrawWeight>.5f?f.DrawReach:0);
     private static float LineDistance(Vector3 p,Vector3 o,Vector3 dir){dir=Vector3.Normalize(dir);var v=p-o;return (v-dir*Vector3.Dot(v,dir)).Length();}
     // The Prototype Series is pinned: its meshes may only change on purpose (update these with the reason in the commit).
-    private const ulong ProtoBow=0x6921910c38750e96UL,ProtoArrow=0xa6ea543d1452d3c0UL,ProtoQuiver=0x47160f2966502e94UL;
+    private const ulong ProtoBow=0xae34fccc266bc756UL,ProtoArrow=0xa6ea543d1452d3c0UL,ProtoQuiver=0x47160f2966502e94UL;
     public static void Run(string root)
     {
         var log=new List<string>();count=0;
@@ -60,6 +60,11 @@ internal static class BowChecks
         int[] arrow={NativeBowModels.ArrowMesh(true,0).Triangles,NativeBowModels.ArrowMesh(true,1).Triangles,NativeBowModels.ArrowMesh(true,2).Triangles},quiver={NativeBowModels.QuiverMesh(true,0).Triangles,NativeBowModels.QuiverMesh(true,1).Triangles,NativeBowModels.QuiverMesh(true,2).Triangles};
         Check(arrow[0]<=240&&arrow[1]<arrow[0]&&arrow[2]<arrow[1],"the arrow (drawn many times: stuck arrows, the volley) stays light and thins out ("+string.Join("/",arrow)+")");
         Check(quiver[0]<=1000&&quiver[1]<quiver[0]&&quiver[2]<quiver[1],"the quiver within 1000 triangles and thinning ("+string.Join("/",quiver)+")");
+        // The Prototype's limbs are box chords along the limb's centre line: each box's long axis follows its chord (a box turned
+        // the other way about x zigzags off the line by up to 9 cm).
+        var chords=new[]{0,3,6,9,11}.Select(i=>new Vector2(NativeBowModels.LimbPath[i].Y,NativeBowModels.LimbPath[i].Z)).ToArray();
+        float OffLine(Vector2 x){float best=1;for(int i=0;i+1<chords.Length;i++){var a=chords[i];var d=chords[i+1]-a;float u=Math.Clamp(Vector2.Dot(x-a,d)/d.LengthSquared(),0,1);best=Math.Min(best,Vector2.Distance(x,a+d*u));}return best;}
+        foreach(bool top in new[]{true,false}){float off=0;foreach(var s in NativeBowModels.Part(false,top?NativeBowModels.UpperLimb:NativeBowModels.LowerLimb,0).Sections)foreach(var v in s.Positions)off=Math.Max(off,OffLine(new Vector2(top?v.Y:-v.Y,v.Z)));Check(off<.025f,"the Prototype "+(top?"upper":"lower")+" limb follows its centre line ("+off+" m off)");}
         ulong pb=NativeBowModels.Hash(NativeBowModels.Part(false,NativeBowModels.Held,0)),pa=NativeBowModels.Hash(NativeBowModels.ArrowMesh(false,0)),pq=NativeBowModels.Hash(NativeBowModels.QuiverMesh(false,0));
         Check(pb==ProtoBow&&pa==ProtoArrow&&pq==ProtoQuiver,"the Prototype Series is pinned (bow 0x"+pb.ToString("x16")+", arrow 0x"+pa.ToString("x16")+", quiver 0x"+pq.ToString("x16")+")");
         // The ids drawn (the Prototype Series is drawn at its one tier: BowHeld and the bank use tier 0 for it).
