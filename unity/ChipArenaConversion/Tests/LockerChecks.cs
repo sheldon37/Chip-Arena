@@ -25,7 +25,7 @@ internal static class LockerChecks
         string[] keys={"appearance","kill-effects","entrance","loadout","weapon-skins"};
         Check(NativeLocker.Count==5&&NativeLocker.Keys.SequenceEqual(keys),"the five categories in order");
         Check(NativeLocker.Labels.Length==5&&NativeLocker.Icons.Length==5&&NativeLocker.Subtitles.Length==5,"a label, icon and subtitle per category");
-        Check(NativeLocker.Labels.SequenceEqual(new[]{"Appearance","Kill Effects","Entrance","Loadout","Weapon Skins"}),"category labels");
+        Check(NativeLocker.Labels.SequenceEqual(new[]{"Appearance","Kill Effects","Entrance","Loadout","Skins"}),"category labels (the skins tab holds the body and the weapons)");
         foreach(var icon in NativeLocker.Icons)Check(icons.Contains(icon),"category icon "+icon+" is in Icons.json");
         for(int i=0;i<5;i++)Check(NativeLocker.Interactive(i)&&!NativeLocker.Soon(i),"every category is live, none coming soon ("+keys[i]+")");
         foreach(var tab in new[]{"Appearance","KillEffects","Entrance","Loadout"})Check(Count(ui,"case NativeLocker."+tab+":")==2,"category "+tab+" is laid out and drawn");
@@ -44,8 +44,8 @@ internal static class LockerChecks
         Check(ui.Contains("NativeLoadoutText.InClass")||ui.Contains("MenuWeapons();"),"the weapon cards use the loadout's gated weapon list (MenuWeapons)");
         var gate=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeHatLooks.cs"));
         Check(profile.Contains("public static bool Allowed(NativeAccess a,string type,string id)=>NativeCosmeticGate.Allowed(a,type,id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());")
-            &&gate.Contains("public static bool DevOnly(string id)=>id==\"dev-gibber\"||id==NativeHatLooks.SheldonHead||id==SheldonIntro;")
-            &&gate.Contains("public static bool Restricted(string id)=>id!=null&&(id.StartsWith(\"dev-\",StringComparison.Ordinal)||id==\"auditor-halo\"||id==NativeHatLooks.SheldonHead||id==SheldonIntro);")
+            &&gate.Contains("public static bool DevOnly(string id)=>id==\"dev-gibber\"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes;")
+            &&gate.Contains("public static bool Restricted(string id)=>id!=null&&(id.StartsWith(\"dev-\",StringComparison.Ordinal)||id==\"auditor-halo\"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes);")
             &&gate.Contains("public static bool Allowed(NativeAccess a,string type,string id,double now)=>id!=null&&(!DevOnly(id)||(a??NativeAccess.Guest).Developer)&&(!Restricted(id)||(a??NativeAccess.Guest).Allows(type+\":\"+id,now));"),"the cosmetic gate is unchanged for legacy grants (moved to Core; the Sheldon Head and Sheldon Intro join the Gibber behind live DEV access)");
         var hats=Ids(profile,"Hats");var kills=Ids(profile,"Kills");var intros=Ids(profile,"Intros");
         Check(hats.Length==12&&kills.Length==22&&intros.Length==23,"cosmetic id lists parsed ("+hats.Length+"/"+kills.Length+"/"+intros.Length+")");
@@ -73,17 +73,17 @@ internal static class LockerChecks
             Check(Regex.IsMatch(ui,@"b\.\w+!=prefs\."+field+@"\b")&&Regex.IsMatch(ui,@"prefs\."+field+@"=b\.\w+;"),"the baseline covers and restores prefs."+field);
         Check(profile.Contains("LockerRebase();};"),"an account profile loaded meanwhile becomes the baseline");
 
-        // 4. The weapon skins tab (Runtime/NativeLockerSkinsUI.cs) picks a skin per weapon: its only write is prefs.weaponSkins
-        // through the normalizing setter (saved by Save Pilot), hovering only tries one on the stage.
+        // 4. The weapon skins tab (Runtime/NativeLockerSkinsUI.cs) picks the body skin and a skin per weapon: its only write is
+        // prefs.weaponSkins through the normalizing setter (saved by Save Pilot), hovering only tries one on the stage.
         string skins=Body(R("NativeLockerSkinsUI.cs"),"private void LkSkins(");
         Check(skins.Length>200&&!ui.Contains("private void LkSkins("),"the weapon skins drawing lives in its own file");
-        Check(Regex.Matches(skins,@"prefs\.\w+=").Count==1&&skins.Contains("prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,w.id,NativeWeaponSkins.Keys[k]);"),"the skin selector writes only the skin map");
+        Check(Regex.Matches(skins,@"prefs\.\w+=").Count==1&&skins.Contains("prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,entry,keys[k]);")&&skins.Contains("string entry=body?NativeBodySkins.Entry:w.id;var keys=body?NativeBodySkins.Keys:NativeWeaponSkins.Keys;"),"the skin selector writes only the skin map");
         foreach(var bad in new[]{"SetWeapon(","menuClass=","SavePilot(","Save("})Check(!skins.Contains(bad),"the weapon skins tab has no "+bad);
 
         // 5. Nothing inside the scroll clip is drawn rotated or scaled (a transformed draw would carry the clip with it).
         Check(!ui.Contains("U.Push("),"no transformed draws in the Locker");
         // 6. The turntable turns without deriving the portrait again.
-        Check(portraits.Contains("public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent&&Skin==o.Skin&&HatColor==o.HatColor;")&&portraits.Contains("slot.Yaw=look.Yaw;")&&portraits.Contains("bones[b]=spin*Matrix4x4.TRS("),"yaw is a render input, not part of the look");
+        Check(portraits.Contains("public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent&&Skin==o.Skin&&HatColor==o.HatColor&&BodySkin==o.BodySkin;")&&portraits.Contains("slot.Yaw=look.Yaw;")&&portraits.Contains("bones[b]=spin*Matrix4x4.TRS("),"yaw is a render input, not part of the look");
 
         // 7. Ability slots read from content, by spec and slot; several options per slot are kept in content order.
         var options=new List<NativeLocker.AbilityOption>();var inv=CultureInfo.InvariantCulture;

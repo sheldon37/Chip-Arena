@@ -17,14 +17,15 @@ namespace ChipArena.UnityConversion
             if(sourceModels==null||string.IsNullOrEmpty(a.SourceSpec))return false;int layer=first?10:0;Camera camera=first?ViewCamera:null;
             Matrix4x4 Bone(int b)=>rig.Bones[b].localToWorldMatrix;bool Visible(int b)=>!first||NativeViewRules.ViewModelBone(b);
             // The first-person Siren shows inked pilot arms (first-person.ts); a Last Laugh victim chars as it burns (C12).
-            string model=a.SourceSpec=="siren"?first?sirenInk??(sirenInk=sourceModels.Ink("pilot")):"siren":sourceModels.WoundedPilot(a.Id,a.Wounds,a.BodyColor,ForceCompatibilityRendering);
+            // Every other pilot wears its body skin at this rig's tier (NativeBodySkinPresentation.cs); the Siren keeps its own.
+            int bodySkin=NativeBodySkins.StandardIndex;string model=a.SourceSpec=="siren"?first?sirenInk??(sirenInk=sourceModels.Ink("pilot")):"siren":sourceModels.WoundedPilot(a.Id,a.Wounds,a.BodyColor,ForceCompatibilityRendering,RigBody(rig,a,first,out bodySkin));
             // The world Siren animates its look (claws, palm orbs, halos, eyes, grin, tongues, wisps: NativeSirenLookPresentation.cs).
             var look=a.SourceSpec=="siren"&&!first?SirenLook(rig,a,time):null;
             // Arena and first-person rigs wear their Chips and block state (NativeBodyChipPresentation.cs); entrance and viewer rigs stay bare.
             bool dressed=!Viewer&&rig!=introRig;Func<int,Color> tint;if(dressed)tint=RigTint(a,time,first);else{ClearRigTint();tint=first?null:SirenCharTint(a.Id);}
             // The hit flash (NativeHitFlash, weapons milestone) on a struck arena rig's body and hat; not the first-person arms.
             float flash=dressed&&!first?HitFlashCode(a.Id,time):1;
-            sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),AccentTint(a.AccentColor),partOpacity:reveal,partTint:tint,look:look,hitFlash:flash);
+            sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),BodyAccent(bodySkin,a.AccentColor,a.Hat,a.HatColor),partOpacity:reveal,partTint:tint,look:look,hitFlash:flash);
             if(look!=null)SirenLookFx(rig,look,layer,camera,time);
             if(!first)LivingWounds(rig,a,time);
             // The hat rides the head (hidden on the first-person view model); the Auditor halo animates (NativeAuditorHaloPresentation.cs),

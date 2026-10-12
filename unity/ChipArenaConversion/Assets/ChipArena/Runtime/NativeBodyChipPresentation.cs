@@ -46,7 +46,9 @@ namespace ChipArena.UnityConversion
             if(!ghostsLoaded){ghostsLoaded=true;ghostPilot=sourceModels.Ghost("pilot");ghostGloves=sourceModels.Ghost("weapon-ansatsuken");}if(ghostPilot==null)return;
             var c=NativeBlockTint.OverlayColor(rigFlash);var color=new Color(c.X,c.Y,c.Z,1);var root=rig.Root.transform.localToWorldMatrix;
             if(flashShell==null)flashShell=b=>flashSource(b)*FlashShell;
-            flashSource=bone;sourceModels.Queue(ghostPilot,root,flashShell,visible,layer,camera,color,null,k);
+            // The parried pilot's own body silhouette (its skin at its tier, NativeBodySkinPresentation.cs).
+            string shell=BodyGhost(sheldonScripted?NativeBodySkins.SheldonIndex:BodySkin(a.Id),rig==introRig?BodyCloseTier:BodyTier(rig.Root.transform.position,first))??ghostPilot;
+            flashSource=bone;sourceModels.Queue(shell,root,flashShell,visible,layer,camera,color,null,k);
             if(weaponBone!=null&&ghostGloves!=null){flashSource=weaponBone;sourceModels.Queue(ghostGloves,root,flashShell,null,layer,camera,color,null,k);}
             if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.Hat!="auditor-halo")
             {
