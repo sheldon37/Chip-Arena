@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-12 corpses: `codex/unity-round-corpses-20261012` on merged melee `374964c` fixes Brickfall ragdoll support by including static floors/stairs/rubble and refreshing changed geometry. PvP player bodies persist until round results, then clear; summon expiry and PvE revival stay separate. Native settling/collapse/late-join build gate added; Unity/Windows acceptance and compiled publication remain pending. See DEV_LOG and follow-up PR.
+2026-10-12 death-results repair: `codex/unity-death-results-20261012` on cloud `2c45d052` fixes PR #125's immediate cleanup on the winning kill, which suppressed the death animation/body entirely. PvP bodies now persist through the full five-second results period and clear at the following countdown, draft or match screen. Brickfall floor/stair/rubble support remains in place; summon expiry and PvE revival stay separate. Managed lifecycle regression reproduces the old failure; Unity/Windows visual acceptance and compiled publication remain pending. See DEV_LOG and task PR for checks/integration receipts.
 
 2026-10-12 jump animation: `claude/jump-anim` (base `fdd1914`) adds per-weapon pack jumps (push-off, rise/apex/fall by vertical speed, fall-scaled landing) for every route and the dagger double-jump presentation (flip, air burst, whoosh), detected from replicated state; the double-jump rule itself is handed to Astra in `docs/MELEE-FEEL.md`. Merged into the shared Unity head; not released; see DEV_LOG.
 
