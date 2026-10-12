@@ -84,7 +84,7 @@ namespace ChipArena.UnityConversion
             if(h.kind=="crane")
             {
                 if(s.Zone<0)return true;var zone=h.zones[s.Zone];
-                if(s.Phase>=NativeFactoryHazards.Travelling&&s.Phase<=NativeFactoryHazards.Regrip)return !Cross(a,b,zone.center,zone.size);
+                if(s.Phase==NativeFactoryHazards.Travelling||s.Phase==NativeFactoryHazards.Warning||s.Phase==NativeFactoryHazards.Falling||Landed(s))return !Cross(a,b,zone.center,zone.size);
                 return true;
             }
             if(h.kind=="vent")return h.damage<=0||s.Phase==NativeFactoryHazards.Parked;

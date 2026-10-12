@@ -40,6 +40,8 @@ internal static class StageHazardChecks
         Check(NativeStaggerRules.Classify(null,"maglev",100)==StaggerWeight.None&&NativeStaggerRules.Classify(null,"grid",13)==StaggerWeight.None,"no hazard stagger");
         foreach(var kind in new[]{"maglev","grid","hazard","collapse",null,""})Check(NativeStageHazards.DeathKind(kind),"wire kind "+kind);Check(!NativeStageHazards.DeathKind("made-up"),"unknown wire kind");
         var crane=factory.hazards.Single(h=>h.kind=="crane");double impact=crane.start+crane.offset+crane.travel+crane.warn+crane.rise;
+        var zone=crane.zones[NativeFactoryHazards.ZoneOf(crane,0,0)];
+        foreach(double t in new[]{crane.start+.1,crane.start+crane.travel+.1,impact-.01,impact+.1,impact+crane.dwell+.1})Check(!NativeStageHazards.LinkOpen(crane,NativePhase.Fight,0,10,14+t,zone.center,zone.center),"crane nav blocks travel, warning, fall, landed and regrip");
         foreach(double t in new[]{impact+.1,impact+crane.dwell+.1})Check(NativeStageHazards.Landed(NativeFactoryHazards.State(crane,0,t)),"landed/regrip collider");
         Check(!NativeStageHazards.Landed(NativeFactoryHazards.State(crane,0,impact+crane.dwell+1.501)),"hoist removes collider");
         foreach(var h in factory.hazards)Check(!NativeFactoryHazards.State(h,0,NativeFactoryHazards.Clock(NativePhase.Fight,10,13.999)).Lethal,"4 second grace "+h.id);
