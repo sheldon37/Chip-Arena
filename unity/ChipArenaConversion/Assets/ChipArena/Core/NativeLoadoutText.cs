@@ -49,6 +49,7 @@ namespace ChipArena.UnityConversion
                 case "pistol":return "Precise sidearm · 7-round magazine";
                 case "rifle":return "Long-range sniper · 3 heavy rounds";
                 case "machinegun":return "Rapid automatic fire · 48 rounds";
+                case "bow":return "Draw to charge · arrows arc and stick";
                 case "fire":return "Firebolts that blast and burn";
                 case "water":return "Fast globes that soak and slow";
                 case "lightning":return "Rapid bolts that chain between enemies";

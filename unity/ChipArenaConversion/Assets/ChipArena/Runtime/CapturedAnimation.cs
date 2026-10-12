@@ -295,6 +295,9 @@ namespace ChipArena.UnityConversion
             private NativeRangedLocomotion rangedLocomotion;private NativeRangedLocomotion RangedLocomotion=>Hits!=null?rangedLocomotion??=new NativeRangedLocomotion():null;
             // The held weapons' reach stretch, set by the presentation before posing (the melee layers measure the stretched blade).
             public float WeaponReach=1;
+            // The first-person camera's pitch (degrees, the view pilot's Actor.Pitch; the view copy's own is zeroed): the plunging
+            // stab's view blade points at the ground below it (NativePlungePose.ViewDown).
+            public float ViewPitch;
             public static bool CapturedMelee(Actor a)=>NativePoseRoute.For(a,false)==PoseRoute.CapturedMelee;
             private void MeleePose(Actor a,Vector3 position,float time)
             {
@@ -364,7 +367,7 @@ namespace ChipArena.UnityConversion
                 v.LastAttack=a.AttackAt;v.Windup=a.VisualWindup;v.AttackRate=a.CastRate>0?a.CastRate:1;v.AttackIndex=a.Combo+1;
                 v.SwingAt=a.SwingAt>-90?a.SwingAt:float.NaN;v.SwingUntil=a.SwingAt>-90?a.SwingUntil:float.NaN;
                 v.Commit=a.CommitAt>-90;v.CommitAt=a.CommitAt;v.CommitUntil=a.CommitUntil;v.CommitYaw=-a.CommitYaw*D;v.StepAt=a.StepAt;v.StepUntil=a.StepUntil;v.StepDistance=a.StepDistance;v.Followup=a.Followup;v.Hurricane=a.Hurricane;
-                v.AirAttack=a.AirAttack?1:0;v.OpenerLunge=a.OpenerLunge;v.SprintAttack=a.SprintAttack;
+                v.AirAttack=a.AirAttack?1:0;v.OpenerLunge=a.OpenerLunge;v.SprintAttack=a.SprintAttack;v.Plunge=NativePlungeFields.Of(a);
                 v.Guarding=false;v.BlockTime=time<a.BlockUntil?a.BlockUntil-time:0;v.LastBlock=a.BlockAt;v.HitStunUntil=a.StunUntil;
                 v.RollAt=a.RollAt;v.RollUntil=a.RollAt>-90?a.RollAt+a.VisualRollDuration:-100;
                 v.ActionKind=a.SpecialKind;v.ActionAt=a.SpecialAt;v.ActionUntil=a.SpecialUntil;
@@ -381,17 +384,18 @@ namespace ChipArena.UnityConversion
                     case PoseRoute.Magic:MagicGaitPose(a,position,time);return;
                     case PoseRoute.Fighter:FighterPose(a,position,time);return;
                     case PoseRoute.Gun:GunGaitPose(a,position,time);return;
+                    case PoseRoute.Bow:BowGaitPose(a,position,time);return;
                 }
                 // The DEV Cyber Lord's first-person fists (Core/CyberLordMotion.FirstPerson): never the sword set.
                 if(firstPerson&&CyberLordMotion.Handles(a.SourceSpec)){Weapon=a.Weapon;cyberMotion??=new CyberLordMotion();State=cyberMotion.FirstPerson(pose,a,time);WritePose();fresh=false;lastTime=time;return;}
                 // Generic: the Siren and the first-person view models (guns, magic and the rest). A magic-class pilot (the four
                 // schools and the L33t H4x staff, MagicPose.School) never plays the sword set's cuts, block or stagger here.
-                Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);bool magic=MagicPose.School(a)>0,sword=NativePoseRoute.SwordLayers(a);
+                Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);bool magic=MagicPose.School(a)>0,sword=NativePoseRoute.SwordLayers(a),bow=NativeBowWire.Is(a);
                 float dt=Mathf.Clamp(time-lastTime,0,.1f); bool reset=fresh||time<lastTime||time-lastTime>.35f;
                 if(reset) phase=0; lastTime=time;
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 float speed=new Vector2(a.Velocity.x,a.Velocity.z).magnitude;
-                bool attack=!magic&&a.Attacking(time),roll=a.Rolling(time),stun=a.StunUntil>time,ground=a.Grounded;
+                bool attack=!magic&&!bow&&a.Attacking(time),roll=a.Rolling(time),stun=a.StunUntil>time,ground=a.Grounded;
                 bool special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time),juggle=!firstPerson&&Juggled(a,time);
                 bool moving=speed>.08f&&!attack&&!roll&&!stun&&!special&&!down&&!juggle&&ground;
                 if(moving) phase+=dt*Mathf.Min(3.7f,speed/Mathf.Min(2.1f,.62f+.22f*speed));
@@ -405,10 +409,12 @@ namespace ChipArena.UnityConversion
                     Save(blendP,blendQ); var run=Find(set,"run"); Sample(set,"run",run.Marks[0]+phase*run.Duration); Blend(blendP,blendQ,CapturedClip.Ease((speed-3.2f)/2.8f)*keep);
                     State=speed>4?"run":"walk";
                 }
-                // A swing begun in the air plays the weapon's jump attack (Core/NativeAirAttack) instead of the cut below.
-                bool air=!magic&&!GunRules.Ranged(a.Weapon)&&AirView(a,position,time,set,firstPerson,attack);
+                // A swing begun in the air plays the weapon's plunging stab (Core/NativePlungePose) or jump attack (Core/NativeAirAttack)
+                // instead of the cut below.
+                bool plunge=!magic&&!bow&&!GunRules.Ranged(a.Weapon)&&PlungeView(a,position,time,firstPerson,attack);
+                bool air=plunge||!magic&&!bow&&!GunRules.Ranged(a.Weapon)&&AirView(a,position,time,set,firstPerson,attack);
                 // A grounded swing entered from a sprint plays the weapon's sprint attack (Core/NativeSprintAttackVisuals) instead.
-                bool sprinting=!air&&!magic&&!GunRules.Ranged(a.Weapon)&&SprintView(a,time,set,attack);
+                bool sprinting=!air&&!magic&&!bow&&!GunRules.Ranged(a.Weapon)&&SprintView(a,time,set,attack);
                 if(attack&&!air&&!sprinting)
                 {
                     string cut="cut"+(char)('A'+a.Combo%(set==1?4:set==0?3:2)); var c=Find(set,cut);
@@ -447,6 +453,8 @@ namespace ChipArena.UnityConversion
                     RangedAbilityPose.Apply(pose,a,time,firstPerson);
                     State=a.ReloadUntil>time?"reload":time<a.BlockUntil?"block":time-a.LastShot<.2f?"fire":a.Aiming?"aim":moving?"carry":"ready";
                 }
+                // The first-person bow (Core/NativeBowPose.View): the arms on the arrow line straight down the view.
+                if(bow){BowFrame=NativeBowPose.View(pose,a,time);BowView=NativeBow.At(NativeBowWire.Of(a),time);BowAt=time;State=NativeBowMotion.StateOf(BowView);}
                 if(moving)
                 {
                     // The source game also layers procedural travel-aware feet under captured upper-body carry.
@@ -482,7 +490,7 @@ namespace ChipArena.UnityConversion
                 if(special){NativeSpecialPose.Special(pose,a,time,firstPerson);State=a.SpecialKind;}
                 if(down){NativeSpecialPose.Recover(pose,a,time);State="recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time);}
                 if(juggle){NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);State="juggle";}
-                if(sword&&ground&&!roll&&!special&&!down&&!juggle&&!NativeFighterPose.Handles(a.SourceSpec)) CapturedRig.BladeFloor(pose,false,1.28f);
+                if(sword&&ground&&!roll&&!special&&!down&&!juggle&&!plunge&&!NativeFighterPose.Handles(a.SourceSpec)) CapturedRig.BladeFloor(pose,false,1.28f);
                 if(firstPerson)NativeFirstPersonPose.SettleTorso(pose);
                 WritePose(); fresh=false;
             }
@@ -496,7 +504,7 @@ namespace ChipArena.UnityConversion
             {
                 bool blocked=a.Hp<=0||a.Rolling(time)||a.StunUntil>time||a.JuggleUntil>time||NativeSpecialPose.Active(a,time)||NativeSpecialPose.Down(a,time);
                 airTrack.Observe(time,a.Grounded,position.y,blocked);
-                airWatch.Observe(airTrack,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,a.AirAttack?1:0,time,blocked);
+                airWatch.Observe(airTrack,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,NativePlungeRules.ForwardFlag(a.AirAttack?1:0,a.SprintAttack,NativePlungeFields.Of(a).Down),time,blocked);
                 var clip=NativeAirAttackRules.Clip(a.SourceSpec);var melee=MeleeSet.For(a.SourceSpec);
                 if(!attack||clip==null||melee==null||!airWatch.Air||airWatch.SwingAt!=a.AttackAt)return false;
                 float windup=a.VisualWindup,active=a.VisualActive,recovery=Mathf.Max(.001f,a.VisualDuration-windup-active),landed=airWatch.Landed(time),age=time-a.AttackAt;
@@ -508,6 +516,23 @@ namespace ChipArena.UnityConversion
                 Save(blendP,blendQ);NativePoseWriter.Write(Bones,airPose,"a jump attack view model");Blend(blendP,blendQ,CapturedClip.Ease((time-a.AttackAt)/.04f));
                 if(age>windup+active){Save(blendP,blendQ);Sample(set,"idle",time);Blend(blendP,blendQ,MeleeSwing.Settle(age,windup,active,recovery));}
                 State="air attack"+(float.IsNaN(landed)?"":" landed");return true;
+            }
+            // ---- the first-person plunging stab (Core/NativePlungePose.ViewPose; the third-person rigs pose it in MeleeMotion) ----
+            // The view rig keeps its own plunge watch over the replicated data (NativePlungeFields.Of, the one field mapping) and poses
+            // the view model on a scratch rig: the grips low in view, the blades pointing at the ground below the camera's pitch (the
+            // pilot looks down the blade as it falls), jolted down at the plant, drawn back up over the pull-out and settled into the
+            // guard; blended in over .04 s. The speed lines and vignette are ArenaPresentation's (NativeSprintFxPresentation).
+            private readonly NativePlungeWatch plungeWatch=new NativePlungeWatch();private MeleeRig plungeRig;private readonly float[] plungeRow=new float[CapturedClip.Channels];private readonly CapturedRig.Pose plungePose=new CapturedRig.Pose();
+            private bool PlungeView(Actor a,Vector3 position,float time,bool firstPerson,bool attack)
+            {
+                bool blocked=a.Hp<=0||a.Rolling(time)||a.StunUntil>time||a.JuggleUntil>time||NativeSpecialPose.Active(a,time)||NativeSpecialPose.Down(a,time);
+                plungeWatch.Observe(NativePlungeFields.Of(a),a.SourceSpec,position.y,a.Grounded,time,blocked);
+                var melee=MeleeSet.For(a.SourceSpec);
+                if(!attack||melee==null||NativePlungePose.For(a.SourceSpec)==null||!plungeWatch.Is(a.AttackAt)||!plungeWatch.Clock(time,out var c))return false;
+                melee.Idle.Sample(a.AttackAt,plungeRow);plungeRig??=new MeleeRig();plungeRig.Reset();plungeRig.WeaponVisible=!a.WeaponAway;plungeRig.WeaponReach=WeaponReach;
+                float guard=NativePlungePose.ViewPose(plungeRig,melee,a.SourceSpec,c,plungeRow,firstPerson?ViewPitch:a.Pitch);plungeRig.WritePose(plungePose);
+                Save(blendP,blendQ);NativePoseWriter.Write(Bones,plungePose,"a plunging stab view model");Blend(blendP,blendQ,CapturedClip.Ease((time-a.AttackAt)/.04f)*(1-guard));
+                State=NativePlungeRules.Label(c.Phase);return true;
             }
             // ---- the first-person sprint attack (Core/NativeSprintAttackVisuals; the third-person rigs pose it in MeleeMotion) ----
             // A swing the authority flags as entered from a sprint (it flags only grounded openers, so the greatsword's hop keeps
@@ -551,6 +576,22 @@ namespace ChipArena.UnityConversion
             // (Core/GunMotion) with the native gun hold over it, instead of the captured sword walk/run under a reset torso and
             // a stiff procedural leg cycle. A juggle (observed from the replicated JuggleUntil) owns the frame; otherwise the
             // native roll, reaction, special and recovery layers pose before the ground pass.
+            // ---- the bow (Core/NativeBowMotion: the gait, the pack 2Hand-Bow carry and the bow hold), third person ----
+            /// <summary>The posed bow of the last frame (rig space, source frame) and its view, at BowAt (the bow models read them).</summary>
+            public NativeBowPose.Frame BowFrame;public NativeBow.View BowView;public float BowAt=-100;private NativeBowMotion bowMotion;
+            private void BowGaitPose(Actor a,Vector3 position,float time)
+            {
+                Weapon=a.Weapon;Set=0;if(bowMotion==null)bowMotion=new NativeBowMotion();bowMotion.JumpLayer=JumpLayer;bowMotion.SprintLayer=SprintLayer;bowMotion.Locomotion=RangedLocomotion;
+                bool juggle=Juggled(a,time),roll=!juggle&&a.Rolling(time);
+                Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
+                Vector3 at=Root.transform.position;bowMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);bowMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
+                State=bowMotion.Pose(a,time,pose,juggle,juggleTrack,out bool react);
+                if(react){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
+                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Gun,time,bowMotion.Rig.GroupYaw,bowMotion.Rig.GroupPosition);
+                bowMotion.Finish(pose,time);if(Hits!=null)hitLayer.Replant(melee.Rig,pose);
+                BowFrame=bowMotion.Shot;BowView=bowMotion.Bow;BowAt=time;
+                WritePose();fresh=false;lastTime=time;
+            }
             private GunMotion gunMotion;
             private void GunGaitPose(Actor a,Vector3 position,float time)
             {

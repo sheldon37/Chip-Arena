@@ -35,9 +35,10 @@ namespace ChipArena.UnityConversion
         static partial void Guns(Dictionary<string,Design> d);
         static partial void Melee(Dictionary<string,Design> d);
         static partial void Magic(Dictionary<string,Design> d);
+        static partial void Bows(Dictionary<string,Design> d);
         private static Dictionary<string,Design> Designs()
         {
-            if(designs!=null)return designs;var d=new Dictionary<string,Design>(StringComparer.Ordinal);Guns(d);Melee(d);Magic(d);return designs=d;
+            if(designs!=null)return designs;var d=new Dictionary<string,Design>(StringComparer.Ordinal);Guns(d);Melee(d);Magic(d);Bows(d);return designs=d;
         }
         public static bool Designed(string spec)=>spec!=null&&Designs().ContainsKey(spec);
         public static Design Get(string spec)=>spec!=null&&Designs().TryGetValue(spec,out var d)?d:null;

@@ -944,3 +944,130 @@ is unchanged.
 ### Astra night implementation, 2026-10-12
 
 `codex/unity-night-handoff-20261012` integrates sprint PR #133, implements the owner's landing-timed jump attack (explicit Air/PlungeAt/ImpactAt state, guest prediction and Land event), and corrects S0b with an enforced eleven-cut captured-blade check. See MELEE-SIMULATION-HANDOFF's night section for the precise simulation and replication contract. The earlier proposal/presentation-only status above is historical; Windows animation retiming and real native duel measurements are still pending. No animation clips are changed by this simulation patch.
+
+## Plunging stab (owner 2026-10-12: "Can we add a downward jump attack as well? If the player is facing downwards?"; choice "Plunging stab")
+
+### Presentation (Claude, `claude/plunge-stab`)
+
+On the branch only, not merged or released. Astra builds the rule (docs/NEW-KITS.md section 1). Until her kind field
+exists, nothing changes in play: every air attack still shows as the forward jump attack. The presentation is proven on
+fixtures and offline timelines built from the spec's numbers. It changes no hit timing, hitbox, damage, cooldown, movement,
+stamina or network data.
+
+- **One field mapping** (`Core/NativePlungeStab.cs`, `NativePlungeFields`). It is the only code that names the
+  replicated fields. Every presenter reads its struct, `NativePlungeData`.
+  - Read today: `Actor.AirAttack` (Swing.Air), `PlungeAt`, `ImpactAt`, and the commitment end once landed (the stuck
+    recovery's end).
+  - Stand-ins until Astra's fields land, one line each: `Kind(a)` (proposed `AirKind`, `"down"`; returns none today)
+    and `Height(a)` (proposed fall height at impact; NaN today, so the watch measures the presented drop).
+  - The impact event: `Land` with Detail `melee-down` (Source, Position, Radius; `Amount` read as the height when
+    filled). `Direct()` splits the direct victim from the ring until a Detail says which: a hit before the landing, or one
+    within 0.85 m of the feet.
+- **Classification** (`NativePlungeRules.Classify`, `ForwardFlag`). Only the replicated kind makes a plunge, never the
+  airtime. A sprint attack or a swing that a special, stun, roll, juggle or knockdown owns is neither. The forward jump
+  attack's four watches (rig, first person, impact effect, cues) get flag 0 for a plunge, so it never shows that attack's
+  take or impact. A swing without the kind stays the forward attack.
+- **Timeline** (`NativePlungeRules.Clock`, on the replicated times; the presented landing and the impact event stand in
+  only for a missing `ImpactAt`):
+
+  | Phase | From | What shows |
+  |---|---|---|
+  | Windup | At (.08 s to PlungeAt) | the blade brought forward out of the guard, then turned point-down into the tuck |
+  | Drop | PlungeAt | committed over .06 s: blade first under the pilot, legs drawn up, head down at the target |
+  | Plant | ImpactAt (.045 s, +.035 s at 8 m) | the point already in (it leads the feet), driven in as the hips drop |
+  | Stuck | | a strain held over the planted blade, the soles planted, lead flat, rear on its toes |
+  | Pull-out | recovery x pull share | the grip draws back along the blade; the greatsword rocks it twice, then wrenches |
+  | Settle | recovery x free share | the blade is out; the upper body returns to the guard over the planted feet |
+
+  | | Daggers | Sword | Shield | Greatsword |
+  |---|---|---|---|---|
+  | Ring (spec) | 0.9 m | 1.0 m | 1.2 m | 1.4 m |
+  | Stuck recovery (spec) | 0.30 s | 0.45 s | 0.50 s | 0.70 s |
+  | Pull-out starts / free after impact | 0.13 / 0.20 s | 0.22 / 0.33 s | 0.24 / 0.38 s | 0.39 / 0.60 s |
+  | Contact in the floor (2 m / 8 m) | 0.13 / 0.18 m | 0.20 / 0.28 m | 0.10 / 0.15 m | 0.36 / 0.46 m |
+
+- **Poses** (`Core/NativePlungePose.cs`, `MeleeMotion.PlungeCut`). The pack has no downward or plunge take: its
+  Air-Attack takes all chop forward (searched `Armed-Air-Attack-R1/L1`, `2Hand-Sword/Axe/Spear/Staff-Air-Attack1`,
+  `Unarmed-Air-Attack1`, the `Special1` and `Fall`/`Land` takes). So the keys are authored here as hand targets, blade
+  directions and leg targets in the rig's group space, solved through the rig's own IK. Each hand keeps the captured
+  guard's roll (the least turn of its blade onto the key's).
+  - Daggers: both reverse-grip blades point down and are driven in side by side, in a deep wide squat.
+  - Sword: a one-handed downward stab angled ahead, the free fist out for balance.
+  - Shield: the heater's bottom rim leads and slams in ahead. The free arm is drawn back, and the side sword stays
+    sheathed on the shield's back.
+  - Greatsword: a two-handed reverse grip, point down, planted deep and angled ahead, nearly kneeling.
+
+  While planted, the contact (blade point, or the shield's bottom rim) is fixed on the floor at its key and the grip is
+  solved back from it. The hips drop up to 0.16 m further when an arm cannot reach. A bigger fall crouches deeper and buries
+  deeper. The rig owns the legs through the plunge: the jump layer stands aside as for the greatsword's leap
+  (`JumpLayer.Leap`), and the floor guard leaves the planted blade alone until it comes free. The end hands the crouch to
+  the guard on planted feet.
+- **First person** (`NativePlungePose.ViewPose`, `CapturedAnimation.PlungeView`). The view model's grips sit low in
+  view. Each blade points at the ground under the camera at the view pilot's real pitch (`Player.ViewPitch`; the view
+  copy's own pitch is zeroed). The blade is leaned 0.7 toward the view's axis so it reads as a blade, not a dot: the
+  pilot looks down the blade as it falls. The plant jolts the hands down; the pull-out lifts them back.
+  - The drop takes the sprint's first-person screen: the edge vignette and speed lines at
+    `NativePlungeRules.ScreenWeight`, streaming 1.8x faster. Reduced effects dim it and Low graphics thin it, as for
+    the sprint.
+  - The air-tear rides the view blade's point.
+- **Effects** (`Core/NativePlungeFx.cs`, drawn through the melee kit's scene and sink in
+  `Runtime/NativeAirAttackFxPresentation.cs`):
+  - Drop: weapon-accent speed streaks trailing up off the blade, shoulders and knees. An air-tear at the point: a hot
+    core in a flickering ring with a bow shock.
+  - Impact, sized by the fall's 2-8 m weight (the damage bonus range):
+    - a flash and shock ring;
+    - a ring of light out to the rule's ring radius;
+    - cracks over the floor;
+    - hot sparks (embers for the greatsword);
+    - grit chunks;
+    - a dust wave rolling out;
+    - through the destruction kit (`NativePlungeFx.Structures`): a crater stain, a chip and 3-7 crack decals, a
+      concrete rubble burst from 3.5 m, and the camera kick.
+  - The direct victim: a hit flash, a ring and sparks at its chest.
+  - The pull-out: a puff of grit where the blade comes out (rubble chips for the greatsword).
+
+  | Fall weight 0 (2 m) to 1 (8 m), sword ring | 2 m | 8 m |
+  |---|---|---|
+  | Crater radius | 0.40 m | 1.00 m |
+  | Cracks reach | 0.45 m | 1.40 m |
+  | Dust wave reach | 1.1 m | 2.1 m |
+  | Rubble | none (from 3.5 m) | burst of size 1.2 |
+  | Camera kick (peak, length) | 3.5 cm, 0.32 s | 10 cm, 0.60 s |
+
+  The kick is the destruction kit's shake. It is heavier than the jump attack's 2.5-6.5 cm and stays inside the
+  structure shake's rules: the camera-shake setting gates it, Reduced effects halve it, the 0.3 m cap and distance
+  falloff apply. Reduced effects (0.3) thin the particles to about 40% and dim the flashes; Low graphics halves them
+  again.
+- **Audio** (`NativeAudio.AirAttackCues`, `NativePlungeFx.Sounds`). Existing bank keys only:
+  - drop: `structure.whoosh` with the weapon's swing, lower (the shield's is `melee.miss`);
+  - impact: `impact.ground`, `move.land`, a `structure.thud` growing with the fall, and the weapon's hit (the shield's
+    is `melee.shield.bash`); lower and louder for a bigger fall;
+  - pull-out: `impact.debris` and a short swing.
+- **Tests** (`Tests/PlungeStabChecks`, 11 groups):
+  - the mapping and the event;
+  - the classification at rule and rig level (never the jump attack's or a sprint attack's states, no forward impact;
+    the forward attack never shows the plunge);
+  - the rig's phases frame by frame against the spec timeline at 3 and 8 m;
+  - blade first and legs drawn up in the drop;
+  - soles planted and the contact held in the floor (within 7 mm) until it comes free, the greatsword last;
+  - the first-person blade at -45, -60 and -75 degrees;
+  - sizes by height, drawn and in the destruction kit;
+  - the Reduced and Low tiers;
+  - replicated-data-only keying (a guest's late root, a killcam rig, missing fields standing in);
+  - no allocation per frame (the rig allocates no more than the same swing as the forward attack: its existing view
+    clone);
+  - the runtime hooks. Two pinned strings in `SprintAttackPoseChecks` follow the hook's new form; their meaning is
+    unchanged.
+- **Not run:** the Unity Editor and play, Windows, a guest client, the real effects renderer. The offline renders use the
+  harness's three.js stand-in over the real `NativeVfx` shader blocks.
+
+### Fields needed from Astra
+
+The presentation adapts in `NativePlungeFields` only:
+- `Actor.AirKind` (or any name) with the value `"down"`, set on the host from the swing and in guest prediction
+  (`NativeMeleePresentation.MeleePresentation`, `NativeReplicaMotion`);
+- the fall height at impact on the actor (or in the `Land` event's `Amount`);
+- `Land` with Detail `melee-down`, the ring radius and the weapon;
+- optionally a Hit Detail that marks the direct victim.
+
+Keep `PlungeAt` as the windup's end, `ImpactAt` as the landing, and the commitment end as the end of the stuck recovery.

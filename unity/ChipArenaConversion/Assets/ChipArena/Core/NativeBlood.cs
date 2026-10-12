@@ -26,6 +26,8 @@ namespace ChipArena.UnityConversion
         public const float Gravity=15,MaxLife=3,MinDrop=.011f,MaxDrop=.032f,MaxLength=.12f,MaxWidth=.065f,Lift=.009f;
         /// <summary>Fresh and dried splat colours (sRGB): the rim and the wet core.</summary>
         public const int Rim=0x5e0610,Core=0x8f0d18,DropColor=0x7a0912,DropDeep=0x4f0510;
+        /// <summary>The Siren's ink (her minions bleed it, NativeHordeKindPresentation): near-black drops, splats with a violet wet core.</summary>
+        public const int InkRim=0x120b1a,InkCore=0x2a1940,InkDrop=0x150d22,InkDeep=0x07040b;
         public static float Finite(float v,float fallback)=>float.IsNaN(v)||float.IsInfinity(v)?fallback:v;
         /// <summary>The droplets a wound sprays: by its kind and severity, `quality` (1 full, .3 reduced effects) and the low tier.</summary>
         public static int Count(string kind,float severity,float quality,bool low)
@@ -123,7 +125,7 @@ namespace ChipArena.UnityConversion
     public sealed class NativeBloodSplats
     {
         public const int Kept=384,Spare=48,Capacity=Kept+Spare;public const float FadeSeconds=.6f,SurfaceFade=.25f;
-        public struct Splat{public bool Live;public Vector3 Center,Normal,Along;public float Length,Width,Born,FadeAt,FadeFor;public uint Seed;public int Surface;public long Key;}
+        public struct Splat{public bool Live,Ink;public Vector3 Center,Normal,Along;public float Length,Width,Born,FadeAt,FadeFor;public uint Seed;public int Surface;public long Key;}
         public readonly Splat[] Items=new Splat[Capacity];
         /// <summary>How many stay (Kept; the runtime lowers it with reduced effects and on the low graphics tier).</summary>
         public int Limit=Kept;
@@ -134,7 +136,7 @@ namespace ChipArena.UnityConversion
         public int Version{get;private set;}
         public void Clear(){Array.Clear(Items,0,Items.Length);Steady=Live=0;Version++;}
         public bool Has(long key){for(int i=0;i<Capacity;i++)if(Items[i].Live&&Items[i].Key==key)return true;return false;}
-        public int Add(long key,Vector3 center,Vector3 normal,Vector3 along,float length,float width,uint seed,int surface,float time)
+        public int Add(long key,Vector3 center,Vector3 normal,Vector3 along,float length,float width,uint seed,int surface,float time,bool ink=false)
         {
             if(Has(key))return -1;
             while(Steady>=Math.Max(1,Math.Min(Kept,Limit)))
@@ -146,7 +148,7 @@ namespace ChipArena.UnityConversion
             int slot=-1;for(int i=0;i<Capacity&&slot<0;i++)if(!Items[i].Live)slot=i;
             // No free slot: the fading splat furthest along goes now.
             if(slot<0){float most=-1;for(int i=0;i<Capacity;i++){var s=Items[i];if(s.FadeAt>=0){float u=(time-s.FadeAt)/Math.Max(1e-3f,s.FadeFor);if(u>most){most=u;slot=i;}}}if(slot<0)return -1;Live--;}
-            Items[slot]=new Splat{Live=true,Center=center,Normal=normal,Along=along,Length=length,Width=width,Born=time,FadeAt=-1,FadeFor=FadeSeconds,Seed=seed,Surface=surface,Key=key};
+            Items[slot]=new Splat{Live=true,Ink=ink,Center=center,Normal=normal,Along=along,Length=length,Width=width,Born=time,FadeAt=-1,FadeFor=FadeSeconds,Seed=seed,Surface=surface,Key=key};
             Steady++;Live++;Version++;return slot;
         }
         /// <summary>Every splat on `surface` fades (its block broke, fell or moved).</summary>
@@ -182,7 +184,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The runtime's sweep from `from` to `to` against the arena: the first hit's point, normal and a surface id
         /// (0: a surface no splat should stay on, such as a moving crate).</summary>
         public delegate bool Cast(Vector3 from,Vector3 to,out Vector3 point,out Vector3 normal,out int surface);
-        public struct Drop{public bool Live;public Vector3 Position,Velocity;public float Size,Born,Delay;public uint Seed;public long Key;public bool Stain;}
+        public struct Drop{public bool Live;public Vector3 Position,Velocity;public float Size,Born,Delay;public uint Seed;public long Key;public bool Stain,Ink;}
         public readonly Drop[] Drops=new Drop[Max];public readonly NativeBloodSplats Splats=new NativeBloodSplats();
         private int cursor;private float clock=float.NaN;
         public int Flying{get{int n=0;for(int i=0;i<Max;i++)if(Drops[i].Live)n++;return n;}}
@@ -205,13 +207,13 @@ namespace ChipArena.UnityConversion
             float dt=time-budgetAt[slot];if(dt<-.25f)dt=BudgetBurst;budgetAt[slot]=time;budgetLeft[slot]=Math.Min(BudgetBurst*scale,budgetLeft[slot]+Math.Max(0,dt)*BudgetRate*scale);
             int granted=kill?wanted:Math.Min(wanted,(int)Math.Floor(budgetLeft[slot]));if(!kill&&granted<1&&budgetLeft[slot]>=.5f)granted=1;budgetLeft[slot]=Math.Max(0,budgetLeft[slot]-granted);return granted;
         }
-        public int Spray(string kind,float severity,uint seed,long key,Vector3 origin,Vector3 normal,Vector3 along,float time,float quality,bool low,bool stain,int extra=0,int target=-1,bool kill=false)
+        public int Spray(string kind,float severity,uint seed,long key,Vector3 origin,Vector3 normal,Vector3 along,float time,float quality,bool low,bool stain,int extra=0,int target=-1,bool kill=false,bool ink=false)
         {
             int count=NativeBloodRules.Count(kind,severity,quality,low)+Math.Max(0,extra);if(target>=0)count=Allow(target,count,time,quality,low,kill);
             for(int i=0;i<count;i++)
             {
                 NativeBloodRules.Drop(kind,seed,i,count,normal,along,out var v,out float size,out float delay);
-                int slot=cursor++%Max;Drops[slot]=new Drop{Live=true,Position=origin,Velocity=v,Size=size,Born=time,Delay=delay,Seed=seed^(uint)(i*0x9e3779b1u),Key=key*64+i,Stain=stain};
+                int slot=cursor++%Max;Drops[slot]=new Drop{Live=true,Position=origin,Velocity=v,Size=size,Born=time,Delay=delay,Seed=seed^(uint)(i*0x9e3779b1u),Key=key*64+i,Stain=stain,Ink=ink};
             }
             return count;
         }
@@ -229,7 +231,7 @@ namespace ChipArena.UnityConversion
                 {
                     d.Live=false;if(!d.Stain||surface==0)continue;
                     NativeBloodRules.Splat(v,n,d.Size,d.Seed,out var along,out float length,out float width);
-                    Splats.Add(d.Key,p+n*NativeBloodRules.Lift,n,along,length,width,d.Seed,surface,time);continue;
+                    Splats.Add(d.Key,p+n*NativeBloodRules.Lift,n,along,length,width,d.Seed,surface,time,d.Ink);continue;
                 }
                 d.Position=to;d.Velocity=v;
             }

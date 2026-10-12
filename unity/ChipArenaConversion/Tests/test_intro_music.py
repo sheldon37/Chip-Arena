@@ -52,7 +52,7 @@ class IntroMusicTests(unittest.TestCase):
         keys = installer.contract()[0]
         intro = sorted(k for k in keys if k.startswith('intro.'))
         styles = [s for s in entrances() if not s.startswith('dev-')]
-        self.assertEqual(len(styles), 18)
+        self.assertEqual(len(styles), 19)
         # The owner's DEV Sheldon Intro has music too: its id has no dev- prefix (its DEV gate is the cosmetic rules').
         self.assertNotIn(SHELDON, entrances())
         self.assertEqual(intro, sorted('intro.' + s for s in styles + [SHELDON]))

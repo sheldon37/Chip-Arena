@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         // weapon-visuals.ts:21-22: the visual blade lengths that the reach strip and the enchant tracks share.
         public static float BladeLength(string spec,bool shield=true)=>spec=="daggers"?.5f:spec=="greatsword"?1.35f:spec=="shield"&&shield?.7f:.94f;
         // The 'muzzle' socket z (weapon-visuals.ts:59,68; matrix-effects.ts:10), or .8 without one (weapon-visuals.ts:89).
-        public static float MuzzleZ(string spec)=>spec=="pistol"?.51f:spec=="rifle"?1.22f:spec=="machinegun"?.91f:Staff(spec)?.88f:spec=="leet"?1.52f:.8f;
+        public static float MuzzleZ(string spec)=>spec=="pistol"?.51f:spec=="rifle"?1.22f:spec=="machinegun"?.91f:Staff(spec)?.88f:spec=="leet"?1.52f:NativeBowWire.Is(spec)?NativeBowModels.ModuleTip:.8f;
         public static bool Staff(string spec)=>spec=="fire"||spec=="water"||spec=="lightning"||spec=="darkness";
         public static bool Gun(string spec)=>spec=="pistol"||spec=="rifle"||spec=="machinegun";
         // WEAPONS class 'melee' (shared/content.ts): the sword family, the fighters and the weaponless siren.

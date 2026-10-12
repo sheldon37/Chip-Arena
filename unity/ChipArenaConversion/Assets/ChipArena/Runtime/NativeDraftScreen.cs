@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
     // only draws the authoritative draft (offers, ready time, pick, pick time) and sends the same choose messages.
     public sealed partial class ConversionGame
     {
-        private int draftFocus=-1;private float draftTrayLine=-1,draftTrayBottom=-1;private readonly float[] cardHolo=new float[16],cardHoloAt=new float[16];private readonly NativeChipCard.Reveal[] cardReveal=new NativeChipCard.Reveal[16];
+        private int draftFocus=-1;private float draftTrayLine=-1,draftTrayBottom=-1,draftHeadLine=-1;private readonly float[] cardHolo=new float[16],cardHoloAt=new float[16];private readonly NativeChipCard.Reveal[] cardReveal=new NativeChipCard.Reveal[16];
         private static float DraftRevealSeconds(string id)=>id.StartsWith("l44t-")?4.6f:id.StartsWith("arcade-")||id.StartsWith("mishima-")?4.8f:3.2f;
         // NativeMatch.NextDraft's offer pause, recovered from the replicated ready time (the turn's start is not sent).
         private double DraftStarted(NativeSeat seat)
@@ -132,7 +132,7 @@ namespace ChipArena.UnityConversion
             U.Text(new Rect(x,y,W*.55f,15),eyebrow,12,eyebrowColor,TextAnchor.MiddleLeft,bold:true,tracking:.2f,shadow:shade);y+=15+6;
             float F=H<=760?24:Mathf.Clamp(W*.025f,24,34);U.Text(new Rect(x,y,W*.6f,F*1.08f),title,F,U.Hex(0xf4f4f5),TextAnchor.MiddleLeft,bold:true,tracking:-.03f,shadow:shade);y+=F*1.08f+4;
             if(!string.IsNullOrEmpty(hint)&&H>760){var lines=U.Wrap(hint,14,Mathf.Min(W*.45f,46*7.2f));foreach(var line in lines){U.Text(new Rect(x,y,W*.5f,14*1.45f),line,14,U.Hex(0xc3c5ce),TextAnchor.MiddleLeft,shadow:shade);y+=14*1.45f;}}
-            bottom=y+Mathf.Clamp(H*.024f,4,30);
+            bottom=y+Mathf.Clamp(H*.024f,4,30);draftHeadLine=bottom/H;
         }
 
         // ---- PvP draft ----
