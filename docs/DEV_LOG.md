@@ -1,5 +1,31 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — gun and magic pack run/sprint animations
+- Owner: "Give both ranged and magic different run/sprint animations, theirs are currently too basic." Branch `claude/loco-ranged`, base `1af916c` (shared head after PR #132). Implementation commit `188ef73` (signed). Not pushed, merged or released.
+- Clip mapping (`tools/export_pack_ranged_locomotion.mjs`, deterministic, 52 loops in `Core/NativePackRangedLocomotion.Generated.cs` + provenance; no FBX or pack `.meta` committed): pistol = Armed-Walk-Slow, Armed-Walk + Armed-Strafe-*, Unarmed-Run-* (8 directions); rifle and machine gun = 2Hand-Shooting Walk-Slow, Walk + Strafe-*, Run-*; the four schools and L33t H4x = 2Hand-Staff Walk-Slow-WithStaff, Walk-WithStaff + Strafe-*, Run-*, mirrored (the game's staff is in the left hand, the cast arm the right); Unarmed-Sprint for every sprint torso. 1Hand-Pistol has no locomotion, so the pistol carry is built over the Armed and Unarmed loops.
+- `Core/NativeRangedLocomotion` (arena rigs only, null keeps the source port and parity fixtures): directional blend of the two bracketing clips by travel against facing, eased, phased to the gait stride. The stride swing is kept per weapon; the clips' mean chest is turned onto the gait body's line plus a per-weapon lean, because the pack's run hunch buried muzzles. The head is turned back toward the gait gaze and the hands follow a spring. Raised guns keep the `RangedPose` world aim, with part of the stride swing re-added under it. Lowered long guns feed a run carry into the hold's lowered carry: rifle low ready, machine gun at the hip. `RangedPose.Arms` gains two optional parameters; null keeps today's hold. The pistol is tucked with the free arm pumping; the staff rides the pack staff hand and tilt.
+- Reach seat: the hips drop just enough for each planted ankle to reach its gait target, then settle at the recent peak deficit. Today's gait skated a planted ankle up to 72.6 cm/s on walking strafes and 31-55 cm/s on diagonals, a pre-existing gait limit. The seat applies on the ranged and magic routes only. MeleeGait gains read-only `BodyBob` and `Planted`; melee is unchanged.
+- Sprints (`Core/NativeSprintMotion`): pistol both fists pumping with the gun tucked; rifle high port leaning in; machine gun heaved onto the shoulder, lumbering dip and roll; fire clawing low; water glide (bob held low, hands out); lightning tight with twitch steps; darkness low stalking glide; L33t H4x arms flung back in held glitch frames. Gun and magic routes now advance the sprint weight before the pack carry and lean after it. The cast phrase's head and shoulder yaw blend over the pack instead of snapping.
+- First person (`Core/NativeViewSway`): per-weapon run bob (pistol light, rifle steady, machine gun heavy, water flowing) and per-school sprint carries. The extra bob follows the camera-shake setting (off none, Reduced half), passed from `SprintSway` to `ApplyViewSway`; raw inputs and melee are unchanged.
+- Gameplay impact: none. Hit timing, hitboxes, damage, cooldowns, movement, prediction and networking are untouched. Shots and the muzzle stay on the aim (0.000 deg). The aimed chest's mean yaw and pitch are within 0.85 deg of today's.
+- Checks, all on the final tree:
+  - `unity-check.sh`: runtime and editor build OK.
+  - `check_relay.py`: 436 PASS, no FAIL, 92 s. The managed run is close to the script's fixed 90 s CoreTests timeout when the machine is loaded. One loaded run timed out.
+  - Python: 86 tests, 1 skipped.
+  - `package_source.py`: 1347 files.
+  - `git diff --check`: clean.
+  - New `Tests/RangedLocomotionChecks`: contact-foot slip at most 0.023 cm/s in 96 cases, today up to 72.6; muzzle on aim in 33 aimed runs; travel within MeleeFeel bounds; distinct carries; 59 transitions with no pop beyond today's; first-person shake gating; zero allocation; hooks.
+  - `SprintMotionChecks`: updated for 12 distinct carries, now comparing planted feet.
+  - The exporter rerun gives byte-identical output.
+- Renders: before/after side and front views of walk, run, strafe, backpedal and sprint for all 8, plus first-person sheets for the pistol and fire, in the session scratchpad (`loco-ranged/renders`). The harness approximates first-person magic and is not the Unity renderer.
+- Not run: Unity Editor, Windows play and two-client play.
+- Risks:
+  - Aimed gun strafes still read close to today's, because the hold dominates; the gain there is no foot slip and a light sway.
+  - The seat crouches walking strafes up to about 5 cm.
+  - The machine-gun shoulder sprint carry and the staff tilts need an in-game look.
+  - The first-person magic sheet comes from the approximate harness.
+- Next: owner Windows playtest, and tune the per-weapon Style values from it.
+
 ## 2026-10-12 — Astra — replace greatsword E with Whirlwind
 - Branch `codex/unity-greatsword-whirlwind-20261012`, base current shared/cloud `c0e5aa1` (preserves Claude's latest jump attacks and Q/E presentation). Owner explicitly replaces Wolf Knight with a steerable spin; pushes/merges remain authorized. Integration/CI receipts are recorded in the task PR.
 - Native greatsword E now resolves `whirlwind`: fixed .3 s windup / 3 s active / .5 s recovery, 45 stamina and 11 s cooldown from commitment with existing cost/cooldown modifiers. Seven radial pulses at 0/.45/.90/1.35/1.80/2.25/2.70 active seconds deal 8.5 base each (59.5 total per target), base radius 2.6 m with normal reach/damage modifiers. Only pulse 1 attempts .12 s normal stagger. Contacts recheck visibility, teams, protection, roll and timed block; block still punishes/cancels the caster. Removes the old leap/slam and super armour from this ability.
