@@ -258,6 +258,8 @@ namespace ChipArena.UnityConversion
         public const int MaxDrops=150,MaxPools=10;
         public const int MaterialGibber=0xc10b25,PoolColor=0x780516;
         public readonly KillSprayProfile Profile;public readonly int Drops,Pools,Count;public readonly double Floor;
+        /// <summary>How many drops have landed so far (each wrote pool slot n % Pools): the persistent blood splats read them.</summary>
+        public int Splatted=>splatCursor;
         /// <summary>The impact profiles use the glowing wound material (WoundMaterial .3) and .6 size drops.</summary>
         public bool Glow=>Profile!=KillSprayProfile.Gibber;public double SizeScale=>Profile==KillSprayProfile.Gibber?1:.6;
         private uint seed;private int cursor,splatCursor;private double pending;

@@ -52,7 +52,7 @@ internal static class Program
             SummonCeilingPickupChecks.Run(root,data);
             StructureFxChecks.Run(root);
             VfxChecks.Run(root);VfxRuntimeChecks.Run(root);
-            LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);JumpMotionChecks.Run(root);PackLocomotionChecks.Run(root);SprintMotionChecks.Run(root);AirAttackChecks.Run(root,data);
+            LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);HitFeelChecks.Run(root,data);JumpMotionChecks.Run(root);PackLocomotionChecks.Run(root);SprintMotionChecks.Run(root);AirAttackChecks.Run(root,data);
             ArmorLightChecks.Run(root);
             BlockFxChecks.Run(root,data);
             MeleeKitPresentationChecks.Run(root,data);
