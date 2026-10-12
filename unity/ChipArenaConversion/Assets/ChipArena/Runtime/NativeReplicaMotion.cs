@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
         {body.interpolation=RigidbodyInterpolation.None;body.transform.position=position;body.position=position;}
         private NativePredictionState PredictionState(NativePilotFrame frame)
         {
-            var p=Local;bool unlocked=p!=null&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.frozenUntil<=Time&&frame.scareUntil<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&(p.Pose.AttackUntil<=Time||p.Pose.CommitUntil>Time||NativeWhirlwindRules.Busy(p.Pose.MeleeKit,Time));
+            var p=Local;bool unlocked=p!=null&&!(p.Pose.Kernel?.Busy(Time)??false)&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.frozenUntil<=Time&&frame.scareUntil<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&(p.Pose.AttackUntil<=Time||p.Pose.CommitUntil>Time||NativeWhirlwindRules.Busy(p.Pose.MeleeKit,Time));
             var a=p?.Pose;NativeMeleeSwing swing=null;
             if(p!=null&&a.CommitUntil>Time&&NativeMeleeRules.Standard(p.Seat.spec))
             {

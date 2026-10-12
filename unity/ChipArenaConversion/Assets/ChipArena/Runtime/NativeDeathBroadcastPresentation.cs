@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
                 if(!broadcastStages.TryGetValue(item.Seed,out var stage))
                 {
                     stage=new BroadcastStage{Rig=captured.Create(transform,-item.Seed)};var rig=stage.Rig;stage.Bone=b=>rig.Bones[b].localToWorldMatrix;var seat=arena.Match.Seat(item.Victim);
-                    stage.Pilot=sourceModels.Hologram("pilot");stage.HatRow=NativeBroadcastEdges.HatIndex(seat?.hat);stage.Hat=stage.HatRow>0?sourceModels.Hologram("hat-"+seat.hat):null;broadcastStages[item.Seed]=stage;
+                    stage.Pilot=sourceModels.Hologram(BodyModel(BodySkin(item.Victim),BodyCloseTier));stage.HatRow=NativeBroadcastEdges.HatIndex(seat?.hat);stage.Hat=stage.HatRow>0?sourceModels.Hologram("hat-"+seat.hat):null;broadcastStages[item.Seed]=stage;
                 }
                 // The portrait: head and shoulders fitted into the frame (create()), its head drifting (update()).
                 stage.Pose.Reset();stage.Pose.Rotation[CapturedRig.Head]=CapturedRig.Euler(s.HeadX,s.HeadY);NativePoseWriter.Write(stage.Rig.Bones,stage.Pose,"a death broadcast rig");

@@ -107,26 +107,118 @@ fighters use).
   the caster for 50% of it. It breaks on lost line of sight or beyond 15 m. Cooldown 10 s, 25 mana.
 - **3, System Crash:** a .5 s windup ground slam that makes a 4 m field: 25 damage and a 1.0 s "glitched"
   stun. Cooldown 14 s, 40 mana.
-- **4, Kernel Strike (ultimate):**
-  - The caster leaps 4 m up and marks a point within 25 m.
-  - .9 s later a column of code crashes there: 5 m radius, 70 damage and knockback.
-  - The caster lands at the impact point.
-  - Cooldown 30 s, 60 mana.
+- **4, Kernel Panic (ultimate, a cinematic connect-combo).** The owner revised the ultimate on 2026-10-12:
+  "since we're adding an "Ultimate" im think using a "skill cut-in" animation. If the first hit connects, it
+  does a combo. Hits them far, teleport behind hit them again, in the air teleport above, make this creative".
+  It replaces the earlier Kernel Strike AoE.
+  - **Opener:**
+    - A .25 s windup.
+    - Then a 6 m hardlight lunge-punch along the aim (capsule sweep, radius .6 m, one target: the first pilot
+      touched).
+    - **Whiff:** .6 s recovery, and half the cooldown is refunded.
+    - **Connect:** the sequence below starts at once.
+    - Cooldown 30 s, 60 mana, both spent on cast.
+  - **Cut-in:**
+    - On connect, a .6 s "skill cut-in" plays: a full-screen splash for the caster and the victim, and a slim
+      top banner for everyone else.
+    - Caster and victim are frozen in place for those .6 s. Everyone else keeps playing.
+  - **Sequence:** about 3.4 s after the cut-in, host-authoritative and deterministic from its start time,
+    anchor, facing and the seeded arena-clamped waypoints, so every client plays the same choreography.
+
+    | Step | Starts at | What happens | Damage |
+    |---|---|---|---|
+    | 1. Breaker | 0 s | Punch launches the victim 8 m back along the facing, rising 1.5 m | 12 |
+    | 2. Blink-behind | .45 s | Caster glitch-teleports behind the flying victim and kicks them straight up 5 m | 10 |
+    | 3. Blink-above | .95 s | Caster teleports above the victim's apex and hammer-fists them downward | 10 |
+    | 4. Fork bomb | 1.35 s | As the victim falls, three hardlight clones of the caster strike from three sides | 3 × 6 |
+    | 5. Kernel Panic | 1.9 s | The caster reappears at the landing point; the victim is slammed into a column of falling code | 25 |
+    | Recovery | from 2.6 s | Caster recovers for .8 s | |
+
+    - Step 5 also sends out a 5 m shockwave: 20 damage and knockback to other enemies.
+    - Victim total about 75. The usual damage scaling and chips apply per hit.
+  - **Rules during the sequence:**
+    - Caster and victim are intangible to everyone else and cannot be interrupted. The victim has no control and
+      takes only the sequence's hits.
+    - The sequence ends early and cleanly if either player disconnects or the round ends.
+    - The victim cannot die before step 5. Lethal damage is held to the final hit, so the kill lands on the
+      finisher.
+  - **Walls and edges:** every waypoint is clamped against arena collision and bounds. If the launch hits a wall,
+    the victim wall-splats and the sequence continues from there. The victim never ends outside the arena or in
+    a hazard; teleports skip to the nearest valid point.
+  - **Replication:** sequence start time, anchor, facing, seed, the resolved waypoints (or enough data to
+    resolve them identically), the victim id, an outcome flag (whiff, connect, ended early), and per-step hit
+    events (Detail `kernel-panic-1` to `-5`).
+  - **Implementation contract — Astra, 2026-10-12 (`codex/unity-kernel-panic-20261012`, base `da5b9c1`):**
+    - Kernel Panic simulation and the existing `InputFrame.SirenAbility == 4` dispatch are implemented on this
+      branch. Cyber Lord itself is still spec-only at this base: this change does **not** register an incomplete
+      weapon, add its other abilities, or expose a selectable class. Claude's cut-in, choreography, cameras and
+      HUD remain presentation work. The full kit/roster integration must land before player acceptance or release.
+    - Proposed base numbers above are retained: .25 s opener, .6 s cut-in, five steps at 0/.45/.95/1.35/1.9 s,
+      recovery at 2.6 through 3.4 s, 60 mana and 30 s cooldown. The opener captures but adds no extra damage:
+      12 + 10 + 10 + 3*6 + 25 = **75** before normal scaling/defenses. Resource-cost chips scale the 60 mana.
+      Whiff uses .6 s recovery and a cooldown deadline of cast time + 15 s; mana is not refunded. The wave's
+      previously unspecified impulse is **260** (4 m/s before knockback modifiers), with the proposed 5 m/20 damage.
+    - A real .6 m-radius capsule sweep follows the input aim, limited by world collision and arena bounds.
+      The nearest enemy pilot wins (id breaks ties). Block, roll immunity or a spawn shield prevent capture and
+      count as a whiff. Already captured pilots, Siren-held/scared pilots and the PvE authority boss are not
+      capture targets. Only a live DEV claim can cast; weapon grants do not authorize it.
+    - `Actor.Kernel` (with `HasKernel` for Unity JSON presence) is a deep-copied `NativeKernelPanic` on both
+      participants. It carries `Id`, `Caster`, `Victim`, `Seed`, `At` (cast), `ConnectedAt` (cut-in start),
+      `Until`, `Ready`, `Anchor`, unit `Facing`, `CasterStart`, `VictimStart`, two **six-point** arrays
+      `CasterPoints`/`VictimPoints`, safe `CasterExit`/`VictimExit`, `WallSplat`, `Next` and `Outcome`.
+      Positions are **Rigidbody centres in native metres** (subtract .865 m for Actor foot positions).
+      `NativePilotFrame.kernelReady` carries the cooldown separately. Outcome: 0 windup, 1 connect,
+      2 whiff, 3 ended early, 4 complete. The `Id` distinguishes later casts; do not infer a cast from events.
+    - Use `NativeKernelPanicRules.Sample(state, presentationTime, out caster, out victim)` for the resolved
+      choreography. It holds the start positions during the cut-in, interpolates the victim between host points,
+      teleports the caster at each step, and settles both at recovery. Late join/killcam do not replay old events.
+      `Next` is the count of committed steps, not a pose clock. The seed selects the side offset and is also
+      available for deterministic clones/VFX. Wall-clamped launches set `WallSplat` explicitly.
+    - Each damaging beat emits `Hit` with Detail `kernel-panic-1` ... `kernel-panic-5`; step 4 emits three
+      six-damage hits with the same Detail. A fully held hit still emits a zero-actual-damage event. The wave
+      uses `kernel-panic-wave`. Damage scaling, normal direct-hit modifiers and impact chips apply on paid hits.
+      After normal mitigation, damage below 1 HP is stored as `DamageDebt` and paid once on step 5; it is
+      discarded on early cancellation. Reactive escape/panic chips are deferred to the finisher, and their
+      teleport cannot break the lock. Normal lethal-save chips can still save against the finisher.
+    - During connect, both colliders are disabled and bodies are kinematic; input and guest prediction are
+      locked. Third-party attacks, stage damage and DoTs cannot affect the pair; only the explicitly authorized
+      sequence hits can damage the victim. Existing outgoing projectiles/chips still affect other pilots under
+      ordinary rules. The wave does not double-hit the captured victim. No mid-combo kill/interrupt.
+    - Host waypoints use capsule sweeps, arena clamps and clear supported landing searches on a deterministic
+      .5 m grid (up to 6 m around a candidate). Hazard columns are conservatively excluded, including inactive
+      spikes. If no safe initial route is found, it whiffs. Geometry/hazard changes invalidating a sample abort
+      before moving there. Cleanup tries nearby support, the prevalidated exit, then spawn support before the
+      original bounded exit; supported maps require a permanent safe floor. Survivors regain their original
+      collision/physics state; a dead victim remains dead. Disconnects and round changes use the same cleanup.
+    - Verification on this branch: managed determinism/serialization, HP 1–100 lethal-debt conservation,
+      isolation, catch-up/exactly-once steps and malformed-state checks. A genuine Unity build-gate fixture
+      covers capture, DEV rejection, spend/refund, block, JSON path, damage isolation, lethal finisher,
+      disconnect and round cleanup. That fixture is compile-checked here; actual PhysX/Windows execution,
+      two-client latency, tight geometry and Claude's presentation acceptance remain required.
+  - **Cameras:** for the caster and the victim, a cinematic camera that follows the choreography (the existing
+    C16 cinematic camera rules). Everyone else keeps their own camera.
 - **Stats:** base HP 100; class `melee` (unarmed) for the block, stamina and roll rules, with mana as the
   ability resource.
 - **Replication:** the combo step, per-ability cast/active/end times, the dash path, the wall transform and
-  expiry, the link target and end, the crash field position and end, the Kernel Strike target and impact time,
+  expiry, the link target and end, the crash field position and end, the Kernel Panic sequence data above,
   and events for each hit (Detail per ability: `cyber-jab`, `cyber-cross`, `cyber-palm`, `data-dash`,
-  `firewall`, `packet-burst`, `siphon-link`, `system-crash`, `kernel-strike`).
+  `firewall`, `packet-burst`, `siphon-link`, `system-crash`, `kernel-panic-1` to `-5`).
 - **Bots:** sandbox dummy and bot pickers follow the existing DEV rules. If bots can play it: combo in close
   range, Packet Burst under 6 m, Data Dash to close, Firewall when being shot, System Crash with two or more
-  enemies within 4 m, Kernel Strike on groups.
+  enemies within 4 m, Kernel Panic when a target is inside 6 m and not blocking.
 
 Presentation (Claude):
 - A DEV look on the pilot body: hardlight fists and forearm gauntlets that form from light, glowing seams and a
   holographic halo.
 - An unarmed fighting stance and locomotion.
 - Combo poses and effects for all six abilities, in third and first person.
+- For Kernel Panic:
+  - the skill cut-in, a stylised splash of the caster's live portrait with diagonal hardlight panels, glitch text
+    "KERNEL PANIC" and the pilot's colours;
+  - the slim banner for other players;
+  - choreography poses and effects for every step: launch streak, glitch-teleport tears, clone afterimages, the
+    falling code column and the shockwave;
+  - the cinematic camera path for caster and victim, within the camera-shake and reduced-effects settings.
 - HUD cards for Q, E and 1-4, a class icon, a Locker tile, an entrance animation and audio routing on existing
   keys.
 

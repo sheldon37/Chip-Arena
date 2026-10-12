@@ -55,10 +55,12 @@ namespace ChipArena.UnityConversion
         /// <summary>The hood's voxel and the head it clears (blank-head, crown and jaw of the pilot rig, plus a margin).</summary>
         public const float Voxel=.032f;
         public const float ClearX=.186f,ClearBottom=-.055f,ClearTop=.38f,ClearBack=-.186f,ClearFront=.178f;
-        /// <summary>The face opening: an arch .152 wide each side, round above .155, narrowing a little toward the neck.</summary>
-        public const float OpenHalf=.162f,OpenRound=.165f,OpenRise=.185f,OpenDepth=.07f,OpenPower=2.8f;
+        /// <summary>The face opening: .162 wide each side, narrowing a little toward the neck; above .165 a round arch (as if
+        /// .215 wide) rising .185, which a voxel further out each side (EyeBottom..EyeTop, cut from EyeDepth forward) widens
+        /// it round the eyes.</summary>
+        public const float OpenHalf=.162f,OpenRound=.165f,OpenRise=.185f,OpenDepth=.07f,OpenPower=2.4f,ArchHalf=.215f,EyeBottom=.176f,EyeTop=.24f,EyeDepth=.14f;
         /// <summary>The void plate just in front of the head's face, and the face drawn just in front of it.</summary>
-        public const float PlateZ=.171f,FaceZ=.1755f,PlateHalf=.1755f,PlateBottom=-.047f,PlateTop=.366f;
+        public const float PlateZ=.171f,FaceZ=.1755f,PlateHalf=.1755f,PlateBottom=-.047f,PlateTop=.366f,PlateSide=.2075f;
         /// <summary>The eyes: centres, crescent radius, flattening, thickness and tilt (rad; the outer ends dip).</summary>
         public const float EyeX=.068f,EyeY=.212f,EyeR=.052f,EyeFlat=.92f,EyeThick=.032f,EyeTilt=.14f;
         /// <summary>The grin: half width, the upper lip's centre and curve, the lower lip's drop, the teeth and the gap between the rows.</summary>
@@ -73,7 +75,7 @@ namespace ChipArena.UnityConversion
         public const int Fabric=0x161a26,FabricTop=0x1c2132,Inner=0x06070b,PlateColor=0x020203;
         public const float TrimLevel=.55f,TrimGlow=1.15f,FaceLevel=.6f,FaceGlow=1.75f,RingLevel=.6f,RingGlow2=1.3f,HaloAlpha=.32f,HaloGlow=.9f;
         /// <summary>The trim: thin glowing strips along the voxel edges of the opening (a pixel-stepped piping), lifted off the cloth.</summary>
-        public const float StripWidth=.0075f,StripLift=.0012f,TrimBottom=-.02f;
+        public const float StripWidth=.0075f,StripLift=.0012f,TrimBottom=-.02f,TrimDepth=PlateZ-Voxel/2;
 
         private static Vector4 Lin(int hex,float a=1){var c=NativePortraitRules.Linear(hex);return new Vector4(c.X,c.Y,c.Z,a);}
         private static Vector4 Glow(float level){return new Vector4(level,level,level,1);}
@@ -146,25 +148,48 @@ namespace ChipArena.UnityConversion
         // ---- Hood (head joint) --------------------------------------------------------------------------------------------
         private static bool InOpening(float x,float y)
         {
-            if(y>=OpenRound){float a=Math.Abs(x)/OpenHalf,b=(y-OpenRound)/OpenRise;return MathF.Pow(a,OpenPower)+MathF.Pow(b,OpenPower)<1;}
-            float narrow=OpenHalf-Math.Max(0,Math.Min(1,-y/.16f))*.032f;return Math.Abs(x)<narrow;
+            float ax=Math.Abs(x);
+            if(y>=OpenRound){float a=ax/ArchHalf,b=(y-OpenRound)/OpenRise;return MathF.Pow(a,OpenPower)+MathF.Pow(b,OpenPower)<1&&(ax<OpenHalf||y>EyeBottom&&y<EyeTop);}
+            float narrow=OpenHalf-Math.Max(0,Math.Min(1,-y/.16f))*.032f;return ax<narrow;
         }
-        private static bool HoodOpen(Vector3 p)=>p.Z>OpenDepth&&InOpening(p.X,p.Y);
+        // The eye-level widening is cut from EyeDepth forward only: behind it the shell still closes the side of the head.
+        private static bool HoodOpen(Vector3 p)=>p.Z>(Math.Abs(p.X)<OpenHalf?OpenDepth:EyeDepth)&&InOpening(p.X,p.Y);
         // The hood: one voxel of cloth round the head's clearance (face and edge cells, the corners left out so it rounds off),
         // ending under the jaw (the mantle's collar covers the neck, so a turning head carries no cowl into swings that pass
-        // close in front of the chest and shoulders) and tight at the sides and back, where greatsword windups pass close.
-        // A brim and front edges reach forward past the face, so the face sits deep in shadow, and a low peak leans back.
+        // close in front of the chest and shoulders). A brim and front edges reach forward past the face, so the face sits deep
+        // in shadow; above the eyes the brim reaches a voxel further (Brow). Owner 2026-10-12 ("widen the hood slightly (in
+        // reference to the picture) But do NOT expand the hitbox"): roomier round the head, a voxel (Cowl) further out where
+        // nothing the pilot holds passes. Behind the ears and over the crown it balloons out, standing off the head (the
+        // shell's side column there left open as a pocket), the crown is a voxel fuller and the peak taller and leaning back;
+        // at the eyes the opening widens a voxel each side inside a rim a voxel out. The cheeks and jaw in front of the ears
+        // stay tight (the rifle and machine gun stocks and two-handed grips pass there), as does the back (greatsword
+        // windups), and the hood still ends under the jaw: a lower hem, a wider mantle or a cheek flare all put cloth into
+        // swings, aims and lobby poses (Tests/HatLookChecks' clearance; DEV_LOG). Cloth only: hits never read it.
         public const float HoodBottom=-.085f;
+        /// <summary>The cowl: its outer half width (a voxel past the shell); the balloon behind the ears (BalloonBottom..Top,
+        /// back to BalloonBack, forward to BalloonFront below BalloonStep and BalloonFrontHigh above it); the crown's shoulder
+        /// over the clearance (CrownBack..ShoulderFront); the eye rim's front; the brow's reach (from BrowBottom, within BrowHalf).</summary>
+        public const float CowlHalf=.24f,BalloonBottom=-.016f,BalloonTop=.368f,BalloonBack=-.176f,BalloonFront=-.08f,BalloonStep=.144f,BalloonFrontHigh=-.048f,ShoulderFront=-.016f,RimFront=.24f,BrowBottom=.27f,BrowTop=.4f,BrowHalf=.18f,BrowFront=.272f;
+        /// <summary>The crown's extra layers (half width, back and front for the first and second) and the peak (base half
+        /// width, top, front and back at its base, and the lean of both per metre of rise).</summary>
+        public const float CrownHalf=.17f,CrownBack=-.208f,CrownFront=.08f,Crown2Half=.13f,Crown2Back=-.176f,Crown2Front=.016f,PeakHalf=.14f,PeakTop=.56f,PeakFront=.02f,PeakBack=-.2f,PeakLean=.4f;
         private static bool HoodCloth(Vector3 p)
         {
-            float x=p.X,y=p.Y,z=p.Z,e=Voxel+1e-4f;if(y<HoodBottom||y>.55f)return false;
-            float dx=Math.Max(0,Math.Abs(x)-ClearX),dy=y>ClearTop?y-ClearTop:y<ClearBottom?ClearBottom-y:0,dz=z>ClearFront?z-ClearFront:z<ClearBack?ClearBack-z:0;
+            float x=p.X,y=p.Y,z=p.Z,ax=Math.Abs(x),e=Voxel+1e-4f;if(y<HoodBottom||y>PeakTop)return false;
+            float dx=Math.Max(0,ax-ClearX),dy=y>ClearTop?y-ClearTop:y<ClearBottom?ClearBottom-y:0,dz=z>ClearFront?z-ClearFront:z<ClearBack?ClearBack-z:0;
             if(dx==0&&dy==0&&dz==0)return false;
+            bool side=dx>0&&dx<=e,outer=ax>ClearX+e&&ax<CowlHalf;
             bool shell=dx<=e&&dy<=e&&dz<=e&&!(dx>0&&dy>0&&dz>0);
-            bool brim=y>.3f&&y<.42f&&z>.1f&&z<.245f&&Math.Abs(x)<.21f*(float)Math.Sqrt(Math.Max(0,1-Math.Pow((y-.36f)/.075f,2)));
-            bool edges=y>HoodBottom&&y<.36f&&z>.1f&&z<.235f&&Math.Abs(x)<.214f;
-            bool peak=y>.4f&&y<.53f&&z>-.2f&&z<.06f&&Math.Abs(x)<.095f*(1-(y-.4f)/.14f);
-            if(!(shell||brim||edges||peak))return false;
+            bool brim=y>.3f&&y<.42f&&z>.1f&&z<.245f&&ax<.21f*(float)Math.Sqrt(Math.Max(0,1-Math.Pow((y-.36f)/.075f,2)));
+            bool edges=y>HoodBottom&&y<.36f&&z>.1f&&z<.235f&&ax<.214f;
+            bool brow=y>BrowBottom&&y<BrowTop&&z>ClearFront&&z<BrowFront&&ax<BrowHalf;
+            bool balloon=y>BalloonBottom&&y<BalloonTop&&z>BalloonBack&&z<(y>BalloonStep?BalloonFrontHigh:BalloonFront);
+            bool cowl=outer&&(balloon||y>ClearTop&&y<ClearTop+Voxel&&z>CrownBack&&z<ShoulderFront||y>EyeBottom&&y<EyeTop&&z>EyeDepth&&z<RimFront);
+            bool crown=y>ClearTop+Voxel/2&&y<ClearTop+Voxel*1.5f&&z>CrownBack&&z<CrownFront&&ax<CrownHalf||y>ClearTop+Voxel*1.5f&&y<ClearTop+Voxel*2.5f&&z>Crown2Back&&z<Crown2Front&&ax<Crown2Half;
+            bool peak=y>.4f&&z>PeakBack+(y-.4f)*PeakLean&&z<PeakFront-(y-.4f)*PeakLean&&ax<PeakHalf*(1-(y-.4f)/.16f);
+            if(!(shell||brim||edges||brow||cowl||crown||peak))return false;
+            // Inside the balloon the shell's side column is left open: the cowl stands off the head there.
+            if(side&&dy==0&&balloon&&z<BalloonFront)return false;
             // Under the jaw the hood is open round the neck.
             if(y<=ClearBottom&&x*x+z*z<.15f*.15f)return false;
             return !HoodOpen(p);
@@ -177,7 +202,8 @@ namespace ChipArena.UnityConversion
             Greedy(g,s,(x,y,z,axis,sign)=>
             {
                 var c=g.Centre(x,y,z);var n=Vector3.Zero;if(axis==0)n.X=sign;else if(axis==1)n.Y=sign;else n.Z=sign;
-                bool inner=Vector3.Dot(n,c-HeadCentre)<0;int spill=0;
+                // Inside: facing the head, or looking into the opening (the eye rim's sides).
+                bool inner=Vector3.Dot(n,c-HeadCentre)<0||HoodOpen(c+n*Voxel);int spill=0;
                 if(inner&&c.Z>0){float d=Vector3.Distance(c,FaceCentre);spill=(int)Math.Round(Math.Max(0,1-d/.24f)*3);}
                 return 10+(inner?100:0)+spill+(n.Y>.5f?50:0);
             },(k,centre,n)=>
@@ -189,8 +215,15 @@ namespace ChipArena.UnityConversion
             // The trim: piping along the opening's rim on the hood's front faces.
             for(int z=0;z<21;z++)for(int y=0;y<23;y++)for(int x=0;x<21;x++)
             {
-                if(g.Get(x,y,z)!=Cloth||g.Get(x,y,z+1)!=0)continue;var p=g.Centre(x,y,z);if(p.Z<.12f||p.Y<TrimBottom)continue;
+                if(g.Get(x,y,z)!=Cloth||g.Get(x,y,z+1)!=0)continue;var p=g.Centre(x,y,z);if(p.Z<TrimDepth||p.Y<TrimBottom)continue;
                 for(int k=0;k<4;k++){int dx=k==0?1:k==1?-1:0,dy=k==2?1:k==3?-1:0;if(g.Get(x+dx,y+dy,z)==0&&HoodOpen(g.Centre(x+dx,y+dy,z)))EdgeStrip(s,p,Vector3.UnitZ,InPlane[k]);}
+                // Where the rim steps back (the brow beside the shallower rim), the piping turns along the step's side face.
+                for(int k=0;k<4;k++)for(int o=0;o<4;o++)
+                {
+                    if(k/2==o/2)continue;int dx=k==0?1:k==1?-1:0,dy=k==2?1:k==3?-1:0,ox=o==0?1:o==1?-1:0,oy=o==2?1:o==3?-1:0;
+                    if(g.Get(x+dx,y+dy,z)!=0||HoodOpen(g.Centre(x+dx,y+dy,z))||g.Get(x+dx,y+dy,z-1)==0)continue;
+                    if(g.Get(x+ox,y+oy,z)==0&&HoodOpen(g.Centre(x+ox,y+oy,z)))EdgeStrip(s,p,InPlane[k],InPlane[o]);
+                }
             }
         }
 
@@ -244,14 +277,21 @@ namespace ChipArena.UnityConversion
         private static void BuildVoid(SheldonSection s,List<Vector2> features)
         {
             const int nx=20,ny=24;int start=s.Positions.Count;var col=Lin(PlateColor);
-            for(int j=0;j<=ny;j++)for(int i=0;i<=nx;i++)
+            void Vertex(float x,float y)
             {
-                float x=-PlateHalf+2*PlateHalf*i/nx,y=PlateBottom+(PlateTop-PlateBottom)*j/ny,d=float.MaxValue;
-                foreach(var f in features)d=Math.Min(d,Vector2.Distance(f,new Vector2(x,y)));d=Math.Max(0,d-.004f);
+                float d=float.MaxValue;foreach(var f in features)d=Math.Min(d,Vector2.Distance(f,new Vector2(x,y)));d=Math.Max(0,d-.004f);
                 // A soft bloom baked round the face, so it glows on screens without bloom too (tinted with the face).
                 float glow=.45f*MathF.Exp(-d/.011f)+.035f*MathF.Exp(-d/.03f);s.Add(new Vector3(x,y,PlateZ),Vector3.UnitZ,col,new Vector4(glow,glow,glow,1));
             }
+            for(int j=0;j<=ny;j++)for(int i=0;i<=nx;i++)Vertex(-PlateHalf+2*PlateHalf*i/nx,PlateBottom+(PlateTop-PlateBottom)*j/ny);
             for(int j=0;j<ny;j++)for(int i=0;i<nx;i++){int a=start+j*(nx+1)+i;s.Quad(a,a+1,a+nx+2,a+nx+1);}
+            // Its sides where the opening widens round the eyes, out to the eye rim (just inside its cloth).
+            foreach(int side in new[]{-1,1})
+            {
+                const int sx=3,sy=8;int b=s.Positions.Count;
+                for(int j=0;j<=sy;j++)for(int i=0;i<=sx;i++)Vertex(side*(PlateHalf+(PlateSide-PlateHalf)*i/sx),EyeBottom+.0005f+(EyeTop-EyeBottom-.001f)*j/sy);
+                for(int j=0;j<sy;j++)for(int i=0;i<sx;i++){int a=b+j*(sx+1)+i;Facing(s,a,a+1,a+sx+2,a+sx+1,Vector3.UnitZ);}
+            }
         }
 
         // ---- Ring (head joint) ------------------------------------------------------------------------------------------

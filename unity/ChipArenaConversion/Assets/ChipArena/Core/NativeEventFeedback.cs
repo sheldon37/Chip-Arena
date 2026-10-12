@@ -71,7 +71,8 @@ namespace ChipArena.UnityConversion
 
     // combat-numbers.ts CombatNumberTrack and numberLabel, with lobby.css/match-hud.css .combat-number styling: every
     // authoritative hit (burn/poison ticks included) and heal once; a target's numbers of one kind within .16 s merge; three
-    // lanes per target; a number lives 1.15 s (at most 64). In PvE the local pilot's hits on adds count too.
+    // lanes per target; a number lives 1.15 s (at most 64). In PvE the local pilot's hits on adds count too. A first-person
+    // view pilot's own heals go to the quiet readout by the vitals (Heals, NativeHealReadout) instead of a drawn number.
     public sealed class NativeCombatNumbers
     {
         public const float Life=1.15f,Merge=.16f,Fade=.48f,Rise=.9f,Drift=.2f,Head=1.15f,Ground=.35f,Pop=.16f,PopScale=1.5f;
@@ -79,13 +80,19 @@ namespace ChipArena.UnityConversion
         // match-hud.css:3 .combat-number.damage and lobby.css:92 .combat-number.healing: colour, the text-shadow drop and
         // the dark outline (the healing glow's 12px #38dd6655 halo is folded into its outline).
         public const int DamageColor=0xff535f,DamageShadow=0x24060a,DamageOutline=0x200308,HealColor=0x82f2a0,HealShadow=0x0c2714,HealOutline=0x102b18;
-        public sealed class Number{public int Id,Target,Lane;public bool Heal;public float Amount,At;public V3 Position;public string Label;}
+        // Readout: a first-person own heal, shown by Heals and never drawn (it has no Label).
+        public sealed class Number{public int Id,Target,Lane;public bool Heal,Readout;public float Amount,At;public V3 Position;public string Label;}
         public delegate bool Anchor(int target,out V3 position);
         public readonly List<Number> Numbers=new List<Number>();
+        // The running total of the first-person view pilot's own heals (the `readout` target of Update), drawn by the vitals.
+        public readonly NativeHealReadout Heals=new NativeHealReadout();
         private int lastEvent,generation=-1;private float lastTime=-1;
-        public void Clear(){Numbers.Clear();lastEvent=0;generation=-1;lastTime=-1;}
+        public void Clear(){Numbers.Clear();Heals.Clear();lastEvent=0;generation=-1;lastTime=-1;}
         // `pilot(target, out position)`: the target's body position when it is a pilot (the source's state.players).
-        public List<Number> Update(List<ArenaEvent> events,float time,int gen,int local,bool pve,Anchor pilot)
+        // `readout`: the first-person view pilot's seat (0 in third person). Its heals feed Heals; each still takes its
+        // number, flagged Readout and merged only with its own kind, so every other number's merges, lanes and the cap
+        // stay exactly as before (0 is the source's track unchanged).
+        public List<Number> Update(List<ArenaEvent> events,float time,int gen,int local,bool pve,Anchor pilot,int readout=0)
         {
             if(time<lastTime||generation!=gen)Clear();generation=gen;lastTime=time;
             for(int i=0;i<events.Count;i++)
@@ -96,21 +103,33 @@ namespace ChipArena.UnityConversion
                 // A pilot hit exists in the source only above .05; a hit on a non-pilot is the source's `minionHit`, shown
                 // only for my own hits in PvE (any amount).
                 if(player?!heal&&!NativeEventFeedback.SourceHit(e.Kind,e.Amount):heal||!pve||local<=0||e.Source!=local)continue;
-                Number old=null;for(int n=Numbers.Count-1;n>=0;n--){var q=Numbers[n];if(q.Target==e.Target&&q.Heal==heal&&e.Time-q.At>=0&&e.Time-q.At<Merge){old=q;break;}}
-                if(old!=null){old.Amount+=e.Amount;old.Label=Label(old.Amount,heal);continue;}
+                bool own=heal&&readout>0&&e.Target==readout;if(own)Heals.Add(e.Time,e.Amount);
+                Number old=null;for(int n=Numbers.Count-1;n>=0;n--){var q=Numbers[n];if(q.Target==e.Target&&q.Heal==heal&&q.Readout==own&&e.Time-q.At>=0&&e.Time-q.At<Merge){old=q;break;}}
+                if(old!=null){old.Amount+=e.Amount;if(!own)old.Label=Label(old.Amount,heal);continue;}
                 int lane=0;for(int n=0;n<Numbers.Count;n++)if(Numbers[n].Target==e.Target)lane++;
-                Numbers.Add(new Number{Id=e.Id,Target=e.Target,Heal=heal,Amount=e.Amount,At=e.Time,Lane=lane%Lanes,Position=player?body+new V3(0,Head,0):e.Position+new V3(0,Ground,0),Label=Label(e.Amount,heal)});
+                Numbers.Add(new Number{Id=e.Id,Target=e.Target,Heal=heal,Readout=own,Amount=e.Amount,At=e.Time,Lane=lane%Lanes,Position=player?body+new V3(0,Head,0):e.Position+new V3(0,Ground,0),Label=own?null:Label(e.Amount,heal)});
             }
             int kept=0;for(int n=0;n<Numbers.Count;n++)if(time-Numbers[n].At<Life)Numbers[kept++]=Numbers[n];Numbers.RemoveRange(kept,Numbers.Count-kept);
             if(Numbers.Count>Cap)Numbers.RemoveRange(0,Numbers.Count-Cap);return Numbers;
         }
         public static float Alpha(float age)=>Math.Min(1,(Life-age)/Fade);
         public static float Scale(float age)=>1+Math.Max(0,Pop-age)*PopScale;
-        // FloatingCombatNumbers.update: the world point drifts by lane and rises; a first-person pilot's own numbers sit
-        // under the crosshair (x 50% +- 3% per lane, y 62% - 7%/s).
+        // FloatingCombatNumbers.update: the world point drifts by lane and rises; a first-person pilot's own damage numbers
+        // sit under the crosshair (x 50% +- 3% per lane, y 62% - 7%/s; its own heals are the Heals readout).
         public static V3 World(Number n,float age)=>new V3(n.Position.x+(n.Lane-1)*Drift*age,n.Position.y+age*Rise,n.Position.z);
         public static float OwnX(int lane)=>.5f+(lane-1)*.03f;
         public static float OwnY(float age)=>.62f-age*.07f;
+        // Third person: my own heals keep their world numbers over my head, but the Classic camera (and a shoulder rig pulled
+        // in by a wall) puts that spot right on the crosshair: a number spawns about 14 units over it and its stream rises
+        // through the target above. There they fade, eased, from full at AimClear canvas units clear of the aim point to
+        // AimAlpha within AimNear (the shoulder rigs' numbers, ~200 units out, never dim). The text box is .6 em a glyph by
+        // 1 em about its centre (cx, cy).
+        public const float AimClear=120,AimNear=24,AimAlpha=.25f;
+        public static float AimFade(string label,float size,float cx,float cy,float aimX,float aimY)
+        {
+            float w=(label?.Length??0)*.6f*size,dx=Math.Max(Math.Abs(cx-aimX)-w/2,0),dy=Math.Max(Math.Abs(cy-aimY)-size/2,0);
+            float u=Math.Max(0,Math.Min(1,((float)Math.Sqrt(dx*dx+dy*dy)-AimNear)/(AimClear-AimNear)));return AimAlpha+(1-AimAlpha)*u*u*(3-2*u);
+        }
         // numberLabel: integers at 1 and above (JS Math.round), else toFixed(1), or toFixed(2) under .1; '+' heals, U+2212.
         public static string Label(double amount,bool heal)
         {
@@ -131,6 +150,59 @@ namespace ChipArena.UnityConversion
             string text=n.ToString(CultureInfo.InvariantCulture).PadLeft(digits+1,'0');
             return text.Substring(0,text.Length-digits)+"."+text.Substring(text.Length-digits);
         }
+    }
+
+    // The first-person own-heal readout (owner 2026-10-12: "Change healing number display to be less obstructive on first
+    // person"). A first-person pilot cannot see their own head, so their heals used to sit under the crosshair (x 50% +- 3%,
+    // y 62% rising to 54%), and regeneration, heal fields and lifesteal heal on every 60 Hz tick: a new +0.2 every .16 s,
+    // six or seven stacked under the aim. In first person they feed this instead: one quiet running total right-aligned
+    // over the vitals' HP readout (heal green, 15 px mono, .72 opacity). A heal while it shows adds to it (+12 counting
+    // up); a total under one HP waits, unseen, until it reaches one; when the healing stops it holds .6 s, then drifts up
+    // 10 units and fades over .5 s. Reduced effects: no fade-in or motion, the same hold and fade. Labels are cached, so
+    // counting up allocates nothing. Presentation only, read from the authoritative heal events.
+    public sealed class NativeHealReadout
+    {
+        public const float Floor=1,Hold=.6f,Fade=.5f,Appear=.12f,Rise=4,Drift=10,Opacity=.72f,Size=15,Gap=5,Width=56,Pad=14;
+        /// <summary>The centre it keeps clear of, as a half extent of the canvas each way: the crosshair, the hit marker and
+        /// the old own-number spot (x 47-53%, y 54-62%) all sit inside the middle 36%.</summary>
+        public const float SafeHalf=.18f;
+        public float Total{get;private set;}
+        public float Last{get;private set;}=-100;
+        public float ShownAt{get;private set;}=-100;
+        public void Clear(){Total=0;Last=ShownAt=-100;}
+        // The total is live within Hold + Fade of its last heal, on the same clock (a clock running back starts over).
+        public bool Live(float now)=>Total>0&&now>=Last&&now-Last<Hold+Fade;
+        public bool Visible(float now)=>Total>=Floor&&Live(now);
+        public void Add(float at,float amount)
+        {
+            if(!(amount>0)||float.IsInfinity(amount))return;if(!Live(at)){Total=0;ShownAt=-100;}
+            bool hidden=Total<Floor;Total+=amount;Last=at;if(hidden&&Total>=Floor)ShownAt=at;
+        }
+        // Opacity: in over .12 s as a total first shows, full while heals come and for .6 s after the last, then out over .5 s.
+        public float Alpha(float now,bool reduced)
+        {
+            if(!Visible(now))return 0;float fade=1-Clamp((now-Last-Hold)/Fade),appear=reduced?1:Clamp((now-ShownAt)/Appear);
+            return Opacity*fade*appear;
+        }
+        // Canvas units over its rest spot: from 4 below as it appears, then an eased 10 up while it fades; still with Reduced effects.
+        public float Lift(float now,bool reduced)
+        {
+            if(reduced||!Visible(now))return 0;float u=Clamp((now-Last-Hold)/Fade);
+            return -Rise*(1-Clamp((now-ShownAt)/Appear))+Drift*u*(2-u);
+        }
+        // JS Math.round of the total, as the numbers' integers.
+        public int Value=>Total>=int.MaxValue?int.MaxValue:(int)Math.Floor(Total+.5);
+        private static readonly string[] labels=new string[1000];private int labelValue=-1;private string label;
+        public string Label{get{int v=Value;if(v!=labelValue){labelValue=v;label=v>=0&&v<labels.Length?(labels[v]??=Text(v)):Text(v);}return label;}}
+        private static string Text(int v)=>"+"+v.ToString(CultureInfo.InvariantCulture);
+        // Its text box: the right edge on the vitals' inner edge (the right end of the HP readout's "/ max"), Gap over the
+        // panel's top edge, `lift` higher; the vitals box (x, y, width) and the box it returns are in canvas units.
+        public static void Place(float boxX,float boxY,float boxW,float lift,out float x,out float y,out float w,out float h)
+        {w=Width;h=Size*1.3f;x=boxX+boxW-Pad-w;y=boxY-Gap-h-lift;}
+        // Whether a box overlaps the canvas's central safe area.
+        public static bool Central(float x,float y,float w,float h,float canvasW,float canvasH)
+            =>x<canvasW*(.5f+SafeHalf)&&x+w>canvasW*(.5f-SafeHalf)&&y<canvasH*(.5f+SafeHalf)&&y+h>canvasH*(.5f-SafeHalf);
+        private static float Clamp(float v)=>v>0?v<1?v:1:0;
     }
 
     // audio.ts SoundLimiter / HIT_TRIM / cue(): per key, plays closer than the key's gap are skipped and folded into the next

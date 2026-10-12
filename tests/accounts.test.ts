@@ -51,6 +51,9 @@ test('native account cosmetics survive save, reload and a second login without g
   revision=skinned.account.revision;assert.equal(skinned.account.profile.cosmetics.weaponSkins,'pistol:prototype,sword:prototype');
   const skinRead:any=await(await f.request('me',undefined,first.session)).json();assert.equal(skinRead.account.profile.cosmetics.weaponSkins,'pistol:prototype,sword:prototype');assert.equal(skinRead.account.profile.cosmetics.lobbyBack,'hex-field');
   const skinLogin:any=await(await f.request('login',{username:'nativepilot',password})).json();assert.equal(skinLogin.account.profile.cosmetics.weaponSkins,'pistol:prototype,sword:prototype');
+  // The pilot body rides the same map after the weapons (Unity Core/NativeBodySkins.cs): a non-DEV account cannot keep the Sheldon Clothes.
+  const bodied:any=await(await f.request('profile',{revision,profile:{cosmetics:{weaponSkins:'body:prototype,pistol:prototype,body:gold,pistol:sheldon'}}},first.session)).json();revision=bodied.account.revision;assert.equal(bodied.account.profile.cosmetics.weaponSkins,'pistol:prototype,body:prototype');
+  const hooded:any=await(await f.request('profile',{revision,profile:{cosmetics:{weaponSkins:'sword:prototype,body:sheldon'}}},first.session)).json();revision=hooded.account.revision;assert.equal(hooded.account.profile.cosmetics.weaponSkins,'sword:prototype');
   const longest=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','emperor','ansatsuken','leet'].map(s=>s+':prototype').join(',');
   const all:any=await(await f.request('profile',{revision,profile:{cosmetics:{weaponSkins:longest.split(',').reverse().join(',')+',sword:prototype,siren:prototype'}}},first.session)).json();revision=all.account.revision;assert.equal(all.account.profile.cosmetics.weaponSkins,longest);
   for(const junk of [undefined,null,42,{sword:'prototype'},'',',,:,','sword','sword:standard','x'.repeat(5000)+',sword:prototype']){
@@ -72,6 +75,10 @@ test('native tints persist and Sheldon cosmetics require a DEV account',async()=
    assert.equal(got.hatColor,c.hatColor);assert.equal(got.backColor,c.backColor);assert.equal(got.hat,allowed?'sheldon-head':'none');assert.equal(got.intro,allowed?'sheldon-intro':'neon-drop');
    const bad:any=await(await f.request('profile',{revision:1,profile:{cosmetics:{hatColor:'',backColor:'<script>',hat:'sheldon-head',intro:'sheldon-intro'}}},pilot.session)).json();
    assert.equal(bad.account.profile.cosmetics.hatColor,'');assert.equal(bad.account.profile.cosmetics.backColor,'');
+   // The Sheldon Clothes body skin: kept on the DEV account, Standard ('' for the body) on any other; weapon picks stay.
+   const clothes:any=await(await f.request('profile',{revision:2,profile:{cosmetics:{weaponSkins:'body:sheldon,sword:prototype'}}},pilot.session)).json();
+   assert.equal(clothes.account.profile.cosmetics.weaponSkins,allowed?'sword:prototype,body:sheldon':'sword:prototype');
+   const reload:any=await(await f.request('me',undefined,pilot.session)).json();assert.equal(reload.account.profile.cosmetics.weaponSkins,allowed?'sword:prototype,body:sheldon':'sword:prototype');
   }
  }finally{f.db.close();}
 });
