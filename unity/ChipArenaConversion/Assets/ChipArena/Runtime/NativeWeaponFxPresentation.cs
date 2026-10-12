@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<long,SlashState> slashes=new Dictionary<long,SlashState>();private readonly Stack<SlashState> spareSlashes=new Stack<SlashState>();private readonly List<long> staleSlashes=new List<long>();
         private readonly Dictionary<int,(float At,bool Head)> hitFlashes=new Dictionary<int,(float,bool)>();private int hitFlashEvent;
         private readonly NativeAfterimages afterimages=new NativeAfterimages();private GhostPose[] afterimagePoses;private readonly Color[] afterimageTints=new Color[NativeAfterimages.Slots];
-        private readonly string[] afterimageWeapon=new string[NativeAfterimages.Slots];private readonly Dictionary<string,string> afterimageModels=new Dictionary<string,string>();
+        private readonly string[] afterimageWeapon=new string[NativeAfterimages.Slots],afterimageBody=new string[NativeAfterimages.Slots];private readonly Dictionary<string,string> afterimageModels=new Dictionary<string,string>();
         private readonly Dictionary<long,Emitter> emitters=new Dictionary<long,Emitter>();private readonly Stack<Emitter> spareEmitters=new Stack<Emitter>();private readonly List<long> staleEmitters=new List<long>();
         private TrailSprite[] trailSprites=new TrailSprite[512];private int trailSpriteCount;
         private readonly ImpactMark[] impactMarks=new ImpactMark[32];private int impactNext,impactEvent;private NativeArena impactArena;private int impactGeneration=-1;
@@ -132,7 +132,7 @@ namespace ChipArena.UnityConversion
                 if(!afterimages.Due(a.Id,at,a.RollAt,time,q))continue;int slot=afterimages.Take(a.Id,at,a.RollAt,time,q);var pose=afterimagePoses[slot];
                 pose.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)pose.Bones[b]=rig.Bones[b].localToWorldMatrix;
                 string weapon=null;if(!a.WeaponAway&&NativeWeaponDressing.SocketShown(a.SourceSpec)){string w=SkinnedHeld(a);if(!afterimageModels.TryGetValue(w,out weapon))afterimageModels[w]=weapon=sourceModels.Afterimage(w);}
-                afterimageWeapon[slot]=weapon;pose.Armed=weapon!=null;
+                afterimageWeapon[slot]=weapon;pose.Armed=weapon!=null;afterimageBody[slot]=BodyAfterimage(BodySkin(a.Id),BodyTier(root,false))??pilot;
                 if(pose.Armed){float reach=WeaponReach(rig,a,time);for(int b=0;b<22&&b<rig.Bones.Length;b++)pose.Weapon[b]=SourceWeaponBone(rig,a,time,false,b,reach);}
                 afterimageTints[slot]=NativeWeaponFxShapes.Fx(NativeAfterimages.Color(a.AccentColor));
             }
@@ -140,7 +140,7 @@ namespace ChipArena.UnityConversion
             {
                 if(!afterimages.Live(k,time))continue;float opacity=(float)NativeAfterimages.Fade(time-afterimages.At[k]);if(opacity<=.002f)continue;
                 var pose=afterimagePoses[k];var tint=afterimageTints[k];
-                sourceModels.Queue(pilot,pose.Root,pose.Bone,null,0,null,tint,null,opacity);
+                sourceModels.Queue(afterimageBody[k]??pilot,pose.Root,pose.Bone,null,0,null,tint,null,opacity);
                 if(pose.Armed)sourceModels.Queue(afterimageWeapon[k],pose.Root,pose.WeaponBone,null,0,null,tint,null,opacity);
             }
         }

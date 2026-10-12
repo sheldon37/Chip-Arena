@@ -6,12 +6,13 @@ namespace ChipArena.UnityConversion
     // The cosmetic gate (NativeCosmeticRules.Allowed; engine-free so the managed checks run it): an id is allowed when it is
     // public, or a dev- item / the Auditor Halo with a grant for "type:id" (DEV access grants everything), and the Gibber, the
     // Sheldon Head and the Sheldon Intro need live DEV access itself (no grant can hand them out). The host normalises every joining seat with the
-    // peer's verified access, so a non-DEV request for them becomes no hat / the default effect.
+    // peer's verified access, so a non-DEV request for them becomes no hat / the default effect. The Sheldon Clothes body skin
+    // (NativeBodySkins.SheldonClothes) is gated the same way and falls back to the Standard body.
     public static class NativeCosmeticGate
     {
         public const string SheldonIntro="sheldon-intro";
-        public static bool DevOnly(string id)=>id=="dev-gibber"||id==NativeHatLooks.SheldonHead||id==SheldonIntro;
-        public static bool Restricted(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo"||id==NativeHatLooks.SheldonHead||id==SheldonIntro);
+        public static bool DevOnly(string id)=>id=="dev-gibber"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes;
+        public static bool Restricted(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes);
         public static bool Allowed(NativeAccess a,string type,string id,double now)=>id!=null&&(!DevOnly(id)||(a??NativeAccess.Guest).Developer)&&(!Restricted(id)||(a??NativeAccess.Guest).Allows(type+":"+id,now));
     }
 

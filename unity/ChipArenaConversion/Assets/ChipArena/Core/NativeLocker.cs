@@ -12,11 +12,11 @@ namespace ChipArena.UnityConversion
     {
         public const int Appearance=0,KillEffects=1,Entrance=2,Loadout=3,WeaponSkins=4,Count=5;
         public static readonly string[] Keys={"appearance","kill-effects","entrance","loadout","weapon-skins"};
-        public static readonly string[] Labels={"Appearance","Kill Effects","Entrance","Loadout","Weapon Skins"};
+        public static readonly string[] Labels={"Appearance","Kill Effects","Entrance","Loadout","Skins"};
         public static readonly string[] Icons={"palette","skull","sparkles","swords","gem"};
         public static readonly string[] Subtitles=
         {
-            "Callsign, colours, headwear, idle pose and backdrop.",
+            "Callsign, body, colours, headwear, idle pose and backdrop.",
             "How opponents see you finish them.",
             "Your match intro and the line under your name.",
             "Preferred class and weapon, and that weapon's abilities.",

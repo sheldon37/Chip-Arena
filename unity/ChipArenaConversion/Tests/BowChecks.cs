@@ -358,7 +358,7 @@ internal static class BowChecks
         Check(R("NativeFightHud.cs").Contains("BowMeter(p);"),"the HUD draws the draw meter");
         Check(R("NativeIntros.cs").Contains("if(style==NativeBowEntrance.Id&&entranceScript is NativeBowEntrance bow){BowIntro(bow,entranceTime);return;}"),"the Arrowfall entrance draws the live bow");
         var audio=R("NativeAudio.cs");Check(audio.Contains("BowCues(")&&audio.Contains("BowFlightCues(")&&audio.Contains("BowEventCue("),"the bow's sounds are cued");
-        Check(R("NativeSourceModels.cs").Contains("SheldonModels();BowModels();"),"the bow models are banked at load");
+        Check(R("NativeSourceModels.cs").Contains("SheldonModels();PilotBodies();BowModels();"),"the bow models are banked at load");
         Check(C("ArenaModel.cs").Contains("[NonSerialized] public NativeBowFeed Bow;"),"the provisional feed is never on the wire");
         // Nothing in play writes the provisional feed, and the bow presentation reads the actor only through the wire map.
         foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories))

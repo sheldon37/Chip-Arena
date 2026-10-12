@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         // PROVISIONAL bow presentation fixture slot (Core/NativeBow.cs NativeBowWire): never on the wire; replaced by the simulation's fields.
         [NonSerialized] public NativeBowFeed Bow;
         // Native authority presentation only; the inherited lab wire codec does not transport these.
-        public NativeMeleeKit MeleeKit;public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
+        public bool HasKernel;public NativeKernelPanic Kernel;public NativeMeleeKit MeleeKit;public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
         public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;
         public float CastRate=1,AbilityAt=-100,AbilityRelease;public string AbilityId;
         public bool Grounded=true;public int AirJumps;public float AirJumpAt=-100;
@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
         public float StunUntil, StaggerImmuneUntil, RegenAt, ShootReady, RespawnAt, FlashUntil;
         internal bool QueuedAttack;
         internal readonly HashSet<int> Hit = new HashSet<int>();
-        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.MeleeKit=MeleeKit?.ViewCopy();return copy;}
+        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.Kernel=Kernel?.ViewCopy();copy.MeleeKit=MeleeKit?.ViewCopy();return copy;}
         public bool Alive { get { return Hp > 0; } }
         public bool Rolling(float t) { return t >= RollAt && t < RollAt + VisualRollDuration; }
         public bool Invulnerable(float t) { return t >= RollAt + Rules.IframeStart && t < RollAt + Rules.IframeEnd; }

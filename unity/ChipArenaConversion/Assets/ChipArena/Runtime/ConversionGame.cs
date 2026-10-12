@@ -202,7 +202,7 @@ namespace ChipArena.UnityConversion
             {
                 if(!rooftopShown){rooftopShown=true;rooftopFov=cameraView.fieldOfView;rooftopNear=cameraView.nearClipPlane;}
                 backdropMap=null;viewModelCamera.enabled=false;float quality=presentation.LowGraphics?.34f:prefs.reducedEffects?.6f:1;
-                var pilot=new RooftopPilot{Spec=prefs.weapon,Hat=prefs.hat,Body=prefs.bodyColor,Accent=prefs.accentColor,HatColor=prefs.hatColor};
+                var pilot=new RooftopPilot{Spec=prefs.weapon,BodySkin=NativeBodySkins.Index(BodySkinShown()),Hat=prefs.hat,Body=prefs.bodyColor,Accent=prefs.accentColor,HatColor=prefs.hatColor};
                 if(presentation.RenderRooftop(cameraView,(float)(Time.unscaledTimeAsDouble%4800.0),pilot,quality,prefs.reducedEffects))return;
             }
             RooftopLeave();

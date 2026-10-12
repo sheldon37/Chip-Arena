@@ -26,6 +26,7 @@ namespace ChipArena.UnityConversion.Editor
             var skinReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{weaponSkins="pistol:prototype,sword:prototype"}}}));
             if(skinPrefs.weaponSkins!="sword:prototype"||skinReady.profile.cosmetics.weaponSkins!="pistol:prototype,sword:prototype"||NativeWeaponSkins.Index(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").weaponSkins,"sword")!=NativeWeaponSkins.StandardIndex)
                 throw new Exception("Saved pilot/ready DTO lost the weapon skins, or an old save did not load as Standard");
+            if(NativeBodySkins.Of(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").weaponSkins)!=NativeBodySkins.StandardIndex||NativeBodySkins.Gate("body:sheldon",false)!="")throw new Exception("An old save did not load the Standard body, or the Sheldon Clothes passed the gate");
             // Headwear and backdrop colours (NativeHatLooks) travel the same way; an old save and an old profile are Auto.
             var colourPrefs=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{hatColor="#22e6ff",backColor="#ff3dcf"}));
             var colourReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{hatColor="#22e6ff",backColor="#ff3dcf",hat="sheldon-head"}}}));
@@ -112,6 +113,11 @@ namespace ChipArena.UnityConversion.Editor
                 if(!skins.Valid(authority.Content))throw new Exception("Weapon skin frame failed validation");replica.ApplyFrame(skins,authority.LocalId);
                 if(replica.Match.Seat(skins.seats[0].id)?.weaponSkins!="rifle:prototype,sword:prototype"||replica.Match.Seat(skins.seats[1].id)?.weaponSkins!="")throw new Exception("Guest/replay lost or did not normalise the weapon skins");
                 var longSkins=NativeFrameCodec.Clone(copy);longSkins.seats[0].weaponSkins=new string('x',NativeWeaponSkins.MaxLength+1);if(longSkins.Valid(authority.Content))throw new Exception("Over-long weapon skin map accepted");
+                // The pilot's body skin is the map's "body" entry (Core/NativeBodySkins.cs): it arrives with the weapon picks (the
+                // host gated the Sheldon Clothes when it built the seat), and a body pick no client knows reads as Standard.
+                var bodies=NativeFrameCodec.Clone(copy);bodies.seats[0].weaponSkins="body:sheldon,sword:prototype";bodies.seats[1].weaponSkins="body:gold";bodies=NativeFrameCodec.Clone(bodies);
+                if(!bodies.Valid(authority.Content))throw new Exception("Body skin frame failed validation");replica.ApplyFrame(bodies,authority.LocalId);
+                if(replica.Match.Seat(bodies.seats[0].id)?.weaponSkins!="sword:prototype,body:sheldon"||NativeBodySkins.Of(replica.Match.Seat(bodies.seats[1].id)?.weaponSkins)!=NativeBodySkins.StandardIndex)throw new Exception("Guest/replay lost or did not normalise the body skin");
                 // Hat and backdrop colours ride the seat frame too: a colour arrives (lower-cased), junk is Auto, an older
                 // host's frame without them is Auto, an over-long one fails validation; the Sheldon Head id is shown as sent.
                 var colours=NativeFrameCodec.Clone(copy);colours.seats[0].hatColor="#22E6FF";colours.seats[0].backColor="#ff3dcf";colours.seats[0].hat="sheldon-head";colours.seats[1].hatColor="red";colours.seats[1].backColor=null;colours=NativeFrameCodec.Clone(colours);
@@ -191,7 +197,7 @@ namespace ChipArena.UnityConversion.Editor
             try
             {
                 var match=new NativeMatch(content,7);match.Seats.Add(new NativeSeat{id=1,name="A",spec="pistol"});match.Seats.Add(new NativeSeat{id=2,name="B",spec="pistol"});
-                arena=new NativeArena(content,match,"foundry"){ReplicaScene=scene};match.Start();match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});arena.ValidateDevCombatParity();arena.ValidateParityCombat();arena.ValidateFollowupParity();
+                arena=new NativeArena(content,match,"foundry"){ReplicaScene=scene};match.Start();match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});arena.ValidateDevCombatParity();arena.ValidateParityCombat();arena.ValidateFollowupParity();arena.ValidateKernelPanic();
                 Debug.Log("PASS native combat: no generic stun, ability block rules, splash/DoT roll rules, reload-independent abilities and authority wall-clamped aim");
             }
             finally{arena?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}
