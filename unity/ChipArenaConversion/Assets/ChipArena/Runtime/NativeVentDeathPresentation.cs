@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
                 string spec=death.actor?.SourceSpec;v.Caster=spec=="fire"||spec=="water"||spec=="lightning"||spec=="darkness"||spec=="leet";bool caster=v.Caster;
                 // buildWeapon(victim.weapon, spec): one weapon in the right hand (a caster's staff too; no off-hand weapon).
                 v.WeaponBone=b=>body.At(caster&&b==CapturedRig.LHand?CapturedRig.RHand:b);v.WeaponShown=b=>b==CapturedRig.RHand||caster&&b==CapturedRig.LHand;
-                v.Weapon=!string.IsNullOrEmpty(spec)&&spec!="siren"&&sourceModels.Has("weapon-"+spec)?"weapon-"+spec:null;v.Hat=!string.IsNullOrEmpty(death.actor?.Hat)&&death.actor.Hat!="none"?death.actor.Hat:null;
+                v.Weapon=!string.IsNullOrEmpty(spec)&&spec!="siren"&&sourceModels.Has("weapon-"+spec)?Skinned(death.actor,"weapon-"+spec):null;v.Hat=!string.IsNullOrEmpty(death.actor?.Hat)&&death.actor.Hat!="none"?death.actor.Hat:null;
                 if(v.Splat){int n=NativeVentDeath.DustCount(Mathf.Clamp01(EffectsQuality));v.Dust=new NativeVentDeath.Dust[n];for(int i=0;i<n;i++)v.Dust[i]=NativeVentDeath.DustDirection(death.seed,i);}
                 // DeathPoseCarry: the dead rig's last pose (joints matched by name), when this client still has it.
                 else if(rigs.TryGetValue(death.id,out var rig)){for(int i=0;i<22;i++)v.From[i]=CapturedRig.Mirror(CapturedAnimation.Num(rig.Bones[i].localRotation));v.FromBody=CapturedRig.Mirror(CapturedAnimation.Num(rig.Bones[0].localPosition));v.Carried=true;}

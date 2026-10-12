@@ -20,11 +20,11 @@ namespace ChipArena.UnityConversion
             "How opponents see you finish them.",
             "Your match intro and the line under your name.",
             "Preferred class and weapon, and that weapon's abilities.",
-            "Finishes for every weapon. Coming soon.",
+            "A finish for every weapon: Standard or the Prototype Series.",
         };
-        // Weapon skins are a future feature: the tab shows locked silhouettes and nothing in it can be picked or saved.
-        public static bool Interactive(int category)=>category!=WeaponSkins;
-        public static bool Soon(int category)=>category==WeaponSkins;
+        // Every category is live (weapon skins since the Standard models: Core/NativeWeaponSkins.cs); none is coming soon.
+        public static bool Interactive(int category)=>category>=0&&category<Count;
+        public static bool Soon(int category)=>false;
 
         // Restricted cosmetics (shown only when NativeCosmeticRules.Allowed lets them through) carry a DEV badge.
         public static bool DevItem(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo");

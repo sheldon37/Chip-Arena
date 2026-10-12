@@ -17,6 +17,8 @@ namespace ChipArena.UnityConversion
         // Settings · Camera (Core/NativeCameraModes): the third-person rig and its shoulder (absent in older saves: the right
         // shoulder, the new default); firstPerson above stays the first-person choice that V toggles.
         public string cameraMode=NativeCameraModes.Default;public bool shoulderLeft;
+        // The Locker's per-weapon skins (NativeWeaponSkins map; absent in older saves: every weapon Standard).
+        public string weaponSkins="";
         public bool developmentConsole;
     }
     public sealed partial class ConversionGame : MonoBehaviour

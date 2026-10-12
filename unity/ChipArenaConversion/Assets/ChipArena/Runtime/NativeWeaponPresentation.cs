@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
                 if(count>0)for(int hand=0;hand<(daggers?2:1);hand++)
                 {
                     var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);if(first)parent*=Matrix4x4.Scale(Vector3.one*NativeWeaponDressing.FirstPersonModuleScale);
-                    for(int i=0;i<count;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,parent,layer,camera,rigFactor);}
+                    for(int i=0;i<count;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,first?parent:SkinPiece(a,p,parent),layer,camera,rigFactor);}
                 }
             }
             // renderer.ts:83-84,129: elements only on melee-class weapons, from the burn and poison stats; stacks from the chips.
@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
             if(flames>0)for(int hand=0;hand<(daggers?2:1);hand++)
             {
                 var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);
-                for(int i=0;i<flames;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,parent,layer,camera);}
+                for(int i=0;i<flames;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,SkinPiece(a,p,parent),layer,camera);}
             }
         }
         // A blade that drew blood carries it on its edge (Core/NativeBlood: the ledger's melee hits by this pilot, fading over
@@ -84,7 +84,7 @@ namespace ChipArena.UnityConversion
             {
                 var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);
                 for(int i=0;i<NativeBloodRules.Slivers;i++)if(NativeBloodRules.Sliver(spec,i,amount,out var c,out var size))
-                    QueuePiece(new WeaponPiece{Shape=WeaponShape.Cube,Color=i%2==0?NativeBloodRules.Rim:NativeBloodRules.Core,Position=c,Scale=size,Rotation=System.Numerics.Quaternion.Identity,Orbit=-1},parent,layer,camera);
+                {var piece=new WeaponPiece{Shape=WeaponShape.Cube,Color=i%2==0?NativeBloodRules.Rim:NativeBloodRules.Core,Position=c,Scale=size,Rotation=System.Numerics.Quaternion.Identity,Orbit=-1};QueuePiece(piece,SkinPiece(a,piece,parent),layer,camera);}
             }
         }
         // standard-melee-effects.ts:21: a thrown dagger or shield keeps the owner's enchant (elements and stacks), flying with it.
