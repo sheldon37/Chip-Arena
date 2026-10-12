@@ -43,6 +43,12 @@ first for the shield), a speed streak on the drop, a crater ring and debris size
 recovery and pull-out, first-person view looking down the blade, and a heavier camera shake for big falls
 (camera-shake setting only).
 
+### Plunging stab implementation contract (Astra, 2026-10-12)
+
+`NativeMeleeSwing.AirKind` and snapshot `Actor.AirKind` are `"down"` for the stab and empty for the existing forward attack. `Actor.AirStartY` / `FallHeight` carry centre-height fall distance; `PlungeAt` / `ImpactAt` remain the shared clocks. `Land` uses Detail `melee-down` and the specified radius. Windup retains ordinary gravity (no hover); down carry is 15% of commitment velocity. No echoes or dagger combo follow a down stab.
+
+Direct contacts sweep a narrow .08 m blade from the previous feet to .35 m below the current feet against the existing projectile body geometry, with world visibility and a shared direct/ring victim ledger. The existing target-body overlap allowance is used at ring edges; the ring radius itself remains .9/1/1.2/1.4 m. Height scales each direct hit at its contact height, and the ring at landing, capped at +60%. Direct stun uses the existing boss/anti-stunlock gates. Runtime/PhysX acceptance remains pending.
+
 ## 2. Bow (ranged weapon, id `bow`)
 
 Ranged class, standard (not DEV). Joins pistol, rifle and machine gun.

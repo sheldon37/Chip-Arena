@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
         // Captured-melee presentation (MeleeMotion): the swing window, authoritative step and commitment, Hurricane, and the
         // hit reaction in the struck pilot's facing frame (source frame: +x the rig's left, radians). Never read by authority.
         public float SwingAt=-100,SwingUntil=-100,CommitAt=-100,CommitUntil=-100,CommitYaw,StepAt,StepUntil,StepDistance;public bool Followup,Hurricane,SprintAttack,OpenerLunge;
-        public bool AirAttack,AirAttackUsed,MainWeaponAway;public float PlungeAt,ImpactAt=-1,AirborneAt=-1;public int SwingRemaining;public float ChainAt,MeleeBufferUntil=-1,ComboUntil;
+        public string AirKind="";public float FallHeight,AirStartY;public bool AirAttack,AirAttackUsed,MainWeaponAway;public float PlungeAt,ImpactAt=-1,AirborneAt=-1;public int SwingRemaining;public float ChainAt,MeleeBufferUntil=-1,ComboUntil;
         public float ReactionAt=-100,ReactionUntil,ReactionYaw,ReactionTurn,ReactionStrength;public V3 ReactionDir,ReactionPoint;public int ReactionZone;public bool ReactionParry;
         public float VisualWindup=Rules.SwordWindup,VisualActive=Rules.SwordActive,VisualDuration=Rules.SwordDuration,VisualRollDuration=Rules.RollDuration;
         public int Id, Team, Combo, Action, Kills, LastInput;

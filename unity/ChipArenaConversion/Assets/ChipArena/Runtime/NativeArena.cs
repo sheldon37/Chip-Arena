@@ -181,7 +181,7 @@ namespace ChipArena.UnityConversion
             var recovery=NativeSpecialRules.RecoveryMotion(p.Down,Time,new V3(i.X,0,i.Z),i.Yaw);
             if(recovery.Length>0){p.MoveVelocity=p.Knockback=Vector3.zero;velocity.x=recovery.x;velocity.z=recovery.z;external=Vector3.zero;}
             velocity+=external;
-            if(NativeAirAttackSimulation.Falling(p.Swing)){velocity.y=NativeAirAttackSimulation.Vertical(p.Swing,Time);p.Body.useGravity=false;}
+            if(NativeAirAttackSimulation.Falling(p.Swing)&&(!NativeAirAttackSimulation.Down(p.Swing)||Time>=p.Swing.PlungeAt)){velocity.y=NativeAirAttackSimulation.Vertical(p.Swing,Time);p.Body.useGravity=false;}
             if(GroundMotion(p,ref velocity,jumped,swimming,external.y))p.Body.useGravity=false;
             p.Body.linearVelocity=velocity;
 
