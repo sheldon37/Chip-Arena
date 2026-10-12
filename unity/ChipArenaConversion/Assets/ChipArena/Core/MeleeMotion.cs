@@ -11,6 +11,8 @@ namespace ChipArena.UnityConversion
         public string Id="",Spec="sword";public float Yaw,Pitch,DashTime,Hp=100,LastAttack=-100,Windup=.14f,SwingAt=float.NaN,SwingUntil=float.NaN,AttackRate=1;
         public float? AirJumpAt;public Vector3 Vel;public bool Grounded=true,Sprinting,Guarding,Hurricane,WeaponAway;public int AttackIndex;
         public bool Commit,Followup;public float CommitAt,CommitUntil,CommitYaw,StepAt,StepUntil,StepDistance;
+        // The swing's feel flags (NativeMeleeFeel): a lock-on opener's long lunge and a swing entered from a sprint.
+        public bool OpenerLunge,SprintAttack;
         public float BlockTime,LastBlock=float.NaN,HitStunUntil,RollAt=-100,RollUntil=-100,ActionAt=-100,ActionUntil=-100;public string ActionKind;
         public bool Reaction,Parry;public float ReactionAt,ReactionUntil,ReactionYaw,ReactionTurn,ReactionStrength;public Vector3 ReactionDir,ReactionPoint;public int ReactionZone;
         public bool Down,Juggle;public string DownPhase;
@@ -93,21 +95,39 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- presented yaw (motion-quality presentedYaw) ----
-        // A committed swing's facing eases over TurnBlend when it starts away from the shown facing or its yaw changes (Unity-owned,
-        // docs/MELEE-FEEL.md): a swing begun after the camera turned 40 deg snapped the body in one frame, a 66 m/s blade-tip
-        // pop, and a commit yaw that tracks the aim through the windup stays smooth. The strike window keeps the authority's yaw.
-        public const float TurnBlend=.1f;
-        private string yawSource;private float yawFrom,yawAt=-1e9f,yawLast,yawTime,yawCommit=float.NaN;private bool yawHas,yawTurn;
+        // A committed swing's facing eases over TurnBlend when it starts away from the shown facing (Unity-owned,
+        // docs/MELEE-FEEL.md): a swing begun after the camera turned 40 deg snapped the body in one frame, a 66 m/s blade-tip pop.
+        // The windup's own turn toward the aim or the lock (NativeMeleeFeel.TurnRate) is then followed as it comes, at most
+        // TurnFollow x that rate: no lag or second easing on a 720 deg/s turn (restarting the blend every tick trailed it by
+        // up to 35 deg and popped at the hit), a 20 Hz replicated heading glides between its snapshots, and a chain that starts from
+        // the last swing's heading carries straight on. An entry blend still running when the strike starts finishes over
+        // StrikeBlend, so the strike shows the authority's heading.
+        public const float TurnBlend=.1f,TurnFollow=1.6f,StrikeBlend=.04f;
+        private string yawSource;private float yawFrom,yawAt=-1e9f,yawLast,yawTime,yawSpan=TurnBlend,yawFollow,yawOffset,yawCommitAt=float.NaN;private bool yawHas,yawStrike;
         public float PresentedYaw(MeleeView p,float time,float input)
         {
             bool hit=p.Reaction&&p.HitStunUntil>time&&p.ReactionAt<=time,commit=!hit&&p.Committed(time),roll=!hit&&!commit&&p.Rolling(time);
             string source=hit?"hit":commit?"commit":roll?"roll":"input";float target=hit?p.ReactionYaw:commit?p.CommitYaw:roll?p.Yaw:input;
-            if(!yawHas||MeleeGait.TimeJumped(yawTime,time)){yawHas=true;yawSource=source;yawFrom=target;yawAt=-1e9f;yawLast=target;yawTime=time;yawCommit=commit?target:float.NaN;yawTurn=false;}
-            float now=Math.Max(time,yawTime);bool turned=commit&&source==yawSource&&!float.IsNaN(yawCommit)&&Math.Abs(MeleeMath.Wrap(target-yawCommit))>1e-4f;
-            if(source!=yawSource||turned){yawTurn=commit&&Math.Abs(MeleeMath.Wrap(target-yawLast))>1e-4f;yawSource=source;yawFrom=yawLast;yawAt=now;}
-            yawCommit=commit?target:float.NaN;
-            bool strike=!float.IsNaN(p.SwingAt)&&!float.IsNaN(p.SwingUntil)&&time>=p.SwingAt&&time<p.SwingUntil;float u=(now-yawAt)/(commit?TurnBlend:.12f),yaw=target;
-            if(u<1&&(!commit||yawTurn)&&!strike)yaw=yawFrom+MeleeMath.Wrap(target-yawFrom)*(1-(1-u)*(1-u)*(1-u));
+            if(!yawHas||MeleeGait.TimeJumped(yawTime,time)){yawHas=true;yawSource=source;yawFrom=target;yawAt=-1e9f;yawLast=target;yawTime=time;yawFollow=target;yawOffset=0;yawCommitAt=commit?p.CommitAt:float.NaN;yawStrike=false;}
+            float now=Math.Max(time,yawTime),dt=now-yawTime,yaw=target;
+            bool strike=!float.IsNaN(p.SwingAt)&&!float.IsNaN(p.SwingUntil)&&time>=p.SwingAt&&time<p.SwingUntil;
+            if(commit)
+            {
+                // A new commitment eases from the shown facing; its turn is then followed at up to TurnFollow x the weapon's rate.
+                float rate=NativeMeleeFeel.TurnRate(p.Spec)*TurnFollow*(float)Math.PI/180;
+                if(source!=yawSource||p.CommitAt!=yawCommitAt){yawSource=source;yawCommitAt=p.CommitAt;yawFollow=target;yawOffset=MeleeMath.Wrap(yawLast-target);yawAt=now;yawSpan=TurnBlend;yawStrike=false;}
+                else yawFollow+=MeleeMath.Clamp(MeleeMath.Wrap(target-yawFollow),-rate*dt,rate*dt);
+                float u=MeleeMath.Clamp((now-yawAt)/yawSpan,0,1),left=yawOffset*(1-u)*(1-u)*(1-u);
+                if(strike&&!yawStrike){yawStrike=true;if(Math.Abs(left)>1e-4f){yawOffset=left;yawAt=now;yawSpan=StrikeBlend;}}
+                u=MeleeMath.Clamp((now-yawAt)/yawSpan,0,1);yaw=yawFollow+yawOffset*(1-u)*(1-u)*(1-u);
+            }
+            else
+            {
+                if(source!=yawSource){yawSource=source;yawFrom=yawLast;yawAt=now;yawCommitAt=float.NaN;}
+                float u=(now-yawAt)/.12f;
+                if(u<1&&!strike)yaw=yawFrom+MeleeMath.Wrap(target-yawFrom)*(1-(1-u)*(1-u)*(1-u));
+                yawFollow=yaw;yawOffset=0;
+            }
             yawLast=yaw;yawTime=now;return yaw;
         }
 
@@ -181,7 +201,12 @@ namespace ChipArena.UnityConversion
             return distance*MeleeMath.Smooth((time-stepAt)/Math.Max(.01f,stepUntil-stepAt));
         }
         // Feet anchored to the floor, not to the travelling root: a planted foot holds its world position (the authored root
-        // travel is subtracted) and only moves while it is lifted.
+        // travel is subtracted) and only moves while it is lifted. Each foot starts where it was shown as the swing began (a
+        // chain's follow-through, a run's stride; Unity-owned, docs/MELEE-FEEL.md), so no planted foot slides into the stance.
+        // The stepping (lead) foot flies with the travel and plants as the hit lands; the rear foot holds while the hips can
+        // reach it, then trails low behind them and steps up once the travel ends. A long step (Lunge) lifts the lead foot
+        // higher and trails the rear foot on its toe; a default step keeps the source's short lifts.
+        public const float RearReach=.3f,TrailRamp=.12f,FootLand=.1f,TouchDown=.9f;
         private void Feet(MeleeView p,Attack a,float phase,int sign,bool heavy,bool dagger,bool overhead,bool spin,float turn,float weight,bool seat)
         {
             var r=Rig;float now=p.LastAttack+a.Age,stepUntil=p.Commit?p.StepUntil:p.LastAttack+a.Windup+a.Window*.8f;
@@ -189,14 +214,6 @@ namespace ChipArena.UnityConversion
             var st=MeleeStance.For(p.Spec);bool leadingLeft=sign>0,leadIsLead=leadingLeft==st.LeadLeft;
             float lfx=leadIsLead?st.LeadX:st.RearX,lfz=leadIsLead?st.LeadZ:st.RearZ,lft=leadIsLead?st.LeadToe:st.RearToe,rfx=leadIsLead?st.RearX:st.LeadX,rfz=leadIsLead?st.RearZ:st.LeadZ,rft=leadIsLead?st.RearToe:st.LeadToe;
             float lx=(leadingLeft?1:-1)*Math.Abs(lfx),rx=(leadingLeft?-1:1)*Math.Abs(rfx),lyaw0=(leadingLeft?1:-1)*lft,ryaw0=(leadingLeft?-1:1)*rft;
-            float cx=(leadingLeft?1:-1)*(heavy?.27f:dagger?.29f:.25f),worldPlant=.31f+plantTravel,su=MeleeMath.Clamp(travel/Math.Max(.01f,plantTravel),0,1),bu=MeleeMath.Clamp((phase-2.45f)/.5f,0,1),s=su*su*(3-2*su),back=Step(bu);
-            float lift=(overhead?.18f:heavy?.14f:dagger?.07f:.09f)*Arc(su)+.07f*Arc(bu),cyaw=.15f*sign;
-            float lz=phase<2.45f?lfz+(worldPlant-lfz)*s-travel:(worldPlant-full)*(1-back)+lfz*back;
-            Vector3 lead=new Vector3(phase<2.45f?lx+(cx-lx)*s:cx+(lx-cx)*back,-.795f+lift,lz);
-            float lyaw=phase<2.45f?lyaw0+(cyaw-lyaw0)*s:cyaw+(lyaw0-cyaw)*back,lheel=-.12f*Arc(su)+.22f*Arc(bu);
-            float qu=MeleeMath.Clamp((phase-.75f)/1.65f,0,1),q=Step(qu);
-            Vector3 rear=new Vector3(rx*(1+(heavy?.3f:.18f)*Arc(qu)),-.795f+(heavy?.05f:.065f)*Arc(qu)+(overhead?.09f*Arc(MeleeMath.Clamp((phase-.45f)/.85f,0,1)):0),rfz+full*q-travel-(heavy?.1f:0)*Arc(qu));
-            float ryaw=ryaw0-.35f*sign*Arc(qu),rheel=(heavy?.38f:.32f)*(float)Math.Sin(Math.PI*Math.Min(1,qu*1.15f));
             Vector3? lin=weight<1?entryAnkles[leadingLeft?0:1]:(Vector3?)null,rin=weight<1?entryAnkles[leadingLeft?1:0]:(Vector3?)null;
             if(spin)
             {
@@ -204,11 +221,56 @@ namespace ChipArena.UnityConversion
                 float u=MeleeMath.Clamp((phase-1.1f)/1.75f,0,1),b=Step(u),hop=Arc(u),air=MeleeMath.Ease((u-.05f)/.25f),rot=air*(SpinFrom+(MeleeMath.TAU-SpinFrom)*Math.Max(b,(turn-SpinFrom)/(MeleeMath.TAU-SpinFrom)));
                 Vector3 body=r.P[CapturedRig.Body];float cxs=body.X,czs=body.Z,c=(float)Math.Cos(rot),sn=(float)Math.Sin(rot);body.Y+=.045f*hop;r.P[CapturedRig.Body]=body;
                 Vector3 Place(float x,float z){float ox=x-cxs,oz=z-travel*(1-air)-czs;return new Vector3(cxs+ox*c+oz*sn,-.795f+.075f*hop,czs-ox*sn+oz*c);}
-                lead=Place(lx,lfz);rear=Place(rx,rfz);lead=Reachable(leadingLeft,lead);rear=Reachable(!leadingLeft,rear);
-                float spinYaw=turn*b;r.Foot(leadingLeft,lead,lyaw0+spinYaw,.3f*hop,weight,lin);r.Foot(!leadingLeft,rear,ryaw0+spinYaw,.3f*hop,weight,rin);return;
+                // From a shown start each foot holds where it stood until the hop takes it onto the stance.
+                Vector3 l0=footHas?footStart[leadingLeft?0:1]:new Vector3(lx,FLOOR,lfz),r0=footHas?footStart[leadingLeft?1:0]:new Vector3(rx,FLOOR,rfz);float down=1-MeleeMath.Ease(Math.Max(0,a.Age)/FootLand);
+                Vector3 sl=Place(l0.X+(lx-l0.X)*air,l0.Z+(lfz-l0.Z)*air),sr=Place(r0.X+(rx-r0.X)*air,r0.Z+(rfz-r0.Z)*air);sl.Y+=Math.Max(0,l0.Y-FLOOR)*down;sr.Y+=Math.Max(0,r0.Y-FLOOR)*down;
+                sl=Reachable(leadingLeft,sl);sr=Reachable(!leadingLeft,sr);float spinYaw=turn*b;
+                if(footHas){r.Foot(leadingLeft,sl,lyaw0+spinYaw,.3f*hop,weight,sl);r.Foot(!leadingLeft,sr,ryaw0+spinYaw,.3f*hop,weight,sr);}
+                else{r.Foot(leadingLeft,sl,lyaw0+spinYaw,.3f*hop,weight,lin);r.Foot(!leadingLeft,sr,ryaw0+spinYaw,.3f*hop,weight,rin);}return;
             }
+            float lunge=Lunge(p,full),age=Math.Max(0,a.Age);
+            // Where each foot began (in the swing's frame: the root's travel added back), and how high it was lifted then. While
+            // the body turns over them (the windup's turn) the feet keep that world place, turning on the spot, up to PivotMax.
+            float turned=footHas?MeleeMath.Clamp(MeleeMath.Wrap(r.GroupYaw-footYaw),-PivotMax,PivotMax):0;
+            Vector3 ls=footHas?Turned(footStart[leadingLeft?0:1],-turned):new Vector3(lx,FLOOR,lfz),rs=footHas?Turned(footStart[leadingLeft?1:0],-turned):new Vector3(rx,FLOOR,rfz);
+            float land=1-MeleeMath.Ease(age/FootLand),lUp=Math.Max(0,ls.Y-FLOOR)*land,rUp=Math.Max(0,rs.Y-FLOOR)*land;
+            // The stepping foot: with the travel (by time when there is next to none), planting where the step ends.
+            float cx=(leadingLeft?1:-1)*(heavy?.27f:dagger?.29f:.25f),worldPlant=(heavy?.26f:p.Spec=="shield"?.27f:.31f)+plantTravel;
+            float su=MeleeMath.Clamp(travel/Math.Max(.01f,plantTravel),0,1),tu=MeleeMath.Clamp((phase-.55f)/1.1f,0,1);su=tu+(su-tu)*MeleeMath.Clamp(plantTravel/.1f,0,1);
+            float bu=MeleeMath.Clamp((phase-2.45f)/.5f,0,1),sh=Math.Min(1,su/TouchDown),s=sh*sh*(3-2*sh),back=Step(bu);
+            float lift=(overhead?.18f:heavy?.14f:dagger?.07f:.09f)*(1+.2f*lunge)*Arc(su)+.07f*Arc(bu),cyaw=.15f*sign;
+            Vector3 lead=phase<2.45f?new Vector3(ls.X+(cx-ls.X)*s,FLOOR+lift+lUp,ls.Z+(worldPlant-ls.Z)*s-travel):new Vector3(cx+(lx-cx)*back,FLOOR+lift,(worldPlant-full)*(1-back)+lfz*back);
+            float lyaw=phase<2.45f?lyaw0-turned+(cyaw-lyaw0+turned)*s:cyaw+(lyaw0-cyaw)*back,lheel=-.12f*Arc(su)+.22f*Arc(bu);
+            // The rear foot: held while within reach, then dragged after the hips (ramping up to their pace over TrailRamp of
+            // travel; it leaves the floor first), then the step up behind the lead.
+            float release=Math.Max(0,rs.Z+RearReach-.5f*TrailRamp),e=Math.Max(0,travel-release),drag=e<TrailRamp?e*e/(2*TrailRamp):e-.5f*TrailRamp,trail=MeleeMath.Ease(e/(.4f*TrailRamp));
+            float upU=MeleeMath.Clamp((phase-1.75f-.1f*lunge)/(.6f+.1f*lunge),0,1),up=MeleeMath.Smooth(Math.Min(1,upU/TouchDown));
+            float tz=rs.Z+drag-travel,rz=rfz,span=Math.Abs(rz-tz)+Math.Abs(rx-rs.X);
+            float rlift=(.035f+.02f*lunge)*trail*(1-up)+Math.Min(heavy?.05f:.065f,.015f+.3f*span)*Arc(upU)+(overhead?.09f*Arc(MeleeMath.Clamp((phase-.45f)/.85f,0,1)):0);
+            Vector3 rear=new Vector3(rs.X+(rx-rs.X)*up,FLOOR+rlift+rUp,tz+(rz-tz)*up);
+            float ryaw=ryaw0-turned*(1-Math.Max(trail,up))-.35f*sign*Arc(upU)*Math.Min(1,span/.15f),rheel=(.32f+.25f*lunge)*trail*(1-up)+(heavy?.38f:.32f)*Arc(upU)*Math.Min(1,span/.15f);
             if(seat)SeatHips(leadingLeft,lead,rear,phase<2.45f?s:1-back,weight);lead=Reachable(leadingLeft,lead);rear=Reachable(!leadingLeft,rear);
-            r.Foot(leadingLeft,lead,lyaw,lheel,weight,lin);r.Foot(!leadingLeft,rear,ryaw,rheel,weight,rin);
+            // From a shown start the positions are exact; only the feet's turn blends in with the entry.
+            if(footHas){r.Foot(leadingLeft,lead,lyaw,lheel,weight,lead);r.Foot(!leadingLeft,rear,ryaw,rheel,weight,rear);}
+            else{r.Foot(leadingLeft,lead,lyaw,lheel,weight,lin);r.Foot(!leadingLeft,rear,ryaw,rheel,weight,rin);}
+        }
+        private const float FLOOR=MeleeRig.FLOOR,PivotMax=.8f;
+        private static Vector3 Turned(Vector3 v,float yaw){float c=(float)Math.Cos(yaw),sn=(float)Math.Sin(yaw);return new Vector3(v.X*c+v.Z*sn,v.Y,-v.X*sn+v.Z*c);}
+        // 0 for a default step, 1 for a lock-on opener's lunge (OpenerLunge, 0.9 m or more past the weapon's default step); a
+        // chained lock-on step past the default reads as part of one.
+        public static float Lunge(MeleeView p,float full)=>p.Commit?MeleeMath.Clamp((full-NativeMeleeFeel.DefaultStep(p.Spec))/.9f,0,1)*(p.OpenerLunge?1:.6f):0;
+        // The torso leans into a lunge's travel (most as the lead foot plants, easing out through the recovery), and a swing
+        // entered from a sprint (SprintAttack) carries the run's momentum: the body pitches on over the planted feet as the
+        // authority stops it dead, then rights itself through the hit window.
+        public const float LungeLean=.3f,MomentumLean=.24f,MomentumCarry=.06f;
+        private void StepLean(MeleeView p,Attack a,float phase)
+        {
+            float now=p.LastAttack+a.Age,stepUntil=p.Commit?p.StepUntil:p.LastAttack+a.Windup+a.Window*.8f,full=Travel(p,p.LastAttack,a.Windup,a.Window,stepUntil),age=Math.Max(0,a.Age);
+            float f=full>.01f?Travel(p,p.LastAttack,a.Windup,a.Window,now)/full:0,lean=LungeLean*Lunge(p,full)*MeleeMath.Ease(f/.7f)*(1-MeleeMath.Ease((phase-1.8f)/.9f));
+            float carry=p.SprintAttack?MeleeMath.Ease(age/.06f)*(1-MeleeMath.Ease((age-.06f)/(a.Windup+a.Window))):0;
+            lean+=MomentumLean*carry;if(lean<=1e-5f)return;
+            Rig.AddE(CapturedRig.Body,.25f*lean,0,0);Rig.AddE(CapturedRig.Spine,.75f*lean,0,0);
+            Vector3 b=Rig.P[CapturedRig.Body];b.Z+=MomentumCarry*carry;Rig.P[CapturedRig.Body]=b;
         }
         // Under a captured cut the body lowers until each foot would reach the floor under its target within STEP_REACH.
         private void SeatHips(bool leadingLeft,Vector3 lead,Vector3 rear,float leadK,float weight)
@@ -221,8 +283,14 @@ namespace ChipArena.UnityConversion
                 float h=Math.Min((float)Math.Sqrt((hip.X-t.X)*(hip.X-t.X)+(hip.Z-t.Z)*(hip.Z-t.Z)),.92f*StepReach),need=hip.Y+.795f-(float)Math.Sqrt(StepReach*StepReach-h*h);
                 if(need>0)drop=Math.Max(drop,Math.Min(.15f,need)*k);
             }
-            Vector3 b=Rig.P[CapturedRig.Body];b.Y-=drop*weight;Rig.P[CapturedRig.Body]=b;
+            // The hips rise back at most SeatRise (Unity-owned, docs/MELEE-FEEL.md): as a step's feet plant the drop could
+            // fall 7 cm in a frame, a hip pop that also snapped a low blade (lowering stays immediate, so the feet still reach).
+            float now=swingTime;drop*=weight;
+            if(seatAt==swingNow.At&&now>seatTime&&now-seatTime<.1f)drop=Math.Max(drop,seatDrop-SeatRise*(now-seatTime));
+            seatAt=swingNow.At;seatTime=now;seatDrop=drop;
+            Vector3 b=Rig.P[CapturedRig.Body];b.Y-=drop;Rig.P[CapturedRig.Body]=b;
         }
+        public const float SeatRise=1.2f;private float seatAt=float.NaN,seatTime,seatDrop;
         // A lifted foot the hip cannot reach is drawn toward the hip (fading out as it comes down).
         private Vector3 Reachable(bool left,Vector3 target)
         {
@@ -235,7 +303,7 @@ namespace ChipArena.UnityConversion
             float recoverySeconds=a.Recovery;bool heavy=p.Spec=="greatsword";float drag=heavy?.4f:p.Spec=="shield"?.35f:0;
             Describe(p.Spec,Math.Max(0,(p.AttackIndex>0?p.AttackIndex:1)-1),out int sign,out bool spin,out bool overhead);
             float phase=Phase(a,recoverySeconds,a.Age-HitStop(p,a),drag,heavy);
-            Feet(p,a,phase,sign,heavy,p.Spec=="daggers",overhead,spin,turn,weight,true);
+            if(!spin)StepLean(p,a,phase);Feet(p,a,phase,sign,heavy,p.Spec=="daggers",overhead,spin,turn,weight,true);
         }
 
         // ---- mocap-layer.ts ----
@@ -292,6 +360,55 @@ namespace ChipArena.UnityConversion
             Quaternion counter=MeleeMath.AxisAngle(MeleeMath.Z,-PelvisRollCounter*gaitPelvis.Z*carry)*MeleeMath.AxisAngle(MeleeMath.Y,-PelvisTwistCounter*gaitPelvis.Y*carry)*MeleeMath.AxisAngle(MeleeMath.X,-lift);
             Rig.Premultiply(CapturedRig.Spine,counter);
             if(lift>1e-5f)Rig.Premultiply(CapturedRig.Neck,MeleeMath.AxisAngle(MeleeMath.X,lift));
+        }
+        // ---- chained swings (Unity-owned, docs/MELEE-FEEL.md) ----
+        // The swing shown before this one, as last replicated. A swing pressed before that one's end (NativeMeleeFeel's early
+        // chain) enters from its live follow-through or recovery, which carries on under the entry blend, straight into the
+        // next windup: entering from the guard snapped the pose back toward it and hitched. A held swing that starts at the
+        // last one's end keeps the guard entry (the follow-through has settled there).
+        private struct SwingMemo{public bool Has;public string Id,Spec;public int Index;public float At,Windup,Window,Recovery,Rate,End,Drawn;}
+        private SwingMemo swingNow,swingPrev;private float swingTime=float.NaN;
+        private readonly MeleeCapture.RecoveryCache chainRecovery=new MeleeCapture.RecoveryCache();private readonly Vector3[] chainKept={Vector3.UnitX,Vector3.UnitX};
+        private void TrackSwing(MeleeView p,Attack a,float time)
+        {
+            if(float.IsNaN(swingTime)||time<swingTime-1e-4f||time-swingTime>.35f)swingNow.Has=swingPrev.Has=false;
+            swingTime=time;if(p.LastAttack<-90||time<p.LastAttack)return;
+            if(!swingNow.Has||swingNow.At!=p.LastAttack||swingNow.Id!=p.Id)
+            {
+                swingPrev=swingNow.Has&&swingNow.Id==p.Id&&swingNow.At<p.LastAttack?swingNow:default;
+                swingNow=new SwingMemo{Has=true,Id=p.Id,At=p.LastAttack,Drawn=float.NegativeInfinity};Array.Copy(keptAxes,chainKept,2);
+            }
+            swingNow.Spec=p.Spec;swingNow.Index=p.AttackIndex;swingNow.Windup=a.Windup;swingNow.Window=a.Window;swingNow.Recovery=a.Recovery;
+            swingNow.Rate=p.AttackRate>0?p.AttackRate:1;swingNow.End=p.LastAttack+a.Windup+a.Window+a.Recovery;
+        }
+        // Chained: the last swing was being drawn as this one began, before its end.
+        private bool Chained(MeleeView p)=>swingPrev.Has&&swingNow.Has&&swingNow.At==p.LastAttack&&swingPrev.Spec==p.Spec&&p.LastAttack<swingPrev.End-.002f&&p.LastAttack-swingPrev.Drawn<.1f;
+        public static float ChainEntry(float windup)=>Math.Min(.85f*windup,Math.Max(.1f,.5f*windup));
+        private void ChainBase(MeleeSet set,MeleeView p,float time)
+        {
+            var c=swingPrev;var clip=CutClip(set,c.Index);float age=time-c.At;bool dagger=p.Spec=="daggers";
+            clip.Sample(MeleeSwing.ClipTime(clip,age,c.Windup,c.Window,c.Recovery,dagger),row);
+            if(age>c.Windup+c.Window&&set.Idle!=null&&!dagger)
+            {
+                set.Idle.Sample(c.At+c.Windup+c.Window+c.Recovery,rowB);
+                MeleeCapture.FollowThrough(Rig,set,row,rowB,MeleeSwing.Settle(age,c.Windup,c.Window,c.Recovery),c.At,c.Index,c.Rate,chainRecovery,chainKept,fitScratch);
+            }
+            else MeleeCapture.Apply(Rig,set,row,CaptureOptions.Of(1,set.Fit,MeleeClear.Turn,legs:0));
+        }
+        // ---- the feet as shown (world, the source frame), so a swing's footwork starts where they stood ----
+        private readonly Vector3[] shownAnkles=new Vector3[2],footStart=new Vector3[2];private float shownTime=float.NaN,footAt=float.NaN,footYaw;private string shownId;private bool footHas;
+        private void KeepShownAnkles(MeleeView p,float time)
+        {
+            Quaternion g=Quaternion.CreateFromAxisAngle(Vector3.UnitY,Rig.GroupYaw);
+            for(int i=0;i<2;i++)shownAnkles[i]=Vector3.Transform(Rig.AnkleInGroup(i==0),g)+Rig.GroupPosition;
+            shownTime=time;shownId=p.Id;
+        }
+        private void StartFeet(MeleeView p,Attack a,float time)
+        {
+            if(footAt==p.LastAttack)return;
+            footAt=p.LastAttack;footHas=shownId==p.Id&&time>shownTime&&time-shownTime<.1f;if(!footHas)return;
+            Quaternion gi=Quaternion.CreateFromAxisAngle(Vector3.UnitY,-Rig.GroupYaw);float travel=Travel(p,p.LastAttack,a.Windup,a.Window,time);
+            for(int i=0;i<2;i++){Vector3 f=Vector3.Transform(shownAnkles[i]-Rig.GroupPosition,gi);f.Z+=travel;footStart[i]=f;}footYaw=Rig.GroupYaw;
         }
         private bool FollowupBase(MeleeSet set,MeleeView p)
         {
@@ -428,7 +545,7 @@ namespace ChipArena.UnityConversion
         private static bool ReactionFamily(string action)=>action=="juggle"||action=="down";
         // pose-transitions.ts DEV_GROUNDED: the fighter keys whose legs stand on the gait's planted feet.
         private static bool DevGrounded(string spec,string action)=>NativeFighterPose.Handles(spec)&&(action=="base"||action=="attack"||action=="jab"||action=="combo"||action=="electric"||action=="hadoken"||action=="charge"||action=="shinku"||action=="guard"||action=="block");
-        private bool trHoldAll;private float trU;private Action trBlend;
+        private bool trHoldAll,trFeet;private float trU;private Action trBlend;
         // The decaying offset over the sampled pose (one cached delegate: no allocation while a transition holds the ankles).
         private void BlendTransition(){float u=trU;for(int i=0;i<MeleeRig.N;i++)Rig.Multiply(i,MeleeMath.Slerp(trOffset.Q[i],Quaternion.Identity,u));Rig.P[CapturedRig.Body]+=trOffset.Position*(1-u);}
         // The pose family (transitionAction); an attack's index and a knockdown's phase are kept beside it, unconcatenated.
@@ -481,7 +598,9 @@ namespace ChipArena.UnityConversion
             if(incoming!=null)
             {
                 // A DEV fighter's grounded keys (strings, specials, guard, base) keep the ankles where they are (holdAll).
-                trHold=action=="base"&&trAction=="attack";trHoldAll=reaction==null&&DevGrounded(p.Spec,action)&&DevGrounded(p.Spec,trAction);Keep();trAt=time;trDuration=duration;trActive=duration>1e-4f;
+                trHold=action=="base"&&trAction=="attack";trHoldAll=reaction==null&&DevGrounded(p.Spec,action)&&DevGrounded(p.Spec,trAction);
+                // A captured swing's footwork starts on the feet as shown (Feet): the blend leaves them where the swing put them.
+                trFeet=reaction==null&&action=="attack"&&Handles(p.Spec)&&footHas&&footAt==p.LastAttack;Keep();trAt=time;trDuration=duration;trActive=duration>1e-4f;
                 if(trActive){for(int i=0;i<MeleeRig.N;i++)trOffset.Q[i]=MeleeMath.Inverse(trCurrent.Q[i])*incoming.Q[i];trOffset.Position=incoming.Position-trCurrent.Position;}
             }
             if(trActive)
@@ -491,7 +610,7 @@ namespace ChipArena.UnityConversion
                 else
                 {
                     // Weighted by travel speed: a standing recovery keeps its joint-space leg blend, a run resuming keeps its planted feet.
-                    trU=u;if((trHold||trHoldAll)&&p.Grounded&&p.Hp>0)Rig.HoldAnkles(trBlend??=BlendTransition,trHoldAll?1:Math.Min(1,(float)Math.Sqrt(p.Vel.X*p.Vel.X+p.Vel.Z*p.Vel.Z)/1.5f));else BlendTransition();
+                    trU=u;if((trHold||trHoldAll||trFeet)&&p.Grounded&&p.Hp>0)Rig.HoldAnkles(trBlend??=BlendTransition,trHoldAll||trFeet?1:Math.Min(1,(float)Math.Sqrt(p.Vel.X*p.Vel.X+p.Vel.Z*p.Vel.Z)/1.5f));else BlendTransition();
                 }
             }
             var spare=trPrev;trPrev=trLast;trLast=spare;CaptureTo(trLast);trHasPrev=true;trPrevTime=trTime;trTime=time;
@@ -506,7 +625,7 @@ namespace ChipArena.UnityConversion
             if(planted)r.Motion*=(float)Math.Exp(-MeleeMath.Clamp(dt,0,.05f)*22);
             var vel=planted?new Vector3(0,p.Vel.Y,0):p.Vel;var shown=p;if(planted){shown=p.Clone();shown.Vel=vel;}
             gait.Locomotion(r,shown,time,dt,planted);SprintLean(p,dt);gaitPelvis=r.E[CapturedRig.Pelvis];
-            var a=AttackPose(p,time);
+            var a=AttackPose(p,time);TrackSwing(p,a,time);
             // Source order (sampleCharacter): juggle, knockdown, hitstun, roll, then block, special, cut or guard; the light hit
             // reaction rides the last three. Native layers pose juggles, knockdowns, rolls and specials over the captured guard.
             if(p.Juggle||p.Down){Ready(set,p,time,MeleeReady(p,time));overlay?.Invoke(r);r.MocapPosed=false;}
@@ -530,9 +649,11 @@ namespace ChipArena.UnityConversion
                 {
                     // A captured cut blends in over the pose the rig showed (guard idle, running carry or, for an Echo Strike
                     // follow-up, the cut it follows); its footwork blends from the ankles as the gait placed them.
-                    CarryHold(RunCarry(),time,p);float entry=PhraseEntry(p,a.Windup),k=a.Age<entry?MeleeMath.Ease(a.Age/entry):1,carry=MeleeReady(p,time);
-                    if(k<1){entryAnkles[0]=r.AnkleInGroup(true);entryAnkles[1]=r.AnkleInGroup(false);if(!(p.Followup&&FollowupBase(set,p)))Ready(set,p,time,carry);}
-                    Cut(set,p,a,HitStop(p,a),k);
+                    // A chain enters from the last swing's live follow-through instead (ChainBase), its feet from where they stood.
+                    bool chained=Chained(p);CarryHold(RunCarry(),time,p);float entry=chained?ChainEntry(a.Windup):PhraseEntry(p,a.Windup),k=a.Age<entry?MeleeMath.Ease(a.Age/entry):1,carry=MeleeReady(p,time);
+                    StartFeet(p,a,time);
+                    if(k<1){entryAnkles[0]=r.AnkleInGroup(true);entryAnkles[1]=r.AnkleInGroup(false);if(chained)ChainBase(set,p,time);else if(!(p.Followup&&FollowupBase(set,p)))Ready(set,p,time,carry);}
+                    Cut(set,p,a,HitStop(p,a),k);swingNow.Drawn=time;
                 }
                 var light=ReactionOf(p);if(light!=null)React(p,light,time,false);
             }
@@ -541,7 +662,7 @@ namespace ChipArena.UnityConversion
             gait.GroundPass(r,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
             FinishPose(p,time);
             FloorGuard(set,p,time);
-            CaptureTo(trLast);
+            CaptureTo(trLast);KeepShownAnkles(p,time);
         }
         // ---- the DEV fighting styles (Core/NativeFighterPose): the same gait, then the caller's style layer, then FighterFinish ----
         public void FighterBase(MeleeView p,float time,float dt)
