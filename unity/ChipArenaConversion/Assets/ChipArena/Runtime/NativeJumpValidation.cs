@@ -60,12 +60,31 @@ namespace ChipArena.UnityConversion
                     Check(p.AirJumps==0&&p.AirJumpAt==-100&&p.Body.linearVelocity.y<0,(attack?"attack":"stun")+" blocks air jump");
                 }
                 Setup("daggers",true);Tick(true,true);Check(p.AttackEnd>Time&&p.AirJumps==0,"new attack commitment takes priority over same-tick jump");
-                Setup("daggers",true);ClearRemoteInput(p.Seat.id);
-                AcceptInput(p.Seat.id,new InputFrame{Sequence=1,Jump=true});AcceptInput(p.Seat.id,new InputFrame{Sequence=2});
-                Check(RemoteInput(p.Seat.id).Jump&&!RemoteInput(p.Seat.id).Jump,"coalesced air edge consumed once");ClearRemoteInput(p.Seat.id);
+                ValidateAirJumpInput();
                 Debug.Log("PASS native air jump: six weapon routes, ground/air/third press/landing, walk-off, jumpPower, attack/stun locks, coalesced input and real JSON state validation");
             }
             finally{Replica=false;Match.HoldResolution=hold;CapturedAnimation.Release(floor);}
+        }
+
+        private void ValidateAirJumpInput()
+        {
+            // The authority rejects network input for its own seat. Exercise the guest queue with a distinct ID.
+            int guestId=LocalId==1?2:1;
+            void Check(bool ok,string why){if(!ok)throw new Exception("Native air jump: "+why);}
+            ClearRemoteInput(LocalId);ClearRemoteInput(guestId);
+            try
+            {
+                AcceptInput(LocalId,new InputFrame{Sequence=1,Jump=true});
+                Check(!RemoteInput(LocalId).Jump,"network input cannot control the host seat");
+                AcceptInput(guestId,new InputFrame{Sequence=1,Jump=true});AcceptInput(guestId,new InputFrame{Sequence=2,Z=1});
+                var first=RemoteInput(guestId);var held=RemoteInput(guestId);
+                Check(first.Jump&&!held.Jump&&first.Sequence==2&&held.Z==1,"coalesced guest air edge consumed once while movement is retained");
+                AcceptInput(guestId,new InputFrame{Sequence=2,Jump=true});
+                Check(!RemoteInput(guestId).Jump,"duplicate packet cannot replay the air edge");
+                AcceptInput(guestId,new InputFrame{Sequence=3,Jump=true});
+                Check(RemoteInput(guestId).Jump&&!RemoteInput(guestId).Jump,"next guest air edge consumed once");
+            }
+            finally{ClearRemoteInput(LocalId);ClearRemoteInput(guestId);}
         }
     }
 }
