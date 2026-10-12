@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
             {if(p.BufferedSlot==slot)p.BufferedSlot=null;return;}
             if(gate==NativeAbilityRules.Press.Buffered)
             {if(!retry||p.BufferedSlot==null){p.BufferedSlot=slot;p.BufferedAt=Time;}return;}
-            Vector3 point=AuthorityAim(p,(float)d.range);
+            Vector3 point=AimedAbilityPoint(p,(float)d.range);
             if(d.kind=="strike"||d.kind=="line"||d.kind=="zone")point=GroundPoint(point);
             Vector3 dir=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));
             if(d.id=="blink-strike"){dir=new Vector3(p.Input.X,0,p.Input.Z);if(dir.sqrMagnitude<.01f)dir=Quaternion.Euler(0,p.Input.Yaw,0)*Vector3.forward;point=p.Body.position+dir.normalized*(float)d.range;}
@@ -134,6 +134,26 @@ namespace ChipArena.UnityConversion
             if(root.scene.GetPhysicsScene().Raycast(point+Vector3.up*.08f,Vector3.down,out var hit,40,WorldMask))point=hit.point;return point;
         }
         private Vector3 Muzzle(NativePilot p)=>p.Body.position+Vector3.up*.52f+Quaternion.Euler(0,p.Yaw,0)*new Vector3(.18f,0,.68f);
+        // Owner's overnight request (2026-10-12), the shoulder cameras: AuthorityAim casts the ability point along the sent look
+        // from the eye against the world only, so a crosshair on a pilot put the point on the wall behind it. When the client's
+        // AbilityTarget lies on that same ray (Core NativeAimConvergence.OnLook: within .15 m, nearer than the world point) and
+        // the authority's own ray meets a live pilot or minion there (not the caster), the ray stops at that body. The report
+        // only picks a depth on the authority's own ray, so it cannot pass a wall or the range. Classic's crosshair ray never
+        // lies on the eye ray and bots keep AuthorityAim, so both are unchanged. No wire change; guests do not predict it.
+        private readonly RaycastHit[] abilityAimHits=new RaycastHit[16];
+        private Vector3 AimedAbilityPoint(NativePilot p,float range)
+        {
+            Vector3 point=AuthorityAim(p,range);if(p.Seat.bot||p.Input.AbilityTarget.Length<.01f)return point;
+            Vector3 eye=p.Body.position+Vector3.up*.52f,look=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)).normalized;float world=Vector3.Distance(eye,point);var report=p.Input.AbilityTarget;
+            if(!NativeAimConvergence.OnLook(new System.Numerics.Vector3(eye.x,eye.y,eye.z),new System.Numerics.Vector3(look.x,look.y,look.z),new System.Numerics.Vector3(report.x,report.y,report.z),world,out float along))return point;
+            int count=root.scene.GetPhysicsScene().Raycast(eye,look,abilityAimHits,world,ShotMask,QueryTriggerInteraction.Ignore);float body=-1;Vector3 at=point;
+            for(int i=0;i<count;i++)
+            {
+                var hit=abilityAimHits[i];var q=hit.collider.GetComponent<NativePilotBody>()?.Pilot;var m=hit.collider.GetComponent<NativeMinionBody>()?.Minion;
+                if(q==p||!(q!=null&&q.Hp>0||m!=null&&m.Hp>0)||body>=0&&hit.distance>=body)continue;body=hit.distance;at=hit.point;
+            }
+            return NativeAimConvergence.Confirms(along,body,world)?at-look*.03f:point;
+        }
         private void Slow(NativePilot p,float factor,float duration)
         {
             if(p.Seat.spec=="siren"||SirenArmor(p)||Time<p.SlowImmune)return;
