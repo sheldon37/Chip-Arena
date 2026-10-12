@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
             foreach(var expected in f.swings)
             {
                 var stats=NativeContentRules.Stats(content,expected.spec,new Dictionary<string,int>());stats["attackRate"]=expected.rate;
-                var weapon=content.Weapon(expected.spec);var swing=NativeMeleeRules.Begin(weapon,stats,expected.at,expected.index,expected.yaw);
+                var weapon=content.Weapon(expected.spec);var swing=NativeMeleeRules.Begin(weapon,stats,expected.at,expected.index,-expected.yaw);
                 Near(swing.HitAt,expected.hitAt,"windup");Near(swing.HitUntil,expected.hitUntil,"active");Near(swing.Until,expected.until,"commitment");
                 Near(swing.StepAt,expected.stepAt,"step start");Near(swing.StepUntil,expected.stepUntil,"step end");Near(swing.Distance,expected.distance,"step distance");
                 // Intentional owner-requested balance override: the pinned source fixture's longer hit stun is not the target.
@@ -31,15 +31,15 @@ namespace ChipArena.UnityConversion
                 Near(NativeMeleeRules.HitStun(weapon,expected.rate),Math.Max(.09f,Math.Min(.32f,baseline/Math.Max(.75f,expected.rate))),"retuned hit stun");
                 foreach(var sample in expected.samples)
                 {
-                    Near(NativeMeleeRules.Angle(swing,sample.time),sample.angle,"sweep angle");Vector(NativeMeleeRules.Step(swing,sample.time,1f/60),sample.step,"footwork",.001f);
+                    Near(NativeMeleeRules.Angle(swing,sample.time),-sample.angle,"native sweep angle");Vector(NativeMeleeRules.Step(swing,sample.time,1f/60),new V3(-sample.step.x,sample.step.y,sample.step.z),"native footwork",.001f);
                     Check(NativeMeleeRules.BeforeStrike(swing,sample.time)==sample.before,"half-tick cancel boundary");
-                    foreach(var c in sample.contacts){Check(NativeMeleeRules.Contact(swing,sample.time,c.delta,c.extra)==c.hit,"source contact "+expected.spec+"/"+expected.index+" at "+sample.time);contacts++;}samples++;
+                    foreach(var c in sample.contacts){Check(NativeMeleeRules.Contact(swing,sample.time,new V3(-c.delta.x,c.delta.y,c.delta.z),c.extra)==c.hit,"source contact "+expected.spec+"/"+expected.index+" at "+sample.time);contacts++;}samples++;
                 }
                 // One contact per target across the active interval, and obstruction must not spend the contact.
                 float t=(swing.HitAt+swing.HitUntil)/2;var delta=new V3((float)Math.Sin(swing.Yaw),0,(float)Math.Cos(swing.Yaw));
                 Check(!swing.Contact("target",t,delta,.45f,false),"wall bypass");Check(swing.Contact("target",t,delta,.45f,true),"occlusion consumed future contact");
                 Check(!swing.Contact("target",t+.001f,delta,.45f,true),"repeated damage in one swing");Check(swing.Contact("second",t,delta,.45f,true),"second target lost");
-                var next=NativeMeleeRules.Begin(weapon,stats,expected.at,expected.index,expected.yaw);Check(next.Contact("target",t,delta,.45f,true),"contact ledger leaked to next swing");
+                var next=NativeMeleeRules.Begin(weapon,stats,expected.at,expected.index,-expected.yaw);Check(next.Contact("target",t,delta,.45f,true),"contact ledger leaked to next swing");
                 float travel=0;for(int n=0;n<180;n++)travel+=NativeMeleeRules.Step(swing,swing.At+n/60f,1f/60).Length/60;
                 Near(travel,swing.Distance,"integrated footwork",.0001f);
             }
