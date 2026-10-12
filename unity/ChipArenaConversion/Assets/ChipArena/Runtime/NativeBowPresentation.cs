@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
             string str=std?NativeBowModels.StringId:NativeBowModels.StringProtoId;
             for(int s=0;s<2;s++){sourceModels.Queue(str,bowHand*BowPiece(NativeBowRig.String(s==0,f.Pull,v.Buzz,time)),null,null,layer,camera,accent:accent,partTint:tint);n++;}
             string arrow=NativeBowModels.ArrowId(std,tier);
-            float cant=first?NativeBowPose.ViewCant-(NativeBowPose.VolleyCant-NativeBowPose.Cant)*v.Fan:NativeBowPose.Cant+(NativeBowPose.VolleyCant-NativeBowPose.Cant)*v.Fan;
+            float cant=NativeBowPose.CantOf(v.Fan,first);
             if(v.Nocked)for(int i=0;i<Mathf.Max(1,v.Arrows);i++){sourceModels.Queue(arrow,bowHand*BowPiece(NativeBowRig.Arrow(f.Pull,i,v.Arrows,v.Arrows>1?NativeBow.VolleyFan:0,cant)),null,null,layer,camera,accent:accent,partTint:tint);n++;}
             if(f.HandArrow)
             {
