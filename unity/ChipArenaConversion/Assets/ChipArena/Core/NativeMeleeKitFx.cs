@@ -124,11 +124,13 @@ namespace ChipArena.UnityConversion
             {
                 var a=actors[i];if(a==null)continue;var k=a.MeleeKit;if(k==null)continue;
                 // Effects that outlive the cast (any pilot state): the fissure, the decoy's smoke, the mark, the flying shield.
+                Fissure(sink,a,k,time,quality,low);
                 if(time<k.AfterimageUntil)Decoy(sink,a,k,time,quality,low);
                 if(k.MarkTarget!=0&&time<k.MarkUntil)Mark(sink,scene,a,k,time,quality,low);
                 if(k.ShieldOut)ShieldFlight(sink,a,k,time,quality,low,scene.WeaponColor(a));
                 if(!a.Alive)continue;
                 if(time<k.EmpowerUntil&&a.SourceSpec=="daggers")Empower(sink,scene,a,k,time,quality,low);
+                if(k.SuperArmour)ArmourGlint(sink,scene,a,time,quality,low);
                 if(MeleeKitMotion.Clock(a,time,out var c))Cast(sink,scene,a,c,time,quality,low);
             }
             for(int i=0;i<records.Count;i++)Event(sink,scene,records[i],time,quality,low);
@@ -161,6 +163,10 @@ namespace ChipArena.UnityConversion
                     if(lead)Path(s,feet,f,8,u,edge,core,seed,low,true);
                     if(c.Part==KitPart.Active){if(!view)Dash(s,feet,f,r,time-c.Release,edge,core,seed,q,low,.45f);Ward(s,feet,f,r,time,edge,core,a.MeleeKit.Absorbed,view,q,low);}
                     break;
+                case "earthsplitter":
+                    // The fissure's line ahead (10 m) and the blade's sparks as it drags along the floor.
+                    if(lead){Path(s,feet,f,10,Smooth(u/.85f),Lin(GreatEdge),Lin(Ember),seed,low,false);if(u<.55f&&!view&&scene.Blade(a,false,out _,out var tip))Drag(s,tip,feet.Y,f,time,seed,q);}
+                    break;
                 case "rising-dragon":
                     if(lead&&!c.Recast)Updraft(s,feet,time-c.At,u,edge,core,seed,q,low);
                     else if(lead)Upward(s,feet,chest,u,edge,core,seed,low);
@@ -170,6 +176,9 @@ namespace ChipArena.UnityConversion
                     break;
                 case "kunai-mark":
                     if(c.Recast&&lead)Shimmer(s,scene,a,u,time,seed,q,low);
+                    break;
+                case "wolf-knight":
+                    if(lead)Squat(s,feet,u,time,seed,q,low);
                     break;
                 case "aegis-ricochet":
                     if(lead&&!view&&scene.Blade(a,false,out var sr,out var st)){var mid=(sr+st)*.5f;float spin=time*14;for(int i=0;i<Count(6,q,low);i++){float ang=spin+i*1.047f;var d=new Vector3((float)Math.Cos(ang),(float)Math.Sin(ang)*.6f,(float)Math.Sin(ang)*.8f);s.Sprite(false,mid+d*(.32f+.1f*u),edge*(1.4f*u),.08f,Sparkle);}}
@@ -210,6 +219,12 @@ namespace ChipArena.UnityConversion
             if(view)return;Vector3 c=feet+Vector3.UnitY*1.15f+f*.75f;float pulse=.85f+.15f*(float)Math.Sin(time*30),gain=1+.45f*absorbed;
             s.Glow(c,edge*(.6f*gain*pulse),0,1.15f,Ring,0,1);s.Glow(c,core*(.22f*gain),0,.7f,Core,0,2);
             int n=Count(12,q,low);for(int i=0;i<n;i++){float a=i/(float)n*6.2832f;Vector3 p=c+r*((float)Math.Cos(a)*.5f)+Vector3.UnitY*((float)Math.Sin(a)*.55f)-f*(.12f*(float)Math.Cos(a)*(float)Math.Cos(a));s.Sprite(false,p,edge*(1.3f*pulse),.07f,Sparkle);}
+        }
+        private static void Drag(IKitFxSink s,Vector3 tip,float floor,Vector3 f,float time,long seed,float q)
+        {
+            if(tip.Y>floor+.25f)return;Vector3 at=new Vector3(tip.X,Math.Max(floor+.02f,tip.Y),tip.Z);int n=Count(6,q,false);
+            for(int i=0;i<n;i++){float h=H(seed+(long)(time*60)*7+i,11);var v=-f*(2+3*h)+Vector3.UnitY*(1.5f+2.5f*H(seed+i,12))+Right(f)*((H(seed+i,13)-.5f)*3);s.Streak(at+v*.03f,v,Lin(GreatCore,3f),.02f,.06f,.03f,.9f,h,seed+i);}
+            s.Glow(at,Lin(Ember,2.2f),0,.3f,Core,0,seed);
         }
         // Rising Dragon's coil: a wind spiral climbing round the caster.
         private static void Updraft(IKitFxSink s,Vector3 feet,float t,float u,Vector3 edge,Vector3 core,long seed,float q,bool low)
@@ -253,6 +268,12 @@ namespace ChipArena.UnityConversion
             }
             s.Glow(behind+Vector3.UnitY*.9f,Lin(MarkRed,1.4f*u*flick),0,1.4f,Core,u,seed);GroundRing(s,behind,.55f,.1f,Lin(MarkRed,2f),u,low?10:16);
         }
+        // The Wolf Knight's squat: gold armour light gathering on the pilot, dust pressed out of the floor.
+        private static void Squat(IKitFxSink s,Vector3 feet,float u,float time,long seed,float q,bool low)
+        {
+            s.Glow(feet+Vector3.UnitY*1.0f,Lin(ArmourGold,1.4f*u),0,1.6f*u+.2f,Core,u,seed);
+            if(!low)for(int i=0;i<Count(6,q,low);i++){float a=i/6f*6.2832f;s.Smoke(feet+new Vector3((float)Math.Cos(a)*(.4f+.5f*u),.1f,(float)Math.Sin(a)*(.4f+.5f*u)),Lin(Dust),.5f*u,.5f,u*.5f,seed+i,feet.Y);}
+        }
 
         // ---------------------------------------------------------------------------------------------------------------
         // Persistent kit state
@@ -294,11 +315,60 @@ namespace ChipArena.UnityConversion
                 if(!view&&!low){long seed=a.Id*13L+hand*7;for(int i=0;i<Count(4,q,low);i++){float ph=(time*2.2f+i/4f)%1f;Vector3 p=Vector3.Lerp(r0,r1,H(seed+i,61))+Vector3.UnitY*(.35f*ph);s.Glow(p,Lin(DaggerCore,1.6f*(1-ph)*fade),0,.06f,Mote,ph,seed+i);}}
             }
         }
+        private static void ArmourGlint(IKitFxSink s,IKitFxScene scene,Actor a,float time,float q,bool low)
+        {
+            bool view=scene.Viewer==a.Id;var gold=Lin(ArmourGold);
+            if(view){if(scene.ViewBlade(false,out var b0,out var b1)){float g=(time*2.4f)%1f;s.Sprite(true,Vector3.Lerp(b0,b1,g),gold*3f,.07f,Sparkle);s.Sprite(true,b0,gold*1.6f,.12f,Hot);}return;}
+            Vector3 c=scene.Chest(a,out var ch)?ch:scene.Feet(a)+Vector3.UnitY*1.2f;
+            s.Glow(c,gold*.35f,0,1.3f,Core,0,a.Id);s.Glow(c,gold*.55f,0,1.6f,Ring,0,a.Id+1);
+            // A glint star sweeping across the body every .3 s and gold sparkles orbiting it.
+            float g2=(time/.3f)%1f;s.Sprite(false,c+new Vector3(0,.5f-1.1f*g2,0)+new Vector3(.3f,0,0),gold*(3.5f*(1-g2)),.35f,Sparkle);
+            int n=Count(8,q,low);for(int i=0;i<n;i++){float ang=time*8+i*6.2832f/n;s.Sprite(false,c+new Vector3((float)Math.Cos(ang)*.6f,(float)Math.Sin(ang*1.3f)*.6f,(float)Math.Sin(ang)*.6f),gold*2.2f,.08f,Sparkle);}
+            if(scene.Blade(a,false,out var r0,out var r1))s.Sprite(false,r1,gold*2.6f,.3f,Sparkle);
+        }
         private static void ShieldFlight(IKitFxSink s,Actor a,NativeMeleeKit k,float time,float q,bool low,int weapon)
         {
             Vector3 at=N(k.ShieldPosition);var edge=Edge("shield",weapon);float spin=time*22;
             s.Glow(at,edge*1.3f,0,.95f,Ring,0,a.Id);s.Glow(at,Lin(ShieldCore,1.1f),0,.45f,Core,0,a.Id+1);
             int n=Count(6,q,low);for(int i=0;i<n;i++){float ang=spin+i*6.2832f/n;s.Sprite(false,at+new Vector3((float)Math.Cos(ang)*.42f,(float)Math.Sin(ang*.5f)*.08f,(float)Math.Sin(ang)*.42f),edge*2f,.08f,Sparkle);}
+        }
+        // The fissure: a molten crack running at FissureSpeed up to FissureLength, rock bursting where its front passes, then
+        // the cracked strip glowing for its 2 s life (the slow-ground band, 1.6 m wide as the simulation's slow).
+        private static void Fissure(IKitFxSink s,Actor a,NativeMeleeKit k,float time,float q,bool low)
+        {
+            if(!(k.FissureUntil>time)||time<k.FissureAt||!(k.FissureSpeed>0)||!(k.FissureLength>0))return;
+            Vector3 start=N(k.FissureStart),d=Flat(N(k.FissureDirection),Vector3.UnitZ),r=Right(d);float age=time-k.FissureAt,life=Math.Max(.01f,k.FissureUntil-k.FissureAt);
+            float front=Math.Min(k.FissureLength,age*k.FissureSpeed),fade=1-Smooth((age-(life-.45f))/.45f);if(front<.05f)return;
+            float floor=start.Y-.86f,y=floor+.025f;long seed=a.Id*7477L+(long)Math.Round(k.FissureAt*240);var hot=Lin(GreatCore);var ember=Lin(Ember);var edge=Lin(GreatEdge);
+            // The slow ground: a wide soft amber band over the travelled strip.
+            int bands=low?3:6;
+            for(int i=0;i<bands;i++){float a0=front*i/bands,a1=front*(i+1)/bands;Vector3 p0=new Vector3(start.X,y-.005f,start.Z)+d*a0,p1=new Vector3(start.X,y-.005f,start.Z)+d*a1;float b=.5f*fade*(.8f+.2f*(float)Math.Sin(time*5+i));s.Band(false,p0-r*.8f,p1-r*.8f,p1+r*.8f,p0+r*.8f,b,b,ember*.55f);}
+            // The crack: a jagged line, white-hot at the running front, cooling to ember behind it.
+            int seg=Math.Max(2,(int)Math.Ceiling(front/.45f));Vector3 prev=new Vector3(start.X,y,start.Z);
+            for(int i=1;i<=seg;i++)
+            {
+                float along=front*i/seg,jog=(H(seed+i,71)-.5f)*.34f*(i<seg?1:0);Vector3 p=new Vector3(start.X,y,start.Z)+d*along+r*jog;
+                float since=(front-along)/Math.Max(1,k.FissureSpeed),heat=(float)Math.Exp(-since*5)*(age<k.FissureLength/k.FissureSpeed+.1f?1:.6f);
+                var col=Vector3.Lerp(ember*1.4f,hot*3.2f,Clamp01(heat))*fade;float w=.09f+.08f*heat;var side=r*w;
+                s.Band(false,prev-side,p-side,p+side,prev+side,fade,fade,col);prev=p;
+                // Ember motes rising off the cooled crack.
+                if(!low&&H(seed+i,72)<.5f*Math.Max(.35f,q)){float ph=(age*.9f+H(seed+i,73))%1f;s.Glow(p+Vector3.UnitY*(.05f+.9f*ph),ember*(1.8f*(1-ph)*fade),0,.06f,Mote,ph,seed+i);}
+            }
+            // Rock and light bursting up as the front passes each half metre (each shard lives .4 s from its moment).
+            int shards=Count((int)Math.Ceiling(k.FissureLength/.5f),q,low);
+            for(int i=0;i<shards;i++)
+            {
+                float along=(i+.5f)*k.FissureLength/shards;if(along>front)break;float born=along/k.FissureSpeed,sa=age-born;if(sa<0||sa>.45f)continue;
+                float u=sa/.45f,h=H(seed+i,74);Vector3 baseP=new Vector3(start.X,floor,start.Z)+d*along+r*((h-.5f)*.5f),tipP=baseP+Vector3.UnitY*((.35f+.45f*H(seed+i,75))*(float)Math.Sin(Math.PI*Math.Min(1,u*1.6f)));
+                s.Line(false,baseP,tipP,Vector3.Lerp(hot*2.6f,edge*.6f,u),.11f,true);
+                if(sa<.12f)s.Streak(baseP+Vector3.UnitY*.3f,new Vector3((h-.5f)*3,6+4*h,0)+d*2,hot*2.8f,.03f,.15f,.03f,.9f,u,seed+i+500);
+            }
+            if(front<k.FissureLength-.01f)
+            {
+                // The running front: a burst of light, flying grit and dust.
+                Vector3 fp=new Vector3(start.X,floor,start.Z)+d*front;s.Glow(fp+Vector3.UnitY*.3f,hot*2.4f,0,1.1f,Core,0,seed);
+                if(!low)s.Smoke(fp+Vector3.UnitY*.25f,Lin(Dust),.7f,.9f,Clamp01(age*3),seed+(long)(front*2),floor);
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -373,6 +443,9 @@ namespace ChipArena.UnityConversion
                     if(victim!=null&&victim.StunUntil>e.Time+.2f&&age<victim.StunUntil-e.Time){Vector3 head=scene.Feet(victim)+Vector3.UnitY*2.05f;for(int i=0;i<3;i++){float a=age*7+i*2.094f;s.Sprite(false,head+new Vector3((float)Math.Cos(a)*.32f,.05f*(float)Math.Sin(a*2),(float)Math.Sin(a)*.32f),Lin(ArmourGold,2.2f),.12f,Sparkle);}}
                     break;
                 }
+                case "earthsplitter":
+                    if(age<.4f){float u=age/.4f;for(int i=0;i<Count(6,q,low);i++){var v=new Vector3(H(seed+i,98)-.5f,1.2f,H(seed+i,99)-.5f)*6;s.Streak(at+v*age+new Vector3(0,-4.6f*age*age,0),v,Lin(GreatCore,2.6f*(1-u)),.04f,.14f,.03f,.9f,u,seed+i+80);}}
+                    break;
             }
         }
         // A Bulwark hit is the wall slam when an earlier Bulwark hit on the same target by the same pilot came just before it.

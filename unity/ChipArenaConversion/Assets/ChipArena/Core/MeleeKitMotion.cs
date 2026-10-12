@@ -82,6 +82,9 @@ namespace ChipArena.UnityConversion
     ///  - Kunai Mark: a side-on throw (the aim hand points), the whip follow-through. Recast: a coiled shimmer, the arrival stab.
     ///  - Bulwark Charge: a braced shield push-off, a shield-first sprint, the shove on impact.
     ///  - Aegis Ricochet: a cross-body frisbee coil, the throw and an open-handed follow-through.
+    ///  - Earthsplitter: the blade dragged behind, raised overhead and chopped into the floor on the release.
+    ///  - Wolf Knight: a squat with the blade high, a forward somersault through the air (third person; the view arms stay
+    ///    braced), a heavy landing.
     /// </summary>
     public static class MeleeKitMotion
     {
@@ -91,6 +94,7 @@ namespace ChipArena.UnityConversion
             "flash-step","rising-dragon",
             "shadow-step","kunai-mark",
             "bulwark-charge","aegis-ricochet",
+            "earthsplitter","wolf-knight",
         };
         public static bool Known(string kind){if(kind==null)return false;foreach(var k in Kinds)if(k==kind)return true;return false;}
         public static string Spec(string kind)=>kind=="flash-step"||kind=="rising-dragon"?"sword":kind=="shadow-step"||kind=="kunai-mark"?"daggers":kind=="bulwark-charge"||kind=="aegis-ricochet"?"shield":kind=="earthsplitter"||kind=="wolf-knight"?"greatsword":null;
@@ -211,6 +215,19 @@ namespace ChipArena.UnityConversion
         private static readonly KitPose AegisThrow=Key("shield",k=>{k.Body=V(0,-.1f,.06f);k.Pitch=.22f;k.PelvisY=-.3f;k.ChestY=-.55f;k.ChestX=.12f;k.HeadY=.4f;Stance(k,.17f,.34f,-.16f,-.36f,-.795f,-.77f);
             k.RGrip=V(-.6f,.12f,.3f);k.RBlade=N(-.95f,.15f,.25f);k.RUp=N(.15f,.98f,-.05f);k.RPole=N(-.3f,-.7f,-.6f);k.LGrip=V(.42f,-.12f,.05f);k.LDir=N(.5f,-.4f,.7f);k.LUp=N(-.7f,.6f,.3f);});
 
+        // ---- greatsword: Earthsplitter and Wolf Knight (two-handed: the support hand follows the grip) ----
+        private static readonly KitPose SplitDrag=Key("greatsword",k=>{k.Body=V(0,-.16f,-.06f);k.Pitch=.18f;k.PelvisY=-.45f;k.ChestY=-.75f;k.ChestX=.12f;k.HeadY=.8f;k.HeadX=-.1f;Stance(k,.2f,.3f,-.2f,-.34f);
+            k.RGrip=V(-.42f,-.32f,-.1f);k.RBlade=N(-.28f,-.55f,-.79f);k.RUp=N(-.95f,.25f,.15f);k.RPole=N(-.5f,.3f,-.8f);});
+        private static readonly KitPose SplitRaise=Key("greatsword",k=>{k.Body=V(0,-.04f,-.06f);k.Pitch=-.22f;k.PelvisY=-.1f;k.ChestY=-.1f;k.ChestX=-.25f;k.HeadX=-.25f;Stance(k,.2f,.3f,-.2f,-.34f);
+            k.RGrip=V(-.06f,.62f,-.02f);k.RBlade=N(-.05f,.3f,-.95f);k.RUp=N(.99f,.05f,0);k.RPole=N(-.7f,.6f,.3f);});
+        private static readonly KitPose SplitSlam=Key("greatsword",k=>{k.Body=V(0,-.3f,.08f);k.Pitch=.5f;k.PelvisY=.05f;k.ChestY=.08f;k.ChestX=.22f;k.HeadX=-.55f;Stance(k,.24f,.38f,-.22f,-.36f);
+            k.RGrip=V(-.04f,-.12f,.45f);k.RBlade=N(0,-.5f,.87f);k.RUp=N(1,0,0);k.RPole=N(-.8f,-.2f,.5f);});
+        private static readonly KitPose WolfSquat=Key("greatsword",k=>{k.Body=V(0,-.26f,-.04f);k.Pitch=.08f;k.ChestX=-.12f;k.HeadX=-.35f;Stance(k,.2f,.14f,-.2f,-.16f);
+            k.RGrip=V(-.08f,.6f,-.06f);k.RBlade=N(0,.55f,-.84f);k.RUp=N(1,0,0);k.RPole=N(-.7f,.6f,.3f);});
+        private static readonly KitPose WolfWheel=Key("greatsword",k=>{k.Body=V(0,.02f,0);k.Pitch=.1f;k.ChestX=.15f;k.HeadX=-.4f;k.Air=1;k.LHipX=-1.5f;k.LKnee=2.1f;k.RHipX=-1.35f;k.RKnee=2.0f;k.LHipZ=.12f;k.RHipZ=-.12f;
+            k.RGrip=V(-.06f,.12f,.42f);k.RBlade=N(0,.05f,1);k.RUp=N(1,0,0);k.RPole=N(-.8f,-.3f,.4f);});
+        private static readonly KitPose WolfLand=Key("greatsword",k=>{k.Body=V(0,-.34f,.04f);k.Pitch=.42f;k.ChestX=.2f;k.HeadX=-.45f;Stance(k,.24f,.3f,-.22f,-.3f);
+            k.RGrip=V(-.04f,-.2f,.44f);k.RBlade=N(0,-.45f,.89f);k.RUp=N(1,0,0);k.RPole=N(-.8f,-.2f,.5f);});
 
         // ---------------------------------------------------------------------------------------------------------------
         // Sampling
@@ -254,6 +271,12 @@ namespace ChipArena.UnityConversion
                     else o.Mix(DaggerGuard,KunaiCock,Out(u/.8f));break;
                 case "bulwark-charge":o.Mix(ShieldGuard,BulwarkBrace,Out(u/.8f));break;
                 case "aegis-ricochet":o.Mix(ShieldGuard,AegisCoil,Out(u/.85f));break;
+                case "earthsplitter":
+                    // Drag (to .55), raise overhead (to .82), chop to the floor on the release.
+                    if(u<.55f)o.Mix(GreatGuard,SplitDrag,Out(u/.4f));
+                    else if(u<.82f)o.Mix(SplitDrag,SplitRaise,Ease((u-.55f)/.27f));
+                    else o.Mix(SplitRaise,SplitSlam,In((u-.82f)/.18f));break;
+                case "wolf-knight":o.Mix(GreatGuard,WolfSquat,Out(u/.85f));break;
                 default:o.From(GuardOf(c.Spec));break;
             }
             o.W=1;
@@ -294,12 +317,19 @@ namespace ChipArena.UnityConversion
                     else{s0.Mix(prev,RecastRaise,1);o.Mix(s0,RecastStab,Smooth((t-.05f)/.07f));}
                     o.W=Terminal(c,time);return;
                 }
+                case "wolf-knight":
+                {
+                    // One forward somersault through the flight (the simulation's air time is ~.75 s), the blade held out as a wheel.
+                    o.Mix(prev,WolfWheel,Out(t/.1f));o.Flip=Flip(t);break;
+                }
                 default:o.From(prev);break;
             }
             o.W=1;
         }
         // The recasts' active phase is their last (it ends at Until with no recovery): the layer fades out over its last .25 s.
         private static float Terminal(in KitClock c,float time)=>1-Ease((time-(c.Until-.25f))/.25f);
+        /// <summary>The Wolf Knight's somersault angle `t` seconds after take-off (one turn by .76 s, eased in and out).</summary>
+        public static float Flip(float t)=>Tau*Ease(t/.76f);
         // Recovery: [start, Until); the pose the previous phase ended on, through the ability's follow-through, out to the guard.
         private static void Settle(in KitClock c,float time,KitPose o)
         {
@@ -327,6 +357,14 @@ namespace ChipArena.UnityConversion
                 case "kunai-mark":
                     follow=KunaiThrow;k=Out(t/.07f);hold=.3f;break;
                 case "aegis-ricochet":follow=AegisThrow;k=Out(t/.09f);hold=.4f;break;
+                case "earthsplitter":follow=SplitSlam;k=1;hold=.4f;break;
+                case "wolf-knight":
+                {
+                    // The landing finishes the somersault, then the blade slams down.
+                    follow=WolfLand;k=Out(t/.08f);hold=.4f;
+                    float from=prev.Flip;o.Mix(prev,follow,k);o.Flip=from+(Tau-from)*Out(t/.12f);if(from>=Tau-1e-4f)o.Flip=Tau;
+                    fade=1-Ease((t-hold*dur)/Math.Max(.01f,dur*(1-hold)));o.W=fade;return;
+                }
                 default:follow=GuardOf(c.Spec);k=1;break;
             }
             o.Mix(prev,follow,k);
@@ -421,6 +459,8 @@ namespace ChipArena.UnityConversion
                 case "flash-step":return time>=r-.02f&&time<r+.3f;
                 case "rising-dragon":return c.Recast?c.Part==KitPart.Fall||c.Part==KitPart.Active||c.Part==KitPart.Recovery&&time<c.Start+.12f:c.Part==KitPart.Recovery&&time<r+.16f;
                 case "kunai-mark":return c.Recast&&c.Part==KitPart.Active&&time<r+.16f;
+                case "earthsplitter":return time>=r-.1f&&time<r+.06f;
+                case "wolf-knight":return c.Part==KitPart.Active||c.Part==KitPart.Recovery&&time<c.Start+.12f;
                 default:return false;
             }
         }

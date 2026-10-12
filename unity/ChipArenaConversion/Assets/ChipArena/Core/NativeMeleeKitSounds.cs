@@ -28,6 +28,8 @@ namespace ChipArena.UnityConversion
                 case "kunai-mark":n=recast?S(o,n,"melee.daggers.swing","daggers",.5f):S(o,n,"melee.daggers.throw","daggers",.6f);break;
                 case "bulwark-charge":n=S(o,n,"move.roll","dash",.55f);break;
                 case "aegis-ricochet":n=S(o,n,"melee.shield.throw","shield",.6f);break;
+                case "earthsplitter":break;// FissureStart carries the slam
+                case "wolf-knight":n=S(o,n,"melee.greatsword.spin","greatsword",.6f);n=S(o,n,"move.jump","jump",.4f);break;
             }
             return n;
         }
@@ -47,6 +49,7 @@ namespace ChipArena.UnityConversion
                 case EventKind.Absorb:n=S(o,n,"melee.shield.block","parry",.5f);break;
                 case EventKind.Bounce:n=S(o,n,"impact.metal","metal",.5f);break;
                 case EventKind.Land:n=S(o,n,"blast.quake","stone",fx=="wolf-knight"?.75f:.6f);n=S(o,n,"move.land","explosion",fx=="wolf-knight"?.35f:.25f);break;
+                case EventKind.FissureStart:n=S(o,n,"blast.quake","stone",.8f);n=S(o,n,"melee.greatsword.hit","greatsword",.5f);break;
             }
             return n;
         }

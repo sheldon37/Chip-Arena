@@ -45,6 +45,8 @@ namespace ChipArena.UnityConversion
             list.Add(Cast("kunai-mark","daggers","kunai-recast",2,2.2f,(2.2f,"recast",2.65f),(2.65f,"active",2.65f)));
             list.Add(Cast("bulwark-charge","shield","bulwark-charge",1,1.15f,(1.15f,"windup",1.6f),(1.32f,"active",1.6f),(1.52f,"recovery",1.52f)));
             list.Add(Cast("aegis-ricochet","shield","shield-throw",1,1.3f,(1.3f,"windup",1.7f),(1.7f,"recovery",1.7f)));
+            list.Add(Cast("earthsplitter","greatsword","earthsplitter",1,1.45f,(1.45f,"windup",1.75f),(1.75f,"recovery",1.75f)));
+            var wolf=Cast("wolf-knight","greatsword","wolf-spin",1,1.28f,(1.28f,"windup",4.78f),(2.15f,"active",4.78f),(2.7f,"recovery",2.7f));for(int i=0;i<wolf.Spans.Count;i++){var s=wolf.Spans[i];s.Landed=s.Phase=="recovery"?2.15f:-1;wolf.Spans[i]=s;}list.Add(wolf);
             return list.Where(t=>MeleeKitMotion.Known(t.Kind)).ToArray();
         }
         private static Actor Pilot(string spec)=>new Actor{Id=1,SourceSpec=spec,Weapon=WeaponId.Sword,VisualSet=spec=="daggers"?1:spec=="greatsword"?2:spec=="shield"?3:0,CastRate=1,Hp=100,Grounded=true,MeleeKit=new NativeMeleeKit()};
@@ -93,6 +95,9 @@ namespace ChipArena.UnityConversion
                 }
                 At(a,t,t.Spans[0].From-.01f);Check(!MeleeKitMotion.Owns(a,t.Spans[0].From-.01f),"no layer before the cast "+t.Kind);
             }
+            // The Wolf Knight flips in third person only; the view arms never somersault.
+            var wolf=Timelines().FirstOrDefault(x=>x.Kind=="wolf-knight");
+            if(wolf!=null){var a=Pilot("greatsword");At(a,wolf,1.66f);MeleeKitMotion.Sample(a,1.66f,k);Check(k.Flip>2&&k.Flip<4.3f,"Wolf Knight is upside down mid-flight");var p=new CapturedRig.Pose();var before=p.Rotation[CapturedRig.Body];MeleeKitMotion.Apply(p,a,1.66f,true);Check(p.Rotation[CapturedRig.Body].Equals(before),"first person never flips the view rig");}
         }
         private static float Angle(Quaternion a,Quaternion b){float d=Math.Abs(Quaternion.Dot(a,b));return 2*(float)Math.Acos(Math.Min(1,d));}
         private static void Continuity()
@@ -221,6 +226,20 @@ namespace ChipArena.UnityConversion
                 events.Add(E(id++,EventKind.Bounce,1,1,2,new Vector3(0,1.2f,3),"aegis-ricochet",1,from:new Vector3(0,1.2f,3),normal:Vector3.UnitX));
                 Expect("shield in flight and the bounce link",r=>r.Glows>=2&&r.Lines>=5,1.1f);k.ShieldOut=false;k.ShieldChain=Array.Empty<int>();
                 Check(NativeMeleeKitHud.ShieldAway("shield",new NativeMeleeKit{ShieldOut=true})&&!NativeMeleeKitHud.ShieldAway("shield",new NativeMeleeKit()),"RMB card: block unavailable while the shield is out");
+            }
+            if(kinds.Contains("earthsplitter"))
+            {
+                var k=caster.MeleeKit;k.FissureStart=new V3(0,.865f,0);k.FissureDirection=new V3(0,0,1);k.FissureAt=1;k.FissureUntil=3;k.FissureSpeed=25;k.FissureLength=10;
+                var running=Frame(scene,events,1.2f,1,false);var lingering=Frame(scene,events,2.5f,1,false);
+                Check(running.Bands>=8&&running.Lines>=1,"fissure crack and rock running at its speed");Check(lingering.Bands>=6,"the 2 s slow-ground strip lingers");Check(Frame(scene,events,3.01f,1,false).Bands==0,"strip gone at FissureUntil");
+                // The front never passes the wall-clamped length or the speed.
+                k.FissureLength=3;var clamped=Frame(scene,events,1.6f,1,false);Check(clamped.BandPoints.Count>0&&clamped.BandPoints.All(v=>v.Z<=3.81f),"fissure clamped to FissureLength");
+                k.FissureUntil=0;
+            }
+            if(kinds.Contains("wolf-knight"))
+            {
+                events.Clear();caster.SourceSpec="greatsword";caster.VisualSet=2;caster.MeleeKit.SuperArmour=true;Expect("super armour glint",r=>r.Glows>=2&&r.Sprites>=8,1);caster.MeleeKit.SuperArmour=false;
+                events.Add(E(id++,EventKind.Land,1,1,0,new Vector3(0,.865f,6),"wolf-knight",0,3.7f));Expect("Wolf Knight landing wave",r=>r.Bands>=16,1.15f);
             }
             // Determinism: a JSON round trip of the snapshot (as guests and the killcam receive it) draws the identical frame,
             // and drawing twice changes nothing (no hidden state).
