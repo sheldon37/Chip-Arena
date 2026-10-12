@@ -56,6 +56,7 @@ namespace ChipArena.UnityConversion
         public int Id, Team, Combo, Action, Kills, LastInput;
         public WeaponId Weapon;
         public int Ammo, ShotsFired, AimShots;
+        public float OverdriveAt,OverdriveUntil,VentUntil;
         public bool Aiming;
         public float Pitch, AimYaw, AimAt=-100, LastShot=-100, ReloadAt=-100, ReloadUntil;
         internal readonly int[] Magazines={0,7,3,48};

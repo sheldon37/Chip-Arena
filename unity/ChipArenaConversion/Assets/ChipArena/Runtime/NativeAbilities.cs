@@ -36,10 +36,10 @@ namespace ChipArena.UnityConversion
         private void CancelWindup(NativePilot p)
         {
             if(p.AbilityCast!=null){p.Pose.AbilityAt=-100;p.Pose.AbilityId=null;}
-            p.AbilityCast=null;
+            p.AbilityCast=null;p.Fan=null;
             if(p.CastAt>0){p.CastAt=0;p.AttackAt=-100;}
         }
-        private bool AbilityBusy(NativePilot p)=>p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Incapacitated(p);
+        private bool AbilityBusy(NativePilot p)=>p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Incapacitated(p);
         private void StepAbilities(NativePilot p)
         {
             if(NativeMeleeRules.Standard(p.Seat.spec)){StepMeleeAbilityInput(p);return;}
@@ -65,6 +65,7 @@ namespace ChipArena.UnityConversion
         private void PressAbility(NativePilot p,string slot,bool retry=false)
         {
             var d=Content.Ability(p.Seat.spec,slot);
+            if(NativeRangedRules.Q(d?.id)){TryRangedQ(p,d);return;}
             float cooldown=slot=="q"?p.QReady-Time:p.ECharges>0?0:p.EReady-Time;
             var gate=NativeAbilityRules.Decide(d!=null&&d.kind!="ads"&&d.live,p.Hp>0,Time<p.BlockEnd,p.Mana,d==null?0:NativeAbilityRules.Cost(d,p.Stats),cooldown,AbilityBusy(p));
             if(gate==NativeAbilityRules.Press.Refused)
@@ -87,7 +88,7 @@ namespace ChipArena.UnityConversion
             if(d.slot=="q")p.QReady=Time+NativeAbilityRules.Cooldown(d,p.Stats);
             else {p.ECharges--;if(Time>=p.EReady)p.EReady=Time+NativeAbilityRules.Cooldown(d,p.Stats);}
             p.Ready=Math.Max(p.Ready,Time+NativeAbilityRules.CastTime(d.lockout,p.Stats));
-            if(d.slot=="q"&&p.Stats["qEmpower"]>0){p.EmpowerUntil=Time+3;p.EmpowerShots=(int)Math.Ceiling(.6/p.Weapon.interval);}
+            if(d.slot=="q")EmpowerQ(p);
             if(d.slot=="e"&&p.Stats["spellEcho"]>0)abilityEchoes.Add((Time+.8f,p,cast,scale*.5f));
             ExecuteAbility(p,cast,scale);
         }

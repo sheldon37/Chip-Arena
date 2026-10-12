@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
         public float Time,Ready,Stamina,BufferUntil,ComboUntil,RollUntil;public int Combo;
         public string JumpSpec;public int AirJumps;public float AirJumpAt;public bool Swimming;
         public ContentWeapon MeleeWeapon;public ChipStats MeleeStats;public NativeMeleeSwing Swing;
-        public NativeMeleeKit MeleeKit;
+        public NativeMeleeKit MeleeKit;public float OverdriveAt,OverdriveUntil;
     }
     // Locomotion and local swing commitment are predicted; hits, damage and real resources stay authority-owned.
     public sealed class NativePrediction
@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
             float dot=input.X*(float)Math.Sin(radians)+input.Z*(float)Math.Cos(radians);
             bool sprint=!kitBusy&&input.Sprint&&state.CanSprint&&!input.Shoot&&!input.Aim&&dot>=.6f;
             state.Sprinting=sprint&&!swinging;
-            float speed=state.Speed*(sprint?Rules.SprintMultiplier:1)*(whirling?NativeWhirlwindRules.MoveScale:1);
+            float speed=state.Speed*(sprint?Rules.SprintMultiplier:1)*(whirling?NativeWhirlwindRules.MoveScale:1)*(NativeRangedRules.Overdrive(state.Time,state.OverdriveAt,state.OverdriveUntil)?NativeRangedRules.OverdriveMove:1);
             state.Velocity.x=rooted?0:Towards(state.Velocity.x,input.X*speed,Rules.Acceleration*dt);
             state.Velocity.z=rooted?0:Towards(state.Velocity.z,input.Z*speed,Rules.Acceleration*dt);
             var jump=NativeJumpSimulation.Try(state.JumpSpec,input.Jump,state.Grounded,state.Swimming,kitBusy||swinging||state.Time<state.RollUntil,
