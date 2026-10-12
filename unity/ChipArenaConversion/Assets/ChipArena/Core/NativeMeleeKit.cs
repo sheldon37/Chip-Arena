@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeMeleeKit
     {
         public string Kind,Phase,RecastKind;
-        public float At=-100,Release,Until,RecoverUntil,Yaw,RecastUntil;
+        public float At=-100,Release,Until,RecoverUntil,RecoverAt=-1,ShieldUntil,Yaw,RecastUntil;
         public int Target,MarkTarget,Absorbed,Tick;
         public float MarkUntil,AfterimageUntil,EmpowerUntil,RisingCooldownAt;
         public V3 Afterimage,ShieldPosition,FissureStart,FissureDirection;
@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
             bool F(float v)=>MathUtil.Finite(v)&&Math.Abs(v)<10000000;
             bool V(V3 v)=>F(v.x)&&F(v.y)&&F(v.z)&&v.Length<100000;
             bool S(string v)=>v==null||v.Length<=32;
-            return S(Kind)&&S(Phase)&&S(RecastKind)&&F(At)&&F(Release)&&F(Until)&&F(RecoverUntil)&&F(Yaw)&&F(RecastUntil)&&F(RisingCooldownAt)&&F(MarkUntil)&&F(AfterimageUntil)&&F(EmpowerUntil)&&F(FissureAt)&&F(FissureUntil)&&F(FissureSpeed)&&F(FissureLength)&&V(Afterimage)&&V(ShieldPosition)&&V(FissureStart)&&V(FissureDirection)&&Absorbed>=0&&Absorbed<=3&&Tick>=0&&Tick<=NativeWhirlwindRules.MaxTicks&&(ShieldChain==null||ShieldChain.Length<=3)&&
+            return S(Kind)&&S(Phase)&&S(RecastKind)&&F(At)&&F(Release)&&F(Until)&&F(RecoverUntil)&&F(RecoverAt)&&F(ShieldUntil)&&F(Yaw)&&F(RecastUntil)&&F(RisingCooldownAt)&&F(MarkUntil)&&F(AfterimageUntil)&&F(EmpowerUntil)&&F(FissureAt)&&F(FissureUntil)&&F(FissureSpeed)&&F(FissureLength)&&V(Afterimage)&&V(ShieldPosition)&&V(FissureStart)&&V(FissureDirection)&&Absorbed>=0&&Absorbed<=3&&Tick>=0&&Tick<=NativeWhirlwindRules.MaxTicks&&(ShieldChain==null||ShieldChain.Length<=3)&&
                 (Kind!="whirlwind"||Release>=At&&Until>=Release&&RecoverUntil>=Until&&(Phase=="windup"||Phase=="active"||Phase=="recovery"));
         }
     }

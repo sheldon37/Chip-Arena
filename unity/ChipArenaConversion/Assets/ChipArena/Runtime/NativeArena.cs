@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         public NativeFanBurst Fan;public float OverdriveAt,OverdriveUntil,VentUntil;
         public int Ammo,Combo=-1,AimShots;public float Ready,RegenAt,ReloadAt,ReloadEnd,BlockEnd,BlockReady,RollAt=-100,RollEnd,RollReady,StunEnd,StaggerImmune,CastAt,SlowEnd,SoakedAt=-100;
         public float AttackAt=-100,HitAt,AttackEnd,LastAttack=-100,LastShot=-100,AimAt=-100,QReady,EReady;
-        public int AirJumps;public float AirJumpAt=-100;
+        public float AirborneAt=-1;public bool AirAttackUsed;public int AirJumps;public float AirJumpAt=-100;
         public Vector3 Knockback,RollDirection;public RollValues Roll;public bool HitPending,Aiming,SprintExhausted,Grounded;
         public NativeAbilityCast AbilityCast;public string BufferedSlot;public float BufferedAt,HoldAt=-1,SlowFactor=1,SlowImmune;public int ECharges=1;
         public readonly Dictionary<string,NativeDot> Dots=new Dictionary<string,NativeDot>();
@@ -178,6 +178,7 @@ namespace ChipArena.UnityConversion
             var recovery=NativeSpecialRules.RecoveryMotion(p.Down,Time,new V3(i.X,0,i.Z),i.Yaw);
             if(recovery.Length>0){p.MoveVelocity=p.Knockback=Vector3.zero;velocity.x=recovery.x;velocity.z=recovery.z;external=Vector3.zero;}
             velocity+=external;
+            if(NativeAirAttackSimulation.Falling(p.Swing)){velocity.y=NativeAirAttackSimulation.Vertical(p.Swing,Time);p.Body.useGravity=false;}
             if(GroundMotion(p,ref velocity,jumped,swimming,external.y))p.Body.useGravity=false;
             p.Body.linearVelocity=velocity;
 
@@ -216,7 +217,7 @@ namespace ChipArena.UnityConversion
                 {var next=Pilots.Where(p=>p!=target&&p.Hp>0&&Enemy(source,p)&&(p.Body.position-target.Body.position).magnitude<4&&!SceneLinecast(target.Body.position,p.Body.position,WorldMask)).OrderBy(p=>(p.Body.position-target.Body.position).sqrMagnitude).FirstOrDefault();if(next!=null)Damage(next,source,(float)source.Weapon.chain,Vector3.zero,0,false,false,false,damageKind:"chain");}
             }
             if(actual>0){PveDamaged(target,source,actual);if(!forced)ChipDamaged(target,source,weaponHit);}
-            Emit(eventKind==EventKind.Hit&&head?EventKind.Headshot:eventKind,source,target.Seat.id,hitPoint??(target.Body.position+Vector3.up*.8f),actual,collapseSegment??damageKind??(direct?"direct":"secondary"),damageKind:collapseSegment!=null?"collapse":null);
+            Emit(eventKind==EventKind.Hit&&head?EventKind.Headshot:eventKind,source,target.Seat.id,hitPoint??(target.Body.position+Vector3.up*.8f),actual,collapseSegment??damageKind??(direct?"direct":"secondary"),normal:direction.sqrMagnitude>1e-12f?direction.normalized:Vector3.zero,damageKind:collapseSegment!=null?"collapse":null);
             if(stage&&actual>0)Emit(EventKind.HazardHit,source,target.Seat.id,target.Body.position,actual,damageKind!=null&&damageKind.StartsWith("stage-",StringComparison.Ordinal)?damageKind.Substring(6):damageKind??"stage");
             if(target.Hp<=0){RecordDeath(target,source,direction,impulse,melee,sirenCrush,collapseSegment!=null?"collapse":null);target.Down=null;target.Juggle=null;CancelSiren(target);CancelFighter(target);CancelSpecial(target);CancelMelee(target);CancelAbilities(target);target.OverdriveAt=target.OverdriveUntil=target.VentUntil=0;PveDied(target);target.Seat.alive=false;target.Collider.enabled=false;target.Body.isKinematic=true;Emit(EventKind.Death,source,target.Seat.id,target.Body.position,0,collapseSegment,damageKind:collapseSegment!=null?"collapse":null);}
             return actual;
@@ -257,8 +258,8 @@ namespace ChipArena.UnityConversion
             var prop=hit.collider.GetComponent<NativePropBody>();if(prop==null)return;
             Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Impact,Source=source?.Seat.id??0,Time=Time,Position=Vec(hit.point),Normal=Vec(hit.normal),SurfaceId=prop.Definition.id,Color=color,Projectile=projectile});
         }
-        private void Emit(EventKind kind,NativePilot source,int target,Vector3 position,float amount,string detail=null,float radius=0,Vector3? from=null,Vector3? normal=null,string surfaceId=null,int color=0,string damageKind=null)
-        {Events.Add(new ArenaEvent{Id=nextEvent++,Kind=kind,Time=Time,Source=source?.Seat.id??0,Target=target,Position=Vec(position),Amount=amount,Detail=detail,DamageKind=damageKind,Radius=radius,From=Vec(from??position),Normal=Vec(normal??Vector3.zero),SurfaceId=surfaceId,Color=color});}
+        private void Emit(EventKind kind,NativePilot source,int target,Vector3 position,float amount,string detail=null,float radius=0,Vector3? from=null,Vector3? normal=null,string surfaceId=null,int color=0,string damageKind=null,bool wallSlam=false)
+        {Events.Add(new ArenaEvent{Id=nextEvent++,Kind=kind,Time=Time,Source=source?.Seat.id??0,Target=target,Position=Vec(position),Amount=amount,Detail=detail,DamageKind=damageKind,WallSlam=wallSlam,Radius=radius,From=Vec(from??position),Normal=Vec(normal??Vector3.zero),SurfaceId=surfaceId,Color=color});}
         public Snapshot Snapshot(bool interpolated=false)
         {
             if(Replica&&replicaFrame!=null)return ReplicaSnapshot();
@@ -272,7 +273,7 @@ namespace ChipArena.UnityConversion
                 CaptureMeleeKit(p);a.MeleeKit=p.MeleeKit.ViewCopy();
                 var special=p.Special;var down=p.Down;
                 a.SpecialKind=special?.Kind;a.SpecialAt=special?.At??-100;a.SpecialRelease=special?.Release??0;a.SpecialUntil=NativeMeleeKitRules.End(special);a.SpecialLanded=special?.Landed??-1;a.SpecialReleased=special?.Released??false;
-                a.WeaponAway=p.Seat.spec=="shield"&&MeleeShots.Any(s=>s.Shield&&s.Original==p)||special!=null&&special.Kind=="dagger-throw"&&special.Released&&Time<special.Until-.12f;
+                a.WeaponAway=p.Seat.spec=="shield"&&MeleeShots.Any(s=>s.Shield&&s.Original==p);a.MainWeaponAway=special!=null&&special.Kind=="dagger-throw"&&special.Released&&Time<special.Until-.12f;
                 a.DownAt=down?.At??-100;a.DownUntil=down?.Until??0;a.DownLanded=down?.Landed??-1;a.DownPickup=down?.PickupUntil??0;a.DownUsed=down?.PickupUsed??false;a.DownRoll=down?.RollAt??-1;a.DownRollEnd=down?.RollUntil??-1;a.DownDirection=down?.Direction??new V3();
                 MeleePresentation(p,a);a.CastRate=(float)p.Stats["attackRate"];a.Grounded=p.Grounded;a.AirJumps=p.AirJumps;a.AirJumpAt=p.AirJumpAt;a.VisualWindup=p.Swing!=null?p.Swing.HitAt-p.Swing.At:(float)(p.Weapon.windup/p.Stats["attackRate"]);a.VisualActive=p.Swing!=null?p.Swing.HitUntil-p.Swing.HitAt:(float)(.16/p.Stats["attackRate"]);a.VisualDuration=p.AttackEnd-p.AttackAt;a.VisualRollDuration=p.RollEnd-p.RollAt;
             }

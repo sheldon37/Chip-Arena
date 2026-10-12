@@ -356,7 +356,7 @@ namespace ChipArena.UnityConversion
                 v.LastAttack=a.AttackAt;v.Windup=a.VisualWindup;v.AttackRate=a.CastRate>0?a.CastRate:1;v.AttackIndex=a.Combo+1;
                 v.SwingAt=a.SwingAt>-90?a.SwingAt:float.NaN;v.SwingUntil=a.SwingAt>-90?a.SwingUntil:float.NaN;
                 v.Commit=a.CommitAt>-90;v.CommitAt=a.CommitAt;v.CommitUntil=a.CommitUntil;v.CommitYaw=-a.CommitYaw*D;v.StepAt=a.StepAt;v.StepUntil=a.StepUntil;v.StepDistance=a.StepDistance;v.Followup=a.Followup;v.Hurricane=a.Hurricane;
-                v.OpenerLunge=a.OpenerLunge;v.SprintAttack=a.SprintAttack;
+                v.AirAttack=a.AirAttack?1:0;v.OpenerLunge=a.OpenerLunge;v.SprintAttack=a.SprintAttack;
                 v.Guarding=false;v.BlockTime=time<a.BlockUntil?a.BlockUntil-time:0;v.LastBlock=a.BlockAt;v.HitStunUntil=a.StunUntil;
                 v.RollAt=a.RollAt;v.RollUntil=a.RollAt>-90?a.RollAt+a.VisualRollDuration:-100;
                 v.ActionKind=a.SpecialKind;v.ActionAt=a.SpecialAt;v.ActionUntil=a.SpecialUntil;
@@ -484,7 +484,7 @@ namespace ChipArena.UnityConversion
             {
                 bool blocked=a.Hp<=0||a.Rolling(time)||a.StunUntil>time||a.JuggleUntil>time||NativeSpecialPose.Active(a,time)||NativeSpecialPose.Down(a,time);
                 airTrack.Observe(time,a.Grounded,position.y,blocked);
-                airWatch.Observe(airTrack,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,-1,time,blocked);
+                airWatch.Observe(airTrack,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,a.AirAttack?1:0,time,blocked);
                 var clip=NativeAirAttackRules.Clip(a.SourceSpec);var melee=MeleeSet.For(a.SourceSpec);
                 if(!attack||clip==null||melee==null||!airWatch.Air||airWatch.SwingAt!=a.AttackAt)return false;
                 float windup=a.VisualWindup,active=a.VisualActive,recovery=Mathf.Max(.001f,a.VisualDuration-windup-active),landed=airWatch.Landed(time),age=time-a.AttackAt;

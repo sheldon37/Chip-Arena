@@ -249,7 +249,7 @@ namespace ChipArena.UnityConversion
                 DrawStaff(rig,school==MagicPose.Leet?1:school);
                 return;
             }
-            if(!a.WeaponAway)Weapon(MeleeHand(rig,a,time),rig.Set,color);
+            if(!a.WeaponAway&&!a.MainWeaponAway)Weapon(MeleeHand(rig,a,time),rig.Set,color);
             if(rig.Set==1) Weapon(MeleeHand(rig,a,time,true),1,color);
         }
         private static Matrix4x4 MeleeHand(CapturedAnimation.Player rig,Actor a,float time,bool left=false)

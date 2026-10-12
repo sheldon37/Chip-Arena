@@ -132,3 +132,20 @@ presentation and landing-ring VFX; timing adapters already consume these fields.
 No new art/audio or presentation assets are authored here.
 
 Validation status and branch/publication state: see the corresponding DEV_LOG entry.
+
+
+## 2026-10-12 night simulation handoff
+
+Sprint attacks from PR #133 are integrated on `codex/unity-night-handoff-20261012`. They retain the profiles above and the existing SprintAttack/timing/step fields. S0b now follows all eleven captured cuts: dagger C and both shield cuts reverse; the four-cut dagger cycle preserves D. The captured-blade comparison is an assertion, not a warning.
+
+A fresh airborne LMB after .15 s starts one landing attack per airtime. It costs 1.25 times normal swing stamina, hangs .15 s, then plunges at -14 m/s through normal capsule/world collision. There are no midair hits. On ground contact the forward arc and ring share one per-target ledger and normal sight/team/block/roll protection. Ring radii: daggers 1.4, sword 1.6, shield 1.8, greatsword 2.4 m; damage 1.3 times normal (greatsword 1.5); ordinary light stagger, not shield launch. Recovery starts at actual impact: .25/.35/.4/.55 s respectively. Extra-strike echoes wait until that recovery finishes. A canceled plunge still consumes that airtime's opportunity.
+
+`NativeMeleeSwing.Air`, `PlungeAt`, `ImpactAt` are authoritative; actor snapshots expose `AirAttack`, `PlungeAt`, `ImpactAt`, `AirborneAt`, `AirAttackUsed`. ImpactAt is -1 before ground contact; `Land` with Detail `melee-air` carries the world ground contact position, surface normal and ring radius. Impact rewrites the swing hit/recovery clocks. Host and guest prediction share hang/plunge/landing rules; rollback never repays stamina or reapplies an acknowledged input. The ten-second pending commitment is a safety timeout, not a flight duration for animation. Claude's explicit-air hooks are connected; pose timing/VFX should consume PlungeAt/ImpactAt rather than infer flight from the provisional hit window. No pose clips were retuned here.
+
+Every Q/E kit now carries `RecoverAt` (-1 until recovery actually starts, or a known Whirlwind boundary) and `RecoverUntil` (pilot commitment end). Skyfall starts landing recovery on ground contact without the old .15 s floor. Kunai recast explicitly enters recovery after release, including a failed target recheck. `AbilityHit.WallSlam` is true only for Bulwark's wall impact; Detail remains `bulwark-charge` for existing FX routing.
+
+Aegis has two independent clocks: Until/RecoverUntil describe the pilot action, while `ShieldOut` ends only on actual catch/removal and `ShieldUntil` estimates the current outward/return leg end from authoritative projectile life/travel/position. Do not use the short pilot recovery to hide the flying shield. Kunai sets `Actor.MainWeaponAway` instead of the all-weapons `WeaponAway`; the source and fallback render paths hide only the thrown right-hand dagger.
+
+Account service now stores hatColor/backColor as six-digit hex or empty Auto and accepts sheldon-head/sheldon-intro only for DEV accounts. Native selection normalization also requires an unexpired DEV grant; host-approved hat/intro IDs are transmitted unchanged to guests without granting them DEV access. Cosmetic models/catalogue additions and native colour DTOs remain Claude's work. The per-weapon skin property name has not been pushed to DEV_LOG on the inspected shared head, so its account allowlist is pending that exact contract. Account Worker deployment is separate from the Unity player build; this source change does not claim it is live.
+
+Claude's latest blood/stagger request is implemented: pilot Hit/Headshot carries normalized actual damage direction in ArenaEvent.Normal, matching adds. His slicing fix needs no wound-classification change. No host camera-convergence change was reported. Actual Unity/PhysX gates, Windows/two-client acceptance and native duel win rates remain unrun: the duel command reports that Unity Editor is unavailable here. No additional balance tuning was performed.
