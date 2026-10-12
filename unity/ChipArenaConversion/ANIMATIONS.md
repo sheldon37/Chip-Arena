@@ -164,6 +164,13 @@ update the same day ("change the player animations on the rest too ... (except d
 play); Deadeye (Pistol-Reload-R1, Armed-Idle-Pistol-R's one-hand aim, Pistol-Attack-R1's shot on 2.12 s carried into the
 barrel-up hold); Longwatch (2Hand-Shooting Idle, Crouch-Idle legs under Fire-Rifle1's aim raised level, the 1.8 s shot,
 back to the low ready); Belt Rattle (Idle, Activate, Fire-Rifle2's hip stance through the 24 Hz burst, held at the hip).
+The magic schools hold the staff in the left hand and cast with the right, as in play: the pack's staff and off-hand casts
+are read mirrored (2Hand-Staff; Armed's palm casts for the thrusts). Cinder Crown (Idle, Cast-L-Summon1's sweep back and
+raise out to the side as the flame gathers, Armed-Cast-L-Attack-Hand3's wind-up and palm thrust throwing the lance on
+1.8 s); Tidal Serpent (Cast-L-AOE1's gathering crouch and raised hand under the rising serpents, Cast-L-AOE2's slam to the
+floor on 2.12 s, the crouch held); Thunderstep (the Fall pose lifted 2.3 m, a hard drop into Jump's touchdown on 1.45 s and
+its landing crouch, Idle-Alert1); Eventide Gate (Cast-L-Summon2's hand on the floor opening the gate, Summon1's raised
+claw, Armed-Cast-L-Attack-Hand2's crouching palm thrust on 2.12 s). A hand pressed to the floor rests on it.
 Guns use grip 'gun' (the barrel along the fist's metacarpals) and the gameplay support grips (`RangedPose.Support`); the
 pack's rifle fire barely moves the gun, so the shots add an authored recoil (the old layer's follow-through curve). The torso, legs
 and root are the capture's; the arms reach the captured grip through the rig's IK with the gameplay melee clearance
@@ -172,5 +179,6 @@ spots they land on (leg IK, the body sinking up to 6 cm where a lunge outreaches
 crouch), swinging feet are kept out of the floor and the blade tip above it. Camera, effects and timing stay the director's
 (shot tweaks for the new motion; the greatsword's scrape sparks now fly where the tip scrapes after the bite). The daggers
 and every signature without a track keep their baked clip. `Tests/PackIntroChecks.cs` covers provenance, determinism,
-feet, floor, grips, clearance, the hit, allocation and the unchanged daggers. Presentation only: the match sees only the
+feet, floor, grips, blade and staff clearance, the hit, the detail shots' framing (muzzle or casting hand in frame and in
+view, the pilot under 40% of the frame), allocation and the unchanged daggers. Presentation only: the match sees only the
 style and its 4.8 s phase; no hit timing, hitbox, damage, cooldown, movement or network change.

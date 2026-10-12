@@ -95,7 +95,8 @@ The Unity weapon-signature entrances' pilot motion uses the same pack: `node uni
 <pack>/Animations` rewrites `Assets/ChipArena/Core/NativePackIntros.Generated.cs` and `tools/pack-intros-provenance.json`
 deterministically (one 4.8 s, 60 Hz track per entrance, sequenced from pack clips with timing keys, cross-fades, root
 continuity and foot contacts; the choices are its ENTRANCES table; the daggers keep their baked clip), then run the Tests
-project (`Tests/PackIntroChecks.cs` checks the hashes, planted feet, floor, grips, blade clearance and the daggers' fingerprint).
+project (`Tests/PackIntroChecks.cs` checks the hashes, planted feet, floor, grips, blade and staff clearance, the hits, the
+detail shots' framing and the daggers' fingerprint).
 
 ## CI and agent access
 
