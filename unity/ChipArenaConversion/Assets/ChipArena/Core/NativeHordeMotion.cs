@@ -17,25 +17,32 @@ namespace ChipArena.UnityConversion
         public float Health;
         /// <summary>The DEV preview's gallery drives a treadmill: the feet plant as if the body moved at Velocity.</summary>
         public bool Treadmill;
+        /// <summary>A door or cell entrance (the authority walks it in from behind the opening): `EntryAge` seconds since it began,
+        /// `EntryWalk` when the walk starts (the wait before it wakes the zombie, the first steps lurch through the threshold).</summary>
+        public bool Entering;public float EntryAge,EntryWalk;
     }
 
     /// <summary>
     /// One horde add's animation (presentation only: never read by the authority, no change to hit timing, hitboxes, damage,
-    /// cooldowns, movement or the network frame). Procedural, so every kind moves as itself and every add moves on its own:
+    /// cooldowns, movement or the network frame), on the owner's zombie mocap (owner 2026-10-12: "Their animations also look a
+    /// lot more simple then what we used to have? We do have the zombie mo-cap ones we could utilize ... (Especially there walk
+    /// animations, its not great)"; Core/NativeZombieMotion, Core/NativePackZombie.Generated.cs):
     /// <list type="bullet">
-    /// <item>Feet that plant: each foot stands where it landed in the world until its turn to step, then swings to where the
-    /// body will be when it lands, on a cadence that follows the add's real ground speed (stride per kind and speed), so
-    /// nothing skates, on turns or under a shove either. Standing still, a foot left behind steps home.</item>
-    /// <item>Per kind: the shambler's dragged foot and lurch, the runner's pitched sprint, the brute's wide stomp and rolling
-    /// shoulders, the spitter's hunched skitter, the crawler's four-limbed trot (its hands plant like feet), the bloater's
-    /// waddle. Arms swing against the feet that are actually forward.</item>
-    /// <item>Crowd variety: each add's seed sets its phase, cadence (plus or minus 6 %), hunch, head tilt, limp side, arm hang
-    /// and idle rhythm (the Siren's twitches come at hashed times).</item>
-    /// <item>Idle, alert (crouched, head locked on its pilot), attack (wind-up into a held telegraph, the strike arriving at
-    /// LastAttack + Strike exactly, follow-through and recovery to Recover), hit and stagger (Core/NativeHordeReact layers them),
-    /// and a death per kind.</item>
+    /// <item>The body is the capture: each add walks, chases or sprints on one of its kind's takes (picked by its seed), blended
+    /// by its real ground speed and phased to its own stride; standing it sways on one of the pack's idles. The capture's
+    /// pelvis, spine, chest, head and both reaching arms are drawn as taken, the swinging foot's lift and turn too.</item>
+    /// <item>Feet that plant: each foot stands where it landed in the world until the capture lifts it, then swings to where the
+    /// body will be when it lands. The cycle's cadence and each foot's strike and lift follow the take (its natural speed scaled
+    /// toward the add's by the square root), so the stride stretches with the authority's speed and nothing skates, on turns or
+    /// under a shove either. The legs reach their feet with the capture's own knee direction; a long stride sinks the hips.</item>
+    /// <item>Attacks: the swipe, lunge and smash play the pack's blows retimed so the hand lands exactly at LastAttack + Strike
+    /// (the take's wind-up held into a telegraph, then its follow-through to Recover); the spit, belly and pounce stay
+    /// procedural. Hits (Core/NativeHordeReact) layer recoil, shove and stagger steps; the authority's stagger plays a captured
+    /// knockback reel. Deaths fall on the pack's takes the way the killing blow pushes.</item>
+    /// <item>The crawler's four-limbed trot (and an add that lost a leg, which crawls) stays procedural: the pack's crawls are a
+    /// tenth of the authority's crawl speed.</item>
     /// </list>
-    /// Pure arithmetic on fixed fields: no allocation per frame.
+    /// Fixed fields and rows: no allocation per frame (every clip is decoded when the first gait is made).
     /// </summary>
     public sealed class NativeHordeGait
     {
@@ -47,7 +54,7 @@ namespace ChipArena.UnityConversion
             // runner: long low strides, pitched forward
             new Def{WalkStride=1.0f,RunStride=1.72f,WalkSpeed=2.6f,RunSpeed=4.6f,Duty=.58f,RunDuty=.34f,Lift=.07f,RunLift=.15f,Bob=.02f,RunBob=.05f,Crouch=.08f,RunCrouch=.13f,Hunch=.45f,RunLean=.55f,Width=.1f,ArmSwing=.35f,RunArm=.6f,Hang=.1f,Sway=.02f,Roll=.06f,Twist=.2f},
             // brute: wide heavy stomps
-            new Def{WalkStride=.9f,RunStride=1.25f,WalkSpeed=1.3f,RunSpeed=2.4f,Duty=.66f,RunDuty=.48f,Lift=.07f,RunLift=.1f,Bob=.035f,RunBob=.055f,Crouch=.1f,RunCrouch=.13f,Hunch=.62f,RunLean=.72f,Width=.18f,ArmSwing=.26f,RunArm=.42f,Hang=.3f,Sway=.05f,Roll=.13f,Twist=.1f},
+            new Def{WalkStride=.9f,RunStride=1.25f,WalkSpeed=1.3f,RunSpeed=2.4f,Duty=.66f,RunDuty=.48f,Lift=.07f,RunLift=.1f,Bob=.035f,RunBob=.055f,Crouch=.1f,RunCrouch=.13f,Hunch=.62f,RunLean=.72f,Width=.15f,ArmSwing=.26f,RunArm=.42f,Hang=.3f,Sway=.05f,Roll=.13f,Twist=.1f},
             // spitter: hunched skitter
             new Def{WalkStride=.8f,RunStride=1.3f,WalkSpeed=1.6f,RunSpeed=2.9f,Duty=.6f,RunDuty=.42f,Lift=.06f,RunLift=.1f,Bob=.015f,RunBob=.03f,Crouch=.08f,RunCrouch=.11f,Hunch=.62f,RunLean=.72f,Width=.11f,ArmSwing=.18f,RunArm=.3f,Hang=-.2f,Sway=.025f,Roll=.07f,Twist=.12f},
             // crawler: a four-limbed trot
@@ -56,6 +63,7 @@ namespace ChipArena.UnityConversion
             new Def{WalkStride=.66f,RunStride=.95f,WalkSpeed=1.1f,RunSpeed=1.8f,Duty=.7f,RunDuty=.56f,Lift=.045f,RunLift=.07f,Bob=.03f,RunBob=.045f,Crouch=.13f,RunCrouch=.15f,Hunch=-.08f,RunLean=.05f,Width=.17f,ArmSwing=.2f,RunArm=.3f,Hang=-.3f,Sway=.06f,Roll=.17f,Twist=.06f}};
 
         public const float AnkleHeight=.07f,MaxDt=.1f,ResetGap=.5f;
+
         // ---- state ----
         private float time=float.NaN;private uint seed;private int id=int.MinValue;
         /// <summary>The cycle phase (cycles; one cycle is a step of each foot), the smoothed ground speed and the presented yaw (Unity, deg).</summary>
@@ -70,7 +78,16 @@ namespace ChipArena.UnityConversion
         /// <summary>Footfalls this frame (a foot that planted), for the dust and the heavy kinds' step cue.</summary>
         public int Landed;
         // per-add variety, set from the seed
-        private float cadence=1,hunchJitter,tilt,hang,idleRate=1,limpSide=1,drag;private int kind;
+        private float cadence=1,hunchJitter,tilt,hang,idleRate=1,limpSide=1,drag;private int kind;private bool quad;
+        // the add's takes (Core/NativeZombieMotion: -1 for the procedural crawl), this frame's blended stride shape, the rows
+        private int walkClip=-1,runClip=-1,idleClip=-1;private float idlePhase,duty0=.6f,duty1=.6f,off1=.5f,lastDt,sinkNow;
+        private readonly float[] rowW=new float[CapturedClip.Channels],rowR=new float[CapturedClip.Channels],rowI=new float[CapturedClip.Channels],rowA=new float[CapturedClip.Channels],row=new float[CapturedClip.Channels];
+        private readonly float[] retimeAt=new float[4],retimeMarks=new float[4];
+        private readonly Vector3[] mocapAnkle=new Vector3[2],mocapKnee=new Vector3[2],mocapHip=new Vector3[2];private readonly Quaternion[] mocapFoot=new Quaternion[2];
+        /// <summary>The take this add walks, runs and stands on (NativeZombieClips indices; -1 off the capture).</summary>
+        public int WalkClip=>walkClip;public int RunClip=>runClip;public int IdleClip=>idleClip;
+        /// <summary>The capture clip and its time the last frame's blow played (-1: none or procedural), for the checks and effects.</summary>
+        public int AttackClip{get;private set;}=-1;public float AttackClipTime{get;private set;}
         /// <summary>Forgets the add (a new arena, a rewind, a jump): the next frame plants its feet where it stands.</summary>
         public void Reset(){time=float.NaN;}
 
@@ -83,8 +100,15 @@ namespace ChipArena.UnityConversion
 
         /// <summary>The walk-run blend at ground speed `v` for a kind (0 walk, 1 run).</summary>
         public static float RunBlend(int kind,float v){var d=defs[Math.Max(0,Math.Min(defs.Length-1,kind))];return Clamp01((v-d.WalkSpeed*1.05f)/Math.Max(.1f,d.RunSpeed*.8f-d.WalkSpeed*1.05f));}
-        /// <summary>The stride (m per cycle) at speed `v`: the gait's cadence is v / stride.</summary>
-        public static float Stride(int kind,float v){var d=defs[Math.Max(0,Math.Min(defs.Length-1,kind))];float r=RunBlend(kind,v);return Lerp(d.WalkStride,d.RunStride,r)*(.75f+.25f*Clamp01(v/Math.Max(.1f,d.WalkSpeed)));}
+        /// <summary>The stride (m per cycle) at speed `v` for a kind's first takes (the step cue's spacing): the capture's cadence
+        /// over the speed; the crawler's procedural stride.</summary>
+        public static float Stride(int kind,float v)
+        {
+            kind=Math.Max(0,Math.Min(defs.Length-1,kind));
+            if(NativeZombieMotion.Captured(kind)){int w=NativeZombieMotion.Walks(kind)[0],r=NativeZombieMotion.Runs(kind)[0];float hz=Lerp(NativeZombieMotion.Cadence(w,v,kind),NativeZombieMotion.Cadence(r,v,kind),RunBlend(kind,v));return Math.Max(.2f,v)/Math.Max(.2f,hz);}
+            return ProceduralStride(kind,v);
+        }
+        private static float ProceduralStride(int kind,float v){var d=defs[kind];float r=RunBlend(kind,v);return Lerp(d.WalkStride,d.RunStride,r)*(.75f+.25f*Clamp01(v/Math.Max(.1f,d.WalkSpeed)));}
         public static float Duty(int kind,float v){var d=defs[Math.Max(0,Math.Min(defs.Length-1,kind))];return Lerp(d.Duty,d.RunDuty,RunBlend(kind,v));}
 
         /// <summary>
@@ -93,12 +117,11 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public void Pose(in HordeMotionInput f,CapturedRig.Pose p,NativeHordeReact react=null)
         {
-            Step(f,react);p.Reset();kind=f.Kind;var d=defs[kind];
-            float v=Speed,run=RunBlend(kind,v),moving=Sm((v-.12f)/.5f),hurt=1-Clamp01(f.Health*1.6f);
-            // ---- the attack's channels ----
-            float age=f.AttackAge;bool attacking=!float.IsNaN(age)&&age>=0&&age<f.Recover+.25f;
+            NativeZombieMotion.Warm();Step(f,react);p.Reset();AttackClip=-1;
+            float age=f.AttackAge;
             AttackCurve(f,out float cock,out float swing,out float follow,out float settle,out float attackW);
             // ---- alert ----
+            float v=Speed,moving=Sm((v-.12f)/.5f);
             float alert=0,lookYaw=0,lookPitch=0;
             if(f.HasTarget)
             {
@@ -106,64 +129,123 @@ namespace ChipArena.UnityConversion
                 if(dist>.05f){to/=dist;float ang=(float)Math.Atan2(Vector2.Dot(to,Right),Vector2.Dot(to,Forward));lookYaw=Math.Max(-1.1f,Math.Min(1.1f,ang));lookPitch=(float)Math.Atan2(f.Target.Y+.5f-(f.Root.Y+.6f),dist);}
                 alert=Clamp01((14-dist)/6)*(1-moving*.6f);
             }
-            if(kind==NativeHordeKinds.Crawler){CrawlerPose(f,p,d,v,run,moving,alert,lookYaw,cock,swing,follow,settle,attackW,react);return;}
-            // ---- hips ----
-            float t=f.Time,ph=Phase*(float)Math.PI*2;
-            float crouch=Lerp(d.Crouch,d.RunCrouch,run)*moving+alert*.05f+hurt*.04f+cock*CockCrouch(f.Attack)-swing*(f.Attack==NativeHordeKinds.Attack.Smash?-.02f:.0f);
-            float bob=Lerp(d.Bob,d.RunBob,run)*moving*(float)Math.Cos(ph*2)+ (1-moving)*.006f*(float)Math.Sin(t*2.2f*idleRate+seed%7);
-            float sway=d.Sway*moving*(float)Math.Sin(ph)*(kind==NativeHordeKinds.Shambler?1+.6f*drag:1);
-            p.Position[CapturedRig.Body]=new Vector3(sway,-crouch+bob,0);
-            float lean=Lerp(d.Hunch,d.RunLean,run*moving)+hunchJitter+alert*.12f+hurt*.12f;
-            float pelvisYaw=d.Twist*moving*(float)Math.Sin(ph),pelvisRoll=d.Roll*moving*(float)Math.Cos(ph)*(kind==NativeHordeKinds.Bloater?1.3f:1);
-            // ---- the attack's body (overlaid on the gait; the strike lands at Strike) ----
+            if(quad){CrawlerPose(f,p,defs[NativeHordeKinds.Crawler],v,RunBlend(NativeHordeKinds.Crawler,v),moving,alert,lookYaw,cock,swing,follow,settle,attackW,react);return;}
+            float run=RunBlend(kind,v),hurt=1-Clamp01(f.Health*1.6f),t=f.Time;var d=defs[kind];
+            // ---- the capture: the walk and run takes at the stride's phase, the idle (the door's wake while it waits) ----
+            NativeZombieClips.SamplePhase(walkClip,Phase,rowW);NativeZombieClips.SamplePhase(runClip,Phase,rowR);NativeZombieClips.Blend(rowW,rowR,run,rowA);
+            float wake=f.Entering&&f.EntryAge<f.EntryWalk?f.EntryAge:float.NaN;
+            if(!float.IsNaN(wake))NativeZombieClips.Sample(NativeZombieMotion.Wake,Math.Min(wake,NativeZombieClips.Duration(NativeZombieMotion.Wake)),rowI);
+            else NativeZombieClips.Sample(idleClip,t*idleRate+idlePhase,rowI);
+            NativeZombieClips.Blend(rowI,rowA,moving,row);
+            // The capture's pelvis swings a long way about the travel (a person's whole turn per stride): kept to two thirds, so
+            // the body reads along its path and the planted feet stay under it.
+            row[0]*=.62f;
+            float ground=Lerp(NativeZombieMotion.Ground(idleClip),Lerp(NativeZombieMotion.Ground(walkClip),NativeZombieMotion.Ground(runClip),run),moving);
+            // ---- the blow: the pack's take retimed onto the authority's strike, over the trunk and arms ----
+            bool attacking=!float.IsNaN(age)&&age>=0&&age<f.Recover+.25f;int ac=attacking?NativeZombieMotion.Attack(f.Attack,f.Side,seed):-1;
+            if(ac>=0)
+            {
+                var c=NativeZombieClips.Clip(ac);float lead=Math.Min(SwingLead(f.Attack),f.Strike*.45f);
+                retimeAt[0]=0;retimeAt[1]=f.Strike-lead;retimeAt[2]=f.Strike;retimeAt[3]=Math.Max(f.Recover,f.Strike+.05f);
+                retimeMarks[0]=c.Marks[0];retimeMarks[1]=c.Marks[1];retimeMarks[2]=c.Marks[2];retimeMarks[3]=c.Marks[3];
+                float ct=CapturedClip.Retime(retimeAt,retimeMarks,age);NativeZombieClips.Sample(ac,ct,rowA);AttackClip=ac;AttackClipTime=ct;
+                Upper(row,rowA,attackW*Sm(age/.06f),.7f,.6f);
+            }
+            // ---- the authority's stagger: a captured knockback reel over the trunk and arms ----
+            float reel=react!=null?react.Reel(t):float.NaN;
+            if(!float.IsNaN(reel)){int kc=NativeZombieMotion.Knock(seed^(uint)(id*31));NativeZombieClips.Sample(kc,Math.Min(1.15f,reel*.9f),rowA);Upper(row,rowA,Sm(reel/.12f)*(1-Sm((reel-.75f)/.45f))*.85f,.5f,.5f);}
+            ArmReach(row,.44f);NativeZombieClips.Pose(row,p);
+            // The capture's legs (before the feet are planted): their swing lift, turn and knee direction.
+            p.World();
+            for(int i=0;i<2;i++){int hip=i==0?CapturedRig.LHip:CapturedRig.RHip;mocapHip[i]=p.WorldPosition[hip];mocapKnee[i]=p.WorldPosition[hip+1];mocapAnkle[i]=p.WorldPosition[hip+2];mocapFoot[i]=p.WorldRotation[hip+2];}
+            // ---- the body over the capture: alert and hurt sag it; the procedural attacks' trunk ----
+            var b=p.Position[CapturedRig.Body];b.Y-=alert*.04f+hurt*.05f;
             AttackBody(f,cock,swing,follow,settle,out float aPitch,out float aYaw,out float aRoll,out float aCrouch,out float aHead);
-            p.Position[CapturedRig.Body].Y-=aCrouch;
-            float spinePitch=lean*.45f+aPitch*.5f,chestPitch=lean*.55f+aPitch*.5f;
-            p.Rotation[CapturedRig.Pelvis]=CapturedRig.Euler(lean*.15f,pelvisYaw+aYaw*.3f,pelvisRoll*.5f);
-            p.Rotation[CapturedRig.Spine]=CapturedRig.Euler(spinePitch,-pelvisYaw*.5f+aYaw*.35f,-pelvisRoll*.4f+aRoll*.5f);
-            p.Rotation[CapturedRig.Chest]=CapturedRig.Euler(chestPitch,-pelvisYaw*.6f+aYaw*.35f,-pelvisRoll*.3f+aRoll*.5f+ (kind==NativeHordeKinds.Brute?d.Roll*moving*.6f*(float)Math.Cos(ph):0));
-            // ---- head: counters the hunch to look ahead, tilts (the Siren's crooked head), twitches, tracks its pilot ----
-            float twitch=Twitch(t);float headPitch=-(lean*.82f)+lookPitch*.6f*alert+aHead,headYaw=lookYaw*(.55f+.35f*alert)*(1-attackW*.5f)+twitch*.5f,headRoll=tilt+twitch*.8f+(kind==NativeHordeKinds.Shambler?.08f*(float)Math.Sin(ph):0);
-            p.Rotation[CapturedRig.Neck]=CapturedRig.Euler(headPitch*.45f,headYaw*.45f,headRoll*.4f);
-            p.Rotation[CapturedRig.Head]=CapturedRig.Euler(headPitch*.55f,headYaw*.55f,headRoll*.6f);
+            if(ac>=0){aPitch=aYaw=aRoll=aCrouch=aHead=0;}
+            b.Y-=aCrouch;p.Position[CapturedRig.Body]=b;
+            if(aPitch!=0||aYaw!=0||aRoll!=0){Bend(p,CapturedRig.Spine,aPitch*.5f,aYaw*.35f,aRoll*.5f);Bend(p,CapturedRig.Chest,aPitch*.5f,aYaw*.35f,aRoll*.5f);}
+            // ---- head: tracks its pilot, the Siren's crooked tilt and twitches ----
+            float twitch=Twitch(t);float headPitch=lookPitch*.6f*alert+aHead,headYaw=lookYaw*(.55f+.35f*alert)*(1-attackW*.5f)+twitch*.5f,headRoll=tilt+twitch*.8f;
+            Bend(p,CapturedRig.Neck,headPitch*.45f,headYaw*.45f,headRoll*.4f);Bend(p,CapturedRig.Head,headPitch*.55f,headYaw*.55f,headRoll*.6f);
             // ---- reactions over the trunk (hips shove, recoil, head snap) ----
             react?.Trunk(p,f.Time,Forward,Right);
             Balance(p,kind);
-            // ---- legs: feet to their planted (or swinging) targets ----
+            // ---- legs: feet to their planted (or swinging) targets; a stride the legs cannot reach sinks the hips ----
             p.World();
             for(int i=0;i<2;i++)
             {
-                bool left=i==0;Vector3 w=FootWorld[i];Vector3 local=ToLocal(w,f.Root);local.Y=f.Ground-f.Root.Y+AnkleHeight+feet[i].Y;
-                // A foot can only reach so far: past it the hips sink (never the foot through the floor).
-                CapturedRig.Leg(p,left,local,FootTurn(i));
-                // The dragged foot's toe scrapes (shambler) and the run's toe-off.
+                if(feet[i].Swing&&moving>0){float lift=Math.Max(0,mocapAnkle[i].Y-ground);feet[i].Y=Lerp(feet[i].Y,Math.Min(.4f,lift+.01f),moving);}
+            }
+            float sink=0;
+            for(int i=0;i<2;i++)
+            {
+                // Only a planted foot holds the hips down (a swinging one reaches as far as it can).
+                if(feet[i].Swing)continue;
+                Vector3 local=ToLocal(FootWorld[i],f.Root);local.Y=f.Ground-f.Root.Y+AnkleHeight+feet[i].Y;var hipAt=p.WorldPosition[i==0?CapturedRig.LHip:CapturedRig.RHip];
+                float dx=local.X-hipAt.X,dz=local.Z-hipAt.Z,h2=dx*dx+dz*dz,dy=hipAt.Y-local.Y,R=.485f;float need=h2>=R*R?dy-.05f:dy-(float)Math.Sqrt(R*R-h2);if(need>sink)sink=need;
+            }
+            sink=Math.Min(.17f,Math.Max(0,sink));sinkNow=sink>sinkNow?sink:sinkNow+(sink-sinkNow)*(1-(float)Math.Exp(-lastDt/.12f));
+            // (The hips never drop below a deep crouch: the thighs would fold the knees into the floor.)
+            {var bb=p.Position[CapturedRig.Body];bb.Y=Math.Max(bb.Y-sinkNow,Math.Min(bb.Y,-.18f));p.Position[CapturedRig.Body]=bb;p.World();}
+            for(int i=0;i<2;i++)
+            {
+                bool left=i==0;int hip=left?CapturedRig.LHip:CapturedRig.RHip,foot=hip+2;
+                Vector3 local=ToLocal(FootWorld[i],f.Root);local.Y=f.Ground-f.Root.Y+AnkleHeight+feet[i].Y;
+                // The knee goes where the capture's knee goes (zombie knock knees and splay), never backward.
+                var kneeDir=mocapKnee[i]-(mocapHip[i]+mocapAnkle[i])*.5f;kneeDir.Z=Math.Max(kneeDir.Z,.02f);var pole=CapturedRig.Unit(kneeDir+new Vector3(0,0,.04f),Vector3.UnitZ);
+                Leg(p,left,local,pole);
+                // A swinging leg folded so far its knee would scrape the floor lifts its foot instead.
+                if(feet[i].Swing){p.World();float knee=p.WorldPosition[hip+1].Y-(f.Ground-f.Root.Y);if(knee<.19f){local.Y+=.19f-knee;Leg(p,left,local,pole);}}
+                // A swinging foot takes the capture's turn (the dragged toe, the sprint's toe-off); a planted one lies flat.
+                if(feet[i].Swing)
+                {
+                    float s=Clamp01((f.Time-feet[i].T0)/Math.Max(1e-3f,feet[i].T1-feet[i].T0)),k=Sm(s/.25f)*(1-Sm((s-.75f)/.25f))*moving*Clamp01(feet[i].Y/.14f);
+                    if(k>0){var parent=p.WorldRotation[CapturedRig.Pelvis]*p.Rotation[hip]*p.Rotation[hip+1];p.Rotation[foot]=Quaternion.Slerp(p.Rotation[foot],Quaternion.Inverse(parent)*mocapFoot[i],k*.8f);}
+                }
                 float toe=feet[i].Swing?(-.35f+(kind==NativeHordeKinds.Shambler&&(i==0)==(limpSide<0)?.5f*drag:0)):0;
                 p.Rotation[i==0?CapturedRig.LToe:CapturedRig.RToe]=CapturedRig.Euler(-toe*.4f);
             }
-            // ---- arms: swing against the feet that are forward, then the attack ----
-            p.World();float zl=ToLocal(FootWorld[0],f.Root).Z,zr=ToLocal(FootWorld[1],f.Root).Z,reach=Math.Max(.1f,Stride(kind,Math.Max(v,.5f))*.5f);
-            float swingAmp=Lerp(d.ArmSwing,d.RunArm,run)*moving;
-            for(int i=0;i<2;i++)
-            {
-                bool left=i==0;int arm=left?CapturedRig.LArm:CapturedRig.RArm,elbow=arm+1,clav=arm-1,hand=arm+2;float sgn=left?1:-1;
-                float fwd=Math.Max(-1.2f,Math.Min(1.2f,(left?zl:zr)/reach));
-                float hangX=-(d.Hang+(kind==NativeHordeKinds.Shambler&&(left?limpSide>0:limpSide<0)?.3f+hang*.6f:hang*.3f))*(1-run*.4f);
-                float x=hangX+swingAmp*fwd,z=sgn*(.12f+.04f*moving),elbowX=-(.3f+.35f*run+(kind==NativeHordeKinds.Runner?.4f*run:0)+(kind==NativeHordeKinds.Spitter?.9f:0));
-                // The runner sweeps its blades back as it sprints; the shambler's reaching arm rises when it runs at you.
-                if(kind==NativeHordeKinds.Runner)x+=.7f*run*moving;
-                if(kind==NativeHordeKinds.Shambler)x-=.42f*run*moving*(left?.8f:1);
-                if(kind==NativeHordeKinds.Brute){z=sgn*.22f;elbowX=-.45f-.2f*run;}
-                if(kind==NativeHordeKinds.Bloater){z=sgn*(.2f+.04f*(float)Math.Sin(ph));elbowX=-.75f;}
-                // Alert: claws come up ready.
-                x-=alert*(.35f+(kind==NativeHordeKinds.Brute?.2f:0));elbowX-=alert*.35f;
-                p.Rotation[clav]=CapturedRig.Euler(0,sgn*(kind==NativeHordeKinds.Brute?-.25f:-.05f)-sgn*alert*.05f,sgn*(kind==NativeHordeKinds.Brute?-.08f:0));
-                p.Rotation[arm]=CapturedRig.Euler(x,0,z);p.Rotation[elbow]=CapturedRig.Euler(elbowX,0,0);
-                p.Rotation[hand]=CapturedRig.Euler(-.2f-alert*.3f,0,sgn*.1f);
-            }
-            AttackArms(f,p,cock,swing,follow,settle,attackW);
+            // ---- arms: the capture's reach; the procedural attacks layer their own ----
+            if(ac<0)AttackArms(f,p,cock,swing,follow,settle,attackW);
             react?.Arms(p,f.Time);
+            KeepHands(p,kind);
             p.World();
         }
+        /// <summary>A hand the capture flings wider than a pilot's reach (round the hit volume) is drawn back to it, its arm
+        /// re-reached with the same wrist and elbow direction, so the claws stay where shots at them land.</summary>
+        private static void KeepHands(CapturedRig.Pose p,int kind)
+        {
+            p.World();float most=NativeHordeKinds.Radius[Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind))]+.26f;var chest=p.WorldRotation[CapturedRig.Chest];var inv=Quaternion.Inverse(chest);var cpos=p.WorldPosition[CapturedRig.Chest];
+            for(int i=0;i<2;i++)
+            {
+                bool left=i==0;int h=left?CapturedRig.LHand:CapturedRig.RHand;var w=p.WorldPosition[h];float hor=(float)Math.Sqrt(w.X*w.X+w.Z*w.Z);if(hor<=most)continue;
+                var t=new Vector3(w.X*most/hor,w.Y,w.Z*most/hor);var elbow=p.WorldPosition[h-1];var shoulder=p.WorldPosition[h-2];
+                CapturedRig.Arm(p,left,Vector3.Transform(t-cpos,inv),inv*p.WorldRotation[h],Vector3.Transform(elbow-(shoulder+w)*.5f,inv));p.World();
+            }
+        }
+        // The capture's reach (a person's long arm stretched straight) kept a little bent, so the claws stay within reach of the
+        // hit volume as a pilot's do: each hand's chest-space target no farther than `most` from its shoulder (source frame: the
+        // right hand's shoulder at -x).
+        private static void ArmReach(float[] row,float most)
+        {
+            for(int h=0;h<2;h++)
+            {
+                int c=h==0?39:51;float sx=h==0?-.345f:.345f;float dx=row[c]-sx,dy=row[c+1]-.18f,dz=row[c+2],l=(float)Math.Sqrt(dx*dx+dy*dy+dz*dz);
+                if(l>most){float k=most/l;row[c]=sx+dx*k;row[c+1]=.18f+dy*k;row[c+2]=dz*k;}
+                // ... and never flung straight out to the side (a hand at most .27 outside its shoulder).
+                if(h==0&&row[c]<sx-.27f)row[c]=sx-.27f;else if(h==1&&row[c]>sx+.27f)row[c]=sx+.27f;
+            }
+        }
+        // Blends a take's trunk and arms into `into` by `k`: pelvis to head and clavicles, both arms' reach, the heading by `yaw`
+        // and the hips' height by `hips` (the legs stay the gait's).
+        private static void Upper(float[] into,float[] take,float k,float yaw,float hips)
+        {
+            if(k<=0)return;if(k>1)k=1;
+            into[0]+=(take[0]-into[0])*k*yaw;into[2]+=(take[2]-into[2])*k*hips;
+            for(int c=4;c<25;c++)into[c]+=(take[c]-into[c])*k;
+            for(int c=39;c<CapturedClip.Channels;c++)into[c]+=(take[c]-into[c])*k;
+        }
+        private static void Bend(CapturedRig.Pose p,int bone,float x,float y,float z){if(x==0&&y==0&&z==0)return;p.Rotation[bone]=CapturedRig.Euler(x,y,z)*p.Rotation[bone];}
 
         /// <summary>The farthest the face and the chest may reach ahead of the root (m): the hit capsule's radius, less a margin.</summary>
         public static float Reach(int kind)=>NativeHordeKinds.Radius[Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind))]-.06f;
@@ -175,27 +257,37 @@ namespace ChipArena.UnityConversion
         private static void Balance(CapturedRig.Pose p,int kind)
         {
             p.World();var head=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(new Vector3(0,.24f,.18f),p.WorldRotation[CapturedRig.Head]);
+            var crown=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(new Vector3(0,.2f,0),p.WorldRotation[CapturedRig.Head]);
             var chest=p.WorldPosition[CapturedRig.Chest]+Vector3.Transform(new Vector3(0,.4f,.19f),p.WorldRotation[CapturedRig.Chest]);
-            float over=Math.Max(head.Z,chest.Z)-Reach(kind);if(over<=0)return;
-            var b=p.Position[CapturedRig.Body];b.Z-=Math.Min(over,kind==NativeHordeKinds.Runner?.26f:.32f);p.Position[CapturedRig.Body]=b;
+            // ... the same for a capture that leans back or to a side: the farthest of the face, crown and chest, drawn back
+            // radially toward the capsule's axis (a hunched add sits back, a swaying one steps its hips under it).
+            Vector2 worst=Vector2.Zero;float most=0;
+            Pick(head,ref worst,ref most);Pick(crown,ref worst,ref most);Pick(chest,ref worst,ref most);
+            float over=most-Reach(kind);if(over<=0)return;
+            var dir=worst/most;float shift=Math.Min(over,kind==NativeHordeKinds.Runner?.26f:.32f);
+            var b=p.Position[CapturedRig.Body];b.X-=dir.X*shift;b.Z-=dir.Y*shift;p.Position[CapturedRig.Body]=b;
         }
+        private static void Pick(Vector3 v,ref Vector2 worst,ref float most){float d=(float)Math.Sqrt(v.X*v.X+v.Z*v.Z);if(d>most){most=d;worst=new Vector2(v.X,v.Z);}}
 
         // ================================================================================================================
         // Stepping: the clock, the yaw, the speed and the feet
         // ================================================================================================================
         private void Step(in HordeMotionInput f,NativeHordeReact react)
         {
-            kind=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,f.Kind));var d=defs[kind];
+            kind=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,f.Kind));quad=kind==NativeHordeKinds.Crawler||f.Crawl||!NativeZombieMotion.Captured(kind);
+            int gk=quad?NativeHordeKinds.Crawler:kind;var d=defs[gk];
             float dt=float.IsNaN(time)?0:f.Time-time;bool fresh=float.IsNaN(time)||id!=f.Id||dt<-.001f||dt>ResetGap;
             if(fresh)
             {
-                id=f.Id;seed=f.Seed;Yaw=f.Yaw;root=new Vector2(f.Root.X,f.Root.Z);velocity=Vector2.Zero;Speed=0;dt=0;
+                id=f.Id;seed=f.Seed;Yaw=f.Yaw;root=new Vector2(f.Root.X,f.Root.Z);velocity=Vector2.Zero;Speed=0;dt=0;sinkNow=0;
                 float H(int k)=>NativeHordeKinds.Hash(seed,40+k);
                 Phase=H(0);cadence=.94f+.12f*H(1);hunchJitter=(H(2)-.5f)*.12f;tilt=(H(3)-.5f)*.36f;hang=H(4)*.3f;idleRate=.8f+.4f*H(5);limpSide=H(6)<.5f?-1:1;drag=kind==NativeHordeKinds.Shambler?.4f+.6f*H(7):0;
+                if(NativeZombieMotion.Captured(kind)){walkClip=NativeZombieMotion.Walk(kind,seed);runClip=NativeZombieMotion.Run(kind,seed);idleClip=NativeZombieMotion.Idle(kind,seed);idlePhase=H(8)*NativeZombieClips.Duration(idleClip);}
+                else walkClip=runClip=idleClip=-1;
                 Forward=Dir(Yaw);Right=new Vector2(Forward.Y,-Forward.X);
                 for(int i=0;i<4;i++){feet[i]=default;feet[i].W=Home(i,new Vector2(f.Root.X,f.Root.Z),d);FootWorld[i]=new Vector3(feet[i].W.X,f.Ground,feet[i].W.Y);FootAir[i]=false;}
             }
-            time=f.Time;dt=Math.Max(0,Math.Min(MaxDt,dt));
+            time=f.Time;dt=Math.Max(0,Math.Min(MaxDt,dt));lastDt=dt;
             // The facing turns quickly toward the authority's yaw (which snaps), faster while winding up an attack, so the strike faces
             // where the authority aims it.
             bool winding=!float.IsNaN(f.AttackAge)&&f.AttackAge>=0&&f.AttackAge<f.Strike;
@@ -209,18 +301,27 @@ namespace ChipArena.UnityConversion
             if(react!=null)react.Step(f.Time);
             // The hit-stop holds the gait for a moment on a melee blow (the strike's own clock never waits).
             float held=react!=null?react.Hold(f.Time):0;float gdt=dt*(1-held);
-            // ---- the cycle ----
-            float stride=Stride(kind,Speed),duty=Duty(kind,Speed);bool moving=Speed>.2f;
-            float rateHz=moving?Speed/Math.Max(.2f,stride)*cadence:0;Phase+=rateHz*gdt;
-            Landed=0;Vector2 ahead=Forward*(duty*stride*.5f);
+            // ---- the cycle: the capture's cadence at this speed, its feet's strikes and lifts ----
+            bool moving=Speed>.2f;float rateHz,stride;
+            if(!quad)
+            {
+                float run=RunBlend(kind,Speed);rateHz=Lerp(NativeZombieMotion.Cadence(walkClip,Speed,kind),NativeZombieMotion.Cadence(runClip,Speed,kind),run)*cadence;
+                // A run's stance is short (a walking take run fast keeps its feet down no more than half the cycle).
+                duty0=Lerp(NativeZombieMotion.Duty(walkClip,0),Math.Min(.55f,NativeZombieMotion.Duty(runClip,0)),run);duty1=Lerp(NativeZombieMotion.Duty(walkClip,1),Math.Min(.55f,NativeZombieMotion.Duty(runClip,1)),run);
+                off1=Lerp(NativeZombieMotion.Offset(walkClip,1),NativeZombieMotion.Offset(runClip,1),run);stride=Math.Max(.2f,Speed)/Math.Max(.2f,rateHz);
+                if(!moving)rateHz=0;
+            }
+            else{stride=ProceduralStride(gk,Speed);duty0=duty1=Duty(gk,Speed);off1=.5f;rateHz=moving?Speed/Math.Max(.2f,stride)*cadence:0;}
+            Phase+=rateHz*gdt;
+            Landed=0;
             // A shove moves the hips off the feet: standing feet step back under them (the stagger-back steps).
             Vector2 shove=react!=null?react.Shove(f.Time):Vector2.Zero;bool staggering=react!=null&&react.Staggering(f.Time);
-            int feetCount=kind==NativeHordeKinds.Crawler?4:2;
+            int feetCount=quad?4:2;
             for(int i=0;i<feetCount;i++)
             {
                 ref var ft=ref feet[i];
-                float off=FootOffset(i);float u=Frac(Phase+off);int cycle=(int)Math.Floor(Phase+off);
-                Vector2 home=Home(i,now+shove*(staggering?1.15f:.8f),d);
+                float off=quad?FootOffset(i):i==1?off1:0,duty=quad?duty0:i==1?duty1:duty0;float u=Frac(Phase+off);int cycle=(int)Math.Floor(Phase+off);
+                Vector2 home=Home(i,now+shove*(staggering?1.15f:.8f),d),ahead=Forward*(duty*stride*.5f);
                 if(!ft.Swing)
                 {
                     // Moving: lift off once the cycle passes the duty (the foot is behind); standing: step only if left behind.
@@ -228,8 +329,9 @@ namespace ChipArena.UnityConversion
                     if(moving&&u>=duty&&ft.Cycle!=cycle){lift=true;swingTime=(1-u)/Math.Max(.3f,rateHz)+.02f;}
                     else if(!moving&&Vector2.Distance(ft.W,home)>(staggering?.05f:.11f)&&!OtherSwinging(i,feetCount)){lift=true;swingTime=.2f+.06f*NativeHordeKinds.Hash(seed,60+i);}
                     // A planted foot the hips (or a shove) have left out of reach steps at once.
-                    else if(Vector2.Distance(ft.W,home)>.45f&&!OtherSwinging(i,feetCount)){lift=true;swingTime=.16f;}
-                    if(lift){ft.Swing=true;ft.From=ft.W;ft.T0=f.Time;ft.T1=f.Time+Math.Max(.08f,Math.Min(.5f,swingTime));ft.Cycle=cycle;ft.Lift=(moving?Lerp(d.Lift,d.RunLift,RunBlend(kind,Speed)):d.Lift*.7f)*(kind==NativeHordeKinds.Shambler&&(i==0)==(limpSide<0)?1-.6f*drag:1);}
+                    // (Moving, it lands on the stride's own beat, so a foot left behind falls back into step instead of skipping along.)
+                    else if(Vector2.Distance(ft.W,home)>.45f+(quad?0:.25f*Clamp01(stride-1))&&!OtherSwinging(i,feetCount)){lift=true;swingTime=moving&&!quad?Math.Min(.42f,(1-u)/Math.Max(.3f,rateHz)+.02f):.16f;}
+                    if(lift){ft.Swing=true;ft.From=ft.W;ft.T0=f.Time;ft.T1=f.Time+Math.Max(.08f,Math.Min(.5f,swingTime));ft.Cycle=cycle;ft.Lift=(moving?Lerp(d.Lift,d.RunLift,RunBlend(gk,Speed)):d.Lift*.7f)*(kind==NativeHordeKinds.Shambler&&(i==0)==(limpSide<0)?1-.6f*drag:1);}
                 }
                 if(ft.Swing)
                 {
@@ -252,9 +354,8 @@ namespace ChipArena.UnityConversion
             float side=SideOf(i);var right=Right.LengthSquared()<.5f?new Vector2(1,0):Right;var fwd=Forward.LengthSquared()<.5f?new Vector2(0,1):Forward;
             // The crawler's hands stand ahead of its shoulders; a seed staggers the idle stance a little.
             float ahead=i>=2?.62f:i==0?.03f*(NativeHordeKinds.Hash(seed,70)-.5f):-.03f*(NativeHordeKinds.Hash(seed,70)-.5f);
-            float width=i>=2?d.Width*1.3f:d.Width;return at+right*(side*width)+fwd*(ahead-(i<2&&kind==NativeHordeKinds.Crawler?.1f:0));
+            float width=i>=2?d.Width*1.3f:d.Width;return at+right*(side*width)+fwd*(ahead-(i<2&&quad?.1f:0));
         }
-        private float FootTurn(int i)=>0;
         /// <summary>A Unity world point in the rig's source frame (root at the body, +x the add's left, +z forward).</summary>
         public Vector3 ToLocal(Vector3 w,Vector3 at){float dx=w.X-at.X,dz=w.Z-at.Z;return new Vector3(-(dx*Right.X+dz*Right.Y),w.Y-at.Y,dx*Forward.X+dz*Forward.Y);}
         /// <summary>A point in the rig's source frame back in the Unity world.</summary>
@@ -389,18 +490,113 @@ namespace ChipArena.UnityConversion
             Vector3 lower=Vector3.Transform(d*reach-upper*.25f,Quaternion.Inverse(p.Rotation[hip]));p.Rotation[knee]=CapturedRig.FromTo(-Vector3.UnitY,lower.LengthSquared()<1e-10f?-Vector3.UnitY:Vector3.Normalize(lower));
             p.Rotation[foot]=Quaternion.Inverse(parent*p.Rotation[hip]*p.Rotation[knee]);
         }
-
-        // ================================================================================================================
+        // =============================================================================================================
         // Deaths (the body chars and burns away by height on NativeMinionFx's clock; these are the bodies' falls)
-        // ================================================================================================================
+        // =============================================================================================================
+        /// <summary>When a captured death's head reaches the floor (s after death): every take is retimed to it, the rest of
+        /// the take (the last twitches and settling) laid over the remaining seconds.</summary>
+        public const float DownAt=.95f;
+        /// <summary>The floor under the rig root (the root stands half the add capsule above it).</summary>
+        public const float Floor=-NativeHordeKinds.AddHeight*.5f;
+        private static readonly float[] staticRow=new float[CapturedClip.Channels];private static readonly Vector3[] staticFeet=new Vector3[2],staticKnees=new Vector3[2];
         /// <summary>
-        /// The kind's death at `age` seconds (0..NativeMinionFx.DeathSeconds), from where it stood: the shambler buckles to its
-        /// knees and topples forward, the runner tumbles on with its momentum, the brute reels back to a knee then crashes
-        /// backward, the spitter chokes and crumples sideways, the crawler flips onto its back, the bloater swells and bursts
-        /// (its body hides at <see cref="BurstAt"/>; Core/NativeHordeFx throws the burst). `dir` (source frame, horizontal)
-        /// is the killing blow's push; a sliced death falls away from it.
+        /// The kind's death at `age` seconds (0..NativeMinionFx.DeathSeconds), from where it stood. The upright kinds fall on the
+        /// zombie pack's deaths: back, forward or to a side as `dir` pushes (source frame, horizontal: the killing blow's push;
+        /// a sliced death falls away from it), a take per add by `seed`, the head on the floor at <see cref="DownAt"/> and the
+        /// body kept on the floor throughout. The crawler flips onto its back and the bloater swells and bursts (its body hides at
+        /// <see cref="BurstAt"/>; Core/NativeHordeFx throws the burst), procedurally.
         /// </summary>
         public static void Death(CapturedRig.Pose p,int kind,uint seed,float age,Vector2 dir)
+        {
+            if(kind==NativeHordeKinds.Crawler||kind==NativeHordeKinds.Bloater||!NativeZombieMotion.Captured(kind)){ProceduralDeath(p,kind,seed,age,dir);return;}
+            int c=NativeZombieMotion.Death(seed,dir);var clip=NativeZombieClips.Clip(c);float down=clip.Marks[1],end=clip.Marks[2],a=Math.Max(0,age);
+            float t=a<DownAt?a/DownAt*down:down+(end-down)*Clamp01((a-DownAt)/Math.Max(.1f,(float)NativeMinionFx.DeathSeconds-DownAt));
+            NativeZombieClips.Sample(c,t,staticRow);NativeZombieClips.Pose(staticRow,p);
+            OnFloor(p);
+        }
+        /// <summary>Sets the pose's lowest part on the floor (neither through it nor floating over it).</summary>
+        private static void OnFloor(CapturedRig.Pose p){float low=p.Lowest();var b=p.Position[CapturedRig.Body];b.Y+=Floor-low;p.Position[CapturedRig.Body]=b;p.World();}
+
+        // =============================================================================================================
+        // Entrances: the vent's climb, the dive into a vent, the brute's drop (the door and cell walk in on the gait)
+        // =============================================================================================================
+        /// <summary>The vent's rim (the edge the climber hauls itself over), behind its standing point (rig z; vent-fall.ts VENT_RIM_Z).</summary>
+        public const float VentRim=-.38f;
+        /// <summary>
+        /// A vent climb at `tau` seconds into the source's 1.95 s climb (NativeEntryRules.Climb; a follower starts .35 s in), the
+        /// root already at the authority's climbing position `climb` off its standing point (rig frame: y up, z forward). The
+        /// zombie rises up the shaft with its claws reaching for the rim, slams its hands on the floor past the rim, hauls its
+        /// chest over, then gets its feet under it and stands on the pack's crawl-to-stand.
+        /// </summary>
+        public static void VentClimb(CapturedRig.Pose p,int kind,uint seed,float tau,Vector3 climb)
+        {
+            float u=Math.Max(0,Math.Min(1.95f,tau));int c=NativeZombieMotion.CrawlStand;float dur=NativeZombieClips.Duration(c);
+            // The stand-up: the take's kneel at first, then its rise from 1.15 s, compressed into the climb's last .8 s.
+            float stand=Sm((u-1.15f)/.8f);NativeZombieClips.Sample(c,stand*dur,staticRow);NativeZombieClips.Pose(staticRow,p);
+            float haul=Sm((u-.45f)/.5f)*(1-stand),reach=1-Sm((u-.5f)/.25f);
+            // In the shaft: the body upright, the trunk pitched over the rim as it hauls; the stand-up takes the take's own trunk.
+            float hold=1-stand;var b=p.Position[CapturedRig.Body];b.Y=Lerp(-.06f,b.Y,stand);b.Z=Lerp(-.04f,b.Z,stand);p.Position[CapturedRig.Body]=b;
+            p.Rotation[CapturedRig.Pelvis]=Quaternion.Slerp(CapturedRig.Euler(.15f+.25f*haul),p.Rotation[CapturedRig.Pelvis],stand);
+            p.Rotation[CapturedRig.Spine]=Quaternion.Slerp(CapturedRig.Euler(.1f+.35f*haul),p.Rotation[CapturedRig.Spine],stand);
+            p.Rotation[CapturedRig.Chest]=Quaternion.Slerp(CapturedRig.Euler(-.12f*reach+.3f*haul),p.Rotation[CapturedRig.Chest],stand);
+            p.Rotation[CapturedRig.Neck]=Quaternion.Slerp(CapturedRig.Euler(-.35f*reach-.3f*haul,0,.2f*(NativeHordeKinds.Hash(seed,120)-.5f)),p.Rotation[CapturedRig.Neck],stand);
+            p.Rotation[CapturedRig.Head]=Quaternion.Slerp(CapturedRig.Euler(-.3f*reach-.35f*haul),p.Rotation[CapturedRig.Head],stand);
+            // Legs hang and kick in the shaft until the feet find the floor.
+            if(hold>0)for(int i=0;i<2;i++){int hip=i==0?CapturedRig.LHip:CapturedRig.RHip;float k=(float)Math.Sin(u*9+i*2.1f)*.25f;p.Rotation[hip]=Quaternion.Slerp(p.Rotation[hip],CapturedRig.Euler(-.5f+k),hold);p.Rotation[hip+1]=Quaternion.Slerp(p.Rotation[hip+1],CapturedRig.Euler(.9f-k),hold);}
+            // The claws: reaching up for the rim, then planted on the floor past it (fixed in the world as the body hauls up).
+            p.World();float floor=Floor-climb.Y,rim=VentRim-climb.Z;var chest=p.WorldRotation[CapturedRig.Chest];var inv=Quaternion.Inverse(chest);var cpos=p.WorldPosition[CapturedRig.Chest];
+            float grab=hold*(1-Sm((u-1.35f)/.4f));
+            if(grab>0)for(int i=0;i<2;i++)
+            {
+                bool left=i==0;float sx=left?1:-1;float sway=(float)Math.Sin(u*13+i*1.7f)*.05f*reach;
+                var up=new Vector3(sx*.22f,Math.Min(floor+.25f,cpos.Y+.75f),rim+.05f+sway);var plant=new Vector3(sx*.26f,floor+.06f,rim+.16f+(left?.02f:-.03f));
+                var target=Vector3.Lerp(up,plant,Sm((u-.38f)/.17f));var wrist=Quaternion.Normalize(CapturedRig.Euler(-1.25f-.3f*reach,0,0));
+                var restHand=p.WorldPosition[left?CapturedRig.LHand:CapturedRig.RHand];target=Vector3.Lerp(restHand,target,grab);
+                CapturedRig.Arm(p,left,Vector3.Transform(target-cpos,inv),inv*wrist,Vector3.Transform(new Vector3(sx*.7f,.3f,-.6f),inv));
+            }
+            p.World();
+        }
+        /// <summary>A dive into a vent at `age` (0 .. .9 s): it throws itself forward and down (the pack's stand-to-crawl fall)
+        /// and sinks into the shaft (hidden after .9 s).</summary>
+        public static void Dive(CapturedRig.Pose p,int kind,uint seed,float age)
+        {
+            float a=Math.Max(0,Math.Min(.9f,age));int c=NativeZombieMotion.StandCrawl;NativeZombieClips.Sample(c,a/.9f*1.25f,staticRow);NativeZombieClips.Pose(staticRow,p);
+            var b=p.Position[CapturedRig.Body];b.Y-=1.5f*Sm((a-.3f)/.6f);p.Position[CapturedRig.Body]=b;p.World();
+        }
+        /// <summary>
+        /// The brute's jump-down (Core/NativeHordeDrop) at `age` s after the add's SpawnAt, turning active `span` s after it, from
+        /// `height` above its landing. Writes the pose (the root at the landing point) and the root's height over its standing
+        /// height (`lift`); false while the landing spot is only telegraphed (nothing to draw). The leap is the pack's HyperChase
+        /// jump start, the fall its air take, the landing one of its jump ends (by `seed`) with the feet on the floor.
+        /// </summary>
+        public static bool Drop(CapturedRig.Pose p,uint seed,float age,float span,float height,out float lift,out NativeHordeDrop.Phase phase)
+        {
+            phase=NativeHordeDrop.At(age,span,height,out float into,out lift);
+            switch(phase)
+            {
+                case NativeHordeDrop.Phase.Warn:p.Reset();p.World();return false;
+                case NativeHordeDrop.Phase.Leap:{int c=NativeZombieMotion.JumpStart;NativeZombieClips.Sample(c,into/NativeHordeDrop.Leap*NativeZombieClips.Duration(c),staticRow);break;}
+                case NativeHordeDrop.Phase.Air:NativeZombieClips.Sample(NativeZombieMotion.JumpAir,into,staticRow);break;
+                default:
+                {
+                    int c=NativeZombieMotion.Land(seed);var clip=NativeZombieClips.Clip(c);float deep=clip.Marks[1],end=clip.Marks[2];
+                    // The compression lands at once, the rise is stretched over the recovery.
+                    float t=into<.12f?into/.12f*deep:deep+(end-deep)*Clamp01((into-.12f)/Math.Max(.1f,NativeHordeDrop.Recover-.12f));
+                    NativeZombieClips.Sample(c,t,staticRow);break;
+                }
+            }
+            NativeZombieClips.Pose(staticRow,p);
+            if(phase==NativeHordeDrop.Phase.Land||phase==NativeHordeDrop.Phase.Done)
+            {
+                // The feet stand on the floor where the take put them, the hips' compression over them (never deeper than the legs reach).
+                p.World();var ankles=staticFeet;var knees=staticKnees;for(int i=0;i<2;i++){int hip=i==0?CapturedRig.LHip:CapturedRig.RHip;ankles[i]=p.WorldPosition[hip+2];knees[i]=p.WorldPosition[hip+1]-(p.WorldPosition[hip]+ankles[i])*.5f;}
+                var b=p.Position[CapturedRig.Body];b.Y=Math.Max(b.Y,-.42f);p.Position[CapturedRig.Body]=b;p.World();
+                for(int i=0;i<2;i++){var k=knees[i];k.Z=Math.Max(k.Z,.05f);Leg(p,i==0,new Vector3(ankles[i].X*1.15f,Floor+AnkleHeight,ankles[i].Z),CapturedRig.Unit(k,Vector3.UnitZ));}
+            }
+            p.World();return true;
+        }
+        /// <summary>The procedural deaths (the crawler's flip, the bloater's burst; a kind off the capture).</summary>
+        private static void ProceduralDeath(CapturedRig.Pose p,int kind,uint seed,float age,Vector2 dir)
         {
             p.Reset();float a=Math.Max(0,age);float R(int k)=>NativeHordeKinds.Hash(seed,90+k);float side=R(0)<.5f?-1:1;
             float push=dir.LengthSquared()>1e-4f?(float)Math.Atan2(dir.X,dir.Y):0;

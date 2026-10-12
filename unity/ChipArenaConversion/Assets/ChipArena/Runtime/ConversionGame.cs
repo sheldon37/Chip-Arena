@@ -159,6 +159,8 @@ namespace ChipArena.UnityConversion
                 if(shakeAmount>0){if(!menu&&Spectator==null&&!cinematic.Directing)cameraView.transform.position+=Vector3.right*NativeShakeRules.Offset(shakeAmount,UnityEngine.Random.value);shakeAmount=NativeShakeRules.Decay(shakeAmount,Time.unscaledDeltaTime);}
                 // Structure stress, falls and landings shake by distance (Core NativeStructureShake, within 25 m) under the same rules.
                 if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)cameraView.transform.position+=presentation.StructureShake(cameraView.transform.position,prefs.reducedEffects?.5f:1);
+                // The Siren brutes' slams and jump-down landings shake a nearby view, and kick one in the smash's disc (NativeHordeZombiePresentation.cs).
+                if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)presentation.HordeShake(cameraView.transform,prefs.reducedEffects?.5f:1);
                 SprintSway();
             }
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;

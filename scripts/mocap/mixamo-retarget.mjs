@@ -105,7 +105,7 @@ export function calibrate(obj,{mirror=false,grip='blade'}={}){
 
 /** Sample `clip` on `obj` at `fps`; returns one Float32Array row per frame in CHANNELS order. `mirror` reads the capture
  * left↔right (calibrate with the same flag); `oneHand` keeps the support hand off the weapon (one-handed weapons). */
-export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false,soften=false,poleTurn=0,splitTwist=false,bothHands=false,hilt=bothHands,heading=0,loop=false}={}){
+export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false,soften=false,poleTurn=0,splitTwist=false,canonTwist=false,keepFold=false,bothHands=false,hilt=bothHands,heading=0,loop=false}={}){
  const mixer=new T.AnimationMixer(obj);mixer.clipAction(clip).play();const {wq,wp}=bones(obj,mirror);
  const n=Math.max(2,Math.round(clip.duration*fps)+1),rows=[];let yawPrev=0,hips0=null;
  const W={},Wp={};const names=['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftFoot','RightFoot','LeftHand','RightHand'];
@@ -128,6 +128,8 @@ export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=
   // Rig joints: pelvis←Hips, spine←Spine1 (Spine+Spine1), chest←Spine2, neck, head, clavicles, hips, ankles.
   // The voxel torso is long and blocky: a human's deep forward fold (low sweeps) reads as a collapse on it, so spine flexion
   // past .45 rad (and hip pitch past .12) is mostly taken out (the chest and arms keep their capture; only the lean is eased).
+  // `keepFold` keeps them as captured: a body falling on its face (a death) pitches its pelvis a quarter turn, and easing it
+  // would leave the legs hanging down under the lying trunk. Off by default, so the earlier sets' tracks stay byte-identical.
   // `splitTwist`: the torso's twist (about the spine's own axis) is shared evenly between the waist and chest joints, the
   // chest's capture orientation (and the chest-space arms) unchanged: the voxel torso is two rigid blocks, which a
   // capture's whole torso turn at the waist (the Explosive pack's wind-ups twist it past 90°) shears apart.
@@ -137,9 +139,12 @@ export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=
   // the procedural feet the runtime gives it, the torso carrying the turn.
   if(heading){const P=local('Hips').clone(),S=local('Spine1').clone(),C=local('Spine2').clone(),PS=P.clone().multiply(S),y=a=>new T.Quaternion().setFromAxisAngle(UP,a);
    spineQ=P.clone().invert().multiply(y(.45*heading)).multiply(P).multiply(S);chestQ=PS.clone().invert().multiply(y(.55*heading)).multiply(PS).multiply(C);}
-  if(splitTwist){const s=(spineQ??local('Spine1')).clone(),c=(chestQ??local('Spine2')).clone(),tw=x=>2*Math.atan2(x.y,x.w),h=new T.Quaternion().setFromAxisAngle(UP,(tw(s)-tw(c))/2);
+  // `canonTwist` reads each joint's twist from the quaternion with w >= 0 (q and -q are one rotation, but their twist
+  // angles differ by 2 pi, which split in half turned both blocks half a turn: rigs whose local spine quaternions come out
+  // negated, such as the zombie pack's MotusMan). Off by default, so the earlier sets' tracks stay byte-identical.
+  if(splitTwist){const s=(spineQ??local('Spine1')).clone(),c=(chestQ??local('Spine2')).clone(),tw=x=>canonTwist&&x.w<0?2*Math.atan2(-x.y,-x.w):2*Math.atan2(x.y,x.w),h=new T.Quaternion().setFromAxisAngle(UP,(tw(s)-tw(c))/2);
    spineQ=s.multiply(h.clone().invert());chestQ=h.multiply(c);}
-  for(const k of ['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftFoot','RightFoot']){rotvec((k==='Spine1'&&spineQ?tmp.copy(spineQ):k==='Spine2'&&chestQ?tmp.copy(chestQ):local(k)).normalize(),rv);if(k==='Spine1'&&rv.x>.45)rv.x=.45+(rv.x-.45)*.35;if(k==='Hips'&&rv.x>.12)rv.x=.12+(rv.x-.12)*.5;
+  for(const k of ['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftFoot','RightFoot']){rotvec((k==='Spine1'&&spineQ?tmp.copy(spineQ):k==='Spine2'&&chestQ?tmp.copy(chestQ):local(k)).normalize(),rv);if(!keepFold&&k==='Spine1'&&rv.x>.45)rv.x=.45+(rv.x-.45)*.35;if(!keepFold&&k==='Hips'&&rv.x>.12)rv.x=.12+(rv.x-.12)*.5;
    // `soften`: the voxel head is a big block, so a capture's deep neck/head bends (the Explosive pack's hunched combat
    // look) are eased past .9 rad, and its block feet past 1.2 rad (a stagger's rolled, pointed foot).
    const soft=!soften?0:k==='Neck'||k==='Head'?.9:k==='LeftFoot'||k==='RightFoot'?1.2:0;
