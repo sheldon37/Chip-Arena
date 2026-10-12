@@ -5,13 +5,13 @@ Claude owns animation, VFX, audio and HUD presentation. No new animation or effe
 
 ## Budget and timing decisions
 
-The proposal contradicted its own shared limits. This implementation follows the owner's Q ≤30 / E ≤60 base budget and .15 s minimum telegraph: Flash Step and Shadow Step windups are .15 s, Bulwark is 20 + 10 wall damage, and Aegis is 20 on each of at most three distinct targets. Normal damage/stat chips still modify those base values. Wolf Knight's direct and landing attacks share one per-target hit ledger (53.76 base, never twice). Sword is 33.6 + 22 on its launched target; its 10-damage landing wave excludes that target. Kunai is 18 + 28.
+The proposal contradicted its own shared limits. This implementation follows the owner's Q ≤30 / E ≤60 base budget and .15 s minimum telegraph: Flash Step and Shadow Step windups are .15 s, Bulwark is 20 + 10 wall damage, and Aegis is 20 on each of at most three distinct targets. Normal damage/stat chips still modify those base values. Whirlwind replaces Wolf Knight: seven 8.5-damage pulses total 59.5 base per target; only the first pulse staggers. Sword is 33.6 + 22 on its launched target; its 10-damage landing wave excludes that target. Kunai is 18 + 28.
 
 The eight entries live in `tools/melee-abilities.json`, included by `tools/export_source.mjs` and already present in `Resources/GameContent.json`. Existing DEV and ranged/magic ability entries stay intact. Stamina uses abilityCost/resourceCost; cooldown uses abilityCooldown. Ability windups use the ability attack-rate helper with a .15 s floor. Sword/dagger/shield E recovery retains the existing special recovery divided by attackRate.
 
 Recasts cost no additional stamina. Sword's .9 s recast window follows a successful launch; without the recast its original cast cooldown becomes 7 s. Skyfall and Kunai recasts have .2 s anticipation and recheck target, range, line of sight and free destination before striking. Teleports sweep the whole capsule path against cover. Skyfall waits for actual ground contact before its wave/bounce. A missed Kunai reduces E to four seconds from throw release. Rolls cancel windups, including recast windups, but not committed active abilities; cancellation spends the original cost/cooldown.
 
-Bulwark absorbs three frontal projectiles at most; rear projectiles still hit. It stops on contact and carries the victim through swept collision for up to 6 m. Its wall stun extends that same impact, with the normal post-stun grace. Fissure damage is once per target; the travelled ground strip slows everyone by ×.7 for its two-second life. Every ability hit goes through timed-block, roll and damage rules. Light Wolf Knight hits still deal damage but suppress hit reaction/stagger during the airborne flip. Blocking an attack still punishes its attacker.
+Bulwark absorbs three frontal projectiles at most; rear projectiles still hit. It stops on contact and carries the victim through swept collision for up to 6 m. Its wall stun extends that same impact, with the normal post-stun grace. Fissure damage is once per target; the travelled ground strip slows everyone by ×.7 for its two-second life. Every ability hit goes through timed-block, roll and damage rules. Whirlwind has no legacy leap, slam or super armour. Blocking an attack still punishes its attacker.
 
 ## Primary swing tuning
 
@@ -42,17 +42,20 @@ Read `Actor.MeleeKit` (copied into each network snapshot and restored to `Native
 | Fields | Meaning |
 | --- | --- |
 | Kind, Phase, At, Release, Until, Yaw | Canonical ability id; windup/active/recovery/recast/fall; cast start, damage/movement release and phase end |
-| RecastKind, Target, RecastUntil | Canonical id, launched/marked target id and E recast deadline |
+| RecoverUntil, Tick | Recovery end (for all kit casts); Whirlwind emitted pulse count 0–7, including misses |
+| RecastKind, Target, RecastUntil | Canonical id, launched/marked target id and E recast deadline; Whirlwind is targetless (`Target=0`) |
 | MarkTarget, MarkUntil | Kunai mark owner-to-target relationship and expiry |
 | Afterimage, AfterimageUntil, EmpowerUntil | Decoy position/lifetime and next dagger hit's +40% deadline |
 | ShieldOut, ShieldPosition, ShieldChain | Shield away flag, current position, distinct hit ids in order (≤3); block is unavailable while away |
 | FissureStart, FissureDirection, FissureAt, FissureUntil, FissureSpeed, FissureLength | Authoritative line origin/direction, lifetime, 25 m/s speed and wall-clamped length |
-| SuperArmour | Airborne Wolf Knight light-hit protection; health damage still applies |
+| SuperArmour | Retained compatibility field; Whirlwind leaves it false |
 | Absorbed | Bulwark's absorbed projectile count (0–3) |
 
 Primary fields remain `AttackAt`, `Combo`, `SwingAt/SwingUntil`, `CommitAt/CommitUntil/CommitYaw`, `StepAt/StepUntil/StepDistance`, `VisualWindup/VisualActive/VisualDuration` and `Followup`. CommitYaw updates each windup tick. Added actor fields: `SprintAttack`, `OpenerLunge`, `ChainAt`, `ComboUntil`, `MeleeBufferUntil`, `SwingRemaining`. The latter fields let guest acknowledgement replay resume a queued or extra-strike swing. Native frame validation rejects nonfinite timing/heading/distance and invalid counts.
 
-Legacy Actor.Special* fields remain for current animation compatibility (`sword-launch`, `dagger-throw`, `shield-throw`, `wolf-spin`; recasts use `skyfall`/`kunai-recast`). New presentation should use MeleeKit.Kind and Phase. Empty/null Kind means no current cast; marks, decoys, shield and fissures can outlive it. Thrown effects also carry the canonical fx id in NativeEffectFrame.effect.
+Whirlwind's `Release` is spin start, `Until` is spin end, and `RecoverUntil` is the end of the .5 s recovery. Recast shortens both ends; `Tick` never resets until the cast clears. `Actor.SpecialUntil`/`AttackUntil` stay committed through recovery. For its spin clock use `(time-Release)/.45` and the authority's completed pulse count; do not infer a leap or landing. Recast opens at `Release+.5`, with `RecastKind="whirlwind"` and `RecastUntil=Until` but `Target=0`; HUD code must allow this targetless recast. Active motion is steered, ×.8 normal run speed, including guest prediction. Presentation remains Claude's handoff.
+
+Legacy Actor.Special* fields remain for current animation compatibility (`sword-launch`, `dagger-throw`, `shield-throw`, `whirlwind`; recasts use `skyfall`/`kunai-recast`). New presentation should use MeleeKit.Kind and Phase. Empty/null Kind means no current cast; marks, decoys, shield and fissures can outlive it. Thrown effects also carry the canonical fx id in NativeEffectFrame.effect.
 
 | Event | Payload beyond canonical fx id in Detail |
 | --- | --- |
@@ -60,10 +63,10 @@ Legacy Actor.Special* fields remain for current animation compatibility (`sword-
 | AbilityHit | Target victim, Position contact, Normal contact direction, Amount actual damage |
 | Mark | Target marked id, Amount 1 on / 0 off |
 | Teleport | From origin, Position destination |
-| Recast | Target victim, From caster, Position target anticipation point |
+| Recast | Target victim, From caster, Position target anticipation point; Whirlwind early end has Target 0 and Position caster |
 | Absorb | Target projectile id, Position contact, Amount absorbed count |
 | Bounce | Target next victim, Position/From previous contact, Normal next direction, Amount targets already hit |
-| Land | Position landing, Target Skyfall victim (0 for Wolf Knight), Radius wave radius |
+| Land | Position landing, Target Skyfall victim, Radius wave radius |
 | FissureStart | Position start, Normal direction, Amount speed, Radius half-width |
 
 New event values are appended to EventKind; existing numeric values, including Teleport, are unchanged. Block uses Detail `guard` (Target 0), `clash` (melee/summon/add) or `deflect` (projectile). Hit blocks preserve attacker/owner id in Target and the collider surface contact, instead of the projectile sphere center or guessed effect classification.

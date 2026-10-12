@@ -185,26 +185,28 @@
   {
     "spec": "greatsword",
     "slot": "e",
-    "id": "wolf-knight",
-    "name": "Wolf Knight",
-    "short": "Wolf Knight",
-    "text": "Somersault with a direct hit or landing wave for 53.76 damage per target. During the flip, hits below 25 damage do not interrupt.",
+    "id": "whirlwind",
+    "name": "Whirlwind",
+    "short": "Whirlwind",
+    "text": "Spin for 3 s while steering at 80% run speed. Seven 8.5-damage ticks in 2.6 m; the first tick staggers. Recast after 0.5 s to end early, then recover for 0.5 s.",
     "kind": "melee",
-    "fx": "wolf-knight",
+    "fx": "whirlwind",
     "cooldown": 11,
     "cost": 45,
-    "windup": 0.28,
-    "range": 5,
-    "damage": 53.76,
-    "radius": 3.7,
-    "duration": 3.5,
+    "windup": 0.3,
+    "range": 2.6,
+    "damage": 8.5,
+    "radius": 2.6,
+    "duration": 3,
     "live": true,
     "bot": {
       "min": 0,
-      "max": 5,
+      "max": 3,
       "lead": 0,
       "point": false,
       "ballistic": false
-    }
+    },
+    "tick": 0.45,
+    "lockout": 0.5
   }
 ]

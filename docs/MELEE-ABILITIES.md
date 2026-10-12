@@ -20,7 +20,7 @@ the result: melee bots lose about 100 % of duels to every ranged and magic spec 
 
 So every melee **Q is a gap closer or a way through fire**, and every **E is the weapon's signature move**. The four
 current specials become the base for the Es, keeping what already works (launch juggle, dagger throw, shield throw, the
-Wolf Knight somersault). The cooldown model now matches magic: Q ≈ 6–8 s, E ≈ 10–12 s, both paid in stamina (melee's
+Whirlwind spin; replaces the Wolf Knight somersault). The cooldown model now matches magic: Q ≈ 6–8 s, E ≈ 10–12 s, both paid in stamina (melee's
 resource). The basic combo keeps its current costs.
 
 ## Shared rules
@@ -93,10 +93,15 @@ resource). The basic combo keeps its current costs.
 - Cooldown 8 s, 30 stamina.
 - This is the greatsword's answer to kiting: reach in a line, not a dash.
 
-**E · Wolf Knight** (`wolf-knight`, keeps `wolf-spin`): today's somersault with ragdolling direct hits and a landing
-shockwave.
-- New: **super armour** during the flip. Light hits (< 25 damage) cause no hitstun, but damage is still taken.
-- Cooldown 11 s (was 5 s), stamina 45 (was 55). Its damage is unchanged.
+**E · Whirlwind** (`whirlwind`, owner replacement 2026-10-12): steerable greatsword spin.
+- Fixed .3 s windup, 3.0 s active spin, then .5 s recovery. Attack-rate chips do not add pulses or shorten these phases.
+- Steer at ×.8 ordinary run speed during active (5.44 m/s before movement modifiers); no sprint, jump, block or primary attack. Windup/recovery are rooted. A roll cancels only windup.
+- Seven 8.5-base-damage radial pulses at active ages 0, .45, .90, 1.35, 1.80, 2.25 and 2.70 s: **59.5 maximum base damage per target**. Base radius 2.6 m, normal reach/damage modifiers, visibility checks and team rules.
+- Only pulse 1 can apply the light .12 s stagger, respecting normal boss/recovery immunity. Each pulse checks block and roll again; a successful normal melee block punishes/cancels the caster. Wolf Knight's launch, landing slam and super armour are removed.
+- Recast E after .5 s of active to stop immediately, then take the full .5 s recovery. No extra stamina or cooldown refund. Cost 45, cooldown 11 s from commitment; normal cost/cooldown modifiers remain.
+- Bots prioritize it with an enemy within 3 m, steer while active, and only end early when the target has moved beyond 4 m.
+- Replication: `MeleeKit.Kind="whirlwind"`, `Phase=windup/active/recovery`, `Release` spin start, `Until` spin end (shortens on recast), `RecoverUntil` recovery end, `Tick` emitted pulse count (0–7, including misses). `Yaw` follows steering. Targetless recast uses `RecastKind="whirlwind"`, `RecastUntil=Until`, `Target=0`, only after the minimum spin.
+- `AbilityCast`, one `AbilityHit` per successful pulse/target, and targetless early-stop `Recast` carry `Detail="whirlwind"`. No artificial landing event. `SpecialKind="whirlwind"`; `SpecialUntil`/`AttackUntil` include recovery. Claude owns matching spin poses/VFX/sounds/HUD; old Wolf Knight presentation must not be reused as a flip.
 
 ## The new block effect (Claude, presentation only)
 
@@ -130,7 +135,7 @@ shockwave.
   - Super armour flag.
   - Charge: the absorbed-projectile count.
 - **Events,** with the fx tag in Detail: AbilityCast, AbilityHit (target, point, normal), Mark (on/off), Teleport
-  (from, to), Recast, Absorb (projectile stopped by the charge), Bounce (the shield hop), Land (Skyfall/Wolf Knight
+  (from, to), Recast, Absorb (projectile stopped by the charge), Bounce (the shield hop), Land (Skyfall
   landing), FissureStart.
 - Block already emits EventKind.Block. Please add a Detail of `guard` (window opened), `clash` (melee blocked) or
   `deflect` (projectile reflected), plus the attacker id and contact point.

@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
         {body.interpolation=RigidbodyInterpolation.None;body.transform.position=position;body.position=position;}
         private NativePredictionState PredictionState(NativePilotFrame frame)
         {
-            var p=Local;bool unlocked=p!=null&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.frozenUntil<=Time&&frame.scareUntil<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&(p.Pose.AttackUntil<=Time||p.Pose.CommitUntil>Time);
+            var p=Local;bool unlocked=p!=null&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.frozenUntil<=Time&&frame.scareUntil<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&(p.Pose.AttackUntil<=Time||p.Pose.CommitUntil>Time||NativeWhirlwindRules.Busy(p.Pose.MeleeKit,Time));
             var a=p?.Pose;NativeMeleeSwing swing=null;
             if(p!=null&&a.CommitUntil>Time&&NativeMeleeRules.Standard(p.Seat.spec))
             {
@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
             }
             bool melee=p!=null&&NativeMeleeRules.Standard(p.Seat.spec)&&frame.reloadEnd<=Time&&frame.blockEnd<=Time;
             return new NativePredictionState{JumpSpec=p?.Seat.spec,AirJumps=a?.AirJumps??0,AirJumpAt=a?.AirJumpAt??-100,Swimming=NativeHazards.InLava(MapId,Vec(frame.position)),Time=Time,RollUntil=frame.rollEnd,Ready=frame.ready,Stamina=frame.stamina,Combo=a?.Combo??-1,ComboUntil=a?.ComboUntil??0,BufferUntil=a?.MeleeBufferUntil??-1,
-                MeleeWeapon=melee?p.Weapon:null,MeleeStats=melee?p.Stats:null,Swing=swing,Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),
+                MeleeKit=a?.MeleeKit?.ViewCopy(),MeleeWeapon=melee?p.Weapon:null,MeleeStats=melee?p.Stats:null,Swing=swing,Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),
                 Speed=p==null?6.8f:(float)(6.8*p.Stats["speed"])*(p.Input.Aim&&p.Weapon.@class=="ranged"?(float)Content.Ads(p.Seat.spec).move:1),
                 Gravity=p==null?23:(float)(23*p.Stats["playerGravity"]),JumpSpeed=p==null?8.5f:(float)(8.5*p.Stats["jumpPower"]),
                 Sprinting=p?.Pose.Sprinting??false,Grounded=p?.Pose.Grounded??false,CanMove=unlocked,CanSprint=unlocked&&frame.stamina>0&&frame.reloadEnd<=Time&&frame.blockEnd<=Time};
@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
         public void PredictReplica(InputFrame input)
         {
             if(!Replica||replicaFrame==null||Local==null)return;
-            Local.Input=input;Local.Yaw=Local.Pose.CommitUntil>Time?Local.Pose.CommitYaw:Local.MeleeKit.Until>Time?Local.MeleeKit.Yaw*Mathf.Rad2Deg:input.Yaw;Local.Pitch=input.Pitch;
+            Local.Input=input;Local.Yaw=Local.Pose.CommitUntil>Time?Local.Pose.CommitYaw:Local.MeleeKit.RecoverUntil>Time&&!NativeWhirlwindRules.Active(Local.MeleeKit,predictor.State.Time)?Local.MeleeKit.Yaw*Mathf.Rad2Deg:input.Yaw;Local.Pitch=input.Pitch;
             predictor.Push(input,ConstrainPrediction,PredictionGrounded,id=>MeleeLockPoint(Local,id));
             if(predictor.State.Swing!=null)Local.Yaw=predictor.State.Swing.Yaw*Mathf.Rad2Deg;SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);
         }
@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
         {PresentedJump(Local,out a.Grounded,out a.AirJumpAt);a.AirJumps=predictor.State.AirJumps;}
         private void PredictedMeleePose(Actor a)
         {
-            var state=predictor.State;var s=state.Swing;if(state.MeleeWeapon==null||!state.CanMove)return;
+            var state=predictor.State;var s=state.Swing;if(state.MeleeWeapon==null||!state.CanMove||NativeWhirlwindRules.Busy(state.MeleeKit,state.Time))return;
             if(s==null){a.CommitUntil=a.AttackUntil=Math.Min(a.AttackUntil,state.Time);a.SwingAt=a.SwingUntil=-100;return;}
             // Translate only the transient local pose onto the interpolated presentation clock.
             // Recorded authority timestamps and remote actors are never rewritten.
