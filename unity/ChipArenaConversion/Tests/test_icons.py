@@ -50,7 +50,9 @@ class ClassIconChecks(unittest.TestCase):
         classes={p['id']:p['icon'] for p in self.art['classes']}
         specs={p['id']:p['icon'] for p in self.art['specs']}
         self.assertEqual(set(classes),{'dev','magic','melee','ranged'})
-        self.assertEqual(set(specs),{w['id'] for w in self.content['weapons']})
+        # The Bow's art ships ahead of its content entry (docs/NEW-KITS.md section 2; the rules are Astra's).
+        weapons={w['id'] for w in self.content['weapons']}
+        self.assertEqual(set(specs),weapons|({'bow'} if 'bow' not in weapons else set()))
         for icon in [*classes.values(),*specs.values(),self.art['fallback']]:
             self.assertIn(icon,self.icons)
         self.assertEqual(len(set(specs.values())),len(specs))

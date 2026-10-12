@@ -106,3 +106,93 @@ The per-round `Shot` events (Detail `fan` / `overdrive`) still play the normal s
 - If the fan ever needs to read exactly from the first frame (for example a late joiner arriving mid-burst), an explicit replicated round count would remove the .09 s "overdue" inference. It is not needed for the present visuals.
 - Bots: the content no longer has pistol or machine-gun ADS entries. `NativeBotRules.Ads` already excludes both.
 - Gameplay feel to review in play, not measured here: the off hand moves at up to about 18 m/s at the .075 s cadence. The rounds' own recoil spring (`RangedPose.Recoil`) restarts on every round, so the gun snaps a little on each one.
+
+## Bow presentation (Claude, `claude/bow`)
+
+Owner (2026-10-12): "For ranged i want to add a "Bow" class." Chosen feel: "Tap or hold-to-draw" (rules in
+`docs/NEW-KITS.md` section 2; Astra builds them). This is the presentation only. It is built against the proposed
+replicated data and reads it in one place, `Core/NativeBowWire` (`Core/NativeBow.cs`). Until the simulation writes
+the real fields, a provisional `Actor.Bow` slot (`NativeBowFeed`, `[NonSerialized]`, never on the wire, written by
+nothing in play) carries the fixtures. When the real names land, only `NativeBowWire.Of` / `Shot` change.
+
+### Field map (`NativeBowWire`)
+
+| Presentation reads | Proposed source |
+| --- | --- |
+| draw start | `Actor.Bow.DrawAt` (0 while not drawing) |
+| release time, draw at release | `Actor.LastShot`, `Actor.Bow.ReleaseDraw` |
+| full draw time | `NativeBow.FullDraw` (.8 s) / `Actor.CastRate` |
+| let-down (no shot) | `Actor.Bow.CancelAt` (optional: else watched as a draw start cleared with no release) |
+| Volley / Rain cast and release | `Actor.Bow.VolleyAt/VolleyRelease`, `RainAt/RainRelease`; else the existing `AbilityId` `volley` / `rain-of-arrows` + `AbilityAt` / `AbilityRelease` |
+| Rain target and radius | `Actor.Bow.RainTarget`, `HasRainTarget`, `RainRadius` (else 3.5 m) |
+| arrow kind and draw | Shot event: Detail `bow` / `bow-full` / `volley` / `rain`, `Amount` = draw fraction, `Projectile` = the bullet id |
+| arrows in flight | bullets with `Spec == "bow"` (an unseen shot's draw comes from its launch speed, 45-110 m/s) |
+| stuck arrows | Hit / Headshot events by a bow pilot (point, flight direction; the carrying joint is the nearest body joint); prop `Impact` events; an arrow gone from the shots with no hit near it lodged in the static world (raycast) |
+
+### What it draws
+
+- **Models** (`Core/NativeWeaponModels.Bow.cs`, banked by `Runtime/NativeBowPresentation.cs`): an original
+  procedural recurve (riser, limbs that flex about their pockets with the pull, a string bent to the nock), at
+  2058 / 934 / 480 triangles (Full / Reduced / Low). The Prototype Series bow is 228 triangles, pinned by hash.
+  Arrow 180 / 132 / 82, quiver 736 / 480 / 224 (Prototype 60 / 120). The arrow line is beside the riser
+  (`ArrowX`/`ArrowY`), brace at -.125, full draw at -.82. The chip modules sit about the arrow line ahead of the
+  riser, with the enchant flames on the nocked arrowhead. The skin selector covers Standard and Prototype (`bow`
+  is in `NativeWeaponSkins.Weapons`).
+- **Poses** (`Core/NativeBowMotion.cs`): the ranged gait route with the pack's 2Hand-Bow travel loops
+  (`Core/NativePackBow.Generated.cs`, derived numbers in `tools/pack-bow-provenance.json`). On top of it, a
+  bladed archer's torso and a push-pull draw on the arrow line: the string hand reaches the cheek anchor at full
+  draw. It covers the quick tap, the hold with a fatigue tremor after 2.5 s, the release follow-through past the
+  ear, and the nock: one smooth stroke over the right shoulder to the quiver, the arrow drawn out and set on the
+  string. Also the let-down, the Volley's canted five-arrow fan draw and the Rain sky shot. The aim is the
+  replicated look in every camera mode. First person runs the same phases on the view rig, the arrow straight
+  down the view.
+- **Effects** (`Core/NativeBowFx.cs`): the arrow model with a trail that brightens with the draw, the full-draw
+  glint and lock star, the string snap, Volley's fan streak, and Rain of Arrows. The Rain marker is upright light
+  posts round the circle with chevrons above it: under the owner's rule nothing flat glows on the floor. Rain also
+  has the sky volley, twelve arrows falling (unless the simulation's own rain arrows are seen), ground hits and
+  arrows left standing 3 s, and a slow tint of frost motes. Stuck arrows stay 6 s in walls (fading over the last
+  .4 s) and in pilots until respawn or the round's end. They ride the struck joint on the rig or the corpse. The
+  pool holds 128 (48 on the low tier). Reduced effects and the low tier thin the particles.
+- **HUD** (`Runtime/NativeBowHud.cs`, `Core/NativeBowHud`): a segmented draw meter under the crosshair (the
+  quick-shot mark, brackets closing on the crosshair, a magenta full-draw lock flare, amber to red as the arm
+  tires, the released fill fading). The Q / E cards use the kit icons `ability-volley` / `ability-rain`. The
+  class/weapon icon is `spec-bow` (`tools/export_class_icons.mjs`). The Locker shows the role line and the
+  ability icons.
+- **Sounds** (existing bank keys only): the draw creak `structure.creak`, the release thwip
+  `melee.daggers.throw` (pitched by the draw), the thunk `impact.wood` into props and the static world.
+- **Arrowfall** (`weapon-bow`, `Core/NativeBowEntrance.cs`): the Bow's signature entrance. A native keyed
+  entrance with the Bow's own arms: reach to the quiver, nock, turn side-on, draw at 42 degrees, hold, loose
+  into the sky in slow motion, the split overhead, a ring of arrows landing round the pilot, the hero frame among
+  them. Beat marks (match age = song time, 0.4 s grid): .4 hand at the quiver, .8 arrow on the string, 1.0 draw,
+  1.6 full draw (glint), 2.0 release (the hit; slow motion to 3.04), 2.4 split, 2.8 volley lands (stragglers to
+  3.0), 3.2 hero frame, 4.8 hand-off. Music key `intro.weapon-bow` (`K(...,F,4.8f,H)`). Until it is licensed,
+  the built-in sting is the 150 bpm `neon-drop` bed. The account service does not know the id, so it stores
+  `neon-drop`, and the client remembers the pick locally, as with the procedural entrances.
+
+Animation impact: none on the rules. No hit timing, hitbox, damage, cooldown, movement, projectile or network
+change. The presentation follows the replicated times, and every peer draws the same frame.
+
+### Notes for Astra (fields the presentation needs)
+
+1. The bow's actor fields: draw start, draw fraction at release (release time `LastShot`), optionally the
+   let-down time, the Volley / Rain cast and release times (or the `AbilityId` stamp), and the Rain target and
+   radius. Rename freely: tell me the names and `NativeBowWire.Of` follows.
+2. Shot events per arrow: Detail `bow` / `bow-full` / `volley` / `rain`, `Amount` = draw fraction,
+   `Projectile` = the bullet id; bullets with `Spec` `bow`.
+3. Whether the Rain arrows are simulated as shots (then the presentation draws them as shots and skips its own
+   fall), and how a Rain slow shows (a Hit Detail `rain`, or a slow-until field, for an exact slow tint).
+4. Content: the `bow` weapon entry (class ranged, secondary `rain-of-arrows`, colour 0x7fd36b), the `volley`
+   (q) and `rain-of-arrows` (e) abilities, and the weapon id the actor carries. The presentation keys on
+   `SourceSpec == "bow"`.
+5. Accounts: `src/relay/accounts.ts` `SKIN_WEAPONS` needs `bow`, so a Prototype pick persists on the account.
+   The intro validation needs `weapon-bow` to store Arrowfall, so `NativeIntroRules.ServiceIntro` can drop its
+   exception.
+
+### Verification boundary
+
+`Tests/BowChecks.cs` covers: model budgets, tiers and determinism (the Prototype pinned), sockets, the string and
+arrow following the pull, the third- and first-person aim converging within 1 degree, the arms reaching, no hand
+jump, replicated-data-only keying, the stuck-arrow lifecycle, the effects and the floor rule, the HUD, the
+Arrowfall beats, the pack provenance, the runtime hooks and no per-frame allocation. Offline renders (scratch
+harness, real Core and VFX code over a stub) show the pixels. Not run: the Unity Editor, Windows play, multiplayer
+with the real rules (they do not exist yet).

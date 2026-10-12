@@ -87,6 +87,18 @@ namespace ChipArena.UnityConversion
             int c=left?CapturedRig.LClav:CapturedRig.RClav;Vector3 shoulder=p.WorldPosition[c]+Vector3.Transform(CapturedRig.Bones[c+1].Position,p.WorldRotation[c]);
             return Vector3.Distance(shoulder,target);
         }
+        /// <summary>The nock stroke at `s` (0..1): a Catmull-Rom curve through the follow-through, the quiver's mouth (at k1), the
+        /// drawn arrow (at k2) and the string at rest, tangents from the neighbouring points over their knot spans.</summary>
+        private static Vector3 NockStroke(Vector3 p0,Vector3 p1,Vector3 p2,Vector3 p3,float k1,float k2,float s)
+        {
+            Vector3 m1=(p2-p0)/Math.Max(1e-3f,k2),m2=(p3-p1)/Math.Max(1e-3f,1-k1),m0=(p1-p0)/Math.Max(1e-3f,k1),m3=(p3-p2)/Math.Max(1e-3f,1-k2);
+            Vector3 a,b,ma,mb;float lo,hi;
+            if(s<k1){a=p0;b=p1;ma=m0;mb=m1;lo=0;hi=k1;}else if(s<k2){a=p1;b=p2;ma=m1;mb=m2;lo=k1;hi=k2;}else{a=p2;b=p3;ma=m2;mb=m3;lo=k2;hi=1;}
+            float span=Math.Max(1e-4f,hi-lo),t=MeleeMath.Clamp((s-lo)/span,0,1),t2=t*t,t3=t2*t;
+            return (2*t3-3*t2+1)*a+(t3-2*t2+t)*span*ma+(-2*t3+3*t2)*b+(t3-t2)*span*mb;
+        }
+        /// <summary>The nock path's beats (fractions of NativeBow.Nock): the hand at the quiver's mouth, the arrow drawn out.</summary>
+        public const float Mouth=.58f,Drawn=.7f;
         private static readonly int[] RightArm={CapturedRig.RArm,CapturedRig.RElbow,CapturedRig.RHand};
         private static readonly Quaternion[] savedRight=new Quaternion[3];
 
@@ -119,9 +131,10 @@ namespace ChipArena.UnityConversion
             // The string hand: on the nock at the pull, along the arrow line.
             Quaternion dq=Look(Rot(f.BowRotation,Vector3.UnitZ),Rot(f.BowRotation,Vector3.UnitY));dq=Quaternion.Slerp(dq,Look(aim,up),kk);
             Vector3 nock=f.BowWrist+Rot(f.BowRotation,NativeBow.NockAt(pull));f.Nock=nock;f.Pull=pull;
-            Vector3 hand=nock-Rot(dq,NativeBowModels.Hook);float hold=kk;
-            if(e>pull+.02f)
+            Vector3 hand=nock-Rot(dq,NativeBowModels.Hook);float hold=kk,onString=1;
+            if(e>pull+.02f&&!v.Nocked)
             {
+                onString=0;
                 // Released (the string has left the fingers): the hand flies back along the arrow past the ear, out from the face
                 // and a little down.
                 hand=anchor-Rot(dq,NativeBowModels.Hook)+(-aim*FollowBack+right*FollowOut-Vector3.UnitY*FollowDown)*v.Follow;
@@ -133,17 +146,22 @@ namespace ChipArena.UnityConversion
                 float u=v.Nocking;Vector3 mouth=World(p,NativeBowModels.QuiverMouth+new Vector3(.03f,.05f,.07f));
                 Vector3 axis=Vector3.Normalize(World(p,NativeBowModels.QuiverMouth)-World(p,NativeBowModels.QuiverBase));Vector3 drawn=mouth+axis*.16f+Vector3.UnitY*.02f;
                 Vector3 rest=f.BowWrist+Rot(f.BowRotation,NativeBow.NockAt(0))-Rot(dq,NativeBowModels.Hook);
-                Vector3 from=anchor-Rot(dq,NativeBowModels.Hook)+(-aim*FollowBack+right*FollowOut-Vector3.UnitY*FollowDown)*NativeBow.FollowWeight(NativeBow.Follow,r.ReleaseDraw);
+                // From the follow-through as it is now (the casts start their nock while it settles), so the path leaves the hand where it is.
+                Vector3 from=anchor-Rot(dq,NativeBowModels.Hook)+(-aim*FollowBack+right*FollowOut-Vector3.UnitY*FollowDown)*v.Follow;
                 float a0=NativeBow.Follow/NativeBow.Nock;Vector3 path;
-                if(u<a0)path=hand;
-                else if(u<.52f)path=Vector3.Lerp(from,mouth,MeleeMath.Ease((u-a0)/(.52f-a0)));
-                else if(u<.68f)path=Vector3.Lerp(mouth,drawn,MeleeMath.Ease((u-.52f)/.16f));
-                else path=Vector3.Lerp(drawn,rest,MeleeMath.Ease((u-.68f)/.32f));
-                float w=MeleeMath.Ease(Math.Min(1,(1-u)/.08f));hand=Vector3.Lerp(hand,path,w);hold=Math.Max(hold,w);
-                if(u>=.52f&&u<.97f)
+                float on;
+                if(u<a0){path=hand;on=onString;}
+                else
+                {
+                    // One smooth stroke through the mouth and the drawn arrow (a spline, eased in and out as a whole: no stop at the quiver).
+                    float sNorm=MeleeMath.Ease((u-a0)/(1-a0)),k1=(Mouth-a0)/(1-a0),k2=(Drawn-a0)/(1-a0);
+                    path=NockStroke(from,mouth,drawn,rest,k1,k2,sNorm);on=sNorm>k2?MeleeMath.Ease((sNorm-k2)/(1-k2)):0;
+                }
+                float w=MeleeMath.Ease(Math.Min(1,(1-u)/.08f));hand=Vector3.Lerp(hand,path,w);hold=Math.Max(hold,w);onString=MeleeMath.Lerp(onString,on,w);
+                if(u>=Mouth&&u<.97f)
                 {
                     // The arrow in the hand: along the quiver as it is drawn, turning onto the arrow line as it reaches the string.
-                    f.HandArrow=true;float turn=MeleeMath.Ease((u-.68f)/.3f);Vector3 dir=Vector3.Normalize(Vector3.Lerp(axis,Rot(f.BowRotation,Vector3.UnitZ),turn));
+                    f.HandArrow=true;float turn=MeleeMath.Ease((u-Drawn)/(.98f-Drawn));Vector3 dir=Vector3.Normalize(Vector3.Lerp(axis,Rot(f.BowRotation,Vector3.UnitZ),turn));
                     f.HandArrowDir=Vector3.Transform(dir,Quaternion.Inverse(dq));f.HandArrowAt=NativeBowModels.Hook-f.HandArrowDir*(.02f*(1-turn));
                 }
             }
@@ -153,11 +171,15 @@ namespace ChipArena.UnityConversion
             Vector3 aimC=Vector3.Transform(aim,Quaternion.Inverse(chest));
             Vector3 drawPole=Vector3.Lerp(new Vector3(-1,-.7f,-.2f),Vector3.Normalize(-aimC+new Vector3(0,.55f,0)),kk);
             CapturedRig.Arm(p,true,Chest(p,f.BowWrist),ChestQ(p,f.BowRotation),new Vector3(1,-.8f,-.25f));p.World();
+            // Where the bow hand got to (the arm folds no tighter than its reach allows): the string, and the hand on it, follow
+            // the bow as drawn.
+            f.BowReach=Reach(p,true,f.BowWrist);Vector3 slip=p.WorldPosition[CapturedRig.LHand]-f.BowWrist;
+            if(slip.LengthSquared()>1e-10f){f.BowWrist+=slip;f.Nock+=slip;hand+=slip*onString;f.DrawWrist=hand;}
             for(int i=0;i<3;i++)savedRight[i]=p.Rotation[RightArm[i]];
             CapturedRig.Arm(p,false,Chest(p,f.DrawWrist),ChestQ(p,f.DrawRotation),drawPole);
             if(hold<1)for(int i=0;i<3;i++)p.Rotation[RightArm[i]]=Quaternion.Slerp(savedRight[i],p.Rotation[RightArm[i]],Math.Max(0,hold));
             p.World();
-            f.BowReach=Reach(p,true,f.BowWrist);f.DrawReach=Reach(p,false,f.DrawWrist);
+            f.DrawReach=Reach(p,false,f.DrawWrist);
             return f;
         }
         /// <summary>The rig-frame full-draw anchor of a posed (bladed) chest.</summary>
@@ -186,6 +208,9 @@ namespace ChipArena.UnityConversion
         public static Frame View(CapturedRig.Pose p,Actor a,float time)
         {
             var r=NativeBowWire.Of(a);var v=NativeBow.At(r,time);
+            // In view the sky shot's recovery lowers the bow as the next arrow is set, as after a normal shot (the raised sky bow
+            // would bring the string arm across the lens).
+            if(v.Phase==NativeBow.Phase.Rain&&v.Nocking>0){float down=1-NativeBow.Smooth(v.Nocking/.6f);v.Raised=Math.Min(v.Raised,down);v.Sky=Math.Min(v.Sky,down);}
             p.Rotation[CapturedRig.Pelvis]=p.Rotation[CapturedRig.Spine]=Quaternion.Identity;p.Rotation[CapturedRig.Chest]=CapturedRig.Rot(CapturedRig.Y,-ViewBlade);p.World();
             // In view the bow stays in the hands (a lowered bow would leave the frame): the carry points it down and left of the
             // aim, raised onto the arrow line through the draw, the release and the casts.

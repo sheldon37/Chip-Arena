@@ -1,5 +1,6 @@
 # Chip Arena — current state
 
+2026-10-12 Bow presentation: `claude/bow` (base shared `6486be8`) adds the Bow's visuals. These are models (Standard and Prototype), poses, effects, the HUD draw meter, icons, Locker entries and the Arrowfall entrance (`weapon-bow`, music key `intro.weapon-bow`). They are built against the fields proposed in NEW-KITS.md; the rules are Astra's and not built yet. On the branch; not pushed, merged or released. Unity Editor/Windows not run; see DEV_LOG.
 2026-10-12 Sheldon Intro: `claude/hats` adds the DEV-only `sheldon-intro` entrance (glitch arrival on the music's beats, the Sheldon Head look, glitch screen pass and card; music key `intro.sheldon-intro`). On the branch; not pushed, merged or released. Unity Editor/Windows not run; see DEV_LOG.
 2026-10-12 hats: `claude/hats` (shared `cd9f066` merged) adds Locker HAT COLOUR and BACKDROP COLOUR pickers (Auto keeps the old look; colours travel like the backdrop key) and the DEV-only Sheldon Head hood (procedural; animated face and ring). The account service already stores both colours and the DEV ids (PR #136); its Worker deploy is pending. On the branch; not pushed, merged or released. Unity Editor/Windows not run; see DEV_LOG.
 

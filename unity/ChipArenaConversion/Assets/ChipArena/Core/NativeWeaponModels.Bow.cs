@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The arrow rest on the shelf (the muzzle-equivalent: the arrow leaves the bow here).</summary>
         public static readonly Vector3 Rest=new Vector3(NativeBow.ArrowX,NativeBow.ArrowY,NativeBow.RiserZ+.032f);
         /// <summary>The chip modules' 'muzzle' depth on the arrow line (NativeWeaponDressing.MuzzleZ): just ahead of the riser.</summary>
-        public const float ModuleTip=.2f;
+        public const float ModuleTip=.3f;
         /// <summary>The modules' frame offset onto the arrow line (they are laid out about the bow's axis, the gun way).</summary>
         public static readonly Vector3 ModuleOffset=new Vector3(NativeBow.ArrowX,NativeBow.ArrowY,0);
         /// <summary>The limbs' pivots (the limb pockets) at rest.</summary>
@@ -296,6 +296,8 @@ namespace ChipArena.UnityConversion
         public static string QuiverId(bool standard,int tier)=>standard?quiverIds[Math.Max(0,Math.Min(2,tier))]:quiverIds[3];
         /// <summary>The Prototype Series held / loose ids the skin map resolves from (NativeWeaponSkins.PrototypeHeld("bow")).</summary>
         public const string PrototypeHeldId="weapon-bow",PrototypeLooseId="loose-bow";
+        /// <summary>The Prototype Series bow's triangles (the whole held bow), what the Standard is measured against.</summary>
+        public static int PrototypeTriangles=>Part(false,Held,0).Triangles;
 
         /// <summary>A stable hash of a mesh's geometry (positions, normals, colours, indices; quantised), for the pinned Prototype.</summary>
         public static ulong Hash(WeaponMesh mesh)

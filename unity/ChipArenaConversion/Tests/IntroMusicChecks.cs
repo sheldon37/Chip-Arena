@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
             // dev- entrances still have none (its DEV gate is the cosmetic rules', NativeCosmeticGate).
             var keyed=styles.Append(NativeSheldonIntro.Style).ToArray();
             var intro=NativeSoundKeys.All.Where(k=>NativeSoundKeys.IsIntro(k.Key)).ToArray();
-            Check(styles.Length==18&&intro.Length==keyed.Length&&intro.Select(k=>k.Key).SequenceEqual(keyed.Select(s=>"intro."+s)),"one intro key per non-DEV entrance and the Sheldon Intro, in the entrance order ("+intro.Length+")");
+            Check(styles.Length==19&&intro.Length==keyed.Length&&intro.Select(k=>k.Key).SequenceEqual(keyed.Select(s=>"intro."+s)),"one intro key per non-DEV entrance and the Sheldon Intro, in the entrance order ("+intro.Length+")");
             Check(NativeSoundKeys.Intro(NativeSheldonIntro.Style)=="intro.sheldon-intro"&&!NativeSheldonIntro.Style.StartsWith("dev-",StringComparison.Ordinal)&&NativeCosmeticGate.DevOnly(NativeSheldonIntro.Style),"the Sheldon Intro's key is intro.sheldon-intro and the intro stays DEV-only");
             foreach(var k in intro)
             {
@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
             foreach(var (json,why) in new[]{(Broken("\"intro.weapon-sword\":{\"clips\":[\"0\"],\"space\":\"3d\"}"),"positional space"),(Broken("\"intro.weapon-sword\":{\"clips\":[\"0\"],\"maxLength\":5.2}"),"longer than the entrance"),
                 (Broken("\"intro.dev-siren\":{\"clips\":[\"0\"]}"),"a DEV entrance key"),(Broken("\"intro.weapon-sword\":{\"clips\":[\"Sword Pick\"]}"),"clip name"),(Broken("\"intro.weapon-sword\":{\"clips\":[\"0\"],\"gain\":-1}"),"gain range")})
             {var b=NativeSoundBank.Parse(json);Check(b.Errors.Count>0&&b.IntroClip("weapon-sword",out float g)==null&&g==1&&b.IntroClip("dev-siren",out _)==null,"rejects "+why+", keeping today's sting");}
-            passed.Add("intro music: the first listed clip plays with its gain trim for all 18 keyed entrances; bank absent, every entry empty and 5 broken entries fall back to today's sting at gain 1; DEV entrances never take a bank clip");
+            passed.Add("intro music: the first listed clip plays with its gain trim for all 19 keyed entrances; bank absent, every entry empty and 5 broken entries fall back to today's sting at gain 1; DEV entrances never take a bank clip");
 
             // ---------- the built-in fallback stays ----------
             int stings=0;

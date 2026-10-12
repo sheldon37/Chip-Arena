@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
     /// the replicated bow (NativeBowWire.Of), its arrows in flight, the posed bow and the presentation clock, seeded by cast and
     /// shot times: the arrow model on every shot with a trail that brightens with the draw (a full-draw shot burns brighter and
     /// carries a glint for its first moments), the full-draw glint on the nocked arrowhead (with a star when the draw locks),
-    /// the string's snap, Volley's five-arrow fan streak, and Rain of Arrows: the aim marker ring over the target, the sky
+    /// the string's snap, Volley's five-arrow fan streak, and Rain of Arrows: the aim marker over the target (upright light posts round the circle and chevrons above it: nothing flat glows on the floor), the sky
     /// volley streaking up, twelve arrows falling into the circle (when the simulation does not fall its own), their ground
     /// hits (dust, a spark, a stuck arrow) and the slow tint on pilots the rain hits. Effects quality (Reduced, .3) thins them;
     /// the low graphics tier halves the particles and drops the glints' sparkle. Nothing here reaches the authority.
@@ -151,15 +151,24 @@ namespace ChipArena.UnityConversion
         private static void Rain(IBowFxSink sink,Actor a,in NativeBow.Read r,bool simulated,float time,float quality,bool low)
         {
             if(!r.HasRainTarget)return;long seed=NativeWeaponFx.Seed(r.RainAt,a.Id);float fall=r.RainAt+NativeBow.RainDelay,end=fall+NativeBow.RainSpan;
-            // The marker: a ring traced round the circle over the delay, a soft inner disc pulsing, held through the fall.
+            // The marker (upright: the owner's rule keeps glowing rings and discs off the floor): a fence of light posts round the
+            // circle, raised in turn over the first .18 s and held through the fall, and three chevrons pointing down over the
+            // centre, bobbing, the warning of what is coming.
             float age=time-r.RainAt,fade=time<end?1:1-NativeBow.Clamp01((time-end)/.25f);
             if(fade>0)
             {
-                float draw=NativeBow.Clamp01(age/.18f),pulse=.6f+.4f*(float)Math.Sin(age*14),warn=time<fall?1:.6f;int segs=low?24:40;var c=r.RainTarget+new Vector3(0,.04f,0);
-                Ring(sink,c,r.RainRadius,.07f,Lin(Marker,1.4f*fade*warn),segs,draw,age*.8f);
-                Ring(sink,c,r.RainRadius*.97f,.025f,Lin(MarkerCore,1.2f*fade*pulse),segs,draw,-age*1.3f);
-                if(time<fall){float k=NativeBow.Clamp01((fall-time)/NativeBow.RainDelay);Ring(sink,c,r.RainRadius*(.15f+.85f*k),.03f,Lin(Marker,.9f*fade),segs/2,1,0);}
-                if(!low)for(int s=0;s<4;s++){float ang=s*1.5707963f+age*.8f;var p=c+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*r.RainRadius;sink.Sprite(false,p,Lin(MarkerCore,1.2f*fade),.12f,NativeMeleeKitFx.Sparkle);}
+                float draw=NativeBow.Clamp01(age/.18f),pulse=.6f+.4f*(float)Math.Sin(age*14),warn=time<fall?1:.6f;int posts=low?10:16,shown=(int)Math.Ceiling(posts*draw);var c=r.RainTarget;
+                for(int s=0;s<shown;s++)
+                {
+                    float ang=s*6.2831853f/posts+age*.5f,h=(.32f+.4f*warn)*(.85f+.15f*(float)Math.Sin(age*9+s*1.7f));var p=c+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*r.RainRadius;
+                    sink.Line(false,p+new Vector3(0,.02f,0),p+new Vector3(0,h,0),Lin(Marker,1.3f*fade*warn),.035f,false);
+                    if(!low)sink.Sprite(false,p+new Vector3(0,h,0),Lin(MarkerCore,.9f*fade*pulse),.08f,NativeMeleeKitFx.Soft);
+                }
+                for(int k=0;k<3;k++)
+                {
+                    float y=2.7f-k*.3f+.08f*(float)Math.Sin(age*6),b=fade*(.55f+.45f*(float)Math.Sin(age*10-k*1.2f));var tip=c+new Vector3(0,y,0);
+                    for(int side=-1;side<=1;side+=2){sink.Line(false,tip+new Vector3(.26f*side,.2f,0),tip,Lin(MarkerCore,1.4f*b),.03f,false);sink.Line(false,tip+new Vector3(0,.2f,.26f*side),tip,Lin(Marker,1.1f*b),.03f,false);}
+                }
             }
             int n=low?NativeBow.RainArrows/2:NativeBow.RainArrows;
             for(int i=0;i<NativeBow.RainArrows;i++)
@@ -182,17 +191,6 @@ namespace ChipArena.UnityConversion
                 if(!simulated&&since>=0&&since<GroundLife){float op=since>GroundLife-.4f?(GroundLife-since)/.4f:1;var head=at+dir*.16f;sink.Arrow(head-dir*NativeBow.ArrowLength,dir,op,false,true);}
             }
         }
-        /// <summary>A flat ring of `segments` band quads (radius, width), traced `draw` of the way round, turned by `spin`.</summary>
-        public static void Ring(IKitFxSink sink,Vector3 c,float radius,float width,Vector3 color,int segments,float draw,float spin)
-        {
-            int shown=(int)Math.Ceiling(segments*NativeBow.Clamp01(draw));
-            for(int s=0;s<shown;s++)
-            {
-                float a0=spin+s*6.2831853f/segments,a1=spin+(s+1)*6.2831853f/segments;var d0=new Vector3((float)Math.Cos(a0),0,(float)Math.Sin(a0));var d1=new Vector3((float)Math.Cos(a1),0,(float)Math.Sin(a1));
-                sink.Band(false,c+d0*(radius-width),c+d1*(radius-width),c+d1*(radius+width),c+d0*(radius+width),0,0,color);
-            }
-        }
-
         // ---- the slow tint on pilots the rain hits ----
         /// <summary>The slow tint's weight on a pilot hit by a rain arrow at `hitAt` (1.5 s, the rule's slow; faded in and out).</summary>
         public static float SlowWeight(float hitAt,float time)
@@ -206,10 +204,11 @@ namespace ChipArena.UnityConversion
             if(!r.HasRainTarget||r.RainAt<=0)return false;float fall=r.RainAt+NativeBow.RainDelay-.05f;if(at<fall||at>fall+NativeBow.RainSpan+.15f)return false;
             float dx=point.X-r.RainTarget.X,dz=point.Z-r.RainTarget.Z;return dx*dx+dz*dz<=(r.RainRadius+.6f)*(r.RainRadius+.6f);
         }
-        /// <summary>The slow tint round a pilot (feet `feet`, Unity world): a cold ring at the feet and motes sinking round the body.</summary>
+        /// <summary>The slow tint round a pilot (feet `feet`, Unity world): frost motes sinking round the body and a cold glow on
+        /// the legs (nothing flat on the floor).</summary>
         public static void SlowTint(IBowFxSink sink,Vector3 feet,float w,float time,int id,float quality,bool low)
         {
-            if(w<=0)return;Ring(sink,feet+new Vector3(0,.05f,0),.55f,.04f,Lin(Slow,1.2f*w),low?16:28,1,time*1.5f);
+            if(w<=0)return;sink.Glow(feet+new Vector3(0,.45f,0),Lin(Slow,.5f*w),.3f,.55f,NativeMeleeKitFx.Mote,0,id%97);
             int motes=Count(8,quality,low);long seed=id*7919L;
             for(int i=0;i<motes;i++)
             {

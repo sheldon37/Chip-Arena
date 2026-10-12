@@ -176,7 +176,7 @@ namespace ChipArena.UnityConversion
                     v.Phase=Phase.Volley;v.Arrows=VolleyArrows;v.Fan=Smooth(Math.Min(age/.05f,(VolleyPose-after)/.18f));
                     // The fan draw over a cast windup when the simulation gives one; an immediate cast snaps to 70% and looses.
                     float pre=rel-r.VolleyAt;if(after<0){v.Pull=VolleyDraw*PullOf(age/Math.Max(.05f,pre));v.Extend=v.Pull;v.Raised=Smooth(age/Math.Min(Raise,Math.Max(.05f,pre)));}
-                    else{v.Pull=0;v.Extend=VolleyDraw*(1-Smooth((after-Follow)/(Nock+.15f-Follow)));v.Raised=1-Smooth((after-VolleyPose*.5f)/(VolleyPose*.5f));v.Follow=FollowWeight(after,VolleyDraw);v.Buzz=after<Buzz?1-after/Buzz:0;v.Nocked=false;v.Arrows=0;v.Nocking=Clamp01((after-Follow)/(Nock-Follow));}
+                    else{v.Pull=0;v.Extend=VolleyDraw*(1-Smooth((after-Follow)/(Nock+.15f-Follow)));v.Raised=1-Smooth((after-VolleyPose*.5f)/(VolleyPose*.5f));v.Follow=FollowWeight(after,VolleyDraw);v.Buzz=after<Buzz?1-after/Buzz:0;v.Nocking=Clamp01(after/Nock);v.Nocked=v.Nocking>=.86f;v.Arrows=v.Nocked?1:0;}
                     return v;
                 }
                 case 5:
@@ -185,7 +185,8 @@ namespace ChipArena.UnityConversion
                     if(after>=RainPose){v.Phase=Phase.Carry;return v;}
                     v.Phase=Phase.Rain;v.Sky=Smooth(Math.Min(age/.12f,(RainPose-after)/.3f));v.Raised=v.Sky;
                     if(after<0){v.Pull=SkyDraw*PullOf(age/Math.Max(.05f,rel-r.RainAt));v.Extend=v.Pull;v.Arrows=3;}
-                    else{v.Pull=0;v.Extend=SkyDraw*(1-Smooth((after-Follow)/(Nock+.15f-Follow)));v.Follow=FollowWeight(after,1);v.Buzz=after<Buzz?1-after/Buzz:0;v.Nocked=false;v.Arrows=0;v.Nocking=Clamp01((after-Follow)/(Nock-Follow));}
+                    // After the sky loose the bow arm comes back in before the next arrow is set on the string (the high bow is out of the string hand's reach).
+                    else{v.Pull=0;v.Extend=SkyDraw*(1-Smooth((after-Follow)/(Nock-.08f-Follow)));v.Follow=FollowWeight(after,1);v.Buzz=after<Buzz?1-after/Buzz:0;v.Nocking=Clamp01(after/Nock);v.Nocked=v.Nocking>=.86f;v.Arrows=v.Nocked?1:0;}
                     return v;
                 }
             }

@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
             for(int sk=0;sk<2;sk++)
             {
                 bool std=sk==0;
-                for(int part=0;part<3;part++)for(int t=0;t<NativeWeaponModels.Tiers;t++)Bank(NativeBowModels.PartId(std,part,t),NativeBowModels.Part(std,NativeBowModels.PartMask(part),t),-2);
+                for(int part=0;part<3;part++)for(int t=0;t<(std?NativeWeaponModels.Tiers:1);t++)Bank(NativeBowModels.PartId(std,part,t),NativeBowModels.Part(std,NativeBowModels.PartMask(part),t),-2);
                 for(int t=0;t<(std?NativeWeaponModels.Tiers:1);t++){Bank(NativeBowModels.ArrowId(std,t),NativeBowModels.ArrowMesh(std,t),-1);Bank(NativeBowModels.QuiverId(std,t),NativeBowModels.QuiverMesh(std,t),-1);}
                 Bank(std?NativeBowModels.StringId:NativeBowModels.StringProtoId,NativeBowModels.StringMesh(std),-1);
             }
@@ -52,13 +52,24 @@ namespace ChipArena.UnityConversion
         {
             if(!NativeBowWire.Is(a)||sourceModels==null||rig?.Bones==null)return false;
             bool std=WeaponSkin(a)!=NativeWeaponSkins.PrototypeIndex;float distance=0;var eye=WorldEye;if(!first&&eye!=null)distance=Vector3.Distance(eye.transform.position,rig.Root.transform.position);
-            int tier=std?NativeWeaponSkins.Tier(LowGraphics,WeaponEffectsQuality,distance,first):0;string riser=NativeBowModels.PartId(std,0,tier);if(!sourceModels.Has(riser))return false;
+            int tier=std?NativeWeaponSkins.Tier(LowGraphics,WeaponEffectsQuality,distance,first):0;
             NativeBow.View v;NativeBowPose.Frame f;
             if(Mathf.Abs(rig.BowAt-time)<1e-4f){v=rig.BowView;f=rig.BowFrame;}else{v=NativeBow.At(NativeBowWire.Of(a),time);f=default;f.Pull=v.Pull;}
-            bowHand=rig.Bones[CapturedRig.LHand].localToWorldMatrix;var root=rig.Root.transform.localToWorldMatrix;var accent=AccentTint(a.AccentColor);float hf=std?flash:1;int n=0;
+            int n=BowDraw(rig,std,tier,v,f,AccentTint(a.AccentColor),std?flash:1,layer,camera,tint,first,time,HeldGlow);if(n<0)return false;
+            BowDressing(a,f,v,time,first,layer,camera);BowPiecesDrawn=n;return true;
+        }
+        /// <summary>
+        /// One posed bow on `rig`'s hands (rig frame `f`, bow `v`): the riser on the bow hand, the limbs flexed by the pull, the
+        /// two string halves bent to the nock, the nocked arrow or the Volley's fan, the arrow in the string hand while nocking
+        /// and (third person) the quiver on the back. Returns the pieces queued, or -1 when the models are not banked.
+        /// </summary>
+        private int BowDraw(CapturedAnimation.Player rig,bool std,int tier,in NativeBow.View v,in NativeBowPose.Frame f,Color accent,float hf,int layer,Camera camera,Func<int,Color> tint,bool first,float time,Vector4? glow)
+        {
+            string riser=NativeBowModels.PartId(std,0,tier);if(!sourceModels.Has(riser))return -1;
+            bowHand=rig.Bones[CapturedRig.LHand].localToWorldMatrix;var root=rig.Root.transform.localToWorldMatrix;int n=0;
             bowHandBone??=b=>bowHand;bowPartBone??=b=>bowPart;
-            sourceModels.Queue(riser,root,bowHandBone,null,layer,camera,accent:accent,hitFlash:hf,partTint:tint,glow:HeldGlow);n++;
-            for(int l=0;l<2;l++){bowPart=bowHand*BowPiece(NativeBowRig.Limb(l==0,f.Pull));sourceModels.Queue(NativeBowModels.PartId(std,1+l,tier),root,bowPartBone,null,layer,camera,accent:accent,hitFlash:hf,partTint:tint,glow:HeldGlow);n++;}
+            sourceModels.Queue(riser,root,bowHandBone,null,layer,camera,accent:accent,hitFlash:hf,partTint:tint,glow:glow);n++;
+            for(int l=0;l<2;l++){bowPart=bowHand*BowPiece(NativeBowRig.Limb(l==0,f.Pull));sourceModels.Queue(NativeBowModels.PartId(std,1+l,tier),root,bowPartBone,null,layer,camera,accent:accent,hitFlash:hf,partTint:tint,glow:glow);n++;}
             string str=std?NativeBowModels.StringId:NativeBowModels.StringProtoId;
             for(int s=0;s<2;s++){sourceModels.Queue(str,bowHand*BowPiece(NativeBowRig.String(s==0,f.Pull,v.Buzz,time)),null,null,layer,camera,accent:accent,partTint:tint);n++;}
             string arrow=NativeBowModels.ArrowId(std,tier);
@@ -70,7 +81,20 @@ namespace ChipArena.UnityConversion
                 sourceModels.Queue(arrow,rig.Bones[CapturedRig.RHand].localToWorldMatrix*BowPiece(piece),null,null,layer,camera,accent:accent,partTint:tint);n++;
             }
             if(!first){sourceModels.Queue(NativeBowModels.QuiverId(std,tier),rig.Bones[CapturedRig.Chest].localToWorldMatrix,null,null,layer,camera,accent:accent,partTint:tint,hitFlash:hf);n++;}
-            BowDressing(a,f,v,time,first,layer,camera);BowPiecesDrawn=n;return true;
+            return n;
+        }
+        private readonly NativeBowPiece[] bowIntroArrows=new NativeBowPiece[NativeBowEntrance.MaxArrows];
+        /// <summary>
+        /// The Arrowfall entrance (Core/NativeBowEntrance): the intro rig's bow in the pilot's own skin for the bow, at the full
+        /// tier and without chip dressing like every weapon intro, posed by the script's bow; and its loose arrows (the sky
+        /// arrow, the volley falling and standing in the floor) in the world.
+        /// </summary>
+        private void BowIntro(NativeBowEntrance script,float t)
+        {
+            if(sourceModels==null||introRig?.Bones==null)return;bool std=NativeWeaponSkins.Index(introSkins,NativeBowWire.Spec)!=NativeWeaponSkins.PrototypeIndex;
+            script.BowAt(t,out var v,out var f);if(BowDraw(introRig,std,0,v,f,introAccent,1,0,null,null,false,t,null)<0)return;
+            string arrow=NativeBowModels.ArrowId(std,0);int n=script.Arrows(t,bowIntroArrows);
+            for(int i=0;i<n;i++)sourceModels.Queue(arrow,BowPiece(bowIntroArrows[i]),null,null,0,null,accent:introAccent);
         }
         /// <summary>
         /// The chip modules on the bow, laid out as on the other ranged weapons (NativeWeaponDressing.Modules, the 'muzzle' just
