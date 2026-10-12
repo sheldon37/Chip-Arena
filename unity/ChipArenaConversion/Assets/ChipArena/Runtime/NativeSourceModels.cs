@@ -85,7 +85,7 @@ namespace ChipArena.UnityConversion
                     if(s.texture>=0){material.mainTexture=textures[s.texture];var repeat=data.textures[s.texture].repeat;material.mainTextureScale=new Vector2(repeat[0],repeat[1]);}materials.Add(material);parts.Add(new Part{Name=s.part,Bone=s.bone,Mesh=mesh,Material=material});
                 }ArmorLights(model,parts);models.Add(model.id,parts.ToArray());HatTwin(model,parts);
             }
-            SplitSirenPieces(data);HordeMaterials();WeaponSkins();SheldonModels();
+            SplitSirenPieces(data);HordeMaterials();WeaponSkins();BowModels();SheldonModels();
         }
         public void Begin(){foreach(var d in draws.Values){d.Matrices.Clear();d.Bodies.Clear();d.Accents.Clear();d.Tints.Clear();d.Glows.Clear();}}
         public bool Has(string id)=>id!=null&&models.ContainsKey(id);

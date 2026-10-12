@@ -375,15 +375,16 @@ namespace ChipArena.UnityConversion
                     case PoseRoute.Magic:MagicGaitPose(a,position,time);return;
                     case PoseRoute.Fighter:FighterPose(a,position,time);return;
                     case PoseRoute.Gun:GunGaitPose(a,position,time);return;
+                    case PoseRoute.Bow:BowGaitPose(a,position,time);return;
                 }
                 // Generic: the Siren and the first-person view models (guns, magic and the rest). A magic-class pilot (the four
                 // schools and the L33t H4x staff, MagicPose.School) never plays the sword set's cuts, block or stagger here.
-                Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);bool magic=MagicPose.School(a)>0,sword=NativePoseRoute.SwordLayers(a);
+                Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);bool magic=MagicPose.School(a)>0,sword=NativePoseRoute.SwordLayers(a),bow=NativeBowWire.Is(a);
                 float dt=Mathf.Clamp(time-lastTime,0,.1f); bool reset=fresh||time<lastTime||time-lastTime>.35f;
                 if(reset) phase=0; lastTime=time;
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 float speed=new Vector2(a.Velocity.x,a.Velocity.z).magnitude;
-                bool attack=!magic&&a.Attacking(time),roll=a.Rolling(time),stun=a.StunUntil>time,ground=a.Grounded;
+                bool attack=!magic&&!bow&&a.Attacking(time),roll=a.Rolling(time),stun=a.StunUntil>time,ground=a.Grounded;
                 bool special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time),juggle=!firstPerson&&Juggled(a,time);
                 bool moving=speed>.08f&&!attack&&!roll&&!stun&&!special&&!down&&!juggle&&ground;
                 if(moving) phase+=dt*Mathf.Min(3.7f,speed/Mathf.Min(2.1f,.62f+.22f*speed));
@@ -398,9 +399,9 @@ namespace ChipArena.UnityConversion
                     State=speed>4?"run":"walk";
                 }
                 // A swing begun in the air plays the weapon's jump attack (Core/NativeAirAttack) instead of the cut below.
-                bool air=!magic&&!GunRules.Ranged(a.Weapon)&&AirView(a,position,time,set,firstPerson,attack);
+                bool air=!magic&&!bow&&!GunRules.Ranged(a.Weapon)&&AirView(a,position,time,set,firstPerson,attack);
                 // A grounded swing entered from a sprint plays the weapon's sprint attack (Core/NativeSprintAttackVisuals) instead.
-                bool sprinting=!air&&!magic&&!GunRules.Ranged(a.Weapon)&&SprintView(a,time,set,attack);
+                bool sprinting=!air&&!magic&&!bow&&!GunRules.Ranged(a.Weapon)&&SprintView(a,time,set,attack);
                 if(attack&&!air&&!sprinting)
                 {
                     string cut="cut"+(char)('A'+a.Combo%(set==1?4:set==0?3:2)); var c=Find(set,cut);
@@ -439,6 +440,8 @@ namespace ChipArena.UnityConversion
                     RangedAbilityPose.Apply(pose,a,time,firstPerson);
                     State=a.ReloadUntil>time?"reload":time<a.BlockUntil?"block":time-a.LastShot<.2f?"fire":a.Aiming?"aim":moving?"carry":"ready";
                 }
+                // The first-person bow (Core/NativeBowPose.View): the arms on the arrow line straight down the view.
+                if(bow){BowFrame=NativeBowPose.View(pose,a,time);BowView=NativeBow.At(NativeBowWire.Of(a),time);BowAt=time;State=NativeBowMotion.StateOf(BowView);}
                 if(moving)
                 {
                     // The source game also layers procedural travel-aware feet under captured upper-body carry.
@@ -543,6 +546,22 @@ namespace ChipArena.UnityConversion
             // (Core/GunMotion) with the native gun hold over it, instead of the captured sword walk/run under a reset torso and
             // a stiff procedural leg cycle. A juggle (observed from the replicated JuggleUntil) owns the frame; otherwise the
             // native roll, reaction, special and recovery layers pose before the ground pass.
+            // ---- the bow (Core/NativeBowMotion: the gait, the pack 2Hand-Bow carry and the bow hold), third person ----
+            /// <summary>The posed bow of the last frame (rig space, source frame) and its view, at BowAt (the bow models read them).</summary>
+            public NativeBowPose.Frame BowFrame;public NativeBow.View BowView;public float BowAt=-100;private NativeBowMotion bowMotion;
+            private void BowGaitPose(Actor a,Vector3 position,float time)
+            {
+                Weapon=a.Weapon;Set=0;if(bowMotion==null)bowMotion=new NativeBowMotion();bowMotion.JumpLayer=JumpLayer;bowMotion.SprintLayer=SprintLayer;bowMotion.Locomotion=RangedLocomotion;
+                bool juggle=Juggled(a,time),roll=!juggle&&a.Rolling(time);
+                Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
+                Vector3 at=Root.transform.position;bowMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);bowMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
+                State=bowMotion.Pose(a,time,pose,juggle,juggleTrack,out bool react);
+                if(react){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
+                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Gun,time,bowMotion.Rig.GroupYaw,bowMotion.Rig.GroupPosition);
+                bowMotion.Finish(pose,time);if(Hits!=null)hitLayer.Replant(melee.Rig,pose);
+                BowFrame=bowMotion.Shot;BowView=bowMotion.Bow;BowAt=time;
+                WritePose();fresh=false;lastTime=time;
+            }
             private GunMotion gunMotion;
             private void GunGaitPose(Actor a,Vector3 position,float time)
             {
