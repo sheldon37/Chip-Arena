@@ -363,7 +363,7 @@ cooldown, movement, stamina or network change. The step stays the simulated body
   every tick trailed a 720°/s windup turn by up to 31–35° and popped at the hit (1500–1860°/s in a frame). A chain that
   starts from the previous heading carries straight on. A 20 Hz replicated heading (36° snapshot steps) glides at most
   19.2° per frame. An entry blend still running at the strike finishes over `StrikeBlend` (0.04 s).
-- **P10 anchored footwork.** Each foot starts where it was shown as the swing began (the ankles are kept in world space
+- **P10 anchored footwork** (superseded by "Footwork" below, which pins the soles and takes real steps). Each foot starts where it was shown as the swing began (the ankles are kept in world space
   each frame). That start can be a chain's recovery step or a run's stride, so no planted foot slides into the stance,
   and the pose transition into a swing holds the ankles.
   - **Lead foot.** It flies with the travel and comes straight down as it plants in the hit window (the horizontal stride
@@ -431,9 +431,12 @@ is the largest speed and the total distance of an ankle on the floor; L / R are 
     step, sprint stop):
     - early chains per weapon enter from the live follow-through: the blade keeps at least 30% of its speed and 70% of
       the unchained follow-through's distance from the guard;
-    - planted feet slip at most 1 m/s and 3–6 cm through openers at the cap, default steps, early chains and sprint
-      entries;
-    - the lower foot stays within 7 cm of the floor, and the lead foot plants inside the hit window;
+    - the footwork, measured at the soles (see "Footwork" below): through openers at the cap, default steps, early chains,
+      sprint entries and a 60° windup turn, a sole on the floor turns about a pivot but slides at most 0.35 m/s in a frame
+      and 1.5 cm in all, never sinks into the floor, and every step clears it by at least 5 cm; the lead foot plants inside
+      the hit window, the rear foot lands a recovery step after it, the hips drop at least 2 cm into the plant (the
+      greatsword deeper than the sword); a swing with no step or into a wall keeps both soles planted; a planted foot only
+      turns with its heel up;
     - lunges lean 6° more than a default step, and sprint entries 4° more than a standing swing;
     - the facing follows a 720°/s windup turn within 1° and at most `TurnFollow` × the rate, and a 20 Hz heading glides;
     - cut A, a buffered B, then A again after `ComboUntil`.
@@ -645,6 +648,298 @@ The presentation then needs only one line, `MeleeViewOf` setting `v.AirAttack`, 
 `NativeAirAttackFxPresentation` and `AirAttackCues` (each passes -1 today). The air take's strike would then key to the
 plunge's own window.
 
+## Footwork (owner 2026-10-12: "Also, at more realism to the basic attack animation. Currently~ They slide across with their feet on the ground, make this appear a lot better.")
+
+### What was wrong
+
+P10 held the ankles in place, and the old probe measured the ankle (planted while within 1.2 cm of its floor height):
+0.04–0.41 m/s. Measured at the soles, the lowest corner of the foot and toe boxes, the picture was different. The rear
+foot "trailed low on its toe" with its ankle 3–5 cm up and its heel raised, so its toe was 1.8–4.6 cm under the floor and
+was dragged along at the hips' speed: 4.7–17.6 m/s on every swing that stepped. The lead foot's lifts cleared the floor by
+2.9 cm, and planted feet turned flat with the body.
+
+### Approach
+
+New `Core/MeleeFootwork.cs` holds the plan; `MeleeMotion.Feet` calls it for every captured cut but the daggers' hopped
+spin. Presentation only: the body still travels by the authority's step (`StepAt/StepUntil/StepDistance`), never by root
+motion. No change to hit timing, hitboxes, damage, cooldowns, movement, stamina or networking.
+
+- **Pinned soles.** A foot touching the floor is pinned in world space. It is anchored either on its toe joint, with the
+  heel raised to push off or pivot and the toes bent back flat, or on its heel's back edge while a heel strike rolls flat.
+  The rig reads the world position from `GroupPosition`/`GroupYaw`, as the runtime places the root each frame, so a pinned
+  foot holds however the presented body moves.
+- **Real steps.** A foot leaves the floor straight up, travels on an arc, and comes down onto its spot. Its sole is kept
+  at least `Clearance` (5.5 cm) clear through the travel. It lands heel first, the lead with the toe up 16°. The landing
+  target is set from where the body will be at that moment: the simulated travel still to come, scaled by the travel
+  actually observed. So a step into a wall lands where the body stopped, and a swing that does not move lifts no foot.
+- **The plan, timed to the step window.**
+  - **Lead foot.** It lifts once the body starts to move. It plants as early in the hit window as the leg reaches: +47 to
+    +110 ms after the window opens, 29–69% of the 0.16 s window, and never before it.
+  - **Rear foot.** It pushes off on its toes until its hip is too far away (`Hold`, at most what the leg reaches with the
+    hips seated). It then lifts and lands its recovery step behind the lead in the recovery, re-squaring the cut's stance.
+  - **Long steps.** A long step (from `LongStep`, 1.15 m: lock-on openers and chained lunges) strides with the rear foot
+    first and then plants the lead, giving two short flights instead of one long skate. So does any step whose single
+    bound would leave both feet off longer than `MaxFlight`, which is every greatsword step.
+- **Push-off.** A planted foot that is about to be outrun lifts one frame ahead (at a lunge's peak the hips cover 10 cm a
+  frame).
+- **Weight.**
+  - **Hips.** They drop into the plant and rise over the recovery (`Drop`, `DropHold`, `DropRise`), seated lower still
+    when a planted foot needs the reach (`SeatSteps`, rising at most 1.2 m/s as before).
+  - **Trunk lean.** Every step leans the trunk 4–6° into its cut as the lead plants (`StepLeanBase`), on top of the
+    lunge's and the sprint entry's leans.
+  - **Hips lead.** The pelvis turns 8° (the greatsword 10°) toward the blade's sweep ahead of the chest (`HipsLead`), and
+    the capture keeps the shoulders.
+  - **Greatsword.** It plants deepest and longest and takes the slowest recovery step.
+  - **Shield.** Its drop also offsets the capture rising through the bash.
+- **Pivots.** When the body turns well past a planted foot (a windup turn), its heel lifts and the foot turns on its toe
+  joint after the body, then settles flat. The rear foot's heel also comes up through the cut's drive.
+- **Transitions.**
+  - **Start.** A swing starts from the feet as shown. A foot already in the air (a run's stride, a chain's recovery
+    step) carries its speed into its first step, or comes down first on a short catch step.
+  - **Pose blends.** The blend into and out of a swing now keeps each sole's orientation, not only its ankle
+    (`MeleeRig.HoldAnkles(..., feet:true)`); it had tilted pinned soles 3–4 cm into the floor.
+  - **Gait handoff.** The gait takes the swing's feet over exactly (`MeleeGait.SyncTolerance` 0 after a footwork frame,
+    instead of within 1.5 cm). This removed a 0.7 m/s one-frame slip as every swing ended.
+  - **Hit-stop.** It freezes the cut, not the feet, because the body keeps moving.
+- **Daggers' spin hop.** It keeps its own hop, now 12 cm high. Its feet turn only while they are off the floor: before,
+  they swept the floor at 9 m/s as it landed.
+- **Leg pose.** `MeleeRig.StepFoot` turns the foot to its heading and then pitches it about its own axis. The source's
+  `foot()` pitched about the group axis, which rolls a turned foot sideways. It also blends the foot's orientation in
+  group space, because blending the local rotation across a re-solved knee tilted the sole.
+
+The pack's own attack legs were considered and not used. The cut clips' legs move 0.1–0.4 m in place, with their root
+travel stripped at import. Their windups are retimed 2.5–5× by `MeleeSwing`. No clip covers a 0.75–2.4 m step in 0.17–0.32 s,
+a chain, a run entry or a wall. Stride-warping them 3–8× with foot-contact IK would not keep their contacts. Procedural
+steps timed to the authority's step window do keep them, for every case.
+
+### Before and after (offline probe, 60 Hz, flat floor, attackRate 1)
+
+Before is shared `c0e5aa1` and after is this branch. "Sole slip" is the slowest-moving of a sole's three pivots (toe
+joint, heel back edge, sole centre) on frames where the sole touches the floor in both frames. A foot turning on its toe
+joint therefore counts as 0, and a dragged toe does not. "Sink" is how far a sole goes into the floor. "Step clearance"
+is the lowest peak clearance of any step that travels more than 10 cm. "Lead plant" is the lead foot's touchdown after
+the hit window opens. "Hip drop" is the pelvis's lowest point below its height as the swing began; it includes the
+captured cut's own dip, and an entry from a sprint, walk or run starts from the run's height. The run case measures
+the swing window plus 0.1 s of the run-out.
+
+**Sword**
+
+| Scenario | Sole slip, max (m/s) | Sole slip, mean (m/s) | Sink (cm) | Step clearance (cm) | Lead plant | Hip drop (cm) |
+|---|---|---|---|---|---|---|
+| default step | 7.05 → 0.00 | 0.768 → 0.000 | 3.5 → 0.0 | 2.9 → 11.6 | +77 ms (48%) | 12.1 → 6.1 |
+| early chain | 7.05 → 0.00 | 0.976 → 0.000 | 5.2 → 0.0 | 2.8 → 9.5 | +77 ms (48%) | 12.1 → 8.3 |
+| held repeat | 7.05 → 0.00 | 0.836 → 0.000 | 4.0 → 0.0 | 2.8 → 9.5 | +77 ms (48%) | 12.1 → 8.3 |
+| lock-on opener (2.2 m) | 17.22 → 0.27 | 1.876 → 0.004 | 4.7 → 0.0 | 2.9 → 10.6 | +93 ms (58%) | 12.8 → 4.8 |
+| opener into chain | 17.22 → 0.27 | 1.230 → 0.002 | 4.7 → 0.0 | 2.8 → 10.6 | +93 ms (58%) | 12.8 → 6.8 |
+| sprint entry | 7.05 → 0.19 | 0.945 → 0.004 | 6.0 → 0.0 | 2.9 → 8.0 | +77 ms (48%) | 21.8 → 18.5 |
+| walk entry | 7.05 → 0.05 | 0.915 → 0.002 | 4.3 → 0.0 | 2.9 → 10.4 | +143 ms (90%) | 26.6 → 19.3 |
+| run in / run out | 7.05 → 0.61 | 1.109 → 0.029 | 4.0 → 0.4 | 2.9 → 10.4 | +143 ms (90%) | 25.9 → 18.7 |
+| no step | 0.39 → 0.00 | 0.028 → 0.000 | 3.5 → 0.0 | 2.9 → 0.0 | — | 5.0 → 5.1 |
+| into a wall | 5.47 → 0.01 | 0.472 → 0.000 | 3.5 → 0.0 | 2.9 → 0.0 | — | 12.1 → 4.7 |
+| 60° windup turn | 7.05 → 0.04 | 0.991 → 0.000 | 3.6 → 0.0 | 2.8 → 10.8 | +77 ms (48%) | 12.0 → 8.3 |
+| chain with hits (hit-stop) | 7.68 → 0.00 | 0.947 → 0.000 | 5.2 → 0.0 | 2.8 → 9.5 | +77 ms (48%) | 12.1 → 8.3 |
+
+**Greatsword**
+
+| Scenario | Sole slip, max (m/s) | Sole slip, mean (m/s) | Sink (cm) | Step clearance (cm) | Lead plant | Hip drop (cm) |
+|---|---|---|---|---|---|---|
+| default step | 4.73 → 0.03 | 0.509 → 0.000 | 2.7 → 0.0 | 2.9 → 9.7 | +63 ms (40%) | 16.6 → 17.8 |
+| early chain | 6.47 → 0.05 | 0.645 → 0.001 | 10.7 → 0.0 | 2.8 → 9.5 | +63 ms (40%) | 16.7 → 17.8 |
+| held repeat | 6.48 → 0.05 | 0.602 → 0.001 | 3.1 → 0.0 | 2.8 → 9.5 | +63 ms (40%) | 16.6 → 17.8 |
+| lock-on opener (2.4 m) | 11.34 → 0.26 | 1.232 → 0.002 | 4.6 → 0.0 | 2.9 → 10.5 | +80 ms (50%) | 13.4 → 21.0 |
+| opener into chain | 11.34 → 0.26 | 1.232 → 0.002 | 4.6 → 0.0 | 2.9 → 10.5 | +80 ms (50%) | 13.4 → 21.0 |
+| sprint entry | 4.73 → 0.05 | 0.585 → 0.001 | 2.7 → 0.0 | 2.9 → 9.6 | +47 ms (29%) | 27.7 → 30.6 |
+| walk entry | 4.73 → 0.11 | 0.576 → 0.001 | 3.0 → 0.0 | 2.9 → 9.4 | +63 ms (40%) | 27.8 → 30.6 |
+| run in / run out | 4.73 → 0.61 | 0.663 → 0.015 | 4.9 → 0.4 | 2.9 → 9.5 | +47 ms (29%) | 27.2 → 30.8 |
+| no step | 0.16 → 0.00 | 0.023 → 0.000 | 2.2 → 0.0 | 2.9 → 0.0 | — | 12.3 → 15.0 |
+| into a wall | 3.49 → 0.00 | 0.228 → 0.000 | 2.7 → 0.0 | 2.9 → 0.0 | — | 16.6 → 17.8 |
+| 60° windup turn | 4.73 → 0.03 | 0.478 → 0.001 | 2.9 → 0.0 | 2.9 → 9.7 | +47 ms (29%) | 16.7 → 17.8 |
+| chain with hits (hit-stop) | 6.97 → 0.05 | 0.624 → 0.001 | 10.1 → 0.0 | 2.8 → 9.5 | +63 ms (40%) | 16.7 → 17.6 |
+
+**Daggers**
+
+| Scenario | Sole slip, max (m/s) | Sole slip, mean (m/s) | Sink (cm) | Step clearance (cm) | Lead plant | Hip drop (cm) |
+|---|---|---|---|---|---|---|
+| default step | 7.04 → 0.00 | 0.970 → 0.000 | 2.9 → 0.0 | 2.9 → 11.7 | +93 ms (58%) | 13.2 → 13.2 |
+| early chain | 10.67 → 0.08 | 1.081 → 0.003 | 4.8 → 0.0 | 3.8 → 7.0 | +93 ms (58%) | 13.2 → 13.2 |
+| held repeat | 14.17 → 0.05 | 1.151 → 0.001 | 2.9 → 0.0 | 2.8 → 7.0 | +93 ms (58%) | 13.2 → 13.2 |
+| lock-on opener (2.0 m) | 17.59 → 0.27 | 2.454 → 0.007 | 4.6 → 0.0 | 2.9 → 9.0 | +110 ms (69%) | 13.2 → 13.2 |
+| opener into chain | 17.59 → 0.27 | 1.292 → 0.003 | 4.6 → 0.0 | 2.8 → 9.0 | +110 ms (69%) | 13.2 → 13.2 |
+| sprint entry | 7.04 → 0.03 | 1.224 → 0.001 | 5.8 → 0.0 | 2.9 → 7.4 | +93 ms (58%) | 26.9 → 26.9 |
+| walk entry | 7.04 → 0.00 | 1.171 → 0.000 | 4.7 → 0.0 | 2.9 → 5.1 | — | 25.1 → 25.1 |
+| run in / run out | 7.04 → 0.21 | 1.394 → 0.011 | 6.3 → 0.3 | 2.9 → 8.5 | — | 27.2 → 27.2 |
+| no step | 0.18 → 0.00 | 0.031 → 0.000 | 2.9 → 0.0 | 2.9 → 0.0 | — | 13.2 → 14.2 |
+| into a wall | 5.25 → 0.00 | 0.578 → 0.000 | 2.9 → 0.0 | 2.9 → 0.0 | — | 13.2 → 13.2 |
+| 60° windup turn | 8.14 → 0.08 | 1.200 → 0.001 | 3.2 → 0.0 | 2.8 → 8.1 | +93 ms (58%) | 13.2 → 13.2 |
+| chain with hits (hit-stop) | 10.66 → 0.08 | 1.086 → 0.003 | 4.8 → 0.0 | 3.8 → 7.0 | +93 ms (58%) | 13.2 → 13.2 |
+
+**Shield**
+
+| Scenario | Sole slip, max (m/s) | Sole slip, mean (m/s) | Sink (cm) | Step clearance (cm) | Lead plant | Hip drop (cm) |
+|---|---|---|---|---|---|---|
+| default step | 5.21 → 0.00 | 0.584 → 0.000 | 2.9 → 0.0 | 2.9 → 11.6 | +67 ms (42%) | 7.6 → 2.4 |
+| early chain | 6.25 → 0.00 | 0.743 → 0.000 | 4.2 → 0.0 | 2.8 → 7.1 | +67 ms (42%) | 16.4 → 16.4 |
+| held repeat | 6.25 → 0.00 | 0.636 → 0.000 | 2.9 → 0.0 | 2.8 → 7.1 | +67 ms (42%) | 16.4 → 16.4 |
+| lock-on opener (2.0 m) | 13.69 → 0.27 | 1.517 → 0.004 | 4.7 → 0.0 | 2.9 → 9.0 | +100 ms (63%) | 7.8 → 8.2 |
+| opener into chain | 13.69 → 0.27 | 0.951 → 0.002 | 4.7 → 0.0 | 2.8 → 9.0 | +100 ms (63%) | 16.4 → 19.1 |
+| sprint entry | 5.05 → 0.04 | 0.689 → 0.001 | 3.0 → 0.0 | 2.9 → 8.7 | +83 ms (52%) | 21.6 → 16.6 |
+| walk entry | 5.23 → 0.12 | 0.696 → 0.003 | 3.4 → 0.0 | 2.9 → 9.8 | +67 ms (42%) | 22.4 → 14.3 |
+| run in / run out | 5.23 → 0.61 | 0.841 → 0.026 | 3.5 → 0.4 | 2.9 → 8.3 | +67 ms (42%) | 22.0 → 13.4 |
+| no step | 0.33 → 0.00 | 0.034 → 0.000 | 2.9 → 0.0 | 2.9 → 0.0 | — | 3.5 → 0.3 |
+| into a wall | 4.52 → 0.00 | 0.388 → 0.000 | 2.9 → 0.0 | 2.9 → 0.0 | — | 7.6 → 0.3 |
+| 60° windup turn | 6.25 → 0.56 | 0.660 → 0.004 | 3.7 → 0.0 | 2.8 → 7.6 | +67 ms (42%) | 16.4 → 16.4 |
+| chain with hits (hit-stop) | 7.04 → 0.00 | 0.721 → 0.000 | 4.2 → 0.0 | 2.8 → 7.1 | +67 ms (42%) | 16.4 → 16.4 |
+
+The 0.61 m/s in "run in / run out" is the gait's first run-out step, not the handoff. The gait rolls a planted foot about
+its ankle and slips up to 5.1 m/s while running with no swing at all; it is pre-existing locomotion and left alone here. The
+other residuals, 0.2–0.56 m/s, are single frames: a foot lifting while it pivots, and a 2.0–2.4 m opener's 2–3-frame
+stride contact. The strict corner measure (the mean of the touching corners) also sees the heel box's front edge sweep
+2 mm a frame under the pinned toe box as the heel lifts: at most 0.14–0.39 m/s.
+
+Renders (scratch, not committed) are side views that follow the pilot, before over after, with world-fixed footprints:
+blue left, orange right, red where no pivot of the sole held still. Airborne ankle trails are drawn as dots. Strips: the
+sword default step, combo and 60° windup turn; the greatsword combo and 2.4 m lunge; the daggers chain; the shield
+combo; and a run into a swing and back out to a run.
+
+### Tests
+
+`Tests/MeleeFeelChecks.cs` `Feel` now measures the soles, not the ankles (see "Tests and parity" above). On the old code
+the new checks fail everywhere:
+- soles slip 4.7–17.6 m/s and 22–242 cm in all;
+- they sink 2.5–12.9 cm into the floor;
+- steps clear the floor by 1.9–3.8 cm;
+- no recovery step lands;
+- swings with no step or into a wall step 15–28 cm;
+- a turning planted foot turns flat for 16 frames.
+
+`Tests/melee-motion-pinned.json` is re-pinned for its 24 swing scenarios. The five hit-reaction scenarios stay on the
+original within 0.34 mm, and the torso-only scenarios keep the lower body within 0.08 mm.
+
+### Limits
+
+The probe and checks are offline (no Unity Editor, Windows or two-client play). A remote pilot's presented position may
+lag or smooth its swing's timing. The pinned feet hold regardless, but the landing targets assume the authority's step
+curve. Uneven floors are not handled: the floor is taken as flat at the body's height, as before. Owner taste is open on
+the stride-first long steps, the follow step's timing and the deeper shield drop.
+
+## Sprint attacks (owner 2026-10-12: "can we give melee's a "sprint" attack? Of course each melee gets their own.")
+
+### Presentation (Claude, `claude/melee-steps`)
+
+Implemented on the branch only, not merged or released. The simulation is Astra's (`Core/NativeSprintAttack`, PR #133,
+merged into this branch at `44c79cf`); see "weapon sprint primaries" in MELEE-SIMULATION-HANDOFF. This presentation
+reads only her replicated fields (`SprintAttack`, `VisualWindup/Active/Duration`, `SwingAt/Until`,
+`StepAt/Until/Distance`, `ChainAt`, the hop through `Grounded` and the root height). It changes no hit timing, hitbox,
+damage, cooldown, movement, stamina or network data.
+
+- **Pack takes.** `tools/export_pack_sprint_attacks.mjs` retargets one running attack per weapon into
+  `Core/NativePackSprintAttacks.Generated.cs`. `tools/pack-sprint-attacks-provenance.json` records each track's SHA-256,
+  which `Tests/SprintAttackPoseChecks` recomputes.
+  - Sword "Lunging Slash": `Armed-Run-Attack-R1`, a long, low horizontal slash.
+  - Daggers "Twin Lunge": `Armed-Run-Attack-Dual`, both blades together.
+  - Shield "Shoulder Charge": `Armed-Shield-Run-Forward-Charge`, mirrored onto the shield arm.
+  - Greatsword "Leaping Cleave": `2Hand-Sword-Run-Forward-Attack1`, a wide two-handed sweep.
+- **Timing** (`MeleeMotion.SprintCut`; `NativeSprintAttackRules.ClipTime`; the `sprint/*` shapes in `MeleeSwing`). Each
+  take's lead-in plays over the real windup, its strike across the real hit window, then the follow-through and the
+  settle into the guard over the recovery.
+  - Measured strike: sword 62 m/s at 0.267 s (window 0.16–0.34); shield furthest out, 92 cm, at 0.233 s (0.12–0.28);
+    greatsword 83 m/s at 0.50 s (0.48–0.64).
+  - The daggers' twin follows Astra's two sweeps (`NativeSprintAttack.Pulse`, half a window each, the second reversed).
+    The take's cross-cut plays over the first half, at its furthest at 0.167 s (0.12–0.24). Over the second half it whips
+    back out, easing into the opened pose. The right blade crosses 99 cm and comes back 106 cm.
+  - A chain after a sprint attack enters the next cut from the take's live pose. The daggers can chain 0.15 s after
+    their window.
+- **Shield bash.** The charge already carries the shield near full reach, so the bash comes from the body. The chest
+  turns the shield forward and pitches over it, the body pushes on 0.18 m, and the shield goes out a further 0.10 m. The
+  bash peaks 60% into the window and is drawn back over the first 30% of the recovery.
+- **Lean.** The takes drive their own trunk into the lunge, so a sprint attack keeps only the footwork's plant lean (no
+  opener lean, no momentum lean). Stacked, the lean pitched the shield's trunk to 90°.
+
+  | Weapon | Before: cut A on Astra's timing | After: own take |
+  | --- | ---: | ---: |
+  | Sword | 42° | 39° |
+  | Daggers | 65° | 49° |
+  | Shield | 26° | 60° (a dropped-shoulder charge) |
+  | Greatsword | 26° | 28° |
+
+- **Footwork** (`Core/MeleeFootwork`, from the sprint run-up). The steps of 2.0–2.6 m start with the swing
+  (`StepAt = At`) and are long, stride-first steps. The greatsword's sprint attack is a leap on Astra's hop:
+  - **Off:** both feet leave with the body (the rear 20 ms later), and a foot still in the air from the run goes
+    straight into its leap.
+  - **In the air:** they ride tucked under the body: 26 cm (lead) and 20 cm (rear) at mid-flight.
+  - **Down:** they land as the body lands. Each is held until the body is within 2 cm of the floor, the lead first and
+    the rear 30 ms later.
+  - `NativeJumpMotion.Leap`, a minimal hook set before each `Melee` call, makes the jump layer draw no air or landing
+    pose while the leap is drawn. Its air legs and leg-return blend dragged the landing soles 6–19 m/s and sank them
+    12 cm.
+  - A sprint attack is never read as a jump attack, though the hop is airborne. The rig passes `explicitAir = 0` for one.
+    The first-person view and the jump-attack impact and sound take Astra's replicated air flag (`Actor.AirAttack`), which
+    a sprint attack never carries.
+- **First person** (`CapturedAnimation.SprintView`). The same take, clip time and shield bash on a scratch rig. It is kept
+  through the greatsword's hop, blended in over 0.04 s and settled into the guard after the window.
+- **Effects** (`Runtime/NativeSprintAttackFxPresentation.cs`, `Core/NativeSprintAttackFx`, `NativeSprintAttackWatch`).
+  Every peer runs the same watch.
+  - An entry dust burst at the feet.
+  - Weapon-accent speed streaks through the hit window.
+  - The greatsword's landing ring once it is down inside its window (`NativeSprintAttackRules.RingLive`, as Astra's
+    `Ring`): dust rolling out and a ring of accent light spreading to her 1.6 m round the feet. None if it is still
+    falling through the window (off a ledge).
+  - The daggers' crescents draw the twin's two opposed sweeps (`NativeSlashFx.Frame`), one per half window.
+  - All of it thins with Reduced effects and Low graphics.
+- **Sound** (`NativeAudio.SprintAttackCues`): existing keys only. `move.roll` scuffs the entry. The landing ring adds
+  `impact.ground` over the hop's own jump and landing sounds (`NativeEffectsAudio`), so the landing is not doubled.
+
+### Before and after (offline probe, 60 Hz, flat floor, attackRate 1)
+
+Each pilot runs at 9.18 m/s into one sprint attack on Astra's profile, with the arena rig's jump, locomotion and sprint
+layers. "Before" is this branch before the sprint presentation (`2371fa6`): Astra's timing and the footwork's cut A.
+Slip is the worst sole slip about its slowest pivot.
+
+| Weapon | Slip, before → after (m/s) | Sink, before → after | Notes |
+| --- | --- | --- | --- |
+| Sword | 0.044 → 0.041 | 0 → 0 | |
+| Daggers | 0.270 → 0.052 | 0 → 0 | |
+| Shield | 0.041 → 0.041 | 0 → 0 | |
+| Greatsword | 18.9 → 0.025 | 12.4 cm → 0 | Hops 62 cm; feet tucked 24 cm over the stance; both land at 0.467 s as the body does (the window opens at 0.48) |
+
+Renders were made offline from the probe (side, front and its first-person replica, before over after); they are
+scratch output, not committed.
+
+### Tests
+
+`Tests/SprintAttackPoseChecks` runs on Astra's profiles (`NativeSprintAttack.Apply`, the hop under 23 m/s², with the
+jump layer attached as on the arena rigs):
+- provenance and decode;
+- the clip time, including the twin played out and back;
+- the shield bash;
+- strikes in the window and the twin's opposed sweeps;
+- pinned soles (at most 0.26 m/s, 0 mm into the floor);
+- the leap: feet off through the hop, tucked, the jump layer idle, landing with the body (also when the body comes down
+  late, at 0.60 s);
+- plain swings and chains keep their cuts;
+- the watch: one entry, one ring, none off a ledge or under a special;
+- the effects above the floor and inside the ring, the twin crescents, thinning;
+- the hooks.
+
+`Tests/MeleeFeelChecks` sprint entries now use the same profiles and hop. Astra's `Tests/SprintAttackChecks` (simulation)
+is unchanged.
+
+### Limits and handoff
+
+- No Unity Editor, Windows or two-client run; the effects, the sounds and the first-person view model were compiled
+  against the Unity player API, not seen in play.
+- The probe's first-person render is a replica of `SprintView`.
+- A guest's interpolated `Grounded` and height drive the leap. The landing hold covers a late flag, but this is not
+  measured.
+- Owner taste is open on:
+  - the take choices (the greatsword's wide sweep rather than an overhead chop);
+  - the shield's 60° charge;
+  - the depth of the greatsword's landing crouch (hips 23 cm under the run, 10 cm under the standing guard).
+- **For Astra** (simulation):
+  - The step profile starts at rest (`StepAt = At`, smoothstep) while `MoveVelocity` is zeroed. A 9.2 m/s sprint drops to
+    about 1.7 m/s for a frame, then lunges at up to 13 m/s, a visible hitch in the root (pelvis 9.2 m/s change in one
+    frame). A step curve that starts at the entry speed would carry the run's momentum.
+  - The hitbox sweeps horizontally while the shield bashes straight ahead.
 
 ### Astra night implementation, 2026-10-12
 

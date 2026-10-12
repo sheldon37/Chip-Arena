@@ -399,7 +399,9 @@ namespace ChipArena.UnityConversion
                 }
                 // A swing begun in the air plays the weapon's jump attack (Core/NativeAirAttack) instead of the cut below.
                 bool air=!magic&&!GunRules.Ranged(a.Weapon)&&AirView(a,position,time,set,firstPerson,attack);
-                if(attack&&!air)
+                // A grounded swing entered from a sprint plays the weapon's sprint attack (Core/NativeSprintAttackVisuals) instead.
+                bool sprinting=!air&&!magic&&!GunRules.Ranged(a.Weapon)&&SprintView(a,time,set,attack);
+                if(attack&&!air&&!sprinting)
                 {
                     string cut="cut"+(char)('A'+a.Combo%(set==1?4:set==0?3:2)); var c=Find(set,cut);
                     float age=time-a.AttackAt,recovery=Mathf.Max(.001f,a.VisualDuration-a.VisualWindup-a.VisualActive);
@@ -498,6 +500,25 @@ namespace ChipArena.UnityConversion
                 Save(blendP,blendQ);NativePoseWriter.Write(Bones,airPose,"a jump attack view model");Blend(blendP,blendQ,CapturedClip.Ease((time-a.AttackAt)/.04f));
                 if(age>windup+active){Save(blendP,blendQ);Sample(set,"idle",time);Blend(blendP,blendQ,MeleeSwing.Settle(age,windup,active,recovery));}
                 State="air attack"+(float.IsNaN(landed)?"":" landed");return true;
+            }
+            // ---- the first-person sprint attack (Core/NativeSprintAttackVisuals; the third-person rigs pose it in MeleeMotion) ----
+            // A swing the authority flags as entered from a sprint (it flags only grounded openers, so the greatsword's hop keeps
+            // it) poses the weapon's running take on a scratch rig on the swing's own timing (NativeSprintAttackRules.ClipTime: the
+            // daggers' twin cuts out and back), the shield driven out at the hit, blended in over .04 s and settling into the guard
+            // after the window; the view layer keeps its own carry and bob.
+            private MeleeRig sprintRig;private readonly float[] sprintRow=new float[CapturedClip.Channels];private readonly CapturedRig.Pose sprintPose=new CapturedRig.Pose();
+            private bool SprintView(Actor a,float time,int set,bool attack)
+            {
+                var clip=NativeSprintAttackRules.Clip(a.SourceSpec);var melee=MeleeSet.For(a.SourceSpec);
+                if(!attack||clip==null||melee==null||!NativeSprintAttackRules.Plays(a.SourceSpec,a.SprintAttack,false))return false;
+                float windup=a.VisualWindup,active=a.VisualActive,recovery=Mathf.Max(.001f,a.VisualDuration-windup-active),age=time-a.AttackAt;
+                clip.Sample(NativeSprintAttackRules.ClipTime(clip,a.SourceSpec,age,windup,active,recovery),sprintRow);
+                if(a.SourceSpec=="shield"){float k=NativeSprintAttackRules.Bash(age,windup,active,recovery);sprintRow[MeleeCapture.Grip+2]+=NativeSprintAttackRules.BashReach*k;sprintRow[MeleeCapture.Grip+1]+=NativeSprintAttackRules.BashLift*k;}
+                sprintRig??=new MeleeRig();sprintRig.Reset();sprintRig.WeaponVisible=!a.WeaponAway;sprintRig.WeaponReach=WeaponReach;
+                MeleeCapture.Apply(sprintRig,melee,sprintRow,CaptureOptions.Of(1,melee.Fit,MeleeClear.Turn,legs:0));sprintRig.WritePose(sprintPose);
+                Save(blendP,blendQ);NativePoseWriter.Write(Bones,sprintPose,"a sprint attack view model");Blend(blendP,blendQ,CapturedClip.Ease(age/.04f));
+                if(age>windup+active){Save(blendP,blendQ);Sample(set,"idle",time);Blend(blendP,blendQ,MeleeSwing.Settle(age,windup,active,recovery));}
+                State="sprint attack"+(age>windup+active?" recovery":"");return true;
             }
             // Third-person magic pilots (host, guests, killcam), the four schools and L33t H4x, walk on the source's gait
             // (Core/MagicMotion): the magic layer rides the gait's body bob, torso counter-twist and arm swing instead of

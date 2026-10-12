@@ -272,25 +272,30 @@ namespace ChipArena.UnityConversion
         /// <summary>The tilt sign follows the visible blade's direction, so a strike rises toward its head either way.</summary>
         public static float Tilt(in SlashLook look,NativeMeleeSwing s)=>look.Tilt*Direction(s);
         /// <summary>The cut a swing plays (the captured set's cut for its attack index) and the visible blade over its window.</summary>
-        public static MeleeSwing.Visible Visible(NativeMeleeSwing s){var set=s!=null?MeleeSet.For(s.Spec):null;return set==null?null:MeleeSwing.VisibleSweep(set,set.Cut(s.Index));}
+        // A sprint attack's crescent follows its sprint take's blade (Core/NativeSprintAttackVisuals).
+        public static MeleeSwing.Visible Visible(NativeMeleeSwing s){var set=s!=null?MeleeSet.For(s.Spec):null;return set==null?null:MeleeSwing.VisibleSweep(set,s.SprintAttack&&NativeSprintAttackRules.Clip(s.Spec)!=null?NativeSprintAttackRules.Clip(s.Spec):set.Cut(s.Index));}
         /// <summary>The way the crescent opens round the yaw: the visible blade's (+1 toward the pilot's right, native yaw).</summary>
         public static float Direction(NativeMeleeSwing s){var v=Visible(s);return v!=null?v.Direction:NativeMeleeRules.Reverse(s)?-1:1;}
         /// <summary>
         /// One crescent at `time` (twin: the trailing copy, a quarter window late, inside and above the first, parallel to it):
         /// the tail and head yaw (radians, native: the tail at the arc's end where the visible blade enters it, the head where the
         /// blade has swept to, MeleeSwing.Swept, held there while fading and drifted on by the overshoot), its opacity and its
-        /// radius scale. A capped arc (the shield's bash) keeps its middle. False before the window and once faded.
+        /// radius scale. A capped arc (the shield's bash) keeps its middle. False before the window and once faded. The daggers'
+        /// sprint twin (NativeSprintAttackRules.Twin) draws its two sweeps instead: the first over the window's first half, the
+        /// trailing one over the second, opening back the other way as the blades do.
         /// </summary>
         public static bool Frame(NativeMeleeSwing s,in SlashLook look,float time,bool trailing,out float tail,out float head,out float alpha,out float grow)
         {
-            tail=head=alpha=grow=0;if(s==null)return false;float window=Math.Max(.001f,s.HitUntil-s.HitAt),delay=trailing?window*.25f:0,age=time-s.HitAt-delay;
+            tail=head=alpha=grow=0;if(s==null)return false;bool twin=s.SprintAttack&&NativeSprintAttackRules.Twin(s.Spec)&&NativeSprintAttackRules.Clip(s.Spec)!=null;
+            float window=Math.Max(.001f,s.HitUntil-s.HitAt),delay=trailing?window*.25f:0;if(twin){window*=.5f;delay=trailing?window:0;}float age=time-s.HitAt-delay;
             if(age<0||age>window+look.Fade)return false;
             var v=Visible(s);float sign=v!=null?v.Direction:NativeMeleeRules.Reverse(s)?-1:1,span=Math.Min((float)Math.PI*2,Math.Min(look.MaxArc,s.Arc));
             float u=Math.Min(1,age/window),swept=v!=null?MeleeSwing.Swept(v,u,span):u;
+            if(twin&&trailing){sign=-sign;swept=v!=null?1-MeleeSwing.Swept(v,1-u,span):u;}
             tail=s.Yaw-sign*span*.5f;head=tail+sign*span*swept;
             float fade=age>window?(age-window)/look.Fade:0,drift=look.Overshoot*sign*fade*(2-fade)*.5f;tail+=drift;head+=drift;
             // Fades in as the blade enters the arc, so a strike that crosses it late does not start as a sliver at its end.
-            alpha=(1-fade)*(1-fade)*NativeWeaponFx.Smooth(Math.Min(age/.015,swept/.08+.02))*(trailing?.7f:1);grow=.9f+.08f*u+.06f*fade;return alpha>0;
+            alpha=(1-fade)*(1-fade)*NativeWeaponFx.Smooth(Math.Min(age/.015,swept/.08+.02))*(trailing&&!twin?.7f:1);grow=.9f+.08f*u+.06f*fade;return alpha>0;
         }
     }
 

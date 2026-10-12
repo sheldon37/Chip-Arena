@@ -1,5 +1,81 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — per-weapon sprint attack presentation (owner: "can we give melee's a "sprint" attack? Of course each melee gets their own.")
+- Branch `claude/melee-steps`, after the footwork commit `5312cc2`. It merges Astra's sprint simulation `44c79cf` (PR #133; merge `2371fa6`, DEV_LOG/PROJECT_STATE keep both sides). Separate commit on the branch only: not pushed, merged or released. Details: MELEE-FEEL "Sprint attacks".
+- Presentation over Astra's replicated fields only. Each weapon plays its own pack running take (exporter `tools/export_pack_sprint_attacks.mjs`, derived curves only) on the real swing timing:
+  - sword "Lunging Slash";
+  - daggers "Twin Lunge": cross-cut, then whips back out over the reversed second sweep;
+  - shield "Shoulder Charge": with a body-driven bash peaking in the window;
+  - greatsword "Leaping Cleave": on her hop.
+- Other changes:
+  - footwork leap: both feet leave with the hopping body, ride tucked under it, and land as it lands;
+  - jump layer: a minimal `NativeJumpMotion.Leap` hook, so it draws no air or landing pose over the leap;
+  - a sprint attack is never read as a jump attack (rig, first person, jump-attack effects and sound);
+  - first-person view through the hop;
+  - effects: entry dust, accent streaks, a 1.6 m landing ring keyed to her ring going live, and twin crescents;
+  - sounds: existing keys only.
+- Probe on her profiles, slip before → after, worst sole slip about its pivot:
+  - greatsword: 18.9 → 0.025 m/s, and sink 12.4 cm → 0;
+  - daggers: 0.27 → 0.05 m/s;
+  - sword and shield: unchanged (≤0.044).
+  - Trunk lean: the sprint takes keep only the plant lean (the stacked lean had pitched the shield to 90°).
+- Animation impact: presentation only. No change to hit timing, hitboxes, damage, cooldowns, movement, stamina, prediction or network data.
+- Checks:
+  - `unity-check.sh` on the repo root: OK;
+  - `check_relay.py`: 433 PASS, exit 0 (1 m 29 s wall under load, near its 90 s test timeout; an earlier run under load ~35 timed out with the suite passing directly);
+  - Python unittest: 86 OK, 1 skipped;
+  - `package_source.py`: 1354 files, OK;
+  - `git diff --check`: clean;
+  - managed melee set: 48 PASS, including the new `Tests/SprintAttackPoseChecks.cs`; `MeleeFeelChecks` sprint entries now use her profiles and the hop.
+- After merging shared `7d61d27`, the five checks were rerun:
+  - `unity-check.sh`: OK;
+  - `check_relay.py`: 487 PASS, exit 0;
+  - Python unittest: 86 OK, 1 skipped;
+  - `package_source.py`: 1417 files, OK;
+  - `git diff --check`: clean;
+  - managed melee set: 48 PASS.
+  - Conflict resolution: the jump-attack view, effects and sound take Astra's explicit `AirAttack` flag, which replaces this branch's `-1` hook; both effect hooks and both check registrations are kept; `MeleeGait` keeps the one `Planted`.
+- Not run: Unity Editor/Windows play, two-client (a guest's interpolated `Grounded` drives the leap), the effects and sounds in play.
+- Risks and next steps:
+  - owner taste on the takes, the 60° shield charge and the greatsword's landing crouch;
+  - for Astra: the step starts at rest while `MoveVelocity` is zeroed, so the sprint visibly hitches (9.2 → 1.7 m/s for a frame, then a 13 m/s lunge). A step curve that starts at the entry speed would carry the momentum.
+
+## 2026-10-12 — Claude — melee footwork: pinned soles and real attack steps (owner: "Also, at more realism to the basic attack animation. Currently~ They slide across with their feet on the ground, make this appear a lot better.")
+- Branch `claude/melee-steps`, base shared `c0e5aa1`, fast-forwarded to shared `1af916c` (Astra's Whirlwind) before the commit. One commit on the branch only: not pushed, merged or released. Details, the per-weapon numbers and the limits are in `docs/MELEE-FEEL.md` "Footwork".
+- Cause: measured at the soles, not the ankles, the swing's rear foot dragged its toe 1.8–4.6 cm under the floor at 4.7–17.6 m/s, steps cleared the floor by 2.9 cm, and planted feet turned flat with the body.
+- New `Core/MeleeFootwork.cs`, called from `MeleeMotion.Feet`:
+  - feet on the floor are pinned in world space, on the toe joint (heel up to push off or pivot) or on the heel (a strike rolling flat);
+  - other feet take real steps, rising straight up, clearing the floor by 5.5 cm or more, and landing heel first;
+  - the steps are timed to the authority's step window: the lead plants in the hit window, the rear pushes off and follows with a recovery step, and long steps (openers, chained lunges, every greatsword step) stride first;
+  - swings with no travel, or into a wall, stay planted;
+  - the hips drop into the plant (greatsword deepest), every step leans 4–6° into its cut, and the hips lead the shoulders by 8–10°.
+- Other changes:
+  - `MeleeRig.StepFoot` (correct heading-then-pitch foot, group-space blend);
+  - `MeleeRig.HoldAnkles(feet:)`, so swing transitions keep the soles;
+  - `MeleeGait.SyncTolerance`, so the gait takes the swing's feet over exactly;
+  - the daggers' spin hop turns its feet only in the air.
+- Approach: procedural, not the pack's attack legs. Those legs are in-place 0.1–0.4 m shuffles with root travel stripped and windups retimed 2.5–5×; no clip covers 0.75–2.4 m in 0.17–0.32 s, chains, run entries or walls.
+- Probe results, before → after, worst sole slip about its slowest pivot:
+  - default steps, chains, held repeats and hit-stops: 4.7–14.2 → 0.00–0.08 m/s;
+  - openers: 11.3–17.6 → 0.26–0.27;
+  - sprint and walk entries: → ≤0.19;
+  - windup turns: → ≤0.56 (shield);
+  - stationary and wall swings: → 0.00–0.01.
+  Soles reach at most 4 mm into the floor (before 2.2–10.7 cm), and only in the run in/out case, from the gait's run-out (the other cases 0.0 cm). The worst step clearance is 2.8–3.8 → 5.1–11.7 cm.
+- Animation impact: presentation only. No change to hit timing, hitboxes, damage, cooldowns, movement (the body still travels by the simulated step; no root motion), stamina, prediction or network data.
+- Checks:
+  - `unity-check.sh` on the repo root: OK;
+  - `check_relay.py`: 427 PASS, no FAIL;
+  - Python unittest: 86 OK, 1 skipped;
+  - `package_source.py`: 1342 files, OK;
+  - `git diff --check`: clean;
+  - managed melee set: 43 PASS. `Tests/MeleeFeelChecks.cs` `Feel` now measures soles (slip, sink, clearance, lead plant in the window, recovery step, hip drop, planted and wall swings, toe pivots) and fails across the board on the old code. `Tests/melee-motion-pinned.json` is re-pinned (24 swing scenarios); hit reactions stay ≤0.34 mm on the original.
+- Not run: Unity Editor/Windows play, two-client (remote interpolation), uneven floors.
+- Risks:
+  - owner taste on the stride-first long steps and the deeper shield drop;
+  - the gait's own run-cycle slip (up to 5.1 m/s with no swing) is pre-existing and untouched.
+- Next: the per-weapon sprint attacks (queued, a separate commit).
+
 ## 2026-10-12 — Claude — follow-ups to Astra's landing attacks and Q/E state (simulation gaps and presentation reads)
 - Branch `claude/melee-sim`, base shared `56fe1ec` fast-forwarded to shared `f4252ae` (Astra's PR #136, `eff9743`); shared head `7d61d27` (camera modes, ranged/magic locomotion) merged before the final checks. On the branch only: not pushed, merged or released. Why a Claude branch changes simulation: the owner asked overnight "could you do whatever changes you need in case you don't see them by the time youre done?" and then confirmed "Yes — run the checks, push the merges, and take over Astra's open items." PR #136 landed first and already covers S0b (all eleven cuts asserted against the captured blade), the landing attack (.15 s gate, once per airtime, 1.25 cost, .15 s hang, -14 m/s plunge, ring 1.4/1.6/1.8/2.4 m, x1.3/x1.5, recovery .25/.35/.4/.55 s, Air/PlungeAt/ImpactAt, Land `melee-air`), RecoverAt, Skyfall landing, Kunai recast recovery, `AbilityHit.WallSlam`, Aegis `ShieldUntil`, `MainWeaponAway` and the pilot Hit direction. My overlapping draft was discarded uncommitted; only what #136 still lacks is added here.
 - Simulation (host and guest prediction alike): the attack carries .6 of the horizontal velocity it was committed with through the hang and plunge (the owner's "horizontal speed x.6"; #136 stopped it dead). The host keeps the carry in MoveVelocity, which is the existing replicated `moveVelocity` the guest rebuild seeds from: no new wire field. Only the daggers carry their combo on after the impact; the other weapons' next swing is cut A (`ComboUntil` = ImpactAt). Lava swimming is not an airtime: swimmers keep ordinary swings instead of a plunge into the channel. Native gate fix: `ValidateAirJumps` "new attack commitment takes priority over same-tick jump" ran at .05 s airtime, which #136's gate refuses, so the air jump fired and the Windows gate would fail; it now opens the airtime first and also checks that an earlier press leaves the air jump.
