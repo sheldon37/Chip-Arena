@@ -275,3 +275,11 @@ npm run verify
 Record command exit codes and the tested SHA. Read MIGRATION-REPORT for the actual
 results, environment limits and existing failures. Setup/compilation do not require
 production secrets; account service tests generate disposable signing keys.
+
+### Native relay check timeout
+
+`unity/ChipArenaConversion/tools/check_relay.py` allows 300 seconds for the test
+process by default. Loaded machines can set `CHIP_TEST_TIMEOUT_SECONDS=600` or
+pass `--test-timeout 600` (the CLI wins). Values must be positive integer seconds;
+invalid configuration fails before starting builds or the relay. This changes no
+test assertions, relay startup deadline, or CI job deadline.

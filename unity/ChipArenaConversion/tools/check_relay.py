@@ -9,10 +9,22 @@ import time
 import urllib.request
 
 root = Path(__file__).resolve().parents[1]
+def positive_seconds(value):
+    try:
+        seconds = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError('test timeout must be a positive integer in seconds')
+    if seconds <= 0:
+        raise argparse.ArgumentTypeError('test timeout must be a positive integer in seconds')
+    return seconds
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--dotnet', default='dotnet')
 parser.add_argument('--compiled-relay')
 parser.add_argument('--compiled-tests')
+parser.add_argument('--test-timeout', type=positive_seconds,
+                    default=os.environ.get('CHIP_TEST_TIMEOUT_SECONDS', '300'),
+                    help='test process timeout in seconds (default: CHIP_TEST_TIMEOUT_SECONDS or 300)')
 args = parser.parse_args()
 for project, compiled in [('Relay/ChipArena.Relay.csproj', args.compiled_relay), ('Tests/CoreTests.csproj', args.compiled_tests)]:
     if not compiled:
@@ -37,7 +49,7 @@ with tempfile.TemporaryFile(mode='w+') as log:
             raise RuntimeError('Relay startup timed out')
         env = os.environ.copy()
         env['CHIP_TEST_RELAY'] = f'ws://127.0.0.1:{port}'
-        result = subprocess.run([args.dotnet, tests], cwd=root, env=env, timeout=90)
+        result = subprocess.run([args.dotnet, tests], cwd=root, env=env, timeout=args.test_timeout)
         raise SystemExit(result.returncode)
     finally:
         server.terminate()
