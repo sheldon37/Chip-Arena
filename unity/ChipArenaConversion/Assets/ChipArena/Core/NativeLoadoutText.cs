@@ -66,6 +66,8 @@ namespace ChipArena.UnityConversion
         public static string Stats(ContentWeapon w)
         {
             if(w==null)return "";var inv=CultureInfo.InvariantCulture;bool melee=w.@class=="melee";
+            // The Bow's damage is its draw's (Astra's NativeBowRules: quick shot to full draw at .8 s), not one shot a second.
+            if(w.id=="bow")return NativeBowRules.Damage(0).ToString(inv)+"\u2013"+NativeBowRules.Damage(1).ToString(inv)+" DMG · "+(NativeBow.FullDraw).ToString("0.0",inv)+" S DRAW";
             string s=w.damage.ToString(inv)+" DMG · "+(w.interval>0?(1/w.interval).ToString("0.0",inv):"0.0")+" / SEC";
             if(w.cost!=0)s+=" · "+w.cost.ToString(inv)+(melee?" STAMINA":" MANA");
             if(melee)s+=" · "+w.range.ToString(inv)+" M";

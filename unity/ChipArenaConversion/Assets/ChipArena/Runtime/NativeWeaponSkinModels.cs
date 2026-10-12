@@ -47,6 +47,8 @@ namespace ChipArena.UnityConversion
                 foreach(var s in loose.Sections){var mesh=WeaponMeshOf(s,spec+" / loose");if(mesh!=null)looseParts.Add(new Part{Name="std-loose-"+spec,Bone=-1,Mesh=mesh,Material=plain});}
                 models[NativeWeaponSkins.StandardLoose(spec)]=looseParts.ToArray();StandardWeaponModels++;
             }
+            // The Standard skins' Chip modules (NativeChipModuleModels.cs), built with the models they mount on.
+            ChipModules();
         }
         private static Mesh WeaponMeshOf(WeaponSection s,string name)
         {

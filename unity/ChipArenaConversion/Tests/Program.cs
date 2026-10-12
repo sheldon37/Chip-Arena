@@ -16,6 +16,7 @@ internal static class Program
             string root=ProjectRoot();
             InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
+            FactoryChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};
             var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
             MeleeKitChecks.Run(data);WhirlwindChecks.Run(data);RangedAbilityChecks.Run(data);NativeMeleeFeelChecks.Run(data);SprintAttackChecks.Run(data);NightMeleeChecks.Run(data);JumpAttackFollowupChecks.Run(data);JumpSimulationChecks.Run(data);
@@ -58,7 +59,7 @@ internal static class Program
             CameraRigChecks.Run(root);
             StructureFxChecks.Run(root);
             VfxChecks.Run(root);VfxRuntimeChecks.Run(root);
-            LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);HitFeelChecks.Run(root,data);JumpMotionChecks.Run(root);PackLocomotionChecks.Run(root);SprintMotionChecks.Run(root);RangedLocomotionChecks.Run(root);AirAttackChecks.Run(root,data);PlungeStabChecks.Run(root,data);SprintAttackPoseChecks.Run(root,data);
+            LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);HitFeelChecks.Run(root,data);JumpMotionChecks.Run(root);PackLocomotionChecks.Run(root);SprintMotionChecks.Run(root);RangedLocomotionChecks.Run(root);AirAttackChecks.Run(root,data);DownAttackChecks.Run(data);BowRuleChecks.Run();PlungeStabChecks.Run(root,data);SprintAttackPoseChecks.Run(root,data);
             ArmorLightChecks.Run(root);
             BlockFxChecks.Run(root,data);
             MeleeKitPresentationChecks.Run(root,data);
@@ -67,6 +68,7 @@ internal static class Program
             BloomChecks.Run(root);
             WeaponFxChecks.Run(root,data);
             WeaponSkinChecks.Run(root,data);
+            ChipModuleChecks.Run(root,data);
             BowChecks.Run(root);
             BodySkinChecks.Run(root,data);
             BrickfallSceneryChecks.Run(root);

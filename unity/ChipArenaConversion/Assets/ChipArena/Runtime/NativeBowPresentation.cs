@@ -99,11 +99,14 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// The chip modules on the bow, laid out as on the other ranged weapons (NativeWeaponDressing.Modules, the 'muzzle' just
         /// ahead of the riser) about the arrow line; and the enchant flames (burn, poison: the melee rule's elements, here on the
-        /// ranged bow's arrowhead, where the arrow carries them) round the nocked arrowhead. Not in the menus or the intro.
+        /// ranged bow's arrowhead, where the arrow carries them) round the nocked arrowhead. Not in the menus or the intro. A
+        /// Standard bow draws its designed modules instead (StandardBowDressing); these are the Prototype Series pieces.
         /// </summary>
         private void BowDressing(Actor a,in NativeBowPose.Frame f,in NativeBow.View v,float time,bool first,int layer,Camera camera)
         {
             if(Viewer)return;var pilot=LoadoutPilot(a.Id);if(pilot?.Stats==null||pilot.Weapon==null||pilot.Seat.chips==null)return;var chips=pilot.Seat.chips;var stats=pilot.Stats;
+            // A Standard bow carries the designed modules and arrow enchant (NativeChipModulePresentation.cs); the Prototype keeps these pieces.
+            if(StandardBowDressing(a,pilot,f,v,time,first,layer,camera))return;
             var line=bowHand*Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeBowModels.ModuleOffset)));if(first)line*=Matrix4x4.Scale(Vector3.one*NativeWeaponDressing.FirstPersonModuleScale);
             int count=NativeWeaponDressing.Modules(NativeBowWire.Spec,true,(int)pilot.Weapon.color,chips,stats,weaponPieces);
             for(int i=0;i<count;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,line,layer,camera,rigFactor);}
@@ -215,7 +218,7 @@ namespace ChipArena.UnityConversion
                 {
                     if(!NativeBowWire.Is(b.Spec))continue;NativeShotViews.Bullet(arena,b,tracker,now,out var v);var vel=new Vector3((float)v.VX,(float)v.VY,(float)v.VZ);p.bowVelocity[b.Id]=vel;
                     int owner=b.Original!=0?b.Original:b.Owner;float draw;NativeBow.Arrow kind;
-                    if(p.bowShots.TryGetValue(b.Id,out var shot)){draw=shot.draw;kind=shot.kind;}else{draw=NativeBowWire.SpeedDraw(b.BaseVelocity.sqrMagnitude>.01f?b.BaseVelocity.magnitude:vel.magnitude);kind=draw>=.999f?NativeBow.Arrow.Full:NativeBow.Arrow.Quick;}
+                    if(NativeBowWire.Arrow(b.Detail,b.Draw,out kind,out draw)){}else if(p.bowShots.TryGetValue(b.Id,out var shot)){draw=shot.draw;kind=shot.kind;}else{draw=NativeBowWire.SpeedDraw(b.BaseVelocity.sqrMagnitude>.01f?b.BaseVelocity.magnitude:vel.magnitude);kind=draw>=.999f?NativeBow.Arrow.Full:NativeBow.Arrow.Quick;}
                     var seat=NativeShotViews.Seat(arena,owner);bool std=seat==null||NativeWeaponSkins.Index(seat.weaponSkins,NativeBowWire.Spec)!=NativeWeaponSkins.PrototypeIndex;
                     p.bowLast[b.Id]=new BowLast{At=new Vector3((float)v.X,(float)v.Y,(float)v.Z),Velocity=vel,Draw=draw,Standard=std,Owner=owner,Frame=p.bowFrame};
                     arrows.Add(new NativeBowArrowView{Id=b.Id,Owner=owner,Position=new NVector((float)v.X,(float)v.Y,(float)v.Z),Velocity=BowN(vel),Born=b.Born,Draw=draw,Kind=kind,Standard=std});

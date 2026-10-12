@@ -61,6 +61,8 @@ namespace ChipArena.UnityConversion
             if(p.Seat.spec=="siren")return SirenDecision(p,input,target,distance,visible,level);
             BotAbilities(p,ref input,target,targetVelocity,distance,visible,level);
             if(input.AbilityQ||input.AbilityE)input.Attack=input.Sprint=false;
+            if(NativeMeleeRules.Standard(p.Seat.spec)&&visible&&!p.Grounded&&delta.y<=-2&&new Vector2(delta.x,delta.z).magnitude<=3&&NativeAirAttackSimulation.Starts(false,p.AirborneAt,p.AirAttackUsed,Time,new InputFrame{Attack=true}))
+            {input.Pitch=Math.Min(-45,input.Pitch);input.Attack=input.Shoot=true;input.AbilityQ=input.AbilityE=input.Sprint=false;}
             if((pos-p.BotPrevious).sqrMagnitude<.000025f&&move.magnitude>.2f)p.BotBlocked+=1f/60;else p.BotBlocked=0;p.BotPrevious=pos;
             if(p.BotBlocked>.65f){input.Jump=p.Grounded||p.Seat.spec=="daggers"&&p.AirJumps==0&&p.Body.linearVelocity.y<=2;input.X=Mathf.Sin(Time*3);input.Z=Mathf.Cos(Time*3);}return input;
         }
@@ -80,6 +82,7 @@ namespace ChipArena.UnityConversion
         }
         private void BotAbilities(NativePilot p,ref InputFrame input,Vector3 target,Vector3 velocity,float distance,bool visible,int level)
         {
+            if(p.Seat.spec=="bow"){BotBow(p,ref input,target,velocity,distance,visible);return;}
             if(NativeMeleeRules.Standard(p.Seat.spec)){BotMeleeAbilities(p,ref input,target,distance,visible,level);return;}
             if(!FighterReady(p)||p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||Time<p.AttackEnd&&!(Dev(p,"emperor")&&p.Fighter?.Kind=="wave"))return;
             if(p.Fighter?.Kind=="charge"){input.HadokenHeld=visible&&Time-p.Fighter.At<1.45f&&p.Stamina>=30*p.Stats["resourceCost"];input.Shoot=input.Roll=false;return;}

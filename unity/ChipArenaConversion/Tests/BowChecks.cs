@@ -101,22 +101,28 @@ internal static class BowChecks
     // ---- 3. keyed on the replicated data only ----
     private static void Keying(List<string> log)
     {
-        var a=Pilot(41);var b=Pilot(42);a.Bow.DrawAt=b.Bow.DrawAt=3;a.LastShot=b.LastShot=2;a.Bow.ReleaseDraw=b.Bow.ReleaseDraw=.6f;
+        var a=Pilot(41);var b=Pilot(42);a.BowDrawAt=b.BowDrawAt=3;a.BowReleaseAt=b.BowReleaseAt=2;a.BowDraw=b.BowDraw=.6f;
         b.Hp=17;b.Position=new V3(5,2,-3);b.Velocity=new V3(4,0,2);b.Ammo=3;b.Yaw=80;b.Pitch=-20;b.StunUntil=9;b.AccentColor="#123456";
         var ra=NativeBowWire.Of(a);var rb=NativeBowWire.Of(b);rb.Seed=ra.Seed;
         Check(ra.Equals(rb),"the read depends only on the bow's replicated fields (and the id's seed)");
         var none=NativeBowWire.Of(new Actor{SourceSpec="rifle",LastShot=5});Check(!none.Bow&&NativeBow.At(none,6).Phase==NativeBow.Phase.Carry,"another weapon reads as an idle bow");
-        var bad=Pilot();bad.Bow.DrawAt=float.NaN;bad.LastShot=float.PositiveInfinity;bad.Bow.ReleaseDraw=7;bad.Bow.RainRadius=-3;bad.CastRate=0;var rbad=NativeBowWire.Of(bad);
+        var bad=Pilot();bad.BowDrawAt=float.NaN;bad.BowReleaseAt=float.PositiveInfinity;bad.BowDraw=7;bad.BowRainAt=float.NaN;bad.CastRate=0;var rbad=NativeBowWire.Of(bad);
         Check(rbad.DrawAt<0&&rbad.ReleaseAt<0&&rbad.ReleaseDraw==1&&rbad.RainRadius==NativeBow.RainRadius&&Math.Abs(rbad.DrawTime-NativeBow.FullDraw)<1e-6f,"malformed fields read as absent");
         // The existing cast stamp drives Volley and Rain when the bow's own fields are not set.
         var c=Pilot();c.AbilityId=NativeBowWire.VolleyId;c.AbilityAt=4;c.AbilityRelease=4.06f;var rc=NativeBowWire.Of(c);Check(rc.VolleyAt==4&&rc.VolleyRelease==4.06f,"Volley from AbilityId/AbilityAt/AbilityRelease");
-        c.AbilityId=NativeBowWire.RainId;rc=NativeBowWire.Of(c);Check(rc.RainAt==4&&rc.VolleyAt<0,"Rain of Arrows from the cast stamp");
+        c.AbilityId=NativeBowWire.RainId;c.BowRainAt=4;c.BowRainTarget=new V3(2,0,-6);rc=NativeBowWire.Of(c);
+        Check(rc.RainAt==4&&Math.Abs(rc.RainRelease-4-NativeBow.RainPre)<1e-6f&&rc.HasRainTarget&&rc.RainTarget==new Vector3(2,0,-6)&&rc.RainRadius==NativeBowRules.RainRadius&&rc.VolleyAt<0,"Rain of Arrows from BowRainAt and its ground point; the sky shot looses RainPre after the cast");
+        var q=Pilot();q.LastShot=6;Check(NativeBowWire.Of(q).ReleaseAt<0,"an arrow's LastShot stamp (Volley, Rain) is not a draw's release");
+        Check(NativeBow.Nock==NativeBowRules.Nock&&NativeBow.DrawMove==NativeBowRules.Move&&NativeBow.RainRadius==NativeBowRules.RainRadius&&NativeBow.SpeedQuick==NativeBowRules.Speed(0)&&NativeBow.SpeedFull==NativeBowRules.Speed(1)
+            &&NativeBow.GravityQuick==NativeBowRules.Gravity(0)&&NativeBow.GravityFull==NativeBowRules.Gravity(1),"the presentation's rule numbers are the simulation's (NativeBowRules)");
+        Check(NativeBowWire.Arrow("bow-full",1,out var bk,out float bd)&&bk==NativeBow.Arrow.Full&&bd==1&&NativeBowWire.Arrow("rain",.7f,out bk,out bd)&&bk==NativeBow.Arrow.Rain&&Math.Abs(bd-.7f)<1e-6f&&!NativeBowWire.Arrow(null,1,out _,out _),"a bullet's own Detail and Draw name its arrow");
+        {var snd=new NativeEventSounds.Sound[4];Check(NativeEventSounds.Route(new NativeEventSounds.Context{Kind=EventKind.Shot,SourceSpec=NativeBowWire.Spec},snd)==0,"bow arrows play the bow's own release cues, not the gun shot route");}
         // A frame is a pure function of the read and the time: any order of evaluation gives the same frames.
         var r=ra;var times=Enumerable.Range(0,240).Select(i=>i/60f+1.5f).ToArray();var forward=times.Select(t=>NativeBow.At(r,t)).ToArray();var rng=new Random(5);
         foreach(int i in Enumerable.Range(0,times.Length).OrderBy(_=>rng.Next())){var v=NativeBow.At(r,times[i]);Check(v.Equals(forward[i]),"frame "+times[i]+" depends on the evaluation order");}
         // Shot events carry the arrow's kind and draw fraction.
         foreach(var (detail,kind,amount) in new[]{(NativeBowWire.DetailQuick,NativeBow.Arrow.Quick,.2f),(NativeBowWire.DetailFull,NativeBow.Arrow.Full,1f),(NativeBowWire.DetailVolley,NativeBow.Arrow.Volley,.7f),(NativeBowWire.DetailRain,NativeBow.Arrow.Rain,1f)})
-        {var e=new ArenaEvent{Kind=EventKind.Shot,Detail=detail,Amount=amount};Check(NativeBowWire.Shot(e,out var k,out float d)&&k==kind&&Math.Abs(d-amount)<1e-6f,detail+" shot event");}
+        {var e=new ArenaEvent{Kind=EventKind.Shot,Detail=detail,Draw=amount};Check(NativeBowWire.Shot(e,out var k,out float d)&&k==kind&&Math.Abs(d-amount)<1e-6f,detail+" shot event");}
         Check(!NativeBowWire.Shot(new ArenaEvent{Kind=EventKind.Shot,Detail="pistol"},out _,out _)&&!NativeBowWire.Shot(new ArenaEvent{Kind=EventKind.Hit,Detail="bow"},out _,out _),"other events are not bow shots");
         Check(NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Headshot},"bow")&&!NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Hit,Detail="field"},"bow")&&!NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Hit},"rifle"),"only a bow pilot's direct hits stick an arrow");
         Check(Math.Abs(NativeBowWire.SpeedDraw(NativeBow.SpeedQuick))<1e-6f&&Math.Abs(NativeBowWire.SpeedDraw(NativeBow.SpeedFull)-1)<1e-6f&&NativeBowWire.SpeedDraw(float.NaN)==0,"an unseen shot's draw from its launch speed");
@@ -135,7 +141,7 @@ internal static class BowChecks
         float worstAim=0,worstReach=0,worstHook=0,worstAnchor=0;int frames=0;var states=new HashSet<string>();string worstAt="",handAt="";float worstHand=0;
         foreach(float pitch in new[]{-30f,-10f,0f,15f,35f})foreach(float yaw in new[]{0f,-12f,12f})
         {
-            var a=Pilot(43);a.Pitch=pitch;a.AimYaw=a.Yaw+yaw;a.Bow.DrawAt=1;var d=new Driver();
+            var a=Pilot(43);a.Pitch=pitch;a.AimYaw=a.Yaw+yaw;a.BowDrawAt=1;var d=new Driver();
             for(float t=0;t<=2.2f;t+=1/60f)
             {
                 states.Add(d.Step(a,t));var f=d.Motion.Shot;var v=d.Motion.Bow;frames++;
@@ -174,11 +180,11 @@ internal static class BowChecks
             if(d1>=0&&d2>=0&&d>=0){float spike=d1-Math.Max(d2,d);if(spike>jump){jump=spike;jumpAt=at1;}}
             d2=d1;d1=d;at1=$"{t-1/60f:0.000} {dr.Motion.Bow.Phase} nocking {dr.Motion.Bow.Nocking:0.00}";held=h;lastDraw=f.DrawWrist;lastBow=f.BowWrist;
         }
-        p.Bow.DrawAt=.5f;for(float t=0;t<5.5f;t+=1/60f){dr.Step(p,t);Watch(t);tremor=Math.Max(tremor,dr.Motion.Bow.Tremor);}
-        p.LastShot=5.5f;p.Bow.ReleaseDraw=1;for(float t=5.5f;t<6.1f;t+=1/60f){dr.Step(p,t);Watch(t);follow=Math.Max(follow,dr.Motion.Bow.Follow);handArrow|=dr.Motion.Shot.HandArrow;}
-        p.Bow.DrawAt=6.5f;for(float t=6.1f;t<6.9f;t+=1/60f)dr.Step(p,t);p.Bow.DrawAt=0;for(float t=6.9f;t<7.5f;t+=1/60f){dr.Step(p,t);letDown|=dr.Motion.Bow.Phase==NativeBow.Phase.LetDown;}
-        p.Bow.VolleyAt=7.7f;p.Bow.VolleyRelease=7.76f;for(float t=7.5f;t<8.4f;t+=1/60f){dr.Step(p,t);Watch(t);fan=Math.Max(fan,dr.Motion.Bow.Fan);}
-        p.Bow.RainAt=9f;p.Bow.RainRelease=9.16f;for(float t=8.4f;t<10f;t+=1/60f){dr.Step(p,t);Watch(t);sky=Math.Max(sky,dr.Motion.Bow.Sky);Check(Reach(dr.Motion.Shot)<=.522f,"the sky shot reaches ("+Reach(dr.Motion.Shot).ToString("0.000")+" at "+t.ToString("0.000")+" "+dr.Motion.Bow.Phase+" nocking "+dr.Motion.Bow.Nocking.ToString("0.00")+" bow "+dr.Motion.Shot.BowReach.ToString("0.000")+")");}
+        p.BowDrawAt=.5f;for(float t=0;t<5.5f;t+=1/60f){dr.Step(p,t);Watch(t);tremor=Math.Max(tremor,dr.Motion.Bow.Tremor);}
+        p.BowReleaseAt=5.5f;p.BowDraw=1;for(float t=5.5f;t<6.1f;t+=1/60f){dr.Step(p,t);Watch(t);follow=Math.Max(follow,dr.Motion.Bow.Follow);handArrow|=dr.Motion.Shot.HandArrow;}
+        p.BowDrawAt=6.5f;for(float t=6.1f;t<6.9f;t+=1/60f)dr.Step(p,t);p.BowDrawAt=-1;for(float t=6.9f;t<7.5f;t+=1/60f){dr.Step(p,t);letDown|=dr.Motion.Bow.Phase==NativeBow.Phase.LetDown;}
+        p.AbilityId=NativeBowWire.VolleyId;p.AbilityAt=7.7f;p.AbilityRelease=7.76f;for(float t=7.5f;t<8.4f;t+=1/60f){dr.Step(p,t);Watch(t);fan=Math.Max(fan,dr.Motion.Bow.Fan);}
+        p.BowRainAt=9f;for(float t=8.4f;t<10f;t+=1/60f){dr.Step(p,t);Watch(t);sky=Math.Max(sky,dr.Motion.Bow.Sky);Check(Reach(dr.Motion.Shot)<=.522f,"the sky shot reaches ("+Reach(dr.Motion.Shot).ToString("0.000")+" at "+t.ToString("0.000")+" "+dr.Motion.Bow.Phase+" nocking "+dr.Motion.Bow.Nocking.ToString("0.00")+" bow "+dr.Motion.Shot.BowReach.ToString("0.000")+")");}
         Check(jump<.08f,"the hands never jump between frames (worst spike "+jump.ToString("0.000")+" m at "+jumpAt+")");
         Check(tremor>.5f&&follow>.9f&&handArrow&&letDown&&fan>.99f&&sky>.99f,"hold tremor "+tremor.ToString("0.00")+", follow-through "+follow.ToString("0.00")+", an arrow drawn from the quiver, the let-down watched, the Volley fan and the sky shot");
         log.Add($"third person: {frames} frames over 15 aims (pitch -30..35, yaw +-12): the posed arrow on the crosshair aim within {worstAim:0.00} degrees (the posed hands within {worstHand*1000:0.0} mm of the frame's spacing), the line through the cheek anchor within {worstAnchor*1000:0.0} mm, the string hand on the nock within {worstHook*1000:0.0} mm, the arms reaching (worst {worstReach:0.000} m); tremor, follow-through, nock, let-down, Volley and sky shot, no hand jump (worst one-frame spike {jump*1000:0} mm over its neighbours)");
@@ -187,7 +193,7 @@ internal static class BowChecks
     // ---- 5. first person: the arrow straight down the view at every phase ----
     private static void View(List<string> log)
     {
-        float worst=0,reach=0;var pose=new CapturedRig.Pose();var a=Pilot(45);a.Bow.DrawAt=1;
+        float worst=0,reach=0;var pose=new CapturedRig.Pose();var a=Pilot(45);a.BowDrawAt=1;
         foreach(float pitch in new[]{-40f,0f,40f})
         {
             a.Pitch=pitch;
@@ -253,15 +259,15 @@ internal static class BowChecks
     {
         var scene=new Scene();var a=Pilot(46);scene.List.Add(a);var sink=new ArrowSink();
         Check(Draw(sink,scene,1)==0,"an idle bow draws no effects");
-        a.Bow.DrawAt=1;Draw(sink,scene,1.85f);int glint=sink.Sprites;Check(glint>0,"the full-draw glint on the arrowhead");
-        a.LastShot=2;a.Bow.ReleaseDraw=1;a.Bow.DrawAt=0;Draw(sink,scene,2.02f);Check(sink.Lines>0,"the string snaps at the release");
+        a.BowDrawAt=1;Draw(sink,scene,1.85f);int glint=sink.Sprites;Check(glint>0,"the full-draw glint on the arrowhead");
+        a.BowReleaseAt=2;a.BowDraw=1;a.BowDrawAt=-1;Draw(sink,scene,2.02f);Check(sink.Lines>0,"the string snaps at the release");
         scene.Flying.Add(new NativeBowArrowView{Id=1,Owner=46,Position=new Vector3(0,1.5f,4),Velocity=new Vector3(0,0,110),Born=2,Draw=1,Kind=NativeBow.Arrow.Full,Standard=true});
         scene.Flying.Add(new NativeBowArrowView{Id=2,Owner=46,Position=new Vector3(0,1.5f,4),Velocity=new Vector3(0,-2,45),Born=2,Draw=.1f,Kind=NativeBow.Arrow.Quick,Standard=true});
         Draw(sink,scene,2.05f);Check(sink.Arrows>=2,"every arrow in flight draws its model");
         NativeBowFx.TrailLook(1,NativeBow.Arrow.Full,out float fl,out float fw,out float fg,out _);NativeBowFx.TrailLook(.1f,NativeBow.Arrow.Quick,out float ql,out float qw,out float qg,out _);
         Check(fl>ql&&fg>qg&&fw>=qw,"a fuller draw's trail is longer and brighter");
-        scene.Flying.Clear();a.Bow.VolleyAt=3;a.Bow.VolleyRelease=3.06f;Draw(sink,scene,3.1f);Check(sink.Lines>=NativeBow.VolleyArrows,"the Volley's five-arrow fan streak");
-        a.Bow.RainAt=5;a.Bow.RainRelease=5.16f;a.Bow.HasRainTarget=true;a.Bow.RainTarget=new V3(6,0,10);
+        scene.Flying.Clear();a.AbilityId=NativeBowWire.VolleyId;a.AbilityAt=3;a.AbilityRelease=3.06f;Draw(sink,scene,3.1f);Check(sink.Lines>=NativeBow.VolleyArrows,"the Volley's five-arrow fan streak");
+        a.BowRainAt=5;a.BowRainTarget=new V3(6,0,10);
         int marker=Draw(sink,scene,5.3f),markerLines=sink.Lines+sink.Bands,fall=Draw(sink,scene,5.9f),falling=sink.Arrows,hits=Draw(sink,scene,6.9f);
         Check(marker>0&&markerLines>0&&fall>0&&falling>0&&hits>0&&sink.Arrows>0,"Rain of Arrows: the marker, the sky volley, the arrows falling and standing ("+marker+"/"+fall+"/"+hits+")");
         double h1=sink.Hash;Draw(sink,scene,6.9f);Check(sink.Hash==h1,"the effects are a pure function of the frame");
@@ -278,15 +284,15 @@ internal static class BowChecks
     // ---- 8. HUD and sounds ----
     private static void Hud(List<string> log)
     {
-        var a=Pilot(47);a.Bow.DrawAt=1;var r=NativeBowWire.Of(a);
+        var a=Pilot(47);a.BowDrawAt=1;var r=NativeBowWire.Of(a);
         var m=NativeBowHud.MeterOf(r,1.1f);Check(m.Shown&&m.Quick&&!m.Full&&Math.Abs(m.Fill-.125f)<1e-4f&&Math.Abs(m.QuickMark-NativeBow.QuickBelow/NativeBow.FullDraw)<1e-5f,"the meter fills with the draw fraction, the quick-shot mark at .25 s");
         m=NativeBowHud.MeterOf(r,1.4f);Check(m.Shown&&!m.Quick&&!m.Full,"past the quick mark");m=NativeBowHud.MeterOf(r,1.85f);Check(m.Full&&m.Pulse>0&&!m.Fatigue,"full draw locks with a flare");
         m=NativeBowHud.MeterOf(r,1.8f+NativeBow.SteadyHold+.5f);Check(m.Fatigue&&m.Tremor>0,"the meter warns as the arm tires");
-        a.LastShot=5;a.Bow.DrawAt=0;a.Bow.ReleaseDraw=.6f;r=NativeBowWire.Of(a);m=NativeBowHud.MeterOf(r,5.1f);Check(m.Shown&&m.Release&&Math.Abs(m.Fill-.6f)<1e-6f&&m.Alpha<1,"after a release the meter holds the shot's fill and fades");
+        a.BowReleaseAt=5;a.BowDrawAt=-1;a.BowDraw=.6f;r=NativeBowWire.Of(a);m=NativeBowHud.MeterOf(r,5.1f);Check(m.Shown&&m.Release&&Math.Abs(m.Fill-.6f)<1e-6f&&m.Alpha<1,"after a release the meter holds the shot's fill and fades");
         Check(!NativeBowHud.MeterOf(r,5.5f).Shown&&!NativeBowHud.MeterOf(NativeBowWire.Of(new Actor{SourceSpec="pistol"}),1).Shown,"hidden otherwise and for other weapons");
         var c=NativeBowHud.Of(NativeBowWire.VolleyId,r,6,0,8);Check(c.Ready&&c.State=="READY"&&c.Icon==NativeBowHud.VolleyIcon,"the Q card ready with its icon");
         c=NativeBowHud.Of(NativeBowWire.RainId,r,6,4,12);Check(!c.Ready&&c.State=="4.0s"&&Math.Abs(c.Dial-(1-4/12f))<1e-5f&&c.Icon==NativeBowHud.RainIcon,"the E card's cooldown dial");
-        a.Bow.RainAt=7;r=NativeBowWire.Of(a);Check(NativeBowHud.Of(NativeBowWire.RainId,r,7.2f,12,12).State.StartsWith("MARKED")&&NativeBowHud.Of(NativeBowWire.RainId,r,7.9f,12,12).State=="RAINING","Rain's card marks then rains");
+        a.BowRainAt=7;r=NativeBowWire.Of(a);Check(NativeBowHud.Of(NativeBowWire.RainId,r,7.2f,12,12).State.StartsWith("MARKED")&&NativeBowHud.Of(NativeBowWire.RainId,r,7.9f,12,12).State=="RAINING","Rain's card marks then rains");
         Check(NativeLocker.AbilityIcon(NativeBowWire.VolleyId,null)==NativeBowHud.VolleyIcon&&NativeLocker.AbilityIcon(NativeBowWire.RainId,null)==NativeBowHud.RainIcon,"the Locker shows the same ability icons");
         Check(NativeLoadoutText.Role(new ContentWeapon{id="bow"}).Length>0,"the loadout tile's role line");
         foreach(var s in new[]{NativeBowSounds.Creak,NativeBowSounds.Thwip,NativeBowSounds.Thunk})Check(NativeSoundKeys.Known(s.Key),"the "+s.Key+" sound is an existing bank key");
@@ -359,21 +365,21 @@ internal static class BowChecks
         Check(R("NativeIntros.cs").Contains("if(style==NativeBowEntrance.Id&&entranceScript is NativeBowEntrance bow){BowIntro(bow,entranceTime);return;}"),"the Arrowfall entrance draws the live bow");
         var audio=R("NativeAudio.cs");Check(audio.Contains("BowCues(")&&audio.Contains("BowFlightCues(")&&audio.Contains("BowEventCue("),"the bow's sounds are cued");
         Check(R("NativeSourceModels.cs").Contains("SheldonModels();PilotBodies();BowModels();"),"the bow models are banked at load");
-        Check(C("ArenaModel.cs").Contains("[NonSerialized] public NativeBowFeed Bow;"),"the provisional feed is never on the wire");
-        // Nothing in play writes the provisional feed, and the bow presentation reads the actor only through the wire map.
+        Check(!C("ArenaModel.cs").Contains("NativeBowFeed")&&C("ArenaModel.cs").Contains("BowDrawAt"),"the provisional feed is gone; Astra's replicated bow fields are on Actor");
+        // The bow presentation reads the actor only through the wire map (Astra's simulation files carry the fields).
         foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories))
         {
-            string text=File.ReadAllText(f);Check(!System.Text.RegularExpressions.Regex.IsMatch(text,@"\.Bow\.\w+\s*=[^=]"),Path.GetFileName(f)+" writes the provisional bow feed");
-            if(Path.GetFileName(f).StartsWith("NativeBow",StringComparison.Ordinal)&&Path.GetFileName(f)!="NativeBow.cs")Check(!text.Contains(".Bow.DrawAt")&&!text.Contains(".Bow.RainAt"),Path.GetFileName(f)+" reads the feed past NativeBowWire");
+            string text=File.ReadAllText(f),name=Path.GetFileName(f);bool presenter=name.StartsWith("NativeBow",StringComparison.Ordinal)&&name!="NativeBow.cs"&&name!="NativeBowRules.cs";
+            if(presenter)Check(!text.Contains("BowDrawAt")&&!text.Contains("BowRainAt")&&!text.Contains("BowReleaseAt"),name+" reads the bow fields past NativeBowWire");
         }
         foreach(var f in new[]{"NativeBow.cs","NativeBowMotion.cs","NativeBowFx.cs","NativeBowEntrance.cs","NativeWeaponModels.Bow.cs"}){var text=C(f);Check(!text.Contains("UnityEngine")&&!text.Contains("new Random(")&&!text.Contains("DateTime"),f+" stays engine-free and deterministic");}
-        log.Add("wiring: the posed bow, its effects, HUD meter, intro bow, sounds and model bank hooked into the runtime; the provisional feed never on the wire nor written in play, read only through NativeBowWire");
+        log.Add("wiring: the posed bow, its effects, HUD meter, intro bow, sounds and model bank hooked into the runtime; Astra's fields read only through NativeBowWire");
     }
 
     // ---- 12. no allocation per frame ----
     private static void Allocation(List<string> log)
     {
-        var a=Pilot(48);a.Bow.DrawAt=1;var d=new Driver();var pose=new CapturedRig.Pose();var scene=new Scene();scene.List.Add(a);var sink=new ArrowSink();var stuck=new NativeBowStuck();
+        var a=Pilot(48);a.BowDrawAt=1;var d=new Driver();var pose=new CapturedRig.Pose();var scene=new Scene();scene.List.Add(a);var sink=new ArrowSink();var stuck=new NativeBowStuck();
         var sc=(NativeBowEntrance)NativeEntranceDirector.Script(NativeBowEntrance.Id);var arrows=new NativeBowPiece[NativeBowEntrance.MaxArrows];
         for(int i=0;i<12;i++)stuck.AddPilot(i,7,CapturedRig.Chest,Vector3.Zero,Vector3.UnitZ,0,1,true);
         void Frame(float t)
@@ -381,7 +387,7 @@ internal static class BowChecks
             d.Step(a,t);pose.Reset();NativeBowPose.View(pose,a,t);var r=NativeBowWire.Of(a);NativeBow.At(r,t);NativeBowHud.MeterOf(r,t);
             NativeBowFx.Draw(sink,scene,t,1,false);stuck.Update(t);stuck.Draw(sink,t,Bone);sc.BowAt(t,out _,out _);sc.Arrows(t,arrows);
         }
-        a.Bow.RainAt=2;a.Bow.VolleyAt=1.5f;for(float t=0;t<4;t+=1/60f)Frame(t);
+        a.BowRainAt=2;a.AbilityId=NativeBowWire.VolleyId;a.AbilityAt=1.5f;for(float t=0;t<4;t+=1/60f)Frame(t);
         long before=GC.GetAllocatedBytesForCurrentThread();for(float t=0;t<4;t+=1/60f)Frame(t);long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
         Check(bytes==0,"a frame of the bow (pose, view, read, meter, effects, stuck arrows, the entrance's bow) allocates "+bytes+" bytes");
         log.Add("allocation: 240 frames of the third- and first-person poses, the read, the meter, the effects, the stuck arrows and the entrance's bow allocate 0 bytes");

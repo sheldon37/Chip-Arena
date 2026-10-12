@@ -43,6 +43,12 @@ first for the shield), a speed streak on the drop, a crater ring and debris size
 recovery and pull-out, first-person view looking down the blade, and a heavier camera shake for big falls
 (camera-shake setting only).
 
+### Plunging stab implementation contract (Astra, 2026-10-12)
+
+`NativeMeleeSwing.AirKind` and snapshot `Actor.AirKind` are `"down"` for the stab and empty for the existing forward attack. `Actor.AirStartY` / `FallHeight` carry centre-height fall distance; `PlungeAt` / `ImpactAt` remain the shared clocks. `Land` uses Detail `melee-down` and the specified radius. Windup retains ordinary gravity (no hover); down carry is 15% of commitment velocity. No echoes or dagger combo follow a down stab.
+
+Direct contacts sweep a narrow .08 m blade from the previous feet to .35 m below the current feet against the existing projectile body geometry, with world visibility and a shared direct/ring victim ledger. The existing target-body overlap allowance is used at ring edges; the ring radius itself remains .9/1/1.2/1.4 m. Height scales each direct hit at its contact height, and the ring at landing, capped at +60%. Direct stun uses the existing boss/anti-stunlock gates. Runtime/PhysX acceptance remains pending.
+
 ## 2. Bow (ranged weapon, id `bow`)
 
 Ranged class, standard (not DEV). Joins pistol, rifle and machine gun.
@@ -81,6 +87,12 @@ Presentation (Claude):
 - An arrow model and trail, a full-draw glint, arrows that stick in walls (6 s) and in pilots (until death or
   round end), and Volley and Rain effects.
 - A HUD draw meter, cooldown cards, a class/weapon icon, a Locker tile, and an entrance (intro) animation.
+
+### Bow implementation contract (Astra, 2026-10-12)
+
+`Actor.BowDrawAt` (-1 idle), `BowReleaseAt`, `BowDraw` (last released fraction), `BowRainAt` and `BowRainTarget` carry draw/rain state. `Shot.Draw` / `Shot.Detail` and each `Shot` event's `Draw`, `Detail`, `Projectile` identify every arrow. Details are `bow`, `bow-full`, `volley`, `rain`; Q uses `AbilityId=volley`, E `rain-of-arrows`. AbilityAt/AbilityRelease remain the cast clocks. Rain targets use native world metres (ground point).
+
+Quick shots are fraction 0 until .25 attack-rate-scaled seconds, then interpolate to 1 at .8 scaled seconds. Fatigue starts 2.5 real seconds after full draw, reaches .01 spread after 4 real seconds at full draw. Nock remains .35 real seconds. Rain emits 12 primary arrows on deterministic golden-angle positions inside the exact 3.5 m circle, at .1 s intervals after .6 s; projectile chips reuse the normal bullet path. Arrow radius is the standard .045 m before projectile-size chips. Q arrows retain the specified 22 damage despite their .7 pose fraction. Rain slows only on a successful damaging hit. Bots and the sandbox `primary` action can hold/release the bow. `preferredSpec=bow` and its prototype skin are accepted by account source; that follow-up requires a later Worker deploy after merge.
 
 ## 3. Cyber Lord (DEV-only, id `cyberlord`)
 

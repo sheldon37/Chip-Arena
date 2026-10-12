@@ -57,6 +57,8 @@ namespace ChipArena.UnityConversion
             var pilot=LoadoutPilot(a.Id);
             if(!first)SampleSweep(rig,a,time,reach,pilot?.Seat.chips);
             if(pilot?.Stats==null||pilot.Weapon==null||pilot.Seat.chips==null)return;var chips=pilot.Seat.chips;var stats=pilot.Stats;bool daggers=spec=="daggers";
+            // A Standard weapon carries the designed modules and enchant (NativeChipModulePresentation.cs); the Prototype Series keeps the pieces below.
+            if(StandardChips(a)){StandardDressing(rig,a,time,first,layer,camera,reach,pilot);return;}
             if(!first||aimMotion.Weight<=.5f)
             {
                 int count=NativeWeaponDressing.Modules(spec,pilot.Weapon.@class=="ranged",(int)pilot.Weapon.color,chips,stats,weaponPieces);
@@ -91,7 +93,8 @@ namespace ChipArena.UnityConversion
         private void ThrownEnchant(NativeMeleeShot shot,Matrix4x4 matrix,float time)
         {
             var owner=shot.Original;if(sourceModels==null||owner?.Stats==null||owner.Seat?.chips==null)return;bool fire=owner.Stats["burn"]>0,poison=owner.Stats["poison"]>0;if(!fire&&!poison)return;
-            owner.Seat.chips.TryGetValue("ember",out int ember);owner.Seat.chips.TryGetValue("poison",out int motes);int count=NativeWeaponDressing.Enchant(shot.Shield?"shield":"daggers",fire,poison,ember,motes,weaponPieces,0);
+            owner.Seat.chips.TryGetValue("ember",out int ember);owner.Seat.chips.TryGetValue("poison",out int motes);if(ThrownStandardEnchant(shot,matrix,time,fire,poison,ember,motes))return;
+            int count=NativeWeaponDressing.Enchant(shot.Shield?"shield":"daggers",fire,poison,ember,motes,weaponPieces,0);
             for(int i=0;i<count;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,matrix,0,null);}
         }
         // melee-trails.ts:33-36,44: the swinging blade's grip and blade-tip socket in world space; even dagger strikes swing the
