@@ -1,28 +1,41 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using M=ChipArena.UnityConversion.NativeUiMotion;
+using G=ChipArena.UnityConversion.NativeLoadoutGrid;
+using T=ChipArena.UnityConversion.NativeCyberTiles;
 using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
-    // The loadout pickers of Play vs Bots, Test Boss, the room lobby and Customize: the source's YOUR CLASS row
-    // (main.ts classOptions, .class-option in style.css, its lobby.css and Customize variants) and, under it, the weapon
-    // cards of that class drawn as the source's specialization chips (.spec-grid .chip in style.css; compact cards in
-    // Customize, where the source has a weapon list). The source picks the weapon in a timed in-match phase; the menus pick
-    // it here. The class is UI state only: it filters the cards, and a pick sets prefs.weapon, the one loadout field that is
-    // saved and sent to rooms. The body reserves each picker's slot with GetRect in every event, so the layout and repaint
-    // passes match; the cards are drawn and hit-tested in the body's deferred kit replay (U.Defer), in its physical-pixel
-    // clip, at the slot's place in the scroll content.
+    // The loadout pickers of Play vs Bots, Test Boss, Create / Join Room, the room lobby and the Locker's Loadout tab, as compact
+    // cyber tiles (owner 2026-10-12: "a animated cyber effect over the choices and just the icon + name of class under it",
+    // cyan instead of orange): YOUR CLASS as one row of class tiles (the source's classOptions) and, under it, the class's
+    // weapons in content order as a grid of square tiles, with the info strip that shows the hovered weapon's role and key
+    // stats (the equipped one's, dimmed, otherwise). The class is UI state only: it filters the tiles, and a pick sets
+    // prefs.weapon, the one loadout field that is saved and sent to rooms. The body reserves each picker's slot with GetRect in
+    // every event, so the layout and repaint passes match; the tiles are drawn and hit-tested in the body's deferred kit replay
+    // (U.Defer), in its physical-pixel clip, at the slot's place in the scroll content. Geometry and the motion timeline:
+    // Core/NativeLoadoutGrid; the drawing: NativeCyberTiles.
     public sealed partial class ConversionGame
     {
+        // Stacked: a panel body (Play vs Bots, Test Boss, Create / Join Room); Lobby: the room lobby's roster column;
+        // Customize: the Locker's Loadout tab (its own hover and click gates).
         private enum ClassCardStyle{Stacked,Lobby,Customize}
         private string menuClass;
         private readonly List<string> menuClasses=new List<string>(4);
         private readonly List<ContentWeapon> menuWeapons=new List<ContentWeapon>(8);
-        private readonly List<float> loadoutRows=new List<float>(8);
         // Each picker's slot width from its last repaint, per screen: the layout pass needs the height before IMGUI has
         // given the slot its width (the first frame, still inside the panel's fade-in, uses an estimate).
         private readonly Dictionary<int,float> loadoutWidth=new Dictionary<int,float>();
+        // Per picker: what it shows (a hash of the class and its tiles), when it last painted and when its entrance began. Per
+        // tile (by its hover id): its last hover level and paint, when the pointer arrived and when it was selected.
+        private sealed class PickerFx{public int Sig;public float Seen=-10,Start;}
+        private sealed class TileFx{public float Hover,Seen=-10,HoverAt=-10,SelectAt=-10;public bool Selected;}
+        private readonly Dictionary<int,PickerFx> pickerFx=new Dictionary<int,PickerFx>();
+        private readonly Dictionary<int,TileFx> tileFx=new Dictionary<int,TileFx>();
+        // The info strip: the weapon it shows and since when, how lit it is (a hovered weapon) and the notch's eased x.
+        private string stripWeapon;private float stripAt=-10,stripLive,stripNotch=-1,stripSeen=-10;
+        private static readonly Dictionary<string,string> classLabels=new Dictionary<string,string>();
+        private readonly Dictionary<(string,int,int),string> stripStats=new Dictionary<(string,int,int),string>();
 
         private ContentWeapon MenuWeapon(){foreach(var w in content.weapons)if(w.id==prefs.weapon)return w;return null;}
         // The highlighted class: the one last picked while it still holds the weapon, otherwise the weapon's own class (DEV
@@ -35,141 +48,120 @@ namespace ChipArena.UnityConversion
         }
         // The side effect the weapon grid always had: a host's own seat is re-broadcast to the room.
         private void SetWeapon(string id){if(id==null||id==prefs.weapon)return;prefs.weapon=id;if(Hosting&&arena==null)LobbyBroadcast();}
-        // In a panel body the slot is inset 4 px at each side, the margin the form's labels and buttons keep, so the cards
-        // line up with them; in the room lobby it is flush with the pilot cards above.
+        // In a panel body the slot is inset 4 px at each side, the margin the form's labels and buttons keep, so the tiles
+        // line up with them; in the room lobby (and the Locker) LoadoutEdge, which keeps the selection's outer brackets inside
+        // the scroll clip.
+        private const float LoadoutEdge=5;
         private float LoadoutSlot(int key,float estimate,out Rect slot,float height)
         {
-            float inset=menuScreen==MenuScreen.Lobby?0:4;var r=GUILayoutUtility.GetRect(0,height,GUILayout.ExpandWidth(true));slot=new Rect(r.x+inset,r.y,r.width-2*inset,r.height);var ev=Event.current.type;
+            float inset=menuScreen==MenuScreen.Lobby?LoadoutEdge:4;var r=GUILayoutUtility.GetRect(0,height,GUILayout.ExpandWidth(true));slot=new Rect(r.x+inset,r.y,r.width-2*inset,r.height);var ev=Event.current.type;
             if(ev==EventType.Layout)return loadoutWidth.TryGetValue(key,out float known)?known:estimate;
             if(ev==EventType.Repaint)loadoutWidth[key]=slot.width;return slot.width;
         }
+        private static G.Row RowOf(ClassCardStyle s)=>s==ClassCardStyle.Lobby?G.Row.Lobby:s==ClassCardStyle.Customize?G.Row.Locker:G.Row.Panel;
+        private static bool LoadoutNarrow=>U.W<=580;
+        // The picker's entrance age: it restarts when the picker was not painted for a moment (its screen opened again) or
+        // shows another set of tiles (a class switch).
+        private float PickerAge(int key,int sig,float now,bool repaint)
+        {
+            if(!pickerFx.TryGetValue(key,out var p)){p=new PickerFx();pickerFx[key]=p;}
+            if(repaint){if(now-p.Seen>.3f||p.Sig!=sig){p.Start=now;p.Sig=sig;}p.Seen=now;}
+            return now-p.Start;
+        }
+        // A tile's timeline: the pointer's arrival (from fully off, or a tile not painted for a moment) and the pick; a tile
+        // found selected as its picker enters locks once its entrance is mostly up (`lockAt`).
+        private TileFx TileState(int id,bool selected,bool hot,float level,float now,float lockAt,bool repaint)
+        {
+            if(!tileFx.TryGetValue(id,out var f)){f=new TileFx();tileFx[id]=f;}
+            if(!repaint)return f;bool fresh=now-f.Seen>.3f;f.Seen=now;
+            if(hot&&(f.Hover<=.02f||fresh))f.HoverAt=now;f.Hover=level;
+            if(selected&&(!f.Selected||fresh))f.SelectAt=fresh?lockAt:now;f.Selected=selected;return f;
+        }
+        private T.Look TileLook(TileFx f,float alpha,float hover,bool selected,float now,int col,int row,Color accent,bool mystery,bool dev)
+            =>new T.Look{Alpha=alpha,Hover=hover,HoverAge=now-f.HoverAt,Selected=selected?1:0,SelectAge=now-f.SelectAt,Time=now,Col=col,Row=row,Calm=prefs.reducedEffects,Mystery=mystery,Dev=dev,Accent=accent};
+        private static string ClassTileLabel(string c){if(!classLabels.TryGetValue(c??"",out var s)){s=NativeLoadoutText.Name(c).ToUpperInvariant();classLabels[c??""]=s;}return s;}
 
         // ---- Class row -------------------------------------------------------------------------------------------------
-        // .options: three equal columns (gap 10, 6 under 580 px) with the DEV card (developers) wrapping to a second row;
-        // cards in a row share the tallest height. Clicking plays the ui sound; a weapon outside the class gives way to the
-        // class default (preferredWeapon).
+        // One row of equal class tiles (two columns on a very narrow slot), the DEV class (developers) last. Clicking plays
+        // the ui sound; a weapon outside the class gives way to the class default (preferredWeapon).
         private void ClassRow(string label,ClassCardStyle style)
         {
             Field(label);MenuClasses();
-            int key=(int)menuScreen*8+(int)style;bool lobby=style==ClassCardStyle.Lobby;float top=lobby?2:style==ClassCardStyle.Customize?4:6,bottom=lobby?0:2,gap=U.W<=580?6:10,e=GUI.color.a;
-            float estimate=style==ClassCardStyle.Lobby?860:style==ClassCardStyle.Customize?486:576;float known=loadoutWidth.TryGetValue(key,out float k)?k:estimate;
-            float width=LoadoutSlot(key,estimate,out var slot,top+ClassGrid(style,known,gap)+bottom);
-            U.Defer(()=>ClassCards(slot,width,top,gap,style,e));
+            int key=(int)menuScreen*8+(int)style;bool lobby=style==ClassCardStyle.Lobby;float top=lobby?4:6,bottom=lobby?4:10,e=GUI.color.a,estimate=lobby?860:576;
+            float known=loadoutWidth.TryGetValue(key,out float k)?k:estimate;
+            float width=LoadoutSlot(key,estimate,out var slot,top+G.Classes(known,menuClasses.Count,RowOf(style),LoadoutNarrow).Height+bottom);
+            U.Defer(()=>ClassTiles(new Rect(slot.x,slot.y+top,slot.width,slot.height-top-bottom),width,style,key,e));
         }
         private void MenuClasses(){bool dev=account.Developer;menuClasses.Clear();foreach(var c in NativeLoadoutText.Classes)if(NativeLoadoutText.Offered(c,dev))menuClasses.Add(c);}
-        // The class cards in their slot (`width` wide, the cards `top` below its top edge), with their clicks.
-        private void ClassCards(Rect slot,float width,float top,float gap,ClassCardStyle style,float e)
+        // The Locker's class row and weapon tiles: their reserved heights (at the Locker's width less LoadoutEdge each side) and
+        // their draws into those slots, with the Locker's gates.
+        private float LockerClassHeight=>G.Classes(lockerW-2*LoadoutEdge,menuClasses.Count,G.Row.Locker,LoadoutNarrow).Height;
+        private float LockerWeaponHeight=>G.WeaponsHeight(lockerW-2*LoadoutEdge,menuWeapons.Count,LoadoutNarrow);
+        private void LockerClassTiles(Rect slot,float e)=>ClassTiles(new Rect(slot.x+LoadoutEdge,slot.y,lockerW-2*LoadoutEdge,slot.height),lockerW-2*LoadoutEdge,ClassCardStyle.Customize,(int)MenuScreen.Customize*8+(int)ClassCardStyle.Customize,e);
+        private void LockerWeaponTiles(Rect slot,float e)=>SpecCards(new Rect(slot.x+LoadoutEdge,slot.y,lockerW-2*LoadoutEdge,slot.height),lockerW-2*LoadoutEdge,(int)MenuScreen.Customize*8+4,ClassCardStyle.Customize,e);
+        // The class tiles from `r`'s top-left, `width` wide, with their clicks. In the Locker the pointer must be over its view
+        // and no confirmation open; there a click on the shown class does nothing (the menus' always re-applies it).
+        private void ClassTiles(Rect r,float width,ClassCardStyle style,int key,float e)
         {
-            string active=MenuClass();bool dev=account.Developer,repaint=Event.current.type==EventType.Repaint;MenuClasses();ClassGrid(style,width,gap);
-            float cw=(width-2*gap)/3,y=slot.y+top;
+            string active=MenuClass();bool dev=account.Developer,repaint=Event.current.type==EventType.Repaint,locker=style==ClassCardStyle.Customize,calm=prefs.reducedEffects;MenuClasses();
+            var row=RowOf(style);var g=G.Classes(width,menuClasses.Count,row,LoadoutNarrow);float now=Time.unscaledTime;int sig=menuClasses.Count;
+            float age=PickerAge(key,sig,now,repaint);
             for(int i=0;i<menuClasses.Count;i++)
             {
-                if(i>0&&i%3==0)y+=loadoutRows[i/3-1]+gap;string c=menuClasses[i];var r=new Rect(slot.x+(i%3)*(cw+gap),y,cw,loadoutRows[i/3]);
-                if(repaint)DrawClassCard(r,c,style,c==active,U.Hover(r),e);
-                if(U.Button(r)){Click();menuClass=c;SetWeapon(NativeLoadoutText.Pick(content.weapons,prefs.weapon,c,dev,AllowedWeapon));}
+                string c=menuClasses[i];var cell=G.At(g,i);var tile=new Rect(r.x+cell.X,r.y+cell.Y,cell.W,cell.H);bool on=c==active,hot=(!locker||lockerViewHot)&&U.Hover(tile);
+                int id=(locker?8600:7420)+i;float h=U.HoverAmount(id,tile,hot),enter=G.Enter(age,i,calm);var f=TileState(id,on,hot,h,now,now-age+G.LockAfterEnter(i,calm),repaint);
+                if(repaint&&enter>0)
+                {
+                    bool mystery=c=="dev";var look=TileLook(f,e*enter,h,on,now,G.Col(g,i),G.RowOf(g,i),mystery?NativeCyberTheme.Violet():NativeCyberTheme.Cyan(),mystery,false);
+                    T.Class(new Rect(tile.x,tile.y+G.Rise*(1-enter),tile.width,tile.height),look,row,NativeIcons.Class(c),ClassTileLabel(c));
+                }
+                if(locker){if(!lockerBlocked&&hot&&U.Button(tile)&&!on){Click();menuClass=c;SetWeapon(NativeLoadoutText.Pick(content.weapons,prefs.weapon,c,dev,AllowedWeapon));}}
+                else if(U.Button(tile)){Click();menuClass=c;SetWeapon(NativeLoadoutText.Pick(content.weapons,prefs.weapon,c,dev,AllowedWeapon));}
             }
-        }
-        // Row heights of the class grid at `width` (into loadoutRows); returns the grid's height.
-        private float ClassGrid(ClassCardStyle style,float width,float gap)
-        {
-            float cw=(width-2*gap)/3,total=0;loadoutRows.Clear();
-            for(int i=0;i<menuClasses.Count;i++){float h=ClassCard(style,cw,menuClasses[i],out _);if(i%3==0)loadoutRows.Add(h);else loadoutRows[i/3]=Mathf.Max(loadoutRows[i/3],h);}
-            for(int i=0;i<loadoutRows.Count;i++)total+=loadoutRows[i]+(i>0?gap:0);return total;
-        }
-        // The card's metrics: Stacked (.class-option: 16 px padding, 48 px symbol box with a 38 px icon, 17 px name, 12 px
-        // tagline at least 2.6em tall), Lobby (lobby.css: 32 px icon beside the two text rows, 16 px side padding; 9 px
-        // above and below rather than 11, so the row fits the space the roster keeps under the pilot cards) and
-        // Customize (14 px padding, 28 px symbol box with a 26 px icon, 10 px tagline). Under 580 px the names are 14 px and
-        // the taglines 10 px (the stacked card also pads 12 / 10 px). Returns the natural height.
-        private struct ClassMetrics{public float PadT,PadX,Name,Tag,TagMin;public List<string> Lines;}
-        private static float ClassCard(ClassCardStyle style,float w,string c,out ClassMetrics m)
-        {
-            bool small=U.W<=580;m=new ClassMetrics{Name=small?14:17};
-            if(style==ClassCardStyle.Lobby){m.PadT=9;m.PadX=16;m.Tag=small?10:12;m.Lines=U.Wrap(NativeLoadoutText.Tagline(c),m.Tag,w-80);return 2+2*m.PadT+Mathf.Max(40,m.Name*1.21f+3+m.Lines.Count*m.Tag*1.21f);}
-            if(style==ClassCardStyle.Customize){m.PadT=m.PadX=14;m.Tag=10;m.TagMin=26;}else{m.PadT=small?12:16;m.PadX=small?10:16;m.Tag=small?10:12;m.TagMin=m.Tag*2.6f;}
-            m.Lines=U.Wrap(NativeLoadoutText.Tagline(c),m.Tag,w-2-2*m.PadX);float box=style==ClassCardStyle.Customize?28+8:48+10;
-            return 1+m.PadT+box+9+m.Name*1.21f+9+Mathf.Max(m.TagMin,m.Lines.Count*m.Tag*1.21f)+m.PadT+1;
-        }
-        // Normal #222329 / #484952; hover snaps to #303138 / #ff784b (no transition in the source); active #39251f with the
-        // #ff6b35 edge and its 3 px inset bar along the bottom, winning over hover. The icon and tagline stay #ff996f.
-        private static void DrawClassCard(Rect r,string c,ClassCardStyle style,bool active,bool hot,float e)
-        {
-            ClassCard(style,r.width,c,out var m);
-            Color fill=active?U.Hex(0x39251f):hot?U.Hex(0x303138):U.Hex(0x222329),edge=active?U.Hex(0xff6b35):hot?U.Hex(0xff784b):U.Hex(0x484952);
-            U.Round(r,U.A(fill,e),4,U.A(edge,e));if(active)U.Fill(new Rect(r.x+2,r.yMax-1-3,r.width-4,3),U.Hex(0xff6b35,e));
-            Color warm=U.Hex(0xff996f,e),ink=U.Hex(0xf5f5f7,e);float nl=m.Name*1.21f,tl=m.Tag*1.21f;string icon=NativeIcons.Class(c),name=NativeLoadoutText.Name(c);
-            if(style==ClassCardStyle.Lobby)
-            {
-                float tb=nl+3+m.Lines.Count*tl,mid=r.center.y,tx=r.x+63,tw=r.width-80;NativeIcons.Draw(new Rect(r.x+17,mid-16,32,32),icon,warm);
-                float y=mid-tb/2;U.Text(new Rect(tx,y,tw,nl),name,m.Name,ink,TextAnchor.MiddleLeft,bold:true);y+=nl+3;
-                foreach(var line in m.Lines){U.Text(new Rect(tx,y,tw,tl),line,m.Tag,warm,TextAnchor.MiddleLeft);y+=tl;}
-                return;
-            }
-            bool custom=style==ClassCardStyle.Customize;float size=custom?26:38,top=r.y+1+m.PadT,x=r.x+1+m.PadX,cw=r.width-2-2*m.PadX;
-            NativeIcons.Draw(new Rect(r.center.x-size/2,top+(custom?1:5),size,size),icon,warm);
-            float ny=top+(custom?36:58)+9;U.Text(new Rect(x,ny,cw,nl),name,m.Name,ink,TextAnchor.MiddleLeft,bold:true);
-            float ty=ny+nl+9;foreach(var line in m.Lines){U.Text(new Rect(x,ty,cw,tl),line,m.Tag,warm,TextAnchor.MiddleLeft);ty+=tl;}
         }
 
-        // ---- Weapon cards ----------------------------------------------------------------------------------------------
-        // The class's weapons in content (source) order. Full cards: three columns from a 900 px slot, two from 520, else
-        // one; 18 px between columns and 25 between rows (the source's single-column row gap, which keeps the pin rows of
-        // stacked chips apart); the slot keeps 16 px above and below for the gold pins and the ledge.
-        // Compact (Customize): two columns of 72 px cards (one under 440 px), gap 10.
-        private void WeaponCards(string label,bool compact=false)
+        // ---- Weapon tiles ----------------------------------------------------------------------------------------------
+        // The class's weapons in content order as square tiles (NativeLoadoutGrid.Weapons: the same tile size for every class
+        // at a given width), the info strip under them; the slot keeps 8 px above for the selection's brackets and glow.
+        private void WeaponCards(string label)
         {
             Field(label);MenuWeapons();
-            int key=(int)menuScreen*8+(compact?5:4);float top=compact?6:16,bottom=compact?10:16,e=GUI.color.a,estimate=compact?486:menuScreen==MenuScreen.Lobby?860:576;
+            int key=(int)menuScreen*8+4;float top=8,bottom=6,e=GUI.color.a,estimate=menuScreen==MenuScreen.Lobby?860:576;
             float known=loadoutWidth.TryGetValue(key,out float k)?k:estimate;
-            float width=LoadoutSlot(key,estimate,out var slot,top+SpecGrid(known,compact,out _,out _,out _)+bottom);
-            U.Defer(()=>SpecCards(slot,width,top,compact,e));
+            float width=LoadoutSlot(key,estimate,out var slot,top+G.WeaponsHeight(known,menuWeapons.Count,LoadoutNarrow)+bottom);
+            U.Defer(()=>SpecCards(new Rect(slot.x,slot.y+top,slot.width,slot.height-top-bottom),width,key,ClassCardStyle.Stacked,e));
         }
         // The weapons of the highlighted class, in content order (into menuWeapons).
         private void MenuWeapons(){string cls=MenuClass();bool dev=account.Developer;menuWeapons.Clear();foreach(var w in content.weapons)if(NativeLoadoutText.InClass(w,cls,dev,AllowedWeapon(w)))menuWeapons.Add(w);}
-        // The weapon cards in their slot, with their clicks; the class is read again here, after the class cards' clicks.
-        private void SpecCards(Rect slot,float width,float top,bool compact,float e)
+        // The weapon tiles from `r`'s top-left, `width` wide, with their clicks, then the info strip; the class is read again
+        // here, after the class tiles' clicks. In the Locker the pointer must be over its view, no confirmation open, and the
+        // hovered weapon previews on the pilot (lockerWeapon).
+        private void SpecCards(Rect r,float width,int key,ClassCardStyle style,float e)
         {
-            MenuWeapons();SpecGrid(width,compact,out int cols,out float gap,out float rowGap);bool repaint=Event.current.type==EventType.Repaint;
-            float cw=(width-(cols-1)*gap)/cols,y=slot.y+top;bool narrow=cols<=2||U.W<=850;
+            MenuWeapons();bool repaint=Event.current.type==EventType.Repaint,locker=style==ClassCardStyle.Customize,calm=prefs.reducedEffects;var g=G.Weapons(width,menuWeapons.Count,LoadoutNarrow);
+            float now=Time.unscaledTime;int sig=menuWeapons.Count;foreach(var w in menuWeapons)sig=sig*31+(w.id?.GetHashCode()??0);float age=PickerAge(key,sig,now,repaint);
+            ContentWeapon hovered=null,equipped=null;float hoveredX=-1,equippedX=-1;
             for(int i=0;i<menuWeapons.Count;i++)
             {
-                if(i>0&&i%cols==0)y+=loadoutRows[i/cols-1]+rowGap;var w=menuWeapons[i];var r=new Rect(slot.x+(i%cols)*(cw+gap),y,cw,loadoutRows[i/cols]);
-                bool selected=w.id==prefs.weapon;int index=Array.IndexOf(content.weapons,w);
-                if(compact)
-                {
-                    if(repaint)DrawCompactWeapon(r,w,SpecCard(w,cw,2),selected,U.Hover(r),e);
-                    if(U.Button(r)&&!selected){Click();SetWeapon(w.id);}
-                }
-                else
-                {
-                    float h=U.HoverAmount(7400+index,r);if(repaint)DrawSpecCard(r,w,SpecCard(w,cw,narrow?1:0),selected,h,U.Hover(r),e);
-                    if(U.Button(r)&&!selected){nativeAudio?.UiCue("ui.loadout.select","install",.4f);SetWeapon(w.id);}
-                }
+                var w=menuWeapons[i];var cell=G.At(g,i);var tile=new Rect(r.x+cell.X,r.y+cell.Y,cell.W,cell.H);bool selected=w.id==prefs.weapon,hot=(!locker||lockerViewHot)&&U.Hover(tile);
+                int index=Array.IndexOf(content.weapons,w),id=(locker?8500:7400)+index;float h=U.HoverAmount(id,tile,hot),enter=G.Enter(age,i,calm);var f=TileState(id,selected,hot,h,now,now-age+G.LockAfterEnter(i,calm),repaint);
+                if(repaint&&enter>0)T.Weapon(new Rect(tile.x,tile.y+G.Rise*(1-enter),tile.width,tile.height),TileLook(f,e*enter,h,selected,now,G.Col(g,i),G.RowOf(g,i),U.Hex((int)w.color),false,w.devOnly),NativeIcons.Spec(w.id),w.name);
+                if(hot){hovered=w;hoveredX=tile.center.x;}if(selected){equipped=w;equippedX=tile.center.x;}
+                if(locker){if(hot&&repaint)lockerWeapon=w.id;if(!lockerBlocked&&lockerViewHot&&U.Button(tile)){Click();if(!selected){nativeAudio?.Play("install",null,.4f);SetWeapon(w.id);}}}
+                else if(U.Button(tile)&&!selected){nativeAudio?.UiCue("ui.loadout.select","install",.4f);SetWeapon(w.id);}
             }
+            if(repaint)WeaponStrip(new Rect(r.x,r.y+g.Height+G.StripGap,width,G.StripHeight),hovered??equipped,hovered!=null,hovered!=null?hoveredX:equippedX,equipped,e*G.Enter(age,0,calm),now);
         }
-        // Row heights of the weapon grid at `width` (into loadoutRows); returns the grid's height.
-        private float SpecGrid(float width,bool compact,out int cols,out float gap,out float rowGap)
+        // The info strip (repaint): the shown weapon cross-fades in when it changes; the strip lights and its notch follows the
+        // hovered tile, resting dimmed on the equipped weapon when nothing is hovered.
+        private void WeaponStrip(Rect s,ContentWeapon w,bool live,float x,ContentWeapon equipped,float a,float now)
         {
-            if(compact){cols=width<440?1:2;gap=rowGap=10;}else{cols=width>=900?3:width>=520?2:1;gap=18;rowGap=25;}
-            float cw=(width-(cols-1)*gap)/cols,total=0;int mode=compact?2:cols<=2||U.W<=850?1:0;loadoutRows.Clear();
-            for(int i=0;i<menuWeapons.Count;i++){float h=SpecCard(menuWeapons[i],cw,mode).Height;if(i%cols==0)loadoutRows.Add(h);else loadoutRows[i/cols]=Mathf.Max(loadoutRows[i/cols],h);}
-            for(int i=0;i<loadoutRows.Count;i++)total+=loadoutRows[i]+(i>0?rowGap:0);return total;
-        }
-        // A card's wrapped text and natural height, cached per weapon, width, density and UI scale. Mode 0: the source's
-        // 3-column metrics (padding 23 / 18 / 18, 18 px name); 1: its narrow metrics (padding 18 / 13, 16 px name);
-        // 2: the compact card (stat line only, at most two lines).
-        private sealed class SpecText{public List<string> Name,Desc,Stats;public float Height,PadT,PadX,PadB,NameSize;}
-        private static readonly Dictionary<(string,int,int),SpecText> specText=new Dictionary<(string,int,int),SpecText>();
-        private static SpecText SpecCard(ContentWeapon w,float width,int mode)
-        {
-            var key=(w.id,Mathf.RoundToInt(width*4)*4+mode,Mathf.RoundToInt(U.S*1000));if(specText.TryGetValue(key,out var t))return t;if(specText.Count>512)specText.Clear();
-            if(mode==2){t=new SpecText{Stats=StatLines(NativeLoadoutText.Stats(w),10,width-78,2),Height=72};specText[key]=t;return t;}
-            t=new SpecText{PadT=mode==1?18:23,PadX=mode==1?13:18,PadB=18,NameSize=mode==1?16:18};float tw=width-4-2*t.PadX;
-            t.Name=U.Wrap(w.name,t.NameSize,tw,true);t.Desc=U.Wrap(NativeLoadoutText.Description(w),14,tw);t.Stats=StatLines(NativeLoadoutText.Stats(w),11,tw);
-            // min-height 265 (border box): 2 + padding + the 50 px icon well and its 20 px margin, the name (line-height 1.2),
-            // 10 px, the description (14 px, line-height 1.6), 12 px, then the stat line pinned to the bottom.
-            t.Height=Mathf.Max(265,2+t.PadT+50+20+t.Name.Count*t.NameSize*1.2f+10+t.Desc.Count*22.4f+12+t.Stats.Count*13+t.PadB+2);
-            specText[key]=t;return t;
+            float dt=Mathf.Clamp(now-stripSeen,0,.1f);if(now-stripSeen>.3f){stripLive=live?1:0;stripNotch=-1;stripWeapon=null;}stripSeen=now;
+            string id=w?.id;if(id!=stripWeapon){stripWeapon=id;stripAt=now;}
+            stripLive=prefs.reducedEffects?(live?1:0):G.StripStep(stripLive,live,dt);if(live)stripNotch=prefs.reducedEffects?x:G.Follow(stripNotch,x,dt);
+            float fade=prefs.reducedEffects?1:.35f+.65f*Mathf.Clamp01((now-stripAt)/G.StripFade);if(w==null){T.Strip(s,null,null,null,false,stripLive,0,stripNotch,a);return;}
+            var key=(w.id,Mathf.RoundToInt(s.width*4),Mathf.RoundToInt(U.S*1000));if(!stripStats.TryGetValue(key,out string stats)){if(stripStats.Count>64)stripStats.Clear();var l=StatLines(NativeLoadoutText.Stats(w),10.5f,s.width-24,1);stats=l.Count>0?l[0]:"";stripStats[key]=stats;}
+            T.Strip(s,w.name,NativeLoadoutText.Role(w),stats,w==equipped,stripLive,fade,stripNotch,a);
         }
         // The stat line (mono, .1em tracking) wrapped between its " · " parts; `max` lines, the last cut with an ellipsis.
         private static List<string> StatLines(string text,float size,float width,int max=int.MaxValue)
@@ -179,38 +171,6 @@ namespace ChipArena.UnityConversion
             if(line.Length>0)lines.Add(line);
             if(lines.Count>max){string last=string.Join(" · ",lines.GetRange(max-1,lines.Count-max+1));while(last.Length>1&&U.Measure(last+"…",size,false,true,.1f).x>width)last=last.Substring(0,last.Length-1).TrimEnd();lines.RemoveRange(max-1,lines.Count-max+1);lines.Add(last+"…");}
             return lines;
-        }
-        // .spec-grid .chip: square #24252c body with a 2 px #585a66 edge, a hard 7 px #081b22 ledge, gold pin rows
-        // (#b99b5e, 6 px on / 7 px off, 9 px tall) above and below, the 50 px #17181e icon well (4 px ring, #666874 edge,
-        // #ffc1a5 icon), the name, the description in #bfc0c9 and the #ff996f mono stat line pinned to the bottom. Hover
-        // lifts the whole chip 5 px and warms the body to #30313a over .15 s (ease); the edge snaps to #ff6b35. The menu's
-        // selected card borrows the class card's active look: #39251f, #ff6b35 edge and a 3 px inset bar.
-        private static void DrawSpecCard(Rect r,ContentWeapon w,SpecText t,bool selected,float hover,bool hot,float e)
-        {
-            float k=M.Ease(hover);var d=new Rect(r.x,r.y-5*k,r.width,r.height);
-            U.Fill(new Rect(d.x,d.yMax,d.width,7),U.Hex(0x081b22,e));
-            U.Fill(d,selected?U.Hex(0x39251f,e):U.A(U.Mix(U.Hex(0x24252c),U.Hex(0x30313a),k),e));
-            Color edge=selected||hot?U.Hex(0xff6b35,e):U.Hex(0x585a66,e);
-            U.Fill(new Rect(d.x,d.y,d.width,2),edge);U.Fill(new Rect(d.x,d.yMax-2,d.width,2),edge);U.Fill(new Rect(d.x,d.y+2,2,d.height-4),edge);U.Fill(new Rect(d.xMax-2,d.y+2,2,d.height-4),edge);
-            if(selected)U.Fill(new Rect(d.x+2,d.yMax-2-3,d.width-4,3),U.Hex(0xff6b35,e));
-            Color pin=U.Hex(0xb99b5e,e);for(float px=d.x+12;px<d.xMax-12;px+=13){float pw=Mathf.Min(6,d.xMax-12-px);U.Fill(new Rect(px,d.y-9,pw,9),pin);U.Fill(new Rect(px,d.yMax,pw,9),pin);}
-            float cx=d.x+2+t.PadX,cy=d.y+2+t.PadT,tw=d.width-4-2*t.PadX,nl=t.NameSize*1.2f;
-            U.Round(new Rect(cx-4,cy-4,58,58),U.Hex(0x17181e,e),14);U.Round(new Rect(cx,cy,50,50),U.Hex(0x17181e,e),10,U.Hex(0x666874,e));
-            NativeIcons.Draw(new Rect(cx+8,cy+8,34,34),NativeIcons.Spec(w.id),U.Hex(0xffc1a5,e));
-            float y=cy+50+20;foreach(var line in t.Name){U.Text(new Rect(cx,y,tw,nl),line,t.NameSize,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true);y+=nl;}y+=10;
-            foreach(var line in t.Desc){U.Text(new Rect(cx,y,tw,22.4f),line,14,U.Hex(0xbfc0c9,e),TextAnchor.MiddleLeft);y+=22.4f;}
-            float sy=d.yMax-2-t.PadB-t.Stats.Count*13;foreach(var line in t.Stats){U.Text(new Rect(cx,sy,tw+8,13),line,11,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,mono:true,tracking:.1f);sy+=13;}
-        }
-        // The compact card in Customize (the source lists names in a select): the class card's palette and states, the
-        // spec chip's icon well (40 px, 26 px icon), the name (15 px) and up to two stat lines (10 px mono), centred.
-        private static void DrawCompactWeapon(Rect r,ContentWeapon w,SpecText t,bool selected,bool hot,float e)
-        {
-            Color fill=selected?U.Hex(0x39251f):hot?U.Hex(0x303138):U.Hex(0x222329),edge=selected?U.Hex(0xff6b35):hot?U.Hex(0xff784b):U.Hex(0x484952);
-            U.Round(r,U.A(fill,e),4,U.A(edge,e));if(selected)U.Fill(new Rect(r.x+2,r.yMax-1-3,r.width-4,3),U.Hex(0xff6b35,e));
-            var well=new Rect(r.x+13,r.center.y-20,40,40);U.Round(well,U.Hex(0x17181e,e),10,U.Hex(0x666874,e));NativeIcons.Draw(new Rect(well.x+7,well.y+7,26,26),NativeIcons.Spec(w.id),U.Hex(0xffc1a5,e));
-            float tx=r.x+65,tw=r.width-78,y=r.center.y-(18+4+t.Stats.Count*12)/2;
-            U.Text(new Rect(tx,y,tw,18),Fit(w.name,15,tw,true,0),15,U.Hex(0xf5f5f7,e),TextAnchor.MiddleLeft,bold:true);y+=22;
-            foreach(var line in t.Stats){U.Text(new Rect(tx,y,tw+8,12),line,10,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,mono:true,tracking:.1f);y+=12;}
         }
     }
 }
