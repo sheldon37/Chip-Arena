@@ -20,8 +20,12 @@ namespace ChipArena.UnityConversion
             var passed=new List<string>();
             // ---------- key contract ----------
             var styles=NativeIntroRules.Entrances.Where(s=>!s.StartsWith("dev-",StringComparison.Ordinal)).ToArray();
+            // The owner's DEV Sheldon Intro has its own music too (intro.sheldon-intro, last): its id carries no dev- prefix, so the
+            // dev- entrances still have none (its DEV gate is the cosmetic rules', NativeCosmeticGate).
+            var keyed=styles.Append(NativeSheldonIntro.Style).ToArray();
             var intro=NativeSoundKeys.All.Where(k=>NativeSoundKeys.IsIntro(k.Key)).ToArray();
-            Check(styles.Length==18&&intro.Length==styles.Length&&intro.Select(k=>k.Key).SequenceEqual(styles.Select(s=>"intro."+s)),"one intro key per non-DEV entrance, in the entrance order ("+intro.Length+")");
+            Check(styles.Length==18&&intro.Length==keyed.Length&&intro.Select(k=>k.Key).SequenceEqual(keyed.Select(s=>"intro."+s)),"one intro key per non-DEV entrance and the Sheldon Intro, in the entrance order ("+intro.Length+")");
+            Check(NativeSoundKeys.Intro(NativeSheldonIntro.Style)=="intro.sheldon-intro"&&!NativeSheldonIntro.Style.StartsWith("dev-",StringComparison.Ordinal)&&NativeCosmeticGate.DevOnly(NativeSheldonIntro.Style),"the Sheldon Intro's key is intro.sheldon-intro and the intro stays DEV-only");
             foreach(var k in intro)
             {
                 string style=k.Key.Substring(NativeSoundKeys.IntroPrefix.Length);
@@ -30,7 +34,7 @@ namespace ChipArena.UnityConversion
             }
             foreach(var s in new[]{"dev-emperor","dev-ansatsuken","dev-matrix","dev-siren",null,"","neon-drop","pulse-wave","weapon-siren","weapon-emperor","intro.weapon-sword"})Check(NativeSoundKeys.Intro(s)==null,(s??"null")+" has no intro key");
             Check(NativeSoundKeys.IsIntro("intro.blackout")&&!NativeSoundKeys.IsIntro("ui.go")&&!NativeSoundKeys.IsIntro(null),"intro key prefix");
-            passed.Add("intro music: "+intro.Length+" intro keys, one per non-DEV entrance (2D, 4.8 s cap, high priority); the 4 DEV entrances, retired and unknown styles have none");
+            passed.Add("intro music: "+intro.Length+" intro keys, one per non-DEV entrance and the DEV Sheldon Intro (2D, 4.8 s cap, high priority); the 4 dev- entrances, retired and unknown styles have none");
 
             // ---------- the clip choice ----------
             var everyStyle=NativeIntroRules.Entrances.Concat(NativeIntroRules.Retired).Concat(new string[]{null,"","weapon-siren"}).ToArray();
@@ -57,7 +61,7 @@ namespace ChipArena.UnityConversion
 
             // ---------- the built-in fallback stays ----------
             int stings=0;
-            foreach(var s in styles)
+            foreach(var s in keyed)
             {
                 string sting=NativeIntroRules.IntroSting(s);Check(sting!=null,s+" has a built-in sting");
                 Check(File.Exists(Path.Combine(root,"Assets/Conversion/Resources/Audio/"+sting+".mp3")),s+": "+sting+".mp3 is still in the project");stings++;
@@ -86,10 +90,10 @@ namespace ChipArena.UnityConversion
             if(!File.Exists(local))passed.Add("intro music: LocalAssets absent, so every entrance plays its built-in sting");
             else
             {
-                var installed=NativeSoundBank.Parse(File.ReadAllText(local));string folder=Path.GetDirectoryName(local);int clips=0,keyed=0;
-                foreach(var s in styles)
+                var installed=NativeSoundBank.Parse(File.ReadAllText(local));string folder=Path.GetDirectoryName(local);int clips=0,withMusic=0;
+                foreach(var s in keyed)
                 {
-                    var e=installed.Entry("intro."+s);if(e==null||e.Count==0)continue;keyed++;
+                    var e=installed.Entry("intro."+s);if(e==null||e.Count==0)continue;withMusic++;
                     foreach(var c in e.Clips)
                     {
                         string file=Path.Combine(folder,e.Key,c+".ogg");
@@ -97,7 +101,7 @@ namespace ChipArena.UnityConversion
                         Check(seconds>=4.5&&seconds<=NativeIntroRules.Duration(s)+.02&&rate==44100&&channels>=1&&channels<=2,e.Key+"/"+c+": "+seconds.ToString("0.000")+" s, "+channels+" ch, "+rate+" Hz (4.5-4.8 s, 44.1 kHz)");clips++;
                     }
                 }
-                passed.Add("intro music: LocalAssets present: "+keyed+" of 18 entrances have bank music ("+clips+" clips, defaults first), each 4.5-4.8 s at 44.1 kHz; the rest play their built-in sting");
+                passed.Add("intro music: LocalAssets present: "+withMusic+" of "+keyed.Length+" entrances have bank music ("+clips+" clips, defaults first), each 4.5-4.8 s at 44.1 kHz; the rest play their built-in sting");
             }
             return passed;
         }

@@ -139,7 +139,9 @@ namespace ChipArena.UnityConversion
             if(style==null||style=="dev-siren"||!Pickable(style))return null;
             // The procedural entrances play the retired generic stings (150 bpm beds with a 3.2 s accent); their beats are on that grid.
             switch(style){case "orbital-drop":case "overclock":return "audio/intros/pulse-wave";case "hero-landing":return "audio/intros/neon-drop";case "skyline-zip":return "audio/intros/vector-slide";
-                case "grid-rez":return "audio/intros/signal-spin";case "holo-projection":case "blackout":return "audio/intros/arc-salute";}
+                case "grid-rez":return "audio/intros/signal-spin";case "holo-projection":case "blackout":return "audio/intros/arc-salute";
+                // The DEV Sheldon Intro's music is its LocalAssets key (intro.sheldon-intro, NativeSheldonIntro's beat marks); without it, a built-in sting.
+                case "sheldon-intro":return "audio/intros/signal-spin";}
             return "audio/intros/"+style;
         }
         /// <summary>The music an entrance plays from its first frame (song time = intro age), or null: black-siren-protocol for dev-siren.</summary>
@@ -149,7 +151,7 @@ namespace ChipArena.UnityConversion
         {
             switch(style)
             {
-                case "dev-siren":return "DEV · Black Siren Protocol";case "dev-emperor":return "DEV · Emperor’s Oath";case "dev-ansatsuken":return "DEV · Rain Warrior";case "dev-matrix":return "DEV · L33T Throne";
+                case "dev-siren":return "DEV · Black Siren Protocol";case "dev-emperor":return "DEV · Emperor’s Oath";case "dev-ansatsuken":return "DEV · Rain Warrior";case "dev-matrix":return "DEV · L33T Throne";case "sheldon-intro":return "DEV · Sheldon Intro";
                 case "weapon-sword":return "Flash Draw";case "weapon-daggers":return "Twin Phantom";case "weapon-greatsword":return "Colossus Oath";case "weapon-shield":return "Bastion Drop";
                 case "weapon-pistol":return "Deadeye";case "weapon-rifle":return "Longwatch";case "weapon-machinegun":return "Belt Rattle";case "weapon-fire":return "Cinder Crown";
                 case "weapon-water":return "Tidal Serpent";case "weapon-lightning":return "Thunderstep";case "weapon-darkness":return "Eventide Gate";

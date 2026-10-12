@@ -48,11 +48,13 @@ internal static class LockerChecks
             &&gate.Contains("public static bool Restricted(string id)=>id!=null&&(id.StartsWith(\"dev-\",StringComparison.Ordinal)||id==\"auditor-halo\"||id==NativeHatLooks.SheldonHead||id==SheldonIntro);")
             &&gate.Contains("public static bool Allowed(NativeAccess a,string type,string id,double now)=>id!=null&&(!DevOnly(id)||(a??NativeAccess.Guest).Developer)&&(!Restricted(id)||(a??NativeAccess.Guest).Allows(type+\":\"+id,now));"),"the cosmetic gate is unchanged for legacy grants (moved to Core; the Sheldon Head and Sheldon Intro join the Gibber behind live DEV access)");
         var hats=Ids(profile,"Hats");var kills=Ids(profile,"Kills");var intros=Ids(profile,"Intros");
-        Check(hats.Length==12&&kills.Length==22&&intros.Length==22,"cosmetic id lists parsed ("+hats.Length+"/"+kills.Length+"/"+intros.Length+")");
-        Check(intros.SequenceEqual(NativeIntroRules.Entrances.OrderBy(i=>Array.IndexOf(intros,i)))&&intros.OrderBy(i=>i).SequenceEqual(NativeIntroRules.Entrances.OrderBy(i=>i)),"the Locker offers exactly the staged entrances");
+        Check(hats.Length==12&&kills.Length==22&&intros.Length==23,"cosmetic id lists parsed ("+hats.Length+"/"+kills.Length+"/"+intros.Length+")");
+        // The staged entrances and the DEV Sheldon Intro (staged by the director, listed only with live DEV access).
+        var staged=NativeIntroRules.Entrances.Concat(new[]{NativeCosmeticGate.SheldonIntro}).ToArray();
+        Check(intros.SequenceEqual(staged.OrderBy(i=>Array.IndexOf(intros,i)))&&intros.OrderBy(i=>i).SequenceEqual(staged.OrderBy(i=>i))&&NativeIntroRules.Pickable(NativeCosmeticGate.SheldonIntro)&&NativeEntranceDirector.Directed(NativeCosmeticGate.SheldonIntro),"the Locker offers exactly the staged entrances");
         foreach(var id in NativeIntroRules.Procedural)Check(NativeLocker.IntroIcon(id)!=null&&!NativeLocker.DevItem(id),"the procedural entrance "+id+" has its icon and no DEV badge");
         foreach(var id in NativeIntroRules.Retired)Check(Array.IndexOf(intros,id)<0&&NativeLocker.IntroText(id).Length==0&&NativeLocker.IntroIcon(id)==null,"the retired "+id+" is gone from the Locker");
-        foreach(var id in hats.Concat(kills).Concat(intros))Check(NativeLocker.DevItem(id)==(id.StartsWith("dev-")||id=="auditor-halo"||id=="sheldon-head"),"DEV badge for "+id);
+        foreach(var id in hats.Concat(kills).Concat(intros))Check(NativeLocker.DevItem(id)==(id.StartsWith("dev-")||id=="auditor-halo"||id=="sheldon-head"||id=="sheldon-intro"),"DEV badge for "+id);
         foreach(var id in hats)Check(NativeLocker.HatText(id).Length>0,"headwear text for "+id);
         foreach(var id in kills)Check(NativeLocker.KillText(id).Length>0&&(NativeLocker.KillColor(id)!=0xc0c1ca||id=="ragdoll"),"kill effect text and colour for "+id);
         foreach(var id in intros)Check(NativeLocker.IntroText(id).Length>0,"entrance text for "+id);

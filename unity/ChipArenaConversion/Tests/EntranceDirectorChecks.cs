@@ -38,8 +38,9 @@ internal static class EntranceDirectorChecks
     }
     public static IEnumerable<string> Run(string root)
     {
-        var clips=Clips(root);var directed=NativeIntroRules.Entrances.Where(NativeEntranceDirector.Directed).ToArray();
-        Check(directed.Length==18&&NativeEntranceDirector.Styles.Count()==18,"eighteen directed entrances");
+        // The eighteen non-DEV entrances and the DEV Sheldon Intro (Core/NativeSheldonIntro.cs; not in NativeIntroRules.Entrances).
+        var clips=Clips(root);var directed=NativeIntroRules.Entrances.Where(NativeEntranceDirector.Directed).Append(NativeSheldonIntro.Style).ToArray();
+        Check(directed.Length==19&&NativeEntranceDirector.Styles.Count()==19,"nineteen directed entrances");
         var scripts=new Dictionary<string,NativeEntranceScript>();
         foreach(var s in directed){var sc=NativeEntranceDirector.Script(s);if(sc is NativeWeaponEntrance){Check(!sc.Ready,s+" waits for its clip");var c=clips["intro-"+s];sc.Bind(new NativeEntranceClip(c.values,c.roots,c.frames,c.duration));}Check(sc.Ready&&sc.Style==s,s+" is ready");scripts[s]=sc;sc.Prepare();}
         // 1. Timing: the match's phase and name card are untouched; the clock is the age up to the hit and again by the name card.
@@ -58,7 +59,7 @@ internal static class EntranceDirectorChecks
             }
             Check(sc.Clock(float.NaN)==0&&sc.Clock(-1)==0,s+" clamps a bad clock");
         }
-        yield return $"entrance timing: 18 directed entrances keep 4.8 s and the 3.2 s card; weapon signatures hit on their sting; the slow-motion beat stays between the hit and the card (largest lag {worstLead:0.000} s)";
+        yield return $"entrance timing: {scripts.Count} directed entrances keep 4.8 s and the 3.2 s card; weapon signatures hit on their sting; the slow-motion beat stays between the hit and the card (largest lag {worstLead:0.000} s)";
         // 2. Purity: the same age gives the same frame whatever was evaluated before (shuffled, backwards, repeated).
         var pose=new CapturedRig.Pose();var sink=new Sink();var lights=new NativeEntranceLights();long frames=0;var rng=new Random(2026);
         foreach(var (s,sc) in scripts)
@@ -73,7 +74,7 @@ internal static class EntranceDirectorChecks
                 Check(was.root==frame.root&&was.eye==frame.eye&&was.look==frame.look&&was.fx==frame.fx&&was.props==frame.props&&was.light==frame.light&&was.hand==frame.hand,s+" differs at "+age+" s when evaluated in another order");frames++;
             }
         }
-        yield return $"entrance purity: {frames} re-evaluations (reversed, shuffled) of all 18 entrances give the identical pose, camera, lights, set and effects";
+        yield return $"entrance purity: {frames} re-evaluations (reversed, shuffled) of all {scripts.Count} entrances give the identical pose, camera, lights, set and effects";
         // 3. The camera: clear of the floor, the pilot and solid props; smooth outside cuts, whips and the hit-stop (a freeze by design); the pilot in frame; still at the end.
         double worstAccel=0,worstTurn=0;string accelAt="",turnAt="";int framed=0,visible=0;var boxes=new Vector4[64];const float dt=1/240f,aspect=16/9f;
         foreach(var (s,sc) in scripts)
@@ -145,7 +146,7 @@ internal static class EntranceDirectorChecks
         long before=GC.GetAllocatedBytesForCurrentThread();
         foreach(var (s,sc) in scripts)for(float age=0;age<=4.8f;age+=1/60f)Frame(sc,age,pose,lights,none);
         long bytes=GC.GetAllocatedBytesForCurrentThread()-before;Check(bytes==0,"a playthrough allocates "+bytes+" bytes");
-        yield return "entrance playthroughs: 0 bytes allocated over 60 Hz playthroughs of all 18 entrances (pose, camera, lights, set, effects)";
+        yield return $"entrance playthroughs: 0 bytes allocated over 60 Hz playthroughs of all {scripts.Count} entrances (pose, camera, lights, set, effects)";
     }
     private static void Frame(NativeEntranceScript sc,float age,CapturedRig.Pose pose,NativeEntranceLights lights,Null none)
     {

@@ -61,6 +61,7 @@ namespace ChipArena.UnityConversion
         {
             if(script is NativeWeaponEntrance)script.Bind(NativeSourceMotion.EntranceClip(style));if(!script.Ready)throw new InvalidOperationException("Missing source entrance clip: "+style);
             float quality=Mathf.Clamp01(WeaponEffectsQuality),t=script.Clock(age);entranceScript=script;entranceTime=t;
+            var sheldon=script as NativeSheldonIntroScript;if(sheldon!=null)actor=SheldonIntroBegin(sheldon,actor,pilot,t);
             script.Pose(t,entrancePose,out var root,out var rotation);
             if(NativePoseWriter.Write(introRig.Bones,entrancePose,"the intro rig")){introRig.Root.transform.SetPositionAndRotation(CapturedAnimation.Vec(CapturedRig.Mirror(root)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)));introRig.Root.transform.localScale=Vector3.one;}
             script.Camera(age,out var view);var eye=CapturedAnimation.Vec(CapturedRig.Mirror(view.Eye));var forward=CapturedAnimation.Vec(CapturedRig.Mirror(view.Look-view.Eye));
@@ -71,7 +72,7 @@ namespace ChipArena.UnityConversion
             NativeLighting.Entrance(entranceLights,camera);
             // The pilot, its weapon, its team band; afterimages and the hologram as one-layer see-through silhouettes.
             entranceReveal??=b=>entranceScript.Solid(entranceTime,b);bool solid=script.Solid(t,CapturedRig.Chest)>.5f;
-            SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age,reveal:entranceReveal);if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
+            try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
             EntranceGhosts(script,style,t);
             entranceProps??=new EntranceProps(sourceModels);script.Props(t,entranceProps,quality);

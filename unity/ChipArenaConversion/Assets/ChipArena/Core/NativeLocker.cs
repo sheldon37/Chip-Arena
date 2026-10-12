@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         public static bool Soon(int category)=>false;
 
         // Restricted cosmetics (shown only when NativeCosmeticRules.Allowed lets them through) carry a DEV badge.
-        public static bool DevItem(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo"||id==NativeHatLooks.SheldonHead);
+        public static bool DevItem(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo"||id==NativeHatLooks.SheldonHead||id==NativeCosmeticGate.SheldonIntro);
         // A cosmetic label without its DEV marking (the badge says it instead): "Gibber · DEV ONLY" -> "Gibber",
         // "DEV · Rain Warrior" -> "Rain Warrior".
         public static string Clean(string label)
@@ -123,6 +123,7 @@ namespace ChipArena.UnityConversion
                 case "dev-emperor":return "The Emperor's storm entrance.";
                 case "dev-ansatsuken":return "The rain warrior's entrance.";
                 case "dev-matrix":return "The L33T throne entrance.";
+                case "sheldon-intro":return "Glitches in, hooded, and grins.";
             }
             if(id!=null&&id.StartsWith("weapon-",StringComparison.Ordinal))return Title(id.Substring(7))+" signature entrance.";
             return "";
@@ -133,7 +134,7 @@ namespace ChipArena.UnityConversion
             {
                 case "orbital-drop":return "rocket";case "grid-rez":return "boxes";case "holo-projection":return "scan";case "blackout":return "eclipse";
                 case "skyline-zip":return "spline";case "hero-landing":return "chevrons-down-up";case "overclock":return "cpu";
-                case "dev-siren":return "skull";case "dev-emperor":return "cloud-lightning";case "dev-ansatsuken":return "hand-fist";case "dev-matrix":return "terminal";
+                case "dev-siren":return "skull";case "dev-emperor":return "cloud-lightning";case "dev-ansatsuken":return "hand-fist";case "dev-matrix":return "terminal";case "sheldon-intro":return "scan-line";
             }
             return null;
         }

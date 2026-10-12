@@ -14,6 +14,7 @@ import test_effects_audio as fx  # noqa: E402
 from test_effects_audio import LicensedTree, ogg  # noqa: E402
 
 RULES = ROOT / 'Assets/ChipArena/Core/NativeIntroRules.cs'
+SHELDON = 'sheldon-intro'
 
 
 def entrances():
@@ -52,7 +53,9 @@ class IntroMusicTests(unittest.TestCase):
         intro = sorted(k for k in keys if k.startswith('intro.'))
         styles = [s for s in entrances() if not s.startswith('dev-')]
         self.assertEqual(len(styles), 18)
-        self.assertEqual(intro, sorted('intro.' + s for s in styles))
+        # The owner's DEV Sheldon Intro has music too: its id has no dev- prefix (its DEV gate is the cosmetic rules').
+        self.assertNotIn(SHELDON, entrances())
+        self.assertEqual(intro, sorted('intro.' + s for s in styles + [SHELDON]))
         for key in intro:
             self.assertEqual(keys[key], ('2d', 4.8), key)
         self.assertFalse(any(k.startswith('intro.dev-') for k in keys))
@@ -60,7 +63,7 @@ class IntroMusicTests(unittest.TestCase):
     def test_every_keyed_entrance_keeps_its_built_in_sting(self):
         stings = ROOT / 'Assets/Conversion/Resources/Audio/audio/intros'
         rules = RULES.read_text(encoding='utf-8')
-        for style in entrances():
+        for style in entrances() + [SHELDON]:
             if style.startswith('dev-'):
                 continue
             procedural = re.search(r'case "' + re.escape(style) + r'":(?:case "[a-z-]+":)*return "audio/intros/([a-z-]+)"', rules)

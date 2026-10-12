@@ -21,8 +21,9 @@ namespace ChipArena.UnityConversion
     public struct SheldonFace
     {
         /// <summary>Eye height (1 open crescents, ~.1 mid-blink), the eyes' lift (m), the grin's width scale, the jaw's opening
-        /// (0 closed .. 1 laughing), the grin's sideways jitter (m), the glow's brightness and the ring's turn (rad).</summary>
-        public float EyeOpen,EyeLift,GrinWide,JawOpen,Jitter,Glow,RingSpin;
+        /// (0 closed .. 1 laughing), the grin's sideways jitter (m), the glow's brightness and the ring's turn (rad); RingGrow
+        /// scales the ring up from rest (0: rest; the Sheldon Intro's snap-on, NativeSheldonIntro.Face).</summary>
+        public float EyeOpen,EyeLift,GrinWide,JawOpen,Jitter,Glow,RingSpin,RingGrow;
         public static SheldonFace Rest=>new SheldonFace{EyeOpen=1,GrinWide=1,Glow=1};
     }
 
@@ -473,7 +474,7 @@ namespace ChipArena.UnityConversion
                 case EyeLeft:case EyeRight:m.Pivot=new Vector3((part==EyeLeft?1:-1)*EyeX,EyeY,FaceZ);m.Sy=Math.Max(.08f,f.EyeOpen);m.Offset=new Vector3(f.Jitter*.5f,f.EyeLift,0);break;
                 case GrinUpper:m.Pivot=new Vector3(0,MouthMid,FaceZ);m.Sx=f.GrinWide;m.Offset=new Vector3(f.Jitter,.004f*f.JawOpen,0);break;
                 case GrinLower:m.Pivot=new Vector3(0,MouthMid,FaceZ);m.Sx=f.GrinWide;m.Sy=1+.25f*f.JawOpen;m.Offset=new Vector3(f.Jitter,-.02f*f.JawOpen,0);break;
-                case Ring:case RingGlow:m.Pivot=RingCentre;m.Spin=f.RingSpin;break;
+                case Ring:case RingGlow:m.Pivot=RingCentre;m.Spin=f.RingSpin;m.Sx=m.Sy=1+f.RingGrow;break;
             }
             return m;
         }

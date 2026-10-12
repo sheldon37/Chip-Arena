@@ -121,7 +121,7 @@ namespace ChipArena.UnityConversion
             if(a.Hat!=NativeSheldonHead.Hat||sourceModels==null||!sourceModels.Has(NativeSourceModels.SheldonLive))return false;
             var glow=HatBody(a.Hat,a.HatColor)??Color.white;
             sourceModels.Queue(NativeSourceModels.SheldonLive,root,bone,null,layer,camera,body:glow,partTint:partTint,hitFlash:flash);
-            var face=NativeSheldonHead.Evaluate(time,a.Id,SheldonHitAge(a.Id,time),SheldonKillAge(a.Id,time),HaloReduced);
+            var face=sheldonScripted?sheldonScriptFace:NativeSheldonHead.Evaluate(time,a.Id,SheldonHitAge(a.Id,time),SheldonKillAge(a.Id,time),HaloReduced);
             sourceModels.QueueSheldonPieces(bone(CapturedRig.Head),face,glow,layer,camera,1,flash,partTint?.Invoke(CapturedRig.Head)??Color.white);
             return true;
         }

@@ -106,7 +106,8 @@ namespace ChipArena.UnityConversion
         {
             string awake=Body(game,"private void Awake()");
             Check(!awake.Contains("NativeDamageScreen"),"Awake never adds the damage screen's image effect");
-            Check(game.Contains("private void LateUpdate(){LateFrame();DamageScreen();}"),"the damage screen pass runs from LateUpdate, after Awake");
+            // The Sheldon Intro's glitch pass follows it the same way (Runtime/NativeSheldonIntroPresentation.cs, also added on demand).
+            Check(game.Contains("private void LateUpdate(){LateFrame();DamageScreen();GlitchScreen();}")&&!awake.Contains("NativeGlitchScreen"),"the damage screen and glitch passes run from LateUpdate, after Awake");
             foreach(var file in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs"))
             {
                 string name=Path.GetFileName(file),text=Code(File.ReadAllText(file));
