@@ -121,16 +121,17 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         // The first-person sprint FOV kick rides on top of the camera's own FOV ease (UpdateCamera) and stays out of the view-model
-        // camera, so the hands keep their framing while the world widens.
+        // camera, so the hands keep their framing while the world widens. The shoulder cameras take the same kick and bob from
+        // the view pilot's sprint (NativeShoulderCamera.cs); Classic keeps none, as before.
         private float sprintKick;
         // settled: the camera's FOV eased toward its target from the last frame's FOV without its kick (FieldOfView - sprintKick).
         private float SprintFov(bool first,bool aim,float settled)
         {
-            sprintKick=first&&!aim&&!menu?presentation.SprintFov(prefs.cameraShake,prefs.reducedEffects):0;return settled+sprintKick;
+            sprintKick=first&&!aim&&!menu?presentation.SprintFov(prefs.cameraShake,prefs.reducedEffects):!first&&!aim?ShoulderSprintFov():0;return settled+sprintKick;
         }
         private void SprintSway()
         {
-            if(!menu&&Spectator==null&&!cinematic.Directing)presentation.SprintSway(cameraView.transform,prefs.cameraShake,prefs.reducedEffects);
+            if(!menu&&Spectator==null&&!cinematic.Directing){presentation.SprintSway(cameraView.transform,prefs.cameraShake,prefs.reducedEffects);ShoulderSway();}
         }
     }
 }
