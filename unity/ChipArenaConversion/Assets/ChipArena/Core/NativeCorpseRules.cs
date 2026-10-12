@@ -6,7 +6,9 @@ namespace ChipArena.UnityConversion
     {
         public const float SettleSeconds=10,WorldRefreshSeconds=.1f,WorldRadius=8;
         public static bool Retain(bool pilot,bool cooperative)=>pilot&&!cooperative;
-        public static bool RoundEnded(bool cooperative,NativePhase phase)=>!cooperative&&phase!=NativePhase.Fight;
+        // The winning hit enters Result in the same simulation tick. Keep its death animation and all
+        // retained bodies through that five-second viewing period; wipe when results actually finish.
+        public static bool RoundEnded(bool cooperative,NativePhase phase)=>!cooperative&&phase!=NativePhase.Fight&&phase!=NativePhase.Result;
         public static bool Expired(float age,bool kept,bool retain)=>age>NativeKillEffectRules.DeathSeconds&&!kept&&!retain;
         public static bool EffectsFinished(float age)=>age>=NativeKillEffectRules.DeathSeconds;
     }
