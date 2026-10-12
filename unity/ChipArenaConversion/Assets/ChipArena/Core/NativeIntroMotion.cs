@@ -231,6 +231,9 @@ namespace ChipArena.UnityConversion
             }
             return push!=Vector3.Zero;
         }
+        /// <summary>The push (rig frame) that clears arm `left`'s deepest forearm, hand or weapon probe of weapon intro `style`
+        /// out of the torso and head (zero when nothing sinks in beyond contact; `pose` world current).</summary>
+        public static Vector3 BodyPush(string style,CapturedRig.Pose pose,bool left){int w=WeaponIntro(style);if(w<0)return Vector3.Zero;Inverses(pose);Push(w,pose,left,out var push);return push;}
         /// <summary>
         /// Re-solves arm `left` so its wrist reaches `target` with rotation `rotation` (both in the rig frame), keeping the
         /// elbow on its present side (CapturedRig.Arm works in the chest frame).

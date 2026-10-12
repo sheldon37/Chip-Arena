@@ -91,6 +91,11 @@ The Unity melee hit reactions use the same pack: `node unity/ChipArenaConversion
 <pack>/Animations` rewrites `Assets/ChipArena/Core/NativePackClips.Generated.cs` and `tools/pack-reactions-provenance.json`
 deterministically (GetHit, Block-GetHit and Stunned per weapon set; the choices are its SETS table), then run the
 Tests project (`Tests/PackReactionChecks.cs` compares each track with the provenance hashes).
+The Unity weapon-signature entrances' pilot motion uses the same pack: `node unity/ChipArenaConversion/tools/export_pack_intros.mjs
+<pack>/Animations` rewrites `Assets/ChipArena/Core/NativePackIntros.Generated.cs` and `tools/pack-intros-provenance.json`
+deterministically (one 4.8 s, 60 Hz track per entrance, sequenced from pack clips with timing keys, cross-fades, root
+continuity and foot contacts; the choices are its ENTRANCES table; the daggers keep their baked clip), then run the Tests
+project (`Tests/PackIntroChecks.cs` checks the hashes, planted feet, floor, grips, blade clearance and the daggers' fingerprint).
 
 ## CI and agent access
 

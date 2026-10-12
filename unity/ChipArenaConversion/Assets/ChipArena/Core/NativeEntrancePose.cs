@@ -109,6 +109,12 @@ namespace ChipArena.UnityConversion
             pose.Rotation[CapturedRig.Spine]=pose.Rotation[CapturedRig.Spine]*CapturedRig.Euler(breath,0,0);
             pose.Rotation[CapturedRig.Head]=pose.Rotation[CapturedRig.Head]*CapturedRig.Euler(-breath*.5f,.035f*(float)Math.Sin(w*.5f*lagged+.4f)*weight*NativeEntranceMath.Smooth(u/1.2f),-.02f*(float)Math.Sin(w*lagged)*weight);
         }
+        /// <summary>Plants foot `left` at world (x, z) with heading `yaw` by leg IK, its ankle `lift` above where it stands on the
+        /// floor, blended with the posed leg by `weight`.</summary>
+        public static void PlantFoot(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,float x,float z,float yaw,float weight,float lift=0)
+        {
+            Span<float> stance=stackalloc float[8];int o=left?0:4;stance[o]=x;stance[o+1]=z;stance[o+2]=yaw;stance[o+3]=lift;Plant(pose,root,rotation,stance,left,weight);
+        }
         // Leg `left` onto its world stance (CapturedRig.Leg in the rig frame), blended with the keyed leg by `weight`.
         private static void Plant(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,ReadOnlySpan<float> stance,bool left,float weight)
         {

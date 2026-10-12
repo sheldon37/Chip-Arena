@@ -150,3 +150,20 @@ rad). The tracks are exported offline by `tools/export_pack_reactions.mjs` (docs
 `Tests/PackReactionChecks.cs` checks their provenance hashes, deterministic decoding, selection, stun end, non-melee
 hits, finite bones, blade clearance, allocation and the MeleeMotion hooks. Presentation only: damage, hitboxes, stun
 durations, timing, movement, input, network frames and saves are unchanged.
+
+Pack entrance motion (2026-10-12, `Core/NativeEntrancePack`, `Core/NativePackIntros.Generated.cs`; owner: "Sword and
+greatsword intro animations need to change (The player animations)"): the weapon signatures' pilot is driven by one
+continuous track per entrance retargeted from the owner's Explosive pack (`tools/export_pack_intros.mjs`, its ENTRANCES
+table), sampled on the directed entrance's presentation clock instead of the old baked Electron clip and its weapon-intro
+layer. Flash Draw: Relax-Unsheath-R-Hips (calm stand) into Sword-Attack-R2's windup slowed into a coil, R2's backhand
+draw-cut pinned to the 1.8 s hit, Armed-Boost1's overhead raise as the flourish and Boost1's raised blade held in salute.
+Colossus Oath: 2Hand-Sword Idle-Alert1 (blade up in oath), Jump's crouch and flight (lifted .42 m) with the blade raised,
+Attack2's chop biting the floor on the 1.8 s hit, its recovery and the two-handed Idle (blade shouldered). The torso, legs
+and root are the capture's; the arms reach the captured grip through the rig's IK with the gameplay melee clearance
+(`MeleeClearance`) and a planned forearm/hand clearance, the greatsword's support hand on its grip; planted feet hold the
+spots they land on (leg IK, the body sinking up to 6 cm where a lunge outreaches the voxel leg, the heel rising over a deep
+crouch), swinging feet are kept out of the floor and the blade tip above it. Camera, effects and timing stay the director's
+(shot tweaks for the new motion; the greatsword's scrape sparks now fly where the tip scrapes after the bite). The daggers
+and every signature without a track keep their baked clip. `Tests/PackIntroChecks.cs` covers provenance, determinism,
+feet, floor, grips, clearance, the hit, allocation and the unchanged daggers. Presentation only: the match sees only the
+style and its 4.8 s phase; no hit timing, hitbox, damage, cooldown, movement or network change.

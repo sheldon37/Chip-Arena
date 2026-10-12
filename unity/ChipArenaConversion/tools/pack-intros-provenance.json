@@ -1,0 +1,243 @@
+{
+ "pack": "Explosive RPG Character Mecanim Animation Pack (owner licence; FBX never committed)",
+ "channels": 64,
+ "quantum": 0.00390625,
+ "fps": 60,
+ "duration": 4.8,
+ "entrances": [
+  {
+   "style": "weapon-sword",
+   "fps": 60,
+   "frames": 289,
+   "hit": 1.8,
+   "facing": -0.25,
+   "twoHand": false,
+   "breathe": true,
+   "grip": "blade",
+   "lift": 0.021,
+   "plants": {
+    "left": [
+     0,
+     0.8667,
+     1,
+     1.75,
+     1.8833,
+     2.1833,
+     2.3167,
+     4.8
+    ],
+    "right": [
+     0,
+     1.05,
+     1.3333,
+     1.55,
+     1.6833,
+     1.9,
+     2.0833,
+     2.1833,
+     2.3167,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "Relax-Unsheath-R-Hips",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       1.2,
+       0.1
+      ]
+     ],
+     "blend": 0,
+     "loop": false,
+     "input": "e7207096226d1d725ec56d91000d09a921bbef25e2aa5bf809c9d42deac47c23"
+    },
+    {
+     "source": "Sword-Attack-R2",
+     "keys": [
+      [
+       0.75,
+       0
+      ],
+      [
+       1.45,
+       0.15
+      ],
+      [
+       1.64,
+       0.2
+      ],
+      [
+       1.8,
+       0.3156
+      ],
+      [
+       2.2,
+       0.62
+      ]
+     ],
+     "blend": 0.5,
+     "loop": false,
+     "input": "5afe9741465c1aeb91b89608c0fefce251349973b27d1fa27eb26eec062c5332"
+    },
+    {
+     "source": "Armed-Boost1",
+     "keys": [
+      [
+       2.1,
+       0.2
+      ],
+      [
+       2.55,
+       0.5
+      ],
+      [
+       2.85,
+       0.75
+      ]
+     ],
+     "blend": 0.15,
+     "loop": false,
+     "input": "5f25cdb86218a15d8d0ef82fb0c2c02e79a89f91b0a8518e15256626201e1aad"
+    },
+    {
+     "source": "Armed-Boost1",
+     "keys": [
+      [
+       2.75,
+       0.04
+      ],
+      [
+       3.15,
+       0.09
+      ],
+      [
+       4.8,
+       0.12
+      ]
+     ],
+     "blend": 0.3,
+     "loop": false,
+     "input": "5f25cdb86218a15d8d0ef82fb0c2c02e79a89f91b0a8518e15256626201e1aad"
+    }
+   ],
+   "sha256": "32175a1d47db58eac32ff6ff132974245e0573dddb468e00f998ca78428d3af6"
+  },
+  {
+   "style": "weapon-greatsword",
+   "fps": 60,
+   "frames": 289,
+   "hit": 1.8,
+   "facing": -0.25,
+   "twoHand": true,
+   "breathe": false,
+   "grip": "blade",
+   "lift": 0.0276,
+   "plants": {
+    "left": [
+     0,
+     0.8,
+     0.9333,
+     1.0833,
+     2.6667,
+     2.8,
+     2.9333,
+     4.8
+    ],
+    "right": [
+     0,
+     0.8333,
+     0.9667,
+     1.0667,
+     1.8,
+     2.7667,
+     2.9,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Sword-Idle-Alert1",
+     "keys": [
+      [
+       0,
+       0.15
+      ],
+      [
+       0.8,
+       0.85
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "ca7487e6da9bc39840b50b15a83bc8f188392664b921ef92899536930a32dbc8"
+    },
+    {
+     "source": "2Hand-Sword-Jump",
+     "keys": [
+      [
+       0.65,
+       0
+      ],
+      [
+       1.12,
+       0.06
+      ],
+      [
+       1.25,
+       0.1
+      ],
+      [
+       1.62,
+       0.55
+      ]
+     ],
+     "blend": 0.25,
+     "loop": false,
+     "input": "d53abc7c53acee3ef278004e0f414404fedcc970d525518b9e6538cc977b930e"
+    },
+    {
+     "source": "2Hand-Sword-Attack2",
+     "keys": [
+      [
+       1.62,
+       0.52
+      ],
+      [
+       1.8,
+       0.62
+      ],
+      [
+       2.7,
+       1
+      ]
+     ],
+     "blend": 0.1,
+     "loop": false,
+     "input": "4f04a74cf1d9a73c8583680fe03c96fd032580a59e815b7322c6d866beb7acc8"
+    },
+    {
+     "source": "2Hand-Sword-Idle",
+     "keys": [
+      [
+       2.6,
+       0.3
+      ],
+      [
+       4.8,
+       2.5
+      ]
+     ],
+     "blend": 0.45,
+     "loop": true,
+     "input": "69af4eeab2f93345b89459800d0809af1f5b2a7ffc45ff8d7b04a4f3872126b5"
+    }
+   ],
+   "sha256": "f0cdff2c41a5d651414b51413a1dbb7ea9f58b6aca3d2218c4258928e6967707"
+  }
+ ]
+}
