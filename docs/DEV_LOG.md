@@ -1,5 +1,32 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — Bow chip modules on the Standard skin (coordinator follow-up after the Bow merge)
+- Branch `claude/chip-modules-skins`. The shared head was merged twice: `5452bf8` (with the Bow) in `43f0ab7`, then `a53e752` (Cyber Lord, Siren minions, the CI fix) in `3aa1da2`. Implementation `986e4b1`, re-pin `82f8fd3`, then this log. All signed; on the branch only: not pushed, merged or released. Presentation only.
+- Prototype bow unchanged. `Core/NativeWeaponDressing.cs` is re-pinned at the merged file: the Bow's `MuzzleZ` branch and the Cyber Lord's `SocketShown`. The base Prototype output digest still holds (`c7d7877b6c6f734f`). The bow's Prototype pieces (BowDressing: the ranged layout about the arrow line plus the arrowhead enchant) get their own pinned digest (`8b0ea57b5e2e0291`), and their lines in `Runtime/NativeBowPresentation.cs` are checked after the one new Standard branch.
+- Standard bow: a new `ChipFamily.Bow`. Each piece names the live part it rides (`ChipModule.Ride`, applied by `NativeChipModules.Ride(ref p, pull, nocked)`):
+  - The riser: ricochet collars and velocity coils on the front stabilizer, multishot drones circling it (in the ranged pods' gold), a shrapnel frag collar on its weight, a homing seeker sight on the sight window, a split prism down the upper riser's back, static capacitors up its front, magazine cells down the lower riser's back, echo inlays on its flanks, and the vacuum ring and pong gimbal round the arrow line ahead of the shelf (the arrow runs through them).
+  - Both limbs, posed at rest and turned with `NativeBowRig.Limb`'s flex: spinning rate cams on the recurve tips, kinetic dampers on the bellies, boomerang vanes on the backs, reach rails along both edges.
+  - The nocked arrow, which moves with the pull (`NativeBowRig.Arrow`, the centre arrow of a Volley) and hides while no arrow is on the string: a pierce penetrator sheath, demolition charges behind the broadhead, and the burn / poison enchant (a heated broadhead or venom sleeve, plus the source's count of flames trailing back or motes drifting off).
+- Runtime: one branch at the top of `BowDressing`, which calls `StandardBowDressing` in `Runtime/NativeChipModulePresentation.cs`. That uses the frame BowDraw posed and the bow hand's tier, and there is no ADS hide (the bow has no ADS). The bow is not in GameContent yet (docs/NEW-KITS.md section 2), so `pilot.Weapon` is null and BowDressing draws nothing on either skin until the content lands. The checks assume ranged with the proposed colour 0x7fd36b.
+- Checks on the merged tree (`82f8fd3`):
+  - `unity-check.sh`: runtime+editor OK.
+  - `check_relay.py`, run in a copy holding only `unity/ChipArenaConversion` (as the native-source CI job): exit 0, 559 PASS, no FAIL, 35 managed-core groups. Two SKIPs are other agents' docs-dependent checks. The new line is `PASS chip modules: 36011 checks (6728 placed pieces)`.
+  - Python unittest: 91 OK, 1 skip. `package_source.py` passed (1588 files; Builds removed). `git diff --check f575670 HEAD` is clean.
+- What the new Bow checks cover:
+  - Kind parity and enchant counts against the Prototype bow.
+  - Sockets on the riser, the limbs (at rest) and the arrow.
+  - Every piece inside the posed bow's bounds and touching or hovering by it at brace, half and full draw (riser, flexed limbs, string to the nock, nocked arrow).
+  - Limb pieces keep their distance to their limb's string anchor and pocket through the draw, arrow pieces keep their place on the nock, and riser pieces stay put. Arrow pieces hide with no arrow on the string.
+  - First person on `NativeBowPose.View` (carry, draw, hold): the nearest module is 11.8 degrees from the crosshair, and so is the bow itself.
+  - Full-stack triangles Full/Reduced/Low are 8388/5817/3805, within the 9500/7000/4500 budget. Zero allocation, with the ride.
+- Renders (offline harness over the real Core code, WebGL in Chromium/SwiftShader, not Unity; scratch `chip-modules/renders/best/bow-*.png`): Standard vs Prototype with 1, 3 and the full stack at brace, half and full draw; close-ups of the riser, arrowhead and limb-tip cam; in hand at full draw (NativeBowMotion); first person through early draw, mid draw and full draw (NativeBowPose.View); the three tiers.
+- Not run: the Unity Editor, Windows, the Editor bank check, real shading, and the bow in play (no GameContent entry yet).
+- Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- Risks:
+  - Arrow pieces vanish for the nock beat after each shot, as the Prototype enchant does. In a Volley only the centre arrow carries them.
+  - Mounts were measured on the Full bow; the Reduced/Low limbs are sampled more coarsely.
+  - The Bow agent's later model changes (riser outline, stabilizer, limb path) would move the sockets. ChipModuleChecks then fails until they are re-measured.
+
 ## 2026-10-12 — Claude — chip upgrade displays designed for the Standard weapon skins (owner: "also- improve chip upgrade displays on newer weapons (Change based on skin). The upgrades look out of place on the modern weapons")
 - Branch `claude/chip-modules-skins`, base shared head `f575670`. Implementation `b8c5705`; shared head `f9c755d` merged in `41afa33` (clean); this log commit after them. Signed; on the branch only: not pushed, merged or released. Presentation only.
 - Prototype Series unchanged: `Core/NativeWeaponDressing.cs` and `Runtime/NativeSourcePrimitives.cs` are byte-identical to the base (sha256 pinned in the new check), their output over every weapon's loadouts is pinned (digest `c7d7877b6c6f734f`), and a Prototype pick (or any weapon without a Standard design) takes WeaponDressing's unchanged route.
