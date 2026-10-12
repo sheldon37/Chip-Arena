@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — owner-selected Factory and Cyber City music
+- Branch `codex/factory-cybercity-music-20261012`, base shared `dfd45f32`. Owner supplied Anvil Loop Arena for Factory and Neon Riot Circuit for Cyber City and requested the update source push.
+- Bundled both original MP3s byte-for-byte under Resources/Audio/music, with streaming import metadata, unique GUIDs and asset-lock receipts. Tracks are 192.840 s and 204.792 s; embedded credit Xtrr - musiccreator, hashes in tools/factory-cybercity-music-credits.txt.
+- NativeAudio selects factory-anvil-loop for map id factory and cybercity-neon-riot for cybercity. Existing menu, boss/PvE music priority, volume and stage pause behavior stay intact. These maps currently have dormant presentation but no shipped map entries; this wires their future arena playback without enabling incomplete maps or replacing music on unrelated maps.
+- Checks: both full MP3s decode with ffmpeg without errors; package_source.check validates all asset receipts, unique metadata and dependencies; git diff --check passes. Unity/Windows audio playback is not run here. No gameplay/timing/network changes. Claude owns further audio-visual tuning.
+- Release: source PR/shared/cloud publication follows owner request. Compiled Update delivery still requires the local Build-and-Publish run; the new maps require their separate simulation/content integration before their music is audible in play.
+
 ## 2026-10-12 — Claude — guard: no Unity native objects in component field initializers
 - Context: the owner's Windows log showed a constructor failure from my Cyber City presentation. `NativeCyberCityPresentation.metroOne` created a MaterialPropertyBlock in an ArenaPresentation field initializer. Unity refused to construct the component, which left later partial fields null (`cyberViews`) and broke host/guest setup. Astra fixed it in `82b837e` (PR #144, merged by the owner).
 - Audit of all MonoBehaviours, including ArenaPresentation's 69 partial files: no other case, following the managed helpers that field initializers construct.
