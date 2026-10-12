@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
         /// actor's attack window; the cast's own cooldown is the caller's.</summary>
         private static NativeCyberKit Begin(Actor a,string kind,float at,float windup,float length)
         {
-            var s=a.Cyber??=new NativeCyberKit();s.Kind=kind;s.At=at;s.Release=at+windup;s.Until=at+length;s.Resolved=false;s.Facing=V(KernelPanicPath.Forward(a.Yaw));
+            var s=a.Cyber??=new NativeCyberKit();s.Kind=kind;s.CutAt=-1;s.At=at;s.Release=at+windup;s.Until=at+length;s.Resolved=false;s.Facing=V(KernelPanicPath.Forward(a.Yaw));
             a.AttackAt=a.LastAttack=at;a.AttackUntil=s.Until;return s;
         }
         /// <summary>A combo swing `step` starting at `at`: the hit resolves at the kit's Release.</summary>
@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
                     s.DashFrom=V(body);s.DashTo=V(body+f*CyberLordSpec.DashDistance);break;
                 case CyberLordSpec.E:s.EReady=at+CyberLordSpec.Cooldowns[slot];s.WallAt=at;s.WallUntil=at+CyberLordSpec.WallSeconds;s.WallYaw=a.Yaw;
                     s.WallPoint=V(body-Vector3.UnitY*CyberLordFeed.BodyCentre+f*CyberLordSpec.WallAhead);break;
-                case CyberLordSpec.One:s.PacketReady=at+CyberLordSpec.Cooldowns[slot];break;
+                case CyberLordSpec.One:s.PacketReady=at+CyberLordSpec.Cooldowns[slot];s.PacketAt=s.At;s.PacketRelease=s.Release;s.PacketUntil=s.Until;s.PacketCutAt=-1;break;
                 case CyberLordSpec.Two:s.LinkReady=at+CyberLordSpec.Cooldowns[slot];s.LinkAt=at;s.LinkUntil=at+CyberLordSpec.LinkSeconds;break;
                 case CyberLordSpec.Three:s.CrashReady=at+CyberLordSpec.Cooldowns[slot];s.CrashAt=at;s.CrashUntil=s.Until;s.CrashPoint=V(body);break;
             }
@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
         /// and the link stopped, the kit's Until moved to the host's time each tick (here: `until`), the block on the actor.</summary>
         public static void Block(Actor a,float at,float until)
         {
-            var s=a.Cyber;s.Resolved=true;s.DashUntil=0;s.LinkUntil=0;s.Until=until;a.BlockAt=at;a.BlockUntil=until;
+            var s=a.Cyber;NativeCyberRules.Interrupt(s,at);a.BlockAt=at;a.BlockUntil=until;
         }
         private static Vector3 Body(Actor a)=>new Vector3(a.Position.x,a.Position.y+CyberLordFeed.BodyCentre,a.Position.z);
         /// <summary>

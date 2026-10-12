@@ -157,7 +157,7 @@ namespace ChipArena.UnityConversion
                 else if(e.type=="storm")StormTrails.Add(new NativeStormTrail{Owner=p,Position=e.position,At=e.at,Until=e.until});
             }
             // JsonUtility represents absent string tags as empty strings; runtime special-shot dispatch uses null.
-            foreach(var s in f.snapshot.Shots)Bullets.Add(new NativeBullet{Id=s.Id,Owner=s.Owner,Original=s.Original,SirenTarget=s.SirenTarget,Position=Vec(s.Position),Velocity=Vec(s.Velocity),Radius=s.Radius,Spec=s.Spec??"pistol",SirenKind=string.IsNullOrEmpty(s.SirenKind)?null:s.SirenKind,LeetKind=string.IsNullOrEmpty(s.LeetKind)?null:s.LeetKind,Born=s.Born,Burn=s.Burn,Poison=s.Poison,Hadoken=s.Hadoken,Super=s.Super,Direct=s.Direct,ChipImpact=s.ChipImpact,WeaponFx=s.WeaponFx,Pong=s.Pong,Boomerang=s.Boomerang,Zigzag=s.Zigzag,Mods=(s.Mods??Array.Empty<ChipCount>()).ToDictionary(c=>c.id,c=>c.count)});
+            foreach(var s in f.snapshot.Shots)Bullets.Add(new NativeBullet{Id=s.Id,Owner=s.Owner,Original=s.Original,Draw=s.Draw,Detail=s.Detail,SirenTarget=s.SirenTarget,Position=Vec(s.Position),Velocity=Vec(s.Velocity),Radius=s.Radius,Spec=s.Spec??"pistol",SirenKind=string.IsNullOrEmpty(s.SirenKind)?null:s.SirenKind,LeetKind=string.IsNullOrEmpty(s.LeetKind)?null:s.LeetKind,Born=s.Born,Burn=s.Burn,Poison=s.Poison,Hadoken=s.Hadoken,Super=s.Super,Direct=s.Direct,ChipImpact=s.ChipImpact,WeaponFx=s.WeaponFx,Pong=s.Pong,Boomerang=s.Boomerang,Zigzag=s.Zigzag,Mods=(s.Mods??Array.Empty<ChipCount>()).ToDictionary(c=>c.id,c=>c.count)});
         }
         private void ApplyPve(NativePveFrame f)
         {

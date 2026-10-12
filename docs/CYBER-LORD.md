@@ -55,7 +55,7 @@ The pilot frame's `kernelReady` gives the local pilot's HUD card its cooldown.
 
 The source is `Actor.Cyber` (`NativeCyberKit`, `Core/NativeCyberRules.cs`, written by `StepCyberInput` /
 `StepCyberWorld` in `Runtime/NativeCyberLord.cs`). The kit keeps one window, for the current or last cast (`Kind`, `At`,
-`Release`, `Until`), plus a record of its own for Q, E, 2 and 3. Points are Rigidbody centres (the feet .865 m below),
+`Release`, `Until`), plus a record of its own for Q, E, 1, 2 and 3. Points are Rigidbody centres (the feet .865 m below),
 except `WallPoint`, which is the wall's bottom centre. The pilot is free again at `Until`; the rules have no recovery.
 
 | View field | Source | Meaning |
@@ -65,7 +65,7 @@ except `WallPoint`, which is the wall's bottom centre. The pilot is free again a
 | `DashFrom`, `DashTo`, `TrailUntil` | the same names, as feet | the path and the 1.2 s trail (it ticks on along the whole path, even after an interrupt) |
 | `At`, `Release`, `Until` [E] | `WallAt`, `WallAt`, `WallAt` + .2 | the cast |
 | `WallAt`, `WallYaw`, `WallBorn`, `WallUntil` | `WallPoint`, `WallYaw`, `WallAt`, `WallUntil` | the 5 x 2.5 m wall for 4 s |
-| `At`, `Release`, `Until` [1] | the kit's window while `Kind` is `packet-burst` | the shards fly at `Release` (.08 s) |
+| `At`, `Release`, `Until` [1] | `PacketAt`, `PacketRelease`, `PacketUntil` (retained across later casts) | the shards fly at `Release` (.08 s) |
 | `At`, `Release`, `Until` [2] | `LinkAt`, `LinkAt` + .2, `LinkUntil` | the reach over the cast, held through the drain |
 | `LinkTarget`, `LinkAt`, `LinkUntil` | the same names | the tether; an early end (lost, or interrupted) snaps |
 | `At`, `Release`, `Until` [3] | `CrashAt`, `Release` (`CrashAt` + .5), `CrashUntil` | the windup, the slam, the end at .8 s |
@@ -75,12 +75,12 @@ except `WallPoint`, which is the wall's bottom centre. The pilot is free again a
 `RecoverUntil` is `Until` plus a short presentation settle (.18 to .4 s) that a newer swing, cast or guard takes over
 at once. It is not a rules window.
 
-Interrupts: a block, roll or incapacity makes `StepCyberWorld` resolve the cast. Every tick it lasts, it zeroes
-`DashUntil` and `LinkUntil` and moves `Until` to the host's time. The feed takes the planned end from the actor's
-`AttackUntil` while its `AttackAt` is the cast's (`CyberBegin` sets both). Otherwise it uses the cast's own length (a
-combo step scales with its `Release`). It cuts the window at the first `BlockAt`, `RollAt`, `ReactionAt` or own Kernel
-Panic start inside it. A crash cut before its slam draws no field. The kit does not keep the interrupt's time, so a hit
-reaction that did not interrupt can end a window early.
+Interrupts: block, roll, incapacity or Kernel Panic clips an active cast's `Until` once and records
+`CutAt` (reset to -1 on the next cast). Repeated interruption ticks leave that time unchanged.
+`DashUntil`, `LinkUntil` and `CrashUntil` retain their actual early end. Packet Burst keeps its own
+`PacketAt` / `PacketRelease` / `PacketUntil` / `PacketCutAt` across later casts. The feed uses the
+replicated cut first; the old actor-time inference remains only as a compatibility fallback.
+A crash cut before its slam draws no field, including after another cast replaces the current window.
 
 An empty kit (a new pilot, or the host's reset after death or a lost DEV identity: all zeros) draws nothing. The actor's
 attack window alone (Kernel Panic sets `AttackAt` too) is never read as a swing.
@@ -90,8 +90,8 @@ Events are read with their `Detail` (`CyberLordFeed.Details`):
   `packet-burst`, `siphon-link` for each drain, `system-crash`), and Absorb `firewall` for an absorbed shot;
 - `kernel-panic-1` to `-5`, and `kernel-panic-wave` on the others caught by the shockwave.
 
-The Siphon's heal is a plain Heal with no Detail. `CyberLordFeed.SiphonHeal` pairs it with the caster's drain hit from
-the same tick. The casts' AbilityCast events and the dash's Teleport are not read; the kit draws them.
+Siphon heals carry `Detail="siphon-link"`. The feed accepts that directly and retains same-tick drain
+pairing only for older detail-less events. AbilityCast already emits `packet-burst`; presentation reads its persistent kit record.
 
 `Actor.ViewCopy` deep-copies the kit and the Kernel. `CyberLordFixture` writes both the way her host does: the kit as
 `CyberBegin` / `StepCyberInput` do, an interrupt as `StepCyberWorld` does, and `Actor.Kernel` as `ConnectKernel`
@@ -210,18 +210,10 @@ warp is presentation only, and the bodies stand where the snapshot puts them.
 
 ## What the rules side still needs to provide (Astra)
 
-Kernel Panic (PR #138) and the kit (PR #142) are done. The presentation falls back where her data has no field:
-- No interrupt time in the kit: `Until` moves with the host's clock while an interrupt lasts. The feed estimates the cut
-  from the actor's block, roll and reaction times. A `CutAt` (or keeping `Until` and adding `Interrupted`) would make it
-  exact.
-- Only one cast window: Packet Burst has no record of its own, so its window is gone once another cast replaces it.
-- System Crash has no lasting field (one hit at .5 s). The presentation draws the field for the 1 s stun.
-- The Siphon's heal has no Detail. The presentation pairs it with the drain hit from the same tick. A `siphon-link`
-  Detail on the Heal would remove the pairing.
-- The abilities' content `text` fields are their ids (for example "data-dash"), and the Locker rows show them as
-  descriptions.
-- The account service does not accept the `dev-cyberlord` entrance for DEV accounts (`src/relay/accounts.ts` keeps only
-  `sheldon-intro` among the DEV-only intros).
+The follow-up on base `a44046f` adds exact cut timestamps, persistent Packet Burst records, tagged Siphon heals,
+and six real Locker descriptions. Account source allows `dev-cyberlord` only for DEV accounts; deployment is owner-gated.
+Replica bullets now retain Shot.Draw and Shot.Detail. System Crash remains one hit, with a presentation field for its stun.
+Actual Unity/Windows and two-client play remain to be checked.
 
 ## Checks and renders
 

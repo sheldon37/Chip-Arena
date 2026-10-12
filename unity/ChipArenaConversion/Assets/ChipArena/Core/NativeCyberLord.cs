@@ -155,7 +155,7 @@ namespace ChipArena.UnityConversion
             if(s.DashAt>0&&s.TrailUntil>s.DashAt)
             {
                 float until=s.DashUntil>s.DashAt?s.DashUntil:Interrupt(a,k,s.DashAt,s.DashAt+CyberLordSpec.DashSeconds);if(Same(kind,"data-dash",s,s.DashAt))until=Math.Min(until,end);
-                Window(v,CyberLordSpec.Q,s.DashAt,s.DashAt,until,cut&&Same(kind,"data-dash",s,s.DashAt)||s.DashUntil<=s.DashAt);
+                Window(v,CyberLordSpec.Q,s.DashAt,s.DashAt,until,cut&&Same(kind,"data-dash",s,s.DashAt)||s.DashUntil<s.DashAt+CyberLordSpec.DashSeconds-Eps);
                 v.DashFrom=Feet3(s.DashFrom);v.DashTo=Feet3(s.DashTo);v.TrailUntil=s.TrailUntil;
             }
             // E Firewall (windup 0): the wall stands from the cast for 4 s (WallUntil) at WallPoint, its bottom centre, across WallYaw.
@@ -164,8 +164,9 @@ namespace ChipArena.UnityConversion
                 bool now=Same(kind,"firewall",s,s.WallAt);Window(v,CyberLordSpec.E,s.WallAt,s.WallAt,now?end:s.WallAt+CyberLordSpec.CastSeconds[CyberLordSpec.E],now&&cut);
                 v.WallAt=s.WallPoint;v.WallYaw=s.WallYaw;v.WallBorn=s.WallAt;v.WallUntil=s.WallUntil;
             }
-            // 1 Packet Burst: no record of its own, only the kit's window while it is the current cast (the shards fly at Release).
-            if(cast&&kind=="packet-burst")Window(v,CyberLordSpec.One,s.At,s.Release,end,cut);
+            // Packet Burst retains its window across subsequent casts.
+            if(s.PacketUntil>s.PacketAt)Window(v,CyberLordSpec.One,s.PacketAt,s.PacketRelease,s.PacketUntil,s.PacketCutAt>=s.PacketAt);
+            else if(cast&&kind=="packet-burst")Window(v,CyberLordSpec.One,s.At,s.Release,end,cut);
             // 2 Siphon Link (windup 0): the reach over the .2 s cast, the tether from LinkAt to LinkUntil (2.5 s, the break's time
             // when lost, zeroed by an interrupt: then the interrupt's time), on LinkTarget.
             if(s.LinkAt>0&&s.LinkTarget!=0)
@@ -205,10 +206,11 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Whether an interrupt moved the kit's Until (StepCyberWorld sets it to the host's time on every tick a block,
         /// roll or incapacity lasts) off the planned end.</summary>
-        private static bool Cut(Actor a,NativeCyberKit s)=>Math.Abs(s.Until-Planned(a,s))>Eps;
+        private static bool Cut(Actor a,NativeCyberKit s)=>s.CutAt>=s.At||Math.Abs(s.Until-Planned(a,s))>Eps;
         /// <summary>Where the kit's cast ended: its Until, or where the interrupt that moved it began.</summary>
         private static float CastEnd(Actor a,NativeCyberKit s,float kernelAt)
         {
+            if(s.CutAt>=s.At)return s.CutAt;
             float planned=Planned(a,s);if(Math.Abs(s.Until-planned)<=Eps)return s.Until;
             return Math.Max(s.At,Interrupt(a,kernelAt,s.At,Math.Min(s.Until,planned)));
         }
@@ -261,11 +263,9 @@ namespace ChipArena.UnityConversion
         public static bool Kind(EventKind k)=>k==EventKind.Hit||k==EventKind.AbilityHit||k==EventKind.Heal||k==EventKind.Absorb;
         /// <summary>Whether a hit or an ability hit (the strikes; not an absorb or a heal).</summary>
         public static bool Strike(EventKind k)=>k==EventKind.Hit||k==EventKind.AbilityHit;
-        /// <summary>Astra's Siphon Link heals its caster with a plain Heal (no Detail) in the host tick of each drain hit
-        /// (Detail "siphon-link", Source the caster): a detail-less Heal of `source` itself at the time of `source`'s last
-        /// drain hit is the Siphon's.</summary>
+        /// <summary>Tagged Siphon heals identify themselves; older detail-less events use same-tick drain pairing.</summary>
         public static bool SiphonHeal(EventKind kind,string detail,int source,int target,float time,int drainSource,float drainAt)=>
-            kind==EventKind.Heal&&string.IsNullOrEmpty(detail)&&source==target&&source!=0&&source==drainSource&&Math.Abs(time-drainAt)<=Eps;
+            kind==EventKind.Heal&&source==target&&source!=0&&(detail=="siphon-link"||string.IsNullOrEmpty(detail)&&source==drainSource&&Math.Abs(time-drainAt)<=Eps);
     }
 
     /// <summary>

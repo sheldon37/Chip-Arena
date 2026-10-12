@@ -180,7 +180,7 @@ internal static class CyberLordChecks
             CyberLordFixture.Firewall(a,40);CyberLordFeed.Read(a,v);
             Check(v.WallBorn==40&&v.WallUntil==44&&Math.Abs(v.Until[1]-40.2f)<1e-4f&&Math.Abs(v.WallYaw-90)<1e-4f&&NearV(v.WallAt,new V3(1+f.X*.8f,0,2+f.Z*.8f),1e-3f)&&v.Ready[1]==52,"Firewall: the wall's bottom centre, yaw and life");
             CyberLordFixture.PacketBurst(a,50);CyberLordFeed.Read(a,v);Check(Math.Abs(v.Release[2]-50.08f)<1e-4f&&Math.Abs(v.Until[2]-50.25f)<1e-4f&&v.Ready[2]==54&&v.WallBorn==40,"Packet Burst: shards on Release; the wall's record stays");
-            CyberLordFixture.DataDash(a,51);CyberLordFeed.Read(a,v);Check(v.At[2]==-100,"Packet Burst has no record once another cast replaces the kit's window");
+            CyberLordFixture.DataDash(a,51);CyberLordFeed.Read(a,v);Check(v.At[2]==50&&Math.Abs(v.Until[2]-50.25f)<1e-4f,"Packet Burst retains its window after another cast");
             CyberLordFixture.SiphonLink(a,3,60);CyberLordFeed.Read(a,v);Check(v.LinkTarget==3&&v.LinkAt==60&&Math.Abs(v.LinkUntil-62.5f)<1e-4f&&Math.Abs(v.Release[3]-60.2f)<1e-4f&&Math.Abs(v.Until[3]-62.5f)<1e-4f&&v.Ready[3]==70,"Siphon Link: the reach over the cast, the tether 2.5 s");
             CyberLordFixture.SiphonLink(a,3,60,61);CyberLordFeed.Read(a,v);Near(v.LinkUntil,61,"a lost link ends at the break",1e-4f);
             CyberLordFixture.SiphonLink(a,3,60);CyberLordFixture.Block(a,61.2f,61.5f);CyberLordFeed.Read(a,v);Near(v.LinkUntil,61.2f,"an interrupt ends the link where it began",1e-4f);

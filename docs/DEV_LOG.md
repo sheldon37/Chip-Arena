@@ -1,5 +1,14 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — Cyber Lord feed follow-ups
+- Branch `codex/unity-cyberlord-followups-20261012`, requested base `a44046f`. Implemented on task branch; no shared merge, compiled game release or accounts deployment.
+- `NativeCyberKit.CutAt` (-1 when uncut) records the first early end. Block/roll/incapacity and Kernel Panic use the shared interrupt helper; repeated ticks cannot slide Until. New casts reset only their own CutAt. Dash/link/crash retain actual end clocks; stopped dashes do not resume their final movement tick.
+- Packet Burst keeps PacketAt/PacketRelease/PacketUntil/PacketCutAt across later casts, in host, prediction, snapshot copies and wire validation. Existing AbilityCast detail packet-burst remains. CyberLordFeed reads the records; its old-state inference remains a compatibility fallback.
+- Siphon heals carry detail siphon-link. All six Locker descriptions now explain the moves. Accounts source accepts dev-cyberlord only for DEV; save/read tests include both account roles. Optional replica Shot.Draw/Detail preservation included.
+- Validation: full check_relay.py, 564 PASS lines, exit 0, using its compiled-relay/compiled-tests options after both projects built successfully (0 warnings/errors). The container intermittently crashes the dotnet CLI while reading process start time; compiled options avoid that CLI startup, without excluding checks. Python discovery: 95 tests, OK (one skip), including test_component_field_init.py. Accounts: 9/9. Source package: 1,637 files. git diff --check clean.
+- Tests cover stable first cut, pending-release cancellation, next-cast reset, persistent packet history, wire roundtrip/invalid timestamps, late-block no-op and tagged heals. Existing presentation fixtures now retain Packet Burst and use the real interrupt helper.
+- Not run: real Unity Editor/PhysX, Windows build or two-client play. Owner controls integration and accounts deployment. No accounts deploy attempted. See CYBER-LORD.md for the updated feed contract.
+
 ## 2026-10-12 — Claude — merged Astra's Cyber Lord kit (#142); the Cyber Lord visuals read her fields
 - Branch `claude/cyberlord`. Shared head `607ebce` merged as `eb0e645`. PR #142 head `8a2ed88` merged as `116ea8a` (merge, mapping and pins together). Then the shared heads `27e6e8f` (Cyber City, PR #143; merged as `96fe55e`), `bb3c8f6` (PR #144; `a431bb6`) and `dfd45f3` (PR #145 and the field-initializer guard) merged, so the branch fast-forwards onto the shared head. Not pushed, merged or released.
 - Her `NativeCyberKit` (`Core/NativeCyberRules.cs`), `Actor.Cyber` and `Runtime/NativeCyberLord.cs` are kept as she wrote them. My proposed kit, `NativeCyberCast` and the `Actor.CyberKit` slot are deleted. Her `Tests/CyberChecks.cs` keeps its name; the presentation test is `CyberLordChecks`.
