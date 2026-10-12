@@ -4,6 +4,9 @@ Status: proposal, owner request 2026-10-11 ("overhaul melee abilities … magic 
 melee … creative direction, fun but balanced; can change abilities for melee as needed, not DEV ones"). Unity only.
 DEV classes (Siren, Emperor, Ansatsuken, L33T) are out of scope.
 
+Status check 2026-10-12: not started (no content, branch or PR). [MELEE-FEEL.md](MELEE-FEEL.md) evaluates melee
+fluidity and gap closing, lists this kit as the largest gap-closing fix (G1) and records the presentation contract.
+
 Ownership (AGENTS.md role split):
 - **Astra:** rules, timing, hit tests, damage, cooldowns/costs, recasts, replication, bots, input and tests.
 - **Claude:** animation (Explosive RPG pack clips), VFX, the new block effect, sound, HUD/ability cards.

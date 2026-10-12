@@ -49,6 +49,17 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<Channels;k++) output[k]=w0*d[a+k]+w1*d[b+k]+w2*d[c+k]+w3*d[e+k];
         }
         private int At(int i) { return Loop?((i%(Frames-1))+(Frames-1))%(Frames-1):Math.Min(Frames-1,Math.Max(0,i)); }
+        // Every channel's mean over one authored cycle (a loop's last frame repeats its first): the posture a locomotion clip
+        // oscillates about. The cubic interpolation of a periodic key sequence integrates to the mean of its keys.
+        private float[] cycleMean;
+        public float[] CycleMean()
+        {
+            if(cycleMean!=null) return cycleMean;
+            float[] d=Decode(); int n=Loop?Frames-1:Frames; var m=new float[Channels];
+            for(int f=0;f<n;f++) for(int c=0;c<Channels;c++) m[c]+=d[f*Channels+c];
+            for(int c=0;c<Channels;c++) m[c]/=n;
+            return cycleMean=m;
+        }
         public float AttackTime(float age,float windup,float active,float recovery)
         {
             if(attackAt==null||lastWindup!=windup||lastActive!=active||lastRecovery!=recovery)
