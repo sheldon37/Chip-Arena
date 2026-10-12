@@ -251,7 +251,7 @@ namespace ChipArena.UnityConversion
         }
         private void Stagger(in ArenaEvent e,Actor attacker,Actor target,bool melee)
         {
-            string spec=e.Source==0?null:attacker?.SourceSpec;var w=NativeStaggerRules.Classify(spec,e.DamageKind??e.Detail??"direct",e.Amount);if(w==StaggerWeight.None)return;
+            string spec=e.Source==0?null:attacker?.SourceSpec;var w=NativeStaggerRules.Classify(spec,string.IsNullOrEmpty(e.DamageKind)?e.Detail??"direct":e.DamageKind,e.Amount);if(w==StaggerWeight.None)return;
             if(!staggers.TryGetValue(e.Target,out var ring))staggers[e.Target]=ring=new Ring();
             // Pellets from one gun in one tick are one volley.
             if(ring.Count>0){ref var n=ref ring.Newest;if(n.Source==e.Source&&Math.Abs(n.At-e.Time)<.004f&&!n.Melee&&!melee){n.Amount+=e.Amount;n.Weight=NativeStaggerRules.Volley(n.Weight,spec,n.Amount);n.Scale=NativeStaggerRules.Scale(n.Weight,n.Amount);n.Head|=e.Kind==EventKind.Headshot;return;}}
