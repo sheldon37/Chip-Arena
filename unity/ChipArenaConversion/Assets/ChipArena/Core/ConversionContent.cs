@@ -44,7 +44,8 @@ namespace ChipArena.UnityConversion
         public ContentChip Chip(string id) => Array.Find(chips,x=>x.id==id)??throw new ArgumentException("Unknown chip: "+id);
         public ContentMap Map(string id) => Array.Find(maps,x=>x.id==id)??throw new ArgumentException("Unknown map: "+id);
         public ContentMaterial Material(string id) => Array.Find(materials,x=>x.id==id)??throw new ArgumentException("Unknown material: "+id);
-        public double Weight(string spec) => Array.Find(weights,x=>x.name==spec).value;
+        // Older/incomplete content must still allow rolling; shipped entries are checked by Validate.
+        public double Weight(string spec) => (weights==null?null:Array.Find(weights,x=>x!=null&&x.name==spec))?.value??4;
         public ContentAbility Ability(string spec,string slot) => Array.Find(abilities,x=>x.spec==spec&&x.slot==slot);
         public ContentAds Ads(string spec) => NativeRangedRules.Scope(spec)?Array.Find(ads,x=>x.spec==spec):null;
         public void Validate()
@@ -52,6 +53,9 @@ namespace ChipArena.UnityConversion
             if(schema!=1||sourceCommit==null||sourceCommit.Length!=40)throw new InvalidOperationException("Invalid conversion content receipt");
             if(weapons==null||chips==null||maps==null||baseStats==null)throw new InvalidOperationException("Missing conversion content");
             if(weapons.Select(x=>x.id).Distinct().Count()!=weapons.Length||chips.Select(x=>x.id).Distinct().Count()!=chips.Length||maps.Select(x=>x.id).Distinct().Count()!=maps.Length)throw new InvalidOperationException("Duplicate content IDs");
+            foreach(var w in weapons)
+                if(weights==null||!weights.Any(x=>x!=null&&x.name==w.id&&!double.IsNaN(x.value)&&!double.IsInfinity(x.value)&&x.value>=0))
+                    throw new InvalidOperationException("Missing or invalid weapon weight: "+w.id);
             var stats=new HashSet<string>(baseStats.Select(x=>x.name));
             foreach(var c in chips)foreach(var e in c.effects)if(!stats.Contains(e.stat)||!new[]{"add","mul","set"}.Contains(e.op)||double.IsNaN(e.value)||double.IsInfinity(e.value))throw new InvalidOperationException("Invalid chip effect "+c.id);
             foreach(var map in maps)
