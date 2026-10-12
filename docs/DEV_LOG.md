@@ -1,5 +1,41 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — melee footwork: pinned soles and real attack steps (owner: "Also, at more realism to the basic attack animation. Currently~ They slide across with their feet on the ground, make this appear a lot better.")
+- Branch `claude/melee-steps`, base shared `c0e5aa1`, fast-forwarded to shared `1af916c` (Astra's Whirlwind) before the commit. One commit on the branch only: not pushed, merged or released. Details, the per-weapon numbers and the limits are in `docs/MELEE-FEEL.md` "Footwork".
+- Cause: measured at the soles, not the ankles, the swing's rear foot dragged its toe 1.8–4.6 cm under the floor at 4.7–17.6 m/s, steps cleared the floor by 2.9 cm, and planted feet turned flat with the body.
+- New `Core/MeleeFootwork.cs`, called from `MeleeMotion.Feet`:
+  - feet on the floor are pinned in world space, on the toe joint (heel up to push off or pivot) or on the heel (a strike rolling flat);
+  - other feet take real steps, rising straight up, clearing the floor by 5.5 cm or more, and landing heel first;
+  - the steps are timed to the authority's step window: the lead plants in the hit window, the rear pushes off and follows with a recovery step, and long steps (openers, chained lunges, every greatsword step) stride first;
+  - swings with no travel, or into a wall, stay planted;
+  - the hips drop into the plant (greatsword deepest), every step leans 4–6° into its cut, and the hips lead the shoulders by 8–10°.
+- Other changes:
+  - `MeleeRig.StepFoot` (correct heading-then-pitch foot, group-space blend);
+  - `MeleeRig.HoldAnkles(feet:)`, so swing transitions keep the soles;
+  - `MeleeGait.SyncTolerance`, so the gait takes the swing's feet over exactly;
+  - the daggers' spin hop turns its feet only in the air.
+- Approach: procedural, not the pack's attack legs. Those legs are in-place 0.1–0.4 m shuffles with root travel stripped and windups retimed 2.5–5×; no clip covers 0.75–2.4 m in 0.17–0.32 s, chains, run entries or walls.
+- Probe results, before → after, worst sole slip about its slowest pivot:
+  - default steps, chains, held repeats and hit-stops: 4.7–14.2 → 0.00–0.08 m/s;
+  - openers: 11.3–17.6 → 0.26–0.27;
+  - sprint and walk entries: → ≤0.19;
+  - windup turns: → ≤0.56 (shield);
+  - stationary and wall swings: → 0.00–0.01.
+  Soles reach at most 4 mm into the floor (before 2.2–10.7 cm), and only in the run in/out case, from the gait's run-out (the other cases 0.0 cm). The worst step clearance is 2.8–3.8 → 5.1–11.7 cm.
+- Animation impact: presentation only. No change to hit timing, hitboxes, damage, cooldowns, movement (the body still travels by the simulated step; no root motion), stamina, prediction or network data.
+- Checks:
+  - `unity-check.sh` on the repo root: OK;
+  - `check_relay.py`: 427 PASS, no FAIL;
+  - Python unittest: 86 OK, 1 skipped;
+  - `package_source.py`: 1342 files, OK;
+  - `git diff --check`: clean;
+  - managed melee set: 43 PASS. `Tests/MeleeFeelChecks.cs` `Feel` now measures soles (slip, sink, clearance, lead plant in the window, recovery step, hip drop, planted and wall swings, toe pivots) and fails across the board on the old code. `Tests/melee-motion-pinned.json` is re-pinned (24 swing scenarios); hit reactions stay ≤0.34 mm on the original.
+- Not run: Unity Editor/Windows play, two-client (remote interpolation), uneven floors.
+- Risks:
+  - owner taste on the stride-first long steps and the deeper shield drop;
+  - the gait's own run-cycle slip (up to 5.1 m/s with no swing) is pre-existing and untouched.
+- Next: the per-weapon sprint attacks (queued, a separate commit).
+
 ## 2026-10-12 — Astra — replace greatsword E with Whirlwind
 - Branch `codex/unity-greatsword-whirlwind-20261012`, base current shared/cloud `c0e5aa1` (preserves Claude's latest jump attacks and Q/E presentation). Owner explicitly replaces Wolf Knight with a steerable spin; pushes/merges remain authorized. Integration/CI receipts are recorded in the task PR.
 - Native greatsword E now resolves `whirlwind`: fixed .3 s windup / 3 s active / .5 s recovery, 45 stamina and 11 s cooldown from commitment with existing cost/cooldown modifiers. Seven radial pulses at 0/.45/.90/1.35/1.80/2.25/2.70 active seconds deal 8.5 base each (59.5 total per target), base radius 2.6 m with normal reach/damage modifiers. Only pulse 1 attempts .12 s normal stagger. Contacts recheck visibility, teams, protection, roll and timed block; block still punishes/cancels the caster. Removes the old leap/slam and super armour from this ability.

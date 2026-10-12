@@ -363,7 +363,7 @@ cooldown, movement, stamina or network change. The step stays the simulated body
   every tick trailed a 720°/s windup turn by up to 31–35° and popped at the hit (1500–1860°/s in a frame). A chain that
   starts from the previous heading carries straight on. A 20 Hz replicated heading (36° snapshot steps) glides at most
   19.2° per frame. An entry blend still running at the strike finishes over `StrikeBlend` (0.04 s).
-- **P10 anchored footwork.** Each foot starts where it was shown as the swing began (the ankles are kept in world space
+- **P10 anchored footwork** (superseded by "Footwork" below, which pins the soles and takes real steps). Each foot starts where it was shown as the swing began (the ankles are kept in world space
   each frame). That start can be a chain's recovery step or a run's stride, so no planted foot slides into the stance,
   and the pose transition into a swing holds the ankles.
   - **Lead foot.** It flies with the travel and comes straight down as it plants in the hit window (the horizontal stride
@@ -431,9 +431,12 @@ is the largest speed and the total distance of an ankle on the floor; L / R are 
     step, sprint stop):
     - early chains per weapon enter from the live follow-through: the blade keeps at least 30% of its speed and 70% of
       the unchained follow-through's distance from the guard;
-    - planted feet slip at most 1 m/s and 3–6 cm through openers at the cap, default steps, early chains and sprint
-      entries;
-    - the lower foot stays within 7 cm of the floor, and the lead foot plants inside the hit window;
+    - the footwork, measured at the soles (see "Footwork" below): through openers at the cap, default steps, early chains,
+      sprint entries and a 60° windup turn, a sole on the floor turns about a pivot but slides at most 0.35 m/s in a frame
+      and 1.5 cm in all, never sinks into the floor, and every step clears it by at least 5 cm; the lead foot plants inside
+      the hit window, the rear foot lands a recovery step after it, the hips drop at least 2 cm into the plant (the
+      greatsword deeper than the sword); a swing with no step or into a wall keeps both soles planted; a planted foot only
+      turns with its heel up;
     - lunges lean 6° more than a default step, and sprint entries 4° more than a standing swing;
     - the facing follows a 720°/s windup turn within 1° and at most `TurnFollow` × the rate, and a 20 Hz heading glides;
     - cut A, a buffered B, then A again after `ComboUntil`.
@@ -644,3 +647,177 @@ These are proposals, not implemented. A real plunging attack is simulation:
 The presentation then needs only one line, `MeleeViewOf` setting `v.AirAttack`, plus the same flag in `AirView`,
 `NativeAirAttackFxPresentation` and `AirAttackCues` (each passes -1 today). The air take's strike would then key to the
 plunge's own window.
+
+## Footwork (owner 2026-10-12: "Also, at more realism to the basic attack animation. Currently~ They slide across with their feet on the ground, make this appear a lot better.")
+
+### What was wrong
+
+P10 held the ankles in place, and the old probe measured the ankle (planted while within 1.2 cm of its floor height):
+0.04–0.41 m/s. Measured at the soles, the lowest corner of the foot and toe boxes, the picture was different. The rear
+foot "trailed low on its toe" with its ankle 3–5 cm up and its heel raised, so its toe was 1.8–4.6 cm under the floor and
+was dragged along at the hips' speed: 4.7–17.6 m/s on every swing that stepped. The lead foot's lifts cleared the floor by
+2.9 cm, and planted feet turned flat with the body.
+
+### Approach
+
+New `Core/MeleeFootwork.cs` holds the plan; `MeleeMotion.Feet` calls it for every captured cut but the daggers' hopped
+spin. Presentation only: the body still travels by the authority's step (`StepAt/StepUntil/StepDistance`), never by root
+motion. No change to hit timing, hitboxes, damage, cooldowns, movement, stamina or networking.
+
+- **Pinned soles.** A foot touching the floor is pinned in world space. It is anchored either on its toe joint, with the
+  heel raised to push off or pivot and the toes bent back flat, or on its heel's back edge while a heel strike rolls flat.
+  The rig reads the world position from `GroupPosition`/`GroupYaw`, as the runtime places the root each frame, so a pinned
+  foot holds however the presented body moves.
+- **Real steps.** A foot leaves the floor straight up, travels on an arc, and comes down onto its spot. Its sole is kept
+  at least `Clearance` (5.5 cm) clear through the travel. It lands heel first, the lead with the toe up 16°. The landing
+  target is set from where the body will be at that moment: the simulated travel still to come, scaled by the travel
+  actually observed. So a step into a wall lands where the body stopped, and a swing that does not move lifts no foot.
+- **The plan, timed to the step window.**
+  - **Lead foot.** It lifts once the body starts to move. It plants as early in the hit window as the leg reaches: +47 to
+    +110 ms after the window opens, 29–69% of the 0.16 s window, and never before it.
+  - **Rear foot.** It pushes off on its toes until its hip is too far away (`Hold`, at most what the leg reaches with the
+    hips seated). It then lifts and lands its recovery step behind the lead in the recovery, re-squaring the cut's stance.
+  - **Long steps.** A long step (from `LongStep`, 1.15 m: lock-on openers and chained lunges) strides with the rear foot
+    first and then plants the lead, giving two short flights instead of one long skate. So does any step whose single
+    bound would leave both feet off longer than `MaxFlight`, which is every greatsword step.
+- **Push-off.** A planted foot that is about to be outrun lifts one frame ahead (at a lunge's peak the hips cover 10 cm a
+  frame).
+- **Weight.**
+  - **Hips.** They drop into the plant and rise over the recovery (`Drop`, `DropHold`, `DropRise`), seated lower still
+    when a planted foot needs the reach (`SeatSteps`, rising at most 1.2 m/s as before).
+  - **Trunk lean.** Every step leans the trunk 4–6° into its cut as the lead plants (`StepLeanBase`), on top of the
+    lunge's and the sprint entry's leans.
+  - **Hips lead.** The pelvis turns 8° (the greatsword 10°) toward the blade's sweep ahead of the chest (`HipsLead`), and
+    the capture keeps the shoulders.
+  - **Greatsword.** It plants deepest and longest and takes the slowest recovery step.
+  - **Shield.** Its drop also offsets the capture rising through the bash.
+- **Pivots.** When the body turns well past a planted foot (a windup turn), its heel lifts and the foot turns on its toe
+  joint after the body, then settles flat. The rear foot's heel also comes up through the cut's drive.
+- **Transitions.**
+  - **Start.** A swing starts from the feet as shown. A foot already in the air (a run's stride, a chain's recovery
+    step) carries its speed into its first step, or comes down first on a short catch step.
+  - **Pose blends.** The blend into and out of a swing now keeps each sole's orientation, not only its ankle
+    (`MeleeRig.HoldAnkles(..., feet:true)`); it had tilted pinned soles 3–4 cm into the floor.
+  - **Gait handoff.** The gait takes the swing's feet over exactly (`MeleeGait.SyncTolerance` 0 after a footwork frame,
+    instead of within 1.5 cm). This removed a 0.7 m/s one-frame slip as every swing ended.
+  - **Hit-stop.** It freezes the cut, not the feet, because the body keeps moving.
+- **Daggers' spin hop.** It keeps its own hop, now 12 cm high. Its feet turn only while they are off the floor: before,
+  they swept the floor at 9 m/s as it landed.
+- **Leg pose.** `MeleeRig.StepFoot` turns the foot to its heading and then pitches it about its own axis. The source's
+  `foot()` pitched about the group axis, which rolls a turned foot sideways. It also blends the foot's orientation in
+  group space, because blending the local rotation across a re-solved knee tilted the sole.
+
+The pack's own attack legs were considered and not used. The cut clips' legs move 0.1–0.4 m in place, with their root
+travel stripped at import. Their windups are retimed 2.5–5× by `MeleeSwing`. No clip covers a 0.75–2.4 m step in 0.17–0.32 s,
+a chain, a run entry or a wall. Stride-warping them 3–8× with foot-contact IK would not keep their contacts. Procedural
+steps timed to the authority's step window do keep them, for every case.
+
+### Before and after (offline probe, 60 Hz, flat floor, attackRate 1)
+
+Before is shared `c0e5aa1` and after is this branch. "Sole slip" is the slowest-moving of a sole's three pivots (toe
+joint, heel back edge, sole centre) on frames where the sole touches the floor in both frames. A foot turning on its toe
+joint therefore counts as 0, and a dragged toe does not. "Sink" is how far a sole goes into the floor. "Step clearance"
+is the lowest peak clearance of any step that travels more than 10 cm. "Lead plant" is the lead foot's touchdown after
+the hit window opens. "Hip drop" is the pelvis's lowest point below its height as the swing began; it includes the
+captured cut's own dip, and an entry from a sprint, walk or run starts from the run's height. The run case measures
+the swing window plus 0.1 s of the run-out.
+
+**Sword**
+
+| Scenario | Sole slip, max (m/s) | Sole slip, mean (m/s) | Sink (cm) | Step clearance (cm) | Lead plant | Hip drop (cm) |
+|---|---|---|---|---|---|---|
+| default step | 7.05 → 0.00 | 0.768 → 0.000 | 3.5 → 0.0 | 2.9 → 11.6 | +77 ms (48%) | 12.1 → 6.1 |
+| early chain | 7.05 → 0.00 | 0.976 → 0.000 | 5.2 → 0.0 | 2.8 → 9.5 | +77 ms (48%) | 12.1 → 8.3 |
+| held repeat | 7.05 → 0.00 | 0.836 → 0.000 | 4.0 → 0.0 | 2.8 → 9.5 | +77 ms (48%) | 12.1 → 8.3 |
+| lock-on opener (2.2 m) | 17.22 → 0.27 | 1.876 → 0.004 | 4.7 → 0.0 | 2.9 → 10.6 | +93 ms (58%) | 12.8 → 4.8 |
+| opener into chain | 17.22 → 0.27 | 1.230 → 0.002 | 4.7 → 0.0 | 2.8 → 10.6 | +93 ms (58%) | 12.8 → 6.8 |
+| sprint entry | 7.05 → 0.19 | 0.945 → 0.004 | 6.0 → 0.0 | 2.9 → 8.0 | +77 ms (48%) | 21.8 → 18.5 |
+| walk entry | 7.05 → 0.05 | 0.915 → 0.002 | 4.3 → 0.0 | 2.9 → 10.4 | +143 ms (90%) | 26.6 → 19.3 |
+| run in / run out | 7.05 → 0.61 | 1.109 → 0.029 | 4.0 → 0.4 | 2.9 → 10.4 | +143 ms (90%) | 25.9 → 18.7 |
+| no step | 0.39 → 0.00 | 0.028 → 0.000 | 3.5 → 0.0 | 2.9 → 0.0 | — | 5.0 → 5.1 |
+| into a wall | 5.47 → 0.01 | 0.472 → 0.000 | 3.5 → 0.0 | 2.9 → 0.0 | — | 12.1 → 4.7 |
+| 60° windup turn | 7.05 → 0.04 | 0.991 → 0.000 | 3.6 → 0.0 | 2.8 → 10.8 | +77 ms (48%) | 12.0 → 8.3 |
+| chain with hits (hit-stop) | 7.68 → 0.00 | 0.947 → 0.000 | 5.2 → 0.0 | 2.8 → 9.5 | +77 ms (48%) | 12.1 → 8.3 |
+
+**Greatsword**
+
+| Scenario | Sole slip, max (m/s) | Sole slip, mean (m/s) | Sink (cm) | Step clearance (cm) | Lead plant | Hip drop (cm) |
+|---|---|---|---|---|---|---|
+| default step | 4.73 → 0.03 | 0.509 → 0.000 | 2.7 → 0.0 | 2.9 → 9.7 | +63 ms (40%) | 16.6 → 17.8 |
+| early chain | 6.47 → 0.05 | 0.645 → 0.001 | 10.7 → 0.0 | 2.8 → 9.5 | +63 ms (40%) | 16.7 → 17.8 |
+| held repeat | 6.48 → 0.05 | 0.602 → 0.001 | 3.1 → 0.0 | 2.8 → 9.5 | +63 ms (40%) | 16.6 → 17.8 |
+| lock-on opener (2.4 m) | 11.34 → 0.26 | 1.232 → 0.002 | 4.6 → 0.0 | 2.9 → 10.5 | +80 ms (50%) | 13.4 → 21.0 |
+| opener into chain | 11.34 → 0.26 | 1.232 → 0.002 | 4.6 → 0.0 | 2.9 → 10.5 | +80 ms (50%) | 13.4 → 21.0 |
+| sprint entry | 4.73 → 0.05 | 0.585 → 0.001 | 2.7 → 0.0 | 2.9 → 9.6 | +47 ms (29%) | 27.7 → 30.6 |
+| walk entry | 4.73 → 0.11 | 0.576 → 0.001 | 3.0 → 0.0 | 2.9 → 9.4 | +63 ms (40%) | 27.8 → 30.6 |
+| run in / run out | 4.73 → 0.61 | 0.663 → 0.015 | 4.9 → 0.4 | 2.9 → 9.5 | +47 ms (29%) | 27.2 → 30.8 |
+| no step | 0.16 → 0.00 | 0.023 → 0.000 | 2.2 → 0.0 | 2.9 → 0.0 | — | 12.3 → 15.0 |
+| into a wall | 3.49 → 0.00 | 0.228 → 0.000 | 2.7 → 0.0 | 2.9 → 0.0 | — | 16.6 → 17.8 |
+| 60° windup turn | 4.73 → 0.03 | 0.478 → 0.001 | 2.9 → 0.0 | 2.9 → 9.7 | +47 ms (29%) | 16.7 → 17.8 |
+| chain with hits (hit-stop) | 6.97 → 0.05 | 0.624 → 0.001 | 10.1 → 0.0 | 2.8 → 9.5 | +63 ms (40%) | 16.7 → 17.6 |
+
+**Daggers**
+
+| Scenario | Sole slip, max (m/s) | Sole slip, mean (m/s) | Sink (cm) | Step clearance (cm) | Lead plant | Hip drop (cm) |
+|---|---|---|---|---|---|---|
+| default step | 7.04 → 0.00 | 0.970 → 0.000 | 2.9 → 0.0 | 2.9 → 11.7 | +93 ms (58%) | 13.2 → 13.2 |
+| early chain | 10.67 → 0.08 | 1.081 → 0.003 | 4.8 → 0.0 | 3.8 → 7.0 | +93 ms (58%) | 13.2 → 13.2 |
+| held repeat | 14.17 → 0.05 | 1.151 → 0.001 | 2.9 → 0.0 | 2.8 → 7.0 | +93 ms (58%) | 13.2 → 13.2 |
+| lock-on opener (2.0 m) | 17.59 → 0.27 | 2.454 → 0.007 | 4.6 → 0.0 | 2.9 → 9.0 | +110 ms (69%) | 13.2 → 13.2 |
+| opener into chain | 17.59 → 0.27 | 1.292 → 0.003 | 4.6 → 0.0 | 2.8 → 9.0 | +110 ms (69%) | 13.2 → 13.2 |
+| sprint entry | 7.04 → 0.03 | 1.224 → 0.001 | 5.8 → 0.0 | 2.9 → 7.4 | +93 ms (58%) | 26.9 → 26.9 |
+| walk entry | 7.04 → 0.00 | 1.171 → 0.000 | 4.7 → 0.0 | 2.9 → 5.1 | — | 25.1 → 25.1 |
+| run in / run out | 7.04 → 0.21 | 1.394 → 0.011 | 6.3 → 0.3 | 2.9 → 8.5 | — | 27.2 → 27.2 |
+| no step | 0.18 → 0.00 | 0.031 → 0.000 | 2.9 → 0.0 | 2.9 → 0.0 | — | 13.2 → 14.2 |
+| into a wall | 5.25 → 0.00 | 0.578 → 0.000 | 2.9 → 0.0 | 2.9 → 0.0 | — | 13.2 → 13.2 |
+| 60° windup turn | 8.14 → 0.08 | 1.200 → 0.001 | 3.2 → 0.0 | 2.8 → 8.1 | +93 ms (58%) | 13.2 → 13.2 |
+| chain with hits (hit-stop) | 10.66 → 0.08 | 1.086 → 0.003 | 4.8 → 0.0 | 3.8 → 7.0 | +93 ms (58%) | 13.2 → 13.2 |
+
+**Shield**
+
+| Scenario | Sole slip, max (m/s) | Sole slip, mean (m/s) | Sink (cm) | Step clearance (cm) | Lead plant | Hip drop (cm) |
+|---|---|---|---|---|---|---|
+| default step | 5.21 → 0.00 | 0.584 → 0.000 | 2.9 → 0.0 | 2.9 → 11.6 | +67 ms (42%) | 7.6 → 2.4 |
+| early chain | 6.25 → 0.00 | 0.743 → 0.000 | 4.2 → 0.0 | 2.8 → 7.1 | +67 ms (42%) | 16.4 → 16.4 |
+| held repeat | 6.25 → 0.00 | 0.636 → 0.000 | 2.9 → 0.0 | 2.8 → 7.1 | +67 ms (42%) | 16.4 → 16.4 |
+| lock-on opener (2.0 m) | 13.69 → 0.27 | 1.517 → 0.004 | 4.7 → 0.0 | 2.9 → 9.0 | +100 ms (63%) | 7.8 → 8.2 |
+| opener into chain | 13.69 → 0.27 | 0.951 → 0.002 | 4.7 → 0.0 | 2.8 → 9.0 | +100 ms (63%) | 16.4 → 19.1 |
+| sprint entry | 5.05 → 0.04 | 0.689 → 0.001 | 3.0 → 0.0 | 2.9 → 8.7 | +83 ms (52%) | 21.6 → 16.6 |
+| walk entry | 5.23 → 0.12 | 0.696 → 0.003 | 3.4 → 0.0 | 2.9 → 9.8 | +67 ms (42%) | 22.4 → 14.3 |
+| run in / run out | 5.23 → 0.61 | 0.841 → 0.026 | 3.5 → 0.4 | 2.9 → 8.3 | +67 ms (42%) | 22.0 → 13.4 |
+| no step | 0.33 → 0.00 | 0.034 → 0.000 | 2.9 → 0.0 | 2.9 → 0.0 | — | 3.5 → 0.3 |
+| into a wall | 4.52 → 0.00 | 0.388 → 0.000 | 2.9 → 0.0 | 2.9 → 0.0 | — | 7.6 → 0.3 |
+| 60° windup turn | 6.25 → 0.56 | 0.660 → 0.004 | 3.7 → 0.0 | 2.8 → 7.6 | +67 ms (42%) | 16.4 → 16.4 |
+| chain with hits (hit-stop) | 7.04 → 0.00 | 0.721 → 0.000 | 4.2 → 0.0 | 2.8 → 7.1 | +67 ms (42%) | 16.4 → 16.4 |
+
+The 0.61 m/s in "run in / run out" is the gait's first run-out step, not the handoff. The gait rolls a planted foot about
+its ankle and slips up to 5.1 m/s while running with no swing at all; it is pre-existing locomotion and left alone here. The
+other residuals, 0.2–0.56 m/s, are single frames: a foot lifting while it pivots, and a 2.0–2.4 m opener's 2–3-frame
+stride contact. The strict corner measure (the mean of the touching corners) also sees the heel box's front edge sweep
+2 mm a frame under the pinned toe box as the heel lifts: at most 0.14–0.39 m/s.
+
+Renders (scratch, not committed) are side views that follow the pilot, before over after, with world-fixed footprints:
+blue left, orange right, red where no pivot of the sole held still. Airborne ankle trails are drawn as dots. Strips: the
+sword default step, combo and 60° windup turn; the greatsword combo and 2.4 m lunge; the daggers chain; the shield
+combo; and a run into a swing and back out to a run.
+
+### Tests
+
+`Tests/MeleeFeelChecks.cs` `Feel` now measures the soles, not the ankles (see "Tests and parity" above). On the old code
+the new checks fail everywhere:
+- soles slip 4.7–17.6 m/s and 22–242 cm in all;
+- they sink 2.5–12.9 cm into the floor;
+- steps clear the floor by 1.9–3.8 cm;
+- no recovery step lands;
+- swings with no step or into a wall step 15–28 cm;
+- a turning planted foot turns flat for 16 frames.
+
+`Tests/melee-motion-pinned.json` is re-pinned for its 24 swing scenarios. The five hit-reaction scenarios stay on the
+original within 0.34 mm, and the torso-only scenarios keep the lower body within 0.08 mm.
+
+### Limits
+
+The probe and checks are offline (no Unity Editor, Windows or two-client play). A remote pilot's presented position may
+lag or smooth its swing's timing. The pinned feet hold regardless, but the landing targets assume the authority's step
+curve. Uneven floors are not handled: the floor is taken as flat at the body's height, as before. Owner taste is open on
+the stride-first long steps, the follow step's timing and the deeper shield drop.

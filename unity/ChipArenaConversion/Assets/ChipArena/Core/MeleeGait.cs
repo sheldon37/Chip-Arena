@@ -53,6 +53,8 @@ namespace ChipArena.UnityConversion
         // The share of the stance's pelvis turn the hips take (motion-quality: the rifle's is scaled by its aim weight); 1 for
         // every other spec.
         public float PelvisYawScale=1;
+        // SyncFeet keeps its own foot within this of an action layer's ankle (a captured swing's footwork syncs exactly).
+        public const float SyncNear=.015f;public float SyncTolerance=SyncNear;
         // The last Locomotion's backpedal share (0 forward or strafing, 1 running backward), read by the melee torso.
         public float Back{get;private set;}
         // Both feet re-seated on the stance (spawn, reset, teleport or a near-instant flip), reusing the rig's two feet.
@@ -250,7 +252,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<2;i++)
             {
                 var f=feet[i];if(!captured)cap[i]=r.ReadAnkle(i==0,out capQ[i],out _);Vector3 c=cap[i];
-                if(Vector3.Distance(c,new Vector3(f.sx,f.sy,f.sz))<.015f)continue;
+                if(Vector3.Distance(c,new Vector3(f.sx,f.sy,f.sz))<SyncTolerance)continue;
                 Vector3 fwd=Vector3.Transform(MeleeMath.Z,capQ[i]);
                 f.x=f.fx=f.sx=c.X;f.z=f.fz=f.sz=c.Z;f.y=f.fy=f.sy=Math.Max(FLOOR,c.Y);f.yaw=f.fyaw=f.syaw=(float)Math.Atan2(fwd.X,fwd.Z);f.pitch=f.spitch=(float)Math.Asin(MeleeMath.Clamp(-fwd.Y,-1,1));f.toe=0;
                 f.planted=c.Y<FLOOR+.015f;if(!f.planted)f.uLift=Math.Min(MeleeMath.Frac(r.Stride/MeleeMath.TAU+(i==1?.5f:0)),.97f);

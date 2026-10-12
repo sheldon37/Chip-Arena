@@ -100,6 +100,23 @@ namespace ChipArena.UnityConversion
             Slerp(ankle,MeleeMath.Inverse(q*Q[hip]*Q[knee])*MeleeMath.Euler(heel,yaw,0),weight);
             SetE(toe,-heel*.45f*weight,E[toe].Y,E[toe].Z);
         }
+        // A footwork leg (Core/MeleeFootwork): the knee solved as foot() bends it, the foot turned to its group heading and then
+        // pitched about its own axis (+ heel up), the toes bent by `toe`; the ankle blends from `from` by weight, as foot() does.
+        public void StepFoot(bool left,Vector3 target,float yaw,float pitch,float toe,float weight,Vector3? from=null)
+        {
+            LegsAuthored=true;int hip=Hip(left),knee=hip+1,ankle=hip+2,toeJ=hip+3;
+            Quaternion q=ChainQuat(CapturedRig.Pelvis,-1),q2=MeleeMath.Inverse(q);Vector3 k=ChainPoint(CapturedRig.Pelvis,-1);
+            // the foot's orientation blends in group space (its local rotation would tilt it with the re-solved knee)
+            Quaternion foot=weight>=1?MeleeMath.EulerYXZ(pitch,yaw,0):MeleeMath.Slerp(ChainQuat(ankle,-1),MeleeMath.EulerYXZ(pitch,yaw,0),weight);
+            Vector3 placed=MeleeMath.Lerp(from??ChainPoint(ankle,-1),target,weight);placed.Y=Math.Max(FLOOR,placed.Y);
+            placed=Vector3.Transform(placed-k,q2);Vector3 s=P[hip],d=placed-s;float raw=d.Length();d=raw<1e-6f?new Vector3(0,-1,0):d/raw;float dd=MeleeMath.Clamp(raw,LEG_MIN,LEG_MAX);
+            float reach=Vector3.Transform(d,q).Z;Vector3 pole=Vector3.Transform(new Vector3(0,.6f*MeleeMath.SmoothStep(reach,.2f,.65f),1),q2);
+            Vector3 bend=BendDirection(d,MeleeMath.Unit(pole));float half=dd/2,outward=(float)Math.Sqrt(Math.Max(0,THIGH*THIGH-half*half));
+            Vector3 u=Vector3.Normalize(d*half+bend*outward);SetQ(hip,MeleeMath.FromTo(new Vector3(0,-1,0),u));
+            Vector3 f=Vector3.Transform(Vector3.Normalize(d*dd-u*THIGH),MeleeMath.Inverse(Q[hip]));SetQ(knee,MeleeMath.FromTo(new Vector3(0,-1,0),f));
+            SetQ(ankle,MeleeMath.Inverse(q*Q[hip]*Q[knee])*foot);
+            SetE(toeJ,MeleeMath.Lerp(E[toeJ].X,toe,weight),E[toeJ].Y,E[toeJ].Z);
+        }
 
         // ---- motion-quality.ts leg solves ----
         public void PelvisFrame(out Quaternion pq,out Vector3 pp){pq=Q[CapturedRig.Body]*Q[CapturedRig.Pelvis];pp=Vector3.Transform(P[CapturedRig.Pelvis],Q[CapturedRig.Body])+P[CapturedRig.Body];}
@@ -128,16 +145,19 @@ namespace ChipArena.UnityConversion
         // layerLeg (no pole): a leg solved exactly as the gait solves its own, marked layered for the ground pass.
         public void LayerLeg(bool left,Vector3 target,float yaw,float pitch,float toe){SolveLeg(left,target,yaw,pitch,toe);LegsLayered=true;}
         // holdAnkles: keep both ankles (and foot orientation) where they are while `change` moves the body.
-        private readonly Vector3[] holdScratch=new Vector3[2];private readonly Quaternion[] keepScratch=new Quaternion[4];
-        public void HoldAnkles(Action change,float weight)
+        private readonly Vector3[] holdScratch=new Vector3[2];private readonly Quaternion[] keepScratch=new Quaternion[4],feetScratch=new Quaternion[4];
+        // feet: also keep each foot's orientation and toe bend as they were (a swing's planted soles, Core/MeleeFootwork), so
+        // the change cannot tilt a pinned sole into or off the floor.
+        public void HoldAnkles(Action change,float weight,bool feet=false)
         {
             if(weight<=1e-4f){change();return;}
-            var hold=holdScratch;for(int i=0;i<2;i++)hold[i]=ReadAnkle(i==0,out _,out _);change();
+            var hold=holdScratch;for(int i=0;i<2;i++){hold[i]=ReadAnkle(i==0,out Quaternion fq,out _);if(feet){feetScratch[i*2]=fq;feetScratch[i*2+1]=Q[Hip(i==0)+3];}}change();
             var keep=keepScratch;
             for(int i=0;i<2;i++)
             {
                 int hip=Hip(i==0);ReadAnkle(i==0,out Quaternion aq,out Vector3 k);if(weight<1)for(int b=0;b<4;b++)keep[b]=Q[hip+b];
-                hold[i].Y=Math.Max(hold[i].Y,FLOOR);SolveLeg(i==0,hold[i],0,0,0,aq,k); // the changed leg's foot orientation and knee
+                hold[i].Y=Math.Max(hold[i].Y,FLOOR);SolveLeg(i==0,hold[i],0,0,0,feet?feetScratch[i*2]:aq,k); // the changed leg's foot orientation and knee
+                if(feet)SetQ(hip+3,feetScratch[i*2+1]);
                 if(weight<1)for(int b=0;b<4;b++)SetQ(hip+b,MeleeMath.Slerp(keep[b],Q[hip+b],weight));
             }
         }
