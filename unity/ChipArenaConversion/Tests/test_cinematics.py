@@ -93,17 +93,29 @@ class CinematicChecks(unittest.TestCase):
         intros=(ROOT/'Assets/ChipArena/Runtime/NativeIntros.cs').read_text(encoding='utf-8')
         self.assertIn('if(style=="dev-siren")SirenEntranceFace(clip,age,camera);',intros)
     def test_every_staged_entrance_has_its_scene_and_motion(self):
-        # NativeIntroRules.Entrances is what RenderIntro stages (anything else falls back to neon-drop, never a missing stage).
+        # NativeIntroRules.Entrances is what RenderIntro stages (anything else stages the pilot's weapon signature). The DEV
+        # entrances play their baked stages; the weapon signatures re-stage their baked clips through the entrance director;
+        # the procedural entrances are the director's own and need no bake.
         import re
         core=(ROOT/'Assets/ChipArena/Core/NativeIntroRules.cs').read_text(encoding='utf-8')
         styles=re.findall(r'"([a-z-]+)"',re.search(r'Entrances=\{([^}]*)\}',core).group(1))
-        self.assertEqual(len(styles),20)
+        procedural=re.findall(r'"([a-z-]+)"',re.search(r'Procedural=\{([^}]*)\}',core).group(1))
+        retired=re.findall(r'"([a-z-]+)"',re.search(r'Retired=\{([^}]*)\}',core).group(1))
+        self.assertEqual(len(styles),22)
+        self.assertEqual(set(retired),{'neon-drop','vector-slide','signal-spin','arc-salute','pulse-wave'})
+        self.assertFalse(set(retired)&set(styles))
+        self.assertTrue(set(procedural)<=set(styles))
         motion={c['key'] for c in resource('SourceMotion')['clips']}
+        director=(ROOT/'Assets/ChipArena/Core/NativeEntranceDirector.cs').read_text(encoding='utf-8')
         for style in styles:
             with self.subTest(style=style):
-                self.assertIn('stage-'+style,self.clips)
-                self.assertIn('stage-'+style,self.models)
+                if style in procedural or style.startswith('weapon-'):
+                    self.assertIn('{"'+style+'",',director)
+                if style in procedural:continue
                 self.assertIn('intro-'+style,motion)
+                if style.startswith('dev-'):
+                    self.assertIn('stage-'+style,self.clips)
+                    self.assertIn('stage-'+style,self.models)
     def test_siren_cell_is_lit_by_its_bulb_through_the_entrance_light_conversion(self):
         # The cell has no directional light and almost no ambient: only the bulb and fill show it, so their conversion
         # into Unity lights (NativeEntranceLight, colour space and intensity mode) decides whether the room is visible.

@@ -88,6 +88,31 @@ namespace ChipArena.UnityConversion
             Color middle=new Color((float)NativeEntranceLight.Ambient((skyR+groundR)*.5,linear),(float)NativeEntranceLight.Ambient((skyG+groundG)*.5,linear),(float)NativeEntranceLight.Ambient((skyB+groundB)*.5,linear));
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=upper;RenderSettings.ambientEquatorColor=middle;RenderSettings.ambientGroundColor=lower;
         }
+        /// <summary>
+        /// A directed entrance's light (Core NativeEntranceLights, the source renderer's units), converted exactly as Intro
+        /// converts a baked stage's: the background and fog, the trilight ambient (NativeEntranceLight.Ambient), the directional
+        /// lights as Unity lights (NativeEntranceLight.Light; the first casts the stage shadows) and the point lights through
+        /// the source shaders' stage block (NativeStageLighting).
+        /// </summary>
+        public static void Entrance(NativeEntranceLights l,Camera camera)
+        {
+            EnterStage();if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;
+            camera.backgroundColor=new Color(l.Background.X,l.Background.Y,l.Background.Z).gamma;var fog=new Color(l.Fog.X,l.Fog.Y,l.Fog.Z).gamma;
+            WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),l.FogNear,l.FogFar));StageShadows();RenderSettings.skybox=null;
+            bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear,linearIntensity=GraphicsSettings.lightsUseLinearIntensity;int count=0;
+            for(int i=0;i<l.Directionals;i++)
+            {
+                while(stageLights.Count<=count)stageLights.Add(null);var light=stageLights[count];if(light==null){var go=new GameObject("Entrance light "+count);if(moon!=null)go.transform.SetParent(moon.transform.parent);light=go.AddComponent<Light>();stageLights[count]=light;}count++;
+                var c=l.DirectionColor[i];float k=Math.Max(c.X,Math.Max(c.Y,c.Z));if(!(k>0)){light.enabled=false;continue;}
+                NativeEntranceLight.Light(c.X/k,c.Y/k,c.Z/k,k,linear,linearIntensity,out double r,out double g,out double b,out double unity);
+                var to=l.DirectionTo[i];light.enabled=true;light.type=LightType.Directional;light.color=new Color((float)r,(float)g,(float)b);light.intensity=(float)unity;
+                light.transform.rotation=Quaternion.LookRotation(new Vector3(to.X,-to.Y,-to.Z));light.shadows=i==0?LightShadows.Soft:LightShadows.None;
+            }
+            for(int i=count;i<stageLights.Count;i++)if(stageLights[i]!=null)stageLights[i].enabled=false;
+            int n=Math.Min(l.Points,points.Length);for(int i=0;i<n;i++)points[i]=l.Point[i];StageBlock(n);
+            Color Amb(float r,float g,float b)=>new Color((float)NativeEntranceLight.Ambient(r,linear),(float)NativeEntranceLight.Ambient(g,linear),(float)NativeEntranceLight.Ambient(b,linear));
+            RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=Amb(l.Sky.X,l.Sky.Y,l.Sky.Z);RenderSettings.ambientEquatorColor=Amb((l.Sky.X+l.Ground.X)*.5f,(l.Sky.Y+l.Ground.Y)*.5f,(l.Sky.Z+l.Ground.Z)*.5f);RenderSettings.ambientGroundColor=Amb(l.Ground.X,l.Ground.Y,l.Ground.Z);
+        }
         public static void Clock(float time){if(sky!=null)sky.SetFloat("_SceneTime",time);if(arenaFlicker)PracticalLights(time);}
         /// <summary>Resources/MapLooks.json, loaded and validated once.</summary>
         public static MapLookSet LookSet()

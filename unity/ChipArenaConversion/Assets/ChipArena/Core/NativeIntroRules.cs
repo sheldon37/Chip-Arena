@@ -6,8 +6,10 @@ namespace ChipArena.UnityConversion
         public static string Style(NativeSeat seat)
         {
             var access=seat.access??NativeAccess.Guest;double now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();if(seat.spec=="siren"&&(seat.AuthorityBoss||access.Allows("weapon:siren",now)))return "dev-siren";
-            if(seat.overrideIntro&&!string.IsNullOrEmpty(seat.intro)&&(!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return Entrance(seat.intro);
-            if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";return Entrance("weapon-"+seat.spec);
+            // A chosen entrance plays only while it is one this client stages; a retired or unknown pick (an older client's
+            // neon-drop, vector-slide, ...) falls through to the pilot's weapon signature instead of a fallback stage.
+            if(seat.overrideIntro&&Pickable(seat.intro)&&(!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return seat.intro;
+            if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";return Signature(seat.spec);
         }
         public static double Duration(string style)=>style=="dev-siren"?9.0678:style=="dev-emperor"?7.8:style=="dev-matrix"?8:style=="dev-ansatsuken"?7.2:4.8;
         // Presentation only (the HUD's name card): shared/intros.ts introNameAt, SIREN_INTRO.nameAt 6.4261 for the Siren.
@@ -16,11 +18,38 @@ namespace ChipArena.UnityConversion
         // native phase length unchanged (9.0678 s for a PvP Siren intro), which is a gameplay-timing difference left for review.
         public static double OverlayDuration(string style)=>style=="dev-siren"?7.2678:Duration(style);
         // Presentation only below: what the client stages for the replicated style; match timing keeps that style.
-        // The entrances the client can stage (player-intros.ts; every one has a baked stage and intro clip).
-        public static readonly string[] Entrances={"neon-drop","vector-slide","signal-spin","arc-salute","pulse-wave","weapon-sword","weapon-daggers","weapon-shield","weapon-greatsword","weapon-pistol","weapon-rifle","weapon-machinegun","weapon-fire","weapon-water","weapon-lightning","weapon-darkness","dev-emperor","dev-ansatsuken","dev-matrix","dev-siren"};
-        // A style with no entrance (including an ungranted Siren seat) uses the source's own
-        // fallback, 'neon-drop' (shared/intros.ts effectiveIntro), instead of failing the intro frame.
-        public static string Entrance(string style)=>style!=null&&Array.IndexOf(Entrances,style)>=0?style:"neon-drop";
+        // The entrances the client can stage: the eleven weapon signatures and seven procedural entrances, all directed
+        // (NativeEntranceDirector; the signatures re-stage their baked clips), and the four DEV entrances (baked stages).
+        public static readonly string[] Entrances={"weapon-sword","weapon-daggers","weapon-shield","weapon-greatsword","weapon-pistol","weapon-rifle","weapon-machinegun","weapon-fire","weapon-water","weapon-lightning","weapon-darkness","orbital-drop","grid-rez","holo-projection","blackout","skyline-zip","hero-landing","overclock","dev-emperor","dev-ansatsuken","dev-matrix","dev-siren"};
+        /// <summary>The procedural entrances: tied to no weapon, so any pilot can pick them (owner 2026-10-11).</summary>
+        public static readonly string[] Procedural={"orbital-drop","grid-rez","holo-projection","blackout","skyline-zip","hero-landing","overclock"};
+        /// <summary>
+        /// The generic entrances retired by the owner on 2026-10-11 ("Remove Neon drop, vector slide, signal slide, arc salute,
+        /// and pulse wave"). Saved prefs, account profiles and older clients may still carry them: they read as "no pick" (the
+        /// weapon signature, NativeIntroRules.Migrate), and a replicated one stages the pilot's signature (Entrance).
+        /// </summary>
+        public static readonly string[] Retired={"neon-drop","vector-slide","signal-spin","arc-salute","pulse-wave"};
+        /// <summary>The intro preference held when nothing is picked (overrideIntro false), and the entrance of a pilot whose
+        /// weapon has no signature (an ungranted DEV weapon, an unknown spec).</summary>
+        public const string Default="hero-landing";
+        public static bool Pickable(string style)=>style!=null&&Array.IndexOf(Entrances,style)>=0;
+        /// <summary>The weapon signature of `spec` ("weapon-"+spec), or Default for a weapon without one.</summary>
+        public static string Signature(string spec){string s="weapon-"+spec;return Array.IndexOf(Entrances,s)>=0?s:Default;}
+        /// <summary>A style this client stages; anything else (retired, unknown, null) becomes Default.</summary>
+        public static string Entrance(string style)=>Pickable(style)?style:Default;
+        /// <summary>A style this client stages; anything else becomes the pilot's own weapon signature.</summary>
+        public static string Entrance(string style,string spec)=>Pickable(style)?style:Signature(spec);
+        /// <summary>
+        /// Normalizes a saved or received intro preference: a pick this client cannot stage (a retired generic entrance, an
+        /// unknown id) becomes Default with the override off, so the pilot plays its weapon signature.
+        /// </summary>
+        public static void Migrate(ref string intro,ref bool overrideIntro){if(!Pickable(intro)){intro=Default;overrideIntro=false;}}
+        /// <summary>
+        /// What the shared account service stores for an intro pick: it validates against the Electron client's list
+        /// (shared/cosmetics.ts), which knows the weapon, DEV and retired generic ids but not the procedural entrances, and
+        /// stores those as 'neon-drop'. The client remembers its own pick against that value (NativePendingEffect).
+        /// </summary>
+        public static string ServiceIntro(string intro)=>intro!=null&&(intro.StartsWith("weapon-",StringComparison.Ordinal)&&Pickable(intro)||intro.StartsWith("dev-",StringComparison.Ordinal)||Array.IndexOf(Retired,intro)>=0)?intro:"neon-drop";
         // The weapon model the intro rig holds, or null. player-intros.ts builds a weapon into the bare intro rig for a weapon
         // intro (WEAPON_INTROS[style].spec: the model "weapon-"+spec is the style itself; daggers fill both hands) and for the
         // Emperor's Oath (buildWeapon(weapon/offWeapon,'emperor'), shown by poseEmperor; weapon-emperor holds both gauntlets).
@@ -105,10 +134,17 @@ namespace ChipArena.UnityConversion
         /// none: the boss song plays from the Siren's intro start instead (IntroSong; simulation.ts updateBossSong, audio.ts
         /// previewIntro), and the cell's bulb stutters on that song's beats (NativeSirenIntroLight).
         /// </summary>
-        public static string IntroSting(string style)=>style==null||style=="dev-siren"||Array.IndexOf(Entrances,style)<0?null:"audio/intros/"+style;
+        public static string IntroSting(string style)
+        {
+            if(style==null||style=="dev-siren"||!Pickable(style))return null;
+            // The procedural entrances play the retired generic stings (150 bpm beds with a 3.2 s accent); their beats are on that grid.
+            switch(style){case "orbital-drop":case "overclock":return "audio/intros/pulse-wave";case "hero-landing":return "audio/intros/neon-drop";case "skyline-zip":return "audio/intros/vector-slide";
+                case "grid-rez":return "audio/intros/signal-spin";case "holo-projection":case "blackout":return "audio/intros/arc-salute";}
+            return "audio/intros/"+style;
+        }
         /// <summary>The music an entrance plays from its first frame (song time = intro age), or null: black-siren-protocol for dev-siren.</summary>
         public static string IntroSong(string style)=>style=="dev-siren"?"music/black-siren-protocol":null;
-        // shared/intros.ts INTRO_STYLES display names.
+        // Display names (shared/intros.ts INTRO_STYLES for the weapon and DEV entrances; the procedural entrances are native).
         public static string StyleName(string style)
         {
             switch(style)
@@ -117,7 +153,8 @@ namespace ChipArena.UnityConversion
                 case "weapon-sword":return "Flash Draw";case "weapon-daggers":return "Twin Phantom";case "weapon-greatsword":return "Colossus Oath";case "weapon-shield":return "Bastion Drop";
                 case "weapon-pistol":return "Deadeye";case "weapon-rifle":return "Longwatch";case "weapon-machinegun":return "Belt Rattle";case "weapon-fire":return "Cinder Crown";
                 case "weapon-water":return "Tidal Serpent";case "weapon-lightning":return "Thunderstep";case "weapon-darkness":return "Eventide Gate";
-                case "vector-slide":return "Vector Slide";case "signal-spin":return "Signal Spin";case "arc-salute":return "Arc Salute";case "pulse-wave":return "Pulse Wave";
+                case "orbital-drop":return "Orbital Drop";case "grid-rez":return "Grid Rez";case "holo-projection":return "Holo Projection";case "blackout":return "Blackout";
+                case "skyline-zip":return "Skyline Zip";case "hero-landing":return "Hero Landing";case "overclock":return "Overclock";
                 default:return "Weapon Signature";
             }
         }

@@ -19,7 +19,11 @@ internal static class IntroPresentationChecks
     private static readonly string[] WeaponIntros={"weapon-sword","weapon-daggers","weapon-shield","weapon-greatsword","weapon-pistol","weapon-rifle","weapon-machinegun","weapon-fire","weapon-water","weapon-lightning","weapon-darkness"};
     public static IEnumerable<string> Run()
     {
-        var styles=NativeIntroRules.Entrances;Check(styles.Length==20,"twenty entrances");
+        var styles=NativeIntroRules.Entrances;Check(styles.Length==22,"twenty-two entrances");
+        // The five generic entrances retired on 2026-10-11 are gone from every list; the seven procedural entrances replace them.
+        foreach(var r in NativeIntroRules.Retired)Check(Array.IndexOf(styles,r)<0&&!NativeIntroRules.Pickable(r),r+" is retired");
+        Check(NativeIntroRules.Procedural.Length==7,"seven procedural entrances");foreach(var p in NativeIntroRules.Procedural)Check(Array.IndexOf(styles,p)>=0&&NativeEntranceDirector.Directed(p),p+" is staged by the director");
+        foreach(var s in styles)Check(NativeEntranceDirector.Directed(s)==!s.StartsWith("dev-"),s+(s.StartsWith("dev-")?" keeps its baked stage":" is directed"));
         var seen=new HashSet<string>();foreach(var s in styles)Check(seen.Add(s),"duplicate entrance "+s);
         // Hands: a weapon intro holds its own weapon model and the Emperor's Oath holds the emperor gauntlets.
         int armed=0;
@@ -29,12 +33,29 @@ internal static class IntroPresentationChecks
             Check(weapon?held==s:s=="dev-emperor"?held=="weapon-emperor":held==null,s+" holds "+(held??"nothing"));if(held!=null)armed++;
         }
         Check(armed==WeaponIntros.Length+1,"eleven weapon intros and the Emperor's Oath are armed");
-        foreach(var s in new[]{"dev-matrix","dev-ansatsuken","dev-siren","neon-drop","pulse-wave"})Check(NativeIntroRules.IntroWeapon(s)==null,s+" must keep its hands empty");
+        foreach(var s in new[]{"dev-matrix","dev-ansatsuken","dev-siren","hero-landing","overclock","neon-drop","pulse-wave"})Check(NativeIntroRules.IntroWeapon(s)==null,s+" must keep its hands empty");
         Check(NativeIntroRules.IntroWeapon("weapon-siren")==null&&NativeIntroRules.IntroWeapon(null)==null&&NativeIntroRules.IntroWeapon("weapon-")==null,"unknown weapon intros hold nothing");
-        // Staging: every entrance stages itself; anything else (a Siren seat without its grant) stages the source fallback.
-        foreach(var s in styles)Check(NativeIntroRules.Entrance(s)==s,s+" stages itself");
-        foreach(var s in new[]{"weapon-siren","weapon-leet","",null,"DEV-SIREN"})Check(NativeIntroRules.Entrance(s)=="neon-drop",(s??"null")+" falls back to neon-drop");
-        Check(NativeIntroRules.Duration("weapon-siren")==NativeIntroRules.Duration("neon-drop")&&NativeIntroRules.NameAt("weapon-siren")==NativeIntroRules.NameAt("neon-drop"),"fallback keeps the replicated timing");
+        // Staging: every entrance stages itself; anything else (a retired id from an older host, a Siren seat without its grant)
+        // stages the pilot's own weapon signature, or Default for a weapon without one.
+        foreach(var s in styles){Check(NativeIntroRules.Entrance(s)==s&&NativeIntroRules.Entrance(s,"pistol")==s,s+" stages itself");}
+        foreach(var s in new[]{"weapon-siren","weapon-leet","",null,"DEV-SIREN","neon-drop","vector-slide","signal-spin","arc-salute","pulse-wave"})
+        {
+            Check(NativeIntroRules.Entrance(s)==NativeIntroRules.Default,(s??"null")+" falls back to "+NativeIntroRules.Default);Check(NativeIntroRules.Entrance(s,"rifle")=="weapon-rifle",(s??"null")+" stages the pilot's signature");
+            Check(NativeIntroRules.Entrance(s,"siren")==NativeIntroRules.Default&&NativeIntroRules.Entrance(s,null)==NativeIntroRules.Default,(s??"null")+" without a signature stages "+NativeIntroRules.Default);
+        }
+        // Timing: every non-DEV entrance (old or new, known or not) keeps the 4.8 s phase and the 3.2 s name card, so match flow is unchanged.
+        foreach(var s in new[]{"weapon-siren","neon-drop","hero-landing","orbital-drop","grid-rez","holo-projection","blackout","skyline-zip","overclock","weapon-sword","weapon-darkness"})
+            Check(NativeIntroRules.Duration(s)==4.8&&NativeIntroRules.NameAt(s)==3.2&&NativeIntroRules.OverlayDuration(s)==4.8,s+" keeps the replicated timing");
+        // Migration: a saved or received retired or unknown pick becomes no pick (the weapon signature); a stageable pick is kept.
+        foreach(var r in new[]{"neon-drop","vector-slide","signal-spin","arc-salute","pulse-wave","missing",null})
+        {
+            string intro=r;bool pick=true;NativeIntroRules.Migrate(ref intro,ref pick);Check(intro==NativeIntroRules.Default&&!pick,(r??"null")+" migrates to the weapon signature");
+            Check(NativeIntroRules.Style(new NativeSeat{spec="greatsword",overrideIntro=true,intro=r})=="weapon-greatsword",(r??"null")+" override plays the signature");
+        }
+        foreach(var p in NativeIntroRules.Procedural){string intro=p;bool pick=true;NativeIntroRules.Migrate(ref intro,ref pick);Check(intro==p&&pick,p+" survives migration");Check(NativeIntroRules.Style(new NativeSeat{spec="rifle",overrideIntro=true,intro=p})==p,p+" plays when picked");}
+        // The account service only knows the Electron list: a procedural pick is stored as neon-drop and remembered locally.
+        foreach(var p in NativeIntroRules.Procedural)Check(NativeIntroRules.ServiceIntro(p)=="neon-drop",p+" is stored as the service's fallback");
+        foreach(var s in new[]{"weapon-sword","dev-emperor","neon-drop"})Check(NativeIntroRules.ServiceIntro(s)==s,s+" is stored as is");
         // Lights: what Unity applies equals the source's diffuse light (linear colour x intensity / PI) in every mode.
         int lights=0;var rng=new Random(1709);
         for(int i=0;i<400;i++)
@@ -57,8 +78,8 @@ internal static class IntroPresentationChecks
         Near(NativeEntranceLight.Applied(br,bulbUnity,true,false),bulb*power/Math.PI,"Siren bulb");Check(bulbUnity<8,"Siren bulb fits Unity's light intensity range");
         // Ambient goes through sRGB authoring: Unity's linearised value is the source's ambient / PI.
         foreach(double a in new[]{0,.0012,.004,.05,.4,1.3})Near(NativeEntranceLight.ToLinear(NativeEntranceLight.Ambient(a,true)),a/Math.PI,"ambient");
-        yield return "intro hands: 11 weapon intros hold their own weapon, the Emperor's Oath holds weapon-emperor, 8 entrances (L33T Throne, Rain Warrior, Siren, poses) hold none";
-        yield return "intro staging: 20 entrances stage themselves, unknown styles stage neon-drop with unchanged timing";
+        yield return "intro hands: 11 weapon intros hold their own weapon, the Emperor's Oath holds weapon-emperor, 10 entrances (L33T Throne, Rain Warrior, Siren, the procedural entrances) hold none";
+        yield return "intro staging: 22 entrances stage themselves (18 directed, 4 DEV baked); the 5 retired and unknown styles stage the pilot's weapon signature with unchanged 4.8 s timing; saved picks migrate";
         yield return "entrance lights: "+lights+" conversions apply the source's diffuse light in Linear, linear-intensity and Gamma modes; Siren bulb no longer blown out";
         foreach(var result in Baked(Root()))yield return result;
     }

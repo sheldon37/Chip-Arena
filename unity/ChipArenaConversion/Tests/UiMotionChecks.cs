@@ -23,7 +23,7 @@ internal static class UiMotionChecks
         if(NativeUiMotion.Measure(640,480).Scale<.6f-1e-6f)throw new Exception("UI scale must not drop below .6");
         yield return "UI scale keeps a 900-unit canvas from 720p to 4K and widens to 2150 units at 3440x1440 (21:9)";
         Near((float)NativeIntroRules.NameAt("dev-siren"),6.4261f,1e-6f,"Siren name time");Near((float)NativeIntroRules.OverlayDuration("dev-siren"),7.2678f,1e-6f,"Siren overlay length");
-        if(NativeIntroRules.StyleName("weapon-daggers")!="Twin Phantom"||NativeIntroRules.StyleName("neon-drop")!="Weapon Signature")throw new Exception("Intro style names");
+        if(NativeIntroRules.StyleName("weapon-daggers")!="Twin Phantom"||NativeIntroRules.StyleName("orbital-drop")!="Orbital Drop"||NativeIntroRules.StyleName("neon-drop")!="Weapon Signature")throw new Exception("Intro style names");
         yield return "Intro overlay uses the source name card times and style names";
         // Every card the game can show has the source's exported description and stat lines.
         using(var text=System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources/ChipText.json"))))

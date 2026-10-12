@@ -15,6 +15,14 @@ namespace ChipArena.UnityConversion
             // The weapon intros' clearance plans are built with the clips (NativeIntroMotion.Prepare), not on an entrance's first frame.
             foreach(var c in data.clips)if(c.key.StartsWith("intro-weapon-",StringComparison.Ordinal))NativeIntroMotion.Prepare(c.key.Substring(6),c.values,c.frames,c.duration);}
         public static int ClipCount{get{Ensure();return clips.Count;}}
+        private static readonly Dictionary<string,NativeEntranceClip> entranceClips=new Dictionary<string,NativeEntranceClip>();
+        /// <summary>A weapon signature's baked clip for the entrance director (made once per clip), or null.</summary>
+        public static NativeEntranceClip EntranceClip(string style)
+        {
+            Ensure();if(style==null)return null;if(entranceClips.TryGetValue(style,out var made))return made;if(!clips.TryGetValue("intro-"+style,out var c))return null;
+            made=new NativeEntranceClip(c.values,c.roots,c.frames,c.duration);entranceClips.Add(style,made);return made;
+        }
+
         public static bool Sample(string key,float age,float duration,CapturedRig.Pose pose,bool closed=false)
         {
             Ensure();if(!clips.TryGetValue(key,out var clip))return false;float fraction=clip.loop?Mathf.Repeat(age,clip.duration)/clip.duration:Mathf.Clamp01(age/(duration>0?duration:clip.duration));NativeFighterPose.Frames(clip.frames,fraction,closed,out int a,out int b,out float t);

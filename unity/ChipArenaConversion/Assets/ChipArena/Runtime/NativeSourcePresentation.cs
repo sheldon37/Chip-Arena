@@ -11,7 +11,8 @@ namespace ChipArena.UnityConversion
         // Accent trims and armor strips carry ember('#70e1d0'); the pilot's ember(accent) replaces it (NativePortraitRules.GlowAccentTint).
         private static Color AccentTint(string text){var tint=NativePortraitRules.GlowAccentTint(text);return new Color(tint.X,tint.Y,tint.Z);}
         // `halo`: the clock the Auditor halo animates on (NaN: `time`; the intro rig passes its entrance age, as player-intros.ts does).
-        private bool SourceCharacter(CapturedAnimation.Player rig,Actor a,float time,bool first=false,bool weapon=true,float halo=float.NaN)
+        // `reveal`: per-bone opacity (dithered) for a directed entrance that builds or projects the pilot in (null: solid).
+        private bool SourceCharacter(CapturedAnimation.Player rig,Actor a,float time,bool first=false,bool weapon=true,float halo=float.NaN,Func<int,float> reveal=null)
         {
             if(sourceModels==null||string.IsNullOrEmpty(a.SourceSpec))return false;int layer=first?10:0;Camera camera=first?ViewCamera:null;
             Matrix4x4 Bone(int b)=>rig.Bones[b].localToWorldMatrix;bool Visible(int b)=>!first||NativeViewRules.ViewModelBone(b);
@@ -23,11 +24,12 @@ namespace ChipArena.UnityConversion
             bool dressed=!Viewer&&rig!=introRig;Func<int,Color> tint;if(dressed)tint=RigTint(a,time,first);else{ClearRigTint();tint=first?null:SirenCharTint(a.Id);}
             // The hit flash (NativeHitFlash, weapons milestone) on a struck arena rig's body and hat; not the first-person arms.
             float flash=dressed&&!first?HitFlashCode(a.Id,time):1;
-            sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),AccentTint(a.AccentColor),partTint:tint,look:look,hitFlash:flash);
+            sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),AccentTint(a.AccentColor),partOpacity:reveal,partTint:tint,look:look,hitFlash:flash);
             if(look!=null)SirenLookFx(rig,look,layer,camera,time);
             if(!first)LivingWounds(rig,a,time);
             // The hat rides the head (hidden on the first-person view model); the Auditor halo animates (NativeAuditorHaloPresentation.cs).
-            if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren"&&!AuditorHalo(a.Hat,rig.Bones[CapturedRig.Head].localToWorldMatrix,float.IsNaN(halo)?time:halo,1,HaloReduced,layer,camera))sourceModels.Queue("hat-"+a.Hat,rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera,partTint:dressed?tint:null,hitFlash:flash);
+            bool headShown=reveal==null||reveal(CapturedRig.Head)>.5f;
+            if(headShown)if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren"&&!AuditorHalo(a.Hat,rig.Bones[CapturedRig.Head].localToWorldMatrix,float.IsNaN(halo)?time:halo,1,HaloReduced,layer,camera))sourceModels.Queue("hat-"+a.Hat,rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera,partTint:dressed?tint:null,hitFlash:flash);
             if(dressed)BodyDressing(rig,a,time,first,layer,camera);
             bool armed=NativeWeaponDressing.SocketShown(a.SourceSpec)&&!a.WeaponAway&&weapon&&!NativeSirenVictimPose.Active(a,time);float reach=armed?WeaponReach(rig,a,time):1;Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
             if(armed){sourceModels.Queue("weapon-"+a.SourceSpec,rig.Root.transform.localToWorldMatrix,WeaponBone,null,layer,camera,accent:AccentTint(a.AccentColor),partTint:tint,glow:HeldGlow);WeaponDressing(rig,a,time,first,layer,camera,reach);}
