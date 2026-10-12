@@ -61,6 +61,8 @@ namespace ChipArena.UnityConversion
             if(summon&&summonBreakups.Due(death.id,death.seed,age))for(int i=0;i<NativeSummonBreak.Bursts;i++){NativeSummonBreak.Burst(toy,i,out float lift,out int color,out int count);SourceBurst(death.position+Vector3.up*lift,color,count,NativeSummonBreak.BurstPower);}
             if(summon&&age>=NativeSummonBreak.BreakAt)return true;if(horde&&age>=NativeMinionFx.DeathFxSeconds)return true;
             if(!minionRigs.TryGetValue(death.id,out var rig)){rig=captured.Create(transform,death.id);minionRigs.Add(death.id,rig);}
+            // A Siren minion kind dies as itself (NativeHordeKindPresentation.cs): its fall, burst or slice, then the same burn-away.
+            if(horde&&HordeKindDeath(death,rig,age))return true;
             if(summon)NativeSummonPose.Death(minionPose,toy,age);else NativeSourceMotion.Sample(death.model+"-death",Mathf.Min(age,2.3f),2.3f,minionPose);
             NativePoseWriter.Write(rig.Bones,minionPose,"a summon rig");
             // poseSummonDeath's jitter before the break-up moves the rig group's x (source axes; Unity's x is mirrored).

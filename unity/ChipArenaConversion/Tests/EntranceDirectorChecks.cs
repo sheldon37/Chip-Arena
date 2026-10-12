@@ -38,9 +38,10 @@ internal static class EntranceDirectorChecks
     }
     public static IEnumerable<string> Run(string root)
     {
-        // The nineteen non-DEV entrances and the DEV Sheldon Intro (Core/NativeSheldonIntro.cs; not in NativeIntroRules.Entrances).
-        var clips=Clips(root);var directed=NativeIntroRules.Entrances.Where(NativeEntranceDirector.Directed).Append(NativeSheldonIntro.Style).ToArray();
-        Check(directed.Length==20&&NativeEntranceDirector.Styles.Count()==20,"twenty directed entrances");
+        // The nineteen non-DEV entrances, the DEV Sheldon Intro (Core/NativeSheldonIntro.cs) and the DEV Cyber Lord's Hardlight
+        // Boot (Core/NativeCyberLordIntro.cs); neither DEV one is in NativeIntroRules.Entrances.
+        var clips=Clips(root);var directed=NativeIntroRules.Entrances.Where(NativeEntranceDirector.Directed).Append(NativeSheldonIntro.Style).Append(CyberLordSpec.Entrance).ToArray();
+        Check(directed.Length==21&&NativeEntranceDirector.Styles.Count()==21,"twenty-one directed entrances");
         var scripts=new Dictionary<string,NativeEntranceScript>();
         foreach(var s in directed){var sc=NativeEntranceDirector.Script(s);if(sc is NativeWeaponEntrance){Check(!sc.Ready,s+" waits for its clip");var c=clips["intro-"+s];sc.Bind(new NativeEntranceClip(c.values,c.roots,c.frames,c.duration));}Check(sc.Ready&&sc.Style==s,s+" is ready");scripts[s]=sc;sc.Prepare();}
         // 1. Timing: the match's phase and name card are untouched; the clock is the age up to the hit and again by the name card.

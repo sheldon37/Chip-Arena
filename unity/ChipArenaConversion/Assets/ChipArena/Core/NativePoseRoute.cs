@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
             if(NativeBowWire.Is(a.SourceSpec))return PoseRoute.Bow;
             if(a.MagicVisual==0&&a.Weapon==WeaponId.Sword&&MeleeMotion.Handles(a.SourceSpec))return PoseRoute.CapturedMelee;
             if(MagicPose.School(a)>0)return PoseRoute.Magic;
-            if(NativeFighterPose.Handles(a.SourceSpec))return PoseRoute.Fighter;
+            if(NativeFighterPose.Handles(a.SourceSpec)||CyberLordMotion.Handles(a.SourceSpec))return PoseRoute.Fighter;
             if(GunRules.Ranged(a.Weapon)&&a.SourceSpec!="siren")return PoseRoute.Gun;
             return PoseRoute.Generic;
         }
