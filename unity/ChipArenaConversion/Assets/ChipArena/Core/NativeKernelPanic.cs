@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeKernelPanicRules
     {
-        public const float Windup=.25f,CutIn=.6f,Duration=3.4f,RecoveryAt=2.6f,WhiffRecovery=.6f,Cooldown=30,Mana=60,Range=6,Radius=.6f;
+        public const float Windup=.25f,CutIn=.6f,Duration=3.4f,RecoveryAt=2.6f,WhiffRecovery=.6f,Cooldown=20,Mana=60,Range=12,Radius=1.2f;
         public static readonly float[] Steps={0,.45f,.95f,1.35f,1.9f};
         public static readonly float[] Damage={12,10,10,6,25};
         public static float HitAt(NativeKernelPanic s,int step)=>s.ConnectedAt+CutIn+Steps[step];

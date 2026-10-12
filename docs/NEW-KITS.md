@@ -125,11 +125,11 @@ fighters use).
   It replaces the earlier Kernel Strike AoE.
   - **Opener:**
     - A .25 s windup.
-    - Then a 6 m hardlight lunge-punch along the aim (capsule sweep, radius .6 m, one target: the first pilot
+    - Then a 12 m hardlight lunge-punch along the aim (capsule sweep, radius 1.2 m, one target: the first pilot
       touched).
     - **Whiff:** .6 s recovery, and half the cooldown is refunded.
     - **Connect:** the sequence below starts at once.
-    - Cooldown 30 s, 60 mana, both spent on cast.
+    - Cooldown 20 s, 60 mana, both spent on cast.
   - **Cut-in:**
     - On connect, a .6 s "skill cut-in" plays: a full-screen splash for the caster and the victim, and a slim
       top banner for everyone else.
@@ -165,12 +165,12 @@ fighters use).
       branch. Cyber Lord itself is still spec-only at this base: this change does **not** register an incomplete
       weapon, add its other abilities, or expose a selectable class. Claude's cut-in, choreography, cameras and
       HUD remain presentation work. The full kit/roster integration must land before player acceptance or release.
-    - Proposed base numbers above are retained: .25 s opener, .6 s cut-in, five steps at 0/.45/.95/1.35/1.9 s,
-      recovery at 2.6 through 3.4 s, 60 mana and 30 s cooldown. The opener captures but adds no extra damage:
+    - Owner tuning on 2026-10-12 increases opener reach to 12 m and radius to 1.2 m, with a 20 s cooldown. Other base numbers are retained: .25 s opener, .6 s cut-in, five steps at 0/.45/.95/1.35/1.9 s,
+      recovery at 2.6 through 3.4 s, 60 mana and 20 s cooldown. The opener captures but adds no extra damage:
       12 + 10 + 10 + 3*6 + 25 = **75** before normal scaling/defenses. Resource-cost chips scale the 60 mana.
-      Whiff uses .6 s recovery and a cooldown deadline of cast time + 15 s; mana is not refunded. The wave's
+      Whiff uses .6 s recovery and a cooldown deadline of cast time + 10 s; mana is not refunded. The wave's
       previously unspecified impulse is **260** (4 m/s before knockback modifiers), with the proposed 5 m/20 damage.
-    - A real .6 m-radius capsule sweep follows the input aim, limited by world collision and arena bounds.
+    - A real 1.2 m-radius capsule sweep follows the input aim, limited by world collision and arena bounds.
       The nearest enemy pilot wins (id breaks ties). Block, roll immunity or a spawn shield prevent capture and
       count as a whiff. Already captured pilots, Siren-held/scared pilots and the PvE authority boss are not
       capture targets. Only a live DEV claim can cast; weapon grants do not authorize it.
@@ -217,7 +217,7 @@ fighters use).
   `firewall`, `packet-burst`, `siphon-link`, `system-crash`, `kernel-panic-1` to `-5`).
 - **Bots:** sandbox dummy and bot pickers follow the existing DEV rules. If bots can play it: combo in close
   range, Packet Burst under 6 m, Data Dash to close, Firewall when being shot, System Crash with two or more
-  enemies within 4 m, Kernel Panic when a target is inside 6 m and not blocking.
+  enemies within 4 m, Kernel Panic when a target is inside 12 m and not blocking.
 
 Presentation (Claude):
 - A DEV look on the pilot body: hardlight fists and forearm gauntlets that form from light, glowing seams and a

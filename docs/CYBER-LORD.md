@@ -43,7 +43,7 @@ The source is `Actor.Kernel` (`NativeKernelPanic`). It is on both participants; 
 `KernelPanicPath.Victim` and `Caster` follow those points exactly as `NativeKernelPanicRules.Sample` moves the bodies:
 the victim eases between its points within each step, and the caster teleports at each step. `NativeKernelPanicRules`
 also supplies the numbers: windup .25, cut-in .6, steps at 0 / .45 / .95 / 1.35 / 1.9 s, recovery at 2.6 s, the end at
-3.4 s, cooldown 30 and mana 60.
+3.4 s, cooldown 20 and mana 60. The owner increased opener reach to 12 m and sweep radius to 1.2 m on 2026-10-12.
 
 The hits land on the step starts (`HitAt`), so every take's impact is pinned there. The kick and the hammer wind up in
 the last .1 s and .08 s of the previous step, then strike as the host teleports the body in. Step 4's three hits arrive
@@ -181,7 +181,7 @@ The idle is presentation only. It reads the actor and never writes it, and the h
 ## Kernel Panic
 
 - **Opener.** The .25 s windup cocks the fist and drives the lunge punch, which lands at the contact. There the host
-  moves the body up to 6 m at once, and an RGB-split blink trail shows the path for .3 s.
+  moves the body up to 12 m at once, and an RGB-split blink trail shows the path for .3 s.
   - Whiff: a fizzle and the stumble out through the .6 s recovery. The card shows the half cooldown.
   - Connect: the caster freezes on the punch with a hardlight tremor, and the sparks hang in the air.
 - **Cut-in, .6 s** (`Core/NativeKernelPanicView.cs` KernelPanicCutIn, drawn by `Runtime/NativeCyberLordScreen.cs`).
