@@ -1,5 +1,36 @@
 # Cyber City simulation contract (H0 draft)
 
+## Simulation agreement — 2026-10-12, Astra
+
+Task `codex/unity-stage-hazards-20261012`, base shared `aead19c4` (includes
+owner-selected map music, PR #146). Both maps are selectable with rotation false.
+
+- Shared `ContentMap.hazards` is `MapHazard[]` beside `MapBounds`. `MapHazard`
+  inherits serializable `FactoryHazard`: common fields keep their names and the
+  Factory pure-clock signatures remain unchanged. City adds center/first/danger/
+  speed/length/charge/live. Legacy maps normalize hazards to null. Strict loader
+  validation covers both families, finite values, IDs and nav references.
+- `tools/generate_stage_hazards.py` imports both draft scripts without modifying
+  them. Block IDs, geometry, segments, rubble and clock definitions remain exactly
+  authored. No new visual IDs or geometry changes for Claude. It adds supported
+  navigation on all accessible elevations, optional `MapNavLink.hazards[]` (a
+  crossing may touch multiple hazards), and `MapNavNode.safe` for cut refuges.
+- Damage runs only in Fight. Maglev uses the swept train union and 7-second pilot
+  credit; grid uses eight scheduled ticks, mitigation and feet height. Factory
+  lethals bypass mitigation and defensive saves, with 6-second credit. Vents keep
+  the draft's damage=0; the tick path supports enabling damage later. Existing
+  Kernel Panic pair isolation still applies. Adds receive environmental deaths.
+- Crane cover is a simulation-owned collider outside the prop frame, evaluated
+  on authority, replica and replay clocks through Landed/Regrip. No collider is
+  added to the moving rigs. Source content revision changes automatically.
+- Factory presentation files are untouched. Cyber City's two hazard-source reads
+  use the validated map array; its temporary resource reader is removed. No look,
+  kit, backdrop, effects or cue changes. Factory uses `factory-anvil-loop`; Cyber
+  City uses `cybercity-neon-riot`, from the owner's supplied recordings.
+- Managed and native build gates are separate. Actual executed checks, unrun
+  Unity/Windows/multiplayer checks and remaining risks are in DEV_LOG and the PR.
+
+
 2026-10-12, Claude (presentation) for Astra (simulation). Branch `claude/stage-cybercity`, base `f575670`.
 Design: `docs/arenas/CYBERCITY_PROPOSAL.md`. Draft layout: `docs/arenas/scripts/cybercity_m1.py` (frozen as
 `unity/ChipArenaConversion/Tests/cybercity-draft.json`). This is a proposal for review, in the shape of

@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion.Editor
             var seats=Enumerable.Range(0,8).Select(i=>new NativeSeat{id=i+1,team=i%2}).ToArray();int count=0;
             foreach(var map in data.maps.Where(m=>!m.unity))
             {
-                if(map.spawns!=null||map.bounds!=null||map.nav!=null||map.segments!=null||map.pilotBlocks!=null)
+                if(map.spawns!=null||map.bounds!=null||map.nav!=null||map.segments!=null||map.pilotBlocks!=null||map.hazards!=null)
                     throw new Exception("Legacy map retained supplemental inline defaults: "+map.id);
                 foreach(bool teams in new[]{false,true})for(int i=0;i<seats.Length;i++)
                 {

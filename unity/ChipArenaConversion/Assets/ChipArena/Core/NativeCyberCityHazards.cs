@@ -2,21 +2,6 @@ using System;
 
 namespace ChipArena.UnityConversion
 {
-    /// <summary>
-    /// One timed stage hazard in UnityMaps.json (docs/arenas/CYBERCITY-SIMULATION-CONTRACT.md §3): the schema the presentation
-    /// reads and the simulation will own. JsonUtility objects, every field written (a missing one reads 0). `center`/`size`
-    /// are the hazard's volume (a maglev's whole envelope along its track, a grid's deck volume); `axis` the track or crossing
-    /// direction. Timing: `first` seconds after FightAt for cycle 0, then every `period`; `offset` shifts every cycle on even
-    /// rounds (west +7, east -7: the couplings swap order round to round). Maglev: `warn`/`danger` lead the head's arrival at its portal,
-    /// `speed` (m/s) and `length` (m) the train; Grid: `charge` and `live` seconds per cycle, `tick` and `damage` its damage
-    /// clock. `lethal` marks an instant kill. Presentation only reads these; Astra moves the class beside MapBounds when the
-    /// loader takes `ContentMap.hazards` (same name, same fields).
-    /// </summary>
-    [Serializable] public sealed class MapHazard
-    {
-        public string id,kind;public V3 center,size,axis;
-        public float first,period,offset,warn,danger,speed,length,charge,live,tick,damage;public bool lethal;
-    }
     /// <summary>A hazard's phase. Maglev: Idle, Warn (amber), Danger (red), Active (the pass), Clear (2 s of fading after it).
     /// Grid: Idle, Warn (charging), Active (live), Clear (discharge).</summary>
     public enum NativeHazardPhase { Idle, Warn, Danger, Active, Clear }

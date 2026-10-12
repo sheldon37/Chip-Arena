@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
             Check(p.Contains("NativeSceneryBuilder.BackdropLayer")&&p.Split("ShadowCastingMode.Off,true)").Length-1==3,"the backdrop draws on the backdrop layer with no shadow");
             Check(p.Contains("if(hz!=null&&rigBuilder!=null)")&&p.Contains("private void OnDestroy()=>Release();"),"no hazards, no rigs; resources released with the component");
             var a=R("NativeFactoryAudio.cs");Check(a.Contains("if(menu||arena==null||!NativeFactoryHazards.Active(arena.MapId))"),"audio is dormant off the factory");
-            Check(!File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")).Contains("\"factory\""),"not wired into UnityMaps.json (Astra's)");
+            Check(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")).Contains("\"factory\""),"simulation map is integrated");
         }
         private static void Dressing(ContentMap map,MapLook look)
         {
