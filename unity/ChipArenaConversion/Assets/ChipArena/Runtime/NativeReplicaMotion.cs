@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
                 if(a.SprintAttack)NativeSprintAttack.Apply(swing,a.CastRate);
                 swing.HitAt=a.CommitAt+(a.Followup?.08f/a.CastRate:a.VisualWindup);swing.HitUntil=swing.HitAt+a.VisualActive;swing.Until=a.CommitUntil;
                 swing.StepAt=a.StepAt;swing.StepUntil=a.StepUntil;swing.Distance=a.StepDistance;swing.ChainAt=a.ChainAt;
-                swing.Air=a.AirAttack;swing.PlungeAt=a.PlungeAt;swing.ImpactAt=a.ImpactAt;swing.Carry=new V3(frame.moveVelocity.x,0,frame.moveVelocity.z);
+                swing.AirKind=a.AirKind;swing.AirStartY=a.AirStartY;swing.FallHeight=a.FallHeight;swing.Air=a.AirAttack;swing.PlungeAt=a.PlungeAt;swing.ImpactAt=a.ImpactAt;swing.Carry=new V3(frame.moveVelocity.x,0,frame.moveVelocity.z);
                 swing.Followup=a.Followup;swing.SprintAttack=a.SprintAttack;swing.OpenerLunge=a.OpenerLunge;swing.Remaining=a.SwingRemaining;
             }
             bool melee=p!=null&&NativeMeleeRules.Standard(p.Seat.spec)&&frame.reloadEnd<=Time&&frame.blockEnd<=Time;
@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             float offset=predictionPoseOffset;
             a.Sprinting=false;a.Combo=state.Combo;a.AttackAt=a.LastAttack=a.CommitAt=s.At+offset;a.AttackUntil=a.CommitUntil=s.Until+offset;a.CommitYaw=s.Yaw*Mathf.Rad2Deg;
             a.SwingAt=s.HitAt+offset;a.SwingUntil=s.HitUntil+offset;a.StepAt=s.StepAt+offset;a.StepUntil=s.StepUntil+offset;a.StepDistance=s.Distance;
-            a.AirAttack=s.Air;a.PlungeAt=s.PlungeAt+offset;a.ImpactAt=s.ImpactAt<0?-1:s.ImpactAt+offset;a.AirAttackUsed=state.AirAttackUsed;a.AirborneAt=state.AirborneAt;
+            a.AirKind=s.AirKind;a.AirStartY=s.AirStartY;a.FallHeight=s.FallHeight;a.AirAttack=s.Air;a.PlungeAt=s.PlungeAt+offset;a.ImpactAt=s.ImpactAt<0?-1:s.ImpactAt+offset;a.AirAttackUsed=state.AirAttackUsed;a.AirborneAt=state.AirborneAt;
             a.ChainAt=s.ChainAt+offset;a.Followup=s.Followup;a.SprintAttack=s.SprintAttack;a.OpenerLunge=s.OpenerLunge;
             a.VisualWindup=s.HitAt-s.At;a.VisualActive=s.HitUntil-s.HitAt;a.VisualDuration=s.Until-s.At;
         }

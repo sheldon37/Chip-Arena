@@ -73,10 +73,13 @@ internal static class PlungeStabChecks
     // ---- the field mapping ----
     private static void Mapping(string root,List<string> log)
     {
-        // Today's actors: the jump attack's fields map through; no air-attack kind exists yet, so nothing reads as down.
+        // The jump attack's fields map through; an empty air-attack kind is the forward attack, never down.
         var a=new Actor{Id=4,SourceSpec="sword",AttackAt=2,AirAttack=true,PlungeAt=2.08f,ImpactAt=-1,CommitAt=2,CommitUntil=12};
-        var d=NativePlungeFields.Of(a);Check(!d.Down&&d.At==2&&Math.Abs(d.PlungeAt-2.08f)<1e-6f&&float.IsNaN(d.ImpactAt)&&float.IsNaN(d.Until)&&float.IsNaN(d.Height),"the mapping reads the jump attack's replicated fields; no kind yet: nothing is a plunge");
+        var d=NativePlungeFields.Of(a);Check(!d.Down&&d.At==2&&Math.Abs(d.PlungeAt-2.08f)<1e-6f&&float.IsNaN(d.ImpactAt)&&float.IsNaN(d.Until)&&float.IsNaN(d.Height),"the mapping reads the jump attack's replicated fields; an empty kind is no plunge");
         a.ImpactAt=2.3f;a.CommitUntil=2.75f;d=NativePlungeFields.Of(a);Check(Math.Abs(d.ImpactAt-2.3f)<1e-6f&&Math.Abs(d.Until-2.75f)<1e-6f,"the landing and the recovery's end map from ImpactAt and the commitment");
+        a.AirKind="down";a.FallHeight=5.5f;d=NativePlungeFields.Of(a);Check(d.Down&&Math.Abs(d.Height-5.5f)<1e-6f,"Astra's AirKind \"down\" makes the plunge; her FallHeight is its height");
+        a.FallHeight=0;d=NativePlungeFields.Of(a);Check(d.Down&&float.IsNaN(d.Height),"no fall height until the landing sets it");
+        a.SprintAttack=true;Check(!NativePlungeFields.Of(a).Down,"a sprint attack is never the plunge");a.SprintAttack=false;a.AirKind="";
         a.AirAttack=false;d=NativePlungeFields.Of(a);Check(!d.Down&&float.IsNaN(d.PlungeAt)&&float.IsNaN(d.ImpactAt),"a ground swing maps to no air data");
         Check(!NativePlungeFields.Of(null).Down&&!NativePlungeFields.Of(new Actor{AttackAt=-100}).Down,"no actor or no swing is no plunge");
         Check(NativePlungeFields.Impact(new ArenaEvent{Kind=EventKind.Land,Detail="melee-down"})&&!NativePlungeFields.Impact(new ArenaEvent{Kind=EventKind.Land,Detail="melee-air"})&&!NativePlungeFields.Impact(new ArenaEvent{Kind=EventKind.Hit,Detail="melee-down"}),"the impact event is Land with Detail melee-down, never the jump attack's melee-air");
@@ -84,11 +87,14 @@ internal static class PlungeStabChecks
         var feet=new V3(0,0,0);
         Check(NativePlungeFields.Direct(new ArenaEvent{Kind=EventKind.Hit,Source=1,Target=2,Time=1.1f,Position=new V3(0,1,3)},1,1.08f,1.2f,feet)&&NativePlungeFields.Direct(new ArenaEvent{Kind=EventKind.Hit,Source=1,Target=2,Time=1.2f,Position=new V3(.2f,1,.6f)},1,1.08f,1.2f,feet)
             &&!NativePlungeFields.Direct(new ArenaEvent{Kind=EventKind.Hit,Source=1,Target=3,Time=1.205f,Position=new V3(1.1f,1,0)},1,1.08f,1.2f,feet)&&!NativePlungeFields.Direct(new ArenaEvent{Kind=EventKind.Hit,Source=5,Target=2,Time=1.1f},1,1.08f,1.2f,feet),"direct hits: through the drop or under the blade; the ring's and others' are not");
-        // The one place: only NativePlungeFields names the proposed fields; every presenter reads its struct.
+        // The one place: the simulation and replication files carry Astra's fields; of the presentation, only NativePlungeFields
+        // names them and every presenter reads its struct.
+        var carriers=new HashSet<string>{"NativePlungeStab.cs","ArenaModel.cs","NativeMeleeRules.cs","NativeAirAttackSimulation.cs","NativePrediction.cs",
+            "NativeMelee.cs","NativeDownAttack.cs","NativeMeleePresentation.cs","NativeReplicaMotion.cs","NativeNetworkFrame.cs"};
         foreach(var f in Directory.EnumerateFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories))
         {
-            string text=File.ReadAllText(f),name=Path.GetFileName(f);if(name=="NativePlungeStab.cs")continue;
-            Check(!text.Contains("\"melee-down\"")&&!text.Contains("AirKind")&&!text.Contains("FallHeight"),name+" names no proposed plunge field or event (NativePlungeFields does)");
+            string text=File.ReadAllText(f),name=Path.GetFileName(f);if(carriers.Contains(name))continue;
+            Check(!text.Contains("\"melee-down\"")&&!text.Contains("AirKind")&&!text.Contains("FallHeight"),name+" names no plunge field or event (NativePlungeFields does)");
         }
         log.Add("the mapping (NativePlungeFields) reads AirAttack, PlungeAt, ImpactAt and the commitment and names the proposed kind, height and melee-down event in one place; no actor reads as down until the kind lands; direct and ring hits split");
     }

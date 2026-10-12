@@ -21,12 +21,10 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>
-    /// THE field mapping (the one place that names Astra's replicated fields; docs/MELEE-FEEL.md "Plunging stab"). Proposed in
-    /// docs/NEW-KITS.md section 1: the jump attack's Swing.Air (Actor.AirAttack), PlungeAt and ImpactAt, an air-attack kind
-    /// distinguishing "down" (proposed Actor.AirKind), the fall height at impact (proposed Actor.FallHeight) and the impact
-    /// event (Land, Detail "melee-down", radius, weapon). The existing fields are read here today; the kind and the height do not
-    /// exist on Actor yet, so Kind and Height return the forward attack's values until they land: then each is one line here.
-    /// Fixtures and the offline harness build NativePlungeData directly, so the presentation is proven against the spec now.
+    /// THE field mapping (the one place in the presentation that names Astra's replicated fields; docs/MELEE-FEEL.md "Plunging
+    /// stab"). Per docs/NEW-KITS.md section 1 and PR #140: the jump attack's Swing.Air (Actor.AirAttack), PlungeAt and ImpactAt,
+    /// the air-attack kind Actor.AirKind ("down"), the fall height set at impact (Actor.FallHeight) and the impact event (Land,
+    /// Detail "melee-down", radius, weapon). Fixtures and the offline harness build NativePlungeData directly.
     /// </summary>
     public static class NativePlungeFields
     {
@@ -44,10 +42,12 @@ namespace ChipArena.UnityConversion
             d.Height=Height(a);
             return d;
         }
-        /// <summary>The air-attack kind (Astra's proposed replicated field; none exists yet: every air attack reads as forward).</summary>
-        public static string Kind(Actor a)=>null;
-        /// <summary>The replicated fall height at the impact (metres; NaN until the field exists: the presented drop is measured).</summary>
-        public static float Height(Actor a)=>float.NaN;
+        /// <summary>The air-attack kind: Astra's replicated Actor.AirKind ("down" for the stab, empty for the forward jump attack;
+        /// docs/NEW-KITS.md "Plunging stab implementation contract", PR #140).</summary>
+        public static string Kind(Actor a)=>a.AirKind;
+        /// <summary>The replicated centre-height fall distance (Actor.FallHeight, metres; NaN while it is not yet set, so the
+        /// presented drop is measured until the host fills it).</summary>
+        public static float Height(Actor a)=>a.FallHeight>0&&a.FallHeight<200?a.FallHeight:float.NaN;
         /// <summary>The plunge's impact event: Land with Detail "melee-down" (Source the plunging pilot, Position the ground point,
         /// Radius the ring).</summary>
         public static bool Impact(in ArenaEvent e)=>e.Kind==EventKind.Land&&e.Detail==ImpactDetail;

@@ -56,13 +56,13 @@ namespace ChipArena.UnityConversion
                 state.Velocity.y,state.JumpSpeed,ref state.AirJumps,out float launch);
             if(jump!=NativeJumpKind.None){state.Velocity.y=launch;state.Grounded=false;if(jump==NativeJumpKind.Air)state.AirJumpAt=state.Time;}
             if(!state.Grounded)state.Velocity.y-=state.Gravity*dt;else state.Velocity.y=0;
-            if(NativeAirAttackSimulation.Falling(state.Swing))state.Velocity.y=NativeAirAttackSimulation.Vertical(state.Swing,state.Time);
+            if(NativeAirAttackSimulation.Falling(state.Swing)&&(!NativeAirAttackSimulation.Down(state.Swing)||state.Time>=state.Swing.PlungeAt))state.Velocity.y=NativeAirAttackSimulation.Vertical(state.Swing,state.Time);
             var step=swinging&&(state.Grounded||NativeSprintAttack.Hop(state.Swing))?NativeMeleeRules.Step(state.Swing,state.Time,dt):new V3();
             var wanted=state.Position+(state.Velocity+step)*dt;
             var next=constrain==null?wanted:constrain(state.Position,wanted);
             if(next.y>wanted.y+.00001f&&state.Velocity.y<0){state.Grounded=true;state.Velocity.y=0;}
             if(grounded!=null){state.Grounded=state.Velocity.y<=0&&grounded(next);if(state.Grounded)state.Velocity.y=0;}
-            if(state.Grounded){state.AirJumps=0;if(NativeAirAttackSimulation.Falling(state.Swing)){NativeAirAttackSimulation.Land(state.Swing,state.Time);state.Ready=state.Swing.Until;state.ComboUntil=NativeAirAttackSimulation.ComboUntil(state.Swing);}}state.Position=next;return state;
+            if(state.Grounded){state.AirJumps=0;if(NativeAirAttackSimulation.Falling(state.Swing)){state.Swing.FallHeight=Math.Max(0,state.Swing.AirStartY-next.y);NativeAirAttackSimulation.Land(state.Swing,state.Time);state.Ready=state.Swing.Until;state.ComboUntil=NativeAirAttackSimulation.ComboUntil(state.Swing);}}state.Position=next;return state;
         }
     }
     // A bounded clock on the host snapshot timeline, rather than frame-rate-dependent lerp-to-latest.
