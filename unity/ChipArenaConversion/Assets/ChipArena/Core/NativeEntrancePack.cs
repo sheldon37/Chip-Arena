@@ -9,7 +9,9 @@ namespace ChipArena.UnityConversion
     /// torso, legs and root come from the capture (the root carries the capture's heading and hips travel); the arms reach
     /// the captured grip with the weapon along the captured blade through the rig's own IK, the support hand on the
     /// two-handed grip as in play (CapturedRig.Sample), the blade kept out of the body (MeleeClearance) and the floor, the
-    /// forearms and hands out of the torso by a correction planned over the whole entrance; the feet are planted with leg IK
+    /// forearms and hands out of the torso by a correction planned over the whole entrance, a hand pressed to the floor (a
+    /// cast's slam) resting on it; the magic schools' staff rides the left hand (the pack's casts read mirrored), the right
+    /// hand casting; the feet are planted with leg IK
     /// on the floor spots they land on through each contact the exporter found, so nothing slides. Every pose is a pure
     /// function of time; allocation-free per frame once the plan (spots, body sink, arm correction) is built on the first
     /// pose (main thread only).
@@ -58,10 +60,10 @@ namespace ChipArena.UnityConversion
             // retarget's own rule, again after the clearance and the floor guard have moved the blade).
             for(int pass=0;pass<(TwoHand?3:1);pass++)
             {
-                CapturedRig.Arm(p,false,grip,right,Row(f,MeleeCapture.RPole));
+                CapturedRig.Arm(p,false,grip,right,Row(f,MeleeCapture.RPole));HandOffFloor(p,false,ref grip,right,Row(f,MeleeCapture.RPole));
                 if(Blade>0)BladeOffFloor(p);
                 Vector3 left=Row(f,MeleeCapture.LHand)+fixLeft;var leftQ=CapturedRig.Look(Row(f,MeleeCapture.LFwd),Row(f,MeleeCapture.LUp));
-                if(!TwoHand){CapturedRig.Arm(p,true,left,leftQ,Row(f,MeleeCapture.LPole));break;}
+                if(!TwoHand){CapturedRig.Arm(p,true,left,leftQ,Row(f,MeleeCapture.LPole));HandOffFloor(p,true,ref left,leftQ,Row(f,MeleeCapture.LPole));break;}
                 // The support hand on the reached weapon hand's support grip, as the gameplay socket holds it.
                 p.World();var chest=Quaternion.Inverse(p.WorldRotation[CapturedRig.Chest]);var reached=Vector3.Transform(p.WorldPosition[CapturedRig.RHand]-p.WorldPosition[CapturedRig.Chest],chest);
                 var held=Quaternion.Normalize(chest*p.WorldRotation[CapturedRig.RHand]);
@@ -78,6 +80,21 @@ namespace ChipArena.UnityConversion
         public float Blade=>Melee!=null&&Melee.Fit.Clear!=MeleeClear.None?Melee.BladeEnd:0;
         /// <summary>The floor top in the rig frame (the root stands RootHeight above it, turned only about +y).</summary>
         public const float RigFloor=NativeEntranceStage.FloorY-RootHeight;
+        // A hand pressed to the floor (a slam, a touch) rests on it instead of sinking in: the arm reaches higher by what the
+        // hand's box sinks under the floor top.
+        private static readonly int RightHandBox=HandBox(CapturedRig.RHand),LeftHandBox=HandBox(CapturedRig.LHand);
+        private static int HandBox(int bone){for(int i=0;i<CapturedRig.Boxes.Length;i++)if(CapturedRig.Boxes[i].Bone==bone)return i;return -1;}
+        private static void HandOffFloor(CapturedRig.Pose p,bool left,ref Vector3 target,Quaternion wrist,Vector3 pole)
+        {
+            int box=left?LeftHandBox:RightHandBox;if(box<0)return;
+            for(int pass=0;pass<2;pass++)
+            {
+                p.World();var b=CapturedRig.Boxes[box];var q=p.WorldRotation[b.Bone];var c=p.WorldPosition[b.Bone]+Vector3.Transform(b.Position,q);
+                float reach=(Math.Abs(Vector3.Transform(Vector3.UnitX,q).Y)*b.Size.X+Math.Abs(Vector3.Transform(Vector3.UnitY,q).Y)*b.Size.Y+Math.Abs(Vector3.Transform(Vector3.UnitZ,q).Y)*b.Size.Z)*.5f;
+                float sink=RigFloor+.004f-(c.Y-reach);if(sink<=0)return;
+                target+=Vector3.Transform(Vector3.UnitY,Quaternion.Inverse(p.WorldRotation[CapturedRig.Chest]))*sink;CapturedRig.Arm(p,left,target,wrist,pole);
+            }
+        }
         // The blade never dips under the floor: the wrist turns up about the horizontal axis across the blade just enough to
         // rest the tip on it (CapturedRig.BladeFloor at the entrance floor), so a slam bites the floor instead of sinking in.
         private void BladeOffFloor(CapturedRig.Pose p)

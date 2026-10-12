@@ -26,7 +26,8 @@ const T=await import('three');
 const quiet=console.warn;console.warn=()=>{};// FBXLoader warns about every unused FBX property
 
 const A=f=>`Armed/RPG-Character@Armed-${f}.FBX`,H=f=>`2Hand-Sword/RPG-Character@2Hand-Sword-${f}.FBX`,SW=f=>`1Hand-Sword/RPG-Character@Sword-Attack-${f}.FBX`,R=f=>`Relax/RPG-Character@Relax-${f}.FBX`,
- SH=f=>`Armed-Shield/RPG-Character@Armed-Shield-${f}`,G=f=>`2Hand-Shooting/RPG-Character@2Hand-Shooting-${f}.FBX`,PI=f=>`1Hand-Pistol/RPG-Character@Pistol-${f}.FBX`;
+ SH=f=>`Armed-Shield/RPG-Character@Armed-Shield-${f}`,G=f=>`2Hand-Shooting/RPG-Character@2Hand-Shooting-${f}.FBX`,PI=f=>`1Hand-Pistol/RPG-Character@Pistol-${f}.FBX`,
+ ST=f=>`2Hand-Staff/RPG-Character@2Hand-Staff-${f}.fbx`;
 /**
  * The entrances (NativeIntroRules weapon signatures; daggers keep their baked clip). `grip` and `twoHand` as the gameplay
  * set's (twoHand: the support hand holds the grip throughout and the hilt is kept clear of the head, pauldrons and torso;
@@ -39,7 +40,8 @@ const A=f=>`Armed/RPG-Character@Armed-${f}.FBX`,H=f=>`2Hand-Sword/RPG-Character@
  * `keepYaw`: its heading is not continued from the segment before; `part: 'upper'`: only its torso and arms are layered
  * in (until `until`, then handed back over its blend). Entrance `air`: [entrance s, metres] keys of a leap; `rise`: the
  * same, applied over the feet once they are planted (a crouch held a little taller); `kick`: [entrance s, size] gun shots;
- * `aim`: [entrance s, rad] keys raising the weapon arm; `faceBy: 'chest'`: `facing` is the chest's heading.
+ * `aim`: [entrance s, rad] keys raising the weapon arm; `faceBy: 'chest'`: `facing` is the chest's heading; `leftBlade`:
+ * the left hand's frame follows a weapon held in it (the magic schools' staff rides the left hand, the right hand casts).
  */
 const ENTRANCES=[
  // Flash Draw (iaido): a calm relaxed stand, the blade coiled back across the body (the backhand's windup, slowed), the
@@ -89,6 +91,45 @@ const ENTRANCES=[
   {file:G('Idle'),loop:true,keys:[[0,0],[.6,.6]]},
   {file:G('Activate'),blend:.15,keys:[[.5,0],[1.35,.85]]},
   {file:G('Fire-Rifle2'),blend:.3,keys:[[1.3,0],[1.93,.02],[2.4,.1],[2.9,.3],[4.8,.55]]},
+ ]},
+ // The magic schools: the pack's staff and off-hand casts (2Hand-Staff, and Armed's palm casts for the thrusts) read
+ // mirrored, so the staff rides the game's left hand and the right hand casts, as the gameplay magic pose.
+ // Cinder Crown: the staff stance, the casting hand swept back and raised out to the side as the flame gathers in it, a
+ // wind-up and a palm thrust (Armed-Cast-L-Attack-Hand3) that throws the flame lance on the 1.8 s hit, then the staff
+ // stance under the crown of embers.
+ {style:'weapon-fire',grip:'blade',leftBlade:true,hit:1.8,facing:0,faceBy:'chest',seq:[
+  {file:ST('Idle'),mirror:true,loop:true,keys:[[0,0],[.5,.5]]},
+  {file:ST('Cast-L-Summon1'),mirror:true,blend:.2,keys:[[.35,0],[.5,.06],[.72,.15],[.85,.22],[1.1,.47],[1.5,.8]]},
+  {file:A('Cast-L-Attack-Hand3'),mirror:true,blend:.15,keys:[[1.45,0],[1.72,.2],[1.8,.27],[2.4,.6],[2.9,1]]},
+  {file:ST('Idle'),mirror:true,blend:.45,loop:true,keys:[[2.8,0],[4.8,2]]},
+ ]},
+ // Tidal Serpent: a crouch gathering the water, the casting hand raised high and held as the serpents spiral up, then the
+ // AOE slam driving hand and staff down to the floor on the 2.12 s hit as they dive into the splash, the crouch held through
+ // the slowed beat, and up into the staff stance.
+ {style:'weapon-water',grip:'blade',leftBlade:true,hit:2.12,facing:0,faceBy:'chest',seq:[
+  {file:ST('Idle'),mirror:true,loop:true,keys:[[0,0],[.5,.5]]},
+  {file:ST('Cast-L-AOE1'),mirror:true,blend:.2,keys:[[.4,0],[.75,.2],[1.15,.47],[1.8,.85]]},
+  {file:ST('Cast-L-AOE2'),mirror:true,blend:.15,keys:[[1.75,.3],[2.12,.53],[2.7,.75],[3.2,1.2]]},
+  {file:ST('Idle'),mirror:true,blend:.4,loop:true,keys:[[3,0],[4.8,1.8]]},
+ ]},
+ // Thunderstep: hanging high in the dark (the fall pose lifted 2.3 m), a drift, then a hard drop turning into the landing
+ // (the jump's touchdown pinned to the 1.45 s hit under the bolt), the landing crouch through the slowed beat, the alert
+ // stance and the staff stance.
+ {style:'weapon-lightning',grip:'blade',leftBlade:true,hit:1.45,facing:0,faceBy:'chest',air:[[0,2.3],[.7,2.25],[1.1,2.08],[1.25,1.62],[1.38,.7],[1.45,0]],seq:[
+  {file:ST('Fall'),mirror:true,loop:true,keys:[[0,0],[1,1]]},
+  {file:ST('Jump'),mirror:true,blend:.3,turn:-.8,keys:[[.95,.45],[1.45,.7],[1.75,.8],[2.3,1.1]]},
+  {file:ST('Idle-Alert1'),mirror:true,blend:.3,keys:[[2.25,0],[3.2,.95]]},
+  {file:ST('Idle'),mirror:true,blend:.4,loop:true,keys:[[3,0],[4.8,1.8]]},
+ ]},
+ // Eventide Gate: a hand pressed to the floor tearing the gate open behind, rising with the hand raised, the claw held up
+ // beside the head, drawn back, and a crouching palm thrust (Armed-Cast-L-Attack-Hand2) casting the void blast on the
+ // 2.12 s hit, then up into the staff stance as the gate implodes.
+ {style:'weapon-darkness',grip:'blade',leftBlade:true,hit:2.12,facing:0,faceBy:'chest',seq:[
+  {file:ST('Idle'),mirror:true,loop:true,keys:[[0,0],[.4,.4]]},
+  {file:ST('Cast-L-Summon2'),mirror:true,blend:.2,keys:[[.3,0],[.55,.13],[.95,.45],[1.35,.8]]},
+  {file:ST('Cast-L-Summon1'),mirror:true,blend:.2,keys:[[1.3,.35],[1.6,.55],[1.95,.8]]},
+  {file:A('Cast-L-Attack-Hand2'),mirror:true,blend:.15,keys:[[1.85,.04],[2.02,.13],[2.12,.2],[2.7,.55],[3.1,.9]]},
+  {file:ST('Idle'),mirror:true,blend:.4,loop:true,keys:[[3,0],[4.8,1.8]]},
  ]},
 ];
 if(process.env.PACK_INTROS_PLAN){const plan=JSON.parse(fs.readFileSync(process.env.PACK_INTROS_PLAN,'utf8'));for(const e of plan){const i=ENTRANCES.findIndex(x=>x.style===e.style);if(i>=0)ENTRANCES[i]=e;else ENTRANCES.push(e);}}

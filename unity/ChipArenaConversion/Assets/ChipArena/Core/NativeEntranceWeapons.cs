@@ -402,8 +402,9 @@ namespace ChipArena.UnityConversion
             Shots=new[]
             {
                 Orbit(0,NativeEntranceCut.Cut,40,38,-52,-26,4.4f,3.4f,1.3f,.9f,V(0,1.0f,0),V(0,1.0f,0),0,1,face:.3f),
-                // The gathering flame in the casting hand, a long lens.
-                Follow(Shot(.8f,NativeEntranceCut.Cut,33,30,V(-2.2f,1.25f,2.8f),V(-2.0f,1.22f,2.55f),V(0,.08f,0),V(0,.1f,0),1,1,face:1.1f),NativeEntranceAnchor.RightHand),
+                // The flame gathering in the casting hand as it rises out to the side, the chest and the raised hand framed together
+                // on a long lens (a look locked on the hand would park the head beside it in close-up).
+                Follow(Shot(.8f,NativeEntranceCut.Cut,38,35,V(-1.0f,1.2f,3.0f),V(-.95f,1.18f,2.75f),V(-.2f,.22f,0),V(-.25f,.28f,0),1,1,face:1.1f),NativeEntranceAnchor.Chest),
                 // Low, the arm rising into the strike.
                 Shot(1.4f,NativeEntranceCut.Cut,46,44,V(1.4f,.3f,3.0f),V(1.25f,.3f,2.7f),V(0,1.2f,0),V(0,1.1f,.1f),1,1,face:1.6f),
                 // The lance and the burst from the side, slowed.
@@ -445,7 +446,7 @@ namespace ChipArena.UnityConversion
         }
     }
 
-    /// <summary>Tidal Serpent (water, hit 2.12 s): two water serpents spiral up round the pilot and dive into a tidal splash.</summary>
+    /// <summary>Tidal Serpent (water, hit 2.12 s): two water serpents spiral up round the pilot's raised hand and dive into a tidal splash on the slam.</summary>
     internal sealed class TidalSerpent:NativeWeaponEntrance
     {
         public TidalSerpent():base("weapon-water",2.12f,0x63e2ff)
@@ -455,8 +456,8 @@ namespace ChipArena.UnityConversion
                 Orbit(0,NativeEntranceCut.Cut,40,38,20,10,4.6f,3.9f,2.9f,2.2f,V(0,.5f,0),V(0,.8f,0),0,1,face:.2f),
                 // Round the pilot, rising with the serpents.
                 Orbit(.8f,NativeEntranceCut.Cut,42,42,-32,58,3.3f,2.9f,.9f,1.6f,V(0,1.1f,0),V(0,1.5f,0),3,1,face:1.0f),
-                // Below the apex, looking up.
-                Shot(1.6f,NativeEntranceCut.Cut,50,48,V(1.0f,.28f,3.2f),V(.9f,.26f,2.9f),V(0,1.45f,0),V(0,1.65f,0),1,1,face:1.9f),
+                // Below the apex, looking up past the raised casting hand (on the near side) and tilting down with its slam.
+                Shot(1.6f,NativeEntranceCut.Cut,50,48,V(-1.0f,.28f,3.2f),V(-.9f,.26f,2.9f),V(0,1.45f,0),V(0,1.15f,0),1,1,face:1.9f),
                 // The splash, whipped to the front and slowed.
                 Orbit(2.12f,NativeEntranceCut.Whip,42,40,-8,-30,3.8f,3.4f,1.3f,1.05f,V(0,.85f,0),V(0,.9f,0),1,1,.16f,face:2.12f),
                 Orbit(2.8f,NativeEntranceCut.Blend,38,38,-30,-22,3.4f,3.7f,1.05f,.85f,V(0,.92f,0),V(0,1.0f,0),0,1,.3f,face:2.12f),
@@ -564,12 +565,13 @@ namespace ChipArena.UnityConversion
                 Shot(0,NativeEntranceCut.Cut,42,40,V(.5f,1.0f,5.0f),V(.35f,.9f,4.2f),V(0,1.2f,-.4f),V(0,1.2f,-.4f),0,0),
                 // Low, the gate framing the pilot from behind.
                 Shot(.9f,NativeEntranceCut.Cut,42,40,V(.6f,.32f,3.2f),V(.45f,.3f,2.7f),V(0,1.3f,-.4f),V(0,1.32f,-.4f),1,0),
-                // The claw raised, a long lens.
-                Follow(Shot(1.6f,NativeEntranceCut.Cut,34,32,V(-2.3f,1.4f,2.8f),V(-2.1f,1.4f,2.5f),V(0,.05f,0),V(0,.05f,0),1,1,face:1.9f),NativeEntranceAnchor.RightHand),
+                // The claw raised beside the head and drawn back for the cast, a long lens riding the chest (the hand's snap
+                // into the cast would jerk a look locked on it).
+                Follow(Shot(1.6f,NativeEntranceCut.Cut,38,35,V(-1.0f,1.3f,3.1f),V(-.95f,1.28f,2.85f),V(-.25f,.28f,.1f),V(-.25f,.22f,.15f),1,1,face:1.9f),NativeEntranceAnchor.Chest),
                 // The void cast from the side, slowed.
                 Orbit(2.12f,NativeEntranceCut.Cut,42,40,82,60,3.6f,3.2f,1.0f,1.0f,V(0,1.0f,.4f),V(0,1.0f,.35f),1,1,face:2.12f),
                 // The gate collapsing behind.
-                Orbit(2.75f,NativeEntranceCut.Blend,40,38,60,46,3.2f,3.8f,1.0f,1.2f,V(0,1.0f,.35f),V(0,1.12f,-.2f),0,1,.3f,face:2.12f),
+                Orbit(2.75f,NativeEntranceCut.Blend,40,38,60,46,3.2f,3.8f,1.0f,1.2f,V(0,1.0f,.35f),V(0,1.12f,-.2f),0,1,.4f,face:2.12f),
                 Shot(3.2f,NativeEntranceCut.Cut,36,34,V(-.8f,.42f,3.6f),V(-.52f,.46f,3.3f),V(0,1.0f,0),V(0,1.02f,0),1,0),
             };
         }
