@@ -34,9 +34,10 @@ namespace ChipArena.UnityConversion
             float shade=M.EaseOut(M.Progress(age,nameAt,.7f)),ry=H*.46f*.92f;U.RadialStops(new Rect(-W*.1f,H-ry,W*1.2f,ry*2),U.A(U.Hex(0x040610),shade),new[]{0,.46f,.76f},new[]{.96f,.70f,0});
             // Topline at 88 px with 6vw margins; a 1 px rule and a progress bar that fills linearly over the intro.
             float top=M.EaseOut(M.Progress(age,0,.45f)),x0=W*.06f,tw=W*.88f,y=88;
-            string left=boss?"BOSS":"MATCH INTRO / "+(index+1).ToString("00")+" — "+total.ToString("00"),right=boss?"THE SIREN":NativeIntroRules.StyleName(style).ToUpperInvariant();
+            string left=boss?"BOSS":"MATCH INTRO / "+(index+1).ToString("00")+" — "+total.ToString("00"),right=boss?"THE SIREN":"";
             U.Text(new Rect(x0,y,tw,15),left,12,U.A(U.Hex(boss?0xd9d0ff:0xd7d8de),top),TextAnchor.UpperLeft,mono:true,tracking:.2f);
-            U.Text(new Rect(x0,y,tw,15),right,12,U.A(U.Hex(boss?0xc9bfff:0xff996f),top),TextAnchor.UpperRight,mono:true,tracking:boss?.42f:.2f);
+            // Owner 2026-10-12: "Remove name of intros during intro": a pilot entrance no longer names its intro style (the boss keeps THE SIREN).
+            if(right.Length>0)U.Text(new Rect(x0,y,tw,15),right,12,U.A(U.Hex(boss?0xc9bfff:0xff996f),top),TextAnchor.UpperRight,mono:true,tracking:boss?.42f:.2f);
             float rule=y+29;U.Fill(new Rect(x0,rule,tw,1),U.A(U.Hex(boss?0xb7a8ff:0xff6b35),.25f*top));float fill=Mathf.Clamp01(age/duration);
             if(fill>0)U.HGradient(new Rect(x0,rule,tw*fill,1),U.A(U.Hex(boss?0x7d5cff:0xff6b35),top),U.A(U.Hex(boss?0xf6f3ff:0xffb15c),top));
             if(age<nameAt)return;
