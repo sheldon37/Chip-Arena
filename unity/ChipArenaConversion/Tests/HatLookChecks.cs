@@ -13,8 +13,9 @@ using ChipArena.UnityConversion;
 // normalisation, palettes and the custom control; Auto keeping every hat's draw exactly as it was; the recolour table
 // against the exported hat models; the DEV gate (run on real NativeAccess values); the Sheldon Head's mesh (deterministic,
 // in budget, consistently wound, clear of the rig it dresses) and its face; its clearance from the melee swings' blades and
-// arms; then source checks that every hat draw passes through the colour helpers and that both colours travel like the
-// backdrop key (prefs -> profile cosmetics -> host seat -> lobby and match seat frames, normalised on send and receive).
+// arms and from the gun aim; that no hit reads it (the hit rules, a scripted duel and the hit sources); then source checks
+// that every hat draw passes through the colour helpers and that both colours travel like the backdrop key (prefs ->
+// profile cosmetics -> host seat -> lobby and match seat frames, normalised on send and receive).
 internal static class HatLookChecks
 {
     private static int count;
@@ -159,7 +160,11 @@ internal static class HatLookChecks
         // on every axis, where the bare rig had nothing (its head, neck, chest and shoulder boxes plus 1 cm). The bounds hold
         // today's measurements: the one-handed weapons almost never, the greatsword's two-handed windups and recoveries,
         // which pass a few centimetres behind and beside the head, through the hood's back and sides on most swing frames
-        // (a known limit: any hood that encloses the head is in that path).
+        // (a known limit: any hood that encloses the head is in that path). The gun gait's aim (GunMotion: aimed, firing,
+        // walking and strafing, pitch -60..60) is measured too, in its own groups: the rifle and machine gun stocks ride beside
+        // the right cheek, so a level aim (pitch within 20 degrees) brushes the hood far less than a steep one, where the
+        // tilted head meets the stock (a known limit, as the greatsword). The wider hood (2026-10-12) stands off the head in
+        // its balloon and keeps the cheeks and jaw tight, so every group holds or improves on the narrower hood (DEV_LOG).
         var clearance=Clearance(bankModels,out var by);
         float F(string k,int i)=>by.TryGetValue(k,out var v)&&v[0]>0?v[i]/(float)v[0]:0;
         Check(clearance.frames>2000,"clearance sampled "+clearance.frames+" frames");
@@ -167,6 +172,9 @@ internal static class HatLookChecks
         Check(F("greatsword swing",1)<=.9f&&F("greatsword guard",1)<=.05f&&F("greatsword sprint",1)<=.05f,"the greatsword's guard and sprint stay clear; its swings graze the hood (known, "+(F("greatsword swing",1)*100).ToString("0.0")+"% of swing frames)");
         Check(clearance.blade<=.15f,"blades pass through the cloth on few frames overall ("+(clearance.blade*100).ToString("0.0")+"%, deepest "+clearance.bladeDeep+" vertices: "+clearance.worst+")");
         Check(clearance.arms<=.06f&&F("greatsword sprint",2)<=.05f&&F("shield sprint",2)<=.05f,"forearms and hands seldom pass through the cloth ("+(clearance.arms*100).ToString("0.0")+"% of frames)");
+        Check(by.TryGetValue("rifle level",out var gunFrames)&&gunFrames[0]>=1000,"the gun aim is sampled ("+(gunFrames?[0]??0)+" level rifle frames)");
+        foreach(var (spec,level,steep) in new[]{("pistol",.01f,.01f),("rifle",.25f,.55f),("machinegun",.02f,.5f)})
+            Check(F(spec+" level",1)<=level&&F(spec+" steep",1)<=steep&&F(spec+" level",2)<=.13f&&F(spec+" steep",2)<=.36f,spec+" aim keeps the gun out of the cloth (level "+(F(spec+" level",1)*100).ToString("0.0")+"%, steep "+(F(spec+" steep",1)*100).ToString("0.0")+"%; arms "+(F(spec+" level",2)*100).ToString("0.0")+"% / "+(F(spec+" steep",2)*100).ToString("0.0")+"%)");
 
         // 10. Every hat draw goes through the colour helpers (the authored model and no tint on Auto).
         var sites=new (string file,string text)[]
@@ -220,7 +228,89 @@ internal static class HatLookChecks
         Check(model.Contains("[NonSerialized] public string HatColor=\"\";")&&arena.Contains("a.Hat=p.Seat.hat;a.HatColor=p.Seat.hatColor;")&&frame.Contains("v.HatColor=p.Seat.hatColor;")&&frame.Contains("if(p.Death?.actor!=null)p.Death.actor.HatColor=p.Seat.hatColor;"),"the actor's hat colour comes from the seat on host, guests, replays and deaths");
         var actor=new Actor{HatColor="#ff3dcf"};Check(actor.ViewCopy().HatColor=="#ff3dcf"&&new Actor().HatColor==""&&typeof(Actor).GetField("HatColor").GetCustomAttribute<NonSerializedAttribute>()!=null,"view copies keep the colour; the frame serializer (JsonUtility) skips it");
 
-        Console.WriteLine("PASS Hat looks: "+count+" checks (colour rules, Auto unchanged, recolour table on "+NativeHatLooks.TintableHats.Count()+" hats, DEV gate, Sheldon Head mesh "+verts+" vertices / "+tris+" triangles, face, clearance over "+clearance.frames+" frames, wire path)");
+        // 13. The hood is cloth only: no hit reads it (owner 2026-10-12, widening it: "But do NOT expand the hitbox").
+        HitGeometry(root);
+
+        Console.WriteLine("PASS Hat looks: "+count+" checks (colour rules, Auto unchanged, recolour table on "+NativeHatLooks.TintableHats.Count()+" hats, DEV gate, Sheldon Head mesh "+verts+" vertices / "+tris+" triangles, face, clearance over "+clearance.frames+" frames and the gun aim, wire path, hit geometry unchanged by the hood)");
+    }
+
+    // What decides a hit on a pilot reads no hat: the host's body is its CapsuleCollider (NativeLocomotionRules radius and half
+    // height); gun rays meet the lab authority's body and head spheres (GunRules.SegmentActor) and the native headshot box
+    // (NativeCombatRules.Headshot); wounds and dismemberment take their part from the hit point (NativeBodyDamage.Part); melee
+    // contact is the swing's arc and reach (NativeMeleeRules.Contact). Proven three ways: (a) those rules, sampled densely,
+    // print the same with and without the Sheldon Head on the target, and the same as on the old, narrower hood (the print
+    // below was taken on b97bb8e, before the 2026-10-12 widening); (b) a scripted duel on the lab authority (rifle and pistol
+    // shots from the shins to over the head, sword swings) emits the same events against a bare and a hooded target; (c) the
+    // hit sources name no hat, hood or model bounds, and the hat code adds no collider or physics query (the hood is drawn
+    // with Graphics.DrawMesh; its mesh bounds serve culling and portrait framing only).
+    private const ulong HitPrintPinned=13350718388660593631UL;private static readonly int[] HitCountsPinned={2152,304,440,16128,18299};
+    private static (ulong hash,int[] counts) HitPrint(string hat)
+    {
+        ulong h=1469598103934665603UL;void Add(int v){unchecked{h^=(uint)v;h*=1099511628211UL;}}
+        var counts=new int[5];var target=new Actor{Id=2,Position=new V3(.013f,0,-.021f),Hat=hat,HatColor=hat=="none"?"":"#ff3dcf"};
+        foreach(float yaw in new[]{0f,37.3f,90f,211.7f})
+        {
+            target.Yaw=yaw;
+            for(float y=.0137f;y<2.1f;y+=.0419f)for(float x=-.7531f;x<.76f;x+=.0437f)
+            {
+                var start=new V3(x,y,-6.03f);var end=new V3(x*.97f,y+.011f,6.07f);
+                bool hit=GunRules.SegmentActor(start,end,target,.045f,out _,out bool head);bool box=NativeCombatRules.Headshot(target.Position,yaw,start,end-start,.045f,false);
+                Add(hit?head?2:1:0);Add(box?1:0);if(hit)counts[head?1:0]++;if(box)counts[2]++;
+            }
+        }
+        foreach(float yaw in new[]{0f,63.1f,180f})for(float x=-.6113f;x<.62f;x+=.0389f)for(float y=-.9307f;y<.96f;y+=.0411f)for(float z=-.3301f;z<.34f;z+=.0571f)
+        {int part=NativeBodyDamage.Part(new V3(x,y,z),yaw);Add(part);if(part==CapturedRig.Head)counts[3]++;}
+        foreach(var spec in new[]{"sword","greatsword","daggers","shield"})
+        {
+            var swing=new NativeMeleeSwing{Spec=spec,Index=1,At=0,HitAt=.3f,HitUntil=.46f,Until=1,Yaw=.31f,Range=spec=="greatsword"?2.1f:1.6f,Arc=1.9f};
+            for(float t=.2913f;t<.47f;t+=.0187f)for(float x=-2.5113f;x<2.52f;x+=.1237f)for(float z=-2.5071f;z<2.52f;z+=.1237f)foreach(float y in new[]{-.5f,0f,.9f})
+            {bool c=NativeMeleeRules.Contact(swing,t,new V3(x,y,z),.45f);Add(c?1:0);if(c)counts[4]++;}
+        }
+        return (h,counts);
+    }
+    // The lab authority's duel: shots at each height and two sword swings, everything the world emitted and the target's health.
+    private static string Duel(string hat)
+    {
+        var log=new System.Text.StringBuilder();
+        foreach(var weapon in new[]{WeaponId.Rifle,WeaponId.Pistol,WeaponId.Sword})foreach(float aimY in weapon==WeaponId.Sword?new[]{1f}:new[]{.35f,.85f,1.2f,1.42f,1.51f,1.6f,1.68f,1.75f,1.9f})
+        {
+            var w=new ArenaWorld();w.Covers.Clear();var a=w.Find(1);a.Position=new V3();var b=w.AddHuman(2);bool sword=weapon==WeaponId.Sword;
+            b.Position=new V3(0,0,sword?1.2f:12);b.Hat=hat;b.HatColor=hat=="none"?"":"#ff3dcf";
+            if(!sword)w.Equip(a,weapon);for(int i=0;i<16;i++)w.Step(new InputFrame(),new InputFrame());var point=new V3(0,aimY,b.Position.z);
+            for(int i=0;i<22;i++)w.Step(new InputFrame{Aim=!sword,AimTarget=point},new InputFrame());
+            for(int k=0;k<2;k++){w.Step(new InputFrame{Aim=!sword,Shoot=!sword,Attack=sword,AimTarget=point},new InputFrame());for(int i=0;i<40;i++)w.Step(new InputFrame{Aim=!sword,AimTarget=point},new InputFrame());}
+            foreach(var e in w.Events)log.Append((int)e.Kind).Append(',').Append(e.Source).Append(',').Append(e.Target).Append(',').Append(e.Amount.ToString("R")).Append(',').Append(e.Position.x.ToString("R")).Append(',').Append(e.Position.y.ToString("R")).Append(',').Append(e.Position.z.ToString("R")).Append(';');
+            log.Append("hp ").Append(b.Hp.ToString("R")).Append('|');
+        }
+        return log.ToString();
+    }
+    private static void HitGeometry(string root)
+    {
+        // (a) The rules' print: hat on or off, and the old hood's.
+        var bare=HitPrint("none");var hooded=HitPrint(NativeSheldonHead.Hat);
+        Check(bare.hash==hooded.hash&&bare.counts.SequenceEqual(hooded.counts),"the hit rules print the same with and without the Sheldon Head");
+        Check(bare.hash==HitPrintPinned&&bare.counts.SequenceEqual(HitCountsPinned),"the hit rules print as on the old, narrower hood ("+string.Join(",",bare.counts)+" body/head spheres, headshot box, head part, melee contacts)");
+        Check(NativeLocomotionRules.Radius==.42f&&NativeLocomotionRules.HalfHeight==.85f,"the host's pilot capsule is unchanged (radius .42, half height .85)");
+        // The hood did change: it reaches a voxel past the old one's .208 m half width and above its .528 m peak.
+        var parts=NativeSheldonHead.Build();var hood=parts[NativeSheldonHead.Hood].Positions;
+        Check(hood.Max(v=>Math.Abs(v.X))>.235f&&hood.Max(v=>v.Y)>.55f,"the wider hood is what the print ran against ("+hood.Max(v=>Math.Abs(v.X)).ToString("0.000")+" m half width, "+hood.Max(v=>v.Y).ToString("0.000")+" m top)");
+        // (b) The duel.
+        string a=Duel("none"),b=Duel(NativeSheldonHead.Hat);
+        Check(a==b,"a bare and a hooded target take the same hits");
+        Check(a.Contains(((int)EventKind.Headshot)+",1,2,")&&a.Contains(((int)EventKind.Hit)+",1,2,"),"the duel lands body hits and headshots");
+        // (c) The sources.
+        string Src(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
+        var hatWords=new Regex(@"\bHat(Color)?\b|\.hat(Color)?\b|Sheldon|HoodSolid|""hat-|NativeHatLooks|HatModel");
+        string arena=Src("Runtime/NativeArena.cs");const string snapshot="a.Hat=p.Seat.hat;a.HatColor=p.Seat.hatColor;";
+        Check(Count(arena,snapshot)==1&&arena.Contains("capsule.radius=NativeLocomotionRules.Radius;capsule.height=2*NativeLocomotionRules.HalfHeight;"),"the host's pilot body is its capsule; the hat only rides the presentation snapshot");
+        foreach(var f in new[]{"Core/ArenaWorld.cs","Core/GunRules.cs","Core/NativeCombatRules.cs","Core/NativeBodyDamage.cs","Core/NativeMeleeRules.cs","Core/NativeMeleeSlice.cs","Core/NativeGoreHits.cs","Core/NativeLocomotionRules.cs","Core/NativeAirAttackSimulation.cs","Core/NativeSprintAttack.cs",
+            "Runtime/NativeArena.cs","Runtime/NativeProjectiles.cs","Runtime/NativeMelee.cs","Runtime/NativeAbilities.cs","Runtime/NativeMeleeAbilities.cs","Runtime/NativeMeleeSpecials.cs","Runtime/NativeWoundGeometry.cs","Runtime/NativeDeaths.cs","Runtime/NativeFighters.cs","Runtime/NativeSummons.cs","Runtime/NativeChips.cs"})
+        {var src=Src(f).Replace(snapshot,"");var m=hatWords.Match(src);Check(!m.Success,f+" decides hits without the hat ("+(m.Success?m.Value:"none")+")");}
+        var physics=new Regex(@"Collider|Physics\.|PhysicsScene|Raycast|SphereCast|Overlap(Sphere|Capsule|Box)");
+        foreach(var f in new[]{"Core/NativeSheldonHead.cs","Core/NativeHatLooks.cs","Core/NativeSheldonIntro.cs","Runtime/NativeHatPresentation.cs","Runtime/NativeSheldonIntroPresentation.cs","Runtime/NativeSourceModels.cs","Runtime/NativeHatColorUI.cs"})
+            Check(!physics.IsMatch(Src(f)),f+" adds no collider or physics query");
+        int repair=0;foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs"))repair+=Count(File.ReadAllText(f),"RepairBoxes(");
+        Check(repair==2&&Src("Runtime/NativeInteractionPresentation.cs").Contains("sourceModels.RepairBoxes(p.Seat.spec==\"siren\"?\"siren\":\"pilot\",r.Boxes);"),"the only boxes made from model bounds are the revive scan's, from the pilot (or Siren) model");
     }
 
     // A NativeAccess as Verify would make it (reflection: its setters are private).
@@ -257,7 +347,7 @@ internal static class HatLookChecks
         // Forearms and hands (the upper arms meet the shoulders at their joint, so they always touch the drapes there).
         var arms=CapturedRig.Boxes.Where(b=>b.Bone==CapturedRig.LElbow||b.Bone==CapturedRig.LHand||b.Bone==CapturedRig.RElbow||b.Bone==CapturedRig.RHand).ToArray();
         var world=new Matrix4x4[22];var inverse=new Matrix4x4[22];
-        void Frame(string spec,string what)
+        void Frame(string spec,string what,bool total=true)
         {
             pose.World();for(int i=0;i<22;i++){world[i]=Matrix4x4.CreateFromQuaternion(pose.WorldRotation[i])*Matrix4x4.CreateTranslation(pose.WorldPosition[i]);Matrix4x4.Invert(world[i],out inverse[i]);}
             bool Cloth(Vector3 w)=>NativeSheldonHead.HoodSolid(Vector3.Transform(w,inverse[CapturedRig.Head]))||NativeSheldonHead.DrapeSolid(Vector3.Transform(w,inverse[CapturedRig.LClav]),1)||NativeSheldonHead.DrapeSolid(Vector3.Transform(w,inverse[CapturedRig.RClav]),-1)||NativeSheldonHead.MantleSolid(Vector3.Transform(w,inverse[CapturedRig.Chest]));
@@ -272,7 +362,7 @@ internal static class HatLookChecks
             }
             bool arm=false;
             foreach(var b in arms)for(int c=0;c<8&&!arm;c++){var corner=b.Position+new Vector3((c&1)!=0?b.Size.X/2:-b.Size.X/2,(c&2)!=0?b.Size.Y/2:-b.Size.Y/2,(c&4)!=0?b.Size.Z/2:-b.Size.Z/2)*.9f;var w=Vector3.Transform(corner,world[b.Bone]);if(InCloth(w)&&!InBare(w))arm=true;}
-            frames++;if(blade>0)bladeFrames++;if(arm)armFrames++;if(blade>deepest){deepest=blade;worst=spec+" "+what;}
+            if(total){frames++;if(blade>0)bladeFrames++;if(arm)armFrames++;if(blade>deepest){deepest=blade;worst=spec+" "+what;}}
             string key=spec+" "+(what.StartsWith("lobby")?"lobby":what.Split(' ')[0]);if(!groups.TryGetValue(key,out var gr))groups[key]=gr=new int[3];gr[0]++;if(blade>0)gr[1]++;if(arm)gr[2]++;
         }
         foreach(var spec in new[]{"sword","daggers","shield","greatsword"})
@@ -292,6 +382,23 @@ internal static class HatLookChecks
         }
         foreach(var spec in new[]{"pistol","rifle","machinegun","sword","daggers","shield","greatsword","fire","water","lightning","darkness"})for(int p=0;p<NativeLobbyPoses.Keys.Length;p++)for(float t=0;t<4;t+=.25f)
         {var rig=new MeleeRig();rig.Reset();NativeLobbyPoses.Sample(rig,spec,p,t,out _,out _);rig.WritePose(pose);Frame(spec,"lobby "+NativeLobbyPoses.Keys[p]);}
+        // The gun gait (GunMotion, as the arena's third-person gun route drives it): aimed, firing, walking and strafing aimed,
+        // each at pitch -60..60 and two aim yaws, the gun on its hand joint. Groups "<spec> level" (|pitch| <= 20) and "steep".
+        foreach(var w in new[]{WeaponId.Pistol,WeaponId.Rifle,WeaponId.MachineGun})
+        {
+            string spec=GunMotion.Spec(w);
+            foreach(var (vel,aiming,fire) in new[]{(new V3(0,0,0),true,false),(new V3(0,0,0),false,true),(new V3(0,0,3.4f),true,false),(new V3(-6.8f,0,0),true,false)})
+            foreach(float pitch in new[]{-60f,-40f,-20f,0f,20f,40f,60f})foreach(float aimYaw in new[]{0f,8f})
+            {
+                var motion=new GunMotion();var juggle=new NativeJuggleTrack();var a=new Actor{Id=31,SourceSpec=spec,Weapon=w,Grounded=true,Hp=100,CastRate=1,RollDirection=new V3(0,0,1),Ammo=GunRules.Get(w).Magazine,Velocity=vel,Aiming=aiming,Pitch=pitch,AimYaw=aimYaw};
+                float t=30,dt=1/60f;var at=Vector3.Zero;
+                for(int f=0;f<90;f++,t+=dt)
+                {
+                    if(fire&&f%12==0)a.LastShot=t;at+=new Vector3(a.Velocity.x,0,a.Velocity.z)*dt;motion.Rig.GroupPosition=new Vector3(-at.X,.865f,at.Z);motion.Rig.GroupYaw=0;
+                    motion.Pose(a,t,pose,false,juggle,out _);motion.Finish(pose,t);if(f>=40)Frame(spec,Math.Abs(pitch)<=20?"level":"steep",false);
+                }
+            }
+        }
         return (frames,frames>0?bladeFrames/(float)frames:0,frames>0?armFrames/(float)frames:0,deepest,worst);
     }
 }
