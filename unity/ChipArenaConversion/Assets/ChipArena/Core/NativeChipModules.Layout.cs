@@ -10,7 +10,8 @@ namespace ChipArena.UnityConversion
     // on its model), not the Prototype's offsets: guns stack collars and coils on the exposed barrel or compensator, give each
     // rail part a fixed slot on the top, flank and belly runs, hang pods round the bore and cells under the magazine; staffs
     // ring the bay between the grips and mount on the head collar and the lower shaft; blades mount on the guard, pommel,
-    // ricasso and along the real edge; the shield on its boss, face and rim.
+    // ricasso and along the real edge; the shield on its boss, face and rim; the bow on its riser, stabilizer and arrow line,
+    // its limbs (turning with the draw) and the nocked arrow (moving with the pull).
     public static partial class NativeChipModules
     {
         private static Dictionary<string,ChipSockets> sockets;
@@ -22,7 +23,11 @@ namespace ChipArena.UnityConversion
         private static Dictionary<string,ChipSockets> BuildSockets()
         {
             var d=new Dictionary<string,ChipSockets>(StringComparer.Ordinal);
-            foreach(var spec in NativeWeaponModels.Specs){if(!Designed(spec))continue;var s=Family(spec)==ChipFamily.Gun?GunSockets(spec):Family(spec)==ChipFamily.Staff?StaffSockets(spec):spec=="shield"?ShieldSockets():BladeSockets(spec);s.Spec=spec;s.Family=Family(spec);d[spec]=s;}
+            foreach(var spec in NativeWeaponModels.Specs)
+            {
+                if(!Designed(spec))continue;var f=Family(spec);
+                var s=f==ChipFamily.Gun?GunSockets(spec):f==ChipFamily.Staff?StaffSockets(spec):f==ChipFamily.Bow?BowSockets():spec=="shield"?ShieldSockets():BladeSockets(spec);s.Spec=spec;s.Family=f;d[spec]=s;
+            }
             return d;
         }
         private const float Pi=(float)Math.PI;
@@ -305,6 +310,98 @@ namespace ChipArena.UnityConversion
             return n;
         }
 
+        // ---- the bow (Core/NativeWeaponModels.Bow.cs, the bow frame: +x the bow's left, +y up the riser, +z downrange) ----
+        // The front stabilizer's axis (NativeBowModels.StandardRiser: the rod r .0055 at y -.135 from z .06 to .235, its weight to .271).
+        private const float StabY=-.135f;
+        /// <summary>
+        /// The upper limb at rest, as NativeBowModels sculpts it at the Full tier: the point on LimbPath at u (0 the pocket, 1 the
+        /// recurve tip), the tangent up the limb, the half thickness (its belly toward the string, its back downrange) and half width.
+        /// </summary>
+        public static void BowLimb(float u,out Vector3 at,out Vector3 up,out float half,out float width)
+        {
+            var p=NativeBowModels.LimbPath;float f=Math.Max(0,Math.Min(1,u))*(p.Length-1);int i=Math.Min(p.Length-2,(int)f);
+            at=Vector3.Lerp(p[i],p[i+1],f-i);up=Vector3.Normalize(p[i+1]-p[i]);half=.0068f-.0036f*Math.Max(0,Math.Min(1,u));width=half*2.8f;
+        }
+        /// <summary>The limb's belly normal (toward the string) at tangent `up`: the sculpt's tube frame, (0, up.z, -up.y).</summary>
+        public static Vector3 BowBelly(Vector3 up)=>Vector3.Normalize(new Vector3(0,up.Z,-up.Y));
+        // The turn whose part +y is `y` and +z is `z` (made orthogonal to y).
+        private static Quaternion Basis(Vector3 y,Vector3 z)
+        {
+            y=Vector3.Normalize(y);z=Vector3.Normalize(z-y*Vector3.Dot(z,y));var x=Vector3.Cross(y,z);
+            return Quaternion.Normalize(Quaternion.CreateFromRotationMatrix(new Matrix4x4(x.X,x.Y,x.Z,0,y.X,y.Y,y.Z,0,z.X,z.Y,z.Z,0,0,0,0,1)));
+        }
+        // The lower limb is the upper one reflected in y. A part symmetric about its own x = 0 plane, turned R on the upper limb,
+        // shows that reflection turned M_y R M_x = mirror_y(R) Rz(pi) at (x, -y, z) (a proper turn: no flipped winding).
+        private static Quaternion FlipY(Quaternion q)=>new Quaternion(-q.X,q.Y,-q.Z,q.W)*Rz(Pi);
+        private static ChipSockets BowSockets()
+        {
+            var s=new ChipSockets();
+            // The stabilizer: ricochet collars just behind the weight, the velocity coils behind them, the drones circling it, the
+            // frag collar round the weight.
+            s.Sections=new[]{ChipSection.Circle(.0056f,StabY)};s.RicochetZ=new[]{.225f,.211f,.197f};s.RicochetS=new byte[3];s.VelocityZ=new[]{.178f,.166f,.154f,.142f};s.VelocityS=new byte[4];
+            s.Drones=At(0,StabY,.165f,Quaternion.Identity);s.DroneR=.052f;s.DroneSize=.62f;s.Frag=At(0,StabY,.251f,Quaternion.Identity,.3f);
+            // The arrow line ahead of the shelf: the vacuum ring and the rally gimbal round it (hardlight; the arrow runs through).
+            s.Vacuum=At(NativeBow.ArrowX,NativeBow.ArrowY,.09f,Quaternion.Identity);s.VacuumR=.025f;s.Gimbal=At(NativeBow.ArrowX,NativeBow.ArrowY,.125f,Quaternion.Identity);s.GimbalR=.032f;
+            // The riser: the seeker sight on the sight window's outer (-x) face, lens downrange; the splitter prism down the upper
+            // riser's back (the archer's side, following its slope); three capacitors up its front; the magazine cells down the
+            // lower riser's back under the grip, window toward the archer.
+            s.Homing=At(-.016f,.09f,.046f,Rz(Pi/2));s.Split=At(0,.195f,.0152f,Rx(-Pi/2-(float)Math.Atan(.01f/.045f)),.7f);s.Static=At(0,.172f,.0655f,Rx(Pi/2),.65f);
+            s.MagAt=new Vector3(0,-.128f,.006f);s.MagTurn=Ry(Pi);s.MagCell=new Vector3(.022f,.011f,.012f);
+            // The upper limb at rest (the lower one shows each part reflected): the rate cam on the recurve tip's outer face, the
+            // kinetic damper along the belly by the pocket, the return vane on the back over the accent strip.
+            BowLimb(9f/11,out var tip,out _,out _,out float tipW);s.Cam=At(-tipW-.0003f,tip.Y,tip.Z,Ry(-Pi/2),.8f);
+            BowLimb(1.6f/11,out var low,out var lowUp,out float lowH,out _);var belly=BowBelly(lowUp);s.Kinetic=new ChipMount{At=low+belly*lowH,Turn=Basis(belly,lowUp),Size=.6f,Set=true};
+            BowLimb(4.6f/11,out var mid,out var midUp,out float midH,out _);var back=-BowBelly(midUp);s.Vane=new ChipMount{At=mid+back*(midH+.0002f),Turn=Basis(back,midUp),Size=.85f,Set=true};
+            s.PistonLength=.08f;
+            // The arrow (its frame: the nock at 0, the broadhead at ArrowLength): the charges strapped round the shaft behind the
+            // head (Size: the shaft's radius), the enchant along its front third.
+            s.Charges=At(0,0,NativeBow.ArrowLength-NativeBow.ArrowHead-.032f,Quaternion.Identity,.0046f);s.StripZ0=.6f;s.StripZ1=.87f;s.FlameSize=.5f;
+            return s;
+        }
+        private static int Bow(ChipSockets s,ChipKinds k,ChipModule[] o)
+        {
+            int n=0;var none=Quaternion.Identity;float y=s.Sections[0].Y;
+            // The riser and its stabilizer (static in the bow hand).
+            for(int i=0;i<k.Ricochet&&i<s.RicochetZ.Length;i++)Put(o,ref n,ChipPart.Collar,Ricochet,new Vector3(0,y,s.RicochetZ[i]),none);
+            for(int i=0;i<k.Velocity&&i<s.VelocityZ.Length;i++)Put(o,ref n,ChipPart.Coil,Velocity,new Vector3(0,y,s.VelocityZ[i]),none);
+            // Multishot: drones in the ranged pods' gold circling the stabilizer.
+            for(int i=0;i<k.Extra&&n<o.Length;i++){Put(o,ref n,ChipPart.Drone,PodGlow,s.Drones.At,none,s.DroneSize);o[n-1].Orbit=(sbyte)i;o[n-1].Orbits=(byte)k.Extra;o[n-1].Radius=s.DroneR;o[n-1].RadiusY=s.DroneR;}
+            if(k.Shrapnel)Put(o,ref n,ChipPart.Frag,Shrapnel,s.Frag.At,none,s.Frag.Size);
+            if(k.Vacuum)Put(o,ref n,ChipPart.Intake,Vacuum,s.Vacuum.At,none);
+            if(k.Pong)for(int i=0;i<3;i++)Put(o,ref n,ChipPart.Gimbal,Pong,s.Gimbal.At,Ry(i*Pi/3));
+            if(k.Homing)Put(o,ref n,ChipPart.Seeker,Homing,s.Homing.At,s.Homing.Turn,s.Homing.Size);
+            if(k.Split)Put(o,ref n,ChipPart.Prism,Split,s.Split.At,s.Split.Turn,s.Split.Size);
+            if(k.Static)for(int i=0;i<3;i++)Put(o,ref n,ChipPart.Capacitor,Static,s.Static.At+new Vector3(0,i*.021f,0),s.Static.Turn,s.Static.Size);
+            if(k.Magazine>0)Cells(s,Math.Min(8,k.Magazine),o,ref n);
+            if(k.Echo)Put(o,ref n,ChipPart.Echo,Echo,Vector3.Zero,none);
+            // On both limbs (turning with their flex): the spinning rate cams, the dampers, the return vanes, the reach rails.
+            if(k.Rate>0)Limbs(o,ref n,ChipPart.Flywheel,Rate,s.Cam,true);
+            if(k.Kinetic)Limbs(o,ref n,ChipPart.Piston,Kinetic,s.Kinetic);
+            if(k.Boomerang)Limbs(o,ref n,ChipPart.Vane,Boomerang,s.Vane);
+            if(k.Reach)Limbs(o,ref n,ChipPart.EdgeRail,Reach,At(0,0,0,none));
+            // On the nocked arrow (moving with the pull; hidden while none is on the string): the penetrator sheath, the charges.
+            if(k.Pierce&&Put(o,ref n,ChipPart.Tip,Pierce,Vector3.Zero,none))o[n-1].Ride=OnArrow;
+            if(k.Demolition)for(int i=0;i<3;i++){var m=Radial(s.Charges.Size,Pi/2+i*Pi*2/3,s.Charges.At.Z);if(Put(o,ref n,ChipPart.Charge,Demolition,m.At,m.Turn,.5f))o[n-1].Ride=OnArrow;}
+            return n;
+        }
+        // A part on the upper limb's mount and its reflection on the lower limb.
+        private static void Limbs(ChipModule[] o,ref int n,ChipPart part,int color,ChipMount m,bool spin=false)
+        {
+            if(Put(o,ref n,part,color,m.At,m.Turn,m.Size)){o[n-1].Ride=OnUpperLimb;o[n-1].Spin=spin;}
+            if(Put(o,ref n,part,color,new Vector3(m.At.X,-m.At.Y,m.At.Z),FlipY(m.Turn),m.Size)){o[n-1].Ride=OnLowerLimb;o[n-1].Spin=spin;}
+        }
+        /// <summary>
+        /// A bow piece into the bow frame for one frame's pull (after Animate): on a limb it turns about the limb's pocket with the
+        /// flex (NativeBowRig.Limb); on the arrow it rides the nock (NativeBowRig.Arrow: the centre arrow of a Volley's fan lies on
+        /// the line). False when its arrow is not on the string (`nocked`). Riser pieces, and every other weapon's, are unchanged.
+        /// </summary>
+        public static bool Ride(ref ChipModule p,float pull,bool nocked)
+        {
+            if(p.Ride==OnUpperLimb||p.Ride==OnLowerLimb){var limb=NativeBowRig.Limb(p.Ride==OnUpperLimb,pull);p.Position=limb.Position+Vector3.Transform(p.Position,limb.Rotation);p.Rotation=limb.Rotation*p.Rotation;return true;}
+            if(p.Ride==OnArrow){if(!nocked)return false;var arrow=NativeBowRig.Arrow(pull);p.Position=arrow.Position+Vector3.Transform(p.Position,arrow.Rotation);p.Rotation=arrow.Rotation*p.Rotation;}
+            return true;
+        }
+
         // ---- enchants (enchantWeapon on the Standard blades and the shield) ----
         /// <summary>
         /// The Standard blade enchant: a heated edge (fire) or a venom coat (poison) along the blade's real edge and flats, with
@@ -313,7 +410,8 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static int Enchant(string spec,bool fire,bool poison,int ember,int poisonStacks,ChipModule[] o,int start)
         {
-            int n=start;var s=Sockets(spec);if(s==null||s.Family!=ChipFamily.Blade&&s.Family!=ChipFamily.Shield)return n;bool shield=s.Family==ChipFamily.Shield;
+            int n=start;var s=Sockets(spec);if(s==null||s.Family!=ChipFamily.Blade&&s.Family!=ChipFamily.Shield&&s.Family!=ChipFamily.Bow)return n;bool shield=s.Family==ChipFamily.Shield;
+            if(s.Family==ChipFamily.Bow)return BowEnchant(s,fire,poison,ember,poisonStacks,o,n);
             for(int e=0;e<2;e++)
             {
                 bool flame=e==0;if(flame?!fire:!poison)continue;int count=10+Math.Min(6,Math.Max(1,flame?ember:poisonStacks));
@@ -336,6 +434,23 @@ namespace ChipArena.UnityConversion
                     }
                     o[n++]=new ChipModule{Part=flame?ChipPart.Flame:ChipPart.Mote,Color=flame?(i%3!=0?Flame:FlameHot):Poison,Position=at,Rotation=turn,Drift=drift,Scale=new Vector3(s.FlameSize*(flame?1:.9f)),Orbit=-1,
                         Enchant=(byte)(flame?NativeWeaponDressing.FireEnchant:NativeWeaponDressing.PoisonEnchant),Phase=i*.81f};
+                }
+            }
+            return n;
+        }
+        // The bow's enchant on the nocked arrow (the Prototype's track, the arrow's front third): a heated broadhead or a venom
+        // sleeve, and the source's count of flames trailing back off the shaft or motes drifting off it, round the shaft.
+        private static int BowEnchant(ChipSockets s,bool fire,bool poison,int ember,int poisonStacks,ChipModule[] o,int n)
+        {
+            for(int e=0;e<2;e++)
+            {
+                bool flame=e==0;if(flame?!fire:!poison)continue;int count=10+Math.Min(6,Math.Max(1,flame?ember:poisonStacks));byte tag=(byte)(flame?NativeWeaponDressing.FireEnchant:NativeWeaponDressing.PoisonEnchant);
+                if(Put(o,ref n,flame?ChipPart.HeatEdge:ChipPart.Coat,flame?Flame:Poison,Vector3.Zero,Quaternion.Identity)){o[n-1].Ride=OnArrow;o[n-1].Enchant=tag;o[n-1].Phase=-1;}
+                for(int i=0;i<count&&n<o.Length;i++)
+                {
+                    float u=(float)i/(count-1),z=s.StripZ0+u*(s.StripZ1-s.StripZ0),a=i*2.4f+(flame?0:1.2f);var r=new Vector3((float)Math.Cos(a),(float)Math.Sin(a),0);
+                    o[n++]=new ChipModule{Part=flame?ChipPart.Flame:ChipPart.Mote,Color=flame?(i%3!=0?Flame:FlameHot):Poison,Position=r*(flame?.0042f:.0075f)+new Vector3(0,0,z),Rotation=flame?Basis(r,-Vector3.UnitZ):Quaternion.Identity,
+                        Drift=r,Scale=new Vector3(s.FlameSize*(flame?1:.8f)),Orbit=-1,Enchant=tag,Phase=i*.81f,Ride=OnArrow};
                 }
             }
             return n;

@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
     // (chip counts and stats), so a loadout shows the same kinds on both skins; only the look and the placement differ.
     // Presentation only: nothing here is read by the authority, the network frame or the melee rules, and no module defines
     // reach, a hit volume or timing (weapon-visuals.ts:20).
-    public enum ChipFamily : byte { None, Gun, Staff, Blade, Shield }
+    public enum ChipFamily : byte { None, Gun, Staff, Blade, Shield, Bow }
     /// <summary>The designed attachments; each is one small mesh per weapon (or shared), variant and detail tier.</summary>
     public enum ChipPart : byte { Pod, Drone, Collar, Coil, Helix, Gimbal, Intake, Fin, Seeker, Prism, Lance, Cell, Cap, Vane, Piston, Charge, Launcher, Sawback, Frag, Capacitor, EdgeRail, Echo, HeatEdge, Flame, Coat, Mote, Spinner, Spike, Flywheel, Clamp, Chevron, Tip, Count }
     /// <summary>One placed attachment in the source weapon frame (the Runtime mirrors x once, as for the weapon models).</summary>
@@ -24,8 +24,10 @@ namespace ChipArena.UnityConversion
         /// Orbit: this drone's index round the weapon axis through Position on the Radius x RadiusY ellipse (-1: none; Orbits drones in all). Spin:
         /// turns about its own z (the rate coil). Enchant: NativeWeaponDressing.FireEnchant / PoisonEnchant. Deform: a blade
         /// strip that stretches with the Standard blade under reach (every other piece rides rigid to its stretched place).
+        /// Ride (the bow): the live part the piece is on, NativeChipModules.OnWeapon (the riser), OnUpperLimb / OnLowerLimb (given
+        /// at rest, turned with the limb's flex) or OnArrow (in the nocked arrow's frame: the nock at 0, +z to the head).
         /// </summary>
-        public sbyte Orbit;public byte Orbits;public bool Spin,Deform;public byte Enchant;public float Radius,RadiusY,Phase;
+        public sbyte Orbit;public byte Orbits;public bool Spin,Deform;public byte Enchant,Ride;public float Radius,RadiusY,Phase;
     }
     /// <summary>The kinds a loadout shows, from the chips and stats exactly as weaponModifiers reads them (weapon-visuals.ts:89-106).</summary>
     public struct ChipKinds
@@ -69,6 +71,8 @@ namespace ChipArena.UnityConversion
         // Blades and the shield: fixed mounts and the strip run along the blade.
         public ChipMount Kinetic,Static,Split,Homing,Vane,Charges,Pierce,Gimbal,Cells,Spinner,Vacuum,Sawback,Drones,RicochetM,VelocityM,Seeker;
         public float StripZ0,StripZ1,EdgeSign,GimbalR,SpinnerR,VacuumR,DroneZ,DroneX,DroneR,DroneRY,DroneSize=1,FlameSize=1;public bool DoubleEdge,Mirror;
+        // The bow's limb-tip cams and the frag collar on its stabilizer weight (the bow reuses the mounts above for the rest).
+        public ChipMount Cam,Frag;
         /// <summary>The blade's measured half profile along z (blades), or the rim outline (shield): min/max x and the flat's half thickness.</summary>
         public float[] ProfileZ,ProfileMinX,ProfileMaxX,ProfileHalfY;
         public float MinX(float z)=>Sample(ProfileMinX,z);public float MaxX(float z)=>Sample(ProfileMaxX,z);public float HalfY(float z)=>Sample(ProfileHalfY,z);
@@ -82,10 +86,12 @@ namespace ChipArena.UnityConversion
     {
         public const int MaxModules=NativeWeaponDressing.MaxPieces,Variants=4;
         public const float Gap=.006f,OrbitSpeed=1.4f,SpinSpeed=8;
+        /// <summary>ChipModule.Ride: the bow's live parts (every other weapon's pieces are OnWeapon).</summary>
+        public const byte OnWeapon=0,OnUpperLimb=1,OnLowerLimb=2,OnArrow=3;
         // The source's piece colours (weapon-visuals.ts:89-106), one per kind: every Standard attachment is tinted by its kind's.
         public const int Ricochet=0xffcc49,Velocity=0x79eaff,Homing=0xf482d4,Split=0x96ffb7,Pierce=0xffffff,Magazine=0xe3b779,Pong=0xff5269,Boomerang=0x7fffe0,Vacuum=0xbc72ff,
             Rate=0xffae64,Kinetic=0xffad68,Demolition=0xffd45f,Shrapnel=0xff855c,Static=0xc4a0ff,Reach=0x92f5e5,Echo=0xc1a1ff,PodGlow=0xffd88d,Flame=0xff6c27,FlameHot=0xffd06a,Poison=0x88f37f;
-        public static ChipFamily Family(string spec)=>NativeWeaponDressing.Gun(spec)?ChipFamily.Gun:NativeWeaponDressing.Staff(spec)||spec=="leet"?ChipFamily.Staff:spec=="shield"?ChipFamily.Shield:spec=="sword"||spec=="daggers"||spec=="greatsword"?ChipFamily.Blade:ChipFamily.None;
+        public static ChipFamily Family(string spec)=>NativeWeaponDressing.Gun(spec)?ChipFamily.Gun:NativeWeaponDressing.Staff(spec)||spec=="leet"?ChipFamily.Staff:spec=="shield"?ChipFamily.Shield:spec=="sword"||spec=="daggers"||spec=="greatsword"?ChipFamily.Blade:NativeBowWire.Is(spec)?ChipFamily.Bow:ChipFamily.None;
         /// <summary>A weapon whose Standard model carries designed modules (every Standard weapon but the fists; the Siren has no skin).</summary>
         public static bool Designed(string spec)=>Family(spec)!=ChipFamily.None&&NativeWeaponModels.Designed(spec);
         private static int Count(IReadOnlyDictionary<string,int> chips,string id)=>chips!=null&&chips.TryGetValue(id,out int n)&&n>0?n:0;
@@ -130,7 +136,7 @@ namespace ChipArena.UnityConversion
         public static int Modules(string spec,bool ranged,int weaponColor,IReadOnlyDictionary<string,int> chips,ChipStats stats,ChipModule[] o)
         {
             var s=Sockets(spec);if(s==null||stats==null)return 0;var k=Kinds(chips,stats);if(!k.Any)return 0;
-            switch(s.Family){case ChipFamily.Gun:return Gun(s,k,o);case ChipFamily.Staff:return Staff(s,k,weaponColor,o);case ChipFamily.Blade:return Blade(s,k,weaponColor,o);case ChipFamily.Shield:return Shield(s,k,weaponColor,o);}
+            switch(s.Family){case ChipFamily.Gun:return Gun(s,k,o);case ChipFamily.Staff:return Staff(s,k,weaponColor,o);case ChipFamily.Blade:return Blade(s,k,weaponColor,o);case ChipFamily.Shield:return Shield(s,k,weaponColor,o);case ChipFamily.Bow:return Bow(s,k,o);}
             return 0;
         }
     }

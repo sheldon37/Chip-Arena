@@ -29,19 +29,21 @@ namespace ChipArena.UnityConversion
             var f=Family(spec);if(f==ChipFamily.None||!Designed(spec))return false;
             switch(p)
             {
-                case ChipPart.Pod:case ChipPart.Lance:case ChipPart.Launcher:case ChipPart.Cap:return f==ChipFamily.Gun;
+                case ChipPart.Pod:case ChipPart.Lance:case ChipPart.Launcher:return f==ChipFamily.Gun;
+                case ChipPart.Cap:return f==ChipFamily.Gun||f==ChipFamily.Bow;
                 case ChipPart.Helix:return f==ChipFamily.Staff||f==ChipFamily.Gun&&spec!="pistol";
-                case ChipPart.Flywheel:return spec=="pistol";
-                case ChipPart.Piston:return f==ChipFamily.Gun||f==ChipFamily.Staff;
+                case ChipPart.Flywheel:return spec=="pistol"||f==ChipFamily.Bow;
+                case ChipPart.Piston:return f==ChipFamily.Gun||f==ChipFamily.Staff||f==ChipFamily.Bow;
                 case ChipPart.Fin:return f==ChipFamily.Gun||f==ChipFamily.Staff;
-                case ChipPart.Frag:return f==ChipFamily.Staff;
+                case ChipPart.Frag:return f==ChipFamily.Staff||f==ChipFamily.Bow;
                 case ChipPart.Collar:case ChipPart.Coil:return f!=ChipFamily.Shield;
                 case ChipPart.Drone:return f!=ChipFamily.Gun;
                 case ChipPart.EdgeRail:case ChipPart.Echo:return true;
-                case ChipPart.Spinner:case ChipPart.Clamp:case ChipPart.Sawback:case ChipPart.HeatEdge:case ChipPart.Coat:case ChipPart.Flame:case ChipPart.Mote:return f==ChipFamily.Blade||f==ChipFamily.Shield;
+                case ChipPart.Spinner:case ChipPart.Clamp:case ChipPart.Sawback:return f==ChipFamily.Blade||f==ChipFamily.Shield;
+                case ChipPart.HeatEdge:case ChipPart.Coat:case ChipPart.Flame:case ChipPart.Mote:return f==ChipFamily.Blade||f==ChipFamily.Shield||f==ChipFamily.Bow;
                 case ChipPart.Chevron:return f==ChipFamily.Shield;
                 case ChipPart.Spike:return f==ChipFamily.Staff||f==ChipFamily.Shield;
-                case ChipPart.Tip:return f==ChipFamily.Blade;
+                case ChipPart.Tip:return f==ChipFamily.Blade||f==ChipFamily.Bow;
                 case ChipPart.Count:return false;
                 default:return true;   // Gimbal, Intake, Seeker, Prism, Vane, Charge, Capacitor, Cell
             }
@@ -96,8 +98,8 @@ namespace ChipArena.UnityConversion
             var mesh=new WeaponMesh{Spec=Shared(part)?"chip":spec,Tier=tier};var k=new WeaponSculpt(mesh,tier);k.Into(-1);
             switch(part)
             {
-                case ChipPart.Pod:Pod(k,s);break;case ChipPart.Drone:Drone(k);break;case ChipPart.Collar:Collar(k,s.Sections[Math.Min(variant,s.Sections.Length-1)],s.Family==ChipFamily.Blade);break;
-                case ChipPart.Coil:Coil(k,s.Sections[Math.Min(variant,s.Sections.Length-1)],s.Family==ChipFamily.Blade);break;case ChipPart.Helix:Helix(k,s);break;case ChipPart.Gimbal:Gimbal(k,GimbalRadius(s));break;
+                case ChipPart.Pod:Pod(k,s);break;case ChipPart.Drone:Drone(k);break;case ChipPart.Collar:Collar(k,s.Sections[Math.Min(variant,s.Sections.Length-1)],s.Family==ChipFamily.Blade||s.Family==ChipFamily.Bow);break;
+                case ChipPart.Coil:Coil(k,s.Sections[Math.Min(variant,s.Sections.Length-1)],s.Family==ChipFamily.Blade||s.Family==ChipFamily.Bow);break;case ChipPart.Helix:Helix(k,s);break;case ChipPart.Gimbal:Gimbal(k,GimbalRadius(s));break;
                 case ChipPart.Intake:Intake(k,s);break;case ChipPart.Fin:Fin(k);break;case ChipPart.Seeker:Seeker(k);break;case ChipPart.Prism:Prism(k);break;case ChipPart.Lance:Lance(k,s.LanceLength);break;
                 case ChipPart.Cell:Cell(k,s);break;case ChipPart.Cap:CellCap(k,s);break;case ChipPart.Vane:Vane(k);break;case ChipPart.Piston:Piston(k,s.PistonLength);break;case ChipPart.Charge:Charge(k);break;
                 case ChipPart.Launcher:Launcher(k,s.LauncherLength);break;case ChipPart.Sawback:Sawback(k,s,tier);break;case ChipPart.Frag:Frag(k);break;case ChipPart.Capacitor:Capacitor(k);break;
@@ -398,6 +400,7 @@ namespace ChipArena.UnityConversion
         // Pierce (blades): a white penetrator sheath over the point, following the blade's own taper to just past its tip.
         private static void TipCap(WeaponSculpt k,ChipSockets s,int tier)
         {
+            if(s.Family==ChipFamily.Bow){Bodkin(k);return;}
             var p=TierProfile(s,tier);var d=NativeWeaponModels.Get(s.Spec);float z0=s.TipZ,z1=d.StretchTip;int steps=k.Mid?6:3;var rings=new List<Vector3[]>();
             for(int i=0;i<=steps;i++)
             {
@@ -407,6 +410,51 @@ namespace ChipArena.UnityConversion
             float tx=(p.MinX(z1-.004f)+p.MaxX(z1-.004f))/2;rings.Add(Point(8,V(tx,0,z1+.006f)));
             k.Loft(rings,(i,j)=>i==0?ShellLight:Glow(2.4f,.55f),0,true,false);
             if(k.Mid)k.Loft(new[]{Rect(p.MaxX(z0)-p.MinX(z0)+.009f,2*p.HalfY(z0)+.008f,.003f,z0-.004f,(p.MinX(z0)+p.MaxX(z0))/2,0),Rect(p.MaxX(z0)-p.MinX(z0)+.009f,2*p.HalfY(z0)+.008f,.003f,z0+.006f,(p.MinX(z0)+p.MaxX(z0))/2,0)},(i,j)=>Shell,0,true,true);
+        }
+
+        // ---- the bow's own strips (the bow frame; the arrow's frame for the arrowhead parts) ----
+        // Reach (bow): a hardlight rail just outside each edge of the upper limb, pocket to recurve (the lower limb shows it turned).
+        private static void LimbRails(WeaponSculpt k,WeaponPaint g)
+        {
+            int steps=k.Fine?16:k.Mid?10:6;
+            for(int q=-1;q<=1;q+=2)
+            {
+                var path=new List<Vector3>(steps+1);
+                for(int i=0;i<=steps;i++){float u=.06f+.76f*i/steps;BowLimb(u,out var at,out _,out _,out float w);path.Add(at+V(q*(w+.0018f),0,0));}
+                k.Tube(_=>g,path,_=>.0018f,4,Vector3.UnitX,0,true,false,1,Pi/4);
+            }
+        }
+        // Echo (bow): phantom inlays on both flanks of the lower riser and the upper riser (behind the accent inlays), doubled at
+        // full detail.
+        private static void RiserInlays(WeaponSculpt k,WeaponPaint g)
+        {
+            for(int q=-1;q<=1;q+=2)for(int line=0;line<(k.Mid?2:1);line++)
+            {
+                float x=q*.0146f,dz=line*.0065f;
+                k.Box(g,V(x,-.193f,.026f+dz),V(.0012f,.084f,.0028f),0);k.Box(g,V(x,.19f,.03f+dz),V(.0012f,.044f,.0028f),0);
+            }
+        }
+        // Fire (bow): the heated broadhead, its three blade edges and the ferrule band glowing (the arrow's frame).
+        private static void HotHead(WeaponSculpt k,WeaponPaint g)
+        {
+            float L=NativeBow.ArrowLength,h=NativeBow.ArrowHead;
+            k.Lathe(g,new[]{.0057f,L-h-.004f,.0062f,L-h+.002f,.0062f,L-h+.01f,.0052f,L-h+.014f},k.Sides(8),0,0,true);
+            for(int b=0;b<3;b++){float a=b*Pi*2/3+Pi/6;var n=V((float)Math.Cos(a),(float)Math.Sin(a),0);k.Tube(_=>g,new[]{n*.0143f+V(0,0,L-h+.017f),V(0,0,L+.001f)},_=>.0016f,k.Mid?4:3,Vector3.UnitX,0,true);}
+            if(k.Mid)k.Lathe(g,new[]{.0052f,L-h-.06f,.0056f,L-h-.055f,.0056f,L-h-.048f,.0052f,L-h-.044f},k.Sides(8),0,0,true);
+        }
+        // Poison (bow): a venom sleeve round the shaft behind the head and the broadhead's edges wet with it (the arrow's frame).
+        private static void VenomSleeve(WeaponSculpt k,WeaponPaint g)
+        {
+            float L=NativeBow.ArrowLength,h=NativeBow.ArrowHead;
+            k.Lathe(i=>i==1||i==2?g:Shell,new[]{.0052f,L-h-.12f,.0062f,L-h-.114f,.0062f,L-h-.01f,.0052f,L-h-.004f},k.Sides(8),0,0,true);
+            for(int b=0;b<3;b++){float a=b*Pi*2/3+Pi/6;var n=V((float)Math.Cos(a),(float)Math.Sin(a),0);k.Tube(_=>g,new[]{n*.0138f+V(0,0,L-h+.017f),n*.0045f+V(0,0,L-.01f)},_=>.0012f,3,Vector3.UnitX,0,true);}
+        }
+        // Pierce (bow): a white penetrator sheath over the broadhead, from a collar on the ferrule to a long point past the tip.
+        private static void Bodkin(WeaponSculpt k)
+        {
+            float L=NativeBow.ArrowLength,h=NativeBow.ArrowHead;int n=k.Sides(6);
+            k.Lathe(i=>i<2?ShellLight:Shell,new[]{.0062f,L-h-.009f,.0068f,L-h-.004f,.0068f,L-h+.004f,.0062f,L-h+.008f},n,0,0,true);
+            k.Loft(new[]{Circle(n,.0062f,.0062f,L-h+.008f),Circle(n,.0146f,.0146f,L-h+.016f),Circle(n,.0092f,.0092f,L-.022f),Circle(n,.0032f,.0032f,L+.006f),Point(n,V(0,0,L+.02f))},(i,j)=>Glow(2.4f,.55f),0,true,false);
         }
 
         // ---- strips along the blade (or the shield's rim), from the tier's own profile ----
@@ -425,6 +473,7 @@ namespace ChipArena.UnityConversion
         {
             var g=Glow(2.1f,.45f);
             if(s.Family==ChipFamily.Gun||s.Family==ChipFamily.Staff){RunRails(k,g,s,1);return;}
+            if(s.Family==ChipFamily.Bow){LimbRails(k,g);return;}
             if(s.Family==ChipFamily.Shield){var loop=RimLoop(-.0028f,out int count);var path=new List<Vector3>(count);for(int i=0;i<count;i++){float x=loop[i*2],y=loop[i*2+1];path.Add(V(x,y,.214f+NativeWeaponModels.Bow(x)*.5f));}k.Tube(g,path,.0026f,4,Vector3.UnitZ,0,false,true,1.6f);return;}
             var p=TierProfile(s,tier);int steps=StripSteps(k,s.StripZ1-s.StripZ0);
             Strip(k,g,p,s.StripZ0,s.StripZ1,z=>new Vector2(p.MaxX(z)+.0018f,0),.0036f,.0062f,steps);
@@ -443,6 +492,7 @@ namespace ChipArena.UnityConversion
         {
             var g=Glow(1.8f,.4f);
             if(s.Family==ChipFamily.Gun||s.Family==ChipFamily.Staff){RunRails(k,g,s,-1);return;}
+            if(s.Family==ChipFamily.Bow){RiserInlays(k,g);return;}
             if(s.Family==ChipFamily.Shield){RimTube(k,g,.078f,.0016f,ShieldFace,.0022f);return;}
             var p=TierProfile(s,tier);int steps=StripSteps(k,s.StripZ1-s.StripZ0);float z0=s.StripZ0+.03f,z1=s.StripZ1-.12f;
             for(int f=-1;f<=1;f+=2)
@@ -455,6 +505,7 @@ namespace ChipArena.UnityConversion
         private static void HeatEdge(WeaponSculpt k,ChipSockets s,int tier)
         {
             var g=Glow(2.4f,.5f);
+            if(s.Family==ChipFamily.Bow){HotHead(k,g);return;}
             if(s.Family==ChipFamily.Shield){RimTube(k,g,.008f,.0014f,(x,y)=>.252f+NativeWeaponModels.Bow(x),.0022f);return;}
             var p=TierProfile(s,tier);int steps=StripSteps(k,s.StripZ1-s.StripZ0);
             for(int f=-1;f<=1;f+=2)for(int q=-1;q<=1;q+=2)
@@ -467,6 +518,7 @@ namespace ChipArena.UnityConversion
         private static void Coat(WeaponSculpt k,ChipSockets s,int tier)
         {
             var g=Glow(1.9f,.42f);
+            if(s.Family==ChipFamily.Bow){VenomSleeve(k,g);return;}
             if(s.Family==ChipFamily.Shield){RimTube(k,g,.05f,.0016f,ShieldFace,.0022f);return;}
             var p=TierProfile(s,tier);int steps=StripSteps(k,s.StripZ1-s.StripZ0);
             for(int f=-1;f<=1;f+=2)for(int q=-1;q<=1;q+=2)

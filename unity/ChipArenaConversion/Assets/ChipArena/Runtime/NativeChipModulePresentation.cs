@@ -6,8 +6,9 @@ namespace ChipArena.UnityConversion
     // exactly. The same rules decide when and where they show: the arena (live, guest replica, killcam replay) and first person,
     // the view weapon hiding them past half ADS; the modules dim with the rig's block cooldown, the enchant does not. In first
     // person the attachments stay where they sit on the model (the Prototype's shrink to half size about the hand); their mounts
-    // keep them out of the sight line (ChipModuleChecks). Each draw uses the weapon's detail tier and a cached bank id: no
-    // allocation per frame.
+    // keep them out of the sight line (ChipModuleChecks). The bow draws through BowDressing (StandardBowDressing below): its
+    // pieces ride the riser, the flexing limbs and the nocked arrow. Each draw uses the weapon's detail tier and a cached bank
+    // id: no allocation per frame.
     public sealed partial class ArenaPresentation
     {
         private readonly ChipModule[] chipModules=new ChipModule[NativeChipModules.MaxModules];
@@ -41,6 +42,31 @@ namespace ChipArena.UnityConversion
             float x=((Vector3)parent.GetColumn(0)).magnitude,z=((Vector3)parent.GetColumn(2)).magnitude;
             if(x>1e-6f&&NativeChipModules.Frame(spec,p,z/x,out float scale,out float offset))parent=parent*Matrix4x4.Translate(new Vector3(0,0,offset))*Matrix4x4.Scale(new Vector3(1,1,scale));
             var matrix=parent*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(p.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(p.Rotation)),CapturedAnimation.Vec(p.Scale));
+            var color=NativeArena.ColorOf(p.Color).linear;if(dim!=1)color=new Color(color.r*dim,color.g*dim,color.b*dim,color.a);
+            sourceModels.Queue(id,matrix,null,null,layer,camera,body:color);
+        }
+        /// <summary>
+        /// The Standard bow (called from BowDressing with the frame BowDraw just posed; false: the Prototype route): the designed
+        /// modules on the bow hand, each on its live part (the riser; a limb, turned with its flex; the nocked arrow, moving with
+        /// the pull, hidden while none is on the string), and the burn / poison enchant on the nocked arrow, as the Prototype's.
+        /// The bow keeps its pieces in first person at their own size and place; no aim hides them (the bow has no ADS).
+        /// </summary>
+        private bool StandardBowDressing(Actor a,NativePilot pilot,in NativeBowPose.Frame f,in NativeBow.View v,float time,bool first,int layer,Camera camera)
+        {
+            if(!StandardChips(a))return false;string spec=NativeBowWire.Spec;var chips=pilot.Seat.chips;var stats=pilot.Stats;
+            float distance=0;var eye=WorldEye;if(!first&&eye!=null)distance=Vector3.Distance(eye.transform.position,bowHand.GetColumn(3));int tier=NativeWeaponSkins.Tier(LowGraphics,WeaponEffectsQuality,distance,first);
+            int count=NativeChipModules.Modules(spec,true,(int)pilot.Weapon.color,chips,stats,chipModules);
+            for(int i=0;i<count;i++)QueueBowChip(chipModules[i],tier,time,f.Pull,v.Nocked,layer,camera,rigFactor);
+            bool fire=stats["burn"]>0,poison=stats["poison"]>0;if(!fire&&!poison||!v.Nocked)return true;
+            chips.TryGetValue("ember",out int ember);chips.TryGetValue("poison",out int motes);int flames=NativeChipModules.Enchant(spec,fire,poison,ember,motes,chipModules,0);
+            for(int i=0;i<flames;i++)QueueBowChip(chipModules[i],tier,time,f.Pull,true,layer,camera,1);
+            return true;
+        }
+        private void QueueBowChip(ChipModule p,int tier,float time,float pull,bool nocked,int layer,Camera camera,float dim)
+        {
+            NativeChipModules.Animate(ref p,time);if(!NativeChipModules.Ride(ref p,pull,nocked))return;
+            var id=NativeChipModules.ModelId(NativeBowWire.Spec,p.Part,p.Variant,tier);if(id==null)return;
+            var matrix=bowHand*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(p.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(p.Rotation)),CapturedAnimation.Vec(p.Scale));
             var color=NativeArena.ColorOf(p.Color).linear;if(dim!=1)color=new Color(color.r*dim,color.g*dim,color.b*dim,color.a);
             sourceModels.Queue(id,matrix,null,null,layer,camera,body:color);
         }
