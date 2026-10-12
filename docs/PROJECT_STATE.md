@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-12 PvE chips: `codex/unity-pve-chip-pickups-20261012` on shared `1627b0c` gives every PvE pick three choices, including rainbow, and collects ready drops automatically only for their living, connected owner. Choices stay queued for C; F remains station/revive interaction. Logic harness, managed/relay, Python, Unity API compilation and source packaging pass. Editor/Windows/two-client play and compiled publication remain pending through local Build-and-Publish. See DEV_LOG and task PR for receipts.
+
 2026-10-12 room start: `codex/unity-host-start-20261012` on shared `19c00c7` removes the hidden all-ready automatic start for player-hosted rooms. Ready now enables the host's Start button; the existing host-side readiness guard remains. Old saved auto-start values are ignored. Source logic checks pass; Unity/Windows and two-client acceptance plus compiled publication require the normal local Build-and-Publish. See DEV_LOG and task PR for source integration and CI receipts.
 
 2026-10-12 entrance pilot motion: `claude/intro-melee` (base `512348d`) drives the sword, greatsword, shield and gun signatures from the owner's Explosive pack (`tools/export_pack_intros.mjs`, `Core/NativeEntrancePack`); the four magic schools follow on the same branch (daggers stay baked). Managed/relay 367 PASS, Python 82 (one skip), Unity API compilation and source packaging pass; Unity Editor/Windows play not run. Not pushed, merged or released; see DEV_LOG.

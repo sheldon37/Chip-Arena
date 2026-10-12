@@ -75,9 +75,9 @@ namespace ChipArena.UnityConversion
         {
             Match.Seats.Add(new NativeSeat{id=8,name="Siren",spec="siren",team=7,AuthorityBoss=true,bot=true});Reset();ConfigurePve(data,false);
             if(Pve==null)throw new InvalidOperationException("Configure PvE before its acceptance gate");void Check(bool ok,string message){if(!ok)throw new Exception("Native PvE gate: "+message);}
-            StartPve();var pilot=Members().First();var row=Pve.Rows[pilot.Seat.id];Check(row.Money==150&&row.Open!=null&&row.Open.Offers.Count>0,"opening money/draft");string chip=row.Open.Offers[0];int pick=row.Open.Id;Check(ChoosePve(pilot,pick,chip)&&pilot.Seat.chips[chip]==1&&!ChoosePve(pilot,pick,chip),"draft exactly once");
+            StartPve();var pilot=Members().First();var row=Pve.Rows[pilot.Seat.id];Check(row.Money==150&&row.Open!=null&&row.Open.Offers.Count==3,"opening money/three-choice draft");string chip=row.Open.Offers[0];int pick=row.Open.Id;Check(ChoosePve(pilot,pick,chip)&&pilot.Seat.chips[chip]==1&&!ChoosePve(pilot,pick,chip),"draft exactly once");
             var machine=Pve.Content.machines.First(m=>m.kind=="chip");pilot.Body.position=Vec(machine.front.Position(.9f));row.Money=1000;int cost=NativePveRules.ChipPrice(row.Bought),before=row.Money;PveInteract(pilot,row);Check(row.Money==before-cost&&Pve.Pickups.Count==1&&Pve.Machines.Last().result=="chip","paid dispenser");
-            var pickup=Pve.Pickups[0];while(Time<pickup.Born+.001f)Match.Tick(.0167);pilot.Body.position=pickup.Position;PveInteract(pilot,row);Check(Pve.Pickups.Count==0&&row.Picks.Count==1,"pickup collection");OpenPvePick(pilot);ChoosePve(pilot,row.Open.Id,row.Open.Offers[0]);
+            ValidatePvePickups(pilot);OpenPvePick(pilot);Check(row.Open.Offers.Count==3,"collected chip has three choices");ChoosePve(pilot,row.Open.Id,row.Open.Offers[0]);
             var med=Pve.Content.machines.First(m=>m.kind=="med");pilot.Body.position=Vec(med.front.Position(.9f));pilot.Hp=20;before=row.Money;PveInteract(pilot,row);Check(row.Money==before-75&&row.HealPulses==0&&row.HealReady>Time,"paid healing");before=row.Money;PveInteract(pilot,row);Check(row.Money==before&&Pve.Machines.Last().result=="deny","med cooldown charged twice");
             var recruit=Pve.Content.machines.First(m=>m.kind=="recruit");pilot.Body.position=Vec(recruit.front.Position(.9f));row.Money=1000;PveInteract(pilot,row);PveInteract(pilot,row);before=row.Money;PveInteract(pilot,row);Check(Pve.Hires.Count==2&&row.Money==before,"pending recruit cap");
             pilot.Hp=0;pilot.Seat.alive=false;pilot.Collider.enabled=false;pilot.Body.isKinematic=true;RevivePve(pilot);Check(pilot.Hp==(float)pilot.Stats["hp"]*.5f&&pilot.Collider.enabled&&!pilot.Body.isKinematic&&pilot.ShieldUntil>Time&&pilot.Wounds.Count==0,"safe revival state");
@@ -117,6 +117,34 @@ namespace ChipArena.UnityConversion
             }
             finally{guest.Dispose();}
             Debug.Log("PASS Siren guest screens/audio: real reveal/intro/start/tick/finish traverse framed codec/order/apply at frozen time; personal picks, choose-later/reopen and late join retain all offers");
+        }
+        private void ValidatePvePickups(NativePilot pilot)
+        {
+            void Check(bool ok,string message){if(!ok)throw new Exception("Native PvE pickup gate: "+message);}
+            var row=Pve.Rows[pilot.Seat.id];var pickup=Pve.Pickups.Single();pilot.Input=default;pilot.Body.position=pickup.Position;
+            PveInput(pilot);Check(Pve.Pickups.Count==1&&row.Picks.Count==0,"dispense delay");
+            while(Time<pickup.Born+.001f)Match.Tick(.0167);
+            var other=Members().First(p=>p!=pilot);var otherRow=Pve.Rows[other.Seat.id];int otherPicks=otherRow.Picks.Count;var otherPosition=other.Body.position;
+            other.Body.position=pickup.Position;other.Input=default;PveInput(other);other.Body.position=otherPosition;
+            Check(Pve.Pickups.Count==1&&otherRow.Picks.Count==otherPicks,"non-owner cannot take a chip");
+            pilot.Body.position=pickup.Position+Vector3.right*1.7f;PveInput(pilot);Check(Pve.Pickups.Count==1,"outside pickup radius");
+            pilot.Body.position=pickup.Position+Vector3.up*3;PveInput(pilot);Check(Pve.Pickups.Count==1,"different floor");pilot.Body.position=pickup.Position;
+            float hp=pilot.Hp;pilot.Hp=0;PveInput(pilot);pilot.Hp=hp;Check(Pve.Pickups.Count==1,"downed owner");
+            pilot.Seat.connected=false;PveInput(pilot);pilot.Seat.connected=true;Check(Pve.Pickups.Count==1,"disconnected owner");
+            Replica=true;PveInput(pilot);Replica=false;Check(Pve.Pickups.Count==1,"replica cannot collect");
+            Pve.Holding=true;PveInput(pilot);Pve.Holding=false;Check(Pve.Pickups.Count==1,"cinematic hold");
+            int money=row.Money;PveInput(pilot);PveInput(pilot);
+            Check(Pve.Pickups.Count==0&&row.Picks.Count==1&&row.Open==null&&row.Money==money,"walk-over queues exactly once without F or another charge");
+            var frame=NativeFrameCodec.Clone(NetworkFrame());var ownerFrame=frame.pve.rows.Single(r=>r.id==pilot.Seat.id);
+            Check(frame.pve.pickups.Length==0&&ownerFrame.picks.Length==1&&ownerFrame.picks[0].source=="machine"&&frame.pve.rows.Single(r=>r.id==other.Seat.id).picks.Length==otherPicks,"guest frame preserves personal collection");
+            int choices=Match.Choices;
+            try
+            {
+                foreach(int setting in new[]{1,6,12})foreach(var tier in Pve.Content.offerWeights)
+                {Match.Choices=setting;var pick=new NativePvePick{Tier=tier.id};RollPveOffers(pilot,pick);Check(pick.Offers.Count==3&&pick.Offers.Distinct().Count()==3,"three distinct "+tier.id+" choices with PvP setting "+setting);}
+            }
+            finally{Match.Choices=choices;}
+            Debug.Log("PASS native PvE owner-only walk-over pickups, dispense delay, alive/connected/height/authority guards, queued guest frame and three choices in every tier");
         }
         private void ValidatePossessionReplication(NativeArena guest)
         {
