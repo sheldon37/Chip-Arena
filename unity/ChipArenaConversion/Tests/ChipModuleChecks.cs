@@ -82,7 +82,8 @@ namespace ChipArena.UnityConversion
             Check(Sha("Core/NativeWeaponDressing.cs")==DressingSha,"NativeWeaponDressing.cs (the Prototype pieces) is byte-identical to the base");
             Check(Sha("Runtime/NativeSourcePrimitives.cs")==PrimitivesSha,"NativeSourcePrimitives.cs (the Prototype primitives) is byte-identical to the base");
             var digest=new StringBuilder();
-            foreach(var w in data.weapons)foreach(var l in Loadouts(data,w.id))
+            // The base weapons (the Bow, now in content, has its own pinned digest below).
+            foreach(var w in data.weapons.Where(w=>w.id!=NativeBowWire.Spec))foreach(var l in Loadouts(data,w.id))
             {
                 int n=NativeWeaponDressing.Modules(w.id,w.@class=="ranged",(int)w.color,l.Chips,l.Stats,pieces);digest.Append(w.id).Append(l.Name).Append(n);
                 for(int i=0;i<n;i++)foreach(float t in new[]{0f,1.37f}){var p=pieces[i];NativeWeaponDressing.Animate(ref p,t);Piece(digest,p);}
@@ -252,7 +253,7 @@ namespace ChipArena.UnityConversion
                 {
                     // The bow's own view rig (NativeBowPose.View: the eye at ViewEye looking down +z, the bow on the posed left hand)
                     // through the carry, the draw and the hold; the pieces ride the frame's pull and nocked arrow.
-                    var ba=new Actor{Id=45,SourceSpec=spec,Weapon=WeaponId.Sword,Grounded=true,Hp=100,CastRate=1,MeleeKit=new NativeMeleeKit(),LastShot=-100};ba.Bow.DrawAt=1;var bpose=new CapturedRig.Pose();
+                    var ba=new Actor{Id=45,SourceSpec=spec,Weapon=WeaponId.Sword,Grounded=true,Hp=100,CastRate=1,MeleeKit=new NativeMeleeKit(),LastShot=-100};ba.BowDrawAt=1;var bpose=new CapturedRig.Pose();
                     var eyeB=NativeBowPose.ViewEye;float AngleB(Vector3 w)=>(float)(Math.Acos(MathUtil.Clamp(Vector3.Normalize(w-eyeB).Z,-1,1))*180/Math.PI);
                     var bowParts=new[]{NativeBowModels.Part(true,NativeBowModels.Riser,0),NativeBowModels.Part(true,NativeBowModels.UpperLimb,0),NativeBowModels.Part(true,NativeBowModels.LowerLimb,0)};
                     foreach(float t in new[]{.5f,1.2f,1.5f,1.9f,2.4f})

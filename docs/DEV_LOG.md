@@ -1,5 +1,27 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — merged Astra's plunge (#140) and Bow (#141) rules; visuals wired to them
+- Branch `claude/sleepy-ritchie-g8ruhv` (shared head, also pushed to `codex/unity-cloud-current`). Merges `2608ff5` (PR #140) as `5e0a19c` and `e8ec018` (PR #141) in the next commit. Both PRs were based on `e50c1cd`.
+- Plunge: `NativePlungeFields` now reads `Actor.AirKind` ("down") and `Actor.FallHeight` (NaN until the landing sets it). The keying check now allows her simulation and replication files to name the fields; presenters still go only through the mapping.
+- Bow: `NativeBowWire` reads `BowDrawAt`, `BowReleaseAt`, `BowDraw`, `BowRainAt` and `BowRainTarget`, Volley from `AbilityId volley`/`AbilityAt`, and each arrow's kind and draw from the bullet's own `Detail`/`Draw` or the Shot event's `Draw`. The provisional `NativeBowFeed` is deleted. `LastShot` is no longer read as the release, because every Volley and Rain arrow stamps it. Bow Shot events skip the generic gun-shot sound route, since the bow plays its own cues.
+- Merge resolutions:
+  - The weapon skin list takes Astra's order (bow after leet, matching the Worker's `SKIN_WEAPONS`).
+  - Her `Tests/BowChecks.cs` is now `Tests/BowRuleChecks.cs` (class `BowRuleChecks`), because the presentation test already has that name.
+- Content pins updated now that the Bow is in GameContent:
+  - Parity inventory: 15 source weapons plus the Bow, and 2 Bow abilities.
+  - Weapon card stat line: `18–62 DMG · 0.8 S DRAW`.
+  - The Bow now appears in the ranged list and the aim-higher hint.
+  - The Locker accepts the Bow's art-set icons.
+  - The base chip-module digest excludes the Bow, which has its own pinned digest.
+- Checks: Unity build OK; managed relay exit 0 (562 PASS; also in a copy holding only the Unity folder for #140); Python unittest OK (1 skipped); package_source OK; `tests/accounts.test.ts` 9/9.
+- Not run: Unity Editor, Windows, two-client play.
+- Note for Astra: replica bullets (`NativeNetworkFrame` line 159) do not copy `Shot.Draw`/`Detail`, so guests take arrow kinds from the Shot events.
+- No hit timing, hitbox, damage, cooldown or movement changes from the presentation.
+
+## 2026-10-12 — Astra — Bow simulation
+- Branch `codex/bow-simulation-20261012`, base shared `e50c1cd`. Bow content/abilities, tap/hold draw and cancel, unlimited arrows/nock, fatigue, full-draw headshot multiplier, Q Volley and timed E Rain. Uses the existing projectile/chip collision path and its .045 m arrow radius. Guest draw/movement prediction, explicit snapshot/shot/event fields, bots, sandbox primary hold and account profile/skin allowlist included; NEW-KITS records names and timing interpretation.
+- Focused managed Bow checks pass: quick/full/rate-scaled draw, damage/ballistic endpoints, fatigue, all 12 rain positions within 3.5 m, guest movement slow, release/nock and block cancel. Full visual-content acceptance is pending Claude's Bow icon/model/intro integration. Runtime/PhysX, Unity Editor, Windows and two clients are unrun. Draft source implementation, not merged or released; account source changes here have not been deployed (the separate v65 deployment contains the requested existing cosmetics only).
+
 ## 2026-10-12 — Astra — accounts Worker redeploy and downward plunge
 - Base: fetched shared `1426250` (includes `f575670` and Kernel Panic PR #138). Plunge branch `codex/plunging-stab-20261012`; party test-only PR #139 is separate (`9c58824`, 8/8 tests passed).
 - Accounts Worker deployed successfully as Site version 65, source `ec6e52c1d86adabebab1b6b8b68bab2cf6a5a40d`, deployment `appgdep_6acd10872af481919ecaca200941f59f`. Built the current-head Worker and preserved hosted client/update assets, manifest and migrations byte-for-byte. No account data migration or secret changes.

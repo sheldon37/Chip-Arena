@@ -82,6 +82,7 @@ namespace ChipArena.UnityConversion
         }
         private void BotAbilities(NativePilot p,ref InputFrame input,Vector3 target,Vector3 velocity,float distance,bool visible,int level)
         {
+            if(p.Seat.spec=="bow"){BotBow(p,ref input,target,velocity,distance,visible);return;}
             if(NativeMeleeRules.Standard(p.Seat.spec)){BotMeleeAbilities(p,ref input,target,distance,visible,level);return;}
             if(!FighterReady(p)||p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||Time<p.AttackEnd&&!(Dev(p,"emperor")&&p.Fighter?.Kind=="wave"))return;
             if(p.Fighter?.Kind=="charge"){input.HadokenHeld=visible&&Time-p.Fighter.At<1.45f&&p.Stamina>=30*p.Stats["resourceCost"];input.Shoot=input.Roll=false;return;}

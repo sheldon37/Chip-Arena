@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Texts={"The current production model, with accent lights in your colour.","The original blocky build the arena started with."};
         public const int StandardIndex=0,PrototypeIndex=1,Count=2;
         /// <summary>The weapons that carry skins (every weapon with a model; the Siren has none), in content order.</summary>
-        public static readonly string[] Weapons={"pistol","rifle","machinegun","bow","fire","water","lightning","darkness","sword","daggers","shield","greatsword","emperor","ansatsuken","leet"};
+        public static readonly string[] Weapons={"pistol","rifle","machinegun","fire","water","lightning","darkness","sword","daggers","shield","greatsword","emperor","ansatsuken","leet","bow"};
         /// <summary>The longest normalized map (every weapon on the Prototype Series, the body on the Prototype) is 278 characters; frames refuse longer.</summary>
         public const int MaxLength=320;
         public static bool Skinned(string spec)=>spec!=null&&Array.IndexOf(Weapons,spec)>=0;

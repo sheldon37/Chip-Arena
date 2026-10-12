@@ -110,22 +110,21 @@ The per-round `Shot` events (Detail `fan` / `overdrive`) still play the normal s
 ## Bow presentation (Claude, `claude/bow`)
 
 Owner (2026-10-12): "For ranged i want to add a "Bow" class." Chosen feel: "Tap or hold-to-draw" (rules in
-`docs/NEW-KITS.md` section 2; Astra builds them). This is the presentation only. It is built against the proposed
-replicated data and reads it in one place, `Core/NativeBowWire` (`Core/NativeBow.cs`). Until the simulation writes
-the real fields, a provisional `Actor.Bow` slot (`NativeBowFeed`, `[NonSerialized]`, never on the wire, written by
-nothing in play) carries the fixtures. When the real names land, only `NativeBowWire.Of` / `Shot` change.
+`docs/NEW-KITS.md` section 2; Astra builds them). This is the presentation only. It reads the replicated data in one
+place, `Core/NativeBowWire` (`Core/NativeBow.cs`), now wired to Astra's fields (PR #141; the provisional fixture slot is
+gone).
 
 ### Field map (`NativeBowWire`)
 
-| Presentation reads | Proposed source |
+| Presentation reads | Source |
 | --- | --- |
-| draw start | `Actor.Bow.DrawAt` (0 while not drawing) |
-| release time, draw at release | `Actor.LastShot`, `Actor.Bow.ReleaseDraw` |
+| draw start | `Actor.BowDrawAt` (-1 while not drawing) |
+| release time, draw at release | `Actor.BowReleaseAt`, `Actor.BowDraw` (not `LastShot`: every Volley and Rain arrow stamps it) |
 | full draw time | `NativeBow.FullDraw` (.8 s) / `Actor.CastRate` |
-| let-down (no shot) | `Actor.Bow.CancelAt` (optional: else watched as a draw start cleared with no release) |
-| Volley / Rain cast and release | `Actor.Bow.VolleyAt/VolleyRelease`, `RainAt/RainRelease`; else the existing `AbilityId` `volley` / `rain-of-arrows` + `AbilityAt` / `AbilityRelease` |
-| Rain target and radius | `Actor.Bow.RainTarget`, `HasRainTarget`, `RainRadius` (else 3.5 m) |
-| arrow kind and draw | Shot event: Detail `bow` / `bow-full` / `volley` / `rain`, `Amount` = draw fraction, `Projectile` = the bullet id |
+| let-down (no shot) | watched: a draw start cleared with no release |
+| Volley cast | `AbilityId` `volley` + `AbilityAt` (= `AbilityRelease`: the five arrows leave at once) |
+| Rain cast, sky shot, target and radius | `Actor.BowRainAt`; the sky shot `RainPre` (.16 s) later; `Actor.BowRainTarget` (ground point); `NativeBowRules.RainRadius` |
+| arrow kind and draw | the bullet's own `Detail` / `Draw` (host), else its Shot event: Detail `bow` / `bow-full` / `volley` / `rain`, `Draw`, `Projectile` = the bullet id |
 | arrows in flight | bullets with `Spec == "bow"` (an unseen shot's draw comes from its launch speed, 45-110 m/s) |
 | stuck arrows | Hit / Headshot events by a bow pilot (point, flight direction; the carrying joint is the nearest body joint); prop `Impact` events; an arrow gone from the shots with no hit near it lodged in the static world (raycast) |
 

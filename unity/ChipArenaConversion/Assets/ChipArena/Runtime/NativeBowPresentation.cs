@@ -218,7 +218,7 @@ namespace ChipArena.UnityConversion
                 {
                     if(!NativeBowWire.Is(b.Spec))continue;NativeShotViews.Bullet(arena,b,tracker,now,out var v);var vel=new Vector3((float)v.VX,(float)v.VY,(float)v.VZ);p.bowVelocity[b.Id]=vel;
                     int owner=b.Original!=0?b.Original:b.Owner;float draw;NativeBow.Arrow kind;
-                    if(p.bowShots.TryGetValue(b.Id,out var shot)){draw=shot.draw;kind=shot.kind;}else{draw=NativeBowWire.SpeedDraw(b.BaseVelocity.sqrMagnitude>.01f?b.BaseVelocity.magnitude:vel.magnitude);kind=draw>=.999f?NativeBow.Arrow.Full:NativeBow.Arrow.Quick;}
+                    if(NativeBowWire.Arrow(b.Detail,b.Draw,out kind,out draw)){}else if(p.bowShots.TryGetValue(b.Id,out var shot)){draw=shot.draw;kind=shot.kind;}else{draw=NativeBowWire.SpeedDraw(b.BaseVelocity.sqrMagnitude>.01f?b.BaseVelocity.magnitude:vel.magnitude);kind=draw>=.999f?NativeBow.Arrow.Full:NativeBow.Arrow.Quick;}
                     var seat=NativeShotViews.Seat(arena,owner);bool std=seat==null||NativeWeaponSkins.Index(seat.weaponSkins,NativeBowWire.Spec)!=NativeWeaponSkins.PrototypeIndex;
                     p.bowLast[b.Id]=new BowLast{At=new Vector3((float)v.X,(float)v.Y,(float)v.Z),Velocity=vel,Draw=draw,Standard=std,Owner=owner,Frame=p.bowFrame};
                     arrows.Add(new NativeBowArrowView{Id=b.Id,Owner=owner,Position=new NVector((float)v.X,(float)v.Y,(float)v.Z),Velocity=BowN(vel),Born=b.Born,Draw=draw,Kind=kind,Standard=std});

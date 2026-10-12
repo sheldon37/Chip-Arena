@@ -4,35 +4,16 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// PROVISIONAL: the Bow's proposed replicated data (docs/NEW-KITS.md section 2) as presentation fixtures fill it, until the
-    /// simulation's real fields land (Astra). It is never on the wire ([NonSerialized] on Actor) and nothing in play writes it;
-    /// only NativeBowWire.Of reads it. When the real names land, NativeBowWire.Of reads them instead and this struct goes.
-    /// All times are on the authoritative presentation clock; zero or less means "none".
-    /// </summary>
-    public struct NativeBowFeed
-    {
-        /// <summary>The current draw's start (zero while not drawing).</summary>
-        public float DrawAt;
-        /// <summary>The draw fraction (0..1) of the latest release (its time is the existing Actor.LastShot).</summary>
-        public float ReleaseDraw;
-        /// <summary>The latest draw cancelled with no shot (RMB, sprint), when the simulation stamps it (optional: else watched).</summary>
-        public float CancelAt;
-        /// <summary>Volley (Q) and Rain of Arrows (E): cast and release times (else the existing AbilityId/AbilityAt/AbilityRelease).</summary>
-        public float VolleyAt,VolleyRelease,RainAt,RainRelease;
-        /// <summary>Rain of Arrows' marked point (world, Unity) and circle radius (else NativeBow.RainRadius).</summary>
-        public V3 RainTarget;public float RainRadius;public bool HasRainTarget;
-    }
-
-    /// <summary>
     /// THE FIELD MAP: the only place the bow presentation names replicated data (Actor fields, shot and hit events). Every
-    /// pose, effect, sound and HUD card reads the bow through NativeBowWire.Of / Shot / Arrow, so when the simulation's real
-    /// names land (or differ from the proposal) only this class changes. Proposed contract (NEW-KITS.md section 2):
-    ///   draw start and the draw fraction at release      Actor.Bow.DrawAt, Actor.Bow.ReleaseDraw; release time = Actor.LastShot
-    ///   per-arrow draw fraction on shot events           ArenaEvent Kind Shot, Detail bow / bow-full / volley / rain, Amount = draw,
-    ///                                                    Projectile = the arrow's bullet id
-    ///   Volley and Rain cast times                       Actor.Bow.VolleyAt/RainAt (or AbilityId volley / rain-of-arrows + AbilityAt/AbilityRelease)
-    ///   Rain target point and radius                     Actor.Bow.RainTarget/RainRadius
-    ///   full draw time                                   .8 s / Actor.CastRate (attackRate)
+    /// pose, effect, sound and HUD card reads the bow through NativeBowWire.Of / Shot / Arrow, so a renamed field changes only
+    /// this class. Astra's contract (docs/NEW-KITS.md "Bow implementation contract", PR #141):
+    ///   draw start (-1 idle), release time, released fraction    Actor.BowDrawAt, Actor.BowReleaseAt, Actor.BowDraw
+    ///   per-arrow kind and draw fraction                          Shot event Detail bow / bow-full / volley / rain, Draw, Projectile
+    ///                                                             (the bullet's own Detail and Draw where it carries them)
+    ///   Volley (Q) cast                                           AbilityId volley, AbilityAt (= AbilityRelease: five arrows at once)
+    ///   Rain of Arrows (E) cast and ground point                  Actor.BowRainAt, Actor.BowRainTarget; radius NativeBowRules.RainRadius
+    ///   full draw time                                            .8 s / Actor.CastRate (attackRate)
+    /// Actor.LastShot is not the release: every arrow (Volley's five, Rain's twelve) stamps it.
     /// </summary>
     public static class NativeBowWire
     {
@@ -45,25 +26,25 @@ namespace ChipArena.UnityConversion
         /// <summary>The bow as the presentation reads it from `a` (a non-bow or malformed actor reads as an idle bow). No allocation.</summary>
         public static NativeBow.Read Of(Actor a)
         {
-            var r=NativeBow.Read.None;if(!Is(a))return r;r.Bow=true;var f=a.Bow;
-            r.DrawAt=T(f.DrawAt);r.ReleaseAt=T(a.LastShot);r.ReleaseDraw=F(f.ReleaseDraw)?NativeBow.Clamp01(f.ReleaseDraw):1;r.CancelAt=T(f.CancelAt);
+            var r=NativeBow.Read.None;if(!Is(a))return r;r.Bow=true;
+            r.DrawAt=T(a.BowDrawAt);r.ReleaseAt=T(a.BowReleaseAt);r.ReleaseDraw=F(a.BowDraw)?NativeBow.Clamp01(a.BowDraw):1;
             float rate=F(a.CastRate)&&a.CastRate>.05f?a.CastRate:1;r.DrawTime=NativeBow.FullDraw/rate;
-            r.VolleyAt=T(f.VolleyAt);r.VolleyRelease=Math.Max(r.VolleyAt,T(f.VolleyRelease));
-            r.RainAt=T(f.RainAt);r.RainRelease=Math.Max(r.RainAt,T(f.RainRelease));
-            // The existing cast stamp (NativeAbilities.PressAbility: AbilityId, AbilityAt, AbilityRelease) when no bow field is set.
-            if(r.VolleyAt<0&&a.AbilityId==VolleyId&&T(a.AbilityAt)>0){r.VolleyAt=a.AbilityAt;r.VolleyRelease=Math.Max(a.AbilityAt,T(a.AbilityRelease));}
-            if(r.RainAt<0&&a.AbilityId==RainId&&T(a.AbilityAt)>0){r.RainAt=a.AbilityAt;r.RainRelease=Math.Max(a.AbilityAt,T(a.AbilityRelease));}
-            r.RainRadius=F(f.RainRadius)&&f.RainRadius>.2f&&f.RainRadius<20?f.RainRadius:NativeBow.RainRadius;
-            r.HasRainTarget=f.HasRainTarget&&F(f.RainTarget.x)&&F(f.RainTarget.y)&&F(f.RainTarget.z);r.RainTarget=r.HasRainTarget?new Vector3(f.RainTarget.x,f.RainTarget.y,f.RainTarget.z):Vector3.Zero;
+            if(a.AbilityId==VolleyId&&T(a.AbilityAt)>0){r.VolleyAt=a.AbilityAt;r.VolleyRelease=Math.Max(a.AbilityAt,T(a.AbilityRelease));}
+            // The sky shot looses RainPre after the cast (the cast's AbilityRelease is when the twelve arrows begin to fall).
+            r.RainAt=T(a.BowRainAt);r.RainRelease=r.RainAt>0?r.RainAt+NativeBow.RainPre:-100;r.RainRadius=NativeBowRules.RainRadius;
+            r.HasRainTarget=r.RainAt>0&&F(a.BowRainTarget.x)&&F(a.BowRainTarget.y)&&F(a.BowRainTarget.z);r.RainTarget=r.HasRainTarget?new Vector3(a.BowRainTarget.x,a.BowRainTarget.y,a.BowRainTarget.z):Vector3.Zero;
             r.Seed=a.Id;return r;
         }
-        /// <summary>A bow shot event: the arrow's kind and draw fraction (Detail and Amount); false for any other event.</summary>
-        public static bool Shot(in ArenaEvent e,out NativeBow.Arrow kind,out float draw)
+        /// <summary>A bow shot event: the arrow's kind and draw fraction (Detail and Draw); false for any other event.</summary>
+        public static bool Shot(in ArenaEvent e,out NativeBow.Arrow kind,out float draw){kind=NativeBow.Arrow.Quick;draw=0;return e.Kind==EventKind.Shot&&Arrow(e.Detail,e.Draw,out kind,out draw);}
+        /// <summary>An arrow's kind and draw fraction from its Detail and Draw (a shot event's, or a bullet's own); false for a
+        /// detail that is not a bow arrow's.</summary>
+        public static bool Arrow(string detail,float value,out NativeBow.Arrow kind,out float draw)
         {
-            kind=NativeBow.Arrow.Quick;draw=0;if(e.Kind!=EventKind.Shot||e.Detail==null)return false;
-            switch(e.Detail){case DetailQuick:kind=NativeBow.Arrow.Quick;break;case DetailFull:kind=NativeBow.Arrow.Full;break;case DetailVolley:kind=NativeBow.Arrow.Volley;break;case DetailRain:kind=NativeBow.Arrow.Rain;break;default:return false;}
-            draw=F(e.Amount)?NativeBow.Clamp01(e.Amount):kind==NativeBow.Arrow.Full?1:kind==NativeBow.Arrow.Volley?NativeBow.VolleyDraw:0;
-            if(kind==NativeBow.Arrow.Volley&&!(e.Amount>0))draw=NativeBow.VolleyDraw;return true;
+            kind=NativeBow.Arrow.Quick;draw=0;if(detail==null)return false;
+            switch(detail){case DetailQuick:kind=NativeBow.Arrow.Quick;break;case DetailFull:kind=NativeBow.Arrow.Full;break;case DetailVolley:kind=NativeBow.Arrow.Volley;break;case DetailRain:kind=NativeBow.Arrow.Rain;break;default:return false;}
+            draw=F(value)?NativeBow.Clamp01(value):kind==NativeBow.Arrow.Full?1:0;
+            if(kind==NativeBow.Arrow.Volley&&!(value>0))draw=NativeBow.VolleyDraw;return true;
         }
         /// <summary>The arrow's shot event's projectile id (the bullet it names).</summary>
         public static int Projectile(in ArenaEvent e)=>e.Projectile;
@@ -77,14 +58,14 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The Bow's presentation rules and timeline (owner 2026-10-12: "For ranged i want to add a "Bow" class", tap or
-    /// hold-to-draw). The numbers are the proposal's (NEW-KITS.md section 2); the simulation (Astra) owns them and may tune them.
+    /// hold-to-draw). The numbers are the simulation's (Astra, NativeBowRules); BowChecks fails if they drift.
     /// Everything here is a pure function of NativeBow.Read (NativeBowWire.Of) and the presentation clock, so host, guests,
     /// spectators and the killcam replay draw the same frame. Nothing here reaches the authority, the network frame, hit
     /// timing, hitboxes, damage, cooldowns or movement.
     /// </summary>
     public static class NativeBow
     {
-        // ---- rule numbers the presentation follows (proposal; the simulation's constants replace them when they land) ----
+        // ---- rule numbers the presentation follows (equal to the simulation's NativeBowRules; BowChecks pins them) ----
         public const float FullDraw=.8f,QuickBelow=.25f,Nock=.35f,SteadyHold=2.5f,FatigueFull=4f,DrawMove=.7f;
         public const float SpeedQuick=45,SpeedFull=110,GravityQuick=30,GravityFull=14,SpreadQuick=.012f,SpreadFull=.0015f,SpreadFatigue=.01f;
         public const int VolleyArrows=5;public const float VolleyFan=14,VolleyDraw=.7f,VolleySpeed=90,VolleyCooldown=8;
