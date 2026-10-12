@@ -268,6 +268,10 @@ namespace ChipArena.UnityConversion
         /// pancakes and swaps to rubble on the preview's stress / fall / land schedule.</summary>
         public void Preview(V3 spot,NativeStructureMaterial material,float floor,uint seed,float time)
         {mocks[Oldest(mocks,MockLive,MockBorn)]=new Mock{Live=true,Material=material,Spot=spot,Floor=floor,Born=time,Seed=seed^MockSalt};}
+        /// <summary>A short impact shake that is not a structure's (the melee jump attack's landing, NativeAirAttackFx): the same
+        /// slots, distance falloff, decay envelope and offset cap as the destruction shakes, with its own peak and length.</summary>
+        public void Quake(V3 at,float peak,float duration,uint seed,float time)
+        {shakes[Oldest(shakes,ShakeLive,ShakeBorn)]=new Shake{Live=true,Rise=false,At=at,Peak=Math.Max(0,Math.Min(NativeStructureShake.MaxOffset,peak)),Born=time,Duration=Math.Max(.05f,duration),Seed=seed};}
         private void AddShake(NativeStructureCue cue,V3 at,float amount,float telegraph,uint seed,float time)
         {shakes[Oldest(shakes,ShakeLive,ShakeBorn)]=new Shake{Live=true,Rise=cue==NativeStructureCue.Stress,At=at,Peak=NativeStructureShake.Peak(cue,amount),Born=time,Duration=NativeStructureShake.Duration(cue,telegraph),Seed=seed};}
 

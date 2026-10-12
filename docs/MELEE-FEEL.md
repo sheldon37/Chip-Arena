@@ -169,7 +169,7 @@ damage, cooldowns, movement, stamina or network data.
 | 1 | P1 steady locomotion torso | PRESENTATION | S | No sim impact | Done on `claude/melee-feel` |
 | 2 | S1 LMB input buffer | SIMULATION | S | No timing/hitbox/damage/cooldown change; one edge bit on the wire. Biggest "multiple swings" fix | Done (Astra, `fdd1914`) |
 | 3 | P2–P8 swing retime, follow-through, real recovery length, turn blend, cut B pop, dagger windups, crescent sync | PRESENTATION | M | No sim impact | Done on `claude/melee-feel` |
-| 3b | S0 un-mirror the hitbox sweep (`NativeMeleeRules.Angle` in the native frame) | SIMULATION | XS | Which side of the arc is hit first; arc, reach and timing unchanged. Needs the contact parity check converted to the native frame | Open (Astra): not in `fdd1914` |
+| 3b | S0 un-mirror the hitbox sweep (`NativeMeleeRules.Angle` in the native frame) | SIMULATION | XS | Which side of the arc is hit first; arc, reach and timing unchanged. Needs the contact parity check converted to the native frame | Done (Astra, `f566b9a`); 3 cuts still sweep against their blade (S0b) |
 | 4 | G1 melee Q/E kit (docs/MELEE-ABILITIES.md) | SIMULATION; animation, VFX, HUD PRESENTATION | L | New abilities, damage, cooldowns, replication | Simulation done (Astra); presentation is a separate task |
 | 5 | S2 chain points | SIMULATION | M | Chained DPS +20–25 %; stun escape window ~0.40→0.26 s | Done (Astra) |
 | 6 | S3 windup turning | SIMULATION | S–M | Hitbox yaw can change before the active window only | Done (Astra) |
@@ -402,9 +402,13 @@ is the largest speed and the total distance of an ankle on the floor; L / R are 
 - **Remaining.** The daggers' chained windups (90 ms) still reposition both blades against the floor guard (one frame
   ×2.9 at 22 m/s; before, ×3.0 at 66 m/s). The shield's 2.0 m opener slips its lead foot 1.4 cm on one touchdown frame.
   Planted feet pivot with the body past 46° of windup turn.
-- **S0 (Astra), fixed by the second simulation follow-up above:** `NativeMeleeRules.Angle` in `fdd1914` is still
-  `s.Yaw+(clamp(u)-.5f)*Math.Min(2π,s.Arc)*(Reverse(s)?-1:1)`, which is mirrored in the native frame. The hitbox
-  therefore sweeps opposite to the captured blades and the crescent. The hitbox is not touched here.
+- **S0 (Astra) is fixed in `f566b9a`:** `NativeMeleeRules.Angle` now sweeps `s.Yaw-(clamp(u)-.5f)·Arc·(Reverse(s)?-1:1)`
+  in the native frame. Re-checked against the posed blades (`MeleeFeelChecks.Sweeps`): the hitbox now crosses the front
+  the way the captured blade does on 8 of the 11 cuts, and the crescent (which follows the blade) agrees with it there.
+- **S0b (Astra), still open:** three cuts still sweep against their blade, because the per-cut `Reverse(s)` table does not
+  match those takes: daggers cut C (index 3, the downward stab crossing to the right) and both shield cuts (the face
+  crosses to the right; the hitbox always sweeps left). The check reports them without failing. The hitbox is not touched
+  here.
 
 ## Tests and parity
 
@@ -564,3 +568,79 @@ Implemented in the second simulation follow-up above, including the optional exp
   three places that observe (`NativeJumpMotion.Layer`, `NativeJumpFxPresentation`, `NativeMoveFeelAudio`). From the
   first call, the vertical-speed inference is off.
 - Without the signal, a vent launch while airborne also shows the flip.
+
+## Jump attacks (owner 2026-10-12: "Give jump attacks to melee classes. (Think of Elden ring style jump attack animations) or if theres anything in the pack.")
+
+### Presentation (Claude, `claude/melee-feel`)
+
+Implemented on the branch only, not merged or released. `NativeMelee.TryMelee` has no grounded check, so a press in the
+air starts a normal combo swing with the ground timing. This presentation plays that swing as a jump attack, keyed to its
+real hit window. It changes no hit timing, hitbox, damage, cooldown, movement, stamina or network data.
+
+- **Pack takes.** `tools/export_pack_air_attacks.mjs` retargets the pack's air attacks with each weapon's melee-converter
+  options into `Core/NativePackAirAttacks.Generated.cs`; `tools/pack-air-attacks-provenance.json` records the SHA-256 per
+  track, which `Tests/AirAttackChecks` recomputes. The exporter's output is byte-identical across runs.
+  - Sword, daggers and shield use `Armed-Air-Attack-R1`, which raises the weapon overhead and chops down in front. The
+    daggers' reverse grip turns it into a downward stab, and the shield (strapped on that fist) slams its face down.
+  - The greatsword uses `2Hand-Sword-Air-Attack1`: it winds back at the side and brings the two-handed blade over the
+    top to the front.
+- **Detection** (`Core/NativeAirAttack.cs`, `NativeAirAttackWatch`). A swing whose start falls while the pilot is
+  presented airborne is an air attack. Airborne comes from the jump layer's `NativeJumpTrack`, so host, guests, killcam
+  and spectators agree with what they draw.
+  - **Hook:** `NativeAirAttackRules.Air(explicitAir, airborne)`, fed by `MeleeView.AirAttack` (-1 until a replicated
+    flag exists, then 1 or 0). The watch in the first-person view and in the impact effects and sound takes the same flag.
+  - A swing begun while a Q/E special, stun, roll, juggle or knockdown owns the pilot is never a jump attack. An airborne
+    Wolf Knight or Skyfall stays a special.
+- **Elden Ring feel** (`MeleeMotion.AirCut`; `NativeAirAttackRules.ClipTime` and `MeleeSwing`'s air shapes).
+  - **Raise:** the weapon goes up over the first 45% of the windup (at least 75 ms), eased out. The rest of the windup is
+    the take's held overhead pose: the hang.
+  - **Strike:** the hit window plays the chop and the take's held impact. The blade reaches the bottom two thirds of the
+    way through the window at about 0.6× its authored speed. Fastest frame: sword 57 m/s, greatsword 114 m/s, shield
+    34 m/s, all inside the window.
+  - **After the window:** the follow-through, then the settle into the guard over the real recovery. In the air the jump
+    layer keeps the legs.
+  - **Heavy landing.** A landing during the attack (or within 0.05 s after it):
+    - holds the pose up to 0.16 s;
+    - brings the take's hips down to the stance's and sinks a further 0.12 m under a folded trunk;
+    - scales the jump layer's landing drop by up to 2.1×. That is the one hook in `NativeJumpMotion`, `LandScale`, set
+      before each `Melee` call.
+    The pose transition out of a landed jump attack holds the ankles. A heavy landing sinks at least 9 cm deeper than a
+    plain one, with the feet on the floor (within 0.7 cm).
+  - **Ending in the air:** an attack that ends before landing leaves no impact and settles back to the guard that the air
+    pose rides on.
+- **Impact** (`Runtime/NativeAirAttackFxPresentation.cs`, `Core/NativeAirAttackFx`). Each peer watches the pilots with the
+  same rules. A jump attack's landing leaves:
+  - a dust ring rolling out over the floor;
+  - cracks running out from the weapon's point of impact, plus a crack mark there;
+  - a weapon-accent shock ring.
+  All three scale with the strength (0.4–1, from the fall speed) and thin with Reduced effects and Low graphics.
+  - **Shake:** `NativeStructureFx.Quake` adds a 0.35 s shake of 0.025–0.065 m under the structure shake's rules (distance
+    falloff, the camera-shake setting, reduced effects, the 0.3 m cap). It reaches the attacker and nearby players.
+  - **Sound:** `NativeAudio.AirAttackCues` plays the existing `impact.ground` under a lower `move.land`, louder and lower
+    for a harder impact. No new bank key.
+- **First person** (`CapturedAnimation.AirView`). The view rig keeps its own jump track and watch, and poses the air take
+  on a scratch rig. The chest bows forward up to 1.05 rad (turning toward the centre) through the raise and the hang, so
+  the raised blade hangs about 1.4 m in front of the camera, then chops down through the view (1.6 m) as the bow eases
+  over the window and the recovery.
+- **Tests** (`Tests/AirAttackChecks`): provenance; continuous, monotone clip time; standing, running and dagger
+  double-jump attacks with the blade coming down from over the head; one impact for a landing during an attack, none for
+  one that ends in the air or for an airborne special; ground swings keep their cuts; the explicit flag wins; the
+  first-person chop; the effect stays on the floor.
+- **Remaining:**
+  - The daggers' 90 ms windup raises both blades faster than they chop (36–40 m/s, as their ground windups).
+  - The slash crescent still follows the ground cut's sweep during a jump attack. With an explicit `Swing.Air` it can
+    take `MeleeSwing.VisibleSweep` of the air take.
+  - The hitbox still sweeps its horizontal arc while the blade chops vertically; the timing agrees, the shape does not.
+  - Not run in Unity: the Unity effects, the shake and the first-person view model were compiled against the Unity
+    player API but not seen in a play session.
+
+### Simulation handoff (Astra)
+
+These are proposals, not implemented. A real plunging attack is simulation:
+- `Swing.Air`, replicated as `Actor.AirAttack` (or similar), with a plunge start and an impact or land time;
+- a landing-timed hit around the impact point, its bonus damage and its recovery;
+- an impact event.
+
+The presentation then needs only one line, `MeleeViewOf` setting `v.AirAttack`, plus the same flag in `AirView`,
+`NativeAirAttackFxPresentation` and `AirAttackCues` (each passes -1 today). The air take's strike would then key to the
+plunge's own window.

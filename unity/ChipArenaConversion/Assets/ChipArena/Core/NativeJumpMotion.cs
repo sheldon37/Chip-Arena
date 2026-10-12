@@ -187,13 +187,16 @@ namespace ChipArena.UnityConversion
 
         /// <summary>The captured melee route (Core/MeleeMotion.Sample, after the action layers, before the hit layer and the
         /// ground pass). Swings, blocks and specials keep the upper body; juggles, knockdowns, rolls and stuns own the pilot.</summary>
+        /// <summary>The hook for a heavier landing (the melee jump attack, NativeAirAttackRules.LandScale): scales the landing's
+        /// hips drop; 1 otherwise. Set by MeleeMotion before each Melee call.</summary>
+        public float LandScale=1;
         public void Melee(MeleeRig r,MeleeView p,float time,float dt)
         {
             bool blocked=p.Hp<=0||p.Juggle||p.Down||p.Rolling(time)||p.HitStunUntil>time||p.Action(time);
             bool busy=MeleeMotion.AttackPose(p,time).Active||p.Guarding||p.BlockTime>0;
             int set=NativeJumpRules.SetFor(p.Spec);bool shield=set==NativeJumpRules.Shield;
             // The shield rides the chest: half the clip's torso turn and a shallower squat keep it off the head and the floor.
-            Layer(r,set,p.Spec,p.Grounded,time,dt,blocked,(busy?.35f:1)*(shield?.5f:1),busy?0:1,!shield,MeleeSet.For(p.Spec),set==NativeJumpRules.Greatsword,true,1-MeleeMath.Ease(r.Motion/.2f),shield?.55f:1,p.AirJumpAt);
+            Layer(r,set,p.Spec,p.Grounded,time,dt,blocked,(busy?.35f:1)*(shield?.5f:1),busy?0:1,!shield,MeleeSet.For(p.Spec),set==NativeJumpRules.Greatsword,true,1-MeleeMath.Ease(r.Motion/.2f),(shield?.55f:1)*LandScale,p.AirJumpAt);
         }
         /// <summary>The DEV fighters (MeleeMotion.FighterFinish): only the legs and hips of a plain jump; a style action (their
         /// own air motion), a juggle, knockdown, dodge or stun keeps the style's pose, and legs the style authors stay its own.</summary>

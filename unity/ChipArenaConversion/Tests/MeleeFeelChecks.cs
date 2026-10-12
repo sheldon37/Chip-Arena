@@ -27,6 +27,27 @@ internal static class MeleeFeelChecks
         foreach(var r in Timing(data))yield return r;
         foreach(var r in Swings(data))yield return r;
         foreach(var r in Feel(data))yield return r;
+        foreach(var r in Sweeps(data))yield return r;
+    }
+    // ---- the hitbox's sweep order against the captured blade (S0, Astra's f566b9a) ----
+    // NativeMeleeRules.Angle now sweeps in the native frame. Each cut whose posed blade crosses the front one way must have its
+    // hitbox sweep the same way (the crescent follows the blade). Cuts the per-cut sweep table still runs against the blade are
+    // reported, not failed: they are Astra's to settle (docs/MELEE-FEEL.md S0).
+    private static IEnumerable<string> Sweeps(ConversionContent data)
+    {
+        var against=new List<string>();int agree=0;
+        foreach(var spec in Specs)
+        {
+            var w=data.Weapon(spec);var stats=NativeContentRules.Stats(data,spec,new Dictionary<string,int>());var set=MeleeSet.For(spec);
+            for(int i=1;i<=set.Cuts.Length;i++)
+            {
+                var sw=NativeMeleeRules.Begin(w,stats,1,i,0);float hitbox=Math.Sign(NativeMeleeRules.Angle(sw,sw.HitUntil)-NativeMeleeRules.Angle(sw,sw.HitAt));
+                var v=MeleeSwing.VisibleSweep(set,set.Cut(i));
+                if(hitbox==v.Direction)agree++;else against.Add(set.Cut(i).Name);
+            }
+        }
+        Check(agree>=8,"the hitbox sweeps with the captured blade on "+agree+" cuts (at least 8 since S0)");
+        yield return "melee sweeps: the hitbox crosses the front the way the captured blade does on "+agree+" cuts"+(against.Count>0?"; still against it: "+string.Join(", ",against)+" (Astra, docs/MELEE-FEEL.md S0)":"");
     }
 
     // ---- the pilot driver ----
