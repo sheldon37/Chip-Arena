@@ -312,7 +312,7 @@ internal static class JumpMotionChecks
         Check(gm.Contains("JumpLayer?.Ranged(r,a,v.Spec,time,dt,.4f);\n            UpdateAim(a,time,restart);")&&mp.Contains("JumpLayer?.Ranged(r,a,v.Spec,time,dt,.5f);"),"the gun hold and the magic layer pose over the jump");
         Check(ca.Contains("JumpLayer=>Hits!=null?jump??=new NativeJumpMotion():null;")&&ca.Contains("melee.JumpLayer=JumpLayer;")&&ca.Contains("gunMotion.JumpLayer=JumpLayer;")&&ca.Contains("magicMotion.JumpLayer=JumpLayer;"),"the arena rigs (host, guests, killcam, spectators) get the layer; intro, portrait, corpse and viewer rigs do not");
         Check(Read("Assets/ChipArena/Runtime/ArenaPresentation.cs").Contains("JumpFx(arena,fields);")&&Read("Assets/ChipArena/Runtime/NativeEffectsAudio.cs").Contains("MoveCues(arena);MoveFeelCues(arena);"),"the air burst and the flip whoosh are wired");
-        foreach(var f in new[]{"Assets/ChipArena/Core/ArenaWorld.cs","Assets/ChipArena/Core/NativePrediction.cs"})Check(!Read(f).Contains("NativeJump"),f+" (jump physics and prediction) is untouched by the presentation");
-        log.Add("hooks: melee, fighter, gun and magic routes; arena rigs only; the burst and whoosh; jump physics and prediction untouched");
+        foreach(var f in new[]{"Assets/ChipArena/Core/ArenaWorld.cs","Assets/ChipArena/Core/NativePrediction.cs"})Check(Read(f).Contains("NativeJumpSimulation.Try"),f+" uses the shared jump commitment after the simulation handoff");
+        log.Add("hooks: melee, fighter, gun and magic routes; arena rigs only; the burst and whoosh; shared jump simulation and prediction commitment");
     }
 }

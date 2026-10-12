@@ -49,6 +49,7 @@ namespace ChipArena.UnityConversion
             bool Dots(NativeDotFrame[] values)=>values==null||values.Length<=512&&values.All(d=>d!=null&&d.key!=null&&d.key.Length<=80&&Number(d.dps)&&Number(d.next)&&Number(d.until))&&values.Select(d=>d.key).Distinct().Count()==values.Length;
             bool Mods(ChipCount[] values)=>values==null||values.Length<=250&&values.All(c=>c!=null&&c.id!=null&&c.id.Length<=64&&c.count>=0&&c.count<=100)&&values.Select(c=>c.id).Distinct().Count()==values.Length;
             if(pilots.Any(p=>!Dots(p.dots)||!Finite(p.slowEnd)||!Finite(p.slowFactor))||minions.Any(m=>!Dots(m.dots)||!Finite(m.slowUntil)||!Finite(m.slowFactor)))return false;
+            if(snapshot.Actors.Any(a=>a.AirJumps<0||a.AirJumps>1||!Finite(a.AirJumpAt)||a.AirJumpAt>time+.001))return false;
             if(pilots.Any(p=>!Finite(p.revivedAt))||snapshot.Actors.Any(a=>!Finite(a.GrabAt)||!Finite(a.GrabCrushAt)||!Finite(a.GrabUntil)||a.GrabOwner<0||a.GrabOwner!=0&&(a.GrabOwner==a.Id||!seats.Any(s=>s.id==a.GrabOwner&&s.spec=="siren")||a.GrabAt<0||a.GrabCrushAt<a.GrabAt||a.GrabUntil<a.GrabCrushAt)))return false;
             if(snapshot.Shots.Any(s=>!Mods(s.Mods)||s.SirenTarget!=0&&!seats.Any(p=>p.id==s.SirenTarget)||!Finite(s.Born)||!Finite(s.Burn)||!Finite(s.Poison)||s.Spec!=null&&s.Spec.Length>64||s.SirenKind!=null&&s.SirenKind.Length>64||s.LeetKind!=null&&s.LeetKind.Length>64)||snapshot.Actors.Any(a=>!Finite(a.LastAttack)||!Finite(a.JuggleUntil)||!Finite(a.SourceModeAt)))return false;
             if(effects.Any(e=>!Finite(e.fuse)||!Finite(e.burn)||!Finite(e.poison)||!Finite(e.lockAt)||e.effect!=null&&e.effect.Length>100)||seats.Any(s=>s.lobbyPose!=null&&s.lobbyPose.Length>32||s.lobbyBack!=null&&s.lobbyBack.Length>NativePortraitBacks.MaxLength))return false;
@@ -115,7 +116,7 @@ namespace ChipArena.UnityConversion
             {
                 var p=Pilots.Find(p=>p.Seat.id==pf.id)??SpawnPilot(Match.Seat(pf.id),Pilots.Count);p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);p.Body.isKinematic=true;p.Collider.enabled=pf.hp>0&&p.Seat.connected;
                 if(pf.stats!=null)foreach(var stat in pf.stats)p.Stats[stat.name]=stat.value;ApplyDots(p.Dots,pf.dots);p.SlowEnd=pf.slowEnd;p.SlowFactor=pf.slowFactor;p.AttackAt=pf.attackAt;p.Fighter=pf.fighter;p.Death=pf.death;p.RevivedAt=pf.revivedAt;p.Wounds.Clear();if(pf.wounds!=null)p.Wounds.AddRange(pf.wounds);p.Hp=pf.hp;p.Mana=pf.mana;p.Stamina=pf.stamina;p.Ammo=pf.ammo;p.ECharges=pf.charges;p.Yaw=pf.yaw;p.Pitch=pf.pitch;p.Ready=pf.ready;p.QReady=pf.qReady;p.EReady=pf.eReady;p.ReloadAt=pf.reloadAt;p.ReloadEnd=pf.reloadEnd;p.BlockEnd=pf.blockEnd;p.BlockReady=pf.blockReady;p.RollAt=pf.rollAt;p.RollEnd=pf.rollEnd;p.StunEnd=pf.stunEnd;p.Down=pf.down;p.HoldAt=pf.holdAt;p.ScareAt=pf.scareAt;p.ScareUntil=pf.scareUntil;p.FrozenUntil=pf.frozenUntil;
-                p.Pose=f.snapshot.Actors.FirstOrDefault(a=>a.Id==pf.id)??p.Pose;p.MeleeKit=p.Pose.MeleeKit?.ViewCopy()??new NativeMeleeKit();if(reset||Vector3.Distance(p.Body.position,pf.position)>5)SetReplicaPosition(p.Body,pf.position);
+                p.Pose=f.snapshot.Actors.FirstOrDefault(a=>a.Id==pf.id)??p.Pose;p.AirJumps=p.Pose.AirJumps;p.AirJumpAt=p.Pose.AirJumpAt;p.MeleeKit=p.Pose.MeleeKit?.ViewCopy()??new NativeMeleeKit();if(reset||Vector3.Distance(p.Body.position,pf.position)>5)SetReplicaPosition(p.Body,pf.position);
             }
             foreach(var pf in f.pilots)Pilots.Find(p=>p.Seat.id==pf.id).Controlling=Pilots.Find(p=>p.Seat.id==pf.controlling);
             foreach(var p in Pilots.Where(p=>!f.pilots.Any(x=>x.id==p.Seat.id)).ToArray()){Pilots.Remove(p);CapturedAnimation.Release(p.Body.gameObject);}
@@ -160,6 +161,6 @@ namespace ChipArena.UnityConversion
             v.Pickups.Clear();foreach(var pf in f.pickups){var owner=Pilots.Find(p=>p.Seat.id==pf.owner);if(owner!=null)v.Pickups.Add(new NativePvePickup{Id=pf.id,Machine=pf.machine,Owner=owner,Tier=pf.tier,Position=pf.position,Born=pf.born});}
         }
         private Snapshot ReplicaSnapshot()
-        {var snapshot=replicaFrame.snapshot;return new Snapshot{Tick=snapshot.Tick,Actors=snapshot.Actors.Select(a=>{var p=Pilots.Find(p=>p.Seat.id==a.Id);var v=a.ViewCopy();if(p!=null){v.Position=Vec(p.Body.position-Vector3.up*.865f);v.Yaw=v.AimYaw=p.Yaw;v.Pitch=p.Pitch;if(p.Seat.id==LocalId)PredictedMeleePose(v);}return v;}).ToArray(),Covers=snapshot.Covers,Shots=snapshot.Shots,Events=snapshot.Events};}
+        {var snapshot=replicaFrame.snapshot;return new Snapshot{Tick=snapshot.Tick,Actors=snapshot.Actors.Select(a=>{var p=Pilots.Find(p=>p.Seat.id==a.Id);var v=a.ViewCopy();if(p!=null){v.Position=Vec(p.Body.position-Vector3.up*.865f);v.Yaw=v.AimYaw=p.Yaw;v.Pitch=p.Pitch;if(p.Seat.id==LocalId){PredictedJumpPose(v);PredictedMeleePose(v);}}return v;}).ToArray(),Covers=snapshot.Covers,Shots=snapshot.Shots,Events=snapshot.Events};}
     }
 }

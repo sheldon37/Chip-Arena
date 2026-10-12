@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
         }
         private void RevivePve(NativePilot p,Vector3? respawn=null)
         {
-            p.RevivedAt=Time;p.Wounds.Clear();
+            p.RevivedAt=Time;p.Wounds.Clear();p.AirJumps=0;p.AirJumpAt=-100;
             // The source draws no blast for pve-revive (pve/hud.ts REVIVED banner, audio.ts `go` cue). The first port recorded a
             // water-school ability effect here, which drew a frost blast. Presentation feed only.
 
