@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-12 entrance pilot motion: `claude/intro-melee` (base `512348d`) drives the sword and greatsword signatures from the owner's Explosive pack (`tools/export_pack_intros.mjs`, `Core/NativeEntrancePack`); the remaining signatures except the daggers follow on the same branch. Managed/relay 359 PASS, Python 82 (one skip), Unity API compilation and source packaging pass; Unity Editor/Windows play not run. Not pushed, merged or released; see DEV_LOG.
+2026-10-12 entrance pilot motion: `claude/intro-melee` (base `512348d`) drives the sword, greatsword, shield and gun signatures from the owner's Explosive pack (`tools/export_pack_intros.mjs`, `Core/NativeEntrancePack`); the four magic schools follow on the same branch (daggers stay baked). Managed/relay 367 PASS, Python 82 (one skip), Unity API compilation and source packaging pass; Unity Editor/Windows play not run. Not pushed, merged or released; see DEV_LOG.
 
 2026-10-12 guest screens/music: `codex/unity-guest-screens-20261011` on shared `b320737` fixes held-clock Siren frame ordering and empty-string PvP choices, and replaces native minion-wave music with the owner's Ward Zero track. Boss music stays unchanged. Hover fix `f288493` is already on both shared source refs. Managed/relay (346 PASS), Python (82 tests / one skip), Unity API compilation, asset decode and source packaging pass; native Editor/two-client/listening checks and compiled publication remain pending through local Build-and-Publish. See DEV_LOG for the causes, compatibility and verification limits.
 

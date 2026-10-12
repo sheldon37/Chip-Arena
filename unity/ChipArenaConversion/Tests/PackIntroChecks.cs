@@ -39,7 +39,7 @@ internal static class PackIntroChecks
             string sha=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(c.Data))).ToLowerInvariant();Check(sha==e.GetProperty("sha256").GetString(),p.Style+": track is the exporter's output ("+sha+")");
             Check(c.Fps==60&&c.Frames==289&&!c.Loop&&Math.Abs(c.Duration-NativeEntranceScript.Duration)<1e-4f&&e.GetProperty("frames").GetInt32()==c.Frames,p.Style+": 4.8 s at 60 Hz");
             Check(p.Hit==NativeIntroMotion.Hit(p.Style)&&Math.Abs(e.GetProperty("hit").GetSingle()-p.Hit)<1e-6f&&c.Marks.Length==1&&c.Marks[0]==p.Hit,p.Style+": hits on its sting's accent");
-            Check(Same(p.PlantsLeft,e.GetProperty("plants").GetProperty("left"))&&Same(p.PlantsRight,e.GetProperty("plants").GetProperty("right"))&&p.TwoHand==e.GetProperty("twoHand").GetBoolean()&&p.Breathe==e.GetProperty("breathe").GetBoolean(),p.Style+": plants and grip match the provenance");
+            Check(Same(p.PlantsLeft,e.GetProperty("plants").GetProperty("left"))&&Same(p.PlantsRight,e.GetProperty("plants").GetProperty("right"))&&p.TwoHand==(e.GetProperty("support").ValueKind==JsonValueKind.Array)&&p.Breathe==e.GetProperty("breathe").GetBoolean(),p.Style+": plants and grip match the provenance");
             foreach(var s in e.GetProperty("segments").EnumerateArray()){segments++;Check(s.GetProperty("input").GetString().Length==64&&c.Source.Contains(s.GetProperty("source").GetString()),p.Style+": segment "+s.GetProperty("source").GetString()+" recorded");}
             var a=c.Decode();var b=new CapturedClip(c.Name,c.Source,c.Fps,c.Frames,c.Loop,c.Marks,c.Pace,c.Data).Decode();
             for(int i=0;i<a.Length;i++){Check(BitConverter.SingleToInt32Bits(a[i])==BitConverter.SingleToInt32Bits(b[i]),p.Style+": deterministic decode");Check(float.IsFinite(a[i])&&Math.Abs(a[i])<8,p.Style+": finite, bounded channel "+(i%CapturedClip.Channels));}
@@ -71,7 +71,7 @@ internal static class PackIntroChecks
                 p.Pose(t,pose,out var r,out var q);Check(NativeIntroMotion.Finite(pose)&&float.IsFinite(r.X)&&float.IsFinite(r.Z),p.Style+": finite pose at "+t);
                 pose.World();float low=NativePackIntro.LowestAboveFeet(pose,r);lowest=Math.Min(lowest,low);if(low<NativeEntranceStage.FloorY-.025f)deep+=1/120f;soles=Math.Min(soles,Math.Min(NativePackIntro.Sole(pose,r,true),NativePackIntro.Sole(pose,r,false)));
                 var wrist=pose.WorldPosition[CapturedRig.RHand];var dir=Vector3.Transform(Vector3.UnitZ,pose.WorldRotation[CapturedRig.RHand]);if(p.Blade>0)tipFloor=Math.Min(tipFloor,r.Y+wrist.Y+dir.Y*p.Blade-NativeEntranceStage.FloorY);
-                if(p.TwoHand)grip=Math.Max(grip,(pose.WorldPosition[CapturedRig.LHand]-(wrist+Vector3.Transform(new Vector3(0,0,-.11f),pose.WorldRotation[CapturedRig.RHand]))).Length());
+                if(p.TwoHand&&p.SupportAlways)grip=Math.Max(grip,(pose.WorldPosition[CapturedRig.LHand]-(wrist+Vector3.Transform(p.Support,pose.WorldRotation[CapturedRig.RHand]))).Length());
                 float d=NativeIntroMotion.Clearance(p.Style,pose,out var what);if(d>clear){clear=d;clearWhat=what+" at "+t.ToString("0.00");}
             }
             Check(planted>0,p.Style+": the feet are planted");
@@ -84,7 +84,7 @@ internal static class PackIntroChecks
             Check(!p.TwoHand||grip<=.03f,p.Style+": the support hand leaves the grip by "+(grip*1000).ToString("0")+" mm");
             Check(p.Blade<=0||tipFloor>=-.005f,p.Style+": the blade sinks "+(-tipFloor*1000).ToString("0")+" mm into the floor");
             Check(clear<=.06f,p.Style+": the "+clearWhat+" sinks "+(clear*1000).ToString("0")+" mm into the body");
-            yield return $"pack intro {p.Style}: planted feet slide at most {slide*1000:0.0} mm and stay within {sole*1000:0.0} mm of the floor ({planted} planted samples); soles at least {(soles-NativeEntranceStage.FloorY)*1000:0} mm and every other body box at least {(lowest-NativeEntranceStage.FloorY)*1000:0} mm off the floor top ({deep:0.00} s past -2.5 cm); blade tip at least {tipFloor*1000:0} mm above it{(p.TwoHand?$"; support hand within {grip*1000:0} mm of the grip":"")}; deepest limb or weapon contact with the body {clear*1000:0} mm ({clearWhat})";
+            yield return $"pack intro {p.Style}: planted feet slide at most {slide*1000:0.0} mm and stay within {sole*1000:0.0} mm of the floor ({planted} planted samples); soles at least {(soles-NativeEntranceStage.FloorY)*1000:0} mm and every other body box at least {(lowest-NativeEntranceStage.FloorY)*1000:0} mm off the floor top ({deep:0.00} s past -2.5 cm){(p.Blade>0?$"; blade tip at least {tipFloor*1000:0} mm above it":"")}{(p.TwoHand&&p.SupportAlways?$"; support hand within {grip*1000:0} mm of the grip":"")}; deepest limb or weapon contact with the body {clear*1000:0} mm ({clearWhat})";
         }
         // 3. The hit lands on the sting: the sword's blade is cutting fast, the greatsword's tip bites the floor.
         foreach(var p in NativePackIntros.All)
@@ -92,7 +92,7 @@ internal static class PackIntroChecks
             var sc=Bind(p.Style,clips);var tip=sc.Anchor(NativeEntranceAnchor.RightTip,p.Hit);float speed=(sc.Anchor(NativeEntranceAnchor.RightTip,p.Hit)-sc.Anchor(NativeEntranceAnchor.RightTip,p.Hit-1/30f)).Length()*30;
             if(p.Style=="weapon-sword")Check(speed>=6,"the sword's cut is moving "+speed.ToString("0.0")+" m/s at its hit");
             if(p.Style=="weapon-greatsword")Check(tip.Y-NativeEntranceStage.FloorY<.12f,"the greatsword's slam ends "+(tip.Y-NativeEntranceStage.FloorY).ToString("0.00")+" m over the floor at its hit");
-            yield return $"pack intro {p.Style}: at the {p.Hit} s hit the blade tip moves {speed:0.0} m/s, {(tip.Y-NativeEntranceStage.FloorY)*100:0} cm over the floor";
+            yield return $"pack intro {p.Style}: at the {p.Hit} s hit the weapon tip (blade, muzzle or shield face) moves {speed:0.0} m/s, {(tip.Y-NativeEntranceStage.FloorY)*100:0} cm over the floor";
         }
         // 4. Pure and allocation-free: any order gives the same pose; a 60 Hz playthrough allocates nothing.
         var rng=new Random(7);foreach(var p in NativePackIntros.All)

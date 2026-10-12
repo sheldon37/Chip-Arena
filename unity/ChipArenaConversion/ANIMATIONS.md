@@ -158,7 +158,14 @@ table), sampled on the directed entrance's presentation clock instead of the old
 layer. Flash Draw: Relax-Unsheath-R-Hips (calm stand) into Sword-Attack-R2's windup slowed into a coil, R2's backhand
 draw-cut pinned to the 1.8 s hit, Armed-Boost1's overhead raise as the flourish and Boost1's raised blade held in salute.
 Colossus Oath: 2Hand-Sword Idle-Alert1 (blade up in oath), Jump's crouch and flight (lifted .42 m) with the blade raised,
-Attack2's chop biting the floor on the 1.8 s hit, its recovery and the two-handed Idle (blade shouldered). The torso, legs
+Attack2's chop biting the floor on the 1.8 s hit, its recovery and the two-handed Idle (blade shouldered). Owner scope
+update the same day ("change the player animations on the rest too ... (except daggers, those are good)"): Bastion Drop
+(Armed-Shield Idle, Boost1, a .22 m hop landing into Block on the 1.45 s hit, read mirrored onto the right hand as in
+play); Deadeye (Pistol-Reload-R1, Armed-Idle-Pistol-R's one-hand aim, Pistol-Attack-R1's shot on 2.12 s carried into the
+barrel-up hold); Longwatch (2Hand-Shooting Idle, Crouch-Idle legs under Fire-Rifle1's aim raised level, the 1.8 s shot,
+back to the low ready); Belt Rattle (Idle, Activate, Fire-Rifle2's hip stance through the 24 Hz burst, held at the hip).
+Guns use grip 'gun' (the barrel along the fist's metacarpals) and the gameplay support grips (`RangedPose.Support`); the
+pack's rifle fire barely moves the gun, so the shots add an authored recoil (the old layer's follow-through curve). The torso, legs
 and root are the capture's; the arms reach the captured grip through the rig's IK with the gameplay melee clearance
 (`MeleeClearance`) and a planned forearm/hand clearance, the greatsword's support hand on its grip; planted feet hold the
 spots they land on (leg IK, the body sinking up to 6 cm where a lunge outreaches the voxel leg, the heel rising over a deep

@@ -126,8 +126,8 @@ namespace ChipArena.UnityConversion
             Shots=new[]
             {
                 Orbit(0,NativeEntranceCut.Cut,40,38,-28,-14,4.3f,3.4f,.6f,.7f,V(0,.9f,0),V(0,.95f,0),0,1,face:.2f),
-                // The coil and hop, from above and pushing in.
-                Shot(.6f,NativeEntranceCut.Cut,38,36,V(1.2f,2.3f,2.4f),V(1.0f,2.0f,2.0f),V(0,.9f,.2f),V(0,1.05f,.2f),1,1,face:.9f),
+                // The power-up and hop, from above and pushing in.
+                Shot(.6f,NativeEntranceCut.Cut,40,37,V(1.5f,2.5f,3.0f),V(1.25f,2.2f,2.55f),V(0,.95f,.2f),V(0,1.05f,.2f),1,1,face:.9f),
                 // Anticipation: on the floor in front of where the rim will land.
                 Shot(1.15f,NativeEntranceCut.Cut,44,42,V(-1.1f,.26f,3.0f),V(-.95f,.24f,2.7f),V(0,.9f,.3f),V(0,.7f,.3f),1,1,face:1.3f),
                 // The slam, in slow motion: wide and a little high, the barrier rippling toward the lens.
@@ -288,14 +288,14 @@ namespace ChipArena.UnityConversion
     {
         public Deadeye():base("weapon-pistol",2.12f,0xffd99f,9)
         {
-            OverShoulder=2;
+            OverShoulder=2;OverShoulderSide=.72f;
             Shots=new[]
             {
                 Orbit(0,NativeEntranceCut.Cut,38,36,30,18,4.0f,3.3f,.7f,.8f,V(0,1.0f,0),V(0,1.0f,0),0,1,face:.2f),
                 // The twirl: a long-lens detail on the gun hand.
                 Follow(Shot(.5f,NativeEntranceCut.Cut,32,28,V(-2.3f,1.0f,2.9f),V(-2.05f,1.0f,2.6f),V(0,.1f,0),V(0,.1f,0),1,1,face:.8f),NativeEntranceAnchor.RightHand),
                 // Over the shoulder down the aim, the target hanging in the dark.
-                Shot(1.15f,NativeEntranceCut.Cut,40,36,V(-1.25f,1.95f,-2.6f),V(-1.05f,1.88f,-2.3f),V(.2f,.95f,5),V(.15f,1.0f,5),1,1,face:1.6f),
+                Shot(1.15f,NativeEntranceCut.Cut,44,40,V(-1.25f,1.95f,-2.6f),V(-1.05f,1.88f,-2.3f),V(.2f,.95f,5),V(.15f,1.0f,5),1,1,face:1.6f),
                 // The stare: in front and low, pushing in on the two-hand aim.
                 Shot(1.75f,NativeEntranceCut.Cut,36,33,V(1.2f,.95f,3.1f),V(1.0f,1.0f,2.8f),V(0,1.12f,.2f),V(0,1.15f,.2f),1,1,face:2.0f),
                 // The shot: cut wide to the side, panning with the tracer through the slow motion.
@@ -326,10 +326,10 @@ namespace ChipArena.UnityConversion
             Shots=new[]
             {
                 Orbit(0,NativeEntranceCut.Cut,40,38,-36,-24,4.4f,3.6f,.5f,.6f,V(0,.8f,0),V(0,.85f,0),0,1,face:.3f),
-                // Along the rifle, stock to muzzle.
-                Shot(.75f,NativeEntranceCut.Cut,38,35,V(-2.2f,1.2f,-.4f),V(-2.05f,1.15f,.3f),V(0,1.0f,.4f),V(0,1.0f,1.1f),3,1,face:1.0f),
-                // The scope view: behind the shoulder, a long lens down the beam to the target.
-                Shot(1.3f,NativeEntranceCut.Cut,30,26,V(-1.0f,1.8f,-2.3f),V(-.88f,1.74f,-2.05f),V(.1f,1.0f,8),V(.1f,1.02f,8),1,1,face:1.5f),
+                // The drop into the crouched aim: three-quarter on the off side, pushing in as the rifle comes level.
+                Shot(.75f,NativeEntranceCut.Cut,38,35,V(1.9f,1.05f,2.7f),V(1.6f,.95f,2.4f),V(0,.85f,0),V(0,.75f,0),1,1,face:1.0f),
+                // The scope view: behind the shoulder, down the beam to the target.
+                Shot(1.3f,NativeEntranceCut.Cut,42,38,V(-1.0f,1.8f,-2.3f),V(-.88f,1.74f,-2.05f),V(.1f,1.0f,8),V(.1f,1.02f,8),1,1,face:1.5f),
                 // The shot: low in front, the flash and the brake jets hanging in slow motion.
                 Orbit(1.8f,NativeEntranceCut.Cut,44,40,-36,-22,2.7f,2.4f,.38f,.42f,V(0,.85f,.45f),V(0,.9f,.4f),1,1,face:1.8f),
                 Orbit(2.5f,NativeEntranceCut.Blend,38,38,-22,-12,2.6f,3.5f,.8f,1.1f,V(0,1.0f,0),V(0,1.02f,0),0,1,.3f,face:1.8f),

@@ -25,17 +25,21 @@ const {loadPackFbx,packRestPose}=await import(pathToFileURL(path.join(repo,'scri
 const T=await import('three');
 const quiet=console.warn;console.warn=()=>{};// FBXLoader warns about every unused FBX property
 
-const A=f=>`Armed/RPG-Character@Armed-${f}.FBX`,H=f=>`2Hand-Sword/RPG-Character@2Hand-Sword-${f}.FBX`,SW=f=>`1Hand-Sword/RPG-Character@Sword-Attack-${f}.FBX`,R=f=>`Relax/RPG-Character@Relax-${f}.FBX`;
+const A=f=>`Armed/RPG-Character@Armed-${f}.FBX`,H=f=>`2Hand-Sword/RPG-Character@2Hand-Sword-${f}.FBX`,SW=f=>`1Hand-Sword/RPG-Character@Sword-Attack-${f}.FBX`,R=f=>`Relax/RPG-Character@Relax-${f}.FBX`,
+ SH=f=>`Armed-Shield/RPG-Character@Armed-Shield-${f}`,G=f=>`2Hand-Shooting/RPG-Character@2Hand-Shooting-${f}.FBX`,PI=f=>`1Hand-Pistol/RPG-Character@Pistol-${f}.FBX`;
 /**
  * The entrances (NativeIntroRules weapon signatures; daggers keep their baked clip). `grip` and `twoHand` as the gameplay
- * set's (twoHand: the support hand holds the grip throughout and the hilt is kept clear of the head, pauldrons and torso).
+ * set's (twoHand: the support hand holds the grip throughout and the hilt is kept clear of the head, pauldrons and torso;
+ * grip 'gun': the barrel along the fist's metacarpals). `support`: [x, y, z, always] the support hand's grip in the weapon
+ * hand's frame (RangedPose.Support for the guns), held while the capture holds the weapon in both hands, or throughout.
  * `hit` the sting's accent (NativeIntroMotion.Hit), `facing` the hero heading (rad, 0 faces +z) the entrance ends on, over
  * the stage origin; `breathe`: a held hero pose gets the procedural entrances' breathing from the name card (for a hold
  * the capture itself keeps still). Segment `keys`: [entrance s, source s] pairs (monotone; the first pair starts the segment); `blend`: the
  * cross-fade into it (s, from its first key); `loop`: the source wraps; `turn`: an extra heading (rad) on its root;
  * `keepYaw`: its heading is not continued from the segment before; `part: 'upper'`: only its torso and arms are layered
  * in (until `until`, then handed back over its blend). Entrance `air`: [entrance s, metres] keys of a leap; `rise`: the
- * same, applied over the feet once they are planted (a crouch held a little taller).
+ * same, applied over the feet once they are planted (a crouch held a little taller); `kick`: [entrance s, size] gun shots;
+ * `aim`: [entrance s, rad] keys raising the weapon arm; `faceBy: 'chest'`: `facing` is the chest's heading.
  */
 const ENTRANCES=[
  // Flash Draw (iaido): a calm relaxed stand, the blade coiled back across the body (the backhand's windup, slowed), the
@@ -55,6 +59,36 @@ const ENTRANCES=[
   {file:H('Jump'),blend:.25,keys:[[.65,0],[1.12,.06],[1.25,.1],[1.62,.55]]},
   {file:H('Attack2'),blend:.1,keys:[[1.62,.52],[1.8,.62],[2.7,1]]},
   {file:H('Idle'),blend:.45,loop:true,keys:[[2.6,.3],[4.8,2.5]]},
+ ]},
+ // Bastion Drop: the shield at the side, a power-up crouch with the free fist raised, a hop (.22 m) that lands into the block
+ // on the 1.45 s hit as the honeycomb barrier ripples out from it, the block held through the name card. The pack's
+ // left-arm shield set is read mirrored onto the game's right hand, as the gameplay shield set.
+ {style:'weapon-shield',grip:'shield',hit:1.45,facing:-.25,faceBy:'chest',air:[[1.05,0],[1.25,.22],[1.45,0]],seq:[
+  {file:SH('Idle.fbx'),mirror:true,loop:true,keys:[[0,0],[.6,.6]]},
+  {file:SH('Boost1.FBX'),mirror:true,blend:.15,keys:[[.45,0],[1.1,.6]]},
+  {file:SH('Block.fbx'),mirror:true,blend:.18,loop:true,keys:[[1.15,0],[4.8,2.4]]},
+ ]},
+ // Deadeye: a slick reload checking the pistol, the arm thrown out into the one-hand aim held on the target, Attack-R1's
+ // shot pinned to the 2.12 s hit (its kick starting on it) and the recoil carried up into the barrel-up hold.
+ {style:'weapon-pistol',grip:'gun',hit:2.12,facing:-.25,faceBy:'chest',seq:[
+  {file:PI('Reload-R1'),keys:[[0,.3],[1.2,1.5]]},
+  {file:A('Idle-Pistol-R'),blend:.3,loop:true,keys:[[1.05,0],[2.1,.6]]},
+  {file:PI('Attack-R1'),blend:.12,keys:[[1.9,.25],[2.12,.365],[2.3,.47],[2.6,.52],[4.8,.55]]},
+ ]},
+ // Longwatch: the low ready, a drop into a crouch (Crouch-Idle's legs) with Fire-Rifle1's shouldered aim over it, raised
+ // level (the crouch's lean tips the captured aim down), the 1.8 s shot's recoil kick, and back up to the low ready.
+ {style:'weapon-rifle',grip:'gun',support:[.025,-.03,.10,1],hit:1.8,facing:-.25,faceBy:'chest',kick:[[1.8,1.3]],aim:[[.9,0],[1.2,.33],[2.3,.33],[2.6,0]],seq:[
+  {file:G('Idle'),loop:true,keys:[[0,0],[.8,.8]]},
+  {file:G('Crouch-Idle'),blend:.35,loop:true,keys:[[.65,0],[2.6,1.4]]},
+  {file:G('Fire-Rifle1'),part:'upper',blend:.3,until:2.35,keys:[[.8,0],[1.8,.02],[1.9,.08],[2.5,.12]]},
+  {file:G('Idle'),blend:.5,loop:true,keys:[[2.55,0],[4.8,2.25]]},
+ ]},
+ // Belt Rattle: the low ready, Activate racking the gun, the hip-braced Fire-Rifle2 stance kicking through the ten rounds
+ // of the 1.93-2.33 s burst (24 Hz), then the hip hold settling, barrel smoking, through the name card.
+ {style:'weapon-machinegun',grip:'gun',support:[.025,-.03,.10,1],hit:2.12,facing:-.25,faceBy:'chest',kick:Array.from({length:10},(_,i)=>[+(1.93+i/24).toFixed(4),.45]),seq:[
+  {file:G('Idle'),loop:true,keys:[[0,0],[.6,.6]]},
+  {file:G('Activate'),blend:.15,keys:[[.5,0],[1.35,.85]]},
+  {file:G('Fire-Rifle2'),blend:.3,keys:[[1.3,0],[1.93,.02],[2.4,.1],[2.9,.3],[4.8,.55]]},
  ]},
 ];
 if(process.env.PACK_INTROS_PLAN){const plan=JSON.parse(fs.readFileSync(process.env.PACK_INTROS_PLAN,'utf8'));for(const e of plan){const i=ENTRANCES.findIndex(x=>x.style===e.style);if(i>=0)ENTRANCES[i]=e;else ENTRANCES.push(e);}}
@@ -77,7 +111,11 @@ const rowsCache=new Map();
 function sourceRows(e,s){
  const mirror=!!s.mirror,grip=s.grip||e.grip,twoHand=s.oneHand?false:!!e.twoHand,loop=!!s.loop,key=[s.file,mirror,grip,twoHand,loop,!!e.leftBlade].join('|');
  if(!rowsCache.has(key)){const {obj,clip}=load(s.file);
-  const rows=retarget(obj,clip,calFor(mirror,grip),SOURCE_FPS,{mirror,oneHand:!twoHand,bothHands:twoHand,leftBlade:!!e.leftBlade,soften:true,poleTurn:10,splitTwist:true,loop});
+  // A gun (grip 'gun') is calibrated as a blade, then its frame turned onto the gun's: the barrel leaves the fist along the
+  // metacarpals (the blade frame's edge), the top of the gun along the grip toward the index knuckle (the blade axis).
+  const rows=retarget(obj,clip,calFor(mirror,grip==='gun'?'blade':grip),SOURCE_FPS,{mirror,oneHand:!twoHand,bothHands:twoHand,leftBlade:!!e.leftBlade,soften:true,poleTurn:10,splitTwist:true,loop});
+  if(grip==='gun')for(const r of rows){const b=v().set(r[BLADE],r[BLADE+1],r[BLADE+2]),ed=v().set(r[EDGE],r[EDGE+1],r[EDGE+2]),x=v().crossVectors(b,ed);
+   r[BLADE]=ed.x;r[BLADE+1]=ed.y;r[BLADE+2]=ed.z;r[EDGE]=x.x;r[EDGE+1]=x.y;r[EDGE+2]=x.z;}
   for(const r of rows)for(const v of r)if(!Number.isFinite(v))throw new Error(`${e.style}: non-finite channel in ${s.file}`);
   rowsCache.set(key,{rows,duration:(rows.length-1)/SOURCE_FPS});}
  return rowsCache.get(key);
@@ -133,6 +171,8 @@ function ankles(r,rootY){
  return out;
 }
 
+/** The chest's heading (rad about +y) in row `r`. */
+function chestYaw(r){const c=q().setFromAxisAngle(v().set(0,1,0),r[YAW]).multiply(quatOf(r,ix('pelvis.x'))).multiply(quatOf(r,ix('spine.x'))).multiply(quatOf(r,ix('chest.x')));const f=v().set(0,0,1).applyQuaternion(c);return Math.atan2(f.x,f.z);}
 /** The entrance's track: rows at 60 Hz over the 4.8 s phase, its plants and lift. */
 function build(e){
  const segs=e.seq.map(s=>({s,src:sourceRows(e,s),start:s.keys[0][0],end:s.keys[s.keys.length-1][0],blend:s.blend||0,yaw:0,dx:0,dz:0}));
@@ -155,8 +195,22 @@ function build(e){
  let rows=[];for(let f=0;f<FRAMES;f++)rows.push(composite(f/FPS));
  // `air`: [entrance s, metres] keys of a leap's height added to the body (the pack's jumps leave the flight to physics).
  if(e.air)rows.forEach((r,f)=>{r[BY]+=retime(e.air,f/FPS);});
- // The hero facing over the stage origin at the end.
- const last=rows[rows.length-1],turn=e.facing-last[YAW];let c=Math.cos(turn),s=Math.sin(turn);const ex=last[BX]*c+last[BZ]*s,ez=-last[BX]*s+last[BZ]*c;
+ // `kick`: [entrance s, size] shots whose recoil rides back through the gun (the pack's rifle fire barely moves it): the
+ // muzzle flips up about the axis across the barrel and the grip rides back and up along it, as a damped follow-through
+ // (NativeIntroMotion.Follow: peak at ~.07 s, a dip past the aim at ~.27 s, settled by ~.6 s), the chest rocking with it.
+ if(e.kick)rows.forEach((r,f)=>{let k=0;for(const [at,size] of e.kick){const tau=f/FPS-at;if(tau>0)k+=size*1.8*(1-Math.exp(-60*tau))*Math.exp(-7*tau)*Math.sin(17*tau);}if(!k)return;
+  const b=v().set(r[BLADE],r[BLADE+1],r[BLADE+2]).normalize(),axis=v().crossVectors(b,v().set(0,1,0));if(axis.lengthSq()<1e-6)return;axis.normalize();const q1=q().setFromAxisAngle(axis,.16*k);
+  for(const c of [BLADE,EDGE]){const d=v().set(r[c],r[c+1],r[c+2]).applyQuaternion(q1);r[c]=d.x;r[c+1]=d.y;r[c+2]=d.z;}
+  r[GRIP]-=b.x*.035*k;r[GRIP+1]+=.015*k-b.y*.035*k;r[GRIP+2]-=b.z*.035*k;
+  rotvec(quatOf(r,ix('chest.x')).multiply(q().setFromAxisAngle(v().set(1,0,0),-.04*k)),r,ix('chest.x'));});
+ // `aim`: [entrance s, rad] keys turning the weapon arm up about the axis across the barrel through the weapon shoulder
+ // (a crouch's lean tips a captured aim into the floor).
+ if(e.aim)rows.forEach((r,f)=>{const a=retime(e.aim,f/FPS);if(!a)return;const b=v().set(r[BLADE],r[BLADE+1],r[BLADE+2]).normalize(),axis=v().crossVectors(b,v().set(0,1,0));if(axis.lengthSq()<1e-6)return;
+  const q1=q().setFromAxisAngle(axis.normalize(),a),sh=v().set(-.345,.18,0);for(const c of [BLADE,EDGE,RPOLE]){const d=v().set(r[c],r[c+1],r[c+2]).applyQuaternion(q1);r[c]=d.x;r[c+1]=d.y;r[c+2]=d.z;}
+  const g=v().set(r[GRIP],r[GRIP+1],r[GRIP+2]).sub(sh).applyQuaternion(q1).add(sh);r[GRIP]=g.x;r[GRIP+1]=g.y;r[GRIP+2]=g.z;});
+ // The hero facing over the stage origin at the end: the pelvis's heading, or with `faceBy: 'chest'` the chest's (a gun
+ // stance turns the hips well away from the chest and the barrel).
+ const last=rows[rows.length-1],turn=e.facing-(e.faceBy==='chest'?chestYaw(last):last[YAW]);let c=Math.cos(turn),s=Math.sin(turn);const ex=last[BX]*c+last[BZ]*s,ez=-last[BX]*s+last[BZ]*c;
  rows=rows.map(r=>place(r,turn,-ex,-ez));
  for(const r of rows)if(r.some(x=>!Number.isFinite(x)))throw new Error(`${e.style}: non-finite composite`);
  // Foot contacts on the rig: low and slow (or very low), held at least .1 s; the body lifted so they stand on the floor.
@@ -200,8 +254,10 @@ for(const e of ENTRANCES){
  // Quantize exactly as the encoder does, so the track decodes to the composite's own 1/256 values.
  const data=encode(rows.map(r=>Float32Array.from(r)));
  const clip=`new CapturedClip(${JSON.stringify('intro/'+e.style)},${JSON.stringify(e.seq.map(s=>path.basename(s.file).replace(/^RPG-Character@|\.fbx$/gi,'')).join(' + '))},${FPS},${rows.length},false,new float[] {${f32(e.hit)}},new float[] {},${JSON.stringify(data)})`;
- lines.push(`new NativePackIntro(${JSON.stringify(e.style)},${clip},${!!e.twoHand},${f32(e.hit)},new float[] {${plants[0].map(f32).join(',')}},new float[] {${plants[1].map(f32).join(',')}},${!!e.breathe}),`);
- provenance.push({style:e.style,fps:FPS,frames:rows.length,hit:e.hit,facing:e.facing,twoHand:!!e.twoHand,breathe:!!e.breathe,grip:e.grip,lift:+lift.toFixed(4),plants:{left:plants[0],right:plants[1]},
+ // The support hand's grip on the weapon (the weapon hand's frame; the gameplay sockets): the greatsword's .11 down the grip.
+ const support=e.support||(e.twoHand?[0,0,-.11,1]:null);
+ lines.push(`new NativePackIntro(${JSON.stringify(e.style)},${clip},${support?'new float[] {'+support.map(f32).join(',')+'}':'null'},${f32(e.hit)},new float[] {${plants[0].map(f32).join(',')}},new float[] {${plants[1].map(f32).join(',')}},${!!e.breathe}),`);
+ provenance.push({style:e.style,fps:FPS,frames:rows.length,hit:e.hit,facing:e.facing,twoHand:!!e.twoHand,support:e.support||(e.twoHand?[0,0,-.11,1]:null),breathe:!!e.breathe,grip:e.grip,lift:+lift.toFixed(4),plants:{left:plants[0],right:plants[1]},
   segments:e.seq.map(s=>({source:path.basename(s.file).replace(/^RPG-Character@|\.fbx$/gi,''),keys:s.keys,blend:s.blend||0,loop:!!s.loop,input:createHash('sha256').update(fs.readFileSync(resolve(s.file))).digest('hex')})),
   sha256:createHash('sha256').update(data).digest('hex')});
  console.log(e.style,rows.length,'frames, plants L',plants[0].length/2,'R',plants[1].length/2,'lift',lift.toFixed(3),data.length,'chars');

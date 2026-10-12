@@ -16,12 +16,19 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativePackIntro
     {
-        public readonly string Style;public readonly CapturedClip Track;public readonly bool TwoHand;public readonly float Hit;
+        public readonly string Style;public readonly CapturedClip Track;public readonly float Hit;
+        /// <summary>The support hand's grip in the weapon hand's frame (the gameplay socket) and whether it holds it throughout
+        /// (otherwise while the capture holds the weapon in both hands); TwoHand when there is one.</summary>
+        public readonly Vector3 Support;public readonly bool SupportAlways,TwoHand;
         /// <summary>Foot contacts (entrance s): [land, lift] pairs per foot.</summary>
         public readonly float[] PlantsLeft,PlantsRight;
         /// <summary>The held hero pose breathes from the name card (NativeEntrancePose.Idle; a hold the capture keeps still).</summary>
         public readonly bool Breathe;
-        public NativePackIntro(string style,CapturedClip track,bool twoHand,float hit,float[] plantsLeft,float[] plantsRight,bool breathe){Style=style;Track=track;TwoHand=twoHand;Hit=hit;PlantsLeft=plantsLeft;PlantsRight=plantsRight;Breathe=breathe;}
+        public NativePackIntro(string style,CapturedClip track,float[] support,float hit,float[] plantsLeft,float[] plantsRight,bool breathe)
+        {
+            Style=style;Track=track;Hit=hit;PlantsLeft=plantsLeft;PlantsRight=plantsRight;Breathe=breathe;
+            if(support!=null&&support.Length>=4){TwoHand=true;Support=new Vector3(support[0],support[1],support[2]);SupportAlways=support[3]>.5f;}
+        }
         /// <summary>The entrance's pack motion, or null (it keeps its baked clip).</summary>
         public static NativePackIntro For(string style){foreach(var p in NativePackIntros.All)if(p.Style==style)return p;return null;}
         /// <summary>The root's height: with straight legs and the body at 0 the ankle is .795 under it, its sole .07 under the ankle.</summary>
@@ -55,20 +62,20 @@ namespace ChipArena.UnityConversion
                 if(Blade>0)BladeOffFloor(p);
                 Vector3 left=Row(f,MeleeCapture.LHand)+fixLeft;var leftQ=CapturedRig.Look(Row(f,MeleeCapture.LFwd),Row(f,MeleeCapture.LUp));
                 if(!TwoHand){CapturedRig.Arm(p,true,left,leftQ,Row(f,MeleeCapture.LPole));break;}
-                // The support hand on the reached weapon hand's support grip (.11 down the grip), as the gameplay socket holds it.
+                // The support hand on the reached weapon hand's support grip, as the gameplay socket holds it.
                 p.World();var chest=Quaternion.Inverse(p.WorldRotation[CapturedRig.Chest]);var reached=Vector3.Transform(p.WorldPosition[CapturedRig.RHand]-p.WorldPosition[CapturedRig.Chest],chest);
                 var held=Quaternion.Normalize(chest*p.WorldRotation[CapturedRig.RHand]);
-                float weight=CapturedClip.Clamp(f[MeleeCapture.TwoHand],0,1);left=Vector3.Lerp(left,reached+Vector3.Transform(new Vector3(0,0,-.11f),held),weight);leftQ=Quaternion.Slerp(leftQ,held,weight);
+                float weight=SupportAlways?1:CapturedClip.Clamp(f[MeleeCapture.TwoHand],0,1);left=Vector3.Lerp(left,reached+Vector3.Transform(Support,held),weight);leftQ=Quaternion.Slerp(leftQ,held,weight);
                 CapturedRig.Arm(p,true,left,leftQ,Row(f,MeleeCapture.LPole));
-                p.World();var miss=left-Vector3.Transform(p.WorldPosition[CapturedRig.LHand]-p.WorldPosition[CapturedRig.Chest],chest);if(miss.LengthSquared()<1e-6f)break;grip-=miss*1.05f;
+                p.World();var miss=left-Vector3.Transform(p.WorldPosition[CapturedRig.LHand]-p.WorldPosition[CapturedRig.Chest],chest);if(miss.LengthSquared()<1e-6f||weight<.5f)break;grip-=miss*1.05f;
             }
             root=new Vector3(f[MeleeCapture.Yaw+1],RootHeight,f[MeleeCapture.Yaw+3]);rotation=Quaternion.CreateFromAxisAngle(Vector3.UnitY,f[MeleeCapture.Yaw]);
         }
         /// <summary>The gameplay melee set of the weapon (its blade, pommel and clearance), or null.</summary>
         public MeleeSet Melee{get{if(!meleeKnown){meleeSet=MeleeSet.For(Style.StartsWith("weapon-",StringComparison.Ordinal)?Style.Substring(7):"");meleeKnown=true;}return meleeSet;}}
         private MeleeSet meleeSet;private bool meleeKnown;private readonly MeleeRig melee=new MeleeRig();
-        /// <summary>The melee blade's length past the wrist (MeleeSet blade end; 0: no floor guard).</summary>
-        public float Blade=>Melee?.BladeEnd??0;
+        /// <summary>The melee blade's length past the wrist (MeleeSet blade end; 0: no floor guard, as for the shield and guns).</summary>
+        public float Blade=>Melee!=null&&Melee.Fit.Clear!=MeleeClear.None?Melee.BladeEnd:0;
         /// <summary>The floor top in the rig frame (the root stands RootHeight above it, turned only about +y).</summary>
         public const float RigFloor=NativeEntranceStage.FloorY-RootHeight;
         // The blade never dips under the floor: the wrist turns up about the horizontal axis across the blade just enough to
