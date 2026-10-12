@@ -197,8 +197,22 @@ namespace ChipArena.UnityConversion.Editor
             try
             {
                 var match=new NativeMatch(content,7);match.Seats.Add(new NativeSeat{id=1,name="A",spec="pistol"});match.Seats.Add(new NativeSeat{id=2,name="B",spec="pistol"});
-                arena=new NativeArena(content,match,"foundry"){ReplicaScene=scene};match.Start();match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});arena.ValidateDevCombatParity();arena.ValidateParityCombat();arena.ValidateFollowupParity();arena.ValidateKernelPanic();
+                arena=new NativeArena(content,match,"foundry"){ReplicaScene=scene};match.Start();match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});arena.ValidateDevCombatParity();arena.ValidateParityCombat();arena.ValidateFollowupParity();
                 Debug.Log("PASS native combat: no generic stun, ability block rules, splash/DoT roll rules, reload-independent abilities and authority wall-clamped aim");
+            }
+            finally{arena?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}
+            CheckKernelPanic(content);
+        }
+        private static void CheckKernelPanic(ConversionContent content)
+        {
+            // Follow-up parity leaves a Siren AuthorityBoss, PvE and sandbox state behind.
+            // Kernel Panic must exercise ordinary PvP seats in its own match/physics scene.
+            var scene=EditorSceneManager.NewPreviewScene();NativeArena arena=null;
+            try
+            {
+                var match=new NativeMatch(content,7);match.Seats.Add(new NativeSeat{id=1,name="A",spec="pistol"});match.Seats.Add(new NativeSeat{id=2,name="B",spec="pistol"});
+                arena=new NativeArena(content,match,"foundry"){ReplicaScene=scene};match.Start();
+                arena.ValidateKernelPanic();
             }
             finally{arena?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}
         }

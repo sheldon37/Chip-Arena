@@ -1,7 +1,7 @@
 # Chip Arena — development log
 
 ## 2026-10-12 — Claude — merged Astra's Cyber Lord kit (#142); the Cyber Lord visuals read her fields
-- Branch `claude/cyberlord`. Shared head `607ebce` merged as `eb0e645`, then PR #142 head `8a2ed88` merged in the next commit (merge, mapping and pins together). Not pushed, merged or released.
+- Branch `claude/cyberlord`. Shared head `607ebce` merged as `eb0e645`. PR #142 head `8a2ed88` merged as `116ea8a` (merge, mapping and pins together). Then the newest shared head `27e6e8f` (Cyber City, PR #143) merged in the next commit, so the branch fast-forwards onto it. Not pushed, merged or released.
 - Her `NativeCyberKit` (`Core/NativeCyberRules.cs`), `Actor.Cyber` and `Runtime/NativeCyberLord.cs` are kept as she wrote them. My proposed kit, `NativeCyberCast` and the `Actor.CyberKit` slot are deleted. Her `Tests/CyberChecks.cs` keeps its name; the presentation test is `CyberLordChecks`.
 - `CyberLordFeed.Read` is still the one mapping, now onto her fields. Full table in `docs/CYBER-LORD.md`.
   - Combo: `Kind` cyber-*, `Combo`, `At` to `Until`, hit on `Release`.
@@ -24,7 +24,12 @@
   - Parity inventory: 15 source weapons, the Bow and the DEV-only Cyber Lord, with its 6 abilities.
   - Weapon card line `12 DMG · 3.6 / SEC · 2.2 M`; developer melee and DEV lists gain cyberlord.
   - Weapon skins and the base chip-module digest exclude the unarmed Cyber Lord (no socket). The digest is unchanged.
-- Checks: Unity runtime+editor build OK; managed core 562 PASS; `check_relay.py` exit 0 (also in a copy holding only the Unity folder, Cyber Lord spec text skipped there); Python unittest 93 OK (1 skipped); `package_source.py` OK (Builds removed); `git diff --check` clean; `tests/accounts.test.ts` 9/9.
+- Checks on `116ea8a`, repeated on the `27e6e8f` merge:
+  - Unity runtime+editor build OK.
+  - `check_relay.py` exit 0 (562, then 564 PASS). It also passes in a copy holding only the Unity folder, where the Cyber Lord spec text is skipped.
+  - Python unittest 93 OK (1 skipped).
+  - `package_source.py` OK; Builds removed.
+  - `git diff --check` clean; `tests/accounts.test.ts` 9/9.
 - Not run: Unity Editor, Windows, two-client play. The offline renders were not refreshed for her timings.
 - For Astra:
   - The kit keeps no interrupt time.
@@ -34,6 +39,30 @@
   - The six abilities' content `text` is their ids, and the Locker shows that text.
   - Accounts do not accept the `dev-cyberlord` entrance.
 - No hit timing, hitbox, damage, cooldown, movement or network change from the presentation.
+
+## 2026-10-12 — Astra — isolate Kernel Panic build validation
+- Branch `codex/kernel-panic-build-fix-20261012`, base shared `5e0a19c`; fixes the owner’s Windows gate failure on `9607246` (`connect locks both and removes colliders`).
+- Root cause: `ValidateFollowupParity` leaves seat B marked `AuthorityBoss`, a configured PvE match and sandbox state. The following Kernel Panic fixture reuses that arena, so the real capsule connect correctly rejects B as a boss. Clearing only the boss flag would also leave PvE damage/sandbox behavior contaminating later assertions.
+- Run Kernel Panic in a fresh NativeMatch/NativeArena and dedicated preview physics scene after disposing the prior fixture. Add a clean-state precondition and a boss-exclusion regression case; restore the saved boss flag in cleanup. Gameplay rules, immunity, damage, animation timing and replication are unchanged.
+- Checks: `/tmp/chip-dotnet/dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -c Release` passed (35 final managed-core groups, including Kernel Panic); `git diff --check` passed. The managed suite does not compile/execute the Editor-only fixture. Unity Editor/PhysX and Windows build are unavailable here and remain required via the local builder.
+- Integration: owner approved merging PR #143 and updating the builder source on 2026-10-12. Refreshed against shared `dfe1917`, preserving both sides of the DEV_LOG-only conflict; the two fix source files are unchanged. Merge/build-source advancement follows this resolution; no compiled update published. Unity/Windows validation remains for Build-and-Publish; do not bypass the gate.
+## 2026-10-12 — Claude — CI: relay startup wait is a deadline
+- `native-source` failed on `3cf02f1` with "Relay startup timed out" before any test ran. The relay was unchanged. The cause: `tools/check_relay.py` polled 200 times, and a refused connection returns at once, so the poll gave the relay only ~10 s to start; the busy runner needed longer.
+- The wait is now a deadline: 60 s by default, set with `--startup-timeout` or `CHIP_RELAY_STARTUP_SECONDS`. Test behaviour and the test timeout are unchanged.
+- Checks: a stalled stand-in relay fails cleanly after the configured 3 s; the full relay passes (exit 0, 563 PASS); Python unittest OK.
+- Note for Astra (tooling owner): adjust or revert as you prefer.
+
+## 2026-10-12 — Claude — Cyber City stage: design, simulation contract and dormant presentation (owner: "add a couple of more stages on the same quality of brick fall. A larger map with stage hazards. ... the other is a cyber city. I can have astra handle the coding portion.")
+- Branch `claude/stage-cybercity`, base `f575670`; implementation `1354080`, shared `f9c755d` merged in `478f242`, shared `a53e752` merged in `5c2e207`, follow-ups `1d0cf16`, `6679cd4`, `74cbb1c`, this log commit after them; all signed. On the branch only: not pushed, merged or released. The map is not in the game: no UnityMaps.json entry, no selection or rotation change (Astra's).
+- Design `docs/arenas/CYBERCITY_PROPOSAL.md`: Helix Junction, an 80 x 64 m slab (76 x 60 m play; Brickfall 60 x 52), point symmetric. A 6 m wide, 4 m deep maglev cut along z = 0, the station concourse at 7.2 m over the central bridge with a lift core, the Nova and Vega podiums (3 storeys, 24 m spires), the Lantern and Signal markets, avenues, the Cab Rank and Loading Dock yards. Draft `docs/arenas/scripts/cybercity_m1.py` (frozen as `Tests/cybercity-draft.json`): 702 blocks, 2 segments, a 34-prop frame; 28/28 FFA and 16/16 team spawn pairs blocked under Brickfall's jitter test; nearest spawn to a hazard 6.0 m.
+- Hazards, pure functions of (round index, FightAt, time) in `Core/NativeCyberCityHazards.cs`: the Helix Line maglev every 32 s from fight + 18 s (6 s amber warn, 3 s red danger, 44 m/s, 42 m long, instant kill inside the train's box; 6 alcoves and 2 exits per wall, no floor point more than 3 m from a pocket); two electrified couplings (14 s cycle, 2.5 s charge, 2 s live, 13 damage per 0.25 s tick, order swaps on even rounds); two tear-hinge billboards on the §5 segment contract. Shown in Fight and Result only.
+- Contract `docs/arenas/CYBERCITY-SIMULATION-CONTRACT.md`: `ContentMap.hazards` schema and validation, kill and damage rules (swept train box, DamageKind `maglev`/`grid`), nav gating (`NativeHazardState.Clear`), tests, and a ready-to-paste prompt for Astra (§10). Astra also needs `RecordDeath` and `NativeNetworkFrame` to accept the new kinds.
+- Presentation, dormant off `cybercity`: the `neon-rain` MapLooks preset (night sky, violet fog, 8 practical lights, block look globs); a Cyber City surface bank in `NativeBlockLit` (8 looks on flag bit 128, base looks untouched); `Core/NativeCyberCityKit.cs` (2,567 dressing parts on the draft, the 68-part train); `Core/NativeCyberCityScenery.cs` (4,570-box skyline, 10 draws); `Core/NativeCyberCityFx.cs` (rain, splashes, steam, haze, light pools, wet reflections, traffic, searchlights and every telegraph; 2 draws, at most 3,600 quads, telegraphs never reduced); `Core/NativeCyberCityAmbience.cs` and `Runtime/NativeCyberCityAudio.cs` (cues on existing keys); `Runtime/NativeCyberCityPresentation.cs`. Hooks: one line each in NativeSourcePresentation, NativeBackdropPresentation, ArenaPresentation (dispose) and NativeAudio. The partial members use a `metro` prefix (`6679cd4`): the merged Cyber Lord presentation also declares `cyberFx`/`cyberScene` on ArenaPresentation, which broke the runtime build after the `a53e752` merge; `74cbb1c` renames the kit part struct off the `CyberKit` name that the Cyber Lord checks reserve. The Cyber City checks read only files inside the Unity folder (fixture `Tests/cybercity-draft.json`), and no longer fail once the map is in UnityMaps.json (`1d0cf16`). Hazards are read from `Resources/UnityMaps.json` by map id until `ContentMap.hazards` exists.
+- Checks on the final tree (`74cbb1c`, docs-only changes after it): `unity-check.sh` runtime+editor build OK; `check_relay.py` exit 0, 559 PASS, 0 FAIL, 35 managed-core groups (new `PASS cyber city`: 2,391 checks); the same in a copy holding only `unity/ChipArenaConversion` (the CI `native-source` checkout): exit 0, 559 PASS, 0 FAIL, two SKIP lines from other groups' docs; Python unittest 91 OK, 1 skip; `package_source.py` passed (1,595 source files; Builds removed); `git diff --check f575670 HEAD` clean. Before the `a53e752` merge the same checks passed on `478f242` (523 PASS).
+- Renders: an offline WebGL harness running NativeBlockLit's surface code and the night sky shader, with a CPU light and bloom stand-in, not Unity. Hero, overview, player-eye views, each hazard's telegraph and active frames, the billboard stressed, falling, landed and as rubble, reduced and low tiers. Fixes from them: softer Cut wall wash and floor pools, a thin parapet line, soft headlight and searchlight beams, the fallen screen's content on its rubble plate. Scratch only, not in the repo.
+- Not run: Unity Editor or play, Windows, multiplayer, bots, real GPU shading and bloom, a performance capture.
+- Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking (no simulation code).
+- Risks: owner taste (dark values, cyan pilot colours against cyan neon); the fallen billboard is a plain dark plate (rubble is not in `map.blocks`, so the kit does not dress it yet); the kit binds to the draft's id families, so Astra's geometry or id changes need matching MapLooks globs or kit rules; the hazard source moves to `ContentMap.hazards` with the schema; renders are a stand-in for Unity lighting. Next: owner review; Astra H0 review and G1 from the contract; Claude tunes on Windows once the map loads.
 
 ## 2026-10-12 — Claude — merged Astra's plunge (#140) and Bow (#141) rules; visuals wired to them
 - Branch `claude/sleepy-ritchie-g8ruhv` (shared head, also pushed to `codex/unity-cloud-current`). Merges `2608ff5` (PR #140) as `5e0a19c` and `e8ec018` (PR #141) in the next commit. Both PRs were based on `e50c1cd`.

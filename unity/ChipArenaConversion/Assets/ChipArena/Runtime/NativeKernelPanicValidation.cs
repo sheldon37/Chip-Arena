@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
         public void ValidateKernelPanic()
         {
             void Check(bool ok,string why){if(!ok)throw new Exception("Kernel Panic authority: "+why);}
-            var a=Pilots[0];var b=Pilots[1];var saved=Match.Seats.Select(s=>(seat:s,spec:s.spec,access:s.access)).ToArray();
+            var a=Pilots[0];var b=Pilots[1];var saved=Match.Seats.Select(s=>(seat:s,spec:s.spec,access:s.access,boss:s.AuthorityBoss)).ToArray();
             var grant=new NativeAccess();typeof(NativeAccess).GetProperty("Developer").GetSetMethod(true).Invoke(grant,new object[]{true});typeof(NativeAccess).GetProperty("Expires").GetSetMethod(true).Invoke(grant,new object[]{double.MaxValue});
             var floor=new GameObject("Kernel Panic validation floor");floor.layer=PropLayer;floor.transform.SetParent(root.transform);floor.transform.position=new Vector3(0,99.025f,0);floor.AddComponent<BoxCollider>().size=new Vector3(64,.2f,54);
             void Clock(float t){Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=t});StepKernelWorld();}
@@ -28,6 +28,7 @@ namespace ChipArena.UnityConversion
             }
             try
             {
+                Check(Pve==null&&!Sandbox&&!Match.Teams&&!a.Seat.AuthorityBoss&&!b.Seat.AuthorityBoss,"fixture requires clean PvP seats, without PvE/boss/sandbox state");
                 Setup();a.Seat.access=NativeAccess.Guest;Check(!StartKernelPanic(a),"non-DEV rejected");a.Seat.access=grant;
                 Check(StartKernelPanic(a)&&Math.Abs(a.Mana-40)<.001f&&a.KernelReady==40,"cast spends mana/cooldown");b.Hp=10;Clock(10.25f);
                 Check(a.Kernel.Active&&ReferenceEquals(a.Kernel,b.Kernel)&&!a.Collider.enabled&&!b.Collider.enabled,"connect locks both and removes colliders");
@@ -40,12 +41,13 @@ namespace ChipArena.UnityConversion
                 for(int step=1;step<=5;step++)Check(Events.Any(e=>e.Detail=="kernel-panic-"+step),"per-step event "+step);
                 Clock(14.25f);Check(a.Kernel.Outcome==4&&!a.Body.isKinematic&&a.Collider.enabled&&!b.Collider.enabled,"recovery restores only living bodies");
                 Setup();b.Body.position=new Vector3(0,100,14);Physics.SyncTransforms();Check(StartKernelPanic(a),"whiff cast");Clock(10.25f);Check(a.Kernel.Outcome==2&&a.KernelReady==25&&Math.Abs(a.Ready-10.85f)<.001f,"whiff recovery and half refund");
+                Setup();b.Seat.AuthorityBoss=true;Check(StartKernelPanic(a),"boss exclusion cast");Clock(10.25f);Check(a.Kernel.Outcome==2&&b.Hp==100&&b.Kernel==null,"authority bosses cannot be connected");b.Seat.AuthorityBoss=false;
                 Setup();b.BlockEnd=20;Check(StartKernelPanic(a),"blocked cast");Clock(10.25f);Check(a.Kernel.Outcome==2&&b.Hp==100,"block prevents connect");
                 Setup();Check(StartKernelPanic(a),"disconnect cast");Clock(10.25f);a.Seat.connected=false;Clock(10.3f);Check(a.Kernel.Outcome==3&&!b.Body.isKinematic&&b.Collider.enabled,"disconnect releases victim");
                 Setup();Check(StartKernelPanic(a),"round-end cast");Clock(10.25f);Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Result,time=10.3f});StepKernelWorld();Check(a.Kernel.Outcome==3&&!a.Body.isKinematic&&!b.Body.isKinematic,"round end releases both");
                 Debug.Log("PASS Kernel Panic authority: DEV gate, spend, capsule connect, JSON path, isolation, lethal hold, five events, whiff, block, disconnect and round cleanup");
             }
-            finally{if(a.Kernel?.Active==true)EndKernel(a,3);foreach(var x in saved){x.seat.spec=x.spec;x.seat.access=x.access;}UnityEngine.Object.DestroyImmediate(floor);}
+            finally{if(a.Kernel?.Active==true)EndKernel(a,3);foreach(var x in saved){x.seat.spec=x.spec;x.seat.access=x.access;x.seat.AuthorityBoss=x.boss;}UnityEngine.Object.DestroyImmediate(floor);}
         }
     }
 }
