@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
             if(input.Attack&&NativeMeleeKitRules.BufferOpen(s,now))state.BufferUntil=now+NativeMeleeFeel.BufferSeconds;
             bool queued=state.BufferUntil>=now,chain=queued&&NativeMeleeKitRules.ChainReady(s,now);
             bool sprint=NativeSprintAttack.Starts(chain,now>state.ComboUntil?1:state.Combo+2,state.Grounded,input,state.Sprinting);
-            bool air=!state.Grounded;bool airAllowed=!air||NativeAirAttackSimulation.Starts(state.Grounded,state.AirborneAt,state.AirAttackUsed,now,input)&&!chain;
+            bool air=NativeAirAttackSimulation.Airborne(state.Grounded,state.Swimming);bool airAllowed=!air||NativeAirAttackSimulation.Starts(state.Grounded,state.AirborneAt,state.AirAttackUsed,now,input)&&!chain;
             float cost=NativeSprintAttack.Cost(w,stats,sprint)*(air?1.25f:1);
             if(airAllowed&&!input.AbilityQ&&!input.AbilityE&&!input.Roll&&!input.Block&&state.Stamina>=cost&&
                 (chain||s==null&&now>=state.Ready)&&(input.Attack||queued||input.Shoot&&s==null))
@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
                 float yaw=chain?s.Yaw:input.Yaw*(float)Math.PI/180;
                 s=NativeMeleeFeel.Begin(w,stats,now,++state.Combo+1,yaw);
                 if(sprint)NativeSprintAttack.Apply(s,(float)stats["attackRate"]);
-                if(air){NativeAirAttackSimulation.Apply(s);state.AirAttackUsed=true;}
+                if(air){NativeAirAttackSimulation.Apply(s);NativeAirAttackSimulation.Carry(s,state.Velocity);state.AirAttackUsed=true;}
                 if(point.HasValue&&!sprint&&!air)
                 {
                     var delta=point.Value-state.Position;delta.y=0;

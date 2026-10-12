@@ -114,6 +114,22 @@ namespace ChipArena.UnityConversion
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=Amb(l.Sky.X,l.Sky.Y,l.Sky.Z);RenderSettings.ambientEquatorColor=Amb((l.Sky.X+l.Ground.X)*.5f,(l.Sky.Y+l.Ground.Y)*.5f,(l.Sky.Z+l.Ground.Z)*.5f);RenderSettings.ambientGroundColor=Amb(l.Ground.X,l.Ground.Y,l.Ground.Z);
         }
         public static void Clock(float time){if(sky!=null)sky.SetFloat("_SceneTime",time);if(arenaFlicker)PracticalLights(time);}
+        /// <summary>
+        /// The home screen's rooftop night (NativeRooftopPresentation): its own skybox, a dim navy fog for the pilots (the city's
+        /// shaders draw their own haze), night trilight, and the key and rim recoloured as the city's magenta and cyan neon from
+        /// ahead of the pilot (NativeSourceLit pilots are lit by Unity lights). The lights stay enabled and nothing enters the
+        /// stage state, so Apply (the menu backdrop's map look, a match's start, a preview) writes every one of these back
+        /// (the camera's field of view and near plane are given back by ConversionGame.RooftopLeave).
+        /// </summary>
+        public static void Rooftop(Camera camera,Material skybox)
+        {
+            camera.clearFlags=CameraClearFlags.Skybox;RenderSettings.skybox=skybox;camera.farClipPlane=3000;
+            RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=new Color(.03f,.02f,.07f);RenderSettings.fogStartDistance=45;RenderSettings.fogEndDistance=700;
+            RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=new Color(.10f,.11f,.24f);RenderSettings.ambientEquatorColor=new Color(.09f,.05f,.13f);RenderSettings.ambientGroundColor=new Color(.10f,.03f,.09f);
+            // No shadow maps: the city's shaders take none, and the pilots' own would only fall on each other.
+            if(moon!=null){moon.color=new Color(.85f,.25f,.75f);moon.intensity=.55f;moon.shadows=LightShadows.None;moon.transform.rotation=Quaternion.LookRotation(new Vector3(.3f,-.4f,.85f));}
+            if(rim!=null){rim.color=new Color(.25f,.85f,1f);rim.intensity=.6f;rim.shadows=LightShadows.None;rim.transform.rotation=Quaternion.LookRotation(new Vector3(-.5f,-.2f,.84f));}
+        }
         /// <summary>Resources/MapLooks.json, loaded and validated once.</summary>
         public static MapLookSet LookSet()
         {

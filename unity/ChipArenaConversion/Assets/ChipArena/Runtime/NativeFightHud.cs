@@ -74,9 +74,9 @@ namespace ChipArena.UnityConversion
         // A resource label (10 px mono, tracked, muted) and its value (13 px mono in the resource's tone).
         private static void ResourceRow(float x,float y,float w,string label,string value,Color tone)
         {U.Text(new Rect(x,y,w,14),label,10,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft,mono:true,tracking:.12f);U.Text(new Rect(x,y,w,14),value,13,tone,TextAnchor.MiddleRight,mono:true);}
-        // A card's state (the ready, active, recast and low flags are what a new ability's states set: the Fan the Hammer and
+        // A card's state (an optional line icon ahead of the name; the ready, active, recast and low flags are what a new ability's states set: the Fan the Hammer and
         // Overdrive cards plug in by filling them; the drawing reads nothing else). Dial: the cooldown done, 0..1, or -1.
-        private struct Card {public string Key,State,Sub;public bool Ready,Active,Recast,Low;public float Dial;}
+        private struct Card {public string Key,State,Sub,Icon;public bool Ready,Active,Recast,Low;public float Dial;}
         private readonly NativeMeleeKitHud.Span qSpan=new NativeMeleeKitHud.Span(),eSpan=new NativeMeleeKitHud.Span(),blockSpan=new NativeMeleeKitHud.Span(),rollSpan=new NativeMeleeKitHud.Span();
         // The dial of a cooldown the HUD knows only by its ready time (block, roll): the span it rose to (Span), 1 once ready.
         private static float SpanDial(NativeMeleeKitHud.Span span,float remaining){float total=span.Update(remaining,1);return remaining>0?1-Mathf.Clamp01(remaining/Mathf.Max(.01f,total)):1;}
@@ -98,6 +98,12 @@ namespace ChipArena.UnityConversion
                 var d=content.Ability(p.Seat.spec,slot);
                 // Standard melee Q/E (Core/NativeMeleeKitHud): the recast window, the cast, the cooldown actually started, stamina.
                 if(d!=null&&NativeMeleeRules.Standard(p.Seat.spec)){var kc=MeleeCard(p,slot,d);cards.Add(new Card{Key=slot.ToUpperInvariant()+" · "+d.name.ToUpperInvariant(),State=kc.State,Ready=kc.Ready,Active=kc.Active,Dial=kc.Dial,Recast=kc.Recast,Low=kc.Low&&!kc.Recast});continue;}
+                // The pistol / machine-gun Q kit (Core/NativeGunKitHud): its icon, fanning, Overdrive's active time and vent, cooldown, ammo.
+                if(d!=null&&slot=="q"&&NativeGunKit.Covers(d.id))
+                {
+                    float qLeft=p.QReady-t,span=qSpan.Update(qLeft,(float)NativeAbilityRules.Cooldown(d,p.Stats));var gc=NativeGunKitHud.Of(d.id,NativeGunKit.Of(p.Pose,t),t,qLeft,span,p.Ammo,p.ReloadEnd>t);
+                    cards.Add(new Card{Key="Q · "+d.name.ToUpperInvariant(),State=gc.State,Icon=gc.Icon,Ready=gc.Ready,Active=gc.Active,Low=gc.Venting||gc.Low,Dial=gc.Dial});continue;
+                }
                 string status=AbilityStatus(p,slot);if(string.IsNullOrEmpty(status)||d==null&&slot=="q")continue;
                 int dot=status.IndexOf(" · ",StringComparison.Ordinal);string name,state;
                 if(dot>0){name=status.Substring(0,dot).Replace("  "," · ").ToUpperInvariant();state=status.Substring(dot+3);}
@@ -116,7 +122,7 @@ namespace ChipArena.UnityConversion
         private float CardAt(Card c,float right,float bottom,float since)
         {
             int dot=c.Key.IndexOf(" · ",StringComparison.Ordinal);string key=dot>0?c.Key.Substring(0,dot):null,name=dot>0?c.Key.Substring(dot+3):c.Key;
-            float kh=14,kw=key!=null?NativeHudChrome.KeyWidth(key,kh):0,nw=U.Measure(name,10,false,true,.06f).x,vw=U.Measure(c.State,14,true,true,c.Ready?.1f:0).x;
+            float kh=14,kw=key!=null?NativeHudChrome.KeyWidth(key,kh):0,ic=c.Icon!=null?kh+4:0,nw=U.Measure(name,10,false,true,.06f).x+ic,vw=U.Measure(c.State,14,true,true,c.Ready?.1f:0).x;
             bool dial=c.Dial>=0;float w=Mathf.Max(84,Mathf.Max(kw+(kw>0?6:0)+nw,vw)+22+(dial?14:0)),h=8+14+6+16+8;var r=new Rect(right-w,bottom-h,w,h);bool reduced=prefs.reducedEffects;
             Color tone=c.Recast?NativeCyberTheme.Warn():c.Low?NativeCyberTheme.Danger():c.Active?NativeCyberTheme.Cyan():c.Ready?NativeCyberTheme.Magenta():NativeCyberTheme.Edge();
             if(c.Active&&!c.Recast)U.Glow(r,NativeCyberTheme.Cyan(.16f),10);NativeHudChrome.Flare(r,since,1,reduced,true);
@@ -124,6 +130,8 @@ namespace ChipArena.UnityConversion
             NativeHudChrome.Outline(r,c.Active||c.Recast||c.Low?U.A(tone,.8f):c.Ready?NativeCyberTheme.Magenta(.45f):NativeCyberTheme.Edge(.95f),NativeHudCyber.CardCut);
             if(c.Ready)U.Fill(new Rect(r.x+NativeHudChrome.Snap(1),r.y+12,NativeHudChrome.Snap(2),r.height-24),NativeCyberTheme.Magenta());
             float lx=r.x+11,ly=r.y+8;if(key!=null){NativeHudChrome.Key(new Rect(lx,ly,kw,kh),key);lx+=kw+6;}
+            // A kit card's line icon (Lucide, NativeIcons) ahead of its name, in the card's tone.
+            if(c.Icon!=null){NativeIcons.Draw(new Rect(lx,ly,kh,kh),c.Icon,c.Low||c.Active||c.Recast?tone:c.Ready?NativeCyberTheme.Ink():NativeCyberTheme.Muted());lx+=kh+4;}
             U.Text(new Rect(lx,ly,r.xMax-lx-(dial?18:8),kh),name,10,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft,mono:true,tracking:.06f);
             var line=new Rect(r.x+11,ly+kh+6,w-22,16);Color ink=c.Recast||c.Low||c.Active?tone:c.Ready?NativeCyberTheme.CyanSoft():NativeCyberTheme.Ink();
             NativeHudChrome.Glitch(line,c.State,14,since,1,TextAnchor.MiddleLeft,reduced,tracking:c.Ready?.1f:0);

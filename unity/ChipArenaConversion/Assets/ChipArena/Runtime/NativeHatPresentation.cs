@@ -125,5 +125,13 @@ namespace ChipArena.UnityConversion
             sourceModels.QueueSheldonPieces(bone(CapturedRig.Head),face,glow,layer,camera,1,flash,partTint?.Invoke(CapturedRig.Head)??Color.white);
             return true;
         }
+        /// <summary>The Sheldon Head on a menu rig (the home screen's rooftop pilot): its shell and the idle face and ring on
+        /// `time` (blinks and breathing; no hit or kill there). False for any other hat.</summary>
+        private bool SheldonStill(string hat,string color,Matrix4x4 root,Func<int,Matrix4x4> bone,Matrix4x4 head,float time,int seed,bool reduced,int layer,Camera camera)
+        {
+            if(hat!=NativeSheldonHead.Hat||sourceModels==null||!sourceModels.Has(NativeSourceModels.SheldonLive))return false;
+            var glow=HatBody(hat,color)??Color.white;sourceModels.Queue(NativeSourceModels.SheldonLive,root,bone,null,layer,camera,body:glow);
+            sourceModels.QueueSheldonPieces(head,NativeSheldonHead.Evaluate(time,seed,-1,-1,reduced),glow,layer,camera,1,1,Color.white);return true;
+        }
     }
 }

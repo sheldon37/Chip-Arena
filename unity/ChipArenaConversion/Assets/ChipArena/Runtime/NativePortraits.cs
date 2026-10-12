@@ -13,7 +13,9 @@ namespace ChipArena.UnityConversion
     public struct PortraitLook
     {
         public string Spec,Pose,Hat,HatColor;public int Body,Accent;public float Yaw;
-        public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent&&HatColor==o.HatColor;
+        /// <summary>The weapon's skin key (Core/NativeWeaponSkins.cs; null or unknown: Standard).</summary>
+        public string Skin;
+        public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent&&Skin==o.Skin&&HatColor==o.HatColor;
     }
     // The live 3D pilot portraits of the menu, lobby and results cards (client/menu-portraits.ts MenuPortraits at 05950ea):
     // the pilot's own source model in its colours, with its hat (the Auditor halo: the arena's shared animated drawer,
@@ -44,7 +46,7 @@ namespace ChipArena.UnityConversion
                 Look=look;Spec=string.IsNullOrEmpty(look.Spec)?"pistol":look.Spec;Hat=Spec=="siren"||string.IsNullOrEmpty(look.Hat)?"none":look.Hat;
                 // A picked hat colour: the bank's tintable twin with the colour as its body tint (Auto: the authored hat, untinted).
                 string color=NativeHatLooks.Normalize(look.HatColor);int tint=NativeHatLooks.Tint(Hat,color);HatColor=color;
-                WeaponModel="weapon-"+Spec;HatModel=NativeHatLooks.Model(Hat,color)??"hat-none";HatTint=tint<0?Vector4.one:V4(NativePortraitRules.Linear(tint));IdleClip=Spec=="siren"?"siren-idle-melee":Spec+"-idle";TopPose=-1;
+                WeaponModel=NativeWeaponSkins.Model(NativeWeaponSkins.PrototypeHeld(Spec),look.Skin==NativeWeaponSkins.Prototype?NativeWeaponSkins.PrototypeIndex:NativeWeaponSkins.StandardIndex);HatModel=NativeHatLooks.Model(Hat,color)??"hat-none";HatTint=tint<0?Vector4.one:V4(NativePortraitRules.Linear(tint));IdleClip=Spec=="siren"?"siren-idle-melee":Spec+"-idle";TopPose=-1;
                 BodyTint=V4(NativePortraitRules.BodyTint(look.Body));AccentTint=V4(NativePortraitRules.AccentTint(look.Accent));EdgeTint=V4(NativePortraitRules.EdgeTint(look.Body));FlexTint=V4(NativePortraitRules.FlexTint(look.Body));
             }
         }
@@ -195,7 +197,7 @@ namespace ChipArena.UnityConversion
             if(weapon.Visible||offhand.Visible)foreach(var p in Parts(s.WeaponModel))
             {
                 LobbyHeld held;if(weapon.Visible&&p.Bone==weapon.Bone)held=weapon;else if(offhand.Visible&&p.Bone==offhand.Bone)held=offhand;else continue;
-                Model(p,bones[held.Bone]*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(held.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(held.Rotation)),Vector3.one),Vector4.one,Vector4.one,Vector4.one,Vector4.one);
+                Model(p,bones[held.Bone]*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(held.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(held.Rotation)),Vector3.one),Vector4.one,s.AccentTint,Vector4.one,Vector4.one);
             }
             // The camera: menu-portraits.ts framePortrait (orthographic, looking at the framing centre).
             var target=RenderTexture.GetTemporary(s.W,s.H,24,RenderTextureFormat.ARGB32,RenderTextureReadWrite.Default,Samples(s.W,s.H));target.wrapMode=TextureWrapMode.Clamp;

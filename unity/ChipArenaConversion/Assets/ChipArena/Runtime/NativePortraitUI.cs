@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
             float h=withRows-text-6-top;if(h<PilotStageRows)h=alone-text-6-top;
             var stage=new Rect(r.x+1,top,r.width-2,h);
             if(stage.height<PilotStageMin){var c=new Vector2(r.center.x,r.y+Mathf.Min(r.height*.36f,180));float ring=Mathf.Min(86,r.width*.26f);PilotEmblem(c,ring,accent,body,weapon,e,t);return c.y+ring+26;}
-            var look=new PortraitLook{Spec=weapon.id,Pose=prefs.lobbyPose,Hat=prefs.hat,Body=HexOf(body),Accent=HexOf(accent),HatColor=prefs.hatColor};
+            var look=new PortraitLook{Spec=weapon.id,Pose=prefs.lobbyPose,Hat=prefs.hat,Body=HexOf(body),Accent=HexOf(accent),Skin=NativeWeaponSkins.Of(prefs.weaponSkins,weapon.id),HatColor=prefs.hatColor};
             float emblemRing=Mathf.Min(86,r.width*.26f);var centre=new Vector2(stage.center.x,stage.y+Mathf.Min(stage.height*.42f,emblemRing+60));
             PortraitStage(stage,1,look,prefs.lobbyBack,NativeHatLooks.Rgb(prefs.backColor),accent,body,NativeIcons.Spec(weapon.id),U.Hex((int)weapon.color),e,t,0,centre,emblemRing,28,false);
             return stage.yMax+6;
@@ -137,16 +137,16 @@ namespace ChipArena.UnityConversion
             look=new PortraitLook{Spec=p.weapon,Pose="weapon",Hat="none",Body=HexOf(p.body),Accent=HexOf(p.accent),HatColor=null};key=0;back=NativePortraitBacks.Default;backColor=-1;
             if(result?p.tag=="YOU":p.you)
             {
-                look.Pose=prefs.lobbyPose;look.Hat=prefs.hat;look.HatColor=prefs.hatColor;back=NativePortraitBacks.Normalize(prefs.lobbyBack);backColor=NativeHatLooks.Rgb(prefs.backColor);
+                look.Pose=prefs.lobbyPose;look.Hat=prefs.hat;look.Skin=NativeWeaponSkins.Of(prefs.weaponSkins,look.Spec);look.HatColor=prefs.hatColor;back=NativePortraitBacks.Normalize(prefs.lobbyBack);backColor=NativeHatLooks.Rgb(prefs.backColor);
                 if(!result){key=10000+p.id;return true;}
                 var mine=arena?.Local?.Seat;key=20000+(mine!=null?mine.id:0);return true;
             }
             if(result)
             {
                 var seat=ResultSeat(p,index);if(seat==null){key=29000+index;return true;}
-                look.Hat=seat.hat;look.Pose=seat.lobbyPose;look.HatColor=seat.hatColor;back=NativePortraitBacks.Normalize(seat.lobbyBack);backColor=NativeHatLooks.Rgb(seat.backColor);key=20000+seat.id;return true;
+                look.Hat=seat.hat;look.Pose=seat.lobbyPose;look.Skin=NativeWeaponSkins.Of(seat.weaponSkins,look.Spec);look.HatColor=seat.hatColor;back=NativePortraitBacks.Normalize(seat.lobbyBack);backColor=NativeHatLooks.Rgb(seat.backColor);key=20000+seat.id;return true;
             }
-            key=10000+p.id;foreach(var s in RoomSeats)if(s!=null&&s.id==p.id){look.Hat=s.hat;look.Pose=s.lobbyPose;look.HatColor=s.hatColor;back=NativePortraitBacks.Normalize(s.lobbyBack);backColor=NativeHatLooks.Rgb(s.backColor);break;}
+            key=10000+p.id;foreach(var s in RoomSeats)if(s!=null&&s.id==p.id){look.Hat=s.hat;look.Pose=s.lobbyPose;look.Skin=NativeWeaponSkins.Of(s.weaponSkins,look.Spec);look.HatColor=s.hatColor;back=NativePortraitBacks.Normalize(s.lobbyBack);backColor=NativeHatLooks.Rgb(s.backColor);break;}
             return true;
         }
         // PveResultsPanel's order: the party rows (bots only while connected) by seat id.

@@ -104,6 +104,11 @@ namespace ChipArena.UnityConversion
         }
         public static float Finite(float v,float fallback)=>float.IsNaN(v)||float.IsInfinity(v)?fallback:v;
         /// <summary>The unit push direction (Unity world, horizontal) of a hit on a pilot at `target` from `from`, or false.</summary>
+        // A replicated hit direction (Unity space) with a horizontal part: the push runs along it.
+        public static bool Along(V3 n,out V3 dir)
+        {
+            dir=new V3(0,0,0);float l=(float)Math.Sqrt(n.x*n.x+n.z*n.z);if(!(l>1e-6f)||!(l<1e5f))return false;dir=new V3(n.x/l,0,n.z/l);return true;
+        }
         public static bool Push(V3 target,V3 from,out V3 dir)
         {
             float x=target.x-from.x,z=target.z-from.z,l=(float)Math.Sqrt(x*x+z*z);dir=new V3(0,0,0);if(!(l>.05f)||!(l<1e5f))return false;dir=new V3(x/l,0,z/l);return true;

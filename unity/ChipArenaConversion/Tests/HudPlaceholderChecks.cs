@@ -195,7 +195,7 @@ namespace ChipArena.UnityConversion
             Check(fightHud.Contains("FighterHud(p,W,H)")&&fightHud.Contains("p.Seat.spec==\"ansatsuken\"||p.Seat.spec==\"emperor\"")&&fightHud.Contains("SirenHud(p,W)"),"fighter and Siren HUDs drawn");
             Check(combat.Contains("LeetStatus();")&&!combat.Contains("\"CONTROLLING \"+local.Controlling"),"L33t box replaces the plain CONTROLLING label");
             Check(leet.Contains("ControlUntil=owner.ControlUntil=Time+5")&&NativeLeetStatus.ControlSeconds==5,"the guest's 5 s countdown matches the host's possession length");
-            Check(home.Contains("if(dev&&SubtleLink(ref lx,y+15,\"book-open\",\"Catalogue\",le))")&&home.Contains("if(l.Closed||!account.Developer){Go(MenuScreen.Home);return;}"),"Catalogue is a DEV-only link and screen");
+            Check(home.Contains("if(dev&&QuietRow(ref qy,\"catalogue\",\"CATALOGUE\",\"DEV\",qe))Go(MenuScreen.Catalogue);")&&home.Contains("if(l.Closed||!account.Developer){Go(MenuScreen.Home);return;}"),"Catalogue is a DEV-only link and screen");
             foreach(var call in new[]{"SandboxPreview(\"draft\")","SandboxPreview(\"rarity\",previewRarity)","SandboxPreview(\"knockout\")","SandboxPreview(\"my-death\")","SandboxLaunchDebris(debrisMass,debrisSpeed,debrisMaterial,debrisImpact)","SandboxReset()","SandboxTestBlock()"})
                 Check(sandbox.Contains(call),"sandbox panel calls "+call);
             Check(sandbox.Contains("debrisMass=8,debrisSpeed=15")&&sandbox.Contains("Slider(\"Mass (kg)\",debrisMass,1,150)"),"debris launcher defaults and range (8 kg, 15 m/s, up to 150 kg)");

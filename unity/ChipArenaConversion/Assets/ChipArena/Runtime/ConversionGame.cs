@@ -14,6 +14,11 @@ namespace ChipArena.UnityConversion
         {if(accountServiceVersion>=1)return false;if(string.IsNullOrWhiteSpace(accountOrigin))accountOrigin=NativeAccount.DefaultOrigin;accountServiceVersion=1;return true;}
         // The portrait backdrop picked in the Locker (NativePortraitBacks key; absent in older saves: the tick ring).
         public string lobbyBack=NativePortraitBacks.Default;
+        // Settings · Camera (Core/NativeCameraModes): the third-person rig and its shoulder (absent in older saves: the right
+        // shoulder, the new default); firstPerson above stays the first-person choice that V toggles.
+        public string cameraMode=NativeCameraModes.Default;public bool shoulderLeft;
+        // The Locker's per-weapon skins (NativeWeaponSkins map; absent in older saves: every weapon Standard).
+        public string weaponSkins="";
         public bool developmentConsole;
         // The headwear and backdrop colours picked in the Locker (NativeHatLooks: "" Auto, else #rrggbb; absent in older saves: Auto).
         public string hatColor="",backColor="";
@@ -40,7 +45,7 @@ namespace ChipArena.UnityConversion
                 singleInstance=new NativeSingleInstance("Local\\ChipArena.Native.Player");if(!singleInstance.Acquired){Application.Quit(0);return;}
 #endif
                 prefs=NativeFileStore.Read(PreferencePath,s=>JsonUtility.FromJson<ConversionPreferences>(s),()=>new ConversionPreferences(),out var preferenceWarning);if(preferenceWarning!=null)networkStatus=preferenceWarning;
-                if(prefs.MigrateAccountService())Save();
+                if(prefs.MigrateAccountService())Save();prefs.cameraMode=NativeCameraModes.Sanitize(prefs.cameraMode);
                 // A retired entrance pick (neon-drop, vector-slide, signal-spin, arc-salute, pulse-wave) becomes the weapon signature.
                 {string intro=prefs.intro;bool pick=prefs.overrideIntro;NativeIntroRules.Migrate(ref intro,ref pick);if(intro!=prefs.intro||pick!=prefs.overrideIntro){prefs.intro=intro;prefs.overrideIntro=pick;Save();}}
                 if(prefs.map!="random"&&!content.maps.Any(m=>m.id==prefs.map))prefs.map="moonlit";
@@ -95,10 +100,12 @@ namespace ChipArena.UnityConversion
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;
             if(Input.GetKeyDown(KeyCode.Escape)&&previewArena!=null){EndPreview();return;}if(Input.GetKeyDown(KeyCode.Escape)&&inspectSeat!=0){inspectSeat=0;return;}if(Input.GetKeyDown(KeyCode.Escape)&&ReplayActive){EndReplay();return;}if(Input.GetKeyDown(KeyCode.Escape)){if(arena==null)MenuBack();else if(PvePickOpen)PveOpen(false);else if(menu&&pauseScreen!=PauseScreen.Menu){if(pauseScreen==PauseScreen.Settings){ApplySettings();Save();}pauseScreen=PauseScreen.Menu;}else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
             // M mutes anywhere and V switches the camera during a match (main.ts keydown), neither while a text field has focus
-            // or the board is open; both confirm with a notice.
+            // or the board is open; both confirm with a notice. V toggles first person and the chosen third-person camera; X
+            // swaps the shoulder (NativeShoulderCamera.cs).
             bool typing=GUIUtility.keyboardControl!=0;
             if(Input.GetKeyDown(KeyCode.M)&&!typing&&!BoardOpen){prefs.sound=!prefs.sound;if(nativeAudio!=null)nativeAudio.Muted=!prefs.sound;Save();Notice(prefs.sound?"Sound on · M to mute":"Sound muted · M to unmute");}
-            if(Input.GetKeyDown(KeyCode.V)&&arena!=null&&!typing&&!BoardOpen&&!(arena.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)){prefs.firstPerson=!prefs.firstPerson;Save();Notice(prefs.firstPerson?"First person · V to switch":"Third person · V to switch");}
+            if(Input.GetKeyDown(KeyCode.V)&&arena!=null&&!typing&&!BoardOpen&&!(arena.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)){prefs.firstPerson=!prefs.firstPerson;Save();Notice(CameraName+" · V to switch");}
+            CameraKeys(typing);
             if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
             bool play=arena!=null&&!menu&&!BoardOpen&&match.Phase==NativePhase.Fight&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
@@ -126,7 +133,7 @@ namespace ChipArena.UnityConversion
         private void LateUpdate(){LateFrame();DamageScreen();}
         private void LateFrame()
         {
-            NativeUiBlur.Frame();if(cameraView==null)return;cinematic.BeginFrame();if(PreviewFrame())return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}backdropMap=null;
+            NativeUiBlur.Frame();if(cameraView==null)return;cinematic.BeginFrame();if(PreviewFrame())return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
             if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroClockAge(),cameraView);return;}introClock.Reset();NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
             var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
             UpdateCamera();
@@ -135,6 +142,8 @@ namespace ChipArena.UnityConversion
                 pending.AimTarget=NativeArena.Vec(AimPoint((float)p.Weapon.range));
                 var ability=content.Ability(p.Seat.spec,pending.AbilityEHeld||pending.AbilityE||pending.AbilityEReleased?"e":"q");
                 pending.AbilityTarget=NativeArena.Vec(AimPoint(ability!=null?(float)ability.range:p.Seat.spec=="shield"?25:p.Seat.spec=="daggers"?48:60,p.Seat.spec=="shield"||p.Seat.spec=="daggers"));
+                // The shoulder cameras send the look that points the pilot at the crosshair point (NativeShoulderCamera.cs).
+                ConvergeAim(p);
             }
             // renderer.ts:136/:149 camera shake with event-vfx.ts:29 (NativeShakeRules): a fresh (.4 s) hit, impact, break, block or
             // collapse aimed at the view pilot, never a burn/poison tick, sets .12 while Settings · camera shake is on. The amount
@@ -160,8 +169,10 @@ namespace ChipArena.UnityConversion
             if(!menu&&Spectator==null&&!cinematic.Directing&&presentation.FirstPerson&&prefs.cameraShake){presentation.ObserveHits(frame);presentation.HitKick(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);}
             // The block effect's clash hitch (Core/NativeBlockFx.Hitch): the blocker's own view, first or third person, camera shake on.
             if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.BlockHitch(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
+            // The gun Q kit's first-person kick (Core/NativeGunKitMotion.CameraKick): fanned rounds, Overdrive's buzz; camera shake on.
+            if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.GunKitKick(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
             presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;
-            presentation.Render(frame,renderTime,false);
+            presentation.Render(frame,renderTime,false);ShoulderSprint(renderTime);
             Vector3? preview=null;bool previewClamped=false;
             // previewOn: E held .2 s and casting, or ready (a charge or no cooldown left) and, for magic, affordable. Casting is
             // read from the pose (PressAbility sets it, CancelWindup clears it), which guests also receive.
@@ -180,13 +191,32 @@ namespace ChipArena.UnityConversion
             presentation.RenderAbilities(arena,preview,previewClamped);presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);
             presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView,menu&&!Online);presentation.FinishSourceFrame();
         }
-        // No match: the selected map behind the menu with the source's slow overview orbit (renderer.ts idle camera).
-        private string backdropMap;
+        // No match: the home screen's rooftop over the cyber city (NativeRooftopPresentation.cs; owner 2026-10-12: the home
+        // screen only), else the selected map behind the menu with the source's slow overview orbit (renderer.ts idle camera),
+        // as Play vs Bots, the room screens, Boss Test and the others keep. The rooftop writes its own camera framing and night
+        // look; leaving it gives the camera back its field of view and near plane and re-applies the map look.
+        private string backdropMap;private bool rooftopShown;private float rooftopFov,rooftopNear;
         private void MenuBackdrop()
         {
+            if(menuScreen==MenuScreen.Home&&!InRoom&&presentation!=null&&presentation.RooftopSupported)
+            {
+                if(!rooftopShown){rooftopShown=true;rooftopFov=cameraView.fieldOfView;rooftopNear=cameraView.nearClipPlane;}
+                backdropMap=null;viewModelCamera.enabled=false;float quality=presentation.LowGraphics?.34f:prefs.reducedEffects?.6f:1;
+                var pilot=new RooftopPilot{Spec=prefs.weapon,Hat=prefs.hat,Body=prefs.bodyColor,Accent=prefs.accentColor,HatColor=prefs.hatColor};
+                if(presentation.RenderRooftop(cameraView,(float)(Time.unscaledTimeAsDouble%4800.0),pilot,quality,prefs.reducedEffects))return;
+            }
+            RooftopLeave();
             string map=PreviewMapId;var definition=content.Map(map);if(definition==null||presentation==null)return;
             if(backdropMap!=map){backdropMap=map;NativeLighting.Apply(definition,cameraView);}
             viewModelCamera.enabled=false;ArenaPresentation.OverviewCamera(cameraView,Time.unscaledTime);presentation.RenderBackdrop(content.sourceCommit,map,Time.unscaledTime,cameraView);
+        }
+        private void RooftopLeave(){if(!rooftopShown)return;rooftopShown=false;cameraView.fieldOfView=rooftopFov;cameraView.nearClipPlane=rooftopNear;backdropMap=null;}
+        // Where the seated pilot's feet hang over the lip, on the virtual canvas (the home screen's nameplate follows them), while
+        // the rooftop is shown and the point is in front of the camera.
+        private bool RooftopFeet(out Vector2 point)
+        {
+            point=default;if(!rooftopShown||cameraView==null)return false;var s=cameraView.WorldToScreenPoint(new Vector3(0,.25f,-2f));if(s.z<=0)return false;
+            point=new Vector2(s.x/NativeUi.S,(Screen.height-s.y)/NativeUi.S);return true;
         }
         private void FixedUpdate()
         {
@@ -198,28 +228,31 @@ namespace ChipArena.UnityConversion
             Ray ray=cameraView.ViewportPointToRay(new Vector3(.5f,.5f));float nearest=range+(thrownMelee?0:Vector3.Distance(ray.origin,arena.ViewPilot.Body.position));
             Vector3 target=ray.origin+ray.direction*(thrownMelee?48:nearest);
             foreach(var hit in Physics.RaycastAll(ray,nearest,NativeArena.ShotMask,QueryTriggerInteraction.Ignore))
-            {var pilot=hit.collider.GetComponent<NativePilotBody>();if(pilot!=null&&pilot.Pilot==arena.ViewPilot)continue;if(hit.distance<nearest){target=hit.point;nearest=hit.distance;}}
+            {var pilot=hit.collider.GetComponent<NativePilotBody>();if(pilot!=null&&pilot.Pilot==arena.ViewPilot||hit.distance<aimSkip)continue;if(hit.distance<nearest){target=hit.point;nearest=hit.distance;}}
             return target;
         }
         private void UpdateCamera()
         {
             // C16: the Last Laugh cutscene directs this camera for the pilots in it (the demon victim screen has its own).
-            if(cinematic.Direct(arena,presentation,cameraView,match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result)){viewModelCamera.enabled=false;sprintKick=0;return;}
+            if(cinematic.Direct(arena,presentation,cameraView,match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result)){viewModelCamera.enabled=false;sprintKick=0;shoulderView=convergeAim=false;aimSkip=0;return;}
             var p=Spectator??arena.ViewPilot;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
             // Camera intent survives stagger/knockdown. The simulation independently gates ADS benefits and shots.
             bool alive=arena.Local.Hp>0&&p.Hp>0;
             bool aim=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&pending.Aim&&alive&&!menu;
             // ArenaPresentation.Render already hides the viewed pilot's world body in first person.
             bool first=NativeViewRules.FirstPerson(prefs.firstPerson||aim,alive,menu);
-            cameraView.fieldOfView=SprintFov(first,aim,Mathf.Lerp(cameraView.fieldOfView-sprintKick,aim?(float)ads.fov:first?NativeViewRules.FirstFov:NativeViewRules.ThirdFov,1-Mathf.Exp(-16*Time.unscaledDeltaTime)));
+            // Settings · Camera (NativeShoulderCamera.cs): Classic, once settled, is the original camera below, unchanged.
+            bool classic=CameraClassic(first);
+            cameraView.fieldOfView=SprintFov(first,aim,Mathf.Lerp(cameraView.fieldOfView-sprintKick,aim?(float)ads.fov:first?NativeViewRules.FirstFov:classic?NativeViewRules.ThirdFov:cameraRig.Fov(Time.unscaledTime),1-Mathf.Exp(-16*Time.unscaledDeltaTime)));
             Quaternion rotation=Quaternion.Euler(pitch,yaw,0);Vector3 location=focus;
-            if(!first)
+            if(!first&&!classic)location=ShoulderCamera(p,focus);
+            else if(!first)
             {
                 Vector3 offset=rotation*Vector3.back*NativeViewRules.ThirdDistance+Vector3.up*NativeViewRules.ThirdLift;
                 location=focus+offset;
                 if(Physics.SphereCast(focus,.12f,offset.normalized,out var hit,offset.magnitude,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))location=focus+offset.normalized*Mathf.Max(.15f,hit.distance-NativeViewRules.CollisionPadding);
             }
-            cameraView.transform.SetPositionAndRotation(location,rotation);
+            cameraView.transform.SetPositionAndRotation(location,rotation);CameraAim(p);
             presentation.FirstPerson=first;presentation.AimHeld=aim;viewModelCamera.enabled=first;viewModelCamera.fieldOfView=cameraView.fieldOfView-sprintKick;
         }
         private string AbilityStatus(NativePilot p,string slot)
@@ -233,6 +266,8 @@ namespace ChipArena.UnityConversion
                 string name=p.Seat.spec=="sword"?"Rising slash":p.Seat.spec=="daggers"?"Dagger throw":p.Seat.spec=="shield"?"Shield throw":"Wolf leap";
                 return "E  "+name+" · "+specialState;
             }
+            // The pistol / machine-gun Q kit (Core/NativeGunKitHud): fanning, active time, venting, cooldown, ammo.
+            if(slot=="q"&&NativeGunKit.Covers(d.id))return NativeGunKitHud.Status(d.name,NativeGunKitHud.Of(d.id,NativeGunKit.Of(p.Pose,arena.Time),arena.Time,p.QReady-arena.Time,(float)NativeAbilityRules.Cooldown(d,p.Stats),p.Ammo,p.ReloadEnd>arena.Time));
             if(d.kind=="ads")return "Q  Aim (hold)";
             if(NativeMeleeRules.Standard(p.Seat.spec))
             {

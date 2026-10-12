@@ -12,6 +12,8 @@ namespace ChipArena.UnityConversion
         public string lobbyBack=NativePortraitBacks.Default;
         // Headwear and backdrop colours (NativeHatLooks: "" Auto, the look every seat had before; bots stay Auto).
         public string hatColor=NativeHatLooks.Auto,backColor=NativeHatLooks.Auto;
+        // The per-weapon skin picks (Core/NativeWeaponSkins.cs: normalized, "" = every weapon Standard).
+        public string weaponSkins="";
     }
     [Serializable] public class NativeMatchFrame
     {public int[] rematchVotes=Array.Empty<int>();public int rematchRequired;public float lobbyReturnSeconds;public int introSeat;public double introStarted;public string introStyle;public int round,set,winner,setWinner,draftSeat;public string result,chosen;public NativePhase phase;public double time,phaseEnd,fightAt,readyAt,chosenAt;public bool teams,cooperative;}

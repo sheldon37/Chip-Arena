@@ -76,7 +76,7 @@ internal static class HatLookChecks
             Check(main>0&&reference,hat+" has main vertices and its reference colour");
             Check(hat=="halo"?kept==0:kept>0,hat+" keeps its details ("+kept+" vertices)");
         }
-        Check(bank.Contains("ArmorLights(model,parts);models.Add(model.id,parts.ToArray());HatTwin(model,parts);")&&bank.Contains("SplitSirenPieces(data);HordeMaterials();SheldonModels();"),"the twins and the Sheldon Head are built once, with the bank");
+        Check(bank.Contains("ArmorLights(model,parts);models.Add(model.id,parts.ToArray());HatTwin(model,parts);")&&bank.Contains("HordeMaterials();WeaponSkins();SheldonModels();"),"the twins and the Sheldon Head are built once, with the bank");
         Check(present.Contains("colors[i]=new Color(level,level,level,a);emission.Add(new Vector4(el,el,el,1));")&&present.Contains("else{colors[i]=new Color(r,g,b,a);emission.Add(e);}"),"the twin tags only main vertices (body tint) and copies the rest");
         Check(present.Contains("private static Color? HatBody(string hat,string color){int t=NativeHatLooks.Tint(hat,color);if(t<0)return null;"),"no body tint on Auto (the queue gets the default white, as before)");
 
@@ -181,6 +181,9 @@ internal static class HatLookChecks
             ("NativeVentDeathPresentation.cs","sourceModels.Queue(HatModel(v.Hat,death.actor?.HatColor),root,v.Bone,body:HatBody(v.Hat,death.actor?.HatColor));"),
             ("NativeSceneMotion.cs","sourceModels.Queue(HatModel(death.actor.Hat,death.actor.HatColor),root,Bone,Visible,layer,only,body:HatBody(death.actor.Hat,death.actor.HatColor),opacity:alpha);"),
             ("NativeDraftPresentation.cs","sourceModels.Queue(HatModel(seat.hat,seat.hatColor),root,draftBone,body:HatBody(seat.hat,seat.hatColor));"),
+            ("NativeRooftopPresentation.cs","sourceModels.Queue(HatModel(look.Hat,hatColor),group,cast.Bone[i],null,0,camera,body:HatBody(look.Hat,hatColor));"),
+            ("NativeRooftopPresentation.cs","&&!SheldonStill(look.Hat,hatColor,group,cast.Bone[i],bones[CapturedRig.Head],time,i,reduced,0,camera))"),
+            ("ConversionGame.cs","Accent=prefs.accentColor,HatColor=prefs.hatColor};"),
         };
         foreach(var (file,text) in sites)Check(R(file).Contains(text),"the hat draw in "+file+" passes through the colour helpers");
         foreach(var file in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs"))
@@ -212,7 +215,7 @@ internal static class HatLookChecks
         Check(match.Contains("public string hatColor=NativeHatLooks.Auto,backColor=NativeHatLooks.Auto;"),"seats (bots included) default to Auto");
         Check(network.Contains("hatColor=NativeHatLooks.Normalize(prefs.hatColor),backColor=NativeHatLooks.Normalize(prefs.backColor),")&&network.Contains("hatColor=NativeHatLooks.Normalize(c.hatColor),backColor=NativeHatLooks.Normalize(c.backColor),"),"Profile() sends them normalised and the host seat normalises them");
         Check(lobby.Contains("lobbyBack=s.lobbyBack,hatColor=s.hatColor,backColor=s.backColor,"),"the lobby seat frame carries them");
-        Check(frame.Contains("introText,lobbyPose,lobbyBack,hatColor,backColor;")&&frame.Contains("s.hatColor!=null&&s.hatColor.Length>NativeHatLooks.MaxLength||s.backColor!=null&&s.backColor.Length>NativeHatLooks.MaxLength")&&frame.Contains("lobbyBack=s.lobbyBack,hatColor=s.hatColor,backColor=s.backColor,killEffect")&&frame.Contains("seat.hatColor=NativeHatLooks.Normalize(sf.hatColor);seat.backColor=NativeHatLooks.Normalize(sf.backColor);"),"the match seat frame carries, caps and normalises them");
+        Check(frame.Contains("introText,lobbyPose,lobbyBack;public string weaponSkins;public string hatColor,backColor;")&&frame.Contains("s.hatColor!=null&&s.hatColor.Length>NativeHatLooks.MaxLength||s.backColor!=null&&s.backColor.Length>NativeHatLooks.MaxLength")&&frame.Contains("lobbyBack=s.lobbyBack,hatColor=s.hatColor,backColor=s.backColor,weaponSkins=s.weaponSkins,killEffect")&&frame.Contains("seat.hatColor=NativeHatLooks.Normalize(sf.hatColor);seat.backColor=NativeHatLooks.Normalize(sf.backColor);"),"the match seat frame carries, caps and normalises them");
         Check(profile.Contains("if(!string.IsNullOrEmpty(c.hatColor))prefs.hatColor=NativeHatLooks.Normalize(c.hatColor);if(!string.IsNullOrEmpty(c.backColor))prefs.backColor=NativeHatLooks.Normalize(c.backColor);"),"an account load adopts a colour only when the profile has one");
         Check(model.Contains("[NonSerialized] public string HatColor=\"\";")&&arena.Contains("a.Hat=p.Seat.hat;a.HatColor=p.Seat.hatColor;")&&frame.Contains("v.HatColor=p.Seat.hatColor;")&&frame.Contains("if(p.Death?.actor!=null)p.Death.actor.HatColor=p.Seat.hatColor;"),"the actor's hat colour comes from the seat on host, guests, replays and deaths");
         var actor=new Actor{HatColor="#ff3dcf"};Check(actor.ViewCopy().HatColor=="#ff3dcf"&&new Actor().HatColor==""&&typeof(Actor).GetField("HatColor").GetCustomAttribute<NonSerializedAttribute>()!=null,"view copies keep the colour; the frame serializer (JsonUtility) skips it");

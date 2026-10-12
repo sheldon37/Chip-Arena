@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
                 d.Rig.ActorPose(d.Pose,feet,at);
                 var tint=NativeWeaponFxShapes.Fx(NativeMeleeKitFx.DecoyTint());var root=d.Rig.Root.transform.localToWorldMatrix;
                 sourceModels.Queue(pilot,root,b=>b>=0&&b<d.Rig.Bones.Length?d.Rig.Bones[b].localToWorldMatrix:root,null,0,null,tint,null,opacity);
-                string weapon=Ghost("weapon-"+a.SourceSpec);
+                string weapon=Ghost(SkinnedHeld(a));
                 if(weapon!=null){float reach=WeaponReach(d.Rig,d.Pose,at);sourceModels.Queue(weapon,root,b=>SourceWeaponBone(d.Rig,d.Pose,at,false,b,reach),null,0,null,tint,null,opacity);}
             }
             staleDecoys.Clear();foreach(var pair in decoys){var a=System.Array.Find(s.Actors,x=>x!=null&&x.Id==pair.Key);if(a?.MeleeKit==null||NativeMeleeKitFx.DecoyOpacity(a.MeleeKit,time)<=0)staleDecoys.Add(pair.Key);}
@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
                 if(Vector3.Distance(root,last.At)<NativeMeleeKitFx.DashGhostSpacing*(q<.5f?1.6f:1))continue;dashLast[a.Id]=(root,cast);
                 var g=dashGhosts[dashNext]??(dashGhosts[dashNext]=new DashGhost());dashNext=(dashNext+1)%dashGhosts.Length;
                 g.Pose.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)g.Pose.Bones[b]=rig.Bones[b].localToWorldMatrix;
-                g.Weapon=!a.WeaponAway?Ghost("weapon-"+a.SourceSpec):null;g.Pose.Armed=g.Weapon!=null;
+                g.Weapon=!a.WeaponAway?Ghost(SkinnedHeld(a)):null;g.Pose.Armed=g.Weapon!=null;
                 if(g.Pose.Armed){float reach=WeaponReach(rig,a,time);for(int b=0;b<22&&b<rig.Bones.Length;b++)g.Pose.Weapon[b]=SourceWeaponBone(rig,a,time,false,b,reach);}
                 g.At=time;g.Live=true;g.Tint=NativeWeaponFxShapes.Fx(NativeMeleeKitFx.DashTint(a.SourceSpec,LoadoutPilot(a.Id)?.Weapon!=null?(int)LoadoutPilot(a.Id).Weapon.color:0));
             }

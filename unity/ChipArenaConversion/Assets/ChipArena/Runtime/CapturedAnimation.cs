@@ -291,6 +291,8 @@ namespace ChipArena.UnityConversion
             private NativeLocomotionCarry locomotion;private NativeLocomotionCarry Locomotion=>Hits!=null?locomotion??=new NativeLocomotionCarry():null;
             // The per-weapon sprint carry (Core/NativeSprintMotion), on the same arena rigs.
             private NativeSprintMotion sprint;private NativeSprintMotion SprintLayer=>Hits!=null?sprint??=new NativeSprintMotion():null;
+            // The pack's directional gun and magic travel carry (Core/NativeRangedLocomotion), on the same arena rigs.
+            private NativeRangedLocomotion rangedLocomotion;private NativeRangedLocomotion RangedLocomotion=>Hits!=null?rangedLocomotion??=new NativeRangedLocomotion():null;
             // The held weapons' reach stretch, set by the presentation before posing (the melee layers measure the stretched blade).
             public float WeaponReach=1;
             public static bool CapturedMelee(Actor a)=>NativePoseRoute.For(a,false)==PoseRoute.CapturedMelee;
@@ -397,7 +399,9 @@ namespace ChipArena.UnityConversion
                 }
                 // A swing begun in the air plays the weapon's jump attack (Core/NativeAirAttack) instead of the cut below.
                 bool air=!magic&&!GunRules.Ranged(a.Weapon)&&AirView(a,position,time,set,firstPerson,attack);
-                if(attack&&!air)
+                // A grounded swing entered from a sprint plays the weapon's sprint attack (Core/NativeSprintAttackVisuals) instead.
+                bool sprinting=!air&&!magic&&!GunRules.Ranged(a.Weapon)&&SprintView(a,time,set,attack);
+                if(attack&&!air&&!sprinting)
                 {
                     string cut="cut"+(char)('A'+a.Combo%(set==1?4:set==0?3:2)); var c=Find(set,cut);
                     float age=time-a.AttackAt,recovery=Mathf.Max(.001f,a.VisualDuration-a.VisualWindup-a.VisualActive);
@@ -497,6 +501,25 @@ namespace ChipArena.UnityConversion
                 if(age>windup+active){Save(blendP,blendQ);Sample(set,"idle",time);Blend(blendP,blendQ,MeleeSwing.Settle(age,windup,active,recovery));}
                 State="air attack"+(float.IsNaN(landed)?"":" landed");return true;
             }
+            // ---- the first-person sprint attack (Core/NativeSprintAttackVisuals; the third-person rigs pose it in MeleeMotion) ----
+            // A swing the authority flags as entered from a sprint (it flags only grounded openers, so the greatsword's hop keeps
+            // it) poses the weapon's running take on a scratch rig on the swing's own timing (NativeSprintAttackRules.ClipTime: the
+            // daggers' twin cuts out and back), the shield driven out at the hit, blended in over .04 s and settling into the guard
+            // after the window; the view layer keeps its own carry and bob.
+            private MeleeRig sprintRig;private readonly float[] sprintRow=new float[CapturedClip.Channels];private readonly CapturedRig.Pose sprintPose=new CapturedRig.Pose();
+            private bool SprintView(Actor a,float time,int set,bool attack)
+            {
+                var clip=NativeSprintAttackRules.Clip(a.SourceSpec);var melee=MeleeSet.For(a.SourceSpec);
+                if(!attack||clip==null||melee==null||!NativeSprintAttackRules.Plays(a.SourceSpec,a.SprintAttack,false))return false;
+                float windup=a.VisualWindup,active=a.VisualActive,recovery=Mathf.Max(.001f,a.VisualDuration-windup-active),age=time-a.AttackAt;
+                clip.Sample(NativeSprintAttackRules.ClipTime(clip,a.SourceSpec,age,windup,active,recovery),sprintRow);
+                if(a.SourceSpec=="shield"){float k=NativeSprintAttackRules.Bash(age,windup,active,recovery);sprintRow[MeleeCapture.Grip+2]+=NativeSprintAttackRules.BashReach*k;sprintRow[MeleeCapture.Grip+1]+=NativeSprintAttackRules.BashLift*k;}
+                sprintRig??=new MeleeRig();sprintRig.Reset();sprintRig.WeaponVisible=!a.WeaponAway;sprintRig.WeaponReach=WeaponReach;
+                MeleeCapture.Apply(sprintRig,melee,sprintRow,CaptureOptions.Of(1,melee.Fit,MeleeClear.Turn,legs:0));sprintRig.WritePose(sprintPose);
+                Save(blendP,blendQ);NativePoseWriter.Write(Bones,sprintPose,"a sprint attack view model");Blend(blendP,blendQ,CapturedClip.Ease(age/.04f));
+                if(age>windup+active){Save(blendP,blendQ);Sample(set,"idle",time);Blend(blendP,blendQ,MeleeSwing.Settle(age,windup,active,recovery));}
+                State="sprint attack"+(age>windup+active?" recovery":"");return true;
+            }
             // Third-person magic pilots (host, guests, killcam), the four schools and L33t H4x, walk on the source's gait
             // (Core/MagicMotion): the magic layer rides the gait's body bob, torso counter-twist and arm swing instead of
             // resetting the torso over the captured sword walk, which froze it. A juggle (observed from the replicated
@@ -505,7 +528,7 @@ namespace ChipArena.UnityConversion
             private MagicMotion magicMotion;private NativeSirenDrift sirenDrift;
             private void MagicGaitPose(Actor a,Vector3 position,float time)
             {
-                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(magicMotion==null)magicMotion=new MagicMotion();magicMotion.JumpLayer=JumpLayer;magicMotion.SprintLayer=SprintLayer;
+                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(magicMotion==null)magicMotion=new MagicMotion();magicMotion.JumpLayer=JumpLayer;magicMotion.SprintLayer=SprintLayer;magicMotion.Locomotion=RangedLocomotion;
                 bool juggle=Juggled(a,time),roll=MagicMotion.Rolls(a,time,juggle);
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;magicMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);magicMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
@@ -523,7 +546,7 @@ namespace ChipArena.UnityConversion
             private GunMotion gunMotion;
             private void GunGaitPose(Actor a,Vector3 position,float time)
             {
-                Weapon=a.Weapon;Set=0;if(gunMotion==null)gunMotion=new GunMotion();gunMotion.JumpLayer=JumpLayer;gunMotion.SprintLayer=SprintLayer;
+                Weapon=a.Weapon;Set=0;if(gunMotion==null)gunMotion=new GunMotion();gunMotion.JumpLayer=JumpLayer;gunMotion.SprintLayer=SprintLayer;gunMotion.Locomotion=RangedLocomotion;
                 bool juggle=Juggled(a,time),roll=!juggle&&a.Rolling(time);
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;gunMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);gunMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;

@@ -190,13 +190,18 @@ namespace ChipArena.UnityConversion
         /// <summary>The hook for a heavier landing (the melee jump attack, NativeAirAttackRules.LandScale): scales the landing's
         /// hips drop; 1 otherwise. Set by MeleeMotion before each Melee call.</summary>
         public float LandScale=1;
+        /// <summary>The hook for a swing whose own footwork carries the pilot through the air (the greatsword's leaping sprint
+        /// attack, MeleeMotion.SprintCut over the authority's hop): no air or landing pose from the layer while it is set (the
+        /// track is still observed). Set by MeleeMotion before each Melee call; it clears after the call.</summary>
+        public bool Leap;
         public void Melee(MeleeRig r,MeleeView p,float time,float dt)
         {
+            bool leap=Leap;Leap=false;
             bool blocked=p.Hp<=0||p.Juggle||p.Down||p.Rolling(time)||p.HitStunUntil>time||p.Action(time);
             bool busy=MeleeMotion.AttackPose(p,time).Active||p.Guarding||p.BlockTime>0;
             int set=NativeJumpRules.SetFor(p.Spec);bool shield=set==NativeJumpRules.Shield;
             // The shield rides the chest: half the clip's torso turn and a shallower squat keep it off the head and the floor.
-            Layer(r,set,p.Spec,p.Grounded,time,dt,blocked,(busy?.35f:1)*(shield?.5f:1),busy?0:1,!shield,MeleeSet.For(p.Spec),set==NativeJumpRules.Greatsword,true,1-MeleeMath.Ease(r.Motion/.2f),(shield?.55f:1)*LandScale,p.AirJumpAt);
+            Layer(r,set,p.Spec,p.Grounded,time,dt,blocked,(busy?.35f:1)*(shield?.5f:1),busy?0:1,!shield,MeleeSet.For(p.Spec),set==NativeJumpRules.Greatsword,true,1-MeleeMath.Ease(r.Motion/.2f),(shield?.55f:1)*LandScale,p.AirJumpAt,leap);
         }
         /// <summary>The DEV fighters (MeleeMotion.FighterFinish): only the legs and hips of a plain jump; a style action (their
         /// own air motion), a juggle, knockdown, dodge or stun keeps the style's pose, and legs the style authors stay its own.</summary>
@@ -225,7 +230,7 @@ namespace ChipArena.UnityConversion
         /// in the air; `still`: how far the route's captured guard owns the hips height (the melee guard, standing), which
         /// overrides the gait's own landing dip.
         /// </summary>
-        public void Layer(MeleeRig r,int set,string spec,bool grounded,float time,float dt,bool blocked,float torso,float arms,bool main,MeleeSet fit,bool twoHand,bool legs,float still,float dropScale=1,float? airJumpAt=null)
+        public void Layer(MeleeRig r,int set,string spec,bool grounded,float time,float dt,bool blocked,float torso,float arms,bool main,MeleeSet fit,bool twoHand,bool legs,float still,float dropScale=1,float? airJumpAt=null,bool leap=false)
         {
             if(r==null)return;
             bool restart=last<-90||time<last-MeleeGait.REWIND||time-last>.35f;last=time;dt=restart?1/60f:MeleeMath.Clamp(dt,0,.05f);
@@ -237,6 +242,7 @@ namespace ChipArena.UnityConversion
             var guard=NativeJumpRules.Clip(set,NativeJumpRules.Guard);if(guard==null||own<=1e-4f){hasHeld=false;return;}
             guard.Sample(0,row0);float yaw0=row0[MeleeCapture.Yaw];
             if(t.AirJumps>0&&t.AirJumpAt>flipAt&&t.Airborne&&NativeJumpRules.Flips(spec)){flipAt=t.AirJumpAt;flipLand=-100;}
+            if(leap){hasHeld=false;phase=fall=-1;return;}
             if(t.Airborne)Air(r,set,time,dt,torso,arms,main,fit,twoHand,legs);
             else Land(r,set,time,dt,torso,arms,main,fit,twoHand,still,dropScale);
         }

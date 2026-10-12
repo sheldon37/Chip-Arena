@@ -85,7 +85,7 @@ namespace ChipArena.UnityConversion
                     if(s.texture>=0){material.mainTexture=textures[s.texture];var repeat=data.textures[s.texture].repeat;material.mainTextureScale=new Vector2(repeat[0],repeat[1]);}materials.Add(material);parts.Add(new Part{Name=s.part,Bone=s.bone,Mesh=mesh,Material=material});
                 }ArmorLights(model,parts);models.Add(model.id,parts.ToArray());HatTwin(model,parts);
             }
-            SplitSirenPieces(data);HordeMaterials();SheldonModels();
+            SplitSirenPieces(data);HordeMaterials();WeaponSkins();SheldonModels();
         }
         public void Begin(){foreach(var d in draws.Values){d.Matrices.Clear();d.Bodies.Clear();d.Accents.Clear();d.Tints.Clear();d.Glows.Clear();}}
         public bool Has(string id)=>id!=null&&models.ContainsKey(id);
@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
         public void Queue(string id,Matrix4x4 root,Func<int,Matrix4x4> bone=null,Func<int,bool> visible=null,int layer=0,Camera camera=null,Color? body=null,Color? accent=null,float opacity=1,Func<int,float> partOpacity=null,Func<int,Color> partTint=null,Vector4? glow=null,NativeSirenLookPose look=null,float hitFlash=1)
         {
             if(!models.TryGetValue(id,out var model))return;Color bc=body??Color.white,ac=accent??Color.white;
-            foreach(var part in model){if(visible!=null&&!visible(part.Bone))continue;var key=(part,layer);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}d.Matrices.Add(part.Bone>=0&&bone!=null?bone(part.Bone):root);d.Bodies.Add(new Vector4(bc.r,bc.g,bc.b,opacity*(partOpacity?.Invoke(part.Bone)??1)));d.Accents.Add(new Vector4(ac.r,ac.g,ac.b,hitFlash));d.Tints.Add(partTint?.Invoke(part.Bone)??Color.white);d.Glows.Add(glow??Vector4.one);}
+            foreach(var part in model){if(visible!=null&&!visible(part.Bone))continue;var key=(part,layer);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}var matrix=part.Bone>=0&&bone!=null?bone(part.Bone):root;d.Matrices.Add(weaponStretch.Count>0?WeaponStretched(part.Mesh,matrix):matrix);d.Bodies.Add(new Vector4(bc.r,bc.g,bc.b,opacity*(partOpacity?.Invoke(part.Bone)??1)));d.Accents.Add(new Vector4(ac.r,ac.g,ac.b,hitFlash));d.Tints.Add(partTint?.Invoke(part.Bone)??Color.white);d.Glows.Add(glow??Vector4.one);}
             if(lookPieces.Count>0&&lookPieces.TryGetValue(id,out var list))QueuePieces(list,root,bone,visible,layer,camera,bc,ac,opacity,partOpacity,partTint,glow,look);
         }
         /// <summary>

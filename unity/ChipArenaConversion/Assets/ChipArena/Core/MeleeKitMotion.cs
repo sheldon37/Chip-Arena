@@ -479,6 +479,9 @@ namespace ChipArena.UnityConversion
         // Recovery: [start, Until); the pose the previous phase ended on, through the ability's follow-through, out to the guard.
         private static void Settle(in KitClock c,float time,KitPose o)
         {
+            // The Kunai recast now enters an explicit recovery at its strike (Astra, PR #136): the arrival stab still plays from the
+            // release and fades over the cast's last .25 s, exactly as its active phase drew it before.
+            if(c.Kind=="kunai-mark"&&c.Recast){var a=c;a.Part=KitPart.Active;a.Start=c.Release;Strike(a,time,o);return;}
             float start=c.Start,dur=Math.Max(.01f,c.Until-start),t=Math.Max(0,time-start);
             // The pose at the recovery's start: the end of the active/fall phase when there was one, else the windup's end.
             bool moved=c.Kind=="flash-step"||c.Kind=="bulwark-charge"||c.Kind=="rising-dragon"&&c.Recast;

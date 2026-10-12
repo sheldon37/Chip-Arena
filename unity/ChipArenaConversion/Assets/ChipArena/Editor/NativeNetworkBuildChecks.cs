@@ -21,6 +21,11 @@ namespace ChipArena.UnityConversion.Editor
             var backReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{lobbyBack="circuit"}}}));
             if(backPrefs.lobbyBack!="circuit"||backReady.profile.cosmetics.lobbyBack!="circuit"||NativePortraitBacks.Index(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").lobbyBack)!=NativePortraitBacks.TickRing)
                 throw new Exception("Saved pilot/ready DTO lost the portrait backdrop, or an old save did not load as the tick ring");
+            // Weapon skins (Core/NativeWeaponSkins.cs) are saved and sent the same way; an old save reads as every weapon Standard.
+            var skinPrefs=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{weaponSkins="sword:prototype"}));
+            var skinReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{weaponSkins="pistol:prototype,sword:prototype"}}}));
+            if(skinPrefs.weaponSkins!="sword:prototype"||skinReady.profile.cosmetics.weaponSkins!="pistol:prototype,sword:prototype"||NativeWeaponSkins.Index(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").weaponSkins,"sword")!=NativeWeaponSkins.StandardIndex)
+                throw new Exception("Saved pilot/ready DTO lost the weapon skins, or an old save did not load as Standard");
             // Headwear and backdrop colours (NativeHatLooks) travel the same way; an old save and an old profile are Auto.
             var colourPrefs=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{hatColor="#22e6ff",backColor="#ff3dcf"}));
             var colourReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{hatColor="#22e6ff",backColor="#ff3dcf",hat="sheldon-head"}}}));
@@ -102,6 +107,11 @@ namespace ChipArena.UnityConversion.Editor
                 if(!backs.Valid(authority.Content))throw new Exception("Portrait backdrop frame failed validation");replica.ApplyFrame(backs,authority.LocalId);
                 if(replica.Match.Seat(backs.seats[0].id)?.lobbyBack!="warp"||replica.Match.Seat(backs.seats[1].id)?.lobbyBack!=NativePortraitBacks.Default)throw new Exception("Guest/replay lost or did not normalise the portrait backdrop");
                 var longBack=NativeFrameCodec.Clone(copy);longBack.seats[0].lobbyBack=new string('x',NativePortraitBacks.MaxLength+1);if(longBack.Valid(authority.Content))throw new Exception("Over-long portrait backdrop accepted");
+                // Weapon skins ride the seat frame too: a picked skin arrives, junk normalises away (Standard), an over-long map fails.
+                var skins=NativeFrameCodec.Clone(copy);skins.seats[0].weaponSkins="sword:prototype,rifle:prototype";skins.seats[1].weaponSkins="sword:gold,nope";skins=NativeFrameCodec.Clone(skins);
+                if(!skins.Valid(authority.Content))throw new Exception("Weapon skin frame failed validation");replica.ApplyFrame(skins,authority.LocalId);
+                if(replica.Match.Seat(skins.seats[0].id)?.weaponSkins!="rifle:prototype,sword:prototype"||replica.Match.Seat(skins.seats[1].id)?.weaponSkins!="")throw new Exception("Guest/replay lost or did not normalise the weapon skins");
+                var longSkins=NativeFrameCodec.Clone(copy);longSkins.seats[0].weaponSkins=new string('x',NativeWeaponSkins.MaxLength+1);if(longSkins.Valid(authority.Content))throw new Exception("Over-long weapon skin map accepted");
                 // Hat and backdrop colours ride the seat frame too: a colour arrives (lower-cased), junk is Auto, an older
                 // host's frame without them is Auto, an over-long one fails validation; the Sheldon Head id is shown as sent.
                 var colours=NativeFrameCodec.Clone(copy);colours.seats[0].hatColor="#22E6FF";colours.seats[0].backColor="#ff3dcf";colours.seats[0].hat="sheldon-head";colours.seats[1].hatColor="red";colours.seats[1].backColor=null;colours=NativeFrameCodec.Clone(colours);

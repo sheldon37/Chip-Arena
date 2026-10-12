@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
             void Setup(string spec,bool airborne=false)
             {
                 p.Seat.spec=spec;p.Weapon=Content.Weapon(spec);p.Stats=NativeContentRules.Stats(Content,spec,p.Seat.chips);
-                p.AirJumps=0;p.AirJumpAt=-100;p.Grounded=p.GroundAttached=false;p.Swing=null;p.Special=null;p.Down=null;p.Juggle=null;p.Roll=null;
+                p.AirJumps=0;p.AirJumpAt=-100;p.AirborneAt=-1;p.AirAttackUsed=false;p.Grounded=p.GroundAttached=false;p.Swing=null;p.Special=null;p.Down=null;p.Juggle=null;p.Roll=null;
                 p.RollEnd=p.StunEnd=p.AttackEnd=p.Ready=p.BlockEnd=p.FrozenUntil=p.ScareUntil=p.ReloadEnd=0;
                 p.Body.position=new Vector3(1000,airborne?25:20+NativeLocomotionRules.HalfHeight+.02f,1000);
                 p.Body.linearVelocity=p.MoveVelocity=p.Knockback=Vector3.zero;p.Body.isKinematic=false;p.Body.useGravity=true;
@@ -59,7 +59,10 @@ namespace ChipArena.UnityConversion
                     Setup("daggers",true);if(attack)p.AttackEnd=Time+1;else p.StunEnd=Time+1;Tick(true);
                     Check(p.AirJumps==0&&p.AirJumpAt==-100&&p.Body.linearVelocity.y<0,(attack?"attack":"stun")+" blocks air jump");
                 }
-                Setup("daggers",true);Tick(true,true);Check(p.AttackEnd>Time&&p.AirJumps==0,"new attack commitment takes priority over same-tick jump");
+                // Airborne, a press is the landing attack once its .15 s airtime gate opens (NativeAirAttackSimulation): that commitment
+                // takes priority over a same-tick air jump; an earlier press commits nothing and the air jump goes first.
+                Setup("daggers",true);p.AirborneAt=Time-1;Tick(true,true);Check(p.AttackEnd>Time&&p.AirJumps==0&&p.Swing!=null&&p.Swing.Air,"new attack commitment takes priority over same-tick jump");
+                Setup("daggers",true);Tick(true,true);Check(p.Swing==null&&p.AirJumps==1,"an air press before the airtime gate leaves the air jump");
                 ValidateAirJumpInput();
                 Debug.Log("PASS native air jump: six weapon routes, ground/air/third press/landing, walk-off, jumpPower, attack/stun locks, coalesced input and real JSON state validation");
             }

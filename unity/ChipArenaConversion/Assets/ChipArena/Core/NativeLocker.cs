@@ -20,11 +20,11 @@ namespace ChipArena.UnityConversion
             "How opponents see you finish them.",
             "Your match intro and the line under your name.",
             "Preferred class and weapon, and that weapon's abilities.",
-            "Finishes for every weapon. Coming soon.",
+            "A finish for every weapon: Standard or the Prototype Series.",
         };
-        // Weapon skins are a future feature: the tab shows locked silhouettes and nothing in it can be picked or saved.
-        public static bool Interactive(int category)=>category!=WeaponSkins;
-        public static bool Soon(int category)=>category==WeaponSkins;
+        // Every category is live (weapon skins since the Standard models: Core/NativeWeaponSkins.cs); none is coming soon.
+        public static bool Interactive(int category)=>category>=0&&category<Count;
+        public static bool Soon(int category)=>false;
 
         // Restricted cosmetics (shown only when NativeCosmeticRules.Allowed lets them through) carry a DEV badge.
         public static bool DevItem(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo"||id==NativeHatLooks.SheldonHead);
@@ -195,7 +195,8 @@ namespace ChipArena.UnityConversion
         {
             switch(id)
             {
-                case "fan-hammer":return "crosshair";case "overdrive":return "zap";
+                // The gun Q kit (Core/NativeGunKit.Icon, the HUD cards share it): hammer for Fan the Hammer, gauge for Overdrive.
+                case "fan-hammer":case "overdrive":return NativeGunKit.Icon(id);
                 case "ads":return w!=null&&w.id=="rifle"?"scan-line":"crosshair";case "frag-grenade":return "bomb";case "rocket":return "rocket";case "orbital-mark":return "target";
                 case "flame-lance":return "flame";case "meteor-strike":return "sun";case "tidal-wave":return "waves";case "geyser-wall":return "droplets";
                 case "blink-strike":return "zap";case "ball-lightning":return "orbit";case "shadow-shackles":return "anchor";case "singularity":return "eclipse";
