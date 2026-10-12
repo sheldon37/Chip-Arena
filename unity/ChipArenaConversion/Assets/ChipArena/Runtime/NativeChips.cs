@@ -77,7 +77,7 @@ namespace ChipArena.UnityConversion
         }
         private void ChipBlink(NativePilot p,Vector3 delta,string effect=null)
         {
-            float length=Math.Min(12,delta.magnitude);if(length<.01f)return;var scene=root.scene.GetPhysicsScene();Vector3 origin=p.Body.position+Vector3.up*.12f;
+            if(KernelLocked(p))return;float length=Math.Min(12,delta.magnitude);if(length<.01f)return;var scene=root.scene.GetPhysicsScene();Vector3 origin=p.Body.position+Vector3.up*.12f;
             if(scene.CapsuleCast(origin+Vector3.up*.43f,origin-Vector3.up*.43f,.42f,delta.normalized,out var hit,length,WorldMask,QueryTriggerInteraction.Ignore)&&Vector3.Dot(hit.normal,delta.normalized)<-.05f)length=Math.Max(0,hit.distance-.15f);
             Vector3 target=origin+delta.normalized*length;target=ClampMap(target);if(!RoomFor(p,target))return;p.Body.position=target;p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;Physics.SyncTransforms();Emit(EventKind.Teleport,p,0,target,0,effect,from:origin);Fx(target,1,3,origin,p,"teleport");
         }

@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-12 Kernel Panic: `codex/unity-kernel-panic-20261012` on `da5b9c1` implements the ultimate simulation, deterministic replicated choreography, pair isolation, deferred lethal damage and cleanup. NEW-KITS §3 item 4 records the exact contract. Cyber Lord roster/rest-of-kit and Claude presentation are not in this base; this branch does not expose an incomplete class. Actual Unity/Windows and test publication remain pending; see DEV_LOG.
+
 2026-10-12 Sheldon Intro: `claude/hats` adds the DEV-only `sheldon-intro` entrance (glitch arrival on the music's beats, the Sheldon Head look, glitch screen pass and card; music key `intro.sheldon-intro`). On the branch; not pushed, merged or released. Unity Editor/Windows not run; see DEV_LOG.
 2026-10-12 hats: `claude/hats` (shared `cd9f066` merged) adds Locker HAT COLOUR and BACKDROP COLOUR pickers (Auto keeps the old look; colours travel like the backdrop key) and the DEV-only Sheldon Head hood (procedural; animated face and ring). The account service already stores both colours and the DEV ids (PR #136); its Worker deploy is pending. On the branch; not pushed, merged or released. Unity Editor/Windows not run; see DEV_LOG.
 
