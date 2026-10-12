@@ -199,8 +199,9 @@ internal static class SprintAttackPoseChecks
         string Read(string f)=>File.ReadAllText(Path.Combine(root,f)).Replace("\r\n","\n");
         string mm=Read("Assets/ChipArena/Core/MeleeMotion.cs"),ca=Read("Assets/ChipArena/Runtime/CapturedAnimation.cs"),fx=Read("Assets/ChipArena/Runtime/NativeAirAttackFxPresentation.cs");
         Check(mm.Contains("JumpLayer.Leap=leapLive;")&&mm.Contains("p.SprintAttack?0:p.AirAttack")&&mm.Contains("NativeSprintAttackRules.ClipTime(clip,p.Spec,"),"the rig hands the leap to the footwork, never reads a sprint attack as a jump attack and plays the twin's clip time");
-        Check(ca.Contains("NativeSprintAttackRules.ClipTime(clip,a.SourceSpec,")&&ca.Contains("Plays(a.SourceSpec,a.SprintAttack,false)")&&ca.Contains("a.SprintAttack?0:-1,time,blocked"),"the first-person view keeps the take through the hop and plays the twin");
-        Check(fx.Split("a.SprintAttack?0:-1,").Length==3,"the jump attack's impact and sound never fire for a sprint attack's landing");
+        Check(ca.Contains("NativeSprintAttackRules.ClipTime(clip,a.SourceSpec,")&&ca.Contains("Plays(a.SourceSpec,a.SprintAttack,false)")&&ca.Contains("a.AirAttack?1:0,time,blocked"),"the first-person view keeps the take through the hop and plays the twin");
+        // (the view, the jump-attack impact and its sound take Astra's replicated air flag, never set on a sprint attack)
+        Check(fx.Split("a.AirAttack?1:0,").Length==3,"the jump attack's impact and sound never fire for a sprint attack's landing");
         Check(Read("Assets/ChipArena/Runtime/ArenaPresentation.cs").Contains("SprintAttackFx(arena,fields);")&&Read("Assets/ChipArena/Runtime/NativeEffectsAudio.cs").Contains("SprintAttackCues(arena);"),"the effects and the cues are wired");
         log.Add("hooks: the arena rig hands the greatsword's hop to the footwork (the jump layer's leap hook), the rig, first-person view, jump-attack effects and sounds never read a sprint attack as a jump attack, the twin plays in both views, the effects and cues are wired");
     }

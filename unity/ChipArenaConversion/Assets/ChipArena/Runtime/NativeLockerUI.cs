@@ -210,7 +210,7 @@ namespace ChipArena.UnityConversion
                     LkHead(true);prefs.introText=GUILayout.TextField(prefs.introText??"Ready to make an impact",64,lockerField);LkReserve(18);
                     LkHead();LkReserve(LkGrid(lockerW,lockerIntros.Count+1,LkItemMin,LkItemH));break;
                 case NativeLocker.Loadout:
-                    MenuClasses();MenuWeapons();LkHead(true);LkReserve(54);LkHead();LkReserve(LkGrid(lockerW,menuWeapons.Count,LkRowMin,LkRowH));
+                    MenuClasses();MenuWeapons();LkHead(true);LkReserve(LockerClassHeight+6);LkHead();LkReserve(LockerWeaponHeight+6);
                     LkHead();LkReserve(LkAbilityH(lockerQ));GUILayout.Space(LkGap);LkReserve(LkAbilityH(lockerE));LkReserve(40);break;
                 default:LkReserve(76);LkHead();LkReserve(LkGrid(lockerW,lockerSkins.Count,LkSkinMin,LkSkinH));break;
             }
@@ -299,12 +299,8 @@ namespace ChipArena.UnityConversion
                 {
                     LkHeading(lockerSlots[k++],"CLASS",null);LkClassRow(lockerSlots[k++],e);
                     LkHeading(lockerSlots[k++],"PREFERRED WEAPON","Your default in every match and room");var grid=lockerSlots[k++];
-                    for(int i=0;i<menuWeapons.Count;i++)
-                    {
-                        var w=menuWeapons[i];var r=LkCell(grid,i,LkRowMin,LkRowH);bool on=w.id==prefs.weapon;
-                        if(LkRowCard(r,8500+Array.IndexOf(content.weapons,w),on,NativeIcons.Spec(w.id),U.Hex(0xffc1a5),w.name,null,LockerString(3,w.id),out bool hot)&&!on){nativeAudio?.Play("install",null,.4f);SetWeapon(w.id);}
-                        if(hot&&repaint)lockerWeapon=w.id;
-                    }
+                    // The loadout's weapon tiles (NativeLoadoutUI: hover previews the weapon on the pilot, a pick plays install).
+                    LockerWeaponTiles(new Rect(grid.x,grid.y+6,lockerW,grid.height-6),e);
                     var weapon=MenuWeapon();LkHeading(lockerSlots[k++],"ABILITIES",lockerAbilityHint);
                     LkAbilityRow(lockerSlots[k++],"q",lockerQ,weapon,e);LkAbilityRow(lockerSlots[k++],"e",lockerE,weapon,e);
                     var note=lockerSlots[k++];NativeIcons.Draw(new Rect(note.x+2,note.y+13,14,14),"circle-help",U.Hex(0x8f909a,e));
@@ -575,19 +571,7 @@ namespace ChipArena.UnityConversion
         // ---- Loadout ---------------------------------------------------------------------------------------------------
         // The class switcher (MenuClass / NativeLoadoutText.Pick as the class cards do: a weapon outside the class gives way to
         // the class default).
-        private void LkClassRow(Rect r,float e)
-        {
-            string active=MenuClass();bool dev=account.Developer;int n=menuClasses.Count;if(n==0)return;float w=(lockerW-(n-1)*8)/n;
-            for(int i=0;i<n;i++)
-            {
-                string c=menuClasses[i];var b=new Rect(r.x+i*(w+8),r.y,w,r.height);bool on=c==active,hot=lockerViewHot&&U.Hover(b);float h=on?0:U.HoverAmount(8600+i,b,hot);
-                U.Round(b,on?U.Hex(0x39251f,e):U.A(U.Mix(U.Hex(0x222329),U.Hex(0x303138),h),e),8,on?U.Hex(0xff6b35,e):U.A(U.Mix(U.Hex(0x484952),U.Hex(0xff784b),h),e));if(on)U.Fill(new Rect(b.x+8,b.yMax-4,b.width-16,3),U.Hex(0xff6b35,e));
-                string name=NativeLoadoutText.Name(c),tag=NativeLoadoutText.Tagline(c);float nw=U.Measure(name,15,true).x;bool tagFits=w>=150&&U.Measure(tag,9,false,true).x<=w-60;
-                float bx=b.center.x-(22+8+Mathf.Max(nw,tagFits?U.Measure(tag,9,false,true).x:0))/2;NativeIcons.Draw(new Rect(bx,b.center.y-11,22,22),NativeIcons.Class(c),U.Hex(0xff996f,e));
-                U.Text(new Rect(bx+30,b.y+(tagFits?7:0),w,tagFits?22:b.height),name,15,U.Hex(0xf5f5f7,e),TextAnchor.MiddleLeft,bold:true);if(tagFits)U.Text(new Rect(bx+30,b.y+28,w,16),tag,9,U.Hex(0xff996f,.85f*e),TextAnchor.MiddleLeft,mono:true);
-                if(!lockerBlocked&&hot&&U.Button(b)&&!on){Click();menuClass=c;SetWeapon(NativeLoadoutText.Pick(content.weapons,prefs.weapon,c,dev,AllowedWeapon));}
-            }
-        }
+        private void LkClassRow(Rect r,float e)=>LockerClassTiles(new Rect(r.x,r.y+6,lockerW,r.height-6),e);
         // A slot's row: the key, its option cards (several per slot are laid out side by side) and, with a single option, the
         // "more coming" placeholder beside it; an empty slot says why.
         private const float LkKey=56;

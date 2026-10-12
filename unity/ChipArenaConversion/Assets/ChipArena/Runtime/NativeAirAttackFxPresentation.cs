@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
                 Vector3 feet=p.Body.transform.position-Vector3.up*.865f;
                 bool blocked=a.Hp<=0||a.Rolling(now)||a.StunUntil>now||a.JuggleUntil>now||NativeSpecialPose.Active(a,now)||NativeSpecialPose.Down(a,now);
                 t.Observe(now,a.Grounded,feet.y,blocked);int impacts=w.Impacts;
-                w.Observe(t,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,a.SprintAttack?0:-1,now,blocked);
+                w.Observe(t,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,a.AirAttack?1:0,now,blocked);
                 if(w.Impacts>impacts&&a.Hp>0&&NativeAirAttackRules.Clip(p.Seat.spec)!=null)
                 {
                     var tint=NativeGlowRules.ArmorTint(a.AccentColor);var point=NativeAirAttackFx.Point(new NVector(feet.x,feet.y,feet.z),a.Yaw,t.Floor);
@@ -96,7 +96,7 @@ namespace ChipArena.UnityConversion
                 if(!airWatches.TryGetValue(p.Seat.id,out var watch))airWatches[p.Seat.id]=watch=new NativeAirAttackWatch();
                 bool blocked=a.Hp<=0||a.Rolling(t)||a.StunUntil>t||a.JuggleUntil>t||NativeSpecialPose.Active(a,t)||NativeSpecialPose.Down(a,t);
                 track.Observe(t,a.Grounded,p.Body.transform.position.y,blocked);int impacts=watch.Impacts;
-                watch.Observe(track,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,a.SprintAttack?0:-1,t,blocked);
+                watch.Observe(track,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,a.AirAttack?1:0,t,blocked);
                 if(watch.Impacts>impacts&&a.Hp>0&&NativeAirAttackRules.Clip(p.Seat.spec)!=null)
                 {
                     bool mine=p==me;float k=watch.Strength,rate=p.Seat.spec=="greatsword"?.85f:1;

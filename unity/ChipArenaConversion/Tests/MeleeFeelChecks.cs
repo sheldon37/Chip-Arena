@@ -50,6 +50,7 @@ internal static class MeleeFeelChecks
             }
         }
         Check(agree>=8,"the hitbox sweeps with the captured blade on "+agree+" cuts (at least 8 since S0)");
+        Check(against.Count==0,"S0b mirrored cuts: "+string.Join(", ",against));
         yield return "melee sweeps: the hitbox crosses the front the way the captured blade does on "+agree+" cuts"+(against.Count>0?"; still against it: "+string.Join(", ",against)+" (Astra, docs/MELEE-FEEL.md S0)":"");
     }
 

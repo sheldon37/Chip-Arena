@@ -107,6 +107,12 @@ rewrites `Assets/ChipArena/Core/NativePackLocomotion.Generated.cs` and `tools/pa
 deterministically (per melee weapon Walk-Slow, Walk and the seven strafes, and the run in eight directions, each with its
 left-foot strike; the mirrored shield swaps left and right; the choices are its SETS table), then run the Tests project
 (`Tests/PackLocomotionChecks.cs` checks the hashes, the steady torso, the hand carry, the legs and the hooks).
+The Unity gun and magic travel carry uses the same pack: `node unity/ChipArenaConversion/tools/export_pack_ranged_locomotion.mjs <pack>/Animations`
+rewrites `Assets/ChipArena/Core/NativePackRangedLocomotion.Generated.cs` and `tools/pack-ranged-locomotion-provenance.json`
+deterministically (the pistol: Armed walk and strafes, Unarmed run in eight directions; the long guns: 2Hand-Shooting; the
+staff: 2Hand-Staff mirrored onto the left-hand staff; plus Unarmed-Sprint; the choices are its SETS table), then run the
+Tests project (`Tests/RangedLocomotionChecks.cs` checks the hashes, contact-foot slip, the aim, the torso, distinct carries,
+transitions, the first-person bob and the hooks).
 
 ## CI and agent access
 

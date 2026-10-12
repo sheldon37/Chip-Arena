@@ -17,6 +17,9 @@ namespace ChipArena.UnityConversion
         // The sprint carry (Core/NativeSprintRules.ViewCarry; owner 2026-10-12): the pilot shows its sprint now, and its weapon
         // spec. Set by Input; null Spec (raw inputs) keeps the source view layer exactly.
         public bool Sprint;public string Spec;
+        // The camera-shake setting's share for the per-weapon run and sprint bob over the source's (1 on, .5 Reduced effects, 0
+        // off; NativeRangedLocoRules.ViewRun). Set by Input; 0 for raw inputs.
+        public float Shake;
     }
     // View-layer offsets in the source camera frame (x right, y up, z toward the viewer) and the X/Z view-root rotation (radians).
     public struct NativeViewSwayPose
@@ -38,6 +41,8 @@ namespace ChipArena.UnityConversion
         private float hop,hopv;public float Hop=>hop;
         // The sprint carry's weight (Core/NativeSprintRules: a .15 s blend in and out; arena inputs only).
         private float sprint;public float Sprint=>NativeSprintRules.Shape(sprint);
+        // L33t H4x's held sprint bob (the glitch frames).
+        private int heldStep=int.MinValue;private float heldX,heldY;
         public float Motion {get;private set;}
         public float Stride {get;private set;}
         public float SwayX=>sx;public float SwayY=>sy;public float SwayRoll=>roll;public float Land=>land;
@@ -61,13 +66,13 @@ namespace ChipArena.UnityConversion
         public static float SourcePitch(float forwardY)=>(float)Math.Asin(MathUtil.Clamp(forwardY,-1,1));
         private static float Finite(float v)=>MathUtil.Finite(v)?v:0;
         // The view layer's inputs from a presented pilot (host or replicated snapshot) and the local camera's look.
-        public static NativeViewSwayInput Input(Actor a,float time,float yaw,float pitch,float ads)
+        public static NativeViewSwayInput Input(Actor a,float time,float yaw,float pitch,float ads,float shake=1)
         {
             bool ranged=GunRules.Ranged(a.Weapon);
             return new NativeViewSwayInput{Pilot=a.Id,Time=time,Yaw=yaw,Pitch=pitch,VelocityX=-Finite(a.Velocity.x),VelocityY=Finite(a.Velocity.y),VelocityZ=Finite(a.Velocity.z),Ads=ads,
                 Grounded=a.Grounded,Planted=Planted(a,time),Gait=a.SourceSpec!="siren",Ranged=ranged,Weapon=a.Weapon,AdsKick=AdsKick(a.Weapon),LastShot=a.LastShot,
                 ReloadAt=a.ReloadAt,ReloadUntil=a.ReloadUntil,AbilityId=a.AbilityId,AbilityAt=a.AbilityAt,AbilityRelease=a.AbilityRelease,JumpKick=true,
-                Sprint=NativeSprintRules.Shows(a,time),Spec=a.SourceSpec??""};
+                Sprint=NativeSprintRules.Shows(a,time),Spec=a.SourceSpec??"",Shake=MathUtil.Clamp(shake,0,1)};
         }
         // The first-person rig's locomotion (character-animation.ts sampleCharacter + motion-quality.ts locomotion): planted
         // actions decay the motion and zero the ground velocity; the gait blends toward speed/6.8 and the stride phase advances
@@ -127,11 +132,24 @@ namespace ChipArena.UnityConversion
             // ADS damps the sway and bob to 30 %; the dips, kicks and flick ride on top of the (aligned) ADS pose.
             float damp=1-a*.7f;
             var pose=new NativeViewSwayPose{X=(bx+sx)*damp,Y=(by+sy+hop)*damp+land*.05f-.06f*reload-.03f*runLow-.07f*rocket,Z=.04f*kick+.08f*rocket,Pitch=.06f*kick-.1f*runLow+.12f*rocket+.06f*flick,Roll=roll+.25f*reload};
-            // The sprint carry (arena inputs only): the weapon's own sprint hold and a stronger stride bob, eased by the weight.
+            // The run's per-weapon bob over the source's (arena inputs only, within the camera-shake setting): the pistol light and
+            // quick, the rifle steady, the machine gun heavy, magic flowing; the sprint's own bob takes over as it blends in.
+            float shake=i.Spec!=null?MathUtil.Clamp(i.Shake,0,1):0;
+            if(shake>0&&run>0)
+            {
+                NativeRangedLocoRules.ViewRun(i.Spec,out float side,out float lift,out float sway,out float nod,out float wave);float k=shake*damp*(1-Sprint);
+                pose.X+=(bx*(side-1)+wave*run*(float)Math.Sin(.5f*Stride))*k;pose.Y+=by*(lift-1)*k;
+                pose.Roll+=sway*run*(float)Math.Sin(Stride)*k;pose.Pitch-=nod*run*Math.Abs((float)Math.Cos(Stride))*k;
+            }
+            // The sprint carry (arena inputs only): the weapon's own sprint hold and a stronger stride bob (within camera shake),
+            // eased by the weight; lightning's crackle and L33t H4x's held glitch frames ride the bob.
             if(sprint>0&&i.Spec!=null)
             {
                 NativeSprintRules.ViewCarry(i.Spec,out float drop,out float tip,out float cant,out float gain);float w=Sprint*damp;
-                pose.X+=bx*gain*w;pose.Y+=by*gain*w-drop*w;pose.Pitch+=tip*w;pose.Roll+=cant*w;
+                float gx=bx,gy=by;
+                if(i.Spec=="leet"){int held=(int)Math.Floor(i.Time*NativeSprintRules.GlitchRate);if(held!=heldStep){heldStep=held;heldX=bx;heldY=by;}gx=heldX;gy=heldY;}
+                pose.X+=gx*gain*w*shake;pose.Y+=gy*gain*w*shake-drop*w;pose.Pitch+=tip*w;pose.Roll+=cant*w;
+                if(i.Spec=="lightning"){float u=i.Time*NativeSprintRules.TwitchRate;int n=(int)Math.Floor(u);pose.X+=.004f*NativeSprintRules.Hash(n*3+1)*w*shake;pose.Y+=.003f*NativeSprintRules.Hash(n*3+2)*w*shake;}
             }
             return pose;
         }

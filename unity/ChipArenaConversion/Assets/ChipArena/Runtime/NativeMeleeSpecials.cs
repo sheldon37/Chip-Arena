@@ -42,6 +42,7 @@ namespace ChipArena.UnityConversion
         }
         private void PrimaryMeleeImpact(NativePilot owner,NativePilot target)
         {
+            if(owner.Swing?.Air==true){StaggerMelee(target,NativeMeleeRules.HitStun(owner.Weapon,(float)owner.Stats["attackRate"]));return;}
             if(owner.Swing?.SprintAttack==true&&owner.Seat.spec=="shield"){StaggerMelee(target,.35f);return;}
             if(NativeSpecialRules.Pickup(target.Down,Time))LaunchMelee(target,owner,4.8f,true);
             else if(target.Down!=null&&target.Down.Landed<0&&Time<target.Down.JuggleUntil&&target.Down.JuggleHits<2)
@@ -108,8 +109,14 @@ namespace ChipArena.UnityConversion
         private void ThrowMelee(NativePilot p,NativeMeleeAction action)
         {
             if(ProjectileCount>=100)return;bool shield=action.Kind=="shield-throw";Vector3 start=p.Body.position+Vector3.up*.3f;
+            float speed=(shield?24:30)*(float)p.Stats["projectileSpeed"],gravity=shield?0:18*(float)p.Stats["projectileGravity"];
+            if(action.Fx=="kunai-mark"&&action.LockTarget!=0)
+            {
+                var point=KunaiLockPoint(p,action.LockTarget);
+                if(point.HasValue)action.Aim=NativeMeleeKitRules.KunaiAim(Vec(start),point.Value,speed,gravity);
+            }
             Vector3 direction=action.Fx!=null?Vec(action.Aim):p.Input.AbilityTarget.Length>.01f?(Vec(p.Input.AbilityTarget)-start).normalized:Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));
-            var shot=new NativeMeleeShot{Id=nextBullet++,Original=p,Owner=p,Spec=p.Seat.spec,Shield=shield,At=Time,Position=start,Velocity=direction*(shield?24:30)*(float)p.Stats["projectileSpeed"],Damage=(float)(p.Weapon.damage*p.Stats["damage"]),Impulse=(shield?280:95)*(float)p.Stats["impulse"],Radius=shield?.28f:.095f,Life=shield?3:2,Travel=shield?19:32,Gravity=shield?0:18*(float)p.Stats["projectileGravity"],Burn=(float)p.Stats["burn"],Poison=(float)p.Stats["poison"]};
+            var shot=new NativeMeleeShot{Id=nextBullet++,Original=p,Owner=p,Spec=p.Seat.spec,Shield=shield,At=Time,Position=start,Velocity=direction*speed,Damage=(float)(p.Weapon.damage*p.Stats["damage"]),Impulse=(shield?280:95)*(float)p.Stats["impulse"],Radius=shield?.28f:.095f,Life=shield?3:2,Travel=shield?19:32,Gravity=gravity,Burn=(float)p.Stats["burn"],Poison=(float)p.Stats["poison"]};
             shot.Fx=action.Fx;if(shot.Fx!=null)shot.Damage=(shot.Shield?20:18)*(float)p.Stats["damage"];
             MeleeShots.Add(shot);action.Shot=shot.Id;p.LastShot=Time;
         }
