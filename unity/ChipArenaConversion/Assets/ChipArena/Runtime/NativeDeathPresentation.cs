@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
         /// clock at the release, has no body for the crushed head and ignores earlier, non-fatal wounds.</summary>
         private NativeCorpse(NativeDeath death,NativeArena arena,Matrix4x4[] bind,Vector3[] at,Quaternion[] turn,Vector3[] linear,Vector3[] angular,float release)
         {
-            Death=death;Style=death.kept&&!new[]{"impact-ragdoll","ragdoll","dev-gibber","siren-crush","vent-fall","vent-splat"}.Contains(death.style)?"impact-ragdoll":death.style;
+            this.arena=arena;RetainUntilRoundEnd=NativeCorpseRules.Retain(arena.Pilots.Any(p=>p.Seat.id==death.id),arena.Match.Cooperative);Death=death;Style=death.kept&&!new[]{"impact-ragdoll","ragdoll","dev-gibber","siren-crush","vent-fall","vent-splat"}.Contains(death.style)?"impact-ragdoll":death.style;
 #if UNITY_EDITOR
             if(!Application.isPlaying)scene=UnityEditor.SceneManagement.EditorSceneManager.NewPreviewScene();else
 #endif
@@ -66,49 +66,50 @@ namespace ChipArena.UnityConversion
                 joint.lowAngularXLimit=new SoftJointLimit{limit=elbow?-149:knee?-3:head?-32:-75};joint.highAngularXLimit=new SoftJointLimit{limit=elbow?3:knee?149:head?37:75};joint.angularYLimit=new SoftJointLimit{limit=elbow||knee?2:head?20:65};joint.angularZLimit=new SoftJointLimit{limit=elbow||knee?2:head?20:65};joint.projectionMode=JointProjectionMode.PositionAndRotation;joint.projectionDistance=.08f;joint.projectionAngle=12;
             }
             if(!string.IsNullOrEmpty(death.actor?.SourceSpec)&&death.actor.SourceSpec!="siren")
-            {var go=new GameObject("Dropped weapon");go.transform.SetParent(root.transform);int hand=death.actor.SourceSpec=="fire"||death.actor.SourceSpec=="water"||death.actor.SourceSpec=="lightning"||death.actor.SourceSpec=="darkness"||death.actor.SourceSpec=="leet"?9:13;go.transform.SetPositionAndRotation(at[hand],turn[hand]);weapon=go.AddComponent<Rigidbody>();weapon.mass=.7f;weapon.useGravity=false;weapon.linearVelocity=Vector3.ClampMagnitude(death.velocity,8);weapon.angularVelocity=new Vector3(1,2,1);weapon.linearDamping=.3f;var box=go.AddComponent<BoxCollider>();box.size=new Vector3(.15f,.15f,.45f);box.sharedMaterial=surface;
+            {var go=new GameObject("Dropped weapon");go.transform.SetParent(root.transform);int hand=death.actor.SourceSpec=="fire"||death.actor.SourceSpec=="water"||death.actor.SourceSpec=="lightning"||death.actor.SourceSpec=="darkness"||death.actor.SourceSpec=="leet"?9:13;go.transform.SetPositionAndRotation(at[hand],turn[hand]);weapon=go.AddComponent<Rigidbody>();weapon.mass=.7f;weapon.useGravity=false;weapon.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;weapon.linearVelocity=Vector3.ClampMagnitude(death.velocity,8);weapon.angularVelocity=new Vector3(1,2,1);weapon.linearDamping=.3f;var box=go.AddComponent<BoxCollider>();box.size=new Vector3(.15f,.15f,.45f);box.sharedMaterial=surface;
              // A crush drop's weapon (hidden in the hold) leaves the opening hand at the release with the hand's handed-over motion,
              // sliding out of it rather than being shoved out of the overlapping hand part.
              if(drop){weapon.linearVelocity=linear[hand];weapon.angularVelocity=angular[hand]+new Vector3(1,2,1);if(Parts.TryGetValue(Anchor[hand],out var grip))Physics.IgnoreCollision(box,grip.GetComponent<Collider>());}
              // The source's weapon rides in its hand part (ragdoll.ts collect, weapon zone), so the style forces push it as that part.
              int k=0;foreach(int key in Parts.Keys){if(key==Anchor[hand]){weaponPart=k;break;}k++;}}
             var colliders=Parts.Values.Select(b=>b.GetComponent<Collider>()).ToArray();for(int a=0;a<colliders.Length;a++)for(int b=a+1;b<colliders.Length;b++)Physics.IgnoreCollision(colliders[a],colliders[b]);
-            foreach(var prop in arena.Props.Where(p=>p!=null&&(p.Indestructible||Vector3.Distance(p.transform.position,death.position)<8)).Take(48))
-            {var floor=new GameObject("Body obstacle");floor.transform.SetParent(root.transform);floor.transform.SetPositionAndRotation(prop.transform.position,prop.transform.rotation);floor.transform.localScale=prop.transform.lossyScale;var box=floor.AddComponent<BoxCollider>();var original=prop.GetComponent<BoxCollider>();if(original!=null){box.center=original.center;box.size=original.size;}box.sharedMaterial=surface;}
+            RefreshWorld(0);
             SetupCollapse(arena,null);Physics.SyncTransforms();
         }
         public Matrix4x4 Bone(int b)=>Parts[Anchor[b]].transform.localToWorldMatrix*CollapseFoot(b)*inverse[Anchor[b]]*Bind[b];
         public Vector3 Center=>Parts[1].position;
-        /// <summary>Fixed 1/60 s physics up to <paramref name="age"/> (ragdoll.ts update: min(5, age), a kept body min(age,
-        /// DOWNED.keepAge)). A body built late (a guest's first sight of a death, a corpse rebuilt after the killcam) catches up
+        /// <summary>Fixed 1/60 s physics: five seconds for transient effects, DOWNED.keepAge for PvE, and ten
+        /// seconds to settle retained PvP remains (reawakened when support changes). A body built late (a guest's first sight of a death, a corpse rebuilt after the killcam) catches up
         /// in one go, as the source steps without a cap, so its fall and blood are already where they are at that age; later
         /// frames step at most 8 at a time.</summary>
         public void Step(float age)
         {
-            float target=Math.Min(age,Death.kept?(float)NativeKillEffectRules.KeepAge:(float)NativeKillEffectRules.DeathSeconds);
+            if(RefreshWorld(age)&&RetainUntilRoundEnd)WakeRetained(age);
+            float target=Math.Min(age,Death.kept?(float)NativeKillEffectRules.KeepAge:RetainUntilRoundEnd?settleAt:(float)NativeKillEffectRules.DeathSeconds);
             if(frozen||target<clock){if(!frozen&&age>4.2f&&Death.kept)Freeze();return;}int steps=(int)((target-clock)*60+1e-3f);if(stepped)steps=Math.Min(8,steps);stepped=true;
             for(int step=0;step<steps;step++)
             {
                 DriveCollapse(clock);int index=0;foreach(var body in Parts.Values){int i=index++;if(!body.isKinematic)Force(body,i);}
-                if(weapon!=null)Force(weapon,weaponPart);
+                if(weapon!=null&&!weapon.isKinematic)Force(weapon,weaponPart);
                 physics.Simulate(1f/60);StepSpray();clock+=1f/60;
             }
-            if(age>4.2f&&Death.kept)Freeze();
+            if(age>4.2f&&Death.kept||RetainUntilRoundEnd&&age>=settleAt&&clock+1f/60>=settleAt)Freeze();
         }
-        private void Freeze(){foreach(var b in Parts.Values)b.isKinematic=true;frozen=true;}
+        private void Freeze(){foreach(var b in Parts.Values)b.isKinematic=true;if(weapon!=null)weapon.isKinematic=true;frozen=true;}
         private bool Cue(float at)=>clock+1e-6f>=at&&clock<at+1f/60-1e-6f;
         /// <summary>ragdoll-vfx.ts ragdollForce on one body (<paramref name="i"/>: its index in the source's part list; the
         /// dropped weapon takes its hand part's) and the world's 18 m/s² gravity.</summary>
         private void Force(Rigidbody body,int i)
         {
             Vector3 velocity=body.linearVelocity,pos=body.position;float gravity=18;
-            if(Style=="ragdoll-frost"&&clock>=1.1f){gravity=0;velocity=Vector3.zero;body.angularVelocity=Vector3.zero;}
-            if(Style=="ragdoll-static"&&(Cue(.35f)||Cue(.7f)||Cue(1.05f))){velocity=new Vector3(velocity.x+(i%2==1?2:-2),3.5f,velocity.z);body.angularVelocity=new Vector3(i%2==1?4:-4,6,2);}
-            if(Style=="ragdoll-pinball"&&(Cue(.8f)||Cue(1.65f)))velocity=new Vector3((i%2==1?1:-1)*1.4f,7,velocity.z*.5f);
-            if(Style=="ragdoll-fireworks"&&Cue(.45f))velocity=new Vector3(velocity.x*.25f,10,velocity.z*.25f);
-            if(Style=="ragdoll-soul"){gravity*=.13f;if(clock>.8f)velocity=new Vector3(velocity.x*.985f,Math.Min(2,velocity.y+.08f),velocity.z*.985f);}
-            if(Style=="ragdoll-gravity"&&clock>.3f){gravity=0;Vector3 d=Death.position-pos;velocity=new Vector3(d.x*2.8f-d.z*2,(d.y+1.2f)*3,d.z*2.8f+d.x*2);}
-            if(Style=="dev-singularity"&&clock>.22f){gravity=0;Vector3 d=Death.position-pos;velocity=new Vector3(d.x*3-d.z*2.6f,(d.y+2.4f)*3,d.z*3+d.x*2.6f);body.angularVelocity=new Vector3(.8f,3,.6f);}
+            bool styled=!RetainUntilRoundEnd||!NativeCorpseRules.EffectsFinished(clock);
+            if(styled&&Style=="ragdoll-frost"&&clock>=1.1f){gravity=0;velocity=Vector3.zero;body.angularVelocity=Vector3.zero;}
+            if(styled&&Style=="ragdoll-static"&&(Cue(.35f)||Cue(.7f)||Cue(1.05f))){velocity=new Vector3(velocity.x+(i%2==1?2:-2),3.5f,velocity.z);body.angularVelocity=new Vector3(i%2==1?4:-4,6,2);}
+            if(styled&&Style=="ragdoll-pinball"&&(Cue(.8f)||Cue(1.65f)))velocity=new Vector3((i%2==1?1:-1)*1.4f,7,velocity.z*.5f);
+            if(styled&&Style=="ragdoll-fireworks"&&Cue(.45f))velocity=new Vector3(velocity.x*.25f,10,velocity.z*.25f);
+            if(styled&&Style=="ragdoll-soul"){gravity*=.13f;if(clock>.8f)velocity=new Vector3(velocity.x*.985f,Math.Min(2,velocity.y+.08f),velocity.z*.985f);}
+            if(styled&&Style=="ragdoll-gravity"&&clock>.3f){gravity=0;Vector3 d=Death.position-pos;velocity=new Vector3(d.x*2.8f-d.z*2,(d.y+1.2f)*3,d.z*2.8f+d.x*2);}
+            if(styled&&Style=="dev-singularity"&&clock>.22f){gravity=0;Vector3 d=Death.position-pos;velocity=new Vector3(d.x*3-d.z*2.6f,(d.y+2.4f)*3,d.z*3+d.x*2.6f);body.angularVelocity=new Vector3(.8f,3,.6f);}
             body.linearVelocity=velocity;body.AddForce(Vector3.down*gravity,ForceMode.Acceleration);
         }
         public void Dispose()
@@ -136,12 +137,13 @@ namespace ChipArena.UnityConversion
         private static NativePilot PilotOf(NativeArena arena,int id){foreach(var p in arena.Pilots)if(p.Seat.id==id)return p;return null;}
         private void DeathPresentation(NativeArena arena)
         {
+            if(NativeCorpseRules.RoundEnded(arena.Match.Cooperative,arena.Match.Phase)){if(corpses.Count>0||ventBodies.Count>0||carriedDeaths.Count>0||killPointMesh!=null)ClearCorpses();return;}
             staleCorpses.Clear();
-            foreach(var item in corpses){var d=item.Value.Death;var live=PilotOf(arena,item.Key);if(!DeathListed(arena,item.Key,d.seed)||arena.Time-d.at>5&&!d.kept||live!=null&&live.Hp>0&&arena.Time-live.RevivedAt>1.1f)staleCorpses.Add(item.Key);}
+            foreach(var item in corpses){var d=item.Value.Death;var live=PilotOf(arena,item.Key);if(!DeathListed(arena,item.Key,d.seed)||NativeCorpseRules.Expired(arena.Time-d.at,d.kept,item.Value.RetainUntilRoundEnd)||live!=null&&live.Hp>0&&arena.Time-live.RevivedAt>1.1f)staleCorpses.Add(item.Key);}
             foreach(int id in staleCorpses){corpses[id].Dispose();corpses.Remove(id);}
             PruneVents(arena);
             // DeathEffects: live (not kept) pilot effects share ANIMATION.maxDeathVoxels pieces; a new one gets what is left.
-            killUsed=0;foreach(var c in corpses.Values)if(c.Counted)killUsed+=c.FxCount;
+            killUsed=0;foreach(var c in corpses.Values)if(c.Counted&&!NativeCorpseRules.EffectsFinished(arena.Time-c.Death.at))killUsed+=c.FxCount;
             BeginKillFrame();
             foreach(var p in arena.Pilots)if(p.Death!=null)PresentDeath(arena,p.Death,true);
             foreach(var d in arena.MinionDeaths)PresentDeath(arena,d,false);
@@ -149,19 +151,21 @@ namespace ChipArena.UnityConversion
         }
         private void PresentDeath(NativeArena arena,NativeDeath death,bool pilot)
         {
-            float age=arena.Time-death.at;var live=PilotOf(arena,death.id);bool revived=live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||!death.kept&&age>5||revived&&up>1.1f)return;
+            bool retain=NativeCorpseRules.Retain(pilot,arena.Match.Cooperative);float age=arena.Time-death.at;var live=PilotOf(arena,death.id);bool revived=live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||NativeCorpseRules.Expired(age,death.kept,retain)||revived&&up>1.1f)return;
             // The repair owns the kept body until it hands the pose to the live rig; never also draw the old revive fade.
             if(revived&&death.kept&&revivals.TryGetValue(death.id,out var repair)&&repair.At==live.RevivedAt)return;
             // Last Laugh: the crush clip, then the dropped body falls as a ragdoll (NativeSirenDropPresentation.cs).
-            if(SourceMinionDeath(death,age)||SirenDrop(arena,death,age,up)||SourceDeathScene(death,age,up))return;
+            // Finish authored kill cinematics, then keep their physical remains for the round. Siren drops already own a body.
+            bool remains=retain&&NativeCorpseRules.EffectsFinished(age);
+            if(SourceMinionDeath(death,age)||SirenDrop(arena,death,age,up)||!remains&&SourceDeathScene(death,age,up))return;
             // Ward Zero vent deaths are vent-fall.ts's scripted victim (NativeVentDeathPresentation.cs), not a physics corpse.
             if(VentStyle(death.style)){PresentVent(arena,death,pilot,KillClock(arena)-death.at,live);return;}
             if(!corpses.TryGetValue(death.id,out var corpse))
             {
-                if(corpses.Count>=32)return;CapturedAnimation.Player rig=null;bool temporary=false;
+                if(corpses.Count>=32&&!retain)return;CapturedAnimation.Player rig=null;bool temporary=false;
                 if(!rigs.TryGetValue(death.id,out rig)&&!minionRigs.TryGetValue(death.id,out rig)){rig=captured.Create(transform,death.id);var actor=death.actor??new Actor();actor.Hp=Math.Max(1,actor.Hp);rig.ActorPose(actor,death.position-Vector3.up*.865f,death.at);temporary=true;}
                 corpse=new NativeCorpse(death,rig,arena);corpses[death.id]=corpse;if(temporary)rig.Dispose();
-                bool counted=pilot&&!death.kept;int budget=death.kept?NativeKillEffectRules.KeptBudget:counted?NativeKillEffectRules.MaxDeathVoxels-killUsed:NativeKillEffectRules.MaxDeathVoxels;
+                bool counted=pilot&&!death.kept&&!remains;int budget=death.kept?NativeKillEffectRules.KeptBudget:counted?NativeKillEffectRules.MaxDeathVoxels-killUsed:NativeKillEffectRules.MaxDeathVoxels;
                 bool hatModel=!string.IsNullOrEmpty(death.actor?.Hat)&&death.actor.Hat!="none"&&sourceModels.Has("hat-"+death.actor.Hat);
                 int band=pilot&&live!=null&&(death.model??"pilot")=="pilot"?NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,live.Seat.AuthorityBoss,live.Seat.team,live.Seat.id==arena.LocalId):-1;
                 corpse.SetupKill(budget,Mathf.Clamp01(EffectsQuality),counted,hatModel,band,NativeStructureFxPresentation.KillFloor(arena));if(counted)killUsed+=corpse.FxCount;
@@ -179,8 +183,9 @@ namespace ChipArena.UnityConversion
             if(style=="launch")overlay=Matrix4x4.Translate(Vector3.up*Mathf.Min(20,fx*fx*9));
             if(style=="voxel-burst"||style=="confetti"||style=="siren-dissipate"||style=="siren-crush")alpha=0;
             // ragdoll.ts update(): the stock sink and shrink, then RagdollVfx (centred on the presented pelvis) and its collapse.
-            float sink=stock?(float)NativeKillEffectRules.Sink(shown):0,scale=stock?(float)NativeKillEffectRules.PartScale(shown):1;corpse.Present(overlay,sink,scale);
-            var swarm=corpse.Swarm;
+            float sink=stock&&!retain?(float)NativeKillEffectRules.Sink(shown):0,scale=stock&&!retain?(float)NativeKillEffectRules.PartScale(shown):1;corpse.Present(overlay,sink,scale);
+            if(remains){alpha=1;overlay=Matrix4x4.identity;corpse.Present(overlay,0,1);}
+            var swarm=remains?null:corpse.Swarm;
             if(swarm!=null)
             {
                 int n=0;foreach(var part in corpse.Parts.Keys){if(corpse.Crushed&&part==death.wound.part)continue;Vector3 at=corpse.PresentedPosition(part);corpse.SwarmParts[n*3]=-at.x;corpse.SwarmParts[n*3+1]=at.y;corpse.SwarmParts[n*3+2]=at.z;n++;}
@@ -226,7 +231,10 @@ namespace ChipArena.UnityConversion
                     if(recolored)sourceModels.KillCube(m,ice);else teamBands[corpse.Band].Add(m);
                 }
             }
-            KillWound(corpse,shown,alpha);KillSpray(corpse,shown,alpha);KillSwarm(corpse,shown);KillBurst(corpse,fx);
+            KillWound(corpse,shown,alpha);
+            // Expired swarms must stop drawing too: retaining a body cannot leave their last cached frame alive.
+            if(remains)return;
+            KillSpray(corpse,shown,alpha);KillSwarm(corpse,shown);KillBurst(corpse,fx);
             if(style=="confetti")VoxelCloud(death.position,fx,6,death.seed,60);
             if(style=="siren-dissipate"||style=="siren-crush"){VoxelCloud(death.position,fx,10,death.seed,50,true);Ring(death.position-Vector3.up*.75f,Mathf.Clamp01(fx)*2,7,fx*60);}
             if(style=="dev-raging-demon")for(int j=0;j<12;j++){float t=j*.13f;if(fx>=t&&fx<t+.12f){Vector3 p=death.position+new Vector3(Mathf.Sin(j*13)*.45f,Mathf.Cos(j*9)*.7f,Mathf.Cos(j*11)*.45f);Beam(p-Vector3.up*.24f,p+Vector3.up*.24f,.08f,7);}}

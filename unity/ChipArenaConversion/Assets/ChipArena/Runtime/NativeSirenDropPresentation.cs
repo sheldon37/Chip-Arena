@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
         private NativeCorpse SirenDropBody(NativeArena arena,NativeDeath death)
         {
             if(corpses.TryGetValue(death.id,out var old)){if(old.Death.seed==death.seed&&old.Drop)return old;old.Dispose();corpses.Remove(death.id);}
-            if(arena==null||corpses.Count>=32&&!death.kept)return null;var clip=dropClip;
+            if(arena==null||corpses.Count>=32&&!death.kept&&!NativeCorpseRules.Retain(PilotOf(arena,death.id)!=null,arena.Match.Cooperative))return null;var clip=dropClip;
             var owner=PilotOf(arena,death.owner);var hold=owner?.Pose;
             bool holding=owner!=null&&owner.Hp>0&&hold!=null&&hold.SourceSpec=="siren"&&hold.SourceAction=="grab"&&hold.SourceUntil>death.at+NativeSirenDrop.Limp&&(death.actor==null||death.actor.GrabOwner!=death.owner||Math.Abs(hold.SourceAt-death.actor.GrabAt)<.05f);
             float release=NativeSirenDrop.Release(holding);var root=new float[16];NativeSirenDrop.Root(death.position.x,death.position.y,death.position.z,death.yaw,root);
@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Sets the drawn state for <paramref name="death"/> at <paramref name="age"/> (clip age <paramref name="shown"/>).</summary>
         private void DropFrame(NativeDeath death,NativeCorpse body,float age,float shown)
         {
-            dropBody=body;dropAge=shown;dropRelease=body.DropAt;dropFallen=age>=body.DropAt;dropGone=death.kept?0:NativeSirenDrop.Gone(age);dropLow=EffectsQuality<.5f;
+            dropBody=body;dropAge=shown;dropRelease=body.DropAt;dropFallen=age>=body.DropAt;dropGone=death.kept||body.RetainUntilRoundEnd?0:NativeSirenDrop.Gone(age);dropLow=EffectsQuality<.5f;
             NativeSirenDrop.Root(death.position.x,death.position.y,death.position.z,death.yaw,dropRoot);dropCarried=null;
             if(shown<NativeSirenDrop.Carry)
             {
@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             body.Step(age);DropFrame(death,body,age,death.kept?Math.Min(age,NativeSirenDrop.Keep):age);
             // kills.ts burnRig off the fallen body (a kept body smoulders at 30 % once held), on the presentation clock.
             float clock=KillClock(arena);
-            if(dropFallen&&revival<0&&!float.IsNegativeInfinity(body.BurnClock))
+            if(dropFallen&&revival<0&&(!body.RetainUntilRoundEnd||!NativeCorpseRules.EffectsFinished(age))&&!float.IsNegativeInfinity(body.BurnClock))
             {
                 float dt=Mathf.Clamp(clock-body.BurnClock,0,.05f);
                 if(dt>0){for(int b=0;b<22;b++)DropSource(DropVictim(b),dropJoints,b*16);body.BurnAcc=NativeSirenDrop.Burn(WorldFlames(),dropJoints,dt,NativeSirenDrop.BurnRate(dropAge,EffectsQuality,death.kept&&age>NativeSirenDrop.Keep),body.BurnAcc);}
