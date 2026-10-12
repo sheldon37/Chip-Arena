@@ -50,9 +50,11 @@ namespace ChipArena.UnityConversion
         /// <summary>Glitch steps per second (the pattern holds between steps): full and reduced effects.</summary>
         public const float StepRate=24,ReducedStepRate=6;
         public static readonly Vector3 Cyan=NativeEntranceFx.Hex(0x22e6ff),Magenta=NativeEntranceFx.Hex(0xff3dcf);
-        /// <summary>The intro's whole look (the owner's reference): the suit in the hood's dark fabric and its accents in the glow
-        /// colour (the pilot's hat colour, cyan on Auto), over the Sheldon Head. The pilot's own colours return with the match.</summary>
-        public const string Suit="#1c2132";
+        /// <summary>The intro's whole look (the owner's reference): the Sheldon Clothes body skin (whatever body is
+        /// equipped, as the hood is worn whatever hat is) in the hood's own dark fabric (the export's body colour: the coat's
+        /// cloth untinted) and its accents in the glow colour (the pilot's hat colour, cyan on Auto), under the Sheldon Head.
+        /// The pilot's own body and colours return with the match.</summary>
+        public const string Suit="#e5e7eb";
         public static string Accent(string hatColor)=>NativeHatLooks.Hex(NativeHatLooks.Tint(NativeHatLooks.SheldonHead,hatColor));
         public static int Step(float age,bool reduced)=>(int)Math.Floor(Math.Max(0,age)*(reduced?ReducedStepRate:StepRate));
         public static float Hash(int n,int salt)=>NativeSheldonHead.Hash01(n,salt);

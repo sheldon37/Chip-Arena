@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
         private Revival StartRevival(NativePilot p,CapturedAnimation.Player rig,float time)
         {
             var d=p.Death;var r=new Revival{Id=p.Seat.id,At=p.RevivedAt,Death=d,Seed=d?.seed??p.Seat.id};
-            sourceModels.RepairBoxes(p.Seat.spec=="siren"?"siren":"pilot",r.Boxes);
+            sourceModels.RepairBoxes(p.Seat.spec=="siren"?"siren":BodyModel(BodySkin(p.Seat.id),NativeBodySkins.Full),r.Boxes);
             if(d?.kept==true)
             {
                 r.Body=new Matrix4x4[22];float age=Math.Max(0,time-d.at);
@@ -125,10 +125,12 @@ namespace ChipArena.UnityConversion
                 if(r.Body!=null&&!rise)
                 {
                     float alpha=r.Place?1:1-NativeReviveRules.Smooth((age-.15f)/(NativeReviveRules.Dissolve-.15f));
-                    string wounded=sourceModels.WoundedPilot(r.Id,r.Death.actor?.Wounds,r.Death.actor?.BodyColor,ForceCompatibilityRendering);
+                    // The body skin the pilot wears (NativeBodySkinPresentation.cs), wounded and healed alike.
+                    string healed=BodyAt(r.Id,r.Body[CapturedRig.Pelvis].GetColumn(3),out int bodySkin);Color accent=BodyAccent(bodySkin,pilot.Seat.accentColor,pilot.Seat.hat,pilot.Seat.hatColor);
+                    string wounded=sourceModels.WoundedPilot(r.Id,r.Death.actor?.Wounds,r.Death.actor?.BodyColor,ForceCompatibilityRendering,healed);
                     Matrix4x4 Bone(int b)=>r.Body[b];bool Old(int b)=>!r.Missing[b]&&(!r.Place||front*1.2f<r.Coordinate[b]);bool Healed(int b)=>r.Place&&front*1.2f>=r.Coordinate[b];
-                    sourceModels.QueueShadowless(wounded,Matrix4x4.identity,Bone,Old,BodyTint(pilot.Seat.bodyColor),AccentTint(pilot.Seat.accentColor),alpha);
-                    if(r.Place)sourceModels.QueueShadowless("pilot",Matrix4x4.identity,Bone,Healed,BodyTint(pilot.Seat.bodyColor),AccentTint(pilot.Seat.accentColor),alpha);
+                    sourceModels.QueueShadowless(wounded,Matrix4x4.identity,Bone,Old,BodyTint(pilot.Seat.bodyColor),accent,alpha);
+                    if(r.Place)sourceModels.QueueShadowless(healed,Matrix4x4.identity,Bone,Healed,BodyTint(pilot.Seat.bodyColor),accent,alpha);
                     if(!string.IsNullOrEmpty(pilot.Seat.hat)&&(!r.Missing[CapturedRig.Head]||r.Place&&front>=r.Coordinate[CapturedRig.Head]))sourceModels.QueueShadowless(HatModel(pilot.Seat.hat,pilot.Seat.hatColor),Matrix4x4.identity,Bone,null,HatBody(pilot.Seat.hat,pilot.Seat.hatColor),null,alpha);
                 }
                 bool third=!(FirstPerson&&r.Id==LocalId);

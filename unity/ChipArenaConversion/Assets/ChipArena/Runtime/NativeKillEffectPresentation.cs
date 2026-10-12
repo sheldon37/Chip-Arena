@@ -75,6 +75,8 @@ namespace ChipArena.UnityConversion
             if(rig)
             {
                 RigBoxes=new KillBox[NativeKillBoxes.MaxRigBoxes];RigCount=NativeKillBoxes.Rig(Death.actor?.SourceSpec,Death.actor?.Hat,RigBoxes);
+                // The body skin's cloth joins the gibs (Core/NativeBodyModels.cs: the Sheldon Clothes' coat panels).
+                RigCount=NativeBodyModels.Gibs(NativeBodySkins.Of(arena?.Match?.Seat(Death.actor?.Id??Death.id)?.weaponSkins),RigBoxes,RigCount);
                 if(Band>=0)RigCount=NativeKillBoxes.Bands(RigBoxes,RigCount,NativeStatusVisuals.TeamColors[Band]);BoxLocal=new Matrix4x4[RigCount];
                 for(int i=0;i<RigCount;i++){var b=RigBoxes[i];NativeKillEffectRules.Compose(scratch,b.Px,b.Py,b.Pz,b.Qx,b.Qy,b.Qz,b.Qw,b.Sx,b.Sy,b.Sz);BoxLocal[i]=Unity(scratch);}
             }

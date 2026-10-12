@@ -72,8 +72,10 @@ namespace ChipArena.UnityConversion
             lockerKills.Clear();foreach(var id in NativeCosmeticRules.Kills)if(NativeCosmeticRules.Allowed(access,"effect",id))lockerKills.Add(id);
             lockerIntros.Clear();foreach(var id in NativeCosmeticRules.Intros)if(NativeCosmeticRules.Allowed(access,"intro",id))lockerIntros.Add(id);
             foreach(var id in lockerIntros)if(!lockerIntroWeapon.ContainsKey(id)&&id.StartsWith("weapon-",StringComparison.Ordinal)){var w=LockerWeaponById(id.Substring(7));if(w!=null)lockerIntroWeapon[id]=w;}
-            lockerSkins.Clear();foreach(var w in content.weapons)if(AllowedWeapon(w)&&NativeWeaponSkins.Skinned(w.id))lockerSkins.Add(w.id);
-            lockerKillsLabel=lockerKills.Count+" EFFECTS";lockerSkinsLabel=lockerSkins.Count+" WEAPONS";
+            // The body card first (Core/NativeBodySkins.cs: the Sheldon Clothes need live DEV access), then the weapons.
+            lockerBodySheldon=NativeCosmeticRules.Allowed(access,"body",NativeBodySkins.SheldonClothes);lockerSkins.Clear();lockerSkins.Add(NativeBodySkins.Entry);
+            foreach(var w in content.weapons)if(AllowedWeapon(w)&&NativeWeaponSkins.Skinned(w.id))lockerSkins.Add(w.id);
+            lockerKillsLabel=lockerKills.Count+" EFFECTS";lockerSkinsLabel="BODY + "+(lockerSkins.Count-1)+" WEAPONS";
         }
         private void LockerAbilities()
         {
@@ -634,7 +636,7 @@ namespace ChipArena.UnityConversion
                 U.RadialStops(new Rect(r.center.x-rx*1.2f,fy-ry*1.6f,rx*2.4f,ry*3.2f),U.A(accent,.22f*e),LkGlowAt,LkGlowA);U.RadialStops(new Rect(r.center.x-rx,fy-ry,rx*2,ry*2),U.A(accent,.6f*e),LkRingAt,LkRingA);
                 float yaw=LockerYawShown(t)*Mathf.Deg2Rad;for(int i=0;i<8;i++){float a=i*Mathf.PI/4-yaw,depth=Mathf.Cos(a);var p=new Vector2(r.center.x+Mathf.Sin(a)*rx,fy+depth*ry);U.Fill(new Rect(p.x-1.5f,p.y-1.5f,3,3),U.A(accent,(.25f+.6f*Mathf.Clamp01(depth))*e));}
             }
-            var look=new PortraitLook{Spec=w.id,Pose=pose,Hat=lockerHat??prefs.hat,Body=HexOf(body),Accent=HexOf(accent),Yaw=LockerYawShown(t),Skin=LockerSkinShown(w.id),HatColor=lockerHatColor??prefs.hatColor};
+            var look=new PortraitLook{Spec=w.id,Pose=pose,Hat=lockerHat??prefs.hat,Body=HexOf(body),Accent=HexOf(accent),Yaw=LockerYawShown(t),Skin=LockerSkinShown(w.id),BodySkin=BodySkinShown(),HatColor=lockerHatColor??prefs.hatColor};
             float ring=Mathf.Min(86,r.width*.26f);PortraitStage(r,LockerPortraitKey,look,lockerBack??prefs.lobbyBack,NativeHatLooks.Rgb(lockerBackColor??prefs.backColor),accent,body,NativeIcons.Spec(w.id),tone,e,t,0,new Vector2(r.center.x,r.y+r.height*.42f),ring,28,false);
             U.Text(new Rect(r.x+16,r.y+14,200,14),"LIVE PREVIEW",10,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
             if(lockerHat!=null||lockerPose!=null||lockerBody!=null||lockerAccent!=null||lockerWeapon!=null||lockerBack!=null||lockerHatColor!=null||lockerBackColor!=null)U.Text(new Rect(r.x,r.y+14,r.width-16,14),"TRYING ON",10,U.Hex(0xc9bfff,e),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);
