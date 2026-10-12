@@ -14,6 +14,9 @@ namespace ChipArena.UnityConversion
         // an air jump and a landing.
         // Set by Input (the arena view); off for raw inputs, which keep the source view layer exactly (its parity fixture).
         public bool JumpKick;
+        // The sprint carry (Core/NativeSprintRules.ViewCarry; owner 2026-10-12): the pilot shows its sprint now, and its weapon
+        // spec. Set by Input; null Spec (raw inputs) keeps the source view layer exactly.
+        public bool Sprint;public string Spec;
     }
     // View-layer offsets in the source camera frame (x right, y up, z toward the viewer) and the X/Z view-root rotation (radians).
     public struct NativeViewSwayPose
@@ -33,11 +36,13 @@ namespace ChipArena.UnityConversion
         private bool has,gaitHas;private int pilot;private float t,yaw,pitch,sx,sxv,sy,syv,roll,rollv,land,landv,vy,gaitTime,forward=1;private bool grounded;
         // The jump animation's hop (Core/NativeJumpRules.ViewHop; JumpKick inputs only): metres down in the camera frame.
         private float hop,hopv;public float Hop=>hop;
+        // The sprint carry's weight (Core/NativeSprintRules: a .15 s blend in and out; arena inputs only).
+        private float sprint;public float Sprint=>NativeSprintRules.Shape(sprint);
         public float Motion {get;private set;}
         public float Stride {get;private set;}
         public float SwayX=>sx;public float SwayY=>sy;public float SwayRoll=>roll;public float Land=>land;
         // A new rig: everything starts at rest, as createCharacterRig and a fresh view state do.
-        public void Reset(){has=gaitHas=false;Motion=Stride=0;forward=1;sx=sxv=sy=syv=roll=rollv=land=landv=0;}
+        public void Reset(){has=gaitHas=false;Motion=Stride=0;forward=1;sx=sxv=sy=syv=roll=rollv=land=landv=sprint=0;}
         public static float SmoothMotion(float x){x=MathUtil.Clamp(x,0,1);return x*x*x*(x*(x*6-15)+10);}
         // gun-kit.ts ADS_PROFILES kick (recoil scale at full ADS); the managed check compares it with GameContent.json.
         public static float AdsKick(WeaponId weapon)=>weapon==WeaponId.Pistol?.5f:weapon==WeaponId.MachineGun?.45f:weapon==WeaponId.Rifle?.6f:1;
@@ -61,7 +66,8 @@ namespace ChipArena.UnityConversion
             bool ranged=GunRules.Ranged(a.Weapon);
             return new NativeViewSwayInput{Pilot=a.Id,Time=time,Yaw=yaw,Pitch=pitch,VelocityX=-Finite(a.Velocity.x),VelocityY=Finite(a.Velocity.y),VelocityZ=Finite(a.Velocity.z),Ads=ads,
                 Grounded=a.Grounded,Planted=Planted(a,time),Gait=a.SourceSpec!="siren",Ranged=ranged,Weapon=a.Weapon,AdsKick=AdsKick(a.Weapon),LastShot=a.LastShot,
-                ReloadAt=a.ReloadAt,ReloadUntil=a.ReloadUntil,AbilityId=a.AbilityId,AbilityAt=a.AbilityAt,AbilityRelease=a.AbilityRelease,JumpKick=true};
+                ReloadAt=a.ReloadAt,ReloadUntil=a.ReloadUntil,AbilityId=a.AbilityId,AbilityAt=a.AbilityAt,AbilityRelease=a.AbilityRelease,JumpKick=true,
+                Sprint=NativeSprintRules.Shows(a,time),Spec=a.SourceSpec??""};
         }
         // The first-person rig's locomotion (character-animation.ts sampleCharacter + motion-quality.ts locomotion): planted
         // actions decay the motion and zero the ground velocity; the gait blends toward speed/6.8 and the stride phase advances
@@ -88,7 +94,8 @@ namespace ChipArena.UnityConversion
             if(i.Gait)Locomotion(i,has&&i.Time>=t?i.Time-t:0);
             // ranged-motion.ts clockStep: fresh on the first sample, backward time or a jump over .35 s; the step clamps to .05.
             float step=has?i.Time-t:-1;bool fresh=!has||step<0||step>.35f;float h=fresh?0:Math.Min(step,.05f);
-            if(fresh){has=true;t=i.Time;yaw=i.Yaw;pitch=i.Pitch;sx=sxv=sy=syv=roll=rollv=land=landv=hop=hopv=0;grounded=i.Grounded;vy=i.VelocityY;}
+            if(fresh){has=true;t=i.Time;yaw=i.Yaw;pitch=i.Pitch;sx=sxv=sy=syv=roll=rollv=land=landv=hop=hopv=0;grounded=i.Grounded;vy=i.VelocityY;sprint=i.Spec!=null&&i.Sprint?1:0;}
+            else if(i.Spec!=null&&h>0)sprint=NativeSprintRules.Step(sprint,i.Sprint,h);
             // Look sway: the weapon follows a turn by a few centimetres at most, then springs back.
             float dyaw=Wrap(i.Yaw-yaw),dpitch=i.Pitch-pitch,rate=h>0?1/h:0;
             float tx=MathUtil.Clamp(-dyaw*rate*.004f,-.03f,.03f),ty=MathUtil.Clamp(-dpitch*rate*.004f,-.025f,.025f),tr=MathUtil.Clamp(dyaw*rate*.008f,-.05f,.05f);
@@ -119,7 +126,14 @@ namespace ChipArena.UnityConversion
             }
             // ADS damps the sway and bob to 30 %; the dips, kicks and flick ride on top of the (aligned) ADS pose.
             float damp=1-a*.7f;
-            return new NativeViewSwayPose{X=(bx+sx)*damp,Y=(by+sy+hop)*damp+land*.05f-.06f*reload-.03f*runLow-.07f*rocket,Z=.04f*kick+.08f*rocket,Pitch=.06f*kick-.1f*runLow+.12f*rocket+.06f*flick,Roll=roll+.25f*reload};
+            var pose=new NativeViewSwayPose{X=(bx+sx)*damp,Y=(by+sy+hop)*damp+land*.05f-.06f*reload-.03f*runLow-.07f*rocket,Z=.04f*kick+.08f*rocket,Pitch=.06f*kick-.1f*runLow+.12f*rocket+.06f*flick,Roll=roll+.25f*reload};
+            // The sprint carry (arena inputs only): the weapon's own sprint hold and a stronger stride bob, eased by the weight.
+            if(sprint>0&&i.Spec!=null)
+            {
+                NativeSprintRules.ViewCarry(i.Spec,out float drop,out float tip,out float cant,out float gain);float w=Sprint*damp;
+                pose.X+=bx*gain*w;pose.Y+=by*gain*w-drop*w;pose.Pitch+=tip*w;pose.Roll+=cant*w;
+            }
+            return pose;
         }
     }
 }

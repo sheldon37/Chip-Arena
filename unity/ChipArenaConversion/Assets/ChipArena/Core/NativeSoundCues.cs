@@ -343,6 +343,10 @@ namespace ChipArena.UnityConversion
     public static class NativeFootsteps
     {
         public const float Stride=1.9f,MinSpeed=1.5f,MaxStep=3,MinAir=.25f;
+        /// <summary>The sprint's cadence (owner 2026-10-12, sprint presentation): a step every 1.55 m at 9.18 m/s (5.9 steps a
+        /// second against the run's 3.6), a little brighter and louder.</summary>
+        public const float SprintStride=1.55f,SprintRate=1.08f,SprintGain=1.15f;
+        public static float StrideFor(bool sprinting)=>sprinting?SprintStride:Stride;
         public static string Surface(string map)
         {
             switch(map)

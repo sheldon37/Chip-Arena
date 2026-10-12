@@ -63,12 +63,14 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ArenaPresentation
     {
-        // The dagger air jump's burst (Runtime/NativeJumpFxPresentation), queued into the shared effects renderer in RenderGlow.
+        // The dagger air jump's burst (Runtime/NativeJumpFxPresentation) and the sprint's effects (Runtime/NativeSprintFxPresentation),
+        // queued into the shared effects renderer in RenderGlow.
         private NativeJumpFxPresentation jumpFx;
         private void JumpFx(NativeArena arena,float now)
         {
             if(vfx==null||arena==null)return;jumpFx??=new NativeJumpFxPresentation(vfx);
             jumpFx.Render(arena,now,WeaponEffectsQuality,LowGraphics,arena.ViewPilot?.Seat.id??-1,FirstPerson);
+            SprintFx(arena,now);
         }
     }
 }

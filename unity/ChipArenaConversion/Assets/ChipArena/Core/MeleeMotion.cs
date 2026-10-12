@@ -183,6 +183,8 @@ namespace ChipArena.UnityConversion
         public NativeJumpMotion JumpLayer;
         // The pack's directional travel carry (Core/NativeLocomotionCarry); null keeps the captured walk and run (source parity).
         public NativeLocomotionCarry Locomotion;
+        // The per-weapon sprint carry (Core/NativeSprintMotion), before the jump layer; null where JumpLayer is.
+        public NativeSprintMotion SprintLayer;
         private float HitStop(MeleeView p,Attack a)
         {
             if(!HitStopKeys.TryGetValue(p.Spec,out var k)||string.IsNullOrEmpty(p.Id)||Impacts==null)return 0;float t=p.LastAttack+a.Age,h=Impacts.HitAt(p.Id,t,.5f);
@@ -663,6 +665,7 @@ namespace ChipArena.UnityConversion
                 }
                 var light=ReactionOf(p);if(light!=null)React(p,light,time,false);
             }
+            SprintLayer?.Melee(r,p,time,dt);
             JumpLayer?.Melee(r,p,time,dt);
             HitLayer?.Layer(r,time);
             gait.GroundPass(r,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));

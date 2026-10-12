@@ -185,6 +185,8 @@ namespace ChipArena.UnityConversion
         public bool GroundSkipped{get;private set;}
         // The jump layer (Core/NativeJumpMotion) under the magic layer; null keeps the source port (parity checks).
         public NativeJumpMotion JumpLayer;
+        // The sprint carry (Core/NativeSprintMotion: hands trailing back, the staff angled back); null keeps the source port.
+        public NativeSprintMotion SprintLayer;
         /// <summary>
         /// One third-person frame after the caller placed the rig (Rig.GroupPosition / GroupYaw): the gait and magic layer
         /// (Sample), then sampleCharacter's overrides: a juggle (`juggled`, observed into `juggle`) owns the frame with
@@ -236,6 +238,7 @@ namespace ChipArena.UnityConversion
             float run=MeleeMath.Ease((r.Motion-.1f)/.65f);
             sprintBlend+=((v.Sprinting?1:0)-sprintBlend)*(1-(float)Math.Exp(-Math.Min(.05f,Math.Max(0,dt))*10));
             if(sprintBlend>1e-4f)r.AddE(CapturedRig.Spine,.12f*sprintBlend*run,0,0);
+            float sprint=SprintLayer?.Lean(r,a,v.Spec,time,dt)??0;
             JumpLayer?.Ranged(r,a,v.Spec,time,dt,.5f);
             // magicLayer: the staff carry, faded out with speed so the arm swings with the gait.
             float pitch=v.Pitch,carry=MeleeMath.Clamp(1-MeleeMath.Ease((r.Motion-.10f)/.65f),0,1);
@@ -252,10 +255,11 @@ namespace ChipArena.UnityConversion
                 r.Slerp(CapturedRig.RArm,MeleeMath.Euler(o[0],o[1],o[2]),c);r.Slerp(CapturedRig.RElbow,MeleeMath.Euler(o[3],0,0),c);r.Slerp(CapturedRig.RHand,MeleeMath.Euler(o[4],o[5],o[6]),c);
                 tilt+=MagicPose.CastTilt(a,time,false,o,c);
             }
+            SprintLayer?.Magic(r,sprint);
             r.WritePose(pose);
             // Staff upright in chest space with the small stride sway.
             float sway=MeleeMath.Clamp(r.Motion,0,1);
-            MagicPose.Staff(pose,a,time,tilt+(float)Math.Cos(2*r.Stride)*.04f*sway,(float)Math.Sin(r.Stride)*.08f*sway,guardWeight);
+            MagicPose.Staff(pose,a,time,tilt+(float)Math.Cos(2*r.Stride)*.04f*sway+(SprintLayer?.StaffTilt??0),(float)Math.Sin(r.Stride)*.08f*sway,guardWeight);
         }
         // Ground pass only (the parity fixtures' timelines never change the transition key): the pelvis follows the travel
         // (chest counter-rotated) and the legs re-plant.
