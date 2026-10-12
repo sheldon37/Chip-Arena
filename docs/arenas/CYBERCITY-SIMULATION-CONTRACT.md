@@ -88,7 +88,7 @@ bool NativeHazardState.Clear(double margin);  // Idle with at least `margin` s b
 - The `UnityMaps.json` change alters the content revision (SHA of the file), as every map edit does; no protocol bump is needed for the hazards themselves.
 
 ## 8. What the presentation already does (this branch)
-- Reads hazards from `Resources/UnityMaps.json` by map id today (`NativeCyberCityHazardSource`), so it works as soon as the map entry carries `hazards[]`. When `ContentMap.hazards` exists, switch `NativeCyberCityPresentation.CyberRebind` and `NativeCyberCityAudio` to `arena.Map.hazards` (one line each) and delete the source class.
+- Reads hazards from `Resources/UnityMaps.json` by map id today (`NativeCyberCityHazardSource`), so it works as soon as the map entry carries `hazards[]`. When `ContentMap.hazards` exists, switch `MetroRebind` (Runtime/NativeCyberCityPresentation.cs) and `CyberCityCues` (Runtime/NativeCyberCityAudio.cs) to `arena.Map.hazards` (one line each) and delete the source class.
 - Binds the maglev and the two grids by `kind` (the grid side by the sign of `center.x`), and the billboards' holo content to each segment's block ending in `-screen`.
 - Everything is dormant unless the map id is `cybercity`; without hazards the kit and look still apply and the telegraph rigs stay dark.
 
