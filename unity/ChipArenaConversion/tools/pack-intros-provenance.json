@@ -605,6 +605,496 @@
     }
    ],
    "sha256": "040e5f940842f417a2462fa71f074327f5829b136c4de9e3fa7c9e94947873b0"
+  },
+  {
+   "style": "weapon-fire",
+   "fps": 60,
+   "frames": 289,
+   "hit": 1.8,
+   "facing": 0,
+   "twoHand": false,
+   "support": null,
+   "breathe": false,
+   "grip": "blade",
+   "lift": 0.0289,
+   "plants": {
+    "left": [
+     0,
+     0.5833,
+     0.7167,
+     1.5333,
+     1.6667,
+     3.0833,
+     3.2167,
+     4.8
+    ],
+    "right": [
+     0,
+     1.4833,
+     1.7333,
+     2.9833,
+     3.1167,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       0.5,
+       0.5
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    },
+    {
+     "source": "2Hand-Staff-Cast-L-Summon1",
+     "keys": [
+      [
+       0.35,
+       0
+      ],
+      [
+       0.5,
+       0.06
+      ],
+      [
+       0.72,
+       0.15
+      ],
+      [
+       0.85,
+       0.22
+      ],
+      [
+       1.1,
+       0.47
+      ],
+      [
+       1.5,
+       0.8
+      ]
+     ],
+     "blend": 0.2,
+     "loop": false,
+     "input": "8269124303c1ccdca90e2701356365ad21eb1feb0d4005339ea4799d881bf3c8"
+    },
+    {
+     "source": "Armed-Cast-L-Attack-Hand3",
+     "keys": [
+      [
+       1.45,
+       0
+      ],
+      [
+       1.72,
+       0.2
+      ],
+      [
+       1.8,
+       0.27
+      ],
+      [
+       2.4,
+       0.6
+      ],
+      [
+       2.9,
+       1
+      ]
+     ],
+     "blend": 0.15,
+     "loop": false,
+     "input": "92d561ec247daa57bb82b3a88fda6d5e810ad246051035d85cc757a6e79fc82b"
+    },
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       2.8,
+       0
+      ],
+      [
+       4.8,
+       2
+      ]
+     ],
+     "blend": 0.45,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    }
+   ],
+   "sha256": "6aabfd95924eb63170256e99d940ab73ecbe7d9fc9df5c6bee630486b4c054ae"
+  },
+  {
+   "style": "weapon-water",
+   "fps": 60,
+   "frames": 289,
+   "hit": 2.12,
+   "facing": 0,
+   "twoHand": false,
+   "support": null,
+   "breathe": false,
+   "grip": "blade",
+   "lift": 0.0243,
+   "plants": {
+    "left": [
+     0,
+     0.5667,
+     1.0333,
+     1.8167,
+     2.0167,
+     2.5333,
+     2.9333,
+     4.8
+    ],
+    "right": [
+     0,
+     0.5167,
+     0.65,
+     1.1167,
+     2.0333,
+     2.9333,
+     3.0333,
+     3.3167,
+     3.45,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       0.5,
+       0.5
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    },
+    {
+     "source": "2Hand-Staff-Cast-L-AOE1",
+     "keys": [
+      [
+       0.4,
+       0
+      ],
+      [
+       0.75,
+       0.2
+      ],
+      [
+       1.15,
+       0.47
+      ],
+      [
+       1.8,
+       0.85
+      ]
+     ],
+     "blend": 0.2,
+     "loop": false,
+     "input": "822eb2d51d613916255417c4452d55567a2ba10e58de258b8e2c94a03321ad99"
+    },
+    {
+     "source": "2Hand-Staff-Cast-L-AOE2",
+     "keys": [
+      [
+       1.75,
+       0.3
+      ],
+      [
+       2.12,
+       0.53
+      ],
+      [
+       2.7,
+       0.75
+      ],
+      [
+       3.2,
+       1.2
+      ]
+     ],
+     "blend": 0.15,
+     "loop": false,
+     "input": "16ab235a1a3eb642fadac63867ffbcc7592d331ad6e80d155e536be316f7dd00"
+    },
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       3,
+       0
+      ],
+      [
+       4.8,
+       1.8
+      ]
+     ],
+     "blend": 0.4,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    }
+   ],
+   "sha256": "348d65636352dcd3bd841fe01d2aef5fe40defbbebbba9c6a1f9e0d40dab1c3a"
+  },
+  {
+   "style": "weapon-lightning",
+   "fps": 60,
+   "frames": 289,
+   "hit": 1.45,
+   "facing": 0,
+   "twoHand": false,
+   "support": null,
+   "breathe": false,
+   "grip": "blade",
+   "lift": 0.0244,
+   "plants": {
+    "left": [
+     1.85,
+     3.3,
+     3.4333,
+     4.8
+    ],
+    "right": [
+     1.45,
+     1.7167,
+     1.9167,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Staff-Fall",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       1,
+       1
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "db190075b4951a859c644a5225a388cdc5c46f2b4fb35ecea88120f9f121b389"
+    },
+    {
+     "source": "2Hand-Staff-Jump",
+     "keys": [
+      [
+       0.95,
+       0.45
+      ],
+      [
+       1.45,
+       0.7
+      ],
+      [
+       1.75,
+       0.8
+      ],
+      [
+       2.3,
+       1.1
+      ]
+     ],
+     "blend": 0.3,
+     "loop": false,
+     "input": "6c08e447d94b4353ea29edf4a6b34ce8d84f060f2100a3552e948df3a27b7992"
+    },
+    {
+     "source": "2Hand-Staff-Idle-Alert1",
+     "keys": [
+      [
+       2.25,
+       0
+      ],
+      [
+       3.2,
+       0.95
+      ]
+     ],
+     "blend": 0.3,
+     "loop": false,
+     "input": "59dcc811f728db7bd7c0aeb774bcf0c19f49739828e620e745b6cb3b93cb1f2e"
+    },
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       3,
+       0
+      ],
+      [
+       4.8,
+       1.8
+      ]
+     ],
+     "blend": 0.4,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    }
+   ],
+   "sha256": "6fd55efc86eb67940427484c6c6a50709dc6aecadfd76c35f5371a48d04fb79e"
+  },
+  {
+   "style": "weapon-darkness",
+   "fps": 60,
+   "frames": 289,
+   "hit": 2.12,
+   "facing": 0,
+   "twoHand": false,
+   "support": null,
+   "breathe": false,
+   "grip": "blade",
+   "lift": 0.024,
+   "plants": {
+    "left": [
+     0,
+     0.5333,
+     1.5167,
+     1.9167,
+     2.8333,
+     3.2333,
+     3.3667,
+     4.8
+    ],
+    "right": [
+     0,
+     0.45,
+     0.5833,
+     1.9,
+     2.0333,
+     2.9333,
+     3.0667,
+     3.2667,
+     3.4,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       0.4,
+       0.4
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    },
+    {
+     "source": "2Hand-Staff-Cast-L-Summon2",
+     "keys": [
+      [
+       0.3,
+       0
+      ],
+      [
+       0.55,
+       0.13
+      ],
+      [
+       0.95,
+       0.45
+      ],
+      [
+       1.35,
+       0.8
+      ]
+     ],
+     "blend": 0.2,
+     "loop": false,
+     "input": "18b1ef88f7a3a3c55b1ca9b7c22418debf3fb1839ba441ee69f4b41e3ef3e4b7"
+    },
+    {
+     "source": "2Hand-Staff-Cast-L-Summon1",
+     "keys": [
+      [
+       1.3,
+       0.35
+      ],
+      [
+       1.6,
+       0.55
+      ],
+      [
+       1.95,
+       0.8
+      ]
+     ],
+     "blend": 0.2,
+     "loop": false,
+     "input": "8269124303c1ccdca90e2701356365ad21eb1feb0d4005339ea4799d881bf3c8"
+    },
+    {
+     "source": "Armed-Cast-L-Attack-Hand2",
+     "keys": [
+      [
+       1.85,
+       0.04
+      ],
+      [
+       2.02,
+       0.13
+      ],
+      [
+       2.12,
+       0.2
+      ],
+      [
+       2.7,
+       0.55
+      ],
+      [
+       3.1,
+       0.9
+      ]
+     ],
+     "blend": 0.15,
+     "loop": false,
+     "input": "034877404b9c5a6c80f5a830b23a47e7d243395e8dcc965c6b020c5c85078e3d"
+    },
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       3,
+       0
+      ],
+      [
+       4.8,
+       1.8
+      ]
+     ],
+     "blend": 0.4,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    }
+   ],
+   "sha256": "3f1f1aed84857799506bff8896777b46661a3f3184d558183291504650b7a32b"
   }
  ]
 }
