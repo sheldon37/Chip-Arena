@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — isolate Kernel Panic build validation
+- Branch `codex/kernel-panic-build-fix-20261012`, base shared `5e0a19c`; fixes the owner’s Windows gate failure on `9607246` (`connect locks both and removes colliders`).
+- Root cause: `ValidateFollowupParity` leaves seat B marked `AuthorityBoss`, a configured PvE match and sandbox state. The following Kernel Panic fixture reuses that arena, so the real capsule connect correctly rejects B as a boss. Clearing only the boss flag would also leave PvE damage/sandbox behavior contaminating later assertions.
+- Run Kernel Panic in a fresh NativeMatch/NativeArena and dedicated preview physics scene after disposing the prior fixture. Add a clean-state precondition and a boss-exclusion regression case; restore the saved boss flag in cleanup. Gameplay rules, immunity, damage, animation timing and replication are unchanged.
+- Checks: `/tmp/chip-dotnet/dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -c Release` passed (35 final managed-core groups, including Kernel Panic); `git diff --check` passed. The managed suite does not compile/execute the Editor-only fixture. Unity Editor/PhysX and Windows build are unavailable here and remain required via the local builder.
+- Status: task branch/PR; not merged into shared/cloud and no compiled update published. Repository instructions reserve merges for the owner. Merge this fix before rerunning Build-and-Publish; do not bypass the validation gate.
+
 ## 2026-10-12 — Astra — accounts Worker redeploy and downward plunge
 - Base: fetched shared `1426250` (includes `f575670` and Kernel Panic PR #138). Plunge branch `codex/plunging-stab-20261012`; party test-only PR #139 is separate (`9c58824`, 8/8 tests passed).
 - Accounts Worker deployed successfully as Site version 65, source `ec6e52c1d86adabebab1b6b8b68bab2cf6a5a40d`, deployment `appgdep_6acd10872af481919ecaca200941f59f`. Built the current-head Worker and preserved hosted client/update assets, manifest and migrations byte-for-byte. No account data migration or secret changes.
