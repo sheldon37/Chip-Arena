@@ -131,6 +131,13 @@ namespace ChipArena.UnityConversion
             Quads.Add(x-lx-wx,y,z-lz-wz,x+lx-wx,y,z+lz-wz,x+lx+wx,y,z+lz+wz,x-lx+wx,y,z-lz+wz,r,g,b,a,mode,additive,1);
         }
         // A camera-facing ribbon from A to B, `width` wide.
+        // A soft light shaft (radial falloff across and along): it fades as the eye lines up with it, so looking down the beam
+        // never shows the ribbon as a flat wedge.
+        private void Beam(double ax,double ay,double az,double bx,double by,double bz,double width,double r,double g,double b,double a)
+        {
+            double dx=bx-ax,dy=by-ay,dz=bz-az,dl=Math.Sqrt(dx*dx+dy*dy+dz*dz),mx=(ax+bx)/2-ex,my=(ay+by)/2-ey,mz=(az+bz)/2-ez,ml=Math.Sqrt(mx*mx+my*my+mz*mz);if(dl<1e-6||ml<1e-6)return;
+            double c=Math.Abs(dx*mx+dy*my+dz*mz)/(dl*ml),side=1-c*c;Line(ax,ay,az,bx,by,bz,width,r,g,b,a*side*side,true,1);
+        }
         private void Line(double ax,double ay,double az,double bx,double by,double bz,double width,double r,double g,double b,double a,bool additive=true,int mode=0)
         {
             double dx=bx-ax,dy=by-ay,dz=bz-az,mx=(ax+bx)/2-ex,my=(ay+by)/2-ey,mz=(az+bz)/2-ez;
@@ -173,8 +180,8 @@ namespace ChipArena.UnityConversion
                 NativeCyberCityScenery.Searchlight(i,time,out double x,out double y,out double z,out double dx,out double dy,out double dz);double len=420;
                 // The beam's width faces the camera round its axis, widening toward the clouds.
                 double mx=x+dx*len/2-ex,my=y+dy*len/2-ey,mz=z+dz*len/2-ez,sx=dy*mz-dz*my,sy=dz*mx-dx*mz,sz=dx*my-dy*mx,sl=Math.Sqrt(sx*sx+sy*sy+sz*sz);if(sl<1e-6)continue;sx/=sl;sy/=sl;sz/=sl;
-                double w0=2.5,w1=26,bx=x+dx*len,by=y+dy*len,bz=z+dz*len;
-                Quads.Add(x-sx*w0,y-sy*w0,z-sz*w0,bx-sx*w1,by-sy*w1,bz-sz*w1,bx+sx*w1,by+sy*w1,bz+sz*w1,x+sx*w0,y+sy*w0,z+sz*w0,.55,.62,.9,.07,0,true,1);Beams++;
+                double w0=2.5,w1=26,bx=x+dx*len,by=y+dy*len,bz=z+dz*len,ml=Math.Sqrt(mx*mx+my*my+mz*mz),c=ml>1e-6?Math.Abs(dx*mx+dy*my+dz*mz)/ml:1,fa=.07*(1-c*c);
+                Quads.Add(x-sx*w0,y-sy*w0,z-sz*w0,bx-sx*w1,by-sy*w1,bz-sz*w1,bx+sx*w1,by+sy*w1,bz+sz*w1,x+sx*w0,y+sy*w0,z+sz*w0,.55,.62,.9,Math.Max(.004,fa),0,true,1);Beams++;
                 Point(x,y,z,4,.012,.8,.85,1,.6);
             }
         }
@@ -276,14 +283,14 @@ namespace ChipArena.UnityConversion
             {
                 // The tunnel mouth glows as the head comes, and its headlight cone reaches out of the portal in the last 1.5 s.
                 double k=Math.Max(0,Math.Min(1,1-s.Lead/h.warn));Point(near,floor+1.8,0,3+5*k,.0,1.4*k,1.5*k,1.7*k,.5+.4*k);Telegraph++;
-                if(s.Lead<1.5){double reach=(1.5-s.Lead)/1.5*30;Line(near-d*2,floor+1.3,0,near+d*reach,floor+1.0,0,3.2,.5*k,.55*k,.65*k,.35);Flat(near+d*reach*.6,floor+.35,0,1,0,reach*.5,2.2,.6,.65,.8,.25,1,true);Telegraph+=2;}
+                if(s.Lead<1.5){double reach=(1.5-s.Lead)/1.5*30;Beam(near-d*2,floor+1.3,0,near+d*reach,floor+1.0,0,3.2,.5*k,.55*k,.65*k,.35);Flat(near+d*reach*.6,floor+.35,0,1,0,reach*.5,2.2,.6,.65,.8,.25,1,true);Telegraph+=2;}
             }
             // The train's own lights: twin head lamps and the cone ahead, red tail lamps, sparks off the rails and spray along its flanks.
             double head=s.Head,tail=s.Tail,rail=NativeCyberCityKit.RailTop;
             if(Math.Abs(head)<half+90)
             {
                 for(int k=-1;k<=1;k+=2)Point(head-d*.3,rail+.75,k*1.4,1.1,.004,3,3.1,3.3,.95);
-                Line(head,rail+1.0,0,head+d*26,rail+.6,0,4.5,.35,.38,.45,.3);Flat(head+d*12,floor+.03,0,1,0,12,2.4,.5,.55,.7,.28,1,true);Telegraph+=4;
+                Beam(head,rail+1.0,0,head+d*26,rail+.6,0,4.5,.35,.38,.45,.3);Flat(head+d*12,floor+.03,0,1,0,12,2.4,.5,.55,.7,.28,1,true);Telegraph+=4;
             }
             if(Math.Abs(tail)<half+90)for(int k=-1;k<=1;k+=2){Point(tail+d*.3,rail+.75,k*1.4,.9,.004,2.8,.15,.1,.9);Telegraph++;}
             if(ph==NativeHazardPhase.Active)

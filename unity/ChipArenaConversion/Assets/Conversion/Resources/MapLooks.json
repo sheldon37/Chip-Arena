@@ -249,7 +249,7 @@
     {"block":"cybercity-billboard-*-strut-*","look":"cyber-metal","color":3487808,"band":true,"note":"P billboard struts (structural, explosives only, 80 HP): the 2.3 band and DANGER tag"},
     {"block":"cybercity-billboard-*-screen","look":"cyber-holo","color":8022271,"band":false,"note":"^ the holo billboard screen (carried; dies with its segment's telegraph)"},
     {"block":"cybercity-billboard-*","look":"cyber-metal","color":0,"band":false,"note":"^ billboard truss and frame (carried)"},
-    {"block":"rubble-cybercity-billboard-*-0","look":"cyber-holo","color":1316393,"band":false,"note":"the fallen screen, dark"},
+    {"block":"rubble-cybercity-billboard-*-0","look":"cyber-metal","color":2896192,"band":false,"note":"the fallen screen face down: its bolted metal back (the dying content plays over it)"},
     {"block":"rubble-cybercity-*","look":"cyber-metal","color":0,"band":false,"note":"billboard rubble (truss)"},
     {"block":"cybercity-trench-floor","look":"concrete-board","color":2894899,"band":false,"note":"~ the Cut's floor [static]"},
     {"block":"cybercity-guideway","look":"cyber-metal","color":3289166,"band":false,"note":"= maglev guide beam [static]"},

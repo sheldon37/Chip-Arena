@@ -225,8 +225,8 @@ namespace ChipArena.UnityConversion
             var p=R("NativeCyberCityPresentation.cs");
             Check(p.Contains("if(!NativeCyberCityLooks.Active(arena.MapId)||!EnsureCyberCity())return;")&&p.Contains("if(!NativeCyberCityLooks.Active(mapId)||!EnsureCyberCity())return;"),"dormant unless the map is cybercity");
             Check(!p.Contains("Collider")&&!p.Contains("new GameObject")&&!p.Contains("AddComponent")&&!p.Contains("Rigidbody"),"no colliders, objects or bodies");
-            Check(p.Contains("NativeCyberCityHazards.At(cyberHazards[i],match.Phase,round,match.FightAt,now)")&&p.Contains("NativeStructureFx.RoundIndex(match.Set,match.Round)")&&p.Contains("PresentationClock(arena)"),"hazard rigs read the pure Core state on the presentation clock with the round index and match phase");
-            Check(p.Contains("const int layer=NativeSceneryBuilder.BackdropLayer;")&&p.Contains("CyberDraw(bt,layer,ShadowCastingMode.Off)"),"the backdrop draws on the backdrop layer and casts no shadows");
+            Check(p.Contains("NativeCyberCityHazards.At(metroHazards[i],match.Phase,round,match.FightAt,now)")&&p.Contains("NativeStructureFx.RoundIndex(match.Set,match.Round)")&&p.Contains("PresentationClock(arena)"),"hazard rigs read the pure Core state on the presentation clock with the round index and match phase");
+            Check(p.Contains("const int layer=NativeSceneryBuilder.BackdropLayer;")&&p.Contains("MetroDraw(bt,layer,ShadowCastingMode.Off)"),"the backdrop draws on the backdrop layer and casts no shadows");
             var audio=R("NativeCyberCityAudio.cs");Check(audio.Contains("NativeCyberCityLooks.Active(arena.MapId)")&&R("NativeAudio.cs").Contains("CyberCityCues(arena,menu);"),"the sound hook is dormant off the map");
             foreach(var f in new[]{"NativeCyberCityLooks.cs","NativeCyberCityHazards.cs","NativeCyberCityKit.cs","NativeCyberCityScenery.cs","NativeCyberCityFx.cs","NativeCyberCityAmbience.cs"})Check(!File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core",f)).Contains("UnityEngine"),f+" is engine-free Core");
         }
