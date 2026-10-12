@@ -109,8 +109,8 @@ namespace ChipArena.UnityConversion
                 if(Input.GetKeyDown(KeyCode.W)){if(Time.unscaledTime-lastW<.3f)sprint=true;lastW=Time.unscaledTime;}if(!Input.GetKey(KeyCode.W))sprint=false;
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
                 pending.X=move.x;pending.Z=move.z;pending.Yaw=yaw;pending.Pitch=-pitch;pending.Sprint=sprint;pending.Aim=aiming;
-                pending.Shoot=Input.GetMouseButton(0);
-                pending.AbilityQ|=p.Weapon.@class=="magic"&&Input.GetKeyDown(KeyCode.Q);pending.AbilityE|=Input.GetKeyDown(KeyCode.E);pending.AbilityEReleased|=Input.GetKeyUp(KeyCode.E);pending.AbilityEHeld=Input.GetKey(KeyCode.E);
+                pending.Shoot=Input.GetMouseButton(0);pending.Attack|=Input.GetMouseButtonDown(0);pending.LockTarget=lockPoint.HasValue?lockTarget:0;
+                pending.AbilityQ|=(p.Weapon.@class=="magic"||NativeMeleeRules.Standard(p.Seat.spec))&&Input.GetKeyDown(KeyCode.Q);pending.AbilityE|=Input.GetKeyDown(KeyCode.E);pending.AbilityEReleased|=Input.GetKeyUp(KeyCode.E);pending.AbilityEHeld=Input.GetKey(KeyCode.E);
                 pending.Hadoken|=Input.GetKeyDown(KeyCode.Alpha1);pending.HadokenHeld=Input.GetKey(KeyCode.Alpha1);pending.Uppercut|=Input.GetKeyDown(KeyCode.Alpha2);
                 for(int key=0;key<4;key++)if(Input.GetKeyDown(KeyCode.Alpha1+key))pending.SirenAbility=(byte)(key+1);
                 pending.AbilityQ|=p.Seat.spec=="emperor"&&Input.GetKeyDown(KeyCode.Q)||p.Seat.spec=="siren"&&Input.GetKeyDown(prefs.sirenMode=="F"?KeyCode.F:prefs.sirenMode=="V"?KeyCode.V:KeyCode.Q);
@@ -229,6 +229,12 @@ namespace ChipArena.UnityConversion
                 return "E  "+name+" · "+specialState;
             }
             if(d.kind=="ads")return "Q  Aim (hold)";
+            if(NativeMeleeRules.Standard(p.Seat.spec))
+            {
+                var k=p.MeleeKit;float remaining=(slot=="q"?p.QReady:p.EReady)-arena.Time;
+                string status=slot=="e"&&k.RecastUntil>arena.Time?"recast":k.Kind==d.id&&k.Until>arena.Time?"active":remaining>0?remaining.ToString("0.0")+"s":p.Stamina<NativeAbilityRules.Cost(d,p.Stats)?"low stamina":"ready";
+                return slot.ToUpper()+"  "+d.name+" · "+status;
+            }
             float left=slot=="q"?p.QReady-arena.Time:p.ECharges>0?0:p.EReady-arena.Time;
             string state=p.AbilityCast?.Definition==d?"casting":left>0?left.ToString("0.0")+"s":p.Mana<NativeAbilityRules.Cost(d,p.Stats)?"low mana":"ready";
             return slot.ToUpper()+"  "+d.name+" · "+state;

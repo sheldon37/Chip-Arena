@@ -1,5 +1,7 @@
 # Melee feel: evaluation, plan and handoff (2026-10-12)
 
+Simulation follow-up: the Q/E kit and owner-requested S1–S5/S7/G8 work are implemented on `codex/unity-melee-abilities-20261012`; see [the simulation handoff](MELEE-SIMULATION-HANDOFF.md) for exact live values, owner-versus-proposal differences, replicated fields and the native duel command. The evaluation and proposal below describe the `19c00c7` baseline. Native duel and Windows/two-client acceptance are still pending.
+
 Owner request, 2026-10-12 (verbatim): "we may need to balance melee to stand on par with ranged/magic. They need more
 ways to gap close, and also, we need to improve the "fluidity" of them, it doesnt feel smooth swinging right now now.
 Think like dark souls swinging, its fluid and allows multiple swings. Maybe we need small movements forward when swinging
@@ -10,8 +12,7 @@ too? Please evaluate. Also, the movement for melee is a little weird on the tors
 - **Ownership** (AGENTS.md role split): each recommendation is tagged **PRESENTATION** (Claude: poses, blending, VFX
   timing) or **SIMULATION** (Astra: input, timing, turning, steps, abilities, bots, replication).
 - **Status:** the presentation items are implemented on branch `claude/melee-feel` (see
-  [Presentation work](#presentation-work-on-claudemelee-feel)). The simulation items are a proposal for Astra; none is
-  started.
+  [Presentation work](#presentation-work-on-claudemelee-feel)). The simulation proposal below is retained as the evaluation record; implementation status is in the follow-up above.
 - **Evidence:** reading the code, plus an offline probe (local notes, not committed). The probe compiles `Core/`
   outside Unity, poses pilots through the real `MeleeMotion`, `MeleeGait` and `GunMotion`, and drives them with an
   authority timeline rebuilt from `NativeMeleeRules` with held LMB, as `ConversionGame` sends it. One pilot, flat floor,

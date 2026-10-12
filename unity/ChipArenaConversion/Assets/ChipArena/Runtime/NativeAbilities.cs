@@ -42,6 +42,7 @@ namespace ChipArena.UnityConversion
         private bool AbilityBusy(NativePilot p)=>p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Incapacitated(p);
         private void StepAbilities(NativePilot p)
         {
+            if(NativeMeleeRules.Standard(p.Seat.spec)){StepMeleeAbilityInput(p);return;}
             int max=NativeAbilityRules.Charges(p.Stats);
             if(Content.Ability(p.Seat.spec,"e")!=null&&p.ECharges<max&&Time>=p.EReady){p.ECharges++;if(p.ECharges<max)p.EReady=Time+NativeAbilityRules.Cooldown(Content.Ability(p.Seat.spec,"e"),p.Stats);}
             if(p.Input.CancelAbilities||Time<p.BlockEnd){CancelAbilities(p);return;}
@@ -204,8 +205,9 @@ namespace ChipArena.UnityConversion
                         var minion=h.collider.GetComponent<NativeMinionBody>()?.Minion;if(minion!=null&&(minion.Hp<=0||!CanHit(s.Owner,minion)||s.Hit.Contains(minion.Id)))continue;
                         if(body!=null&&(body.Pilot==s.Owner||body.Pilot.Hp<=0||!CanHit(s.Owner,body.Pilot)||s.Hit.Contains(body.Pilot.Seat.id)||Invulnerable(body.Pilot)))continue;
                         s.Travel+=h.distance;s.Position+=delta.normalized*h.distance;
+                        if(body!=null&&AbsorbCharge(body.Pilot,s.Velocity,h.point,s.Id)){remove=true;contact=true;break;}
                         if(body!=null&&Time<body.Pilot.BlockEnd&&d.id!="tidal-wave"&&s.Reflections<3)
-                        {BlockProc(body.Pilot,s.Owner,s.Position);s.Owner=body.Pilot;s.Reflections++;s.Damage=Math.Min(100,s.Damage*(float)s.Owner.Stats["reflectDamage"]);s.Velocity=Vector3.ClampMagnitude(-s.Velocity*(float)s.Owner.Stats["reflectSpeed"],120);s.Position+=s.Velocity.normalized*(s.Radius+.5f);s.Hit.Clear();contact=true;break;}
+                        {BlockProc(body.Pilot,s.Owner,h.point,"deflect");s.Owner=body.Pilot;s.Reflections++;s.Damage=Math.Min(100,s.Damage*(float)s.Owner.Stats["reflectDamage"]);s.Velocity=Vector3.ClampMagnitude(-s.Velocity*(float)s.Owner.Stats["reflectSpeed"],120);s.Position+=s.Velocity.normalized*(s.Radius+.5f);s.Hit.Clear();contact=true;break;}
                         remove=AbilityContact(s,h);contact=true;
                         // Piercing continues next tick from beyond this contact; no duplicate hit on the same pilot.
                         if(!remove&&(body!=null||minion!=null)&&d.id!="frag-grenade")s.Position+=delta.normalized*.05f;

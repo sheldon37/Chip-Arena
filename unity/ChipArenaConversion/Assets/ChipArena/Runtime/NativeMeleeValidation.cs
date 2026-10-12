@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
                     p.Seat.spec=p==a?spec:defender;p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);
                     p.Seat.bot=false;p.Seat.alive=true;p.Hp=p.Stamina=p.Mana=100;p.Collider.enabled=true;p.Body.isKinematic=false;
                     p.Ready=p.AttackEnd=p.BlockEnd=p.BlockReady=p.RollEnd=p.RollReady=p.StunEnd=p.StaggerImmune=p.ReloadEnd=0;p.CastAt=0;p.RegenAt=Time+10;
-                    p.Swing=null;p.Special=null;p.Down=null;p.Roll=null;p.Combo=-1;p.RiposteAt=p.BlockAt=-100;p.RiposteBy=-1;p.Dots.Clear();CancelAbilities(p);
+                    p.MeleeKit=new NativeMeleeKit();p.MeleeBufferedUntil=-1;p.MeleeComboUntil=0;p.Pose.Sprinting=false;p.ArmourHitUntil=0;p.Swing=null;p.Special=null;p.Down=null;p.Roll=null;p.Combo=-1;p.RiposteAt=p.BlockAt=-100;p.RiposteBy=-1;p.Dots.Clear();CancelAbilities(p);
                     p.Grounded=true;p.Input=new InputFrame{Yaw=p==a?0:180};p.Yaw=p.Input.Yaw;
                     Position(p,new Vector3(1000,100,p==a?1000:1002));
                 }
@@ -63,6 +63,22 @@ namespace ChipArena.UnityConversion
                 Setup();a.Seat.bot=true;TryMelee(a);Check(!TryRoll(a),"bot used human roll cancel");
                 Setup();Position(a,new Vector3(1000,10,1000));a.Grounded=false;a.Knockback=new Vector3(6,4,0);StepPilot(a);
                 NearNative(a.Body.linearVelocity.x,6*Mathf.Exp(-3.1f/60),"external velocity integration");NearNative(a.Body.linearVelocity.y,4,"one-shot vertical kick");Check(a.Knockback.y==0,"lift retained for next tick");
+                Setup();Position(b,new Vector3(1000,100,1005));a.Input.LockTarget=b.Seat.id;a.Input.Sprint=true;a.Input.Z=1;
+                Check(TryMelee(a)&&a.Swing.OpenerLunge&&a.Swing.SprintAttack,"opener/sprint flags");NearNative(a.Swing.Distance,2.2f,"host lock lunge cap");
+                Position(b,new Vector3(1005,100,1005));Advance(Rules.Dt);StepMelee(a);
+                NearNative(a.Yaw,12,"windup turn rate");NearNative(a.Swing.Yaw*Mathf.Rad2Deg,a.Yaw,"commit yaw follows turn");
+                float heading=a.Yaw;Advance(a.Swing.HitAt-Time);a.Input.LockTarget=0;a.Input.Yaw=180;StepMelee(a);NearNative(a.Yaw,heading,"active yaw locked");
+                var previous=a.Swing;Advance(previous.ChainAt-Time);a.Input.Attack=true;StepMeleeInput(a);
+                Check(a.Swing!=previous&&a.Swing.Distance==.9f,"chain starts with default step without lock");NearNative(a.Yaw,heading,"chain does not snap yaw");
+                float comboEnd=a.MeleeComboUntil;a.Input.Attack=false;Advance(comboEnd-Time+.001f);StepMelee(a);a.Input.Attack=true;StepMeleeInput(a);Check(a.Combo==0&&a.Swing.Index==1,"combo reset after pause");
+                Setup();Position(b,new Vector3(1000,100,1005));wall.SetActive(true);Physics.SyncTransforms();a.Input.LockTarget=b.Seat.id;TryMelee(a);NearNative(a.Swing.Distance,.9f,"cover refuses target-assisted lunge");
+                Setup("greatsword");Position(b,new Vector3(1000,100,1020));TryMelee(a);previous=a.Swing;Advance(previous.HitAt-Time);a.Input.Attack=true;StepMeleeInput(a);
+                a.Input.Attack=false;Advance(previous.ChainAt-Time);StepMeleeInput(a);Check(a.Swing==previous,"greatsword expired buffer must not chain");
+                Setup();TryMelee(a);previous=a.Swing;Advance(previous.ChainAt-Time);a.Input.Shoot=true;StepMeleeInput(a);Check(a.Swing==previous,"held input must retain full recovery");
+                Setup();ClearRemoteInput(b.Seat.id);AcceptInput(b.Seat.id,new InputFrame{Sequence=1,Attack=true,Shoot=true,LockTarget=a.Seat.id});AcceptInput(b.Seat.id,new InputFrame{Sequence=2,LockTarget=a.Seat.id});
+                var tap=RemoteInput(b.Seat.id);Check(tap.Attack&&!tap.Shoot&&tap.LockTarget==a.Seat.id,"coalesced release lost LMB edge");
+                AcceptInput(b.Seat.id,new InputFrame{Sequence=2,Attack=true});Check(!RemoteInput(b.Seat.id).Attack,"edge replayed after consumption/duplicate");ClearRemoteInput(b.Seat.id);
+                Debug.Log("PASS native melee feel: host lock/LOS lunge, sprint/opener flags, bounded windup turning, active/chain yaw, combo reset, buffer expiry, held recovery and coalesced input edge");
                 Debug.Log("PASS native melee contacts: four primaries, late sweep entry, cover, team/i-frame protection, riposte/counter, cancellation and impulse integration");
             }
             finally{CapturedAnimation.Release(wall);}

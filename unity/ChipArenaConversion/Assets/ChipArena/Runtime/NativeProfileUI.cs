@@ -55,8 +55,8 @@ namespace ChipArena.UnityConversion
         {
             prefs.name=NativeCosmeticRules.Name(prefs.name);prefs.introText=NativeCosmeticRules.IntroText(prefs.introText);prefs.bodyColor=NativeCosmeticRules.Color(prefs.bodyColor,"#e5e7eb");prefs.accentColor=NativeCosmeticRules.Color(prefs.accentColor,"#70e1d0");
             if(account.Account!=null)prefs.pendingEffects=NativePendingEffect.Remember(prefs.pendingEffects,account.Account.id,prefs.killEffect,account.Account.profile?.cosmetics?.killEffect,e=>NativeCosmeticRules.Allowed(account.Access,"effect",e));
-            // The account service stores a procedural entrance as 'neon-drop' (NativeIntroRules.ServiceIntro): remember the pick against that value.
-            if(account.Account!=null)prefs.pendingIntros=NativePendingEffect.Remember(prefs.pendingIntros,account.Account.id,prefs.intro,NativeIntroRules.ServiceIntro(prefs.intro),i=>NativeCosmeticRules.Intros.Contains(i)&&NativeCosmeticRules.Allowed(account.Access,"intro",i));
+            // Remember the actual pre-save value on the native-aware service; only an acknowledged or changed remote choice clears a pending pick.
+            if(account.Account!=null)prefs.pendingIntros=NativePendingEffect.Remember(prefs.pendingIntros,account.Account.id,prefs.intro,account.Account.profileSchema>=2?account.Account.profile?.cosmetics?.intro:NativeIntroRules.ServiceIntro(prefs.intro),i=>NativeCosmeticRules.Intros.Contains(i)&&NativeCosmeticRules.Allowed(account.Access,"intro",i));
             Save();if(account.Account!=null)account.Save(Profile());
         }
         // Account: the Log in / Register / Recovery form, or the signed-in account and

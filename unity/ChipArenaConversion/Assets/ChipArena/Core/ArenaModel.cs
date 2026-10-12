@@ -19,11 +19,12 @@ namespace ChipArena.UnityConversion
     public struct InputFrame
     {
         public int Sequence;
+        public int LockTarget; // Intent only: native authority rechecks enemy, range and line of sight.
         public float X, Z, Yaw, Pitch;
         public byte SelectWeapon; // 0=no change, 1=Sword, 2=Pistol, 3=Rifle, 4=MachineGun
         public V3 AimTarget,AbilityTarget;
         public bool Interact;public bool Hadoken,HadokenHeld,Uppercut;public byte SirenAbility;public bool Attack, Block, Roll, Shoot, Jump, Sprint, Aim, Reload, AbilityQ, AbilityE, AbilityEHeld, AbilityEReleased, CancelAbilities;
-        public bool Valid { get { return Sequence >= 0 && MathUtil.Finite(X) && MathUtil.Finite(Z) && MathUtil.Finite(Yaw) && MathUtil.Finite(Pitch) && MathUtil.Finite(AbilityTarget.x) && MathUtil.Finite(AbilityTarget.y) && MathUtil.Finite(AbilityTarget.z) && AbilityTarget.Length<=10000 && MathUtil.Finite(AimTarget.x) && MathUtil.Finite(AimTarget.y) && MathUtil.Finite(AimTarget.z) && AimTarget.Length<=10000 && SelectWeapon<=4 && SirenAbility<=4; } }
+        public bool Valid { get { return Sequence >= 0 && LockTarget>=0 && LockTarget<10000000 && MathUtil.Finite(X) && MathUtil.Finite(Z) && MathUtil.Finite(Yaw) && MathUtil.Finite(Pitch) && MathUtil.Finite(AbilityTarget.x) && MathUtil.Finite(AbilityTarget.y) && MathUtil.Finite(AbilityTarget.z) && AbilityTarget.Length<=10000 && MathUtil.Finite(AimTarget.x) && MathUtil.Finite(AimTarget.y) && MathUtil.Finite(AimTarget.z) && AimTarget.Length<=10000 && SelectWeapon<=4 && SirenAbility<=4; } }
         public InputFrame Sanitized()
         {
             if (!Valid) return new InputFrame();
@@ -42,13 +43,14 @@ namespace ChipArena.UnityConversion
         public int GrabOwner;public float GrabAt,GrabCrushAt,GrabUntil;
         public NativeWound[] Wounds=Array.Empty<NativeWound>();public string SourceSpec,SourceAction,BodyColor="#e5e7eb",AccentColor="#70e1d0",Hat="none";public float SourceModeAt=-100;public float SourceAt,SourceUntil,RigScale=1;public int SourceIndex,SourceTotal,SourceSide=1;public bool SourceRanged;
         // Native authority presentation only; the inherited lab wire codec does not transport these.
-        public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
+        public NativeMeleeKit MeleeKit;public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
         public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;
         public float CastRate=1,AbilityAt=-100,AbilityRelease;public string AbilityId;
         public bool Grounded=true;
         // Captured-melee presentation (MeleeMotion): the swing window, authoritative step and commitment, Hurricane, and the
         // hit reaction in the struck pilot's facing frame (source frame: +x the rig's left, radians). Never read by authority.
-        public float SwingAt=-100,SwingUntil=-100,CommitAt=-100,CommitUntil=-100,CommitYaw,StepAt,StepUntil,StepDistance;public bool Followup,Hurricane;
+        public float SwingAt=-100,SwingUntil=-100,CommitAt=-100,CommitUntil=-100,CommitYaw,StepAt,StepUntil,StepDistance;public bool Followup,Hurricane,SprintAttack,OpenerLunge;
+        public int SwingRemaining;public float ChainAt,MeleeBufferUntil=-1,ComboUntil;
         public float ReactionAt=-100,ReactionUntil,ReactionYaw,ReactionTurn,ReactionStrength;public V3 ReactionDir,ReactionPoint;public int ReactionZone;public bool ReactionParry;
         public float VisualWindup=Rules.SwordWindup,VisualActive=Rules.SwordActive,VisualDuration=Rules.SwordDuration,VisualRollDuration=Rules.RollDuration;
         public int Id, Team, Combo, Action, Kills, LastInput;
@@ -64,7 +66,7 @@ namespace ChipArena.UnityConversion
         public float StunUntil, StaggerImmuneUntil, RegenAt, ShootReady, RespawnAt, FlashUntil;
         internal bool QueuedAttack;
         internal readonly HashSet<int> Hit = new HashSet<int>();
-        public Actor ViewCopy() => (Actor)MemberwiseClone();
+        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.MeleeKit=MeleeKit?.ViewCopy();return copy;}
         public bool Alive { get { return Hp > 0; } }
         public bool Rolling(float t) { return t >= RollAt && t < RollAt + VisualRollDuration; }
         public bool Invulnerable(float t) { return t >= RollAt + Rules.IframeStart && t < RollAt + Rules.IframeEnd; }
@@ -90,7 +92,7 @@ namespace ChipArena.UnityConversion
         public WeaponId Weapon;
     }
 
-    public enum EventKind { Hit, Block, Dodge, Shot, Death, Break, ReloadStart, ReloadEnd, Headshot, Impact, Explosion, BlockPulse, Vacuum, Arc, Freeze, Teleport, Critical, Catch, Split, Ricochet, Pong, CeilingHit, HazardHit, BurnTick, PoisonTick, Collapse, Leet, Emperor, Arcade, Siren, PveBuy, PveGib, PvePhase, PveRevive, PveMoney, Install, Field, Summon, Heal, StructureStress, StructureFall, StructureLand }
+    public enum EventKind { Hit, Block, Dodge, Shot, Death, Break, ReloadStart, ReloadEnd, Headshot, Impact, Explosion, BlockPulse, Vacuum, Arc, Freeze, Teleport, Critical, Catch, Split, Ricochet, Pong, CeilingHit, HazardHit, BurnTick, PoisonTick, Collapse, Leet, Emperor, Arcade, Siren, PveBuy, PveGib, PvePhase, PveRevive, PveMoney, Install, Field, Summon, Heal, StructureStress, StructureFall, StructureLand, AbilityCast, AbilityHit, Mark, Recast, Absorb, Bounce, Land, FissureStart }
     [Serializable]
     public struct ArenaEvent
     {

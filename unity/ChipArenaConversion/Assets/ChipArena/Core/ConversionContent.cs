@@ -24,9 +24,10 @@ namespace ChipArena.UnityConversion
     { public string id,name,tag,theme,music,ambience,look; public int sky,floor,accent;public bool rotation;[NonSerialized] public bool unity;public ContentBlock[] blocks;public MapBounds bounds;public MapSpawns spawns;public StructureDefinition[] segments;public MapNav nav;public MapPilotBlock[] pilotBlocks; }
     [Serializable] public sealed class ContentMaterial
     { public string id;public int color;public float mass,durability,friction;public bool indestructible; }
+    [Serializable] public sealed class ContentAbilityBot { public float min,max,lead;public bool point,ballistic; }
     [Serializable] public sealed class ContentAbility
     {
-        public string spec,slot,id,name,@short,text,kind,fx;
+        public string spec,slot,id,name,@short,text,kind,fx;public ContentAbilityBot bot;
         public double cooldown,cost,windup,lockout,range,damage,burn,impulse,speed,gravity,shotRadius,pierce,radius,fuse,closeFuse,duration,speedFactor,slowFor,tick,force,arm;
         public bool live;
     }
