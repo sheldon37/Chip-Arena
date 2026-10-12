@@ -25,15 +25,16 @@ namespace ChipArena.UnityConversion
             if(s!=null&&now>=s.Until)state.Swing=s=null;
             if(input.Attack&&NativeMeleeKitRules.BufferOpen(s,now))state.BufferUntil=now+NativeMeleeFeel.BufferSeconds;
             bool queued=state.BufferUntil>=now,chain=queued&&NativeMeleeKitRules.ChainReady(s,now);
-            float cost=NativeMeleeFeel.Cost(w,stats);
+            bool sprint=NativeSprintAttack.Starts(chain,now>state.ComboUntil?1:state.Combo+2,state.Grounded,input,state.Sprinting);
+            float cost=NativeSprintAttack.Cost(w,stats,sprint);
             if(!input.AbilityQ&&!input.AbilityE&&!input.Roll&&!input.Block&&state.Stamina>=cost&&
                 (chain||s==null&&now>=state.Ready)&&(input.Attack||queued||input.Shoot&&s==null))
             {
                 if(now>state.ComboUntil)state.Combo=-1;
                 float yaw=chain?s.Yaw:input.Yaw*(float)Math.PI/180;
                 s=NativeMeleeFeel.Begin(w,stats,now,++state.Combo+1,yaw);
-                s.SprintAttack=!chain&&state.Grounded&&NativeMeleeFeel.SprintAttack(input,state.Sprinting);
-                if(point.HasValue)
+                if(sprint)NativeSprintAttack.Apply(s,(float)stats["attackRate"]);
+                if(point.HasValue&&!sprint)
                 {
                     var delta=point.Value-state.Position;delta.y=0;
                     if(V3.Dot(delta.Normalized,V3.Forward(s.Yaw*180/(float)Math.PI))>0)
@@ -41,6 +42,8 @@ namespace ChipArena.UnityConversion
                 }
                 s.Remaining=(int)stats["extraStrikes"];
                 s.Until=Math.Max(s.Until,now+(float)((w.windup+.16+stats["extraStrikes"]*.24+.12)/stats["attackRate"]));
+                if(sprint)state.Sprinting=false;
+                if(NativeSprintAttack.Hop(s)){state.Velocity.y=NativeSprintAttack.HopSpeed(s,state.Gravity);state.Grounded=false;}
                 state.Swing=s;state.Ready=s.Until;state.Stamina-=cost;state.BufferUntil=-1;state.ComboUntil=s.Until+NativeMeleeFeel.ComboPause;
             }
             return s!=null&&now<s.Until;
