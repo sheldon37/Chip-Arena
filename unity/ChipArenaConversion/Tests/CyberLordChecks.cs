@@ -109,7 +109,7 @@ internal static class CyberLordChecks
         foreach(var (text,ok) in new (string,bool)[]{
             ("Jab: 12 damage, .28 s",CyberLordSpec.ComboDurations[0]==.28f&&CyberLordSpec.ComboDamage[0]==12),("Cross: 14 damage, .30 s",CyberLordSpec.ComboDurations[1]==.30f),("Pulse Palm: 22 damage, .45 s",CyberLordSpec.ComboDurations[2]==.45f),
             ("range 2.2 m, arc 1.4",CyberLordSpec.ComboRange==2.2f&&CyberLordSpec.ComboArc==1.4f),("1.6 m forward cone",CyberLordSpec.PalmCone==1.6f),("after .6 s idle",CyberLordSpec.ComboReset==.6f),("restores 6",CyberLordSpec.ManaPerHit==6),("mana (100)",CyberLordSpec.Mana==100),
-            ("7 m dash",CyberLordSpec.DashDistance==7),("1.2 s trail",CyberLordSpec.TrailSeconds==1.2f),("per .3 s. Cooldown 6 s, 20 mana",CyberLordSpec.TrailTick==.3f&&CyberLordSpec.Cooldowns[0]==6&&CyberLordSpec.Costs[0]==20),
+            ("7 m dash",CyberLordSpec.DashDistance==7),("1.2 s trail",CyberLordSpec.TrailSeconds==1.2f),("per .3 s. Cooldown 0.5 s, 20 mana",CyberLordSpec.TrailTick==.3f&&CyberLordSpec.Cooldowns[0]==.5f&&CyberLordSpec.Costs[0]==20),
             ("5 m wide and 2.5 m tall, placed .8 m in front, lasting 4 s",CyberLordSpec.WallWidth==5&&CyberLordSpec.WallHeight==2.5f&&CyberLordSpec.WallAhead==.8f&&CyberLordSpec.WallSeconds==4),("Cooldown 12 s, 35 mana",CyberLordSpec.Cooldowns[1]==12&&CyberLordSpec.Costs[1]==35),
             ("6 m, 50 degree cone of 8 glitch shards",CyberLordSpec.BurstRange==6&&CyberLordSpec.BurstAngle==50&&CyberLordSpec.BurstShards==8),("Cooldown 4 s,\n  15 mana",CyberLordSpec.Cooldowns[2]==4&&CyberLordSpec.Costs[2]==15),
             ("within 12 m for 2.5 s",CyberLordSpec.LinkRange==12&&CyberLordSpec.LinkSeconds==2.5f),("beyond 15 m. Cooldown 10 s, 25 mana",CyberLordSpec.LinkBreak==15&&CyberLordSpec.Cooldowns[3]==10&&CyberLordSpec.Costs[3]==25),
@@ -174,7 +174,7 @@ internal static class CyberLordChecks
             Check(CyberLordMotion.Of(v,10.3f,true,10.1f).State=="cyber-guard","the guard shows through a cut swing");
             CyberLordFixture.Combo(a,0,10);CyberLordFixture.Block(a,11,11.5f);CyberLordFeed.Read(a,v);Near(v.ComboUntil,10.28f,"a later block leaves the finished swing alone",1e-4f);
             CyberLordFixture.DataDash(a,20);CyberLordFeed.Read(a,v);var f=KernelPanicPath.Forward(90);
-            Check(v.At[0]==20&&v.Release[0]==20&&Math.Abs(v.Until[0]-20.2f)<1e-4f&&Math.Abs(v.RecoverUntil[0]-20.2f-CyberLordSpec.Settle[0])<1e-4f&&Math.Abs(v.TrailUntil-21.4f)<1e-4f&&v.Ready[0]==26
+            Check(v.At[0]==20&&v.Release[0]==20&&Math.Abs(v.Until[0]-20.2f)<1e-4f&&Math.Abs(v.RecoverUntil[0]-20.2f-CyberLordSpec.Settle[0])<1e-4f&&Math.Abs(v.TrailUntil-21.4f)<1e-4f&&v.Ready[0]==20.5f
                 &&NearV(v.DashFrom,new V3(1,0,2))&&NearV(v.DashTo,new V3(1+f.X*7,0,2+f.Z*7),1e-3f),"Data Dash: its window, settle, trail, cooldown and feet path");
             CyberLordFixture.Block(a,20.1f,20.4f);CyberLordFeed.Read(a,v);Check(Math.Abs(v.Until[0]-20.1f)<1e-4f&&v.RecoverUntil[0]==v.Until[0]&&Math.Abs(v.TrailUntil-21.4f)<1e-4f,"an interrupted dash ends there; its trail ticks on");
             CyberLordFixture.DataDash(a,20);CyberLordFixture.Block(a,25,25.3f);CyberLordFeed.Read(a,v);Near(v.Until[0],20.2f,"a later block leaves the finished dash alone",1e-4f);
@@ -543,8 +543,8 @@ internal static class CyberLordChecks
         }
         {
             var a=CyberLordFixture.Pilot(1,Vector3.Zero,0);var v=new CyberLordView();CyberLordFixture.DataDash(a,10);CyberLordFeed.Read(a,v);
-            Check(NativeCyberLordHud.Of(v,0,10.1f,100).State=="ACTIVE"&&NativeCyberLordHud.Of(v,0,13,100).State=="3.0s"&&NativeCyberLordHud.Of(v,0,17,10).State=="LOW MANA"&&NativeCyberLordHud.Of(v,0,17,100).Ready&&NativeCyberLordHud.Of(v,1,17,100).State=="READY","a card: active, counting down, low mana, ready");
-            Check(NativeCyberLordHud.Of(v,0,13,5).Low&&NativeCyberLordHud.Of(v,0,13,100).Dial>.4f&&NativeCyberLordHud.Of(v,0,13,100).Dial<.6f,"the dial and the low-mana tint");
+            Check(NativeCyberLordHud.Of(v,0,10.1f,100).State=="ACTIVE"&&NativeCyberLordHud.Of(v,0,10.4f,100).State=="0.1s"&&NativeCyberLordHud.Of(v,0,17,10).State=="LOW MANA"&&NativeCyberLordHud.Of(v,0,17,100).Ready&&NativeCyberLordHud.Of(v,1,17,100).State=="READY","a card: active, counting down, low mana, ready");
+            Check(NativeCyberLordHud.Of(v,0,10.4f,5).Low&&NativeCyberLordHud.Of(v,0,10.4f,100).Dial>.7f&&NativeCyberLordHud.Of(v,0,10.4f,100).Dial<.9f,"the dial and the low-mana tint");
             Check(NativeCyberLordHud.Order.SequenceEqual(new[]{0,1,2,3,4,5})&&NativeCyberLordHud.Labels[5]=="4 · KERNEL PANIC"&&NativeCyberLordHud.Labels[0]=="Q · DATA DASH","cards Q, E, 1-4 in drawer order");
             var lucide=File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/Icons.json"));foreach(var icon in NativeCyberLordHud.Icons.Append(NativeLocker.IntroIcon(CyberLordSpec.Entrance)))Check(lucide.Contains("\"id\":\""+icon+"\"")||lucide.Contains("\"id\": \""+icon+"\""),"the card icon "+icon+" ships");
             Check(NativeCyberLordHud.Of(view,5,view.PanicStart+1,100).State=="PANIC"&&NativeCyberLordHud.ReadyAt(hv,5)==hv.Ready[5]&&Math.Abs(hv.Ready[5]-(40+CyberLordSpec.Cooldowns[5]*.5f))<1e-4f,"Kernel Panic's card: PANIC through the sequence, a whiff refunding half");

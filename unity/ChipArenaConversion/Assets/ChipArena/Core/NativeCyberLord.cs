@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Keys={"Q","E","1","2","3","4"};
         public static readonly string[] Names={"Data Dash","Firewall","Packet Burst","Siphon Link","System Crash","Kernel Panic"};
         public static readonly string[] Ids={"data-dash","firewall","packet-burst","siphon-link","system-crash","kernel-panic"};
-        public static readonly float[] Cooldowns={6,12,4,10,14,NativeKernelPanicRules.Cooldown},Costs={20,35,15,25,40,NativeKernelPanicRules.Mana};
+        public static readonly float[] Cooldowns={NativeCyberRules.DashCooldown,12,4,10,14,NativeKernelPanicRules.Cooldown},Costs={20,35,15,25,40,NativeKernelPanicRules.Mana};
         /// <summary>The hardlight combo (Astra's NativeCyberRules): Jab .28 s, Cross .30 s, Pulse Palm .45 s and their damage; the
         /// reset after .6 s idle; range, arc, palm cone.</summary>
         public static readonly float[] ComboDurations=NativeCyberRules.ComboSeconds,ComboDamage=NativeCyberRules.ComboDamage;

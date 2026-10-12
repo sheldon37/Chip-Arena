@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
             if(!CyberAllowed(p)||CyberBusy(p))return;var i=p.Input;var s=p.Cyber;float cd=(float)p.Stats["abilityCooldown"];
             if(i.AbilityQ&&Time>=s.QReady&&CyberPay(p,20))
             {
-                CyberBegin(p,"data-dash",0,.2f);s.QReady=p.QReady=Time+6*cd;s.DashAt=Time;s.DashUntil=Time+.2f;s.TrailUntil=s.DashUntil+1.2f;
+                CyberBegin(p,"data-dash",0,.2f);s.QReady=p.QReady=Time+NativeCyberRules.DashCooldown*cd;s.DashAt=Time;s.DashUntil=Time+.2f;s.TrailUntil=s.DashUntil+1.2f;
                 s.DashFrom=Vec(p.Body.position);s.DashTo=Vec(KernelTravel(p.Body.position,p.Body.position+Vec(s.Facing)*7));p.CyberTrailTick=s.DashUntil+.3f;
                 CyberArea(p,18,"data-dash",q=>NativeCyberRules.SegmentDistance(Vec(q),s.DashFrom,s.DashTo)<=.42f);
                 Emit(EventKind.Teleport,p,0,Vec(s.DashTo),0,"data-dash",from:Vec(s.DashFrom));
