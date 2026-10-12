@@ -102,6 +102,11 @@ rewrites `Assets/ChipArena/Core/NativePackJumps.Generated.cs` and `tools/pack-ju
 (per weapon style the guard frame, the Jump and Land takes split by their .meta frame ranges, the Fall loop and the
 Jump-Flip; the choices are its SETS table), then run the Tests project (`Tests/JumpMotionChecks.cs` checks the hashes,
 phase tracking, floor contact, grips, the dagger flip and the hooks).
+The Unity melee travel carry uses the same pack: `node unity/ChipArenaConversion/tools/export_pack_locomotion.mjs <pack>/Animations`
+rewrites `Assets/ChipArena/Core/NativePackLocomotion.Generated.cs` and `tools/pack-locomotion-provenance.json`
+deterministically (per melee weapon Walk-Slow, Walk and the seven strafes, and the run in eight directions, each with its
+left-foot strike; the mirrored shield swaps left and right; the choices are its SETS table), then run the Tests project
+(`Tests/PackLocomotionChecks.cs` checks the hashes, the steady torso, the hand carry, the legs and the hooks).
 
 ## CI and agent access
 

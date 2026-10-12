@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-12 jump animation: `claude/jump-anim` (base `fdd1914`) adds per-weapon pack jumps (push-off, rise/apex/fall by vertical speed, fall-scaled landing) for every route and the dagger double-jump presentation (flip, air burst, whoosh), detected from replicated state; the double-jump rule itself is handed to Astra in `docs/MELEE-FEEL.md`. Not pushed, merged or released; see DEV_LOG.
+2026-10-12 jump animation and melee travel: `claude/jump-anim` (base `fdd1914`) steadies the melee walk/run/strafe arms with the pack's directional loops and adds per-weapon pack jumps (push-off, rise/apex/fall by vertical speed, fall-scaled landing) for every route and the dagger double-jump presentation (flip, air burst, whoosh), detected from replicated state; the double-jump rule itself is handed to Astra in `docs/MELEE-FEEL.md`. Not pushed, merged or released; see DEV_LOG.
 
 2026-10-12 build validator repair: `codex/unity-fix-flash-step-validation-20261012` on cloud `374964c` corrects the gun/magic gate accidentally sending new melee abilities through the mana caster. The eleven gun/magic checks remain; all eight melee Q/E now also exercise their real input dispatcher, stamina commitment and release. Managed/relay (379 PASS), Unity API compilation and source packaging pass; full Editor/Windows rebuild and compiled publication remain pending through local Build-and-Publish. See task PR/DEV_LOG for verification and source integration.
 

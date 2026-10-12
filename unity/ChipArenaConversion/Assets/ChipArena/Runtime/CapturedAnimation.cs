@@ -287,12 +287,14 @@ namespace ChipArena.UnityConversion
             // The jump layer (Core/NativeJumpMotion) for the arena rigs (host, guests, killcam, spectators: where Hits is set),
             // one per rig across its routes; intro, portrait, corpse and viewer rigs keep their own motion.
             private NativeJumpMotion jump;private NativeJumpMotion JumpLayer=>Hits!=null?jump??=new NativeJumpMotion():null;
+            // The pack's directional melee travel carry (Core/NativeLocomotionCarry), on the same arena rigs.
+            private NativeLocomotionCarry locomotion;private NativeLocomotionCarry Locomotion=>Hits!=null?locomotion??=new NativeLocomotionCarry():null;
             // The held weapons' reach stretch, set by the presentation before posing (the melee layers measure the stretched blade).
             public float WeaponReach=1;
             public static bool CapturedMelee(Actor a)=>NativePoseRoute.For(a,false)==PoseRoute.CapturedMelee;
             private void MeleePose(Actor a,Vector3 position,float time)
             {
-                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;melee.JumpLayer=JumpLayer;
+                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;melee.JumpLayer=JumpLayer;melee.Locomotion=Locomotion;
                 float dt=meleeTime<-90||time<meleeTime||time-meleeTime>.35f?1/60f:Mathf.Min(.1f,time-meleeTime);meleeTime=time;
                 var v=MeleeViewOf(a,time,meleeView);v.Reach=WeaponReach;bool roll=a.Rolling(time),special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time),juggle=Juggled(a,time);v.Juggle=juggle;
                 float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
@@ -379,8 +381,11 @@ namespace ChipArena.UnityConversion
                 Sample(set,"idle",time);
                 if(moving)
                 {
-                    Save(blendP,blendQ); var walk=Find(set,"walk"); Sample(set,"walk",walk.Marks[0]+phase*walk.Duration); Blend(blendP,blendQ,Mathf.Clamp01(speed/2.8f));
-                    Save(blendP,blendQ); var run=Find(set,"run"); Sample(set,"run",run.Marks[0]+phase*run.Duration); Blend(blendP,blendQ,CapturedClip.Ease((speed-3.2f)/2.8f));
+                    // A first-person melee view keeps only part of the captured pump (NativeLocoRules.FirstPersonCarry): at the gait's
+                    // cadence it wiggled the view weapon; the view layer's stride bob carries the steps.
+                    float keep=firstPerson&&MeleeMotion.Handles(a.SourceSpec)?NativeLocoRules.FirstPersonCarry:1;
+                    Save(blendP,blendQ); var walk=Find(set,"walk"); Sample(set,"walk",walk.Marks[0]+phase*walk.Duration); Blend(blendP,blendQ,Mathf.Clamp01(speed/2.8f)*keep);
+                    Save(blendP,blendQ); var run=Find(set,"run"); Sample(set,"run",run.Marks[0]+phase*run.Duration); Blend(blendP,blendQ,CapturedClip.Ease((speed-3.2f)/2.8f)*keep);
                     State=speed>4?"run":"walk";
                 }
                 if(attack)

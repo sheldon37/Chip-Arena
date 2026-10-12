@@ -367,6 +367,29 @@ Held-LMB chains, 60 Hz, mean blade-tip speed in the hit window (whiffs), before 
 Not run: the Unity Editor, the Windows build, two-client networking, the killcam on a live match, the bot duel harness
 and a live playtest. The closing-damage figures assume perfect aim against a non-dodging target (an upper bound).
 
+## Melee travel from the pack (owner 2026-10-12: "the arms kind of wiggle around when running. Make it look more natural when moving~ Refer to the movement in our animation pack")
+
+- **Cause.** The voxel legs step at about 2.6 times the captured run's cadence. The captured carry's arm pump, phased to
+  those steps, read as flapping hands: 13–33 cm of hand travel per stride at a run.
+- **Clips.** `Core/NativeLocomotionCarry` lays the pack's directional loops over the captured melee route, from
+  `tools/export_pack_locomotion.mjs`:
+  - Walk-Slow;
+  - Walk and the seven strafes;
+  - Run in eight directions.
+
+  The sets are sword and daggers from Armed (the daggers in a reverse grip), shield from Armed-Shield (mirrored, so its
+  left and right clips swap), and greatsword from 2Hand-Sword.
+- **Blending.** The two clips bracketing the travel direction are blended, each phased from its own left-foot strike to
+  the gait's stride.
+- **Carry.** The weapon hand keeps 15% (run) or 25% (walk) of the per-stride swing, and the free hand 35% or 45%. The
+  torso keeps the steady-torso shares, less again off the forward line. A strafe's mean hip turn is folded into the spine,
+  so the chest keeps facing the aim.
+- **Legs** stay the gait's procedural planted feet: no skating.
+- **Result.** At a run the hands travel 2–4 cm per stride, and every torso component stays within the bounds below. First
+  person keeps 30% of the captured pump.
+- **Where it applies:** arena rigs only. The source-parity checks keep the captured walk and run.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+
 ## Jump and double jump (owner 2026-10-12: "can we add jump animations? (Of course, changes based on weapon. Daggers can double-jump)")
 
 ### Presentation (Claude, `claude/jump-anim`)
