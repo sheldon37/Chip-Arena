@@ -83,8 +83,10 @@ tail fade, loudness-matched to the built-in sting it replaces and encoded as Ogg
 | Pack | Publisher | Asset Store id |
 |---|---|---|
 | Ultimate Game Music Collection | John Leonard French | 37351 |
+| Badlands Music Pack 3 | Michael La Manna | 184710 |
 
-The same rules apply as for the effects audio: the files are never in this repository, the private
+Sound-effect layers on the hits come from Universal Sound FX (Imphenzia, 17256) and Fantasy Game Sound
+Effects (Epic Sounds and FX, 94186), listed above. The same rules apply as for the effects audio: the files are never in this repository, the private
 licensed-assets repository's `LICENSES.md` names every source file, they install into the git-ignored
 `Assets/LocalAssets` with `tools/install_local_assets.py`, and builds without them play the built-in stings.
 
