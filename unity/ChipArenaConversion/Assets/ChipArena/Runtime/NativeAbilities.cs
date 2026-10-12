@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         private int abilityGroup;
         public void CancelLocalAbilities(){if(Local!=null)CancelAbilities(Local);}
         private void CancelAbilities(NativePilot p)
-        { CancelWindup(p);p.BufferedSlot=null;p.HoldAt=-1; }
+        { CancelWindup(p);p.BowDrawAt=-1;p.BufferedSlot=null;p.HoldAt=-1; }
         private void CancelWindup(NativePilot p)
         {
             if(p.AbilityCast!=null){p.Pose.AbilityAt=-100;p.Pose.AbilityId=null;}
@@ -42,6 +42,7 @@ namespace ChipArena.UnityConversion
         private bool AbilityBusy(NativePilot p)=>p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Incapacitated(p);
         private void StepAbilities(NativePilot p)
         {
+            if(p.Seat.spec=="bow"){StepBowAbilities(p);return;}
             if(NativeMeleeRules.Standard(p.Seat.spec)){StepMeleeAbilityInput(p);return;}
             int max=NativeAbilityRules.Charges(p.Stats);
             if(Content.Ability(p.Seat.spec,"e")!=null&&p.ECharges<max&&Time>=p.EReady){p.ECharges++;if(p.ECharges<max)p.EReady=Time+NativeAbilityRules.Cooldown(Content.Ability(p.Seat.spec,"e"),p.Stats);}

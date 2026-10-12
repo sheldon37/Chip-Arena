@@ -1,5 +1,9 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — Bow simulation
+- Branch `codex/bow-simulation-20261012`, base shared `e50c1cd`. Bow content/abilities, tap/hold draw and cancel, unlimited arrows/nock, fatigue, full-draw headshot multiplier, Q Volley and timed E Rain. Uses the existing projectile/chip collision path and its .045 m arrow radius. Guest draw/movement prediction, explicit snapshot/shot/event fields, bots, sandbox primary hold and account profile/skin allowlist included; NEW-KITS records names and timing interpretation.
+- Focused managed Bow checks pass: quick/full/rate-scaled draw, damage/ballistic endpoints, fatigue, all 12 rain positions within 3.5 m, guest movement slow, release/nock and block cancel. Full visual-content acceptance is pending Claude's Bow icon/model/intro integration. Runtime/PhysX, Unity Editor, Windows and two clients are unrun. Draft source implementation, not merged or released; account source changes here have not been deployed (the separate v65 deployment contains the requested existing cosmetics only).
+
 ## 2026-10-12 — Claude — first-person heal numbers out of the aim (owner: "Change healing number display to be less obstructive on first person")
 - Branch `claude/heal-numbers-fp`, base shared head `f575670`; one signed commit (implementation and this entry). On the branch only: not pushed, merged or released.
 - Found: in first person the view pilot's own numbers sat under the crosshair (x 47-53%, y 62% rising to 54%). Heals on that pilot come from regeneration chips and heal fields on every 60 Hz tick, lifesteal/drain on each hit, Leech every .25 s, PvE med pulses every .5 s, medic recruits and the heal chips (block/reload heal, coin toss, panic button, Emergency Exit, Vampire Dash, fighter procs); a revive sets HP without a heal event. With the .16 s merge, a 3 HP/s regen plus 50% lifesteal burst kept 7 own heal numbers alive under the aim at once.

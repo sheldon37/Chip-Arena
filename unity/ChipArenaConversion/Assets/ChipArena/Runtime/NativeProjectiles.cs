@@ -28,31 +28,33 @@ namespace ChipArena.UnityConversion
         }
         private bool Has(NativePilot p,string chip)=>p!=null&&p.Seat.chips.TryGetValue(chip,out int count)&&count>0;
         private bool Has(NativeBullet p,string chip)=>p.Mods.TryGetValue(chip,out int count)&&count!=0;
-        private void Fire(NativePilot p,bool fan=false)
+        private void Fire(NativePilot p,bool fan=false,NativeBowShot bow=null)
         {
-            var w=p.Weapon;bool pong=p.Stats["pong"]>0&&!w.devOnly&&p.VolleyIndex++%Math.Max(1,(int)Math.Ceiling(.24/w.interval))==0;
+            var w=p.Weapon;bool pong=bow?.Detail!="rain"&&p.Stats["pong"]>0&&!w.devOnly&&p.VolleyIndex++%Math.Max(1,(int)Math.Ceiling(.24/w.interval))==0;
             if(pong){var balls=Bullets.Where(b=>b.Pong&&b.Original==p.Seat.id).ToArray();if(balls.Length>=24)Bullets.Remove(balls[0]);}
             if(ProjectileCount>=100)return;
             Vector3 eye=p.Body.position+Vector3.up*.3f,start=eye+Quaternion.Euler(0,p.Yaw,0)*new Vector3(.2f,0,.48f);
+            if(bow?.Origin!=null)start=bow.Origin.Value;
             Vector3 offset=p.Input.AimTarget.Length>.01f?Vec(p.Input.AimTarget)-start:Vec(GunRules.Direction(p.Yaw,p.Pitch))*(float)w.range;
             float yaw=Mathf.Atan2(offset.x,offset.z)*Mathf.Rad2Deg,distance=new Vector2(offset.x,offset.z).magnitude;
-            bool returning=p.Stats["boomerang"]>0&&!pong;float speed=(float)(w.speed*p.Stats["projectileSpeed"]),gravity=pong||returning?0:(float)(w.gravity*p.Stats["projectileGravity"]);
+            bool returning=p.Stats["boomerang"]>0&&!pong;float speed=(float)((bow?.Speed??(float)w.speed)*p.Stats["projectileSpeed"]),gravity=pong||returning?0:(float)((bow?.Gravity??(float)w.gravity)*p.Stats["projectileGravity"]);
             if(pong)speed=Mathf.Clamp(speed,30,80);
             float pitch=p.Aiming&&gravity>0?GunRules.BallisticPitch(distance,offset.y,speed,gravity):Mathf.Atan2(offset.y,distance)*Mathf.Rad2Deg;
-            bool overdrive=Overdriving(p);double spread=NativeRangedRules.Spread(w.spread,fan);var ads=Content.Ads(p.Seat.spec);if(!fan&&!overdrive&&p.Aiming&&ads!=null){spread*=1+(ads.spread-1)*Mathf.Clamp01((Time-p.AimAt)/(float)ads.settle);if(ads.bloom>0&&Time-p.LastShot<=.25f)spread=Math.Min(w.spread,spread+ads.bloom*p.AimShots);}
-            p.AimShots=overdrive?0:Time-p.LastShot>.25f?1:p.AimShots+1;p.LastShot=Time;if(w.@class!="magic")p.Ready=Time+NativeRangedRules.Interval(w.interval,p.Stats["attackRate"],overdrive)*(p.Aiming&&ads!=null&&ads.interval>0?(float)ads.interval:1);p.Pose.ShotsFired++;
+            bool overdrive=Overdriving(p);double spread=NativeRangedRules.Spread((double?)bow?.Spread??w.spread,fan);var ads=Content.Ads(p.Seat.spec);if(!fan&&!overdrive&&p.Aiming&&ads!=null){spread*=1+(ads.spread-1)*Mathf.Clamp01((Time-p.AimAt)/(float)ads.settle);if(ads.bloom>0&&Time-p.LastShot<=.25f)spread=Math.Min(w.spread,spread+ads.bloom*p.AimShots);}
+            p.AimShots=overdrive?0:Time-p.LastShot>.25f?1:p.AimShots+1;p.LastShot=Time;if(bow==null&&w.@class!="magic")p.Ready=Time+NativeRangedRules.Interval(w.interval,p.Stats["attackRate"],overdrive)*(p.Aiming&&ads!=null&&ads.interval>0?(float)ads.interval:1);p.Pose.ShotsFired++;
             int count=NativeProjectileRules.Volley(p.Stats,pong),attack=nextAttack++;float empowerment=Time<p.EmpowerUntil&&p.EmpowerShots>0?1+(float)p.Stats["qEmpower"]:1;if(empowerment>1)p.EmpowerShots--;
             var volley=new List<NativeBullet>();
             for(int i=0;i<count&&ProjectileCount<100;i++)
             {
-                Vector3 dir=(Vec(GunRules.Direction(yaw+NativeProjectileRules.Fan(i,count,(float)p.Stats["fanDegrees"]),pitch))+new Vector3((float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5))*(float)spread).normalized;
-                var shot=new NativeBullet{Id=nextBullet++,Attack=attack,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=start,Velocity=dir*speed,BaseVelocity=dir*speed,FixedSpeed=speed,Damage=(float)(w.damage*p.Stats["damage"])*(fan?NativeRangedRules.FanDamage:1)*(count>1?.75f:1)*(w.ammo>0&&p.Ammo==0?1+(float)p.Stats["lastRound"]:1)*empowerment,Gravity=gravity,Radius=(float)((w.shotRadius>0?w.shotRadius:w.@class=="magic"?.14:.045)*p.Stats["projectileSize"]),Impulse=(float)(w.impulse*p.Stats["impulse"]),Bounces=(int)p.Stats["bounces"],Pierces=(int)p.Stats["pierces"],BounceRetention=(float)p.Stats["bounceRetention"],Burn=(float)(w.burn+p.Stats["burn"]),Poison=(float)p.Stats["poison"],Demolition=(float)p.Stats["demolition"],Homing=(float)p.Stats["homing"],Life=returning?4:3,Travel=returning?320:160,Boomerang=returning,Zigzag=p.Stats["zigzag"]>0,Mods=new Dictionary<string,int>(p.Seat.chips)};
+                Vector3 dir=(Vec(GunRules.Direction(yaw+(bow?.Yaw??0)+NativeProjectileRules.Fan(i,count,(float)p.Stats["fanDegrees"]),pitch))+new Vector3((float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5))*(float)spread).normalized;
+                if(bow?.Direction!=null)dir=bow.Direction.Value.normalized;
+                var shot=new NativeBullet{Draw=bow?.Draw??0,Detail=bow?.Detail,Id=nextBullet++,Attack=attack,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=start,Velocity=dir*speed,BaseVelocity=dir*speed,FixedSpeed=speed,Damage=(float)((bow?.Damage??(float)w.damage)*p.Stats["damage"])*(fan?NativeRangedRules.FanDamage:1)*(count>1?.75f:1)*(w.ammo>0&&p.Ammo==0?1+(float)p.Stats["lastRound"]:1)*empowerment,Gravity=gravity,Radius=(float)((w.shotRadius>0?w.shotRadius:w.@class=="magic"?.14:.045)*p.Stats["projectileSize"]),Impulse=(float)((bow?.Impulse??(float)w.impulse)*p.Stats["impulse"]),Bounces=(int)p.Stats["bounces"],Pierces=(int)p.Stats["pierces"],BounceRetention=(float)p.Stats["bounceRetention"],Burn=(float)(w.burn+p.Stats["burn"]),Poison=(float)p.Stats["poison"],Demolition=(float)p.Stats["demolition"],Homing=(float)p.Stats["homing"],Life=returning?4:3,Travel=returning?320:160,Boomerang=returning,Zigzag=p.Stats["zigzag"]>0,Mods=new Dictionary<string,int>(p.Seat.chips)};
                 if(pong){shot.Pong=true;shot.RallyMark=start;shot.RallyCap=speed*1.6f;shot.RallyBonus=Math.Min(shot.Damage*.15f,8);shot.Bounces=Math.Min(6,(int)Math.Ceiling(3d/Math.Ceiling(.24/w.interval))+(int)p.Stats["bounces"]);shot.Life=3.5f;shot.Travel=200;shot.Homing=0;shot.Pierces=0;shot.Zigzag=false;}
-                var obstruction=SweepNative(eye,start-eye,shot.Radius,c=>c!=p.Collider&&c.GetComponent<NativePilotBody>()==null);
-                if(obstruction.HasValue&&BulletImpact(shot,p,obstruction.Value))continue;Bullets.Add(shot);volley.Add(shot);
+                var obstruction=bow?.Origin!=null?null:SweepNative(eye,start-eye,shot.Radius,c=>c!=p.Collider&&c.GetComponent<NativePilotBody>()==null);
+                if(obstruction.HasValue&&BulletImpact(shot,p,obstruction.Value))continue;Bullets.Add(shot);volley.Add(shot);if(bow!=null)Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Shot,Source=p.Seat.id,Time=Time,Position=Vec(start),Detail=bow.Detail,Draw=bow.Draw,Projectile=shot.Id});
             }
             SpawnChipShots(p,volley);LeetSpawned(p,volley);if(p.Stats["recoil"]>0)p.Knockback-=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch))*Math.Min(15,(float)p.Stats["recoil"]);
-            Emit(EventKind.Shot,p,0,start,(int)p.Pose.Weapon,fan?"fan":overdrive?"overdrive":null);
+            if(bow==null)Emit(EventKind.Shot,p,0,start,(int)p.Pose.Weapon,fan?"fan":overdrive?"overdrive":null);
         }
         private void StepBullets()
         {
@@ -124,7 +126,8 @@ namespace ChipArena.UnityConversion
             }
             else if(target!=null)
             {
-                bool head=NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-b.Velocity.normalized*.1f),Vec(b.Velocity),b.Radius,target.Down!=null||target.Juggle!=null);float actual=Damage(target,owner,b.Damage*(head?1.5f:1),b.Velocity.normalized,b.Impulse,head,primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude,b.Radius),hitPoint:hit.Point,weaponHit:b.Direct&&b.Reflections==0,damageKind:b.Reflections>0?"reflected":b.Direct?"direct":"secondary");
+                bool head=NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-b.Velocity.normalized*.1f),Vec(b.Velocity),b.Radius,target.Down!=null||target.Juggle!=null);float actual=Damage(target,owner,b.Damage*(head?1.5f*(b.Spec=="bow"&&b.Draw>=1?1.25f:1):1),b.Velocity.normalized,b.Impulse,head,primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude,b.Radius),hitPoint:hit.Point,weaponHit:b.Direct&&b.Reflections==0,damageKind:b.Reflections>0?"reflected":b.Direct?"direct":"secondary");
+                if(actual>0&&b.Detail=="rain"){target.SlowFactor=Math.Min(target.SlowFactor,.8f);target.SlowEnd=Math.Max(target.SlowEnd,Time+1.5f);}
                 FighterProjectileHit(b,owner,target,actual);
                 if(actual>0&&!b.Direct&&(b.Reflections>0||b.WeaponFx)){RefreshDot(target,owner,"fire",b.Burn,2);RefreshDot(target,owner,"poison",b.Poison,4);if(b.WeaponFx&&b.Reflections==0)Heal(owner,actual*(float)(owner.Stats["lifeSteal"]+owner.Weapon.drain));}
                 if(actual>0&&(b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,target,null,hit.Point,b.Velocity.normalized,b.Attack,b.Id);
@@ -151,6 +154,6 @@ namespace ChipArena.UnityConversion
                 b.Damage*=.22f;b.Impulse*=.2f;b.Direct=b.WeaponFx=b.Pong=b.Boomerang=b.Zigzag=false;b.ChipImpact=Has(owner,"fireworks")&&i<5;b.EffectsUsed=true;b.Reflections=b.Bounces=b.Pierces=0;b.Burn=b.Poison=b.Homing=0;b.Life=1.2f;b.Travel=18;if(skip.HasValue)b.Hit.Add(skip.Value);Bullets.Add(b);
             }
         }
-        private NativeBullet CopyBullet(NativeBullet b)=>new NativeBullet{Id=nextBullet++,Attack=b.Attack,Owner=b.Owner,Original=b.Original,Spec=b.Spec,Born=b.Born,Position=b.Position,Velocity=b.Velocity,BaseVelocity=b.BaseVelocity,Motion=b.Motion,Zigzag=b.Zigzag,Damage=b.Damage,Impulse=b.Impulse,Radius=b.Radius,Gravity=b.Gravity,Life=b.Life,Travel=b.Travel,Bounces=b.Bounces,Pierces=b.Pierces,BounceRetention=b.BounceRetention,FixedSpeed=b.FixedSpeed,Homing=b.Homing,Burn=b.Burn,Poison=b.Poison,Demolition=b.Demolition,Mods=new Dictionary<string,int>(b.Mods)};
+        private NativeBullet CopyBullet(NativeBullet b)=>new NativeBullet{Draw=b.Draw,Detail=b.Detail,Id=nextBullet++,Attack=b.Attack,Owner=b.Owner,Original=b.Original,Spec=b.Spec,Born=b.Born,Position=b.Position,Velocity=b.Velocity,BaseVelocity=b.BaseVelocity,Motion=b.Motion,Zigzag=b.Zigzag,Damage=b.Damage,Impulse=b.Impulse,Radius=b.Radius,Gravity=b.Gravity,Life=b.Life,Travel=b.Travel,Bounces=b.Bounces,Pierces=b.Pierces,BounceRetention=b.BounceRetention,FixedSpeed=b.FixedSpeed,Homing=b.Homing,Burn=b.Burn,Poison=b.Poison,Demolition=b.Demolition,Mods=new Dictionary<string,int>(b.Mods)};
     }
 }

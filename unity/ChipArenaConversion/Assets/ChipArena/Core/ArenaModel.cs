@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
         public bool HasKernel;public NativeKernelPanic Kernel;public NativeMeleeKit MeleeKit;public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
         public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;
         public float CastRate=1,AbilityAt=-100,AbilityRelease;public string AbilityId;
-        public bool Grounded=true;public int AirJumps;public float AirJumpAt=-100;
+        public float BowDrawAt=-1,BowDraw,BowReleaseAt=-100,BowRainAt=-100;public V3 BowRainTarget;public bool Grounded=true;public int AirJumps;public float AirJumpAt=-100;
         // Captured-melee presentation (MeleeMotion): the swing window, authoritative step and commitment, Hurricane, and the
         // hit reaction in the struck pilot's facing frame (source frame: +x the rig's left, radians). Never read by authority.
         public float SwingAt=-100,SwingUntil=-100,CommitAt=-100,CommitUntil=-100,CommitYaw,StepAt,StepUntil,StepDistance;public bool Followup,Hurricane,SprintAttack,OpenerLunge;
@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
     public class Shot
     {
         public int Id, Owner, Team, Reflections, MagicVisual;
-        public string Spec,SirenKind,LeetKind;public int Original,SirenTarget;public float Born,Burn,Poison;
+        public float Draw;public string Detail;public string Spec,SirenKind,LeetKind;public int Original,SirenTarget;public float Born,Burn,Poison;
         public bool Hadoken,Super,Direct,ChipImpact,WeaponFx,Pong,Boomerang,Zigzag;public ChipCount[] Mods=Array.Empty<ChipCount>();
         public V3 Position, Velocity;
         public float Damage = 20, Life = 3, Gravity, Radius=.1f, DistanceLeft=320, Impulse=325;
@@ -102,7 +102,7 @@ namespace ChipArena.UnityConversion
         public int Id, Source, Target;
         public EventKind Kind;
         public V3 Position;
-        public float Amount;
+        public float Amount,Draw;
         // Native surface FX payload; the retained lab wire format is unchanged.
         public bool WallSlam;public string Detail,DamageKind;public float Radius;public V3 From;public float Time;public V3 Normal;public string SurfaceId;public int Color,Projectile;
     }
