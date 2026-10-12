@@ -53,12 +53,13 @@ internal static class Program
             HudPlaceholderChecks.Run(root);HudCyberChecks.Run(root,data);
             DeathFxChecks.Run(root);CorpseChecks.Run(data);
             StageVentChecks.Run(root);MinionFxChecks.Run(root);MinionHintChecks.Run(root);
+            HordeKindChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             CameraRigChecks.Run(root);
             StructureFxChecks.Run(root);
             CyberCityChecks.Run(root);
             VfxChecks.Run(root);VfxRuntimeChecks.Run(root);
-            LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);HitFeelChecks.Run(root,data);JumpMotionChecks.Run(root);PackLocomotionChecks.Run(root);SprintMotionChecks.Run(root);RangedLocomotionChecks.Run(root);AirAttackChecks.Run(root,data);SprintAttackPoseChecks.Run(root,data);
+            LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);HitFeelChecks.Run(root,data);JumpMotionChecks.Run(root);PackLocomotionChecks.Run(root);SprintMotionChecks.Run(root);RangedLocomotionChecks.Run(root);AirAttackChecks.Run(root,data);PlungeStabChecks.Run(root,data);SprintAttackPoseChecks.Run(root,data);
             ArmorLightChecks.Run(root);
             BlockFxChecks.Run(root,data);
             MeleeKitPresentationChecks.Run(root,data);
@@ -67,6 +68,7 @@ internal static class Program
             BloomChecks.Run(root);
             WeaponFxChecks.Run(root,data);
             WeaponSkinChecks.Run(root,data);
+            BowChecks.Run(root);
             BodySkinChecks.Run(root,data);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
@@ -77,6 +79,7 @@ internal static class Program
             foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in DraftStageChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in DraftHoverChecks.Run())Console.WriteLine("PASS "+result);
+            DraftBackdropChecks.Run(root);
             foreach(var result in CinematicCameraChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in IntroPresentationChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in SirenIntroChecks.Run(root))Console.WriteLine("PASS "+result);
@@ -84,6 +87,7 @@ internal static class Program
             foreach(var result in EntranceDirectorChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in SheldonIntroChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in PackIntroChecks.Run(root))Console.WriteLine("PASS "+result);
+            foreach(var result in CyberLordChecks.Run(root,data))Console.WriteLine("PASS "+result);
             foreach(var result in MapLookChecks.Run(root,data))Console.WriteLine("PASS "+result);
             foreach(var result in BlockLookChecks.Run(root,data))Console.WriteLine("PASS "+result);
             var tests = RegressionTests.Run(); tests.AddRange(RangedRegressionTests.Run());

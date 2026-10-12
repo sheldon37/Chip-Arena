@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
             HealReadout(box);
             if(match.Phase==NativePhase.Fight&&(p.Seat.spec=="ansatsuken"||p.Seat.spec=="emperor"))FighterHud(p,W,H);
             if(p.Seat.spec=="siren")SirenHud(p,W);
-            Hitmarker();
+            Hitmarker();BowMeter(p);
         }
         // The top-centre status tag (SET / ROUND, the PvE stage): a chamfered navy tag 26 high at y 20, mono 12 tracked,
         // with a tone diamond either side.
@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         // Returns the panel's rect (the first-person heal readout sits over it).
         private Rect HealthBox(NativePilot p,float x,float bottom)
         {
-            bool melee=p.Weapon.@class=="melee",magic=p.Weapon.@class=="magic",ranged=p.Weapon.@class=="ranged";float w=256,pad=14,h=11+24+6+8+10+14+5+3+(melee?0:9+14+5+3)+12;var r=new Rect(x,bottom-h,w,h);
+            bool cyber=CyberLordFeed.Handles(p.Seat.spec),melee=p.Weapon.@class=="melee"&&!cyber,magic=p.Weapon.@class=="magic"||cyber,ranged=p.Weapon.@class=="ranged";float w=256,pad=14,h=11+24+6+8+10+14+5+3+(melee?0:9+14+5+3)+12;var r=new Rect(x,bottom-h,w,h);
             SprintTag(p,r);
             float t=arena.Time,maxHp=Mathf.Max(1,(float)p.Stats["hp"]),hp=Mathf.Clamp01(p.Hp/maxHp);bool low=NativeHudCyber.Low(hp),reduced=prefs.reducedEffects;
             float hit=hudEvents.Drop(HpSlot,t,p.Hp),dropped=hudEvents.Rise(LowSlot,t,low),burst=Mathf.Min(hit,dropped);
@@ -106,7 +106,9 @@ namespace ChipArena.UnityConversion
             bool away=NativeMeleeKitHud.ShieldAway(p.Seat.spec,p.MeleeKit);
             cards.Add(new Card{Key="RMB · "+(p.Seat.spec=="ansatsuken"?"PARRY":"BLOCK"),State=away?"SHIELD OUT":t<p.BlockEnd?"ACTIVE":p.BlockReady>t?(p.BlockReady-t).ToString("0.0")+"s":"READY",Ready=!away&&t>=p.BlockEnd&&p.BlockReady<=t,Active=!away&&t<p.BlockEnd,Low=away,Dial=away?-1:SpanDial(blockSpan,p.BlockReady-t)});
             bool roll=p.Weapon.@class=="melee";string rollState=t<p.RollEnd?"ROLLING":p.RollReady>t?(p.RollReady-t).ToString("0.0")+"s":"READY";cards.Add(new Card{Key="SHIFT · "+(roll?"ROLL":"DODGE"),State=rollState,Ready=rollState=="READY",Active=t<p.RollEnd,Dial=SpanDial(rollSpan,p.RollReady-t)});
-            foreach(var slot in new[]{"q","e"})
+            // The DEV Cyber Lord's Q, E and 1-4 cards (NativeCyberLordScreen.cs) in place of the content Q / E cards.
+            if(CyberLordFeed.Handles(p.Seat.spec))CyberLordCards(p);
+            else foreach(var slot in new[]{"q","e"})
             {
                 var d=content.Ability(p.Seat.spec,slot);
                 // Standard melee Q/E (Core/NativeMeleeKitHud): the recast window, the cast, the cooldown actually started, stamina.
@@ -117,6 +119,9 @@ namespace ChipArena.UnityConversion
                     float qLeft=p.QReady-t,span=qSpan.Update(qLeft,(float)NativeAbilityRules.Cooldown(d,p.Stats));var gc=NativeGunKitHud.Of(d.id,NativeGunKit.Of(p.Pose,t),t,qLeft,span,p.Ammo,p.ReloadEnd>t);
                     cards.Add(new Card{Key="Q · "+d.name.ToUpperInvariant(),State=gc.State,Icon=gc.Icon,Ready=gc.Ready,Active=gc.Active,Low=gc.Venting||gc.Low,Dial=gc.Dial});continue;
                 }
+                // The bow's Volley and Rain of Arrows (Core/NativeBowHud): LOOSING, MARKED / RAINING, the cooldown, their icons.
+                if(d!=null&&NativeBowHud.Covers(d.id)){float bowLeft=(slot=="q"?p.QReady:p.ECharges>0?t:p.EReady)-t,span=(slot=="q"?qSpan:eSpan).Update(bowLeft,(float)NativeAbilityRules.Cooldown(d,p.Stats));var bc=NativeBowHud.Of(d.id,NativeBowWire.Of(p.Pose),t,bowLeft,span);
+                    cards.Add(new Card{Key=slot.ToUpperInvariant()+" · "+d.name.ToUpperInvariant(),State=bc.State,Icon=bc.Icon,Ready=bc.Ready,Active=bc.Active,Low=bc.Low,Dial=bc.Dial});continue;}
                 string status=AbilityStatus(p,slot);if(string.IsNullOrEmpty(status)||d==null&&slot=="q")continue;
                 int dot=status.IndexOf(" · ",StringComparison.Ordinal);string name,state;
                 if(dot>0){name=status.Substring(0,dot).Replace("  "," · ").ToUpperInvariant();state=status.Substring(dot+3);}

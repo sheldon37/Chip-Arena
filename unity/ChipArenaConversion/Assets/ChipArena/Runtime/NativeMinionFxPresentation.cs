@@ -33,9 +33,9 @@ namespace ChipArena.UnityConversion
     // state (the job arrays grow to the largest horde seen).
     public sealed partial class ArenaPresentation
     {
-        private struct HordeFx{public CapturedAnimation.Player Rig;public int Id,Variant,Lost;public uint Seed;public float Time,Emerge,Death,Floor,Ground,Phase,PossessedAt;public Vector3 Velocity;public bool Possessed,Body;}
+        private struct HordeFx{public CapturedAnimation.Player Rig;public int Id,Variant,Lost,Look;public uint Seed;public float Time,Emerge,Death,Floor,Ground,Phase,PossessedAt;public Vector3 Velocity;public bool Possessed,Body;}
         private const int HordeCubeBudget=NativeMinionFx.FullRigs*NativeMinionFx.EffectCubes;private const float LickRange=20;
-        private static readonly int HordeLickBudget=NativeMinionFx.FullRigs*NativeMinionFx.MostTongues*NativeMinionFx.Licks;
+        private static readonly int HordeLickBudget=NativeMinionFx.FullRigs*Math.Max(NativeMinionFx.MostTongues,NativeHordeModels.MostTongues)*NativeMinionFx.Licks;
         private HordeFx[] hordeFx=new HordeFx[64];private float[] hordeRank=new float[64],hordeDistance=new float[64];private int[] hordeOrder=new int[64];private int hordeFxCount;private float hordeClock;
         private readonly double[] hordeLocal=new double[16],hordePoints=new double[18];private readonly NativeMinionFx.Cube[] hordeCubes=new NativeMinionFx.Cube[NativeMinionFx.EffectCubes];
         private static readonly int MinionClockId=Shader.PropertyToID("_MinionClock");
@@ -65,21 +65,22 @@ namespace ChipArena.UnityConversion
         /// A posed horde add: queues its tongues (bank pieces on its joints) and keeps its effects for DevEffects. emerge: seconds
         /// into its vent climb (NaN without one); death: seconds since it died (NaN alive); floor: the world height of the floor
         /// its emergence pool lies on; ground: the floor under it now; possessedAt: its replicated possession start (NaN when it
-        /// is not the possessed add); body: whether its body is still drawn (tongues, licks and the hint need it). Any add also
-        /// starts the grin's bake (a guest or killcam that never saw the arena's PvE state).
+        /// is not the possessed add); body: whether its body is still drawn (tongues, licks and the hint need it); look: a Siren
+        /// minion kind's model (kind x 8 + look, Core/NativeHordeModels: its own tongue anchors and crack), -1 the bank variant's.
+        /// Any add also starts the grin's bake (a guest or killcam that never saw the arena's PvE state).
         /// </summary>
-        private void HordeAdd(CapturedAnimation.Player rig,int id,float emerge,float death,float floor,float ground,float possessedAt,Vector3 velocity,int lost,bool body)
+        private void HordeAdd(CapturedAnimation.Player rig,int id,float emerge,float death,float floor,float ground,float possessedAt,Vector3 velocity,int lost,bool body,int look=-1)
         {
             if(rig==null||sourceModels==null)return;NativeMinionHint.Glyph.Prepare();int variant=NativeMinionFx.Variant(id);bool possessed=!float.IsNaN(possessedAt);
             if(possessed&&body&&float.IsNaN(death))HordeTrail(id,possessedAt,rig.Root.transform.position,ground,velocity);
             if(body&&!NativeMinionFx.Gone(death))
             {
                 double flare=NativeMinionFx.Flare(float.IsNaN(emerge)?double.PositiveInfinity:emerge,float.IsNaN(death)?double.PositiveInfinity:death),extra=NativeMinionFx.TonguePhase(id);
-                for(int k=0;k<NativeMinionFx.TongueCount(variant);k++)
-                {if(!NativeMinionFx.TongueMatrix(variant,k,hordeClock,flare,extra,hordeLocal,out int joint,out int layout)||!HordeJointShown(lost,joint))continue;sourceModels.QueueHordeTongue(layout,rig.Bones[joint].localToWorldMatrix*FromSource(hordeLocal));}
+                for(int k=0;k<HordeTongueCount(variant,look);k++)
+                {if(!HordeTongue(variant,look,k,hordeClock,flare,extra,hordeLocal,out int joint,out int layout)||!HordeJointShown(lost,joint))continue;sourceModels.QueueHordeTongue(layout,rig.Bones[joint].localToWorldMatrix*FromSource(hordeLocal));}
             }
             if(hordeFxCount==hordeFx.Length){Array.Resize(ref hordeFx,hordeFx.Length*2);Array.Resize(ref hordeRank,hordeFx.Length);Array.Resize(ref hordeDistance,hordeFx.Length);Array.Resize(ref hordeOrder,hordeFx.Length);}
-            hordeFx[hordeFxCount++]=new HordeFx{Rig=rig,Id=id,Variant=variant,Lost=lost,Seed=NativeMinionFx.Seed(id),Time=hordeClock,Emerge=emerge,Death=death,Floor=floor,Ground=ground,Phase=(float)NativeMinionFx.Phase(id),PossessedAt=possessedAt,Velocity=velocity,Possessed=possessed,Body=body};
+            hordeFx[hordeFxCount++]=new HordeFx{Rig=rig,Id=id,Variant=variant,Lost=lost,Seed=NativeMinionFx.Seed(id),Time=hordeClock,Emerge=emerge,Death=death,Floor=floor,Ground=ground,Phase=(float)NativeMinionFx.Phase(id),PossessedAt=possessedAt,Velocity=velocity,Possessed=possessed,Body=body,Look=look};
         }
         /// <summary>
         /// horde-view.ts: from level 2 the walking possessed add drips black flame .25 m over its floor into the world flame pool
@@ -118,6 +119,13 @@ namespace ChipArena.UnityConversion
             hordeGrinBlock.SetFloat(GrinOpacityId,opacity);
             Graphics.DrawMesh(hordeGrinQuad,Matrix4x4.TRS(center,camera.transform.rotation,new Vector3((float)NativeMinionHint.Glyph.Width,(float)NativeMinionHint.Glyph.Height,1)),hordeGrinMaterial,0,camera,0,hordeGrinBlock,UnityEngine.Rendering.ShadowCastingMode.Off,false);
         }
+        // The tongues and the crack of a bank variant (look -1) or of a minion kind's look (kind x 8 + look, Core/NativeHordeModels).
+        private static int HordeTongueCount(int variant,int look)=>look<0?NativeMinionFx.TongueCount(variant):NativeHordeModels.Tongues(look>>3,look&7).Length;
+        private static bool HordeTongue(int variant,int look,int k,double t,double flare,double extra,double[] m,out int joint,out int layout)
+            =>look<0?NativeMinionFx.TongueMatrix(variant,k,t,flare,extra,m,out joint,out layout):NativeHordeModels.TongueMatrix(look>>3,look&7,k,t,flare,extra,m,out joint,out layout);
+        private static bool HordeCracked(int variant,int look)=>look<0?NativeMinionFx.Cracked[variant]:NativeHordeModels.Cracked(look>>3,look&7);
+        private static void HordeCrack(int variant,int look,out double x,out double y,out double z)
+        {if(look>=0){NativeHordeModels.Crack(look>>3,look&7,out x,out y,out z);return;}var c=NativeMinionFx.Crack;int o=variant*3;x=c[o];y=c[o+1];z=c[o+2];}
         private void DisposeHordeGrin()
         {
             if(hordeGrinMaterial!=null)CapturedAnimation.Release(hordeGrinMaterial);if(hordeGrinTexture!=null)CapturedAnimation.Release(hordeGrinTexture);if(hordeGrinQuad!=null)CapturedAnimation.Release(hordeGrinQuad);
@@ -172,15 +180,15 @@ namespace ChipArena.UnityConversion
             for(int s=0;s<hordeFxCount;s++)
             {
                 int n=hordeOrder[s];var job=hordeFx[n];var rig=job.Rig;if(rig==null||!job.Body||NativeMinionFx.Gone(job.Death))continue;double t=job.Time;bool alive=float.IsNaN(job.Death);
-                bool head=HordeJointShown(job.Lost,CapturedRig.Head);int want=NativeMinionFx.TongueCount(job.Variant)*licks;
+                bool head=HordeJointShown(job.Lost,CapturedRig.Head);int want=HordeTongueCount(job.Variant,job.Look)*licks;
                 // Shed licks off each tongue's tip, trailing as if they stayed where they were shed: every tongue's or none.
                 if(hordeDistance[n]<LickRange&&want>0&&want<=lickBudget)
                 {
                     lickBudget-=want;
                     double flare=NativeMinionFx.Flare(float.IsNaN(job.Emerge)?double.PositiveInfinity:job.Emerge,alive?double.PositiveInfinity:job.Death),extra=NativeMinionFx.TonguePhase(job.Id);
-                    for(int k=0;k<NativeMinionFx.TongueCount(job.Variant);k++)
+                    for(int k=0;k<HordeTongueCount(job.Variant,job.Look);k++)
                     {
-                        if(!NativeMinionFx.TongueMatrix(job.Variant,k,t,flare,extra,hordeLocal,out int joint,out _)||!HordeJointShown(job.Lost,joint))continue;
+                        if(!HordeTongue(job.Variant,job.Look,k,t,flare,extra,hordeLocal,out int joint,out _)||!HordeJointShown(job.Lost,joint))continue;
                         Vector3 tip=(rig.Bones[joint].localToWorldMatrix*FromSource(hordeLocal)).MultiplyPoint3x4(new Vector3(0,(float)NativeMinionFx.TipY,0));
                         for(int j=0;j<licks;j++)
                         {
@@ -195,17 +203,17 @@ namespace ChipArena.UnityConversion
                 {
                     var headBone=rig.Bones[CapturedRig.Head].localToWorldMatrix;float headChar=alive?0:(float)NativeMinionFx.Charred(job.Seed,CapturedRig.Head,job.Death);
                     // The cracked head's violet haze, breathing and dropping out with the crack's light (the GlowW bits); it dies with the char.
-                    if(NativeMinionFx.Cracked[job.Variant]&&headChar<1)
+                    if(HordeCracked(job.Variant,job.Look)&&headChar<1)
                     {
-                        var crack=NativeMinionFx.Crack;int o=job.Variant*3;NativeMinionFx.Haze(job.Phase,t,out double size,out double opacity);
-                        Vector3 at=headBone.MultiplyPoint3x4(new Vector3(-(float)crack[o],(float)crack[o+1],(float)crack[o+2]+.03f));
+                        HordeCrack(job.Variant,job.Look,out double cx0,out double cy0,out double cz0);NativeMinionFx.Haze(job.Phase,t,out double size,out double opacity);
+                        Vector3 at=headBone.MultiplyPoint3x4(new Vector3(-(float)cx0,(float)cy0,(float)cz0+.03f));
                         draw.Sprite(draw.Effects,at,right,up,(float)size,Alpha(HordeViolet,opacity*(1-headChar)),NativeFxDraw.Authored+NativeFxDraw.Additive);
                     }
                     // hints.ts on the possessed add at every level: the crown seam (the crack on a cracked head) and the halo pulse every
                     // ~4 s, brighter at level 3.
                     if(level>0)
                     {
-                        bool cracked=NativeMinionFx.Cracked[job.Variant];NativeMinionFx.Hint(cracked,NativeMinionFx.HintPulse(job.Phase,t),out double cx,out double cy,out double cz,out double sx,out double sy,out double sz,out double seam,out double halo,out double haloOpacity,NativeMinionHint.Brightness(level));
+                        bool cracked=HordeCracked(job.Variant,job.Look);NativeMinionFx.Hint(cracked,NativeMinionFx.HintPulse(job.Phase,t),out double cx,out double cy,out double cz,out double sx,out double sy,out double sz,out double seam,out double halo,out double haloOpacity,NativeMinionHint.Brightness(level));
                         draw.Box(draw.Effects,headBone*Matrix4x4.TRS(new Vector3(-(float)cx,(float)cy,(float)cz),Quaternion.identity,new Vector3((float)sx,(float)sy,(float)sz)),Alpha(HordeViolet,seam),NativeFxDraw.Flat,NativeFxDraw.Authored+NativeFxDraw.Additive,Vector4.zero,Vector4.zero);
                         draw.Sprite(draw.Effects,headBone.MultiplyPoint3x4(new Vector3(0,.38f,0)),right,up,(float)halo,Alpha(HordeViolet,haloOpacity),NativeFxDraw.Authored+NativeFxDraw.Additive);
                     }

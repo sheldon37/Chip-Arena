@@ -53,6 +53,6 @@ namespace ChipArena.UnityConversion
     public static class NativeViewBase
     {
         public static readonly Vector3 Gun=new Vector3(.24f,-.48f,.20f),Melee=new Vector3(.16f,-.22f,.30f),Fighter=new Vector3(0,-.48f,.20f);
-        public static bool IsFighter(string spec)=>spec=="emperor"||spec=="ansatsuken";
+        public static bool IsFighter(string spec)=>spec=="emperor"||spec=="ansatsuken"||spec==CyberLordSpec.Id;
     }
 }

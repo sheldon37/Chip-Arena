@@ -1,0 +1,395 @@
+{
+ "pack": "Explosive RPG Character Mecanim Animation Pack (owner licence; FBX never committed)",
+ "channels": 64,
+ "quantum": 0.00390625,
+ "heading": -0.928,
+ "clips": [
+  {
+   "clip": "cyberlord/stance",
+   "source": "Unarmed-Idle-Alert1",
+   "range": [
+    0,
+    40
+   ],
+   "fps": 60,
+   "frames": 81,
+   "loop": false,
+   "marks": [
+    0,
+    1.3333
+   ],
+   "heading": -0.928,
+   "sha256": "c321467358d381c500f630c6967e24c6c8e09b55d1638aa092e67fb6468d5d7c",
+   "input": "44256d8d9339ba565896494d21a8e97337790cd4fb060cce80db2f78ae852c0b"
+  },
+  {
+   "clip": "cyberlord/guard",
+   "source": "Unarmed-Block",
+   "range": [
+    0,
+    60
+   ],
+   "fps": 30,
+   "frames": 61,
+   "loop": true,
+   "marks": [
+    0
+   ],
+   "heading": -0.928,
+   "sha256": "ec6e1ece5a34f56dacb540362d3e385147c0faf025257fd193defc1032961929",
+   "input": "55b224e2a327c33c8b138e8e2296ae4a8cc51143dbc9d5b7314649ab73bb4368"
+  },
+  {
+   "clip": "cyberlord/run",
+   "source": "Unarmed-Run-Forward",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "marks": [
+    0
+   ],
+   "heading": -0.928,
+   "sha256": "47024bf23ab9e00b01d9b3cefac0ee642e04d63507a0521e7dd144d46a5ecbee",
+   "input": "c00e32f62c6c3538a581785ba96bb97d573bfa437d2b95ebf97ee077a8953935"
+  },
+  {
+   "clip": "cyberlord/sprint",
+   "source": "Unarmed-Sprint",
+   "range": [
+    0,
+    18
+   ],
+   "fps": 30,
+   "frames": 19,
+   "loop": true,
+   "marks": [
+    0
+   ],
+   "heading": -0.928,
+   "sha256": "ca338b2f3a1649ec14709492c7b35e1f93b4e4e8b23ee04d129b2fbda5e0243a",
+   "input": "70379235aec9b863d6c023aee3a80d97bb6786e5a79e207fef4fdff412f2e28b"
+  },
+  {
+   "clip": "cyberlord/jab",
+   "source": "Unarmed-Attack-L1",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 60,
+   "frames": 49,
+   "loop": false,
+   "marks": [
+    0,
+    0.3367,
+    0.8
+   ],
+   "heading": -0.928,
+   "sha256": "ff7eccba943ac1d0931f0d2e877c86abf463de18b4146a990a1e5dba8186ed13",
+   "input": "c2a09d7e9a0b63e59050a2276fe0af49a3eab896f7b8aba32007731d19b03cf5"
+  },
+  {
+   "clip": "cyberlord/cross",
+   "source": "Unarmed-Attack-R1",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 60,
+   "frames": 49,
+   "loop": false,
+   "marks": [
+    0,
+    0.3317,
+    0.8
+   ],
+   "heading": -0.928,
+   "sha256": "619d21646099c09034a0d1fcd8cd030f457e9693d446365e34d9203af6a6a8db",
+   "input": "1a0fc9e85de4488981b975d6cd9a9d24399872521d1995d6ed3ce608967ff798"
+  },
+  {
+   "clip": "cyberlord/palm",
+   "source": "Unarmed-Cast-Dual-Attack1",
+   "range": [
+    0,
+    12
+   ],
+   "fps": 60,
+   "frames": 25,
+   "loop": false,
+   "marks": [
+    0,
+    0.3681,
+    0.4
+   ],
+   "heading": -0.928,
+   "sha256": "57387a831625b277622f20b0d8ce59bc0e35fbe6a5618c810d4bcc54216e8c81",
+   "input": "7ef57d8e9c23bb93e1f034281a4d303bdbc51355b4a55c253fba8bfc00433a2a"
+  },
+  {
+   "clip": "cyberlord/dash",
+   "source": "Unarmed-Dash-Forward",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 60,
+   "frames": 49,
+   "loop": false,
+   "marks": [
+    0,
+    0.2,
+    0.8
+   ],
+   "heading": -0.928,
+   "sha256": "bb929b32dd1ca85ffb9331ea59030a717fe8cdef57a5881f4ecde34a3a4c985a",
+   "input": "b71329da55418dec3698536e20fe6f2773960d44bab24054f83de4684237bb5b"
+  },
+  {
+   "clip": "cyberlord/firewall",
+   "source": "Unarmed-Cast-Dual-Summon1",
+   "range": [
+    0,
+    14
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [
+    0,
+    0.4263,
+    0.4667
+   ],
+   "heading": -0.928,
+   "sha256": "0b75c486619a807a83f2ff1c7f0a4c6edf587e61499a52683bc77a41ae55f636",
+   "input": "872b24fb155e8bf725d7bb6453452f5d718d61ec41fd0df1c3007f2efa249108"
+  },
+  {
+   "clip": "cyberlord/burst",
+   "source": "Unarmed-Cast-Dual-Attack2",
+   "range": [
+    0,
+    16
+   ],
+   "fps": 60,
+   "frames": 33,
+   "loop": false,
+   "marks": [
+    0,
+    0.4751,
+    0.5333
+   ],
+   "heading": -0.928,
+   "sha256": "363b15b6efa4409931a4e596fb8642ea25d11239bbeaa6a6ba06839025abfcdf",
+   "input": "25cc881e709938e694ab64012bf59a4de414de7d164127db5db152d3a2681222"
+  },
+  {
+   "clip": "cyberlord/siphon",
+   "source": "Unarmed-Cast-R-Attack2",
+   "range": [
+    0,
+    7
+   ],
+   "fps": 60,
+   "frames": 15,
+   "loop": false,
+   "marks": [
+    0,
+    0.2333
+   ],
+   "heading": -0.928,
+   "sha256": "315f5358004a4591c713f11c29e1a165e81d103167da9768446125193cf05db8",
+   "input": "65585d99172890ebcf8e39841d5c2f513703ab4e93c61202203ce2729a922dee"
+  },
+  {
+   "clip": "cyberlord/crash",
+   "source": "Unarmed-Cast-Dual-AOE1",
+   "range": [
+    0,
+    14
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [
+    0,
+    0.463,
+    0.4667
+   ],
+   "heading": -0.928,
+   "sha256": "04d858b2ba0de0042c922942ccdf22051c96f21d9b0b9cb6bbf6faf67c0858c4",
+   "input": "db499b008ddfead4f2dcfa1699c917ed0be4f4cb4d22032d7d093db907d772fb"
+  },
+  {
+   "clip": "cyberlord/lunge",
+   "source": "Unarmed-Run-Forward-Attack1-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 60,
+   "frames": 49,
+   "loop": false,
+   "marks": [
+    0,
+    0.2708,
+    0.8
+   ],
+   "heading": -0.928,
+   "sha256": "000180716b72d5098f805a28a2ccdf4fd0007cc858db7772f91f3abbffd39e28",
+   "input": "06c426ef594a41883164e722974ce225dcae393b56419cad70b4631beedb082b"
+  },
+  {
+   "clip": "cyberlord/breaker",
+   "source": "Unarmed-Attack-R3",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 60,
+   "frames": 49,
+   "loop": false,
+   "marks": [
+    0,
+    0.325,
+    0.8
+   ],
+   "heading": -0.928,
+   "sha256": "98c078f66a00a90f45f56f06292b9639febfda41ce8d791fec91999841c8edc2",
+   "input": "c3b2cbf2aa4aa5afafb5c68db085e3f1b75c529f6890d50f72e805046359ecda"
+  },
+  {
+   "clip": "cyberlord/kick",
+   "source": "Unarmed-Attack-Kick-R1",
+   "range": [
+    0,
+    30
+   ],
+   "fps": 60,
+   "frames": 61,
+   "loop": false,
+   "marks": [
+    0,
+    0.4856,
+    1
+   ],
+   "heading": -0.928,
+   "sha256": "714daae2629476fdaf2c2baaddc8dbdf061ee936f6a0cfe00084b0228b70f40e",
+   "input": "30cdbf24b213db2910ec2087bc8fba44dd2697756927fe004ef40de528b497a5"
+  },
+  {
+   "clip": "cyberlord/hammer",
+   "source": "Unarmed-Air-Attack1",
+   "range": [
+    0,
+    15
+   ],
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.2124,
+    0.5
+   ],
+   "heading": -0.928,
+   "sha256": "1eb32c88d54e0b4c52da1e3ce531ce9e61415321f8e5774b45336bfc56b9fcbf",
+   "input": "525e826790f6d5a5709c4e94c10399666f43367f226b2c44d66358622286687c"
+  },
+  {
+   "clip": "cyberlord/slam",
+   "source": "Unarmed-Cast-Dual-AOE2",
+   "range": [
+    0,
+    14
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [
+    0,
+    0.3979,
+    0.4667
+   ],
+   "heading": -0.928,
+   "sha256": "99d874c56bc9eb47b9e9f413fc7aaec2623c2ca456af07bfce840cce92cf05be",
+   "input": "db068fce11f09f86e7b498d2f2d49ca0df301f24162be48922db85e209cea8b7"
+  },
+  {
+   "clip": "cyberlord/launched",
+   "source": "Unarmed-Knockback-Back1",
+   "range": [
+    0,
+    36
+   ],
+   "fps": 60,
+   "frames": 73,
+   "loop": false,
+   "marks": [
+    0,
+    1.2
+   ],
+   "heading": -0.928,
+   "sha256": "c18a647e09a3c2d7227562ccef647580baa4ded798dd493a1e7bc0a1296cbefd",
+   "input": "e2aaab9b0ce9cf5c2e6a6526944e4aa7d50cf91a7acad720f34fa41efbae22c6"
+  },
+  {
+   "clip": "cyberlord/knockdown",
+   "source": "Unarmed-Knockdown1",
+   "range": [
+    0,
+    46
+   ],
+   "fps": 60,
+   "frames": 93,
+   "loop": false,
+   "marks": [
+    0,
+    1.5333
+   ],
+   "heading": -0.928,
+   "sha256": "a5426964f3411aabded79520c4ae1407074d1fe9909b15ee0ea26f652b220b6a",
+   "input": "4e8caabd71807dd0d3db9aac3bb4970d9006060aef555a2af883d5508e479cc2"
+  },
+  {
+   "clip": "cyberlord/stunned",
+   "source": "Unarmed-Stunned",
+   "range": [
+    0,
+    60
+   ],
+   "fps": 30,
+   "frames": 61,
+   "loop": true,
+   "marks": [
+    0
+   ],
+   "heading": -0.928,
+   "sha256": "67b8d415fcfb828af13d05ec79776b84af0e4581c65a69c1b6315b310bc7944a",
+   "input": "1d2070e50821f8ab693e9731efa3f31ca1ee54896004b0a55967229d9741e5bb"
+  },
+  {
+   "clip": "cyberlord/boost",
+   "source": "Unarmed-Boost1",
+   "range": [
+    0,
+    30
+   ],
+   "fps": 60,
+   "frames": 61,
+   "loop": false,
+   "marks": [
+    0,
+    0.3913,
+    1
+   ],
+   "heading": -0.928,
+   "sha256": "36dae56252f3bcdab795e39037c23ef379a84fda9778575f1ef5b85a654d93e3",
+   "input": "a282807e8c1df6287c4b508e48c88db973b27273a9609f4d1326581f55385503"
+  }
+ ]
+}

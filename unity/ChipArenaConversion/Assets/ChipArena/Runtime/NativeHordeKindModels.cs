@@ -1,0 +1,34 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace ChipArena.UnityConversion
+{
+    // The Siren minion kinds' models in the source-model bank (Core/NativeHordeModels.cs): every kind, look and crowd tier
+    // ("minion-<kind>-<look>-<full|reduced|impostor>") is sculpted once when the bank loads, beside the untouched bank horde-0..5
+    // (the old death records and the classic look still name those). Each kind has one NativeSourceLit material: the minion glow
+    // (its seams flicker cell by cell and drop with the add's power, NativeMinionFx) and the Siren's ink rim and flow, so a dark
+    // add keeps a lavender edge against the night. The reduced and impostor tiers cast no shadows (the horde's far crowd).
+    public sealed partial class NativeSourceModels
+    {
+        /// <summary>The minion models built at load, and each one's triangles (the build checks hold them to the tier budgets).</summary>
+        public int HordeKindModelCount{get;private set;}
+        public readonly Dictionary<string,int> HordeKindTriangles=new Dictionary<string,int>();
+        /// <summary>The Siren's ink shading on the minions: a rim a little stronger than the Siren's body, a faint rising flow.</summary>
+        public const float HordeInkRim=.36f,HordeInkFlow=.012f;
+        private void HordeKindModels()
+        {
+            var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null)throw new System.InvalidOperationException("Source material shader is missing");
+            for(int kind=0;kind<NativeHordeKinds.Count;kind++)
+            {
+                var material=new Material(shader){name="Native Siren minion / "+NativeHordeKinds.Ids[kind],enableInstancing=true};material.SetInt("_Cull",2);
+                material.SetFloat("_Ink",1);material.SetFloat(InkRimId,HordeInkRim);material.SetFloat(InkFlowId,HordeInkFlow);material.SetFloat(MinionGlowId,1);materials.Add(material);
+                for(int look=0;look<NativeHordeKinds.Looks[kind];look++)for(int tier=0;tier<NativeHordeModels.Tiers;tier++)
+                {
+                    var built=NativeHordeModels.Build(kind,look,tier);string id=NativeHordeModels.Id(kind,look,tier);var parts=new List<Part>();
+                    foreach(var s in built.Mesh.Sections){var mesh=BodyMesh(s,id+" / joint "+s.Bone);if(mesh!=null)parts.Add(new Part{Name=id,Bone=s.Bone,Mesh=mesh,Material=material,NoShadow=tier!=NativeHordeModels.Full});}
+                    models[id]=parts.ToArray();HordeKindTriangles[id]=built.Triangles;HordeKindModelCount++;
+                }
+            }
+        }
+    }
+}

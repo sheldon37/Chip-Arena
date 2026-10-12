@@ -101,7 +101,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<drops.Length;i++)
                 {
                     var d=drops[i];if(!d.Live||now-d.Born<d.Delay)continue;float shade=NativeBloodRules.Hash(d.Seed,0,3);
-                    var c=NativeVfxDraw.Linear(shade<.6f?NativeBloodRules.DropColor:NativeBloodRules.DropDeep);c.a=.92f;
+                    var c=NativeVfxDraw.Linear(d.Ink?(shade<.6f?NativeBloodRules.InkDrop:NativeBloodRules.InkDeep):shade<.6f?NativeBloodRules.DropColor:NativeBloodRules.DropDeep);c.a=.92f;
                     vfx.Blood(new Vector3(d.Position.X,d.Position.Y,d.Position.Z),new Vector3(d.Velocity.X,d.Velocity.Y,d.Velocity.Z),c,d.Size,d.Seed&0xffff);
                 }
             }
@@ -145,7 +145,7 @@ namespace ChipArena.UnityConversion
             u=(u-n*Vector3.Dot(u,n)).normalized;if(u.sqrMagnitude<.5f)u=Vector3.Cross(n,Vector3.right).normalized;Vector3 v=Vector3.Cross(n,u);
             float dry=NativeBloodRules.Darken(now-s.Born);Color light=n.y>.5f?splatUp:n.y<-.5f?splatDown:splatSide;
             Color Tone(int hex,float k){var c=NativeArena.ColorOf(hex);return new Color(c.r*k*light.r,c.g*k*light.g,c.b*k*light.b,alpha);}
-            Color rim=Tone(NativeBloodRules.Rim,dry*.95f),core=Tone(NativeBloodRules.Core,dry*(.75f+.25f*dry));
+            Color rim=Tone(s.Ink?NativeBloodRules.InkRim:NativeBloodRules.Rim,dry*.95f),core=Tone(s.Ink?NativeBloodRules.InkCore:NativeBloodRules.Core,dry*(.75f+.25f*dry));
             float L=s.Length,W=s.Width;uint seed=s.Seed;float H(int k)=>NativeBloodRules.Hash(seed,k,47);
             // The blob: 12 lobes, its front (along u) pushed out into a teardrop.
             for(int k=0;k<splatRing.Length;k++)

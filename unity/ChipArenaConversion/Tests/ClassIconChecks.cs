@@ -32,7 +32,10 @@ internal static class ClassIconChecks
         // 1. Every class and every weapon resolves to its own art icon, through the lookup NativeIcons uses.
         foreach(var c in NativeLoadoutText.Classes){string icon=NativeIconRaster.Resolve(classes,lucideClasses,fallback,c);Check(art.ContainsKey(icon)&&classes.ContainsKey(c),"class "+c+" has an art icon");}
         foreach(var w in data.weapons){string icon=NativeIconRaster.Resolve(specs,lucideSpecs,fallback,w.id);Check(art.ContainsKey(icon)&&specs.ContainsKey(w.id),"weapon "+w.id+" has an art icon");}
-        Check(specs.Count==data.weapons.Length&&classes.Count==NativeLoadoutText.Classes.Length,"no mapping for an unknown class or weapon");
+        // The Bow's and the DEV Cyber Lord's art ship ahead of their content entries (docs/NEW-KITS.md sections 2 and 3; the
+        // rules are Astra's): until GameContent lists one it is a mapping without a weapon, afterwards none.
+        var ahead=new[]{NativeBowWire.Spec,CyberLordSpec.Id}.Where(id=>!data.weapons.Any(w=>w.id==id)).ToArray();Check(specs.ContainsKey(CyberLordSpec.Id)&&specs.ContainsKey(NativeBowWire.Spec),"the Bow and the DEV Cyber Lord have art icons");
+        Check(specs.Keys.OrderBy(k=>k).SequenceEqual(data.weapons.Select(w=>w.id).Concat(ahead).OrderBy(k=>k),StringComparer.Ordinal)&&classes.Count==NativeLoadoutText.Classes.Length,"no mapping for an unknown class or weapon");
         Check(specs.Values.Distinct().Count()==specs.Count,"no two weapons share an icon");
         Check(classes.Values.Distinct().Count()==classes.Count&&!classes.Values.Intersect(specs.Values).Any(),"classes have their own icons, not weapon ones");
         Check(art.Keys.All(id=>!lucideMarkup.ContainsKey(id))&&art.Values.All(a=>!lucideMarkup.ContainsValue(a.markup)),"art ids and drawings are not Lucide's");

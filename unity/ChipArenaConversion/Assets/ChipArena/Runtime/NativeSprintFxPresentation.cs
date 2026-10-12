@@ -70,14 +70,16 @@ namespace ChipArena.UnityConversion
         // FOV kick and bob (ConversionGame.UpdateCamera and LateFrame through SprintFov and SprintSway). The first-person weight
         // is the view layer's (NativeViewSway.Sprint: the view pilot's replicated sprint, faded out by a swing, block or roll).
         private NativeSprintFxPresentation sprintFx;
-        private float screenSprint,screenClock;private int screenFrame=-1;private Color screenTint;
+        private float screenSprint,screenClock,screenLast,screenRate=1;private int screenFrame=-1;private Color screenTint;
         private static Texture2D vignetteTexture,lineTexture;
         private void SprintFx(NativeArena arena,float now)
         {
             if(arena==null)return;
             if(vfx!=null){sprintFx??=new NativeSprintFxPresentation(vfx);sprintFx.Render(arena,now,WeaponEffectsQuality,LowGraphics,arena.ViewPilot?.Seat.id??-1,FirstPerson);}
-            var view=arena.ViewPilot?.Pose;
-            screenSprint=FirstPerson&&viewRig!=null&&!ScopeActive&&view!=null&&view.Alive?viewSway.Sprint:0;screenFrame=Time.frameCount;screenClock=now;
+            var view=arena.ViewPilot?.Pose;bool shown=FirstPerson&&viewRig!=null&&!ScopeActive&&view!=null&&view.Alive;
+            // The plunging stab's drop takes the same screen (Core/NativePlungeRules.ScreenWeight), its lines streaming faster.
+            float plunge=shown?PlungeScreen(view,kitClock):0;
+            screenSprint=shown?Mathf.Max(viewSway.Sprint,plunge):0;screenFrame=Time.frameCount;screenRate=Mathf.Lerp(screenRate,plunge>viewSway.Sprint?NativePlungeRules.LineRate:1,.25f);screenClock+=Mathf.Max(0,now-screenLast)*screenRate;screenLast=now;
             if(view!=null){var t=NativeSprintFx.Tint(view.SourceSpec,view.AccentColor);screenTint=new Color(t.X,t.Y,t.Z,1).gamma;}
         }
         /// <summary>The first-person FOV kick (degrees) for the view pilot's sprint: none with camera shake off, half with Reduced

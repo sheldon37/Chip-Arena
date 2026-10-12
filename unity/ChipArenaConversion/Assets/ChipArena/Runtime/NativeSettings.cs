@@ -30,6 +30,9 @@ namespace ChipArena.UnityConversion
             {
                 Field("Developer");bool console=GUILayout.Toggle(prefs.developmentConsole,"Show development console");
                 if(console!=prefs.developmentConsole){prefs.developmentConsole=console;SyncDevelopmentConsole();Save();}
+                // The Siren minion kinds before their rules exist (NativeHordeKindPresentation.cs): every horde add drawn as one kind, or a
+                // mix by id. Looks only (the add's rules, timing and hit volume stay its own); this session only, never saved.
+                GUILayout.Label("Siren minion preview (looks only)",small);NativeHordeKinds.Preview=HordePreviewChoice(ChoiceGrid(HordePreviewIds,HordePreviewId(NativeHordeKinds.Preview),HordePreviewNames));
             }
             Field("Credits");Fine("Icons: Lucide (ISC licence), from the source client.");
         }

@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
         private NativeHudCyber.Rows SelfRowsOf(NativePilot p)
         {
             float t=arena.Time;bool charging=p.Fighter?.Kind=="charge";
-            return NativeHudCyber.SelfRows(p.Weapon.@class,p.ReloadEnd>t,NativeRangedRules.Overdrive(t,p.OverdriveAt,p.OverdriveUntil),NativeRangedRules.Vent(t,p.OverdriveUntil,p.VentUntil),charging);
+            return NativeHudCyber.SelfRows(p.Weapon.@class,p.ReloadEnd>t,NativeRangedRules.Overdrive(t,p.OverdriveAt,p.OverdriveUntil),NativeRangedRules.Vent(t,p.OverdriveUntil,p.VentUntil),charging,CyberLordFeed.Handles(p.Seat.spec));
         }
         // Idle fade: the rows dim once every resource is full and has held still for NativeHudCyber.IdleAfter (instant with
         // Reduced effects, which skips the fade's motion).
@@ -103,7 +103,7 @@ namespace ChipArena.UnityConversion
         {
             float t=arena.Time,cap=(float)Math.Ceiling(p.Weapon.ammo*p.Stats["ammoCapacity"]),maxStamina=(float)p.Stats["maxStamina"],maxMana=(float)p.Stats["maxMana"];
             float signature=p.Stamina*7+p.Mana*13+p.Ammo*17+(int)rows*31;if(!(signature==selfSignature)||t<selfChangedAt){selfSignature=signature;selfChangedAt=t;}
-            bool full=p.Stamina>=maxStamina-.01f&&(p.Weapon.@class!="magic"||p.Mana>=maxMana-.01f)&&(p.Weapon.@class!="ranged"||p.Ammo>=cap)&&(rows&(NativeHudCyber.Rows.Reload|NativeHudCyber.Rows.Heat|NativeHudCyber.Rows.Vent|NativeHudCyber.Rows.Charge))==0;
+            bool full=p.Stamina>=maxStamina-.01f&&(p.Weapon.@class!="magic"&&!CyberLordFeed.Handles(p.Seat.spec)||p.Mana>=maxMana-.01f)&&(p.Weapon.@class!="ranged"||p.Ammo>=cap)&&(rows&(NativeHudCyber.Rows.Reload|NativeHudCyber.Rows.Heat|NativeHudCyber.Rows.Vent|NativeHudCyber.Rows.Charge))==0;
             float idle=t-selfChangedAt;if(prefs.reducedEffects&&idle>NativeHudCyber.IdleAfter)idle=NativeHudCyber.IdleAfter+NativeHudCyber.IdleFadeTime;return NativeHudCyber.IdleFade(idle,full);
         }
         // The rows, top down: the weapon resource (melee stamina, magic mana, ranged magazine pips or the reload sweep), then

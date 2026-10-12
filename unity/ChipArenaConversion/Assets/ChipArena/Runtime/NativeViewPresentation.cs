@@ -55,15 +55,16 @@ namespace ChipArena.UnityConversion
             if(viewRig==null)viewRig=captured.Create(transform,-999);
             var shown=source.ViewCopy();shown.Aiming=AimHeld;shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;
             // A camera-attached presentation rig never changes the authoritative pilot or muzzle.
-            viewRig.ActorPose(shown,Vector3.zero,time,true);
+            viewRig.ViewPitch=source.Pitch;viewRig.ActorPose(shown,Vector3.zero,time,true);
             // Every magic-class pilot (first-person-view.ts cls 'magic': the four schools and the L33t H4x staff) frames the staff view.
-            int school=MagicPose.School(shown);bool gun=GunRules.Ranged(shown.Weapon),magic=school>0;
+            int school=MagicPose.School(shown);bool gun=GunRules.Ranged(shown.Weapon),magic=school>0,bow=NativeBowWire.Is(shown.SourceSpec);
             // first-person-view.ts:69 class bases (NativeViewBase): guns right of centre, the DEV fighters' fists centred and low
             // (their view rig ends on the guard clip, NativeSourceMotion.Pilot), melee raised.
-            Vector3 offset=gun?CapturedAnimation.Vec(NativeViewBase.Gun):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):CapturedAnimation.Vec(NativeViewBase.IsFighter(shown.SourceSpec)?NativeViewBase.Fighter:NativeViewBase.Melee);
+            // The bow (Core/NativeBowPose: its rig is placed so the arrow line runs under and left of the eye).
+            Vector3 offset=bow?NativeBowView(true):gun?CapturedAnimation.Vec(NativeViewBase.Gun):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):CapturedAnimation.Vec(NativeViewBase.IsFighter(shown.SourceSpec)?NativeViewBase.Fighter:NativeViewBase.Melee);
             float ads=aimMotion.Sample(time,gun&&AimHeld);
             if(gun)offset+=CapturedAnimation.Vec(NativeAimPresentation.Offset(shown.Weapon))*ads;
-            float scale=gun?NativeAimPresentation.Scale(ViewCamera.fieldOfView,ads):NativeFirstPersonPose.Scale;
+            float scale=bow?NativeBowPose.ViewScale:gun?NativeAimPresentation.Scale(ViewCamera.fieldOfView,ads):NativeFirstPersonPose.Scale;
             offset+=HitViewDip(source,time,out float dip);
             viewRig.Root.transform.SetPositionAndRotation(ViewCamera.transform.TransformPoint(offset),ViewCamera.transform.rotation*Quaternion.Euler(dip,0,0));
             viewRig.Root.transform.localScale=Vector3.one*scale;

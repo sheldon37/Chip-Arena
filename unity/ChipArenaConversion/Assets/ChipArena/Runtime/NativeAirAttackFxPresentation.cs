@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
                 Vector3 feet=p.Body.transform.position-Vector3.up*.865f;
                 bool blocked=a.Hp<=0||a.Rolling(now)||a.StunUntil>now||a.JuggleUntil>now||NativeSpecialPose.Active(a,now)||NativeSpecialPose.Down(a,now);
                 t.Observe(now,a.Grounded,feet.y,blocked);int impacts=w.Impacts;
-                w.Observe(t,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,a.AirAttack?1:0,now,blocked);
+                w.Observe(t,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,NativePlungeRules.ForwardFlag(a.AirAttack?1:0,a.SprintAttack,NativePlungeFields.Of(a).Down),now,blocked);
                 if(w.Impacts>impacts&&a.Hp>0&&NativeAirAttackRules.Clip(p.Seat.spec)!=null)
                 {
                     var tint=NativeGlowRules.ArmorTint(a.AccentColor);var point=NativeAirAttackFx.Point(new NVector(feet.x,feet.y,feet.z),a.Yaw,t.Floor);
@@ -74,7 +74,31 @@ namespace ChipArena.UnityConversion
         {
             if(vfx==null||arena==null)return;airAttackFx??=new NativeAirAttackFxPresentation(vfx);
             airAttackFx.Render(arena,now,WeaponEffectsQuality,LowGraphics,structureFx?.Fx);
+            PlungeFx(arena);
         }
+        // The plunging stab's effects (Core/NativePlungeFx): every snapshot actor's plunge data (NativePlungeFields.Of, the one
+        // field mapping) and drawn feet, the frame's impact and hit events, the posed blades and chests (the melee kit's scene and
+        // sink, bound here as for the kit), on the kit's clock; its impacts also mark the floor, throw rubble and kick the camera
+        // through the destruction kit (NativePlungeFx.Structures: the camera-shake setting, Reduced halving it, the .3 m cap).
+        private readonly NativePlungeFx plungeFx=new NativePlungeFx();
+        private void PlungeFx(NativeArena arena)
+        {
+            var s=kitSnapshot;if(s?.Actors==null||vfx==null)return;float t=kitClock;
+            if(arena!=null&&arena.Generation!=plungeGeneration){plungeFx.Clear();plungeGeneration=arena.Generation;}
+            kitScene??=new KitScene(this);kitSink??=new KitSink();kitScene.Bind(s,arena,t);kitSink.Bind(vfx,WeaponFxDraw,FirstPerson&&!ScopeActive&&ViewCamera!=null);
+            plungeFx.Begin(t);
+            foreach(var a in s.Actors)
+            {
+                if(a==null)continue;bool owned=a.Hp<=0||a.Rolling(t)||a.StunUntil>t||a.JuggleUntil>t||NativeSpecialPose.Active(a,t)||NativeSpecialPose.Down(a,t);
+                plungeFx.Track(a.Id,a.SourceSpec,NativePlungeFields.Of(a),kitScene.Feet(a),NativePlungeFx.Facing(a),a.Grounded,t,owned);
+            }
+            plungeFx.Events(s.Events,t);
+            var st=structureFx?.Fx;foreach(var b in plungeFx.Fresh)NativePlungeFx.Structures(st,b,t);
+            plungeFx.Draw(kitSink,kitScene,t,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics);
+        }
+        private int plungeGeneration=-1;
+        /// <summary>The view pilot's plunging stab for the first-person speed lines (NativePlungeRules.ScreenWeight; 0 otherwise).</summary>
+        private float PlungeScreen(Actor view,float time)=>view!=null&&plungeFx.Watch(view.Id) is NativePlungeWatch w&&w.Is(view.AttackAt)&&w.Clock(time,out var c)?NativePlungeRules.ScreenWeight(c):0;
     }
     public sealed partial class NativeAudio
     {
@@ -83,11 +107,15 @@ namespace ChipArena.UnityConversion
         // existing ground impact under a heavier landing thump, louder and lower for a harder impact. No new bank key.
         private readonly Dictionary<int,NativeJumpTrack> airTracks=new Dictionary<int,NativeJumpTrack>();
         private readonly Dictionary<int,NativeAirAttackWatch> airWatches=new Dictionary<int,NativeAirAttackWatch>();
+        // The plunging stab's moments (Core/NativePlungeFx.Sounds, existing keys only): the drop's whoosh, the impact (heavier for
+        // a bigger fall), the pull-out's grit, each from its own watch over the same replicated data (NativePlungeFields.Of).
+        private readonly Dictionary<int,NativePlungeWatch> plungeWatches=new Dictionary<int,NativePlungeWatch>();private readonly Dictionary<int,(int Drops,int Impacts,int Frees)> plungeSeen=new Dictionary<int,(int,int,int)>();
+        private readonly NativePlungeFx.Cue[] plungeCues=new NativePlungeFx.Cue[4];
         private int airGeneration=-1;
         public const float AirImpactGain=.9f,AirImpactOwnGain=.7f,AirLandGain=.8f;
         private void AirAttackCues(NativeArena arena)
         {
-            if(arena==null)return;if(arena.Generation!=airGeneration){airGeneration=arena.Generation;airTracks.Clear();airWatches.Clear();}
+            if(arena==null)return;if(arena.Generation!=airGeneration){airGeneration=arena.Generation;airTracks.Clear();airWatches.Clear();plungeWatches.Clear();plungeSeen.Clear();}
             float t=arena.Replica?arena.ReplicaRenderTime:arena.Time;var me=arena.Local;
             foreach(var p in arena.Pilots)
             {
@@ -96,14 +124,30 @@ namespace ChipArena.UnityConversion
                 if(!airWatches.TryGetValue(p.Seat.id,out var watch))airWatches[p.Seat.id]=watch=new NativeAirAttackWatch();
                 bool blocked=a.Hp<=0||a.Rolling(t)||a.StunUntil>t||a.JuggleUntil>t||NativeSpecialPose.Active(a,t)||NativeSpecialPose.Down(a,t);
                 track.Observe(t,a.Grounded,p.Body.transform.position.y,blocked);int impacts=watch.Impacts;
-                watch.Observe(track,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,a.AirAttack?1:0,t,blocked);
+                watch.Observe(track,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,NativePlungeRules.ForwardFlag(a.AirAttack?1:0,a.SprintAttack,NativePlungeFields.Of(a).Down),t,blocked);
                 if(watch.Impacts>impacts&&a.Hp>0&&NativeAirAttackRules.Clip(p.Seat.spec)!=null)
                 {
                     bool mine=p==me;float k=watch.Strength,rate=p.Seat.spec=="greatsword"?.85f:1;
                     BankPlay("impact.ground",p.Body.position,(mine?AirImpactOwnGain:AirImpactGain)*(.6f+.4f*k),0,null,mine,null,rate*(1.05f-.15f*k));
                     BankPlay("move.land",p.Body.position,AirLandGain*(.6f+.4f*k),0,null,mine,null,.9f*rate);
                 }
+                if(!plungeWatches.TryGetValue(p.Seat.id,out var pw))plungeWatches[p.Seat.id]=pw=new NativePlungeWatch();
+                pw.Observe(NativePlungeFields.Of(a),a.SourceSpec,p.Body.transform.position.y,a.Grounded,t,blocked);
+                plungeSeen.TryGetValue(p.Seat.id,out var seen);
+                if(pw.Down&&a.Hp>0)
+                {
+                    bool mine=p==me;float heavy=NativePlungeRules.Heavy(pw.Height);
+                    if(pw.Drops>seen.Drops)PlungeCue(NativePlungeMoment.Drop,a.SourceSpec,heavy,p.Body.position,mine);
+                    if(pw.Impacts>seen.Impacts)PlungeCue(NativePlungeMoment.Impact,a.SourceSpec,heavy,p.Body.position,mine);
+                    if(pw.Frees>seen.Frees)PlungeCue(NativePlungeMoment.Free,a.SourceSpec,heavy,p.Body.position,mine);
+                }
+                plungeSeen[p.Seat.id]=(pw.Drops,pw.Impacts,pw.Frees);
             }
+        }
+        private void PlungeCue(NativePlungeMoment m,string spec,float heavy,Vector3 at,bool mine)
+        {
+            int n=NativePlungeFx.Sounds(m,spec,heavy,plungeCues);
+            for(int i=0;i<n;i++)BankPlay(plungeCues[i].Key,at,plungeCues[i].Gain*(mine?AirImpactOwnGain/AirImpactGain:1),0,null,mine,null,plungeCues[i].Rate);
         }
     }
 }

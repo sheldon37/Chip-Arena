@@ -16,6 +16,8 @@ namespace ChipArena.UnityConversion
         // The jump attack's explicit flag once the simulation replicates one (1 air, 0 ground); -1 until then, when the
         // presented airtime decides (NativeAirAttackRules.Air).
         public int AirAttack=-1;
+        // The plunging stab's replicated data (Core/NativePlungeStab: NativePlungeFields.Of, the one field mapping); None otherwise.
+        public NativePlungeData Plunge=NativePlungeData.None;
         public float BlockTime,LastBlock=float.NaN,HitStunUntil,RollAt=-100,RollUntil=-100,ActionAt=-100,ActionUntil=-100;public string ActionKind;
         public bool Reaction,Parry;public float ReactionAt,ReactionUntil,ReactionYaw,ReactionTurn,ReactionStrength;public Vector3 ReactionDir,ReactionPoint;public int ReactionZone;
         public bool Down,Juggle;public string DownPhase;
@@ -386,7 +388,7 @@ namespace ChipArena.UnityConversion
         // chain) enters from its live follow-through or recovery, which carries on under the entry blend, straight into the
         // next windup: entering from the guard snapped the pose back toward it and hitched. A held swing that starts at the
         // last one's end keeps the guard entry (the follow-through has settled there).
-        private struct SwingMemo{public bool Has,Air,Sprint;public string Id,Spec;public int Index;public float At,Windup,Window,Recovery,Rate,End,Drawn;}
+        private struct SwingMemo{public bool Has,Air,Sprint,Plunge;public string Id,Spec;public int Index;public float At,Windup,Window,Recovery,Rate,End,Drawn;}
         private SwingMemo swingNow,swingPrev;private float swingTime=float.NaN;
         private readonly MeleeCapture.RecoveryCache chainRecovery=new MeleeCapture.RecoveryCache();private readonly Vector3[] chainKept={Vector3.UnitX,Vector3.UnitX};
         private void TrackSwing(MeleeView p,Attack a,float time)
@@ -402,7 +404,7 @@ namespace ChipArena.UnityConversion
             swingNow.Rate=p.AttackRate>0?p.AttackRate:1;swingNow.End=p.LastAttack+a.Windup+a.Window+a.Recovery;
         }
         // Chained: the last swing was being drawn as this one began, before its end.
-        private bool Chained(MeleeView p)=>swingPrev.Has&&swingNow.Has&&swingNow.At==p.LastAttack&&swingPrev.Spec==p.Spec&&p.LastAttack<swingPrev.End-.002f&&p.LastAttack-swingPrev.Drawn<.1f;
+        private bool Chained(MeleeView p)=>swingPrev.Has&&!swingPrev.Plunge&&swingNow.Has&&swingNow.At==p.LastAttack&&swingPrev.Spec==p.Spec&&p.LastAttack<swingPrev.End-.002f&&p.LastAttack-swingPrev.Drawn<.1f;
         public static float ChainEntry(float windup)=>Math.Min(.85f*windup,Math.Max(.1f,.5f*windup));
         private void ChainBase(MeleeSet set,MeleeView p,float time)
         {
@@ -497,9 +499,9 @@ namespace ChipArena.UnityConversion
             // The jump layer's own track (observed last frame, after this sample's pose); without one, the rig's own reading.
             var t=JumpLayer?.Track;bool owned=p.Hp<=0||p.Juggle||p.Down||p.Rolling(time)||p.HitStunUntil>time||p.Action(time);
             if(t==null){airTrack.Observe(time,p.Grounded,Rig.GroupPosition.Y,owned);t=airTrack;}
-            AirWatch.Observe(t,p.LastAttack>-90?p.LastAttack:-100,p.LastAttack+a.Windup+a.Window+a.Recovery,p.SprintAttack?0:p.AirAttack,time,owned);
+            AirWatch.Observe(t,p.LastAttack>-90?p.LastAttack:-100,p.LastAttack+a.Windup+a.Window+a.Recovery,NativePlungeRules.ForwardFlag(p.AirAttack,p.SprintAttack,p.Plunge.Down&&p.Plunge.At==p.LastAttack),time,owned);
         }
-        private bool AirSwing(MeleeView p)=>AirWatch.Air&&AirWatch.SwingAt==p.LastAttack&&NativeAirAttackRules.Clip(p.Spec)!=null;
+        private bool AirSwing(MeleeView p)=>!PlungeSwing(p)&&AirWatch.Air&&AirWatch.SwingAt==p.LastAttack&&NativeAirAttackRules.Clip(p.Spec)!=null;
         // The jump layer's landing drop scale while a landed air attack is still being drawn (its end hands the deeper hips back
         // through the pose transition into the guard).
         private float HeavyLanding(MeleeView p,float time)=>airLive&&!float.IsNaN(AirWatch.Landed(time))?NativeAirAttackRules.LandScale(AirWatch.Strength):1;
@@ -528,6 +530,44 @@ namespace ChipArena.UnityConversion
             }
             State="air attack"+(float.IsNaN(landed)?"":" landed")+(recovering?" recovery":"");
         }
+        // ---- the plunging stab (Unity-owned presentation, Core/NativePlungeStab + NativePlungePose, docs/MELEE-FEEL.md "Plunging stab") ----
+        // A swing the replicated data marks as the plunging stab (NativePlungeData.Down, never the airtime alone) plays the weapon's
+        // blade-down keys on the replicated timeline (the .08 s windup's tuck, the committed drop, the plant at the impact, the
+        // stuck hold, the pull-out timed to the recovery, the settle into the guard). It owns the legs (the jump layer stands aside
+        // as for the greatsword's leap: JumpLayer.Leap); its planted blade is left in the floor (FloorGuard) until it comes free.
+        public readonly NativePlungeWatch PlungeWatch=new NativePlungeWatch();private readonly MeleeRig plungeGuard=new MeleeRig();private bool plungeLive,plungeStuck;
+        private void WatchPlunge(MeleeView p,float time)
+        {
+            bool owned=p.Hp<=0||p.Juggle||p.Down||p.Rolling(time)||p.HitStunUntil>time||p.Action(time);
+            PlungeWatch.Observe(p.Plunge,p.Spec,Rig.GroupPosition.Y,p.Grounded,time,owned);
+        }
+        private bool PlungeSwing(MeleeView p)=>PlungeWatch.Is(p.LastAttack)&&!p.SprintAttack&&NativePlungePose.For(p.Spec)!=null;
+        private static readonly int[] PlungeUpper={CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LClav,CapturedRig.LArm,CapturedRig.LElbow,CapturedRig.LHand,CapturedRig.RClav,CapturedRig.RArm,CapturedRig.RElbow,CapturedRig.RHand};
+        private void PlungeCut(MeleeSet set,MeleeView p,float time)
+        {
+            var w=NativePlungePose.For(p.Spec);var r=Rig;
+            if(!PlungeWatch.Clock(time,out var c)){Ready(set,p,time,0);State="plunge recovery";return;}
+            // The guard the windup leaves and the settle returns to: the weapon's captured idle at the swing's start (held still).
+            set.Idle.Sample(p.LastAttack,rowB);bool guard=c.Phase==NativePlungePhase.Windup&&c.Tuck<.5f||c.Phase==NativePlungePhase.Settle;
+            if(guard){MeleeCapture.Apply(r,set,rowB,CaptureOptions.Of(1,set.Fit,MeleeClear.Full,legs:0));plungeGuard.Copy(r);}
+            var k=NativePlungePose.At(w,c,p.Spec,out float depth,out float wrench,out float g);
+            NativePlungePose.Apply(r,set,w,k,rowB,depth,wrench,c.Landed);
+            if(guard)
+            {
+                // The windup turns out of the guard into the raise (all of it, legs too, in the air); the settle turns the upper body
+                // and the hips back to it over the planted soles (the legs re-solved onto the stance).
+                if(c.Phase==NativePlungePhase.Windup){for(int i=0;i<MeleeRig.N;i++)r.SetQ(i,MeleeMath.Slerp(r.Q[i],plungeGuard.Q[i],g));r.P[CapturedRig.Body]=MeleeMath.Lerp(r.P[CapturedRig.Body],plungeGuard.P[CapturedRig.Body],g);}
+                else
+                {
+                    foreach(int i in PlungeUpper)r.SetQ(i,MeleeMath.Slerp(r.Q[i],plungeGuard.Q[i],g));
+                    r.SetQ(CapturedRig.Body,MeleeMath.Slerp(r.Q[CapturedRig.Body],plungeGuard.Q[CapturedRig.Body],g));r.SetQ(CapturedRig.Pelvis,MeleeMath.Slerp(r.Q[CapturedRig.Pelvis],plungeGuard.Q[CapturedRig.Pelvis],g));
+                    r.P[CapturedRig.Body]=MeleeMath.Lerp(r.P[CapturedRig.Body],plungeGuard.P[CapturedRig.Body],g);
+                    r.SolveLeg(true,k.LFoot,.12f,k.LPitch*(1-g),0,null,k.LKnee);r.SolveLeg(false,k.RFoot,-.12f,k.RPitch*(1-g),0,null,k.RKnee);r.LegsAuthored=true;
+                }
+            }
+            r.MocapPosed=true;plungeStuck=c.Stuck;
+            State=NativePlungeRules.Label(c.Phase);
+        }
         // ---- the sprint attack (Unity-owned, Core/NativeSprintAttackVisuals, docs/MELEE-FEEL.md "Sprint attacks") ----
         // A swing the authority flags as entered from a sprint (Astra's NativeSprintAttack: grounded openers only, so the
         // greatsword's hop keeps it) plays the weapon's own running take instead of its first cut, on the swing's replicated
@@ -535,7 +575,7 @@ namespace ChipArena.UnityConversion
         // twin out and back, the follow-through into the guard over the recovery); the shield's bash drives the shield out at
         // the hit. The feet are the footwork's, the run's stride carrying into the strike; the greatsword leaps on the hop
         // (the jump layer leaves it to the footwork: NativeJumpMotion.Leap). The take carries its own lean (StepLean).
-        private bool SprintSwing(MeleeView p)=>!AirSwing(p)&&NativeSprintAttackRules.Plays(p.Spec,p.SprintAttack,false);
+        private bool SprintSwing(MeleeView p)=>!AirSwing(p)&&!PlungeSwing(p)&&NativeSprintAttackRules.Plays(p.Spec,p.SprintAttack,false);
         private void SprintCut(MeleeSet set,MeleeView p,Attack a,float lag,float weight)
         {
             var clip=NativeSprintAttackRules.Clip(p.Spec);float rate=p.AttackRate>0?p.AttackRate:1,recoverySeconds=a.Recovery,age=a.Age-lag;
@@ -718,7 +758,7 @@ namespace ChipArena.UnityConversion
                 trHold=action=="base"&&trAction=="attack";trHoldAll=reaction==null&&DevGrounded(p.Spec,action)&&DevGrounded(p.Spec,trAction);
                 // A captured swing's footwork starts on the feet as shown (Feet): the blend leaves them where the swing put them.
                 // So does the end of a jump attack that landed: it hands its deep landing crouch to the guard on planted feet.
-                trFeet=reaction==null&&Handles(p.Spec)&&(action=="attack"&&footHas&&footAt==p.LastAttack||action=="base"&&trAction=="attack"&&AirWatch.Air&&AirWatch.SwingAt==p.LastAttack&&!float.IsNaN(AirWatch.Landed(time)));Keep();trAt=time;trDuration=duration;trActive=duration>1e-4f;
+                trFeet=reaction==null&&Handles(p.Spec)&&(action=="attack"&&footHas&&footAt==p.LastAttack||action=="base"&&trAction=="attack"&&(AirWatch.Air&&AirWatch.SwingAt==p.LastAttack&&!float.IsNaN(AirWatch.Landed(time))||PlungeWatch.Is(p.LastAttack)&&MathUtil.Finite(PlungeWatch.ImpactAt)));Keep();trAt=time;trDuration=duration;trActive=duration>1e-4f;
                 if(trActive){for(int i=0;i<MeleeRig.N;i++)trOffset.Q[i]=MeleeMath.Inverse(trCurrent.Q[i])*incoming.Q[i];trOffset.Position=incoming.Position-trCurrent.Position;}
             }
             if(trActive)
@@ -745,7 +785,7 @@ namespace ChipArena.UnityConversion
             if(planted)r.Motion*=(float)Math.Exp(-MeleeMath.Clamp(dt,0,.05f)*22);
             var vel=planted?new Vector3(0,p.Vel.Y,0):p.Vel;var shown=p;if(planted){shown=p.Clone();shown.Vel=vel;}
             gait.Locomotion(r,shown,time,dt,planted);SprintLean(p,dt);gaitPelvis=r.E[CapturedRig.Pelvis];
-            var a=AttackPose(p,time);TrackSwing(p,a,time);WatchAir(p,a,time);airLive=false;
+            var a=AttackPose(p,time);TrackSwing(p,a,time);WatchAir(p,a,time);WatchPlunge(p,time);airLive=false;plungeStuck=false;
             // Source order (sampleCharacter): juggle, knockdown, hitstun, roll, then block, special, cut or guard; the light hit
             // reaction rides the last three. Native layers pose juggles, knockdowns, rolls and specials over the captured guard.
             if(p.Juggle||p.Down){Ready(set,p,time,MeleeReady(p,time));overlay?.Invoke(r);r.MocapPosed=false;}
@@ -771,15 +811,15 @@ namespace ChipArena.UnityConversion
                     // follow-up, the cut it follows); its footwork blends from the ankles as the gait placed them.
                     // A chain enters from the last swing's live follow-through instead (ChainBase), its feet from where they stood.
                     bool chained=Chained(p);CarryHold(RunCarry(),time,p);float entry=chained?ChainEntry(a.Windup):PhraseEntry(p,a.Windup),k=a.Age<entry?MeleeMath.Ease(a.Age/entry):1,carry=MeleeReady(p,time);
-                    StartFeet(p,a,time);bool air=AirSwing(p),sprint=!air&&SprintSwing(p);
+                    StartFeet(p,a,time);bool plunge=PlungeSwing(p),air=!plunge&&AirSwing(p),sprint=!plunge&&!air&&SprintSwing(p);
                     if(k<1){entryAnkles[0]=r.AnkleInGroup(true);entryAnkles[1]=r.AnkleInGroup(false);if(chained)ChainBase(set,p,time);else if(!(p.Followup&&FollowupBase(set,p)))Ready(set,p,time,carry);}
-                    if(air)AirCut(set,p,a,HitStop(p,a),k,time);else if(sprint)SprintCut(set,p,a,HitStop(p,a),k);else Cut(set,p,a,HitStop(p,a),k);swingNow.Drawn=time;swingNow.Air=airLive=air;swingNow.Sprint=sprint;leapLive=sprint&&NativeSprintAttackRules.Leaps(p.Spec);
+                    if(plunge)PlungeCut(set,p,time);else if(air)AirCut(set,p,a,HitStop(p,a),k,time);else if(sprint)SprintCut(set,p,a,HitStop(p,a),k);else Cut(set,p,a,HitStop(p,a),k);swingNow.Drawn=time;swingNow.Air=airLive=air;swingNow.Sprint=sprint;swingNow.Plunge=plunge;leapLive=sprint&&NativeSprintAttackRules.Leaps(p.Spec);plungeLive=plunge;
                 }
                 var light=ReactionOf(p);if(light!=null)React(p,light,time,false);
             }
             // The gait takes the footwork's feet over exactly (not within its 1.5 cm), so a swing hands its planted soles on unmoved.
             gait.SyncTolerance=stepped?0:MeleeGait.SyncNear;stepped=false;
-            if(JumpLayer!=null){JumpLayer.LandScale=HeavyLanding(p,time);JumpLayer.Leap=leapLive;}leapLive=false;
+            if(JumpLayer!=null){JumpLayer.LandScale=HeavyLanding(p,time);JumpLayer.Leap=leapLive||plungeLive;}leapLive=false;plungeLive=false;
             SprintLayer?.Melee(r,p,time,dt);
             JumpLayer?.Melee(r,p,time,dt);
             HitLayer?.Layer(r,time);
@@ -820,7 +860,8 @@ namespace ChipArena.UnityConversion
         }
         private void FloorGuard(MeleeSet set,MeleeView p,float time)
         {
-            if(!p.Grounded||!Rig.MocapPosed)return;
+            // A plunging stab's blade stays in the floor until it comes free (NativePlungePose).
+            if(!p.Grounded||!Rig.MocapPosed||plungeStuck)return;
             float rate=p.AttackRate>0?p.AttackRate:1,end=!float.IsNaN(p.SwingUntil)?p.SwingUntil:p.LastAttack+p.Windup+.16f/rate,age=time-end;
             bool recovering=p.Spec=="daggers"&&(p.AttackIndex>0?p.AttackIndex:1)%4!=0&&age>=0&&age<Recovery(p.Spec)/rate+1&&!p.Guarding&&p.BlockTime<=0&&!(p.HitStunUntil>time)&&!(p.RollAt>-90&&p.RollAt>p.LastAttack)&&!p.Action(time);
             MeleeCapture.FinishRecovery(Rig,set,time,recovering,rate,p.Spec,wrists,keptAxes);

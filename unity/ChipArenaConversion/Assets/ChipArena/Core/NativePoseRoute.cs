@@ -1,7 +1,7 @@
 namespace ChipArena.UnityConversion
 {
     /// <summary>Which pose path a presented pilot takes (CapturedAnimation.Player.ActorPose). Presentation only.</summary>
-    public enum PoseRoute{Generic,CapturedMelee,Magic,Fighter,Gun}
+    public enum PoseRoute{Generic,CapturedMelee,Magic,Fighter,Gun,Bow}
     /// <summary>
     /// character-animation.ts sampleCharacter by weapon class: captured melee (sword, daggers, greatsword, shield) runs the
     /// melee pipeline; every magic-class pilot, the four schools and L33t H4x (MagicPose.School), walks on the magic gait
@@ -14,9 +14,11 @@ namespace ChipArena.UnityConversion
         public static PoseRoute For(Actor a,bool firstPerson)
         {
             if(a==null||firstPerson)return PoseRoute.Generic;
+            // The bow (Core/NativeBowMotion), keyed by its replicated spec whatever weapon id the simulation gives it.
+            if(NativeBowWire.Is(a.SourceSpec))return PoseRoute.Bow;
             if(a.MagicVisual==0&&a.Weapon==WeaponId.Sword&&MeleeMotion.Handles(a.SourceSpec))return PoseRoute.CapturedMelee;
             if(MagicPose.School(a)>0)return PoseRoute.Magic;
-            if(NativeFighterPose.Handles(a.SourceSpec))return PoseRoute.Fighter;
+            if(NativeFighterPose.Handles(a.SourceSpec)||CyberLordMotion.Handles(a.SourceSpec))return PoseRoute.Fighter;
             if(GunRules.Ranged(a.Weapon)&&a.SourceSpec!="siren")return PoseRoute.Gun;
             return PoseRoute.Generic;
         }
@@ -26,6 +28,6 @@ namespace ChipArena.UnityConversion
         /// for the Siren, who carries no blade and whose motion writes every joint (motion.ts): the floor guard bent her right
         /// claw up through the Slam and the Rush while the left one reached the floor.
         /// </summary>
-        public static bool SwordLayers(Actor a)=>a!=null&&a.Weapon==WeaponId.Sword&&MagicPose.School(a)==0&&a.SourceSpec!="siren";
+        public static bool SwordLayers(Actor a)=>a!=null&&a.Weapon==WeaponId.Sword&&MagicPose.School(a)==0&&a.SourceSpec!="siren"&&!NativeBowWire.Is(a.SourceSpec);
     }
 }

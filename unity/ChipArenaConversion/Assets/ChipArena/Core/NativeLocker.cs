@@ -123,7 +123,8 @@ namespace ChipArena.UnityConversion
                 case "dev-emperor":return "The Emperor's storm entrance.";
                 case "dev-ansatsuken":return "The rain warrior's entrance.";
                 case "dev-matrix":return "The L33T throne entrance.";
-                case "sheldon-intro":return "Glitches in, hooded, and grins.";
+                case "sheldon-intro":return "Rezzes in out of the data, hooded, and stares.";
+                case "dev-cyberlord":return "Built from light, then a hardlight palm strike.";
             }
             if(id!=null&&id.StartsWith("weapon-",StringComparison.Ordinal))return Title(id.Substring(7))+" signature entrance.";
             return "";
@@ -134,7 +135,7 @@ namespace ChipArena.UnityConversion
             {
                 case "orbital-drop":return "rocket";case "grid-rez":return "boxes";case "holo-projection":return "scan";case "blackout":return "eclipse";
                 case "skyline-zip":return "spline";case "hero-landing":return "chevrons-down-up";case "overclock":return "cpu";
-                case "dev-siren":return "skull";case "dev-emperor":return "cloud-lightning";case "dev-ansatsuken":return "hand-fist";case "dev-matrix":return "terminal";case "sheldon-intro":return "scan-line";
+                case "dev-siren":return "skull";case "dev-emperor":return "cloud-lightning";case "dev-ansatsuken":return "hand-fist";case "dev-matrix":return "terminal";case "sheldon-intro":return "scan-line";case "dev-cyberlord":return "diamond";
             }
             return null;
         }
@@ -198,6 +199,7 @@ namespace ChipArena.UnityConversion
             {
                 // The gun Q kit (Core/NativeGunKit.Icon, the HUD cards share it): hammer for Fan the Hammer, gauge for Overdrive.
                 case "fan-hammer":case "overdrive":return NativeGunKit.Icon(id);
+                case NativeBowWire.VolleyId:case NativeBowWire.RainId:return NativeBowHud.Icon(id);
                 case "ads":return w!=null&&w.id=="rifle"?"scan-line":"crosshair";case "frag-grenade":return "bomb";case "rocket":return "rocket";case "orbital-mark":return "target";
                 case "flame-lance":return "flame";case "meteor-strike":return "sun";case "tidal-wave":return "waves";case "geyser-wall":return "droplets";
                 case "blink-strike":return "zap";case "ball-lightning":return "orbit";case "shadow-shackles":return "anchor";case "singularity":return "eclipse";
