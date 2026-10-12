@@ -18,7 +18,7 @@ internal static class Program
             SirenDropChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};
             var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
-            MeleeKitChecks.Run(data);WhirlwindChecks.Run(data);NativeMeleeFeelChecks.Run(data);JumpSimulationChecks.Run(data);
+            MeleeKitChecks.Run(data);WhirlwindChecks.Run(data);RangedAbilityChecks.Run(data);NativeMeleeFeelChecks.Run(data);JumpSimulationChecks.Run(data);
             BrickfallChecks.Run(root,data);
             LocomotionChecks.Run(data);
             ParityLogicChecks.Run(data);ParityFollowupChecks.Run(data);
@@ -41,6 +41,7 @@ internal static class Program
             foreach(var result in UiMotionChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in LoadoutChecks.Run(data))Console.WriteLine("PASS "+result);
             LockerChecks.Run(root,data);
+            ClassIconChecks.Run(root,data);
             PortraitBackChecks.Run(root);
             NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
