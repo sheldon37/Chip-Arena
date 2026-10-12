@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — ArenaPresentation constructor build blocker
+- Branch `codex/arena-constructor-fix-20261012`, base shared/cloud `27e6e8f`. Owner's Windows log confirms Kernel Panic authority now passes, then host/guest interaction setup logs Unity `CreateImpl` constructor errors and null `cyberViews` in CyberPoseTime.
+- `NativeCyberCityPresentation.metroOne` allocated a native MaterialPropertyBlock in an ArenaPresentation instance field initializer, even on non-Cyber-City maps. Unity rejects that construction and later partial-class initializers do not finish. Defer that allocation to the actual compatibility draw path and reuse it thereafter. No null-guard masking, visual redesign, simulation, timing, hitbox or network changes. Claude's MetroBatch allocations remain inside render-time setup, not component construction.
+- Validation: 35 managed-core groups passed with the current shared Bow/Cyber City changes (DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 /tmp/chip-dotnet/dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -c Release). This suite does not execute MonoBehaviour native constructors. `git diff --check` passed. Unity Editor/PhysX, native allocation and Windows build cannot be executed here; next Build-and-Publish run must verify the interaction gate. Presentation ownership handoff: Claude, preserve deferred native allocation when editing this renderer.
+- Publication: follow-up to the owner's approved build repair/merge. Source PR and shared/cloud integration receipts are in GitHub; no compiled package published from this environment.
+
 ## 2026-10-12 — Astra — isolate Kernel Panic build validation
 - Branch `codex/kernel-panic-build-fix-20261012`, base shared `5e0a19c`; fixes the owner’s Windows gate failure on `9607246` (`connect locks both and removes colliders`).
 - Root cause: `ValidateFollowupParity` leaves seat B marked `AuthorityBoss`, a configured PvE match and sandbox state. The following Kernel Panic fixture reuses that arena, so the real capsule connect correctly rejects B as a boss. Clearing only the boss flag would also leave PvE damage/sandbox behavior contaminating later assertions.
