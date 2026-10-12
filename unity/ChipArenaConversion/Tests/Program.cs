@@ -18,7 +18,7 @@ internal static class Program
             SirenDropChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};
             var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
-            MeleeKitChecks.Run(data);NativeMeleeFeelChecks.Run(data);JumpSimulationChecks.Run(data);
+            MeleeKitChecks.Run(data);WhirlwindChecks.Run(data);NativeMeleeFeelChecks.Run(data);JumpSimulationChecks.Run(data);
             BrickfallChecks.Run(root,data);
             LocomotionChecks.Run(data);
             ParityLogicChecks.Run(data);ParityFollowupChecks.Run(data);
