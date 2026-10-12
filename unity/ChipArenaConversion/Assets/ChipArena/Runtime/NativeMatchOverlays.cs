@@ -89,8 +89,8 @@ namespace ChipArena.UnityConversion
             // count-tick 1 s: transparent at 1.5x, opaque at 1x by 18%, settling to .93x (cubic-bezier(.2,.9,.25,1) per segment).
             float t=Mathf.Clamp01(tick-remaining),a,s,blur=0;if(t<.18f){float u=M.Bezier(.2f,.9f,.25f,1,t/.18f);a=u;s=1.5f-.5f*u;blur=6*(1-u);}else{a=1;s=1-.07f*M.Bezier(.2f,.9f,.25f,1,(t-.18f)/.82f);}
             float W=U.W,top=U.H*.38f-65;U.Push(new Vector2(W/2,top+52),Vector2.zero,s);
-            U.Text(new Rect(0,top,W,104),tick.ToString(),104,U.A(U.Hex(0xf4f4f5),a),TextAnchor.MiddleCenter,bold:true,tracking:-.04f,glow:U.A(U.Hex(0xff6b35),.44f*a),shadow:new Color(0,0,0,.6f*a),blur:blur);U.Pop();
-            U.Text(new Rect(0,top+114,W,17),"GET READY",13,U.Hex(0xff996f),TextAnchor.UpperCenter,bold:true,tracking:.32f,shadow:new Color(0,0,0,.8f));
+            U.Text(new Rect(0,top,W,104),tick.ToString(),104,NativeCyberTheme.Ink(a),TextAnchor.MiddleCenter,bold:true,tracking:-.04f,glow:NativeCyberTheme.Cyan(.5f*a),shadow:new Color(0,0,0,.6f*a),blur:blur);U.Pop();
+            U.Text(new Rect(0,top+114,W,17),"GET READY",13,NativeCyberTheme.CyanSoft(),TextAnchor.UpperCenter,bold:true,tracking:.32f,shadow:new Color(0,0,0,.8f));
         }
 
         // ---- Round result (.result-sequence) and the set-score overview it shows ----
@@ -101,15 +101,19 @@ namespace ChipArena.UnityConversion
             float F=Mathf.Clamp(W*.046f,34,64),h2=Mathf.Clamp(W*.014f,15,19),bw=Mathf.Min(680,W*.85f),bx=(W-bw)/2;
             // result-arrive .45 s from 12 px above; result-word .6 s closes the heading's tracking from .4em to .08em.
             float arrive=M.Bezier(.16f,.8f,.2f,1,M.Progress(age,0,.45f)),word=M.Bezier(.16f,.8f,.2f,1,M.Progress(age,0,.6f)),by=H*.19f-12*(1-arrive);
-            float bh=16+F+12+h2*1.35f+6+8+20+10+16;var band=U.A(U.Hex(0x101116),.88f*arrive);
+            // The band: navy glass fading out at both ends, thin cyan rules along its top and bottom; the title in cyan for my
+            // side's win, danger for a knockout, ink for a double knockout, with the arrival glitch (none with Reduced effects).
+            float bh=16+F+12+h2*1.35f+6+8+20+10+16;var band=NativeCyberTheme.Navy(.9f*arrive);
             U.HGradient(new Rect(bx,by,bw*.22f,bh),Color.clear,band);U.Fill(new Rect(bx+bw*.22f,by,bw*.56f,bh),band);U.HGradient(new Rect(bx+bw*.78f,by,bw*.22f,bh),band,Color.clear);
-            Color tc=won?U.Hex(0xff6b35):winner!=null?U.Hex(0xff5a6a):Color.white;
-            U.Text(new Rect(bx,by+16,bw,F),title,F,U.A(tc,word*arrive),TextAnchor.MiddleCenter,bold:true,tracking:.4f-.32f*word,shadow:new Color(0,0,0,.66f*word*arrive),blur:6*(1-word));
-            float y=by+16+F+12;U.Text(new Rect(bx+28,y,bw-56,h2*1.35f),match.Result,h2,U.A(U.Hex(0xd7d8de),arrive),TextAnchor.MiddleCenter,bold:true);y+=h2*1.35f+14;
+            Color tc=won?NativeCyberTheme.Cyan():winner!=null?NativeCyberTheme.Danger():NativeCyberTheme.Ink();
+            foreach(float ry in new[]{by,by+bh-NativeHudChrome.Snap(1)}){U.HGradient(new Rect(bx,ry,bw*.5f,NativeHudChrome.Snap(1)),Color.clear,U.A(tc,.75f*arrive));U.HGradient(new Rect(bx+bw*.5f,ry,bw*.5f,NativeHudChrome.Snap(1)),U.A(tc,.75f*arrive),Color.clear);}
+            var titleLine=new Rect(bx,by+16,bw,F);NativeHudChrome.Glitch(titleLine,title,F,age-.12f,word*arrive,TextAnchor.MiddleCenter,prefs.reducedEffects,true,false,.4f-.32f*word);
+            U.Text(titleLine,title,F,U.A(tc,word*arrive),TextAnchor.MiddleCenter,bold:true,tracking:.4f-.32f*word,glow:U.A(tc,.3f*word*arrive),shadow:new Color(0,0,0,.66f*word*arrive),blur:6*(1-word));
+            float y=by+16+F+12;U.Text(new Rect(bx+28,y,bw-56,h2*1.35f),match.Result,h2,NativeCyberTheme.Ink(arrive),TextAnchor.MiddleCenter,bold:true);y+=h2*1.35f+14;
             string next=(final?"Match results":match.SetWinner!=0?"Chip selection":winner!=null?"Next round":"Round replay")+" in "+Mathf.CeilToInt(left)+"s";
-            U.Text(new Rect(bx,y,bw,20),next,13,U.A(U.Hex(0xa6a7ad),arrive),TextAnchor.MiddleCenter);
+            U.Text(new Rect(bx,y,bw,20),next,13,NativeCyberTheme.Muted(arrive),TextAnchor.MiddleCenter,mono:true);
             // p:after — a 2 px bar over the middle half that shrinks to nothing over the result's remaining time.
-            float bar=bw*.5f*Mathf.Clamp01(left/5);U.Round(new Rect(bx+bw*.25f,y+28,bar,2),U.A(U.Hex(0xa6a7ad),.55f*arrive),4);
+            float bar=bw*.5f*Mathf.Clamp01(left/5);U.Fill(new Rect(bx+bw*.25f,y+28,bw*.5f,2),NativeCyberTheme.Edge(.6f*arrive));U.Fill(new Rect(bx+bw*.25f,y+28,bar,2),NativeCyberTheme.Cyan(.85f*arrive));
             MatchOverview();
         }
         // match-score.ts matchScoreHud, top right (match-hud.css): set circles per pilot or team, then who is still alive.
@@ -118,25 +122,25 @@ namespace ChipArena.UnityConversion
             float W=U.W,w=310,x=W-20-w,y=62;var me=arena.Local.Seat;var players=match.Seats.Where(s=>!s.AuthorityBoss).ToList();
             var scoring=match.Teams?players.Where((p,i)=>players.FindIndex(q=>q.team==p.team)==i).ToList():players;int wins=Math.Max(1,Math.Min(20,match.SetsToWin)),columns=Math.Min(10,wins);
             float rows=Mathf.Ceil(wins/(float)columns),row=Mathf.Max(30,rows*15+10),aliveH=players.Count*34;float h=14+20+scoring.Count*row+10+9+19+aliveH+14;
-            U.Round(new Rect(x,y,w,h),U.Hex(0x13141c,.87f),10,new Color(1,1,1,.14f));float cy=y+14;
-            U.Text(new Rect(x+14,cy,w-28,16),"SET SCORE",12,U.Hex(0xedf2fc),TextAnchor.MiddleLeft,tracking:.06f);
-            U.Text(new Rect(x+14,cy,w-28,16),(match.RoundsPerSet==2?"◐ ROUND":"1/"+match.RoundsPerSet+" PER ROUND")+" · ● SET",10,U.Hex(0xaeb6c8),TextAnchor.MiddleRight);cy+=24;
+            NativeHudChrome.Panel(new Rect(x,y,w,h));float cy=y+14;
+            U.Text(new Rect(x+14,cy,w-28,16),"SET SCORE",12,NativeCyberTheme.Ink(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
+            U.Text(new Rect(x+14,cy,w-28,16),(match.RoundsPerSet==2?"◐ ROUND":"1/"+match.RoundsPerSet+" PER ROUND")+" · ● SET",10,NativeCyberTheme.Muted(),TextAnchor.MiddleRight);cy+=24;
             foreach(var p in scoring)
             {
                 bool you=match.Teams?p.team==me.team:p.id==me.id;var color=match.Teams?TeamColor(p.team):SeatColor(p);string name=match.Teams?NativeMatch.TeamNames[TeamIndex(p.team)]+" team":p.name;
-                U.Fill(new Rect(x+14,cy,2,row-4),color);U.Text(new Rect(x+25,cy,150,row-4),name+(you?"  YOU":""),13,U.Hex(0xedf2fc),TextAnchor.MiddleLeft,bold:you);
+                U.Fill(new Rect(x+14,cy,2,row-4),color);U.Text(new Rect(x+25,cy,150,row-4),name+(you?"  YOU":""),13,NativeCyberTheme.Ink(),TextAnchor.MiddleLeft,bold:you);
                 int sets=Mathf.Clamp(p.score,0,wins);float partial=match.SetWinner!=0?0:Mathf.Clamp01(p.roundWins/(float)Math.Max(1,match.RoundsPerSet));
                 for(int i=0;i<wins;i++){int c=i%columns,r=i/columns;var dot=new Rect(x+w-14-(columns-c)*15+3,cy+(row-4-rows*15+3)/2+r*15,12,12);U.Round(dot,new Color(1,1,1,.045f),6,color);
                     if(i<sets){U.Glow(dot,U.A(color,.42f),3);U.Round(dot,color,6);}else if(i==sets&&partial>0)U.Pie(dot,color,partial);}
                 cy+=row;
             }
-            cy+=10;U.Fill(new Rect(x+14,cy,w-28,1),U.Hex(0x414657));cy+=9;int alive=players.Count(p=>p.connected&&p.alive);
-            U.Text(new Rect(x+14,cy,w-28,14),alive+" / "+players.Count+" ALIVE",11,U.Hex(0xc6d0e4),TextAnchor.MiddleLeft,bold:true,tracking:.08f);cy+=19;
+            cy+=10;U.Fill(new Rect(x+14,cy,w-28,1),NativeCyberTheme.Edge());cy+=9;int alive=players.Count(p=>p.connected&&p.alive);
+            U.Text(new Rect(x+14,cy,w-28,14),alive+" / "+players.Count+" ALIVE",11,NativeCyberTheme.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);cy+=19;
             foreach(var p in players)
             {
                 bool out_=!p.connected||!p.alive;var c=U.A(Color.white,out_?.55f:1);U.Fill(new Rect(x+14,cy,2,29),match.Teams?TeamColor(p.team):SeatColor(p));
-                U.Text(new Rect(x+24,cy,w-90,29),p.name,13,U.A(U.Hex(0xedf2fc),c.a),TextAnchor.MiddleLeft);if(match.Teams)U.Text(new Rect(x+24+U.Measure(p.name,13).x+7,cy,60,29),NativeMatch.TeamNames[TeamIndex(p.team)],10,U.A(TeamColor(p.team),c.a),TextAnchor.MiddleLeft);
-                if(out_)U.Text(new Rect(x+14,cy,w-36,29),!p.connected?"OFFLINE":"OUT",11,U.Hex(0xa4a9b6),TextAnchor.MiddleRight,mono:true);cy+=34;
+                U.Text(new Rect(x+24,cy,w-90,29),p.name,13,NativeCyberTheme.Ink(c.a),TextAnchor.MiddleLeft);if(match.Teams)U.Text(new Rect(x+24+U.Measure(p.name,13).x+7,cy,60,29),NativeMatch.TeamNames[TeamIndex(p.team)],10,U.A(TeamColor(p.team),c.a),TextAnchor.MiddleLeft);
+                if(out_)U.Text(new Rect(x+14,cy,w-36,29),!p.connected?"OFFLINE":"OUT",11,NativeCyberTheme.Muted(),TextAnchor.MiddleRight,mono:true);cy+=34;
             }
         }
 
@@ -151,13 +155,18 @@ namespace ChipArena.UnityConversion
         {
             if(matchEndAt<0)matchEndAt=Time.unscaledTime;float enter=U.PanelIn(Time.unscaledTime-matchEndAt),W=U.W,H=U.H;var me=arena.Local.Seat;var winner=match.Seats.Find(s=>s.id==match.Winner);bool lost=HostLost;
             var players=match.Seats.Where(s=>!s.AuthorityBoss).OrderByDescending(s=>s.score).ToList();float pw=Mathf.Min(640,W-32),ph=32+22+40+60+24+players.Count*68+40+24+48+32,px=(W-pw)/2,py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
-            U.Push(new Vector2(W/2,py+ph/2),Vector2.zero,.99f+.01f*enter);U.Panel(new Rect(px,py,pw,ph),enter);float y=py+32,ix=px+32,iw=pw-64;
-            U.Text(new Rect(ix,y,iw,16),"CHIP ARENA",12,U.A(U.Hex(0xc0c1ca),enter),TextAnchor.MiddleLeft,bold:true,tracking:.18f);y+=22;
-            U.Text(new Rect(ix,y,iw,40),lost?"Match ended":OnMySide(winner)?"Match won":winner!=null?"Match lost":"Match ended",30,U.A(U.Hex(0xf4f4f5),enter),TextAnchor.MiddleLeft,bold:true,tracking:-.035f);y+=50;
-            U.Text(new Rect(ix,y,iw,40),lost?(networkStatus.Length>0?networkStatus:"The host disconnected."):match.Result,16,U.A(U.Hex(0xbfc0c9),enter),TextAnchor.UpperLeft,wrap:true);y+=60;
-            U.Text(new Rect(ix,y,iw,20),"SETS WON",12,U.A(U.Hex(0x9799a6),enter),TextAnchor.MiddleCenter,mono:true);y+=24;
-            foreach(var p in players){var r=new Rect(ix,y+12,iw,56);U.Round(r,U.Hex(0x18191f,.94f*enter),4,U.A(U.Hex(0x454650),enter));U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.name+(p.id==me.id?" · YOU":""),15,U.A(U.Hex(0xf4f4f5),enter),TextAnchor.MiddleLeft);U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.score.ToString(),15,U.A(Color.white,enter),TextAnchor.MiddleRight,bold:true);y+=68;}
-            U.Text(new Rect(ix,y+8,iw,20),me.chips.Values.Sum()+" CHIPS INSTALLED · BUILD COMPLETE",13,U.A(U.Hex(0xa6a7ad),enter),TextAnchor.MiddleCenter);y+=40+24;
+            // The in-match holographic panel (NativeHudChrome) rather than the menu .panel: the result in my side's tone (cyan
+            // won, danger lost), the standings as chamfered rows (mine edged in cyan). The buttons stay the shared MenuButton.
+            bool won=!lost&&OnMySide(winner),defeat=!lost&&!won&&winner!=null;Color tone=won?NativeCyberTheme.Cyan():defeat?NativeCyberTheme.Danger():NativeCyberTheme.CyanSoft();
+            U.Push(new Vector2(W/2,py+ph/2),Vector2.zero,.99f+.01f*enter);var panel=new Rect(px,py,pw,ph);U.Glow(new Rect(px,py+30,pw,ph),new Color(0,0,0,.45f*enter),60);U.Backdrop(panel,0,16,enter);
+            NativeHudChrome.Panel(panel,enter,tone,14,NativeHudChrome.Corners.Diagonal,true,.94f);float y=py+32,ix=px+32,iw=pw-64;
+            U.Text(new Rect(ix,y,iw,16),"CHIP ARENA",12,NativeCyberTheme.CyanSoft(enter),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.18f);y+=22;
+            U.Text(new Rect(ix,y,iw,40),lost?"Match ended":won?"Match won":defeat?"Match lost":"Match ended",30,U.A(won||defeat?tone:NativeCyberTheme.Ink(),enter),TextAnchor.MiddleLeft,bold:true,tracking:-.035f,glow:U.A(tone,.25f*enter));y+=50;
+            U.Text(new Rect(ix,y,iw,40),lost?(networkStatus.Length>0?networkStatus:"The host disconnected."):match.Result,16,NativeCyberTheme.Muted(enter),TextAnchor.UpperLeft,wrap:true);y+=60;
+            U.Text(new Rect(ix,y,iw,20),"SETS WON",12,NativeCyberTheme.Muted(enter),TextAnchor.MiddleCenter,mono:true,tracking:.12f);y+=24;
+            foreach(var p in players){var r=new Rect(ix,y+12,iw,56);bool mine=p.id==me.id;NativeHudChrome.Cut(r,NativeCyberTheme.Indigo(.92f*enter),NativeHudCyber.CardCut);NativeHudChrome.Outline(r,mine?NativeCyberTheme.Cyan(.8f*enter):NativeCyberTheme.Edge(enter),NativeHudCyber.CardCut);
+                U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.name+(mine?" · YOU":""),15,NativeCyberTheme.Ink(enter),TextAnchor.MiddleLeft);U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.score.ToString(),15,mine?NativeCyberTheme.Cyan(enter):NativeCyberTheme.Ink(enter),TextAnchor.MiddleRight,bold:true,mono:true);y+=68;}
+            U.Text(new Rect(ix,y+8,iw,20),me.chips.Values.Sum()+" CHIPS INSTALLED · BUILD COMPLETE",13,NativeCyberTheme.Muted(enter),TextAnchor.MiddleCenter,mono:true);y+=40+24;
             float bw=(iw-10)/2;
             if(lost){if(MenuButton(new Rect(ix,y,iw,48),"log-out","Return to Main Menu",null,true,true,enter,15,true))LeaveLostHost();}
             else
@@ -187,11 +196,12 @@ namespace ChipArena.UnityConversion
             float ResultH()=>10+(topH+portrait+4+21.6f+17)+10+chipsH+10+Mathf.CeilToInt(stats/(float)statCols)*25+10;
             if(head+lines*ResultH()+(lines-1)*14+foot>H-32){portrait=0;topH=36;if((cw-20-20)/3>=90)statCols=3;}
             float resH=ResultH(),cardH=topH+portrait+4+21.6f+17,ph=Mathf.Min(H-32,head+lines*resH+(lines-1)*14+foot),px=(W-pw)/2,py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
-            U.Panel(new Rect(px,py,pw,ph),enter);float y=py+32,ix=px+32;
-            U.Text(new Rect(ix,y,iw,16),"BOSS TEST · THE SIREN",12,U.A(U.Hex(0xc0c1ca),enter),TextAnchor.MiddleLeft,bold:true,tracking:.18f);y+=16+8;
-            U.Text(new Rect(ix,y,iw,46),victory?"VICTORY":"DEFEAT",38,U.A(victory?U.Hex(0xffe7a6):U.Hex(0xff8a7a),enter),TextAnchor.MiddleLeft,bold:true,tracking:.08f,glow:U.A(victory?U.Hex(0xffb84a):U.Hex(0xff3535),.4f*enter));y+=46+6;
-            U.Text(new Rect(ix,y,iw,20),victory?"THE SIREN IS SILENCED":"THE SIREN SMILES",13,U.A(victory?U.Hex(0xc9bfff):U.Hex(0xff8a7a),enter),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);y+=20;
-            if(bossLine!=null){U.Text(new Rect(ix,y+6,iw,20),bossLine,15,U.A(U.Hex(0xcfd2dc),enter),TextAnchor.MiddleLeft);y+=26;}y+=16;
+            // The in-match holographic panel (NativeHudChrome): victory in the gold warn tone, defeat in danger.
+            var panel=new Rect(px,py,pw,ph);U.Glow(new Rect(px,py+30,pw,ph),new Color(0,0,0,.45f*enter),60);U.Backdrop(panel,0,16,enter);NativeHudChrome.Panel(panel,enter,victory?NativeCyberTheme.Warn():NativeCyberTheme.Danger(),14,NativeHudChrome.Corners.Diagonal,true,.94f);float y=py+32,ix=px+32;
+            U.Text(new Rect(ix,y,iw,16),"BOSS TEST · THE SIREN",12,NativeCyberTheme.CyanSoft(enter),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.18f);y+=16+8;
+            U.Text(new Rect(ix,y,iw,46),victory?"VICTORY":"DEFEAT",38,victory?NativeCyberTheme.Warn(enter):NativeCyberTheme.Danger(enter),TextAnchor.MiddleLeft,bold:true,tracking:.08f,glow:U.A(victory?NativeCyberTheme.Warn():NativeCyberTheme.Danger(),.4f*enter));y+=46+6;
+            U.Text(new Rect(ix,y,iw,20),victory?"THE SIREN IS SILENCED":"THE SIREN SMILES",13,victory?NativeCyberTheme.CyanSoft(enter):NativeCyberTheme.Danger(enter),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);y+=20;
+            if(bossLine!=null){U.Text(new Rect(ix,y+6,iw,20),bossLine,15,NativeCyberTheme.Ink(enter),TextAnchor.MiddleLeft);y+=26;}y+=16;
             for(int i=0;i<rows.Count;i++)
             {
                 var r=rows[i];var c=new Rect(ix+(i%cols)*(cw+14),y+(i/cols)*(resH+14),cw,resH);bool crown=r==mvp&&r.DamageBoss>0;PveResultCard(c,r,i,crown,portrait,topH,cardH,statCols,enter,t);
@@ -203,7 +213,7 @@ namespace ChipArena.UnityConversion
             float ww=waitingFor>0?U.Measure(waitingText,13).x:0,group=(retry?bw+12:0)+bw+(ww>0?12+ww:0),bx=px+(pw-group)/2;
             if(retry){if(MenuButton(new Rect(bx,y,bw,48),"rotate-cw","Retry",null,true,true,enter,15,true))VoteRematch();bx+=bw+12;}
             if(MenuButton(new Rect(bx,y,bw,48),"log-out","Return to Menu",null,true,true,enter,15,true)){if(HostLost)LeaveLostHost();else{afterMatch=MenuScreen.Home;ReturnMainMenu();}}
-            if(ww>0)U.Text(new Rect(bx+bw+12,y,ww+4,48),waitingText,13,U.Hex(0xa6a7ad,enter),TextAnchor.MiddleLeft);
+            if(ww>0)U.Text(new Rect(bx+bw+12,y,ww+4,48),waitingText,13,NativeCyberTheme.Muted(enter),TextAnchor.MiddleLeft);
         }
         private int waitingFor=-1;private string waitingText="";
         // .pve-result-boss on a defeat: the Siren's remaining health, or the wave the party fell on before she appeared.
@@ -222,7 +232,7 @@ namespace ChipArena.UnityConversion
         // gold badge on the top edge.
         private void PveResultCard(Rect c,NativePveRow r,int index,bool crown,float portrait,float topH,float cardH,int statCols,float e,float t)
         {
-            var seat=r.Pilot.Seat;if(crown)U.Glow(c,U.Hex(0xffb84a,.13f*e),24);U.Round(c,U.Hex(0x121319,e),12,crown?U.Hex(0xffd36a,.47f*e):new Color(1,1,1,.08f*e));
+            var seat=r.Pilot.Seat;if(crown)U.Glow(c,NativeCyberTheme.Warn(.13f*e),24);NativeHudChrome.Cut(c,NativeCyberTheme.Indigo(.92f*e),NativeHudCyber.Cut);NativeHudChrome.Outline(c,crown?NativeCyberTheme.Warn(.6f*e):NativeCyberTheme.Edge(e),NativeHudCyber.Cut);
             var weapon=content.weapons.FirstOrDefault(w=>w.id==seat.spec);bool you=r.Pilot==arena.Local;
             var pilot=new LobbyPilot{name=seat.name,weapon=seat.spec,tag=seat.bot?"BOT":you?"YOU":"PILOT",ready=false,connected=true,bot=seat.bot,accent=HexColor(seat.accentColor,weapon!=null?(int)weapon.color:0xff6b35),body=HexColor(seat.bodyColor,0xe5e7eb)};
             var card=new Rect(c.x+10,c.y+10,c.width-20,cardH);LobbyCard(card,pilot,index,portrait,topH,false,false,e,t,true);
@@ -234,7 +244,7 @@ namespace ChipArena.UnityConversion
             {
                 var cell=new Rect(c.x+10+(i%statCols)*(colW+10),y+(i/statCols)*25,colW,21);U.Fill(new Rect(cell.x,cell.yMax,cell.width,1),new Color(1,1,1,.05f*e));
                 float ls=statCols>2?10:11,room=cell.width-U.Measure(stats[i].value,12,true,true).x-6;string label=stats[i].label;if(U.Measure(label,ls).x>room&&label=="Boss damage")label="Boss dmg";
-                U.Text(cell,Fit(label,ls,room,false,0),ls,U.Hex(0x9fa3b3,e),TextAnchor.MiddleLeft);U.Text(cell,stats[i].value,12,U.Hex(0xf1f2f6,e),TextAnchor.MiddleRight,bold:true,mono:true);
+                U.Text(cell,Fit(label,ls,room,false,0),ls,NativeCyberTheme.Muted(e),TextAnchor.MiddleLeft);U.Text(cell,stats[i].value,12,NativeCyberTheme.Ink(e),TextAnchor.MiddleRight,bold:true,mono:true);
             }
         }
         // .pve-result-chip badges (flex-wrap, gap 4): rarity-tinted fill and edge, the chip icon in the rarity colour, the name
