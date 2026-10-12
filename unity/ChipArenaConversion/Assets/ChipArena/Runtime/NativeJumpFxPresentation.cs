@@ -34,7 +34,8 @@ namespace ChipArena.UnityConversion
                 if(!tracks.TryGetValue(p.Seat.id,out var t))tracks[p.Seat.id]=t=new NativeJumpTrack();
                 int jumps=t.AirJumps;Vector3 feet=p.Body.transform.position-Vector3.up*.865f;
                 bool blocked=a.Hp<=0||a.Rolling(now)||a.StunUntil>now||a.JuggleUntil>now||NativeSpecialPose.Active(a,now)||NativeSpecialPose.Down(a,now);
-                t.Observe(now,a.Grounded,feet.y,blocked);
+                arena.PresentedJump(p,out bool grounded,out float airJumpAt);t.Explicit=true;
+                t.Observe(now,grounded,feet.y,blocked);t.AirJumpSignal(airJumpAt);
                 if(t.AirJumps>jumps&&a.Hp>0&&NativeJumpRules.Flips(p.Seat.spec))
                 {
                     var tint=NativeGlowRules.ArmorTint(a.AccentColor);if(bursts.Count>=16)bursts.RemoveAt(0);

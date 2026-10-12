@@ -10,6 +10,7 @@ namespace ChipArena.UnityConversion
         private readonly List<NativeGameFrame> replicaHistory=new List<NativeGameFrame>();
         private readonly NativeSnapshotClock replicaClock=new NativeSnapshotClock();
         private readonly NativePrediction predictor=new NativePrediction();
+        private float predictionAirJumpAt=-100;
         private Vector3 predictionCorrection;private float predictionPoseAt=-100,predictionPoseOffset;
         public float ReplicaRenderTime=>(float)replicaClock.Time;
         private static void SetReplicaPosition(Rigidbody body,Vector3 position)
@@ -26,7 +27,7 @@ namespace ChipArena.UnityConversion
                 swing.Followup=a.Followup;swing.SprintAttack=a.SprintAttack;swing.OpenerLunge=a.OpenerLunge;swing.Remaining=a.SwingRemaining;
             }
             bool melee=p!=null&&NativeMeleeRules.Standard(p.Seat.spec)&&frame.reloadEnd<=Time&&frame.blockEnd<=Time;
-            return new NativePredictionState{Time=Time,RollUntil=frame.rollEnd,Ready=frame.ready,Stamina=frame.stamina,Combo=a?.Combo??-1,ComboUntil=a?.ComboUntil??0,BufferUntil=a?.MeleeBufferUntil??-1,
+            return new NativePredictionState{JumpSpec=p?.Seat.spec,AirJumps=a?.AirJumps??0,AirJumpAt=a?.AirJumpAt??-100,Swimming=NativeHazards.InLava(MapId,Vec(frame.position)),Time=Time,RollUntil=frame.rollEnd,Ready=frame.ready,Stamina=frame.stamina,Combo=a?.Combo??-1,ComboUntil=a?.ComboUntil??0,BufferUntil=a?.MeleeBufferUntil??-1,
                 MeleeWeapon=melee?p.Weapon:null,MeleeStats=melee?p.Stats:null,Swing=swing,Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),
                 Speed=p==null?6.8f:(float)(6.8*p.Stats["speed"])*(p.Input.Aim&&p.Weapon.@class=="ranged"?(float)Content.Ads(p.Seat.spec).move:1),
                 Gravity=p==null?23:(float)(23*p.Stats["playerGravity"]),JumpSpeed=p==null?8.5f:(float)(8.5*p.Stats["jumpPower"]),
@@ -40,7 +41,7 @@ namespace ChipArena.UnityConversion
         private bool PredictionGrounded(V3 position)=>NativeGroundMotor.Probe(root.scene.GetPhysicsScene(),Vec(position)).Found;
         private void BufferReplica(NativeGameFrame frame,bool reset)
         {
-            if(reset){predictionPoseAt=-100;replicaHistory.Clear();replicaClock.Reset(frame.time);predictionCorrection=Vector3.zero;}
+            if(reset){predictionAirJumpAt=-100;predictionPoseAt=-100;replicaHistory.Clear();replicaClock.Reset(frame.time);predictionCorrection=Vector3.zero;}
             replicaHistory.Add(frame);while(replicaHistory.Count>32)replicaHistory.RemoveAt(0);replicaClock.Observe(frame.time);
             var local=frame.pilots.FirstOrDefault(p=>p.id==LocalId);
             if(local==null)return;
@@ -56,6 +57,18 @@ namespace ChipArena.UnityConversion
             predictor.Push(input,ConstrainPrediction,PredictionGrounded,id=>MeleeLockPoint(Local,id));
             if(predictor.State.Swing!=null)Local.Yaw=predictor.State.Swing.Yaw*Mathf.Rad2Deg;SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);
         }
+        public void PresentedJump(NativePilot p,out bool grounded,out float airJumpAt)
+        {
+            grounded=p.Pose.Grounded;airJumpAt=p.Pose.AirJumps>0?p.Pose.AirJumpAt:-100;
+            if(!Replica||p!=Local)return;
+            var state=predictor.State;grounded=state.Grounded;
+            // One event per airtime: an authority acknowledgement may correct its timestamp, but must not play it twice.
+            if(state.AirJumps==0)predictionAirJumpAt=-100;
+            else if(predictionAirJumpAt<=-90)predictionAirJumpAt=state.AirJumpAt+ReplicaRenderTime-state.Time;
+            airJumpAt=predictionAirJumpAt;
+        }
+        private void PredictedJumpPose(Actor a)
+        {PresentedJump(Local,out a.Grounded,out a.AirJumpAt);a.AirJumps=predictor.State.AirJumps;}
         private void PredictedMeleePose(Actor a)
         {
             var state=predictor.State;var s=state.Swing;if(state.MeleeWeapon==null||!state.CanMove)return;

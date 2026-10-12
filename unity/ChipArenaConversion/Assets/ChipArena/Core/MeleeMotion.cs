@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
     public sealed class MeleeView
     {
         public string Id="",Spec="sword";public float Yaw,Pitch,DashTime,Hp=100,LastAttack=-100,Windup=.14f,SwingAt=float.NaN,SwingUntil=float.NaN,AttackRate=1;
-        public Vector3 Vel;public bool Grounded=true,Sprinting,Guarding,Hurricane,WeaponAway;public int AttackIndex;
+        public float? AirJumpAt;public Vector3 Vel;public bool Grounded=true,Sprinting,Guarding,Hurricane,WeaponAway;public int AttackIndex;
         public bool Commit,Followup;public float CommitAt,CommitUntil,CommitYaw,StepAt,StepUntil,StepDistance;
         // The swing's feel flags (NativeMeleeFeel): a lock-on opener's long lunge and a swing entered from a sprint.
         public bool OpenerLunge,SprintAttack;

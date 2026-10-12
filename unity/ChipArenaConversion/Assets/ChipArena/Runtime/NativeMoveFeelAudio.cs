@@ -6,8 +6,8 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeAudio
     {
         // ---------- movement feel: the dagger air flip's whoosh (owner 2026-10-12, "Daggers can double-jump") ----------
-        // move.jump and move.land are played by MoveCues from the replicated contact flag. An air jump has no flag: each pilot's
-        // presented root is watched by the same rule the jump animation uses (Core NativeJumpTrack), and a dagger pilot's air
+        // move.jump and move.land use the replicated contact flag. AirJumpAt drives the same tracker used by the
+        // jump animation, on the predicted local or replicated remote timeline. A dagger pilot's air
         // jump plays the dagger swing a little faster as the flip's whoosh (no new bank key). Presentation only.
         private readonly Dictionary<int,NativeJumpTrack> jumpTracks=new Dictionary<int,NativeJumpTrack>();
         private int jumpGeneration=-1;
@@ -23,7 +23,8 @@ namespace ChipArena.UnityConversion
                 if(!jumpTracks.TryGetValue(p.Seat.id,out var track))jumpTracks[p.Seat.id]=track=new NativeJumpTrack();
                 int jumps=track.AirJumps;
                 bool blocked=a.Hp<=0||a.Rolling(t)||a.StunUntil>t||a.JuggleUntil>t||NativeSpecialPose.Active(a,t)||NativeSpecialPose.Down(a,t);
-                track.Observe(t,a.Grounded,p.Body.transform.position.y,blocked);
+                arena.PresentedJump(p,out bool grounded,out float airJumpAt);track.Explicit=true;
+                track.Observe(t,grounded,p.Body.transform.position.y,blocked);track.AirJumpSignal(airJumpAt);
                 if(track.AirJumps>jumps&&a.Hp>0&&NativeJumpRules.Flips(p.Seat.spec)){bool mine=p==me;BankPlay("melee.daggers.swing",p.Body.position,mine?FlipWhooshOwnGain:FlipWhooshGain,0,null,mine,null,FlipWhooshRate);}
             }
         }

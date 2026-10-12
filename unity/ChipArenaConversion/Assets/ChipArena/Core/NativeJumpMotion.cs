@@ -103,7 +103,7 @@ namespace ChipArena.UnityConversion
         public int AirJumps,Takeoffs,Landings;
         private float lastY,lastAt,raw,flagAt,minRecent,minAir;private bool flagAir;
         /// <summary>
-        /// The hook for a future explicit signal (a replicated air-jump time, docs/MELEE-FEEL.md "Jump and double jump"): the
+        /// The hook for the explicit simulation signal (a replicated air-jump time, docs/MELEE-FEEL.md "Jump and double jump"): the
         /// caller passes it (-100 for none) each frame after Observe; from the first call, air jumps come only from it (no inference).
         /// </summary>
         public bool Explicit;
@@ -193,21 +193,21 @@ namespace ChipArena.UnityConversion
             bool busy=MeleeMotion.AttackPose(p,time).Active||p.Guarding||p.BlockTime>0;
             int set=NativeJumpRules.SetFor(p.Spec);bool shield=set==NativeJumpRules.Shield;
             // The shield rides the chest: half the clip's torso turn and a shallower squat keep it off the head and the floor.
-            Layer(r,set,p.Spec,p.Grounded,time,dt,blocked,(busy?.35f:1)*(shield?.5f:1),busy?0:1,!shield,MeleeSet.For(p.Spec),set==NativeJumpRules.Greatsword,true,1-MeleeMath.Ease(r.Motion/.2f),shield?.55f:1);
+            Layer(r,set,p.Spec,p.Grounded,time,dt,blocked,(busy?.35f:1)*(shield?.5f:1),busy?0:1,!shield,MeleeSet.For(p.Spec),set==NativeJumpRules.Greatsword,true,1-MeleeMath.Ease(r.Motion/.2f),shield?.55f:1,p.AirJumpAt);
         }
         /// <summary>The DEV fighters (MeleeMotion.FighterFinish): only the legs and hips of a plain jump; a style action (their
         /// own air motion), a juggle, knockdown, dodge or stun keeps the style's pose, and legs the style authors stay its own.</summary>
         public void Fighter(MeleeRig r,MeleeView p,float time,float dt)
         {
             bool blocked=p.Hp<=0||p.Juggle||p.Down||p.Rolling(time)||p.HitStunUntil>time||p.Action(time);
-            Layer(r,NativeJumpRules.SetFor(p.Spec),p.Spec,p.Grounded,time,dt,blocked,0,0,false,null,false,!r.LegsAuthored,0);
+            Layer(r,NativeJumpRules.SetFor(p.Spec),p.Spec,p.Grounded,time,dt,blocked,0,0,false,null,false,!r.LegsAuthored,0,airJumpAt:p.AirJumpAt);
         }
         /// <summary>A gun or magic route (GunMotion, MagicMotion: after the gait, before the gun hold or the magic layer, which
         /// keep their arms and aim over it).</summary>
         public void Ranged(MeleeRig r,Actor a,string spec,float time,float dt,float torso)
         {
             bool blocked=a.Hp<=0||a.Rolling(time)||a.StunUntil>time||a.JuggleUntil>time||NativeSpecialPose.Active(a,time)||NativeSpecialPose.Down(a,time);
-            Layer(r,NativeJumpRules.SetFor(spec),spec,a.Grounded,time,dt,blocked,torso,0,false,null,false,true,0);
+            Layer(r,NativeJumpRules.SetFor(spec),spec,a.Grounded,time,dt,blocked,torso,0,false,null,false,true,0,airJumpAt:a.AirJumps>0?a.AirJumpAt:-100);
         }
         private static Quaternion Rot(float[] f,int i){Vector3 v=new Vector3(f[i],f[i+1],f[i+2]);float a=v.Length();return a<1e-9f||!(a<1e3f)?Quaternion.Identity:MeleeMath.AxisAngle(v/a,a);}
         private static Quaternion Delta(float[] a,float[] b,int i)=>MeleeMath.Inverse(Rot(a,i))*Rot(b,i);
@@ -222,11 +222,12 @@ namespace ChipArena.UnityConversion
         /// in the air; `still`: how far the route's captured guard owns the hips height (the melee guard, standing), which
         /// overrides the gait's own landing dip.
         /// </summary>
-        public void Layer(MeleeRig r,int set,string spec,bool grounded,float time,float dt,bool blocked,float torso,float arms,bool main,MeleeSet fit,bool twoHand,bool legs,float still,float dropScale=1)
+        public void Layer(MeleeRig r,int set,string spec,bool grounded,float time,float dt,bool blocked,float torso,float arms,bool main,MeleeSet fit,bool twoHand,bool legs,float still,float dropScale=1,float? airJumpAt=null)
         {
             if(r==null)return;
             bool restart=last<-90||time<last-MeleeGait.REWIND||time-last>.35f;last=time;dt=restart?1/60f:MeleeMath.Clamp(dt,0,.05f);
-            var t=Track;t.Observe(time,grounded,r.GroupPosition.Y,blocked);
+            var t=Track;if(airJumpAt.HasValue)t.Explicit=true;t.Observe(time,grounded,r.GroupPosition.Y,blocked);
+            if(airJumpAt.HasValue)t.AirJumpSignal(airJumpAt.Value);
             if(restart){own=blocked?0:1;phase=fall=-1;flipAt=flipLand=-100;hasHeld=false;}
             own=blocked||set<0?0:Smooth(own,1,20,dt);
             AirWeight=LandWeight=FlipAngle=Drop=0;State=Ground;
