@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     /// shadows (big parts only; small trims never do); `Fade`: hidden while it sits between the camera and the pilot (§5.5:
     /// decoration above 2.5 m has no collider, so the camera passes through it).
     /// </summary>
-    public struct NativeCyberKitPart
+    public struct NativeCyberCityPart
     {
         public int Parent,Look,Flags,Color;public float X,Y,Z,Hx,Hy,Hz,Gain,Param;public byte Drive;public short Hazard;public bool Shadow,Fade;
     }
@@ -45,10 +45,10 @@ namespace ChipArena.UnityConversion
     public sealed class NativeCyberCityKit
     {
         public const byte DriveSteady=0,DriveFlicker=1,DriveSignal=2,DriveCoil=3,DriveEdge=4,DriveGridBar=5,DriveGridLamp=6,DriveSafe=7,DriveGridDeck=8;
-        public NativeCyberKitPart[] Parts;public NativeCyberGlow[] Glows;public NativeCyberKitPart[] Train;
+        public NativeCyberCityPart[] Parts;public NativeCyberGlow[] Glows;public NativeCyberCityPart[] Train;
         /// <summary>Hazard indices the drives read (into the array Build took; -1 when absent).</summary>
         public int Maglev=-1;public readonly int[] Grids={-1,-1};
-        private readonly List<NativeCyberKitPart> parts=new List<NativeCyberKitPart>();private readonly List<NativeCyberGlow> glows=new List<NativeCyberGlow>();
+        private readonly List<NativeCyberCityPart> parts=new List<NativeCyberCityPart>();private readonly List<NativeCyberGlow> glows=new List<NativeCyberGlow>();
         private ContentBlock[] blocks;private int parent;private ContentBlock b;private float hx,hy,hz;
 
         private const int LPanel=NativeCyberCityLooks.Panel,LMetal=NativeCyberCityLooks.Metal,LTube=NativeCyberCityLooks.Tube,LHolo=NativeCyberCityLooks.Holo,LGlass=NativeCyberCityLooks.Glass,LTile=NativeCyberCityLooks.Tile,LGrate=NativeCyberCityLooks.Grate;
@@ -87,7 +87,7 @@ namespace ChipArena.UnityConversion
         private void P(float x,float y,float z,float sx,float sy,float sz,int look,int flags,int color,float gain=1,byte drive=0,int hazard=-1,float param=0,bool shadow=false,bool fade=true)
         {
             if(!(sx>0&&sy>0&&sz>0))return;
-            parts.Add(new NativeCyberKitPart{Parent=parent,X=x,Y=y,Z=z,Hx=sx/2,Hy=sy/2,Hz=sz/2,Look=look,Flags=flags,Color=color,Gain=gain,Drive=drive,Hazard=(short)hazard,Param=param,Shadow=shadow,Fade=fade&&b.pos.y+y>2.5f});
+            parts.Add(new NativeCyberCityPart{Parent=parent,X=x,Y=y,Z=z,Hx=sx/2,Hy=sy/2,Hz=sz/2,Look=look,Flags=flags,Color=color,Gain=gain,Drive=drive,Hazard=(short)hazard,Param=param,Shadow=shadow,Fade=fade&&b.pos.y+y>2.5f});
         }
         private void Tube(float x,float y,float z,float sx,float sy,float sz,int color,float gain=2.2f,byte drive=0,int hazard=-1,float param=0,bool glow=false)
         {P(x,y,z,sx,sy,sz,LTube,Cy,color,gain,drive,hazard,param);if(glow)Glow(x,y,z,color,Math.Max(sx,Math.Max(sy,sz))*gain*.45f);}
@@ -441,14 +441,14 @@ namespace ChipArena.UnityConversion
         // ---------------- the maglev train (train frame: +x the travel direction, origin at the nose on the guideway top) ----------------
         /// <summary>The train's height above the trench floor at the guideway top (its rest Y in the train frame is 0 there).</summary>
         public const float RailTop=-3.7f;
-        private static NativeCyberKitPart TP(float x,float y,float z,float sx,float sy,float sz,int look,int flags,int color,float gain=1,bool shadow=false)
-        =>new NativeCyberKitPart{Parent=-2,X=x,Y=y,Z=z,Hx=sx/2,Hy=sy/2,Hz=sz/2,Look=look,Flags=flags,Color=color,Gain=gain,Shadow=shadow};
-        private static NativeCyberKitPart[] BuildTrain()
+        private static NativeCyberCityPart TP(float x,float y,float z,float sx,float sy,float sz,int look,int flags,int color,float gain=1,bool shadow=false)
+        =>new NativeCyberCityPart{Parent=-2,X=x,Y=y,Z=z,Hx=sx/2,Hy=sy/2,Hz=sz/2,Look=look,Flags=flags,Color=color,Gain=gain,Shadow=shadow};
+        private static NativeCyberCityPart[] BuildTrain()
         {
             // Three cars (14, 13, 14 m; .5 m gaps: 42 m), 4.9 m wide, a graphite body .3..2.6 m above the guide beam with a lit window
             // band, a cyan light line along each skirt and a violet one along the roof edge; a six-step tapered nose and tail with a
             // dark windscreen, an ice-white headlight bar (red at the tail) and the levitation glow under the skirt.
-            var t=new List<NativeCyberKitPart>();float[] cars={14,13,14};float x=0;const int Body=0x2A2F3C,Roof=0x3A3F4E;
+            var t=new List<NativeCyberCityPart>();float[] cars={14,13,14};float x=0;const int Body=0x2A2F3C,Roof=0x3A3F4E;
             for(int c=0;c<3;c++)
             {
                 float len=cars[c],x0=x-len,x1=x;bool nose=c==0,tail=c==2;float body0=x0+(tail?3.0f:0),body1=x1-(nose?3.0f:0),mid=(body0+body1)/2,bl=body1-body0;
@@ -473,7 +473,7 @@ namespace ChipArena.UnityConversion
             return t.ToArray();
         }
         /// <summary>World centre of train part `p` for a head at x `head` travelling `direction` (+1 east) on the track at z `track`.</summary>
-        public static void TrainPlace(in NativeCyberKitPart p,double head,int direction,float track,out float x,out float y,out float z)
+        public static void TrainPlace(in NativeCyberCityPart p,double head,int direction,float track,out float x,out float y,out float z)
         {x=(float)(head+direction*p.X);y=RailTop+p.Y;z=track+direction*p.Z;}
 
         // ---------------- drives (pure) ----------------
@@ -486,7 +486,7 @@ namespace ChipArena.UnityConversion
         /// rails idle faintly, crawl brighter while charging and blaze white-blue (30 Hz broken) while live, its lamps amber in the
         /// charge and red live.
         /// </summary>
-        public static void Drive(in NativeCyberKitPart p,NativeHazardState[] states,double time,out float r,out float g,out float bl,out float level)
+        public static void Drive(in NativeCyberCityPart p,NativeHazardState[] states,double time,out float r,out float g,out float bl,out float level)
         {
             int hex=p.Color;float gain=p.Gain;level=1;
             NativeHazardState s=p.Hazard>=0&&states!=null&&p.Hazard<states.Length?states[p.Hazard]:default;var ph=s.Phase;

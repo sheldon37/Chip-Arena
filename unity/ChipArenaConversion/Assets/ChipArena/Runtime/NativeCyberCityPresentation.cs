@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
             if(!ReferenceEquals(arena,metroArena)||arena.Generation!=metroGeneration)MetroRebind(arena);
             float now=PresentationClock(arena);var match=arena.Match;int round=NativeStructureFx.RoundIndex(match.Set,match.Round);
             for(int i=0;i<metroStates.Length;i++)metroStates[i]=NativeCyberCityHazards.At(metroHazards[i],match.Phase,round,match.FightAt,now);
-            MetroParents(arena);DrawCyberKit(arena,now);DrawCyberBackdrop(false);
+            MetroParents(arena);DrawMetroKit(arena,now);DrawCyberBackdrop(false);
             int screens=MetroBillboards(arena);DrawCyberFx(now,WorldEye,true,screens);
         }
         // RenderBackdrop: behind the main menu, on the render clock; the skyline, its life and a plate over the slab only.
@@ -121,7 +121,7 @@ namespace ChipArena.UnityConversion
             }
             return n;
         }
-        private void DrawCyberKit(NativeArena arena,float now)
+        private void DrawMetroKit(NativeArena arena,float now)
         {
             metroCastUsed=metroTrimUsed=0;var eye=WorldEye;Vector3 from=eye!=null?eye.transform.position:Vector3.zero,to=from;bool fade=eye!=null&&!FirstPerson&&arena.ViewPilot?.Body!=null;
             if(fade)to=arena.ViewPilot.Body.position+Vector3.up*.9f;
