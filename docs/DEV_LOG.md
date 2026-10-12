@@ -1,5 +1,68 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — Siren minion kinds: design, animation, felt hits, telegraphs and variants (owner: "please improve animations of siren minions and design. Give them hitting from melee too. Add some variants (Like brutes, spitters, runners, etc.)")
+- Branch `claude/siren-minions`, base `f575670`, fast-forwarded to shared `f9c755d` before the commit. One signed commit. On the branch only: not pushed, merged or released. Presentation only; the rules contract for Astra is `docs/SIREN-MINION-VARIANTS.md` (it ends with a ready-to-paste prompt).
+- Kinds (`Core/NativeHordeKinds.cs`): resolve from the replicated `addKind` (`PveAddStats.id`). Shambler, runner and brute ship today and now draw as themselves (before, every add was a bank `horde-<id%6>` look, whatever its kind). Spitter, crawler and bloater draw as soon as the content names them. An unknown id draws as the shambler.
+- Models (`Core/NativeHordeModels.cs`, built at bank load by `Runtime/NativeHordeKindModels.cs`): sculpted in code on the weapons' kit, in the Siren's motif.
+  - The motif: ink-black body with her ink rim, seams in each kind's glow (flicker cell by cell, drop with the add's power on NativeMinionFx codes), couture collars, hoods, laced corsets, pauldrons and tattered hems, and her white grin and teardrop eyes.
+  - Looks: shambler 3, the others 2. Each look grows its own black-flame tongues.
+  - Three crowd tiers: full for the nearest 24 (16 on the low tier), reduced to 40 m, an impostor beyond. They cost about 1.8-2.9k / 1.3-1.9k / 350-490 triangles, against 10-12k for a bank body.
+  - The bank's `horde-0..5` stay for the old death records and as a fallback.
+- Animation (`Core/NativeHordeMotion.cs`).
+  - Planted feet: each foot stays where it landed in the world and steps on a cadence from the add's real ground speed. The managed check finds no slide on straight paths or turns.
+  - Per-kind gaits: the shambler's dragged foot, the runner's pitched lope, the brute's wide stomp, the spitter's skitter, the crawler's four-limbed trot, the bloater's waddle.
+  - Per-add seed: phase, cadence, hunch, tilt, limp side and twitches.
+  - Idle and alert, with the head on the nearest pilot.
+  - A hunched trunk is balanced back over the capsule.
+  - Attacks: wind-up into a held telegraph, the blow arriving at `lastAttack + hit` exactly, follow-through, recovery.
+  - Deaths per kind on the existing char and burn-away. The bloater bursts.
+  - Entries and dives keep the baked clips.
+- Felt hits (`Core/NativeHordeReact.cs` on NativeStaggerRules), from the replicated Hit / Headshot events and their `Normal`:
+  - directional recoil and head snap;
+  - a hip shove scaled by the kind's weight, with stagger-back steps;
+  - the authority's stagger reel, and the cancel of a blow wound up when such a hit lands (inferred from a hit of a quarter of the add's health; `staggerAt` is requested);
+  - hit-stop on melee blows and the struck flash;
+  - Siren ink on the felt hits' blood sim. New `ink` flag on drops and splats in `Core/NativeBlood.cs` and its presentation; red blood is unchanged.
+  - Melee kills slice along the killing swing (NativeMeleeSlice's plan). The authority's severed limbs fly as the model's own parts instead of the olive gore cubes; the ink and flames stay.
+- Telegraphs and effects (`Core/NativeHordeFx.cs`, drawn in DevEffects within the minion effect budgets and bands, thinned by Reduced effects):
+  - a glow flare through every wind-up;
+  - the shambler's claw crescent;
+  - the runner's streaks;
+  - the brute's slam: the authority's own 1.6 m disc, 1.2 m ahead, filling to the rim at the strike, then shockwave and debris;
+  - the spitter's sac, glob arc, acid puddle and bubbles;
+  - the bloater's swell, slam puff and burst;
+  - heavy footfall dust.
+  - Audio uses existing bank keys only (BankPlay), so it is silent without LocalAssets.
+- DEV preview before Astra's rules, looks only:
+  - Settings · Developer · "Siren minion preview (looks only)": every horde add as one kind, or a mix. Session only, not saved.
+  - Dev Sandbox pause menu · "Preview Siren Minions": a presentation-only gallery of all six kinds looping idle, walk, run, two attacks, dagger/sword/greatsword hits and death.
+- Shared-file edits (small, additive):
+  - SourceWorld, SourceMinionDeath and ClearSourceActors call the new path;
+  - NativeMinionFxPresentation takes a look's tongue anchors and crack;
+  - NativeGorePresentation skips the old chunk for kind-drawn adds;
+  - one call each in DevEffects and EffectsFrame;
+  - NativeSourceModels' constructor builds the models;
+  - one Settings row and one Sandbox button;
+  - `Tests/Program.cs` runs `HordeKindChecks`.
+- Checks: `Tests/HordeKindChecks.cs`.
+  - Kind ids resolve, including unknown ids.
+  - The authority's attack formula, smash disc and capsules are read out of NativePveHorde.cs and the timings out of PveContent.json; the presentation's strike, recovery and lunge equal them for every crawl and lost-limb case.
+  - Every posed body stays inside its kind's volume (trunk and head; shoulders at the edge; claws and striding legs bounded).
+  - All tiers build under budget on every joint, with valid glow codes.
+  - Feet do not slide; reactions scale with weight.
+  - No allocation over 2000 frames of six kinds.
+  - The runtime writes no authority state.
+- Impact on hit timing, hitboxes, damage, cooldowns, movement and networking: none. No collider, timing, damage, cooldown, movement, network or save code changed. The capsule check passes against today's values.
+- Results: Unity runtime+editor compile OK; managed/relay checks all PASS; Python 91 OK (1 skip); source package OK (Builds removed); `git diff --check` clean.
+- Not run: Unity Editor, the Unity shader compile, Windows play, two-client play, owner listening.
+- Offline renders (before/after sheets, scratchpad `siren-minions/renders/final`) are the only visual check so far.
+- Risks:
+  - The volume check allows reaching claws (up to .42 m) and striding feet (up to .45 m) beyond the capsule, as pilots' limbs do.
+  - The crawler's and bloater's proposed capsules are Astra's to accept. In the DEV preview they draw on today's 1.7 m capsule.
+  - A death first seen by a late guest draws as a shambler (`NativeDeath.addKind` is requested).
+  - Ink splats share the 384-splat pool with blood.
+- Next: Astra implements the spec (rows, behaviours, mixes, events `minion-spit` / `minion-slam` / `minion-burst` / `minion-charge`, `staggerAt` / `side` / `addKind`). Claude then adds the brute charge's pose and dust, and lets the spit events replace the preview's prediction (already wired).
+
 ## 2026-10-12 — Claude — Sheldon Intro revised: cyber rez-in, a breathing stare (no nod), its own set, re-timed to the new music cut (owner: "Revise sheldon intro; They enter the screen with a cyber effect; still glitchy screen, they dont "nod" at end. They just stare breathing", "Also, a better background for this kind of intro", then "Change the music part of the intro as well~ I like the intro sound better.")
 - Branch `claude/sheldon-intro-revise`, from shared head `f575670`, fast-forwarded to the new shared head `f9c755d` (`claude/sleepy-ritchie-g8ruhv`) before the commit; one signed commit on top of it, on the branch only: not pushed, merged or released. Presentation only.
 - Music: the coordinator re-cuts `intro.sheldon-intro` from the track's opening (0.00-4.80 s, short fade) in the private assets repo; no audio or asset is touched here. The beats follow the coordinator's beat map (`NativeSheldonIntro.Beats`): glitch ticks .15/.27/.39 and the slam .51, jolt .86, black gap 1.05-1.20 (dead pixels flare on the 1.09 click), hard re-entry 1.21, rise 1.56, bass swell 1.83-2.44 (peak 2.17), resolve 2.38 on the groove's first downbeat (`Downbeats` 2.38/2.85/3.32/3.79/4.26/4.73, .47 s apart), name build 3.32-3.79, face flare 4.26 (stutters .12 s, on the hi-hats), exit cut 4.6, end 4.8. Length 4.8 s, name card 3.2 s and the music key are unchanged.

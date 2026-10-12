@@ -119,7 +119,8 @@ namespace ChipArena.UnityConversion
                 if(bone!=null&&(bone.position-body).sqrMagnitude<9)joint=bone.position;
                 else{NativeGoreRules.Joint(limb,-body.x,body.y,body.z,-yaw*Mathf.Deg2Rad,crawl,out double x,out double y,out double z);joint=new Vector3(-(float)x,(float)y,(float)z);}
                 uint seed=NativeGoreRules.GibSeed(at,target,NativeGoreRules.LimbHash(limb));
-                goreChunks.Add(NativeGoreRules.Gib(at,seed,limb,-joint.x,joint.y,joint.z,hasFrom,-from.x,from.y,from.z));
+                // A Siren minion kind throws its own part instead (NativeHordeKindPresentation.HordeSever); the ink and flames stay.
+                if(!HordeKindDrawn(id))goreChunks.Add(NativeGoreRules.Gib(at,seed,limb,-joint.x,joint.y,joint.z,hasFrom,-from.x,from.y,from.z));
                 GoreInk(at,seed^0x9e3779b9u,joint,NativeGoreRules.GibInk(quality),3.2f,quality);
                 // gore.ts gib: the soot spray cone along the blow and a black-flame puff at the joint.
                 NativeGoreFlames.Gib(WorldFlames(),seed,-joint.x,joint.y,joint.z,hasFrom,-from.x,from.y,from.z,quality);
