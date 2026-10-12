@@ -31,6 +31,7 @@ namespace ChipArena.UnityConversion
             Check(specs.OrderBy(s=>s).SequenceEqual(NativeWeaponSkins.Weapons.OrderBy(s=>s)),"the skinned weapons are every weapon but the Siren");
             var designed=NativeWeaponSkins.Weapons.Where(NativeWeaponModels.Designed).ToArray();
             Check(NativeWeaponModels.Specs.All(NativeWeaponSkins.Skinned)&&NativeWeaponModels.Specs.Count()==designed.Length,"every Standard design is a skinned weapon");
+            Check(designed.Length==NativeWeaponSkins.Weapons.Length,"every skinned weapon has a Standard design");
             Check(!NativeWeaponSkins.Skinned("siren")&&!NativeWeaponModels.Designed("siren"),"the Siren has no weapon skin");
             var file=Path.Combine(root,"Assets/Conversion/Resources/SourceModels.json");
             using(var sha=SHA256.Create())Check(string.Concat(sha.ComputeHash(File.ReadAllBytes(file)).Select(b=>b.ToString("x2")))==SourceModelsSha256,"SourceModels.json (the Prototype Series bake) is byte-identical to the base");
