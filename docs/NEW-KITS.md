@@ -110,7 +110,7 @@ fighters use).
   - The combo resets after .6 s idle. Standard melee hit stun applies.
 - **RMB:** standard melee block (hardlight guard).
 - **Q, Data Dash:** 7 m dash through enemies, 18 damage to each pilot passed. It leaves a 1.2 s trail that
-  ticks 6 damage per .3 s. Cooldown 6 s, 20 mana.
+  ticks 6 damage per .3 s. Cooldown 0.5 s, 20 mana.
 - **E, Firewall:** a hardlight wall 5 m wide and 2.5 m tall, placed .8 m in front, lasting 4 s. It absorbs
   projectiles, and enemies touching it take 10 damage per second. Cooldown 12 s, 35 mana.
 - **1, Packet Burst:** a 6 m, 50 degree cone of 8 glitch shards, 5 damage each (40 point blank). Cooldown 4 s,
