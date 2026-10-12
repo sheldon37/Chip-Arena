@@ -1,5 +1,43 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — Cyber Lord presentation, including Kernel Panic on Astra's contract (owner: "For Dev, a class called "Cyber Lord". This is an unarmed class, using cyber themed abilities. (1-4 hotkeys used along with Q and E) it will be a melee spellcasting hybrid."; ultimate: "since we're adding an "Ultimate" im think using a "skill cut-in" animation. If the first hit connects, it does a combo. Hits them far, teleport behind hit them again, in the air teleport above, make this creative")
+- Branch `claude/cyberlord`, base `6486be8` then `da5b9c1`. Implementation `7cf95e0`; shared `1426250` (Astra's PR #138) merged in `d584ab6`; then the adaptation to her names and timing, and the docs. On the branch only: not pushed, merged or released.
+- Built: everything is presentation, in `docs/CYBER-LORD.md`:
+  - the hardlight look (gauntlets forming from light, fist shells, seams, crest, shimmer) over any body skin; the body builder is untouched;
+  - the pack's Unarmed stance, run and sprint, combo and ability takes (`tools/export_pack_cyberlord.mjs`, provenance hashed; no FBX committed), third and first person;
+  - the effects for the combo, guard, Q, E and 1-3;
+  - Kernel Panic: the opener and blink trail, the .6 s cut-in (live portrait, diagonal panels, glitch title) for the caster and victim, the slim banner for others, every step's choreography and effects, clones, the code column, the victim's tumble and wall-splat, the participants' cameras (C16 rules; a gentler path with reduced effects), hit-stops and a screen glitch on the participants' presentation clock only;
+  - HUD Q, E and 1-4 cards with mana; the class icon; the Locker entry; the DEV entrance `dev-cyberlord` ("DEV · Hardlight Boot", no music key by contract); audio on 18 existing bank keys.
+- Kernel Panic follows Astra's `Actor.Kernel` exactly. The mapping is only in `CyberLordFeed`:
+  - positions are her Rigidbody centres less .865; her Outcome codes map to the view;
+  - the paths follow `NativeKernelPanicRules.Sample`; the hits land on her step starts, so the kick and hammer takes strike as the host teleports the caster;
+  - her three step-4 hits are staggered visually by the clones, and `kernel-panic-wave` gets a spark;
+  - the lunge is instant on the host, so it shows as a .3 s blink trail; the card reads the pilot frame's `kernelReady`.
+  The rest of the kit (combo, Q, E, 1-3) is read from the proposed `Actor.CyberKit`. It is `[NonSerialized]`, so it is not on the wire.
+- No rules impact: hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged. The takes follow the replicated windows; the participants' clock warp is presentation only, and the bodies stand where the snapshot puts them.
+- Shared files: small hooks only. One fix outside the hooks: `NativeFirstPersonPose.SettleTorso` no longer allocates an array each frame. Test pins updated:
+  - Locker: 24 intros;
+  - entrance director: 20 directed;
+  - class icons: the Cyber Lord's icon ships ahead of its content entry;
+  - the effect hook order;
+  - the Cyber Lord dither is set before the body-skin queue call.
+- Owner rule kept: no glowing disc, ring or tile on the floor. The slam waves are upright, and CyberLordChecks checks every drawn piece.
+- Checks on the merged tree:
+  - `unity-check.sh`: runtime and editor build OK;
+  - `check_relay.py`: exit 0, 529 PASS lines;
+  - managed core: exit 0, 528 PASS lines, including the new CyberLordChecks (53,682 checks);
+  - Python unittest: 91 tests OK, 1 skipped;
+  - `package_source.py`: passed, 1,528 source files;
+  - `git diff --check 6486be8 HEAD`: clean.
+- Renders: scratch WebGL harness (real Core and real effects drawers). The 2D cut-in, banner, HUD, tile and Locker are canvas mock-ups of the runtime layout.
+- Not run: the Unity Editor, Windows, play, multiplayer, the IMGUI cut-in and HUD themselves, and GPU cost.
+- Astra still needs to provide:
+  - the `cyberlord` content entry (`devOnly`, melee/unarmed, mana);
+  - the combo and Q, E, 1-3 rules and fields (map them in `CyberLordFeed`), with Siphon Heal and Firewall Absorb events;
+  - the 1-3 input;
+  - the account service (`src/relay/accounts.ts`) keeping `dev-cyberlord` for DEV accounts.
+- Next: the owner reviews the renders. Astra's remaining kit lands, then its fields are mapped. Then a Unity/Windows play check.
+
 ## 2026-10-12 — Astra — Kernel Panic authority and replication (owner revised ultimate)
 - Branch `codex/unity-kernel-panic-20261012`, base `da5b9c1`. Implements NEW-KITS §3 item 4 only; the base contains no Cyber Lord weapon/kit implementation. This branch intentionally does not register an incomplete class or take over Claude's presentation. No shared merge, Worker deploy or compiled release.
 - Host: .25 s paid opener on the existing key-4 input, world-limited real capsule sweep, nearest pilot, block/iframe/shield whiff, half cooldown refund; .6 s cut-in; five deterministic steps and the three-hit fork, 75 base victim damage, 5 m/20 damage finisher wave; .8 s final recovery. Costs/timings retained; wave impulse specified at 260. Live DEV claim required, not weapon grants. PvE authority boss is not a capture target.

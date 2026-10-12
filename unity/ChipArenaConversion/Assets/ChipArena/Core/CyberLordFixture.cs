@@ -51,38 +51,42 @@ namespace ChipArena.UnityConversion
             float rel=Cast(a,CyberLordSpec.Three,at);var k=a.CyberKit;k.CrashAt=a.Position;k.CrashBorn=rel;k.CrashUntil=rel+CyberLordSpec.CrashStun;
         }
         /// <summary>
-        /// 4 Kernel Panic cast at `at` on `victim` standing at `victimFeet`: a whiff (no victim: the .6 s recovery), or a connect
-        /// at the lunge's end (the .6 s cut-in, then the sequence) with the nominal waypoints, the wall-splat variant moving the
-        /// launch's end to `wall` (the splat point) when given; `endedAt` ends it early.
+        /// 4 Kernel Panic cast at `at` on `victim` standing at `victimFeet`, written as Astra's host writes Actor.Kernel
+        /// (NativeKernelPanicRuntime.StartKernelPanic / ConnectKernel / KernelWhiff / EndKernel) on an open, flat floor: a whiff
+        /// (the instant 6 m lunge touches no one: .6 s recovery, half the cooldown), or a connect at the windup's end with the
+        /// host's six resolved points each (Rigidbody centres; the launch's end moved to `wall`, the splat's body centre, when
+        /// given); `endedAt` interrupts it there.
         /// </summary>
         public static void KernelPanic(Actor a,float at,int victim,Vector3 victimFeet,bool connect=true,Vector3? wall=null,float endedAt=-1,int seed=7)
         {
-            Cast(a,CyberLordSpec.Four,at);var k=a.CyberKit;var c=k.Casts[CyberLordSpec.Four];k.PanicSeed=seed;k.PanicYaw=a.Yaw;
-            if(!connect){k.PanicOutcome=CyberLordSpec.Whiff;k.PanicVictim=0;c.Ready=at+CyberLordSpec.Cooldowns[CyberLordSpec.Four]*.5f;return;}
-            float connectAt=c.Until;c.RecoverUntil=c.Until;k.PanicOutcome=endedAt>0?CyberLordSpec.EndedEarly:CyberLordSpec.Connect;k.PanicConnect=connectAt;k.PanicStart=connectAt+CyberLordSpec.CutIn;k.PanicEndedAt=endedAt;
-            k.PanicVictim=victim;k.PanicAnchor=new V3(victimFeet.X,victimFeet.Y,victimFeet.Z);k.PanicWall=wall.HasValue;
-            var f=KernelPanicPath.Forward(a.Yaw);var casterAt=victimFeet-f*1.0f;var pts=new Vector3[KernelPanicPath.Points];KernelPanicPath.NominalPoints(victimFeet,casterAt,a.Yaw,pts);
-            if(wall.HasValue)
-            {
-                // The launch stops at the wall: the rest of the choreography rebuilt from the splat point (the host's clamp).
-                var w=wall.Value;var d=pts[KernelPanicPath.LaunchEnd]-w;pts[KernelPanicPath.LaunchEnd]=w;
-                for(int i=KernelPanicPath.Behind;i<=KernelPanicPath.Reappear;i++)pts[i]-=new Vector3(d.X,0,d.Z);
-                pts[KernelPanicPath.Behind]=w-f*.9f;pts[KernelPanicPath.Behind].Y=0;pts[KernelPanicPath.Landing]-=f*.9f;pts[KernelPanicPath.Reappear]-=f*.9f;pts[KernelPanicPath.Apex]-=f*.6f;pts[KernelPanicPath.Above]-=f*.6f;
-            }
-            k.PanicPoints=new V3[pts.Length];for(int i=0;i<pts.Length;i++)k.PanicPoints[i]=new V3(pts[i].X,pts[i].Y,pts[i].Z);
+            const float C=CyberLordFeed.BodyCentre,Ground=.875f;var up=Vector3.UnitY;var f=KernelPanicPath.Forward(a.Yaw);
+            var start=new Vector3(a.Position.x,a.Position.y+C,a.Position.z);
+            var s=new NativeKernelPanic{Id=++kernelIds,Caster=a.Id,Seed=seed,At=at,Until=at+NativeKernelPanicRules.Windup,Ready=at+NativeKernelPanicRules.Cooldown,CasterStart=V(start),Anchor=V(start),VictimStart=V(start),CasterExit=V(start),VictimExit=V(start),Facing=V(f)};
+            a.Kernel=s;a.HasKernel=true;
+            if(!connect){s.Outcome=2;s.Until=at+NativeKernelPanicRules.Windup+NativeKernelPanicRules.WhiffRecovery;s.Ready=at+NativeKernelPanicRules.Cooldown*.5f;return;}
+            float floor=victimFeet.Y;var v0=victimFeet+up*C;var contact=v0-f*1.0f;
+            s.ConnectedAt=at+NativeKernelPanicRules.Windup;s.Until=s.ConnectedAt+NativeKernelPanicRules.CutIn+NativeKernelPanicRules.Duration;s.Outcome=1;
+            s.Anchor=s.VictimStart=V(v0);s.CasterStart=V(contact);s.Victim=victim;
+            var want=v0+f*KernelPanicPath.Launch+up*KernelPanicPath.LaunchRise;var v1=wall??want;s.WallSplat=wall.HasValue;var v2=v1+up*KernelPanicPath.KickUp;
+            // (The host searches a .5 m grid for a clear landing; off a wall that is a step back from it.)
+            var landing=new Vector3(v1.X,floor+Ground,v1.Z)-(wall.HasValue?f*.6f:Vector3.Zero);var v3=landing+up*KernelPanicPath.HammerHeight;var v4=landing;
+            var side=Vector3.Cross(up,f)*((seed&1)==0?KernelPanicPath.ForkSide:-KernelPanicPath.ForkSide);var back=landing-f*KernelPanicPath.Reappear1;
+            s.VictimPoints=new[]{V(v0),V(v1),V(v2),V(v3),V(v4),V(landing)};
+            s.CasterPoints=new[]{s.CasterStart,V(v1-f*KernelPanicPath.BlinkOffset),V(v2+up*KernelPanicPath.AboveOffset),V(v3+side),V(back),V(back)};
+            s.CasterExit=V(back);s.VictimExit=V(landing);
+            if(endedAt>0){s.Outcome=3;s.Until=endedAt;}
         }
-        /// <summary>Where the fixture places the caster and the victim during a Kernel Panic (the host would move the bodies so).</summary>
+        private static int kernelIds;
+        private static V3 V(Vector3 p)=>new V3(p.X,p.Y,p.Z);
+        /// <summary>Where the host puts the caster and the victim during a Kernel Panic (NativeKernelPanicRules.Sample, feet).</summary>
         public static void PanicBodies(Actor caster,Actor victim,float time,CyberLordView scratch)
         {
-            CyberLordFeed.Read(caster,scratch);if(!(scratch.PanicConnect>-90))return;float age=time-scratch.PanicStart;
-            if(time<scratch.PanicConnect)return;
-            var v=KernelPanicPath.Victim(scratch,age);var c=KernelPanicPath.Caster(scratch,age,out _);
-            if(victim!=null){victim.Position=new V3(v.X,v.Y,v.Z);victim.Grounded=v.Y<=.02f;}
-            caster.Position=new V3(c.X,c.Y,c.Z);caster.Grounded=c.Y<=.02f;
-            // The caster faces the victim through the sequence (the host's facing).
-            var d=v-c;if(d.X*d.X+d.Z*d.Z>.01f&&age>=KernelPanicPath.Steps[1])caster.Yaw=(float)(Math.Atan2(d.X,d.Z)*180/Math.PI);
+            var s=caster.Kernel;if(s==null||s.Victim<=0||!(s.Outcome==1||s.Outcome==3||s.Outcome==4)||time<s.ConnectedAt)return;if(s.Outcome==3&&time>=s.Until)return;
+            NativeKernelPanicRules.Sample(s,time,out var c,out var v);const float C=CyberLordFeed.BodyCentre;
+            if(victim!=null){victim.Position=new V3(v.x,v.y-C,v.z);victim.Grounded=v.y-C<=.03f;}
+            caster.Position=new V3(c.x,c.y-C,c.z);caster.Grounded=c.y-C<=.03f;
         }
-        /// <summary>The ids the fixtures' Hit events carry for each Kernel Panic step (the event's Detail), and when they land.</summary>
+        /// <summary>When each Kernel Panic step's Hit events land (NativeKernelPanicRules.HitAt: the step starts).</summary>
         public static float PanicHitTime(CyberLordView v,int step)=>step<1||step>5?-100:v.PanicStart+KernelPanicPath.HitAge(step);
     }
 }

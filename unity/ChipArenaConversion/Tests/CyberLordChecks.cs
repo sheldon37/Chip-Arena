@@ -79,7 +79,8 @@ internal static class CyberLordChecks
         CyberLordFixture.Firewall(c,9.0f);CyberLordFixture.SystemCrash(c,9.3f);CyberLordFixture.DataDash(c,9.5f);CyberLordFixture.SiphonLink(c,3,9.6f);
         CyberLordFixture.PacketBurst(c,9.85f);CyberLordFixture.Combo(c,2,9.9f);
         var view=new CyberLordView();CyberLordFeed.Read(c,view);var ev=new List<ArenaEvent>();int id=1;
-        for(int s=1;s<=5;s++)ev.Add(Ev(id++,EventKind.AbilityHit,CyberLordFixture.PanicHitTime(view,s),1,2,new Vector3(0,1.2f,2),CyberLordFeed.Details[7+s]));
+        for(int s=1;s<=5;s++)for(int k=0;k<(s==4?3:1);k++)ev.Add(Ev(id++,EventKind.Hit,CyberLordFixture.PanicHitTime(view,s),1,2,new Vector3(0,1.2f,2),CyberLordFeed.Details[7+s]));
+        ev.Add(Ev(id++,EventKind.Hit,CyberLordFixture.PanicHitTime(view,5),1,3,new Vector3(2.5f,1,3),"kernel-panic-wave",20));
         ev.Add(Ev(id++,EventKind.Absorb,9.6f,4,1,new Vector3(0,1.2f,.8f),"firewall"));ev.Add(Ev(id++,EventKind.BurnTick,9.9f,1,3,new Vector3(.4f,1,.8f),"firewall",10));
         ev.Add(Ev(id++,EventKind.AbilityHit,9.8f,1,3,new Vector3(2.5f,1,3),"system-crash",25));ev.Add(Ev(id++,EventKind.Heal,10.2f,1,1,Vector3.Zero,"siphon-link",4));
         ev.Add(Ev(id++,EventKind.Hit,9.9f+.45f*.62f,1,3,new Vector3(.3f,1.2f,1.6f),"cyber-palm",22));ev.Add(Ev(id++,EventKind.AbilityHit,10.0f,1,3,new Vector3(2,1,3),"packet-burst",5));
@@ -112,7 +113,7 @@ internal static class CyberLordChecks
             ("Cooldown 30 s, 60 mana",CyberLordSpec.Cooldowns[5]==30&&CyberLordSpec.Costs[5]==60),("a .6 s \"skill cut-in\"",CyberLordSpec.CutIn==.6f),
             ("launches the victim 8 m back along the facing, rising 1.5 m",KernelPanicPath.Launch==8&&KernelPanicPath.LaunchRise==1.5f),("| 2. Blink-behind | .45 s |",KernelPanicPath.Steps[1]==.45f),("kicks them straight up 5 m",KernelPanicPath.KickUp==5),
             ("| 3. Blink-above | .95 s |",KernelPanicPath.Steps[2]==.95f),("| 4. Fork bomb | 1.35 s |",KernelPanicPath.Steps[3]==1.35f),("| 5. Kernel Panic | 1.9 s |",KernelPanicPath.Steps[4]==1.9f),("| 1. Breaker | 0 s |",KernelPanicPath.Steps[0]==0),
-            ("| Recovery | from 2.6 s | Caster recovers for .8 s",KernelPanicPath.Recovery==2.6f&&KernelPanicPath.RecoverySeconds==.8f),("a 5 m shockwave",KernelPanicPath.Shockwave==5),("about 3.4 s",Math.Abs(KernelPanicPath.End-3.4f)<1e-5f)})
+            ("| Recovery | from 2.6 s | Caster recovers for .8 s",KernelPanicPath.Recovery==2.6f&&Math.Abs(KernelPanicPath.RecoverySeconds-.8f)<1e-5f),("a 5 m shockwave",KernelPanicPath.Shockwave==5),("about 3.4 s",Math.Abs(KernelPanicPath.End-3.4f)<1e-5f)})
             Check(s3.Replace("\r","").Contains(text.Replace("\n  ","\n  "))&&ok,"the proposal's number is the spec's: "+text.Replace("\n"," "));
         var details=Regex.Matches(s3,@"`(cyber-[a-z]+|data-dash|firewall|packet-burst|siphon-link|system-crash)`").Select(m=>m.Groups[1].Value).Distinct().ToArray();
         Check(details.SequenceEqual(CyberLordFeed.Details.Take(8))&&Enumerable.Range(1,5).All(i=>CyberLordFeed.Details[7+i]=="kernel-panic-"+i)&&s3.Contains("`kernel-panic-1` to `-5`"),"the event Details are the spec's ("+string.Join(",",details)+")");
@@ -124,19 +125,37 @@ internal static class CyberLordChecks
         // owner replicates it; the copy the presentation holds is deep.
         var field=typeof(Actor).GetField("CyberKit");Check(field!=null&&field.GetCustomAttribute<NonSerializedAttribute>()!=null,"Actor.CyberKit is [NonSerialized]: the network frame is unchanged");
         Check(typeof(NativeCyberKit).GetCustomAttribute<SerializableAttribute>()!=null&&typeof(NativeCyberCast).GetCustomAttribute<SerializableAttribute>()!=null,"the proposed kit is serialisable for when it is replicated");
-        var orig=CyberLordFixture.Pilot(1,Vector3.Zero,0);CyberLordFixture.KernelPanic(orig,1,2,new Vector3(0,0,1.4f));var copy=orig.ViewCopy();
-        Check(!ReferenceEquals(copy.CyberKit,orig.CyberKit)&&!ReferenceEquals(copy.CyberKit.Casts,orig.CyberKit.Casts)&&!ReferenceEquals(copy.CyberKit.Casts[5],orig.CyberKit.Casts[5])&&!ReferenceEquals(copy.CyberKit.PanicPoints,orig.CyberKit.PanicPoints),"Actor.ViewCopy deep-copies the kit");
-        copy.CyberKit.Casts[5].At=99;copy.CyberKit.PanicPoints[1]=new V3(9,9,9);Check(orig.CyberKit.Casts[5].At==1&&orig.CyberKit.PanicPoints[1].x!=9,"a copy's edits leave the original alone");
+        var orig=CyberLordFixture.Pilot(1,Vector3.Zero,0);CyberLordFixture.DataDash(orig,1);CyberLordFixture.KernelPanic(orig,1,2,new Vector3(0,0,1.4f));var copy=orig.ViewCopy();
+        Check(!ReferenceEquals(copy.CyberKit,orig.CyberKit)&&!ReferenceEquals(copy.CyberKit.Casts,orig.CyberKit.Casts)&&!ReferenceEquals(copy.CyberKit.Casts[0],orig.CyberKit.Casts[0])&&!ReferenceEquals(copy.Kernel,orig.Kernel)&&!ReferenceEquals(copy.Kernel.CasterPoints,orig.Kernel.CasterPoints),"Actor.ViewCopy deep-copies the kit and Astra's Kernel");
+        copy.CyberKit.Casts[0].At=99;copy.Kernel.CasterPoints[1]=new V3(9,9,9);Check(orig.CyberKit.Casts[0].At==1&&orig.Kernel.CasterPoints[1].x!=9,"a copy's edits leave the original alone");
+        // Kernel Panic is Astra's implemented contract (PR #138): her numbers, names and outcome codes, read as they are.
+        Check(CyberLordSpec.CutIn==NativeKernelPanicRules.CutIn&&CyberLordSpec.PanicWindup==NativeKernelPanicRules.Windup&&CyberLordSpec.PanicWhiff==NativeKernelPanicRules.WhiffRecovery&&CyberLordSpec.PanicLunge==NativeKernelPanicRules.Range&&CyberLordSpec.PanicRadius==NativeKernelPanicRules.Radius
+            &&CyberLordSpec.Cooldowns[CyberLordSpec.Four]==NativeKernelPanicRules.Cooldown&&CyberLordSpec.Costs[CyberLordSpec.Four]==NativeKernelPanicRules.Mana&&ReferenceEquals(KernelPanicPath.Steps,NativeKernelPanicRules.Steps)&&KernelPanicPath.Recovery==NativeKernelPanicRules.RecoveryAt&&KernelPanicPath.End==NativeKernelPanicRules.Duration,"Kernel Panic's numbers are Astra's (NativeKernelPanicRules)");
+        Check(s3.Contains("`Actor.Kernel`")&&s3.Contains("`kernel-panic-wave`")&&s3.Contains("Outcome: 0 windup, 1 connect"),"the contract recorded in NEW-KITS names Actor.Kernel, its outcomes and kernel-panic-wave");
+        for(int i=1;i<=5;i++){var e=CyberLordFixture.Pilot(1,Vector3.Zero,0);CyberLordFixture.KernelPanic(e,10,2,new Vector3(0,0,1.4f));var ev=new CyberLordView();CyberLordFeed.Read(e,ev);Near(CyberLordFixture.PanicHitTime(ev,i),NativeKernelPanicRules.HitAt(e.Kernel,i-1),"step "+i+" lands on NativeKernelPanicRules.HitAt");}
+        {
+            // The bodies the snapshot shows (NativeKernelPanicRules.Sample, the host's motion) are where KernelPanicPath puts them.
+            var e=CyberLordFixture.Pilot(1,new Vector3(0,0,-1),0);CyberLordFixture.KernelPanic(e,10,2,new Vector3(0,0,1.4f),seed:8);var ev=new CyberLordView();CyberLordFeed.Read(e,ev);float worst=0;
+            for(float t=ev.PanicConnect;t<ev.PanicStart+KernelPanicPath.End+.2f;t+=1/120f){NativeKernelPanicRules.Sample(e.Kernel,t,out var hc,out var hvic);var pc=KernelPanicPath.Caster(ev,t-ev.PanicStart,out _);var pv=KernelPanicPath.Victim(ev,t-ev.PanicStart);
+                worst=Math.Max(worst,Math.Max((new Vector3(hc.x,hc.y-CyberLordFeed.BodyCentre,hc.z)-pc).Length(),(new Vector3(hvic.x,hvic.y-CyberLordFeed.BodyCentre,hvic.z)-pv).Length()));}
+            Check(worst<1e-4f,"the presentation's path is the host's Sample (worst "+worst+" m)");
+            Check(ev.PanicOutcome==CyberLordSpec.Connect&&ev.PanicVictim==2&&ev.PanicPointCount==6&&Math.Abs(ev.PanicYaw)<1e-3f&&ev.Ready[CyberLordSpec.Four]==e.Kernel.Ready,"connect, victim, points, facing and ready map");
+            var victimCopy=Sword(2,new Vector3(0,0,1.4f),180);victimCopy.Kernel=e.Kernel.ViewCopy();var cyberVictim=CyberLordFixture.Pilot(2,new Vector3(0,0,1.4f),180);cyberVictim.Kernel=e.Kernel.ViewCopy();var cv=new CyberLordView();
+            Check(CyberLordFeed.Read(cyberVictim,cv)&&cv.PanicOutcome==0&&cv.At[CyberLordSpec.Four]==-100,"a victim's copy of the caster's state is not read as its own cast");
+            foreach(var (o,want) in new[]{(0,0),(2,CyberLordSpec.Whiff),(3,CyberLordSpec.EndedEarly),(4,CyberLordSpec.Connect)}){var k=e.Kernel.ViewCopy();k.Outcome=o;if(o==0){k.Victim=0;k.CasterPoints=k.VictimPoints=Array.Empty<V3>();}var x=CyberLordFixture.Pilot(1,Vector3.Zero,0);x.Kernel=k;var xv=new CyberLordView();CyberLordFeed.Read(x,xv);Check(xv.PanicOutcome==want,"outcome "+o+" maps to "+want);}
+        }
         // The one field mapping: only CyberLordFeed reads the kit (the fixtures write it; the clone stand-ins make an empty one).
         var core=Path.Combine(root,"Assets/ChipArena/Core");var runtime=Path.Combine(root,"Assets/ChipArena/Runtime");
         var readers=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories).Where(f=>File.ReadAllText(f).Contains("CyberKit")).Select(Path.GetFileName).OrderBy(f=>f).ToArray();
         Check(readers.SequenceEqual(new[]{"ArenaModel.cs","CyberLordFixture.cs","NativeCyberLord.cs","NativeCyberLordFx.cs"}),"the kit is read in one place ("+string.Join(", ",readers)+")");
         string fxSrc=File.ReadAllText(Path.Combine(core,"NativeCyberLordFx.cs"));Check(Regex.Matches(fxSrc,@"\.CyberKit\b").Count==1&&fxSrc.Contains("clone.CyberKit??=new NativeCyberKit();"),"the effects never read the kit (only make the clones' empty one)");
-        string feedSrc=File.ReadAllText(Path.Combine(core,"NativeCyberLord.cs"));Check(Regex.Matches(feedSrc,@"a\.CyberKit\b").Count==1,"CyberLordFeed.Read is the only reader");
+        string feedSrc=File.ReadAllText(Path.Combine(core,"NativeCyberLord.cs"));Check(Regex.Matches(feedSrc,@"a\.CyberKit\b").Count==1&&Regex.Matches(feedSrc,@"a\.Kernel\b").Count==1,"CyberLordFeed.Read is the only reader of the kit and of Astra's Kernel");
+        foreach(var f in new[]{"CyberLordMotion.cs","NativeCyberLordLook.cs","NativeCyberLordFx.cs","NativeCyberLordSounds.cs","NativeKernelPanicView.cs","NativeCyberLordHud.cs","NativeCyberLordIntro.cs"})Check(!Regex.IsMatch(File.ReadAllText(Path.Combine(core,f)),@"\.Kernel\b"),f+" never reads Actor.Kernel directly");
+        foreach(var f in new[]{"NativeCyberLordPresentation.cs","NativeCyberLordScreen.cs"}){var src=File.ReadAllText(Path.Combine(runtime,f));Check(!Regex.IsMatch(src,@"\.Kernel\b")&&!src.Contains("CyberKit"),f+" reads the state only through the views");}
         foreach(var f in new[]{"NativeCyberLord.cs","CyberLordMotion.cs","NativeCyberLordLook.cs","NativeCyberLordFx.cs","NativeCyberLordSounds.cs","NativeKernelPanicView.cs","NativeCyberLordHud.cs","NativeCyberLordIntro.cs"})
         {
             string src=File.ReadAllText(Path.Combine(core,f));
-            foreach(var banned in new[]{"NativePilot","NativeArena","UnityEngine","System.Random","DateTime","Rules.Step(","NativeSimulation",".Stamina",".Mana"})Check(!src.Contains(banned),f+" reads no authority-only state ("+banned+")");
+            foreach(var banned in new[]{"NativePilot","NativeArena","UnityEngine","System.Random","DateTime","Rules.Step(","NativeSimulation",".Stamina","p.Mana","a.Mana","DamageDebt"})Check(!src.Contains(banned),f+" reads no authority-only state ("+banned+")");
         }
         foreach(var f in new[]{"NativeCyberLordPresentation.cs","NativeCyberLordScreen.cs"})
         {
@@ -252,18 +271,18 @@ internal static class CyberLordChecks
         c0=count;var (actors,events)=Everything();var sink=new Sink();var scene=new Scene{LocalId=0};
         var json=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};
         List<Actor> Copies(){return actors.Select(a=>a.ViewCopy()).ToList();}
-        List<Actor> Wire(){return actors.Select(a=>{var c=a.ViewCopy();if(c.CyberKit!=null)c.CyberKit=JsonSerializer.Deserialize<NativeCyberKit>(JsonSerializer.Serialize(a.CyberKit,json),json);return c;}).ToList();}
+        List<Actor> Wire(){return actors.Select(a=>{var c=a.ViewCopy();if(c.CyberKit!=null)c.CyberKit=JsonSerializer.Deserialize<NativeCyberKit>(JsonSerializer.Serialize(a.CyberKit,json),json);if(c.Kernel!=null)c.Kernel=JsonSerializer.Deserialize<NativeKernelPanic>(JsonSerializer.Serialize(a.Kernel,json),json);return c;}).ToList();}
         var times=Enumerable.Range(0,121).Select(i=>8f+i*.042f).ToArray();var first=new Dictionary<float,(int,double,int,double)>();var fxA=new NativeCyberLordFx();int drawn=0,ghosted=0;
         foreach(float t in times){var f=Frame(fxA,scene,actors,events,t,sink);first[t]=f;if(f.count>0)drawn++;if(f.ghosts>0)ghosted++;}
         Check(drawn==times.Length&&ghosted>10,"the busy timeline draws every frame ("+drawn+") with ghosts on "+ghosted);
-        foreach(var (label,make) in new (string,Func<List<Actor>>)[]{("a copied actor",Copies),("the kit through JSON",Wire)})
+        foreach(var (label,make) in new (string,Func<List<Actor>>)[]{("a copied actor",Copies),("the kit and Astra's Kernel through JSON",Wire)})
         {
             var fxB=new NativeCyberLordFx();var other=make();
             foreach(float t in times){var f=Frame(fxB,scene,other,events,t,sink);Check(f.Equals(first[t]),label+" draws the same frame at "+t.ToString("0.000"));}
         }
         {
             // Shuffled and repeated (a fresh effects object per pass sees the same events): the frame is a function of the data.
-            var rng=new Random(2026);var order=times.OrderBy(_=>rng.Next()).ToArray();var fxC=new NativeCyberLordFx();fxC.Observe(events,13);
+            var rng=new Random(2026);var order=times.OrderBy(_=>rng.Next()).ToArray();var fxC=new NativeCyberLordFx();fxC.Observe(events,times[0]);
             foreach(float t in order){scene.List.Clear();scene.List.AddRange(actors);sink.Reset();fxC.Draw(sink,scene,t,1,false);Check(sink.Count==first[t].Item1&&sink.Hash==first[t].Item2,"shuffled order draws the same frame at "+t.ToString("0.000"));}
             // The same for spectators and the killcam: a replay restarting the event ids (and the clock) starts over cleanly.
             var fxD=new NativeCyberLordFx();Frame(fxD,scene,actors,events,12.9f,sink);float rewind=times[33];var back=Frame(fxD,scene,actors,events,rewind,sink);

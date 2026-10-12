@@ -24,17 +24,18 @@ namespace ChipArena.UnityConversion
         private static string[] Seconds(){var s=new string[301];for(int i=0;i<s.Length;i++)s[i]=(i/10f).ToString("0.0",System.Globalization.CultureInfo.InvariantCulture)+"s";return s;}
         /// <summary>"12.3s" without allocating (cached to .1 s up to 30 s).</summary>
         public static string Time(float left){int k=(int)Math.Ceiling(Math.Max(0,left)*10-1e-4f);return k<seconds.Length?seconds[k]:Math.Ceiling(left).ToString(System.Globalization.CultureInfo.InvariantCulture)+"s";}
-        /// <summary>The slot's ready time: replicated, else the cast plus its cooldown (a Kernel Panic whiff refunds half).</summary>
-        public static float ReadyAt(CyberLordView v,int slot)
+        /// <summary>The slot's ready time: `ready` when given (the local pilot's replicated Kernel Panic cooldown, the pilot
+        /// frame's kernelReady), else the view's replicated one, else the cast plus its cooldown (a whiff refunds half).</summary>
+        public static float ReadyAt(CyberLordView v,int slot,float ready=float.NaN)
         {
-            if(v.Ready[slot]>-90)return v.Ready[slot];if(!(v.At[slot]>-90))return -100;
+            if(ready>0)return ready;if(v.Ready[slot]>-90)return v.Ready[slot];if(!(v.At[slot]>-90))return -100;
             float cd=CyberLordSpec.Cooldowns[slot];if(slot==CyberLordSpec.Four&&v.PanicOutcome==CyberLordSpec.Whiff)cd*=.5f;return v.At[slot]+cd;
         }
         /// <summary>One card at `time` for a pilot with `mana`.</summary>
-        public static Card Of(CyberLordView v,int slot,float time,float mana)
+        public static Card Of(CyberLordView v,int slot,float time,float mana,float readyAt=float.NaN)
         {
             var c=new Card{Key=CyberLordSpec.Keys[slot],Name=CyberLordSpec.Names[slot],Icon=Icons[slot]};float cost=CyberLordSpec.Costs[slot];
-            var p=v.Phase(slot,time);float ready=ReadyAt(v,slot),left=ready-time,span=slot==CyberLordSpec.Four&&v.PanicOutcome==CyberLordSpec.Whiff?CyberLordSpec.Cooldowns[slot]*.5f:CyberLordSpec.Cooldowns[slot];
+            var p=v.Phase(slot,time);float ready=ReadyAt(v,slot,readyAt),left=ready-time,span=slot==CyberLordSpec.Four&&v.PanicOutcome==CyberLordSpec.Whiff?CyberLordSpec.Cooldowns[slot]*.5f:CyberLordSpec.Cooldowns[slot];
             if(slot==CyberLordSpec.Four&&v.PanicLive(time)){c.State="PANIC";c.Active=true;c.Dial=1-Clamp01(left/span);return c;}
             if(p.Live&&p.Part<2||slot==CyberLordSpec.Two&&time>=v.LinkAt&&time<v.LinkUntil||slot==CyberLordSpec.E&&time>=v.WallBorn&&time<v.WallUntil){c.State="ACTIVE";c.Active=true;c.Dial=1-Clamp01(left/span);return c;}
             if(left>0){c.State=Time(left);c.Dial=1-Clamp01(left/span);c.Low=mana<cost;return c;}

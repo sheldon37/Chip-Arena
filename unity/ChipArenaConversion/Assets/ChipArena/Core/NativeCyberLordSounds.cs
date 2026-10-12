@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         private static int S(NativeKitSound[] o,int n,string key,string clip,float gain){if(n<o.Length)o[n]=new NativeKitSound{Key=key,Clip=clip,Gain=gain};return Math.Min(o.Length,n+1);}
         /// <summary>The state cue slots NativeAudio walks each frame (Count): their moments and sounds from the view.</summary>
         public const int Swing=0,Palm=1,QRelease=2,ERelease=3,WallEnd=4,OneRelease=5,TwoRelease=6,LinkEnd=7,ThreeCast=8,ThreeSlam=9,FourCast=10,FourLunge=11,FourWhiff=12,
-            Connect=13,Blink2=14,Blink3=15,ForkBomb=16,Reappear=17,Slots=18;
+            Connect=13,Blink2=14,Blink3=15,ForkBomb=16,Reappear=17,Clone1=18,Clone2=19,Clone3=20,Slots=21;
         /// <summary>When state cue `slot` is due for this view (NaN: never), and its sounds into `o` (returns the count).</summary>
         public static int State(CyberLordView v,int slot,NativeKitSound[] o,out float at)
         {
@@ -43,6 +43,8 @@ namespace ChipArena.UnityConversion
                 case Blink3:if(v.PanicStart>-90){at=age(2);n=S(o,n,"magic.blink-strike","demon-step",.6f);}break;
                 case ForkBomb:if(v.PanicStart>-90){at=age(3);n=S(o,n,"chip.split","demon-step",.5f);n=S(o,n,"dev.leet.glitch","darkness",.35f);}break;
                 case Reappear:if(v.PanicStart>-90){at=age(4)-.1f;n=S(o,n,"magic.blink-strike","demon-step",.55f);}break;
+                // The fork bomb's three clone strikes on their staggered beats (the host's three step-4 hits land together).
+                case Clone1:case Clone2:case Clone3:if(v.PanicStart>-90){at=v.PanicStart+KernelPanicPath.Clones[slot-Clone1];n=S(o,n,"dev.fist.hit",slot==Clone2?"arcade-kick":"arcade-punch",.6f);}break;
             }
             // An early end cuts the rest of the choreography's cues.
             if(slot>=Blink2&&v.PanicOutcome==CyberLordSpec.EndedEarly&&v.PanicEndedAt>-90&&at>=v.PanicEndedAt){at=float.NaN;n=0;}
@@ -63,7 +65,8 @@ namespace ChipArena.UnityConversion
                 case CyberHit.Siphon:if(kind==EventKind.Heal)n=S(o,n,"chip.heal",null,.35f);break;
                 case CyberHit.Crash:if(strike)n=S(o,n,"status.shock-zap","lightning",.4f);break;
                 case CyberHit.Panic1:case CyberHit.Panic2:case CyberHit.Panic3:if(strike)n=S(o,n,"dev.fist.hit",hit==CyberHit.Panic2?"arcade-kick":"arcade-heavy",.9f);break;
-                case CyberHit.Panic4:if(strike)n=S(o,n,"dev.fist.hit","arcade-punch",.6f);break;
+                case CyberHit.Panic4:break; // the clone cues (state slots Clone1-3) sound the step's three hits on their beats
+                case CyberHit.PanicWave:if(strike&&!targetMe)n=S(o,n,"impact.energy","stone",.45f);break;
                 case CyberHit.Panic5:if(strike){n=S(o,n,"blast.leet-nuke","explosion",1);n=S(o,n,"blast.quake","stone",.8f);}break;
             }
             return n;

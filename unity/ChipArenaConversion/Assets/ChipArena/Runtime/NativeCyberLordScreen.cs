@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
             var v=presentation?.CyberLordViewOf(p.Pose?.Id??0);if(v==null)return;float t=arena.Time;
             foreach(int slot in NativeCyberLordHud.Order)
             {
-                var c=NativeCyberLordHud.Of(v,slot,t,p.Mana);
+                var c=NativeCyberLordHud.Of(v,slot,t,p.Mana,slot==CyberLordSpec.Four?p.KernelReady:float.NaN);
                 cards.Add(new Card{Key=NativeCyberLordHud.Labels[slot],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});
             }
         }

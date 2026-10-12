@@ -130,16 +130,19 @@ namespace ChipArena.UnityConversion
         /// <summary>The caster through the cut-in and the sequence (KernelPanicPath.Steps): the lunge frozen on its punch (a
         /// hardlight tremor), the Breaker, the blink-behind rising kick, the blink-above hammer-fist, out of sight through the
         /// fork bomb, the slam into the code column, the recovery.</summary>
+        public const float KickLead=.1f,HammerLead=.08f;
         private static bool Panic(CyberLordView v,float time,ref Move m)
         {
             float age=v.PanicAge(time);if(float.IsNaN(age))return false;var S=KernelPanicPath.Steps;m.From=-1;m.Weight=1;
             // Ended early (a disconnect, the round's end): the pose eases back to the stance from wherever it was.
             if(v.PanicOutcome==CyberLordSpec.EndedEarly&&v.PanicEndedAt>-90&&time>=v.PanicEndedAt){m.Clip=Breaker;m.Time=Clip(Breaker).Duration;m.Weight=1-Ease(Ramp(time,v.PanicEndedAt,v.PanicEndedAt+BlendOut));m.State="cyber-kernel-ended";return m.Weight>0;}
             if(age<-.12f){m.Clip=Lunge;m.Time=Impact(Lunge)+.012f*(float)Math.Sin(time*90);m.Legs=.35f;m.Root=.9f;m.State="cyber-kernel-cut-in";return true;}
-            if(age<S[1]){knots[0]=-.12f;knots[1]=0;knots[2]=S[1];marks[0]=Impact(Breaker)*.4f;marks[1]=Impact(Breaker);marks[2]=Clip(Breaker).Duration*.85f;m.Clip=Breaker;m.Time=Retime(3,age);m.Legs=.3f;m.Root=.9f;m.State="cyber-kernel-breaker";
+            // Astra's hits land on the step starts (KernelPanicPath.HitAge): each later take winds up in the last moment of the
+            // previous step and strikes as the host teleports the body in.
+            if(age<S[1]-KickLead){knots[0]=-.12f;knots[1]=0;knots[2]=S[1]-KickLead;marks[0]=Impact(Breaker)*.4f;marks[1]=Impact(Breaker);marks[2]=Clip(Breaker).Duration*.85f;m.Clip=Breaker;m.Time=Retime(3,age);m.Legs=.3f;m.Root=.9f;m.State="cyber-kernel-breaker";
                 if(age<-.12f+ChainBlend){m.From=Lunge;m.FromTime=Impact(Lunge);m.FromWeight=1-Ease(Ramp(age,-.12f,-.12f+ChainBlend));}return true;}
-            if(age<S[2]){knots[0]=S[1];knots[1]=KernelPanicPath.HitAge(2);knots[2]=S[2];marks[0]=Impact(Kick)*.6f;marks[1]=Impact(Kick);marks[2]=Clip(Kick).Duration;m.Clip=Kick;m.Time=Retime(3,age);m.Legs=1;m.Root=1;m.State="cyber-kernel-kick";return true;}
-            if(age<S[3]){knots[0]=S[2];knots[1]=KernelPanicPath.HitAge(3);knots[2]=S[3];marks[0]=Impact(Hammer)*.3f;marks[1]=Impact(Hammer);marks[2]=Clip(Hammer).Duration;m.Clip=Hammer;m.Time=Retime(3,age);m.Legs=1;m.Root=1;m.State="cyber-kernel-hammer";return true;}
+            if(age<S[2]-HammerLead){knots[0]=S[1]-KickLead;knots[1]=KernelPanicPath.HitAge(2);knots[2]=S[2]-HammerLead;marks[0]=Impact(Kick)*.6f;marks[1]=Impact(Kick);marks[2]=Clip(Kick).Duration;m.Clip=Kick;m.Time=Retime(3,age);m.Legs=1;m.Root=1;m.State="cyber-kernel-kick";return true;}
+            if(age<S[3]){knots[0]=S[2]-HammerLead;knots[1]=KernelPanicPath.HitAge(3);knots[2]=S[3];marks[0]=Impact(Hammer)*.3f;marks[1]=Impact(Hammer);marks[2]=Clip(Hammer).Duration;m.Clip=Hammer;m.Time=Retime(3,age);m.Legs=1;m.Root=1;m.State="cyber-kernel-hammer";return true;}
             if(age<S[4]-.08f){m.Clip=Hammer;m.Time=Clip(Hammer).Duration;m.Legs=1;m.Root=1;m.State="cyber-kernel-fork-bomb";return true;}
             if(age<KernelPanicPath.Recovery){knots[0]=S[4]-.08f;knots[1]=S[4];knots[2]=KernelPanicPath.Recovery;marks[0]=Impact(Slam)*.55f;marks[1]=Impact(Slam);marks[2]=Clip(Slam).Duration;m.Clip=Slam;m.Time=Retime(3,age);m.Legs=.6f;m.Root=1;m.State="cyber-kernel-slam";return true;}
             if(age<KernelPanicPath.End+BlendOut){m.Clip=Slam;m.Time=Clip(Slam).Duration;m.Legs=.6f*(1-Ramp(age,KernelPanicPath.Recovery,KernelPanicPath.End));m.Root=1;m.Weight=1-Ease(Ramp(age,KernelPanicPath.Recovery+.2f,KernelPanicPath.End+BlendOut));m.State="cyber-kernel-recovery";return true;}

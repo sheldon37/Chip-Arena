@@ -124,6 +124,7 @@ namespace ChipArena.UnityConversion
                 Palm(sink,scene,a,view,time,quality,low,me);
                 for(int s=0;s<CyberLordSpec.Four;s++){var p=view.Phase(s,time);if(p.Live)Cast(sink,scene,a,view,s,p,time,quality,low,me);}
                 var op=view.Phase(CyberLordSpec.Four,time);if(op.Live||view.PanicOutcome==CyberLordSpec.Whiff&&time<op.End+.4f)Opener(sink,scene,a,view,op,time,quality,low,me);
+                LungeTrail(sink,scene,a,view,time,quality,low);
                 if(view.PanicLive(time)||view.PanicStart>-90&&time<view.PanicStart+KernelPanicPath.End+.6f&&time>=view.PanicConnect)
                 {
                     float pt=KernelPanicFeel.Participant(view,scene.Local)?KernelPanicFeel.Clock(view,time,reduced):time;
@@ -158,8 +159,10 @@ namespace ChipArena.UnityConversion
                     if(r.Kind==EventKind.Heal){if(age<.55f)HealGlint(s,scene,r,age,seed,q,low);}
                     break;
                 case CyberHit.Crash:if(age<SparkSeconds&&r.Kind!=EventKind.Heal)GlitchSpark(s,r.Position,age,1.1f,seed,q,low);break;
+                case CyberHit.PanicWave:if(age<SparkSeconds&&r.Kind!=EventKind.Heal)GlitchSpark(s,r.Position,age,1.2f,seed,q,low);break;
                 default:
-                    int step=CyberLordFeed.PanicStep(r.Hit);if(step>0&&age<.5f&&r.Kind!=EventKind.Heal)HitSpark(s,r.Position,age,step==5?2.1f:step==4?.9f:1.5f,seed,q,low);
+                    // (Step 4's three hits land together on the host; the fork-bomb clones draw their own staggered sparks.)
+                    int step=CyberLordFeed.PanicStep(r.Hit);if(step>0&&step!=4&&age<.5f&&r.Kind!=EventKind.Heal)HitSpark(s,r.Position,age,step==5?2.1f:1.5f,seed,q,low);
                     break;
             }
         }
@@ -460,7 +463,7 @@ namespace ChipArena.UnityConversion
             float fade=1-Smooth((time-v.CrashUntil)/.3f),y=c.Y+.025f;bool reduced=q<.5f;
             // The slam: a white flash, an upright wave of light racing out to 4 m in .2 s, dust.
             if(age<.45f){float u=Clamp01(age/.2f),k=1-Smooth(age/.45f);s.Sprite(false,c+Up*.2f,Lin(White,4*k*k),1.2f,Hot);s.Glow(c+Up*.3f,Lin(Cyan,.6f*k),0,R*.6f,Ring,u,seed);
-                Wave(s,c,R*u,.15f+.6f*(1-u),Lin(White,2.2f*k),k,low?14:28);if(!low)for(int i=0;i<Count(8,q,low);i++){float a0=i*MeleeMath.TAU/8+H(seed+i,3)*.4f;var d=new Vector3((float)Math.Cos(a0),0,(float)Math.Sin(a0));s.Smoke(c+d*(R*u*.8f)+Up*.15f,Lin(0x3a4a6a),.45f*k,.6f+.6f*u,u,seed+i,c.Y);}}
+                Wave(s,c,R*u,.45f+.7f*(1-u),Lin(White,1.6f),k*(1-u),low?14:28);if(!low)for(int i=0;i<Count(8,q,low);i++){float a0=i*MeleeMath.TAU/8+H(seed+i,3)*.4f;var d=new Vector3((float)Math.Cos(a0),0,(float)Math.Sin(a0));s.Smoke(c+d*(R*u*.8f)+Up*.15f,Lin(0x3a4a6a),.45f*k,.6f+.6f*u,u,seed+i,c.Y);}}
             float grow=Smooth(age/.22f)*fade;
             // The field's volume: corrupted voxels popping up out of the floor on hashed slots, data rising off it, an edge-less
             // glow over it (no tiles or rim ring on the floor).
@@ -554,6 +557,22 @@ namespace ChipArena.UnityConversion
             // A whiff: the spearhead fizzles into a null glitch where the punch ran out.
             if(v.PanicOutcome==CyberLordSpec.Whiff){float age=time-v.Until[CyberLordSpec.Four];if(age>=0&&age<.4f)GlitchSpark(s,fist+f*.2f,age*.8f,.8f,seed,q,low);}
         }
+        /// <summary>The lunge's blink trail for .3 s from the contact (the host moves the body there at once): RGB-split bands from
+        /// where the caster stood (a whiff: its cast spot; a connect: back along the facing from the contact) to where it is.</summary>
+        public const float LungeTrailSeconds=.3f,LungeBack=3;
+        private static void LungeTrail(ICyberFxSink s,ICyberFxScene scene,Actor a,CyberLordView v,float time,float q,bool low)
+        {
+            float c=v.Until[CyberLordSpec.Four],age=time-c;if(!(c>-90)||age<0||age>=LungeTrailSeconds||v.PanicOutcome==0)return;
+            var f=Forward(v.PanicYaw);Vector3 to,from;
+            if(v.PanicOutcome==CyberLordSpec.Whiff){to=scene.Feet(a);from=v.PanicCasterStart;}else{to=v.PanicCasterStart;from=to-f*LungeBack;}
+            var d=to-from;d.Y=0;float len=d.Length();if(len<.2f)return;var r=Right(d/len);float fade=1-Smooth(age/LungeTrailSeconds);long seed=a.Id*577L+v.PanicId*13L;
+            int bands=low?3:Count(7,q,low);
+            for(int i=0;i<bands;i++)
+            {
+                float y=.2f+1.5f*H(seed+i,3),w=.025f+.05f*H(seed+i,5),side=(H(seed+i,9)-.5f)*.5f;var p0=from+r*side+Up*y;var p1=to+r*side+Up*y;
+                s.Band(false,p0-Up*w,p1-Up*w,p1+Up*w,p0+Up*w,0,fade,Lin(i%3==0?Magenta:i%3==1?Cyan:White,1.8f));
+            }
+        }
         /// <summary>
         /// The sequence `t` (presentation time; the participants' hit-stopped clock): the connect flash held through the cut-in,
         /// the Breaker's launch streaks (and a wall-splat crack), the glitch-teleport tears out of and into each blink, the
@@ -595,12 +614,13 @@ namespace ChipArena.UnityConversion
             // 3. Blink-above: out behind, in above the apex, the hammer-fist's arc trail down onto the victim.
             Tear(s,v.Point(KernelPanicPath.Behind)+Up*.2f,age-S[2]+.04f,false,seed+107,q,low);
             Tear(s,v.Point(KernelPanicPath.Above),age-S[2],true,seed+109,q,low);
-            if(age>=S[2]&&age<S[3]+.12f)
+            if(age>=S[2]&&age<S[2]+.4f)
             {
-                float u=Clamp01((age-S[2])/(S[3]-S[2])),fade=1-Smooth((age-S[3])/.12f);var top=v.Point(KernelPanicPath.Above)+Up*1.9f+f*.15f;var hit=v.Point(KernelPanicPath.Apex)+Up*1.25f;
+                // (The hammer lands on the step's start, as the caster tears in above: the arc sweeps down in .06 s and fades.)
+                float u=Clamp01((age-S[2])/.06f),fade=1-Smooth((age-S[2]-.06f)/.34f);var top=v.Point(KernelPanicPath.Above)+Up*1.9f+f*.15f;var hit=v.Point(KernelPanicPath.Apex)+Up*1.25f;
                 // A crescent of light from overhead down through the strike.
                 int segs=low?6:10;for(int i=0;i<segs;i++){float a0=i/(float)segs*Math.Min(1,u*2.4f),a1=(i+1)/(float)segs*Math.Min(1,u*2.4f);var p0=Arc(top,hit,f,a0);var p1=Arc(top,hit,f,a1);float w=.03f+.09f*a1;
-                    s.Band(false,p0-r*w,p1-r*w,p1+r*w,p0+r*w,.2f*fade,1.2f*fade*a1,Lin(i%2==0?White:Cyan,2));}
+                    s.Band(false,p0-r*w,p1-r*w,p1+r*w,p0+r*w,.2f*fade,1.2f*fade*Math.Max(.2f,a1),Lin(i%2==0?White:Cyan,2));}
                 float k=age-KernelPanicPath.HitAge(3);if(k>=0&&k<.3f){ImpactBurst(s,hit,k,1.3f,seed+11,q,low);for(int i=0;i<Count(8,q,low);i++){var d=Vector3.Normalize(new Vector3(H(seed+i,23)-.5f,-1.2f,H(seed+i,25)-.5f));s.Streak(hit+d*(k*6),d*20,Lin(Cyan,2.4f*(1-k/.3f)),.03f,.7f,.05f,.9f,k/.3f,seed+i);}}
             }
             // 4. Fork bomb: three clones round the falling victim, each tearing in, striking on its beat and shattering into pixels.
@@ -694,7 +714,8 @@ namespace ChipArena.UnityConversion
             if(k>=0&&k<.7f)
             {
                 float u=Clamp01(k/.32f),fade=1-Smooth(k/.7f);s.Sprite(false,land+Up*.5f,Lin(White,6*fade*fade),1.8f,Hot);s.Glow(land+Up*.4f,Lin(Code,1.1f*fade),0,KernelPanicPath.Shockwave*.6f,Ring,u,seed);
-                Wave(s,land,KernelPanicPath.Shockwave*u,.25f+.9f*(1-u),Lin(White,2.4f*fade),fade,low?18:36);Wave(s,land,KernelPanicPath.Shockwave*u*.82f,.2f+.6f*(1-u),Lin(Code,2f*fade),fade,low?14:28);
+                // (Tall as it leaves, fading as it spreads, gone by the 5 m edge: an upright wall, never a ring left on the floor.)
+                float wave=fade*(1-u)*(1-u);Wave(s,land,KernelPanicPath.Shockwave*u,.6f+1.1f*(1-u),Lin(White,1.6f),wave,low?18:36);Wave(s,land,KernelPanicPath.Shockwave*u*.82f,.45f+.8f*(1-u),Lin(Code,1.4f),wave,low?14:28);
                 int tiles=low?10:Count(24,q,low);for(int i=0;i<tiles;i++){float a0=H(seed+i,17)*MeleeMath.TAU,d=KernelPanicPath.Shockwave*u*(.6f+.4f*H(seed+i,19));var p=land+new Vector3((float)Math.Cos(a0)*d,.05f+.6f*(float)Math.Sin(Clamp01(u*1.2f)*Math.PI)*H(seed+i,21),(float)Math.Sin(a0)*d);
                     float z=.09f*fade;p.Y+=z*.6f;s.Voxel(false,WeaponShape.Cube,p,Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3((float)Math.Sin(a0),.3f,-(float)Math.Cos(a0))),u*2),new Vector3(z,z*.7f,z),Lin(i%3==0?White:Code,2.2f));}
                 if(!low)for(int i=0;i<Count(10,q,low);i++){float a0=i*MeleeMath.TAU/10;var d=new Vector3((float)Math.Cos(a0),0,(float)Math.Sin(a0));s.Smoke(land+d*(KernelPanicPath.Shockwave*u*.7f)+Up*.2f,Lin(0x2a3550),.5f*fade,.8f+.8f*u,u,seed+i,land.Y);}
