@@ -102,3 +102,12 @@ from the general music rotation. No seamless-loop edit or loudness remaster was 
 SHA-256: `3093119a80cdac42bf46a3cbb44b5da2ec6920ec5580ef153f01ea3bc6417d25`.
 The Windows package includes `Music-Credits.txt`; this owner-supplied song is
 separate from the locally installed licensed effects bank.
+
+## Chip Arena Main
+
+Owner-supplied on 2026-10-12 as the Unity main-menu music. The complete original
+MP3 is retained without transcoding (179.832 seconds, 48 kHz stereo, 4,176,048 bytes)
+in the existing `music/menu-afterglow` resource slot, preserving its importer GUID,
+looping, pause/resume and menu volume controls. Legacy Electron audio is unchanged.
+No seamless-loop edit or loudness remaster was made.
+SHA-256: `0fe130e6ad51201891e9060550067f2db759a02cac2dfe3fbd3fd1f30df34ad2`.
