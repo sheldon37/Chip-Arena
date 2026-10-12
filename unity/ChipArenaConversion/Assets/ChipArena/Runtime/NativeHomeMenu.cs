@@ -525,7 +525,7 @@ namespace ChipArena.UnityConversion
             if(!Online&&!lost)items.Add(("rotate-cw","Restart Match",false,true,StartMatch));
             if(!lost)items.Add(("undo-2","Return to Lobby",false,(Hosting||!Online)&&!returning,()=>{if(!Online)afterMatch=OfflineLobby();RequestLobbyReturn();menu=false;}));
             items.Add(("log-out","Return to Main Menu",lost,true,()=>{afterMatch=lost?MenuScreen.Join:MenuScreen.Home;if(Online)LeaveRoom();else ReturnToLobby();}));
-            string hints="WASD move · double-tap W sprint · LMB fire / attack · RMB block · Q / E abilities · R reload · Shift roll · Space jump · V camera · Tab lock-on / board · G scores · Esc menu";
+            string hints="WASD move · double-tap W sprint · LMB fire / attack · RMB block · Q / E abilities · R reload · Shift roll · Space jump · V camera · X shoulder · Tab lock-on / board · G scores · Esc menu";
             string diag=content.Map(arena.MapId).name+"  ·  SET "+match.Set+" · ROUND "+match.Round+"  ·  "+match.Phase+"  ·  "+arena.Bullets.Count+" projectiles  ·  step "+stepMs.ToString("0.00")+" ms  ·  "+presentation.RenderingMode;
             float pw=Mathf.Min(520,W-56),iw=pw-64;var statusLines=U.Wrap(status,16,iw);var hintLines=U.Wrap(hints,13,iw);var diagLines=MonoLines(diag,11,iw);bool guest=Online&&!Hosting;
             float ph=108+statusLines.Count*16*1.6f+16+items.Count*56-8+(guest?24:0)+20+hintLines.Count*13*1.55f+8+diagLines.Count*16+30,e=In(age,0,.26f);
