@@ -25,7 +25,8 @@ namespace ChipArena.UnityConversion
             var winner=match.Seat(match.SetWinner);return match.Seats.Where(p=>p.connected&&!p.AuthorityBoss&&(match.BothDraft||winner==null||!match.SameSide(p,winner))).OrderBy(p=>winner!=null&&match.SameSide(p,winner)).ToList();
         }
         private sealed class Tray {public Rect[] Cards=Array.Empty<Rect>();public int Rows;public float Top,Bottom;public ChipSize Size;}
-        // draft-timeline.ts draftPerRow/draftRows and the .draft-row width rule; cards in a row share the tallest height.
+        // draft-timeline.ts draftPerRow/draftRows and the .draft-row width rule; cards in a row share the tallest height and a
+        // short row sits centred (NativeDraftRules.RowX).
         private Tray LayoutTray(IList<ContentChip> chips,float top,float W,float H)
         {
             var t=new Tray();int n=chips.Count;if(n==0){t.Bottom=top;return t;}int fit=W<=760||H<=480?n:Mathf.Clamp(Mathf.FloorToInt((W-42)/164),2,6);int[] rows=n<=fit?new[]{n}:new[]{(n+1)/2,n/2};t.Rows=rows.Length;
@@ -34,8 +35,8 @@ namespace ChipArena.UnityConversion
             foreach(int cols in rows)
             {
                 float w=Mathf.Min(cap,Mathf.Max(118,(tray-(cols-1)*gap)/cols)),h=0;for(int i=0;i<cols;i++)h=Mathf.Max(h,NativeChipCard.Height(chips[at+i],w,t.Size));
-                float span=cols>1?(tray-cols*w)/(cols-1):0;y+=10;
-                for(int i=0;i<cols;i++){float x=cols==1?(W-w)/2:28+i*(w+span);t.Cards[at+i]=new Rect(x,y,w,h);}
+                y+=10;
+                for(int i=0;i<cols;i++){float x=NativeDraftRules.RowX(i,cols,w,tray,gap,W);t.Cards[at+i]=new Rect(x,y,w,h);}
                 at+=cols;y+=h+8+rowGap;
             }
             t.Top=t.Cards[0].y;t.Bottom=y-rowGap;return t;

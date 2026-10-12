@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — centre short chip-selection rows (owner: "for chip selection, please center them more if there is fewer amounts (Still spreading horizontally)")
+- Branch `claude/sleepy-ritchie-g8ruhv` on `3bb8995`. `NativeDraftScreen.LayoutTray` spread every row's cards to both tray edges (the source's space-between), so 2–4 offers sat far apart (3 cards on 1920x1080: 524 px gaps).
+- New `NativeDraftRules.RowStep/RowX`: a row keeps its card width but sits centred with a gutter of at most `RowGutter` (.2) card widths, never under the 14 px minimum; full rows still span the tray (28 px margins). Used by the PvP and PvE trays and mirrored by `DraftStageChecks`. 3 cards on 1920x1080 now span 498–1422 with 54 px gutters.
+- `DraftStageChecks`: every screen and 2–12 offers keep each row centred, inside the tray and within the gutter cap; fails on the old spread layout.
+- Presentation only (no draft rules, timing or networking change). Checks: unity-check runtime+editor OK; check_relay exit 0, 400 PASS; Python 86 OK (1 skip); package_source passed; diff --check clean. Not run: Unity Editor/Windows view of the tray.
+
 ## 2026-10-12 — Astra — restore winning-kill death animations and bodies
 - Branch `codex/unity-death-results-20261012`, base cloud `2c45d052`; preserves Claude's latest jump presentation. Owner reports bodies disappearing with no death animation and has authorized pushes/merges. Source integration/CI receipts are recorded in the task PR.
 - Root cause is my PR #125 cleanup condition: `NativeArena.Step` resolves a winning kill into `Result` in the same tick, while `DeathPresentation` rejected every PvP phase except `Fight`. The live actor had already stopped rendering, so there was no death scene/body to replace it. The previous lifecycle test incorrectly asserted this immediate wipe.

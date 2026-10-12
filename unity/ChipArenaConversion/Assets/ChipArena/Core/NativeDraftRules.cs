@@ -5,6 +5,12 @@ namespace ChipArena.UnityConversion
     // Source draft-stage.ts pose/look and draft-timeline.ts timing, in source coordinates.
     public static class NativeDraftRules
     {
+        // Tray row placement (owner 2026-10-12: "center them more if there is fewer amounts (Still spreading horizontally)"). The
+        // source spread a row's cards to both tray edges (space-between); a short row now sits centred with a gutter of at most
+        // RowGutter card widths (never under the row's minimum gap), so only a full row still reaches the tray edges.
+        public const float RowGutter=.2f;
+        public static float RowStep(int cols,float w,float tray,float gap){if(cols<=1)return w;float spread=(tray-cols*w)/(cols-1);return w+Math.Min(spread,Math.Max(gap,w*RowGutter));}
+        public static float RowX(int i,int cols,float w,float tray,float gap,float W){float step=RowStep(cols,w,tray,gap);return (W-(w+(cols-1)*step))/2+i*step;}
         public static float Reach(float age)=>MathUtil.Smooth((age-.14f)/.34f);
         public static float Fly(float age)=>MathUtil.Smooth((age-.10f)/.38f);
         public static float Fade(float age)=>MathUtil.Smooth((age-.40f)/.08f);
