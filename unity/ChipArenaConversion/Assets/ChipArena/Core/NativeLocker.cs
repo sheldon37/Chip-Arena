@@ -177,8 +177,11 @@ namespace ChipArena.UnityConversion
         private static AbilityOption FromContent(ContentAbility a,ContentWeapon w)
         {
             bool hold=a.kind=="ads";
-            return new AbilityOption{Id=a.id,Name=a.name,Text=a.text,Icon=AbilityIcon(a.id,w),Cooldown=a.cooldown,Cost=a.cost,Meta=Meta(a.cooldown,a.cost,w.@class=="melee"?"stamina":"mana",hold)};
+            return new AbilityOption{Id=a.id,Name=a.name,Text=a.text,Icon=AbilityIcon(a.id,w),Cooldown=a.cooldown,Cost=a.cost,Meta=Meta(a.cooldown,a.cost,CostUnit(w),hold)};
         }
+        /// <summary>What a weapon's abilities spend: melee kits stamina, the rest mana; the DEV Cyber Lord is a melee class whose
+        /// spells spend mana (Astra's StepCyberInput).</summary>
+        public static string CostUnit(ContentWeapon w)=>w!=null&&w.@class=="melee"&&w.id!=CyberLordSpec.Id?"stamina":"mana";
         // "8 s cooldown · 16 mana", "Hold · no cost".
         public static string Meta(double cooldown,double cost,string unit,bool hold)
         {
@@ -200,6 +203,8 @@ namespace ChipArena.UnityConversion
                 // The gun Q kit (Core/NativeGunKit.Icon, the HUD cards share it): hammer for Fan the Hammer, gauge for Overdrive.
                 case "fan-hammer":case "overdrive":return NativeGunKit.Icon(id);
                 case NativeBowWire.VolleyId:case NativeBowWire.RainId:return NativeBowHud.Icon(id);
+                // The DEV Cyber Lord's Q, E and 1-4 (Astra's content, PR #142): the HUD cards' icons.
+                case "data-dash":case "firewall":case "packet-burst":case "siphon-link":case "system-crash":case "kernel-panic":return NativeCyberLordHud.Icon(id);
                 case "ads":return w!=null&&w.id=="rifle"?"scan-line":"crosshair";case "frag-grenade":return "bomb";case "rocket":return "rocket";case "orbital-mark":return "target";
                 case "flame-lance":return "flame";case "meteor-strike":return "sun";case "tidal-wave":return "waves";case "geyser-wall":return "droplets";
                 case "blink-strike":return "zap";case "ball-lightning":return "orbit";case "shadow-shackles":return "anchor";case "singularity":return "eclipse";

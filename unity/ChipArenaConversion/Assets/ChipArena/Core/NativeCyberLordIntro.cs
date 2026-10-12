@@ -18,8 +18,8 @@ namespace ChipArena.UnityConversion
     public sealed class NativeCyberLordIntroScript:NativeProceduralEntrance
     {
         public const float ScanTo=.6f,FormAt=.55f,JabHit=1.2f,CrossHit=1.6f,PalmHit=2.0f;
-        public static readonly float JabAt=JabHit-CyberLordSpec.ComboDurations[0]*CyberLordSpec.ComboHitShare[0],CrossAt=CrossHit-CyberLordSpec.ComboDurations[1]*CyberLordSpec.ComboHitShare[1];
-        public static readonly float PalmAt=PalmHit-CyberLordSpec.ComboDurations[2]*CyberLordSpec.ComboHitShare[2];
+        public static readonly float JabAt=JabHit-CyberLordSpec.ComboWindups[0],CrossAt=CrossHit-CyberLordSpec.ComboWindups[1];
+        public static readonly float PalmAt=PalmHit-CyberLordSpec.ComboWindups[2];
         private readonly CyberLordMotion motion=new CyberLordMotion();private readonly CyberLordView view=new CyberLordView();private readonly MeleeRig upper=new MeleeRig();
         private static readonly int[] UpperBones={CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LClav,CapturedRig.RClav,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow,CapturedRig.LHand,CapturedRig.RHand};
         public NativeCyberLordIntroScript():base(CyberLordSpec.Entrance,PalmHit,NativeCyberLordLook.Cyan)
@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
             if(t>=PalmAt){view.ComboStep=2;view.ComboAt=PalmAt;view.ComboUntil=PalmAt+CyberLordSpec.ComboDurations[2];}
             else if(t>=CrossAt){view.ComboStep=1;view.ComboAt=CrossAt;view.ComboUntil=CrossAt+CyberLordSpec.ComboDurations[1];}
             else if(t>=JabAt){view.ComboStep=0;view.ComboAt=JabAt;view.ComboUntil=JabAt+CyberLordSpec.ComboDurations[0];}
-            if(view.ComboAt>-90)view.ComboHit=view.ComboAt+(view.ComboUntil-view.ComboAt)*CyberLordSpec.ComboHitShare[view.ComboStep];
+            if(view.ComboAt>-90)view.ComboHit=view.ComboAt+CyberLordSpec.ComboWindups[view.ComboStep];
         }
         public override void Pose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
         {

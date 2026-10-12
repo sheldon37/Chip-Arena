@@ -178,19 +178,20 @@ namespace ChipArena.UnityConversion
             for(int i=MeleeShots.Count-1;i>=0;i--)
             {
                 var s=MeleeShots[i];bool remove=false;
+
                 if(s.Shield&&(s.Original.Hp<=0||!s.Original.Seat.connected)){MeleeShots.RemoveAt(i);continue;}
                 if(s.Shield&&(s.Life<=dt||s.Travel<=0))s.Returning=true;
                 if(s.Returning)
                 {
                     Vector3 delta=s.Original.Body.position+Vector3.up*.25f-s.Position;float distance=delta.magnitude;
                     if(distance<40*dt+.4f){remove=true;if(s.Original.Special?.Shot==s.Id)s.Original.Special.Until=Time+.15f;}
-                    else {s.Velocity=delta.normalized*40;s.Position+=s.Velocity*dt;}
+                    else {s.Velocity=delta.normalized*40;if(CyberAbsorb(s.Owner,s.Position,s.Position+s.Velocity*dt,s.Radius)){MeleeShots.RemoveAt(i);continue;}s.Position+=s.Velocity*dt;}
                 }
                 else if(s.Life<=0||s.Travel<=0)remove=true;
                 else
                 {
                     float h=Math.Min(dt,s.Life);var velocity=Vec(s.Velocity);Vector3 delta=Vec(NativeSpecialRules.Ballistic(ref velocity,s.Gravity,h));s.Velocity=Vec(velocity);s.Life-=h;
-                    delta=Vector3.ClampMagnitude(delta,s.Travel);s.Travel-=delta.magnitude;var hit=SweepMeleeShot(s,delta);
+                    delta=Vector3.ClampMagnitude(delta,s.Travel);s.Travel-=delta.magnitude;if(CyberAbsorb(s.Owner,s.Position,s.Position+delta,s.Radius)){MeleeShots.RemoveAt(i);continue;}var hit=SweepMeleeShot(s,delta);
                     bool ceiling=NativeSpecialRules.Ceiling(Vec(s.Position),Vec(delta),s.Radius,out float fraction,out V3 center);
                     if(ceiling&&(!hit.HasValue||delta.magnitude*fraction<=hit.Value.Distance)){s.Position=Vec(center);Emit(EventKind.CeilingHit,s.Owner,0,s.Position,0,"ABSORB",color:0x75ddff);if(s.Shield)s.Returning=true;else remove=true;}
                     else if(hit.HasValue)remove=HitMeleeShot(s,hit.Value);else s.Position+=delta;

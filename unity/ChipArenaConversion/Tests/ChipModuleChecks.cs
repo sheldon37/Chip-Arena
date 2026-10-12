@@ -82,8 +82,10 @@ namespace ChipArena.UnityConversion
             Check(Sha("Core/NativeWeaponDressing.cs")==DressingSha,"NativeWeaponDressing.cs (the Prototype pieces) is byte-identical to the base");
             Check(Sha("Runtime/NativeSourcePrimitives.cs")==PrimitivesSha,"NativeSourcePrimitives.cs (the Prototype primitives) is byte-identical to the base");
             var digest=new StringBuilder();
-            // The base weapons (the Bow, now in content, has its own pinned digest below).
-            foreach(var w in data.weapons.Where(w=>w.id!=NativeBowWire.Spec))foreach(var l in Loadouts(data,w.id))
+            // The base weapons (the Bow, now in content, has its own pinned digest below; the DEV Cyber Lord, in content since
+            // Astra's PR #142, is unarmed: no weapon socket, so no pieces are drawn for it).
+            Check(!NativeWeaponDressing.SocketShown(CyberLordSpec.Id),"the unarmed Cyber Lord shows no weapon socket (no pieces)");
+            foreach(var w in data.weapons.Where(w=>w.id!=NativeBowWire.Spec&&w.id!=CyberLordSpec.Id))foreach(var l in Loadouts(data,w.id))
             {
                 int n=NativeWeaponDressing.Modules(w.id,w.@class=="ranged",(int)w.color,l.Chips,l.Stats,pieces);digest.Append(w.id).Append(l.Name).Append(n);
                 for(int i=0;i<n;i++)foreach(float t in new[]{0f,1.37f}){var p=pieces[i];NativeWeaponDressing.Animate(ref p,t);Piece(digest,p);}

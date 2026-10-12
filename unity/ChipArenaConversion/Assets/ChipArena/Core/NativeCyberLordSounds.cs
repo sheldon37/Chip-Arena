@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
             if(slot>=Blink2&&v.PanicOutcome==CyberLordSpec.EndedEarly&&v.PanicEndedAt>-90&&at>=v.PanicEndedAt){at=float.NaN;n=0;}
             return n;
         }
-        /// <summary>A cyber event's cues (Hit / AbilityHit / Absorb / Heal with a cyber Detail). targetMe: the local pilot is its
+        /// <summary>A cyber event's cues (Hit / AbilityHit / Absorb with a cyber Detail). targetMe: the local pilot is its
         /// target (it already hears its hurt).</summary>
         public static int Event(EventKind kind,CyberHit hit,bool targetMe,NativeKitSound[] o)
         {
@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
                 case CyberHit.Dash:if(strike&&!targetMe)n=S(o,n,"impact.energy","arcade-punch",.4f);break;
                 case CyberHit.Firewall:if(kind==EventKind.Absorb)n=S(o,n,"melee.shield.block","parry",.45f);else if(strike)n=S(o,n,"status.burn-tick","burn-tick",.3f);break;
                 case CyberHit.Burst:if(strike&&!targetMe)n=S(o,n,"impact.energy","lightning",.25f);break;
-                case CyberHit.Siphon:if(kind==EventKind.Heal)n=S(o,n,"chip.heal",null,.35f);break;
+                case CyberHit.Siphon:break; // the hook and the end sound from the view (TwoRelease, LinkEnd); the caster's heal is the generic Heal cue
                 case CyberHit.Crash:if(strike)n=S(o,n,"status.shock-zap","lightning",.4f);break;
                 case CyberHit.Panic1:case CyberHit.Panic2:case CyberHit.Panic3:if(strike)n=S(o,n,"dev.fist.hit",hit==CyberHit.Panic2?"arcade-kick":"arcade-heavy",.9f);break;
                 case CyberHit.Panic4:break; // the clone cues (state slots Clone1-3) sound the step's three hits on their beats
@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The bank keys this routing may play (Tests/CyberLordChecks: every one is an existing bank key).</summary>
         public static readonly string[] Keys={"dev.fist.swing","impact.energy","move.roll","dev.leet.glitch","field.repulsion","magic.shackles","status.shock-zap","blast.quake","blast.static",
-            "melee.miss","blast.implosion","dev.fist.hit","magic.blink-strike","chip.split","melee.shield.block","status.burn-tick","chip.heal","blast.leet-nuke"};
+            "melee.miss","blast.implosion","dev.fist.hit","magic.blink-strike","chip.split","melee.shield.block","status.burn-tick","blast.leet-nuke"};
         public static readonly string[] Clips={"arcade-punch","electric-hook","dash","darkness","parry","metal","lightning","stone","explosion","arcade-heavy","demon-step","arcade-kick","burn-tick"};
     }
 }

@@ -145,7 +145,7 @@ internal static class LockerChecks
             var w=data.Weapon(a.spec);int n=NativeLocker.SlotOptions(data,w,a.slot,options);var expected=data.abilities.Where(x=>x.spec==a.spec&&x.slot==a.slot).ToArray();
             Check(n==expected.Length&&options.Select(o=>o.Id).SequenceEqual(expected.Select(x=>x.id)),a.spec+" "+a.slot+" options from content");
             var o0=options.First(o=>o.Id==a.id);Check(o0.Name==a.name&&o0.Text==a.text&&o0.Cooldown==a.cooldown&&o0.Cost==a.cost&&!o0.FromWeapon,a.spec+" "+a.slot+" option fields");
-            Check(o0.Meta==(a.kind=="ads"?"Hold":a.cooldown>0?a.cooldown.ToString("0.#",inv)+" s cooldown":"No cooldown")+" · "+(a.cost>0?a.cost.ToString("0.#",inv)+(w.@class=="melee"?" stamina":" mana"):"no cost"),a.spec+" "+a.slot+" meta "+o0.Meta);
+            Check(o0.Meta==(a.kind=="ads"?"Hold":a.cooldown>0?a.cooldown.ToString("0.#",inv)+" s cooldown":"No cooldown")+" · "+(a.cost>0?a.cost.ToString("0.#",inv)+(w.@class=="melee"&&w.id!="cyberlord"?" stamina":" mana"):"no cost"),a.spec+" "+a.slot+" meta "+o0.Meta);
             Check((icons.Contains(o0.Icon)||art.Contains(o0.Icon))&&o0.Icon!="sparkles",a.spec+" "+a.slot+" icon "+o0.Icon);
         }
         {

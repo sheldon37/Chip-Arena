@@ -28,12 +28,14 @@ namespace ChipArena.UnityConversion
             // 1. Both skins for every weapon with a model: the Prototype bake ("weapon-"/"loose-" + spec, unchanged) and a Standard
             // design at three tiers plus its loose copy.
             // The Bow's models ship ahead of its content entry (docs/NEW-KITS.md section 2; the rules are Astra's).
-            var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren").Concat(data.weapons.Any(w=>w.id==NativeBowWire.Spec)?new string[0]:new[]{NativeBowWire.Spec}).ToArray();
-            Check(specs.OrderBy(s=>s).SequenceEqual(NativeWeaponSkins.Weapons.OrderBy(s=>s)),"the skinned weapons are every weapon but the Siren");
+            // The DEV Cyber Lord (Astra, PR #142) is unarmed: its hardlight gauntlets are its look (NativeCyberLordLook), not a skin.
+            var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren"&&id!=CyberLordSpec.Id).Concat(data.weapons.Any(w=>w.id==NativeBowWire.Spec)?new string[0]:new[]{NativeBowWire.Spec}).ToArray();
+            Check(specs.OrderBy(s=>s).SequenceEqual(NativeWeaponSkins.Weapons.OrderBy(s=>s)),"the skinned weapons are every weapon but the Siren and the unarmed Cyber Lord");
             var designed=NativeWeaponSkins.Weapons.Where(NativeWeaponModels.Designed).ToArray();
             Check(NativeWeaponModels.Specs.All(NativeWeaponSkins.Skinned)&&NativeWeaponModels.Specs.Count()==designed.Length,"every Standard design is a skinned weapon");
             Check(designed.Length==NativeWeaponSkins.Weapons.Length,"every skinned weapon has a Standard design");
             Check(!NativeWeaponSkins.Skinned("siren")&&!NativeWeaponModels.Designed("siren"),"the Siren has no weapon skin");
+            Check(!NativeWeaponSkins.Skinned(CyberLordSpec.Id)&&!NativeWeaponModels.Designed(CyberLordSpec.Id),"the unarmed Cyber Lord has no weapon skin");
             var file=Path.Combine(root,"Assets/Conversion/Resources/SourceModels.json");
             using(var sha=SHA256.Create())Check(string.Concat(sha.ComputeHash(File.ReadAllBytes(file)).Select(b=>b.ToString("x2")))==SourceModelsSha256,"SourceModels.json (the Prototype Series bake) is byte-identical to the base");
             var bank=new HashSet<string>();

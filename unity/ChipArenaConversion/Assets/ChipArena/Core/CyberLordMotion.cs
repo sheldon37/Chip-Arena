@@ -112,6 +112,8 @@ namespace ChipArena.UnityConversion
                 case CyberLordSpec.Three:knots[0]=at;knots[1]=rel;knots[2]=until;knots[3]=fin;marks[0]=0;marks[1]=impact;marks[2]=end;marks[3]=end;legs=.55f;root=1;break;
                 default:knots[0]=at;knots[1]=fin;marks[0]=0;marks[1]=end;break;
             }
+            // A cast with no windup (the dash, the wall) is already at its take's impact as it starts (the blend in eases it in).
+            if(slot<CyberLordSpec.Four&&!(v.Release[slot]>at+1e-4f))marks[0]=marks[1];
             var m=new Move{Clip=clip,Time=Retime(slot>=CyberLordSpec.Four?2:4,time),Legs=legs,Root=root,State=AbilityState[slot],From=-1};
             m.Weight=Ease(Ramp(time,at,at+BlendIn*1.4f))*(1-Ease(Ramp(time,fin,fin+BlendOut)));
             // The link's held reach pulls back in small tugs as the packets stream home.
