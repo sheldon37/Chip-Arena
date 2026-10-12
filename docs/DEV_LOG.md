@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — stage death-frame fixture presence
+- Branch `codex/unity-hazard-death-fixture-20261012`, shared base `eb1562e7`. Owner's build (7) proceeds past Cyber Lord and Brickfall, then throws at NativeStageHazardValidation line 36. The fixture assigns death after cloning a live frame but leaves hasDeath=false. Valid calls RestorePresence, correctly removes the absent-marked death, and the fixture later dereferences null. This also made the preceding acceptance assertions vacuous.
+- Round-trip every injected hazard death with NativeFrameCodec.Clone, which captures presence exactly as the wire sender does. Assert absent death remains absent; each maglev/grid/hazard record remains present with its exact kind after validation; an unknown kind reaches validation intact and is rejected. No production codec, damage, networking policy or presentation changes.
+- Actual checks: source validation passes (1,650 files), git diff --check passes; inspected other validation death assignments for this pattern. Unity JsonUtility/native execution remains unavailable here, so the new regression assertions require the owner's next Build-and-Publish. No compiled release or Windows gameplay claim. Source publication receipt is in the task PR.
+
 ## 2026-10-12 — Claude — Bow fixes: first-person bow mirrored; Bow lobby stance
 - Branch `claude/bow-fixes`, base shared `aead19c` (contains Astra's Bow rules, the NativeBowWire rewiring `607ebce` and #145). Not pushed, merged or released.
 - Owner's Windows playtest: "first person on bow is also reversed" and "bow currently doesn't have a stance on lobby".

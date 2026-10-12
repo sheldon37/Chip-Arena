@@ -33,7 +33,17 @@ namespace ChipArena.UnityConversion
                 var crane=Map.hazards.Single(x=>x.kind=="crane");double impact=14+crane.start+crane.offset+crane.travel+crane.warn+crane.rise;Clock(impact+.1);PoseStageLoads(Match.Time);Check(stageLoads[crane.id].enabled,"landed collider");Clock(impact+crane.dwell+.1);PoseStageLoads(Match.Time);Check(stageLoads[crane.id].enabled,"regrip collider");Clock(impact+crane.dwell+1.51);PoseStageLoads(Match.Time);Check(!stageLoads[crane.id].enabled,"hoist collider removed");
             }
             Clock(30);Restore(new Vector3(35,1.1f,25));var frame=NativeFrameCodec.Clone(NetworkFrame());Check(frame.Valid(Content),"real JsonUtility frame");
-            foreach(var kind in new[]{"maglev","grid","hazard"}){frame.pilots[0].death=new NativeDeath{damageKind=kind};Check(frame.Valid(Content),"accept wire kind "+kind);}frame.pilots[0].death.damageKind="unknown";Check(!frame.Valid(Content),"refuse unknown wire kind");
+            Check(frame.pilots[0].death==null&&!frame.pilots[0].hasDeath,"absent death survives JSON");
+            foreach(var kind in new[]{"maglev","grid","hazard"})
+            {
+                frame.pilots[0].death=new NativeDeath{damageKind=kind};
+                // Clone captures optional-record presence before JsonUtility, just like the wire sender.
+                frame=NativeFrameCodec.Clone(frame);
+                Check(frame.Valid(Content)&&frame.pilots[0].hasDeath&&frame.pilots[0].death?.damageKind==kind,"preserve and accept wire kind "+kind);
+            }
+            frame.pilots[0].death=new NativeDeath{damageKind="unknown"};frame=NativeFrameCodec.Clone(frame);
+            Check(frame.pilots[0].hasDeath&&frame.pilots[0].death?.damageKind=="unknown","unknown kind reaches validator");
+            Check(!frame.Valid(Content),"refuse unknown wire kind");
             Reset();Debug.Log("PASS native stage hazard damage, phase gating, credit, collision lifetime and JsonUtility: "+MapId);
         }
     }
