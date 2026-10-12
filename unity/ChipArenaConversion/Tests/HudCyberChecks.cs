@@ -139,7 +139,7 @@ namespace ChipArena.UnityConversion
             // 9. The Runtime draws the cyber HUD everywhere it was asked to: palette in, the old orange out of the HUD files,
             // the cards' flags generic for new ability states.
             foreach(var f in new[]{"NativeFightHud.cs","NativePveUI.cs","NativePveBanners.cs","NativeReplay.cs"})Check(!R(f).Contains("0xff6b35")&&R(f).Contains("NativeCyberTheme."),f+" is on the cyber palette");
-            Check(fight.Contains("private struct Card {public string Key,State,Sub;public bool Ready,Active,Recast,Low;public float Dial;}")&&fight.Contains("private float CardAt(Card c,float right,float bottom,float since)"),"one generic card for every ability state");
+            Check(fight.Contains("private struct Card {public string Key,State,Sub,Icon;public bool Ready,Active,Recast,Low;public float Dial;}")&&fight.Contains("private float CardAt(Card c,float right,float bottom,float since)"),"one generic card for every ability state");
             Check(fight.Contains("NativeHudChrome.Bar(bar,hp*maxHp,maxHp,10,tone,")&&fight.Contains("float trail=DamageTrail(p,hp);"),"segmented HP with its damage trail");
             Check(!Regex.IsMatch(chrome,@"0x[0-9a-fA-F]{6}")&&Regex.Matches(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeHudCyber.cs")),@"0x[0-9a-fA-F]{6}\b").All(m=>m.Value=="0x000000"||m.Value=="0xffffff"),"the chrome kit and its rules restate no colour (all from NativeCyberTheme)");
             Console.WriteLine("PASS HUD cyber: "+count+" checks (palette contrast over glass, sides and semantic colours, segment math, envelopes and Reduced effects, trail and event latches, own-pilot rows and fades, bottom-row fit at 20 window/scale cases, Runtime hooks)");
