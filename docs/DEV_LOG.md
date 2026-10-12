@@ -1,5 +1,34 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — Cyber Lord idle stance with a slight glitch (owner: "Id like to add a idle pose for the DEV Cyber Lord class (Matching the sheldon look) slight glitch effects")
+- Branch `claude/cyberlord-idle`, base shared `aead19c`. Not pushed, merged or released.
+- The stance (`Core/CyberLordIdle.cs`), after the Sheldon Intro's resolved ending:
+  - upright, with the left hand on the hood's front edge (the intro's `HandOnHood` and `HandTurn`), or two fingers at the temple without the Sheldon Head;
+  - the right arm loose and a slow 3.2 s breath;
+  - the head held in the stare on the facing, following a share of the view's pitch.
+- When it shows:
+  - It layers over the fighter rig with the gait's feet kept. It settles after 0.9 s standing still and blends in over 0.6 s.
+  - It blends out within 0.08 s on a step, jab, cast, guard, roll, hit reaction, stun, jump or Kernel Panic.
+  - A fresh rig of a pilot already standing still shows it at once. The state is `cyber-idle`.
+- The glitch, seeded per pilot on 24 Hz steps, about one moment every 4 s:
+  - RGB-split ghosts (`CyberIdleGhosts`);
+  - a slice tear of the upper body or head, up to 5.5 cm;
+  - a scanline band over the hardlight parts (`CyberLordBody`);
+  - a rare two-step twitch.
+  - Reduced effects: no tear or twitch, an eased split and a soft band, no strobing.
+- Portraits: a new `NativeLobbyPoses.Sample` overload (hat, reduced, seed) puts the Cyber Lord in the same stance, unarmed. `NativePortraits` draws its hardlight look and the split ghosts. Every other pilot's lobby pose is unchanged (checked).
+- Small shared touches:
+  - `CapturedAnimation.Player` exposes `CyberMotion` and `ReducedEffects`;
+  - `ArenaPresentation.PrepareCapturedPose` sets `ReducedEffects`;
+  - the stance take holds still under the idle.
+- Checks:
+  - Unity runtime+editor build OK.
+  - The new `CyberLordChecks` idle section: triggers and blend out per action, the pose (hand, head, breath, feet, body), the actor never written, the glitch schedule and the reduced rules, portraits. All checks still allocate 0 bytes per frame.
+  - `test_component_field_init.py` passes.
+  - Full results are in the handback.
+- Renders (scratch, offline harness on the real Core): the match idle, no hood, glitch moments, reduced effects, the blend out on a step and a jab, the lobby portraits, and a Sheldon Intro end-frame comparison. Not run in the Unity Editor or on Windows.
+- Animation impacts: the drawn rig only. The hips rise 3.5 cm over the same feet, and the tear moves up to 5.5 cm. No hit timing, hitbox, damage, cooldown, movement or network change.
+
 ## 2026-10-12 — Astra — owner-selected Factory and Cyber City music
 - Branch `codex/factory-cybercity-music-20261012`, base shared `dfd45f32`. Owner supplied Anvil Loop Arena for Factory and Neon Riot Circuit for Cyber City and requested the update source push.
 - Bundled both original MP3s byte-for-byte under Resources/Audio/music, with streaming import metadata, unique GUIDs and asset-lock receipts. Tracks are 192.840 s and 204.792 s; embedded credit Xtrr - musiccreator, hashes in tools/factory-cybercity-music-credits.txt.

@@ -90,6 +90,20 @@ namespace ChipArena.UnityConversion
                 r.SetE(LHand,.1f,0,-.25f);r.SetE(RHand,-.08f,0,.25f);
             }
         }
+        // The same for a pilot with its hat, the portrait's reduced effects and a per-pilot seed: the DEV Cyber Lord stands in
+        // its idle stance (Core/CyberLordIdle.cs, after the Sheldon Intro's ending: the hand on the hood or the temple, the
+        // breath, the stare) with its slight glitch, unarmed; every other pilot as Sample. `glitch` is the frame's glitch (the
+        // renderer's RGB-split ghosts and scanline band), zero for anyone else.
+        public static void Sample(MeleeRig r,string spec,int pose,float time,string hat,bool reduced,int seed,out LobbyHeld weapon,out LobbyHeld offhand,out CyberIdleGlitch glitch)
+        {
+            glitch=default;
+            if(pose==Weapon&&CyberLordIdlePose.Handles(spec))
+            {
+                weapon=new LobbyHeld{Bone=RHand,Rotation=Quaternion.Identity};offhand=new LobbyHeld{Bone=LHand,Rotation=Quaternion.Identity};
+                glitch=CyberLordIdlePose.Stand(r,time,CyberLordIdlePose.Hood(hat),seed,reduced);return;
+            }
+            Sample(r,spec,pose,time,out weapon,out offhand);
+        }
         // three's `node.rotation.x = v` (the Euler's other angles kept).
         private static void X(MeleeRig r,int i,float x)=>r.SetE(i,x,r.E[i].Y,r.E[i].Z);
         // contrapposto(): the pelvis settles over a straight weight leg and rolls toward the relaxed one, the chest counter-rolls,

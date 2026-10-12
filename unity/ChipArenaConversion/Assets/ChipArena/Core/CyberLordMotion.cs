@@ -9,12 +9,13 @@ namespace ChipArena.UnityConversion
     /// the gait's locomotion and procedural feet, this layer, then the hit reactions, jump layer and ground pass) in third
     /// person, and on the first-person view model. Every move is one of the owner's Explosive pack unarmed takes
     /// (tools/export_pack_cyberlord.mjs, NativePackCyberLord.Generated) retimed onto the replicated windows read through
-    /// CyberLordFeed: the bladed fighting stance with the pack's run and sprint carry over the gait, the hardlight guard, the
-    /// Jab / Cross / Pulse Palm combo (each take's impact pinned to its hit), the six abilities on their cast / active /
-    /// recovery windows, the Kernel Panic opener and its five-step choreography, and the victim's tumble (any pilot,
-    /// layered over its own route). Poses are pure functions of the replicated view and the clock (the gait under them keeps
-    /// its own travel state); nothing here reaches the authority, hit timing, hitboxes, damage, cooldowns or movement.
-    /// No allocation per frame.
+    /// CyberLordFeed: the bladed fighting stance with the pack's run and sprint carry over the gait, the hardlight guard,
+    /// the Jab / Cross / Pulse Palm combo (each take's impact pinned to its hit), the six abilities on their cast / active
+    /// / recovery windows, the idle stance after the Sheldon Intro's ending once the pilot stands still
+    /// (Core/CyberLordIdle.cs), the Kernel Panic opener and its five-step choreography, and the victim's tumble (any pilot,
+    /// layered over its own route). Poses are pure functions of the replicated view and the clock (the gait under them
+    /// keeps its own travel state, and the idle when the pilot last moved); nothing here reaches the authority, hit
+    /// timing, hitboxes, damage, cooldowns or movement. No allocation per frame.
     /// </summary>
     public sealed class CyberLordMotion
     {
@@ -186,7 +187,7 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- applying a move to the gait rig ----
-        private readonly float[] row=new float[CapturedClip.Channels],baseRow=new float[CapturedClip.Channels],fromRow=new float[CapturedClip.Channels],runRow=new float[CapturedClip.Channels];
+        private readonly float[] row=new float[CapturedClip.Channels],baseRow=new float[CapturedClip.Channels],fromRow=new float[CapturedClip.Channels],runRow=new float[CapturedClip.Channels],heldRow=new float[CapturedClip.Channels];
         private readonly CyberLordView view=new CyberLordView();
         public CyberLordView View=>view;
         public string State{get;private set;}="cyber-stance";
@@ -243,9 +244,17 @@ namespace ChipArena.UnityConversion
         /// The style layer on the fighter route (between MeleeMotion.FighterBase and FighterFinish): the base, the move over it,
         /// applied to the gait rig (the legs the gait's except where a move owns them). Returns the presented state.
         /// </summary>
+        /// <summary>The idle stance (Core/CyberLordIdle.cs): its tracker on this rig, this frame's weight and glitch, and whether
+        /// effects are reduced (the runtime sets it before posing: the glitch's softer version).</summary>
+        public readonly CyberLordIdle Idle=new CyberLordIdle();public float IdleWeight{get;private set;}public CyberIdleGlitch IdleGlitch;public bool Reduced;
+        /// <summary>The stance take's moment the idle holds under it (s).</summary>
+        public const float IdleHold=0;
         public string Style(MeleeMotion motion,Actor a,float time,bool stun)
         {
-            var r=motion.Rig;CyberLordFeed.Read(a,view);BaseRow(r,a.Sprinting,time,baseRow,out float travel);
+            var r=motion.Rig;CyberLordFeed.Read(a,view);
+            // The idle stance (CyberLordIdle): its weight first, so the stance take under it holds still (no alert bob in the hips).
+            float idle=Idle.Update(a,view,time,Ease((r.Motion-.10f)/.65f),stun);
+            BaseRow(r,a.Sprinting,time,baseRow,out float travel);if(idle>1e-4f){StanceRow(IdleHold,heldRow);MeleeCapture.BlendRows(baseRow,heldRow,idle,baseRow);}
             bool blocking=!stun&&time<a.BlockUntil;var m=stun?Move.None:Of(view,time,blocking,a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration);
             float legs=0,root=1-travel*.85f;
             if(m.Clip>=0&&m.Weight>1e-4f)
@@ -260,7 +269,11 @@ namespace ChipArena.UnityConversion
             if(!a.Grounded&&m.Clip<0)root*=.3f;
             MeleeCapture.Apply(r,Unarmed,row,CaptureOptions.Of(1,Unarmed.Fit,MeleeClear.None,legs:legs,root:Math.Max(0,root)));FaceForward(r,FaceWeight);
             if(legs>.05f)r.LegsAuthored=true;
-            State=stun?"hit reaction":m.State??(blocking?"cyber-guard":travel>.5f?(a.Sprinting?"cyber-sprint":"cyber-run"):"cyber-stance");return State;
+            // The idle stance over the stance once the pilot has stood still (CyberLordIdle), under any move still blending out.
+            float under=idle*(m.Clip>=0?1-Clamp01(m.Weight):1);IdleWeight=under;
+            IdleGlitch=CyberLordIdlePose.Glitch(a.Id,time,under,Reduced);
+            CyberLordIdlePose.Layer(r,under,time,CyberLordIdlePose.Hood(a.Hat),a.Pitch*(float)Math.PI/180,IdleGlitch);
+            State=stun?"hit reaction":m.State??(blocking?"cyber-guard":travel>.5f?(a.Sprinting?"cyber-sprint":"cyber-run"):under>.5f?"cyber-idle":"cyber-stance");return State;
         }
         /// <summary>
         /// The first-person view model (the generic route's view rig): the same base and move with the legs and root left out,
