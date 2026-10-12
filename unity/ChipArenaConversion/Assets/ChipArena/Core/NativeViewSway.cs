@@ -10,6 +10,10 @@ namespace ChipArena.UnityConversion
         public bool Grounded,Planted,Gait;
         // Ranged view layers: the gun, its ADS kick factor, the last shot, the reload span and the latest Q/E phrase.
         public bool Ranged;public WeaponId Weapon;public float AdsKick,LastShot,ReloadAt,ReloadUntil,AbilityAt,AbilityRelease;public string AbilityId;
+        // The jump animation's view hop (Core/NativeJumpRules.ViewHop; owner 2026-10-12): the hands and weapon dip on a takeoff,
+        // an air jump and a landing.
+        // Set by Input (the arena view); off for raw inputs, which keep the source view layer exactly (its parity fixture).
+        public bool JumpKick;
     }
     // View-layer offsets in the source camera frame (x right, y up, z toward the viewer) and the X/Z view-root rotation (radians).
     public struct NativeViewSwayPose
@@ -27,6 +31,8 @@ namespace ChipArena.UnityConversion
     {
         private const float Tau=(float)(Math.PI*2);
         private bool has,gaitHas;private int pilot;private float t,yaw,pitch,sx,sxv,sy,syv,roll,rollv,land,landv,vy,gaitTime,forward=1;private bool grounded;
+        // The jump animation's hop (Core/NativeJumpRules.ViewHop; JumpKick inputs only): metres down in the camera frame.
+        private float hop,hopv;public float Hop=>hop;
         public float Motion {get;private set;}
         public float Stride {get;private set;}
         public float SwayX=>sx;public float SwayY=>sy;public float SwayRoll=>roll;public float Land=>land;
@@ -55,7 +61,7 @@ namespace ChipArena.UnityConversion
             bool ranged=GunRules.Ranged(a.Weapon);
             return new NativeViewSwayInput{Pilot=a.Id,Time=time,Yaw=yaw,Pitch=pitch,VelocityX=-Finite(a.Velocity.x),VelocityY=Finite(a.Velocity.y),VelocityZ=Finite(a.Velocity.z),Ads=ads,
                 Grounded=a.Grounded,Planted=Planted(a,time),Gait=a.SourceSpec!="siren",Ranged=ranged,Weapon=a.Weapon,AdsKick=AdsKick(a.Weapon),LastShot=a.LastShot,
-                ReloadAt=a.ReloadAt,ReloadUntil=a.ReloadUntil,AbilityId=a.AbilityId,AbilityAt=a.AbilityAt,AbilityRelease=a.AbilityRelease};
+                ReloadAt=a.ReloadAt,ReloadUntil=a.ReloadUntil,AbilityId=a.AbilityId,AbilityAt=a.AbilityAt,AbilityRelease=a.AbilityRelease,JumpKick=true};
         }
         // The first-person rig's locomotion (character-animation.ts sampleCharacter + motion-quality.ts locomotion): planted
         // actions decay the motion and zero the ground velocity; the gait blends toward speed/6.8 and the stride phase advances
@@ -82,7 +88,7 @@ namespace ChipArena.UnityConversion
             if(i.Gait)Locomotion(i,has&&i.Time>=t?i.Time-t:0);
             // ranged-motion.ts clockStep: fresh on the first sample, backward time or a jump over .35 s; the step clamps to .05.
             float step=has?i.Time-t:-1;bool fresh=!has||step<0||step>.35f;float h=fresh?0:Math.Min(step,.05f);
-            if(fresh){has=true;t=i.Time;yaw=i.Yaw;pitch=i.Pitch;sx=sxv=sy=syv=roll=rollv=land=landv=0;grounded=i.Grounded;vy=i.VelocityY;}
+            if(fresh){has=true;t=i.Time;yaw=i.Yaw;pitch=i.Pitch;sx=sxv=sy=syv=roll=rollv=land=landv=hop=hopv=0;grounded=i.Grounded;vy=i.VelocityY;}
             // Look sway: the weapon follows a turn by a few centimetres at most, then springs back.
             float dyaw=Wrap(i.Yaw-yaw),dpitch=i.Pitch-pitch,rate=h>0?1/h:0;
             float tx=MathUtil.Clamp(-dyaw*rate*.004f,-.03f,.03f),ty=MathUtil.Clamp(-dpitch*rate*.004f,-.025f,.025f),tr=MathUtil.Clamp(dyaw*rate*.008f,-.05f,.05f);
@@ -91,6 +97,7 @@ namespace ChipArena.UnityConversion
                 NativeFirstPersonPose.Spring(ref sx,ref sxv,tx,14,.8f,h);NativeFirstPersonPose.Spring(ref sy,ref syv,ty,14,.8f,h);NativeFirstPersonPose.Spring(ref roll,ref rollv,tr,14,.8f,h);
                 // Landing: the grounded edge kicks the view model down in proportion to the fall speed, then it springs back.
                 if(i.Grounded&&!grounded)landv-=Math.Min(1,Math.Max(0,-vy)/9)*.9f;
+                if(i.JumpKick){hopv-=NativeJumpRules.ViewHop(grounded,i.Grounded,vy,i.VelocityY);NativeFirstPersonPose.Spring(ref hop,ref hopv,0,NativeJumpRules.ViewHopOmega,.6f,h);}
                 NativeFirstPersonPose.Spring(ref land,ref landv,0,16,.55f,h);
             }
             // A held clock (h 0: a pause, or a guest's snapshot clock waiting at the newest host frame) keeps the stored look
@@ -112,7 +119,7 @@ namespace ChipArena.UnityConversion
             }
             // ADS damps the sway and bob to 30 %; the dips, kicks and flick ride on top of the (aligned) ADS pose.
             float damp=1-a*.7f;
-            return new NativeViewSwayPose{X=(bx+sx)*damp,Y=(by+sy)*damp+land*.05f-.06f*reload-.03f*runLow-.07f*rocket,Z=.04f*kick+.08f*rocket,Pitch=.06f*kick-.1f*runLow+.12f*rocket+.06f*flick,Roll=roll+.25f*reload};
+            return new NativeViewSwayPose{X=(bx+sx)*damp,Y=(by+sy+hop)*damp+land*.05f-.06f*reload-.03f*runLow-.07f*rocket,Z=.04f*kick+.08f*rocket,Pitch=.06f*kick-.1f*runLow+.12f*rocket+.06f*flick,Roll=roll+.25f*reload};
         }
     }
 }

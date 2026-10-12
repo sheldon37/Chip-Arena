@@ -192,6 +192,16 @@ namespace ChipArena.UnityConversion
         {
             float w=MeleeMath.Clamp(NativeHitRules.Finite(weight,0),0,1);if(r==null||clip==null||w<=1e-4f)return;
             clip.Sample(clipTime,row);(reference??clip).Sample(reference!=null?referenceTime:0,row0);
+            LayerRows(r,row,row0,clip.Decode()[MeleeCapture.Yaw],w,hips,arms,main,fit,twoHand,travel,turn);
+        }
+        /// <summary>
+        /// <see cref="Layer"/> over rows the caller already sampled (and may have blended): `row` the pose, `row0` its reference,
+        /// `yaw0` the heading the clip's own turn is measured from (the clip's first frame). The jump layer (Core/NativeJumpMotion)
+        /// blends its rise, fall and landing rows before laying them. No allocation.
+        /// </summary>
+        public void LayerRows(MeleeRig r,float[] row,float[] row0,float yaw0,float weight,float hips,float arms,bool main,MeleeSet fit,bool twoHand,float travel,float turn)
+        {
+            float w=MeleeMath.Clamp(NativeHitRules.Finite(weight,0),0,1);if(r==null||row==null||row0==null||w<=1e-4f)return;
             // The hands as the route holds them, in chest space, before the torso turns.
             Vector3 gR=Vector3.Zero,gL=Vector3.Zero;Quaternion qR=Quaternion.Identity,qL=Quaternion.Identity;float wa=MeleeMath.Clamp(NativeHitRules.Finite(arms,0),0,1)*w;
             bool clear=main&&fit!=null&&r.WeaponVisible&&fit.Fit.Clear!=MeleeClear.None;float own=wa;
@@ -210,7 +220,7 @@ namespace ChipArena.UnityConversion
             float h=MeleeMath.Clamp(hips,0,1)*w;
             if(h>1e-4f)
             {
-                float yaw=MeleeMath.Clamp(NativeHitRules.Finite(row[MeleeCapture.Yaw]-clip.Decode()[MeleeCapture.Yaw],0),-MaxTurn,MaxTurn)*MeleeMath.Clamp(turn,0,1)*h;
+                float yaw=MeleeMath.Clamp(NativeHitRules.Finite(row[MeleeCapture.Yaw]-yaw0,0),-MaxTurn,MaxTurn)*MeleeMath.Clamp(turn,0,1)*h;
                 r.SetQ(CapturedRig.Pelvis,MeleeMath.AxisAngle(MeleeMath.Y,yaw)*r.Q[CapturedRig.Pelvis]*MeleeMath.Slerp(Quaternion.Identity,Delta(row0,row,MeleeCapture.Pelvis),h));
                 Vector3 b=r.P[CapturedRig.Body];b.Y+=MeleeMath.Clamp(row[MeleeCapture.By]-row0[MeleeCapture.By],-.15f,.08f)*h;
                 float t=MeleeMath.Clamp(travel,0,1)*h;

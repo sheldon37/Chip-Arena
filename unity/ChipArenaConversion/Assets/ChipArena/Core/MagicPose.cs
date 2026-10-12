@@ -183,6 +183,8 @@ namespace ChipArena.UnityConversion
         public static bool Rolls(Actor a,float time,bool juggled)=>!juggled&&a.Rolling(time);
         // Whether this frame's ground pass is skipped (dead, juggled, knocked down or rolling), set by Pose for Finish.
         public bool GroundSkipped{get;private set;}
+        // The jump layer (Core/NativeJumpMotion) under the magic layer; null keeps the source port (parity checks).
+        public NativeJumpMotion JumpLayer;
         /// <summary>
         /// One third-person frame after the caller placed the rig (Rig.GroupPosition / GroupYaw): the gait and magic layer
         /// (Sample), then sampleCharacter's overrides: a juggle (`juggled`, observed into `juggle`) owns the frame with
@@ -234,6 +236,7 @@ namespace ChipArena.UnityConversion
             float run=MeleeMath.Ease((r.Motion-.1f)/.65f);
             sprintBlend+=((v.Sprinting?1:0)-sprintBlend)*(1-(float)Math.Exp(-Math.Min(.05f,Math.Max(0,dt))*10));
             if(sprintBlend>1e-4f)r.AddE(CapturedRig.Spine,.12f*sprintBlend*run,0,0);
+            JumpLayer?.Ranged(r,a,v.Spec,time,dt,.5f);
             // magicLayer: the staff carry, faded out with speed so the arm swings with the gait.
             float pitch=v.Pitch,carry=MeleeMath.Clamp(1-MeleeMath.Ease((r.Motion-.10f)/.65f),0,1);
             r.Slerp(CapturedRig.LArm,MeleeMath.Euler(-.24f-pitch*.08f,-.08f,.16f),carry);r.Slerp(CapturedRig.LElbow,MeleeMath.Euler(-.42f,0,0),carry);r.SetE(CapturedRig.LHand,0,0,0);
