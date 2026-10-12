@@ -28,14 +28,15 @@ namespace ChipArena.UnityConversion
             Vector3 aimAt=Vec(p.BotBrain.Observe(Time,p.Seat.difficulty,Vec(target),random.NextDouble)),aim=aimAt-eye;bool visible=MeleeVisible(eye,target,p,collider),melee=p.Weapon.@class=="melee";
             var input=new InputFrame{Yaw=Mathf.Atan2(aim.x,aim.z)*Mathf.Rad2Deg,Pitch=Mathf.Atan2(aim.y,new Vector2(aim.x,aim.z).magnitude)*Mathf.Rad2Deg,AimTarget=Vec(aimAt),AbilityTarget=Vec(aimAt),Aim=visible&&NativeBotRules.Ads(p.Seat.spec,distance)};
             if(!melee&&!input.Aim){float pitch=GunRules.BallisticPitch(new Vector2(aim.x,aim.z).magnitude,aim.y,(float)(p.Weapon.speed*p.Stats["projectileSpeed"]),(float)(p.Weapon.gravity*p.Stats["projectileGravity"]));input.Pitch=Mathf.Lerp(input.Pitch,pitch,level==2?.95f:level==1?.85f:.65f);}
-            float desired=NativeBotRules.Desired(p.Weapon);var flat=new Vector3(delta.x,0,delta.z).normalized;Vector3 move=distance>desired+1?flat:distance<desired-1?-flat*.8f:Vector3.zero;
+            float desired=NativeWhirlwindRules.Active(p.Special,Time)?1:NativeBotRules.Desired(p.Weapon);var flat=new Vector3(delta.x,0,delta.z).normalized;Vector3 move=distance>desired+1?flat:distance<desired-1?-flat*.8f:Vector3.zero;
             if(level>0&&!melee&&visible)move+=Quaternion.Euler(0,input.Yaw+90,0)*Vector3.forward*(Mathf.Sin(Time*1.1f+p.Seat.id)>0?.65f:-.65f);
             if(level>0&&!melee&&(p.ReloadEnd>Time||p.Weapon.ammo>0&&p.Ammo<=1||p.Mana<18))
             {var cover=AllBlocks.Where(c=>c!=null&&!c.Fragment&&!c.Definition.dynamic&&c.Definition.material!="foundation"&&c.Definition.size.y>1).OrderBy(c=>(c.transform.position-pos).sqrMagnitude).FirstOrDefault();if(cover!=null){var safe=cover.transform.position+(cover.transform.position-target).normalized*(Math.Max(cover.Definition.size.x,cover.Definition.size.z)*.6f+1);move=Vector3.Distance(safe,pos)<1?Vector3.zero:new Vector3(safe.x-pos.x,0,safe.z-pos.z).normalized;}}
             if(Map.unity)move=StructureNavMove(p,target,move);
             bool obstacle=move.sqrMagnitude>.01f&&root.scene.GetPhysicsScene().Raycast(pos-Vector3.up*.4f,move.normalized,out _,1.1f,WorldMask,QueryTriggerInteraction.Ignore);
             if(obstacle){if(!Map.unity)move=NativeMeleeRules.Standard(p.Seat.spec)?MeleeApproachLane(p,move):move*.25f+Quaternion.Euler(0,input.Yaw+90,0)*Vector3.forward*(Mathf.Sin(Time*.4f)>0?1:-1);input.Jump=p.Grounded||p.Seat.spec=="daggers"&&p.AirJumps==0&&p.Body.linearVelocity.y<=2;}
-            if(melee&&p.Stamina<p.Weapon.cost)move=-flat*.8f;
+            if(NativeWhirlwindRules.Active(p.Special,Time))move=distance>1.8f?move:Vector3.zero;
+            else if(melee&&p.Stamina<p.Weapon.cost)move=-flat*.8f;
             var clamped=ClampMap(pos,true);if(clamped.x!=pos.x)move.x=Math.Sign(clamped.x-pos.x);if(clamped.z!=pos.z)move.z=Math.Sign(clamped.z-pos.z);
             input.X=Mathf.Clamp(move.x,-1,1);input.Z=Mathf.Clamp(move.z,-1,1);input.Shoot=melee?distance<p.Weapon.range*1.25:visible||obstacle;input.Reload=p.Weapon.ammo>0&&(p.Ammo==0||p.Seat.spec!="rifle"&&p.Ammo<2);
             if(NativeMeleeRules.Standard(p.Seat.spec))
@@ -101,12 +102,14 @@ namespace ChipArena.UnityConversion
         private void BotMeleeAbilities(NativePilot p,ref InputFrame input,Vector3 target,float distance,bool visible,int level)
         {
             if(Incapacitated(p)||Time<p.BlockEnd||Time<p.RollEnd)return;
+            if(p.Special?.Fx=="whirlwind")
+            {input.AbilityE=distance>4&&MeleeRecastOpen(p);input.Shoot=input.Attack=input.Roll=input.Sprint=input.Jump=false;return;}
             if(MeleeRecastOpen(p)&&visible&&random.NextDouble()<NativeBotRules.Chance(level))
             {input.AbilityE=true;input.Shoot=input.Roll=false;return;}
             if(SpecialBusy(p)||Time<p.AttackEnd||Time<p.Ready||!visible)return;
             var q=Content.Ability(p.Seat.spec,"q");var e=Content.Ability(p.Seat.spec,"e");
             bool Ready(ContentAbility a)=>a?.bot!=null&&a.live&&(a.slot=="q"?Time>=p.QReady:Time>=p.EReady)&&p.Stamina>=NativeAbilityRules.Cost(a,p.Stats)&&distance>=a.bot.min&&distance<=a.bot.max;
-            var cast=Ready(q)?q:Ready(e)?e:null;if(cast==null||random.NextDouble()>NativeBotRules.Chance(level))return;
+            var cast=e?.id=="whirlwind"&&Ready(e)?e:Ready(q)?q:Ready(e)?e:null;if(cast==null||random.NextDouble()>NativeBotRules.Chance(level))return;
             input.AbilityTarget=Vec(target);input.AbilityQ=cast.slot=="q";input.AbilityE=cast.slot=="e";input.Shoot=input.Roll=false;
             if(cast.id=="shadow-step"){var d=(target-p.Body.position).normalized;input.X=d.x;input.Z=d.z;}
             if(cast.bot.ballistic){var d=target-p.Body.position-Vector3.up*.3f;input.Pitch=GunRules.BallisticPitch(new Vector2(d.x,d.z).magnitude,d.y,30*(float)p.Stats["projectileSpeed"],18*(float)p.Stats["projectileGravity"]);input.AbilityTarget=new V3();}

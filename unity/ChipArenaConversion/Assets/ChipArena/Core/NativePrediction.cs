@@ -9,6 +9,7 @@ namespace ChipArena.UnityConversion
         public float Time,Ready,Stamina,BufferUntil,ComboUntil,RollUntil;public int Combo;
         public string JumpSpec;public int AirJumps;public float AirJumpAt;public bool Swimming;
         public ContentWeapon MeleeWeapon;public ChipStats MeleeStats;public NativeMeleeSwing Swing;
+        public NativeMeleeKit MeleeKit;
     }
     // Locomotion and local swing commitment are predicted; hits, damage and real resources stay authority-owned.
     public sealed class NativePrediction
@@ -40,15 +41,16 @@ namespace ChipArena.UnityConversion
             state.Time+=dt;if(state.Grounded)state.AirJumps=0;
             if(state.MeleeWeapon!=null&&input.Attack&&state.Time<state.RollUntil&&state.Time>=state.RollUntil-.2f)state.BufferUntil=state.Time+NativeMeleeFeel.BufferSeconds;
             if(!state.CanMove)return state;
-            bool swinging=NativeMeleePrediction.Advance(ref state,input,lockTarget);
+            bool kitBusy=NativeWhirlwindRules.Busy(state.MeleeKit,state.Time),whirling=NativeWhirlwindRules.Active(state.MeleeKit,state.Time);
+            bool swinging=!kitBusy&&NativeMeleePrediction.Advance(ref state,input,lockTarget),rooted=swinging||kitBusy&&!whirling;
             float radians=input.Yaw*(float)Math.PI/180;
             float dot=input.X*(float)Math.Sin(radians)+input.Z*(float)Math.Cos(radians);
-            bool sprint=input.Sprint&&state.CanSprint&&!input.Shoot&&!input.Aim&&dot>=.6f;
+            bool sprint=!kitBusy&&input.Sprint&&state.CanSprint&&!input.Shoot&&!input.Aim&&dot>=.6f;
             state.Sprinting=sprint&&!swinging;
-            float speed=state.Speed*(sprint?Rules.SprintMultiplier:1);
-            state.Velocity.x=swinging?0:Towards(state.Velocity.x,input.X*speed,Rules.Acceleration*dt);
-            state.Velocity.z=swinging?0:Towards(state.Velocity.z,input.Z*speed,Rules.Acceleration*dt);
-            var jump=NativeJumpSimulation.Try(state.JumpSpec,input.Jump,state.Grounded,state.Swimming,swinging||state.Time<state.RollUntil,
+            float speed=state.Speed*(sprint?Rules.SprintMultiplier:1)*(whirling?NativeWhirlwindRules.MoveScale:1);
+            state.Velocity.x=rooted?0:Towards(state.Velocity.x,input.X*speed,Rules.Acceleration*dt);
+            state.Velocity.z=rooted?0:Towards(state.Velocity.z,input.Z*speed,Rules.Acceleration*dt);
+            var jump=NativeJumpSimulation.Try(state.JumpSpec,input.Jump,state.Grounded,state.Swimming,kitBusy||swinging||state.Time<state.RollUntil,
                 state.Velocity.y,state.JumpSpeed,ref state.AirJumps,out float launch);
             if(jump!=NativeJumpKind.None){state.Velocity.y=launch;state.Grounded=false;if(jump==NativeJumpKind.Air)state.AirJumpAt=state.Time;}
             if(!state.Grounded)state.Velocity.y-=state.Gravity*dt;else state.Velocity.y=0;

@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in Minions)if(m.Hp>0&&CanHit(p,m))yield return(m.Id,null,m,m.Body.position,m.Collider);
         }
         private (int id,NativePilot pilot,NativeMinion minion,Vector3 at,Collider collider) MeleeTarget(NativePilot p,int id)=>MeleeTargets(p).FirstOrDefault(t=>t.id==id);
-        private bool MeleeRecastOpen(NativePilot p)=>Time<p.MeleeKit.RecastUntil&&p.MeleeKit.Target!=0&&MeleeTarget(p,p.MeleeKit.Target).collider!=null;
+        private bool MeleeRecastOpen(NativePilot p)=>NativeWhirlwindRules.CanRecast(p.Special,Time)||Time<p.MeleeKit.RecastUntil&&p.MeleeKit.Target!=0&&MeleeTarget(p,p.MeleeKit.Target).collider!=null;
         private void ClearMeleeMark(NativePilot p)
         {
             var k=p.MeleeKit;if(k.MarkTarget!=0)Emit(EventKind.Mark,p,k.MarkTarget,Pilots.Find(t=>t.Seat.id==k.MarkTarget)?.Body.position??Minions.Find(t=>t.Id==k.MarkTarget)?.Body.position??p.Body.position,0,"kunai-mark");
@@ -74,20 +74,27 @@ namespace ChipArena.UnityConversion
             var d=Content.Ability(p.Seat.spec,slot);if(d==null||!d.live)return false;
             float cost=NativeAbilityRules.Cost(d,p.Stats);
             if(p.Hp<=0||!p.Seat.connected||Incapacitated(p)||SpecialBusy(p)||Time<p.Ready||Time<p.AttackEnd||Time<p.BlockEnd||Time<p.RollEnd||p.ReloadEnd>Time||p.CastAt>0||p.AbilityCast!=null||p.Stamina<cost||(slot=="q"?Time<p.QReady:Time<p.EReady))return false;
-            if((d.id=="wolf-knight"||d.id=="earthsplitter")&&!p.Grounded||(d.id=="aegis-ricochet"||d.id=="kunai-mark")&&ProjectileCount>=100)return false;
+            if((d.id=="whirlwind"||d.id=="earthsplitter")&&!p.Grounded||(d.id=="aegis-ricochet"||d.id=="kunai-mark")&&ProjectileCount>=100)return false;
             if(slot=="e"&&MeleeRecastOpen(p))return false;
             CancelMelee(p);p.MeleeBufferedUntil=-1;p.Stamina-=cost;p.Yaw=p.Input.Yaw;
             float release=Time+NativeMeleeKitRules.Windup(d,p.Stats);
-            var a=new NativeMeleeAction{Kind=slot=="e"?NativeSpecialRules.Kind(p.Seat.spec):d.id,Fx=d.id,Phase="windup",At=Time,Release=release,Yaw=p.Input.Yaw*Mathf.Deg2Rad,Until=release+(d.id=="wolf-knight"?3.5f:d.id=="flash-step"?.22f:d.id=="bulwark-charge"?.45f:slot=="e"?NativeSpecialRules.Recovery(p.Seat.spec)/(float)p.Stats["attackRate"]:.3f)};
+            var a=new NativeMeleeAction{Kind=slot=="e"?NativeSpecialRules.Kind(p.Seat.spec):d.id,Fx=d.id,Phase="windup",At=Time,Release=release,Yaw=p.Input.Yaw*Mathf.Deg2Rad,Until=release+(d.id=="flash-step"?.22f:d.id=="bulwark-charge"?.45f:slot=="e"?NativeSpecialRules.Recovery(p.Seat.spec)/(float)p.Stats["attackRate"]:.3f)};
+            if(d.id=="whirlwind")a=NativeWhirlwindRules.Begin(Time,p.Input.Yaw*Mathf.Deg2Rad);
             a.Direction=V3.Forward(p.Input.Yaw);a.Aim=p.Input.AbilityTarget.Length>.01f?Vec((Vec(p.Input.AbilityTarget)-p.Body.position-Vector3.up*.3f).normalized):GunRules.Direction(p.Input.Yaw,p.Input.Pitch);
             if(d.id=="shadow-step"){var move=new V3(p.Input.X,0,p.Input.Z);if(move.Length>.1f)a.Direction=move.Normalized;}
-            p.Special=a;p.AttackAt=-100;p.LastAttack=Time;p.AttackEnd=p.Ready=a.Until;p.MoveVelocity=Vector3.zero;p.RegenAt=a.Until+.45f;
+            p.Special=a;p.AttackAt=-100;p.LastAttack=Time;p.AttackEnd=p.Ready=NativeMeleeKitRules.End(a);p.MoveVelocity=Vector3.zero;p.RegenAt=p.Ready+.45f;
             if(slot=="q")p.QReady=Time+NativeAbilityRules.Cooldown(d,p.Stats);else{p.EReady=Time+NativeAbilityRules.Cooldown(d,p.Stats);p.ECharges=0;}
             p.MeleeKit.Absorbed=0;CaptureMeleeKit(p);Emit(EventKind.AbilityCast,p,0,p.Body.position,0,d.fx,normal:Vec(a.Direction));return true;
         }
         private bool TryMeleeRecast(NativePilot p)
         {
             var k=p.MeleeKit;
+            if(p.Special?.Fx=="whirlwind")
+            {
+                if(Incapacitated(p)||!NativeWhirlwindRules.Recast(p.Special,Time))return false;
+                p.AttackEnd=p.Ready=p.Special.RecoverUntil;p.RegenAt=p.Ready+.45f;p.MoveVelocity=Vector3.zero;
+                Emit(EventKind.Recast,p,0,p.Body.position,0,"whirlwind");CaptureMeleeKit(p);return true;
+            }
             if(!MeleeRecastOpen(p)||Incapacitated(p)||Time<p.RollEnd||Time<p.BlockEnd||p.Swing!=null||p.AbilityCast!=null||p.CastAt>0||p.Special!=null&&p.Special.Fx!=k.RecastKind)return false;
             var t=MeleeTarget(p,k.Target);bool sky=k.RecastKind=="rising-dragon";
             if((t.at-p.Body.position).magnitude>(sky?10:32)||!MeleeVisible(p.Body.position,t.at,p,t.collider))return false;
@@ -102,8 +109,11 @@ namespace ChipArena.UnityConversion
         private void CaptureMeleeKit(NativePilot p)
         {
             var k=p.MeleeKit;var a=p.Special;
-            k.Kind=a?.Fx;k.Phase=a?.Phase;k.At=a?.At??-100;k.Release=a?.Release??0;k.Until=a?.Until??0;k.Yaw=a?.Yaw??0;
-            k.SuperArmour=a?.Fx=="wolf-knight"&&a.Released&&a.Landed<0&&Time<a.Until;
+            k.Kind=a?.Fx;k.Phase=a?.Phase;k.At=a?.At??-100;k.Release=a?.Release??0;k.Until=a?.Until??0;k.RecoverUntil=NativeMeleeKitRules.End(a);k.Tick=a?.Tick??0;k.Yaw=a?.Yaw??0;
+            k.SuperArmour=false;
+            if(a?.Fx=="whirlwind")
+            {k.RecastKind=NativeWhirlwindRules.CanRecast(a,Time)?"whirlwind":null;k.RecastUntil=k.RecastKind!=null?a.Until:0;k.Target=0;}
+            else if(k.RecastKind=="whirlwind"){k.RecastKind=null;k.RecastUntil=0;}
             var shield=MeleeShots.FirstOrDefault(s=>s.Original==p&&s.Shield);k.ShieldOut=shield!=null;
             if(shield!=null){k.ShieldPosition=Vec(shield.Position);k.ShieldChain=shield.Chain.ToArray();}
             else k.ShieldChain=Array.Empty<int>();
@@ -111,7 +121,8 @@ namespace ChipArena.UnityConversion
         private void StepMeleeAbility(NativePilot p,NativeMeleeAction a)
         {
             if(p.Hp<=0||!p.Seat.connected||Incapacitated(p)){CancelSpecial(p);return;}
-            if(Time>=a.Until){CancelSpecial(p);return;}
+            if(Time>=NativeMeleeKitRules.End(a)){CancelSpecial(p);return;}
+            if(a.Fx=="whirlwind"){StepWhirlwind(p,a);CaptureMeleeKit(p);return;}
             if(!a.Released&&Time>=a.Release)
             {
                 a.Released=true;a.Phase="active";
@@ -128,7 +139,6 @@ namespace ChipArena.UnityConversion
                         else p.EReady=a.At+7*(float)Math.Max(.45,Math.Min(3,p.Stats["abilityCooldown"]));break;
                     case "kunai-mark":if(a.Kind=="kunai-recast")MeleeRecastStrike(p,a,false);else{ThrowMelee(p,a);a.Phase="recovery";}break;
                     case "aegis-ricochet":ThrowMelee(p,a);a.Phase="recovery";break;
-                    case "wolf-knight":p.Knockback=Vec(V3.Forward(a.Yaw*Mathf.Rad2Deg))*7+Vector3.up*(10-p.Body.linearVelocity.y);p.Grounded=false;break;
                     case "earthsplitter":
                         Vector3 direction=Vec(a.Direction),start=p.Body.position;float length=10;
                         if(root.scene.GetPhysicsScene().Raycast(start,direction,out var wall,length,WorldMask,QueryTriggerInteraction.Ignore))length=wall.distance;
@@ -138,18 +148,32 @@ namespace ChipArena.UnityConversion
                 }
             }
             if(p.Special!=a)return;
-            if(a.Fx=="wolf-knight"&&a.Released)
+            CaptureMeleeKit(p);
+        }
+        private void StepWhirlwind(NativePilot p,NativeMeleeAction a)
+        {
+            NativeWhirlwindRules.Advance(a,Time);
+            if(a.Phase=="active"){p.Yaw=p.Input.Yaw;a.Yaw=p.Yaw*Mathf.Deg2Rad;}
+            while(p.Special==a&&p.Hp>0&&NativeWhirlwindRules.NextTick(a,Time))
             {
-                if(a.Landed<0&&Time>a.Release+.04f)SpecialStrike(p,a,2.15f*(float)p.Stats["reach"],760,"spin-direct");
-                if(p.Special!=a)return;
-                if(NativeSpecialRules.CanLand(a,Time,p.Grounded,p.Body.linearVelocity.y))
+                a.Hit.Clear();Vector3 origin=p.Body.position;
+                foreach(var t in MeleeTargets(p).ToArray())
                 {
-                    a.Landed=Time;a.Phase="recovery";a.Until=Time+.55f/(float)p.Stats["attackRate"];p.AttackEnd=p.Ready=a.Until;p.RegenAt=a.Until+.45f;
-                    p.Knockback.x*=.25f;p.Knockback.z*=.25f;float radius=3.7f*(float)p.Stats["reach"];
-                    SpecialStrike(p,a,radius,760,"slam");MeleeImpacts.Add(new NativeMeleeImpact{At=Time,Position=p.Body.position-Vector3.up*.75f,Radius=radius});Emit(EventKind.Land,p,0,p.Body.position,0,a.Fx,radius);
+                    if(p.Special!=a||p.Hp<=0)break;
+                    if(!NativeWhirlwindRules.Contact(Vec(t.at-origin),(float)p.Stats["reach"])||!MeleeVisible(origin,t.at,p,t.collider)||!a.Hit.Add(t.id.ToString()))continue;
+                    Vector3 direction=t.at-origin;direction.y=0;
+                    if(direction.sqrMagnitude<.0001f)direction=Vec(V3.Forward(p.Yaw));else direction.Normalize();
+                    float actual=MeleeAbilityHit(p,t.id,NativeWhirlwindRules.Damage,direction,0,"whirlwind",t.collider.ClosestPoint(origin));
+                    if(actual>0&&a.Tick==1&&t.pilot!=null)StaggerMelee(t.pilot,NativeWhirlwindRules.Stagger);
+                }
+                if(p.Special!=a||p.Hp<=0)break;
+                foreach(var prop in Props.ToArray())
+                {
+                    if(prop==null||prop.Indestructible)continue;var collider=prop.GetComponent<Collider>();var point=collider.ClosestPoint(origin);
+                    if(!NativeWhirlwindRules.Contact(Vec(point-origin),(float)p.Stats["reach"])||!MeleeVisible(origin,point,p,collider))continue;
+                    DamageProp(prop,NativeWhirlwindRules.Damage*(float)(p.Stats["damage"]*p.Stats["demolition"]),Vector3.zero,point,p,"melee");
                 }
             }
-            CaptureMeleeKit(p);
         }
         private bool MeleeTeleport(NativePilot p,Vector3 destination,string fx)
         {

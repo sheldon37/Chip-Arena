@@ -133,6 +133,7 @@ namespace ChipArena.UnityConversion
             StepSpecial(p);StepMelee(p);
             StepMeleeInput(p);
             locked=Time<p.AttackEnd||Incapacitated(p);rolling=Time<p.RollEnd;
+            bool whirling=!Incapacitated(p)&&NativeWhirlwindRules.Active(p.Special,Time);
             if(p.Weapon.@class!="melee"&&!Incapacitated(p)&&p.AbilityCast==null&&p.CastAt<=0&&!rolling&&!locked&&Time>=p.Ready&&p.ReloadEnd==0&&Time>=p.BlockEnd&&i.Shoot)
             {
                 if(p.Weapon.@class=="ranged"&&p.Ammo<=0)Reload(p);
@@ -149,11 +150,12 @@ namespace ChipArena.UnityConversion
             p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+(float)(12*p.Stats["manaRegen"]*dt));
             if(Time-p.LastDamage>=3)Heal(p,(float)(p.Stats["regeneration"]*dt));
             float speed=(float)(6.8*p.Stats["speed"])*(sprint?1.35f:1)*(aim?(float)Content.Ads(p.Seat.spec).move:1)*Math.Max(.4f,Math.Min(Time<p.SlowEnd?p.SlowFactor:1,ChipFieldSpeed(p)))*(swimming?.6f:1);
+            if(whirling)speed*=NativeWhirlwindRules.MoveScale;
             Vector3 velocity=p.Body.linearVelocity;
             if(rolling){float duration=p.RollEnd-p.RollAt,u=(Time-p.RollAt)/duration,q=(Time+dt-p.RollAt)/duration;var roll=p.RollDirection*(Dev(p,"ansatsuken")?22:(float)p.Roll.distance*(MathUtil.Smooth(q)-MathUtil.Smooth(u))/dt);velocity.x=roll.x;velocity.z=roll.z;}
             else
             {
-                if(locked)p.MoveVelocity=Vector3.zero;
+                if(locked&&!whirling)p.MoveVelocity=Vector3.zero;
                 else p.MoveVelocity=new Vector3(Mathf.MoveTowards(p.MoveVelocity.x,move.x*speed,35*dt),0,Mathf.MoveTowards(p.MoveVelocity.z,move.z*speed,35*dt));
                 Vector3 step=p.Grounded&&!Incapacitated(p)?Vec(NativeMeleeRules.Step(p.Swing,Time,dt)):Vector3.zero;
                 step+=MeleeAbilityMotion(p)+FighterMotion(p)+SirenMotion(p);velocity.x=p.MoveVelocity.x+step.x;velocity.z=p.MoveVelocity.z+step.z;
@@ -166,7 +168,7 @@ namespace ChipArena.UnityConversion
             p.Body.useGravity=!swimming||velocity.y>2;
             if(p.Body.useGravity)velocity.y-=(float)(23*(p.Stats["playerGravity"]-1)*dt);
             var remaining=Vec(p.Knockback);Vector3 external=Vec(NativeMeleeRules.External(ref remaining,dt,out float steeringSpeed,Time<(p.Fighter?.WaveUntil??0)&&!rolling));if(Time<p.LaunchUntil){external=p.Knockback;external.x*=Mathf.Exp(-3.1f*dt);external.z*=Mathf.Exp(-3.1f*dt);remaining=new V3(external.x,0,external.z);}p.Knockback=Vec(remaining);
-            if(!rolling&&!locked)
+            if(!rolling&&(!locked||whirling))
             {
                 var controlled=Vec(NativeMeleeRules.CounterSteer(Vec(p.MoveVelocity),Vec(external),steeringSpeed));
                 velocity.x=controlled.x;velocity.z=controlled.z;
@@ -267,7 +269,7 @@ namespace ChipArena.UnityConversion
                 a.Hp=p.Hp;a.Stamina=p.Stamina;a.Position=Vec(p.Body.position-Vector3.up*.865f);a.Velocity=Vec(p.Body.linearVelocity);a.Yaw=p.Yaw;a.AimYaw=p.Yaw;a.Pitch=p.Pitch;a.Combo=Math.Max(0,p.Combo);a.LastAttack=p.LastAttack;a.JuggleUntil=p.Juggle?.Until??0;a.AttackAt=p.AttackAt;a.AttackUntil=p.AttackEnd;a.BlockAt=p.BlockAt;a.BlockUntil=p.BlockEnd;a.BlockReady=p.BlockReady;a.RollAt=p.RollAt;a.RollDirection=Vec(p.RollDirection);a.StunUntil=p.StunEnd;a.Aiming=p.Aiming;a.AimAt=p.AimAt;a.Ammo=p.Ammo;a.LastShot=p.LastShot;a.ReloadAt=p.ReloadAt;a.ReloadUntil=p.ReloadEnd;
                 CaptureMeleeKit(p);a.MeleeKit=p.MeleeKit.ViewCopy();
                 var special=p.Special;var down=p.Down;
-                a.SpecialKind=special?.Kind;a.SpecialAt=special?.At??-100;a.SpecialRelease=special?.Release??0;a.SpecialUntil=special?.Until??0;a.SpecialLanded=special?.Landed??-1;a.SpecialReleased=special?.Released??false;
+                a.SpecialKind=special?.Kind;a.SpecialAt=special?.At??-100;a.SpecialRelease=special?.Release??0;a.SpecialUntil=NativeMeleeKitRules.End(special);a.SpecialLanded=special?.Landed??-1;a.SpecialReleased=special?.Released??false;
                 a.WeaponAway=p.Seat.spec=="shield"&&MeleeShots.Any(s=>s.Shield&&s.Original==p)||special!=null&&special.Kind=="dagger-throw"&&special.Released&&Time<special.Until-.12f;
                 a.DownAt=down?.At??-100;a.DownUntil=down?.Until??0;a.DownLanded=down?.Landed??-1;a.DownPickup=down?.PickupUntil??0;a.DownUsed=down?.PickupUsed??false;a.DownRoll=down?.RollAt??-1;a.DownRollEnd=down?.RollUntil??-1;a.DownDirection=down?.Direction??new V3();
                 MeleePresentation(p,a);a.CastRate=(float)p.Stats["attackRate"];a.Grounded=p.Grounded;a.AirJumps=p.AirJumps;a.AirJumpAt=p.AirJumpAt;a.VisualWindup=(float)(p.Weapon.windup/p.Stats["attackRate"]);a.VisualActive=(float)(.16/p.Stats["attackRate"]);a.VisualDuration=p.AttackEnd-p.AttackAt;a.VisualRollDuration=p.RollEnd-p.RollAt;
