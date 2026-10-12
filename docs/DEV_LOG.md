@@ -22,12 +22,12 @@
   - the effect hook order;
   - the Cyber Lord dither is set before the body-skin queue call.
 - Owner rule kept: no glowing disc, ring or tile on the floor. The slam waves are upright, and CyberLordChecks checks every drawn piece.
-- Checks on the merged tree:
+- Checks on the merged tree (`869d834`, with shared `f9c755d`):
   - `unity-check.sh`: runtime and editor build OK;
-  - `check_relay.py`: exit 0, 529 PASS lines;
-  - managed core: exit 0, 528 PASS lines, including the new CyberLordChecks (53,682 checks);
+  - `check_relay.py`: exit 0, 530 PASS lines;
+  - managed core: exit 0, 529 PASS lines, including the new CyberLordChecks (53,682 checks);
   - Python unittest: 91 tests OK, 1 skipped;
-  - `package_source.py`: passed, 1,528 source files;
+  - `package_source.py`: passed, 1,529 source files;
   - `git diff --check 6486be8 HEAD`: clean.
 - Renders: scratch WebGL harness (real Core and real effects drawers). The 2D cut-in, banner, HUD, tile and Locker are canvas mock-ups of the runtime layout.
 - Not run: the Unity Editor, Windows, play, multiplayer, the IMGUI cut-in and HUD themselves, and GPU cost.
