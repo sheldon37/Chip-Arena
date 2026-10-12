@@ -214,12 +214,15 @@ namespace ChipArena.UnityConversion
     public abstract class NativeWeaponEntrance:NativeEntranceScript
     {
         protected NativeEntranceClip Clip;protected readonly string Spec;protected readonly int WeaponColor;
-        protected NativeWeaponEntrance(string style,float hit,int color):base(style,hit,color){Spec=style.Substring(7);WeaponColor=color;}
+        /// <summary>The pilot's pack motion (Core/NativeEntrancePack; null: the baked clip and its weapon-intro layer, as the daggers keep).</summary>
+        public readonly NativePackIntro Pack;
+        protected NativeWeaponEntrance(string style,float hit,int color):base(style,hit,color){Spec=style.Substring(7);WeaponColor=color;Pack=NativePackIntro.For(style);}
         public override void Bind(NativeEntranceClip clip){if(Clip==clip)return;Clip=clip;Invalidate();}
         public override bool Ready=>Clip!=null;
         public override void Pose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
         {
             if(Clip==null){pose.Reset();root=new Vector3(0,.88f,0);rotation=Quaternion.Identity;return;}
+            if(Pack!=null){Pack.Pose(t,pose,out root,out rotation);return;}
             NativeEntrancePose.Baked(Style,Clip,t,pose,out root,out rotation);
         }
         protected override float TipLength(bool left)

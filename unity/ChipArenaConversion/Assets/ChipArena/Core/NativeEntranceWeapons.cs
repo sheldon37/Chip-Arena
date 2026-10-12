@@ -6,7 +6,8 @@ namespace ChipArena.UnityConversion
     // Each camera plan: an establishing move, a push-in or orbit on the weapon, a low hero frame on the anticipation, a cut or
     // whip on the hit into a slow-motion beat, a dolly out to the final pose and a still hero frame under the name card.
 
-    /// <summary>Flash Draw (sword, hit 1.8 s): walk-in with the hand on the hilt, a crouched draw-cut through a crescent of light.</summary>
+    /// <summary>Flash Draw (sword, hit 1.8 s; pack motion, Core/NativeEntrancePack): a calm stand, the blade coiled back across
+    /// the body, a backhand draw-cut through a crescent of light, an overhead flourish and the blade raised in salute.</summary>
     internal sealed class FlashDraw:NativeWeaponEntrance
     {
         public FlashDraw():base("weapon-sword",1.8f,0xb6fff0)
@@ -15,12 +16,12 @@ namespace ChipArena.UnityConversion
             {
                 // Establishing: a crane coming down and in on the walk-in, the rim light carving the silhouette as the pylons wake.
                 Orbit(0,NativeEntranceCut.Cut,40,37,-40,-25,4.2f,3.3f,1.3f,.75f,V(0,.95f,0),V(0,.9f,0),0,1,face:.5f),
-                // The hand on the hilt: a long-lens detail at hip height on the sword side.
-                Follow(Shot(.95f,NativeEntranceCut.Cut,32,29,V(-2.2f,.8f,2.4f),V(-2.0f,.82f,2.2f),V(.05f,.1f,0),V(.05f,.12f,0),1,1,face:1.2f),NativeEntranceAnchor.RightHand),
-                // Anticipation: low from the off side, looking up as the pilot sinks into the draw.
-                Shot(1.42f,NativeEntranceCut.Cut,42,39,V(1.5f,.3f,2.9f),V(1.3f,.3f,2.6f),V(0,.95f,0),V(0,.9f,0),1,1,face:1.6f),
-                // The cut, in slow motion: a wide side orbit that lets the crescent hang in the air.
-                Orbit(1.8f,NativeEntranceCut.Cut,40,36,-58,-28,3.3f,2.8f,1.0f,.85f,V(0,.95f,.15f),V(0,.95f,.1f),1,1,face:1.8f),
+                // The coil: a medium shot on the sword side, following the chest as the blade is drawn back across the body.
+                Follow(Shot(.95f,NativeEntranceCut.Cut,37,34,V(-2.7f,.95f,2.9f),V(-2.4f,.95f,2.6f),V(0,.1f,0),V(0,.05f,0),1,1,face:1.2f),NativeEntranceAnchor.Chest),
+                // Anticipation: low on the sword side, looking up at the coiled blade as the pilot sinks into the draw.
+                Shot(1.42f,NativeEntranceCut.Cut,42,39,V(-1.7f,.3f,2.7f),V(-1.5f,.3f,2.4f),V(0,.95f,0),V(0,.9f,0),1,1,face:1.6f),
+                // The cut, in slow motion: an orbit round the front that lets the crescent hang in the air.
+                Orbit(1.8f,NativeEntranceCut.Cut,40,36,-38,-8,3.3f,2.9f,1.0f,.85f,V(0,.95f,.15f),V(0,.95f,.1f),1,1,face:1.8f),
                 // Dolly out and crane up to the flourish.
                 Orbit(2.7f,NativeEntranceCut.Blend,36,38,-28,-18,2.9f,3.5f,1.0f,1.3f,V(0,1.0f,0),V(0,1.02f,0),0,1,.3f,face:1.8f),
                 // Hero: low three-quarter, drifting in, still before the hand-off.
@@ -179,7 +180,9 @@ namespace ChipArena.UnityConversion
         }
     }
 
-    /// <summary>Colossus Oath (greatsword, hit 1.8 s): dragged in throwing sparks, wound up and slammed into the floor, the ground cracking open.</summary>
+    /// <summary>Colossus Oath (greatsword, hit 1.8 s; pack motion, Core/NativeEntrancePack): the blade held up in oath, a crouch,
+    /// a leap with the blade raised overhead and a two-handed slam into the floor, the ground cracking open and the tip scraping
+    /// sparks, then the blade shouldered.</summary>
     internal sealed class ColossusOath:NativeWeaponEntrance
     {
         public ColossusOath():base("weapon-greatsword",1.8f,0xffcb87)
@@ -187,25 +190,26 @@ namespace ChipArena.UnityConversion
             SlowRate=.25f;
             Shots=new[]
             {
-                // Low and wide beside the dragged blade, tracking the sparks.
-                Orbit(0,NativeEntranceCut.Cut,42,40,-60,-40,3.4f,2.9f,.4f,.45f,V(-.2f,.7f,-.2f),V(0,.85f,0),0,1,face:.4f),
-                // Shouldered: a push-in from the front, a little low.
-                Shot(.9f,NativeEntranceCut.Cut,40,38,V(.5f,.55f,3.6f),V(.4f,.58f,3.2f),V(0,1.25f,0),V(0,1.3f,0),1,.6f,face:1.2f),
-                // The wind-up: on the floor at the off side, the blade high against the rim light.
-                Orbit(1.45f,NativeEntranceCut.Cut,46,44,70,56,3.2f,2.9f,.3f,.28f,V(0,1.4f,0),V(0,1.25f,0),1,.3f,face:1.6f),
+                // The oath: low and close in front, looking up the raised blade as the pylons wake.
+                Orbit(0,NativeEntranceCut.Cut,42,39,32,18,3.7f,3.1f,.45f,.5f,V(0,1.35f,0),V(0,1.25f,0),0,1,face:.3f),
+                // The crouch: a push-in from the front, a little low.
+                Shot(.9f,NativeEntranceCut.Cut,40,38,V(.5f,.55f,3.6f),V(.4f,.58f,3.2f),V(0,1.15f,0),V(0,1.3f,0),1,.6f,face:1.2f),
+                // The leap: on the floor at the off side, looking up at the blade raised against the rim light.
+                Orbit(1.45f,NativeEntranceCut.Cut,48,46,70,56,3.5f,3.2f,.3f,.28f,V(0,1.75f,0),V(0,1.45f,0),1,.3f,face:1.6f),
                 // The slam, in slow motion, from high above: the floor splitting open round the blade.
                 Shot(1.8f,NativeEntranceCut.Cut,44,40,V(1.2f,3.6f,3.0f),V(1.0f,3.2f,2.6f),V(0,.3f,.5f),V(0,.4f,.4f),1,1,face:1.8f),
                 Orbit(2.6f,NativeEntranceCut.Blend,40,38,21,8,2.9f,3.6f,3.0f,.85f,V(0,.45f,.4f),V(0,1.0f,0),0,1,.3f,face:1.8f),
-                Shot(3.2f,NativeEntranceCut.Cut,38,35,V(.85f,.3f,3.45f),V(.55f,.34f,3.15f),V(0,1.0f,0),V(0,1.02f,0),1,0),
+                Shot(3.2f,NativeEntranceCut.Cut,38,35,V(.9f,.32f,3.9f),V(.6f,.36f,3.6f),V(0,1.12f,0),V(0,1.15f,0),1,0),
             };
         }
         public override void Effects(float t,INativeEntranceFx fx,float q)
         {
             Motes(fx,t,q,Accent);Beams(fx,t,q,Accent);var white=Vector3.One;var ember=NativeEntranceFx.Hex(0xffb35a,2.4f);
-            // Sparks where the dragged tip scrapes the floor (a fixed schedule, each spark sampled where the tip was when it flew).
+            // Sparks where the tip scrapes the floor after the bite (a fixed schedule, each spark sampled where the tip was when
+            // it flew; only while the tip is on the floor).
             for(int i=0;i<48;i++)
             {
-                if(NativeEntranceMath.Rand(400,i)>q)continue;float born=.05f+i*.022f,a=t-born;if(a<0||a>.45f)continue;var tip=Anchor(NativeEntranceAnchor.RightTip,born);if(tip.Y>NativeEntranceStage.FloorY+.24f)continue;
+                if(NativeEntranceMath.Rand(400,i)>q)continue;float born=Hit-.04f+i*.013f,a=t-born;if(a<0||a>.45f)continue;var tip=Anchor(NativeEntranceAnchor.RightTip,born);if(tip.Y>NativeEntranceStage.FloorY+.24f)continue;
                 var v=-ForwardOf(born)*1.4f+new Vector3(NativeEntranceMath.Signed(400,i*3),0,NativeEntranceMath.Signed(400,i*3+1))*.6f+new Vector3(0,.9f+1.4f*NativeEntranceMath.Rand(400,i*3+2),0);
                 var p=new Vector3(tip.X,NativeEntranceStage.FloorY+.03f,tip.Z)+v*a+new Vector3(0,-4.9f*a*a,0);if(p.Y<NativeEntranceStage.FloorY)continue;float u=a/.45f;
                 fx.Streak(p,v+new Vector3(0,-9.8f*a,0),Vector3.Lerp(white*3,ember,u)*(1-u),.016f,.03f,.035f,.8f,u,400+i);
