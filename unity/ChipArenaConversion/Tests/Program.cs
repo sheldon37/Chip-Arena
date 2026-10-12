@@ -69,6 +69,7 @@ internal static class Program
             BodySkinChecks.Run(root,data);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
+            HealNumberChecks.Run(root);
             foreach(var result in EffectsAudioChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in IntroMusicChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in ImpactCueChecks.Run(root,data))Console.WriteLine("PASS "+result);
