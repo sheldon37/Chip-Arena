@@ -117,7 +117,7 @@ namespace ChipArena.UnityConversion
             string held=installCue.Step(FollowChip,FollowStarted,FollowAge);if(held!=null)InstallCue(held);
             var events=arena.Events;int newest=0;for(int i=0;i<events.Count;i++)newest=Math.Max(newest,events[i].Id);if(newest>0&&newest<cursor)cursor=0;
             for(int i=0;i<events.Count;i++){var e=events[i];if(e.Id<=cursor||t-e.Time>.4f||t<e.Time)continue;EventSounds(arena,events,i,me);}
-            cursor=Math.Max(cursor,newest);
+            cursor=Math.Max(cursor,newest);BowFlightCues(arena);
             foreach(var p in arena.Pilots)
             {
                 string id=p.Seat.id+":";Vector3 pos=p.Body.position;if(p==me&&t<p.ScareUntil&&Once(id+"scare",p.ScareAt)){Play("darkness",null,.9f);Play("metal",null,.6f);}bool mine=p==me;
@@ -135,6 +135,7 @@ namespace ChipArena.UnityConversion
                 for(int r=0;r<gun.FanShots;r++){float at=gun.FanShot(r);if(t>=at&&t-at<.1f&&Once(id+"fan"+r,gun.FanAt))Cue(NativeGunKit.Slap.Key,NativeGunKit.Slap.Clip,pos,NativeGunKit.Slap.Gain,mine:mine);}
                 if(gun.HasOverdrive&&t>=gun.OverdriveAt&&t-gun.OverdriveAt<.2f&&Once(id+"overdrive",gun.OverdriveAt))Cue(NativeGunKit.Whine.Key,NativeGunKit.Whine.Clip,pos,NativeGunKit.Whine.Gain,NativeGunKit.WhineRate,mine:mine);
                 if(gun.HasOverdrive&&t>=gun.OverdriveUntil&&t-gun.OverdriveUntil<.2f&&Once(id+"vent",gun.OverdriveUntil))Cue(NativeGunKit.Hiss.Key,NativeGunKit.Hiss.Clip,pos,NativeGunKit.Hiss.Gain,mine:mine);
+                BowCues(p,id,t,pos,mine);
                 var f=p.Fighter;if(f?.LastHit>0&&t-f.LastHit<.15f&&Once(id+"fighter",f.LastHit)){string hit=f.Kind=="electric"?"electric-hook-hit":f.Kind=="tatsu"?"arcade-kick":f.Index==f.Total-1?"arcade-heavy":"arcade-punch";Cue(NativeSoundCues.Fighter(hit),hit,pos,.9f,mine:mine);}
             }
             // Source events Unity derives from state: stage-spikes-rise (stage-hazards.ts:21) and the PvP draft pick's `install`
@@ -173,7 +174,7 @@ namespace ChipArena.UnityConversion
             var context=new NativeEventSounds.Context{Kind=e.Kind,Detail=e.Detail,SourceSpec=source?.Seat.spec,Material=material,Amount=e.Amount,Radius=e.Radius,
                 TargetMe=local>0&&e.Target==local,SourceMe=local>0&&e.Source==local,TargetPilot=target!=null,Ally=source!=null&&target!=null&&arena.Match.SameSide(source.Seat,target.Seat),Pve=arena.Pve!=null,
                 Supernova=supernova>0};
-            Vector3 pos=NativeArena.Vec(e.Position);int n=NativeEventSounds.Route(context,routed);
+            Vector3 pos=NativeArena.Vec(e.Position);BowEventCue(arena,e,source,pos);int n=NativeEventSounds.Route(context,routed);
             // The bank plan (NativeSoundPlan): with no LocalAssets bank, exactly the routed sounds above.
             string style=e.Kind!=EventKind.Death?null:target?.Death?.style??(string.IsNullOrEmpty(source?.Seat.killEffect)?null:source.Seat.killEffect);
             var detail=new NativeSoundDetail{WeaponDetail=e.Kind==EventKind.Explosion&&WeaponDetail(arena,e.Detail),KillStyle=style};

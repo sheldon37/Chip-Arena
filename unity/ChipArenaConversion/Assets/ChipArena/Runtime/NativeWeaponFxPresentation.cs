@@ -162,7 +162,7 @@ namespace ChipArena.UnityConversion
             if(!ReferenceEquals(emitterArena,arena)||emitterGeneration!=arena.Generation||now<emitterClock-.25f){ClearEmitters();emitterArena=arena;emitterGeneration=arena.Generation;}
             emitterClock=Math.Max(emitterClock,now);
             float q=BlastQuality;bool low=LowGraphics,trails=TrailsEnabled;Vector3 eye=camera!=null?camera.transform.position:Vector3.zero;
-            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,shotTracker,now,out var v);ShotFx(draw,v,now,q,low,trails,eye,GunKitTracer(b,v));}
+            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,shotTracker,now,out var v);if(!NativeBowWire.Is(v.Spec))ShotFx(draw,v,now,q,low,trails,eye,GunKitTracer(b,v));}
             foreach(var s in arena.AbilityShots){NativeShotViews.Ability(arena,s,shotTracker,now,out var v);ShotFx(draw,v,now,q,low,trails,eye);}
             staleEmitters.Clear();foreach(var pair in emitters)if(pair.Value.Frame!=weaponFrame)staleEmitters.Add(pair.Key);
             foreach(long key in staleEmitters){spareEmitters.Push(emitters[key]);emitters.Remove(key);}
@@ -174,7 +174,7 @@ namespace ChipArena.UnityConversion
                 NativeWeaponFxShapes.Sprite(draw,p.At,p.Drift,p.Color,p.Size,p.Life,age);i++;
             }
             // The pistol / machine-gun Q kit (NativeGunKitPresentation.cs) on the pose clock, before the drawer is submitted.
-            GunKitFx();
+            GunKitFx();BowFx(arena,now);
             ImpactFx(draw,arena,now,q,low);
             draw.Submit(camera,FirstPerson&&!ScopeActive?ViewCamera:null);
         }

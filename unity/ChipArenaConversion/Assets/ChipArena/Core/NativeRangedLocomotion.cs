@@ -13,10 +13,13 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The carries: the pistol (Armed walk, Unarmed run), the long guns (2Hand-Shooting) and the staff (2Hand-Staff,
         /// mirrored onto the game's left-hand staff).</summary>
-        public const int None=-1,Pistol=0,Shooting=1,Staff=2;
-        public static int SetFor(string spec)=>spec=="pistol"?Pistol:spec=="rifle"||spec=="machinegun"?Shooting:MeleeStance.MagicSpec(spec)?Staff:None;
+        public const int None=-1,Pistol=0,Shooting=1,Staff=2,Bow=3;
+        /// <summary>The carries: the three above plus the bow (2Hand-Bow, Core/NativePackBow.Generated: tools/export_pack_bow.mjs).</summary>
+        public static int SetCount=>NativePackRangedLocomotion.Sets.Length+1;
+        public static int SetFor(string spec)=>NativeBowWire.Is(spec)?Bow:spec=="pistol"?Pistol:spec=="rifle"||spec=="machinegun"?Shooting:MeleeStance.MagicSpec(spec)?Staff:None;
         public static CapturedClip Clip(int set,int slot)
         {
+            if(set==Bow){var b=NativePackBow.Loco;return slot>=0&&slot<b.Length?b[slot]:null;}
             if(set<0||set>=NativePackRangedLocomotion.Sets.Length)return null;var s=NativePackRangedLocomotion.Sets[set];return slot>=0&&slot<s.Length?s[slot]:null;
         }
         /// <summary>
@@ -46,6 +49,8 @@ namespace ChipArena.UnityConversion
                 case "lightning":return new Style{TorsoWalk=.28f,TorsoRun=.15f,Lean=.09f,HeadKeep=.45f,FreeKeep=.3f,HandKeep=.2f,StaffFollow=.35f};
                 case "darkness":return new Style{TorsoWalk=.3f,TorsoRun=.15f,Lean=.2f,HeadKeep=.4f,FreeKeep=.32f,HandKeep=.18f,Crouch=.03f,StaffFollow=.1f};
                 case "leet":return new Style{TorsoWalk=.3f,TorsoRun=.15f,Lean=.08f,HeadKeep=.5f,FreeKeep=.4f,HandKeep=.22f,StaffFollow=.25f};
+                // the bow: light and athletic, the bow hand riding steady, the draw hand swinging loose
+                case "bow":return new Style{TorsoWalk=.34f,TorsoRun=.24f,Lean=.07f,HeadKeep=.45f,FreeKeep=.45f,HandKeep=.2f,Crouch=.008f,AimSway=.5f};
                 default:return new Style{TorsoWalk=.4f,TorsoRun=.3f,HeadKeep=.5f,FreeKeep=.4f,HandKeep=.2f,AimSway=.5f,StaffFollow=.5f};
             }
         }
@@ -118,12 +123,12 @@ namespace ChipArena.UnityConversion
     {
         private readonly float[] rowA=new float[CapturedClip.Channels],rowB=new float[CapturedClip.Channels],mean=new float[CapturedClip.Channels],meanB=new float[CapturedClip.Channels];
         private float dx,dz=1,last=-100,speedV,asideKeep=1,ground=1,move;private bool speedHas;
-        private static readonly float[][][] headings=new float[NativePackRangedLocomotion.Sets.Length][][];
+        private static readonly float[][][] headings=new float[NativeRangedLocoRules.SetCount][][];
         private static bool warmed;
         public NativeRangedLocomotion()
         {
             if(warmed)return;
-            for(int s=0;s<NativePackRangedLocomotion.Sets.Length;s++)for(int k=0;k<NativePackRangedLocomotion.Slots.Length;k++){NativeRangedLocoRules.Clip(s,k).Decode();Heading(s,k);}
+            for(int s=0;s<NativeRangedLocoRules.SetCount;s++)for(int k=0;k<NativePackRangedLocomotion.Slots.Length;k++){NativeRangedLocoRules.Clip(s,k).Decode();Heading(s,k);}
             NativePackRangedLocomotion.Sprint.Decode();NativePackRangedLocomotion.Sprint.CycleMean();warmed=true;
         }
         /// <summary>The travel direction (radians from the facing, + to the rig's left) the last frame blended, its two
@@ -239,8 +244,8 @@ namespace ChipArena.UnityConversion
             float slow=(1-MeleeMath.Ease((speedV-NativeLocoRules.SlowFrom)/(NativeLocoRules.SlowTo-NativeLocoRules.SlowFrom)))*Math.Max(0,(float)Math.Cos(dir));
             float ahead=Math.Max(0,(float)Math.Cos(dir)),aside=MeleeMath.Lerp(NativeLocoRules.AsideTorso,1,ahead*ahead*ahead);sprint=MeleeMath.Clamp(sprint,0,1);asideKeep=aside;
             Vector3 pelvis=r.E[CapturedRig.Pelvis];right=rightMean=left=leftMean=leftFwd=Vector3.Zero;rightQ=leftQ=Quaternion.Identity;Quaternion gaze=r.ChainQuat(CapturedRig.Head,-1);
-            // The weapon hand keeps HandKeep and the free hand FreeKeep; on the mirrored staff set the staff is the left hand.
-            bool staff=s==NativeRangedLocoRules.Staff;float rk=staff?st.FreeKeep:st.HandKeep,lk=staff?st.HandKeep:st.FreeKeep;
+            // The weapon hand keeps HandKeep and the free hand FreeKeep; on the mirrored staff set (and the bow's) the left hand holds it.
+            bool staff=s==NativeRangedLocoRules.Staff||s==NativeRangedLocoRules.Bow;float rk=staff?st.FreeKeep:st.HandKeep,lk=staff?st.HandKeep:st.FreeKeep;
             Family(s,NativeLocoRules.Walk,phase,a,b,t,slow,st.TorsoWalk*aside);Lay(r,w,st,rk,lk);
             if(run>1e-3f){Family(s,NativeLocoRules.Run,phase,a,b,t,0,st.TorsoRun*aside);Lay(r,w*run,st,rk,lk);}
             // The sprint: the pack's Unarmed sprint torso, its cadence and lean (NativeSprintMotion lays each weapon's arms over it).
@@ -336,6 +341,15 @@ namespace ChipArena.UnityConversion
             target=Vector3.Lerp(target,(mg?NativeRangedLocoRules.MachineGunGrip:NativeRangedLocoRules.RifleGrip)+bob,w);
             aim=MeleeMath.Slerp(aim,CapturedRig.Euler(c.X-lean-bob.Y*.6f,c.Y+bob.X*.5f,c.Z),w);
         }
+        /// <summary>
+        /// The bow route (Core/NativeBowMotion), after the gait and the sprint lean and before the bow hold: the pack torso of the
+        /// 2Hand-Bow carry. Its hands stay the bow layer's (it reads the pack's bow-hand and draw-hand carry: BowHand, DrawHand).
+        /// Returns the move weight.
+        /// </summary>
+        public float Bow(MeleeRig r,MeleeView v,string spec,float time,float sprint)=>Torso(r,v,spec,time,sprint);
+        /// <summary>The frame's pack carry of the bow hand (the rig's left) and the draw hand (its right), chest space, about
+        /// their cycle means (zero when the carry is off).</summary>
+        public Vector3 BowHand=>left;public Vector3 DrawHand=>right;public Vector3 BowHandMean=>leftMean;public Vector3 DrawHandMean=>rightMean;
         /// <summary>
         /// MagicMotion.Sample, after the gait, the sprint lean and the staff carry and before the cast phrase: the pack torso,
         /// the staff hand (the left) on the pack's staff hand, the casting hand on its free hand (the cast phrase slerps from

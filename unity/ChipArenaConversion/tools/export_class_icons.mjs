@@ -120,6 +120,27 @@ icons['spec-machinegun']=()=>{
   const belt=[[7.6,12.6,4],[7.1,14.6,12],[6.2,16.5,22],[4.9,18.2,32],[3.3,19.6,42]].map(([x,y,a])=>round.shift(x,y).rot(a,x,y));
   return [L(stock),L(receiver),L(jacket,{evenodd:true}),L(barrel),L(handle),L(grip),L(belt,{knock:.5})];
 };
+// BOW: a recurve at full draw on the diagonal, the string pulled back to the nock and the arrow flying up and right.
+const arrowShape=(x0,x1,y=12,w=1.1,head=2.6,fl=true)=>{const a=[crect(x0,y-w/2,x1-x0-head+.4,w),poly([[x1-head,y-1.9],[x1,y],[x1-head,y+1.9],[x1-head+.7,y]])];const f=fl?[poly([[x0,y-.4],[x0+3.2,y-.4],[x0+2.2,y-2.3],[x0-.6,y-2.3]]),poly([[x0,y+.4],[x0+3.2,y+.4],[x0+2.2,y+2.3],[x0-.6,y+2.3]])]:[];return {shaft:a,fletch:f};};
+icons['spec-bow']=()=>{
+  const limbs=ellipseBand(7.6,12,8.6,9.8,2.6,-78,78);
+  const tips=[taper([9.6,2.4],[11.9,1.1],1.6,.5),taper([9.6,21.6],[11.9,22.9],1.6,.5)];
+  const riser=crect(14.9,8.6,3.4,6.8,.8),grip=crect(15.9,10.2,1.4,3.6,.3);
+  const string=line([[9.8,2.6],[3.6,12],[9.8,21.4]]);const ar=arrowShape(2.4,22.6);
+  const place=p=>p.rot(-38,12,12);
+  return [L([limbs,...tips,riser].map(place)),L(place(grip),{cut:true}),L(place(string),{line:.75,opacity:TONE}),L(ar.shaft.map(place),{knock:1}),L(ar.fletch.map(place),{opacity:TONE})];
+};
+// VOLLEY (the bow's Q): five arrows fanned out of one nock, flying up and right.
+icons['ability-volley']=()=>{
+  const out=[];for(let i=0;i<5;i++){const a=arrowShape(2.6,21.4,12,.95,2.4,false);out.push(...a.shaft.map(p=>p.rot(-12-i*16,3,20.5).shift(0,8.5)));}
+  return [L(out.slice(0,6)),L(out.slice(6),{knock:.7}),L(circ(3.4,20.4,1.6),{opacity:TONE})];
+};
+// RAIN OF ARROWS (the bow's E): arrows falling steeply onto a marked circle.
+icons['ability-rain']=()=>{
+  const ringP=ellipseBand(12,19.6,9.4,3,1.4,0,360,0,56);const falls=[];
+  for(const [x,y,len] of [[6.4,2.2,10.6],[12,.8,13],[17.6,2.6,10.2]]){const a=arrowShape(0,len,0,1,2.4,false);falls.push(...a.shaft.map(p=>p.rot(90,0,0).shift(x,y)));}
+  return [L(ringP,{opacity:TONE}),L(falls,{knock:.8}),L([star(6.4,15.6,.45,1.4),star(17.6,15.2,.45,1.4)])];
+};
 // SWORD: a longsword with a winged crossguard, on the diagonal.
 icons['spec-sword']=()=>{
   const s=[poly([[12,-1.4],[13.55,1.3],[13.55,14.6],[10.45,14.6],[10.45,1.3]]),poly([[6.4,14.4],[17.6,14.4],[16.6,16.5],[7.4,16.5]]),crect(11.05,16.5,1.9,4.2),poly([[12,20.2],[13.7,21.9],[12,23.6],[10.3,21.9]])];
@@ -236,6 +257,11 @@ small['class-dev']=()=>{
   const pins=[crect(11,4.6,2,2.2),crect(11,17.2,2,2.2),crect(4.6,11,2.2,2),crect(17.2,11,2.2,2)];
   return [L(frame,{evenodd:true}),L(pins),L(die.add(core),{evenodd:true})];
 };
+// The bow at small sizes: heavier limbs, the arrow without its fletching.
+small['spec-bow']=()=>{
+  const limbs=ellipseBand(7.6,12,8.6,9.8,2.8,-80,80),riser=crect(14.8,8.8,3.2,6.4,.8),string=line([[9.4,2.4],[3.6,12],[9.4,21.6]]);const ar=arrowShape(3,22.6,12,1.5,3,false);
+  const place=p=>p.rot(-38,12,12);return [L([limbs,riser].map(place)),L(place(string),{line:1.1,opacity:TONE}),L(ar.shaft.map(place),{knock:1.1})];
+};
 small['spec-rifle']=()=>{
   const body=[poly([[-15,1.4],[-14.2,-1.2],[-6.5,-2.2],[-4.5,-2.2],[-4.5,2.2],[-7.5,2.8],[-10.5,4.8],[-15,5]]),crect(-4.8,-2.4,10.2,4.6,.6),crect(5.2,-1.6,10.6,3,0),crect(-1.6,1.8,3,3.8)];
   const scope=[crect(-4.4,-7,10.4,3.6,.8)];
@@ -257,7 +283,7 @@ small['spec-ansatsuken']=()=>{
 
 // ---- export ----
 const CLASSES={dev:'class-dev',magic:'class-magic',melee:'class-melee',ranged:'class-ranged'};
-const SPECS=Object.fromEntries(['ansatsuken','daggers','darkness','emperor','fire','greatsword','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','water'].map(id=>[id,'spec-'+id]));
+const SPECS=Object.fromEntries(['ansatsuken','bow','daggers','darkness','emperor','fire','greatsword','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','water'].map(id=>[id,'spec-'+id]));
 const entries=Object.keys(icons).sort().map(id=>{const e={id,markup:markup(icons[id]())};if(small[id])e.small=markup(small[id]());return e;});
 const pairs=o=>Object.entries(o).sort(([a],[b])=>a<b?-1:1).map(([id,icon])=>({id,icon}));
 const data={schema:1,source:'tools/export_class_icons.mjs',note:'Original Chip Arena class and weapon artwork authored for this project as geometry; not derived from any third-party icon set.',box:24,smallPx:22,fallback:'class-dev',icons:entries,classes:pairs(CLASSES),specs:pairs(SPECS)};

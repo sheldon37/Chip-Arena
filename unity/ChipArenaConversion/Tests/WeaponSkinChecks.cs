@@ -27,7 +27,8 @@ namespace ChipArena.UnityConversion
             count=0;
             // 1. Both skins for every weapon with a model: the Prototype bake ("weapon-"/"loose-" + spec, unchanged) and a Standard
             // design at three tiers plus its loose copy.
-            var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren").ToArray();
+            // The Bow's models ship ahead of its content entry (docs/NEW-KITS.md section 2; the rules are Astra's).
+            var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren").Concat(data.weapons.Any(w=>w.id==NativeBowWire.Spec)?new string[0]:new[]{NativeBowWire.Spec}).ToArray();
             Check(specs.OrderBy(s=>s).SequenceEqual(NativeWeaponSkins.Weapons.OrderBy(s=>s)),"the skinned weapons are every weapon but the Siren");
             var designed=NativeWeaponSkins.Weapons.Where(NativeWeaponModels.Designed).ToArray();
             Check(NativeWeaponModels.Specs.All(NativeWeaponSkins.Skinned)&&NativeWeaponModels.Specs.Count()==designed.Length,"every Standard design is a skinned weapon");
@@ -45,7 +46,9 @@ namespace ChipArena.UnityConversion
             }
             foreach(var spec in NativeWeaponSkins.Weapons)
             {
-                Check(bank.Contains("weapon-"+spec)&&bank.Contains("loose-"+spec),spec+" Prototype Series models in the bake");
+                // The Bow is new to the native game: its Prototype Series is built natively (NativeBowModels.Prototype) under the bake's ids.
+                if(spec==NativeBowWire.Spec)Check(!bank.Contains("weapon-"+spec)&&NativeBowModels.PrototypeHeldId=="weapon-"+spec&&NativeBowModels.PrototypeLooseId=="loose-"+spec,spec+" Prototype Series models built natively under the bake's ids");
+                else Check(bank.Contains("weapon-"+spec)&&bank.Contains("loose-"+spec),spec+" Prototype Series models in the bake");
                 Check(NativeWeaponSkins.Model("weapon-"+spec,NativeWeaponSkins.PrototypeIndex)=="weapon-"+spec&&NativeWeaponSkins.Model("loose-"+spec,NativeWeaponSkins.PrototypeIndex)=="loose-"+spec,spec+" Prototype ids are the bake's own");
                 if(!NativeWeaponModels.Designed(spec)){Check(NativeWeaponSkins.Model("weapon-"+spec,NativeWeaponSkins.StandardIndex)=="weapon-"+spec,spec+" without a design draws the Prototype");continue;}
                 for(int t=0;t<NativeWeaponModels.Tiers;t++)Check(NativeWeaponSkins.Model("weapon-"+spec,NativeWeaponSkins.StandardIndex,t)==NativeWeaponSkins.StandardModel(spec,t)&&!bank.Contains(NativeWeaponSkins.StandardModel(spec,t)),spec+" Standard tier "+t+" id");
@@ -104,6 +107,16 @@ namespace ChipArena.UnityConversion
                     Check(all.Max(p=>p.Z)<=socket+.06f&&all.Min(p=>p.Z)>=-.5f,spec+" head and heel within the Prototype's length");
                     Check(Near(Vector3.Zero)<.05f&&(spec=="leet"||Near(new Vector3(0,0,.40f))<.05f),spec+" main grip at the hand, the guard-grip at .40");
                     Check(d.Bone==NativeWeaponModels.LeftHand,spec+" rides the left hand");
+                }
+                else if(spec==NativeBowWire.Spec)
+                {
+                    // The Bow (Core/NativeWeaponModels.Bow.cs, BowChecks): the riser's grip in the bow hand, the arrow rest on the
+                    // arrow line, the limbs out to the string's tips, a clear arrow pass ahead of the rest; rigid, on the left hand.
+                    var mn=new Vector3(float.MaxValue);var mx=new Vector3(float.MinValue);foreach(var p in all){mn=Vector3.Min(mn,p);mx=Vector3.Max(mx,p);}
+                    Check(d.Bone==NativeWeaponModels.LeftHand&&d.Muzzle==NativeBowModels.Rest&&Near(Vector3.Zero)<.05f,spec+" grip in the left hand, the rest as its muzzle");
+                    Check(Near(NativeBowModels.Rest)<.02f&&mn.Y<-NativeBow.TipY+.06f&&mx.Y>NativeBow.TipY-.06f,spec+" arrow rest and limb tips ("+mn.Y+" / "+mx.Y+")");
+                    Check(!all.Any(p=>p.Z>NativeBowModels.Rest.Z+.02f&&p.Z<.6f&&new Vector2(p.X-NativeBow.ArrowX,p.Y-NativeBow.ArrowY).Length()<.008f),spec+" a clear arrow pass ahead of the rest");
+                    Check(m.Sections.All(s=>s.Stretch==WeaponStretch.None),spec+" never stretches");
                 }
                 else if(fist)
                 {
@@ -165,7 +178,8 @@ namespace ChipArena.UnityConversion
             var chips=new Dictionary<string,int>{{"ricochet",2},{"velocity",2},{"magazine",3},{"fire-rate",2},{"demolition",1},{"overclock",1}};
             foreach(var spec in designed)
             {
-                var w=data.weapons.First(x=>x.id==spec);var stats=NativeContentRules.Stats(data,spec,chips);stats["extraProjectiles"]=4;stats["homing"]=1;stats["split"]=1;stats["pierces"]=1;stats["pong"]=1;stats["boomerang"]=1;stats["vacuum"]=1;stats["impulse"]=2;stats["shrapnel"]=1;stats["staticEvery"]=3;if(NativeWeaponDressing.Melee(spec)){stats["reach"]=1.4;stats["extraStrikes"]=1;}
+                // The Bow ahead of its content entry dresses as a ranged weapon with the rifle's stats (presentation only).
+                var w=data.weapons.FirstOrDefault(x=>x.id==spec)??(spec==NativeBowWire.Spec?new ContentWeapon{id=spec,@class="ranged",color=0x7fd36b}:null);var stats=NativeContentRules.Stats(data,data.weapons.Any(x=>x.id==spec)?spec:"rifle",chips);stats["extraProjectiles"]=4;stats["homing"]=1;stats["split"]=1;stats["pierces"]=1;stats["pong"]=1;stats["boomerang"]=1;stats["vacuum"]=1;stats["impulse"]=2;stats["shrapnel"]=1;stats["staticEvery"]=3;if(NativeWeaponDressing.Melee(spec)){stats["reach"]=1.4;stats["extraStrikes"]=1;}
                 var m=NativeWeaponModels.Build(spec,0);m.Bounds(NativeWeaponModels.Get(spec).Bone,out var mn,out var mx);
                 int n=NativeWeaponDressing.Modules(spec,w.@class=="ranged",(int)w.color,chips,stats,pieces);
                 if(NativeWeaponDressing.Fist(spec)){Check(n==0,spec+" fists carry no modules");continue;}
@@ -218,7 +232,7 @@ namespace ChipArena.UnityConversion
             Check(lockerUi.Contains("b.Skins!=prefs.weaponSkins")&&lockerUi.Contains("prefs.weaponSkins=b.Skins;"),"the Locker baseline covers the skins");
             Console.WriteLine("PASS weapon skins: "+count+" checks ("+designed.Length+" of "+NativeWeaponSkins.Weapons.Length+" weapons with both skins, sockets, reach stretch, tiers/budgets/determinism, modules/enchants, skin map, wiring) digest "+Hash(digest.ToString()));
         }
-        private static int ProtoTriangles(string spec)=>spec=="pistol"?180:spec=="rifle"?264:spec=="machinegun"?228:spec=="sword"?264:spec=="daggers"?456:spec=="greatsword"?300:spec=="shield"?168:spec=="emperor"?144:spec=="ansatsuken"?72:spec=="leet"?1388:180;
+        private static int ProtoTriangles(string spec)=>spec=="pistol"?180:spec=="rifle"?264:spec=="machinegun"?228:spec=="sword"?264:spec=="daggers"?456:spec=="greatsword"?300:spec=="shield"?168:spec=="emperor"?144:spec=="ansatsuken"?72:spec=="leet"?1388:spec=="bow"?NativeBowModels.PrototypeTriangles:180;
         private static bool BladeLengthCovered(Vector3[] blade,NativeWeaponModels.Design d,string spec)
         {
             // The enchant track: .28 .. .28 + BladeLength (weapon-visuals.ts:126) inside the blade's own span.
