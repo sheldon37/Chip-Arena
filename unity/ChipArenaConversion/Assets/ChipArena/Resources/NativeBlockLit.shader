@@ -51,6 +51,19 @@ Shader "ChipArena/NativeBlockLit"
         #define FLAG_LAMP_RED 16u
         #define FLAG_SPIN_Y 32u
         #define FLAG_SPIN_Z 64u
+        // Cyber City's bank (Core NativeCyberCityLooks.Bank): with this flag the look id names a slot of BkCyber's bank.
+        #define FLAG_CYBER 128u
+        #define CY_TILE 0.0
+        #define CY_PANEL 4.0
+        #define CY_METAL 5.0
+        #define CY_GRATE 7.0
+        #define CY_ROAD 8.0
+        #define CY_GLASS 10.0
+        #define CY_HOLO 11.0
+        #define CY_TUBE 12.0
+        // The wet sheen of puddles (a faint mirror of the violet city sky) and the sky a pane reflects, linear.
+        #define CY_SHEEN float3(0.010,0.009,0.030)
+        #define CY_SKYREF float3(0.012,0.010,0.034)
         // ARENA_PROPOSAL.md 3.10 colours in linear light: mortar #CDBB9E, window frame #1F2A30, lit window #FFB45E, rust
         // #7A3E22, demolition yellow #F4B321, black #1C1A18, danger red #D6332A, tag lettering #F2EDE4, dust #B8A68F, soot
         // #4A403A, the dust coat #B3A48E, fresh concrete #C9C2B4, fresh brick #D2BFA3 and the band lamp's amber #FFB000 (its red
@@ -142,6 +155,102 @@ Shader "ChipArena/NativeBlockLit"
             float above=band.y+0.2;float below=band.x-0.2;
             return float3(band,above+0.12<=height-c-0.02?above:(below-0.12>=c+0.02?below:-1.0));
         }
+        // Cyber City's surfaces (FLAG_CYBER; docs/arenas/CYBERCITY_PROPOSAL.md §8): paving, precast panels, anodised metal,
+        // floor grating, wet asphalt, curtain-wall glass, LED/holo screens and neon tubes, in rest space like the base looks.
+        // `win` is the instance's light level: 1 lit, the 3.9 telegraph's 8 Hz strobe and black on sim blocks (glass panes and
+        // screens die with their segment), driven by the kit and the hazard rigs elsewhere; above 1 it glows a grate's void.
+        void BkCyber(float look,float2 uv,float2 fw,float fwm,bool top,float3 base,float seed,float edge,float detail,float win,inout float3 alb,inout float3 emit,inout float j)
+        {
+            if(BkIs(look,CY_TILE))
+            {
+                // 60 cm pavers in 6 mm joints, each its own shade; wet patches on top faces darken and keep the sheen.
+                float2 tid=floor(uv/0.6);j=max(BkJoint(uv.x,0.6,0.006,fw.x),BkJoint(uv.y,0.6,0.006,fw.y));
+                float3 t=base*lerp(1.0,lerp(0.86,1.10,BkHash2(tid+seed*11.0)),detail);
+                float wet=top?smoothstep(0.55,0.75,BkFbm(uv*0.35+seed*4.0)):0.0;
+                alb=lerp(t*(1.0-0.45*wet),base*0.42,j);emit=CY_SHEEN*wet*0.6;
+            }
+            else if(BkIs(look,CY_PANEL))
+            {
+                // Precast panels 1.2 x 1.8 m in 1.5 cm recessed seams, each its own shade, rain streaks under each panel head;
+                // roofs and tops take a gritty membrane.
+                if(top){alb=base*(0.9+0.12*BkNoise(uv*0.9+seed))*(1.0+0.10*(BkHash2(floor(uv*55.0))-0.5)*detail);}
+                else
+                {
+                    float2 pid=floor(uv/float2(1.2,1.8));float pf=frac(uv.y/1.8);
+                    j=max(BkJoint(uv.x,1.2,0.015,fw.x),BkJoint(uv.y,1.8,0.015,fw.y));
+                    float tone=lerp(1.0,lerp(0.86,1.08,BkHash2(pid+seed*23.0)),detail);
+                    float streak=smoothstep(0.45,0.85,BkNoise(float2(uv.x*5.0,uv.y*0.35+seed*3.0)))*pf*0.28*detail;
+                    alb=base*tone*(1.0-streak)*(1.0-0.62*j);
+                }
+            }
+            else if(BkIs(look,CY_METAL))
+            {
+                // Anodised panels 0.6 x 1.2 m: fine brushed grain, 8 mm seams, a bolt head near each corner, no rust.
+                float seam=max(BkJoint(uv.x,0.6,0.008,fw.x),BkJoint(uv.y,1.2,0.008,fw.y));
+                float tone=lerp(1.0,lerp(0.9,1.1,BkHash2(floor(uv/float2(0.6,1.2))+seed*5.0)),detail);
+                float brush=1.0+0.07*(BkNoise(float2(uv.x*0.8,uv.y*90.0))-0.5)*detail;
+                float2 bp=abs(frac(uv/float2(0.6,1.2))-0.5)*float2(0.6,1.2)-float2(0.26,0.56);
+                float bolt=(1.0-smoothstep(0.008-fwm,0.008+fwm,length(bp)))*saturate(1.0-fwm/0.01);
+                alb=base*tone*brush*(1.0-0.5*seam)*(1.0+0.7*bolt);j=seam;
+            }
+            else if(BkIs(look,CY_GRATE))
+            {
+                // Floor grating: 1.2 cm bearing bars every 4 cm (along the face's x), 8 mm rods every 10 cm, a solid 7 cm
+                // frame, over a dark void; sides are plain plate. A light level above 1 lights the void (charge).
+                float bar=BkJoint(uv.x,0.04,0.012,fw.x);float rod=BkJoint(uv.y,0.10,0.008,fw.y);
+                float m=top?max(max(bar,rod),1.0-smoothstep(0.06,0.08,edge)):1.0;
+                alb=lerp(base*0.07,base*(0.92+0.2*(BkHash2(floor(uv*25.0)+seed)-0.5)*detail),m);
+                emit=float3(0.30,0.80,1.00)*max(0.0,win-1.0)*(1.0-m)*2.2;j=0.0;
+            }
+            else if(BkIs(look,CY_ROAD))
+            {
+                // Wet asphalt: aggregate speckle, patching, puddles where the surface dips (darker, with the sheen); the cut
+                // faces of the slab read as rough concrete.
+                float spk=(BkHash2(floor(uv*60.0)+seed*3.0)-0.5)*0.22*detail*saturate(1.0-fwm/0.016);float blot=(BkFbm(uv*0.25+seed*2.0)-0.5)*0.14;
+                float wet=top?smoothstep(0.52,0.70,BkFbm(uv*0.18+seed*1.3)):0.0;
+                alb=top?base*(1.0+spk+blot)*(1.0-0.55*wet):base*1.35*(1.0+blot+spk*0.5);emit=CY_SHEEN*wet;
+            }
+            else if(BkIs(look,CY_GLASS))
+            {
+                // Curtain wall: 1.5 m bays in 3.6 m storeys (a .8 m spandrel at each floor line, a transom 1.1 m up), dark panes
+                // mirroring the violet sky (lighter toward each pane's top), a third lit in cool white, cyan, magenta or warm, some
+                // behind blinds. Far away a bay fades to its window's average coverage so towers glow and never shimmer.
+                if(top){alb=base*0.6;emit=float3(0.0,0.0,0.0);}
+                else
+                {
+                    float2 bay=floor(uv/float2(1.5,3.6));float2 bf=frac(uv/float2(1.5,3.6));
+                    float fade=smoothstep(0.12,0.34,max(fw.x/1.5,fw.y/3.6));
+                    float mull=lerp(max(max(BkJoint(uv.x,1.5,0.07,fw.x),BkJoint(uv.y,3.6,0.06,fw.y)),BkJoint(uv.y-1.1,3.6,0.04,fw.y)),0.12,fade);
+                    float spand=lerp(step(bf.y,0.22),0.22,fade);
+                    float h=BkHash2(bay+seed*41.0);float floorLit=step(0.3,BkHash2(float2(bay.y,seed*7.0)));float lit=step(h,0.30)*floorLit*saturate(win);
+                    float3 lc=(h<0.13?float3(0.75,0.85,1.00):(h<0.21?float3(1.00,0.72,0.45):(h<0.25?float3(0.10,0.80,1.00):(h<0.28?float3(1.00,0.18,0.70):float3(0.55,0.62,0.85)))))*0.62;
+                    float blinds=step(0.55,BkHash2(bay*1.7+float2(3.0,3.0)))*lerp(BkStripe(uv.y/0.09,fw.y/0.09),0.5,fade);
+                    float3 pane=base*(0.45+0.55*bf.y);
+                    alb=lerp(pane,base*1.8,max(mull,spand));
+                    emit=(lc*lit*(0.7+0.5*BkHash2(bay*3.1))*(1.0-0.55*blinds)+CY_SKYREF*(0.4+0.8*bf.y)*(1.0-lit))*(1.0-max(mull,spand));
+                }
+            }
+            else if(BkIs(look,CY_HOLO))
+            {
+                // An LED/holo screen: emissive in the block's colour with a secondary hue band, 1.5 cm scanlines and a 3 cm
+                // pixel grid (fading to their average with distance) inside a dark 6 cm bezel.
+                float bezel=1.0-smoothstep(0.05,0.07,edge);
+                float scan=lerp(lerp(0.70,1.0,BkStripe(uv.y/0.015,fw.y/0.015)),0.85,saturate(fw.y/0.015));
+                float pix=lerp(1.0-0.35*max(BkJoint(uv.x,0.03,0.006,fw.x),BkJoint(uv.y,0.03,0.006,fw.y)),0.9,saturate(fwm/0.03));
+                float band=smoothstep(0.35,0.75,BkNoise(float2(uv.x*0.22+seed*9.0,uv.y*0.55)));
+                float3 c=lerp(base,base.gbr,band*0.65);
+                alb=lerp(base*0.06,BK_FRAME,bezel);emit=top?float3(0.0,0.0,0.0):c*1.5*scan*pix*saturate(win)*(1.0-bezel);
+            }
+            else if(BkIs(look,CY_TUBE))
+            {
+                // A neon tube or LED strip: emissive in the block's colour, a little brighter along the core of each face.
+                alb=base*0.15;emit=base*saturate(win)*(0.85+0.3*smoothstep(0.0,0.03,edge));
+            }
+            else
+            {
+                alb=base*(1.0+0.06*(BkNoise(uv*3.0+seed*5.0)-0.5)*detail);
+            }
+        }
         struct BlockSurf {float3 albedo;float3 emit;};
         // The look in rest space (pat), then the shared layers: band, tag and lamp paint, vertex shade, fresh breaks, rebar,
         // cracks, edge wear, the grime ramp, top-face dust and soot, the dust coat (light on the band, tag and lamp). fwP:
@@ -157,6 +266,9 @@ Shader "ChipArena/NativeBlockLit"
             float edge=top?min(hs.x-abs(obj.x),hs.z-abs(obj.z)):(sideX?min(hs.y-abs(obj.y),hs.z-abs(obj.z)):min(hs.x-abs(obj.x),hs.y-abs(obj.y)));
             float detail=saturate(1.0-fwm/0.06);
             float3 alb=base;float3 emit=float3(0.0,0.0,0.0);float2 id=float2(0.0,0.0);float j=0.0;
+            bool cyber=(fl&FLAG_CYBER)!=0u;
+            if(cyber)BkCyber(look,uv,fw,fwm,top,base,seed,edge,detail,win,alb,emit,j);
+            else
             if(BkIs(look,LOOK_BRICK_RED)||BkIs(look,LOOK_BRICK_BUFF))
             {
                 // Running bond, 12 cm courses of 36 cm bricks in 1.6 cm mortar; some bricks from the dark course.
@@ -318,7 +430,7 @@ Shader "ChipArena/NativeBlockLit"
                 float g=1.0-smoothstep(1.2,1.8,yb);float splash=1.0-smoothstep(0.0,0.3,yb);
                 alb*=1.0-(BK_GRIME+0.04*(BkNoise(uv*float2(2.0,6.0))-0.5))*g-0.06*splash;
             }
-            if(nO.y>0.7)
+            if(nO.y>0.7&&!cyber)
             {
                 alb=lerp(alb,BK_DUST,0.08*smoothstep(0.35,0.75,BkFbm(uv*0.35+seed*3.0)));
                 alb=lerp(alb,BK_SOOT,0.06*smoothstep(0.6,0.8,BkNoise(uv*0.25+float2(19.0,19.0))));

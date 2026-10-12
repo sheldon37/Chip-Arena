@@ -10,6 +10,7 @@ namespace ChipArena.UnityConversion
         {
             if(sourceModels==null)return;sourceModels.Begin();sourceModels.Queue("map-"+mapId,Matrix4x4.identity);HazardPresentation(mapId,time);SceneryMotion(commit,mapId);
             BrickfallBackdrop(mapId,time,camera);
+            CyberCityBackdrop(mapId,time,camera);
             if(mapId=="siren")
             {
                 if(wardMotion==null){wardMotion=JsonUtility.FromJson<NativeWardMotion>(Resources.Load<TextAsset>("WardMotion").text);if(wardMotion.commit!=commit)throw new System.InvalidOperationException("Ward motion source differs");}
