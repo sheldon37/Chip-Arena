@@ -62,7 +62,8 @@ namespace ChipArena.UnityConversion
         public float Back{get;private set;}
         // The last Locomotion's stride bob of the body (m; 0 at the stride's mid line), read by the sprint glide.
         public float BodyBob{get;private set;}
-        // Whether a foot is planted (in contact, held still on the floor) after the last Locomotion; read by the checks.
+        // Whether a foot is planted (in contact, held still on the floor) after the last Locomotion; read by the checks and the
+        // ranged/magic seat (NativeRangedLocomotion), which measure and hold slip on it.
         public bool Planted(bool left)=>has&&feet!=null&&feet[left?0:1].planted;
         // Both feet re-seated on the stance (spawn, reset, teleport or a near-instant flip), reusing the rig's two feet.
         private Foot[] IdleFeet(string spec)
@@ -82,8 +83,6 @@ namespace ChipArena.UnityConversion
         {
             target=default;yaw=pitch=toe=0;if(!has)return false;var f=feet[left?0:1];target=new Vector3(f.sx,f.sy,f.sz);yaw=f.syaw;pitch=f.spitch;toe=f.toe;return true;
         }
-        /// <summary>The gait has this foot planted on the floor (read-only; the presentation checks measure slip on it).</summary>
-        public bool Planted(bool left)=>has&&feet[left?0:1].planted;
         private static void SwingArm(MeleeRig r,MeleeGait s,bool left,float ph,float run,float air,float amp,float back,float push,float reach,float dt)
         {
             int arm=left?CapturedRig.LArm:CapturedRig.RArm,elbow=left?CapturedRig.LElbow:CapturedRig.RElbow,hand=left?CapturedRig.LHand:CapturedRig.RHand,i=left?0:1;float sign=left?1:-1;
