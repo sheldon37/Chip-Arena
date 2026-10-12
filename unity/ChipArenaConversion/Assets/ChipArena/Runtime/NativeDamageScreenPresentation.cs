@@ -110,13 +110,14 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<pilots.Count;i++){var p=pilots[i];if(p.Seat.id==key&&p.Hp>0&&p.Body!=null){position=p.Body.transform.position;return true;}}
             return false;
         }
-        // HealthBox: the HP bar's lag chip (the overhead HealthLag rule, NativeDamageScreen.LagStep): the lost part stays a pale
-        // #ffece4 at 85% for .22 s after the last loss, then drains at .9 of max HP per second. Off with the damage screen.
-        private void DamageLagChip(Rect bar,NativePilot p,float hp)
+        // HealthBox: the HP bar's damage trail (the overhead HealthLag rule, NativeDamageScreen.LagStep): the lost part stays
+        // shown for .22 s after the last loss, then drains at .9 of max HP per second; the HUD draws it as the segmented bar's
+        // ghost. Off with the damage screen (the trail then equals the HP).
+        private float DamageTrail(NativePilot p,float hp)
         {
-            if(arena==null||p==null||prefs.damageScreen=="Off")return;
+            if(arena==null||p==null||prefs.damageScreen=="Off")return hp;
             float lag=NativeDamageScreen.LagStep(ref damageLag,p.Seat.id,arena.Time,hp);
-            if(lag>hp+.002f)U.Round(new Rect(bar.x,bar.y,bar.width*lag,bar.height),U.Hex(0xffece4,.85f),4);
+            return lag>hp+.002f?lag:hp;
         }
     }
 

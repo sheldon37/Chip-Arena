@@ -356,9 +356,10 @@ namespace ChipArena.UnityConversion
         {
             string text=ConnectionPillText(out bool lost);
             float w=14+6+8+U.Measure(text,12,false,true).x+14;var r=new Rect(right-w,top,w,36);
-            U.Fill(r,U.Hex(0x45464f));U.Fill(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),U.Hex(0x18191e,.91f));
-            U.Round(new Rect(r.x+14,r.center.y-3,6,6),lost?U.Hex(0xef9b7a):U.Hex(0x59dd83),3);
-            U.Text(new Rect(r.x+28,r.y,w-42,r.height),text,12,U.Hex(0xc3c4ce),TextAnchor.MiddleLeft,mono:true);
+            // Cyber chrome: a chamfered navy tag, the light good (danger once disconnected) with its glow.
+            NativeHudChrome.Cut(r,NativeCyberTheme.Navy(.91f),NativeHudCyber.TagCut);NativeHudChrome.Outline(r,NativeCyberTheme.Edge(),NativeHudCyber.TagCut);
+            var light=new Rect(r.x+14,r.center.y-3,6,6);Color tone=lost?NativeCyberTheme.Danger():NativeCyberTheme.Good();U.Glow(light,U.A(tone,.5f),4);U.Round(light,tone,3);
+            U.Text(new Rect(r.x+28,r.y,w-42,r.height),text,12,NativeCyberTheme.Ink(.9f),TextAnchor.MiddleLeft,mono:true);
         }
 
         // ---- Room column -----------------------------------------------------------------------------------------------

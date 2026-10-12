@@ -277,11 +277,11 @@ namespace ChipArena.UnityConversion
                 if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive)Crosshair();
                 if(!menu&&match.Phase==NativePhase.Fight)
                 {
-                    if(arena.Downed(p))Prompt(U.H/2+80,"RECOVERING  ·  WASD chooses roll direction",14,NativeUi.Hex(0xd7d8de));
-                    if(arena.RiposteOpen(p))Prompt(U.H/2+40,"RIPOSTE  ·  LMB counter",17,NativeUi.Hex(0xff996f));
+                    if(arena.Downed(p))Prompt(U.H/2+80,"RECOVERING  ·  WASD chooses roll direction",14,NativeCyberTheme.Ink());
+                    if(arena.RiposteOpen(p))Prompt(U.H/2+40,"RIPOSTE  ·  LMB counter",17,NativeCyberTheme.Warn());
                     // A Kunai mark on me (the marker can teleport behind me while it lasts): every pilot's replicated kit.
                     float marked=0;foreach(var q in arena.Pilots)marked=Math.Max(marked,NativeMeleeKitHud.MarkLeft(q.MeleeKit,p.Seat.id,arena.Time));
-                    if(marked>0&&p.Hp>0)Prompt(U.H/2+120,"MARKED  ·  "+marked.ToString("0.0")+"s",15,NativeUi.Hex(0xff4a5e));
+                    if(marked>0&&p.Hp>0)Prompt(U.H/2+120,"MARKED  ·  "+marked.ToString("0.0")+"s",15,NativeCyberTheme.Danger());
                 }
                 if(!menu&&match.Phase==NativePhase.Countdown)CountdownOverlay();
                 if(!menu&&match.Phase==NativePhase.Result)ResultOverlay();
@@ -374,17 +374,18 @@ namespace ChipArena.UnityConversion
         private void Board(float width)
         {
             if(inspectSeat!=0)return;float W=NativeUi.W,w=360,x=W-24-w,y=62;var seats=match.Seats.Where(s=>!s.AuthorityBoss).ToList();float h=14+20+10+seats.Count*46+10;
-            NativeUi.Round(new Rect(x,y,w,h),NativeUi.Hex(0x13141c,.92f),10,new Color(1,1,1,.14f));NativeUi.Text(new Rect(x+14,y+14,w-28,20),arena?.Pve!=null?"PARTY":"PILOTS",12,NativeUi.Hex(0xedf2fc),TextAnchor.MiddleLeft,bold:true,tracking:.08f);
-            NativeUi.Text(new Rect(x+14,y+14,w-28,20),"Click to inspect a build",11,NativeUi.Hex(0xaeb6c8),TextAnchor.MiddleRight);float cy=y+44;
+            // The pilot board in the cyber HUD chrome: a holographic panel, chamfered rows lifting into a cyan edge on hover.
+            NativeHudChrome.Panel(new Rect(x,y,w,h),1,default,NativeHudCyber.Cut,NativeHudChrome.Corners.Diagonal,true,.94f);NativeUi.Text(new Rect(x+14,y+14,w-28,20),arena?.Pve!=null?"PARTY":"PILOTS",12,NativeCyberTheme.Ink(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
+            NativeUi.Text(new Rect(x+14,y+14,w-28,20),"Click to inspect a build",11,NativeCyberTheme.Muted(),TextAnchor.MiddleRight);float cy=y+44;
             foreach(var p in seats)
             {
                 var r=new Rect(x+10,cy,w-20,40);float hv=NativeUi.HoverAmount(7100+p.id,r);bool you=p.id==arena?.Local?.Seat.id;var pilot=arena?.Pilots.Find(q=>q.Seat==p);bool alive=pilot!=null&&pilot.Hp>0&&p.connected;
-                NativeUi.Round(new Rect(r.x,r.y-hv,r.width,r.height),NativeUi.Mix(NativeUi.Hex(0x18191f,.9f),NativeUi.Hex(0x22232a),hv),6,NativeUi.Mix(new Color(1,1,1,.06f),NativeUi.Hex(0xff784b),hv));
+                var row=new Rect(r.x,r.y-hv,r.width,r.height);NativeHudChrome.Cut(row,NativeUi.Mix(NativeCyberTheme.Indigo(.9f),NativeCyberTheme.Indigo(),hv),NativeHudCyber.TagCut);NativeHudChrome.Outline(row,NativeUi.Mix(NativeCyberTheme.Edge(.8f),NativeCyberTheme.Cyan(),hv),NativeHudCyber.TagCut);
                 NativeUi.Fill(new Rect(r.x,r.y+6-hv,2,r.height-12),match.Teams?TeamColor(p.team):SeatColor(p));
-                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),p.name+(you?"  · YOU":""),13,NativeUi.Hex(0xf4f4f5,alive?1:.6f),TextAnchor.MiddleLeft,bold:you);
-                NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),(content.weapons.FirstOrDefault(c=>c.id==p.spec)?.name??p.spec)+"  ·  "+p.chips.Values.Sum()+" chips",11,NativeUi.Hex(0xa6a7ad),TextAnchor.MiddleLeft);
-                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),arena?.Pve!=null?"":"SETS "+p.score+" · ROUNDS "+p.roundWins,11,NativeUi.Hex(0xd6d7e1),TextAnchor.MiddleRight,mono:true);
-                NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),!p.connected?"OFFLINE":alive?"ALIVE":"OUT",10,alive?NativeUi.Hex(0xa9f4ca):NativeUi.Hex(0xa4a9b6),TextAnchor.MiddleRight,mono:true,tracking:.1f);
+                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),p.name+(you?"  · YOU":""),13,NativeCyberTheme.Ink(alive?1:.6f),TextAnchor.MiddleLeft,bold:you);
+                NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),(content.weapons.FirstOrDefault(c=>c.id==p.spec)?.name??p.spec)+"  ·  "+p.chips.Values.Sum()+" chips",11,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft);
+                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),arena?.Pve!=null?"":"SETS "+p.score+" · ROUNDS "+p.roundWins,11,NativeCyberTheme.CyanSoft(),TextAnchor.MiddleRight,mono:true);
+                NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),!p.connected?"OFFLINE":alive?"ALIVE":"OUT",10,alive?NativeCyberTheme.Good():NativeCyberTheme.Muted(),TextAnchor.MiddleRight,mono:true,tracking:.1f);
                 if(NativeUi.Button(r))inspectSeat=p.id;cy+=46;
             }
         }
