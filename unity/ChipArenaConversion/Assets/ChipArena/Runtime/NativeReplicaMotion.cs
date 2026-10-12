@@ -22,6 +22,7 @@ namespace ChipArena.UnityConversion
             if(p!=null&&a.CommitUntil>Time&&NativeMeleeRules.Standard(p.Seat.spec))
             {
                 swing=NativeMeleeFeel.Begin(p.Weapon,p.Stats,a.CommitAt,a.Combo+1,a.CommitYaw*Mathf.Deg2Rad);
+                if(a.SprintAttack)NativeSprintAttack.Apply(swing,a.CastRate);
                 swing.HitAt=a.CommitAt+(a.Followup?.08f/a.CastRate:a.VisualWindup);swing.HitUntil=swing.HitAt+a.VisualActive;swing.Until=a.CommitUntil;
                 swing.StepAt=a.StepAt;swing.StepUntil=a.StepUntil;swing.Distance=a.StepDistance;swing.ChainAt=a.ChainAt;
                 swing.Followup=a.Followup;swing.SprintAttack=a.SprintAttack;swing.OpenerLunge=a.OpenerLunge;swing.Remaining=a.SwingRemaining;
@@ -77,7 +78,7 @@ namespace ChipArena.UnityConversion
             // Recorded authority timestamps and remote actors are never rewritten.
             if(predictionPoseAt!=s.At){predictionPoseAt=s.At;predictionPoseOffset=ReplicaRenderTime-state.Time;}
             float offset=predictionPoseOffset;
-            a.Combo=state.Combo;a.AttackAt=a.LastAttack=a.CommitAt=s.At+offset;a.AttackUntil=a.CommitUntil=s.Until+offset;a.CommitYaw=s.Yaw*Mathf.Rad2Deg;
+            a.Sprinting=false;a.Combo=state.Combo;a.AttackAt=a.LastAttack=a.CommitAt=s.At+offset;a.AttackUntil=a.CommitUntil=s.Until+offset;a.CommitYaw=s.Yaw*Mathf.Rad2Deg;
             a.SwingAt=s.HitAt+offset;a.SwingUntil=s.HitUntil+offset;a.StepAt=s.StepAt+offset;a.StepUntil=s.StepUntil+offset;a.StepDistance=s.Distance;
             a.ChainAt=s.ChainAt+offset;a.Followup=s.Followup;a.SprintAttack=s.SprintAttack;a.OpenerLunge=s.OpenerLunge;
             a.VisualWindup=s.HitAt-s.At;a.VisualActive=s.HitUntil-s.HitAt;a.VisualDuration=s.Until-s.At;

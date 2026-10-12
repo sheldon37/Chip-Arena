@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
                 state.Velocity.y,state.JumpSpeed,ref state.AirJumps,out float launch);
             if(jump!=NativeJumpKind.None){state.Velocity.y=launch;state.Grounded=false;if(jump==NativeJumpKind.Air)state.AirJumpAt=state.Time;}
             if(!state.Grounded)state.Velocity.y-=state.Gravity*dt;else state.Velocity.y=0;
-            var step=swinging&&state.Grounded?NativeMeleeRules.Step(state.Swing,state.Time,dt):new V3();
+            var step=swinging&&(state.Grounded||NativeSprintAttack.Hop(state.Swing))?NativeMeleeRules.Step(state.Swing,state.Time,dt):new V3();
             var wanted=state.Position+(state.Velocity+step)*dt;
             var next=constrain==null?wanted:constrain(state.Position,wanted);
             if(next.y>wanted.y+.00001f&&state.Velocity.y<0){state.Grounded=true;state.Velocity.y=0;}

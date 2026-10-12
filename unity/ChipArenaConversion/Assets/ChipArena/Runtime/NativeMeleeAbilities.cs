@@ -39,6 +39,7 @@ namespace ChipArena.UnityConversion
         }
         private void AimMeleeStep(NativePilot p,bool chained)
         {
+            if(p.Swing.SprintAttack)return;
             var point=MeleeLockPoint(p,p.Input.LockTarget);if(!point.HasValue)return;
             var delta=point.Value-Vec(p.Body.position);delta.y=0;
             // Do not lunge backwards to a lock behind the committed starting direction.
