@@ -8,7 +8,7 @@ files. It never runs anything from SOURCE, and a zip is read member by member (n
 bounded sizes).
 
 It checks the manifest against the key contract in Assets/ChipArena/Core/NativeSoundBank.cs (the same rules as
-NativeSoundBank.Parse). Every listed clip must exist as Ogg Vorbis with a .meta, at 44.1 kHz, mono when positional and
+NativeSoundBank.Parse), effect keys and the intro.<style> entrance-music keys alike (2D, so stereo, up to 4.8 s). Every listed clip must exist as Ogg Vorbis with a .meta, at 44.1 kHz, mono when positional and
 within its hard length cap. Every folder needs its .meta, no unlisted file is allowed, and EffectsAudio must stay under
 the 12 MB budget. It then replaces Assets/LocalAssets/Resources/EffectsAudio with the source's copy. Unity merges every
 Resources folder, so the game loads it as Resources "EffectsAudio/...". Without it the game plays today's sounds.
