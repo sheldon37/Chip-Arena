@@ -14,6 +14,7 @@ namespace ChipArena.UnityConversion
         {if(accountServiceVersion>=1)return false;if(string.IsNullOrWhiteSpace(accountOrigin))accountOrigin=NativeAccount.DefaultOrigin;accountServiceVersion=1;return true;}
         // The portrait backdrop picked in the Locker (NativePortraitBacks key; absent in older saves: the tick ring).
         public string lobbyBack=NativePortraitBacks.Default;
+        public bool developmentConsole;
     }
     public sealed partial class ConversionGame : MonoBehaviour
     {
@@ -86,6 +87,7 @@ namespace ChipArena.UnityConversion
         private float shakeAmount;private int shakeEvent,shakeGeneration=-1;
         private void Update()
         {
+            SyncDevelopmentConsole();
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;

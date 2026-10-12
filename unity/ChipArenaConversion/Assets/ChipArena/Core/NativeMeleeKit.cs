@@ -25,6 +25,16 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeMeleeKitRules
     {
+        // Low ballistic arc to the locked body point. Unreachable targets keep their true direction;
+        // do not invent speed, remove gravity or steer the projectile after release.
+        public static V3 KunaiAim(V3 origin,V3 target,float speed,float gravity)
+        {
+            var delta=target-origin;float horizontal=(float)Math.Sqrt(delta.x*delta.x+delta.z*delta.z);
+            if(horizontal<.001f||speed<=0||gravity<=0)return delta.Normalized;
+            double squared=(double)speed*speed,disc=squared*squared-gravity*(gravity*horizontal*horizontal+2*delta.y*squared);
+            if(disc<0)return delta.Normalized;
+            return GunRules.Direction((float)(Math.Atan2(delta.x,delta.z)*180/Math.PI),GunRules.BallisticPitch(horizontal,delta.y,speed,gravity));
+        }
         public static float Windup(ContentAbility ability,ChipStats stats)=>ability.id=="whirlwind"?NativeWhirlwindRules.Windup:Math.Max(.15f,NativeAbilityRules.CastTime(ability.windup,stats));
         public static float End(NativeMeleeAction action)=>action==null?0:Math.Max(action.Until,action.RecoverUntil);
         public static float ChainAt(NativeMeleeSwing swing)=>swing.ChainAt>0?swing.ChainAt:swing.HitUntil+(swing.Until-swing.HitUntil)*.5f;

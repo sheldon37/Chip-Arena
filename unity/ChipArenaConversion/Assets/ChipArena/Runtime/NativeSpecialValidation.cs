@@ -74,6 +74,7 @@ namespace ChipArena.UnityConversion
                 Advance(.61f);StepRecovery(b);Check(b.Down==null&&!Incapacitated(b),"recovery failed to end");
 
                 ValidateWhirlwind(Setup,Advance,Position,a,b,wall);
+                ValidateKunaiAim(Setup,Advance,a,b,wall);
 
                 var dagger=Release("daggers");dagger.Position=new Vector3(1000,100,1000);dagger.Velocity=Vector3.forward*120;wall.SetActive(true);Physics.SyncTransforms();StepMeleeShots();Check(MeleeShots.Count==0&&b.Hp==100,"dagger tunneled through cover");
                 dagger=Release("daggers");Position(b,1002);dagger.Position=new Vector3(1000,100,1000);dagger.Velocity=Vector3.forward*120;Physics.SyncTransforms();StepMeleeShots();Check(b.Hp<100&&MeleeShots.Count==0,"swept dagger missed capsule");
