@@ -45,6 +45,9 @@ namespace ChipArena.UnityConversion
                 foreach(var ability in Content.abilities.Where(d=>d.live&&d.kind!="ads"))
                 {
                     var weapon=Content.weapons.FirstOrDefault(w=>Content.Ability(w.id,ability.slot)?.id==ability.id);if(weapon==null)throw new Exception("Unmapped live ability: "+ability.id);
+                    // Standard melee uses Special and pays stamina at commitment. Its Q/E
+                    // dispatcher/release contract is checked by ValidateSpecials, not AbilityCast.
+                    if(NativeMeleeRules.Standard(weapon.id))continue;
                     Setup(weapon.id);CheckAbilityRelease(ability,(float)a.Stats["maxMana"]);
                     Setup(weapon.id);
                     // Gun E abilities cost no mana: they must still cast from an empty pool.
@@ -67,7 +70,7 @@ namespace ChipArena.UnityConversion
                     Check(b.Death.kneel==grounded,"headshot collapse selection ("+state+"): kneel="+b.Death.kneel);
                     Check(b.StunEnd==stunEnd,"fatal projectile changed stun ("+state+"): expected "+stunEnd+", got "+b.StunEnd);
                 }
-                Debug.Log("PASS native gun/magic primaries, release resources, swept capsule/cover, reload, reflection bounds, all live Q/E exact costs/cooldowns/charges, free casts at zero mana, paid cast refusal, multishot/split ledger and grounded/airborne headshot choreography with unchanged stun (four cases)");
+                Debug.Log("PASS native gun/magic primaries, release resources, swept capsule/cover, reload, reflection bounds, all live gun/magic Q/E exact costs/cooldowns/charges, free casts at zero mana, paid cast refusal, multishot/split ledger and grounded/airborne headshot choreography with unchanged stun (four cases)");
             }
             finally{CapturedAnimation.Release(wall);Bullets.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();}
         }
