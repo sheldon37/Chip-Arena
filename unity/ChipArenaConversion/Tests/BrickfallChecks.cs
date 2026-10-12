@@ -35,7 +35,7 @@ internal static class BrickfallChecks
         try{NativeMapRules.Validate(malformed);}catch(InvalidOperationException){rejected=true;}
         Check(rejected,"missing authored Unity spawn table silently accepted");
         Console.WriteLine("PASS legacy map loading: omitted inline defaults, 15 maps / 240 FFA-team spawns, player/bot bounds; invalid Unity spawns rejected");
-        Check(data.maps.Length==16&&data.maps.Count(m=>m.rotation)==legacy.maps.Count(m=>m.rotation)&&!map.rotation,"old maps or rotation changed");
+        Check(data.maps.Length==legacy.maps.Length+3&&data.maps.Count(m=>m.rotation)==legacy.maps.Count(m=>m.rotation)&&!map.rotation,"old maps or rotation changed");
         Check(data.contentRevision.Length==64&&data.contentRevision!=NativeMapRules.Revision(text+" "),"revision not byte sensitive");
         Check(!NativeMapRules.Compatible(5,data.sourceCommit,data.contentRevision,data)&&!NativeMapRules.Compatible(6,data.sourceCommit,null,data)&&!NativeMapRules.Compatible(6,data.sourceCommit,NativeMapRules.Revision(text+" "),data)&&NativeMapRules.Compatible(6,data.sourceCommit,data.contentRevision,data),"old/mismatched join compatibility");
         Check((NativeMapRules.Clamp(map,new V3(100,4,-100))-new V3(29.58f,4,-25.58f)).Length<.001,"map bounds");

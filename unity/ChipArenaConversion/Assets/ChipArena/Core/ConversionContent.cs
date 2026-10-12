@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class ContentBlock
     { public string id,material,role,parent,segment; public float hp; public float[] stages; public V3 pos,size;public ContentRotation rotation;public string[] support;public bool dynamic;public float mass; }
     [Serializable] public sealed class ContentMap
-    { public string id,name,tag,theme,music,ambience,look; public int sky,floor,accent;public bool rotation;[NonSerialized] public bool unity;public ContentBlock[] blocks;public MapBounds bounds;public MapSpawns spawns;public StructureDefinition[] segments;public MapNav nav;public MapPilotBlock[] pilotBlocks; }
+    { public string id,name,tag,theme,music,ambience,look; public int sky,floor,accent;public bool rotation;[NonSerialized] public bool unity;public ContentBlock[] blocks;public MapBounds bounds;public MapSpawns spawns;public StructureDefinition[] segments;public MapNav nav;public MapPilotBlock[] pilotBlocks;public MapHazard[] hazards; }
     [Serializable] public sealed class ContentMaterial
     { public string id;public int color;public float mass,durability,friction;public bool indestructible; }
     [Serializable] public sealed class ContentAbilityBot { public float min,max,lead;public bool point,ballistic; }

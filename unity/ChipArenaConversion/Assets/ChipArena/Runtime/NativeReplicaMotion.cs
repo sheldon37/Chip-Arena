@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
             if(replicaHistory.Count==0)return;
             double time=replicaClock.Advance(delta);while(replicaHistory.Count>2&&replicaHistory[1].time<=time)replicaHistory.RemoveAt(0);
             var a=replicaHistory[0];var b=replicaHistory.Count>1?replicaHistory[1]:a;
-            if(Map.unity)RestoreStructures(a.segments,(float)time,a.props);
+            if(Map.unity)RestoreStructures(a.segments,(float)time,a.props);PoseStageLoads(time);
             float blend=Mathf.Clamp01((float)((time-a.time)/Math.Max(.00001,b.time-a.time)));
             foreach(var p in Pilots)
             {

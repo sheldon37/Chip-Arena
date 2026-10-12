@@ -24,24 +24,6 @@ namespace ChipArena.UnityConversion
     /// FightAt, presentation clock): NativeCyberCityHazards.Evaluate, the timing the contract pins. Nothing here writes sim data,
     /// collides, damages or enters the network frame. Allocation free after the one-time builds.
     /// </summary>
-    /// <summary>
-    /// A map's `hazards` from Resources/UnityMaps.json (CYBERCITY-SIMULATION-CONTRACT.md §3), read once per map id for the
-    /// presentation and the sound until the content loader carries them (ContentMap.hazards); empty when the map or its hazards
-    /// are absent, which leaves every hazard rig at rest.
-    /// </summary>
-    internal static class NativeCyberCityHazardSource
-    {
-        [Serializable] private sealed class File{public Entry[] maps;}
-        [Serializable] private sealed class Entry{public string id;public MapHazard[] hazards;}
-        private static readonly Dictionary<string,MapHazard[]> cache=new Dictionary<string,MapHazard[]>();
-        public static MapHazard[] For(string mapId)
-        {
-            if(mapId==null)return Array.Empty<MapHazard>();if(cache.TryGetValue(mapId,out var known))return known;var found=Array.Empty<MapHazard>();
-            var asset=Resources.Load<TextAsset>("UnityMaps");var file=asset!=null?JsonUtility.FromJson<File>(asset.text):null;
-            if(file?.maps!=null)foreach(var m in file.maps)if(m!=null&&m.id==mapId){found=m.hazards??Array.Empty<MapHazard>();break;}
-            cache[mapId]=found;return found;
-        }
-    }
     public sealed partial class ArenaPresentation
     {
         private sealed class MetroBatch{public readonly Matrix4x4[] M=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];public int Count;public readonly MaterialPropertyBlock Block=new MaterialPropertyBlock();}
@@ -87,7 +69,7 @@ namespace ChipArena.UnityConversion
         }
         private void MetroRebind(NativeArena arena)
         {
-            metroArena=arena;metroGeneration=arena.Generation;var map=arena.Map;if(metroHazards==null)metroHazards=NativeCyberCityHazardSource.For(arena.MapId);
+            metroArena=arena;metroGeneration=arena.Generation;var map=arena.Map;if(metroHazards==null)metroHazards=arena.Map.hazards??Array.Empty<MapHazard>();
             metroKit=NativeCyberCityKit.Build(map.blocks,metroHazards);metroScene=NativeCyberFxScene.Build(map.blocks,metroHazards,metroKit,metroBackdrop);
             metroStates=new NativeHazardState[metroHazards.Length];metroSeeds=new float[metroKit.Parts.Length];for(int i=0;i<metroSeeds.Length;i++)metroSeeds[i]=NativeBlockLooks.Seed(map.blocks[metroKit.Parts[i].Parent].id+"#"+i);metroParents=new NativePropBody[map.blocks.Length];metroIndex.Clear();for(int i=0;i<map.blocks.Length;i++)if(map.blocks[i]?.id!=null)metroIndex[map.blocks[i].id]=i;
             // The billboards: each segment's screen block (the presentation's holo content follows it down).

@@ -35,6 +35,9 @@ namespace ChipArena.UnityConversion
         public static bool OffHand(string spec)=>spec=="daggers"||spec=="emperor"||spec=="ansatsuken";
         public static bool Magic(string spec)=>spec=="fire"||spec=="water"||spec=="lightning"||spec=="darkness"||spec=="leet";
         public static bool Gun(string spec)=>spec=="pistol"||spec=="rifle"||spec=="machinegun";
+        /// <summary>The joint a spec's weapon hangs from in the lobby: the staffs and the Bow ride the left hand (their models are
+        /// built on it: Core/NativeWeaponModels.Bow.cs), everything else the right.</summary>
+        public static int HeldBone(string spec)=>Magic(spec)||NativeBowWire.Is(spec)?CapturedRig.LHand:CapturedRig.RHand;
         // The pose keeps the weapon's own idle (the caller samples it into the rig first): the fighters' standing pose is
         // their combat idle (heroStance returns for them), and the Siren is animated as herself.
         public static bool UsesIdle(string spec,int pose)=>pose==Weapon&&(Fighter(spec)||spec=="siren");
@@ -57,7 +60,7 @@ namespace ChipArena.UnityConversion
         {
             bool magic=Magic(spec),idle=UsesIdle(spec,pose);
             // lobby-poses.ts:15: the weapon shows only in the standing pose; the off hand only for daggers and the fighters.
-            weapon=new LobbyHeld{Visible=pose==Weapon&&spec!="siren",Bone=magic?LHand:RHand,Position=magic||Fighter(spec)?HandSocket:Vector3.Zero,Rotation=Quaternion.Identity};
+            weapon=new LobbyHeld{Visible=pose==Weapon&&spec!="siren",Bone=HeldBone(spec),Position=magic||Fighter(spec)?HandSocket:Vector3.Zero,Rotation=Quaternion.Identity};
             offhand=new LobbyHeld{Visible=pose==Weapon&&OffHand(spec),Bone=LHand,Position=Fighter(spec)?HandSocket:Vector3.Zero,Rotation=Quaternion.Identity};
             if(idle)return;
             r.Reset();r.WeaponReach=1;
@@ -134,7 +137,14 @@ namespace ChipArena.UnityConversion
             else if(spec=="pistol"){r.Hand(false,new Vector3(-.3f,-.36f+lift,.09f),Aim(-.32f,-.8f,.5f,-.5f),1);Relax(r,true,breath);}
             else if(Gun(spec)){r.BraceWeapon(new Vector3(-.06f,-.04f+lift,.21f),Aim(.4f,-.5f,.76f),1,null,false);SupportHand(r,GunSupportGrip,1);}
             else if(Magic(spec)){r.Hand(true,new Vector3(.3f,-.2f+lift,.15f),Aim(.05f,1,.08f),1);Relax(r,false,breath);}
+            else if(NativeBowWire.Is(spec)){r.Hand(true,BowGrip+new Vector3(0,lift,0),BowHold,1,BowElbow);Relax(r,false,breath);}
         }
+        /// <summary>The Bow's rest (a native stance; the source has no bow): the left wrist (chest space; the bow frame, as in
+        /// play) low at the left side, the elbow tucked back, the riser upright with the top limb leaning forward of the shoulder
+        /// and the lower tip behind the left heel, the back of the bow turned out to the front left so the recurve faces the
+        /// card camera; the right hand relaxed. LobbyPoseChecks pins the clearances.</summary>
+        public static readonly Vector3 BowGrip=new Vector3(.37f,-.25f,.17f),BowElbow=new Vector3(.45f,-.5f,-.75f);
+        public static readonly Quaternion BowHold=MeleeMath.Euler(MeleeMath.ToEuler(CapturedRig.Look(new Vector3(.815f,-.18f,.552f),new Vector3(0,.95f,.31f))));
         // rig-ik.ts supportHand() for a weapon whose support grip is `grip` (weapon frame = the right wrist, the weapon held
         // at the grip): the left arm reaches it and the left wrist takes the weapon's orientation.
         private static void SupportHand(MeleeRig r,Vector3 grip,float weight)

@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
             if(metroMap!=arena.MapId)
             {
                 // The cue keys, built once per map (no strings are made per frame).
-                metroMap=arena.MapId;metroHazards=NativeCyberCityHazardSource.For(arena.MapId);metroOnce=new string[metroHazards.Length][];metroName=new string[metroHazards.Length][];
+                metroMap=arena.MapId;metroHazards=arena.Map.hazards??System.Array.Empty<MapHazard>();metroOnce=new string[metroHazards.Length][];metroName=new string[metroHazards.Length][];
                 for(int i=0;i<metroHazards.Length;i++){metroOnce[i]=new string[MetroCueKeys.Length];metroName[i]=new string[MetroCueKeys.Length];for(int k=0;k<MetroCueKeys.Length;k++){metroOnce[i][k]="cybercity:"+metroHazards[i].id+":"+MetroCueKeys[k];metroName[i][k]="hazard."+MetroCueKeys[k];}}
             }
             if(!metroBedLoaded){metroBedLoaded=true;metroBedClip=Clip("audio/"+NativeCyberCityAmbience.Bed);}var bed=metroBedClip;
