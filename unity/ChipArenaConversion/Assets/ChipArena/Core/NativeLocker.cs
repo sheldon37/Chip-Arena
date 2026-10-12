@@ -123,7 +123,7 @@ namespace ChipArena.UnityConversion
                 case "dev-emperor":return "The Emperor's storm entrance.";
                 case "dev-ansatsuken":return "The rain warrior's entrance.";
                 case "dev-matrix":return "The L33T throne entrance.";
-                case "sheldon-intro":return "Glitches in, hooded, and grins.";
+                case "sheldon-intro":return "Rezzes in out of the data, hooded, and stares.";
             }
             if(id!=null&&id.StartsWith("weapon-",StringComparison.Ordinal))return Title(id.Substring(7))+" signature entrance.";
             return "";
