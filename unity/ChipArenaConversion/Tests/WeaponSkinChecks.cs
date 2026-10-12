@@ -38,7 +38,11 @@ namespace ChipArena.UnityConversion
             var bank=new HashSet<string>();
             using(var envelope=JsonDocument.Parse(File.ReadAllText(file)))
             using(var bytes=new MemoryStream(Convert.FromBase64String(envelope.RootElement.GetProperty("data").GetString())))using(var zip=new GZipStream(bytes,CompressionMode.Decompress))using(var reader=new StreamReader(zip))
-            using(var doc=JsonDocument.Parse(reader.ReadToEnd()))foreach(var m in doc.RootElement.GetProperty("models").EnumerateArray())bank.Add(m.GetProperty("id").GetString());
+            {
+                // The model ids, read straight from the bake's text (a full parse of the bank costs the suite a second).
+                string text=reader.ReadToEnd();const string key="\"id\":\"";
+                for(int at=text.IndexOf(key,StringComparison.Ordinal);at>=0;at=text.IndexOf(key,at+1,StringComparison.Ordinal)){int start=at+key.Length,end=text.IndexOf('"',start);if(end>start&&end-start<64)bank.Add(text.Substring(start,end-start));}
+            }
             foreach(var spec in NativeWeaponSkins.Weapons)
             {
                 Check(bank.Contains("weapon-"+spec)&&bank.Contains("loose-"+spec),spec+" Prototype Series models in the bake");

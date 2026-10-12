@@ -84,7 +84,7 @@ namespace ChipArena.UnityConversion
             {
                 var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);
                 for(int i=0;i<NativeBloodRules.Slivers;i++)if(NativeBloodRules.Sliver(spec,i,amount,out var c,out var size))
-                    QueuePiece(new WeaponPiece{Shape=WeaponShape.Cube,Color=i%2==0?NativeBloodRules.Rim:NativeBloodRules.Core,Position=c,Scale=size,Rotation=System.Numerics.Quaternion.Identity,Orbit=-1},parent,layer,camera);
+                {var piece=new WeaponPiece{Shape=WeaponShape.Cube,Color=i%2==0?NativeBloodRules.Rim:NativeBloodRules.Core,Position=c,Scale=size,Rotation=System.Numerics.Quaternion.Identity,Orbit=-1};QueuePiece(piece,SkinPiece(a,piece,parent),layer,camera);}
             }
         }
         // standard-melee-effects.ts:21: a thrown dagger or shield keeps the owner's enchant (elements and stacks), flying with it.
