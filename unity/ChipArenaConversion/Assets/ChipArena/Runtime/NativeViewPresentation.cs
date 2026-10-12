@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
             if(viewRig==null)viewRig=captured.Create(transform,-999);
             var shown=source.ViewCopy();shown.Aiming=AimHeld;shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;
             // A camera-attached presentation rig never changes the authoritative pilot or muzzle.
-            viewRig.ActorPose(shown,Vector3.zero,time,true);
+            viewRig.ViewPitch=source.Pitch;viewRig.ActorPose(shown,Vector3.zero,time,true);
             // Every magic-class pilot (first-person-view.ts cls 'magic': the four schools and the L33t H4x staff) frames the staff view.
             int school=MagicPose.School(shown);bool gun=GunRules.Ranged(shown.Weapon),magic=school>0;
             // first-person-view.ts:69 class bases (NativeViewBase): guns right of centre, the DEV fighters' fists centred and low
