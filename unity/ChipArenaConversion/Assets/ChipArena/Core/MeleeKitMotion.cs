@@ -78,6 +78,8 @@ namespace ChipArena.UnityConversion
     ///  - Flash Step: a chambered thrust in a low lunge (the telegraph), the extended dash-thrust, the blade returning.
     ///  - Rising Dragon: a deep coil with the blade trailing low behind, the rising slash ending overhead (the launch), held for
     ///    the recast window. Skyfall (recast): a gathering crouch with the blade raised, an airborne plunge (fall), the landing.
+    ///  - Shadow Step: a crouched departure with the daggers crossed (the decoy keeps this silhouette), an arrival flourish.
+    ///  - Kunai Mark: a side-on throw (the aim hand points), the whip follow-through. Recast: a coiled shimmer, the arrival stab.
     /// </summary>
     public static class MeleeKitMotion
     {
@@ -85,6 +87,7 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Kinds=
         {
             "flash-step","rising-dragon",
+            "shadow-step","kunai-mark",
         };
         public static bool Known(string kind){if(kind==null)return false;foreach(var k in Kinds)if(k==kind)return true;return false;}
         public static string Spec(string kind)=>kind=="flash-step"||kind=="rising-dragon"?"sword":kind=="shadow-step"||kind=="kunai-mark"?"daggers":kind=="bulwark-charge"||kind=="aegis-ricochet"?"shield":kind=="earthsplitter"||kind=="wolf-knight"?"greatsword":null;
@@ -173,6 +176,26 @@ namespace ChipArena.UnityConversion
         private static readonly KitPose SkyLand=Key("sword",k=>{k.Body=V(0,-.34f,.06f);k.Pitch=.48f;k.ChestX=.15f;k.HeadX=-.5f;Stance(k,.2f,.3f,-.18f,-.32f);
             k.RGrip=V(-.14f,-.22f,.48f);k.RBlade=N(0,-.86f,.5f);k.RUp=N(1,0,0);k.RPole=N(-.9f,-.3f,-.2f);k.LGrip=V(.5f,.0f,-.1f);k.LDir=N(.7f,-.3f,-.6f);k.LUp=N(.3f,.9f,-.2f);});
 
+        // ---- daggers: Shadow Step and Kunai Mark ----
+        private static readonly KitPose ShadowDepart=Key("daggers",k=>{k.Body=V(0,-.3f,.02f);k.Pitch=.42f;k.ChestX=.15f;k.ChestY=.1f;k.HeadX=-.45f;Stance(k,.2f,.22f,-.19f,-.22f);
+            k.RGrip=V(-.06f,.08f,.36f);k.RBlade=N(.6f,-.7f,-.3f);k.RUp=N(-.5f,-.1f,-.85f);k.RPole=N(-.9f,-.4f,-.2f);
+            k.LGrip=V(.06f,.12f,.34f);k.LDir=N(-.6f,-.7f,-.3f);k.LUp=N(-.5f,.1f,.85f);k.LPole=N(.9f,-.4f,-.2f);});
+        private static readonly KitPose ShadowArrive=Key("daggers",k=>{k.Body=V(0,-.24f,0);k.Pitch=.3f;k.ChestX=.05f;k.HeadX=-.3f;Stance(k,.24f,.18f,-.22f,-.26f);
+            k.RGrip=V(-.62f,-.05f,-.08f);k.RBlade=N(.2f,-.85f,-.45f);k.RUp=N(-.9f,-.2f,.3f);k.RPole=N(-.5f,-.3f,-.8f);
+            k.LGrip=V(.62f,-.02f,-.06f);k.LDir=N(-.2f,-.85f,-.45f);k.LUp=N(-.8f,.2f,.5f);k.LPole=N(.5f,-.3f,-.8f);});
+        private static readonly KitPose KunaiCock=Key("daggers",k=>{k.Body=V(0,-.1f,-.06f);k.Pitch=-.04f;k.PelvisY=-.55f;k.ChestY=-.6f;k.ChestX=-.08f;k.HeadY=.85f;Stance(k,.14f,.3f,-.18f,-.3f);
+            k.RGrip=V(-.42f,.42f,-.22f);k.RBlade=N(-.1f,.55f,.82f);k.RUp=N(-.9f,.25f,-.3f);k.RPole=N(-.7f,-.2f,-.7f);
+            k.LGrip=V(.2f,.28f,.48f);k.LDir=N(-.3f,-.85f,-.4f);k.LUp=N(-.6f,.3f,.7f);k.LPole=N(.7f,-.7f,.1f);});
+        private static readonly KitPose KunaiThrow=Key("daggers",k=>{k.Body=V(0,-.16f,.08f);k.Pitch=.32f;k.PelvisY=.3f;k.ChestY=.45f;k.ChestX=.12f;k.HeadY=-.2f;k.HeadX=-.15f;Stance(k,.16f,.4f,-.16f,-.42f,-.795f,-.76f);
+            k.RGrip=V(.04f,-.08f,.5f);k.RBlade=N(.2f,-.4f,.9f);k.RUp=N(-.9f,.1f,.2f);k.RPole=N(-.8f,-.6f,.1f);
+            k.LGrip=V(.48f,-.1f,-.1f);k.LDir=N(.4f,-.8f,-.4f);k.LUp=N(-.6f,0,.8f);k.LPole=N(.7f,-.5f,.5f);});
+        private static readonly KitPose RecastCoil=Key("daggers",k=>{k.Body=V(0,-.28f,-.02f);k.Pitch=.34f;k.ChestX=.2f;k.HeadX=-.3f;Stance(k,.19f,.18f,-.2f,-.2f);
+            k.RGrip=V(-.2f,.0f,.22f);k.RBlade=N(.3f,-.8f,.5f);k.RUp=N(-.95f,-.2f,.1f);k.LGrip=V(.2f,.02f,.22f);k.LDir=N(-.3f,-.8f,.5f);k.LUp=N(-.95f,.2f,-.1f);});
+        private static readonly KitPose RecastRaise=Key("daggers",k=>{k.Body=V(0,-.02f,0);k.Pitch=-.1f;k.ChestX=-.2f;k.HeadX=-.2f;Stance(k,.17f,.24f,-.16f,-.24f,-.76f,-.795f);
+            k.RGrip=V(-.2f,.62f,.18f);k.RBlade=N(.05f,-.35f,.94f);k.RUp=N(-.98f,0,.1f);k.RPole=N(-.9f,.3f,-.3f);k.LGrip=V(.2f,.6f,.18f);k.LDir=N(-.05f,-.35f,.94f);k.LUp=N(-.98f,0,-.1f);k.LPole=N(.9f,.3f,-.3f);});
+        private static readonly KitPose RecastStab=Key("daggers",k=>{k.Body=V(0,-.2f,.06f);k.Pitch=.4f;k.ChestX=.25f;k.HeadX=-.35f;Stance(k,.18f,.36f,-.17f,-.3f);
+            k.RGrip=V(-.14f,.02f,.5f);k.RBlade=N(.05f,-.9f,.4f);k.RUp=N(-.98f,.05f,.1f);k.RPole=N(-.9f,-.2f,-.3f);k.LGrip=V(.14f,.0f,.48f);k.LDir=N(-.05f,-.9f,.4f);k.LUp=N(-.98f,-.05f,-.1f);k.LPole=N(.9f,-.2f,-.3f);});
+
 
         // ---------------------------------------------------------------------------------------------------------------
         // Sampling
@@ -210,6 +233,10 @@ namespace ChipArena.UnityConversion
                 case "rising-dragon":
                     if(c.Recast)o.Mix(RisingHold,SkyGather,Out(u/.8f));
                     else o.Mix(SwordGuard,RisingCoil,Out(u/.8f));break;
+                case "shadow-step":o.Mix(DaggerGuard,ShadowDepart,Out(u/.85f));break;
+                case "kunai-mark":
+                    if(c.Recast)o.Mix(DaggerGuard,RecastCoil,Out(u/.7f));
+                    else o.Mix(DaggerGuard,KunaiCock,Out(u/.8f));break;
                 default:o.From(GuardOf(c.Spec));break;
             }
             o.W=1;
@@ -232,6 +259,13 @@ namespace ChipArena.UnityConversion
                     // Skyfall: the caster appears beside the airborne target and plunges (the simulation drives it down at 18 m/s,
                     // so it meets the floor within ~.06 s): the plunge, then the landing crouch it lands in. A miss ends like it.
                     if(t<.07f)o.Mix(prev,SkyPlunge,Out(t/.08f));else{s0.Mix(prev,SkyPlunge,Out(.07f/.08f));o.Mix(s0,SkyLand,Smooth((t-.07f)/.1f));}
+                    o.W=Terminal(c,time);return;
+                }
+                case "kunai-mark":
+                {
+                    // Recast arrival behind the target: rise and stab down on the release frame's strike.
+                    if(t<.05f)o.Mix(prev,RecastRaise,Out(t/.05f));
+                    else{s0.Mix(prev,RecastRaise,1);o.Mix(s0,RecastStab,Smooth((t-.05f)/.07f));}
                     o.W=Terminal(c,time);return;
                 }
                 default:o.From(prev);break;
@@ -260,6 +294,11 @@ namespace ChipArena.UnityConversion
                         prev.From(RisingSlash);follow=RisingHold;k=Ease((t-.1f)/.25f);hold=.45f;
                     }
                     break;
+                case "shadow-step":
+                    // The arrival: the crouch unfolds, the daggers sweep out behind and the pilot rises into the guard.
+                    follow=ShadowArrive;k=Out(t/.09f);hold=.25f;break;
+                case "kunai-mark":
+                    follow=KunaiThrow;k=Out(t/.07f);hold=.3f;break;
                 default:follow=GuardOf(c.Spec);k=1;break;
             }
             o.Mix(prev,follow,k);
@@ -351,6 +390,7 @@ namespace ChipArena.UnityConversion
             {
                 case "flash-step":return time>=r-.02f&&time<r+.3f;
                 case "rising-dragon":return c.Recast?c.Part==KitPart.Fall||c.Part==KitPart.Active||c.Part==KitPart.Recovery&&time<c.Start+.12f:c.Part==KitPart.Recovery&&time<r+.16f;
+                case "kunai-mark":return c.Recast&&c.Part==KitPart.Active&&time<r+.16f;
                 default:return false;
             }
         }

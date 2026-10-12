@@ -17,6 +17,8 @@ namespace ChipArena.UnityConversion
     {
         private readonly NativeMeleeKitFx meleeKitFx=new NativeMeleeKitFx();
         private KitScene kitScene;private KitSink kitSink;private Snapshot kitSnapshot;private float kitClock;
+        private sealed class DecoyRig{public CapturedAnimation.Player Rig;public float Until;public Actor Pose;}
+        private readonly Dictionary<int,DecoyRig> decoys=new Dictionary<int,DecoyRig>();private readonly List<int> staleDecoys=new List<int>();
         private sealed class DashGhost{public GhostPose Pose=new GhostPose();public float At;public string Weapon;public Color Tint;public bool Live;}
         private readonly DashGhost[] dashGhosts=new DashGhost[NativeMeleeKitFx.DashGhostSlots];private int dashNext;
         private readonly Dictionary<int,(Vector3 At,float Cast)> dashLast=new Dictionary<int,(Vector3,float)>();
@@ -26,7 +28,32 @@ namespace ChipArena.UnityConversion
         {
             kitSnapshot=s;kitClock=time;if(s?.Actors==null)return;meleeKitFx.Observe(s.Events,time);
             if(sourceModels==null)return;
+            Decoys(s,time);
             DashGhosts(s,time);
+        }
+        // The Shadow Step decoy: the caster's departure crouch (its windup's last pose, posed on a rig of its own so a late
+        // joiner, the killcam and the caster's own first-person view all see the same figure), drawn as a weapon ghost in the
+        // daggers' violet at kit.Afterimage for the decoy's life (NativeMeleeKitFx.DecoyOpacity).
+        private void Decoys(Snapshot s,float time)
+        {
+            string pilot=Ghost("pilot");
+            foreach(var a in s.Actors)
+            {
+                var k=a?.MeleeKit;float opacity=NativeMeleeKitFx.DecoyOpacity(k,time);if(opacity<=0||pilot==null)continue;
+                if(!decoys.TryGetValue(a.Id,out var d)||d.Until!=k.AfterimageUntil)
+                {
+                    if(d==null){d=new DecoyRig{Rig=captured.Create(transform,-700-a.Id)};decoys[a.Id]=d;}
+                    d.Until=k.AfterimageUntil;d.Pose=NativeMeleeKitFx.DecoyActor(a,k);
+                }
+                var feet=new Vector3(k.Afterimage.x,k.Afterimage.y-.865f,k.Afterimage.z);float at=NativeMeleeKitFx.DecoyPoseTime(k);
+                d.Rig.ActorPose(d.Pose,feet,at);
+                var tint=NativeWeaponFxShapes.Fx(NativeMeleeKitFx.DecoyTint());var root=d.Rig.Root.transform.localToWorldMatrix;
+                sourceModels.Queue(pilot,root,b=>b>=0&&b<d.Rig.Bones.Length?d.Rig.Bones[b].localToWorldMatrix:root,null,0,null,tint,null,opacity);
+                string weapon=Ghost("weapon-"+a.SourceSpec);
+                if(weapon!=null){float reach=WeaponReach(d.Rig,d.Pose,at);sourceModels.Queue(weapon,root,b=>SourceWeaponBone(d.Rig,d.Pose,at,false,b,reach),null,0,null,tint,null,opacity);}
+            }
+            staleDecoys.Clear();foreach(var pair in decoys){var a=System.Array.Find(s.Actors,x=>x!=null&&x.Id==pair.Key);if(a?.MeleeKit==null||NativeMeleeKitFx.DecoyOpacity(a.MeleeKit,time)<=0)staleDecoys.Add(pair.Key);}
+            foreach(int id in staleDecoys){decoys[id].Rig.Dispose();decoys.Remove(id);}
         }
         private readonly Dictionary<string,string> kitGhostModels=new Dictionary<string,string>();
         private string Ghost(string model){if(!kitGhostModels.TryGetValue(model,out var id))kitGhostModels[model]=id=sourceModels.Afterimage(model);return id;}
@@ -63,6 +90,7 @@ namespace ChipArena.UnityConversion
         private void ClearMeleeKit()
         {
             meleeKitFx.Clear();kitSnapshot=null;dashLast.Clear();foreach(var g in dashGhosts)if(g!=null)g.Live=false;
+            foreach(var d in decoys.Values)d.Rig.Dispose();decoys.Clear();
         }
 
         // What the Core effects read of this presentation (allocation-free once bound).

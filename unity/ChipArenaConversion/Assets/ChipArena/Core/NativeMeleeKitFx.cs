@@ -80,6 +80,17 @@ namespace ChipArena.UnityConversion
         private static Vector3 N(V3 v)=>new Vector3(v.x,v.y,v.z);
 
         // ---- the Shadow Step decoy model and the dash ghosts (Runtime draws them as weapon ghosts) ----
+        /// <summary>The decoy's pose: the caster's own Shadow Step windup at its last frame (the departure crouch), from the
+        /// decoy's replicated expiry (it is born at Release and lives one second), so every peer poses the same figure.</summary>
+        public static Actor DecoyActor(Actor a,NativeMeleeKit k)
+        {
+            float release=k.AfterimageUntil-DecoySeconds,at=release-.15f;
+            return new Actor{Id=a.Id,SourceSpec=a.SourceSpec,Weapon=a.Weapon,VisualSet=a.VisualSet,Yaw=a.Yaw,CastRate=1,Hp=100,Grounded=true,BodyColor=a.BodyColor,AccentColor=a.AccentColor,Hat=a.Hat,
+                SpecialKind="shadow-step",SpecialAt=at,SpecialRelease=release,SpecialUntil=release+.3f,MeleeKit=new NativeMeleeKit{Kind="shadow-step",Phase="windup",At=at,Release=release,Until=release+.3f,Yaw=k.Yaw}};
+        }
+        public const float DecoySeconds=1;
+        public static float DecoyPoseTime(NativeMeleeKit k)=>k.AfterimageUntil-DecoySeconds-.001f;
+        public static FxColor DecoyTint(){var c=Lin(DaggerCore,1.6f);return new FxColor(c.X,c.Y,c.Z);}
         public const int DashGhostSlots=12;public const float DashGhostSpacing=.9f,DashGhostLife=.3f;
         /// <summary>A Flash Step or Bulwark Charge pilot in its replicated active (dash) phase.</summary>
         public static bool Dashing(Actor a,float time)=>MeleeKitMotion.Clock(a,time,out var c)&&c.Part==KitPart.Active&&(c.Kind=="flash-step"||c.Kind=="bulwark-charge");
@@ -113,10 +124,14 @@ namespace ChipArena.UnityConversion
             {
                 var a=actors[i];if(a==null)continue;var k=a.MeleeKit;if(k==null)continue;
                 // Effects that outlive the cast (any pilot state): the fissure, the decoy's smoke, the mark, the flying shield.
+                if(time<k.AfterimageUntil)Decoy(sink,a,k,time,quality,low);
+                if(k.MarkTarget!=0&&time<k.MarkUntil)Mark(sink,scene,a,k,time,quality,low);
                 if(!a.Alive)continue;
+                if(time<k.EmpowerUntil&&a.SourceSpec=="daggers")Empower(sink,scene,a,k,time,quality,low);
                 if(MeleeKitMotion.Clock(a,time,out var c))Cast(sink,scene,a,c,time,quality,low);
             }
             for(int i=0;i<records.Count;i++)Event(sink,scene,records[i],time,quality,low);
+            for(int i=0;i<scene.Shots;i++)if(scene.Shot(i,out var at,out var v,out string fx,out int owner)&&fx=="kunai-mark")Kunai(sink,at,v,owner,time,quality);
         }
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -144,6 +159,12 @@ namespace ChipArena.UnityConversion
                 case "rising-dragon":
                     if(lead&&!c.Recast)Updraft(s,feet,time-c.At,u,edge,core,seed,q,low);
                     else if(lead)Upward(s,feet,chest,u,edge,core,seed,low);
+                    break;
+                case "shadow-step":
+                    if(lead)Gather(s,feet,u,time,seed,q,low);
+                    break;
+                case "kunai-mark":
+                    if(c.Recast&&lead)Shimmer(s,scene,a,u,time,seed,q,low);
                     break;
             }
         }
@@ -192,7 +213,72 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<(low?3:6);i++){float h=H(seed+i,21);Vector3 p=feet+new Vector3((h-.5f)*.8f,.2f+2.2f*u*H(seed+i,22),(H(seed+i,23)-.5f)*.8f);s.Streak(p,Vector3.UnitY*12,edge*(2f*u),.035f,.6f,.06f,.9f,u,seed+i);}
             s.Glow(chest,core*(1.5f*u),0,.7f,Core,u,seed);
         }
+        // Shadow Step's departure: dark smoke drawn in round the feet, violet motes sinking into the pilot.
+        private static void Gather(IKitFxSink s,Vector3 feet,float u,float time,long seed,float q,bool low)
+        {
+            int n=Count(8,q,low);
+            for(int i=0;i<n;i++)
+            {
+                float a=i/(float)n*6.2832f+H(seed+i,31),d=1.1f*(1-u)+.25f;Vector3 p=feet+new Vector3((float)Math.Cos(a)*d,.15f+.25f*H(seed+i,32),(float)Math.Sin(a)*d);
+                if(!low)s.Smoke(p,Lin(DaggerSmoke),.75f*Smooth(u/.4f),.45f+.25f*u,u*.6f,seed+i,feet.Y);
+                s.Glow(p+Vector3.UnitY*(.4f+.6f*u),Lin(DaggerCore,1.6f*u),0,.08f,Mote,u,seed+i);
+            }
+        }
+        // The Kunai recast's .2 s shimmer: a red flicker where the pilot will appear behind the marked target, and on the pilot.
+        private static void Shimmer(IKitFxSink s,IKitFxScene scene,Actor a,float u,float time,long seed,float q,bool low)
+        {
+            var target=Find(scene,a.MeleeKit.Target!=0?a.MeleeKit.Target:a.MeleeKit.MarkTarget);var mine=scene.Feet(a);
+            float flick=.55f+.45f*(float)Math.Sin(time*90);
+            for(int i=0;i<Count(10,q,low);i++){float h=H(seed+i,41);Vector3 p=mine+new Vector3((h-.5f)*.7f,.2f+1.6f*H(seed+i,42),(H(seed+i,43)-.5f)*.7f);s.Streak(p,Vector3.UnitY*(4+6*h),Lin(MarkRed,2.4f*flick*u),.025f,.25f,.04f,.8f,u,seed+i);}
+            if(target==null)return;Vector3 tf=scene.Feet(target),behind=tf-Forward(target.Yaw*(float)Math.PI/180)*1.15f;
+            for(int i=0;i<Count(12,q,low);i++)
+            {
+                float h=H(seed+i,44),y=.1f+1.7f*((h+time*3)%1f);Vector3 p=behind+new Vector3((H(seed+i,45)-.5f)*.5f,y,(H(seed+i,46)-.5f)*.5f);
+                s.Streak(p,Vector3.UnitY*6,Lin(MarkRed,2.6f*flick*Smooth(u/.5f)),.03f,.35f,.05f,.85f,u,seed+i+100);
+            }
+            s.Glow(behind+Vector3.UnitY*.9f,Lin(MarkRed,1.4f*u*flick),0,1.4f,Core,u,seed);GroundRing(s,behind,.55f,.1f,Lin(MarkRed,2f),u,low?10:16);
+        }
 
+        // ---------------------------------------------------------------------------------------------------------------
+        // Persistent kit state
+        // ---------------------------------------------------------------------------------------------------------------
+        /// <summary>The Shadow Step decoy's opacity at `time` (its model draws as a ghost at kit.Afterimage): solid while it fools,
+        /// flickering in its last .25 s, gone at AfterimageUntil.</summary>
+        public static float DecoyOpacity(NativeMeleeKit k,float time)
+        {
+            if(k==null||!(time<k.AfterimageUntil))return 0;float left=k.AfterimageUntil-time,born=1-left;
+            float o=.8f*Smooth(born/.05f);if(left<.25f)o*=Clamp01(left/.25f)*(.6f+.4f*(float)Math.Sin(time*80));return Math.Max(0,o);
+        }
+        private static void Decoy(IKitFxSink s,Actor a,NativeMeleeKit k,float time,float q,bool low)
+        {
+            Vector3 at=N(k.Afterimage)-new Vector3(0,.865f,0);float left=k.AfterimageUntil-time,born=1-left;long seed=a.Id*104729L+(long)Math.Round(k.AfterimageUntil*240);
+            // Smoke curling off the decoy, and the dissolve: its last .25 s bursts into motes.
+            if(!low)for(int i=0;i<Count(5,q,low);i++){float ph=(born*1.6f+i/5f)%1f;Vector3 p=at+new Vector3((H(seed+i,51)-.5f)*.6f,.2f+1.4f*ph,(H(seed+i,52)-.5f)*.6f);s.Smoke(p,Lin(DaggerSmoke),.45f*(1-ph),.35f+.3f*ph,ph,seed+i,at.Y);}
+            if(left<.25f){float d=1-left/.25f;for(int i=0;i<Count(12,q,low);i++){var dir=Vector3.Normalize(new Vector3(H(seed+i,53)-.5f,H(seed+i,54)*.8f,H(seed+i,55)-.5f)+new Vector3(0,.2f,0));s.Glow(at+Vector3.UnitY*(.4f+1.2f*H(seed+i,56))+dir*(1.2f*d),Lin(DaggerEdge,2f*(1-d)),0,.07f,Mote,d,seed+i);}}
+            GroundRing(s,at,.55f,.12f,Lin(DaggerCore,1.6f),.6f*DecoyOpacity(k,time),low?10:16);
+        }
+        // The Kunai mark: a red sigil turning over the marked target's head (every viewer), a ring at its feet, pulsing faster as it expires.
+        private static void Mark(IKitFxSink s,IKitFxScene scene,Actor owner,NativeMeleeKit k,float time,float q,bool low)
+        {
+            var t=Find(scene,k.MarkTarget);if(t==null||!t.Alive)return;if(scene.Viewer==t.Id)return;// the marked pilot's own view: the HUD warns it
+            Vector3 feet=scene.Feet(t),top=feet+Vector3.UnitY*2.35f;float left=k.MarkUntil-time,rate=left<1?14:6,pulse=.75f+.25f*(float)Math.Sin(time*rate),spin=time*2.4f;
+            long seed=owner.Id*31L+t.Id;var red=Lin(MarkRed);
+            s.Glow(top,red*(1.6f*pulse),0,.62f,Ring,0,seed);s.Glow(top,Lin(MarkCore,1.4f*pulse),0,.18f,Core,0,seed+1);
+            // Four kunai blades around the ring, points inward, turning.
+            for(int i=0;i<4;i++){float a=spin+i*1.5708f;var d=new Vector3((float)Math.Cos(a),(float)Math.Sin(a),0);Vector3 o=top+d*.34f,inner=top+d*.13f;s.Line(false,o,inner,red*(3f*pulse),.05f,true);}
+            if(!low)GroundRing(s,feet,.62f,.08f,red*2f,.8f*pulse,16);
+        }
+        private static void Empower(IKitFxSink s,IKitFxScene scene,Actor a,NativeMeleeKit k,float time,float q,bool low)
+        {
+            bool view=scene.Viewer==a.Id;float left=k.EmpowerUntil-time,flick=.75f+.25f*(float)Math.Sin(time*47+a.Id),fade=Clamp01(left/.3f);
+            for(int hand=0;hand<2;hand++)
+            {
+                bool l=hand==1;if(!(view?scene.ViewBlade(l,out var r0,out var r1):scene.Blade(a,l,out r0,out r1)))continue;
+                int n=low?3:5;for(int i=0;i<n;i++){float t=(i+.5f)/n;Vector3 p=Vector3.Lerp(r0,r1,t);s.Sprite(view,p,Lin(DaggerCore,(1.4f+1.2f*t)*flick*fade),view?.05f:.12f,Hot);}
+                s.Sprite(view,r1,Lin(DaggerEdge,2.6f*flick*fade),view?.08f:.22f,Sparkle);
+                if(!view&&!low){long seed=a.Id*13L+hand*7;for(int i=0;i<Count(4,q,low);i++){float ph=(time*2.2f+i/4f)%1f;Vector3 p=Vector3.Lerp(r0,r1,H(seed+i,61))+Vector3.UnitY*(.35f*ph);s.Glow(p,Lin(DaggerCore,1.6f*(1-ph)*fade),0,.06f,Mote,ph,seed+i);}}
+            }
+        }
 
         // ---------------------------------------------------------------------------------------------------------------
         // Events
@@ -285,6 +371,10 @@ namespace ChipArena.UnityConversion
             var tint=e.Fx=="kunai-mark"?Lin(MarkRed):edge;var src=Find(scene,e.Source);Vector3 from=src!=null?(scene.Chest(src,out var sc)?sc:scene.Feet(src)+Vector3.UnitY*1.2f):e.From;
             float flick=.6f+.4f*(float)Math.Sin(age*120);s.Line(false,from,Vector3.Lerp(from,to,Smooth(u*2)),tint*(2.2f*flick),.025f,false);
             s.Glow(to,tint*(1.6f*u*flick),0,.8f,Ring,u,seed);
+        }
+        private static void Kunai(IKitFxSink s,Vector3 at,Vector3 v,int owner,float time,float q)
+        {
+            float sp=v.Length();if(sp<.1f)return;s.Streak(at,v,Lin(MarkRed,2.6f),.05f,.6f,.04f,.85f,0,owner);s.Glow(at,Lin(MarkCore,1.6f),0,.28f,Core,0,owner);
         }
         /// <summary>A soft ring of light lying on the floor (radius to its outer edge), even all the way round.</summary>
         public static void GroundRing(IKitFxSink s,Vector3 centre,float radius,float width,Vector3 color,float brightness,int segments)

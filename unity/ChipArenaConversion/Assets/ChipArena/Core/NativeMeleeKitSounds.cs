@@ -24,6 +24,8 @@ namespace ChipArena.UnityConversion
             {
                 case "flash-step":n=S(o,n,"move.roll","dash",.55f);n=S(o,n,"melee.sword.swing","sword",.4f);break;
                 case "rising-dragon":n=recast?S(o,n,"melee.sword.swing","sword",.55f):S(o,n,"melee.sword.swing","sword",.6f);break;
+                case "shadow-step":break;// the Teleport event carries the blink
+                case "kunai-mark":n=recast?S(o,n,"melee.daggers.swing","daggers",.5f):S(o,n,"melee.daggers.throw","daggers",.6f);break;
             }
             return n;
         }
@@ -39,6 +41,7 @@ namespace ChipArena.UnityConversion
                 case EventKind.AbilityHit:if(!targetMe)n=S(o,n,NativeSoundCues.BodyImpact(spec),spec,.55f);if(fx=="bulwark-charge"||fx=="earthsplitter")n=S(o,n,"impact.ground","stone",.4f);break;
                 case EventKind.Teleport:n=S(o,n,"magic.blink-strike",fx=="shadow-step"?"demon-step":"dash",.55f);break;
                 case EventKind.Recast:n=fx=="rising-dragon"?S(o,n,"move.jump","jump",.5f):S(o,n,"magic.blink-strike","demon-step",.45f);break;
+                case EventKind.Mark:if(amount>0)n=S(o,n,"gun.orbital.mark","metal",.35f);break;
                 case EventKind.Land:n=S(o,n,"blast.quake","stone",fx=="wolf-knight"?.75f:.6f);n=S(o,n,"move.land","explosion",fx=="wolf-knight"?.35f:.25f);break;
             }
             return n;

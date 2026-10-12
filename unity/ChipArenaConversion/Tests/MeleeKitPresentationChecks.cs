@@ -40,6 +40,9 @@ namespace ChipArena.UnityConversion
             list.Add(Cast("rising-dragon","sword","sword-launch",1,1.26f,(1.26f,"windup",1.76f),(1.76f,"recovery",1.76f)));
             var sky=Cast("rising-dragon","sword","skyfall",1.5f,1.7f,(1.7f,"recast",2.15f),(1.85f,"fall",4.7f),(2.1f,"recovery",2.1f));for(int i=0;i<sky.Spans.Count;i++){var s=sky.Spans[i];s.Landed=s.Phase=="recovery"?1.85f:-1;sky.Spans[i]=s;}list.Add(sky);
             list.Add(Cast("rising-dragon","sword","skyfall",1.5f,1.7f,(1.7f,"recast",2.15f),(2.15f,"active",2.15f)));
+            list.Add(Cast("shadow-step","daggers","shadow-step",1,1.15f,(1.15f,"windup",1.45f),(1.45f,"recovery",1.45f)));
+            list.Add(Cast("kunai-mark","daggers","dagger-throw",1,1.19f,(1.19f,"windup",1.47f),(1.47f,"recovery",1.47f)));
+            list.Add(Cast("kunai-mark","daggers","kunai-recast",2,2.2f,(2.2f,"recast",2.65f),(2.65f,"active",2.65f)));
             return list.Where(t=>MeleeKitMotion.Known(t.Kind)).ToArray();
         }
         private static Actor Pilot(string spec)=>new Actor{Id=1,SourceSpec=spec,Weapon=WeaponId.Sword,VisualSet=spec=="daggers"?1:spec=="greatsword"?2:spec=="shield"?3:0,CastRate=1,Hp=100,Grounded=true,MeleeKit=new NativeMeleeKit()};
@@ -187,6 +190,22 @@ namespace ChipArena.UnityConversion
             {
                 events.Clear();events.Add(E(id++,EventKind.Land,1,1,2,new Vector3(0,.865f,1.8f),"rising-dragon",0,2));Expect("Skyfall landing wave (floor band, pillar)",r=>r.Bands>=12&&r.Lines>=1,1.1f);
                 events.Add(E(id++,EventKind.Teleport,1,1,0,new Vector3(0,1.9f,.65f),"rising-dragon",from:new Vector3(0,.865f,0)));Expect("Skyfall teleport streak",r=>r.Lines>=1,1.05f);
+            }
+            if(kinds.Contains("shadow-step"))
+            {
+                events.Clear();caster.SourceSpec="daggers";caster.VisualSet=1;var k=caster.MeleeKit;k.Afterimage=new V3(0,.865f,0);k.AfterimageUntil=2;k.EmpowerUntil=2.5f;
+                Check(NativeMeleeKitFx.DecoyOpacity(k,1.5f)>.5f&&NativeMeleeKitFx.DecoyOpacity(k,2.01f)==0&&NativeMeleeKitFx.DecoyOpacity(k,1.9f)<.8f,"decoy visible for its whole life, then gone");
+                var decoy=NativeMeleeKitFx.DecoyActor(caster,k);Check(MeleeKitMotion.Owns(decoy,NativeMeleeKitFx.DecoyPoseTime(k)),"the decoy is posed as the departure crouch");
+                Expect("empowered daggers glow (both blades)",r=>r.Sprites>=10,1.5f);
+                scene.ViewerId=1;Expect("empowered daggers on the view weapon in first person",r=>r.View>=6,1.5f);scene.ViewerId=0;
+                k.AfterimageUntil=0;k.EmpowerUntil=0;
+            }
+            if(kinds.Contains("kunai-mark"))
+            {
+                var k=caster.MeleeKit;k.MarkTarget=2;k.MarkUntil=5;Expect("the mark's sigil over the marked target",r=>r.Glows>=2&&r.Lines>=4,2);
+                scene.ViewerId=2;Expect("the marked pilot's own view draws no sigil (its HUD warns it)",r=>r.Lines==0,2);scene.ViewerId=0;
+                Check(NativeMeleeKitHud.MarkedFor(scene.List.ToArray(),2,2,out int owner)>2.9f&&owner==1,"HUD mark warning for the target");k.MarkTarget=0;
+                scene.ShotList.Add((new Vector3(0,1.2f,3),new Vector3(0,0,30),"kunai-mark",1));Expect("kunai in flight trails red",r=>r.Streaks>=1,2);scene.ShotList.Clear();
             }
             // Determinism: a JSON round trip of the snapshot (as guests and the killcam receive it) draws the identical frame,
             // and drawing twice changes nothing (no hidden state).
