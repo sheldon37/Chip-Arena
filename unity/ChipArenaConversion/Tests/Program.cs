@@ -40,6 +40,7 @@ internal static class Program
             RigDressingChecks.Run(root,data);
             foreach(var result in UiMotionChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in LoadoutChecks.Run(data))Console.WriteLine("PASS "+result);
+            foreach(var result in LoadoutGridChecks.Run(data))Console.WriteLine("PASS "+result);
             LockerChecks.Run(root,data);
             ClassIconChecks.Run(root,data);
             PortraitBackChecks.Run(root);
