@@ -47,7 +47,7 @@ internal static class Program
             StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();KillEffectChecks.Run(root);SirenFxChecks.Run(root);SirenMarkChecks.Run(root);SirenLookChecks.Run(root);DevFxChecks.Run(root);
             SirenSmileChecks.Run(root);SirenDetailChecks.Run(root);SirenSmileFaceChecks.Run(root);
             HudPlaceholderChecks.Run(root);
-            DeathFxChecks.Run(root);
+            DeathFxChecks.Run(root);CorpseChecks.Run(data);
             StageVentChecks.Run(root);MinionFxChecks.Run(root);MinionHintChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             StructureFxChecks.Run(root);
