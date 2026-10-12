@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — repair VFX build gate tier ordering
+- Branch `codex/unity-vfx-build-check-20261012`, base shared/cloud `f288493`. Owner's Windows build reached `CheckVfx` and failed the soft-depth assertion.
+- The fixture submitted Low=true (correctly releasing depth), assigned Low=false without submitting, then incorrectly expected normal-tier depth. Assert depth immediately after the normal submission, release immediately after the low submission, and restoration after a fresh normal submission. All existing checks remain; runtime rendering and gameplay are unchanged.
+- Verification: freshly compiled managed/relay assemblies pass 345 PASS lines through `check_relay.py`; source package validation passes (1,234 files); `git diff --check` passes. Used .NET 8 direct Roslyn compilation because SDK process discovery fails in this container.
+- Unity Editor/Windows build and real soft-particle rendering are unrun here (Unity references/editor unavailable). This fixes the observed fixture ordering error; later build gates are not claimed to pass. Shared source integration is intended for the existing local Build-and-Publish flow; no compiled update published by this task. Next: rebuild with the local builder and require all native validation before publishing.
+
 ## 2026-10-11 — Astra — consistent menu hover and one-shot chip highlights
 - Owner requested one menu highlight sound and a better, non-continuous chip highlight sound. Branch `codex/unity-hover-audio-20261011`, base shared/cloud `0bdcaa3`. Direct owner audio request; this narrowly changes hover feedback and its trigger, leaving Claude's other audio/visual work intact.
 - Root cause: `LayoutTray` creates a new object every GUI pass; `DrawTray` compared its reference to the previous tray and replayed `ui.draft.hover` every repaint. `NativeHoverFocus` now tracks the actual slot/chip and resets with the existing draft-turn reset. Mouse and keyboard highlights cue once; disabled/spectator trays stay silent. Card hit regions use `SilentButton`, so their custom focus/pick cues cannot also emit a generic menu hover as cards finish appearing or relayout.

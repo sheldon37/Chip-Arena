@@ -32,12 +32,14 @@ namespace ChipArena.UnityConversion.Editor
                     if(vfx.Billboards==0||vfx.LitVertices<NativeVfxMeshes.Bomb.VertexCount||vfx.ShockVertices==0||sim.Shocks.Count==0)
                         throw new Exception($"Effects renderer queued {vfx.Billboards} billboards, {vfx.LitVertices} lit and {vfx.ShockVertices} shell vertices for {sim.Shocks.Count} fronts");
                     int full=vfx.Billboards;vfx.Submit(camera);if(vfx.Billboards!=0||vfx.LitVertices!=0||vfx.ShockVertices!=0)throw new Exception("Effects renderer Submit kept its queue");
-                    // The low tier skips a third of the toon puffs.
-                    vfx.Low=true;vfx.Begin();vfx.Blasts(sim);vfx.Sparks(sparks);vfx.Bomb(pose,0xffa141);int low=vfx.Billboards;vfx.Submit(camera);vfx.Low=false;
-                    if(!(low<full))throw new Exception($"Effects renderer queued {low} billboards on the low tier, {full} on the normal tiers");
-                    // Soft particles ask the camera for a depth texture on the normal tiers and give it back on the low tier.
+                    // Depth state follows Submit, not assignment to Low. Check each submitted tier before changing it.
                     if((camera.depthTextureMode&DepthTextureMode.Depth)==0)throw new Exception("Effects renderer did not ask for the depth texture (soft particles)");
-                    vfx.Low=true;vfx.Submit(camera);if((camera.depthTextureMode&DepthTextureMode.Depth)!=0)throw new Exception("Effects renderer kept the depth texture on the low tier");vfx.Low=false;
+                    // The low tier skips a third of the toon puffs.
+                    vfx.Low=true;vfx.Begin();vfx.Blasts(sim);vfx.Sparks(sparks);vfx.Bomb(pose,0xffa141);int low=vfx.Billboards;vfx.Submit(camera);
+                    if(!(low<full))throw new Exception($"Effects renderer queued {low} billboards on the low tier, {full} on the normal tiers");
+                    if((camera.depthTextureMode&DepthTextureMode.Depth)!=0)throw new Exception("Effects renderer kept the depth texture on the low tier");
+                    vfx.Low=false;vfx.Submit(camera);
+                    if((camera.depthTextureMode&DepthTextureMode.Depth)==0)throw new Exception("Effects renderer did not restore the depth texture after leaving the low tier");
                     var clock=Stopwatch.StartNew();while(!vfx.AtlasReady&&clock.ElapsedMilliseconds<15000){System.Threading.Thread.Sleep(10);vfx.Submit(camera);}
                     if(!vfx.AtlasReady)throw new Exception("The smoke atlas was not built and uploaded within 15 s");
                 }
