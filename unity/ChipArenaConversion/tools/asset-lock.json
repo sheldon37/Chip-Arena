@@ -636,6 +636,18 @@
       "bytes": 4687082,
       "gitBlob": "a38bfefa0cab43a4423d2740054cd3e44b3bc759",
       "source": "Owner-supplied Brickfall Run.mp3 (2026-10-11)"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/factory-anvil-loop.mp3",
+      "bytes": 4739326,
+      "gitBlob": "36bb555599dc5d1b6ccfd4003809a52d7a1396d0",
+      "source": "Owner-supplied Anvil Loop Arena.mp3 (2026-10-12)"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/cybercity-neon-riot.mp3",
+      "bytes": 4979661,
+      "gitBlob": "75d3bbd813daf16ba3f37cdf0f625a971a3272a2",
+      "source": "Owner-supplied Neon Riot Circuit.mp3 (2026-10-12)"
     }
   ]
 }

@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — owner-selected Factory and Cyber City music
+- Branch `codex/factory-cybercity-music-20261012`, base shared `dfd45f32`. Owner supplied Anvil Loop Arena for Factory and Neon Riot Circuit for Cyber City and requested the update source push.
+- Bundled both original MP3s byte-for-byte under Resources/Audio/music, with streaming import metadata, unique GUIDs and asset-lock receipts. Tracks are 192.840 s and 204.792 s; embedded credit Xtrr - musiccreator, hashes in tools/factory-cybercity-music-credits.txt.
+- NativeAudio selects factory-anvil-loop for map id factory and cybercity-neon-riot for cybercity. Existing menu, boss/PvE music priority, volume and stage pause behavior stay intact. These maps currently have dormant presentation but no shipped map entries; this wires their future arena playback without enabling incomplete maps or replacing music on unrelated maps.
+- Checks: both full MP3s decode with ffmpeg without errors; package_source.check validates all asset receipts, unique metadata and dependencies; git diff --check passes. Unity/Windows audio playback is not run here. No gameplay/timing/network changes. Claude owns further audio-visual tuning.
+- Release: source PR/shared/cloud publication follows owner request. Compiled Update delivery still requires the local Build-and-Publish run; the new maps require their separate simulation/content integration before their music is audible in play.
 ## 2026-10-12 — Claude — merged Astra's Cyber Lord kit (#142); the Cyber Lord visuals read her fields
 - Branch `claude/cyberlord`. Shared head `607ebce` merged as `eb0e645`. PR #142 head `8a2ed88` merged as `116ea8a` (merge, mapping and pins together). Then the shared heads `27e6e8f` (Cyber City, PR #143; merged as `96fe55e`), `bb3c8f6` (PR #144; `a431bb6`) and `dfd45f3` (PR #145 and the field-initializer guard) merged, so the branch fast-forwards onto the shared head. Not pushed, merged or released.
 - Her `NativeCyberKit` (`Core/NativeCyberRules.cs`), `Actor.Cyber` and `Runtime/NativeCyberLord.cs` are kept as she wrote them. My proposed kit, `NativeCyberCast` and the `Actor.CyberKit` slot are deleted. Her `Tests/CyberChecks.cs` keeps its name; the presentation test is `CyberLordChecks`.

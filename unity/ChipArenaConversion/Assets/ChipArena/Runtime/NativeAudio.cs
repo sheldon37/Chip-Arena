@@ -108,7 +108,8 @@ namespace ChipArena.UnityConversion
             else if(arena.Pve!=null)Track("music/restricted-zone-pulse",Music*.55f*NativeStageMusic.Dip(match.Phase,true),!NativeStageMusic.Plays(match.Phase,true,false));
             else
             {
-                string theme=arena.Content.Map(arena.MapId).music;
+                // Owner-selected themes also apply when the pending map content is enabled.
+                string theme=arena.MapId=="factory"?"factory-anvil-loop":arena.MapId=="cybercity"?"cybercity-neon-riot":arena.Content.Map(arena.MapId).music;
                 if(string.IsNullOrEmpty(theme)){if(!track.StartsWith("music/")||track=="music/menu-afterglow"||music.clip!=null&&musicPlayed&&!musicStarting&&!music.isPlaying&&!musicHeld){if(bag.Count==0){foreach(var name in rotationTracks.OrderBy(_=>UnityEngine.Random.value))bag.Enqueue(name);if(bag.Peek()==rotationTracks[Math.Max(0,rotation)])bag.Enqueue(bag.Dequeue());}theme=bag.Dequeue();rotation=Array.IndexOf(rotationTracks,theme);}else theme=track.Substring(6);}
                 Track("music/"+theme,Music*.55f,!NativeStageMusic.Plays(match.Phase,false,false));
             }
