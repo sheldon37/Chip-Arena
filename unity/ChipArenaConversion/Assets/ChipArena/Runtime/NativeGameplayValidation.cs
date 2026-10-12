@@ -33,6 +33,42 @@ namespace ChipArena.UnityConversion
                 Check(Math.Abs(ready-(Time+NativeAbilityRules.Cooldown(ability,a.Stats)))<.0003f,"cooldown after "+ability.id);
                 Check(a.ECharges==charges-(ability.slot=="e"?1:0),"charges after "+ability.id);
             }
+            void CheckCyberAbility(ContentAbility ability)
+            {
+                // Kernel Panic has its own native connect/whiff/isolation gate in CheckCombatParity.
+                if(ability.slot=="4"){Check(ability.id=="kernel-panic","unknown Cyber Lord ultimate");return;}
+                Check(new[]{"data-dash","firewall","packet-burst","siphon-link","system-crash"}.Contains(ability.id),"unhandled Cyber Lord ability "+ability.id);
+                var savedAccess=a.Seat.access;
+                var grant=new NativeAccess();typeof(NativeAccess).GetProperty("Developer").GetSetMethod(true).Invoke(grant,new object[]{true});typeof(NativeAccess).GetProperty("Expires").GetSetMethod(true).Invoke(grant,new object[]{double.MaxValue});
+                float Ready()=>ability.slot=="q"?a.Cyber.QReady:ability.slot=="e"?a.Cyber.EReady:ability.slot=="1"?a.Cyber.PacketReady:ability.slot=="2"?a.Cyber.LinkReady:a.Cyber.CrashReady;
+                void Prepare(NativeAccess access,float mana)
+                {
+                    Setup(CyberLordSpec.Id);a.Seat.access=access;a.Cyber=new NativeCyberKit();a.Kernel=null;a.KernelPinned=false;
+                    a.CyberTrailTick=a.CyberWallTick=a.CyberLinkTick=0;a.Mana=mana;a.ECharges=0;
+                    a.Stats["resourceCost"]=.8;a.Stats["abilityCost"]=.9;a.Stats["abilityCooldown"]=1.3;
+                    a.Input.AbilityQ=ability.slot=="q";a.Input.AbilityE=ability.slot=="e";a.Input.SirenAbility=(byte)(ability.slot=="1"?1:ability.slot=="2"?2:3);
+                    if(ability.slot=="q"||ability.slot=="e")a.Input.SirenAbility=0;
+                }
+                try
+                {
+                    Prepare(NativeAccess.Guest,100);StepAbilities(a);
+                    Check(a.Cyber.Kind==""&&a.AbilityCast==null&&a.Mana==100&&Ready()==0,"Cyber Lord DEV refusal "+ability.id);
+                    Prepare(grant,0);StepAbilities(a);
+                    Check(a.Cyber.Kind==""&&a.AbilityCast==null&&a.Mana==0&&Ready()==0,"Cyber Lord unfunded refusal "+ability.id);
+                    Prepare(grant,100);float at=Time;StepAbilities(a);
+                    float expectedMana=100-(float)(ability.cost*a.Stats["resourceCost"]*a.Stats["abilityCost"]);
+                    Check(a.Cyber.Kind==ability.id&&a.Cyber.At==at&&a.AbilityCast==null,"Cyber Lord input dispatch "+ability.id);
+                    Check(Math.Abs(a.Mana-expectedMana)<.001f&&a.ECharges==0,"Cyber Lord commitment cost/no E charges "+ability.id);
+                    Check(Math.Abs(Ready()-(at+ability.cooldown*a.Stats["abilityCooldown"]))<.001f,"Cyber Lord cooldown "+ability.id);
+                    Check(Math.Abs(a.Cyber.Release-(at+ability.windup))<.001f,"Cyber Lord release clock "+ability.id);
+                    if(ability.slot=="q")Check(a.QReady==Ready()&&a.Cyber.DashUntil>at,"Data Dash state and HUD cooldown");
+                    if(ability.slot=="e")Check(a.EReady==Ready()&&a.Cyber.WallUntil==at+4,"Firewall state and HUD cooldown");
+                    if(ability.slot=="2")Check(a.Cyber.LinkTarget==b.Seat.id&&a.Cyber.LinkUntil==at+2.5f,"Siphon Link target and duration");
+                    float ready=Ready();Advance(a.Cyber.Until-Time+.01f);StepAbilities(a);
+                    Check(a.Cyber.At==at&&Ready()==ready&&Math.Abs(a.Mana-expectedMana)<.001f,"Cyber Lord cooldown prevents repeat after recovery "+ability.id);
+                }
+                finally{a.Seat.access=savedAccess;a.Cyber=new NativeCyberKit();a.CyberTrailTick=a.CyberWallTick=a.CyberLinkTick=0;}
+            }
             void CheckBowAbilityRelease(ContentAbility ability)
             {
                 Check(ability.id=="volley"||ability.id=="rain-of-arrows","unhandled Bow ability "+ability.id);
@@ -77,6 +113,7 @@ namespace ChipArena.UnityConversion
                     // dispatcher/release contract is checked by ValidateSpecials, not AbilityCast.
                     if(NativeMeleeRules.Standard(weapon.id))continue;
                     if(weapon.id=="bow"){CheckBowAbilityRelease(ability);continue;}
+                    if(weapon.id==CyberLordSpec.Id){CheckCyberAbility(ability);continue;}
                     Setup(weapon.id);CheckAbilityRelease(ability,(float)a.Stats["maxMana"]);
                     Setup(weapon.id);
                     // Gun E abilities cost no mana: they must still cast from an empty pool.
@@ -99,7 +136,7 @@ namespace ChipArena.UnityConversion
                     Check(b.Death.kneel==grounded,"headshot collapse selection ("+state+"): kneel="+b.Death.kneel);
                     Check(b.StunEnd==stunEnd,"fatal projectile changed stun ("+state+"): expected "+stunEnd+", got "+b.StunEnd);
                 }
-                Debug.Log("PASS native gun/magic primaries, release resources, swept capsule/cover, reload, reflection bounds, all live gun/magic Q/E exact costs/cooldowns/charges, free casts at zero mana, paid cast refusal, multishot/split ledger and grounded/airborne headshot choreography with unchanged stun (four cases)");
+                Debug.Log("PASS native gun/magic primaries, release resources, swept capsule/cover, reload, reflection bounds, all live gun/magic Q/E exact costs/cooldowns/charges, Cyber Lord native input/DEV/cost/cooldown contracts (Kernel Panic checked separately), free casts at zero mana, paid cast refusal, multishot/split ledger and grounded/airborne headshot choreography with unchanged stun (four cases)");
             }
             finally{CapturedAnimation.Release(wall);Bullets.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();}
         }
