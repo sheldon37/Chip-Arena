@@ -35,6 +35,25 @@ namespace ChipArena.UnityConversion
             }
             try
             {
+                // Exercise the normal input dispatcher used by StepPilot for every melee Q/E.
+                // These commit stamina immediately and release Special, never a mana AbilityCast.
+                foreach(string spec in new[]{"sword","daggers","shield","greatsword"})foreach(string slot in new[]{"q","e"})
+                {
+                    Setup(spec);Position(b,1020);a.Mana=0;a.Stamina=0;a.ECharges=1;
+                    var ability=Content.Ability(spec,slot);Check(ability!=null&&ability.live,"mapped live melee "+spec+"/"+slot);
+                    a.Input.AbilityQ=slot=="q";a.Input.AbilityE=slot=="e";StepAbilities(a);
+                    Check(a.Special==null&&a.AbilityCast==null&&a.QReady==0&&a.EReady==0&&a.ECharges==1,"unfunded melee dispatch "+ability.id);
+                    a.Stamina=100;StepAbilities(a);var action=a.Special;
+                    Check(action!=null&&action.Fx==ability.id&&a.AbilityCast==null,"melee dispatch "+ability.id);
+                    NearNative(a.Stamina,100-NativeAbilityRules.Cost(ability,a.Stats),"dispatch stamina "+ability.id);
+                    NearNative((slot=="q"?a.QReady:a.EReady)-Time,NativeAbilityRules.Cooldown(ability,a.Stats),"dispatch cooldown "+ability.id);
+                    Check(a.Mana==0&&a.ECharges==(slot=="e"?0:1),"dispatch resource pool "+ability.id);
+                    a.Input.AbilityQ=a.Input.AbilityE=false;StepSpecial(a);Check(!action.Released,"melee early release "+ability.id);
+                    Advance(action.Release-Time+.001f);StepAbilities(a);StepSpecial(a);
+                    Check(action.Released&&a.AbilityCast==null&&a.Mana==0,"melee dispatch release "+ability.id);
+                    NearNative(a.Stamina,100-NativeAbilityRules.Cost(ability,a.Stats),"melee release charged twice "+ability.id);
+                }
+                Debug.Log("PASS native melee Q/E dispatcher: all eight abilities reject empty stamina, cast with zero mana, debit once at commitment and release through Special");
                 foreach(string spec in new[]{"sword","daggers","shield","greatsword"})
                 {
                     Setup(spec);a.Stamina=0;Check(!TrySpecial(a)&&a.Special==null&&a.EReady==0,"unfunded E spent cooldown");a.Stamina=100;
