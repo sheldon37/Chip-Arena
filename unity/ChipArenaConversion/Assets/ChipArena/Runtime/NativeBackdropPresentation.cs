@@ -9,6 +9,7 @@ namespace ChipArena.UnityConversion
         public void RenderBackdrop(string commit,string mapId,float time,Camera camera=null)
         {
             if(sourceModels==null)return;sourceModels.Begin();sourceModels.Queue("map-"+mapId,Matrix4x4.identity);HazardPresentation(mapId,time);SceneryMotion(commit,mapId);
+            FactoryBackdrop(mapId,time,camera);
             BrickfallBackdrop(mapId,time,camera);
             if(mapId=="siren")
             {

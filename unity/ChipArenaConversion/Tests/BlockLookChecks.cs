@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         {
             string shader=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativeBlockLit.shader"));
             // Look ids and flags: the shader's defines are the Core's keys and constants.
-            string[] names={"PLAIN","BRICK_RED","BRICK_BUFF","TERRACOTTA","CONCRETE","STEEL","TIMBER","TAR","ASPHALT","COBBLE","WINDOW","NEON","CORRUGATED","DEMOLITION"};
+            string[] names={"PLAIN","BRICK_RED","BRICK_BUFF","TERRACOTTA","CONCRETE","STEEL","TIMBER","TAR","ASPHALT","COBBLE","WINDOW","NEON","CORRUGATED","DEMOLITION","FACTORY_GRATING"};
             Check(names.Length==NativeBlockLooks.Keys.Length&&NativeBlockLooks.Palette.Length==NativeBlockLooks.Keys.Length,"one shader id and palette colour per key");
             for(int i=0;i<names.Length;i++){var m=Regex.Match(shader,@"#define LOOK_"+names[i]+@" ([0-9.]+)\r?\n");Check(m.Success&&float.Parse(m.Groups[1].Value,CultureInfo.InvariantCulture)==i,"LOOK_"+names[i]+" is "+i+" ("+NativeBlockLooks.Keys[i]+")");Check(NativeBlockLooks.Id(NativeBlockLooks.Keys[i])==i,"Id("+NativeBlockLooks.Keys[i]+")");}
             foreach(var (n,v) in new[]{("BAND",NativeBlockLooks.Band),("TAG",NativeBlockLooks.Tag),("FRAGMENT",NativeBlockLooks.Fragment),("LAMP_AMBER",NativeBlockLooks.LampAmber),("LAMP_RED",NativeBlockLooks.LampRed),("SPIN_Y",NativeBlockLooks.SpinY),("SPIN_Z",NativeBlockLooks.SpinZ)})
