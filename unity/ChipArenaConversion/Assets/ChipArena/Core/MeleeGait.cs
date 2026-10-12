@@ -53,6 +53,8 @@ namespace ChipArena.UnityConversion
         // The share of the stance's pelvis turn the hips take (motion-quality: the rifle's is scaled by its aim weight); 1 for
         // every other spec.
         public float PelvisYawScale=1;
+        // The last Locomotion's backpedal share (0 forward or strafing, 1 running backward), read by the melee torso.
+        public float Back{get;private set;}
         // Both feet re-seated on the stance (spawn, reset, teleport or a near-instant flip), reusing the rig's two feet.
         private Foot[] IdleFeet(string spec)
         {
@@ -127,7 +129,7 @@ namespace ChipArena.UnityConversion
             r.WasGrounded=p.Grounded;r.GroundWeight+=((ground?1:0)-r.GroundWeight)*(1-(float)Math.Exp(-dt*(ground?(r.WasGrounded&&now-landAt>.05f?9:22):16)));float air=1-r.GroundWeight;
             float dip=landDepth*Landing(now-landAt);r.Land=dip;
             float run=r.Motion,weight=Math.Min(run,1),back=MeleeMath.Ease((-forward-.3f)/.4f)*MeleeMath.Clamp(speed/1.5f,0,1),side=Math.Abs(strafe)*MeleeMath.Clamp(speed/1.5f,0,1);
-            float D=CycleLength(speed)*MeleeMath.Lerp(1,.8f,back),S=Stance*MeleeMath.Lerp(1,.7f,back),contact=MeleeMath.Clamp(S/D,ContactMin,ContactMax);
+            Back=back;float D=CycleLength(speed)*MeleeMath.Lerp(1,.8f,back),S=Stance*MeleeMath.Lerp(1,.7f,back),contact=MeleeMath.Clamp(S/D,ContactMin,ContactMax);
             float rate=ground&&speed>.05f?Math.Min(speed/D,MaxCadence):0;if(settling&&ground)rate=Math.Max(rate,SettleCadence);if(planted)rate=0;
             float prevStride=r.Stride;r.Stride+=MeleeMath.TAU*rate*dt;phaseOffset*=(float)Math.Exp(-dt*10);
             float sprint=MeleeMath.Ease((run-.32f)/.65f)*(1-back),moving=MeleeMath.Clamp(speed/2,0,1),heel=.1f*weight,toeOff=(.22f+.3f*sprint)*moving;

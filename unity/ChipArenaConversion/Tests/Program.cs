@@ -33,6 +33,7 @@ internal static class Program
             foreach(var result in NativePresentationChecks.Run(data,presentation))Console.WriteLine("PASS "+result);
             foreach(var result in NativeParityChecks.Run(data,fixtures))Console.WriteLine("PASS "+result);
             foreach(var result in MeleeMotionChecks.Run(root))Console.WriteLine("PASS "+result);
+            foreach(var result in MeleeFeelChecks.Run(root,data))Console.WriteLine("PASS "+result);
             foreach(var result in MagicMotionChecks.Run(root))Console.WriteLine("PASS "+result);
             WeaponPresentationChecks.Run(root,data);
             RigDressingChecks.Run(root,data);

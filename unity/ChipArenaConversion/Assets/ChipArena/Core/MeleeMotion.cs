@@ -242,11 +242,37 @@ namespace ChipArena.UnityConversion
             if(walking)
             {
                 float phase=MeleeMath.Frac(Rig.Stride/MeleeMath.TAU);
-                if(carry*k<.999f){set.Walk.Sample(set.Walk.Marks[0]+phase*set.Walk.Duration,row);MeleeCapture.Apply(Rig,set,row,CaptureOptions.Of(carry,set.Fit,legs:0,root:0));}
-                if(k>.001f){set.Run.Sample(set.Run.Marks[0]+phase*set.Run.Duration,row);MeleeCapture.Apply(Rig,set,row,CaptureOptions.Of(carry*k,set.Fit,legs:0,root:0));}
+                if(carry*k<.999f){set.Walk.Sample(set.Walk.Marks[0]+phase*set.Walk.Duration,row);DampTorso(set.Walk,row,WalkTorsoKeep);MeleeCapture.Apply(Rig,set,row,CaptureOptions.Of(carry,set.Fit,legs:0,root:0));}
+                if(k>.001f){set.Run.Sample(set.Run.Marks[0]+phase*set.Run.Duration,row);DampTorso(set.Run,row,RunTorsoKeep);MeleeCapture.Apply(Rig,set,row,CaptureOptions.Of(carry*k,set.Fit,legs:0,root:0));}
+                SteadyTorso(carry,carry*k);
                 State=k>.5f?"run":"walk";
             }
             else State="idle";
+        }
+        // ---- steady locomotion torso (Unity-owned; owner 2026-10-12: "notice how the body rocks when moving") ----
+        // The captured walk/run torso twist and roll were authored against the capture's own pelvis. Over the procedural pelvis
+        // (another amplitude and phase) and at 1.9-3x the authored cadence they rocked a sword runner's chest 52 deg and rolled
+        // its shoulders 20 deg at the stride rate. Each clip keeps its cycle-mean carry posture and only part of its per-stride
+        // swing on the spine, chest, neck and head; the spine counters most of the gait's pelvis twist and roll (as the raised
+        // gun cancels them on the chest, GunMotion), so the shoulders keep a small counter-swing; the run's forward hunch lifts
+        // (more when backpedalling) and the neck keeps the gaze. Every weight follows the carry and run blends, so walking,
+        // running and stopping stay continuous. Presentation only: no timing, hitbox, movement or network change.
+        public const float WalkTorsoKeep=.35f,RunTorsoKeep=.25f,PelvisTwistCounter=.75f,PelvisRollCounter=.8f,RunHunchLift=.26f,BackpedalLift=.22f;
+        private Vector3 gaitPelvis;
+        private static void DampTorso(CapturedClip clip,float[] f,float keep)
+        {
+            float[] mean=clip.CycleMean();
+            for(int c=MeleeCapture.Spine;c<MeleeCapture.Head+3;c++)f[c]=mean[c]+(f[c]-mean[c])*keep;
+        }
+        private void SteadyTorso(float carry,float run)
+        {
+            if(carry<=.001f)return;
+            // Running backward the forward run clip's hunch lifts further (the gait already leans the body back a little).
+            float lift=(RunHunchLift+BackpedalLift*gait.Back)*run;
+            // The gait pelvis is Euler XYZ (0, twist, roll): a share of its inverse, then the lift about the steadied frame.
+            Quaternion counter=MeleeMath.AxisAngle(MeleeMath.Z,-PelvisRollCounter*gaitPelvis.Z*carry)*MeleeMath.AxisAngle(MeleeMath.Y,-PelvisTwistCounter*gaitPelvis.Y*carry)*MeleeMath.AxisAngle(MeleeMath.X,-lift);
+            Rig.Premultiply(CapturedRig.Spine,counter);
+            if(lift>1e-5f)Rig.Premultiply(CapturedRig.Neck,MeleeMath.AxisAngle(MeleeMath.X,lift));
         }
         private bool FollowupBase(MeleeSet set,MeleeView p)
         {
@@ -456,7 +482,7 @@ namespace ChipArena.UnityConversion
             bool planted=p.Committed(time)||p.HitStunUntil>time||p.Rolling(time);
             if(planted)r.Motion*=(float)Math.Exp(-MeleeMath.Clamp(dt,0,.05f)*22);
             var vel=planted?new Vector3(0,p.Vel.Y,0):p.Vel;var shown=p;if(planted){shown=p.Clone();shown.Vel=vel;}
-            gait.Locomotion(r,shown,time,dt,planted);SprintLean(p,dt);
+            gait.Locomotion(r,shown,time,dt,planted);SprintLean(p,dt);gaitPelvis=r.E[CapturedRig.Pelvis];
             var a=AttackPose(p,time);
             // Source order (sampleCharacter): juggle, knockdown, hitstun, roll, then block, special, cut or guard; the light hit
             // reaction rides the last three. Native layers pose juggles, knockdowns, rolls and specials over the captured guard.

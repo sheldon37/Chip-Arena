@@ -117,6 +117,11 @@ Presentation only: hit timing, hitboxes, damage, cooldowns, movement and network
 (`ValidateMelee`) checks lead-foot drift, ankle and tip clearance and finite bones. Rendered motion still needs the
 owner's Windows playtest.
 
+Owner-requested melee feel changes (2026-10-12, `docs/MELEE-FEEL.md`) deviate from the source on purpose: the walk/run
+torso keeps the captured carry posture with a damped stride swing and a countered pelvis twist (`MeleeMotion.SteadyTorso`).
+`Tests/MeleeMotionChecks.cs` compares those scenarios with the Unity-owned `Tests/melee-motion-pinned.json`
+(`CHIP_PIN_MELEE=1`) and keeps every other scenario on the source; `Tests/MeleeFeelChecks.cs` bounds the torso motion.
+
 Melee hit layer (2026-10-10, `Core/NativeHitReact`): every third-person route (captured melee, DEV fighters, gun and magic
 gaits) adds, after its own reactions and before its ground pass, a weight-scaled impact accent from the attacker's side
 (front, back, left, right; crisp rise, held impact frame, damped recovery, alternating along a combo), a head snap on a
