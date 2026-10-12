@@ -11,6 +11,8 @@ namespace ChipArena.UnityConversion
         private readonly NativeHitLedger hitLedger=new NativeHitLedger();
         // The view model's daze, held through a combo (resets itself for another pilot or a rewind).
         private readonly NativeStunClock viewStun=new NativeStunClock();
+        // The local pilot's recent staggering hits (Core/NativeStagger): bullets, magic and blasts kick the view too.
+        private readonly StaggerHit[] kickHits=new StaggerHit[NativeHitLedger.StaggerSlots];
         /// <summary>Reads this frame's events (once per event id); Render calls it before posing, the camera kick may call it first.</summary>
         public void ObserveHits(Snapshot s)=>hitLedger.Observe(s);
         /// <summary>
@@ -23,7 +25,8 @@ namespace ChipArena.UnityConversion
             if(view==null||s?.Actors==null||!(scale>0))return;Actor local=null;
             foreach(var a in s.Actors)if(a!=null&&a.Id==localId){local=a;break;}
             if(local==null)return;hitLedger.Hit(local.Id,local.ReactionAt,out var hit);hitLedger.Block(local.Id,time,.5f,out var block);
-            if(!NativeHitRules.CameraKick(local,time,hit,block,scale,out var k))return;
+            int felt=hitLedger.Staggers(local.Id,kickHits);
+            if(!NativeHitRules.CameraKick(local,time,hit,block,scale,out var k,kickHits,felt))return;
             view.rotation*=Quaternion.Euler(k.Pitch,k.Yaw,k.Roll);view.position+=view.rotation*new Vector3(k.Offset.X,k.Offset.Y,k.Offset.Z);
         }
         // The first-person view model drops its guard while the local pilot is stunned and jolts back on a melee hit.

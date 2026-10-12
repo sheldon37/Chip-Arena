@@ -44,7 +44,7 @@ namespace ChipArena.UnityConversion
             if(!stepped)return;
             if(frozen)
             {
-                foreach(var pair in Parts)if(!(Death.wound?.kind=="crush"&&Death.wound.part==pair.Key))pair.Value.isKinematic=false;
+                foreach(var pair in Parts)if(pair.Key!=CrushPart)pair.Value.isKinematic=false;
                 if(weapon!=null)weapon.isKinematic=false;frozen=false;clock=age;
             }
             settleAt=age+NativeCorpseRules.SettleSeconds;

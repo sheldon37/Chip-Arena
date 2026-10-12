@@ -511,9 +511,9 @@ namespace ChipArena.UnityConversion
                 Vector3 at=Root.transform.position;magicMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);magicMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
                 string state=magicMotion.Pose(a,time,pose,magicChannels,magicGuard.Sample(time,time<a.BlockUntil),juggle,juggleTrack,out bool react);
                 if(react){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
-                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Magic,time,magicMotion.Rig.GroupYaw);
+                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Magic,time,magicMotion.Rig.GroupYaw,magicMotion.Rig.GroupPosition);
                 State=ReferenceEquals(state,MagicMotion.Recovery)?"recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):state;
-                magicMotion.Finish(pose,time);
+                magicMotion.Finish(pose,time);if(Hits!=null)hitLayer.Replant(melee.Rig,pose);
                 WritePose();fresh=false;lastTime=time;
             }
             // Third-person gun pilots (host, guests, bots and the killcam) run on the source's gait in the gun's stance
@@ -529,8 +529,8 @@ namespace ChipArena.UnityConversion
                 Vector3 at=Root.transform.position;gunMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);gunMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
                 State=gunMotion.Pose(a,time,pose,juggle,juggleTrack,out bool react);
                 if(react){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
-                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Gun,time,gunMotion.Rig.GroupYaw);
-                gunMotion.Finish(pose,time);
+                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Gun,time,gunMotion.Rig.GroupYaw,gunMotion.Rig.GroupPosition);
+                gunMotion.Finish(pose,time);if(Hits!=null)hitLayer.Replant(melee.Rig,pose);
                 WritePose();fresh=false;lastTime=time;
             }
             public void Preview(int set,string state,float time,Vector3 position)
