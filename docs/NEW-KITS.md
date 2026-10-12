@@ -129,6 +129,7 @@ fighters use).
       touched).
     - **Whiff:** .6 s recovery, and half the cooldown is refunded.
     - **Connect:** the sequence below starts at once.
+    - Opener uses the sword Flash Step’s horizontal per-tick wall sweep and speed (7 / .22 ≈ 31.8 m/s), after the .25 s windup. Full 12 m travel takes about .38 s; capture occurs on contact, not at the end of the windup.
     - Cooldown 20 s, 60 mana, both spent on cast.
   - **Cut-in:**
     - On connect, a .6 s "skill cut-in" plays: a full-screen splash for the caster and the victim, and a slim

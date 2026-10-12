@@ -235,13 +235,17 @@ namespace ChipArena.UnityConversion
             if(actual>0){Emit(EventKind.AbilityHit,p,id,point,actual,fx,normal:-direction,wallSlam:wallSlam);ImpactChips(p,t.pilot,null,point,direction,nextAttack++,nextAttack,t.minion);if(t.minion!=null)MinionWeaponHit(t.minion,p,actual,(float)p.Stats["burn"],(float)p.Stats["poison"]);}
             return actual;
         }
+        // Shared sword/Kernel opener sweep: horizontal incremental travel with a small wall skin.
+        private float ForwardAbilityStep(Vector3 origin,Vector3 direction,float distance,out bool wall)
+        {
+            wall=root.scene.GetPhysicsScene().CapsuleCast(origin+Vector3.up*.43f,origin-Vector3.up*.43f,.42f,direction,out var hit,distance+.03f,WorldMask,QueryTriggerInteraction.Ignore);
+            return wall?Math.Max(0,Math.Min(distance,hit.distance-.03f)):distance;
+        }
         private Vector3 MeleeAbilityMotion(NativePilot p)
         {
             var a=p.Special;if(a==null||!a.Released||a.Phase!="active"||(a.Fx!="flash-step"&&a.Fx!="bulwark-charge"))return Vector3.zero;
             const float dt=1f/60;bool charge=a.Fx=="bulwark-charge";float speed=charge?8/.45f:7/.22f;
-            Vector3 direction=Vec(a.Direction);float distance=Math.Min(speed*dt,(charge?8:7)-a.Distance);var scene=root.scene.GetPhysicsScene();
-            bool wall=scene.CapsuleCast(p.Body.position+Vector3.up*.43f,p.Body.position-Vector3.up*.43f,.42f,direction,out var hit,distance+.03f,WorldMask,QueryTriggerInteraction.Ignore);
-            if(wall)distance=Math.Max(0,hit.distance-.03f);
+            Vector3 direction=Vec(a.Direction);float distance=ForwardAbilityStep(p.Body.position,direction,Math.Min(speed*dt,(charge?8:7)-a.Distance),out bool wall);
             var t=MeleeTargets(p).Where(t=>Vector3.Dot(t.at-p.Body.position,direction)>=0&&Math.Abs(t.at.y-p.Body.position.y)<1.5f&&Vector3.Distance(t.at,p.Body.position+direction*Mathf.Clamp(Vector3.Dot(t.at-p.Body.position,direction),0,distance))<.95f&&MeleeVisible(p.Body.position,t.at,p,t.collider)).OrderBy(t=>(t.at-p.Body.position).sqrMagnitude).FirstOrDefault();
             if(t.collider!=null)
             {
