@@ -203,6 +203,16 @@ icons['spec-siren']=()=>{
   const n=6,teeth=[];for(let i=0;i<=n;i++){const x=2.2+i*(19.6/n),top=12.9+2.2*Math.sin(Math.PI*i/n);teeth.push([x,i%2?top+4.8-Math.abs(i-n/2)*.5:top+.1]);}
   return [L([eyeL,eyeR]),L(grin),L(line(teeth),{cut:true,line:1.3})];
 };
+// CYBER LORD: a hardlight fist punching out of a broken hexagon crest, a scan line cut through its knuckles, a diamond in
+// the crest's gap.
+icons['spec-cyberlord']=()=>{
+  const v=Array.from({length:6},(_,i)=>at(12,12,10.8,-90+i*60)),mid=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k];
+  const crest=[taper(mid(v[0],v[1],.42),v[1],2,2),taper(v[1],v[2],2,2),taper(v[2],v[3],2,2),taper(v[3],v[4],2,2),taper(v[4],v[5],2,2),taper(v[5],mid(v[5],v[0],.58),2,2)];
+  const knuckles=[6.9,6.1,6.3,7.2].map((y,i)=>crect(6.6+i*2.75,y,2.5,12.6-y,.8));
+  const palm=poly([[6.6,11.4],[17.6,11.4],[17.6,15.6],[15.8,17.6],[8.4,17.6],[6.6,15.8]]),thumb=poly([[5.2,12.4],[11.4,11.8],[13.4,13.1],[11.9,14.5],[6.9,14.7],[5.2,13.8]]),wrist=crect(8.9,17.6,6.4,3.4,.4);
+  const spark=poly([[12,.6],[13.4,2.4],[12,4.2],[10.6,2.4]]);
+  return [L(crest,{opacity:TONE}),L(palm,{knock:GAP}),L(wrist,{knock:.35}),L(knuckles,{knock:.5}),L(thumb,{knock:.7}),L(line([[4,10.2],[20,10.2]]),{cut:true,line:.6}),L(spark)];
+};
 // Horizontal slab clip of a polygon path made by poly() (Sutherland–Hodgman against y0 <= y <= y1).
 function clipPoly(pathP,y0,y1)
 {
@@ -247,6 +257,12 @@ small['spec-leet']=()=>{
   const parts=[lt,gt];for(const [y0,y1,dx] of [[0,10.4,0],[10.4,13.6,2.2],[13.6,24,0]])parts.push(clipPoly(slash,y0,y1).shift(dx,0));
   return [L(parts)];
 };
+small['spec-cyberlord']=()=>{
+  const ringP=hexP(11.6).add(hexP(9.4));
+  const knuckles=[6.6,5.9,6.1,6.9].map((y,i)=>crect(6.4+i*2.85,y,2.6,12.6-y,.8));
+  const palm=poly([[6.4,11.4],[17.8,11.4],[17.8,15.8],[16,17.8],[8.2,17.8],[6.4,16]]),thumb=poly([[5,12.4],[11.6,11.8],[13.6,13.2],[12,14.8],[6.8,15],[5,14]]);
+  return [L(ringP,{evenodd:true,opacity:.5}),L(palm,{knock:1.2}),L(knuckles,{knock:.7}),L(thumb,{knock:.9})];
+};
 small['spec-ansatsuken']=()=>{
   const aura=poly([[4.4,19],[1.8,12.6],[1.8,6.8],[5.2,9.4],[7,2.6],[10,6.4],[12,.4],[14,6.4],[17,2.6],[18.8,9.4],[22.2,6.8],[22.2,12.6],[19.6,19]]);
   const fingers=[7.6,6.3,6.5,7.8].map((y,i)=>crect(5+i*3.55,y,3.1,13-y,1));
@@ -257,7 +273,7 @@ small['spec-ansatsuken']=()=>{
 
 // ---- export ----
 const CLASSES={dev:'class-dev',magic:'class-magic',melee:'class-melee',ranged:'class-ranged'};
-const SPECS=Object.fromEntries(['ansatsuken','daggers','darkness','emperor','fire','greatsword','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','water'].map(id=>[id,'spec-'+id]));
+const SPECS=Object.fromEntries(['ansatsuken','cyberlord','daggers','darkness','emperor','fire','greatsword','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','water'].map(id=>[id,'spec-'+id]));
 const entries=Object.keys(icons).sort().map(id=>{const e={id,markup:markup(icons[id]())};if(small[id])e.small=markup(small[id]());return e;});
 const pairs=o=>Object.entries(o).sort(([a],[b])=>a<b?-1:1).map(([id,icon])=>({id,icon}));
 const data={schema:1,source:'tools/export_class_icons.mjs',note:'Original Chip Arena class and weapon artwork authored for this project as geometry; not derived from any third-party icon set.',box:24,smallPx:22,fallback:'class-dev',icons:entries,classes:pairs(CLASSES),specs:pairs(SPECS)};

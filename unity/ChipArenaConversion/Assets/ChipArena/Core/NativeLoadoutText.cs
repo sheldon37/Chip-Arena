@@ -45,6 +45,7 @@ namespace ChipArena.UnityConversion
                 case "emperor":return "DEV · chained punches and launches";
                 case "ansatsuken":return "DEV · arcade punches, kicks and specials";
                 case "leet":return "DEV · binary bolts that lock on";
+                case "cyberlord":return "DEV · hardlight fists and cyber spells";
                 case "pistol":return "Precise sidearm · 7-round magazine";
                 case "rifle":return "Long-range sniper · 3 heavy rounds";
                 case "machinegun":return "Rapid automatic fire · 48 rounds";

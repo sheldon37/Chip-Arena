@@ -32,7 +32,9 @@ internal static class ClassIconChecks
         // 1. Every class and every weapon resolves to its own art icon, through the lookup NativeIcons uses.
         foreach(var c in NativeLoadoutText.Classes){string icon=NativeIconRaster.Resolve(classes,lucideClasses,fallback,c);Check(art.ContainsKey(icon)&&classes.ContainsKey(c),"class "+c+" has an art icon");}
         foreach(var w in data.weapons){string icon=NativeIconRaster.Resolve(specs,lucideSpecs,fallback,w.id);Check(art.ContainsKey(icon)&&specs.ContainsKey(w.id),"weapon "+w.id+" has an art icon");}
-        Check(specs.Count==data.weapons.Length&&classes.Count==NativeLoadoutText.Classes.Length,"no mapping for an unknown class or weapon");
+        // (The DEV Cyber Lord's icon ships with its presentation, ahead of its content entry: the rules owner adds the weapon.)
+        int ahead=data.weapons.Any(w=>w.id==CyberLordSpec.Id)?0:1;Check(specs.ContainsKey(CyberLordSpec.Id),"the DEV Cyber Lord has an art icon");
+        Check(specs.Count==data.weapons.Length+ahead&&specs.Keys.All(k=>k==CyberLordSpec.Id||data.weapons.Any(w=>w.id==k))&&classes.Count==NativeLoadoutText.Classes.Length,"no mapping for an unknown class or weapon");
         Check(specs.Values.Distinct().Count()==specs.Count,"no two weapons share an icon");
         Check(classes.Values.Distinct().Count()==classes.Count&&!classes.Values.Intersect(specs.Values).Any(),"classes have their own icons, not weapon ones");
         Check(art.Keys.All(id=>!lucideMarkup.ContainsKey(id))&&art.Values.All(a=>!lucideMarkup.ContainsValue(a.markup)),"art ids and drawings are not Lucide's");

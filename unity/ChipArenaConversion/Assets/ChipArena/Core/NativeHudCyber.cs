@@ -101,9 +101,9 @@ namespace ChipArena.UnityConversion
         [Flags] public enum Rows{None=0,Stamina=1,Mana=2,Ammo=4,Reload=8,Heat=16,Vent=32,Charge=64}
         /// <summary>The rows for a weapon class at a moment: melee stamina, magic mana, ranged magazine (with the reload sweep
         /// while reloading) and the machine gun's Overdrive heat / vent while they run; a DEV fighter's charge while held.</summary>
-        public static Rows SelfRows(string weaponClass,bool reloading,bool overdrive,bool vent,bool charging)
+        public static Rows SelfRows(string weaponClass,bool reloading,bool overdrive,bool vent,bool charging,bool mana=false)
         {
-            var r=weaponClass=="ranged"?Rows.Ammo|(reloading?Rows.Reload:0):weaponClass=="magic"?Rows.Mana:Rows.Stamina;
+            var r=weaponClass=="ranged"?Rows.Ammo|(reloading?Rows.Reload:0):weaponClass=="magic"?Rows.Mana:Rows.Stamina;if(mana)r|=Rows.Mana;
             if(overdrive)r|=Rows.Heat;if(vent)r|=Rows.Vent;if(charging)r|=Rows.Charge;return r;
         }
         /// <summary>Overdrive heat 0..1 over the 4 s buff, and the vent's cooling 1..0 over its .8 s.</summary>

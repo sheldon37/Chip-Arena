@@ -333,8 +333,8 @@ namespace ChipArena.UnityConversion
             {
                 Weapon=a.Weapon;Set=0;if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;melee.JumpLayer=JumpLayer;
                 float dt=meleeTime<-90||time<meleeTime||time-meleeTime>.35f?1/60f:Mathf.Min(.1f,time-meleeTime);meleeTime=time;
-                bool emperor=a.SourceSpec=="emperor",juggle=Juggled(a,time),down=!juggle&&NativeSpecialPose.Down(a,time),stun=!juggle&&!down&&a.StunUntil>time;
-                bool dodge=emperor&&a.Rolling(time)&&!juggle&&!down&&!stun;
+                bool emperor=a.SourceSpec=="emperor",cyber=CyberLordMotion.Handles(a.SourceSpec),juggle=Juggled(a,time),down=!juggle&&NativeSpecialPose.Down(a,time),stun=!juggle&&!down&&a.StunUntil>time;
+                bool dodge=(emperor||cyber)&&a.Rolling(time)&&!juggle&&!down&&!stun;
                 var v=MeleeViewOf(a,time,fighterView);v.Reach=1;v.Juggle=juggle;v.Down=down;v.HitStunUntil=stun?a.StunUntil:0;NativeFighterPose.View(v,a,waveDash,time);
                 // Only the Emperor's Shift is a dodge roll (souls-combat.ts usesRoll); the Demon Step is the Ansatsuken's own layer.
                 if(!dodge){v.RollAt=v.RollUntil=-100;}
@@ -346,10 +346,16 @@ namespace ChipArena.UnityConversion
                 if(juggle){r.WritePose(pose);NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);r.ReadPose(pose);State="juggle";}
                 else if(down){r.WritePose(pose);NativeSpecialPose.Recover(pose,a,time);r.ReadPose(pose);State="recovery";}
                 else if(dodge){r.WritePose(pose);CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration);r.ReadPose(pose);State="roll (adapted)";}
+                // The DEV Cyber Lord's unarmed style (Core/CyberLordMotion: the pack's stance, combo and abilities on its replicated windows).
+                else if(cyber){cyberMotion??=new CyberLordMotion();State=cyberMotion.Style(melee,a,time,stun);}
                 else if(NativeSourceMotion.Fighter(fighterClip,a,time,stun,out string key,true)){NativeFighterPose.Style(melee,fighterClip,a,stun,time);State=stun?"hit reaction":key;}
                 melee.FighterFinish(v,time,dt);
                 r.WritePose(pose);WritePose();fresh=false;lastTime=time;
             }
+            private CyberLordMotion cyberMotion;
+            /// <summary>Re-poses this rig's last pose through `layer` (a presentation overlay: the Kernel Panic victim's tumble,
+            /// Core/CyberLordMotion.VictimPose); the bones are left as they were when it declines.</summary>
+            public bool Overlay(Func<CapturedRig.Pose,bool> layer){ReadPose();if(layer==null||!layer(pose))return false;WritePose();return true;}
             // The native actor in the source frame (+x the rig's left, radians), as the source's PlayerView.
             private static MeleeView MeleeViewOf(Actor a,float time,MeleeView v)
             {
@@ -376,6 +382,8 @@ namespace ChipArena.UnityConversion
                     case PoseRoute.Fighter:FighterPose(a,position,time);return;
                     case PoseRoute.Gun:GunGaitPose(a,position,time);return;
                 }
+                // The DEV Cyber Lord's first-person fists (Core/CyberLordMotion.FirstPerson): never the sword set.
+                if(firstPerson&&CyberLordMotion.Handles(a.SourceSpec)){Weapon=a.Weapon;cyberMotion??=new CyberLordMotion();State=cyberMotion.FirstPerson(pose,a,time);WritePose();fresh=false;lastTime=time;return;}
                 // Generic: the Siren and the first-person view models (guns, magic and the rest). A magic-class pilot (the four
                 // schools and the L33t H4x staff, MagicPose.School) never plays the sword set's cuts, block or stagger here.
                 Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);bool magic=MagicPose.School(a)>0,sword=NativePoseRoute.SwordLayers(a);

@@ -171,7 +171,7 @@ namespace ChipArena.UnityConversion
             if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.BlockHitch(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
             // The gun Q kit's first-person kick (Core/NativeGunKitMotion.CameraKick): fanned rounds, Overdrive's buzz; camera shake on.
             if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.GunKitKick(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
-            presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;
+            presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.CameraShake=prefs.cameraShake;
             presentation.Render(frame,renderTime,false);ShoulderSprint(renderTime);
             Vector3? preview=null;bool previewClamped=false;
             // previewOn: E held .2 s and casting, or ready (a charge or no cooldown left) and, for magic, affordable. Casting is
@@ -304,7 +304,7 @@ namespace ChipArena.UnityConversion
             if(previewArena==null&&PvePickScreen){PveChipScreen();return;}
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             // The Last Laugh cutscene hides the HUD behind its letterbox (style.css data-cutscene); the board and pause menu stay.
-            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(BoardOpen)Board(width);if(menu)PauseMenu();return;}
+            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu)PauseMenu();return;}
             if(!cinematic.Private)CombatWorldHud(scale,width,height);
             PveBeaconHud();
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
@@ -313,6 +313,7 @@ namespace ChipArena.UnityConversion
             {
                 var p=arena.Local;bool fighting=match.Phase==NativePhase.Fight||match.Phase==NativePhase.Countdown;
                 if(!menu&&(fighting||match.Phase==NativePhase.Result))FightHud(p);
+                if(!menu&&fighting)KernelPanicBanner();
                 if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive)Crosshair();
                 if(!menu&&match.Phase==NativePhase.Fight)
                 {

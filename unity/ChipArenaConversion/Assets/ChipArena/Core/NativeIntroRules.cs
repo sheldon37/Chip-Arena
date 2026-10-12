@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
             // A chosen entrance plays only while it is one this client stages; a retired or unknown pick (an older client's
             // neon-drop, vector-slide, ...) falls through to the pilot's weapon signature instead of a fallback stage.
             if(seat.overrideIntro&&Pickable(seat.intro)&&(seat.intro=="sheldon-intro"?access.Developer&&access.Expires>now:!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return seat.intro;
-            if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";return Signature(seat.spec);
+            if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";if(seat.spec==CyberLordSpec.Id)return CyberLordSpec.Entrance;return Signature(seat.spec);
         }
         public static double Duration(string style)=>style=="dev-siren"?9.0678:style=="dev-emperor"?7.8:style=="dev-matrix"?8:style=="dev-ansatsuken"?7.2:4.8;
         // Presentation only (the HUD's name card): shared/intros.ts introNameAt, SIREN_INTRO.nameAt 6.4261 for the Siren.
@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The intro preference held when nothing is picked (overrideIntro false), and the entrance of a pilot whose
         /// weapon has no signature (an ungranted DEV weapon, an unknown spec).</summary>
         public const string Default="hero-landing";
-        public static bool Pickable(string style)=>style!=null&&(style=="sheldon-intro"||Array.IndexOf(Entrances,style)>=0);
+        public static bool Pickable(string style)=>style!=null&&(style=="sheldon-intro"||style==CyberLordSpec.Entrance||Array.IndexOf(Entrances,style)>=0);
         /// <summary>The weapon signature of `spec` ("weapon-"+spec), or Default for a weapon without one.</summary>
         public static string Signature(string spec){string s="weapon-"+spec;return Array.IndexOf(Entrances,s)>=0?s:Default;}
         /// <summary>A style this client stages; anything else (retired, unknown, null) becomes Default.</summary>
@@ -141,7 +141,9 @@ namespace ChipArena.UnityConversion
             switch(style){case "orbital-drop":case "overclock":return "audio/intros/pulse-wave";case "hero-landing":return "audio/intros/neon-drop";case "skyline-zip":return "audio/intros/vector-slide";
                 case "grid-rez":return "audio/intros/signal-spin";case "holo-projection":case "blackout":return "audio/intros/arc-salute";
                 // The DEV Sheldon Intro's music is its LocalAssets key (intro.sheldon-intro, NativeSheldonIntro's beat marks); without it, a built-in sting.
-                case "sheldon-intro":return "audio/intros/signal-spin";}
+                case "sheldon-intro":return "audio/intros/signal-spin";
+                // The DEV Cyber Lord's Hardlight Boot: the pulse-wave bed (its punches on the beat grid); no intro.dev- music key.
+                case CyberLordSpec.Entrance:return "audio/intros/pulse-wave";}
             return "audio/intros/"+style;
         }
         /// <summary>The music an entrance plays from its first frame (song time = intro age), or null: black-siren-protocol for dev-siren.</summary>
@@ -151,7 +153,7 @@ namespace ChipArena.UnityConversion
         {
             switch(style)
             {
-                case "dev-siren":return "DEV · Black Siren Protocol";case "dev-emperor":return "DEV · Emperor’s Oath";case "dev-ansatsuken":return "DEV · Rain Warrior";case "dev-matrix":return "DEV · L33T Throne";case "sheldon-intro":return "DEV · Sheldon Intro";
+                case "dev-siren":return "DEV · Black Siren Protocol";case "dev-emperor":return "DEV · Emperor’s Oath";case "dev-ansatsuken":return "DEV · Rain Warrior";case "dev-matrix":return "DEV · L33T Throne";case "sheldon-intro":return "DEV · Sheldon Intro";case CyberLordSpec.Entrance:return "DEV · Hardlight Boot";
                 case "weapon-sword":return "Flash Draw";case "weapon-daggers":return "Twin Phantom";case "weapon-greatsword":return "Colossus Oath";case "weapon-shield":return "Bastion Drop";
                 case "weapon-pistol":return "Deadeye";case "weapon-rifle":return "Longwatch";case "weapon-machinegun":return "Belt Rattle";case "weapon-fire":return "Cinder Crown";
                 case "weapon-water":return "Tidal Serpent";case "weapon-lightning":return "Thunderstep";case "weapon-darkness":return "Eventide Gate";

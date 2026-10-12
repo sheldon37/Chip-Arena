@@ -37,6 +37,8 @@ namespace ChipArena.UnityConversion
             // arena.ViewPilot without its per-call lambda: the local pilot, or the one it controls (renderer.ts viewId).
             var local=Find(arena.Pilots,arena.LocalId);var me=local?.Controlling??local;if(me?.Seat==null){siren.Stop();return false;}
             VictimScreen(arena,presentation,view,me);
+            // Kernel Panic's caster and victim (Core/KernelPanicCamera; NativeCyberLordPresentation.cs).
+            if(phaseOk&&presentation.KernelPanicDirect(arena,view,presentation.CinematicClock(arena),presentation.CameraShake,presentation.WeaponEffectsQuality<.5f)){Directing=true;return true;}
             return Cutscene(arena,presentation,view,me,presentation.CinematicClock(arena),phaseOk);
         }
         private void VictimScreen(NativeArena arena,ArenaPresentation presentation,Camera view,NativePilot me)

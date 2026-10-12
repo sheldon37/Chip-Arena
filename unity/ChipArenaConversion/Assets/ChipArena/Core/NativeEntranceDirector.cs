@@ -255,6 +255,8 @@ namespace ChipArena.UnityConversion
             {"weapon-fire",()=>new CinderCrown()},{"weapon-water",()=>new TidalSerpent()},{"weapon-lightning",()=>new Thunderstep()},{"weapon-darkness",()=>new EventideGate()},
             // The DEV Sheldon Intro (Core/NativeSheldonIntro.cs; not in NativeIntroRules.Entrances: only live DEV access picks it).
             {NativeSheldonIntro.Style,()=>new NativeSheldonIntroScript()},
+            // The DEV Cyber Lord's Hardlight Boot (Core/NativeCyberLordIntro.cs; the class's own entrance, not in NativeIntroRules.Entrances).
+            {CyberLordSpec.Entrance,()=>new NativeCyberLordIntroScript()},
         };
         /// <summary>True for a style the director stages (the eleven weapon signatures, the procedural entrances and the Sheldon Intro).</summary>
         public static bool Directed(string style)=>style!=null&&makers.ContainsKey(style);

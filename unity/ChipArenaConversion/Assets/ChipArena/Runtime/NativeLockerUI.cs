@@ -107,7 +107,7 @@ namespace ChipArena.UnityConversion
         // #rrggbb to a colour without allocating (HexColor cuts a substring).
         private static Color LkColor(string value,int fallback)=>U.Hex(NativePortraitRules.Parse(value,fallback));
         // The entrance NativeIntroRules.Style plays without an override: the weapon's own (the DEV kits' and the Siren's).
-        private static string LockerSignature(string spec)=>spec=="siren"?"dev-siren":spec=="emperor"?"dev-emperor":spec=="ansatsuken"?"dev-ansatsuken":spec=="leet"?"dev-matrix":"weapon-"+spec;
+        private static string LockerSignature(string spec)=>spec=="siren"?"dev-siren":spec=="emperor"?"dev-emperor":spec=="ansatsuken"?"dev-ansatsuken":spec=="leet"?"dev-matrix":spec==CyberLordSpec.Id?CyberLordSpec.Entrance:"weapon-"+spec;
         private void LockerStyles()
         {
             if(lockerField!=null)return;lockerField=new GUIStyle(GUI.skin.textField){fontSize=16,alignment=TextAnchor.MiddleLeft,fixedHeight=40};lockerField.padding=new RectOffset(12,12,9,9);lockerField.margin=new RectOffset(0,0,4,4);

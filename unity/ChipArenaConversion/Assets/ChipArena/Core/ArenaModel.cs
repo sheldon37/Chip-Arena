@@ -44,6 +44,9 @@ namespace ChipArena.UnityConversion
         public NativeWound[] Wounds=Array.Empty<NativeWound>();public string SourceSpec,SourceAction,BodyColor="#e5e7eb",AccentColor="#70e1d0",Hat="none";public float SourceModeAt=-100;public float SourceAt,SourceUntil,RigScale=1;public int SourceIndex,SourceTotal,SourceSide=1;public bool SourceRanged;
         // The headwear colour (NativeHatLooks), filled from the seat on host and guests alike: never on the wire per tick.
         [NonSerialized] public string HatColor="";
+        // The DEV Cyber Lord's proposed state (Core/NativeCyberLord.cs), read only through CyberLordFeed. Not serialized: game
+        // frames carry nothing new until Astra's rules replicate it (their real fields then map in CyberLordFeed).
+        [NonSerialized] public NativeCyberKit CyberKit;
         // Native authority presentation only; the inherited lab wire codec does not transport these.
         public NativeMeleeKit MeleeKit;public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
         public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;
@@ -69,7 +72,7 @@ namespace ChipArena.UnityConversion
         public float StunUntil, StaggerImmuneUntil, RegenAt, ShootReady, RespawnAt, FlashUntil;
         internal bool QueuedAttack;
         internal readonly HashSet<int> Hit = new HashSet<int>();
-        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.MeleeKit=MeleeKit?.ViewCopy();return copy;}
+        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.MeleeKit=MeleeKit?.ViewCopy();copy.CyberKit=CyberKit?.ViewCopy();return copy;}
         public bool Alive { get { return Hp > 0; } }
         public bool Rolling(float t) { return t >= RollAt && t < RollAt + VisualRollDuration; }
         public bool Invulnerable(float t) { return t >= RollAt + Rules.IframeStart && t < RollAt + Rules.IframeEnd; }

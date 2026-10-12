@@ -50,7 +50,8 @@ class ClassIconChecks(unittest.TestCase):
         classes={p['id']:p['icon'] for p in self.art['classes']}
         specs={p['id']:p['icon'] for p in self.art['specs']}
         self.assertEqual(set(classes),{'dev','magic','melee','ranged'})
-        self.assertEqual(set(specs),{w['id'] for w in self.content['weapons']})
+        # The DEV Cyber Lord's icon ships with its presentation, ahead of its content entry (the rules owner adds the weapon).
+        self.assertEqual(set(specs),{w['id'] for w in self.content['weapons']}|{'cyberlord'})
         for icon in [*classes.values(),*specs.values(),self.art['fallback']]:
             self.assertIn(icon,self.icons)
         self.assertEqual(len(set(specs.values())),len(specs))

@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
         // vitals to the danger tone with a breathing edge; a hit glitches the readout and slices the panel for .18 s.
         private void HealthBox(NativePilot p,float x,float bottom)
         {
-            bool melee=p.Weapon.@class=="melee",magic=p.Weapon.@class=="magic",ranged=p.Weapon.@class=="ranged";float w=256,pad=14,h=11+24+6+8+10+14+5+3+(melee?0:9+14+5+3)+12;var r=new Rect(x,bottom-h,w,h);
+            bool cyber=CyberLordFeed.Handles(p.Seat.spec),melee=p.Weapon.@class=="melee"&&!cyber,magic=p.Weapon.@class=="magic"||cyber,ranged=p.Weapon.@class=="ranged";float w=256,pad=14,h=11+24+6+8+10+14+5+3+(melee?0:9+14+5+3)+12;var r=new Rect(x,bottom-h,w,h);
             SprintTag(p,r);
             float t=arena.Time,maxHp=Mathf.Max(1,(float)p.Stats["hp"]),hp=Mathf.Clamp01(p.Hp/maxHp);bool low=NativeHudCyber.Low(hp),reduced=prefs.reducedEffects;
             float hit=hudEvents.Drop(HpSlot,t,p.Hp),dropped=hudEvents.Rise(LowSlot,t,low),burst=Mathf.Min(hit,dropped);
@@ -93,7 +93,9 @@ namespace ChipArena.UnityConversion
             bool away=NativeMeleeKitHud.ShieldAway(p.Seat.spec,p.MeleeKit);
             cards.Add(new Card{Key="RMB · "+(p.Seat.spec=="ansatsuken"?"PARRY":"BLOCK"),State=away?"SHIELD OUT":t<p.BlockEnd?"ACTIVE":p.BlockReady>t?(p.BlockReady-t).ToString("0.0")+"s":"READY",Ready=!away&&t>=p.BlockEnd&&p.BlockReady<=t,Active=!away&&t<p.BlockEnd,Low=away,Dial=away?-1:SpanDial(blockSpan,p.BlockReady-t)});
             bool roll=p.Weapon.@class=="melee";string rollState=t<p.RollEnd?"ROLLING":p.RollReady>t?(p.RollReady-t).ToString("0.0")+"s":"READY";cards.Add(new Card{Key="SHIFT · "+(roll?"ROLL":"DODGE"),State=rollState,Ready=rollState=="READY",Active=t<p.RollEnd,Dial=SpanDial(rollSpan,p.RollReady-t)});
-            foreach(var slot in new[]{"q","e"})
+            // The DEV Cyber Lord's Q, E and 1-4 cards (NativeCyberLordScreen.cs) in place of the content Q / E cards.
+            if(CyberLordFeed.Handles(p.Seat.spec))CyberLordCards(p);
+            else foreach(var slot in new[]{"q","e"})
             {
                 var d=content.Ability(p.Seat.spec,slot);
                 // Standard melee Q/E (Core/NativeMeleeKitHud): the recast window, the cast, the cooldown actually started, stamina.

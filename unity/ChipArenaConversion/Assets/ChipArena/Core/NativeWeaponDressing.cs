@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
         public static bool Melee(string spec)=>spec=="sword"||spec=="daggers"||spec=="greatsword"||spec=="shield"||spec=="emperor"||spec=="ansatsuken"||spec=="siren";
         // renderer.ts:129 still runs weaponModifiers and enchant on the Siren's weapon group, but buildSiren (siren/model.ts:95)
         // hid it and nothing shows it again: no Chip module or enchant flame is ever seen on her hand (or her first-person arms).
-        public static bool SocketShown(string spec)=>spec!="siren";
+        public static bool SocketShown(string spec)=>spec!="siren"&&spec!=CyberLordSpec.Id;
         // Chip modules and blade enchants are skipped for the fighters' fists (weapon-visuals.ts:88,128).
         public static bool Fist(string spec)=>spec=="emperor"||spec=="ansatsuken";
         // character-animation.ts:57: a melee-class weapon (and its off-hand copy) is scaled along +z by reach / range, i.e.
