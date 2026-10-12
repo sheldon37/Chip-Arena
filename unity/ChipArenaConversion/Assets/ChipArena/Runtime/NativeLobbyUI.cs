@@ -70,7 +70,7 @@ namespace ChipArena.UnityConversion
             U.Fill(new Rect(r.x,r.y,r.width,1),U.Hex(0x4b414c,e));float y=r.y+21,x=r.x;
             if(Hosting)
             {
-                float w=Mathf.Min(280,r.width*.4f);if(MenuButton(new Rect(x,y,w,56),"play",prefs.pve?"Start Boss Fight":"Start Match",null,true,server==null&&!blocked,e,18,true))StartMatch();x+=w+10;
+                float w=Mathf.Min(280,r.width*.4f);if(MenuButton(new Rect(x,y,w,56),"play",prefs.pve?"Start Boss Fight":"Start Match",null,true,server==null&&GuestsReady&&!blocked,e,18,true))StartMatch();x+=w+10;
             }
             else
             {

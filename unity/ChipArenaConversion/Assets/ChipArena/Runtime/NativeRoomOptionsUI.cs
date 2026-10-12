@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
             if(RulesGuest&&menuScreen==MenuScreen.Lobby)return GuestRules;var m=rulesMirror;
             m.map=prefs.map;m.cooperative=prefs.pve;m.teams=prefs.teams;m.friendlyFire=prefs.friendlyFire;m.bots=prefs.bots;m.rounds=prefs.rounds;m.sets=prefs.sets;m.choices=prefs.choices;m.selectionSeconds=prefs.selectionSeconds;
             m.skipBotDrafts=prefs.skipBotDrafts;m.bothDraft=prefs.bothDraft;m.skipPlayerIntros=prefs.skipPlayerIntros;m.randomizeMap=prefs.randomizeMap;m.mirrorWeapons=prefs.mirrorWeapons;m.stationary=prefs.stationary;m.skipWaves=prefs.skipWaves;
-            m.botDifficulty=prefs.botDifficulty;m.botOptions=prefs.botOptions??Array.Empty<NativeBotOption>();m.hostTeam=prefs.team;m.autoStart=prefs.autoStart;return m;
+            m.botDifficulty=prefs.botDifficulty;m.botOptions=prefs.botOptions??Array.Empty<NativeBotOption>();m.hostTeam=prefs.team;return m;
         }
         // Starts a body's rows. `narrow` is the 300 px room column, where labels stack over their selects (lobby.css narrow
         // .settings-row); `estimate` is the row width before a repaint has measured it; `inset` matches the form's 4 px margins.

@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeBotOption {public string weapon="random",difficulty="normal";public int team=-1;}
     [Serializable] public sealed class NativeRoomOptions
     {
-        public string map="moonlit",botDifficulty="normal";public bool cooperative,teams,friendlyFire,skipBotDrafts,bothDraft,skipPlayerIntros,randomizeMap,mirrorWeapons,stationary,skipWaves,autoStart=true;
+        public string map="moonlit",botDifficulty="normal";public bool cooperative,teams,friendlyFire,skipBotDrafts,bothDraft,skipPlayerIntros,randomizeMap,mirrorWeapons,stationary,skipWaves;
         public int bots=3,rounds=2,sets=5,choices=6,selectionSeconds=18,hostTeam;public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();
         public void Normalize(ConversionContent content)
         {
