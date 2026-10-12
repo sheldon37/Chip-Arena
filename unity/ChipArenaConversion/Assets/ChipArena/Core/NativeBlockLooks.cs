@@ -65,7 +65,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Instances per draw (one D3D11 constant buffer holds 500 of the shader's per-instance block) and the arena's draw budget (2.4).</summary>
         public const int Chunk=500,DrawBudget=60,Stages=4;
 
-        public static int Id(string key){if(key==null)return -1;for(int i=0;i<Keys.Length;i++)if(Keys[i]==key)return i;return -1;}
+        /// <summary>A key's look id: its index in Keys, else a Cyber City bank key's NativeCyberCityLooks id (Offset + slot), else -1.</summary>
+        public static int Id(string key){if(key==null)return -1;for(int i=0;i<Keys.Length;i++)if(Keys[i]==key)return i;return NativeCyberCityLooks.Id(key);}
         /// <summary>The look a material gets when no entry names its block (the 2.3 colour code: grey concrete and buff stone never fall).</summary>
         public static int MaterialDefault(string material)
         {
@@ -80,9 +81,12 @@ namespace ChipArena.UnityConversion
         public static Choice Resolve(MapLookBlock[] entries,MapLookBlock[] preview,string id,string material,int materialColor)
         {
             var e=Best(entries,id,material)??Best(preview,id,material);
-            if(e!=null){int look=Math.Max(0,Id(e.look));return new Choice{Look=look,Color=e.color!=0?e.color:Palette[look]>=0?Palette[look]:materialColor,Flags=e.band?Band|Tag:0,Listed=true};}
+            if(e!=null){int look=Math.Max(0,Id(e.look));if(NativeCyberCityLooks.Is(look))return CyberChoice(NativeCyberCityLooks.Slot(look),e,materialColor);return new Choice{Look=look,Color=e.color!=0?e.color:Palette[look]>=0?Palette[look]:materialColor,Flags=e.band?Band|Tag:0,Listed=true};}
             return new Choice{Look=MaterialDefault(material),Color=materialColor};
         }
+        // A Cyber City bank look (Core NativeCyberCityLooks): the slot as the look id plus the bank flag, the slot's palette colour.
+        private static Choice CyberChoice(int slot,MapLookBlock e,int materialColor)
+        {int p=NativeCyberCityLooks.Palette[slot];return new Choice{Look=slot,Color=e.color!=0?e.color:p>=0?p:materialColor,Flags=(e.band?Band|Tag:0)|NativeCyberCityLooks.Bank,Listed=true};}
         private static MapLookBlock Best(MapLookBlock[] entries,string id,string material)
         {
             if(entries==null)return null;MapLookBlock best=null;int score=-1;

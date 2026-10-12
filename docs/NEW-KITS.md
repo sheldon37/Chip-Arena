@@ -88,6 +88,12 @@ Presentation (Claude):
   round end), and Volley and Rain effects.
 - A HUD draw meter, cooldown cards, a class/weapon icon, a Locker tile, and an entrance (intro) animation.
 
+### Bow implementation contract (Astra, 2026-10-12)
+
+`Actor.BowDrawAt` (-1 idle), `BowReleaseAt`, `BowDraw` (last released fraction), `BowRainAt` and `BowRainTarget` carry draw/rain state. `Shot.Draw` / `Shot.Detail` and each `Shot` event's `Draw`, `Detail`, `Projectile` identify every arrow. Details are `bow`, `bow-full`, `volley`, `rain`; Q uses `AbilityId=volley`, E `rain-of-arrows`. AbilityAt/AbilityRelease remain the cast clocks. Rain targets use native world metres (ground point).
+
+Quick shots are fraction 0 until .25 attack-rate-scaled seconds, then interpolate to 1 at .8 scaled seconds. Fatigue starts 2.5 real seconds after full draw, reaches .01 spread after 4 real seconds at full draw. Nock remains .35 real seconds. Rain emits 12 primary arrows on deterministic golden-angle positions inside the exact 3.5 m circle, at .1 s intervals after .6 s; projectile chips reuse the normal bullet path. Arrow radius is the standard .045 m before projectile-size chips. Q arrows retain the specified 22 damage despite their .7 pose fraction. Rain slows only on a successful damaging hit. Bots and the sandbox `primary` action can hold/release the bow. `preferredSpec=bow` and its prototype skin are accepted by account source; that follow-up requires a later Worker deploy after merge.
+
 ## 3. Cyber Lord (DEV-only, id `cyberlord`)
 
 An unarmed hardlight brawler and spellcaster. DEV class like Siren, Emperor, Ansatsuken and L33T H4x: live DEV

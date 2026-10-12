@@ -15,7 +15,8 @@ namespace ChipArena.UnityConversion
         public static List<string> Run(ConversionContent data,ParityFixtures fixtures)
         {
             data.Validate();Check(data.sourceCommit==fixtures.sourceCommit,"Source receipts differ");
-            Check(data.weapons.Length==15&&data.chips.Length==236&&data.maps.Count(m=>!m.unity)==15&&data.maps.Where(m=>!m.unity).Sum(m=>m.blocks.Length)==3451&&data.abilities.Count(a=>!NativeMeleeRules.Standard(a.spec))==14,"Content inventory differs from pinned source");
+            // The source's inventory, plus the Unity-only Bow (Astra, PR #141: one weapon, its Q and E).
+            Check(data.weapons.Count(w=>w.id!="bow")==15&&data.weapons.Length==16&&data.chips.Length==236&&data.maps.Count(m=>!m.unity)==15&&data.maps.Where(m=>!m.unity).Sum(m=>m.blocks.Length)==3451&&data.abilities.Count(a=>!NativeMeleeRules.Standard(a.spec)&&a.spec!="bow")==14&&data.abilities.Count(a=>a.spec=="bow")==2,"Content inventory differs from pinned source");
             int values=0;
             foreach(var c in fixtures.cases)
             {

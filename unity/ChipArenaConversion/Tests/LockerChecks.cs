@@ -21,6 +21,8 @@ internal static class LockerChecks
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
         string ui=R("NativeLockerUI.cs"),home=R("NativeHomeMenu.cs"),profile=R("NativeProfileUI.cs"),lobby=R("NativeLobbyUI.cs"),portraits=R("NativePortraits.cs");
         var icons=new HashSet<string>();using(var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/Icons.json"))))foreach(var i in doc.RootElement.GetProperty("icons").EnumerateArray())icons.Add(i.GetProperty("id").GetString());
+        // The original art set (ClassIcons.json: class, weapon and the Bow's Volley/Rain icons) that NativeIcons also draws.
+        var art=new HashSet<string>();using(var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ClassIcons.json"))))foreach(var i in doc.RootElement.GetProperty("icons").EnumerateArray())art.Add(i.GetProperty("id").GetString());
 
         // 1. Every category exists, in rail order, with its label, icon and subtitle; only the weapon skins are inert.
         string[] keys={"appearance","kill-effects","entrance","loadout","weapon-skins"};
@@ -144,7 +146,7 @@ internal static class LockerChecks
             Check(n==expected.Length&&options.Select(o=>o.Id).SequenceEqual(expected.Select(x=>x.id)),a.spec+" "+a.slot+" options from content");
             var o0=options.First(o=>o.Id==a.id);Check(o0.Name==a.name&&o0.Text==a.text&&o0.Cooldown==a.cooldown&&o0.Cost==a.cost&&!o0.FromWeapon,a.spec+" "+a.slot+" option fields");
             Check(o0.Meta==(a.kind=="ads"?"Hold":a.cooldown>0?a.cooldown.ToString("0.#",inv)+" s cooldown":"No cooldown")+" · "+(a.cost>0?a.cost.ToString("0.#",inv)+(w.@class=="melee"?" stamina":" mana"):"no cost"),a.spec+" "+a.slot+" meta "+o0.Meta);
-            Check(icons.Contains(o0.Icon)&&o0.Icon!="sparkles",a.spec+" "+a.slot+" icon "+o0.Icon);
+            Check((icons.Contains(o0.Icon)||art.Contains(o0.Icon))&&o0.Icon!="sparkles",a.spec+" "+a.slot+" icon "+o0.Icon);
         }
         {
             // A second option for one slot (future content) lists both, in order.

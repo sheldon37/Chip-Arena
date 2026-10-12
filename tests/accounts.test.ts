@@ -56,6 +56,7 @@ test('native account cosmetics survive save, reload and a second login without g
   const hooded:any=await(await f.request('profile',{revision,profile:{cosmetics:{weaponSkins:'sword:prototype,body:sheldon'}}},first.session)).json();revision=hooded.account.revision;assert.equal(hooded.account.profile.cosmetics.weaponSkins,'sword:prototype');
   const longest=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','emperor','ansatsuken','leet'].map(s=>s+':prototype').join(',');
   const all:any=await(await f.request('profile',{revision,profile:{cosmetics:{weaponSkins:longest.split(',').reverse().join(',')+',sword:prototype,siren:prototype'}}},first.session)).json();revision=all.account.revision;assert.equal(all.account.profile.cosmetics.weaponSkins,longest);
+  const bow:any=await(await f.request('profile',{revision,profile:{cosmetics:{preferredSpec:'bow',weaponSkins:'bow:prototype'}}},first.session)).json();revision=bow.account.revision;assert.equal(bow.account.profile.cosmetics.preferredSpec,'bow');assert.equal((await(await f.request('me',undefined,first.session)).json() as any).account.profile.cosmetics.weaponSkins,'bow:prototype');
   for(const junk of [undefined,null,42,{sword:'prototype'},'',',,:,','sword','sword:standard','x'.repeat(5000)+',sword:prototype']){
    const r:any=await(await f.request('profile',{revision,profile:{cosmetics:{weaponSkins:junk}}},first.session)).json();revision=r.account.revision;assert.equal(r.account.profile.cosmetics.weaponSkins,'',String(junk).slice(0,40));
   }

@@ -285,7 +285,7 @@ namespace ChipArena.UnityConversion
             int n=0;
             switch(e.Kind)
             {
-                case EventKind.Shot:if(!string.IsNullOrEmpty(e.SourceSpec)&&e.SourceSpec!="siren")n=Add(o,n,e.SourceSpec=="leet"||e.SourceSpec=="emperor"?"lightning":e.SourceSpec=="ansatsuken"?"fire":e.SourceSpec,.65f,true);break;
+                case EventKind.Shot:if(!string.IsNullOrEmpty(e.SourceSpec)&&e.SourceSpec!="siren"&&e.SourceSpec!="bow")n=Add(o,n,e.SourceSpec=="leet"||e.SourceSpec=="emperor"?"lightning":e.SourceSpec=="ansatsuken"?"fire":e.SourceSpec,.65f,true);break;
                 // blockHit (Source = blocker): parry, except an Ansatsuken blocker, whose arcade parry plays instead.
                 case EventKind.Block:n=e.SourceSpec=="ansatsuken"?Add(o,n,"arcade-parry",.95f,true):Add(o,n,"parry",.65f,true);break;
                 case EventKind.ReloadStart:case EventKind.ReloadEnd:if(e.SourceMe)n=Add(o,n,e.Kind==EventKind.ReloadStart?"reload-start":"reload-end",.6f,false);break;

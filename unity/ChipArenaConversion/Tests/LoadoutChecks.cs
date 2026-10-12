@@ -16,7 +16,7 @@ internal static class LoadoutChecks
             ["leet"]="32 DMG · 1.7 / SEC · 7 MANA",["pistol"]="23 DMG · 2.4 / SEC",["rifle"]="58 DMG · 0.9 / SEC",["machinegun"]="8 DMG · 11.8 / SEC",
             ["fire"]="24 DMG · 2.0 / SEC · 8 MANA",["water"]="20 DMG · 2.6 / SEC · 6 MANA",["lightning"]="15 DMG · 3.6 / SEC · 5 MANA",["darkness"]="34 DMG · 1.5 / SEC · 10 MANA",
             ["sword"]="30 DMG · 1.6 / SEC · 14 STAMINA · 2.5 M",["daggers"]="15 DMG · 2.9 / SEC · 7 STAMINA · 1.75 M",["shield"]="23 DMG · 1.3 / SEC · 16 STAMINA · 2.1 M",
-            ["greatsword"]="52 DMG · 0.8 / SEC · 20 STAMINA · 3.4 M",
+            ["greatsword"]="52 DMG · 0.8 / SEC · 20 STAMINA · 3.4 M",["bow"]="18\u201362 DMG · 0.8 S DRAW",
         };
         if(data.weapons.Length!=expected.Count)throw new Exception("Weapon count changed: "+data.weapons.Length);
         var previous=CultureInfo.CurrentCulture;
@@ -32,15 +32,15 @@ internal static class LoadoutChecks
             }
         }
         finally{CultureInfo.CurrentCulture=previous;}
-        yield return "Weapon card stat lines match the source's specialization chips for all 15 weapons, in any locale";
+        yield return "Weapon card stat lines match the source's specialization chips for all 15 weapons and the Bow's draw range, in any locale";
         var hinted=data.weapons.Where(w=>NativeLoadoutText.Description(w).EndsWith(" Projectiles fall; aim higher at range.",StringComparison.Ordinal)).Select(w=>w.id).ToArray();
-        if(string.Join(",",hinted)!="pistol,rifle,machinegun,fire,water,lightning,darkness")throw new Exception("Gravity hint weapons: "+string.Join(",",hinted));
+        if(string.Join(",",hinted)!="pistol,rifle,machinegun,fire,water,lightning,darkness,bow")throw new Exception("Gravity hint weapons: "+string.Join(",",hinted));
         if(data.weapons.Any(w=>!NativeLoadoutText.Description(w).StartsWith(w.description,StringComparison.Ordinal)))throw new Exception("Descriptions must stay verbatim");
-        yield return "Descriptions stay verbatim and only the seven falling-projectile weapons get the aim-higher hint";
+        yield return "Descriptions stay verbatim and only the eight falling-projectile weapons (the Bow's arrows too) get the aim-higher hint";
         string List(string c,bool developer,Func<ContentWeapon,bool> allows)=>string.Join(",",data.weapons.Where(w=>NativeLoadoutText.InClass(w,c,developer,allows(w))).Select(w=>w.id));
         void Expect(string what,string actual,string wanted){if(actual!=wanted)throw new Exception(what+": "+actual+" expected "+wanted);}
         Func<ContentWeapon,bool> guest=w=>!w.devOnly,dev=w=>true,granted=w=>!w.devOnly||w.id=="siren";
-        Expect("guest ranged",List("ranged",false,guest),"pistol,rifle,machinegun");Expect("guest magic",List("magic",false,guest),"fire,water,lightning,darkness");
+        Expect("guest ranged",List("ranged",false,guest),"pistol,rifle,machinegun,bow");Expect("guest magic",List("magic",false,guest),"fire,water,lightning,darkness");
         Expect("guest melee",List("melee",false,guest),"sword,daggers,shield,greatsword");Expect("guest dev",List("dev",false,guest),"");
         Expect("developer magic",List("magic",true,dev),"leet,fire,water,lightning,darkness");Expect("developer melee",List("melee",true,dev),"siren,emperor,ansatsuken,sword,daggers,shield,greatsword");
         Expect("developer dev",List("dev",true,dev),"siren,emperor,ansatsuken,leet");Expect("granted melee",List("melee",false,granted),"siren,sword,daggers,shield,greatsword");Expect("granted dev",List("dev",false,granted),"");
