@@ -19,8 +19,9 @@ namespace ChipArena.UnityConversion
         {
             float W=U.W,H=U.H;if(hudEventGeneration!=arena.Generation){hudEvents.Clear();hudEventGeneration=arena.Generation;}
             if(arena.Pve==null)SetTag("SET "+match.Set+"  ·  ROUND "+match.Round,NativeCyberTheme.Cyan(),W);
-            HealthBox(p,24,H-24);Cooldowns(p,W-24,H-24);
+            var box=HealthBox(p,24,H-24);Cooldowns(p,W-24,H-24);
             if(Event.current.type!=EventType.Repaint)return;
+            HealReadout(box);
             if(match.Phase==NativePhase.Fight&&(p.Seat.spec=="ansatsuken"||p.Seat.spec=="emperor"))FighterHud(p,W,H);
             if(p.Seat.spec=="siren")SirenHud(p,W);
             Hitmarker();
@@ -37,7 +38,8 @@ namespace ChipArena.UnityConversion
         // .healthbox: weapon (its 15 px spec icon, 7 px gap, the name), the HP readout (rounded up, over the max), the
         // segmented HP bar with its damage trail, the weapon resource and, off melee, stamina. Low health (30%) turns the
         // vitals to the danger tone with a breathing edge; a hit glitches the readout and slices the panel for .18 s.
-        private void HealthBox(NativePilot p,float x,float bottom)
+        // Returns the panel's rect (the first-person heal readout sits over it).
+        private Rect HealthBox(NativePilot p,float x,float bottom)
         {
             bool cyber=CyberLordFeed.Handles(p.Seat.spec),melee=p.Weapon.@class=="melee"&&!cyber,magic=p.Weapon.@class=="magic"||cyber,ranged=p.Weapon.@class=="ranged";float w=256,pad=14,h=11+24+6+8+10+14+5+3+(melee?0:9+14+5+3)+12;var r=new Rect(x,bottom-h,w,h);
             SprintTag(p,r);
@@ -70,6 +72,17 @@ namespace ChipArena.UnityConversion
             }
             if(!melee){float max=(float)p.Stats["maxStamina"];y+=9;ResourceRow(ix,y,iw,"STAMINA",Mathf.FloorToInt(p.Stamina)+" / "+Mathf.RoundToInt(max),p.Pose.Sprinting?NativeCyberTheme.Warn():NativeCyberTheme.Good());y+=14+5;
                 NativeHudChrome.Line(new Rect(ix,y,iw,3),max>0?p.Stamina/max:0,p.Pose.Sprinting?NativeCyberTheme.Warn():NativeCyberTheme.Good(),NativeCyberTheme.Edge(.55f));}
+            return r;
+        }
+        // The first-person own-heal total (NativeHealReadout, fed by the combat numbers in place of the view pilot's heal
+        // numbers): small heal-green mono right-aligned over the HP readout, at reduced opacity with the numbers' shadow and
+        // outline; it counts up while heals come, then drifts up and fades (no motion with Reduced effects).
+        private void HealReadout(Rect box)
+        {
+            var heals=combatTrack.Heals;float t=arena.Time;bool reduced=prefs.reducedEffects;float a=heals.Alpha(t,reduced);if(a<=0)return;
+            NativeHealReadout.Place(box.x,box.y,box.width,heals.Lift(t,reduced),out float x,out float y,out float w,out float h);
+            U.Text(new Rect(x,y,w,h),heals.Label,NativeHealReadout.Size,U.Hex(NativeCombatNumbers.HealColor,a),TextAnchor.MiddleRight,bold:true,mono:true,
+                glow:U.Hex(NativeCombatNumbers.HealOutline,.8f*a),shadow:U.Hex(NativeCombatNumbers.HealShadow,a));
         }
         // A resource label (10 px mono, tracked, muted) and its value (13 px mono in the resource's tone).
         private static void ResourceRow(float x,float y,float w,string label,string value,Color tone)

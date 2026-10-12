@@ -10,7 +10,8 @@ using ChipArena.UnityConversion;
 // The Locker (the Customize screen): its categories and card text (Core/NativeLocker.cs) and the weapon ability slots
 // read from content, engine-free; then source checks of the IMGUI screen (Runtime/NativeLockerUI.cs) that the categories
 // are all drawn, restricted cosmetics stay behind NativeCosmeticRules.Allowed, Save Pilot keeps the old save-and-send path
-// and the weapon skins tab only picks skins. Drawing itself is checked by the offline menu renders, not here.
+// and the weapon skins tab only picks skins, and the Appearance BODY SKIN row shares the Skins card's body setter and DEV gate.
+// Drawing itself is checked by the offline menu renders, not here.
 internal static class LockerChecks
 {
     private static int count;
@@ -80,6 +81,56 @@ internal static class LockerChecks
         Check(Regex.Matches(skins,@"prefs\.\w+=").Count==1&&skins.Contains("prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,entry,keys[k]);")&&skins.Contains("string entry=body?NativeBodySkins.Entry:w.id;var keys=body?NativeBodySkins.Keys:NativeWeaponSkins.Keys;"),"the skin selector writes only the skin map");
         foreach(var bad in new[]{"SetWeapon(","menuClass=","SavePilot(","Save("})Check(!skins.Contains(bad),"the weapon skins tab has no "+bad);
 
+        // 4b. The body is also picked in Appearance (owner: "add Body skin selection in customization"): a BODY SKIN row in the
+        // pilot section beside BODY COLOUR. It and the Skins tab's body card read the same choices and equipped body, try a
+        // hovered body on the stage the same way and write through one setter, so the two pickers always agree; the setter
+        // keeps the DEV gate, and the pick is saved only by Save Pilot (no new field: the "body" entry of prefs.weaponSkins).
+        string skinsFile=R("NativeLockerSkinsUI.cs"),row=Body(skinsFile,"private void LkBodyRow("),appearanceLayout=Between(ui,"case NativeLocker.Appearance:","case NativeLocker.KillEffects:"),
+            appearance=Between(ui.Substring(ui.IndexOf("private void LockerDeferred()",StringComparison.Ordinal)),"case NativeLocker.Appearance:","case NativeLocker.KillEffects:");
+        const string setter="private void SetBodySkin(string key){prefs.weaponSkins=NativeBodySkins.Gate(NativeWeaponSkins.With(prefs.weaponSkins,NativeBodySkins.Entry,key),lockerBodySheldon);}";
+        const string choices="private int BodySkinChoices=>lockerBodySheldon?NativeBodySkins.Count:NativeBodySkins.SheldonIndex;";
+        const string equippedRule="private int BodySkinEquipped(){int k=NativeBodySkins.Of(prefs.weaponSkins);return k<BodySkinChoices?k:NativeBodySkins.StandardIndex;}";
+        Check(Count(skinsFile,setter)==1&&Count(skinsFile,choices)==1&&Count(skinsFile,equippedRule)==1,"one setter, one choice list and one equipped rule for the body");
+        Check(Count(skinsFile+ui,"SetBodySkin(")==3&&skins.Contains("if(body)SetBodySkin(keys[k]);else prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,entry,keys[k]);")&&row.Contains("if(click&&!on)SetBodySkin(NativeBodySkins.Keys[i]);"),"the Skins card and the BODY SKIN row both equip through SetBodySkin (its only callers)");
+        Check(skins.Contains("int count=body?BodySkinChoices:NativeWeaponSkins.Count;")&&skins.Contains("int equipped=body?BodySkinEquipped():")&&row.Contains("int equipped=BodySkinEquipped(),count=BodySkinChoices;"),"both pickers offer the same bodies and mark the same equipped one");
+        Check(Count(skinsFile+ui,"NativeBodySkins.Entry,key")==1&&!Regex.IsMatch(row,@"prefs\.\w+=")&&!Regex.IsMatch(ui,@"prefs\.weaponSkins=(?!b\.Skins;)"),"nothing else in the Locker writes the body entry (Revert restores the whole map)");
+        foreach(var bad in new[]{"SavePilot(","Save(","account.","SendServer(","LobbyBroadcast("})Check(!row.Contains(bad)&&!setter.Contains(bad),"the BODY SKIN row saves only through Save Pilot (no "+bad+")");
+        Check(row.Contains("if(hot&&repaint)lockerBodyTry=NativeBodySkins.Keys[i];")&&skinsFile.Contains("if(lockerBodyTry!=null&&menuScreen==MenuScreen.Customize&&(lockerTab==NativeLocker.WeaponSkins||lockerTab==NativeLocker.Appearance))return lockerBodyTry;")
+            &&ui.Contains("lockerHatColor=lockerBackColor=null;lockerBodyTry=null;}")&&ui.Contains("BodySkin=BodySkinShown()"),"hovering a body tries it on the Locker stage (cleared every repaint, only on the Customize screen); a pick shows there at once");
+        // The row sits in the pilot (Appearance) section, laid out and drawn between CALLSIGN and BODY COLOUR.
+        int callsign=appearance.IndexOf("\"CALLSIGN\"",StringComparison.Ordinal),bodySkin=appearance.IndexOf("LkHeading(lockerSlots[k++],\"BODY SKIN\",\"Hover a body to try it on\");LkBodyRow(lockerSlots[k++]);",StringComparison.Ordinal),bodyColour=appearance.IndexOf("\"BODY COLOUR\"",StringComparison.Ordinal);
+        Check(callsign>=0&&callsign<bodySkin&&bodySkin<bodyColour,"the BODY SKIN row is drawn in the pilot section, after CALLSIGN and right before BODY COLOUR");
+        Check(appearanceLayout.Contains("prefs.name=GUILayout.TextField(prefs.name??\"\",20,lockerField);LkHead();LkReserve(LkBodyRowH());\n                    LkHead();LkSwatches(ref prefs.bodyColor,\"#e5e7eb\");"),"its slots are reserved in the same place");
+        int slots=int.Parse(Regex.Match(ui,@"private readonly Rect\[\] lockerSlots=new Rect\[(\d+)\];").Groups[1].Value);
+        Check(Count(appearance,"lockerSlots[k++]")<=slots&&Count(appearance,"lockerSlots[k++]")==Count(appearanceLayout,"LkHead(")+Count(appearanceLayout,"LkReserve(")+Count(appearanceLayout,"LkSwatches("),"the Appearance section's "+Count(appearance,"lockerSlots[k++]")+" slots fit the "+slots+" reserved and match its layout");
+        Check(row.Contains("LkRowCard(r,8260+i,on,null,default,NativeBodySkins.Labels[i],LkBodyTexts[i],null,out bool hot,i,i==NativeBodySkins.SheldonIndex);")&&ui.Contains("if(body>=0)LkBodyThumb(well,body,e,h);")
+            &&Regex.Matches(Regex.Match(skinsFile,@"LkBodyTexts=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeBodySkins.Count,"the row's cards reuse the Locker's row card with a body thumbnail, a line per body and the DEV badge on the Sheldon Clothes");
+        Check(!skinsFile.Contains("U.Push("),"the body thumbnails draw untransformed (scroll clip)");
+        {
+            // The setter's rule, run engine-free on Core (NativeCosmeticRules.Allowed is NativeCosmeticGate.Allowed, section 2):
+            // whatever was stored, a non-DEV pilot is offered, marked, keeps and saves no Sheldon Clothes, a live DEV pilot can
+            // pick all three, and the weapon picks around the body entry are untouched.
+            double now=1e12;var dev=LockerAccess(true,now+60000);var lapsed=LockerAccess(true,now-1);var granted=LockerAccess(false,now+60000,"body:"+NativeBodySkins.SheldonClothes);
+            Check(NativeBodySkins.Keys.Length==NativeBodySkins.Count&&NativeBodySkins.SheldonIndex==NativeBodySkins.Count-1&&NativeBodySkins.Keys[NativeBodySkins.SheldonIndex]==NativeBodySkins.Sheldon,"the DEV body is the last choice, so the non-DEV list stops before it");
+            foreach(var (access,live) in new[]{(dev,true),(lapsed,false),(granted,false),(NativeAccess.Guest,false),((NativeAccess)null,false)})
+            {
+                bool allowed=NativeCosmeticGate.Allowed(access,"body",NativeBodySkins.SheldonClothes,now);Check(allowed==live,"the Sheldon Clothes are offered only with live DEV access ("+(access==null?"null":live?"DEV":"non-DEV")+")");
+                int offered=allowed?NativeBodySkins.Count:NativeBodySkins.SheldonIndex;
+                foreach(var stored in new[]{"","sword:prototype","body:prototype","body:sheldon","pistol:prototype,body:sheldon","rifle:prototype,body:prototype"})
+                {
+                    int k0=NativeBodySkins.Of(stored),marked=k0<offered?k0:NativeBodySkins.StandardIndex;
+                    Check(marked==NativeBodySkins.Of(NativeBodySkins.Gate(stored,allowed)),"the marked body is the body Save Pilot keeps ("+stored+")");
+                    for(int k=0;k<offered;k++)
+                    {
+                        string after=NativeBodySkins.Gate(NativeWeaponSkins.With(stored,NativeBodySkins.Entry,NativeBodySkins.Keys[k]),allowed);
+                        Check(NativeBodySkins.Of(after)==k&&NativeBodySkins.Gate(after,allowed)==after,"picking "+NativeBodySkins.Keys[k]+" over \""+stored+"\" stores it and survives the save gate");
+                        foreach(var spec in NativeWeaponSkins.Weapons)Check(NativeWeaponSkins.Index(after,spec)==NativeWeaponSkins.Index(stored,spec),"a body pick keeps the "+spec+" finish");
+                    }
+                    Check(allowed||NativeBodySkins.Of(NativeBodySkins.Gate(NativeWeaponSkins.With(stored,NativeBodySkins.Entry,NativeBodySkins.Sheldon),allowed))!=NativeBodySkins.SheldonIndex,"even a forced Sheldon pick is dropped for a non-DEV pilot");
+                }
+            }
+        }
+
         // 5. Nothing inside the scroll clip is drawn rotated or scaled (a transformed draw would carry the clip with it).
         Check(!ui.Contains("U.Push("),"no transformed draws in the Locker");
         // 6. The turntable turns without deriving the portrait again.
@@ -113,12 +164,24 @@ internal static class LockerChecks
         Check(NativeLocker.SlotOptions(data,data.Weapon("emperor"),"q",options)==1&&NativeLocker.SlotOptions(data,data.Weapon("ansatsuken"),"q",options)==0&&NativeLocker.EmptySlot(data.Weapon("ansatsuken"),"q").Contains("DEV"),"DEV kits show their own keys");
         Check(ui.Contains("private int LockerEquippedAbility(")&&ui.Contains("private static bool LockerAbilityPicks=>false;"),"ability picks wait for the loadout field (no invented persistence)");
 
-        Console.WriteLine("PASS Locker: "+count+" checks (five categories, gated cosmetic lists, the Save Pilot path and unsaved-changes prompt, the weapon skin selector, content ability slots)");
+        Console.WriteLine("PASS Locker: "+count+" checks (five categories, gated cosmetic lists, the Save Pilot path and unsaved-changes prompt, the weapon skin selector, the Appearance BODY SKIN row sharing the Skins card's setter and DEV gate, content ability slots)");
     }
     private static int Count(string s,string what){int n=0;for(int i=s.IndexOf(what,StringComparison.Ordinal);i>=0;i=s.IndexOf(what,i+what.Length,StringComparison.Ordinal))n++;return n;}
     private static string[] Ids(string source,string name)
     {
         var m=Regex.Match(source,@"public static readonly string\[\] "+name+@"=\{([^}]*)\}");return m.Success?Regex.Matches(m.Groups[1].Value,"\"([^\"]+)\"").Select(x=>x.Groups[1].Value).ToArray():Array.Empty<string>();
+    }
+    // The text from `from` to the next `to` after it (empty when either is missing).
+    private static string Between(string source,string from,string to)
+    {
+        int a=source.IndexOf(from,StringComparison.Ordinal);if(a<0)return "";int b=source.IndexOf(to,a+from.Length,StringComparison.Ordinal);return b<0?"":source.Substring(a,b-a);
+    }
+    // A NativeAccess as Verify would make it (reflection: its setters are private), as BodySkinChecks builds one.
+    private static NativeAccess LockerAccess(bool developer,double expires,params string[] grants)
+    {
+        var a=(NativeAccess)Activator.CreateInstance(typeof(NativeAccess),true);var t=typeof(NativeAccess);
+        t.GetProperty("Developer").SetValue(a,developer);t.GetProperty("Expires").SetValue(a,expires);
+        var set=(HashSet<string>)t.GetField("grants",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).GetValue(a);foreach(var g in grants)set.Add(g);return a;
     }
     // A method's text from its signature to its closing brace.
     private static string Body(string source,string signature)

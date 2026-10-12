@@ -9,17 +9,20 @@ namespace ChipArena.UnityConversion
     {
         private sealed class HealthLag {public float Value,Last,Time=-100,Hold;}
         // combat-numbers.ts CombatNumberTrack (NativeCombatNumbers): every hit (burn/poison ticks included) and heal once; a
-        // target's numbers of one kind within .16 s share one, in one of three lanes; numbers live 1.15 s (at most 64).
+        // target's numbers of one kind within .16 s share one, in one of three lanes; numbers live 1.15 s (at most 64). In
+        // first person (the setting, or the rifle scope) the view pilot's own heals feed the quiet total by the vitals
+        // (HealReadout) instead, so none sits under the crosshair.
         private readonly NativeCombatNumbers combatTrack=new NativeCombatNumbers();private NativeCombatNumbers.Anchor combatAnchor;
+        private bool FirstPersonView=>prefs.firstPerson||presentation.FirstPerson;
         private bool CombatAnchor(int id,out V3 at)
         {foreach(var p in arena.Pilots)if(p.Seat.id==id){at=NativeArena.Vec(p.Body.transform.position);return true;}at=default;return false;}
         private List<NativeCombatNumbers.Number> CombatNumbers()
-        {combatAnchor??=CombatAnchor;return combatTrack.Update(arena.Events,arena.Time,arena.Generation,arena.ViewPilot?.Seat.id??0,arena.Pve!=null,combatAnchor);}
+        {combatAnchor??=CombatAnchor;int view=arena.ViewPilot?.Seat.id??0;return combatTrack.Update(arena.Events,arena.Time,arena.Generation,view,arena.Pve!=null,combatAnchor,FirstPersonView?view:0);}
         // One number centred on `c`: .combat-number translate(-50%,-50%) scale(1 + max(0, .16 - age) x 1.5), fading out over
-        // its last .48 s; damage red, heals green, each with its drop shadow and dark outline.
-        private static void CombatNumberText(NativeCombatNumbers.Number n,Vector2 c,float size,float age)
+        // its last .48 s (times `fade`); damage red, heals green, each with its drop shadow and dark outline.
+        private static void CombatNumberText(NativeCombatNumbers.Number n,Vector2 c,float size,float age,float fade=1)
         {
-            float alpha=NativeCombatNumbers.Alpha(age);U.Push(c,Vector2.zero,NativeCombatNumbers.Scale(age));
+            float alpha=NativeCombatNumbers.Alpha(age)*fade;U.Push(c,Vector2.zero,NativeCombatNumbers.Scale(age));
             NativeUi.Text(new Rect(c.x-70,c.y-size*.6f,140,size*1.2f),n.Label,size,NativeUi.Hex(n.Heal?NativeCombatNumbers.HealColor:NativeCombatNumbers.DamageColor,alpha),TextAnchor.MiddleCenter,bold:true,
                 glow:NativeUi.Hex(n.Heal?NativeCombatNumbers.HealOutline:NativeCombatNumbers.DamageOutline,.9f*alpha),shadow:NativeUi.Hex(n.Heal?NativeCombatNumbers.HealShadow:NativeCombatNumbers.DamageShadow,alpha));U.Pop();
         }
@@ -148,14 +151,19 @@ namespace ChipArena.UnityConversion
             // and result phases, the track cleared otherwise (main.ts combatNumbers.update).
             if(match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result)
             {
-                float numberSize=Mathf.Clamp(NativeUi.W*.0165f,18,25);int view=arena.ViewPilot?.Seat.id??0;
+                float numberSize=Mathf.Clamp(NativeUi.W*.0165f,18,25);int view=arena.ViewPilot?.Seat.id??0;bool first=FirstPersonView;
                 foreach(var n in CombatNumbers())
                 {
+                    // In first person my own heals are the readout by the vitals, never a number (one spawned just before the
+                    // switch included).
+                    if(n.Readout||first&&n.Heal&&n.Target==view)continue;
                     float age=Math.Max(0,arena.Time-n.At);Vector3 at;bool own=prefs.firstPerson&&n.Target==view;
-                    // A first-person pilot cannot see their own head: their numbers sit under the crosshair.
+                    // A first-person pilot cannot see their own head: their damage numbers sit under the crosshair.
                     if(own)at=new Vector3(width*NativeCombatNumbers.OwnX(n.Lane),height*(1-NativeCombatNumbers.OwnY(age)),1);
                     else{at=cameraView.WorldToScreenPoint(NativeArena.Vec(NativeCombatNumbers.World(n,age)))/scale;if(at.z<=0||at.x<-width*.05f||at.x>width*1.05f||at.y<-height*.05f||at.y>height*1.05f)continue;}
-                    CombatNumberText(n,new Vector2(at.x,height-at.y),numberSize,age);
+                    // Third person: my own heals over my head fade where they would cover the crosshair (Classic spawns them on it).
+                    float fade=n.Heal&&n.Target==view?NativeCombatNumbers.AimFade(n.Label,numberSize,at.x,height-at.y,width/2,height/2):1;
+                    CombatNumberText(n,new Vector2(at.x,height-at.y),numberSize,age,fade);
                 }
             }
             else combatTrack.Clear();
