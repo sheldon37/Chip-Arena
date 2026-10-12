@@ -66,7 +66,7 @@ namespace ChipArena.UnityConversion
         public readonly MeleeRig Rig=new MeleeRig();
         private readonly MeleeGait gait=new MeleeGait();
         private readonly float[] row=new float[CapturedClip.Channels],rowB=new float[CapturedClip.Channels],rowC=new float[CapturedClip.Channels];
-        private readonly MeleeCapture.RecoveryCache recovery=new MeleeCapture.RecoveryCache();
+        private readonly MeleeCapture.RecoveryCache recovery=new MeleeCapture.RecoveryCache();private readonly MeleeRig fitScratch=new MeleeRig();
         private readonly MeleeCapture.WristHistory wrists=new MeleeCapture.WristHistory();
         private readonly Vector3[] keptAxes={Vector3.UnitX,Vector3.UnitX};
         private readonly Vector3[] entryAnkles=new Vector3[2];
@@ -76,24 +76,38 @@ namespace ChipArena.UnityConversion
         public static float Recovery(string spec)=>spec=="greatsword"?.5f:spec=="daggers"?.15f:.3f;
         private static readonly Dictionary<string,float> WeaponWeight=new Dictionary<string,float>{{"siren",4},{"daggers",2},{"sword",5},{"shield",8},{"greatsword",12},{"pistol",2},{"rifle",7},{"machinegun",10},{"fire",4},{"water",4},{"lightning",3},{"darkness",5},{"leet",3},{"emperor",1},{"ansatsuken",1}};
 
-        public struct Attack{public float Age,Windup,Window;public bool Active;}
+        public struct Attack{public float Age,Windup,Window,Recovery;public bool Active;}
         public static Attack AttackPose(MeleeView p,float time)
         {
             float rate=p.AttackRate>0?p.AttackRate:1,age=Math.Max(0,time-p.LastAttack),windup=!float.IsNaN(p.SwingAt)?Math.Max(.025f,p.SwingAt-p.LastAttack):Math.Max(.025f,p.Windup);
-            float window=!float.IsNaN(p.SwingUntil)&&!float.IsNaN(p.SwingAt)?p.SwingUntil-p.SwingAt:.16f/rate,recoverySeconds=Recovery(p.Spec)/rate;
-            return new Attack{Age=age,Windup=windup,Window=window,Active=age<windup+window+recoverySeconds&&!p.RollCancelled(time)};
+            float window=!float.IsNaN(p.SwingUntil)&&!float.IsNaN(p.SwingAt)?p.SwingUntil-p.SwingAt:.16f/rate,recoverySeconds=RecoverySeconds(p,windup,window);
+            return new Attack{Age=age,Windup=windup,Window=window,Recovery=recoverySeconds,Active=age<windup+window+recoverySeconds&&!p.RollCancelled(time)};
+        }
+        // The real recovery (Unity-owned, docs/MELEE-FEEL.md): while the swing's commitment is replicated, its end (the authority's
+        // AttackEnd, held at least the weapon interval) less the windup and window, never shorter than the source's Recovery. A held
+        // swing then reaches the guard as the next one starts instead of standing there for 0.08-0.10 s (shield, greatsword).
+        public static float RecoverySeconds(MeleeView p,float windup,float window)
+        {
+            float rate=p.AttackRate>0?p.AttackRate:1,source=Recovery(p.Spec)/rate;
+            return p.Commit&&Math.Abs(p.CommitAt-p.LastAttack)<.002f?Math.Max(source,p.CommitUntil-p.LastAttack-windup-window):source;
         }
 
         // ---- presented yaw (motion-quality presentedYaw) ----
-        private string yawSource;private float yawFrom,yawAt=-1e9f,yawLast,yawTime;private bool yawHas;
+        // A committed swing's facing eases over TurnBlend when it starts away from the shown facing or its yaw changes (Unity-owned,
+        // docs/MELEE-FEEL.md): a swing begun after the camera turned 40 deg snapped the body in one frame, a 66 m/s blade-tip
+        // pop, and a commit yaw that tracks the aim through the windup stays smooth. The strike window keeps the authority's yaw.
+        public const float TurnBlend=.1f;
+        private string yawSource;private float yawFrom,yawAt=-1e9f,yawLast,yawTime,yawCommit=float.NaN;private bool yawHas,yawTurn;
         public float PresentedYaw(MeleeView p,float time,float input)
         {
             bool hit=p.Reaction&&p.HitStunUntil>time&&p.ReactionAt<=time,commit=!hit&&p.Committed(time),roll=!hit&&!commit&&p.Rolling(time);
             string source=hit?"hit":commit?"commit":roll?"roll":"input";float target=hit?p.ReactionYaw:commit?p.CommitYaw:roll?p.Yaw:input;
-            if(!yawHas||MeleeGait.TimeJumped(yawTime,time)){yawHas=true;yawSource=source;yawFrom=target;yawAt=-1e9f;yawLast=target;yawTime=time;}
-            float now=Math.Max(time,yawTime);if(source!=yawSource){yawSource=source;yawFrom=yawLast;yawAt=now;}
-            bool strike=!float.IsNaN(p.SwingAt)&&!float.IsNaN(p.SwingUntil)&&time>=p.SwingAt&&time<p.SwingUntil;float u=(now-yawAt)/.12f,yaw=target;
-            if(u<1&&!commit&&!strike)yaw=yawFrom+MeleeMath.Wrap(target-yawFrom)*(1-(1-u)*(1-u)*(1-u));
+            if(!yawHas||MeleeGait.TimeJumped(yawTime,time)){yawHas=true;yawSource=source;yawFrom=target;yawAt=-1e9f;yawLast=target;yawTime=time;yawCommit=commit?target:float.NaN;yawTurn=false;}
+            float now=Math.Max(time,yawTime);bool turned=commit&&source==yawSource&&!float.IsNaN(yawCommit)&&Math.Abs(MeleeMath.Wrap(target-yawCommit))>1e-4f;
+            if(source!=yawSource||turned){yawTurn=commit&&Math.Abs(MeleeMath.Wrap(target-yawLast))>1e-4f;yawSource=source;yawFrom=yawLast;yawAt=now;}
+            yawCommit=commit?target:float.NaN;
+            bool strike=!float.IsNaN(p.SwingAt)&&!float.IsNaN(p.SwingUntil)&&time>=p.SwingAt&&time<p.SwingUntil;float u=(now-yawAt)/(commit?TurnBlend:.12f),yaw=target;
+            if(u<1&&(!commit||yawTurn)&&!strike)yaw=yawFrom+MeleeMath.Wrap(target-yawFrom)*(1-(1-u)*(1-u)*(1-u));
             yawLast=yaw;yawTime=now;return yaw;
         }
 
@@ -104,7 +118,7 @@ namespace ChipArena.UnityConversion
         {
             float rate=p.AttackRate>0?p.AttackRate:1,windup=!float.IsNaN(p.SwingAt)?Math.Max(.025f,p.SwingAt-p.LastAttack):Math.Max(.025f,p.Windup),window=!float.IsNaN(p.SwingUntil)&&!float.IsNaN(p.SwingAt)?p.SwingUntil-p.SwingAt:.16f/rate;
             float end=float.NegativeInfinity;void Consider(float start,float stop){if(start<=time)end=Math.Max(end,Math.Min(stop,time));}
-            Consider(p.LastAttack,p.LastAttack+windup+window+Recovery(p.Spec)/rate);if(p.ActionKind!=null)Consider(p.ActionAt,p.ActionUntil);if(!float.IsNaN(p.LastBlock))Consider(p.LastBlock,p.LastBlock+.3f);
+            Consider(p.LastAttack,p.LastAttack+windup+window+RecoverySeconds(p,windup,window));if(p.ActionKind!=null)Consider(p.ActionAt,p.ActionUntil);if(!float.IsNaN(p.LastBlock))Consider(p.LastBlock,p.LastBlock+.3f);
             return float.IsNegativeInfinity(end)?0:1-MeleeMath.Ease((time-end-GuardHold)/GuardFade);
         }
         private void CarryHold(float target,float time,MeleeView p)
@@ -140,7 +154,7 @@ namespace ChipArena.UnityConversion
             sign=reverse?-1:1;overhead=!heavy&&!dagger&&!shield&&index%3==2;spin=dagger&&index%4==3;
         }
         private static readonly Dictionary<string,float[]> HitStopKeys=new Dictionary<string,float[]>{{"greatsword",new[]{.075f,.1f,.09f}},{"sword",new[]{.05f,.18f,.08f}},{"shield",new[]{.06f,.14f,.08f}},{"daggers",new[]{.028f,.3f,.05f}}};
-        private bool gateHas,gateOn;private float gateAttack,gateAt,gateFrom;
+        private bool gateHas,gateOn;private float gateAttack,gateAt,gateFrom;public const float CatchUpRate=1.3f;
         public MeleeImpacts Impacts;
         // The native melee hit layer (Core/NativeHitReact), run after the reactions and before the ground pass; null outside
         // the arena rigs (and in the source parity checks), which keep the source port exactly.
@@ -150,7 +164,10 @@ namespace ChipArena.UnityConversion
             if(!HitStopKeys.TryGetValue(p.Spec,out var k)||string.IsNullOrEmpty(p.Id)||Impacts==null)return 0;float t=p.LastAttack+a.Age,h=Impacts.HitAt(p.Id,t,.5f);
             if(float.IsNaN(h)||h<p.LastAttack+a.Windup-.03f||h>p.LastAttack+a.Windup+a.Window+.05f)return 0;
             if(!gateHas||gateAttack!=p.LastAttack||gateAt!=h||t<gateFrom){gateHas=true;gateAttack=p.LastAttack;gateAt=h;gateFrom=t;gateOn=t-h<=.08f;}
-            if(!gateOn)return 0;float hold=k[0],slow=k[1],catchUp=k[2],u=t-gateFrom,max=hold*(1-slow);
+            if(!gateOn)return 0;float hold=k[0],slow=k[1],u=t-gateFrom,max=hold*(1-slow);
+            // The time lost in the hold is caught up at most CatchUpRate x (Unity-owned, docs/MELEE-FEEL.md), over the
+            // follow-through if need be: the source's .05-.09 s catch-up raced the retimed sweep, the greatsword's blade to 180 m/s.
+            float latest=p.LastAttack+a.Windup+a.Window+.8f*a.Recovery-gateFrom-hold,catchUp=Math.Max(k[2],Math.Min(1.875f*max/(CatchUpRate-1),latest));
             return u<=0?0:u<hold?u*(1-slow):u<hold+catchUp?max*(1-MeleeMath.Ease((u-hold)/catchUp)):0;
         }
         private static float Step(float u)=>MeleeMath.Ease((u-.1f)/.75f);
@@ -213,7 +230,7 @@ namespace ChipArena.UnityConversion
         }
         private void PhraseFootwork(MeleeView p,Attack a,float weight,float turn)
         {
-            float rate=p.AttackRate>0?p.AttackRate:1,recoverySeconds=Recovery(p.Spec)/rate;bool heavy=p.Spec=="greatsword";float drag=heavy?.4f:p.Spec=="shield"?.35f:0;
+            float recoverySeconds=a.Recovery;bool heavy=p.Spec=="greatsword";float drag=heavy?.4f:p.Spec=="shield"?.35f:0;
             Describe(p.Spec,Math.Max(0,(p.AttackIndex>0?p.AttackIndex:1)-1),out int sign,out bool spin,out bool overhead);
             float phase=Phase(a,recoverySeconds,a.Age-HitStop(p,a),drag,heavy);
             Feet(p,a,phase,sign,heavy,p.Spec=="daggers",overhead,spin,turn,weight,true);
@@ -276,20 +293,22 @@ namespace ChipArena.UnityConversion
         }
         private bool FollowupBase(MeleeSet set,MeleeView p)
         {
-            var prev=CutClip(set,Math.Max(1,p.AttackIndex-1));prev.Sample(prev.Marks[2],row);MeleeCapture.Apply(Rig,set,row,CaptureOptions.Of(1,set.Fit,MeleeClear.Turn,legs:0));return true;
+            var prev=CutClip(set,Math.Max(1,p.AttackIndex-1));prev.Sample(MeleeSwing.For(prev).SweepEnd,row);MeleeCapture.Apply(Rig,set,row,CaptureOptions.Of(1,set.Fit,MeleeClear.Turn,legs:0));return true;
         }
         private void Cut(MeleeSet set,MeleeView p,Attack a,float lag,float weight)
         {
-            var clip=CutClip(set,p.AttackIndex);float rate=p.AttackRate>0?p.AttackRate:1,recoverySeconds=Recovery(p.Spec)/rate,age=a.Age-lag;
-            float ct=clip.AttackTime(age,a.Windup,a.Window,recoverySeconds);var m=clip.Marks;clip.Sample(ct,row);
-            // A partial anticipation: the windup's pose eases toward the straight path between the start and contact poses.
+            var clip=CutClip(set,p.AttackIndex);float rate=p.AttackRate>0?p.AttackRate:1,recoverySeconds=a.Recovery,age=a.Age-lag;bool dagger=p.Spec=="daggers";
+            // Unity-owned swing timing (MeleeSwing): the authored sweep across the hit window, then the follow-through.
+            var shape=MeleeSwing.For(clip);float ct=MeleeSwing.ClipTime(clip,age,a.Windup,a.Window,recoverySeconds,dagger);clip.Sample(ct,row);
+            // A partial anticipation: the windup's pose eases toward the straight path between the start and sweep poses.
             float keep=set.AnticipationFor(p.AttackIndex);
-            if(keep<1&&ct>m[0]&&ct<m[1]){clip.Sample(m[0],rowB);clip.Sample(m[1],rowC);MeleeCapture.BlendRowsTurning(rowB,rowC,(ct-m[0])/(m[1]-m[0]),rowB);MeleeCapture.BlendRowsTurning(row,rowB,1-keep,row);}
-            float settle=MeleeMath.Ease((age-a.Windup-a.Window)/recoverySeconds);
-            if(settle>0&&set.Idle!=null&&p.Spec!="daggers")
+            if(keep<1&&ct>shape.Start&&ct<shape.SweepStart){clip.Sample(shape.Start,rowB);clip.Sample(shape.SweepStart,rowC);MeleeCapture.BlendRowsTurning(rowB,rowC,(ct-shape.Start)/(shape.SweepStart-shape.Start),rowB);MeleeCapture.BlendRowsTurning(row,rowB,1-keep,row);}
+            float settle=age>a.Windup+a.Window?MeleeSwing.Settle(age,a.Windup,a.Window,recoverySeconds):0;bool recovering=age>a.Windup+a.Window;
+            if(recovering&&set.Idle!=null&&!dagger)
             {
-                clip.Sample(m[2],row);set.Idle.Sample(p.LastAttack+a.Windup+a.Window+recoverySeconds,rowB);
-                MeleeCapture.Recovery(Rig,set,row,rowB,settle,p.LastAttack,p.AttackIndex,rate,recovery,keptAxes);
+                // Follow-through: the clip carries on past its sweep while the pose settles into the guard (no dead stop at the window's end).
+                set.Idle.Sample(p.LastAttack+a.Windup+a.Window+recoverySeconds,rowB);
+                MeleeCapture.FollowThrough(Rig,set,row,rowB,settle,p.LastAttack,p.AttackIndex,rate,recovery,keptAxes,fitScratch);
             }
             else MeleeCapture.Apply(Rig,set,row,CaptureOptions.Of(weight,set.Fit,MeleeClear.Turn,legs:0));
             Describe(p.Spec,Math.Max(0,(p.AttackIndex>0?p.AttackIndex:1)-1),out _,out bool spin,out _);
@@ -297,7 +316,7 @@ namespace ChipArena.UnityConversion
             Rig.AddE(CapturedRig.Body,0,turn*weight,0);PhraseFootwork(p,a,weight,turn);
             // The Hurricane chip's full turn over the strike window.
             if(p.Hurricane&&!spin)Rig.AddE(CapturedRig.Body,0,MeleeMath.Ease((age-a.Windup)/a.Window)*MeleeMath.TAU*weight,0);
-            State="cut"+(char)('A'+Array.IndexOf(set.Cuts,clip))+(settle>0?" recovery":"");
+            State="cut"+(char)('A'+Array.IndexOf(set.Cuts,clip))+(recovering?" recovery":"");
         }
         private static readonly float[] BlockKeys={0,.13f,.36f},BlockHitKeys={0,.1f,.45f};private readonly float[] staggerKeys={0,0,0};
         private bool raiseHas;private float raiseSince,raiseTime;
@@ -414,7 +433,7 @@ namespace ChipArena.UnityConversion
         private static string TransitionAction(MeleeView p,float time,out int index,out string phase)
         {
             // A DEV fighter's strike tail lasts .8 s / rate (transitionAction's attackDuration outside the standard specs).
-            var a=AttackPose(p,time);float rate=p.AttackRate>0?p.AttackRate:1,duration=Handles(p.Spec)?a.Windup+a.Window+Recovery(p.Spec)/rate:.8f/rate;index=0;phase=null;
+            var a=AttackPose(p,time);float rate=p.AttackRate>0?p.AttackRate:1,duration=Handles(p.Spec)?a.Windup+a.Window+a.Recovery:.8f/rate;index=0;phase=null;
             if(p.Juggle)return "juggle";if(p.Down){phase=p.DownPhase??"";return "down";}
             if(p.HitStunUntil>time)return "flinch";if(p.Rolling(time))return "roll";if(p.Guarding||p.BlockTime>0)return "block";if(p.Action(time))return p.ActionKind;
             if(time-p.LastAttack<duration&&!p.RollCancelled(time)){index=p.AttackIndex;return "attack";}
@@ -447,7 +466,9 @@ namespace ChipArena.UnityConversion
             if(!same)
             {
                 duration=TransitionDuration(p,time,action,phase,trAction,reaction);incoming=trLast;
-                if(reaction==null&&ReactionFamily(trAction)&&trHasPrev&&trTime>trPrevTime)
+                // Into, out of and between the captured weapons' swings too (Unity-owned, docs/MELEE-FEEL.md): the first transition
+                // frame held the last pose, a one-frame stop at every swing's start and end. The DEV fighters keep the source's.
+                if(reaction==null&&(ReactionFamily(trAction)||Handles(p.Spec)&&(trAction=="attack"||action=="attack"))&&trHasPrev&&trTime>trPrevTime)
                 {
                     // Continue the last frame's joint velocities to this frame's time, then keep only the remaining discontinuity.
                     float ratio=MeleeMath.Clamp((time-trTime)/(trTime-trPrevTime),0,2);
@@ -554,6 +575,131 @@ namespace ChipArena.UnityConversion
             float rate=p.AttackRate>0?p.AttackRate:1,end=!float.IsNaN(p.SwingUntil)?p.SwingUntil:p.LastAttack+p.Windup+.16f/rate,age=time-end;
             bool recovering=p.Spec=="daggers"&&(p.AttackIndex>0?p.AttackIndex:1)%4!=0&&age>=0&&age<Recovery(p.Spec)/rate+1&&!p.Guarding&&p.BlockTime<=0&&!(p.HitStunUntil>time)&&!(p.RollAt>-90&&p.RollAt>p.LastAttack)&&!p.Action(time);
             MeleeCapture.FinishRecovery(Rig,set,time,recovering,rate,p.Spec,wrists,keptAxes);
+        }
+    }
+
+    // Unity-owned swing timing for the four captured weapons (owner 2026-10-12, docs/MELEE-FEEL.md), shared by the
+    // third-person rigs (MeleeMotion), the first-person view model (CapturedAnimation) and the slash crescent (NativeSlashFx).
+    // The source retime (CapturedClip.AttackTime) maps a cut's contact marks onto the authoritative hit window, but the authored
+    // blade whip starts up to 70 ms before the first mark: the blade peaked in the windup, crawled through the window at
+    // 0.13-0.4x and stopped dead at its end. Each cut names its authored sweep [SweepStart, SweepEnd] (clip seconds) and plays it
+    // linearly across the hit window, so the fastest motion lands inside it; the windup plays [Start, SweepStart] on the cut's
+    // pace keys, ending at the window's clip rate; after the window the clip carries on at that rate and eases to rest at
+    // FollowEnd (the follow-through) while the pose settles into the guard over the real recovery. Presentation only: the
+    // window, its timing and the hit sweep stay the authority's.
+    public static class MeleeSwing
+    {
+        public readonly struct Shape
+        {
+            // Even: how far the windup's pacing moves from the cut's pace keys toward even steps (0 keeps the keys).
+            public readonly float Start,SweepStart,SweepEnd,FollowEnd,Even;
+            public Shape(float start,float sweepStart,float sweepEnd,float followEnd,float even=0){Start=start;SweepStart=sweepStart;SweepEnd=sweepEnd;FollowEnd=followEnd;Even=even;}
+        }
+        // From the authored blade-tip speed of each cut: the sweep holds its whip, ending while the blade still moves (the
+        // greatsword's just before its chop meets the floor). The daggers start after their wind-back, which the entry blend from
+        // the guard stands in for, cutting their windup compression from x4.7-5.7 to x2.5-3.0. Sword cut B's pace keys crowd two
+        // fast spans into its windup (3.7-3.9x); half-even pacing keeps its peak inside the window.
+        private static readonly Dictionary<string,Shape> Shapes=new Dictionary<string,Shape>
+        {
+            {"sword/cutA",new Shape(0,.255f,.36f,.40f)},{"sword/cutB",new Shape(0,.275f,.395f,.435f,.5f)},{"sword/cutC",new Shape(0,.245f,.355f,.40f)},
+            {"daggers/cutA",new Shape(.2f,.425f,.545f,.58f)},{"daggers/cutB",new Shape(.1f,.335f,.45f,.49f)},{"daggers/cutC",new Shape(.1f,.37f,.475f,.5f)},{"daggers/cutD",new Shape(.1f,.335f,.45f,.49f)},
+            {"shield/cutA",new Shape(0,.43f,.52f,.6f)},{"shield/cutB",new Shape(0,.27f,.36f,.42f)},
+            {"greatsword/cutA",new Shape(0,.40f,.47f,.49f)},{"greatsword/cutB",new Shape(0,.43f,.54f,.555f)},
+        };
+        // A clip without a shape keeps its contact marks.
+        public static Shape For(CapturedClip c)=>Shapes.TryGetValue(c.Name,out var s)?s:new Shape(c.Marks[0],c.Marks[1],c.Marks[2],c.Marks[2]);
+        // The follow-through lasts at most this share of the recovery.
+        public const float FollowShare=.6f;
+        // The clip time `age` seconds into a swing. keep: the daggers' own captured recovery to their settled mark (their wrist
+        // limiter settles it) instead of the follow-through.
+        public static float ClipTime(CapturedClip c,float age,float windup,float active,float recovery,bool keep=false)
+        {
+            var s=For(c);active=Math.Max(.001f,active);float rate=(s.SweepEnd-s.SweepStart)/active;
+            if(age>=windup&&age<=windup+active)return s.SweepStart+(age-windup)*rate;
+            if(age>windup+active)
+            {
+                float t=age-windup-active;
+                if(keep){float h=Math.Max(.001f,recovery),end=Math.Max(s.SweepEnd,c.Marks[3]);return t>=h?end:MeleeMath.Hermite(s.SweepEnd,end,Math.Min(rate*h,3*(end-s.SweepEnd)),0,t/h);}
+                // Decelerating evenly from the window's rate to rest (a monotone Hermite: its start tangent is 2/3 of the bound).
+                float d=s.FollowEnd-s.SweepEnd;if(d<=1e-5f)return s.SweepEnd;
+                float span=Math.Min(2*d/Math.Max(rate,1e-4f),FollowShare*Math.Max(.001f,recovery));
+                return t>=span?s.FollowEnd:MeleeMath.Hermite(s.SweepEnd,s.FollowEnd,rate*span,0,t/span);
+            }
+            // The windup: the pace keys (evenly spaced over it) rescaled from [mark 0, mark 1] onto [Start, SweepStart], monotone
+            // Hermite tangents (CapturedClip.Retime) except the last, which takes the window's rate (bounded to stay monotone).
+            int n=c.Pace.Length+1;float m0=c.Marks[0],scale=(s.SweepStart-s.Start)/Math.Max(1e-4f,c.Marks[1]-m0),h2=Math.Max(1e-4f,windup)/n;
+            float V(int k)=>k<=0?s.Start:k>=n?s.SweepStart:MeleeMath.Lerp(s.Start+(c.Pace[k-1]-m0)*scale,s.Start+(s.SweepStart-s.Start)*k/n,s.Even);
+            float S(int k)=>(V(k+1)-V(k))/h2;
+            float T(int k){if(k<=0)return S(0);if(k>=n)return MeleeMath.Clamp(rate,0,3*Math.Max(0,S(n-1)));float a=S(k-1),b=S(k);return a*b<=0?0:2*a*b/(a+b);}
+            float x=Math.Max(0,age)/h2;int i=Math.Min(n-1,(int)x);
+            return MeleeMath.Hermite(V(i),V(i+1),T(i)*h2,T(i+1)*h2,Math.Min(1,x-i));
+        }
+        // The guard's weight over the recovery: easing in from the window's end (the follow-through dominates its start, so the
+        // blade turns back toward the guard without stopping) to 1 at the attack's end; a cubic, so a held swing does not idle
+        // in the long flat tail of a quintic ease before the next one starts.
+        public static float Settle(float age,float windup,float active,float recovery)=>MeleeMath.Smooth((age-windup-active)/Math.Max(.001f,recovery));
+
+        // ---- the visible blade over the hit window (the slash crescent follows it) ----
+        // The posed blade tip's bearing round the body at 17 even steps through the window (the sweep plays linearly, so this
+        // depends on the clip alone), in the native frame (radians from the facing, + toward the pilot's right).
+        public sealed class Visible
+        {
+            public const int Steps=16;
+            public readonly float[] Bearing=new float[Steps+1],Path=new float[Steps+1];
+            // +1: the blade crosses the front toward the pilot's right; -1: toward its left.
+            public float Direction;
+            // The blade's main crossing of the front half (the samples it spans), for the crescent's growth.
+            public int Enter,Leave;
+            // A bash (the shield) barely turns across the front: its crescent grows with the distance the face has travelled.
+            public bool Bash;
+        }
+        private static readonly Dictionary<CapturedClip,Visible> visible=new Dictionary<CapturedClip,Visible>();
+        public static Visible VisibleSweep(MeleeSet set,CapturedClip c)
+        {
+            if(visible.TryGetValue(c,out var v))return v;
+            v=new Visible();var r=new MeleeRig();var row=new float[CapturedClip.Channels];var s=For(c);var tips=new Vector3[2,Visible.Steps+1];float[] path=new float[2];
+            for(int j=0;j<=Visible.Steps;j++)
+            {
+                c.Sample(s.SweepStart+(s.SweepEnd-s.SweepStart)*j/Visible.Steps,row);r.Reset();
+                MeleeCapture.Apply(r,set,row,CaptureOptions.Of(1,set.Fit,MeleeClear.Turn,legs:0));
+                for(int h=0;h<(set.Dual?2:1);h++)
+                {
+                    int hand=h==0?CapturedRig.RHand:CapturedRig.LHand;tips[h,j]=r.ChainPoint(hand,-1)+Vector3.Transform(r.Reached(set.Tip),r.ChainQuat(hand,-1));
+                    if(j>0)path[h]+=Vector3.Distance(tips[h,j],tips[h,j-1]);
+                }
+            }
+            // The daggers strike with either hand: the blade that travels further over the window is the one seen to cut.
+            int lead=set.Dual&&path[1]>path[0]?1:0;
+            // The source frame's +x is the pilot's left: the native bearing is its mirror.
+            for(int j=0;j<=Visible.Steps;j++){Vector3 tip=tips[lead,j];v.Bearing[j]=-(float)Math.Atan2(tip.X,tip.Z);v.Path[j]=j==0?0:v.Path[j-1]+Vector3.Distance(tip,tips[lead,j-1]);}
+            for(int j=0;j<=Visible.Steps;j++)v.Path[j]/=Math.Max(1e-4f,v.Path[Visible.Steps]);
+            // The main crossing of the front: of the runs of samples within 100 deg of the facing, the one that turns furthest (a
+            // cut that loops behind the body first can show the blade beside it before it comes round).
+            int first=0,last=Visible.Steps;float travel=0,most=-1;
+            for(int j=0;j<=Visible.Steps;j++)
+            {
+                if(Math.Abs(v.Bearing[j])>=1.75f)continue;int k=j;float turn=0;
+                while(k<Visible.Steps&&Math.Abs(v.Bearing[k+1])<1.75f){turn+=MeleeMath.Wrap(v.Bearing[k+1]-v.Bearing[k]);k++;}
+                if(Math.Abs(turn)>most){most=Math.Abs(turn);travel=turn;first=j;last=k;}j=k;
+            }
+            v.Direction=travel>=0?1:-1;v.Enter=first;v.Leave=last;v.Bash=Math.Abs(travel)<.35f;
+            visible[c]=v;return v;
+        }
+        // The share (0..1) of a crescent spanning `span` radians round the facing that the visible blade has swept at window share
+        // `u`: the blade's bearing clamped to the arc, never moving back (a bash: the share of the face's travel).
+        public static float Swept(Visible v,float u,float span)
+        {
+            float half=Math.Max(1e-4f,span*.5f),best=0;u=MeleeMath.Clamp(u,0,1);
+            int last=(int)Math.Floor(u*Visible.Steps);float frac=u*Visible.Steps-last;
+            if(v.Bash)return last>=Visible.Steps?1:MeleeMath.Lerp(v.Path[last],v.Path[last+1],frac);
+            // Before the crossing nothing; through it the furthest bearing reached (between samples, interpolated), kept after it.
+            if(last<v.Enter)return 0;
+            for(int j=v.Enter;j<=Math.Min(last+1,v.Leave);j++)
+            {
+                float b=v.Bearing[j];if(j==last+1){float a=v.Bearing[last];b=a+MeleeMath.Wrap(b-a)*frac;}
+                best=Math.Max(best,MeleeMath.Clamp((v.Direction*b+half)/(2*half),0,1));
+            }
+            return best;
         }
     }
 }

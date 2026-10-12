@@ -383,14 +383,16 @@ namespace ChipArena.UnityConversion
                 if(attack)
                 {
                     string cut="cut"+(char)('A'+a.Combo%(set==1?4:set==0?3:2)); var c=Find(set,cut);
-                    float age=time-a.AttackAt,recovery=a.VisualDuration-a.VisualWindup-a.VisualActive;
+                    float age=time-a.AttackAt,recovery=Mathf.Max(.001f,a.VisualDuration-a.VisualWindup-a.VisualActive);
                     Save(blendP,blendQ);
-                    Sample(set,cut,c.AttackTime(age,a.VisualWindup,a.VisualActive,recovery));
+                    // The third-person rigs' swing timing (Core/MeleeSwing): the authored sweep across the hit window, then the
+                    // follow-through carrying on past it while the view model settles into the guard over the real recovery.
+                    Sample(set,cut,MeleeSwing.ClipTime(c,age,a.VisualWindup,a.VisualActive,recovery));
                     Blend(blendP,blendQ,CapturedClip.Ease(age/.04f));
                     if(age>a.VisualWindup+a.VisualActive)
                     {
-                        Sample(set,cut,c.Marks[2]); Save(blendP,blendQ); Sample(set,"idle",time);
-                        Blend(blendP,blendQ,CapturedClip.Ease((age-a.VisualWindup-a.VisualActive)/recovery)); State=cut+" recovery";
+                        Save(blendP,blendQ); Sample(set,"idle",time);
+                        Blend(blendP,blendQ,MeleeSwing.Settle(age,a.VisualWindup,a.VisualActive,recovery)); State=cut+" recovery";
                     }
                 }
                 if(sword&&time<a.BlockUntil)

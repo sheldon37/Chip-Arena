@@ -11,8 +11,9 @@ too? Please evaluate. Also, the movement for melee is a little weird on the tors
   `unity/ChipArenaConversion/Assets/ChipArena/` unless stated.
 - **Ownership** (AGENTS.md role split): each recommendation is tagged **PRESENTATION** (Claude: poses, blending, VFX
   timing) or **SIMULATION** (Astra: input, timing, turning, steps, abilities, bots, replication).
-- **Status:** the presentation items are implemented on branch `claude/melee-feel` (see
-  [Presentation work](#presentation-work-on-claudemelee-feel)). The simulation proposal below is retained as the evaluation record; implementation status is in the follow-up above.
+- **Status:** the presentation items (P1–P5, P7, P8 and the crescent sync) are implemented on branch
+  `claude/melee-feel` (see [Presentation work](#presentation-work-on-claudemelee-feel)); P6 waits for S2. The simulation
+  proposal below is retained as the evaluation record; implementation status is in the follow-up above.
 - **Evidence:** reading the code, plus an offline probe (local notes, not committed). The probe compiles `Core/`
   outside Unity, poses pilots through the real `MeleeMotion`, `MeleeGait` and `GunMotion`, and drives them with an
   authority timeline rebuilt from `NativeMeleeRules` with held LMB, as `ConversionGame` sends it. One pilot, flat floor,
@@ -84,6 +85,13 @@ The cause is mostly structural (simulation), with presentation errors on top.
 - **Slash crescent lag.** The crescent sweeps the authority arc uniformly over `HitAt..HitUntil`
   (Core/NativeWeaponFx.cs:243-249, `Frame` :277-288), but the visible blade has whipped past before `HitAt`, so the
   effect trails the body by about 50–100 ms.
+- **Hitbox sweep mirrored (found while syncing the crescent; SIMULATION).** `NativeMeleeRules.Angle`
+  (Core/NativeMeleeRules.cs:30) sweeps `Yaw + (u − 0.5)·Arc`, ported from the source where yaw grows toward the pilot's
+  *left*. In the native frame yaw grows toward the *right*, so every swing's hit test runs mirrored: cut A sweeps the
+  hitbox left→right while the captured blade (and the source's sweep) goes right→left; the `Reverse` cuts mirror the other
+  way. The contact parity check passes because it replays the source in the source frame
+  (Core/NativeMeleeChecks.cs:34). Which side of the arc is hit first changes; the arc, reach and timing do not. The slash
+  crescent showed the hitbox's direction, so it opened against the blade.
 
 ### 2. Melee can't close the gap
 
@@ -157,7 +165,8 @@ damage, cooldowns, movement, stamina or network data.
 |---|---|---|---|---|---|
 | 1 | P1 steady locomotion torso | PRESENTATION | S | No sim impact | Done on `claude/melee-feel` |
 | 2 | S1 LMB input buffer | SIMULATION | S | No timing/hitbox/damage/cooldown change; one edge bit on the wire. Biggest "multiple swings" fix | Proposed |
-| 3 | P2–P8 swing retime, follow-through, real recovery length, turn blend, cut B pop, dagger windups, crescent sync | PRESENTATION | M | No sim impact | On `claude/melee-feel` |
+| 3 | P2–P8 swing retime, follow-through, real recovery length, turn blend, cut B pop, dagger windups, crescent sync | PRESENTATION | M | No sim impact | Done on `claude/melee-feel` |
+| 3b | S0 un-mirror the hitbox sweep (`NativeMeleeRules.Angle` in the native frame) | SIMULATION | XS | Which side of the arc is hit first; arc, reach and timing unchanged. Needs the contact parity check converted to the native frame | Proposed |
 | 4 | G1 melee Q/E kit (docs/MELEE-ABILITIES.md) | SIMULATION; animation, VFX, HUD PRESENTATION | L | New abilities, damage, cooldowns, replication | Not started |
 | 5 | S2 chain points | SIMULATION | M | Chained DPS +20–25 %; stun escape window ~0.40→0.26 s | Proposed |
 | 6 | S3 windup turning | SIMULATION | S–M | Hitbox yaw can change before the active window only | Proposed |
@@ -175,6 +184,11 @@ damage, cooldowns, movement, stamina or network data.
 
 In this order for fluidity (S1–S5), then gap closing. Numbers at attackRate 1; scale by `1/attackRate` like the
 existing timings.
+
+- **S0. Un-mirror the hitbox sweep.** In the native frame the sweep should run `Yaw − (u − 0.5)·Arc` (and `+` for the
+  `Reverse` cuts), so the hit order matches the captured blades and the source. Keep `NativeMeleeChecks` replaying the
+  source by converting its fixture (negate yaw and delta x) rather than the formula. The slash crescent already follows
+  the visible blade, so it and the hitbox then agree; no presentation change is needed.
 
 - **S1. LMB input buffer.**
   - Send the press edge: `pending.Attack |= Input.GetMouseButtonDown(0)`; check that the native input codec carries
@@ -245,6 +259,8 @@ existing timings.
   start a new `AttackAt` and increment `Combo` as today; presentation blends into it from the current pose.
 - **Commit yaw:** `CommitYaw` is the swing yaw. Once S3 lands, update it every tick during the windup and freeze it at
   `HitAt`; presentation eases a changed commit yaw over 0.1 s (P5), so per-tick updates are smooth.
+- **Hit window:** `SwingAt/SwingUntil` must stay the authority's `HitAt/HitUntil`: the captured sweep, the slash crescent
+  and the hit-stop are all placed in it. The crescent reads `Combo + 1` to pick the cut the pilot plays.
 - **Step fields:** `StepAt/StepUntil/StepDistance`, computed by the host at swing start (with magnetism up to 2.4 m).
   The footwork plants against them.
 - **Attack kind:** add a replicated flag (or kind) for the **sprint attack** and the **opener lunge**, so presentation
@@ -281,9 +297,51 @@ The largest frame-to-frame step of the chest's turn rate through speed ramps, tu
 from 410–556°/s to 138–152°/s; running into and out of a swing from 306–447°/s to 77–237°/s. The greatsword run keeps
 more roll (7.6°) than the sword: its captured run carries the blade across the body with a large authored roll.
 
-### P2–P8. Swing presentation
+### P2–P8. Swing presentation (done)
 
-See the second commit on the branch and its DEV_LOG entry.
+`Core/MeleeMotion.cs` on the branch: the static `MeleeSwing` (shared by the third-person rigs, the first-person view model
+in `Runtime/CapturedAnimation.cs` and the crescent), `MeleeMotion.Cut`, `RecoverySeconds`, `PresentedYaw`, `HitStop` and
+`FinishPose`; `MeleeCapture.FollowThrough`; `NativeSlashFx.Frame` in `Core/NativeWeaponFx.cs`.
+
+- **P2 retime.** Each cut names its authored sweep (clip seconds, from the authored blade-tip speed) and plays it
+  linearly across the hit window at 0.4–0.75× its authored speed; the windup plays the cut's pace keys rescaled up to the
+  sweep, ending at the window's clip rate. Sword cut B's crowded pace keys are eased halfway to even steps.
+- **P3 follow-through.** After the window the clip carries on at the window's rate and decelerates evenly to rest at
+  the cut's follow-through end, while the live pose blends toward the fitted guard (cubic, over the recovery); the wrists
+  still interpolate in chest space. The daggers keep their captured recovery and wrist limiter.
+- **P4 real recovery.** While the commitment is replicated, the recovery runs to `CommitUntil` (the authority's
+  `AttackEnd`), not `Recovery(spec)`; the footwork, pose transitions and guard hold use the same end.
+- **P5 turn blend.** A swing that starts away from the shown facing, or whose commit yaw changes, eases in over 0.1 s
+  (cubic ease-out); the strike window keeps the authority's yaw.
+- **P7 daggers.** The cuts start after their authored wind-back (the entry blend from the guard stands in for it):
+  windup compression ×4.7–5.7 → ×2.5–3.0.
+- **P8 / hit-stop.** The greatsword cut B pop came from the hit-stop's 0.09 s catch-up racing the clip. The lost time is
+  now caught up at most 1.3×, over the follow-through if needed.
+- **Transitions.** Pose transitions into, out of and between the captured swings carry the last frame's joint velocity
+  (as the reactions already did), so no swing starts or ends on a held frame.
+- **Crescent sync.** The head follows the posed blade of the cut being played: it grows as the blade crosses the arc,
+  in the blade's direction, and holds where the blade left it while fading. The shield's bash grows with the face's travel.
+  This is opposite to today's mirrored hitbox order until S0.
+- **P6 chain entry** waits for S2. The held chain already meets the next swing at the guard (at most 2–3 frames below
+  1 m/s; before, 7). Skipping the entry blend on a held chain was tried and rejected: it made the next windup start with
+  a jolt.
+
+Held-LMB chains, 60 Hz, mean blade-tip speed in the hit window (whiffs), before → after:
+
+| | Sword A / B / C | Daggers A / B / C / D | Shield A / B | Greatsword A / B |
+|---|---|---|---|---|
+| Mean in the window | 18.7 / 18.4 / 28.4 → **53.2 / 51.8 / 61.3** | 9.6 / 7.7 / 10.0 / 27.7 → **24.8 / 24.2 / 14.9 / 24.1** | 5.6 / 4.6 → 8.7 / 10.5 | 18.8 / 31.1 → **37.4 / 63.4** |
+| Fastest frame | windup (100–134 m/s) → **in the window** (94–117) | windup → windup for A–C (the 90 ms windup repositions both blades: 37–73 m/s, was 73–88) | windup → in the window | windup (cut B) → in the window |
+| Leaving the window | 0.07–0.4 m/s (dead stop) → **12–29 m/s** | 5–47 → 5–47 | 3–5 → 3–5 | 4 / 55 → 17 / 26 (cut A/B, then the chop meets the floor) |
+| Frames below 1 m/s at the next held swing | 4 → 0 | 1 → 0 | 7 → 2–3 | 7 → 2 |
+
+- With hits landing mid-window (the presentation hit-stop holds 0.03–0.075 s), the sword still averages 43–45 m/s in
+  the window. The greatsword's worst frame fell from 118 m/s, a ×2.6 pop at recovery start, to 94 m/s with no pop
+  (×1.3).
+- The worst one-frame spike over all chains is ×1.8 (sword cut B's windup). A 40° camera turn before a held swing used
+  to snap the facing in one frame (a 66 m/s tip pop); the facing now steps at most 17° per frame.
+- While the blade crosses the arc, the crescent head stays within 5° of it. Before, it ran the opposite way at a uniform
+  rate.
 
 ## Tests and parity
 
@@ -292,9 +350,17 @@ See the second commit on the branch and its DEV_LOG entry.
   deviations are listed in its `Deviations` table and compared with the Unity-owned `Tests/melee-motion-pinned.json`
   (regenerate with `CHIP_PIN_MELEE=1` after an intended change). A listed scenario must still deviate, and a torso-only
   deviation keeps its lower body (body, pelvis, legs, feet) on the original within 5 mm.
-- `Tests/MeleeFeelChecks.cs` pins the new behaviour: torso amplitude bounds for every melee weapon at a walk, run,
-  sprint, strafe, backpedal and lock-on circle; the lifted run hunch; and continuity through speed ramps and runs into
-  and out of a swing.
+- The swing changes move every attacking frame, so the combo, run-attack-block (torso and swing), Echo Strike/Hurricane,
+  fast-rate and reach-variant scenarios are pinned too. Only the five hit-reaction scenarios stay on the original.
+- `Tests/MeleeFeelChecks.cs` pins the new behaviour:
+  - torso amplitude bounds for every melee weapon at a walk, run, sprint, strafe, backpedal and lock-on circle, and the
+    lifted run hunch;
+  - continuity through speed ramps and runs into and out of a swing;
+  - the shared swing timing: continuous, monotone, the sweep across the window, leaving it at the window's rate;
+  - held chains, whiffs and hits: tip speed inside the window (sword ≥ 40, greatsword ≥ 30 m/s), the peak inside it, no
+    one-frame pop, no dead stop leaving it, no idle at the guard;
+  - the 40° turn case, and the crescent head on the posed blade.
+- `Tests/WeaponFxChecks.cs` checks the crescent against the visible blade instead of `NativeMeleeRules.Angle`.
 
 ## Verification limits
 
