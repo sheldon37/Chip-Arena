@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     // Angles here are native radians (+x/right); source fixtures reflect x and yaw. Input/camera yaw remains degrees.
     public sealed class NativeMeleeSwing
     {
-        public string Spec;public int Index,Id,Remaining;public bool Followup,SprintAttack,OpenerLunge;public float ChainAt;
+        public string Spec;public int Index,Id,Remaining;public bool Followup,SprintAttack,OpenerLunge,Air;public float PlungeAt,ImpactAt=-1;public float ChainAt;
         // Prediction never resolves contacts; copy before mutating a replay state.
         public NativeMeleeSwing PredictionCopy()=>(NativeMeleeSwing)MemberwiseClone();public float DamageScale=1;public float At,HitAt,HitUntil,Until,Yaw,StepAt,StepUntil,Distance,Range,Arc;
         private readonly HashSet<string> hit=new HashSet<string>();
@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
                 Until=at+Math.Max((float)w.interval/rate,windup+active+Recovery(w.id)/rate),StepAt=at+windup*.55f,StepUntil=at+windup+active*.8f,
                 Distance=w.id=="daggers"?.85f:w.id=="sword"?.65f:w.id=="shield"?.55f:.45f,Range=(float)(w.range*stats["reach"]),Arc=(float)((w.id=="sword"&&index%3==0?.8:w.arc)*stats["meleeArc"])};
         }
-        public static bool Reverse(NativeMeleeSwing s)=>(s.Spec=="daggers"||s.Spec=="greatsword")&&s.Index%2==0||s.Spec=="sword"&&s.Index%3==2;
+        public static bool Reverse(NativeMeleeSwing s)=>s.Spec=="shield"||s.Spec=="daggers"&&(s.Index%2==0||s.Index%4==3)||s.Spec=="greatsword"&&s.Index%2==0||s.Spec=="sword"&&s.Index%3==2;
         public static float Angle(NativeMeleeSwing s,float time)
         {
             float phase=MathUtil.Clamp((time-s.HitAt)/(s.HitUntil-s.HitAt),0,1);bool reverse=Reverse(s);
@@ -38,6 +38,7 @@ namespace ChipArena.UnityConversion
         }
         public static bool Contact(NativeMeleeSwing s,float time,V3 delta,float extra)
         {
+            if(s.Air)return NativeAirAttackSimulation.Contact(s,time,delta,extra);
             if(time<s.HitAt||time>s.HitUntil)return false;
             float distance=delta.Length;if(Math.Abs(delta.y)>1.6f+extra||distance>s.Range+extra)return false;
             float angle=Angle(s,time);var direction=new V3((float)Math.Sin(angle),0,(float)Math.Cos(angle));

@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
                     p.Seat.bot=false;p.Seat.alive=true;p.Hp=p.Stamina=p.Mana=100;p.Collider.enabled=true;p.Body.isKinematic=false;
                     p.Ready=p.AttackEnd=p.BlockEnd=p.BlockReady=p.RollEnd=p.RollReady=p.StunEnd=p.StaggerImmune=p.ReloadEnd=0;p.CastAt=0;p.RegenAt=Time+10;
                     p.MeleeKit=new NativeMeleeKit();p.MeleeBufferedUntil=-1;p.MeleeComboUntil=0;p.Pose.Sprinting=false;p.ArmourHitUntil=0;p.Swing=null;p.Special=null;p.Down=null;p.Roll=null;p.Combo=-1;p.RiposteAt=p.BlockAt=-100;p.RiposteBy=-1;p.Dots.Clear();CancelAbilities(p);
-                    p.Grounded=true;p.Input=new InputFrame{Yaw=p==a?0:180};p.Yaw=p.Input.Yaw;
+                    p.AirborneAt=-1;p.AirAttackUsed=false;p.Grounded=true;p.Input=new InputFrame{Yaw=p==a?0:180};p.Yaw=p.Input.Yaw;
                     Position(p,new Vector3(1000,100,p==a?1000:1002));
                 }
             }
@@ -39,6 +39,24 @@ namespace ChipArena.UnityConversion
                     Position(b,new Vector3(1000,100,1002));Advance((a.Swing.HitAt+a.Swing.HitUntil)/2-Time);StepMelee(a);
                     NearNative(b.Hp,100-(float)a.Weapon.damage,"late entry into sweep "+spec);float hp=b.Hp;Advance(.001f);StepMelee(a);Check(b.Hp==hp,"duplicate primary contact");
                 }
+                // Landing attacks use the real hit, block and roll handlers; airtime never resolves damage.
+                foreach(string spec in new[]{"daggers","sword","shield","greatsword"})
+                {
+                    foreach(string defense in new[]{"none","block","roll","wall"})
+                    {
+                        Setup(spec);a.Grounded=false;a.AirborneAt=Time-.2f;a.Input.Attack=true;
+                        Check(TryMelee(a)&&a.Swing.Air&&a.AirAttackUsed,"air commitment "+spec);
+                        NearNative(a.Stamina,100-NativeMeleeFeel.Cost(a.Weapon,a.Stats)*1.25f,"air stamina");
+                        Advance(.2f);StepMelee(a);Check(b.Hp==100,"airborne damage");
+                        if(defense=="block")Check(TryBlock(b),"landing defender block");
+                        if(defense=="roll"){b.Roll=NativeContentRules.Roll(Content,b.Seat.spec,b.Stats);b.RollAt=Time-.1f;b.RollEnd=Time+.3f;}
+                        if(defense=="wall"){wall.SetActive(true);Physics.SyncTransforms();}
+                        a.Grounded=true;StepMelee(a);
+                        if(defense=="none"){NearNative(b.Hp,100-(float)a.Weapon.damage*(spec=="greatsword"?1.5f:1.3f),"landing damage");Check(b.StunEnd>Time,"landing stagger");Check(Events.Exists(e=>e.Kind==EventKind.Hit&&e.Source==a.Seat.id&&e.Target==b.Seat.id&&e.Time==Time&&e.Normal.Length>.9f),"pilot hit carries its actual direction");float hp=b.Hp;StepMelee(a);Check(b.Hp==hp,"duplicate landing hit");NearNative(a.Ready-Time,NativeAirAttackSimulation.Recovery(spec),"landing recovery");}
+                        else Check(b.Hp==100,"landing defense "+defense);
+                    }
+                }
+                Debug.Log("PASS native landing attacks: four weapons, no air damage, cost, landing damage/stagger/recovery, dedup, block/roll/cover");
                 // Sprint contacts use the real damage/defense route; do not replace these with profile-only checks.
                 foreach(string spec in new[]{"sword","daggers","shield","greatsword"})
                 {

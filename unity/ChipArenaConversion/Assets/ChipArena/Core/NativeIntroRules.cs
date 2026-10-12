@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
             var access=seat.access??NativeAccess.Guest;double now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();if(seat.spec=="siren"&&(seat.AuthorityBoss||access.Allows("weapon:siren",now)))return "dev-siren";
             // A chosen entrance plays only while it is one this client stages; a retired or unknown pick (an older client's
             // neon-drop, vector-slide, ...) falls through to the pilot's weapon signature instead of a fallback stage.
-            if(seat.overrideIntro&&Pickable(seat.intro)&&(!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return seat.intro;
+            if(seat.overrideIntro&&Pickable(seat.intro)&&(seat.intro=="sheldon-intro"?access.Developer&&access.Expires>now:!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return seat.intro;
             if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";return Signature(seat.spec);
         }
         public static double Duration(string style)=>style=="dev-siren"?9.0678:style=="dev-emperor"?7.8:style=="dev-matrix"?8:style=="dev-ansatsuken"?7.2:4.8;
@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The intro preference held when nothing is picked (overrideIntro false), and the entrance of a pilot whose
         /// weapon has no signature (an ungranted DEV weapon, an unknown spec).</summary>
         public const string Default="hero-landing";
-        public static bool Pickable(string style)=>style!=null&&Array.IndexOf(Entrances,style)>=0;
+        public static bool Pickable(string style)=>style!=null&&(style=="sheldon-intro"||Array.IndexOf(Entrances,style)>=0);
         /// <summary>The weapon signature of `spec` ("weapon-"+spec), or Default for a weapon without one.</summary>
         public static string Signature(string spec){string s="weapon-"+spec;return Array.IndexOf(Entrances,s)>=0?s:Default;}
         /// <summary>A style this client stages; anything else (retired, unknown, null) becomes Default.</summary>
