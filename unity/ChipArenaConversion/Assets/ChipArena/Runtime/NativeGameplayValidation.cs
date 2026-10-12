@@ -60,7 +60,10 @@ namespace ChipArena.UnityConversion
                     Check(a.Cyber.Kind==ability.id&&a.Cyber.At==at&&a.AbilityCast==null,"Cyber Lord input dispatch "+ability.id);
                     Check(Math.Abs(a.Mana-expectedMana)<.001f&&a.ECharges==0,"Cyber Lord commitment cost/no E charges "+ability.id);
                     Check(Math.Abs(Ready()-(at+ability.cooldown*a.Stats["abilityCooldown"]))<.001f,"Cyber Lord cooldown "+ability.id);
-                    Check(Math.Abs(a.Cyber.Release-(at+ability.windup))<.001f,"Cyber Lord release clock "+ability.id);
+                    // These casts use the Cyber Lord clock contract, not generic ContentAbility windup metadata.
+                    int slot=CyberLordSpec.Slot(ability.id);
+                    Check(Math.Abs(a.Cyber.Release-(at+CyberLordSpec.CastWindup[slot]))<.001f,"Cyber Lord release clock "+ability.id);
+                    Check(Math.Abs(a.Cyber.Until-(at+CyberLordSpec.CastSeconds[slot]))<.001f,"Cyber Lord recovery clock "+ability.id);
                     if(ability.slot=="q")Check(a.QReady==Ready()&&a.Cyber.DashUntil>at,"Data Dash state and HUD cooldown");
                     if(ability.slot=="e")Check(a.EReady==Ready()&&a.Cyber.WallUntil==at+4,"Firewall state and HUD cooldown");
                     if(ability.slot=="2")Check(a.Cyber.LinkTarget==b.Seat.id&&a.Cyber.LinkUntil==at+2.5f,"Siphon Link target and duration");
