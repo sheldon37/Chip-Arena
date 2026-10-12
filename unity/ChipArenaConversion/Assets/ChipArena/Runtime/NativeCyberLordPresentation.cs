@@ -140,8 +140,8 @@ namespace ChipArena.UnityConversion
             }
         }
 
-        // The idle stance's RGB-split shimmer (Core/CyberLordIdlePose.Glitch): a magenta and a cyan ghost of the posed rig, a few
-        // centimetres apart across it, for the glitch's steps; never on the local pilot's own body in first person.
+        // The idle stance's RGB-split shimmer (Core/CyberLordIdlePose.Glitch): a magenta and a cyan ghost of the posed rig (in its
+        // body skin), a few centimetres apart across it, for the glitch's steps; never on the local pilot's own body in first person.
         private void CyberIdleGhosts(Snapshot s,string pilot)
         {
             int used=0;var magenta=NativeCyberLordFx.Lin(NativeCyberLordFx.Magenta);var cyan=NativeCyberLordFx.Lin(NativeCyberLordFx.Cyan);
@@ -149,12 +149,12 @@ namespace ChipArena.UnityConversion
             {
                 if(!CyberLordFeed.Handles(a)||FirstPerson&&a.Id==LocalId||used+2>cyberIdleGhosts.Length)continue;
                 if(!rigs.TryGetValue(a.Id,out var rig)||rig?.Bones==null||rig.CyberMotion==null)continue;var g=rig.CyberMotion.IdleGlitch;if(!(g.Split>1e-3f))continue;
-                var across=rig.Root.transform.right*(g.SplitOffset*.5f);
+                var across=rig.Root.transform.right*(g.SplitOffset*.5f);string shell=Ghost(BodyModel(BodySkin(a.Id),BodyTier(rig.Root.transform.position,false)))??pilot;
                 for(int k=0;k<2;k++)
                 {
                     var gp=cyberIdleGhosts[used++];var off=Matrix4x4.Translate(k==0?across:-across);var c=k==0?magenta:cyan;
                     gp.Root=off*rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)gp.Bones[b]=off*rig.Bones[b].localToWorldMatrix;
-                    sourceModels.Queue(pilot,gp.Root,gp.Bone,null,0,null,new Color(c.X,c.Y,c.Z,0),null,g.Split*CyberIdleGhostOpacity);
+                    sourceModels.Queue(shell,gp.Root,gp.Bone,null,0,null,new Color(c.X,c.Y,c.Z,0),null,g.Split*CyberIdleGhostOpacity);
                 }
             }
         }

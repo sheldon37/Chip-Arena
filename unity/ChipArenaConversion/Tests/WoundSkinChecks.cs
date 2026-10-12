@@ -147,9 +147,11 @@ namespace ChipArena.UnityConversion
                 ("NativeSirenDropPresentation.cs","sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering,victimBody)","the Siren's crush drop"),
                 ("NativeInteractionPresentation.cs","sourceModels.WoundedPilot(r.Id,r.Death.actor?.Wounds,r.Death.actor?.BodyColor,ForceCompatibilityRendering,healed)","the revive scan's wounded body (healed is the pilot's skin model)"),
                 ("NativeCyberLordPresentation.cs","sourceModels.Queue(Ghost(BodyModel(BodySkin(g.Actor),BodyTier(rig.Root.transform.position,false)))??pilot,","the Cyber Lord's glitch and fork-bomb ghosts"),
+                ("NativeCyberLordPresentation.cs","string shell=Ghost(BodyModel(BodySkin(a.Id),BodyTier(rig.Root.transform.position,false)))??pilot;","the Cyber Lord idle stance's split shimmer"),
                 ("NativeKillEffectPresentation.cs","RigCount=NativeBodyModels.Gibs(bodySkin,RigBoxes,RigCount);","the coat panels among the gibs"),
             };
             foreach(var w in callers)Check(R(w.file).Contains(w.text),w.what+" ("+w.file+")");
+            Check(Regex.Matches(R("NativeCyberLordPresentation.cs"),@"sourceModels\.Queue\(pilot,").Count==0,"no Cyber Lord ghost draws the Prototype over a body skin");
             int calls=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs").Sum(f=>Regex.Matches(File.ReadAllText(f),@"\.WoundedPilot\(").Count);
             Check(calls==5,"every WoundedPilot caller is listed and passes its body ("+calls+")");
             Check(R("NativeInteractionPresentation.cs").Contains("string healed=BodyAt(r.Id,"),"the revive's fifth argument is the body skin model at the body's distance");

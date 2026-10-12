@@ -1,5 +1,39 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — wounds keep the body skin (a headshot no longer turns the head into the Prototype)
+- Branch `claude/wound-skins`, base shared `aead19c`, shared `c8b714a` merged. Not pushed, merged or released.
+- Owner report from Windows: "Getting shot in head reverts model back to prototype?". Cause: `NativeSourceModels.WoundedPilot` built a body skin's wounded model as the skin's parts with each wounded part replaced, by name, by the Prototype's carved boxes.
+- Approach: the skin's own mesh is carved (`Core/NativeWoundSkin.cs`); no overlay was needed.
+  - `NativeWoundCarve.Carve` takes an optional recorder (`WoundCarveCells`). It lists each carve's grid, removed cells and laid cells, and changes nothing the carve returns.
+  - Each column of the grid finds the skin's surface along the face axis on that joint. The column's own surface layer drops to it.
+  - The skin's triangles in the hole and rim are clipped away. The cells are drawn in the skin's colours: a broken rim (its own paint darkened, bare edges, blood, some pieces standing up), then the undersuit or coat lining (Standard: accent conduits here and there), then the Prototype's flesh.
+  - Cuts are closed: floors, 3 mm skirts on sides the body leaves open, hollows lined after an earlier wound. A shot through a thin plate runs on into the part behind.
+  - Per-skin look: `NativeBodyModels.WoundLook`.
+- Prototype unchanged:
+  - The anchors move verbatim to Core (`NativeWoundAnchors`).
+  - The anchors and carved boxes of 22 replicated wound lists are pinned to the aead19c digest `8d0ed1aeb3e99540bdb2b0e7`, which the old code computed.
+  - `CarveMesh` is byte-identical (text digest), and the composition by name is the same. Its meshes are now built only when the Prototype is drawn.
+- Runtime (`NativeWoundGeometry.cs`): the skin cuts are cached per pilot, body tier and joint, keyed by that joint's wounds, so a new wound recuts only its joints. Every body tier keeps its Core mesh from load (`NativeBodySkinModels`). A skin without its mesh draws unwounded, never with Prototype parts.
+- Fallback audit:
+  - The five `WoundedPilot` callers (live, first-person, intro and killcam rigs; corpses including collapse and crush; death scenes; the Siren drop; the revive, whose fifth argument `healed` is the skin model) already pass the skin. They were wrong only through the composition. Fixed.
+  - Voxel bursts, crush debris and stump caps used the Prototype's colours. They now take the skin's own main paint (`NativeBodyModels.GibColor`). The box shapes stay, as the effect is voxel by design.
+  - The Cyber Lord glitch, fork-bomb and idle-shimmer ghosts drew the Prototype silhouette. They now use the skin's ghost.
+  - Left as they are: the collapse uses `WoundParts` only as physics proxies (every skin sits within them); the revive scan boxes use the Prototype's part bounds (pinned by BodySkinChecks); vent falls draw the skin unwounded for every body; the other ghosts and afterimages already wear the skin; `WoundMark` blood sprays start on the exported face (up to 3 cm off a skin's surface).
+- Checks on the merge:
+  - Unity runtime+editor build OK.
+  - New managed `WoundSkinChecks` (8240 checks): the Prototype pin; every case on both skins at all 3 tiers; deterministic; cut parts are the skin's own; no see-through along the 2832 cut columns; insides at the surface; the look; kill colours; wiring, including a text check that a skin's wounded model never reads Prototype parts.
+  - Offline renders, before and after (scratch).
+  - `check_relay.py` exit 0 (574 PASS), also in a copy holding only the Unity folder (574 PASS).
+  - Python unittest 95 OK (1 skipped); `package_source.py` OK, Builds removed; `git diff --check` clean.
+- Not run: Unity Editor, Windows play.
+- Risks:
+  - CPU per new wound: managed .NET, Full tier, about 1 to 8 ms per joint, 20 ms for eight wounds at once; the Prototype carve is about 10 ms.
+  - About 1.1k to 12k inside triangles per wounded pilot (comparable to the Prototype carve).
+  - A wound breaking through a box corner shows on its anchored face only.
+  - Rare 1 px T-junction sparkles.
+  - Pre-existing: a reviving pilot's live rig and its corpse alternate wound lists for up to 1.1 s and recarve each frame; this is now about twice as costly on skins.
+- No hit timing, hitbox, damage, cooldown, movement or network change.
+
 ## 2026-10-12 — Astra — easier Kernel Panic capture and shorter cooldown
 - Task `codex/unity-kernel-panic-reach-20261012`, base shared `b9b354f7`. Owner requested Cyber Lord 4 be easier to hit, have much bigger reach, and lower cooldown.
 - Opener travel 6 -> 12 m; capture capsule radius .6 -> 1.2 m; cooldown 30 -> 20 s (existing half-refund makes a whiff deadline cast+10 s). Mana, damage, windup, cut-in and combo timings are unchanged. Bot activation uses the same range constant. The wider sweep now checks target visibility, preventing sideways capture through cover. Content description/range/radius/cooldown and NEW-KITS/CYBER-LORD handoffs agree; existing presentation reads the shared constants and replicated clocks, with no visual edits.
