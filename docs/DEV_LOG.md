@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — Bow build-gate dispatch correction
+- Branch `codex/bow-build-gate-fix-20261012`, base shared/cloud `bb3c8f6`. Owner's Windows run passes Kernel Panic and progresses beyond ArenaPresentation construction, then fails `ability did not release volley`.
+- Cause: the all-live-abilities fixture invokes generic PressAbility for Bow, leaving AbilityCast pending because StepAbilities routes Bow to its dedicated input handler. Gameplay already uses the latter path. Route Bow fixtures through actual Q/E input and StepAbilities instead of generic windup/release assumptions.
+- New native checks cover five Volley arrows, Rain's .6-second telegraph/first arrow and twelve-arrow catch-up without duplicates, 8/12-second cooldowns, nock recovery, repeated-input cooldown rejection and no mana/ammo/E-charge spending even with empty pools. Setup clears prior Bow draw/rain state. Other generic handlers retain all checks; gameplay code is unchanged.
+- Checks: Bow content/fixture routing contract verified (live ids/slots/cooldowns/costs), `git diff --check` passed. Prior base's 35 managed-core groups passed in the immediately preceding repair; not rerun for this Editor-only fixture change because that suite does not compile or exercise it. Unity Editor/PhysX/Windows execution remains pending through the owner’s next Build-and-Publish run.
+- Publication: continuing approved build repair/merge; PR/shared/cloud receipts in GitHub. No compiled package published here.
+
 ## 2026-10-12 — Astra — ArenaPresentation constructor build blocker
 - Branch `codex/arena-constructor-fix-20261012`, base shared/cloud `27e6e8f`. Owner's Windows log confirms Kernel Panic authority now passes, then host/guest interaction setup logs Unity `CreateImpl` constructor errors and null `cyberViews` in CyberPoseTime.
 - `NativeCyberCityPresentation.metroOne` allocated a native MaterialPropertyBlock in an ArenaPresentation instance field initializer, even on non-Cyber-City maps. Unity rejects that construction and later partial-class initializers do not finish. Defer that allocation to the actual compatibility draw path and reuse it thereafter. No null-guard masking, visual redesign, simulation, timing, hitbox or network changes. Claude's MetroBatch allocations remain inside render-time setup, not component construction.
