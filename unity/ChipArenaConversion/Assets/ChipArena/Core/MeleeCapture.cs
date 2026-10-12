@@ -114,8 +114,11 @@ namespace ChipArena.UnityConversion
                 r.SetQ(wrist,MeleeMath.Inverse(r.ChainQuat(MeleeRig.Parent(wrist),-1))*(MeleeMath.AxisAngle(ga,lift)*wq));
             }
         }
-        // Recovery between the already fitted contact and guard poses (applyMocapRecovery). The wrists interpolate in chest
-        // space, then convert through the blended arm chain, so a reverse-grip blade never swings through the floor.
+        // Recovery from the live cut pose to the fitted guard (applyMocapRecovery, Unity-owned follow-through since 2026-10-12,
+        // docs/MELEE-FEEL.md): the source slerped from the fitted contact pose, so the blade stopped dead as the hit window ended;
+        // here the clip keeps playing past its sweep (MeleeSwing.ClipTime) and that live pose settles toward the guard by `k`. The
+        // wrists interpolate in chest space, then convert through the blended arm chain, so a reverse-grip blade never swings
+        // through the floor. The guard end is fitted once per attack, on a copy of the rig that is then restored.
         private static readonly int[] RecoveryBones={CapturedRig.Pelvis,CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LClav,CapturedRig.RClav,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow,CapturedRig.LHand,CapturedRig.RHand};
         public sealed class RecoveryCache{public bool Has;public string Spec;public float Attack,Rate,Reach;public int Index;public readonly Quaternion[] From=new Quaternion[13],To=new Quaternion[13];public float FromY,ToY;public readonly Quaternion[] FromWrist=new Quaternion[2],ToWrist=new Quaternion[2];}
         private static void Capture(MeleeRig r,Quaternion[] q,Quaternion[] wrists,out float y)
@@ -123,15 +126,19 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<RecoveryBones.Length;i++)q[i]=r.Q[RecoveryBones[i]];y=r.P[CapturedRig.Body].Y;
             wrists[0]=r.ChainQuat(CapturedRig.RHand,CapturedRig.Chest);wrists[1]=r.ChainQuat(CapturedRig.LHand,CapturedRig.Chest);
         }
-        public static void Recovery(MeleeRig r,MeleeSet set,float[] contact,float[] guard,float k,float attack,int index,float rate,RecoveryCache cache,Vector3[] kept)
+        private static readonly Vector3[] keptScratch=new Vector3[2];
+        public static void FollowThrough(MeleeRig r,MeleeSet set,float[] cut,float[] guard,float k,float attack,int index,float rate,RecoveryCache cache,Vector3[] kept,MeleeRig scratch)
         {
             // Keyed by the attack (the source's id:spec:lastAttack:attackIndex:reach:rate string; the id is the cache's owner).
             if(!(cache.Has&&cache.Spec==set.Spec&&cache.Attack==attack&&cache.Index==index&&cache.Rate==rate&&cache.Reach==r.WeaponReach))
             {
-                ApplyCleared(r,set,contact,MeleeClear.Turn);KeepBladesOffFloor(r,set,kept);Capture(r,cache.From,cache.FromWrist,out cache.FromY);
-                ApplyCleared(r,set,guard,MeleeClear.Full);KeepBladesOffFloor(r,set,kept);Capture(r,cache.To,cache.ToWrist,out cache.ToY);cache.Has=true;cache.Spec=set.Spec;cache.Attack=attack;cache.Index=index;cache.Rate=rate;cache.Reach=r.WeaponReach;
+                scratch.Copy(r);Array.Copy(kept,keptScratch,2);
+                ApplyCleared(r,set,guard,MeleeClear.Full);KeepBladesOffFloor(r,set,kept);Capture(r,cache.To,cache.ToWrist,out cache.ToY);
+                r.Copy(scratch);Array.Copy(keptScratch,kept,2);cache.Has=true;cache.Spec=set.Spec;cache.Attack=attack;cache.Index=index;cache.Rate=rate;cache.Reach=r.WeaponReach;
             }
-            r.MocapPosed=true;
+            // The live pose clears as the cut did through its window, so the follow-through starts exactly where the window ended.
+            Apply(r,set,cut,CaptureOptions.Of(1,set.Fit,MeleeClear.Turn,legs:0));KeepBladesOffFloor(r,set,kept);Capture(r,cache.From,cache.FromWrist,out cache.FromY);
+            r.MocapPosed=true;if(k<=0){if(!set.Fit.OneHand)r.SupportHand(1);return;}
             for(int i=0;i<RecoveryBones.Length;i++)r.SetQ(RecoveryBones[i],MeleeMath.Slerp(cache.From[i],cache.To[i],k));
             Vector3 b=r.P[CapturedRig.Body];b.Y=cache.FromY+(cache.ToY-cache.FromY)*k;r.P[CapturedRig.Body]=b;
             for(int i=0;i<2;i++){int h=i==0?CapturedRig.RHand:CapturedRig.LHand;Quaternion w=MeleeMath.Slerp(cache.FromWrist[i],cache.ToWrist[i],k);r.SetQ(h,MeleeMath.Inverse(r.ChainQuat(MeleeRig.Parent(h),CapturedRig.Chest))*w);}
