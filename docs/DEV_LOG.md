@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — stage death-frame fixture presence
+- Branch `codex/unity-hazard-death-fixture-20261012`, shared base `eb1562e7`. Owner's build (7) proceeds past Cyber Lord and Brickfall, then throws at NativeStageHazardValidation line 36. The fixture assigns death after cloning a live frame but leaves hasDeath=false. Valid calls RestorePresence, correctly removes the absent-marked death, and the fixture later dereferences null. This also made the preceding acceptance assertions vacuous.
+- Round-trip every injected hazard death with NativeFrameCodec.Clone, which captures presence exactly as the wire sender does. Assert absent death remains absent; each maglev/grid/hazard record remains present with its exact kind after validation; an unknown kind reaches validation intact and is rejected. No production codec, damage, networking policy or presentation changes.
+- Actual checks: source validation passes (1,650 files), git diff --check passes; inspected other validation death assignments for this pattern. Unity JsonUtility/native execution remains unavailable here, so the new regression assertions require the owner's next Build-and-Publish. No compiled release or Windows gameplay claim. Source publication receipt is in the task PR.
+
 ## 2026-10-12 — Astra — correct Cyber Lord clock expectations
 - Branch `codex/unity-cyberlord-clock-gate-20261012`, shared base `4161cd9e`. Owner's next native run passes Data Dash and Firewall dispatch checks but fails Packet Burst's release clock. The new test incorrectly read generic ContentAbility.windup (0 for Packet Burst); its actual native/predicted/presentation contract is .08 seconds, with .25 seconds total commitment.
 - Read CyberLordSpec.CastWindup/CastSeconds for the native timing assertions, including a recovery-clock assertion. No cast, damage, visual or resource behavior changes. Reviewed all five regular casts against StepCyberInput: Data Dash 0/.2, Firewall 0/.2, Packet Burst .08/.25, Siphon Link 0/.2, System Crash .5/.8 seconds (windup/total). Kernel Panic remains in its dedicated gate.
