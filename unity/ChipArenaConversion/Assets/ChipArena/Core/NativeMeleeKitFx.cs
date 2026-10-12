@@ -126,6 +126,7 @@ namespace ChipArena.UnityConversion
                 // Effects that outlive the cast (any pilot state): the fissure, the decoy's smoke, the mark, the flying shield.
                 if(time<k.AfterimageUntil)Decoy(sink,a,k,time,quality,low);
                 if(k.MarkTarget!=0&&time<k.MarkUntil)Mark(sink,scene,a,k,time,quality,low);
+                if(k.ShieldOut)ShieldFlight(sink,a,k,time,quality,low,scene.WeaponColor(a));
                 if(!a.Alive)continue;
                 if(time<k.EmpowerUntil&&a.SourceSpec=="daggers")Empower(sink,scene,a,k,time,quality,low);
                 if(MeleeKitMotion.Clock(a,time,out var c))Cast(sink,scene,a,c,time,quality,low);
@@ -156,6 +157,10 @@ namespace ChipArena.UnityConversion
                     if(lead)Path(s,feet,f,7,u,edge,core,seed,low,true);
                     else if(c.Part==KitPart.Active&&!view)Dash(s,feet,f,r,time-c.Release,edge,core,seed,q,low,.22f);
                     break;
+                case "bulwark-charge":
+                    if(lead)Path(s,feet,f,8,u,edge,core,seed,low,true);
+                    if(c.Part==KitPart.Active){if(!view)Dash(s,feet,f,r,time-c.Release,edge,core,seed,q,low,.45f);Ward(s,feet,f,r,time,edge,core,a.MeleeKit.Absorbed,view,q,low);}
+                    break;
                 case "rising-dragon":
                     if(lead&&!c.Recast)Updraft(s,feet,time-c.At,u,edge,core,seed,q,low);
                     else if(lead)Upward(s,feet,chest,u,edge,core,seed,low);
@@ -165,6 +170,9 @@ namespace ChipArena.UnityConversion
                     break;
                 case "kunai-mark":
                     if(c.Recast&&lead)Shimmer(s,scene,a,u,time,seed,q,low);
+                    break;
+                case "aegis-ricochet":
+                    if(lead&&!view&&scene.Blade(a,false,out var sr,out var st)){var mid=(sr+st)*.5f;float spin=time*14;for(int i=0;i<Count(6,q,low);i++){float ang=spin+i*1.047f;var d=new Vector3((float)Math.Cos(ang),(float)Math.Sin(ang)*.6f,(float)Math.Sin(ang)*.8f);s.Sprite(false,mid+d*(.32f+.1f*u),edge*(1.4f*u),.08f,Sparkle);}}
                     break;
             }
         }
@@ -195,6 +203,13 @@ namespace ChipArena.UnityConversion
             }
             s.Streak(feet+Vector3.UnitY*.85f-f*.25f,-f*30,core*1.5f,.06f,1.4f,.06f,.9f,u,seed);
             if(!low)for(int i=0;i<Count(3,q,low);i++){float a=(t*12+i/3f)%1f;s.Smoke(feet-f*(.4f+1.2f*a)+r*((H(seed+i,7)-.5f)*.6f)+Vector3.UnitY*.12f,Lin(Dust,.9f),.55f*(1-a),.4f+.5f*a,a,seed+i,feet.Y);}
+        }
+        // The Bulwark's frontal ward while charging: a curved hex-lit shield of light that flares with each absorbed projectile.
+        private static void Ward(IKitFxSink s,Vector3 feet,Vector3 f,Vector3 r,float time,Vector3 edge,Vector3 core,int absorbed,bool view,float q,bool low)
+        {
+            if(view)return;Vector3 c=feet+Vector3.UnitY*1.15f+f*.75f;float pulse=.85f+.15f*(float)Math.Sin(time*30),gain=1+.45f*absorbed;
+            s.Glow(c,edge*(.6f*gain*pulse),0,1.15f,Ring,0,1);s.Glow(c,core*(.22f*gain),0,.7f,Core,0,2);
+            int n=Count(12,q,low);for(int i=0;i<n;i++){float a=i/(float)n*6.2832f;Vector3 p=c+r*((float)Math.Cos(a)*.5f)+Vector3.UnitY*((float)Math.Sin(a)*.55f)-f*(.12f*(float)Math.Cos(a)*(float)Math.Cos(a));s.Sprite(false,p,edge*(1.3f*pulse),.07f,Sparkle);}
         }
         // Rising Dragon's coil: a wind spiral climbing round the caster.
         private static void Updraft(IKitFxSink s,Vector3 feet,float t,float u,Vector3 edge,Vector3 core,long seed,float q,bool low)
@@ -279,6 +294,12 @@ namespace ChipArena.UnityConversion
                 if(!view&&!low){long seed=a.Id*13L+hand*7;for(int i=0;i<Count(4,q,low);i++){float ph=(time*2.2f+i/4f)%1f;Vector3 p=Vector3.Lerp(r0,r1,H(seed+i,61))+Vector3.UnitY*(.35f*ph);s.Glow(p,Lin(DaggerCore,1.6f*(1-ph)*fade),0,.06f,Mote,ph,seed+i);}}
             }
         }
+        private static void ShieldFlight(IKitFxSink s,Actor a,NativeMeleeKit k,float time,float q,bool low,int weapon)
+        {
+            Vector3 at=N(k.ShieldPosition);var edge=Edge("shield",weapon);float spin=time*22;
+            s.Glow(at,edge*1.3f,0,.95f,Ring,0,a.Id);s.Glow(at,Lin(ShieldCore,1.1f),0,.45f,Core,0,a.Id+1);
+            int n=Count(6,q,low);for(int i=0;i<n;i++){float ang=spin+i*6.2832f/n;s.Sprite(false,at+new Vector3((float)Math.Cos(ang)*.42f,(float)Math.Sin(ang*.5f)*.08f,(float)Math.Sin(ang)*.42f),edge*2f,.08f,Sparkle);}
+        }
 
         // ---------------------------------------------------------------------------------------------------------------
         // Events
@@ -291,6 +312,8 @@ namespace ChipArena.UnityConversion
             {
                 case EventKind.Teleport:Teleport(s,e,age,edge,core,seed,q,low,scene.Viewer==e.Source);break;
                 case EventKind.AbilityHit:Hit(s,scene,e,age,edge,core,seed,q,low);break;
+                case EventKind.Absorb:Absorb(s,scene,e,age,edge,core,seed,q,low);break;
+                case EventKind.Bounce:Bounce(s,scene,e,age,edge,core,seed,q,low);break;
                 case EventKind.Land:Land(s,e,age,edge,core,seed,q,low);break;
                 case EventKind.Recast:Recast(s,scene,e,age,edge,core,seed,q,low);break;
                 case EventKind.AbilityCast:Cast(s,e,age,edge,core,seed,q,low);break;
@@ -341,7 +364,43 @@ namespace ChipArena.UnityConversion
                     // The thrust pierces: a line through the target along the dash.
                     if(age<.2f){float u=age/.2f;var d=-n;d.Y=0;if(d.LengthSquared()>1e-4f){d=Vector3.Normalize(d);s.Line(false,at-d*.6f,at+d*(1.4f+1.2f*u),core*(3.5f*(1-u)),.06f*(1-u)+.01f,false);}}
                     break;
+                case "bulwark-charge":
+                {
+                    // The second Bulwark hit on the same target is the wall slam: a heavier star burst, dust off the wall, stars over the head.
+                    if(!Wall(e,scene,out var victim))break;
+                    if(age<.35f){float u=age/.35f;for(int i=0;i<Count(14,q,low);i++){float a=i/14f*6.2832f;var dir=Vector3.Normalize(new Vector3((float)Math.Cos(a),(float)Math.Sin(a),0)+n*.4f);s.Streak(at+dir*(7*age),dir*7,Lin(ShieldCore,3f*(1-u)),.04f,.25f,.04f,.9f,u,seed+i+60);}
+                        if(!low)for(int i=0;i<Count(5,q,low);i++)s.Smoke(at+new Vector3(H(seed+i,95)-.5f,H(seed+i,96)-.5f,H(seed+i,97)-.5f)*.8f,Lin(Dust),.7f*(1-u),.6f+.6f*u,u,seed+i+70,at.Y-1.5f);}
+                    if(victim!=null&&victim.StunUntil>e.Time+.2f&&age<victim.StunUntil-e.Time){Vector3 head=scene.Feet(victim)+Vector3.UnitY*2.05f;for(int i=0;i<3;i++){float a=age*7+i*2.094f;s.Sprite(false,head+new Vector3((float)Math.Cos(a)*.32f,.05f*(float)Math.Sin(a*2),(float)Math.Sin(a)*.32f),Lin(ArmourGold,2.2f),.12f,Sparkle);}}
+                    break;
+                }
             }
+        }
+        // A Bulwark hit is the wall slam when an earlier Bulwark hit on the same target by the same pilot came just before it.
+        private bool Wall(in Record e,IKitFxScene scene,out Actor victim)
+        {
+            victim=Find(scene,e.Target);
+            for(int i=0;i<records.Count;i++){var r=records[i];if(r.Id!=e.Id&&r.Kind==EventKind.AbilityHit&&r.Fx=="bulwark-charge"&&r.Source==e.Source&&r.Target==e.Target&&r.Time<e.Time&&e.Time-r.Time<.6f)return true;}
+            return false;
+        }
+        private static void Absorb(IKitFxSink s,IKitFxScene scene,in Record e,float age,Vector3 edge,Vector3 core,long seed,float q,bool low)
+        {
+            // The flare rides the charging pilot's frontal ward (the projectile met the shield there), offset as the contact was.
+            if(age>.25f)return;float u=age/.25f,gain=1+.4f*Math.Max(0,e.Amount-1);var src=Find(scene,e.Source);Vector3 at=e.Position;
+            Vector3 n=e.Normal.LengthSquared()>1e-4f?Vector3.Normalize(e.Normal):Vector3.UnitZ;
+            if(src!=null&&src.MeleeKit!=null){var f=Forward(src.MeleeKit.Yaw);Vector3 ward=scene.Feet(src)+Vector3.UnitY*1.15f+f*.75f;Vector3 off=e.Position-ward;off-=f*Vector3.Dot(off,f);if(off.Length()>.5f)off=Vector3.Normalize(off)*.5f;at=ward+off;n=f;}
+            Vector3 ax=Vector3.Normalize(Vector3.Cross(n,Math.Abs(n.Y)>.9f?Vector3.UnitX:Vector3.UnitY)),ay=Vector3.Cross(ax,n);
+            s.Glow(at,core*(2.4f*gain*(1-u)*(1-u)),0,.25f+.25f*u,Core,u,seed);s.Glow(at,edge*(1.6f*gain*(1-u)),0,.25f+.7f*u,Ring,u,seed+1);
+            // Hex flare: six spokes in the shield plane; the third absorb (the charge ends) shatters into sparks.
+            for(int i=0;i<6;i++){float a=i*1.0472f+.5236f;var d=ax*(float)Math.Cos(a)+ay*(float)Math.Sin(a);s.Line(false,at+d*(.06f+.18f*u),at+d*(.16f+.34f*u),edge*(2.6f*gain*(1-u)),.025f,false);}
+            if(e.Amount>=3){for(int i=0;i<Count(12,q,low);i++){var d=Vector3.Normalize(ax*(H(seed+i,101)-.5f)+ay*(H(seed+i,102)-.5f)+n*.5f);s.Streak(at+d*(8*age),d*8,core*2.6f*(1-u),.035f,.2f,.04f,.9f,u,seed+i);}}
+        }
+        private static void Bounce(IKitFxSink s,IKitFxScene scene,in Record e,float age,Vector3 edge,Vector3 core,long seed,float q,bool low)
+        {
+            if(age>.55f)return;float u=age/.55f;var next=Find(scene,e.Target);Vector3 from=e.From,to=next!=null?(scene.Chest(next,out var c)?c:scene.Feet(next)+Vector3.UnitY*1.2f):e.Position+e.Normal*7;
+            // The link: a lit chain from the contact to the next victim (an arc rising over the middle), and a flare where it rebounded.
+            int segs=low?5:10;Vector3 prevP=from;
+            for(int i=1;i<=segs;i++){float t=i/(float)segs;Vector3 p=Vector3.Lerp(from,to,t)+Vector3.UnitY*(.6f*(float)Math.Sin(Math.PI*t));float b=Smooth((u*1.6f-t*.6f)*3)*(1-u);s.Line(false,prevP,p,edge*(2.6f*b),.05f,false);prevP=p;}
+            if(age<.2f){float k=age/.2f;s.Glow(from,core*(2.6f*(1-k)),0,.6f+.6f*k,Core,k,seed);s.Glow(from,edge*(1.8f*(1-k)),0,.5f+1.2f*k,Ring,k,seed+1);}
         }
         private static void Land(IKitFxSink s,in Record e,float age,Vector3 edge,Vector3 core,long seed,float q,bool low)
         {

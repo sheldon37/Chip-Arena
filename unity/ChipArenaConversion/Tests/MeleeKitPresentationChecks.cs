@@ -43,6 +43,8 @@ namespace ChipArena.UnityConversion
             list.Add(Cast("shadow-step","daggers","shadow-step",1,1.15f,(1.15f,"windup",1.45f),(1.45f,"recovery",1.45f)));
             list.Add(Cast("kunai-mark","daggers","dagger-throw",1,1.19f,(1.19f,"windup",1.47f),(1.47f,"recovery",1.47f)));
             list.Add(Cast("kunai-mark","daggers","kunai-recast",2,2.2f,(2.2f,"recast",2.65f),(2.65f,"active",2.65f)));
+            list.Add(Cast("bulwark-charge","shield","bulwark-charge",1,1.15f,(1.15f,"windup",1.6f),(1.32f,"active",1.6f),(1.52f,"recovery",1.52f)));
+            list.Add(Cast("aegis-ricochet","shield","shield-throw",1,1.3f,(1.3f,"windup",1.7f),(1.7f,"recovery",1.7f)));
             return list.Where(t=>MeleeKitMotion.Known(t.Kind)).ToArray();
         }
         private static Actor Pilot(string spec)=>new Actor{Id=1,SourceSpec=spec,Weapon=WeaponId.Sword,VisualSet=spec=="daggers"?1:spec=="greatsword"?2:spec=="shield"?3:0,CastRate=1,Hp=100,Grounded=true,MeleeKit=new NativeMeleeKit()};
@@ -206,6 +208,19 @@ namespace ChipArena.UnityConversion
                 scene.ViewerId=2;Expect("the marked pilot's own view draws no sigil (its HUD warns it)",r=>r.Lines==0,2);scene.ViewerId=0;
                 Check(NativeMeleeKitHud.MarkedFor(scene.List.ToArray(),2,2,out int owner)>2.9f&&owner==1,"HUD mark warning for the target");k.MarkTarget=0;
                 scene.ShotList.Add((new Vector3(0,1.2f,3),new Vector3(0,0,30),"kunai-mark",1));Expect("kunai in flight trails red",r=>r.Streaks>=1,2);scene.ShotList.Clear();
+            }
+            if(kinds.Contains("bulwark-charge"))
+            {
+                events.Clear();caster.SourceSpec="shield";caster.VisualSet=3;events.Add(E(id++,EventKind.Absorb,1,1,77,new Vector3(0,1.3f,1.5f),"bulwark-charge",3,normal:-Vector3.UnitZ));Expect("absorb flare (hex spokes, third absorb shatters)",r=>r.Lines>=6&&r.Streaks>=6,1.05f);
+                events.Clear();events.Add(E(id++,EventKind.AbilityHit,1,1,2,new Vector3(0,1.1f,3.6f),"bulwark-charge",20));events.Add(E(id++,EventKind.AbilityHit,1.1f,1,2,new Vector3(0,1.2f,6.4f),"bulwark-charge",10));victim.StunUntil=1.8f;
+                Expect("wall slam: star burst and stun stars",r=>r.Streaks>=20&&r.Sprites>=3,1.2f);victim.StunUntil=0;
+            }
+            if(kinds.Contains("aegis-ricochet"))
+            {
+                events.Clear();var k=caster.MeleeKit;k.ShieldOut=true;k.ShieldPosition=new V3(0,1.2f,3);k.ShieldChain=new[]{2};
+                events.Add(E(id++,EventKind.Bounce,1,1,2,new Vector3(0,1.2f,3),"aegis-ricochet",1,from:new Vector3(0,1.2f,3),normal:Vector3.UnitX));
+                Expect("shield in flight and the bounce link",r=>r.Glows>=2&&r.Lines>=5,1.1f);k.ShieldOut=false;k.ShieldChain=Array.Empty<int>();
+                Check(NativeMeleeKitHud.ShieldAway("shield",new NativeMeleeKit{ShieldOut=true})&&!NativeMeleeKitHud.ShieldAway("shield",new NativeMeleeKit()),"RMB card: block unavailable while the shield is out");
             }
             // Determinism: a JSON round trip of the snapshot (as guests and the killcam receive it) draws the identical frame,
             // and drawing twice changes nothing (no hidden state).

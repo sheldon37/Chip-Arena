@@ -80,6 +80,8 @@ namespace ChipArena.UnityConversion
     ///    the recast window. Skyfall (recast): a gathering crouch with the blade raised, an airborne plunge (fall), the landing.
     ///  - Shadow Step: a crouched departure with the daggers crossed (the decoy keeps this silhouette), an arrival flourish.
     ///  - Kunai Mark: a side-on throw (the aim hand points), the whip follow-through. Recast: a coiled shimmer, the arrival stab.
+    ///  - Bulwark Charge: a braced shield push-off, a shield-first sprint, the shove on impact.
+    ///  - Aegis Ricochet: a cross-body frisbee coil, the throw and an open-handed follow-through.
     /// </summary>
     public static class MeleeKitMotion
     {
@@ -88,6 +90,7 @@ namespace ChipArena.UnityConversion
         {
             "flash-step","rising-dragon",
             "shadow-step","kunai-mark",
+            "bulwark-charge","aegis-ricochet",
         };
         public static bool Known(string kind){if(kind==null)return false;foreach(var k in Kinds)if(k==kind)return true;return false;}
         public static string Spec(string kind)=>kind=="flash-step"||kind=="rising-dragon"?"sword":kind=="shadow-step"||kind=="kunai-mark"?"daggers":kind=="bulwark-charge"||kind=="aegis-ricochet"?"shield":kind=="earthsplitter"||kind=="wolf-knight"?"greatsword":null;
@@ -196,6 +199,18 @@ namespace ChipArena.UnityConversion
         private static readonly KitPose RecastStab=Key("daggers",k=>{k.Body=V(0,-.2f,.06f);k.Pitch=.4f;k.ChestX=.25f;k.HeadX=-.35f;Stance(k,.18f,.36f,-.17f,-.3f);
             k.RGrip=V(-.14f,.02f,.5f);k.RBlade=N(.05f,-.9f,.4f);k.RUp=N(-.98f,.05f,.1f);k.RPole=N(-.9f,-.2f,-.3f);k.LGrip=V(.14f,.0f,.48f);k.LDir=N(-.05f,-.9f,.4f);k.LUp=N(-.98f,-.05f,-.1f);k.LPole=N(.9f,-.2f,-.3f);});
 
+        // ---- shield: Bulwark Charge and Aegis Ricochet ----
+        private static readonly KitPose BulwarkBrace=Key("shield",k=>{k.Body=V(0,-.16f,-.04f);k.Pitch=.3f;k.PelvisY=-.25f;k.ChestY=-.35f;k.ChestX=.15f;k.HeadY=.2f;k.HeadX=-.3f;Stance(k,.18f,.3f,-.16f,-.4f);
+            k.RGrip=V(-.06f,.1f,.42f);k.RBlade=N(-.15f,.05f,1);k.RUp=N(0,1,-.05f);k.RPole=N(-.9f,-.5f,0);k.LGrip=V(.38f,-.15f,.12f);k.LDir=N(.2f,-.2f,.95f);k.LUp=N(-.9f,.3f,.1f);});
+        private static readonly KitPose BulwarkRush=Key("shield",k=>{k.Body=V(0,-.12f,.06f);k.Pitch=.42f;k.PelvisY=-.15f;k.ChestY=-.25f;k.ChestX=.12f;k.HeadY=.15f;k.HeadX=-.42f;
+            k.RGrip=V(-.02f,.14f,.46f);k.RBlade=N(-.1f,.1f,1);k.RUp=N(0,1,-.1f);k.RPole=N(-.9f,-.5f,0);k.LGrip=V(.32f,-.1f,.2f);k.LDir=N(.2f,0,.98f);k.LUp=N(-.9f,.4f,.1f);});
+        private static readonly KitPose BulwarkShove=Key("shield",k=>{k.Body=V(0,-.14f,.1f);k.Pitch=.32f;k.ChestY=.1f;k.HeadX=-.3f;Stance(k,.17f,.42f,-.16f,-.36f);
+            k.RGrip=V(.02f,.18f,.58f);k.RBlade=N(0,.15f,1);k.RUp=N(0,1,-.15f);k.RPole=N(-.9f,-.4f,.1f);k.LGrip=V(.35f,-.05f,.3f);k.LDir=N(.2f,.1f,.97f);k.LUp=N(-.9f,.4f,.1f);});
+        private static readonly KitPose AegisCoil=Key("shield",k=>{k.Body=V(0,-.12f,-.02f);k.Pitch=.12f;k.PelvisY=.4f;k.ChestY=.8f;k.ChestX=.1f;k.HeadY=-.7f;Stance(k,.18f,.26f,-.17f,-.3f);
+            k.RGrip=V(.24f,.02f,.16f);k.RBlade=N(.95f,.25f,-.1f);k.RUp=N(-.25f,.95f,.1f);k.RPole=N(-.3f,-.6f,-.75f);k.LGrip=V(.5f,.1f,.3f);k.LDir=N(.3f,.5f,.8f);k.LUp=N(-.9f,.3f,.2f);});
+        private static readonly KitPose AegisThrow=Key("shield",k=>{k.Body=V(0,-.1f,.06f);k.Pitch=.22f;k.PelvisY=-.3f;k.ChestY=-.55f;k.ChestX=.12f;k.HeadY=.4f;Stance(k,.17f,.34f,-.16f,-.36f,-.795f,-.77f);
+            k.RGrip=V(-.6f,.12f,.3f);k.RBlade=N(-.95f,.15f,.25f);k.RUp=N(.15f,.98f,-.05f);k.RPole=N(-.3f,-.7f,-.6f);k.LGrip=V(.42f,-.12f,.05f);k.LDir=N(.5f,-.4f,.7f);k.LUp=N(-.7f,.6f,.3f);});
+
 
         // ---------------------------------------------------------------------------------------------------------------
         // Sampling
@@ -237,6 +252,8 @@ namespace ChipArena.UnityConversion
                 case "kunai-mark":
                     if(c.Recast)o.Mix(DaggerGuard,RecastCoil,Out(u/.7f));
                     else o.Mix(DaggerGuard,KunaiCock,Out(u/.8f));break;
+                case "bulwark-charge":o.Mix(ShieldGuard,BulwarkBrace,Out(u/.8f));break;
+                case "aegis-ricochet":o.Mix(ShieldGuard,AegisCoil,Out(u/.85f));break;
                 default:o.From(GuardOf(c.Spec));break;
             }
             o.W=1;
@@ -253,6 +270,15 @@ namespace ChipArena.UnityConversion
                 {
                     // The thrust snaps out over .06 s and holds through the dash; the rear foot trails a little more with distance.
                     o.Mix(prev,FlashThrust,Out(t/.07f));float drag=Smooth(t/.22f);o.RFoot.Z-=.08f*drag;o.Body.Y-=.02f*drag;break;
+                }
+                case "bulwark-charge":
+                {
+                    o.Mix(prev,BulwarkRush,Out(t/.08f));
+                    // A shield-first sprint: alternating strides at the charge's pace (17.8 m/s, ~5 strides a second), blended in
+                    // from the brace's stance.
+                    float ph=t*5.2f*Tau,s=(float)Math.Sin(ph),k=Smooth(t/.08f);
+                    o.LFoot=Vector3.Lerp(o.LFoot,V(.16f,-.795f+.12f*Math.Max(0,s),.05f+.34f*s),k);o.RFoot=Vector3.Lerp(o.RFoot,V(-.16f,-.795f+.12f*Math.Max(0,-s),.05f-.34f*s),k);
+                    o.Body.Y+=.03f*Math.Abs(s)*k;o.ChestZ+=.06f*s*k;break;
                 }
                 case "rising-dragon":
                 {
@@ -285,6 +311,7 @@ namespace ChipArena.UnityConversion
             switch(c.Kind)
             {
                 case "flash-step":follow=FlashSettle;k=Out(t/.12f);hold=.2f;break;
+                case "bulwark-charge":follow=BulwarkShove;k=Out(t/.07f);hold=.45f;break;
                 case "rising-dragon":
                     if(c.Recast){follow=SkyLand;k=Out(t/.06f);hold=.35f;}
                     else
@@ -299,6 +326,7 @@ namespace ChipArena.UnityConversion
                     follow=ShadowArrive;k=Out(t/.09f);hold=.25f;break;
                 case "kunai-mark":
                     follow=KunaiThrow;k=Out(t/.07f);hold=.3f;break;
+                case "aegis-ricochet":follow=AegisThrow;k=Out(t/.09f);hold=.4f;break;
                 default:follow=GuardOf(c.Spec);k=1;break;
             }
             o.Mix(prev,follow,k);
@@ -319,6 +347,8 @@ namespace ChipArena.UnityConversion
         public static bool Apply(Pose p,Actor a,float time,bool firstPerson)
         {
             if(!Sample(a,time,outPose))return false;
+            // First person, the shield rides lower and to the right of the view so a shield-first cast never blinds its caster.
+            if(firstPerson&&a.SourceSpec=="shield"){outPose.RGrip+=V(-.1f,-.14f,0);outPose.LGrip+=V(.05f,-.06f,0);}
             Put(p,outPose,firstPerson);return true;
         }
         public static void Put(Pose p,KitPose k,bool firstPerson)
