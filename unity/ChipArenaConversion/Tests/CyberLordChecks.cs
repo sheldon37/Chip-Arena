@@ -10,9 +10,10 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using ChipArena.UnityConversion;
 
-// The DEV Cyber Lord's presentation (Claude; docs/CYBER-LORD.md) against the proposed replicated data (Astra builds the
-// rules: docs/NEW-KITS.md section 3). Driven by CyberLordFixture, the spec's timeline written the way the host is proposed to:
-//  1. the contract: the proposal's numbers are the spec's, the field stays out of the network frame, one field mapping;
+// The DEV Cyber Lord's presentation (Claude; docs/CYBER-LORD.md) against Astra's replicated data (her rules: Actor.Cyber,
+// PR #142, and Actor.Kernel, PR #138; docs/NEW-KITS.md section 3). Driven by CyberLordFixture, which writes her fields the way
+// her host does:
+//  1. the contract: the numbers are the spec's and her rules', each record and interrupt maps, one field mapping;
 //  2. pose timing: the pack takes are the exporter's, each take's impact lands on its replicated hit, the sequence's states;
 //  3. replicated data only: a copied actor (and a kit round-tripped through JSON) draws the identical frame, in any order;
 //  4. effect lifecycles: each effect starts and ends with its window, records expire, ghosts and the look's formation;
@@ -26,6 +27,7 @@ internal static class CyberLordChecks
     private static int count;
     private static void Check(bool ok,string what){if(!ok)throw new Exception("Cyber Lord: "+what);count++;}
     private static void Near(float a,float b,string what,float tol=1e-3f)=>Check(Math.Abs(a-b)<=tol,what+" ("+a+" vs "+b+")");
+    private static bool NearV(V3 a,V3 b,float tol=1e-4f)=>(a-b).Length<=tol;
 
     // ---- a recording sink and a fixed scene ----
     private sealed class Sink:ICyberFxSink
@@ -81,9 +83,9 @@ internal static class CyberLordChecks
         var view=new CyberLordView();CyberLordFeed.Read(c,view);var ev=new List<ArenaEvent>();int id=1;
         for(int s=1;s<=5;s++)for(int k=0;k<(s==4?3:1);k++)ev.Add(Ev(id++,EventKind.Hit,CyberLordFixture.PanicHitTime(view,s),1,2,new Vector3(0,1.2f,2),CyberLordFeed.Details[7+s]));
         ev.Add(Ev(id++,EventKind.Hit,CyberLordFixture.PanicHitTime(view,5),1,3,new Vector3(2.5f,1,3),"kernel-panic-wave",20));
-        ev.Add(Ev(id++,EventKind.Absorb,9.6f,4,1,new Vector3(0,1.2f,.8f),"firewall"));ev.Add(Ev(id++,EventKind.BurnTick,9.9f,1,3,new Vector3(.4f,1,.8f),"firewall",10));
-        ev.Add(Ev(id++,EventKind.AbilityHit,9.8f,1,3,new Vector3(2.5f,1,3),"system-crash",25));ev.Add(Ev(id++,EventKind.Heal,10.2f,1,1,Vector3.Zero,"siphon-link",4));
-        ev.Add(Ev(id++,EventKind.Hit,9.9f+.45f*.62f,1,3,new Vector3(.3f,1.2f,1.6f),"cyber-palm",22));ev.Add(Ev(id++,EventKind.AbilityHit,10.0f,1,3,new Vector3(2,1,3),"packet-burst",5));
+        ev.Add(Ev(id++,EventKind.Absorb,9.6f,4,1,new Vector3(0,1.2f,.8f),"firewall"));ev.Add(Ev(id++,EventKind.Hit,9.9f,1,3,new Vector3(.4f,1,.8f),"firewall",2.5f));
+        ev.Add(Ev(id++,EventKind.AbilityHit,9.8f,1,3,new Vector3(2.5f,1,3),"system-crash",25));ev.Add(Ev(id++,EventKind.Hit,10.2f,1,3,new Vector3(2.5f,1.2f,3),"siphon-link",2));ev.Add(Ev(id++,EventKind.Heal,10.2f,1,1,Vector3.Zero,null,1));
+        ev.Add(Ev(id++,EventKind.Hit,9.9f+CyberLordSpec.ComboWindups[2],1,3,new Vector3(.3f,1.2f,1.6f),"cyber-palm",22));ev.Add(Ev(id++,EventKind.AbilityHit,10.0f,1,3,new Vector3(2,1,3),"packet-burst",5));
         ev.Add(Ev(id++,EventKind.AbilityHit,9.62f,1,3,new Vector3(1,1,4),"data-dash",18));
         return (new List<Actor>{c,v,o},ev);
     }
@@ -116,20 +118,82 @@ internal static class CyberLordChecks
             ("launches the victim 8 m back along the facing, rising 1.5 m",KernelPanicPath.Launch==8&&KernelPanicPath.LaunchRise==1.5f),("| 2. Blink-behind | .45 s |",KernelPanicPath.Steps[1]==.45f),("kicks them straight up 5 m",KernelPanicPath.KickUp==5),
             ("| 3. Blink-above | .95 s |",KernelPanicPath.Steps[2]==.95f),("| 4. Fork bomb | 1.35 s |",KernelPanicPath.Steps[3]==1.35f),("| 5. Kernel Panic | 1.9 s |",KernelPanicPath.Steps[4]==1.9f),("| 1. Breaker | 0 s |",KernelPanicPath.Steps[0]==0),
             ("| Recovery | from 2.6 s | Caster recovers for .8 s",KernelPanicPath.Recovery==2.6f&&Math.Abs(KernelPanicPath.RecoverySeconds-.8f)<1e-5f),("a 5 m shockwave",KernelPanicPath.Shockwave==5),("about 3.4 s",Math.Abs(KernelPanicPath.End-3.4f)<1e-5f)})
-            Check((!hasSpec||s3.Replace("\r","").Contains(text.Replace("\n  ","\n  ")))&&ok,"the proposal's number is the spec's: "+text.Replace("\n"," "));
+            Check((!hasSpec||s3.Replace("\r","").Contains(text.Replace("\n  ","\n  ")))&&ok,"the presentation's number is the spec's: "+text.Replace("\n"," "));
         var details=Regex.Matches(s3,@"`(cyber-[a-z]+|data-dash|firewall|packet-burst|siphon-link|system-crash)`").Select(m=>m.Groups[1].Value).Distinct().ToArray();
         Check((!hasSpec||details.SequenceEqual(CyberLordFeed.Details.Take(8)))&&Enumerable.Range(1,5).All(i=>CyberLordFeed.Details[7+i]=="kernel-panic-"+i)&&(!hasSpec||s3.Contains("`kernel-panic-1` to `-5`")),"the event Details are the spec's ("+string.Join(",",details)+")");
         for(int i=0;i<CyberLordFeed.Details.Length;i++)Check(CyberLordFeed.Hit(CyberLordFeed.Details[i])==(CyberHit)(i+1),"Detail "+CyberLordFeed.Details[i]+" maps");
         Check(CyberLordFeed.Hit(null)==CyberHit.None&&CyberLordFeed.Hit("sword")==CyberHit.None&&CyberLordFeed.Hit("kernel-panic-6")==CyberHit.None,"unknown Details map to nothing");
         Check(Enumerable.Range(1,5).All(i=>CyberLordFeed.PanicStep(CyberHit.Panic1+i-1)==i)&&CyberLordFeed.PanicStep(CyberHit.Palm)==0,"Kernel Panic steps");
         Check(CyberLordSpec.Ids.Select(CyberLordSpec.Slot).SequenceEqual(Enumerable.Range(0,6))&&CyberLordSpec.Keys.SequenceEqual(new[]{"Q","E","1","2","3","4"})&&CyberLordSpec.Slot("nope")==-1,"slots Q, E, 1-4");
-        // The proposed field never reaches the network frame (NativeFrameCodec's JsonUtility skips [NonSerialized]) until the rules
-        // owner replicates it; the copy the presentation holds is deep.
-        var field=typeof(Actor).GetField("CyberKit");Check(field!=null&&field.GetCustomAttribute<NonSerializedAttribute>()!=null,"Actor.CyberKit is [NonSerialized]: the network frame is unchanged");
-        Check(typeof(NativeCyberKit).GetCustomAttribute<SerializableAttribute>()!=null&&typeof(NativeCyberCast).GetCustomAttribute<SerializableAttribute>()!=null,"the proposed kit is serialisable for when it is replicated");
+        // Astra's kit (PR #142) is the replicated state: Actor.Cyber, a [Serializable] NativeCyberKit the snapshot carries; the
+        // proposed Actor.CyberKit slot is gone. The copy the presentation holds is deep.
+        Check(typeof(Actor).GetField("CyberKit")==null&&typeof(Actor).GetField("Cyber")?.FieldType==typeof(NativeCyberKit)&&typeof(Actor).GetField("Cyber").GetCustomAttribute<NonSerializedAttribute>()==null,"Actor.Cyber is Astra's replicated NativeCyberKit (no proposed slot)");
+        Check(typeof(NativeCyberKit).GetCustomAttribute<SerializableAttribute>()!=null&&typeof(NativeCyberKit).Assembly.GetType("ChipArena.UnityConversion.NativeCyberCast")==null,"her kit is serialisable; the proposed cast record is gone");
+        if(hasSpec)Check(spec.Contains("## Cyber Lord implementation contract")&&spec.Contains("`Actor.Cyber` is a deep-copied `NativeCyberKit`"),"NEW-KITS records Astra's contract");
         var orig=CyberLordFixture.Pilot(1,Vector3.Zero,0);CyberLordFixture.DataDash(orig,1);CyberLordFixture.KernelPanic(orig,1,2,new Vector3(0,0,1.4f));var copy=orig.ViewCopy();
-        Check(!ReferenceEquals(copy.CyberKit,orig.CyberKit)&&!ReferenceEquals(copy.CyberKit.Casts,orig.CyberKit.Casts)&&!ReferenceEquals(copy.CyberKit.Casts[0],orig.CyberKit.Casts[0])&&!ReferenceEquals(copy.Kernel,orig.Kernel)&&!ReferenceEquals(copy.Kernel.CasterPoints,orig.Kernel.CasterPoints),"Actor.ViewCopy deep-copies the kit and Astra's Kernel");
-        copy.CyberKit.Casts[0].At=99;copy.Kernel.CasterPoints[1]=new V3(9,9,9);Check(orig.CyberKit.Casts[0].At==1&&orig.Kernel.CasterPoints[1].x!=9,"a copy's edits leave the original alone");
+        Check(!ReferenceEquals(copy.Cyber,orig.Cyber)&&!ReferenceEquals(copy.Kernel,orig.Kernel)&&!ReferenceEquals(copy.Kernel.CasterPoints,orig.Kernel.CasterPoints),"Actor.ViewCopy deep-copies Astra's kit and Kernel");
+        copy.Cyber.DashAt=99;copy.Kernel.CasterPoints[1]=new V3(9,9,9);Check(orig.Cyber.DashAt==1&&orig.Kernel.CasterPoints[1].x!=9,"a copy's edits leave the original alone");
+        // The fixtures write the kit as her rules do (NativeCyberRules: the combo's numbers; StepCyberInput's windows).
+        Check(ReferenceEquals(CyberLordSpec.ComboDurations,NativeCyberRules.ComboSeconds)&&ReferenceEquals(CyberLordSpec.ComboDamage,NativeCyberRules.ComboDamage)&&CyberLordSpec.Ids.Take(5).SequenceEqual(new[]{"data-dash","firewall","packet-burst","siphon-link","system-crash"})
+            &&CyberLordSpec.ComboKinds.SequenceEqual(CyberLordFeed.Details.Take(3)),"the combo's numbers are NativeCyberRules', the kinds her Kind strings");
+        {
+            var k=CyberLordFixture.Pilot(1,Vector3.Zero,0);CyberLordFixture.DataDash(k,5);var dk=k.Cyber.ViewCopy();
+            Check(NearV(NativeCyberRules.DashPosition(dk,5.2f),dk.DashTo)&&NearV(NativeCyberRules.DashPosition(dk,5.1f),(dk.DashFrom+dk.DashTo)*.5f)&&Math.Abs((dk.DashTo-dk.DashFrom).Length-7)<1e-4f&&Math.Abs(dk.DashFrom.y-CyberLordFeed.BodyCentre)<1e-5f,"the fixture's dash is her 7 m, .2 s DashPosition between body centres");
+        }
+        {
+            // Her Predict (the guest's copy of StepCyberInput) begins each untargeted cast and combo step with the windows the
+            // presentation and its fixtures key on, at attack rate 1 and 1.25 and cooldown scale 1.
+            Func<V3,V3,V3> free=(p0,p1)=>p1;
+            foreach(var (slot,input) in new[]{(CyberLordSpec.Q,new InputFrame{AbilityQ=true}),(CyberLordSpec.E,new InputFrame{AbilityE=true}),(CyberLordSpec.One,new InputFrame{SirenAbility=1}),(CyberLordSpec.Three,new InputFrame{SirenAbility=3})})
+            {
+                var st=new NativeCyberKit();float mana=100;NativeCyberRules.Predict(st,input,10,new V3(0,CyberLordFeed.BodyCentre,0),ref mana,1,1,1,free);
+                var fa=CyberLordFixture.Pilot(1,Vector3.Zero,0);CyberLordFixture.Cast(fa,slot,10);var fk=fa.Cyber;
+                Check(st.Kind==CyberLordSpec.Ids[slot]&&Math.Abs(st.Release-st.At-CyberLordSpec.CastWindup[slot])<1e-5f&&Math.Abs(st.Until-st.At-CyberLordSpec.CastSeconds[slot])<1e-5f&&Math.Abs(100-mana-CyberLordSpec.Costs[slot])<1e-4f,CyberLordSpec.Names[slot]+": her Predict's windup, length and cost are the presentation's");
+                Check(fk.Kind==st.Kind&&fk.At==st.At&&fk.Release==st.Release&&fk.Until==st.Until&&fk.QReady==st.QReady&&fk.EReady==st.EReady&&fk.PacketReady==st.PacketReady&&fk.CrashReady==st.CrashReady&&fk.DashAt==st.DashAt&&fk.DashUntil==st.DashUntil&&fk.TrailUntil==st.TrailUntil
+                    &&NearV(fk.DashFrom,st.DashFrom)&&NearV(fk.DashTo,st.DashTo)&&fk.WallAt==st.WallAt&&fk.WallUntil==st.WallUntil&&fk.WallYaw==st.WallYaw&&NearV(fk.WallPoint,st.WallPoint)&&fk.CrashAt==st.CrashAt&&fk.CrashUntil==st.CrashUntil&&NearV(fk.CrashPoint,st.CrashPoint),CyberLordSpec.Names[slot]+": the fixture writes the kit as her Predict does");
+            }
+            foreach(float rate in new[]{1f,1.25f})
+            {
+                var st=new NativeCyberKit();float mana=100;
+                for(int step=0;step<3;step++)
+                {
+                    float t=10+step*.5f;NativeCyberRules.Predict(st,new InputFrame{Attack=true},t,new V3(0,CyberLordFeed.BodyCentre,0),ref mana,rate,1,1,free);
+                    Check(st.Combo==step&&st.Kind==CyberLordSpec.ComboKinds[step]&&Math.Abs(st.Release-t-CyberLordSpec.ComboWindups[step]/rate)<1e-5f&&Math.Abs(st.Until-t-CyberLordSpec.ComboDurations[step]/rate)<1e-5f,"combo step "+step+" at rate "+rate+": her windup and length");
+                    // The kit as the host leaves it after a block that began after the swing: the swing's own end still reads.
+                    var x=CyberLordFixture.Pilot(1,Vector3.Zero,0);x.Cyber=st.ViewCopy();x.Cyber.Until=t+3;var xv=new CyberLordView();CyberLordFeed.Read(x,xv);Near(xv.ComboUntil,t+CyberLordSpec.ComboDurations[step]/rate,"step "+step+" at rate "+rate+": the swing's end without the actor's attack window",1e-4f);
+                }
+            }
+        }
+        {
+            // Each record into the view (feet, windows, cooldowns), and Astra's interrupt (StepCyberWorld: Until moved to the host's
+            // time each tick, the dash and the link zeroed) ending a window where it began.
+            var a=CyberLordFixture.Pilot(1,new Vector3(1,0,2),90);var v=new CyberLordView();
+            CyberLordFixture.Combo(a,2,10);CyberLordFeed.Read(a,v);Check(v.ComboStep==2&&v.ComboAt==10&&Math.Abs(v.ComboUntil-10.45f)<1e-4f&&Math.Abs(v.ComboHit-10.18f)<1e-4f,"the palm: its swing and its hit on Release");
+            CyberLordFixture.Combo(a,0,10);CyberLordFixture.Block(a,10.1f,10.6f);CyberLordFeed.Read(a,v);Near(v.ComboUntil,10.1f,"a block cuts the swing where it began",1e-4f);
+            Check(CyberLordMotion.Of(v,10.3f,true,10.1f).State=="cyber-guard","the guard shows through a cut swing");
+            CyberLordFixture.Combo(a,0,10);CyberLordFixture.Block(a,11,11.5f);CyberLordFeed.Read(a,v);Near(v.ComboUntil,10.28f,"a later block leaves the finished swing alone",1e-4f);
+            CyberLordFixture.DataDash(a,20);CyberLordFeed.Read(a,v);var f=KernelPanicPath.Forward(90);
+            Check(v.At[0]==20&&v.Release[0]==20&&Math.Abs(v.Until[0]-20.2f)<1e-4f&&Math.Abs(v.RecoverUntil[0]-20.2f-CyberLordSpec.Settle[0])<1e-4f&&Math.Abs(v.TrailUntil-21.4f)<1e-4f&&v.Ready[0]==26
+                &&NearV(v.DashFrom,new V3(1,0,2))&&NearV(v.DashTo,new V3(1+f.X*7,0,2+f.Z*7),1e-3f),"Data Dash: its window, settle, trail, cooldown and feet path");
+            CyberLordFixture.Block(a,20.1f,20.4f);CyberLordFeed.Read(a,v);Check(Math.Abs(v.Until[0]-20.1f)<1e-4f&&v.RecoverUntil[0]==v.Until[0]&&Math.Abs(v.TrailUntil-21.4f)<1e-4f,"an interrupted dash ends there; its trail ticks on");
+            CyberLordFixture.DataDash(a,20);CyberLordFixture.Block(a,25,25.3f);CyberLordFeed.Read(a,v);Near(v.Until[0],20.2f,"a later block leaves the finished dash alone",1e-4f);
+            CyberLordFixture.Firewall(a,40);CyberLordFeed.Read(a,v);
+            Check(v.WallBorn==40&&v.WallUntil==44&&Math.Abs(v.Until[1]-40.2f)<1e-4f&&Math.Abs(v.WallYaw-90)<1e-4f&&NearV(v.WallAt,new V3(1+f.X*.8f,0,2+f.Z*.8f),1e-3f)&&v.Ready[1]==52,"Firewall: the wall's bottom centre, yaw and life");
+            CyberLordFixture.PacketBurst(a,50);CyberLordFeed.Read(a,v);Check(Math.Abs(v.Release[2]-50.08f)<1e-4f&&Math.Abs(v.Until[2]-50.25f)<1e-4f&&v.Ready[2]==54&&v.WallBorn==40,"Packet Burst: shards on Release; the wall's record stays");
+            CyberLordFixture.DataDash(a,51);CyberLordFeed.Read(a,v);Check(v.At[2]==-100,"Packet Burst has no record once another cast replaces the kit's window");
+            CyberLordFixture.SiphonLink(a,3,60);CyberLordFeed.Read(a,v);Check(v.LinkTarget==3&&v.LinkAt==60&&Math.Abs(v.LinkUntil-62.5f)<1e-4f&&Math.Abs(v.Release[3]-60.2f)<1e-4f&&Math.Abs(v.Until[3]-62.5f)<1e-4f&&v.Ready[3]==70,"Siphon Link: the reach over the cast, the tether 2.5 s");
+            CyberLordFixture.SiphonLink(a,3,60,61);CyberLordFeed.Read(a,v);Near(v.LinkUntil,61,"a lost link ends at the break",1e-4f);
+            CyberLordFixture.SiphonLink(a,3,60);CyberLordFixture.Block(a,61.2f,61.5f);CyberLordFeed.Read(a,v);Near(v.LinkUntil,61.2f,"an interrupt ends the link where it began",1e-4f);
+            CyberLordFixture.SystemCrash(a,70);CyberLordFeed.Read(a,v);Check(Math.Abs(v.Release[4]-70.5f)<1e-4f&&Math.Abs(v.Until[4]-70.8f)<1e-4f&&Math.Abs(v.CrashBorn-70.5f)<1e-4f&&Math.Abs(v.CrashUntil-71.5f)<1e-4f&&NearV(v.CrashAt,new V3(1,0,2))&&v.Ready[4]==84,"System Crash: the slam at Release, the field for the stun, at the feet");
+            CyberLordFixture.SystemCrash(a,70);CyberLordFixture.Block(a,70.2f,70.6f);CyberLordFeed.Read(a,v);Check(v.CrashBorn==-100&&Math.Abs(v.Until[4]-70.2f)<1e-4f&&v.Release[4]<=v.Until[4],"a crash interrupted in its windup makes no field");
+            CyberLordFixture.SystemCrash(a,70);CyberLordFixture.Block(a,70.6f,71);CyberLordFeed.Read(a,v);Check(Math.Abs(v.CrashBorn-70.5f)<1e-4f&&Math.Abs(v.Until[4]-70.6f)<1e-4f,"a crash interrupted after the slam keeps its field");
+            // Kernel Panic after a swing: its own AttackAt replaces the swing's, and the incapacity moves the kit's Until.
+            CyberLordFixture.Combo(a,0,80);CyberLordFixture.KernelPanic(a,80.3f,0,Vector3.Zero,connect:false);a.Cyber.Until=81;CyberLordFeed.Read(a,v);Near(v.ComboUntil,80.28f,"a swing before Kernel Panic keeps its own end",1e-4f);
+            var reset=CyberLordFixture.Pilot(1,Vector3.Zero,0);reset.Cyber=new NativeCyberKit();reset.AttackAt=5;reset.AttackUntil=5.3f;CyberLordFeed.Read(reset,v);Check(v.ComboAt==-100&&v.At.Take(5).All(x=>x==-100)&&v.Ready.Take(5).All(x=>x==0),"the host's reset kit: nothing drawn, every key ready");
+            // The Siphon's heal: a plain Heal (no Detail) of the caster in the tick of its drain hit.
+            Check(CyberLordFeed.SiphonHeal(EventKind.Heal,null,1,1,10,1,10)&&!CyberLordFeed.SiphonHeal(EventKind.Heal,null,1,1,10.25f,1,10)&&!CyberLordFeed.SiphonHeal(EventKind.Heal,null,2,2,10,1,10)&&!CyberLordFeed.SiphonHeal(EventKind.Heal,"chip",1,1,10,1,10)&&!CyberLordFeed.SiphonHeal(EventKind.Hit,null,1,1,10,1,10),"a heal is the Siphon's only in its drain's tick");
+            Check(!CyberLordFeed.Kind(EventKind.AbilityCast)&&!CyberLordFeed.Kind(EventKind.Teleport)&&CyberLordFeed.Kind(EventKind.Absorb)&&CyberLordFeed.Strike(EventKind.Hit)&&CyberLordFeed.Strike(EventKind.AbilityHit)&&!CyberLordFeed.Strike(EventKind.Heal),"the casts draw from the kit, not their AbilityCast / Teleport events");
+        }
         // Kernel Panic is Astra's implemented contract (PR #138): her numbers, names and outcome codes, read as they are.
         Check(CyberLordSpec.CutIn==NativeKernelPanicRules.CutIn&&CyberLordSpec.PanicWindup==NativeKernelPanicRules.Windup&&CyberLordSpec.PanicWhiff==NativeKernelPanicRules.WhiffRecovery&&CyberLordSpec.PanicLunge==NativeKernelPanicRules.Range&&CyberLordSpec.PanicRadius==NativeKernelPanicRules.Radius
             &&CyberLordSpec.Cooldowns[CyberLordSpec.Four]==NativeKernelPanicRules.Cooldown&&CyberLordSpec.Costs[CyberLordSpec.Four]==NativeKernelPanicRules.Mana&&ReferenceEquals(KernelPanicPath.Steps,NativeKernelPanicRules.Steps)&&KernelPanicPath.Recovery==NativeKernelPanicRules.RecoveryAt&&KernelPanicPath.End==NativeKernelPanicRules.Duration,"Kernel Panic's numbers are Astra's (NativeKernelPanicRules)");
@@ -146,14 +210,20 @@ internal static class CyberLordChecks
             Check(CyberLordFeed.Read(cyberVictim,cv)&&cv.PanicOutcome==0&&cv.At[CyberLordSpec.Four]==-100,"a victim's copy of the caster's state is not read as its own cast");
             foreach(var (o,want) in new[]{(0,0),(2,CyberLordSpec.Whiff),(3,CyberLordSpec.EndedEarly),(4,CyberLordSpec.Connect)}){var k=e.Kernel.ViewCopy();k.Outcome=o;if(o==0){k.Victim=0;k.CasterPoints=k.VictimPoints=Array.Empty<V3>();}var x=CyberLordFixture.Pilot(1,Vector3.Zero,0);x.Kernel=k;var xv=new CyberLordView();CyberLordFeed.Read(x,xv);Check(xv.PanicOutcome==want,"outcome "+o+" maps to "+want);}
         }
-        // The one field mapping: only CyberLordFeed reads the kit (the fixtures write it; the clone stand-ins make an empty one).
+        // The one field mapping: CyberLordFeed.Read names Astra's fields (a.Cyber, a.Kernel) once each; every other file that
+        // draws from the view (the poses, effects, sounds, HUD, cameras, entrance and the runtime hosts) never names them. Her
+        // simulation files (NativeCyberRules, Runtime/NativeCyberLord, NativePrediction, NativeNetworkFrame, NativeArena and the
+        // rest) and the fixtures do, and are not presentation.
         var core=Path.Combine(root,"Assets/ChipArena/Core");var runtime=Path.Combine(root,"Assets/ChipArena/Runtime");
-        var readers=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories).Where(f=>File.ReadAllText(f).Contains("CyberKit")).Select(Path.GetFileName).OrderBy(f=>f).ToArray();
-        Check(readers.SequenceEqual(new[]{"ArenaModel.cs","CyberLordFixture.cs","NativeCyberLord.cs","NativeCyberLordFx.cs"}),"the kit is read in one place ("+string.Join(", ",readers)+")");
-        string fxSrc=File.ReadAllText(Path.Combine(core,"NativeCyberLordFx.cs"));Check(Regex.Matches(fxSrc,@"\.CyberKit\b").Count==1&&fxSrc.Contains("clone.CyberKit??=new NativeCyberKit();"),"the effects never read the kit (only make the clones' empty one)");
-        string feedSrc=File.ReadAllText(Path.Combine(core,"NativeCyberLord.cs"));Check(Regex.Matches(feedSrc,@"a\.CyberKit\b").Count==1&&Regex.Matches(feedSrc,@"a\.Kernel\b").Count==1,"CyberLordFeed.Read is the only reader of the kit and of Astra's Kernel");
-        foreach(var f in new[]{"CyberLordMotion.cs","NativeCyberLordLook.cs","NativeCyberLordFx.cs","NativeCyberLordSounds.cs","NativeKernelPanicView.cs","NativeCyberLordHud.cs","NativeCyberLordIntro.cs"})Check(!Regex.IsMatch(File.ReadAllText(Path.Combine(core,f)),@"\.Kernel\b"),f+" never reads Actor.Kernel directly");
-        foreach(var f in new[]{"NativeCyberLordPresentation.cs","NativeCyberLordScreen.cs"}){var src=File.ReadAllText(Path.Combine(runtime,f));Check(!Regex.IsMatch(src,@"\.Kernel\b")&&!src.Contains("CyberKit"),f+" reads the state only through the views");}
+        string Rel(string f)=>Path.GetRelativePath(Path.Combine(root,"Assets/ChipArena"),f).Replace('\\','/');
+        var sources=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories);
+        var viewers=sources.Where(f=>{var t=File.ReadAllText(f);return t.Contains("CyberLordView")||t.Contains("ICyberFxSink");}).Select(Rel).Where(f=>f!="Core/NativeCyberLord.cs"&&f!="Core/CyberLordFixture.cs").OrderBy(f=>f).ToArray();
+        foreach(var want in new[]{"Core/CyberLordMotion.cs","Core/NativeCyberLordFx.cs","Core/NativeCyberLordSounds.cs","Core/NativeCyberLordHud.cs","Core/NativeKernelPanicView.cs","Core/NativeCyberLordIntro.cs","Runtime/NativeCyberLordPresentation.cs","Runtime/NativeCyberLordScreen.cs"})Check(viewers.Contains(want),want+" draws from the view");
+        foreach(var f in viewers){var src=File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));Check(!Regex.IsMatch(src,@"\.(Cyber|Kernel)\b")&&!src.Contains("NativeCyberKit")&&!src.Contains("CyberKit"),f+" reads Astra's state only through the view");}
+        var naming=sources.Where(f=>Regex.IsMatch(File.ReadAllText(f),@"\.Cyber\b")).Select(Rel).ToArray();
+        Check(naming.Contains("Core/NativeCyberLord.cs")&&naming.Contains("Runtime/NativeCyberLord.cs")&&naming.All(f=>!viewers.Contains(f)),"the files naming Actor.Cyber are the feed, the fixtures and her simulation ("+naming.Length+")");
+        string feedSrc=File.ReadAllText(Path.Combine(core,"NativeCyberLord.cs"));Check(Regex.Matches(feedSrc,@"a\.Cyber\b").Count==1&&Regex.Matches(feedSrc,@"a\.Kernel\b").Count==1&&!Regex.IsMatch(feedSrc,@"\b(p|s|state)\.Cyber\b"),"CyberLordFeed.Read is the only reader of the kit and of Astra's Kernel");
+        Check(!sources.Any(f=>Regex.IsMatch(File.ReadAllText(f),@"\bCyberKit\b")),"no file names the proposed Actor.CyberKit");
         foreach(var f in new[]{"NativeCyberLord.cs","CyberLordMotion.cs","NativeCyberLordLook.cs","NativeCyberLordFx.cs","NativeCyberLordSounds.cs","NativeKernelPanicView.cs","NativeCyberLordHud.cs","NativeCyberLordIntro.cs"})
         {
             string src=File.ReadAllText(Path.Combine(core,f));
@@ -164,9 +234,12 @@ internal static class CyberLordChecks
             string src=File.ReadAllText(Path.Combine(runtime,f));foreach(var banned in new[]{"Time.timeScale","Time.time","arena.Step","NativeSimulation","Rules."})Check(!src.Contains(banned),f+" touches no clock or rule ("+banned+")");
         }
         var none=new CyberLordView();Check(!CyberLordFeed.Read(Sword(4,Vector3.Zero,0),none)&&none.Id==0&&!CyberLordFeed.Read(null,none),"other pilots map to nothing");
+        // An empty kit (a new pilot, or the host's reset after death or a lost DEV identity: all zeros) draws nothing, and the
+        // actor's attack window alone (Kernel Panic's own AttackAt) is never read as a swing.
         var bare=new Actor{Id=5,SourceSpec=CyberLordSpec.Id,Hp=100,Combo=1,AttackAt=3,AttackUntil=3.3f,SwingAt=3.12f};var bv=new CyberLordView();
-        Check(CyberLordFeed.Read(bare,bv)&&bv.ComboStep==1&&bv.ComboAt==3&&bv.ComboHit==3.12f&&bv.At.All(x=>x==-100),"without the kit the combo reads the standard swing fields");
-        yield return $"Cyber Lord contract: {count} checks (the proposal's numbers are NEW-KITS section 3's, the {CyberLordFeed.Details.Length} Details map, Actor.CyberKit stays out of the network frame, CyberLordFeed is the one field mapping)";
+        Check(CyberLordFeed.Read(bare,bv)&&bv.ComboAt==-100&&bv.At.All(x=>x==-100)&&bv.WallBorn==-100&&bv.LinkTarget==0&&bv.CrashBorn==-100&&bv.TrailUntil==-100,"an empty kit draws no swing or cast");
+        bare.Cyber=null;Check(CyberLordFeed.Read(bare,bv)&&bv.ComboAt==-100,"a missing kit draws nothing");
+        yield return $"Cyber Lord contract: {count} checks (the presentation's numbers are NEW-KITS section 3's and Astra's rules', the {CyberLordFeed.Details.Length} Details map, Actor.Cyber and Actor.Kernel read only in CyberLordFeed)";
 
         // ------------------------------------------------------------------------------------------------------------------
         // 2. Pose timing
@@ -194,7 +267,7 @@ internal static class CyberLordChecks
         {
             CyberLordFixture.Combo(cl,step,10);CyberLordFeed.Read(cl,view);var m=CyberLordMotion.Of(view,view.ComboHit,false,0);int clip=CyberLordMotion.ComboClip(step);
             Check(m.Clip==clip&&m.State==(step==0?"cyber-jab":step==1?"cyber-cross":"cyber-palm"),"combo step "+step+" plays its take");Near(m.Time,CyberLordMotion.Impact(clip),"combo step "+step+" impact on the replicated hit",2e-3f);
-            Near(view.ComboHit,10+CyberLordSpec.ComboDurations[step]*CyberLordSpec.ComboHitShare[step],"step "+step+" hit from SwingAt");
+            Near(view.ComboHit,10+CyberLordSpec.ComboWindups[step],"step "+step+" hit on the kit's Release");
             float prev=-1;for(float t=10;t<view.ComboUntil;t+=1/240f){var mm=CyberLordMotion.Of(view,t,false,0);Check(mm.Time>=prev-1e-5f,"combo "+step+" take time runs forward");prev=mm.Time;}
             Check(CyberLordMotion.Of(view,view.ComboUntil+CyberLordMotion.BlendOut+.01f,false,0).Clip<0,"combo "+step+" ends with its window");
         }
@@ -210,9 +283,9 @@ internal static class CyberLordChecks
             else Check(at.Time>CyberLordMotion.Clip(clip).Duration-.1f,"Siphon Link reaches by the release and holds");
             Check(CyberLordMotion.Of(view,t0-.01f,false,0).Clip<0&&CyberLordMotion.Of(view,view.RecoverUntil[slot]+CyberLordMotion.BlendOut+.01f,false,0).Clip<0,CyberLordSpec.Names[slot]+" starts and ends with its window");
         }
-        Check(CyberLordSpec.Timing[CyberLordSpec.Three][0]==CyberLordSpec.CrashWindup&&CyberLordSpec.Timing[CyberLordSpec.Four][0]==CyberLordSpec.PanicWindup&&CyberLordSpec.Timing[CyberLordSpec.Four][2]==CyberLordSpec.PanicWhiff&&CyberLordSpec.Timing[CyberLordSpec.Two][1]==CyberLordSpec.LinkSeconds,"the fixture windows carry the spec's windup, link and whiff times");
+        Check(CyberLordSpec.CastWindup[CyberLordSpec.Three]==CyberLordSpec.CrashWindup&&CyberLordSpec.CastWindup[CyberLordSpec.Four]==CyberLordSpec.PanicWindup&&CyberLordSpec.CastSeconds[CyberLordSpec.Q]==CyberLordSpec.DashSeconds&&CyberLordSpec.Settle[CyberLordSpec.Four]==0,"the cast windows carry the rules' windups (Kernel Panic's from Actor.Kernel)");
         var caster=CyberLordFixture.Pilot(1,Vector3.Zero,0);CyberLordFixture.KernelPanic(caster,40,2,new Vector3(0,0,1.4f));CyberLordFeed.Read(caster,view);
-        Near(view.PanicConnect,40+CyberLordSpec.PanicWindup+CyberLordSpec.Timing[5][1],"the connect at the lunge's end");Near(view.PanicStart,view.PanicConnect+CyberLordSpec.CutIn,"the sequence after the .6 s cut-in");
+        Near(view.PanicConnect,40+CyberLordSpec.PanicWindup,"the connect at the lunge's end");Near(view.PanicStart,view.PanicConnect+CyberLordSpec.CutIn,"the sequence after the .6 s cut-in");
         var lunge=CyberLordMotion.Of(view,view.PanicConnect-1e-4f,false,0);Check(lunge.Clip==CyberLordMotion.Lunge,"the opener lunges");Near(lunge.Time,CyberLordMotion.Impact(CyberLordMotion.Lunge),"the lunge's punch lands on the connect",3e-3f);
         Check(CyberLordMotion.Of(view,view.PanicConnect+.3f,false,0).State=="cyber-kernel-cut-in","frozen on the punch through the cut-in");
         int[] stepClip={CyberLordMotion.Breaker,CyberLordMotion.Kick,CyberLordMotion.Hammer,-1,CyberLordMotion.Slam};
@@ -239,9 +312,11 @@ internal static class CyberLordChecks
         // finite, normalised, and the presented states in order.
         {
             var a=CyberLordFixture.Pilot(1,Vector3.Zero,0);var mo=new MeleeMotion();var cyber=new CyberLordMotion();var mv=new MeleeView{Id="1",Spec=CyberLordSpec.Id,Grounded=true};var pose=new CapturedRig.Pose();
-            CyberLordFixture.Combo(a,0,1);CyberLordFixture.Firewall(a,2);CyberLordFixture.KernelPanic(a,4,2,new Vector3(0,0,1.4f));var seen=new List<string>();var fp=new List<string>();
+            CyberLordFixture.KernelPanic(a,4,2,new Vector3(0,0,1.4f));var seen=new List<string>();var fp=new List<string>();
             for(float t=0;t<9;t+=1/60f)
             {
+                // The kit holds one window, so the timeline writes each cast when the host would: the jab, then the wall.
+                if(t<2)CyberLordFixture.Combo(a,0,1);else if(a.Cyber.Kind!="firewall")CyberLordFixture.Firewall(a,2);
                 mo.Rig.GroupPosition=new Vector3(0,.865f,0);mo.Rig.GroupYaw=0;mo.FighterBase(mv,t,1/60f);string st=cyber.Style(mo,a,t,false);mo.FighterFinish(mv,t,1/60f);if(seen.Count==0||seen[^1]!=st)seen.Add(st);
                 foreach(var q in mo.Rig.Q)Check(float.IsFinite(q.W)&&Math.Abs(q.Length()-1)<1e-3f,"finite rotations at "+t);
                 string f=cyber.FirstPerson(pose,a,t);if(fp.Count==0||fp[^1]!=f)fp.Add(f);foreach(var q in pose.Rotation)Check(float.IsFinite(q.W),"finite first-person rotations at "+t);
@@ -273,7 +348,7 @@ internal static class CyberLordChecks
         c0=count;var (actors,events)=Everything();var sink=new Sink();var scene=new Scene{LocalId=0};
         var json=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};
         List<Actor> Copies(){return actors.Select(a=>a.ViewCopy()).ToList();}
-        List<Actor> Wire(){return actors.Select(a=>{var c=a.ViewCopy();if(c.CyberKit!=null)c.CyberKit=JsonSerializer.Deserialize<NativeCyberKit>(JsonSerializer.Serialize(a.CyberKit,json),json);if(c.Kernel!=null)c.Kernel=JsonSerializer.Deserialize<NativeKernelPanic>(JsonSerializer.Serialize(a.Kernel,json),json);return c;}).ToList();}
+        List<Actor> Wire(){return actors.Select(a=>{var c=a.ViewCopy();if(c.Cyber!=null)c.Cyber=JsonSerializer.Deserialize<NativeCyberKit>(JsonSerializer.Serialize(a.Cyber,json),json);if(c.Kernel!=null)c.Kernel=JsonSerializer.Deserialize<NativeKernelPanic>(JsonSerializer.Serialize(a.Kernel,json),json);return c;}).ToList();}
         var times=Enumerable.Range(0,121).Select(i=>8f+i*.042f).ToArray();var first=new Dictionary<float,(int,double,int,double)>();var fxA=new NativeCyberLordFx();int drawn=0,ghosted=0;
         foreach(float t in times){var f=Frame(fxA,scene,actors,events,t,sink);first[t]=f;if(f.count>0)drawn++;if(f.ghosts>0)ghosted++;}
         Check(drawn==times.Length&&ghosted>10,"the busy timeline draws every frame ("+drawn+") with ghosts on "+ghosted);
@@ -326,10 +401,15 @@ internal static class CyberLordChecks
             Check(Count(a,v.ComboHit+.05f,both,hit)>Count(a,v.ComboHit+.05f,both),"the palm's hit adds sparks and the mana flow");
             Check(Count(a,v.ComboHit+NativeCyberLordFx.PalmSeconds+NativeCyberLordFx.ManaFlowSeconds+.2f,both,hit)==Count(a,v.ComboHit+NativeCyberLordFx.PalmSeconds+NativeCyberLordFx.ManaFlowSeconds+.2f,both),"and they fade");
             Check(Count(a,v.ComboHit+.05f,both)>Count(a,v.ComboHit-.01f,both),"the palm cone on the replicated hit");
-            foreach(var (detail,kind,life) in new[]{("firewall",EventKind.Absorb,.6f),("firewall",EventKind.BurnTick,.35f),("siphon-link",EventKind.Heal,.55f),("data-dash",EventKind.AbilityHit,NativeCyberLordFx.SparkSeconds),("packet-burst",EventKind.AbilityHit,NativeCyberLordFx.SparkSeconds)})
+            // (Astra's events: the wall's burn is a Hit "firewall"; the Siphon's heal a plain Heal of the caster in its drain hit's tick.)
+            foreach(var (detail,kind,life) in new[]{("firewall",EventKind.Absorb,.6f),("firewall",EventKind.Hit,.35f),("siphon-link",EventKind.Heal,.55f),("data-dash",EventKind.AbilityHit,NativeCyberLordFx.SparkSeconds),("packet-burst",EventKind.AbilityHit,NativeCyberLordFx.SparkSeconds)})
             {
-                var b=CyberLordFixture.Pilot(1,Vector3.Zero,0);var e=new List<ArenaEvent>{Ev(1,kind,70,1,kind==EventKind.Heal?1:3,new Vector3(0,1,1),detail)};
+                var b=CyberLordFixture.Pilot(1,Vector3.Zero,0);var e=kind==EventKind.Heal?new List<ArenaEvent>{Ev(1,EventKind.Hit,70,1,3,new Vector3(0,1,1.5f),detail,2),Ev(2,EventKind.Heal,70,1,1,new Vector3(0,1,0),null,1)}:new List<ArenaEvent>{Ev(1,kind,70,1,3,new Vector3(0,1,1),detail)};
                 Check(Count(b,70.05f,both,e)>0&&Count(b,70+life+.05f,both,e)==0&&Count(b,69.9f,both,e)==0,detail+" "+kind+" lives "+life+" s");
+            }
+            {
+                var b=CyberLordFixture.Pilot(1,Vector3.Zero,0);var lone=new List<ArenaEvent>{Ev(1,EventKind.Heal,70,1,1,new Vector3(0,1,0),null,1)};var cast=new List<ArenaEvent>{Ev(1,EventKind.AbilityCast,70,1,0,new Vector3(0,1,0),"firewall",0)};
+                Check(Count(b,70.05f,both,lone)==0&&Count(b,70.05f,both,cast)==0,"a heal without its drain hit, and a cast's AbilityCast, draw nothing");
             }
             var crash=new List<ArenaEvent>{Ev(1,EventKind.AbilityHit,80,1,3,new Vector3(0,1,1.5f),"system-crash",25)};var f=new NativeCyberLordFx();var lst=new List<Actor>{CyberLordFixture.Pilot(1,Vector3.Zero,0),three};
             var g0=Frame(f,scene,lst,crash,80.3f,sink);Check(g0.ghosts==2&&Enumerable.Range(0,f.Ghosts).All(i=>f.Ghost(i).Kind==CyberGhost.Split&&f.Ghost(i).Actor==3),"the glitched stun splits its victim RGB");
@@ -349,7 +429,7 @@ internal static class CyberLordChecks
             for(float age=-.6f;age<KernelPanicPath.End;age+=1/120f){Frame(f,scene,lst,empty,v.PanicStart+age,sink);for(int i=0;i<f.Ghosts;i++){var g=f.Ghost(i);if(g.Kind!=CyberGhost.Clone)continue;seenClone.Add(g.Index);if(firstClone<0)firstClone=age;lastClone=age;Check(g.Opacity>0&&g.Opacity<=1&&g.Step>=0&&g.Step<3,"clone ghost sane");}}
             Check(seenClone.SetEquals(new[]{0,1,2})&&firstClone>=KernelPanicPath.Clones[0]-.17f&&lastClone<=KernelPanicPath.Clones[2]+.25f,"three clones strike through the fork bomb only ("+firstClone.ToString("0.00")+" .. "+lastClone.ToString("0.00")+" s)");
             var clone=new Actor();var cg=new CyberGhost{Kind=CyberGhost.Clone,Index=1,Step=2,Position=new Vector3(1,0,1),Yaw=30,PoseAge=.16f};NativeCyberLordFx.CloneActor(clone,a,cg);var cv=new CyberLordView();
-            Check(CyberLordFeed.Read(clone,cv)&&cv.ComboStep==2&&clone.Id<0&&clone.CyberKit!=a.CyberKit,"a clone stand-in is its own Cyber Lord");Near(NativeCyberLordFx.CloneTime(cg),cv.ComboHit,"a clone's strike lands on its take's hit at .16 s",1e-3f);
+            Check(CyberLordFeed.Read(clone,cv)&&cv.ComboStep==2&&clone.Id<0&&!ReferenceEquals(clone.Cyber,a.Cyber),"a clone stand-in is its own Cyber Lord");Near(NativeCyberLordFx.CloneTime(cg),cv.ComboHit,"a clone's strike lands on its take's hit at .16 s",1e-3f);
         }
         {
             // The look forms from light: nothing at the start, every piece once formed, never past capacity.

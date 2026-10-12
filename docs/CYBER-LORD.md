@@ -13,16 +13,17 @@ Who builds what:
   hitboxes, damage, cooldowns or movement.
 
 Status: implemented on `claude/cyberlord` only. Not pushed, merged or released.
-- Kernel Panic's authority and replicated state are Astra's (PR #138, `d68043d`, in shared `1426250`, merged into this
-  branch). The presentation reads them as they are.
-- The rest of the kit is still spec-only: no content entry, combo or Q/E/1-3 rules exist. A Cyber Lord cannot be picked
-  or played yet, so the checks drive the presentation through fixtures.
+- The rules are Astra's: Kernel Panic (PR #138) and the rest of the kit (PR #142, `8a2ed88`: the content entry, the
+  combo, Q, E, 1-3, prediction, bots, the DEV-only scope), both merged into this branch. The presentation reads her
+  replicated state as it is. Two-client gameplay and the Unity runtime are unrun, so the checks still drive the
+  presentation through fixtures that write her fields the way her host does.
 
 ## The contract and the one field mapping
 
-Everything reads replicated data through **`CyberLordFeed`** (`Core/NativeCyberLord.cs`). It is the only place that knows
-field names. When the rest of Astra's fields land, change `CyberLordFeed.Read` and `CyberLordFeed.Details`. Nothing else
-needs to change. `Tests/CyberLordChecks` enforces this: only the feed reads the kit and `Actor.Kernel`.
+Everything reads replicated data through **`CyberLordFeed`** (`Core/NativeCyberLord.cs`). It is the only presentation
+code that names Astra's fields (`Actor.Cyber`, `Actor.Kernel`). If her names change, change `CyberLordFeed.Read` and
+`CyberLordFeed.Details`; nothing else needs to change. `Tests/CyberLordChecks` enforces this. Every file that draws from
+the view must not name the fields. Her simulation files and the fixtures may.
 
 ### Kernel Panic: Astra's implemented contract
 
@@ -50,30 +51,52 @@ together; the fork-bomb clones stagger them visually, and their sounds play on t
 
 The pilot frame's `kernelReady` gives the local pilot's HUD card its cooldown.
 
-### The rest of the kit: still a proposal
+### The rest of the kit: Astra's `Actor.Cyber`
 
-These fields are read from `Actor.CyberKit` (a `NativeCyberKit`):
+The source is `Actor.Cyber` (`NativeCyberKit`, `Core/NativeCyberRules.cs`, written by `StepCyberInput` /
+`StepCyberWorld` in `Runtime/NativeCyberLord.cs`). The kit keeps one window, for the current or last cast (`Kind`, `At`,
+`Release`, `Until`), plus a record of its own for Q, E, 2 and 3. Points are Rigidbody centres (the feet .865 m below),
+except `WallPoint`, which is the wall's bottom centre. The pilot is free again at `Until`; the rules have no recovery.
 
-| View field | Proposed source | Spec meaning |
+| View field | Source | Meaning |
 |---|---|---|
-| `ComboStep`, `ComboAt`, `ComboUntil` | `ComboStep`, `ComboAt`, `ComboUntil`; else the standard `Actor.Combo`, `AttackAt`, `AttackUntil` | LMB Jab / Cross / Pulse Palm window |
-| `ComboHit` | `Actor.SwingAt` inside the window, else the spec share (.42 / .41 / .62) | the hit moment each take's impact is pinned to |
-| `At`, `Release`, `Until`, `RecoverUntil`, `Ready` [0-3] | `Casts[slot]` (Q, E, 1, 2, 3) | cast, active start, active end, recovery end, cooldown ready |
-| `DashFrom`, `DashTo`, `TrailUntil` | same names | Q path and 1.2 s trail |
-| `WallAt`, `WallYaw`, `WallBorn`, `WallUntil` | same names | E wall transform and life |
-| `LinkTarget`, `LinkAt`, `LinkUntil` | same names | 2 tether target and end (early end = broken) |
-| `CrashAt`, `CrashBorn`, `CrashUntil` | same names | 3 field position, slam and end |
+| `ComboStep`, `ComboAt`, `ComboUntil`, `ComboHit` | `Combo`, `At`, `Until` (cut, below), `Release` while `Kind` is `cyber-jab` / `-cross` / `-palm` | the swing; its hit resolves at `Release` (.1 / .1 / .18 s of .28 / .30 / .45 s, over the attack rate) |
+| `At`, `Release`, `Until` [Q] | `DashAt`, `DashAt`, `DashUntil` | the .2 s dash (windup 0) |
+| `DashFrom`, `DashTo`, `TrailUntil` | the same names, as feet | the path and the 1.2 s trail (it ticks on along the whole path, even after an interrupt) |
+| `At`, `Release`, `Until` [E] | `WallAt`, `WallAt`, `WallAt` + .2 | the cast |
+| `WallAt`, `WallYaw`, `WallBorn`, `WallUntil` | `WallPoint`, `WallYaw`, `WallAt`, `WallUntil` | the 5 x 2.5 m wall for 4 s |
+| `At`, `Release`, `Until` [1] | the kit's window while `Kind` is `packet-burst` | the shards fly at `Release` (.08 s) |
+| `At`, `Release`, `Until` [2] | `LinkAt`, `LinkAt` + .2, `LinkUntil` | the reach over the cast, held through the drain |
+| `LinkTarget`, `LinkAt`, `LinkUntil` | the same names | the tether; an early end (lost, or interrupted) snaps |
+| `At`, `Release`, `Until` [3] | `CrashAt`, `Release` (`CrashAt` + .5), `CrashUntil` | the windup, the slam, the end at .8 s |
+| `CrashAt`, `CrashBorn`, `CrashUntil` | `CrashPoint` as feet, the slam, the slam + 1 s | the field drawn for the 1 s stun (the rules hit once; there is no lasting field) |
+| `Ready` [Q, E, 1, 2, 3] | `QReady`, `EReady`, `PacketReady`, `LinkReady`, `CrashReady` | the HUD cards' cooldowns |
+
+`RecoverUntil` is `Until` plus a short presentation settle (.18 to .4 s) that a newer swing, cast or guard takes over
+at once. It is not a rules window.
+
+Interrupts: a block, roll or incapacity makes `StepCyberWorld` resolve the cast. Every tick it lasts, it zeroes
+`DashUntil` and `LinkUntil` and moves `Until` to the host's time. The feed takes the planned end from the actor's
+`AttackUntil` while its `AttackAt` is the cast's (`CyberBegin` sets both). Otherwise it uses the cast's own length (a
+combo step scales with its `Release`). It cuts the window at the first `BlockAt`, `RollAt`, `ReactionAt` or own Kernel
+Panic start inside it. A crash cut before its slam draws no field. The kit does not keep the interrupt's time, so a hit
+reaction that did not interrupt can end a window early.
+
+An empty kit (a new pilot, or the host's reset after death or a lost DEV identity: all zeros) draws nothing. The actor's
+attack window alone (Kernel Panic sets `AttackAt` too) is never read as a swing.
 
 Events are read with their `Detail` (`CyberLordFeed.Details`):
-- proposed: `cyber-jab`, `cyber-cross`, `cyber-palm`, `data-dash`, `firewall`, `packet-burst`, `siphon-link`,
-  `system-crash`;
-- Astra's: `kernel-panic-1` to `-5`, and `kernel-panic-wave` on the others caught by the shockwave.
-The kinds read are Hit, AbilityHit, Heal (the Siphon's heal), Absorb (the Firewall's absorbed shot), AbilityCast and
-BurnTick.
+- the cast kinds on Hit / AbilityHit (`cyber-jab`, `cyber-cross`, `cyber-palm`, `data-dash`, `firewall` for the burn,
+  `packet-burst`, `siphon-link` for each drain, `system-crash`), and Absorb `firewall` for an absorbed shot;
+- `kernel-panic-1` to `-5`, and `kernel-panic-wave` on the others caught by the shockwave.
 
-`Actor.CyberKit` is `[NonSerialized]`, so the network frame is unchanged until Astra replicates it. `Actor.ViewCopy`
-deep-copies it, and Astra's `Kernel` too. `CyberLordFixture` writes the spec's timeline the way the host would: the kit,
-and `Actor.Kernel` as her `ConnectKernel` resolves it on an open floor. It is for the checks and the render harness; the
+The Siphon's heal is a plain Heal with no Detail. `CyberLordFeed.SiphonHeal` pairs it with the caster's drain hit from
+the same tick. The casts' AbilityCast events and the dash's Teleport are not read; the kit draws them.
+
+`Actor.ViewCopy` deep-copies the kit and the Kernel. `CyberLordFixture` writes both the way her host does: the kit as
+`CyberBegin` / `StepCyberInput` do, an interrupt as `StepCyberWorld` does, and `Actor.Kernel` as `ConnectKernel`
+resolves it on an open floor. The checks pin the fixture to her `NativeCyberRules.Predict` (windup, length, cost,
+cooldown and points per cast, the combo at attack rate 1 and 1.25). It is for the checks and the render harness; the
 game never calls it.
 
 ## What it looks like
@@ -101,7 +124,7 @@ game never calls it.
   are absorbed, flickers red where enemies burn on it, and collapses into falling pixels at 4 s.
 - **1 Packet Burst**: 8 glitch shards from the palms in the 6 m, 50 degree cone, with RGB-split trails and glitch sparks on hits.
 - **2 Siphon Link**: a jittering tether to the target, data packets streaming back, and a heal glint on the caster with
-  each Heal event. It snaps with sparks if broken early.
+  each drain's heal. It snaps with sparks if it ends early.
 - **3 System Crash**: energy gathers in the fists over the .5 s windup. The slam sends an upright wave out to 4 m. The
   field is a volume of corrupted voxels popping out of the floor, rising data and rim scan columns. Its victims show the
   glitched stun (RGB-split ghosts and crawling pixel blocks) for the 1 s stun.
@@ -161,8 +184,10 @@ Owner rule kept: no glowing disc, ring or tile lies on the floor. Areas read thr
   mana.
 - **Class icon**: `spec-cyberlord` (full and small drawings) in `tools/export_class_icons.mjs`, regenerated into
   `ClassIcons.json`.
-- **Loadout tile**: once the content entry is `devOnly`, the existing tile shows the DEV violet dot. The role line reads
-  "DEV · hardlight fists and cyber spells".
+- **Loadout tile**: the content entry is `devOnly`, so the existing tile shows the DEV violet dot under Melee and DEV for
+  developers. The role line reads "DEV · hardlight fists and cyber spells". The card line is her entry's jab:
+  "12 DMG · 3.6 / SEC · 2.2 M".
+- **Locker**: the Q, E and 1-4 rows show the HUD cards' icons, and their costs read in mana (her kit spends mana).
 - **Locker entrance**: "DEV · Hardlight Boot" (`dev-cyberlord`), with a DEV badge, a diamond icon and the text "Built from
   light, then a hardlight palm strike." It is gated like every `dev-` cosmetic (a guest or a scoped grant cannot pick it).
 - **Entrance** (`Core/NativeCyberLordIntro.cs`, directed). It plays on the standard 4.8 s with the name card at 3.2 s, on
@@ -172,7 +197,7 @@ Owner rule kept: no glowing disc, ring or tile lies on the floor. Areas read thr
   3. Jab (1.2 s), cross (1.6 s), then the Pulse Palm at the lens (2.0 s, slowed, caught up before the card).
   4. The stance settles on the 3.2 s accent.
   A Cyber Lord pilot plays it by default.
-- **Audio** (`Core/NativeCyberLordSounds.cs`): existing bank keys only (18 keys), with shipped fallback clips. State cues
+- **Audio** (`Core/NativeCyberLordSounds.cs`): existing bank keys only (17 keys), with shipped fallback clips. State cues
   fire once each; event cues are skipped for the target, who already hears its hurt sound.
 
 Effects quality (Reduced) thins the particles and never strobes, flashes or tears. The low graphics tier also thins the
@@ -185,19 +210,24 @@ warp is presentation only, and the bodies stand where the snapshot puts them.
 
 ## What the rules side still needs to provide (Astra)
 
-Kernel Panic is done (PR #138). Still needed:
-- A content entry `cyberlord`: `devOnly`, class `melee` (unarmed), mana 100, keys Q, E, 1-4.
-- The combo and Q, E, 1-3: the replicated fields above, or any equivalent. Map them in `CyberLordFeed`.
-- Events with the proposed Details, including a Heal for each Siphon tick and an Absorb for each Firewall-absorbed shot.
-- The input path for 1-3.
-- The account service accepting `dev-cyberlord` for DEV accounts. `src/relay/accounts.ts` keeps only `sheldon-intro` among
-  the DEV-only intros today.
+Kernel Panic (PR #138) and the kit (PR #142) are done. The presentation falls back where her data has no field:
+- No interrupt time in the kit: `Until` moves with the host's clock while an interrupt lasts. The feed estimates the cut
+  from the actor's block, roll and reaction times. A `CutAt` (or keeping `Until` and adding `Interrupted`) would make it
+  exact.
+- Only one cast window: Packet Burst has no record of its own, so its window is gone once another cast replaces it.
+- System Crash has no lasting field (one hit at .5 s). The presentation draws the field for the 1 s stun.
+- The Siphon's heal has no Detail. The presentation pairs it with the drain hit from the same tick. A `siphon-link`
+  Detail on the Heal would remove the pairing.
+- The abilities' content `text` fields are their ids (for example "data-dash"), and the Locker rows show them as
+  descriptions.
+- The account service does not accept the `dev-cyberlord` entrance for DEV accounts (`src/relay/accounts.ts` keeps only
+  `sheldon-intro` among the DEV-only intros).
 
 ## Checks and renders
 
 `Tests/CyberLordChecks.cs` covers:
-- the proposal's numbers against NEW-KITS section 3;
-- the one field mapping;
+- the numbers against NEW-KITS section 3 and Astra's rules (her `NativeCyberRules.Predict`);
+- the one field mapping, each record, the interrupt cuts and the Siphon heal pairing;
 - each pack take's impact on its replicated hit;
 - a copied actor, and the kit round-tripped through JSON, drawing the identical frame in any order;
 - the effect lifecycles, the tiers and the no-floor-disc rule;

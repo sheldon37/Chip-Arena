@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
         public bool Bow;public float BowDrawAt;public float Time,Ready,Stamina,BufferUntil,ComboUntil,RollUntil;public int Combo;
         public float AirborneAt;public bool AirAttackUsed;public string JumpSpec;public int AirJumps;public float AirJumpAt;public bool Swimming;
         public ContentWeapon MeleeWeapon;public ChipStats MeleeStats;public NativeMeleeSwing Swing;
-        public NativeMeleeKit MeleeKit;public float OverdriveAt,OverdriveUntil;
+        public NativeCyberKit Cyber;public float CyberMana,CyberRate,CyberCost,CyberCooldown;public NativeMeleeKit MeleeKit;public float OverdriveAt,OverdriveUntil;
     }
     // Locomotion and local swing commitment are predicted; hits, damage and real resources stay authority-owned.
     public sealed class NativePrediction
@@ -42,8 +42,12 @@ namespace ChipArena.UnityConversion
             if(state.MeleeWeapon!=null&&input.Attack&&state.Time<state.RollUntil&&state.Time>=state.RollUntil-.2f)state.BufferUntil=state.Time+NativeMeleeFeel.BufferSeconds;
             if(!state.CanMove){state.BowDrawAt=-1;return state;}
             if(state.Bow){if(input.Block||input.Aim||input.Sprint||input.CancelAbilities||input.AbilityQ||input.AbilityE||state.Time<state.RollUntil)state.BowDrawAt=-1;else if(state.BowDrawAt>=0&&!input.Shoot){state.BowDrawAt=-1;state.Ready=state.Time+NativeBowRules.Nock;}else if(state.BowDrawAt<0&&input.Shoot&&state.Time>=state.Ready)state.BowDrawAt=state.Time;}
+            state.Cyber=state.Cyber?.ViewCopy();
+            if(state.Cyber!=null&&state.Time>=state.Ready&&state.Time>=state.RollUntil)NativeCyberRules.Predict(state.Cyber,input,state.Time,state.Position,ref state.CyberMana,Math.Max(.01f,state.CyberRate),state.CyberCost,state.CyberCooldown,constrain);
+            bool cyberBusy=state.Cyber!=null&&state.Time<state.Cyber.Until;
+            if(cyberBusy&&state.Cyber.Kind=="data-dash"){state.Position=constrain(state.Position,NativeCyberRules.DashPosition(state.Cyber,state.Time));state.Velocity=new V3();return state;}
             bool kitBusy=NativeWhirlwindRules.Busy(state.MeleeKit,state.Time),whirling=NativeWhirlwindRules.Active(state.MeleeKit,state.Time);
-            bool swinging=!kitBusy&&NativeMeleePrediction.Advance(ref state,input,lockTarget),rooted=swinging||kitBusy&&!whirling;
+            bool swinging=!kitBusy&&NativeMeleePrediction.Advance(ref state,input,lockTarget),rooted=swinging||kitBusy&&!whirling||cyberBusy;
             float radians=input.Yaw*(float)Math.PI/180;
             float dot=input.X*(float)Math.Sin(radians)+input.Z*(float)Math.Cos(radians);
             bool sprint=!kitBusy&&input.Sprint&&state.CanSprint&&!input.Shoot&&!input.Aim&&dot>=.6f;

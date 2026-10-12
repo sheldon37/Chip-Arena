@@ -6,6 +6,45 @@
 - NativeAudio selects factory-anvil-loop for map id factory and cybercity-neon-riot for cybercity. Existing menu, boss/PvE music priority, volume and stage pause behavior stay intact. These maps currently have dormant presentation but no shipped map entries; this wires their future arena playback without enabling incomplete maps or replacing music on unrelated maps.
 - Checks: both full MP3s decode with ffmpeg without errors; package_source.check validates all asset receipts, unique metadata and dependencies; git diff --check passes. Unity/Windows audio playback is not run here. No gameplay/timing/network changes. Claude owns further audio-visual tuning.
 - Release: source PR/shared/cloud publication follows owner request. Compiled Update delivery still requires the local Build-and-Publish run; the new maps require their separate simulation/content integration before their music is audible in play.
+## 2026-10-12 — Claude — merged Astra's Cyber Lord kit (#142); the Cyber Lord visuals read her fields
+- Branch `claude/cyberlord`. Shared head `607ebce` merged as `eb0e645`. PR #142 head `8a2ed88` merged as `116ea8a` (merge, mapping and pins together). Then the shared heads `27e6e8f` (Cyber City, PR #143; merged as `96fe55e`), `bb3c8f6` (PR #144; `a431bb6`) and `dfd45f3` (PR #145 and the field-initializer guard) merged, so the branch fast-forwards onto the shared head. Not pushed, merged or released.
+- Her `NativeCyberKit` (`Core/NativeCyberRules.cs`), `Actor.Cyber` and `Runtime/NativeCyberLord.cs` are kept as she wrote them. My proposed kit, `NativeCyberCast` and the `Actor.CyberKit` slot are deleted. Her `Tests/CyberChecks.cs` keeps its name; the presentation test is `CyberLordChecks`.
+- `CyberLordFeed.Read` is still the one mapping, now onto her fields. Full table in `docs/CYBER-LORD.md`.
+  - Combo: `Kind` cyber-*, `Combo`, `At` to `Until`, hit on `Release`.
+  - Q, E, 2 and 3: `DashAt`/`DashUntil`/`DashFrom`/`DashTo`/`TrailUntil`, `WallAt`/`WallUntil`/`WallPoint`/`WallYaw`, `LinkAt`/`LinkUntil`/`LinkTarget`, and `CrashAt`/`CrashUntil`/`CrashPoint` with the slam at `Release`.
+  - 1: the kit's window while `Kind` is packet-burst. Cooldowns from `QReady` to `CrashReady`. Key 4 reads `Actor.Kernel`, unchanged.
+  - Interrupts (she moves `Until` each tick and zeroes `DashUntil`/`LinkUntil`): the window is cut at the actor's first block, roll, reaction or own Kernel Panic start. A crash cut before its slam draws no field.
+  - The Siphon's detail-less Heal is paired with that tick's drain hit. AbilityCast and Teleport are not read; BurnTick is replaced by her Hit "firewall".
+- Presentation changes:
+  - Combo hits land on her windups (.1/.1/.18 s); casts with no windup start at the take's impact.
+  - A short settle after each cast is presentation only; a newer swing, cast or guard overrides it.
+  - Packet Burst icon is now `boxes`. Her six Locker rows use the HUD icons, and their cost reads mana.
+  - The Siphon heal sound is dropped, because the generic Heal cue covers it.
+  - The checks pin the fixture to her `NativeCyberRules.Predict` (windup, length, cost, cooldown and points; the combo at rate 1 and 1.25).
+- Merge resolutions keep both sides (Bow and Cyber):
+  - `src/relay/accounts.ts`: bow, plus DEV-only cyberlord, `preferredSpec`.
+  - `NativePrediction`, `NativeAbilities`, `NativeBots`, `NativeArena`, `NativeNetworkFrame`, `NativeProjectiles`, `NativeReplicaMotion`.
+  - `GameContent.json` union: 17 weapons, cyberlord after greatsword, 6 abilities.
+  - `Tests/Program.cs` and `ArenaModel.cs`.
+- Content pins:
+  - Parity inventory: 15 source weapons, the Bow and the DEV-only Cyber Lord, with its 6 abilities.
+  - Weapon card line `12 DMG · 3.6 / SEC · 2.2 M`; developer melee and DEV lists gain cyberlord.
+  - Weapon skins and the base chip-module digest exclude the unarmed Cyber Lord (no socket). The digest is unchanged.
+- Checks on `116ea8a`, repeated on the `27e6e8f`, `bb3c8f6` and `dfd45f3` merges:
+  - Unity runtime+editor build OK.
+  - `check_relay.py` exit 0 (562, then 564 PASS). It also passes in a copy holding only the Unity folder, where the Cyber Lord spec text is skipped.
+  - Python unittest 93 OK (1 skipped), then 95 with `test_component_field_init.py`, which passes. My ArenaPresentation parts create no native object in a field initializer.
+  - `package_source.py` OK; Builds removed.
+  - `git diff --check` clean; `tests/accounts.test.ts` 9/9.
+- Not run: Unity Editor, Windows, two-client play. The offline renders were not refreshed for her timings.
+- For Astra:
+  - The kit keeps no interrupt time.
+  - Only one cast window, so Packet Burst has no record of its own.
+  - There is no lasting System Crash field; the presentation draws one for the 1 s stun.
+  - The Siphon Heal has no Detail.
+  - The six abilities' content `text` is their ids, and the Locker shows that text.
+  - Accounts do not accept the `dev-cyberlord` entrance.
+- No hit timing, hitbox, damage, cooldown, movement or network change from the presentation.
 
 ## 2026-10-12 — Claude — guard: no Unity native objects in component field initializers
 - Context: the owner's Windows log showed a constructor failure from my Cyber City presentation. `NativeCyberCityPresentation.metroOne` created a MaterialPropertyBlock in an ArenaPresentation field initializer. Unity refused to construct the component, which left later partial fields null (`cyberViews`) and broke host/guest setup. Astra fixed it in `82b837e` (PR #144, merged by the owner).
@@ -339,6 +378,11 @@
 - Not run: Unity Editor/player, Windows, real IMGUI fonts and DPI, mouse input in Unity.
 - Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking.
 - Risks: the row uses the Locker's existing warm selection style (as the other Appearance rows) rather than a cyan one; the thumbnails are 44-unit drawings, not renders; the descriptions are shortened to fit one line at a third of the column. Next: owner look on Windows, then the coordinator's merge.
+
+## 2026-10-12 — Astra — Cyber Lord remaining simulation kit
+- Branch `codex/cyberlord-simulation-20261012`, base fetched shared `e50c1cd` (includes Kernel Panic #138). Adds the melee combo and mana return, Data Dash and trail, Firewall interception/touch damage, Packet Burst, aimed Siphon Link, System Crash, content, snapshot validation/deep copies, guest movement/cast prediction, bots, sandbox primary/numeric keys, and DEV-only saved preferredSpec. Existing standard block and Kernel Panic are reused.
+- DEV checks reject weapon grants; an expiring DEV-owned sandbox scope can operate only its selected kit. Geometry is bounded to the spec; NEW-KITS records unspecified timings/widths, the exact fields, event details and the conservative palm pulse reach. Lost-LOS link and interrupted dash cleanup occur before further effects.
+- Focused managed checks passed: exact cone/wall edges, dash distance/cost/cooldown prediction, no double-spend, deep-copy and JSON field round-trip, malformed clocks, grant denial and expiring exact sandbox DEV scope. Core assembly builds with zero warnings/errors. Accounts tests 9/9 passed, including DEV-only preferredSpec persistence. Unity runtime/PhysX, Windows, two clients and Claude's presentation/full content-coverage integration are unrun/pending. Draft implementation, not merged or released. No Worker redeploy for these new kit profile additions; v65 remains the verified existing-cosmetics deployment. Bow #141 and plunge #140 are separate branches; shared Actor/dispatcher/content/profile hunks require preserving both during integration.
 
 ## 2026-10-12 — Claude — first-person heal numbers out of the aim (owner: "Change healing number display to be less obstructive on first person")
 - Branch `claude/heal-numbers-fp`, base shared head `f575670`; one signed commit (implementation and this entry). On the branch only: not pushed, merged or released.

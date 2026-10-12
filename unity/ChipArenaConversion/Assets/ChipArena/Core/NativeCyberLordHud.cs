@@ -18,8 +18,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The cards' keys and names as the drawer splits them ("KEY · NAME"), built once.</summary>
         public static readonly string[] Labels=Build();
         private static string[] Build(){var l=new string[CyberLordSpec.Slots];for(int i=0;i<l.Length;i++)l[i]=CyberLordSpec.Keys[i]+" · "+CyberLordSpec.Names[i].ToUpperInvariant();return l;}
-        /// <summary>Line icons (Lucide names, NativeIcons) per slot.</summary>
-        public static readonly string[] Icons={"zap","brick-wall","sparkles","network","radio","cpu"};
+        /// <summary>Line icons (Lucide names, NativeIcons) per slot; the Locker's ability rows share them (Icon).</summary>
+        public static readonly string[] Icons={"zap","brick-wall","boxes","network","radio","cpu"};
+        /// <summary>The icon of a Cyber Lord ability id (Astra's content ids, CyberLordSpec.Ids), null for any other.</summary>
+        public static string Icon(string id){int s=CyberLordSpec.Slot(id);return s<0?null:Icons[s];}
         private static readonly string[] seconds=Seconds();
         private static string[] Seconds(){var s=new string[301];for(int i=0;i<s.Length;i++)s[i]=(i/10f).ToString("0.0",System.Globalization.CultureInfo.InvariantCulture)+"s";return s;}
         /// <summary>"12.3s" without allocating (cached to .1 s up to 30 s).</summary>

@@ -44,14 +44,11 @@ namespace ChipArena.UnityConversion
         public NativeWound[] Wounds=Array.Empty<NativeWound>();public string SourceSpec,SourceAction,BodyColor="#e5e7eb",AccentColor="#70e1d0",Hat="none";public float SourceModeAt=-100;public float SourceAt,SourceUntil,RigScale=1;public int SourceIndex,SourceTotal,SourceSide=1;public bool SourceRanged;
         // The headwear colour (NativeHatLooks), filled from the seat on host and guests alike: never on the wire per tick.
         [NonSerialized] public string HatColor="";
-        // The DEV Cyber Lord's proposed state (Core/NativeCyberLord.cs), read only through CyberLordFeed. Not serialized: game
-        // frames carry nothing new until Astra's rules replicate it (their real fields then map in CyberLordFeed).
-        [NonSerialized] public NativeCyberKit CyberKit;
         // Native authority presentation only; the inherited lab wire codec does not transport these.
         public bool HasKernel;public NativeKernelPanic Kernel;public NativeMeleeKit MeleeKit;public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
         public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;
         public float CastRate=1,AbilityAt=-100,AbilityRelease;public string AbilityId;
-        public float BowDrawAt=-1,BowDraw,BowReleaseAt=-100,BowRainAt=-100;public V3 BowRainTarget;public bool Grounded=true;public int AirJumps;public float AirJumpAt=-100;
+        public float BowDrawAt=-1,BowDraw,BowReleaseAt=-100,BowRainAt=-100;public V3 BowRainTarget;public NativeCyberKit Cyber=new NativeCyberKit();public bool Grounded=true;public int AirJumps;public float AirJumpAt=-100;
         // Captured-melee presentation (MeleeMotion): the swing window, authoritative step and commitment, Hurricane, and the
         // hit reaction in the struck pilot's facing frame (source frame: +x the rig's left, radians). Never read by authority.
         public float SwingAt=-100,SwingUntil=-100,CommitAt=-100,CommitUntil=-100,CommitYaw,StepAt,StepUntil,StepDistance;public bool Followup,Hurricane,SprintAttack,OpenerLunge;
@@ -72,7 +69,7 @@ namespace ChipArena.UnityConversion
         public float StunUntil, StaggerImmuneUntil, RegenAt, ShootReady, RespawnAt, FlashUntil;
         internal bool QueuedAttack;
         internal readonly HashSet<int> Hit = new HashSet<int>();
-        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.Kernel=Kernel?.ViewCopy();copy.MeleeKit=MeleeKit?.ViewCopy();copy.CyberKit=CyberKit?.ViewCopy();return copy;}
+        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.Cyber=Cyber?.ViewCopy();copy.Kernel=Kernel?.ViewCopy();copy.MeleeKit=MeleeKit?.ViewCopy();return copy;}
         public bool Alive { get { return Hp > 0; } }
         public bool Rolling(float t) { return t >= RollAt && t < RollAt + VisualRollDuration; }
         public bool Invulnerable(float t) { return t >= RollAt + Rules.IframeStart && t < RollAt + Rules.IframeEnd; }

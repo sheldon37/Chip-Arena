@@ -4,52 +4,62 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// The spec's timeline as the proposed replicated data (docs/NEW-KITS.md section 3 numbers, CyberLordSpec.Timing for the
-    /// windows the proposal leaves to the rules): what Tests/CyberLordChecks and the offline render harness drive the
-    /// presentation with. It writes only a NativeCyberKit (and the actor's standard swing fields for the combo) the way the
-    /// host is proposed to; nothing in the game calls it.
+    /// Astra's rules as the host writes them, on an open, flat floor at attack rate and cooldown scale 1: what
+    /// Tests/CyberLordChecks and the offline render harness drive the presentation with. It writes Actor.Cyber the way
+    /// NativeArena.StepCyberInput / CyberBegin do (and the actor's AttackAt / AttackUntil, which the snapshot copies from the
+    /// host's AttackAt / AttackEnd) and Actor.Kernel the way NativeKernelPanicRuntime does; nothing in the game calls it.
     /// </summary>
     public static class CyberLordFixture
     {
         public static Actor Pilot(int id,Vector3 feet,float yaw)=>new Actor{Id=id,SourceSpec=CyberLordSpec.Id,Weapon=WeaponId.Sword,Grounded=true,Hp=100,CastRate=1,Yaw=yaw,Position=new V3(feet.X,feet.Y,feet.Z),
-            CyberKit=new NativeCyberKit(),MeleeKit=new NativeMeleeKit(),BodyColor="#e5e7eb",AccentColor="#22e6ff"};
-        /// <summary>A combo swing `step` starting at `at` (the standard swing fields and the kit's own copy).</summary>
+            Cyber=new NativeCyberKit(),MeleeKit=new NativeMeleeKit(),BodyColor="#e5e7eb",AccentColor="#22e6ff"};
+        /// <summary>CyberBegin: the kit's one window (Kind, At, Release = At + windup, Until = At + length, Facing) and the
+        /// actor's attack window; the cast's own cooldown is the caller's.</summary>
+        private static NativeCyberKit Begin(Actor a,string kind,float at,float windup,float length)
+        {
+            var s=a.Cyber??=new NativeCyberKit();s.Kind=kind;s.At=at;s.Release=at+windup;s.Until=at+length;s.Resolved=false;s.Facing=V(KernelPanicPath.Forward(a.Yaw));
+            a.AttackAt=a.LastAttack=at;a.AttackUntil=s.Until;return s;
+        }
+        /// <summary>A combo swing `step` starting at `at`: the hit resolves at the kit's Release.</summary>
         public static void Combo(Actor a,int step,float at)
         {
-            float d=CyberLordSpec.ComboDurations[step],hit=at+d*CyberLordSpec.ComboHitShare[step];
-            a.Combo=step;a.AttackAt=at;a.AttackUntil=at+d;a.SwingAt=hit;a.SwingUntil=hit+.06f;a.LastAttack=at;
-            var k=a.CyberKit;k.ComboStep=step;k.ComboAt=at;k.ComboUntil=at+d;
+            var s=Begin(a,CyberLordSpec.ComboKinds[step],at,CyberLordSpec.ComboWindups[step],CyberLordSpec.ComboDurations[step]);s.Combo=step;s.LastComboEnd=s.Until;a.Combo=step;
         }
-        /// <summary>Ability `slot` cast at `at` on the fixture windows; returns its active (release) start.</summary>
+        /// <summary>Ability `slot` (Q to 3) cast at `at` with its own record; returns its release.</summary>
         public static float Cast(Actor a,int slot,float at)
         {
-            var t=CyberLordSpec.Timing[slot];var c=a.CyberKit.Casts[slot];c.At=at;c.Release=at+t[0];c.Until=c.Release+t[1];c.RecoverUntil=c.Until+t[2];c.Ready=at+CyberLordSpec.Cooldowns[slot];
-            return c.Release;
+            var s=Begin(a,CyberLordSpec.Ids[slot],at,CyberLordSpec.CastWindup[slot],CyberLordSpec.CastSeconds[slot]);var f=KernelPanicPath.Forward(a.Yaw);var body=Body(a);
+            switch(slot)
+            {
+                case CyberLordSpec.Q:s.QReady=at+CyberLordSpec.Cooldowns[slot];s.DashAt=at;s.DashUntil=at+CyberLordSpec.DashSeconds;s.TrailUntil=s.DashUntil+CyberLordSpec.TrailSeconds;
+                    s.DashFrom=V(body);s.DashTo=V(body+f*CyberLordSpec.DashDistance);break;
+                case CyberLordSpec.E:s.EReady=at+CyberLordSpec.Cooldowns[slot];s.WallAt=at;s.WallUntil=at+CyberLordSpec.WallSeconds;s.WallYaw=a.Yaw;
+                    s.WallPoint=V(body-Vector3.UnitY*CyberLordFeed.BodyCentre+f*CyberLordSpec.WallAhead);break;
+                case CyberLordSpec.One:s.PacketReady=at+CyberLordSpec.Cooldowns[slot];break;
+                case CyberLordSpec.Two:s.LinkReady=at+CyberLordSpec.Cooldowns[slot];s.LinkAt=at;s.LinkUntil=at+CyberLordSpec.LinkSeconds;break;
+                case CyberLordSpec.Three:s.CrashReady=at+CyberLordSpec.Cooldowns[slot];s.CrashAt=at;s.CrashUntil=s.Until;s.CrashPoint=V(body);break;
+            }
+            return s.Release;
         }
-        /// <summary>Q Data Dash from the pilot's feet along its facing (7 m), the trail lasting 1.2 s from the dash's end.</summary>
-        public static void DataDash(Actor a,float at)
-        {
-            float rel=Cast(a,CyberLordSpec.Q,at);var c=a.CyberKit.Casts[CyberLordSpec.Q];var k=a.CyberKit;var f=KernelPanicPath.Forward(a.Yaw);
-            k.DashFrom=a.Position;k.DashTo=new V3(a.Position.x+f.X*CyberLordSpec.DashDistance,a.Position.y,a.Position.z+f.Z*CyberLordSpec.DashDistance);k.TrailUntil=c.Until+CyberLordSpec.TrailSeconds;
-        }
-        /// <summary>E Firewall .8 m ahead, across the facing, for 4 s from the release.</summary>
-        public static void Firewall(Actor a,float at)
-        {
-            float rel=Cast(a,CyberLordSpec.E,at);var k=a.CyberKit;var f=KernelPanicPath.Forward(a.Yaw);
-            k.WallAt=new V3(a.Position.x+f.X*CyberLordSpec.WallAhead,a.Position.y,a.Position.z+f.Z*CyberLordSpec.WallAhead);k.WallYaw=a.Yaw;k.WallBorn=rel;k.WallUntil=rel+CyberLordSpec.WallSeconds;
-        }
+        /// <summary>Q Data Dash from the pilot's body along its facing (7 m in .2 s), the trail lasting 1.2 s from the dash's end.</summary>
+        public static void DataDash(Actor a,float at)=>Cast(a,CyberLordSpec.Q,at);
+        /// <summary>E Firewall: the wall's bottom centre .8 m ahead of the feet, across the facing, for 4 s.</summary>
+        public static void Firewall(Actor a,float at)=>Cast(a,CyberLordSpec.E,at);
         public static void PacketBurst(Actor a,float at)=>Cast(a,CyberLordSpec.One,at);
-        /// <summary>2 Siphon Link on `target` from the release for 2.5 s (or broken at `broken` when given).</summary>
+        /// <summary>2 Siphon Link on `target` for 2.5 s from the cast (or lost at `broken`: StepCyberWorld sets LinkUntil then).</summary>
         public static void SiphonLink(Actor a,int target,float at,float broken=-1)
         {
-            float rel=Cast(a,CyberLordSpec.Two,at);var k=a.CyberKit;k.LinkTarget=target;k.LinkAt=rel;k.LinkUntil=broken>rel?broken:rel+CyberLordSpec.LinkSeconds;
-            if(broken>rel){var c=k.Casts[CyberLordSpec.Two];c.Until=broken;c.RecoverUntil=broken+CyberLordSpec.Timing[CyberLordSpec.Two][2];}
+            Cast(a,CyberLordSpec.Two,at);var s=a.Cyber;s.LinkTarget=target;if(broken>at)s.LinkUntil=broken;
         }
-        /// <summary>3 System Crash: the .5 s windup, then the 4 m field at the pilot's feet (the stun's length).</summary>
-        public static void SystemCrash(Actor a,float at)
+        /// <summary>3 System Crash: the .5 s windup, then the slam at the pilot's body (25 damage, a 1 s stun in 4 m).</summary>
+        public static void SystemCrash(Actor a,float at)=>Cast(a,CyberLordSpec.Three,at);
+        /// <summary>StepCyberWorld's interrupt (a block, roll or incapacity) at `at`, lasting to `until`: the cast resolved, the dash
+        /// and the link stopped, the kit's Until moved to the host's time each tick (here: `until`), the block on the actor.</summary>
+        public static void Block(Actor a,float at,float until)
         {
-            float rel=Cast(a,CyberLordSpec.Three,at);var k=a.CyberKit;k.CrashAt=a.Position;k.CrashBorn=rel;k.CrashUntil=rel+CyberLordSpec.CrashStun;
+            var s=a.Cyber;s.Resolved=true;s.DashUntil=0;s.LinkUntil=0;s.Until=until;a.BlockAt=at;a.BlockUntil=until;
         }
+        private static Vector3 Body(Actor a)=>new Vector3(a.Position.x,a.Position.y+CyberLordFeed.BodyCentre,a.Position.z);
         /// <summary>
         /// 4 Kernel Panic cast at `at` on `victim` standing at `victimFeet`, written as Astra's host writes Actor.Kernel
         /// (NativeKernelPanicRuntime.StartKernelPanic / ConnectKernel / KernelWhiff / EndKernel) on an open, flat floor: a whiff
@@ -62,8 +72,8 @@ namespace ChipArena.UnityConversion
             const float C=CyberLordFeed.BodyCentre,Ground=.875f;var up=Vector3.UnitY;var f=KernelPanicPath.Forward(a.Yaw);
             var start=new Vector3(a.Position.x,a.Position.y+C,a.Position.z);
             var s=new NativeKernelPanic{Id=++kernelIds,Caster=a.Id,Seed=seed,At=at,Until=at+NativeKernelPanicRules.Windup,Ready=at+NativeKernelPanicRules.Cooldown,CasterStart=V(start),Anchor=V(start),VictimStart=V(start),CasterExit=V(start),VictimExit=V(start),Facing=V(f)};
-            a.Kernel=s;a.HasKernel=true;
-            if(!connect){s.Outcome=2;s.Until=at+NativeKernelPanicRules.Windup+NativeKernelPanicRules.WhiffRecovery;s.Ready=at+NativeKernelPanicRules.Cooldown*.5f;return;}
+            a.Kernel=s;a.HasKernel=true;a.AttackAt=a.LastAttack=at;a.AttackUntil=s.Until;
+            if(!connect){s.Outcome=2;s.Until=at+NativeKernelPanicRules.Windup+NativeKernelPanicRules.WhiffRecovery;s.Ready=at+NativeKernelPanicRules.Cooldown*.5f;a.AttackUntil=s.Until;return;}
             float floor=victimFeet.Y;var v0=victimFeet+up*C;var contact=v0-f*1.0f;
             s.ConnectedAt=at+NativeKernelPanicRules.Windup;s.Until=s.ConnectedAt+NativeKernelPanicRules.CutIn+NativeKernelPanicRules.Duration;s.Outcome=1;
             s.Anchor=s.VictimStart=V(v0);s.CasterStart=V(contact);s.Victim=victim;
@@ -75,6 +85,7 @@ namespace ChipArena.UnityConversion
             s.CasterPoints=new[]{s.CasterStart,V(v1-f*KernelPanicPath.BlinkOffset),V(v2+up*KernelPanicPath.AboveOffset),V(v3+side),V(back),V(back)};
             s.CasterExit=V(back);s.VictimExit=V(landing);
             if(endedAt>0){s.Outcome=3;s.Until=endedAt;}
+            a.AttackUntil=s.Until;
         }
         private static int kernelIds;
         private static V3 V(Vector3 p)=>new V3(p.X,p.Y,p.Z);

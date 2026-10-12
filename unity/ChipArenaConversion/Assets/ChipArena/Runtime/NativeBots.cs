@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
                 foreach(var shot in Bullets){var owner=Pilots.Find(q=>q.Seat.id==shot.Owner);if(!CanHit(owner,p))continue;Vector3 d=pos-shot.Position;float eta=Vector3.Dot(d,shot.Velocity.normalized)/Math.Max(1,shot.Velocity.magnitude);if(eta>0&&eta<(level==2?.24f:level==1?.3f:.38f)&&(d-shot.Velocity*eta).magnitude<.9f&&!SceneLinecast(shot.Position,pos,WorldMask)){threat=true;break;}}
                 input.Block=threat&&random.NextDouble()<(level==2?.85:level==1?.65:.35);
             }
-            if(input.Block){input.Attack=input.Shoot=input.Roll=input.Sprint=false;return input;}
+            if(input.Block){input.Attack=input.Shoot=input.Roll=input.Sprint=false;if(CyberAllowed(p)&&Time>=p.Cyber.EReady&&p.Mana>=35){input.Block=false;input.AbilityE=true;}return input;}
             if(p.Seat.spec=="siren")return SirenDecision(p,input,target,distance,visible,level);
             BotAbilities(p,ref input,target,targetVelocity,distance,visible,level);
             if(input.AbilityQ||input.AbilityE)input.Attack=input.Sprint=false;
@@ -83,6 +83,7 @@ namespace ChipArena.UnityConversion
         private void BotAbilities(NativePilot p,ref InputFrame input,Vector3 target,Vector3 velocity,float distance,bool visible,int level)
         {
             if(p.Seat.spec=="bow"){BotBow(p,ref input,target,velocity,distance,visible);return;}
+            if(p.Seat.spec=="cyberlord"){BotCyber(p,ref input,target,distance,visible);return;}
             if(NativeMeleeRules.Standard(p.Seat.spec)){BotMeleeAbilities(p,ref input,target,distance,visible,level);return;}
             if(!FighterReady(p)||p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||Time<p.AttackEnd&&!(Dev(p,"emperor")&&p.Fighter?.Kind=="wave"))return;
             if(p.Fighter?.Kind=="charge"){input.HadokenHeld=visible&&Time-p.Fighter.At<1.45f&&p.Stamina>=30*p.Stats["resourceCost"];input.Shoot=input.Roll=false;return;}

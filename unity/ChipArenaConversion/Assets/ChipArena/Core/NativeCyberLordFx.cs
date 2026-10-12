@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
     public sealed class NativeCyberLordFx
     {
         public struct Record{public int Id,Source,Target;public EventKind Kind;public CyberHit Hit;public float Time,Amount;public Vector3 Position,From;}
-        private readonly List<Record> records=new List<Record>(MaxRecords);private int cursor;private float clock=float.NegativeInfinity;
+        private readonly List<Record> records=new List<Record>(MaxRecords);private int cursor,drainSource;private float clock=float.NegativeInfinity,drainAt=-100;
         public IReadOnlyList<Record> Records=>records;
         public const int MaxRecords=128;public const float RecordSeconds=4;
         public const int Mote=0,Core=1,Ring=2,Snow=3,Soft=0,Hot=1,RingSprite=2,Sparkle=3;
@@ -79,11 +79,14 @@ namespace ChipArena.UnityConversion
         public void Observe(IReadOnlyList<ArenaEvent> events,float time)
         {
             if(events==null)return;int newest=0;for(int i=0;i<events.Count;i++)if(events[i].Id>newest)newest=events[i].Id;
-            if(newest>0&&newest<cursor||time<clock-.25f){records.Clear();cursor=0;}
+            if(newest>0&&newest<cursor||time<clock-.25f){records.Clear();cursor=0;drainSource=0;drainAt=-100;}
             clock=time;
             for(int i=0;i<events.Count;i++)
             {
-                var e=events[i];if(e.Id<=cursor||!CyberLordFeed.Kind(e.Kind))continue;var hit=CyberLordFeed.Hit(e.Detail);if(hit==CyberHit.None||time-e.Time>RecordSeconds)continue;
+                var e=events[i];if(e.Id<=cursor||!CyberLordFeed.Kind(e.Kind))continue;var hit=CyberLordFeed.Hit(e.Detail);
+                if(hit==CyberHit.Siphon&&CyberLordFeed.Strike(e.Kind)){drainSource=e.Source;drainAt=e.Time;}
+                else if(hit==CyberHit.None&&CyberLordFeed.SiphonHeal(e.Kind,e.Detail,e.Source,e.Target,e.Time,drainSource,drainAt))hit=CyberHit.Siphon;
+                if(hit==CyberHit.None||time-e.Time>RecordSeconds)continue;
                 if(records.Count>=MaxRecords)records.RemoveAt(0);
                 records.Add(new Record{Id=e.Id,Source=e.Source,Target=e.Target,Kind=e.Kind,Hit=hit,Time=e.Time,Amount=e.Amount,Position=N(e.Position),From=N(e.From)});
             }
@@ -153,16 +156,16 @@ namespace ChipArena.UnityConversion
                 case CyberHit.Burst:if(age<SparkSeconds&&(r.Kind==EventKind.Hit||r.Kind==EventKind.AbilityHit))GlitchSpark(s,r.Position,age,.55f,seed,q,low);break;
                 case CyberHit.Firewall:
                     if(r.Kind==EventKind.Absorb){if(age<.6f)Ripple(s,scene,r,age,q,low);}
-                    else if(age<.35f)BurnFlicker(s,r.Position,age,seed,q,low);
+                    else if(age<.35f&&CyberLordFeed.Strike(r.Kind))BurnFlicker(s,r.Position,age,seed,q,low);
                     break;
                 case CyberHit.Siphon:
                     if(r.Kind==EventKind.Heal){if(age<.55f)HealGlint(s,scene,r,age,seed,q,low);}
                     break;
-                case CyberHit.Crash:if(age<SparkSeconds&&r.Kind!=EventKind.Heal)GlitchSpark(s,r.Position,age,1.1f,seed,q,low);break;
-                case CyberHit.PanicWave:if(age<SparkSeconds&&r.Kind!=EventKind.Heal)GlitchSpark(s,r.Position,age,1.2f,seed,q,low);break;
+                case CyberHit.Crash:if(age<SparkSeconds&&CyberLordFeed.Strike(r.Kind))GlitchSpark(s,r.Position,age,1.1f,seed,q,low);break;
+                case CyberHit.PanicWave:if(age<SparkSeconds&&CyberLordFeed.Strike(r.Kind))GlitchSpark(s,r.Position,age,1.2f,seed,q,low);break;
                 default:
                     // (Step 4's three hits land together on the host; the fork-bomb clones draw their own staggered sparks.)
-                    int step=CyberLordFeed.PanicStep(r.Hit);if(step>0&&step!=4&&age<.5f&&r.Kind!=EventKind.Heal)HitSpark(s,r.Position,age,step==5?2.1f:1.5f,seed,q,low);
+                    int step=CyberLordFeed.PanicStep(r.Hit);if(step>0&&step!=4&&age<.5f&&CyberLordFeed.Strike(r.Kind))HitSpark(s,r.Position,age,step==5?2.1f:1.5f,seed,q,low);
                     break;
             }
         }
@@ -529,10 +532,10 @@ namespace ChipArena.UnityConversion
         public static void CloneActor(Actor clone,Actor caster,in CyberGhost g)
         {
             clone.Id=-1000-g.Index;clone.SourceSpec=CyberLordSpec.Id;clone.Weapon=WeaponId.Sword;clone.Grounded=true;clone.Hp=100;clone.CastRate=1;clone.Yaw=g.Yaw;clone.Position=new V3(g.Position.X,g.Position.Y,g.Position.Z);
-            clone.BodyColor=caster?.BodyColor??clone.BodyColor;clone.AccentColor=caster?.AccentColor??clone.AccentColor;clone.Hat=caster?.Hat??"none";clone.CyberKit??=new NativeCyberKit();
+            clone.BodyColor=caster?.BodyColor??clone.BodyColor;clone.AccentColor=caster?.AccentColor??clone.AccentColor;clone.Hat=caster?.Hat??"none";
             CyberLordFixture.Combo(clone,g.Step,CloneSwingAt);
         }
-        public static float CloneTime(in CyberGhost g)=>CloneSwingAt+CyberLordSpec.ComboDurations[g.Step]*CyberLordSpec.ComboHitShare[g.Step]-.16f+g.PoseAge;
+        public static float CloneTime(in CyberGhost g)=>CloneSwingAt+CyberLordSpec.ComboWindups[g.Step]-.16f+g.PoseAge;
         /// <summary>Pixel blocks crawling over a glitched pilot's body (the runtime passes its posed box centres).</summary>
         public void GlitchBlocks(ICyberFxSink s,int actor,Vector3 chest,float g,float time,float q,bool low)
         {

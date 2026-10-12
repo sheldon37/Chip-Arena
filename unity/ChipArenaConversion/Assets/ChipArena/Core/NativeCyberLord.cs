@@ -3,45 +3,9 @@ using System.Numerics;
 
 namespace ChipArena.UnityConversion
 {
-    /// <summary>
-    /// The DEV Cyber Lord's replicated state that is still a PROPOSAL for Astra's rules (docs/NEW-KITS.md section 3,
-    /// docs/CYBER-LORD.md): the hardlight combo step, one cast record per ability slot, the Data Dash path, the Firewall, the
-    /// Siphon Link and the System Crash field. Kernel Panic is NOT here: it is Astra's implemented contract (Actor.Kernel, a
-    /// NativeKernelPanic, PR #138), read as it is. Nothing in the game writes this kit yet. The presentation never reads it
-    /// directly: CyberLordFeed.Read is the one place that maps the replicated actor into CyberLordView, which every pose,
-    /// effect, HUD card and camera reads. Times are match seconds, positions Unity world metres (feet height), yaws degrees
-    /// (Unity: 0 faces +z).
-    /// </summary>
-    [Serializable] public sealed class NativeCyberKit
-    {
-        /// <summary>The hardlight combo: the current or last swing's step (0 Jab, 1 Cross, 2 Pulse Palm), its start and end.</summary>
-        public int ComboStep;public float ComboAt=-100,ComboUntil=-100;
-        /// <summary>One record per slot, CyberLordSpec.Q, E, One, Two, Three (Q Data Dash ... 3 System Crash); slot Four is unused
-        /// (Kernel Panic's cast comes from Actor.Kernel).</summary>
-        public NativeCyberCast[] Casts=NativeCyberCast.Slots();
-        /// <summary>Q Data Dash: the dash path and the damaging trail's end.</summary>
-        public V3 DashFrom,DashTo;public float TrailUntil=-100;
-        /// <summary>E Firewall: the wall's base centre and yaw, when it formed and when it expires (or was broken).</summary>
-        public V3 WallAt;public float WallYaw,WallBorn=-100,WallUntil=-100;
-        /// <summary>2 Siphon Link: the tethered pilot, the link's start and end (expiry, lost sight or range).</summary>
-        public int LinkTarget;public float LinkAt=-100,LinkUntil=-100;
-        /// <summary>3 System Crash: the field's centre, when the slam made it and when it ends.</summary>
-        public V3 CrashAt;public float CrashBorn=-100,CrashUntil=-100;
-        public NativeCyberKit ViewCopy()
-        {
-            var c=(NativeCyberKit)MemberwiseClone();c.Casts=new NativeCyberCast[Casts?.Length??0];for(int i=0;i<c.Casts.Length;i++)c.Casts[i]=Casts[i]?.Copy()??new NativeCyberCast();return c;
-        }
-    }
-    /// <summary>One ability's replicated cast: start, active (release) start, active end, recovery end and the slot's ready time.</summary>
-    [Serializable] public sealed class NativeCyberCast
-    {
-        public float At=-100,Release=-100,Until=-100,RecoverUntil=-100,Ready=-100;
-        public NativeCyberCast Copy()=>(NativeCyberCast)MemberwiseClone();
-        public static NativeCyberCast[] Slots(){var s=new NativeCyberCast[CyberLordSpec.Slots];for(int i=0;i<s.Length;i++)s[i]=new NativeCyberCast();return s;}
-    }
-
-    /// <summary>The spec's numbers (docs/NEW-KITS.md section 3) the presentation keys on. Astra may tune them; the replicated
-    /// windows always win where they exist, these are the fallbacks and the fixtures' timeline.</summary>
+    /// <summary>The numbers the presentation keys on: Astra's rules (NativeCyberRules, the host's StepCyberInput /
+    /// StepCyberWorld, NativeKernelPanicRules) where she names them, her literals otherwise. The replicated kit (Actor.Cyber)
+    /// always wins; these size the effects and drive the fixtures' timeline.</summary>
     public static class CyberLordSpec
     {
         public const string Id="cyberlord",Entrance="dev-cyberlord";
@@ -51,13 +15,16 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Names={"Data Dash","Firewall","Packet Burst","Siphon Link","System Crash","Kernel Panic"};
         public static readonly string[] Ids={"data-dash","firewall","packet-burst","siphon-link","system-crash","kernel-panic"};
         public static readonly float[] Cooldowns={6,12,4,10,14,NativeKernelPanicRules.Cooldown},Costs={20,35,15,25,40,NativeKernelPanicRules.Mana};
-        /// <summary>The hardlight combo: Jab .28 s, Cross .30 s, Pulse Palm .45 s; the reset after .6 s idle; range, arc, palm cone.</summary>
-        public static readonly float[] ComboDurations={.28f,.30f,.45f};
-        public static readonly float[] ComboDamage={12,14,22};
+        /// <summary>The hardlight combo (Astra's NativeCyberRules): Jab .28 s, Cross .30 s, Pulse Palm .45 s and their damage; the
+        /// reset after .6 s idle; range, arc, palm cone.</summary>
+        public static readonly float[] ComboDurations=NativeCyberRules.ComboSeconds,ComboDamage=NativeCyberRules.ComboDamage;
         public const float ComboReset=.6f,ComboRange=2.2f,ComboArc=1.4f,PalmCone=1.6f,ManaPerHit=6,Mana=100;
-        /// <summary>Where each combo step's hit lands in its duration (the pack takes' impacts: jab .42, cross .41, palm .82).</summary>
-        public static readonly float[] ComboHitShare={.42f,.41f,.62f};
-        public const float DashDistance=7,TrailSeconds=1.2f,TrailTick=.3f;
+        /// <summary>Each step's windup at attack rate 1 (StepCyberInput: .1, .1, .18 s): the hit resolves at the kit's Release, and
+        /// the kit's Kind names the step.</summary>
+        public static readonly float[] ComboWindups={.1f,.1f,.18f};
+        public static readonly string[] ComboKinds={"cyber-jab","cyber-cross","cyber-palm"};
+        /// <summary>Q: 7 m in .2 s (NativeCyberRules.DashPosition), the trail 1.2 s after, ticking every .3 s.</summary>
+        public const float DashDistance=7,DashSeconds=.2f,TrailSeconds=1.2f,TrailTick=.3f;
         public const float WallWidth=5,WallHeight=2.5f,WallAhead=.8f,WallSeconds=4,WallForm=.28f,WallCollapse=.35f;
         public const float BurstRange=6,BurstAngle=50,BurstShards=8;
         public const float LinkRange=12,LinkBreak=15,LinkSeconds=2.5f;
@@ -70,8 +37,12 @@ namespace ChipArena.UnityConversion
         public const int Whiff=1,Connect=2,EndedEarly=3;
         /// <summary>The share of the windup the opener's lunge drive starts at (the take cocks, then drives to the contact).</summary>
         public const float PanicDrive=.6f;
-        /// <summary>Fixture casts (the proposal leaves windup/active/recovery to the rules): per slot [windup, active, recovery].</summary>
-        public static readonly float[][] Timing={new[]{.08f,.22f,.18f},new[]{.3f,.12f,.3f},new[]{.18f,.1f,.32f},new[]{.2f,LinkSeconds,.25f},new[]{CrashWindup,.12f,.4f},new[]{PanicWindup,0,PanicWhiff}};
+        /// <summary>Each cast's windup and length as StepCyberInput begins it (CyberBegin: Release = At + windup, Until = At +
+        /// length; Q to 3; Kernel Panic's come from Actor.Kernel). The pilot is free again at Until: the rules have no recovery.</summary>
+        public static readonly float[] CastWindup={0,0,.08f,0,CrashWindup,PanicWindup},CastSeconds={DashSeconds,.2f,.25f,.2f,.8f,PanicWindup};
+        /// <summary>The presentation's settle after a cast's end (the pose eases back to the stance; a newer swing, cast, block or
+        /// move takes over at once, so it never holds the pilot). Not a rules window.</summary>
+        public static readonly float[] Settle={.18f,.3f,.32f,.25f,.4f,0};
         public static int Slot(string id){for(int i=0;i<Ids.Length;i++)if(Ids[i]==id)return i;return -1;}
     }
 
@@ -156,11 +127,11 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// THE field mapping (owner brief: "Keep the field mapping in one place, so it adapts when Astra's real names land"):
-    /// the replicated actor into CyberLordView, and a cyber event's Detail into what it is. Kernel Panic reads Astra's
-    /// implemented state (Actor.Kernel, NativeKernelPanic: positions are Rigidbody centres, the feet .865 m below; Outcome 0
-    /// windup, 1 connect, 2 whiff, 3 interrupted, 4 complete) and her Details (kernel-panic-1 .. -5, kernel-panic-wave).
-    /// The rest reads the still-proposed NativeCyberKit (Actor.CyberKit) and the actor's standard melee swing fields for the
-    /// combo (Combo, AttackAt/AttackUntil, SwingAt); when those fields land, only this class changes. Allocation-free.
+    /// the replicated actor into CyberLordView, and a cyber event's Detail into what it is. It reads Astra's implemented
+    /// state only: the kit (Actor.Cyber, NativeCyberKit, the host's StepCyberInput / StepCyberWorld, Runtime/NativeCyberLord.cs) for the combo and Q to
+    /// 3, Kernel Panic (Actor.Kernel, NativeKernelPanic: positions are Rigidbody centres, the feet .865 m below; Outcome 0
+    /// windup, 1 connect, 2 whiff, 3 interrupted, 4 complete) for 4, and her event Details (the cast kinds, kernel-panic-1 ..
+    /// -5, kernel-panic-wave). Nothing else in the presentation names those fields. Allocation-free.
     /// </summary>
     public static class CyberLordFeed
     {
@@ -170,22 +141,88 @@ namespace ChipArena.UnityConversion
         public static bool Read(Actor a,CyberLordView v)
         {
             v.Clear();if(!Handles(a))return false;v.Id=a.Id;v.Alive=a.Alive;v.Feet=a.Position;v.Yaw=a.Yaw;
-            var k=a.CyberKit;
-            // The combo: the kit's own step and window, else the standard melee swing the rules may reuse (Combo, AttackAt/AttackUntil).
-            if(k!=null&&k.ComboAt>-90){v.ComboStep=Mod3(k.ComboStep);v.ComboAt=k.ComboAt;v.ComboUntil=k.ComboUntil;}
-            else if(a.AttackAt>-90){v.ComboStep=Mod3(a.Combo);v.ComboAt=a.AttackAt;v.ComboUntil=a.AttackUntil>a.AttackAt?a.AttackUntil:a.AttackAt+CyberLordSpec.ComboDurations[v.ComboStep];}
-            if(v.ComboAt>-90)v.ComboHit=a.SwingAt>=v.ComboAt-1e-4f&&a.SwingAt<v.ComboUntil?a.SwingAt:v.ComboAt+(v.ComboUntil-v.ComboAt)*CyberLordSpec.ComboHitShare[v.ComboStep];
             // Kernel Panic: Astra's state, on both participants; the caster's own cast only (a victim's copy belongs to its caster).
-            var kp=a.Kernel;if(kp!=null&&kp.Id>0&&kp.Caster==a.Id)Kernel(kp,v);
-            if(k==null)return true;
-            int n=Math.Min(CyberLordSpec.Four,k.Casts?.Length??0);
-            for(int i=0;i<n;i++){var c=k.Casts[i];if(c==null)continue;v.At[i]=c.At;v.Release[i]=c.Release;v.Until[i]=c.Until;v.RecoverUntil[i]=c.RecoverUntil;v.Ready[i]=c.Ready;}
-            v.DashFrom=k.DashFrom;v.DashTo=k.DashTo;v.TrailUntil=k.TrailUntil;
-            v.WallAt=k.WallAt;v.WallYaw=k.WallYaw;v.WallBorn=k.WallBorn;v.WallUntil=k.WallUntil;
-            v.LinkTarget=k.LinkTarget;v.LinkAt=k.LinkAt;v.LinkUntil=k.LinkUntil;
-            v.CrashAt=k.CrashAt;v.CrashBorn=k.CrashBorn;v.CrashUntil=k.CrashUntil;
+            var kp=a.Kernel;bool own=kp!=null&&kp.Id>0&&kp.Caster==a.Id;if(own)Kernel(kp,v);float k=own?kp.At:-100;
+            var s=a.Cyber;if(s==null)return true;
+            v.Ready[CyberLordSpec.Q]=s.QReady;v.Ready[CyberLordSpec.E]=s.EReady;v.Ready[CyberLordSpec.One]=s.PacketReady;v.Ready[CyberLordSpec.Two]=s.LinkReady;v.Ready[CyberLordSpec.Three]=s.CrashReady;
+            // The kit keeps one window, the current or last cast's (Kind, At, Release, Until); the host's reset kit is all zeros.
+            string kind=s.Kind??"";bool cast=kind.Length>0&&s.At>0&&s.Until>=s.At;float end=cast?CastEnd(a,s,k):-100;bool cut=cast&&Cut(a,s);
+            // The combo: the kit's step, its swing from At to Until, the hit on Release (StepCyberWorld resolves it there).
+            if(cast&&kind.StartsWith("cyber-",StringComparison.Ordinal)&&s.Combo>=0)
+            {v.ComboStep=Mod3(s.Combo);v.ComboAt=s.At;v.ComboUntil=Math.Max(s.At+.01f,end);v.ComboHit=s.Release;}
+            // Q Data Dash (windup 0): its own start and end (DashUntil, zeroed when an interrupt stops the body), the path's two
+            // body centres and the damaging trail's end (the trail ticks on along the whole path either way).
+            if(s.DashAt>0&&s.TrailUntil>s.DashAt)
+            {
+                float until=s.DashUntil>s.DashAt?s.DashUntil:Interrupt(a,k,s.DashAt,s.DashAt+CyberLordSpec.DashSeconds);if(Same(kind,"data-dash",s,s.DashAt))until=Math.Min(until,end);
+                Window(v,CyberLordSpec.Q,s.DashAt,s.DashAt,until,cut&&Same(kind,"data-dash",s,s.DashAt)||s.DashUntil<=s.DashAt);
+                v.DashFrom=Feet3(s.DashFrom);v.DashTo=Feet3(s.DashTo);v.TrailUntil=s.TrailUntil;
+            }
+            // E Firewall (windup 0): the wall stands from the cast for 4 s (WallUntil) at WallPoint, its bottom centre, across WallYaw.
+            if(s.WallAt>0&&s.WallUntil>s.WallAt)
+            {
+                bool now=Same(kind,"firewall",s,s.WallAt);Window(v,CyberLordSpec.E,s.WallAt,s.WallAt,now?end:s.WallAt+CyberLordSpec.CastSeconds[CyberLordSpec.E],now&&cut);
+                v.WallAt=s.WallPoint;v.WallYaw=s.WallYaw;v.WallBorn=s.WallAt;v.WallUntil=s.WallUntil;
+            }
+            // 1 Packet Burst: no record of its own, only the kit's window while it is the current cast (the shards fly at Release).
+            if(cast&&kind=="packet-burst")Window(v,CyberLordSpec.One,s.At,s.Release,end,cut);
+            // 2 Siphon Link (windup 0): the reach over the .2 s cast, the tether from LinkAt to LinkUntil (2.5 s, the break's time
+            // when lost, zeroed by an interrupt: then the interrupt's time), on LinkTarget.
+            if(s.LinkAt>0&&s.LinkTarget!=0)
+            {
+                float link=s.LinkUntil>=s.LinkAt?s.LinkUntil:Interrupt(a,k,s.LinkAt,s.LinkAt+CyberLordSpec.LinkSeconds,s.LinkAt+CyberLordSpec.CastSeconds[CyberLordSpec.Two]);
+                float reach=Same(kind,"siphon-link",s,s.LinkAt)?end:s.LinkAt+CyberLordSpec.CastSeconds[CyberLordSpec.Two];
+                Window(v,CyberLordSpec.Two,s.LinkAt,Math.Min(reach,link),link,s.LinkUntil<s.LinkAt);
+                v.LinkTarget=s.LinkTarget;v.LinkAt=s.LinkAt;v.LinkUntil=link;
+            }
+            // 3 System Crash: the .5 s windup, the slam at Release (one hit with a 1 s stun at CrashPoint, a body centre), to
+            // CrashUntil; the field the presentation draws lasts the stun. An interrupt before the slam leaves no field.
+            if(s.CrashAt>0&&s.CrashUntil>s.CrashAt)
+            {
+                bool now=Same(kind,"system-crash",s,s.CrashAt);float slam=now?s.Release:s.CrashAt+CyberLordSpec.CrashWindup,until=now?end:s.CrashUntil;
+                Window(v,CyberLordSpec.Three,s.CrashAt,slam,until,now&&cut);
+                if(until>=slam-Eps){v.CrashAt=Feet3(s.CrashPoint);v.CrashBorn=slam;v.CrashUntil=slam+CyberLordSpec.CrashStun;}
+            }
             return true;
         }
+        private const float Eps=.002f;
+        /// <summary>Slot `slot`'s window: a cut cast ends where it was cut, its release no later, with no settle.</summary>
+        private static void Window(CyberLordView v,int slot,float at,float release,float until,bool cut)
+        {
+            until=Math.Max(at,until);v.At[slot]=at;v.Release[slot]=Math.Min(Math.Max(at,release),until);v.Until[slot]=until;v.RecoverUntil[slot]=cut?until:until+CyberLordSpec.Settle[slot];
+        }
+        private static bool Same(string kind,string id,NativeCyberKit s,float at)=>kind==id&&Math.Abs(s.At-at)<=Eps;
+        /// <summary>The planned end of the kit's cast: the actor's AttackUntil while its AttackAt is the cast's (the host's
+        /// AttackEnd, which CyberBegin sets with AttackAt; a newer action such as Kernel Panic overwrites both), else the cast's
+        /// own length: a combo step's scales with the attack rate as its windup does (the kit's Release shows it), an ability's
+        /// is fixed (Tests/CyberLordChecks pins both to NativeCyberRules.Predict).</summary>
+        private static float Planned(Actor a,NativeCyberKit s)
+        {
+            if(Math.Abs(a.AttackAt-s.At)<=Eps&&a.AttackUntil>=s.At)return a.AttackUntil;
+            string kind=s.Kind??"";
+            for(int i=0;i<3;i++)if(kind==CyberLordSpec.ComboKinds[i])return s.At+Math.Max(0,s.Release-s.At)*CyberLordSpec.ComboDurations[i]/CyberLordSpec.ComboWindups[i];
+            int slot=CyberLordSpec.Slot(kind);return slot>=0&&slot<CyberLordSpec.Four?s.At+CyberLordSpec.CastSeconds[slot]:s.Until;
+        }
+        /// <summary>Whether an interrupt moved the kit's Until (StepCyberWorld sets it to the host's time on every tick a block,
+        /// roll or incapacity lasts) off the planned end.</summary>
+        private static bool Cut(Actor a,NativeCyberKit s)=>Math.Abs(s.Until-Planned(a,s))>Eps;
+        /// <summary>Where the kit's cast ended: its Until, or where the interrupt that moved it began.</summary>
+        private static float CastEnd(Actor a,NativeCyberKit s,float kernelAt)
+        {
+            float planned=Planned(a,s);if(Math.Abs(s.Until-planned)<=Eps)return s.Until;
+            return Math.Max(s.At,Interrupt(a,kernelAt,s.At,Math.Min(s.Until,planned)));
+        }
+        /// <summary>The first interrupt after `from` and before `upTo` (a block, a roll, a hit reaction, the pilot's own Kernel
+        /// Panic at `kernelAt`), else `otherwise` (`upTo` when not given). The kit does not keep the interrupt's time, so this
+        /// is the presentation's best reading of the actor (a reaction that did not interrupt can end it early).</summary>
+        private static float Interrupt(Actor a,float kernelAt,float from,float upTo,float otherwise=float.NaN)
+        {
+            float t=upTo;bool found=false;
+            void Take(float x){if(x>from+Eps&&x<t){t=x;found=true;}}
+            Take(a.BlockAt);Take(a.RollAt);Take(a.ReactionAt);Take(kernelAt);
+            return found||float.IsNaN(otherwise)?t:Math.Min(upTo,otherwise);
+        }
+        private static V3 Feet3(V3 p)=>new V3(p.x,p.y-BodyCentre,p.z);
         /// <summary>The feet below a NativeKernelPanic position (a Rigidbody centre, as Actor.Position is the body less .865 m).</summary>
         public const float BodyCentre=.865f;
         private static Vector3 Feet(V3 p)=>new Vector3(p.x,p.y-BodyCentre,p.z);
@@ -208,9 +245,8 @@ namespace ChipArena.UnityConversion
             else if(s.Outcome==3){v.Until[F]=Math.Min(contact,s.Until);v.RecoverUntil[F]=s.Until;}
         }
         private static int Mod3(int x)=>((x%3)+3)%3;
-        /// <summary>The proposed per-ability event Details (NEW-KITS section 3), in CyberHit order from Jab.</summary>
-        /// <summary>The event Details in CyberHit order from Jab: the proposed per-ability ones (NEW-KITS section 3) and Astra's
-        /// Kernel Panic ones (kernel-panic-1 .. -5 on the victim, step 4 three times; kernel-panic-wave on the others).</summary>
+        /// <summary>The event Details in CyberHit order from Jab: Astra's cast kinds (the combo's steps and Q to 3, on Hit
+        /// events as the damage kind, on the dash's Teleport and the wall's Absorb) and her Kernel Panic ones (kernel-panic-1 .. -5 on the victim, step 4 three times; kernel-panic-wave on the others).</summary>
         public static readonly string[] Details={"cyber-jab","cyber-cross","cyber-palm","data-dash","firewall","packet-burst","siphon-link","system-crash","kernel-panic-1","kernel-panic-2","kernel-panic-3","kernel-panic-4","kernel-panic-5","kernel-panic-wave"};
         public static CyberHit Hit(string detail)
         {
@@ -220,8 +256,16 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The Kernel Panic step (1..5) of an event, 0 for none.</summary>
         public static int PanicStep(CyberHit h)=>h>=CyberHit.Panic1&&h<=CyberHit.Panic5?h-CyberHit.Panic1+1:0;
-        /// <summary>The event kinds the presentation reads with a cyber Detail: hits, ability hits, heals (the Siphon's) and absorbs (the Firewall's).</summary>
-        public static bool Kind(EventKind k)=>k==EventKind.Hit||k==EventKind.AbilityHit||k==EventKind.Heal||k==EventKind.Absorb||k==EventKind.AbilityCast||k==EventKind.BurnTick;
+        /// <summary>The event kinds the presentation reads: hits and ability hits (Detail: the damage kind), the Firewall's
+        /// absorbs and the Siphon's heals (SiphonHeal; the casts' AbilityCast and the dash's Teleport are drawn from the kit).</summary>
+        public static bool Kind(EventKind k)=>k==EventKind.Hit||k==EventKind.AbilityHit||k==EventKind.Heal||k==EventKind.Absorb;
+        /// <summary>Whether a hit or an ability hit (the strikes; not an absorb or a heal).</summary>
+        public static bool Strike(EventKind k)=>k==EventKind.Hit||k==EventKind.AbilityHit;
+        /// <summary>Astra's Siphon Link heals its caster with a plain Heal (no Detail) in the host tick of each drain hit
+        /// (Detail "siphon-link", Source the caster): a detail-less Heal of `source` itself at the time of `source`'s last
+        /// drain hit is the Siphon's.</summary>
+        public static bool SiphonHeal(EventKind kind,string detail,int source,int target,float time,int drainSource,float drainAt)=>
+            kind==EventKind.Heal&&string.IsNullOrEmpty(detail)&&source==target&&source!=0&&source==drainSource&&Math.Abs(time-drainAt)<=Eps;
     }
 
     /// <summary>
