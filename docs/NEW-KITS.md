@@ -148,6 +148,53 @@ fighters use).
   - **Replication:** sequence start time, anchor, facing, seed, the resolved waypoints (or enough data to
     resolve them identically), the victim id, an outcome flag (whiff, connect, ended early), and per-step hit
     events (Detail `kernel-panic-1` to `-5`).
+  - **Implementation contract — Astra, 2026-10-12 (`codex/unity-kernel-panic-20261012`, base `da5b9c1`):**
+    - Kernel Panic simulation and the existing `InputFrame.SirenAbility == 4` dispatch are implemented on this
+      branch. Cyber Lord itself is still spec-only at this base: this change does **not** register an incomplete
+      weapon, add its other abilities, or expose a selectable class. Claude's cut-in, choreography, cameras and
+      HUD remain presentation work. The full kit/roster integration must land before player acceptance or release.
+    - Proposed base numbers above are retained: .25 s opener, .6 s cut-in, five steps at 0/.45/.95/1.35/1.9 s,
+      recovery at 2.6 through 3.4 s, 60 mana and 30 s cooldown. The opener captures but adds no extra damage:
+      12 + 10 + 10 + 3*6 + 25 = **75** before normal scaling/defenses. Resource-cost chips scale the 60 mana.
+      Whiff uses .6 s recovery and a cooldown deadline of cast time + 15 s; mana is not refunded. The wave's
+      previously unspecified impulse is **260** (4 m/s before knockback modifiers), with the proposed 5 m/20 damage.
+    - A real .6 m-radius capsule sweep follows the input aim, limited by world collision and arena bounds.
+      The nearest enemy pilot wins (id breaks ties). Block, roll immunity or a spawn shield prevent capture and
+      count as a whiff. Already captured pilots, Siren-held/scared pilots and the PvE authority boss are not
+      capture targets. Only a live DEV claim can cast; weapon grants do not authorize it.
+    - `Actor.Kernel` (with `HasKernel` for Unity JSON presence) is a deep-copied `NativeKernelPanic` on both
+      participants. It carries `Id`, `Caster`, `Victim`, `Seed`, `At` (cast), `ConnectedAt` (cut-in start),
+      `Until`, `Ready`, `Anchor`, unit `Facing`, `CasterStart`, `VictimStart`, two **six-point** arrays
+      `CasterPoints`/`VictimPoints`, safe `CasterExit`/`VictimExit`, `WallSplat`, `Next` and `Outcome`.
+      Positions are **Rigidbody centres in native metres** (subtract .865 m for Actor foot positions).
+      `NativePilotFrame.kernelReady` carries the cooldown separately. Outcome: 0 windup, 1 connect,
+      2 whiff, 3 ended early, 4 complete. The `Id` distinguishes later casts; do not infer a cast from events.
+    - Use `NativeKernelPanicRules.Sample(state, presentationTime, out caster, out victim)` for the resolved
+      choreography. It holds the start positions during the cut-in, interpolates the victim between host points,
+      teleports the caster at each step, and settles both at recovery. Late join/killcam do not replay old events.
+      `Next` is the count of committed steps, not a pose clock. The seed selects the side offset and is also
+      available for deterministic clones/VFX. Wall-clamped launches set `WallSplat` explicitly.
+    - Each damaging beat emits `Hit` with Detail `kernel-panic-1` ... `kernel-panic-5`; step 4 emits three
+      six-damage hits with the same Detail. A fully held hit still emits a zero-actual-damage event. The wave
+      uses `kernel-panic-wave`. Damage scaling, normal direct-hit modifiers and impact chips apply on paid hits.
+      After normal mitigation, damage below 1 HP is stored as `DamageDebt` and paid once on step 5; it is
+      discarded on early cancellation. Reactive escape/panic chips are deferred to the finisher, and their
+      teleport cannot break the lock. Normal lethal-save chips can still save against the finisher.
+    - During connect, both colliders are disabled and bodies are kinematic; input and guest prediction are
+      locked. Third-party attacks, stage damage and DoTs cannot affect the pair; only the explicitly authorized
+      sequence hits can damage the victim. Existing outgoing projectiles/chips still affect other pilots under
+      ordinary rules. The wave does not double-hit the captured victim. No mid-combo kill/interrupt.
+    - Host waypoints use capsule sweeps, arena clamps and clear supported landing searches on a deterministic
+      .5 m grid (up to 6 m around a candidate). Hazard columns are conservatively excluded, including inactive
+      spikes. If no safe initial route is found, it whiffs. Geometry/hazard changes invalidating a sample abort
+      before moving there. Cleanup tries nearby support, the prevalidated exit, then spawn support before the
+      original bounded exit; supported maps require a permanent safe floor. Survivors regain their original
+      collision/physics state; a dead victim remains dead. Disconnects and round changes use the same cleanup.
+    - Verification on this branch: managed determinism/serialization, HP 1–100 lethal-debt conservation,
+      isolation, catch-up/exactly-once steps and malformed-state checks. A genuine Unity build-gate fixture
+      covers capture, DEV rejection, spend/refund, block, JSON path, damage isolation, lethal finisher,
+      disconnect and round cleanup. That fixture is compile-checked here; actual PhysX/Windows execution,
+      two-client latency, tight geometry and Claude's presentation acceptance remain required.
   - **Cameras:** for the caster and the victim, a cinematic camera that follows the choreography (the existing
     C16 cinematic camera rules). Everyone else keeps their own camera.
 - **Stats:** base HP 100; class `melee` (unarmed) for the block, stamina and roll rules, with mana as the
