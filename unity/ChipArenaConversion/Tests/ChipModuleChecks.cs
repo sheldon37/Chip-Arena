@@ -22,9 +22,10 @@ namespace ChipArena.UnityConversion
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Chip modules: "+what);count++;}
         // The base (f575670) files the Prototype pieces come from, byte-identical, and their output over every weapon's loadouts.
-        // NativeWeaponDressing.cs pinned at the shared head 5452bf8: the Bow merge added one branch to MuzzleZ (the bow's 'muzzle'
-        // on its arrow line, NativeBowModels.ModuleTip); every other weapon's pieces are the base's (PrototypeDigest below).
-        private const string DressingSha="c0345431c371768039d056b251b38ef1b6e8c300c439d37bbb90b12b3e102973",PrimitivesSha="cc7fa54dd5dc6aeec35110a11cb2a5be142883decc5dc65cc82d061d45fd6b61";
+        // NativeWeaponDressing.cs pinned at the shared head a53e752: the Bow merge added one branch to MuzzleZ (the bow's 'muzzle'
+        // on its arrow line, NativeBowModels.ModuleTip) and the Cyber Lord merge hid the weapon socket on its spec (SocketShown);
+        // every other weapon's pieces are the base's (PrototypeDigest below), the bow's the Bow merge's (BowPrototypeDigest).
+        private const string DressingSha="4c4b6470726f3343f472e21e7f8d70d476ec7909dca69d91201e2474577251a4",PrimitivesSha="cc7fa54dd5dc6aeec35110a11cb2a5be142883decc5dc65cc82d061d45fd6b61";
         private const string PrototypeDigest="c7d7877b6c6f734f",BowPrototypeDigest="8b0ea57b5e2e0291";
         public const float Standoff=.05f,Contact=.012f,Hover=.06f,SightCone=6f;
         private sealed class Loadout{public string Name;public Dictionary<string,int> Chips;public ChipStats Stats;public bool Fire,Poison;public int Ember,Motes;}
