@@ -284,12 +284,15 @@ namespace ChipArena.UnityConversion
             public MeleeImpacts Impacts;
             // The arena's melee hit ledger (null for intro, portrait, corpse and viewer rigs) and this rig's hit layer (Core/NativeHitReact).
             public NativeHitLedger Hits;private readonly NativeHitLayer hitLayer=new NativeHitLayer();
+            // The jump layer (Core/NativeJumpMotion) for the arena rigs (host, guests, killcam, spectators: where Hits is set),
+            // one per rig across its routes; intro, portrait, corpse and viewer rigs keep their own motion.
+            private NativeJumpMotion jump;private NativeJumpMotion JumpLayer=>Hits!=null?jump??=new NativeJumpMotion():null;
             // The held weapons' reach stretch, set by the presentation before posing (the melee layers measure the stretched blade).
             public float WeaponReach=1;
             public static bool CapturedMelee(Actor a)=>NativePoseRoute.For(a,false)==PoseRoute.CapturedMelee;
             private void MeleePose(Actor a,Vector3 position,float time)
             {
-                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;
+                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;melee.JumpLayer=JumpLayer;
                 float dt=meleeTime<-90||time<meleeTime||time-meleeTime>.35f?1/60f:Mathf.Min(.1f,time-meleeTime);meleeTime=time;
                 var v=MeleeViewOf(a,time,meleeView);v.Reach=WeaponReach;bool roll=a.Rolling(time),special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time),juggle=Juggled(a,time);v.Juggle=juggle;
                 float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
@@ -318,7 +321,7 @@ namespace ChipArena.UnityConversion
             private readonly CapturedRig.Pose fighterClip=new CapturedRig.Pose();private readonly MeleeView fighterView=new MeleeView();private readonly NativeWaveDash waveDash=new NativeWaveDash();
             private void FighterPose(Actor a,Vector3 position,float time)
             {
-                Weapon=a.Weapon;Set=0;if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;
+                Weapon=a.Weapon;Set=0;if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;melee.JumpLayer=JumpLayer;
                 float dt=meleeTime<-90||time<meleeTime||time-meleeTime>.35f?1/60f:Mathf.Min(.1f,time-meleeTime);meleeTime=time;
                 bool emperor=a.SourceSpec=="emperor",juggle=Juggled(a,time),down=!juggle&&NativeSpecialPose.Down(a,time),stun=!juggle&&!down&&a.StunUntil>time;
                 bool dodge=emperor&&a.Rolling(time)&&!juggle&&!down&&!stun;
@@ -466,7 +469,7 @@ namespace ChipArena.UnityConversion
             private MagicMotion magicMotion;private NativeSirenDrift sirenDrift;
             private void MagicGaitPose(Actor a,Vector3 position,float time)
             {
-                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(magicMotion==null)magicMotion=new MagicMotion();
+                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(magicMotion==null)magicMotion=new MagicMotion();magicMotion.JumpLayer=JumpLayer;
                 bool juggle=Juggled(a,time),roll=MagicMotion.Rolls(a,time,juggle);
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;magicMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);magicMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
@@ -484,7 +487,7 @@ namespace ChipArena.UnityConversion
             private GunMotion gunMotion;
             private void GunGaitPose(Actor a,Vector3 position,float time)
             {
-                Weapon=a.Weapon;Set=0;if(gunMotion==null)gunMotion=new GunMotion();
+                Weapon=a.Weapon;Set=0;if(gunMotion==null)gunMotion=new GunMotion();gunMotion.JumpLayer=JumpLayer;
                 bool juggle=Juggled(a,time),roll=!juggle&&a.Rolling(time);
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;gunMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);gunMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;

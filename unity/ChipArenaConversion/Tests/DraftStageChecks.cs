@@ -32,7 +32,7 @@ internal static class DraftStageChecks
         float header=(H<=760?16:22)+21+(H<=760?24:Math.Clamp(W*.025f,24,34))*1.08f+4+(H>760?20.3f:0)+Math.Clamp(H*.024f,4,30);
         int fit=W<=760||H<=480?n:Math.Clamp((int)Math.Floor((W-42)/164),2,6);int[] rows=n<=fit?new[]{n}:new[]{(n+1)/2,n/2};bool large=W>=1600&&H>=900;
         float tray=W-56,gap=14,rowGap=H<=760||rows.Length==2&&H<=820?14:20,cap=rows.Length==2?214:large?272:236,y=header;var cards=new Vector4[n];int at=0;
-        foreach(int cols in rows){float w=Math.Min(cap,Math.Max(118,(tray-(cols-1)*gap)/cols)),h=w*.78f,span=cols>1?(tray-cols*w)/(cols-1):0;y+=10;for(int i=0;i<cols;i++)cards[at+i]=new Vector4(cols==1?(W-w)/2:28+i*(w+span),y,w,h);at+=cols;y+=h+8+rowGap;}
+        foreach(int cols in rows){float w=Math.Min(cap,Math.Max(118,(tray-(cols-1)*gap)/cols)),h=w*.78f;y+=10;for(int i=0;i<cols;i++)cards[at+i]=new Vector4(NativeDraftRules.RowX(i,cols,w,tray,gap,W),y,w,h);at+=cols;y+=h+8+rowGap;}
         float end=y-rowGap,off=Math.Max(0,H-(pve?142:H<=760?54:66)-end);for(int i=0;i<n;i++)cards[i].Y+=off;top=cards[0].Y;bottom=end+off;return cards;
     }
     private static Vector2[] Centres(Vector4[] cards,float W,float H){var c=new Vector2[cards.Length];for(int i=0;i<cards.Length;i++)c[i]=new Vector2((cards[i].X+cards[i].Z/2)/W,(cards[i].Y+cards[i].W/2)/H);return c;}
@@ -100,6 +100,21 @@ internal static class DraftStageChecks
         // The considered card: chosen, then hover/focus, then the boot scan following the entrance, then the 1.8 s cycle.
         Check(NativeDraftStage.Focus(2,4,0,5,false)==2&&NativeDraftStage.Focus(-1,4,0,5,false)==4&&NativeDraftStage.Focus(-1,-1,.5f,5,false)==2&&NativeDraftStage.Focus(-1,-1,1.2f,5,false)==0
             &&NativeDraftStage.Focus(-1,-1,1.9f,5,false)==1&&NativeDraftStage.Focus(-1,-1,9,5,true)==0&&NativeDraftStage.Focus(-1,-1,3,0,false)==-1&&NativeDraftStage.Focus(7,-1,0,5,false)==4,"focus order");
+        // Tray rows: a short row sits centred with at most RowGutter card widths between cards (owner 2026-10-12), a full row
+        // still spans the tray (28 px margins), and every row stays inside the screen without overlapping cards.
+        foreach(var sc in Screens)foreach(int n in new[]{2,3,4,5,6,8,12})
+        {
+            var r=Tray(n,sc.W,sc.H,false,out _,out _);int first=0;
+            while(first<n)
+            {
+                int last=first;while(last+1<n&&Math.Abs(r[last+1].Y-r[first].Y)<.5f)last++;float left=r[first].X,right=r[last].X+r[last].Z,w=r[first].Z;
+                Check(Math.Abs((left+right)/2-sc.W/2)<.5f,sc.Name+" "+n+" cards: the row is centred ("+left+".."+right+" of "+sc.W+")");
+                Check(left>=27.5f&&right<=sc.W-27.5f,sc.Name+" "+n+" cards: the row stays inside the tray");
+                for(int i=first;i<last;i++){float g=r[i+1].X-(r[i].X+r[i].Z);Check(g>=-.01f&&g<=Math.Max(14,w*NativeDraftRules.RowGutter)+.01f,sc.Name+" "+n+" cards: gutter "+g+" for "+w+" px cards");}
+                first=last+1;
+            }
+        }
+        {var r=Tray(3,1920,1080,false,out _,out _);Check(r[0].X>400,"three cards on 1920x1080 sit together, not at the tray edges (first at "+r[0].X+")");}
         var rest0=new CapturedRig.Pose();NativeDraftRules.Pose(rest0,0);rest0.World();float restHead=rest0.WorldPosition[CapturedRig.Head].Y;
         // The solar plexus comes from the rig: on the chest's front, halfway up from the spine joint (the navel) to the neck joint
         // (the sternal notch), so above the chest joint (the ribcage's base) and below the shoulders, and the seated lean carries

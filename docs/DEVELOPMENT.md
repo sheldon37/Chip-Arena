@@ -97,6 +97,11 @@ deterministically (one 4.8 s, 60 Hz track per entrance, sequenced from pack clip
 continuity and foot contacts; the choices are its ENTRANCES table; the daggers keep their baked clip), then run the Tests
 project (`Tests/PackIntroChecks.cs` checks the hashes, planted feet, floor, grips, blade and staff clearance, the hits, the
 detail shots' framing and the daggers' fingerprint).
+The Unity jump animation uses the same pack: `node unity/ChipArenaConversion/tools/export_pack_jumps.mjs <pack>/Animations`
+rewrites `Assets/ChipArena/Core/NativePackJumps.Generated.cs` and `tools/pack-jumps-provenance.json` deterministically
+(per weapon style the guard frame, the Jump and Land takes split by their .meta frame ranges, the Fall loop and the
+Jump-Flip; the choices are its SETS table), then run the Tests project (`Tests/JumpMotionChecks.cs` checks the hashes,
+phase tracking, floor contact, grips, the dagger flip and the hooks).
 
 ## CI and agent access
 

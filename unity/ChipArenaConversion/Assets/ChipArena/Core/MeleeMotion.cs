@@ -179,6 +179,8 @@ namespace ChipArena.UnityConversion
         // The native melee hit layer (Core/NativeHitReact), run after the reactions and before the ground pass; null outside
         // the arena rigs (and in the source parity checks), which keep the source port exactly.
         public NativeHitLayer HitLayer;
+        // The jump layer (Core/NativeJumpMotion), after the action layers and before the hit layer; null where HitLayer is.
+        public NativeJumpMotion JumpLayer;
         private float HitStop(MeleeView p,Attack a)
         {
             if(!HitStopKeys.TryGetValue(p.Spec,out var k)||string.IsNullOrEmpty(p.Id)||Impacts==null)return 0;float t=p.LastAttack+a.Age,h=Impacts.HitAt(p.Id,t,.5f);
@@ -655,6 +657,7 @@ namespace ChipArena.UnityConversion
                 }
                 var light=ReactionOf(p);if(light!=null)React(p,light,time,false);
             }
+            JumpLayer?.Melee(r,p,time,dt);
             HitLayer?.Layer(r,time);
             gait.GroundPass(r,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
             FinishPose(p,time);
@@ -676,6 +679,7 @@ namespace ChipArena.UnityConversion
         {
             if(!p.Juggle&&!p.Down&&p.HitStunUntil>time){var h=ReactionOf(p);if(h==null||!React(p,h,time,true))FallbackFlinch(p,time);}
             else if(!p.Juggle&&!p.Down&&!p.Rolling(time)){var light=ReactionOf(p);if(light!=null)React(p,light,time,false);}
+            JumpLayer?.Fighter(Rig,p,time,dt);
             HitLayer?.Layer(Rig,time);
             gait.GroundPass(Rig,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
             FinishPose(p,time);

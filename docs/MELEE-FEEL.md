@@ -438,3 +438,60 @@ is the largest speed and the total distance of an ankle on the floor; L / R are 
 
 Not run: the Unity Editor, the Windows build, two-client networking, the killcam on a live match, the bot duel harness
 and a live playtest. The closing-damage figures assume perfect aim against a non-dodging target (an upper bound).
+
+## Jump and double jump (owner 2026-10-12: "can we add jump animations? (Of course, changes based on weapon. Daggers can double-jump)")
+
+### Presentation (Claude, `claude/jump-anim`)
+
+- **Per-weapon jumps.** `Core/NativeJumpMotion` lays the owner's Explosive pack jump takes over each route's pose:
+  - sword: Armed;
+  - daggers: Armed, reverse grip;
+  - shield: the Armed body, with the shield arm kept on its own guard;
+  - greatsword: 2Hand-Sword;
+  - rifle and machine gun: 2Hand-Shooting;
+  - pistol and the DEV fighters: Unarmed;
+  - the magic schools and L33t H4x: 2Hand-Staff;
+  - the Siren keeps her own air tuck.
+
+  The tracks come from `tools/export_pack_jumps.mjs` (`NativePackJumps.Generated.cs` plus provenance).
+- **Phases** come from what every peer presents: the replicated contact flag, the presented root height and the
+  presentation clock (`NativeJumpTrack`).
+  - **Takeoff:** a push-off blended in over 0.06 s. There is no anticipation crouch, because a remote jump is only known
+    once the pilot leaves the ground.
+  - **Rise, apex, fall:** blended by the presented vertical speed, then the Fall loop.
+  - **Landing:** the Land take's compression, scaled by the fall speed.
+  - **Guest timing:** a guest's flags are about 0.1 s ahead of its interpolated pilots, so a landing waits for the
+    presented root to stop.
+- **The dagger double jump** (`NativeJumpRules.Flips`) is detected as an upward step in the presented vertical speed while
+  airborne. It plays:
+  - the Jump-Flip tuck with a procedural front flip (0.45 s);
+  - an accent ring and streaks under the feet, plus an afterimage puff (`NativeJumpFx`): upright and round, never on the
+    floor;
+  - the dagger swing played faster as a whoosh.
+
+  No simulation change was made: today only a launch while already airborne (a Siren vent, for example) can trigger it.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+
+### Simulation handoff (Astra)
+
+**The rule (daggers only)**
+- One air jump per airtime, available once the pilot is airborne. It resets on landing (`Grounded`).
+- Impulse: proposed `0.9 × JumpSpeed × jumpPower` (7.65 m/s at base). Set `velocity.y` to the impulse rather than adding
+  to it, as the grounded jump does.
+- It is blocked by the same locks as the grounded jump (rolling, attack lock, incapacitated). Lava swimming keeps its own
+  stroke.
+
+**Code changes**
+- **Authority:** `NativeArena` input (`Runtime/NativeArena.cs`, the `jumped` line, about line 162) and the lab
+  `Core/ArenaWorld.cs` (about line 218) need matching changes.
+- **Prediction:** `Core/NativePrediction.cs` (about line 42) must predict the air jump identically. Add an air-jump count
+  to `NativePredictionState`, reset when grounded, so guests do not snap.
+- **Input wire:** unchanged. `Jump` is already an edge flag; the air jump is the next `Jump` edge while airborne.
+- **Bots** may use it, for example to clear cover (`NativeBots` already presses Jump when blocked).
+
+**Optional explicit signal**
+- Replicate an `AirJumpAt` time on `Actor`.
+- The presentation then stops inferring: pass the time to `NativeJumpTrack.AirJumpSignal(at)` after `Observe`, in the
+  three places that observe (`NativeJumpMotion.Layer`, `NativeJumpFxPresentation`, `NativeMoveFeelAudio`). From the
+  first call, the vertical-speed inference is off.
+- Without the signal, a vent launch while airborne also shows the flip.
