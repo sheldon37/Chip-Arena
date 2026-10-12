@@ -160,7 +160,7 @@ namespace ChipArena.UnityConversion
         }
         private void Slow(NativePilot p,float factor,float duration)
         {
-            if(p.Seat.spec=="siren"||SirenArmor(p)||Time<p.SlowImmune)return;
+            if(KernelLocked(p)||p.Seat.spec=="siren"||SirenArmor(p)||Time<p.SlowImmune)return;
             if(Time>=p.SlowEnd)p.SlowFactor=1;
             p.SlowFactor=Math.Min(p.SlowFactor,factor);p.SlowEnd=Math.Max(p.SlowEnd,Time+duration);
         }

@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
         {
             if(!SandboxAllowed||p!=sandboxDummy||Time>=sandboxCastUntil)return input;Vector3 d=Local.Body.position-p.Body.position;float angle=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;if(sandboxKey=="ai")return Bot(p,true);
             var f=new InputFrame{Yaw=angle,Pitch=Mathf.Atan2(d.y,new Vector2(d.x,d.z).magnitude)*Mathf.Rad2Deg,AimTarget=Vec(Local.Body.position),AbilityTarget=Vec(Local.Body.position-Vector3.up*.85f)};
-            f.AbilityQ=(sandboxKey=="q"||sandboxKey=="mode")&&sandboxTap;f.Aim=sandboxKey=="q"&&NativeRangedRules.Scope(p.Seat.spec);f.AbilityE=sandboxKey=="e"&&sandboxTap;f.AbilityEHeld=sandboxKey=="e";f.Block=sandboxKey=="block"&&sandboxTap;f.Roll=sandboxKey=="dash"&&sandboxTap;f.Jump=sandboxKey=="jump"&&sandboxTap;f.Hadoken=sandboxKey=="1"&&sandboxTap;f.HadokenHeld=sandboxKey=="1";f.Uppercut=sandboxKey=="2"&&sandboxTap;if(p.Seat.spec=="siren"&&byte.TryParse(sandboxKey,out byte key)&&sandboxTap)f.SirenAbility=key;sandboxTap=false;return f;
+            f.AbilityQ=(sandboxKey=="q"||sandboxKey=="mode")&&sandboxTap;f.Aim=sandboxKey=="q"&&NativeRangedRules.Scope(p.Seat.spec);f.AbilityE=sandboxKey=="e"&&sandboxTap;f.AbilityEHeld=sandboxKey=="e";f.Block=sandboxKey=="block"&&sandboxTap;f.Roll=sandboxKey=="dash"&&sandboxTap;f.Jump=sandboxKey=="jump"&&sandboxTap;f.Hadoken=sandboxKey=="1"&&sandboxTap;f.HadokenHeld=sandboxKey=="1";f.Uppercut=sandboxKey=="2"&&sandboxTap;if((p.Seat.spec=="siren"||p.Seat.spec=="cyberlord")&&byte.TryParse(sandboxKey,out byte key)&&sandboxTap)f.SirenAbility=key;sandboxTap=false;return f;
         }
         public void SandboxAction(string action,bool self=false)
         {
