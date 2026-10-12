@@ -86,6 +86,7 @@ internal static class Program
             foreach(var result in EntranceDirectorChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in SheldonIntroChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in PackIntroChecks.Run(root))Console.WriteLine("PASS "+result);
+            foreach(var result in CyberLordChecks.Run(root,data))Console.WriteLine("PASS "+result);
             foreach(var result in MapLookChecks.Run(root,data))Console.WriteLine("PASS "+result);
             foreach(var result in BlockLookChecks.Run(root,data))Console.WriteLine("PASS "+result);
             var tests = RegressionTests.Run(); tests.AddRange(RangedRegressionTests.Run());

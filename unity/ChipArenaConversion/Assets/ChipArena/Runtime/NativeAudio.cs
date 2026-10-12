@@ -135,6 +135,8 @@ namespace ChipArena.UnityConversion
                 for(int r=0;r<gun.FanShots;r++){float at=gun.FanShot(r);if(t>=at&&t-at<.1f&&Once(id+"fan"+r,gun.FanAt))Cue(NativeGunKit.Slap.Key,NativeGunKit.Slap.Clip,pos,NativeGunKit.Slap.Gain,mine:mine);}
                 if(gun.HasOverdrive&&t>=gun.OverdriveAt&&t-gun.OverdriveAt<.2f&&Once(id+"overdrive",gun.OverdriveAt))Cue(NativeGunKit.Whine.Key,NativeGunKit.Whine.Clip,pos,NativeGunKit.Whine.Gain,NativeGunKit.WhineRate,mine:mine);
                 if(gun.HasOverdrive&&t>=gun.OverdriveUntil&&t-gun.OverdriveUntil<.2f&&Once(id+"vent",gun.OverdriveUntil))Cue(NativeGunKit.Hiss.Key,NativeGunKit.Hiss.Clip,pos,NativeGunKit.Hiss.Gain,mine:mine);
+                // The DEV Cyber Lord's state cues (Core/NativeCyberLordSounds), each once.
+                CyberLordCues(p,pos,mine,t);
                 BowCues(p,id,t,pos,mine);
                 var f=p.Fighter;if(f?.LastHit>0&&t-f.LastHit<.15f&&Once(id+"fighter",f.LastHit)){string hit=f.Kind=="electric"?"electric-hook-hit":f.Kind=="tatsu"?"arcade-kick":f.Index==f.Total-1?"arcade-heavy":"arcade-punch";Cue(NativeSoundCues.Fighter(hit),hit,pos,.9f,mine:mine);}
             }
@@ -182,6 +184,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<plays;i++)Perform(planned[i],pos,from,arena.Time-e.Time,context.SourceMe||context.TargetMe);
             // The melee Q/E kit's cues (Core/NativeMeleeKitSounds): bank keys with today's built-in clips as their fallback.
             if(NativeMeleeKitFx.Kinds(e.Kind)&&NativeMeleeKitFx.Tag(e.Detail)){int k=NativeMeleeKitSounds.Event(e.Kind,e.Detail,e.Amount,context.TargetMe,kitSounds);for(int i=0;i<k;i++)Cue(kitSounds[i].Key,kitSounds[i].Clip,pos,kitSounds[i].Gain,mine:context.SourceMe||context.TargetMe);}
+            CyberLordEvent(e,pos,context.TargetMe,context.SourceMe||context.TargetMe);
             if(e.Kind==EventKind.Death&&target!=null){if(source?.Seat.killEffect=="dev-clown-love")Play("clown-love",pos,.8f,1);if(source?.Seat.killEffect=="dev-bass-van")Play("bass-van",pos,.8f,1);}
         }
     }

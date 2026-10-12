@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         public static readonly MeleeStance Pistol=S(.15f,.04f,.12f,-.15f,-.03f,.2f,-.015f,-.05f,.035f),Rifle=S(.09f,.12f,-.3f,-.10f,-.10f,.85f,-.025f,-.55f,.04f),
             MachineGun=S(.19f,.10f,.2f,-.19f,-.04f,.4f,-.03f,-.1f,.08f,.15f);
         public static bool MagicSpec(string spec)=>spec=="fire"||spec=="water"||spec=="lightning"||spec=="darkness"||spec=="leet";
-        public static MeleeStance For(string spec)=>spec=="daggers"?Daggers:spec=="greatsword"?Greatsword:spec=="sword"||spec=="shield"?Melee:spec=="emperor"?Emperor:spec=="ansatsuken"?Karate:MagicSpec(spec)?Magic:
+        public static MeleeStance For(string spec)=>spec=="daggers"?Daggers:spec=="greatsword"?Greatsword:spec=="sword"||spec=="shield"?Melee:spec=="emperor"?Emperor:spec=="ansatsuken"?Karate:spec==CyberLordSpec.Id?CyberLordStance.Stance:MagicSpec(spec)?Magic:
             spec=="pistol"?Pistol:spec=="rifle"?Rifle:spec=="machinegun"?MachineGun:Neutral;
         // Idle stance ankle target (group space) for one foot.
         public void Foot(bool left,out float x,out float z,out float yaw){bool lead=left==LeadLeft;x=lead?LeadX:RearX;z=lead?LeadZ:RearZ;yaw=(left?1:-1)*(lead?LeadToe:RearToe);}

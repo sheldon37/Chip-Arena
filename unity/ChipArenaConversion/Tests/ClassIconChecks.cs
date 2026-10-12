@@ -32,9 +32,9 @@ internal static class ClassIconChecks
         // 1. Every class and every weapon resolves to its own art icon, through the lookup NativeIcons uses.
         foreach(var c in NativeLoadoutText.Classes){string icon=NativeIconRaster.Resolve(classes,lucideClasses,fallback,c);Check(art.ContainsKey(icon)&&classes.ContainsKey(c),"class "+c+" has an art icon");}
         foreach(var w in data.weapons){string icon=NativeIconRaster.Resolve(specs,lucideSpecs,fallback,w.id);Check(art.ContainsKey(icon)&&specs.ContainsKey(w.id),"weapon "+w.id+" has an art icon");}
-        // The Bow's art ships ahead of its content entry (docs/NEW-KITS.md section 2; the rules are Astra's): until GameContent
-        // lists the bow it is the one mapping without a weapon, afterwards none.
-        var ahead=data.weapons.Any(w=>w.id==NativeBowWire.Spec)?new string[0]:new[]{NativeBowWire.Spec};
+        // The Bow's and the DEV Cyber Lord's art ship ahead of their content entries (docs/NEW-KITS.md sections 2 and 3; the
+        // rules are Astra's): until GameContent lists one it is a mapping without a weapon, afterwards none.
+        var ahead=new[]{NativeBowWire.Spec,CyberLordSpec.Id}.Where(id=>!data.weapons.Any(w=>w.id==id)).ToArray();Check(specs.ContainsKey(CyberLordSpec.Id)&&specs.ContainsKey(NativeBowWire.Spec),"the Bow and the DEV Cyber Lord have art icons");
         Check(specs.Keys.OrderBy(k=>k).SequenceEqual(data.weapons.Select(w=>w.id).Concat(ahead).OrderBy(k=>k),StringComparer.Ordinal)&&classes.Count==NativeLoadoutText.Classes.Length,"no mapping for an unknown class or weapon");
         Check(specs.Values.Distinct().Count()==specs.Count,"no two weapons share an icon");
         Check(classes.Values.Distinct().Count()==classes.Count&&!classes.Values.Intersect(specs.Values).Any(),"classes have their own icons, not weapon ones");
