@@ -118,13 +118,14 @@ internal static class SirenDropChecks
         // drop, the PvE repair rebuilds from it, and the drop ignores earlier non-fatal wounds.
         string Text(string p)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",p));
         Check(Text("NativeSiren.cs").Contains("m.CrushAt=Time+3.2f;m.Until=Time+3.8f"),"Last Laugh crush/release timing changed");
-        var death=Text("NativeDeathPresentation.cs");Check(death.Contains("SirenDrop(arena,death,age,up)||SourceDeathScene(death,age,up)")&&death.Contains("var wound=drop?null:death.wound;")&&death.Contains("if(drop&&b==CapturedRig.Head)continue;"),"death presentation hook");
+        var death=Text("NativeDeathPresentation.cs");Check(death.Contains("SirenDrop(arena,death,age,up)||!remains&&SourceDeathScene(death,age,up)")&&death.Contains("var wound=drop?null:death.wound;")&&death.Contains("if(drop&&b==CapturedRig.Head)continue;"),"death presentation hook");
         Check(Text("NativeInteractionPresentation.cs").Contains("SirenDropPose(WeaponLoadout,d,age,r.Body,r.Missing)"),"PvE repair hook");
         var drop=Text("NativeSirenDropPresentation.cs");Check(drop.Contains("NativeSirenDrop.Handoff(")&&drop.Contains("NativeSirenDrop.FlameShown(")&&drop.Contains("NativeSirenDrop.GibAt(")&&drop.Contains("NativeSirenDrop.Burn("),"drop presentation uses the Core rules");
         // The weapon falls out of the hand at the release (kills.ts keeps it in the victim's hand) and a kept body is never left to
         // the old clip by the corpse cap, so the repair rebuilds from the body that is drawn.
         Check(death.Contains("if(drop){weapon.linearVelocity=linear[hand];")&&drop.Contains("body.LooseModel!=null&&body.PresentedWeapon is Matrix4x4 loose"),"dropped weapon");
         Check(drop.Contains("corpses.Count>=32&&!death.kept"),"kept crush body capped away from its ragdoll");
+        Check(drop.Contains("&&!NativeCorpseRules.Retain(PilotOf(arena,death.id)!=null,arena.Match.Cooperative)")&&drop.Contains("dropGone=death.kept||body.RetainUntilRoundEnd?0:"),"PvP crush remains survive body cap and come-apart ending");
         Console.WriteLine("PASS Siren crush drop: "+cases+" deaths x release (handoff = drawn pose, worst step to it "+worstStep.ToString("0.0000")+" m / "+worstTurn.ToString("0.0000")+" rad, finite, deterministic, bounded motion, backward tumble, knees give about their hinges, lands and settles before keep/come-apart), "+gibs+" gibs on the arena floor matching the clip flight, flame split at the release, dropped weapon, kept body uncapped, authority timing and hooks unchanged");
     }
 }

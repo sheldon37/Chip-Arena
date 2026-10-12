@@ -7,6 +7,7 @@ namespace ChipArena.UnityConversion
     {
         public V3 Position,Velocity;public float Speed,Gravity,JumpSpeed;public bool Grounded,CanMove,CanSprint,Sprinting;
         public float Time,Ready,Stamina,BufferUntil,ComboUntil,RollUntil;public int Combo;
+        public string JumpSpec;public int AirJumps;public float AirJumpAt;public bool Swimming;
         public ContentWeapon MeleeWeapon;public ChipStats MeleeStats;public NativeMeleeSwing Swing;
     }
     // Locomotion and local swing commitment are predicted; hits, damage and real resources stay authority-owned.
@@ -36,7 +37,7 @@ namespace ChipArena.UnityConversion
         public static NativePredictionState Step(NativePredictionState state,InputFrame raw,Func<V3,V3,V3> constrain,Func<V3,bool> grounded=null,Func<int,V3?> lockTarget=null)
         {
             var input=raw.Sanitized();float dt=Rules.Dt;
-            state.Time+=dt;
+            state.Time+=dt;if(state.Grounded)state.AirJumps=0;
             if(state.MeleeWeapon!=null&&input.Attack&&state.Time<state.RollUntil&&state.Time>=state.RollUntil-.2f)state.BufferUntil=state.Time+NativeMeleeFeel.BufferSeconds;
             if(!state.CanMove)return state;
             bool swinging=NativeMeleePrediction.Advance(ref state,input,lockTarget);
@@ -47,14 +48,16 @@ namespace ChipArena.UnityConversion
             float speed=state.Speed*(sprint?Rules.SprintMultiplier:1);
             state.Velocity.x=swinging?0:Towards(state.Velocity.x,input.X*speed,Rules.Acceleration*dt);
             state.Velocity.z=swinging?0:Towards(state.Velocity.z,input.Z*speed,Rules.Acceleration*dt);
-            if(input.Jump&&state.Grounded&&!swinging){state.Velocity.y=state.JumpSpeed;state.Grounded=false;}
+            var jump=NativeJumpSimulation.Try(state.JumpSpec,input.Jump,state.Grounded,state.Swimming,swinging||state.Time<state.RollUntil,
+                state.Velocity.y,state.JumpSpeed,ref state.AirJumps,out float launch);
+            if(jump!=NativeJumpKind.None){state.Velocity.y=launch;state.Grounded=false;if(jump==NativeJumpKind.Air)state.AirJumpAt=state.Time;}
             if(!state.Grounded)state.Velocity.y-=state.Gravity*dt;else state.Velocity.y=0;
             var step=swinging&&state.Grounded?NativeMeleeRules.Step(state.Swing,state.Time,dt):new V3();
             var wanted=state.Position+(state.Velocity+step)*dt;
             var next=constrain==null?wanted:constrain(state.Position,wanted);
             if(next.y>wanted.y+.00001f&&state.Velocity.y<0){state.Grounded=true;state.Velocity.y=0;}
             if(grounded!=null){state.Grounded=state.Velocity.y<=0&&grounded(next);if(state.Grounded)state.Velocity.y=0;}
-            state.Position=next;return state;
+            if(state.Grounded)state.AirJumps=0;state.Position=next;return state;
         }
     }
     // A bounded clock on the host snapshot timeline, rather than frame-rate-dependent lerp-to-latest.

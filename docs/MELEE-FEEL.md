@@ -2,6 +2,8 @@
 
 Simulation follow-up: the Q/E kit and owner-requested S1–S5/S7/G8 work are implemented on `codex/unity-melee-abilities-20261012`; see [the simulation handoff](MELEE-SIMULATION-HANDOFF.md) for exact live values, owner-versus-proposal differences, replicated fields and the native duel command. The evaluation and proposal below describe the `19c00c7` baseline. Native duel and Windows/two-client acceptance are still pending.
 
+Second simulation follow-up: `codex/unity-melee-followup-20261012` on `3bb8995f` implements S0's native sweep direction and the dagger jump handoff below. Daggers get one air jump per airtime at `0.9 × JumpSpeed × jumpPower`, available after walking off a ledge too; landing resets it. Host, lab and guest prediction share commitment rules, including action locks and separate lava strokes. `Actor.AirJumps/AirJumpAt` carry the authority state; guest reconciliation restores/replays the budget. Claude's existing flip, burst and whoosh now consume the explicit signal, with the local prediction clock mapped for presentation and one cue per airtime. Obstructed dagger bots may use it near the apex. No input-wire change or optional balance tuning; the native duel gate is still pending. See DEV_LOG/task PR for verification and merge receipts.
+
 Owner request, 2026-10-12 (verbatim): "we may need to balance melee to stand on par with ranged/magic. They need more
 ways to gap close, and also, we need to improve the "fluidity" of them, it doesnt feel smooth swinging right now now.
 Think like dark souls swinging, its fluid and allows multiple swings. Maybe we need small movements forward when swinging
@@ -11,9 +13,10 @@ too? Please evaluate. Also, the movement for melee is a little weird on the tors
   `unity/ChipArenaConversion/Assets/ChipArena/` unless stated.
 - **Ownership** (AGENTS.md role split): each recommendation is tagged **PRESENTATION** (Claude: poses, blending, VFX
   timing) or **SIMULATION** (Astra: input, timing, turning, steps, abilities, bots, replication).
-- **Status:** the presentation items (P1–P5, P7, P8 and the crescent sync) are implemented on branch
-  `claude/melee-feel` (see [Presentation work](#presentation-work-on-claudemelee-feel)); P6 waits for S2. The simulation
-  proposal below is retained as the evaluation record; implementation status is in the follow-up above.
+- **Status:** P1–P5, P7, P8 and the crescent sync are merged in the shared Unity head (`fdd1914`). The follow-up over
+  Astra's native feel (P6 chain entry, the turn follower, anchored step/lunge footwork, sprint momentum; see
+  [P6 and P9–P11](#p6-and-p9p11-presentation-over-the-native-feel-done)) is integrated in shared `0c026f0`; it is not a compiled release. S0 is implemented in the second simulation follow-up above. The simulation proposal below is kept as the evaluation record; the simulation
+  status is in the follow-up above.
 - **Evidence:** reading the code, plus an offline probe (local notes, not committed). The probe compiles `Core/`
   outside Unity, poses pilots through the real `MeleeMotion`, `MeleeGait` and `GunMotion`, and drives them with an
   authority timeline rebuilt from `NativeMeleeRules` with held LMB, as `ConversionGame` sends it. One pilot, flat floor,
@@ -164,18 +167,18 @@ damage, cooldowns, movement, stamina or network data.
 | # | Change | Tag | Effort | Impact | Status |
 |---|---|---|---|---|---|
 | 1 | P1 steady locomotion torso | PRESENTATION | S | No sim impact | Done on `claude/melee-feel` |
-| 2 | S1 LMB input buffer | SIMULATION | S | No timing/hitbox/damage/cooldown change; one edge bit on the wire. Biggest "multiple swings" fix | Proposed |
+| 2 | S1 LMB input buffer | SIMULATION | S | No timing/hitbox/damage/cooldown change; one edge bit on the wire. Biggest "multiple swings" fix | Done (Astra, `fdd1914`) |
 | 3 | P2–P8 swing retime, follow-through, real recovery length, turn blend, cut B pop, dagger windups, crescent sync | PRESENTATION | M | No sim impact | Done on `claude/melee-feel` |
-| 3b | S0 un-mirror the hitbox sweep (`NativeMeleeRules.Angle` in the native frame) | SIMULATION | XS | Which side of the arc is hit first; arc, reach and timing unchanged. Needs the contact parity check converted to the native frame | Proposed |
-| 4 | G1 melee Q/E kit (docs/MELEE-ABILITIES.md) | SIMULATION; animation, VFX, HUD PRESENTATION | L | New abilities, damage, cooldowns, replication | Not started |
-| 5 | S2 chain points | SIMULATION | M | Chained DPS +20–25 %; stun escape window ~0.40→0.26 s | Proposed |
-| 6 | S3 windup turning | SIMULATION | S–M | Hitbox yaw can change before the active window only | Proposed |
-| 7 | S4 step defaults + magnetism (G2 opener lunge) | SIMULATION | M | Movement during the step window (up to ~16 m/s) | Proposed |
-| 8 | P6 chain entry from the follow-through (after #5) | PRESENTATION | S | No sim impact | Waits for S2 |
-| 9 | G3 sprint attack | SIMULATION + PRESENTATION | M | New attack kind, replicated flag | Proposed |
+| 3b | S0 un-mirror the hitbox sweep (`NativeMeleeRules.Angle` in the native frame) | SIMULATION | XS | Which side of the arc is hit first; arc, reach and timing unchanged. Needs the contact parity check converted to the native frame | Open (Astra): not in `fdd1914` |
+| 4 | G1 melee Q/E kit (docs/MELEE-ABILITIES.md) | SIMULATION; animation, VFX, HUD PRESENTATION | L | New abilities, damage, cooldowns, replication | Simulation done (Astra); presentation is a separate task |
+| 5 | S2 chain points | SIMULATION | M | Chained DPS +20–25 %; stun escape window ~0.40→0.26 s | Done (Astra) |
+| 6 | S3 windup turning | SIMULATION | S–M | Hitbox yaw can change before the active window only | Done (Astra) |
+| 7 | S4 step defaults + magnetism (G2 opener lunge) | SIMULATION | M | Movement during the step window (up to ~16 m/s) | Done (Astra); lunge footwork on `claude/melee-feel` |
+| 8 | P6 chain entry from the follow-through (after #5) | PRESENTATION | S | No sim impact | Done on `claude/melee-feel` |
+| 9 | G3 sprint attack | SIMULATION + PRESENTATION | M | New attack kind, replicated flag | Flag only (Astra); momentum lean on `claude/melee-feel` |
 | 10 | G8 melee bot approach AI, then the duel harness | SIMULATION | M | Bots only; needed to measure balance | Proposed |
-| 11 | S5 combo reset | SIMULATION | XS | Opener always cut A | Proposed |
-| 12 | S7 guest swing prediction | SIMULATION | M–L | Predicted lock and step, reconciled to the host | Proposed |
+| 11 | S5 combo reset | SIMULATION | XS | Opener always cut A | Done (Astra) |
+| 12 | S7 guest swing prediction | SIMULATION | M–L | Predicted lock and step, reconciled to the host | Done (Astra) |
 | 13 | G4 melee speed +6–8 % / sprint drain 8/s; G5 50 % block refund on a reflect | SIMULATION | XS each | Tuning; only after #4, #7, #10 are measured | Gated |
 | 14 | S6 recovery release | SIMULATION | S | Gates and movement; optional | Proposed |
 | 15 | G6 ×0.85 projectile damage while sprinting; G7 backpedal ×0.85; charged heavy | SIMULATION | XS–L | Cross-class balance; owner decision | Owner |
@@ -311,8 +314,8 @@ in `Runtime/CapturedAnimation.cs` and the crescent), `MeleeMotion.Cut`, `Recover
   still interpolate in chest space. The daggers keep their captured recovery and wrist limiter.
 - **P4 real recovery.** While the commitment is replicated, the recovery runs to `CommitUntil` (the authority's
   `AttackEnd`), not `Recovery(spec)`; the footwork, pose transitions and guard hold use the same end.
-- **P5 turn blend.** A swing that starts away from the shown facing, or whose commit yaw changes, eases in over 0.1 s
-  (cubic ease-out); the strike window keeps the authority's yaw.
+- **P5 turn blend.** A swing that starts away from the shown facing eases in over 0.1 s (cubic ease-out); the strike
+  window keeps the authority's yaw. (Over the native windup turning this became a follower; see P9.)
 - **P7 daggers.** The cuts start after their authored wind-back (the entry blend from the guard stands in for it):
   windup compression ×4.7–5.7 → ×2.5–3.0.
 - **P8 / hit-stop.** The greatsword cut B pop came from the hit-stop's 0.09 s catch-up racing the clip. The lost time is
@@ -322,7 +325,7 @@ in `Runtime/CapturedAnimation.cs` and the crescent), `MeleeMotion.Cut`, `Recover
 - **Crescent sync.** The head follows the posed blade of the cut being played: it grows as the blade crosses the arc,
   in the blade's direction, and holds where the blade left it while fading. The shield's bash grows with the face's travel.
   This is opposite to today's mirrored hitbox order until S0.
-- **P6 chain entry** waits for S2. The held chain already meets the next swing at the guard (at most 2–3 frames below
+- **P6 chain entry:** see below. A held chain still meets the next swing at the guard (at most 2–3 frames below
   1 m/s; before, 7). Skipping the entry blend on a held chain was tried and rejected: it made the next windup start with
   a jolt.
 
@@ -343,6 +346,66 @@ Held-LMB chains, 60 Hz, mean blade-tip speed in the hit window (whiffs), before 
 - While the blade crosses the arc, the crescent head stays within 5° of it. Before, it ran the opposite way at a uniform
   rate.
 
+### P6 and P9–P11. Presentation over the native feel (done)
+
+Astra's simulation (`docs/MELEE-SIMULATION-HANDOFF.md`, shared `fdd1914`) added the LMB buffer, early chains at
+`ChainAt`, windup turning, 0.75–1.0 m default steps, 2.0–2.4 m lock-on openers (`OpenerLunge`), `SprintAttack` and the
+combo reset. All of the following is in `Core/MeleeMotion.cs`, presentation only: no hit timing, hitbox, damage,
+cooldown, movement, stamina or network change. The step stays the simulated body movement; nothing adds root motion.
+`MeleeView` gains `OpenerLunge` and `SprintAttack`, set in `CapturedAnimation.MeleeViewOf`.
+
+- **P6 chain entry.** `MeleeMotion` remembers the swing it drew before the current one. A swing that starts before that
+  one's end (an early chain) enters from its live pose: the previous cut carries on at its own timing (clip time,
+  follow-through and settle) under the entry blend (`ChainEntry`: half the windup, 0.1–0.85 of it), straight into the
+  next windup. The guard is no longer the entry base. A held full-recovery repeat keeps the guard entry.
+- **P9 turn follower.** A new commitment still eases from the shown facing over `TurnBlend` (0.1 s). After that, the
+  facing follows `CommitYaw` as it comes, at most `TurnFollow` (1.6) × `NativeMeleeFeel.TurnRate`. Restarting the blend
+  every tick trailed a 720°/s windup turn by up to 31–35° and popped at the hit (1500–1860°/s in a frame). A chain that
+  starts from the previous heading carries straight on. A 20 Hz replicated heading (36° snapshot steps) glides at most
+  19.2° per frame. An entry blend still running at the strike finishes over `StrikeBlend` (0.04 s).
+- **P10 anchored footwork.** Each foot starts where it was shown as the swing began (the ankles are kept in world space
+  each frame). That start can be a chain's recovery step or a run's stride, so no planted foot slides into the stance,
+  and the pose transition into a swing holds the ankles.
+  - **Lead foot.** It flies with the travel and comes straight down as it plants in the hit window (the horizontal stride
+    ends at 90% of the lift).
+  - **Rear foot.** It holds while the hips can reach it (`RearReach`, 0.3 m), then trails low on its toe behind them,
+    then steps up once the travel ends.
+  - **Turning.** While the body turns over planted feet (the windup turn), the feet keep their world place and pivot,
+    up to 46°.
+  - **Lunge.** A step past the weapon's default (`Lunge`: full at an `OpenerLunge` 0.9 m past it; a chained lock-on step
+    past it counts at 0.6) lifts the lead foot up to 1.2× higher, trails the rear foot on its toe and leans the trunk into
+    the travel (`LungeLean` 0.3 rad, mostly in the spine, most as the lead plants). Default steps keep the source's lifts.
+  - **Hips and lead plant.** The hips rise back at most `SeatRise` (1.2 m/s). As the feet planted the drop could fall
+    7 cm in a frame, which popped a low dagger blade. The greatsword and shield plant their lead 0.26/0.27 m ahead
+    (0.31 for the others), where the leg reaches the floor.
+- **P11 sprint momentum.** A `SprintAttack` swing pitches the trunk on over the planted feet (`MomentumLean`, 0.24 rad;
+  the body 6 cm ahead) as the authority stops it dead. The lean peaks 0.06 s in and rights itself through the hit window.
+
+Offline probe, 60 Hz, one pilot, flat floor, attackRate 1. Before is `fdd1914`; after is this branch. Planted-foot slip
+is the largest speed and the total distance of an ankle on the floor; L / R are the left and right foot.
+
+| Case | Before | After |
+|---|---|---|
+| Sword 2.2 m opener | 0.78 / 0.33 m/s, 2.1 / 1.6 cm; both feet 9 cm up mid-step | 0.04 / 0.04 m/s, 0.5 / 0.4 cm; rear foot trails at most 6 cm up |
+| Greatsword 2.4 m opener | 0.65 / 0.72 m/s, 3.1 / 2.8 cm; both feet 14 cm up | 0.14 / 0.13 m/s, 0.6 / 1.1 cm; the lead plants on the floor |
+| Daggers / shield 2.0 m opener | 0.40 / 0.13, 0.49 / 0.25 m/s | 0.42 / 0.08, 0.92 / 0.06 m/s (one touchdown frame) |
+| Sword early chain (presses 0, 0.42, 0.84 s) | 0.47 / 0.75 m/s, 4.2 / 4.2 cm | 0.41 / 0.47 m/s, 1.3 / 1.2 cm |
+| Greatsword early chain (0, 0.8, 1.6 s) | 1.46 / 1.26 m/s, 11.4 / 15.7 cm | 0.03 / 0.12 m/s, 0.3 / 1.3 cm |
+| Sword / greatsword sprint entry | 2.5 / 6.7 and 4.1 / 6.0 m/s, up to 24 / 33 cm | 0.05 / 0.05 and 0.41 / 0.12 m/s, at most 1.4 cm |
+| Sword windup turn toward a 60° aim, then a chain | facing lags up to 35°, 1500 °/s in a frame | lags 0.0°, at most 720 °/s (the authority's) |
+| Greatsword chain entry, blade tip m/s per frame | 9.6, 1.8, 32, 69 (stops, snaps toward the guard) | 9.6, 8.4, 7.3, 7.3, 9.9, 21, 36 (carries into the windup) |
+| Sword chain entry, blade tip m/s per frame | 17, 10, 72 (×7 in a frame) | 17, 15, 34, 81 |
+
+- The combo index is presented correctly across buffered presses and resets: cut A, then the buffered cut B at
+  `ChainAt`, then cut A again after a press past `ComboUntil`. The chain entry is decided by the presented swings' times,
+  not by the index, so a reset never enters from the previous cut.
+- **Remaining.** The daggers' chained windups (90 ms) still reposition both blades against the floor guard (one frame
+  ×2.9 at 22 m/s; before, ×3.0 at 66 m/s). The shield's 2.0 m opener slips its lead foot 1.4 cm on one touchdown frame.
+  Planted feet pivot with the body past 46° of windup turn.
+- **S0 (Astra), fixed by the second simulation follow-up above:** `NativeMeleeRules.Angle` in `fdd1914` is still
+  `s.Yaw+(clamp(u)-.5f)*Math.Min(2π,s.Arc)*(Reverse(s)?-1:1)`, which is mirrored in the native frame. The hitbox
+  therefore sweeps opposite to the captured blades and the crescent. The hitbox is not touched here.
+
 ## Tests and parity
 
 - `Tests/MeleeMotionChecks.cs` still pins `MeleeMotion` to the original game's frames (`Tests/melee-motion-parity.json`,
@@ -359,7 +422,17 @@ Held-LMB chains, 60 Hz, mean blade-tip speed in the hit window (whiffs), before 
   - the shared swing timing: continuous, monotone, the sweep across the window, leaving it at the window's rate;
   - held chains, whiffs and hits: tip speed inside the window (sword ≥ 40, greatsword ≥ 30 m/s), the peak inside it, no
     one-frame pop, no dead stop leaving it, no idle at the guard;
-  - the 40° turn case, and the crescent head on the posed blade.
+  - the 40° turn case, and the crescent head on the posed blade;
+  - the native feel (`Feel`), driven through the host's input rules (buffer, `ChainAt`, combo reset, windup turn, lock
+    step, sprint stop):
+    - early chains per weapon enter from the live follow-through: the blade keeps at least 30% of its speed and 70% of
+      the unchained follow-through's distance from the guard;
+    - planted feet slip at most 1 m/s and 3–6 cm through openers at the cap, default steps, early chains and sprint
+      entries;
+    - the lower foot stays within 7 cm of the floor, and the lead foot plants inside the hit window;
+    - lunges lean 6° more than a default step, and sprint entries 4° more than a standing swing;
+    - the facing follows a 720°/s windup turn within 1° and at most `TurnFollow` × the rate, and a 20 Hz heading glides;
+    - cut A, a buffered B, then A again after `ComboUntil`.
 - `Tests/WeaponFxChecks.cs` checks the crescent against the visible blade instead of `NativeMeleeRules.Angle`.
 
 ## Verification limits
@@ -424,6 +497,8 @@ and a live playtest. The closing-damage figures assume perfect aim against a non
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
 
 ### Simulation handoff (Astra)
+
+Implemented in the second simulation follow-up above, including the optional explicit signal. The proposed rule and integration points below are retained as the handoff record.
 
 **The rule (daggers only)**
 - One air jump per airtime, available once the pilot is airborne. It resets on landing (`Grounded`).

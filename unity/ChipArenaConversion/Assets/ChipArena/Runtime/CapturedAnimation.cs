@@ -346,10 +346,11 @@ namespace ChipArena.UnityConversion
             private static MeleeView MeleeViewOf(Actor a,float time,MeleeView v)
             {
                 const float D=Mathf.Deg2Rad;
-                if(!(int.TryParse(v.Id,out int seen)&&seen==a.Id))v.Id=a.Id.ToString();v.Spec=a.SourceSpec;v.Yaw=-a.Yaw*D;v.Pitch=a.Pitch*D;v.Vel=new NVector(-a.Velocity.x,a.Velocity.y,a.Velocity.z);v.Grounded=a.Grounded;v.Hp=a.Hp;v.Sprinting=a.Sprinting;
+                if(!(int.TryParse(v.Id,out int seen)&&seen==a.Id))v.Id=a.Id.ToString();v.Spec=a.SourceSpec;v.Yaw=-a.Yaw*D;v.Pitch=a.Pitch*D;v.Vel=new NVector(-a.Velocity.x,a.Velocity.y,a.Velocity.z);v.Grounded=a.Grounded;v.AirJumpAt=a.AirJumps>0?a.AirJumpAt:-100;v.Hp=a.Hp;v.Sprinting=a.Sprinting;
                 v.LastAttack=a.AttackAt;v.Windup=a.VisualWindup;v.AttackRate=a.CastRate>0?a.CastRate:1;v.AttackIndex=a.Combo+1;
                 v.SwingAt=a.SwingAt>-90?a.SwingAt:float.NaN;v.SwingUntil=a.SwingAt>-90?a.SwingUntil:float.NaN;
                 v.Commit=a.CommitAt>-90;v.CommitAt=a.CommitAt;v.CommitUntil=a.CommitUntil;v.CommitYaw=-a.CommitYaw*D;v.StepAt=a.StepAt;v.StepUntil=a.StepUntil;v.StepDistance=a.StepDistance;v.Followup=a.Followup;v.Hurricane=a.Hurricane;
+                v.OpenerLunge=a.OpenerLunge;v.SprintAttack=a.SprintAttack;
                 v.Guarding=false;v.BlockTime=time<a.BlockUntil?a.BlockUntil-time:0;v.LastBlock=a.BlockAt;v.HitStunUntil=a.StunUntil;
                 v.RollAt=a.RollAt;v.RollUntil=a.RollAt>-90?a.RollAt+a.VisualRollDuration:-100;
                 v.ActionKind=a.SpecialKind;v.ActionAt=a.SpecialAt;v.ActionUntil=a.SpecialUntil;

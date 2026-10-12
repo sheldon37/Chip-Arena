@@ -26,6 +26,7 @@ internal static class MeleeFeelChecks
         foreach(var r in Continuity(data))yield return r;
         foreach(var r in Timing(data))yield return r;
         foreach(var r in Swings(data))yield return r;
+        foreach(var r in Feel(data))yield return r;
     }
 
     // ---- the pilot driver ----
@@ -183,7 +184,7 @@ internal static class MeleeFeelChecks
             if(swing!=null&&t>swing.HitUntil&&t>=swing.Until)swing=null;
             if(swings<4&&t>=end&&t>=1.1f)
             {
-                swings++;swing=NativeMeleeRules.Begin(w,stats,t,swings,input);swing.Until=Math.Max(swing.Until,t+(float)((w.windup+.28)/stats["attackRate"]));end=swing.Until;
+                swings++;swing=NativeMeleeFeel.Begin(w,stats,t,swings,input);swing.Until=Math.Max(swing.Until,t+(float)((w.windup+.28)/stats["attackRate"]));end=swing.Until;
                 if(hit)p.Motion.Impacts.RecordHit(v.Id,(swing.HitAt+swing.HitUntil)/2);
             }
             bool live=swing!=null&&t<end;var st=swing!=null?NativeMeleeRules.Step(swing,t,Dt):new V3();
@@ -255,5 +256,148 @@ internal static class MeleeFeelChecks
         for(int i=1;i<turn.Count;i++){jump=Math.Max(jump,Math.Abs(MeleeMath.Wrap(turn[i].Yaw-turn[i-1].Yaw)));if(i+1<turn.Count&&turn[i].Tip>8)turnSpike=Math.Max(turnSpike,turn[i].Tip/Math.Max(2,Math.Max(turn[i-1].Tip,turn[i+1].Tip)));}
         Check(jump*Deg<=20&&turnSpike<=2.5f,"a swing after a 40 deg camera turn: facing step "+(jump*Deg).ToString("0")+" deg per frame, blade pop x"+turnSpike.ToString("0.0"));
         yield return "melee swings: held chains move the blade through the hit window at least "+means+" m/s on average (whiffs), the sword, shield and greatsword peak inside it and leave it moving, no frame pops (worst x"+worstSpike.ToString("0.0")+", "+spikeAt+"), held swings meet the next one (at most "+dwell+" frames below 1 m/s), a 40 deg turn eases in ("+(jump*Deg).ToString("0")+" deg per frame at most), the crescent head stays within "+(worstSync*Deg).ToString("0")+" deg of the blade over "+synced+" frames";
+    }
+
+    // ---- the native feel (NativeMeleeFeel): early chains, lock-on lunges, sprint entries, windup turning, combo resets ----
+    private sealed class Beat{public float T,Tip,Yaw,CommitYaw,Pitch;public Vector3 TipLocal;public Vector3[] Feet=new Vector3[2];public bool[] Planted=new bool[2];public string Phase,State;public int Swing;public bool Commit;}
+    private sealed class Struck{public float At,HitAt,HitUntil,ChainAt,Distance;public bool Chained,Opener;public int Index;}
+    private sealed class Play{public readonly List<Beat> Beats=new List<Beat>();public readonly List<Struck> Swings=new List<Struck>();public readonly float[] Skate=new float[2],Slide=new float[2];public float Float;}
+    // The host's melee input as NativeMelee and NativeMeleeAbilities run it each tick (StepMelee's windup turn and retirement,
+    // then StepMeleeInput's edge buffer, early chain and combo reset; a lock target straight ahead sets the step, a sprint
+    // run-up stops dead at the first swing), presented through MeleeMotion. Times are seconds after the first press.
+    private static Play Drive(ConversionContent data,string spec,float[] presses,float lockDistance=0,bool sprint=false,float turnTo=0,float turnAt=99,float until=2.4f)
+    {
+        var w=data.Weapon(spec);var stats=NativeContentRules.Stats(data,spec,new Dictionary<string,int>());float rate=(float)stats["attackRate"];var p=new Pilot(spec);var v=p.View;var play=new Play();
+        const float T0=1;NativeMeleeSwing swing=null;Struck cur=null;float attackEnd=0,comboUntil=0,buffer=-1,yaw=0;int combo=-1;Vector3 at=Vector3.Zero,target=new Vector3(0,0,lockDistance);Vector3? prevTip=null;Vector3?[] prevFoot={null,null};
+        var set=MeleeSet.For(spec);
+        for(int f=0;f*Dt<T0+until;f++)
+        {
+            float t=f*Dt,input=(t<T0+turnAt?0:Math.Min(1,(t-T0-turnAt)/.2f)*turnTo)/Deg;
+            if(swing!=null){if(t<swing.HitAt){float desired=lockDistance>0?(float)Math.Atan2(target.X-at.X,target.Z-at.Z)*Deg:input*Deg;swing.Yaw=NativeMeleeFeel.Turn(swing.Yaw,desired,spec,Dt);yaw=swing.Yaw;}if(t>swing.HitUntil&&t>=swing.Until)swing=null;}
+            bool edge=false;foreach(float pt in presses)if(Math.Abs(t-T0-pt)<Dt*.5f)edge=true;
+            if(edge&&NativeMeleeKitRules.BufferOpen(swing,t))buffer=t+NativeMeleeFeel.BufferSeconds;
+            bool queued=buffer>=t,chain=queued&&NativeMeleeKitRules.ChainReady(swing,t);
+            if((edge||queued)&&(chain||t>=attackEnd))
+            {
+                if(t>comboUntil)combo=-1;combo++;if(!chain)yaw=input;
+                swing=NativeMeleeFeel.Begin(w,stats,t,combo+1,yaw);swing.SprintAttack=!chain&&sprint&&play.Swings.Count==0;
+                Vector3 d=target-at;if(lockDistance>0&&Vector3.Dot(d,new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw)))>0){swing.Distance=NativeMeleeFeel.Distance(spec,chain,d.Length());swing.OpenerLunge=!chain&&swing.Distance>NativeMeleeFeel.DefaultStep(spec);}
+                swing.Until=Math.Max(swing.Until,t+(float)((w.windup+.28)/rate));comboUntil=swing.Until+NativeMeleeFeel.ComboPause;attackEnd=swing.Until;buffer=-1;
+                cur=new Struck{At=t-T0,HitAt=swing.HitAt-T0,HitUntil=swing.HitUntil-T0,ChainAt=swing.ChainAt-T0,Distance=swing.Distance,Chained=chain,Opener=swing.OpenerLunge,Index=combo+1};play.Swings.Add(cur);
+            }
+            bool live=swing!=null&&t<attackEnd,run=sprint&&play.Swings.Count==0;var st=swing!=null&&live?NativeMeleeRules.Step(swing,t,Dt):new V3();
+            Vector3 vel=new Vector3(st.x,0,(run?9.18f:0)+st.z);
+            // The source frame mirrors the native one: x and yaw negate.
+            v.Vel=new Vector3(-vel.X,0,vel.Z);v.Sprinting=run;v.Yaw=live?-swing.Yaw:-input;
+            if(cur!=null)
+            {
+                v.LastAttack=cur.At+T0;v.Windup=cur.HitAt-cur.At;v.AttackRate=rate;v.AttackIndex=combo+1;bool window=swing!=null&&t<=swing.HitUntil;v.SwingAt=window?swing.HitAt:float.NaN;v.SwingUntil=window?swing.HitUntil:float.NaN;
+                v.Commit=live;if(live){v.CommitAt=swing.At;v.CommitUntil=attackEnd;v.CommitYaw=-swing.Yaw;v.StepAt=swing.StepAt;v.StepUntil=swing.StepUntil;v.StepDistance=swing.Distance;}v.OpenerLunge=live&&swing.OpenerLunge;v.SprintAttack=live&&swing.SprintAttack;
+            }
+            p.Pose(t);
+            var r=p.Motion.Rig;Quaternion g=Quaternion.CreateFromAxisAngle(Vector3.UnitY,r.GroupYaw);
+            Vector3 local=r.ChainPoint(CapturedRig.RHand,-1)+Vector3.Transform(r.Reached(set.Tip),r.ChainQuat(CapturedRig.RHand,-1)),tip=Vector3.Transform(local,g)+r.GroupPosition;
+            var b=new Beat{T=t-T0,Tip=prevTip.HasValue?Vector3.Distance(tip,prevTip.Value)/Dt:0,TipLocal=local,Yaw=r.GroupYaw,CommitYaw=v.CommitYaw,Commit=v.Committed(t),Swing=play.Swings.Count,State=p.Motion.State,Pitch=Lean(p),
+                Phase=swing==null?(cur==null?"idle":"after"):t<swing.HitAt?"windup":t<=swing.HitUntil?"active":"recovery"};prevTip=tip;
+            float low=float.MaxValue;
+            for(int k=0;k<2;k++)
+            {
+                Vector3 ankle=r.AnkleInGroup(k==0);b.Feet[k]=Vector3.Transform(ankle,g)+r.GroupPosition;b.Planted[k]=ankle.Y<MeleeRig.FLOOR+.012f;low=Math.Min(low,ankle.Y-MeleeRig.FLOOR);
+                // A planted foot must hold its place on the floor (counted from just before the first press).
+                if(b.T>-.05f&&b.Planted[k]&&prevFoot[k].HasValue){Vector3 m=b.Feet[k]-prevFoot[k].Value;m.Y=0;play.Skate[k]=Math.Max(play.Skate[k],m.Length()/Dt);play.Slide[k]+=m.Length();}
+                prevFoot[k]=b.Planted[k]?b.Feet[k]:(Vector3?)null;
+            }
+            if(b.T>0)play.Float=Math.Max(play.Float,low);
+            play.Beats.Add(b);p.Position+=v.Vel*Dt;at+=vel*Dt;
+        }
+        return play;
+    }
+    // The trunk's forward lean (deg): the head ahead of the pelvis in the pilot's frame, whatever the torso's twist.
+    private static float Lean(Pilot p){Vector3 h=p.LocalPoint(CapturedRig.Head)-p.LocalPoint(CapturedRig.Pelvis);return (float)Math.Atan2(h.Z,h.Y)*Deg;}
+    private static IEnumerable<string> Feel(ConversionContent data)
+    {
+        var notes=new List<string>();
+        // Early chains: each press from the last swing's hit on is buffered (0.4 s) and chains at its ChainAt.
+        var chainPress=new Dictionary<string,float[]>{{"sword",new[]{0,.2f,.7f}},{"daggers",new[]{0,.12f,.44f,.76f}},{"shield",new[]{0,.25f,.85f}},{"greatsword",new[]{0,.6f,1.55f}}};
+        float worstSkate=0,worstSlide=0,worstDip=1,worstStall=99;string slideAt="",dipAt="",stallAt="";
+        void Feet(Play pl,string what,float skate,float slide)
+        {
+            for(int k=0;k<2;k++){if(pl.Skate[k]>worstSkate)worstSkate=pl.Skate[k];if(pl.Slide[k]>worstSlide){worstSlide=pl.Slide[k];slideAt=what;}}
+            Check(pl.Skate[0]<=skate&&pl.Skate[1]<=skate&&pl.Slide[0]<=slide&&pl.Slide[1]<=slide,what+": planted feet slip "+Math.Max(pl.Skate[0],pl.Skate[1]).ToString("0.00")+" m/s, "+(Math.Max(pl.Slide[0],pl.Slide[1])*100).ToString("0.0")+" cm in all (at most "+skate+" m/s, "+(slide*100).ToString("0")+" cm)");
+        }
+        foreach(var spec in Specs)
+        {
+            var pl=Drive(data,spec,chainPress[spec]);
+            Check(pl.Swings.Count==chainPress[spec].Length,spec+" early chain drove "+pl.Swings.Count+" swings");
+            for(int i=1;i<pl.Swings.Count;i++)Check(pl.Swings[i].Chained&&Math.Abs(pl.Swings[i].At-pl.Swings[i-1].ChainAt)<Dt,spec+" swing "+(i+1)+" chains at the last one's ChainAt");
+            Feet(pl,spec+" early chain",1.0f,.06f);
+            // The chain enters from the live follow-through: the blade neither stalls nor, over the first 40% of the entry blend,
+            // closes on the guard faster than that follow-through would have without the chain (an entry from the guard did:
+            // the greatsword's blade stopped, 9.6 -> 1.8 m/s, and went back to the guard first).
+            Vector3 guard=pl.Beats[30].TipLocal;
+            for(int i=1;i<pl.Swings.Count;i++)
+            {
+                var s=pl.Swings[i];float[] earlier=new float[i];Array.Copy(chainPress[spec],earlier,i);var alone=Drive(data,spec,earlier);
+                float entry=MeleeMotion.ChainEntry(s.HitAt-s.At),before=0,slow=float.MaxValue,dip=1;
+                for(int j=0;j<pl.Beats.Count&&j<alone.Beats.Count;j++)
+                {
+                    var b=pl.Beats[j];if(b.T<s.At-1e-4f){before=b.Tip;continue;}
+                    float own=Vector3.Distance(alone.Beats[j].TipLocal,guard);
+                    if(b.T<=s.At+.4f*entry+1e-4f&&own>=.2f)dip=Math.Min(dip,Vector3.Distance(b.TipLocal,guard)/own);
+                    if(b.T<=s.At+.1f)slow=Math.Min(slow,b.Tip);
+                }
+                float stall=slow/Math.Max(1.5f,before);
+                if(dip<worstDip){worstDip=dip;dipAt=spec+" swing "+(i+1);}if(stall<worstStall){worstStall=stall;stallAt=spec+" swing "+(i+1);}
+                Check(dip>=.7f,spec+" chained swing "+(i+1)+" swings its blade back toward the guard ("+(dip*100).ToString("0")+"% of the follow-through's distance from it)");
+                Check(stall>=.3f,spec+" chained swing "+(i+1)+" stalls the blade ("+before.ToString("0.0")+" -> "+slow.ToString("0.0")+" m/s)");
+            }
+            // No frame pop (the daggers' 90 ms windup repositions both blades against the floor guard: x3.0 at 66 m/s before).
+            for(int i=1;i+1<pl.Beats.Count;i++){var b=pl.Beats[i];if(b.Tip>8)Check(b.Tip/Math.Max(2,Math.Max(pl.Beats[i-1].Tip,pl.Beats[i+1].Tip))<=(spec=="daggers"?3.2f:2.5f)&&b.Tip<120,spec+" early chain blade pop at "+b.T.ToString("0.000")+" ("+b.Tip.ToString("0")+" m/s)");}
+        }
+        notes.Add("early chains enter from the live follow-through (the blade keeps at least "+(worstStall*100).ToString("0")+"% of its speed, "+stallAt+", and at least "+(worstDip*100).ToString("0")+"% of the follow-through's distance from the guard, "+dipAt+")");
+        // Lock-on openers at each weapon's cap (OpenerLunge) and default steps: no planted foot slips, neither foot floats (the
+        // lower one stays within 7 cm of the floor: before, both rose 13-20 cm through a 2.2-2.4 m step), the stepping foot
+        // plants inside the hit window and the chest leans into the lunge.
+        float worstFloat=0,leanLow=float.MaxValue;string floatAt="";
+        foreach(var spec in Specs)
+        {
+            float cap=NativeMeleeFeel.StepCap(spec,false);var lunge=Drive(data,spec,new[]{0f},cap+1.15f,until:1.2f);var plain=Drive(data,spec,new[]{0f},until:1.2f);var s=lunge.Swings[0];
+            Check(s.Opener&&Math.Abs(s.Distance-cap)<1e-3f&&!plain.Swings[0].Opener,spec+" opener steps the cap ("+s.Distance.ToString("0.00")+" m)");
+            Feet(lunge,spec+" "+cap.ToString("0.0")+" m opener",1.0f,.03f);Feet(plain,spec+" default step",1.0f,.03f);
+            foreach(var pl in new[]{lunge,plain}){if(pl.Float>worstFloat){worstFloat=pl.Float;floatAt=spec+(pl==lunge?" opener":" default step");}Check(pl.Float<=.07f,spec+(pl==lunge?" opener":" default step")+" floats both feet "+(pl.Float*100).ToString("0")+" cm off the floor");}
+            // The stepping foot touches down at the end of the step between the hit window's start and its end.
+            float plant=float.NaN;int lead=-1;
+            for(int i=1;i<lunge.Beats.Count&&lead<0;i++){var b=lunge.Beats[i];if(b.T>s.HitUntil+.1f)break;for(int k=0;k<2;k++)if(b.Planted[k]&&!lunge.Beats[i-1].Planted[k]&&b.T>s.At+.05f&&Math.Abs(b.Feet[k].Z)>cap*.8f){plant=b.T;lead=k;}}
+            Check(lead>=0&&plant>=s.HitAt-1e-4f&&plant<=s.HitUntil+Dt,spec+" opener plants its lead foot at "+plant.ToString("0.000")+" s (hit window "+s.HitAt.ToString("0.00")+"-"+s.HitUntil.ToString("0.00")+")");
+            float Most(Play pl){float m=float.MinValue;foreach(var b in pl.Beats)if(b.T>=s.HitAt&&b.T<=s.HitUntil)m=Math.Max(m,b.Pitch);return m;}
+            float lean=Most(lunge)-Most(plain);leanLow=Math.Min(leanLow,lean);Check(lean>=6,spec+" opener leans "+lean.ToString("0.0")+" deg further than a default step through the hit window (at least 6)");
+            // A swing entered from a sprint carries the run's momentum: the chest pitches on over the planted feet.
+            var dash=Drive(data,spec,new[]{0f},sprint:true,until:1.2f);Feet(dash,spec+" sprint entry",1.0f,.03f);
+            float carry=0,still=0;foreach(var b in dash.Beats)if(b.T>=.03f&&b.T<=.12f)carry+=b.Pitch;foreach(var b in plain.Beats)if(b.T>=.03f&&b.T<=.12f)still+=b.Pitch;float more=(carry-still)/6;
+            Check(more>=4,spec+" sprint entry leans "+more.ToString("0.0")+" deg further than a standing swing over 0.03-0.12 s (at least 4)");
+        }
+        notes.Add("openers at the cap, default steps, early chains and sprint entries keep planted feet within "+worstSkate.ToString("0.00")+" m/s ("+(worstSlide*100).ToString("0.0")+" cm at most, "+slideAt+"), the lower foot within "+(worstFloat*100).ToString("0")+" cm of the floor ("+floatAt+"), the lead foot plants in the hit window and lunges lean at least "+leanLow.ToString("0")+" deg");
+        // Windup turning (NativeMeleeFeel.TurnRate toward an aim turned 60 deg through the first windup, then a chain from that
+        // heading): the facing tracks the committed heading without lag and never turns faster than TurnFollow x the rate.
+        {
+            var pl=Drive(data,"sword",new[]{0,.2f},turnTo:60,turnAt:.03f,until:1.4f);float lag=0,fastest=0,limit=NativeMeleeFeel.TurnRate("sword")*MeleeMotion.TurnFollow/Deg*Dt*1.01f;
+            for(int i=1;i<pl.Beats.Count;i++){var b=pl.Beats[i];if(b.Commit&&b.T>MeleeMotion.TurnBlend)lag=Math.Max(lag,Math.Abs(MeleeMath.Wrap(b.Yaw-b.CommitYaw)));if(b.T>0)fastest=Math.Max(fastest,Math.Abs(MeleeMath.Wrap(b.Yaw-pl.Beats[i-1].Yaw)));}
+            Check(pl.Swings.Count==2&&pl.Swings[1].Chained,"turn drive chains");Check(lag*Deg<=1,"the facing lags the windup turn by "+(lag*Deg).ToString("0.0")+" deg (at most 1)");Check(fastest<=limit,"the facing turns "+(fastest*Deg/Dt).ToString("0")+" deg/s in a frame (at most "+(limit*Deg/Dt).ToString("0")+")");
+            // A remote pilot's heading arrives at 20 Hz (36 deg steps of a 720 deg/s turn): the facing glides between them.
+            var m=new MeleeMotion();var v=new MeleeView{Id="remote",Spec="sword",Commit=true,CommitAt=1,CommitUntil=3,LastAttack=1};float worst=0,trail=0,prev=0;
+            for(int f=0;f<60;f++){float t=1+f*Dt;v.CommitYaw=Math.Min(10,f/3)*36/Deg;float y=m.PresentedYaw(v,t,0);if(f>0)worst=Math.Max(worst,Math.Abs(y-prev));trail=Math.Max(trail,Math.Abs(MeleeMath.Wrap(v.CommitYaw-y)));prev=y;if(f==59)Check(Math.Abs(MeleeMath.Wrap(v.CommitYaw-y))<1e-3f,"the facing reaches the replicated heading");}
+            Check(worst<=limit&&trail*Deg<=37,"a 20 Hz heading: the facing steps "+(worst*Deg).ToString("0.0")+" deg per frame (at most "+(limit*Deg).ToString("0.0")+"), trailing "+(trail*Deg).ToString("0")+" deg");
+            notes.Add("the facing follows a 720 deg/s windup turn within "+(lag*Deg).ToString("0.0")+" deg, at most "+(fastest*Deg/Dt).ToString("0")+" deg/s, into a chain from that heading; a 20 Hz heading glides at most "+(worst*Deg).ToString("0.0")+" deg per frame");
+        }
+        // Combo index across a buffered chain and a ComboUntil reset: cut A, the buffered cut B, then cut A again.
+        foreach(var spec in new[]{"sword","daggers"})
+        {
+            var pl=Drive(data,spec,new[]{0,spec=="sword"?.2f:.12f,1.6f},until:2.4f);
+            Check(pl.Swings.Count==3&&pl.Swings[1].Chained&&!pl.Swings[2].Chained&&pl.Swings[2].Index==1,spec+" combo drive: "+pl.Swings.Count+" swings, last index "+(pl.Swings.Count>2?pl.Swings[2].Index:0));
+            string[] want={"cutA","cutB","cutA"};
+            for(int i=0;i<3;i++){string seen=null;foreach(var b in pl.Beats)if(b.Swing==i+1&&b.T>=pl.Swings[i].At+.05f){seen=b.State;break;}Check(seen!=null&&seen.StartsWith(want[i]),spec+" swing "+(i+1)+" presents "+seen+" (expected "+want[i]+")");}
+        }
+        notes.Add("a buffered chain presents the next cut and a press after ComboUntil starts again from cut A");
+        yield return "melee feel: "+string.Join("; ",notes);
     }
 }

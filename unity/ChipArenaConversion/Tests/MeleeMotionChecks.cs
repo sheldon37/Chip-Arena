@@ -27,7 +27,9 @@ internal static class MeleeMotionChecks
     // "swing" ("it doesnt feel smooth swinging"): each cut's authored sweep plays across the hit window (MeleeSwing), the
     // follow-through carries on past it into the real recovery (the replicated attack end), a changed commit yaw eases in, the
     // hit-stop's lost time is caught up at most 1.3x and transitions into, out of and between swings keep their velocity, so
-    // every attacking frame moves the whole rig (the clip's hips and the footwork's recovery timing included).
+    // every attacking frame moves the whole rig (the clip's hips and the footwork's recovery timing included); the footwork
+    // starts on the feet as shown, holds planted feet in place (the rear foot trails, then steps up), the hips rise back at a
+    // bounded rate and the facing follows the commit's turn (the native feel, NativeMeleeFeel).
     private static readonly Dictionary<string,string> Deviations=new Dictionary<string,string>{{"stand-walk-run-stop","torso"},{"strafe-jump","torso"},
         {"run-attack-block","torso+swing"},{"combo","swing"},{"echo-hurricane","swing"},{"fast-rate","swing"}};
     private static string Deviation(string name){int r=name.IndexOf("-reach",StringComparison.Ordinal);return Deviations.TryGetValue(r<0?name:name.Substring(0,r),out var d)?d:null;}
