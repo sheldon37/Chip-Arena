@@ -107,26 +107,71 @@ fighters use).
   the caster for 50% of it. It breaks on lost line of sight or beyond 15 m. Cooldown 10 s, 25 mana.
 - **3, System Crash:** a .5 s windup ground slam that makes a 4 m field: 25 damage and a 1.0 s "glitched"
   stun. Cooldown 14 s, 40 mana.
-- **4, Kernel Strike (ultimate):**
-  - The caster leaps 4 m up and marks a point within 25 m.
-  - .9 s later a column of code crashes there: 5 m radius, 70 damage and knockback.
-  - The caster lands at the impact point.
-  - Cooldown 30 s, 60 mana.
+- **4, Kernel Panic (ultimate, a cinematic connect-combo).** The owner revised the ultimate on 2026-10-12:
+  "since we're adding an "Ultimate" im think using a "skill cut-in" animation. If the first hit connects, it
+  does a combo. Hits them far, teleport behind hit them again, in the air teleport above, make this creative".
+  It replaces the earlier Kernel Strike AoE.
+  - **Opener:**
+    - A .25 s windup.
+    - Then a 6 m hardlight lunge-punch along the aim (capsule sweep, radius .6 m, one target: the first pilot
+      touched).
+    - **Whiff:** .6 s recovery, and half the cooldown is refunded.
+    - **Connect:** the sequence below starts at once.
+    - Cooldown 30 s, 60 mana, both spent on cast.
+  - **Cut-in:**
+    - On connect, a .6 s "skill cut-in" plays: a full-screen splash for the caster and the victim, and a slim
+      top banner for everyone else.
+    - Caster and victim are frozen in place for those .6 s. Everyone else keeps playing.
+  - **Sequence:** about 3.4 s after the cut-in, host-authoritative and deterministic from its start time,
+    anchor, facing and the seeded arena-clamped waypoints, so every client plays the same choreography.
+
+    | Step | Starts at | What happens | Damage |
+    |---|---|---|---|
+    | 1. Breaker | 0 s | Punch launches the victim 8 m back along the facing, rising 1.5 m | 12 |
+    | 2. Blink-behind | .45 s | Caster glitch-teleports behind the flying victim and kicks them straight up 5 m | 10 |
+    | 3. Blink-above | .95 s | Caster teleports above the victim's apex and hammer-fists them downward | 10 |
+    | 4. Fork bomb | 1.35 s | As the victim falls, three hardlight clones of the caster strike from three sides | 3 × 6 |
+    | 5. Kernel Panic | 1.9 s | The caster reappears at the landing point; the victim is slammed into a column of falling code | 25 |
+    | Recovery | from 2.6 s | Caster recovers for .8 s | |
+
+    - Step 5 also sends out a 5 m shockwave: 20 damage and knockback to other enemies.
+    - Victim total about 75. The usual damage scaling and chips apply per hit.
+  - **Rules during the sequence:**
+    - Caster and victim are intangible to everyone else and cannot be interrupted. The victim has no control and
+      takes only the sequence's hits.
+    - The sequence ends early and cleanly if either player disconnects or the round ends.
+    - The victim cannot die before step 5. Lethal damage is held to the final hit, so the kill lands on the
+      finisher.
+  - **Walls and edges:** every waypoint is clamped against arena collision and bounds. If the launch hits a wall,
+    the victim wall-splats and the sequence continues from there. The victim never ends outside the arena or in
+    a hazard; teleports skip to the nearest valid point.
+  - **Replication:** sequence start time, anchor, facing, seed, the resolved waypoints (or enough data to
+    resolve them identically), the victim id, an outcome flag (whiff, connect, ended early), and per-step hit
+    events (Detail `kernel-panic-1` to `-5`).
+  - **Cameras:** for the caster and the victim, a cinematic camera that follows the choreography (the existing
+    C16 cinematic camera rules). Everyone else keeps their own camera.
 - **Stats:** base HP 100; class `melee` (unarmed) for the block, stamina and roll rules, with mana as the
   ability resource.
 - **Replication:** the combo step, per-ability cast/active/end times, the dash path, the wall transform and
-  expiry, the link target and end, the crash field position and end, the Kernel Strike target and impact time,
+  expiry, the link target and end, the crash field position and end, the Kernel Panic sequence data above,
   and events for each hit (Detail per ability: `cyber-jab`, `cyber-cross`, `cyber-palm`, `data-dash`,
-  `firewall`, `packet-burst`, `siphon-link`, `system-crash`, `kernel-strike`).
+  `firewall`, `packet-burst`, `siphon-link`, `system-crash`, `kernel-panic-1` to `-5`).
 - **Bots:** sandbox dummy and bot pickers follow the existing DEV rules. If bots can play it: combo in close
   range, Packet Burst under 6 m, Data Dash to close, Firewall when being shot, System Crash with two or more
-  enemies within 4 m, Kernel Strike on groups.
+  enemies within 4 m, Kernel Panic when a target is inside 6 m and not blocking.
 
 Presentation (Claude):
 - A DEV look on the pilot body: hardlight fists and forearm gauntlets that form from light, glowing seams and a
   holographic halo.
 - An unarmed fighting stance and locomotion.
 - Combo poses and effects for all six abilities, in third and first person.
+- For Kernel Panic:
+  - the skill cut-in, a stylised splash of the caster's live portrait with diagonal hardlight panels, glitch text
+    "KERNEL PANIC" and the pilot's colours;
+  - the slim banner for other players;
+  - choreography poses and effects for every step: launch streak, glitch-teleport tears, clone afterimages, the
+    falling code column and the shockwave;
+  - the cinematic camera path for caster and victim, within the camera-shake and reduced-effects settings.
 - HUD cards for Q, E and 1-4, a class icon, a Locker tile, an entrance animation and audio routing on existing
   keys.
 
