@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Codex — owner-supplied main menu music
+- Branch `codex/unity-main-menu-music-20261012`, base shared/cloud `0c026f0`. Replaces only the Unity `music/menu-afterglow` asset with the complete uploaded “Chip Arena Main.mp3”; preserves the importer GUID and existing menu playback/volume behavior. No code, gameplay, networking or animation changes.
+- Updated asset receipt and attribution, including the existing packaged Music-Credits.txt source. Legacy Electron recording and historical conversion inventory remain unchanged.
+- Verification: exact upload-byte comparison, full MP3 decode, source asset/packaging validation and diff whitespace checks. Unity Editor/Windows listening and compiled publication require the local Build-and-Publish workflow. Source integration is recorded in the task PR; no compiled release claimed here.
+
 ## 2026-10-12 — Claude — swing presentation over the native melee feel (chains, turns, lunges, sprint entries)
 - Branch `claude/melee-feel`, base shared `fdd1914` (Astra's merged simulation plus this branch's earlier `1903c08`/`463f233`); one commit, on the branch only (not pushed, merged or released). Details, numbers and the remaining items are in `docs/MELEE-FEEL.md` (P6, P9–P11).
 - `Core/MeleeMotion.cs`: an early chain at `ChainAt` enters from the previous swing's live follow-through, not the guard (greatsword blade 9.6→1.8→69 m/s snap → a steady 7–10 m/s carry into the windup). The commit facing follows the windup turn at up to 1.6× `TurnRate` (lag 35°→0°, the 1500°/s pop at the hit gone; 20 Hz headings glide). The footwork starts on the feet as shown and holds planted feet in world space through steps, chains, turns and sprint stops; the rear foot trails, then steps up; lock-on openers lean into a lunge; `SprintAttack` swings pitch on with the carried momentum; the hips rise back at most 1.2 m/s. `MeleeView.OpenerLunge/SprintAttack` are mapped in `Runtime/CapturedAnimation.cs`.
