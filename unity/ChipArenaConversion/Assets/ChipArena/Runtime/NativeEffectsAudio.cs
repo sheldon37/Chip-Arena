@@ -8,7 +8,8 @@ namespace ChipArena.UnityConversion
     // source bank are untouched). Core NativeSoundBank reads the manifest that the owner's builder copies to
     // Assets/LocalAssets/Resources/EffectsAudio (private assets repository, tools/install_local_assets.py); Unity merges every
     // Resources folder, so Resources.Load("EffectsAudio/...") finds it. Without it the bank is empty: Cue plays today's clip,
-    // EventSounds plays the route sound for sound (NativeSoundPlan), and every hook below stays silent, as today.
+    // EventSounds plays the route sound for sound (NativeSoundPlan), and bank-only hooks stay silent. The fixed menu/chip
+    // hover ticks below are built in and play identically with or without LocalAssets.
     // Clips load a few per frame after startup (and on first use), so no frame loads the whole bank. Each bank play keeps
     // the limiter gate and the 8 gated-voice cap, takes a voice by priority (NativeVoicePool) and stops at its entry's hard
     // length cap. Presentation only: gameplay, timing and networking are unchanged.
@@ -51,12 +52,34 @@ namespace ChipArena.UnityConversion
         private string pendingUi;private int pendingUiFrame=-1,explicitUiFrame=-1;
         private void UiHeard(string key){int f=Time.frameCount;if(pendingUi!=null&&pendingUiFrame==f&&pendingUi!=NativeUiSounds.Hover)return;pendingUi=key;pendingUiFrame=f;}
         /// <summary>A screen's own UI cue (key with today's fallback clip); it replaces the generic helper sound of this frame.</summary>
-        public void UiCue(string key,string clip,float gain){explicitUiFrame=Time.frameCount;Cue(key,clip,null,gain,0,null,null,true);}
+        public void UiCue(string key,string clip,float gain)
+        {
+            explicitUiFrame=Time.frameCount;
+            if(key=="ui.draft.hover"||key==NativeUiSounds.Hover){PlayHover(key=="ui.draft.hover",gain);return;}
+            Cue(key,clip,null,gain,0,null,null,true);
+        }
         private void FlushUi()
         {
             if(pendingUi==null||Time.frameCount<=pendingUiFrame)return;string key=pendingUi;pendingUi=null;if(pendingUiFrame==explicitUiFrame)return;
-            BankPlay(key,null,key==NativeUiSounds.Hover?.35f:key==NativeUiSounds.Confirm?.6f:.5f,0,null,true);
+            if(key==NativeUiSounds.Hover){PlayHover(false,.35f);return;}
+            BankPlay(key,null,key==NativeUiSounds.Confirm?.6f:.5f,0,null,true);
         }
+
+        private AudioClip menuHoverClip,chipHoverClip;private double nextHoverAt;
+        private void PlayHover(bool chip,float gain)
+        {
+            double now=Time.unscaledTimeAsDouble;if(Muted||Effects<=0||now<nextHoverAt)return;
+            var voice=Voice();if(voice==null)return;
+            var clip=chip?chipHoverClip:menuHoverClip;
+            if(clip==null)
+            {
+                var data=NativeHoverSound.Samples(chip);clip=AudioClip.Create(chip?"Chip highlight":"Menu highlight",data.Length,1,NativeHoverSound.SampleRate,false);clip.SetData(data,0);
+                if(chip)chipHoverClip=clip;else menuHoverClip=clip;
+            }
+            nextHoverAt=now+NativeHoverSound.Cooldown;
+            voice.clip=clip;voice.volume=Mathf.Clamp01(gain*Effects);voice.panStereo=0;voice.pitch=1;voice.loop=false;voice.Play();
+        }
+        private void ClearHoverClips(){CapturedAnimation.Release(menuHoverClip);CapturedAnimation.Release(chipHoverClip);}
 
         /// <summary>
         /// One bank play of <paramref name="key"/>. False when the key has no clips or its clip failed to load (the caller falls

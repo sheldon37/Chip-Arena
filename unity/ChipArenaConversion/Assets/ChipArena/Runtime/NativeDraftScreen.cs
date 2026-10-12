@@ -74,14 +74,15 @@ namespace ChipArena.UnityConversion
         // (NativeHoloScan); the others recede under a veil while it is up, and the keyboard focus keeps still brackets while the
         // pointer is on another card. The stage's gaze and reach follow the highlighted card (draftHover). The skipped (chosen)
         // card's level stays as it was at the pick, for FlyToPalm.
-        private Tray hoverSoundTray;private int hoverSoundCard=-1;
+        private readonly NativeHoverFocus hoverSoundFocus=new NativeHoverFocus();
         private int DrawTray(Tray tray,IList<ContentChip> chips,Func<int,int> copies,float elapsed,bool enabled,int skip,Func<int,bool> hidden,bool badges=false)
         {
             int clicked=-1,n=Math.Min(tray.Cards.Length,cardHolo.Length),under=-1;float now=Time.unscaledTime;bool repaint=Event.current.type==EventType.Repaint,calm=prefs.reducedEffects;if(repaint)draftHover=-1;
             for(int i=0;i<n;i++){bool shown=i!=skip&&!hidden(i);cardReveal[i]=shown?NativeChipCard.Entrance(chips[i].rarity,elapsed-i*.22f):default;if(shown&&enabled&&cardReveal[i].Alpha>0&&U.Hover(tray.Cards[i]))under=i;}
-            // The draft card hover sound (the effects bank's ui.draft.hover; silent without LocalAssets) on entering another card.
-            if(repaint){if(enabled&&under>=0&&(under!=hoverSoundCard||tray!=hoverSoundTray))nativeAudio?.UiCue("ui.draft.hover",null,.5f);hoverSoundCard=enabled?under:-1;hoverSoundTray=tray;}
             int lit=under>=0?under:draftFocus>=0&&draftFocus<n&&cardReveal[draftFocus].Alpha>0?draftFocus:-1;bool held=enabled&&lit<0&&draftHeld.Reaching;if(enabled&&repaint&&lit>=0)draftHover=lit;
+            // LayoutTray returns a new object every GUI pass. Track the actual mouse/keyboard highlight, never that object.
+            // Chip regions use SilentButton below; only this focus cue and the screen's explicit pick cue may sound.
+            if(repaint&&hoverSoundFocus.Step(lit,lit>=0?chips[lit].id:null,enabled))nativeAudio?.UiCue("ui.draft.hover",null,.5f);
             // Levels (Repaint only), then the most highlighted visible cards for the others' veil.
             int top=-1;float first=0,second=0;
             for(int i=0;i<n;i++)
@@ -101,12 +102,12 @@ namespace ChipArena.UnityConversion
                 // The Siren pick's number badge sits on the card's top-left corner, under the holo scan's brackets (NativeChipCard).
                 var look=new ChipLook{Alpha=reveal.Alpha,Hover=h,Time=now,SweepAt=-10,Bright=reveal.Bright,Focus=enabled&&draftFocus==i,Enabled=enabled,Plain=reveal.Degrees!=0,Holo=h,HoloAt=i<n?cardHoloAt[i]:-10,Calm=calm,Recede=recede,Ghost=ghost,Badge=badges&&i<9?i+1:0};
                 NativeChipCard.Draw(r,c,copies(i),tray.Size,look);
-                U.Pop();if(enabled&&reveal.Alpha>.5f&&U.Button(r))clicked=i;
+                U.Pop();if(enabled&&reveal.Alpha>.5f&&U.SilentButton(r))clicked=i;
             }
             return clicked;
         }
         // A new tray (a new turn, another picker, the next Siren pick): no card starts highlighted.
-        private void ResetHolo(){Array.Clear(cardHolo,0,cardHolo.Length);for(int i=0;i<cardHoloAt.Length;i++)cardHoloAt[i]=-10;}
+        private void ResetHolo(){hoverSoundFocus.Reset();Array.Clear(cardHolo,0,cardHolo.Length);for(int i=0;i<cardHoloAt.Length;i++)cardHoloAt[i]=-10;}
         // A card's footing on the tray's display: a soft contact shadow along its lower edge and a faint glow of its rarity on
         // the surface under it. `hover` 0..1 (the lift).
         private static void TrayStand(Rect r,string rarity,float alpha,float hover)

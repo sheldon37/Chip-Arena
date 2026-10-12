@@ -432,7 +432,9 @@ namespace ChipArena.UnityConversion
         }
         // A clickable region in virtual space (respects the current transform for hit testing through GUI.matrix).
         public static bool Button(Rect r,bool enabled=true)=>Pressed(r,enabled,NativeUiSounds.Click);
-        /// <summary>The one UI sound hook (NativeAudio listens; its effects bank plays them, silent without LocalAssets): a press
+        // Regions with their own focus/pick cues must not also emit a generic menu tick as they animate or become clickable.
+        public static bool SilentButton(Rect r,bool enabled=true)=>Pressed(r,enabled,null);
+        /// <summary>The one UI sound hook (NativeAudio listens; built-in hover, effects bank for the other cues): a press
         /// (click, back or confirm by the button), a press on a disabled button (error) and the pointer entering a button (hover).</summary>
         public static event Action<string> Sound;
         private static int hoverFrame=-10;private static bool hoverNow,hoverBefore;private static Vector2 hoverAt,hoverWas;

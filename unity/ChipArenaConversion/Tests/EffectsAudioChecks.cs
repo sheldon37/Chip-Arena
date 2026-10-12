@@ -22,6 +22,24 @@ namespace ChipArena.UnityConversion
         public static IEnumerable<string> Run(string root)
         {
             var passed=new List<string>();
+            // Repeated GUI repaints/recreated layouts must not retrigger a stationary highlight. A real focus change,
+            // duplicate-chip slot, leave/re-enter or new draft still gives one cue (mouse and keyboard share this gate).
+            var focus=new NativeHoverFocus();int hoverPlays=0;
+            for(int frame=0;frame<10000;frame++)if(focus.Step(2,new string(new[]{'c','h','i','p'}),true))hoverPlays++;
+            Check(hoverPlays==1,"stationary chip is silent after its first highlight over 10,000 repaints");
+            Check(focus.Step(3,"chip",true)&&!focus.Step(3,"chip",true),"another slot with the same chip cues once");
+            Check(focus.Step(3,"another-chip",true),"replaced offer in the same slot cues once");
+            Check(!focus.Step(-1,null,true)&&focus.Step(3,"another-chip",true),"leave and re-enter cues once");
+            Check(!focus.Step(3,"another-chip",false)&&!focus.Step(3,"another-chip",false)&&focus.Step(3,"another-chip",true),"disabled/spectator tray is silent");
+            focus.Reset();Check(focus.Step(3,"another-chip",true),"new draft reset permits its first highlight");
+            foreach(bool chip in new[]{false,true})
+            {
+                var pcm=NativeHoverSound.Samples(chip);double duration=pcm.Length/(double)NativeHoverSound.SampleRate;
+                Check(duration>0&&duration<=.07&&duration<NativeHoverSound.Cooldown,"hover ends before rapid navigation can overlap it");
+                Check(pcm.SequenceEqual(NativeHoverSound.Samples(chip)),"identical hover samples on every play");
+                Check(pcm[0]==0&&pcm[pcm.Length-1]==0&&pcm.All(s=>!float.IsNaN(s)&&!float.IsInfinity(s)&&Math.Abs(s)<1)&&pcm.Any(s=>Math.Abs(s)>.1),"finite audible hover with silent ends and no clipping");
+            }
+            passed.Add("hover audio: 10,000 stationary repaints cue once; slot/offer/keyboard edges, disabled/re-entry/reset, fixed 40/70 ms ticks and overlap budget pass");
             // ---------- key contract ----------
             var keys=NativeSoundKeys.All;Check(keys.Length==173&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length,"173 unique keys ("+keys.Length+")");
             foreach(var k in keys)
@@ -193,7 +211,7 @@ namespace ChipArena.UnityConversion
                 foreach(var hook in new[]{"Cue(\"death.broadcast\",\"explosion\",null,.7f);","Cue(\"hazard.entry\",\"metal\",null,.18f);","Cue(\"ui.error\",\"ui\",null,.3f,mine:true);"})Check(scene.Contains(hook),"scene hook: "+hook);
                 Check(st.Contains("var clip=BankStructureClip(layer.Clip,out var banked);if(clip==null)clip=StructureClip(layer.Clip);if(clip==null)continue;"),"structure layers take the bank override, else the synth");
                 Check(ui.Contains("public static bool Button(Rect r,bool enabled=true)=>Pressed(r,enabled,NativeUiSounds.Click);")&&ui.Contains("return Pressed(r,enabled,alpha>.5f?NativeUiSounds.Button(label,primary):null)&&alpha>.5f;")&&ui.Contains("Sound?.Invoke(NativeUiSounds.Error);")&&ui.Contains("Sound?.Invoke(NativeUiSounds.Hover);")&&ui.Contains("if(hit&&enabled&&sound!=null)Sound?.Invoke(sound);"),"U.Button / U.Btn raise click, back, confirm, error and hover once");
-                Check(R("NativeLoadoutUI.cs").Contains("nativeAudio?.UiCue(\"ui.loadout.select\",\"install\",.4f);")&&R("NativeDraftScreen.cs").Contains("nativeAudio.UiCue(\"ui.draft.pick\",\"ui\",.4f);")&&R("NativeDraftScreen.cs").Contains("nativeAudio?.UiCue(\"ui.draft.hover\",null,.5f);")&&R("NativeHomeMenu.cs").Contains("nativeAudio?.UiCue(\"ui.click\",\"ui\",.4f);")&&R("NativeNotice.cs").Contains("nativeAudio?.Cue(\"ui.notice\",null,null,.5f,mine:true);"),"screen UI cues go through the bank with today's clips as fallbacks");
+                Check(R("NativeLoadoutUI.cs").Contains("nativeAudio?.UiCue(\"ui.loadout.select\",\"install\",.4f);")&&R("NativeDraftScreen.cs").Contains("nativeAudio.UiCue(\"ui.draft.pick\",\"ui\",.4f);")&&R("NativeDraftScreen.cs").Contains("nativeAudio?.UiCue(\"ui.draft.hover\",null,.5f);")&&R("NativeHomeMenu.cs").Contains("nativeAudio?.UiCue(\"ui.click\",\"ui\",.4f);")&&R("NativeNotice.cs").Contains("nativeAudio?.Cue(\"ui.notice\",null,null,.5f,mine:true);"),"screen UI cues use the shared audio entrypoints (hover has fixed built-in ticks)");
                 Check(fx.Contains("if(key!=null&&BankPlay(key,position,gain,0,gate,mine))return;")&&fx.Contains("if(cover!=null&&bank.Has(cover))return;")&&fx.Contains("if(clip!=null)Play(clip,position,gain,rate,gate);"),"Cue falls back to exactly today's Play");
                 Check(fx.Contains("if(s.Key==null){if(s.Tone)ArcadeTone();else Play(s.Clip,s.Positional?at:(Vector3?)null,s.Gain,s.Rate,s.Gate);return;}"),"an unbanked plan entry is today's play");
                 Check(fx.Contains("FieldBorn(NativeFieldSounds.Born(f.Kind,fx),")&&fx.Contains("BankPlay(\"chip.mine.arm\",at,.6f);")&&fx.Contains("FuseBeeps(f.Id,at,f.Born,f.Until,t);")&&fx.Contains("WantLoop((long)f.Id*2,loop,at);")&&fx.Contains("WantLoop((long)z.Id*2+1,loop,z.Position);")&&fx.Contains("BankPlay(\"move.jump\",")&&fx.Contains("BankPlay(\"move.land\",")&&fx.Contains("BankPlay(\"gun.ads\",null,.5f,0,null,true);"),"field, fuse, loop and movement hooks play only through the bank");
