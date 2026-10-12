@@ -1,5 +1,40 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — cyber home screen over the Pilot's Rooftop (owner: "Id like to revise the UI- to a more modern design ... change the background, something beautifully animated pertaining to our games design"; round 2: "have them sitting on top of a building, look down at a cyber city? Can see other pilots in the distance", "So cyan instead of orange", "add small particle effects sprinkled around")
+- Branch `claude/menu-redesign`, base shared `a090abf` (fast-forwarded from `c0e5aa1` through `44278a9` and `3a6b2dd`). Signed implementation commit `a848554` and this log commit on the branch only: not pushed, merged or released. Concept renders (two rounds) are scratch deliverables, not in the repo.
+- Background, home screen only (Play vs Bots, the room screens, Boss Test and the rest keep the orbiting map; `ConversionGame.MenuBackdrop`):
+  - Core `NativeRooftopCity`: a deterministic voxel cyber city (1477 lots, setback tiers, neon roof trims, window grids), our roof (lip, AC unit, vent stack, antenna with beacon, stair hut, four puddles, magenta ARENA blade sign), five holo screens placed from screen intent (Chip Arena, the RICOCHET chip card, the Siren / Boss Test, the CHIP banner, the sign), six traffic lanes whose periods divide the 48 s loop, and the sprinkle (screen and trim glows, mist, steam, cyan specks near the pilot, data motes, rain).
+  - Core `NativeRooftopActors`: the player's pilot (prefs weapon, hat, colours) seated on the lip, legs over the edge (`NativeLobbyPoses` chair), with a `NativeDraftRules.Look` gaze scan and a glance that follows a passing car. Distant pilots: two runners (captured run, pack jump and land), a blade/gunner duel (cutA/block/cutB; rifle `RangedPose` bursts with tracers and deflection sparks) and a watcher (hero stance).
+  - Core `NativeRooftopArt`: monoline wordmark glyphs and the ads as SVG markup for `NativeIconRaster`.
+  - Runtime `NativeRooftopPresentation`: x-mirrored, winding-flipped meshes; ads rasterised on worker threads; cars and dynamic sprites per frame; pilots through `NativeSourceModels` with the weapon lying on the lip. Four new shaders (`NativeRooftop`, `NativeRooftopSky`, `NativeRooftopScreen`, `NativeRooftopSprite` and `NativeRooftopCommon.cginc`).
+  - `NativeLighting.Rooftop` sets the night look, which `Apply` restores. Leaving the rooftop also restores the camera's field of view and near plane. Unsupported shaders or any failure fall back to the map orbit (logged once).
+- Tiers: quality 1, reduced effects .6, low graphics .34. Sprite counts are 1658, 1198 and 779; the low tier has no mist or car trails. Reduced effects halves the camera drift and stills the screen glitch.
+- Composition change from the concept: runner A's roof and bridge now put its leap mid-frame, and runner B sits higher so the duel roof no longer hides it. In the concept, one leap was off-frame and the other hidden; the new line-of-sight check found this.
+- Home menu (`NativeHomeMenu`):
+  - the vector wordmark (no tagline; PROTOTYPE moved to the footer);
+  - constellation entries 01-04 (keys 1-4 unchanged);
+  - quiet rows: Sandbox (DEV, offline), Catalogue (DEV) and Quit;
+  - the Update Game circle, with the same state logic and actions; its card opens beside it and is forced open while busy;
+  - hexagon buttons: Customize, Settings, Account and DEV (with the "log in once" redirect);
+  - a Connection report pill, left out if it would collide with the hexagons (still in Settings);
+  - the nameplate (name, weapon, class) under the seated pilot, which opens Customize.
+- Panel chrome: `BeginScreen` wears `NativeHudChrome.Panel`, as the pause menu does, with a hexagon close button. These are now cyan: `MenuButton` (so the HUD's pause and match-end buttons too), `U.Btn`, `U.Panel`, `NativeMenuSkin`, the update card, and the orange accents in `NativeLobbyUI` and `NativeRoomOptionsUI`. The loadout tiles, the Locker internals and the HUD are untouched.
+- Animation impact: presentation only. The rooftop pilots never enter a match. There are no changes to hit timing, hitboxes, damage, cooldowns, movement, networking, accounts, the updater service or saves. Menu music is unchanged.
+- Checks:
+  - `unity-check.sh` on the repo root: runtime+editor OK.
+  - `check_relay.py`: exit 0, 459 PASS, no FAIL. The base `a090abf` has 454; the 5 new lines are from `Tests/RooftopChecks`. They cover determinism, the triangle budget (90k), tier thinning, quad winding, loop seams for the camera, lanes, gaze and scripted pilots, the car glance timing, framing at 16:9 and 21:9 with clear line of sight to every screen and pilot, the seat on the lip with feet over the edge for 7 specs, tracers meeting the block, ad and wordmark rasters, and source checks for routing, every home function, the updater states and no orange left.
+  - Python unittests: 91 OK, 1 skipped. `package_source.py`: OK. `git diff --check`: clean.
+  - `HudPlaceholderChecks`' Catalogue string was updated to the new quiet row.
+  - The HLSL of the four shaders passes glslang's HLSL front end against a UnityCG stub. An offline three.js render of the dumped Core data matches the concept's composition.
+- Not run: the Unity Editor or player, Unity's own shader compiler, a Windows build, frame time, or the real pixels at 1080p and 21:9.
+- Risks:
+  - The first home frame builds the city on the main thread, a one-time hitch.
+  - The shaders have not been compiled by Unity.
+  - The mirroring and winding have not been seen in the player.
+  - Per-letter tracked IMGUI text has a cost.
+  - Lobby-pose breathing runs on its own clock, so it is not looped.
+- Next: the owner checks it in the player at 1920x1080 and 3440x1440 on all three tiers; the coordinator merges and pushes; then test-channel publication per the standing instruction.
+
 ## 2026-10-12 — Claude — cyber loadout tiles (owner: "Lets also rework this weapon selection: it is very outdated and too big. We will have this not show text, instead; a animated cyber effect over the choices and just the icon + name of class under it. Rework the Class selection to compliment this as well")
 - Branch `claude/loadout-ui`, base `f026b9e` (shared Unity head with the class icons and `NativeCyberTheme`). Implementation `498f818` plus this log commit, signed, on the branch only: not pushed, merged or released.
 - Weapons: the tall two-column cards (description paragraph, orange stat line, gold pin strips) become a grid of square tiles, at most 124 px. Each tile shows the large weapon icon and its name only. Columns follow the slot width, so every class shows the same tile size; seven melee weapons take two rows in Play vs Bots instead of four. An info strip under the grid shows the hovered weapon's name, a one-line role (`NativeLoadoutText.Role`, without ability names) and its key stats. With nothing hovered it rests, dimmed, on the equipped weapon (a check before the name); a notch follows the hovered tile.
