@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
         public static void Sample(Look look,State s,float time)
         {
             var p=s.Pose;p.Reset();s.Offset=Vector3.Zero;s.Hidden=false;int set=SetOf(look.Spec);
-            s.Weapon=new LobbyHeld{Visible=look.Script!=Seated,Bone=NativeLobbyPoses.Magic(look.Spec)?CapturedRig.LHand:CapturedRig.RHand,Position=Vector3.Zero,Rotation=Quaternion.Identity};
+            s.Weapon=new LobbyHeld{Visible=look.Script!=Seated,Bone=NativeLobbyPoses.HeldBone(look.Spec),Position=Vector3.Zero,Rotation=Quaternion.Identity};
             s.Offhand=new LobbyHeld{Visible=look.Script!=Seated&&NativeLobbyPoses.OffHand(look.Spec),Bone=CapturedRig.LHand,Position=Vector3.Zero,Rotation=Quaternion.Identity};
             switch(look.Script)
             {

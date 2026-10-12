@@ -114,7 +114,7 @@ namespace ChipArena.UnityConversion
             var f=new Frame{Aim=aim,Raised=k,Extend=v.Extend};float kk=MeleeMath.Clamp(k,0,1);
             Vector3 left=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,aim)),up=Vector3.Normalize(Vector3.Cross(aim,left)),right=-left;
             // The aimed bow: canted (more for the Volley's fan), tipped forward after a release, trembling when tired.
-            float cant=firstPerson?ViewCant-(VolleyCant-Cant)*v.Fan:Cant+(VolleyCant-Cant)*v.Fan;Vector3 upC=Vector3.Normalize(up*(float)Math.Cos(cant)-left*(float)Math.Sin(cant));
+            float cant=CantOf(v.Fan,firstPerson);Vector3 upC=Vector3.Normalize(up*(float)Math.Cos(cant)-left*(float)Math.Sin(cant));
             Quaternion bow=Look(aim,upC);
             NativeBow.Tremor(r.Seed,time,v.Tremor,out var shake,out float ty,out float tp);
             if(v.Tremor>0)bow=bow*CapturedRig.Euler(tp,ty,0);
@@ -195,12 +195,18 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- first person (the generic view-model route: the rig's frame is the camera's, the aim straight ahead) ----
-        /// <summary>The view model's layout (rig frame, source: x the left, y up, z the view): the arrow line straight ahead
-        /// (ViewAnchor: the full-draw nock, under and left of the eye so the arrow points from the lower right at the crosshair),
-        /// the chest bladed (unseen; it brings both shoulders within reach of the line), the bow canted away from the centre;
-        /// the eye's place in the rig (ViewEye), so the root sits at the camera less ViewEye x ViewScale.</summary>
-        public static readonly Vector3 ViewAnchor=new Vector3(0,.38f,-.03f),ViewEye=new Vector3(-.167f,.572f,-.056f);
-        public const float ViewCarryYaw=-14,ViewCarryPitch=-24,ViewSkyPitch=.42f,ViewBlade=1.3f,ViewCant=-.32f,ViewStart=.2f,ViewScale=NativeFirstPersonPose.Scale;
+        /// <summary>The view model's layout (rig frame, source: +x the rig's LEFT, y up, z the view), the same right-handed archer
+        /// third person shows from its own head: the arrow line straight ahead (ViewAnchor: the full-draw nock at the right jaw,
+        /// under the eye and ViewSide to its right, so the arrow comes in from the lower right to the crosshair, the string hand
+        /// low right, the riser just right of the arrow), the chest bladed (unseen; it brings both shoulders within reach of the
+        /// line), the bow's top limb canted right, away from the crosshair (ViewCant, the sign of the third-person Cant); the
+        /// eye's place in the rig (ViewEye), so the root sits at the camera less ViewEye x ViewScale.</summary>
+        public const float ViewSide=.06f;
+        public static readonly Vector3 ViewAnchor=new Vector3(0,.38f,-.03f),ViewEye=new Vector3(ViewSide,.572f,-.056f);
+        public const float ViewCarryYaw=-14,ViewCarryPitch=-24,ViewSkyPitch=.42f,ViewBlade=1.3f,ViewCant=.32f,ViewStart=.2f,ViewScale=NativeFirstPersonPose.Scale;
+        /// <summary>The bow's cant (rad about the aim; positive turns the top limb to the archer's right) for the Volley's fan
+        /// weight `fan`, third person or the view: the Volley lays the bow over further the same way.</summary>
+        public static float CantOf(float fan,bool firstPerson)=>(firstPerson?ViewCant:Cant)+(VolleyCant-Cant)*fan;
         /// <summary>The root's offset from the camera (camera space, Unity frame: x right) for RenderFirstPerson.</summary>
         public static Vector3 ViewOffset=>new Vector3(ViewEye.X,-ViewEye.Y,-ViewEye.Z)*ViewScale;
         /// <summary>The first-person bow over the view rig's rest pose: the torso bladed (unseen), the arms on the arrow line
