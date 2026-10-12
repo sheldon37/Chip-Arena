@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — CI: relay startup wait is a deadline
+- `native-source` failed on `3cf02f1` with "Relay startup timed out" before any test ran. The relay was unchanged. The cause: `tools/check_relay.py` polled 200 times, and a refused connection returns at once, so the poll gave the relay only ~10 s to start; the busy runner needed longer.
+- The wait is now a deadline: 60 s by default, set with `--startup-timeout` or `CHIP_RELAY_STARTUP_SECONDS`. Test behaviour and the test timeout are unchanged.
+- Checks: a stalled stand-in relay fails cleanly after the configured 3 s; the full relay passes (exit 0, 563 PASS); Python unittest OK.
+- Note for Astra (tooling owner): adjust or revert as you prefer.
+
 ## 2026-10-12 — Claude — Cyber City stage: design, simulation contract and dormant presentation (owner: "add a couple of more stages on the same quality of brick fall. A larger map with stage hazards. ... the other is a cyber city. I can have astra handle the coding portion.")
 - Branch `claude/stage-cybercity`, base `f575670`; implementation `1354080`, shared `f9c755d` merged in `478f242`, shared `a53e752` merged in `5c2e207`, follow-ups `1d0cf16`, `6679cd4`, `74cbb1c`, this log commit after them; all signed. On the branch only: not pushed, merged or released. The map is not in the game: no UnityMaps.json entry, no selection or rotation change (Astra's).
 - Design `docs/arenas/CYBERCITY_PROPOSAL.md`: Helix Junction, an 80 x 64 m slab (76 x 60 m play; Brickfall 60 x 52), point symmetric. A 6 m wide, 4 m deep maglev cut along z = 0, the station concourse at 7.2 m over the central bridge with a lift core, the Nova and Vega podiums (3 storeys, 24 m spires), the Lantern and Signal markets, avenues, the Cab Rank and Loading Dock yards. Draft `docs/arenas/scripts/cybercity_m1.py` (frozen as `Tests/cybercity-draft.json`): 702 blocks, 2 segments, a 34-prop frame; 28/28 FFA and 16/16 team spawn pairs blocked under Brickfall's jitter test; nearest spawn to a hazard 6.0 m.
