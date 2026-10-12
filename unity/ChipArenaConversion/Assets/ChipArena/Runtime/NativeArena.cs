@@ -157,7 +157,9 @@ namespace ChipArena.UnityConversion
             if(rolling){float duration=p.RollEnd-p.RollAt,u=(Time-p.RollAt)/duration,q=(Time+dt-p.RollAt)/duration;var roll=p.RollDirection*(Dev(p,"ansatsuken")?22:(float)p.Roll.distance*(MathUtil.Smooth(q)-MathUtil.Smooth(u))/dt);velocity.x=roll.x;velocity.z=roll.z;}
             else
             {
-                if(locked&&!whirling)p.MoveVelocity=Vector3.zero;
+                // A landing attack carries its committed horizontal velocity (x .6) through the hang and plunge (the guest's seed).
+                if(NativeAirAttackSimulation.Falling(p.Swing)&&!Incapacitated(p))p.MoveVelocity=Vec(p.Swing.Carry);
+                else if(locked&&!whirling)p.MoveVelocity=Vector3.zero;
                 else p.MoveVelocity=new Vector3(Mathf.MoveTowards(p.MoveVelocity.x,move.x*speed,35*dt),0,Mathf.MoveTowards(p.MoveVelocity.z,move.z*speed,35*dt));
                 Vector3 step=(p.Grounded||NativeSprintAttack.Hop(p.Swing))&&!Incapacitated(p)?Vec(NativeMeleeRules.Step(p.Swing,Time,dt)):Vector3.zero;
                 step+=MeleeAbilityMotion(p)+FighterMotion(p)+SirenMotion(p);velocity.x=p.MoveVelocity.x+step.x;velocity.z=p.MoveVelocity.z+step.z;
