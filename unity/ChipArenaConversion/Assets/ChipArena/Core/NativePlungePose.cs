@@ -234,9 +234,9 @@ namespace ChipArena.UnityConversion
             switch(spec)
             {
                 case "daggers":return new ViewKey{Grip=V(-.06f,-.07f,.11f),LGrip=V(.47f,-.07f,.11f)};
-                case "greatsword":return new ViewKey{Grip=V(-.04f,-.12f,.11f)};
-                case "shield":return new ViewKey{Grip=V(-.18f,-.1f,.14f),LGrip=V(.5f,-.4f,-.1f)};
-                default:return new ViewKey{Grip=V(-.08f,-.1f,.13f),LGrip=V(.5f,-.4f,-.1f)};
+                case "greatsword":return new ViewKey{Grip=V(-.12f,-.22f,.1f)};
+                case "shield":return new ViewKey{Grip=V(-.18f,-.1f,.14f),LGrip=V(.5f,-.45f,-.28f)};
+                default:return new ViewKey{Grip=V(-.08f,-.1f,.13f),LGrip=V(.5f,-.45f,-.28f)};
             }
         }
         /// <summary>The view's blade direction at the view's pitch (degrees, negative looking down; Actor.Pitch): world down in the
@@ -266,14 +266,14 @@ namespace ChipArena.UnityConversion
                 // Rim first: the shield's top up and back, its face forward, its bottom rim pointing down the view.
                 Vector3 up=-down,face=new Vector3(0,down.Z,-down.Y);
                 r.BraceWeapon(ToChest(r,v.Grip+shift),inv*ShieldHand(face,up),1,PoleToClav(r,false,V(-1,-.3f,-.3f)),false);
-                r.Hand(true,ToChest(r,v.LGrip),GuardLeft(guard),1,PoleToClav(r,true,V(1,-.6f,.2f)));
+                r.Hand(true,ToChest(r,v.LGrip),GuardLeft(guard),1,PoleToClav(r,true,V(1,-.3f,-.5f)));
             }
             else
             {
-                Quaternion hand=Turned(GuardHand(guard),DirToChest(r,Vector3.Normalize(down+new Vector3(w.TwoHand?0:ViewIn,0,0))));
+                Quaternion hand=Turned(GuardHand(guard),DirToChest(r,Vector3.Normalize(down+new Vector3(ViewIn,0,0))));
                 r.BraceWeapon(ToChest(r,v.Grip+shift),hand,1,PoleToClav(r,false,V(-1,-.4f,-.3f)),w.TwoHand);
                 if(w.Dual)r.Hand(true,ToChest(r,v.LGrip+shift),Turned(GuardLeft(guard),DirToChest(r,Vector3.Normalize(down+new Vector3(-ViewIn,0,0)))),1,PoleToClav(r,true,V(1,-.4f,-.3f)));
-                else if(!w.TwoHand)r.Hand(true,ToChest(r,v.LGrip),GuardLeft(guard),1,PoleToClav(r,true,V(1,-.6f,.2f)));
+                else if(!w.TwoHand)r.Hand(true,ToChest(r,v.LGrip),GuardLeft(guard),1,PoleToClav(r,true,V(1,-.3f,-.5f)));
             }
             r.MocapPosed=true;
             return c.Phase==NativePlungePhase.Settle?c.Settle:c.Phase==NativePlungePhase.Windup?1-c.Tuck:0;
