@@ -1,19 +1,94 @@
 name: Request Chip Arena Desktop Build
 
-# GitHub records this request; the owner's desktop polls workflow run metadata.
-# No executable code is delivered to the desktop from this workflow.
+# The Windows desktop agent checks manual requests and publishes its real result
+# to a per-request commit status. This workflow waits for that result.
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
+  statuses: read
 
 jobs:
-  request:
+  wait-for-desktop:
+    name: Wait for desktop Build-and-Publish
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 120
     steps:
-      - name: Signal desktop agent
+      - name: Wait for desktop build result
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT_SHA: ${{ github.sha }}
+          REPORT_REPO: ${{ github.repository }}
+          REQUEST_RUN_ID: ${{ github.run_id }}
+          REQUEST_ATTEMPT: ${{ github.run_attempt }}
         run: |
-          echo "Build request recorded. Your desktop agent polls this workflow's runs."
-          echo "A green check here means GitHub accepted the request, NOT that Unity finished."
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import time
+          import urllib.error
+          import urllib.request
+
+          repo = os.environ['REPORT_REPO']
+          sha = os.environ['REPORT_SHA']
+          run_id = os.environ['REQUEST_RUN_ID']
+          attempt = os.environ['REQUEST_ATTEMPT']
+          context = f'chip-arena/desktop-request/{run_id}-{attempt}'
+          url = f'https://api.github.com/repos/{repo}/commits/{sha}/statuses?per_page=100'
+          token = os.environ['GH_TOKEN']
+
+          print(f'Build request {run_id} (attempt {attempt}). Waiting for the desktop.', flush=True)
+          print('Green means the existing builder exited 0, not just that the request arrived.', flush=True)
+          deadline = time.monotonic() + 110 * 60
+          last = None
+          errors = 0
+          last_heartbeat = 0
+          while time.monotonic() < deadline:
+              req = urllib.request.Request(url, headers={
+                  'Authorization': f'Bearer {token}',
+                  'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+                  'User-Agent': 'chip-arena-desktop-waiter',
+              })
+              try:
+                  with urllib.request.urlopen(req, timeout=20) as resp:
+                      statuses = json.load(resp)
+                  errors = 0
+              except (urllib.error.URLError, ValueError) as exc:
+                  errors += 1
+                  print(f'GitHub status request failed ({errors}): {exc}', flush=True)
+                  if errors >= 10:
+                      print('::error::Cannot query GitHub for desktop build result.')
+                      sys.exit(1)
+                  time.sleep(20)
+                  continue
+
+              status = next((s for s in statuses if s.get('context') == context), None)
+              state = status.get('state') if status else 'queued'
+              detail = (status.get('description') or '') if status else 'Desktop has not acknowledged request'
+              if (state, detail) != last:
+                  print(f'Desktop status: {state} - {detail}', flush=True)
+                  last = (state, detail)
+              if state in ('success', 'failure', 'error'):
+                  summary = os.environ.get('GITHUB_STEP_SUMMARY')
+                  if summary:
+                      with open(summary, 'a', encoding='utf-8') as f:
+                          f.write('### Chip Arena desktop Build-and-Publish\n\n')
+                          f.write(f'- **Result:** {state.upper()}\n')
+                          f.write(f'- **Details:** {detail}\n')
+                          f.write('- Full build logs remain on the desktop.\n')
+                  if state == 'success':
+                      print('Build-and-Publish reported exit 0. Confirm published update in builder logs.')
+                      sys.exit(0)
+                  print(f'::error::Desktop build failed: {detail}')
+                  sys.exit(1)
+              if time.monotonic() - last_heartbeat > 600:
+                  print('Still waiting for desktop response...', flush=True)
+                  last_heartbeat = time.monotonic()
+              time.sleep(20)
+          print('::error::Desktop did not return a final result within 110 minutes.')
+          sys.exit(1)
+          PY
