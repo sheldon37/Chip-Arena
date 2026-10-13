@@ -8,11 +8,15 @@ namespace ChipArena.UnityConversion
         // Brickfall draws its own backdrop (NativeBrickfallPresentation.cs); `camera` orients its sprites.
         public void RenderBackdrop(string commit,string mapId,float time,Camera camera=null)
         {
-            if(sourceModels==null)return;sourceModels.Begin();sourceModels.Queue("map-"+mapId,Matrix4x4.identity);HazardPresentation(mapId,time);SceneryMotion(commit,mapId);
+            if(sourceModels==null)return;sourceModels.Begin();
+            // The revamped Ward Zero draws its own cut-away (NativeWardZeroPresentation.cs) in place of today's hall.
+            bool revamp=mapId==NativeWardZeroLooks.MapId&&NativeWardZeroLooks.Active(NativeLighting.CurrentMap);
+            if(!revamp)sourceModels.Queue("map-"+mapId,Matrix4x4.identity);HazardPresentation(mapId,time);SceneryMotion(commit,mapId);
             FactoryBackdrop(mapId,time,camera);
             BrickfallBackdrop(mapId,time,camera);
             CyberCityBackdrop(mapId,time,camera);
-            if(mapId=="siren")
+            if(revamp)WardZeroBackdrop(mapId,time,camera);
+            else if(mapId=="siren")
             {
                 if(wardMotion==null){wardMotion=JsonUtility.FromJson<NativeWardMotion>(Resources.Load<TextAsset>("WardMotion").text);if(wardMotion.commit!=commit)throw new System.InvalidOperationException("Ward motion source differs");}
                 foreach(var p in wardMotion.parts)

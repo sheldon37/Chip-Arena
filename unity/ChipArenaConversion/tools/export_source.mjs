@@ -39,6 +39,9 @@ const catalogue={schema:1,sourceCommit:lock.commit,weapons:Object.values(content
  maps:maps.ALL_MAPS.map(m=>({...m,rotation:maps.ROTATION_MAPS.some(r=>r.id===m.id),blocks:arena.arenaBlocks(m.id).map(b=>({...b,rotation:b.rotation||{x:0,y:0,z:0,w:1},support:b.support||[]}))})),
  materials:Object.entries(config.MATERIALS).map(([id,m])=>({id,...m,durability:Number.isFinite(m.durability)?m.durability:0,indestructible:!Number.isFinite(m.durability)})),
  spawns:Array.from({length:8},(_,i)=>arena.playerSpawn(i)),abilities:kits,ads:Object.entries(gun.ADS_PROFILES).map(([spec,data])=>({spec,...data})),weights:pairs(souls.WEAPON_WEIGHT)};
+// Unity-only kits stay explicit and reproducible without modifying the pinned Electron source.
+const native=JSON.parse(fs.readFileSync(path.join(project,'tools/native-content.json'),'utf8'));
+for(const [key,values] of Object.entries(native))catalogue[key].push(...values);
 // Fixtures are outputs from original source functions, not outputs copied from the C# implementation.
 const random=seed=>{let s=seed>>>0;return ()=>((s=(Math.imul(s,1664525)+1013904223)>>>0)/4294967296);};
 const setups=[{}, {vital:3,overclock:4,frame:2},Object.fromEntries(content.CHIPS.map(c=>[c.id,c.max])),{'l44t-copy':1,'arcade-rush':1,'mishima-godfist':1,'siren-crown':1}];

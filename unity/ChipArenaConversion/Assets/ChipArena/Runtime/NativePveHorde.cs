@@ -53,12 +53,12 @@ namespace ChipArena.UnityConversion
                 else if(!a.Struck){m.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;if(distance>.8f)move=Vec(V3.Forward(m.Yaw))*((a.Crawl?.15f:armless?.45f:a.Stats.lunge)/Math.Max(.05f,hit));}
                 else if(Time>=a.RecoverAt)
                 {
-                    float speed=(distance<=7||m.Hp<m.MaxHp*.5f?a.Stats.run:a.Stats.walk)*(a.Crawl?.35f:a.Limp?.55f:1);Vector3 dir=pveNavigation.Direction(at,target.Body.position,target.Seat.id);
+                    float speed=(distance<=7||m.Hp<m.MaxHp*.5f?a.Stats.run:a.Stats.walk)*(a.Crawl?.35f:a.Limp?.55f:1);Vector3 dir=Map.unity?StructureNavMove(m.Id,at,target.Body.position,(target.Body.position-at).normalized):pveNavigation.Direction(at,target.Body.position,target.Seat.id);
                     if(a.Possessed){float age=Time-a.PossessedAt;if(age<60){if(age%6>=5.2f||distance>=8&&distance<=14)dir=Vector3.zero;else if(distance<8)dir=-dir;speed=(m.Hp<m.MaxHp*.5f?a.Stats.run:a.Stats.walk)*(a.Crawl?.35f:a.Limp?.55f:1);}}
-                    move=distance>1.1f||a.Possessed?dir*speed:Vector3.zero;
+                    move=distance>1.1f||a.Possessed?dir*speed:Vector3.zero;if(!SupportedStageMove(at,move))move=Vector3.zero;
                 }
                 if(move.sqrMagnitude>.001f){float factor=Time<a.SlowUntil?a.SlowFactor:1;foreach(var f in ChipFields)if(CanHit(f.Owner,m)&&Vector3.Distance(f.Position,at)<f.Radius)factor=Math.Min(factor,f.Kind=="frost"?.45f:f.Kind=="time"?.6f:1);move*=factor;int n=0;foreach(var other in adds){if(other==m||Time<other.Pve.ActiveAt||n>=6)continue;Vector3 diff=at-other.Body.position;diff.y=0;float dist=diff.magnitude;if(dist<.9f){n++;move+=dist<.0001f?Vector3.right*(m.Id<other.Id?-1.8f:1.8f):diff/dist*(.9f-dist)*2;}}m.Yaw=Mathf.Atan2(move.x,move.z)*Mathf.Rad2Deg;}
-                a.External*=Mathf.Exp(-6*dt);move+=Vector3.ClampMagnitude(a.External,6);m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);
+                if(!SupportedStageMove(at,move))move=Vector3.zero;a.External*=Mathf.Exp(-6*dt);move+=Vector3.ClampMagnitude(a.External,6);m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);
             }
         }
         private bool TryVentTravel(NativeMinion m,NativePilot target)
@@ -130,13 +130,13 @@ namespace ChipArena.UnityConversion
             // PvE fighters must fight even when saved PvP practice settings specify
             // stationary targets or dummies. Medics still have no combat target.
             if(target.HasValue){input=BotFocus(p,target.Value,minion!=null?MinionVelocity(minion):PilotVelocity(Pve.Boss),minion?.Collider??Pve.Boss.Collider,minion==null?Pve.Boss:null,force:true);move=new Vector3(input.X,0,input.Z);}else input=new InputFrame{Yaw=p.Yaw};
-            if(anchor!=null&&Vector3.Distance(anchor.Body.position,p.Body.position)>(target.HasValue?12:5))move=pveNavigation?.Direction(p.Body.position,anchor.Body.position,anchor.Seat.id)??(anchor.Body.position-p.Body.position).normalized;input.X=move.x;input.Z=move.z;return input;
+            if(anchor!=null&&Vector3.Distance(anchor.Body.position,p.Body.position)>(target.HasValue?12:5))move=Map.unity?StructureNavMove(p,anchor.Body.position,(anchor.Body.position-p.Body.position).normalized):pveNavigation?.Direction(p.Body.position,anchor.Body.position,anchor.Seat.id)??(anchor.Body.position-p.Body.position).normalized;if(!SupportedStageMove(p.Body.position,move)){move=Vector3.zero;input.Jump=input.Roll=input.Sprint=false;}input.X=move.x;input.Z=move.z;return input;
         }
         private InputFrame SirenBot(NativePilot p,InputFrame input)
         {
             if(Pve.Hidden)return new InputFrame{Yaw=p.Yaw};var q=Members().Where(t=>t.Hp>0&&t.Seat.connected).OrderBy(t=>(t.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();if(q==null)return new InputFrame{Yaw=p.Yaw};p.Seat.difficulty=NativeBotRules.BossDifficulty(PartySize);
             input=BotFocus(p,q.Body.position,PilotVelocity(q),q.Collider,q,force:true);var s=Siren(p);float distance=Vector3.Distance(q.Body.position,p.Body.position);
-            Vector3 move=distance>(s.Ranged?12:2)?pveNavigation.Direction(p.Body.position,q.Body.position,q.Seat.id):Vector3.zero;input.X=move.x;input.Z=move.z;return input;
+            Vector3 move=distance>(s.Ranged?12:2)?(Map.unity?StructureNavMove(p,q.Body.position,(q.Body.position-p.Body.position).normalized):pveNavigation.Direction(p.Body.position,q.Body.position,q.Seat.id)):Vector3.zero;if(!SupportedStageMove(p.Body.position,move)){move=Vector3.zero;input.Jump=input.Roll=input.Sprint=false;}input.X=move.x;input.Z=move.z;return input;
         }
     }
     internal sealed class NativePveNavigation

@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
         {
             foreach(var m in Minions.ToArray())
             {
-                if(!Minions.Contains(m)||m.Pve!=null)continue;if(m.Owner.Hp<=0||Time>=m.Until||m.Body.position.y<-6){RemoveMinion(m);continue;}
+                if(!Minions.Contains(m)||m.Pve!=null)continue;if(m.Owner.Hp<=0||Time>=m.Until||m.Body.position.y<(Map.bounds?.killY??-6)){RemoveMinion(m);continue;}
                 foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time+1e-8&&d.Next<=d.Until+1e-8){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)(d.Dps*.25),Vector3.zero,0,kind:"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0||m.Kind=="slender")continue;
                 bool toy=m.Kind=="toy";float windup=toy?.45f:.42f,recover=toy?.55f:.48f;Vector3 at=m.Body.position,velocity=m.Body.linearVelocity;
                 if(m.StrikeAt>=0)

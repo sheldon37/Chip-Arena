@@ -33,6 +33,11 @@ namespace ChipArena.UnityConversion
     /// (<see cref="DriveSafe"/>), the portal signals (<see cref="DriveSignal"/>), drains.</item>
     /// <item>Couplings: grating, energised rails (<see cref="DriveGridBar"/>), pylon insulators and lamps
     /// (<see cref="DriveGridLamp"/>), hazard stripes.</item>
+    /// <item>The Cut's exits (when Build gets the map's <see cref="NativeCyberCityExits"/>): the lintel over each exit door carries
+    /// a white EXIT sign with a stair pictogram rising the way the climb goes instead of the lime SAFE light (<see cref="DriveExit"/>),
+    /// the walls either side frame the door with white strips, ">>" chevrons through it and a small EXIT, the landing has floor
+    /// chevrons toward the stairs, and the climb's steps carry white nosings and riser lines that chase up toward the street
+    /// (<see cref="DriveExitChase"/>). SAFE means "hide here"; white EXIT means "climb out".</item>
     /// <item>Station, podiums and spires: deck and stair LED nosings, framed openings, floor-line strips (Nova magenta, Vega
     /// cyan), spire corner fins and crowns, the NOVA / VEGA / HELIX signs, rooftop plant details.</item>
     /// <item>Markets, avenues and yards: lantern strings and lanterns, the open canopy lattice, stall lamps, signs, vending
@@ -44,16 +49,18 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeCyberCityKit
     {
-        public const byte DriveSteady=0,DriveFlicker=1,DriveSignal=2,DriveCoil=3,DriveEdge=4,DriveGridBar=5,DriveGridLamp=6,DriveSafe=7,DriveGridDeck=8;
+        public const byte DriveSteady=0,DriveFlicker=1,DriveSignal=2,DriveCoil=3,DriveEdge=4,DriveGridBar=5,DriveGridLamp=6,DriveSafe=7,DriveGridDeck=8,DriveExit=9,DriveExitChase=10;
         public NativeCyberCityPart[] Parts;public NativeCyberGlow[] Glows;public NativeCyberCityPart[] Train;
         /// <summary>Hazard indices the drives read (into the array Build took; -1 when absent).</summary>
         public int Maglev=-1;public readonly int[] Grids={-1,-1};
+        /// <summary>The Cut's exits Build dressed (null when it got none: the exit doors then look like the alcoves).</summary>
+        public NativeCyberCityExits Exits;
         private readonly List<NativeCyberCityPart> parts=new List<NativeCyberCityPart>();private readonly List<NativeCyberGlow> glows=new List<NativeCyberGlow>();
         private ContentBlock[] blocks;private int parent;private ContentBlock b;private float hx,hy,hz;
 
         private const int LPanel=NativeCyberCityLooks.Panel,LMetal=NativeCyberCityLooks.Metal,LTube=NativeCyberCityLooks.Tube,LHolo=NativeCyberCityLooks.Holo,LGlass=NativeCyberCityLooks.Glass,LTile=NativeCyberCityLooks.Tile,LGrate=NativeCyberCityLooks.Grate;
         private const int Cy=NativeCyberCityLooks.Bank;
-        private const int CyanC=NativeCyberCityLooks.CyanHex,MagentaC=NativeCyberCityLooks.MagentaHex,VioletC=NativeCyberCityLooks.VioletHex,IceC=NativeCyberCityLooks.IceHex,WarmC=NativeCyberCityLooks.WarmHex,LimeC=NativeCyberCityLooks.LimeHex,AmberC=NativeCyberCityLooks.AmberHex,RedC=NativeCyberCityLooks.DangerHex;
+        private const int CyanC=NativeCyberCityLooks.CyanHex,MagentaC=NativeCyberCityLooks.MagentaHex,VioletC=NativeCyberCityLooks.VioletHex,IceC=NativeCyberCityLooks.IceHex,WarmC=NativeCyberCityLooks.WarmHex,LimeC=NativeCyberCityLooks.LimeHex,AmberC=NativeCyberCityLooks.AmberHex,RedC=NativeCyberCityLooks.DangerHex,ExitC=NativeCyberCityLooks.ExitHex;
         private static readonly int[] Neons={CyanC,MagentaC,VioletC,IceC,0xFF5A8A,0x5AFFD2};
 
         // ---------------- hashing (stable across machines) ----------------
@@ -64,9 +71,12 @@ namespace ChipArena.UnityConversion
         private double H(int a,int c=0)=>Hash(b.id,a,c);
 
         /// <summary>Builds the kit for a map's blocks (Cyber City ids only; anything else gets nothing) and its hazards.</summary>
-        public static NativeCyberCityKit Build(ContentBlock[] blocks,MapHazard[] hazards)
+        public static NativeCyberCityKit Build(ContentBlock[] blocks,MapHazard[] hazards)=>Build(blocks,hazards,null);
+        /// <summary>The kit with the Cut's exits dressed (<see cref="NativeCyberCityExits.Build(ContentMap)"/> on the same blocks).</summary>
+        public static NativeCyberCityKit Build(ContentBlock[] blocks,MapHazard[] hazards,NativeCyberCityExits exits)
         {
             var k=new NativeCyberCityKit{blocks=blocks??Array.Empty<ContentBlock>()};
+            if(exits!=null&&exits.Exits.Length>0&&exits.BlockOpening.Length==k.blocks.Length)k.Exits=exits;
             if(hazards!=null)for(int i=0;i<hazards.Length;i++){if(NativeCyberCityHazards.IsMaglev(hazards[i])&&k.Maglev<0)k.Maglev=i;if(NativeCyberCityHazards.IsGrid(hazards[i])){int side=hazards[i].center.x<0?0:1;if(k.Grids[side]<0)k.Grids[side]=i;}}
             for(int i=0;i<k.blocks.Length;i++){var bl=k.blocks[i];if(bl?.id==null)continue;k.parent=i;k.b=bl;k.hx=bl.size.x/2;k.hy=bl.size.y/2;k.hz=bl.size.z/2;k.Dress();}
             k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Train=BuildTrain();k.parts.Clear();k.glows.Clear();return k;
@@ -140,13 +150,13 @@ namespace ChipArena.UnityConversion
             return o;
         }
         /// <summary>A neon word on a face, centred at u, its baseline v up, letter cells `cell` m (a letter is 5 x 7 cells, 1 cell apart).</summary>
-        private void Word(int axis,int sign,string text,float u,float v,float cell,int color,float gain=2.6f,float depth=.06f,byte drive=0,float param=0)
+        private void Word(int axis,int sign,string text,float u,float v,float cell,int color,float gain=2.6f,float depth=.06f,byte drive=0,float param=0,int hazard=-1)
         {
             float width=(text.Length*6-1)*cell,start=u-width/2;bool flip=axis==0?sign<0:sign>0;
             for(int i=0;i<text.Length;i++)foreach(var r in Glyph(text[i]))
             {
                 float a=start+(i*6+r[0]+r[2]*.5f)*cell,uu=flip?2*u-a:a,vv=v+(7-r[1]-r[3]*.5f)*cell;
-                FaceP(axis,sign,uu,vv-r[3]*cell*.5f+cell*.12f,0,r[2]*cell-cell*.24f,r[3]*cell-cell*.24f,depth,LTube,Cy,color,gain,drive,-1,param);
+                FaceP(axis,sign,uu,vv-r[3]*cell*.5f+cell*.12f,0,r[2]*cell-cell*.24f,r[3]*cell-cell*.24f,depth,LTube,Cy,color,gain,drive,hazard,param);
             }
             float y=-hy+v+3.5f*cell;Glow(axis==0?sign*(hx+.1f):u,y,axis==0?u:sign*(hz+.1f),color,width*.55f+cell*4);
         }
@@ -155,6 +165,8 @@ namespace ChipArena.UnityConversion
         private void Dress()
         {
             string s=Stem(b.id);if(s==null)return;
+            // An exit's lintel takes the EXIT sign in place of its own dressing (the alcoves' SAFE light).
+            int role=Exits!=null?Exits.BlockOpening[parent]:-1;if(role>=0&&role%4==1){ExitSign(role/4);return;}
             if(Starts(s,"frontage-"))Frontage(s);
             else if(Starts(s,"portal-"))Portal();
             else if(Starts(s,"trench-wall-"))TrenchWall();
@@ -193,7 +205,10 @@ namespace ChipArena.UnityConversion
             else if(Has(s,"-canopy"))Canopy();
             else if(Has(s,"-pylon-"))Charger();
             else if(Has(s,"-wall"))YardWall();
+            if(role>=0)ExitJamb(role/4,role%4==2);
+            int exit=ExitOf();if(exit>=0&&!Has(s,"stair-"))ExitLanding(exit);
         }
+        private int ExitOf()=>Exits!=null?Exits.BlockExit[parent]:-1;
         // Which face (axis, sign) of the block looks toward the arena's middle: the long axis' normal toward the origin.
         private void Inward(out int axis,out int sign){if(hx<hz){axis=0;sign=b.pos.x>0?-1:1;}else{axis=2;sign=b.pos.z>0?-1:1;}}
         private void Frontage(string s)
@@ -312,10 +327,61 @@ namespace ChipArena.UnityConversion
         private void RailStrip(){TopP(0,0,hx*2,hz*2,.04f,LTube,Cy,Accent==MagentaC&&!Has(Stem(b.id),"station")?MagentaC:CyanC,1.5f);}
         private void Nosing()
         {
-            // An LED nosing on each step's front edge (the stair rises along its longer axis; the front faces down-slope).
-            bool runX=hx<hz;
-            if(runX)for(int s=-1;s<=1;s+=2)P(s*(hx-.03f),hy-.02f,0,.05f,.03f,hz*2-.1f,LTube,Cy,IceC,1.6f,fade:false);
-            else for(int s=-1;s<=1;s+=2)P(0,hy-.02f,s*(hz-.03f),hx*2-.1f,.03f,.05f,LTube,Cy,IceC,1.6f,fade:false);
+            // An LED nosing on each step's front edge (the stair rises along its longer axis; the front faces down-slope). On an
+            // exit's climb they are the exit's white, chasing up toward the street (Param: the step's height up the climb), and the
+            // riser facing down the climb gets a line under its nosing.
+            bool runX=hx<hz;int e=ExitOf();bool exit=e>=0;int col=exit?ExitC:IceC;float gain=exit?2.4f:1.6f,param=exit?Exits.BlockClimb[parent]:0;byte drive=exit?DriveExitChase:DriveSteady;int hz0=exit?Maglev:-1;
+            if(runX)for(int s=-1;s<=1;s+=2)P(s*(hx-.03f),hy-.02f,0,.05f,.03f,hz*2-.1f,LTube,Cy,col,gain,drive,hz0,param,fade:false);
+            else for(int s=-1;s<=1;s+=2)P(0,hy-.02f,s*(hz-.03f),hx*2-.1f,.03f,.05f,LTube,Cy,col,gain,drive,hz0,param,fade:false);
+            if(!exit)return;var x=Exits.Exits[e];
+            if(runX)FaceTube(0,x.RunX>=0?-1:1,0,b.size.y-.1f,hz*2-.12f,.035f,ExitC,1.9f,DriveExitChase,Maglev,param);
+            else FaceTube(2,x.RunZ>=0?-1:1,0,b.size.y-.1f,hx*2-.12f,.035f,ExitC,1.9f,DriveExitChase,Maglev,param);
+        }
+        // ---------------- the Cut's exits ----------------
+        private void ExitSign(int e)
+        {
+            // The lintel over an exit door, on its face toward the Cut: a dark plate, EXIT in white under the top edge and a stair
+            // pictogram rising the way the climb behind the wall goes (the world direction, so it reads true from the Cut), a white
+            // line along the top, the lower edge strip where the climb's chase starts, and a light line under the lintel lighting
+            // the doorway. No lime SAFE light: an alcove is somewhere to hide, this is the way out.
+            var x=Exits.Exits[e];int sg=-x.Side;float len=hx*2,tall=b.size.y;
+            FaceP(2,sg,0,.12f,0,len-.06f,tall-.2f,.03f,LMetal,Cy,0x0B0F1C);
+            float cell=Math.Min(.075f,len*.86f/23f),word=tall-.16f-7*cell;
+            Word(2,sg,"EXIT",0,word,cell,ExitC,3.2f,.06f,DriveExit,0,Maglev);
+            int dir=x.RunX>=0?1:-1;float run=Math.Min(.88f,len*.44f),tread=run/4,riser=Math.Max(.05f,Math.Min(.11f,(word-.42f)/4));
+            for(int k=0;k<4;k++)FaceP(2,sg,dir*(-run/2+(k+.5f)*tread),.3f,0,tread-.03f,riser*(k+1),.05f,LTube,Cy,ExitC,2.6f,DriveExit,Maglev,k);
+            FaceTube(2,sg,0,tall-.075f,len-.08f,.04f,ExitC,2.0f,DriveExit,Maglev);
+            FaceTube(2,sg,0,.05f,len-.08f,.06f,ExitC,2.8f,DriveExitChase,Maglev,0,true);
+            P(0,-hy-.015f,0,len-.3f,.03f,hz*2-.4f,LTube,Cy,ExitC,2.2f,DriveExit,Maglev,0,fade:false);Glow(0,-hy-.3f,0,ExitC,2.4f);
+        }
+        private void ExitJamb(int e,bool low)
+        {
+            // A wall beside an exit door, on its face into the opening (seen head-on from down the Cut): a white strip up its front
+            // edge, ">>" chevrons pointing through the door at chest height and a small EXIT over them.
+            var x=Exits.Exits[e];int sg=low?1:-1;float open=Math.Min(b.size.y,x.OpenTop-(b.pos.y-hy));if(open<1.2f)return;
+            FaceTube(0,sg,-x.Side*(hz-.04f),.08f,.06f,open-.16f,ExitC,2.8f,DriveExit,Maglev,0,true);
+            float cell=Math.Min(.07f,(hz*2-.3f)/9.5f),wc=Math.Min(.042f,(hz*2-.2f)/23f);
+            for(int c=0;c<2;c++)Chevron(0,sg,x.Side*(c-.5f)*4.5f*cell,1.15f,cell,x.Side,.05f);
+            Word(0,sg,"EXIT",0,1.15f+7*cell+.14f,wc,ExitC,3.0f,.05f,DriveExit,0,Maglev);
+        }
+        private void ExitLanding(int e)
+        {
+            // A landing under the climb at floor level: lit floor chevrons toward the stairs (along the climb's run).
+            var x=Exits.Exits[e];if(b.pos.y+hy>Exits.FloorY+.6f)return;bool alongX=Math.Abs(x.RunX)>=Math.Abs(x.RunZ);int dir=alongX?(x.RunX>=0?1:-1):(x.RunZ>=0?1:-1);
+            float cell=Math.Min(.09f,Math.Min(alongX?hx*2:hz*2,alongX?hz*2:hx*2)*.8f/9.5f);
+            for(int c=0;c<2;c++)
+                for(int r=0;r<7;r++)
+                {
+                    int col=r<=3?r:6-r;float along=dir*((c-.5f)*4.5f+col+1-2.5f)*cell,across=(3-r)*cell;
+                    float px=alongX?along:across,pz=alongX?across:along;
+                    P(px,hy+.007f,pz,alongX?cell*1.8f:cell*.8f,.012f,alongX?cell*.8f:cell*1.8f,LTube,Cy,ExitC,1.8f,DriveExitChase,Maglev,0,fade:false);
+                }
+        }
+        // A 5 x 7 ">" of two-cell strokes on a face, its tip toward `dir` along the face's u axis (world direction, unflipped),
+        // centred at u, its bottom v up.
+        private void Chevron(int axis,int sign,float u,float v,float cell,int dir,float depth)
+        {
+            for(int r=0;r<7;r++){int col=r<=3?r:6-r;FaceP(axis,sign,u+dir*(col+1-2.5f)*cell,v+(6-r)*cell+cell*.1f,0,cell*1.8f,cell*.8f,depth,LTube,Cy,ExitC,2.6f,DriveExit,Maglev,r);}
         }
         private void Spire(string s)
         {
@@ -482,7 +548,8 @@ namespace ChipArena.UnityConversion
         /// 0 dark; above 1 glows a grate) from its drive, the hazard states (indexed like the hazards Build took; null: idle) and
         /// the presentation clock. Steady parts keep their colour; flickering signs stutter on a seeded schedule; the maglev's
         /// signals show clear (cyan) / warning (amber) / danger (red, 4 Hz); the coils race toward the approaching end through the
-        /// warning and blaze under the train; the edge strips turn amber then strobe red; the SAFE lights brighten; a coupling's
+        /// warning and blaze under the train; the edge strips turn amber then strobe red; the SAFE lights brighten; the EXIT signs
+        /// and frames breathe and brighten from the warning, the climb lights chase up the stairs (faster from the warning); a coupling's
         /// rails idle faintly, crawl brighter while charging and blaze white-blue (30 Hz broken) while live, its lamps amber in the
         /// charge and red live.
         /// </summary>
@@ -517,6 +584,12 @@ namespace ChipArena.UnityConversion
                     else level=.1f;
                     break;
                 case DriveGridDeck:level=DeckGlow(s,time);break;
+                case DriveExit:level=s.Telegraph||ph==NativeHazardPhase.Active?1.3f+.25f*(float)Math.Sin(time*8):.92f+.08f*(float)Math.Sin(time*1.7+p.Param);break;
+                case DriveExitChase:
+                {
+                    // A pulse up the climb every 1.8 s (0.9 s from the warning on, brighter), Param the part's height up it.
+                    bool alarm=s.Telegraph||ph==NativeHazardPhase.Active;double u=Frac(time*(alarm?1.1:.55)-p.Param);level=(.4f+1.15f*(float)Math.Pow(1-u,4))*(alarm?1.3f:1);break;
+                }
                 case DriveGridLamp:
                     if(ph==NativeHazardPhase.Warn){hex=AmberC;level=Strobe(time,3)<.5?1.2f:.2f;}
                     else if(ph==NativeHazardPhase.Active){hex=RedC;level=1.5f;}

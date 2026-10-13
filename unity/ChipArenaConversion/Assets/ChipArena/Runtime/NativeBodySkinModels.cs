@@ -11,7 +11,8 @@ namespace ChipArena.UnityConversion
     // armour lights' sever masks) treats it as the pilot. The Core arrays are already in the bank frame (no mirror, no
     // winding turn). Each part gets one NativeSourceLit material, shared by its three tiers, with its armour-light table
     // (NativeArmorLight.Build over the body's own trims: an emitter part's glowing voxels, and the strips set into the
-    // receivers, such as the visor), so the trims light the plates round them as on the Prototype.
+    // receivers, such as the visor), so the trims light the plates round them as on the Prototype. Each tier's Core mesh is
+    // kept (pilotBodies) for the wounds, which cut that body's own parts (NativeWoundGeometry.cs, Core NativeWoundSkin).
     public sealed partial class NativeSourceModels
     {
         /// <summary>The body models built at load (two skins, three tiers each), for the build checks.</summary>
@@ -33,8 +34,8 @@ namespace ChipArena.UnityConversion
                 for(int tier=0;tier<NativeBodySkins.Tiers;tier++)
                 {
                     var built=tier==NativeBodySkins.Full?full:NativeBodyModels.Build(skin,tier);var parts=new List<Part>();string id=NativeBodySkins.Model(skin,tier);
-                    for(int i=0;i<built.Parts.Length;i++){var p=built.Parts[i];var mesh=BodyMesh(p.Mesh,id+" / "+p.Name+" / joint "+p.Bone);if(mesh!=null)parts.Add(new Part{Name=p.Name,Bone=p.Bone,Mesh=mesh,Material=materials[i]});}
-                    models[id]=parts.ToArray();PilotBodyTriangles[id]=built.Triangles;PilotBodyModels++;
+                    for(int i=0;i<built.Parts.Length;i++){var p=built.Parts[i];var mesh=BodyMesh(p.Mesh,id+" / "+p.Name+" / joint "+p.Bone);if(mesh!=null)parts.Add(new Part{Name=p.Name,Bone=p.Bone,Mesh=mesh,Material=materials[i],Core=p.Mesh});}
+                    models[id]=parts.ToArray();pilotBodies[id]=built;PilotBodyTriangles[id]=built.Triangles;PilotBodyModels++;
                 }
             }
         }

@@ -15,11 +15,13 @@ supporting files beside it. Shortcuts point to `Chip Arena.exe`. Windows players
 need .NET Framework 4.8. The cloud export includes the same clean player ZIP beside
 its technical delivery bundle. Share **only `Chip-Arena-Windows.zip`** with players.
 
-The internal player filename and `app` layout remain stable for bootstrap-v1 update
-and rollback compatibility. Existing installations with the old launcher name still
-update normally; updates replace `app`, not the install folder or its launcher.
-New downloads use the friendly name. Do not rename the internal player executable.
-The old, technical seed ZIP name remains an automation input with identical contents.
+Both the outer launcher and the Unity player in `app` are now named `Chip Arena.exe`.
+This is bootstrap version 2: existing bootstrap-1 installations require a one-time
+replacement with the new starter ZIP. Their updater rejects version 2 before
+replacing any files. Extract into a new folder and run its outer `Chip Arena.exe`.
+Settings and saved login continue using the existing per-user data folder.
+Subsequent version-2 installations update normally through the test channel.
+The technical seed ZIP name remains an automation input with identical contents.
 
 Keep that installed copy **outside the source project** (for example,
 `C:\Games\Chip Arena`). `Builds\Windows` and the starter ZIP are replaced by
@@ -150,7 +152,7 @@ the top-level launcher. Diagnostics are in `.native-update/updater.log` and
 download, orphan transaction folders may remain: with the game and launcher
 closed and **no journal.json present**, obsolete 32-character transaction folders
 can be removed. Never remove a pending journal or its backup to bypass recovery.
-Launcher protocol upgrades beyond bootstrap version 1 require a new starter ZIP.
+Launcher protocol upgrades beyond the installed bootstrap version require a new starter ZIP.
 
 ## Verification
 

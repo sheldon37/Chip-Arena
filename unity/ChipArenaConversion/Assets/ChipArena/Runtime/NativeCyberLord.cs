@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         {
             if(!CyberAllowed(p)||!visible)return;input.Shoot=distance<=2.2f;input.Attack=input.Shoot;
             if(CyberBusy(p))return;var enemy=Pilots.FirstOrDefault(q=>q.Hp>0&&CanHit(p,q)&&Vector3.Distance(q.Body.position,target)<.1f);
-            if(distance<=6&&p.Mana>=60&&Time>=p.KernelReady&&enemy!=null&&Time>=enemy.BlockEnd)input.SirenAbility=4;
+            if(distance<=NativeKernelPanicRules.Range&&p.Mana>=NativeKernelPanicRules.Mana&&Time>=p.KernelReady&&enemy!=null&&Time>=enemy.BlockEnd)input.SirenAbility=4;
             else if(p.Mana>=40&&Time>=p.Cyber.CrashReady&&Pilots.Count(q=>q.Hp>0&&CanHit(p,q)&&Vector3.Distance(q.Body.position,p.Body.position)<=4)>=2)input.SirenAbility=3;
             else if(distance<=6&&p.Mana>=15&&Time>=p.Cyber.PacketReady)input.SirenAbility=1;
             else if(distance>3&&distance<=12&&p.Mana>=20&&Time>=p.Cyber.QReady)input.AbilityQ=true;
@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
             if(!CyberAllowed(p)||CyberBusy(p))return;var i=p.Input;var s=p.Cyber;float cd=(float)p.Stats["abilityCooldown"];
             if(i.AbilityQ&&Time>=s.QReady&&CyberPay(p,20))
             {
-                CyberBegin(p,"data-dash",0,.2f);s.QReady=p.QReady=Time+6*cd;s.DashAt=Time;s.DashUntil=Time+.2f;s.TrailUntil=s.DashUntil+1.2f;
+                CyberBegin(p,"data-dash",0,.2f);s.QReady=p.QReady=Time+NativeCyberRules.DashCooldown*cd;s.DashAt=Time;s.DashUntil=Time+.2f;s.TrailUntil=s.DashUntil+1.2f;
                 s.DashFrom=Vec(p.Body.position);s.DashTo=Vec(KernelTravel(p.Body.position,p.Body.position+Vec(s.Facing)*7));p.CyberTrailTick=s.DashUntil+.3f;
                 CyberArea(p,18,"data-dash",q=>NativeCyberRules.SegmentDistance(Vec(q),s.DashFrom,s.DashTo)<=.42f);
                 Emit(EventKind.Teleport,p,0,Vec(s.DashTo),0,"data-dash",from:Vec(s.DashFrom));

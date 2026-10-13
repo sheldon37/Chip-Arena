@@ -11,6 +11,7 @@ namespace ChipArena.UnityConversion
         private static System.Numerics.Quaternion Source(Quaternion q)=>CapturedRig.Mirror(CapturedAnimation.Num(q));
         private void SetupCollapse(NativeArena arena,CapturedAnimation.Player rig)
         {
+            if(Halved)return;
             if(!Death.kneel||Death.model!="pilot"||Style!="impact-ragdoll")return;
             var sourceParts=NativeSourceModels.WoundParts;var parts=new List<CollapsePart>();var reflection=Matrix4x4.Scale(new Vector3(-1,1,1));
             foreach(var pair in Parts)

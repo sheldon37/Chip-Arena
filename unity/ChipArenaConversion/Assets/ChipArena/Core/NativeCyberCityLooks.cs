@@ -49,6 +49,9 @@ namespace ChipArena.UnityConversion
         /// <summary>Neon and signal colours: the HUD's cyan and magenta (NativeCyberTheme), violet, ice white; the hazard colours
         /// (amber warn, red danger) are reserved for telegraphs and the 2.3 bands.</summary>
         public const int CyanHex=0x22E6FF,MagentaHex=0xFF3DCF,VioletHex=0x8B5CFF,IceHex=0xC8F4FF,WarmHex=0xFF8A4D,AmberHex=0xFFB000,DangerHex=0xFF2A3D,LimeHex=0x7DFF8A;
+        /// <summary>The way out of the Cut (the EXIT signs, door frames, climb lights, floor chevrons at rest and the stair-top
+        /// glow): a neutral white, apart from the alcoves' lime SAFE ("hide here"), the city's cyan and the telegraph colours.</summary>
+        public const int ExitHex=0xF2F6FF;
         public const int ConcreteHex=0x4A4E5C,ConcreteDarkHex=0x34363F,MetalHex=0x2C3140,MetalLightHex=0x6B7385,AsphaltHex=0x22232A,PavingHex=0x3B3D47,GlassDarkHex=0x141A2C,PaintHex=0xC9CED8,HazardHex=0xF4B321;
     }
 }

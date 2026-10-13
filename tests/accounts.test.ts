@@ -86,3 +86,32 @@ test('native tints persist and Sheldon cosmetics require a DEV account',async()=
   }
  }finally{f.db.close();}
 });
+
+test('Sheldon Idle persists only for live DEV accounts and stays outside the Electron pose catalog',async()=>{
+ const {LOBBY_POSES,lobbyPose}=await import('../src/shared/lobby-presentation.js');
+ assert.equal(Object.hasOwn(LOBBY_POSES,'sheldon-idle'),false);
+ assert.equal(lobbyPose('sheldon-idle'),'weapon');
+ const f=await fixture();try{
+  const dev:any=await(await f.request('login',{username:'Sheldon',password})).json();
+  const user:any=await(await f.request('register',{username:'idle_player',password})).json();
+  for(const [pilot,allowed] of [[dev,true],[user,false]] as const){
+   const saved:any=await(await f.request('profile',{revision:0,profile:{developer:true,cosmetics:{lobbyPose:'sheldon-idle'}}},pilot.session)).json();
+   assert.equal(saved.account.profile.cosmetics.lobbyPose,allowed?'sheldon-idle':'weapon');
+   const read:any=await(await f.request('me',undefined,pilot.session)).json();
+   assert.equal(read.account.profile.cosmetics.lobbyPose,allowed?'sheldon-idle':'weapon');
+   const login:any=await(await f.request('login',{username:allowed?'Sheldon':'idle_player',password})).json();
+   assert.equal(login.account.profile.cosmetics.lobbyPose,allowed?'sheldon-idle':'weapon');
+  }
+  // Stored values and old sessions cannot retain DEV cosmetics after access is revoked.
+  f.db.sql.prepare('UPDATE player_accounts SET developer=0,unlocks=? WHERE id=?').run(JSON.stringify(['pose:sheldon-idle']),dev.account.id);
+  const revoked:any=await(await f.request('me',undefined,dev.session)).json();
+  assert.equal(revoked.account.developer,false);assert.equal(revoked.account.profile.cosmetics.lobbyPose,'weapon');
+  const forged:any=await(await f.request('profile',{revision:1,profile:{developer:true,cosmetics:{lobbyPose:'sheldon-idle'}}},dev.session)).json();
+  assert.equal(forged.account.profile.cosmetics.lobbyPose,'weapon');
+  let revision=2;
+  for(const pose of [...Object.keys(LOBBY_POSES),'unknown','__proto__',null,42]){
+   const r:any=await(await f.request('profile',{revision:revision++,profile:{cosmetics:{lobbyPose:pose}}},dev.session)).json();
+   assert.equal(r.account.profile.cosmetics.lobbyPose,lobbyPose(pose));
+  }
+ }finally{f.db.close();}
+});

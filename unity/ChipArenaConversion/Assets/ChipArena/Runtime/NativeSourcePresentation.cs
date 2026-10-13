@@ -15,6 +15,8 @@ namespace ChipArena.UnityConversion
         private bool SourceCharacter(CapturedAnimation.Player rig,Actor a,float time,bool first=false,bool weapon=true,float halo=float.NaN,Func<int,float> reveal=null)
         {
             if(sourceModels==null||string.IsNullOrEmpty(a.SourceSpec))return false;int layer=first?10:0;Camera camera=first?ViewCamera:null;
+            // The match-start spawn-in (NativeSpawnInPresentation.cs): the body forms part by part, tinted, while the beam holds it.
+            var spawn=SpawnFor(rig,a,first);spawnNow=spawn;reveal=SpawnReveal(spawn,reveal);
             Matrix4x4 Bone(int b)=>rig.Bones[b].localToWorldMatrix;bool Visible(int b)=>!first||NativeViewRules.ViewModelBone(b);
             // The first-person Siren shows inked pilot arms (first-person.ts); a Last Laugh victim chars as it burns (C12).
             // Every other pilot wears its body skin at this rig's tier (NativeBodySkinPresentation.cs); the Siren keeps its own.
@@ -23,33 +25,40 @@ namespace ChipArena.UnityConversion
             var look=a.SourceSpec=="siren"&&!first?SirenLook(rig,a,time):null;
             // Arena and first-person rigs wear their Chips and block state (NativeBodyChipPresentation.cs); entrance and viewer rigs stay bare.
             bool dressed=!Viewer&&rig!=introRig;Func<int,Color> tint;if(dressed)tint=RigTint(a,time,first);else{ClearRigTint();tint=first?null:SirenCharTint(a.Id);}
+            tint=SpawnTinted(spawn,tint);
             // The hit flash (NativeHitFlash, weapons milestone) on a struck arena rig's body and hat; not the first-person arms.
             float flash=dressed&&!first?HitFlashCode(a.Id,time):1;
             // The DEV Cyber Lord's Data Dash and fork bomb dither its body (NativeCyberLordPresentation.cs).
             reveal=CyberReveal(a,time,reveal);
             sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),BodyAccent(bodySkin,a.AccentColor,a.Hat,a.HatColor),partOpacity:reveal,partTint:tint,look:look,hitFlash:flash);
+            if(!first)SpawnHologram(rig,spawn,bodySkin,layer,camera);
             if(look!=null)SirenLookFx(rig,look,layer,camera,time);
             if(!first)LivingWounds(rig,a,time);
             // The hat rides the head (hidden on the first-person view model); the Auditor halo animates (NativeAuditorHaloPresentation.cs),
             // the Sheldon Head's face and ring too (NativeHatPresentation.cs); a picked hat colour tints the hat (NativeHatLooks).
             bool headShown=reveal==null||reveal(CapturedRig.Head)>.5f;
             if(headShown)if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren"&&!AuditorHalo(a.Hat,rig.Bones[CapturedRig.Head].localToWorldMatrix,float.IsNaN(halo)?time:halo,1,HaloReduced,layer,camera,color:a.HatColor)&&!SheldonHead(a,rig.Root.transform.localToWorldMatrix,Bone,float.IsNaN(halo)?time:halo,layer,camera,dressed?tint:null,flash))sourceModels.Queue(HatModel(a.Hat,a.HatColor),rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera,body:HatBody(a.Hat,a.HatColor),partTint:dressed?tint:null,hitFlash:flash);
-            if(dressed)BodyDressing(rig,a,time,first,layer,camera);
-            // The DEV Cyber Lord's hardlight look on its joints (NativeCyberLordPresentation.cs).
-            CyberLordBody(rig,a,time,first,layer,camera);
-            bool armed=NativeWeaponDressing.SocketShown(a.SourceSpec)&&!a.WeaponAway&&weapon&&!NativeSirenVictimPose.Active(a,time);float reach=armed?WeaponReach(rig,a,time):1;Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
+            if(dressed&&SpawnShows(CapturedRig.Chest))BodyDressing(rig,a,time,first,layer,camera);
+            // The DEV Cyber Lord's hardlight look on its joints (NativeCyberLordPresentation.cs), once its hands have formed.
+            if(SpawnShows(CapturedRig.RHand))CyberLordBody(rig,a,time,first,layer,camera);
+            bool armed=NativeWeaponDressing.SocketShown(a.SourceSpec)&&!a.WeaponAway&&weapon&&!NativeSirenVictimPose.Active(a,time)&&SpawnShows(CapturedRig.RHand);float reach=armed?WeaponReach(rig,a,time):1;Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
             // The bow draws its live parts (Runtime/NativeBowPresentation.cs: the flexed limbs, the string to the nock, the arrows).
             if(armed&&BowHeld(rig,a,time,first,layer,camera,tint,flash))armed=false;
             if(armed){string held=HeldWeaponModel(rig,a,first);sourceModels.Queue(held,rig.Root.transform.localToWorldMatrix,WeaponBone,b=>!a.MainWeaponAway||a.SourceSpec!="daggers"||b!=CapturedRig.RHand,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:StandardModel(held)?flash:1,partTint:tint,glow:HeldGlow);WeaponDressing(rig,a,time,first,layer,camera,reach);}
             if(dressed&&rigFlash>0)ParryFlash(rig,a,layer,camera,Bone,Visible,armed?WeaponBone:(Func<int,Matrix4x4>)null,first);
-            ClearRigTint();return true;
+            spawnNow=null;ClearRigTint();return true;
         }
         private void SourceWorld(NativeArena arena)
         {
-            if(sourceModels==null)return;sourceModels.Queue("map-"+arena.MapId,Matrix4x4.identity);HazardPresentation(arena);SceneryMotion(arena);if(arena.MapId=="siren")WardPresentation(arena);
+            if(sourceModels==null)return;
+            // The revamped Ward Zero (NativeWardZeroPresentation.cs) replaces today's exported hall and its motion; until it is
+            // imported the map carries no look and this is today's path.
+            bool revamp=arena.MapId==NativeWardZeroLooks.MapId&&NativeWardZeroLooks.Active(arena.Map);
+            if(!revamp)sourceModels.Queue("map-"+arena.MapId,Matrix4x4.identity);HazardPresentation(arena);SceneryMotion(arena);if(arena.MapId=="siren"&&!revamp)WardPresentation(arena);
             FactoryScenery(arena);
             BrickfallScenery(arena);
             CyberCityScenery(arena);
+            if(revamp)WardZeroScenery(arena);
             PveMachinePresentation(arena);
             // A dead add's rig stays posed until its death effects end (NativeMinionFxPresentation.cs: flames rise off its joints).
             foreach(int id in minionRigs.Keys.Where(id=>!arena.Minions.Any(m=>m.Id==id)&&!arena.MinionDeaths.Any(d=>d.id==id&&arena.Time-d.at<NativeMinionFx.DeathFxSeconds)).ToArray()){minionRigs[id].Dispose();minionRigs.Remove(id);}

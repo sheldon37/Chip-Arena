@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
     /// What the Cyber City atmosphere needs from the map, built once (<see cref="Build"/>): a 1 m roof map over the slab (the
     /// topmost surface of every cell, from blocks at least .6 m across) for the rain and its splashes; the kit's glow sources
     /// (wet reflections, rain haze); steam vents; the alcoves' beacons; the couplings' decks and the maglev's track from the
-    /// hazards; the backdrop's screens and beacons. No allocation after Build.
+    /// hazards; the backdrop's screens and beacons; the Cut's exits (the kit's, for the floor guidance). No allocation after Build.
     /// </summary>
     public sealed class NativeCyberFxScene
     {
@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
         public NativeCyberGlow[] Glows=Array.Empty<NativeCyberGlow>();public float[] VentX=Array.Empty<float>(),VentY=Array.Empty<float>(),VentZ=Array.Empty<float>();
         public float[] BeaconX=Array.Empty<float>(),BeaconZ=Array.Empty<float>();public MapHazard[] Hazards=Array.Empty<MapHazard>();public int Maglev=-1;public int[] Grids={-1,-1};
         public NativeCyberScreen[] Screens=Array.Empty<NativeCyberScreen>();public float[] AviationX=Array.Empty<float>(),AviationY=Array.Empty<float>(),AviationZ=Array.Empty<float>();
+        /// <summary>The Cut and its exits (the kit's; null without them: no floor guidance).</summary>
+        public NativeCyberCityExits Cut;
         /// <summary>The topmost surface over (x, z): the roof map on the slab (the Cut's floor where nothing covers it), the street beyond.</summary>
         public float Top(double x,double z)
         {
@@ -41,6 +43,8 @@ namespace ChipArena.UnityConversion
             var glows=new List<NativeCyberGlow>();var vx=new List<float>();var vy=new List<float>();var vz=new List<float>();var bx=new List<float>();var bz=new List<float>();
             if(kit!=null)
             {
+                // The exits are pockets too: their beacons stand where the alcoves' do, over the door on the wall's face.
+                s.Cut=kit.Exits;if(s.Cut!=null)foreach(var e in s.Cut.Exits){bx.Add(e.DoorX);bz.Add(e.DoorZ-e.Side*.025f);}
                 foreach(var g in kit.Glows)if(g.Size>=.8f)glows.Add(g);
                 foreach(var p in kit.Parts)
                 {
@@ -75,7 +79,11 @@ namespace ChipArena.UnityConversion
     ///  - the hazards' telegraphs and events (never reduced, ARENA_PROPOSAL.md §2.1 rule 4): the maglev's alcove beacons and their
     ///    light pools, the tunnel glare and headlight cone as it approaches, the head and tail lights, rail sparks and spray as it
     ///    passes; the couplings' arcs, deck glow, lamp halos and sparks; the billboards' glitch (stressed), noise (falling) and
-    ///    dying flicker with sparks (rubble).
+    ///    dying flicker with sparks (rubble);
+    ///  - the way out of the Cut (with the scene's exits; never reduced either): chevron strips along both lanes of the Cut's floor
+    ///    pointing to the nearest exit on their wall with a pulse scrolling toward it, white at rest, amber in the warning and
+    ///    red in the danger and the pass (<see cref="NativeCyberCityExits.Tone"/>); at each door a chevron into it and a white
+    ///    pool on its threshold; at each stair top a soft white light column and pool, seen from the Cut floor over the wall.
     /// Pure: the same clock, camera, light, quality, states and scene give the same quads. Allocation free.
     /// </summary>
     public sealed class NativeCyberCityFx
@@ -84,7 +92,9 @@ namespace ChipArena.UnityConversion
         public readonly NativeFxQuads Quads=new NativeFxQuads(Capacity);
         public const int RainFull=720,SplashFull=96,SteamPer=6,HazeMax=40,ReflectMax=64;
         public const double RainRadius=16,RainHeight=24,RainSpeed=11,WindX=1.6,WindZ=.5;
-        public int Rain,Splashes,Steam,Haze,Reflections,Pools,Cars,Lights,Beams,Telegraph;
+        public int Rain,Splashes,Steam,Haze,Reflections,Pools,Cars,Lights,Beams,Telegraph,Guide;
+        /// <summary>The first of this frame's way-out guidance quads (Guide of them follow).</summary>
+        public int GuideStart;
         public const int PoolMax=56;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz;private NativeFxLight light;
         private readonly double[] key=new double[96],px=new double[96],py=new double[96],pz=new double[96],ps=new double[96],pa=new double[96];private readonly int[] order=new int[96];
@@ -105,12 +115,12 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public void Build(NativeCyberFxScene scene,double time,double camX,double camY,double camZ,double rightX,double rightY,double rightZ,double upX,double upY,double upZ,NativeFxLight sun,double quality,bool low,bool atmosphere,NativeHazardState[] states,NativeCyberScreen[] screens,int screenCount)
         {
-            Quads.Clear();ex=camX;ey=camY;ez=camZ;rx=rightX;ry=rightY;rz=rightZ;ux=upX;uy=upY;uz=upZ;light=sun;Rain=Splashes=Steam=Haze=Reflections=Pools=Cars=Lights=Beams=Telegraph=0;
+            Quads.Clear();ex=camX;ey=camY;ez=camZ;rx=rightX;ry=rightY;rz=rightZ;ux=upX;uy=upY;uz=upZ;light=sun;Rain=Splashes=Steam=Haze=Reflections=Pools=Cars=Lights=Beams=Telegraph=Guide=0;
             Searchlights(time,low);Traffic(time,quality,low);Streams(time,quality,low);Aviation(scene,time);
             foreach(var sc in scene.Screens)ScreenFx(sc,time);
             if(!atmosphere)return;
             for(int i=0;i<screenCount&&screens!=null&&i<screens.Length;i++)if(screens[i].Live)ScreenFx(screens[i],time);
-            MaglevFx(scene,states,time);GridFx(scene,states,time);
+            MaglevFx(scene,states,time);GridFx(scene,states,time);GuideFx(scene,states,time);
             PoolFx(scene,quality,low);Reflect(scene,quality,low);HazeFx(scene,quality,low);SteamFx(scene,time,quality,low);RainFx(scene,states,time,quality,low);SplashFx(scene,time,quality,low);
         }
 
@@ -334,6 +344,68 @@ namespace ChipArena.UnityConversion
                 double lr=ph==NativeHazardPhase.Warn?2.4:2.6,lg=ph==NativeHazardPhase.Warn?1.05:.12,lb=ph==NativeHazardPhase.Warn?.05:.08,lp=ph==NativeHazardPhase.Warn?(Frac(time*3)<.5?1:.25):ph==NativeHazardPhase.Active?1:.4;
                 for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2){Point(h.center.x+sx*(h.size.x/2+.4),2.75,sz*3.8,1.4,.005,lr,lg,lb,.8*lp);Telegraph++;}
             }
+        }
+
+        // ---------------- the way out of the Cut (never reduced) ----------------
+        /// <summary>Chevron spacing along a lane, the lane's distance in from the wall's face, and how far from the eye they draw.</summary>
+        public const double ChevronStep=1.6,LaneIn=.8,GuideRange=60;
+        /// <summary>The guidance colour (linear, emission folded in) and pulse speed (m/s toward the exit) for a tone.</summary>
+        public static void GuideTone(int tone,out double r,out double g,out double b,out double speed)
+        {
+            if(tone==1){r=2.4;g=1.05;b=.05;speed=6;}else if(tone==2){r=2.6;g=.12;b=.08;speed=9;}
+            else{r=Lin(NativeCyberCityLooks.ExitHex,16)*1.3;g=Lin(NativeCyberCityLooks.ExitHex,8)*1.3;b=Lin(NativeCyberCityLooks.ExitHex,0)*1.3;speed=2.6;}
+        }
+        /// <summary>A chevron's brightness `d` metres from its exit's door at `time` (a pulse scrolling toward the door every
+        /// 9 m; the danger's strobes at 4 Hz on top).</summary>
+        public static double GuidePulse(int tone,double d,double time)
+        {
+            // At rest a gentle pulse (.3 to .85); the warning and the danger run it full and faster (the danger strobing).
+            GuideTone(tone,out _,out _,out _,out double speed);double u=Frac((d+time*speed)/9),w=Math.Pow(1-u,3);
+            return tone==2?(.32+.68*w)*(Frac(time*4)<.5?1:.55):tone==1?(.32+.68*w)*1.15:.3+.55*w;
+        }
+        private void GuideFx(NativeCyberFxScene scene,NativeHazardState[] states,double time)
+        {
+            GuideStart=Quads.Count;var c=scene.Cut;if(c==null||!c.Found||c.Exits.Length==0)return;
+            var s=scene.Maglev>=0&&states!=null&&scene.Maglev<states.Length?states[scene.Maglev]:NativeCyberCityHazards.Idle();int tone=NativeCyberCityExits.Tone(s);
+            GuideTone(tone,out double cr,out double cg,out double cb,out _);double y=c.FloorY+.03,range=GuideRange*GuideRange;
+            for(int side=-1;side<=1;side+=2)
+            {
+                double lane=c.Axis+side*(c.Inner-LaneIn);
+                for(double x=c.X0+ChevronStep;x<=c.X1-ChevronStep+1e-6;x+=ChevronStep)
+                {
+                    if(c.NearestOnSide((float)x,side,out float dx)<0)break;double d=Math.Abs(dx);if(d<ChevronStep*.6)continue;
+                    double ddx=x-ex,ddz=lane-ez;if(ddx*ddx+ddz*ddz>range)continue;
+                    Chevron(x,y,lane,dx>0?1:-1,0,GuidePulse(tone,d,time),cr,cg,cb);
+                }
+            }
+            // Each door: a chevron on its lane pointing into it and a white pool on its threshold; each top: a light column and pool.
+            foreach(var e in c.Exits)
+            {
+                double lane=c.Axis+e.Side*(c.Inner-LaneIn),near=(e.DoorX-ex)*(e.DoorX-ex)+(lane-ez)*(lane-ez);
+                if(near<=range){double k=GuidePulse(tone,0,time);Chevron(e.DoorX,y,lane+e.Side*.15,0,e.Side,k,cr,cg,cb);Chevron(e.DoorX,y,lane-e.Side*.55,0,e.Side,k*.7,cr,cg,cb);}
+                double wr=Lin(NativeCyberCityLooks.ExitHex,16),wg=Lin(NativeCyberCityLooks.ExitHex,8),wb=Lin(NativeCyberCityLooks.ExitHex,0);
+                Flat(e.DoorX,c.FloorY+.035,e.DoorZ+e.Side*.35,1,0,Math.Max(.8,(e.OpenX1-e.OpenX0)*.55),1.0,wr*.28,wg*.28,wb*.28,1,1,true);Guide++;
+                if(e.PathCount<2)continue;
+                double breath=.8+.2*Math.Sin(time*1.9+e.DoorX*.3);if(tone>0)breath*=1.25;
+                // A soft column (seen from the Cut floor over the wall's lip) with a brighter core, a halo and a pool on the top.
+                // (Rising past the 3 m coupling pylons that stand beside two of the tops.)
+                Beam(e.TopX,e.TopY+.1,e.TopZ,e.TopX,e.TopY+5.0,e.TopZ,2.0,wr*.6*breath,wg*.6*breath,wb*.6*breath,.8);Guide++;
+                Beam(e.TopX,e.TopY+.1,e.TopZ,e.TopX,e.TopY+3.8,e.TopZ,.5,wr*1.1*breath,wg*1.1*breath,wb*1.1*breath,.8);Guide++;
+                Flat(e.TopX,e.TopY+.035,e.TopZ,1,0,1.9,1.9,wr*.34*breath,wg*.34*breath,wb*.34*breath,1,1,true);Guide++;
+                Point(e.TopX,e.TopY+.8,e.TopZ,1.8,.004,wr*.9*breath,wg*.9*breath,wb*.9*breath,.6);Guide++;
+            }
+        }
+        // A floor chevron (">") at (x, z) on the plane y pointing along (dx, dz): two bright strokes over a soft glow.
+        private void Chevron(double x,double y,double z,double dx,double dz,double k,double r,double g,double b)
+        {
+            double l=Math.Sqrt(dx*dx+dz*dz);if(l<1e-6)return;dx/=l;dz/=l;double px_=-dz,pz_=dx;const double Arm=.42,Half=.3;
+            double tx=x+dx*.18,tz=z+dz*.18;
+            for(int s=-1;s<=1;s+=2)
+            {
+                double bx=tx-dx*Arm+px_*Half*s,bz=tz-dz*Arm+pz_*Half*s;
+                Flat((tx+bx)/2,y,(tz+bz)/2,tx-bx,tz-bz,Math.Sqrt((tx-bx)*(tx-bx)+(tz-bz)*(tz-bz))/2+.04,.065,r*k,g*k,b*k,1,0,true);Guide++;
+            }
+            Flat(x,y-.005,z,dx,dz,.55,.45,r*k*.16,g*k*.16,b*k*.16,1,1,true);Guide++;
         }
 
         // ---------------- atmosphere ----------------

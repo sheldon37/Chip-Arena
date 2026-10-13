@@ -21,7 +21,21 @@ namespace ChipArena.UnityConversion
             int ceilingHitsBefore=Events.Count(e=>e.Kind==EventKind.CeilingHit);
             var ability=Content.abilities.First(d=>d.id=="rocket");AbilityShots.Clear();AbilityShots.Add(new NativeAbilityShot{Owner=a,Definition=ability,Position=new Vector3(0,23.9f,0),Velocity=Vector3.up*60,Radius=.1f,Life=2,MaxTravel=100});StepAbilityWorld();
             Check(AbilityShots.Count==0&&Events.Count(e=>e.Kind==EventKind.CeilingHit)==ceilingHitsBefore,"ability ceiling absorbs without hologram");
-            b.Seat.AuthorityBoss=true;ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),false);StartPve();a.Hp=0;a.Death=new NativeDeath{position=new Vector3(5,2,5)};a.Mana=3;a.Stamina=4;a.Ammo=2;RevivePve(a);Check(a.Body.position==new Vector3(5,2,5)&&a.Mana==3&&a.Stamina==4&&a.Ammo==2,"paid/self revive at death position without resource refill");
+            b.Seat.AuthorityBoss=true;ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),false);StartPve();
+            // Death.position is the immutable kill pose. The dead body carries the current
+            // authority-selected ragdoll anchor (or the kill location before an anchor update).
+            var deathAt=new Vector3(5,2,5);var corpseAt=new Vector3(7,2,5);var padAt=new Vector3(-5,2,5);
+            foreach(var currentAt in new[]{deathAt,corpseAt})
+            {
+                a.Hp=0;a.Death=new NativeDeath{position=deathAt};a.Body.position=currentAt;
+                a.Mana=3;a.Stamina=4;a.Ammo=2;RevivePve(a);
+                Check(a.Body.position==currentAt,"paid/self revive preserves current body anchor");
+                Check(a.Death.position==deathAt,"revive preserves immutable death pose");
+                Check(a.Mana==3&&a.Stamina==4&&a.Ammo==2,"paid/self revive without resource refill");
+            }
+            a.Hp=0;a.Body.position=corpseAt;RevivePve(a,padAt);
+            Check(a.Body.position==padAt&&a.Death.position==deathAt,"explicit pad respawn overrides corpse anchor without changing death pose");
+            Check(a.Mana==3&&a.Stamina==4&&a.Ammo==2,"pad revive without resource refill");
             float hp=b.Hp;bool aWasKinematic=a.Body.isKinematic,bWasKinematic=b.Body.isKinematic;var rescuedAt=new Vector3(0,.9f,24.2f);var placementErrors=new System.Collections.Generic.List<string>();
             void CapturePlacement(string message,string trace,LogType type){if(type==LogType.Warning||type==LogType.Error||type==LogType.Exception||type==LogType.Assert)placementErrors.Add(message);}
             Application.logMessageReceived+=CapturePlacement;

@@ -57,7 +57,9 @@ namespace ChipArena.UnityConversion
             bool carried=swinging&&NativeAirAttackSimulation.Falling(state.Swing);
             state.Velocity.x=carried?state.Swing.Carry.x:rooted?0:Towards(state.Velocity.x,input.X*speed,Rules.Acceleration*dt);
             state.Velocity.z=carried?state.Swing.Carry.z:rooted?0:Towards(state.Velocity.z,input.Z*speed,Rules.Acceleration*dt);
-            var jump=NativeJumpSimulation.Try(state.JumpSpec,input.Jump,state.Grounded,state.Swimming,kitBusy||swinging||state.Time<state.RollUntil,
+            // Targeted Link and Kernel Panic await authority; do not predict an air jump over that cast request.
+            bool pendingCyberCast=state.Cyber!=null&&(input.SirenAbility==2||input.SirenAbility==4);
+            var jump=NativeJumpSimulation.Try(state.JumpSpec,input.Jump,state.Grounded,state.Swimming,kitBusy||swinging||cyberBusy||pendingCyberCast||state.Time<state.RollUntil,
                 state.Velocity.y,state.JumpSpeed,ref state.AirJumps,out float launch);
             if(jump!=NativeJumpKind.None){state.Velocity.y=launch;state.Grounded=false;if(jump==NativeJumpKind.Air)state.AirJumpAt=state.Time;}
             if(!state.Grounded)state.Velocity.y-=state.Gravity*dt;else state.Velocity.y=0;

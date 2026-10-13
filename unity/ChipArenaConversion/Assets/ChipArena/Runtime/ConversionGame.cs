@@ -32,7 +32,18 @@ namespace ChipArena.UnityConversion
         private readonly NativeVisualClock visualClock=new NativeVisualClock();
         private NativeBloom bloom;
         private double stepMs;private readonly System.Diagnostics.Stopwatch timer=new System.Diagnostics.Stopwatch();
-        private string PreferencePath=>Path.Combine(Application.persistentDataPath,"native-preferences-v1.json");
+        private string PreferencePath=>Path.Combine(NativeUserDataPath,"native-preferences-v1.json");
+        internal static string NativeUserDataPath
+        {
+            get
+            {
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+                return Path.Combine(Path.GetDirectoryName(Application.persistentDataPath),"Chip Arena Native Conversion TEST");
+#else
+                return Application.persistentDataPath;
+#endif
+            }
+        }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot(){if(FindFirstObjectByType<ConversionGame>()==null)new GameObject("Chip Arena Native Conversion").AddComponent<ConversionGame>();}
         private void Awake()
@@ -92,7 +103,8 @@ namespace ChipArena.UnityConversion
             if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;NativeLighting.Apply(content.Map(arena.MapId),cameraView);
         }
         private float shakeAmount;private int shakeEvent,shakeGeneration=-1;
-        private void Update()
+        private void Update(){long at=System.Diagnostics.Stopwatch.GetTimestamp();try{UpdateFrame();}finally{hitchUpdate+=HitchMs(at);}}
+        private void UpdateFrame()
         {
             SyncDevelopmentConsole();
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();
@@ -121,7 +133,7 @@ namespace ChipArena.UnityConversion
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
                 pending.X=move.x;pending.Z=move.z;pending.Yaw=yaw;pending.Pitch=-pitch;pending.Sprint=sprint;pending.Aim=aiming;
                 pending.Shoot=Input.GetMouseButton(0);pending.Attack|=Input.GetMouseButtonDown(0);pending.LockTarget=lockPoint.HasValue?lockTarget:0;
-                pending.AbilityQ|=(p.Weapon.@class=="magic"||NativeMeleeRules.Standard(p.Seat.spec)||NativeRangedRules.Q(content.Ability(p.Seat.spec,"q")?.id))&&Input.GetKeyDown(KeyCode.Q);pending.AbilityE|=Input.GetKeyDown(KeyCode.E);pending.AbilityEReleased|=Input.GetKeyUp(KeyCode.E);pending.AbilityEHeld=Input.GetKey(KeyCode.E);
+                pending.AbilityQ|=NativeRangedRules.KeyboardQ(content,p.Seat.spec,Input.GetKeyDown(KeyCode.Q));pending.AbilityE|=Input.GetKeyDown(KeyCode.E);pending.AbilityEReleased|=Input.GetKeyUp(KeyCode.E);pending.AbilityEHeld=Input.GetKey(KeyCode.E);
                 pending.Hadoken|=Input.GetKeyDown(KeyCode.Alpha1);pending.HadokenHeld=Input.GetKey(KeyCode.Alpha1);pending.Uppercut|=Input.GetKeyDown(KeyCode.Alpha2);
                 for(int key=0;key<4;key++)if(Input.GetKeyDown(KeyCode.Alpha1+key))pending.SirenAbility=(byte)(key+1);
                 pending.AbilityQ|=p.Seat.spec=="emperor"&&Input.GetKeyDown(KeyCode.Q)||p.Seat.spec=="siren"&&Input.GetKeyDown(prefs.sirenMode=="F"?KeyCode.F:prefs.sirenMode=="V"?KeyCode.V:KeyCode.Q);
@@ -130,10 +142,10 @@ namespace ChipArena.UnityConversion
             else pending=new InputFrame{Yaw=yaw,Pitch=-pitch};
         }
         // The damage screen reads the frame after the live view is placed, so it runs after every early return of LateFrame.
-        private void LateUpdate(){LateFrame();DamageScreen();GlitchScreen();}
+        private void LateUpdate(){long at=System.Diagnostics.Stopwatch.GetTimestamp();try{LateFrame();DamageScreen();GlitchScreen();}finally{FinishHitchFrame(HitchMs(at));}}
         private void LateFrame()
         {
-            NativeUiBlur.Frame();if(cameraView==null)return;cinematic.BeginFrame();if(PreviewFrame())return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
+            NativeUiBlur.Frame();if(cameraView==null)return;cinematic.BeginFrame();if(PreviewFrame())return;long replayAt=System.Diagnostics.Stopwatch.GetTimestamp();ObserveReplay();hitchReplay+=HitchMs(replayAt);if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
             if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroClockAge(),cameraView);return;}introClock.Reset();NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
             var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
             UpdateCamera();
@@ -159,11 +171,13 @@ namespace ChipArena.UnityConversion
                 if(shakeAmount>0){if(!menu&&Spectator==null&&!cinematic.Directing)cameraView.transform.position+=Vector3.right*NativeShakeRules.Offset(shakeAmount,UnityEngine.Random.value);shakeAmount=NativeShakeRules.Decay(shakeAmount,Time.unscaledDeltaTime);}
                 // Structure stress, falls and landings shake by distance (Core NativeStructureShake, within 25 m) under the same rules.
                 if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)cameraView.transform.position+=presentation.StructureShake(cameraView.transform.position,prefs.reducedEffects?.5f:1);
+                // The Siren brutes' slams and jump-down landings shake a nearby view, and kick one in the smash's disc (NativeHordeZombiePresentation.cs).
+                if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)presentation.HordeShake(cameraView.transform,prefs.reducedEffects?.5f:1);
                 SprintSway();
             }
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
-            var frame=arena.Snapshot(true);
+            long snapshotAt=System.Diagnostics.Stopwatch.GetTimestamp();var frame=arena.Snapshot(true);hitchSnapshot+=HitchMs(snapshotAt);
             // Melee hit kick (Core/NativeHitReact): first person, a live local view and Settings · camera shake on (reduced
             // with reduced effects); applied after the aim point above, and the view is rebuilt from the look angles next frame.
             if(!menu&&Spectator==null&&!cinematic.Directing&&presentation.FirstPerson&&prefs.cameraShake){presentation.ObserveHits(frame);presentation.HitKick(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);}
@@ -171,7 +185,12 @@ namespace ChipArena.UnityConversion
             if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.BlockHitch(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
             // The gun Q kit's first-person kick (Core/NativeGunKitMotion.CameraKick): fanned rounds, Overdrive's buzz; camera shake on.
             if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.GunKitKick(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
+            // The match-start spawn-in (NativeSpawnInPresentation.cs): my first-person view rides the beam's hold and drop, and the touchdown kicks.
+            if(!menu&&Spectator==null&&!cinematic.Directing)presentation.SpawnCamera(cameraView.transform,arena,renderTime,prefs.cameraShake,prefs.reducedEffects);
             presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.CameraShake=prefs.cameraShake;
+            // A PvE revive's first-person view (NativeReviveHoloPresentation.ReviveView): a gentle rise, none with reduced effects or
+            // camera shake off, in a scanline vignette; after the aim above, so the aim and the authority eye never move.
+            if(!menu&&Spectator==null&&!cinematic.Directing)presentation.ReviveView(cameraView,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects||!prefs.cameraShake);
             presentation.Render(frame,renderTime,false);ShoulderSprint(renderTime);
             Vector3? preview=null;bool previewClamped=false;
             // previewOn: E held .2 s and casting, or ready (a charge or no cooldown left) and, for magic, affordable. Casting is
@@ -188,8 +207,8 @@ namespace ChipArena.UnityConversion
                 preview=point;
             }
             presentation.EffectsQuality=prefs.reducedEffects?.3f:1;
-            presentation.RenderAbilities(arena,preview,previewClamped);presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);
-            presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView,menu&&!Online);presentation.FinishSourceFrame();
+            long effectsAt=System.Diagnostics.Stopwatch.GetTimestamp();presentation.RenderAbilities(arena,preview,previewClamped);presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);
+            presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView,menu&&!Online);presentation.FinishSourceFrame();hitchEffects+=HitchMs(effectsAt);
         }
         // No match: the home screen's rooftop over the cyber city (NativeRooftopPresentation.cs; owner 2026-10-12: the home
         // screen only), else the selected map behind the menu with the source's slow overview orbit (renderer.ts idle camera),
@@ -218,7 +237,8 @@ namespace ChipArena.UnityConversion
             point=default;if(!rooftopShown||cameraView==null)return false;var s=cameraView.WorldToScreenPoint(new Vector3(0,.25f,-2f));if(s.z<=0)return false;
             point=new Vector2(s.x/NativeUi.S,(Screen.height-s.y)/NativeUi.S);return true;
         }
-        private void FixedUpdate()
+        private void FixedUpdate(){long at=System.Diagnostics.Stopwatch.GetTimestamp();try{FixedFrame();}finally{hitchFixed+=HitchMs(at);hitchTicks++;}}
+        private void FixedFrame()
         {
             if(arena==null||menu&&!Online)return;if(arena.Replica){if(server!=null){pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});arena.PredictReplica(pending);pending=pending.HeldOnly();}return;}timer.Restart();bool held=arena.Pve?.Holding==true;arena.Step(pending);if(!held&&arena.Pve?.Holding!=true){arena.BeforePhysics();Physics.Simulate(1f/60);arena.AfterPhysics();}timer.Stop();stepMs=timer.Elapsed.TotalMilliseconds;
             pending=pending.HeldOnly();
@@ -311,6 +331,8 @@ namespace ChipArena.UnityConversion
             if(previewArena!=null){PreviewHud(width,height);return;}
             if(arena!=null)
             {
+                // My own first-person spawn-in screen, under the HUD (NativeSpawnInPresentation.cs).
+                if(!menu)SpawnInScreen();
                 var p=arena.Local;bool fighting=match.Phase==NativePhase.Fight||match.Phase==NativePhase.Countdown;
                 if(!menu&&(fighting||match.Phase==NativePhase.Result))FightHud(p);
                 if(!menu&&fighting)KernelPanicBanner();

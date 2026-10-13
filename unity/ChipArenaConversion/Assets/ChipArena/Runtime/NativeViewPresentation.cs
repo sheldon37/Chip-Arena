@@ -53,8 +53,9 @@ namespace ChipArena.UnityConversion
             if(ViewCamera==null)return;Actor source=System.Array.Find(snapshot.Actors,a=>a.Id==LocalId&&a.Alive);if(source==null)return;
             foreach(var batch in batches)batch.Clear();
             if(viewRig==null)viewRig=captured.Create(transform,-999);
-            var shown=source.ViewCopy();shown.Aiming=AimHeld;shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;
+            var shown=source.ViewCopy();shown.Aiming=AimHeld;shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;shown.Grounded=SpawnContact(shown.Id,shown.Grounded);
             // A camera-attached presentation rig never changes the authoritative pilot or muzzle.
+            viewRig.PreviewAirJumpAt=rigs.TryGetValue(LocalId,out var own)?own.PreviewAirJumpAt:-100;// the Dev Sandbox's Cyber Lord boost preview
             viewRig.ViewPitch=source.Pitch;viewRig.ActorPose(shown,Vector3.zero,time,true);
             // Every magic-class pilot (first-person-view.ts cls 'magic': the four schools and the L33t H4x staff) frames the staff view.
             int school=MagicPose.School(shown);bool gun=GunRules.Ranged(shown.Weapon),magic=school>0,bow=NativeBowWire.Is(shown.SourceSpec);
@@ -79,6 +80,8 @@ namespace ChipArena.UnityConversion
                 viewRig.Root.transform.position-=(ViewCamera.transform.right*local.x+ViewCamera.transform.up*local.y)*ads;
             }
             ApplyViewSway(shown,time,ads);
+            // PvE chip selection: the raised wrist and its hologram in view (NativeChipSelectPresentation.cs).
+            ChipSelectView(viewRig,source,time);
             if(shown.SourceSpec=="siren")SirenViewArms(shown,time);
             PlayerState=viewRig.State;
             // A scoped rifle uses the centred reticle; its magnified housing would obscure the whole screen.

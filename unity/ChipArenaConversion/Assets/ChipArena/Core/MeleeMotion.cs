@@ -828,10 +828,13 @@ namespace ChipArena.UnityConversion
             FloorGuard(set,p,time);
             CaptureTo(trLast);KeepShownAnkles(p,time);
         }
+        /// <summary>A style's reach seat after the ground pass (the Cyber Lord's travel carry, Core/CyberLordRun.cs: its planted feet
+        /// always reach); null for every other fighter. The style sets it each frame.</summary>
+        public CyberLordRunCarry FighterSeat;
         // ---- the DEV fighting styles (Core/NativeFighterPose): the same gait, then the caller's style layer, then FighterFinish ----
         public void FighterBase(MeleeView p,float time,float dt)
         {
-            var r=Rig;r.Reset();r.LegsAuthored=r.LegsLayered=r.MocapPosed=false;r.WeaponVisible=!p.WeaponAway;r.WeaponReach=1;
+            var r=Rig;r.Reset();r.LegsAuthored=r.LegsLayered=r.MocapPosed=false;r.WeaponVisible=!p.WeaponAway;r.WeaponReach=1;FighterSeat=null;
             bool planted=p.Committed(time)||p.HitStunUntil>time||p.Rolling(time);
             if(planted)r.Motion*=(float)Math.Exp(-MeleeMath.Clamp(dt,0,.05f)*22);
             var vel=p.Vel;if(planted)p.Vel=new Vector3(0,vel.Y,0);gait.Locomotion(r,p,time,dt,planted);p.Vel=vel;SprintLean(p,dt);
@@ -845,7 +848,7 @@ namespace ChipArena.UnityConversion
             else if(!p.Juggle&&!p.Down&&!p.Rolling(time)){var light=ReactionOf(p);if(light!=null)React(p,light,time,false);}
             JumpLayer?.Fighter(Rig,p,time,dt);
             HitLayer?.Layer(Rig,time);
-            gait.GroundPass(Rig,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
+            gait.GroundPass(Rig,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));FighterSeat?.Seat(Rig,gait,p.Grounded,time,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
             FinishPose(p,time);HitLayer?.Replant(Rig);
         }
         // gaitFoot: this sample's gait ankle target, heading, pitch and toe for a foot (the fighter layers edit over it).

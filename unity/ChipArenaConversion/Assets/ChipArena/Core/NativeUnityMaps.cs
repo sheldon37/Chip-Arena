@@ -6,14 +6,17 @@ using System.Text;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class UnityMapContent { public int schema; public ContentMaterial[] materials; public ContentMap[] maps; }
+    // Common factory fields retain their original serialized names and pure-clock API.
+    [Serializable] public sealed class MapHazard : FactoryHazard
+    { public V3 center; public float first,danger,speed,length,charge,live; }
     [Serializable] public sealed class MapBounds { public float minX,maxX,minZ,maxZ,ceiling,killY; }
     [Serializable] public sealed class MapSpawn { public V3 pos; public float yaw; }
     [Serializable] public sealed class MapTeamSpawns { public int side; public MapSpawn[] points; }
     [Serializable] public sealed class MapSpawns { public MapSpawn[] ffa; public MapTeamSpawns[] teams; }
     [Serializable] public sealed class MapVolume { public V3 center,size; }
     [Serializable] public sealed class MapPilotBlock { public string id; public V3 center,size; public float bottom; }
-    [Serializable] public sealed class MapNavNode { public string id; public V3 pos; public int layer; }
-    [Serializable] public sealed class MapNavLink { public string id,a,b,kind; public string[] requires,after; }
+    [Serializable] public sealed class MapNavNode { public string id; public V3 pos; public int layer;public bool safe; }
+    [Serializable] public sealed class MapNavLink { public string id,a,b,kind; public string[] requires,after,hazards; }
     [Serializable] public sealed class MapNav { public MapNavNode[] nodes; public MapNavLink[] links; }
     public static class NativeMapRules
     {
@@ -30,7 +33,7 @@ namespace ChipArena.UnityConversion
             // JsonUtility can create empty inline objects for these absent supplemental fields.
             // Normalize at the shared load boundary so every runtime/build-check consumer agrees.
             // Authored UnityMaps below still require their own validated tables and bounds.
-            foreach(var m in c.maps){m.bounds=null;m.spawns=null;m.nav=null;m.segments=null;m.pilotBlocks=null;}
+            foreach(var m in c.maps){m.bounds=null;m.spawns=null;m.nav=null;m.segments=null;m.pilotBlocks=null;m.hazards=null;}
             c.contentRevision=Revision(text);c.materials=c.materials.Concat(u.materials).ToArray();
             if(c.materials.Select(m=>m.id).Distinct().Count()!=c.materials.Length)throw new InvalidOperationException("Duplicate material");
             foreach(var m in u.maps){m.unity=true;Validate(m);}
@@ -71,7 +74,7 @@ namespace ChipArena.UnityConversion
             foreach(var x in m.blocks)Need(!string.IsNullOrEmpty(x.id)&&Box(x.pos,x.size)&&new[]{"static","structural","masonry","carried","cover"}.Contains(x.role)&&MathUtil.Finite(x.hp)&&(!new[]{"structural","masonry","cover"}.Contains(x.role)||x.hp>0),"block geometry/role/hp "+x.id);
             foreach(var x in m.blocks)Need(x.stages==null||x.stages.Length==0||x.stages.Length==2&&MathUtil.Finite(x.stages[0])&&MathUtil.Finite(x.stages[1])&&x.stages[0]<1&&x.stages[0]>x.stages[1]&&x.stages[1]>0,"block stage thresholds "+x.id);
             foreach(var x in m.pilotBlocks??Array.Empty<MapPilotBlock>())Need(!string.IsNullOrEmpty(x.id)&&Finite(x.center)&&Finite(x.size)&&x.size.x>0&&x.size.z>0&&MathUtil.Finite(x.bottom),"pilot exclusion");
-            NativeStructureRules.Validate(m);
+            NativeStructureRules.Validate(m);NativeStageHazards.Validate(m);
             Need(m.nav?.nodes!=null&&m.nav.links!=null,"nav");var nodes=new HashSet<string>(m.nav.nodes.Select(n=>n.id));Need(nodes.Count==m.nav.nodes.Length,"nav node IDs");
             Need(m.nav.links.Select(l=>l.id).Distinct().Count()==m.nav.links.Length,"nav link IDs");
             var segments=new HashSet<string>((m.segments??Array.Empty<StructureDefinition>()).Select(s=>s.id));var links=new HashSet<string>(m.nav.links.Select(l=>l.id));

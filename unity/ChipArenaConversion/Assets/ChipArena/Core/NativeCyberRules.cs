@@ -15,6 +15,7 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeCyberRules
     {
+        public const float DashCooldown=0;
         // Preserve the first cancellation time; repeated blocked/stunned ticks must not move it.
         public static void Interrupt(NativeCyberKit s,float time)
         {
@@ -35,7 +36,7 @@ namespace ChipArena.UnityConversion
             else if(input.SirenAbility==3&&time>=s.CrashReady){kind="system-crash";cost=40;duration=.8f;windup=.5f;}
             else if(input.Attack||input.Shoot){if(time>s.LastComboEnd+.6f)s.Combo=-1;s.Combo=(s.Combo+1)%3;kind=new[]{"cyber-jab","cyber-cross","cyber-palm"}[s.Combo];duration=ComboSeconds[s.Combo]/rate;windup=(s.Combo==2?.18f:.1f)/rate;s.LastComboEnd=time+duration;}
             if(kind==""||mana<cost*costScale)return;mana-=cost*costScale;s.Kind=kind;s.CutAt=-1;s.At=time;s.Release=time+windup;s.Until=time+duration;s.Facing=V3.Forward(input.Yaw);s.Resolved=false;
-            if(kind=="data-dash"){s.QReady=time+6*cooldownScale;s.DashAt=time;s.DashUntil=s.Until;s.DashFrom=position;s.DashTo=constrain(position,position+s.Facing*7);s.TrailUntil=s.Until+1.2f;}
+            if(kind=="data-dash"){s.QReady=time+DashCooldown*cooldownScale;s.DashAt=time;s.DashUntil=s.Until;s.DashFrom=position;s.DashTo=constrain(position,position+s.Facing*7);s.TrailUntil=s.Until+1.2f;}
             if(kind=="firewall"){s.EReady=time+12*cooldownScale;s.WallAt=time;s.WallUntil=time+4;s.WallYaw=input.Yaw;s.WallPoint=position-new V3(0,.865f,0)+s.Facing*.8f;}
             if(kind=="packet-burst"){s.PacketReady=time+4*cooldownScale;s.PacketAt=s.At;s.PacketRelease=s.Release;s.PacketUntil=s.Until;s.PacketCutAt=-1;}
             if(kind=="system-crash"){s.CrashReady=time+14*cooldownScale;s.CrashAt=time;s.CrashUntil=s.Until;s.CrashPoint=position;}

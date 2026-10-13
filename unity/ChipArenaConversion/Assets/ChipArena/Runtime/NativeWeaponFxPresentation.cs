@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
             if(!TrailsEnabled){foreach(var st in slashes.Values)spareSlashes.Push(st);slashes.Clear();afterimages.Clear();return;}
             foreach(var a in s.Actors)
             {
-                if(a==null||!a.Alive||!NativeSlashFx.Covers(a.SourceSpec)||!(a.SwingAt>-90))continue;
+                if(!NativeSlashFx.CanCapture(a,time))continue;
                 long key=(long)a.Id<<32|(uint)Mathf.RoundToInt(a.SwingAt*4096);if(slashes.ContainsKey(key))continue;
                 var state=spareSlashes.Count>0?spareSlashes.Pop():new SlashState();SlashBegin(state,a);slashes.Add(key,state);
             }
@@ -115,6 +115,7 @@ namespace ChipArena.UnityConversion
             var pilot=LoadoutPilot(a.Id);var w=pilot?.Weapon;var sw=st.Swing;float yaw=a.CommitYaw*Mathf.Deg2Rad;int index=a.Combo+1;
             if(w!=null&&pilot.Stats!=null){var b=NativeMeleeRules.Begin(w,pilot.Stats,a.AttackAt,index,yaw);sw.Arc=b.Arc;st.Range=b.Range;}
             else{var cw=WeaponLoadout?.Content?.Weapon(a.SourceSpec);sw.Arc=cw!=null?(float)(a.SourceSpec=="sword"&&index%3==0?.8:cw.arc):1.6f;st.Range=cw!=null?(float)cw.range:2.5f;}
+            sw.Air=a.AirAttack;sw.ImpactAt=a.ImpactAt;sw.SprintAttack=a.SprintAttack;
             sw.Spec=a.SourceSpec;sw.Index=index;sw.Yaw=yaw;sw.HitAt=a.SwingAt;sw.HitUntil=a.SwingUntil;sw.At=a.AttackAt;
             st.Spec=a.SourceSpec;st.Id=a.Id;st.At=Position(a);st.Color=NativeWeaponDressing.SweepColor(pilot?.Seat?.chips);
         }

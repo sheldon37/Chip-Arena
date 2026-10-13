@@ -17,24 +17,42 @@ namespace ChipArena.UnityConversion
     //          (Emperor Style, Ansatsuken) keep their combat idle; the Siren stands in her own idle (menu-portraits.ts).
     //  chair   'Sitting on chair', sleep 'Sleeping' (curled on the right side, the lower hand under the head by IK),
     //  crossed 'Arms crossed' (contrapposto, forearms stacked by IK).
+    //  sheldon-idle 'Sheldon Idle' (DEV only, a native fifth pick after the source's four; SheldonIdle below).
     // Every pose except the fighters' and the Siren's sets all 22 joints from rest (the source's base sample is fully
     // overwritten; checked against the source in Tests/LobbyPoseChecks.cs), so Sample starts from the rest pose.
     public static class NativeLobbyPoses
     {
-        public const int Weapon=0,Chair=1,Sleep=2,Crossed=3;
+        public const int Weapon=0,Chair=1,Sleep=2,Crossed=3,SheldonIdle=4;
         // shared/lobby-presentation.ts LOBBY_POSES (keys and labels, in the source order) and main.ts:131 lobbyPoseOptions icons.
         public static readonly string[] Keys={"weapon","chair","sleep","crossed"};
         public static readonly string[] Labels={"Standing with weapon","Sitting on chair","Sleeping","Arms crossed"};
         public static readonly string[] Icons={"person-standing","armchair","moon","hand"};
-        // lobbyPose(): a known key, else 'weapon'.
-        public static int Index(string value){for(int i=0;i<Keys.Length;i++)if(value==Keys[i])return i;return Weapon;}
-        public static string Normalize(string value)=>Keys[Index(value)];
+        // The Sheldon Idle (owner 2026-10-12: "Can that Idle be set as "Sheldon Idle" need it to be selectable"): the DEV Cyber
+        // Lord's twitching idle stance (Core/CyberLordIdle.cs CyberLordIdlePose.Stand: the sword idle, its "psycho" twitches) as
+        // an idle pose any pilot can stand in, listed in the Locker after the source's four only with live DEV access (the
+        // Sheldon Head's gate: NativeCosmeticGate.SheldonIdle and Pose, which turns it into 'weapon' for anyone else). The
+        // lobby, Locker, pilot-card and PvE-result portraits only: the match never reads the pick (the Cyber Lord's match idle
+        // is its class's own). Every pilot gets the same body motion and twitches; an armed pilot's weapon arm(s) keep the hero
+        // stance's grip over the twitching chest (Grip), the fighters (unarmed) and the Cyber Lord keep the stance's fists. The
+        // Cyber Lord's 'Standing with weapon' is this same stance, so a Cyber Lord pilot stands in it by default.
+        public const string SheldonKey=NativeCosmeticGate.SheldonIdle,SheldonLabel="Sheldon Idle",SheldonIcon="activity";
+        /// <summary>The picker's length: the source's four, and the Sheldon Idle when the pilot may pick it.</summary>
+        public static int Count(bool sheldon)=>Keys.Length+(sheldon?1:0);
+        public static string Key(int index)=>index==SheldonIdle?SheldonKey:Keys[index];
+        public static string Label(int index)=>index==SheldonIdle?SheldonLabel:Labels[index];
+        public static string Icon(int index)=>index==SheldonIdle?SheldonIcon:Icons[index];
+        // lobbyPose(): a known key (or the Sheldon Idle), else 'weapon'.
+        public static int Index(string value){if(value==SheldonKey)return SheldonIdle;for(int i=0;i<Keys.Length;i++)if(value==Keys[i])return i;return Weapon;}
+        public static string Normalize(string value)=>Key(Index(value));
         // menu-portraits.ts render(): the Siren always stands.
         public static int Effective(string spec,string pose)=>spec=="siren"?Weapon:Index(pose);
         public static bool Fighter(string spec)=>spec=="emperor"||spec=="ansatsuken";
         public static bool OffHand(string spec)=>spec=="daggers"||spec=="emperor"||spec=="ansatsuken";
         public static bool Magic(string spec)=>spec=="fire"||spec=="water"||spec=="lightning"||spec=="darkness"||spec=="leet";
         public static bool Gun(string spec)=>spec=="pistol"||spec=="rifle"||spec=="machinegun";
+        /// <summary>The joint a spec's weapon hangs from in the lobby: the staffs and the Bow ride the left hand (their models are
+        /// built on it: Core/NativeWeaponModels.Bow.cs), everything else the right.</summary>
+        public static int HeldBone(string spec)=>Magic(spec)||NativeBowWire.Is(spec)?CapturedRig.LHand:CapturedRig.RHand;
         // The pose keeps the weapon's own idle (the caller samples it into the rig first): the fighters' standing pose is
         // their combat idle (heroStance returns for them), and the Siren is animated as herself.
         public static bool UsesIdle(string spec,int pose)=>pose==Weapon&&(Fighter(spec)||spec=="siren");
@@ -55,9 +73,10 @@ namespace ChipArena.UnityConversion
         // weapons. For UsesIdle the caller has sampled the weapon's idle into `r`; it is kept. Otherwise `r` starts at rest.
         public static void Sample(MeleeRig r,string spec,int pose,float time,out LobbyHeld weapon,out LobbyHeld offhand)
         {
+            if(pose==SheldonIdle){Sheldon(r,spec,time,0,false,out weapon,out offhand);return;}
             bool magic=Magic(spec),idle=UsesIdle(spec,pose);
             // lobby-poses.ts:15: the weapon shows only in the standing pose; the off hand only for daggers and the fighters.
-            weapon=new LobbyHeld{Visible=pose==Weapon&&spec!="siren",Bone=magic?LHand:RHand,Position=magic||Fighter(spec)?HandSocket:Vector3.Zero,Rotation=Quaternion.Identity};
+            weapon=new LobbyHeld{Visible=pose==Weapon&&spec!="siren",Bone=HeldBone(spec),Position=magic||Fighter(spec)?HandSocket:Vector3.Zero,Rotation=Quaternion.Identity};
             offhand=new LobbyHeld{Visible=pose==Weapon&&OffHand(spec),Bone=LHand,Position=Fighter(spec)?HandSocket:Vector3.Zero,Rotation=Quaternion.Identity};
             if(idle)return;
             r.Reset();r.WeaponReach=1;
@@ -90,6 +109,65 @@ namespace ChipArena.UnityConversion
                 r.SetE(LHand,.1f,0,-.25f);r.SetE(RHand,-.08f,0,.25f);
             }
         }
+        // The same for a pilot with its hat, the portrait's reduced effects and a per-pilot seed: the Sheldon Idle (and the DEV
+        // Cyber Lord standing: its idle stance, Core/CyberLordIdle.cs, the sword idle with fists, twitching, the same as in a
+        // match, with its slight glitch, unarmed) twitches on the pilot's own seed; every other pose as Sample. `glitch` is the
+        // frame's glitch (the renderer's RGB-split ghosts and scanline band, and the clench for its fist shells): the Cyber
+        // Lord's only, zero for anyone else.
+        public static void Sample(MeleeRig r,string spec,int pose,float time,string hat,bool reduced,int seed,out LobbyHeld weapon,out LobbyHeld offhand,out CyberIdleGlitch glitch)
+        {
+            glitch=default;
+            if(pose==SheldonIdle||pose==Weapon&&CyberLordIdlePose.Handles(spec)){glitch=Sheldon(r,spec,time,seed,reduced,out weapon,out offhand);return;}
+            Sample(r,spec,pose,time,out weapon,out offhand);
+        }
+        /// <summary>Whether a spec holds its weapon in the Sheldon Idle (the hero stance's grips: the blades, the shield, the guns,
+        /// the staffs and the Bow); the fighters, the Cyber Lord and any other spec keep the stance's fists.</summary>
+        public static bool Grips(string spec)=>spec=="greatsword"||spec=="sword"||spec=="daggers"||spec=="shield"||spec=="pistol"||Gun(spec)||Magic(spec)||NativeBowWire.Is(spec);
+        // The Sheldon Idle from rest: the Cyber Lord's stance (its body, twitches and planted feet; the glitch for the Cyber Lord
+        // only), then an armed pilot's grip. The weapon shows as standing (the fighters' gloves and the daggers' off hand too).
+        private static CyberIdleGlitch Sheldon(MeleeRig r,string spec,float time,int seed,bool reduced,out LobbyHeld weapon,out LobbyHeld offhand)
+        {
+            bool cyber=CyberLordIdlePose.Handles(spec),magic=Magic(spec);
+            weapon=new LobbyHeld{Visible=!cyber&&spec!="siren",Bone=cyber?RHand:HeldBone(spec),Position=magic||Fighter(spec)?HandSocket:Vector3.Zero,Rotation=Quaternion.Identity};
+            offhand=new LobbyHeld{Visible=!cyber&&OffHand(spec),Bone=LHand,Position=Fighter(spec)?HandSocket:Vector3.Zero,Rotation=Quaternion.Identity};
+            var g=CyberLordIdlePose.Stand(r,time,seed,reduced,cyber,out var twitch);
+            if(Grips(spec))Grip(r,spec,twitch);
+            return cyber?g:default;
+        }
+        /// <summary>The Sheldon Idle's grip: how far a weapon hand rises per radian of its shoulder's hitch (m), its jerk up and back
+        /// on a full flinch (m), the grip's tightening on a full clench (rad, the wrist curling the held blade or gun), and the
+        /// share of the crouch's drop (the stance's chest below the hero stance's) the weapon hands rise back by.</summary>
+        public const float GripHitch=.12f,GripFlinch=.03f,GripClench=.12f,GripRaise=1f;
+        // The hero stance's chest against the Sheldon stance's at rest (both from rest, no breath or twitch; measured once):
+        // the turn that takes a hero-chest-space hold onto the hunched, turned chest, and the chest's drop (m).
+        private static bool gripReady;private static Quaternion gripTurn=Quaternion.Identity;private static float gripDrop;
+        private static void GripFrame()
+        {
+            if(gripReady)return;var r=new MeleeRig();
+            r.Reset();r.WeaponReach=1;HeroStance(r,"",0,0);Quaternion hero=r.ChainQuat(Chest,-1);float heroY=r.ChainPoint(Chest,-1).Y;
+            CyberLordIdlePose.Stand(r,0,0,false,false,out _);Quaternion stance=r.ChainQuat(Chest,-1);
+            gripTurn=Quaternion.Normalize(MeleeMath.Inverse(stance)*hero);gripDrop=heroY-r.ChainPoint(Chest,-1).Y;gripReady=true;
+        }
+        // The hero stance's hold (HeroStance) of the weapon arm(s), carried onto the hunched chest (gripTurn: at rest each weapon
+        // sits as in the hero stance, turned with the stance, and raised back by the crouch's drop) and twitching with it: each
+        // weapon hand rides its shoulder's breath, hitch and flinch and tightens with its fist's clench (the blades and guns; the
+        // upright staffs and the Bow stay upright). The free hand keeps the stance's fist.
+        private static void Grip(MeleeRig r,string spec,in CyberTwitch t)
+        {
+            GripFrame();var raise=Vector3.Transform(new Vector3(0,gripDrop*GripRaise,0),MeleeMath.Inverse(r.ChainQuat(Chest,-1)));
+            float shrug=CyberLordIdlePose.BreathShoulder*t.Breath+CyberLordIdlePose.FlinchShoulder*t.Flinch,jerk=GripFlinch*t.Flinch;
+            var lift=raise+new Vector3(0,GripHitch*(shrug+t.LShoulder)+jerk,-jerk*.5f);var rift=raise+new Vector3(0,GripHitch*(shrug+t.RShoulder)+jerk,-jerk*.5f);
+            Quaternion lc=MeleeMath.AxisAngle(MeleeMath.X,GripClench*t.LClench),rc=MeleeMath.AxisAngle(MeleeMath.X,GripClench*t.RClench),k=gripTurn;
+            Vector3 T(float x,float y,float z)=>Vector3.Transform(new Vector3(x,y,z),k);
+            if(spec=="greatsword")r.BraceWeapon(T(-.27f,-.04f,.30f)+rift,k*Aim(-.2f,.62f,-.76f,2.1f)*rc,1);
+            else if(spec=="sword")r.BraceWeapon(T(-.31f,-.34f,.19f)+rift,k*Aim(-.38f,-.2f,.9f,-.25f)*rc,1,null,false);
+            else if(spec=="daggers"){r.Hand(false,T(-.27f,-.33f,.13f)+rift,k*Aim(-.3f,-.42f,.85f,-.4f)*rc,1);r.Hand(true,T(.27f,-.33f,.13f)+lift,k*Aim(.3f,-.42f,.85f,.4f)*lc,1);}
+            else if(spec=="shield")r.Hand(false,T(-.3f,-.33f,.12f)+rift,k*Aim(-.3f,-.12f,.95f)*rc,1);
+            else if(spec=="pistol")r.Hand(false,T(-.3f,-.36f,.09f)+rift,k*Aim(-.32f,-.8f,.5f,-.5f)*rc,1);
+            else if(Gun(spec)){r.BraceWeapon(T(-.06f,-.04f,.21f)+rift,k*Aim(.4f,-.5f,.76f)*rc,1,null,false);SupportHand(r,GunSupportGrip,1);}
+            else if(Magic(spec))r.Hand(true,T(.3f,-.2f,.15f)+lift,k*Aim(.05f,1,.08f),1);
+            else if(NativeBowWire.Is(spec))r.Hand(true,Vector3.Transform(BowGrip,k)+lift,k*BowHold,1,Vector3.Transform(BowElbow,k));
+        }
         // three's `node.rotation.x = v` (the Euler's other angles kept).
         private static void X(MeleeRig r,int i,float x)=>r.SetE(i,x,r.E[i].Y,r.E[i].Z);
         // contrapposto(): the pelvis settles over a straight weight leg and rolls toward the relaxed one, the chest counter-rolls,
@@ -120,7 +198,14 @@ namespace ChipArena.UnityConversion
             else if(spec=="pistol"){r.Hand(false,new Vector3(-.3f,-.36f+lift,.09f),Aim(-.32f,-.8f,.5f,-.5f),1);Relax(r,true,breath);}
             else if(Gun(spec)){r.BraceWeapon(new Vector3(-.06f,-.04f+lift,.21f),Aim(.4f,-.5f,.76f),1,null,false);SupportHand(r,GunSupportGrip,1);}
             else if(Magic(spec)){r.Hand(true,new Vector3(.3f,-.2f+lift,.15f),Aim(.05f,1,.08f),1);Relax(r,false,breath);}
+            else if(NativeBowWire.Is(spec)){r.Hand(true,BowGrip+new Vector3(0,lift,0),BowHold,1,BowElbow);Relax(r,false,breath);}
         }
+        /// <summary>The Bow's rest (a native stance; the source has no bow): the left wrist (chest space; the bow frame, as in
+        /// play) low at the left side, the elbow tucked back, the riser upright with the top limb leaning forward of the shoulder
+        /// and the lower tip behind the left heel, the back of the bow turned out to the front left so the recurve faces the
+        /// card camera; the right hand relaxed. LobbyPoseChecks pins the clearances.</summary>
+        public static readonly Vector3 BowGrip=new Vector3(.37f,-.25f,.17f),BowElbow=new Vector3(.45f,-.5f,-.75f);
+        public static readonly Quaternion BowHold=MeleeMath.Euler(MeleeMath.ToEuler(CapturedRig.Look(new Vector3(.815f,-.18f,.552f),new Vector3(0,.95f,.31f))));
         // rig-ik.ts supportHand() for a weapon whose support grip is `grip` (weapon frame = the right wrist, the weapon held
         // at the grip): the left arm reaches it and the left wrist takes the weapon's orientation.
         private static void SupportHand(MeleeRig r,Vector3 grip,float weight)

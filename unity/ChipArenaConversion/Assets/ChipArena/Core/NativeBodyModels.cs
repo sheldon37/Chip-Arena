@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 namespace ChipArena.UnityConversion
@@ -110,6 +111,58 @@ namespace ChipArena.UnityConversion
         {
             if(skin!=NativeBodySkins.SheldonIndex)return n;foreach(var b in SheldonGibs)if(n<into.Length)into[n++]=b;return n;
         }
+        /// <summary>
+        /// The colour a kill box takes on a body skin (voxel bursts, crush debris and stump caps fly the exported boxes,
+        /// NativeKillBoxes): a body part's box in that part's own main paint on the skin (its largest painted area by tint:
+        /// the pilot's body colour, its accent or a fixed colour), so a Standard or Sheldon Clothes body does not burst into
+        /// the Prototype's colours. The Prototype, and every box that is not a body part's (hat, weapon, team band, the
+        /// coat's own panels), keeps NativeKillEffectRules.BoxColor. sRGB 0xRRGGBB, as BoxColor.
+        /// </summary>
+        public static int GibColor(int skin,in KillBox box,int body,int accent)
+        {
+            int part=skin==NativeBodySkins.StandardIndex||skin==NativeBodySkins.SheldonIndex?NativeBodySkins.PartIndex(box.Name,box.Bone):-1;
+            if(part<0)return NativeKillEffectRules.BoxColor(box,body,accent);
+            var (color,tag)=Paints(skin)[part];if(tag<0)return NativeKillEffectRules.BoxColor(box,body,accent);
+            if(tag==1){var b=NativePortraitRules.Linear(body);color*=new Vector3(b.X/ShellColor.X,b.Y/ShellColor.Y,b.Z/ShellColor.Z);}
+            else if(tag==2)color*=NativePortraitRules.GlowAccentTint(accent);
+            return Hex(color);
+        }
+        private static readonly (Vector3 color,int tag)[][] paints=new (Vector3,int)[NativeBodySkins.Count][];
+        /// <summary>Each part's main paint on a skin (Full tier): the paint (colour and tint tag) covering its largest area
+        /// (tag -1 for an empty part). Built once per skin.</summary>
+        private static (Vector3 color,int tag)[] Paints(int skin)
+        {
+            if(paints[skin]!=null)return paints[skin];var body=Build(skin,NativeBodySkins.Full);var result=new (Vector3,int)[body.Parts.Length];
+            for(int p=0;p<body.Parts.Length;p++)
+            {
+                var m=body.Parts[p].Mesh;var area=new Dictionary<(Vector3,int),float>();
+                for(int k=0;k+2<m.Indices.Count;k+=3)
+                {
+                    int a=m.Indices[k],b=m.Indices[k+1],c=m.Indices[k+2];float w=Vector3.Cross(m.Positions[b]-m.Positions[a],m.Positions[c]-m.Positions[a]).Length()*.5f;
+                    var col=m.Colors[a];var key=(new Vector3(col.X,col.Y,col.Z),Math.Max(0,Math.Min(2,(int)Math.Round(m.Emission[a].W))));area.TryGetValue(key,out float had);area[key]=had+w;
+                }
+                result[p]=area.Count==0?(Vector3.Zero,-1):area.OrderByDescending(e=>e.Value).ThenBy(e=>e.Key.Item2).First().Key;
+            }
+            return paints[skin]=result;
+        }
+        /// <summary>
+        /// How a skin shows a wound in its own surface (Core/NativeWoundSkin.cs cuts the Prototype's carve into the body): the
+        /// Standard's plates breach to the dark undersuit, an accent conduit glowing here and there, with bare metal among the
+        /// broken rim; the Sheldon Clothes tear to the coat's lining with frayed fibre. Deeper down both keep the flesh.
+        /// </summary>
+        public static WoundSkinLook WoundLook(int skin)=>skin==NativeBodySkins.SheldonIndex
+            ?new WoundSkinLook(true,Inner.Color,Lapel.Color*1.6f,Vector3.Zero,0,.72f,.82f)
+            :new WoundSkinLook(false,Suit.Color,GreyLight.Color,AccentColor,1.4f,.55f,.8f);
+        /// <summary>
+        /// How a body skin's cut face looks when the body is split in two (Core NativeBisect): the plates' or the coat's own
+        /// paint darkened at the edge, then the Standard's dark undersuit with glints of its accent conduits (tag 2: the pilot's
+        /// accent) or the Sheldon Clothes' coat lining (the lapel cloth, body tinted), then flesh in layers; the Prototype goes
+        /// from its shell's edge straight to its flesh, as its wounds do.
+        /// </summary>
+        public static BisectLook CutLook(int skin)=>skin==NativeBodySkins.SheldonIndex
+            ?new BisectLook{Rim=.012f,Inner=.016f,RimShade=.72f,InnerColor=Lapel.Color*.85f,InnerTag=1}
+            :skin==NativeBodySkins.PrototypeIndex?new BisectLook{Rim=.009f,Inner=0,RimShade=.6f}
+            :new BisectLook{Rim=.011f,Inner=.018f,RimShade=.62f,InnerColor=Suit.Color,ConduitShare=.09f,Conduit=AccentColor,ConduitLevel=1.4f};
         /// <summary>Builds one tier of a body skin (NativeBodySkins.StandardIndex or SheldonIndex); null for the Prototype.</summary>
         public static PilotBodyMesh Build(int skin,int tier)
         {

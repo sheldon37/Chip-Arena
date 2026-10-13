@@ -91,8 +91,8 @@ namespace ChipArena.UnityConversion
                 // The crush happens once, but Last Laugh's pose must finish its 0.6 s hang until m.Until.
                 // Release before Damage: lethal damage calls CancelSiren(victim), which must not cancel her holder.
                 m.Crushed=true;q.HeldBy=null;q.Body.useGravity=true;
-                if(Pve!=null)Damage(q,p,(float)q.Stats["hp"]*.6f*NativePveRules.BossDamage(PartySize),Vector3.zero,0,false,direct:false,primary:false,sirenCrush:true);
-                else Damage(q,p,q.Hp+1,Vector3.zero,0,false,forced:true,primary:false,sirenCrush:true);
+                // A completed catch is an execution, using current HP so healing during the hold cannot save it.
+                Damage(q,p,q.Hp+1,Vector3.zero,0,false,forced:true,direct:false,primary:false,sirenCrush:true);
                 // Keep m.Caught and the original m.Until so SourceAction remains "grab"; no repeated damage.
             }
             foreach(var f in SirenFields.ToArray())

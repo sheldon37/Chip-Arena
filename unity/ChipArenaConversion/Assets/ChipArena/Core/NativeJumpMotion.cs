@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// The pack set closest to the weapon, as the melee and reaction sets map them: Armed for the sword, Armed in a reverse
         /// grip for the daggers, 2Hand-Sword for the greatsword, the Armed body for the shield (its arm keeps its own guard),
-        /// 2Hand-Shooting for the rifle and machine gun, Unarmed for the pistol and the DEV fighters' fists, 2Hand-Staff for the
+        /// 2Hand-Shooting for the rifle and machine gun, Unarmed for the pistol and the DEV fighters' fists (the Cyber Lord's too), 2Hand-Staff for the
         /// four schools and L33t H4x. None for the Siren, whose own drift keeps its air tuck (NativeSirenDrift).
         /// </summary>
         public static int SetFor(string spec)
@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
             switch(spec)
             {
                 case "sword":return Sword;case "daggers":return Daggers;case "greatsword":return Greatsword;case "shield":return Shield;
-                case "rifle":case "machinegun":return Shooting;case "pistol":case "emperor":case "ansatsuken":return Unarmed;
+                case "rifle":case "machinegun":return Shooting;case "bow":case "pistol":case "emperor":case "ansatsuken":case CyberLordSpec.Id:return Unarmed;
                 case "fire":case "water":case "lightning":case "darkness":case "leet":return Staff;
                 default:return None;
             }
@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
             if(set<0||set>=NativePackJumps.Sets.Length)return null;var s=NativePackJumps.Sets[set];return slot>=0&&slot<s.Length?s[slot]:null;
         }
         /// <summary>Whether a second upward impulse in the air shows the dagger flip (the owner's "Daggers can double-jump").</summary>
-        public static bool Flips(string spec)=>spec=="daggers";
+        public static bool Flips(string spec)=>NativeJumpSimulation.CanAirJump(spec);
 
         // ---- phase detection on the presented root (host, guests, killcam and spectators all draw the same thing) ----
         /// <summary>
@@ -65,6 +65,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The flip's turn (fraction of a full turn) at u = age / FlipSeconds: a fast tucked rotation that leaves
         /// and lands at rest (a cycloid, finished by u = .85, the rest held upright for the fall).</summary>
         public static float FlipTurn(float u){float x=MeleeMath.Clamp(u/.85f,0,1);return x-(float)Math.Sin(MeleeMath.TAU*x)/MeleeMath.TAU;}
+        /// <summary>The weight of the flip's tucked take at u = age / FlipSeconds (in over the first tenth, out over the last fifth).</summary>
+        public static float FlipTuck(float u)=>!(u>=0)||u>=1?0:MeleeMath.Ease(u/.1f)*(1-MeleeMath.Ease((u-.8f)/.2f));
         /// <summary>The impact's strength from the fall speed: 0 below 2.5 m/s, .67 after a standing jump (8.5 m/s), 1 from a
         /// 3 m drop (11.7 m/s) on.</summary>
         public static float Impact(float fallSpeed)=>MeleeMath.Clamp((fallSpeed-2.5f)/9f,0,1);
@@ -174,7 +176,7 @@ namespace ChipArena.UnityConversion
         private readonly NativePackPose pack=new NativePackPose();
         private readonly float[] row=new float[CapturedClip.Channels],rowB=new float[CapturedClip.Channels],row0=new float[CapturedClip.Channels];
         private readonly Quaternion[] held=new Quaternion[6];private bool hasHeld;
-        private float own,phase,fall,last=-100,flipAt=-100,flipLand=-100,flipFrom;
+        private float own,phase,fall,last=-100,flipAt=-100,flipLand=-100,flipFrom,boostAt=-100;
         private static readonly int[] Legs={CapturedRig.LHip,CapturedRig.LKnee,CapturedRig.LFoot,CapturedRig.RHip,CapturedRig.RKnee,CapturedRig.RFoot};
         /// <summary>The layer's state (rise, apex, fall, land, flip or ground) and its weights, as the last frame left them.</summary>
         public string State{get;private set;}="ground";
@@ -183,7 +185,9 @@ namespace ChipArena.UnityConversion
         public float FlipAngle{get;private set;}
         /// <summary>The landing's added hips drop this frame (rig metres).</summary>
         public float Drop{get;private set;}
-        public const string Rise="jump rise",Apex="jump apex",Fall="fall",Landing="land",AirFlip="air flip",Ground="ground";
+        /// <summary>The Cyber Lord's air boost weight this frame (Core/CyberLordRun.cs CyberLordAirBoost: its legs and hips), 0 outside one.</summary>
+        public float BoostWeight{get;private set;}
+        public const string Rise="jump rise",Apex="jump apex",Fall="fall",Landing="land",AirFlip="air flip",AirBoost="air boost",Ground="ground";
 
         /// <summary>The captured melee route (Core/MeleeMotion.Sample, after the action layers, before the hit layer and the
         /// ground pass). Swings, blocks and specials keep the upper body; juggles, knockdowns, rolls and stuns own the pilot.</summary>
@@ -236,12 +240,14 @@ namespace ChipArena.UnityConversion
             bool restart=last<-90||time<last-MeleeGait.REWIND||time-last>.35f;last=time;dt=restart?1/60f:MeleeMath.Clamp(dt,0,.05f);
             var t=Track;if(airJumpAt.HasValue)t.Explicit=true;t.Observe(time,grounded,r.GroupPosition.Y,blocked);
             if(airJumpAt.HasValue)t.AirJumpSignal(airJumpAt.Value);
-            if(restart){own=blocked?0:1;phase=fall=-1;flipAt=flipLand=-100;hasHeld=false;}
+            if(restart){own=blocked?0:1;phase=fall=-1;flipAt=flipLand=boostAt=-100;hasHeld=false;}
             own=blocked||set<0?0:Smooth(own,1,20,dt);
-            AirWeight=LandWeight=FlipAngle=Drop=0;State=Ground;
+            AirWeight=LandWeight=FlipAngle=Drop=BoostWeight=0;State=Ground;
             var guard=NativeJumpRules.Clip(set,NativeJumpRules.Guard);if(guard==null||own<=1e-4f){hasHeld=false;return;}
             guard.Sample(0,row0);float yaw0=row0[MeleeCapture.Yaw];
-            if(t.AirJumps>0&&t.AirJumpAt>flipAt&&t.Airborne&&NativeJumpRules.Flips(spec)){flipAt=t.AirJumpAt;flipLand=-100;}
+            // The Cyber Lord's air jump is the hardlight boost (CyberLordAirBoost) instead of the flip, whatever Flips says for it.
+            if(t.AirJumps>0&&t.AirJumpAt>flipAt&&t.Airborne&&NativeJumpRules.Flips(spec)&&!CyberLordAirBoost.Handles(spec)){flipAt=t.AirJumpAt;flipLand=-100;}
+            if(t.AirJumps>0&&t.AirJumpAt>boostAt&&t.Airborne&&CyberLordAirBoost.Handles(spec))boostAt=t.AirJumpAt;
             if(leap){hasHeld=false;phase=fall=-1;return;}
             if(t.Airborne)Air(r,set,time,dt,torso,arms,main,fit,twoHand,legs);
             else Land(r,set,time,dt,torso,arms,main,fit,twoHand,still,dropScale);
@@ -259,14 +265,17 @@ namespace ChipArena.UnityConversion
             if(phase<0){phase=t.Jumped?m1:m3;fall=targetFall;}else{phase=Smooth(phase,targetPhase,28,dt);fall=Smooth(fall,targetFall,20,dt);}
             jump.Sample(phase,row);
             if(fall>1e-4f){loop.Sample(time-t.AirAt,rowB);MeleeCapture.BlendRowsTurning(row,rowB,fall,row);}
-            float w=own*presence;AirWeight=w;State=vy>2?Rise:vy>-2?Apex:Fall;
+            // The Cyber Lord's boost: its stamp and tuck over the jump and fall (legs and hips; the style layer takes its torso and fists).
+            float boostAge=time-boostAt;
+            if(boostAt>-90&&boostAge>=0&&boostAge<CyberLordAirBoost.Seconds){float bw=CyberLordAirBoost.Weight(boostAge);CyberLordAirBoost.Clip.Sample(CyberLordAirBoost.TakeTime(boostAge),rowB);MeleeCapture.BlendRowsTurning(row,rowB,bw,row);BoostWeight=bw;}
+            float w=own*presence;AirWeight=w;State=BoostWeight>.5f?AirBoost:vy>2?Rise:vy>-2?Apex:Fall;
             // The hips turn of the blended take (the flip's own pelvis channel turns through a full circle: the flip is procedural).
             Quaternion pelvis=MeleeMath.Slerp(Quaternion.Identity,Delta(row0,row,MeleeCapture.Pelvis),.6f*w);
             float flipU=(time-flipAt)/NativeJumpRules.FlipSeconds;
             if(flipU>=0&&flipU<1)
             {
                 var flip=NativeJumpRules.Clip(set,NativeJumpRules.Flip);flip.Sample(flipU*flip.Duration,rowB);
-                float fw=MeleeMath.Ease(flipU/.1f)*(1-MeleeMath.Ease((flipU-.8f)/.2f));MeleeCapture.BlendRowsTurning(row,rowB,fw,row);
+                float fw=NativeJumpRules.FlipTuck(flipU);MeleeCapture.BlendRowsTurning(row,rowB,fw,row);
                 FlipAngle=MeleeMath.TAU*NativeJumpRules.FlipTurn(flipU);State=AirFlip;
             }
             Gaze(row);
@@ -289,6 +298,22 @@ namespace ChipArena.UnityConversion
         }
         // The flip about the hips' lateral axis, pivoting a little above them (the tucked body's centre).
         private static readonly Vector3 Pivot=new Vector3(0,.1f,0);
+        /// <summary>The flip's turn at `angle` (rig frame) and the point it turns the body about, for a pose solved on the
+        /// unturned body (Core/NativeBowMotion: the bow held through the flip): world x goes to Turn * (x - about) + about, where
+        /// `about` is the unturned body root plus the pivot.</summary>
+        public static Quaternion Turn(float angle)=>MeleeMath.AxisAngle(MeleeMath.X,angle);
+        public static Vector3 About(Vector3 body)=>body+Pivot;
+        /// <summary>Takes the flip's turn off a rig (Spin undone), and puts it back on the pose solved over it.</summary>
+        public static void Unspin(MeleeRig r,float angle)
+        {
+            if(Math.Abs(angle)<1e-5f)return;Quaternion q=Turn(angle);
+            r.SetQ(CapturedRig.Body,MeleeMath.Inverse(q)*r.Q[CapturedRig.Body]);r.P[CapturedRig.Body]-=Pivot-Vector3.Transform(Pivot,q);
+        }
+        public static void Respin(CapturedRig.Pose p,float angle)
+        {
+            if(Math.Abs(angle)<1e-5f)return;Quaternion q=Turn(angle);
+            p.Rotation[CapturedRig.Body]=q*p.Rotation[CapturedRig.Body];p.Position[CapturedRig.Body]+=Pivot-Vector3.Transform(Pivot,q);p.World();
+        }
         private static void Spin(MeleeRig r,float angle)
         {
             if(Math.Abs(angle)<1e-5f)return;Quaternion q=MeleeMath.AxisAngle(MeleeMath.X,angle);

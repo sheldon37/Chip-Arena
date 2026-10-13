@@ -28,10 +28,10 @@ class NativePublisherTests(unittest.TestCase):
         self.channel = self.root / 'channel'
 
     def payload(self, char='b', revision=2, extra=None, embedded=None):
-        build = dict(schema=1, product='chip-arena-unity', channel='native-test', platform='windows-x64', version=char * 64, revision=revision, bootstrap=1)
+        build = dict(schema=1, product='chip-arena-unity', channel='native-test', platform='windows-x64', version=char * 64, revision=revision, bootstrap=2)
         files = {'native-build.json': json.dumps(embedded or build).encode(),
-                 'ChipArena-Native-Conversion-TEST.exe': b'fixture', 'UnityPlayer.dll': b'fixture',
-                 'ChipArena-Native-Conversion-TEST_Data/globalgamemanagers': b'fixture'}
+                 'Chip Arena.exe': b'fixture', 'UnityPlayer.dll': b'fixture',
+                 'Chip Arena_Data/globalgamemanagers': b'fixture'}
         if extra:
             files.update(extra)
         stream = io.BytesIO()

@@ -9,12 +9,13 @@ namespace ChipArena.UnityConversion
     /// the gait's locomotion and procedural feet, this layer, then the hit reactions, jump layer and ground pass) in third
     /// person, and on the first-person view model. Every move is one of the owner's Explosive pack unarmed takes
     /// (tools/export_pack_cyberlord.mjs, NativePackCyberLord.Generated) retimed onto the replicated windows read through
-    /// CyberLordFeed: the bladed fighting stance with the pack's run and sprint carry over the gait, the hardlight guard, the
-    /// Jab / Cross / Pulse Palm combo (each take's impact pinned to its hit), the six abilities on their cast / active /
-    /// recovery windows, the Kernel Panic opener and its five-step choreography, and the victim's tumble (any pilot,
-    /// layered over its own route). Poses are pure functions of the replicated view and the clock (the gait under them keeps
-    /// its own travel state); nothing here reaches the authority, hit timing, hitboxes, damage, cooldowns or movement.
-    /// No allocation per frame.
+    /// CyberLordFeed: the bladed fighting stance with the pack's run and sprint carry over the gait, the hardlight guard,
+    /// the Jab / Cross / Pulse Palm combo (each take's impact pinned to its hit), the six abilities on their cast / active
+    /// / recovery windows, the idle stance after the Sheldon Intro's ending once the pilot stands still
+    /// (Core/CyberLordIdle.cs), the Kernel Panic opener and its five-step choreography, and the victim's tumble (any pilot,
+    /// layered over its own route). Poses are pure functions of the replicated view and the clock (the gait under them
+    /// keeps its own travel state, and the idle when the pilot last moved); nothing here reaches the authority, hit
+    /// timing, hitboxes, damage, cooldowns or movement. No allocation per frame.
     /// </summary>
     public sealed class CyberLordMotion
     {
@@ -186,7 +187,7 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- applying a move to the gait rig ----
-        private readonly float[] row=new float[CapturedClip.Channels],baseRow=new float[CapturedClip.Channels],fromRow=new float[CapturedClip.Channels],runRow=new float[CapturedClip.Channels];
+        private readonly float[] row=new float[CapturedClip.Channels],baseRow=new float[CapturedClip.Channels],fromRow=new float[CapturedClip.Channels],runRow=new float[CapturedClip.Channels],heldRow=new float[CapturedClip.Channels];
         private readonly CyberLordView view=new CyberLordView();
         public CyberLordView View=>view;
         public string State{get;private set;}="cyber-stance";
@@ -214,8 +215,6 @@ namespace ChipArena.UnityConversion
         public const float FaceWeight=.85f;
         /// <summary>First person: the fists raised and brought in so the guard sits in the lower view (chest space, m).</summary>
         public static readonly Vector3 ViewLift=new Vector3(0,.08f,.22f);
-        /// <summary>The pack run's share of the per-stride arm swing kept about its cycle mean (NativeLocoRules' run keep).</summary>
-        public const float RunArmKeep=.32f,RunTorsoKeep=.55f;
         /// <summary>The stance row at `time`: the alert take played forward and back (it is not a loop), its middle held longest.</summary>
         public static void StanceRow(float time,float[] into)
         {
@@ -231,21 +230,51 @@ namespace ChipArena.UnityConversion
             row[MeleeCapture.LHand]+=LeadLift.X*k;row[MeleeCapture.LHand+1]+=LeadLift.Y*k;row[MeleeCapture.LHand+2]+=LeadLift.Z*k;
             row[MeleeCapture.Grip]+=RearLift.X*k;row[MeleeCapture.Grip+1]+=RearLift.Y*k;row[MeleeCapture.Grip+2]+=RearLift.Z*k;
         }
-        /// <summary>The base (no move): the stance, carried by the pack run or sprint at the gait's stride as the pilot travels.</summary>
-        public void BaseRow(MeleeRig r,bool sprinting,float time,float[] into,out float travel)
+        /// <summary>The base (no move): the stance, carried by the Runner pack's run and sprint (Core/CyberLordRun.cs) at the gait's
+        /// stride as the pilot travels.</summary>
+        private readonly CyberLordRunCarry carry=new CyberLordRunCarry();
+        /// <summary>The travel carry on this rig (its direction, bracketing takes and sprint weight, as the last frame left them).</summary>
+        public CyberLordRunCarry Carry=>carry;
+        public void BaseRow(MeleeRig r,Actor a,float time,float[] into,out float travel)
         {
-            StanceRow(time,into);travel=Ease((r.Motion-.10f)/.65f);if(travel<=1e-4f)return;
-            var c=Clip(sprinting?Sprint:Run);float phase=MeleeMath.Frac(r.Stride/MeleeMath.TAU);c.Sample(c.Marks[0]+phase*c.Duration,runRow);var mean=c.CycleMean();
-            for(int i=0;i<CapturedClip.Channels;i++){float keep=i>=MeleeCapture.Grip?RunArmKeep:RunTorsoKeep;runRow[i]=mean[i]+(runRow[i]-mean[i])*keep;}
-            MeleeCapture.BlendRowsTurning(into,runRow,travel,into);
+            StanceRow(time,into);travel=Ease((r.Motion-.10f)/.65f);carry.Weight=travel;if(travel<=1e-4f)return;
+            carry.Row(r,a,time,runRow);MeleeCapture.BlendRowsTurning(into,runRow,travel,into);
         }
         /// <summary>
         /// The style layer on the fighter route (between MeleeMotion.FighterBase and FighterFinish): the base, the move over it,
         /// applied to the gait rig (the legs the gait's except where a move owns them). Returns the presented state.
         /// </summary>
+        /// <summary>The idle stance (Core/CyberLordIdle.cs): its tracker on this rig, this frame's weight and glitch, and whether
+        /// effects are reduced (the runtime sets it before posing: the glitch's and the twitches' softer versions).</summary>
+        public readonly CyberLordIdle Idle=new CyberLordIdle();public float IdleWeight{get;private set;}public CyberIdleGlitch IdleGlitch;public bool Reduced;
+        /// <summary>The second jump's hardlight boost (Core/CyberLordRun.cs CyberLordAirBoost): this frame's weight, the Dev Sandbox
+        /// preview's stand-in air-jump time (-100: none; the runtime sets it for the local pilot only), and the jump track the
+        /// boost reads when the route has no jump layer (the first-person view model).</summary>
+        public float BoostWeight{get;private set;}public float PreviewAirJumpAt=-100;private readonly NativeJumpTrack ownTrack=new NativeJumpTrack();private readonly float[] boostRow=new float[CapturedClip.Channels];
+        /// <summary>The boost's take over `row` at the boost's weight on the track (the torso at CyberLordAirBoost.Torso, the fists at
+        /// Arms; `arms` alone: the first-person view keeps only the fists' share).</summary>
+        private float BoostRow(NativeJumpTrack t,float time,bool blocked,float[] row,bool armsOnly,float share)
+        {
+            float age=CyberLordAirBoost.Age(t,time),w=blocked||float.IsNaN(age)?0:CyberLordAirBoost.Weight(age)*share;if(w<=1e-4f)return 0;
+            CyberLordAirBoost.Clip.Sample(CyberLordAirBoost.TakeTime(age),boostRow);
+            for(int i=armsOnly?MeleeCapture.Grip:0;i<CapturedClip.Channels;i++){float k=i<MeleeCapture.Grip?CyberLordAirBoost.Torso:CyberLordAirBoost.Arms;boostRow[i]=row[i]+(boostRow[i]-row[i])*k;}
+            MeleeCapture.BlendRowsTurning(row,boostRow,w,row);return w;
+        }
+        /// <summary>The ranged layer's state this frame (null in melee mode).</summary>
+        public string RangedState{get;private set;}
         public string Style(MeleeMotion motion,Actor a,float time,bool stun)
         {
-            var r=motion.Rig;CyberLordFeed.Read(a,view);BaseRow(r,a.Sprinting,time,baseRow,out float travel);
+            var r=motion.Rig;CyberLordFeed.Read(a,view);motion.FighterSeat=carry;
+            // The idle stance (CyberLordIdle): its weight first, so the base under it is the sword idle (no alert bob in the hips).
+            float idle=Idle.Update(a,view,time,Ease((r.Motion-.10f)/.65f),stun);
+            // The ranged mode holds its emitters up instead (Core/CyberLordRangedMotion.cs): no idle stance there.
+            idle*=1-view.ModeWeight(time);
+            BaseRow(r,a,time,baseRow,out float travel);if(idle>1e-4f){CyberLordIdlePose.Base(time,heldRow);MeleeCapture.BlendRowsTurning(baseRow,heldRow,idle,baseRow);}
+            // The second jump's boost over the base: the rig's own jump track (the jump layer's, observed here first with the same
+            // replicated signal, so the torso and the legs start on the same frame).
+            bool airBlocked=stun||a.Hp<=0||a.Rolling(time)||a.JuggleUntil>time||NativeSpecialPose.Active(a,time)||NativeSpecialPose.Down(a,time);
+            var track=motion.JumpLayer?.Track??ownTrack;track.Explicit=true;track.Observe(time,a.Grounded,r.GroupPosition.Y,airBlocked);track.AirJumpSignal(CyberLordAirBoost.Signal(a,PreviewAirJumpAt));
+            BoostWeight=BoostRow(track,time,airBlocked,baseRow,false,1);
             bool blocking=!stun&&time<a.BlockUntil;var m=stun?Move.None:Of(view,time,blocking,a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration);
             float legs=0,root=1-travel*.85f;
             if(m.Clip>=0&&m.Weight>1e-4f)
@@ -260,7 +289,16 @@ namespace ChipArena.UnityConversion
             if(!a.Grounded&&m.Clip<0)root*=.3f;
             MeleeCapture.Apply(r,Unarmed,row,CaptureOptions.Of(1,Unarmed.Fit,MeleeClear.None,legs:legs,root:Math.Max(0,root)));FaceForward(r,FaceWeight);
             if(legs>.05f)r.LegsAuthored=true;
-            State=stun?"hit reaction":m.State??(blocking?"cyber-guard":travel>.5f?(a.Sprinting?"cyber-sprint":"cyber-run"):"cyber-stance");return State;
+            // The idle's twitching over the sword idle once the pilot has stood still (CyberLordIdle), under any move still blending out.
+            float under=idle*(m.Clip>=0?1-Clamp01(m.Weight):1);IdleWeight=under;
+            IdleGlitch=CyberLordIdlePose.Glitch(a.Id,time,under,Reduced);
+            if(under>1e-4f){var tw=CyberLordIdlePose.Twitch(a.Id,time,Reduced);IdleGlitch.LClench=tw.LClench*under;IdleGlitch.RClench=tw.RClench*under;}
+            CyberLordIdlePose.Layer(r,under,time,a.Id,Reduced,a.Pitch*(float)Math.PI/180,IdleGlitch);
+            // The ranged mode (Core/CyberLordRangedMotion.cs): the emitter hold, the switch and the ranged casts over the posed rig;
+            // a melee take (the guard, Q, E) owns the frame through its weight, a sprint forward lowers the hold.
+            string ranged=stun?null:CyberRangedPose.Layer(r,view,time,a.Pitch*(float)Math.PI/180,m.Clip>=0?Clamp01(m.Weight):0,carry.Sprint*travel,false,Reduced);
+            RangedState=ranged;
+            State=stun?"hit reaction":m.State??(ranged!=null&&ranged!="cyber-ranged-aim"?ranged:null)??(blocking?"cyber-guard":BoostWeight>.5f?"cyber-air-boost":travel>.5f?(a.Sprinting?"cyber-sprint":ranged!=null?"cyber-ranged-run":"cyber-run"):ranged??(under>.5f?"cyber-idle":"cyber-stance"));return State;
         }
         /// <summary>
         /// The first-person view model (the generic route's view rig): the same base and move with the legs and root left out,
@@ -270,7 +308,10 @@ namespace ChipArena.UnityConversion
         public string FirstPerson(CapturedRig.Pose pose,Actor a,float time)
         {
             CyberLordFeed.Read(a,view);var r=viewRig;r.Reset();StanceRow(time,baseRow);
-            bool blocking=time<a.BlockUntil,stun=a.StunUntil>time;var m=stun?Move.None:Of(view,time,blocking,a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration);
+            bool blocking=time<a.BlockUntil,stun=a.StunUntil>time;
+            // The second jump's boost: a gentler share of its fists (the view's own hop carries the body; no camera motion).
+            bool airBlocked=stun||a.Hp<=0||a.Rolling(time);ownTrack.Explicit=true;ownTrack.Observe(time,a.Grounded,a.Position.y,airBlocked);ownTrack.AirJumpSignal(CyberLordAirBoost.Signal(a,PreviewAirJumpAt));
+            BoostWeight=BoostRow(ownTrack,time,airBlocked,baseRow,true,CyberLordAirBoost.FirstPerson);var m=stun?Move.None:Of(view,time,blocking,a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration);
             if(m.Clip>=0&&m.Weight>1e-4f)
             {
                 Clip(m.Clip).Sample(m.Time,row);
@@ -283,8 +324,10 @@ namespace ChipArena.UnityConversion
             for(int i=MeleeCapture.Pelvis;i<MeleeCapture.Neck;i++)row[i]*=.35f;
             for(int k=0;k<3;k++){row[MeleeCapture.Grip+k]+=k==0?ViewLift.X:k==1?ViewLift.Y:ViewLift.Z;row[MeleeCapture.LHand+k]+=k==0?-ViewLift.X:k==1?ViewLift.Y:ViewLift.Z;}
             MeleeCapture.Apply(r,Unarmed,row,CaptureOptions.Of(1,Unarmed.Fit,MeleeClear.None,legs:0,root:0));
+            // The ranged mode's emitters in the lower view (the camera carries the aim: no pitch here).
+            string ranged=stun?null:CyberRangedPose.Layer(r,view,time,0,m.Clip>=0?Clamp01(m.Weight):0,0,true,Reduced);RangedState=ranged;
             r.WritePose(pose);NativeFirstPersonPose.SettleTorso(pose);
-            State=stun?"hit reaction":m.State??(blocking?"cyber-guard":"cyber-stance");return State;
+            State=stun?"hit reaction":m.State??ranged??(blocking?"cyber-guard":"cyber-stance");return State;
         }
         /// <summary>The upper body alone (the dev-cyberlord entrance over its keyed legs): the stance and the view's move on `r`.</summary>
         public string Upper(CyberLordView v,float time,MeleeRig r)

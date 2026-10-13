@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeKernelPanic
     {
         public bool WallSplat;
-        public int Id,Caster,Victim,Seed,Next,Outcome; // 0 windup, 1 connect, 2 whiff, 3 interrupted, 4 complete
+        public int Id,Caster,Victim,Seed,Next,Outcome; // 0 windup/lunge, 1 connect, 2 whiff, 3 interrupted, 4 complete
         public float At,ConnectedAt,Until,Ready,DamageDebt;
         public V3 Anchor,Facing,CasterStart,VictimStart,CasterExit,VictimExit;
         public V3[] CasterPoints=Array.Empty<V3>(),VictimPoints=Array.Empty<V3>();
@@ -24,7 +24,8 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeKernelPanicRules
     {
-        public const float Windup=.25f,CutIn=.6f,Duration=3.4f,RecoveryAt=2.6f,WhiffRecovery=.6f,Cooldown=30,Mana=60,Range=6,Radius=.6f;
+        public const float Windup=.25f,CutIn=.6f,Duration=3.4f,RecoveryAt=2.6f,WhiffRecovery=.6f,Cooldown=20,Mana=60,Range=12,Radius=1.2f;
+        public const float LungeSpeed=7f/.22f; // Sword Flash Step speed; 12 m takes about .38 s.
         public static readonly float[] Steps={0,.45f,.95f,1.35f,1.9f};
         public static readonly float[] Damage={12,10,10,6,25};
         public static float HitAt(NativeKernelPanic s,int step)=>s.ConnectedAt+CutIn+Steps[step];

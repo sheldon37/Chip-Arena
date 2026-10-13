@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
                 if(pass==0)
                 {
                     // beacons.ts:92 + hologram.ts:34-37: "F · REVIVE" over "$150", or "SELF-REVIVE" over "0:04"; 1.5 x .45 m.
-                    Vector3 centre=new Vector3(at.x,NativeBeaconRules.LabelY(t),at.z),s=cameraView.WorldToScreenPoint(centre);if(s.z<=.05f)continue;
+                    Vector3 centre=new Vector3(at.x,at.y+NativeBeaconRules.LabelY(t),at.z),s=cameraView.WorldToScreenPoint(centre);if(s.z<=.05f)continue;
                     float k=half/(s.z*tan)/U.S,text=NativeBeaconRules.LabelText*k;if(text<3)continue;
                     Vector3 delta=centre-eye;if(physics.Raycast(eye,delta.normalized,out _,delta.magnitude-.08f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))continue;
                     float w=NativeBeaconRules.LabelWidth*k,h=NativeBeaconRules.LabelHeight*k,x=s.x/U.S-w*.5f,y=(Screen.height-s.y)/U.S-h*.5f;if(x>U.W||x+w<0||y>U.H||y+h<0)continue;
@@ -37,8 +37,8 @@ namespace ChipArena.UnityConversion
                 // downed.ts:54-60 + beacons.ts:95-96: everyone but the downed player sees HELP!, constant on screen between
                 // 5 and 26 m, its bottom above the label, bobbing, tilting about its bottom centre.
                 if(p.Seat.id==arena.LocalId)continue;
-                float width=NativeBeaconRules.HelpWidth(Vector3.Distance(eye,new Vector3(at.x,2.6f,at.z))),bob=NativeBeaconRules.HelpBob(t,NativeGoreRules.FnvDigits(p.Seat.id));
-                Vector3 anchor=cameraView.WorldToScreenPoint(new Vector3(at.x,NativeBeaconRules.HelpY(width,bob),at.z));if(anchor.z<=.05f)continue;
+                float width=NativeBeaconRules.HelpWidth(Vector3.Distance(eye,new Vector3(at.x,at.y+2.6f,at.z))),bob=NativeBeaconRules.HelpBob(t,NativeGoreRules.FnvDigits(p.Seat.id));
+                Vector3 anchor=cameraView.WorldToScreenPoint(new Vector3(at.x,at.y+NativeBeaconRules.HelpY(width,bob),at.z));if(anchor.z<=.05f)continue;
                 float scale=half/(anchor.z*tan)/U.S,bw=width*scale,bh=bw*NativeBeaconRules.HelpAspect;var pivot=new Vector2(anchor.x/U.S,(Screen.height-anchor.y)/U.S);
                 if(pivot.x+bw<0||pivot.x-bw>U.W||pivot.y<0||pivot.y-bh*2>U.H||!EnsureHelpBubble())continue;
                 U.Push(pivot,Vector2.zero,1,-NativeBeaconRules.HelpTilt(t,NativeGoreRules.DigitCount(p.Seat.id))*Mathf.Rad2Deg);

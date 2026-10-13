@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
         }
         private void RecordDeath(NativePilot p,NativePilot source,Vector3 direction,float force,bool melee,bool sirenCrush,string damageKind=null)
         {
-            if(damageKind!="collapse"&&source==null&&Time-p.LastAttackerAt<=7)source=p.LastAttacker;
+            if(damageKind!="collapse"&&damageKind!="hazard"&&damageKind!="maglev"&&damageKind!="grid"&&source==null&&Time-p.LastAttackerAt<=7)source=p.LastAttacker;
             // A hold interrupted by a bystander is not a Siren crush; only the timed crush hit sets this flag.
             string style=NativeSirenRules.DeathStyle(p.Seat.spec,sirenCrush,source?.Seat.killEffect);
             p.Pose.Wounds=p.Wounds.ToArray();p.Death=new NativeDeath{damageKind=damageKind,id=p.Seat.id,owner=source?.Seat.id??0,at=Time,seed=nextEvent++,yaw=sirenCrush&&source!=null?NativeSirenRules.CrushDeathYaw(source.Yaw):p.Yaw,force=force,style=style,model=p.Seat.spec=="siren"?"siren":"pilot",position=p.Body.position,velocity=p.Body.isKinematic?Vector3.zero:p.Body.linearVelocity+p.Knockback,direction=direction,melee=melee,kept=Pve!=null&&!p.Seat.AuthorityBoss,actor=p.Pose.ViewCopy(),wound=p.Wounds.LastOrDefault()};

@@ -71,6 +71,9 @@ namespace ChipArena.UnityConversion
         public float Clock=float.NaN;
         /// <summary>The per-id memory shared with NativeShotPresentation, begun once this frame; null uses this glow's own.</summary>
         public NativeShotTracker Tracker;
+        /// <summary>How much of pilot `id`'s joint `bone` has formed (0..1; the match-start spawn-in, ArenaPresentation.SpawnJointOf):
+        /// its armour halo waits for the part. Null: every joint whole.</summary>
+        public Func<int,int,float> Shown;
         private readonly NativeShotTracker own=new NativeShotTracker();
         // The two pooled armor spill lights' holders: nearest the camera, with hysteresis and a fade (Core NativeArmorSpillPicker).
         private readonly NativeArmorSpillPicker spill=new NativeArmorSpillPicker();
@@ -208,7 +211,7 @@ namespace ChipArena.UnityConversion
                 float pulse=NativeGlowRules.ArmorPulse(now,pilot.BlockReady-now,now<pilot.BlockEnd),alpha=(Quality<.5f?.43f:.70f)*pulse*ArmorHaloScale;
                 void Joint(int bone,Vector3 local,float size,float side=0)
                 {
-                    var t=rig.Bones[bone];Vector3 at=t.TransformPoint(local);float a=alpha;
+                    var t=rig.Bones[bone];Vector3 at=t.TransformPoint(local);float a=alpha*(Shown?.Invoke(pilot.Seat.id,bone)??1);
                     if(side!=0)a*=NativeArmorLight.HaloFacing(Vector3.Dot(t.TransformDirection(0,0,side),(eye-at).normalized));
                     if(a>.001f)world.Halo(at,right,up,NativeArmorLight.HaloPixelClamp(size*ArmorHaloScale,Vector3.Dot(at-eye,forward),fov,height),color,a);
                 }
@@ -230,7 +233,7 @@ namespace ChipArena.UnityConversion
             {
                 Color color=ArmorTint(arena.ViewPilot.Seat.accentColor,out _);float pulse=NativeGlowRules.ArmorPulse(now,arena.ViewPilot.BlockReady-now,now<arena.ViewPilot.BlockEnd);
                 Vector3 viewEye=viewCamera.transform.position,viewForward=viewCamera.transform.forward;
-                foreach(int bone in viewHands){Vector3 at=viewRig.Bones[bone].TransformPoint(new Vector3(0,0,.1f));view.Halo(at,right,up,NativeArmorLight.HaloPixelClamp(.13f*ArmorHaloScale,Vector3.Dot(at-viewEye,viewForward),viewCamera.fieldOfView,viewCamera.pixelHeight),color,.45f*pulse*ArmorHaloScale);}
+                foreach(int bone in viewHands){Vector3 at=viewRig.Bones[bone].TransformPoint(new Vector3(0,0,.1f));view.Halo(at,right,up,NativeArmorLight.HaloPixelClamp(.13f*ArmorHaloScale,Vector3.Dot(at-viewEye,viewForward),viewCamera.fieldOfView,viewCamera.pixelHeight),color,.45f*pulse*ArmorHaloScale*(Shown?.Invoke(arena.ViewPilot.Seat.id,bone)??1));}
                 if(viewStaff.HasValue)view.Halo(viewStaff.Value.MultiplyPoint3x4(new Vector3(0,0,.72f)),right,up,.28f,School(arena.ViewPilot.Pose.MagicVisual),.55f);
                 if(submitDraws)view.Draw(material,viewCamera,10);
             }

@@ -6,18 +6,19 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>One built minion model: one section per rig joint (bank frame: Unity axes, +x the add's right, +z forward, each
     /// joint's own frame at rest), the triangles and whether it is the impostor tier.</summary>
-    public sealed class HordeModel{public int Kind,Look,Tier;public WeaponMesh Mesh;public int Triangles=>Mesh.Triangles;}
+    public sealed class HordeModel{public int Kind,Look,Tier;public WeaponMesh Mesh;public int Triangles=>Mesh.Triangles+(Jaw?.Triangles??0);
+        /// <summary>The hinged kinds' jaw, its own model on the head joint (null: the jaw is part of the head), turned about
+        /// <see cref="NativeHordeModels.JawHinge"/>.</summary>
+        public WeaponMesh Jaw;}
 
     /// <summary>
     /// The Siren's minions, sculpted in code (presentation only; the exported horde-0..5 bank bodies stay for the classic look
-    /// and the old death records). Every kind reads as the Siren's creature: an ink-black body with a violet ink rim (the
-    /// Siren's own ink shading), seams stitched in the kind's glow colour that flicker cell by cell and drop out with the
-    /// add's failing power (NativeMinionFx glow codes), her couture (high torn collars, corsets laced in glow, tattered hems,
-    /// pauldrons) and her white grin and teardrop eyes. Each kind keeps its silhouette at 30 m: the shambler upright and
-    /// slumped under its collar, the runner thin and pitched forward with blade claws and streaming tails, the brute a
-    /// shoulder-hunched mass with plated fists, the spitter hunched over a glowing throat sac, the crawler low on four
-    /// limbs, the bloater a swollen glowing belly. Each is built inside its hit volume (NativeHordeKinds.Radius/Height):
-    /// Tests/HordeKindChecks poses them and holds every vertex to the capsule.
+    /// and the old death records). Since 2026-10-12 every kind is a zombie built from the pilots (Core/NativeZombieModels.cs,
+    /// the builders and the zombie palette): the Standard pilot's blocks rotted and torn, the armour cracked and half gone, the
+    /// jaw hanging open, the eyes glowing in the kind's colour and the Siren's ink running through the wounds as veins that
+    /// flicker cell by cell and drop out with the add's failing power (NativeMinionFx glow codes); the brute a big muscle
+    /// version. Each kind keeps its silhouette at 30 m and is built inside its hit volume (NativeHordeKinds.Radius/Height):
+    /// Tests/HordeKindChecks poses them and holds every vertex to the capsule. This file keeps the shared kit.
     /// <list type="bullet">
     /// <item>Three tiers, as the horde's crowd tiers draw them: Full (the nearest 24 adds, 16 on the low graphics tier),
     /// Reduced (the rest within 40 m) and Impostor (a dozen boxes per add, the far crowd), with the same joints, so lost limbs,
@@ -28,12 +29,35 @@ namespace ChipArena.UnityConversion
     /// </list>
     /// Built once when the source models load (Runtime/NativeHordeKindModels.cs); nothing here runs per frame.
     /// </summary>
-    public static class NativeHordeModels
+    public static partial class NativeHordeModels
     {
         public const int Full=0,Reduced=1,Impostor=2,Tiers=3;
         public static readonly string[] TierNames={"full","reduced","impostor"};
         /// <summary>The bank id of a kind's look at a tier.</summary>
-        public static string Id(int kind,int look,int tier)=>"minion-"+NativeHordeKinds.Ids[kind]+"-"+look+"-"+TierNames[tier];
+        public static string Id(int kind,int look,int tier)=>Ids(false)[(kind*NativeHordeKinds.MostLooks+look)*Tiers+tier];
+        /// <summary>The bank id of a hinged kind's jaw model (NativeHordeJaw).</summary>
+        public static string JawId(int kind,int look,int tier)=>Ids(true)[(kind*NativeHordeKinds.MostLooks+look)*Tiers+tier];
+        // The ids, made once (the draw names a model every frame for every add: no string per frame).
+        private static string[] ids,jawIds;
+        private static string[] Ids(bool jaw)
+        {
+            if(ids==null)
+            {
+                var a=new string[NativeHordeKinds.Count*NativeHordeKinds.MostLooks*Tiers];var b=new string[a.Length];
+                for(int k=0;k<NativeHordeKinds.Count;k++)for(int l=0;l<NativeHordeKinds.MostLooks;l++)for(int t=0;t<Tiers;t++){int i=(k*NativeHordeKinds.MostLooks+l)*Tiers+t;a[i]="minion-"+NativeHordeKinds.Ids[k]+"-"+l+"-"+TierNames[t];b[i]=a[i]+"-jaw";}
+                jawIds=b;ids=a;
+            }
+            return jaw?jawIds:ids;
+        }
+        /// <summary>Each kind's head: its width scale and how far it sits down on its joint (the builders' Head calls).</summary>
+        public static readonly float[] HeadWidth={1,.88f,.74f,.95f,.68f,.86f,.6f},HeadDrop={0,0,-.07f,0,-.03f,-.02f,-.1f};
+        /// <summary>The jaw's hinge on the head joint (bank frame: the skull's back, at the mouth's height).</summary>
+        public static Vector3 JawHinge(int kind){int k=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind));return new Vector3(0,.07f+HeadDrop[k],.02f);}
+        /// <summary>The mouth socket on the head joint (bank frame): just in front of the teeth, where the spit leaves.</summary>
+        public static Vector3 MouthSocket(int kind){int k=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind));return new Vector3(0,.075f+HeadDrop[k],.15f*HeadWidth[k]+.035f);}
+        /// <summary>The jaw's turn about its hinge for an opening (rad, the front dropping), as a matrix on the head joint's frame
+        /// (System.Numerics row vectors; the runtime turns it into the bone's matrix).</summary>
+        public static Matrix4x4 JawMatrix(int kind,float open){var h=JawHinge(kind);return Matrix4x4.CreateTranslation(-h)*Matrix4x4.CreateRotationX(open)*Matrix4x4.CreateTranslation(h);}
         /// <summary>Triangle budgets per tier (every kind and look stays under them; the checks hold them).</summary>
         public static readonly int[] Budget={7200,3000,600};
 
@@ -51,9 +75,9 @@ namespace ChipArena.UnityConversion
             switch(kind)
             {
                 case NativeHordeKinds.Runner:Runner(k);break;case NativeHordeKinds.Brute:Brute(k);break;case NativeHordeKinds.Spitter:Spitter(k);break;
-                case NativeHordeKinds.Crawler:Crawler(k);break;case NativeHordeKinds.Bloater:Bloater(k);break;default:Shambler(k);break;
+                case NativeHordeKinds.Crawler:Crawler(k);break;case NativeHordeKinds.Bloater:Bloater(k);break;case NativeHordeKinds.Hulk:Hulk(k);break;default:Shambler(k);break;
             }
-            return new HordeModel{Kind=kind,Look=look,Tier=tier,Mesh=k.Mesh};
+            return new HordeModel{Kind=kind,Look=look,Tier=tier,Mesh=k.Mesh,Jaw=k.SplitJaw?k.JawMesh:null};
         }
 
         // ================================================================================================================
@@ -61,9 +85,17 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private sealed class K
         {
-            public readonly WeaponMesh Mesh;public readonly WeaponSculpt S;public readonly int Tier,Kind,Look;private float side=1;private int cell;private readonly uint seed;
-            public K(int kind,int look,int tier){Kind=kind;Look=look;Tier=tier;Mesh=new WeaponMesh{Spec="minion-"+kind,Tier=tier};S=new WeaponSculpt(Mesh,tier);seed=(uint)(kind*977+look*131+17);}
+            public readonly WeaponMesh Mesh;public WeaponSculpt S;public readonly int Tier,Kind,Look;private float side=1;private int cell;private readonly uint seed;
+            /// <summary>A hinged kind's jaw (NativeHordeJaw): built into its own mesh on the head joint.</summary>
+            public readonly bool SplitJaw;public readonly WeaponMesh JawMesh;public readonly WeaponSculpt JawSculpt;
+            public K(int kind,int look,int tier)
+            {
+                Kind=kind;Look=look;Tier=tier;Mesh=new WeaponMesh{Spec="minion-"+kind,Tier=tier};S=new WeaponSculpt(Mesh,tier);seed=(uint)(kind*977+look*131+17);
+                SplitJaw=NativeHordeJaw.Hinged(kind);if(SplitJaw){JawMesh=new WeaponMesh{Spec="minion-"+kind+"-jaw",Tier=tier};JawSculpt=new WeaponSculpt(JawMesh,tier);}
+            }
             public bool Fine=>Tier==Full;public bool Mid=>Tier<=Reduced;public bool Far=>Tier==Impostor;
+            /// <summary>The smallest bevel the reduced tier keeps (a big kind keeps only its big masses rounded).</summary>
+            public float ReducedBevel=.012f;
             /// <summary>Starts drawing on `bone`; `mirror` draws a left-authored (bank -x) part on the right.</summary>
             public void On(int bone,bool mirror=false){if(mirror)bone=Right(bone);S.Into(bone);side=mirror?-1:1;}
             /// <summary>The right side's joint for a left one (clavicle to wrist, hip to toe).</summary>
@@ -77,7 +109,7 @@ namespace ChipArena.UnityConversion
             /// <summary>A box by centre and full size (left-authored x), turned by Euler XYZ (radians) about its centre.</summary>
             public void Box(in WeaponPaint p,float x,float y,float z,float sx,float sy,float sz,float bevel=0,float rx=0,float ry=0,float rz=0)
             {
-                if(Tier==Reduced&&bevel<.012f)bevel=0;var c=new Vector3(x,y,z);var s=new Vector3(sx,sy,sz);var paint=p;
+                if(Tier==Reduced&&bevel<ReducedBevel)bevel=0;var c=new Vector3(x,y,z);var s=new Vector3(sx,sy,sz);var paint=p;
                 if(side<0){S.Push(WeaponSculpt.S(-1,1,1));S.Box(paint,c,s,bevel,rx,ry,rz);S.Pop();}else S.Box(paint,c,s,bevel,rx,ry,rz);
             }
             /// <summary>A box spanning bounds (left-authored x).</summary>
@@ -191,300 +223,6 @@ namespace ChipArena.UnityConversion
         }
 
         // ================================================================================================================
-        // Shared anatomy
-        // ================================================================================================================
-        // A plain arm on the left (bank -x): upper arm on LArm, forearm on LElbow, a clawed hand on LHand (mirrored right).
-        private static void Arm(K k,bool mirror,float upper,float fore,float handW,int claws,float clawLen,float clawCurl,in WeaponPaint shell,bool plates=false)
-        {
-            k.On(CapturedRig.LArm,mirror);k.Limb(Ink,-.01f,-.27f,upper,upper*.82f);
-            if(plates&&k.Mid)k.Box(shell,-.01f,-.07f,0,upper*2.3f,.09f,upper*2.2f,.012f);
-            k.On(CapturedRig.LElbow,mirror);k.Limb(Ink,.02f,-.24f,fore,fore*.78f);
-            if(k.Mid)k.Box(shell,0,-.13f,.0f,fore*2.05f,.12f,fore*2.05f,.01f);
-            if(k.Fine)k.Stitch(new Vector3(-fore*.95f,-.04f,.02f),new Vector3(-fore*.8f,-.22f,.03f),new Vector3(-1,0,.2f),.009f,3,.8f);
-            Hand(k,mirror,handW,claws,clawLen,clawCurl);
-        }
-        private static void Hand(K k,bool mirror,float w,int claws,float len,float curl)
-        {
-            k.On(CapturedRig.LHand,mirror);k.Box(Ink,0,-.035f,.01f,w,.085f,w*1.05f,.014f);
-            if(k.Far){k.Box(Bone,0,-.1f-len*.3f,.03f,w*.9f,len*.7f,.02f);return;}
-            for(int i=0;i<claws;i++)
-            {
-                float u=claws==1?0:i/(claws-1f)-.5f;float x=u*w*.8f,z=.03f+(1-Math.Abs(u))*.012f;
-                k.Box(Ink,x,-.09f,z,.024f,.04f,.026f,.004f);
-                k.Spike(Bone,x,-.105f,z,.02f,.022f,new Vector3(0,-len,len*curl));
-            }
-            if(k.Fine)k.Spike(Bone,-w*.5f,-.04f,.03f,.018f,.02f,new Vector3(-.03f,-len*.55f,len*.4f));
-        }
-        private static void Leg(K k,bool mirror,float thigh,float shin,float footL,float footW,bool toeClaws,in WeaponPaint shin2)
-        {
-            k.On(CapturedRig.LHip,mirror);k.Limb(Ink,.02f,-.25f,thigh,thigh*.8f);
-            k.On(CapturedRig.LKnee,mirror);k.Limb(Ink,.02f,-.24f,shin,shin*.72f);if(k.Mid)k.Box(shin2,0,-.08f,shin*.55f,shin*1.6f,.1f,.04f,.008f);
-            k.On(CapturedRig.LFoot,mirror);k.Box(Ink,0,-.035f,-.01f,footW,.06f,footL*.6f,.012f);
-            k.On(CapturedRig.LToe,mirror);k.Box(Ink,0,-.012f,.035f,footW*.92f,.045f,footL*.55f,.01f);
-            if(toeClaws&&k.Mid)for(int i=-1;i<=1;i++)k.Spike(Bone,i*footW*.3f,-.02f,.08f+.01f*(1-Math.Abs(i)),.018f,.02f,new Vector3(0,-.02f,.045f));
-        }
-        private static void Neck(K k,float r,float h){k.On(CapturedRig.Neck);k.Limb(Ink,-.04f,h,r,r*.9f);}
-
-        // ================================================================================================================
-        // Shambler: the rank and file. Upright but slumped, a torn couture bodice stitched up the front in violet, a high torn
-        // collar (look 0), a hood draped over its head (look 1) or a bare cracked crown spilling light (look 2); a ragged hem.
-        // ================================================================================================================
-        private static void Shambler(K k)
-        {
-            var plate=Sheen;
-            k.On(CapturedRig.Pelvis);k.Span(Ink,-.19f,.19f,-.1f,.1f,-.13f,.14f,.03f);k.Span(Cloth,-.21f,.21f,-.035f,.06f,-.145f,.155f,.012f);
-            // A ragged skirt, longer behind (a torn coat's tails).
-            k.Hem(-.02f,.21f,.16f,k.Look==1?12:10,.26f,.12f);k.Hem(-.03f,.19f,.15f,k.Look==1?7:5,.36f,.06f,true);
-            // A corseted waist: narrower than the chest above it, laced in violet.
-            k.On(CapturedRig.Spine);k.Span(Ink,-.15f,.15f,-.01f,.17f,-.12f,.125f,.03f);k.Span(Cloth,-.165f,.165f,.02f,.15f,-.13f,.135f,.012f);
-            if(k.Mid)for(int i=0;i<2;i++){float y=.04f+i*.06f;k.Stitch(new Vector3(-.06f,y,.136f),new Vector3(.06f,y+.045f,.136f),Vector3.UnitZ,.008f,0,1f);k.Stitch(new Vector3(.06f,y,.136f),new Vector3(-.06f,y+.045f,.136f),Vector3.UnitZ,.008f,0,1f);}
-            // A bodice wider at the shoulders, torn at its hem, stitched up the front.
-            k.On(CapturedRig.Chest);k.Span(Ink,-.22f,.22f,-.04f,.27f,-.14f,.15f,.04f);k.Box(Ink,0,.21f,-.01f,.5f,.12f,.27f,.035f);
-            k.Span(Cloth,-.235f,.235f,.0f,.22f,.1f,.166f,.02f);k.Span(plate,-.2f,.2f,.03f,.25f,-.16f,-.12f,.015f);
-            k.Stitch(new Vector3(0,-.02f,.167f),new Vector3(0,.22f,.167f),Vector3.UnitZ,.012f,5,1.1f);
-            if(k.Mid)for(int s=-1;s<=1;s+=2){k.Stitch(new Vector3(s*.05f,.17f,.167f),new Vector3(s*.19f,.07f,.167f),Vector3.UnitZ,.008f,3,.8f);k.Stitch(new Vector3(s*.06f,.07f,.167f),new Vector3(s*.17f,-.01f,.167f),Vector3.UnitZ,.007f,2,.7f);}
-            if(k.Look==0)
-            {
-                // The Siren's high collar: torn plates rising behind the head and flaring out, lined in violet.
-                k.Collar(.23f,.155f,.28f,12,1.35f,.24f);
-                if(k.Mid)k.Box(k.Seam(.9f),0,.26f,-.17f,.26f,.012f,.012f);
-            }
-            else if(k.Look==1)
-            {
-                // A shawl: a torn cape from the shoulders down the back.
-                k.Span(Cloth,-.25f,.25f,.16f,.3f,-.18f,.04f,.03f);k.Hem(.18f,.23f,.16f,9,.36f,.12f,true,-.02f);
-            }
-            else{k.Span(plate,-.23f,.23f,.21f,.29f,-.12f,.12f,.02f);for(int s=-1;s<=1;s+=2)k.Spike(Ink,s*.13f,.24f,-.13f,.06f,.05f,new Vector3(s*.07f,.12f,-.08f));}
-            // Shoulders: torn epaulettes.
-            foreach(bool m in new[]{false,true}){k.On(CapturedRig.LClav,m);k.Box(Ink,-.05f,0,0,.13f,.11f,.17f,.025f);if(k.Mid){k.Box(Cloth,-.085f,.04f,0,.14f,.04f,.2f,.01f,0,0,.35f);k.Spike(Cloth,-.14f,.0f,.0f,.05f,.16f,new Vector3(-.05f,-.08f,0));}}
-            // Long thin arms; the forearm runs past the wrist into the claws.
-            Arm(k,false,.058f,.05f,.1f,3,.085f,.35f,plate);Arm(k,true,.058f,.05f,.1f,3,.085f,.35f,plate);
-            Leg(k,false,.068f,.058f,.2f,.11f,false,plate);Leg(k,true,.068f,.058f,.2f,.11f,false,plate);
-            Neck(k,.058f,.1f);
-            k.On(CapturedRig.Head);
-            if(k.Look==1)
-            {
-                // A hood falling over the brow and down the back of the neck; the face sits deep inside it.
-                k.Span(Ink,-.13f,.13f,.0f,.27f,-.12f,.12f,.05f);
-                k.Span(Cloth,-.155f,.155f,-.04f,.33f,-.16f,.06f,.04f);k.Span(Cloth,-.158f,-.12f,-.06f,.3f,.05f,.155f,.02f);k.Span(Cloth,.12f,.158f,-.06f,.3f,.05f,.155f,.02f);k.Span(Cloth,-.145f,.145f,.27f,.33f,.05f,.165f,.02f);
-                if(k.Mid)k.Spike(Cloth,0,.31f,-.1f,.12f,.08f,new Vector3(0,.04f,-.14f));
-                k.Grin(0,.07f,.125f,.085f,.025f,.05f,9);k.Eyes(0,.165f,.125f,.105f,.06f,.04f,.25f);
-            }
-            else
-            {
-                k.Span(Ink,-.145f,.145f,.0f,.3f,-.14f,.14f,.07f);k.Span(plate,-.13f,.13f,.2f,.31f,-.12f,.12f,.04f);
-                k.Span(Ink,-.11f,.11f,-.04f,.04f,-.06f,.13f,.025f);
-                k.Grin(0,.075f,.143f,.1f,.03f,.055f,11);k.Eyes(0,.175f,.143f,.12f,.065f,.045f,.25f);
-                if(k.Look==2)
-                {
-                    // The cracked crown: a jagged split of light over the brow (NativeHordeModels.Crack is its centre).
-                    var g=k.Seam(1.4f);k.Box(g,-.03f,.245f,.142f,.016f,.07f,.01f,0,0,0,.4f);k.Box(g,-.015f,.29f,.12f,.014f,.05f,.04f,0,.6f,0,-.3f);k.Box(g,-.035f,.31f,.04f,.016f,.012f,.12f,0,0,.3f,0);
-                    if(k.Mid)k.Box(k.Seam(1.1f),.05f,.27f,.14f,.012f,.05f,.01f,0,0,0,-.5f);
-                }
-            }
-        }
-
-        // ================================================================================================================
-        // Runner: thin and pitched forward (the pose leans it), a narrow skull thrust out on a long neck, a ridge of hot pink
-        // fins down its back, long blade claws and two couture tails that stream behind it as it sprints.
-        // ================================================================================================================
-        private static void Runner(K k)
-        {
-            var plate=Sheen;
-            k.On(CapturedRig.Pelvis);k.Span(Ink,-.16f,.16f,-.08f,.09f,-.11f,.12f,.025f);
-            // The coat tails: two long torn ribbons off the back of the hips (rigid on the pelvis; the gait's lean streams them).
-            foreach(int s in new[]{-1,1})
-            {
-                if(k.Far){k.Box(Cloth,s*.07f,-.15f,-.15f,.07f,.26f,.03f,0,-.35f);continue;}
-                k.Box(Cloth,s*.07f,-.05f,-.13f,.075f,.14f,.02f,.006f,-.25f);k.Box(Cloth,s*.075f,-.17f,-.165f,.065f,.13f,.018f,.004f,-.4f);
-                if(k.Mid)k.Spike(Cloth,s*.078f,-.23f,-.2f,.06f,.016f,new Vector3(0,-.1f,-.05f));
-                if(k.Fine)k.Stitch(new Vector3(s*.07f,.02f,-.142f),new Vector3(s*.072f,-.22f,-.19f),new Vector3(0,.3f,-1),.008f,3,.9f);
-            }
-            k.On(CapturedRig.Spine);k.Span(Ink,-.13f,.13f,-.01f,.17f,-.1f,.11f,.03f);
-            k.On(CapturedRig.Chest);k.Span(Ink,-.19f,.19f,-.03f,.25f,-.13f,.13f,.04f);k.Span(plate,-.15f,.15f,.03f,.22f,.09f,.142f,.015f);
-            // Ribs stitched in pink and the back's fin ridge.
-            if(k.Mid)for(int i=0;i<3;i++){float y=.05f+i*.06f;k.Stitch(new Vector3(-.13f,y,.142f),new Vector3(.13f,y-.015f,.142f),Vector3.UnitZ,.007f,4,.8f);}
-            for(int i=0;i<(k.Far?2:4);i++){float y=.22f-i*.075f;k.Spike(k.Seam(1.2f),0,y,-.13f,.03f,.04f,new Vector3(0,.035f,-.11f+.01f*i));}
-            k.On(CapturedRig.Spine);for(int i=0;i<(k.Far?1:2);i++)k.Spike(k.Seam(1.1f),0,.13f-i*.07f,-.1f,.026f,.035f,new Vector3(0,.03f,-.09f));
-            foreach(bool m in new[]{false,true}){k.On(CapturedRig.LClav,m);k.Box(Ink,-.05f,0,0,.12f,.09f,.14f,.02f);if(k.Mid)k.Spike(plate,-.08f,.04f,-.02f,.06f,.06f,new Vector3(-.04f,.07f,-.04f));}
-            // Long arms ending in three blade claws.
-            foreach(bool m in new[]{false,true})
-            {
-                k.On(CapturedRig.LArm,m);k.Limb(Ink,-.01f,-.27f,.05f,.042f);
-                k.On(CapturedRig.LElbow,m);k.Limb(Ink,.02f,-.24f,.045f,.035f);if(k.Mid)k.Box(plate,0,-.1f,.03f,.07f,.14f,.03f,.008f);
-                k.On(CapturedRig.LHand,m);k.Box(Ink,0,-.03f,.01f,.08f,.07f,.08f,.012f);
-                for(int i=0;i<(k.Far?1:3);i++){float x=(i-1)*.026f;k.Spike(i==1?k.Seam(.9f):Bone,x,-.06f,.03f,.018f,.012f,new Vector3(x*.4f,-.2f,.06f));}
-            }
-            foreach(bool m in new[]{false,true})
-            {
-                k.On(CapturedRig.LHip,m);k.Limb(Ink,.02f,-.25f,.058f,.045f);
-                // A shin swept back (a hound's hock read on a biped) and a hooked foot.
-                k.On(CapturedRig.LKnee,m);k.Limb(Ink,.02f,-.24f,.05f,.034f,0,0,1,-.05f);if(k.Mid)k.Spike(plate,0,-.03f,-.04f,.05f,.04f,new Vector3(0,-.02f,-.09f));
-                k.On(CapturedRig.LFoot,m);k.Box(Ink,0,-.03f,0,.08f,.05f,.12f,.01f);
-                k.On(CapturedRig.LToe,m);k.Spike(Ink,0,-.02f,.02f,.07f,.045f,new Vector3(0,-.015f,.1f));
-            }
-            Neck(k,.05f,.12f);
-            k.On(CapturedRig.Head);
-            // A narrow skull pushed forward, a snout of a grin under deep brow plates, back-swept horns.
-            k.Span(Ink,-.11f,.11f,.0f,.24f,-.1f,.17f,.05f);k.Span(plate,-.115f,.115f,.17f,.24f,.0f,.18f,.025f);
-            k.Span(Ink,-.08f,.08f,-.02f,.08f,.08f,.22f,.02f);
-            k.Grin(0,.045f,.222f,.072f,.02f,.04f,9);k.Eyes(0,.13f,.18f,.1f,.05f,.03f,.35f);
-            if(k.Look==1){for(int s=-1;s<=1;s+=2)k.Spike(plate,s*.08f,.22f,-.03f,.04f,.05f,new Vector3(s*.05f,.12f,-.14f));}
-            else{k.Spike(k.Seam(1f),0,.24f,-.02f,.04f,.08f,new Vector3(0,.04f,-.2f));}
-        }
-
-        // ================================================================================================================
-        // Brute: a shoulder-hunched mass. A corseted trunk laced in ember glow, a hump of couture pauldrons, forearms and fists
-        // plated like gauntlets, a small head sunk under the shoulders with a wide grin; thick short legs.
-        // ================================================================================================================
-        private static void Brute(K k)
-        {
-            var plate=Sheen;
-            k.On(CapturedRig.Pelvis);k.Span(Ink,-.21f,.21f,-.11f,.11f,-.15f,.17f,.035f);k.Span(plate,-.22f,.22f,-.02f,.06f,-.16f,.18f,.015f);
-            if(k.Mid)k.Hem(-.04f,.22f,.17f,10,.17f,.22f);
-            k.On(CapturedRig.Spine);k.Span(Ink,-.2f,.2f,-.02f,.18f,-.16f,.18f,.04f);
-            // The corset: ember lacing crossing the belly.
-            if(k.Mid)for(int i=0;i<3;i++){float y=.02f+i*.05f;k.Stitch(new Vector3(-.07f,y,.181f),new Vector3(.07f,y+.04f,.181f),Vector3.UnitZ,.009f,0,1.1f);k.Stitch(new Vector3(.07f,y,.181f),new Vector3(-.07f,y+.04f,.181f),Vector3.UnitZ,.009f,0,1.1f);}
-            k.On(CapturedRig.Chest);
-            // A chest that widens to great shoulders, lats sloping in to the waist, and a hump rising behind the head.
-            k.Span(Ink,-.24f,.24f,-.05f,.2f,-.18f,.19f,.05f);k.Box(Ink,0,.24f,-.02f,.6f,.16f,.4f,.06f);
-            foreach(int s in new[]{-1,1})k.Box(Ink,s*.2f,.08f,-.02f,.14f,.28f,.34f,.04f,0,0,s*-.3f);
-            k.Span(plate,-.25f,.25f,.08f,.28f,.16f,.215f,.025f);
-            k.Blob(Ink,0,.34f,-.1f,.25f,.13f,.15f);k.Span(plate,-.21f,.21f,.24f,.4f,-.24f,-.12f,.04f);
-            for(int i=-1;i<=1;i++)k.Spike(i==0?k.Seam(1.2f):Ink,i*.1f,.4f-.03f*Math.Abs(i),-.17f,.07f,.06f,new Vector3(i*.03f,.11f,-.07f));
-            k.Stitch(new Vector3(-.21f,.21f,.216f),new Vector3(.21f,.21f,.216f),Vector3.UnitZ,.011f,6,1.2f);
-            foreach(bool m in new[]{false,true})
-            {
-                // Pauldrons: three flared couture shoulder plates over a heavy cap, the rims lit.
-                k.On(CapturedRig.LClav,m);k.Box(Ink,-.06f,0,0,.18f,.17f,.25f,.04f);
-                k.Box(plate,-.075f,.085f,0,.21f,.07f,.29f,.02f,0,0,.28f);k.Box(plate,-.11f,.04f,0,.15f,.06f,.28f,.014f,0,0,.55f);if(k.Mid)k.Box(plate,-.13f,-.01f,0,.09f,.05f,.26f,.01f,0,0,.85f);
-                if(k.Mid)k.Box(k.Seam(1f),-.155f,.005f,0,.012f,.03f,.26f,0,0,0,.6f);
-                // Arms: thick upper arms, gauntlet forearms and great plated fists.
-                k.On(CapturedRig.LArm,m);k.Limb(Ink,-.0f,-.27f,.088f,.078f);
-                k.On(CapturedRig.LElbow,m);k.Limb(Ink,.02f,-.22f,.09f,.105f);k.Box(plate,0,-.14f,0,.21f,.16f,.21f,.03f);if(k.Mid){for(int i=0;i<2;i++)k.Box(k.Seam(.9f),-.106f,-.1f-.06f*i,0,.008f,.014f,.17f);k.Spike(plate,-.06f,-.05f,-.06f,.05f,.05f,new Vector3(-.03f,.08f,-.06f));}
-                k.On(CapturedRig.LHand,m);k.Box(Ink,0,-.06f,.01f,.16f,.15f,.16f,.04f);k.Box(plate,0,-.1f,.07f,.16f,.06f,.06f,.015f);
-                if(k.Mid)for(int i=0;i<3;i++)k.Spike(Bone,(i-1)*.048f,-.11f,.1f,.03f,.03f,new Vector3(0,-.01f,.045f));
-                k.On(CapturedRig.LHip,m);k.Limb(Ink,.02f,-.25f,.1f,.085f);
-                k.On(CapturedRig.LKnee,m);k.Limb(Ink,.02f,-.24f,.085f,.075f);if(k.Mid)k.Box(plate,0,-.05f,.075f,.13f,.12f,.05f,.012f);
-                k.On(CapturedRig.LFoot,m);k.Box(Ink,0,-.035f,.0f,.15f,.07f,.17f,.02f);
-                k.On(CapturedRig.LToe,m);k.Box(Ink,0,-.015f,.035f,.14f,.05f,.1f,.015f);
-            }
-            Neck(k,.09f,.06f);
-            // A small head, low and forward under the hump: a heavy brow, the wide grin, ember eye slits.
-            k.On(CapturedRig.Head);k.Span(Ink,-.12f,.12f,-.03f,.19f,-.11f,.13f,.05f);k.Span(plate,-.135f,.135f,.12f,.2f,-.08f,.15f,.025f);
-            k.Grin(0,.035f,.133f,.105f,.035f,.05f,11);
-            if(k.Far)k.Box(k.Seam(1.6f),0,.1f,.134f,.16f,.02f,.012f);else foreach(int s in new[]{-1,1})k.Box(k.Seam(1.7f),s*.052f,.1f,.134f,.06f,.016f,.01f,0,0,0,s*.25f);
-            if(k.Look==1){for(int s=-1;s<=1;s+=2)k.Spike(plate,s*.1f,.16f,.0f,.05f,.06f,new Vector3(s*.1f,.06f,.06f));}
-        }
-
-        // ================================================================================================================
-        // Spitter: lanky and hunched over the sac that swells in its throat, lit acid green; a split jaw under the grin, glowing
-        // pustules down its back, a ragged shawl; thin two-clawed arms.
-        // ================================================================================================================
-        private static void Spitter(K k)
-        {
-            var plate=Sheen;
-            k.On(CapturedRig.Pelvis);k.Span(Ink,-.17f,.17f,-.09f,.09f,-.12f,.13f,.025f);k.Hem(-.03f,.18f,.14f,9,.24f,.1f);
-            k.On(CapturedRig.Spine);k.Span(Ink,-.15f,.15f,-.01f,.17f,-.12f,.12f,.03f);
-            k.On(CapturedRig.Chest);k.Span(Ink,-.2f,.2f,-.03f,.26f,-.14f,.14f,.04f);
-            // The shawl over the shoulders and back.
-            k.Span(Cloth,-.23f,.23f,.17f,.29f,-.17f,.06f,.03f);if(k.Mid)k.Hem(.2f,.22f,.15f,8,.17f,.25f,true,-.02f);
-            // Pustules: glowing blisters down the back.
-            for(int i=0;i<(k.Far?1:k.Mid?5:3);i++){float x=(i%2==0?-1:1)*(.05f+.03f*(i%3)),y=.06f+i*.045f;k.Blob(k.Seam(1.3f),x,y,-.145f,.035f,.035f,.03f);}
-            // The throat sac (NativeHordeFx swells it in the wind-up): a glowing bulb under the jaw, veined.
-            k.On(CapturedRig.Neck);k.Limb(Ink,-.04f,.08f,.055f,.05f);
-            k.Blob(k.Seam(1.5f),0,.0f,.075f,.085f,.08f,.075f);if(k.Mid){k.Blob(Ink,0,.03f,.04f,.07f,.06f,.06f);k.Stitch(new Vector3(-.06f,-.03f,.13f),new Vector3(.05f,.05f,.13f),new Vector3(0,0,1),.006f,0,.5f);}
-            foreach(bool m in new[]{false,true})
-            {
-                k.On(CapturedRig.LClav,m);k.Box(Ink,-.05f,0,0,.13f,.1f,.15f,.02f);
-                k.On(CapturedRig.LArm,m);k.Limb(Ink,-.01f,-.27f,.048f,.04f);
-                k.On(CapturedRig.LElbow,m);k.Limb(Ink,.02f,-.24f,.042f,.034f);
-                Hand(k,m,.075f,2,.09f,.5f);
-                k.On(CapturedRig.LHip,m);k.Limb(Ink,.02f,-.25f,.06f,.048f);
-                k.On(CapturedRig.LKnee,m);k.Limb(Ink,.02f,-.24f,.05f,.038f);
-                k.On(CapturedRig.LFoot,m);k.Box(Ink,0,-.035f,0,.09f,.055f,.13f,.01f);
-                k.On(CapturedRig.LToe,m);k.Box(Ink,0,-.012f,.035f,.085f,.04f,.1f,.008f);if(k.Mid)for(int i=-1;i<=1;i+=2)k.Spike(Bone,i*.025f,-.02f,.08f,.016f,.016f,new Vector3(0,-.015f,.05f));
-            }
-            k.On(CapturedRig.Head);
-            // A long skull, the grin split down its length and the lower jaw hung open over the sac.
-            k.Span(Ink,-.12f,.12f,.04f,.28f,-.13f,.14f,.05f);k.Span(plate,-.125f,.125f,.2f,.29f,-.1f,.12f,.03f);
-            k.Span(Ink,-.09f,.09f,-.05f,.03f,-.02f,.15f,.02f);
-            k.Grin(0,.085f,.143f,.09f,.022f,.06f,10);k.Eyes(0,.19f,.142f,.11f,.055f,.04f,.3f);
-            k.Box(k.Seam(1.2f),0,.0f,.152f,.1f,.012f,.01f);
-            if(k.Look==1){k.Collar(.2f,.13f,.12f,7,1.6f,.5f,.018f,-.02f);}
-        }
-
-        // ================================================================================================================
-        // Crawler: low on four limbs (the pose pitches the trunk forward); long arms with heavy paws as forelegs, a spine of white
-        // glow, the head thrust forward on a short neck with the widest grin of the horde.
-        // ================================================================================================================
-        private static void Crawler(K k)
-        {
-            var plate=Sheen;
-            k.On(CapturedRig.Pelvis);k.Span(Ink,-.15f,.15f,-.08f,.08f,-.11f,.11f,.025f);
-            k.On(CapturedRig.Spine);k.Span(Ink,-.14f,.14f,-.01f,.17f,-.11f,.11f,.03f);
-            k.On(CapturedRig.Chest);k.Span(Ink,-.18f,.18f,-.04f,.25f,-.13f,.13f,.04f);k.Span(plate,-.15f,.15f,.0f,.24f,.11f,.14f,.015f);
-            // The spine: a row of glowing vertebra plates along the back (the trunk is horizontal in the pose: they face up).
-            for(int i=0;i<(k.Far?2:5);i++)k.Box(k.Seam(1.3f),0,.02f+i*.05f,-.135f,.05f,.02f,.03f,.004f);
-            k.On(CapturedRig.Spine);for(int i=0;i<(k.Far?1:3);i++)k.Box(k.Seam(1.1f),0,.02f+i*.06f,-.115f,.045f,.018f,.025f,.003f);
-            k.On(CapturedRig.Pelvis);if(k.Mid)k.Spike(Ink,0,.0f,-.11f,.08f,.05f,new Vector3(0,-.06f,-.18f));
-            foreach(bool m in new[]{false,true})
-            {
-                k.On(CapturedRig.LClav,m);k.Box(Ink,-.05f,0,0,.13f,.1f,.15f,.02f);
-                // Forelegs: long arms, thick forearms and splayed paws with hooked claws.
-                k.On(CapturedRig.LArm,m);k.Limb(Ink,-.01f,-.27f,.055f,.05f);
-                k.On(CapturedRig.LElbow,m);k.Limb(Ink,.02f,-.24f,.06f,.05f);if(k.Mid)k.Spike(plate,0,-.02f,-.05f,.05f,.04f,new Vector3(0,.04f,-.08f));
-                k.On(CapturedRig.LHand,m);k.Box(Ink,0,-.035f,.02f,.1f,.06f,.12f,.012f);
-                for(int i=0;i<(k.Far?1:4);i++){float x=(i-1.5f)*.025f;k.Spike(Bone,x,-.06f,.07f,.018f,.016f,new Vector3(0,-.05f,.06f));}
-                k.On(CapturedRig.LHip,m);k.Limb(Ink,.02f,-.25f,.06f,.05f);
-                k.On(CapturedRig.LKnee,m);k.Limb(Ink,.02f,-.24f,.05f,.04f);
-                k.On(CapturedRig.LFoot,m);k.Box(Ink,0,-.03f,0,.08f,.05f,.13f,.01f);
-                k.On(CapturedRig.LToe,m);k.Box(Ink,0,-.012f,.035f,.075f,.04f,.1f,.008f);
-            }
-            Neck(k,.055f,.08f);
-            k.On(CapturedRig.Head);
-            // The head (the pose lifts it to look ahead): a broad flat skull and the widest grin.
-            k.Span(Ink,-.13f,.13f,.0f,.22f,-.11f,.15f,.05f);k.Span(plate,-.135f,.135f,.15f,.23f,-.08f,.16f,.025f);
-            k.Grin(0,.07f,.153f,.115f,.035f,.06f,12);k.Eyes(0,.165f,.152f,.13f,.06f,.035f,.35f);
-            if(k.Look==1)for(int s=-1;s<=1;s+=2)k.Spike(plate,s*.1f,.2f,-.02f,.04f,.05f,new Vector3(s*.04f,.02f,-.16f));
-        }
-
-        // ================================================================================================================
-        // Bloater: a swollen trunk laced shut over a belly of amber light about to burst, a small head with the grin on top,
-        // stubby arms and legs; glowing vents swell on its gut.
-        // ================================================================================================================
-        private static void Bloater(K k)
-        {
-            var plate=Sheen;
-            k.On(CapturedRig.Pelvis);k.Span(Ink,-.2f,.2f,-.1f,.08f,-.14f,.16f,.03f);
-            // The belly: one great ellipsoid on the spine, stitched shut in glowing amber that strains as it swells.
-            k.On(CapturedRig.Spine);k.Blob(Ink,0,.07f,.06f,.34f,.28f,.32f);
-            if(!k.Far)
-            {
-                for(int i=-2;i<=2;i++){double a=i*.42;float x=(float)Math.Sin(a)*.33f,z=(float)Math.Cos(a)*.31f+.06f;k.Stitch(new Vector3(x*.86f,-.12f,z*.86f+.008f),new Vector3(x,.12f,z+.01f),new Vector3(x,0,z-.06f),.012f,3,1.25f);}
-                if(k.Mid)for(int i=0;i<3;i++){double a=-.7+.7*i;float x=(float)Math.Sin(a)*.3f,z=(float)Math.Cos(a)*.28f+.06f;k.Blob(k.Seam(1.6f),x,.2f-.05f*i,z,.035f,.035f,.03f);}
-            }
-            else k.Box(k.Seam(1.4f),0,.07f,.36f,.3f,.2f,.01f);
-            k.On(CapturedRig.Chest);k.Span(Ink,-.22f,.22f,-.02f,.22f,-.17f,.17f,.05f);k.Span(plate,-.18f,.18f,.12f,.24f,-.15f,.1f,.03f);
-            if(k.Look==0)k.Collar(.2f,.15f,.12f,9,1.4f,.45f);
-            foreach(bool m in new[]{false,true})
-            {
-                k.On(CapturedRig.LClav,m);k.Box(Ink,-.05f,0,0,.14f,.12f,.17f,.025f);
-                k.On(CapturedRig.LArm,m);k.Limb(Ink,-.01f,-.22f,.065f,.055f);
-                k.On(CapturedRig.LElbow,m);k.Limb(Ink,.02f,-.2f,.055f,.05f);
-                Hand(k,m,.09f,3,.05f,.3f);
-                k.On(CapturedRig.LHip,m);k.Limb(Ink,.02f,-.25f,.085f,.07f);
-                k.On(CapturedRig.LKnee,m);k.Limb(Ink,.02f,-.24f,.07f,.06f);
-                k.On(CapturedRig.LFoot,m);k.Box(Ink,0,-.035f,0,.13f,.06f,.15f,.015f);
-                k.On(CapturedRig.LToe,m);k.Box(Ink,0,-.015f,.03f,.12f,.045f,.09f,.012f);
-            }
-            Neck(k,.07f,.04f);
-            k.On(CapturedRig.Head);k.Span(Ink,-.12f,.12f,-.02f,.2f,-.11f,.12f,.05f);k.Span(plate,-.125f,.125f,.13f,.21f,-.09f,.1f,.025f);
-            k.Grin(0,.05f,.123f,.09f,.03f,.05f,10);k.Eyes(0,.13f,.122f,.1f,.05f,.035f,.3f);
-            if(k.Look==1)k.Spike(k.Seam(1.2f),0,.2f,0,.05f,.05f,new Vector3(0,.09f,-.02f));
-        }
-
-        // ================================================================================================================
         // Black-flame tongues (NativeMinionFx.Tongue swells and sways them; the bank's horde-tongue pieces draw them) and the
         // crack's light, per kind and look. Anchors are in the joint frame in source axes (+x the add's left), as the old bank's.
         // ================================================================================================================
@@ -520,7 +258,10 @@ namespace ChipArena.UnityConversion
                       new[]{T(C,1,.05,.2,-.14,-1.3,.85,1.9),T(C,0,-.05,.08,-.14,-1.3,.8,3.4),T(S,0,0,.14,-.12,-1.4,.75,5.8)}},
                 // bloater: the gut's vents and the crown
                 new[]{new[]{T(S,0,.12,.2,.32,.6,.8,.8),T(S,1,-.14,.12,.33,.5,.75,3.2),T(H,0,0,.21,0,-.2,.8,5.1)},
-                      new[]{T(S,1,0,.27,.3,.4,.85,1.7),T(H,0,0,.28,0,-.1,.9,4.3)}}};
+                      new[]{T(S,1,0,.27,.3,.4,.85,1.7),T(H,0,0,.28,0,-.1,.9,4.3)}},
+                // hulk: out of the cracks in its hump and its shoulders
+                new[]{new[]{T(C,0,0,.47,-.15,-.3,1.3,.6),TZ(LC,1,.12,.12,0,.8,1.0,2.3),TZ(RC,1,-.12,.12,0,-.8,1.0,4.5),T(C,1,.18,.3,-.24,-.7,.9,5.7)},
+                      new[]{T(C,0,.1,.47,-.16,-.3,1.2,1.3),T(C,1,-.1,.47,-.16,-.3,1.2,3.4),TZ(LC,0,.13,.12,0,.8,.95,4.8)}}};
         }
         /// <summary>
         /// Tongue k of a kind's look at clock t (NativeMinionFx.TongueMatrix with this kind's anchors): its joint, bank piece and

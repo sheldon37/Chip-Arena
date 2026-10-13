@@ -13,20 +13,24 @@ internal static class JumpSimulationChecks
         {
             int used=0;
             var jump=NativeJumpSimulation.Try(weapon.id,true,false,false,false,-15,8.5f,ref used,out float v);
-            Check(jump==(weapon.id=="daggers"?NativeJumpKind.Air:NativeJumpKind.None),weapon.id+" air permission");
-            if(weapon.id=="daggers")Check(used==1&&Near(v,7.65f),"air impulse replaces falling speed");
+            Check(jump==((weapon.id=="daggers"||weapon.id=="bow"||weapon.id=="cyberlord")?NativeJumpKind.Air:NativeJumpKind.None),weapon.id+" air permission");
+            if(weapon.id=="daggers"||weapon.id=="bow"||weapon.id=="cyberlord")Check(used==1&&Near(v,7.65f),"air impulse replaces falling speed");
             Check(NativeJumpSimulation.Try(weapon.id,true,false,false,false,v,8.5f,ref used,out _)==NativeJumpKind.None,"third jump refused "+weapon.id);
             Check(NativeJumpSimulation.Try(weapon.id,true,true,false,false,-1,17,ref used,out v)==NativeJumpKind.Ground&&used==0&&v==17,"landing reset and jumpPower scaling "+weapon.id);
         }
-        foreach(bool ground in new[]{false,true})
+        foreach(string spec in new[]{"daggers","bow","cyberlord"})
         {
-            int used=ground?1:0;
-            Check(NativeJumpSimulation.Try("daggers",true,ground,false,true,-2,8.5f,ref used,out _)==NativeJumpKind.None&&used==0,"locks refuse without spending air jump; landing still resets");
+            foreach(bool ground in new[]{false,true})
+            {
+                int used=ground?1:0;
+                Check(NativeJumpSimulation.Try(spec,true,ground,false,true,-2,8.5f,ref used,out _)==NativeJumpKind.None&&used==0,spec+": locks refuse without spending; landing resets");
+            }
+            int air=0;
+            Check(NativeJumpSimulation.Try(spec,false,false,false,false,-8,8.5f,ref air,out _)==NativeJumpKind.None&&air==0,spec+": held/no edge does not jump");
+            Check(NativeJumpSimulation.Try(spec,true,false,true,false,3,8.5f,ref air,out _)==NativeJumpKind.None&&air==0,spec+": swimming cannot use an air jump");
+            Check(NativeJumpSimulation.Try(spec,true,false,true,false,1,17,ref air,out float stroke)==NativeJumpKind.Swim&&Near(stroke,20)&&air==0,spec+": scaled swim remains separate");
+            Check(NativeJumpSimulation.Try(spec,true,false,false,false,-20,12.75f,ref air,out float scaled)==NativeJumpKind.Air&&Near(scaled,11.475f),spec+": jumpPower scales once");
         }
-        int air=0;
-        Check(NativeJumpSimulation.Try("daggers",false,false,false,false,-8,8.5f,ref air,out _)==NativeJumpKind.None&&air==0,"held/no edge does not jump");
-        Check(NativeJumpSimulation.Try("daggers",true,false,true,false,3,8.5f,ref air,out _)==NativeJumpKind.None&&air==0,"swimming cannot use an air jump");
-        Check(NativeJumpSimulation.Try("daggers",true,false,true,false,1,17,ref air,out float stroke)==NativeJumpKind.Swim&&Near(stroke,20)&&air==0,"existing scaled swim stroke remains separate");
 
         var initial=new NativePredictionState{JumpSpec="daggers",AirJumpAt=-100,CanMove=true,Grounded=true,Gravity=23,JumpSpeed=8.5f,Speed=6.8f};
         V3 Floor(V3 old,V3 wanted)=>new V3(wanted.x,Math.Max(0,wanted.y),wanted.z);
@@ -42,6 +46,16 @@ internal static class JumpSimulationChecks
             if(i==21)Check(actor.AirJumps==1&&Near(actor.AirJumpAt,20*Rules.Dt),"third edge does not refresh the event");
         }
         Check(jumps==2,"air jump available again after actual landing");
+        foreach(string spec in new[]{"bow","cyberlord"})
+        {
+            var candidate=initial;candidate.JumpSpec=spec;candidate.Bow=spec=="bow";candidate.Cyber=spec=="cyberlord"?new NativeCyberKit():null;var daggerState=initial;
+            for(int i=1;i<=150;i++)
+            {
+                var input=new InputFrame{Sequence=i,Jump=i==1||i==20||i==21||i==115||i==125};
+                candidate=NativePrediction.Step(candidate,input,Floor,Ground);daggerState=NativePrediction.Step(daggerState,input,Floor,Ground);
+                Check(Near(candidate.Position.y,daggerState.Position.y)&&Near(candidate.Velocity.y,daggerState.Velocity.y)&&candidate.AirJumps==daggerState.AirJumps&&candidate.AirJumpAt==daggerState.AirJumpAt,spec+": dagger trajectory and landing reset tick "+i);
+            }
+        }
         var predictor=new NativePrediction();predictor.Reset(initial,0);var authority=initial;
         for(int i=1;i<=35;i++)
         {
@@ -60,12 +74,24 @@ internal static class JumpSimulationChecks
         locked.Time=1;locked.AirborneAt=.5f;
         var attackJump=NativePrediction.Step(locked,new InputFrame{Jump=true,Attack=true},Floor,Ground);
         Check(attackJump.Swing!=null&&attackJump.AirJumps==0,"same-tick attack commitment blocks guest air jump");
+        foreach(string kind in new[]{"cyber-jab","cyber-cross","cyber-palm","firewall","packet-burst","siphon-link","system-crash","data-dash"})
+        {
+            var cyber=initial;cyber.JumpSpec="cyberlord";cyber.Grounded=false;cyber.Cyber=new NativeCyberKit{Kind=kind,Until=1,DashUntil=1,DashTo=new V3(0,0,7)};
+            var refused=NativePrediction.Step(cyber,new InputFrame{Jump=true},Floor,Ground);
+            Check(refused.AirJumps==0&&refused.AirJumpAt==-100,"guest active cast refuses jump: "+kind);
+        }
+        foreach(var input in new[]{new InputFrame{Jump=true,Attack=true},new InputFrame{Jump=true,AbilityQ=true},new InputFrame{Jump=true,AbilityE=true},new InputFrame{Jump=true,SirenAbility=1},new InputFrame{Jump=true,SirenAbility=2},new InputFrame{Jump=true,SirenAbility=3},new InputFrame{Jump=true,SirenAbility=4}})
+        {
+            var cyber=initial;cyber.JumpSpec="cyberlord";cyber.Grounded=false;cyber.Position=new V3(0,5,0);cyber.Cyber=new NativeCyberKit();cyber.CyberMana=100;cyber.CyberRate=cyber.CyberCost=cyber.CyberCooldown=1;
+            var refused=NativePrediction.Step(cyber,input,Floor,Ground);
+            Check(refused.AirJumps==0&&refused.AirJumpAt==-100,"same-tick Cyber cast request wins over predicted jump");
+        }
         var json=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};var copy=JsonSerializer.Deserialize<Actor>(JsonSerializer.Serialize(new Actor{AirJumps=1,AirJumpAt=3.5f,Grounded=false},json),json);
         Check(copy.AirJumps==1&&copy.AirJumpAt==3.5f&&!copy.Grounded,"replicated jump state round trip");
         var track=new NativeJumpTrack{Explicit=true};track.Observe(1,true,0,false);track.AirJumpSignal(-100);
         for(int i=1;i<=30;i++){float t=1+i/60f;track.Observe(t,false,i/60f,false);track.AirJumpSignal(i>=15?1.25f:-100);}
         Check(track.AirJumps==1&&Near(track.AirJumpAt,1.25f),"explicit signal needs no velocity inference and does not repeat");
-        Console.WriteLine("PASS dagger air jump: shared lab/prediction trajectories, landing reset, locks, swim separation, impulse scaling, edge replay and replicated signal");
+        Console.WriteLine("PASS dagger/Bow/Cyber Lord air jump: shared lab/prediction trajectories, landing reset, locks, swim separation, impulse scaling, edge replay and replicated signal");
 
         foreach(var cut in new[]{("sword",1,1),("sword",2,-1),("sword",3,1),("daggers",1,1),("daggers",2,-1),("daggers",3,-1),("daggers",4,-1),("shield",1,-1),("shield",2,-1),("greatsword",1,1),("greatsword",2,-1)})
         {

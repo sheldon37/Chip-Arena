@@ -9,6 +9,11 @@ below is implemented in the simulation yet. The numbers are starting proposals; 
 any change here so the presentation follows (Core/NativeHordeKinds.cs holds the presentation's copy, and
 Tests/HordeKindChecks.cs fails when the authority's attack formula or capsules change without it).
 
+Update (2026-10-12, zombies): the kinds now draw as zombies built from the pilot body on the owner's zombie mocap,
+entrances included, and the brute gets a knock-back smash look and a jump-down entrance from map data. That presentation,
+its jump-down contract and the brute's knock-back, landing-slam, drop-entry and hit-volume proposals are in
+docs/SIREN-ZOMBIES.md (with its own prompt for Astra). Everything below still holds.
+
 ## 1. What already works without new rules
 
 The network already carries each add's kind (`NativeMinionFrame.addKind` = `PveAddStats.id`). The presentation resolves
@@ -43,9 +48,10 @@ cooldown between attack starts is `cycle`.
 | `shambler` | 60 | 6 | 1.5 | 3.4 | 1.75 | 1.45 | .34 | 1.05 | .71 | .45 | 90 | 25 | .35 | .4 | .45 | - |
 | `runner` | 38 | 4 | 2.6 | 4.6 | 2 | 2.2 | .34 | .85 | .51 | .9 | 60 | 20 | .35 | .4 | .45 | - |
 | `brute` | 240 | 15 | 1.3 | 2.4 | 2.1 | 1.7 | .43 | 1.7 | 1.27 | .3 | 260 | 80 | .45 | .5 | .25 | 1.6 |
-| `spitter` | 45 | 7 | 1.6 | 2.9 | 11 | 9 | .55 | 2.6 | 2.05 | 0 | 40 | 30 | .35 | .4 | .45 | 1.3 (puddle) |
+| `spitter` | 45 | 7 | 1.6 | 2.9 | 11 | 9 | .8 | 2.6 | 1.8 | 0 | 40 | 30 | .35 | .4 | .45 | 1.3 (puddle) |
 | `crawler` | 34 | 5 | 2.2 | 3.9 | 1.6 | 2.4 | .3 | 1.1 | .8 | 1.6 (pounce) | 70 | 20 | .3 | .35 | .5 | - |
 | `bloater` | 150 | 10 | 1.1 | 1.8 | 1.6 | 1.4 | .62 | 2.2 | 1.58 | .2 | 180 | 45 | .4 | .45 | .3 | 2.6 (death burst) |
+| `hulk` | 1600 | 32 | .75 | 1.15 | 3 | 2.6 | 1.1 | 3.4 | 2.3 | .15 | 900 | 300 | .55 | .6 | .2 | 2.8 (disc 2 m ahead) |
 
 Attack names (`PveAddStats.attack`) that the presentation maps: `swipe`, `lunge`, `smash`, `spit`, `pounce`, `belly`
 (also `burst`). Keep the existing crawl and armless overrides (.34 s hit, reach 1.3 / 1.2, lunge .15 / .45). A crawling
@@ -53,7 +59,8 @@ add of any kind is presented with the lunge.
 
 ## 3. Behaviours (proposed)
 
-- **Brute: charge and slam.** It keeps today's smash (1.6 m disc 1.2 m ahead at `hit` .43). New charge when its target is
+- **Brute: charge and slam.** It keeps today's smash (1.6 m disc 1.2 m ahead at `hit` .43; its knock-back and the
+  jump-down's landing slam: docs/SIREN-ZOMBIES.md section 4). New charge when its target is
   6-12 m away with a clear line, with an 8 s cooldown:
   - .6 s wind-up, then a straight charge at 7 m/s for up to 1.6 s on the line fixed at the wind-up's end.
   - The first pilot it meets takes 18 damage and impulse 600, and the charge ends.
@@ -138,7 +145,8 @@ Small replicated fields that would make the presentation exact (all optional; to
 
 ## 7. Presentation keys (for reference)
 
-- **Models:** `minion-<kind>-<look>-<full|reduced|impostor>`, built in code (Core/NativeHordeModels.cs).
+- **Models:** `minion-<kind>-<look>-<full|reduced|impostor>`, built in code (Core/NativeHordeModels.cs; the zombie
+  builders in Core/NativeZombieModels.cs).
   - Looks: shambler 3, the rest 2, chosen by the add's id.
   - The nearest 24 adds (16 on the low graphics tier) draw full, the rest within 40 m reduced, impostors beyond.
 - **Audio:** existing effects-bank keys only, silent without the owner's LocalAssets bank.
