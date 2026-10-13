@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — persist the Cyber Lord cosmetic skin in accounts
+- Branch `codex/cyberlord-account-skin`, base shared `bf083e7d`. Added `cyberlord` between `bow` and `body` in `SKIN_WEAPONS`, matching NativeWeaponSkins order, so account saves/reads/login retain `cyberlord:prototype` instead of overwriting the native preference. Standard remains omission; unsupported skin IDs remain rejected.
+- No change to DEV class/preferredSpec gating, grants, seat frames or local preferences. A cosmetic pick alone does not unlock Cyber Lord. No account deployment; owner authorization remains required before deploying.
+- Regression uses the actual account endpoints and SQLite fixture for DEV and ordinary accounts: profile save, me/reload, second login, canonical bow/cyberlord/body order, signed DEV status, preferredSpec gating and resetting to Standard. `node --import tsx --test tests/accounts.test.ts`: 11/11 pass, zero skips. `npm ci --ignore-scripts` used locked dependencies without changing package files; diff check clean. Source branch/PR only, not merged or deployed.
+
 ## 2026-10-13 — Claude — Cyber Lord aura skin (owner: "Change Cyber lord weapon to instead just show an aura around the hands (Like a glitchy / cyber aura)"; "(We can use this current model as a prototype)")
 - Branch `claude/cyberlord-aura`, base shared `ae3bbbb` (`claude/sleepy-ritchie-g8ruhv`). Signed commit on the branch; not pushed, merged or released.
 - Skins: the Cyber Lord joins the cosmetic skin map as `cyberlord` (after the weapons, before `body`; `Core/NativeWeaponSkins.cs`; longest map now 298 of 320). Standard (default) is the new aura; `cyberlord:prototype` is today's hardlight gauntlets and fist shells, drawn piece for piece as before (pinned digest of the shared head's output). A missing, unknown or malformed value reads as the aura. It rides the existing map, so seats, the killcam and the Locker carry it. The Locker's Skins tab lists it behind the class's DEV gate and tries it on the stage. `NativeWeaponSkins.Modelled` is false for it (no model ids).
