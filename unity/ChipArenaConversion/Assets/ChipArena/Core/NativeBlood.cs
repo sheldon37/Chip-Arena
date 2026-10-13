@@ -156,6 +156,14 @@ namespace ChipArena.UnityConversion
         {
             int n=0;for(int i=0;i<Capacity;i++){ref var s=ref Items[i];if(s.Live&&s.Surface==surface&&s.FadeAt<0){s.FadeAt=time;s.FadeFor=SurfaceFade;Steady--;n++;}}if(n>0)Version++;return n;
         }
+        /// <summary>Every steady splat within `radius` of `center` fades over `fadeFor` s (a revive washes its body's blood and ink
+        /// away: NativeReviveHolo).</summary>
+        public int FadeNear(Vector3 center,float radius,float time,float fadeFor)
+        {
+            int n=0;float r2=radius*radius;
+            for(int i=0;i<Capacity;i++){ref var s=ref Items[i];if(s.Live&&s.FadeAt<0&&Vector3.DistanceSquared(s.Center,center)<=r2){s.FadeAt=time;s.FadeFor=Math.Max(.05f,fadeFor);Steady--;n++;}}
+            if(n>0)Version++;return n;
+        }
         /// <summary>Drops the splats that have faded out (and any born after `time`: a rewind past them).</summary>
         public void Update(float time)
         {

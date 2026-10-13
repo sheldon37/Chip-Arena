@@ -115,6 +115,6 @@ namespace ChipArena.UnityConversion
                 if(!drawn)for(int i=0;i<count;i++){properties.Clear();properties.SetVector("_BodyTint",bodies[i]);properties.SetVector("_AccentTint",accents[i]);properties.SetVector("_SceneTint",tints[i]);properties.SetVector("_GlowTint",glows[i]);properties.SetFloat(StageLitId,Stage?1:0);Graphics.DrawMesh(d.Part.Mesh,buffer[i],d.Part.Material,d.Layer,d.Camera,0,properties,d.Layer==10||d.Part.NoShadow?ShadowCastingMode.Off:ShadowCastingMode.On,true);}
             }
         }
-        public void Dispose(){ClearWounds();ClearBisects();DisposePieces();foreach(var mesh in models.Values.SelectMany(p=>p).Select(p=>p.Mesh).Distinct())CapturedAnimation.Release(mesh);foreach(var m in materials)CapturedAnimation.Release(m);foreach(var t in textures)CapturedAnimation.Release(t);models.Clear();draws.Clear();}
+        public void Dispose(){ClearWounds();ClearBisects();ClearReviveModels();DisposePieces();foreach(var mesh in models.Values.SelectMany(p=>p).Select(p=>p.Mesh).Distinct())CapturedAnimation.Release(mesh);foreach(var m in materials)CapturedAnimation.Release(m);foreach(var t in textures)CapturedAnimation.Release(t);models.Clear();draws.Clear();}
     }
 }

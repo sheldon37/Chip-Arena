@@ -259,7 +259,7 @@ namespace ChipArena.UnityConversion
                 ("NativeVentDeathPresentation.cs","string pilot=BodyAt(death.id,death.position,out int bodySkin);","vent falls"),
                 ("NativeSirenDropPresentation.cs","WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering,victimBody)","the Siren's crush drop"),
                 ("NativeInteractionPresentation.cs","RepairBoxes(p.Seat.spec==\"siren\"?\"siren\":\"pilot\",r.Boxes)","PvE revive scan boxes (the exported part bounds, which every body sits within)"),
-                ("NativeInteractionPresentation.cs","sourceModels.QueueShadowless(healed,","the healed body"),
+                ("NativeReviveHoloPresentation.cs","sourceModels.QueueShadowless(h.Healed,","the healed body (the holographic revive draws it over the wounded one)"),
                 ("NativeDevFighterEffects.cs","demonBodies[slot]=BodyGhost(BodySkin(p.Seat.id),","Demon Step ghosts"),
                 ("NativeBodyChipPresentation.cs","string shell=BodyGhost(","the parry flash shell"),
                 ("NativeMeleeKitPresentation.cs","g.Body=Ghost(BodyModel(BodySkin(a.Id),BodyTier(root,false)));","dash ghosts"),

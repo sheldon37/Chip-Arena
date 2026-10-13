@@ -239,6 +239,8 @@ namespace ChipArena.UnityConversion.Editor
             foreach(var name in new[]{"NativeVfx","NativeVfxLit"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             // The block effect (NativeBlockFxPresentation: guards, clashes and deflects).
             {var shader=Resources.Load<Shader>("NativeBlockFx");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeBlockFx");}
+            // The holographic revive (NativeReviveHoloPresentation.cs): the hardlight and the first-person vignette.
+            foreach(var name in new[]{"NativeReviveHolo","NativeReviveScreen"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             CheckVfx();
         }
     }

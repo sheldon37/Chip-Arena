@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
     {
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Bisect: "+what);count++;}
-        private sealed class Model{public string Name;public int Bone;public WeaponSection Mesh;public bool Clear;}
+        internal sealed class Model{public string Name;public int Bone;public WeaponSection Mesh;public bool Clear;}
 
         public static void Run(string root)
         {
@@ -189,7 +189,7 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- the bodies as the runtime banks them ----
-        private static Dictionary<string,List<Model>> Bank(string root)
+        internal static Dictionary<string,List<Model>> Bank(string root)
         {
             using var envelope=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/SourceModels.json")));
             using var bytes=new MemoryStream(Convert.FromBase64String(envelope.RootElement.GetProperty("data").GetString()));using var zip=new GZipStream(bytes,CompressionMode.Decompress);using var reader=new StreamReader(zip);
@@ -211,7 +211,7 @@ namespace ChipArena.UnityConversion
             return o;
         }
         // The Runtime's CarveMesh (NativeWoundGeometry.cs) in System.Numerics: a carved Prototype part's boxes as uploaded.
-        private static WeaponSection CarveMesh(NativeWoundPart d,List<WoundSolid> solids)
+        internal static WeaponSection CarveMesh(NativeWoundPart d,List<WoundSolid> solids)
         {
             var m=new Matrix4x4(d.matrix[0],d.matrix[1],d.matrix[2],d.matrix[3],d.matrix[4],d.matrix[5],d.matrix[6],d.matrix[7],d.matrix[8],d.matrix[9],d.matrix[10],d.matrix[11],d.matrix[12],d.matrix[13],d.matrix[14],d.matrix[15]);
             m=Matrix4x4.CreateScale((float)(1/d.size.x),(float)(1/d.size.y),(float)(1/d.size.z))*m;Matrix4x4.Invert(m,out var inv);var nm=Matrix4x4.Transpose(inv);var w=new WeaponSection{Bone=d.bone};

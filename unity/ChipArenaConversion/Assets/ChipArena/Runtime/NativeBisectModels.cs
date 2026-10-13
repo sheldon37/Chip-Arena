@@ -102,7 +102,7 @@ namespace ChipArena.UnityConversion
             var cut=job.Cut;if(cut==null){if(job.Error!=null)Debug.LogWarning("Bisect failed: "+job.Error.Message);return null;}
             if(!jobParts.TryGetValue(job.Key,out var parts))return null;jobParts.Remove(job.Key);var made=new Halves();var lists=new[]{new List<Part>(),new List<Part>(),new List<Part>(),new List<Part>()};var cap=CapMaterial();
             // A wound's own mesh is released with its wounds (a revived pilot's new set): a half keeps its own copy of one.
-            var transient=new HashSet<Part>();foreach(var c in wounds.Values)if(c.Owned!=null)foreach(var p in c.Owned)transient.Add(p);foreach(var c in skinCuts.Values)foreach(var p in c.Owned)transient.Add(p);
+            var transient=new HashSet<Part>();foreach(var c in wounds.Values.Concat(woundsB.Values))if(c.Owned!=null)foreach(var p in c.Owned)transient.Add(p);foreach(var c in skinCuts.Values)foreach(var p in c.Owned)transient.Add(p);
             bool hat=false;
             foreach(var piece in cut.Pieces)
             {
