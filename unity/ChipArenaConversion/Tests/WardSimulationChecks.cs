@@ -38,6 +38,31 @@ namespace ChipArena.UnityConversion
             Check(pve.entries.Length==53&&pve.machines.Length==8&&pve.pads.Length==8&&pve.hideSpots.Length==12,"PvE import");
             Check(pve.pads.Count(p=>p.y==6)==4&&pve.hideSpots.Count(p=>p.y==6)==6,"two floors");
             Check(new PvePoint{x=1,y=6,z=2}.Position(.9f).y==6.9f,"point height adds floor");
+            // Reproduce the native gate's clock reset: default frame round/set switches parity.
+            var clockMatch=new NativeMatch(content);var firstBurner=map.hazards.First(h=>h.kind=="burner");
+            double firstLive=10+firstBurner.first+firstBurner.warn;int brokenTicks=0;
+            for(int i=0;i<(int)(firstBurner.live*60);i++)
+            {
+                clockMatch.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=firstLive+i/60d,fightAt=10});
+                brokenTicks+=NativeStageHazards.DamageTicks(firstBurner,NativeStructureFx.RoundIndex(clockMatch.Set,clockMatch.Round),clockMatch.FightAt,clockMatch.Time-1d/60,clockMatch.Time);
+            }
+            Check(brokenTicks==0,"old native clock flips odd to even and misses all ten burner ticks");
+            string wardValidation=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeWardValidation.cs"));
+            Check(wardValidation.Contains("fightAt=10,round=Match.Round,set=Match.Set"),"native fixture preserves round and set while changing time");
+            foreach(int set in new[]{1,2})foreach(int round in new[]{1,2})foreach(var hazard in map.hazards.Where(h=>h.kind=="burner"||h.kind=="gas"))
+            {
+                clockMatch.ApplyNetwork(new NativeMatchFrame{set=set,round=round});
+                int stageRound=NativeStructureFx.RoundIndex(set,round),ticks=0;
+                double live=10+hazard.first+(stageRound%2==0?hazard.offset:0)+hazard.warn;
+                for(int i=0;i<(int)(hazard.live*60);i++)
+                {
+                    clockMatch.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=live+i/60d,fightAt=10,round=clockMatch.Round,set=clockMatch.Set});
+                    ticks+=NativeStageHazards.DamageTicks(hazard,NativeStructureFx.RoundIndex(clockMatch.Set,clockMatch.Round),clockMatch.FightAt,clockMatch.Time-1d/60,clockMatch.Time);
+                }
+                Check(clockMatch.Round==round&&clockMatch.Set==set,"60 Hz fixture preserves schedule identity");
+                Check(ticks==(hazard.kind=="burner"?10:8),hazard.id+" exact 60 Hz tick count, round "+round);
+                Check(ticks*hazard.damage*.5==(hazard.kind=="burner"?50:24),hazard.id+" mitigated window damage");
+            }
             foreach(var h in map.hazards)
             {
                 if(h.kind=="burner"||h.kind=="gas")

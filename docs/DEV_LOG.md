@@ -1,5 +1,14 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — preserve Ward native fixture round while advancing time
+- Branch `codex/ward-burner-tick-fix`, initial base shared/builder `b4e2351`, rebased onto `738bbf4` preserving the Cyber Lord ranged merge; owner's Windows build passed the previous interaction gate and failed `siren-burner-e-a mitigated tick count`.
+- Reproduced fixture defect with real NativeMatch and DamageTicks: the start was calculated at set 1 / round 1 (stage round 65, live at 17.5 s); the first Clock call applied a frame with default set/round 0, moving the burner start to 22.5 s. The entire sampled 2.5 s window therefore recorded zero ticks instead of ten.
+- Preserve Match.Round and Match.Set in the editor/validation-only clock. Add actual/expected HP and stage round to failure diagnostics. No shipping gameplay, hazard timing, damage, mitigation, networking, animation, content or updater changes.
+- Managed regression reproduces the old zero-tick result, then checks all four burners and both gas volumes at 60 Hz in sets 1/2 and rounds 1/2: ten burner ticks / 50 mitigated damage; eight gas ticks / 24 mitigated damage. Ward simulation now 229 checks.
+- Verification: fresh direct SDK Core/Tests + relay compilation passed; 101 Python tests OK (one skip); package-source check passed (1,797 files); diff check clean. Full relay rerun completed with exit 0 and the final 35-managed-check marker, including real WebSocket/UDP/TCP. Initial interrupted run was not counted.
+- Integration: fresh Core/Tests and relay compilation on `738bbf4` passed, as did source packaging (1,806 files). Focused post-rebase runs were not completed: initial launch used the wrong working directory, then the execution service disconnected before retry. Publishing through the connected GitHub app; reconstructed source/test changes were verified against the exact tested local Git tree hash before publication.
+- Unity Editor/PhysX/Windows unavailable here; native gate and full package still require the desktop builder. Owner push/merge/builder-sync authorization applies. No compiled release claimed.
+
 ## 2026-10-13 — Astra — Cyber Lord ranged authority and replication
 - Branch `codex/cyber-ranged-simulation`, initial shared base `18a94436`, updated to `762cffd5` for the Ward inventory/breach fixes, then merged `b4e23516` (PR #173, PvE machine-frame exclusion) during PR #174 publication. Both authors’ log entries and all runtime changes retained. Owner authorized push, merge and builder sync; source implementation complete, Unity builder verification pending.
 - Implement key 5 with the .3 s moving switch / 1 s clock, all busy-state refusals and no queue. Separate ranged clocks/mana survive toggling; death resets to melee. Q/E/block/roll keep their existing behavior outside the switch. Shared Root/Kernel 20 s ultimate includes Kernel's whiff refund and resource-only cost multiplier.
