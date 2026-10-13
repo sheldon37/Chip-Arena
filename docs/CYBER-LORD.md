@@ -1,5 +1,14 @@
 # Cyber Lord — presentation
 
+## 2026-10-12 simulation follow-up (`codex/cyber-jump-sheldon-idle`)
+
+Based on merged presentation head `466130a1`. Cyber Lord now shares the dagger/Bow one-air-jump rule: edge input, landing reset, .9 × the already-scaled jump speed, swim separation and action locks. `AirJumps` / `AirJumpAt` remain the replicated signal; Claude's boost needs no visual change. Prediction now includes active Cyber casts in its jump lock; Data Dash already returns through its movement path, and Kernel Panic snapshots disable movement. On simultaneous Link/Kernel requests, prediction conservatively leaves the jump budget untouched until the authority resolves the targeted cast (a refused cast can reconcile to the host's jump).
+
+Accounts source now preserves `sheldon-idle` only using the current account row's DEV access, on save and read. It remains absent from `LOBBY_POSES`, and the shared Electron normalizer still returns `weapon`. Claude's NativeNetwork host-seat and NativeProfileUI account-load edits are correct: both use `NativeCosmeticGate.Pose` with verified access; that gate requires DEV plus unexpired access and rejects item-only grants. No changes to those lines or visuals were needed. Accounts deployment is still required for server persistence.
+
+Data Dash review: the authority stores one path/expiry/tick timer per pilot. A new dash replaces it and schedules the next tick .3 s after the new .2 s dash ends; recasting before that tick can erase all remaining trail damage. Each uninterrupted trail deals four ticks × 6 = 24 damage per eligible target, in addition to the 18 direct dash hit. The existing spec promises a 1.2 s trail and does not establish replacement as an intentional balance rule. Treat this as a single-trail implementation limitation exposed by zero cooldown, not an owner-approved design decision. No damage behavior changed here; independent damaging trails would need bounded authority history and an overlap/stacking decision. Claude's older fading trails remain cosmetic.
+
+
 DEV-only class `cyberlord`. The owner asked for "a class called "Cyber Lord". This is an unarmed class, using cyber themed
 abilities. (1-4 hotkeys used along with Q and E) it will be a melee spellcasting hybrid." The chosen direction is the
 hardlight brawler. The ultimate is Kernel Panic. The owner's words for it: "since we're adding an "Ultimate" im think using
