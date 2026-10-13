@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
         private sealed class RepairCell {public Matrix4x4 Target;public Vector3 From;public float Coordinate;}
         private sealed class Revival
         {
-            public int Id,Seed;public float At;public bool Place;public NativeDeath Death;
+            public int Id,Seed;public float At,FloorY;public bool Place;public NativeDeath Death;
             public Matrix4x4[] Body;public readonly bool[] Missing=new bool[22];public readonly float[] Coordinate=new float[22];
             public Vector3 AxisA,AxisB,FloorMin,FloorMax;public Vector3[] StandPosition;public Quaternion[] StandRotation;
             public readonly List<NativeRepairBox> Boxes=new List<NativeRepairBox>();public readonly List<RepairCell> Cells=new List<RepairCell>();
@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
         }
         private Revival StartRevival(NativePilot p,CapturedAnimation.Player rig,float time)
         {
-            var d=p.Death;var r=new Revival{Id=p.Seat.id,At=p.RevivedAt,Death=d,Seed=d?.seed??p.Seat.id};
+            var d=p.Death;var r=new Revival{Id=p.Seat.id,At=p.RevivedAt,FloorY=p.Body.position.y-NativeLocomotionRules.HalfHeight,Death=d,Seed=d?.seed??p.Seat.id};
             sourceModels.RepairBoxes(p.Seat.spec=="siren"?"siren":"pilot",r.Boxes);
             if(d?.kept==true)
             {
@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
                 // Rebuild a missing subtree at its nearest remaining joint, rather than at a severed limb's landing spot.
                 for(int b=0;b<22;b++)if(r.Missing[b])
                 {int parent=CapturedRig.Bones[b].Parent;while(parent>=0&&r.Missing[parent])parent=CapturedRig.Bones[parent].Parent;if(parent>=0)r.Body[b]=r.Body[parent]*rig.Bones[parent].worldToLocalMatrix*rig.Bones[b].localToWorldMatrix;}
-                r.Place=NativeReviveRules.InPlace(NativeArena.Vec(d.position),NativeArena.Vec(rig.Root.transform.position));
+                r.Place=NativeReviveRules.InPlace(NativeArena.Vec((Vector3)r.Body[CapturedRig.Spine].GetColumn(3)),NativeArena.Vec(rig.Root.transform.position));
                 BodyScan(r);
             }
             if(!r.Place)
@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
             float lo=float.PositiveInfinity,hi=float.NegativeInfinity;var bounds=new Bounds(feet,Vector3.zero);
             foreach(var box in r.Boxes){Vector3 p=(r.Body[box.Bone]*box.Local).GetColumn(3);float d=Vector3.Dot(p-feet,dir);lo=Math.Min(lo,d);hi=Math.Max(hi,d);bounds.Encapsulate(p);}
             if(!(hi>lo)){lo=0;hi=1;}r.AxisA=feet+dir*(lo-.08f);r.AxisB=feet+dir*(hi+.08f);
-            float floor=r.Death.position.y-.85f;r.FloorMin=new Vector3(bounds.min.x-.3f,floor,bounds.min.z-.3f);r.FloorMax=new Vector3(bounds.max.x+.3f,floor,bounds.max.z+.3f);
+            float floor=r.FloorY;r.FloorMin=new Vector3(bounds.min.x-.3f,floor,bounds.min.z-.3f);r.FloorMax=new Vector3(bounds.max.x+.3f,floor,bounds.max.z+.3f);
             for(int b=0;b<22;b++)r.Coordinate[b]=ScanCoordinate(r.Body[b].GetColumn(3),r.AxisA,r.AxisB);
         }
         private void BuildRepairCells(Revival r,CapturedAnimation.Player rig)

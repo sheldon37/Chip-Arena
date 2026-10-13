@@ -253,6 +253,9 @@ namespace ChipArena.UnityConversion
     public static class NativeSlashFx
     {
         public const int Segments=22;
+        // Falling attacks carry a ten-second simulation safety window, not a visible slash lifetime.
+        public static bool CanCapture(Actor a,float time)=>a!=null&&a.Alive&&Covers(a.SourceSpec)&&a.SwingAt>-90&&
+            (!a.AirAttack||a.ImpactAt>=0)&&time>=a.SwingAt-1&&time<=a.SwingUntil+.3f;
         public static bool Covers(string spec)=>NativeMeleeRules.Standard(spec);
         /// <summary>The crescent stands in for the ribbon: a standard melee pilot's strike, not a released sword launch or wolf spin.</summary>
         public static bool Replaces(Actor a,float time)=>a!=null&&Covers(a.SourceSpec)&&!(a.SpecialReleased&&(a.SpecialKind=="sword-launch"||a.SpecialKind=="wolf-spin")&&time<a.SpecialUntil)&&!MeleeKitMotion.Sweeps(a,time);
@@ -286,7 +289,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static bool Frame(NativeMeleeSwing s,in SlashLook look,float time,bool trailing,out float tail,out float head,out float alpha,out float grow)
         {
-            tail=head=alpha=grow=0;if(s==null)return false;bool twin=s.SprintAttack&&NativeSprintAttackRules.Twin(s.Spec)&&NativeSprintAttackRules.Clip(s.Spec)!=null;
+            tail=head=alpha=grow=0;if(s==null||s.Air&&s.ImpactAt<0)return false;bool twin=s.SprintAttack&&NativeSprintAttackRules.Twin(s.Spec)&&NativeSprintAttackRules.Clip(s.Spec)!=null;
             float window=Math.Max(.001f,s.HitUntil-s.HitAt),delay=trailing?window*.25f:0;if(twin){window*=.5f;delay=trailing?window:0;}float age=time-s.HitAt-delay;
             if(age<0||age>window+look.Fade)return false;
             var v=Visible(s);float sign=v!=null?v.Direction:NativeMeleeRules.Reverse(s)?-1:1,span=Math.Min((float)Math.PI*2,Math.Min(look.MaxArc,s.Arc));

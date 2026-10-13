@@ -102,6 +102,9 @@ namespace ChipArena.UnityConversion
             entries.Add("  \"phase\": "+JsonText(match!=null?match.Phase.ToString().ToLowerInvariant():"lobby"));
             entries.Add("  \"players\": "+(match!=null?match.Seats.Count:InRoom?lobbySeats.Length:0).ToString(inv));
             entries.Add("  \"fps\": "+Mathf.RoundToInt(FrameRate()).ToString(inv));entries.Add("  \"simulationTickMs\": "+stepMs.ToString("0.##",inv));
+            entries.Add("  \"hitchCount\": "+hitchWindow.Hitches);
+            entries.Add("  \"worstFrameMs\": "+hitchWindow.WorstMs.ToString("0.##",inv));
+            entries.Add("  \"lastHitch\": "+JsonText(lastHitchReport));
             if(Hosting)
             {
                 var peers=PeerMetrics??Array.Empty<NativeConnectionReport>();var sb=new StringBuilder("  \"peers\": [");

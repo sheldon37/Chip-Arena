@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
             return v!=null&&v.Stage!="ended"&&p.Hp<=0&&p.Seat.connected&&v.Rows.TryGetValue(p.Seat.id,out row)&&!arena.InShaft(p);
         }
         // beacons.ts:87 at the body (death position), on the floor.
-        public static Vector3 Position(NativePilot p){Vector3 at=p.Death!=null?p.Death.position:p.Body.position;return new Vector3(at.x,0,at.z);}
+        public static Vector3 Position(NativePilot p){Vector3 at=p.Body.position;return new Vector3(at.x,at.y-NativeLocomotionRules.HalfHeight,at.z);}
         public static bool Self(NativePveRow row)=>row.SelfAt>=0;
         // beacons.ts:21 the solo self-revive timer from the death time (NativeArena.PveDied sets SelfAt = death + 5 s).
         public static float Progress(NativeArena arena,NativePilot p,NativePveRow row)=>Self(row)?NativeBeaconRules.Progress(arena.Time,p.Death!=null?p.Death.at:arena.Time,row.SelfAt):0;
@@ -25,7 +25,8 @@ namespace ChipArena.UnityConversion
         private sealed class BeaconGeometry : NativeBeaconRules.IMeshSink
         {
             public readonly List<Vector3> Points=new List<Vector3>(512),Uv=new List<Vector3>(512);public readonly List<Color> Colors=new List<Color>(512);public readonly List<int> Indices=new List<int>(1024);
-            public int Vertex(float x,float y,float z,float u,float v,float flat,float r,float g,float b,float a){Points.Add(new Vector3(x,y,z));Uv.Add(new Vector3(u,v,flat));Colors.Add(new Color(r,g,b,a));return Points.Count-1;}
+            public float Floor;
+            public int Vertex(float x,float y,float z,float u,float v,float flat,float r,float g,float b,float a){Points.Add(new Vector3(x,y+Floor,z));Uv.Add(new Vector3(u,v,flat));Colors.Add(new Color(r,g,b,a));return Points.Count-1;}
             public void Triangle(int a,int b,int c){Indices.Add(a);Indices.Add(b);Indices.Add(c);}
             public void Clear(){Points.Clear();Uv.Clear();Colors.Clear();Indices.Clear();}
         }
@@ -38,7 +39,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.Pilots)
             {
                 if(!NativeBeaconView.Target(arena,p,out var row))continue;bool self=NativeBeaconView.Self(row);
-                int color=self?NativeBeaconRules.Self:NativeBeaconRules.Down;Vector3 at=NativeBeaconView.Position(p);
+                int color=self?NativeBeaconRules.Self:NativeBeaconRules.Down;Vector3 at=NativeBeaconView.Position(p);beaconGeometry.Floor=at.y;
                 NativeBeaconRules.Column(beaconGeometry,at.x,at.z,-1,color,linear,NativeBeaconRules.ColumnOpacity(t,self));
                 NativeBeaconRules.Ring(beaconGeometry,at.x,at.z,-1,t,NativeBeaconView.Progress(arena,p,row),color,linear);
             }
