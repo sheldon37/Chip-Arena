@@ -113,13 +113,17 @@ game never calls it.
 ## What it looks like
 
 - **Body** (`Core/NativeCyberLordLook.cs`, queued on the pilot's joints in `Runtime/NativeCyberLordPresentation.cs`).
-  It is layered over any body skin; the body builder is untouched. The look has:
-  - hardlight forearm gauntlets and fist shells;
+  It is layered over any body skin; the body builder is untouched. The look depends on the pilot's Cyber Lord skin (owner
+  2026-10-13: "Change Cyber lord weapon to instead just show an aura around the hands (Like a glitchy / cyber aura)", "We
+  can use this current model as a prototype"; see "Skins" below). Both skins have:
   - glowing seams with a pulse running out from the chest;
   - a floating broken-hexagon crest with a magenta diamond behind the head;
   - a data shimmer of blinking motes.
-  The gauntlets form from light edge by edge (.55 s) when the pilot is first seen alive. They flare on each combo hit and
-  light up as the mana flows in. First person keeps the arm pieces only.
+  The **Standard** skin (the default) has no gauntlets: the pilot's own hands and lower forearms wear a glitch aura
+  (`Core/NativeCyberLordAura.cs`). The aura ignites over .55 s when the pilot is first seen alive. Its hands flare on each
+  combo hit and light up as the mana flows in; first person keeps a lighter aura on the view model's hands.
+  The **Prototype Series** skin keeps the hardlight forearm gauntlets and fist shells, unchanged: they form from light edge
+  by edge (.55 s), flare on each combo hit and light up with the mana.
 - **Stance and locomotion** (`Core/CyberLordMotion.cs`): the owner's Explosive RPG pack Unarmed takes, retargeted by
   `tools/export_pack_cyberlord.mjs`. Hashes are in `tools/pack-cyberlord-provenance.json`; no FBX is committed.
   - It runs on the DEV fighter route (gait feet, the style layer, the reactions).
@@ -150,6 +154,45 @@ game never calls it.
 
 Owner rule kept: no glowing disc, ring or tile lies on the floor. Areas read through their volume. Slam waves are upright.
 `CyberLordChecks` checks this on every drawn piece.
+
+### Skins: the aura (Standard) and the gauntlets (Prototype Series)
+
+The pick is the `cyberlord` entry of the cosmetic skin map (`Core/NativeWeaponSkins.cs`), after the weapons and before
+the body: `cyberlord:prototype` for the gauntlets. Standard is never written. A missing, unknown or malformed value reads
+as Standard, the aura; that covers older clients, old saves and bots. An older client drops the entry and draws its own
+gauntlets. The Locker's Skins tab lists the Cyber Lord's two finishes like a weapon's, behind the class's DEV gate, and
+hovering one tries it on the stage. The entry has no model ids (`NativeWeaponSkins.Modelled` is false).
+
+The aura (`NativeCyberLordAura`) is glowing voxel primitives on the hand and elbow joints, in the look's palette. It hugs
+the fist and lower forearm a few millimetres off the skin, so it reads as an aura on the hand, not a weapon or a box:
+- shards: voxel and pixel fragments that snap in and out on hashed cycles and drift outward, some floating further out;
+- the RGB split: a magenta and a cyan copy of some shards a few millimetres apart, re-offset every glitch step (24 Hz);
+- scanlines: short bands crawling down the forearm onto the back of the hand and the knuckles;
+- data strands: dashed pixel columns rising straight up in the world off the fists (`CyberPiece.Rise`);
+- glitch jumps: in about half of each .9 s slot, a hand's whole aura jumps 1.2 to 3.2 cm for one or two steps;
+- the haze: a soft cyan glow round each fist and forearm, a flickering hot core at the knuckles, and a magenta and a cyan
+  glow either side for the split. The match and first person draw it in the effects pass (`NativeCyberLordAura.Halo`); the
+  entrance and the portraits draw their own soft glows.
+
+It reacts to the gauntlets' signals. It ignites on the form time (respawn, first seen alive, the entrance's beat): the
+shards rush in, flash and settle, and one scanline sweeps the arm. The striking hand's flare brightens and swells it and
+bursts shards off the knuckles. The mana charge lights both hands and adds strands. A guard packs the shimmer denser and
+faster. The Data Dash's dither dims and thins it. The Data Dash and sprint streaks still run from the hands.
+
+Ranged mode: the aura condenses instead of fists opening into emitters. The fist's shards pull in to a tight emitter point
+and a turning hex glyph ahead of each palm, at the look's `EmitterAt`; the casts' own anchors are unchanged. The right
+hand is the main emitter (a hex and three prongs), the left the support coil (two counter-turning hexes). The scanlines
+run faster into them and the strands die down. The key-5 switch keeps its glitch flash, shards and split.
+
+The pilot body skins are untouched under it. The aura is seeded per pilot and a pure function of the presentation clock,
+so host, guests, spectators and the killcam draw the same frame; no allocation per frame. Tiers:
+- Reduced effects: slower, every piece eased in and out; no snap, blink, split or jump, a steady haze.
+- The low graphics tier: fewer shards, one band, short strands, no split, the fist glow only.
+
+The Prototype Series draws exactly the shared head's pieces (pinned digest in `Tests/CyberLordAuraChecks.cs`). One
+existing quirk is kept because of that: its ranged emitters are built before `EmitterAt` is initialised, so they centre on
+the wrist joint rather than 15.5 cm ahead of it. Moving `EmitterAt` above `emitters` in `NativeCyberLordLook` fixes it if
+wanted. That would change the Prototype's ranged pieces, and the pin would need a new value.
 
 ## Idle stance
 
@@ -378,10 +421,11 @@ Q Data Dash and E Firewall stay as they are in both modes, so Q and E need no ch
 Presentation only. It reads one record per pilot through `CyberLordFeed` (`CyberRangedRecord`; see the contract), so the
 host, guests, spectators and the killcam draw the same frame.
 - **The switch** (`Core/NativeCyberLordLook.cs` `Mode`, `Core/NativeCyberLordRangedFx.cs`): both forearms fold in across
-  the chest with a glitch jolt at the middle. A white-cyan flash fires at each fist, the shell's shards scatter out (or snap
-  in), and the body splits RGB for others. The fist shells dim and shrink while the emitters build in piece by piece: a
-  hex ring, a core and prongs on each hand, a three-ring barrel on the right forearm and a coil on the left. The mode eases
-  over the .3 s from the replicated switch time.
+  the chest with a glitch jolt at the middle. A white-cyan flash fires at each fist, shards scatter out (or snap in), and
+  the body splits RGB for others. With the Standard skin the aura condenses into an emitter point and a turning hex glyph
+  ahead of each palm (see "Skins"). With the Prototype Series the fist shells dim and shrink while the emitters build in
+  piece by piece: a hex ring, a core and prongs on each hand, a three-ring barrel on the right forearm and a coil on the
+  left. The mode eases over the .3 s from the replicated switch time.
 - **The ranged stance and run** (`Core/CyberLordRangedMotion.cs` `CyberRangedPose`): both emitters are held on the aim
   ahead of the shoulders, following the pitch (the chest takes .3 of it). The hold rides over the run carry's planted legs.
   A melee take (the guard, Q, E) owns the frame by its weight; a sprint forward lowers the hold. The idle stance yields to it.
@@ -557,13 +601,14 @@ are `CyberRangedSpec` (`Core/CyberLordRanged.cs`).
 - **Loadout tile**: the content entry is `devOnly`, so the existing tile shows the DEV violet dot under Melee and DEV for
   developers. The role line reads "DEV · hardlight fists and cyber spells". The card line is her entry's jab:
   "12 DMG · 3.6 / SEC · 2.2 M".
-- **Locker**: the Q, E and 1-4 rows show the HUD cards' icons, and their costs read in mana (her kit spends mana).
+- **Locker**: the Q, E and 1-4 rows show the HUD cards' icons, and their costs read in mana (her kit spends mana). The
+  Skins tab offers its Standard (the aura) and Prototype Series (the gauntlets) finishes.
 - **Locker entrance**: "DEV · Hardlight Boot" (`dev-cyberlord`), with a DEV badge, a diamond icon and the text "Built from
   light, then a hardlight palm strike." It is gated like every `dev-` cosmetic (a guest or a scoped grant cannot pick it).
 - **Entrance** (`Core/NativeCyberLordIntro.cs`, directed). It plays on the standard 4.8 s with the name card at 3.2 s, on
   the shipped pulse-wave bed (150 bpm). `dev-*` styles get no music key by contract.
   1. A scan of light builds the pilot from the shins up.
-  2. The gauntlets form on a close shot.
+  2. The aura ignites (Standard) or the gauntlets form (Prototype Series) on a close shot, at the same beat.
   3. Jab (1.2 s), cross (1.6 s), then the Pulse Palm at the lens (2.0 s, slowed, caught up before the card).
   4. The stance settles on the 3.2 s accent.
   A Cyber Lord pilot plays it by default.
@@ -631,6 +676,17 @@ Still pending or limited:
   held, each finishing its own fade, the oldest first, the older ones on the low tier; past the cap the oldest retires);
 - the flip's three paths skip the Cyber Lord;
 - zero per-frame allocation, a Data Dash spam's ring included.
+
+`Tests/CyberLordAuraChecks.cs` covers the skins:
+- the skin map's `cyberlord` entry: round trip, canonical order, missing, unknown, malformed and older maps reading as the
+  aura, the longest map (298 of 320 characters), no model id;
+- the Prototype Series against the shared head's pinned digest (`Pieces` and `PiecesIn`, any seed or guard);
+- the Standard: no gauntlet, fist shell or emitter piece, the Prototype's seams, crest and shimmer kept, every aura piece
+  small and on the hands or lower forearms, shards, split pairs, bands and rising strands present;
+- the signals: the ignition, both hands, the glitch jumps, the striking hand's flare and burst, the mana, the guard, the
+  dash's dither, the ranged emitters on `EmitterAt` (right main, left coil) with the shards condensing and the glyph turning;
+- determinism in any order, the tiers (Reduced never strobes, splits or jumps; low and first person lighter), the haze,
+  zero per-frame allocation, and the Runtime wiring.
 
 `Tests/CyberLordRangedChecks.cs` covers the ranged mode on the preview record:
 - the proposed numbers, the icons, the ranged Details, the shot slot (the Data Packets stay the default drawer's), the mode

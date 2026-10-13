@@ -11,9 +11,10 @@ namespace ChipArena.UnityConversion
     //  - BeginCyberLord (start of Render): the views, the cyber events, the look's form times;
     //  - CyberPoseTime / CyberVictimPose (PrepareCapturedPose): Kernel Panic's participants on their hit-stopped clock, and its
     //    victim's tumble layered over the victim's own route (Core/CyberLordMotion.VictimPose);
-    //  - CyberLordBody / CyberReveal (SourceCharacter): the hardlight gauntlets, fists, seams, crest and shimmer on the rig's
-    //    joints (Core/NativeCyberLordLook) with the idle stance's scanline band (Core/CyberLordIdle.cs), and the Data Dash's
-    //    dithered body;
+    //  - CyberLordBody / CyberReveal (SourceCharacter): the look on the rig's joints in the pilot's skin (its "cyberlord" pick in
+    //    the seat's skin map: Standard the glitch aura round the hands, Core/NativeCyberLordAura; the Prototype Series the
+    //    hardlight gauntlets and fist shells; both with the seams, crest and shimmer, Core/NativeCyberLordLook.PiecesIn) under
+    //    the idle stance's scanline band (Core/CyberLordIdle.cs), and the Data Dash's dithered body;
     //  - CyberLordFx (RenderGlow, before the weapons drawer is submitted): the effects (Core/NativeCyberLordFx), the glitched
     //    pilots' RGB-split ghosts and pixel blocks, the idle stance's split shimmer, and the fork-bomb clones posed on rigs of
     //    their own.
@@ -48,7 +49,8 @@ namespace ChipArena.UnityConversion
             foreach(var a in s.Actors)
             {
                 if(!CyberLordFeed.Handles(a))continue;if(!cyberViews.TryGetValue(a.Id,out var v)){v=new CyberLordView();cyberViews.Add(a.Id,v);}CyberLordFeed.Read(a,v);
-                // The gauntlets form from light when the pilot is first seen alive (a respawn re-forms them; a rewound killcam starts formed).
+                // The look forms from light when the pilot is first seen alive (the aura ignites, the gauntlets build; a respawn
+                // re-forms it; a rewound killcam starts formed).
                 if(!a.Alive)cyberFormAt.Remove(a.Id);else if(!cyberFormAt.TryGetValue(a.Id,out float at)||time<at-.25f)cyberFormAt[a.Id]=cyberFormAt.ContainsKey(a.Id)?time-10:time;
             }
             cyberStale.Clear();foreach(var id in cyberViews.Keys){bool live=false;foreach(var a in s.Actors)if(a!=null&&a.Id==id&&CyberLordFeed.Handles(a)){live=true;break;}if(!live)cyberStale.Add(id);}
@@ -93,23 +95,30 @@ namespace ChipArena.UnityConversion
             if(reveal!=null||!CyberLordFeed.Handles(a)||!cyberViews.TryGetValue(a.Id,out var v))return reveal;
             float s=NativeCyberLordLook.BodySolid(v,time);if(s>=.999f)return null;cyberSolid=Mathf.Max(0,s);return cyberReveal??=b=>cyberSolid;
         }
+        /// <summary>The Cyber Lord skin a rig shows: the entrance rig its pilot's seat map, every other rig its pilot's seat
+        /// (live, guest replica or killcam replay; the viewer rigs the Locker's map). Standard (the aura) when absent.</summary>
+        private int CyberSkin(CapturedAnimation.Player rig,int id)=>NativeCyberLordAura.Skin(rig!=null&&rig==introRig?introSkins:SeatWeaponSkins(id));
         /// <summary>SourceCharacter: the hardlight look on a Cyber Lord's joints (arena, first-person view model, entrance rigs).</summary>
         private void CyberLordBody(CapturedAnimation.Player rig,Actor a,float time,bool first,int layer,Camera camera)
         {
             if(sourceModels==null||!CyberLordFeed.Handles(a)||rig?.Bones==null)return;
             float solid=cyberViews.TryGetValue(a.Id,out var v)?NativeCyberLordLook.BodySolid(v,time):1,formAt=cyberFormAt.TryGetValue(a.Id,out float f)?f:-100;var flare=cyberFx.FlareOf(a.Id,time);
             // The Hardlight Boot entrance forms and flares the look on its own clock (Core/NativeCyberLordIntro.cs).
-            if(rig==introRig&&entranceScript is NativeCyberLordIntroScript intro){time=entranceTime;formAt=NativeCyberLordIntroScript.FormAt;flare=intro.Flare(time);solid=1;}
+            // The pilot's skin picks what forms there: the gauntlets build, or the aura ignites with its haze (the entrance's effects).
+            if(rig==introRig&&entranceScript is NativeCyberLordIntroScript intro){time=entranceTime;formAt=NativeCyberLordIntroScript.FormAt;flare=intro.Flare(time);solid=1;intro.Aura=CyberSkin(rig,a.Id)!=NativeWeaponSkins.PrototypeIndex;}
             // The idle stance's scanline band over the hardlight parts and its fist clench (Core/CyberLordIdle.cs; none in first person or the entrance).
             var glitch=!first&&rig!=introRig&&rig.CyberMotion!=null?rig.CyberMotion.IdleGlitch:default;bool reduced=WeaponEffectsQuality<.5f;flare=CyberLordIdlePose.Clench(glitch,flare);
-            // The ranged mode's emitters build over the fists through the key-5 switch (Core/CyberLordRanged.cs; not in the entrance).
-            var mode=v!=null&&rig!=introRig?NativeCyberLordLook.ModeOf(v,time):default;
-            int n=NativeCyberLordLook.Pieces(time,formAt,flare,first,solid,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics,cyberPieces,mode);
+            // The ranged mode's emitters build over the fists (the aura condenses into them) through the key-5 switch
+            // (Core/CyberLordRanged.cs; not in the entrance); a guard packs the aura's shimmer denser.
+            var mode=v!=null&&rig!=introRig?NativeCyberLordLook.ModeOf(v,time):default;float guard=rig!=introRig?NativeCyberLordAura.Guard(time,a.BlockAt,a.BlockUntil):0;
+            int n=NativeCyberLordLook.PiecesIn(CyberSkin(rig,a.Id),a.Id,time,formAt,flare,first,solid,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics,cyberPieces,mode,guard);
             for(int i=0;i<n;i++)QueueCyberPiece(cyberPieces[i],rig.Bones[cyberPieces[i].Bone].localToWorldMatrix,CyberLordIdlePose.ScanGain(glitch,cyberPieces[i],i,reduced),layer,camera);
         }
         private void QueueCyberPiece(in CyberPiece p,Matrix4x4 bone,float gain,int layer,Camera camera)
         {
             var m=bone*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(p.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(p.Rotation)),CapturedAnimation.Vec(p.Scale));
+            // The aura's data strands rise straight up in the world (at the rig's scale: the view model's too).
+            if(p.Rise!=0)m.m13+=p.Rise*((Vector3)bone.GetColumn(1)).magnitude;
             sourceModels.QueuePiece(p.Shape,true,m,new Color(p.Color.X*gain,p.Color.Y*gain,p.Color.Z*gain,1),layer,camera);
         }
         /// <summary>RenderGlow, before the weapons drawer is submitted: every Cyber Lord effect, the glitched ghosts and the clones.</summary>
@@ -119,7 +128,27 @@ namespace ChipArena.UnityConversion
             bool viewOk=FirstPerson&&!ScopeActive&&ViewCamera!=null&&viewRig!=null;float q=Mathf.Clamp01(WeaponEffectsQuality);
             cyberArena=arena;cyberScene??=new CyberScene(this);cyberSink??=new CyberSink(this);cyberScene.Bind(s,camera,arena,cyberRanged);cyberSink.Bind(vfx,draw,viewOk);
             cyberFx.Draw(cyberSink,cyberScene,cyberClock,q,LowGraphics);
+            CyberAuraHaze(s,cyberClock,q,viewOk);
             CyberGhosts(s,cyberClock,q);
+        }
+        // The Standard skin's aura haze (Core/NativeCyberLordAura.Halo): soft glows round each Cyber Lord's hands in that skin, the
+        // first-person pilot's own on the view layer; nothing for the Prototype Series, a hidden or unbuilt body.
+        private static readonly Vector3 AuraFist=CapturedAnimation.Vec(CapturedRig.Mirror(NativeCyberLordAura.FistCentre)),AuraArm=CapturedAnimation.Vec(CapturedRig.Mirror(NativeCyberLordAura.ArmPoint)),
+            AuraEmitter=CapturedAnimation.Vec(CapturedRig.Mirror(NativeCyberLordLook.EmitterAt));
+        private static NVector AuraN(Vector3 v)=>new NVector(v.x,v.y,v.z);
+        private void CyberAuraHaze(Snapshot s,float time,float q,bool viewOk)
+        {
+            foreach(var a in s.Actors)
+            {
+                if(!CyberLordFeed.Handles(a)||!a.Alive||!cyberViews.TryGetValue(a.Id,out var v)||CyberSkin(null,a.Id)==NativeWeaponSkins.PrototypeIndex)continue;
+                bool me=a.Id==LocalId&&FirstPerson;if(me&&!viewOk)continue;
+                CapturedAnimation.Player rig=me?viewRig:rigs.TryGetValue(a.Id,out var r)?r:null;if(rig?.Bones==null||!SpawnShowsFor(a.Id,CapturedRig.RHand))continue;
+                Transform lh=rig.Bones[CapturedRig.LHand],rh=rig.Bones[CapturedRig.RHand],le=rig.Bones[CapturedRig.LElbow],re=rig.Bones[CapturedRig.RElbow];
+                var at=new NativeCyberLordAura.HandPoints{LFist=AuraN(lh.TransformPoint(AuraFist)),RFist=AuraN(rh.TransformPoint(AuraFist)),LArm=AuraN(le.TransformPoint(AuraArm)),RArm=AuraN(re.TransformPoint(AuraArm)),
+                    LEmitter=AuraN(lh.TransformPoint(AuraEmitter)),REmitter=AuraN(rh.TransformPoint(AuraEmitter)),Right=AuraN(me&&ViewCamera!=null?ViewCamera.transform.right:rig.Root.transform.right),Scale=lh.lossyScale.y};
+                var glitch=!me&&rig.CyberMotion!=null?rig.CyberMotion.IdleGlitch:default;float formAt=cyberFormAt.TryGetValue(a.Id,out float f)?f:-100;
+                NativeCyberLordAura.Halo(cyberSink,me,at,a.Id,time,formAt,CyberLordIdlePose.Clench(glitch,cyberFx.FlareOf(a.Id,time)),NativeCyberLordLook.BodySolid(v,time),q,LowGraphics,NativeCyberLordLook.ModeOf(v,time),NativeCyberLordAura.Guard(time,a.BlockAt,a.BlockUntil));
+            }
         }
         // The glitched pilots' RGB-split silhouettes (their posed rig, offset) with pixel blocks, and the fork-bomb clones (a
         // stand-in actor posed on a clone rig at the strike), as see-through weapon ghosts of the pilot model.
@@ -145,7 +174,7 @@ namespace ChipArena.UnityConversion
                     rig.ActorPose(clone,new Vector3(g.Position.X,g.Position.Y,g.Position.Z),at);var root=rig.Root.transform.localToWorldMatrix;
                     if(pose>=cyberGhostPoses.Length)continue;var gp=cyberGhostPoses[pose++];gp.Root=root;for(int b=0;b<22&&b<rig.Bones.Length;b++)gp.Bones[b]=rig.Bones[b].localToWorldMatrix;
                     sourceModels.Queue(Ghost(BodyModel(BodySkin(g.Actor),BodyTier(rig.Root.transform.position,false)))??pilot,gp.Root,gp.Bone,null,0,null,tint,null,g.Opacity);
-                    var flare=new NativeCyberLordLook.Flare{Left=1,Right=1};int n=NativeCyberLordLook.Pieces(at,-100,flare,false,g.Opacity,.3f,true,cyberPieces);
+                    var flare=new NativeCyberLordLook.Flare{Left=1,Right=1};int n=NativeCyberLordLook.PiecesIn(CyberSkin(null,g.Actor),g.Actor*3+g.Index,at,-100,flare,false,g.Opacity,.3f,true,cyberPieces,default);
                     for(int k=0;k<n;k++)QueueCyberPiece(cyberPieces[k],rig.Bones[cyberPieces[k].Bone].localToWorldMatrix,1,0,null);
                 }
             }
