@@ -43,13 +43,17 @@ namespace ChipArena.UnityConversion
         private bool PredictionGrounded(V3 position)=>NativeGroundMotor.Probe(root.scene.GetPhysicsScene(),Vec(position)).Found;
         private void BufferReplica(NativeGameFrame frame,bool reset)
         {
+            var previousLocal=replicaHistory.LastOrDefault()?.pilots.FirstOrDefault(p=>p.id==LocalId);
             if(reset){predictionAirJumpAt=-100;predictionPoseAt=-100;replicaHistory.Clear();replicaClock.Reset(frame.time);predictionCorrection=Vector3.zero;}
             replicaHistory.Add(frame);while(replicaHistory.Count>32)replicaHistory.RemoveAt(0);replicaClock.Observe(frame.time);
             var local=frame.pilots.FirstOrDefault(p=>p.id==LocalId);
             if(local==null)return;
             var state=PredictionState(local);var before=Local.Body.position;
-            if(reset)predictor.Reset(state,local.inputAck);else predictor.Reconcile(state,local.inputAck,ConstrainPrediction,PredictionGrounded,id=>MeleeLockPoint(Local,id));
-            var error=before-Vec(predictor.State.Position);predictionCorrection=reset||error.magnitude>3?Vector3.zero:error;
+            // Corpse anchors and revives are authority placements, not locomotion corrections.
+            // Even a sub-three-metre placement must discard the old offset and pre-death inputs.
+            bool placed=reset||local.hp<=0||previousLocal!=null&&(previousLocal.hp<=0||previousLocal.revivedAt!=local.revivedAt);
+            if(placed)predictor.Reset(state,local.inputAck);else predictor.Reconcile(state,local.inputAck,ConstrainPrediction,PredictionGrounded,id=>MeleeLockPoint(Local,id));
+            var error=before-Vec(predictor.State.Position);predictionCorrection=placed||error.magnitude>3?Vector3.zero:error;
             SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);
         }
         public void PredictReplica(InputFrame input)
