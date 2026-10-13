@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed class NativePveAdd
     {
-        public NativeHulkBreach.Progress WallProgress;public NativeBreachRecord WallBreach;public PveAddStats Stats;public PveEntry Entry;public int Lost,Side=1;public float ActiveAt,ExposedAt,SpawnAt,ThinkAt,RecoverAt,StaggerAt,DamageScale,HpScale,PossessedAt,SlowUntil,SlowFactor=1,LastDamage=-100,VentReady,WalkAt,DiveAt,VentUntil;public bool Landed,DropLanded,Struck=true,Possessed,Crawl,Limp,First=true,Travelling;public float HideThinkAt;public Vector3 HideDestination;public Vector3 External;public NativePilot Target;public NativeMinion KillerSummon;public NativePilot LastHit;
+        public Vector3 BreachShortcut;public float BreachThinkAt;public bool HasBreachShortcut;public float SpitCancelAt=-100;public NativeHulkBreach.Progress WallProgress;public NativeBreachRecord WallBreach;public PveAddStats Stats;public PveEntry Entry;public int Lost,Side=1;public float ActiveAt,ExposedAt,SpawnAt,ThinkAt,RecoverAt,StaggerAt,DamageScale,HpScale,PossessedAt,SlowUntil,SlowFactor=1,LastDamage=-100,VentReady,WalkAt,DiveAt,VentUntil;public bool Landed,DropLanded,Struck=true,Possessed,Crawl,Limp,First=true,Travelling;public float HideThinkAt;public Vector3 HideDestination;public Vector3 External;public NativePilot Target;public NativeMinion KillerSummon;public NativePilot LastHit;
         public readonly Dictionary<int,float> Dealt=new Dictionary<int,float>();public readonly Dictionary<int,float> Parts=new Dictionary<int,float>();
     }
     public sealed partial class NativeArena
@@ -28,8 +28,9 @@ namespace ChipArena.UnityConversion
         }
         private NativeMinion SpawnPveAddCore(string kind,bool force,int forcedEntry)
         {
-            var v=Pve??wardSandboxState;if(v==null)return null;
+            var v=Pve??wardSandboxState;if(v==null||kind==null)return null;
             if(Minions.Count(m=>m.Pve!=null)>=v.Cap&&v.Cap>0)return null;
+            if(kind=="spitter"&&Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")>=NativeSpitterRules.Cap)return null;
             if(kind=="hulk"&&Minions.Count(m=>m.Pve?.Stats.id=="hulk")>=Math.Max(1,Math.Min(2,v.Cap/2)))return null;
             var members=(Pve==null?Pilots.Where(p=>!p.Seat.AuthorityBoss):Members()).Where(p=>p.Hp>0).ToArray();
             var candidates=v.Content.entries.Where(e=>NativeWardEntries.Allows(e,kind)&&EntryQueue(e.e)<3&&
@@ -82,6 +83,27 @@ namespace ChipArena.UnityConversion
                 else {Damage(p,null,profile.Heavy?Mathf.Lerp(25,10,distance/profile.SlamRadius):Mathf.Lerp(12,5,distance/profile.SlamRadius),dir,profile.Heavy?900:400,false,primary:false,melee:true);p.Knockback.y=Math.Max(p.Knockback.y,profile.Heavy?4:2);}
             }
         }
+        private readonly List<NativeMinion> hordeAdds=new List<NativeMinion>(192);
+        private readonly List<NativePilot> hordeEnemies=new List<NativePilot>(8);
+        private readonly Dictionary<int,int> hordeTargets=new Dictionary<int,int>(8);
+        private readonly NativeCrowdGrid hordeGrid=new NativeCrowdGrid();
+        private int HordeTargetCount(int id)=>hordeTargets.TryGetValue(id,out int count)?count:0;
+        private string PickHordeKind(NumberValue[] mix,NativePveState v)
+        {
+            int spitters=0,hulks=0;foreach(var m in Minions)if(m.Hp>0){if(m.Pve?.Stats.id=="spitter")spitters++;if(m.Pve?.Stats.id=="hulk")hulks++;}
+            bool Allowed(string id)=>id!="spitter"||spitters<NativeSpitterRules.Cap;
+            bool Room(string id)=>Allowed(id)&&(id!="hulk"||hulks<Math.Max(1,Math.Min(2,v.Cap/2)));
+            double total=0;foreach(var row in mix)if(row.value>0&&Room(row.name))total+=row.value;
+            double roll=v.SpawnRandom.Next()*total;string last=null;foreach(var row in mix)if(row.value>0&&Room(row.name)){last=row.name;roll-=row.value;if(roll<0)return last;}return last;
+        }
+        private Vector3 HordeSeparation(NativeMinion m,Vector3 at)
+        {
+            var push=Vector3.zero;int count=0,cx=NativeCrowdGrid.Cell(at.x),cz=NativeCrowdGrid.Cell(at.z);
+            for(int z=cz-1;z<=cz+1&&count<6;z++)for(int x=cx-1;x<=cx+1&&count<6;x++)
+            for(int i=hordeGrid.Head(x,z);i>=0&&count<6;i=hordeGrid.Next(i))
+            {var other=hordeAdds[i];if(other==m||other.Hp<=0||Math.Abs(at.y-other.Body.position.y)>1.8f)continue;var diff=at-other.Body.position;diff.y=0;float sq=diff.sqrMagnitude;if(sq>=.81f)continue;count++;float dist=Mathf.Sqrt(sq);push+=dist<.0001f?Vector3.right*(m.Id<other.Id?-1.8f:1.8f):diff/dist*(.9f-dist)*2;}
+            return push;
+        }
         private void StepPveHorde()
         {
             long at=System.Diagnostics.Stopwatch.GetTimestamp();
@@ -93,8 +115,10 @@ namespace ChipArena.UnityConversion
             var v=Pve;const float dt=1f/60;pveNavigation=pveNavigation??new NativePveNavigation(this);
             int active=Minions.Count(m=>m.Pve!=null),entering=Minions.Count(m=>m.Pve!=null&&Time<m.Pve.ActiveAt);
             if(v.Rate>0&&Time>=v.SpawnAt&&active<v.Cap&&entering<(v.Hidden?64:16)&&(v.SpawnBudget<0||v.Spawned<v.SpawnBudget))
-            {int count=Math.Min(8,1+(int)((Time-v.SpawnAt)*v.Rate));for(int n=0;n<count&&active<v.Cap;n++){var mix=v.Stage=="boss"?v.Content.bossMix[v.Phase-1].mix:v.Content.waves[v.Wave-1].mix;var created=SpawnPveAdd(NativePveRules.Weighted(mix,v.SpawnRandom.Next));if(created==null)break;v.Spawned++;active++;v.SpawnAt+=1/v.Rate;if(v.SpawnBudget>=0&&v.Spawned>=v.SpawnBudget)break;}}else if(active>=v.Cap||entering>=(v.Hidden?64:16))v.SpawnAt=Time;
-            var enemies=Pilots.Where(p=>p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss).ToArray();var adds=Minions.Where(m=>m.Pve!=null).ToArray();
+            {int count=NativePveRules.SpawnAllowance(v.SpawnBudget,v.Spawned,active,v.Cap,Math.Min(2,1+(int)((Time-v.SpawnAt)*v.Rate)));for(int n=0;n<count&&active<v.Cap;n++){var mix=v.Stage=="boss"?v.Content.bossMix[v.Phase-1].mix:v.Content.waves[v.Wave-1].mix;var created=SpawnPveAdd(PickHordeKind(mix,v));if(created==null)break;v.Spawned++;active++;v.SpawnAt+=1/v.Rate;if(v.SpawnBudget>=0&&v.Spawned>=v.SpawnBudget)break;}}else if(active>=v.Cap||entering>=(v.Hidden?64:16))v.SpawnAt=Time;
+            var enemies=hordeEnemies;enemies.Clear();foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss)enemies.Add(p);
+            var adds=hordeAdds;adds.Clear();hordeTargets.Clear();hordeGrid.Clear();
+            foreach(var m in Minions)if(m.Pve!=null){adds.Add(m);if(m.Pve.Target!=null){int id=m.Pve.Target.Seat.id;hordeTargets.TryGetValue(id,out int count);hordeTargets[id]=count+1;}if(m.Hp>0&&Time>=m.Pve.ActiveAt)hordeGrid.Add(adds.Count-1,m.Body.position.x,m.Body.position.z);}
             foreach(var m in adds)
             {
                 if(m.Hp<=0)continue;var a=m.Pve;
@@ -111,17 +135,17 @@ namespace ChipArena.UnityConversion
                 Vector3 at=m.Body.position,navAt=Vec(NativeNavSearch.BodyAnchor(Vec(at),m.Collider.height/2));var target=a.Target;
                 if(Time>=a.ThinkAt||target==null||target.Hp<=0||!target.Seat.connected)
                 {
-                    a.ThinkAt=Time+.75f;target=enemies.Where(p=>!a.Possessed||!p.Seat.bot).OrderBy(p=>pveNavigation.Distance(at,p.Body.position,p.Seat.id)+3*Math.Max(0,adds.Count(q=>q.Pve.Target==p)-6)-(a.Target==p?2:0)-(v.Recruits.Any(r=>r.Pilot==p&&r.Role=="tank")&&Vector3.Distance(p.Body.position,at)<8?6:0)).FirstOrDefault();a.Target=target;if(target!=null&&TryVentTravel(m,target))continue;
+                    a.ThinkAt=Time+.75f;target=enemies.Where(p=>p.Hp>0&&p.Seat.connected&&(!a.Possessed||!p.Seat.bot)).OrderBy(p=>pveNavigation.Distance(at,p.Body.position,p.Seat.id)+3*Math.Max(0,HordeTargetCount(p.Seat.id)-6)-(a.Target==p?2:0)-(v.Recruits.Any(r=>r.Pilot==p&&r.Role=="tank")&&Vector3.Distance(p.Body.position,at)<8?6:0)).FirstOrDefault();a.Target=target;if(target!=null&&TryVentTravel(m,target))continue;
                 }
                 if(target!=null&&StepHulkBreach(m,target.Body.position)){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}
                 if(!a.Struck&&Time>=m.StrikeAt){a.Struck=true;PveAddStrike(m);if(m.Hp<=0)continue;}
                 if(target==null){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}Vector3 d=target.Body.position-at;float distance=new Vector2(d.x,d.z).magnitude;
-                bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,start=a.Crawl?1:armless?.95f:a.Stats.startRange,hit=a.Crawl||armless?.34f:a.Stats.hit;
-                if(a.Struck&&!a.Possessed&&Time>=a.RecoverAt&&Time>=a.StaggerAt&&distance<=start&&Math.Abs(d.y)<1.6f&&(a.Stats.id!="hulk"||MeleeVisible(at,target.Body.position,m.Owner,target.Collider,true)))
+                bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,start=a.Stats.id=="spitter"?a.Stats.startRange:a.Crawl?1:armless?.95f:a.Stats.startRange,hit=a.Stats.id=="spitter"?a.Stats.hit:a.Crawl||armless?.34f:a.Stats.hit;
+                if(a.Struck&&!a.Possessed&&Time>=a.RecoverAt&&Time>=a.StaggerAt&&distance<=start&&(a.Stats.id!="spitter"||distance>=4)&&Math.Abs(d.y)<1.6f&&(a.Stats.id!="hulk"&&a.Stats.id!="spitter"||MeleeVisible(at,target.Body.position,m.Owner,target.Collider,true)))
                 {m.LastAttack=Time;m.StrikeAt=Time+hit;a.Struck=false;a.RecoverAt=Time+Math.Max(a.Stats.cycle,hit+.05f);a.Side=-a.Side;if(a.Side==1&&right)a.Side=-1;else if(a.Side==-1&&left)a.Side=1;m.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;}
                 Vector3 move=Vector3.zero;
                 if(Time<a.StaggerAt){}
-                else if(!a.Struck){m.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;if(distance>.8f)move=Vec(V3.Forward(m.Yaw))*((a.Crawl?.15f:armless?.45f:a.Stats.lunge)/Math.Max(.05f,hit));}
+                else if(!a.Struck){m.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;if(a.Stats.id!="spitter"&&distance>.8f)move=Vec(V3.Forward(m.Yaw))*((a.Crawl?.15f:armless?.45f:a.Stats.lunge)/Math.Max(.05f,hit));}
                 else if(Time>=a.RecoverAt)
                 {
                     float speed=(distance<=7||m.Hp<m.MaxHp*.5f?a.Stats.run:a.Stats.walk)*(a.Crawl?.35f:a.Limp?.55f:1);
@@ -141,17 +165,19 @@ namespace ChipArena.UnityConversion
                     // Resolve hiding before requesting a route: the old chase-then-hide
                     // calls invalidated each other's cached target twice every fixed tick.
                     Vector3 dir=hideSpot&&(destination-navAt).magnitude<1?Vector3.zero:
-                        Map.unity?StructureNavMove(m.Id,navAt,destination,(destination-navAt).normalized,hideSpot||adds.Length<12?(int?)null:target.Seat.id):
+                        Map.unity?StructureNavMove(m.Id,navAt,destination,(destination-navAt).normalized,hideSpot||adds.Count<12?(int?)null:target.Seat.id):
                         pveNavigation.Direction(at,destination,target.Seat.id);
+                    if(a.HasBreachShortcut)dir=a.BreachShortcut;
                     if(a.WallBreach!=null&&Time>=a.WallBreach.breakAt&&Time<a.WallBreach.breakAt+3f)dir=Vec(a.WallBreach.normal);
                     if(hiding)
                     {
                         if(!hideSpot){float age=Time-a.PossessedAt;if(age%6>=5.2f||distance>=8&&distance<=14)dir=Vector3.zero;else if(distance<8)dir=-dir;}
                         speed=(m.Hp<m.MaxHp*.5f?a.Stats.run:a.Stats.walk)*(a.Crawl?.35f:a.Limp?.55f:1);
                     }
-                    move=distance>1.1f||a.Possessed?dir*speed:Vector3.zero;if(!SupportedStageMove(navAt,move))move=Vector3.zero;
+                    if(a.Stats.id=="spitter"&&!a.Possessed&&MeleeVisible(at,target.Body.position,m.Owner,target.Collider,true))dir=NativeSpitterRules.KeepDistance(distance)<0?-d.normalized:NativeSpitterRules.KeepDistance(distance)==0?Vector3.zero:dir;
+                    move=distance>1.1f||a.Possessed||a.Stats.id=="spitter"?dir*speed:Vector3.zero;if(!SupportedStageMove(navAt,move))move=Vector3.zero;
                 }
-                if(move.sqrMagnitude>.001f){float factor=Time<a.SlowUntil?a.SlowFactor:1;foreach(var f in ChipFields)if(CanHit(f.Owner,m)&&Vector3.Distance(f.Position,at)<f.Radius)factor=Math.Min(factor,f.Kind=="frost"?.45f:f.Kind=="time"?.6f:1);move*=factor;int n=0;foreach(var other in adds){if(other==m||Time<other.Pve.ActiveAt||n>=6)continue;Vector3 diff=at-other.Body.position;diff.y=0;float dist=diff.magnitude;if(dist<.9f){n++;move+=dist<.0001f?Vector3.right*(m.Id<other.Id?-1.8f:1.8f):diff/dist*(.9f-dist)*2;}}m.Yaw=Mathf.Atan2(move.x,move.z)*Mathf.Rad2Deg;}
+                if(move.sqrMagnitude>.001f){float factor=Time<a.SlowUntil?a.SlowFactor:1;foreach(var f in ChipFields)if(CanHit(f.Owner,m)&&Vector3.Distance(f.Position,at)<f.Radius)factor=Math.Min(factor,f.Kind=="frost"?.45f:f.Kind=="time"?.6f:1);move*=factor;move+=HordeSeparation(m,at);m.Yaw=Mathf.Atan2(move.x,move.z)*Mathf.Rad2Deg;}
                 if(!SupportedStageMove(navAt,move))move=Vector3.zero;a.External*=Mathf.Exp(-6*dt);move+=Vector3.ClampMagnitude(a.External,6);m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);
             }
         }
@@ -168,7 +194,7 @@ namespace ChipArena.UnityConversion
         }
         private void PveAddStrike(NativeMinion m)
         {
-            var a=m.Pve;Vector3 at=m.Body.position,dir=Vec(V3.Forward(m.Yaw));bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float damage=a.Stats.damage*a.DamageScale*(a.Crawl?.6f:armless?.35f:left!=right?.65f:1),reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,impulse=a.Stats.impulse*(a.Crawl||armless?.5f:1);
+            var a=m.Pve;if(a.Stats.id=="spitter"){LaunchPveSpit(m);return;}Vector3 at=m.Body.position,dir=Vec(V3.Forward(m.Yaw));bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float damage=a.Stats.damage*a.DamageScale*(a.Crawl?.6f:armless?.35f:left!=right?.65f:1),reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,impulse=a.Stats.impulse*(a.Crawl||armless?.5f:1);
             bool smash=a.Stats.attack=="smash"&&!a.Crawl;
             if(smash&&a.Stats.id=="brute")Emit(EventKind.Impact,m.Owner,m.Id,at+dir*1.2f-Vector3.up*.9f,0,"minion-slam",radius:1.6f);
             foreach(var q in Pilots)
@@ -197,8 +223,10 @@ namespace ChipArena.UnityConversion
                 // every gun kill of a Siren add (owner playtest 2026-10-10). Presentation feed only; damage and limbs are unchanged.
                 if(limb>0){a.Parts.TryGetValue(limb,out float pool);pool+=taken;a.Parts[limb]=pool;if(pool>=m.MaxHp*(limb==1?a.Stats.headFrac:a.Stats.limbFrac)){a.Lost|=NativeHordeDamage.Descendants(limb);Emit(EventKind.PveGib,source,m.Id,point??m.Body.position,limb);if(limb==1)m.Hp=0;bool l=(a.Lost&(32|128))!=0,r=(a.Lost&(64|256))!=0;a.Crawl=(a.Lost&(32|64))!=0||l&&r;a.Limp=!a.Crawl&&(l||r);if(a.Crawl){m.Collider.height=.88f;m.Collider.radius=.32f;}}}
             }
+            if(NativeSpitterRules.Interrupt(actual,Time,m.LastAttack,a.Struck)&&a.Stats.id=="spitter")
+            {a.SpitCancelAt=Time;a.Struck=true;a.RecoverAt=NativeSpitterRules.Retry(Time);Emit(EventKind.Impact,source,m.Id,m.Body.position,0,"minion-spit-cancel");}
             a.LastHit=source;a.LastDamage=Time;a.Dealt.TryGetValue(source.Seat.id,out float dealt);a.Dealt[source.Seat.id]=dealt+actual;
-            if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;a.RecoverAt=Time;}if(Time>=a.ExposedAt)a.External=Vector3.ClampMagnitude(a.External+new Vector3(dir.x,0,dir.z)*NativePveParity.AddImpulse(impulse),6);
+            if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;if(a.Stats.id!="spitter"||actual<=0)a.RecoverAt=Time;}if(Time>=a.ExposedAt)a.External=Vector3.ClampMagnitude(a.External+new Vector3(dir.x,0,dir.z)*NativePveParity.AddImpulse(impulse),6);
             m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,normal:dir.x*dir.x+dir.z*dir.z>1e-12f?dir:Vector3.zero);
             MinionImpact(m,source,actual,point,kind,dir);
             if(m.Hp<=0){Vector3 at=m.Body.position;PveAddKilled(m,source);RemoveMinion(m,false);if(a.Possessed)FoundPveBoss(at);}return actual;

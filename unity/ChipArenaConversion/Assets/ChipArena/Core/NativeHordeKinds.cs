@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Ids={"shambler","runner","brute","spitter","crawler","bloater","hulk"};
         public static readonly string[] Names={"Shambler","Runner","Brute","Spitter","Crawler","Bloater","Hulk"};
         /// <summary>Kinds the shipped content spawns (the others are proposals until Astra adds them).</summary>
-        public static readonly bool[] Shipped={true,true,true,false,false,false,true};
+        public static readonly bool[] Shipped={true,true,true,true,false,false,true};
         /// <summary>The kind an add kind id draws as (an unknown or missing id: the shambler).</summary>
         public static int Resolve(string id){if(id!=null)for(int i=0;i<Count;i++)if(string.Equals(Ids[i],id,StringComparison.Ordinal))return i;return Shambler;}
         /// <summary>Whether an id names one of the kinds (no fallback).</summary>
@@ -91,6 +91,8 @@ namespace ChipArena.UnityConversion
         public static bool RightArmless(int lost)=>(lost&(4|16))!=0;
         /// <summary>When the attack lands after LastAttack: the stats' hit, or .34 s crawling or armless (StepPveHorde's
         /// <c>hit=a.Crawl||armless?.34f:a.Stats.hit</c>; StrikeAt=LastAttack+hit).</summary>
+        public static float Strike(PveAddStats stats,bool crawl,int lost)=>stats?.id=="spitter"?stats.hit:Strike(stats?.hit??.34f,crawl,lost);
+        public static float Recover(PveAddStats stats,bool crawl,int lost)=>Math.Max(stats?.cycle??1,Strike(stats,crawl,lost)+.05f);
         public static float Strike(float hit,bool crawl,int lost)=>crawl||Armless(lost)?.34f:hit;
         /// <summary>When the add can move again after LastAttack (<c>RecoverAt=Time+Math.Max(a.Stats.cycle,hit+.05f)</c>).</summary>
         public static float Recover(float hit,float cycle,bool crawl,int lost)=>Math.Max(cycle,Strike(hit,crawl,lost)+.05f);
@@ -117,6 +119,7 @@ namespace ChipArena.UnityConversion
         public static readonly Attack[] Default={Attack.Swipe,Attack.Lunge,Attack.Smash,Attack.Spit,Attack.Pounce,Attack.Belly,Attack.Smash};
         public static Attack AttackOf(int kind,string attack,bool crawl)
         {
+            if(kind==Spitter)return Attack.Spit;
             if(crawl&&kind!=Crawler)return Attack.Lunge;
             switch(attack){case "swipe":return Attack.Swipe;case "lunge":return kind==Crawler?Attack.Pounce:Attack.Lunge;case "smash":return Attack.Smash;case "spit":return Attack.Spit;case "pounce":return Attack.Pounce;case "belly":case "burst":return Attack.Belly;}
             return Default[Clamp(kind)];

@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
                 // damaging hit interrupts a spitter's spit (the proposed rule): the sac deflates and the acid fizzles at its feet.
                 if(m!=null&&stats!=null&&s.CancelFor!=m.LastAttack)
                 {
-                    var attack=NativeHordeKinds.AttackOf(kind,stats.attack,m.Pve.Crawl);float strike=NativeHordeKinds.Strike(stats.hit,m.Pve.Crawl,m.Pve.Lost),age=e.Time-m.LastAttack;
+                    var attack=NativeHordeKinds.AttackOf(kind,stats.attack,m.Pve.Crawl);float strike=NativeHordeKinds.Strike(stats,m.Pve.Crawl,m.Pve.Lost),age=e.Time-m.LastAttack;
                     if(age>=0&&age<strike&&NativeHordeKinds.Interrupts(kind,attack,e.Amount,m.MaxHp,heavy))
                     {
                         s.CancelAt=e.Time;s.CancelFor=m.LastAttack;s.CancelSwell=NativeHordeFx.Swell(attack,age,strike);
@@ -171,7 +171,7 @@ namespace ChipArena.UnityConversion
             Vector3 velocity=arena.Replica?m.NetworkVelocity:m.Body.isKinematic?Vector3.zero:m.Body.linearVelocity;float yaw=m.Yaw;
             float ground=pos.y-NativeHordeKinds.RootHeight(real,a.Crawl);
             bool entering=!a.Travelling&&now<a.ActiveAt;uint seed=NativeHordeKinds.Seed(m.Id);
-            var st0=a.Stats;var attack0=NativeHordeKinds.AttackOf(kind,st0?.attack,a.Crawl);float strike0=NativeHordeKinds.Strike(st0?.hit??.34f,a.Crawl,a.Lost),recover0=NativeHordeKinds.Recover(st0?.hit??.34f,st0?.cycle??1,a.Crawl,a.Lost);
+            var st0=a.Stats;var attack0=NativeHordeKinds.AttackOf(kind,st0?.attack,a.Crawl);float strike0=NativeHordeKinds.Strike(st0,a.Crawl,a.Lost),recover0=NativeHordeKinds.Recover(st0,a.Crawl,a.Lost);
             float roar=float.NaN,jawAge=float.NaN;
             if(a.Travelling)
             {
@@ -212,6 +212,8 @@ namespace ChipArena.UnityConversion
                 // A Hulk breaking a wall block it cannot fit past (the replicated dynamic breach, by its actor): it stands at the wall
                 // and pounds it on the same take and knocks. The blows land on the wall (the breach's draw), so no slam job is made.
                 else if(!entering&&HordeWallKnock(m.Id,now,out float knockAt)){attack=NativeHordeKinds.Attack.Smash;strike=.42f;recover=.6f;age=NativeBreach.KnockAge(now-knockAt,strike);knocking=true;}
+                if(a.Stats.id=="spitter"&&a.SpitCancelAt>=m.LastAttack&&a.SpitCancelAt<m.LastAttack+NativeSpitterRules.Hit&&s.CancelFor!=m.LastAttack)
+                {s.CancelAt=a.SpitCancelAt;s.CancelFor=m.LastAttack;s.CancelSwell=NativeHordeFx.Swell(attack,a.SpitCancelAt-m.LastAttack,strike);HordeFizzle(s,ground,a.SpitCancelAt);}
                 // A blow the authority cancelled (stagger in the wind-up) fades out at once instead of landing.
                 jawAge=age;
                 if(!float.IsNaN(age)&&s.CancelFor==m.LastAttack&&now>=s.CancelAt)age=float.NaN;
@@ -266,13 +268,13 @@ namespace ChipArena.UnityConversion
         }
         private float HordeSwellNow(HordeKindState s,NativeMinion m,float now)
         {
-            var st=m.Pve?.Stats;if(st==null)return 0;var attack=NativeHordeKinds.AttackOf(s.Kind,st.attack,m.Pve.Crawl);float strike=NativeHordeKinds.Strike(st.hit,m.Pve.Crawl,m.Pve.Lost);
+            var st=m.Pve?.Stats;if(st==null)return 0;var attack=NativeHordeKinds.AttackOf(s.Kind,st.attack,m.Pve.Crawl);float strike=NativeHordeKinds.Strike(st,m.Pve.Crawl,m.Pve.Lost);
             float age=now-m.LastAttack;if(s.CancelFor==m.LastAttack&&now>=s.CancelAt)return s.CancelSwell*(1-Mathf.SmoothStep(0,1,(now-s.CancelAt)/.35f));return NativeHordeFx.Swell(attack,age,strike);
         }
         // The add's glow this frame: the minion flicker's phase and drop bits (HordeGlow) brightened through a wind-up.
         private Vector4 HordeGlowFor(int id,HordeKindState s,NativeMinion m,float now)
         {
-            var g=HordeGlow(id);var st=m.Pve?.Stats;if(st==null)return g;float strike=NativeHordeKinds.Strike(st.hit,m.Pve.Crawl,m.Pve.Lost),recover=NativeHordeKinds.Recover(st.hit,st.cycle,m.Pve.Crawl,m.Pve.Lost),age=now-m.LastAttack;
+            var g=HordeGlow(id);var st=m.Pve?.Stats;if(st==null)return g;float strike=NativeHordeKinds.Strike(st,m.Pve.Crawl,m.Pve.Lost),recover=NativeHordeKinds.Recover(st,m.Pve.Crawl,m.Pve.Lost),age=now-m.LastAttack;
             if(s.CancelFor==m.LastAttack&&now>=s.CancelAt)age=float.NaN;float k=NativeHordeFx.Brighten(age,strike,recover)*(s.Possessed?1.15f:1);return new Vector4(k,k,k,g.w);
         }
         /// <summary>Queues a horde model on its rig: lost limbs (and `hidden` joints) left out, the spitter's sac and the bloater's
@@ -384,7 +386,7 @@ namespace ChipArena.UnityConversion
                         for(int i=0;i<NativeHordeFx.DroolDrops;i+=half?2:1)if(NativeHordeFx.Drool(j.Seed,i,a,H,out var o,out float sz,out float da))draw.Sprite(draw.Effects,mouth+new Vector3(o.X,o.Y,o.Z)+fwd*o.Z,right,up,sz*2.2f,Alpha(seam,da),NativeFxDraw.Authored+NativeFxDraw.Additive);
                         // The glob leaves the mouth at the strike (the DEV preview predicts where it lands, facing its pilot, once per
                         // attack; Astra's minion-spit events replace the prediction).
-                        if(a>=H&&!hordeSpitEvents.Contains(j.Id)&&(!hordeSpat.TryGetValue(j.Id,out float last)||last!=now-a))
+                        if(arena?.Pve==null&&a>=H&&!hordeSpitEvents.Contains(j.Id)&&(!hordeSpat.TryGetValue(j.Id,out float last)||last!=now-a))
                         {
                             hordeSpat[j.Id]=now-a;Vector3 to=j.HasTarget?new Vector3(j.Target.x,j.Ground,j.Target.z):floor+fwd*6;Vector3 flat=to-floor;flat.y=0;if(flat.magnitude>11)to=floor+flat.normalized*11;
                             float flight=NativeHordeFx.Flight(Vector3.Distance(new Vector3(mouth.x,0,mouth.z),new Vector3(to.x,0,to.z)));
@@ -425,6 +427,13 @@ namespace ChipArena.UnityConversion
         private int hordeSpitEvent;
         private void HordeSpitEvents(NativeArena arena,float now)
         {
+            if(arena.Pve!=null)
+            {
+                int recordCount=arena.PveAcidCount;
+                for(int i=0;i<hordeGlobs.Length;i++){bool found=false;for(int k=0;k<recordCount;k++){var r=arena.PveAcidAt(k);if(hordeGlobs[i].Id==r.actor&&hordeGlobs[i].At==r.at){found=true;break;}}if(!found)hordeGlobs[i].Flight=0;}
+                for(int k=0;k<recordCount;k++){var r=arena.PveAcidAt(k);bool found=false;for(int i=0;i<hordeGlobs.Length;i++)if(hordeGlobs[i].Flight>0&&hordeGlobs[i].Id==r.actor&&hordeGlobs[i].At==r.at){found=true;break;}if(!found)HordeLaunchGlob(NativeArena.Vec(r.from),NativeArena.Vec(r.to),r.at,r.flight,(uint)r.id,r.actor,NativeSpitterRules.Radius,NativeSpitterRules.Duration);}
+                return;
+            }
             var events=arena.Events;int newest=hordeSpitEvent;
             for(int i=0;i<events.Count;i++)
             {
@@ -570,7 +579,7 @@ namespace ChipArena.UnityConversion
                 int id=990000+k;if(galleryRigs[k]==null){galleryRigs[k]=captured.Create(transform,id);galleryStates[k]=new HordeKindState();galleryStates[k].Reset(id);galleryStates[k].Kind=k;galleryStates[k].Look=0;galleryStates[k].React.Bind(k);}
                 var rig=galleryRigs[k];var s=galleryStates[k];var st=NativeHordeKinds.ProposedRow(k);float t=Mathf.Repeat(now-galleryStart+k*.37f,GalleryLoop);uint seed=NativeHordeKinds.Seed(id);
                 Vector3 slot=galleryAt+across*((k-(NativeHordeKinds.Hulk-1)*.5f)*1.9f);Vector3 pos=slot;float yaw=yawToMe;Vector3 vel=Vector3.zero;float age=float.NaN;
-                var attack=NativeHordeKinds.AttackOf(k,st.attack,false);float strike=NativeHordeKinds.Strike(st.hit,false,0),recover=NativeHordeKinds.Recover(st.hit,st.cycle,false,0);
+                var attack=NativeHordeKinds.AttackOf(k,st.attack,false);float strike=NativeHordeKinds.Strike(st,false,0),recover=NativeHordeKinds.Recover(st,false,0);
                 bool entering=false;float entryAge=0,entryWalk=0,jawAge=float.NaN,cancelAge=float.NaN;
                 // The entrances (presentation only: the same poses and effects the live adds play from their replicated entries).
                 if(t<GalleryEntrance)
@@ -681,12 +690,12 @@ namespace ChipArena.UnityConversion
                     }
                     continue;
                 }
-                var attack=NativeHordeKinds.AttackOf(kind,a.Stats.attack,a.Crawl);float strike=NativeHordeKinds.Strike(a.Stats.hit,a.Crawl,a.Lost);Vector3 pos=m.Body.position;
+                var attack=NativeHordeKinds.AttackOf(kind,a.Stats.attack,a.Crawl);float strike=NativeHordeKinds.Strike(a.Stats,a.Crawl,a.Lost);Vector3 pos=m.Body.position;
                 // The cue keys are only built inside a cue's window (no string per add per frame).
                 string wind=NativeHordeKinds.WindupCue(attack);if(wind!=null&&t>=m.LastAttack&&t-m.LastAttack<.15f&&Once("add"+m.Id+"w",m.LastAttack))BankPlay(wind,pos,NativeHordeKinds.WindupGain);
                 float at2=m.LastAttack+strike;if(t>=at2&&t-at2<.12f&&Once("add"+m.Id+"s",m.LastAttack)){BankPlay(NativeHordeKinds.StrikeCue(attack),pos,NativeHordeKinds.StrikeGain);string under=NativeHordeKinds.StrikeUnder(attack);if(under!=null)BankPlay(under,pos,NativeHordeKinds.UnderGain,0,null,false,null,kind==NativeHordeKinds.Hulk?.6f:.8f);if(kind==NativeHordeKinds.Hulk)BankPlay("blast.quake",pos,.6f,0,null,false,null,.9f);}
                 // The Hulk's roar (the same seeded moments the presentation roars at): a deep groan.
-                if(kind==NativeHordeKinds.Hulk){float roar=NativeHordeRoar.Age(kind,NativeHordeKinds.Seed(m.Id),t,a.ActiveAt,t-m.LastAttack,NativeHordeKinds.Recover(a.Stats.hit,a.Stats.cycle,a.Crawl,a.Lost));if(!float.IsNaN(roar)&&roar<.12f&&Once("add"+m.Id+"o",Mathf.Round((t-roar)*10)/10))BankPlay("structure.groan",pos,.95f,0,null,false,null,.55f);}
+                if(kind==NativeHordeKinds.Hulk){float roar=NativeHordeRoar.Age(kind,NativeHordeKinds.Seed(m.Id),t,a.ActiveAt,t-m.LastAttack,NativeHordeKinds.Recover(a.Stats,a.Crawl,a.Lost));if(!float.IsNaN(roar)&&roar<.12f&&Once("add"+m.Id+"o",Mathf.Round((t-roar)*10)/10))BankPlay("structure.groan",pos,.95f,0,null,false,null,.55f);}
                 string step=NativeHordeKinds.StepCue(kind);if(step==null)continue;
                 if(hordeLast.TryGetValue(m.Id,out var last)){var d=pos-last;d.y=0;float moved=d.magnitude;if(moved<1){hordeStrides.TryGetValue(m.Id,out float acc);acc+=moved;float sc=NativeHordeKinds.Scale[kind];float stride=NativeHordeGait.Stride(kind,Mathf.Max(.5f/sc,moved/Mathf.Max(1e-3f,Time.unscaledDeltaTime)/sc))*.5f*sc;if(acc>=stride){acc-=stride;BankPlay(step,pos,NativeHordeKinds.StepGainOf(kind),0,null,false,null,kind==NativeHordeKinds.Hulk?.55f:kind==NativeHordeKinds.Brute?.72f:.82f);}hordeStrides[m.Id]=acc;}}
                 hordeLast[m.Id]=pos;

@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         private static void Timing(string root)
         {
             var sim=R(root,"Assets/ChipArena/Runtime/NativePveHorde.cs");
-            foreach(var s in new[]{"bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;","hit=a.Crawl||armless?.34f:a.Stats.hit;","m.LastAttack=Time;m.StrikeAt=Time+hit;a.Struck=false;a.RecoverAt=Time+Math.Max(a.Stats.cycle,hit+.05f);","(a.Crawl?.15f:armless?.45f:a.Stats.lunge)/Math.Max(.05f,hit)","Vector3 center=at+dir*NativeHordeKinds.SmashAheadOf(NativeHordeKinds.Resolve(a.Stats.id));if(new Vector2(q.Body.position.x-center.x,q.Body.position.z-center.z).magnitude>NativeHordeKinds.SmashRadiusOf(NativeHordeKinds.Resolve(a.Stats.id)))continue;","if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;a.RecoverAt=Time;}"})
+            foreach(var s in new[]{"bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;","hit=a.Stats.id==\"spitter\"?a.Stats.hit:a.Crawl||armless?.34f:a.Stats.hit;","m.LastAttack=Time;m.StrikeAt=Time+hit;a.Struck=false;a.RecoverAt=Time+Math.Max(a.Stats.cycle,hit+.05f);","(a.Crawl?.15f:armless?.45f:a.Stats.lunge)/Math.Max(.05f,hit)","Vector3 center=at+dir*NativeHordeKinds.SmashAheadOf(NativeHordeKinds.Resolve(a.Stats.id));if(new Vector2(q.Body.position.x-center.x,q.Body.position.z-center.z).magnitude>NativeHordeKinds.SmashRadiusOf(NativeHordeKinds.Resolve(a.Stats.id)))continue;","if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;if(a.Stats.id!=\"spitter\"||actual<=0)a.RecoverAt=Time;}"})
                 Check(sim.Contains(s),"the authority's attack rule is still `"+s+"` (update NativeHordeKinds to follow it)");
             Check(NativeHordeKinds.SmashAhead==1.2f&&NativeHordeKinds.SmashRadius==1.6f,"the slam telegraph is the authority's disc");
             int[] losts={0,2,8,4,16,2|4,8|16,2|16,32,1};
@@ -241,7 +241,7 @@ namespace ChipArena.UnityConversion
             var p=R(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs");
             foreach(var bad in new[]{".Hp=","Damage(","Emit(","StaggerAt=","RecoverAt=","StrikeAt=","LastAttack=","Yaw=m.","m.Yaw="})Check(!p.Contains(bad),"the kind presentation never writes `"+bad+"`");
             Check(p.Contains("LowGraphics?HordeFullRigsLow:HordeFullRigs")&&p.Contains("HordeFullRigs=24,HordeFullRigsLow=16")&&p.Contains("HordeReducedRange=40"),"the crowd tiers: 24 full (16 on the low tier), reduced to 40 m, impostors beyond");
-            Check(p.Contains("NativeHordeKinds.Strike(st0?.hit??.34f,a.Crawl,a.Lost)")&&p.Contains("float age=now-m.LastAttack;"),"attacks are timed from the replicated LastAttack and the content's strike");
+            Check(p.Contains("NativeHordeKinds.Strike(st0,a.Crawl,a.Lost)")&&p.Contains("float age=now-m.LastAttack;"),"attacks are timed from the replicated LastAttack and the content's strike");
             Check(p.Contains("NativeHordeKinds.Interrupts(kind,attack,e.Amount,m.MaxHp,heavy)")&&p.Contains("s.CancelFor==m.LastAttack&&now>=s.CancelAt"),"a stagger in the wind-up cancels the shown blow as the authority cancels the real one");
             Check(p.Contains("NativeHordeKinds.Resolve(a.Stats?.id)"),"the kind keys off the replicated add kind");
             Check(p.Contains("HitFlashCode(m.Id,now)"),"the struck flash on the body");

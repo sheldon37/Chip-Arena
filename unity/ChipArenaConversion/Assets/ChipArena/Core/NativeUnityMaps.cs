@@ -28,6 +28,7 @@ namespace ChipArena.UnityConversion
         public static bool Finite(V3 p)=>MathUtil.Finite(p.x)&&MathUtil.Finite(p.y)&&MathUtil.Finite(p.z);
         public static bool Box(V3 p,V3 size)=>Finite(p)&&Finite(size)&&size.x>0&&size.y>0&&size.z>0;
         public static string Revision(string text) { using(var hash=SHA256.Create())return BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(text))).Replace("-","").ToLowerInvariant(); }
+        public static string PveRevision(string mapRevision,string pveText)=>Revision(mapRevision+"\n"+pveText);
         public static bool Compatible(int protocol,string source,string revision,ConversionContent c)=>protocol==NativeConnection.Protocol&&source==c.sourceCommit&&revision==c.contentRevision;
         public static void Merge(ConversionContent c,UnityMapContent u,string text)
         {

@@ -23,10 +23,9 @@ internal static class NativeSystemsChecks
         {
             foreach(var e in file.RootElement.GetProperty("cases").EnumerateArray())
             {int h=e.GetProperty("h").GetInt32(),wave=e.GetProperty("wave").GetInt32();var data=pve.waves[wave-1];var flow=e.GetProperty("flow");Near(NativePveRules.BossHp(h),e.GetProperty("hp").GetDouble(),"party HP");Near(NativePveRules.BossDamage(h),e.GetProperty("damage").GetDouble(),"party damage");Near(NativePveRules.Budget(data,h),e.GetProperty("budget").GetDouble(),"wave budget");Near(NativePveRules.Rate(data,h),flow.GetProperty("rate").GetDouble(),"spawn flow");Near(NativePveRules.Cap(data,h,e.GetProperty("relay").GetBoolean()),flow.GetProperty("maxAlive").GetDouble(),"alive cap");}
-            foreach(var e in file.RootElement.GetProperty("schedules").EnumerateArray())
-            {var schedule=new NativeWaveSchedule(0,e.GetProperty("skip").GetBoolean());double resolved=e.GetProperty("resolvedAt").GetDouble();var events=new List<PveWaveEvent>();for(double t=0;t<550;t+=.25){var change=schedule.Step(t,t%33<30?0:5,resolved<0?(double?)null:resolved);if(change!=null)events.Add(change);}var expected=e.GetProperty("events").EnumerateArray().ToArray();Check(events.Count==expected.Length,"schedule count");for(int i=0;i<events.Count;i++){Check(events[i].kind==expected[i].GetProperty("kind").GetString(),"wave event");Near(events[i].at,expected[i].GetProperty("at").GetDouble(),"wave time");}}
+
         }
-        Console.WriteLine("PASS native PvE: 24 source scaling cases and six complete wave schedules");
+        Console.WriteLine("PASS native PvE: 24 source scaling cases; native fixed-count schedules checked separately");
         using(var file=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/native-systems-parity.json"))))
         {
             var d=file.RootElement;

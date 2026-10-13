@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     public static class NativeUnityMapLoader
     {
         public static void Load(ConversionContent content)
-        {var asset=Resources.Load<TextAsset>("UnityMaps");if(asset==null)throw new InvalidOperationException("UnityMaps.json is missing");NativeMapRules.Merge(content,JsonUtility.FromJson<UnityMapContent>(asset.text),asset.text);}
+        {var asset=Resources.Load<TextAsset>("UnityMaps");if(asset==null)throw new InvalidOperationException("UnityMaps.json is missing");NativeMapRules.Merge(content,JsonUtility.FromJson<UnityMapContent>(asset.text),asset.text);var pve=Resources.Load<TextAsset>("PveContent");if(pve==null)throw new InvalidOperationException("PveContent.json is missing");content.contentRevision=NativeMapRules.PveRevision(content.contentRevision,pve.text);}
     }
     public sealed partial class NativeArena
     {

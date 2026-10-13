@@ -16,18 +16,20 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class PveWaveEvent {public string kind;public int wave;public double at;public bool forced;}
     public sealed class NativeWaveSchedule
     {
-        public string Stage="opening";public int Wave;public double At,Until=10;private double low=-1;private readonly bool skip;
+        public string Stage="opening";public int Wave;public double At,Until=10;private readonly bool skip;
         public NativeWaveSchedule(double time,bool skip){this.skip=skip;At=time;Until=time+10;}
         public PveWaveEvent Step(double time,int remaining,double? resolvedAt)
         {
             if(Stage=="opening"){Until=resolvedAt.HasValue?Math.Min(At+10,Math.Max(At+4,resolvedAt.Value+3)):At+10;if(time>=Until)return Next(skip?4:1,Until);}
-            else if(Stage=="wave"){if(remaining<=2){if(low<0)low=time;}else low=-1;double quiet=low<0?double.PositiveInfinity:low+3,forced=At+150;if(time>=Math.Min(quiet,forced)){At=Math.Min(quiet,forced);Stage="intermission";low=-1;Until=At+30;return new PveWaveEvent{kind="wave-clear",wave=Wave,at=At,forced=forced<quiet};}}
+            else if(Stage=="wave"&&remaining==0){At=time;Stage="intermission";Until=At+30;return new PveWaveEvent{kind="wave-clear",wave=Wave,at=At,forced=false};}
             else if(Stage=="intermission"&&time>=Until)return Next(Wave+1,Until);return null;
         }
-        private PveWaveEvent Next(int wave,double at){Wave=wave;At=at;low=-1;Stage=wave>3?"done":"wave";return new PveWaveEvent{kind=wave>3?"boss":"wave-start",wave=wave>3?0:wave,at=at};}
+        private PveWaveEvent Next(int wave,double at){Wave=wave;At=at;Stage=wave>3?"done":"wave";return new PveWaveEvent{kind=wave>3?"boss":"wave-start",wave=wave>3?0:wave,at=at};}
     }
     public static class NativePveRules
     {
+        public static int Remaining(int budget,int spawned,int alive)=>Math.Max(0,budget-spawned)+Math.Max(0,alive);
+        public static int SpawnAllowance(int budget,int spawned,int active,int cap,int due)=>Math.Max(0,Math.Min(due,Math.Min(cap-active,budget<0?due:budget-spawned)));
         public static int BossHp(int members)=>(int)Math.Round(6000*(1+.5*(Math.Max(1,members)-1)));
         public static float BossDamage(int members)=>new[]{.2f,.22f,.24f,.26f}[Math.Max(0,Math.Min(3,members-1))];
         public static int Budget(PveWaveData w,int members)=>(int)Math.Floor(w.count*(1+.6*(Math.Max(1,members)-1))+.5);
