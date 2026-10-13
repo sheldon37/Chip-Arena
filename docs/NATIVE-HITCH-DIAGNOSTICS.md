@@ -20,7 +20,8 @@ write files per frame. Log entries omit stack traces, credentials and usernames.
   snapshot creation, animation and effects are nested timings, not additional
   costs to add to those totals. Animation is the renderer's most recent sample.
 - `arenaStepMs` and `physicsMs`: authority gameplay step versus BeforePhysics / PhysX / AfterPhysics, nested inside `simulationMs`.
-- `navigationMs` and `navigationSearches`: structural navigation work and route rebuild count, nested inside the gameplay step. Both PvP bots and PvE enemies use this search.
+- `navigationMs` and `navigationSearches`: structural navigation work and search/tree-build count, nested inside the gameplay step. Both PvP bots and PvE enemies use this search.
+- `hordeMs` and `hordeSpawnMs`: horde update and enemy entry selection/creation, nested inside the gameplay step. Spawning and horde navigation can overlap the horde total; do not add these timings together. `pveStage`, `pvePhase` and `hordeCap` identify the active load.
 - `deathRecordMs`: pilot death-record creation only, nested inside the gameplay step (not every damage/cleanup operation).
 - `deathPresentationMs`: corpse/death presentation, including its creation and stepping, nested inside presentation time. This is separate from authority physics; use it to investigate deaths on other PvP maps.
 - GC counters are runtime collection-count deltas. Matching generation counters do not establish three separate sets of pauses, and these reports do not measure GC pause duration.
@@ -72,3 +73,23 @@ expiry; hitch checks cover recovered freezes, sustained slow frames, rolling
 recovery, throttling and cap. The native interaction gate additionally checks a
 healed/resistant/shielded victim, once-only crush, safe anchor, invalid anchor,
 replication and respawn. Actual Unity/PhysX and Windows acceptance remain required.
+
+## Ward Zero crowd follow-up (2026-10-13)
+
+Hidden Siren phase two retains its authored 20x spawn rate and 12x cap (up to
+192 adds). With 12 or more adds, mobs chasing the same pilot share a reverse
+shortest-path tree; individual routes and immediate unsafe-edge checks remain.
+Trees refresh on the existing 0.7-second cadence, target movement or topology
+revision. Directed drops remain one-way. Small groups and the possessed enemy
+retain individual searches. Equal-cost crowd paths may choose different lanes.
+
+The possessed enemy selects its hiding destination before navigation instead of
+requesting chase and hide paths that invalidate one another every fixed tick.
+Hide selection now runs every 0.75 seconds. Feet-relative support/navigation
+queries fix the full-height Hulk missing the floor and its first waypoint.
+Actual Hulk capsule, health, attack timing and crowd limits are unchanged.
+
+Managed crowd checks do not include Unity raycasts, physics or rendering. The
+native Ward build gate checks real Hulk movement, shared crowd search count and
+the possessed route cache. Windows phase-two load testing and a fresh hitch
+capture remain necessary before calling the performance problem resolved.

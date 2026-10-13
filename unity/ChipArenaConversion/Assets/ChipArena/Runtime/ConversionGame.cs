@@ -241,9 +241,9 @@ namespace ChipArena.UnityConversion
         private void FixedFrame()
         {
             if(arena==null||menu&&!Online)return;if(arena.Replica){if(server!=null){pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});arena.PredictReplica(pending);pending=pending.HeldOnly();}return;}timer.Restart();bool held=arena.Pve?.Holding==true;
-            double navBefore=arena.NavigationMs,deathBefore=arena.DeathRecordMs;int searchesBefore=arena.NavigationSearches;
+            double navBefore=arena.NavigationMs,deathBefore=arena.DeathRecordMs,hordeBefore=arena.HordeMs,spawnBefore=arena.HordeSpawnMs;int searchesBefore=arena.NavigationSearches;
             long stepAt=System.Diagnostics.Stopwatch.GetTimestamp();
-            try{arena.Step(pending);}finally{hitchArenaStep+=HitchMs(stepAt);hitchNavigation+=arena.NavigationMs-navBefore;hitchNavSearches+=arena.NavigationSearches-searchesBefore;hitchDeathRecord+=arena.DeathRecordMs-deathBefore;}
+            try{arena.Step(pending);}finally{hitchArenaStep+=HitchMs(stepAt);hitchNavigation+=arena.NavigationMs-navBefore;hitchNavSearches+=arena.NavigationSearches-searchesBefore;hitchDeathRecord+=arena.DeathRecordMs-deathBefore;hitchHorde+=arena.HordeMs-hordeBefore;hitchHordeSpawn+=arena.HordeSpawnMs-spawnBefore;}
             if(!held&&arena.Pve?.Holding!=true){long physicsAt=System.Diagnostics.Stopwatch.GetTimestamp();try{arena.BeforePhysics();Physics.Simulate(1f/60);arena.AfterPhysics();}finally{hitchPhysics+=HitchMs(physicsAt);}}
             timer.Stop();stepMs=timer.Elapsed.TotalMilliseconds;
             pending=pending.HeldOnly();

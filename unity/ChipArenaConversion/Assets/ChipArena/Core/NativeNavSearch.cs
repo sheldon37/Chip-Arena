@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     {
         private readonly MapNavNode[] nodes;
         private readonly Dictionary<string,int> index=new Dictionary<string,int>();
-        private readonly List<MapNavLink>[] edges;
+        private readonly List<MapNavLink>[] edges,incoming;
         private readonly float[] distance,estimate;
         private readonly int[] previous,heap,position;
         private readonly bool[] closed;
@@ -21,17 +21,21 @@ namespace ChipArena.UnityConversion
         }
         public MapNavNode Nearest(V3 point,Func<MapNavNode,bool> usable)
         {
-            for(int i=0;i<nodes.Length;i++){nearestOrder[i]=i;var d=nodes[i].pos-point;nearestDistance[i]=V3.Dot(d,d);}
+            int closest=-1;float best=float.PositiveInfinity;
+            for(int i=0;i<nodes.Length;i++){nearestOrder[i]=i;var d=nodes[i].pos-point;float distance=nearestDistance[i]=V3.Dot(d,d);if(distance<best){best=distance;closest=i;}}
+            // Usually the closest floor node is usable. Avoid sorting the whole map
+            // for every mob; retain the ordered fallback for obstructed candidates.
+            if(closest>=0&&usable(nodes[closest]))return nodes[closest];
             Array.Sort(nearestOrder,nearestComparer);
             foreach(int i in nearestOrder)if(usable(nodes[i]))return nodes[i];return null;
         }
         public NativeNavSearch(MapNav graph)
         {
-            nodes=graph.nodes;int n=nodes.Length;edges=new List<MapNavLink>[n];
+            nodes=graph.nodes;int n=nodes.Length;edges=new List<MapNavLink>[n];incoming=new List<MapNavLink>[n];
             nearestOrder=new int[n];nearestDistance=new float[n];nearestComparer=new NearestComparer(nearestDistance);
             distance=new float[n];estimate=new float[n];previous=new int[n];heap=new int[n];position=new int[n];closed=new bool[n];
-            for(int i=0;i<n;i++){index.Add(nodes[i].id,i);edges[i]=new List<MapNavLink>();}
-            foreach(var link in graph.links){edges[index[link.a]].Add(link);if(link.kind!="drop")edges[index[link.b]].Add(link);}
+            for(int i=0;i<n;i++){index.Add(nodes[i].id,i);edges[i]=new List<MapNavLink>();incoming[i]=new List<MapNavLink>();}
+            foreach(var link in graph.links){edges[index[link.a]].Add(link);incoming[index[link.b]].Add(link);if(link.kind!="drop"){edges[index[link.b]].Add(link);incoming[index[link.a]].Add(link);}}
         }
         public void Find(string startId,string endId,Func<MapNavLink,bool> active,List<string> path)
         {
@@ -49,6 +53,33 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
+        // Crowd routes share one reverse shortest-path tree per destination. Incoming
+        // edges preserve one-way drops; previous[] points toward the destination.
+        public void BuildFlow(string endId,Func<MapNavLink,bool> active)
+        {
+            int end=index[endId];count=0;
+            for(int i=0;i<nodes.Length;i++){distance[i]=float.PositiveInfinity;estimate[i]=0;previous[i]=-1;position[i]=-1;closed[i]=false;}
+            distance[end]=0;PushOrDecrease(end);
+            while(count>0)
+            {
+                int at=Pop();closed[at]=true;
+                foreach(var link in incoming[at])
+                {
+                    int next=index[link.a==nodes[at].id?link.b:link.a];if(closed[next]||!active(link))continue;
+                    float cost=distance[at]+(nodes[next].pos-nodes[at].pos).Length;
+                    if(cost>=distance[next])continue;distance[next]=cost;previous[next]=at;PushOrDecrease(next);
+                }
+            }
+        }
+        public void TraceFlow(string startId,List<string> path)
+        {
+            path.Clear();int start=index[startId];if(float.IsPositiveInfinity(distance[start]))return;
+            for(int at=start;at>=0;at=previous[at])path.Add(nodes[at].id);
+        }
+        // Navigation nodes and support rays are authored for the standard pilot height.
+        // Keep the actual capsule unchanged; anchor these queries relative to its feet.
+        public static V3 BodyAnchor(V3 center,float halfHeight)
+            =>new V3(center.x,center.y-halfHeight+NativeLocomotionRules.HalfHeight,center.z);
         private bool Before(int a,int b)
         {float x=distance[a]+estimate[a],y=distance[b]+estimate[b];return x<y||x==y&&StringComparer.Ordinal.Compare(nodes[a].id,nodes[b].id)<0;}
         private void Put(int slot,int node){heap[slot]=node;position[node]=slot;}
