@@ -25,7 +25,7 @@ def read_manifest(data):
         raise ValueError('Manifest too large')
     m = json.loads(data.decode('utf-8-sig'))
     b = m['build']
-    if m['schema'] != 1 or b['schema'] != 1 or tuple(b[k] for k in ('product', 'channel', 'platform')) != PRODUCT or b['bootstrap'] != 1 or b['revision'] <= 0 or not HEX.fullmatch(b['version']):
+    if m['schema'] != 1 or b['schema'] != 1 or tuple(b[k] for k in ('product', 'channel', 'platform')) != PRODUCT or b['bootstrap'] not in (1, 2) or b['revision'] <= 0 or not HEX.fullmatch(b['version']):
         raise ValueError('Wrong native build identity')
     if not HEX.fullmatch(m['sha256']) or not 0 < m['bytes'] <= 2 * 1024**3 or not 0 < m['unpackedBytes'] <= 4 * 1024**3 or not 3 <= m['files'] <= 20000 or not 1 <= len(m['parts']) <= 64:
         raise ValueError('Invalid archive bounds')
@@ -141,7 +141,8 @@ def validate(feed):
                 if path.lower() in names or (row.external_attr >> 16) & 0xf000 not in (0, 0x8000):
                     raise ValueError('Duplicate, link or non-file archive entry')
                 names.add(path.lower())
-            if not {'native-build.json', 'unityplayer.dll', 'chiparena-native-conversion-test.exe'} <= names or not any(p.startswith('chiparena-native-conversion-test_data/') for p in names):
+            player = 'chip arena' if b['bootstrap'] == 2 else 'chiparena-native-conversion-test'
+            if not {'native-build.json', 'unityplayer.dll', player + '.exe'} <= names or not any(p.startswith(player + '_data/') for p in names):
                 raise ValueError('Incomplete player')
             if json.loads(archive.read('native-build.json')) != b:
                 raise ValueError('Embedded build differs from manifest')

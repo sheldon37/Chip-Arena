@@ -5640,3 +5640,16 @@ containing an entry; no self-referential commit hash is required.
 - Next: each agent synchronizes this branch before making its own task branch;
   after migration merges, start new tasks from updated main. Review relevant open
   PRs to avoid overlapping work. Resolve baseline failures before release work.
+
+## 2026-10-13 · Codex · Windows app and executable name
+Branch: `codex/windows-app-name`, base `ae3bbbbba62f`. Product/window identity
+and the compiled player are now **Chip Arena** / **Chip Arena.exe**, with matching
+data directory, cloud staging, packaging and launcher validation. Preferences and
+account tokens retain the previous Windows user-data directory. Old flat starter
+launcher discovery remains supported. This changes the native bootstrap to 2:
+bootstrap-1 installs reject the renamed payload before replacing files and need
+one new starter ZIP. The launcher itself is not self-updated.
+Checks: Python discovery 101 tests, OK (1 skipped); managed updater 57 passed;
+git diff --check passed. Unity compilation, Windows startup/mixer display and
+real installed-client update were not run (no Unity/Windows here). No compiled
+release published; source changes await builder verification.

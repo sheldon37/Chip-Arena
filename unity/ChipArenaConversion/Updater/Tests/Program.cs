@@ -18,7 +18,7 @@ static class Program
         public string App{get{return Path.Combine(Root,"app");}}
         public Fixture()
         {
-            Directory.CreateDirectory(Root);File.WriteAllText(Path.Combine(Root,NativeUpdateRules.Executable),"stable launcher");File.WriteAllText(Path.Combine(Root,"native-install.txt"),NativeUpdateRules.Product+"/1");
+            Directory.CreateDirectory(Root);File.WriteAllText(Path.Combine(Root,NativeUpdateRules.LegacyExecutable),"stable launcher");File.WriteAllText(Path.Combine(Root,"native-install.txt"),NativeUpdateRules.Product+"/1");
             Player(App,Identity('a',1));File.WriteAllText(Path.Combine(App,"obsolete.dll"),"old");File.WriteAllText(Path.Combine(Root,"settings-sentinel.json"),"preserve");
         }
         public static void Player(string dir,NativeBuildIdentity build)
@@ -40,9 +40,11 @@ static class Program
     static void Main()
     {
         CloudPlayerChecks.Run();StarterPackageChecks.Run();
+        Check(new NativeBuildIdentity().bootstrap==2&&NativeUpdateRules.BootstrapVersion==2,"renamed player requires bootstrap 2, rejected by bootstrap-1 guard");
+        Check(NativeUpdateRules.Executable=="Chip Arena.exe"&&NativeUpdateRules.DataDirectory=="Chip Arena_Data","friendly player and matching Unity data directory");
         using(var f=new Fixture())
         {
-            string old=Path.Combine(f.Root,NativeUpdateRules.Executable),friendly=Path.Combine(f.Root,NativeUpdateRules.LauncherExecutable);
+            string old=Path.Combine(f.Root,NativeUpdateRules.LegacyExecutable),friendly=Path.Combine(f.Root,NativeUpdateRules.LauncherExecutable);
             Check(NativeUpdateRules.LauncherPath(f.Root)==old,"legacy launcher remains discoverable");
             File.Move(old,friendly);UpdateStorage.ValidateRoot(f.Root);
             Check(NativeUpdateRules.LauncherPath(f.Root)==friendly,"friendly launcher works without a legacy alias");

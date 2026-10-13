@@ -51,7 +51,7 @@ memory); a restart ends current rooms.
 A Windows Unity build can also run an unattended authority:
 
 ```powershell
-.\ChipArena-Native-Conversion-TEST.exe -batchmode -nographics --ca-server --ca-port 29941 --ca-map foundry --ca-min-players 2
+& ".\Chip Arena.exe" -batchmode -nographics --ca-server --ca-port 29941 --ca-map foundry --ca-min-players 2
 ```
 
 Add `--ca-online` for an automatic Cloudflare room, `--ca-pve` for Ward Zero, `--ca-bots 2` for bots, or `--ca-relay wss://YOUR-RELAY-HOST --ca-public` to list a relayed server. The server logs its room code. Players choose Ready; a match starts when the configured minimum is ready. Rejoin leases last 90 seconds. A fully empty server returns to its lobby after that lease expires. Dedicated mode is compiled but requires native Unity execution to validate.
