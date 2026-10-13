@@ -173,7 +173,7 @@ internal static class FinalKillcamChecks
         // Presentation clocks default to today's behaviour.
         string slow=R("Runtime/NativeSlowMotionPresentation.cs"),blast=R("Runtime/NativeBlastPresentation.cs"),shots=R("Runtime/NativeShotPresentation.cs"),corpse=R("Runtime/NativeCorpseSmoothing.cs"),death=R("Runtime/NativeDeathPresentation.cs");
         Check(slow.Contains("private float clockRate=1;")&&slow.Contains("public bool SlowBodies;")&&blast.Contains("public float Rate=1;")&&shots.Contains("public float Rate=1;")&&blast.Contains("Time.unscaledDeltaTime*Rate")&&shots.Contains("Time.unscaledDeltaTime*Rate"),"particle sims follow the replay rate, 1 by default");
-        Check(Body(corpse,"private Matrix4x4 Posed(").Contains("if(!Smooth||smoothT>=1")&&death.Contains("float age=(SlowBodies?KillClock(arena):arena.Time)-death.at;")&&death.Contains("corpse.Smooth=SlowBodies;"),"bodies blend only in the final killcam");
+        Check(Body(corpse,"private Matrix4x4 Posed(").Contains("if(!Smooth||smoothT>=1")&&death.Contains("float age=(SlowBodies||arena.ReplaySampledShots?KillClock(arena):arena.Time)-death.at;")&&death.Contains("corpse.Smooth=SlowBodies;"),"bodies blend only in the final killcam");
         Check(Body(final,"private void FinalStop()").Contains("presentation.ClockRate=1;presentation.SlowBodies=false;")&&Body(final,"private void FinalStop()").Contains("ReplayRestore()"),"clocks and pitch restored when it ends");
         // The broadcast frame draws without per-frame allocation: no string building, no array or delegate creation.
         string hud=Body(final,"private void FinalKillcamHud()");

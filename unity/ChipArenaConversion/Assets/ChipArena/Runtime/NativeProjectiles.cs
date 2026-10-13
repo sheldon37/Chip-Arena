@@ -56,6 +56,8 @@ namespace ChipArena.UnityConversion
             SpawnChipShots(p,volley);LeetSpawned(p,volley);if(p.Stats["recoil"]>0)p.Knockback-=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch))*Math.Min(15,(float)p.Stats["recoil"]);
             if(bow==null)Emit(EventKind.Shot,p,0,start,(int)p.Pose.Weapon,fan?"fan":overdrive?"overdrive":null);
         }
+        private void EndBullet(NativeBullet b)
+        {if(Bullets.Remove(b)&&b.Id>0)shotEnds.Record(b.Id,Time,Vec(b.Position));}
         private void StepBullets()
         {
             const float dt=1f/60;
@@ -63,7 +65,7 @@ namespace ChipArena.UnityConversion
             foreach(var b in Bullets.ToArray())
             {
                 if(!Bullets.Contains(b)||StepSirenShot(b))continue;var owner=Pilots.Find(p=>p.Seat.id==b.Owner);var original=Pilots.Find(p=>p.Seat.id==b.Original);
-                if(owner==null||b.Life<=0||b.Travel<=0||b.Pong&&(original==null||original.Hp<=0)){Bullets.Remove(b);continue;}
+                if(owner==null||b.Life<=0||b.Travel<=0||b.Pong&&(original==null||original.Hp<=0)){EndBullet(b);continue;}
                 if(!LeetShotStep(b,owner,dt))continue;float scale=b.LeetKind!=null?1:ChipShotMotion(b,owner,dt);if(scale<=0)continue;float h=Math.Min(dt*scale,b.Life),age=Time-b.Born;
                 bool turned=b.Boomerang&&age>=Math.Min(.65f,24/Math.Max(1,b.FixedSpeed));
                 if(turned&&original!=null){if(b.ReturnAt<0){b.ReturnAt=Time;b.Hit.Clear();b.Damage*=1.4f;}b.Velocity=Vec(NativeProjectileRules.Return(Vec(b.Velocity),Vec(original.Body.position+Vector3.up*.3f-b.Position),Mathf.PI*4/3*dt));}
@@ -73,7 +75,7 @@ namespace ChipArena.UnityConversion
                     foreach(var target in Pilots)
                     {Vector3 d=target.Body.position+Vector3.up*.15f-b.Position;if(target.Hp<=0||!Enemy(owner,target)||b.Hit.Contains(target.Collider.GetInstanceID())||d.magnitude>16||Vector3.Dot(b.Velocity.normalized,d.normalized)<Mathf.Cos(50*Mathf.Deg2Rad)||!MeleeVisible(b.Position,target.Body.position,owner,target.Collider))continue;b.Velocity=Vec(NativeProjectileRules.Steer(Vec(b.Velocity),Vec(d),b.Homing*Mathf.Deg2Rad*h));break;}
                 Vector3 before=b.Velocity;var velocity=Vec(before);Vector3 previous=b.Position;Vector3 delta=Vector3.ClampMagnitude(Vec(NativeSpecialRules.Ballistic(ref velocity,b.Gravity,h)),b.Travel);b.Velocity=Vec(velocity);b.Life-=h;b.Travel-=delta.magnitude;b.Travelled+=delta.magnitude;
-                if(CyberAbsorb(owner,b.Position,b.Position+delta,b.Radius)){Bullets.Remove(b);continue;}
+                if(CyberAbsorb(owner,b.Position,b.Position+delta,b.Radius)){EndBullet(b);continue;}
                 var hit=SweepNative(b.Position,delta,b.Radius,c=>
                 {var p=c.GetComponent<NativePilotBody>()?.Pilot;var m=c.GetComponent<NativeMinionBody>()?.Minion;return (m==null||m.Hp>0&&CanHit(owner,m))&& !b.Hit.Contains(c.GetInstanceID())&&(!b.Pong||!b.Contacts.TryGetValue(c.GetInstanceID(),out float contact)||Time-contact>.18f)&&(p==null||p.Hp>0&&CanHit(owner,p)&&!Invulnerable(p));});
                 bool ceiling=NativeSpecialRules.Ceiling(Vec(b.Position),Vec(delta),b.Radius,out float fraction,out V3 center),remove=false;
@@ -93,7 +95,7 @@ namespace ChipArena.UnityConversion
                 {
                     if(b.Direct&&ProcOnce("catch:"+b.Attack)){Emit(EventKind.Catch,original,0,b.Position,0);if(original.Weapon.@class=="ranged")original.Ammo=Math.Min(Magazine(original),original.Ammo+1);else original.Mana=Math.Min((float)original.Stats["maxMana"],original.Mana+(float)original.Weapon.cost*.5f);}remove=true;
                 }
-                if(remove||b.Life<=0||b.Travel<=0||b.Position.y<-15)Bullets.Remove(b);
+                if(remove||b.Life<=0||b.Travel<=0||b.Position.y<-15)EndBullet(b);
             }
         }
         private bool PongBounce(NativeBullet b,NativePilot owner,Vector3 point,Vector3 velocity)
