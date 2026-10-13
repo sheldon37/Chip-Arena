@@ -1,3 +1,15 @@
+# Hulk zombie and the spitter's spit — 2026-10-13
+
+The Hulk (content-gated) reuses the brute's zombie takes on the shared rig at 1.8x. Its gait runs in rig metres and is scaled back:
+- walk-4 / walk-6 at a .62 tempo, chase-5;
+- smash-1 / smash-2 with a 1.1 s wind-up;
+- seeded roars on the start of knock-3, with a hinged jaw;
+- the jump-in on the jump takes with the heavier `NativeHordeDrop.Hulk` profile;
+- reels only on a 25% hit;
+- deaths at scale.
+
+The spitter rears back on the start of knock-1 before its procedural spit. It opens its hinged jaw and launches from the posed mouth socket. An interrupted spit flinches and closes the jaw. Timing is pinned to LastAttack + hit (Tests/HulkSpitterChecks); no timing, hitbox or movement change. Details: `docs/SIREN-ZOMBIES.md` §7-9.
+
 # Siren zombies on the zombie mocap — 2026-10-12
 
 Owner request: "Sirens minions need to look more zombie like (Based on player models) Their animations also look a lot more simple then what we used to have? We do have the zombie mo-cap ones we could utilize ... (Especially there walk animations, its not great)". The horde kinds now move on the owner's ZOMBIE PRO mocap, retargeted by `tools/export_pack_zombie.mjs` (shared `scripts/mocap/mixamo-retarget.mjs` with the pack loader `scripts/mocap/zombie-pack.mjs`) into `Core/NativePackZombie.Generated.cs`: 39 pose tracks only (walks, chases, sprints, idles, swipes, smashes, lunges, knock-backs, deaths, wake, vent climb and dive, the jump), SHA-256 per track in `tools/pack-zombie-provenance.json`; the FBX, meshes, textures, audio and `.meta` files are never committed. `Core/NativeZombieMotion` picks each add's takes by its id and kind; `Core/NativeHordeMotion` lays the captured upper body, hips and head over planted procedural feet whose cadence, stance phases, swing lift, foot turn and knee direction come from the take (no foot sliding at the authority's speeds), retimes every blow so its impact frame lands exactly at `lastAttack + hit`, overlays a captured knock-back reel on a stagger, plays the deaths by the push's direction, and poses the vent climb, door/cell walk-in (waking take, then the gait), dive and the brute's jump-down on the kind's own zombie model. Two exporter details: every clip's channels are made continuous for interpolation (no frame pops where a lying body's heading is ill-defined), and deaths keep the capture's whole forward fold (retarget `keepFold`), so a body falling on its face lies flat. Presentation only: no change to colliders, attack timing, damage, cooldowns, movement, spawns or networking. Clip mapping and the rules hand-off: docs/SIREN-ZOMBIES.md. Checked by `Tests/ZombieMotionChecks.cs` and `Tests/HordeKindChecks.cs`; Unity Editor and Windows play not run.

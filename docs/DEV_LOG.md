@@ -1,5 +1,38 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — Hulk zombie, wall breach entrance, spitter acid (owner: "Add a Hulk zombie too, ... They can also break through the walls to enter (Stage will eventually holographically recover broken pieces)"; "The spitter should shoot do a windup animation and shoot acidic spit from their mouth, creating a small puddle of poison (Can corrode destructibles). Can interupt their spit by hitting them.")
+- Branch `claude/hulk-zombie`, base shared `e2e894e`. Not pushed, merged or released. Presentation only. Rules, the contract and the Astra prompt are in `docs/SIREN-ZOMBIES.md` §7-9.
+- Hulk (`NativeHordeKinds.Hulk`, content-gated):
+  - A new 1.8x model on the shared rig (huge shoulders and fists, small head, cracked hide with ink veins, three tiers, hinged jaw), sized to a proposed r .95 / h 3.06 capsule. Colliders are unchanged.
+  - The brute's mocap at a .62 tempo, with footfall shakes, dust and cracks.
+  - A 1.1 s smash with a 2.8 m telegraph, shockwave, debris and a shove burst on hit pilots.
+  - Seeded roars on knock-3; staggers only from hits of at least 25% of max hp. Deaths crash where the chest lands, with a thud cue.
+  - Drop entries reused with a Hulk profile (`NativeHordeDrop.Hulk`, 4.49 s from 9 m): rumbling warning; on landing, waves, crater, dust wall, cracks, debris, drawn-only prop jolts and a pitch/roll shake within 34 m.
+- Wall breach (`Core/NativeBreach.cs`, `Runtime/NativeHordeBreachPresentation.cs`): generic, driven by entry kind `breach` and the map segment `breach:<id>`.
+  - Knocks with cracks, then the burst into chunks, a ragged hole, rubble.
+  - Holographic restore: a hardlight scan, wireframe pieces flying home, solidifying, a flash. The default restore is break + 12 s until `restoreAt` is replicated.
+  - Colliders are never touched.
+- Spitter:
+  - The wind-up rears back on knock-1; the throat sac glows and the jaw unhinges. The proposed hit .55 -> .8 is mirrored in the VARIANTS row.
+  - The glob leaves the mouth socket with a trail, splashes and sizzles on pilots, and leaves a 1.3 m / 4 s puddle with a clear edge. Destructible props corrode (pits, tint, drips).
+  - Any damaging hit in the wind-up cancels it: the sac deflates and the acid fizzles at the spitter's feet.
+  - `minion-spit` events are read when they exist.
+- Dev Sandbox gallery: the Hulk loop (drop, roars, walk/run, smash, greatsword hit, death), a breach and restore on its own wall, and the spitter interrupt.
+- Animation impacts:
+  - None on hit timing, hitboxes, damage, cooldowns, movement, spawns, network or saves.
+  - The spitter's proposed `SpitHit` .8 and the Hulk row are proposals for Astra; no rules read them.
+- Checks (actual):
+  - `tools/check_relay.py`: 35 managed groups pass (593 PASS lines). This includes HordeKindChecks 433,636, ZombieMotionChecks 29,232 and the new HulkSpitterChecks 49,296 (tables, capsule, strike timing, poses inside the capsule, drop profile, breach hole/pieces/restore, jaws and mouth socket, spit timing, interrupt, determinism, no allocation, presentation-only runtime).
+  - Also passing: the Unity-stub runtime+editor compile, the Python tests (95, 1 skipped), `package_source.py` and `git diff --check`.
+  - Harness software renders of the Core poses and effects (not Unity).
+- Not run: the Unity Editor, Windows, multiplayer, and the Runtime draw code in engine.
+- Risks:
+  - The breach hole is visual only until the rules remove collision.
+  - The interrupt is inferred from hits until a cancel is replicated.
+  - Prop jolts hide the renderer for .75 s (root MeshRenderer only).
+  - Whether the Hulk reads well at 1.8x in the real lighting.
+- Next: Astra's rules (prompt in `docs/SIREN-ZOMBIES.md`). The Ward Zero rework places breach walls and the Hulk drop. Then the owner's look in the Dev Sandbox.
+
 ## 2026-10-13 — Astra — stall diagnostics, stuck slash, Siren execution and ragdoll revive
 - Task `codex/unity-hitch-trail-revive`, base shared `e2e894e9` (owner is running this build). Owner supplied a local-practice report (104 FPS, latest simulation tick .11 ms), startup-only Player.log and an 8.45 s recording showing a large crescent beside the moving greatsword pilot. No measured cause of the intermittent multi-second stalls yet.
 - Added automatic bounded `PERF_HITCH` JSON in Player.log and retained last/worst/count in Connection report. Measures wall-clock frame intervals, total fixed/update/presentation CPU time, nested replay/snapshot/animation/effects timings, GC counts/heap and scene counts/context. Logs >=100 ms frames or sustained slow rendering; 240-sample ring, at most once per 2 s and 120 reports per process. Unattributed time explicitly is not GPU time; no forced GC or per-frame disk writes. Full interpretation in NATIVE-HITCH-DIAGNOSTICS.md.

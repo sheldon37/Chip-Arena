@@ -185,7 +185,7 @@ namespace ChipArena.UnityConversion
             Check(NativeHordeDrop.Is(new PveEntry{kind="drop"})&&!NativeHordeDrop.Is(new PveEntry{kind="vent"})&&!NativeHordeDrop.Is(null),"a drop is an entry of kind \"drop\"");
             // Map data, not coordinates: the landing point is the entry's, the height the entry's (or the default fall height).
             var pres=R(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs");
-            Check(pres.Contains("NativeHordeDrop.Is(a.Entry)")&&pres.Contains("float height=NativeHordeDrop.HeightOf(a.Entry);var land=NativeArena.Vec(a.Entry.@exit.Position(0));"),"the drop lands on its entry's point at its entry's height");
+            Check(pres.Contains("NativeHordeDrop.Is(a.Entry)")&&pres.Contains("float height=NativeHordeDrop.HeightOf(a.Entry,profile);var land=NativeArena.Vec(a.Entry.@exit.Position(0));"),"the drop lands on its entry's point at its entry's height");
             // (The map's distinctive coordinates: fractional or 15 m out and beyond; small whole numbers are the effects' own constants.)
             var content=JsonDocument.Parse(R(root,"Assets/Conversion/Resources/PveContent.json"));var literals=new HashSet<string>();
             foreach(var e in content.RootElement.GetProperty("entries").EnumerateArray())foreach(var pt in new[]{"from","exit"}){var q=e.GetProperty(pt);foreach(var c in new[]{"x","z"}){double v=Math.Abs(q.GetProperty(c).GetDouble());if(v>=1&&(v%1!=0||v>=15))literals.Add(v.ToString("0.###",System.Globalization.CultureInfo.InvariantCulture));}}
@@ -221,7 +221,7 @@ namespace ChipArena.UnityConversion
         {
             var p=R(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs");
             foreach(var old in new[]{"horde-0-vent","horde-0-door","horde-0-cell","horde-0-dive"})Check(!p.Contains(old),"the entrances never play the old bank clip "+old);
-            Check(p.Contains("NativeHordeGait.VentClimb(minionPose,kind,seed,tau,")&&p.Contains("NativeHordeGait.Dive(minionPose,kind,seed,now-a.DiveAt)")&&p.Contains("Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=a.WalkAt-a.SpawnAt"),"vents, dives and doors pose the zombie on its kind's model");
+            Check(p.Contains("NativeHordeGait.VentClimb(minionPose,kind,seed,tau,")&&p.Contains("NativeHordeGait.Dive(minionPose,kind,seed,now-a.DiveAt)")&&p.Contains("Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=(breach?breakAt:a.WalkAt)-a.SpawnAt"),"vents, dives and doors pose the zombie on its kind's model");
             Check(p.Contains("NativeHordeGait.Drop(minionPose,seed,t,GalleryEntrance,NativeHordeDrop.DefaultHeight")&&p.Contains("NativeHordeGait.VentClimb(minionPose,k,seed,tau,"),"the Dev Sandbox gallery previews the jump-down and the entrances");
             var z=R(root,"Assets/ChipArena/Runtime/NativeHordeZombiePresentation.cs");
             foreach(var bad in new[]{".Hp=","Damage(","Emit(","StaggerAt=","RecoverAt=","StrikeAt=","LastAttack=","Body.position=","linearVelocity=","AddComponent<"})Check(!z.Contains(bad)&&!p.Contains(bad),"the zombie presentation never writes `"+bad+"`");

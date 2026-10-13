@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
         /// <summary>A door or cell entrance (the authority walks it in from behind the opening): `EntryAge` seconds since it began,
         /// `EntryWalk` when the walk starts (the wait before it wakes the zombie, the first steps lurch through the threshold).</summary>
         public bool Entering;public float EntryAge,EntryWalk;
+        /// <summary>The Hulk's roar (Core/NativeHordeRoar): `RoarAge` seconds into it while `Roaring`.</summary>
+        public bool Roaring;public float RoarAge;
     }
 
     /// <summary>
@@ -60,7 +62,9 @@ namespace ChipArena.UnityConversion
             // crawler: a four-limbed trot
             new Def{WalkStride=.62f,RunStride=1.05f,WalkSpeed=2.2f,RunSpeed=3.9f,Duty=.6f,RunDuty=.44f,Lift=.05f,RunLift=.09f,Bob=.012f,RunBob=.025f,Crouch=0,RunCrouch=0,Hunch=0,RunLean=0,Width=.12f,ArmSwing=0,RunArm=0,Hang=0,Sway=.015f,Roll=.06f,Twist=.1f},
             // bloater: a short waddle
-            new Def{WalkStride=.66f,RunStride=.95f,WalkSpeed=1.1f,RunSpeed=1.8f,Duty=.7f,RunDuty=.56f,Lift=.045f,RunLift=.07f,Bob=.03f,RunBob=.045f,Crouch=.13f,RunCrouch=.15f,Hunch=-.08f,RunLean=.05f,Width=.17f,ArmSwing=.2f,RunArm=.3f,Hang=-.3f,Sway=.06f,Roll=.17f,Twist=.06f}};
+            new Def{WalkStride=.66f,RunStride=.95f,WalkSpeed=1.1f,RunSpeed=1.8f,Duty=.7f,RunDuty=.56f,Lift=.045f,RunLift=.07f,Bob=.03f,RunBob=.045f,Crouch=.13f,RunCrouch=.15f,Hunch=-.08f,RunLean=.05f,Width=.17f,ArmSwing=.2f,RunArm=.3f,Hang=-.3f,Sway=.06f,Roll=.17f,Twist=.06f},
+            // hulk: the brute's stomp at its scale (the gait runs in the rig's metres: its .75 / 1.15 m/s are .42 / .64 here), as wide
+            new Def{WalkStride=.8f,RunStride=1.05f,WalkSpeed=.42f,RunSpeed=.64f,Duty=.7f,RunDuty=.55f,Lift=.06f,RunLift=.09f,Bob=.035f,RunBob=.05f,Crouch=.1f,RunCrouch=.12f,Hunch=.62f,RunLean=.7f,Width=.16f,ArmSwing=.22f,RunArm=.35f,Hang=.3f,Sway=.05f,Roll=.13f,Twist=.08f}};
 
         public const float AnkleHeight=.07f,MaxDt=.1f,ResetGap=.5f;
 
@@ -121,7 +125,8 @@ namespace ChipArena.UnityConversion
             float age=f.AttackAge;
             AttackCurve(f,out float cock,out float swing,out float follow,out float settle,out float attackW);
             // ---- alert ----
-            float v=Speed,moving=Sm((v-.12f)/.5f);
+            // (A scaled kind's rig speeds are its own over its scale: the Hulk is walking at half the speed a pilot-sized one is.)
+            float v=Speed,ms=1/NativeHordeKinds.Scale[kind],moving=Sm((v-.12f*ms)/(.5f*ms));
             float alert=0,lookYaw=0,lookPitch=0;
             if(f.HasTarget)
             {
@@ -151,6 +156,15 @@ namespace ChipArena.UnityConversion
                 float ct=CapturedClip.Retime(retimeAt,retimeMarks,age);NativeZombieClips.Sample(ac,ct,rowA);AttackClip=ac;AttackClipTime=ct;
                 Upper(row,rowA,attackW*Sm(age/.06f),.7f,.6f);
             }
+            // ---- the spitter's wind-up rears it back on the start of a knock-back reel (arms flung, chest up), held to the spit ----
+            if(ac<0&&attacking&&f.Attack==NativeHordeKinds.Attack.Spit)
+            {
+                float hold=swing>0?1-swing:cock,k=hold*(1-settle);
+                if(k>0){NativeZombieClips.Sample(NativeZombieMotion.SpitRear,.06f+.26f*cock,rowA);Upper(row,rowA,.8f*k,0,.35f);}
+            }
+            // ---- the Hulk's roar: arms flung wide on another reel's start, chest out (Core/NativeHordeRoar) ----
+            float roarW=f.Roaring?NativeHordeRoar.Weight(f.RoarAge):0;
+            if(roarW>0){NativeZombieClips.Sample(NativeZombieMotion.Roar,.12f+.26f*Sm(f.RoarAge/.55f),rowA);Upper(row,rowA,.9f*roarW,0,.4f);}
             // ---- the authority's stagger: a captured knockback reel over the trunk and arms ----
             float reel=react!=null?react.Reel(t):float.NaN;
             if(!float.IsNaN(reel)){int kc=NativeZombieMotion.Knock(seed^(uint)(id*31));NativeZombieClips.Sample(kc,Math.Min(1.15f,reel*.9f),rowA);Upper(row,rowA,Sm(reel/.12f)*(1-Sm((reel-.75f)/.45f))*.85f,.5f,.5f);}
@@ -162,6 +176,7 @@ namespace ChipArena.UnityConversion
             var b=p.Position[CapturedRig.Body];b.Y-=alert*.04f+hurt*.05f;
             AttackBody(f,cock,swing,follow,settle,out float aPitch,out float aYaw,out float aRoll,out float aCrouch,out float aHead);
             if(ac>=0){aPitch=aYaw=aRoll=aCrouch=aHead=0;}
+            if(roarW>0){float tremble=(float)Math.Sin(f.RoarAge*31)*.035f*roarW;aPitch+=-.32f*roarW;aHead+=(-.55f+tremble)*roarW*(1-Sm((f.RoarAge-.9f)/.6f))+.15f*roarW*Sm((f.RoarAge-.9f)/.6f);aCrouch+=.03f*roarW;}
             b.Y-=aCrouch;p.Position[CapturedRig.Body]=b;
             if(aPitch!=0||aYaw!=0||aRoll!=0){Bend(p,CapturedRig.Spine,aPitch*.5f,aYaw*.35f,aRoll*.5f);Bend(p,CapturedRig.Chest,aPitch*.5f,aYaw*.35f,aRoll*.5f);}
             // ---- head: tracks its pilot, the Siren's crooked tilt and twitches ----
@@ -291,7 +306,7 @@ namespace ChipArena.UnityConversion
             // The facing turns quickly toward the authority's yaw (which snaps), faster while winding up an attack, so the strike faces
             // where the authority aims it.
             bool winding=!float.IsNaN(f.AttackAge)&&f.AttackAge>=0&&f.AttackAge<f.Strike;
-            float rate=(winding?16:9)*dt*57.3f*(kind==NativeHordeKinds.Brute?.7f:1),diff=Wrap(f.Yaw-Yaw);Yaw=Wrap(Yaw+Math.Max(-rate,Math.Min(rate,diff)));if(fresh)Yaw=f.Yaw;
+            float rate=(winding?16:9)*dt*57.3f*(kind==NativeHordeKinds.Brute?.7f:kind==NativeHordeKinds.Hulk?.45f:1),diff=Wrap(f.Yaw-Yaw);Yaw=Wrap(Yaw+Math.Max(-rate,Math.Min(rate,diff)));if(fresh)Yaw=f.Yaw;
             Forward=Dir(Yaw);Right=new Vector2(Forward.Y,-Forward.X);
             // Ground speed from how the body really moved (what the camera sees), or the treadmill's velocity.
             var now=new Vector2(f.Root.X,f.Root.Z);
@@ -400,7 +415,7 @@ namespace ChipArena.UnityConversion
                 case NativeHordeKinds.Attack.Swipe:pitch=-.18f*hold+.38f*hit;yaw=s*(.45f*hold-.55f*hit);roll=-s*.12f*hold;head=.1f*hold-.1f*hit;break;
                 case NativeHordeKinds.Attack.Lunge:pitch=.25f*hold+.4f*hit;crouch=.05f*hold-.03f*hit;head=-.3f*hold-.2f*hit;break;
                 case NativeHordeKinds.Attack.Smash:pitch=-.42f*hold+.95f*hit;crouch=-.03f*hold+.13f*hit;head=.25f*hold-.45f*hit;break;
-                case NativeHordeKinds.Attack.Spit:pitch=-.45f*hold+.5f*hit;head=.35f*hold-.55f*hit;crouch=.03f*hold;break;
+                case NativeHordeKinds.Attack.Spit:pitch=-.55f*hold+.62f*hit;head=.12f*hold-.42f*hit;crouch=.04f*hold;break;
                 case NativeHordeKinds.Attack.Belly:pitch=-.4f*hold+.3f*hit;crouch=.06f*hold-.04f*hit;head=.2f*hold;break;
                 case NativeHordeKinds.Attack.Pounce:pitch=.2f*hold-.1f*hit;crouch=.08f*hold-.12f*hit;break;
             }
@@ -427,7 +442,8 @@ namespace ChipArena.UnityConversion
                         // Both fists raised high over the head, then hammered down to the floor ahead.
                         e=new Vector3(-3.0f*hold-1.0f*hit,0,sgn*(.25f*hold+.05f*hit));el=new Vector3(-1.0f*hold-.15f*hit,0,0);break;
                     case NativeHordeKinds.Attack.Spit:
-                        e=new Vector3(.5f*hold-.2f*hit,0,sgn*(.55f*hold+.2f*hit));el=new Vector3(-1.4f*hold,0,0);break;
+                        // The claws spread back as it rears (the reel's arms), then thrown forward with the spit.
+                        e=new Vector3(.35f*hold-.45f*hit,0,sgn*(.7f*hold+.25f*hit));el=new Vector3(-1.1f*hold-.3f*hit,0,0);break;
                     case NativeHordeKinds.Attack.Belly:
                         e=new Vector3(.4f*hold-.6f*hit,0,sgn*(.8f*hold+.3f*hit));el=new Vector3(-.6f*hold,0,0);break;
                     case NativeHordeKinds.Attack.Pounce:
@@ -569,19 +585,21 @@ namespace ChipArena.UnityConversion
         /// height (`lift`); false while the landing spot is only telegraphed (nothing to draw). The leap is the pack's HyperChase
         /// jump start, the fall its air take, the landing one of its jump ends (by `seed`) with the feet on the floor.
         /// </summary>
-        public static bool Drop(CapturedRig.Pose p,uint seed,float age,float span,float height,out float lift,out NativeHordeDrop.Phase phase)
+        public static bool Drop(CapturedRig.Pose p,uint seed,float age,float span,float height,out float lift,out NativeHordeDrop.Phase phase)=>Drop(p,seed,age,span,height,NativeHordeDrop.Brute,out lift,out phase);
+        /// <summary>The drop on a kind's profile (the Hulk's longer leap and recovery play the same takes slower).</summary>
+        public static bool Drop(CapturedRig.Pose p,uint seed,float age,float span,float height,in NativeHordeDrop.DropProfile profile,out float lift,out NativeHordeDrop.Phase phase)
         {
-            phase=NativeHordeDrop.At(age,span,height,out float into,out lift);
+            phase=NativeHordeDrop.At(age,span,height,profile,out float into,out lift);
             switch(phase)
             {
                 case NativeHordeDrop.Phase.Warn:p.Reset();p.World();return false;
-                case NativeHordeDrop.Phase.Leap:{int c=NativeZombieMotion.JumpStart;NativeZombieClips.Sample(c,into/NativeHordeDrop.Leap*NativeZombieClips.Duration(c),staticRow);break;}
+                case NativeHordeDrop.Phase.Leap:{int c=NativeZombieMotion.JumpStart;NativeZombieClips.Sample(c,into/profile.Leap*NativeZombieClips.Duration(c),staticRow);break;}
                 case NativeHordeDrop.Phase.Air:NativeZombieClips.Sample(NativeZombieMotion.JumpAir,into,staticRow);break;
                 default:
                 {
                     int c=NativeZombieMotion.Land(seed);var clip=NativeZombieClips.Clip(c);float deep=clip.Marks[1],end=clip.Marks[2];
                     // The compression lands at once, the rise is stretched over the recovery.
-                    float t=into<.12f?into/.12f*deep:deep+(end-deep)*Clamp01((into-.12f)/Math.Max(.1f,NativeHordeDrop.Recover-.12f));
+                    float t=into<.12f?into/.12f*deep:deep+(end-deep)*Clamp01((into-.12f)/Math.Max(.1f,profile.Recover-.12f));
                     NativeZombieClips.Sample(c,t,staticRow);break;
                 }
             }

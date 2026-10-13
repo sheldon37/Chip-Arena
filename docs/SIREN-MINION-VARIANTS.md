@@ -48,9 +48,10 @@ cooldown between attack starts is `cycle`.
 | `shambler` | 60 | 6 | 1.5 | 3.4 | 1.75 | 1.45 | .34 | 1.05 | .71 | .45 | 90 | 25 | .35 | .4 | .45 | - |
 | `runner` | 38 | 4 | 2.6 | 4.6 | 2 | 2.2 | .34 | .85 | .51 | .9 | 60 | 20 | .35 | .4 | .45 | - |
 | `brute` | 240 | 15 | 1.3 | 2.4 | 2.1 | 1.7 | .43 | 1.7 | 1.27 | .3 | 260 | 80 | .45 | .5 | .25 | 1.6 |
-| `spitter` | 45 | 7 | 1.6 | 2.9 | 11 | 9 | .55 | 2.6 | 2.05 | 0 | 40 | 30 | .35 | .4 | .45 | 1.3 (puddle) |
+| `spitter` | 45 | 7 | 1.6 | 2.9 | 11 | 9 | .8 | 2.6 | 1.8 | 0 | 40 | 30 | .35 | .4 | .45 | 1.3 (puddle) |
 | `crawler` | 34 | 5 | 2.2 | 3.9 | 1.6 | 2.4 | .3 | 1.1 | .8 | 1.6 (pounce) | 70 | 20 | .3 | .35 | .5 | - |
 | `bloater` | 150 | 10 | 1.1 | 1.8 | 1.6 | 1.4 | .62 | 2.2 | 1.58 | .2 | 180 | 45 | .4 | .45 | .3 | 2.6 (death burst) |
+| `hulk` | 1600 | 32 | .75 | 1.15 | 3 | 2.6 | 1.1 | 3.4 | 2.3 | .15 | 900 | 300 | .55 | .6 | .2 | 2.8 (disc 2 m ahead) |
 
 Attack names (`PveAddStats.attack`) that the presentation maps: `swipe`, `lunge`, `smash`, `spit`, `pounce`, `belly`
 (also `burst`). Keep the existing crawl and armless overrides (.34 s hit, reach 1.3 / 1.2, lunge .15 / .45). A crawling

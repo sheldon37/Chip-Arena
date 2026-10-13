@@ -58,12 +58,13 @@ namespace ChipArena.UnityConversion
             k.Box(Socket,0,.07f+y,.02f,hw*1.5f,.05f,hd*1.6f);
             if(k.Mid){k.Box(Gore,.04f*w,.1f+y,hd+.002f,.06f,.03f,.008f);k.Box(Gore,-.05f*w,.07f+y,hd-.006f,.05f,.05f,.008f);}
             // The jaw turns open about the skull's back (rx > 0 drops its front).
-            float jz=.02f,jy=.07f+y;
+            // (A hinged kind's jaw is its own model on the head joint, opened by NativeHordeJaw about the same hinge.)
+            float jz=.02f,jy=.07f+y;var head=k.S;if(k.SplitJaw){k.S=k.JawSculpt;k.S.Into(CapturedRig.Head);}
             k.S.Push(WeaponSculpt.T(0,-jy,-jz)*WeaponSculpt.Rx(jaw)*WeaponSculpt.T(0,jy,jz));
             k.Box(Skin,0,.04f+y,.01f,hw*1.75f,.055f,hd*1.85f,.018f);k.Box(SkinDark,0,.012f+y,.0f,hw*1.4f,.025f,hd*1.5f,.008f);
             for(int i=0;i<teeth-1;i++){float u=(i+.5f)/(teeth-1)-.5f;k.Box(ToothPaint,u*hw*1.0f,.073f+y,hd-.01f,hw*.9f/teeth,.022f,.016f);}
             if(k.Mid)k.Box(Gum,0,.068f+y,.04f,hw*1.3f,.012f,hd*1.4f);
-            k.S.Pop();
+            k.S.Pop();k.S=head;
             switch(top)
             {
                 case 0:
@@ -183,7 +184,7 @@ namespace ChipArena.UnityConversion
             Shoulder(k,false,armL);Shoulder(k,true,armR||look==2);Arm(k,false,armL,1,.03f);Arm(k,true,armR,look==2?.9f:1,.04f);
             Leg(k,false,1,look!=2,look==0,true,false);Leg(k,true,1,look==1,look==2,look!=1,false);
             if(look==1&&k.Mid){k.On(CapturedRig.Chest);k.Span(Rag,-.27f,.27f,.17f,.3f,-.19f,.05f,.02f);k.Hem(.17f,.25f,.17f,9,.32f,.12f,true,-.02f);}
-            Neck(k,.06f,.1f,Skin);Head(k,1,0,.32f+.08f*look,look==0?0:look==1?1:2);
+            Neck(k,.06f,.1f,Skin);Head(k,HeadWidth[NativeHordeKinds.Shambler],HeadDrop[NativeHordeKinds.Shambler],.32f+.08f*look,look==0?0:look==1?1:2);
         }
 
         // ================================================================================================================
@@ -203,7 +204,7 @@ namespace ChipArena.UnityConversion
             Shoulder(k,false,look==0,w);Shoulder(k,true,false,w);
             Arm(k,false,false,.85f,.08f);Arm(k,true,false,.85f,.08f);
             Leg(k,false,w,false,false,true,look==1);Leg(k,true,w,look==0,false,true,look==1);
-            Neck(k,.05f,.12f,Skin);Head(k,.88f,0,.5f,look==0?1:3);
+            Neck(k,.05f,.12f,Skin);Head(k,HeadWidth[NativeHordeKinds.Runner],HeadDrop[NativeHordeKinds.Runner],.5f,look==0?1:3);
             if(look==1&&k.Mid){k.On(CapturedRig.Head);k.Box(Rot,0,.31f,-.01f,.27f,.02f,.25f,.008f);k.Box(k.Seam(1.2f),0,.32f,-.02f,.012f,.012f,.2f);}
         }
 
@@ -247,7 +248,7 @@ namespace ChipArena.UnityConversion
             }
             Neck(k,.1f,.06f,Muscle);
             // A small head sunk low between the shoulders, the jaw heavy and open.
-            Head(k,.74f,-.07f,.28f,look==0?3:1);
+            Head(k,HeadWidth[NativeHordeKinds.Brute],HeadDrop[NativeHordeKinds.Brute],.28f,look==0?3:1);
             if(look==0){k.On(CapturedRig.Head);k.Box(ShellDark,0,.19f,-.08f,.25f,.2f,.06f,.015f);if(k.Mid)k.Box(Hair,0,.205f,-.005f,.22f,.03f,.2f);}
         }
 
@@ -262,7 +263,7 @@ namespace ChipArena.UnityConversion
             k.On(CapturedRig.Neck);k.Limb(Skin,-.03f,.1f,.065f,.06f);
             var acid=k.Glow(1,1.6f,NativeHordeKinds.Seam[NativeHordeKinds.Spitter]);k.Blob(acid,0,.03f,.045f,.085f,.07f,.065f);
             if(k.Mid){k.Blob(SkinDark,0,.05f,.02f,.095f,.06f,.06f);Vein(k,.04f,.02f,.11f,.05f,.4f,1.2f);Vein(k,-.04f,.04f,.11f,.04f,-.3f);}
-            Head(k,.95f,0,.55f,look==0?1:3);
+            Head(k,HeadWidth[NativeHordeKinds.Spitter],HeadDrop[NativeHordeKinds.Spitter],.3f,look==0?1:3);
             if(k.Mid){k.On(CapturedRig.Head);var drool=k.Glow(1,1.2f,NativeHordeKinds.Seam[NativeHordeKinds.Spitter]);k.Box(drool,.02f,-.01f,.12f,.025f,.08f,.02f);}
         }
 
@@ -283,7 +284,7 @@ namespace ChipArena.UnityConversion
                 k.On(CapturedRig.LKnee,m);k.Limb(SkinDark,.02f,-.23f,.045f,.032f);if(k.Mid)k.Box(BoneWhite,0,-.02f,.035f,.04f,.04f,.03f,.005f);
                 k.On(CapturedRig.LFoot,m);k.Box(Skin,0,-.03f,-.02f,.1f,.06f,.14f,.012f);k.On(CapturedRig.LToe,m);k.Box(SkinDark,0,-.012f,.02f,.1f,.04f,.11f,.008f);
             }
-            Neck(k,.05f,.08f,Skin);Head(k,.68f,-.03f,.45f,look==0?1:2);
+            Neck(k,.05f,.08f,Skin);Head(k,HeadWidth[NativeHordeKinds.Crawler],HeadDrop[NativeHordeKinds.Crawler],.45f,look==0?1:2);
         }
 
         // ================================================================================================================
@@ -301,7 +302,62 @@ namespace ChipArena.UnityConversion
             Chest(k,1,look==0?-1:0,false);
             Shoulder(k,false,look==0);Shoulder(k,true,false);Arm(k,false,look==0,.95f,.03f);Arm(k,true,false,.9f,.03f);
             Leg(k,false,1.05f,true,false,false,false);Leg(k,true,1.05f,false,false,true,false);
-            Neck(k,.07f,.08f,Skin);Head(k,.86f,-.02f,.3f,look==0?0:1);
+            Neck(k,.07f,.08f,Skin);Head(k,HeadWidth[NativeHordeKinds.Bloater],HeadDrop[NativeHordeKinds.Bloater],.3f,look==0?0:1);
+        }
+
+        // ================================================================================================================
+        // Hulk (owner 2026-10-13: "similar to brute but much bigger model size"): drawn 1.8 times the rig (NativeHordeKinds.Scale),
+        // so here inside the rig's .53 x 1.7 capsule: a mountain of muscle bursting out of what is left of a pilot. Enormous
+        // shoulders and a hump of trapezius that swallows the neck, a tiny sunken head with a hinged jaw (it roars), forearms and
+        // fists like boulders, tree-trunk legs; the hide cracked all over, the Siren's ink glowing in the cracks.
+        // ================================================================================================================
+        private static void Hulk(K k)
+        {
+            int look=k.Look;
+            // A crack in the hide: the split skin and the ink glowing in it (flickering by cell, as every vein).
+            k.ReducedBevel=.055f;
+            void Crack(float x,float y,float z,float len,float rz,float rx=0,float kk=1.25f)
+            {
+                if(k.Far)return;k.Box(Wound,x,y,z,.03f,len,.012f,0,rx,0,rz);if(!k.Far)k.Box(k.Seam(kk),x,y,z+(rx==0?.004f:0),.011f,len*.86f,.012f,0,rx,0,rz);
+                if(k.Fine)k.Box(k.Seam(kk*.7f),x+(float)Math.Sin(rz)*len*.3f+.02f,y+len*.2f,z,.008f,len*.45f,.01f,0,rx,0,rz+.8f);
+            }
+            k.On(CapturedRig.Pelvis);k.Box(Muscle,0,-.01f,0,.5f,.25f,.34f,.04f);k.Box(Suit,0,-.05f,.0f,.52f,.17f,.35f,.02f);k.Box(SuitDark,0,.06f,0,.53f,.06f,.36f,.012f);
+            if(k.Mid){k.Hem(-.1f,.25f,.18f,7,.16f,.13f);Crack(.16f,.04f,.172f,.12f,.5f);}
+            k.On(CapturedRig.Spine);k.Box(Muscle,0,.08f,.01f,.5f,.22f,.34f,.05f);
+            if(k.Mid){for(int i=0;i<3;i++)foreach(float sx in new[]{-1f,1f})k.Box(Skin,sx*.065f,.035f+i*.055f,.17f,.09f,.045f,.02f,.01f);}
+            Crack(-.14f,.1f,.17f,.15f,-.4f);
+            // The chest: a slab of muscle twice the pilot's, the chest plate's last shards sunk in it (look 0), pecs, the hump.
+            k.On(CapturedRig.Chest);k.Box(Muscle,0,.13f,0,.8f,.36f,.42f,.07f);
+            foreach(float sx in new[]{-1f,1f}){k.Box(Skin,sx*.17f,.17f,.18f,.3f,.2f,.1f,.04f);k.Box(Muscle,sx*.23f,.33f,-.04f,.28f,.16f,.3f,.05f,0,0,sx*-.32f);}
+            // The hump of trapezius rising behind and over the head, swallowing the neck.
+            k.Box(Muscle,0,.33f,-.13f,.5f,.26f,.24f,.06f);k.Box(SkinDark,0,.26f,-.2f,.56f,.2f,.1f,.04f);
+            if(look==0){k.Box(Shell,-.2f,.22f,.225f,.2f,.14f,.04f,.015f,0,0,-.25f);k.Box(ShellDark,.24f,.07f,.215f,.13f,.11f,.04f,.012f,0,0,.4f);}
+            else if(!k.Far){for(int i=0;i<(k.Fine?5:3);i++)k.Spike(BoneWhite,(i-2)*.08f,.42f+.02f*(i%2),-.18f,.05f,.05f,new Vector3(0,.09f+.03f*(i%2),-.06f));}
+            Crack(-.08f,.16f,.235f,.2f,.35f);Crack(.22f,.24f,.2f,.13f,-.6f);Crack(.05f,.04f,.215f,.12f,.1f);Crack(0,.3f,-.25f,.16f,.15f,-.3f,1.1f);Crack(-.25f,.12f,-.215f,.12f,-.4f,0,1);
+            if(k.Mid)k.Box(Rag,0,.05f,-.215f,.36f,.1f,.02f,.008f,0,0,.12f);
+            foreach(bool m in new[]{false,true})
+            {
+                // Shoulders like boulders on the clavicles (one wears the pilot's split pauldron), arms thicker than its head.
+                k.On(CapturedRig.LClav,m);k.Box(Muscle,-.085f,.0f,0,.25f,.22f,.3f,.06f);
+                if(m==(look==1)){k.Box(Shell,-.09f,.09f,0,.22f,.07f,.28f,.018f,0,0,-.12f);if(k.Mid)k.Box(k.Seam(.8f),-.1f,.13f,0,.2f,.01f,.04f);}
+                else Crack(-.12f,.03f,.15f,.12f,.6f);
+                k.On(CapturedRig.LArm,m);k.Box(Muscle,0,-.14f,0,.26f,.3f,.27f,.06f);if(k.Mid){k.Box(Skin,-.05f,-.12f,.09f,.14f,.17f,.09f,.03f);}Crack(-.13f,-.13f,.02f,.16f,.15f,0,1.1f);
+                k.On(CapturedRig.LElbow,m);k.Box(SkinDark,0,0,0,.22f,.13f,.22f,.04f);k.Box(Muscle,0,-.13f,.01f,.34f,.27f,.33f,.07f);
+                if(m==(look==0))k.Box(ShellDark,0,-.2f,0,.35f,.09f,.34f,.02f);else Crack(-.16f,-.12f,.07f,.15f,.25f,0,1.2f);
+                // A fist like a block of rubble, its knuckles bone.
+                k.On(CapturedRig.LHand,m);k.Box(Skin,0,-.07f,.025f,.28f,.22f,.27f,.06f);
+                if(!k.Far){for(int i=0;i<4;i++)k.Box(SkinDark,(i-1.5f)*.062f,-.17f,.11f,.056f,.06f,.07f,.012f);if(k.Mid)for(int i=0;i<4;i++)k.Box(BoneWhite,(i-1.5f)*.062f,-.19f,.15f,.036f,.026f,.024f);Crack(.1f,-.05f,.15f,.09f,-.4f,0,.9f);}
+                // Legs like tree trunks in the burst suit, bare feet.
+                k.On(CapturedRig.LHip,m);k.Box(Muscle,0,-.12f,0,.27f,.28f,.29f,.05f);k.Box(Suit,0,-.04f,0,.29f,.12f,.3f,.02f);if(k.Mid)Crack(-.13f,-.15f,.06f,.12f,.2f);
+                k.On(CapturedRig.LKnee,m);k.Box(SkinDark,0,0,0,.22f,.11f,.2f,.03f);k.Box(Muscle,0,-.095f,-.01f,.23f,.15f,.19f,.04f);k.Box(SkinDark,0,-.18f,0,.15f,.04f,.15f,.012f);
+                if(m==(look==0))k.Box(ShellDark,0,.005f,.1f,.19f,.1f,.05f,.015f);
+                k.On(CapturedRig.LFoot,m);k.Box(Skin,0,-.028f,-.03f,.18f,.1f,.2f,.02f);k.On(CapturedRig.LToe,m);k.Box(SkinDark,0,-.012f,.02f,.18f,.07f,.16f,.016f);
+                if(k.Mid)for(int i=0;i<3;i++)k.Box(BoneWhite,(i-1)*.05f,-.02f,.1f,.028f,.024f,.03f);
+            }
+            k.On(CapturedRig.Neck);k.Limb(Muscle,-.03f,.06f,.12f,.12f);
+            // A tiny head sunk deep in the hump, the jaw hinged to roar.
+            Head(k,HeadWidth[NativeHordeKinds.Hulk],HeadDrop[NativeHordeKinds.Hulk],.22f,look==0?3:1);
+            if(look==1){k.On(CapturedRig.Head);k.Box(ShellDark,0,.13f,-.07f,.21f,.15f,.06f,.015f);}
         }
     }
 }

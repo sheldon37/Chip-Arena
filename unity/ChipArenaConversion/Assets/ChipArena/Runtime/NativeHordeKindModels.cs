@@ -3,7 +3,8 @@ using UnityEngine;
 
 namespace ChipArena.UnityConversion
 {
-    // The Siren minion kinds' models in the source-model bank (Core/NativeHordeModels.cs, the zombies of NativeZombieModels.cs):
+    // The Siren minion kinds' models in the source-model bank (Core/NativeHordeModels.cs, the zombies of NativeZombieModels.cs; the
+    // spitter's and the Hulk's jaws as their own "-jaw" models, hinged by the presentation):
     // every kind, look and crowd tier ("minion-<kind>-<look>-<full|reduced|impostor>") is sculpted once when the bank loads, beside
     // the untouched bank horde-0..5 (the old death records and the classic look still name those). Each kind has one NativeSourceLit
     // material: the minion glow (its ink veins flicker cell by cell and drop with the add's power, NativeMinionFx) and a faint
@@ -28,6 +29,13 @@ namespace ChipArena.UnityConversion
                     var built=NativeHordeModels.Build(kind,look,tier);string id=NativeHordeModels.Id(kind,look,tier);var parts=new List<Part>();
                     foreach(var s in built.Mesh.Sections){var mesh=BodyMesh(s,id+" / joint "+s.Bone);if(mesh!=null)parts.Add(new Part{Name=id,Bone=s.Bone,Mesh=mesh,Material=material,NoShadow=tier!=NativeHordeModels.Full});}
                     models[id]=parts.ToArray();HordeKindTriangles[id]=built.Triangles;HordeKindModelCount++;
+                    // A hinged kind's jaw: its own model on the head joint (the presentation turns it about NativeHordeModels.JawHinge).
+                    if(built.Jaw!=null&&built.Jaw.Triangles>0)
+                    {
+                        string jaw=NativeHordeModels.JawId(kind,look,tier);var jp=new List<Part>();
+                        foreach(var s in built.Jaw.Sections){var mesh=BodyMesh(s,jaw+" / joint "+s.Bone);if(mesh!=null)jp.Add(new Part{Name=jaw,Bone=s.Bone,Mesh=mesh,Material=material,NoShadow=tier!=NativeHordeModels.Full});}
+                        models[jaw]=jp.ToArray();
+                    }
                 }
             }
         }

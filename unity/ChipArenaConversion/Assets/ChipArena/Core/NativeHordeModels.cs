@@ -6,7 +6,10 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>One built minion model: one section per rig joint (bank frame: Unity axes, +x the add's right, +z forward, each
     /// joint's own frame at rest), the triangles and whether it is the impostor tier.</summary>
-    public sealed class HordeModel{public int Kind,Look,Tier;public WeaponMesh Mesh;public int Triangles=>Mesh.Triangles;}
+    public sealed class HordeModel{public int Kind,Look,Tier;public WeaponMesh Mesh;public int Triangles=>Mesh.Triangles+(Jaw?.Triangles??0);
+        /// <summary>The hinged kinds' jaw, its own model on the head joint (null: the jaw is part of the head), turned about
+        /// <see cref="NativeHordeModels.JawHinge"/>.</summary>
+        public WeaponMesh Jaw;}
 
     /// <summary>
     /// The Siren's minions, sculpted in code (presentation only; the exported horde-0..5 bank bodies stay for the classic look
@@ -31,7 +34,30 @@ namespace ChipArena.UnityConversion
         public const int Full=0,Reduced=1,Impostor=2,Tiers=3;
         public static readonly string[] TierNames={"full","reduced","impostor"};
         /// <summary>The bank id of a kind's look at a tier.</summary>
-        public static string Id(int kind,int look,int tier)=>"minion-"+NativeHordeKinds.Ids[kind]+"-"+look+"-"+TierNames[tier];
+        public static string Id(int kind,int look,int tier)=>Ids(false)[(kind*NativeHordeKinds.MostLooks+look)*Tiers+tier];
+        /// <summary>The bank id of a hinged kind's jaw model (NativeHordeJaw).</summary>
+        public static string JawId(int kind,int look,int tier)=>Ids(true)[(kind*NativeHordeKinds.MostLooks+look)*Tiers+tier];
+        // The ids, made once (the draw names a model every frame for every add: no string per frame).
+        private static string[] ids,jawIds;
+        private static string[] Ids(bool jaw)
+        {
+            if(ids==null)
+            {
+                var a=new string[NativeHordeKinds.Count*NativeHordeKinds.MostLooks*Tiers];var b=new string[a.Length];
+                for(int k=0;k<NativeHordeKinds.Count;k++)for(int l=0;l<NativeHordeKinds.MostLooks;l++)for(int t=0;t<Tiers;t++){int i=(k*NativeHordeKinds.MostLooks+l)*Tiers+t;a[i]="minion-"+NativeHordeKinds.Ids[k]+"-"+l+"-"+TierNames[t];b[i]=a[i]+"-jaw";}
+                jawIds=b;ids=a;
+            }
+            return jaw?jawIds:ids;
+        }
+        /// <summary>Each kind's head: its width scale and how far it sits down on its joint (the builders' Head calls).</summary>
+        public static readonly float[] HeadWidth={1,.88f,.74f,.95f,.68f,.86f,.6f},HeadDrop={0,0,-.07f,0,-.03f,-.02f,-.1f};
+        /// <summary>The jaw's hinge on the head joint (bank frame: the skull's back, at the mouth's height).</summary>
+        public static Vector3 JawHinge(int kind){int k=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind));return new Vector3(0,.07f+HeadDrop[k],.02f);}
+        /// <summary>The mouth socket on the head joint (bank frame): just in front of the teeth, where the spit leaves.</summary>
+        public static Vector3 MouthSocket(int kind){int k=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind));return new Vector3(0,.075f+HeadDrop[k],.15f*HeadWidth[k]+.035f);}
+        /// <summary>The jaw's turn about its hinge for an opening (rad, the front dropping), as a matrix on the head joint's frame
+        /// (System.Numerics row vectors; the runtime turns it into the bone's matrix).</summary>
+        public static Matrix4x4 JawMatrix(int kind,float open){var h=JawHinge(kind);return Matrix4x4.CreateTranslation(-h)*Matrix4x4.CreateRotationX(open)*Matrix4x4.CreateTranslation(h);}
         /// <summary>Triangle budgets per tier (every kind and look stays under them; the checks hold them).</summary>
         public static readonly int[] Budget={7200,3000,600};
 
@@ -49,9 +75,9 @@ namespace ChipArena.UnityConversion
             switch(kind)
             {
                 case NativeHordeKinds.Runner:Runner(k);break;case NativeHordeKinds.Brute:Brute(k);break;case NativeHordeKinds.Spitter:Spitter(k);break;
-                case NativeHordeKinds.Crawler:Crawler(k);break;case NativeHordeKinds.Bloater:Bloater(k);break;default:Shambler(k);break;
+                case NativeHordeKinds.Crawler:Crawler(k);break;case NativeHordeKinds.Bloater:Bloater(k);break;case NativeHordeKinds.Hulk:Hulk(k);break;default:Shambler(k);break;
             }
-            return new HordeModel{Kind=kind,Look=look,Tier=tier,Mesh=k.Mesh};
+            return new HordeModel{Kind=kind,Look=look,Tier=tier,Mesh=k.Mesh,Jaw=k.SplitJaw?k.JawMesh:null};
         }
 
         // ================================================================================================================
@@ -59,9 +85,17 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private sealed class K
         {
-            public readonly WeaponMesh Mesh;public readonly WeaponSculpt S;public readonly int Tier,Kind,Look;private float side=1;private int cell;private readonly uint seed;
-            public K(int kind,int look,int tier){Kind=kind;Look=look;Tier=tier;Mesh=new WeaponMesh{Spec="minion-"+kind,Tier=tier};S=new WeaponSculpt(Mesh,tier);seed=(uint)(kind*977+look*131+17);}
+            public readonly WeaponMesh Mesh;public WeaponSculpt S;public readonly int Tier,Kind,Look;private float side=1;private int cell;private readonly uint seed;
+            /// <summary>A hinged kind's jaw (NativeHordeJaw): built into its own mesh on the head joint.</summary>
+            public readonly bool SplitJaw;public readonly WeaponMesh JawMesh;public readonly WeaponSculpt JawSculpt;
+            public K(int kind,int look,int tier)
+            {
+                Kind=kind;Look=look;Tier=tier;Mesh=new WeaponMesh{Spec="minion-"+kind,Tier=tier};S=new WeaponSculpt(Mesh,tier);seed=(uint)(kind*977+look*131+17);
+                SplitJaw=NativeHordeJaw.Hinged(kind);if(SplitJaw){JawMesh=new WeaponMesh{Spec="minion-"+kind+"-jaw",Tier=tier};JawSculpt=new WeaponSculpt(JawMesh,tier);}
+            }
             public bool Fine=>Tier==Full;public bool Mid=>Tier<=Reduced;public bool Far=>Tier==Impostor;
+            /// <summary>The smallest bevel the reduced tier keeps (a big kind keeps only its big masses rounded).</summary>
+            public float ReducedBevel=.012f;
             /// <summary>Starts drawing on `bone`; `mirror` draws a left-authored (bank -x) part on the right.</summary>
             public void On(int bone,bool mirror=false){if(mirror)bone=Right(bone);S.Into(bone);side=mirror?-1:1;}
             /// <summary>The right side's joint for a left one (clavicle to wrist, hip to toe).</summary>
@@ -75,7 +109,7 @@ namespace ChipArena.UnityConversion
             /// <summary>A box by centre and full size (left-authored x), turned by Euler XYZ (radians) about its centre.</summary>
             public void Box(in WeaponPaint p,float x,float y,float z,float sx,float sy,float sz,float bevel=0,float rx=0,float ry=0,float rz=0)
             {
-                if(Tier==Reduced&&bevel<.012f)bevel=0;var c=new Vector3(x,y,z);var s=new Vector3(sx,sy,sz);var paint=p;
+                if(Tier==Reduced&&bevel<ReducedBevel)bevel=0;var c=new Vector3(x,y,z);var s=new Vector3(sx,sy,sz);var paint=p;
                 if(side<0){S.Push(WeaponSculpt.S(-1,1,1));S.Box(paint,c,s,bevel,rx,ry,rz);S.Pop();}else S.Box(paint,c,s,bevel,rx,ry,rz);
             }
             /// <summary>A box spanning bounds (left-authored x).</summary>
@@ -224,7 +258,10 @@ namespace ChipArena.UnityConversion
                       new[]{T(C,1,.05,.2,-.14,-1.3,.85,1.9),T(C,0,-.05,.08,-.14,-1.3,.8,3.4),T(S,0,0,.14,-.12,-1.4,.75,5.8)}},
                 // bloater: the gut's vents and the crown
                 new[]{new[]{T(S,0,.12,.2,.32,.6,.8,.8),T(S,1,-.14,.12,.33,.5,.75,3.2),T(H,0,0,.21,0,-.2,.8,5.1)},
-                      new[]{T(S,1,0,.27,.3,.4,.85,1.7),T(H,0,0,.28,0,-.1,.9,4.3)}}};
+                      new[]{T(S,1,0,.27,.3,.4,.85,1.7),T(H,0,0,.28,0,-.1,.9,4.3)}},
+                // hulk: out of the cracks in its hump and its shoulders
+                new[]{new[]{T(C,0,0,.47,-.15,-.3,1.3,.6),TZ(LC,1,.12,.12,0,.8,1.0,2.3),TZ(RC,1,-.12,.12,0,-.8,1.0,4.5),T(C,1,.18,.3,-.24,-.7,.9,5.7)},
+                      new[]{T(C,0,.1,.47,-.16,-.3,1.2,1.3),T(C,1,-.1,.47,-.16,-.3,1.2,3.4),TZ(LC,0,.13,.12,0,.8,.95,4.8)}}};
         }
         /// <summary>
         /// Tongue k of a kind's look at clock t (NativeMinionFx.TongueMatrix with this kind's anchors): its joint, bank piece and
