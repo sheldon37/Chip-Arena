@@ -45,6 +45,11 @@ namespace ChipArena.UnityConversion
             Check(NativeHordeDropRules.Next(entries,ref cursor,e=>e==drop)==drop,"skip unavailable drop");
             Check(NativeHordeDropRules.Touch(new V3(2.4f,1.49f,0))&&!NativeHordeDropRules.Touch(new V3(2.401f,0,0))&&!NativeHordeDropRules.Touch(new V3(0,1.5f,0))&&!NativeHordeDropRules.Touch(new V3(0,-1.5f,0)),"disc radius and strict vertical bound");
             Check(NativeHordeDropRules.Damage(0,false)==10&&NativeHordeDropRules.Damage(1.2f,false)==7.5f&&NativeHordeDropRules.Damage(2.4f,false)==5&&NativeHordeDropRules.Damage(0,true)==0,"falloff and block");
+            float rim=NativeHordeDrop.SlamRadius;
+            float inside=BitConverter.Int32BitsToSingle(BitConverter.SingleToInt32Bits(rim)-1);
+            float outside=BitConverter.Int32BitsToSingle(BitConverter.SingleToInt32Bits(rim)+1);
+            foreach(var axis in new[]{new V3(1,0,0),new V3(-1,0,0),new V3(0,0,1),new V3(0,0,-1)})
+                Check(NativeHordeDropRules.Touch(axis*inside)&&NativeHordeDropRules.Touch(axis*rim)&&!NativeHordeDropRules.Touch(axis*outside),"inclusive rim and adjacent float values on both axes");
             var full=NativeHordeDropRules.Shove(new V3(1,0,0),new V3(0,0,1),380,false);var half=NativeHordeDropRules.Shove(new V3(1,0,0),new V3(0,0,1),380,true);
             Check(Near(full.x,380f/65)&&full.y==2.5f&&Near(half.x,full.x*.5f)&&half.y==1.25f,"drop shove and half blocked shove");
             var smash=NativeHordeDropRules.Shove(new V3(0,0,-.2f),new V3(0,0,1),420,false);

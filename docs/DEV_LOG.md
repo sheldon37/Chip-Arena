@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — drop rim precision follow-up after #182
+- Branch `codex/unity-drop-boundary-precision`, publication based on shared/builder `64e79581`. The 02:49 EDT builder log confirms #182 was picked up but the same 2.4 m assertion still fails. The earlier fixture-only change was insufficient.
+- Candidate remaining cause: mixed intermediate precision in `Touch`: a runtime float product can retain extra precision under Mono while the compile-time float radius square is rounded. Explicit double intermediates now evaluate both sides identically, preserving the inclusive 2.4f boundary without an epsilon or widened radius. Unity Mono reproduction is unavailable here, so this is not yet a confirmed diagnosis.
+- Added four managed checks covering both axes/signs at the rim and the immediately adjacent float values inside/outside. The real Editor assertion now includes HP, expected HP, exact delta components, Touch, LOS and hold state so another failure identifies the failing path rather than only the sample.
+- Checks: fresh Core/Tests compilation; 75 drop checks and 49,154 Hulk/spitter checks pass; Editor fixture syntax zero errors. Unity/PhysX/Windows remain unrun. Owner requested fix and authorized publication; merge/sync for the builder to verify. No compiled release claimed.
+
 ## 2026-10-13 — Astra — brute drop build gate boundary precision
 - Branch `codex/unity-drop-radius-gate`, base shared `28db06347093`. Owner-provided Latest-Build.txt (modified 2026-10-13 06:26 UTC) fails `ValidateHordeDrops` at `actual radius/falloff 2.4`; Ward traversal and Hulk/crowd gates passed earlier in that build. This build does not include the separate dynamic Hulk breach branch.
 - Root cause: the isolated fixture at X=1000 rounds `(1000f + 2.4f) - 1000f` to 2.400024414, outside the 2.400000095 float radius. Keep Z=1000 for isolation and use X=0 for exact X-axis boundary probes. No gameplay radius, damage, timing or networking changes.
