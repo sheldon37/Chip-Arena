@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-13 build follow-up: `5211d13` compiled but failed the new spitter native gate because its fixture activated before spawning. `codex/spitter-gate-timestamps` corrects fixture timing and splits frame assertions; local syntax/source checks pass. Desktop Unity rebuild and test Update publication remain pending.
+
 2026-10-13 spitter/wave/CPU follow-up: `codex/unity-spitters-wave-budget` on shared `f043b7cb` implements authoritative spitter acid/interrupts and replicated pools, fixed finite wave totals with last-enemy completion, safe shorter-route Hulk breaches, cached wall probes and spatial crowd separation. Managed/focused/Python/source checks pass; Unity/PhysX and Windows/FPS validation remain pending. See latest DEV_LOG and task PR for full-suite/integration/publication receipts.
 
 2026-10-13 dynamic Hulk wall breach: `codex/unity-hulk-dynamic-breaches` on shared `9f394d6` adds interior-wall obstruction handling for PvE and Sandbox entry-spawned Hulks, timed reversible collision, occupancy holds and guest/replay records (protocol 7). On task branch; Claude's dynamic visual hookup (whole-block knock, burst and hologram restore, guests and killcam from the records) is on `claude/hulk-dynamic-breach-fx` (not pushed); real Unity/Windows acceptance remains pending. Not merged/released; see DEV_LOG for exact fields.

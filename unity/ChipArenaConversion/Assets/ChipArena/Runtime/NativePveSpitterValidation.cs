@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
                 p.Seat.chips.Clear();p.Seat.spec="pistol";p.Weapon=Content.Weapon("pistol");p.Stats=NativeContentRules.Stats(Content,"pistol",p.Seat.chips);p.Hp=1000;p.Stats["hp"]=1000;p.Stats["damageTaken"]=1;
                 p.Seat.alive=p.Seat.connected=true;p.Down=null;p.Juggle=null;p.Kernel=null;p.Roll=null;p.ShieldUntil=p.RollEnd=p.BlockEnd=0;p.Dots.Clear();p.Body.position=new Vector3(0,p.Collider.height/2+.025f,1006);p.Body.linearVelocity=Vector3.zero;
                 foreach(var q in Pilots.Where(q=>q!=p))q.Body.position=new Vector3(15,1,1010);
-                var spit=SpawnPveAdd("spitter",true,0);Check(spit!=null,"spitter row spawns");spit.Body.position=new Vector3(0,.875f,1000);spit.Pve.ActiveAt=spit.Pve.ExposedAt=Time-1;spit.Pve.Target=p;spit.Pve.DamageScale=1;spit.Pve.ThinkAt=Time+20;spit.Yaw=0;spit.Collider.enabled=true;Physics.SyncTransforms();
+                var spit=SpawnPveAdd("spitter",true,0);Check(spit!=null,"spitter row spawns");spit.Body.position=new Vector3(0,.875f,1000);spit.Pve.SpawnAt=spit.Pve.WalkAt=spit.Pve.ActiveAt=spit.Pve.ExposedAt=Time-1;spit.Pve.Target=p;spit.Pve.DamageScale=1;spit.Pve.ThinkAt=Time+20;spit.Yaw=0;spit.Collider.enabled=true;Physics.SyncTransforms();
                 LaunchPveSpit(spit);Check(pveAcid.Count==1&&Events.Any(e=>e.Detail=="minion-spit"),"clear mouth arc launches once");
                 var record=pveAcid[0].Record;float hp=p.Hp;StepPveAcid();Check(p.Hp==hp,"no damage during flight");
                 Clock(record.at+record.flight+.002);StepPveAcid();Check(Math.Abs(p.Hp-(hp-7))<.002f,"7 direct landing damage");StepPveAcid();Check(Math.Abs(p.Hp-(hp-7))<.002f,"direct hit once");
@@ -32,7 +32,11 @@ namespace ChipArena.UnityConversion
                 CorrodePve(record,.6f,10);Check(Math.Abs(prop.Health-90)<.002f,"direct corrosion uses destructible damage");CorrodePve(record,1.3f,6);Check(Math.Abs(prop.Health-84)<.002f,"puddle corrosion");prop.Indestructible=true;CorrodePve(record,1.3f,6);Check(Math.Abs(prop.Health-84)<.002f,"protected geometry is not corroded");
                 spit.LastAttack=Time-.2f;spit.StrikeAt=spit.LastAttack+.8f;spit.Pve.Struck=false;spit.Hp=spit.MaxHp=1000;spit.Pve.Parts.Clear();
                 HitPveAdd(spit,p,1,Vector3.forward,0,null,"projectile",0,false);Check(spit.Pve.Struck&&spit.Pve.SpitCancelAt==Time&&Math.Abs(spit.Pve.RecoverAt-Time-1.56f)<.002f,"small damaging hit cancels with partial cooldown");
-                var frame=NativeFrameCodec.Clone(NetworkFrame());Check(frame.Valid(Content)&&frame.pve.acid.Length==1&&frame.minions.Single(m=>m.id==spit.Id).spitCancelAt==Time,"real JsonUtility carries acid and cancellation");
+                // Skip the entrance with a coherent completed timeline, then validate before serialization.
+                var source=NetworkFrame();Check(source.Valid(Content),"source frame is valid before JsonUtility");
+                var frame=NativeFrameCodec.Clone(source);Check(frame.Valid(Content),"JsonUtility clone remains valid");
+                Check(frame.pve.acid.Length==1,"real JsonUtility carries acid");
+                Check(frame.minions.Single(m=>m.id==spit.Id).spitCancelAt==Time,"real JsonUtility carries cancellation");
                 var guest=new NativeArena(Content,new NativeMatch(Content),MapId){Replica=true,ReplicaScene=root.scene};
                 try{guest.ApplyFrame(frame,LocalId);Check(guest.PveAcidCount==1&&guest.PveAcidAt(0).to.z==record.to.z,"guest / late join restores live puddle");frame.pve.acid=Array.Empty<NativeAcidRecord>();guest.ApplyFrame(frame,LocalId);Check(guest.PveAcidCount==0,"absent records clear on rewind/transition");}finally{guest.Dispose();}
                 Debug.Log("PASS native spitter arc/landing/DoT/nonstacking/corrosion/interrupt/JsonUtility/guest state");
