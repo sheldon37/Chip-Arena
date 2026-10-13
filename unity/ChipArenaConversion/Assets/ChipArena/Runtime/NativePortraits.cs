@@ -196,7 +196,7 @@ namespace ChipArena.UnityConversion
                 Model(p,m,siren?Vector4.one:s.BodyTint,siren?Vector4.one:s.AccentTint,scene,siren?Vector4.one:Vector4.zero);
             }
             if(siren)SirenPieces(time,turn);
-            if(CyberLordIdlePose.Handles(spec))CyberLordPieces(bodyParts,time,glitch,turn,rootMatrix);
+            if(CyberLordIdlePose.Handles(spec))CyberLordPieces(s,bodyParts,time,glitch,turn,rootMatrix);
             if(!siren&&hat==NativeAuditorHalo.Hat&&haloDraw!=null)haloDraw.Draw(bones[CapturedRig.Head],time,1,Reduced,view,Layer,view,s.HatColor);
             else if(!siren&&hat==NativeSheldonHead.Hat&&Parts(NativeSourceModels.SheldonLive).Length>0)SheldonHead(s,index,time,rootMatrix);
             else if(!siren&&hat!="none")foreach(var p in Parts(s.HatModel))Model(p,p.Bone>=0&&p.Bone<22?bones[p.Bone]:rootMatrix,s.HatTint,Vector4.one,Vector4.one,Vector4.one);
@@ -237,20 +237,25 @@ namespace ChipArena.UnityConversion
             block.SetVector(BodyId,body);block.SetVector(AccentId,accent);block.SetVector(SceneId,scene);block.SetVector(GlowId,glow);block.SetFloat(InkId,p.Ink);
             Draw(p.Mesh,m,p.Transparent?(p.DoubleSide?transparentDouble:transparent):p.DoubleSide?opaqueDouble:opaque);
         }
-        // The DEV Cyber Lord in its idle stance (Core/CyberLordIdle.cs): the hardlight look on its joints (Core/NativeCyberLordLook,
-        // formed, unlit glow boxes) under the idle's scanline band, and on the glitch's split steps a magenta and a cyan ghost of
-        // the body added a few centimetres apart across the camera (Reduced: the softer, eased version).
+        // The DEV Cyber Lord in its idle stance (Core/CyberLordIdle.cs): the look on its joints in the portrait's skin (the look's
+        // "cyberlord" pick: Standard the glitch aura round the hands, the Prototype Series the hardlight gauntlets; formed, unlit
+        // glow boxes, Core/NativeCyberLordLook.PiecesIn, seeded by the slot) under the idle's scanline band, and on the glitch's
+        // split steps a magenta and a cyan ghost of the body added a few centimetres apart across the camera (Reduced: the
+        // softer, eased version).
         private readonly CyberPiece[] cyberPieces=new CyberPiece[NativeCyberLordLook.Capacity];
-        private void CyberLordPieces(Part[] body,float time,in CyberIdleGlitch glitch,Quaternion turn,Matrix4x4 root)
+        private void CyberLordPieces(Slot s,Part[] body,float time,in CyberIdleGlitch glitch,Quaternion turn,Matrix4x4 root)
         {
-            int n=NativeCyberLordLook.Pieces(time,-100,CyberLordIdlePose.Clench(glitch,default),false,1,Reduced?.3f:1,false,cyberPieces);
+            int skin=s.Look.Skin==NativeWeaponSkins.Prototype?NativeWeaponSkins.PrototypeIndex:NativeWeaponSkins.StandardIndex;
+            int n=NativeCyberLordLook.PiecesIn(skin,s.Key,time,-100,CyberLordIdlePose.Clench(glitch,default),false,1,Reduced?.3f:1,false,cyberPieces,default);
             for(int i=0;i<n;i++)
             {
                 var pc=cyberPieces[i];float gain=CyberLordIdlePose.ScanGain(glitch,pc,i,Reduced);
                 var m=bones[pc.Bone]*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(pc.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(pc.Rotation)),CapturedAnimation.Vec(pc.Scale));
+                if(pc.Rise!=0)m.m13+=pc.Rise;
                 block.Clear();block.SetVector(ColorId,new Vector4(pc.Color.X*gain,pc.Color.Y*gain,pc.Color.Z*gain,1));block.SetFloat(ModeId,2);block.SetTexture(MainTexId,Texture2D.whiteTexture);block.SetVector(MainStId,new Vector4(1,1,0,0));
                 block.SetVector(BodyId,Vector4.one);block.SetVector(AccentId,Vector4.one);block.SetVector(SceneId,Vector4.one);block.SetVector(GlowId,Vector4.one);block.SetFloat(InkId,0);Draw(box,m,opaque);
             }
+            if(skin==NativeWeaponSkins.StandardIndex)CyberAuraGlow(time,turn);
             if(!(glitch.Split>1e-3f)||body==null)return;var across=turn*Vector3.right*(glitch.SplitOffset*.5f);
             var magenta=NativeCyberLordFx.Lin(NativeCyberLordFx.Magenta);var cyan=NativeCyberLordFx.Lin(NativeCyberLordFx.Cyan);
             for(int k=0;k<2;k++)
@@ -266,6 +271,20 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The idle split ghosts' added light at a full glitch step.</summary>
         private const float CyberIdleGhost=.28f;
+        // The Standard skin's haze (Core/NativeCyberLordAura.Halo's soft glow round each fist) on the radial sprite turned to the
+        // portrait camera, stepping on the glitch's 24 Hz (steady with reduced effects).
+        private static readonly Vector3 AuraFist=CapturedAnimation.Vec(CapturedRig.Mirror(NativeCyberLordAura.FistCentre));
+        private void CyberAuraGlow(float time,Quaternion turn)
+        {
+            var radial=presentation.PortraitModels?.SirenHaloTexture;if(radial==null)return;int step=(int)Math.Floor(time*NativeCyberLordAura.StepRate);
+            for(int h=0;h<2;h++)
+            {
+                var at=bones[h==0?CapturedRig.LHand:CapturedRig.RHand].MultiplyPoint3x4(AuraFist);float k=Reduced?1:.8f+.1f*((step*7+h*3)%5);
+                block.Clear();block.SetVector(ColorId,Linear(NativeCyberLordLook.Cyan,.5f*k));block.SetFloat(ModeId,2);block.SetTexture(MainTexId,radial);block.SetVector(MainStId,new Vector4(1,1,0,0));
+                block.SetVector(BodyId,Vector4.one);block.SetVector(AccentId,Vector4.one);block.SetVector(SceneId,Vector4.one);block.SetVector(GlowId,Vector4.one);block.SetFloat(InkId,0);
+                Draw(haloQuad,Matrix4x4.TRS(at,turn,Vector3.one*.36f),additive);
+            }
+        }
         // The Sheldon Head: its shell like any hat, then the face and ring animated on the portrait clock (idle breathing and
         // blinks, the ring turning; reduced effects slows the ring), tinted with the hat colour (cyan on Auto).
         private readonly Dictionary<int,Part> sheldonPieces=new Dictionary<int,Part>();
