@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
             if(ViewCamera==null)return;Actor source=System.Array.Find(snapshot.Actors,a=>a.Id==LocalId&&a.Alive);if(source==null)return;
             foreach(var batch in batches)batch.Clear();
             if(viewRig==null)viewRig=captured.Create(transform,-999);
-            var shown=source.ViewCopy();shown.Aiming=AimHeld;shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;
+            var shown=source.ViewCopy();shown.Aiming=AimHeld;shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;shown.Grounded=SpawnContact(shown.Id,shown.Grounded);
             // A camera-attached presentation rig never changes the authoritative pilot or muzzle.
             viewRig.PreviewAirJumpAt=rigs.TryGetValue(LocalId,out var own)?own.PreviewAirJumpAt:-100;// the Dev Sandbox's Cyber Lord boost preview
             viewRig.ViewPitch=source.Pitch;viewRig.ActorPose(shown,Vector3.zero,time,true);

@@ -1,5 +1,42 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — match-start spawn-in (owner: "Lets also add a spawning in animation; Players tend to float for 3 seconds when match is starting currently lol")
+- Branch `claude/spawn-in`, base shared `e2e894e`. Not pushed, merged or released.
+- Root cause (simulation; unchanged here; details and the Astra hand-off in `docs/SPAWN-IN.md`):
+  - Every authored spawn (GameContent's global table for its 15 maps, and all three UnityMaps tables) puts the capsule centre at 1.1 m on a floor at 0. That is 0.23 m over the ground motor's rest (0.87): presented feet at 23.5 cm, on every map, round, set, host and guest.
+  - Outside the fight, `NativeArena.Step` zeroes velocity and returns before `ProbePilotGround`. The fresh pilot's `Grounded = false` therefore replicates through the intro and the 3 s countdown, so every rig's jump layer holds its air pose, and Land plus `move.land` fire at GO.
+  - Inferred, not measured: PhysX still integrates one tick of gravity per held tick, so the body probably sinks to the floor about 0.65 s after the reset.
+- Presentation (`Core/NativeSpawnIn.cs`, `Runtime/NativeSpawnInPresentation.cs`, one-line hooks in ArenaPresentation Render/RenderGlow/Reset, SourceCharacter, RenderStatus, NativeCombatGlow, NativeCombatHud, NativeViewPresentation and ConversionGame):
+  - Timing comes only from replicated `Phase`/`PhaseEnd`/`FightAt`, so the host, guests (own pilot `GuestLead` ahead), the killcam and late joiners agree on every round; the hold ends exactly at the fight start.
+  - The beam strikes and rings the spawn. The body forms from the feet up (dithered per part from its posed height) behind a hologram slice of its own skin, team- or accent-tinted, then flashes and splits magenta/cyan.
+  - The beam holds the feet at the spawn's own height with a bob, posed on the ground (no Fall loop), with motes and countdown-tick pulses.
+  - At GO it drops for the authority's own fall (`AuthorityFall` + 1 tick = 0.083 s) and lands with impact rings, light dust, sparks and a local camera kick.
+  - A grounded spawn (lift under 6 cm) is lowered to the floor by GO instead.
+  - Hat, weapon, body Chips, Cyber Lord hardlight, bands, armour halos and the overhead bar wait for their parts.
+  - First person: my view rides the hold and drop and kicks (camera shake only), with a scanline-wipe veil, vignette, edge split and GO flash.
+  - Reduced and low tiers. No per-frame allocation. PvE waves and revives are untouched (revives keep their own scan).
+- Affected systems: arena pilot presentation, the first-person view and screen, the local camera, the combat glow and the HUD. No rule, timing, hitbox, damage, cooldown, movement or network field changed. Hit timing is unaffected: nothing can attack before GO, and the presented drop ends one tick after the authority's touchdown without the authority reading it. Only presentation files reference the module (checked).
+- Checks (actual):
+  - `unity-check.sh`: runtime+editor OK.
+  - `check_relay.py`: exit 0, 593 PASS (592 + `PASS spawn-in`, 72,823 checks). The spawn-in checks cover:
+    - the lift measured on all 18 maps;
+    - NativeMatch's countdown, every round of a real match through results, a draft, sets and intros;
+    - 20 Hz guest frames and killcam frames against the host;
+    - the drop re-derived from the ground probe's rule (4 ticks + 1) and lowered grounded spawns;
+    - the feet-up build in rest and seven idle poses;
+    - tiers, geometry bounds, camera kick and screen limits;
+    - 12,000 frames with 0 bytes allocated;
+    - the wiring.
+  - It also passes from a sparse `git ls-files` copy.
+  - Also passing: Python unittest (95, 1 skipped), `package_source.py` (1,713 files; Builds removed) and `git diff --check e2e894e HEAD`.
+- Renders: offline WebGL sheets (scratch `renders-spawn-in/`): before/after pairs, the sequence for Standard/sword, Sheldon Clothes/greatsword/Sheldon Head and Prototype/daggers/crown, the GO landing, first person (Full and Reduced), Reduced, Low, teams and grounded spawns. They use the real Core, NativeVfxDraw and body meshes over a stub, the jump layer's real poses and Prototype bank weapons; the view-model arms are not drawn, and the screen is a 2D stand-in for IMGUI.
+- Not run: the Unity Editor/player, PhysX (the sink is inferred), Windows, two clients, IMGUI and shader output.
+- Risks:
+  - The exact PhysX countdown height is unconfirmed. The hold covers both cases.
+  - The countdown length is mirrored as 3 s (checked against NativeMatch).
+  - Dust and ring tuning was judged offline only.
+- Next step: Astra picks option 1 or 2 in `docs/SPAWN-IN.md`; owner taste review in engine.
+
 ## 2026-10-13 — Claude — saw bisect gib (owner: "For the buzzsaw death on factory, can we add essentially a "split in the middle" gib? This can be useful for future things too")
 - Branch `claude/saw-bisect`, base shared `4a67602`. Not pushed, merged or released.
 - Reusable Core module `Core/NativeBisect.cs` (engine free; API in `docs/BISECT-GIB.md`).

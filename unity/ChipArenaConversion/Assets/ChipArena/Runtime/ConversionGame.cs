@@ -173,6 +173,8 @@ namespace ChipArena.UnityConversion
             if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.BlockHitch(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
             // The gun Q kit's first-person kick (Core/NativeGunKitMotion.CameraKick): fanned rounds, Overdrive's buzz; camera shake on.
             if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.GunKitKick(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
+            // The match-start spawn-in (NativeSpawnInPresentation.cs): my first-person view rides the beam's hold and drop, and the touchdown kicks.
+            if(!menu&&Spectator==null&&!cinematic.Directing)presentation.SpawnCamera(cameraView.transform,arena,renderTime,prefs.cameraShake,prefs.reducedEffects);
             presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.CameraShake=prefs.cameraShake;
             presentation.Render(frame,renderTime,false);ShoulderSprint(renderTime);
             Vector3? preview=null;bool previewClamped=false;
@@ -313,6 +315,8 @@ namespace ChipArena.UnityConversion
             if(previewArena!=null){PreviewHud(width,height);return;}
             if(arena!=null)
             {
+                // My own first-person spawn-in screen, under the HUD (NativeSpawnInPresentation.cs).
+                if(!menu)SpawnInScreen();
                 var p=arena.Local;bool fighting=match.Phase==NativePhase.Fight||match.Phase==NativePhase.Countdown;
                 if(!menu&&(fighting||match.Phase==NativePhase.Result))FightHud(p);
                 if(!menu&&fighting)KernelPanicBanner();

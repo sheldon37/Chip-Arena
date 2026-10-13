@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         private float FieldClock(NativeArena arena)=>arena.Replica&&hazardClock<=arena.Time&&arena.Time-hazardClock<1?hazardClock:PresentationClock(arena);
         // paused: the match itself is stopped (offline menu), so the blasts hold still; see NativeBlastFrame.Step.
         public void RenderGlow(NativeArena arena,Camera camera,bool paused=false)
-        {float now=PresentationClock(arena),fields=FieldClock(arena);if(vfx!=null)vfx.Low=LowGraphics;vfx?.Begin();fieldTelegraphs?.Collect(arena,fields);StructureFx(arena,camera,fields);if(blasts!=null)blasts.Trails=TrailsEnabled;blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);EventWorldFx(arena,camera,fields);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);MagicFx(arena,camera,fields);CyberLordFx(arena,camera,fields);MeleeKitFx(arena,camera,fields);meleeFlash?.Render(arena,camera,fields,WeaponEffectsQuality);WeaponFx(arena,camera,fields);DevEffects(arena,camera,fields);JumpFx(arena,fields);AirAttackFx(arena,fields);SprintAttackFx(arena,fields);BloodFx(arena,camera,fields);if(combatGlow==null){vfx?.Submit(camera);return;}combatGlow.Tracker=shotTracker;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);vfx?.Submit(camera);}
+        {float now=PresentationClock(arena),fields=FieldClock(arena);if(vfx!=null)vfx.Low=LowGraphics;vfx?.Begin();fieldTelegraphs?.Collect(arena,fields);StructureFx(arena,camera,fields);if(blasts!=null)blasts.Trails=TrailsEnabled;blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);EventWorldFx(arena,camera,fields);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);MagicFx(arena,camera,fields);CyberLordFx(arena,camera,fields);MeleeKitFx(arena,camera,fields);meleeFlash?.Render(arena,camera,fields,WeaponEffectsQuality);WeaponFx(arena,camera,fields);DevEffects(arena,camera,fields);JumpFx(arena,fields);AirAttackFx(arena,fields);SprintAttackFx(arena,fields);BloodFx(arena,camera,fields);SpawnInFx(arena,camera);if(combatGlow==null){vfx?.Submit(camera);return;}combatGlow.Tracker=shotTracker;combatGlow.Shown=spawnJoint??=SpawnJointOf;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);vfx?.Submit(camera);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;
@@ -126,7 +126,7 @@ namespace ChipArena.UnityConversion
         /// kit keeps its decals and structure records (NativeStructureFxPresentation.Reset), which the event buffer cannot rebuild.</summary>
         public void ResetPresentation(bool keepWorldMarks=false)
         {
-            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();ClearStructureFx(keepWorldMarks);ClearBlood(!keepWorldMarks);fieldTelegraphs?.Clear();shots?.Clear();vfx?.Clear();meleeFlash?.Clear();ClearMeleeKit();ClearCyberLord();ClearMagicFx();shotTracker.Clear();hitLedger.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            ClearSourceActors();ClearSpawnIn();combatGlow?.Clear();blasts?.Clear();ClearStructureFx(keepWorldMarks);ClearBlood(!keepWorldMarks);fieldTelegraphs?.Clear();shots?.Clear();vfx?.Clear();meleeFlash?.Clear();ClearMeleeKit();ClearCyberLord();ClearMagicFx();shotTracker.Clear();hitLedger.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
@@ -136,7 +136,7 @@ namespace ChipArena.UnityConversion
         public Vector3 Position(Actor actor) { Vector3 p; return visualPositions.TryGetValue(actor.Id,out p)?p:Vec(actor.Position); }
         public void Render(Snapshot s, float renderTime, bool smooth)
         {
-            if(s==null) return;sourceModels?.Begin();hazardClock=renderTime;ObserveHits(s);BeginWeaponFx(s);BeginHatFx(s);BeginCyberLord(s,renderTime);
+            if(s==null) return;sourceModels?.Begin();hazardClock=renderTime;SpawnBegin();ObserveHits(s);BeginWeaponFx(s);BeginHatFx(s);BeginCyberLord(s,renderTime);
             foreach(var list in batches) list.Clear(); DrawnParts=0;
             removedRigs.Clear();
             foreach(int id in rigs.Keys) { bool exists=false; foreach(var a in s.Actors) if(a.Id==id) { exists=true; break; } if(!exists) removedRigs.Add(id); }
@@ -147,8 +147,11 @@ namespace ChipArena.UnityConversion
                 Vector3 old; Vector3 target=Vec(a.Position);
                 if(!visualPositions.TryGetValue(a.Id,out old)||(old-target).sqrMagnitude>64) old=target;
                 Vector3 p=smooth?Vector3.Lerp(old,target,1-Mathf.Exp(-18*Time.unscaledDeltaTime)):target;
+                // The match-start spawn-in (NativeSpawnInPresentation.cs): the beam holds the feet; the rig is posed on the ground
+                // while it does and in the air for its drop, with the replicated flag restored after posing.
+                p=SpawnPlace(a,p,renderTime);
                 visualPositions[a.Id]=p;
-                if(a.Alive&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon)))PrepareCapturedPose(a,p,renderTime);
+                if(a.Alive&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon))){bool ground=a.Grounded;a.Grounded=SpawnContact(a.Id,ground);try{PrepareCapturedPose(a,p,renderTime);}finally{a.Grounded=ground;}SpawnBones(a);}
             }
             // Pose everyone before drawing: a held victim must use this frame's claw, regardless of seat order.
             PrepareInteractions(s,renderTime);
@@ -340,7 +343,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            rooftop?.Dispose();rooftop=null;ClearSourceActors();DisposeDevEffects();DisposeEventWorldFx();DisposeStructureFx();DisposeHalos();DisposeBrickfall();DisposeCyberCity();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();meleeFlash?.Dispose();fieldTelegraphs?.Dispose();shots?.Dispose();DisposeMagicFx();vfx?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            rooftop?.Dispose();rooftop=null;ClearSourceActors();DisposeSpawnIn();DisposeDevEffects();DisposeEventWorldFx();DisposeStructureFx();DisposeHalos();DisposeBrickfall();DisposeCyberCity();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();meleeFlash?.Dispose();fieldTelegraphs?.Dispose();shots?.Dispose();DisposeMagicFx();vfx?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) CapturedAnimation.Release(m);
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
             if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);
