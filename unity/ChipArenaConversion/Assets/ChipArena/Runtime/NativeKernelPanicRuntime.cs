@@ -19,6 +19,7 @@ namespace ChipArena.UnityConversion
             long now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             if(p.Cyber.Ranged?.Ranged==true||CyberSwitching(p)||p.Seat.spec!="cyberlord"||!p.Seat.access.DeveloperWeapon("cyberlord",now)||p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Time<p.Ready||Time<p.KernelReady||Time<p.AttackEnd||Time<p.RollEnd||Time<p.BlockEnd||p.AbilityCast!=null||p.Special!=null||p.Mana<NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"])return false;
             p.Mana-=NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"];
+            NativeCyberRules.Interrupt(p.Cyber,Time);p.CyberLinkTick=0;
             p.KernelReady=Time+NativeKernelPanicRules.Cooldown;p.KernelTravelled=0;
             (p.Cyber.Ranged??=new NativeCyberRangedState()).Ready[4]=p.KernelReady;
             p.Kernel=new NativeKernelPanic{Id=nextAttack++,Caster=p.Seat.id,Seed=random.Next(),At=Time,Until=Time+NativeKernelPanicRules.Windup+NativeKernelPanicRules.Range/NativeKernelPanicRules.LungeSpeed,Ready=p.KernelReady,CasterStart=Vec(p.Body.position),Anchor=Vec(p.Body.position),Facing=V3.Forward(p.Input.Yaw)};
@@ -57,7 +58,7 @@ namespace ChipArena.UnityConversion
         private void KernelPin(NativePilot p)
         {
             p.KernelKinematic=p.Body.isKinematic;p.KernelCollider=p.Collider.enabled;p.KernelPinned=true;
-            CancelSiren(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);CancelFighter(p);p.Down=null;p.Juggle=null;p.Roll=null;p.RollEnd=p.BlockEnd=p.StunEnd=Time;p.Knockback=p.MoveVelocity=Vector3.zero;
+            NativeCyberRules.Interrupt(p.Cyber,Time);p.CyberLinkTick=0;CancelSiren(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);CancelFighter(p);p.Down=null;p.Juggle=null;p.Roll=null;p.RollEnd=p.BlockEnd=p.StunEnd=Time;p.Knockback=p.MoveVelocity=Vector3.zero;
             if(!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;p.Body.isKinematic=true;p.Collider.enabled=false;
         }
         private void KernelRelease(NativePilot p)

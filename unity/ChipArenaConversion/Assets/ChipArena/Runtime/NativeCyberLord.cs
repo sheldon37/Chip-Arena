@@ -32,11 +32,11 @@ namespace ChipArena.UnityConversion
         {cost*=(float)(p.Stats["resourceCost"]*p.Stats["abilityCost"]);if(p.Mana<cost)return false;p.Mana-=cost;return true;}
         private float CyberScale(NativePilot p)=>NativeAbilityRules.Scale(p.Stats,p.Mana>=.75f*p.Stats["maxMana"]);
         private void CyberBegin(NativePilot p,string kind,float windup,float duration)
-        {var s=p.Cyber;p.CyberAttack=nextAttack++;s.Kind=kind;s.At=Time;s.Release=Time+windup;s.Until=Time+duration;s.Resolved=false;s.Facing=V3.Forward(p.Input.Yaw);p.Yaw=p.Input.Yaw;p.AttackAt=p.LastAttack=Time;p.AttackEnd=p.Ready=s.Until;p.MoveVelocity=Vector3.zero;Emit(EventKind.AbilityCast,p,0,p.Body.position,0,kind);}
+        {var s=p.Cyber;p.CyberAttack=nextAttack++;s.Kind=kind;s.CutAt=-1;s.At=Time;s.Release=Time+windup;s.Until=Time+duration;s.Resolved=false;s.Facing=V3.Forward(p.Input.Yaw);p.Yaw=p.Input.Yaw;p.AttackAt=p.LastAttack=Time;p.AttackEnd=p.Ready=s.Until;p.MoveVelocity=Vector3.zero;Emit(EventKind.AbilityCast,p,0,p.Body.position,0,kind);}
         private void StepCyberInput(NativePilot p)
         {
             if(!CyberAllowed(p))return;var i=p.Input;var s=p.Cyber;s.Ranged??=new NativeCyberRangedState();
-            if(i.CancelAbilities){NativeCyberRangedRules.Interrupt(s,Time);return;}if(i.SirenAbility==5){CyberSwitch(p);return;}if(CyberBusy(p))return;float cd=(float)p.Stats["abilityCooldown"];
+            if(i.CancelAbilities){NativeCyberRules.Interrupt(s,Time);p.CyberLinkTick=0;return;}if(i.SirenAbility==5){CyberSwitch(p);return;}if(CyberBusy(p))return;float cd=(float)p.Stats["abilityCooldown"];
             if(i.AbilityQ&&Time>=s.QReady&&CyberPay(p,20))
             {
                 CyberBegin(p,"data-dash",0,.2f);s.QReady=p.QReady=Time+NativeCyberRules.DashCooldown*cd;s.DashAt=Time;s.DashUntil=Time+.2f;s.TrailUntil=s.DashUntil+1.2f;
@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             {CyberBegin(p,"firewall",0,.2f);s.EReady=p.EReady=Time+12*cd;s.WallAt=Time;s.WallUntil=Time+4;s.WallYaw=p.Yaw;s.WallPoint=Vec(p.Body.position-Vector3.up*.865f+Vec(s.Facing)*.8f);p.CyberWallTick=Time+.25f;}
             else if(s.Ranged.Ranged)CyberRangedInput(p);
             else if(i.SirenAbility==1&&Time>=s.PacketReady&&CyberPay(p,15))
-            {CyberBegin(p,"packet-burst",.08f,.25f);s.PacketReady=Time+4*cd;}
+            {CyberBegin(p,"packet-burst",.08f,.25f);s.PacketReady=Time+4*cd;s.PacketAt=s.At;s.PacketRelease=s.Release;s.PacketUntil=s.Until;s.PacketCutAt=-1;}
             else if(i.SirenAbility==2&&Time>=s.LinkReady)
             {
                 var target=CyberAim(p,12);if(target==null||!CyberPay(p,25))return;
@@ -87,7 +87,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in Pilots)
             {
                 var s=p.Cyber;if(!CyberAllowed(p)||p.Hp<=0||!p.Seat.connected){p.Cyber=new NativeCyberKit();continue;}
-                if(Incapacitated(p)||Time<p.BlockEnd||Time<p.RollEnd){NativeCyberRangedRules.Interrupt(s,Time);s.Resolved=true;s.DashUntil=0;s.LinkUntil=0;s.Until=Time;p.CyberLinkTick=0;}
+                if(Incapacitated(p)||Time<p.BlockEnd||Time<p.RollEnd||KernelBusy(p)){NativeCyberRules.Interrupt(s,Time);p.CyberLinkTick=0;}
                 if(!s.Resolved&&Time>=s.Release)
                 {
                     s.Resolved=true;
@@ -96,14 +96,14 @@ namespace ChipArena.UnityConversion
                     else if(s.Kind=="packet-burst")CyberPackets(p);
                     else if(s.Kind=="system-crash")CyberArea(p,25,"system-crash",q=>new Vector2(q.x-s.CrashPoint.x,q.z-s.CrashPoint.z).magnitude<=4&&Math.Abs(q.y-s.CrashPoint.y)<=1.6f,stun:1);
                 }
-                if(s.DashUntil>0&&Time>=s.DashAt&&Time<=s.DashUntil+Rules.Dt&&!KernelBusy(p)){p.Body.position=KernelTravel(p.Body.position,Vec(NativeCyberRules.DashPosition(s,Time)));p.MoveVelocity=Vector3.zero;}
+                if(s.DashUntil>=s.DashAt+.2f-.0001f&&Time>=s.DashAt&&Time<=s.DashUntil+Rules.Dt&&!KernelBusy(p)){p.Body.position=KernelTravel(p.Body.position,Vec(NativeCyberRules.DashPosition(s,Time)));p.MoveVelocity=Vector3.zero;}
                 if(Time>=p.CyberTrailTick&&p.CyberTrailTick>0&&p.CyberTrailTick<=s.TrailUntil+.0001f)
                 {p.CyberTrailTick+=.3f;CyberArea(p,6,"data-dash",q=>NativeCyberRules.SegmentDistance(Vec(q),s.DashFrom,s.DashTo)<=.42f);}
                 if(Time>=p.CyberWallTick&&p.CyberWallTick>0&&p.CyberWallTick<=s.WallUntil+.0001f)
                 {p.CyberWallTick+=.25f;CyberArea(p,2.5f,"firewall",q=>NativeCyberRules.WallCross(Vec(q),Vec(q),s.WallPoint,s.WallYaw,.42f,out _));}
                 var linked=Pilots.FirstOrDefault(q=>q.Seat.id==s.LinkTarget);
                 if(p.CyberLinkTick>0&&p.CyberLinkTick<=s.LinkUntil+.0001f&&(linked==null||linked.Hp<=0||!linked.Seat.connected||!CanHit(p,linked)||Vector3.Distance(p.Body.position,linked.Body.position)>15||!MeleeVisible(p.Body.position,linked.Body.position,p,linked.Collider))){s.LinkUntil=Time;p.CyberLinkTick=0;}
-                if(Time>=p.CyberLinkTick&&p.CyberLinkTick>0&&p.CyberLinkTick<=s.LinkUntil+.0001f&&linked!=null){p.CyberLinkTick+=.25f;Heal(p,CyberHit(p,linked,2,"siphon-link")*.5f);}
+                if(Time>=p.CyberLinkTick&&p.CyberLinkTick>0&&p.CyberLinkTick<=s.LinkUntil+.0001f&&linked!=null){p.CyberLinkTick+=.25f;Heal(p,CyberHit(p,linked,2,"siphon-link")*.5f,"siphon-link");}
                 CyberRangedWorld(p);
             }
         }

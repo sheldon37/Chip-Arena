@@ -80,6 +80,9 @@ test('native tints persist and Sheldon cosmetics require a DEV account',async()=
    const clothes:any=await(await f.request('profile',{revision:2,profile:{cosmetics:{weaponSkins:'body:sheldon,sword:prototype'}}},pilot.session)).json();
    assert.equal(clothes.account.profile.cosmetics.weaponSkins,allowed?'sword:prototype,body:sheldon':'sword:prototype');
    const reload:any=await(await f.request('me',undefined,pilot.session)).json();assert.equal(reload.account.profile.cosmetics.weaponSkins,allowed?'sword:prototype,body:sheldon':'sword:prototype');
+   const cyber:any=await(await f.request('profile',{revision:3,profile:{cosmetics:{intro:'dev-cyberlord',overrideWeaponIntro:true}}},pilot.session)).json();
+   assert.equal(cyber.account.profile.cosmetics.intro,allowed?'dev-cyberlord':'neon-drop');
+   const cyberRead:any=await(await f.request('me',undefined,pilot.session)).json();assert.equal(cyberRead.account.profile.cosmetics.intro,allowed?'dev-cyberlord':'neon-drop');
   }
  }finally{f.db.close();}
 });

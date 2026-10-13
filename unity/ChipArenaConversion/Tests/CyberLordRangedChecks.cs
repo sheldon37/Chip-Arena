@@ -268,7 +268,7 @@ internal static class CyberLordRangedChecks
             {
                 var a=CyberLordFixture.Pilot(23,Vector3.Zero,0);var sc=new Scene();sc.List.Add(a);
                 a.Cyber=new NativeCyberKit{Ranged=new NativeCyberRangedState{Ranged=true}};float mana=100;
-                NativeCyberRangedRules.Begin(a.Cyber,slot,10,ref mana,1,1,1);float cut=10+CyberRangedSpec.Windup[slot]*.5f;NativeCyberRangedRules.Interrupt(a.Cyber,cut);
+                NativeCyberRangedRules.Begin(a.Cyber,slot,10,ref mana,1,1,1);float cut=10+CyberRangedSpec.Windup[slot]*.5f;NativeCyberRules.Interrupt(a.Cyber,cut);
                 var sink=new Sink();new NativeCyberLordFx().Draw(sink,sc,cut+.01f,1,false);int stopped=sink.Count;
                 a.Cyber=new NativeCyberKit{Ranged=new NativeCyberRangedState{Ranged=true}};sink.Reset();new NativeCyberLordFx().Draw(sink,sc,cut+.01f,1,false);
                 Check(stopped==sink.Count,"no phantom release effects after authority cut, slot "+slot);

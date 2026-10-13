@@ -26,13 +26,13 @@ internal static class CyberRangedSimulationChecks
             var predicted=Ranged();float predictedMana=100;NativeCyberRules.Predict(predicted,new InputFrame{SirenAbility=(byte)slot,Shoot=slot==0},20,new V3(),ref predictedMana,2,.5f,.75f,(a,b)=>b,.8f);
             Near(predictedMana,mana,"prediction mana "+slot);Near(predicted.Release,s.Release,"prediction windup "+slot);Near(predicted.Ranged.Ready[slot],s.Ranged.Ready[slot],"prediction clock "+slot);
             float spent=mana;Check(!NativeCyberRangedRules.Begin(s,slot,20.01f,ref mana,2,cost,.75f)&&mana==spent,"no duplicate spend "+slot);
-            float cut=20+CyberRangedSpec.Windup[slot]/rate*.5f;NativeCyberRangedRules.Interrupt(s,cut);Check(s.Resolved&&s.Until==cut&&s.Release==cut&&s.Ranged.Until[slot]==cut&&s.Ranged.Release[slot]==cut&&s.Valid(),"pre-release cut "+slot);
+            float cut=20+CyberRangedSpec.Windup[slot]/rate*.5f;NativeCyberRules.Interrupt(s,cut);Check(s.Resolved&&s.Until==cut&&s.Release==cut&&s.Ranged.Until[slot]==cut&&s.Ranged.Release[slot]==cut&&s.Valid(),"pre-release cut "+slot);
             Check(!NativeCyberRangedRules.Switch(s,cut,true),"cut while incapacitated refuses switch");
         }
         s=Ranged();mana=0;Check(!NativeCyberRangedRules.Begin(s,1,10,ref mana,1,1,1)&&s.Kind==""&&s.Ranged.Ready[1]==-100,"insufficient mana no cast or clock");
         Check(NativeCyberRangedRules.Begin(s,0,10,ref mana,1,1,1)&&s.Ranged.BoltHand==1,"free bolt first hand");Check(NativeCyberRangedRules.Begin(s,0,10.27f,ref mana,1,1,1)&&s.Ranged.BoltHand==0,"alternate hand");
         s=Ranged();s.Ranged.Ready[4]=30;mana=100;Check(!NativeCyberRangedRules.Begin(s,4,29,ref mana,1,1,1)&&mana==100,"shared ultimate refuses before clock");Check(NativeCyberRangedRules.Begin(s,4,30,ref mana,1,1,1),"shared ultimate ready");
-        NativeCyberRangedRules.Interrupt(s,31.1f);Near(s.Ranged.Release[4],31,"post-release interrupt retains release");Near(s.Ranged.Until[4],31.1f,"post-release cuts recovery");
+        NativeCyberRules.Interrupt(s,31.1f);Near(s.Ranged.Release[4],31,"post-release interrupt retains release");Near(s.Ranged.Until[4],31.1f,"post-release cuts recovery");
         {NativeCyberKit fallback;
         fallback=Ranged();fallback.EReady=20;mana=0;NativeCyberRules.Predict(fallback,new InputFrame{AbilityE=true,Shoot=true},10,new V3(),ref mana,1,1,1,(a,b)=>b);Check(fallback.Kind=="bit-bolt"&&mana==0,"unavailable Q/E falls back to ranged bolt, never melee combo");
         fallback=Ranged();mana=100;NativeCyberRules.Predict(fallback,new InputFrame{AbilityQ=true,Shoot=true},10,new V3(),ref mana,1,1,1,(a,b)=>b);Check(fallback.Kind=="data-dash"&&mana==80&&fallback.Ranged.Ranged,"Q unchanged in ranged mode");
