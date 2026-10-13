@@ -14,6 +14,8 @@ namespace ChipArena.UnityConversion
     /// under the name card on the accent.
     /// The upper body is the pack's unarmed takes (CyberLordMotion.Upper on a scripted view), the legs and root keyed and
     /// planted. Reduced effects keep every beat with fewer particles. Presentation only; pure functions of the clock.
+    /// The pilot's Cyber Lord skin picks what forms at FormAt: the Prototype Series' gauntlets build edge by edge, the Standard
+    /// skin's glitch aura (Core/NativeCyberLordAura.cs) ignites round the hands instead, with a soft haze (Aura; the same beats).
     /// </summary>
     public sealed class NativeCyberLordIntroScript:NativeProceduralEntrance
     {
@@ -21,6 +23,9 @@ namespace ChipArena.UnityConversion
         public static readonly float JabAt=JabHit-CyberLordSpec.ComboWindups[0],CrossAt=CrossHit-CyberLordSpec.ComboWindups[1];
         public static readonly float PalmAt=PalmHit-CyberLordSpec.ComboWindups[2];
         private readonly CyberLordMotion motion=new CyberLordMotion();private readonly CyberLordView view=new CyberLordView();private readonly MeleeRig upper=new MeleeRig();
+        /// <summary>The Standard skin's aura instead of the gauntlets (the runtime sets it from the pilot's pick each frame): the
+        /// effects add the aura's haze round the hands from FormAt. False (the Prototype Series) leaves the entrance as it was.</summary>
+        public bool Aura;
         private static readonly int[] UpperBones={CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LClav,CapturedRig.RClav,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow,CapturedRig.LHand,CapturedRig.RHand};
         public NativeCyberLordIntroScript():base(CyberLordSpec.Entrance,PalmHit,NativeCyberLordLook.Cyan)
         {
@@ -105,9 +110,25 @@ namespace ChipArena.UnityConversion
             const float jab=JabHit,cross=CrossHit;
             Spark(fx,t,jab,NativeEntranceAnchor.LeftHand,7100,q);Spark(fx,t,cross,NativeEntranceAnchor.RightHand,7200,q);
             float pa=t-PalmHit;if(pa>=0&&pa<.5f){var palm=(Anchor(NativeEntranceAnchor.LeftHand,t)+Anchor(NativeEntranceAnchor.RightHand,t))*.5f;float k=1-pa/.5f;fx.Glow(palm,NativeEntranceFx.Hex(NativeCyberLordLook.Core,3*k*k),0,.6f,1,pa,7300);fx.Glow(palm+ForwardOf(t)*.6f,NativeEntranceFx.Hex(NativeCyberLordLook.Cyan,1.2f*k),0,1.4f,2,pa,7301);}
-            // The gauntlets forming: motes pulled into the forearms.
+            if(Aura)AuraHaze(fx,t,q);
+            // The gauntlets forming (or the aura igniting): motes pulled into the forearms.
             float form=t-FormAt;if(form>=0&&form<.6f)for(int s=0;s<2;s++){var h=Anchor(s==0?NativeEntranceAnchor.LeftHand:NativeEntranceAnchor.RightHand,t);var e=Anchor(s==0?NativeEntranceAnchor.LeftElbow:NativeEntranceAnchor.RightElbow,t);int n=q<.5f?4:9;
                 for(int i=0;i<n;i++){float u=(form*2.4f+i/(float)n)%1f;var p=Vector3.Lerp(h,e,(i%3)/2f)+new Vector3((float)Math.Sin(i*2.1f),(float)Math.Cos(i*1.7f),(float)Math.Sin(i*3.3f))*(.35f*(1-u));fx.Glow(p,NativeEntranceFx.Hex(NativeCyberLordLook.Cyan,1.6f*u),0,.05f,0,u,7400+i+s*20);}}
+        }
+        // The aura's haze igniting at FormAt (NativeCyberLordAura.Halo's look on the entrance clock): a soft cyan glow on each hand
+        // that flashes as the aura settles and swells with the punches' flares; the RGB split either side with full effects.
+        private void AuraHaze(INativeEntranceFx fx,float t,float q)
+        {
+            float form=t-FormAt;if(form<0)return;float ign=Math.Min(1,form/NativeCyberLordLook.FormSeconds),rise=Math.Min(1,ign*1.8f),settle=rise*rise*(3-2*rise);
+            float flash=1+2.2f*Math.Max(0,1-Math.Abs(ign-.55f)/.3f);var flare=Flare(t);var r=RightOf(t);bool full=q>=.5f;int step=(int)(t*NativeCyberLordAura.StepRate);
+            for(int s=0;s<2;s++)
+            {
+                var at=Anchor(s==0?NativeEntranceAnchor.LeftHand:NativeEntranceAnchor.RightHand,t);float fl=s==0?flare.Left:flare.Right;
+                float g=settle*flash*(1+1.8f*fl+.8f*flare.Charge)*(full?.85f+.3f*(((step*7+s*3)%5)/4f):1);
+                fx.Glow(at,NativeEntranceFx.Hex(NativeCyberLordLook.Cyan,1.1f*g),0,.34f*(1+.35f*fl),1,ign,7500+s);
+                if(!full)continue;float split=.012f+.006f*((step+s)%3);
+                fx.Glow(at+r*split,NativeEntranceFx.Hex(NativeCyberLordLook.Magenta,.35f*g),0,.3f,1,ign,7510+s);fx.Glow(at-r*split,NativeEntranceFx.Hex(NativeCyberLordLook.Cyan,.35f*g),0,.3f,1,ign,7520+s);
+            }
         }
         private void Spark(INativeEntranceFx fx,float t,float at,NativeEntranceAnchor hand,int seed,float q)
         {

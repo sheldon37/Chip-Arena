@@ -102,6 +102,7 @@ internal static class Program
             foreach(var result in CyberLordChecks.Run(root,data))Console.WriteLine("PASS "+result);
             foreach(var result in CyberLordRunChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CyberLordRangedChecks.Run(root))Console.WriteLine("PASS "+result);
+            foreach(var result in CyberLordAuraChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in SheldonIdleChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in BowFlipChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in MapLookChecks.Run(root,data))Console.WriteLine("PASS "+result);
