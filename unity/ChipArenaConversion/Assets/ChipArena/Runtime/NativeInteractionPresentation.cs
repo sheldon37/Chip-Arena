@@ -14,11 +14,14 @@ namespace ChipArena.UnityConversion
             public Matrix4x4[] Body;public readonly bool[] Missing=new bool[22];public readonly float[] Coordinate=new float[22];
             public Vector3 AxisA,AxisB,FloorMin,FloorMax;public Vector3[] StandPosition;public Quaternion[] StandRotation;
             public readonly List<NativeRepairBox> Boxes=new List<NativeRepairBox>();public readonly List<RepairCell> Cells=new List<RepairCell>();
+            /// <summary>The holographic repair over it (NativeReviveHoloPresentation.cs); where each missing part's gib lay (null:
+            /// none); a split body's half models and each half's pose as the revive began.</summary>
+            public ReviveHolo Holo;public Matrix4x4[] Gib;public string[] SplitHalves;public Matrix4x4[][] SplitFrom;
         }
         private readonly Dictionary<int,Revival> revivals=new Dictionary<int,Revival>();private readonly List<int> oldRevivals=new List<int>();
         private NativeArena reviveArena;private int reviveGeneration=-1;private float reviveClock;
         private static readonly Color RepairCyan=new Color(95/255f,232/255f,1).linear,RepairWhite=new Color(216/255f,251/255f,1).linear;
-        private void ClearRevives(){revivals.Clear();oldRevivals.Clear();reviveArena=null;reviveGeneration=-1;}
+        private void ClearRevives(){revivals.Clear();oldRevivals.Clear();reviveArena=null;reviveGeneration=-1;ClearReviveGallery();ReleaseReviveScreen();}
         private bool IsReviving(NativePilot p,float time)=>p!=null&&p.Hp>0&&p.Seat.connected&&WeaponLoadout?.Pve!=null&&WeaponLoadout.Pve.Rows.ContainsKey(p.Seat.id)&&NativeReviveRules.Active(time,p.RevivedAt)&&!NativeSirenVictimPose.Active(p.Pose,time);
         private bool ReviveVisible(int id,float time)=>sourceModels==null||!IsReviving(LoadoutPilot(id),time)||time-LoadoutPilot(id).RevivedAt>=NativeReviveRules.Scan;
         private void PrepareInteractions(Snapshot snapshot,float time)
@@ -44,6 +47,8 @@ namespace ChipArena.UnityConversion
                 if(!revivals.TryGetValue(a.Id,out var r)&&time-p.RevivedAt>=NativeReviveRules.Settle)
                 {r=StartRevival(p,rig,time);revivals.Add(a.Id,r);}
                 if(r!=null&&r.Place&&time-r.At>=NativeReviveRules.Scan)StandFromBody(r,rig,time-r.At);
+                // The levitation (Core NativeReviveHolo.Lift): the drawn rig only, settling back onto the authority body by the end.
+                if(r!=null)ReviveLift(r,rig,time,a.Id);
             }
         }
         private Revival StartRevival(NativePilot p,CapturedAnimation.Player rig,float time)
@@ -59,25 +64,34 @@ namespace ChipArena.UnityConversion
                 else if(Vent(d.id) is VentBody vent&&vent.Seed==d.seed)for(int b=0;b<22;b++)r.Body[b]=vent.Bones[b];
                 else
                 {
-                    if(!corpses.TryGetValue(d.id,out var corpse)||corpse.Death.seed!=d.seed)
+                    // A split body (NativeBisectPresentation) floats back together from its two halves.
+                    if(corpses.TryGetValue(d.id,out var split)&&split.Death.seed==d.seed&&HalvesBody(r,split)){}
+                    else if(!corpses.TryGetValue(d.id,out var corpse)||corpse.Death.seed!=d.seed)
                     {
                         corpse?.Dispose();var temp=captured.Create(transform,-d.id);
                         try {var atDeath=d.actor?.ViewCopy()??new Actor();atDeath.Hp=Math.Max(1,atDeath.Hp);temp.ActorPose(atDeath,d.position-Vector3.up*.865f,d.at);corpse=new NativeCorpse(d,temp,WeaponLoadout);corpses[d.id]=corpse;}
                         finally {temp.Dispose();}
+                        corpse.Step(age);for(int b=0;b<22;b++)r.Body[b]=corpse.Bone(b);
                     }
-                    corpse.Step(age);for(int b=0;b<22;b++)r.Body[b]=corpse.Bone(b);
+                    else{corpse.Step(age);for(int b=0;b<22;b++)r.Body[b]=corpse.Bone(b);}
                     int lost=d.wound?.destroyed==true?d.wound.part:d.style=="dev-gibber"?(d.wound?.part??CapturedRig.Head):-1;
-                    if(lost>=0)for(int b=0;b<22;b++)r.Missing[b]=BoneWithin(b,lost);
+                    if(lost>=0&&r.SplitHalves==null)for(int b=0;b<22;b++)r.Missing[b]=BoneWithin(b,lost);
                 }
-                // Rebuild a missing subtree at its nearest remaining joint, rather than at a severed limb's landing spot.
-                for(int b=0;b<22;b++)if(r.Missing[b])
-                {int parent=CapturedRig.Bones[b].Parent;while(parent>=0&&r.Missing[parent])parent=CapturedRig.Bones[parent].Parent;if(parent>=0)r.Body[b]=r.Body[parent]*rig.Bones[parent].worldToLocalMatrix*rig.Bones[b].localToWorldMatrix;}
+                GibsOf(r,rig);
                 r.Place=NativeReviveRules.InPlace(NativeArena.Vec((Vector3)r.Body[CapturedRig.Spine].GetColumn(3)),NativeArena.Vec(rig.Root.transform.position));
                 BodyScan(r);
             }
             if(!r.Place)
             {r.AxisA=new Vector3(0,-.85f,0);r.AxisB=new Vector3(0,.95f,0);r.FloorMin=new Vector3(-.55f,-.85f,-.55f);r.FloorMax=new Vector3(.55f,-.85f,.55f);}
-            BuildRepairCells(r,rig);return r;
+            BuildRepairCells(r,rig);BeginHolo(r,rig,p.Seat.bodyColor,p.Seat.accentColor,p.Seat.hat,p.Seat.hatColor);return r;
+        }
+        /// <summary>Keeps where each missing part's gib lies (its voxels fly back from there), then rebuilds the missing subtree at
+        /// its nearest remaining joint, rather than at a severed limb's landing spot.</summary>
+        private static void GibsOf(Revival r,CapturedAnimation.Player rig)
+        {
+            for(int b=0;b<22;b++)if(r.Missing[b]){if(r.Gib==null){r.Gib=new Matrix4x4[22];for(int k=0;k<22;k++)r.Gib[k]=r.Body[k];}}
+            for(int b=0;b<22;b++)if(r.Missing[b])
+            {int parent=CapturedRig.Bones[b].Parent;while(parent>=0&&r.Missing[parent])parent=CapturedRig.Bones[parent].Parent;if(parent>=0)r.Body[b]=r.Body[parent]*rig.Bones[parent].worldToLocalMatrix*rig.Bones[b].localToWorldMatrix;}
         }
         private static float ScanCoordinate(Vector3 p,Vector3 a,Vector3 b)
         {var d=b-a;return d.sqrMagnitude>1e-6f?Mathf.Clamp01(Vector3.Dot(p-a,d)/d.sqrMagnitude):0;}
@@ -93,17 +107,22 @@ namespace ChipArena.UnityConversion
         }
         private void BuildRepairCells(Revival r,CapturedAnimation.Player rig)
         {
-            int budget=EffectsQuality<.5f?120:360;var cells=new List<Matrix4x4>();
+            int budget=EffectsQuality<.5f?120:360;var cells=new List<Matrix4x4>();var gibOf=new List<int>();
             foreach(var box in r.Boxes)
             {
                 if(r.Place&&!r.Missing[box.Bone])continue;
                 var m=(r.Place?r.Body[box.Bone]:rig.Root.transform.worldToLocalMatrix*rig.Bones[box.Bone].localToWorldMatrix)*box.Local;
                 Vector3 size=m.lossyScale;int nx=Mathf.Clamp(Mathf.RoundToInt(Mathf.Abs(size.x)/.09f),1,20),ny=Mathf.Clamp(Mathf.RoundToInt(Mathf.Abs(size.y)/.09f),1,20),nz=Mathf.Clamp(Mathf.RoundToInt(Mathf.Abs(size.z)/.09f),1,20);
                 for(int x=0;x<nx;x++)for(int y=0;y<ny;y++)for(int z=0;z<nz;z++)
-                {if(x>0&&y>0&&z>0&&x<nx-1&&y<ny-1&&z<nz-1)continue;cells.Add(m*Matrix4x4.TRS(new Vector3((x+.5f)/nx-.5f,(y+.5f)/ny-.5f,(z+.5f)/nz-.5f),Quaternion.identity,new Vector3(.74f/nx,.74f/ny,.74f/nz)));}
+                {if(x>0&&y>0&&z>0&&x<nx-1&&y<ny-1&&z<nz-1)continue;cells.Add(m*Matrix4x4.TRS(new Vector3((x+.5f)/nx-.5f,(y+.5f)/ny-.5f,(z+.5f)/nz-.5f),Quaternion.identity,new Vector3(.74f/nx,.74f/ny,.74f/nz)));gibOf.Add(r.Place&&r.Missing[box.Bone]?box.Bone:-1);}
             }
             int count=Math.Min(budget,cells.Count);for(int i=0;i<count;i++)
-            {var m=cells[(int)(i*cells.Count/(float)count)];r.Cells.Add(new RepairCell{Target=m,Coordinate=ScanCoordinate(m.GetColumn(3),r.AxisA,r.AxisB),From=CapturedAnimation.Vec(NativeReviveRules.Scatter(unchecked((uint)r.Seed),i))});}
+            {
+                int pick=(int)(i*cells.Count/(float)count);var m=cells[pick];var from=CapturedAnimation.Vec(NativeReviveRules.Scatter(unchecked((uint)r.Seed),i));
+                // A gib's voxels leave from where it lies (the holographic repair dissolves it there: NativeReviveHoloPresentation.cs).
+                if(r.Gib!=null&&gibOf[pick]>=0)from=(Vector3)(r.Gib[gibOf[pick]]*r.Body[gibOf[pick]].inverse*m).GetColumn(3)-(Vector3)m.GetColumn(3)+from*.2f;
+                r.Cells.Add(new RepairCell{Target=m,Coordinate=ScanCoordinate(m.GetColumn(3),r.AxisA,r.AxisB),From=from});
+            }
         }
         private static void StandFromBody(Revival r,CapturedAnimation.Player rig,float age)
         {
@@ -121,39 +140,9 @@ namespace ChipArena.UnityConversion
             foreach(var r in revivals.Values)
             {
                 if(!rigs.TryGetValue(r.Id,out var rig))continue;var pilot=PilotOf(arena,r.Id);if(!IsReviving(pilot,time))continue;
-                float age=Math.Max(0,time-r.At),front=NativeReviveRules.Front(age),glow=NativeReviveRules.Glow(age);bool rise=age>=NativeReviveRules.Scan;
-                if(r.Body!=null&&!rise)
-                {
-                    float alpha=r.Place?1:1-NativeReviveRules.Smooth((age-.15f)/(NativeReviveRules.Dissolve-.15f));
-                    // The body skin the pilot wears (NativeBodySkinPresentation.cs), wounded and healed alike.
-                    string healed=BodyAt(r.Id,r.Body[CapturedRig.Pelvis].GetColumn(3),out int bodySkin);Color accent=BodyAccent(bodySkin,pilot.Seat.accentColor,pilot.Seat.hat,pilot.Seat.hatColor);
-                    string wounded=sourceModels.WoundedPilot(r.Id,r.Death.actor?.Wounds,r.Death.actor?.BodyColor,ForceCompatibilityRendering,healed);
-                    Matrix4x4 Bone(int b)=>r.Body[b];bool Old(int b)=>!r.Missing[b]&&(!r.Place||front*1.2f<r.Coordinate[b]);bool Healed(int b)=>r.Place&&front*1.2f>=r.Coordinate[b];
-                    sourceModels.QueueShadowless(wounded,Matrix4x4.identity,Bone,Old,BodyTint(pilot.Seat.bodyColor),accent,alpha);
-                    if(r.Place)sourceModels.QueueShadowless(healed,Matrix4x4.identity,Bone,Healed,BodyTint(pilot.Seat.bodyColor),accent,alpha);
-                    if(!string.IsNullOrEmpty(pilot.Seat.hat)&&(!r.Missing[CapturedRig.Head]||r.Place&&front>=r.Coordinate[CapturedRig.Head]))sourceModels.QueueShadowless(HatModel(pilot.Seat.hat,pilot.Seat.hatColor),Matrix4x4.identity,Bone,null,HatBody(pilot.Seat.hat,pilot.Seat.hatColor),null,alpha);
-                }
-                bool third=!(FirstPerson&&r.Id==LocalId);
-                if(rise&&!third)continue;
-                var root=r.Place&&!rise?Matrix4x4.identity:rig.Root.transform.localToWorldMatrix;
-                Vector3 a=rise?new Vector3(0,-.85f,0):r.AxisA,b=rise?new Vector3(0,.95f,0):r.AxisB;
-                Vector3 min=rise?new Vector3(-.55f,-.85f,-.55f):r.FloorMin,max=rise?new Vector3(.55f,-.85f,.55f):r.FloorMax;
-                RepairFrame(root,min,max,age,glow,time);
-                if(!rise)RepairSlab(root,a,b,front,r.Place?.7f:.8f,r.Place?.55f:.9f,glow,time);
-                foreach(var box in r.Boxes)
-                {
-                    var matrix=rise?rig.Bones[box.Bone].localToWorldMatrix*box.Local:r.Place?r.Body[box.Bone]*box.Local:root*box.Local;
-                    float s=rise?ScanCoordinate((rig.Root.transform.worldToLocalMatrix*matrix).GetColumn(3),a,b):r.Coordinate[box.Bone];
-                    float opacity=rise?.32f*(1-NativeReviveRules.Smooth((NativeReviveRules.Standing(age)*1.25f-s)/.3f)):r.Place&&front>=s?.13f+.5f*Mathf.Clamp01(1-(front-s)/.18f):0;
-                    if(opacity>0)sourceModels.RepairCube(matrix*Matrix4x4.Scale(Vector3.one*1.07f),RepairCyan,opacity*glow,time);
-                }
-                if(!rise)foreach(var cell in r.Cells)
-                {
-                    float k=NativeReviveRules.Flight(age,cell.Coordinate);if(k<=0)continue;float e=1-Mathf.Pow(1-k,3),landed=Mathf.Clamp01(1-(age-NativeReviveRules.Arrival(cell.Coordinate))/.15f);
-                    Vector3 at=(Vector3)cell.Target.GetColumn(3)+cell.From*(1-e);var m=root*Matrix4x4.TRS(at,cell.Target.rotation,cell.Target.lossyScale*(.3f+.7f*e));
-                    sourceModels.RepairCube(m,k<1?RepairCyan:Color.Lerp(RepairCyan,RepairWhite,landed),(k<1?.5f:.32f+.4f*landed)*glow,time);
-                }
+                RenderRevival(arena,r,rig,time,!(FirstPerson&&r.Id==LocalId));
             }
+            ReviveLinger(arena,time);RevivePreview(arena);
         }
         private void RepairFrame(Matrix4x4 root,Vector3 min,Vector3 max,float age,float glow,float time)
         {

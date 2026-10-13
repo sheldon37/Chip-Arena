@@ -1,5 +1,45 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — holographic revive (owner: "Improve revive effect as well (If user was gibbed / wounded, repair with cyber holographic lines and player levitates up for a moment, returns to normal after)")
+- Branch `claude/revive-holo`, base shared `44d2811` (Astra's revive anchor, PR #166, included). Not pushed, merged or released. Reference: `docs/REVIVE-HOLO.md`.
+- Revive paths:
+  - The paid and solo self-revive (`RevivePve`, in place on the anchor) and the free respawn at a pad both get the hologram.
+  - The Sandbox respawn (`SandboxRestore`) is not a PvE revive and stays the spawn-in presentation's.
+  - The C17 window (scan 0.8 s, stand 0.6 s), the shield, the anchor and every rule are unchanged; managed text pins check this.
+- Core `NativeReviveHolo` is engine free and allocates nothing per frame.
+  - Lift: up to 0.5 m from 0.06 s, held while the body is repaired and stands, exactly 0 again at 1.4 s.
+  - Repair curves on the C17 front: a wounded joint heals; a missing part goes wire, then hologram, then skin. Everything is done by 0.8 s.
+  - Crater voxels from the cells the wounds removed. `NativeWoundSkin.Cut` gains an optional `holes` recorder that changes no cut; `PrototypeHoles` covers the Prototype.
+  - The ring, disc, column, streaks and landing pulse.
+  - Feature-edge wireframes.
+  - The first-person view rise and vignette.
+  - `NativeBloodSplats.FadeNear` washes the blood and ink away.
+- Runtime:
+  - `NativeReviveHoloPresentation` and `NativeReviveModels` are new. They add an additive hardlight shader and a vignette shader, both on the Editor build gate. `BeginHolo` builds the models, holes and cached delegates once per revive.
+  - Only the drawn rig's root lifts, after it stands from the body (`ReviveLift`). The authority body and collider never move.
+  - `ConversionGame` gets the first-person `ReviveView` after the aim is placed. There is no rise with reduced effects or camera shake off.
+  - Sandbox: "Preview Revive" cycles headshot, heavily wounded, gibbed and split stand-ins over the three skins.
+- Edits to Astra's revive presentation (`NativeInteractionPresentation`), presentation only:
+  - gib positions are kept so the gib voxels fly back;
+  - a split corpse revives from its halves;
+  - the hologram hooks are added;
+  - the body drawing moved into `RenderRevival`.
+  - Pins in HatLookChecks, BodySkinChecks and WoundSkinChecks followed the moved lines.
+- Recarve fix: `WoundedPilot` keeps two carves per pilot (its live body and the body it left), so a revive no longer recuts every frame against its corpse. A kept carve is found without allocating; a carve not drawn for 2.5 s is released.
+- Checks (actual):
+  - `tools/check_relay.py` passes: 35 managed groups plus real WebSocket/LAN, including revive holo (21,721 checks), wound skins (8,256) and bisect (1,929). It also passes from a sparse copy.
+  - Revive coverage: the lift window and exact landing; the repair finished at every scan coordinate; 6,008 skin holes on their joints and 1,502 Prototype holes, with recording leaving every cut unchanged; tier budgets; determinism; 600 frames at 0 bytes; the wireframe; the wash; the wiring.
+  - Also passing: the Unity-stub runtime+editor compile, the Python tests (95, 1 skipped), `package_source.py` and `git diff --check`.
+  - Headless WebGL renders of the Core composition on rigid stand-in poses.
+- Not run: the Unity Editor, the shaders' compile, PhysX, Windows, two clients and PERF_HITCH timing.
+- Risks:
+  - The shaders are uncompiled here.
+  - The hologram flashes near-white where the band passes a re-forming head.
+  - Stand-in poses only; the real ragdoll's lying pose varies.
+  - The rig's lift moves rig-anchored effects (muzzle flashes, nameplates) up for the window.
+  - The killcam replays the revive from the same data, but was not run.
+- Next: the owner's Windows look at a PvE revive (wounded, gibbed) and the Sandbox preview; a PERF_HITCH read on revive frames.
+
 ## 2026-10-13 — Astra — stall diagnostics, stuck slash, Siren execution and ragdoll revive
 - Task `codex/unity-hitch-trail-revive`, base shared `e2e894e9` (owner is running this build). Owner supplied a local-practice report (104 FPS, latest simulation tick .11 ms), startup-only Player.log and an 8.45 s recording showing a large crescent beside the moving greatsword pilot. No measured cause of the intermittent multi-second stalls yet.
 - Added automatic bounded `PERF_HITCH` JSON in Player.log and retained last/worst/count in Connection report. Measures wall-clock frame intervals, total fixed/update/presentation CPU time, nested replay/snapshot/animation/effects timings, GC counts/heap and scene counts/context. Logs >=100 ms frames or sustained slow rendering; 240-sample ring, at most once per 2 s and 120 reports per process. Unattributed time explicitly is not GPU time; no forced GC or per-frame disk writes. Full interpretation in NATIVE-HITCH-DIAGNOSTICS.md.

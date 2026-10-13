@@ -146,9 +146,11 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// The body `body` (one tier of a sculpted skin) with the carved wounds `groups` cut in: a mesh for every body part the
         /// wounds touch (the part with its hole), then one for each wounded exported part's inside, coloured by `look`.
-        /// Parts on other joints, and every part the cuts miss, are not listed (they draw as they are).
+        /// Parts on other joints, and every part the cuts miss, are not listed (they draw as they are). `holes`, when given,
+        /// receives every cell the cuts take out, where they lie on this body (a revive refills them: NativeReviveHolo);
+        /// recording changes nothing the cut returns.
         /// </summary>
-        public static List<WoundSkinMesh> Cut(PilotBodyMesh body,IReadOnlyList<WoundCarveGroup> groups,in WoundSkinLook look)
+        public static List<WoundSkinMesh> Cut(PilotBodyMesh body,IReadOnlyList<WoundCarveGroup> groups,in WoundSkinLook look,List<WoundHole> holes=null)
         {
             var result=new List<WoundSkinMesh>();if(body?.Parts==null||groups==null)return result;
             var polys=new Dictionary<int,List<Vtx[]>>();var cut=new HashSet<int>();
@@ -170,7 +172,7 @@ namespace ChipArena.UnityConversion
                 {
                     var step=g.Steps[s];if(!first.TryGetValue(step.Seed,out var lay))continue;
                     if(!g.First[s]){lay=Behind(lay,frame,step,Surface(body,candidates,frame,step,d));if(lay==null)continue;}else if(lay.Cells!=step)continue;
-                    var cells=Cells(lay,g.Steps,s,look,d,inside.Mesh);if(cells==0)continue;
+                    var cells=Cells(lay,g.Steps,s,look,d,inside.Mesh,holes);if(cells==0)continue;
                     foreach(int p in candidates)
                     {
                         if(!polys.TryGetValue(p,out var list)){list=Polygons(body.Parts[p].Mesh);polys[p]=list;}
@@ -189,6 +191,18 @@ namespace ChipArena.UnityConversion
             meshes.AddRange(result);return meshes;
         }
 
+        /// <summary>The Prototype's wound cells (its carve's own, which its boxes lose) as holes in its joints' bank frames.</summary>
+        public static void PrototypeHoles(IReadOnlyList<WoundCarveGroup> groups,List<WoundHole> into)
+        {
+            if(groups==null||into==null)return;
+            foreach(var g in groups){if(g?.Part==null)continue;var f=new Frame(g.Part);foreach(var step in g.Steps)foreach(var r in step.Removed)into.Add(Hole(f,g.Part.bone,r.cell,r.k*step.G));}
+        }
+        private static WoundHole Hole(Frame f,int bone,WoundSolid b,double depth)
+        {
+            var mid=(b.min+b.max)*.5;var c=f.Bank(mid);WoundVector Axis(int a){var d=new WoundVector();d[a]=(b.max[a]-b.min[a])*.5;return f.BankDirection(d);}
+            var u=Axis(0);var v=Axis(1);var w=Axis(2);
+            return new WoundHole{Bone=bone,Center=new Vector3((float)c.x,(float)c.y,(float)c.z),U=new Vector3((float)u.x,(float)u.y,(float)u.z),V=new Vector3((float)v.x,(float)v.y,(float)v.z),W=new Vector3((float)w.x,(float)w.y,(float)w.z),Depth=(float)depth};
+        }
         private static List<Vtx[]> Polygons(WeaponSection m)
         {
             var list=new List<Vtx[]>(m.Indices.Count/3);
@@ -318,7 +332,7 @@ namespace ChipArena.UnityConversion
         }
         private static readonly (int,int,int)[] Steps6={(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(0,0,1),(0,0,-1)};
         private static readonly Vector3 DeepFlesh=new Vector3(.078f,.002f,.005f);
-        private static int Cells(Lay lay,IReadOnlyList<WoundCarveCells> steps,int step,in WoundSkinLook look,NativeWoundPart part,WeaponSection into)
+        private static int Cells(Lay lay,IReadOnlyList<WoundCarveCells> steps,int step,in WoundSkinLook look,NativeWoundPart part,WeaponSection into,List<WoundHole> holes=null)
         {
             var c=lay.Cells;int ax=c.Axis,sign=c.Sign;double g=c.G;bool cut=c.Kind=="cut",gun=c.Kind=="puncture"||c.Kind=="cavity",bruise=c.Kind=="bruise";int drawn=0;
             var top=new bool[lay.Size*lay.Size];var drawnW=new List<(double lo,double hi)>[lay.Size*lay.Size];
@@ -347,7 +361,7 @@ namespace ChipArena.UnityConversion
             foreach(var r in c.Removed)
             {
                 var cell=r.cell;if(sign>0?cell.min[ax]<back:cell.max[ax]>back){var min=cell.min;var max=cell.max;if(sign>0)min[ax]=Math.Min(max[ax],back);else max[ax]=Math.Max(min[ax],back);cell=new WoundSolid{min=min,max=max};}
-                Interval(r.i,r.j,Shift(cell,r.i,r.j,false),r.k);
+                var shifted=Shift(cell,r.i,r.j,false);Interval(r.i,r.j,shifted,r.k);holes?.Add(Hole(lay.F,part.bone,shifted,r.k*g));
             }
             uint seed=c.Seed^0xa5b35705u;
             foreach(var l in c.Laid)

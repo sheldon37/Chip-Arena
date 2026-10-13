@@ -70,8 +70,9 @@ namespace ChipArena.UnityConversion
             var key=(part,0);if(!draws.TryGetValue(key,out var draw)){draw=new Draws{Part=part};draws[key]=draw;}
             draw.Matrices.Add(matrix);draw.Bodies.Add(body);draw.Accents.Add(accent);draw.Tints.Add(tint);draw.Glows.Add(glow);
         }
-        /// <summary>A model's meshes as <see cref="Queue"/> draws them, but casting no shadow (a ragdoll's copied parts).</summary>
-        public void QueueShadowless(string id,Matrix4x4 root,Func<int,Matrix4x4> bone,Func<int,bool> visible,Color? body,Color? accent,float opacity)
+        /// <summary>A model's meshes as <see cref="Queue"/> draws them, but casting no shadow (a ragdoll's copied parts).
+        /// `partOpacity`, when given, scales each joint's opacity (below 1 the body shader dithers it: a revive's skin solidifying).</summary>
+        public void QueueShadowless(string id,Matrix4x4 root,Func<int,Matrix4x4> bone,Func<int,bool> visible,Color? body,Color? accent,float opacity,Func<int,float> partOpacity=null)
         {
             if(id==null||!models.TryGetValue(id,out var model))return;Color bc=body??Color.white,ac=accent??Color.white;
             if(shadowlessParts.Count>512)PruneRecolor();
@@ -81,7 +82,8 @@ namespace ChipArena.UnityConversion
                 if(visible!=null&&!visible(part.Bone))continue;
                 // Only a part whose spill crosses a torn joint skips those boxes (NativeArmorLights.TornJoints).
                 int severs=SeverJoints(part.Material);if(severs!=0&&torn<0)torn=bone!=null?TornJoints(bone,visible):0;
-                Draw(Shadowless(part),part.Bone>=0&&bone!=null?bone(part.Bone):root,new Vector4(bc.r,bc.g,bc.b,opacity),Color.white,(severs&torn)!=0?CorpseGlow:Vector4.one,new Vector4(ac.r,ac.g,ac.b,1));
+                float shown=partOpacity==null?opacity:opacity*partOpacity(part.Bone);if(partOpacity!=null&&shown<=.002f)continue;
+                Draw(Shadowless(part),part.Bone>=0&&bone!=null?bone(part.Bone):root,new Vector4(bc.r,bc.g,bc.b,shown),Color.white,(severs&torn)!=0?CorpseGlow:Vector4.one,new Vector4(ac.r,ac.g,ac.b,1));
             }
         }
         private Part Shadowless(Part part)

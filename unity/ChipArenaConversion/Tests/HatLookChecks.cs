@@ -185,7 +185,8 @@ internal static class HatLookChecks
             ("NativeDeathPresentation.cs","else if(!hat&&corpse.HatModel!=null&&death.actor?.Hat==NativeSheldonHead.Hat)sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,SheldonBody,"),
             ("NativeKillEffectPresentation.cs","internal string HatModel=>hatModel??=string.IsNullOrEmpty(Death.actor?.Hat)?null:NativeHatLooks.Model(Death.actor.Hat,Death.actor.HatColor);"),
             ("NativeKillEffectPresentation.cs","sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,LooseHatBone,SheldonHood,HatBody(corpse.Death.actor?.Hat,corpse.Death.actor?.HatColor),null,alpha);"),
-            ("NativeInteractionPresentation.cs","sourceModels.QueueShadowless(HatModel(pilot.Seat.hat,pilot.Seat.hatColor),Matrix4x4.identity,Bone,null,HatBody(pilot.Seat.hat,pilot.Seat.hatColor),null,alpha);"),
+            ("NativeReviveHoloPresentation.cs","h.Hat=string.IsNullOrEmpty(hat)||hat==\"none\"?null:HatModel(hat,hatColor);h.HatTint=HatBody(hat,hatColor);"),
+            ("NativeInteractionPresentation.cs","BeginHolo(r,rig,p.Seat.bodyColor,p.Seat.accentColor,p.Seat.hat,p.Seat.hatColor);"),
             ("NativeVentDeathPresentation.cs","sourceModels.Queue(HatModel(v.Hat,death.actor?.HatColor),root,v.Bone,body:HatBody(v.Hat,death.actor?.HatColor));"),
             ("NativeSceneMotion.cs","sourceModels.Queue(HatModel(death.actor.Hat,death.actor.HatColor),root,Bone,Visible,layer,only,body:HatBody(death.actor.Hat,death.actor.HatColor),opacity:alpha);"),
             ("NativeDraftPresentation.cs","sourceModels.Queue(HatModel(seat.hat,seat.hatColor),root,draftBone,body:HatBody(seat.hat,seat.hatColor));"),
@@ -310,7 +311,7 @@ internal static class HatLookChecks
         foreach(var f in new[]{"Core/NativeSheldonHead.cs","Core/NativeHatLooks.cs","Core/NativeSheldonIntro.cs","Runtime/NativeHatPresentation.cs","Runtime/NativeSheldonIntroPresentation.cs","Runtime/NativeSourceModels.cs","Runtime/NativeHatColorUI.cs"})
             Check(!physics.IsMatch(Src(f)),f+" adds no collider or physics query");
         int repair=0;foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs"))repair+=Count(File.ReadAllText(f),"RepairBoxes(");
-        Check(repair==2&&Src("Runtime/NativeInteractionPresentation.cs").Contains("sourceModels.RepairBoxes(p.Seat.spec==\"siren\"?\"siren\":\"pilot\",r.Boxes);"),"the only boxes made from model bounds are the revive scan's, from the pilot (or Siren) model");
+        Check(repair==3&&Src("Runtime/NativeInteractionPresentation.cs").Contains("sourceModels.RepairBoxes(p.Seat.spec==\"siren\"?\"siren\":\"pilot\",r.Boxes);")&&Src("Runtime/NativeReviveHoloPresentation.cs").Contains("sourceModels.RepairBoxes(\"pilot\",r.Boxes);"),"the only boxes made from model bounds are the revive scan's (and its Sandbox preview's), from the pilot (or Siren) model");
     }
 
     // A NativeAccess as Verify would make it (reflection: its setters are private).
