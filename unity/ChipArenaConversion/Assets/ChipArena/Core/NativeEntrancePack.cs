@@ -71,8 +71,26 @@ namespace ChipArena.UnityConversion
                 CapturedRig.Arm(p,true,left,leftQ,Row(f,MeleeCapture.LPole));
                 p.World();var miss=left-Vector3.Transform(p.WorldPosition[CapturedRig.LHand]-p.WorldPosition[CapturedRig.Chest],chest);if(miss.LengthSquared()<1e-6f||weight<.5f)break;grip-=miss*1.05f;
             }
+            // The staff schools' free hand comes down to hang as the hold sets in (Rest).
+            float rest=Rest(Style,t);
+            if(rest>0)
+            {
+                for(int i=0;i<3;i++){int b=CapturedRig.RArm+i;p.Rotation[b]=Quaternion.Normalize(Quaternion.Slerp(p.Rotation[b],RestArm[i],rest));}
+            }
             root=new Vector3(f[MeleeCapture.Yaw+1],RootHeight,f[MeleeCapture.Yaw+3]);rotation=Quaternion.CreateFromAxisAngle(Vector3.UnitY,f[MeleeCapture.Yaw]);
         }
+        /// <summary>
+        /// The staff schools' free (right, casting) hand in the hold (owner 2026-10-13, the one-arm raise in every entrance): the
+        /// pack's closing 2Hand-Staff Idle holds the staff in both hands, but the staff rides the left hand alone, so read as is
+        /// its right fist rose into the empty grip in front of the chest under the name card. From FreeHandFrom it eases down
+        /// to hang loose at the side by FreeHandTo (the procedural entrances' loose arm), the staff hand and the body the clip's.
+        /// </summary>
+        public const float FreeHandFrom=2.85f,FreeHandTo=3.35f;
+        public static bool FreeHandRests(string style)=>style=="weapon-fire"||style=="weapon-water"||style=="weapon-lightning"||style=="weapon-darkness";
+        /// <summary>How far the free hand has come down to hang at `t` (0..1; 0 for every other entrance).</summary>
+        public static float Rest(string style,float t)=>FreeHandRests(style)?NativeEntranceMath.Ramp(t,FreeHandFrom,FreeHandTo):0;
+        // The loose arm: shoulder, elbow and wrist turns of the keyed hero hold (NativeEntranceKeys.Hero's right arm).
+        private static readonly Quaternion[] RestArm={CapturedRig.Euler(-.12f,0,-.18f),CapturedRig.Euler(NativeEntranceKeys.HeroElbow,0,0),Quaternion.Identity};
         /// <summary>The gameplay melee set of the weapon (its blade, pommel and clearance), or null.</summary>
         public MeleeSet Melee{get{if(!meleeKnown){meleeSet=MeleeSet.For(Style.StartsWith("weapon-",StringComparison.Ordinal)?Style.Substring(7):"");meleeKnown=true;}return meleeSet;}}
         private MeleeSet meleeSet;private bool meleeKnown;private readonly MeleeRig melee=new MeleeRig();
