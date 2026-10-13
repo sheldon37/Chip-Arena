@@ -1,5 +1,18 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — PvE chip selection: the wrist hologram and SELECTING CHIP tag (owner: "Lets also add a 'Chip Selection' Animation for PVE (Similar to what we had for Electron), what I mean is when other people are picking chips on PVE, we can see them looking at a holographic display through their wrist. Above, it'll show a small animated Text 'Selecting Chip',")
+- Branch `claude/pve-chip-select`, base shared `e2e894e`. Not pushed, merged or released. Contract: `docs/PVE-CHIP-SELECT.md`.
+- Electron baseline (`client/pve/hologram.ts`, rendered with its real modules): a cyan fan of three cards, a chip die and a cone over a remote chooser's head, red at 6 Hz when hit; head down .25 rad, right forearm raised; "Choosing chip" in the board.
+- Unity, presentation only (`Core/NativeChipSelect.cs`, `Runtime/NativeChipSelectPresentation.cs`, `Runtime/NativeChipSelectHud.cs`, `Resources/NativeChipSelect.shader`):
+  - Pose layer over every class's route (rig Overlay): display wrist up (left; right for staffs, L33t, bow), head down at it, weapon kept in its hand (lowered; greatsword trailing; staff and bow keep their idle hold), empty hands tap and swipe, pistol/dagger swipe below the cards, long weapons flick the wrist. Legs untouched.
+  - Wrist hologram: panel, three rarity cards, cone, ring, motes, scanlines, flicker, fog; red when hit. Tag over the name: typed in, then dots; occluded and faded 20-30 m like the bars; not mine in first person.
+  - First person: the raised wrist low in view (seen only when the full-screen pick is not over the arena). Tiers Reduced/Low; no per-frame allocation. Dev Sandbox "Preview Chip Selecting".
+- State: the existing replicated `NativePveRowFrame.open` (row.Open on every guest), no network change. No open time is replicated, so clients ease in from the frame they see it; optional for Astra: a per-row `openAt` (not required).
+- Hooks (one line each): `ArenaPresentation.PrepareCapturedPose`/`Render`, `NativeViewPresentation.RenderFirstPerson`, `NativeCombatHud.CombatWorldHud`, `NativeSandbox`.
+- Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking (input is already zeroed while a pick is open).
+- Checks (final tree): `unity-check.sh` runtime+editor OK; `check_relay.py` exit 0, 600 PASS (was 592; new `ChipSelectChecks`: mapping, track, gestures, pose over all 16 classes at 30-240 Hz, grip kept, first person, hologram tiers, tag; 0 bytes per frame); Python unittest 99 OK, 1 skip (new `test_chip_select.py`); `package_source.py` passed (1,718 files; Builds removed); `git diff --check` clean; sparse tracked-file copy relay 600 PASS. Unity Editor, Windows and two-client play not run. Offline renders (Electron original and Unity) in the session scratchpad only.
+- Risks: the panel faces its wearer, so others see it edge-on from some sides (the tag carries it); first-person view only shows on the close or with a menu or hold over the pick; pose tuned offline, not in the Editor.
+
 ## 2026-10-13 — Claude — saw bisect gib (owner: "For the buzzsaw death on factory, can we add essentially a "split in the middle" gib? This can be useful for future things too")
 - Branch `claude/saw-bisect`, base shared `4a67602`. Not pushed, merged or released.
 - Reusable Core module `Core/NativeBisect.cs` (engine free; API in `docs/BISECT-GIB.md`).

@@ -213,6 +213,8 @@ namespace ChipArena.UnityConversion
             RenderBlockFx(s,renderTime);
             // The melee Q/E kit: its events, the Shadow Step decoy and the dash ghosts (NativeMeleeKitPresentation.cs).
             RenderMeleeKit(s,renderTime);
+            // The PvE chip selection's wrist holograms (NativeChipSelectPresentation.cs).
+            RenderChipSelect(s);
         }
         private void PrepareCapturedPose(Actor a,Vector3 position,float time)
         {
@@ -220,7 +222,7 @@ namespace ChipArena.UnityConversion
             if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rig.Impacts=meleeImpacts; rig.Hits=hitLedger; rigs.Add(a.Id,rig); }
             if(Viewer&&ViewerSet>=4) rig.PreviewGun((WeaponId)(ViewerSet-3),ViewerClip,ViewerTime);
             else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
-            else { PoseReach(rig,a,time); rig.ReducedEffects=WeaponEffectsQuality<.5f; CyberBoostPreview(rig,a,time); rig.ActorPose(a,position,CyberPoseTime(a,time)); CyberVictimPose(rig,a,time); }
+            else { PoseReach(rig,a,time); rig.ReducedEffects=WeaponEffectsQuality<.5f; CyberBoostPreview(rig,a,time); rig.ActorPose(a,position,CyberPoseTime(a,time)); CyberVictimPose(rig,a,time); ChipSelectPose(rig,a,time); }
         }
         private void CapturedPose(Actor a,Vector3 position,float time,int color)
         {

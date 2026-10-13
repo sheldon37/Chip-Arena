@@ -145,6 +145,8 @@ namespace ChipArena.UnityConversion
             // Every pilot's health; only this client's own pilot (third person: the first-person view has no body to sit on)
             // also carries its resources, so another player's screen never shows mine and mine never shows theirs.
             foreach(var p in arena.Pilots){if(!p.Seat.connected||(prefs.firstPerson||presentation.FirstPerson)&&p==arena.ViewPilot||p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)continue;bool ally=p==arena.Local||match.SameSide(p.Seat,arena.Local.Seat);Health(p.Seat.id,p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:1),p.Hp,(float)p.Stats["hp"],.72f,ally,match.Teams?(ally?"ALLY · ":"ENEMY · ")+p.Seat.name:p.Seat.name,true,p==arena.Local?p:null);}
+            // PvE chip selection: the "SELECTING CHIP" tag over the names (NativeChipSelectHud.cs).
+            ChipSelectTags(scale,height);
             foreach(var m in arena.Minions)if(m.Hp<m.MaxHp)Health(m.Id,m.Body.transform.position+Vector3.up*(m.Kind=="slender"?1.52f:m.Kind=="toy"?.85f:1.2f),m.Hp,m.MaxHp,m.Kind=="toy"?.42f:.6f,m.Owner==arena.Local||match.SameSide(m.Owner.Seat,arena.Local.Seat),null,false,null);
             // combat-numbers.ts FloatingCombatNumbers with lobby.css:92 / match-hud.css:3 .combat-number (clamp(18px,1.65vw,25px),
             // 850): red damage and green heals over every pilot, and in PvE the view pilot's hits on adds; shown only in the fight

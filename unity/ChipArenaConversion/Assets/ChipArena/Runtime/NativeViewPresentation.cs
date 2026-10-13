@@ -80,6 +80,8 @@ namespace ChipArena.UnityConversion
                 viewRig.Root.transform.position-=(ViewCamera.transform.right*local.x+ViewCamera.transform.up*local.y)*ads;
             }
             ApplyViewSway(shown,time,ads);
+            // PvE chip selection: the raised wrist and its hologram in view (NativeChipSelectPresentation.cs).
+            ChipSelectView(viewRig,source,time);
             if(shown.SourceSpec=="siren")SirenViewArms(shown,time);
             PlayerState=viewRig.State;
             // A scoped rifle uses the centred reticle; its magnified housing would obscure the whole screen.
