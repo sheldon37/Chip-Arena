@@ -1,0 +1,19 @@
+name: Request Chip Arena Desktop Build
+
+# GitHub records this request; the owner's desktop polls workflow run metadata.
+# No executable code is delivered to the desktop from this workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  request:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Signal desktop agent
+        run: |
+          echo "Build request recorded. Your desktop agent polls this workflow's runs."
+          echo "A green check here means GitHub accepted the request, NOT that Unity finished."
