@@ -169,7 +169,14 @@ namespace ChipArena.UnityConversion
             foreach(var d in arena.MinionDeaths)if(d.id==id&&d.seed==seed)return true;return false;
         }
         private static NativePilot PilotOf(NativeArena arena,int id){foreach(var p in arena.Pilots)if(p.Seat.id==id)return p;return null;}
+        public double DiagnosticDeathPresentationMs {get;private set;}
         private void DeathPresentation(NativeArena arena)
+        {
+            long at=System.Diagnostics.Stopwatch.GetTimestamp();
+            try{DeathPresentationCore(arena);}
+            finally{DiagnosticDeathPresentationMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
+        }
+        private void DeathPresentationCore(NativeArena arena)
         {
             if(NativeCorpseRules.RoundEnded(arena.Match.Cooperative,arena.Match.Phase)){if(corpses.Count>0||ventBodies.Count>0||carriedDeaths.Count>0||killPointMesh!=null)ClearCorpses();if(blood.Splats.Live>0||stainedWounds.Count>0)ClearBlood(true);return;}
             staleCorpses.Clear();

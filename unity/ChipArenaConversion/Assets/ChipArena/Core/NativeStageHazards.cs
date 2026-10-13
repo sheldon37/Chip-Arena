@@ -113,6 +113,6 @@ namespace ChipArena.UnityConversion
             for(int i=1;i<=10;i++)if(NativeFactoryHazards.State(h,round,clock+i*.1).Phase!=NativeFactoryHazards.Parked)return false;
             return true;
         }
-        public static bool Cross(V3 a,V3 b,V3 c,V3 size,float margin=.45f)=>NativeStructureRules.Crosses(a,b,new MapVolume{center=c,size=size},margin);
+        public static bool Cross(V3 a,V3 b,V3 c,V3 size,float margin=.45f)=>NativeStructureRules.Crosses(a,b,c,size,margin);
     }
 }

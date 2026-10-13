@@ -26,10 +26,11 @@ namespace ChipArena.UnityConversion
         public static uint Seed(string map,string segment,int round){uint h=2166136261;foreach(byte b in Encoding.UTF8.GetBytes(map+"/"+segment+"/"+round.ToString(System.Globalization.CultureInfo.InvariantCulture)))h=unchecked((h^b)*16777619);return h;}
         public static bool Contains(V3 p,V3 center,V3 size,float padding=0)=>Math.Abs(p.x-center.x)<=size.x/2+padding&&Math.Abs(p.y-center.y)<=size.y/2+padding&&Math.Abs(p.z-center.z)<=size.z/2+padding;
         public static bool Swept(StructureDefinition s,V3 p,float padding=.42f)=>s.sweeps.Any(v=>Contains(p,v.center,v.size,padding));
-        public static bool Crosses(V3 a,V3 b,MapVolume box,float pad=0)
+        public static bool Crosses(V3 a,V3 b,MapVolume box,float pad=0)=>Crosses(a,b,box.center,box.size,pad);
+        public static bool Crosses(V3 a,V3 b,V3 center,V3 size,float pad=0)
         {
             float lo=0,hi=1;bool Slab(float start,float end,float c,float size){float d=end-start,min=c-size/2-pad,max=c+size/2+pad;if(Math.Abs(d)<.000001)return start>=min&&start<=max;float x=(min-start)/d,y=(max-start)/d;lo=Math.Max(lo,Math.Min(x,y));hi=Math.Min(hi,Math.Max(x,y));return lo<=hi;}
-            return Slab(a.x,b.x,box.center.x,box.size.x)&&Slab(a.y,b.y,box.center.y,box.size.y)&&Slab(a.z,b.z,box.center.z,box.size.z);
+            return Slab(a.x,b.x,center.x,size.x)&&Slab(a.y,b.y,center.y,size.y)&&Slab(a.z,b.z,center.z,size.z);
         }
         public static float DamageScale(string role,string kind,float demolition)
         {if(role=="static"||role=="carried"||role=="rubble")return 0;if(role=="structural")return kind=="blast"?Math.Max(0,Math.Min(1.5f,demolition)):0;if(role=="masonry")return (kind=="blast"?1.5f:kind=="melee"?.5f:kind=="bullet"?.25f:1)*demolition;return demolition;}

@@ -19,6 +19,11 @@ write files per frame. Log entries omit stack traces, credentials and usernames.
 - `updateMs`, `presentationMs`: timed Update and LateUpdate CPU work. Replay capture,
   snapshot creation, animation and effects are nested timings, not additional
   costs to add to those totals. Animation is the renderer's most recent sample.
+- `arenaStepMs` and `physicsMs`: authority gameplay step versus BeforePhysics / PhysX / AfterPhysics, nested inside `simulationMs`.
+- `navigationMs` and `navigationSearches`: structural navigation work and route rebuild count, nested inside the gameplay step. Both PvP bots and PvE enemies use this search.
+- `deathRecordMs`: pilot death-record creation only, nested inside the gameplay step (not every damage/cleanup operation).
+- `deathPresentationMs`: corpse/death presentation, including its creation and stepping, nested inside presentation time. This is separate from authority physics; use it to investigate deaths on other PvP maps.
+- GC counters are runtime collection-count deltas. Matching generation counters do not establish three separate sets of pauses, and these reports do not measure GC pause duration.
 - `unattributedMs`: remaining interval. It includes render/GPU waits, scheduling,
   other callbacks and work outside these timers. It is **not measured GPU time**.
 - `gc0/1/2`: GC collection-count deltas, not GC pause durations. `managedBytes` is
