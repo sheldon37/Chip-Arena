@@ -28,6 +28,32 @@ internal static class StageHazardChecks
         }
         Check(city.segments.Length==2&&city.segments.All(s=>s.mode=="tear-hinge"&&s.rubble.Length==3),"billboard/rubble contract");
         Check(city.nav.nodes.Count(n=>n.safe)>=12,"alcove/exit nodes");
+        foreach(var flight in NativeCyberCityStairs.Flights(city))
+        {
+            Check(flight.Steps.Length==16&&Math.Abs(flight.Width-1.8f)<.001f,"preserved flight treads/width "+flight.Id);
+            Check(Math.Abs(flight.Low.y+4)<.001f&&Math.Abs(flight.High.y)<.001f,"floor-to-street ramp "+flight.Id);
+            float run=Math.Abs(flight.High.x-flight.Low.x),slope=(flight.High.y-flight.Low.y)/run;
+            Check(Math.Abs(run-8.8f)<.001f&&1/Math.Sqrt(1+slope*slope)>=NativeLocomotionRules.MinGroundY,"walkable ramp "+flight.Id);
+            foreach(var step in flight.Steps)
+            {
+                Check(NativeCyberCityStairs.IsTread(city.id,step.id),"cosmetic corpse keeps tread support "+step.id);
+                float top=step.pos.y+step.size.y*.5f;
+                float ramp=flight.Low.y+Math.Abs(step.pos.x-flight.Low.x)*slope;
+                Check(Math.Abs(step.size.x-.55f)<.001f&&ramp>=top-.001f&&ramp-top<=.251f,"ramp hugs original treads "+step.id);
+            }
+            // Restrict the graph to THIS flight: reaching street via another flight must not satisfy the check.
+            float minX=Math.Min(flight.Landing.x,flight.Street.x)-.6f,maxX=Math.Max(flight.Landing.x,flight.Street.x)+.6f;
+            var nodes=city.nav.nodes.Where(n=>n.pos.x>=minX&&n.pos.x<=maxX&&Math.Abs(n.pos.z-flight.Low.z)<.6f).ToDictionary(n=>n.id);
+            var adj=nodes.Keys.ToDictionary(id=>id,id=>new List<string>());
+            foreach(var l in city.nav.links.Where(l=>nodes.ContainsKey(l.a)&&nodes.ContainsKey(l.b)&&(l.hazards?.Length??0)==0))
+            {adj[l.a].Add(l.b);adj[l.b].Add(l.a);}
+            string Near(V3 p)=>nodes.Values.OrderBy(n=>(n.pos-p-new V3(0,.9f,0)).Length).First().id;
+            string start=Near(flight.Landing),end=Near(flight.Street);var seen=new HashSet<string>{start};var queue=new Queue<string>();queue.Enqueue(start);
+            while(queue.Count>0)foreach(var id in adj[queue.Dequeue()])if(seen.Add(id))queue.Enqueue(id);
+            Check(seen.Contains(end),"independent landing-to-street nav route "+flight.Id);
+            Check(city.nav.links.Any(l=>nodes.ContainsKey(l.a)&&nodes.ContainsKey(l.b)&&
+                ((nodes[l.a].pos.y<.85f&&nodes[l.b].pos.y>=.85f)||(nodes[l.b].pos.y<.85f&&nodes[l.a].pos.y>=.85f))),"top step connects to promenade "+flight.Id);
+        }
         var mag=city.hazards.Single(h=>h.kind=="maglev");var grid=city.hazards.First(h=>h.kind=="grid");
         Check(!NativeStageHazards.TrainSweep(mag,0,10,27.9,27.99,out _,out _),"before arrival");
         Check(NativeStageHazards.TrainSweep(mag,0,10,28.01,28.03,out var c,out var z),"entry sweep");
@@ -50,6 +76,6 @@ internal static class StageHazardChecks
         Check(NativeStageHazards.Touch(new V3(c.x,.85f,c.z),c,z)&&!NativeStageHazards.Touch(new V3(c.x,.85f,c.z+.6f),c,z),"saw lethal line / .6 m aside");
         var legacy=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),opt);foreach(var m in legacy.maps)m.hazards=new[]{mag};NativeMapRules.Merge(legacy,set,json);Check(legacy.maps.Where(m=>!m.unity).All(m=>m.hazards==null),"legacy inline hazards normalized");
         Check(!NativeMapRules.Compatible(NativeConnection.Protocol,legacy.sourceCommit,NativeMapRules.Revision(json+" "),legacy),"exact content revision mismatch refused");
-        Console.WriteLine("PASS stage simulation: both authored layouts, strict hazard schema, closed-hazard spawn routes, swept maglev, safe pockets/bridges, eight grid ticks, jumps, saw clearance, crane collider clock, legacy defaults and revision refusal");
+        Console.WriteLine("PASS stage simulation: both authored layouts, strict hazard schema, closed-hazard spawn routes, four cut ramps and independent landing-to-street nav routes, swept maglev, safe pockets/bridges, eight grid ticks, jumps, saw clearance, crane collider clock, legacy defaults and revision refusal");
     }
 }
