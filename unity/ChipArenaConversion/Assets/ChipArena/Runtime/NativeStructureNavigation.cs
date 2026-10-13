@@ -10,12 +10,21 @@ namespace ChipArena.UnityConversion
         private Dictionary<string,MapNavNode> navNodes;
         private Dictionary<string,List<MapNavLink>> navEdges;
         private string navMap;
+        private NativeNavSearch navSearch;private Func<MapNavLink,bool> navActive;private Func<MapNavNode,bool> navUsable;private Vector3 navOrigin;
+        public double NavigationMs {get;private set;}public int NavigationSearches {get;private set;}
+        private Vector3 TimedStructureNavMove(int actorId,Vector3 pos,Vector3 target,Vector3 fallback)
+        {
+            long at=System.Diagnostics.Stopwatch.GetTimestamp();
+            try{return StructureNavMoveCore(actorId,pos,target,fallback);}
+            finally{NavigationMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
+        }
         private Vector3 StructureNavMove(NativePilot pilot,Vector3 target,Vector3 fallback)
         =>StructureNavMove(pilot.Seat.id,pilot.Body.position,target,fallback);
-        private Vector3 StructureNavMove(int actorId,Vector3 pos,Vector3 target,Vector3 fallback)
+        private Vector3 StructureNavMove(int actorId,Vector3 pos,Vector3 target,Vector3 fallback)=>TimedStructureNavMove(actorId,pos,target,fallback);
+        private Vector3 StructureNavMoveCore(int actorId,Vector3 pos,Vector3 target,Vector3 fallback)
         {
             if(Map.nav==null)return fallback;
-            if(navMap!=MapId){navMap=MapId;navNodes=Map.nav.nodes.ToDictionary(n=>n.id);navEdges=Map.nav.nodes.ToDictionary(n=>n.id,n=>new List<MapNavLink>());foreach(var l in Map.nav.links){navEdges[l.a].Add(l);if(l.kind!="drop")navEdges[l.b].Add(l);}}
+            if(navMap!=MapId){navMap=MapId;navSearch=new NativeNavSearch(Map.nav);navActive=NavLinkActive;navUsable=NavNodeUsable;navNodes=Map.nav.nodes.ToDictionary(n=>n.id);navEdges=Map.nav.nodes.ToDictionary(n=>n.id,n=>new List<MapNavLink>());foreach(var l in Map.nav.links){navEdges[l.a].Add(l);if(l.kind!="drop")navEdges[l.b].Add(l);}}
             if(Map.hazards!=null&&UnsafeStagePath(pos,pos))
             {var pocket=Map.nav.nodes.Where(n=>n.safe&&Math.Abs(n.pos.y-pos.y)<1.2&&!SceneLinecast(pos,Vec(n.pos),WorldMask)).OrderBy(n=>(Vec(n.pos)-pos).sqrMagnitude).FirstOrDefault();if(pocket!=null)return (Vec(pocket.pos)-pos).magnitude<.25f?Vector3.zero:new Vector3(pocket.pos.x-pos.x,0,pocket.pos.z-pos.z).normalized;}
             if(UnsafeStructure(pos)||UnsafeStagePath(pos,pos))
@@ -23,22 +32,9 @@ namespace ChipArena.UnityConversion
             if(Map.hazards==null&&Math.Abs(target.y-pos.y)<1.1&&!SceneLinecast(pos,target,WorldMask)&&!UnsafeStructurePath(pos,target))return fallback;
             if(!navRoutes.TryGetValue(actorId,out var route)||Time-route.at>.7f||route.revision!=NavigationRevision||(route.target-target).sqrMagnitude>9)
             {
-                MapNavNode Nearest(Vector3 p)=>Map.nav.nodes.OrderBy(n=>(Vec(n.pos)-p).sqrMagnitude).FirstOrDefault(n=>navEdges[n.id].Any(NavLinkEnabled)&&!UnsafeStructure(Vec(n.pos))&&!UnsafeStagePath(Vec(n.pos),Vec(n.pos))&&!SceneLinecast(p,Vec(n.pos),WorldMask));
-                var start=Nearest(pos);var end=Nearest(target);var path=new List<string>();
-                if(start!=null&&end!=null)
-                {
-                    var distance=new Dictionary<string,float>{{start.id,0}};var previous=new Dictionary<string,string>();var open=new List<string>{start.id};var closed=new HashSet<string>();
-                    while(open.Count>0)
-                    {
-                        string at=open.OrderBy(id=>distance[id]+(Vec(navNodes[id].pos)-Vec(end.pos)).magnitude).ThenBy(id=>id,StringComparer.Ordinal).First();open.Remove(at);if(at==end.id)break;if(!closed.Add(at))continue;
-                        foreach(var l in navEdges[at])
-                        {
-                            string next=l.a==at?l.b:l.a;if(closed.Contains(next)||!NavLinkActive(l))continue;float cost=distance[at]+(Vec(navNodes[next].pos)-Vec(navNodes[at].pos)).magnitude;
-                            if(!distance.TryGetValue(next,out float old)||cost<old){distance[next]=cost;previous[next]=at;if(!open.Contains(next))open.Add(next);}
-                        }
-                    }
-                    if(distance.ContainsKey(end.id)){string n=end.id;path.Add(n);while(n!=start.id){n=previous[n];path.Add(n);}path.Reverse();}
-                }
+                var start=NearestNavNode(pos);var end=NearestNavNode(target);var path=route.path??new List<string>();
+                path.Clear();NavigationSearches++;
+                if(start!=null&&end!=null)navSearch.Find(start.id,end.id,navActive,path);
                 route=(Time,NavigationRevision,target,path,0);navRoutes[actorId]=route;
             }
             if(route.path.Count==0)return Map.hazards!=null||UnsafeStructurePath(pos,pos+fallback*2)?Vector3.zero:fallback;
@@ -46,11 +42,24 @@ namespace ChipArena.UnityConversion
             if(route.step>0&&!navEdges[route.path[route.step-1]].Any(l=>(l.a==route.path[route.step]||l.b==route.path[route.step])&&NavLinkActive(l))){navRoutes.Remove(actorId);return Vector3.zero;}
             navRoutes[actorId]=route;var waypoint=Vec(navNodes[route.path[route.step]].pos);var delta=waypoint-pos;return new Vector3(delta.x,0,delta.z).normalized;
         }
-        private bool UnsafeStructurePath(Vector3 a,Vector3 b)=>UnsafeStagePath(a,b)||Map.segments.Any(s=>(Structures.Get(s.id).state==1||Structures.Get(s.id).state==2)&&s.sweeps.Any(v=>NativeStructureRules.Crosses(Vec(a),Vec(b),v,.5f)));
+        private MapNavNode NearestNavNode(Vector3 point)
+        {navOrigin=point;return navSearch.Nearest(Vec(point),navUsable);}
+        private bool NavNodeUsable(MapNavNode node)
+        {
+            bool enabled=false;foreach(var edge in navEdges[node.id])if(NavLinkEnabled(edge)){enabled=true;break;}
+            var at=Vec(node.pos);return enabled&&!UnsafeStructure(at)&&!UnsafeStagePath(at,at)&&!SceneLinecast(navOrigin,at,WorldMask);
+        }
+        private bool UnsafeStructurePath(Vector3 a,Vector3 b)
+        {
+            if(UnsafeStagePath(a,b))return true;
+            foreach(var segment in Map.segments)
+            {int state=Structures.Get(segment.id).state;if(state!=1&&state!=2)continue;foreach(var volume in segment.sweeps)if(NativeStructureRules.Crosses(Vec(a),Vec(b),volume,.5f))return true;}return false;
+        }
         private bool NavLinkEnabled(MapNavLink l)
         {
             if(!StageLinkOpen(l))return false;
-            if((l.requires??Array.Empty<string>()).Any(s=>Structures.Get(s).state!=0)||(l.after??Array.Empty<string>()).Any(s=>Structures.Get(s).state!=3))return false;
+            foreach(var id in l.requires??Array.Empty<string>())if(Structures.Get(id).state!=0)return false;
+            foreach(var id in l.after??Array.Empty<string>())if(Structures.Get(id).state!=3)return false;
             foreach(var d in Map.segments)
             {int state=Structures.Get(d.id).state;if(state!=0&&(d.nav?.remove??Array.Empty<string>()).Contains(l.id))return false;if((d.nav?.add??Array.Empty<string>()).Contains(l.id)&&state!=3)return false;}
             return true;

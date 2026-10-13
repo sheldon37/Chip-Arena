@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
         public ExclusionData[] incompatibilities;public ExclusiveOdds[] exclusiveOdds;public V3[] spawns;
         public ContentWeapon Weapon(string id) => Array.Find(weapons,x=>x.id==id)??throw new ArgumentException("Unknown weapon: "+id);
         public ContentChip Chip(string id) => Array.Find(chips,x=>x.id==id)??throw new ArgumentException("Unknown chip: "+id);
-        public ContentMap Map(string id) => Array.Find(maps,x=>x.id==id)??throw new ArgumentException("Unknown map: "+id);
+        public ContentMap Map(string id) {foreach(var map in maps)if(map.id==id)return map;throw new ArgumentException("Unknown map: "+id);}
         public ContentMaterial Material(string id) => Array.Find(materials,x=>x.id==id)??throw new ArgumentException("Unknown material: "+id);
         // Older/incomplete content must still allow rolling; shipped entries are checked by Validate.
         public double Weight(string spec) => (weights==null?null:Array.Find(weights,x=>x!=null&&x.name==spec))?.value??4;

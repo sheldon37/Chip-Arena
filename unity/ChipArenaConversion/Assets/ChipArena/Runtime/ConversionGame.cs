@@ -240,7 +240,12 @@ namespace ChipArena.UnityConversion
         private void FixedUpdate(){long at=System.Diagnostics.Stopwatch.GetTimestamp();try{FixedFrame();}finally{hitchFixed+=HitchMs(at);hitchTicks++;}}
         private void FixedFrame()
         {
-            if(arena==null||menu&&!Online)return;if(arena.Replica){if(server!=null){pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});arena.PredictReplica(pending);pending=pending.HeldOnly();}return;}timer.Restart();bool held=arena.Pve?.Holding==true;arena.Step(pending);if(!held&&arena.Pve?.Holding!=true){arena.BeforePhysics();Physics.Simulate(1f/60);arena.AfterPhysics();}timer.Stop();stepMs=timer.Elapsed.TotalMilliseconds;
+            if(arena==null||menu&&!Online)return;if(arena.Replica){if(server!=null){pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});arena.PredictReplica(pending);pending=pending.HeldOnly();}return;}timer.Restart();bool held=arena.Pve?.Holding==true;
+            double navBefore=arena.NavigationMs,deathBefore=arena.DeathRecordMs;int searchesBefore=arena.NavigationSearches;
+            long stepAt=System.Diagnostics.Stopwatch.GetTimestamp();
+            try{arena.Step(pending);}finally{hitchArenaStep+=HitchMs(stepAt);hitchNavigation+=arena.NavigationMs-navBefore;hitchNavSearches+=arena.NavigationSearches-searchesBefore;hitchDeathRecord+=arena.DeathRecordMs-deathBefore;}
+            if(!held&&arena.Pve?.Holding!=true){long physicsAt=System.Diagnostics.Stopwatch.GetTimestamp();try{arena.BeforePhysics();Physics.Simulate(1f/60);arena.AfterPhysics();}finally{hitchPhysics+=HitchMs(physicsAt);}}
+            timer.Stop();stepMs=timer.Elapsed.TotalMilliseconds;
             pending=pending.HeldOnly();
         }
         private Vector3 AimPoint(float range,bool thrownMelee=false)

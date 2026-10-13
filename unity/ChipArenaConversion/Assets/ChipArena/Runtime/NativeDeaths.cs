@@ -18,7 +18,14 @@ namespace ChipArena.UnityConversion
             if(impact==null)return;Vector3 hit=point??(p.Body.position+Vector3.up*(head?.6f:0));Vector3 local=Quaternion.Euler(0,-p.Yaw,0)*(hit-p.Body.position);var wound=NativeBodyDamage.Resolve(impact,NativeBodyDamage.Part(new V3(-local.x,local.y,local.z),0,head),amount,lethal,head);if(wound==null)return;
             wound.id=nextEvent++;wound.at=Time;if(head)local.y=Mathf.Clamp(local.y,.48f,.8f);wound.point=new V3(Mathf.Clamp(-local.x,-.5f,.5f),Mathf.Clamp(local.y,-.9f,.9f),Mathf.Clamp(local.z,-.4f,.4f));var localDirection=Quaternion.Euler(0,-p.Yaw,0)*dir.normalized;wound.direction=new V3(-localDirection.x,localDirection.y,localDirection.z);p.Wounds.Add(wound);while(p.Wounds.Count>8)p.Wounds.RemoveAt(0);
         }
+        public double DeathRecordMs {get;private set;}
         private void RecordDeath(NativePilot p,NativePilot source,Vector3 direction,float force,bool melee,bool sirenCrush,string damageKind=null)
+        {
+            long at=System.Diagnostics.Stopwatch.GetTimestamp();
+            try{RecordDeathCore(p,source,direction,force,melee,sirenCrush,damageKind);}
+            finally{DeathRecordMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
+        }
+        private void RecordDeathCore(NativePilot p,NativePilot source,Vector3 direction,float force,bool melee,bool sirenCrush,string damageKind)
         {
             if(damageKind!="collapse"&&damageKind!="hazard"&&damageKind!="maglev"&&damageKind!="grid"&&source==null&&Time-p.LastAttackerAt<=7)source=p.LastAttacker;
             // A hold interrupted by a bystander is not a Siren crush; only the timed crush hit sets this flag.

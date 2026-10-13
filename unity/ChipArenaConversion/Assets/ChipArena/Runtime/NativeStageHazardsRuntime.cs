@@ -85,23 +85,27 @@ namespace ChipArena.UnityConversion
         private bool StageLinkOpen(MapNavLink link)
         {
             foreach(var id in link.hazards??Array.Empty<string>())
-            {var h=Array.Find(Map.hazards??Array.Empty<MapHazard>(),x=>x.id==id);if(h==null||!NativeStageHazards.LinkOpen(h,Match.Phase,StageRound,Match.FightAt,Match.Time,navNodes[link.a].pos,navNodes[link.b].pos))return false;}return true;
+            {MapHazard h=null;foreach(var candidate in Map.hazards??Array.Empty<MapHazard>())if(candidate.id==id){h=candidate;break;}if(h==null||!NativeStageHazards.LinkOpen(h,Match.Phase,StageRound,Match.FightAt,Match.Time,navNodes[link.a].pos,navNodes[link.b].pos))return false;}return true;
         }
         private bool UnsafeStagePath(Vector3 from,Vector3 to,float margin=.45f)
         {
+            var a=Vec(from);var b=Vec(to);
             foreach(var h in Map.hazards??Array.Empty<MapHazard>())
             {
-                var a=Vec(from);var b=Vec(to);
+                bool cross=false;
                 if(NativeStageHazards.City(h)||NativeStageHazards.Ward(h))
-                {if((h.kind=="burner"?(h.zones??Array.Empty<MapVolume>()).Any(z=>NativeStageHazards.Cross(a,b,z.center,z.size,margin)):NativeStageHazards.Cross(a,b,h.center,h.size,margin))&&!NativeStageHazards.LinkOpen(h,Match.Phase,StageRound,Match.FightAt,Match.Time,a,b))return true;}
+                {
+                    if(h.kind=="burner"){foreach(var z in h.zones??Array.Empty<MapVolume>())if(NativeStageHazards.Cross(a,b,z.center,z.size,margin)){cross=true;break;}}
+                    else cross=NativeStageHazards.Cross(a,b,h.center,h.size,margin);
+                }
                 else
                 {
                     if(h.kind=="vent"&&h.damage<=0)continue;
-                    if(h.kind=="crane")
-                    {if((h.zones??Array.Empty<MapVolume>()).Any(z=>NativeStageHazards.Cross(a,b,z.center,z.size,margin))&&!NativeStageHazards.LinkOpen(h,Match.Phase,StageRound,Match.FightAt,Match.Time,a,b))return true;}
+                    if(h.kind=="crane"){foreach(var z in h.zones??Array.Empty<MapVolume>())if(NativeStageHazards.Cross(a,b,z.center,z.size,margin)){cross=true;break;}}
                     else
-                    {V3 c=(h.a+h.b)*.5f,s=new V3(Math.Abs(h.a.x-h.b.x)+h.size.x,Math.Abs(h.a.y-h.b.y)+h.size.y,Math.Abs(h.a.z-h.b.z)+h.size.z);if(h.kind=="vent"){c=h.a+new V3(0,h.size.y/2,0);s=h.size;}if(NativeStageHazards.Cross(a,b,c,s,margin)&&!NativeStageHazards.LinkOpen(h,Match.Phase,StageRound,Match.FightAt,Match.Time,a,b))return true;}
+                    {V3 c=(h.a+h.b)*.5f,size=new V3(Math.Abs(h.a.x-h.b.x)+h.size.x,Math.Abs(h.a.y-h.b.y)+h.size.y,Math.Abs(h.a.z-h.b.z)+h.size.z);if(h.kind=="vent"){c=h.a+new V3(0,h.size.y/2,0);size=h.size;}cross=NativeStageHazards.Cross(a,b,c,size,margin);}
                 }
+                if(cross&&!NativeStageHazards.LinkOpen(h,Match.Phase,StageRound,Match.FightAt,Match.Time,a,b))return true;
             }return false;
         }
         private bool SupportedStageMove(Vector3 pos,Vector3 move)
