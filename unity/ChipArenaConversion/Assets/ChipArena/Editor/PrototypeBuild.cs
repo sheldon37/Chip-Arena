@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion.Editor
         private static void Prepare()
         {
             PlayerSettings.companyName="ChipArenaConversion";
-            PlayerSettings.productName="Chip Arena Native Conversion TEST";
+            PlayerSettings.productName="Chip Arena";
             PlayerSettings.bundleVersion="0.5.0-native-updater";
             PlayerSettings.defaultScreenWidth=1600; PlayerSettings.defaultScreenHeight=900;
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
@@ -112,7 +112,7 @@ namespace ChipArena.UnityConversion.Editor
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone,ScriptingImplementation.Mono2x);
             string root=Path.GetFullPath(Path.Combine(Application.dataPath,".."));
             string folder=NativeUpdateBuild.PlayerFolder(root);
-            string exe=Path.Combine(folder,"ChipArena-Native-Conversion-TEST.exe");
+            string exe=Path.Combine(folder,"Chip Arena.exe");
             var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes=new[] { ScenePath }, locationPathName=exe,
                 target=BuildTarget.StandaloneWindows64,options=BuildOptions.Development });
             if(report.summary.result!=BuildResult.Succeeded||!File.Exists(exe)) throw new Exception("Unity Windows build failed: "+report.summary.result);
@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion.Editor
         // Shared by the local builder and the already-exported Build Automation player.
         internal static NativeBuildIdentity PackageWindows(string root,string folder)
         {
-            if(!File.Exists(Path.Combine(folder,"UnityPlayer.dll"))||!Directory.Exists(Path.Combine(folder,"ChipArena-Native-Conversion-TEST_Data")))
+            if(!File.Exists(Path.Combine(folder,"UnityPlayer.dll"))||!Directory.Exists(Path.Combine(folder,"Chip Arena_Data")))
                 throw new Exception("The Windows player is incomplete: UnityPlayer.dll or its game data folder is missing.");
             var identity=NativeUpdateBuild.Package(root,folder);string install=Path.GetDirectoryName(folder);
             File.WriteAllText(Path.Combine(install,"READ-ME.txt"),

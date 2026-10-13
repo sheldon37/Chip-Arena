@@ -32,7 +32,18 @@ namespace ChipArena.UnityConversion
         private readonly NativeVisualClock visualClock=new NativeVisualClock();
         private NativeBloom bloom;
         private double stepMs;private readonly System.Diagnostics.Stopwatch timer=new System.Diagnostics.Stopwatch();
-        private string PreferencePath=>Path.Combine(Application.persistentDataPath,"native-preferences-v1.json");
+        private string PreferencePath=>Path.Combine(NativeUserDataPath,"native-preferences-v1.json");
+        internal static string NativeUserDataPath
+        {
+            get
+            {
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+                return Path.Combine(Path.GetDirectoryName(Application.persistentDataPath),"Chip Arena Native Conversion TEST");
+#else
+                return Application.persistentDataPath;
+#endif
+            }
+        }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot(){if(FindFirstObjectByType<ConversionGame>()==null)new GameObject("Chip Arena Native Conversion").AddComponent<ConversionGame>();}
         private void Awake()

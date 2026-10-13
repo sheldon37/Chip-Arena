@@ -11,7 +11,7 @@ whole project in a new folder; the repaired native build still needs to run.
 1. Extract the whole source archive into a new folder and add `ChipArenaConversion` in Unity Hub.
 2. Open with Unity **6000.3.24f1**, choose **Chip Arena → Open test arena**, then Play.
 3. For Windows, close this project in the Editor and run **Build-Windows.cmd**.
-4. Wait for **UNITY_TEST_BUILD_READY**. Run `Builds/Windows/ChipArena-Native-Conversion-TEST.exe`.
+4. Wait for **UNITY_TEST_BUILD_READY**. Run `Builds/Windows/Chip Arena.exe`.
 
 The builder runs the import, content, animation, shader and native physics gates before packaging `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep the top-level launcher and `app` folder together. The EXE retains the voxel CA icon. This source archive contains no precompiled executable; an activated Windows Editor is required.
 

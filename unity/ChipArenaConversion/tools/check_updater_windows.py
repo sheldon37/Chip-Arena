@@ -13,8 +13,8 @@ import zipfile
 import zlib
 
 PROJECT = Path(__file__).resolve().parents[1]
-EXE = 'ChipArena-Native-Conversion-TEST.exe'
-DATA = 'ChipArena-Native-Conversion-TEST_Data'
+EXE = 'Chip Arena.exe'
+DATA = 'Chip Arena_Data'
 LAUNCHER = 'Chip Arena.exe'
 
 
@@ -30,7 +30,7 @@ def wait_for(path, process=None):
 
 
 def identity(char, revision):
-    return dict(schema=1, product='chip-arena-unity', channel='native-test', platform='windows-x64', version=char * 64, revision=revision, bootstrap=1)
+    return dict(schema=1, product='chip-arena-unity', channel='native-test', platform='windows-x64', version=char * 64, revision=revision, bootstrap=2)
 
 
 def fixture_icon(path):
