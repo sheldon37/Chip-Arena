@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     /// The heavy kinds' jump-down entrance (owner 2026-10-12: "For now, we will have them enter from the middle of the map by
     /// jumping down and creating a small slam effect on their landing. (I am planning to revamp this map, so keep this in mind)";
     /// 2026-10-13, the Hulk: "The jump in too, shaking the ground and a even bigger stage effect when landing").
-    /// Presentation side of a contract the rules do not implement yet (docs/SIREN-ZOMBIES.md hands it to Astra): an add whose
+    /// Shared presentation/simulation contract (docs/SIREN-ZOMBIES.md): an add whose
     /// replicated entry is a map entry of kind <see cref="Kind"/> drops from <see cref="HeightOf"/> above that entry's landing
     /// point (PveEntry.exit), on its kind's <see cref="Profile"/> from its replicated SpawnAt to its replicated ActiveAt:
     /// <list type="number">
@@ -44,9 +44,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The landing slam's shown radius (m; the proposed rule's knock-back radius) and the shake's reach.</summary>
         public const float SlamRadius=2.4f,ShakeRange=12f;
         public static bool Is(PveEntry e)=>e!=null&&string.Equals(e.kind,Kind,StringComparison.Ordinal);
-        /// <summary>The entry's drop height (today the profile's default: PveEntry has no height field yet).</summary>
-        public static float HeightOf(PveEntry e)=>e!=null&&e.height>0?e.height:DefaultHeight;
-        public static float HeightOf(PveEntry e,in DropProfile p)=>e!=null&&e.height>0?e.height:p.DefaultHeight;
+        /// <summary>The map-authored positive finite height; otherwise the kind's profile default.</summary>
+        public static float HeightOf(PveEntry e)=>HeightOf(e,Brute);
+        public static float HeightOf(PveEntry e,in DropProfile p)=>e!=null&&MathUtil.Finite(e.height)&&e.height>0?e.height:p.DefaultHeight;
         /// <summary>The fall from the top of the hop to the floor (s).</summary>
         public static float Fall(float height)=>Fall(height,Brute);
         public static float Fall(float height,in DropProfile p)=>(float)Math.Sqrt(2*(Math.Max(.5f,height)+p.Hop)/p.Gravity);

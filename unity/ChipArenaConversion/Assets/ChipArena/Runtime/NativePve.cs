@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
     public sealed class NativePveRecruit {public NativePilot Pilot,Owner;public string Role;public float At,HealAt,RemoveAt;}
     public sealed class NativePveState
     {
-        public readonly List<NativeMachineUse> Machines=new List<NativeMachineUse>();public NativePveContent Content;public NativeWaveSchedule Schedule;public NativePilot Boss;public bool Skip,Started,Hidden,Holding;public string Stage="opening",Cinematic,Outcome,Notice;public int Wave,Phase=1,Reveal,SpawnBudget,Spawned,WaveTotal;public float Rate,SpawnAt,StageAt,StageUntil,ResolvedAt=-1,HoldLeft,HoldDuration,PossessionAt,Floor;public int Cap,Possessed;public bool Solo;public float MaxHp;
+        public readonly List<NativeMachineUse> Machines=new List<NativeMachineUse>();public NativePveContent Content;public NativeWaveSchedule Schedule;public NativePilot Boss;public bool Skip,Started,Hidden,Holding;public string Stage="opening",Cinematic,Outcome,Notice;public int Wave,Phase=1,Reveal,SpawnBudget,Spawned,WaveTotal;public float Rate,SpawnAt,StageAt,StageUntil,ResolvedAt=-1,HoldLeft,HoldDuration,PossessionAt,Floor;public int Cap,Possessed,DropCursor;public bool Solo;public float MaxHp;
         public readonly Dictionary<int,NativePveRow> Rows=new Dictionary<int,NativePveRow>();public readonly List<NativePvePickup> Pickups=new List<NativePvePickup>();public readonly List<NativePveRecruit> Recruits=new List<NativePveRecruit>();
         public readonly List<(NativePilot owner,float at,int machine)> Hires=new List<(NativePilot,float,int)>();public NativePveRandom SpawnRandom,EconomyRandom;
     }

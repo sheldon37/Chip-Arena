@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
         public static (float walk,float duration) Timeline(PveEntry e,bool first,string kind)
         {
             if(e.kind=="breach")return(NativeBreach.Knock,NativeBreach.Knock+NativeBreach.Through);
-            if(Drop(e))return(0,NativeHordeDrop.Duration(NativeHordeDrop.HeightOf(e),kind=="hulk"?NativeHordeDrop.Hulk:NativeHordeDrop.Brute));
+            if(Drop(e))return(0,NativeHordeDrop.Duration(NativeHordeDrop.HeightOf(e,kind=="hulk"?NativeHordeDrop.Hulk:NativeHordeDrop.Brute),kind=="hulk"?NativeHordeDrop.Hulk:NativeHordeDrop.Brute));
             return NativeEntryRules.Timeline(e.kind,first);
         }
         public static void Validate(NativePveContent data,ContentMap map)

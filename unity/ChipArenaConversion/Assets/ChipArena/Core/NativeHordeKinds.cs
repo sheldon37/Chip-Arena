@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
         public static readonly PveAddStats[] Proposed={
             Row("shambler","swipe",60,6,1.5f,3.4f,1.75f,1.45f,.34f,1.05f,.45f,90,25,.35f,.4f,.45f,0),
             Row("runner","lunge",38,4,2.6f,4.6f,2,2.2f,.34f,.85f,.9f,60,20,.35f,.4f,.45f,0),
-            Row("brute","smash",240,15,1.3f,2.4f,2.1f,1.7f,.43f,1.7f,.3f,260,80,.45f,.5f,.25f,SmashRadius),
+            Row("brute","smash",240,15,1.3f,2.4f,2.1f,1.7f,.43f,1.7f,.3f,420,80,.45f,.5f,.25f,SmashRadius),
             Row("spitter","spit",45,7,1.6f,2.9f,11,9,SpitHit,2.6f,0,40,30,.35f,.4f,.45f,1.3f),
             Row("crawler","pounce",34,5,2.2f,3.9f,1.6f,2.4f,.3f,1.1f,1.6f,70,20,.3f,.35f,.5f,0),
             Row("bloater","belly",150,10,1.1f,1.8f,1.6f,1.4f,.62f,2.2f,.2f,180,45,.4f,.45f,.3f,2.6f),

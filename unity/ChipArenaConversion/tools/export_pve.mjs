@@ -5,6 +5,12 @@ registerHooks({resolve(s,c,next){if(c.parentURL?.startsWith(root)&&s.endsWith('.
 const get=p=>import(pathToFileURL(path.join(source,'src/shared',p+'.ts')).href);const balance=await get('pve/balance'),layout=await get('pve/layout'),waves=await get('pve/waves'),boss=await get('boss-music'),money=await get('pve/money-chips');
 const numbers=o=>Object.entries(o).filter(([,v])=>typeof v==='number').map(([name,value])=>({name,value}));
 const data={sourceCommit:inventory.sourceCommit,machines:layout.PVE_MACHINES,entries:layout.PVE_ENTRIES,pads:layout.PVE_LAYOUT.pads,machineBlocks:layout.machineBlocks(),adds:Object.entries(balance.ADD_KINDS).map(([id,v])=>({id,...v})),waves:balance.WAVES.map(v=>({...v,mix:numbers(v.mix)})),bossMix:Object.entries(balance.MIX_BOSS).map(([phase,mix])=>({phase:Number(phase),mix:numbers(mix)})),dropOdds:numbers(balance.DROP_ODDS),offerWeights:Object.entries(balance.OFFER_WEIGHTS).map(([id,v])=>({id,weights:numbers(v)})),moneyChips:money.PVE_MONEY_CHIPS,bossMusic:boss.BLACK_SIREN_PROTOCOL};
+// PveContent is the native map-data authority for drop points and the tuned brute shove.
+// Preserve these native additions when refreshing the frozen Electron export; no coordinates live in this script.
+const native=JSON.parse(fs.readFileSync(path.join(project,'Assets/Conversion/Resources/PveContent.json'),'utf8'));
+if(native.boss){for(const key of ['entries','machines','pads','machineBlocks','boss','hideSpots'])data[key]=native[key];}
+else data.entries=[...data.entries,...native.entries.filter(e=>e.kind==='drop')];
+data.adds.find(a=>a.id==='brute').impulse=native.adds.find(a=>a.id==='brute').impulse;
 fs.writeFileSync(path.join(project,'Assets/Conversion/Resources/PveContent.json'),JSON.stringify(data)+'\n');
 const cases=[];for(const h of [1,2,3,4])for(const wave of [1,2,3])for(const relay of [false,true])cases.push({h,wave,relay,budget:waves.waveBudget(wave,h),flow:waves.waveFlow(wave,h,undefined,relay),hp:balance.bossHp(h),damage:balance.damageScale(h)});
 const schedules=[];for(const skip of [false,true])for(const resolvedAt of [undefined,1,9]){const schedule=new waves.WaveSchedule(3,skip);schedule.start(0);const events=[];for(let time=0;time<550;time+=.25)for(const event of schedule.step({time,remaining:time%33<30?0:5,resolvedAt}))events.push(event);schedules.push({skip,resolvedAt:resolvedAt??-1,events});}

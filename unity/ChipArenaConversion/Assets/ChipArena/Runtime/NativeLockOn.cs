@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         private IEnumerable<(int id,Vector3 point)> LockTargets()
         {
             foreach(var p in arena.Pilots)if(p!=arena.Local&&p.Hp>0&&p.Seat.connected&&!match.SameSide(p.Seat,arena.Local.Seat)&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true))yield return(p.Seat.id,p.Body.transform.position+Vector3.up*.2f);
-            foreach(var m in arena.Minions)if(m.Hp>0&&!match.SameSide(m.Owner.Seat,arena.Local.Seat)&&(m.Pve==null||!m.Pve.Travelling&&arena.Time>=m.Pve.ActiveAt))yield return(m.Id,m.Body.transform.position+Vector3.up*(m.Pve?.Crawl==true?0:.2f));
+            foreach(var m in arena.Minions)if(m.Hp>0&&!match.SameSide(m.Owner.Seat,arena.Local.Seat)&&(m.Pve==null||!m.Pve.Travelling&&arena.Time>=(NativeWardEntries.Drop(m.Pve.Entry)?m.Pve.ExposedAt:m.Pve.ActiveAt)))yield return(m.Id,m.Body.transform.position+Vector3.up*(m.Pve?.Crawl==true?0:.2f));
         }
         private void UpdateLock()
         {
