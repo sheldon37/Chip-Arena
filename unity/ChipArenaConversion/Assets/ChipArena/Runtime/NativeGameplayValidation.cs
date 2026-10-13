@@ -319,10 +319,13 @@ namespace ChipArena.UnityConversion
         private void ValidatePveMinionContacts(NativePilot pilot)
         {
             void Check(bool ok,string message){if(!ok)throw new Exception("Native PvE contact gate: "+message);}
-            Pve.Holding=false;SetBossHidden(true);var add=SpawnPveAdd("shambler",true);Check(add!=null,"spawn fixture");
-            add.Body.position=new Vector3(20,10,20);add.Collider.enabled=true;add.Pve.ActiveAt=add.Pve.ExposedAt=Time-1;add.Pve.Travelling=false;add.Hp=add.MaxHp=1000;
+            var pilotAt=pilot.Body.position;Pve.Holding=false;SetBossHidden(true);var add=SpawnPveAdd("shambler",true);Check(add!=null,"spawn fixture");
+            // Use the isolated projectile-test lane; the old (20,10,19) muzzle is inside the revamped concourse wall.
+            add.Body.position=new Vector3(1000,10,1002);add.Collider.enabled=true;add.Pve.ActiveAt=add.Pve.ExposedAt=Time-1;add.Pve.Travelling=false;add.Hp=add.MaxHp=1000;
             pilot.Body.position=add.Body.position-Vector3.forward*2;pilot.Seat.connected=true;pilot.Seat.chips.Clear();pilot.Seat.spec="pistol";pilot.Weapon=Content.Weapon("pistol");pilot.Stats=NativeContentRules.Stats(Content,"pistol",pilot.Seat.chips);Physics.SyncTransforms();
             Check(!Pve.Boss.Seat.connected&&Enemy(pilot,add)&&!CanHit(pilot,Pve.Boss),"hidden boss and target acquisition");
+            var contact=SweepNative(add.Body.position-Vector3.forward,Vector3.forward*2,.045f,c=>c!=pilot.Collider);
+            Check(contact.HasValue&&contact.Value.Collider==add.Collider,"fixture sweep obstructed by "+(contact.HasValue?contact.Value.Collider.name:"no collider"));
             float hp=add.Hp;Bullets.Add(new NativeBullet{Id=nextBullet++,Attack=nextAttack++,Owner=pilot.Seat.id,Original=pilot.Seat.id,Spec="pistol",Position=add.Body.position-Vector3.forward,Velocity=Vector3.forward*120,Radius=.045f,Damage=10,Life=1,Travel=10,Direct=true});
             StepBullets();Check(add.Hp<hp,"swept projectile passed through the hidden boss's add");
             hp=add.Hp;Check(HitMinion(add,pilot,5,Vector3.forward,0)>0&&add.Hp<hp,"melee contact rejected");
@@ -333,7 +336,7 @@ namespace ChipArena.UnityConversion
             add.Pve.ExposedAt=Time+1;Check(HitMinion(add,pilot,5,Vector3.forward,0)==0,"unexposed entry protection lost");add.Pve.ExposedAt=Time-1;
             Events.Clear();HitMinion(add,pilot,1,Vector3.right,0);var hit=Events.Last(e=>e.Kind==EventKind.Hit);Check(hit.Normal.x==1&&hit.Normal.y==0&&hit.Detail=="direct","directed add hit payload");Check(Events.Any(e=>e.Kind==EventKind.Impact&&e.Target==add.Id&&e.Source==pilot.Seat.id),"add contact impact missing");
             Events.Clear();HitMinion(add,pilot,1,Vector3.zero,0,null,"dot");Check(Events.Last(e=>e.Kind==EventKind.Hit).Normal.Length==0,"DoT generated a directed splatter");Check(!Events.Any(e=>e.Kind==EventKind.Impact),"add DoT emitted contact impact");
-            RemoveMinion(add,false);Bullets.Clear();
+            RemoveMinion(add,false);Bullets.Clear();pilot.Body.position=pilotAt;Physics.SyncTransforms();
             Debug.Log("PASS hidden Siren adds: projectile sweep, melee, ability/chip blast, target acquisition, hold/entry/travel protections and hit direction");
         }
     }

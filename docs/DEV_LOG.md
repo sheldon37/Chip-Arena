@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — isolate PvE minion contact fixture from map geometry
+- Branch `codex/ward-pve-contact-gate`, base `4d868be3`, preserving the latest intro/killcam integration. Owner's `814dea6` Windows log proves all Ward traversal cases now pass, then fails the hidden-boss add projectile assertion.
+- The fixture bullet starts at (20,10,19), inside `siren-concourse-n-wall-9` (x 17.8..20.2, y 9.4..13, z 19..19.4). The sweep correctly hits world geometry first. Move this contact-only fixture to the existing isolated projectile-test area at (1000,10,1002), preserving the projectile, actual contact/damage paths and hold/travel/exposure assertions. Restore the pilot position afterward. Add a real PhysX precondition requiring the first swept collider to be the add, reporting any obstruction by name.
+- Managed regression reproduces the old muzzle/wall overlap, verifies the new lane is clear of authored blocks and guards the native precondition. No shipping collision, damage, projectile, enemy or presentation changes.
+- Verification: Core/Tests compile with zero warnings/errors; focused Ward checks pass (254 simulation checks); Python 101 tests OK, one skip; source package check passes (1,818 files); diff check clean. Full check_relay.py passed with exit 0, including real local WebSocket/UDP/TCP and the final 35 managed-core checks.
+- Unity Editor/PhysX and Windows unavailable here: actual contact gate and later native gates need the next desktop build. Owner authorized pushing, merging and syncing fixes; no compiled release claimed.
+
 ## 2026-10-13 — Astra — Ward atrium traversal landing turn
 - Branch `codex/ward-traversal-fix`, base shared/builder `375f9ed`. Owner log `Latest-Build(8).log` passes Ward hazards and reports 85 traversal failures, all ascending the two atrium stairs at the second target. Host/guest capsules reach y ~6.85 and stop at z +/-4.43 before the end guardrail; every other flight and all descent cases passed that run.
 - The test assumed every landing continues straight. Authored atrium landings end at z +/-5 with rails from +/-4.85; the intended exit turns outward onto the gallery. Build-only waypoints now reach the flight end, centre on the landing, then turn outward to x +/-13.5, over two metres beyond the flight. All starts, sides, movement modes and tolerances remain. No collision removal, map edit, runtime navigation, movement, combat or visual change.
