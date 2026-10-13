@@ -15,7 +15,9 @@ namespace ChipArena.UnityConversion
     ///    moving parts (doors, cell gates, vent lids, hatches, shutter slats, the ink) are offset by their Move share; parts
     ///    between the camera and the pilot are hidden; the low tier leaves the detail parts out. A breach panel's parts go with
     ///    its block, and hide while the breach presentation reports the breach open (<see cref="SetWardBreach"/>); the burst and
-    ///    the holographic restore are that presentation's, not this one's.
+    ///    the holographic restore are that presentation's, not this one's. A wall block a Hulk breaks (a dynamic breach) is
+    ///    reported by its id (<see cref="SetWardBlockBreach"/>): every part on it hides while it is open, and follows its knock's
+    ///    shudder before (<see cref="NudgeWardBlock"/>).
     ///  - The mood (Core NativeWardZeroMood) from the replicated match and PvE state and the boss song, eased per frame.
     ///  - The eight practical lights picked for the camera (Core NativeWardZeroLights) through NativeLighting.PickedLights.
     ///  - Effects (Core NativeWardZeroFx) through one NativeFxDraw: a solid and an effects batch.
@@ -32,6 +34,8 @@ namespace ChipArena.UnityConversion
         private ContentMap wzMap;private NativeWardZeroKit wzKit;private NativeWardFxScene wzScene;private NativeWardZeroLights wzLights;private MapHazard[] wzHazards=Array.Empty<MapHazard>();private NativeHazardState[] wzStates=Array.Empty<NativeHazardState>();
         private NativeWardEntry[] wzEntries;private float[] wzOpen=Array.Empty<float>();private bool[] wzBreached=Array.Empty<bool>();private readonly bool[] wzSongOn=new bool[2];private readonly float[] wzSongWarn=new float[2];
         private NativePropBody[] wzParents=Array.Empty<NativePropBody>();private float[] wzSeeds=Array.Empty<float>();private readonly Dictionary<string,int> wzIndex=new Dictionary<string,int>();
+        // By block index: the blocks a Hulk's breach has open (their parts hidden) and their knock's shudder (world m).
+        private bool[] wzBlockOut=Array.Empty<bool>();private Vector3[] wzNudge=Array.Empty<Vector3>();
         private NativeEntryView[] wzWard;private NativeWardMood wzMood;private float wzLast=-1;private bool wzMoodSet;private NativeArena wzArena;private int wzGeneration=-1;
 
         // SourceWorld: the arena or the killcam replay arena.
@@ -39,7 +43,7 @@ namespace ChipArena.UnityConversion
         {
             var map=arena.Map;if(!NativeWardZeroLooks.Active(map)||!EnsureWardZero())return;
             if(!ReferenceEquals(map,wzMap))WardZeroBuild(map);
-            if(!ReferenceEquals(arena,wzArena)||arena.Generation!=wzGeneration){wzArena=arena;wzGeneration=arena.Generation;wzMoodSet=false;wzLast=-1;if(!arena.ReplicaScene.IsValid())Array.Clear(wzBreached,0,wzBreached.Length);}
+            if(!ReferenceEquals(arena,wzArena)||arena.Generation!=wzGeneration){wzArena=arena;wzGeneration=arena.Generation;wzMoodSet=false;wzLast=-1;if(!arena.ReplicaScene.IsValid()){Array.Clear(wzBreached,0,wzBreached.Length);Array.Clear(wzBlockOut,0,wzBlockOut.Length);Array.Clear(wzNudge,0,wzNudge.Length);}}
             float now=PresentationClock(arena);var match=arena.Match;int round=NativeStructureFx.RoundIndex(match.Set,match.Round);
             for(int i=0;i<wzStates.Length;i++)wzStates[i]=NativeWardZeroHazards.At(wzHazards[i],match.Phase,round,match.FightAt,now);
             WardZeroOpen(arena);WardZeroSong(arena);WardZeroMood(arena,now);
@@ -60,6 +64,21 @@ namespace ChipArena.UnityConversion
         /// <summary>The same by the entry's id (NativeHordeBreachPresentation knows the PveEntry): call with true when it hides
         /// the segment and false when the segment's own look returns. Nothing happens off the revamp.</summary>
         public void SetWardBreach(string entryId,bool open){if(wzEntries==null||entryId==null)return;for(int i=0;i<wzEntries.Length;i++)if(wzEntries[i]?.id==entryId){SetWardBreach(i,open);return;}}
+        /// <summary>The breach presentation's report that a Hulk has broken the wall block `block` out (a dynamic breach, by the
+        /// block's id: any wall, not only an entry's panel) or that it is whole again: it leaves the arena dressing's draw and every
+        /// kit part on it hides while it is open. The dressing's part works on any map; a new live arena clears both.</summary>
+        public void SetWardBlockBreach(string block,bool open)
+        {
+            if(string.IsNullOrEmpty(block))return;if(open)NativeArenaDressing.Hidden.Add(block);else NativeArenaDressing.Hidden.Remove(block);
+            if(wzIndex.TryGetValue(block,out int i)&&i<wzBlockOut.Length)wzBlockOut[i]=open;
+        }
+        /// <summary>A wall block's knock shudder (world m; zero when it stands still again) on what draws it on the revamp, the arena
+        /// dressing and the kit parts on it: the block's transform and collider never move.</summary>
+        public void NudgeWardBlock(string block,Vector3 by)
+        {
+            if(string.IsNullOrEmpty(block))return;if(by==Vector3.zero)NativeArenaDressing.Nudged.Remove(block);else NativeArenaDressing.Nudged[block]=by;
+            if(wzIndex.TryGetValue(block,out int i)&&i<wzNudge.Length)wzNudge[i]=by;
+        }
         // RenderBackdrop: behind the main menu, on the render clock: a cut-away of the map's blocks and kit (the vault and the
         // outer walls toward the camera left out), at rest in the calm mood, no effects. False when the map is not the revamp.
         private bool WardZeroBackdrop(string mapId,float time,Camera camera)
@@ -110,7 +129,7 @@ namespace ChipArena.UnityConversion
             if(wzEntries==null){var asset=Resources.Load<TextAsset>("PveContent");wzEntries=asset!=null?JsonUtility.FromJson<NativeWardEntrySet>(asset.text)?.entries??Array.Empty<NativeWardEntry>():Array.Empty<NativeWardEntry>();}
             wzMap=map;var blocks=map.blocks??Array.Empty<ContentBlock>();wzHazards=map.hazards??Array.Empty<MapHazard>();wzStates=new NativeHazardState[wzHazards.Length];
             wzKit=NativeWardZeroKit.Build(blocks,wzHazards,wzEntries);wzScene=NativeWardFxScene.Build(blocks,wzHazards,wzKit,wzEntries);wzLights=NativeWardZeroLights.Build(wzKit);
-            wzOpen=new float[wzEntries.Length];wzBreached=new bool[wzEntries.Length];wzParents=new NativePropBody[blocks.Length];wzIndex.Clear();for(int i=0;i<blocks.Length;i++)if(blocks[i]?.id!=null)wzIndex[blocks[i].id]=i;
+            wzOpen=new float[wzEntries.Length];wzBreached=new bool[wzEntries.Length];wzParents=new NativePropBody[blocks.Length];wzBlockOut=new bool[blocks.Length];wzNudge=new Vector3[blocks.Length];wzIndex.Clear();for(int i=0;i<blocks.Length;i++)if(blocks[i]?.id!=null)wzIndex[blocks[i].id]=i;
             wzSeeds=new float[wzKit.Parts.Length];for(int i=0;i<wzSeeds.Length;i++)wzSeeds[i]=NativeBlockLooks.Seed(blocks[wzKit.Parts[i].Parent].id+"#"+i);
             if(wzWard==null){wzWard=new NativeEntryView[8];for(int i=0;i<8;i++)wzWard[i]=new NativeEntryView{entry=i,kind="vent",mode="dive"};}
         }
@@ -150,9 +169,9 @@ namespace ChipArena.UnityConversion
             var parts=wzKit.Parts;var blocks=arena.Map.blocks;bool low=LowGraphics;
             for(int i=0;i<parts.Length;i++)
             {
-                var part=parts[i];if(part.Detail&&low)continue;var prop=wzParents[part.Parent];if(prop==null)continue;if(part.Entry>=0&&part.Entry<wzBreached.Length&&wzBreached[part.Entry])continue;
+                var part=parts[i];if(part.Detail&&low)continue;var prop=wzParents[part.Parent];if(prop==null)continue;if(part.Entry>=0&&part.Entry<wzBreached.Length&&wzBreached[part.Entry])continue;if(wzBlockOut[part.Parent])continue;
                 float f=NativeWardZeroKit.Move(part,wzStates,wzOpen,wzMood,out bool hidden);if(hidden)continue;
-                var tr=prop.transform;Quaternion q=tr.rotation;Vector3 at=tr.position+q*new Vector3(part.X+part.Mx*f,part.Y+part.My*f,part.Z+part.Mz*f);
+                var tr=prop.transform;Quaternion q=tr.rotation;Vector3 at=tr.position+wzNudge[part.Parent]+q*new Vector3(part.X+part.Mx*f,part.Y+part.My*f,part.Z+part.Mz*f);
                 if(fade&&part.Fade&&MetroBetween(from,to,at,new Vector3(part.Hx+.2f,part.Hy+.2f,part.Hz+.2f)))continue;
                 NativeWardZeroKit.Drive(part,wzStates,wzOpen,wzMood,now,out float r,out float g,out float bl,out float level);var rest=blocks[part.Parent].pos;
                 WzAdd(Matrix4x4.TRS(at,q,Vector3.one),new Vector4(part.Hx,part.Hy,part.Hz,NativeBlockLooks.Chamfer),new Vector4(rest.x+part.X,rest.y+part.Y,rest.z+part.Z,0),MetroColor(r,g,bl,level),new Vector4(part.Look,1,wzSeeds[i],part.Flags));

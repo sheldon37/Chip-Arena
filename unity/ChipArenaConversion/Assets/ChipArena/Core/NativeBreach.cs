@@ -20,6 +20,10 @@ namespace ChipArena.UnityConversion
     /// solidify; at <see cref="SolidAt"/> the wall is whole again (the rules return its collision then).</item>
     /// </list>
     /// No coordinates here: the wall, the hole and the pieces come from the map's wall segment and the entry's from/exit.
+    /// The same timeline draws a Hulk's breach of an interior wall block it cannot fit past (owner 2026-10-13: "make the hulk punch
+    /// through any wall in ward zero if he cant fit"; a dynamic NativeBreachRecord, Core NativeHulkBreach): the authority removes
+    /// the whole block's collider at the break, so the hole is the whole block (<see cref="BlockWall"/>, <see cref="BuildBlock"/>),
+    /// knocked from the Hulk's side along its facing and seeded from the block id and the break (<see cref="Seed"/>).
     /// Engine free; a hole is built once per breach (its arrays), everything per frame is a pure function of time.
     /// </summary>
     public static class NativeBreach
@@ -37,6 +41,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The blows on the wall before the break (s after SpawnAt); the last is the break itself.</summary>
         public static readonly float[] Blows={.55f,1.2f,Knock};
         public static float BreakAt(float activeAt)=>activeAt-Through;
+        /// <summary>A wall-block breach's knock start (its record carries only the break: the authority starts the knock then).</summary>
+        public static float KnockAt(float breakAt)=>breakAt-Knock;
         public static float DefaultRestoreAt(float breakAt)=>breakAt+RestoreDelay;
         public static float SolidAt(float restoreAt)=>restoreAt+Rebuild;
         public enum Phase{Intact,Knock,Broken,Rebuild,Solid}
@@ -98,9 +104,39 @@ namespace ChipArena.UnityConversion
             var n=exit-from;n.Y=0;n=n.LengthSquared()>1e-6f?Vector3.Normalize(n):Vector3.UnitZ;var mid=(from+exit)*.5f;
             return new Wall(new Vector3(mid.X,floor+height*.5f,mid.Z),Vector3.Cross(Vector3.UnitY,n),n,width,height,thickness);
         }
+        /// <summary>How far before and past its punch point a Hulk's facing crosses a wall block (m): its from and exit.</summary>
+        public const float Approach=1.2f;
+        /// <summary>
+        /// The wall a Hulk knocks a whole block out of (a dynamic record, Core NativeHulkBreach): the block's centre, rotation and
+        /// full size, crossed from the Hulk's side (`point` - `normal` * <see cref="Approach"/>, `normal` its horizontal facing) to
+        /// past it, so the normal points the way the blows push the block.
+        /// </summary>
+        public static Wall BlockWall(Vector3 center,Quaternion rotation,Vector3 size,Vector3 point,Vector3 normal)=>WallOf(center,rotation,size,point-normal*Approach,point+normal*Approach);
+        /// <summary>The floor under a block (world y): the highest top of another static block whose footprint holds the block's
+        /// centre, at or below its base (a lintel's pieces fall to the floor under its door); its own base when nothing is there.</summary>
+        public static float FloorUnder(ContentBlock wall,ContentBlock[] blocks)
+        {
+            float bottom=wall.pos.y-wall.size.y*.5f,best=float.NegativeInfinity;
+            if(blocks!=null)foreach(var o in blocks)
+            {
+                if(o==null||ReferenceEquals(o,wall)||o.role!="static"||o.dynamic||string.Equals(o.id,wall.id,StringComparison.Ordinal))continue;float top=o.pos.y+o.size.y*.5f;
+                if(top>bottom+.05f||top<=best||Math.Abs(wall.pos.x-o.pos.x)>o.size.x*.5f+.02f||Math.Abs(wall.pos.z-o.pos.z)>o.size.z*.5f+.02f)continue;best=top;
+            }
+            return float.IsNegativeInfinity(best)?bottom:Math.Min(best,bottom);
+        }
+        /// <summary>A wall-block breach's seed, the same on every peer: FNV-1a over the block id's characters (a string's own hash
+        /// is randomised per process) mixed with its break time in milliseconds (a block broken again breaks differently).</summary>
+        public static uint Seed(string block,float breakAt)
+        {
+            unchecked
+            {
+                uint h=2166136261;if(block!=null)for(int i=0;i<block.Length;i++)h=(h^block[i])*16777619;
+                h^=(uint)(long)Math.Round(breakAt*1000.0)*0x9E3779B9U;h^=h>>16;h*=0x7feb352dU;h^=h>>15;h*=0x846ca68bU;h^=h>>16;return h==0?1u:h;
+            }
+        }
 
         // ---- the hole and its pieces ----
-        public const int Outline=20,MaxChunks=40;
+        public const int Outline=20,MaxChunks=40,MaxBlockChunks=96;
         /// <summary>A breach's hole in its wall (wall-local metres: x along, y up from the centre, z the normal), its broken panel
         /// mesh and its pieces' slots and flights. Built once when the breach starts; queries never allocate.</summary>
         public sealed class Hole
@@ -108,9 +144,16 @@ namespace ChipArena.UnityConversion
             public Wall Wall;public uint Seed;
             /// <summary>The hole's centre (local), half width and half height, and whether it opens onto the floor.</summary>
             public Vector2 Center;public float HalfWidth,HalfHeight;
+            /// <summary>Where the blows land (local xy; an entry's hole centre) and how far their cracks run, and the floor the pieces
+            /// land on (local y; an entry's wall foot).</summary>
+            public Vector2 Strike;public float Reach,Floor;
+            /// <summary>A whole wall block knocked out (<see cref="BuildBlock"/>): no panel is left, the pieces fill the block.</summary>
+            public bool Full;
             public readonly Vector2[] Rim=new Vector2[Outline];
-            public int Chunks;public readonly Vector3[] Slot=new Vector3[MaxChunks],Size=new Vector3[MaxChunks],Velocity=new Vector3[MaxChunks],Spin=new Vector3[MaxChunks];
-            public readonly float[] Order=new float[MaxChunks];
+            public int Chunks;public readonly Vector3[] Slot,Size,Velocity,Spin;
+            public readonly float[] Order;
+            public Hole():this(MaxChunks){}
+            public Hole(int capacity){Slot=new Vector3[capacity];Size=new Vector3[capacity];Velocity=new Vector3[capacity];Spin=new Vector3[capacity];Order=new float[capacity];}
             /// <summary>The broken panel (local): positions, normals, uvs (metres), triangles.</summary>
             public Vector3[] Positions,Normals;public Vector2[] Uvs;public int[] Triangles;
             /// <summary>The hole's radius from its centre along the unit direction (local xy).</summary>
@@ -123,6 +166,8 @@ namespace ChipArena.UnityConversion
         private static float Radius(Hole h,float angle)
         {
             float c=(float)Math.Cos(angle),s=(float)Math.Sin(angle);
+            // (A whole block's hole is its whole face.)
+            if(h.Full)return Edge(h,c,s,false);
             // The jagged outline: the rim points' radii interpolated by angle.
             float u=angle/(float)(Math.PI*2)*Outline;u-=(float)Math.Floor(u/Outline)*Outline;int i=(int)u;float f=u-i;
             var a=h.Rim[i%Outline];var b=h.Rim[(i+1)%Outline];float r=a.Length()+(b.Length()-a.Length())*f;
@@ -146,7 +191,7 @@ namespace ChipArena.UnityConversion
             var h=new Hole{Wall=wall,Seed=seed};
             float hw=Math.Min(wall.Width*.5f-.15f,radius*1.25f+.15f),hh=Math.Min(wall.Height-.2f,height*1.08f)*.5f;hw=Math.Max(.3f,hw);hh=Math.Max(.4f,hh);
             float x=Vector3.Dot(cross-wall.Center,wall.Right);x=Math.Max(-wall.Width*.5f+hw+.12f,Math.Min(wall.Width*.5f-hw-.12f,x));
-            h.Center=new Vector2(x,-wall.Height*.5f+hh*.92f);h.HalfWidth=hw;h.HalfHeight=hh;
+            h.Center=new Vector2(x,-wall.Height*.5f+hh*.92f);h.HalfWidth=hw;h.HalfHeight=hh;h.Strike=h.Center;h.Reach=Math.Max(hw,hh);h.Floor=-wall.Height*.5f;
             for(int i=0;i<Outline;i++)
             {
                 float a=(float)(Math.PI*2*i/Outline),jag=.8f+.3f*H(seed,i,1)-(i%2==1?.1f*H(seed,i,2):0);
@@ -178,7 +223,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Piece(Hole h,int k,float since,out Vector3 at,out Vector3 spin)
         {
-            var v=h.Velocity[k];var p0=h.Slot[k];float floor=-h.Wall.Height*.5f+h.Size[k].Y*.42f,t=Math.Max(0,since);
+            var v=h.Velocity[k];var p0=h.Slot[k];float floor=h.Floor+h.Size[k].Y*.42f,t=Math.Max(0,since);
             float land=Land(p0.Y,v.Y,floor);float t1=Math.Min(t,land);float y=p0.Y+v.Y*t1-.5f*Gravity*t1*t1;var flat=new Vector2(v.X,v.Z)*t1;float roll=t1;
             if(t>land)
             {
@@ -265,8 +310,63 @@ namespace ChipArena.UnityConversion
         public static bool Crack(Hole h,int i,float cracked,out Vector2 a,out Vector2 b,out float width)
         {
             a=b=Vector2.Zero;width=0;float share=(i+1f)/CrackLines;if(cracked<share*.6f)return false;
-            float ang=(float)(Math.PI*2*(i+H(h.Seed,i,30)*.6f)/CrackLines),len=(.4f+.9f*H(h.Seed,i,31))*Math.Max(h.HalfWidth,h.HalfHeight)*Sm((cracked-share*.6f)/.4f);
-            var dir=new Vector2((float)Math.Cos(ang),(float)Math.Sin(ang));a=h.Center+dir*.15f;b=a+dir*len+new Vector2(-dir.Y,dir.X)*(H(h.Seed,i,32)-.5f)*len*.3f;width=.018f+.02f*H(h.Seed,i,33);return true;
+            float ang=(float)(Math.PI*2*(i+H(h.Seed,i,30)*.6f)/CrackLines),len=(.4f+.9f*H(h.Seed,i,31))*h.Reach*Sm((cracked-share*.6f)/.4f);
+            var dir=new Vector2((float)Math.Cos(ang),(float)Math.Sin(ang));a=h.Strike+dir*.15f;b=a+dir*len+new Vector2(-dir.Y,dir.X)*(H(h.Seed,i,32)-.5f)*len*.3f;width=.018f+.02f*H(h.Seed,i,33);
+            // A whole block's cracks run out from the blow and stop at its face's edges (it has no panel round a hole to run into).
+            if(h.Full)b=a+(b-a)*Inside(h,a,b-a);
+            return true;
         }
+        // The share of the segment from `a` along `d` that stays on a whole block's face (3 cm in from its edges).
+        private static float Inside(Hole h,Vector2 a,Vector2 d)
+        {
+            float hw=h.Wall.Width*.5f-.03f,hh=h.Wall.Height*.5f-.03f,t=1;
+            if(d.X>1e-6f)t=Math.Min(t,(hw-a.X)/d.X);else if(d.X<-1e-6f)t=Math.Min(t,(-hw-a.X)/d.X);
+            if(d.Y>1e-6f)t=Math.Min(t,(hh-a.Y)/d.Y);else if(d.Y<-1e-6f)t=Math.Min(t,(-hh-a.Y)/d.Y);
+            return Math.Max(0,t);
+        }
+
+        // ---- a whole wall block (a Hulk's breach of an interior wall it cannot fit past) ----
+        /// <summary>
+        /// The hole a Hulk knocks in a wall block it cannot fit past (a dynamic record; its collider goes at once, so all of the block
+        /// goes): the hole is the block's whole face (<see cref="Hole.Full"/>; no panel is left), the blows land at `point` (world, on
+        /// the block) and crack it from there, and the pieces tile the block's whole box: courses up the face with jittered heights,
+        /// jittered joints along each (no two courses line up), a layer per cell of thickness, a cell of .45 m or more to keep within
+        /// <see cref="MaxBlockChunks"/>. They burst out along the wall's normal (the Hulk's facing, `normal` the world unit) hardest
+        /// round the blow, the far end slumping out and down, and land on `floor` (world y, <see cref="FloorUnder"/>). The restore
+        /// brings the top course home before the rebuild ends, so the whole block is whole again when its own look returns.
+        /// </summary>
+        public static Hole BuildBlock(in Wall wall,Vector3 point,Vector3 normal,float floor,uint seed)
+        {
+            var h=new Hole(MaxBlockChunks){Wall=wall,Seed=seed,Full=true};float hw=wall.Width*.5f,hh=wall.Height*.5f,ht=wall.Thickness*.5f,W=wall.Width,Hh=wall.Height,T=wall.Thickness;
+            h.Center=Vector2.Zero;h.HalfWidth=hw;h.HalfHeight=hh;h.Reach=Math.Min(Math.Max(hw,hh),2.6f);h.Floor=Math.Min(-hh,floor-wall.Center.Y);
+            var d=point-wall.Center;float inX=Math.Max(.05f,hw-.2f),inY=Math.Max(.05f,hh-.2f);
+            h.Strike=new Vector2(Math.Max(-inX,Math.Min(inX,Vector3.Dot(d,wall.Right))),Math.Max(-inY,Math.Min(inY,d.Y)));
+            for(int i=0;i<Outline;i++){float a=(float)(Math.PI*2*i/Outline),c=(float)Math.Cos(a),s=(float)Math.Sin(a);h.Rim[i]=new Vector2(c,s)*Edge(h,c,s,false);}
+            // The courses, the joints and the layers: as near 64 pieces as a .45 m cell allows, never more than the cap.
+            float cell=Math.Max(.45f,(float)Math.Sqrt(W*Hh/64f));int nx,ny,nz;
+            for(;;){nx=Math.Max(1,(int)Math.Round(W/cell));ny=Math.Max(1,(int)Math.Round(Hh/cell));nz=Math.Max(1,(int)Math.Round(T/cell));if(nx*ny*nz<=MaxBlockChunks)break;cell*=1.1f;}
+            float cw=W/nx,ch=Hh/ny,cz=T/nz,along=Vector3.Dot(normal,wall.Right);
+            for(int iy=0;iy<ny;iy++)
+            {
+                float y0=Course(seed,iy,ny,hh,ch),y1=Course(seed,iy+1,ny,hh,ch);
+                for(int iz=0;iz<nz;iz++)for(int ix=0;ix<nx;ix++)
+                {
+                    int row=iy*nz+iz;float x0=Joint(seed,row,ix,nx,hw,cw),x1=Joint(seed,row,ix+1,nx,hw,cw),z0=-ht+iz*cz,z1=iz==nz-1?ht:-ht+(iz+1)*cz;
+                    int k=h.Chunks++;float cx=(x0+x1)*.5f,cy=(y0+y1)*.5f;
+                    h.Slot[k]=new Vector3(cx,cy,(z0+z1)*.5f);h.Size[k]=new Vector3(x1-x0,y1-y0,z1-z0);
+                    // Out along the normal: hard round the blow, a slump and a topple farther off; across with an oblique facing.
+                    float dx=cx-h.Strike.X,dy=cy-h.Strike.Y,dist=(float)Math.Sqrt(dx*dx+dy*dy),near=(float)Math.Exp(-dist/2.2f),side=dist>1e-3f?dx/dist:0;
+                    float out_=1.1f+1.5f*H(seed,k,7)+4.6f*near*(.7f+.3f*H(seed,k,8));
+                    h.Velocity[k]=new Vector3(side*near*2.4f+(H(seed,k,9)-.5f)*1.2f+along*out_*.6f,.4f+2f*near*H(seed,k,10)+dy*.25f*near,out_);
+                    h.Spin[k]=new Vector3(H(seed,k,11)-.5f,H(seed,k,12)-.5f,H(seed,k,14)-.5f)*(6+10*near);
+                    h.Order[k]=(cy+hh)/Hh*.72f;
+                }
+            }
+            h.Positions=Array.Empty<Vector3>();h.Normals=Array.Empty<Vector3>();h.Uvs=Array.Empty<Vector2>();h.Triangles=Array.Empty<int>();return h;
+        }
+        // The height of course boundary `j` (0 the block's foot, n its top; the rest jittered a third of a course).
+        private static float Course(uint seed,int j,int n,float hh,float ch)=>j<=0?-hh:j>=n?hh:-hh+j*ch+(H(seed,j,40)-.5f)*ch*.35f;
+        // The joint `i` along a course's row (0 and n the block's ends; the rest jittered, so no two courses line up).
+        private static float Joint(uint seed,int row,int i,int n,float hw,float cw)=>i<=0?-hw:i>=n?hw:-hw+i*cw+(H(seed,row*131+i,41)-.5f)*cw*.6f;
     }
 }

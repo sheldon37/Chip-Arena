@@ -198,7 +198,7 @@ namespace ChipArena.UnityConversion
             {
                 var st=st0;var attack=attack0;float strike=strike0,recover=recover0;
                 float age=now-m.LastAttack;if(age<0||age>recover+.3f||entering)age=float.NaN;
-                bool breach=entering&&NativeBreach.Is(a.Entry);float breakAt=breach?NativeBreach.BreakAt(a.ActiveAt):float.NaN;
+                bool breach=entering&&NativeBreach.Is(a.Entry),knocking=false;float breakAt=breach?NativeBreach.BreakAt(a.ActiveAt):float.NaN;
                 // A door or cell walks the add in (the authority moves it from behind the opening): the gait plants its steps on that
                 // walk, the wait before it plays the zombie's waking twitch. The floor is the entry's, not the walk's raised centre.
                 if(entering){if(now<a.SpawnAt)return true;ground=NativeArena.Vec(a.Entry.@exit.Position(0)).y;}
@@ -209,6 +209,9 @@ namespace ChipArena.UnityConversion
                     HordeBreachJob(arena,a.Entry,a.SpawnAt,breakAt,NativeArena.Vec(a.Entry.from.Position(0)),NativeArena.Vec(a.Entry.@exit.Position(0)),kind,seed);
                     if(now<breakAt){attack=NativeHordeKinds.Attack.Smash;strike=.42f;recover=.6f;age=NativeBreach.KnockAge(now-a.SpawnAt,strike);}
                 }
+                // A Hulk breaking a wall block it cannot fit past (the replicated dynamic breach, by its actor): it stands at the wall
+                // and pounds it on the same take and knocks. The blows land on the wall (the breach's draw), so no slam job is made.
+                else if(!entering&&HordeWallKnock(m.Id,now,out float knockAt)){attack=NativeHordeKinds.Attack.Smash;strike=.42f;recover=.6f;age=NativeBreach.KnockAge(now-knockAt,strike);knocking=true;}
                 // A blow the authority cancelled (stagger in the wind-up) fades out at once instead of landing.
                 jawAge=age;
                 if(!float.IsNaN(age)&&s.CancelFor==m.LastAttack&&now>=s.CancelAt)age=float.NaN;
@@ -219,7 +222,7 @@ namespace ChipArena.UnityConversion
                     Crawl=a.Crawl,Possessed=a.Possessed,Lost=a.Lost,AttackAge=age,Strike=strike,Recover=recover,Attack=attack,Side=HordeSide(m.LastAttack,a.Lost),Health=m.MaxHp>0?m.Hp/m.MaxHp:1,
                     HasTarget=target!=null,Target=target!=null?ToN(target.Body.position)*inv:default,Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=(breach?breakAt:a.WalkAt)-a.SpawnAt,Roaring=!float.IsNaN(roar),RoarAge=roar};
                 s.Gait.Pose(f,minionPose,s.React);yaw=s.Gait.Yaw;pos.y=ground+NativeHordeKinds.DrawRoot(kind,a.Crawl);
-                HordeKindJob(s,m.Id,kind,attack,age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time);
+                HordeKindJob(s,m.Id,kind,attack,knocking?float.NaN:age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time);
                 if(s.Gait.Landed!=0)HordeDust(s,kind,ground,now);
                 attack0=attack;strike0=strike;
             }
@@ -649,7 +652,7 @@ namespace ChipArena.UnityConversion
         private readonly HashSet<int> hordeHulks=new HashSet<int>();
         private void HordeCues(NativeArena arena)
         {
-            if(arena?.Pve==null)return;if(arena.Generation!=hordeCueGeneration){hordeCueGeneration=arena.Generation;hordeStrides.Clear();hordeLast.Clear();hordeBreachCues.Clear();hordeHulks.Clear();}float t=arena.Time;
+            if(arena==null)return;HordeWallCues(arena);if(arena.Pve==null)return;if(arena.Generation!=hordeCueGeneration){hordeCueGeneration=arena.Generation;hordeStrides.Clear();hordeLast.Clear();hordeBreachCues.Clear();hordeHulks.Clear();}float t=arena.Time;
             foreach(var m in arena.Minions)
             {
                 var a=m.Pve;if(a==null||m.Hp<=0||a.Stats==null||a.Travelling)continue;
@@ -704,6 +707,20 @@ namespace ChipArena.UnityConversion
                 if(t>solid+1||t<pair.Value.BreakAt-10)hordeBreachDone.Add(pair.Key);
             }
             foreach(var e in hordeBreachDone)hordeBreachCues.Remove(e);
+        }
+        // A Hulk's breach of a wall block (a replicated dynamic record; PvE and the Ward sandbox alike): the blows on the wall at
+        // its punch point, the burst, the restore's hum and the block setting solid, the breach's own sounds above.
+        private void HordeWallCues(NativeArena arena)
+        {
+            if(!(arena.WardBreaches is List<NativeBreachRecord> list))return;float t=arena.Time;
+            for(int i=0;i<list.Count;i++)
+            {
+                var r=list[i];if(r==null||!r.Dynamic)continue;float knock=NativeBreach.KnockAt(r.breakAt),solid=NativeBreach.SolidAt(r.restoreAt);if(t<knock||t>solid+1)continue;var at=new Vector3(r.point.x,r.point.y,r.point.z);
+                for(int b=0;b<NativeBreach.Blows.Length-1;b++){float k=knock+NativeBreach.Blows[b];if(t>=k&&t-k<.12f&&Once("wall"+r.block+"k"+b,k)){BankPlay("structure.thud",at,.85f,0,null,false,null,.7f);BankPlay("structure.crack",at,.5f);}}
+                if(t>=r.breakAt&&t-r.breakAt<.12f&&Once("wall"+r.block+"b",r.breakAt)){BankPlay("structure.boom",at,.85f,0,null,false,null,.8f);BankPlay("structure.debris",at,.7f);}
+                if(t>=r.restoreAt&&t-r.restoreAt<.12f&&Once("wall"+r.block+"h",r.restoreAt))BankPlay("siren.reveal",at,.6f,0,null,false,null,1.2f);
+                if(t>=solid&&t-solid<.12f&&Once("wall"+r.block+"x",solid))BankPlay("structure.snap",at,.6f);
+            }
         }
     }
 }
