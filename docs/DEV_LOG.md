@@ -1,5 +1,53 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — final killcam with CoD-style slow motion (owner: "Also, id like to add a final killcam. Similar to killcam we have now, but it plays for everyone on final kill (If you are the last player dead on the round, instead of seeing your normal kill cam, you will see this one). It will replicate the slow motion on death like call of duty.")
+- Branch `claude/final-killcam`, base `8b0c130` (shared head `claude/sleepy-ritchie-g8ruhv`, PR #62). Committed on the branch only: not pushed, no PR, not merged or released. Presentation only. Design and contract: `docs/FINAL-KILLCAM.md`.
+- **Rule** (`Core/NativeFinalKillcam.Select`, run on each client at the Fight -> Result step it sees). The final kill is the latest death (`at`, then `seed`) of a pilot not on the winner's side.
+  - It must be at most 0.5 s before that Result frame, by a killer other than the victim, and not a teammate.
+  - There is no final killcam on a draw, an environmental or self death (that victim's normal killcam plays), PvE or the Siren flow, the Dev Sandbox, practice (offline Play vs Bots; `InPractice` flips it), a late joiner, under 0.5 s of history, or under 1.67 s of time.
+  - Host and guests hold the same records and see the same step, so they pick the same death.
+- **Order.** Once the final kill is decided, no normal killcam arms that round, so the last victim never sees both. A normal killcam that is playing or waiting is cut over. The final killcam uses its own scene name and plays once per round. Skip is per player: Space (living pilots too), Escape or the button.
+- **Slow motion** (`FinalKillcamCurve`). The replay clock is smooth and strictly increasing over the recorded frames:
+  - Normal-speed pre-roll, then a smoothstep ramp down to 0.25×, ending 0.15 s before the fatal hit.
+  - A hold through the hit and 0.45 s of death reaction, then a ramp back up and the aftermath.
+  - The ideal clip is 6.44 s. In today's 5 s Result it is fitted to 4.05 s: 1.3 s of pre-roll, still 0.25×, ending 0.9 s before the next phase (`Fit`).
+  - Death bodies step on the continuous replay clock and blend their last two physics steps. Blast, projectile and hand-mote particles follow the playback rate.
+  - Effects voices are pitched down (at most an octave) and the music ducks. All of this is off outside the final killcam.
+- **Presentation.**
+  - The killer's view, pulling wider and up (with +7° FOV) while slowed and turning toward the killer–victim midpoint. Reduced effects keep the FOV and halve the move.
+  - A FINAL KILLCAM broadcast frame:
+    - a title card;
+    - killer ▸ victim, the weapon and cause;
+    - a SLOW MOTION ×rate chip and a hit pulse;
+    - a timeline with the slowed stretch shaded;
+    - the ROUND/SET/MATCH WINNER outcome;
+    - a skip pill.
+  - Then a hand-off flash, under which the round result banner arrives. The broadcast frame allocates nothing per frame.
+- **Files.**
+  - New: `Core/NativeFinalKillcam.cs`, `Runtime/NativeFinalKillcamPresentation.cs`, `Runtime/NativeReplayAudio.cs`, `Runtime/NativeSlowMotionPresentation.cs`, `Runtime/NativeCorpseSmoothing.cs` (with metas), `Tests/FinalKillcamChecks.cs` and `docs/FINAL-KILLCAM.md`.
+  - Guarded hooks in `NativeReplay.cs`, `NativeDeathPresentation.cs`, `NativeKillEffectPresentation.cs`, `NativeBlastPresentation.cs`, `NativeShotPresentation.cs`, `NativeBodyChipPresentation.cs` and `NativeMatchOverlays.cs` (result age). One line in `KILLCAM-HANDOFF.md`.
+- **Animation, rules and networking impact:** none on hit timing, hitboxes, damage, cooldowns, movement, networking messages or phase durations. Result stays 5 s.
+- **Checks:**
+  - `unity-check.sh`: runtime+editor build OK.
+  - `check_relay.py`: exit 0, 621 PASS / 0 FAIL. The new `FinalKillcamChecks` (93 checks) cover selection and host/guest agreement, the curve shape (monotonic, continuous, the hold around the hit, durations), the fit (never overlaps the next phase, monotonic, history and trim limits), the dedupe and the source guards (the normal killcam is unchanged for other deaths; no rule or network change).
+  - Python unittest: 101 OK (1 skipped).
+  - `package_source.py`: OK, 1,794 files, Builds removed.
+  - Relay from a sparse `git ls-files` copy: exit 0, 621 PASS / 0 FAIL (the copy was deleted).
+  - `git diff --check 8b0c130 HEAD`: clean.
+  - Offline renders: a curve strip and HUD beats in the scratchpad. 3D replay frames were not rendered (no pilot/ragdoll harness offline).
+- **Not run:** the Unity Editor, a Windows player, a two-PC match, and listening to the slowed audio. The slowed ragdoll blend, camera framing, pitch and timing were reasoned about, not seen in-engine.
+- **Risks:**
+  - The final kill is inferred from death time against the first Result frame (0.5 s window). A lag spike over 0.5 s on a guest skips the final killcam on that guest.
+  - The fitted clip leaves only 0.9 s of round result before the next phase.
+  - The voice pitch restore assumes no other code re-pitches a playing one-shot.
+  - Practice shows no final killcam, as briefed.
+- **Astra prompt** (full text in `docs/FINAL-KILLCAM.md`):
+  - Hold Result for 8.5 s (`PhaseEnd = Time + 5 + 3.5`) when `Resolve` ends a PvP online round on the same final-kill rule: winner set, latest losing-side death ≤ 0.5 s before, killed by another non-teammate pilot. Add a `NativeMatch.FinalKillcams` flag set by the host for online rooms. Every other result keeps 5 s.
+  - Replicate `finalVictim`, `finalSeed` and `resultAt` (plus the Result length, or let clients use `phaseEnd − resultAt`) in `NativeMatchFrame`, with explicit presence and validation. Old hosts send 0.
+  - Bots need nothing, and the host's `PhaseEnd` stays authoritative.
+  - Tests: Core hold checks, a JsonUtility round trip, and a relay check that guests receive the marker.
+  - Claude then reads the marker, keeping the local rule as the fallback; the ideal clip plays automatically once `PhaseEnd` is longer.
+
 ## 2026-10-13 — Claude — build stamp in the bottom-right corner
 - Owner: "in one of the corners can we show the game version? (This way we keep track of builds)". Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), base `bfbc117`.
 - `Core/NativeBuildLabel.cs` + `Runtime/NativeBuildStamp.cs`: drawn after every screen (`ConversionGame.OnGUI`, menus, lobby, match, intros, killcam, chip selection), faint 10-unit mono under the ability cards (NativeArcadeHud.Bottom leaves 93 units) and below the menu footer: `BUILD <12-char source hash> · <UTC build time>` from the updater's installed identity, else the player folder's own `native-build.json` (any packaged build, starter-installed or not); without one, `DEV BUILD · SRC <content source commit>`. Same 12 characters as the menu footer and the update card. Presentation only; no updater, build or network change.

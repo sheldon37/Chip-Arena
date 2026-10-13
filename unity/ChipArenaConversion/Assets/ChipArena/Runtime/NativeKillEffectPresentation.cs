@@ -39,10 +39,10 @@ namespace ChipArena.UnityConversion
         /// <summary>ragdoll.ts update(): the presented part (body pose, then the stock .35 m sink and .85 shrink, and the
         /// RagdollVfx collapse; scale is about the part's own joint, as the source scales each part group).</summary>
         internal void Present(Matrix4x4 overlay,float sink,float scale){this.overlay=overlay;this.sink=sink;partScale=scale;}
-        internal Matrix4x4 PartMatrix(int part)=>overlay*Matrix4x4.Translate(new Vector3(0,-sink,0))*Parts[part].transform.localToWorldMatrix*Matrix4x4.Scale(new Vector3(partScale,partScale,partScale));
+        internal Matrix4x4 PartMatrix(int part)=>overlay*Matrix4x4.Translate(new Vector3(0,-sink,0))*Posed(part,Parts[part].transform.localToWorldMatrix)*Matrix4x4.Scale(new Vector3(partScale,partScale,partScale));
         /// <summary>The dropped weapon as its hand part is presented (ragdoll.ts keeps the held weapon's meshes in the hand
         /// part's group): the same sink, shrink and collapse, scaled about the weapon body's own origin.</summary>
-        internal Matrix4x4? PresentedWeapon=>weapon==null?(Matrix4x4?)null:overlay*Matrix4x4.Translate(new Vector3(0,-sink,0))*weapon.transform.localToWorldMatrix*Matrix4x4.Scale(new Vector3(partScale,partScale,partScale));
+        internal Matrix4x4? PresentedWeapon=>weapon==null?(Matrix4x4?)null:overlay*Matrix4x4.Translate(new Vector3(0,-sink,0))*Posed(SmoothWeapon,weapon.transform.localToWorldMatrix)*Matrix4x4.Scale(new Vector3(partScale,partScale,partScale));
         private float fxAge;
         /// <summary>The effect's age on the presentation clock (<paramref name="clockAge"/>), held so it never runs backwards
         /// or below 0.</summary>

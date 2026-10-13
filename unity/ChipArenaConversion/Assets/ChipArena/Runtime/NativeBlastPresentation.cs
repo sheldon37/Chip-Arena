@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
     // here touches the match.
     public sealed class NativeBlastPresentation : IDisposable
     {
+        /// <summary>Playback rate (ArenaPresentation.ClockRate: below 1 only in the final killcam's slow motion).</summary>
+        public float Rate=1;
         private struct Marker{public Vector3 Position;public string Tag;public float Reach;}
         private readonly NativeBlastSim sim=new NativeBlastSim();
         private readonly NativeVfxDraw vfx;private readonly bool ownsVfx;private readonly GameObject root;private readonly Light[] lights=new Light[NativeBlastSim.LightCapacity];
@@ -262,7 +264,7 @@ namespace ChipArena.UnityConversion
         {
             // A rewind (killcam, new round) clears.
             if(generation!=arena.Generation||now<lastTime-.25f){Clear();generation=arena.Generation;}
-            lastTime=Math.Max(lastTime,now);double dt=NativeBlastFrame.Step(Time.unscaledDeltaTime,paused);
+            lastTime=Math.Max(lastTime,now);double dt=NativeBlastFrame.Step(Time.unscaledDeltaTime*Rate,paused);
             world=World(arena,out physics);
             double q=Math.Max(0,Math.Min(1,quality));
             // Source renderer order: event blasts, then fields(state), then update(dt), then draw.
