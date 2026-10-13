@@ -73,9 +73,11 @@ namespace ChipArena.UnityConversion
             var m=Matrix4x4.identity;m.SetColumn(0,new Vector4(w.Right.X,w.Right.Y,w.Right.Z,0));m.SetColumn(1,new Vector4(0,1,0,0));m.SetColumn(2,new Vector4(w.Normal.X,w.Normal.Y,w.Normal.Z,0));m.SetColumn(3,new Vector4(w.Center.X,w.Center.Y,w.Center.Z,1));return m;
         }
         private static Vector3 BreachPoint(in NativeBreach.Wall w,float x,float y,float z){var p=w.ToWorld(new NVector(x,y,z));return new Vector3(p.X,p.Y,p.Z);}
-        private void HordeBreachHide(HordeBreachState b){if(b.Hidden||b.Renderers==null)return;for(int i=0;i<b.Renderers.Length;i++)if(b.Renderers[i]!=null)b.Renderers[i].enabled=false;b.Hidden=true;}
-        private void HordeBreachShow(HordeBreachState b){if(b.Hidden&&b.Renderers!=null)for(int i=0;i<b.Renderers.Length;i++)if(b.Renderers[i]!=null)b.Renderers[i].enabled=true;b.Hidden=false;}
-        private void HordeBreachRelease(HordeBreachState b){if(b.Hidden&&b.Renderers!=null)for(int i=0;i<b.Renderers.Length;i++)if(b.Renderers[i]!=null)b.Renderers[i].enabled=true;b.Hidden=false;b.Live=false;b.Entry=null;}
+        // The revamped Ward Zero draws its panels through the block dressing (renderers forced off), so each hide and show is also
+        // reported to it (NativeWardZeroPresentation.SetWardBreach; nothing happens off that map).
+        private void HordeBreachHide(HordeBreachState b){if(b.Hidden||b.Renderers==null)return;for(int i=0;i<b.Renderers.Length;i++)if(b.Renderers[i]!=null)b.Renderers[i].enabled=false;b.Hidden=true;SetWardBreach(b.Entry?.id,true);}
+        private void HordeBreachShow(HordeBreachState b){if(!b.Hidden)return;if(b.Renderers!=null)for(int i=0;i<b.Renderers.Length;i++)if(b.Renderers[i]!=null)b.Renderers[i].enabled=true;b.Hidden=false;SetWardBreach(b.Entry?.id,false);}
+        private void HordeBreachRelease(HordeBreachState b){HordeBreachShow(b);b.Live=false;b.Entry=null;}
 
         /// <summary>SourceWorld (HordeKindsEnd): the breaches' solid draws (the shuddering segment, the broken panel, the pieces).</summary>
         private void HordeBreachesDraw(float now)
