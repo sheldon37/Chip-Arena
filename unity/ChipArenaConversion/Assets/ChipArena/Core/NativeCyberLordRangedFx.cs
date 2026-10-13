@@ -91,7 +91,7 @@ namespace ChipArena.UnityConversion
                 switch(slot)
                 {
                     case CyberRangedSpec.Bolt:
-                        if(p.Live&&age>=0&&age<MuzzleLife){var at=v.BoltHand==1?le:re;float k=1-age/MuzzleLife;s.Sprite(me,at,Lin(White,3*k),me?.05f:.16f,Hot);s.Sprite(me,at,Lin(Cyan,2*k),(me?.04f:.1f)+(me?.05f:.18f)*(1-k),RingSprite);}
+                        if(v.RReleased(CyberRangedSpec.Bolt)&&p.Live&&age>=0&&age<MuzzleLife){var at=v.BoltHand==1?le:re;float k=1-age/MuzzleLife;s.Sprite(me,at,Lin(White,3*k),me?.05f:.16f,Hot);s.Sprite(me,at,Lin(Cyan,2*k),(me?.04f:.1f)+(me?.05f:.18f)*(1-k),RingSprite);}
                         break;
                     case CyberRangedSpec.Lance:
                         if(p.Live&&p.Part==0)
@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
                             // The telegraph: a thin dashed line down the aim, marching out, brighter as the lance is about to fire.
                             if(!me)Dashed(s,re,aim,CyberRangedSpec.LanceRange,time,Lin(Cyan,.5f+1.2f*p.U),.016f,reduced,seed);
                         }
-                        if(v.RAt[slot]>-90&&age>=0&&age<LanceLife)
+                        if(v.RReleased(slot)&&age>=0&&age<LanceLife)
                         {
                             float k=1-Smooth(age/LanceLife);var from=v.LanceFrom;var to=v.LanceTo;
                             if(me)
@@ -189,7 +189,7 @@ namespace ChipArena.UnityConversion
             bool reduced=q<.5f;float at=v.RAt[CyberRangedSpec.Swap],rel=v.RRelease[CyberRangedSpec.Swap],mine=v.MineAt;if(!(at>-90))return;
             var from=v.SwapFrom;var to=v.SwapTo;float age=time-rel;
             // The blink: a streak of pixels along the path (the body is already there; the host moved it).
-            if(age>=-.05f&&age<.25f&&!me)
+            if(v.RReleased(CyberRangedSpec.Swap)&&age>=-.05f&&age<.25f&&!me)
             {
                 float k=1-Smooth(Math.Max(0,age)/.25f);int n=reduced?5:low?6:12;
                 for(int i=0;i<n;i++){float t=(i+.5f)/n;var pp=Vector3.Lerp(from,to,t)+Up*(.4f+1.1f*H(seed+i,3));float z=.05f*k*(.5f+H(seed+i,5));s.Voxel(false,WeaponShape.Cube,pp,Quaternion.Identity,new Vector3(z*1.6f,z,z),Lin(i%2==0?Magenta:Cyan,2.2f));}
@@ -249,7 +249,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             float age=time-rel;
-            if(age>=0&&age<BeamLife)
+            if(v.RReleased(CyberRangedSpec.Root)&&age>=0&&age<BeamLife)
             {
                 // (Reduced effects: a softer flash.)
                 float u=age/BeamLife,k=(1-Smooth(u))*(reduced?.65f:1),w=Smooth(Math.Min(1,age/.04f))*k;var from=v.RootFrom;var to=v.RootTo;var len=Vector3.Distance(from,to);var dir=len>1e-3f?(to-from)/len:aim;

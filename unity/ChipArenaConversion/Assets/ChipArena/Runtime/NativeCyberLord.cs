@@ -9,8 +9,16 @@ namespace ChipArena.UnityConversion
     {
         private void BotCyber(NativePilot p,ref InputFrame input,Vector3 target,float distance,bool visible)
         {
-            if(!CyberAllowed(p)||!visible)return;input.Shoot=distance<=2.2f;input.Attack=input.Shoot;
+            if(!CyberAllowed(p))return;var ranged=p.Cyber.Ranged??(p.Cyber.Ranged=new NativeCyberRangedState());
+            input.Shoot=visible&&(ranged.Ranged?distance<=40:distance<=2.2f);input.Attack=input.Shoot;
             if(CyberBusy(p))return;var enemy=Pilots.FirstOrDefault(q=>q.Hp>0&&CanHit(p,q)&&Vector3.Distance(q.Body.position,target)<.1f);
+            bool Ready(int slot)=>Time>=(slot==4?p.KernelReady:ranged.Ready[slot])&&p.Mana>=CyberRangedSpec.Costs[slot]*(float)(p.Stats["resourceCost"]*(slot==4?1:p.Stats["abilityCost"]));
+            int chosen=NativeCyberRangedRules.BotSlot(distance,p.Hp/(float)p.Stats["hp"],enemy==null?1:enemy.Hp/(float)enemy.Stats["hp"],enemy!=null&&Time<enemy.BlockEnd,visible,Ready);
+            if(ranged.Ranged&&chosen==CyberRangedSpec.Swap)input.SirenAbility=3;
+            else if(Time>=ranged.ModeReady&&(ranged.Ranged?distance<5:distance>8))input.SirenAbility=5;
+            else if(ranged.Ranged){if(chosen>0)input.SirenAbility=(byte)chosen;}
+            if(input.SirenAbility>0){input.Attack=input.Shoot=input.Roll=input.AbilityQ=input.AbilityE=false;return;}
+            if(ranged.Ranged||!visible)return;
             if(distance<=NativeKernelPanicRules.Range&&p.Mana>=NativeKernelPanicRules.Mana&&Time>=p.KernelReady&&enemy!=null&&Time>=enemy.BlockEnd)input.SirenAbility=4;
             else if(p.Mana>=40&&Time>=p.Cyber.CrashReady&&Pilots.Count(q=>q.Hp>0&&CanHit(p,q)&&Vector3.Distance(q.Body.position,p.Body.position)<=4)>=2)input.SirenAbility=3;
             else if(distance<=6&&p.Mana>=15&&Time>=p.Cyber.PacketReady)input.SirenAbility=1;
@@ -27,7 +35,8 @@ namespace ChipArena.UnityConversion
         {var s=p.Cyber;p.CyberAttack=nextAttack++;s.Kind=kind;s.At=Time;s.Release=Time+windup;s.Until=Time+duration;s.Resolved=false;s.Facing=V3.Forward(p.Input.Yaw);p.Yaw=p.Input.Yaw;p.AttackAt=p.LastAttack=Time;p.AttackEnd=p.Ready=s.Until;p.MoveVelocity=Vector3.zero;Emit(EventKind.AbilityCast,p,0,p.Body.position,0,kind);}
         private void StepCyberInput(NativePilot p)
         {
-            if(!CyberAllowed(p)||CyberBusy(p))return;var i=p.Input;var s=p.Cyber;float cd=(float)p.Stats["abilityCooldown"];
+            if(!CyberAllowed(p))return;var i=p.Input;var s=p.Cyber;s.Ranged??=new NativeCyberRangedState();
+            if(i.CancelAbilities){NativeCyberRangedRules.Interrupt(s,Time);return;}if(i.SirenAbility==5){CyberSwitch(p);return;}if(CyberBusy(p))return;float cd=(float)p.Stats["abilityCooldown"];
             if(i.AbilityQ&&Time>=s.QReady&&CyberPay(p,20))
             {
                 CyberBegin(p,"data-dash",0,.2f);s.QReady=p.QReady=Time+NativeCyberRules.DashCooldown*cd;s.DashAt=Time;s.DashUntil=Time+.2f;s.TrailUntil=s.DashUntil+1.2f;
@@ -37,6 +46,7 @@ namespace ChipArena.UnityConversion
             }
             else if(i.AbilityE&&Time>=s.EReady&&CyberPay(p,35))
             {CyberBegin(p,"firewall",0,.2f);s.EReady=p.EReady=Time+12*cd;s.WallAt=Time;s.WallUntil=Time+4;s.WallYaw=p.Yaw;s.WallPoint=Vec(p.Body.position-Vector3.up*.865f+Vec(s.Facing)*.8f);p.CyberWallTick=Time+.25f;}
+            else if(s.Ranged.Ranged)CyberRangedInput(p);
             else if(i.SirenAbility==1&&Time>=s.PacketReady&&CyberPay(p,15))
             {CyberBegin(p,"packet-burst",.08f,.25f);s.PacketReady=Time+4*cd;}
             else if(i.SirenAbility==2&&Time>=s.LinkReady)
@@ -77,11 +87,12 @@ namespace ChipArena.UnityConversion
             foreach(var p in Pilots)
             {
                 var s=p.Cyber;if(!CyberAllowed(p)||p.Hp<=0||!p.Seat.connected){p.Cyber=new NativeCyberKit();continue;}
-                if(Incapacitated(p)||Time<p.BlockEnd||Time<p.RollEnd){s.Resolved=true;s.DashUntil=0;s.LinkUntil=0;s.Until=Time;p.CyberLinkTick=0;}
+                if(Incapacitated(p)||Time<p.BlockEnd||Time<p.RollEnd){NativeCyberRangedRules.Interrupt(s,Time);s.Resolved=true;s.DashUntil=0;s.LinkUntil=0;s.Until=Time;p.CyberLinkTick=0;}
                 if(!s.Resolved&&Time>=s.Release)
                 {
                     s.Resolved=true;
                     if(s.Kind.StartsWith("cyber-"))CyberArea(p,NativeCyberRules.ComboDamage[s.Combo],s.Kind,q=>NativeCyberRules.Cone(Vec(q-p.Body.position),s.Facing,2.2f,1.4f),true,NativeMeleeRules.HitStun(p.Weapon,(float)p.Stats["attackRate"]),s.Combo==2);
+                    else if(CyberRangedSpec.Slot(s.Kind)>=0)CyberRangedRelease(p,CyberRangedSpec.Slot(s.Kind));
                     else if(s.Kind=="packet-burst")CyberPackets(p);
                     else if(s.Kind=="system-crash")CyberArea(p,25,"system-crash",q=>new Vector2(q.x-s.CrashPoint.x,q.z-s.CrashPoint.z).magnitude<=4&&Math.Abs(q.y-s.CrashPoint.y)<=1.6f,stun:1);
                 }
@@ -93,6 +104,7 @@ namespace ChipArena.UnityConversion
                 var linked=Pilots.FirstOrDefault(q=>q.Seat.id==s.LinkTarget);
                 if(p.CyberLinkTick>0&&p.CyberLinkTick<=s.LinkUntil+.0001f&&(linked==null||linked.Hp<=0||!linked.Seat.connected||!CanHit(p,linked)||Vector3.Distance(p.Body.position,linked.Body.position)>15||!MeleeVisible(p.Body.position,linked.Body.position,p,linked.Collider))){s.LinkUntil=Time;p.CyberLinkTick=0;}
                 if(Time>=p.CyberLinkTick&&p.CyberLinkTick>0&&p.CyberLinkTick<=s.LinkUntil+.0001f&&linked!=null){p.CyberLinkTick+=.25f;Heal(p,CyberHit(p,linked,2,"siphon-link")*.5f);}
+                CyberRangedWorld(p);
             }
         }
         private void CyberPackets(NativePilot p)
