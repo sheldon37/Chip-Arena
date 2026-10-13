@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             k.Key(Release,stand).Root(0,.88f,0,DrawFacing).Drop(-.09f).ImpactKey();
             k.Key(2.25f,stand).Root(0,.88f,0,DrawFacing).Drop(-.06f).J(B,-.04f);
             k.Key(LowerFrom,stand).Root(0,.88f,0,DrawFacing).Drop(-.05f).J(RA,-.2f,0,-.25f).J(RE,-.6f);
-            k.Key(LowerTo,stand).Root(0,.88f,0,Facing).Drop(-.02f).J(RA,-.25f,0,-.25f).J(RE,-1.0f);
+            k.Key(LowerTo,stand).Root(0,.88f,0,Facing).Drop(-.02f).J(RA,-.16f,0,-.22f).J(RE,-.45f);
             k.Key(NameAt,NativeEntranceKeys.Hero());Keys=k;
             // The volley: a ring round the pilot (1.2 .. 2.2 m), each arrow falling steeply outward from the split overhead.
             for(int i=0;i<Volley;i++)

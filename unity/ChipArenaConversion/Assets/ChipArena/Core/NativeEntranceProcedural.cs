@@ -6,7 +6,11 @@ namespace ChipArena.UnityConversion
     // pilot can pick them in the Locker. Each keeps the standard entrance timing (4.8 s, name card 3.2 s) and lands its
     // beats on the 0.4 s grid of the sting it plays (NativeIntroRules.IntroSting). Empty hands, like every non-weapon entrance.
 
-    /// <summary>A procedural entrance: keyed poses with planted feet, a step plan and an optional root path.</summary>
+    /// <summary>
+    /// A procedural entrance: keyed poses with planted feet, a step plan and an optional root path. Each settles into the
+    /// shared hero hold under the name card (NativeEntranceKeys.Hero) with both arms loose: its last key before the card lets
+    /// the arms hang (owner 2026-10-13: the old hold lifted the right fist to the hip, the one-arm raise in every entrance).
+    /// </summary>
     public abstract class NativeProceduralEntrance:NativeEntranceScript
     {
         /// <summary>The hero facing every procedural entrance ends on.</summary>
@@ -57,7 +61,7 @@ namespace ChipArena.UnityConversion
             k.Key(1.6f,kneel(-.37f,.66f,.48f));
             k.Key(2.05f,kneel(-.35f,.6f,.12f));
             k.Key(2.35f,kneel(-.31f,.5f,-.25f)).J(C,-.12f).J(LA,.3f,0,.8f);
-            k.Key(2.9f,NativeEntranceKeys.Stand()).Root(0,.88f,0,-.22f).J(B,.04f).J(Hd,0,.1f,0).J(RA,-.3f,0,-.25f).J(RE,-1.1f).J(LA,-.1f,0,.2f).J(LE,-.3f);
+            k.Key(2.9f,NativeEntranceKeys.Stand()).Root(0,.88f,0,-.22f).J(B,.04f).J(Hd,0,.1f,0).J(RA,-.14f,0,-.2f).J(RE,-.4f).J(LA,-.1f,0,.2f).J(LE,-.3f);
             k.Key(NameAt,NativeEntranceKeys.Hero());Keys=k;
             // The fall: constant gravity from far above, so it arrives fast and decelerates into the knees.
             RootPath=(t,r)=>t<Land?new Vector3(r.X,Top-(Top-.88f)*(t/Land)*(t/Land),r.Z):r;
@@ -145,7 +149,7 @@ namespace ChipArena.UnityConversion
             k.Key(1.95f,crouch(-.3f,.25f,-.15f));
             k.Key(2.3f,stand).Root(0,.88f,-.8f,0).Drop(-.12f).J(B,.14f).J(LA,.25f,0,.15f).J(RA,-.35f,0,-.15f).J(LE,-.4f).J(RE,-.5f).PassKey();
             k.Key(2.65f,stand).Root(0,.88f,-.42f,0).Drop(-.03f).J(B,.06f).J(LA,-.3f,0,.15f).J(RA,.2f,0,-.15f).J(LE,-.5f).J(RE,-.3f).PassKey();
-            k.Key(2.98f,stand).Root(0,.88f,-.05f,-.15f).J(RA,-.3f,0,-.25f).J(RE,-1.1f).J(LA,-.1f,0,.2f).J(LE,-.3f);
+            k.Key(2.98f,stand).Root(0,.88f,-.05f,-.15f).J(RA,-.14f,0,-.2f).J(RE,-.4f).J(LA,-.1f,0,.2f).J(LE,-.3f);
             k.Key(NameAt,NativeEntranceKeys.Hero());Keys=k;
             Shots=new[]
             {
@@ -277,7 +281,7 @@ namespace ChipArena.UnityConversion
             float[] boot=NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.Yaw]=-.1f;NativeEntranceKeys.Set(v,Hd,.42f,0,0);NativeEntranceKeys.Set(v,C,.08f,0,0);NativeEntranceKeys.Set(v,LA,-.05f,0,.42f);NativeEntranceKeys.Set(v,RA,-.05f,0,-.42f);NativeEntranceKeys.Set(v,LE,-.08f,0,0);NativeEntranceKeys.Set(v,RE,-.08f,0,0);});
             k.Key(0,boot);k.Key(2.1f,boot);
             k.Key(Done,stand).Root(0,.88f,0,-.16f).Drop(-.05f).J(Hd,-.12f).J(C,-.08f).J(LA,-.2f,0,.35f).J(RA,-.2f,0,-.35f).J(LE,-.6f).J(RE,-.6f).ImpactKey();
-            k.Key(2.75f,stand).Root(0,.88f,0,-.2f).J(Hd,0,.08f,0).J(RA,-.32f,0,-.25f).J(RE,-1.2f).J(LA,-.12f,0,.2f).J(LE,-.35f);
+            k.Key(2.75f,stand).Root(0,.88f,0,-.2f).J(Hd,0,.08f,0).J(RA,-.14f,0,-.2f).J(RE,-.4f).J(LA,-.12f,0,.2f).J(LE,-.35f);
             k.Key(NameAt,NativeEntranceKeys.Hero());Keys=k;
             Shots=new[]
             {
@@ -365,7 +369,7 @@ namespace ChipArena.UnityConversion
             k.Key(0,stand).Root(0,.88f,0,-.12f).J(Hd,.12f);k.Key(1.35f,stand).Root(0,.88f,0,-.12f).J(Hd,.1f);
             k.Key(Lock,stand).Root(0,.88f,0,-.14f).J(C,-.1f).J(Hd,-.08f).J(LA,-.08f,0,.3f).J(RA,-.08f,0,-.3f).ImpactKey();
             k.Key(2.15f,stand).Root(0,.88f,0,-.18f).J(C,0,.16f,0).J(Hd,0,-.1f,0).J(LA,-.1f,0,.22f).J(RA,-.15f,0,-.2f).J(RE,-.5f);
-            k.Key(2.7f,stand).Root(0,.88f,0,-.2f).J(RA,-.32f,0,-.25f).J(RE,-1.2f).J(LA,-.12f,0,.2f).J(LE,-.35f);
+            k.Key(2.7f,stand).Root(0,.88f,0,-.2f).J(RA,-.14f,0,-.2f).J(RE,-.4f).J(LA,-.12f,0,.2f).J(LE,-.35f);
             k.Key(NameAt,NativeEntranceKeys.Hero());Keys=k;
             Shots=new[]
             {
@@ -458,7 +462,7 @@ namespace ChipArena.UnityConversion
             k.Key(.95f,kneel(.5f)).PassKey();k.Key(Slam,kneel(.55f)).ImpactKey();k.Key(1.5f,kneel(.5f));
             k.Key(1.62f,kneel(-.22f)).ImpactKey();k.Key(Second,kneel(-.18f));
             k.Key(2.55f,stand).Root(0,.88f,0,-.22f).Drop(-.08f).J(B,.08f).J(Hd,-.05f).J(RA,-.2f,0,-.3f).J(RE,-.7f).J(LA,-.15f,0,.3f).J(LE,-.5f);
-            k.Key(2.95f,stand).Root(0,.88f,0,-.22f).J(RA,-.32f,0,-.25f).J(RE,-1.2f).J(LA,-.12f,0,.2f).J(LE,-.35f);
+            k.Key(2.95f,stand).Root(0,.88f,0,-.22f).J(RA,-.14f,0,-.2f).J(RE,-.4f).J(LA,-.12f,0,.2f).J(LE,-.35f);
             k.Key(NameAt,NativeEntranceKeys.Hero());Keys=k;
             Shots=new[]
             {
@@ -534,7 +538,7 @@ namespace ChipArena.UnityConversion
             k.Key(Land,stand).Root(0,.88f,0,.1f).Drop(-.38f).J(B,.45f).J(Hd,.05f).J(LA,-.3f,0,1.15f).J(LE,-.3f).J(RA,-.55f,0,-.3f).J(RE,-.2f).ImpactKey();
             k.Key(SlideEnd,stand).Root(0,.88f,0,0).Drop(-.4f).J(B,.5f).J(Hd,-.05f).J(LA,-.3f,0,1.0f).J(LE,-.4f).J(RA,-.6f,0,-.3f).J(RE,-.2f);
             k.Key(2.1f,stand).Root(0,.88f,0,-.1f).Drop(-.3f).J(B,.35f).J(Hd,-.2f).J(LA,-.2f,0,.7f).J(RA,-.4f,0,-.4f);
-            k.Key(2.75f,stand).Root(0,.88f,0,-.2f).J(RA,-.32f,0,-.25f).J(RE,-1.2f).J(LA,-.12f,0,.2f).J(LE,-.35f);
+            k.Key(2.75f,stand).Root(0,.88f,0,-.2f).J(RA,-.14f,0,-.2f).J(RE,-.4f).J(LA,-.12f,0,.2f).J(LE,-.35f);
             k.Key(NameAt,NativeEntranceKeys.Hero());Keys=k;
             RootPath=(t,r)=>Body(t,r);
             Shots=new[]
