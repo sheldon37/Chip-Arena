@@ -180,6 +180,7 @@ namespace ChipArena.UnityConversion
             BeginKillFrame();
             foreach(var p in arena.Pilots)if(p.Death!=null)PresentDeath(arena,p.Death,true);
             foreach(var d in arena.MinionDeaths)PresentDeath(arena,d,false);
+            SyncReviveAnchors(arena);
             SawSplitPreview(arena);
             EndKillFrame();
         }

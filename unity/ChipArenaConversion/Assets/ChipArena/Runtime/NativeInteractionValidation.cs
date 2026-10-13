@@ -32,6 +32,21 @@ namespace ChipArena.UnityConversion
             Check(released.snapshot.Actors.Single(p=>p.Id==victim.Seat.id).GrabOwner==0&&guest.Local.Pose.GrabOwner==0,"released victim remained held");
             hostView.ValidateInteractionFrame(this,Time+.02f,victim.Seat.id,false,false,false,false);guestView.ValidateInteractionFrame(guest,Time+.02f,victim.Seat.id,false,false,false,false);
             Debug.Log("PASS Siren grab feedback: exact victim/times through real codec and guest application, current-frame claw anchor and animated limbs, cancellation, malformed state rejection, authority untouched");
+            // A healed, damage-resistant party member still dies at the completed catch, once.
+            victim.Hp=10;Heal(victim,(float)victim.Stats["hp"]);victim.ShieldUntil=Time+10;
+            double oldTaken=victim.Stats["damageTaken"];victim.Stats["damageTaken"]=.1;
+            owner.Siren=new NativeSirenState{Move=new NativeSirenMove{Rule=NativeSirenRules.Rule("laugh"),Caught=victim,CaughtAt=Time-3.2f,CrushAt=Time,Until=Time+.6f}};
+            victim.HeldBy=owner;StepSirenWorld();
+            Check(victim.Hp==0&&victim.Death?.style=="siren-crush"&&owner.Siren.Move.Crushed,"healed PvE victim survived completed crush");
+            var crushDeath=victim.Death;StepSirenWorld();Check(ReferenceEquals(crushDeath,victim.Death),"crush repeated death");
+            CancelSiren(owner);victim.ShieldUntil=0;victim.Stats["damageTaken"]=oldTaken;
+            Physics.SyncTransforms();var deathOrigin=victim.Death.position;
+            Check(SetReviveAnchor(victim,new Vector3(0,.4f,0)),"ragdoll floor anchor refused");
+            var reviveAt=victim.Body.position;Check(victim.Death.position==deathOrigin,"revive anchor rewrote immutable death pose");
+            Check(!SetReviveAnchor(victim,new Vector3(float.NaN,0,0))&&victim.Body.position==reviveAt,"invalid corpse anchor moved body");
+            var anchored=NativeFrameCodec.Clone(NetworkFrame());guest.ApplyFrame(anchored,victim.Seat.id);
+            Check((guest.Local.Body.position-reviveAt).sqrMagnitude<.001f&&!guest.SetReviveAnchor(guest.Local,Vector3.zero),"revive anchor replication/authority");
+            RevivePve(victim);Check(victim.Body.position==reviveAt,"revive returned to original kill location");
             int seed=300;
             foreach(string style in new[]{"impact-ragdoll","dev-gibber","siren-crush","pad"})
             {
@@ -39,7 +54,7 @@ namespace ChipArena.UnityConversion
                 var wound=style=="dev-gibber"?new NativeWound{id=1,part=CapturedRig.Head,at=Time-2,radius=.18f,severity=1,kind="sever",destroyed=true}:null;
                 var actor=victim.Pose.ViewCopy();actor.Wounds=wound==null?Array.Empty<NativeWound>():new[]{wound};
                 victim.Death=new NativeDeath{id=victim.Seat.id,seed=seed++,kept=true,model="pilot",at=Time-5,position=new Vector3(0,1,0),style=style=="pad"?"impact-ragdoll":style,actor=actor,wound=wound};
-                victim.Hp=0;victim.Seat.alive=false;RevivePve(victim,style=="pad"?(Vector3?)new Vector3(5,1,0):null);
+                victim.Hp=0;victim.Body.position=victim.Death.position;victim.Seat.alive=false;RevivePve(victim,style=="pad"?(Vector3?)new Vector3(5,1,0):null);
                 var revived=NativeFrameCodec.Clone(NetworkFrame());Check(revived.Valid(Content),"revive frame invalid: "+style);guest.ApplyFrame(revived,victim.Seat.id);guest.InterpolateReplica(1);
                 Check(guest.Local.RevivedAt==victim.RevivedAt&&guest.Local.Death?.seed==victim.Death.seed,"revive identity lost: "+style);
                 position=victim.Body.position;hp=victim.Hp;bool place=style!="pad",missing=style=="dev-gibber"||style=="siren-crush";
