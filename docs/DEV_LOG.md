@@ -1,5 +1,9 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — Final killcam timeline label follows the victim's view
+- Branch `claude/sleepy-ritchie-g8ruhv` (shared), base `b3f2f17` (PR #186 merged: every final killcam plays from the victim's view). Its broadcast frame still labelled the timeline "KILLER’S VIEW" until the hit on a credited kill while the camera showed the victim; the label is now "FINAL MOMENTS" throughout. The normal killcam's labels are unchanged. Presentation only; check added in Tests/FinalKillcamChecks.cs.
+- Checks: see the commit message. Not run: Windows build or in-game playback.
+
 ## 2026-10-13 — Astra — final killcam from the killed player's perspective
 - Owner: "Can we set the final kill to be from the perspective of the killed player? Please push and update when complete :)" Branch `codex/unity-final-killcam-victim-view`, base shared/builder `978be241`. Owner explicitly requests this camera change and publication.
 - Final replays now always select the final victim's recorded third-person camera, for the killer, victim, other pilots and spectators. Their recorded yaw/pitch remain the look direction through the slow-motion hit and aftermath; the existing midpoint framing guard already preserves a victim target's facing. Kill credit, broadcast labels, replay clock, skip, normal killcams, match rules and network fields are unchanged. No hit-timing, hitbox, damage, cooldown or movement impact.

@@ -238,7 +238,7 @@ namespace ChipArena.UnityConversion
             // Timeline in the bottom letterbox: ink to the hit, danger after it, the slowed stretch shaded gold.
             float tl=(.45f+.55f*NativeUiMotion.Progress(wall,.1f,.4f))*(1-shut),tw=Mathf.Min(520,W*.44f),tlx=(W-tw)/2,tly=H-kb/2-8,span=Mathf.Max(.001f,c.Span);
             float progress=Mathf.Clamp01((replayTime-replayStart)/span),mark=Mathf.Clamp01(c.Preroll/span),s0=Mathf.Clamp01(c.W1/span),s1=Mathf.Clamp01(c.R4/span);
-            NativeUi.Text(new Rect(tlx,tly-14,tw,12),replayBody||finalSolo?"FINAL MOMENTS":"KILLER’S VIEW",10,NativeCyberTheme.Muted(tl),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.18f);
+            NativeUi.Text(new Rect(tlx,tly-14,tw,12),"FINAL MOMENTS",10,NativeCyberTheme.Muted(tl),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.18f);
             var track=new Rect(tlx,tly+4,tw,4);NativeUi.Fill(new Rect(track.x,track.y,tw*mark,4),NativeCyberTheme.Edge(.9f*tl));NativeUi.Fill(new Rect(track.x+tw*mark,track.y,tw*(1-mark),4),NativeCyberTheme.Danger(.22f*tl));
             NativeUi.Fill(new Rect(track.x+tw*s0,track.y-4,tw*(s1-s0),12),NativeUi.A(gold,.26f*tl));NativeUi.Fill(new Rect(track.x+tw*s0,track.y+9,tw*(s1-s0),NativeHudChrome.Snap(1)),NativeUi.A(gold,.85f*tl));
             NativeUi.Fill(new Rect(track.x,track.y,tw*Mathf.Min(progress,mark),4),NativeCyberTheme.Ink(tl));if(progress>mark)NativeUi.Fill(new Rect(track.x+tw*mark,track.y,tw*(progress-mark),4),NativeCyberTheme.Danger(tl));

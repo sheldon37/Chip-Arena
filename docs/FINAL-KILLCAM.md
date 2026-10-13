@@ -94,7 +94,7 @@ The clip always ends before the next phase. Under 1.67 s available, or under 0.5
   - While slowed, the boom pulls back by up to 1.9 m and up by up to 0.45 m.
   - The FOV opens by up to 7°.
   - The look keeps the victim's facing; it does not turn toward the killer–victim midpoint.
-  - After the hit, the camera stays with the victim ("FINAL MOMENTS").
+  - After the hit, the camera stays with the victim. The timeline is labelled "FINAL MOMENTS" throughout, never the killer's view.
   - Reduced effects keep the FOV and halve the move.
 - **Broadcast frame (FINAL KILLCAM).** It is in the killcam's style, kept to the edges.
   - **Letterbox and frame:** a taller letterbox with gold rules, squeezing slightly while slowed. A vignette, and the killer's colour on the frame edge.

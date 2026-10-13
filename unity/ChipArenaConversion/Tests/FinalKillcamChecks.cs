@@ -178,6 +178,9 @@ internal static class FinalKillcamChecks
         // The broadcast frame draws without per-frame allocation: no string building, no array or delegate creation.
         string hud=Body(final,"private void FinalKillcamHud()");
         Check(!hud.Contains("ToString(")&&!Regex.IsMatch(hud,"\"\\s*\\+|\\+\\s*\"")&&!hud.Contains("new[]")&&!hud.Contains("=>")&&!hud.Contains("string."),"broadcast frame allocation free");
+        // The camera follows the victim throughout (owner: "from the perspective of the killed player"), so the timeline never
+        // names the killer's view.
+        Check(hud.Contains("\"FINAL MOMENTS\"")&&!hud.Contains("KILLER"),"timeline labels the victim's view");
         Check(hud.Contains("\"FINAL KILLCAM\"")&&hud.Contains("finalKillerName")&&hud.Contains("finalVictimName")&&hud.Contains("finalHow")&&hud.Contains("finalWinnerName")&&hud.Contains("\"Space\""),"title, killer and victim, cause, outcome and skip");
         // The host holds a qualifying Result for the whole clip (PR #178); every other Result still lasts 5 s.
         Check(match.Contains("PhaseEnd=Time+5+(FinalVictim!=0?FinalKillcamHold:0)"),"host-controlled final kill result hold");
