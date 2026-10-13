@@ -9,6 +9,19 @@ namespace ChipArena.UnityConversion
         public static NativeCutStair[] Flights(ContentMap map)=>(map.ramps??Array.Empty<MapRamp>()).Select(r=>
             new NativeCutStair{Id=r.id,Low=r.low,High=r.high,Width=r.width,Bottom=r.bottom,Landing=r.low,
                 Steps=r.blocks.Select(id=>map.blocks.Single(b=>b.id==id)).ToArray()}).ToArray();
+#if UNITY_EDITOR || ARENA_VALIDATE || ARENA_TESTS
+        // Build-gate waypoints: the atrium landing exits sideways, before its end guardrail.
+        public static V3[] TraversalFinish(NativeCutStair r,bool down,V3 lateral)
+        {
+            var end=down?r.Low:r.High;var direction=r.Direction*(down?-1:1);
+            if(!down&&(r.Id=="siren-stair-atrium-e"||r.Id=="siren-stair-atrium-w"))
+            {
+                var turn=end+direction*.6f;
+                return new[]{end+lateral,turn,turn+new V3(r.High.x>0?3:-3,0,0)};
+            }
+            return new[]{end+lateral,end+lateral+direction*2};
+        }
+#endif
         public static void Validate(ContentMap map)
         {
             void Need(bool ok,string why){if(!ok)throw new InvalidOperationException("Map ramps "+map.id+": "+why);}
