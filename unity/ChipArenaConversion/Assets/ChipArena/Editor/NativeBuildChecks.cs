@@ -119,9 +119,11 @@ namespace ChipArena.UnityConversion.Editor
                     throw new InvalidOperationException("NativeAccount declares an invalid Unity Start callback");
             NativeSourceModels.ValidateTextureImports();
             var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new Exception("Missing native GameContent asset");
-            var data=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(data);CheckLegacyMapDefaults(data);
+            var data=JsonUtility.FromJson<ConversionContent>(asset.text);
             var fixtures=JsonUtility.FromJson<ParityFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/source-parity.json")));
+            // Validate the pinned export before UnityMaps replaces legacy Ward Zero (siren).
             foreach(var test in NativeParityChecks.Run(data,fixtures))Debug.Log("PASS "+test);
+            NativeUnityMapLoader.Load(data);CheckLegacyMapDefaults(data);
             var presentation=JsonUtility.FromJson<PresentationFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/presentation-parity.json")));
             var melee=JsonUtility.FromJson<MeleeFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/melee-parity.json")));
             var specials=JsonUtility.FromJson<SpecialFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/specials-parity.json")));
@@ -209,6 +211,7 @@ namespace ChipArena.UnityConversion.Editor
                         }
                         if(map.id=="factory"||map.id=="cybercity")arena.ValidateStageHazardRuntime();
                         if(map.id=="cybercity")arena.ValidateCyberCityExits();
+                        if(map.look=="quarantine"){arena.ValidateWardSimulation();arena.ValidateWardTraversal();}
                         if(map.id=="brickfall"){arena.ValidateCorpsePhysics();arena.ValidateBrickfallRuntime();CheckBrickfallReplica(arena);}
                         if(map.id=="siren")arena.ValidatePveEconomy(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");

@@ -178,7 +178,7 @@ namespace ChipArena.UnityConversion
                 // Diving into a vent: it throws itself forward into the shaft on the zombie take (hidden after .9 s).
                 if(now-a.DiveAt>=.9f)return true;NativeHordeGait.Dive(minionPose,kind,seed,now-a.DiveAt);s.Gait.Reset();
             }
-            else if(entering&&a.Entry.kind=="vent")
+            else if(entering&&a.Entry.kind=="vent"&&a.Entry.surface!="ceiling"&&a.Entry.surface!="wall")
             {
                 // Climbing out of a vent: the body where the authority's climb has it (exit plus NativeEntryRules.Climb, turned to
                 // the add's facing), clawing up to the rim, hauling over it and standing on the zombie take.
@@ -186,7 +186,7 @@ namespace ChipArena.UnityConversion
                 var standing=NativeArena.Vec(a.Entry.@exit.Position(.9f));pos=standing+Quaternion.Euler(0,yaw,0)*new Vector3(0,climb.y,climb.z);ground=standing.y-.9f;
                 NativeHordeGait.VentClimb(minionPose,kind,seed,tau,new NVector(0,climb.y+(.9f-NativeHordeKinds.RootHeight(real,false)),climb.z)/sc);s.Gait.Reset();
             }
-            else if(entering&&NativeHordeDrop.Is(a.Entry))
+            else if(entering&&(NativeHordeDrop.Is(a.Entry)||a.Entry.surface=="ceiling"))
             {
                 // The heavy kinds' jump-down (Core/NativeHordeDrop, on the kind's profile): the spot telegraphed, the leap, the fall, the slam.
                 if(now<a.SpawnAt)return true;var profile=NativeHordeDrop.Profile(kind);float height=NativeHordeDrop.HeightOf(a.Entry,profile);var land=NativeArena.Vec(a.Entry.@exit.Position(0));
@@ -491,7 +491,7 @@ namespace ChipArena.UnityConversion
             foreach(int id in hordeDeadStale)hordeDead.Remove(id);
             HordePartsDraw(now);
             if(MinionGallery)HordeGallery(arena);else if(galleryRigs[0]!=null)ClearHordeGallery();
-            HordeBreachesDraw(now);HordeJoltsDraw(now);
+            HordeBreachFrames(arena);HordeBreachesDraw(now);HordeJoltsDraw(now);
         }
         /// <summary>A horde add's death with its kind (false: an add this presentation never drew; the bank death plays).</summary>
         private bool HordeKindDeath(NativeDeath death,CapturedAnimation.Player rig,float age)

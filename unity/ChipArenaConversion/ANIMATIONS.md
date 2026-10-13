@@ -227,3 +227,30 @@ and every signature without a track keep their baked clip. `Tests/PackIntroCheck
 feet, floor, grips, blade and staff clearance, the hit, the detail shots' framing (muzzle or casting hand in frame and in
 view, the pilot under 40% of the frame), allocation and the unchanged daggers. Presentation only: the match sees only the
 style and its 4.8 s phase; no hit timing, hitbox, damage, cooldown, movement or network change.
+
+Entrance holds (2026-10-13; owner: "why do we do that little one arm movement up in each intro? That seems to be a legacy
+motion"): the raise was the shared hero hold `NativeEntranceKeys.Hero`, a port of the Electron neon-drop entrance's last
+key (the right fist lifted to the hip, the elbow bent 1.28 rad), which every procedural entrance (Orbital Drop, Grid Rez,
+Holo Projection, Blackout, Skyline Zip, Hero Landing, Overclock) and the Bow's Arrowfall keyed on the 3.2 s name card, six
+of them with a pre-card key (2.7-2.98 s) already lifting that forearm. The hold now hangs both arms loose (the right as
+the left, elbows -.35 rad) and those keys and Arrowfall's lowering key let the arm come down; the chest turn, chin and
+facing are unchanged. The four staff schools (Cinder Crown, Tidal Serpent, Thunderstep, Eventide Gate) closed on the
+pack's two-handed 2Hand-Staff Idle while the staff rides the left hand alone, so the right fist rose into an empty grip in
+front of the chest under the card; it now eases down to hang over 2.85-3.35 s (`NativePackIntro.Rest`, a joint slerp to
+the hold's loose arm), the staff hand and body still the clip's. Every other entrance (Flash Draw's salute, Colossus
+Oath, Bastion Drop, Deadeye, Longwatch, Belt Rattle, Twin Phantom, the Hardlight Boot) keeps its own clip. Timing marks,
+cameras and effects are unchanged. `Tests/IntroHoldChecks.cs` pins the hold, the hang and the timing marks.
+
+Sheldon Intro (reworked 2026-10-13; owner: "utilize an animation fitting for the "Sheldon Idle" glitchy, psycho
+entrance"): the figure is the Sheldon Idle (`CyberLordIdlePose.Stand`, seed 128, on the socket) from first frame to last,
+on a glitching idle clock (`NativeSheldonIntroScript.IdleTime`): frozen on one calm idle frame through the rez-in (the
+head hanging limp, chin on the chest, the frame skipping a little on each glitch tick), thrown back on the .51 s slam and
+dropped dead still (torn sideways on glitch steps), the head snapped up into a cocked stare on the .86 s jolt; it moves in
+the black gap, so the projection returns on 1.21 s in another spot, its idle overclocked 2.5x in 8 Hz stop motion and
+skipping place on the rise and the swell's peak; on the 2.38 s resolve it snaps back onto the socket in the frozen frame,
+deadly still; the 2.85 s downbeat breaks it with a snapped head tilt and a shoulder hitch and the idle starts to run, the
+3.32 s build snaps the head the other way, and it eases back so that from 3.79 s the pose is exactly the Sheldon Idle on
+a continuous clock (its own head jerk lands on the 4.26 s flare; its split ghosts as in the match). The hand on the hood
+and the breathing stare are gone; beats, music key, duration, name card and the glitch pass are unchanged. Reduced
+effects: softer, slower snaps, no stop motion, skipping or tearing. `Tests/SheldonIntroChecks.cs` checks the frame match
+from the hand-off, the stillness, the snaps, the projection and scrub determinism.

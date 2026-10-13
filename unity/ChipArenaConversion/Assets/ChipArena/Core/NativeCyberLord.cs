@@ -174,8 +174,8 @@ namespace ChipArena.UnityConversion
             v.Clear();if(!Handles(a))return false;v.Id=a.Id;v.Alive=a.Alive;v.Feet=a.Position;v.Yaw=a.Yaw;
             // Kernel Panic: Astra's state, on both participants; the caster's own cast only (a victim's copy belongs to its caster).
             var kp=a.Kernel;bool own=kp!=null&&kp.Id>0&&kp.Caster==a.Id;if(own)Kernel(kp,v);float k=own?kp.At:-100;
-            RangedMode(a,v);
-            var s=a.Cyber;if(s==null)return true;
+            var s=a.Cyber;RangedMode(a,v,s?.Ranged);
+            if(s==null)return true;
             v.Ready[CyberLordSpec.Q]=s.QReady;v.Ready[CyberLordSpec.E]=s.EReady;v.Ready[CyberLordSpec.One]=s.PacketReady;v.Ready[CyberLordSpec.Two]=s.LinkReady;v.Ready[CyberLordSpec.Three]=s.CrashReady;
             // The kit keeps one window, the current or last cast's (Kind, At, Release, Until); the host's reset kit is all zeros.
             string kind=s.Kind??"";bool cast=kind.Length>0&&s.At>0&&s.Until>=s.At;float end=cast?CastEnd(a,s,k):-100;bool cut=cast&&Cut(a,s);
@@ -224,8 +224,17 @@ namespace ChipArena.UnityConversion
         public static ICyberRangedSource RangedSource;
         /// <summary>The ranged mode into the view: the record's, else the actor's mode fields (Actor.SourceRanged / SourceModeAt,
         /// the Siren's mode on the wire today; the contract has the host set them for the Cyber Lord too).</summary>
-        private static void RangedMode(Actor a,CyberLordView v)
+        private static void RangedMode(Actor a,CyberLordView v,NativeCyberRangedState state)
         {
+            if(state!=null)
+            {
+                v.Ranged=state.Ranged;v.ModeAt=state.ModeAt;v.ModeReady=state.ModeReady;v.BoltHand=state.BoltHand;
+                for(int i=0;i<CyberRangedSpec.Slots;i++)
+                {float at=state.At[i],until=Math.Max(at,state.Until[i]);v.RAt[i]=at;v.RUntil[i]=until;v.RRelease[i]=Math.Max(at,Math.Min(state.Release[i],until));v.RReady[i]=state.Ready[i];bool cut=until<at+CyberRangedSpec.Seconds[i]*.5f-Eps&&i!=0;v.RRecover[i]=at>-90?until+(cut?0:CyberRangedSpec.Settle[i]):-100;}
+                Vector3 V(V3 p)=>new Vector3(p.x,p.y,p.z);
+                v.LanceFrom=V(state.LanceFrom);v.LanceTo=V(state.LanceTo);v.FieldFrom=V(state.FieldFrom);v.FieldPoint=V(state.FieldPoint);v.FieldLand=state.FieldLand;v.FieldUntil=state.FieldUntil;
+                v.SwapFrom=V(state.SwapFrom);v.SwapTo=V(state.SwapTo);v.MineAt=state.MineAt;v.RootFrom=V(state.RootFrom);v.RootTo=V(state.RootTo);return;
+            }
             var r=RangedSource?.Of(a.Id);
             if(r==null){v.Ranged=a.SourceRanged;v.ModeAt=a.SourceModeAt;v.ModeReady=a.SourceModeAt>-90?a.SourceModeAt+CyberRangedSpec.SwitchCooldown:-100;return;}
             v.Ranged=r.Ranged;v.ModeAt=r.ModeAt;v.ModeReady=r.ModeReady;v.BoltHand=r.BoltHand;

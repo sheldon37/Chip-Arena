@@ -262,6 +262,19 @@ internal static class CyberLordRangedChecks
             Check(viewDraws>0,"first person draws its own emitter effects on the view layer ("+viewDraws+")");
         }
         {
+            // Authority cuts end at Release == Until. They must not draw a phantom release at the cut.
+            CyberLordFeed.RangedSource=null;
+            foreach(int slot in new[]{CyberRangedSpec.Bolt,CyberRangedSpec.Lance,CyberRangedSpec.Swap,CyberRangedSpec.Root})
+            {
+                var a=CyberLordFixture.Pilot(23,Vector3.Zero,0);var sc=new Scene();sc.List.Add(a);
+                a.Cyber=new NativeCyberKit{Ranged=new NativeCyberRangedState{Ranged=true}};float mana=100;
+                NativeCyberRangedRules.Begin(a.Cyber,slot,10,ref mana,1,1,1);float cut=10+CyberRangedSpec.Windup[slot]*.5f;NativeCyberRules.Interrupt(a.Cyber,cut);
+                var sink=new Sink();new NativeCyberLordFx().Draw(sink,sc,cut+.01f,1,false);int stopped=sink.Count;
+                a.Cyber=new NativeCyberKit{Ranged=new NativeCyberRangedState{Ranged=true}};sink.Reset();new NativeCyberLordFx().Draw(sink,sc,cut+.01f,1,false);
+                Check(stopped==sink.Count,"no phantom release effects after authority cut, slot "+slot);
+            }
+        }
+        {
             // The sprint's streaks: in and out with the replicated flag's ease, none in the pilot's own first person.
             var a=CyberLordFixture.Pilot(22,Vector3.Zero,0);var fx=new NativeCyberLordFx();var fxMe=new NativeCyberLordFx();var sc=new Scene();sc.List.Add(a);var me=new Scene{ViewerId=22,LocalId=22};me.List.Add(a);
             var sink=new Sink();var sinkMe=new Sink();CyberLordFeed.RangedSource=null;int onFrames=0,fadeFrames=0,selfStreaks=0;

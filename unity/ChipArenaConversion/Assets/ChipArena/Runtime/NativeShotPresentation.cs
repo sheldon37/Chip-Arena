@@ -102,6 +102,8 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeShotPresentation : IDisposable
     {
+        /// <summary>Playback rate (ArenaPresentation.ClockRate: below 1 only in the final killcam's slow motion).</summary>
+        public float Rate=1;
         private sealed class Layer
         {
             public readonly Mesh Mesh=new Mesh{indexFormat=IndexFormat.UInt32};public readonly Material Material;
@@ -162,7 +164,7 @@ namespace ChipArena.UnityConversion
         {
             if(arena!=last||generation!=arena.Generation||now<lastTime-.25f){Clear();last=arena;generation=arena.Generation;}
             if(tracker==null){tracker=own;own.Begin(arena,arena.Generation,arena.Replica,arena.Time);}
-            lastTime=Math.Max(lastTime,now);double dt=NativeBlastFrame.Step(Time.unscaledDeltaTime,paused);
+            lastTime=Math.Max(lastTime,now);double dt=NativeBlastFrame.Step(Time.unscaledDeltaTime*Rate,paused);
             // The darkness pulse and tail wobble follow the source's state.time: the match clock on the host, the
             // interpolated snapshot time (this clock) on a replica.
             scene.Begin(now,arena.Replica?now:arena.Time,dt,Math.Max(0,quality));

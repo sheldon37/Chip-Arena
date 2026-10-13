@@ -339,9 +339,19 @@ Please give the DEV Cyber Lord (`cyberlord`) one air jump exactly like the dagge
 ## Ranged mode (key 5)
 
 Owner (2026-10-13): "Give cyber lord a 2nd set of abilities for a "Ranged" mode. So, new 1-4 if they switch to ranged :)[We can
-set this to the 5 hotkey to switch)". Status: the design and the presentation are on `claude/cyberlord-ranged`. The rules are
-Astra's and pending (the prompt is below). Until they land, the Dev Sandbox's "Preview Cyber Ranged" loops the whole set on
-your own Cyber Lord.
+set this to the 5 hotkey to switch)". Design/presentation: `claude/cyberlord-ranged`. Authority implementation:
+`codex/cyber-ranged-simulation` (2026-10-13), based on shared `762cffd5`; merge/build status is in DEV_LOG.
+
+Implementation agreement: keep CyberRangedSpec's IDs, numbers, windows and authored presentation. The wire record is
+`NativeCyberKit.Ranged` (`NativeCyberRangedState`), with the contract's fields and Unity-serializable `V3` vectors;
+`CyberLordFeed.RangedMode` maps it to the existing view, reading Actor.Cyber once. A present authority record wins over the
+old sandbox preview. Actor.SourceRanged/SourceModeAt are also written, and key 5 is an edge-only SirenAbility value.
+Standard damage/resource/ability modifiers apply; Root keeps its 75-damage cap (37.5 when blocked), uses Kernel's
+resource-only mana multiplier and unscaled shared ultimate clock, including Kernel's whiff refund. The field must find
+walkable ground; a throw into a void creates no field. Its slow refreshes per authority tick and clears after leaving.
+Presentation integration gates released bolt/lance/blink/beam effects after an interrupt and replaces the obsolete
+sandbox preview button with the live key-5 instruction; no art, sound, pose, icon, kit number or effect styling changes. Native collisions, real JsonUtility/guest application and input locks
+are covered by a new build gate, but require the Unity builder; managed checks alone do not establish those results.
 
 ### The kit (proposed numbers, `Core/CyberLordRanged.cs` `CyberRangedSpec`)
 
