@@ -104,6 +104,7 @@ namespace ChipArena.UnityConversion
                     var c=NativeVfxDraw.Linear(d.Ink?(shade<.6f?NativeBloodRules.InkDrop:NativeBloodRules.InkDeep):shade<.6f?NativeBloodRules.DropColor:NativeBloodRules.DropDeep);c.a=.92f;
                     vfx.Blood(new Vector3(d.Position.X,d.Position.Y,d.Position.Z),new Vector3(d.Velocity.X,d.Velocity.Y,d.Velocity.Z),c,d.Size,d.Seed&0xffff);
                 }
+                BisectSparks(now);
             }
             DrawSplats(camera,now);
         }

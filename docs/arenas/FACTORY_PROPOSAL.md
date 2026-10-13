@@ -265,6 +265,7 @@ The Factory is a steel plant: its shell, walls, columns, roofs, machines and the
   - the ladle's hoops, trunnions and lip, its car's wheels; floor paint (aisle lines, joints, drains);
   - hazard fittings: slot voids, edge plates, danger lines and striped ends; rail-saw tracks, braces and striped wall slots; vent grates; tunnel borders; numbered, hatched crane zones.
 - **Hazard rigs** (`Core/NativeFactoryRig.cs`): sixteen-tooth blades (four turned square plates on a hub), the rail-saw carriages with guard hoods and motors, the rams with stripes and guide rods, the crane (end trucks with wheels, two box girders, walkway, hanging cab, trolley with hoist, motor and beacon, ropes, hook block, slings, the three-beam bundle with straps and sway) and every lamp.
+- **Saw deaths** (presentation only): a pilot a saw kills is split in two along the blade's plane through the pelvis, with sealed caps, sparks, blood and a bloodied blade; gore off keeps the current death. See `docs/BISECT-GIB.md`.
 - **Landmarks:**
   - the crane;
   - the ladle;

@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
                     else{colors[i]=new Color(r,g,b,a);emission.Add(e);}
                 }
                 var mesh=new Mesh{name=model.id+NativeHatLooks.TintSuffix+" / joint "+s.bone,indexFormat=count>65535?IndexFormat.UInt32:IndexFormat.UInt16};mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=uv;mesh.SetUVs(1,emission);mesh.triangles=s.indices;mesh.RecalculateBounds();mesh.UploadMeshData(true);
-                twins.Add(new Part{Name=source.Name,Bone=source.Bone,Mesh=mesh,Material=source.Material});
+                twins.Add(new Part{Name=source.Name,Bone=source.Bone,Mesh=mesh,Material=source.Material,Core=CoreOf(vertices,normals,colors,emission,s.indices),Open=source.Open});
             }
             models[model.id+NativeHatLooks.TintSuffix]=twins.ToArray();
         }
@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
                 var t=new int[s.Indices.Count];for(int i=0;i+2<t.Length;i+=3){t[i]=s.Indices[i];t[i+1]=s.Indices[i+2];t[i+2]=s.Indices[i+1];}
                 var mesh=new Mesh{name="hat-sheldon-head / "+s.Part};mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=new Vector2[n];mesh.SetUVs(1,emission);mesh.triangles=t;mesh.RecalculateBounds();mesh.UploadMeshData(true);
                 var material=new Material(s.Transparent?clear:lit){enableInstancing=true,name="Sheldon Head "+s.Part};material.SetInt("_Cull",s.DoubleSide?0:2);material.SetFloat("_Ink",0);if(s.Transparent)material.SetFloat("_Unlit",1);materials.Add(material);
-                var part=new Part{Name=s.Part,Bone=s.Bone,Mesh=mesh,Material=material,NoShadow=s.Transparent||NativeSheldonHead.Animated(p)&&p!=NativeSheldonHead.Ring};
+                var part=new Part{Name=s.Part,Bone=s.Bone,Mesh=mesh,Material=material,NoShadow=s.Transparent||NativeSheldonHead.Animated(p)&&p!=NativeSheldonHead.Ring,Core=CoreOf(vertices,normals,colors,emission,t),Open=s.Transparent||s.DoubleSide};
                 sheldonParts[p]=part;all.Add(part);if(!NativeSheldonHead.Animated(p))shell.Add(part);
             }
             models["hat-"+NativeSheldonHead.Hat]=all.ToArray();models[SheldonLive]=shell.ToArray();

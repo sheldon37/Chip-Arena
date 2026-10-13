@@ -15,6 +15,8 @@ namespace ChipArena.UnityConversion
         // Copies live only in the cosmetic scene; corpses never obstruct players, bullets or other bodies.
         private bool RefreshWorld(float age)
         {
+            // A bisected body's second half lives in its first half's scene, whose copies serve both.
+            if(Host!=null)return false;
             if(age<worldAt+NativeCorpseRules.WorldRefreshSeconds)return false;worldAt=age;
             bool changed=false;seenObstacles.Clear();float radius2=NativeCorpseRules.WorldRadius*NativeCorpseRules.WorldRadius;
             foreach(var prop in arena.AllBlocks)
@@ -42,7 +44,7 @@ namespace ChipArena.UnityConversion
         private void WakeRetained(float age)
         {
             // First sight of an old death still has a bounded ten-second catch-up.
-            if(!stepped)return;
+            if(!stepped)return;Twin?.Thaw(age);
             if(frozen)
             {
                 foreach(var pair in Parts)if(pair.Key!=CrushPart)pair.Value.isKinematic=false;

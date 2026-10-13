@@ -16,7 +16,10 @@ namespace ChipArena.UnityConversion
     // Source-authored geometry is converted once at build time. Batches are shared across all actors using that model.
     public sealed partial class NativeSourceModels:IDisposable
     {
-        private sealed class Part {public string Name;public int Bone;public Mesh Mesh;public Material Material;public bool NoShadow;}
+        private sealed class Part {public string Name;public int Bone;public Mesh Mesh;public Material Material;public bool NoShadow;
+            /// <summary>The mesh's Core arrays as uploaded (pilot bodies, their wound cuts and hats: what a bisect cuts), its closed
+            /// stand-in for a cut's cap (a wound cut's unwounded part), and whether its section is never capped (glass, flat cloth).</summary>
+            public WeaponSection Core,Fill;public bool Open;}
         private sealed class Draws {public Part Part;public int Layer;public Camera Camera;public readonly List<Matrix4x4> Matrices=new List<Matrix4x4>();public readonly List<Vector4> Bodies=new List<Vector4>(),Accents=new List<Vector4>(),Tints=new List<Vector4>(),Glows=new List<Vector4>();}
         private readonly Dictionary<string,Part[]> models=new Dictionary<string,Part[]>();private readonly Dictionary<(Part,int),Draws> draws=new Dictionary<(Part,int),Draws>();
         private readonly List<Texture2D> textures=new List<Texture2D>();private readonly List<Material> materials=new List<Material>();private readonly Matrix4x4[] buffer=new Matrix4x4[512];private readonly Vector4[] bodies=new Vector4[512],accents=new Vector4[512],tints=new Vector4[512],glows=new Vector4[512];private readonly MaterialPropertyBlock properties=new MaterialPropertyBlock();
@@ -82,7 +85,7 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i<count;i++){vertices[i]=new Vector3(s.positions[i*3],s.positions[i*3+1],s.positions[i*3+2]);normals[i]=new Vector3(s.normals[i*3],s.normals[i*3+1],s.normals[i*3+2]);colors[i]=new Color(s.colors[i*4],s.colors[i*4+1],s.colors[i*4+2],s.colors[i*4+3]);emission.Add(new Vector4(s.emission[i*4],s.emission[i*4+1],s.emission[i*4+2],s.emission[i*4+3]));uv[i]=new Vector2(s.uv[i*2],s.uv[i*2+1]);}
                     var mesh=new Mesh{name=model.id+" / joint "+s.bone,indexFormat=count>65535?IndexFormat.UInt32:IndexFormat.UInt16};mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=uv;mesh.SetUVs(1,emission);mesh.triangles=s.indices;mesh.RecalculateBounds();mesh.UploadMeshData(true);
                     var shader=Resources.Load<Shader>(s.transparent?"NativeSourceTransparent":"NativeSourceLit");if(shader==null)throw new InvalidOperationException("Source material shader is missing");var material=new Material(shader){enableInstancing=true};material.SetInt("_Cull",s.doubleSide?0:2);material.SetFloat("_Ink",s.ink?1:0);
-                    if(s.texture>=0){material.mainTexture=textures[s.texture];var repeat=data.textures[s.texture].repeat;material.mainTextureScale=new Vector2(repeat[0],repeat[1]);}materials.Add(material);parts.Add(new Part{Name=s.part,Bone=s.bone,Mesh=mesh,Material=material});
+                    if(s.texture>=0){material.mainTexture=textures[s.texture];var repeat=data.textures[s.texture].repeat;material.mainTextureScale=new Vector2(repeat[0],repeat[1]);}materials.Add(material);parts.Add(new Part{Name=s.part,Bone=s.bone,Mesh=mesh,Material=material,Core=Banked(model.id)?CoreOf(s):null,Open=s.transparent||s.doubleSide});
                 }ArmorLights(model,parts);models.Add(model.id,parts.ToArray());HatTwin(model,parts);
             }
             SplitSirenPieces(data);HordeMaterials();WeaponSkins();SheldonModels();PilotBodies();BowModels();HordeKindModels();
@@ -112,6 +115,6 @@ namespace ChipArena.UnityConversion
                 if(!drawn)for(int i=0;i<count;i++){properties.Clear();properties.SetVector("_BodyTint",bodies[i]);properties.SetVector("_AccentTint",accents[i]);properties.SetVector("_SceneTint",tints[i]);properties.SetVector("_GlowTint",glows[i]);properties.SetFloat(StageLitId,Stage?1:0);Graphics.DrawMesh(d.Part.Mesh,buffer[i],d.Part.Material,d.Layer,d.Camera,0,properties,d.Layer==10||d.Part.NoShadow?ShadowCastingMode.Off:ShadowCastingMode.On,true);}
             }
         }
-        public void Dispose(){ClearWounds();DisposePieces();foreach(var mesh in models.Values.SelectMany(p=>p).Select(p=>p.Mesh).Distinct())CapturedAnimation.Release(mesh);foreach(var m in materials)CapturedAnimation.Release(m);foreach(var t in textures)CapturedAnimation.Release(t);models.Clear();draws.Clear();}
+        public void Dispose(){ClearWounds();ClearBisects();DisposePieces();foreach(var mesh in models.Values.SelectMany(p=>p).Select(p=>p.Mesh).Distinct())CapturedAnimation.Release(mesh);foreach(var m in materials)CapturedAnimation.Release(m);foreach(var t in textures)CapturedAnimation.Release(t);models.Clear();draws.Clear();}
     }
 }

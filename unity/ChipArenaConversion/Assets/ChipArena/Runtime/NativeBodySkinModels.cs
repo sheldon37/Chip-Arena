@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
                 for(int tier=0;tier<NativeBodySkins.Tiers;tier++)
                 {
                     var built=tier==NativeBodySkins.Full?full:NativeBodyModels.Build(skin,tier);var parts=new List<Part>();string id=NativeBodySkins.Model(skin,tier);
-                    for(int i=0;i<built.Parts.Length;i++){var p=built.Parts[i];var mesh=BodyMesh(p.Mesh,id+" / "+p.Name+" / joint "+p.Bone);if(mesh!=null)parts.Add(new Part{Name=p.Name,Bone=p.Bone,Mesh=mesh,Material=materials[i]});}
+                    for(int i=0;i<built.Parts.Length;i++){var p=built.Parts[i];var mesh=BodyMesh(p.Mesh,id+" / "+p.Name+" / joint "+p.Bone);if(mesh!=null)parts.Add(new Part{Name=p.Name,Bone=p.Bone,Mesh=mesh,Material=materials[i],Core=p.Mesh});}
                     models[id]=parts.ToArray();pilotBodies[id]=built;PilotBodyTriangles[id]=built.Triangles;PilotBodyModels++;
                 }
             }

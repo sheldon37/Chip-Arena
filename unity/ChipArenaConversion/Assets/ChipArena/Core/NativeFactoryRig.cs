@@ -63,13 +63,15 @@ namespace ChipArena.UnityConversion
             }
         }
 
-        /// <summary>Poses every hazard at hazard clock `clock` in round `round` into <see cref="Parts"/>.</summary>
-        public void Build(FactoryHazard[] hazards,int round,double clock)
+        /// <summary>Poses every hazard at hazard clock `clock` in round `round` into <see cref="Parts"/>. `blood`: each hazard's
+        /// last kill (the hazard clock a saw cut a pilot this round, NaN none; the presentation's Core NativeSawBisect): that
+        /// blade carries blood from then on (null: none).</summary>
+        public void Build(FactoryHazard[] hazards,int round,double clock,double[] blood=null)
         {
-            Parts.Clear();if(hazards==null)return;
-            foreach(var h in hazards)
+            Parts.Clear();clockNow=clock;if(hazards==null)return;
+            for(int i=0;i<hazards.Length;i++)
             {
-                if(h==null)continue;var st=NativeFactoryHazards.State(h,round,clock);
+                var h=hazards[i];if(h==null)continue;var st=NativeFactoryHazards.State(h,round,clock);kill=blood!=null&&i<blood.Length?blood[i]:double.NaN;
                 switch(h.kind)
                 {
                     case NativeFactoryHazards.SawSlot:Slot(h,st,clock);break;case NativeFactoryHazards.SawRail:Rail(h,st,clock);break;
@@ -84,7 +86,26 @@ namespace ChipArena.UnityConversion
             FactoryQ basis=alongX?FactoryQ.Axis(0,1,0,Math.PI/2):FactoryQ.Identity;
             for(int k=0;k<4;k++)w.Add(cx,cy,cz,half,half,t,basis*FactoryQ.Axis(0,0,1,spin+k*Math.PI/8),NativeFactoryKit.Blade,shadow,-1,1,h.a.x,h.a.y,h.a.z);
             for(int k=0;k<2;k++)w.Add(cx,cy,cz,.17,.17,t+.02,basis*FactoryQ.Axis(0,0,1,spin+k*Math.PI/4),NativeFactoryKit.Hub,shadow,-1,1,h.a.x,h.a.y,h.a.z);
+            Smears(h,cx,cy,cz,spin,t,alongX,basis);
         }
+        private double kill=double.NaN,clockNow;
+        /// <summary>Wet blood fresh off a cut darkening as it dries (sRGB), and how long it takes (s).</summary>
+        public const int BloodWet=0x7a0912,BloodDry=0x34060a;public const double BloodDries=24;
+        /// <summary>
+        /// A blade that has cut a pilot this round keeps the blood (owner 2026-10-12, the saw split): seven smears over both
+        /// faces at hashed radii, turning with the blade, wet at the kill and drying dark. Nothing before the kill.
+        /// </summary>
+        private void Smears(FactoryHazard h,double cx,double cy,double cz,double spin,double t,bool alongX,FactoryQ basis)
+        {
+            if(double.IsNaN(kill)||!(clockNow>=kill))return;double dry=Math.Min(1,(clockNow-kill)/BloodDries);int col=Mix(BloodWet,BloodDry,dry);
+            for(int k=0;k<7;k++)
+            {
+                double f=((k*0x9e3779b1u)>>8&0xffff)/65536.0,r=h.radius*(.32+.56*f),a=spin+k*2.39996,len=.05+.09*(((k*0x85ebca77u)>>8&0xffff)/65536.0);
+                double u=r*Math.Cos(a),v=r*Math.Sin(a),x=alongX?0:u,z=alongX?-u:0;
+                Parts.Add(cx+x,cy+v,cz+z,len,.014+.01*f,t+.004,basis*FactoryQ.Axis(0,0,1,a),NativeFactoryKit.Red,false,col);
+            }
+        }
+        private static int Mix(int a,int b,double t){int C(int s)=>(int)Math.Round(((a>>s)&255)+(((b>>s)&255)-((a>>s)&255))*t);return C(16)<<16|C(8)<<8|C(0);}
         private void Slot(FactoryHazard h,in FactoryHazardState st,double clock)
         {
             var w=Parts;if(st.Lift>0)Blade(h,st.Center.x,st.Center.y,st.Center.z,st.Spin,true);

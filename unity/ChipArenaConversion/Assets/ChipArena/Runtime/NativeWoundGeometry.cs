@@ -50,6 +50,8 @@ namespace ChipArena.UnityConversion
                     var owned=new List<Part>();
                     foreach(var group in carved.Groups){var d=group.Part;var template=models[NativeBodySkins.PrototypeModel].FirstOrDefault(p=>p.Name==d.name);if(template==null)throw new InvalidOperationException("Wound part absent from source mesh: "+d.name);owned.Add(CarveMesh(d,group.Solids,template.Material));}
                     carved.Owned=owned.ToArray();
+                    // Their Core arrays for a bisect (NativeBisectModels.CarveCore: the same boxes in Core).
+                    for(int i=0;i<carved.Owned.Length;i++)carved.Owned[i].Core=CarveCore(carved.Groups[i].Part,carved.Groups[i].Solids);
                 }
                 var list=models[basis].Where(p=>!carved.Replaced.Contains(p.Name)).ToList();list.AddRange(carved.Owned);parts=list.ToArray();
             }
@@ -84,7 +86,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in NativeWoundSkin.Cut(body,groups,look))
             {
                 var source=Base(m.Part>=0?m.Part:m.Material);if(source==null)continue;var mesh=BodyMesh(m.Mesh,basis+" / wounded "+m.Name+" / joint "+m.Bone);
-                var part=mesh==null?null:new Part{Name=m.Part>=0?source.Name:m.Name,Bone=m.Bone,Mesh=mesh,Material=source.Material,NoShadow=source.NoShadow};if(part!=null)cut.Owned.Add(part);
+                var part=mesh==null?null:new Part{Name=m.Part>=0?source.Name:m.Name,Bone=m.Bone,Mesh=mesh,Material=source.Material,NoShadow=source.NoShadow,Core=m.Mesh,Fill=m.Part>=0?body.Parts[m.Part].Mesh:null};if(part!=null)cut.Owned.Add(part);
                 if(m.Part>=0)cut.Replaced[source]=part;else if(part!=null)cut.Extra.Add(part);
             }
             return cut;

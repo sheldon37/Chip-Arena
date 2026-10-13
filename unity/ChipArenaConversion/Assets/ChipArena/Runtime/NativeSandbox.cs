@@ -70,6 +70,8 @@ namespace ChipArena.UnityConversion
             if(GUILayout.Button(presentation.MinionGallery?"Hide Siren Minions":"Preview Siren Minions",button)){presentation.MinionGallery=!presentation.MinionGallery;menu=false;}
             // The Cyber Lord's second-jump boost (NativeCyberLordPresentation.cs): shown on your own jumps until the rules grant the air jump.
             if(GUILayout.Button(presentation.CyberBoostPreviewOn?"Hide Cyber Double Jump":"Preview Cyber Double Jump",button)){presentation.CyberBoostPreviewOn=!presentation.CyberBoostPreviewOn;menu=false;}
+            // The saw split (NativeBisectPresentation.cs): a stand-in of you split by a phantom blade on a loop, presentation only.
+            if(GUILayout.Button(presentation.SawSplitGallery?"Hide Saw Split":"Preview Saw Split",button)){presentation.SawSplitGallery=!presentation.SawSplitGallery;menu=false;}
             GUILayout.EndHorizontal();previewRarity=ChoiceGrid(previewRarities,previewRarity,previewRarityNames);
             Field("Debris launcher");debrisMass=Mathf.Round(Slider("Mass (kg)",debrisMass,1,150));debrisSpeed=Mathf.Round(Slider("Speed (m/s)",debrisSpeed,1,100));
             debrisMaterial=ChoiceGrid(new[]{"wood","stone","metal"},debrisMaterial);debrisImpact=ChoiceGrid(new[]{"face","edge","corner"},debrisImpact);
