@@ -1,5 +1,14 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — Ward Zero PvE machine frame rejection
+- Branch `codex/interaction-held-frame-fix`, base shared/builder `762cffd584fd77187a8e1fb103f5bdc29e267430`; owner reports `Interaction feedback: held frame invalid`.
+- Root cause found in source/data: ConfigurePve inserts eight machine bodies into Props, but their definitions belong to PveContent rather than UnityMaps. The newly authored Ward Zero enables strict map-prop validation, which rejects those eight IDs. The first held-frame gate encounters the general PvE frame defect.
+- Mark those fixed, indestructible machines as local fixtures, omit them from host prop frames and preserve them during guest prop reconciliation. Both peers still build their collision from PveContent. Keep strict frame validation, carried-prop behavior, destructible props and machine-use replication unchanged. No combat timing, damage, cooldown, animation, account or save changes.
+- Extend the real-Unity gate with pre-grab frame validation, machine omission, repeated guest collision/position/uniqueness checks, and rejection of an injected out-of-map machine prop. Managed Ward checks reproduce the disjoint map/machine IDs and guard both ends of the exclusion.
+- Verification: fresh direct SDK Roslyn Core/Tests + relay compilation passed; 101 Python tests OK (one skip); source-package check passed (1,797 files); diff check clean. Full check_relay.py exited 0 with 621 PASS lines, including real WebSocket/UDP/TCP checks; Ward simulation now 155 checks.
+- Unity Editor/PhysX and Windows build unavailable in this environment; new native gates and successful packaging require the desktop builder. No compiled release claimed.
+- Initial push was blocked by automatic approval review; owner explicitly approved push and merge on 2026-10-13. Proceeding with task PR, shared-branch merge and builder synchronization after the checks above. Compiled test-channel publication remains dependent on a successful Windows build.
+
 ## 2026-10-13 — Astra — validate pinned inventory before Ward Zero replacement
 - Branch `codex/native-inventory-fix`, base shared/build `f6ed52c1`; owner failure on `18a94436`: `Content inventory differs from pinned source` in NativeParityChecks immediately after legacy-map defaults.
 - Cause: the Editor merged UnityMaps before source parity. Ward Zero now replaces legacy `siren`, leaving 14 legacy maps / 3,379 blocks rather than the pinned export's 15 / 3,451. Managed parity tests used the raw export, hiding the Editor ordering mismatch.
