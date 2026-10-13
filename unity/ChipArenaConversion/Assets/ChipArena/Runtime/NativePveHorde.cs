@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed class NativePveAdd
     {
-        public PveAddStats Stats;public PveEntry Entry;public int Lost,Side=1;public float ActiveAt,ExposedAt,SpawnAt,ThinkAt,RecoverAt,StaggerAt,DamageScale,HpScale,PossessedAt,SlowUntil,SlowFactor=1,LastDamage=-100,VentReady,WalkAt,DiveAt,VentUntil;public bool Landed,Struck=true,Possessed,Crawl,Limp,First=true,Travelling;public float HideThinkAt;public Vector3 HideDestination;public Vector3 External;public NativePilot Target;public NativeMinion KillerSummon;public NativePilot LastHit;
+        public NativeHulkBreach.Progress WallProgress;public NativeBreachRecord WallBreach;public PveAddStats Stats;public PveEntry Entry;public int Lost,Side=1;public float ActiveAt,ExposedAt,SpawnAt,ThinkAt,RecoverAt,StaggerAt,DamageScale,HpScale,PossessedAt,SlowUntil,SlowFactor=1,LastDamage=-100,VentReady,WalkAt,DiveAt,VentUntil;public bool Landed,Struck=true,Possessed,Crawl,Limp,First=true,Travelling;public float HideThinkAt;public Vector3 HideDestination;public Vector3 External;public NativePilot Target;public NativeMinion KillerSummon;public NativePilot LastHit;
         public readonly Dictionary<int,float> Dealt=new Dictionary<int,float>();public readonly Dictionary<int,float> Parts=new Dictionary<int,float>();
     }
     public sealed partial class NativeArena
@@ -107,10 +107,11 @@ namespace ChipArena.UnityConversion
                 {
                     a.ThinkAt=Time+.75f;target=enemies.Where(p=>!a.Possessed||!p.Seat.bot).OrderBy(p=>pveNavigation.Distance(at,p.Body.position,p.Seat.id)+3*Math.Max(0,adds.Count(q=>q.Pve.Target==p)-6)-(a.Target==p?2:0)-(v.Recruits.Any(r=>r.Pilot==p&&r.Role=="tank")&&Vector3.Distance(p.Body.position,at)<8?6:0)).FirstOrDefault();a.Target=target;if(target!=null&&TryVentTravel(m,target))continue;
                 }
+                if(target!=null&&StepHulkBreach(m,target.Body.position)){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}
                 if(!a.Struck&&Time>=m.StrikeAt){a.Struck=true;PveAddStrike(m);if(m.Hp<=0)continue;}
                 if(target==null){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}Vector3 d=target.Body.position-at;float distance=new Vector2(d.x,d.z).magnitude;
                 bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,start=a.Crawl?1:armless?.95f:a.Stats.startRange,hit=a.Crawl||armless?.34f:a.Stats.hit;
-                if(a.Struck&&!a.Possessed&&Time>=a.RecoverAt&&Time>=a.StaggerAt&&distance<=start&&Math.Abs(d.y)<1.6f)
+                if(a.Struck&&!a.Possessed&&Time>=a.RecoverAt&&Time>=a.StaggerAt&&distance<=start&&Math.Abs(d.y)<1.6f&&(a.Stats.id!="hulk"||MeleeVisible(at,target.Body.position,m.Owner,target.Collider,true)))
                 {m.LastAttack=Time;m.StrikeAt=Time+hit;a.Struck=false;a.RecoverAt=Time+Math.Max(a.Stats.cycle,hit+.05f);a.Side=-a.Side;if(a.Side==1&&right)a.Side=-1;else if(a.Side==-1&&left)a.Side=1;m.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;}
                 Vector3 move=Vector3.zero;
                 if(Time<a.StaggerAt){}
@@ -136,6 +137,7 @@ namespace ChipArena.UnityConversion
                     Vector3 dir=hideSpot&&(destination-navAt).magnitude<1?Vector3.zero:
                         Map.unity?StructureNavMove(m.Id,navAt,destination,(destination-navAt).normalized,hideSpot||adds.Length<12?(int?)null:target.Seat.id):
                         pveNavigation.Direction(at,destination,target.Seat.id);
+                    if(a.WallBreach!=null&&Time>=a.WallBreach.breakAt&&Time<a.WallBreach.breakAt+3f)dir=Vec(a.WallBreach.normal);
                     if(hiding)
                     {
                         if(!hideSpot){float age=Time-a.PossessedAt;if(age%6>=5.2f||distance>=8&&distance<=14)dir=Vector3.zero;else if(distance<8)dir=-dir;}

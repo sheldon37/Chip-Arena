@@ -30,7 +30,7 @@ Dockerfile.
 ## Verify before configuring players
 
 1. `https://<actual-service-host>/health` must return service
-   `chip-arena-native-relay`, `protocol: 6` and `roomCodeLength: 6`.
+   `chip-arena-native-relay`, `protocol: 7` and `roomCodeLength: 6`.
 2. From this Unity project directory, run:
 
    ```sh

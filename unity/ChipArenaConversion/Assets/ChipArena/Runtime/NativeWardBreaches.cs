@@ -17,10 +17,21 @@ namespace ChipArena.UnityConversion
         private void StepWardSandbox()
         {
             if(!SandboxAllowed||Pve!=null)return;
-            foreach(var m in Minions.Where(m=>m.Pve!=null))
-            {if(Time<m.Pve.ActiveAt)WardEntryPose(m);else if(m.Body.isKinematic){m.Body.isKinematic=false;m.Collider.enabled=true;}}
+            foreach(var m in Minions)
+            {
+                if(m.Pve==null||m.Hp<=0)continue;
+                if(Time<m.Pve.ActiveAt){WardEntryPose(m);continue;}
+                if(m.Body.isKinematic){m.Body.isKinematic=false;m.Collider.enabled=true;m.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;}
+                if(m.Pve.Stats.id!="hulk"||Local==null||Local.Hp<=0)continue;
+                var at=m.Body.position;var target=Local.Body.position;var delta=target-at;delta.y=0;
+                var dir=WardHulkDirection(m,target,delta.normalized);
+                var move=delta.magnitude>m.Pve.Stats.startRange?dir*m.Pve.Stats.run:Vector3.zero;
+                if(StepHulkBreach(m,target)||!SupportedStageMove(WardNavPosition(m),move))move=Vector3.zero;
+                if(move.sqrMagnitude>.001f)m.Yaw=Mathf.Atan2(move.x,move.z)*Mathf.Rad2Deg;
+                m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);
+            }
         }
-        private readonly List<NativeBreachRecord> wardBreaches=new List<NativeBreachRecord>();
+        private readonly List<NativeBreachRecord> wardBreaches=new List<NativeBreachRecord>(64);
         public IEnumerable<NativeBreachRecord> WardBreaches=>wardBreaches;
         private void NameWardPanels()
         {
@@ -35,19 +46,82 @@ namespace ChipArena.UnityConversion
             float broken=NativeBreach.BreakAt(active);
             wardBreaches.Add(new NativeBreachRecord{entry=e.e,breakAt=broken,restoreAt=NativeBreach.DefaultRestoreAt(broken)});
         }
+        private int wardBreachRevision;
+        private NativePropBody WardBlock(string id)
+        {foreach(var p in StaticBlocks)if(p.Definition.id==id)return p;return null;}
+        private ContentBlock BreachBlock(NativeBreachRecord b)
+        {
+            if(b.Dynamic)return WardBlock(b.block)?.Definition;
+            foreach(var e in StageContent.entries)if(e.e==b.entry&&e.kind=="breach")return WardBlock(e.block)?.Definition;
+            return null;
+        }
+        private bool BreachOccupied(ContentBlock wall)
+        {
+            foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&NativeStageHazards.Touch(Vec(p.Body.position),wall.pos,wall.size,p.Collider.radius,p.Collider.height/2))return true;
+            foreach(var m in Minions)if(m.Hp>0&&NativeStageHazards.Touch(Vec(m.Body.position),wall.pos,wall.size,m.Collider.radius,m.Collider.height/2))return true;
+            return false;
+        }
         private void PoseWardBreaches()
         {
             if(Map.look!="quarantine")return;
             foreach(var b in wardBreaches)
             {
-                var e=StageContent.entries.FirstOrDefault(e=>e.e==b.entry&&e.kind=="breach");if(e==null)continue;
-                var prop=StaticBlocks.FirstOrDefault(p=>p.Definition.id==e.block);if(prop==null)continue;
-                bool Overlap()=>Pilots.Any(p=>p.Hp>0&&p.Seat.connected&&NativeStageHazards.Touch(Vec(p.Body.position),e.center,e.size))||
-                    Minions.Any(m=>m.Hp>0&&NativeStageHazards.Touch(Vec(m.Body.position),e.center,e.size,m.Collider.radius,m.Collider.height/2));
-                // Extend before rebuilding and again at solidity: no capsule can be sealed into the panel.
-                if(!Replica&&Time>=b.restoreAt&&Time<NativeBreach.SolidAt(b.restoreAt)+1f/60&&Overlap())b.restoreAt=Math.Max(b.restoreAt+.5f,Time+.5f);
-                prop.GetComponent<Collider>().enabled=Time<b.breakAt||Time>=NativeBreach.SolidAt(b.restoreAt);
+                var wall=BreachBlock(b);if(wall==null)continue;var collider=WardBlock(wall.id).GetComponent<Collider>();
+                // Only open colliders extend: a long-expired intact record must not reopen on approach.
+                if(!Replica&&!collider.enabled)NativeHulkBreach.HoldOpen(b,Time,BreachOccupied(wall));
+                bool solid=NativeHulkBreach.Solid(b,Time);
+                if(collider.enabled!=solid){collider.enabled=solid;wardBreachRevision++;}
             }
+        }
+        private void ApplyWardBreaches(NativeBreachRecord[] records)
+        {
+            // Replay can jump backwards, or omit an expired record: restore old collision before applying.
+            foreach(var b in wardBreaches){var wall=BreachBlock(b);if(wall!=null)WardBlock(wall.id).GetComponent<Collider>().enabled=true;}
+            wardBreaches.Clear();if(records!=null)foreach(var b in records)wardBreaches.Add(b.ViewCopy());
+            PoseWardBreaches();
+        }
+        private Vector3 WardNavPosition(NativeMinion m)=>Vec(NativeNavSearch.BodyAnchor(Vec(m.Body.position),m.Collider.height/2));
+        private Vector3 WardHulkDirection(NativeMinion m,Vector3 target,Vector3 fallback)
+        {
+            // Nav nodes are pilot-centre positions. A 3.06 m Hulk stands .63 m higher.
+            var breach=m.Pve.WallBreach;
+            if(breach!=null&&Time>=breach.breakAt&&Time<breach.breakAt+3f)return Vec(breach.normal);
+            var navAt=WardNavPosition(m);
+            return StructureNavMove(m.Id,navAt,target,fallback);
+        }
+        private bool StepHulkBreach(NativeMinion m,Vector3 target)
+        {
+            var a=m.Pve;
+            if(Replica||Map.id!="siren"||a.Stats.id!="hulk"||a.Crawl||Time<a.ActiveAt)return false;
+            if(a.WallBreach!=null&&Time<a.WallBreach.breakAt)
+            {m.Yaw=Mathf.Atan2(a.WallBreach.normal.x,a.WallBreach.normal.z)*Mathf.Rad2Deg;return true;}
+            // Traverse the opened block even when the authored graph had no link through solid wall.
+            // Normal floor/hazard support and PhysX still constrain this short local steering leg.
+            if(a.WallBreach!=null&&Time<a.WallBreach.breakAt+3f)return false;
+            a.WallBreach=null;
+            if(Time<a.StaggerAt||Time<a.RecoverAt||!a.Struck){a.WallProgress.tracking=false;return false;}
+            var at=m.Body.position;var waypoint=target;
+            if(navRoutes.TryGetValue(m.Id,out var route)&&route.path.Count>0&&route.step<route.path.Count)
+                waypoint=Vec(navNodes[route.path[route.step]].pos);
+            // The destination remains useful when the point-sized graph has no route through the blockage.
+            var delta=waypoint-at;delta.y=0;if(delta.sqrMagnitude<.04f){waypoint=target;delta=target-at;delta.y=0;}
+            NativePropBody chosen=null;Vector3 point=Vector3.zero;float nearest=float.MaxValue;
+            foreach(var prop in StaticBlocks)
+            {
+                if(!NativeHulkBreach.Eligible(Map,prop.Definition)||!prop.GetComponent<Collider>().enabled)continue;
+                if(!NativeHulkBreach.Blocks(prop.Definition,Vec(at),Vec(waypoint),m.Collider.radius,m.Collider.height,out float distance,out var hit)||distance>=nearest)continue;
+                chosen=prop;nearest=distance;point=Vec(hit);
+            }
+            if(!a.WallProgress.Step(Vec(at),Time,chosen!=null))return false;
+            foreach(var b in wardBreaches)if(b.Dynamic&&b.block==chosen.Definition.id&&Time<NativeBreach.SolidAt(b.restoreAt))
+            {a.WallBreach=b;return Time<b.breakAt;}
+            // Bounded record count. Expired records are reusable; active entry breaches are never evicted.
+            for(int i=wardBreaches.Count-1;i>=0;i--)if(wardBreaches[i].Dynamic&&Time>=NativeBreach.SolidAt(wardBreaches[i].restoreAt))wardBreaches.RemoveAt(i);
+            int reserved=0;foreach(var e in StageContent.entries)if(e.kind=="breach")reserved++;
+            if(wardBreaches.Count>=64-reserved)return false;
+            a.WallBreach=NativeHulkBreach.Begin(chosen.Definition,m.Id,Vec(point),Vec(delta),Time);
+            wardBreaches.Add(a.WallBreach);a.WallProgress.tracking=false;
+            m.Yaw=Mathf.Atan2(delta.x,delta.z)*Mathf.Rad2Deg;return true;
         }
     }
 }

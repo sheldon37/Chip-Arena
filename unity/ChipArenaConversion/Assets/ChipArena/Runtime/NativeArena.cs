@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
         private void DestroyScene()
         {
             if(root!=null){foreach(var c in root.GetComponentsInChildren<Collider>())c.enabled=false;CapturedAnimation.Release(root);}
-            wardBreaches.Clear();wardSandboxState=null;ClearCutExitCollision();stageLoads.Clear();frameProps.Clear();Pilots.Clear();Props.Clear();StaticBlocks.Clear();ResetStructureRuntime();Bullets.Clear();Events.Clear();hazardHits.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();abilityEchoes.Clear();MeleeShots.Clear();MeleeImpacts.Clear();meleeFissures.Clear();meleeCarries.Clear();procLedger.Clear();chipCooldowns.Clear();ChipFields.Clear();Minions.Clear();FighterEchoes.Clear();StormTrails.Clear();LeetFields.Clear();originalInputs.Clear();SirenFields.Clear();sirenFieldAt=0;
+            wardBreaches.Clear();wardBreachRevision=0;wardSandboxState=null;ClearCutExitCollision();stageLoads.Clear();frameProps.Clear();Pilots.Clear();Props.Clear();StaticBlocks.Clear();ResetStructureRuntime();Bullets.Clear();Events.Clear();hazardHits.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();abilityEchoes.Clear();MeleeShots.Clear();MeleeImpacts.Clear();meleeFissures.Clear();meleeCarries.Clear();procLedger.Clear();chipCooldowns.Clear();ChipFields.Clear();Minions.Clear();FighterEchoes.Clear();StormTrails.Clear();LeetFields.Clear();originalInputs.Clear();SirenFields.Clear();sirenFieldAt=0;
         }
         public void Reset()
         {

@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         {
             int count=0;
             void Check(bool ok,string why){count++;if(!ok)throw new Exception("Ward simulation: "+why);}
-            var options=new JsonSerializerOptions{IncludeFields=true};
+            var options=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};
             T Read<T>(string name)=>JsonSerializer.Deserialize<T>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources",name)),options);
             var content=Read<ConversionContent>("GameContent.json");var old=content.maps.Single(m=>m.id=="siren");
             var parity=JsonSerializer.Deserialize<ParityFixtures>(File.ReadAllText(Path.Combine(root,"Tests/source-parity.json")),options);
