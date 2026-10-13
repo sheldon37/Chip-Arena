@@ -45,6 +45,45 @@ namespace ChipArena.UnityConversion
             c.State="READY";c.Ready=true;c.Dial=1;return c;
         }
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
+
+        // ---- the ranged mode (Core/CyberLordRanged.cs): the 1-4 cards swap sets, and a key-5 card shows the live set ----
+        /// <summary>Whether the drawer shows the ranged set (the mode's weight past half: the cards swap mid-switch).</summary>
+        public static bool ShowsRanged(CyberLordView v,float time)=>v.ModeWeight(time)>=.5f;
+        /// <summary>The ranged 1-4 cards in drawer order (CyberRangedSpec slots), their labels, and the key-5 card's labels.</summary>
+        public static readonly int[] RangedOrder={CyberRangedSpec.Lance,CyberRangedSpec.Field,CyberRangedSpec.Swap,CyberRangedSpec.Root};
+        public static readonly string[] RangedLabels=BuildRanged();
+        private static string[] BuildRanged(){var l=new string[CyberRangedSpec.Slots];for(int i=0;i<l.Length;i++)l[i]=CyberRangedSpec.Keys[i]+" · "+CyberRangedSpec.Names[i].ToUpperInvariant();return l;}
+        public const string RangedMode="5 · RANGED",MeleeMode="5 · MELEE";
+        /// <summary>A ranged slot's ready time: the view's replicated one, else the cast plus its cooldown; Root Access also waits
+        /// for the shared ultimate clock (Kernel Panic's: `kernelReady`, the pilot frame's, else the view's).</summary>
+        public static float RangedReadyAt(CyberLordView v,int slot,float kernelReady=float.NaN,float time=float.PositiveInfinity)
+        {
+            // (A cast the record holds after `time`, on a rewound clock, has not happened yet.)
+            float ready=v.RAt[slot]>-90&&time<v.RAt[slot]?-100:v.RReady[slot]>-90?v.RReady[slot]:v.RAt[slot]>-90?v.RAt[slot]+CyberRangedSpec.Cooldowns[slot]:-100;
+            if(slot==CyberRangedSpec.Root)ready=Math.Max(ready,kernelReady>0?kernelReady:ReadyAt(v,CyberLordSpec.Four));
+            return ready;
+        }
+        /// <summary>One ranged card at `time` for a pilot with `mana` (the states as Of: ACTIVE through the cast, the field's life
+        /// and the mine's fuse; CHARGE through Root Access's charge).</summary>
+        public static Card RangedOf(CyberLordView v,int slot,float time,float mana,float kernelReady=float.NaN)
+        {
+            var c=new Card{Key=CyberRangedSpec.Keys[slot],Name=CyberRangedSpec.Names[slot],Icon=CyberRangedSpec.Icons[slot]};float cost=CyberRangedSpec.Costs[slot];
+            var p=v.RPhase(slot,time);float ready=RangedReadyAt(v,slot,kernelReady,time),left=ready-time,span=CyberRangedSpec.Cooldowns[slot];
+            if(slot==CyberRangedSpec.Root&&p.Live&&p.Part==0){c.State="CHARGE";c.Active=true;c.Dial=p.U;return c;}
+            if(p.Live&&p.Part<2||slot==CyberRangedSpec.Field&&time>=v.FieldLand&&time<v.FieldUntil||slot==CyberRangedSpec.Swap&&time>=v.RRelease[slot]&&time<v.MineAt){c.State="ACTIVE";c.Active=true;c.Dial=span>0?1-Clamp01(left/span):1;return c;}
+            if(left>0){c.State=Time(left);c.Dial=span>0?1-Clamp01(left/span):1;c.Low=mana<cost;return c;}
+            if(mana<cost){c.State="LOW MANA";c.Low=true;c.Dial=1;return c;}
+            c.State="READY";c.Ready=true;c.Dial=1;return c;
+        }
+        /// <summary>The key-5 card: the live set (RANGED or MELEE, its icon), SWITCHING through the reconfiguration, then the
+        /// switch's cooldown, then READY.</summary>
+        public static Card ModeOf(CyberLordView v,float time)
+        {
+            bool ranged=ShowsRanged(v,time);var c=new Card{Key=CyberRangedSpec.ModeKey,Name=ranged?"Ranged":"Melee",Icon=ranged?CyberRangedSpec.ModeIcon:CyberRangedSpec.MeleeIcon};
+            float sw=v.SwitchU(time);if(sw>=0){c.State="SWITCHING";c.Active=true;c.Dial=sw;return c;}
+            float left=v.ModeAt>-90&&time<v.ModeAt?0:v.ModeReady-time;if(left>0){c.State=Time(left);c.Dial=1-Clamp01(left/CyberRangedSpec.SwitchCooldown);return c;}
+            c.State="READY";c.Ready=true;c.Dial=1;return c;
+        }
         /// <summary>The mana bar's gain flash: a combo hit's +6 lands in the bar (0..1 over .35 s from the flow's arrival).</summary>
         public static float GainFlash(float time,float chargeAt)=>chargeAt>-90&&time>=chargeAt&&time<chargeAt+.35f?1-(time-chargeAt)/.35f:0;
     }

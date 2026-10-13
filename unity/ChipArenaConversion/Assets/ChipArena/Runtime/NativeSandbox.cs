@@ -70,6 +70,8 @@ namespace ChipArena.UnityConversion
             if(GUILayout.Button(presentation.MinionGallery?"Hide Siren Minions":"Preview Siren Minions",button)){presentation.MinionGallery=!presentation.MinionGallery;menu=false;}
             // The Cyber Lord's second-jump boost (NativeCyberLordPresentation.cs): shown on your own jumps until the rules grant the air jump.
             if(GUILayout.Button(presentation.CyberBoostPreviewOn?"Hide Cyber Double Jump":"Preview Cyber Double Jump",button)){presentation.CyberBoostPreviewOn=!presentation.CyberBoostPreviewOn;menu=false;}
+            // The Cyber Lord's ranged mode (NativeCyberLordRangedPreview.cs): your own Cyber Lord loops the key-5 switch and the ranged set until the rules land.
+            if(GUILayout.Button(presentation.CyberRangedPreviewOn?"Hide Cyber Ranged":"Preview Cyber Ranged",button)){presentation.CyberRangedPreviewOn=!presentation.CyberRangedPreviewOn;menu=false;}
             // The saw split (NativeBisectPresentation.cs): a stand-in of you split by a phantom blade on a loop, presentation only.
             if(GUILayout.Button(presentation.SawSplitGallery?"Hide Saw Split":"Preview Saw Split",button)){presentation.SawSplitGallery=!presentation.SawSplitGallery;menu=false;}
             GUILayout.EndHorizontal();previewRarity=ChoiceGrid(previewRarities,previewRarity,previewRarityNames);

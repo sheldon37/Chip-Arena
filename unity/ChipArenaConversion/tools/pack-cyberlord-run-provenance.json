@@ -141,7 +141,7 @@
   },
   {
    "clip": "cyberlord-run/sprint-forward",
-   "source": "Mvm_Boost",
+   "source": "Mvm_ChargeBoost",
    "range": [
     0,
     12
@@ -152,13 +152,13 @@
    "marks": [
     0.017
    ],
-   "sha256": "0b07f77e2f380283b56d7075dea5a320f6b1ab311bfdf571c73f2c41318b595a",
-   "input": "0b30432648eb31dc2c88e2226c3182a5b31be7d02058d44cc1d457c352bd91fc",
-   "strikeFrom": "14696d984637865ae325258d2d791a2347fc38353afeb831c348ac2515d1f7a1"
+   "sha256": "7dcae455c02be38709cf8d3997f69b9c0eea6fd8f7fba2b3e6b53dce2cecd672",
+   "input": "197f6bb824ac89ba725aeca1e01a0bdd5073dd1a4e98199d0d08d8be3c15b267",
+   "strikeFrom": "1f53741e48c4ef52b05f042059199d812ebaad6a45efbb3ac035c5f30c7a9738"
   },
   {
    "clip": "cyberlord-run/sprint-forward-left",
-   "source": "Mvm_Boost_Front_L45",
+   "source": "Mvm_ChargeBoost_Front_L45",
    "range": [
     0,
     12
@@ -169,13 +169,13 @@
    "marks": [
     0.017
    ],
-   "sha256": "ca27222e9cb0c8e8e96c3593ec3455f03c7fb1924f597bbb8eda8f13a40ff4b0",
-   "input": "0a364c98c668be6f824b7f9d385c3418476ac65185a2e363922f1cac7f4179f2",
-   "strikeFrom": "84668fdb7535aba317e0b7d7394036b0a2440758c58d64df68a0682d8a599ad9"
+   "sha256": "00460f5ab62181e170b1feefd5cef0baad79506bcfbc0235eed03ae19dce28b5",
+   "input": "3acea13b2a16987eb0145c8f086c6c7902926784f0abcec41e8035decfee5ab5",
+   "strikeFrom": "6322eebe55bd53a5cac94782869e1f06b385282bfc0a96f86e3ee5addc972f7f"
   },
   {
    "clip": "cyberlord-run/sprint-forward-right",
-   "source": "Mvm_Boost_Front_R45",
+   "source": "Mvm_ChargeBoost_Front_R45",
    "range": [
     0,
     12
@@ -186,9 +186,9 @@
    "marks": [
     0.05
    ],
-   "sha256": "ec987713391364ea9af0fadce39559c3501afab600b2839a8a7134a1e9c70c7e",
-   "input": "59252daa3c983f8d5df9e434a6e7d216278d70d56d2a140eab5eb932c5134fd6",
-   "strikeFrom": "66361f16af6db36c75749c0cf383d48e6589efc7c9de6a045605f0a3fb5dd7ce"
+   "sha256": "3327dbd03188dfe66e3791bb15f26fb23266ae5e0673212aeb56799d1a1f93a6",
+   "input": "37478e87f9095881340d3e6aabb2383cb9160a06cc6be474365906b817faa520",
+   "strikeFrom": "c4f949a9aad431382089f1d1b9db975809b620dffff77d0f95bce50f64d4a098"
   },
   {
    "clip": "cyberlord-run/boost",

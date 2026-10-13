@@ -44,7 +44,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Start of Render: this frame's Cyber Lord views (CyberLordFeed), the cyber events, the look's form times.</summary>
         private void BeginCyberLord(Snapshot s,float time)
         {
-            cyberSnapshot=s;cyberClock=time;if(s?.Actors==null)return;cyberFx.Observe(s.Events,time);
+            cyberSnapshot=s;cyberClock=time;CyberRangedStep(s,time);if(s?.Actors==null)return;cyberFx.Observe(s.Events,time);
             foreach(var a in s.Actors)
             {
                 if(!CyberLordFeed.Handles(a))continue;if(!cyberViews.TryGetValue(a.Id,out var v)){v=new CyberLordView();cyberViews.Add(a.Id,v);}CyberLordFeed.Read(a,v);
@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
         }
         private void ClearCyberLord()
         {
-            cyberFx.Clear();cyberViews.Clear();cyberFormAt.Clear();cyberSnapshot=null;
+            cyberFx.Clear();cyberViews.Clear();cyberFormAt.Clear();cyberSnapshot=null;cyberRanged.Clear();cyberRangedStart=-100;
             for(int i=0;i<cyberCloneRigs.Length;i++){cyberCloneRigs[i]?.Dispose();cyberCloneRigs[i]=null;}
         }
         /// <summary>The Dev Sandbox's "Preview Cyber Double Jump" (developer sandbox only): the local Cyber Lord's own jumps show the
@@ -102,7 +102,9 @@ namespace ChipArena.UnityConversion
             if(rig==introRig&&entranceScript is NativeCyberLordIntroScript intro){time=entranceTime;formAt=NativeCyberLordIntroScript.FormAt;flare=intro.Flare(time);solid=1;}
             // The idle stance's scanline band over the hardlight parts and its fist clench (Core/CyberLordIdle.cs; none in first person or the entrance).
             var glitch=!first&&rig!=introRig&&rig.CyberMotion!=null?rig.CyberMotion.IdleGlitch:default;bool reduced=WeaponEffectsQuality<.5f;flare=CyberLordIdlePose.Clench(glitch,flare);
-            int n=NativeCyberLordLook.Pieces(time,formAt,flare,first,solid,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics,cyberPieces);
+            // The ranged mode's emitters build over the fists through the key-5 switch (Core/CyberLordRanged.cs; not in the entrance).
+            var mode=v!=null&&rig!=introRig?NativeCyberLordLook.ModeOf(v,time):default;
+            int n=NativeCyberLordLook.Pieces(time,formAt,flare,first,solid,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics,cyberPieces,mode);
             for(int i=0;i<n;i++)QueueCyberPiece(cyberPieces[i],rig.Bones[cyberPieces[i].Bone].localToWorldMatrix,CyberLordIdlePose.ScanGain(glitch,cyberPieces[i],i,reduced),layer,camera);
         }
         private void QueueCyberPiece(in CyberPiece p,Matrix4x4 bone,float gain,int layer,Camera camera)
@@ -115,7 +117,7 @@ namespace ChipArena.UnityConversion
         {
             var s=cyberSnapshot;if(s?.Actors==null||vfx==null||sourceModels==null||cyberViews.Count==0&&cyberFx.Records.Count==0)return;var draw=WeaponFxDraw;if(draw==null)return;
             bool viewOk=FirstPerson&&!ScopeActive&&ViewCamera!=null&&viewRig!=null;float q=Mathf.Clamp01(WeaponEffectsQuality);
-            cyberScene??=new CyberScene(this);cyberSink??=new CyberSink(this);cyberScene.Bind(s,camera);cyberSink.Bind(vfx,draw,viewOk);
+            cyberArena=arena;cyberScene??=new CyberScene(this);cyberSink??=new CyberSink(this);cyberScene.Bind(s,camera,arena,cyberRanged);cyberSink.Bind(vfx,draw,viewOk);
             cyberFx.Draw(cyberSink,cyberScene,cyberClock,q,LowGraphics);
             CyberGhosts(s,cyberClock,q);
         }
@@ -168,11 +170,12 @@ namespace ChipArena.UnityConversion
             }
         }
         // What the Core effects read of this presentation (allocation-free once bound).
-        private sealed class CyberScene:ICyberFxScene
+        private sealed class CyberScene:ICyberFxScene,ICyberShots
         {
-            private readonly ArenaPresentation p;private readonly List<Actor> actors=new List<Actor>();private Camera camera;
+            private readonly ArenaPresentation p;private readonly List<Actor> actors=new List<Actor>();private Camera camera;private readonly CyberShotList shots=new CyberShotList();
             public CyberScene(ArenaPresentation owner){p=owner;}
-            public void Bind(Snapshot s,Camera c){camera=c;actors.Clear();if(s.Actors!=null)actors.AddRange(s.Actors);}
+            public void Bind(Snapshot s,Camera c,NativeArena arena,CyberRangedPreview preview){camera=c;actors.Clear();if(s.Actors!=null)actors.AddRange(s.Actors);shots.Bind(arena,preview);}
+            public int CyberShots=>shots.Shots;public CyberShot CyberShotAt(int i)=>shots.ShotAt(i);public int CyberImpacts=>shots.Impacts;public CyberImpact CyberImpactAt(int i)=>shots.ImpactAt(i);
             public IReadOnlyList<Actor> Actors=>actors;
             public NVector Feet(Actor a){var v=p.visualPositions.TryGetValue(a.Id,out var at)?at:ArenaPresentation.Vec(a.Position);return new NVector(v.x,v.y,v.z);}
             public bool Chest(Actor a,out NVector chest){chest=default;if(!p.rigs.TryGetValue(a.Id,out var rig))return false;var c=rig.Bones[CapturedRig.Chest].position+Vector3.up*.12f;chest=new NVector(c.x,c.y,c.z);return true;}

@@ -36,6 +36,47 @@ namespace ChipArena.UnityConversion
         private const int LGauntlet=0,RGauntlet=1,LFist=2,RFist=3,Seams=4,Crest=5;
         private static readonly Spec[] specs=Build();
         public static int Count=>specs.Length;
+        // Ranged-mode parts (Core/CyberLordRanged.cs): 6 left emitter, 7 right emitter, 8 the right forearm's barrel, 9 the left's coil.
+        private const int LEmitter=6,REmitter=7,Barrel=8,Coil=9;
+        private static readonly Spec[] emitters=BuildEmitters();
+        /// <summary>The ranged-mode pieces (the emitters, the barrel and the coil), drawn as the mode weight builds them.</summary>
+        public static int EmitterCount=>emitters.Length;
+        /// <summary>The emitter's centre in the hand's frame (just ahead of the fist shell's front face; the hold turns the hand's
+        /// +z onto the aim) and its ring's radius.</summary>
+        public static readonly Vector3 EmitterAt=new Vector3(0,-.06f,.155f);public const float EmitterRadius=.05f;
+        private static Spec[] BuildEmitters()
+        {
+            var l=new System.Collections.Generic.List<Spec>();
+            void Add(int bone,Vector3 p,Vector3 sc,Quaternion r,int color,float gain,int part,float order,bool low=true)=>l.Add(new Spec{Bone=bone,Shape=WeaponShape.Cube,P=p,S=sc,R=r,Color=color,Gain=gain,Part=part,Order=order,Low=low});
+            foreach(bool left in new[]{true,false})
+            {
+                int hand=left?CapturedRig.LHand:CapturedRig.RHand,elbow=left?CapturedRig.LElbow:CapturedRig.RElbow,part=left?LEmitter:REmitter;
+                // The emitter: a hexagon of light round the aperture facing the aim, a white core, three prongs forward.
+                for(int i=0;i<6;i++)
+                {
+                    float a=i*(float)Math.PI/3+(float)Math.PI/6,side=EmitterRadius*1.02f;var c=EmitterAt+new Vector3((float)Math.Cos(a),(float)Math.Sin(a),0)*EmitterRadius*.87f;
+                    Add(hand,c,new Vector3(side,.008f,.012f),Quaternion.CreateFromAxisAngle(Vector3.UnitZ,a+(float)Math.PI/2),i%2==0?Cyan:Core,1.9f,part,.1f+.08f*i,i%2==0);
+                }
+                Add(hand,EmitterAt,new Vector3(.028f,.028f,.006f),Quaternion.CreateFromAxisAngle(Vector3.UnitZ,(float)Math.PI/4),Core,2.6f,part,.6f);
+                for(int i=0;i<3;i++){float a=(float)Math.PI/2+i*2*(float)Math.PI/3;var c=EmitterAt+new Vector3((float)Math.Cos(a),(float)Math.Sin(a),0)*(EmitterRadius*1.15f)+new Vector3(0,0,.022f);Add(hand,c,new Vector3(.007f,.007f,.045f),Quaternion.Identity,Magenta,1.7f,part,.7f+.08f*i,false);}
+                if(!left)
+                {
+                    // The right forearm's hardlight barrel: three hexagonal rings round the gauntlet, two rails along it.
+                    foreach(float y in new[]{-.07f,-.15f,-.23f})for(int i=0;i<6;i++)
+                    {
+                        float a=i*(float)Math.PI/3,r=.112f;var c=new Vector3((float)Math.Cos(a)*r*.87f,y,(float)Math.Sin(a)*r*.87f);
+                        Add(elbow,c,new Vector3(r*1.02f,.008f,.012f),Quaternion.CreateFromAxisAngle(Vector3.UnitY,-a+(float)Math.PI/2),y<-.2f?Core:Cyan,1.6f,Barrel,.05f+(-y-.07f)*2.5f+.02f*i,i%2==0);
+                    }
+                    foreach(float x in new[]{-.06f,.06f})Add(elbow,new Vector3(x,-.16f,.118f),new Vector3(.01f,.27f,.01f),Quaternion.Identity,Magenta,1.5f,Barrel,.5f);
+                }
+                else
+                {
+                    // The left forearm's coil: one ring round the gauntlet (the support emitter's capacitor).
+                    for(int i=0;i<6;i++){float a=i*(float)Math.PI/3,r=.108f;var c=new Vector3((float)Math.Cos(a)*r*.87f,-.16f,(float)Math.Sin(a)*r*.87f);Add(elbow,c,new Vector3(r*1.02f,.008f,.012f),Quaternion.CreateFromAxisAngle(Vector3.UnitY,-a+(float)Math.PI/2),Cyan,1.5f,Coil,.3f+.03f*i,i%2==0);}
+                }
+            }
+            return l.ToArray();
+        }
         private static Spec[] Build()
         {
             var l=new System.Collections.Generic.List<Spec>();
@@ -106,9 +147,26 @@ namespace ChipArena.UnityConversion
         /// `first` keeps the arms only (the first-person view model), `solid` dims the whole look with the body (the Data Dash's
         /// translucency). `quality` .3 is Reduced; `low` the low graphics tier.
         /// </summary>
-        public static int Pieces(float time,float formAt,Flare flare,bool first,float solid,float quality,bool low,CyberPiece[] into)
+        public static int Pieces(float time,float formAt,Flare flare,bool first,float solid,float quality,bool low,CyberPiece[] into)=>Pieces(time,formAt,flare,first,solid,quality,low,into,default);
+        /// <summary>The ranged mode's state for the look: its weight (0 melee .. 1 ranged; the fist shells open and dim as the
+        /// emitters build, piece by piece), a charge lighting the emitters (Ping Lance's windup, Root Access's charge), and the
+        /// switch's glitch (0..1: the building pieces flicker and tear).</summary>
+        public struct Mode{public float Ranged,Charge,Glitch;}
+        /// <summary>The look's mode for view `v` at `time`: the eased mode weight, the lance's windup and Root Access's charge, and
+        /// the switch's glitch (up and down over the reconfiguration).</summary>
+        public static Mode ModeOf(CyberLordView v,float time)
         {
-            int n=0;bool reduced=quality<.5f;float form=time-formAt;
+            var m=new Mode{Ranged=v.ModeWeight(time)};float s=v.SwitchU(time);if(s>=0)m.Glitch=(float)Math.Sin(Math.PI*s);
+            for(int k=0;k<2;k++)
+            {
+                int slot=k==0?CyberRangedSpec.Lance:CyberRangedSpec.Root;var p=v.RPhase(slot,time);
+                if(p.Live&&p.Part==0)m.Charge=Math.Max(m.Charge,k==0?p.U*.6f:p.U);else if(p.Live&&p.Part==1)m.Charge=Math.Max(m.Charge,1-p.U);
+            }
+            return m;
+        }
+        public static int Pieces(float time,float formAt,Flare flare,bool first,float solid,float quality,bool low,CyberPiece[] into,in Mode mode)
+        {
+            int n=0;bool reduced=quality<.5f;float form=time-formAt;float open=Clamp01(mode.Ranged);
             float crestTurn=time*(reduced?.25f:.6f);
             for(int i=0;i<specs.Length&&n<into.Length;i++)
             {
@@ -133,8 +191,22 @@ namespace ChipArena.UnityConversion
                     c.Position=CrestAt+new Vector3(0,bob,0)+Vector3.Transform(Vector3.Transform(s.P,spin),tilt);c.Rotation=tilt*spin*s.R;
                 }
                 if(solid<.999f&&s.Part!=Crest)c.Scale*=.85f+.15f*solid;
+                // Ranged mode: the fist shells open and dim to frame the emitters.
+                if(open>1e-3f&&(s.Part==LFist||s.Part==RFist)){c.Color*=1-.65f*open;c.Scale*=1-.25f*open;}
                 into[n++]=c;
             }
+            // The ranged mode's emitters, barrel and coil, each built in at its order as the mode weight rises (and taken apart in
+            // reverse), flickering while they build; a charge brightens the emitters, a hit-flash the firing one.
+            if(open>1e-3f&&form>=FormSeconds*.5f)
+                for(int i=0;i<emitters.Length&&n<into.Length;i++)
+                {
+                    var s=emitters[i];if(low&&!s.Low)continue;if(first&&!ViewBone(s.Bone))continue;
+                    float u=Clamp01((open-s.Order*.6f)/.4f);if(u<=0)continue;
+                    float flick=u<1&&!reduced?(H((int)(time*40)+i*17,9)>.3f?1:.2f):1;if(mode.Glitch>0&&!reduced&&H((int)(time*24)+i*5,11)<.25f*mode.Glitch)flick*=.15f;
+                    float fl=s.Part==LEmitter?flare.Left:s.Part==REmitter?flare.Right:0,charge=s.Part<=REmitter?Clamp01(mode.Charge):.4f*Clamp01(mode.Charge);
+                    float gain=s.Gain*flick*(.35f+.65f*Smooth(u))*(1+1.8f*fl+1.6f*charge);
+                    into[n++]=new CyberPiece{Bone=s.Bone,Shape=s.Shape,Position=s.P,Scale=s.S*(.5f+.5f*Smooth(u))*(1+.12f*fl),Rotation=s.R,Color=Lin(s.Color,gain*Clamp01(solid))};
+                }
             // Data shimmer: motes blinking on the body's boxes on hashed slots (8 Hz; 2.5 Hz and fewer with reduced effects).
             int motes=first?2:low?2:reduced?3:6;float rate=reduced?2.5f:8;int slot=(int)Math.Floor(time*rate);
             for(int k=0;k<motes&&n<into.Length;k++)
@@ -148,7 +220,7 @@ namespace ChipArena.UnityConversion
             return n;
         }
         /// <summary>The most pieces Pieces writes (the buffer size).</summary>
-        public static int Capacity=>specs.Length+8;
+        public static int Capacity=>specs.Length+emitters.Length+8;
 
         /// <summary>
         /// How solid the pilot's body is drawn (NativeSourceModels part opacity: below 1 the pilot's own shader dithers it away,

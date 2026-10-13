@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>What a cyber event is (CyberLordFeed.Hit maps its Detail).</summary>
-    public enum CyberHit{None,Jab,Cross,Palm,Dash,Firewall,Burst,Siphon,Crash,Panic1,Panic2,Panic3,Panic4,Panic5,PanicWave}
+    public enum CyberHit{None,Jab,Cross,Palm,Dash,Firewall,Burst,Siphon,Crash,Panic1,Panic2,Panic3,Panic4,Panic5,PanicWave,Bolt,Lance,Field,Swap,Root}
 
     /// <summary>One ability's window at a moment, from the view.</summary>
     public struct CyberPhase
@@ -80,13 +80,44 @@ namespace ChipArena.UnityConversion
         public int PanicId,PanicOutcome,PanicSeed,PanicVictim,PanicNext;public float PanicConnect=-100,PanicStart=-100,PanicEndedAt=-100;public V3 PanicAnchor;public float PanicYaw;public bool PanicWall;
         public Vector3 PanicFacing,PanicCasterStart,PanicVictimStart;
         public readonly Vector3[] CasterPoints=new Vector3[KernelPanicPath.HostPoints],VictimPoints=new Vector3[KernelPanicPath.HostPoints];public int PanicPointCount;
+        // The ranged mode (Core/CyberLordRanged.cs, the proposed record through CyberLordFeed): the mode and its switch, each
+        // ranged slot's window and ready time (CyberRangedSpec order: the LMB bolt, then 1-4), the bolt's hand, the lance's and
+        // the beam's lines (world, from the emitters), the field's throw, landing and life (the point at the feet), the swap's
+        // path (feet) and its mine's burst.
+        public bool Ranged;public float ModeAt=-100,ModeReady=-100;
+        public readonly float[] RAt=new float[CyberRangedSpec.Slots],RRelease=new float[CyberRangedSpec.Slots],RUntil=new float[CyberRangedSpec.Slots],RRecover=new float[CyberRangedSpec.Slots],RReady=new float[CyberRangedSpec.Slots];
+        public int BoltHand;public Vector3 LanceFrom,LanceTo,FieldFrom,FieldPoint,SwapFrom,SwapTo,RootFrom,RootTo;public float FieldLand=-100,FieldUntil=-100,MineAt=-100;
         public void Clear()
         {
             Id=0;Alive=false;Feet=default;Yaw=0;ComboStep=0;ComboAt=ComboUntil=ComboHit=-100;for(int i=0;i<CyberLordSpec.Slots;i++)At[i]=Release[i]=Until[i]=RecoverUntil[i]=Ready[i]=-100;
             DashFrom=DashTo=default;TrailUntil=-100;WallAt=default;WallYaw=0;WallBorn=WallUntil=-100;LinkTarget=0;LinkAt=LinkUntil=-100;CrashAt=default;CrashBorn=CrashUntil=-100;
             PanicId=PanicOutcome=PanicSeed=PanicVictim=PanicNext=0;PanicConnect=PanicStart=PanicEndedAt=-100;PanicAnchor=default;PanicYaw=0;PanicWall=false;PanicPointCount=0;
             PanicFacing=PanicCasterStart=PanicVictimStart=default;
+            Ranged=false;ModeAt=ModeReady=-100;for(int i=0;i<CyberRangedSpec.Slots;i++)RAt[i]=RRelease[i]=RUntil[i]=RRecover[i]=RReady[i]=-100;
+            BoltHand=0;LanceFrom=LanceTo=FieldFrom=FieldPoint=SwapFrom=SwapTo=RootFrom=RootTo=default;FieldLand=FieldUntil=MineAt=-100;
         }
+        /// <summary>Ranged slot `slot`'s window at `time` (CyberRangedSpec order), as Phase.</summary>
+        public CyberPhase RPhase(int slot,float time)
+        {
+            var p=new CyberPhase{At=RAt[slot],Release=RRelease[slot],Until=RUntil[slot]};p.End=Math.Max(p.Until,RRecover[slot]);
+            if(!(p.At>-90)||time<p.At||time>=p.End)return p;p.Live=true;p.Age=time-p.At;float rel=p.Release>p.At?p.Release:p.At;
+            if(time<rel){p.Part=0;p.U=Clamp01((time-p.At)/Math.Max(1e-4f,rel-p.At));}
+            else if(time<p.Until){p.Part=1;p.U=Clamp01((time-rel)/Math.Max(1e-4f,p.Until-rel));}
+            else{p.Part=2;p.U=Clamp01((time-p.Until)/Math.Max(1e-4f,p.End-p.Until));}
+            return p;
+        }
+        /// <summary>The ranged mode's weight at `time` (0 melee .. 1 ranged), eased over the switch from ModeAt (before it, on a
+        /// rewound clock, the mode it left).</summary>
+        public float ModeWeight(float time)
+        {
+            float u=ModeAt>-90?Clamp01((time-ModeAt)/CyberRangedSpec.SwitchSeconds):1;u=u*u*(3-2*u);return Ranged?u:1-u;
+        }
+        /// <summary>The switch's progress at `time` (0..1 through the reconfiguration), or -1 outside one.</summary>
+        public float SwitchU(float time)=>ModeAt>-90&&time>=ModeAt&&time<ModeAt+CyberRangedSpec.SwitchSeconds?(time-ModeAt)/CyberRangedSpec.SwitchSeconds:-1;
+        /// <summary>Whether ranged cast `slot` reached its release (a cast cut before it ends on its release: no shot, no cue).</summary>
+        public bool RReleased(int slot)=>RAt[slot]>-90&&RUntil[slot]>RRelease[slot]+1e-4f;
+        /// <summary>Whether a ranged cast's window (to its end, not its settle) is live at `time`.</summary>
+        public bool RangedCasting(float time){for(int i=0;i<CyberRangedSpec.Slots;i++)if(RAt[i]>-90&&time>=RAt[i]&&time<RUntil[i])return true;return false;}
         /// <summary>Slot `slot`'s window at `time` (Live from its start to the end of its recovery).</summary>
         public CyberPhase Phase(int slot,float time)
         {
@@ -143,6 +174,7 @@ namespace ChipArena.UnityConversion
             v.Clear();if(!Handles(a))return false;v.Id=a.Id;v.Alive=a.Alive;v.Feet=a.Position;v.Yaw=a.Yaw;
             // Kernel Panic: Astra's state, on both participants; the caster's own cast only (a victim's copy belongs to its caster).
             var kp=a.Kernel;bool own=kp!=null&&kp.Id>0&&kp.Caster==a.Id;if(own)Kernel(kp,v);float k=own?kp.At:-100;
+            RangedMode(a,v);
             var s=a.Cyber;if(s==null)return true;
             v.Ready[CyberLordSpec.Q]=s.QReady;v.Ready[CyberLordSpec.E]=s.EReady;v.Ready[CyberLordSpec.One]=s.PacketReady;v.Ready[CyberLordSpec.Two]=s.LinkReady;v.Ready[CyberLordSpec.Three]=s.CrashReady;
             // The kit keeps one window, the current or last cast's (Kind, At, Release, Until); the host's reset kit is all zeros.
@@ -186,6 +218,28 @@ namespace ChipArena.UnityConversion
             return true;
         }
         private const float Eps=.002f;
+        /// <summary>The ranged mode's record before the rules replicate it (docs/CYBER-LORD.md "Ranged mode"): the runtime's Dev
+        /// Sandbox preview, the checks' and render harness's fixture; null reads the actor alone.</summary>
+        public static ICyberRangedSource RangedSource;
+        /// <summary>The ranged mode into the view: the record's, else the actor's mode fields (Actor.SourceRanged / SourceModeAt,
+        /// the Siren's mode on the wire today; the contract has the host set them for the Cyber Lord too).</summary>
+        private static void RangedMode(Actor a,CyberLordView v)
+        {
+            var r=RangedSource?.Of(a.Id);
+            if(r==null){v.Ranged=a.SourceRanged;v.ModeAt=a.SourceModeAt;v.ModeReady=a.SourceModeAt>-90?a.SourceModeAt+CyberRangedSpec.SwitchCooldown:-100;return;}
+            v.Ranged=r.Ranged;v.ModeAt=r.ModeAt;v.ModeReady=r.ModeReady;v.BoltHand=r.BoltHand;
+            for(int i=0;i<CyberRangedSpec.Slots;i++)
+            {
+                float at=r.At[i],until=Math.Max(at,r.Until[i]);v.RAt[i]=at;v.RUntil[i]=until;v.RRelease[i]=Math.Max(at,Math.Min(r.Release[i],until));v.RReady[i]=r.Ready[i];
+                // A cut cast (an interrupt moved its end before its own length) has no settle.
+                bool cut=at>-90&&until<at+CyberRangedSpec.Seconds[i]*.5f-Eps&&i!=CyberRangedSpec.Bolt;v.RRecover[i]=at>-90?until+(cut?0:CyberRangedSpec.Settle[i]):-100;
+            }
+            v.LanceFrom=r.LanceFrom;v.LanceTo=r.LanceTo;v.FieldFrom=r.FieldFrom;v.FieldPoint=r.FieldPoint;v.FieldLand=r.FieldLand;v.FieldUntil=r.FieldUntil;
+            v.SwapFrom=r.SwapFrom;v.SwapTo=r.SwapTo;v.MineAt=r.MineAt;v.RootFrom=r.RootFrom;v.RootTo=r.RootTo;
+        }
+        /// <summary>A replicated shot's ranged slot: a Cyber Lord's shot (Spec cyberlord) with a ranged Detail (the contract's
+        /// Bit Bolt: Detail bit-bolt), else -1.</summary>
+        public static int ShotSlot(string spec,string detail)=>spec==CyberLordSpec.Id&&detail!=null?CyberRangedSpec.Slot(detail):-1;
         /// <summary>Slot `slot`'s window: a cut cast ends where it was cut, its release no later, with no settle.</summary>
         private static void Window(CyberLordView v,int slot,float at,float release,float until,bool cut)
         {
@@ -247,7 +301,8 @@ namespace ChipArena.UnityConversion
         private static int Mod3(int x)=>((x%3)+3)%3;
         /// <summary>The event Details in CyberHit order from Jab: Astra's cast kinds (the combo's steps and Q to 3, on Hit
         /// events as the damage kind, on the dash's Teleport and the wall's Absorb) and her Kernel Panic ones (kernel-panic-1 .. -5 on the victim, step 4 three times; kernel-panic-wave on the others).</summary>
-        public static readonly string[] Details={"cyber-jab","cyber-cross","cyber-palm","data-dash","firewall","packet-burst","siphon-link","system-crash","kernel-panic-1","kernel-panic-2","kernel-panic-3","kernel-panic-4","kernel-panic-5","kernel-panic-wave"};
+        public static readonly string[] Details={"cyber-jab","cyber-cross","cyber-palm","data-dash","firewall","packet-burst","siphon-link","system-crash","kernel-panic-1","kernel-panic-2","kernel-panic-3","kernel-panic-4","kernel-panic-5","kernel-panic-wave",
+            "bit-bolt","ping-lance","lag-field","proxy-swap","root-access"};
         public static CyberHit Hit(string detail)
         {
             if(detail==null)return CyberHit.None;
@@ -257,8 +312,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The Kernel Panic step (1..5) of an event, 0 for none.</summary>
         public static int PanicStep(CyberHit h)=>h>=CyberHit.Panic1&&h<=CyberHit.Panic5?h-CyberHit.Panic1+1:0;
         /// <summary>The event kinds the presentation reads: hits and ability hits (Detail: the damage kind), the Firewall's
-        /// absorbs and the Siphon's heals (SiphonHeal; the casts' AbilityCast and the dash's Teleport are drawn from the kit).</summary>
-        public static bool Kind(EventKind k)=>k==EventKind.Hit||k==EventKind.AbilityHit||k==EventKind.Heal||k==EventKind.Absorb;
+        /// absorbs, the Siphon's heals (SiphonHeal; the casts' AbilityCast and the dash's Teleport are drawn from the kit) and
+        /// the ranged set's impacts on the world (Impact with a ranged Detail; an undetailed impact maps to no hit).</summary>
+        public static bool Kind(EventKind k)=>k==EventKind.Hit||k==EventKind.AbilityHit||k==EventKind.Heal||k==EventKind.Absorb||k==EventKind.Impact;
         /// <summary>Whether a hit or an ability hit (the strikes; not an absorb or a heal).</summary>
         public static bool Strike(EventKind k)=>k==EventKind.Hit||k==EventKind.AbilityHit;
         /// <summary>Astra's Siphon Link heals its caster with a plain Heal (no Detail) in the host tick of each drain hit

@@ -16,11 +16,21 @@ namespace ChipArena.UnityConversion
         private void CyberLordCards(NativePilot p)
         {
             var v=presentation?.CyberLordViewOf(p.Pose?.Id??0);if(v==null)return;float t=arena.Time;
+            // The ranged mode (Core/CyberLordRanged.cs): Q and E stay, 1-4 swap to the ranged set mid-switch, and the key-5 card
+            // names the live set.
+            bool ranged=NativeCyberLordHud.ShowsRanged(v,t);
             foreach(int slot in NativeCyberLordHud.Order)
             {
+                if(ranged&&slot>=CyberLordSpec.One)continue;
                 var c=NativeCyberLordHud.Of(v,slot,t,p.Mana,slot==CyberLordSpec.Four?p.KernelReady:float.NaN);
                 cards.Add(new Card{Key=NativeCyberLordHud.Labels[slot],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});
             }
+            if(ranged)foreach(int slot in NativeCyberLordHud.RangedOrder)
+            {
+                var c=NativeCyberLordHud.RangedOf(v,slot,t,p.Mana,p.KernelReady);
+                cards.Add(new Card{Key=NativeCyberLordHud.RangedLabels[slot],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});
+            }
+            {var c=NativeCyberLordHud.ModeOf(v,t);cards.Add(new Card{Key=ranged?NativeCyberLordHud.RangedMode:NativeCyberLordHud.MeleeMode,State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=false,Dial=c.Dial});}
         }
 
         // ---- Kernel Panic's skill cut-in (participants, full screen) and banner (everyone else) ----

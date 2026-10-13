@@ -234,6 +234,55 @@ icons['spec-cyberlord']=()=>{
   const spark=poly([[12,.6],[13.4,2.4],[12,4.2],[10.6,2.4]]);
   return [L(crest,{opacity:TONE}),L(palm,{knock:GAP}),L(wrist,{knock:.35}),L(knuckles,{knock:.5}),L(thumb,{knock:.7}),L(line([[4,10.2],[20,10.2]]),{cut:true,line:.6}),L(spark)];
 };
+// THE CYBER LORD'S RANGED SET (Core/CyberLordRanged.cs; key 5 switches): hardlight emitters, hex rings and RGB-split bolts.
+// BIT BOLT (ranged LMB): a split hardlight bolt off a hex emitter, trailing bits.
+icons['ability-bit-bolt']=()=>{
+  const emitter=hexP(5,6.2,17.8).add(hexP(3.1,6.2,17.8)),core=circ(6.2,17.8,1.4);
+  const kite=poly([[8.2,12],[15.6,9.8],[23.4,12],[15.6,14.2]]).rot(-45,12,12);
+  const bits=[crect(14.6,14.6,2,2,.3),crect(18.2,11.8,1.5,1.5,.2),crect(11.6,18.2,1.5,1.5,.2)];
+  return [L(kite.shift(1.5,1.5),{opacity:TONE}),L(emitter,{evenodd:true}),L(core),L(kite,{knock:.8}),L(bits)];
+};
+// PING LANCE (ranged 1): a needle-thin lance from the emitter onto a ping reticle.
+icons['ability-ping-lance']=()=>{
+  const c=[17.2,6.8],reticle=ring(c[0],c[1],3.2,4.6);
+  const ticks=[crect(c[0]-.55,c[1]-6.6,1.1,1.8),crect(c[0]-.55,c[1]+4.8,1.1,1.8),crect(c[0]-6.6,c[1]-.55,1.8,1.1),crect(c[0]+4.8,c[1]-.55,1.8,1.1)];
+  const lance=taper([2.2,21.8],[c[0],c[1]],2.6,.5),pings=[star(7,17,.45,1.9),star(11.2,13.4,.4,1.5)];
+  return [L(lance),L(pings,{knock:.6}),L(reticle,{knock:.9}),L(ticks,{opacity:TONE}),L(circ(c[0],c[1],1),{})];
+};
+// LAG FIELD (ranged 2): a hardlight dome of hex rings with a pause glyph inside, packets stalled on its shell.
+icons['ability-lag-field']=()=>{
+  const outer=ellipseBand(12,19.4,9.8,9.8,1.9,180,360),inner=ellipseBand(12,19.4,6.6,6.6,1.3,180,360);
+  const base=crect(1.4,19.6,21.2,1.7,.5),bars=[crect(9.5,13.6,1.9,4.6,.3),crect(12.6,13.6,1.9,4.6,.3)];
+  const stalled=[crect(3.4,8.2,1.7,1.7,.3),crect(19.2,6.8,1.5,1.5,.3),crect(12.2,2.2,1.4,1.4,.3)];
+  return [L(inner,{opacity:TONE}),L(outer),L(base),L(bars,{knock:.6}),L(stalled,{knock:.5})];
+};
+// PROXY SWAP (ranged 3): a glitch blink over the top from the hollow proxy left behind to the solid pilot.
+icons['ability-proxy-swap']=()=>{
+  const proxy=hexP(4.6,5.2,16.6).add(hexP(3,5.2,16.6)),pilot=hexP(4.6,18.8,16.6),pcore=circ(18.8,16.6,1.5);
+  const arc=ellipseBand(12,16,8.2,8.2,2,214,306);const tip=at(12,16,8.2,313),tan=[-Math.sin(313*Math.PI/180),Math.cos(313*Math.PI/180)],nrm=[-tan[1],tan[0]];
+  const head=poly([[tip[0]+tan[0]*2,tip[1]+tan[1]*2],[tip[0]-tan[0]*1.3+nrm[0]*2.5,tip[1]-tan[1]*1.3+nrm[1]*2.5],[tip[0]-tan[0]*1.3-nrm[0]*2.5,tip[1]-tan[1]*1.3-nrm[1]*2.5]]);
+  const glitch=[crect(1.4,22.2,4.6,1.1,.2),crect(7,22.2,2.2,1.1,.2)];
+  return [L(proxy,{evenodd:true,opacity:TONE}),L(glitch,{opacity:TONE}),L(pilot),L(pcore,{cut:true}),L(arc,{knock:.7}),L(head,{knock:.7})];
+};
+// ROOT ACCESS (ranged 4): a charged railbeam out of a ringed emitter, a white core down its middle.
+icons['ability-root-access']=()=>{
+  const beam=poly([[7.6,9.8],[20.4,8.6],[23.4,12],[20.4,15.4],[7.6,14.2]]),coreLine=crect(9,11.35,11.6,1.3,.3);
+  const blocks=[crect(10.4,5.4,1.8,1.8,.3),crect(15.6,4.6,1.5,1.5,.3),crect(12.8,17,1.8,1.8,.3),crect(18,17.8,1.5,1.5,.3)];
+  const emitter=ring(5.4,12,3.2,5.1),core=circ(5.4,12,1.8);
+  return [L(blocks,{opacity:TONE}),L(beam),L(coreLine,{cut:true}),L(emitter,{knock:1}),L(core)];
+};
+// The key-5 mode card: RANGED (the emitter in the Cyber Lord's hex) and MELEE (the hardlight fist in it).
+icons['ability-cyber-ranged']=()=>{
+  const emit=hexP(6.2).add(hexP(4.2)),core=circ(12,12,2.2),orbit=ring(12,12,8.6,9.8);
+  const prongs=[45,135,225,315].map(a=>taper(at(12,12,6.6,a),at(12,12,11.4,a),2.4,.7));
+  return [L(orbit,{opacity:TONE}),L(prongs,{knock:.8}),L(emit,{evenodd:true}),L(core)];
+};
+icons['ability-cyber-melee']=()=>{
+  const frame=hexP(11.4).add(hexP(9.4));
+  const knuckles=[8.1,7.5,7.7,8.4].map((y,i)=>crect(7.6+i*2.3,y,2.1,12.8-y,.7));
+  const palm=poly([[7.6,11.8],[16.8,11.8],[16.8,15.4],[15.3,17]  ,[9.1,17],[7.6,15.6]]),thumb=poly([[6.4,12.7],[11.6,12.2],[13.3,13.3],[12,14.5],[7.8,14.6],[6.4,13.9]]);
+  return [L(frame,{evenodd:true,opacity:TONE}),L(palm,{knock:1}),L(knuckles,{knock:.45}),L(thumb,{knock:.6})];
+};
 // Horizontal slab clip of a polygon path made by poly() (Sutherland–Hodgman against y0 <= y <= y1).
 function clipPoly(pathP,y0,y1)
 {
