@@ -35,20 +35,26 @@ internal static class FinalKillcamChecks
         var teams=new[]{D(4,1,70,29,1,0),D(5,2,71,30,1,0),D(1,5,72,30,0,1)};
         var tc=new FinalKillContext{Teams=true,Witnessed=true,Winner=1,WinnerSide=0,FightAt=3,ResultAt=30};
         Check(NativeFinalKillcam.Select(teams,3,tc,out _)==1,"teams: the last enemy on the losing team");
-        // No final killcam: a draw, an environmental or self death, a team kill, a death well before the round resolved
-        // (the round ended on a disconnect after the grace), an unwitnessed Result (late joiner), and the excluded modes.
-        Check(NativeFinalKillcam.Select(deaths,2,Ffa(0,20),out why)<0&&why==FinalKillSkip.Draw,"simultaneous knockout");
-        Check(NativeFinalKillcam.Select(new[]{D(2,0,9,20)},1,Ffa(1,20),out why)<0&&why==FinalKillSkip.NoKiller,"environmental death");
-        Check(NativeFinalKillcam.Select(new[]{D(2,2,9,20)},1,Ffa(1,20),out why)<0&&why==FinalKillSkip.NoKiller,"self elimination");
-        Check(NativeFinalKillcam.Select(new[]{D(5,6,9,30,1,1)},1,tc,out why)<0&&why==FinalKillSkip.TeamKill,"team kill");
+        // Every round that ends on a death has one (owner: "at the end of every round (per set)"): a simultaneous knockout
+        // shows the last death; an environmental or self death and a team kill play from the victim's view (not credited).
+        Check(NativeFinalKillcam.Select(deaths,2,Ffa(0,20),out why)==1&&why==FinalKillSkip.None,"simultaneous knockout: the last death");
+        var lone=new[]{D(2,0,9,20)};Check(NativeFinalKillcam.Select(lone,1,Ffa(1,20),out _)==0&&!NativeFinalKillcam.Credited(lone[0],false),"environmental death: victim's view");
+        var self=new[]{D(2,2,9,20)};Check(NativeFinalKillcam.Select(self,1,Ffa(1,20),out _)==0&&!NativeFinalKillcam.Credited(self[0],false),"self elimination: victim's view");
+        var mate=new[]{D(5,6,9,30,1,1)};Check(NativeFinalKillcam.Select(mate,1,tc,out _)==0&&!NativeFinalKillcam.Credited(mate[0],true),"team kill: victim's view");
+        Check(NativeFinalKillcam.Credited(deaths[1],false)&&NativeFinalKillcam.Credited(teams[1],true),"a kill is watched from the killer");
+        Check(NativeFinalKillcam.SoloCause(true,false,null)=="Self-inflicted"&&NativeFinalKillcam.SoloCause(false,true,null)=="Friendly fire"&&NativeFinalKillcam.SoloCause(false,false,"collapse")=="Structural collapse"
+            &&NativeFinalKillcam.SoloCause(false,false,"saw")=="Stage hazard"&&NativeFinalKillcam.SoloCause(false,false,null)=="Environment","uncredited cause lines");
+        // No final killcam: a death well before the round resolved (the round ended on a disconnect after the grace), an
+        // unwitnessed Result (late joiner), and the excluded modes; practice (offline Play vs Bots) shows it.
         Check(NativeFinalKillcam.Select(deaths,2,Ffa(1,32),out why)<0&&why==FinalKillSkip.NotRoundEnding,"round resolved 12 s after the last death");
         Check(NativeFinalKillcam.Select(deaths,2,Ffa(1,20.49),out _)==1&&NativeFinalKillcam.Select(deaths,2,Ffa(1,20.51),out _)<0,"the .5 s window");
         var late=Ffa(1,20);late.Witnessed=false;Check(NativeFinalKillcam.Select(deaths,2,late,out why)<0&&why==FinalKillSkip.Unwitnessed,"late joiner");
-        foreach(int mode in new[]{0,1,2,3})
+        foreach(int mode in new[]{0,1,2})
         {
-            var m=Ffa(1,20);if(mode==0)m.Cooperative=true;if(mode==1)m.Pve=true;if(mode==2)m.Sandbox=true;if(mode==3)m.Practice=true;
-            Check(NativeFinalKillcam.Select(deaths,2,m,out why)<0&&why==FinalKillSkip.Mode,"mode "+mode+" (PvE, Siren, sandbox, practice) shows none");
+            var m=Ffa(1,20);if(mode==0)m.Cooperative=true;if(mode==1)m.Pve=true;if(mode==2)m.Sandbox=true;
+            Check(NativeFinalKillcam.Select(deaths,2,m,out why)<0&&why==FinalKillSkip.Mode,"mode "+mode+" (PvE, Siren, sandbox) shows none");
         }
+        var practice=Ffa(1,20);practice.Practice=true;Check(NativeFinalKillcam.InPractice&&NativeFinalKillcam.Select(deaths,2,practice,out _)==1,"practice shows it");
         // A death record from before this fight (FightAt) never counts; no deaths at all is a skip.
         Check(NativeFinalKillcam.Select(new[]{D(2,1,5,2)},1,Ffa(1,2.2),out why)<0&&why==FinalKillSkip.NoDeath,"previous fight's record");
         Check(NativeFinalKillcam.Select(Array.Empty<FinalKillCandidate>(),0,Ffa(1,20),out why)<0&&why==FinalKillSkip.NoDeath,"no deaths");
@@ -157,6 +163,10 @@ internal static class FinalKillcamChecks
         Check(Body(final,"private void FinalFrame()").Contains("if(finalOn)")&&Body(final,"private void FinalAudioBefore()").Contains("if(finalOn)")&&Body(final,"private void FinalAudioAfter()").Contains("if(finalOn)"),"clock and audio slowed only in the final killcam");
         Check(replay.IndexOf("FinalKillWatch();",StringComparison.Ordinal)<replay.IndexOf("if(fresh){replaySeen=d.seed;",StringComparison.Ordinal),"final kill decided before the normal one can arm");
         Check(replay.Contains("CreateScene(finalOn?\"Final killcam presentation\":\"Killcam presentation\""),"own scene name (a cut-over never collides with the unloading one)");
+        // Every round: practice counts, an uncredited death plays from the victim, and the clip's start frame survives the
+        // history trim (the normal killcam's trim is unchanged).
+        Check(final.Contains("Practice=!Online,")&&final.Contains("replayView=credited?f.Killer:f.Victim;"),"practice and the victim's view wired");
+        Check(replay.Contains("while(replayFrames.Count>1&&!FinalKeeps()&&(replayFrames.Count>132||replayEntities>150000||arena.Time-replayFrames[0].time>6))")&&final.Contains("private bool FinalKeeps()=>finalOn&&"),"trim keeps the clip's frames only in the final killcam");
         // Presentation clocks default to today's behaviour.
         string slow=R("Runtime/NativeSlowMotionPresentation.cs"),blast=R("Runtime/NativeBlastPresentation.cs"),shots=R("Runtime/NativeShotPresentation.cs"),corpse=R("Runtime/NativeCorpseSmoothing.cs"),death=R("Runtime/NativeDeathPresentation.cs");
         Check(slow.Contains("private float clockRate=1;")&&slow.Contains("public bool SlowBodies;")&&blast.Contains("public float Rate=1;")&&shots.Contains("public float Rate=1;")&&blast.Contains("Time.unscaledDeltaTime*Rate")&&shots.Contains("Time.unscaledDeltaTime*Rate"),"particle sims follow the replay rate, 1 by default");

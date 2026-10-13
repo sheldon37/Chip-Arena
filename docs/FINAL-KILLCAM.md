@@ -2,6 +2,8 @@
 
 Owner request (2026-10-13): "Also, id like to add a final killcam. Similar to killcam we have now, but it plays for everyone on final kill (If you are the last player dead on the round, instead of seeing your normal kill cam, you will see this one). It will replicate the slow motion on death like call of duty."
 
+Owner follow-up (2026-10-13): "The final killcam isn't playing, its supposed to be at the end of every round (per set)". It was skipped in offline Play vs Bots, on environmental, self and team-kill deaths, and on draws; it now plays at the end of every round that ends on a death.
+
 It is presentation only. Branch `claude/final-killcam`; Unity code in `unity/ChipArenaConversion/Assets/ChipArena`.
 
 - Core logic: `Core/NativeFinalKillcam.cs`. It is engine free and covered by `Tests/FinalKillcamChecks.cs`.
@@ -17,16 +19,13 @@ The normal killcam contract (`docs/KILLCAM-HANDOFF.md`) is unchanged for every d
 
 Each client checks once, on the first frame where it sees the match phase go from Fight to Result. A late joiner never sees that step, so it skips. The candidates are the pilots' replicated death records.
 
-The final kill is the latest death of a pilot who is not on the winner's side, ordered by `at` and then by `seed` (the authority's event order), between `FightAt` and the Result frame. All of these must hold:
-
-- **Winner:** the round has one (`Winner != 0`). A simultaneous knockout or draw gets no final killcam.
+The final kill is the latest death of a pilot who is not on the winner's side (any pilot on a simultaneous knockout), ordered by `at` and then by `seed` (the authority's event order), between `FightAt` and the Result frame. All of these must hold:
 - **Window:** the death is at most 0.5 s before the first Result frame the client saw.
   - The host resolves in the same step as the death.
   - A guest's first Result frame is at most one 20 Hz send later.
   - A round that resolves later is not ended by that kill. Examples are the 12 s disconnect grace and a sandbox hold.
-- **Killer:** `owner` is a pilot other than the victim. Environmental deaths and self-eliminations have no killer, so there is no final killcam. That victim's normal killcam plays as it does today. The fall and overtime credit that the authority already assigns (last attacker within 7 s) counts as a kill.
-- **Teams:** in a teams match, the killer is not on the victim's team (no team kills).
-- **Mode:** not PvE or cooperative (the Siren boss flow), not the Dev Sandbox, and not practice (offline Play vs Bots). `NativeFinalKillcam.InPractice` turns practice on.
+- **Any cause:** a kill (`owner` is a pilot other than the victim and, in a teams match, not a teammate: `Credited`) plays from the killer's view. An environmental death, a self-elimination or a team kill plays from the victim's view as "FINAL ELIMINATION" with the cause (`SoloCause`). The fall and overtime credit that the authority already assigns (last attacker within 7 s) counts as a kill. A simultaneous knockout shows the last death and a "NO WINNER · Draw" outcome.
+- **Mode:** not PvE or cooperative (the Siren boss flow) and not the Dev Sandbox. Practice (offline Play vs Bots) shows it (`NativeFinalKillcam.InPractice`).
 - **History:** this client has recorded at least 0.5 s before the hit, and the clip fits into the time left (see below).
 
 The host and the guests hold the same death records and see the same step, so they pick the same death. Two deaths in one step resolve by seed. A replicated marker, in the Astra prompt below, would remove the timing inference.
@@ -68,7 +67,8 @@ The rate is continuous, and its slope is zero at each end of each ramp, so the r
 
 The fit returns the longest clip that fits all three limits:
 
-- **Time:** `available` = `PhaseEnd − now − 0.9 s`. The 0.9 s hand-off keeps the round result on screen. A match-ending kill is unbounded, because the Match phase waits for the replay.
+- **Time:** `available` = `PhaseEnd − now − 0.9 s`. The 0.9 s hand-off keeps the round result on screen. A match-ending kill is unbounded on the host and offline, because the Match phase waits for the replay. A guest fits it into the Result time, because its match does not hold the room's sets to win.
+- **History kept:** while the final killcam plays, the live history trim keeps the frame its clip starts from (`FinalKeeps`), so a large map's entity cap cannot drop the frames it is still playing.
 - **History:** the client's recorded history before the hit.
 - **Trimming:** the clip never falls far enough behind the live clock for the 6 s history trim to remove its frame.
 

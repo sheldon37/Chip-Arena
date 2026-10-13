@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
             replayWasAlive=p.Hp>0;if(arena.Time<replayNext&&!fresh)return;replayNext=arena.Time+.05f;
             // NetworkFrame detaches mutable pilot state and shares immutable prop records; no 20 Hz JSON deep copy.
             var frame=arena.NetworkFrame();replayFrames.Add(frame);replayEntities+=ReplaySize(frame);
-            while(replayFrames.Count>1&&(replayFrames.Count>132||replayEntities>150000||arena.Time-replayFrames[0].time>6)){replayEntities-=ReplaySize(replayFrames[0]);replayFrames.RemoveAt(0);}
+            while(replayFrames.Count>1&&!FinalKeeps()&&(replayFrames.Count>132||replayEntities>150000||arena.Time-replayFrames[0].time>6)){replayEntities-=ReplaySize(replayFrames[0]);replayFrames.RemoveAt(0);}
         }
         private static int ReplaySize(NativeGameFrame f)=>f.pilots.Length+f.props.Length+f.minions.Length+f.effects.Length+f.snapshot.Shots.Length+f.snapshot.Events.Length;
         private void ClearReplay(){EndReplay();FinalClear();replayFrames.Clear();replayEntities=0;replayNext=0;replaySeen=0;replayWasAlive=false;spectatorId=0;}

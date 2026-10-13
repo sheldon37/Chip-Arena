@@ -3,24 +3,25 @@ using System.Linq;
 using UnityEngine;
 namespace ChipArena.UnityConversion
 {
-    // The final killcam (Core/NativeFinalKillcam.cs, docs/FINAL-KILLCAM.md): when a round ends on a kill, every client (the
-    // killer, the survivors, the dead and spectators) replays that kill from its own recorded frames in the killcam's
-    // presentation scene (Runtime/NativeReplay.cs), with a CoD-style slow motion around the fatal hit, its own broadcast
-    // frame, a wider slow-motion shot and a local skip, then hands off to the round result. Presentation only: the match,
+    // The final killcam (Core/NativeFinalKillcam.cs, docs/FINAL-KILLCAM.md): when a round ends on a death (every round of
+    // every set, practice included), every client (the killer, the survivors, the dead and spectators) replays it from its
+    // own recorded frames in the killcam's presentation scene (Runtime/NativeReplay.cs), with a CoD-style slow motion around
+    // the fatal hit, its own broadcast frame, a wider slow-motion shot and a local skip, then hands off to the round result. Presentation only: the match,
     // its phases and the live simulation are untouched.
     public sealed partial class ConversionGame
     {
-        private bool finalOn,finalShown;private int finalSeed,finalVictim,finalKiller;private NativePhase finalPhase=NativePhase.Lobby;
+        private bool finalOn,finalShown,finalSolo;private int finalSeed,finalVictim,finalKiller;private NativePhase finalPhase=NativePhase.Lobby;
         private FinalKillcamCurve finalCurve;private FinalKillSkip finalSkip;private float finalEndedAt=-10,finalFov,finalLook;
-        private readonly FinalKillCandidate[] finalDeaths=new FinalKillCandidate[8];
+        private readonly FinalKillCandidate[] finalDeaths=new FinalKillCandidate[16];
         // The broadcast frame's text and colours, fixed when the clip starts (no per-frame strings).
-        private string finalKillerName="",finalVictimName="",finalHow="",finalWinnerLabel="",finalWinnerName="",finalOutcome="",finalRound="";
+        private string finalKillerName="",finalVictimName="",finalHow="",finalWinnerLabel="",finalWinnerName="",finalOutcome="",finalRound="",finalTag="FINAL KILL";
         private Color finalKillerColor,finalVictimColor,finalWinnerColor;private bool finalKillerTeam;private string finalKillerTeamName="";private Color finalKillerTeamColor;
         private int FinalSide(NativeSeat s)=>match.Teams?s.team:s.id;
         /// <summary>
         /// ObserveReplay, every frame: at the Fight -> Result step this client sees, picks the round's final kill from the
         /// replicated death records, fits the slow-motion clip into the Result time left, and starts it (cutting over a
-        /// normal killcam that is playing or waiting). finalSeed then keeps the normal killcam from arming this round.
+        /// normal killcam that is playing or waiting). finalSeed then keeps the normal killcam from arming this round. A death
+        /// with no killer to watch (environment, self, team kill) plays from the victim's view as their final moments.
         /// </summary>
         private void FinalKillWatch()
         {
@@ -37,29 +38,42 @@ namespace ChipArena.UnityConversion
             var context=new FinalKillContext{Teams=match.Teams,Cooperative=match.Cooperative,Pve=arena.Pve!=null,Sandbox=arena.Sandbox,Practice=!Online,Witnessed=true,Winner=match.Winner,WinnerSide=winner!=null?FinalSide(winner):-1,FightAt=match.FightAt,ResultAt=match.Time};
             int pick=NativeFinalKillcam.Select(finalDeaths,n,context,out finalSkip);
             if(pick<0){Debug.Log("Final killcam skipped: "+finalSkip);return;}
-            var f=finalDeaths[pick];bool matchEnds=match.Seats.Any(s=>s.score>=match.SetsToWin);
+            // Only the authority knows the room's sets to win (a guest's match holds its own prefs), so a guest always fits
+            // the clip into the Result time.
+            var f=finalDeaths[pick];bool credited=NativeFinalKillcam.Credited(f,match.Teams),matchEnds=(!Online||Hosting)&&match.Seats.Any(s=>s.score>=match.SetsToWin);
             float history=replayFrames.Count>1?(float)(f.At-replayFrames[0].time):0;
             if(!NativeFinalKillcam.Fit(NativeFinalKillcam.Available(match.PhaseEnd,match.Time,matchEnds),history,NativeFinalKillcam.Behind(match.Time,f.At),out var curve,out finalSkip)){Debug.Log("Final killcam skipped: "+finalSkip);return;}
             var start=NativeFinalKillcam.Begin(replayRunning,replayDeath>=0,finalShown);if(start==NativeFinalKillcam.Start.Already)return;
             if(start==NativeFinalKillcam.Start.CutOver)EndReplay();
-            finalSeed=f.Seed;finalShown=true;finalOn=true;finalCurve=curve;finalVictim=f.Victim;finalKiller=f.Killer;
-            // Armed for RenderReplayFrame's start block: now, from the killer's view.
-            replayDeath=(float)f.At;replayWait=0;replayView=f.Killer;FinalLabels(matchEnds);
-            Debug.Log("Final killcam: seat "+f.Killer+" on seat "+f.Victim+" · "+curve.Wall.ToString("0.00")+" s at x"+curve.Rate.ToString("0.00"));
+            finalSeed=f.Seed;finalShown=true;finalOn=true;finalCurve=curve;finalVictim=f.Victim;finalKiller=credited?f.Killer:0;finalSolo=!credited;
+            // Armed for RenderReplayFrame's start block: now, from the killer's view (the victim's with no killer to watch).
+            replayDeath=(float)f.At;replayWait=0;replayView=credited?f.Killer:f.Victim;FinalLabels(matchEnds,f.Killer);
+            Debug.Log("Final killcam: "+(credited?"seat "+f.Killer+" on seat ":"final moments of seat ")+f.Victim+" · "+curve.Wall.ToString("0.00")+" s at x"+curve.Rate.ToString("0.00"));
         }
-        private void FinalLabels(bool matchEnds)
+        private void FinalLabels(bool matchEnds,int source)
         {
             var killer=arena.Pilots.Find(p=>p.Seat.id==finalKiller);var victim=arena.Pilots.Find(p=>p.Seat.id==finalVictim);var winner=match.Seat(match.Winner);
-            finalKillerName=killer?.Seat.name??match.Seat(finalKiller)?.name??"Unknown";finalVictimName=victim?.Seat.name??"Unknown";
-            finalKillerColor=SeatColor(killer?.Seat??match.Seat(finalKiller));finalVictimColor=SeatColor(victim?.Seat);
-            finalHow=killer!=null&&victim?.Death!=null?killer.Weapon.name+"  ·  "+KillCause(victim.Death,killer):"Final elimination";
-            finalKillerTeam=match.Teams&&killer!=null;if(finalKillerTeam){finalKillerTeamColor=TeamColor(killer.Seat.team);finalKillerTeamName=NativeMatch.TeamNames[TeamIndex(killer.Seat.team)].ToUpperInvariant();}
-            finalWinnerLabel=matchEnds?"MATCH WINNER":match.SetWinner!=0?"SET WINNER":"ROUND WINNER";
-            finalWinnerName=winner==null?"":match.Teams?NativeMatch.TeamNames[TeamIndex(winner.team)]+" team":winner.name;finalWinnerColor=winner==null?NativeCyberTheme.Ink():match.Teams?TeamColor(winner.team):SeatColor(winner);
+            finalVictimName=victim?.Seat.name??"Unknown";finalVictimColor=SeatColor(victim?.Seat);finalTag=finalSolo?"FINAL ELIMINATION":"FINAL KILL";
+            if(finalSolo)
+            {
+                // No killer to name: the lower third carries the victim and the cause (a team kill names its teammate).
+                bool self=source==finalVictim;var mate=!self&&source>0?match.Seat(source):null;
+                finalKillerName=finalVictimName;finalKillerColor=finalVictimColor;finalKillerTeam=false;
+                finalHow=NativeFinalKillcam.SoloCause(self,mate!=null,victim?.Death?.damageKind);if(mate!=null)finalHow+="  ·  "+mate.name;
+            }
+            else
+            {
+                finalKillerName=killer?.Seat.name??match.Seat(finalKiller)?.name??"Unknown";finalKillerColor=SeatColor(killer?.Seat??match.Seat(finalKiller));
+                finalHow=killer!=null&&victim?.Death!=null?killer.Weapon.name+"  ·  "+KillCause(victim.Death,killer):"Final elimination";
+                finalKillerTeam=match.Teams&&killer!=null;if(finalKillerTeam){finalKillerTeamColor=TeamColor(killer.Seat.team);finalKillerTeamName=NativeMatch.TeamNames[TeamIndex(killer.Seat.team)].ToUpperInvariant();}
+            }
+            // A simultaneous knockout has no winner: the outcome card says so with the round's result line.
+            finalWinnerLabel=winner==null?"NO WINNER":matchEnds?"MATCH WINNER":match.SetWinner!=0?"SET WINNER":"ROUND WINNER";
+            finalWinnerName=winner==null?"Draw":match.Teams?NativeMatch.TeamNames[TeamIndex(winner.team)]+" team":winner.name;finalWinnerColor=winner==null?NativeCyberTheme.Ink():match.Teams?TeamColor(winner.team):SeatColor(winner);
             finalOutcome=match.Result??"";finalRound="ROUND "+match.Round+"  ·  SET "+match.Set;
         }
         /// <summary>RenderReplayFrame's start block, final killcam: the clip window from the fitted curve and the slowed
-        /// presentation. If history was trimmed since the pick (not in practice: both run in one frame), refit to it.</summary>
+        /// presentation. If history was trimmed since the pick (normally not: both run in one frame), refit to it.</summary>
         private void FinalBegin()
         {
             float history=replayDeath-(float)replayFrames[0].time;
@@ -100,7 +114,10 @@ namespace ChipArena.UnityConversion
             if(finalOn&&replayRunning)finalEndedAt=Time.unscaledTime;finalOn=false;
             if(presentation!=null){presentation.ClockRate=1;presentation.SlowBodies=false;}nativeAudio?.ReplayRestore();
         }
-        private void FinalClear(){finalOn=false;finalShown=false;finalSeed=0;finalPhase=NativePhase.Lobby;finalEndedAt=-10;}
+        private void FinalClear(){finalOn=false;finalShown=false;finalSolo=false;finalSeed=0;finalPhase=NativePhase.Lobby;finalEndedAt=-10;}
+        /// <summary>ObserveReplay's history trim: while the final killcam plays, the frame its clip starts from is kept (the
+        /// entity cap can hold less than the clip falls behind the live clock on a large map).</summary>
+        private bool FinalKeeps()=>finalOn&&replayDeath>=0&&replayFrames.Count>1&&replayFrames[1].time>replayDeath-finalCurve.Preroll;
         /// <summary>Space skips the final killcam for a living pilot too (only on this screen; the dead already skip with it).</summary>
         private bool FinalSkipKey()
         {
@@ -185,11 +202,17 @@ namespace ChipArena.UnityConversion
                 float fs=Mathf.Clamp(W*.022f,19,27),cw=Mathf.Min(460,W-2*g),ch=10+14+fs*1.15f+5+(finalKillerTeam?20:0)+18+11,cx=g-22*(1-lower),cy=H-kb-16-ch;
                 var r=new Rect(cx,cy,cw,ch);float beat=wall>=hitWall?1-NativeUiMotion.EaseOut(NativeUiMotion.Progress(wall,hitWall,.6f)):0;
                 NativeHudChrome.Panel(r,lower,accent);NativeUi.Fill(new Rect(cx,cy+6,3,ch-12),NativeUi.A(accent,lower));if(beat>0&&!reduced)NativeUi.Glow(new Rect(cx,cy+6,3,ch-12),NativeUi.A(accent,.8f*beat*lower),10);
-                float ly=cy+10;NativeUi.Text(new Rect(cx+16,ly,cw-34,14),"FINAL KILL",10,NativeUi.A(gold,lower),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.22f);ly+=16;
-                float kw=Mathf.Min(cw*.46f,NativeUi.Measure(finalKillerName,fs,true,false,-.02f).x);
-                NativeUi.Text(new Rect(cx+16,ly,kw+4,fs*1.15f),finalKillerName,fs,NativeUi.A(accent,lower),TextAnchor.MiddleLeft,bold:true,tracking:-.02f,shadow:new Color(0,0,0,lower));
-                NativeUi.Text(new Rect(cx+16+kw+10,ly,22,fs*1.15f),"▸",fs*.8f,NativeCyberTheme.Muted(lower),TextAnchor.MiddleCenter,bold:true);
-                NativeUi.Text(new Rect(cx+16+kw+36,ly,cw-kw-56,fs*1.15f),finalVictimName,fs,NativeUi.A(finalVictimColor,lower),TextAnchor.MiddleLeft,bold:true,tracking:-.02f,shadow:new Color(0,0,0,lower));ly+=fs*1.15f+3;
+                float ly=cy+10;NativeUi.Text(new Rect(cx+16,ly,cw-34,14),finalTag,10,NativeUi.A(gold,lower),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.22f);ly+=16;
+                // Killer ▸ victim; with no killer to name (environment, self, team kill), the victim alone.
+                if(finalSolo)NativeUi.Text(new Rect(cx+16,ly,cw-34,fs*1.15f),finalVictimName,fs,NativeUi.A(finalVictimColor,lower),TextAnchor.MiddleLeft,bold:true,tracking:-.02f,shadow:new Color(0,0,0,lower));
+                else
+                {
+                    float kw=Mathf.Min(cw*.46f,NativeUi.Measure(finalKillerName,fs,true,false,-.02f).x);
+                    NativeUi.Text(new Rect(cx+16,ly,kw+4,fs*1.15f),finalKillerName,fs,NativeUi.A(accent,lower),TextAnchor.MiddleLeft,bold:true,tracking:-.02f,shadow:new Color(0,0,0,lower));
+                    NativeUi.Text(new Rect(cx+16+kw+10,ly,22,fs*1.15f),"▸",fs*.8f,NativeCyberTheme.Muted(lower),TextAnchor.MiddleCenter,bold:true);
+                    NativeUi.Text(new Rect(cx+16+kw+36,ly,cw-kw-56,fs*1.15f),finalVictimName,fs,NativeUi.A(finalVictimColor,lower),TextAnchor.MiddleLeft,bold:true,tracking:-.02f,shadow:new Color(0,0,0,lower));
+                }
+                ly+=fs*1.15f+3;
                 if(finalKillerTeam){var tr=new Rect(cx+16,ly,NativeUi.Measure(finalKillerTeamName,10,true,true,.12f).x+12,16);NativeUi.Round(tr,Color.clear,4,NativeUi.A(finalKillerTeamColor,lower));NativeUi.Text(tr,finalKillerTeamName,10,NativeUi.A(finalKillerTeamColor,lower),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.12f);ly+=20;}
                 NativeUi.Text(new Rect(cx+16,ly,cw-34,18),finalHow,13,NativeCyberTheme.Ink(lower),TextAnchor.MiddleLeft);
             }
@@ -207,7 +230,7 @@ namespace ChipArena.UnityConversion
             // Timeline in the bottom letterbox: ink to the hit, danger after it, the slowed stretch shaded gold.
             float tl=(.45f+.55f*NativeUiMotion.Progress(wall,.1f,.4f))*(1-shut),tw=Mathf.Min(520,W*.44f),tlx=(W-tw)/2,tly=H-kb/2-8,span=Mathf.Max(.001f,c.Span);
             float progress=Mathf.Clamp01((replayTime-replayStart)/span),mark=Mathf.Clamp01(c.Preroll/span),s0=Mathf.Clamp01(c.W1/span),s1=Mathf.Clamp01(c.R4/span);
-            NativeUi.Text(new Rect(tlx,tly-14,tw,12),replayBody?"FINAL MOMENTS":"KILLER’S VIEW",10,NativeCyberTheme.Muted(tl),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.18f);
+            NativeUi.Text(new Rect(tlx,tly-14,tw,12),replayBody||finalSolo?"FINAL MOMENTS":"KILLER’S VIEW",10,NativeCyberTheme.Muted(tl),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.18f);
             var track=new Rect(tlx,tly+4,tw,4);NativeUi.Fill(new Rect(track.x,track.y,tw*mark,4),NativeCyberTheme.Edge(.9f*tl));NativeUi.Fill(new Rect(track.x+tw*mark,track.y,tw*(1-mark),4),NativeCyberTheme.Danger(.22f*tl));
             NativeUi.Fill(new Rect(track.x+tw*s0,track.y-4,tw*(s1-s0),12),NativeUi.A(gold,.26f*tl));NativeUi.Fill(new Rect(track.x+tw*s0,track.y+9,tw*(s1-s0),NativeHudChrome.Snap(1)),NativeUi.A(gold,.85f*tl));
             NativeUi.Fill(new Rect(track.x,track.y,tw*Mathf.Min(progress,mark),4),NativeCyberTheme.Ink(tl));if(progress>mark)NativeUi.Fill(new Rect(track.x+tw*mark,track.y,tw*(progress-mark),4),NativeCyberTheme.Danger(tl));

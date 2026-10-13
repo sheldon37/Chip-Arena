@@ -4,10 +4,10 @@ namespace ChipArena.UnityConversion
 {
     // The final killcam (owner 2026-10-13: "a final killcam ... plays for everyone on final kill (If you are the last player
     // dead on the round, instead of seeing your normal kill cam, you will see this one). It will replicate the slow motion
-    // on death like call of duty."). Presentation only, engine free: which recorded death ended the round (from the death
-    // records and the Fight -> Result step every client already replicates), the slow-motion clock over the recorded
-    // frames, fitting it into the time the Result phase leaves, and the order rules that keep the last victim from seeing
-    // both killcams. Runtime/NativeFinalKillcamPresentation.cs plays it; docs/FINAL-KILLCAM.md has the contract.
+    // on death like call of duty."; follow-up: "its supposed to be at the end of every round (per set)"). Presentation only,
+    // engine free: which recorded death ended the round (from the death records and the Fight -> Result step every client
+    // already replicates), the slow-motion clock over the recorded frames, fitting it into the time the Result phase
+    // leaves, and the order rules that keep the last victim from seeing both killcams. Runtime/NativeFinalKillcamPresentation.cs plays it; docs/FINAL-KILLCAM.md has the contract.
 
     /// <summary>One replicated pilot death record. Side: the team in a teams match, else the seat id.</summary>
     public struct FinalKillCandidate{public int Victim,Killer,Seed,VictimSide,KillerSide;public double At;}
@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
     public struct FinalKillContext{public bool Teams,Cooperative,Pve,Sandbox,Practice,Witnessed;public int Winner,WinnerSide;public double FightAt,ResultAt;}
 
     /// <summary>Why there is no final killcam (logs and checks).</summary>
-    public enum FinalKillSkip{None,Mode,Unwitnessed,Draw,NoDeath,NotRoundEnding,NoKiller,TeamKill,NoHistory,NoTime}
+    public enum FinalKillSkip{None,Mode,Unwitnessed,NoDeath,NotRoundEnding,NoHistory,NoTime}
 
     /// <summary>
     /// The replay clock: wall seconds since the clip started -> replay seconds since its first recorded moment. Normal speed
@@ -82,8 +82,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The round-ending death is at most this long before the first Result frame a client saw (the host
         /// resolves in the same step as the death; a guest's first Result frame is at most one 20 Hz send later).</summary>
         public const double Window=.5;
-        /// <summary>Practice (offline Play vs Bots) shows no final killcam (the normal killcam still plays there).</summary>
-        public const bool InPractice=false;
+        /// <summary>Practice (offline Play vs Bots) shows the final killcam too: the owner wants it at the end of every round.</summary>
+        public const bool InPractice=true;
         /// <summary>Wall seconds the round result keeps after the clip (its banner arrives over the hand-off flash).</summary>
         public const float Handoff=.9f;
         /// <summary>Replay seconds the clip needs before the hit; less history skips the final killcam.</summary>
@@ -94,30 +94,33 @@ namespace ChipArena.UnityConversion
         public static float Longest=>FinalKillcamCurve.Ideal.Wall;
 
         /// <summary>
-        /// The final kill: the latest (time, then seed) death of a pilot not on the winner's side between the fight's start
-        /// and the round's end, if the round ended on it (no more than <see cref="Window"/> before the client's first Result
-        /// frame) and it was a kill (a killer other than the victim, and not a teammate in a teams match). Returns its index,
-        /// or -1 with the reason. Every client holds the same death records and the same Result step, so all pick the same.
+        /// The final kill: the latest (time, then seed) death of a pilot not on the winner's side (any pilot on a simultaneous
+        /// knockout) between the fight's start and the round's end, if the round ended on it (no more than <see cref="Window"/>
+        /// before the client's first Result frame). Every round that ends on a death has one, whoever or whatever caused it:
+        /// an environmental or self death, or a team kill, plays from the victim's view (<see cref="Credited"/>). Returns its
+        /// index, or -1 with the reason. Every client holds the same death records and the same Result step, so all pick the same.
         /// </summary>
         public static int Select(FinalKillCandidate[] deaths,int count,in FinalKillContext c,out FinalKillSkip why)
         {
             why=FinalKillSkip.None;
             if(c.Cooperative||c.Pve||c.Sandbox||c.Practice&&!InPractice){why=FinalKillSkip.Mode;return -1;}
             if(!c.Witnessed){why=FinalKillSkip.Unwitnessed;return -1;}
-            if(c.Winner==0){why=FinalKillSkip.Draw;return -1;}
             int best=-1;
             for(int i=0;i<count&&deaths!=null&&i<deaths.Length;i++)
             {
-                var d=deaths[i];if(d.At<c.FightAt-1e-4||d.At>c.ResultAt+1e-4||d.VictimSide==c.WinnerSide)continue;
+                var d=deaths[i];if(d.At<c.FightAt-1e-4||d.At>c.ResultAt+1e-4||c.Winner!=0&&d.VictimSide==c.WinnerSide)continue;
                 if(best<0||d.At>deaths[best].At||d.At==deaths[best].At&&d.Seed>deaths[best].Seed)best=i;
             }
             if(best<0){why=FinalKillSkip.NoDeath;return -1;}
             var f=deaths[best];
             if(c.ResultAt-f.At>Window){why=FinalKillSkip.NotRoundEnding;return -1;}
-            if(f.Killer<=0||f.Killer==f.Victim){why=FinalKillSkip.NoKiller;return -1;}
-            if(c.Teams&&f.KillerSide==f.VictimSide){why=FinalKillSkip.TeamKill;return -1;}
             return best;
         }
+        /// <summary>The death has a killer to watch from: a pilot other than the victim, not on the victim's team in a teams
+        /// match. Otherwise (environment, self, team kill) the clip plays from the victim's view as their final moments.</summary>
+        public static bool Credited(in FinalKillCandidate f,bool teams)=>f.Killer>0&&f.Killer!=f.Victim&&!(teams&&f.KillerSide==f.VictimSide);
+        /// <summary>The broadcast frame's cause line for an uncredited final death (constant strings: the HUD allocates nothing).</summary>
+        public static string SoloCause(bool self,bool teamKill,string damageKind)=>self?"Self-inflicted":teamKill?"Friendly fire":damageKind=="collapse"?"Structural collapse":!string.IsNullOrEmpty(damageKind)?"Stage hazard":"Environment";
 
         // Shrinking the clip, in this order: pre-roll and aftermath, then hold, ramps and lead, then a lighter slow motion,
         // then everything to the minimum. Every step only shortens it, so the fit is a search along these keyframes.

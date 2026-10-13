@@ -1,5 +1,13 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — Final killcam at the end of every round (owner: "The final killcam isn't playing, its supposed to be at the end of every round (per set)")
+- Branch `claude/sleepy-ritchie-g8ruhv` (shared), base `710deba`. Presentation only: no match, phase, network or damage change; hit timing, hitboxes, cooldowns and movement are untouched.
+- Cause: the final killcam was gated off in offline Play vs Bots (`InPractice=false` with `Practice=!Online`), and it also skipped environmental and stage-hazard deaths, self and team kills, and simultaneous knockouts. Now every round that ends on a death plays it: kills from the killer's view; other deaths from the victim's view as "FINAL ELIMINATION" with the cause; a draw shows the last death and a "NO WINNER · Draw" outcome. PvE/Siren and the Dev Sandbox stay excluded.
+- Also: a guest no longer assumes a match-ending clip can outlast the Result phase (its match holds its own prefs, not the room's sets to win); the live history trim keeps the clip's start frame while it plays (a large map's entity cap could drop it); the candidate buffer is 16.
+- Files: `Core/NativeFinalKillcam.cs` (`Select`, `Credited`, `SoloCause`, `InPractice=true`), `Runtime/NativeFinalKillcamPresentation.cs`, `Runtime/NativeReplay.cs` (trim guard), `Tests/FinalKillcamChecks.cs`, `docs/FINAL-KILLCAM.md`.
+- Checks: Unity runtime+editor compile OK; check_relay exit 0 (final killcam 97 checks); Python 101 tests OK (one skip); package_source OK; git diff --check clean; sparse-copy relay as noted in the commit. Not run: Windows build or in-game playback.
+- Remaining: the 5 s Result phase still shortens the clip to about 4 s (Astra's Result hold in docs/FINAL-KILLCAM.md would give the full 6.4 s).
+
 ## 2026-10-13 — Astra — Ward Zero navigation allocation/hitch fix and separate PvP death diagnostics
 - Branch `codex/unity-wardzero-hitches`, base shared/builder `b9639f9`. Owner report: 1,060 ms frame, 1,047 ms in six simulation ticks, 94 reported GC-count increments, 15 adds. Later confirmed Ward PvP with one bot also lags; death stalls on another PvP map are separate and not yet captured.
 - Ward graph has 6,202 nodes / 10,440 links. Replace allocating LINQ A* frontier selection with a reusable indexed binary heap, retained distance/parent/closed arrays, cached nearest-node sort buffers and reused actor path lists. Remove temporary hazard MapVolume objects and captured predicates from hot hazard/link/map lookups. Existing route refresh policy, adjacency order, ordinal priority ties, directed drops, dynamic hazard/destruction/LOS checks and movement rules remain.
