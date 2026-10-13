@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
             public NativeBreach.Hole Hole;public Renderer[] Renderers;public MeshFilter[] Filters;public Material[][] Materials;public Material Material;public Mesh PanelMesh;public int Layer;
         }
         private readonly HordeBreachState[] hordeBreaches=MakeBreaches();
-        private static HordeBreachState[] MakeBreaches(){var b=new HordeBreachState[4];for(int i=0;i<b.Length;i++)b[i]=new HordeBreachState();return b;}
+        private static HordeBreachState[] MakeBreaches(){var b=new HordeBreachState[64];for(int i=0;i<b.Length;i++)b[i]=new HordeBreachState();return b;}
         private Mesh hordeBreachCube;
         /// <summary>The stage's hardlight (the restore's hologram).</summary>
         private static readonly Color HardlightColor=new Color(.38f,.92f,1f);
@@ -33,11 +33,12 @@ namespace ChipArena.UnityConversion
         private void HordeBreachJob(NativeArena arena,PveEntry entry,float spawnAt,float breakAt,Vector3 from,Vector3 exit,int kind,uint seed,GameObject segment=null)
         {
             if(entry==null)return;HordeBreachState free=null;
-            for(int i=0;i<hordeBreaches.Length;i++){var b=hordeBreaches[i];if(b.Live&&b.Entry==entry){if(Mathf.Abs(b.SpawnAt-spawnAt)<.05f)return;HordeBreachRelease(b);free=b;break;}if(!b.Live&&free==null)free=b;}
+            for(int i=0;i<hordeBreaches.Length;i++){var b=hordeBreaches[i];if(b.Live&&b.Entry.e==entry.e&&b.Entry.id==entry.id){if(Mathf.Abs(b.SpawnAt-spawnAt)<.05f)return;HordeBreachRelease(b);free=b;break;}if(!b.Live&&free==null)free=b;}
             if(free==null)return;
             var s=free;s.Live=true;s.Entry=entry;s.SpawnAt=spawnAt;s.BreakAt=breakAt;s.RestoreAt=NativeBreach.DefaultRestoreAt(breakAt);s.Seed=seed;s.Kind=kind;s.Hidden=false;
             // The map's segment (by name; looked up once per breach), else the wall the entry implies.
-            var go=segment!=null?segment:GameObject.Find(NativeBreach.ObjectName(entry.id));
+            var go=segment;
+            if(go==null)foreach(var prop in arena.AllBlocks)if(prop!=null&&prop.gameObject.name==NativeBreach.ObjectName(entry.id)){go=prop.gameObject;break;}
             s.Renderers=null;s.Filters=null;s.Materials=null;s.Material=null;s.Panel=false;
             NativeBreach.Wall wall;
             if(go!=null)
@@ -65,6 +66,18 @@ namespace ChipArena.UnityConversion
                 var h=s.Hole;var v=new Vector3[h.Positions.Length];var nn=new Vector3[v.Length];var uv=new Vector2[v.Length];
                 for(int i=0;i<v.Length;i++){v[i]=new Vector3(h.Positions[i].X,h.Positions[i].Y,h.Positions[i].Z);nn[i]=new Vector3(h.Normals[i].X,h.Normals[i].Y,h.Normals[i].Z);uv[i]=new Vector2(h.Uvs[i].X,h.Uvs[i].Y);}
                 s.PanelMesh.vertices=v;s.PanelMesh.normals=nn;s.PanelMesh.uv=uv;s.PanelMesh.triangles=h.Triangles;s.PanelMesh.RecalculateBounds();
+            }
+        }
+        private void HordeBreachFrames(NativeArena arena)
+        {
+            foreach(var frame in arena.WardBreaches)
+            {
+                if(arena.Time>NativeBreach.SolidAt(frame.restoreAt)+.4f)continue;
+                var entry=System.Array.Find(NativeArena.StageContent.entries,e=>e.e==frame.entry);
+                if(entry==null)continue;
+                float spawn=frame.breakAt-NativeBreach.Knock;
+                HordeBreachJob(arena,entry,spawn,frame.breakAt,NativeArena.Vec(entry.from.Position()),NativeArena.Vec(entry.@exit.Position()),NativeHordeKinds.Hulk,(uint)(frame.entry+1));
+                foreach(var b in hordeBreaches)if(b.Live&&b.Entry.e==frame.entry&&Mathf.Abs(b.BreakAt-frame.breakAt)<.01f)b.RestoreAt=frame.restoreAt;
             }
         }
         // The wall's frame as a Unity matrix (local x along it, y up, z out into the arena).

@@ -31,17 +31,23 @@ namespace ChipArena.UnityConversion
         public bool IntroStartsBossSong=>BossSongAt>=0&&(Match.Phase==NativePhase.Intro
             ?Match.IntroStyle=="dev-siren"&&BossSongLead==0&&BossSongAt==(float)Match.IntroStarted
             :Pve?.Holding==true&&Pve.Cinematic=="intro");
-        public static readonly Vector3[] StageVents={new Vector3(-10,0,-9),new Vector3(10,0,9),new Vector3(-10,0,9),new Vector3(10,0,-9),new Vector3(0,0,-17),new Vector3(0,0,17),new Vector3(-21,0,-12),new Vector3(21,0,12)};
+        private static NativePveContent stageContent;
+        public static NativePveContent StageContent=>stageContent??(stageContent=JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
+        private static Vector3[] stageVents;
+        public static Vector3[] StageVents=>stageVents??(stageVents=StageContent.entries.Where(e=>e.song>=0).OrderBy(e=>e.e).Select(e=>Vec(e.from.Position())).ToArray());
+        private PveEntry SongVent(int index)=>StageContent.entries.First(e=>e.e==index);
+        private Vector3 BossSpawn=>Vec((Pve?.Content??StageContent).boss.spawn.Position(.9f));
+        private Vector3 BossRescue=>Vec((Pve?.Content??StageContent).boss.rescue.Position());
         private void StepSirenStage()
         {
             if(MapId!="siren"||Match.Phase!=NativePhase.Fight||BossSongTime<0)return;
             for(int i=0;i<StageVents.Length;i++)
             {
-                if(!BossTrack.Vent(BossSongTime,i%2).active)continue;Vector3 vent=StageVents[i];
+                if(!BossTrack.Vent(BossSongTime,SongVent(i).song).active)continue;Vector3 vent=StageVents[i];
                 foreach(var p in Pilots)
                 {
                     if(p.Hp<=0||!p.Seat.connected)continue;Vector3 pos=p.Body.position;string key="vent:"+i+":"+p.Seat.id;
-                    if(hazardHits.TryGetValue(key,out float until)&&Time<until||Math.Abs(pos.x-vent.x)>1.5f||Math.Abs(pos.z-vent.z)>1.5f||pos.y-.85f>2.2f||pos.y<-.5f)continue;
+                    if(hazardHits.TryGetValue(key,out float until)&&Time<until||Math.Abs(pos.x-vent.x)>1.5f||Math.Abs(pos.z-vent.z)>1.5f||pos.y-.85f>vent.y+2.2f||pos.y<vent.y-.5f)continue;
                     hazardHits[key]=Time+.65f;float actual=Damage(p,null,14,Vector3.up,0,false,direct:false,stage:true,damageKind:"stage-vent");
                     if(actual>0&&!SirenArmor(p)){p.Knockback.y=6.5f-p.Body.linearVelocity.y;p.Grounded=false;}Fx(vent,1.2f,4);
                 }

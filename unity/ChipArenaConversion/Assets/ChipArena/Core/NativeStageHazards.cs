@@ -6,7 +6,8 @@ namespace ChipArena.UnityConversion
     public static class NativeStageHazards
     {
         public static bool City(MapHazard h)=>h.kind=="maglev"||h.kind=="grid";
-        public static bool DeathKind(string kind)=>string.IsNullOrEmpty(kind)||kind=="collapse"||kind=="maglev"||kind=="grid"||kind=="hazard";
+        public static bool Ward(MapHazard h)=>h.kind=="burner"||h.kind=="gas"||h.kind=="shutter";
+        public static bool DeathKind(string kind)=>string.IsNullOrEmpty(kind)||kind=="collapse"||kind=="maglev"||kind=="grid"||kind=="burner"||kind=="gas"||kind=="hazard";
         public static void Validate(ContentMap map)
         {
             var hs=map.hazards??Array.Empty<MapHazard>();
@@ -17,7 +18,22 @@ namespace ChipArena.UnityConversion
                 Need(NativeMapRules.Box(h.center,h.size)&&NativeMapRules.Finite(h.a)&&NativeMapRules.Finite(h.b)&&NativeMapRules.Finite(h.axis),"geometry "+h.id);
                 Need(new[]{h.first,h.period,h.offset,h.warn,h.danger,h.speed,h.length,h.charge,h.live,h.tick,h.damage,h.radius,h.start,h.rise,h.travel,h.dwell,h.hoist,h.carry,h.push}.All(MathUtil.Finite),"finite clock "+h.id);
                 Need(h.period>0&&h.damage>=0,"period/damage "+h.id);
-                if(City(h))
+                if(map.id=="siren")Need(City(h)&&h.kind=="grid"||Ward(h),"Ward kind "+h.id);
+                if(Ward(h))
+                {
+                    Need(h.first>=0&&h.first+h.offset>=0&&!h.lethal&&h.warn>0&&h.dwell>=0,"Ward clock "+h.id);
+                    if(h.kind=="shutter")Need(h.travel>0&&h.rise>0&&h.push>0&&h.damage==0&&h.warn+h.travel+h.dwell+h.rise<=h.period&&Math.Min(h.size.x,h.size.z)<1&&Math.Max(h.size.x,h.size.z)>1,"shutter "+h.id);
+                    else
+                    {
+                        Need(h.live>0&&h.warn+h.live+h.dwell<=h.period&&h.tick>0&&h.damage>0,"burst "+h.id);
+                        if(h.kind=="burner")
+                        {
+                            Need(h.zones!=null&&h.zones.Length>0,"burner zones");
+                            foreach(var z in h.zones)Need(z!=null&&NativeMapRules.Box(z.center,z.size)&&Math.Abs(z.center.x-h.center.x)+z.size.x/2<=h.size.x/2+.001f&&Math.Abs(z.center.y-h.center.y)+z.size.y/2<=h.size.y/2+.001f&&Math.Abs(z.center.z-h.center.z)+z.size.z/2<=h.size.z/2+.001f,"burner zone bounds");
+                        }
+                    }
+                }
+                else if(City(h))
                 {
                     Need(h.first>=0&&h.first+h.offset>=0,"first "+h.id);
                     if(h.kind=="maglev")Need(h.lethal&&h.speed>0&&h.length>0&&h.period>h.warn&&h.warn>h.danger&&h.danger>0&&(h.size.x+h.length)/h.speed+2+h.warn<h.period,"maglev timing "+h.id);
@@ -62,11 +78,14 @@ namespace ChipArena.UnityConversion
         {
             double origin,duration;
             if(h.kind=="grid"){origin=fightAt+h.first+(round%2==0?h.offset:0)+h.period-h.live-1;duration=h.live;}
+            else if(NativeWardZeroHazards.IsBurst(h)){origin=fightAt+h.first+(round%2==0?h.offset:0)+h.warn;duration=h.live;}
             else if(h.kind=="vent"){origin=fightAt+NativeFactoryHazards.ArmDelay+h.start+h.offset+h.period-h.dwell;duration=h.dwell;}
             else return 0;
             int cycle=(int)Math.Floor((to-origin)/h.period);if(cycle<0)return 0;
             return Ticks(from,to,origin+cycle*h.period,duration,h.tick);
         }
+        public static bool BurstTouch(MapHazard h,V3 p,float radius=.42f,float halfHeight=.85f)
+        =>h.kind=="burner"?(h.zones??Array.Empty<MapVolume>()).Any(z=>Touch(p,z.center,z.size,radius,halfHeight)):Touch(p,h.center,h.size,radius,halfHeight);
         public static bool GridTouch(MapHazard h,V3 p,float halfHeight=.85f)
         {float feet=p.y-halfHeight;return feet>=h.center.y-h.size.y/2-.1f&&feet<=h.center.y+h.size.y/2&&Math.Abs(p.x-h.center.x)<h.size.x/2+.42f&&Math.Abs(p.z-h.center.z)<h.size.z/2+.42f;}
         public static bool FactoryBox(MapHazard h,in FactoryHazardState s,out V3 center,out V3 size)
@@ -78,6 +97,7 @@ namespace ChipArena.UnityConversion
         public static bool LinkOpen(MapHazard h,NativePhase phase,int round,double fightAt,double now,V3 a,V3 b)
         {
             if(phase!=NativePhase.Fight&&phase!=NativePhase.Result)return true;
+            if(Ward(h))return NativeWardZeroHazards.At(h,phase,round,fightAt,now).Clear(h.kind=="shutter"?3:h.kind=="gas"?2.5:1);
             if(City(h))return NativeCyberCityHazards.At(h,phase,round,fightAt,now).Clear(h.kind=="maglev"?6:1.5);
             double clock=NativeFactoryHazards.Clock(phase,fightAt,now);var s=NativeFactoryHazards.State(h,round,clock);
             if(h.kind=="saw-slot")return s.Phase==NativeFactoryHazards.Parked||!Cross(a,b,new V3(s.Center.x, .8f,s.Center.z),new V3(8,1.6f,1.4f));

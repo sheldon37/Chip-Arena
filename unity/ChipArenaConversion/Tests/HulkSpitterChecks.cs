@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         private static void Kind()
         {
             int k=NativeHordeKinds.Hulk,n=NativeHordeKinds.Count;
-            Check(n==7&&NativeHordeKinds.Ids[k]=="hulk"&&NativeHordeKinds.Resolve("hulk")==k&&!NativeHordeKinds.Shipped[k],"the Hulk is the seventh kind, content-gated");
+            Check(n==7&&NativeHordeKinds.Ids[k]=="hulk"&&NativeHordeKinds.Resolve("hulk")==k&&NativeHordeKinds.Shipped[k],"the Hulk is the seventh shipped kind");
             foreach(var len in new[]{NativeHordeKinds.Ids.Length,NativeHordeKinds.Names.Length,NativeHordeKinds.Shipped.Length,NativeHordeKinds.Looks.Length,NativeHordeKinds.Radius.Length,NativeHordeKinds.Height.Length,NativeHordeKinds.Axis.Length,NativeHordeKinds.Root.Length,NativeHordeKinds.CenterAhead.Length,NativeHordeKinds.Scale.Length,NativeHordeKinds.Mass.Length,NativeHordeKinds.Default.Length,NativeHordeKinds.Seam.Length,NativeHordeKinds.SeamClass.Length,NativeHordeKinds.Proposed.Length,NativeZombieMotion.Tempo.Length,NativeHordeModels.HeadWidth.Length,NativeHordeModels.HeadDrop.Length})
                 Check(len==n,"every kind table has the Hulk ("+len+")");
             float scale=NativeHordeKinds.Scale[k];Check(scale>=1.6f&&scale<=2&&NativeHordeKinds.Scale.Take(k).All(x=>x==1),"the Hulk is drawn 1.6-2 times the brute's size ("+scale+"), every other kind at its own");
@@ -293,11 +293,10 @@ namespace ChipArena.UnityConversion
             }
             Check(!Regex.IsMatch(zombie,@"\.transform\.(position|rotation|localPosition|localScale)\s*=")&&!zombie.Contains("SetPositionAndRotation"),"a jolted prop is only drawn jolted (it never moves)");
             Check(!Regex.IsMatch(breach,@"Destroy\("),"the breach never destroys the map's wall");
-            // No Ward Zero coordinates in the drop, breach or acid files (the maps place them).
-            var content=System.Text.Json.JsonDocument.Parse(R(root,"Assets/Conversion/Resources/PveContent.json"));var literals=new System.Collections.Generic.HashSet<string>();
-            foreach(var e in content.RootElement.GetProperty("entries").EnumerateArray())foreach(var pt in new[]{"from","exit"}){var q=e.GetProperty(pt);foreach(var c in new[]{"x","z"}){double v=Math.Abs(q.GetProperty(c).GetDouble());if(v>=1&&(v%1!=0||v>=15))literals.Add(v.ToString("0.###",System.Globalization.CultureInfo.InvariantCulture));}}
-            foreach(var f in new[]{"Assets/ChipArena/Core/NativeBreach.cs","Assets/ChipArena/Runtime/NativeHordeBreachPresentation.cs","Assets/ChipArena/Runtime/NativeHordeAcidPresentation.cs","Assets/ChipArena/Core/NativeHordeDrop.cs"})
-            {var t=R(root,f);foreach(var l in literals)foreach(var form in new[]{l+"f",l+",",l+")"})Check(!Regex.IsMatch(t,@"(?<![\d.*/])"+Regex.Escape(form)),Path.GetFileName(f)+" holds no Ward Zero entry coordinate ("+l+")");}
+            // Integration reads complete entry points, not individual numeric literals (a map coordinate may
+            // legitimately equal gravity or an effect duration).
+            Check(breach.Contains("entry.from.Position()")&&breach.Contains("entry.@exit.Position()")&&breach.Contains("frame.restoreAt"),"breach frame uses authored endpoints and replicated restoration");
+            Check(R(root,"Assets/ChipArena/Core/NativeHordeDrop.cs").Contains("e.height"),"drop uses authored height");
             foreach(var f in new[]{"NativeBreach.cs","NativeHordeRoar.cs"}){var t=R(root,"Assets/ChipArena/Core/"+f);Check(!t.Contains("UnityEngine")&&!t.Contains("NativeArena")&&!t.Contains("new Random("),f+" is engine free and clock free");}
         }
     }

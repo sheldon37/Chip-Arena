@@ -18,6 +18,10 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class MapNavNode { public string id; public V3 pos; public int layer;public bool safe; }
     [Serializable] public sealed class MapNavLink { public string id,a,b,kind; public string[] requires,after,hazards; }
     [Serializable] public sealed class MapNav { public MapNavNode[] nodes; public MapNavLink[] links; }
+    [Serializable] public sealed class MapRamp {public string id,kind;public V3 low,high;public float width,bottom;public string[] blocks;}
+    [Serializable] public sealed class MapDrop {public string id;public V3 a,b;}
+    [Serializable] public sealed class MapSafe {public string hazard;public V3 at;}
+    [Serializable] public sealed class MapNavHints {public MapDrop[] drops;public MapSafe[] safe;public string[] collisionOff;}
     public static class NativeMapRules
     {
         public const float PilotRadius=.42f;
@@ -33,11 +37,13 @@ namespace ChipArena.UnityConversion
             // JsonUtility can create empty inline objects for these absent supplemental fields.
             // Normalize at the shared load boundary so every runtime/build-check consumer agrees.
             // Authored UnityMaps below still require their own validated tables and bounds.
-            foreach(var m in c.maps){m.bounds=null;m.spawns=null;m.nav=null;m.segments=null;m.pilotBlocks=null;m.hazards=null;}
+            foreach(var m in c.maps){m.bounds=null;m.spawns=null;m.nav=null;m.segments=null;m.pilotBlocks=null;m.hazards=null;m.ramps=null;m.navHints=null;}
             c.contentRevision=Revision(text);c.materials=c.materials.Concat(u.materials).ToArray();
             if(c.materials.Select(m=>m.id).Distinct().Count()!=c.materials.Length)throw new InvalidOperationException("Duplicate material");
             foreach(var m in u.maps){m.unity=true;Validate(m);}
-            c.maps=c.maps.Concat(u.maps).ToArray();c.Validate();
+            // Ward Zero deliberately replaces its exported legacy map, preserving its public ID.
+            if(u.maps.GroupBy(m=>m.id).Any(g=>g.Count()>1)||u.maps.Any(m=>m.id!="siren"&&c.maps.Any(old=>old.id==m.id)))throw new InvalidOperationException("Duplicate Unity map");
+            c.maps=c.maps.Where(m=>!u.maps.Any(next=>next.id==m.id)).Concat(u.maps).ToArray();c.Validate();
         }
         public static V3 Clamp(ContentMap m,V3 p,bool bot=false)
         {
@@ -74,7 +80,7 @@ namespace ChipArena.UnityConversion
             foreach(var x in m.blocks)Need(!string.IsNullOrEmpty(x.id)&&Box(x.pos,x.size)&&new[]{"static","structural","masonry","carried","cover"}.Contains(x.role)&&MathUtil.Finite(x.hp)&&(!new[]{"structural","masonry","cover"}.Contains(x.role)||x.hp>0),"block geometry/role/hp "+x.id);
             foreach(var x in m.blocks)Need(x.stages==null||x.stages.Length==0||x.stages.Length==2&&MathUtil.Finite(x.stages[0])&&MathUtil.Finite(x.stages[1])&&x.stages[0]<1&&x.stages[0]>x.stages[1]&&x.stages[1]>0,"block stage thresholds "+x.id);
             foreach(var x in m.pilotBlocks??Array.Empty<MapPilotBlock>())Need(!string.IsNullOrEmpty(x.id)&&Finite(x.center)&&Finite(x.size)&&x.size.x>0&&x.size.z>0&&MathUtil.Finite(x.bottom),"pilot exclusion");
-            NativeStructureRules.Validate(m);NativeStageHazards.Validate(m);
+            NativeMapRamps.Validate(m);NativeStructureRules.Validate(m);NativeStageHazards.Validate(m);
             Need(m.nav?.nodes!=null&&m.nav.links!=null,"nav");var nodes=new HashSet<string>(m.nav.nodes.Select(n=>n.id));Need(nodes.Count==m.nav.nodes.Length,"nav node IDs");
             Need(m.nav.links.Select(l=>l.id).Distinct().Count()==m.nav.links.Length,"nav link IDs");
             var segments=new HashSet<string>((m.segments??Array.Empty<StructureDefinition>()).Select(s=>s.id));var links=new HashSet<string>(m.nav.links.Select(l=>l.id));

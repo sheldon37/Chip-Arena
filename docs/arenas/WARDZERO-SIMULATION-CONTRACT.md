@@ -7,6 +7,30 @@ Branch `claude/wardzero-rework` (base `258e348`). Nothing here is wired into the
 unchanged until the import, and the presentation on the branch stays dormant until then. All numbers are proposals; record
 agreements and changes at the top of this file (as BRICKFALL- and CYBERCITY-SIMULATION-CONTRACT.md do).
 
+## Simulation agreement — 2026-10-13, Codex (implementation on task branch)
+
+- Import through UnityMaps.json: replace only the existing `siren` map, preserve
+  music, rotation, public identity and every authored geometry/entry ID. Keep old hall assets.
+- Generic `ramps` / `navHints` drive wedge collision and navigation; corpse treads remain.
+- Breach collision returns at `restoreAt + 2.6`, not at restoreAt. Overlapping
+  bodies postpone restore in 0.5-second increments; the updated clock is replicated.
+- Shutters push only on authority simulation ticks. Their collision interlock stays
+  open if a checked push cannot clear a capsule, including a locked pilot; it
+  retries while the clock is shut. The visual clock is unchanged, so an obstructed
+  shutter may look shut while collision waits. This deliberate no-crush exception
+  needs native playtest coverage.
+- Navigation uses a supported 1 m graph, wedge links, twelve directed drops and
+  hazard-tagged links. Authored safe pockets are marked for evacuation.
+- Hulk content adopts the existing VARIANTS row and capsule (.954 radius / 3.06
+  height), capped at two and no more than half the normal alive cap. It enters only
+  via breaches or the flagged Cradle hatch. Ordinary entries remain data driven.
+- Song sides come from `song`, including the draft's last pair (1, 0); index parity
+  is no longer assumed. No entry IDs or geometry were changed.
+- No presentation geometry, animation, lighting, kit or effect redesign is authorized.
+  The only presentation edits will connect the replicated/data-owned simulation fields.
+- Actual executed gates and remaining native validation are recorded in DEV_LOG.
+
+
 ## 1. Owners and files
 | owner | files |
 |---|---|

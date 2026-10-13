@@ -5664,3 +5664,36 @@ Checks: Python discovery 101 tests, OK (1 skipped); managed updater 57 passed;
 git diff --check passed. Unity compilation, Windows startup/mixer display and
 real installed-client update were not run (no Unity/Windows here). No compiled
 release published; source changes await builder verification.
+
+## 2026-10-13 · Codex · Ward Zero simulation import
+Task branch `codex/wardzero-simulation`, base `51f0aa7d383c` (includes the
+Chip Arena executable rename). Same-ID UnityMaps replacement imports Claude's
+616 blocks, eight wedge routes, 53 entries, both floors, bounds and hazards,
+preserving music, rotation, IDs, old hall assets and the presentation design.
+The generator adds supported navigation, directed drops and hazard gates.
+Generic wedge collision is built on reset for host/guest; the corpse scene keeps
+authored treads. Stage damage includes burner/gas, row-only burners and 7-second
+credit. Shutters use a checked push and obstruction interlock; visual clock
+unchanged (an obstructed shutter can look closed while its collider waits).
+PvE points carry floor height; song vents and boss locations come from data.
+Drop/ceiling/wall/breach timelines, clear landings, two-floor hiding, Hulk content,
+cap, capsule, smash and landing use existing presentation constants. Breach
+restore clocks replicate, return collision after rebuild and defer on overlap.
+The sandbox entry selector can force any authored entry, including Cradle/breach.
+Narrow presentation feed changes connect authored song sides, ceiling drops and
+replicated breach restoration; no IDs, geometry, kit, lighting, FX or animation
+curves changed. Old literal-string tests were updated where they asserted the
+pre-import dormant map, the old capsule only, or mistook gravity for coordinates.
+Checks so far: focused Ward simulation 148 assertions, WardZero 1668,
+StageVent 102445, HordeKind 433713, ZombieMotion 29237, HulkSpitter 49154 pass.
+Python 101 tests OK (1 skipped); source package check 1792 files; Roslyn syntax
+parse of all native sources with Editor/validation defines has zero errors.
+.NET CLI later hit a container /proc Process.GetStat failure; the same installed
+SDK's Roslyn compiler and runtime executed the managed project directly with
+its reference assemblies and ARENA_TESTS define. Full managed suite passed (all
+presentation/rules suites and the final 35 managed-core checks).
+Added Editor/build gates for both-direction host/guest walk/sprint/bot traversal,
+damage, shutter interlock, breach overlap and real JsonUtility. These are NOT
+executed here: no Unity Editor, PhysX, Windows or multiplayer claims. Native
+traversal, large-capsule navigation and obstruction behaviour remain playtest
+risks. No compiled player or channel payload published by this environment.
