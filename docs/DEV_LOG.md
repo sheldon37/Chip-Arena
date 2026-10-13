@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — Ward atrium traversal landing turn
+- Branch `codex/ward-traversal-fix`, base shared/builder `375f9ed`. Owner log `Latest-Build(8).log` passes Ward hazards and reports 85 traversal failures, all ascending the two atrium stairs at the second target. Host/guest capsules reach y ~6.85 and stop at z +/-4.43 before the end guardrail; every other flight and all descent cases passed that run.
+- The test assumed every landing continues straight. Authored atrium landings end at z +/-5 with rails from +/-4.85; the intended exit turns outward onto the gallery. Build-only waypoints now reach the flight end, centre on the landing, then turn outward to x +/-13.5, over two metres beyond the flight. All starts, sides, movement modes and tolerances remain. No collision removal, map edit, runtime navigation, movement, combat or visual change.
+- Updated traversal contract to describe the authored turn. Failure summaries now include the first failed route and failure count on the first line, retaining the complete multiline list.
+- Checks: Core/Tests builds with zero warnings/errors; focused Ward suites pass (251 simulation checks, including reproduction of the old rail-intersecting targets and outward exit/distance checks); Python 101 tests OK, one skip; source package 1,806 files; diff check clean. Full check_relay.py passed, exit 0, including the final 35 managed-core checks and real WebSocket/UDP/TCP checks (fresh Core/Tests assembly; unchanged relay assembly from the same base).
+- Unity Editor/PhysX and Windows package unavailable locally. The builder must establish that all actual traversal cases pass; managed checks do not replace this gate. Push/merge/builder synchronization authorized by standing owner instructions; no compiled release claimed.
+
 ## 2026-10-13 — Astra — preserve Ward native fixture round while advancing time
 - Branch `codex/ward-burner-tick-fix`, initial base shared/builder `b4e2351`, rebased onto `738bbf4` preserving the Cyber Lord ranged merge; owner's Windows build passed the previous interaction gate and failed `siren-burner-e-a mitigated tick count`.
 - Reproduced fixture defect with real NativeMatch and DamageTicks: the start was calculated at set 1 / round 1 (stage round 65, live at 17.5 s); the first Clock call applied a frame with default set/round 0, moving the burner start to 22.5 s. The entire sampled 2.5 s window therefore recorded zero ticks instead of ten.

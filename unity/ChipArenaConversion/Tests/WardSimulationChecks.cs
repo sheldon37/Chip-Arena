@@ -80,6 +80,19 @@ namespace ChipArena.UnityConversion
                 }
                 if(h.kind=="burner"){Check(!NativeStageHazards.BurstTouch(h,h.center),"lane pocket harmless");Check(NativeStageHazards.BurstTouch(h,h.zones[0].center),"row damages");}
             }
+            foreach(var flight in NativeMapRamps.Flights(map))foreach(bool down in new[]{false,true})
+            {
+                var finish=NativeMapRamps.TraversalFinish(flight,down,new V3(0,0,0));
+                bool turns=!down&&flight.Id.Contains("stair-atrium-");
+                Check(finish.Length==(turns?3:2),"landing route "+flight.Id);
+                if(turns)
+                {
+                    var rail=map.blocks.Single(b=>b.id==flight.Id+(flight.High.x>0?"-rail-n":"-rail-s"));
+                    Check(NativeStageHazards.Touch(flight.High+flight.Direction*2+new V3(0,.9f,0),rail.pos,rail.size),"old straight target intersects landing guardrail");
+                    Check(Math.Abs(finish[2].x)>12.5f&&Math.Abs(finish[2].z)<4,"turn reaches gallery beyond landing");
+                    Check((finish[2]-flight.High).Length>2,"exit still proves over two metres beyond flight");
+                }
+            }
             var nodes=map.nav.nodes.ToDictionary(n=>n.id);
             foreach(var ramp in map.ramps)
             {

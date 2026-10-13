@@ -34,9 +34,9 @@ namespace ChipArena.UnityConversion
                         Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10,fightAt=10});navRoutes.Clear();Physics.SyncTransforms();
                         bool guest=mode.StartsWith("guest",StringComparison.Ordinal),sprint=mode.EndsWith("sprint",StringComparison.Ordinal);
                         var state=new NativePredictionState{Position=Vec(start),Grounded=true,CanMove=true,CanSprint=true,Speed=6.8f,Gravity=23,JumpSpeed=8.5f};
-                        foreach(var point in new[]{high+lateral,high+lateral+direction*2})
+                        foreach(var point in NativeMapRamps.TraversalFinish(r,down,Vec(lateral)))
                         {
-                            var target=point+Vector3.up*.9f;int ticks=0;float tolerance=mode=="bot"?.8f:.18f;
+                            var target=Vec(point)+Vector3.up*.9f;int ticks=0;float tolerance=mode=="bot"?.8f:.18f;
                             Vector3 Position()=>guest?Vec(state.Position):p.Body.position;
                             float Distance(){var d=target-Position();d.y=0;return d.magnitude;}
                             while(Distance()>tolerance&&ticks++<900)
@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             finally{Match.HoldResolution=hold;Reset();}
-            if(failures.Count>0)throw new Exception("Ward traversal failed:\n"+string.Join("\n",failures));
+            if(failures.Count>0)throw new Exception("Ward traversal failed ("+failures.Count+"): "+failures[0]+"\n"+string.Join("\n",failures));
             Debug.Log("PASS Ward traversal: eight routes, both directions, floor/bottom/mid-flight, centre/left/right, host/guest walk/sprint and bot");
         }
     }
