@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — relay green after the Ward Zero simulation import (PR #171)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), base `18a9443` (owner-merged PR #171). The relay stopped at `HulkSpitterChecks`: "a breach reads its entry and the map's named segment" text-matched the old `GameObject.Find(NativeBreach.ObjectName(entry.id))`, which #171 replaced with a search of `arena.AllBlocks` by the same name (a better lookup). The check now matches the new lookup; intent unchanged.
+- Also in `NativeHordeBreachPresentation.HordeBreachFrames` (runs every drawn frame): the entry lookup used `Array.Find` with a lambda capturing the frame, a closure allocation per breach per frame; now a plain loop. No behaviour change.
+- Checks: Unity runtime+editor build OK; relay 621 PASS / 0 FAIL (Ward simulation 148 checks included); Python unittest OK; package OK; diff-check clean; sparse copy below. The revamped Ward Zero presentation is now live with the imported map; not seen in the Unity Editor or on Windows yet.
+
 ## 2026-10-13 — Claude — build stamp in the bottom-right corner
 - Owner: "in one of the corners can we show the game version? (This way we keep track of builds)". Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), base `bfbc117`.
 - `Core/NativeBuildLabel.cs` + `Runtime/NativeBuildStamp.cs`: drawn after every screen (`ConversionGame.OnGUI`, menus, lobby, match, intros, killcam, chip selection), faint 10-unit mono under the ability cards (NativeArcadeHud.Bottom leaves 93 units) and below the menu footer: `BUILD <12-char source hash> · <UTC build time>` from the updater's installed identity, else the player folder's own `native-build.json` (any packaged build, starter-installed or not); without one, `DEV BUILD · SRC <content source commit>`. Same 12 characters as the menu footer and the update card. Presentation only; no updater, build or network change.

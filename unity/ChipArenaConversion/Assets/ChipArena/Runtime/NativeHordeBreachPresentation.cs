@@ -73,7 +73,8 @@ namespace ChipArena.UnityConversion
             foreach(var frame in arena.WardBreaches)
             {
                 if(arena.Time>NativeBreach.SolidAt(frame.restoreAt)+.4f)continue;
-                var entry=System.Array.Find(NativeArena.StageContent.entries,e=>e.e==frame.entry);
+                // A plain search: the frame's capture would allocate a closure on every drawn frame.
+                PveEntry entry=null;foreach(var e in NativeArena.StageContent.entries)if(e!=null&&e.e==frame.entry){entry=e;break;}
                 if(entry==null)continue;
                 float spawn=frame.breakAt-NativeBreach.Knock;
                 HordeBreachJob(arena,entry,spawn,frame.breakAt,NativeArena.Vec(entry.from.Position()),NativeArena.Vec(entry.@exit.Position()),NativeHordeKinds.Hulk,(uint)(frame.entry+1));
