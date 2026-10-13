@@ -9,7 +9,8 @@ namespace ChipArena.UnityConversion
         public void ValidateWardSimulation()
         {
             void Check(bool ok,string why){if(!ok)throw new Exception("Ward native simulation: "+why);}
-            void Clock(double now)=>Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=now,fightAt=10});
+            // Keep the same round used to calculate alternating hazard schedules.
+            void Clock(double now)=>Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=now,fightAt=10,round=Match.Round,set=Match.Set});
             ReplicaScene=root.scene;Reset();var p=Local;var connected=Pilots.ToDictionary(q=>q.Seat.id,q=>q.Seat.connected);
             try
             {
@@ -26,7 +27,8 @@ namespace ChipArena.UnityConversion
                     var area=h.kind=="burner"?h.zones[0]:new MapVolume{center=h.center,size=h.size};
                     Place(Vec(new V3(area.center.x,area.center.y-area.size.y/2+.9f,area.center.z)));
                     for(int i=0;i<(int)(h.live*60);i++){Clock(live+i/60d);StepAuthoredHazards();}
-                    Check(Math.Abs(p.Hp-(1000-h.damage*h.live/h.tick*.5))<.02,h.id+" mitigated tick count");
+                    float expected=1000-h.damage*h.live/h.tick*.5f;
+                    Check(Math.Abs(p.Hp-expected)<.02,h.id+" mitigated tick count: expected HP "+expected+", actual "+p.Hp+", stage round "+StageRound);
                     float hp=p.Hp;Clock(live+h.live+.2);StepAuthoredHazards();Check(p.Hp==hp,h.id+" clear harmless");
                     if(h.kind=="burner"){Place(Vec(h.center));Clock(live);StepAuthoredHazards();Check(p.Hp==1000,h.id+" pocket harmless");}
                 }
