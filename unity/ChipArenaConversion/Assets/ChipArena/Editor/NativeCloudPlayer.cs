@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion.Editor
     // No Unity API dependency: exercised with real directories on Linux and Windows CI.
     public static class NativeCloudPlayer
     {
-        public const string PlayerName="ChipArena-Native-Conversion-TEST";
+        public const string PlayerName="Chip Arena";
 
         public static string FindExecutable(string exportPath)
         {

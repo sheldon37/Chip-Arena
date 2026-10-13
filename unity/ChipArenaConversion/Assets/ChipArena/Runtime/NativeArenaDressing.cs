@@ -42,6 +42,9 @@ namespace ChipArena.UnityConversion
         public static readonly bool Preview=Array.IndexOf(Environment.GetCommandLineArgs(),"--ca-dress-blocks")>=0;
         /// <summary>The last frame's instanced draws and blocks (main pass).</summary>
         public int Draws{get;private set;}public int Instances{get;private set;}
+        /// <summary>Block ids left undrawn (a breach panel while a breach presentation shows it broken, through
+        /// ArenaPresentation.SetWardBreach); empty on every map until a breach happens, cleared when a new live arena binds.</summary>
+        public static readonly HashSet<string> Hidden=new HashSet<string>();
         private const float BoundsSize=200;
         private sealed class Entry {public int Look,Color,Flags,Seen;public string Segment;public uint Hash;public float Seed,Max,S1,S2,Reach;public bool Pending;public Vector3 Last;public Vector4 Size,Rest,Linear;}
         private sealed class Batch {public readonly Matrix4x4[] Matrices=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];}
@@ -95,7 +98,7 @@ namespace ChipArena.UnityConversion
             removed.Clear();for(int s=0;s<counts.Length;s++)counts[s]=0;
             foreach(var p in arena.AllBlocks)
             {
-                if(p==null||p.Definition==null||!entries.TryGetValue(p,out var e))continue;var t=p.transform;Vector3 pos=t.position;Quaternion rot=t.rotation;
+                if(p==null||p.Definition==null||!entries.TryGetValue(p,out var e))continue;if(Hidden.Count>0&&p.Definition.id!=null&&Hidden.Contains(p.Definition.id))continue;var t=p.transform;Vector3 pos=t.position;Quaternion rot=t.rotation;
                 if(e.Pending){e.Pending=false;Inherit(e,p.Definition.id,pos,frame);}e.Last=pos;
                 float f=NativeBlockLooks.Fraction(p.Health,e.Max,p.Indestructible);int stage=NativeBlockLooks.Stage(f,e.S1,e.S2);Vector4 size=e.Size,rest=e.Rest;
                 // S3 is a stub of the block's lower 24% (same base, same rest-space pattern).
@@ -124,7 +127,7 @@ namespace ChipArena.UnityConversion
             materials.Clear();foreach(var m in arena.Content.materials)if(m!=null&&m.id!=null)materials[m.id]=m;
             // The killcam's replay arena (in its own scene) shares the live round's dust coat and fragment looks; a new round or arena
             // starts clean ones.
-            if(!arena.ReplicaScene.IsValid()&&(!ReferenceEquals(arena,liveArena)||arena.Generation!=liveGeneration)){liveArena=arena;liveGeneration=arena.Generation;lastEvent=0;coat.Clear();kept.Clear();for(int i=0;i<gone.Length;i++)gone[i].Frame=-1;}
+            if(!arena.ReplicaScene.IsValid()&&(!ReferenceEquals(arena,liveArena)||arena.Generation!=liveGeneration)){liveArena=arena;liveGeneration=arena.Generation;lastEvent=0;coat.Clear();kept.Clear();Hidden.Clear();for(int i=0;i<gone.Length;i++)gone[i].Frame=-1;}
         }
         private Entry Create(NativePropBody prop)
         {

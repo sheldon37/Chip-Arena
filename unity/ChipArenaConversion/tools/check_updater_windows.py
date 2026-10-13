@@ -13,8 +13,8 @@ import zipfile
 import zlib
 
 PROJECT = Path(__file__).resolve().parents[1]
-EXE = 'ChipArena-Native-Conversion-TEST.exe'
-DATA = 'ChipArena-Native-Conversion-TEST_Data'
+EXE = 'Chip Arena.exe'
+DATA = 'Chip Arena_Data'
 LAUNCHER = 'Chip Arena.exe'
 
 
@@ -30,7 +30,7 @@ def wait_for(path, process=None):
 
 
 def identity(char, revision):
-    return dict(schema=1, product='chip-arena-unity', channel='native-test', platform='windows-x64', version=char * 64, revision=revision, bootstrap=1)
+    return dict(schema=1, product='chip-arena-unity', channel='native-test', platform='windows-x64', version=char * 64, revision=revision, bootstrap=2)
 
 
 def fixture_icon(path):
@@ -77,7 +77,9 @@ def run():
         fixture = base / 'fixture.exe'
         subprocess.run([str(compiler), '/nologo', '/warnaserror+', '/target:exe', '/out:' + str(fixture), *refs, *common,
                         str(PROJECT / 'Updater/WindowsFixture.cs')], check=True)
-        for launcher_name, fails in ((LAUNCHER, False), (LAUNCHER, True), (EXE, False), (EXE, True)):
+        # Since bootstrap 2 the player and the launcher share one name (in different folders), so the player-name
+        # cases repeat the launcher's; run each distinct case once (a repeat would recreate its case folder).
+        for launcher_name, fails in dict.fromkeys(((LAUNCHER, False), (LAUNCHER, True), (EXE, False), (EXE, True))):
             root = base / (launcher_name + (' rollback case' if fails else ' install case'))
             app = root / 'app'
             work = root / '.native-update'

@@ -16,6 +16,19 @@ namespace ChipArena.UnityConversion
             Check(drop.id=="drop-centre"&&drop.height==6.5f,"authored landing entry and height");
             Check(NativeEntryRules.ValidIndex(drop.e,drop.kind)&&!NativeEntryRules.ValidIndex(16,"door")&&!NativeEntryRules.ValidIndex(-1,"drop")&&!NativeEntryRules.ValidIndex(256,"drop"),"network accepts authored drop beyond legacy indices, retains bounds");
             Check(NativeHordeDrop.HeightOf(new PveEntry())==6.5f&&NativeHordeDrop.HeightOf(new PveEntry{height=9})==9,"default and custom height");
+            foreach(var profile in new[]{NativeHordeDrop.Brute,NativeHordeDrop.Hulk})
+            {
+                Check(NativeHordeDrop.HeightOf(null,profile)==profile.DefaultHeight,"null entry uses kind default");
+                foreach(float height in new[]{0f,-1f,float.NaN,float.PositiveInfinity,3f,7f,13f})
+                {
+                    var entry=new PveEntry{kind="drop",height=height};float expected=MathUtil.Finite(height)&&height>0?height:profile.DefaultHeight;
+                    float actual=NativeHordeDrop.HeightOf(entry,profile);
+                    Check(actual==expected,"both profiles respect authored height or their own fallback");
+                    Check(Near(NativeHordeDrop.Duration(actual,profile),profile.Warn+profile.Leap+(float)Math.Sqrt(2*(expected+profile.Hop)/profile.Gravity)+profile.Recover),"height drives each profile timeline");
+                }
+            }
+            Check(NativeHordeKinds.ProposedRow(NativeHordeKinds.Brute).hp==240&&NativeHordeKinds.ProposedRow(NativeHordeKinds.Brute).impulse==420,"brute hp unchanged; impulse is 420");
+            Check(NativeHordeKinds.ProposedRow(NativeHordeKinds.Spitter).hit==NativeHordeKinds.SpitHit&&NativeHordeKinds.SpitHit==.8f,"spitter proposal preserves presentation windup");
             foreach(float h in new[]{0f,3f,6.5f,12f})foreach(bool first in new[]{false,true})
             {
                 var e=new PveEntry{kind="drop",height=h};var timeline=NativeEntryRules.Timeline(e,first);float active=10+timeline.duration,land=NativeHordeDrop.LandAt(active);

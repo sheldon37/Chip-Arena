@@ -18,7 +18,12 @@ namespace ChipArena.UnityConversion
         private static int S(NativeKitSound[] o,int n,string key,string clip,float gain){if(n<o.Length)o[n]=new NativeKitSound{Key=key,Clip=clip,Gain=gain};return Math.Min(o.Length,n+1);}
         /// <summary>The state cue slots NativeAudio walks each frame (Count): their moments and sounds from the view.</summary>
         public const int Swing=0,Palm=1,QRelease=2,ERelease=3,WallEnd=4,OneRelease=5,TwoRelease=6,LinkEnd=7,ThreeCast=8,ThreeSlam=9,FourCast=10,FourLunge=11,FourWhiff=12,
-            Connect=13,Blink2=14,Blink3=15,ForkBomb=16,Reappear=17,Clone1=18,Clone2=19,Clone3=20,Slots=21;
+            Connect=13,Blink2=14,Blink3=15,ForkBomb=16,Reappear=17,Clone1=18,Clone2=19,Clone3=20,
+            // The ranged mode (Core/CyberLordRanged.cs; the view's mode and R* windows): the reconfiguration, each bolt, the
+            // lance's charge and shot, the field's throw, landing and collapse, the swap's blink, its mine's arm, beep and burst,
+            // Root Access's charge, its telegraph's warning (the target's counterplay cue) and the beam.
+            Switch=21,BoltShot=22,LanceCharge=23,LanceFire=24,FieldThrow=25,FieldLand=26,FieldEnd=27,SwapBlink=28,MineArm=29,MineBeep=30,MineBurst=31,
+            RootCharge=32,RootTell=33,RootFire=34,Slots=35;
         /// <summary>When state cue `slot` is due for this view (NaN: never), and its sounds into `o` (returns the count).</summary>
         public static int State(CyberLordView v,int slot,NativeKitSound[] o,out float at)
         {
@@ -45,6 +50,20 @@ namespace ChipArena.UnityConversion
                 case Reappear:if(v.PanicStart>-90){at=age(4)-.1f;n=S(o,n,"magic.blink-strike","demon-step",.55f);}break;
                 // The fork bomb's three clone strikes on their staggered beats (the host's three step-4 hits land together).
                 case Clone1:case Clone2:case Clone3:if(v.PanicStart>-90){at=v.PanicStart+KernelPanicPath.Clones[slot-Clone1];n=S(o,n,"dev.fist.hit",slot==Clone2?"arcade-kick":"arcade-punch",.6f);}break;
+                case Switch:if(v.ModeAt>-90){at=v.ModeAt;n=S(o,n,"dev.leet.glitch","darkness",.4f);n=S(o,n,"chip.delayed.charge","electric-hook",v.Ranged?.35f:.22f);}break;
+                case BoltShot:if(v.RReleased(CyberRangedSpec.Bolt)){at=v.RRelease[CyberRangedSpec.Bolt];n=S(o,n,"magic.lightning.shot","lightning",.28f);}break;
+                case LanceCharge:if(v.RAt[CyberRangedSpec.Lance]>-90){at=v.RAt[CyberRangedSpec.Lance];n=S(o,n,"chip.delayed.charge","electric-hook",.3f);}break;
+                case LanceFire:if(v.RReleased(CyberRangedSpec.Lance)){at=v.RRelease[CyberRangedSpec.Lance];n=S(o,n,"magic.flame-lance","lightning",.5f);n=S(o,n,"dev.leet.glitch","metal",.2f);}break;
+                case FieldThrow:if(v.RReleased(CyberRangedSpec.Field)){at=v.RRelease[CyberRangedSpec.Field];n=S(o,n,"gun.frag.throw","dash",.45f);}break;
+                case FieldLand:if(v.FieldLand>-90){at=v.FieldLand;n=S(o,n,"field.time","darkness",.55f);n=S(o,n,"dev.leet.glitch","metal",.3f);}break;
+                case FieldEnd:if(v.FieldUntil>-90){at=v.FieldUntil;n=S(o,n,"dev.leet.glitch","metal",.25f);}break;
+                case SwapBlink:if(v.RReleased(CyberRangedSpec.Swap)){at=v.RRelease[CyberRangedSpec.Swap];n=S(o,n,"chip.teleport","demon-step",.55f);n=S(o,n,"dev.leet.glitch","darkness",.3f);}break;
+                case MineArm:if(v.MineAt>-90){at=v.MineAt-CyberRangedSpec.MineFuse+.05f;n=S(o,n,"chip.mine.arm","parry",.35f);}break;
+                case MineBeep:if(v.MineAt>-90){at=v.MineAt-CyberRangedSpec.MineFuse*.45f;n=S(o,n,"chip.bomb.fuse-beep","metal",.35f);}break;
+                case MineBurst:if(v.MineAt>-90){at=v.MineAt;n=S(o,n,"blast.mine","explosion",.6f);n=S(o,n,"impact.energy","electric-hook",.3f);}break;
+                case RootCharge:if(v.RAt[CyberRangedSpec.Root]>-90){at=v.RAt[CyberRangedSpec.Root];n=S(o,n,"chip.delayed.charge","electric-hook",.5f);n=S(o,n,"dev.leet.glitch","darkness",.3f);}break;
+                case RootTell:if(v.RAt[CyberRangedSpec.Root]>-90&&v.RUntil[CyberRangedSpec.Root]>v.RAt[CyberRangedSpec.Root]+CyberRangedSpec.TellFrom){at=v.RAt[CyberRangedSpec.Root]+CyberRangedSpec.TellFrom;n=S(o,n,"chip.bomb.fuse-beep","metal",.45f);}break;
+                case RootFire:if(v.RReleased(CyberRangedSpec.Root)){at=v.RRelease[CyberRangedSpec.Root];n=S(o,n,"blast.shock","lightning",.8f);n=S(o,n,"magic.lightning.shot","lightning",.55f);n=S(o,n,"blast.static","explosion",.4f);}break;
             }
             // An early end cuts the rest of the choreography's cues.
             if(slot>=Blink2&&v.PanicOutcome==CyberLordSpec.EndedEarly&&v.PanicEndedAt>-90&&at>=v.PanicEndedAt){at=float.NaN;n=0;}
@@ -68,12 +87,22 @@ namespace ChipArena.UnityConversion
                 case CyberHit.Panic4:break; // the clone cues (state slots Clone1-3) sound the step's three hits on their beats
                 case CyberHit.PanicWave:if(strike&&!targetMe)n=S(o,n,"impact.energy","stone",.45f);break;
                 case CyberHit.Panic5:if(strike){n=S(o,n,"blast.leet-nuke","explosion",1);n=S(o,n,"blast.quake","stone",.8f);}break;
+                // The ranged set (the shot and cast sounds come from the view's windows; these are the landings).
+                case CyberHit.Bolt:if(kind==EventKind.Absorb)n=S(o,n,"melee.shield.block","parry",.3f);else if(strike&&!targetMe)n=S(o,n,"impact.energy","lightning",.35f);else if(kind==EventKind.Impact)n=S(o,n,"impact.energy","electric-hook",.15f);break;
+                case CyberHit.Lance:if(kind==EventKind.Absorb)n=S(o,n,"melee.shield.block","parry",.4f);else if(strike)n=S(o,n,"status.shock-zap","lightning",.45f);break;
+                case CyberHit.Field:if(strike)n=S(o,n,"status.burn-tick","burn-tick",.22f);break;
+                case CyberHit.Swap:if(strike&&!targetMe)n=S(o,n,"impact.energy","stone",.4f);break;
+                case CyberHit.Root:if(kind==EventKind.Absorb)n=S(o,n,"melee.shield.block","parry",.6f);else if(strike){n=S(o,n,"dev.fist.hit","arcade-heavy",.8f);n=S(o,n,"blast.nova","explosion",.5f);}break;
             }
             return n;
         }
+        /// <summary>The second jump's hardlight boost (Core/CyberLordRun.cs; NativeAudio's movement feel, on the jump track's air
+        /// jump): the Data Dash's whoosh, lighter, and a glitch tick.</summary>
+        public static int AirBoost(NativeKitSound[] o){int n=0;n=S(o,n,"move.roll","dash",.35f);n=S(o,n,"dev.leet.glitch","darkness",.22f);return n;}
         /// <summary>The bank keys this routing may play (Tests/CyberLordChecks: every one is an existing bank key).</summary>
         public static readonly string[] Keys={"dev.fist.swing","impact.energy","move.roll","dev.leet.glitch","field.repulsion","magic.shackles","status.shock-zap","blast.quake","blast.static",
-            "melee.miss","blast.implosion","dev.fist.hit","magic.blink-strike","chip.split","melee.shield.block","status.burn-tick","blast.leet-nuke"};
+            "melee.miss","blast.implosion","dev.fist.hit","magic.blink-strike","chip.split","melee.shield.block","status.burn-tick","blast.leet-nuke",
+            "chip.delayed.charge","magic.lightning.shot","magic.flame-lance","gun.frag.throw","field.time","chip.teleport","chip.mine.arm","chip.bomb.fuse-beep","blast.mine","blast.shock","blast.nova"};
         public static readonly string[] Clips={"arcade-punch","electric-hook","dash","darkness","parry","metal","lightning","stone","explosion","arcade-heavy","demon-step","arcade-kick","burn-tick"};
     }
 }

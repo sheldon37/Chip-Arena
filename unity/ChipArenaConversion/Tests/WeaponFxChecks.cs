@@ -102,6 +102,13 @@ namespace ChipArena.UnityConversion
             foreach(var spec in new[]{"sword","daggers","greatsword","shield"})
             {
                 bool has=NativeSlashFx.Look(spec,out var look);Check(NativeSlashFx.Covers(spec)&&has,spec+" has a slash look");
+                var falling=NativeMeleeRules.Begin(content.Weapon(spec),stats,1,1,0);
+                NativeAirAttackSimulation.Apply(falling);
+                var air=new Actor{Hp=100,SourceSpec=spec,AirAttack=true,ImpactAt=-1,SwingAt=falling.HitAt,SwingUntil=falling.HitUntil};
+                Check(!NativeSlashFx.CanCapture(air,2)&&!NativeSlashFx.Frame(falling,look,2,false,out _,out _,out _,out _),spec+" falling timeout never becomes a ten-second crescent");
+                NativeAirAttackSimulation.Land(falling,2);air.ImpactAt=2;air.SwingAt=falling.HitAt;air.SwingUntil=falling.HitUntil;
+                Check(NativeSlashFx.CanCapture(air,2)&&NativeSlashFx.Frame(falling,look,2.004f,false,out _,out _,out _,out _),spec+" landed attack has a short impact crescent");
+                Check(!NativeSlashFx.Frame(falling,look,3,false,out _,out _,out _,out _)&&!NativeSlashFx.CanCapture(air,3),spec+" walking after landing cannot retain or recreate slash");
                 for(int index=1;index<=3;index++)
                 {
                     var s=NativeMeleeRules.Begin(content.Weapon(spec),stats,1,index,.4f);

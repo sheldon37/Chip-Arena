@@ -112,8 +112,10 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<NativeHordeKinds.Count;k++)for(int l=0;l<NativeHordeKinds.Looks[k];l++)
             {
                 var model=NativeHordeModels.Build(k,l,0);var st=NativeHordeKinds.ProposedRow(k);
-                foreach(float speed in new[]{0,st.walk,st.run})
+                foreach(float world in new[]{0,st.walk,st.run})
                 {
+                    // The gait runs in the rig's metres (a scaled kind's authority speed over its scale).
+                    float speed=world/NativeHordeKinds.Scale[k];
                     var g=new NativeHordeGait();var f=new HordeMotionInput{Kind=k,Look=l,Id=20000+k*10+l,Seed=NativeHordeKinds.Seed(20000+k*10+l),Health=1,AttackAge=float.NaN};
                     float worstTrunk=0,worstShoulder=0,worstArm=0,worstLeg=0,low=1e9f;
                     for(int i=0;i<200;i++)
@@ -130,7 +132,7 @@ namespace ChipArena.UnityConversion
                             }
                         }
                     }
-                    string what=NativeHordeModels.Id(k,l,0)+" at "+speed+" m/s";bool run=speed>=st.run*.99f&&speed>0,still=speed==0;
+                    string what=NativeHordeModels.Id(k,l,0)+" at "+world+" m/s";bool run=world>=st.run*.99f&&world>0,still=world==0;
                     // The body's mass stays inside (a sprint's lean a little over); shoulders, reaching claws and striding legs as a pilot's.
                     Check(worstTrunk<=(still?.11f:run?.16f:.1f),what+": trunk and head inside the hit volume (worst "+worstTrunk.ToString("0.000")+" m out)");
                     Check(worstShoulder<=.15f,what+": shoulders at the capsule's edge (worst "+worstShoulder.ToString("0.000")+")");
@@ -158,10 +160,13 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<NativeHordeKinds.Count;k++)
             {
                 var st=NativeHordeKinds.ProposedRow(k);int feet=k==NativeHordeKinds.Crawler?4:2;
-                foreach(float speed in new[]{st.walk,st.run,1.1f})foreach(float turn in new[]{0f,40f})
+                foreach(float world in new[]{st.walk,st.run,1.1f})foreach(float turn in new[]{0f,40f})
                 {
+                    float speed=world/NativeHordeKinds.Scale[k];
                     var g=new NativeHordeGait();var f=new HordeMotionInput{Kind=k,Id=30000+k,Seed=NativeHordeKinds.Seed(30000+k),Health=1,AttackAge=float.NaN};var last=new Vector3[4];var air=new bool[4];float worst=0;int steps=0;Vector3 at=new Vector3(0,.85f,0);float yaw=0;
-                    for(int i=0;i<400;i++)
+                    // (A scaled kind steps as slowly as it is big: it walks as long again.)
+                    int frames=(int)(400*NativeHordeKinds.Scale[k]);
+                    for(int i=0;i<frames;i++)
                     {
                         float t=i/60f;yaw+=turn/60;float r=yaw*(float)Math.PI/180;var v=new Vector3((float)Math.Sin(r),0,(float)Math.Cos(r))*speed;at+=v/60;
                         f.Time=t;f.Root=at;f.Velocity=v;f.Yaw=yaw;g.Pose(f,pose);
@@ -201,7 +206,7 @@ namespace ChipArena.UnityConversion
         {
             for(int i=0;i<NativeHordeFx.DebrisCount;i++){Check(NativeHordeFx.Debris(7,i,.3f,out var o,out float s,out _,out float a)&&o.Y>=0&&s>0&&a>0,"slam debris flies");Check(!NativeHordeFx.Debris(7,i,2,out _,out _,out _,out _),"slam debris settles out");}
             Check(NativeHordeFx.Glob(new Vector3(0,1.4f,0),new Vector3(0,0,6),.8f,.4f,out var mid)&&mid.Y>1.4f&&!NativeHordeFx.Glob(new Vector3(0,1.4f,0),new Vector3(0,0,6),.8f,.81f,out _),"the glob arcs and lands");
-            Check(NativeHordeFx.Puddle(.1f,4,1.3f,out float r,out _)&&r<1.3f&&NativeHordeFx.Puddle(1,4,1.3f,out float r2,out _)&&Math.Abs(r2-1.3f)<1e-4f&&!NativeHordeFx.Puddle(4.1f,4,1.3f,out _,out _),"the puddle spreads to its radius and fades out");
+            Check(NativeHordeFx.Puddle(.1f,4,1.3f,out float r,out _)&&r<1.3f&&NativeHordeFx.Puddle(1,4,1.3f,out float r2,out _)&&r2>1.3f*.88f&&r2<1.3f&&NativeHordeFx.Puddle(3.5f,4,1.3f,out float r3,out _)&&Math.Abs(r3-1.3f)<1e-4f&&!NativeHordeFx.Puddle(4.1f,4,1.3f,out _,out _),"the puddle creeps out to its radius (never past it) and fades out");
             Check(NativeHordeFx.Swell(NativeHordeKinds.Attack.Spit,.5f,.55f)>.8f&&NativeHordeFx.Swell(NativeHordeKinds.Attack.Swipe,.5f,.55f)==0,"only the spitter's sac and the bloater's belly swell");
             NativeHordeFx.Gib(3,1,0,new Vector2(0,1),1,.8f,out var g0,out _,out _);NativeHordeFx.Gib(3,1,3,new Vector2(0,1),1,.8f,out var g3,out _,out _);Check(g0.Length()<1e-5f&&Math.Abs(g3.Y+.8f)<1e-4f&&g3.Z>0,"a sliced part leaves from its joint, flies along the blow and rests on the floor");
             Check(NativeHordeFx.PartVanish(1)==0&&NativeHordeFx.PartVanish(2.4f)==1,"a severed part burns away with the body");
@@ -235,8 +240,8 @@ namespace ChipArena.UnityConversion
             var p=R(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs");
             foreach(var bad in new[]{".Hp=","Damage(","Emit(","StaggerAt=","RecoverAt=","StrikeAt=","LastAttack=","Yaw=m.","m.Yaw="})Check(!p.Contains(bad),"the kind presentation never writes `"+bad+"`");
             Check(p.Contains("LowGraphics?HordeFullRigsLow:HordeFullRigs")&&p.Contains("HordeFullRigs=24,HordeFullRigsLow=16")&&p.Contains("HordeReducedRange=40"),"the crowd tiers: 24 full (16 on the low tier), reduced to 40 m, impostors beyond");
-            Check(p.Contains("NativeHordeKinds.Strike(st?.hit??.34f,a.Crawl,a.Lost)")&&p.Contains("float age=now-m.LastAttack;"),"attacks are timed from the replicated LastAttack and the content's strike");
-            Check(p.Contains("if(stagger&&stats!=null)")&&p.Contains("s.CancelFor==m.LastAttack&&now>=s.CancelAt"),"a stagger in the wind-up cancels the shown blow as the authority cancels the real one");
+            Check(p.Contains("NativeHordeKinds.Strike(st0?.hit??.34f,a.Crawl,a.Lost)")&&p.Contains("float age=now-m.LastAttack;"),"attacks are timed from the replicated LastAttack and the content's strike");
+            Check(p.Contains("NativeHordeKinds.Interrupts(kind,attack,e.Amount,m.MaxHp,heavy)")&&p.Contains("s.CancelFor==m.LastAttack&&now>=s.CancelAt"),"a stagger in the wind-up cancels the shown blow as the authority cancels the real one");
             Check(p.Contains("NativeHordeKinds.Resolve(a.Stats?.id)"),"the kind keys off the replicated add kind");
             Check(p.Contains("HitFlashCode(m.Id,now)"),"the struck flash on the body");
             Check(p.Contains("blood.Spray(")&&p.Contains(",kill,true);"),"hits spray the Siren's ink into the blood sim");

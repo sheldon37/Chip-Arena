@@ -47,9 +47,9 @@ internal static class LockerChecks
         Check(ui.Contains("NativeLoadoutText.InClass")||ui.Contains("MenuWeapons();"),"the weapon cards use the loadout's gated weapon list (MenuWeapons)");
         var gate=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeHatLooks.cs"));
         Check(profile.Contains("public static bool Allowed(NativeAccess a,string type,string id)=>NativeCosmeticGate.Allowed(a,type,id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());")
-            &&gate.Contains("public static bool DevOnly(string id)=>id==\"dev-gibber\"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes;")
-            &&gate.Contains("public static bool Restricted(string id)=>id!=null&&(id.StartsWith(\"dev-\",StringComparison.Ordinal)||id==\"auditor-halo\"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes);")
-            &&gate.Contains("public static bool Allowed(NativeAccess a,string type,string id,double now)=>id!=null&&(!DevOnly(id)||(a??NativeAccess.Guest).Developer)&&(!Restricted(id)||(a??NativeAccess.Guest).Allows(type+\":\"+id,now));"),"the cosmetic gate is unchanged for legacy grants (moved to Core; the Sheldon Head and Sheldon Intro join the Gibber behind live DEV access)");
+            &&gate.Contains("public static bool DevOnly(string id)=>id==\"dev-gibber\"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes||id==SheldonIdle;")
+            &&gate.Contains("public static bool Restricted(string id)=>id!=null&&(id.StartsWith(\"dev-\",StringComparison.Ordinal)||id==\"auditor-halo\"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes||id==SheldonIdle);")
+            &&gate.Contains("public static bool Allowed(NativeAccess a,string type,string id,double now)=>id!=null&&(!DevOnly(id)||(a??NativeAccess.Guest).Developer)&&(!Restricted(id)||(a??NativeAccess.Guest).Allows(type+\":\"+id,now));"),"the cosmetic gate is unchanged for legacy grants (moved to Core; the Sheldon Head, Sheldon Intro and Sheldon Idle join the Gibber behind live DEV access)");
         var hats=Ids(profile,"Hats");var kills=Ids(profile,"Kills");var intros=Ids(profile,"Intros");
         Check(hats.Length==12&&kills.Length==22&&intros.Length==25,"cosmetic id lists parsed ("+hats.Length+"/"+kills.Length+"/"+intros.Length+")");
         // The staged entrances, the DEV Sheldon Intro and the DEV Cyber Lord's Hardlight Boot (staged by the director, listed only with DEV access).

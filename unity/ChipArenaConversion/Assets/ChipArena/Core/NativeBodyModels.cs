@@ -153,6 +153,16 @@ namespace ChipArena.UnityConversion
         public static WoundSkinLook WoundLook(int skin)=>skin==NativeBodySkins.SheldonIndex
             ?new WoundSkinLook(true,Inner.Color,Lapel.Color*1.6f,Vector3.Zero,0,.72f,.82f)
             :new WoundSkinLook(false,Suit.Color,GreyLight.Color,AccentColor,1.4f,.55f,.8f);
+        /// <summary>
+        /// How a body skin's cut face looks when the body is split in two (Core NativeBisect): the plates' or the coat's own
+        /// paint darkened at the edge, then the Standard's dark undersuit with glints of its accent conduits (tag 2: the pilot's
+        /// accent) or the Sheldon Clothes' coat lining (the lapel cloth, body tinted), then flesh in layers; the Prototype goes
+        /// from its shell's edge straight to its flesh, as its wounds do.
+        /// </summary>
+        public static BisectLook CutLook(int skin)=>skin==NativeBodySkins.SheldonIndex
+            ?new BisectLook{Rim=.012f,Inner=.016f,RimShade=.72f,InnerColor=Lapel.Color*.85f,InnerTag=1}
+            :skin==NativeBodySkins.PrototypeIndex?new BisectLook{Rim=.009f,Inner=0,RimShade=.6f}
+            :new BisectLook{Rim=.011f,Inner=.018f,RimShade=.62f,InnerColor=Suit.Color,ConduitShare=.09f,Conduit=AccentColor,ConduitLevel=1.4f};
         /// <summary>Builds one tier of a body skin (NativeBodySkins.StandardIndex or SheldonIndex); null for the Prototype.</summary>
         public static PilotBodyMesh Build(int skin,int tier)
         {

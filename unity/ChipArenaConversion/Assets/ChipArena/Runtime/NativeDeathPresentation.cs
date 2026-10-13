@@ -26,28 +26,30 @@ namespace ChipArena.UnityConversion
         /// <summary>The body from posed bones: world matrices, joint positions and rotations. A Siren crush drop
         /// (<paramref name="release"/> >= 0, NativeSirenDropPresentation.cs) takes each part's handed-over velocity, starts its
         /// clock at the release, has no body for the crushed head and ignores earlier, non-fatal wounds.</summary>
-        private NativeCorpse(NativeDeath death,NativeArena arena,Matrix4x4[] bind,Vector3[] at,Quaternion[] turn,Vector3[] linear,Vector3[] angular,float release,SlicePlan slice=null)
+        private NativeCorpse(NativeDeath death,NativeArena arena,Matrix4x4[] bind,Vector3[] at,Quaternion[] turn,Vector3[] linear,Vector3[] angular,float release,SlicePlan slice=null,BisectCut halves=null,BisectRequest bisect=null,int half=0,NativeCorpse host=null)
         {
-            Slice=release>=0||slice==null||!slice.Any?null:slice;
+            Slice=release>=0||slice==null||!slice.Any?null:slice;Halved=halves!=null&&bisect!=null&&release<0;if(Halved){Bisection=halves;Request=bisect;Half=half;Host=host;}
             this.arena=arena;RetainUntilRoundEnd=NativeCorpseRules.Retain(arena.Pilots.Any(p=>p.Seat.id==death.id),arena.Match.Cooperative);Death=death;Style=death.kept&&!new[]{"impact-ragdoll","ragdoll","dev-gibber","siren-crush","vent-fall","vent-splat"}.Contains(death.style)?"impact-ragdoll":death.style;
+            // A bisected body's second half shares its first half's physics scene (one step, one world copy).
+            if(Host!=null)scene=Host.scene;else
 #if UNITY_EDITOR
             if(!Application.isPlaying)scene=UnityEditor.SceneManagement.EditorSceneManager.NewPreviewScene();else
 #endif
             scene=SceneManager.CreateScene("Cosmetic body "+death.id+" "+death.seed,new CreateSceneParameters(LocalPhysicsMode.Physics3D));physics=scene.GetPhysicsScene();root=new GameObject("Cosmetic body");SceneManager.MoveGameObjectToScene(root,scene);
             surface=new PhysicsMaterial("Body surface"){dynamicFriction=.7f,staticFriction=.7f,bounciness=Style=="ragdoll-pinball"?.82f:.15f};
-            for(int i=0;i<22;i++)Bind[i]=bind[i];bool drop=release>=0;DropAt=release;if(drop)clock=release;var wound=drop?null:death.wound;
+            for(int i=0;i<22;i++)Bind[i]=bind[i];bool drop=release>=0;DropAt=release;if(drop)clock=release;var wound=drop?null:death.wound;if(Halved)wound=null;
             if(death.style=="dev-gibber"&&!drop)Severed.Add(wound?.part??5);else if(wound?.destroyed==true&&wound.kind=="sever")Severed.Add(wound.part);
             if(wound?.destroyed==true&&wound.kind=="crush")CrushPart=wound.part;
             if(Slice!=null){for(int i=0;i<Slice.Count;i++)if(!Severed.Contains(Slice.Joints[i])&&Slice.Joints[i]!=CrushPart)Severed.Add(Slice.Joints[i]);if(CrushPart<0)CrushPart=Slice.Crush;}
             Severed.Remove(CapturedRig.Pelvis);if(CrushPart>=0)Severed.Remove(CrushPart);
             foreach(int b in Bones)
             {
-                if(drop&&b==CapturedRig.Head)continue;
+                if(drop&&b==CapturedRig.Head)continue;if(Halved&&!Bisection.Bodies[Half][b])continue;
                 var go=new GameObject(CapturedRig.Bones[b].Name);go.transform.SetParent(root.transform);go.transform.SetPositionAndRotation(at[b],turn[b]);
                 var body=go.AddComponent<Rigidbody>();body.useGravity=false;body.linearDamping=.27f;body.angularDamping=b<=2?.6f:1.1f;body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
                 var box=go.AddComponent<BoxCollider>();box.sharedMaterial=surface;
                 var points=new List<Vector3>();foreach(var shape in CapturedRig.Boxes){int ancestor=shape.Bone;while(ancestor>=0&&Array.IndexOf(Bones,ancestor)<0)ancestor=CapturedRig.Bones[ancestor].Parent;if(ancestor!=b)continue;Matrix4x4 local=go.transform.worldToLocalMatrix*Bind[shape.Bone];Vector3 pos=CapturedAnimation.Vec(CapturedRig.Mirror(shape.Position)),size=CapturedAnimation.Vec(shape.Size)*.5f;for(int k=0;k<8;k++)points.Add(local.MultiplyPoint3x4(pos+new Vector3((k&1)==0?-size.x:size.x,(k&2)==0?-size.y:size.y,(k&4)==0?-size.z:size.z)));}
-                var bounds=new Bounds(Vector3.zero,Vector3.one*.1f);foreach(var point in points)bounds.Encapsulate(point);box.center=bounds.center;box.size=new Vector3(Mathf.Clamp(bounds.size.x,.1f,.8f),Mathf.Clamp(bounds.size.y,.1f,.9f),Mathf.Clamp(bounds.size.z,.1f,.8f));body.mass=Math.Max(.01f,2*box.size.x*box.size.y*box.size.z);
+                var bounds=new Bounds(Vector3.zero,Vector3.one*.1f);foreach(var point in points)bounds.Encapsulate(point);if(Halved)bounds=HalfBounds(b,go.transform.worldToLocalMatrix);float least=Halved?.05f:.1f;box.center=bounds.center;box.size=new Vector3(Mathf.Clamp(bounds.size.x,least,.8f),Mathf.Clamp(bounds.size.y,least,.9f),Mathf.Clamp(bounds.size.z,least,.8f));body.mass=Math.Max(.01f,2*box.size.x*box.size.y*box.size.z);
                 inverse[b]=go.transform.worldToLocalMatrix;Parts[b]=body;
                 Vector3 dir=death.direction.sqrMagnitude>.01f?death.direction.normalized:Quaternion.Euler(0,death.yaw,0)*Vector3.back;
                 if(drop){body.linearVelocity=linear[b];body.angularVelocity=angular[b];}
@@ -79,8 +81,11 @@ namespace ChipArena.UnityConversion
                 }
             }
             foreach(var part in Parts.Values)part.linearVelocity=Vector3.ClampMagnitude(part.linearVelocity,(float)NativeKillEffectRules.MaxBodySpeed);
+            // A half holds still on the cutter (kinematic) until the request's hitch, then parts (NativeBisectCorpse.ReleaseHalves).
+            if(Halved)foreach(var part in Parts.Values){part.linearVelocity=part.angularVelocity=Vector3.zero;part.isKinematic=true;}
             if(CrushPart>=0&&Parts.TryGetValue(CrushPart,out var crushed)){crushed.GetComponent<Collider>().enabled=false;crushed.isKinematic=true;}
             for(int i=0;i<22;i++){int a=i;while(a>=0&&!Parts.ContainsKey(a))a=CapturedRig.Bones[a].Parent;Anchor[i]=a<0?1:a;}
+            if(Halved)LoosePieces();
             foreach(var pair in Parts)
             {
                 int b=pair.Key,parent=CapturedRig.Bones[b].Parent;while(parent>=0&&!Parts.ContainsKey(parent))parent=CapturedRig.Bones[parent].Parent;if(parent<0)continue;
@@ -90,13 +95,13 @@ namespace ChipArena.UnityConversion
                 bool elbow=b==8||b==12,knee=b==15||b==19,head=b==5;
                 joint.lowAngularXLimit=new SoftJointLimit{limit=elbow?-149:knee?-3:head?-32:-75};joint.highAngularXLimit=new SoftJointLimit{limit=elbow?3:knee?149:head?37:75};joint.angularYLimit=new SoftJointLimit{limit=elbow||knee?2:head?20:65};joint.angularZLimit=new SoftJointLimit{limit=elbow||knee?2:head?20:65};joint.projectionMode=JointProjectionMode.PositionAndRotation;joint.projectionDistance=.08f;joint.projectionAngle=12;
             }
-            if(!string.IsNullOrEmpty(death.actor?.SourceSpec)&&death.actor.SourceSpec!="siren")
+            if(!string.IsNullOrEmpty(death.actor?.SourceSpec)&&death.actor.SourceSpec!="siren"&&HoldsWeapon(at))
             {var go=new GameObject("Dropped weapon");go.transform.SetParent(root.transform);int hand=death.actor.SourceSpec=="fire"||death.actor.SourceSpec=="water"||death.actor.SourceSpec=="lightning"||death.actor.SourceSpec=="darkness"||death.actor.SourceSpec=="leet"?9:13;go.transform.SetPositionAndRotation(at[hand],turn[hand]);weapon=go.AddComponent<Rigidbody>();weapon.mass=.7f;weapon.useGravity=false;weapon.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;weapon.linearVelocity=Vector3.ClampMagnitude(death.velocity,8);weapon.angularVelocity=new Vector3(1,2,1);weapon.linearDamping=.3f;var box=go.AddComponent<BoxCollider>();box.size=new Vector3(.15f,.15f,.45f);box.sharedMaterial=surface;
              // A crush drop's weapon (hidden in the hold) leaves the opening hand at the release with the hand's handed-over motion,
              // sliding out of it rather than being shoved out of the overlapping hand part.
              if(drop){weapon.linearVelocity=linear[hand];weapon.angularVelocity=angular[hand]+new Vector3(1,2,1);if(Parts.TryGetValue(Anchor[hand],out var grip))Physics.IgnoreCollision(box,grip.GetComponent<Collider>());}
              // The source's weapon rides in its hand part (ragdoll.ts collect, weapon zone), so the style forces push it as that part.
-             int k=0;foreach(int key in Parts.Keys){if(key==Anchor[hand]){weaponPart=k;break;}k++;}}
+             int k=0;foreach(int key in Parts.Keys){if(key==Anchor[hand]){weaponPart=k;break;}k++;}if(Halved)weapon.isKinematic=true;}
             var colliders=Parts.Values.Select(b=>b.GetComponent<Collider>()).ToArray();for(int a=0;a<colliders.Length;a++)for(int b=a+1;b<colliders.Length;b++)Physics.IgnoreCollision(colliders[a],colliders[b]);
             RefreshWorld(0);
             SetupCollapse(arena,null);Physics.SyncTransforms();
@@ -115,13 +120,13 @@ namespace ChipArena.UnityConversion
             if(frozen||target<clock){if(!frozen&&age>4.2f&&Death.kept)Freeze();return;}int steps=(int)((target-clock)*60+1e-3f);if(stepped)steps=Math.Min(8,steps);stepped=true;
             for(int step=0;step<steps;step++)
             {
-                DriveCollapse(clock);int index=0;foreach(var body in Parts.Values){int i=index++;if(!body.isKinematic)Force(body,i);}
-                if(weapon!=null&&!weapon.isKinematic)Force(weapon,weaponPart);
-                physics.Simulate(1f/60);StepSpray();clock+=1f/60;
+                DriveCollapse(clock);ReleaseHalves();int index=0;foreach(var body in Parts.Values){int i=index++;if(!body.isKinematic)Force(body,i);}
+                if(weapon!=null&&!weapon.isKinematic)Force(weapon,weaponPart);Twin?.Forces();
+                physics.Simulate(1f/60);StepSpray();clock+=1f/60;if(Twin!=null){Twin.StepSpray();Twin.clock=clock;}
             }
             if(age>4.2f&&Death.kept||RetainUntilRoundEnd&&age>=settleAt&&clock+1f/60>=settleAt)Freeze();
         }
-        private void Freeze(){foreach(var b in Parts.Values)b.isKinematic=true;if(weapon!=null)weapon.isKinematic=true;frozen=true;}
+        private void Freeze(){foreach(var b in Parts.Values)b.isKinematic=true;if(weapon!=null)weapon.isKinematic=true;frozen=true;Twin?.Freeze();}
         private bool Cue(float at)=>clock+1e-6f>=at&&clock<at+1f/60-1e-6f;
         /// <summary>ragdoll-vfx.ts ragdollForce on one body (<paramref name="i"/>: its index in the source's part list; the
         /// dropped weapon takes its hand part's) and the world's 18 m/s² gravity.</summary>
@@ -140,7 +145,9 @@ namespace ChipArena.UnityConversion
         }
         public void Dispose()
         {
-            CapturedAnimation.Release(root);CapturedAnimation.Release(surface);if(!scene.IsValid())return;
+            // A bisected body: the second half and the halves' models go with the first; the shared scene goes last.
+            Twin?.Dispose();Twin=null;OnRelease?.Invoke();OnRelease=null;
+            CapturedAnimation.Release(root);CapturedAnimation.Release(surface);if(Host!=null||!scene.IsValid())return;
 #if UNITY_EDITOR
             if(!Application.isPlaying&&UnityEditor.SceneManagement.EditorSceneManager.IsPreviewScene(scene)){UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(scene);return;}
 #endif
@@ -150,7 +157,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private readonly Dictionary<int,NativeCorpse> corpses=new Dictionary<int,NativeCorpse>();private readonly List<int> staleCorpses=new List<int>();
-        private void ClearCorpses(){foreach(var c in corpses.Values)c.Dispose();corpses.Clear();carriedDeaths.Clear();ClearVents();ReleaseKillEffects();}
+        private void ClearCorpses(){foreach(var c in corpses.Values)c.Dispose();corpses.Clear();carriedDeaths.Clear();ClearVents();ClearSawGallery();ReleaseKillEffects();}
         // The clock kill effects are presented on (see PresentDeath): FieldClock, the continuous snapshot clock a guest renders at
         // (PresentationClock on the host and in the killcam replay).
         private float KillClock(NativeArena arena)=>FieldClock(arena);
@@ -173,6 +180,8 @@ namespace ChipArena.UnityConversion
             BeginKillFrame();
             foreach(var p in arena.Pilots)if(p.Death!=null)PresentDeath(arena,p.Death,true);
             foreach(var d in arena.MinionDeaths)PresentDeath(arena,d,false);
+            SyncReviveAnchors(arena);
+            SawSplitPreview(arena);
             EndKillFrame();
         }
         private void PresentDeath(NativeArena arena,NativeDeath death,bool pilot)
@@ -191,14 +200,17 @@ namespace ChipArena.UnityConversion
                 if(corpses.Count>=32&&!retain)return;CapturedAnimation.Player rig=null;bool temporary=false;
                 if(!rigs.TryGetValue(death.id,out rig)&&!minionRigs.TryGetValue(death.id,out rig)){rig=captured.Create(transform,death.id);var actor=death.actor??new Actor();actor.Hp=Math.Max(1,actor.Hp);rig.ActorPose(actor,death.position-Vector3.up*.865f,death.at);temporary=true;}
                 var slice=pilot?MeleeSlice(arena,death):null;
-                corpse=new NativeCorpse(death,rig,arena,slice);corpses[death.id]=corpse;if(temporary)rig.Dispose();
+                // A Factory saw splits the body in two (NativeBisectPresentation); every other death is one corpse as before.
+                corpse=pilot&&slice==null?SawBisect(arena,death,rig):null;
+                if(corpse==null)corpse=new NativeCorpse(death,rig,arena,slice);corpses[death.id]=corpse;if(temporary)rig.Dispose();
                 BleedDeath(death,slice,KillClock(arena));
                 bool counted=pilot&&!death.kept&&!remains;int budget=death.kept?NativeKillEffectRules.KeptBudget:counted?NativeKillEffectRules.MaxDeathVoxels-killUsed:NativeKillEffectRules.MaxDeathVoxels;
                 bool hatModel=!string.IsNullOrEmpty(death.actor?.Hat)&&death.actor.Hat!="none"&&sourceModels.Has(HatModel(death.actor.Hat,death.actor.HatColor));
                 int band=pilot&&live!=null&&(death.model??"pilot")=="pilot"?NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,live.Seat.AuthorityBoss,live.Seat.team,live.Seat.id==arena.LocalId):-1;
-                corpse.SetupKill(budget,Mathf.Clamp01(EffectsQuality),counted,hatModel,band,NativeStructureFxPresentation.KillFloor(arena));if(counted)killUsed+=corpse.FxCount;
+                if(corpse.Bisect is BisectFx split){split.Band=band;corpse.SetupBisect(budget,Mathf.Clamp01(EffectsQuality),counted,NativeStructureFxPresentation.KillFloor(arena));}
+                else corpse.SetupKill(budget,Mathf.Clamp01(EffectsQuality),counted,hatModel,band,NativeStructureFxPresentation.KillFloor(arena));if(counted)killUsed+=corpse.FxCount;
             }
-            corpse.Step(age);string style=corpse.Style??"impact-ragdoll";bool stock=StockEnding(style);
+            corpse.Step(age);if(corpse.Bisect!=null)BisectBlood(corpse,death,KillClock(arena));string style=corpse.Style??"impact-ragdoll";bool stock=StockEnding(style);
             // What the effect looks like (swarm, burst, fragments, spray fade and splats, the stock sink and shrink, the fades)
             // is a function of age alone, so it follows the presentation clock: arena.Time only moves when a 20 Hz host frame
             // lands on a guest and in the killcam, and at the 60 Hz fixed rate on the host (the source feeds DeathEffects the
@@ -213,6 +225,7 @@ namespace ChipArena.UnityConversion
             // ragdoll.ts update(): the stock sink and shrink, then RagdollVfx (centred on the presented pelvis) and its collapse.
             float sink=stock&&!retain?(float)NativeKillEffectRules.Sink(shown):0,scale=stock&&!retain?(float)NativeKillEffectRules.PartScale(shown):1;corpse.Present(overlay,sink,scale);
             if(remains){alpha=1;overlay=Matrix4x4.identity;corpse.Present(overlay,0,1);}
+            if(corpse.Twin!=null)BisectPresent(corpse,shown,overlay,remains?0:sink,remains?1:scale);
             var swarm=remains?null:corpse.Swarm;
             if(swarm!=null)
             {
@@ -236,6 +249,8 @@ namespace ChipArena.UnityConversion
                 // ragdoll.ts copies the rig with copyVoxelPart (castShadow off): the body, hat and weapon cast no shadow.
                 // A pilot's body skin at the corpse's distance (death.model "pilot" names the pilot rig, not the skin).
                 int bodySkin=NativeBodySkins.StandardIndex;string model=(death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering,BodyAt(death.id,center,out bodySkin)):death.model;bool recolored=false;Color ice=Color.white;
+                // A split body draws its two halves instead (and so skips the whole body below).
+                if(corpse.Bisect!=null)recolored=BisectDraw(corpse,death,model,bodySkin,alpha,clock);
                 if(frost)
                 {
                     // Frostbreak after 1.1 s: every mesh icy with the source's emissive.
@@ -265,7 +280,7 @@ namespace ChipArena.UnityConversion
             KillWound(corpse,shown,alpha);
             // Expired swarms must stop drawing too: retaining a body cannot leave their last cached frame alive.
             if(remains)return;
-            KillSpray(corpse,shown,alpha,clock);KillSwarm(corpse,shown);KillBurst(corpse,fx);
+            KillSpray(corpse,shown,alpha,clock);if(corpse.Twin!=null)KillSpray(corpse.Twin,shown,alpha,clock);KillSwarm(corpse,shown);KillBurst(corpse,fx);
             if(style=="confetti")VoxelCloud(death.position,fx,6,death.seed,60);
             if(style=="siren-dissipate"||style=="siren-crush"){VoxelCloud(death.position,fx,10,death.seed,50,true);Ring(death.position-Vector3.up*.75f,Mathf.Clamp01(fx)*2,7,fx*60);}
             if(style=="dev-raging-demon")for(int j=0;j<12;j++){float t=j*.13f;if(fx>=t&&fx<t+.12f){Vector3 p=death.position+new Vector3(Mathf.Sin(j*13)*.45f,Mathf.Cos(j*9)*.7f,Mathf.Cos(j*11)*.45f);Beam(p-Vector3.up*.24f,p+Vector3.up*.24f,.08f,7);}}

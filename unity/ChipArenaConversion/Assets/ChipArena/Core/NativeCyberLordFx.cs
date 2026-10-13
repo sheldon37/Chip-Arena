@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
     /// the local pilot) see its effects on their own hit-stopped clock (KernelPanicFeel.Clock); everyone else on the match's.
     /// Nothing here reaches the authority, the network frame, hit timing, hitboxes, damage or movement.
     /// </summary>
-    public sealed class NativeCyberLordFx
+    public sealed partial class NativeCyberLordFx
     {
         public struct Record{public int Id,Source,Target;public EventKind Kind;public CyberHit Hit;public float Time,Amount;public Vector3 Position,From;}
         private readonly List<Record> records=new List<Record>(MaxRecords);private int cursor,drainSource;private float clock=float.NegativeInfinity,drainAt=-100;
@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
         /// <summary>This frame's silhouettes (glitched splits, fork-bomb clones), filled by Draw.</summary>
         public int Ghosts=>ghostCount;public CyberGhost Ghost(int i)=>ghosts[i];
         private readonly CyberLordView view=new CyberLordView(),other=new CyberLordView();
-        public void Clear(){records.Clear();cursor=0;clock=float.NegativeInfinity;ghostCount=0;}
+        public void Clear(){records.Clear();cursor=0;clock=float.NegativeInfinity;ghostCount=0;ClearBoosts();dashTrailCount=0;}
         /// <summary>Reads the fresh cyber events (idempotent per frame); a new arena or the killcam's replica (ids restart, the clock
         /// rewinds) starts over.</summary>
         public void Observe(IReadOnlyList<ArenaEvent> events,float time)
@@ -112,14 +112,18 @@ namespace ChipArena.UnityConversion
         /// <summary>Draws every live Cyber Lord effect of the frame at `time`.</summary>
         public void Draw(ICyberFxSink sink,ICyberFxScene scene,float time,float quality,bool low)
         {
-            ghostCount=0;if(sink==null||scene?.Actors==null)return;var actors=scene.Actors;bool reduced=quality<.5f;
+            ghostCount=0;if(sink==null||scene?.Actors==null)return;var actors=scene.Actors;bool reduced=quality<.5f;ExpireTrails(time);
             for(int i=0;i<actors.Count;i++)
             {
                 var a=actors[i];if(!CyberLordFeed.Read(a,view))continue;
-                // World effects that outlive the cast (any caster state): the trail, the wall, the field, the link.
-                Trail(sink,view,time,quality,low);
+                // World effects that outlive the cast (any caster state): the trails, the wall, the field, the link.
+                NoteTrail(view,time);
                 Wall(sink,view,time,quality,low);
                 Field(sink,view,time,quality,low);
+                // The ranged mode (NativeCyberLordRangedFx.cs): the switch, the casts, the Lag Field and the proxy mine.
+                Ranged(sink,scene,a,view,time,quality,low,scene.Viewer==a.Id);
+                // The hardlight dash sprint's fist streaks (NativeCyberLordRangedFx.cs Sprint).
+                Sprint(sink,scene,a,time,quality,low,scene.Viewer==a.Id);
                 if(!a.Alive)continue;
                 Link(sink,scene,a,view,time,quality,low);
                 bool me=scene.Viewer==a.Id;
@@ -134,7 +138,10 @@ namespace ChipArena.UnityConversion
                     Panic(sink,scene,a,view,pt,quality,low,me);
                 }
             }
+            for(int i=0;i<dashTrailCount;i++)Trail(sink,dashTrails[i],time,quality,low||TrailLow(i));
+            RangedShots(sink,scene,time,quality,low);
             for(int i=0;i<records.Count;i++)Event(sink,scene,records[i],time,quality,low);
+            AirBoosts(sink,scene,time,quality,low);
             Glitched(scene,time,quality,low);
         }
 
@@ -313,12 +320,13 @@ namespace ChipArena.UnityConversion
             // Pixel blocks shed off the body.
             int px=Count(10,q,low);for(int i=0;i<px;i++){float h=H(seed+i,13),k=(p.U+h)%1f;var at=head-f*(k*1.8f)+Up*(.2f+1.5f*H(seed+i,17))+r*((H(seed+i,19)-.5f)*.7f);float z=.05f*(1-k);s.Voxel(false,WeaponShape.Cube,at,Quaternion.Identity,new Vector3(z,z,z),Lin(i%2==0?Cyan:Magenta,2));}
         }
-        /// <summary>The lingering data trail (1.2 s from the dash's end): a strip of data blocks along the path that ticks (every .3 s) and fades.</summary>
-        private static void Trail(ICyberFxSink s,CyberLordView v,float time,float q,bool low)
+        /// <summary>The lingering data trail (1.2 s from the dash's end): a strip of data blocks along the path that ticks (every .3 s)
+        /// and fades; one per remembered dash (NativeCyberLordDashTrails.cs), so a chained dash leaves the last one to finish.</summary>
+        private static void Trail(ICyberFxSink s,in DashTrail d,float time,float q,bool low)
         {
-            var p=v.Phase(CyberLordSpec.Q,time);float end=v.Until[CyberLordSpec.Q];if(!(v.TrailUntil>-90)||time>=v.TrailUntil+.2f||!(end>-90)||time<v.Release[CyberLordSpec.Q])return;
-            var from=V(v.DashFrom);var to=V(v.DashTo);var path=to-from;float len=path.Length();if(len<.05f)return;var f=path/len;var r=Right(f);
-            float born=v.Release[CyberLordSpec.Q],grow=Clamp01((time-born)/Math.Max(.05f,end-born)),fade=1-Smooth((time-(v.TrailUntil-.25f))/.45f),y=from.Y+.03f;long seed=v.Id*131L+(long)Math.Round(born*240);
+            float end=d.End;if(!(d.Until>-90)||time>=d.Until+.2f||!(end>-90)||time<d.Born)return;
+            var from=d.From;var to=d.To;var path=to-from;float len=path.Length();if(len<.05f)return;var f=path/len;var r=Right(f);
+            float born=d.Born,grow=Clamp01((time-born)/Math.Max(.05f,end-born)),fade=1-Smooth((time-(d.Until-.25f))/.45f),y=from.Y+.03f;long seed=d.Actor*131L+(long)Math.Round(born*240);
             // A tick pulse runs down the trail every .3 s (the damage ticks).
             float tick=time<end?0:CyberLordSpec.TrailTick-((time-end)%CyberLordSpec.TrailTick),pulse=time<end?0:Smooth(1-tick/.12f);
             int cells=low?10:Count(22,q,low);
@@ -326,7 +334,7 @@ namespace ChipArena.UnityConversion
             {
                 float k=(i+.5f)/cells;if(k>grow)break;float h=H(seed+i,3),z=.045f+.05f*H(seed+i,7);var at=new Vector3(from.X,y,from.Z)+f*(len*k)+r*((h-.5f)*.55f)+Up*(z*.5f+.04f+.18f*H(seed+i,11)+.05f*pulse);
                 float blink=q<.5f?1:(H(seed+i*7+(int)(time*14),5)>.3f?1:.35f);float g=(1.1f+1.6f*pulse)*fade*blink;
-                s.Voxel(false,WeaponShape.Cube,at,Yaw(v.Yaw)*Quaternion.CreateFromAxisAngle(Up,h*3),new Vector3(z,z,z),Lin(i%5==0?Magenta:Cyan,g));
+                s.Voxel(false,WeaponShape.Cube,at,Yaw(d.Yaw)*Quaternion.CreateFromAxisAngle(Up,h*3),new Vector3(z,z,z),Lin(i%5==0?Magenta:Cyan,g));
                 // A few rising data bits over the trail.
                 if(!low&&i%3==0){float rise=((time*1.3f+h)%1f);s.Voxel(false,WeaponShape.Cube,at+Up*(.05f+.6f*rise),Quaternion.Identity,new Vector3(.025f,.025f,.006f),Lin(White,1.6f*(1-rise)*fade));}
             }

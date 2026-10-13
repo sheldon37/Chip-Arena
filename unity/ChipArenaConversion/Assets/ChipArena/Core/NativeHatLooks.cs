@@ -7,13 +7,18 @@ namespace ChipArena.UnityConversion
     // public, or a dev- item / the Auditor Halo with a grant for "type:id" (DEV access grants everything), and the Gibber, the
     // Sheldon Head and the Sheldon Intro need live DEV access itself (no grant can hand them out). The host normalises every joining seat with the
     // peer's verified access, so a non-DEV request for them becomes no hat / the default effect. The Sheldon Clothes body skin
-    // (NativeBodySkins.SheldonClothes) is gated the same way and falls back to the Standard body.
+    // (NativeBodySkins.SheldonClothes) is gated the same way and falls back to the Standard body, and so is the Sheldon Idle
+    // lobby pose (NativeLobbyPoses.SheldonIdle; Pose: it falls back to 'weapon').
     public static class NativeCosmeticGate
     {
-        public const string SheldonIntro="sheldon-intro";
-        public static bool DevOnly(string id)=>id=="dev-gibber"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes;
-        public static bool Restricted(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes);
+        public const string SheldonIntro="sheldon-intro",SheldonIdle="sheldon-idle";
+        public static bool DevOnly(string id)=>id=="dev-gibber"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes||id==SheldonIdle;
+        public static bool Restricted(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes||id==SheldonIdle);
         public static bool Allowed(NativeAccess a,string type,string id,double now)=>id!=null&&(!DevOnly(id)||(a??NativeAccess.Guest).Developer)&&(!Restricted(id)||(a??NativeAccess.Guest).Allows(type+":"+id,now));
+        /// <summary>A lobby pose pick for this access: a known pose (NativeLobbyPoses.Normalize: an unknown id is 'weapon'), the
+        /// Sheldon Idle only with live DEV access (else 'weapon').</summary>
+        public static string Pose(NativeAccess a,string value,double now)
+        {var p=NativeLobbyPoses.Normalize(value);return p==SheldonIdle&&!Allowed(a,"pose",p,now)?NativeLobbyPoses.Keys[NativeLobbyPoses.Weapon]:p;}
     }
 
     // Headwear and backdrop colours (owner 2026-10-12: "Lets make Hats color-customizable and backdrop (Instead of

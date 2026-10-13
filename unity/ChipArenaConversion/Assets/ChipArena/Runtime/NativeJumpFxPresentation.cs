@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
                 bool blocked=a.Hp<=0||a.Rolling(now)||a.StunUntil>now||a.JuggleUntil>now||NativeSpecialPose.Active(a,now)||NativeSpecialPose.Down(a,now);
                 arena.PresentedJump(p,out bool grounded,out float airJumpAt);t.Explicit=true;
                 t.Observe(now,grounded,feet.y,blocked);t.AirJumpSignal(airJumpAt);
-                if(t.AirJumps>jumps&&a.Hp>0&&NativeJumpRules.Flips(p.Seat.spec))
+                if(t.AirJumps>jumps&&a.Hp>0&&NativeJumpRules.Flips(p.Seat.spec)&&!CyberLordAirBoost.Handles(p.Seat.spec))
                 {
                     var tint=NativeGlowRules.ArmorTint(a.AccentColor);if(bursts.Count>=16)bursts.RemoveAt(0);
                     bursts.Add(new Burst{At=now,Feet=feet,Floor=t.Floor,Seed=++seeds,Owner=p.Seat.id,Accent=new Color(tint.X,tint.Y,tint.Z,0)});

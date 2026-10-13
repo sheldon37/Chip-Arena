@@ -62,6 +62,13 @@ Shader "ChipArena/NativeBlockLit"
         #define CY_GLASS 10.0
         #define CY_HOLO 11.0
         #define CY_TUBE 12.0
+        // Ward Zero's slots of the same bank (Core NativeWardZeroLooks; docs/arenas/WARDZERO_PROPOSAL.md section 10).
+        #define WZ_TILE 1.0
+        #define WZ_BURN 3.0
+        #define WZ_PANEL 2.0
+        #define WZ_GLASS 13.0
+        #define WZ_LIGHT 14.0
+        #define WZ_INK 15.0
         // The wet sheen of puddles (a faint mirror of the violet city sky) and the sky a pane reflects, linear.
         #define CY_SHEEN float3(0.010,0.009,0.030)
         #define CY_SKYREF float3(0.012,0.010,0.034)
@@ -246,6 +253,71 @@ Shader "ChipArena/NativeBlockLit"
             {
                 // A neon tube or LED strip: emissive in the block's colour, a little brighter along the core of each face.
                 alb=base*0.15;emit=base*saturate(win)*(0.85+0.3*smoothstep(0.0,0.03,edge));
+            }
+            else if(BkIs(look,WZ_BURN))
+            {
+                // Burner grate: the floor grating's bars and rods over the burner trough; a light level above 1 heats it
+                // (the trough glows orange, the bars go dull red, then yellow-white in the burn).
+                float bar=BkJoint(uv.x,0.04,0.012,fw.x);float rod=BkJoint(uv.y,0.10,0.008,fw.y);
+                float m=top?max(max(bar,rod),1.0-smoothstep(0.06,0.08,edge)):1.0;float heat=max(0.0,win-1.0);
+                alb=lerp(base*0.06,base*(0.92+0.2*(BkHash2(floor(uv*25.0)+seed)-0.5)*detail),m);
+                emit=lerp(float3(1.0,0.32,0.06),float3(1.0,0.78,0.42),saturate(heat-0.6))*heat*((1.0-m)*2.4+m*0.35*saturate(heat-0.3));j=0.0;
+            }
+            else if(BkIs(look,WZ_TILE))
+            {
+                // Ward Zero clinical tile: 30 cm tiles in 4 mm joints, each its own pale shade; scuffs on floors, broad stains
+                // (old disinfectant, worse in the corners), the joints darkened with grime.
+                float2 tid=floor(uv/0.3);j=max(BkJoint(uv.x,0.3,0.004,fw.x),BkJoint(uv.y,0.3,0.004,fw.y));
+                float tone=lerp(1.0,lerp(0.9,1.06,BkHash2(tid+seed*13.0)),detail);
+                float scuff=top?smoothstep(0.62,0.80,BkFbm(uv*0.6+seed*3.0))*0.16*detail:0.0;
+                float stain=smoothstep(0.55,0.85,BkFbm(uv*0.12+seed*5.0))*0.24;
+                alb=lerp(base*tone*(1.0-scuff-stain),base*0.42,j);
+            }
+            else if(BkIs(look,WZ_PANEL))
+            {
+                // Ward Zero wall panels 1.2 x 2.4 m in 1 cm seams, each its own shade, a rivet near each corner, faint vertical
+                // streaks; tops are a dusty plate.
+                if(top){alb=base*(0.85+0.1*BkNoise(uv*0.8+seed));}
+                else
+                {
+                    float2 pid=floor(uv/float2(1.2,2.4));j=max(BkJoint(uv.x,1.2,0.01,fw.x),BkJoint(uv.y,2.4,0.01,fw.y));
+                    float tone=lerp(1.0,lerp(0.9,1.05,BkHash2(pid+seed*19.0)),detail);
+                    float streak=smoothstep(0.5,0.9,BkNoise(float2(uv.x*7.0,uv.y*0.3+seed*2.0)))*0.12*detail;
+                    float2 rp=abs(frac(uv/float2(1.2,2.4))-0.5)*float2(1.2,2.4)-float2(0.55,1.15);
+                    float rivet=(1.0-smoothstep(0.007-fwm,0.007+fwm,length(rp)))*saturate(1.0-fwm/0.01);
+                    alb=base*tone*(1.0-streak)*(1.0-0.55*j)*(1.0-0.35*rivet);
+                }
+            }
+            else if(BkIs(look,WZ_GLASS))
+            {
+                // A specimen tank: lit fluid behind glass (the block's colour), darker toward the bottom, a bright meniscus 12%
+                // under the top edge, bubble trails, a cool sheen up one side; the light level lights the fluid, 0 drains it.
+                float lit=saturate(win);
+                if(top){alb=base*0.25;emit=base*lit*0.35;}
+                else
+                {
+                    float f=frac(uv.y/3.0);float men=smoothstep(0.84,0.86,f)*(1.0-smoothstep(0.88,0.9,f));
+                    float trail=step(0.86,BkHash2(float2(floor(uv.x/0.07),seed*9.0)))*step(0.55,BkNoise(float2(uv.x*14.0,uv.y*6.0+seed*4.0)))*detail;
+                    float sheen=smoothstep(0.75,0.95,frac(uv.x/1.6+seed));
+                    alb=base*0.12+float3(0.02,0.03,0.035)*sheen;
+                    emit=base*lit*(0.18+0.42*f*step(f,0.86)+1.6*men+0.55*trail)+float3(0.03,0.05,0.06)*sheen;
+                }
+            }
+            else if(BkIs(look,WZ_LIGHT))
+            {
+                // A fluorescent troffer: an opal diffuser over two tubes along the face's u, a 15 cm louvre grid, emissive by
+                // the light level (the kit's flicker and the ward's mood drive it); dark housing at the rim.
+                float rim=1.0-smoothstep(0.03,0.05,edge);
+                float tube=max(1.0-smoothstep(0.0,0.06,abs(frac(uv.y/0.3)-0.25)*0.3),1.0-smoothstep(0.0,0.06,abs(frac(uv.y/0.3)-0.75)*0.3));
+                float louvre=lerp(max(BkJoint(uv.x,0.15,0.01,fw.x),BkJoint(uv.y,0.15,0.01,fw.y)),0.12,saturate(fwm/0.05));
+                alb=lerp(base*0.6,BK_FRAME,rim);emit=base*saturate(win)*(0.55+0.45*tube)*(1.0-0.45*louvre)*(1.0-rim);
+            }
+            else if(BkIs(look,WZ_INK))
+            {
+                // The Siren's ink: glossy black-violet with a creeping vein web; the veins glow by the light level.
+                float web=1.0-abs(BkFbm(uv*0.9+seed*7.0)*2.0-1.0);float vein=smoothstep(0.90,0.985,web)*detail;
+                float pool=smoothstep(0.4,0.8,BkFbm(uv*0.3+seed*3.0));
+                alb=base*(0.5+0.5*pool);emit=float3(0.55,0.16,1.0)*vein*saturate(win)*1.4;j=0.0;
             }
             else
             {

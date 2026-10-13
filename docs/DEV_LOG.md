@@ -1,5 +1,282 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — PR #160 Brute drop reconciliation
+- Branch `codex/siren-brute-drops` reconciled with requested shared `b177323a`, then current `bfbc1175` (updater check + log only). Owner requests Claude to merge; no shared/builder merge, Update release or accounts deployment performed.
+- Preserved Brute/Hulk DropProfile and map-authored finite positive height in both accessors. Brute stays 240 HP with 420 impulse/pop; retained SpitHit=.8 presentation proposal and 900 Hulk impulse. Updated stale Hulk >=3x Brute assertion to pin 900 and >2x420; both HulkSpitterChecks and HordeDropChecks run, including both profiles and invalid/custom heights. No Hulk/spitter simulation or Ward Zero draft import added.
+- Validation: fresh direct Roslyn compile of all Core/Tests and relay source, then complete `check_relay.py --compiled-tests ... --compiled-relay ... --test-timeout 900`, exit 0, through final 35 managed-core checks plus real WebSocket/UDP/TCP relay groups. Python discovery 101 tests OK, one skip; affected native-updater Python checks rerun after bfbc1175. Source package validation and git diff whitespace checks pass. Shared updater suite: 57 checks pass. 
+- Environment: dotnet CLI/MSBuild fail during process lookup in this container; direct SDK Roslyn compiler bypasses that tooling failure without omitting test source or groups. Unity Editor/PhysX/runtime compilation, Windows builds and two-client play not run. Native build gates remain required before a compiled release.
+- Publication: publish the exact verified tree through the GitHub app (CLI has no push credentials), preserving both PR and shared parents. Ready for Claude after publication; no force-update of shared branches.
+
+## 2026-10-13 — Claude — Windows updater check: duplicate launcher cases after the rename
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), base `b177323`; CI `native-updater-windows` failed on `51f0aa7` (PR #170).
+- Cause: PR #170 named the player `Chip Arena.exe`, the launcher's name, so `tools/check_updater_windows.py`'s four cases ran the launcher pair twice and the repeat's `mkdir` of its case folder raised `FileExistsError` (WinError 183).
+- Fix: run each distinct (name, rollback) case once (`dict.fromkeys`, order kept); with two different names all four still run. No updater, launcher or build change.
+- Checks: `py_compile` OK; Python unittest discovery OK. The Windows job itself runs only on the Windows runner (not runnable here). Astra: adjust if the player-name cases were meant to cover something else.
+
+## 2026-10-13 — Astra — local corpse/revive replication placement
+- Branch `codex/revive-anchor-replication`, base shared/build `6751324831666caae6075ccd89ee51f06988edd1`. Owner's 03:11 UTC Windows build passed the previous revive gate and failed `Interaction feedback: revive anchor replication/authority`.
+- Root cause: `BufferReplica` reconciled the correct authority position, then added the old local-body offset for differences <=3 m. That locomotion smoothing incorrectly delayed corpse-anchor placement and nearby revives.
+- Reset local prediction and discard correction/pending input while dead and on revival (previous dead state or changed replicated `revivedAt`). Ordinary living movement retains reconciliation smoothing. No protocol/schema, host collision or presentation changes.
+- Extended the real Unity interaction gate: distinct position/authority failures, repeated nearby corpse anchor, dead input plus interpolation, pending-input clearing, immediate in-place/nearby-pad revival, and immediate placement across the existing hologram cases. Existing guest authority rejection remains required.
+- Checks: Python discovery 101 tests OK (1 skipped); source-package check passed (1,778 source files); diff whitespace clean. Unity/PhysX/Windows and managed relay execution unavailable here (no Unity/.NET); the owner builder must confirm the corrected gate and downstream gates. No claim of a successful compiled release.
+- Owner standing push/merge permission applies: this task is to be merged into the shared Unity branch and fast-forwarded to the builder branch after source checks. The prior PR #168 is merged and included in this base.
+
+## 2026-10-13 — Astra — revive build gate follows the authoritative corpse anchor
+- Branch `codex/revive-build-validation`, base shared `d29fb7e3138b5191bdb44c38fd0e9c8e32b9bd43`.
+- Owner log `Latest-Build(1).txt`, source `7dc41e03c176`, stops in `ValidateFollowupParity`: the old fixture sets only `Death.position` and still expects a revive there. The ragdoll-anchor change deliberately revives at the current authority body position; the immutable death pose is no longer the revive target.
+- Updated only the build validation: cover the unchanged original body position, a moved corpse anchor, and an explicit pad override; preserve assertions for mana/stamina/ammo and the immutable death pose. Existing interaction validation separately exercises real anchor collision/replication. No gameplay or presentation changes.
+- Checks: Python unittest discovery ran 99 tests, OK (1 skipped); `package_source.py --check` passed (1,761 source files); `git diff --check` clean. Unity Editor/PhysX/Windows and managed relay checks were not run: Unity and .NET are unavailable in this environment.
+- Status: prepared on task branch for PR into shared Unity branch; not merged or published. Next: owner-approved integration into the shared/build branch and a fresh Windows builder run to execute this gate and the remaining gates.
+
+## 2026-10-13 — Claude — Ward Zero revamp: two floors, vent/door/breach spawning, hazards, lighting (owner: "Rework Ward Zero map, support vent spawning / door spawning, add hazards. Make it a lot bigger, 2 floors, and improve the lighting, effects, and overall design")
+- Branch `claude/wardzero-rework`, base shared `258e348` (`claude/sleepy-ritchie-g8ruhv`); signed commits on the branch. Not pushed, merged or released. Split: this is design, draft data and presentation; Astra imports and builds the simulation from `docs/arenas/WARDZERO-SIMULATION-CONTRACT.md` (ends with her prompt). Today's Ward Zero (GameContent `siren`, its hall model, WardMotion, NativeWardPresentation) is unchanged and still the map; no simulation, collision, spawning, hazard authority, nav, network, save or hitbox change; not in UnityMaps.json or rotation.
+- Design (`docs/arenas/WARDZERO_PROPOSAL.md`): Meridian Biocontainment, an 80 x 64 m slab on two full floors (ground 0, upper 6, roof 13; about 2,930 + 2,100 m² walkable) round the Breach Atrium (24 x 20 m void, the Cradle under the Spine hatch); halls, concourses, cell and observation blocks, morgues, intakes, decon wings, control rooms, specimen halls, incinerator lanes, gantries. Six stairs (26.6 deg) and two ramps (24 deg) with collision as closed wedges (the Cut precedent, Astra asked for the traversal gate on both floors), 12 drop-downs. 53 entries all in data: 10 floor vents (the 8 song vents keep indices 0..7), 8 wall and 4 ceiling vents, 8 cell gates, 12 doors, 3 drops (the Cradle drop 13 m, 4.5 m clear, `hulk`), 8 breach panels for the Hulk (distinct `siren-breach-*` blocks, 3.2 x 4.0 m, proud of solid faces, a black recess plate behind). Hazards: live grating bridges (existing `grid`), incinerator burners, decon gas locks, blast shutters, today's song vents.
+- Generator `docs/arenas/scripts/wardzero_m1.py` (deterministic, byte-identical reruns; `--json`, `--png`, `--ascii`, `--sections`): 616 blocks, spawns, bounds, hazards, `ramps[]`, nav hints, and the PvE block (entries with y/surface/level/song/pit/height/clear/hulk/breach fields, machines, pads, boss, hide spots). Its checks: every walkable cell on both floors reached from the spawns (capsule flood), each route alone, all 53 entry exits and all machines/pads/hides/boss on reached floor, drop clearances, FFA 28/28 and teams 16/16 blocked under jitter, closest same-floor hazard 6.6 m, bridge/portal/burner fairness over two rounds, ids clear of today's.
+- Presentation (dormant until the map is `siren` with look `quarantine`): MapLooks `siren-quarantine`; six ward slots in the shared shader bank (tile, panel, burner grate, specimen glass, troffer, ink); Core `NativeWardZero{Looks,Hazards,Mood,Kit,Lights,Fx}`; Runtime `NativeWardZeroPresentation` (kit 7,124 parts in 15 draws, 4,817 on the low tier; eight practical lights picked per camera from 189 candidates through the new `NativeLighting.PickedLights`; calm/horde/boss/emergency mood from replicated PvE state and the boss song; ink corruption; FX in two draws with telegraphs, entrances and route guides never reduced). Hooks: SourceWorld and the menu backdrop draw the revamp instead of today's hall only when the map carries the look; `NativeLighting.Look` honours a map's `look` field (old maps name none). Breach seam: `ArenaPresentation.SetWardBreach(entryId, open)` hides the panel's dressing and leaves its block out of NativeArenaDressing (`NativeArenaDressing.Hidden`) for the zombie lane's breach presentation to call.
+- Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking (no add or pilot animation changed). The add entrance poses for wall and ceiling vents (crawl, drop) are the zombie lane's to map from `surface` after the import.
+- Checks (actual): unity-check.sh runtime+editor build OK; check_relay.py exit 0, 588 PASS (587 on the base plus `PASS ward zero`, 1,668 checks), 0 FAIL; Python 97 tests OK, 1 skip; package_source.py 1,706 source files; git diff --check clean; generator twice: JSON, PNG and report identical and equal to the fixture; in a copy holding only `unity/ChipArenaConversion` (the CI `native-source` checkout): exit 0, 588 PASS, 0 FAIL, two SKIP lines from other groups (their docs are not in that tree).
+- Renders (offline WebGL harness running NativeBlockLit's shared code on the draft; scratch only): hero, overviews, plans of both floors (and the generator's PNG), player-eye views on both floors, each hazard's telegraph and live state, every entrance kind (floor/wall/ceiling vent, cell gate, door, hatches, breach intact and broken), calm/horde/boss/emergency, reduced and low tiers.
+- Risks / next: no Unity Editor, PhysX traversal, Windows or multiplayer run; the stairs need Astra's wedges (0.5 m treads); two-floor nav, the burner/gas damage kinds and the shutter's push are new; breach collision timing follows docs/SIREN-ZOMBIES.md section 8 (collision back at `restoreAt + 2.6`); the upper floor's lighting needs an in-engine look. Next: Astra imports from the contract. On merge into the shared head, `NativeHordeBreachPresentation` now calls `SetWardBreach` on each hide and show of a breach segment.
+
+## 2026-10-13 — Claude — Cyber Lord ranged mode, dash sprint (owner: "Give cyber lord a 2nd set of abilities for a "Ranged" mode. So, new 1-4 if they switch to ranged :)[We can set this to the 5 hotkey to switch)"; "change cyber lords sprint animation to be different than their run animation. (Currently its just the run animation sped up)")
+- Branch `claude/cyberlord-ranged`, base `e2e894e`. Committed locally, not pushed; not merged or released.
+- Design (Claude's part; numbers in `Core/CyberLordRanged.cs` `CyberRangedSpec`, table and contract in `docs/CYBER-LORD.md` "Ranged mode"):
+  - Key 5 switches (.3 s, 1 s cooldown, refused mid-cast and never queued).
+  - The ranged set: LMB Bit Bolt (poke), 1 Ping Lance (long poke), 2 Lag Field (zone), 3 Proxy Swap (escape), 4 Root Access (finisher, on Kernel Panic's clock).
+  - Q, E, RMB and SHIFT are unchanged. Cooldowns and mana carry across modes.
+- Presentation, keyed only on a proposed replicated record read through `CyberLordFeed.RangedMode`:
+  - the key-5 reconfiguration (fists to emitters, a barrel and a coil; a glitch flash, shards and an RGB split);
+  - the emitter hold over the run;
+  - each cast's pose, effects, telegraphs (true-perspective ribbons) and impacts;
+  - first person in both modes;
+  - the HUD's two sets with a "5 · MELEE / 5 · RANGED" card, and seven art icons;
+  - existing-key audio, and reduced/low tiers.
+  - Without a record the feed falls back to the Siren's `SourceRanged` / `SourceModeAt`.
+  - Bit Bolts are `Spec cyberlord` / `Detail bit-bolt` bullets, which the default drawer now skips (the Data Packets stay its own).
+  - Dev Sandbox: "Preview Cyber Ranged" loops the set on your own pilot (`Runtime/NativeCyberLordRangedPreview.cs`).
+- Sprint: the Runner pack's Mvm_ChargeBoost (was Mvm_Boost) with the fists swept past the hips (`CyberLordRun.Swept`, own .3 s ease), a deeper lean and hardlight fist streaks easing with the replicated flag. Every take's chest is folded onto the forward run's line. The run and first person are unchanged.
+- Affected systems: Cyber Lord pose/look/effects/HUD/audio, the class icon art (7 new; others byte-identical), the default shot drawer's skip, and the Dev Sandbox menu.
+- Animation impacts: none on hit timing, hitboxes, damage, cooldowns, movement or networking. The drawn arms and chest move, and the blink dips the drawn hips 6 cm.
+- Checks (actual):
+  - Unity-stub runtime+editor compile: OK.
+  - `tools/check_relay.py`: passes, 35 managed groups plus WebSocket/LAN, including the new `Tests/CyberLordRangedChecks.cs` (14,866 checks, 0 bytes per frame) and the updated `CyberLordRunChecks` (the sprint's swept fists, no ramp spike).
+  - Python tests: 95, 1 skipped.
+  - `package_source.py`: OK.
+  - `git diff --check`: clean.
+  - The relay also passes from a sparse `git ls-files` copy.
+  - Offline WebGL renders (scratch harness, real Core and draw code) of the switch, stance and run, each ability (incl. the target's view), first person, the tiers, the HUD mock and run-vs-sprint.
+- Not run: the Unity Editor, Windows, two clients, the in-game Dev Sandbox button.
+- Risks:
+  - The rules are pending (the presentation shows nothing ranged in real matches until Astra replicates the record or the Siren fields).
+  - The HUD bar gains a ninth card.
+  - Ribbon beams are untested on the Unity shader path beyond the shared WebGL block.
+- Next step: Astra's ranged rules (the prompt is in `docs/CYBER-LORD.md`).
+
+## 2026-10-13 — Claude — PvE chip selection: the wrist hologram and SELECTING CHIP tag (owner: "Lets also add a 'Chip Selection' Animation for PVE (Similar to what we had for Electron), what I mean is when other people are picking chips on PVE, we can see them looking at a holographic display through their wrist. Above, it'll show a small animated Text 'Selecting Chip',")
+- Branch `claude/pve-chip-select`, base shared `e2e894e`. Not pushed, merged or released. Contract: `docs/PVE-CHIP-SELECT.md`.
+- Electron baseline (`client/pve/hologram.ts`, rendered with its real modules): a cyan fan of three cards, a chip die and a cone over a remote chooser's head, red at 6 Hz when hit; head down .25 rad, right forearm raised; "Choosing chip" in the board.
+- Unity, presentation only (`Core/NativeChipSelect.cs`, `Runtime/NativeChipSelectPresentation.cs`, `Runtime/NativeChipSelectHud.cs`, `Resources/NativeChipSelect.shader`):
+  - Pose layer over every class's route (rig Overlay): display wrist up (left; right for staffs, L33t, bow), head down at it, weapon kept in its hand (lowered; greatsword trailing; staff and bow keep their idle hold), empty hands tap and swipe, pistol/dagger swipe below the cards, long weapons flick the wrist. Legs untouched.
+  - Wrist hologram: panel, three rarity cards, cone, ring, motes, scanlines, flicker, fog; red when hit. Tag over the name: typed in, then dots; occluded and faded 20-30 m like the bars; not mine in first person.
+  - First person: the raised wrist low in view (seen only when the full-screen pick is not over the arena). Tiers Reduced/Low; no per-frame allocation. Dev Sandbox "Preview Chip Selecting".
+- State: the existing replicated `NativePveRowFrame.open` (row.Open on every guest), no network change. No open time is replicated, so clients ease in from the frame they see it; optional for Astra: a per-row `openAt` (not required).
+- Hooks (one line each): `ArenaPresentation.PrepareCapturedPose`/`Render`, `NativeViewPresentation.RenderFirstPerson`, `NativeCombatHud.CombatWorldHud`, `NativeSandbox`.
+- Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking (input is already zeroed while a pick is open).
+- Checks (final tree): `unity-check.sh` runtime+editor OK; `check_relay.py` exit 0, 600 PASS (was 592; new `ChipSelectChecks`: mapping, track, gestures, pose over all 16 classes at 30-240 Hz, grip kept, first person, hologram tiers, tag; 0 bytes per frame); Python unittest 99 OK, 1 skip (new `test_chip_select.py`); `package_source.py` passed (1,718 files; Builds removed); `git diff --check` clean; sparse tracked-file copy relay 600 PASS. Unity Editor, Windows and two-client play not run. Offline renders (Electron original and Unity) in the session scratchpad only.
+- Risks: the panel faces its wearer, so others see it edge-on from some sides (the tag carries it); first-person view only shows on the close or with a menu or hold over the pick; pose tuned offline, not in the Editor.
+
+## 2026-10-13 — Claude — match-start spawn-in (owner: "Lets also add a spawning in animation; Players tend to float for 3 seconds when match is starting currently lol")
+- Branch `claude/spawn-in`, base shared `e2e894e`. Not pushed, merged or released.
+- Root cause (simulation; unchanged here; details and the Astra hand-off in `docs/SPAWN-IN.md`):
+  - Every authored spawn (GameContent's global table for its 15 maps, and all three UnityMaps tables) puts the capsule centre at 1.1 m on a floor at 0. That is 0.23 m over the ground motor's rest (0.87): presented feet at 23.5 cm, on every map, round, set, host and guest.
+  - Outside the fight, `NativeArena.Step` zeroes velocity and returns before `ProbePilotGround`. The fresh pilot's `Grounded = false` therefore replicates through the intro and the 3 s countdown, so every rig's jump layer holds its air pose, and Land plus `move.land` fire at GO.
+  - Inferred, not measured: PhysX still integrates one tick of gravity per held tick, so the body probably sinks to the floor about 0.65 s after the reset.
+- Presentation (`Core/NativeSpawnIn.cs`, `Runtime/NativeSpawnInPresentation.cs`, one-line hooks in ArenaPresentation Render/RenderGlow/Reset, SourceCharacter, RenderStatus, NativeCombatGlow, NativeCombatHud, NativeViewPresentation and ConversionGame):
+  - Timing comes only from replicated `Phase`/`PhaseEnd`/`FightAt`, so the host, guests (own pilot `GuestLead` ahead), the killcam and late joiners agree on every round; the hold ends exactly at the fight start.
+  - The beam strikes and rings the spawn. The body forms from the feet up (dithered per part from its posed height) behind a hologram slice of its own skin, team- or accent-tinted, then flashes and splits magenta/cyan.
+  - The beam holds the feet at the spawn's own height with a bob, posed on the ground (no Fall loop), with motes and countdown-tick pulses.
+  - At GO it drops for the authority's own fall (`AuthorityFall` + 1 tick = 0.083 s) and lands with impact rings, light dust, sparks and a local camera kick.
+  - A grounded spawn (lift under 6 cm) is lowered to the floor by GO instead.
+  - Hat, weapon, body Chips, Cyber Lord hardlight, bands, armour halos and the overhead bar wait for their parts.
+  - First person: my view rides the hold and drop and kicks (camera shake only), with a scanline-wipe veil, vignette, edge split and GO flash.
+  - Reduced and low tiers. No per-frame allocation. PvE waves and revives are untouched (revives keep their own scan).
+- Affected systems: arena pilot presentation, the first-person view and screen, the local camera, the combat glow and the HUD. No rule, timing, hitbox, damage, cooldown, movement or network field changed. Hit timing is unaffected: nothing can attack before GO, and the presented drop ends one tick after the authority's touchdown without the authority reading it. Only presentation files reference the module (checked).
+- Checks (actual):
+  - `unity-check.sh`: runtime+editor OK.
+  - `check_relay.py`: exit 0, 593 PASS (592 + `PASS spawn-in`, 72,823 checks). The spawn-in checks cover:
+    - the lift measured on all 18 maps;
+    - NativeMatch's countdown, every round of a real match through results, a draft, sets and intros;
+    - 20 Hz guest frames and killcam frames against the host;
+    - the drop re-derived from the ground probe's rule (4 ticks + 1) and lowered grounded spawns;
+    - the feet-up build in rest and seven idle poses;
+    - tiers, geometry bounds, camera kick and screen limits;
+    - 12,000 frames with 0 bytes allocated;
+    - the wiring.
+  - It also passes from a sparse `git ls-files` copy.
+  - Also passing: Python unittest (95, 1 skipped), `package_source.py` (1,713 files; Builds removed) and `git diff --check e2e894e HEAD`.
+- Renders: offline WebGL sheets (scratch `renders-spawn-in/`): before/after pairs, the sequence for Standard/sword, Sheldon Clothes/greatsword/Sheldon Head and Prototype/daggers/crown, the GO landing, first person (Full and Reduced), Reduced, Low, teams and grounded spawns. They use the real Core, NativeVfxDraw and body meshes over a stub, the jump layer's real poses and Prototype bank weapons; the view-model arms are not drawn, and the screen is a 2D stand-in for IMGUI.
+- Not run: the Unity Editor/player, PhysX (the sink is inferred), Windows, two clients, IMGUI and shader output.
+- Risks:
+  - The exact PhysX countdown height is unconfirmed. The hold covers both cases.
+  - The countdown length is mirrored as 3 s (checked against NativeMatch).
+  - Dust and ring tuning was judged offline only.
+- Next step: Astra picks option 1 or 2 in `docs/SPAWN-IN.md`; owner taste review in engine.
+
+## 2026-10-13 — Claude — holographic revive (owner: "Improve revive effect as well (If user was gibbed / wounded, repair with cyber holographic lines and player levitates up for a moment, returns to normal after)")
+- Branch `claude/revive-holo`, base shared `44d2811` (Astra's revive anchor, PR #166, included). Not pushed, merged or released. Reference: `docs/REVIVE-HOLO.md`.
+- Revive paths:
+  - The paid and solo self-revive (`RevivePve`, in place on the anchor) and the free respawn at a pad both get the hologram.
+  - The Sandbox respawn (`SandboxRestore`) is not a PvE revive and stays the spawn-in presentation's.
+  - The C17 window (scan 0.8 s, stand 0.6 s), the shield, the anchor and every rule are unchanged; managed text pins check this.
+- Core `NativeReviveHolo` is engine free and allocates nothing per frame.
+  - Lift: up to 0.5 m from 0.06 s, held while the body is repaired and stands, exactly 0 again at 1.4 s.
+  - Repair curves on the C17 front: a wounded joint heals; a missing part goes wire, then hologram, then skin. Everything is done by 0.8 s.
+  - Crater voxels from the cells the wounds removed. `NativeWoundSkin.Cut` gains an optional `holes` recorder that changes no cut; `PrototypeHoles` covers the Prototype.
+  - The ring, disc, column, streaks and landing pulse.
+  - Feature-edge wireframes.
+  - The first-person view rise and vignette.
+  - `NativeBloodSplats.FadeNear` washes the blood and ink away.
+- Runtime:
+  - `NativeReviveHoloPresentation` and `NativeReviveModels` are new. They add an additive hardlight shader and a vignette shader, both on the Editor build gate. `BeginHolo` builds the models, holes and cached delegates once per revive.
+  - Only the drawn rig's root lifts, after it stands from the body (`ReviveLift`). The authority body and collider never move.
+  - `ConversionGame` gets the first-person `ReviveView` after the aim is placed. There is no rise with reduced effects or camera shake off.
+  - Sandbox: "Preview Revive" cycles headshot, heavily wounded, gibbed and split stand-ins over the three skins.
+- Edits to Astra's revive presentation (`NativeInteractionPresentation`), presentation only:
+  - gib positions are kept so the gib voxels fly back;
+  - a split corpse revives from its halves;
+  - the hologram hooks are added;
+  - the body drawing moved into `RenderRevival`.
+  - Pins in HatLookChecks, BodySkinChecks and WoundSkinChecks followed the moved lines.
+- Recarve fix: `WoundedPilot` keeps two carves per pilot (its live body and the body it left), so a revive no longer recuts every frame against its corpse. A kept carve is found without allocating; a carve not drawn for 2.5 s is released.
+- Checks (actual):
+  - `tools/check_relay.py` passes: 35 managed groups plus real WebSocket/LAN, including revive holo (21,721 checks), wound skins (8,256) and bisect (1,929). It also passes from a sparse copy.
+  - Revive coverage: the lift window and exact landing; the repair finished at every scan coordinate; 6,008 skin holes on their joints and 1,502 Prototype holes, with recording leaving every cut unchanged; tier budgets; determinism; 600 frames at 0 bytes; the wireframe; the wash; the wiring.
+  - Also passing: the Unity-stub runtime+editor compile, the Python tests (95, 1 skipped), `package_source.py` and `git diff --check`.
+  - Headless WebGL renders of the Core composition on rigid stand-in poses.
+- Not run: the Unity Editor, the shaders' compile, PhysX, Windows, two clients and PERF_HITCH timing.
+- Risks:
+  - The shaders are uncompiled here.
+  - The hologram flashes near-white where the band passes a re-forming head.
+  - Stand-in poses only; the real ragdoll's lying pose varies.
+  - The rig's lift moves rig-anchored effects (muzzle flashes, nameplates) up for the window.
+  - The killcam replays the revive from the same data, but was not run.
+- Next: the owner's Windows look at a PvE revive (wounded, gibbed) and the Sandbox preview; a PERF_HITCH read on revive frames.
+
+## 2026-10-13 — Claude — Hulk zombie, wall breach entrance, spitter acid (owner: "Add a Hulk zombie too, ... They can also break through the walls to enter (Stage will eventually holographically recover broken pieces)"; "The spitter should shoot do a windup animation and shoot acidic spit from their mouth, creating a small puddle of poison (Can corrode destructibles). Can interupt their spit by hitting them.")
+- Branch `claude/hulk-zombie`, base shared `e2e894e`. Not pushed, merged or released. Presentation only. Rules, the contract and the Astra prompt are in `docs/SIREN-ZOMBIES.md` §7-9.
+- Hulk (`NativeHordeKinds.Hulk`, content-gated):
+  - A new 1.8x model on the shared rig (huge shoulders and fists, small head, cracked hide with ink veins, three tiers, hinged jaw), sized to a proposed r .95 / h 3.06 capsule. Colliders are unchanged.
+  - The brute's mocap at a .62 tempo, with footfall shakes, dust and cracks.
+  - A 1.1 s smash with a 2.8 m telegraph, shockwave, debris and a shove burst on hit pilots.
+  - Seeded roars on knock-3; staggers only from hits of at least 25% of max hp. Deaths crash where the chest lands, with a thud cue.
+  - Drop entries reused with a Hulk profile (`NativeHordeDrop.Hulk`, 4.49 s from 9 m): rumbling warning; on landing, waves, crater, dust wall, cracks, debris, drawn-only prop jolts and a pitch/roll shake within 34 m.
+- Wall breach (`Core/NativeBreach.cs`, `Runtime/NativeHordeBreachPresentation.cs`): generic, driven by entry kind `breach` and the map segment `breach:<id>`.
+  - Knocks with cracks, then the burst into chunks, a ragged hole, rubble.
+  - Holographic restore: a hardlight scan, wireframe pieces flying home, solidifying, a flash. The default restore is break + 12 s until `restoreAt` is replicated.
+  - Colliders are never touched.
+- Spitter:
+  - The wind-up rears back on knock-1; the throat sac glows and the jaw unhinges. The proposed hit .55 -> .8 is mirrored in the VARIANTS row.
+  - The glob leaves the mouth socket with a trail, splashes and sizzles on pilots, and leaves a 1.3 m / 4 s puddle with a clear edge. Destructible props corrode (pits, tint, drips).
+  - Any damaging hit in the wind-up cancels it: the sac deflates and the acid fizzles at the spitter's feet.
+  - `minion-spit` events are read when they exist.
+- Dev Sandbox gallery: the Hulk loop (drop, roars, walk/run, smash, greatsword hit, death), a breach and restore on its own wall, and the spitter interrupt.
+- Animation impacts:
+  - None on hit timing, hitboxes, damage, cooldowns, movement, spawns, network or saves.
+  - The spitter's proposed `SpitHit` .8 and the Hulk row are proposals for Astra; no rules read them.
+- Checks (actual):
+  - `tools/check_relay.py`: 35 managed groups pass (593 PASS lines). This includes HordeKindChecks 433,636, ZombieMotionChecks 29,232 and the new HulkSpitterChecks 49,296 (tables, capsule, strike timing, poses inside the capsule, drop profile, breach hole/pieces/restore, jaws and mouth socket, spit timing, interrupt, determinism, no allocation, presentation-only runtime).
+  - Also passing: the Unity-stub runtime+editor compile, the Python tests (95, 1 skipped), `package_source.py` and `git diff --check`.
+  - Harness software renders of the Core poses and effects (not Unity).
+- Not run: the Unity Editor, Windows, multiplayer, and the Runtime draw code in engine.
+- Risks:
+  - The breach hole is visual only until the rules remove collision.
+  - The interrupt is inferred from hits until a cancel is replicated.
+  - Prop jolts hide the renderer for .75 s (root MeshRenderer only).
+  - Whether the Hulk reads well at 1.8x in the real lighting.
+- Next: Astra's rules (prompt in `docs/SIREN-ZOMBIES.md`). The Ward Zero rework places breach walls and the Hulk drop. Then the owner's look in the Dev Sandbox.
+
+## 2026-10-13 — Astra — stall diagnostics, stuck slash, Siren execution and ragdoll revive
+- Task `codex/unity-hitch-trail-revive`, base shared `e2e894e9` (owner is running this build). Owner supplied a local-practice report (104 FPS, latest simulation tick .11 ms), startup-only Player.log and an 8.45 s recording showing a large crescent beside the moving greatsword pilot. No measured cause of the intermittent multi-second stalls yet.
+- Added automatic bounded `PERF_HITCH` JSON in Player.log and retained last/worst/count in Connection report. Measures wall-clock frame intervals, total fixed/update/presentation CPU time, nested replay/snapshot/animation/effects timings, GC counts/heap and scene counts/context. Logs >=100 ms frames or sustained slow rendering; 240-sample ring, at most once per 2 s and 120 reports per process. Unattributed time explicitly is not GPU time; no forced GC or per-frame disk writes. Full interpretation in NATIVE-HITCH-DIAGNOSTICS.md.
+- Found a matching stuck-crescent defect: a falling jump attack's ten-second safety hit window was captured as a persistent visual swing and followed the moving actor after landing. Reject pending-air captures/frames, use landed impact timing and copy pooled air/impact/sprint flags. Ground swings retain timing; no damage or movement change for this fix.
+- Owner added Siren grab and revive requests. Completed Last Laugh now deals current HP + 1 forced damage in PvE as in PvP, once, through the existing kill-credit/death path. Previously PvE used 60% max HP times boss scaling and mitigation, so healing could survive it. Catch/cancel and 3.2/3.8 s clocks unchanged. Native interaction gate covers healed/resistant/shielded victim and once-only death.
+- Authority presentation now proposes the ragdoll centre at 10 Hz; world floor/normal, bounds and capsule clearance produce the revive anchor. Existing replicated dead pilot body position carries it. Beacon/HELP, teammate interaction and ordinary revive agree; original death pose stays immutable. Repair uses current ragdoll and floor height. Explicit pad/wave destinations unchanged. Guest cannot choose authority anchor. Native gate covers safe/invalid anchor, replication and respawn. Headless authority has no presentation ragdoll and retains the existing anchor; unsafe projections keep the last anchor. Claude handoff: no redesign, existing repair art retained; Windows host/guest visual alignment still needs review.
+- Validation: fresh managed Roslyn compile with warnings as errors; full managed/relay suite passed after updating two exact-source hook assertions for the timing wrapper. Python 95 OK / one skip; source package 1,715 files; diff clean. Final managed rerun includes the sustained-slowdown-after-smooth-play regression. Native runtime/editor compilation, actual PhysX, Windows freeze capture and two-client visual acceptance are UNRUN here (no Unity).
+- Status: implementation on task branch, source publication receipt in PR. No claim the FPS cause is fixed or a compiled Update has been published. Builder must run native interaction gates; after a recovered stall send Connection report or PERF_HITCH lines from Player.log.
+
+## 2026-10-13 — Claude — saw bisect gib (owner: "For the buzzsaw death on factory, can we add essentially a "split in the middle" gib? This can be useful for future things too")
+- Branch `claude/saw-bisect`, base shared `4a67602`. Not pushed, merged or released.
+- Reusable Core module `Core/NativeBisect.cs` (engine free; API in `docs/BISECT-GIB.md`).
+  - Input: the posed body's meshes (any skin, wound cuts included), the hat and attachments, and a plane.
+  - Output: two halves with sealed caps. Each cap is painted by `NativeBodyModels.CutLook`: the darkened shell, then the Standard undersuit with accent conduit glints or the Sheldon coat lining, then flesh layers (the Prototype is shell, then flesh).
+  - Limbs wholly on one side go to that half untouched.
+  - Deterministic. Nothing allocates after the split.
+  - A new cause only maps itself to a `BisectRequest` (plane, parting velocities, hitch, blood, sparks, blade).
+- Saw death:
+  - `Core/NativeSawBisect.Find` repeats the authority's first-lethal-touch order from the replicated death record (time, round, FightAt), so the host, guests, late joiners and the killcam split the same way.
+  - The plane is the killing blade's (normal = axle) through the pelvis.
+  - The two halves are `NativeCorpse`s in one physics scene (`Runtime/NativeBisectCorpse.cs`). They hold on the blade (0.17 s slot, 0.13 s rail), shuddering with sparks and blood out of the seam, then part on the existing ragdoll path.
+  - Effects: trunk fountains, cut and rim blood landing as the round's splats, and a drying blood smear on the blade (`NativeFactoryRig.Build(..., blood)`).
+  - The weapon drops whole.
+  - The split runs on a worker during the hold (synchronous on WebGL and for late sights).
+  - Gore off (`ArenaPresentation.Gore`; no player setting exists yet), a purchased kill effect, Sirens and kept PvE bodies keep the current death.
+  - Dev Sandbox: "Preview Saw Split".
+- Affected systems: death/corpse presentation, the Factory blade rig, and the source models (a cap-able `Core` per body part; `CarveMesh` is unchanged and its text pin still holds). No hitbox, damage, timing, cooldown, movement, network or hazard rule changed, and no simulation file references the split (checked).
+- Checks (actual):
+  - `tools/check_relay.py` passes: 35 managed groups plus real WebSocket/LAN, including BisectChecks (1,929 checks) and wound skins (8,243). It also passes from a sparse `git ls-files` copy.
+  - BisectChecks covers 28 splits over every skin and tier, with hats and a sagittal headshot: deterministic, sealed (1.25 M-ray see-through sweep), volume within 0.15%, silhouette within 0.002%, caps within 2.3% of an independent section, slowest split 74–114 ms on .NET across runs. It also covers the saw finder and planes for both saws, the gore-off fallback, 600 frames with 0 bytes allocated, and the wiring.
+  - Also passing: the Unity-stub runtime+editor compile, the Python tests (95, 1 skipped), `package_source.py` and `git diff --check`.
+  - Headless WebGL renders of the Core geometry were made with a rigid-motion stand-in, not Unity physics.
+- Not run: the Unity Editor, PhysX ragdolls, Windows, two clients and Mono split time.
+- Risks:
+  - The worker-thread split under Mono/IL2CPP.
+  - The parting feel is tuned by numbers, not in engine.
+  - The cap covers a Standard/Sheldon wound tunnel at the plane; the Prototype's carved crater shows as a notch.
+- Next: the owner's Windows look at a saw death (both saws, three skins), then a gore setting if wanted.
+
+## 2026-10-12 — Astra — Cyber Lord air jump, Sheldon Idle account persistence, gate/trail review
+- Branch `codex/cyber-jump-sheldon-idle`, base current shared `466130a1` (Claude's run/idle/boost merged). Source implementation only; no shared merge, account deployment or Update release.
+- Added Cyber Lord to `NativeJumpSimulation.CanAirJump`. Preserved dagger/Bow budget, edge, reset, .9 multiplier and lock/swim rules. Fixed the guest jump lock to include active Cyber casts; Data Dash uses its existing early return and Kernel snapshots disable movement. Link/Kernel requests defer predicted jump spending until the authority resolves them. Existing AirJumps/AirJumpAt replicate; no visual or packet/schema change.
+- Expanded JumpSimulationChecks for eligible-spec rules and trajectories, active and same-tick Cyber casts, retaining dagger jump-attack priority. Expanded NativeJumpValidation's spec loops, walk-off/scaling/JSON/prediction and lock checks; gives the fixture a live DEV grant, restores access, and exercises Cyber casts and Kernel Panic.
+- `accountCosmetics` preserves `sheldon-idle` only for the current DB row's DEV account, like Sheldon Head/Intro. Shared `LOBBY_POSES` and Electron normalizer stay unchanged. API tests cover save/read/login, forged DEV fields, item-only unlocks, revocation, regular poses and invalid IDs. Reviewed Claude's host-seat/account-load one-liners: verified token access plus NativeCosmeticGate's DEV/expiry checks are correct; kept unchanged. Existing SheldonIdleChecks cover guest, expired and item-only rejection.
+- Data Dash remains single-trail authority: recasting overwrites path/expiry/timer, cancelling older damage; fast spam can prevent trail ticks entirely. Spec does not confirm intentional replacement; documented as implementation limitation in CYBER-LORD.md, with 4 × 6 damage over 1.2 s when uninterrupted. No trail damage change requested or applied.
+- Actual checks: fresh managed Roslyn compile with warnings as errors; full check_relay.py (35 managed-core summary groups), including jump, Cyber boost and Sheldon Idle checks; accounts+lobby tests 16/16; Python 95 OK (one skip); source package 1684 files; diff check clean. Native Unity runtime/editor compile, PhysX gate, Windows and two-client play are unrun in this environment. Accounts Worker needs deployment after source integration to make saves persistent in the live service.
+## 2026-10-13 — Astra — Cut stair collision and expanded PhysX gate
+- Task `codex/cut-stair-physx`, base shared `258e348f` including Claude’s merged exit guidance. Integrates the previously local cut fix and expands the owner’s requested traversal coverage. The older `codex/cybercity-cut-exits` is superseded; do not merge it over current presentation.
+- Four invisible closed wedge colliders replace tread collision: 4 m rise / 8.8 m run (24.44 degrees), 1.8 m wide, including the final street lip. All 64 `pit-*-stair-*` content blocks, IDs, transforms and renderers are unchanged. No extra exits. Collision helper is `NativeCyberCityStairs`; Claude’s `NativeCyberCityExits`, marker discovery and HUD remain untouched. Corpse-only PhysX retains authored tread boxes.
+- Editor/batch and normal build gate: 116 routes with actual radius .42 / StepHeight .35. Per exit: host/guest walk/sprint from mid-cut through lintel, from landing and mid-flight at centre/left/right (2 cm side clearance), plus actual bot navigator/host motor from mid-cut to promenade. Slope starts use capsule tangent height; failures report flight/start/side/mode/position. Managed nav checks isolate each flight and require the top-to-street link.
+- Actual verification: fresh managed Roslyn compile with warnings as errors; complete check_relay.py exit 0 (35 managed-core groups, real WebSocket/LAN), including ramp/nav checks and Claude’s 117 marker checks; Python 95 OK / one skip; source package 1,697 files; diff check clean.
+- UNRUN: Unity runtime/editor compilation, actual PhysX traversal, Windows and two-client gameplay. No Unity installed here. The original owner report motivates the fallback; no claim that a particular riser was locally reproduced or any PhysX route passed. Run Chip Arena / Check Cyber City cut exits (or NativeBuildChecks.CheckCyberCityCutExits) before accepting/publishing a build. No movement constants, timing, hitboxes or network fields changed; foot contact on the smooth surface needs Windows visual review.
+- Source task ready for draft PR; no shared merge or compiled Update release. Claude handoff: existing IDs and nav intact, no new exits to dress. Contract updated with test matrix and native limitation.
+
+## 2026-10-13 — Claude — Cyber City: the way out of the Cut is readable (owner: "Currently if u fall in the train track on cyber city, you cant get back up lol can we fix that?")
+- Branch `claude/cut-exits`, base shared `af0570f` (`claude/sleepy-ritchie-g8ruhv`); implementation commit on the branch (signed). Not pushed, merged or released. Split: Astra owns the collision/movement side (the stairs in PhysX, ramps or extra exits); this is the presentation part only. No collision, geometry, movement, hazard, nav or network change.
+- Cause on the presentation side: the four stair exits sat behind lintels dressed exactly like the 12 alcoves (one lime SAFE strip each), with the stairs out of sight behind the wall and a right-angle turn on the landing, so nothing in the Cut said which openings lead up.
+- Exits from data (`Core/NativeCyberCityExits.cs`, new): the Cut is the `maglev` hazard's envelope widened to the walls standing on its floor; exits are nav routes (each below-street node group off the Cut floor that links both to the floor and to a street-level node; dead-end alcoves are not exits); the lintel, jambs and the blocks under each route come from geometry. No ids or coordinates are read; new exits Astra adds (any id, ramps included) pick up the markers once the nav links them to the street. Contract: `docs/arenas/CYBERCITY-SIMULATION-CONTRACT.md` §11.
+- Markers (kit, `NativeCyberCityKit`): on each exit lintel a white EXIT sign with a stair pictogram rising the way the climb goes, top and bottom strips and a light line under the lintel (no lime SAFE: SAFE = hide here, white EXIT = climb out); the jambs get a white front strip, ">>" chevrons through the door and a small EXIT (they face along the Cut, so they read from down it); landing floor chevrons toward the stairs; white nosings and riser lines on the climb that chase up toward the street (`DriveExitChase`, faster and brighter from the warning). New palette constant `ExitHex` (#F2F6FF).
+- Floor guidance (FX, `NativeCyberCityFx.GuideFx`, never reduced): chevron strips along both lanes of the Cut floor pointing to each wall's nearest exit with a pulse scrolling toward it, white at rest, amber in the warning, red in the danger and the pass (`NativeCyberCityExits.Tone` from the hazard state the presentation already evaluates on the replicated match clock, so guests and the killcam match); a chevron into each door and a pool on its threshold; a light column, halo and pool at each stair top (seen from the Cut floor over the wall's lip). The 16 pocket beacons stay (exits keep theirs). About 310 extra quads a frame (busiest test frame 1,966 of 3,600); no per-frame allocation (checked).
+- HUD (`Runtime/NativeCutExitHud.cs`, called from FightHud): only while the local pilot is alive in the Fight and in the Cut (under the street, inside the trench and its recesses; not the stairs or bridges), a small cyber tag under the SET / ROUND tag: an arrow turned toward the nearest reachable exit's door relative to the camera, "EXIT" and the distance ("12 m"); its tone follows the same phase mapping; fades over .15 s; danger pulse off under Reduced effects; cached strings.
+- Diagnostics for Astra (static analysis of UnityMaps.json, not PhysX; full notes in contract §11): no blocker found (doors 2.0 x 2.4 x 1.2 m, climbs 1.8 m wide and open to the sky, risers all 0.25 m, lowest step flush with the landing, top step 0.25 m under the street, rails clear, all 466 Cut floor nav nodes in one component reaching the street via the 4 routes). Risk: treads 0.55 m are shorter than the capsule's 0.84 m diameter, so the base never rests flat on a tread. For about 0.38 m before every riser its contact is a non-walkable edge (normal y about 0.40), and 8.7% of the capsule centre's path up a pit is steeper than 50 degrees (63 at most). So all 16 risers rely on `NativeGroundMotor.StepUp`'s edge path; one refused step stalls the capsule at that riser. Jump apex 1.57 m (two jumps about 3.1 m) against a 4 m wall and pilot-blocked tunnel mouths: the stairs are the only way out. Suggested PhysX tests: walk and sprint, from the landing and from mid-stair, hugging either side; if a riser refuses, deeper treads or a walkable ramp collider under the steps (24 degrees). The presentation follows either.
+- Checks (actual): unity-check.sh runtime+editor build OK; check_relay.py exit 0, 575 PASS (one more than the 574 reported for the base: the new `PASS cut exits`, 117 checks), 0 FAIL, 35 managed-core groups plus the real WebSocket/LAN relay checks; the same in a copy holding only `unity/ChipArenaConversion` (the CI `native-source` checkout): exit 0, 575 PASS, 0 FAIL, two SKIP lines from other groups' docs; Python unittest 95 OK, 1 skip; package_source.py passed (1,661 source files; Builds removed); git diff --check af0570f HEAD clean. The existing `PASS cyber city` keeps its 2,392 checks (same as the base), so the exit-free path is unchanged.
+- Renders (offline WebGL harness running NativeBlockLit's shared code, the night sky and a bloom stand-in, on the real UnityMaps map; the HUD tag is a canvas stand-in drawn from the Core hint; scratch only): before/after along the Cut both ways, the NW door close and from across the Cut, the stairs from the landing, the stair top from the street and from the Cut floor, warn/danger/pass states and the HUD tag. Tuned from them: a calmer rest pulse, and a stronger, taller stair-top column; at the NW and SE tops a 3 m coupling pylon stands between the column and parts of the Cut floor. Scratch: `renders-cut-exits/` (v1 before/after set, v2 tuned set and chase frames, v3 top-glow views).
+- Not run: Unity Editor or play, Windows, PhysX, multiplayer (guest and killcam colouring follow from the replicated clock, not observed), real bloom/GPU shading, performance capture.
+- Animation/simulation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- Risks: owner taste (white vs the alcoves' lime; chevron brightness); in the danger the chevrons still point to exits, though the nearest alcove (beacons) may be closer; the hint's "nearest" is straight-line door distance, which matches the walk inside the open Cut; exits need nav links to the street to be found (a regenerated nav does this). Next: owner review; Astra's PhysX stair verification; Claude tunes on Windows.
+
+## 2026-10-12 — Claude — Cyber Lord run/sprint, double-jump presentation, psycho idle, Sheldon Idle, dash-spam trails, Bow flip hold
+- Branch `claude/cyberlord-run`, base `b9b354f` (kept as asked; the coordinator merges onto the shared head `e175fa6`). Not pushed, merged or released; implementation commit in the handback.
+- Owner requests: "Change the cyber lord running / sprint animation ... Give this class a double jump as well; Second jump has a cyber effect"; "Change Cyberlord idle to be similar to the sword idle, but more "psycho" appearance, like they're twitching"; "Can that Idle be set as "Sheldon Idle" need it to be selectable"; dash trails for chained (now cooldown-free) Data Dashes; a visual check of the Bow's new double jump.
+- Run and sprint: the CLazy Runner pack's Mvm_Dash (8 directions) and Mvm_Boost (3) retargeted through the existing pipeline (`scripts/mocap/clazy-pack.mjs`, `tools/export_pack_cyberlord_run.mjs`, SHA-256 provenance, byte-identical reruns; no pack data committed), carried over the gait's planted feet with a reach seat (contact slip at most 0.023 cm/s at 6.8 and 9.18 m/s; the old route slipped up to 96 cm/s on diagonals), chest kept on the aim, sprint ramp on the replicated flag. Rationale in `docs/CYBER-LORD.md` "Run and sprint".
+- Double jump: presentation only, keyed on the replicated `Actor.AirJumps`/`AirJumpAt` (Esc_BoostDash_Up_Fwd boost pose; hex platform, glitch afterimage, scanline trail; gentler first-person and reduced versions; existing bank keys; Dev Sandbox preview). The Cyber Lord has no air jump yet: Astra prompt in `docs/CYBER-LORD.md`. The flip pose, burst and whoosh now skip the Cyber Lord, so PR #159's `Flips`=`CanAirJump` never flips it once granted.
+- Idle: the sword idle with fists and seeded "psycho" twitches (head jerks, spasms, clenches, ragged breath, flinches, short weight shifts), the glitch synced to the big twitches, gentler when reduced, no camera shake, feet planted, blends unchanged. Kernel Panic numbers are read from the rules, not hard-coded.
+- Sheldon Idle: a fifth, DEV-only IDLE POSE (`sheldon-idle`, the Sheldon Head's gate) for the lobby, Locker, pilot-card and PvE-result portraits; any class gets the stance's body motion and twitches with the weapon kept in the hero grip (fists for the fighters and the Cyber Lord, the Cyber Lord's default). Host seat and account load gate it; the account service still strips it to `weapon` (Astra prompt in `docs/CYBER-LORD.md`). The match never reads it.
+- Dash trails: a per-pilot ring sized for dash spam (8 per pilot, 48 in all), each trail finishing its own fade, oldest first, older ones on the low tier; a faded dash is no longer re-noted every frame.
+- Bow double jump (head `e175fa6`, rendered on a scratch checkout): drawn through the flip, the string hand left the nock by up to 47 cm and the bow arm's target was 1.17 m away (bow within 1 cm of the spine). Fix in `Core/NativeBowMotion`: a raised bow keeps the torso out of the flip's tuck and solves on the unturned body, then turns with it (string hand on the nock, reach .41 m, bow 24+ cm clear). A carried bow and first person were fine and are unchanged.
+- Checks (actual): Unity runtime+editor build OK; relay/managed suite and package see the handback for counts; Python 95 tests OK (1 skipped). New `Tests/CyberLordRunChecks.cs`, `Tests/SheldonIdleChecks.cs`, `Tests/BowFlipChecks.cs` (its route part is dormant on this base and passes on `e175fa6` with the fix, fails without it). Unity Editor, Windows play and two-client play not run.
+- Renders (scratch, offline harness on the real Core; the Locker is a canvas mock): run/sprint/strafe/back strips, the boost (3P, run, reduced, FP), dash chain, the psycho idle and lobby, Sheldon Idle portraits for 8 classes and the Locker mock, the Bow double jump before/after.
+- Animation impacts: none on hit timing, hitboxes, damage, cooldowns, movement or networking. The drawn rigs only (the run's reach seat lowers drawn hips up to 10 cm; the idle's shifts up to 4.5 cm; the Bow's drawn flip pose).
+- Merge notes for `e175fa6`: `NativeJumpMotion.SetFor` takes both cases (`case "bow":case "pistol":case "emperor":case "ansatsuken":case CyberLordSpec.Id:return Unarmed;`), keep PR #159's `Flips` line; `Tests/JumpMotionChecks.cs` likewise. Next: the owner asks Astra for the Cyber Lord air jump and the Sheldon Idle save; Windows playtest of all of the above.
+
 ## 2026-10-12 — Astra — brute drop simulation and slam knockback
 - Branch `codex/siren-brute-drops`, base shared `eaab6443` (Claude's Siren zombie presentation merged). Implementation commit `54b09b1e`. Owner approved pushing this branch on 2026-10-12; source push authorized. Not merged or released.
 - Added map-authored entry 16 `drop-centre` to Ward Zero PveContent and `PveEntry.height`; shared `HeightOf` reads height with the 6.5 default. Export preserves these native entries and brute tuning; asset lock updated. Brutes select only drops round-robin when present, wait for occupied queues, and retain old-entry fallback when absent. No location literals in simulation.
@@ -5384,3 +5661,16 @@ containing an entry; no self-referential commit hash is required.
 - Next: each agent synchronizes this branch before making its own task branch;
   after migration merges, start new tasks from updated main. Review relevant open
   PRs to avoid overlapping work. Resolve baseline failures before release work.
+
+## 2026-10-13 · Codex · Windows app and executable name
+Branch: `codex/windows-app-name`, base `ae3bbbbba62f`. Product/window identity
+and the compiled player are now **Chip Arena** / **Chip Arena.exe**, with matching
+data directory, cloud staging, packaging and launcher validation. Preferences and
+account tokens retain the previous Windows user-data directory. Old flat starter
+launcher discovery remains supported. This changes the native bootstrap to 2:
+bootstrap-1 installs reject the renamed payload before replacing files and need
+one new starter ZIP. The launcher itself is not self-updated.
+Checks: Python discovery 101 tests, OK (1 skipped); managed updater 57 passed;
+git diff --check passed. Unity compilation, Windows startup/mixer display and
+real installed-client update were not run (no Unity/Windows here). No compiled
+release published; source changes await builder verification.

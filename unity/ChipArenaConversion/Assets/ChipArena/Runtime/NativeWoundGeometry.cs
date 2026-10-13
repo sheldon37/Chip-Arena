@@ -14,9 +14,21 @@ namespace ChipArena.UnityConversion
         //  - a sculpted body skin tier (Core NativeBodyModels): the body's own parts with the same carve cut into them
         //    (Core NativeWoundSkin.Cut), never a Prototype part. Those cuts are kept per joint (SkinCut, keyed by the wounds
         //    on that joint), so a new wound recuts only the joints it reaches and a tier change cuts that tier once.
-        private sealed class Carved {public string Signature,Prefix;public WoundCarveGroup[] Groups;public HashSet<string> Replaced;public Part[] Owned;public Dictionary<uint,string> Keys;public readonly Dictionary<string,string> Models=new Dictionary<string,string>();}
-        private sealed class SkinCut {public string Signature;public readonly Dictionary<Part,Part> Replaced=new Dictionary<Part,Part>();public readonly List<Part> Owned=new List<Part>(),Extra=new List<Part>();}
-        private readonly Dictionary<int,Carved> wounds=new Dictionary<int,Carved>();private static NativeWoundPart[] woundParts;
+        // A pilot keeps two carves (two slots, keyed id and ~id): its live body's and the body it left (a corpse, a death scene,
+        // a revive drawing the death's wounds), so the two never recut each other every frame while both are drawn (a revive
+        // overlaps its corpse for up to 1.1 s). A third set replaces the one drawn longer ago; a carve no draw has asked for in
+        // KeepCarve seconds is released by the pilot's next draw. The same open wounds as a kept carve are found without
+        // allocating (the first eight valid ones compared in order).
+        private sealed class Carved
+        {
+            public string Signature,Prefix,BodyHex;public bool Low;public int Key;public float Used;public WoundCarveGroup[] Groups;public HashSet<string> Replaced;public Part[] Owned;public Dictionary<uint,string> Keys;
+            public readonly Dictionary<string,string> Models=new Dictionary<string,string>();public readonly Dictionary<string,List<WoundHole>> Holes=new Dictionary<string,List<WoundHole>>();
+            public readonly int[] RawIds=new int[8];public readonly float[] RawAts=new float[8];public int RawCount;
+        }
+        private sealed class SkinCut {public string Signature;public readonly Dictionary<Part,Part> Replaced=new Dictionary<Part,Part>();public readonly List<Part> Owned=new List<Part>(),Extra=new List<Part>();public readonly List<WoundHole> Holes=new List<WoundHole>();}
+        private readonly Dictionary<int,Carved> wounds=new Dictionary<int,Carved>(),woundsB=new Dictionary<int,Carved>();private static NativeWoundPart[] woundParts;
+        /// <summary>Seconds a pilot's second carve stays kept after its last draw.</summary>
+        public const float KeepCarve=2.5f;
         private readonly Dictionary<(int id,string basis,int bone),SkinCut> skinCuts=new Dictionary<(int,string,int),SkinCut>();
         /// <summary>Each sculpted body tier's Core mesh by bank id (NativeBodySkinModels keeps the build from load); its parts
         /// match the bank's by name and joint.</summary>
@@ -30,17 +42,53 @@ namespace ChipArena.UnityConversion
         public string WoundedPilot(int id,NativeWound[] impacts,string bodyHex,bool low=false,string basis=NativeBodySkins.PrototypeModel)
         {
             if(basis==null||!models.ContainsKey(basis))basis=NativeBodySkins.PrototypeModel;
-            var valid=(impacts??Array.Empty<NativeWound>()).Where(w=>NativeBodyDamage.Valid(w)&&!w.destroyed).Take(8).OrderBy(w=>w.at).ThenBy(w=>w.id).ToArray();if(valid.Length==0){RemoveWounds(id);RemoveSkinCuts(id,null);return basis;}
-            string prefix=bodyHex+":"+low+":",signature=prefix+string.Join(",",valid.Select(w=>w.id+"@"+w.at.ToString("R",System.Globalization.CultureInfo.InvariantCulture)));if(wounds.TryGetValue(id,out var previous)&&previous.Signature==signature)return Wounded(id,previous,basis);RemoveWounds(id);
+            float now=Time.unscaledTime;wounds.TryGetValue(id,out var a);woundsB.TryGetValue(id,out var b);
+            if(Same(a,impacts,bodyHex,low)){a.Used=now;Stale(b,now);return Wounded(a,basis);}
+            if(Same(b,impacts,bodyHex,low)){b.Used=now;Stale(a,now);return Wounded(b,basis);}
+            var valid=(impacts??Array.Empty<NativeWound>()).Where(w=>NativeBodyDamage.Valid(w)&&!w.destroyed).Take(8).OrderBy(w=>w.at).ThenBy(w=>w.id).ToArray();if(valid.Length==0){Stale(a,now);Stale(b,now);return basis;}
+            string prefix=bodyHex+":"+low+":",signature=prefix+string.Join(",",valid.Select(w=>w.id+"@"+w.at.ToString("R",System.Globalization.CultureInfo.InvariantCulture)));
+            if(a!=null&&a.Signature==signature){Raw(a,impacts);a.Used=now;return Wounded(a,basis);}
+            if(b!=null&&b.Signature==signature){Raw(b,impacts);b.Used=now;return Wounded(b,basis);}
+            // A new set: a free slot, else the slot drawn longer ago.
+            bool second=a!=null&&(b==null||b.Used<a.Used);if(second){if(b!=null)ReleaseCarved(b);}else if(a!=null)ReleaseCarved(a);
             var allParts=WoundParts;
             if(!ColorUtility.TryParseHtmlString(bodyHex??"#e5e7eb",out var body))body=Color.white;body=body.linear;var color=new WoundVector(body.r,body.g,body.b);
             var groups=NativeWoundAnchors.Carve(valid.SelectMany(w=>NativeWoundAnchors.Of(allParts,w,low,color)));var keys=new Dictionary<uint,string>();
             foreach(var w in valid)keys[NativeWoundCarve.Seed(w.id.ToString(System.Globalization.CultureInfo.InvariantCulture))]=w.id+"@"+w.at.ToString("R",System.Globalization.CultureInfo.InvariantCulture);
-            var carved=new Carved{Signature=signature,Prefix=prefix,Groups=groups,Keys=keys,Replaced=new HashSet<string>(groups.Select(g=>g.Part.name))};wounds[id]=carved;return Wounded(id,carved,basis);
+            var carved=new Carved{Signature=signature,Prefix=prefix,BodyHex=bodyHex,Low=low,Key=second?~id:id,Used=now,Groups=groups,Keys=keys,Replaced=new HashSet<string>(groups.Select(g=>g.Part.name))};Raw(carved,impacts);
+            if(second)woundsB[id]=carved;else wounds[id]=carved;return Wounded(carved,basis);
         }
-        private string Wounded(int id,Carved carved,string basis)
+        /// <summary>Whether `impacts` opens the same wounds as carve `c` (its first eight valid open ones, in order), without allocating.</summary>
+        private static bool Same(Carved c,NativeWound[] impacts,string bodyHex,bool low)
         {
-            if(carved.Models.TryGetValue(basis,out var model))return model;
+            if(c==null||c.Low!=low||!string.Equals(c.BodyHex,bodyHex,StringComparison.Ordinal))return false;int n=0;
+            if(impacts!=null)for(int i=0;i<impacts.Length;i++){var w=impacts[i];if(!NativeBodyDamage.Valid(w)||w.destroyed)continue;if(n==8)break;if(n>=c.RawCount||c.RawIds[n]!=w.id||c.RawAts[n]!=w.at)return false;n++;}
+            return n>0&&n==c.RawCount;
+        }
+        private static void Raw(Carved c,NativeWound[] impacts)
+        {
+            int n=0;if(impacts!=null)for(int i=0;i<impacts.Length&&n<8;i++){var w=impacts[i];if(!NativeBodyDamage.Valid(w)||w.destroyed)continue;c.RawIds[n]=w.id;c.RawAts[n]=w.at;n++;}c.RawCount=n;
+        }
+        /// <summary>Releases carve `c` when no draw has asked for it in <see cref="KeepCarve"/> s.</summary>
+        private void Stale(Carved c,float now){if(c!=null&&now-c.Used>KeepCarve)ReleaseCarved(c);}
+        /// <summary>The cells the wounds of `model` (a <see cref="WoundedPilot"/> result) take out, in their joints' bank frames
+        /// (NativeReviveHolo refills them); none for an unwounded body.</summary>
+        public void WoundHoles(string model,List<WoundHole> into)
+        {
+            into.Clear();if(model==null)return;foreach(var c in wounds.Values)if(Holes(c,model,into))return;foreach(var c in woundsB.Values)if(Holes(c,model,into))return;
+        }
+        private static bool Holes(Carved c,string model,List<WoundHole> into)
+        {
+            foreach(var pair in c.Models)if(pair.Value==model)
+            {
+                if(!c.Holes.TryGetValue(pair.Key,out var list)){list=new List<WoundHole>();if(pair.Key==NativeBodySkins.PrototypeModel)NativeWoundSkin.PrototypeHoles(c.Groups,list);c.Holes[pair.Key]=list;}
+                into.AddRange(list);return true;
+            }
+            return false;
+        }
+        private string Wounded(Carved carved,string basis)
+        {
+            if(carved.Models.TryGetValue(basis,out var model))return model;int id=carved.Key;
             model=basis==NativeBodySkins.PrototypeModel?"wounded-"+id:"wounded-"+id+"/"+basis;
             Part[] parts;
             if(basis==NativeBodySkins.PrototypeModel)
@@ -50,6 +98,8 @@ namespace ChipArena.UnityConversion
                     var owned=new List<Part>();
                     foreach(var group in carved.Groups){var d=group.Part;var template=models[NativeBodySkins.PrototypeModel].FirstOrDefault(p=>p.Name==d.name);if(template==null)throw new InvalidOperationException("Wound part absent from source mesh: "+d.name);owned.Add(CarveMesh(d,group.Solids,template.Material));}
                     carved.Owned=owned.ToArray();
+                    // Their Core arrays for a bisect (NativeBisectModels.CarveCore: the same boxes in Core).
+                    for(int i=0;i<carved.Owned.Length;i++)carved.Owned[i].Core=CarveCore(carved.Groups[i].Part,carved.Groups[i].Solids);
                 }
                 var list=models[basis].Where(p=>!carved.Replaced.Contains(p.Name)).ToList();list.AddRange(carved.Owned);parts=list.ToArray();
             }
@@ -57,6 +107,8 @@ namespace ChipArena.UnityConversion
             // Prototype parts.
             else if(!pilotBodies.TryGetValue(basis,out var body))return basis;
             else parts=SkinWounds(id,carved,basis,body);
+            if(basis!=NativeBodySkins.PrototypeModel)
+            {var holes=new List<WoundHole>();foreach(var cut in skinCuts)if(cut.Key.id==id&&cut.Key.basis==basis)holes.AddRange(cut.Value.Holes);carved.Holes[basis]=holes;}
             models[model]=parts;carved.Models[basis]=model;return model;
         }
         /// <summary>A body skin's tier with the wounds cut in: each wounded joint's cut (kept while its wounds stay), the
@@ -81,10 +133,10 @@ namespace ChipArena.UnityConversion
         {
             Part Base(int index){var b=body.Parts[index];foreach(var p in baseParts)if(p.Name==b.Name&&p.Bone==b.Bone)return p;return null;}
             var cut=new SkinCut{Signature=signature};
-            foreach(var m in NativeWoundSkin.Cut(body,groups,look))
+            foreach(var m in NativeWoundSkin.Cut(body,groups,look,cut.Holes))
             {
                 var source=Base(m.Part>=0?m.Part:m.Material);if(source==null)continue;var mesh=BodyMesh(m.Mesh,basis+" / wounded "+m.Name+" / joint "+m.Bone);
-                var part=mesh==null?null:new Part{Name=m.Part>=0?source.Name:m.Name,Bone=m.Bone,Mesh=mesh,Material=source.Material,NoShadow=source.NoShadow};if(part!=null)cut.Owned.Add(part);
+                var part=mesh==null?null:new Part{Name=m.Part>=0?source.Name:m.Name,Bone=m.Bone,Mesh=mesh,Material=source.Material,NoShadow=source.NoShadow,Core=m.Mesh,Fill=m.Part>=0?body.Parts[m.Part].Mesh:null};if(part!=null)cut.Owned.Add(part);
                 if(m.Part>=0)cut.Replaced[source]=part;else if(part!=null)cut.Extra.Add(part);
             }
             return cut;
@@ -110,7 +162,12 @@ namespace ChipArena.UnityConversion
             if(!models.TryGetValue("wound-cube",out var parts)){var mat=new Material(Resources.Load<Shader>("NativeSourceLit")){enableInstancing=true};materials.Add(mat);var d=new NativeWoundPart{name="wound-cube",bone=-1,size=new WoundVector(1,1,1),matrix=new float[]{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1},color=new float[]{1,1,1},emission=new float[]{.3f,.3f,.3f}};parts=new[]{CarveMesh(d,new List<WoundSolid>{new WoundSolid{min=new WoundVector(-.5,-.5,-.5),max=new WoundVector(.5,.5,.5),color=new WoundVector(1,1,1)}},mat)};models["wound-cube"]=parts;}
             var key=(parts[0],0);if(!draws.TryGetValue(key,out var draw)){draw=new Draws{Part=parts[0]};draws[key]=draw;}draw.Matrices.Add(matrix);draw.Bodies.Add(new Vector4(1,1,1,opacity));draw.Accents.Add(Vector4.one);draw.Tints.Add(color);draw.Glows.Add(Vector4.one);
         }
-        private void RemoveWounds(int id){if(!wounds.TryGetValue(id,out var old))return;if(old.Owned!=null)foreach(var part in old.Owned){foreach(var key in draws.Keys.Where(k=>k.Item1==part).ToArray())draws.Remove(key);CapturedAnimation.Release(part.Mesh);}foreach(var model in old.Models.Values)models.Remove(model);wounds.Remove(id);}
-        public void ClearWounds(){foreach(int id in wounds.Keys.ToArray())RemoveWounds(id);foreach(var cut in skinCuts.Values)ReleaseSkinCut(cut);skinCuts.Clear();}
+        /// <summary>Releases one carve: its Prototype boxes, its models and its body-skin cuts.</summary>
+        private void ReleaseCarved(Carved old)
+        {
+            if(old.Owned!=null)foreach(var part in old.Owned){foreach(var key in draws.Keys.Where(k=>k.Item1==part).ToArray())draws.Remove(key);CapturedAnimation.Release(part.Mesh);}foreach(var model in old.Models.Values)models.Remove(model);
+            RemoveSkinCuts(old.Key,null);int id=old.Key<0?~old.Key:old.Key;var slot=old.Key<0?woundsB:wounds;if(slot.TryGetValue(id,out var held)&&held==old)slot.Remove(id);
+        }
+        public void ClearWounds(){foreach(var c in wounds.Values.Concat(woundsB.Values).ToArray())ReleaseCarved(c);foreach(var cut in skinCuts.Values)ReleaseSkinCut(cut);skinCuts.Clear();}
     }
 }

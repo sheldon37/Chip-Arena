@@ -17,6 +17,9 @@ namespace ChipArena.UnityConversion
         public float Twitch;
         /// <summary>The glitch step (seeds the flicker pattern; it holds between steps).</summary>
         public int Step;
+        /// <summary>The idle's fist clench twitches (0..1, the rig's left and right fist; CyberTwitch): the hardlight fist shells
+        /// flare with them (NativeCyberLordLook.Flare). Not a glitch: Visible ignores them.</summary>
+        public float LClench,RClench;
         public bool Visible=>Math.Abs(Slice)>1e-4f||Math.Abs(HeadSlice)>1e-4f||Split>1e-3f||Scan>1e-3f||Math.Abs(Twitch)>1e-3f;
     }
 
@@ -65,6 +68,9 @@ namespace ChipArena.UnityConversion
             {
                 Window(v.ComboAt,v.ComboUntil+o);
                 for(int s=0;s<CyberLordSpec.Slots;s++)Window(v.At[s],Math.Max(v.Until[s],v.RecoverUntil[s])+o);
+                // The ranged mode's casts and its key-5 switch (Core/CyberLordRanged.cs).
+                for(int s=0;s<CyberRangedSpec.Slots;s++)Window(v.RAt[s],Math.Max(v.RUntil[s],v.RRecover[s])+o);
+                Window(v.ModeAt,v.ModeAt+CyberRangedSpec.SwitchSeconds+o);
                 if(v.PanicConnect>-90)Window(v.PanicConnect,(v.PanicOutcome==CyberLordSpec.EndedEarly&&v.PanicEndedAt>-90?v.PanicEndedAt:v.PanicStart+KernelPanicPath.End)+o);
             }
             Window(a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration,a.BlockUntil);
@@ -75,40 +81,216 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>
-    /// The DEV Cyber Lord's idle stance and its glitch, after the Sheldon Intro's resolved ending (Core/NativeSheldonIntro.cs,
-    /// NativeSheldonIntroScript: Stare and Arms): upright and contained, the left hand on the hood's front edge at the temple
-    /// (two fingers at the temple when no Sheldon Head hood is worn), the right arm loose, a slow visible breath lifting the
-    /// chest and shoulders while the head holds its stare on the facing (and the view's pitch, eased). In a match it layers
-    /// over the posed fighter rig with the gait's legs kept (Layer); in the lobby, Locker and pilot-card portraits it is the
-    /// whole stance from rest (Stand, NativeLobbyPoses). The glitch is slight and occasional, seeded per pilot: a brief slice
-    /// (the upper body or the head torn sideways), an RGB-split shimmer (the runtime's two tinted ghosts), a scanline band
-    /// running over the hardlight parts, and a rare twitch, all on 24 Hz steps like the Sheldon Intro's. Reduced effects keep
-    /// a softer version: no slice or twitch, the split eased in and out at a lower strength, the band a smooth glow, no
-    /// strobing. Pure functions of the time, the seed and the weight; no allocation.
+    /// One moment of the idle Cyber Lord's twitching (CyberLordIdlePose.Twitch): the "psycho" layer over the sword idle. Angles
+    /// in radians in the rig's joint frames (source frame: +x the rig's left, + pitch forward), the shift in metres; every
+    /// field 0 at rest.
+    /// </summary>
+    public struct CyberTwitch
+    {
+        /// <summary>The head's snapped jerk (pitch + chin down, turn + to the rig's left, tilt + the left ear down) and the neck's spasm.</summary>
+        public Vector3 Head,Neck;
+        /// <summary>The shoulders' hitch (+ up) and the fists' clench (0..1).</summary>
+        public float LShoulder,RShoulder,LClench,RClench;
+        /// <summary>The ragged breath (0 out .. about 1.3 at a gasp), the full-body flinch (0..1) and the weight shift that stops short
+        /// (m, + to the rig's left).</summary>
+        public float Breath,Flinch,Shift;
+        /// <summary>A glitch flicker synced to a big twitch (0..1: the flinch and the largest head jerks), read by Glitch.</summary>
+        public float Sync;
+    }
+
+    /// <summary>
+    /// The DEV Cyber Lord's idle stance and its glitch (owner 2026-10-12: "Change Cyberlord idle to be similar to the sword
+    /// idle, but more "psycho" appearance, like they're twitching, etc. Same will apply to their idle"): the sword's own
+    /// standing idle (the owner's Explosive Armed-Idle, MeleeSet "sword" Idle: hunched, knees bent, arms hanging out wide) with
+    /// the empty hands closed into fists, and over it a twitching layer: the head jerking and tilting, snapping and holding;
+    /// shoulder and neck spasms; the fists clenching (their hardlight shells flaring); an uneven, ragged breath with gasps; an
+    /// occasional full-body flinch; weight shifts that stop short. Every twitch is a fast attack, a short hold and an eased
+    /// release, on its own irregular, seeded schedule per pilot (Twitch: a pure function of the seed and the time; no
+    /// per-frame noise). In a match it layers over the posed fighter rig with the gait's planted legs (Base, Layer); in the
+    /// lobby, Locker and pilot-card portraits it is the same stance on the fighter stance's feet (Stand, NativeLobbyPoses).
+    /// The glitch stays slight and occasional, seeded per pilot (a brief slice, an RGB-split shimmer, a scanline band over the
+    /// hardlight parts, a rare jolt, all on 24 Hz steps like the Sheldon Intro's), and the flinch and the biggest head jerks
+    /// flicker it in sync. Reduced effects: fewer and smaller jerks, softer attacks, no tear or jolt, the split eased and the
+    /// band a smooth glow, no strobing. Pure functions of the time, the seed and the weight; no allocation.
     /// </summary>
     public static class CyberLordIdlePose
     {
-        /// <summary>The breath: its period (s) and, at a full in-breath, the spine's counter-turn, the chest's lift and the
-        /// shoulders' rise (radians; the Sheldon Intro's stare breath made a little slower and larger so it reads in a match).</summary>
-        public const float BreathPeriod=3.2f,BreathSpine=.03f,BreathChest=.018f,BreathShoulder=.1f;
-        /// <summary>The stare's chin (rad, + down) and the share of the view's pitch the head follows, clamped.</summary>
-        public const float StareChin=.07f,PitchShare=.45f,PitchMax=.32f;
-        /// <summary>The chest turned a little toward the raised hand (the intro's stare key) and the loose right arm.</summary>
-        public static readonly Vector3 ChestTurn=new Vector3(-.04f,-.06f,0),RightArm=new Vector3(-.12f,0,-.2f);public const float RightElbow=-.3f;
-        /// <summary>The wrist on the hood (the intro's NativeSheldonIntroScript.HandOnHood), and two fingers at the temple of the
-        /// bare voxel head (its side at .17 m; head space, source frame: +x the rig's left).</summary>
-        public static readonly Vector3 HandOnHood=NativeSheldonIntroScript.HandOnHood,HandAtTemple=new Vector3(.205f,.13f,.075f);
-        /// <summary>The raised arm before the reach (the intro's stare key: LA (-.6, 0, .5), LE -1.6): the reach keeps its elbow's
-        /// side, as NativeIntroMotion.Reach does; the fallback pole (clavicle space) when it has none.</summary>
-        public static readonly Vector3 RaisedArm=new Vector3(-.6f,0,.5f),RaisedPole=new Vector3(1,-.4f,-.1f);public const float RaisedElbow=-1.6f;
-        /// <summary>The upright rise of the hips over the fighter stance's soft knees (m, at full weight; the feet stay planted).</summary>
-        public const float Rise=.035f;
-        /// <summary>The lobby stance's turn (rad, the raised hand toward the camera; the intro's hero frame is turned -.22).</summary>
-        public const float LobbyYaw=-.18f;
         public static bool Handles(string spec)=>spec==CyberLordSpec.Id;
-        /// <summary>Whether the hat is the Sheldon Head (its hood takes the hand).</summary>
+        /// <summary>Whether the hat is the Sheldon Head (kept for the portrait callers; the stance no longer reaches for it).</summary>
         public static bool Hood(string hat)=>hat==NativeSheldonHead.Hat;
-        public static float Breath(float time)=>.5f-.5f*(float)Math.Cos(2*Math.PI*time/BreathPeriod);
+        /// <summary>The sword's standing idle (Core/CapturedClips.Generated "sword/idle", the owner's Explosive Armed-Idle).</summary>
+        public static CapturedClip Clip=>MeleeSet.For("sword").Idle;
+        /// <summary>
+        /// The empty hands closed into fists over the sword idle's grip (chest space, m): the right fist (the sword hand) drawn
+        /// in from the empty blade's reach toward the hip and turned knuckles forward, the left fist a little in; the fists'
+        /// knuckle line (the grip's blade axis) and their facing (its edge).
+        /// </summary>
+        public static readonly Vector3 RightFist=new Vector3(.09f,.02f,-.05f),LeftFist=new Vector3(-.05f,.01f,-.02f),FistAxis=Vector3.Normalize(new Vector3(.25f,-.35f,.9f)),FistEdge=Vector3.Normalize(new Vector3(0,-.9f,-.35f));
+        /// <summary>The base row (CyberLordMotion's capture channels) at `time`: the sword idle with the fists.</summary>
+        public static void Base(float time,float[] into)
+        {
+            Clip.Sample(time,into);
+            into[MeleeCapture.Grip]+=RightFist.X;into[MeleeCapture.Grip+1]+=RightFist.Y;into[MeleeCapture.Grip+2]+=RightFist.Z;
+            into[MeleeCapture.LHand]+=LeftFist.X;into[MeleeCapture.LHand+1]+=LeftFist.Y;into[MeleeCapture.LHand+2]+=LeftFist.Z;
+            into[MeleeCapture.Blade]=FistAxis.X;into[MeleeCapture.Blade+1]=FistAxis.Y;into[MeleeCapture.Blade+2]=FistAxis.Z;
+            into[MeleeCapture.Edge]=FistEdge.X;into[MeleeCapture.Edge+1]=FistEdge.Y;into[MeleeCapture.Edge+2]=FistEdge.Z;into[MeleeCapture.TwoHand]=0;
+        }
+
+        // ---- the twitches ----
+        /// <summary>A twitch's envelope at `age`: a fast attack (out-cubic over `attack`), held for `hold`, eased out over `release`.</summary>
+        public static float Envelope(float age,float attack,float hold,float release)
+        {
+            if(!(age>0))return 0;if(age<attack){float u=1-age/attack;return 1-u*u*u;}age-=attack;if(age<hold)return 1;age-=hold;return age<release?1-MeleeMath.Ease(age/release):0;
+        }
+        /// <summary>
+        /// One schedule: windows of `window` s (each pilot's offset), a window holding an event with chance `chance`, at a seeded
+        /// moment inside it. The event of window `n` (n = the current one, then the one before: an event may run past its own
+        /// window): its start and its key for the hashes. False when that window holds none.
+        /// </summary>
+        private static bool Event(int seed,float time,float window,float chance,float span,int salt,int back,out float start,out int key)
+        {
+            float phase=H(seed,salt)*window;int n=(int)Math.Floor((time+phase)/window)-back;key=seed*7919+n*131+salt*1009;start=n*window-phase+H(key,1)*Math.Max(0,window-span);
+            return H(key,2)<chance;
+        }
+        /// <summary>The schedules (s): each kind's window, chance (full, reduced) and its timing ranges.</summary>
+        public const float HeadWindow=1.45f,HeadChance=.75f,ReducedHeadChance=.4f,SpasmWindow=2.05f,SpasmChance=.6f,ReducedSpasmChance=.3f,ClenchWindow=1.15f,ClenchChance=.5f,ReducedClenchChance=.3f,
+            FlinchWindow=5.3f,FlinchChance=.55f,ReducedFlinchChance=.3f,ShiftWindow=3.7f,ShiftChance=.6f,GaspWindow=2.6f,GaspChance=.55f;
+        /// <summary>The largest jerks (full effects; Reduced keeps ReducedScale of them, with attacks ReducedAttack times as long).</summary>
+        public const float HeadTilt=.42f,HeadTurn=.3f,HeadPitch=.2f,SpasmShoulder=.26f,SpasmNeck=.16f,ShiftMax=.045f,ReducedScale=.45f,ReducedAttack=2.2f,SyncHead=.33f;
+        /// <summary>The breath: its mean period (s), the warp of its cycles, its depth's swing and a gasp's catch; at a full in-breath the
+        /// spine's counter-turn, the chest's lift and the shoulders' rise (radians).</summary>
+        public const float BreathPeriod=3f,BreathSpine=.035f,BreathChest=.02f,BreathShoulder=.11f,Gasp=.55f;
+        private static float H(int n,int salt)=>NativeSheldonHead.Hash01(n,salt);
+        private static float Sign(float h)=>h<.5f?-1:1;
+        /// <summary>A big twitch's glitch sync at `age`: up with its attack, held `hold`, off over `fade` (Reduced: one slow swell
+        /// at .6, never a flicker).</summary>
+        private static float SyncOf(float age,float attack,float hold,float fade,bool reduced)
+            =>reduced?.6f*(float)Math.Sin(Math.PI*MeleeMath.Clamp(age/(attack+hold+fade+.25f),0,1)):Envelope(age,attack,hold,fade);
+        /// <summary>The twitching at `time` for the pilot `seed` (no weight: the caller scales it).</summary>
+        public static CyberTwitch Twitch(int seed,float time,bool reduced)
+        {
+            var t=new CyberTwitch();if(float.IsNaN(time)||float.IsInfinity(time))return t;
+            float scale=reduced?ReducedScale:1,slow=reduced?ReducedAttack:1;
+            // The head: a snap to a tilted, turned stare that holds, some with a second, smaller snap further over.
+            for(int back=0;back<2;back++)
+            {
+                if(!Event(seed,time,HeadWindow,reduced?ReducedHeadChance:HeadChance,1.3f,21,back,out float at,out int k))continue;
+                float a=(.035f+.035f*H(k,3))*slow,hold=.2f+.45f*H(k,4),rel=.25f+.25f*H(k,5),e=Envelope(time-at,a,hold,rel);if(e<=0)continue;
+                float big=.45f+.55f*H(k,6);var head=new Vector3(Sign(H(k,7))*HeadPitch*(.25f+.75f*H(k,8)),Sign(H(k,9))*HeadTurn*(.3f+.7f*H(k,10)),Sign(H(k,11))*HeadTilt*big)*scale;
+                if(H(k,12)<.3f){float e2=Envelope(time-at-a-hold*.45f,a*.8f,hold*.55f,rel);head*=1+.4f*e2;}
+                t.Head+=head*e;if(big*HeadTilt>SyncHead)t.Sync=Math.Max(t.Sync,SyncOf(time-at,a,.06f,.18f,reduced));
+            }
+            // The shoulder and neck spasm: one shoulder hitches up, the neck pulled toward it.
+            for(int back=0;back<2;back++)
+            {
+                if(!Event(seed,time,SpasmWindow,reduced?ReducedSpasmChance:SpasmChance,.6f,22,back,out float at,out int k))continue;
+                float e=Envelope(time-at,(.03f+.02f*H(k,3))*slow,.05f+.09f*H(k,4),.18f+.12f*H(k,5));if(e<=0)continue;
+                bool left=H(k,6)<.5f;float up=SpasmShoulder*(.55f+.45f*H(k,7))*scale*e;if(left)t.LShoulder+=up;else t.RShoulder+=up;
+                t.Neck+=new Vector3(-.03f,0,(left?1:-1)*SpasmNeck*(.5f+.5f*H(k,8)))*scale*e;
+            }
+            // The fists clench (one, the other or both), held, let go.
+            for(int back=0;back<2;back++)
+            {
+                if(!Event(seed,time,ClenchWindow,reduced?ReducedClenchChance:ClenchChance,1f,23,back,out float at,out int k))continue;
+                float e=Envelope(time-at,.04f*slow,.15f+.35f*H(k,3),.2f+.15f*H(k,4))*(reduced?.5f:1);if(e<=0)continue;
+                float side=H(k,5);if(side<.35f||side>=.7f)t.LClench=Math.Max(t.LClench,e);if(side>=.35f)t.RClench=Math.Max(t.RClench,e);
+            }
+            // The flinch: the whole body jolts back and up, shoulders hunched, and slowly lets go.
+            for(int back=0;back<2;back++)
+            {
+                if(!Event(seed,time,FlinchWindow,reduced?ReducedFlinchChance:FlinchChance,1f,24,back,out float at,out int k))continue;
+                float a=.045f*slow,e=Envelope(time-at,a,.1f+.08f*H(k,3),.4f+.2f*H(k,4));if(e<=0)continue;
+                t.Flinch=Math.Max(t.Flinch,e*scale);t.Head+=new Vector3(-.12f,Sign(H(k,5))*.1f,Sign(H(k,6))*.08f)*scale*e;
+                t.Sync=Math.Max(t.Sync,SyncOf(time-at,a,.1f,.22f,reduced));
+            }
+            // The weight shift that stops short: the hips run toward one side, accelerating, and halt dead; held, then eased back.
+            for(int back=0;back<2;back++)
+            {
+                if(!Event(seed,time,ShiftWindow,ShiftChance,3f,25,back,out float at,out int k))continue;
+                float go=.28f+.12f*H(k,3),hold=.7f+.9f*H(k,4),rel=.6f+.3f*H(k,5),age=time-at;if(age<=0||age>=go+hold+rel)continue;
+                float u=age<go?(float)Math.Pow(age/go,2.2):age<go+hold?1:1-MeleeMath.Ease((age-go-hold)/rel);
+                t.Shift+=Sign(H(k,6))*ShiftMax*(.55f+.45f*H(k,7))*u*(reduced?.7f:1);
+            }
+            // The ragged breath: warped, uneven cycles of a swinging depth, with sudden gasps.
+            float ph=time/BreathPeriod+.3f*(float)Math.Sin(2*Math.PI*time/7.7f+6.28f*H(seed,31))+.18f*(float)Math.Sin(2*Math.PI*time/4.3f+6.28f*H(seed,32));
+            float depth=.75f+.35f*(float)Math.Sin(2*Math.PI*time/5.9f+6.28f*H(seed,33));t.Breath=depth*(.5f-.5f*(float)Math.Cos(2*Math.PI*ph));
+            for(int back=0;back<2;back++)
+            {
+                if(!Event(seed,time,GaspWindow,GaspChance,.6f,26,back,out float at,out int k))continue;
+                t.Breath+=Gasp*(reduced?.5f:1)*Envelope(time-at,.06f*slow,.08f,.35f);
+            }
+            return t;
+        }
+
+        // ---- the pose ----
+        /// <summary>The flinch's jolt at full strength: the spine and chest thrown back (rad), the shoulders hunched up, the elbows
+        /// jerked in, the hips dropped (m; downward only, so the planted feet always reach).</summary>
+        public const float FlinchBack=.11f,FlinchShoulder=.18f,FlinchElbow=.3f,FlinchDip=.022f;
+        /// <summary>The fist's clench at full strength: the wrist curled and the elbow tensed (rad).</summary>
+        public const float ClenchWrist=.38f,ClenchElbow=.16f;
+        /// <summary>The share of the view's pitch the head follows (rad, clamped).</summary>
+        public const float PitchShare=.35f,PitchMax=.28f;
+        /// <summary>The weight shift's pelvis roll per metre of shift and the chest's counter.</summary>
+        public const float ShiftRoll=1.2f,ShiftCounter=.7f;
+        /// <summary>The lobby stance's turn (rad, toward the card camera).</summary>
+        public const float LobbyYaw=-.18f;
+        /// <summary>
+        /// The match layer over a posed fighter rig at weight `w` (group space; the legs stay the gait's planted feet): the
+        /// twitches, then the glitch's tear and jolt. `pitch` is the view's pitch (rad, + up).
+        /// </summary>
+        public static void Layer(MeleeRig r,float w,float time,int seed,bool reduced,float pitch,in CyberIdleGlitch g)
+        {
+            if(w<=1e-4f)return;Twitches(r,w,Twitch(seed,time,reduced),pitch,g);
+        }
+        /// <summary>
+        /// The lobby stance from rest (NativeLobbyPoses, the portraits): the same sword idle and twitches at full weight, on the
+        /// fighter stance's feet (CyberLordStance: the match's planted feet), turned LobbyYaw; returns the glitch for the
+        /// renderer's ghosts and band (and the clench for its fist shells). `time` is the portrait clock (0 with reduced motion:
+        /// the stance holds still, nothing twitches or glitches).
+        /// </summary>
+        private static readonly float[] standRow=new float[CapturedClip.Channels];
+        public static CyberIdleGlitch Stand(MeleeRig r,float time,int seed,bool reduced)=>Stand(r,time,seed,reduced,true,out _);
+        /// <summary>The same with the glitch optional (`glitch` false: no tear or jolt, a zero glitch back; the Sheldon Idle of the
+        /// other pilots, NativeLobbyPoses) and the frame's twitching out.</summary>
+        public static CyberIdleGlitch Stand(MeleeRig r,float time,int seed,bool reduced,bool glitch,out CyberTwitch twitch)
+        {
+            r.Reset();r.WeaponReach=1;Base(time,standRow);standRow[MeleeCapture.Yaw]=0;CyberLordMotion.Posture(standRow);
+            r.SetE(CapturedRig.Body,0,LobbyYaw,0);
+            MeleeCapture.Apply(r,CyberLordMotion.Unarmed,standRow,CaptureOptions.Of(1,CyberLordMotion.Unarmed.Fit,MeleeClear.None,legs:0,root:1));CyberLordMotion.FaceForward(r,CyberLordMotion.FaceWeight);
+            bool live=time>0;var tw=live?Twitch(seed,time,reduced):default;var g=live&&glitch?Glitch(seed,time,1,reduced):default;
+            Twitches(r,1,tw,0,g);g.LClench=tw.LClench;g.RClench=tw.RClench;twitch=tw;
+            var st=CyberLordStance.Stance;
+            r.Foot(true,new Vector3(st.LeadX,MeleeRig.FLOOR,st.LeadZ),st.LeadToe,0,1,null,NativeLobbyPoses.StandingReach);r.Foot(false,new Vector3(st.RearX,MeleeRig.FLOOR,st.RearZ),-st.RearToe,0,1,null,NativeLobbyPoses.StandingReach);
+            return g;
+        }
+        /// <summary>The fists' clench for the hardlight look (NativeCyberLordLook.Flare's left and right, at ClenchFlare of a hit's
+        /// flare) at the idle's weight.</summary>
+        public const float ClenchFlare=.6f;
+        public static NativeCyberLordLook.Flare Clench(in CyberIdleGlitch g,NativeCyberLordLook.Flare f)
+        {f.Left=Math.Max(f.Left,ClenchFlare*g.LClench);f.Right=Math.Max(f.Right,ClenchFlare*g.RClench);return f;}
+        private static Quaternion E(float x,float y,float z)=>MeleeMath.Euler(x,y,z);
+        private static void Twitches(MeleeRig r,float w,in CyberTwitch t,float pitch,in CyberIdleGlitch g)
+        {
+            const int Sp=CapturedRig.Spine,C=CapturedRig.Chest,N=CapturedRig.Neck,Hd=CapturedRig.Head;
+            // The weight shift (the hips over the planted feet, rolled toward the weight leg) and the flinch's dip.
+            var b=r.P[CapturedRig.Body];r.P[CapturedRig.Body]=new Vector3(b.X+t.Shift*w,b.Y-FlinchDip*t.Flinch*w,b.Z);
+            r.Premultiply(CapturedRig.Pelvis,E(0,0,-t.Shift*ShiftRoll*w));r.Multiply(Sp,E(0,0,t.Shift*ShiftRoll*ShiftCounter*w));
+            // The breath lifts the chest and shoulders (the spine counters so the neck stays put); the flinch throws them back.
+            float br=t.Breath*w,fl=t.Flinch*w;
+            r.Multiply(Sp,E(BreathSpine*br-FlinchBack*.5f*fl,0,0));r.Multiply(C,E(-(BreathChest+BreathSpine)*br-FlinchBack*.5f*fl,0,0));
+            float ls=BreathShoulder*br+FlinchShoulder*fl+t.LShoulder*w,rs=BreathShoulder*br+FlinchShoulder*fl+t.RShoulder*w;
+            r.Multiply(CapturedRig.LClav,E(0,0,ls));r.Multiply(CapturedRig.RClav,E(0,0,-rs));
+            // The arms jerk in on the flinch; the fists clench (the wrist curls, the forearm tenses).
+            r.Multiply(CapturedRig.LElbow,E(-FlinchElbow*fl-ClenchElbow*t.LClench*w,0,0));r.Multiply(CapturedRig.RElbow,E(-FlinchElbow*fl-ClenchElbow*t.RClench*w,0,0));
+            r.Multiply(CapturedRig.LHand,E(ClenchWrist*t.LClench*w,0,-.1f*t.LClench*w));r.Multiply(CapturedRig.RHand,E(ClenchWrist*t.RClench*w,0,.1f*t.RClench*w));
+            // The neck spasm and the head's snapped jerk, with a share of the view's pitch (the stare follows the aim).
+            float look=-PitchShare*MeleeMath.Clamp(pitch,-PitchMax/PitchShare,PitchMax/PitchShare);
+            r.Multiply(N,E(t.Neck.X*w,t.Neck.Y*w,t.Neck.Z*w));r.Multiply(Hd,E((t.Head.X+look)*w,t.Head.Y*w,t.Head.Z*w));
+            // The glitch's jolt (a step or two) and tear (the joint offsets; the next frame's rig starts from rest).
+            if(g.Twitch!=0){r.Premultiply(N,MeleeMath.AxisAngle(MeleeMath.Y,.07f*g.Twitch*w));r.Multiply(CapturedRig.RClav,MeleeMath.AxisAngle(MeleeMath.Z,-.1f*g.Twitch*w));}
+            if(g.Slice!=0)r.P[Sp]=new Vector3(r.P[Sp].X+g.Slice*w,r.P[Sp].Y,r.P[Sp].Z);
+            if(g.HeadSlice!=0)r.P[Hd]=new Vector3(r.P[Hd].X+g.HeadSlice*w,r.P[Hd].Y,r.P[Hd].Z);
+        }
 
         // ---- the glitch ----
         /// <summary>Glitch steps per second (the Sheldon Intro's): full and reduced effects.</summary>
@@ -122,7 +304,6 @@ namespace ChipArena.UnityConversion
         public const float SliceMax=.055f,HeadSliceMax=.035f,SplitGap=.03f,ReducedSplit=.45f;
         /// <summary>The glitch only shows once the stance has settled (the weight above this).</summary>
         public const float Settled=.95f;
-        private static float H(int n,int salt)=>NativeSheldonHead.Hash01(n,salt);
         private static int Slot0(int seed,float time,float slot,int salt,out float start)
         {
             float phase=H(seed,salt)*slot;int n=(int)Math.Floor((time+phase)/slot);start=n*slot-phase;return n;
@@ -172,6 +353,13 @@ namespace ChipArena.UnityConversion
                     if(age>=0&&age<TwitchSteps/StepRate)g.Twitch=H(tk,3)<.5f?-1:1;
                 }
             }
+            // The flinch and the biggest head jerks flicker the split with them (full: on the steps; reduced: one eased swell).
+            float sy=Twitch(seed,time,reduced).Sync;
+            if(sy>1e-3f)
+            {
+                if(reduced){g.Split=Math.Max(g.Split,ReducedSplit*.6f*sy);g.SplitOffset=Math.Max(g.SplitOffset,SplitGap*.6f);}
+                else if(H(g.Step*41+seed,14)>.3f){g.Split=Math.Max(g.Split,(.6f+.4f*H(g.Step*43+seed,15))*sy);g.SplitOffset=Math.Max(g.SplitOffset,SplitGap*(.8f+.7f*H(g.Step*47+seed,16)));}
+            }
             return g;
         }
         /// <summary>The rest height of each joint (rig rest space; CapturedRig.Bones are rest offsets with no rest turn).</summary>
@@ -188,59 +376,5 @@ namespace ChipArena.UnityConversion
             float flick=H(g.Step*37+index,13)<.5f?.25f:1.9f;return 1+(flick-1)*band*g.Scan;
         }
 
-        // ---- the pose ----
-        /// <summary>
-        /// The match layer over a posed fighter rig at weight `w` (group space; the legs stay the gait's, the hips rise a touch
-        /// over the planted feet): the stare, the breath, the loose right arm, the raised left hand, then the glitch's tear and
-        /// twitch. `pitch` is the view's pitch (rad, + up).
-        /// </summary>
-        public static void Layer(MeleeRig r,float w,float time,bool hood,float pitch,in CyberIdleGlitch g)
-        {
-            if(w<=1e-4f)return;
-            // Upright: the pelvis keeps only its heading (the fighter stance tips it forward) and the hips rise a touch; the gait's
-            // ground pass after the style re-plants the feet under them.
-            var pf=Vector3.Transform(Vector3.UnitZ,r.Q[CapturedRig.Pelvis]);if(pf.X*pf.X+pf.Z*pf.Z>1e-6f)r.Slerp(CapturedRig.Pelvis,MeleeMath.AxisAngle(MeleeMath.Y,(float)Math.Atan2(pf.X,pf.Z)),w);
-            var hips=r.P[CapturedRig.Body];r.P[CapturedRig.Body]=new Vector3(hips.X,hips.Y+Rise*w,hips.Z);
-            Upper(r,w,time,hood,pitch,g);
-        }
-        /// <summary>
-        /// The lobby stance from rest (NativeLobbyPoses, the portraits): standing even on both feet, turned LobbyYaw, the same
-        /// upper body at full weight; returns the glitch for the renderer's ghosts. `time` is the portrait clock (0 with reduced
-        /// motion: the stance holds still and nothing glitches).
-        /// </summary>
-        public static CyberIdleGlitch Stand(MeleeRig r,float time,bool hood,int seed,bool reduced)
-        {
-            r.Reset();r.WeaponReach=1;float b=Breath(time);
-            r.P[CapturedRig.Body]=new Vector3(0,-.004f+b*.002f,0);r.SetE(CapturedRig.Body,0,LobbyYaw,0);r.SetE(CapturedRig.Pelvis,0,.03f,0);
-            r.Foot(false,new Vector3(-.12f,MeleeRig.FLOOR,-.01f),-.1f,0,1,null,NativeLobbyPoses.StandingReach);r.Foot(true,new Vector3(.125f,MeleeRig.FLOOR,.035f),.14f,0,1,null,NativeLobbyPoses.StandingReach);
-            var g=time>0?Glitch(seed,time,1,reduced):default;Upper(r,1,time,hood,0,g);return g;
-        }
-        private static void Upper(MeleeRig r,float w,float time,bool hood,float pitch,in CyberIdleGlitch g)
-        {
-            const int Sp=CapturedRig.Spine,C=CapturedRig.Chest,N=CapturedRig.Neck,Hd=CapturedRig.Head;
-            float b=Breath(time),sh=BreathShoulder*b;
-            // Upright: the spine counter-turns the chest's lift so the neck stays put; the chest turned a little to the raised hand.
-            r.Slerp(Sp,MeleeMath.Euler(BreathSpine*b,0,0),w);r.Slerp(C,MeleeMath.Euler(ChestTurn.X-(BreathChest+BreathSpine)*b,ChestTurn.Y,ChestTurn.Z),w);
-            r.Slerp(CapturedRig.LClav,MeleeMath.Euler(0,0,sh),w);r.Slerp(CapturedRig.RClav,MeleeMath.Euler(0,0,-sh),w);
-            // The loose right arm rides the shoulder up but keeps hanging.
-            r.Slerp(CapturedRig.RArm,MeleeMath.AxisAngle(MeleeMath.Z,sh)*MeleeMath.Euler(RightArm.X,RightArm.Y,RightArm.Z),w);r.Slerp(CapturedRig.RElbow,MeleeMath.Euler(RightElbow,0,0),w);
-            r.Slerp(CapturedRig.RHand,MeleeMath.Euler(0,0,.06f),w);
-            // The stare: the neck upright, the head set in the rig's frame whatever is under it (the breath never reaches it).
-            r.Slerp(N,Quaternion.Identity,w);
-            float look=StareChin-PitchShare*MeleeMath.Clamp(pitch,-PitchMax/PitchShare,PitchMax/PitchShare);
-            r.Slerp(Hd,MeleeMath.Inverse(r.ChainQuat(N,-1))*MeleeMath.Euler(look,0,0),w);
-            // The glitch's twitch (a step or two) and tear (the joint offsets; the next frame's rig starts from rest).
-            if(g.Twitch!=0){r.Premultiply(N,MeleeMath.AxisAngle(MeleeMath.Y,.07f*g.Twitch*w));r.Multiply(CapturedRig.RClav,MeleeMath.AxisAngle(MeleeMath.Z,-.1f*g.Twitch*w));}
-            if(g.Slice!=0)r.P[Sp]=new Vector3(r.P[Sp].X+g.Slice*w,r.P[Sp].Y,r.P[Sp].Z);
-            if(g.HeadSlice!=0)r.P[Hd]=new Vector3(r.P[Hd].X+g.HeadSlice*w,r.P[Hd].Y,r.P[Hd].Z);
-            // The left hand on the hood's front edge at the temple (or two fingers at the bare temple), fingers up over the brim:
-            // the intro's keyed raised arm (out to the side, the elbow folded), then the reach keeping that arm's elbow pole.
-            r.Slerp(CapturedRig.LArm,MeleeMath.Euler(RaisedArm.X,RaisedArm.Y,RaisedArm.Z),w);r.Slerp(CapturedRig.LElbow,MeleeMath.Euler(RaisedElbow,0,0),w);
-            Vector3 s=r.ChainPoint(CapturedRig.LArm,-1),line=r.ChainPoint(CapturedRig.LHand,-1)-s,bend=r.ChainPoint(CapturedRig.LElbow,-1)-s;float len=line.LengthSquared();if(len>1e-8f)bend-=line*(Vector3.Dot(bend,line)/len);
-            var pole=bend.LengthSquared()>1e-8f?Vector3.Transform(bend,MeleeMath.Inverse(r.ChainQuat(CapturedRig.LClav,-1))):RaisedPole;
-            Quaternion head=r.ChainQuat(Hd,-1),chest=r.ChainQuat(C,-1),chestInv=MeleeMath.Inverse(chest);
-            var target=r.ChainPoint(Hd,-1)+Vector3.Transform(hood?HandOnHood:HandAtTemple,head);
-            r.Hand(true,Vector3.Transform(target-r.ChainPoint(C,-1),chestInv),chestInv*head*NativeSheldonIntroScript.HandTurn,w,pole);
-        }
     }
 }

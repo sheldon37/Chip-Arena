@@ -15,12 +15,15 @@ namespace ChipArena.UnityConversion
         // Copies live only in the cosmetic scene; corpses never obstruct players, bullets or other bodies.
         private bool RefreshWorld(float age)
         {
+            // A bisected body's second half lives in its first half's scene, whose copies serve both.
+            if(Host!=null)return false;
             if(age<worldAt+NativeCorpseRules.WorldRefreshSeconds)return false;worldAt=age;
             bool changed=false;seenObstacles.Clear();float radius2=NativeCorpseRules.WorldRadius*NativeCorpseRules.WorldRadius;
             foreach(var prop in arena.AllBlocks)
             {
                 if(prop==null)continue;var original=prop.GetComponent<BoxCollider>();
-                if(original==null||!original.enabled||original.isTrigger||!original.gameObject.activeInHierarchy)continue;
+                // Cut treads retain their authored boxes for this separate cosmetic world; gameplay uses the smooth ramp.
+                if(original==null||(!original.enabled&&!NativeCyberCityStairs.IsTread(arena.MapId,prop.Definition?.id))||original.isTrigger||!original.gameObject.activeInHierarchy)continue;
                 var bounds=original.bounds;bool near=prop.Indestructible||bounds.SqrDistance(Death.position)<=radius2;
                 if(!near)foreach(var part in Parts.Values)if(bounds.SqrDistance(part.position)<=radius2){near=true;break;}
                 if(!near&&weapon!=null)near=bounds.SqrDistance(weapon.position)<=radius2;
@@ -41,7 +44,7 @@ namespace ChipArena.UnityConversion
         private void WakeRetained(float age)
         {
             // First sight of an old death still has a bounded ten-second catch-up.
-            if(!stepped)return;
+            if(!stepped)return;Twin?.Thaw(age);
             if(frozen)
             {
                 foreach(var pair in Parts)if(pair.Key!=CrushPart)pair.Value.isKinematic=false;

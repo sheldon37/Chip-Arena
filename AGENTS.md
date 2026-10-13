@@ -88,3 +88,11 @@ impacts on hit timing, hitboxes, damage, cooldowns, movement and networking.
 Keep PROJECT_STATE short. Preserve other agents' entries when resolving conflicts;
 do not overwrite their work. Coordinate overlapping files/systems before editing.
 Do not append long transcripts or duplicate full diffs. No automatic review loop.
+
+Owner standing instruction (2026-10-12): completed fixes may always be pushed
+to GitHub unless the owner specifies otherwise; no per-push confirmation is needed.
+Owner follow-up (2026-10-12): merges are also authorized going forward unless
+specified otherwise. Completed task PRs may be merged into the shared development
+branch and synced to the existing builder branch without per-merge confirmation.
+Preserve verification requirements and other agents' work. Existing live-release,
+production, and infrastructure boundaries still apply.

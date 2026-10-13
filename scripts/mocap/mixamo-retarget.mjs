@@ -105,7 +105,7 @@ export function calibrate(obj,{mirror=false,grip='blade'}={}){
 
 /** Sample `clip` on `obj` at `fps`; returns one Float32Array row per frame in CHANNELS order. `mirror` reads the capture
  * left↔right (calibrate with the same flag); `oneHand` keeps the support hand off the weapon (one-handed weapons). */
-export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false,soften=false,poleTurn=0,splitTwist=false,canonTwist=false,keepFold=false,bothHands=false,hilt=bothHands,heading=0,loop=false}={}){
+export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false,soften=false,poleTurn=0,splitTwist=false,canonTwist=false,canonicalTwist=false,keepFold=false,bothHands=false,hilt=bothHands,heading=0,loop=false}={}){
  const mixer=new T.AnimationMixer(obj);mixer.clipAction(clip).play();const {wq,wp}=bones(obj,mirror);
  const n=Math.max(2,Math.round(clip.duration*fps)+1),rows=[];let yawPrev=0,hips0=null;
  const W={},Wp={};const names=['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftFoot','RightFoot','LeftHand','RightHand'];
@@ -142,7 +142,8 @@ export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=
   // `canonTwist` reads each joint's twist from the quaternion with w >= 0 (q and -q are one rotation, but their twist
   // angles differ by 2 pi, which split in half turned both blocks half a turn: rigs whose local spine quaternions come out
   // negated, such as the zombie pack's MotusMan). Off by default, so the earlier sets' tracks stay byte-identical.
-  if(splitTwist){const s=(spineQ??local('Spine1')).clone(),c=(chestQ??local('Spine2')).clone(),tw=x=>canonTwist&&x.w<0?2*Math.atan2(-x.y,-x.w):2*Math.atan2(x.y,x.w),h=new T.Quaternion().setFromAxisAngle(UP,(tw(s)-tw(c))/2);
+  // The Cyber Lord run export passes the same rule as `canonicalTwist` (the CLazy runs land on w < 0 for a few frames).
+  if(splitTwist){const s=(spineQ??local('Spine1')).clone(),c=(chestQ??local('Spine2')).clone(),tw=x=>(canonTwist||canonicalTwist)&&x.w<0?2*Math.atan2(-x.y,-x.w):2*Math.atan2(x.y,x.w),h=new T.Quaternion().setFromAxisAngle(UP,(tw(s)-tw(c))/2);
    spineQ=s.multiply(h.clone().invert());chestQ=h.multiply(c);}
   for(const k of ['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftFoot','RightFoot']){rotvec((k==='Spine1'&&spineQ?tmp.copy(spineQ):k==='Spine2'&&chestQ?tmp.copy(chestQ):local(k)).normalize(),rv);if(!keepFold&&k==='Spine1'&&rv.x>.45)rv.x=.45+(rv.x-.45)*.35;if(!keepFold&&k==='Hips'&&rv.x>.12)rv.x=.12+(rv.x-.12)*.5;
    // `soften`: the voxel head is a big block, so a capture's deep neck/head bends (the Explosive pack's hunched combat

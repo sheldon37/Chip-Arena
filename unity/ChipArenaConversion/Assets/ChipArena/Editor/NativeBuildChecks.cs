@@ -208,6 +208,7 @@ namespace ChipArena.UnityConversion.Editor
                             CheckNetworkSerialization(arena);CheckCombatParity(data);CheckInteractionFeedback(data);CheckPresentation(arena);CheckGlow(arena,match);CheckShots(arena);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();
                         }
                         if(map.id=="factory"||map.id=="cybercity")arena.ValidateStageHazardRuntime();
+                        if(map.id=="cybercity")arena.ValidateCyberCityExits();
                         if(map.id=="brickfall"){arena.ValidateCorpsePhysics();arena.ValidateBrickfallRuntime();CheckBrickfallReplica(arena);}
                         if(map.id=="siren"){arena.ValidatePveEconomy(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));arena.ValidateHordeDrops();}
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");
@@ -238,6 +239,8 @@ namespace ChipArena.UnityConversion.Editor
             foreach(var name in new[]{"NativeVfx","NativeVfxLit"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             // The block effect (NativeBlockFxPresentation: guards, clashes and deflects).
             {var shader=Resources.Load<Shader>("NativeBlockFx");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeBlockFx");}
+            // The holographic revive (NativeReviveHoloPresentation.cs): the hardlight and the first-person vignette.
+            foreach(var name in new[]{"NativeReviveHolo","NativeReviveScreen"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             CheckVfx();
         }
     }

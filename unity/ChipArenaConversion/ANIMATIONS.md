@@ -1,6 +1,35 @@
+# Hulk zombie and the spitter's spit — 2026-10-13
+
+The Hulk (content-gated) reuses the brute's zombie takes on the shared rig at 1.8x. Its gait runs in rig metres and is scaled back:
+- walk-4 / walk-6 at a .62 tempo, chase-5;
+- smash-1 / smash-2 with a 1.1 s wind-up;
+- seeded roars on the start of knock-3, with a hinged jaw;
+- the jump-in on the jump takes with the heavier `NativeHordeDrop.Hulk` profile;
+- reels only on a 25% hit;
+- deaths at scale.
+
+The spitter rears back on the start of knock-1 before its procedural spit. It opens its hinged jaw and launches from the posed mouth socket. An interrupted spit flinches and closes the jaw. Timing is pinned to LastAttack + hit (Tests/HulkSpitterChecks); no timing, hitbox or movement change. Details: `docs/SIREN-ZOMBIES.md` §7-9.
+
+# Cyber Lord ranged mode and dash sprint — 2026-10-13
+
+Owner requests: "Give cyber lord a 2nd set of abilities for a "Ranged" mode. So, new 1-4 if they switch to ranged :)[We can set this to the 5 hotkey to switch)" and "change cyber lords sprint animation to be different than their run animation. (Currently its just the run animation sped up)".
+- **The sprint** is now the Runner pack's Mvm_ChargeBoost set (ahead and the forward diagonals; `tools/export_pack_cyberlord_run.mjs`, hashes in `tools/pack-cyberlord-run-provenance.json`). `Core/CyberLordRun.cs` sweeps the fists back past the hips (`CyberLordRunRules.Swept*`) and leans the torso deeper, with hardlight streaks trailing the fists. The fists ease over .3 s on the replicated flag, the lean on the .15 s ramp. Every take's chest is folded onto the forward run's line (the ChargeBoost carries it bladed 35 degrees). The run is unchanged.
+- **The ranged mode** (`Core/CyberLordRangedMotion.cs` `CyberRangedPose`) is a procedural layer over the posed rig, on the replicated record (`docs/CYBER-LORD.md` "Ranged mode"):
+  - the key-5 reconfiguration: the forearms fold in with a glitch jolt;
+  - the emitter hold on the aim, with the chest taking .3 of the pitch, over the run's planted legs;
+  - each cast on its window: the bolt's thrust and kick, the lance's cock and thrust, the lob arcing about the shoulder, the swap's tuck and 6 cm dip, Root Access's converge and tremor and its recoil;
+  - first person anchored on the view stance's fists.
+- Melee frames are bit-identical without a record. Nothing drives a rules window.
+
 # Siren zombies on the zombie mocap — 2026-10-12
 
 Owner request: "Sirens minions need to look more zombie like (Based on player models) Their animations also look a lot more simple then what we used to have? We do have the zombie mo-cap ones we could utilize ... (Especially there walk animations, its not great)". The horde kinds now move on the owner's ZOMBIE PRO mocap, retargeted by `tools/export_pack_zombie.mjs` (shared `scripts/mocap/mixamo-retarget.mjs` with the pack loader `scripts/mocap/zombie-pack.mjs`) into `Core/NativePackZombie.Generated.cs`: 39 pose tracks only (walks, chases, sprints, idles, swipes, smashes, lunges, knock-backs, deaths, wake, vent climb and dive, the jump), SHA-256 per track in `tools/pack-zombie-provenance.json`; the FBX, meshes, textures, audio and `.meta` files are never committed. `Core/NativeZombieMotion` picks each add's takes by its id and kind; `Core/NativeHordeMotion` lays the captured upper body, hips and head over planted procedural feet whose cadence, stance phases, swing lift, foot turn and knee direction come from the take (no foot sliding at the authority's speeds), retimes every blow so its impact frame lands exactly at `lastAttack + hit`, overlays a captured knock-back reel on a stagger, plays the deaths by the push's direction, and poses the vent climb, door/cell walk-in (waking take, then the gait), dive and the brute's jump-down on the kind's own zombie model. Two exporter details: every clip's channels are made continuous for interpolation (no frame pops where a lying body's heading is ill-defined), and deaths keep the capture's whole forward fold (retarget `keepFold`), so a body falling on its face lies flat. Presentation only: no change to colliders, attack timing, damage, cooldowns, movement, spawns or networking. Clip mapping and the rules hand-off: docs/SIREN-ZOMBIES.md. Checked by `Tests/ZombieMotionChecks.cs` and `Tests/HordeKindChecks.cs`; Unity Editor and Windows play not run.
+
+# Cyber Lord run, sprint, second jump and idle — 2026-10-12
+
+Owner request: "Change the cyber lord running / sprint animation ... Give this class a double jump as well; Second jump has a cyber effect." The DEV Cyber Lord now runs on the owner's CLazy Runner Action Animation Pack (`tools/export_pack_cyberlord_run.mjs` through `scripts/mocap/clazy-pack.mjs`, the pack's Unreal mannequin skeleton read as Mixamo; data `Core/NativePackCyberLordRun.Generated.cs`, hashes in `tools/pack-cyberlord-run-provenance.json`; no FBX, texture or `.meta` committed). The run is Mvm_Dash in eight directions and the sprint Mvm_Boost (since 2026-10-13 Mvm_ChargeBoost with the fists swept back, above) ahead and on the forward diagonals, carried over the gait's planted feet at its stride phase (`Core/CyberLordRun.cs`), with a strafe's chest turn folded out so the chest stays on the aim and a reach seat so no planted ankle skates (the fighter route's gait let them skate up to .96 m/s on diagonals). The second jump's pose is Esc_BoostDash_Up_Fwd (the stamp and tuck), keyed on the replicated air jump once the rules grant one. The idle is the sword's Armed-Idle with fists and a seeded twitching layer (`Core/CyberLordIdle.cs`); the same stance is the DEV "Sheldon Idle" lobby pose for any pilot (`Core/NativeLobbyPoses.cs`: armed pilots keep the hero stance's grip carried onto the hunched chest). Presentation only; details in `docs/CYBER-LORD.md`; checked by `Tests/CyberLordRunChecks.cs`, `Tests/CyberLordChecks.cs` and `Tests/SheldonIdleChecks.cs`; Unity Editor and Windows play not run.
+
+Bow double jump (PR #159 gave the Bow the dagger flip): drawn through the flip, the archer's aimed arrow line went out of the tucked, turned arms' reach (the bow arm's target up to 1.17 m away, the string hand up to 47 cm off the nock, the bow within 1 cm of the spine). `Core/NativeBowMotion` now keeps a raised bow's torso out of the flip's tucked take (`NativeJumpRules.FlipTuck`) and solves the stance and arms on the unturned body, then turns the pose and its bow frame with the flip (`NativeJumpMotion.Unspin` / `Respin`, `NativeBowMotion.Turned`): the archer somersaults holding the drawn bow, string in hand. A carried bow flips as before; first person has no jump layer and does not flip. Checked by `Tests/BowFlipChecks.cs` (its route part runs once the Bow flips, after PR #159).
 
 # Gun and magic pack locomotion — 2026-10-12
 

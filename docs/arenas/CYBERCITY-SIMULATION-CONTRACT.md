@@ -1,5 +1,36 @@
 # Cyber City simulation contract (H0 draft)
 
+## Cut exits — 2026-10-13, Astra / Claude handoff
+
+Owner reports pilots cannot climb out. `codex/cut-stair-physx` replaces only
+the collision of the four `cybercity-pit-{nw,ne,se,sw}-stair-*` flights with closed,
+invisible wedge ramps: floor -4 to street 0 over 8.8 m (24.44 degrees), width 1.8 m. Each ramp
+includes the last .25 m rise to the street. All 64 original blocks, IDs, transforms
+and renderers remain unchanged. The separate cosmetic corpse world retains the
+original tread support. Runtime objects `cybercity-pit-*-collision-ramp` have no
+renderers and are rebuilt on round reset on authority and replica alike; they
+are not new ContentMap blocks or new exits. No additional exits or climb assist.
+
+Existing nav links connect every flight to the promenade. Managed checks now
+restrict connectivity to each flight independently, including its street link;
+escaping via a different flight cannot satisfy those checks. No nav regeneration.
+
+The native build gate walks from mid-cut (-24,0), through each lintel and landing,
+up its flight and beyond the street onto the promenade. It exercises host and
+guest walk/sprint plus the actual bot pathfinder and host motor. Additional host/guest
+walk/sprint routes start on the landing and halfway up, at centre and hugging
+either side (capsule edge 2 cm from the side): 116 traversals total,
+radius .42 / StepHeight .35, with hazards held quiet. Floor height at the starting
+guideway is resolved by raycast (its top is -3.7, not -4). Both position and final
+height are checked. Failure reports include the exit, start/side, mode and stalled position.
+Collision geometry lives in `NativeCyberCityStairs`; Claude’s data-derived
+`NativeCyberCityExits` and all marker/HUD presentation remain unchanged.
+Run **Chip Arena / Check Cyber City cut exits** in the Editor, or batch entry
+`ChipArena.UnityConversion.Editor.NativeBuildChecks.CheckCyberCityCutExits`.
+It also runs in the normal Build-and-Publish native checks. These native checks
+were added but could not be executed in the Linux coding environment; the owner
+report is the evidence for the original failure, not a claimed local PhysX repro.
+
 ## Simulation agreement — 2026-10-12, Astra
 
 Task `codex/unity-stage-hazards-20261012`, base shared `aead19c4` (includes
@@ -169,3 +200,54 @@ Do not change the look, kit, backdrop, FX, telegraphs or sound cues (Claude's); 
 change that affects them in DEV_LOG and the PR. No Unity Editor, Windows or multiplayer claims without running
 them. Run the repo checks in docs/DEVELOPMENT.md; record actual results, unrun checks and risks in DEV_LOG.
 ```
+
+## 11. The way out of the Cut (presentation reads; 2026-10-13, Claude)
+Owner report: "Currently if u fall in the train track on cyber city, you cant get back up". Astra owns the
+collision and movement side (the stairs in PhysX, any ramps or new exits). Claude's part makes the way out
+readable and follows whatever exits the map has: nothing is hard-coded, and no collision, geometry, movement
+or hazard rule changes.
+
+**What the presentation reads** (Core `NativeCyberCityExits.Build(ContentMap)`, once per map):
+- The Cut: the first hazard with `kind == "maglev"` (`center`, `size`; the track runs along x). Its envelope's
+  bottom is the Cut floor, its x span the Cut's length.
+- The walls: axis-aligned, static, non-rubble blocks standing on that floor (bottom within 0.1 m, at least
+  1.7 m tall) on either side of the envelope, inner face within 1 m of it. Their inner faces give the Cut's
+  width, their outer faces the recesses (alcoves, door openings), their highest top the street level.
+- The exits: `nav.nodes` and `nav.links` (a node stands 0.9 m over its floor, as
+  `tools/generate_stage_hazards.py` writes it). Every connected group of below-street nodes off the Cut floor
+  that links both to a Cut floor node and to a street-level node is an exit; doors more than 3 m apart along
+  one wall are separate exits. A group that never reaches the street (an alcove) is not one. Link `hazards`
+  are ignored (a link gated for bots is still a way out for a pilot); `MapNavNode.safe` is not read.
+- The opening: the lowest block over the door at least 1.7 m above the floor is the lintel (it takes the EXIT
+  sign); walls whose ends meet the opening are its jambs (framed); blocks under the route beyond the Cut floor,
+  their tops within 0.3 m of it (steps, ramp pieces, landings), carry the climb lights.
+- The maglev's state for the colour (`NativeCyberCityHazards.At` on the replicated match clock, as every Cut
+  telegraph), so host, guests and the killcam agree.
+
+**What it draws:** white EXIT signs with a stair pictogram on the exit lintels instead of the lime SAFE light
+(SAFE = "hide here", white EXIT = "climb out"), white door frames with ">>" chevrons and a small EXIT on the
+jambs, floor chevrons on the landing, white nosings and riser lines chasing up the climb, floor chevron strips
+along both lanes pointing to each wall's nearest exit (a pulse scrolling toward it: white at rest, amber in the
+warning, red in the danger and the pass), a chevron and a pool at each door, a light column and pool at each
+stair top, and, for the local pilot only while in the Cut, a HUD tag "↑ EXIT 12 m" toward the nearest
+reachable exit (`Runtime/NativeCutExitHud.cs`). The 16 pocket beacons stay (alcoves and exits).
+
+**For new exits** (ramps, extra stairs): regenerate the nav so the route links the Cut floor to the street;
+keep the blocks axis-aligned; a lintel over a new door gets the sign, a gap in the wall without one still gets
+the floor guidance, the frame (if walls meet it) and the HUD hint. No ids are read; any `cybercity-` id is
+dressed. `Tests/CutExitChecks.cs` proves a synthetic opening with unconventional ids is picked up and a dead
+end is not.
+
+**Geometry notes for Astra (static analysis of UnityMaps.json, not PhysX):** the four doors are 2.0 m wide,
+2.4 m high and 1.2 m deep (capsule 0.84 x 1.7 m); the climbs are 1.8 m wide and open to the sky; 16 risers of
+0.25 m (StepHeight 0.35), the lowest step flush with the landing, the top step 0.25 m under the street; the
+rails stay clear of the route; all 466 Cut floor nav nodes form one component and reach the street through
+the four routes. Risk: the treads are 0.55 m, shorter than the capsule's 0.84 m diameter, so the capsule never
+rests flat on a tread. For about 0.38 m before every riser its base touches an edge whose contact normal is
+non-walkable (y about 0.40). The capsule centre's path up a pit is steeper than 50 degrees over 8.7% of its
+length (63 degrees at most). Every one of the 16 risers therefore depends on `NativeGroundMotor.StepUp`'s edge
+path; one refused step stalls the frictionless capsule at that riser. Jump apex is 1.57 m (two jumps about
+3.1 m) against a 4 m wall, and the tunnel mouths are pilot-blocked, so the stairs are the only way out. Worth
+testing in PhysX: walk and sprint, from the landing and from mid-stair, hugging either side. If a riser
+refuses, consider deeper treads or a walkable ramp collider under the steps (24 degrees); the presentation
+follows either.

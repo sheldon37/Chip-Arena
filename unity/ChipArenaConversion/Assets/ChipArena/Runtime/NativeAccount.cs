@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         private const string OfflineStatus="Signed out / offline";
         public NativeAccountData Account{get;private set;}public string RecoveryCode{get;private set;}="";public string Status{get;private set;}=OfflineStatus;public bool Busy{get;private set;}public Action<NativeAccountData,bool> Accepted;
         private NativeProfile pendingProfile;private bool reloadProfile;private string session="";private bool remember;private float refreshAt;
-        private string SessionPath=>Path.Combine(Application.persistentDataPath,"conversion-account.bin");
+        private string SessionPath=>Path.Combine(ConversionGame.NativeUserDataPath,"conversion-account.bin");
         public static string ValidateOrigin(string value)
         {if(!Uri.TryCreate(value.Trim(),UriKind.Absolute,out var uri)||uri.UserInfo.Length>0||uri.Query.Length>0||uri.Fragment.Length>0||uri.AbsolutePath!="/"||uri.Scheme!="https"&&!(uri.Scheme=="http"&&uri.IsLoopback))throw new ArgumentException("Use an HTTPS account service origin, or HTTP on localhost for development.");return uri.GetLeftPart(UriPartial.Authority);}
         public void Configure(string origin,bool loadRemembered=false)
@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
                 if(response?.account==null||string.IsNullOrEmpty(access.AccountId)||access.AccountId!=response.account.id||response.session!=null&&response.session.Length>0&&!ValidSession(response.session)){Status="Account response could not be verified.";yield break;}
                 bool loadProfile=authenticating||Account==null||reloadProfile&&action=="me";if(action=="me")reloadProfile=false;Access=access;Token=response.token;Account=response.account;if(!string.IsNullOrEmpty(response.recoveryCode))RecoveryCode=response.recoveryCode;if(!string.IsNullOrEmpty(response.session))session=response.session;
                 Status="Signed in as "+Account.username;refreshAt=Time.unscaledTime+300;
-                try{if(remember&&session.Length>0){var protectedBytes=NativeSessionVault.Protect(Encoding.UTF8.GetBytes(session),Origin);Directory.CreateDirectory(Application.persistentDataPath);File.WriteAllBytes(SessionPath+".new",protectedBytes);if(File.Exists(SessionPath))File.Delete(SessionPath);File.Move(SessionPath+".new",SessionPath);}else if(File.Exists(SessionPath))File.Delete(SessionPath);}
+                try{if(remember&&session.Length>0){var protectedBytes=NativeSessionVault.Protect(Encoding.UTF8.GetBytes(session),Origin);Directory.CreateDirectory(ConversionGame.NativeUserDataPath);File.WriteAllBytes(SessionPath+".new",protectedBytes);if(File.Exists(SessionPath))File.Delete(SessionPath);File.Move(SessionPath+".new",SessionPath);}else if(File.Exists(SessionPath))File.Delete(SessionPath);}
                 catch(Exception e)when(e is IOException||e is UnauthorizedAccessException||e is System.Security.Cryptography.CryptographicException||e is NotSupportedException){remember=false;Status+=" · sign-in kept for this session only";}
                 Accepted?.Invoke(Account,loadProfile);
             }
