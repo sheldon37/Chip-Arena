@@ -1,5 +1,35 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — saw bisect gib (owner: "For the buzzsaw death on factory, can we add essentially a "split in the middle" gib? This can be useful for future things too")
+- Branch `claude/saw-bisect`, base shared `4a67602`. Not pushed, merged or released.
+- Reusable Core module `Core/NativeBisect.cs` (engine free; API in `docs/BISECT-GIB.md`).
+  - Input: the posed body's meshes (any skin, wound cuts included), the hat and attachments, and a plane.
+  - Output: two halves with sealed caps. Each cap is painted by `NativeBodyModels.CutLook`: the darkened shell, then the Standard undersuit with accent conduit glints or the Sheldon coat lining, then flesh layers (the Prototype is shell, then flesh).
+  - Limbs wholly on one side go to that half untouched.
+  - Deterministic. Nothing allocates after the split.
+  - A new cause only maps itself to a `BisectRequest` (plane, parting velocities, hitch, blood, sparks, blade).
+- Saw death:
+  - `Core/NativeSawBisect.Find` repeats the authority's first-lethal-touch order from the replicated death record (time, round, FightAt), so the host, guests, late joiners and the killcam split the same way.
+  - The plane is the killing blade's (normal = axle) through the pelvis.
+  - The two halves are `NativeCorpse`s in one physics scene (`Runtime/NativeBisectCorpse.cs`). They hold on the blade (0.17 s slot, 0.13 s rail), shuddering with sparks and blood out of the seam, then part on the existing ragdoll path.
+  - Effects: trunk fountains, cut and rim blood landing as the round's splats, and a drying blood smear on the blade (`NativeFactoryRig.Build(..., blood)`).
+  - The weapon drops whole.
+  - The split runs on a worker during the hold (synchronous on WebGL and for late sights).
+  - Gore off (`ArenaPresentation.Gore`; no player setting exists yet), a purchased kill effect, Sirens and kept PvE bodies keep the current death.
+  - Dev Sandbox: "Preview Saw Split".
+- Affected systems: death/corpse presentation, the Factory blade rig, and the source models (a cap-able `Core` per body part; `CarveMesh` is unchanged and its text pin still holds). No hitbox, damage, timing, cooldown, movement, network or hazard rule changed, and no simulation file references the split (checked).
+- Checks (actual):
+  - `tools/check_relay.py` passes: 35 managed groups plus real WebSocket/LAN, including BisectChecks (1,929 checks) and wound skins (8,243). It also passes from a sparse `git ls-files` copy.
+  - BisectChecks covers 28 splits over every skin and tier, with hats and a sagittal headshot: deterministic, sealed (1.25 M-ray see-through sweep), volume within 0.15%, silhouette within 0.002%, caps within 2.3% of an independent section, slowest split 74–114 ms on .NET across runs. It also covers the saw finder and planes for both saws, the gore-off fallback, 600 frames with 0 bytes allocated, and the wiring.
+  - Also passing: the Unity-stub runtime+editor compile, the Python tests (95, 1 skipped), `package_source.py` and `git diff --check`.
+  - Headless WebGL renders of the Core geometry were made with a rigid-motion stand-in, not Unity physics.
+- Not run: the Unity Editor, PhysX ragdolls, Windows, two clients and Mono split time.
+- Risks:
+  - The worker-thread split under Mono/IL2CPP.
+  - The parting feel is tuned by numbers, not in engine.
+  - The cap covers a Standard/Sheldon wound tunnel at the plane; the Prototype's carved crater shows as a notch.
+- Next: the owner's Windows look at a saw death (both saws, three skins), then a gore setting if wanted.
+
 ## 2026-10-12 — Astra — Cyber Lord Q cooldown tuning
 - Task `codex/cyber-q-cooldown-20261012`, shared base `c8b714a3`. Owner requested Data Dash Q cooldown 0.5 seconds. Changed the base from 6 to 0.5 seconds through one NativeCyberRules constant used by host, prediction and HUD spec; content and NEW-KITS agree. Existing cooldown modifiers still apply. Mana cost, distance, damage, movement and animation timings are unchanged.
 - Updated existing prediction, fixture, HUD countdown/dial and design-contract assertions for the shorter cooldown. The first full check found an old six-second fixture expectation; all old Q clock expectations were corrected before the final verification run. Fresh managed SDK Roslyn compilation (warnings as errors), content-only parsed diff and source package validation (1,653 files) pass. Full check_relay.py final run exits 0 (35 final managed groups plus real WebSocket/LAN) using the freshly compiled test assembly and unchanged relay binary. An intermediate run was superseded during fixture updates; only the final completed run is the verification receipt. git diff --check passes.

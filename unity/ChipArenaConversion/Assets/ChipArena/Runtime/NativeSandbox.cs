@@ -68,6 +68,8 @@ namespace ChipArena.UnityConversion
             if(GUILayout.Button("Preview My Death",button)){arena.SandboxPreview("my-death");menu=false;}
             // The Siren minion gallery (NativeHordeKindPresentation.cs): every kind looping its set before you, presentation only.
             if(GUILayout.Button(presentation.MinionGallery?"Hide Siren Minions":"Preview Siren Minions",button)){presentation.MinionGallery=!presentation.MinionGallery;menu=false;}
+            // The saw split (NativeBisectPresentation.cs): a stand-in of you split by a phantom blade on a loop, presentation only.
+            if(GUILayout.Button(presentation.SawSplitGallery?"Hide Saw Split":"Preview Saw Split",button)){presentation.SawSplitGallery=!presentation.SawSplitGallery;menu=false;}
             GUILayout.EndHorizontal();previewRarity=ChoiceGrid(previewRarities,previewRarity,previewRarityNames);
             Field("Debris launcher");debrisMass=Mathf.Round(Slider("Mass (kg)",debrisMass,1,150));debrisSpeed=Mathf.Round(Slider("Speed (m/s)",debrisSpeed,1,100));
             debrisMaterial=ChoiceGrid(new[]{"wood","stone","metal"},debrisMaterial);debrisImpact=ChoiceGrid(new[]{"face","edge","corner"},debrisImpact);

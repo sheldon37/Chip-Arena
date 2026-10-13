@@ -54,6 +54,8 @@ namespace ChipArena.UnityConversion
             }
             catch(Exception e){Debug.LogWarning("Factory presentation disabled: "+e.Message);Release();failed=true;return false;}
         }
+        /// <summary>Each hazard's blood (the hazard clock of the last pilot its saw cut this round, NaN none; null: no blood, gore off), set before Render.</summary>
+        public double[] Blood;
         /// <summary>One arena frame. now: the drawn arena's field clock; quality: effects quality; low: graphics=performance.</summary>
         public void Render(NativeArena arena,float now,Camera camera,float quality,bool low,bool instancing,NativeDustCoat coat)
         {
@@ -67,7 +69,7 @@ namespace ChipArena.UnityConversion
             DrawScenery(now,true);foreach(var b in kit)Draw(b,instancing);
             if(hz!=null&&rigBuilder!=null)
             {
-                rigBuilder.Build(hz,round,clock);Fill(rigBuilder.Parts);foreach(var b in rig)Draw(b,instancing);
+                rigBuilder.Build(hz,round,clock,Blood);Fill(rigBuilder.Parts);foreach(var b in rig)Draw(b,instancing);
                 // a crane impact this cycle dusts the round's coat once (match time = hazard clock + FightAt + the arm delay)
                 foreach(var h in hz)if(h.kind==NativeFactoryHazards.Crane){var st=NativeFactoryHazards.State(h,round,clock);if(!double.IsNaN(st.ImpactAt)&&clock>=st.ImpactAt&&st.Zone>=0){var z=h.zones[st.Zone];coat?.Land(st.ImpactAt+match.FightAt+NativeFactoryHazards.ArmDelay,z.center.x,z.center.z,3,.6f);}}
             }
@@ -166,6 +168,7 @@ namespace ChipArena.UnityConversion
         private void FactoryScenery(NativeArena arena)
         {
             if(!NativeFactoryScenery.Active(arena.MapId))return;if(factoryStage==null)factoryStage=gameObject.AddComponent<NativeFactoryStage>();
+            factoryStage.Blood=SawBlood(arena,NativeFactoryStage.Hazards(arena.MapId));
             factoryStage.Render(arena,FieldClock(arena),WorldEye,EffectsQuality,LowGraphics,UsesInstancing,dustCoat);
         }
         // RenderBackdrop: behind the main menu, on the render clock.
