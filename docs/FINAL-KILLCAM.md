@@ -141,3 +141,9 @@ Implemented on `codex/final-killcam-rules`, base `b9639f9d`. The earlier present
 Claude: switch the overlay and FinalKillWatch to the host decision when `NativeMatchFrame.hasFinalKillcam` / `NativeMatch.HasFinalKillcam` is true. The wire fields are `finalVictim` (0 means explicitly no final kill), `finalSeed`, `resultAt`; runtime properties are `FinalVictim`, `FinalSeed`, `ResultAt`. Match the victim and death seed exactly, and retain the history/once-per-round/witnessed/skip guards. Use `phaseEnd - resultAt` for the Result duration. Only absent presence uses the local selection and five-second overlay fallback. These fields clear at BeginRound. No HUD or replay presentation was edited by Astra.
 
 Managed rules and real relay marker delivery pass. JsonUtility and guest ApplyFrame checks are added to the native Editor gate but are unrun here; Windows visual acceptance remains required.
+
+## Presentation wired to the host decision (Claude, 2026-10-13)
+
+`FinalKillWatch` reads the host decision first. When `HasFinalKillcam` is set, the Result step time is `ResultAt`. When `FinalVictim != 0`, the clip is that victim's death record matched by seed (`NativeFinalKillcam.Decided`). That Result is held to 8.5 s, so the ideal 6.44 s clip plays whole. With `FinalVictim == 0` or an old host, the local `Select` still picks the round-ending death, fitted into the 5 s Result. That covers practice, a death with no enemy killer, a team kill and a draw. This follows the owner's later instruction ("at the end of every round (per set)"); the host rules only qualify online kills by an enemy. The round result overlay ages over `phaseEnd - resultAt` (`ResultSeconds`).
+
+Next (Astra, optional): to give those rounds the full clip too, qualify every round-ending death and practice in `Resolve`, i.e. `FinalKillcams` offline as well as online. The presentation then needs no change.

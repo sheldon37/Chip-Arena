@@ -35,8 +35,13 @@ namespace ChipArena.UnityConversion
                 finalDeaths[n++]=new FinalKillCandidate{Victim=q.Seat.id,Killer=d.owner,Seed=d.seed,At=d.at,VictimSide=FinalSide(q.Seat),KillerSide=killer!=null?FinalSide(killer):-1};
             }
             var winner=match.Seat(match.Winner);
-            var context=new FinalKillContext{Teams=match.Teams,Cooperative=match.Cooperative,Pve=arena.Pve!=null,Sandbox=arena.Sandbox,Practice=!Online,Witnessed=true,Winner=match.Winner,WinnerSide=winner!=null?FinalSide(winner):-1,FightAt=match.FightAt,ResultAt=match.Time};
-            int pick=NativeFinalKillcam.Select(finalDeaths,n,context,out finalSkip);
+            // The host's decision (NativeMatch.HasFinalKillcam, PR #178) when it sent one: its Result step time, and its
+            // victim and seed when it found a qualifying kill (that Result is held for the whole clip). With no qualifying
+            // kill (practice, a death with no enemy killer, a draw) or an old host, the local pick still gives every round
+            // that ends on a death its final killcam (owner), fitted into the Result time.
+            var context=new FinalKillContext{Teams=match.Teams,Cooperative=match.Cooperative,Pve=arena.Pve!=null,Sandbox=arena.Sandbox,Practice=!Online,Witnessed=true,Winner=match.Winner,WinnerSide=winner!=null?FinalSide(winner):-1,FightAt=match.FightAt,ResultAt=match.HasFinalKillcam?match.ResultAt:match.Time};
+            int pick=match.HasFinalKillcam&&match.FinalVictim!=0?NativeFinalKillcam.Decided(finalDeaths,n,match.FinalVictim,match.FinalSeed):-1;finalSkip=FinalKillSkip.None;
+            if(pick<0)pick=NativeFinalKillcam.Select(finalDeaths,n,context,out finalSkip);
             if(pick<0){Debug.Log("Final killcam skipped: "+finalSkip);return;}
             // Only the authority knows the room's sets to win (a guest's match holds its own prefs), so a guest always fits
             // the clip into the Result time.
@@ -123,6 +128,8 @@ namespace ChipArena.UnityConversion
         {
             if(!finalOn||!replayRunning||menu||BoardOpen||arena?.Local==null||arena.Local.Hp<=0||!Input.GetKeyDown(KeyCode.Space))return false;EndReplay();return true;
         }
+        /// <summary>The Result phase's length: the host's held Result when it sent its decision (phaseEnd - resultAt), else 5 s.</summary>
+        private float ResultSeconds()=>match.HasFinalKillcam&&match.PhaseEnd>match.ResultAt?(float)(match.PhaseEnd-match.ResultAt):5;
         /// <summary>The round result's age after a final killcam: its banner arrives with the hand-off, not under the replay.</summary>
         private float FinalResultAge(float age)=>finalShown&&!finalOn&&finalEndedAt>0?Mathf.Min(age,Time.unscaledTime-finalEndedAt):age;
 

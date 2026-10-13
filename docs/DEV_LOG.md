@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — Merge #180, #147, #160, #178; final killcam reads the host decision
+- Branch `claude/sleepy-ritchie-g8ruhv` (shared), base `f4b5a12`. Merged Astra's PRs #180 (Cyber Lord skin in account saves), #147 (Cyber Lord cast interruptions), #160 (brute drops and landing slam) and #178 (replicated final killcam decision and 8.5 s qualifying Result). Only DEV_LOG conflicted; both sides' entries kept.
+- Presentation on top of #178: `FinalKillWatch` uses the host's `ResultAt` and, when `FinalVictim != 0`, that exact death (`NativeFinalKillcam.Decided`). Otherwise the local pick keeps the owner's "every round" rule. The Result overlay ages over `phaseEnd - resultAt` (`ResultSeconds`). No rule, phase or network change on Claude's side.
+- Checks: see the integration commit message. Not run: Windows build, Unity Editor network gate (#178's JsonUtility/ApplyFrame checks), in-game playback.
+- Next (Astra, optional): qualify every round-ending death and practice in `Resolve` so those rounds get the 8.5 s hold too.
+
 ## 2026-10-13 — Astra — authoritative final killcam result markers
 - Publication follow-up: merged current shared `bf083e7d` (Cyber Lord hand aura) after initial validation. Only DEV_LOG conflicted; preserved both logs. Fresh managed compile and affected focused checks rerun; the prior full-suite results above/on b9639f9d remain the baseline.
 - Branch `codex/final-killcam-rules`, base current shared `b9639f9d` (includes requested `4d868be`). Rules/networking only; Claude's presentation files remain unchanged.

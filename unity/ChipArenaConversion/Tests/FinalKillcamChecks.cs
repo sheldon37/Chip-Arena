@@ -55,6 +55,8 @@ internal static class FinalKillcamChecks
             Check(NativeFinalKillcam.Select(deaths,2,m,out why)<0&&why==FinalKillSkip.Mode,"mode "+mode+" (PvE, Siren, sandbox) shows none");
         }
         var practice=Ffa(1,20);practice.Practice=true;Check(NativeFinalKillcam.InPractice&&NativeFinalKillcam.Select(deaths,2,practice,out _)==1,"practice shows it");
+        // The host's decision (PR #178): exactly its victim and death seed; a record this client does not hold leaves it to Select.
+        Check(NativeFinalKillcam.Decided(deaths,2,2,55)==1&&NativeFinalKillcam.Decided(swapped,2,2,55)==0&&NativeFinalKillcam.Decided(deaths,2,2,99)<0&&NativeFinalKillcam.Decided(deaths,2,4,55)<0,"host decision matched by victim and seed");
         // A death record from before this fight (FightAt) never counts; no deaths at all is a skip.
         Check(NativeFinalKillcam.Select(new[]{D(2,1,5,2)},1,Ffa(1,2.2),out why)<0&&why==FinalKillSkip.NoDeath,"previous fight's record");
         Check(NativeFinalKillcam.Select(Array.Empty<FinalKillCandidate>(),0,Ffa(1,20),out why)<0&&why==FinalKillSkip.NoDeath,"no deaths");
@@ -166,6 +168,7 @@ internal static class FinalKillcamChecks
         // Every round: practice counts, an uncredited death plays from the victim, and the clip's start frame survives the
         // history trim (the normal killcam's trim is unchanged).
         Check(final.Contains("Practice=!Online,")&&final.Contains("replayView=credited?f.Killer:f.Victim;"),"practice and the victim's view wired");
+        Check(final.Contains("ResultAt=match.HasFinalKillcam?match.ResultAt:match.Time")&&final.Contains("int pick=match.HasFinalKillcam&&match.FinalVictim!=0?NativeFinalKillcam.Decided(finalDeaths,n,match.FinalVictim,match.FinalSeed):-1;")&&final.Contains("if(pick<0)pick=NativeFinalKillcam.Select("),"host decision first, local pick for every other round-ending death");
         Check(replay.Contains("while(replayFrames.Count>1&&!FinalKeeps()&&(replayFrames.Count>132||replayEntities>150000||arena.Time-replayFrames[0].time>6))")&&final.Contains("private bool FinalKeeps()=>finalOn&&"),"trim keeps the clip's frames only in the final killcam");
         // Presentation clocks default to today's behaviour.
         string slow=R("Runtime/NativeSlowMotionPresentation.cs"),blast=R("Runtime/NativeBlastPresentation.cs"),shots=R("Runtime/NativeShotPresentation.cs"),corpse=R("Runtime/NativeCorpseSmoothing.cs"),death=R("Runtime/NativeDeathPresentation.cs");
@@ -176,9 +179,9 @@ internal static class FinalKillcamChecks
         string hud=Body(final,"private void FinalKillcamHud()");
         Check(!hud.Contains("ToString(")&&!Regex.IsMatch(hud,"\"\\s*\\+|\\+\\s*\"")&&!hud.Contains("new[]")&&!hud.Contains("=>")&&!hud.Contains("string."),"broadcast frame allocation free");
         Check(hud.Contains("\"FINAL KILLCAM\"")&&hud.Contains("finalKillerName")&&hud.Contains("finalVictimName")&&hud.Contains("finalHow")&&hud.Contains("finalWinnerName")&&hud.Contains("\"Space\""),"title, killer and victim, cause, outcome and skip");
-        // Presentation only: the round result still lasts 5 s and resolves as before; no network message added.
+        // The host holds a qualifying Result for the whole clip (PR #178); every other Result still lasts 5 s.
         Check(match.Contains("PhaseEnd=Time+5+(FinalVictim!=0?FinalKillcamHold:0)"),"host-controlled final kill result hold");
-        Check(overlays.Contains("age=FinalResultAge(5-left)")&&final.Contains("private float FinalResultAge(float age)=>finalShown&&!finalOn&&finalEndedAt>0?Mathf.Min(age,Time.unscaledTime-finalEndedAt):age;"),"result banner arrives at the hand-off");
+        Check(overlays.Contains("age=FinalResultAge(ResultSeconds()-left)")&&final.Contains("private float ResultSeconds()=>match.HasFinalKillcam&&match.PhaseEnd>match.ResultAt?(float)(match.PhaseEnd-match.ResultAt):5;")&&final.Contains("private float FinalResultAge(float age)=>finalShown&&!finalOn&&finalEndedAt>0?Mathf.Min(age,Time.unscaledTime-finalEndedAt):age;"),"result banner arrives at the hand-off");
         foreach(var f in new[]{"Core/NativeFinalKillcam.cs","Runtime/NativeFinalKillcamPresentation.cs","Runtime/NativeReplayAudio.cs","Runtime/NativeSlowMotionPresentation.cs","Runtime/NativeCorpseSmoothing.cs"})
             Check(File.Exists(Path.Combine(root,"Assets/ChipArena/"+f+".meta")),f+" has its Unity meta");
     }

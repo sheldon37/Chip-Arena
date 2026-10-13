@@ -116,6 +116,13 @@ namespace ChipArena.UnityConversion
             if(c.ResultAt-f.At>Window){why=FinalKillSkip.NotRoundEnding;return -1;}
             return best;
         }
+        /// <summary>The host's decided final kill (NativeMatch.FinalVictim / FinalSeed): the record with that victim and death
+        /// seed exactly, or -1 when this client does not hold it (then the local <see cref="Select"/> decides).</summary>
+        public static int Decided(FinalKillCandidate[] deaths,int count,int victim,int seed)
+        {
+            for(int i=0;i<count&&deaths!=null&&i<deaths.Length;i++)if(deaths[i].Victim==victim&&deaths[i].Seed==seed)return i;
+            return -1;
+        }
         /// <summary>The death has a killer to watch from: a pilot other than the victim, not on the victim's team in a teams
         /// match. Otherwise (environment, self, team kill) the clip plays from the victim's view as their final moments.</summary>
         public static bool Credited(in FinalKillCandidate f,bool teams)=>f.Killer>0&&f.Killer!=f.Victim&&!(teams&&f.KillerSide==f.VictimSide);
