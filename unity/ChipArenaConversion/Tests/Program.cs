@@ -7,14 +7,18 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--wardzero-simulation"){var wardRoot=ProjectRoot();WardSimulationChecks.Run(wardRoot);WardZeroChecks.Run(wardRoot);StageVentChecks.Run(wardRoot);HordeKindChecks.Run(wardRoot);ZombieMotionChecks.Run(wardRoot);HulkSpitterChecks.Run(wardRoot);return 0;}
             if(args.Length==1&&args[0]=="--cloudflare-smoke"){CloudflareChecks.Live(ProjectRoot()).GetAwaiter().GetResult();return 0;}
             if(args.Length==2&&args[0]=="--relay-smoke")
             {var json=System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json"));using(var doc=System.Text.Json.JsonDocument.Parse(json))RelayChecks.Run(args[1],doc.RootElement.GetProperty("sourceCommit").GetString()).GetAwaiter().GetResult();return 0;}
+            if(args.Length==1&&args[0]=="--cyber-ranged"){CyberRangedSimulationChecks.Run();CyberChecks.Run();foreach(var result in CyberLordRangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
+            if(args.Length==1&&args[0]=="--horde-drops"){HordeDropChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());return 0;}
+            CyberRangedSimulationChecks.Run();
             HitchChecks.Run();KernelPanicChecks.Run();OnlineRoomChecks.Run();
             CloudflareChecks.Run().GetAwaiter().GetResult();
             AnimationChecks.Run();
             string root=ProjectRoot();
-            InteractionChecks.Run(root);
+            WardSimulationChecks.Run(root);InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
             FactoryChecks.Run(root);StageHazardChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};
@@ -47,6 +51,8 @@ internal static class Program
             ClassIconChecks.Run(root,data);
             RooftopChecks.Run(root);
             PortraitBackChecks.Run(root);
+            BuildLabelChecks.Run(root);
+            FinalKillcamChecks.Run(root);
             HatLookChecks.Run(root);
             NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);WoundSkinChecks.Run(root);BisectChecks.Run(root);ReviveHoloChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
@@ -92,6 +98,7 @@ internal static class Program
             foreach(var result in EntranceDirectorChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in SheldonIntroChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in PackIntroChecks.Run(root))Console.WriteLine("PASS "+result);
+            foreach(var result in IntroHoldChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CyberLordChecks.Run(root,data))Console.WriteLine("PASS "+result);
             foreach(var result in CyberLordRunChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CyberLordRangedChecks.Run(root))Console.WriteLine("PASS "+result);

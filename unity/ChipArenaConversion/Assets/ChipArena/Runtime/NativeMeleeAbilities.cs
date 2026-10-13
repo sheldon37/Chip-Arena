@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         private V3? KunaiLockPoint(NativePilot p,int id)
         {
             if(id==0)return null;var target=MeleeTarget(p,id);
-            if(target.collider==null||!target.collider.enabled||target.pilot!=null&&!Enemy(p,target.pilot)||target.minion!=null&&(!Enemy(p,target.minion)||target.minion.Pve!=null&&(target.minion.Pve.Travelling||Time<NativeHordeDropRules.TargetAt(target.minion.Pve.Entry,target.minion.Pve.ActiveAt))))return null;
+            if(target.collider==null||!target.collider.enabled||target.pilot!=null&&!Enemy(p,target.pilot)||target.minion!=null&&(!Enemy(p,target.minion)||target.minion.Pve!=null&&(target.minion.Pve.Travelling||Time<(NativeWardEntries.Drop(target.minion.Pve.Entry)?target.minion.Pve.ExposedAt:target.minion.Pve.ActiveAt))))return null;
             var point=target.at+Vector3.up*(target.minion?.Pve?.Crawl==true?0:.2f);
             if(Vector3.Distance(p.Body.position,point)>24||!MeleeVisible(p.Body.position+Vector3.up*.3f,point,p,target.collider))return null;
             return Vec(point);

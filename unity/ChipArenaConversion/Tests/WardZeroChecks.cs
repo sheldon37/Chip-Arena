@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
             var draft=JsonSerializer.Deserialize<Draft>(File.ReadAllText(Path.Combine(root,"Tests/wardzero-draft.json")),o);var map=draft.maps.Single();var entries=draft.pve.entries;
             var set=JsonSerializer.Deserialize<MapLookSet>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/MapLooks.json")),o);
             Looks(root,set,map);Hazards(map);Mood();Kit(map,entries);Lights(map,entries);Fx(map,entries);Hooks(root);
-            Console.WriteLine("PASS ward zero ("+count+" checks: today's Ward Zero keeps its look and the revamp gate stays shut on it; bank slots beside Cyber City's, shader ids match; quarantine preset, every draft block dressed; hazard timing table, purity, round parity, Fight/Result only; mood states, corruption, easing; kit deterministic per family, entrances from the entries only (breach panels, Hulk hatch), rule 2.1.1 below 3 m, budget, low tier; practical lights and FX pure, telegraphs never reduced, no allocations; runtime hooks dormant; "+string.Join(", ",facts)+")");
+            Console.WriteLine("PASS ward zero ("+count+" checks: legacy export remains unchanged; imported Ward Zero activates quarantine; bank slots beside Cyber City's, shader ids match; quarantine preset, every draft block dressed; hazard timing table, purity, round parity, Fight/Result only; mood states, corruption, easing; kit deterministic per family, entrances from the entries only (breach panels, Hulk hatch), rule 2.1.1 below 3 m, budget, low tier; practical lights and FX pure, telegraphs never reduced, no allocations; runtime hooks gated to the revamp; "+string.Join(", ",facts)+")");
         }
         private static void Looks(string root,MapLookSet set,DraftMap draft)
         {
@@ -43,7 +43,8 @@ namespace ChipArena.UnityConversion
             var today=content.Map("siren");Check(string.IsNullOrEmpty(today.look)&&!NativeWardZeroLooks.Active(today),"today's Ward Zero has no look, so the revamp stays off");
             Check(NativeWardZeroLooks.Active(new ContentMap{id="siren",look="quarantine"})&&!NativeWardZeroLooks.Active(new ContentMap{id="cybercity",look="quarantine"})&&!NativeWardZeroLooks.Active(new ContentMap{id="siren",look="ward-zero"})&&!NativeWardZeroLooks.Active(null),"Active needs the id siren and the look quarantine");
             Check(draft.id=="siren"&&draft.name=="Ward Zero"&&draft.look==NativeWardZeroLooks.Look,"the draft replaces Ward Zero under its id and name and carries the look");
-            Check(!File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")).Contains("\"quarantine\""),"the draft is not in UnityMaps.json (no rotation change)");
+            var imported=JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),new JsonSerializerOptions{IncludeFields=true}).maps.Single(m=>m.id=="siren");
+            Check(NativeWardZeroLooks.Active(imported)&&imported.music==today.music&&imported.rotation==today.rotation,"the imported revamp keeps music and rotation");
             // The bank: Ward Zero's slots are the ones Cyber City leaves free; ids past every base key.
             for(int i=0;i<16;i++)
             {

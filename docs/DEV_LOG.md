@@ -1,11 +1,134 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — PR #160 reconciled with imported Ward Zero
+- Updated `codex/siren-brute-drops` onto shared `b9639f9d` (includes requested `4d868be`), retaining merge ancestry. Preserved every Ward entry, level, machine, boss/hide location, breach and Hulk field; asset lock tracks only the Brute impulse change. Native export retains the full authored Ward layout.
+- Brutes rotate only through eligible non-Hulk drops; occupied/unsafe landings wait, legacy fallback remains when no Brute drops exist. Keep Ward clearance/queue/hazard/forced-entry rules and Hulk/breach simulation. Brute touchdown has exactly one 10→5 damage slam, 380 impulse/pop and half blocked shove; 420 outward smash, no knockdown. During drop recovery Brutes are physical/hittable but cannot attack. Hulk and ceiling-vent movement retain the Ward path. Replica exposure uses each kind's profile; lock-on reads that exposure. Both height accessors reject nonfinite values.
+- Updated the old single-drop fixture to the new multi-drop Ward layout, excluded Hulk-reserved drops from Brute rotation, and isolated the new native combat gate from authored scenery. No old drop-centre entry is reintroduced.
+- Checks: fresh managed compile; focused Brute rules 71 checks and Hulk/spitter 49,154 checks pass. Python 101 tests OK (one skip), source-package and diff checks pass. Full check_relay.py passed with exit 0 through real WebSocket/UDP/TCP and all final 35 managed-core checks. Unity Editor/PhysX, Windows and two-client checks remain unrun; no shared merge or compiled Update publication.
+
 ## 2026-10-13 — Astra — PR #160 Brute drop reconciliation
 - Branch `codex/siren-brute-drops` reconciled with requested shared `b177323a`, then current `bfbc1175` (updater check + log only). Owner requests Claude to merge; no shared/builder merge, Update release or accounts deployment performed.
 - Preserved Brute/Hulk DropProfile and map-authored finite positive height in both accessors. Brute stays 240 HP with 420 impulse/pop; retained SpitHit=.8 presentation proposal and 900 Hulk impulse. Updated stale Hulk >=3x Brute assertion to pin 900 and >2x420; both HulkSpitterChecks and HordeDropChecks run, including both profiles and invalid/custom heights. No Hulk/spitter simulation or Ward Zero draft import added.
 - Validation: fresh direct Roslyn compile of all Core/Tests and relay source, then complete `check_relay.py --compiled-tests ... --compiled-relay ... --test-timeout 900`, exit 0, through final 35 managed-core checks plus real WebSocket/UDP/TCP relay groups. Python discovery 101 tests OK, one skip; affected native-updater Python checks rerun after bfbc1175. Source package validation and git diff whitespace checks pass. Shared updater suite: 57 checks pass. 
 - Environment: dotnet CLI/MSBuild fail during process lookup in this container; direct SDK Roslyn compiler bypasses that tooling failure without omitting test source or groups. Unity Editor/PhysX/runtime compilation, Windows builds and two-client play not run. Native build gates remain required before a compiled release.
 - Publication: publish the exact verified tree through the GitHub app (CLI has no push credentials), preserving both PR and shared parents. Ready for Claude after publication; no force-update of shared branches.
+## 2026-10-13 — Astra — isolate PvE minion contact fixture from map geometry
+- Branch `codex/ward-pve-contact-gate`, base `4d868be3`, preserving the latest intro/killcam integration. Owner's `814dea6` Windows log proves all Ward traversal cases now pass, then fails the hidden-boss add projectile assertion.
+- The fixture bullet starts at (20,10,19), inside `siren-concourse-n-wall-9` (x 17.8..20.2, y 9.4..13, z 19..19.4). The sweep correctly hits world geometry first. Move this contact-only fixture to the existing isolated projectile-test area at (1000,10,1002), preserving the projectile, actual contact/damage paths and hold/travel/exposure assertions. Restore the pilot position afterward. Add a real PhysX precondition requiring the first swept collider to be the add, reporting any obstruction by name.
+- Managed regression reproduces the old muzzle/wall overlap, verifies the new lane is clear of authored blocks and guards the native precondition. No shipping collision, damage, projectile, enemy or presentation changes.
+- Verification: Core/Tests compile with zero warnings/errors; focused Ward checks pass (254 simulation checks); Python 101 tests OK, one skip; source package check passes (1,818 files); diff check clean. Full check_relay.py passed with exit 0, including real local WebSocket/UDP/TCP and the final 35 managed-core checks.
+- Unity Editor/PhysX and Windows unavailable here: actual contact gate and later native gates need the next desktop build. Owner authorized pushing, merging and syncing fixes; no compiled release claimed.
+
+## 2026-10-13 — Astra — Ward atrium traversal landing turn
+- Branch `codex/ward-traversal-fix`, base shared/builder `375f9ed`. Owner log `Latest-Build(8).log` passes Ward hazards and reports 85 traversal failures, all ascending the two atrium stairs at the second target. Host/guest capsules reach y ~6.85 and stop at z +/-4.43 before the end guardrail; every other flight and all descent cases passed that run.
+- The test assumed every landing continues straight. Authored atrium landings end at z +/-5 with rails from +/-4.85; the intended exit turns outward onto the gallery. Build-only waypoints now reach the flight end, centre on the landing, then turn outward to x +/-13.5, over two metres beyond the flight. All starts, sides, movement modes and tolerances remain. No collision removal, map edit, runtime navigation, movement, combat or visual change.
+- Updated traversal contract to describe the authored turn. Failure summaries now include the first failed route and failure count on the first line, retaining the complete multiline list.
+- Checks: Core/Tests builds with zero warnings/errors; focused Ward suites pass (251 simulation checks, including reproduction of the old rail-intersecting targets and outward exit/distance checks); Python 101 tests OK, one skip; source package 1,806 files; diff check clean. Full check_relay.py passed, exit 0, including the final 35 managed-core checks and real WebSocket/UDP/TCP checks (fresh Core/Tests assembly; unchanged relay assembly from the same base).
+- Unity Editor/PhysX and Windows package unavailable locally. The builder must establish that all actual traversal cases pass; managed checks do not replace this gate. Push/merge/builder synchronization authorized by standing owner instructions; no compiled release claimed.
+
+## 2026-10-13 — Claude — entrance holds without the one-arm raise; Sheldon Intro reworked as the Sheldon Idle (owner: "why do we do that little one arm movement up in each intro? That seems to be a legacy motion~ cave we adjust that?"; "Lets rework the Sheldon Intro again as well, utilize an animation fitting for the "Sheldon Idle" glitchy, psycho entrance.")
+- Branch `claude/intro-polish`, base shared head `51f0aa7` (`claude/sleepy-ritchie-g8ruhv`). Committed on the branch only: not pushed, merged or released. Presentation only: no gameplay, hitbox, damage, cooldown, movement, timing, network or save change.
+- The arm raise (found by sampling every directed entrance's pose and rendering before/after): `NativeEntranceKeys.Hero`, the shared hero hold every procedural entrance (Orbital Drop, Grid Rez, Holo Projection, Blackout, Skyline Zip, Hero Landing, Overclock) and the Bow's Arrowfall key on the 3.2 s name card, is a port of the Electron neon-drop entrance's last key (`src/client/intro-choreography.ts`: right arm -.32/-.25, elbow -1.25), a generic entrance the owner retired on 2026-10-11. It lifted the right fist to the hip (elbow 1.28 rad: the forearm rising from about 20 to 73 degrees between 2.6 and 3.2 s), and six of the seven had a pre-card key (2.7-2.98 s) already lifting it. Separately, the four staff schools close on the pack's two-handed 2Hand-Staff Idle while the staff rides the left hand alone, so their right fist rose into an empty grip in front of the chest at 3.0-3.4 s.
+- Changes: the hero hold hangs both arms loose (the right as the left, elbows -.35 rad; chest turn, chin and facing kept); the six pre-card keys and Arrowfall's lowering key let the arm come down; the staff schools' free hand eases down to hang over 2.85-3.35 s (`NativePackIntro.Rest`, joint slerp to the hold's loose arm; staff hand and body the clip's). Every other entrance keeps its own clip (Flash Draw's raised-blade salute, Colossus Oath, Bastion Drop, Deadeye, Longwatch, Belt Rattle, Twin Phantom's baked guard, the DEV stages, the Hardlight Boot). Timing marks, cameras and effects unchanged.
+- Sheldon Intro (`Core/NativeSheldonIntro.cs`): the figure is the Sheldon Idle (`CyberLordIdlePose.Stand`, glitch on, seed 128, on the socket) throughout, on a glitching idle clock: frozen on a calm idle frame through the rez-in with the head hanging limp and a frame skip per tick; thrown back on the .51 slam and dropped dead still, torn sideways on glitch steps; head snapped up into a cocked stare on the .86 jolt; it moves in the black gap, so the 1.21 projection returns elsewhere, its idle overclocked 2.5x in 8 Hz stop motion, skipping place on the rise and the swell's peak; snaps back onto the socket on the 2.38 resolve and holds deadly still; the 2.85 downbeat snaps the head over (and hitches a shoulder) and starts the idle clock, the 3.32 build snaps it the other way, and it eases out so that from 3.79 s the pose is exactly the Sheldon Idle on a continuous clock (its own head jerk on the 4.26 flare, its split ghosts as in the match). The hand on the hood and the breathing stare are gone; the push-in ends on a bust (2.25 m) instead of the face. Beats, music key, 4.8 s, 3.2 s card, glitch pass, set and card unchanged. Reduced effects: softer slower snaps, no stop motion, skipping or tearing; a tier change rebuilds the anchors. Locker text updated.
+- Shared intro code: no edit to `NativeIntros.cs`, `NativeIntroRules.cs`, `CyberLordIdle.cs` or the Cyber Lord's files. `Tests/Program.cs` gains one line (`IntroHoldChecks`).
+- Checks (this commit): `unity-check.sh` runtime+editor OK; `check_relay.py` exit 0, 622 PASS, 0 FAIL (new `entrance holds` x2, `entrance timing marks unchanged`; `Sheldon Intro psycho entrance` replaces the stare group: frame match to an independent Stand from 3.79 to 5.8 s, stillness, snaps, projection, anchors per tier; determinism extended to shuffled/reversed scrubs of pose, root, ghosts, reveal, hologram and camera); Python unittest 101 OK (1 skipped); `package_source.py` passed; `git diff --check` clean. Renders (offline three.js stand-in, not Unity): before/after sheets of all 21 directed entrances, arm close-ups of the 12 changed holds, the Sheldon Intro over its length, beats, figure only, the hand-off strip into the Sheldon Idle, reduced and low tiers, and the Standard body (the runtime always dresses this intro in the Sheldon Clothes).
+- Risks: not run in the Unity Editor or on Windows; the Sheldon Intro's magenta/cyan split copies read as a tint on the dark Sheldon Clothes robe in the close shots during the idle's split steps (as the match idle's do); the projection's skips assume the stage stays clear around the socket; Arrowfall's bow is drawn by the runtime and was not in the offline sheets. Next: owner review in a build.
+
+## 2026-10-13 — Claude — final killcam with CoD-style slow motion (owner: "Also, id like to add a final killcam. Similar to killcam we have now, but it plays for everyone on final kill (If you are the last player dead on the round, instead of seeing your normal kill cam, you will see this one). It will replicate the slow motion on death like call of duty.")
+- Branch `claude/final-killcam`, base `8b0c130` (shared head `claude/sleepy-ritchie-g8ruhv`, PR #62). Committed on the branch only: not pushed, no PR, not merged or released. Presentation only. Design and contract: `docs/FINAL-KILLCAM.md`.
+- **Rule** (`Core/NativeFinalKillcam.Select`, run on each client at the Fight -> Result step it sees). The final kill is the latest death (`at`, then `seed`) of a pilot not on the winner's side.
+  - It must be at most 0.5 s before that Result frame, by a killer other than the victim, and not a teammate.
+  - There is no final killcam on a draw, an environmental or self death (that victim's normal killcam plays), PvE or the Siren flow, the Dev Sandbox, practice (offline Play vs Bots; `InPractice` flips it), a late joiner, under 0.5 s of history, or under 1.67 s of time.
+  - Host and guests hold the same records and see the same step, so they pick the same death.
+- **Order.** Once the final kill is decided, no normal killcam arms that round, so the last victim never sees both. A normal killcam that is playing or waiting is cut over. The final killcam uses its own scene name and plays once per round. Skip is per player: Space (living pilots too), Escape or the button.
+- **Slow motion** (`FinalKillcamCurve`). The replay clock is smooth and strictly increasing over the recorded frames:
+  - Normal-speed pre-roll, then a smoothstep ramp down to 0.25×, ending 0.15 s before the fatal hit.
+  - A hold through the hit and 0.45 s of death reaction, then a ramp back up and the aftermath.
+  - The ideal clip is 6.44 s. In today's 5 s Result it is fitted to 4.05 s: 1.3 s of pre-roll, still 0.25×, ending 0.9 s before the next phase (`Fit`).
+  - Death bodies step on the continuous replay clock and blend their last two physics steps. Blast, projectile and hand-mote particles follow the playback rate.
+  - Effects voices are pitched down (at most an octave) and the music ducks. All of this is off outside the final killcam.
+- **Presentation.**
+  - The killer's view, pulling wider and up (with +7° FOV) while slowed and turning toward the killer–victim midpoint. Reduced effects keep the FOV and halve the move.
+  - A FINAL KILLCAM broadcast frame:
+    - a title card;
+    - killer ▸ victim, the weapon and cause;
+    - a SLOW MOTION ×rate chip and a hit pulse;
+    - a timeline with the slowed stretch shaded;
+    - the ROUND/SET/MATCH WINNER outcome;
+    - a skip pill.
+  - Then a hand-off flash, under which the round result banner arrives. The broadcast frame allocates nothing per frame.
+- **Files.**
+  - New: `Core/NativeFinalKillcam.cs`, `Runtime/NativeFinalKillcamPresentation.cs`, `Runtime/NativeReplayAudio.cs`, `Runtime/NativeSlowMotionPresentation.cs`, `Runtime/NativeCorpseSmoothing.cs` (with metas), `Tests/FinalKillcamChecks.cs` and `docs/FINAL-KILLCAM.md`.
+  - Guarded hooks in `NativeReplay.cs`, `NativeDeathPresentation.cs`, `NativeKillEffectPresentation.cs`, `NativeBlastPresentation.cs`, `NativeShotPresentation.cs`, `NativeBodyChipPresentation.cs` and `NativeMatchOverlays.cs` (result age). One line in `KILLCAM-HANDOFF.md`.
+- **Animation, rules and networking impact:** none on hit timing, hitboxes, damage, cooldowns, movement, networking messages or phase durations. Result stays 5 s.
+- **Checks:**
+  - `unity-check.sh`: runtime+editor build OK.
+  - `check_relay.py`: exit 0, 621 PASS / 0 FAIL. The new `FinalKillcamChecks` (93 checks) cover selection and host/guest agreement, the curve shape (monotonic, continuous, the hold around the hit, durations), the fit (never overlaps the next phase, monotonic, history and trim limits), the dedupe and the source guards (the normal killcam is unchanged for other deaths; no rule or network change).
+  - Python unittest: 101 OK (1 skipped).
+  - `package_source.py`: OK, 1,794 files, Builds removed.
+  - Relay from a sparse `git ls-files` copy: exit 0, 621 PASS / 0 FAIL (the copy was deleted).
+  - `git diff --check 8b0c130 HEAD`: clean.
+  - Offline renders: a curve strip and HUD beats in the scratchpad. 3D replay frames were not rendered (no pilot/ragdoll harness offline).
+- **Not run:** the Unity Editor, a Windows player, a two-PC match, and listening to the slowed audio. The slowed ragdoll blend, camera framing, pitch and timing were reasoned about, not seen in-engine.
+- **Risks:**
+  - The final kill is inferred from death time against the first Result frame (0.5 s window). A lag spike over 0.5 s on a guest skips the final killcam on that guest.
+  - The fitted clip leaves only 0.9 s of round result before the next phase.
+  - The voice pitch restore assumes no other code re-pitches a playing one-shot.
+  - Practice shows no final killcam, as briefed.
+- **Astra prompt** (full text in `docs/FINAL-KILLCAM.md`):
+  - Hold Result for 8.5 s (`PhaseEnd = Time + 5 + 3.5`) when `Resolve` ends a PvP online round on the same final-kill rule: winner set, latest losing-side death ≤ 0.5 s before, killed by another non-teammate pilot. Add a `NativeMatch.FinalKillcams` flag set by the host for online rooms. Every other result keeps 5 s.
+  - Replicate `finalVictim`, `finalSeed` and `resultAt` (plus the Result length, or let clients use `phaseEnd − resultAt`) in `NativeMatchFrame`, with explicit presence and validation. Old hosts send 0.
+  - Bots need nothing, and the host's `PhaseEnd` stays authoritative.
+  - Tests: Core hold checks, a JsonUtility round trip, and a relay check that guests receive the marker.
+  - Claude then reads the marker, keeping the local rule as the fallback; the ideal clip plays automatically once `PhaseEnd` is longer.
+
+## 2026-10-13 — Astra — preserve Ward native fixture round while advancing time
+- Branch `codex/ward-burner-tick-fix`, initial base shared/builder `b4e2351`, rebased onto `738bbf4` preserving the Cyber Lord ranged merge; owner's Windows build passed the previous interaction gate and failed `siren-burner-e-a mitigated tick count`.
+- Reproduced fixture defect with real NativeMatch and DamageTicks: the start was calculated at set 1 / round 1 (stage round 65, live at 17.5 s); the first Clock call applied a frame with default set/round 0, moving the burner start to 22.5 s. The entire sampled 2.5 s window therefore recorded zero ticks instead of ten.
+- Preserve Match.Round and Match.Set in the editor/validation-only clock. Add actual/expected HP and stage round to failure diagnostics. No shipping gameplay, hazard timing, damage, mitigation, networking, animation, content or updater changes.
+- Managed regression reproduces the old zero-tick result, then checks all four burners and both gas volumes at 60 Hz in sets 1/2 and rounds 1/2: ten burner ticks / 50 mitigated damage; eight gas ticks / 24 mitigated damage. Ward simulation now 229 checks.
+- Verification: fresh direct SDK Core/Tests + relay compilation passed; 101 Python tests OK (one skip); package-source check passed (1,797 files); diff check clean. Full relay rerun completed with exit 0 and the final 35-managed-check marker, including real WebSocket/UDP/TCP. Initial interrupted run was not counted.
+- Integration: fresh Core/Tests and relay compilation on `738bbf4` passed, as did source packaging (1,806 files). Focused post-rebase runs were not completed: initial launch used the wrong working directory, then the execution service disconnected before retry. Publishing through the connected GitHub app; reconstructed source/test changes were verified against the exact tested local Git tree hash before publication.
+- Unity Editor/PhysX/Windows unavailable here; native gate and full package still require the desktop builder. Owner push/merge/builder-sync authorization applies. No compiled release claimed.
+
+## 2026-10-13 — Astra — Cyber Lord ranged authority and replication
+- Branch `codex/cyber-ranged-simulation`, initial shared base `18a94436`, updated to `762cffd5` for the Ward inventory/breach fixes, then merged `b4e23516` (PR #173, PvE machine-frame exclusion) during PR #174 publication. Both authors’ log entries and all runtime changes retained. Owner authorized push, merge and builder sync; source implementation complete, Unity builder verification pending.
+- Implement key 5 with the .3 s moving switch / 1 s clock, all busy-state refusals and no queue. Separate ranged clocks/mana survive toggling; death resets to melee. Q/E/block/roll keep their existing behavior outside the switch. Shared Root/Kernel 20 s ultimate includes Kernel's whiff refund and resource-only cost multiplier.
+- Native Bit Bolt (alternate hand, 64 m/s, .12 radius, 40 m, 9 base damage, +3 mana/pilot hit), two-target Ping Lance, grounded Lag Field with eight 7-damage ticks and 35% slow, constrained Proxy Swap/mine/shove, rooted aimable Root Access with missing-health damage, cap and half block. World/Firewall ordering uses the existing scene sweep. Normal damage rules and modifiers remain active; Root stays capped at 75 (37.5 blocked). No beam/minion head multiplier.
+- Contract mapping: `NativeCyberKit.Ranged` is `NativeCyberRangedState`, using V3 for real Unity JSON rather than System.Numerics vectors. Field names/IDs/numbers match CyberRangedRecord; feed maps them in one place and still reads Actor.Cyber once. Deep copies, bounded arrays/clocks/positions, Actor.SourceRanged/SourceModeAt, prediction mana/cooldowns, shared ultimate snapshots and bot hysteresis/ability choices are wired. Existing optional records remain readable; multiplayer gameplay requires matching updated clients.
+- Presentation integration only: authority records supersede preview; sandbox now explains key 5 instead of offering the obsolete preview loop, and preview shots cannot overlay a real record. Gate release effects with RReleased so a cut cannot draw a phantom bolt/lance/blink/beam. No authored geometry, animation, material, sound, icon or effect styling changes. The preview-based checks remain supported.
+- Added 103 managed simulation assertions, four cancelled-release FX regressions (ranged presentation now 14,870 checks), and a Unity build gate exercising actual input, movement lock, collisions, world/Firewall, shared ultimate, interruption, field/mine, JsonUtility frame validation and guest application. `CheckCyberRanged` runs after Kernel Panic in the combat checks, isolated from preceding fixtures.
+- Actual validation: direct SDK Roslyn Core/Tests and relay compilation passed (CLI/MSBuild process lookup is broken in this container); full `check_relay.py --compiled-relay ... --compiled-tests ... --test-timeout 600` passed, exit 0, 622 PASS lines including local WebSocket/UDP/TCP; final prediction fallback changes passed the focused `--cyber-ranged` suite. Python unittest discovery: 101 OK, one skip. `package_source.py --check`: 1,806 files. All Unity C# syntax parsed with zero errors; `git diff --check` clean.
+- After the shared merge: fresh Core/Tests compilation, focused Ward group (155 simulation checks plus presentation/entry suites), focused Cyber group and all-Unity-source syntax parsing passed.
+- Not run: Unity runtime/editor semantic compilation, new native build gate, PhysX traversal/combat, Windows package, real multiplayer gameplay or visual review. The first native builder run must establish those results; managed/syntax checks are not a substitute. No compiled release or public feed publication claimed. Merge this source PR and sync the existing builder ref; no owner confirmation needed.
+
+## 2026-10-13 — Astra — Ward Zero PvE machine frame rejection
+- Branch `codex/interaction-held-frame-fix`, base shared/builder `762cffd584fd77187a8e1fb103f5bdc29e267430`; owner reports `Interaction feedback: held frame invalid`.
+- Root cause found in source/data: ConfigurePve inserts eight machine bodies into Props, but their definitions belong to PveContent rather than UnityMaps. The newly authored Ward Zero enables strict map-prop validation, which rejects those eight IDs. The first held-frame gate encounters the general PvE frame defect.
+- Mark those fixed, indestructible machines as local fixtures, omit them from host prop frames and preserve them during guest prop reconciliation. Both peers still build their collision from PveContent. Keep strict frame validation, carried-prop behavior, destructible props and machine-use replication unchanged. No combat timing, damage, cooldown, animation, account or save changes.
+- Extend the real-Unity gate with pre-grab frame validation, machine omission, repeated guest collision/position/uniqueness checks, and rejection of an injected out-of-map machine prop. Managed Ward checks reproduce the disjoint map/machine IDs and guard both ends of the exclusion.
+- Verification: fresh direct SDK Roslyn Core/Tests + relay compilation passed; 101 Python tests OK (one skip); source-package check passed (1,797 files); diff check clean. Full check_relay.py exited 0 with 621 PASS lines, including real WebSocket/UDP/TCP checks; Ward simulation now 155 checks.
+- Unity Editor/PhysX and Windows build unavailable in this environment; new native gates and successful packaging require the desktop builder. No compiled release claimed.
+- Initial push was blocked by automatic approval review; owner explicitly approved push and merge on 2026-10-13. Proceeding with task PR, shared-branch merge and builder synchronization after the checks above. Compiled test-channel publication remains dependent on a successful Windows build.
+
+## 2026-10-13 — Astra — validate pinned inventory before Ward Zero replacement
+- Branch `codex/native-inventory-fix`, base shared/build `f6ed52c1`; owner failure on `18a94436`: `Content inventory differs from pinned source` in NativeParityChecks immediately after legacy-map defaults.
+- Cause: the Editor merged UnityMaps before source parity. Ward Zero now replaces legacy `siren`, leaving 14 legacy maps / 3,379 blocks rather than the pinned export's 15 / 3,451. Managed parity tests used the raw export, hiding the Editor ordering mismatch.
+- Move source parity before `NativeUnityMapLoader.Load`, then retain legacy-default checks and every later native gate. No inventory thresholds relaxed; no content, gameplay, map, animation, save or protocol change.
+- Regression: the Ward simulation group checks source parity with modeled JsonUtility defaults, then the real map merge; confirms 14 legacy maps and reproduces rejection of merged content. Also guards the Editor call order. Ward checks now 152.
+- Verification: fresh direct SDK Roslyn Core/Tests and relay compilation; full check_relay.py with compiled paths, exit 0, 621 PASS lines including real WebSocket/UDP/TCP checks; 101 Python tests OK (one skip); package_source.py --check passed (1,797 files); git diff --check clean. Direct compiler used because dotnet CLI/MSBuild process lookup fails in this container; no managed groups omitted.
+- Unity Editor/runtime compilation, PhysX and Windows build unavailable here. This resolves the reproduced inventory gate; downstream native gates still need the builder. Owner standing authorization permits PR merge and builder sync after validation. No compiled release claimed; source publication triggers the next unattended build.
+
+## 2026-10-13 — Claude — relay green after the Ward Zero simulation import (PR #171)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), base `18a9443` (owner-merged PR #171). The relay stopped at `HulkSpitterChecks`: "a breach reads its entry and the map's named segment" text-matched the old `GameObject.Find(NativeBreach.ObjectName(entry.id))`, which #171 replaced with a search of `arena.AllBlocks` by the same name (a better lookup). The check now matches the new lookup; intent unchanged.
+- Also in `NativeHordeBreachPresentation.HordeBreachFrames` (runs every drawn frame): the entry lookup used `Array.Find` with a lambda capturing the frame, a closure allocation per breach per frame; now a plain loop. No behaviour change.
+- Checks: Unity runtime+editor build OK; relay 621 PASS / 0 FAIL (Ward simulation 148 checks included); Python unittest OK; package OK; diff-check clean; sparse copy below. The revamped Ward Zero presentation is now live with the imported map; not seen in the Unity Editor or on Windows yet.
+
+## 2026-10-13 — Claude — build stamp in the bottom-right corner
+- Owner: "in one of the corners can we show the game version? (This way we keep track of builds)". Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), base `bfbc117`.
+- `Core/NativeBuildLabel.cs` + `Runtime/NativeBuildStamp.cs`: drawn after every screen (`ConversionGame.OnGUI`, menus, lobby, match, intros, killcam, chip selection), faint 10-unit mono under the ability cards (NativeArcadeHud.Bottom leaves 93 units) and below the menu footer: `BUILD <12-char source hash> · <UTC build time>` from the updater's installed identity, else the player folder's own `native-build.json` (any packaged build, starter-installed or not); without one, `DEV BUILD · SRC <content source commit>`. Same 12 characters as the menu footer and the update card. Presentation only; no updater, build or network change.
+- Checks: Unity runtime+editor build OK; relay 620 PASS / 0 FAIL (new `BuildLabelChecks`, 8 checks); Python unittest OK; package OK; sparse copy and diff-check below. Not run: the Unity Editor or a Windows player (the corner placement against every screen is reasoned from the HUD margins, not seen in-engine).
 
 ## 2026-10-13 — Claude — Windows updater check: duplicate launcher cases after the rename
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), base `b177323`; CI `native-updater-windows` failed on `51f0aa7` (PR #170).
@@ -5674,3 +5797,36 @@ Checks: Python discovery 101 tests, OK (1 skipped); managed updater 57 passed;
 git diff --check passed. Unity compilation, Windows startup/mixer display and
 real installed-client update were not run (no Unity/Windows here). No compiled
 release published; source changes await builder verification.
+
+## 2026-10-13 · Codex · Ward Zero simulation import
+Task branch `codex/wardzero-simulation`, base `51f0aa7d383c` (includes the
+Chip Arena executable rename). Same-ID UnityMaps replacement imports Claude's
+616 blocks, eight wedge routes, 53 entries, both floors, bounds and hazards,
+preserving music, rotation, IDs, old hall assets and the presentation design.
+The generator adds supported navigation, directed drops and hazard gates.
+Generic wedge collision is built on reset for host/guest; the corpse scene keeps
+authored treads. Stage damage includes burner/gas, row-only burners and 7-second
+credit. Shutters use a checked push and obstruction interlock; visual clock
+unchanged (an obstructed shutter can look closed while its collider waits).
+PvE points carry floor height; song vents and boss locations come from data.
+Drop/ceiling/wall/breach timelines, clear landings, two-floor hiding, Hulk content,
+cap, capsule, smash and landing use existing presentation constants. Breach
+restore clocks replicate, return collision after rebuild and defer on overlap.
+The sandbox entry selector can force any authored entry, including Cradle/breach.
+Narrow presentation feed changes connect authored song sides, ceiling drops and
+replicated breach restoration; no IDs, geometry, kit, lighting, FX or animation
+curves changed. Old literal-string tests were updated where they asserted the
+pre-import dormant map, the old capsule only, or mistook gravity for coordinates.
+Checks so far: focused Ward simulation 148 assertions, WardZero 1668,
+StageVent 102445, HordeKind 433713, ZombieMotion 29237, HulkSpitter 49154 pass.
+Python 101 tests OK (1 skipped); source package check 1792 files; Roslyn syntax
+parse of all native sources with Editor/validation defines has zero errors.
+.NET CLI later hit a container /proc Process.GetStat failure; the same installed
+SDK's Roslyn compiler and runtime executed the managed project directly with
+its reference assemblies and ARENA_TESTS define. Full managed suite passed (all
+presentation/rules suites and the final 35 managed-core checks).
+Added Editor/build gates for both-direction host/guest walk/sprint/bot traversal,
+damage, shutter interlock, breach overlap and real JsonUtility. These are NOT
+executed here: no Unity Editor, PhysX, Windows or multiplayer claims. Native
+traversal, large-capsule navigation and obstruction behaviour remain playtest
+risks. No compiled player or channel payload published by this environment.

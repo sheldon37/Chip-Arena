@@ -55,11 +55,18 @@ namespace ChipArena.UnityConversion
             S(CapturedRig.LArm,-.10f,0,.13f);S(CapturedRig.RArm,-.10f,0,-.13f);S(CapturedRig.LElbow,-.18f,0,0);S(CapturedRig.RElbow,-.18f,0,0);
             S(CapturedRig.LHip,0,0,.1f);S(CapturedRig.RHip,0,0,-.1f);return v;
         }
-        /// <summary>A basis: the hero hold (player-intros.ts neon-drop's last key): weight back, a fist at the hip, chin up.</summary>
+        /// <summary>
+        /// A basis: the hero hold under the name card: weight back, the chest turned a little, chin up, both arms loose at the
+        /// sides. (It began as player-intros.ts neon-drop's last key, whose right fist rose to the hip, the elbow bent 1.28 rad:
+        /// every procedural entrance and the Bow's Arrowfall lifted that one forearm into the card. Owner 2026-10-13: "why do
+        /// we do that little one arm movement up in each intro? That seems to be a legacy motion"; the right arm now hangs as
+        /// the left does.)
+        /// </summary>
+        public const float HeroElbow=-.35f;
         public static float[] Hero()
         {
             var v=Stand();void S(int bone,float x,float y,float z){int s=Slot(bone);v[s]=x;v[s+1]=y;v[s+2]=z;}
-            S(CapturedRig.Chest,0,-.14f,0);S(CapturedRig.Head,0,.12f,0);S(CapturedRig.RArm,-.33f,0,-.25f);S(CapturedRig.RElbow,-1.28f,0,0);S(CapturedRig.LArm,-.12f,0,.18f);S(CapturedRig.LElbow,-.35f,0,0);
+            S(CapturedRig.Chest,0,-.14f,0);S(CapturedRig.Head,0,.12f,0);S(CapturedRig.RArm,-.12f,0,-.18f);S(CapturedRig.RElbow,HeroElbow,0,0);S(CapturedRig.LArm,-.12f,0,.18f);S(CapturedRig.LElbow,HeroElbow,0,0);
             S(CapturedRig.LHip,0,0,.12f);S(CapturedRig.RHip,0,0,-.12f);v[Yaw]=-.22f;return v;
         }
         public static float[] With(float[] basis,Action<float[]> edit){var v=(float[])basis.Clone();edit(v);return v;}

@@ -12,9 +12,9 @@ namespace ChipArena.UnityConversion
             int count=0;void Check(bool ok,string why){if(!ok)throw new Exception("Horde drop: "+why);count++;}
             bool Near(float a,float b)=>Math.Abs(a-b)<.0001f;
             var data=JsonSerializer.Deserialize<NativePveContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/PveContent.json")),new JsonSerializerOptions{IncludeFields=true});
-            var drop=data.entries.Single(NativeHordeDrop.Is);var door=data.entries.First(e=>e.kind=="door");
-            Check(drop.id=="drop-centre"&&drop.height==6.5f,"authored landing entry and height");
-            Check(NativeEntryRules.ValidIndex(drop.e,drop.kind)&&!NativeEntryRules.ValidIndex(16,"door")&&!NativeEntryRules.ValidIndex(-1,"drop")&&!NativeEntryRules.ValidIndex(256,"drop"),"network accepts authored drop beyond legacy indices, retains bounds");
+            var drop=data.entries.First(e=>NativeHordeDrop.Is(e)&&!e.hulk);var door=data.entries.First(e=>e.kind=="door");
+            Check(drop.id=="drop-obs-n"&&drop.height==7f,"authored landing entry and height");
+            Check(NativeEntryRules.ValidIndex(drop.e,drop.kind)&&NativeEntryRules.ValidIndex(16,"door")&&!NativeEntryRules.ValidIndex(-1,"drop")&&!NativeEntryRules.ValidIndex(256,"drop"),"network accepts authored drop beyond legacy indices, retains bounds");
             Check(NativeHordeDrop.HeightOf(new PveEntry())==6.5f&&NativeHordeDrop.HeightOf(new PveEntry{height=9})==9,"default and custom height");
             foreach(var profile in new[]{NativeHordeDrop.Brute,NativeHordeDrop.Hulk})
             {
@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
             Check(Near(NativeHordeDrop.Duration(6.5f),2.705535f),"6.5 m duration");
             Check(!NativeHordeDropRules.Held(door,0,10)&&NativeHordeDropRules.TargetAt(door,10)==10,"legacy entry behavior");
             Check(NativeHordeDropRules.UsesDrop("brute",data.entries)&&!NativeHordeDropRules.UsesDrop("runner",data.entries)&&!NativeHordeDropRules.UsesDrop("brute",new[]{door}),"brute-only drops and fallback without them");
-            var second=new PveEntry{e=17,kind="drop"};var entries=new[]{door,drop,second};int cursor=0;
+            var second=new PveEntry{e=17,kind="drop"};var hulk=new PveEntry{e=18,kind="drop",hulk=true};var entries=new[]{door,drop,hulk,second};int cursor=0;
             Check(NativeHordeDropRules.Next(entries,ref cursor,e=>true)==drop&&NativeHordeDropRules.Next(entries,ref cursor,e=>true)==second&&NativeHordeDropRules.Next(entries,ref cursor,e=>true)==drop,"round robin excludes legacy");
             int before=cursor;Check(NativeHordeDropRules.Next(entries,ref cursor,e=>false)==null&&cursor==before,"full queues do not fall back or rotate");
             Check(NativeHordeDropRules.Next(entries,ref cursor,e=>e==drop)==drop,"skip unavailable drop");

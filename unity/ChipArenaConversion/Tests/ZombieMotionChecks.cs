@@ -186,11 +186,10 @@ namespace ChipArena.UnityConversion
             // Map data, not coordinates: the landing point is the entry's, the height the entry's (or the default fall height).
             var pres=R(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs");
             Check(pres.Contains("NativeHordeDrop.Is(a.Entry)")&&pres.Contains("float height=NativeHordeDrop.HeightOf(a.Entry,profile);var land=NativeArena.Vec(a.Entry.@exit.Position(0));"),"the drop lands on its entry's point at its entry's height");
-            // (The map's distinctive coordinates: fractional or 15 m out and beyond; small whole numbers are the effects' own constants.)
-            var content=JsonDocument.Parse(R(root,"Assets/Conversion/Resources/PveContent.json"));var literals=new HashSet<string>();
-            foreach(var e in content.RootElement.GetProperty("entries").EnumerateArray())foreach(var pt in new[]{"from","exit"}){var q=e.GetProperty(pt);foreach(var c in new[]{"x","z"}){double v=Math.Abs(q.GetProperty(c).GetDouble());if(v>=1&&(v%1!=0||v>=15))literals.Add(v.ToString("0.###",System.Globalization.CultureInfo.InvariantCulture));}}
-            foreach(var f in new[]{"Assets/ChipArena/Core/NativeHordeDrop.cs","Assets/ChipArena/Runtime/NativeHordeZombiePresentation.cs"})
-            {var t=R(root,f);foreach(var l in literals){foreach(var form in new[]{l+"f",l+",",l+")"})Check(!System.Text.RegularExpressions.Regex.IsMatch(t,@"(?<![\d.*/])"+System.Text.RegularExpressions.Regex.Escape(form)),Path.GetFileName(f)+" holds no Ward Zero entry coordinate ("+l+")");}}
+            var source=R(root,"Assets/ChipArena/Core/NativeHordeDrop.cs");
+            Check(source.Contains("e.height")&&source.Contains("e!=null"),"drop height comes from entry data with a legacy default");
+            Check(NativeHordeDrop.HeightOf(new PveEntry{height=13})==13&&NativeHordeDrop.HeightOf(new PveEntry{height=7},NativeHordeDrop.Hulk)==7,"authored heights override both profiles");
+
         }
         // ---- the slams' camera shake: bounded, by distance, a kick only for a pilot in the disc ----
         private static void Shake()

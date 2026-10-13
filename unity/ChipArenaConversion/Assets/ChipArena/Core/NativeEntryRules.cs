@@ -3,7 +3,7 @@ namespace ChipArena.UnityConversion
 {
     public static class NativeEntryRules
     {
-        public static bool ValidIndex(int index,string kind)=>index>=0&&(kind==NativeHordeDrop.Kind?index<=255:index<=15&&(kind=="vent"||kind=="door"||kind=="cell"));
+        public static bool ValidIndex(int index,string kind)=>index>=0&&index<256&&(kind=="drop"||kind=="vent"||kind=="door"||kind=="cell"||kind=="breach");
         public static (float walk,float duration) Timeline(PveEntry entry,bool first)=>NativeHordeDrop.Is(entry)?(0,NativeHordeDrop.Duration(NativeHordeDrop.HeightOf(entry))):Timeline(entry.kind,first);
         public static (float walk,float duration) Timeline(string kind,bool first)=>kind=="vent"?(0,first?1.95f:1.6f):kind=="door"?(first?.6f:0,first?1.8f:1.2f):(first?.5f:0,first?1.5f:1);
         public static float Weight(float distance,string kind,bool wave,bool possession)=>distance<5?0:(distance<10?.4f:distance<=30?1:.6f)*(wave&&kind!="vent"?1.2f:1)*(possession&&kind=="vent"?1.5f:1);

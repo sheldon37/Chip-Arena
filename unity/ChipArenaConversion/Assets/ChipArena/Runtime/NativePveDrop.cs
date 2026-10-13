@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
-        private bool DropHeld(NativeMinion m)=>m.Pve!=null&&NativeHordeDropRules.Held(m.Pve.Entry,Time,m.Pve.ActiveAt);
+        private bool DropHeld(NativeMinion m)=>m.Pve!=null&&NativeWardEntries.Drop(m.Pve.Entry)&&Time<m.Pve.ExposedAt;
         // True only while hidden in the air. At touchdown the body becomes physical/hittable, still recovering.
         private bool StepPveDrop(NativeMinion m)
         {

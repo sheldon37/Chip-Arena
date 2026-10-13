@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         private int abilityGroup;
         public void CancelLocalAbilities(){if(Local!=null)CancelAbilities(Local);}
         private void CancelAbilities(NativePilot p)
-        { CancelWindup(p);p.BowDrawAt=-1;p.BufferedSlot=null;p.HoldAt=-1; }
+        { NativeCyberRangedRules.Interrupt(p.Cyber,Time);CancelWindup(p);p.BowDrawAt=-1;p.BufferedSlot=null;p.HoldAt=-1; }
         private void CancelWindup(NativePilot p)
         {
             if(p.AbilityCast!=null){p.Pose.AbilityAt=-100;p.Pose.AbilityId=null;}

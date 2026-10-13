@@ -4,10 +4,11 @@ using System.Linq;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativePveContent
-    {public NativeBossTrack bossMusic;public string sourceCommit;public PveMachine[] machines;public PveEntry[] entries;public PvePoint[] pads;public ContentBlock[] machineBlocks;public PveAddStats[] adds;public PveWaveData[] waves;public PveMix[] bossMix;public NumberValue[] dropOdds;public PveWeights[] offerWeights;public ContentChip[] moneyChips;}
-    [Serializable] public sealed class PvePoint {public float x,z;public V3 Position(float y=0)=>new V3(x,y,z);}
-    [Serializable] public sealed class PveMachine {public int m;public string id,kind;public float x,z,yaw;public PvePoint front,dispense,chipDrop;}
-    [Serializable] public sealed class PveEntry {public int e;public string id,kind;public PvePoint from,@exit;public float yaw,height;}
+    {public NativeBossTrack bossMusic;public PveBoss boss;public PvePoint[] hideSpots;public string sourceCommit;public PveMachine[] machines;public PveEntry[] entries;public PvePoint[] pads;public ContentBlock[] machineBlocks;public PveAddStats[] adds;public PveWaveData[] waves;public PveMix[] bossMix;public NumberValue[] dropOdds;public PveWeights[] offerWeights;public ContentChip[] moneyChips;}
+    [Serializable] public sealed class PvePoint {public float x,y,z;public V3 Position(float height=0)=>new V3(x,y+height,z);}
+    [Serializable] public sealed class PveMachine {public int m;public string id,kind;public float x,y,z,yaw;public PvePoint front,dispense,chipDrop;}
+    [Serializable] public sealed class PveBoss {public PvePoint spawn,rescue;public float yaw;}
+    [Serializable] public sealed class PveEntry {public int e;public string id,kind,surface,block;public PvePoint from,@exit;public float yaw,height,clear;public int level,song=-1;public bool pit,hulk;public V3 center,size,normal;}
     [Serializable] public sealed class PveAddStats {public string id,attack;public float hp,damage,walk,run,reach,startRange,hit,cycle,lunge,impulse,reward,limbFrac,headFrac,stagger,smashRadius;}
     [Serializable] public sealed class PveWaveData {public int count,maxAlive;public float rate;public NumberValue[] mix;}
     [Serializable] public sealed class PveMix {public int phase;public NumberValue[] mix;}

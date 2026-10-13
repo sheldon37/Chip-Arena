@@ -7,6 +7,30 @@ Branch `claude/wardzero-rework` (base `258e348`). Nothing here is wired into the
 unchanged until the import, and the presentation on the branch stays dormant until then. All numbers are proposals; record
 agreements and changes at the top of this file (as BRICKFALL- and CYBERCITY-SIMULATION-CONTRACT.md do).
 
+## Simulation agreement — 2026-10-13, Codex (implementation on task branch)
+
+- Import through UnityMaps.json: replace only the existing `siren` map, preserve
+  music, rotation, public identity and every authored geometry/entry ID. Keep old hall assets.
+- Generic `ramps` / `navHints` drive wedge collision and navigation; corpse treads remain.
+- Breach collision returns at `restoreAt + 2.6`, not at restoreAt. Overlapping
+  bodies postpone restore in 0.5-second increments; the updated clock is replicated.
+- Shutters push only on authority simulation ticks. Their collision interlock stays
+  open if a checked push cannot clear a capsule, including a locked pilot; it
+  retries while the clock is shut. The visual clock is unchanged, so an obstructed
+  shutter may look shut while collision waits. This deliberate no-crush exception
+  needs native playtest coverage.
+- Navigation uses a supported 1 m graph, wedge links, twelve directed drops and
+  hazard-tagged links. Authored safe pockets are marked for evacuation.
+- Hulk content adopts the existing VARIANTS row and capsule (.954 radius / 3.06
+  height), capped at two and no more than half the normal alive cap. It enters only
+  via breaches or the flagged Cradle hatch. Ordinary entries remain data driven.
+- Song sides come from `song`, including the draft's last pair (1, 0); index parity
+  is no longer assumed. No entry IDs or geometry were changed.
+- No presentation geometry, animation, lighting, kit or effect redesign is authorized.
+  The only presentation edits will connect the replicated/data-owned simulation fields.
+- Actual executed gates and remaining native validation are recorded in DEV_LOG.
+
+
 ## 1. Owners and files
 | owner | files |
 |---|---|
@@ -25,7 +49,7 @@ agreements and changes at the top of this file (as BRICKFALL- and CYBERCITY-SIMU
 ## 3. Floors and collision
 - **Routes between the floors (`ramps[]`, 8):** six stairs (`kind: stair`, 26.6 degrees, 0.25 m risers, 0.5 m treads) and two gurney ramps (`kind: ramp`, 24 degrees). Each entry: `id`, `low` and `high` (the top face's ends, y 0 and 6), `width`, `bottom` (0) and the visual `blocks`. Proposed `ContentMap.ramps` (`MapRamp {id, kind, low, high, width, bottom, blocks[]}`), read like `NativeCyberCityStairs.Flights` but from data instead of ids.
 - **Collision (Astra's Cut precedent):** for each route disable the listed blocks' colliders (the treads, the pitched ramp deck; `navHints.collisionOff` also lists the ramp skirts) and add one closed invisible wedge mesh collider from `low` to `high`, `width` wide, down to `bottom`, with no renderer, rebuilt on round reset on host and replica alike; the corpse world keeps the authored treads. A 0.5 m tread is shorter than the 0.84 m capsule, so every flight needs its wedge.
-- **Traversal gate on both floors** (as the Cut's 116-route gate, `NativeCyberCityExitValidation`): for every route, host and guest walk and sprint from the foot's floor, from the bottom tread and from mid-flight at centre, left and right (capsule edge 2 cm from the side), to 2 m beyond the top on the upper floor; and down again from the top; plus the bot path (navigator and host motor) from a ground point to an upper point through each route. 8 routes x up and down. Report failures with route, start, side, mode and position. Run it in the Editor menu and in the build's native checks.
+- **Traversal gate on both floors** (as the Cut's 116-route gate, `NativeCyberCityExitValidation`): for every route, host and guest walk and sprint from the foot's floor, from the bottom tread and from mid-flight at centre, left and right (capsule edge 2 cm from the side), to 2 m beyond the top on the upper floor (the two atrium landings turn outward onto the gallery before the end guardrail; do not drive straight through it); and down again from the top; plus the bot path (navigator and host motor) from a ground point to an upper point through each route. 8 routes x up and down. Report failures with route, start, side, mode and position. Run it in the Editor menu and in the build's native checks.
 - **Rails:** a top bar (0.95..1.1 m) and a kick plate (0..0.15 m) both collide; the 0.8 m gap between them stops a capsule but not shots or sight. Drop gaps in the rails are deliberate (section 8).
 - **Breach panels:** solid blocks until a breach (section 7.6).
 - **Today's stair rule unchanged elsewhere.** The static flood (0.5 m cells, the capsule's footprint, the wedges) reaches every walkable cell on both floors from the spawns; Unity's PhysX result is the gate's to show.

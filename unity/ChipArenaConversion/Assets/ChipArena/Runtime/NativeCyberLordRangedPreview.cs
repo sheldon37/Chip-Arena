@@ -28,11 +28,12 @@ namespace ChipArena.UnityConversion
         private const float CyberRangedPeriod=13;
         private void CyberRangedStep(Snapshot s,float time)
         {
-            if(!CyberRangedPreviewOn)
+            Actor me=null;if(s?.Actors!=null)foreach(var a in s.Actors)if(a!=null&&a.Id==LocalId){me=a;break;}
+            if(!CyberRangedPreviewOn||me?.Cyber?.Ranged!=null)
             {
                 if(cyberRanged.Any)cyberRanged.Clear();if(CyberLordFeed.RangedSource==cyberRanged)CyberLordFeed.RangedSource=null;cyberRangedStart=-100;return;
             }
-            CyberLordFeed.RangedSource=cyberRanged;Actor me=null;if(s?.Actors!=null)foreach(var a in s.Actors)if(a!=null&&a.Id==LocalId){me=a;break;}
+            CyberLordFeed.RangedSource=cyberRanged;
             if(me!=null&&CyberLordFeed.Handles(me)&&me.Alive)
             {
                 // A new loop (or a rewound clock) starts in melee mode.

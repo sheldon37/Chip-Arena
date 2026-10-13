@@ -1,5 +1,6 @@
 #if ARENA_TESTS
 using System;
+using System.Linq;
 using System.IO;
 using System.Text.Json;
 namespace ChipArena.UnityConversion
@@ -49,9 +50,13 @@ namespace ChipArena.UnityConversion
             Check(r.GetProperty("renderOrder").GetInt32()<r.GetProperty("pitRenderOrder").GetInt32(),"the open pit draws over the rim");
             Near(D(r,"swing"),NativeStageVentFx.Swing,"VENT_SWING");Near(D(r,"entryClose"),NativeStageVentFx.EntryClose,"ENTRY_CLOSE.vent");Near(D(r,"warn"),1,"VENT_PIT.warn (NativeVentRules.Warning)");Near(D(r,"lead"),.5,"VENT_PIT.lead (NativeVentRules.Open drawn)");
             // The grates stand where the runtime draws the vents (NativeArena.StageVents, Unity axes = the map export's axes).
-            var stage=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeSirenStage.cs"));var list=new System.Text.StringBuilder();
-            foreach(var v in r.GetProperty("vents").EnumerateArray()){var e=A(v);Near(e[1],.015,"grate height");if(list.Length>0)list.Append(',');list.Append("new Vector3("+e[0]+",0,"+e[2]+")");}
-            Check(stage.Contains("StageVents={"+list+"}"),"NativeArena.StageVents are the source SIREN_VENTS");
+            var stage=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeSirenStage.cs"));
+            Check(stage.Contains("StageContent.entries.Where(e=>e.song>=0)")&&stage.Contains("Vec(e.from.Position())"),"song vent origins come from map entry data");
+            using var content=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/PveContent.json")));
+            var vents=content.RootElement.GetProperty("entries").EnumerateArray().Where(e=>e.GetProperty("song").GetInt32()>=0).ToArray();
+            Check(vents.Length==NativeStageVentFx.Count,"eight data-owned song vents");
+            for(int ventIndex=0;ventIndex<vents.Length;ventIndex++)Check(vents[ventIndex].GetProperty("e").GetInt32()==ventIndex&&vents[ventIndex].GetProperty("song").GetInt32()>=0&&vents[ventIndex].GetProperty("song").GetInt32()<=1,"song side/index valid");
+
         }
         private static void Replay(string name,JsonElement run,NativeBossTrack track,double[] vx,double[] vz,int capacity)
         {
@@ -125,7 +130,7 @@ namespace ChipArena.UnityConversion
             string world=R("NativeWorldEffects.cs"),wardFile=R("NativeWardPresentation.cs"),vents=R("NativeStageVentPresentation.cs"),dev=R("NativeDevEffects.cs");
             foreach(var stand in new[]{"FrozenUntil","Controlling","ShieldUntil","Ring(","Beam(","Add(","BossTrack.Vent"})Check(!world.Contains(stand),"no first-port stand-in in WorldEffects: "+stand);
             Check(!wardFile.Contains("Ring(")&&wardFile.Contains("StageVentEffects(arena,wardEntries)")&&wardFile.Contains("NativeStageVentFx.LidAngle(opening,"),"Ward Zero warning is the rim and wisps with the lid rattle, not a cube ring");
-            foreach(var hook in new[]{"NativeStageVentFx.EntrySmoke(fire,","NativeStageVentFx.Vent(fire,","NativeStageVentFx.Rim(","WorldFlames()","FieldClock(arena)","arena.BossTrack.Vent(song,i%2)","song+=clock-arena.Time","NativeStageVentFx.Quality(EffectsQuality)",
+            foreach(var hook in new[]{"NativeStageVentFx.EntrySmoke(fire,","NativeStageVentFx.Vent(fire,","NativeStageVentFx.Rim(","WorldFlames()","FieldClock(arena)","arena.BossTrack.Vent(song,NativeArena.StageContent.entries[i].song)","song+=clock-arena.Time","NativeStageVentFx.Quality(EffectsQuality)",
                 "-vents[i].x","-at.x","Resources.Load<Shader>(\"NativeFieldGlow\")","CullMode.Off","RenderQueue.Transparent","NativeFieldRules.SirenDisplay(hex,1,","NativeStageVentFx.RimVertex(","NativeStageVentFx.OpenGlow(","NativeStageVentFx.PitActive(","NativeStageVentFx.EntryActive("})
                 Check(vents.Contains(hook),"vent presentation hook: "+hook);
             Check(!vents.Contains("Ring(")&&!vents.Contains("Add(7")&&!vents.Contains("cube"),"no cube rings or rising boxes");

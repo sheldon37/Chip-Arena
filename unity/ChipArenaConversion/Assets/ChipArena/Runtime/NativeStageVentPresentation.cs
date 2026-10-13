@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
             bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
             for(int i=0;i<count;i++)
             {
-                var hazard=sung?arena.BossTrack.Vent(song,i%2):(active:false,warning:0f);double warn=Math.Max(hazard.warning,ventWardWarn[i]);Vector3 at=vents[i];
+                var hazard=sung?arena.BossTrack.Vent(song,NativeArena.StageContent.entries[i].song):(active:false,warning:0f);double warn=Math.Max(hazard.warning,ventWardWarn[i]);Vector3 at=vents[i];
                 NativeStageVentFx.Vent(fire,ventStates[i],-at.x,at.z,warn,hazard.active,dt,q);
                 NativeStageVentFx.Rim(hazard.active,warn,ventGlow[i],out int hex,out double opacity);if(opacity<=.001)continue;
                 // A glowMaterial colour reaches the screen as its linear value (NativeFieldRules.SirenDisplay); vertex and uniform

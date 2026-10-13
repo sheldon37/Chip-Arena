@@ -13,7 +13,10 @@ namespace ChipArena.UnityConversion
             bool Near(float a,float b)=>Math.Abs(a-b)<.002f;
             foreach(var n in Minions.ToArray())RemoveMinion(n,false);
             Pve.Holding=false;Pve.Rate=0;Pve.DropCursor=0;pveEntries.Clear();
-            var entries=Pve.Content.entries;var drop=entries.Single(NativeHordeDrop.Is);
+            var entries=Pve.Content.entries;var drop=entries.First(e=>NativeHordeDrop.Is(e)&&!e.hulk);
+            // Isolate the combat fixture from authored map walls/landing-clearance gates.
+            var fixtureDrop=new PveEntry{e=drop.e,id=drop.id,kind="drop",height=drop.height,from=new PvePoint{x=1000,z=1000},@exit=new PvePoint{x=1000,z=1000}};
+            Pve.Content.entries=(PveEntry[])entries.Clone();Pve.Content.entries[drop.e]=fixtureDrop;drop=fixtureDrop;
             var pilot=Members().First();var landing=Vec(drop.@exit.Position());
             var wall=GameObject.CreatePrimitive(PrimitiveType.Cube);wall.name="Brute slam LOS gate";wall.transform.SetParent(root.transform);wall.layer=PropLayer;wall.SetActive(false);
             void Pilot(Vector3 delta,bool block=false)
@@ -26,7 +29,7 @@ namespace ChipArena.UnityConversion
             try
             {
                 Pilot(Vector3.up*.9f+Vector3.right*4);
-                var brute=SpawnPveAdd("brute",true);var a=brute.Pve;
+                var brute=SpawnPveAdd("brute",true,drop.e);var a=brute.Pve;
                 Check(a.Entry==drop&&Near(a.ActiveAt-a.SpawnAt,NativeHordeDrop.Duration(drop.height)),"data selection/timeline");
                 brute.Body.position+=Vector3.one*3;StepPveHorde();
                 Check(brute.Body.isKinematic&&!brute.Collider.enabled&&Vector3.Distance(brute.Body.position,landing+Vector3.up*.9f)<.001f,"held at authored exit, no blocking collider");

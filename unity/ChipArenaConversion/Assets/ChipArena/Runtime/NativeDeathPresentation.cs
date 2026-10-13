@@ -117,14 +117,15 @@ namespace ChipArena.UnityConversion
         {
             if(RefreshWorld(age)&&RetainUntilRoundEnd)WakeRetained(age);
             float target=Math.Min(age,Death.kept?(float)NativeKillEffectRules.KeepAge:RetainUntilRoundEnd?settleAt:(float)NativeKillEffectRules.DeathSeconds);
-            if(frozen||target<clock){if(!frozen&&age>4.2f&&Death.kept)Freeze();return;}int steps=(int)((target-clock)*60+1e-3f);if(stepped)steps=Math.Min(8,steps);stepped=true;
+            if(frozen||target<clock){if(!frozen&&age>4.2f&&Death.kept)Freeze();SmoothAt(age);return;}int steps=(int)((target-clock)*60+1e-3f);if(stepped)steps=Math.Min(8,steps);stepped=true;
             for(int step=0;step<steps;step++)
             {
+                if(Smooth&&step==steps-1){Remember();Twin?.Remember();}
                 DriveCollapse(clock);ReleaseHalves();int index=0;foreach(var body in Parts.Values){int i=index++;if(!body.isKinematic)Force(body,i);}
                 if(weapon!=null&&!weapon.isKinematic)Force(weapon,weaponPart);Twin?.Forces();
                 physics.Simulate(1f/60);StepSpray();clock+=1f/60;if(Twin!=null){Twin.StepSpray();Twin.clock=clock;}
             }
-            if(age>4.2f&&Death.kept||RetainUntilRoundEnd&&age>=settleAt&&clock+1f/60>=settleAt)Freeze();
+            if(age>4.2f&&Death.kept||RetainUntilRoundEnd&&age>=settleAt&&clock+1f/60>=settleAt)Freeze();SmoothAt(age);
         }
         private void Freeze(){foreach(var b in Parts.Values)b.isKinematic=true;if(weapon!=null)weapon.isKinematic=true;frozen=true;Twin?.Freeze();}
         private bool Cue(float at)=>clock+1e-6f>=at&&clock<at+1f/60-1e-6f;
@@ -186,7 +187,7 @@ namespace ChipArena.UnityConversion
         }
         private void PresentDeath(NativeArena arena,NativeDeath death,bool pilot)
         {
-            bool retain=NativeCorpseRules.Retain(pilot,arena.Match.Cooperative);float age=arena.Time-death.at;var live=PilotOf(arena,death.id);bool revived=live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||NativeCorpseRules.Expired(age,death.kept,retain)||revived&&up>1.1f)return;
+            bool retain=NativeCorpseRules.Retain(pilot,arena.Match.Cooperative);float age=(SlowBodies?KillClock(arena):arena.Time)-death.at;var live=PilotOf(arena,death.id);bool revived=live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||NativeCorpseRules.Expired(age,death.kept,retain)||revived&&up>1.1f)return;
             // The repair owns the kept body until it hands the pose to the live rig; never also draw the old revive fade.
             if(revived&&death.kept&&revivals.TryGetValue(death.id,out var repair)&&repair.At==live.RevivedAt)return;
             // Last Laugh: the crush clip, then the dropped body falls as a ragdoll (NativeSirenDropPresentation.cs).
@@ -210,7 +211,7 @@ namespace ChipArena.UnityConversion
                 if(corpse.Bisect is BisectFx split){split.Band=band;corpse.SetupBisect(budget,Mathf.Clamp01(EffectsQuality),counted,NativeStructureFxPresentation.KillFloor(arena));}
                 else corpse.SetupKill(budget,Mathf.Clamp01(EffectsQuality),counted,hatModel,band,NativeStructureFxPresentation.KillFloor(arena));if(counted)killUsed+=corpse.FxCount;
             }
-            corpse.Step(age);if(corpse.Bisect!=null)BisectBlood(corpse,death,KillClock(arena));string style=corpse.Style??"impact-ragdoll";bool stock=StockEnding(style);
+            corpse.Smooth=SlowBodies;corpse.Step(age);if(corpse.Bisect!=null)BisectBlood(corpse,death,KillClock(arena));string style=corpse.Style??"impact-ragdoll";bool stock=StockEnding(style);
             // What the effect looks like (swarm, burst, fragments, spray fade and splats, the stock sink and shrink, the fades)
             // is a function of age alone, so it follows the presentation clock: arena.Time only moves when a 20 Hz host frame
             // lands on a guest and in the killcam, and at the 60 Hz fixed rate on the host (the source feeds DeathEffects the

@@ -16,9 +16,17 @@ namespace ChipArena.UnityConversion
             Pilots.Single(p=>p.Seat.id==8).Seat.AuthorityBoss=true;
             ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),false);
             StartPve();SetBossHidden(false);var victim=Members().First();var owner=Pve.Boss;
+            var baseline=NativeFrameCodec.Clone(NetworkFrame());Check(baseline.Valid(Content),"PvE frame invalid before grab");
+            Check(Pve.Content.machineBlocks.All(b=>!baseline.props.Any(p=>p.id==b.id)),"static machines entered prop replication");
+            guest.ApplyFrame(baseline,victim.Seat.id);
+            void CheckMachines(){Check(Pve.Content.machineBlocks.All(b=>guest.Props.Count(p=>p.LocalFixture&&p.Definition.id==b.id&&p.Indestructible&&p.GetComponent<Collider>().enabled&&(p.transform.position-Vec(b.pos)).sqrMagnitude<.0001f)==1),"guest lost or displaced a static machine");}
+            CheckMachines();
+            var unknown=NativeFrameCodec.Clone(baseline);
+            unknown.props=unknown.props.Concat(new[]{new NativePropFrame{id=Pve.Content.machineBlocks[0].id,rotation=Quaternion.identity}}).ToArray();
+            Check(!unknown.Valid(Content),"out-of-map machine accepted as network prop");
             victim.Body.position=new Vector3(0,1,0);owner.Body.position=new Vector3(0,1,1);owner.Yaw=180;
             owner.Siren=new NativeSirenState{Move=new NativeSirenMove{Rule=NativeSirenRules.Rule("laugh"),Caught=victim,CaughtAt=Time-.3f,CrushAt=Time+2.2f,Until=Time+2.8f}};victim.HeldBy=owner;
-            var held=NativeFrameCodec.Clone(NetworkFrame());Check(held.Valid(Content),"held frame invalid");guest.ApplyFrame(held,victim.Seat.id);
+            var held=NativeFrameCodec.Clone(NetworkFrame());Check(held.Valid(Content),"held frame invalid");guest.ApplyFrame(held,victim.Seat.id);CheckMachines();
             var a=held.snapshot.Actors.Single(p=>p.Id==victim.Seat.id);Check(a.GrabOwner==owner.Seat.id&&a.GrabCrushAt==owner.Siren.Move.CrushAt,"catch/crush timeline lost");
             var guestPosition=guest.Local.Body.position;guest.PredictReplica(new InputFrame{Sequence=1,X=1,Jump=true});Check(guest.Local.Body.position==guestPosition,"guest predicted movement while held");victim.Input=new InputFrame{Sequence=1};
             var position=victim.Body.position;float hp=victim.Hp;
@@ -28,7 +36,7 @@ namespace ChipArena.UnityConversion
             var bad=NativeFrameCodec.Clone(held);bad.snapshot.Actors.Single(p=>p.Id==victim.Seat.id).GrabOwner=victim.Seat.id;Check(!bad.Valid(Content),"self-grab accepted");
             bad=NativeFrameCodec.Clone(held);bad.snapshot.Actors.Single(p=>p.Id==victim.Seat.id).GrabCrushAt=float.NaN;Check(!bad.Valid(Content),"nonfinite grab accepted");
             bad=NativeFrameCodec.Clone(held);bad.snapshot.Actors.Single(p=>p.Id==victim.Seat.id).GrabCrushAt=Time-2;Check(!bad.Valid(Content),"reversed grab accepted");
-            CancelSiren(owner);var released=NativeFrameCodec.Clone(NetworkFrame());guest.ApplyFrame(released,victim.Seat.id);
+            CancelSiren(owner);var released=NativeFrameCodec.Clone(NetworkFrame());guest.ApplyFrame(released,victim.Seat.id);CheckMachines();
             Check(released.snapshot.Actors.Single(p=>p.Id==victim.Seat.id).GrabOwner==0&&guest.Local.Pose.GrabOwner==0,"released victim remained held");
             hostView.ValidateInteractionFrame(this,Time+.02f,victim.Seat.id,false,false,false,false);guestView.ValidateInteractionFrame(guest,Time+.02f,victim.Seat.id,false,false,false,false);
             Debug.Log("PASS Siren grab feedback: exact victim/times through real codec and guest application, current-frame claw anchor and animated limbs, cancellation, malformed state rejection, authority untouched");

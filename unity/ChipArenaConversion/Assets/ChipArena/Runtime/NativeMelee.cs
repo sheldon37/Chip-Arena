@@ -12,6 +12,7 @@ namespace ChipArena.UnityConversion
         private void CancelMelee(NativePilot p){p.Swing=null;p.HitPending=false;p.AttackEnd=0;p.MeleeBufferedUntil=-1;}
         private bool TryBlock(NativePilot p)
         {
+            if(CyberSwitching(p))return false;
             if(p.Seat.spec=="shield"&&MeleeShots.Any(s=>s.Shield&&s.Original==p))return false;
             if(Time<p.BlockReady||Time<p.BlockEnd||Time<p.RollEnd||Incapacitated(p)||Time<p.AttackEnd)return false;
             if(LeetBlock(p))return true;
@@ -20,6 +21,7 @@ namespace ChipArena.UnityConversion
         }
         private bool TryRoll(NativePilot p)
         {
+            if(CyberSwitching(p))return false;
             if(Dev(p,"ansatsuken"))
             {if(Time<p.RollReady||Incapacitated(p)||Time<p.BlockEnd)return false;CancelFighter(p);CancelMelee(p);CancelAbilities(p);p.Roll=new RollValues{duration=.3,distance=6.6,iframeStart=.05,iframeSeconds=.2};p.RollAt=Time;p.RollEnd=Time+.3f;p.RollReady=Time+Math.Max(.5f,2.8f*(float)p.Stats["dashCooldown"]);p.RollDirection=new Vector3(p.Input.X,0,p.Input.Z).normalized;if(p.RollDirection.sqrMagnitude<.01f)p.RollDirection=Vec(V3.Forward(p.Input.Yaw));ChipRoll(p);return true;}
             bool live=Time<p.AttackEnd||p.Swing!=null,cancel=!p.Seat.bot&&NativeMeleeRules.Standard(p.Seat.spec)&&live;

@@ -15,21 +15,24 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The Sheldon Intro (DEV entrance "sheldon-intro", owner 2026-10-12; revised the same day: "They enter the screen with a
-    /// cyber effect; still glitchy screen, they dont "nod" at end. They just stare breathing", "a better background for this
-    /// kind of intro", and the music re-cut from the track's opening). The pilot rezzes in out of converging data streams, a
-    /// band of the body locking on each of the four glitch ticks (landed in a crouch, the last tick the slam); the signal
-    /// jolts and cuts to black in the music's gap; the figure comes back on the next hit as a projection and rises through the
-    /// bass swell; on the groove's first downbeat it resolves in the Sheldon Head look (hood, glowing face and broken ring,
-    /// worn for the intro whatever hat is equipped) with the left hand already on the hood, and from there only breathes and
-    /// stares into the camera (the head holds still: no nod, laugh throw or settle) while the camera pushes in, the name card
-    /// builds and the grin flares on a later downbeat (the face only), then a final glitch cut. It plays in its own set
-    /// (NativeSheldonSet). Every beat sits on its music (intro.sheldon-intro, NativeSoundBank: the opening of the owner's
-    /// track): the marks below are seconds from the intro start. It keeps the standard timing (4.8 s, name card 3.2 s) and the
-    /// presentation clock is the age (no slow-motion beat), so the marks stay on the music. Presentation only: the match sees
-    /// the style id and its unchanged duration; DEV access is checked where every pick is (NativeCosmeticGate,
+    /// cyber effect; still glitchy screen", "a better background for this kind of intro", the music re-cut from the track's
+    /// opening; reworked 2026-10-13: "utilize an animation fitting for the "Sheldon Idle" glitchy, psycho entrance"). The pilot
+    /// is the Sheldon Idle (the DEV lobby pose: CyberLordIdlePose's hunched sword idle over fists, twitching) from the first
+    /// tick: it rezzes in out of converging data streams with the head hanging limp, a band of the body locking and the frame
+    /// skipping on each of the four glitch ticks; the slam throws it back and drops it dead still, torn sideways on glitch
+    /// steps; the jolt snaps the head up into a cocked stare; it moves in the music's black gap, so the projection comes back
+    /// on the next hit in another spot, its idle overclocked in stop motion and skipping place through the bass swell; on the
+    /// groove's first downbeat it snaps back onto its socket and resolves in the Sheldon Head look (hood, glowing face and
+    /// broken ring, worn whatever hat is equipped) and holds deadly still; the next downbeat breaks it with a snapped head
+    /// tilt, the name build's snaps it the other way, and it eases into the Sheldon Idle itself, which it is from the build's
+    /// end to the hand-off (its own twitches, one on the grin's flare, and split ghosts), then a final glitch cut. It plays in
+    /// its own set (NativeSheldonSet). Every beat sits on its music (intro.sheldon-intro, NativeSoundBank: the opening of the
+    /// owner's track): the marks below are seconds from the intro start. It keeps the standard timing (4.8 s, name card
+    /// 3.2 s) and the presentation clock is the age (no slow-motion beat), so the marks stay on the music. Presentation only:
+    /// the match sees the style id and its unchanged duration; DEV access is checked where every pick is (NativeCosmeticGate,
     /// NativeIntroRules.Style). Reduced effects keep every beat but never strobe (soft glitches stepping at 6 Hz, ramped
-    /// blackouts and rez steps, no blocks or specks); the low graphics tier runs one shader stage and a cheaper set.
-    /// Everything is a pure function of the age.
+    /// blackouts and rez steps, no blocks or specks; softer snaps, no stop motion, skipping or tearing); the low graphics tier
+    /// runs one shader stage and a cheaper set. Everything is a pure function of the age.
     /// </summary>
     public static class NativeSheldonIntro
     {
@@ -49,7 +52,7 @@ namespace ChipArena.UnityConversion
         public const float Rise=1.56f;
         /// <summary>The bass swell (from, peak, to): the projection charges and the glitch thickens to the peak.</summary>
         public const float SwellFrom=1.83f,SwellPeak=2.17f,SwellTo=2.44f;
-        /// <summary>The groove locks in on its first downbeat: the figure resolves; hood, face and ring snap on; the stare begins.</summary>
+        /// <summary>The groove locks in on its first downbeat: the figure resolves; hood, face and ring snap on; the stillness begins.</summary>
         public const float Resolve=2.38f;
         /// <summary>The groove's downbeat spacing (about 128 BPM) and its downbeats in the cut, from Resolve.</summary>
         public const float Downbeat=.47f;
@@ -63,7 +66,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The hi-hats' spacing in the groove: the flare's three stutters fall on them.</summary>
         public const float Stutter=.12f;
         public static readonly float[] Beats={.15f,.27f,.39f,Slam,Jolt,Silence,Click,SilenceEnd,Return,Rise,SwellFrom,SwellPeak,Resolve,SwellTo,BuildFrom,BuildTo,Flare};
-        /// <summary>The stare's breath: one every four downbeats (in over two, out over two).</summary>
+        /// <summary>The face glow's slow swell on the groove: one every four downbeats (up over two, down over two).</summary>
         public const float BreathPeriod=4*Downbeat;
         /// <summary>Glitch steps per second (the pattern holds between steps): full and reduced effects.</summary>
         public const float StepRate=24,ReducedStepRate=6;
@@ -87,8 +90,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The bass swell's envelope (0..1, peaking at SwellPeak).</summary>
         public static float Swell(float age)=>age<=SwellFrom||age>=SwellTo?0:age<SwellPeak?Smooth((age-SwellFrom)/(SwellPeak-SwellFrom)):1-Smooth((age-SwellPeak)/(SwellTo-SwellPeak));
-        /// <summary>The stare's breath (0 out .. 1 in) at intro age `age`: none before the resolve, then in on the next two
-        /// downbeats and out on the two after (starting still, so the resolve does not jolt).</summary>
+        /// <summary>The face glow's swell (0 .. 1) at intro age `age`: none before the resolve, then up on the next two
+        /// downbeats and down on the two after (starting still, so the resolve does not jolt).</summary>
         public static float Breath(float age)=>age<=Resolve?0:.5f-.5f*(float)Math.Cos(2*Math.PI*(age-Resolve)/BreathPeriod);
         /// <summary>How many rez steps have landed (0 before the first tick .. 4 from the slam); reduced effects: one smooth rise.</summary>
         public static float Rezzed(float age,bool reduced)
@@ -143,8 +146,8 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// The face and ring through the intro (the hood is hidden until Resolve, NativeSheldonIntroScript.Solid): a flash as
         /// they snap on, the ring clicking into place in four steps (one smooth settle with reduced effects), the glow rising
-        /// a touch with each in-breath, the grin widening through the build and flaring into a stuttered grin at Flare. No
-        /// random blinks: the stare holds. The face moves; the head never does (NativeSheldonIntroScript.Pose).
+        /// a touch on the groove's slow swell (Breath), the grin widening through the build and flaring into a stuttered grin
+        /// at Flare. No random blinks: the stare holds (the head's snaps and twitches are the pose's, NativeSheldonIntroScript.Pose).
         /// </summary>
         public static SheldonFace Face(float age,bool reduced)
         {
@@ -356,97 +359,164 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The Sheldon Intro's choreography (NativeSheldonIntro): pose, camera, lights, set, effects, the hologram and RGB-split
-    /// ghosts. From the resolve the pose only breathes: the keys hold, the head holds one world turn (the stare), and the
-    /// chest and shoulders rise and fall on the groove with the neck kept where it was (no head travel).
+    /// ghosts. Owner 2026-10-13: "rework the Sheldon Intro again as well, utilize an animation fitting for the "Sheldon Idle"
+    /// glitchy, psycho entrance". The pilot is the Sheldon Idle from first frame to last (CyberLordIdlePose.Stand: the sword
+    /// idle hunched over fists, its twitches and glitch, the lobby's DEV "Sheldon Idle"), on a clock that glitches: frozen
+    /// on one idle frame (Still) through the rez-in, the slam and the jolt, head hanging limp and skipping a frame on each
+    /// tick; the slam throws it back and drops it dead still, torn sideways on glitch steps; the jolt snaps the head up into a
+    /// cocked stare; in the gap's black it moves, so the projection comes back on the re-entry in another spot, its idle
+    /// overclocked in stop motion (the twitches 2.5x as fast, held on 8 Hz frames), skipping place on the rise and the
+    /// swell's peak; on the resolve it snaps back onto the socket in the frozen frame and holds deadly still for a downbeat;
+    /// the next downbeat (Wake) breaks it with a snapped head tilt and the idle starts to run; the build's downbeat snaps the
+    /// head the other way, and it eases back so that from HandOff the pose is exactly the Sheldon Idle (its own twitches, one
+    /// of them landing on the flare, and its split ghosts) on a continuous clock: the intro hands off to the idle itself.
+    /// Reduced effects keep every beat with softer, slower snaps, no stop motion, no skipped place and no tear. Every pose is
+    /// a pure function of the presentation clock (scrub- and frame-rate-safe); allocation-free per frame.
     /// </summary>
     public sealed class NativeSheldonIntroScript:NativeProceduralEntrance
     {
         private const float Slam=NativeSheldonIntro.Slam,Jolt=NativeSheldonIntro.Jolt,Silence=NativeSheldonIntro.Silence,Return=NativeSheldonIntro.Return,Rise=NativeSheldonIntro.Rise,
             SwellFrom=NativeSheldonIntro.SwellFrom,SwellPeak=NativeSheldonIntro.SwellPeak,Resolve=NativeSheldonIntro.Resolve,BuildFrom=NativeSheldonIntro.BuildFrom,Flare=NativeSheldonIntro.Flare,ExitCut=NativeSheldonIntro.Cut;
-        /// <summary>When the left hand rises to the hood and arrives (in the rise, so it is in place as the figure resolves).</summary>
-        public const float HandUp=2.0f,HandAt=2.33f;
-        /// <summary>The stare: the head's turn in the rig frame from the resolve (square to the pilot's facing, the closing
-        /// shot's axis; the chin a touch down), and the breath's chest lift, the spine's counter-turn (1.68x the lift: keeps the
-        /// neck in place) and the shoulders' rise (radians at a full in-breath; the drapes and shoulder caps rise about a centimetre).</summary>
-        public static readonly Quaternion StareTurn=CapturedRig.Euler(.07f,0,0);
-        public const float BreathChest=.013f,BreathSpine=.022f,BreathShoulder=.08f;
-        private static readonly Vector3 Cy=NativeSheldonIntro.Cyan,Mg=NativeSheldonIntro.Magenta,Bl=NativeSheldonIntro.Blue;
-        /// <summary>Reduced effects and the low graphics tier (set by the presentation before it draws; the checks drive both).</summary>
-        public bool Reduced,Low;
+        /// <summary>The idle's twitch seed for the intro (one authored schedule for every pilot): with the idle clock below, its
+        /// own big head jerk lands on the flare (4.26 s) and nothing of its own fights the authored snaps before HandOff.</summary>
+        public const int Seed=128;
+        /// <summary>The idle frame (s on the idle's clock) the stillness holds: a calm one, no twitch of its own.</summary>
+        public const float Still=5.3f;
+        /// <summary>The idle frame the overclocked projection starts from (its schedule busy there) and how fast it runs.</summary>
+        public const float Rush=.9f,RushRate=2.5f,RushFrames=8;
+        /// <summary>The downbeat that breaks the stillness (the idle clock runs from it) and the hand-off: from HandOff the pose is
+        /// exactly the Sheldon Idle at IdleTime (the build's last downbeat; the name is up).</summary>
+        public const float Wake=2.85f,HandOff=NativeSheldonIntro.BuildTo;
+        /// <summary>The root over the socket: the idle's feet on the floor (NativePackIntro.RootHeight) turned so the idle's head
+        /// (turned LobbyYaw back toward its front) meets the closing shot's axis, as the hero facing.</summary>
+        public static readonly float RootYaw=Facing+.03f;
+        /// <summary>Reduced effects: the snaps' size and how much slower they attack (the idle's own reduced rules).</summary>
+        public const float ReducedSnap=.6f;
+        /// <summary>Reduced effects and the low graphics tier (set by the presentation before it draws; the checks drive both).
+        /// The pose differs between the effects tiers (the projection only skips place with full effects), so a change of
+        /// tier rebuilds the anchors the camera and the effects follow.</summary>
+        public bool Reduced{get=>reduced;set{if(reduced==value)return;reduced=value;Invalidate();}}
+        public bool Low;private bool reduced;
         /// <summary>The intro's set, built once with the script.</summary>
         public readonly NativeSheldonSet Set=new NativeSheldonSet();
-        private readonly float[] stance=new float[8];private readonly Func<float,float> wave;private float waveT;private bool waveReduced;
-        private const float NoIdle=1e6f;
+        private readonly Func<float,float> wave;private float waveT;private bool waveReduced;
+        private readonly MeleeRig idle=new MeleeRig();
+        private static readonly Vector3 Cy=NativeSheldonIntro.Cyan,Mg=NativeSheldonIntro.Magenta,Bl=NativeSheldonIntro.Blue;
         public NativeSheldonIntroScript():base(NativeSheldonIntro.Style,Resolve,0x22e6ff)
         {
             // No slow-motion beat: the clock is the age, so every beat stays on the music.
-            SlowRate=1;SlowHold=0;SlowRecover=.1f;SlowCatchUp=.5f;
-            Start=Stance(.2f,.34f,.15f,-.17f,-.12f,-.42f);Steps=new[]{Step(false,1.86f,2.12f,-.18f,-.1f,-.42f,.07f),Step(true,2.04f,2.3f,.16f,.07f,.1f,.05f)};
-            var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            // The landed crouch: left foot forward, right knee down, the head bowed.
-            float[] kneel(float drop,float head,float lean)=>NativeEntranceKeys.With(stand,v=>{v[NativeEntranceKeys.Yaw]=-.22f;v[NativeEntranceKeys.BodyY]=drop;v[NativeEntranceKeys.PlantL]=1;v[NativeEntranceKeys.PlantR]=0;
-                NativeEntranceKeys.Set(v,B,lean,0,0);NativeEntranceKeys.Set(v,Hd,head,0,0);NativeEntranceKeys.Set(v,LL,-1.4f,0,.15f);NativeEntranceKeys.Set(v,LK,1.9f,0,0);NativeEntranceKeys.Set(v,RL,.22f,0,-.08f);NativeEntranceKeys.Set(v,RK,1.75f,0,0);
-                NativeEntranceKeys.Set(v,LA,-.95f,0,.3f);NativeEntranceKeys.Set(v,LE,-1.15f,0,0);NativeEntranceKeys.Set(v,RA,.35f,0,-.35f);NativeEntranceKeys.Set(v,RE,-.4f,0,0);});
-            // Rezzed in already landed; settling into it on the slam; still down through the jolt, the gap and the re-entry.
-            k.Key(0,kneel(-.34f,.48f,.38f));k.Key(Slam,kneel(-.37f,.55f,.42f)).ImpactKey();k.Key(Jolt,kneel(-.36f,.5f,.4f));
-            k.Key(Return,kneel(-.35f,.45f,.37f));k.Key(Rise,kneel(-.34f,.4f,.34f));
-            // The rise through the swell: up off the knee, the chin still down, then tall.
-            k.Key(1.98f,stand).Root(0,.88f,0,-.22f).Drop(-.15f).J(B,.16f).J(Hd,.3f).J(LA,-.2f,0,.25f).J(LE,-.5f).J(RA,-.15f,0,-.25f).J(RE,-.4f).Planted(1,.5f);
-            k.Key(2.2f,stand).Root(0,.88f,0,-.22f).Drop(-.04f).J(B,.04f).J(C,-.03f,-.03f,0).J(Hd,.16f).J(LA,-.5f,0,.45f).J(LE,-1.3f).J(RA,-.12f,0,-.2f).J(RE,-.32f);
-            // The stare (held from the resolve: no later key): weight a touch back, the chest turned a little to the raised
-            // hand, the right arm loose; the head's turn is StareTurn (Pose), the left arm reaches the hood (Arms).
-            k.Key(Resolve,stand).Root(0,.88f,0,-.22f).J(B,-.02f).J(C,-.04f,-.06f,0).J(Hd,.07f,.06f,0).J(LA,-.6f,0,.5f).J(LE,-1.6f).J(RA,-.12f,0,-.2f).J(RE,-.3f);
-            Keys=k;wave=Wave;
+            SlowRate=1;SlowHold=0;SlowRecover=.1f;SlowCatchUp=.5f;wave=Wave;
             Shots=new[]
             {
-                // Wide in the dark: the data streams converging on the figure, a band locking on each tick.
-                Orbit(0,NativeEntranceCut.Cut,44,42,18,8,4.4f,4.0f,1.1f,1.0f,V(0,.6f,0),V(0,.55f,0),0,0),
-                // The slam: low and close on the landed crouch.
-                Shot(Slam,NativeEntranceCut.Cut,42,39,V(.9f,.38f,2.65f),V(.72f,.42f,2.4f),V(0,.5f,0),V(0,.58f,0),1,0),
-                // The jolt: a slow drift round the side as the signal fails.
-                Orbit(Jolt,NativeEntranceCut.Cut,38,36,-42,-32,3.0f,2.85f,.7f,.75f,V(0,.62f,0),V(0,.7f,0),0,0),
-                // The re-entry: front on and low, tilting up as the projection rises through the swell.
-                Shot(Return,NativeEntranceCut.Cut,40,37,V(.2f,.72f,3.5f),V(.1f,1.0f,3.25f),V(0,.62f,0),V(0,1.12f,0),0,0),
-                // The resolve on the downbeat: low and nearly square, the stare meeting the lens.
-                Shot(Resolve,NativeEntranceCut.Cut,36,34,V(.42f,.66f,2.95f),V(.32f,.76f,2.7f),V(0,1.22f,0),V(0,1.27f,0),1,0),
-                // The push-in: square on the face, to the reference's frame by the hand-off (the whole hood over the chest).
-                Shot(BuildFrom,NativeEntranceCut.Cut,34,31,V(-.45f,1.42f,2.35f),V(-.3f,1.47f,1.4f),V(-.02f,1.33f,0),V(-.04f,1.38f,0),0,0),
+                // Wide in the dark: the data streams converging on the hunched figure, a band locking on each tick.
+                Orbit(0,NativeEntranceCut.Cut,44,42,18,8,4.4f,4.0f,1.1f,1.0f,V(0,.62f,0),V(0,.6f,0),0,0),
+                // The slam: low and close on the figure thrown back and dropped dead, the head hanging.
+                Shot(Slam,NativeEntranceCut.Cut,42,39,V(.9f,.5f,2.65f),V(.72f,.55f,2.4f),V(0,.78f,0),V(0,.86f,0),1,0),
+                // The jolt: closer, drifting round the side as the head snaps up into the stare.
+                Orbit(Jolt,NativeEntranceCut.Cut,38,36,-40,-31,2.55f,2.4f,.98f,1.02f,V(0,1.0f,0),V(0,1.04f,0),0,0),
+                // The re-entry: front on and low, wide enough for the projection skipping place, tilting up through the swell.
+                Shot(Return,NativeEntranceCut.Cut,42,38,V(.2f,.7f,3.6f),V(.1f,.9f,3.3f),V(0,.78f,0),V(0,.98f,0),0,0),
+                // The resolve on the downbeat: low and nearly square on the still figure, the stare meeting the lens.
+                Shot(Resolve,NativeEntranceCut.Cut,36,34,V(.42f,.6f,2.95f),V(.32f,.66f,2.7f),V(0,.96f,0),V(0,1.0f,0),1,0),
+                // The push-in: square on the hood, to a bust of the Sheldon Idle by the hand-off (the hood, the shoulders, the fists).
+                Shot(BuildFrom,NativeEntranceCut.Cut,34,31,V(-.46f,1.0f,2.95f),V(-.36f,1.04f,2.25f),V(-.02f,.95f,0),V(-.04f,1.0f,0),0,0),
             };
         }
+
+        // ---- the clock the idle runs on ----
+        /// <summary>
+        /// The Sheldon Idle's clock at presentation time `t`: Still (frozen) until the re-entry and again from the resolve to
+        /// Wake; the overclocked projection between (Rush on, RushRate times as fast, held on RushFrames frames a second with
+        /// full effects); from Wake it runs at the intro's own rate, Still + (t - Wake), continuously through HandOff and on.
+        /// </summary>
+        public float IdleTime(float t)
+        {
+            if(t>=Wake)return Still+(t-Wake);
+            if(t>=Return&&t<Resolve){float u=t-Return;if(!Reduced)u=(float)Math.Floor(u*RushFrames)/RushFrames;return Rush+RushRate*u;}
+            return Still;
+        }
+        /// <summary>The Sheldon Idle itself at idle time `tau` (rig frame), on the intro's root: what the intro hands off to.</summary>
+        public void Idle(float tau,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
+        {
+            CyberLordIdlePose.Stand(idle,tau,Seed,Reduced,true,out _);idle.WritePose(pose);
+            root=new Vector3(0,NativePackIntro.RootHeight,0);rotation=NativeEntranceMath.Yaw(RootYaw);
+        }
+        /// <summary>The idle's glitch at presentation time `t` (its split ghosts, slices and jolts; Stand applies the pose's share).</summary>
+        public CyberIdleGlitch IdleGlitch(float t)=>CyberLordIdlePose.Glitch(Seed,IdleTime(t),1,Reduced);
+
+        // ---- the authored snaps over it (zero from HandOff) ----
+        // A snap: the idle's twitch envelope (a fast out-cubic attack, a hold, an eased release); reduced effects attack slower.
+        private float Snap(float t,float at,float attack,float hold,float release)=>CyberLordIdlePose.Envelope(t-at,attack*(Reduced?CyberLordIdlePose.ReducedAttack:1),hold,release);
+        /// <summary>The ticks' frame skips (rez-in): the limp head's roll and the body's small jump on each tick (held until the next).</summary>
+        private static readonly float[] TickRoll={.22f,-.3f,.16f,-.1f},TickTurn={.1f,-.12f,.06f,0},TickShift={.03f,-.035f,.018f,0};
+        /// <summary>Where the projection skips to (hero frame, m): from the re-entry, the rise and the swell's peak until the resolve.</summary>
+        public static readonly Vector3[] Skips={new Vector3(.42f,0,.3f),new Vector3(-.38f,0,.12f),new Vector3(.12f,0,.42f)};
+        public static readonly float[] SkipAt={Return,Rise,SwellPeak};
+        /// <summary>The projection's offset from the socket at `t` (zero outside the projection and with reduced effects).</summary>
+        public Vector3 Skip(float t)
+        {
+            if(Reduced||t<Return||t>=Resolve)return Vector3.Zero;int k=0;while(k+1<SkipAt.Length&&t>=SkipAt[k+1])k++;return Local(Skips[k].X,0,Skips[k].Z);
+        }
+        /// <summary>How limp the head hangs (1 limp: chin on the chest; the jolt snaps it up).</summary>
+        public float Limp(float t)=>t>=Silence?0:1-Snap(t,Jolt,.035f,10,0);
         public override void Pose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
         {
-            // The keys without the shared hero idle (its weight shift and head drift would bob the stare), then the stare.
-            NativeEntrancePose.Feet(t,Start,Steps,stance);NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,stance,NoIdle,RootPath);Stare(t,pose);Arms(t,pose,root,rotation);
-        }
-        /// <summary>
-        /// The stare from the resolve: the breath lifts the chest against the spine (turned so the neck stays put) and raises
-        /// the shoulders, and the head is set to StareTurn whatever is under it (eased in over the last .14 s of the rise, while
-        /// only the hologram shows it), so nothing reaches it but about a millimetre of the breath's neck travel.
-        /// </summary>
-        private void Stare(float t,CapturedRig.Pose pose)
-        {
-            float hold=NativeEntranceMath.Ramp(t,Resolve-.14f,Resolve);if(hold<=0)return;float b=NativeSheldonIntro.Breath(t);
-            if(b>0)
+            if(!MathUtil.Finite(t))t=0;
+            Idle(IdleTime(t),pose,out root,out rotation);
+            if(t>=HandOff)return;
+            float k=Reduced?ReducedSnap:1;
+            // The rez-in's frame skips: the body jumps a little on each tick and holds (none with reduced effects).
+            int tick=-1;for(int i=0;i<NativeSheldonIntro.Ticks.Length;i++)if(t>=NativeSheldonIntro.Ticks[i])tick=i;
+            float roll=0,turn=0;
+            if(t<Silence)
             {
-                pose.Rotation[Sp]=pose.Rotation[Sp]*CapturedRig.Euler(BreathSpine*b,0,0);pose.Rotation[C]=pose.Rotation[C]*CapturedRig.Euler(-(BreathChest+BreathSpine)*b,0,0);
-                float sh=BreathShoulder*b;pose.Rotation[CapturedRig.LClav]=pose.Rotation[CapturedRig.LClav]*CapturedRig.Euler(0,0,sh);pose.Rotation[CapturedRig.RClav]=pose.Rotation[CapturedRig.RClav]*CapturedRig.Euler(0,0,-sh);
-                // The arms ride the shoulders up but keep hanging as they were.
-                pose.Rotation[CapturedRig.LArm]=CapturedRig.Euler(0,0,-sh)*pose.Rotation[CapturedRig.LArm];pose.Rotation[CapturedRig.RArm]=CapturedRig.Euler(0,0,sh)*pose.Rotation[CapturedRig.RArm];
+                int held=Reduced?Math.Min(0,tick):tick;
+                if(held>=0){roll=TickRoll[held];turn=TickTurn[held];if(!Reduced){root+=Local(TickShift[held],0,0);pose.Rotation[Sp]=pose.Rotation[Sp]*CapturedRig.Euler(0,TickTurn[held]*.5f,0);}}
+                // The limp head (chin on the chest, the shoulders dropped) until the jolt snaps it up.
+                float limp=Limp(t);
+                if(limp>0)
+                {
+                    pose.Rotation[CapturedRig.Neck]=pose.Rotation[CapturedRig.Neck]*CapturedRig.Euler(.3f*limp,0,0);
+                    pose.Rotation[CapturedRig.LClav]=pose.Rotation[CapturedRig.LClav]*CapturedRig.Euler(0,0,-.09f*limp);pose.Rotation[CapturedRig.RClav]=pose.Rotation[CapturedRig.RClav]*CapturedRig.Euler(0,0,.09f*limp);
+                }
+                // The slam throws the body back and up, shoulders hunched, and drops it dead still (the idle's flinch, doubled).
+                float fl=k*Snap(t,Slam,.03f,.05f,.32f);
+                if(fl>0)
+                {
+                    pose.Rotation[Sp]=pose.Rotation[Sp]*CapturedRig.Euler(-.12f*fl,0,0);pose.Rotation[C]=pose.Rotation[C]*CapturedRig.Euler(-.12f*fl,0,0);
+                    pose.Rotation[CapturedRig.LClav]=pose.Rotation[CapturedRig.LClav]*CapturedRig.Euler(0,0,.3f*fl);pose.Rotation[CapturedRig.RClav]=pose.Rotation[CapturedRig.RClav]*CapturedRig.Euler(0,0,-.3f*fl);
+                    pose.Rotation[LE]=pose.Rotation[LE]*CapturedRig.Euler(-.45f*fl,0,0);pose.Rotation[RE]=pose.Rotation[RE]*CapturedRig.Euler(-.45f*fl,0,0);
+                    pose.Position[B]=pose.Position[B]-new Vector3(0,.035f*fl,0);
+                }
+                // The jolt's stare: the head snapped up, cocked hard to the rig's left and turned a touch to the lens, held into the black.
+                float stare=k*Snap(t,Jolt,.035f,10,0);
+                pose.Rotation[Hd]=pose.Rotation[Hd]*CapturedRig.Euler(.82f*limp-.04f*stare,turn*limp+.1f*stare,roll*limp+.5f*stare);
+                // A shoulder hitch on the failing signal (the idle's spasm, bigger).
+                float hitch=k*Snap(t,.95f,.03f,.08f,.2f);if(hitch>0){pose.Rotation[CapturedRig.RClav]=pose.Rotation[CapturedRig.RClav]*CapturedRig.Euler(0,0,-.3f*hitch);pose.Rotation[CapturedRig.Neck]=pose.Rotation[CapturedRig.Neck]*CapturedRig.Euler(0,0,-.12f*hitch);}
+                // Torn sideways on glitch steps between the slam and the gap (the idle's slice; full effects only).
+                if(!Reduced&&t>Slam+.12f)
+                {
+                    int s=NativeSheldonIntro.Step(t,false);float h=NativeSheldonIntro.Hash(s,701);
+                    if(h>.76f){float side=NativeSheldonIntro.Hash(s,703)<.5f?-1:1;var p=pose.Position[Sp];pose.Position[Sp]=new Vector3(p.X+side*CyberLordIdlePose.SliceMax,p.Y,p.Z);if(h>.9f){var q=pose.Position[Hd];pose.Position[Hd]=new Vector3(q.X-side*CyberLordIdlePose.HeadSliceMax,q.Y,q.Z);}}
+                }
+                return;
             }
-            pose.World();var head=hold>=1?StareTurn:Quaternion.Slerp(pose.WorldRotation[Hd],StareTurn,hold);
-            pose.Rotation[Hd]=Quaternion.Normalize(Quaternion.Inverse(pose.WorldRotation[CapturedRig.Neck])*head);
+            if(t<Resolve)
+            {
+                // The projection: skipping place, its head cocked the other way, snapping further over on the rise and the peak.
+                root+=Skip(t);float a=k*(Snap(t,Rise,.03f,.25f,.2f)+Snap(t,SwellPeak,.03f,.12f,.12f));
+                pose.Rotation[Hd]=pose.Rotation[Hd]*CapturedRig.Euler(-.06f*k+.14f*a,-.12f*k,-.38f*k-.22f*a);
+                return;
+            }
+            // From the resolve: deadly still (the frozen frame) until Wake; Wake snaps the head over and hitches the left shoulder;
+            // the build's downbeat snaps it the other way and juts it down; it eases back to the idle's own head by HandOff.
+            float back=1-NativeEntranceMath.Ramp(t,BuildFrom+.16f,HandOff);
+            float w1=k*Snap(t,Wake,.04f,10,0)*(1-Snap(t,BuildFrom,.035f,10,0)),w2=k*Snap(t,BuildFrom,.035f,10,0)*back;
+            if(w1<=0&&w2<=0)return;
+            pose.Rotation[Hd]=pose.Rotation[Hd]*CapturedRig.Euler(.04f*w1+.14f*w2,.12f*w1-.16f*w2,.45f*w1-.5f*w2);
+            pose.Rotation[CapturedRig.Neck]=pose.Rotation[CapturedRig.Neck]*CapturedRig.Euler(.05f*w2,0,.1f*w1-.12f*w2);
+            float sh=k*Snap(t,Wake,.03f,.12f,.3f);if(sh>0)pose.Rotation[CapturedRig.LClav]=pose.Rotation[CapturedRig.LClav]*CapturedRig.Euler(0,0,.24f*sh);
         }
-        protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
-        {
-            // The left hand on the hood's front edge at the temple, the fingers over the brim (the owner's reference).
-            float w=NativeEntranceMath.Ramp(t,HandUp,HandAt);if(w<=.001f)return;pose.World();
-            var head=NativeEntrancePose.WorldRotation(pose,rotation,CapturedRig.Head);
-            var target=NativeEntrancePose.Point(pose,root,rotation,CapturedRig.Head,HandOnHood);
-            NativeEntrancePose.Reach(pose,root,rotation,true,target,head*HandTurn,w);
-        }
-        /// <summary>The wrist on the hood (head space, source frame: +x the rig's left) and its turn (fingers up over the brim).</summary>
-        public static readonly Vector3 HandOnHood=new Vector3(.2f,.17f,.12f);
-        public static readonly Quaternion HandTurn=CapturedRig.Euler(-2.5f,.3f,-.5f);
         // Glitch level in the scene (the fragments, streaks, lines and ghosts follow the screen's tear and split).
         private float Level(float t){var g=NativeSheldonIntro.Glitch(t,Reduced,false);return Math.Max(g.Tear,g.Split)*(1-g.Black);}
         private bool On(int bone,float t,float chance){int s=NativeSheldonIntro.Step(t,false);return NativeSheldonIntro.Hash(s*29+bone,31)<chance;}
@@ -486,16 +556,32 @@ namespace ChipArena.UnityConversion
             int s=NativeSheldonIntro.Step(t,Reduced);offset=!Reduced&&NativeSheldonIntro.Hash(s,41)>.75f?Local(NativeEntranceMath.Signed(4111,s)*.06f,0,0):Vector3.Zero;
             opacity=a*(Reduced?1:.75f+.25f*NativeSheldonIntro.Hash(s,43));return opacity>.01f;
         }
+        /// <summary>The idle's split ghosts' opacity at a full glitch step (the match idle's, NativeCyberLordPresentation).</summary>
+        public const float IdleGhost=.3f;
         public override int Ghosts(float t,Span<NativeEntranceGhost> into)
         {
-            // The RGB split in the scene: magenta and cyan copies pulled apart on the glitch hits.
-            // Only on the strong hits, and only in the wide shots (in the close push-in a copy this near reads as a tint, so the
-            // screen pass alone splits the frame there): a split copy, not a tint over the figure. Never over the outline or
-            // the projection (each copy's depth pass would hide the hologram behind it).
-            if(t<Slam+.2f||t>=Silence&&t<Resolve+.05f||t>=BuildFrom||into.Length<2)return 0;float k=Level(t);if(k<.3f)return 0;
-            int s=NativeSheldonIntro.Step(t,Reduced);float jag=Reduced?1:.6f+.8f*NativeSheldonIntro.Hash(s,47),apart=(Reduced?.025f:.1f)*k*jag,op=(Reduced?.16f:.3f)*NativeEntranceMath.Smooth((k-.25f)/.35f);
-            into[0]=new NativeEntranceGhost{Lag=0,Opacity=op,Color=Mg,Offset=Local(apart,0,0)};
-            into[1]=new NativeEntranceGhost{Lag=Reduced?0:.03f,Opacity=op,Color=Cy,Offset=Local(-apart,0,.01f)};
+            // The RGB split in the scene: magenta and cyan copies pulled apart, never over the outline or the projection (each
+            // copy's depth pass would hide the hologram behind it). Between the slam and the gap they follow the screen's
+            // glitch (torn wide on the slam); the resolve's hit and the snaps on Wake and the build split them a few centimetres;
+            // from Wake on the idle's own split ghosts flicker on its glitch steps (CyberLordIdlePose.Glitch), as in the match.
+            if(into.Length<2||t<Slam+.08f||t>=Silence&&t<Resolve+.05f)return 0;
+            float apart=0,op=0;int s=NativeSheldonIntro.Step(t,Reduced);float jag=Reduced?1:.6f+.8f*NativeSheldonIntro.Hash(s,47);
+            if(t<Silence||t<Resolve+.35f)
+            {
+                float k=Level(t);if(t<Silence)k=Math.Max(k,NativeEntranceMath.Pulse(t,Slam,.01f,.18f));
+                if(k>=.3f){apart=(Reduced?.025f:.1f)*k*jag;op=(Reduced?.16f:.3f)*NativeEntranceMath.Smooth((k-.25f)/.35f);}
+            }
+            if(t>=Wake)
+            {
+                float snap=NativeEntranceMath.Pulse(t,Wake,.01f,.08f)+NativeEntranceMath.Pulse(t,BuildFrom,.01f,.08f);
+                if(snap>.05f){float a=(Reduced?.02f:.07f)*Math.Min(1,snap)*jag;if(a>apart){apart=a;op=Math.Max(op,(Reduced?.1f:.16f)*Math.Min(1,snap));}}
+                var g=IdleGlitch(t);if(g.Split>1e-3f&&g.SplitOffset*.5f>=apart*.5f){apart=g.SplitOffset*.5f;op=Math.Max(op,IdleGhost*g.Split);}
+            }
+            if(op<=.003f||apart<=0)return 0;
+            // Across the pilot (the root's right, as the match idle's ghosts are).
+            var across=NativeEntranceMath.RotateY(new Vector3(-apart,0,0),RootYaw);
+            into[0]=new NativeEntranceGhost{Lag=0,Opacity=op,Color=Mg,Offset=across};
+            into[1]=new NativeEntranceGhost{Lag=Reduced||t>=Wake?0:.03f,Opacity=op,Color=Cy,Offset=-across+new Vector3(0,0,.01f)};
             return 2;
         }
         /// <summary>No solid set pieces: the void has nothing the camera could enter.</summary>
@@ -534,8 +620,6 @@ namespace ChipArena.UnityConversion
             float level=t>=Silence&&t<Return||Reduced?0:Level(t);
             Set.Draw(props,t,tier,Power(t,Reduced),wave,charge,RingLevel(t),level,NativeSheldonIntro.Step(t,false),!Reduced&&t>=Resolve,Vector3.Zero,Facing);
         }
-        /// <summary>The time of the last key: the stare's pose is held from it (Pose adds only the breath).</summary>
-        public float KeysEnd=>Keys.End;
         public override void Props(float t,INativeEntranceProps props,float q)
         {
             DrawSet(t,props,q);float level=t>=Silence&&t<Return?0:Level(t);

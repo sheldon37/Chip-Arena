@@ -6,11 +6,11 @@ namespace ChipArena.UnityConversion
     public static class NativeHordeDropRules
     {
         public const float DamageCentre=10,DamageRim=5,Impulse=380,AddImpulse=200,Pop=2.5f;
-        public static bool UsesDrop(string kind,PveEntry[] entries)=>kind=="brute"&&entries.Any(NativeHordeDrop.Is);
+        public static bool UsesDrop(string kind,PveEntry[] entries)=>kind=="brute"&&entries.Any(e=>NativeHordeDrop.Is(e)&&!e.hulk);
         // Rotate only after a successful selection; a full drop queue never redirects a brute to a door.
         public static PveEntry Next(PveEntry[] entries,ref int cursor,Func<PveEntry,bool> available)
         {
-            var drops=entries.Where(NativeHordeDrop.Is).ToArray();
+            var drops=entries.Where(e=>NativeHordeDrop.Is(e)&&!e.hulk).ToArray();
             for(int i=0;i<drops.Length;i++)
             {int at=(cursor+i)%drops.Length;if(!available(drops[at]))continue;cursor=(at+1)%drops.Length;return drops[at];}
             return null;
