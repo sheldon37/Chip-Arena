@@ -6035,3 +6035,16 @@ FPS and two-client play remain unrun. No compiled Update payload published here.
 Next: build from synced builder source and test solo+bot phase two/full mob load;
 use the new report to distinguish remaining physics, spawning or presentation
 cost. Do not call all freezing fixed from managed timings alone.
+
+## 2026-10-13 · Codex · Menu music level and Ward hitch capture
+Branch `codex/menu-music-gain`, base shared `29143c5`. Owner reports Ward
+Zero still stalls; no new cause or FPS improvement claimed without player logs.
+Documented automatic PERF_HITCH capture, Copy report and Windows Player.log path.
+Menu-only playback gain is now 0.3 (-10.46 dB) for home and pause menus, including
+existing saved sliders. Defaults now output .18 versus arena music .1925.
+Source audio mean levels measured with ffmpeg: menu -15.2 dBFS, Ward -15.7,
+Foundry -18.0; the menu's prior .6 versus arena .1925 compounded that mismatch.
+No asset re-encode, slider migration, gameplay or animation changes.
+Validation: diff whitespace and source-package checks passed. Unity/Windows
+listening remains unrun; desktop build/publication pending. Send runtime log
+from a fresh Ward session before another speculative performance change.

@@ -1,5 +1,16 @@
 # Native stall diagnostics and combat follow-ups
 
+## Capturing a Ward Zero session
+
+Start a fresh game process, reproduce a few stalls, then immediately use
+Pause → Connection report → Copy. For all sampled hitches, quit and copy
+`%USERPROFILE%\AppData\LocalLow\ChipArenaConversion\Chip Arena\Player.log`
+before relaunching (the next launch rotates it to Player-prev.log).
+Upload the log and copied report with the approximate freeze time, PvE/PvP,
+solo/host/guest, wave/phase and whether it coincided with a kill or replay.
+The builder's Latest-Build.txt diagnoses compilation, not gameplay frame times.
+A short video with the visible freeze is useful if the log reports no hitch.
+
 ## Reading a stall report
 
 While a native match exists, frame intervals of at least 100 ms and sustained

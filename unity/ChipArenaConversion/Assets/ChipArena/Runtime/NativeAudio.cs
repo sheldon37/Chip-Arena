@@ -8,6 +8,8 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeAudio:MonoBehaviour
     {
         public float Effects=.3f,Music=.35f,Menu=.6f;public bool Muted;
+        // The replacement menu master is loud; trim playback without overwriting saved sliders.
+        private const float MenuTrackGain=.3f;
         private readonly Dictionary<string,AudioClip> clips=new Dictionary<string,AudioClip>();
         private readonly NativeSoundLimiter limiter=new NativeSoundLimiter();private bool[] keyedVoices;
         private readonly NativeEventSounds.Sound[] routed=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];private readonly NativeKitSound[] kitSounds=new NativeKitSound[NativeMeleeKitSounds.Max];private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();private readonly NativeInstallCue installCue=new NativeInstallCue();
@@ -99,11 +101,11 @@ namespace ChipArena.UnityConversion
         {
             // audio.ts update: falloff and pan are heard from the local pilot (`listener=self.pos`), turned by the view yaw.
             if(camera!=null){listener=camera.transform.position;yaw=camera.transform.eulerAngles.y*Mathf.Deg2Rad;}if(arena?.Local?.Body!=null)listener=arena.Local.Body.position;
-            Slender(arena,menu);StructureQueue(arena);EffectsFrame(arena,menu);if(arena==null){CyberCityCues(null,true);Track("music/menu-afterglow",Menu);return;}
+            Slender(arena,menu);StructureQueue(arena);EffectsFrame(arena,menu);if(arena==null){CyberCityCues(null,true);Track("music/menu-afterglow",Menu*MenuTrackGain);return;}
             if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();installCue.Clear();phase="";countdown=-1;foreach(var v in voices){v.Stop();v.loop=false;}}
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             CyberCityCues(arena,menu);
-            if(menu)Track("music/menu-afterglow",Menu);
+            if(menu)Track("music/menu-afterglow",Menu*MenuTrackGain);
             else if(arena.BossSongTime>=0)Track("music/black-siren-protocol",Music*.55f,arena.Pve?.Holding==true&&arena.Pve.Cinematic!="intro",arena.BossTrack.Looped(arena.BossSongTime),arena,arena.BossSongAt);
             else if(arena.Pve!=null)Track("music/restricted-zone-pulse",Music*.55f*NativeStageMusic.Dip(match.Phase,true),!NativeStageMusic.Plays(match.Phase,true,false));
             else
