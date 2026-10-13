@@ -167,7 +167,7 @@ internal static class FinalKillcamChecks
         Check(!hud.Contains("ToString(")&&!Regex.IsMatch(hud,"\"\\s*\\+|\\+\\s*\"")&&!hud.Contains("new[]")&&!hud.Contains("=>")&&!hud.Contains("string."),"broadcast frame allocation free");
         Check(hud.Contains("\"FINAL KILLCAM\"")&&hud.Contains("finalKillerName")&&hud.Contains("finalVictimName")&&hud.Contains("finalHow")&&hud.Contains("finalWinnerName")&&hud.Contains("\"Space\""),"title, killer and victim, cause, outcome and skip");
         // Presentation only: the round result still lasts 5 s and resolves as before; no network message added.
-        Check(match.Contains("Phase=NativePhase.Result;PhaseEnd=Time+5;")&&!match.Contains("finalKill"),"match rules unchanged");
+        Check(match.Contains("PhaseEnd=Time+5+(FinalVictim!=0?FinalKillcamHold:0)"),"host-controlled final kill result hold");
         Check(overlays.Contains("age=FinalResultAge(5-left)")&&final.Contains("private float FinalResultAge(float age)=>finalShown&&!finalOn&&finalEndedAt>0?Mathf.Min(age,Time.unscaledTime-finalEndedAt):age;"),"result banner arrives at the hand-off");
         foreach(var f in new[]{"Core/NativeFinalKillcam.cs","Runtime/NativeFinalKillcamPresentation.cs","Runtime/NativeReplayAudio.cs","Runtime/NativeSlowMotionPresentation.cs","Runtime/NativeCorpseSmoothing.cs"})
             Check(File.Exists(Path.Combine(root,"Assets/ChipArena/"+f+".meta")),f+" has its Unity meta");

@@ -23,6 +23,12 @@ internal static class RelayChecks
             await Until(()=>host.Accepted.Count==2);Check(host.Accepted.TryDequeue(out var a),"first relay accepted");Check(host.Accepted.TryDequeue(out var b),"second relay accepted");
             using(a)using(b){first.Send("first-pilot");second.Send("second-pilot");await Until(()=>a.Received.Count==1&&b.Received.Count==1);a.TryReceive(out var text);b.TryReceive(out var other);Check(new[]{text,other}.OrderBy(s=>s).SequenceEqual(new[]{"first-pilot","second-pilot"}),"separate relay pipes");
                 var sender=text=="first-pilot"?a:b;for(int i=0;i<20;i++)first.Send("ordered-"+i);await Until(()=>sender.Received.Count==20);for(int i=0;i<20;i++)Check(sender.TryReceive(out var message)&&message=="ordered-"+i,"ordered WebSocket byte-stream frames");
+                var marker=new NativeMatchFrame{hasFinalKillcam=true,finalVictim=2,finalSeed=42,resultAt=12.25,time=12.25,phaseEnd=20.75,phase=NativePhase.Result};
+                var fields=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};
+                first.Send(System.Text.Json.JsonSerializer.Serialize(marker,fields));await Until(()=>sender.Received.Count==1);
+                Check(sender.TryReceive(out var markerJson),"guest receives final kill frame");
+                var guestMarker=System.Text.Json.JsonSerializer.Deserialize<NativeMatchFrame>(markerJson,fields);
+                Check(guestMarker.hasFinalKillcam&&guestMarker.finalVictim==2&&guestMarker.finalSeed==42&&guestMarker.resultAt==12.25&&guestMarker.phaseEnd==20.75,"guest relay final kill marker matches host");
                 string snapshot="{\"state\":\""+new string('v',130000)+"\"}";sender.Send(snapshot);await Until(()=>first.Received.Count==1);Check(first.TryReceive(out var got)&&got==snapshot,"large relay snapshot");
                 using(var http=new HttpClient()){var uri=new UriBuilder(origin){Scheme=origin.StartsWith("wss:")?"https":"http",Path="native/v3/rooms",Query="source="+source};using(var list=JsonDocument.Parse(await http.GetStringAsync(uri.Uri))){Check(list.RootElement.GetProperty("rooms").EnumerateArray().Any(r=>r.GetProperty("code").GetString()==host.Room&&r.GetProperty("players").GetInt32()==3),"room discovery tracks guests");}}
                 rejected=false;try{using(var wrong=await NativeRelayHost.Join(origin,host.Room,new string('0',40),CancellationToken.None)){}}catch(WebSocketException){rejected=true;}Check(rejected,"relay rejects different source version");

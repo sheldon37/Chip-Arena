@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
              foreach(var bot in LobbyBots(n)){sides.Add(prefs.pve?0:prefs.teams?bot.team:bot.id);n++;}if(prefs.pve){sides.Add(1);n++;}
              if(n<2||sides.Count<2){networkStatus=n>=2?"Both teams need a pilot: add a bot or change teams.":"Add a bot or wait for a pilot to join.";return;}}
             if(!dedicated)Save();EndPreview();inspectSeat=0;ClearReplay();arena?.Dispose();presentation?.ResetPresentation();networkEpoch++;
-            match=new NativeMatch(content){ShowIntros=!prefs.skipPlayerIntros&&!sandboxWanted,Cooperative=prefs.pve,Teams=prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
+            match=new NativeMatch(content){FinalKillcams=Online,ShowIntros=!prefs.skipPlayerIntros&&!sandboxWanted,Cooperative=prefs.pve,Teams=prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
             if(!dedicated){var local=SanitizedSeat(1,Profile(),account.Token);local.team=prefs.pve?0:prefs.team;match.Seats.Add(local);}
             foreach(var peer in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){peer.Seat.team=prefs.pve?0:peer.Seat.team;match.Seats.Add(peer.Seat);peer.Ready=false;}
             match.Seats.AddRange(LobbyBots(match.Seats.Count));

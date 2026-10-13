@@ -16,13 +16,21 @@ namespace ChipArena.UnityConversion
         public string weaponSkins="";
     }
     [Serializable] public class NativeMatchFrame
-    {public int[] rematchVotes=Array.Empty<int>();public int rematchRequired;public float lobbyReturnSeconds;public int introSeat;public double introStarted;public string introStyle;public int round,set,winner,setWinner,draftSeat;public string result,chosen;public NativePhase phase;public double time,phaseEnd,fightAt,readyAt,chosenAt;public bool teams,cooperative;}
+    {public bool hasFinalKillcam;public int finalVictim,finalSeed;public double resultAt;public int[] rematchVotes=Array.Empty<int>();public int rematchRequired;public float lobbyReturnSeconds;public int introSeat;public double introStarted;public string introStyle;public int round,set,winner,setWinner,draftSeat;public string result,chosen;public NativePhase phase;public double time,phaseEnd,fightAt,readyAt,chosenAt;public bool teams,cooperative;}
     public sealed class NativeMatch
     {
         public readonly List<NativeSeat> Seats=new List<NativeSeat>();
         public NativePhase Phase { get;private set; }=NativePhase.Lobby;
         public double Time { get;private set; }
         public double PhaseEnd { get;private set; }
+        public const double FinalKillcamHold=3.5;
+        public bool FinalKillcams;
+        public Func<bool> IsSandbox;
+        public Func<IEnumerable<FinalKillCandidate>> RoundDeaths;
+        public int FinalVictim { get;private set; }
+        public int FinalSeed { get;private set; }
+        public double ResultAt { get;private set; }
+        public bool HasFinalKillcam { get;private set; }
         public double FightAt { get;private set; }
         public int Round { get;private set; }=1;
         public int Set { get;private set; }=1;
@@ -43,7 +51,7 @@ namespace ChipArena.UnityConversion
         private readonly List<int> queue=new List<int>();private int turn;private double chosenAt;
         public static uint NewSeed(){var bytes=new byte[4];using(var rng=System.Security.Cryptography.RandomNumberGenerator.Create())rng.GetBytes(bytes);return BitConverter.ToUInt32(bytes,0);}
         public NativeMatch(ConversionContent data,uint? seed=null){this.data=data;random=new SourceRandom(seed??NewSeed());}
-        public void ApplyNetwork(NativeMatchFrame f){IntroSeat=f.introSeat;IntroStarted=f.introStarted;IntroStyle=f.introStyle;Phase=f.phase;Time=f.time;PhaseEnd=f.phaseEnd;FightAt=f.fightAt;ReadyAt=f.readyAt;Round=f.round;Set=f.set;Winner=f.winner;SetWinner=f.setWinner;DraftSeat=f.draftSeat;Chosen=string.IsNullOrEmpty(f.chosen)?null:f.chosen;chosenAt=f.chosenAt;Result=f.result;Teams=f.teams;Cooperative=f.cooperative;}
+        public void ApplyNetwork(NativeMatchFrame f){HasFinalKillcam=f.hasFinalKillcam;FinalVictim=f.hasFinalKillcam?f.finalVictim:0;FinalSeed=f.hasFinalKillcam?f.finalSeed:0;ResultAt=f.hasFinalKillcam?f.resultAt:0;IntroSeat=f.introSeat;IntroStarted=f.introStarted;IntroStyle=f.introStyle;Phase=f.phase;Time=f.time;PhaseEnd=f.phaseEnd;FightAt=f.fightAt;ReadyAt=f.readyAt;Round=f.round;Set=f.set;Winner=f.winner;SetWinner=f.setWinner;DraftSeat=f.draftSeat;Chosen=string.IsNullOrEmpty(f.chosen)?null:f.chosen;chosenAt=f.chosenAt;Result=f.result;Teams=f.teams;Cooperative=f.cooperative;}
         public bool SameSide(NativeSeat a,NativeSeat b)=>a!=null&&b!=null&&(a.id==b.id||Teams&&a.team==b.team);
         public NativeSeat Seat(int id)=>Seats.Find(p=>p.id==id);
         public bool Start()
@@ -56,7 +64,7 @@ namespace ChipArena.UnityConversion
         }
         private void NextIntro(){var order=Seats.Where(p=>p.connected&&!p.AuthorityBoss&&(!p.bot||p.spec=="siren")).OrderBy(p=>p.spec=="siren").ToArray();if(introIndex>=order.Length){Phase=NativePhase.Countdown;PhaseEnd=Time+3;return;}var p=order[introIndex++];IntroSeat=p.id;IntroStarted=Time;IntroStyle=NativeIntroRules.Style(p);Phase=NativePhase.Intro;PhaseEnd=Time+NativeIntroRules.Duration(IntroStyle);}
         private void BeginRound()
-        { Winner=SetWinner=DraftSeat=0;Chosen=null;foreach(var p in Seats)p.alive=p.connected;ResetRound?.Invoke();Phase=NativePhase.Countdown;PhaseEnd=Time+3; }
+        { FinalVictim=FinalSeed=0;ResultAt=0;HasFinalKillcam=false;Winner=SetWinner=DraftSeat=0;Chosen=null;foreach(var p in Seats)p.alive=p.connected;ResetRound?.Invoke();Phase=NativePhase.Countdown;PhaseEnd=Time+3; }
         private void NextSet()
         { Set++;Round=1;foreach(var p in Seats){p.roundWins=0;p.offers.Clear();}BeginRound(); }
         public void Tick(double dt)
@@ -101,7 +109,19 @@ namespace ChipArena.UnityConversion
                 Result=SetWinner==0?name+" wins the round · "+win.roundWins+"/"+RoundsPerSet+" rounds in this set":win.score>=SetsToWin?name+" wins the match · "+SetsToWin+" sets":name+" wins set "+Set+" · "+win.roundWins+" round wins";
             }
             else Result="Simultaneous knockout · replay this round; set progress stays";
-            Phase=NativePhase.Result;PhaseEnd=Time+5;
+            FinalVictim=FinalSeed=0;ResultAt=Time;HasFinalKillcam=true;
+            if(FinalKillcams&&!Cooperative&&IsSandbox?.Invoke()!=true&&Winner!=0)
+            {
+                var win=Seat(Winner);
+                // Select the latest opponent death first. An invalid final death must not fall back to an earlier kill.
+                var latest=(RoundDeaths?.Invoke()??Enumerable.Empty<FinalKillCandidate>())
+                    .Where(d=>Seat(d.Victim)!=null&&!SameSide(Seat(d.Victim),win)&&!double.IsNaN(d.At)&&!double.IsInfinity(d.At)&&d.At>=FightAt&&d.At<=Time+1e-4&&d.Seed>=0)
+                    .OrderByDescending(d=>d.At).ThenByDescending(d=>d.Seed).FirstOrDefault();
+                var victim=Seat(latest.Victim);var killer=Seat(latest.Killer);
+                if(victim!=null&&Time-latest.At<=.5&&killer!=null&&!SameSide(killer,victim))
+                {FinalVictim=latest.Victim;FinalSeed=latest.Seed;}
+            }
+            Phase=NativePhase.Result;PhaseEnd=Time+5+(FinalVictim!=0?FinalKillcamHold:0);
         }
         // shared/teams.ts order for the native integer teams.
         public static readonly string[] TeamNames={"Red","Blue","Green","Yellow","Purple","Orange","Cyan","Pink"};
