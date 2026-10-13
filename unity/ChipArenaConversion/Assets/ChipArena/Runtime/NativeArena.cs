@@ -12,6 +12,9 @@ namespace ChipArena.UnityConversion
     public sealed class NativePropBody : MonoBehaviour
     {
         public NativeArena Arena;public NativePilot Source;public float SourceAt;public string Group;public bool Fragment;public ContentBlock Definition;public float Health;public bool Indestructible;public Rigidbody Body;
+        // Authored PvE machines are built identically on every peer, outside map prop replication.
+        public bool LocalFixture;
+        public bool Replicated=>!LocalFixture&&Definition.role!="carried";
         private void OnCollisionEnter(Collision c)=>Arena?.PropContact(this,c);private void OnCollisionStay(Collision c)=>Arena?.PropContact(this,c);
     }
     public sealed partial class NativePilot
