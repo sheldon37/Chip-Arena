@@ -5,8 +5,11 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeBreachRecord
     {
         public int entry;public float breakAt,restoreAt;
+        // Dynamic wall records use entry=-1. V3 fields are world-space, holeSize is full XYZ extent.
+        public string block;public int actor;public V3 point,normal,holeSize;
+        public bool Dynamic=>!string.IsNullOrEmpty(block);
         public NativeBreachRecord ViewCopy()=>(NativeBreachRecord)MemberwiseClone();
-        public bool Valid()=>entry>=0&&entry<256&&MathUtil.Finite(breakAt)&&MathUtil.Finite(restoreAt)&&breakAt>=0&&restoreAt>=breakAt&&restoreAt<1e8;
+        public bool Valid()=>(Dynamic?entry==-1&&block.Length<=160&&actor>=10000&&NativeMapRules.Finite(point)&&NativeMapRules.Finite(normal)&&Math.Abs(normal.Length-1)<.01f&&Math.Abs(normal.y)<.001f&&NativeMapRules.Finite(holeSize)&&holeSize.x>0&&holeSize.y>0&&holeSize.z>0&&holeSize.x<=80&&holeSize.y<=20&&holeSize.z<=80:entry>=0&&entry<256)&&MathUtil.Finite(breakAt)&&MathUtil.Finite(restoreAt)&&breakAt>=0&&restoreAt>=breakAt&&restoreAt<1e8;
     }
     public static class NativeWardEntries
     {

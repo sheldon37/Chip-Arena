@@ -53,7 +53,11 @@ namespace ChipArena.UnityConversion
             }
             if(route.path.Count==0)return Map.hazards!=null||UnsafeStructurePath(pos,pos+fallback*2)?Vector3.zero:fallback;
             while(route.step<route.path.Count-1&&(Vec(navNodes[route.path[route.step]].pos)-pos).magnitude<.65f)route.step++;
-            if(route.step>0&&!navEdges[route.path[route.step-1]].Any(l=>(l.a==route.path[route.step]||l.b==route.path[route.step])&&NavLinkActive(l))){navRoutes.Remove(actorId);return Vector3.zero;}
+            if(route.step>0)
+            {
+                bool open=false;foreach(var l in navEdges[route.path[route.step-1]])if((l.a==route.path[route.step]||l.b==route.path[route.step])&&NavLinkActive(l)){open=true;break;}
+                if(!open){route.at=-100;navRoutes[actorId]=route;return Vector3.zero;}
+            }
             navRoutes[actorId]=route;var waypoint=Vec(navNodes[route.path[route.step]].pos);var delta=waypoint-pos;return new Vector3(delta.x,0,delta.z).normalized;
         }
         private MapNavNode NearestNavNode(Vector3 point)

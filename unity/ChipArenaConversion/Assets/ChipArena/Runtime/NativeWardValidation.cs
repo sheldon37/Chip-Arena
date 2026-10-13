@@ -52,7 +52,34 @@ namespace ChipArena.UnityConversion
                 foreach(string kind in new[]{"burner","gas"})
                 {frame=NativeFrameCodec.Clone(NetworkFrame());frame.pilots[0].death=new NativeDeath{damageKind=kind};frame=NativeFrameCodec.Clone(frame);Check(frame.Valid(Content),"wire death "+kind);}
                 ValidateWardHulkCrowd();
-                Debug.Log("PASS Ward native hazard ticks, interlock, breach overlap/solidity and JsonUtility");
+                // Real runtime obstruction, collider and JsonUtility gate (also exercises the Sandbox frame).
+                Clock(200);wardSandboxState=new NativePveState{Content=StageContent,Boss=p,Cap=8,SpawnRandom=new NativePveRandom(12345)};
+                var hulk=SpawnPveAdd("hulk",true,entry.e);Check(hulk!=null,"dynamic Hulk fixture spawn");
+                var wall=StaticBlocks.Single(b=>b.Definition.id=="siren-atrium-wall-e-2");var wallCollider=wall.GetComponent<Collider>();
+                hulk.Pve.SpawnAt=hulk.Pve.ActiveAt=0;hulk.Body.position=new Vector3(14.8f,NativeHordeKinds.HulkHeight/2,-2.5f);
+                var goal=new Vector3(18,NativeHordeKinds.HulkHeight/2,-2.5f);Place(new Vector3(20,.9f,0));
+                for(int tick=0;tick<=240;tick++){Clock(200+tick/60d);StepHulkBreach(hulk,goal);PoseWardBreaches();}
+                var dynamicRecord=wardBreaches.Single(b=>b.Dynamic&&b.block==wall.Definition.id);
+                Check(dynamicRecord.breakAt<=204&&!wallCollider.enabled,"Hulk narrow edge breaks within four seconds");
+                frame=NativeFrameCodec.Clone(NetworkFrame());Check(frame.Valid(Content),"dynamic real JsonUtility frame valid");
+                var records=frame.pve?.breaches??frame.wardBreaches;var remote=records.Single(b=>b.Dynamic);
+                Check(remote.actor==hulk.Id&&(remote.point-dynamicRecord.point).Length<.001f&&(remote.normal-dynamicRecord.normal).Length<.001f&&(remote.holeSize-dynamicRecord.holeSize).Length<.001f,"dynamic guest payload round trip");
+                bool wasReplica=Replica;Replica=true;
+                try
+                {
+                    ApplyWardBreaches(records);Check(!wallCollider.enabled,"guest opens collider");
+                    Clock(remote.breakAt-.01f);ApplyWardBreaches(records);Check(wallCollider.enabled,"replay rewind restores collider");
+                    Clock(remote.breakAt);ApplyWardBreaches(records);Check(!wallCollider.enabled,"replay break opens collider");
+                    ApplyWardBreaches(Array.Empty<NativeBreachRecord>());Check(wallCollider.enabled,"absent frame restores collider");
+                }
+                finally{Replica=wasReplica;}
+                ApplyWardBreaches(records);dynamicRecord=wardBreaches.Single(b=>b.Dynamic);
+                Clock(dynamicRecord.restoreAt);Place(Vec(wall.Definition.pos));PoseWardBreaches();
+                Check(dynamicRecord.restoreAt>remote.restoreAt&&!wallCollider.enabled,"pilot holds dynamic opening");
+                Place(new Vector3(20,.9f,0));hulk.Body.position=Vec(wall.Definition.pos);Clock(NativeBreach.SolidAt(dynamicRecord.restoreAt));PoseWardBreaches();
+                Check(!wallCollider.enabled,"minion holds dynamic opening at solidity");
+                hulk.Body.position=new Vector3(20,1.53f,3);Clock(NativeBreach.SolidAt(dynamicRecord.restoreAt));PoseWardBreaches();Check(wallCollider.enabled,"dynamic collider rebuilt");
+                Debug.Log("PASS Ward native hazards, entry/dynamic Hulk breaches, occupied rebuild, guest frames and replay rewind");
             }
             finally{foreach(var q in Pilots)if(connected.TryGetValue(q.Seat.id,out bool value))q.Seat.connected=value;Reset();}
         }

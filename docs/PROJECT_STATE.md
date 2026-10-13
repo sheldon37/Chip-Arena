@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-13 dynamic Hulk wall breach: `codex/unity-hulk-dynamic-breaches` on shared `9f394d6` adds interior-wall obstruction handling for PvE and Sandbox entry-spawned Hulks, timed reversible collision, occupancy holds and guest/replay records (protocol 7). On task branch; Claude's dynamic visual hookup and real Unity/Windows acceptance remain pending. Not merged/released; see DEV_LOG for exact fields.
+
 2026-10-13 Hulk/crowd follow-up: `codex/unity-hulk-movement` on shared `f4b5a12a` fixes Hulk floor/waypoint anchors, removes possessed chase/hide route thrashing, and shares routes for large hordes without lowering phase-two mob limits. Release managed/relay, focused Ward, Python and source checks pass. Native gate and Windows phase-two performance remain unrun; build/playtest next. See NATIVE-HITCH-DIAGNOSTICS and latest DEV_LOG.
 
 2026-10-13 Ward hitch fix: `codex/unity-wardzero-hitches` on `b9639f9` replaces allocating route searches used by PvP bots/PvE adds with reusable heap/buffers and removes hot hazard allocations. Exact-route and allocation regressions, full managed/relay and 101 Python tests pass. Adds navigation/physics/death timing fields. Pending source integration and desktop build/playtest; separate other-map PvP death hitch is not claimed fixed. See NATIVE-HITCH-DIAGNOSTICS and latest DEV_LOG.

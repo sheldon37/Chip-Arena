@@ -1,6 +1,6 @@
 # Native conversion rooms
 
-The Unity client can host a direct TCP LAN room or connect through this separate .NET 8 WebSocket relay. No account session, developer password or production endpoint is bundled. Native rooms use protocol 6 and require the same pinned game source; they cannot join Electron rooms.
+The Unity client can host a direct TCP LAN room or connect through this separate .NET 8 WebSocket relay. No account session, developer password or production endpoint is bundled. Native rooms use protocol 7 and require the same pinned game source; they cannot join Electron rooms.
 
 Online rooms now use **Create Room → Copy Code → Join Room**. New codes have six
 characters (for example `7KMR4P`), with no prefix and no I, O, 0 or 1. Lowercase,

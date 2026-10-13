@@ -37,7 +37,7 @@ internal static class BrickfallChecks
         Console.WriteLine("PASS legacy map loading: omitted inline defaults, 15 maps / 240 FFA-team spawns, player/bot bounds; invalid Unity spawns rejected");
         Check(data.maps.Length==legacy.maps.Length+3&&data.maps.Count(m=>m.rotation)==legacy.maps.Count(m=>m.rotation)&&!map.rotation,"old maps or rotation changed");
         Check(data.contentRevision.Length==64&&data.contentRevision!=NativeMapRules.Revision(text+" "),"revision not byte sensitive");
-        Check(!NativeMapRules.Compatible(5,data.sourceCommit,data.contentRevision,data)&&!NativeMapRules.Compatible(6,data.sourceCommit,null,data)&&!NativeMapRules.Compatible(6,data.sourceCommit,NativeMapRules.Revision(text+" "),data)&&NativeMapRules.Compatible(6,data.sourceCommit,data.contentRevision,data),"old/mismatched join compatibility");
+        Check(!NativeMapRules.Compatible(5,data.sourceCommit,data.contentRevision,data)&&!NativeMapRules.Compatible(NativeConnection.Protocol,data.sourceCommit,null,data)&&!NativeMapRules.Compatible(NativeConnection.Protocol,data.sourceCommit,NativeMapRules.Revision(text+" "),data)&&NativeMapRules.Compatible(NativeConnection.Protocol,data.sourceCommit,data.contentRevision,data),"old/mismatched join compatibility");
         Check((NativeMapRules.Clamp(map,new V3(100,4,-100))-new V3(29.58f,4,-25.58f)).Length<.001,"map bounds");
         Check(NativeMapRules.Clamp(legacy.maps[0],new V3(100,0,100)).x==31&&NativeMapRules.Clamp(legacy.maps[0],new V3(100,0,100),true).x==28,"legacy clamps");
         var seats=Enumerable.Range(0,8).Select(i=>new NativeSeat{id=i+1,team=i%2==0?2:7}).ToList();
