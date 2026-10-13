@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
             Check(NativeBodySkins.Of("sword:prototype,body:prototype")==NativeBodySkins.PrototypeIndex&&NativeBodySkins.Of("body:sheldon")==NativeBodySkins.SheldonIndex,"the body pick reads back");
             Check(NativeWeaponSkins.With("sword:prototype","body","sheldon")=="sword:prototype,body:sheldon"&&NativeWeaponSkins.With("sword:prototype,body:sheldon","body","standard")=="sword:prototype"&&NativeWeaponSkins.Index("body:prototype","sword")==NativeWeaponSkins.StandardIndex,"setting the body keeps the weapon picks");
             var longest=string.Join(",",NativeWeaponSkins.Weapons.Select(s=>s+":prototype"))+",body:prototype";
-            Check(NativeWeaponSkins.Normalize(longest)==longest&&longest.Length==278&&longest.Length<=NativeWeaponSkins.MaxLength,"the longest map with the body fits the frame limit ("+longest.Length+" / "+NativeWeaponSkins.MaxLength+")");
+            Check(NativeWeaponSkins.Normalize(longest)==longest&&longest.Length==298&&longest.Length<=NativeWeaponSkins.MaxLength,"the longest map with the body fits the frame limit ("+longest.Length+" / "+NativeWeaponSkins.MaxLength+")");
             // An older client parses only the weapons: the body entry is an unknown spec it drops, so it keeps its own body.
             Check(NativeWeaponSkins.Weapons.All(w=>NativeWeaponSkins.Index("body:prototype",w)==NativeWeaponSkins.StandardIndex)&&!NativeWeaponSkins.Skinned("body"),"the body entry never reads as a weapon pick");
             Check(NativeBodySkins.Index(null)==0&&NativeBodySkins.Index("")==0&&NativeBodySkins.Index("prototype")==1&&NativeBodySkins.Index("sheldon")==2&&NativeBodySkins.Index("nope")==0,"skin keys to indices");

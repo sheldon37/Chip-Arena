@@ -9,6 +9,13 @@ namespace ChipArena.UnityConversion
         public int Bone;public WeaponShape Shape;public Vector3 Position,Scale;public Quaternion Rotation;
         /// <summary>Linear colour (above 1: overbright for the bloom).</summary>
         public Vector3 Color;
+        /// <summary>A lift straight up in the world after the bone's transform (m at the rig's scale): the aura's data strands
+        /// rise whatever the hand's turn. 0 for every other piece (their matrices are the bone's alone).</summary>
+        public float Rise;
+        /// <summary>What the piece is (never drawn differently): the body's seams, crest and shimmer, the Prototype Series'
+        /// gauntlet cages, fist shells and ranged emitters, or the Standard aura and its ranged emitter.</summary>
+        public byte Kind;
+        public const byte Body=0,Gauntlet=1,FistShell=2,Emitter=3,Aura=4,AuraEmitter=5;
     }
 
     /// <summary>
@@ -25,6 +32,10 @@ namespace ChipArena.UnityConversion
     /// - shimmer: a few voxel motes blinking on and off the body on hashed time slots.
     /// Effects quality (Reduced) slows the shimmer and the crest and never strobes; the low tier drops the cage edges and the
     /// shimmer to the essentials. Pure functions of the time, the form time and the flare times; no allocation per frame.
+    /// Since 2026-10-13 (owner: the weapon becomes an aura round the hands, "we can use this current model as a prototype") the
+    /// gauntlets and fist shells are the Prototype Series skin (Pieces, unchanged) and the Standard skin wears a glitch aura
+    /// round the hands instead (NativeCyberLordAura) over the same seams, crest and shimmer; PiecesIn picks by the pilot's
+    /// "cyberlord" entry of the skin map (Core/NativeWeaponSkins.cs).
     /// </summary>
     public static class NativeCyberLordLook
     {
@@ -135,11 +146,13 @@ namespace ChipArena.UnityConversion
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
         private static float Smooth(float x){x=Clamp01(x);return x*x*(3-2*x);}
 
-        /// <summary>The flare state of each fist at a moment (0..1), from the pilot's last combo hit (CyberLordFx.LastStrike).</summary>
-        public struct Flare{public float Left,Right,Charge;}
+        /// <summary>The flare state of each fist at a moment (0..1), from the pilot's last combo hit (CyberLordFx.LastStrike).
+        /// HitLeft / HitRight: the hit's part of Left / Right alone (the idle's clench raises Left / Right only), so the aura
+        /// bursts shards on hits, never on a clench.</summary>
+        public struct Flare{public float Left,Right,Charge,HitLeft,HitRight;}
         public static Flare FlareAt(float time,float strikeAt,int step,float chargeAt)
         {
-            var f=new Flare();float s=time-strikeAt;if(s>=0&&s<FlareSeconds){float k=1-s/FlareSeconds;k*=k;if(step!=1)f.Left=k;if(step!=0)f.Right=k;}
+            var f=new Flare();float s=time-strikeAt;if(s>=0&&s<FlareSeconds){float k=1-s/FlareSeconds;k*=k;if(step!=1)f.Left=f.HitLeft=k;if(step!=0)f.Right=f.HitRight=k;}
             float c=time-chargeAt;if(c>=0&&c<.5f)f.Charge=(1-c/.5f);return f;
         }
         /// <summary>
@@ -164,13 +177,26 @@ namespace ChipArena.UnityConversion
             }
             return m;
         }
-        public static int Pieces(float time,float formAt,Flare flare,bool first,float solid,float quality,bool low,CyberPiece[] into,in Mode mode)
+        public static int Pieces(float time,float formAt,Flare flare,bool first,float solid,float quality,bool low,CyberPiece[] into,in Mode mode)=>Build(time,formAt,flare,first,solid,quality,low,into,mode,true);
+        /// <summary>
+        /// The look in the pilot's skin (`skin` its "cyberlord" pick, NativeCyberLordAura.Skin): the Prototype Series is today's
+        /// hardlight look (Pieces, piece for piece); Standard draws the seams, crest and shimmer without the gauntlets, fist
+        /// shells or emitters and adds the glitch aura round the hands (NativeCyberLordAura.Pieces: pilot `seed`, the guard's
+        /// weight `guard`).
+        /// </summary>
+        public static int PiecesIn(int skin,int seed,float time,float formAt,Flare flare,bool first,float solid,float quality,bool low,CyberPiece[] into,in Mode mode,float guard=0)
+        {
+            if(skin==NativeWeaponSkins.PrototypeIndex)return Build(time,formAt,flare,first,solid,quality,low,into,mode,true);
+            int n=Build(time,formAt,flare,first,solid,quality,low,into,mode,false);
+            return NativeCyberLordAura.Pieces(seed,time,formAt,flare,first,solid,quality,low,into,n,mode,guard);
+        }
+        private static int Build(float time,float formAt,Flare flare,bool first,float solid,float quality,bool low,CyberPiece[] into,in Mode mode,bool gauntlets)
         {
             int n=0;bool reduced=quality<.5f;float form=time-formAt;float open=Clamp01(mode.Ranged);
             float crestTurn=time*(reduced?.25f:.6f);
             for(int i=0;i<specs.Length&&n<into.Length;i++)
             {
-                var s=specs[i];if(low&&!s.Low)continue;if(first&&!ViewBone(s.Bone))continue;if(first&&s.Part==Crest)continue;
+                var s=specs[i];if(low&&!s.Low)continue;if(first&&!ViewBone(s.Bone))continue;if(first&&s.Part==Crest)continue;if(!gauntlets&&s.Part<Seams)continue;
                 // Formation: each piece flickers in at its order along the forearm (knuckles first), the crest and seams after.
                 float delay=s.Order*FormSeconds*.7f+(s.Part>=Seams?FormSeconds*.35f:0),u=Clamp01((form-delay)/(FormSeconds*.3f));
                 if(u<=0)continue;
@@ -182,7 +208,7 @@ namespace ChipArena.UnityConversion
                 gain*=1+1.6f*fl+.8f*charge;float swell=1+(s.Part>=LFist&&s.Part<=RFist?.18f:.06f)*fl;
                 // Seams carry a pulse running outward from the chest (period 2.4 s; slower with reduced effects).
                 if(s.Part==Seams){float wave=(float)Math.Sin((time*(reduced?1.2f:2.6f)-s.Order*4)*Math.PI);gain*=.7f+.3f*wave*wave;}
-                var c=new CyberPiece{Bone=s.Bone,Shape=s.Shape,Position=s.P,Scale=s.S*swell*(.6f+.4f*Smooth(u)),Rotation=s.R,Color=Lin(s.Color,gain*Clamp01(solid))};
+                var c=new CyberPiece{Bone=s.Bone,Shape=s.Shape,Position=s.P,Scale=s.S*swell*(.6f+.4f*Smooth(u)),Rotation=s.R,Color=Lin(s.Color,gain*Clamp01(solid)),Kind=s.Part<=RGauntlet?CyberPiece.Gauntlet:s.Part<=RFist?CyberPiece.FistShell:CyberPiece.Body};
                 if(s.Part==Crest)
                 {
                     // The crest floats behind the head with a slow bob, the hexagon turning; the diamond counter-turns.
@@ -197,7 +223,7 @@ namespace ChipArena.UnityConversion
             }
             // The ranged mode's emitters, barrel and coil, each built in at its order as the mode weight rises (and taken apart in
             // reverse), flickering while they build; a charge brightens the emitters, a hit-flash the firing one.
-            if(open>1e-3f&&form>=FormSeconds*.5f)
+            if(gauntlets&&open>1e-3f&&form>=FormSeconds*.5f)
                 for(int i=0;i<emitters.Length&&n<into.Length;i++)
                 {
                     var s=emitters[i];if(low&&!s.Low)continue;if(first&&!ViewBone(s.Bone))continue;
@@ -205,7 +231,7 @@ namespace ChipArena.UnityConversion
                     float flick=u<1&&!reduced?(H((int)(time*40)+i*17,9)>.3f?1:.2f):1;if(mode.Glitch>0&&!reduced&&H((int)(time*24)+i*5,11)<.25f*mode.Glitch)flick*=.15f;
                     float fl=s.Part==LEmitter?flare.Left:s.Part==REmitter?flare.Right:0,charge=s.Part<=REmitter?Clamp01(mode.Charge):.4f*Clamp01(mode.Charge);
                     float gain=s.Gain*flick*(.35f+.65f*Smooth(u))*(1+1.8f*fl+1.6f*charge);
-                    into[n++]=new CyberPiece{Bone=s.Bone,Shape=s.Shape,Position=s.P,Scale=s.S*(.5f+.5f*Smooth(u))*(1+.12f*fl),Rotation=s.R,Color=Lin(s.Color,gain*Clamp01(solid))};
+                    into[n++]=new CyberPiece{Bone=s.Bone,Shape=s.Shape,Position=s.P,Scale=s.S*(.5f+.5f*Smooth(u))*(1+.12f*fl),Rotation=s.R,Color=Lin(s.Color,gain*Clamp01(solid)),Kind=CyberPiece.Emitter};
                 }
             // Data shimmer: motes blinking on the body's boxes on hashed slots (8 Hz; 2.5 Hz and fewer with reduced effects).
             int motes=first?2:low?2:reduced?3:6;float rate=reduced?2.5f:8;int slot=(int)Math.Floor(time*rate);
@@ -219,8 +245,10 @@ namespace ChipArena.UnityConversion
             }
             return n;
         }
-        /// <summary>The most pieces Pieces writes (the buffer size).</summary>
-        public static int Capacity=>specs.Length+emitters.Length+8;
+        /// <summary>The most pieces Pieces or PiecesIn writes (the buffer size): the Prototype's every piece, or the Standard's
+        /// body pieces and its aura.</summary>
+        public static int Capacity=>Math.Max(specs.Length+emitters.Length+8,BodyCount+8+NativeCyberLordAura.Max);
+        private static readonly int BodyCount=Array.FindAll(specs,s=>s.Part>=Seams).Length;
 
         /// <summary>
         /// How solid the pilot's body is drawn (NativeSourceModels part opacity: below 1 the pilot's own shader dithers it away,
