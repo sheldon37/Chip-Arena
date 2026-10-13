@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,(string segment,string block,float at)> riders=new Dictionary<string,(string,string,float)>();
         private readonly Dictionary<string,float> fragmentRest=new Dictionary<string,float>();
         public int NavigationRevision=>Props.Count+(Structures?.Revision??0)*10000;
-        private void ResetStructureRuntime(){structuralDamage.Clear();triggeringMembers.Clear();lastPilotDamage.Clear();crushSpent.Clear();crushHits.Clear();riders.Clear();fragmentRest.Clear();navRoutes.Clear();}
+        private void ResetStructureRuntime(){structuralDamage.Clear();triggeringMembers.Clear();lastPilotDamage.Clear();crushSpent.Clear();crushHits.Clear();riders.Clear();fragmentRest.Clear();navRoutes.Clear();crowdRoutes.Clear();}
         private bool FilterStructureDamage(NativePropBody prop,ref float amount,NativePilot source,string kind,float demolition)
         {
             var b=prop.Definition;if(string.IsNullOrEmpty(b.role))return true;

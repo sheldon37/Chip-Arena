@@ -7,24 +7,27 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         private readonly Dictionary<int,(float at,int revision,Vector3 target,List<string> path,int step)> navRoutes=new Dictionary<int,(float,int,Vector3,List<string>,int)>();
+        private sealed class CrowdRoute
+        {public NativeNavSearch search;public float at;public int revision;public Vector3 target;public MapNavNode end;}
+        private readonly Dictionary<int,CrowdRoute> crowdRoutes=new Dictionary<int,CrowdRoute>();
         private Dictionary<string,MapNavNode> navNodes;
         private Dictionary<string,List<MapNavLink>> navEdges;
         private string navMap;
         private NativeNavSearch navSearch;private Func<MapNavLink,bool> navActive;private Func<MapNavNode,bool> navUsable;private Vector3 navOrigin;
         public double NavigationMs {get;private set;}public int NavigationSearches {get;private set;}
-        private Vector3 TimedStructureNavMove(int actorId,Vector3 pos,Vector3 target,Vector3 fallback)
+        private Vector3 TimedStructureNavMove(int actorId,Vector3 pos,Vector3 target,Vector3 fallback,int? crowdGoal=null)
         {
             long at=System.Diagnostics.Stopwatch.GetTimestamp();
-            try{return StructureNavMoveCore(actorId,pos,target,fallback);}
+            try{return StructureNavMoveCore(actorId,pos,target,fallback,crowdGoal);}
             finally{NavigationMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
         }
         private Vector3 StructureNavMove(NativePilot pilot,Vector3 target,Vector3 fallback)
         =>StructureNavMove(pilot.Seat.id,pilot.Body.position,target,fallback);
-        private Vector3 StructureNavMove(int actorId,Vector3 pos,Vector3 target,Vector3 fallback)=>TimedStructureNavMove(actorId,pos,target,fallback);
-        private Vector3 StructureNavMoveCore(int actorId,Vector3 pos,Vector3 target,Vector3 fallback)
+        private Vector3 StructureNavMove(int actorId,Vector3 pos,Vector3 target,Vector3 fallback,int? crowdGoal=null)=>TimedStructureNavMove(actorId,pos,target,fallback,crowdGoal);
+        private Vector3 StructureNavMoveCore(int actorId,Vector3 pos,Vector3 target,Vector3 fallback,int? crowdGoal)
         {
             if(Map.nav==null)return fallback;
-            if(navMap!=MapId){navMap=MapId;navSearch=new NativeNavSearch(Map.nav);navActive=NavLinkActive;navUsable=NavNodeUsable;navNodes=Map.nav.nodes.ToDictionary(n=>n.id);navEdges=Map.nav.nodes.ToDictionary(n=>n.id,n=>new List<MapNavLink>());foreach(var l in Map.nav.links){navEdges[l.a].Add(l);if(l.kind!="drop")navEdges[l.b].Add(l);}}
+            if(navMap!=MapId){crowdRoutes.Clear();navRoutes.Clear();navMap=MapId;navSearch=new NativeNavSearch(Map.nav);navActive=NavLinkActive;navUsable=NavNodeUsable;navNodes=Map.nav.nodes.ToDictionary(n=>n.id);navEdges=Map.nav.nodes.ToDictionary(n=>n.id,n=>new List<MapNavLink>());foreach(var l in Map.nav.links){navEdges[l.a].Add(l);if(l.kind!="drop")navEdges[l.b].Add(l);}}
             if(Map.hazards!=null&&UnsafeStagePath(pos,pos))
             {var pocket=Map.nav.nodes.Where(n=>n.safe&&Math.Abs(n.pos.y-pos.y)<1.2&&!SceneLinecast(pos,Vec(n.pos),WorldMask)).OrderBy(n=>(Vec(n.pos)-pos).sqrMagnitude).FirstOrDefault();if(pocket!=null)return (Vec(pocket.pos)-pos).magnitude<.25f?Vector3.zero:new Vector3(pocket.pos.x-pos.x,0,pocket.pos.z-pos.z).normalized;}
             if(UnsafeStructure(pos)||UnsafeStagePath(pos,pos))
@@ -32,9 +35,20 @@ namespace ChipArena.UnityConversion
             if(Map.hazards==null&&Math.Abs(target.y-pos.y)<1.1&&!SceneLinecast(pos,target,WorldMask)&&!UnsafeStructurePath(pos,target))return fallback;
             if(!navRoutes.TryGetValue(actorId,out var route)||Time-route.at>.7f||route.revision!=NavigationRevision||(route.target-target).sqrMagnitude>9)
             {
-                var start=NearestNavNode(pos);var end=NearestNavNode(target);var path=route.path??new List<string>();
-                path.Clear();NavigationSearches++;
-                if(start!=null&&end!=null)navSearch.Find(start.id,end.id,navActive,path);
+                var start=NearestNavNode(pos);var path=route.path??new List<string>();path.Clear();
+                if(crowdGoal.HasValue)
+                {
+                    if(!crowdRoutes.TryGetValue(crowdGoal.Value,out var flow))
+                    {flow=new CrowdRoute{search=new NativeNavSearch(Map.nav),at=float.NegativeInfinity};crowdRoutes.Add(crowdGoal.Value,flow);}
+                    if(Time-flow.at>.7f||flow.revision!=NavigationRevision||(flow.target-target).sqrMagnitude>9)
+                    {
+                        flow.at=Time;flow.revision=NavigationRevision;flow.target=target;flow.end=NearestNavNode(target);
+                        if(flow.end!=null){NavigationSearches++;flow.search.BuildFlow(flow.end.id,navActive);}
+                    }
+                    if(start!=null&&flow.end!=null)flow.search.TraceFlow(start.id,path);
+                }
+                else
+                {var end=NearestNavNode(target);NavigationSearches++;if(start!=null&&end!=null)navSearch.Find(start.id,end.id,navActive,path);}
                 route=(Time,NavigationRevision,target,path,0);navRoutes[actorId]=route;
             }
             if(route.path.Count==0)return Map.hazards!=null||UnsafeStructurePath(pos,pos+fallback*2)?Vector3.zero:fallback;

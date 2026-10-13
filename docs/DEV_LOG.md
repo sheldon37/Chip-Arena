@@ -5910,3 +5910,34 @@ damage, shutter interlock, breach overlap and real JsonUtility. These are NOT
 executed here: no Unity Editor, PhysX, Windows or multiplayer claims. Native
 traversal, large-capsule navigation and obstruction behaviour remain playtest
 risks. No compiled player or channel payload published by this environment.
+
+## 2026-10-13 · Codex · Ward Hulk movement and Siren phase-two crowd cost
+Branch `codex/unity-hulk-movement`, base `710deba8`, integrated shared `f4b5a12a`
+(final-killcam update preserved). Source fix; desktop build/playtest pending.
+Hulk half-height 1.53 put the existing 1.65 m support ray above flat ground and
+its centre outside the .65 m waypoint tolerance. Feet-relative navigation/support
+anchors fix this without changing its capsule, attacks or presentation. Crawlers
+use the same anchor. A native Ward gate checks actual Hulk movement with PhysX.
+Phase two keeps its 20x spawn rate/12x cap (maximum 192). The possessed enemy
+previously requested chase then hide paths, invalidating both every fixed tick.
+It now resolves one destination before navigation and selects hiding every .75 s.
+Groups of 12+ share reverse shortest-path trees per chased pilot, with current
+edge safety checks, one-way drops and revision/movement/age refresh. Small groups
+keep A*. Nearest-node queries bypass sorting when the closest node is usable;
+removed minions release their route cache. Equal-cost crowd routes can differ.
+PERF_HITCH adds hordeMs/hordeSpawnMs, pveStage/pvePhase/hordeCap; these are nested
+costs, not values to sum. NavigationSearches counts real searches/tree builds.
+Managed checks: 384 routes at 192 mobs per destination from two shared tree
+builds, 10.8 ms and zero warm allocations here (excludes PhysX/nearest/rendering);
+shortest-cost equivalence, gate close/reopen, directed drops and both-floor Hulk/
+crawler anchors pass. Ward focused suites pass; Python 101 OK (one skipped);
+source packaging 1824 files; changed runtime C# syntax has zero errors.
+Full managed/real relay suite passes through all 35 final checks with Release
+optimization. Two initial non-optimized compiler-helper runs stopped at the
+unchanged wavedash allocation assertion (1448/5552 bytes); isolated and full
+unchanged baseline passed, and the Release run passed without changing animation
+code or any assertion. Actual Unity compilation, new native gate, Windows crowd
+FPS and two-client play remain unrun. No compiled Update payload published here.
+Next: build from synced builder source and test solo+bot phase two/full mob load;
+use the new report to distinguish remaining physics, spawning or presentation
+cost. Do not call all freezing fixed from managed timings alone.

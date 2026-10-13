@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
@@ -50,10 +51,56 @@ namespace ChipArena.UnityConversion
                 frame.pve.breaches[0].restoreAt=float.NaN;Check(!frame.Valid(Content),"malformed breach rejected");
                 foreach(string kind in new[]{"burner","gas"})
                 {frame=NativeFrameCodec.Clone(NetworkFrame());frame.pilots[0].death=new NativeDeath{damageKind=kind};frame=NativeFrameCodec.Clone(frame);Check(frame.Valid(Content),"wire death "+kind);}
+                ValidateWardHulkCrowd();
                 Debug.Log("PASS Ward native hazard ticks, interlock, breach overlap/solidity and JsonUtility");
             }
             finally{foreach(var q in Pilots)if(connected.TryGetValue(q.Seat.id,out bool value))q.Seat.connected=value;Reset();}
         }
+        private void ValidateWardHulkCrowd()
+        {
+            void Check(bool ok,string why){if(!ok)throw new Exception("Ward Hulk/crowd: "+why);}
+            void Clock(double now)=>Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=now,fightAt=10,round=Match.Round,set=Match.Set});
+            var savedPve=Pve;var savedNav=Map.nav;var content=StageContent;var savedHides=content.hideSpots;
+            NativePropBody platform=null;NativeMinion hulk=null;var p=Local;
+            try
+            {
+                platform=AddProp(new ContentBlock{id="hulk-check-floor",material="foundation",role="static",pos=new V3(1000,-.5f,1000),size=new V3(16,1,16),rotation=new ContentRotation()});
+                Map.nav=new MapNav{nodes=new[]{
+                    new MapNavNode{id="start",pos=new V3(1000,.9f,1000)},new MapNavNode{id="mid",pos=new V3(1000,.9f,1002)},
+                    new MapNavNode{id="chase",pos=new V3(1000,.9f,1004)},new MapNavNode{id="hide",pos=new V3(1004,.9f,1000)}},
+                    links=new[]{new MapNavLink{id="a",a="start",b="mid"},new MapNavLink{id="b",a="mid",b="chase"},new MapNavLink{id="c",a="start",b="hide"}}};
+                navMap=null;navRoutes.Clear();crowdRoutes.Clear();
+                content.hideSpots=new[]{new PvePoint{x=1004,z=1000}};
+                Clock(300);p.Body.position=new Vector3(1000,.875f,1004);p.Body.linearVelocity=Vector3.zero;p.Body.isKinematic=true;
+                Pve=new NativePveState{Content=content,Boss=p,Started=true,Stage="wave",Wave=1,Cap=8,SpawnRandom=new NativePveRandom(12345)};
+                hulk=SpawnPveAdd("hulk",true,content.entries.First(e=>e.hulk&&e.kind=="drop").e);
+                Check(hulk!=null,"authored Hulk spawns");hulk.Pve.ActiveAt=hulk.Pve.ExposedAt=Time-1;hulk.Pve.Target=p;hulk.Pve.ThinkAt=Time+10;
+                hulk.Body.position=new Vector3(1000,NativeHordeKinds.HulkHeight/2+.025f,1000);Physics.SyncTransforms();
+                for(int i=0;i<30;i++){Clock(300+i/60d);StepPveHorde();root.scene.GetPhysicsScene().Simulate(1f/60);}
+                Check(hulk.Body.position.z>1000.25f,"full-size Hulk advances on supported route");
+                Check(Math.Abs(hulk.Collider.height-NativeHordeKinds.HulkHeight)<.001f&&Math.Abs(hulk.Collider.radius-NativeHordeKinds.HulkRadius)<.001f,"Hulk collider preserved");
+                navRoutes.Clear();crowdRoutes.Clear();Clock(300.5);int crowdBefore=NavigationSearches;
+                for(int i=0;i<192;i++)
+                {
+                    var move=StructureNavMove(-1000-i,new Vector3(1000,.875f,1000),p.Body.position,Vector3.forward,p.Seat.id);
+                    Check(move.z>.9f,"crowd follows shared destination");
+                }
+                Check(NavigationSearches-crowdBefore==1,"192 mobs share one native route-tree build");
+                navRoutes.Clear();crowdRoutes.Clear();hulk.Pve.Possessed=true;hulk.Pve.PossessedAt=301;hulk.Pve.HideThinkAt=0;
+                int before=NavigationSearches;
+                for(int i=0;i<12;i++){Clock(301+i/60d);StepPveHorde();root.scene.GetPhysicsScene().Simulate(1f/60);}
+                Check(NavigationSearches-before==1,"possessed hide route is cached, not chase/hide rebuilt every tick");
+                Debug.Log("PASS Ward full-size Hulk PhysX movement, 192 shared crowd routes and possessed route cache");
+            }
+            finally
+            {
+                if(hulk!=null&&Minions.Contains(hulk))RemoveMinion(hulk,false);
+                if(platform!=null)RemoveStructureProp(platform);
+                content.hideSpots=savedHides;Map.nav=savedNav;Pve=savedPve;navMap=null;navRoutes.Clear();crowdRoutes.Clear();
+                p.Body.isKinematic=false;Physics.SyncTransforms();
+            }
+        }
+
     }
 }
 #endif
