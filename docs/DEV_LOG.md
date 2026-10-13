@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — Windows updater check: duplicate launcher cases after the rename
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), base `b177323`; CI `native-updater-windows` failed on `51f0aa7` (PR #170).
+- Cause: PR #170 named the player `Chip Arena.exe`, the launcher's name, so `tools/check_updater_windows.py`'s four cases ran the launcher pair twice and the repeat's `mkdir` of its case folder raised `FileExistsError` (WinError 183).
+- Fix: run each distinct (name, rollback) case once (`dict.fromkeys`, order kept); with two different names all four still run. No updater, launcher or build change.
+- Checks: `py_compile` OK; Python unittest discovery OK. The Windows job itself runs only on the Windows runner (not runnable here). Astra: adjust if the player-name cases were meant to cover something else.
+
 ## 2026-10-13 — Astra — local corpse/revive replication placement
 - Branch `codex/revive-anchor-replication`, base shared/build `6751324831666caae6075ccd89ee51f06988edd1`. Owner's 03:11 UTC Windows build passed the previous revive gate and failed `Interaction feedback: revive anchor replication/authority`.
 - Root cause: `BufferReplica` reconciled the correct authority position, then added the old local-body offset for differences <=3 m. That locomotion smoothing incorrectly delayed corpse-anchor placement and nearby revives.

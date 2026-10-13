@@ -77,7 +77,9 @@ def run():
         fixture = base / 'fixture.exe'
         subprocess.run([str(compiler), '/nologo', '/warnaserror+', '/target:exe', '/out:' + str(fixture), *refs, *common,
                         str(PROJECT / 'Updater/WindowsFixture.cs')], check=True)
-        for launcher_name, fails in ((LAUNCHER, False), (LAUNCHER, True), (EXE, False), (EXE, True)):
+        # Since bootstrap 2 the player and the launcher share one name (in different folders), so the player-name
+        # cases repeat the launcher's; run each distinct case once (a repeat would recreate its case folder).
+        for launcher_name, fails in dict.fromkeys(((LAUNCHER, False), (LAUNCHER, True), (EXE, False), (EXE, True))):
             root = base / (launcher_name + (' rollback case' if fails else ' install case'))
             app = root / 'app'
             work = root / '.native-update'
