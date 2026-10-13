@@ -164,7 +164,8 @@ internal static class FinalKillcamChecks
         Check(replay.Contains("if(replayRunning&&finalOn){FinalKillcamHud();return;}")&&replay.IndexOf("if(replayRunning&&finalOn)",StringComparison.Ordinal)<replay.IndexOf("NativeHudChrome.Glitch(camLine,\"KILL CAM\"",StringComparison.Ordinal),"normal KILL CAM frame unchanged");
         Check(Body(final,"private void FinalFrame()").Contains("if(finalOn)")&&Body(final,"private void FinalAudioBefore()").Contains("if(finalOn)")&&Body(final,"private void FinalAudioAfter()").Contains("if(finalOn)"),"clock and audio slowed only in the final killcam");
         Check(replay.IndexOf("FinalKillWatch();",StringComparison.Ordinal)<replay.IndexOf("if(fresh){replaySeen=d.seed;",StringComparison.Ordinal),"final kill decided before the normal one can arm");
-        Check(replay.Contains("CreateScene(finalOn?\"Final killcam presentation\":\"Killcam presentation\""),"own scene name (a cut-over never collides with the unloading one)");
+        Check(replay.Contains("CreateScene(\"Killcam presentation \"+(++replaySceneSerial)"),"unique scene name across asynchronous round cleanup");
+        Check(Body(replay,"private void EndReplay()").Contains("replayArena.Root.SetActive(false)")&&!Body(replay,"private void EndReplay()").Contains("Dispose()")&&Body(replay,"private void ClearReplay()").Contains("ReleaseReplayArena();"),"normal/final cut-over reuses the world; round/leave clears it");
         // Every round: practice counts, every final death plays from the victim, and the clip's start frame survives the
         // history trim (the normal killcam's trim is unchanged).
         Check(final.Contains("Practice=!Online,")&&final.Contains("replayView=f.Victim;")&&Body(final,"private Quaternion FinalLook(").Contains("victim==target"),"all final kills use the victim's recorded view and facing");

@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-13 killcam/music follow-up: `codex/killcam-hitches-and-music` on `33939f4` bounds corpse collider copies and initial catch-up, prepares/reuses replay worlds before combat, adds playback hitch timings, and imports owner menu/Ward tracks. Local checks pass; actual Unity build, compiled Update and Windows frame-time acceptance remain pending. See DEV_LOG and task PR.
+
 2026-10-13 build follow-up: `5211d13` compiled but failed the new spitter native gate because its fixture activated before spawning. `codex/spitter-gate-timestamps` corrects fixture timing and splits frame assertions; local syntax/source checks pass. Desktop Unity rebuild and test Update publication remain pending.
 
 2026-10-13 spitter/wave/CPU follow-up: `codex/unity-spitters-wave-budget` on shared `f043b7cb` implements authoritative spitter acid/interrupts and replicated pools, fixed finite wave totals with last-enemy completion, safe shorter-route Hulk breaches, cached wall probes and spatial crowd separation. Managed/focused/Python/source checks pass; Unity/PhysX and Windows/FPS validation remain pending. See latest DEV_LOG and task PR for full-suite/integration/publication receipts.

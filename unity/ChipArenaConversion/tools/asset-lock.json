@@ -441,9 +441,9 @@
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/menu-afterglow.mp3",
-      "bytes": 4176048,
-      "gitBlob": "68e5740095b427f155c243762ff5a505afa04db0",
-      "source": "Owner upload: Chip Arena Main.mp3 (2026-10-12)"
+      "bytes": 2898597,
+      "gitBlob": "60abe2860aa5956edd397ba99debd10b52237e72",
+      "source": "Owner upload: Midnight_Arena_Skyline_2026-10-13T230445.mp4 (2026-10-13); full audio extracted to MP3 VBR q2"
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/moonlit-wilderness.mp3",
@@ -477,9 +477,9 @@
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/restricted-zone-pulse.mp3",
-      "bytes": 4897730,
-      "gitBlob": "b17b8e993af427dca3ffc288f55dcaec7b0f0b08",
-      "source": "Owner-supplied Ward Zero (1).mp3 (2026-10-11; replaces native minion-wave track only)"
+      "bytes": 2580141,
+      "gitBlob": "8874efd788c247a158918b9b75e4f5ab03d6d922",
+      "source": "Owner upload: Containment_Sirens_2026-10-13T230740.mp4 (2026-10-13); full audio extracted to MP3 VBR q2"
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/skyline-run.mp3",

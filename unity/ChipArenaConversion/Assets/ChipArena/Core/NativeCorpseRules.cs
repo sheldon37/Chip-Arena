@@ -5,6 +5,9 @@ namespace ChipArena.UnityConversion
     public static class NativeCorpseRules
     {
         public const float SettleSeconds=10,WorldRefreshSeconds=.1f,WorldRadius=8;
+        // Budget the first sight of an old corpse too: replay/late join must not run 600 PhysX steps in one frame.
+        public const int MaxStepsPerFrame=8;
+        public static int CatchUpSteps(float clock,float target)=>target<=clock?0:(int)System.Math.Min(MaxStepsPerFrame,System.Math.Floor((target-clock)*60+1e-3f));
         public static bool Retain(bool pilot,bool cooperative)=>pilot&&!cooperative;
         // The winning hit enters Result in the same simulation tick. Keep its death animation and all
         // retained bodies through that five-second viewing period; wipe when results actually finish.

@@ -10,9 +10,20 @@ SHA-256: 3093119a80cdac42bf46a3cbb44b5da2ec6920ec5580ef153f01ea3bc6417d25
 
 CHIP ARENA - MAIN MENU MUSIC
 
-Chip Arena Main
-Owner-supplied recording, added 2026-10-12.
-Original file: Chip Arena Main.mp3
-Full original MP3 retained without transcoding: 179.832 seconds, 48 kHz stereo.
+Midnight Arena Skyline
+Owner-supplied recording, added 2026-10-13.
+Original file: Midnight_Arena_Skyline_2026-10-13T230445.mp4
+Full 120-second audio stream extracted to MP3 VBR q2, 48 kHz stereo.
 Internal menu track ID: menu-afterglow
-SHA-256: 0fe130e6ad51201891e9060550067f2db759a02cac2dfe3fbd3fd1f30df34ad2
+SHA-256: 2f2455bc7defe8e3c2d2fa07e580f080e5a1bd33bb3ee2dc64dd950714b69ebc
+
+CHIP ARENA - WARD ZERO MUSIC
+
+Containment Sirens
+Owner-supplied recording, added 2026-10-13.
+Original file: Containment_Sirens_2026-10-13T230740.mp4
+Full 120-second audio stream extracted to MP3 VBR q2, 48 kHz stereo.
+Internal stage track ID: restricted-zone-pulse
+SHA-256: ae76da29e7023a038ef9022039ad399bbe93cb3935d4940192881c94bc62f5ee
+Siren boss music remains Black Siren Protocol.
+No loudness remaster or seamless-loop edit. Video streams are not included.
