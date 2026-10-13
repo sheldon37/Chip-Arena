@@ -26,6 +26,13 @@ namespace ChipArena.UnityConversion
             bool rejectsMerged=false;try{NativeParityChecks.Run(content,parity);}catch(Exception e){rejectsMerged=e.Message=="Content inventory differs from pinned source";}
             Check(rejectsMerged,"regression reproduces original failure when parity sees merged content; inventory gate remains strict");
             var map=content.maps.Single(m=>m.id=="siren");var pve=Read<NativePveContent>("PveContent.json");NativeWardEntries.Validate(pve,map);
+            // Machine collision belongs to PveContent, not the authored map's replicated props.
+            Check(pve.machineBlocks.Length==8&&pve.machineBlocks.All(b=>!map.blocks.Any(m=>m.id==b.id)),"reproduce out-of-map PvE machine definitions");
+            string arenaSource=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeArena.cs"));
+            string pveSource=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativePve.cs"));
+            string frameSource=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeNetworkFrame.cs"));
+            Check(arenaSource.Contains("public bool Replicated=>!LocalFixture&&Definition.role!=\"carried\"")&&pveSource.Contains("prop.LocalFixture=true;prop.Indestructible=true"),"only locally authored machines opt out of prop replication");
+            Check(frameSource.Contains("Props.Where(p=>p.Replicated).Select(FrameProp)")&&frameSource.Contains("if(!p.Replicated)continue;var pf="),"host serialization and guest removal share the fixture exclusion");
             Check(map.name=="Ward Zero"&&map.look=="quarantine"&&map.music==old.music&&map.rotation==old.rotation,"identity preserved");
             Check(map.blocks.Length==616&&map.ramps.Length==8&&map.bounds.ceiling==13&&map.bounds.killY==-6,"complete import");
             Check(pve.entries.Length==53&&pve.machines.Length==8&&pve.pads.Length==8&&pve.hideSpots.Length==12,"PvE import");
