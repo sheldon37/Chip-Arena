@@ -14,28 +14,30 @@ namespace ChipArena.UnityConversion
     /// <item>A cycle plays at <see cref="Rate"/>: its natural speed on the rig scaled toward the add's speed by the square
     /// power .7 (cadence takes most of the change and the stride the rest, so the planted feet stay under the hips), so at the authority's 1.5-4.6 m/s the feet still plant
     /// (the gait's planted feet take the stride: Core/NativeHordeMotion).</item>
-    /// <item>Attacks: the swipe on the striking arm's takes, the runner's frenzied claws, the brute's two-handed hammer; the
-    /// spitter's spit, the bloater's belly and the crawler's pounce stay procedural (no capture fits them).</item>
+    /// <item>Attacks: the swipe on the striking arm's takes, the runner's frenzied claws, the brute's and the Hulk's two-handed
+    /// hammer; the spitter rears back on the start of a knock-back reel (<see cref="SpitRear"/>) before its procedural spit, the
+    /// bloater's belly and the crawler's pounce stay procedural (no capture fits them).</item>
+    /// <item>The Hulk plods on the slow walks at a heavy tempo and roars on the flung-arms start of another reel (<see cref="Roar"/>).</item>
     /// <item>Deaths fall the way the killing blow pushes (back, front, to either side), a take per add.</item>
     /// </list>
     /// </summary>
     public static class NativeZombieMotion
     {
         private static int[][] walks,runs,idles;private static int[] swipeR,swipeL,lunge,smash,knock,deathBack,deathFront,deathLeft,deathRight,lands;
-        public static int Wake,CrawlStand,StandCrawl,JumpStart,JumpAir;
+        public static int Wake,CrawlStand,StandCrawl,JumpStart,JumpAir,SpitRear,Roar;
         private static float[] ground;private static bool ready;
         /// <summary>Builds the tables and decodes every clip once (so no frame ever decodes one; the first gait calls it).</summary>
         public static void Warm()
         {
             if(ready)return;
             int[] N(params string[] keys){var r=new int[keys.Length];for(int i=0;i<keys.Length;i++)r[i]=NativeZombieClips.Need(keys[i]);return r;}
-            walks=new[]{N("chase-1","chase-2","chase-5"),N("sprint-1","sprint-3"),N("walk-4","walk-6"),N("chase-1","walk-6"),new int[0],N("walk-6","walk-4")};
-            runs=new[]{N("sprint-1","sprint-3"),N("sprint-3","sprint-4"),N("chase-5","chase-2"),N("chase-2","sprint-1"),new int[0],N("chase-1")};
-            idles=new[]{N("shamble-1","shamble-2","idle-3"),N("shamble-2","idle-3"),N("idle-3","shamble-1"),N("shamble-1","idle-3"),new int[0],N("idle-3")};
+            walks=new[]{N("chase-1","chase-2","chase-5"),N("sprint-1","sprint-3"),N("walk-4","walk-6"),N("chase-1","walk-6"),new int[0],N("walk-6","walk-4"),N("walk-4","walk-6")};
+            runs=new[]{N("sprint-1","sprint-3"),N("sprint-3","sprint-4"),N("chase-5","chase-2"),N("chase-2","sprint-1"),new int[0],N("chase-1"),N("chase-5")};
+            idles=new[]{N("shamble-1","shamble-2","idle-3"),N("shamble-2","idle-3"),N("idle-3","shamble-1"),N("shamble-1","idle-3"),new int[0],N("idle-3"),N("idle-3","shamble-1")};
             swipeR=N("swipe-r1","swipe-r2");swipeL=N("swipe-l1","swipe-l2");lunge=N("lunge-1","lunge-2");smash=N("smash-1","smash-2");knock=N("knock-1","knock-2","knock-3","knock-4","knock-5");
             deathBack=N("death-back-1","death-back-2","death-back-3");deathFront=N("death-front-1","death-front-2","death-front-3");deathLeft=N("death-left-1");deathRight=N("death-right-1","death-right-2");
             lands=N("jump-land");Wake=NativeZombieClips.Need("wake");CrawlStand=NativeZombieClips.Need("crawl-stand");StandCrawl=NativeZombieClips.Need("stand-crawl");
-            JumpStart=NativeZombieClips.Need("jump-start");JumpAir=NativeZombieClips.Need("jump-air");
+            JumpStart=NativeZombieClips.Need("jump-start");JumpAir=NativeZombieClips.Need("jump-air");SpitRear=NativeZombieClips.Need("knock-1");Roar=NativeZombieClips.Need("knock-3");
             for(int i=0;i<NativeZombieClips.Count;i++)NativeZombieClips.Clip(i).Decode();
             // Each clip's planted ankle height (rig frame, the root at the body): where its feet stand, for the swing's lift.
             ground=new float[NativeZombieClips.Count];var row=new float[NativeZombieClips.Channels];var p=new CapturedRig.Pose();
@@ -86,8 +88,8 @@ namespace ChipArena.UnityConversion
         public static float Ground(int clip){Warm();return ground[clip];}
 
         // ---- following the add's ground speed ----
-        /// <summary>A kind's tempo: the brute and the bloater take longer, heavier strides at a slower cadence.</summary>
-        public static readonly float[] Tempo={1,1,.9f,.95f,1,.85f};
+        /// <summary>A kind's tempo: the brute and the bloater take longer, heavier strides at a slower cadence, the Hulk slowest.</summary>
+        public static readonly float[] Tempo={1,1,.9f,.95f,1,.85f,.62f};
         public const float MinRate=.55f,MaxRate=2.8f,Exponent=.7f;
         /// <summary>The playback rate of cycle `clip` at ground speed `v` (m/s) for `kind`.</summary>
         public static float Rate(int clip,float v,int kind)
