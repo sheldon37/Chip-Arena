@@ -89,12 +89,13 @@ namespace ChipArena.UnityConversion.Editor
         }
         private static void CheckCyberLordModel(NativeSourceModels models)
         {
-            // Cyber Lord wears bone-attached hardlight primitives, not a held weapon-bank asset.
+            // Cyber Lord wears bone-attached hardlight primitives, not a held weapon-bank asset: the Standard skin's aura round the
+            // hands and the Prototype Series' gauntlets (NativeCyberLordLook.PiecesIn), on the same glow primitives.
             var pieces=new CyberPiece[NativeCyberLordLook.Capacity];
-            foreach(bool first in new[]{false,true})
+            foreach(int skin in new[]{NativeWeaponSkins.StandardIndex,NativeWeaponSkins.PrototypeIndex})foreach(bool first in new[]{false,true})
             {
-                int count=NativeCyberLordLook.Pieces(1,0,default,first,1,1,false,pieces);
-                if(count<=0)throw new Exception("Missing Cyber Lord procedural look: first-person="+first);
+                int count=NativeCyberLordLook.PiecesIn(skin,1,1,0,default,first,1,1,false,pieces,default);
+                if(count<=0)throw new Exception("Missing Cyber Lord procedural look: skin="+skin+" first-person="+first);
                 bool left=false,right=false;
                 for(int i=0;i<count;i++)
                 {
@@ -105,10 +106,10 @@ namespace ChipArena.UnityConversion.Editor
                     models.QueuePiece(p.Shape,true,Matrix4x4.identity,Color.white);
                     if(!models.Has("native-weapon-piece-"+((int)p.Shape*2+1)))throw new Exception("Missing Cyber Lord primitive: "+p.Shape);
                 }
-                if(!left||!right)throw new Exception("Cyber Lord procedural fists are incomplete");
+                if(!left||!right)throw new Exception("Cyber Lord procedural fists are incomplete: skin="+skin+" first-person="+first);
             }
             models.Begin();
-            Debug.Log("PASS Cyber Lord procedural model: first/third-person fists, rig bones and glow primitive resources");
+            Debug.Log("PASS Cyber Lord procedural model: Standard aura and Prototype gauntlets, first/third-person hands, rig bones and glow primitive resources");
         }
 
         public static void Run()
@@ -136,9 +137,9 @@ namespace ChipArena.UnityConversion.Editor
             if(NativeSourceMotion.ClipCount!=165)throw new Exception("Source motion bank is incomplete");
             using(var models=new NativeSourceModels()){foreach(var map in data.maps.Where(m=>!m.unity))if(!models.Has("map-"+map.id))throw new Exception("Missing map model: "+map.id);foreach(var weapon in data.weapons){if(weapon.id==CyberLordSpec.Id)CheckCyberLordModel(models);else if(!models.Has("weapon-"+weapon.id)&&weapon.id!="siren")throw new Exception("Missing weapon model: "+weapon.id);}foreach(var part in new[]{"saw","saw-track","spikes","spikes-cones","spikes-surface","lava","lava-surface","lava-currents","lava-bubble-0","lava-bubble-1"})if(!models.Has("hazard-"+part))throw new Exception("Missing stage hazard model: "+part);
                 // Weapon skins (Core/NativeWeaponSkins.cs): every weapon keeps its Prototype model and has a Standard model at each tier plus its loose copy.
-                int designed=0;foreach(var spec in NativeWeaponSkins.Weapons){if(!models.Has(NativeWeaponSkins.PrototypeHeld(spec)))throw new Exception("Missing Prototype Series model: "+spec);if(!NativeWeaponModels.Designed(spec))continue;designed++;for(int tier=0;tier<NativeWeaponSkins.Tiers;tier++)if(!models.Has(NativeWeaponSkins.StandardModel(spec,tier)??""))throw new Exception("Missing Standard weapon model: "+spec+" tier "+tier);if(!models.Has(NativeWeaponSkins.StandardLoose(spec)??""))throw new Exception("Missing Standard loose weapon model: "+spec);}
+                int designed=0,modelled=0;foreach(var spec in NativeWeaponSkins.Weapons){if(!NativeWeaponSkins.Modelled(spec))continue;modelled++;if(!models.Has(NativeWeaponSkins.PrototypeHeld(spec)))throw new Exception("Missing Prototype Series model: "+spec);if(!NativeWeaponModels.Designed(spec))continue;designed++;for(int tier=0;tier<NativeWeaponSkins.Tiers;tier++)if(!models.Has(NativeWeaponSkins.StandardModel(spec,tier)??""))throw new Exception("Missing Standard weapon model: "+spec+" tier "+tier);if(!models.Has(NativeWeaponSkins.StandardLoose(spec)??""))throw new Exception("Missing Standard loose weapon model: "+spec);}
                 if(models.StandardWeaponModels!=designed*(NativeWeaponSkins.Tiers+1))throw new Exception("Standard weapon model count "+models.StandardWeaponModels);
-                Debug.Log("PASS native weapon skins: "+NativeWeaponSkins.Weapons.Length+" weapons with Prototype Series models, "+designed+" with Standard models ("+models.StandardWeaponModels+" Standard tier and loose models)");
+                Debug.Log("PASS native weapon skins: "+modelled+" weapons with Prototype Series models, "+designed+" with Standard models ("+models.StandardWeaponModels+" Standard tier and loose models)");
                 // Chip modules on the Standard skins (Core/NativeChipModules*.cs): every part mesh the layouts can place is in the bank.
                 int chipMeshes=0;foreach(var m in NativeChipModules.Meshes()){chipMeshes++;if(!models.Has(NativeChipModules.ModelId(m.spec,m.part,m.variant,m.tier,m.left)??""))throw new Exception("Missing chip module mesh: "+(m.spec??"shared")+" "+m.part+" "+m.variant+" tier "+m.tier+(m.left?" left":""));}
                 if(models.ChipModuleModels!=chipMeshes)throw new Exception("Chip module mesh count "+models.ChipModuleModels+" / "+chipMeshes);

@@ -14,6 +14,10 @@ namespace ChipArena.UnityConversion
     // Presentation only: a skin never changes reach, hit volumes, timing or any rule. The map also carries the pilot's body
     // skin as one more entry after the weapons ("body:prototype", "body:sheldon"; Core/NativeBodySkins.cs), so the body pick
     // travels on exactly the same path; an older client drops the entry it does not know and draws its own body.
+    // The unarmed DEV Cyber Lord's entry ("cyberlord", owner 2026-10-13) picks its look, not a model: Standard is the glitch
+    // aura round the hands (Core/NativeCyberLordAura.cs), the Prototype Series the hardlight gauntlets and fist shells it wore
+    // before (Core/NativeCyberLordLook.cs). It has no model ids (Modelled is false), and a missing or unknown pick reads as
+    // the aura like every other Standard.
     public static class NativeWeaponSkins
     {
         public const string Standard="standard",Prototype="prototype";
@@ -21,11 +25,15 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Labels={"Standard","Prototype Series"};
         public static readonly string[] Texts={"The current production model, with accent lights in your colour.","The original blocky build the arena started with."};
         public const int StandardIndex=0,PrototypeIndex=1,Count=2;
-        /// <summary>The weapons that carry skins (every weapon with a model; the Siren has none), in content order.</summary>
-        public static readonly string[] Weapons={"pistol","rifle","machinegun","fire","water","lightning","darkness","sword","daggers","shield","greatsword","emperor","ansatsuken","leet","bow"};
-        /// <summary>The longest normalized map (every weapon on the Prototype Series, the body on the Prototype) is 278 characters; frames refuse longer.</summary>
+        /// <summary>The weapons that carry skins (every weapon with a model; the Siren has none), in content order, then the
+        /// Cyber Lord, whose skin is its look.</summary>
+        public static readonly string[] Weapons={"pistol","rifle","machinegun","fire","water","lightning","darkness","sword","daggers","shield","greatsword","emperor","ansatsuken","leet","bow",CyberLordSpec.Id};
+        /// <summary>The longest normalized map (every weapon and the Cyber Lord on the Prototype Series, the body on the Prototype) is 298 characters; frames refuse longer.</summary>
         public const int MaxLength=320;
         public static bool Skinned(string spec)=>spec!=null&&Array.IndexOf(Weapons,spec)>=0;
+        /// <summary>A skinned weapon with weapon models (a Prototype Series bake or build and usually a Standard design): every
+        /// entry but the Cyber Lord's, whose two skins are drawn looks (NativeCyberLordLook.PiecesIn).</summary>
+        public static bool Modelled(string spec)=>Skinned(spec)&&spec!=CyberLordSpec.Id;
         public static int SkinIndex(string skin)=>skin==Prototype?PrototypeIndex:skin==Standard?StandardIndex:-1;
         /// <summary>Every entry the map carries, in its canonical order: the weapons, then the pilot's body.</summary>
         public static readonly string[] Entries=Join(Weapons,NativeBodySkins.Entry);

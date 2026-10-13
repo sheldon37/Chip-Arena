@@ -28,14 +28,15 @@ namespace ChipArena.UnityConversion
             // 1. Both skins for every weapon with a model: the Prototype bake ("weapon-"/"loose-" + spec, unchanged) and a Standard
             // design at three tiers plus its loose copy.
             // The Bow's models ship ahead of its content entry (docs/NEW-KITS.md section 2; the rules are Astra's).
-            // The DEV Cyber Lord (Astra, PR #142) is unarmed: its hardlight gauntlets are its look (NativeCyberLordLook), not a skin.
-            var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren"&&id!=CyberLordSpec.Id).Concat(data.weapons.Any(w=>w.id==NativeBowWire.Spec)?new string[0]:new[]{NativeBowWire.Spec}).ToArray();
-            Check(specs.OrderBy(s=>s).SequenceEqual(NativeWeaponSkins.Weapons.OrderBy(s=>s)),"the skinned weapons are every weapon but the Siren and the unarmed Cyber Lord");
-            var designed=NativeWeaponSkins.Weapons.Where(NativeWeaponModels.Designed).ToArray();
-            Check(NativeWeaponModels.Specs.All(NativeWeaponSkins.Skinned)&&NativeWeaponModels.Specs.Count()==designed.Length,"every Standard design is a skinned weapon");
-            Check(designed.Length==NativeWeaponSkins.Weapons.Length,"every skinned weapon has a Standard design");
+            // The DEV Cyber Lord (Astra, PR #142) is unarmed: its skin is its look (owner 2026-10-13), Standard the glitch aura round
+            // the hands (NativeCyberLordAura), the Prototype Series the hardlight gauntlets (NativeCyberLordLook); it has no model.
+            var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren").Concat(data.weapons.Any(w=>w.id==NativeBowWire.Spec)?new string[0]:new[]{NativeBowWire.Spec}).ToArray();
+            Check(specs.OrderBy(s=>s).SequenceEqual(NativeWeaponSkins.Weapons.OrderBy(s=>s)),"the skinned weapons are every weapon but the Siren (the Cyber Lord's skin is its look)");
+            var modelled=NativeWeaponSkins.Weapons.Where(NativeWeaponSkins.Modelled).ToArray();var designed=NativeWeaponSkins.Weapons.Where(NativeWeaponModels.Designed).ToArray();
+            Check(NativeWeaponModels.Specs.All(NativeWeaponSkins.Modelled)&&NativeWeaponModels.Specs.Count()==designed.Length,"every Standard design is a skinned, modelled weapon");
+            Check(designed.Length==modelled.Length&&modelled.Length==NativeWeaponSkins.Weapons.Length-1,"every modelled weapon has a Standard design");
             Check(!NativeWeaponSkins.Skinned("siren")&&!NativeWeaponModels.Designed("siren"),"the Siren has no weapon skin");
-            Check(!NativeWeaponSkins.Skinned(CyberLordSpec.Id)&&!NativeWeaponModels.Designed(CyberLordSpec.Id),"the unarmed Cyber Lord has no weapon skin");
+            Check(NativeWeaponSkins.Skinned(CyberLordSpec.Id)&&!NativeWeaponSkins.Modelled(CyberLordSpec.Id)&&!NativeWeaponModels.Designed(CyberLordSpec.Id),"the unarmed Cyber Lord's skin is its look, with no weapon model");
             var file=Path.Combine(root,"Assets/Conversion/Resources/SourceModels.json");
             using(var sha=SHA256.Create())Check(string.Concat(sha.ComputeHash(File.ReadAllBytes(file)).Select(b=>b.ToString("x2")))==SourceModelsSha256,"SourceModels.json (the Prototype Series bake) is byte-identical to the base");
             var bank=new HashSet<string>();
@@ -46,7 +47,7 @@ namespace ChipArena.UnityConversion
                 string text=reader.ReadToEnd();const string key="\"id\":\"";
                 for(int at=text.IndexOf(key,StringComparison.Ordinal);at>=0;at=text.IndexOf(key,at+1,StringComparison.Ordinal)){int start=at+key.Length,end=text.IndexOf('"',start);if(end>start&&end-start<64)bank.Add(text.Substring(start,end-start));}
             }
-            foreach(var spec in NativeWeaponSkins.Weapons)
+            foreach(var spec in modelled)
             {
                 // The Bow is new to the native game: its Prototype Series is built natively (NativeBowModels.Prototype) under the bake's ids.
                 if(spec==NativeBowWire.Spec)Check(!bank.Contains("weapon-"+spec)&&NativeBowModels.PrototypeHeldId=="weapon-"+spec&&NativeBowModels.PrototypeLooseId=="loose-"+spec,spec+" Prototype Series models built natively under the bake's ids");
@@ -56,6 +57,7 @@ namespace ChipArena.UnityConversion
                 for(int t=0;t<NativeWeaponModels.Tiers;t++)Check(NativeWeaponSkins.Model("weapon-"+spec,NativeWeaponSkins.StandardIndex,t)==NativeWeaponSkins.StandardModel(spec,t)&&!bank.Contains(NativeWeaponSkins.StandardModel(spec,t)),spec+" Standard tier "+t+" id");
                 Check(NativeWeaponSkins.Model("loose-"+spec,NativeWeaponSkins.StandardIndex)=="loose-std-"+spec,spec+" Standard loose id");
             }
+            Check(NativeWeaponSkins.Model("weapon-"+CyberLordSpec.Id,NativeWeaponSkins.StandardIndex)=="weapon-"+CyberLordSpec.Id&&!bank.Contains("weapon-"+CyberLordSpec.Id),"the Cyber Lord's look-only entry names no model");
             Check(NativeWeaponSkins.Model("weapon-siren",NativeWeaponSkins.StandardIndex)=="weapon-siren"&&NativeWeaponSkins.Model("hat-cap",NativeWeaponSkins.StandardIndex)=="hat-cap"&&NativeWeaponSkins.Model(null,0)==null,"ids without a design pass through");
 
             // 2. Meshes: valid, deterministic, within budget, thinning tier by tier.
@@ -233,7 +235,7 @@ namespace ChipArena.UnityConversion
             var locker=R("NativeLockerSkinsUI.cs");var lockerUi=R("NativeLockerUI.cs");
             Check(locker.Contains("prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,entry,keys[k]);")&&lockerUi.Contains("default:LkSkinsLayout();break;")&&lockerUi.Contains("Skin=LockerSkinShown(w.id)")&&lockerUi.Contains("BodySkin=BodySkinShown()"),"the Locker's skin selector equips, and its stage tries on, a skin");
             Check(lockerUi.Contains("b.Skins!=prefs.weaponSkins")&&lockerUi.Contains("prefs.weaponSkins=b.Skins;"),"the Locker baseline covers the skins");
-            Console.WriteLine("PASS weapon skins: "+count+" checks ("+designed.Length+" of "+NativeWeaponSkins.Weapons.Length+" weapons with both skins, sockets, reach stretch, tiers/budgets/determinism, modules/enchants, skin map, wiring) digest "+Hash(digest.ToString()));
+            Console.WriteLine("PASS weapon skins: "+count+" checks ("+designed.Length+" of "+modelled.Length+" modelled weapons with both skins, the Cyber Lord's two looks, sockets, reach stretch, tiers/budgets/determinism, modules/enchants, skin map, wiring) digest "+Hash(digest.ToString()));
         }
         private static int ProtoTriangles(string spec)=>spec=="pistol"?180:spec=="rifle"?264:spec=="machinegun"?228:spec=="sword"?264:spec=="daggers"?456:spec=="greatsword"?300:spec=="shield"?168:spec=="emperor"?144:spec=="ansatsuken"?72:spec=="leet"?1388:spec=="bow"?NativeBowModels.PrototypeTriangles:180;
         private static bool BladeLengthCovered(Vector3[] blade,NativeWeaponModels.Design d,string spec)
