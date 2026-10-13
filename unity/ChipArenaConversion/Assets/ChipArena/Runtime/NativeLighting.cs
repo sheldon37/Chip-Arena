@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         private static readonly MapLookState applied=new MapLookState();private static MapFogState stageFog;
         // The practical lights' globals for NativeBlockLit's own light block (only dressed blocks read them): position and
         // range, linear colour times intensity (times the flicker each frame), and the count. Unused slots sit far below.
-        private static readonly Vector4[] arenaPos=new Vector4[NativeMapLooks.MaxLights],arenaBase=new Vector4[NativeMapLooks.MaxLights],arenaColor=new Vector4[NativeMapLooks.MaxLights];private static int arenaCount;private static bool arenaFlicker;
+        private static readonly Vector4[] arenaPos=new Vector4[NativeMapLooks.MaxLights],arenaBase=new Vector4[NativeMapLooks.MaxLights],arenaColor=new Vector4[NativeMapLooks.MaxLights];private static int arenaCount;private static bool arenaFlicker,arenaPicked;private static ContentMap currentMap;
         private static readonly int ArenaPosId=Shader.PropertyToID("_ArenaLightPos"),ArenaColorId=Shader.PropertyToID("_ArenaLightColor"),ArenaCountId=Shader.PropertyToID("_ArenaLightCount");
         private static readonly int HorizonId=Shader.PropertyToID("_Horizon"),ZenithId=Shader.PropertyToID("_Zenith"),MoonSizeId=Shader.PropertyToID("_MoonSize"),SunDirId=Shader.PropertyToID("_SunDir"),DiscColorId=Shader.PropertyToID("_DiscColor"),DiscShadeId=Shader.PropertyToID("_DiscShade");
         private static readonly int HaloColorId=Shader.PropertyToID("_HaloColor"),HaloFalloffId=Shader.PropertyToID("_HaloFalloff"),StarsId=Shader.PropertyToID("_Stars"),CloudTintId=Shader.PropertyToID("_CloudTint"),CloudSpeedId=Shader.PropertyToID("_CloudSpeed");
@@ -113,7 +113,23 @@ namespace ChipArena.UnityConversion
             Color Amb(float r,float g,float b)=>new Color((float)NativeEntranceLight.Ambient(r,linear),(float)NativeEntranceLight.Ambient(g,linear),(float)NativeEntranceLight.Ambient(b,linear));
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=Amb(l.Sky.X,l.Sky.Y,l.Sky.Z);RenderSettings.ambientEquatorColor=Amb((l.Sky.X+l.Ground.X)*.5f,(l.Sky.Y+l.Ground.Y)*.5f,(l.Sky.Z+l.Ground.Z)*.5f);RenderSettings.ambientGroundColor=Amb(l.Ground.X,l.Ground.Y,l.Ground.Z);
         }
-        public static void Clock(float time){if(sky!=null)sky.SetFloat("_SceneTime",time);if(arenaFlicker)PracticalLights(time);}
+        public static void Clock(float time){if(sky!=null)sky.SetFloat("_SceneTime",time);if(arenaFlicker&&!arenaPicked)PracticalLights(time);}
+        /// <summary>The map the last Apply lit (the menu backdrop reads it to tell the revamped Ward Zero from today's).</summary>
+        public static ContentMap CurrentMap=>currentMap;
+        /// <summary>
+        /// A map's presentation choosing the eight practical lights itself each frame (Ward Zero's revamp, Core
+        /// NativeWardZeroLights): positions with ranges in `pos` (x, y, z, range per light) and linear colours times intensity in
+        /// `rgb`. They replace the look's lights until the next Apply (a map change gives the look's own back); Clock leaves them.
+        /// </summary>
+        public static void PickedLights(float[] pos,float[] rgb)
+        {
+            bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;arenaPicked=true;arenaCount=NativeMapLooks.MaxLights;
+            for(int i=0;i<NativeMapLooks.MaxLights;i++)
+            {
+                arenaPos[i]=new Vector4(pos[i*4],pos[i*4+1],pos[i*4+2],Math.Max(.0001f,pos[i*4+3]));var c=new Color(rgb[i*3],rgb[i*3+1],rgb[i*3+2]);if(!linear)c=c.gamma;arenaColor[i]=new Vector4(c.r,c.g,c.b,0);
+            }
+            Shader.SetGlobalVectorArray(ArenaPosId,arenaPos);Shader.SetGlobalVectorArray(ArenaColorId,arenaColor);Shader.SetGlobalInt(ArenaCountId,arenaCount);
+        }
         /// <summary>
         /// The home screen's rooftop night (NativeRooftopPresentation): its own skybox, a dim navy fog for the pilots (the city's
         /// shaders draw their own haze), night trilight, and the key and rim recoloured as the city's magenta and cyan neon from
@@ -136,8 +152,9 @@ namespace ChipArena.UnityConversion
             if(looks==null){var asset=Resources.Load<TextAsset>("MapLooks");if(asset==null)throw new InvalidOperationException("MapLooks.json is missing");var set=JsonUtility.FromJson<MapLookSet>(asset.text);NativeMapLooks.Validate(set);looks=set;}
             return looks;
         }
-        /// <summary>The map's look: its MapLooks.json entry, or today's look worked out from the map (NativeMapLooks.Fallback).</summary>
-        public static MapLook Look(ContentMap map)=>NativeMapLooks.Resolve(LookSet(),map.id,map.theme,map.sky,map.accent);
+        /// <summary>The map's look: the entry its `look` names (UnityMaps maps carry one), else its id's entry, else today's look worked
+        /// out from the map (NativeMapLooks.Fallback). The old maps name none, so they resolve by id as before.</summary>
+        public static MapLook Look(ContentMap map)=>(string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??NativeMapLooks.Resolve(LookSet(),map.id,map.theme,map.sky,map.accent);
         private static readonly int ArenaRimDirId=Shader.PropertyToID("_ArenaRimDir"),ArenaRimColorId=Shader.PropertyToID("_ArenaRimColor");
         /// <summary>
         /// NativeBlockLit's rim (it has no add pass, and Apply keeps the rim per-pixel on dressed maps, so Unity's second
@@ -159,7 +176,7 @@ namespace ChipArena.UnityConversion
         // looks moved into data, except Cinder Crossing's sky (forge theme).
         public static void Apply(ContentMap map,Camera camera)
         {
-            var look=Look(map);current=look;var s=applied;NativeMapLooks.Applied(look,map.sky,NativeArenaDressing.Preview,s);
+            var look=Look(map);current=look;currentMap=map;arenaPicked=false;var s=applied;NativeMapLooks.Applied(look,map.sky,NativeArenaDressing.Preview,s);
             camera.farClipPlane=s.FarClip;camera.backgroundColor=C(s.Background);camera.clearFlags=s.Skybox?CameraClearFlags.Skybox:CameraClearFlags.SolidColor;
             WriteFog(s.Fog);if(introActive)stageFog=ReadFog();
             Sky(s);RenderSettings.skybox=s.Skybox?sky:null;Shadows();
