@@ -94,4 +94,33 @@ namespace ChipArena.UnityConversion
             if(count>0){int slot=0;while(slot*2+1<count){int child=slot*2+1;if(child+1<count&&Before(heap[child+1],heap[child]))child++;if(!Before(heap[child],last))break;Put(slot,heap[child]);slot=child;}Put(slot,last);}return result;
         }
     }
+    // Per-map broad phase: authored endpoints and hazard envelopes never move.
+    // Only candidate membership is cached; LinkOpen evaluates the current clock on every query.
+    public sealed class NativeNavHazards
+    {
+        private readonly Dictionary<MapNavLink,MapHazard[]> links=new Dictionary<MapNavLink,MapHazard[]>();
+        private readonly Dictionary<MapNavNode,MapHazard[]> nodes=new Dictionary<MapNavNode,MapHazard[]>();
+        public NativeNavHazards(MapNav graph,MapHazard[] hazards)
+        {
+            var byId=new Dictionary<string,MapNavNode>();foreach(var node in graph.nodes)byId.Add(node.id,node);
+            MapHazard[] Candidates(V3 a,V3 b)
+            {
+                var list=new List<MapHazard>();foreach(var h in hazards??Array.Empty<MapHazard>())
+                    if(NativeStageHazards.CrossesEnvelope(h,a,b))list.Add(h);
+                return list.Count==0?Array.Empty<MapHazard>():list.ToArray();
+            }
+            foreach(var node in graph.nodes)nodes.Add(node,Candidates(node.pos,node.pos));
+            foreach(var link in graph.links)links.Add(link,Candidates(byId[link.a].pos,byId[link.b].pos));
+        }
+        public bool Unsafe(MapNavLink link,V3 a,V3 b,NativePhase phase,int round,double fightAt,double now)
+            =>Unsafe(links[link],a,b,phase,round,fightAt,now);
+        public bool Unsafe(MapNavNode node,NativePhase phase,int round,double fightAt,double now)
+            =>Unsafe(nodes[node],node.pos,node.pos,phase,round,fightAt,now);
+        private static bool Unsafe(MapHazard[] candidates,V3 a,V3 b,NativePhase phase,int round,double fightAt,double now)
+        {
+            foreach(var h in candidates)if(!NativeStageHazards.LinkOpen(h,phase,round,fightAt,now,a,b))return true;
+            return false;
+        }
+    }
+
 }

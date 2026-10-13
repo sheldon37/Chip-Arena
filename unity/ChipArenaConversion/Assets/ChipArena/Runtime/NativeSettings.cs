@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
             Field("Camera");NativeCameraModes.Choose(ChoiceGrid(NativeCameraModes.Choices,NativeCameraModes.Choice(prefs.cameraMode,prefs.shoulderLeft,prefs.firstPerson),NativeCameraModes.Labels),ref prefs.cameraMode,ref prefs.shoulderLeft,ref prefs.firstPerson);
             Fine("V switches to first person and back; "+NativeCameraModes.SwapKey+" swaps the shoulder during play.");
             Field("Controls");prefs.sensitivity=Slider("Mouse sensitivity",prefs.sensitivity,.2f,2.5f);
-            Field("Audio");prefs.sound=!GUILayout.Toggle(!prefs.sound,"Mute audio");SoundTestRow();prefs.audio=Slider("Effects volume",prefs.audio,0,1);prefs.music=Slider("Arena music volume",prefs.music,0,1);prefs.menuMusic=Slider("Menu music volume",prefs.menuMusic,0,1);
+            Field("Audio");prefs.sound=!GUILayout.Toggle(!prefs.sound,"Mute audio");SoundTestRow();prefs.menuMusic=Slider("Menu Music",prefs.menuMusic,0,1);prefs.music=Slider("Stage Music",prefs.music,0,1);prefs.audio=Slider("Sounds",prefs.audio,0,1);
             if(nativeAudio!=null){nativeAudio.Effects=Mathf.Clamp01(prefs.audio);nativeAudio.Music=Mathf.Clamp01(prefs.music);nativeAudio.Menu=Mathf.Clamp01(prefs.menuMusic);}
             Field("Effects");prefs.trails=GUILayout.Toggle(prefs.trails,"Projectile trails");prefs.reducedEffects=GUILayout.Toggle(prefs.reducedEffects,"Reduced effects");prefs.cameraShake=GUILayout.Toggle(prefs.cameraShake,"Camera shake");
             GUILayout.Label("Combat glow",small);int glow=prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?1:2;prefs.combatGlow=new[]{"Off","Low","Full"}[ChoiceRow(new[]{"Off","Low","Full"},glow)];

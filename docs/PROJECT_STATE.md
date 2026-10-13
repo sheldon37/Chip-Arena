@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-13 runtime hitch follow-up: `codex/ward-navigation-audio` on `1a13677` responds to measured Ward navigation (118 ms) and Cyber City replay death presentation (2374 ms). Adds a static hazard broad phase with live safety checks, granular navigation/death timings, and Menu Music / Stage Music / Sounds labels over existing independent saved controls. Managed checks pass; Windows build/playtest pending. Replay death spike remains unresolved pending sub-timings. See DEV_LOG and NATIVE-HITCH-DIAGNOSTICS.
+
 2026-10-13 killcam/music follow-up: `codex/killcam-hitches-and-music` on `33939f4` bounds corpse collider copies and initial catch-up, prepares/reuses replay worlds before combat, adds playback hitch timings, and imports owner menu/Ward tracks. Local checks pass; actual Unity build, compiled Update and Windows frame-time acceptance remain pending. See DEV_LOG and task PR.
 
 2026-10-13 build follow-up: `5211d13` compiled but failed the new spitter native gate because its fixture activated before spawning. `codex/spitter-gate-timestamps` corrects fixture timing and splits frame assertions; local syntax/source checks pass. Desktop Unity rebuild and test Update publication remain pending.

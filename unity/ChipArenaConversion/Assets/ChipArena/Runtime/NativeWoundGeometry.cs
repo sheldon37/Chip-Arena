@@ -39,7 +39,14 @@ namespace ChipArena.UnityConversion
         /// tier, NativeBodySkins) wounded, or `basis` itself while unwounded. The carve depends on the wounds only; the
         /// Prototype shows it as carved boxes, a body skin cut into its own surface (NativeWoundSkin).
         /// </summary>
+        public double DiagnosticWoundMs {get;private set;}
         public string WoundedPilot(int id,NativeWound[] impacts,string bodyHex,bool low=false,string basis=NativeBodySkins.PrototypeModel)
+        {
+            long at=System.Diagnostics.Stopwatch.GetTimestamp();
+            try{return WoundedPilotCore(id,impacts,bodyHex,low,basis);}
+            finally{DiagnosticWoundMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
+        }
+        private string WoundedPilotCore(int id,NativeWound[] impacts,string bodyHex,bool low,string basis)
         {
             if(basis==null||!models.ContainsKey(basis))basis=NativeBodySkins.PrototypeModel;
             float now=Time.unscaledTime;wounds.TryGetValue(id,out var a);woundsB.TryGetValue(id,out var b);

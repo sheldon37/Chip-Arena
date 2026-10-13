@@ -113,6 +113,24 @@ namespace ChipArena.UnityConversion
             for(int i=1;i<=10;i++)if(NativeFactoryHazards.State(h,round,clock+i*.1).Phase!=NativeFactoryHazards.Parked)return false;
             return true;
         }
+        // Static swept envelope only. Hazard clocks and current-world raycasts are never baked here.
+        public static bool CrossesEnvelope(MapHazard h,V3 a,V3 b,float margin=.45f)
+        {
+            bool cross=false;
+            if(NativeStageHazards.City(h)||NativeStageHazards.Ward(h))
+            {
+                if(h.kind=="burner"){foreach(var z in h.zones??Array.Empty<MapVolume>())if(NativeStageHazards.Cross(a,b,z.center,z.size,margin)){cross=true;break;}}
+                else cross=NativeStageHazards.Cross(a,b,h.center,h.size,margin);
+            }
+            else
+            {
+                if(h.kind=="vent"&&h.damage<=0)return false;
+                if(h.kind=="crane"){foreach(var z in h.zones??Array.Empty<MapVolume>())if(NativeStageHazards.Cross(a,b,z.center,z.size,margin)){cross=true;break;}}
+                else
+                {V3 c=(h.a+h.b)*.5f,size=new V3(Math.Abs(h.a.x-h.b.x)+h.size.x,Math.Abs(h.a.y-h.b.y)+h.size.y,Math.Abs(h.a.z-h.b.z)+h.size.z);if(h.kind=="vent"){c=h.a+new V3(0,h.size.y/2,0);size=h.size;}cross=NativeStageHazards.Cross(a,b,c,size,margin);}
+            }
+            return cross;
+        }
         public static bool Cross(V3 a,V3 b,V3 c,V3 size,float margin=.45f)=>NativeStructureRules.Crosses(a,b,c,size,margin);
     }
 }

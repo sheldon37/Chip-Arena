@@ -23,6 +23,7 @@ internal static class NavSearchChecks
     {
         void Check(bool ok,string why){if(!ok)throw new Exception("Navigation search: "+why);}
         var set=JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),new JsonSerializerOptions{IncludeFields=true});
+        CheckHazardBroadPhase(set,Check);
         var map=set.maps.Single(m=>m.id=="siren");var search=new NativeNavSearch(map.nav);var result=new List<string>(map.nav.nodes.Length);
         Func<MapNavLink,bool> all=l=>true,closedHazards=l=>(l.hazards?.Length??0)==0;
         var nodes=map.nav.nodes.ToDictionary(n=>n.id);var edges=map.nav.nodes.ToDictionary(n=>n.id,n=>new List<MapNavLink>());
@@ -81,4 +82,41 @@ internal static class NavSearchChecks
         long allocation=GC.GetAllocatedBytesForCurrentThread();bool hit=false;for(int i=0;i<10000;i++)hit|=NativeStageHazards.Cross(new V3(-2,2,3),new V3(2,2,3),box.center,box.size);Check(GC.GetAllocatedBytesForCurrentThread()==allocation&&hit,"hazard geometry allocates no temporary volume");
         Console.WriteLine($"PASS navigation: Ward {map.nav.nodes.Length} nodes/{map.nav.links.Length} links, 16 legacy-equivalent routes/gates/ties, directed drops, unreachable, nearest, zero-allocation warm searches/cross tests; legacy {oldMs:F1} ms/{oldBytes} bytes, new {newMs:F1} ms/{newBytes} bytes (managed only; both exclude one-time adjacency setup and PhysX)");
     }
+    private static bool LegacyEnvelope(MapHazard h,V3 a,V3 b)
+    {
+        if(NativeStageHazards.City(h)||NativeStageHazards.Ward(h))
+        {
+            if(h.kind=="burner")return (h.zones??Array.Empty<MapVolume>()).Any(z=>NativeStageHazards.Cross(a,b,z.center,z.size));
+            return NativeStageHazards.Cross(a,b,h.center,h.size);
+        }
+        if(h.kind=="vent"&&h.damage<=0)return false;
+        if(h.kind=="crane")return (h.zones??Array.Empty<MapVolume>()).Any(z=>NativeStageHazards.Cross(a,b,z.center,z.size));
+        V3 c=(h.a+h.b)*.5f,size=new V3(Math.Abs(h.a.x-h.b.x)+h.size.x,Math.Abs(h.a.y-h.b.y)+h.size.y,Math.Abs(h.a.z-h.b.z)+h.size.z);
+        if(h.kind=="vent"){c=h.a+new V3(0,h.size.y/2,0);size=h.size;}
+        return NativeStageHazards.Cross(a,b,c,size);
+    }
+    private static void CheckHazardBroadPhase(UnityMapContent set,Action<bool,string> check)
+    {
+        int comparisons=0;double oldMs=0,newMs=0;
+        foreach(var map in set.maps.Where(m=>m.nav!=null&&m.hazards!=null))
+        {
+            var index=new NativeNavHazards(map.nav,map.hazards);var nodes=map.nav.nodes.ToDictionary(n=>n.id);
+            bool Old(V3 a,V3 b,NativePhase phase,int round,double now)
+            {foreach(var h in map.hazards)if(LegacyEnvelope(h,a,b)&&!NativeStageHazards.LinkOpen(h,phase,round,10,now,a,b))return true;return false;}
+            foreach(var phase in new[]{NativePhase.Countdown,NativePhase.Fight,NativePhase.Result})foreach(int round in new[]{1,2})foreach(double now in new[]{10d,13.5,19,28,43,75})
+            {
+                foreach(var l in map.nav.links){var a=nodes[l.a].pos;var b=nodes[l.b].pos;check(index.Unsafe(l,a,b,phase,round,10,now)==Old(a,b,phase,round,now),"hazard link broad phase "+map.id+" "+l.id);comparisons++;}
+                foreach(var n in map.nav.nodes){check(index.Unsafe(n,phase,round,10,now)==Old(n.pos,n.pos,phase,round,now),"hazard node broad phase "+map.id+" "+n.id);comparisons++;}
+            }
+            var watch=new Stopwatch();int oldCount=0,newCount=0;
+            for(int warm=0;warm<2;warm++)
+            {
+                watch.Restart();foreach(var l in map.nav.links)if(Old(nodes[l.a].pos,nodes[l.b].pos,NativePhase.Fight,2,19))oldCount++;watch.Stop();if(warm==1)oldMs+=watch.Elapsed.TotalMilliseconds;
+                long bytes=GC.GetAllocatedBytesForCurrentThread();watch.Restart();foreach(var l in map.nav.links)if(index.Unsafe(l,nodes[l.a].pos,nodes[l.b].pos,NativePhase.Fight,2,10,19))newCount++;watch.Stop();if(warm==1){newMs+=watch.Elapsed.TotalMilliseconds;check(GC.GetAllocatedBytesForCurrentThread()==bytes,"hazard broad phase warm allocation");}
+            }
+            check(oldCount==newCount,"hazard benchmark result equivalence");
+        }
+        Console.WriteLine($"PASS hazard broad phase: {comparisons} node/link comparisons across maps, live clocks/rounds/phases, zero warm allocations; whole-graph queries legacy {oldMs:F2} ms, cached candidates {newMs:F2} ms (managed, excludes PhysX and initialization)");
+    }
+
 }

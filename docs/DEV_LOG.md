@@ -6048,3 +6048,31 @@ No asset re-encode, slider migration, gameplay or animation changes.
 Validation: diff whitespace and source-package checks passed. Unity/Windows
 listening remains unrun; desktop build/publication pending. Send runtime log
 from a fresh Ward session before another speculative performance change.
+
+## 2026-10-13 · Codex · Measured Ward navigation and replay death diagnostics
+Branch `codex/ward-navigation-audio`, base shared `1a13677` (menu gain kept).
+Owner runtime reports: Ward wave 138.62 ms frame / 118.37 ms navigation / four
+searches / 14 adds; Cyber City Result replay 2382.46 ms frame / 2373.76 ms death
+presentation, GC counters +17. These establish two separate bottlenecks, not an
+exact death sub-operation or GC pause duration. The later header tick/FPS does
+not describe the recorded hitch.
+Audio already had three independent saved sliders; renamed/reordered them to
+Menu Music, Stage Music, Sounds as requested, retaining values and gain trim.
+Navigation precomputes static hazard-envelope candidates per authored node/link
+at arena setup. Each query retains live hazard clocks, structural state and
+world raycasts; no stale safety cache, route changes or crowd cap reduction.
+Added nearest-node/link sub-timings and link counts, plus regular corpse setup,
+stepping/world refresh, wound-model timings and corpse creation counts. These
+are nested diagnostic values, not additive costs. No wound art or death physics
+change: the multi-second replay death issue remains unresolved pending sub-timings.
+Validation: full managed/real relay suite passed; Python 101 OK (one skipped);
+source package 1852 files; changed runtime/Core syntax and whitespace clean.
+1,616,076 hazard candidate comparisons across authored maps/rounds/clocks/phases
+match the prior queries; warmed candidate queries allocate zero bytes. Managed
+whole-graph hazard query benchmark 11.37 ms legacy vs 2.99 ms indexed; excludes
+initialization and PhysX, not a claim about Windows frame time. Existing path,
+directed drop, crowd, dynamic gate and zero-allocation checks also passed.
+Unity compilation, Windows listening/performance and compiled publication not
+run here. Next: builder compile and fresh Ward + replay Connection reports with
+new fields before calling either hitch fixed. Gameplay, animation and network
+protocol remain unchanged.
