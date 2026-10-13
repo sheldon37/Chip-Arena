@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-13 Stall/combat follow-ups: `codex/unity-hitch-trail-revive` on `e2e894e9` adds bounded automatic stall reports, fixes pending-air slash lifetime, makes completed Siren crush lethal despite healing, and aligns rendered-host revive anchors with ragdolls. Managed/relay/Python/source checks pass; Unity/PhysX/Windows remain unrun. Intermittent FPS cause still unconfirmed; send PERF_HITCH records after next build. See NATIVE-HITCH-DIAGNOSTICS and DEV_LOG.
+
 2026-10-13 saw bisect gib: `claude/saw-bisect` (base shared `4a67602`) splits a pilot a Factory saw kills in two along the blade's plane through the pelvis, using a reusable Core bisect module (`docs/BISECT-GIB.md`). It has sealed per-skin caps, a hold then a part, blood, sparks and a bloodied blade; gore off keeps the current death. Presentation only. Merged into the shared head; not released. Unity Editor/Windows not run; see DEV_LOG.
 2026-10-12 Cyber Lord air jump / Sheldon Idle saves: `codex/cyber-jump-sheldon-idle` on shared `466130a1` enables the dagger-equivalent air jump, fixes cast locks in prediction and preserves the native DEV pose in accounts source. Claude's two DEV gates reviewed and retained. Managed/relay, 16 accounts+lobby tests, Python and source checks pass. Unity/PhysX/Windows acceptance and accounts deployment pending; no merge or release. Data Dash's single damaging trail is documented as an implementation limitation; unchanged. See DEV_LOG and CYBER-LORD.md.
 
