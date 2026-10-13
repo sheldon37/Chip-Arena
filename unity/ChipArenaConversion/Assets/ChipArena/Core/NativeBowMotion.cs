@@ -296,15 +296,32 @@ namespace ChipArena.UnityConversion
             float sprint=SprintLayer?.Advance(r,a,time,dt)??0;
             float move=Locomotion?.Bow(r,v,v.Spec,time,sprint)??0;
             if(sprintBlend>1e-4f)r.AddE(CapturedRig.Spine,.2f*sprintBlend*run,0,0);
-            JumpLayer?.Ranged(r,a,v.Spec,time,dt,.4f);
             // The bow: its phase from the replicated draw and casts (a let-down the presentation watched when not stamped).
             Read=NativeBowWire.Of(a);Watch.Observe(Read,time);Bow=NativeBow.At(Read,time,Watch.CancelAt,Watch.CancelPull);
+            // The double jump's flip (NativeJumpRules.Flips follows the air jump grant, the Bow's included) with the bow raised:
+            // the torso stays out of the flip's tucked take, and the stance and the arms solve on the unturned body with the turn
+            // put back on after, bow frame and all, so the archer somersaults holding the bow on the arrow line and the string
+            // in the hand. Curled and turned, the arms could not reach the aimed line: the string hand left the string by up to
+            // 20 cm and the bow swung by the torso. The legs keep the tuck; a carried bow flips as before.
+            float tuck=a.AirJumps>0&&NativeJumpRules.Flips(v.Spec)?NativeJumpRules.FlipTuck((time-a.AirJumpAt)/NativeJumpRules.FlipSeconds):0;
+            JumpLayer?.Ranged(r,a,v.Spec,time,dt,.4f*(1-MeleeMath.Clamp(Bow.Raised,0,1)*tuck));
+            float spin=JumpLayer?.FlipAngle??0;bool spun=Math.Abs(spin)>1e-5f;NativeJumpMotion.Unspin(r,spin);Vector3 about=NativeJumpMotion.About(r.P[CapturedRig.Body]);
             r.WritePose(pose);pose.World();
             var aim=NativeBowPose.PhaseAim(a,Bow,false);float k=Bow.Raised,still=1-MeleeMath.Ease(r.Motion/.4f);
             NativeBowPose.Torso(pose,aim,k,still,Bow.Sky);
             Vector3 anchor=NativeBowPose.ChestAnchor(pose);
             Vector3 carryBow=Locomotion!=null&&move>0?NativeBowPose.CarryWrist+(Locomotion.BowHand-Locomotion.BowHandMean)*.6f:NativeBowPose.CarryWrist;
             Shot=NativeBowPose.Arms(pose,Read,Bow,time,aim,anchor,NativeBowPose.Start,k,carryBow,sprint*(1-k),false);
+            if(spun){NativeJumpMotion.Respin(pose,spin);Shot=Turned(Shot,NativeJumpMotion.Turn(spin),about);}
+        }
+        /// <summary>A posed bow frame turned with the body (the flip): its points about `about`, its directions and rotations.
+        /// The hand-held arrow is in the draw hand's frame and turns with it.</summary>
+        public static NativeBowPose.Frame Turned(NativeBowPose.Frame f,Quaternion q,Vector3 about)
+        {
+            Vector3 P(Vector3 x)=>Vector3.Transform(x-about,q)+about;
+            f.Anchor=P(f.Anchor);f.Nock=P(f.Nock);f.BowWrist=P(f.BowWrist);f.DrawWrist=P(f.DrawWrist);
+            f.Aim=Vector3.Transform(f.Aim,q);f.Left=Vector3.Transform(f.Left,q);f.Up=Vector3.Transform(f.Up,q);f.BowRotation=q*f.BowRotation;f.DrawRotation=q*f.DrawRotation;
+            return f;
         }
     }
 }

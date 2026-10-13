@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         public static bool Soon(int category)=>false;
 
         // Restricted cosmetics (shown only when NativeCosmeticRules.Allowed lets them through) carry a DEV badge.
-        public static bool DevItem(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo"||id==NativeHatLooks.SheldonHead||id==NativeCosmeticGate.SheldonIntro);
+        public static bool DevItem(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo"||id==NativeHatLooks.SheldonHead||id==NativeCosmeticGate.SheldonIntro||id==NativeCosmeticGate.SheldonIdle);
         // A cosmetic label without its DEV marking (the badge says it instead): "Gibber · DEV ONLY" -> "Gibber",
         // "DEV · Rain Warrior" -> "Rain Warrior".
         public static string Clean(string label)
@@ -102,9 +102,10 @@ namespace ChipArena.UnityConversion
                 default:return "";
             }
         }
-        // Lobby poses in NativeLobbyPoses.Keys order (weapon, chair, sleep, crossed).
+        // Lobby poses in NativeLobbyPoses.Keys order (weapon, chair, sleep, crossed), then the DEV Sheldon Idle.
         public static readonly string[] PoseTexts={"A ready stance with your weapon.","Lounging on the lobby chair.","Napping until the match starts.","Arms crossed, waiting."};
-        public static string PoseText(int index)=>index>=0&&index<PoseTexts.Length?PoseTexts[index]:"";
+        public const string SheldonPoseText="Hunched and twitching.";
+        public static string PoseText(int index)=>index==NativeLobbyPoses.SheldonIdle?SheldonPoseText:index>=0&&index<PoseTexts.Length?PoseTexts[index]:"";
 
         // Entrances: the procedural entrances by what they stage, the weapon intros as that weapon's signature, the DEV entrances.
         public static string IntroName(string id,string label)=>Clean(label);

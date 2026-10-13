@@ -55,6 +55,7 @@ namespace ChipArena.UnityConversion
             if(viewRig==null)viewRig=captured.Create(transform,-999);
             var shown=source.ViewCopy();shown.Aiming=AimHeld;shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;
             // A camera-attached presentation rig never changes the authoritative pilot or muzzle.
+            viewRig.PreviewAirJumpAt=rigs.TryGetValue(LocalId,out var own)?own.PreviewAirJumpAt:-100;// the Dev Sandbox's Cyber Lord boost preview
             viewRig.ViewPitch=source.Pitch;viewRig.ActorPose(shown,Vector3.zero,time,true);
             // Every magic-class pilot (first-person-view.ts cls 'magic': the four schools and the L33t H4x staff) frames the staff view.
             int school=MagicPose.School(shown);bool gun=GunRules.Ranged(shown.Weapon),magic=school>0,bow=NativeBowWire.Is(shown.SourceSpec);

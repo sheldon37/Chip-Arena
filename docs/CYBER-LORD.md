@@ -12,7 +12,9 @@ Who builds what:
 - Claude built everything below: presentation only. Nothing here changes the simulation, the network frame, hit timing,
   hitboxes, damage, cooldowns or movement.
 
-Status: implemented on `claude/cyberlord` only. Not pushed, merged or released.
+Status: implemented on `claude/cyberlord` only. Not pushed, merged or released. The Runner-pack run and sprint, the
+double-jump presentation, the twitching idle (also the DEV "Sheldon Idle" lobby pose) and the chained dash trails are on
+`claude/cyberlord-run` (not pushed).
 - The rules are Astra's: Kernel Panic (PR #138) and the rest of the kit (PR #142, `8a2ed88`: the content entry, the
   combo, Q, E, 1-3, prediction, bots, the DEV-only scope), both merged into this branch. The presentation reads her
   replicated state as it is. Two-client gameplay and the Unity runtime are unrun, so the checks still drive the
@@ -113,13 +115,20 @@ game never calls it.
   `tools/export_pack_cyberlord.mjs`. Hashes are in `tools/pack-cyberlord-provenance.json`; no FBX is committed.
   - It runs on the DEV fighter route (gait feet, the style layer, the reactions).
   - A bladed high guard, the head kept on the facing.
-  - The pack run and sprint are carried at the gait's stride. First person has its own view pose.
+  - The run and sprint are the CLazy Runner pack's (see "Run and sprint"); the Explosive pack's `run` and `sprint` takes stay
+    in its generated file, unused, so its take indices and hashes are unchanged. First person has its own view pose.
 - **LMB combo**: Jab, Cross, Pulse Palm. Each take's impact lands on the replicated hit, and a chained step starts from
   the previous step's end. Hit events add white hardlight sparks with a hex ring and pixel shards, and the mana flows from
   the hit into the gauntlets. The palm adds a forward hex-ring cone (1.6 m).
 - **RMB guard**: a hex hardlight panel in front of the crossed forearms that flares on a block.
 - **Q Data Dash**: the body goes translucent and pixelated through the dash. RGB-split glitch bands streak from the start,
-  and a 1.2 s trail of hovering data pixels and an upright light curtain pulses on each .3 s tick.
+  and a 1.2 s trail of hovering data pixels and an upright light curtain pulses on each .3 s tick. The replicated kit keeps
+  one dash, so a chained dash used to snap the last trail away mid-fade; the effects now remember each pilot's dash trails
+  (`Core/NativeCyberLordDashTrails.cs`, noted from the replicated window by its start, so guests and late joiners see them
+  too), and an older trail finishes its own fade while the new one grows. With Data Dash's cooldown at 0 (PR #159: only
+  the .2 s dash and its mana gate it) a trail lives about 1.6 s from its dash to the end of its fade, so dashes .2 s apart
+  keep about eight alive: the ring holds `TrailsPerPilot` 8 per pilot (48 in all), the oldest retires first, and past the
+  pilot's three newest the older trails draw on the low tier (fewer blocks, no rising bits). No allocation per frame.
 - **E Firewall**: a 5 x 2.5 m hex wall .8 m ahead. It forms from the base centre out (.28 s), scans, ripples where shots
   are absorbed, flickers red where enemies burn on it, and collapses into falling pixels at 4 s.
 - **1 Packet Burst**: 8 glitch shards from the palms in the 6 m, 50 degree cone, with RGB-split trails and glitch sparks on hits.
@@ -135,48 +144,178 @@ Owner rule kept: no glowing disc, ring or tile lies on the floor. Areas read thr
 
 ## Idle stance
 
-The owner asked: "Id like to add a idle pose for the DEV Cyber Lord class (Matching the sheldon look) slight glitch
-effects". The code is in `Core/CyberLordIdle.cs`. It follows the Sheldon Intro's resolved ending
-(`NativeSheldonIntroScript` Stare and Arms).
+The owner asked first for "a idle pose ... (Matching the sheldon look) slight glitch effects", then (2026-10-12): "Change
+Cyberlord idle to be similar to the sword idle, but more "psycho" appearance, like they're twitching, etc. Same will apply
+to their idle". The code is in `Core/CyberLordIdle.cs`. One look serves the match and the portraits.
 
-**The pose**
-- The figure stands upright. The pelvis keeps only its heading and the hips rise 3.5 cm. The gait keeps the feet planted.
-- The left hand rests on the hood's front edge at the temple, fingers over the brim, at the intro's `HandOnHood` and
-  `HandTurn`. The arm starts from the intro's raised-arm key and keeps that elbow's side.
-- With no Sheldon Head hood, two fingers rest at the bare temple instead.
-- The right arm hangs loose, and the chest is turned a little toward the raised hand.
-- A slow breath (3.2 s) lifts the chest and shoulders. The head holds its stare on the facing, chin a touch down, and
-  follows a share of the view's pitch. Neither the breath nor the stance take under it moves the head or the hips.
+**The stance** is the sword's own standing idle (`CyberLordIdlePose.Base`: the owner's Explosive Armed-Idle, `MeleeSet`
+"sword" Idle): hunched, knees bent, the arms hanging out wide. The empty hands close into fists: the right one (the sword
+hand) is drawn in from the empty blade's reach and turned knuckles forward, the left a little in. In a match it is the base
+row under the twitches with the gait's planted feet (the fighter stance's spots); the hips crouch lower over them.
 
-**When it shows**
-- A third-person pilot settles into it after 0.9 s standing still, blending in over 0.6 s. The pilot must be alive,
-  grounded, not sprinting, at ground speed of 0.35 m/s or less, with the gait's travel at zero.
-- It blends out within 0.08 s on any of these: a step, a jab, a cast, a guard, a roll, a hit reaction, a stun, a jump,
-  or Kernel Panic.
-- A swing or cast must have finished its settle and blend out first, and only then does the 0.9 s still time start.
-- A fresh rig of a pilot already standing still (a late join, the killcam) shows the idle at once. Every window comes
-  from the replicated actor and its view. The only memory is when the pilot last moved.
-- The presented state is `cyber-idle`. First person is unchanged.
+**The twitches** (`CyberLordIdlePose.Twitch`) are the "psycho" layer. Each kind has its own seeded schedule per pilot:
+windows of an irregular length, an event in some of them at a seeded moment, so nothing runs like a metronome. Each twitch
+is a fast attack (about .035 to .07 s), a short hold and an eased release (`Envelope`). It is a pure function of the seed
+and the time, with no per-frame noise: between snaps the head and hips hold dead still.
+- the head jerks to a tilt, a turn or a pitch, snaps and holds (some with a second, smaller snap further over);
+- a shoulder hitches up with the neck pulled toward it (a spasm);
+- a fist clenches (the wrist curls, the forearm tenses) and its hardlight shell flares (`Clench`, the look's flare);
+- the breath is ragged: warped, uneven cycles of a swinging depth, with sudden gasps;
+- an occasional full-body flinch: the body jolts back and up, shoulders hunched, the hips dip, then slowly lets go;
+- weight shifts that stop short: the hips run toward one side, accelerating, halt dead, hold and ease back.
+The head also follows a share of the view's pitch. All of it is bounded (the checks pin the joints).
 
-**The glitch** is slight and occasional: about one moment every 4 s, some 6% of the idle's frames. It is seeded per
-pilot, on the Sheldon Intro's 24 Hz steps, and only shows once the stance has settled. There are four kinds:
-- an RGB-split shimmer (`Split`): a magenta and a cyan ghost of the posed body, 2 to 4 cm apart across it, for 0.2 s;
-- a slice tear (`Slice`, `HeadSlice`): the upper body, and some steps the head, torn up to 5.5 cm sideways for 0.125 s;
-- a scanline band (`Scan`): a band sweeping the hardlight parts over 0.5 s and flickering them dim and bright;
-- a rare twitch (`Twitch`): two steps of a neck and shoulder jolt, in some 6.5 s slots.
+**When it shows** is unchanged: a third-person pilot settles into it after 0.9 s standing still and blends in over 0.6 s
+(alive, grounded, not sprinting, at 0.35 m/s or less, the gait's travel at zero). It blends out within 0.08 s on a step,
+a jab, a cast, a guard, a roll, a hit reaction, a stun, a jump or Kernel Panic. A swing or cast must finish its settle and
+blend out first. A fresh rig of a pilot already standing still shows it at once. The presented state is `cyber-idle`.
+First person is unchanged: the twitches never move the view or shake the camera.
 
-With reduced effects there is no slice and no twitch. The split rises and falls once at a lower strength, and the band
-only brightens softly, so nothing strobes. In a match the tear and the twitch are in the rig's pose. The runtime draws
-the ghosts (`CyberIdleGhosts`) and the band (`CyberLordBody`).
+**The glitch** stays slight and occasional, seeded per pilot on the Sheldon Intro's 24 Hz steps, once the stance has
+settled: the RGB-split shimmer (`Split`), the slice tear (`Slice`, `HeadSlice`), the scanline band (`Scan`) and a rare
+two-step jolt (`Twitch`). The flinch and the biggest head jerks now flicker the split in sync (`CyberTwitch.Sync`).
 
-**Portraits** (lobby, Locker, pilot card, the Kernel Panic cut-in)
-- A Cyber Lord in the standing pose uses `CyberLordIdlePose.Stand` through `NativeLobbyPoses.Sample`, the new overload
-  that takes the hat, reduced effects and a seed. It stands even on both feet, unarmed, turned a little to the camera.
-- `Runtime/NativePortraits.cs` draws its hardlight look (unlit boxes) with the scanline band, and the split ghosts as
-  additive tinted copies.
-- With reduced motion (portrait time 0) it holds still and does not glitch. Every other pilot's lobby pose is unchanged.
+**Reduced effects**: fewer and smaller jerks (under half the angles) with softer, longer attacks, smaller clenches, no tear
+or jolt, the split eased in and out (the synced flicker one slow swell), the band a soft glow, nothing strobes.
+
+**Portraits** (lobby, Locker, pilot card, the Kernel Panic cut-in): `CyberLordIdlePose.Stand` through the
+`NativeLobbyPoses.Sample` overload is the same sword idle and twitches on the match idle's feet, turned a little to the
+camera, unarmed. `Runtime/NativePortraits.cs` draws its hardlight look with the band, the clench flare and the split
+ghosts. With reduced motion (portrait time 0) it holds still: no twitch, no glitch.
 
 The idle is presentation only. It reads the actor and never writes it, and the hitboxes are the capsule, not the pose.
+
+### Sheldon Idle (the lobby pose)
+
+The owner: "Can that Idle be set as "Sheldon Idle" need it to be selectable", for the idle pose (lobby, portraits, pilot
+cards and results). `Core/NativeLobbyPoses.cs`:
+- **The pick**: a fifth IDLE POSE card, "Sheldon Idle" (id `sheldon-idle`, icon `activity`, "Hunched and twitching."), after
+  the source's four (`Keys` stays the four that `Tests/LobbyPoseChecks` pins to `lobby-presentation.ts`; `Count`, `Key`,
+  `Label`, `Icon` add it). It is DEV only, gated like the Sheldon Head: `NativeCosmeticGate.SheldonIdle` is DevOnly and
+  Restricted, the Locker lists it only with live DEV access and badges it DEV, and `NativeCosmeticGate.Pose` (through
+  `NativeCosmeticRules.Pose`) turns it into `weapon` for anyone else on an account load and at the host's seat. Guests take
+  the host's gated pick through `NativeLobbyPoses.Normalize`, which knows it; unknown ids are still `weapon`.
+- **Where**: the lobby, Locker, pilot-card and PvE-result portraits, everywhere `NativeLobbyPoses.Sample` poses a pilot. The
+  match never reads the pick: a Cyber Lord's match idle stays its class idle above.
+- **The pose** is the Cyber Lord's stance (`CyberLordIdlePose.Stand`): the same body motion and twitches, the same planted
+  feet, seeded per pilot. An armed pilot's weapon arm (both for the greatsword, the guns and the daggers) keeps the hero
+  stance's hold, carried onto the hunched, turned chest (`Grip`: measured once against the hero stance, raised back by the
+  crouch's drop), so the weapon stays in the hand and rides the twitches: the hand rises with its shoulder's hitch and the
+  flinch, and the grip tightens with the clench. The support hand stays on a two-handed grip, and the free hand keeps the
+  stance's fist. The upright staffs and the Bow stay upright. The fighters (unarmed), the Cyber Lord and any other spec keep
+  the stance's fists. The Siren still stands as herself. The glitch is the Cyber Lord's only.
+- **Default**: a Cyber Lord's "Standing with weapon" is this same stance, so Cyber Lord pilots stand in it by default.
+- **Saving**: the Unity side saves and replicates it as any pose (prefs, the profile's cosmetics, the seat frames, 32
+  characters at most). The account service does not keep it yet, so a DEV pilot's pick returns to `weapon` on the next
+  account load. The prompt is below.
+
+### Astra prompt: Sheldon Idle save
+
+Please let the account service keep the DEV-only lobby pose `sheldon-idle` for DEV accounts.
+- `src/shared/lobby-presentation.ts` `lobbyPose()` keeps only the `LOBBY_POSES` keys and falls back to `'weapon'`, and
+  `src/shared/cosmetics.ts` `cosmetics()` runs every saved profile through it. So the pick is saved as `weapon`.
+- Accept `sheldon-idle` only for an account with live DEV access, the way the DEV-only `sheldon-head` and `sheldon-intro`
+  are kept (`src/relay/accounts.ts`). Keep it out of `LOBBY_POSES` itself, so the Electron lobby picker does not list it
+  (no new Electron features).
+- Unity needs no change: the Locker, `NativeCosmeticRules.Pose` (account load, host seat) and `NativeLobbyPoses.Normalize`
+  (guests) already gate and carry it; `Tests/SheldonIdleChecks.cs` pins that path.
+
+## Run and sprint
+
+The owner: "Change the cyber lord running / sprint animation, I have this for reference [BIPER Runner Action Animation
+Pack]... Unless theres better ones in the pack we have." The pack we have is the owner's CLazy Runner Action Animation Pack.
+`tools/export_pack_cyberlord_run.mjs` retargets it (`scripts/mocap/clazy-pack.mjs`: the pack's Unreal mannequin skeleton
+read as Mixamo, its T-pose from the avatar in each `.meta`) into `Core/NativePackCyberLordRun.Generated.cs`, with a SHA-256
+per track in `tools/pack-cyberlord-run-provenance.json`. No FBX, texture or `.meta` is committed.
+
+**The choice.** The pack's run families, measured on their root-motion twins: Jog 3.2 m/s, Dash 7.6 m/s, Boost 10.1 m/s
+(PowerDash and the Charge variants are the same strides with other arm carries). Scaled to the voxel legs (half a human's),
+the Dash's stride is the closest to the gait's at the 6.8 m/s run and the Boost's to the 9.18 m/s sprint.
+- **Run: Mvm_Dash** in eight directions (ahead, the strafes Front_L / Front_R, the diagonals Front_L45 / R45, the
+  backpedal Back and its diagonals Back_L45 / R45). An athlete's run: a forward lean, the fists pumping hip to chin.
+- **Sprint: Mvm_Boost** ahead and on the forward diagonals (the authority sprints only within 53 degrees of the facing). The
+  same fist pump driven deeper and longer, so the sprint ramps in and out without the arms changing their carry.
+- Not chosen: the Charge sets (arms swept back, a ninja run) would swing the arms through a different carry on every sprint
+  toggle and hide the hardlight fists behind the body. The Jog is too slow for any replicated speed. The Explosive Unarmed
+  run and sprint were an upright jog with a bladed torso turned 50 degrees off the aim.
+
+**How it plays** (`Core/CyberLordRun.cs`, `CyberLordRunCarry`, the base row of `CyberLordMotion`):
+- The legs stay the gait's planted procedural feet. Their stride is matched to the replicated speed
+  (`MeleeGait.CycleLength`), as every other carry's is.
+- The two takes bracketing the travel direction are sampled at the gait's stride phase from each take's left-foot strike
+  (measured on its root-motion twin) and blended. The sprint takes blend over them on the replicated `Sprinting` flag's eased
+  .15 s ramp (`NativeSprintRules`).
+- Each keeps part of its per-stride swing about its cycle mean (the voxel legs step about 1.7 times the captured cadence):
+  the torso .7 (sprint .8), the fists .68 and .72 (sprint .8).
+- A strafe's mean chest turn is folded out of the spine, so the chest stays on the aim in every direction. The pack's
+  diagonals twist the chest up to 34 degrees off it over hips facing ahead, and the melee carry's hip-heading fold would
+  have kept that twist.
+- A reach seat (NativeRangedLocomotion's rule) lowers the hips just enough for each planted ankle to reach its gait target.
+  The fighter route's gait let a planted ankle skate up to .7 m/s on run diagonals, and the old Cyber Lord run up to
+  .96 m/s. Now the contact foot stays under .03 cm/s at the run and sprint speeds in every direction.
+- The existing sprint effect, the hardlight look and the first-person view are unchanged.
+
+## Double jump
+
+The owner: "Give this class a double jump as well; Second jump has a cyber effect". The air jump itself is simulation
+(Astra; the prompt below). Today `Core/NativeJumpSimulation.cs` grants it to the daggers only, so the presentation below does
+not fire in a match until the grant lands. The Dev Sandbox previews it ("Preview Cyber Double Jump").
+
+Everything keys on the replicated `Actor.AirJumps` / `AirJumpAt` of a Cyber Lord pilot, read through a `NativeJumpTrack` on
+the presented root: the same rule the dagger flip uses. The host, guests (the local pilot's predicted signal and the remote
+pilots' replicated one, drawn later), the killcam and spectators draw the same thing.
+- **The jump and fall** are now the Unarmed pack set's legs and hips, like the other DEV fighters'
+  (`NativeJumpRules.SetFor`).
+- **The second jump's pose** (`CyberLordAirBoost`): the Runner pack's Esc_BoostDash_Up_Fwd, from just before its push-off. One
+  leg stamps down onto the hardlight hex as the body leaves it. Both knees tuck by .3 s while the body leans into the rise,
+  arms driving. It holds to .38 s and has blended back into the fall by .6 s. The jump layer (`NativeJumpMotion`) takes its
+  legs and hips, the style layer its torso and fists. Both read one jump track, so they start on the same frame. A cast or
+  swing in the air keeps priority.
+- **The cyber effect** (`Core/NativeCyberLordAirBoostFx.cs`, part of the Cyber Lord's effects):
+  - A hardlight hex platform flashes under the feet and spreads and spins a little: a horizontal hexagon of light, a
+    magenta echo and a white inner hexagon, with upright spokes and sparks at its corners. It is kept .22 m over the floor
+    it left, so it is never a disc on the floor.
+  - Pixel shards shed off it.
+  - A data-glitch afterimage of the body stays at the take-off: two RGB-split ghosts, torn and flickering on 24 Hz steps,
+    fading in .3 s.
+  - A short scanline trail strings up the rise, the lowest lines fading first.
+  - The palette is the Cyber Lord's cyan, magenta and white.
+- **First person** gets a gentler version: the platform's outer hexagon at half strength under the camera, a flare at the
+  view fists, and a third of the take's fists on the view model. There is no afterimage, trail, spokes or shards, and no
+  camera motion beyond the existing view hop.
+- **Reduced effects**: one ring, a soft swell instead of the flash, steady and fainter ghosts, four unflickering scanlines.
+  The low graphics tier halves the counts.
+- **Audio**: the Data Dash's whoosh, lighter, and a glitch tick (`NativeCyberLordSounds.AirBoost`: existing bank keys
+  `move.roll` and `dev.leet.glitch`, shipped fallbacks), on the jump track's air jump (`Runtime/NativeMoveFeelAudio.cs`).
+  The Dev Sandbox preview is silent.
+- **Never the dagger flip**: PR #159 makes `NativeJumpRules.Flips` follow `NativeJumpSimulation.CanAirJump`, so a granted
+  Cyber Lord would also flip. The flip pose (`NativeJumpMotion`), its air burst (`NativeJumpFxPresentation`) and its whoosh
+  (`NativeMoveFeelAudio`) skip `CyberLordAirBoost.Handles` pilots; the boost replaces them. When merging onto PR #159, keep
+  its `Flips` and `SetFor` lines and add `case CyberLordSpec.Id:` to the Unarmed case
+  (`case "bow":case "pistol":case "emperor":case "ansatsuken":case CyberLordSpec.Id:return Unarmed;`).
+
+### Astra prompt: double jump
+
+Please give the DEV Cyber Lord (`cyberlord`) one air jump exactly like the daggers'.
+- In `Core/NativeJumpSimulation.Try`, replace `spec!="daggers"` with one shared rule (for example
+  `NativeJumpSimulation.HasAirJump(spec)`, true for `daggers` and `cyberlord`). The authority (`ArenaWorld`,
+  `NativeArena.StepPilot`) and the guest prediction (`NativePrediction`, through `JumpSpec`) then grant it the same way.
+- Keep the daggers' rules: an edge press only, impulse `JumpSpeed` x `AirMultiplier`, landing resets the budget, locks and
+  swimming refuse, `jumpPower` scales once, and a same-tick jump attack's commitment wins.
+- The Cyber Lord's own locks also refuse it: casts, Data Dash and Kernel Panic (`kitBusy` / `locked`), as for its ground jump.
+- Replicate it through the existing `Actor.AirJumps` (0..1) and `Actor.AirJumpAt` (the air jump's tick time).
+  `NativeNetworkFrame.Valid` already bounds both, and `PresentedJump` already shifts the local guest's predicted time.
+- `Runtime/NativeJumpValidation.cs` needs updating:
+  - Add `cyberlord` to the spec loop. It is DEV-only, so the fixture seat needs the DEV grant (as the Cyber Lord's own gates
+    set it up).
+  - Change the `spec=="daggers"` predicate and its "dagger-only air jump" message to the shared rule.
+  - The walk-off, `jumpPower`, JSON, prediction, acknowledgement and attack/stun lock checks can stay on the daggers. Repeat
+    the prediction seed and the lock refusal for `cyberlord` if its kit locks differ.
+- `Tests/JumpSimulationChecks.cs` lines 16-17 (`weapon.id=="daggers"`) need the same shared rule.
+- Optional: `Runtime/NativeBots.cs` lines 37 and 67 let obstructed dagger bots air-jump near the apex; extend them if Cyber
+  Lord bots should too.
+- No presentation change is needed. The boost, its effect and its cue already key on the replicated fields for `cyberlord`
+  pilots, and `Tests/CyberLordRunChecks.cs` drives them with that contract.
 
 ## Kernel Panic
 
@@ -252,8 +391,14 @@ constructs and voxels and drops smoke.
 
 None on the rules. The takes are timed to the replicated windows and hits; they never drive them. The participants' clock
 warp is presentation only, and the bodies stand where the snapshot puts them.
-The idle stance moves only the drawn rig: the hips 3.5 cm up over the same planted feet, and the glitch's tear up to
-5.5 cm sideways. The capsule, movement, hit timing and the network frame are untouched.
+- The idle stance moves only the drawn rig: the sword idle's crouch over the same planted feet, the twitches (the hips up
+  to 4.5 cm sideways and 2.2 cm down on a flinch), and the glitch's tear up to 5.5 cm sideways.
+- The run and sprint carry the upper body and lean. The reach seat lowers the drawn hips by up to 10 cm, and the feet are
+  the gait's.
+- The boost poses the drawn rig in the air only.
+- The Sheldon Idle poses the portrait rigs only (never a match rig).
+- The trail ring draws more trails at once; the authority's trail is unchanged.
+- The capsule, movement speed, jump height, hit timing, cooldowns and the network frame are untouched.
 
 ## What the rules side still needs to provide (Astra)
 
@@ -269,6 +414,13 @@ Kernel Panic (PR #138) and the kit (PR #142) are done. The presentation falls ba
   descriptions.
 - The account service does not accept the `dev-cyberlord` entrance for DEV accounts (`src/relay/accounts.ts` keeps only
   `sheldon-intro` among the DEV-only intros).
+- The air jump (the double jump the owner asked for): the prompt is under "Double jump" above.
+- Chained Data Dashes: the kit keeps one trail. A new dash resets `CyberTrailTick` and overwrites `DashFrom` / `DashTo` /
+  `TrailUntil`, so the earlier trail stops damaging when the next dash starts, though it still draws its fade. With no
+  cooldown (PR #159) a spammed chain leaves up to eight drawn trails but only the newest damages. If each trail should
+  keep ticking for its own 1.2 s, the kit needs a small trail history (about eight per pilot). Otherwise the shorter damage
+  is the rule, and the older drawn trails are cosmetic.
+- The Sheldon Idle save: the prompt is under "Sheldon Idle" above.
 
 ## Checks and renders
 
@@ -280,8 +432,28 @@ Kernel Panic (PR #138) and the kit (PR #142) are done. The presentation falls ba
 - the effect lifecycles, the tiers and the no-floor-disc rule;
 - the camera, clock and cut-in rules;
 - the DEV gate on every UI entry, the HUD states and the audio keys;
-- the idle stance: its triggers and blend out, the pose, the glitch schedule, reduced effects and the portraits;
+- the idle stance: its triggers and blend out, the sword idle with fists, the twitches (pure, irregular, snapping and
+  holding, every kind, bounded, the feet planted, fewer and smaller when reduced), the glitch schedule and its sync, the
+  portraits;
 - zero per-frame allocation.
+
+`Tests/CyberLordRunChecks.cs` covers:
+- the Runner pack takes against their provenance;
+- the run in eight directions and the sprint on the replicated flag: the contact foot never slips, the takes follow the
+  travel, the chest stays on the aim, the fists pump, the ramp has no pop;
+- the boost keyed only on the replicated air jump, on the host's and a delayed guest's timeline, torso and legs on the same
+  frame, the Dev Sandbox preview, the daggers' flip unchanged;
+- its effect: once per air jump, its lifetime, the first-person and reduced versions, never flat on the floor, the audio keys;
+- chained Data Dashes: two .7 s apart (both draw, the first finishes its fade), and six .2 s apart with no cooldown (all
+  held, each finishing its own fade, the oldest first, the older ones on the low tier; past the cap the oldest retires);
+- the flip's three paths skip the Cyber Lord;
+- zero per-frame allocation, a Data Dash spam's ring included.
+
+`Tests/SheldonIdleChecks.cs` covers the Sheldon Idle: the DEV-only listing and the gate on the account load and the host
+seat, the fallback for unknown ids, the match never reading the pick, the Cyber Lord stance's body and twitches for 17
+classes, each weapon on its own hand with the hand reaching its hold, two-handed support grips, the free fist, the weapon
+clear of the podium and riding the twitches (less with reduced effects), the Cyber Lord's default, determinism and no
+allocation.
 
 The offline renders come from a scratch WebGL harness: real Core, real `NativeVfxDraw` and `NativeWeaponFxDraw`, and the
 shader SHARED blocks. The 2D overlays (the cut-in, banner, HUD, tile and Locker) are canvas mock-ups of the runtime layout.
