@@ -201,7 +201,7 @@ namespace ChipArena.UnityConversion.Editor
                 Debug.Log("PASS native combat: no generic stun, ability block rules, splash/DoT roll rules, reload-independent abilities and authority wall-clamped aim");
             }
             finally{arena?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}
-            CheckKernelPanic(content);
+            CheckKernelPanic(content);CheckCyberRanged(content);
         }
         private static void CheckKernelPanic(ConversionContent content)
         {
