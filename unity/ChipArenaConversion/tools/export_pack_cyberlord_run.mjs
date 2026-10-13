@@ -12,8 +12,9 @@
 // and the heading left to the gait, as the melee travel carry (tools/export_pack_locomotion.mjs) does: a loop's phase 0 is
 // its left foot's strike, measured on the pack's root-motion twin (its planted foot stands still in the world).
 // Choice (docs/CYBER-LORD.md "Run and sprint"): the run is the Mvm_Dash set (7.6 m/s captured, the stride closest to the
-// gait's at 6.8 m/s on the voxel legs), the sprint the Mvm_Boost set (10.1 m/s, a deeper drive at the 9.2 m/s sprint) with
-// the same fist pump, so the sprint ramps without the arms changing their carry; the boost is Esc_BoostDash_Up_Fwd.
+// gait's at 6.8 m/s on the voxel legs), the sprint the Mvm_ChargeBoost set (the Boost's 10.1 m/s stride with the arms swept
+// back, a different body line from the run's pump; Core/CyberLordRun.cs sweeps the fists past the hips over it); the boost is
+// Esc_BoostDash_Up_Fwd.
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
@@ -26,7 +27,7 @@ const {calibrate,retarget,encode,leftFootStrike,CHANNELS}=await import(pathToFil
 const {loadClazyFbx,clazyRestPose,clazyRange}=await import(pathToFileURL(path.join(repo,'scripts/mocap/clazy-pack.mjs')));
 const quiet=console.warn;console.warn=()=>{};// FBXLoader warns about every unused FBX property
 
-const D=f=>`P1_CLazyMovement/Mvm_8way_Dash/CLazy@Mvm_Dash${f}`,B=f=>`P1_CLazyMovement/Mvm_8way_Boost/CLazy@Mvm_Boost${f}`;
+const D=f=>`P1_CLazyMovement/Mvm_8way_Dash/CLazy@Mvm_Dash${f}`,C=f=>`P1_CLazyMovement/Mvm_8way_ChargeBoost/CLazy@Mvm_ChargeBoost${f}`;
 /** The takes in Core/CyberLordRun's slot order: the run by direction from the facing, counter-clockwise (to the rig's left) in
  * 45 degree steps (NativeLocoRules' order: ahead, forward-left, left, back-left, back, back-right, right, forward-right; the
  * pack's Front_L / Front_R strafes turn the hips toward the travel, its Back_L45 / Back_R45 backpedal on the diagonals), the
@@ -38,7 +39,7 @@ const CLIPS=[
  {name:'run-forward',file:D(''),loop:true},{name:'run-forward-left',file:D('_Front_L45'),loop:true},{name:'run-left',file:D('_Front_L'),loop:true},
  {name:'run-back-left',file:D('_Back_L45'),loop:true},{name:'run-back',file:D('_Back'),loop:true},{name:'run-back-right',file:D('_Back_R45'),loop:true},
  {name:'run-right',file:D('_Front_R'),loop:true},{name:'run-forward-right',file:D('_Front_R45'),loop:true},
- {name:'sprint-forward',file:B(''),loop:true},{name:'sprint-forward-left',file:B('_Front_L45'),loop:true},{name:'sprint-forward-right',file:B('_Front_R45'),loop:true},
+ {name:'sprint-forward',file:C(''),loop:true},{name:'sprint-forward-left',file:C('_Front_L45'),loop:true},{name:'sprint-forward-right',file:C('_Front_R45'),loop:true},
  {name:'boost',file:'P2_CLazyEscape/Esc_BoostDash_UpDown/CLazy@Esc_BoostDash_Up_Fwd'},
 ];
 // The pack mixes .fbx and .FBX: names resolve case-insensitively.

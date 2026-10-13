@@ -120,6 +120,10 @@ namespace ChipArena.UnityConversion
                 NoteTrail(view,time);
                 Wall(sink,view,time,quality,low);
                 Field(sink,view,time,quality,low);
+                // The ranged mode (NativeCyberLordRangedFx.cs): the switch, the casts, the Lag Field and the proxy mine.
+                Ranged(sink,scene,a,view,time,quality,low,scene.Viewer==a.Id);
+                // The hardlight dash sprint's fist streaks (NativeCyberLordRangedFx.cs Sprint).
+                Sprint(sink,scene,a,time,quality,low,scene.Viewer==a.Id);
                 if(!a.Alive)continue;
                 Link(sink,scene,a,view,time,quality,low);
                 bool me=scene.Viewer==a.Id;
@@ -135,6 +139,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             for(int i=0;i<dashTrailCount;i++)Trail(sink,dashTrails[i],time,quality,low||TrailLow(i));
+            RangedShots(sink,scene,time,quality,low);
             for(int i=0;i<records.Count;i++)Event(sink,scene,records[i],time,quality,low);
             AirBoosts(sink,scene,time,quality,low);
             Glitched(scene,time,quality,low);

@@ -260,11 +260,15 @@ namespace ChipArena.UnityConversion
             for(int i=armsOnly?MeleeCapture.Grip:0;i<CapturedClip.Channels;i++){float k=i<MeleeCapture.Grip?CyberLordAirBoost.Torso:CyberLordAirBoost.Arms;boostRow[i]=row[i]+(boostRow[i]-row[i])*k;}
             MeleeCapture.BlendRowsTurning(row,boostRow,w,row);return w;
         }
+        /// <summary>The ranged layer's state this frame (null in melee mode).</summary>
+        public string RangedState{get;private set;}
         public string Style(MeleeMotion motion,Actor a,float time,bool stun)
         {
             var r=motion.Rig;CyberLordFeed.Read(a,view);motion.FighterSeat=carry;
             // The idle stance (CyberLordIdle): its weight first, so the base under it is the sword idle (no alert bob in the hips).
             float idle=Idle.Update(a,view,time,Ease((r.Motion-.10f)/.65f),stun);
+            // The ranged mode holds its emitters up instead (Core/CyberLordRangedMotion.cs): no idle stance there.
+            idle*=1-view.ModeWeight(time);
             BaseRow(r,a,time,baseRow,out float travel);if(idle>1e-4f){CyberLordIdlePose.Base(time,heldRow);MeleeCapture.BlendRowsTurning(baseRow,heldRow,idle,baseRow);}
             // The second jump's boost over the base: the rig's own jump track (the jump layer's, observed here first with the same
             // replicated signal, so the torso and the legs start on the same frame).
@@ -290,7 +294,11 @@ namespace ChipArena.UnityConversion
             IdleGlitch=CyberLordIdlePose.Glitch(a.Id,time,under,Reduced);
             if(under>1e-4f){var tw=CyberLordIdlePose.Twitch(a.Id,time,Reduced);IdleGlitch.LClench=tw.LClench*under;IdleGlitch.RClench=tw.RClench*under;}
             CyberLordIdlePose.Layer(r,under,time,a.Id,Reduced,a.Pitch*(float)Math.PI/180,IdleGlitch);
-            State=stun?"hit reaction":m.State??(blocking?"cyber-guard":BoostWeight>.5f?"cyber-air-boost":travel>.5f?(a.Sprinting?"cyber-sprint":"cyber-run"):under>.5f?"cyber-idle":"cyber-stance");return State;
+            // The ranged mode (Core/CyberLordRangedMotion.cs): the emitter hold, the switch and the ranged casts over the posed rig;
+            // a melee take (the guard, Q, E) owns the frame through its weight, a sprint forward lowers the hold.
+            string ranged=stun?null:CyberRangedPose.Layer(r,view,time,a.Pitch*(float)Math.PI/180,m.Clip>=0?Clamp01(m.Weight):0,carry.Sprint*travel,false,Reduced);
+            RangedState=ranged;
+            State=stun?"hit reaction":m.State??(ranged!=null&&ranged!="cyber-ranged-aim"?ranged:null)??(blocking?"cyber-guard":BoostWeight>.5f?"cyber-air-boost":travel>.5f?(a.Sprinting?"cyber-sprint":ranged!=null?"cyber-ranged-run":"cyber-run"):ranged??(under>.5f?"cyber-idle":"cyber-stance"));return State;
         }
         /// <summary>
         /// The first-person view model (the generic route's view rig): the same base and move with the legs and root left out,
@@ -316,8 +324,10 @@ namespace ChipArena.UnityConversion
             for(int i=MeleeCapture.Pelvis;i<MeleeCapture.Neck;i++)row[i]*=.35f;
             for(int k=0;k<3;k++){row[MeleeCapture.Grip+k]+=k==0?ViewLift.X:k==1?ViewLift.Y:ViewLift.Z;row[MeleeCapture.LHand+k]+=k==0?-ViewLift.X:k==1?ViewLift.Y:ViewLift.Z;}
             MeleeCapture.Apply(r,Unarmed,row,CaptureOptions.Of(1,Unarmed.Fit,MeleeClear.None,legs:0,root:0));
+            // The ranged mode's emitters in the lower view (the camera carries the aim: no pitch here).
+            string ranged=stun?null:CyberRangedPose.Layer(r,view,time,0,m.Clip>=0?Clamp01(m.Weight):0,0,true,Reduced);RangedState=ranged;
             r.WritePose(pose);NativeFirstPersonPose.SettleTorso(pose);
-            State=stun?"hit reaction":m.State??(blocking?"cyber-guard":"cyber-stance");return State;
+            State=stun?"hit reaction":m.State??ranged??(blocking?"cyber-guard":"cyber-stance");return State;
         }
         /// <summary>The upper body alone (the dev-cyberlord entrance over its keyed legs): the stance and the view's move on `r`.</summary>
         public string Upper(CyberLordView v,float time,MeleeRig r)

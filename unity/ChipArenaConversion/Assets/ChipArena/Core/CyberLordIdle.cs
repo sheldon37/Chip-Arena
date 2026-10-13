@@ -68,6 +68,9 @@ namespace ChipArena.UnityConversion
             {
                 Window(v.ComboAt,v.ComboUntil+o);
                 for(int s=0;s<CyberLordSpec.Slots;s++)Window(v.At[s],Math.Max(v.Until[s],v.RecoverUntil[s])+o);
+                // The ranged mode's casts and its key-5 switch (Core/CyberLordRanged.cs).
+                for(int s=0;s<CyberRangedSpec.Slots;s++)Window(v.RAt[s],Math.Max(v.RUntil[s],v.RRecover[s])+o);
+                Window(v.ModeAt,v.ModeAt+CyberRangedSpec.SwitchSeconds+o);
                 if(v.PanicConnect>-90)Window(v.PanicConnect,(v.PanicOutcome==CyberLordSpec.EndedEarly&&v.PanicEndedAt>-90?v.PanicEndedAt:v.PanicStart+KernelPanicPath.End)+o);
             }
             Window(a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration,a.BlockUntil);

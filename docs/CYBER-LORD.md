@@ -242,11 +242,21 @@ per track in `tools/pack-cyberlord-run-provenance.json`. No FBX, texture or `.me
 the Dash's stride is the closest to the gait's at the 6.8 m/s run and the Boost's to the 9.18 m/s sprint.
 - **Run: Mvm_Dash** in eight directions (ahead, the strafes Front_L / Front_R, the diagonals Front_L45 / R45, the
   backpedal Back and its diagonals Back_L45 / R45). An athlete's run: a forward lean, the fists pumping hip to chin.
-- **Sprint: Mvm_Boost** ahead and on the forward diagonals (the authority sprints only within 53 degrees of the facing). The
-  same fist pump driven deeper and longer, so the sprint ramps in and out without the arms changing their carry.
-- Not chosen: the Charge sets (arms swept back, a ninja run) would swing the arms through a different carry on every sprint
-  toggle and hide the hardlight fists behind the body. The Jog is too slow for any replicated speed. The Explosive Unarmed
-  run and sprint were an upright jog with a bladed torso turned 50 degrees off the aim.
+- **Sprint: Mvm_ChargeBoost** ahead and on the forward diagonals (the authority sprints only within 53 degrees of the facing):
+  the Boost's stride with the arms swept back, so the sprint reads as a different body line from the run, not the run sped
+  up (owner, 2026-10-13).
+  - `CyberLordRun.Swept` holds the fists past the hips, edges up and trailing (`CyberLordRunRules.Swept*`: chest-space
+    (-+.21, -.47, -.34) m, the take's own swing kept at .2, a 5.5 cm swing at the stride). It leans the spine .35 and the
+    chest .2 rad further ahead and lifts the head back .4 rad onto the aim.
+  - The lean rides the takes' eased `Sprinting` ramp and the fists their own .3 s ease (`SweptBlend`), so they swing back
+    and forward over a toggle instead of snapping.
+  - While sprinting each fist trails a hardlight streak (`NativeCyberLordFx.Sprint`, growing and fading on the same eased
+    ramp of the replicated flag; thinner and dimmer on the reduced tier, the streak alone on the low tier, none in the
+    pilot's own first person).
+  - First person is unchanged (the sprint row is third-person only).
+- Not chosen: the plain Boost (the run's pump driven harder; the owner read it as the run sped up). PowerDash and
+  PWChargeDash are the same lines with the arms lower or the torso bladed. The Jog is too slow for any replicated speed. The
+  Explosive Unarmed run and sprint were an upright jog with a bladed torso turned 50 degrees off the aim.
 
 **How it plays** (`Core/CyberLordRun.cs`, `CyberLordRunCarry`, the base row of `CyberLordMotion`):
 - The legs stay the gait's planted procedural feet. Their stride is matched to the replicated speed
@@ -255,14 +265,14 @@ the Dash's stride is the closest to the gait's at the 6.8 m/s run and the Boost'
   (measured on its root-motion twin) and blended. The sprint takes blend over them on the replicated `Sprinting` flag's eased
   .15 s ramp (`NativeSprintRules`).
 - Each keeps part of its per-stride swing about its cycle mean (the voxel legs step about 1.7 times the captured cadence):
-  the torso .7 (sprint .8), the fists .68 and .72 (sprint .8).
-- A strafe's mean chest turn is folded out of the spine, so the chest stays on the aim in every direction. The pack's
-  diagonals twist the chest up to 34 degrees off it over hips facing ahead, and the melee carry's hip-heading fold would
-  have kept that twist.
+  the torso .7 (sprint .8), the fists .68 and .72 (the sprint's swept fists keep .2 of the take's swing).
+- Each take's mean chest turn, relative to the forward run's, is folded out of the spine, so the chest stays on the aim in
+  every direction. The pack's diagonals twist the chest up to 34 degrees off it over hips facing ahead, the ChargeBoost
+  sprint carries it bladed 35 degrees even ahead, and the melee carry's hip-heading fold would have kept those twists.
 - A reach seat (NativeRangedLocomotion's rule) lowers the hips just enough for each planted ankle to reach its gait target.
   The fighter route's gait let a planted ankle skate up to .7 m/s on run diagonals, and the old Cyber Lord run up to
   .96 m/s. Now the contact foot stays under .03 cm/s at the run and sprint speeds in every direction.
-- The existing sprint effect, the hardlight look and the first-person view are unchanged.
+- The existing sprint effect, the hardlight look and the first-person view are unchanged (the fist streaks are added).
 
 ## Double jump
 
@@ -325,6 +335,163 @@ Please give the DEV Cyber Lord (`cyberlord`) one air jump exactly like the dagge
   Lord bots should too.
 - No presentation change is needed. The boost, its effect and its cue already key on the replicated fields for `cyberlord`
   pilots, and `Tests/CyberLordRunChecks.cs` drives them with that contract.
+
+## Ranged mode (key 5)
+
+Owner (2026-10-13): "Give cyber lord a 2nd set of abilities for a "Ranged" mode. So, new 1-4 if they switch to ranged :)[We can
+set this to the 5 hotkey to switch)". Status: the design and the presentation are on `claude/cyberlord-ranged`. The rules are
+Astra's and pending (the prompt is below). Until they land, the Dev Sandbox's "Preview Cyber Ranged" loops the whole set on
+your own Cyber Lord.
+
+### The kit (proposed numbers, `Core/CyberLordRanged.cs` `CyberRangedSpec`)
+
+Key 5 reconfigures the hardlight fists into emitters and back. In ranged mode LMB and 1-4 change. RMB block, SHIFT roll,
+Q Data Dash and E Firewall stay as they are in both modes, so Q and E need no change.
+
+| Key | Ability | Role | Damage | Cooldown | Mana | Timing | Reach | Counterplay |
+|---|---|---|---|---|---|---|---|---|
+| 5 | Reconfigure | mode switch | none | 1 s from its start | 0 | .3 s; the pilot moves but cannot attack, cast, block or dash | none | the glitch flash, the fists turning to emitters, the HUD's 5 card |
+| LMB | Bit Bolt | sustained poke | 9 per bolt; +3 mana per pilot hit | .26 s between bolts (scaled by the attack rate) | 0 | .05 s windup; the hands alternate | a 64 m/s projectile, radius .12 m, 40 m | visible travel (.22 s at 14 m): strafe; block |
+| 1 | Ping Lance | long poke | 22 per pilot, pierces 2 | 5 s | 15 | .18 s charge, .32 s cast | an instant line, 45 m, radius .15 m | the charge and a dashed telegraph down the aim: step off it; Firewall absorbs; block |
+| 2 | Lag Field | zone | 7 per .5 s tick (56 over 4 s) and 35% slow | 13 s | 30 | .16 s windup; the cube's flight distance/16 s (.35-1.1 s); forms over .35 s, lasts 4 s | the aimed floor point within 22 m; radius 4.5 m | edge posts rise before it lands; walk out; it does not block shots |
+| 3 | Proxy Swap | escape | the mine: 18 and a 3 m/s shove | 11 s | 25 | .04 s windup, .12 s cast; the mine bursts .8 s after the blink | a 9 m blink toward the move input (straight back without one), path-constrained like Data Dash; the mine's radius 3 m | the proxy at the start and the mine's quickening fuse with its edge posts: step out of 3 m |
+| 4 | Root Access | finisher | 45 + 30% of the target's missing health, capped at 75; a block halves it | Kernel Panic's 20 s clock (one ultimate clock for both 4s) | Kernel Panic's | a 1 s rooted charge (the aim still turns), then the beam; 1.3 s cast | an instant beam, 45 m, radius .4 m; stops on the first pilot, a wall or a Firewall | 1 s of charge with a danger line from .2 s and a warning beep everyone hears: break the line, block, Firewall, or stun the caster (a cut beam never fires) |
+
+- The switch is refused, never queued, while any cast, combo swing, Data Dash, Siphon Link, Kernel Panic or Root charge is
+  live, and while the pilot is stunned, rolling, juggled or dead.
+- Cooldowns carry across modes: each ability keeps its own clock. The mana pool is shared, so switching never refunds or
+  resets anything.
+- Movement speed is the same in both modes. A respawn starts in melee mode.
+
+### How it looks
+
+Presentation only. It reads one record per pilot through `CyberLordFeed` (`CyberRangedRecord`; see the contract), so the
+host, guests, spectators and the killcam draw the same frame.
+- **The switch** (`Core/NativeCyberLordLook.cs` `Mode`, `Core/NativeCyberLordRangedFx.cs`): both forearms fold in across
+  the chest with a glitch jolt at the middle. A white-cyan flash fires at each fist, the shell's shards scatter out (or snap
+  in), and the body splits RGB for others. The fist shells dim and shrink while the emitters build in piece by piece: a
+  hex ring, a core and prongs on each hand, a three-ring barrel on the right forearm and a coil on the left. The mode eases
+  over the .3 s from the replicated switch time.
+- **The ranged stance and run** (`Core/CyberLordRangedMotion.cs` `CyberRangedPose`): both emitters are held on the aim
+  ahead of the shoulders, following the pitch (the chest takes .3 of it). The hold rides over the run carry's planted legs.
+  A melee take (the guard, Q, E) owns the frame by its weight; a sprint forward lowers the hold. The idle stance yields to it.
+- **The casts**, each on its replicated window:
+  - Bit Bolt: the firing emitter thrusts and kicks, a muzzle flash, then the bolt (a white head, an RGB-split tail and
+    trailing pixels). It lands in a hex flash with shards.
+  - Ping Lance: the cannon arm cocks back over the charge, glowing, with the dashed telegraph down the aim; then it thrusts,
+    and the lance (a white core in a cyan sheath with pings running along it) leaves a hex reticle on a struck pilot.
+  - Lag Field: an underhand lob arcing about the shoulder. A tumbling data cube flies with upright posts rising round the
+    landing point. Then a hexagonal dome of rings over a ring of stuttering posts, lagging packets inside, a pulse per
+    tick, the pilots inside glitching, and a collapse into pixels.
+  - Proxy Swap: the arms tuck through the blink, and a pixel streak runs along the path. The RGB-split proxy left at the
+    start collapses into a spinning hardlight mine that blinks faster to the burst; posts show the burst's edge.
+  - Root Access: both emitters close in with a growing core, converging streaks and spinning hex rings, plus a magenta
+    danger line down the aim from .2 s. The beam is a white core in a cyan sheath with magenta edges and code blocks
+    spiralling along it. Both arms are thrown back and up.
+  - The beams and the telegraphs are true-perspective ribbons facing the eye, so the target looking down the line, and the
+    shooter looking along it, still see them.
+- **First person**: the emitters sit where the view's stance holds the fists, drawn in toward the centre. The switch folds
+  them together in view, and the casts flash at the view's emitters. The pilot's own beams start on the view layer and run on
+  in the world. The pilot never sees its own split, proxy or reticle.
+- **HUD** (`Core/NativeCyberLordHud.cs`, `Runtime/NativeCyberLordScreen.cs`): Q and E stay. At the switch's middle the 1-4
+  cards swap to Ping Lance, Lag Field, Proxy Swap and Root Access (CHARGE through its charge, ACTIVE through the field's
+  life and the mine's fuse). A key-5 card is always last: "5 · MELEE" or "5 · RANGED", showing SWITCHING, then its
+  cooldown, then READY.
+- **Icons**: seven art icons in the class icon style (`tools/export_class_icons.mjs`): `ability-bit-bolt`,
+  `ability-ping-lance`, `ability-lag-field`, `ability-proxy-swap`, `ability-root-access`, and the mode card's
+  `ability-cyber-ranged` and `ability-cyber-melee`.
+- **Audio** (`Core/NativeCyberLordSounds.cs`): existing bank keys only, with shipped fallbacks:
+  - the switch (`dev.leet.glitch`, `chip.delayed.charge`);
+  - each bolt (`magic.lightning.shot`);
+  - the lance's charge and shot (`chip.delayed.charge`, `magic.flame-lance`);
+  - the lob, the landing and the collapse (`gun.frag.throw`, `field.time`);
+  - the blink (`chip.teleport`), and the mine's arm, beep and burst (`chip.mine.arm`, `chip.bomb.fuse-beep`, `blast.mine`);
+  - Root Access's charge (`chip.delayed.charge`), its warning beep at the telegraph (`chip.bomb.fuse-beep`) and the beam
+    (`blast.shock`, `magic.lightning.shot`, `blast.static`);
+  - the landings by their ranged Detail.
+  A cut cast is silent past its cut.
+- **Tiers**: reduced effects never flicker or strobe, soften the flashes (the beam at .65) and thin the pieces; the low tier
+  drops the secondary lines and glows. Nothing lies flat within 12 cm of the floor: the field's rings float from .5 m, and
+  the posts stand up.
+- **The sprint** in either mode keeps the hardlight dash sprint (see "Run and sprint").
+
+Animation impacts: none on the rules. The poses move only the drawn arms, chest and (through the blink) a 6 cm dip of the
+drawn hips. Hit timing, hitboxes, damage, cooldowns, movement and the network frame are untouched; the presentation never
+drives a window.
+
+### The contract
+
+The presentation reads it in one place, `CyberLordFeed.RangedMode` (`Core/NativeCyberLord.cs`); Astra's real names change
+only that mapping.
+- **The mode**: the Siren's precedent. `Runtime/NativeSiren.cs:58` toggles `s.Ranged` and stamps `s.ModeAt` on Q, and
+  `Runtime/NativeArena.cs:276` copies them to `Actor.SourceRanged` / `Actor.SourceModeAt`, which are already on the wire.
+  Without a ranged record the feed reads those two for the Cyber Lord too, taking the switch's cooldown as ModeAt + 1 s.
+- **Key 5**: `InputFrame.SirenAbility = 5`. `Runtime/ConversionGame.cs:126` maps Alpha1-4 today; `InputFrame.Valid` bounds
+  it to 4, so it needs to admit 5 for the Cyber Lord (or use a new flag; Astra's call).
+- **The casts**: one `CyberRangedRecord` per pilot (`Core/CyberLordRanged.cs`, `[Serializable]`, with `ViewCopy`).
+  Embedding it in `NativeCyberKit` (`Actor.Cyber`) replicates it with the kit's deep copy and JSON.
+  - `Ranged`, `ModeAt`, `ModeReady` (the mode, if kept here instead of the Siren fields).
+  - Per slot (Bolt, Lance, Field, Swap, Root): `At`, `Release`, `Until` and `Ready`. An interrupt ends `Until` at the cut
+    (a cut before `Release` sets `Release` there too: nothing fired).
+  - `BoltHand` (0 right, 1 left, alternating), `LanceFrom` / `LanceTo`, `FieldFrom` / `FieldPoint`, `FieldLand` /
+    `FieldUntil`, `SwapFrom` / `SwapTo`, `MineAt` (the burst time), `RootFrom` / `RootTo`. Points are world metres from the
+    emitter height (the field and the swap at the feet).
+  - `NativeNetworkFrame.Valid` needs to bound them: finite, five per array.
+- **Bit Bolts** are bullets with `Spec = "cyberlord"` and `Detail = "bit-bolt"`. The default shot drawer skips exactly those
+  (`CyberLordFeed.ShotSlot`); the Data Packets (Detail null) stay its own.
+- **Events**: Hit / AbilityHit / Absorb with Details `bit-bolt`, `ping-lance`, `lag-field`, `proxy-swap`, `root-access`
+  (already in `CyberLordFeed.Details`, mapped to `CyberHit.Bolt..Root`), and `EventKind.Impact` with the Detail where a bolt,
+  the lance or the beam ends on the world.
+- **Prediction**: the switch (mode, its time and cooldown) and the casts' mana and cooldowns in `NativeCyberRules.Predict`,
+  as the melee kit's are.
+- **Bots** (`Runtime/NativeBots.cs`, `BotCyber`): switch to ranged beyond about 8 m and back inside 5 m, with hysteresis.
+  In ranged: bolts while visible, the lance at 8-40 m, the field on a target 6-20 m away, the swap when an enemy is within
+  3 m and health is under 50%, and Root Access on a visible, unblocking target at 10-40 m under 60% health.
+
+### Astra prompt: ranged mode
+
+Please build the DEV Cyber Lord's ranged mode: rules, input, networking, prediction, bots and tests. The presentation is done
+and waits on the replicated data. The design, numbers and contract are in docs/CYBER-LORD.md "Ranged mode", and the numbers
+are `CyberRangedSpec` (`Core/CyberLordRanged.cs`).
+- **Key 5 switches** melee ⇄ ranged (`InputFrame.SirenAbility = 5`, mapped beside Alpha1-4 in `Runtime/ConversionGame.cs:126`;
+  extend `InputFrame.Valid` for it, or use a new flag).
+  - Follow the Siren's toggle (`Runtime/NativeSiren.cs:58`): flip the mode, stamp the switch time.
+  - Rules: a .3 s switch (moving allowed; attacks, casts, block and dash refused); the next switch 1 s after the start.
+    Refused, never queued, while any cast, combo swing, Data Dash, Siphon Link, Kernel Panic or Root charge is live, or while
+    stunned, rolling, juggled or dead. A respawn starts in melee.
+  - Cooldowns and mana carry across modes.
+- **Ranged LMB, Bit Bolt**: alternate-hand bullets, `Spec "cyberlord"`, `Detail "bit-bolt"`. Speed 64 m/s, radius .12, range
+  40 m, 9 damage, one every .26 s scaled by the attack rate, no mana cost, +3 mana per pilot hit. Emit Hit with the Detail
+  on a pilot, and Impact with the Detail on the world.
+- **Ranged 1, Ping Lance**: 15 mana, 5 s. A .18 s windup, then an instant 45 m line (radius .15) from the emitter along the
+  aim. 22 per pilot, pierces 2, stopped by the world; a Firewall absorbs it (Absorb). Record LanceFrom / LanceTo.
+- **Ranged 2, Lag Field**: 30 mana, 13 s. A .16 s windup, then a cube lobbed to the aimed floor point (clamped to 22 m),
+  landing after `FieldFlight(distance)`. A 4.5 m field forms over .35 s and lasts 4 s: 7 per .5 s tick to enemies inside
+  and a 35% slow while inside. Record FieldFrom / FieldPoint / FieldLand / FieldUntil.
+- **Ranged 3, Proxy Swap**: 25 mana, 11 s. A .04 s windup, then a blink up to 9 m toward the move input (straight back
+  without one), path-constrained like Data Dash. A mine left at the start bursts .8 s later: radius 3, 18 damage, a 3 m/s
+  shove outward. Record SwapFrom / SwapTo / MineAt (the burst time).
+- **Ranged 4, Root Access**: Kernel Panic's mana, sharing its 20 s clock (one ultimate clock for both 4s). A 1 s rooted
+  charge (the aim still turns), then an instant 45 m beam (radius .4) on the first pilot, wall or Firewall. Damage 45 + 30%
+  of the target's missing health, capped at 75; a block halves it. A stun or interrupt cuts it before the release and
+  nothing fires. Record RootFrom / RootTo.
+- **Q, E, RMB and SHIFT** are unchanged in both modes. Kernel Panic is the melee 4 only.
+- **Replicate**:
+  - the mode on `Actor.SourceRanged` / `Actor.SourceModeAt` as the Siren does (`Runtime/NativeArena.cs:276`), or in the
+    record;
+  - each cast as a `CyberRangedRecord` (embed it in `NativeCyberKit`, or use your own names and change only
+    `CyberLordFeed.RangedMode` in `Core/NativeCyberLord.cs`);
+  - an interrupt ends the slot's `Until` at the cut (and `Release` too when it is before the release).
+  Bound the new fields in `NativeNetworkFrame.Valid`. `a.Cyber` must stay read once in `NativeCyberLord.cs`
+  (`Tests/CyberLordChecks.cs`).
+- **Predict** the switch and the casts' mana and cooldowns in `NativeCyberRules.Predict`, as the melee kit's are.
+- **Bots** (`BotCyber`): switch to ranged beyond about 8 m and back inside 5 m (with hysteresis, respecting the cooldown).
+  Use bolts while visible, the lance at 8-40 m, the field on a target 6-20 m away, the swap when an enemy is within 3 m and
+  health is under 50%, and Root Access on a visible, unblocking target at 10-40 m under 60% health.
+- **Tests**: the switch's refusals and cooldown, no queueing, each ability's numbers and Details, the interrupt cuts,
+  prediction parity, validation bounds, the JSON round trip, and bot use. `Tests/CyberLordRangedChecks.cs` drives the
+  presentation through the preview record (`CyberRangedPreview`); once your fields exist, point the feed at them and keep
+  those checks green.
 
 ## Kernel Panic
 
@@ -407,6 +574,7 @@ warp is presentation only, and the bodies stand where the snapshot puts them.
 - The boost poses the drawn rig in the air only.
 - The Sheldon Idle poses the portrait rigs only (never a match rig).
 - The trail ring draws more trails at once; the authority's trail is unchanged.
+- The ranged mode's hold, switch and casts move only the drawn arms and chest, and the blink a 6 cm dip of the drawn hips.
 - The capsule, movement speed, jump height, hit timing, cooldowns and the network frame are untouched.
 
 ## What the rules side still needs to provide (Astra)
@@ -430,6 +598,7 @@ Kernel Panic (PR #138) and the kit (PR #142) are done. The presentation falls ba
   keep ticking for its own 1.2 s, the kit needs a small trail history (about eight per pilot). Otherwise the shorter damage
   is the rule, and the older drawn trails are cosmetic.
 - The Sheldon Idle save: the prompt is under "Sheldon Idle" above.
+- The ranged mode (key 5 and its LMB and 1-4): the prompt is under "Ranged mode" above.
 
 ## Checks and renders
 
@@ -449,7 +618,7 @@ Kernel Panic (PR #138) and the kit (PR #142) are done. The presentation falls ba
 `Tests/CyberLordRunChecks.cs` covers:
 - the Runner pack takes against their provenance;
 - the run in eight directions and the sprint on the replicated flag: the contact foot never slips, the takes follow the
-  travel, the chest stays on the aim, the fists pump, the ramp has no pop;
+  travel, the chest stays on the aim, the run's fists pump and the sprint's sweep back past the hips, the ramp has no pop;
 - the boost keyed only on the replicated air jump, on the host's and a delayed guest's timeline, torso and legs on the same
   frame, the Dev Sandbox preview, the daggers' flip unchanged;
 - its effect: once per air jump, its lifetime, the first-person and reduced versions, never flat on the floor, the audio keys;
@@ -457,6 +626,18 @@ Kernel Panic (PR #138) and the kit (PR #142) are done. The presentation falls ba
   held, each finishing its own fade, the oldest first, the older ones on the low tier; past the cap the oldest retires);
 - the flip's three paths skip the Cyber Lord;
 - zero per-frame allocation, a Data Dash spam's ring included.
+
+`Tests/CyberLordRangedChecks.cs` covers the ranged mode on the preview record:
+- the proposed numbers, the icons, the ranged Details, the shot slot (the Data Packets stay the default drawer's), the mode
+  on the Siren's fields when no record exists;
+- the switch's refusals and cooldown, the interrupt cuts, the eased mode weight and the bar swapping at its middle;
+- the pose: every ranged state on its window, the feet planted, the hold on the aim and over the run, no spikes, first
+  person; melee bit-identical with a source holding no record; a guest on a delayed copy of the record posing the host's
+  frames exactly;
+- the effects: each cast drawing on its window, never flat on the floor, the tiers, the switch's split for others only, a
+  copied record drawing the same, the sprint streaks easing with the flag;
+- the look's emitters (melee piece for piece unchanged), the HUD's two sets and the key-5 card, the sounds, and zero
+  per-frame allocation.
 
 `Tests/SheldonIdleChecks.cs` covers the Sheldon Idle: the DEV-only listing and the gate on the account load and the host
 seat, the fallback for unknown ids, the match never reading the pick, the Cyber Lord stance's body and twitches for 17

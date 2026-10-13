@@ -166,8 +166,9 @@ namespace ChipArena.UnityConversion
             // The darkness pulse and tail wobble follow the source's state.time: the match clock on the host, the
             // interpolated snapshot time (this clock) on a replica.
             scene.Begin(now,arena.Replica?now:arena.Time,dt,Math.Max(0,quality));
-            // Siren shots are the Siren effects' own orbs and flame trails (ArenaPresentation.DevEffects, C12).
-            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,tracker,now,out var v);if(!v.Siren&&!NativeBowWire.Is(v.Spec))scene.Shot(v);}
+            // Siren shots are the Siren effects' own orbs and flame trails (ArenaPresentation.DevEffects, C12); the Cyber Lord's
+            // ranged bolts its own hardlight shots (Core/NativeCyberLordRangedFx.cs; its Data Packets stay here).
+            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,tracker,now,out var v);if(!v.Siren&&!NativeBowWire.Is(v.Spec)&&CyberLordFeed.ShotSlot(b.Spec,b.Detail)<0)scene.Shot(v);}
             foreach(var s in arena.AbilityShots){NativeShotViews.Ability(arena,s,tracker,now,out var v);scene.Shot(v);}
             foreach(var s in arena.MeleeShots){NativeShotViews.Melee(arena,s,tracker,now,out var v);scene.Shot(v);}
             scene.End(dt);Fill(camera);

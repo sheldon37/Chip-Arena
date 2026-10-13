@@ -12,7 +12,8 @@ using ChipArena.UnityConversion;
 // chained Data Dash trails:
 //  1. the Runner pack takes are the exporter's (tools/pack-cyberlord-run-provenance.json), in their slot order;
 //  2. the carry on the fighter route: the contact foot never slips at the replicated run and sprint speeds in every
-//     direction, the takes follow the travel direction, the sprint ramps on the replicated flag without a pop, the fists pump,
+//     direction, the takes follow the travel direction, the sprint ramps on the replicated flag without a pop, the run's fists
+//     pump and the hardlight dash sprint's sweep back past the hips,
 //     the chest stays on the aim, the actor is never written;
 //  3. the boost: keyed only on the replicated air jump (Actor.AirJumps / AirJumpAt, as the authority writes the daggers'), on
 //     a host's and a guest's (delayed) timeline alike; the style and the jump layer start on the same frame; the timing;
@@ -100,7 +101,7 @@ internal static class CyberLordRunChecks
         // ------------------------------------------------------------------------------------------------------------------
         int c0=count;
         string[] names={"run-forward","run-forward-left","run-left","run-back-left","run-back","run-back-right","run-right","run-forward-right","sprint-forward","sprint-forward-left","sprint-forward-right","boost"};
-        string[] sources={"Mvm_Dash","Mvm_Dash_Front_L45","Mvm_Dash_Front_L","Mvm_Dash_Back_L45","Mvm_Dash_Back","Mvm_Dash_Back_R45","Mvm_Dash_Front_R","Mvm_Dash_Front_R45","Mvm_Boost","Mvm_Boost_Front_L45","Mvm_Boost_Front_R45","Esc_BoostDash_Up_Fwd"};
+        string[] sources={"Mvm_Dash","Mvm_Dash_Front_L45","Mvm_Dash_Front_L","Mvm_Dash_Back_L45","Mvm_Dash_Back","Mvm_Dash_Back_R45","Mvm_Dash_Front_R","Mvm_Dash_Front_R45","Mvm_ChargeBoost","Mvm_ChargeBoost_Front_L45","Mvm_ChargeBoost_Front_R45","Esc_BoostDash_Up_Fwd"};
         Check(NativePackCyberLordRun.Names.SequenceEqual(names)&&NativePackCyberLordRun.Clips.Length==CyberLordRunRules.Clips&&CyberLordRunRules.Sprint==8&&CyberLordRunRules.Boost==11,"the takes in slot order (the run in eight directions, the sprint in three, the boost)");
         using(var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"tools/pack-cyberlord-run-provenance.json"))))
         {
@@ -121,26 +122,26 @@ internal static class CyberLordRunChecks
             Check(!rel.Contains("CLazy",StringComparison.OrdinalIgnoreCase)||rel.EndsWith(".cs")||rel.EndsWith(".json")||rel.EndsWith(".mjs"),"no Runner pack file in the project ("+rel+")");
         }
         Check(CyberLordRunRules.SprintFor(0)==CyberLordRunRules.Sprint&&CyberLordRunRules.SprintFor(1)==CyberLordRunRules.SprintLeft&&CyberLordRunRules.SprintFor(7)==CyberLordRunRules.SprintRight&&CyberLordRunRules.SprintFor(2)<0&&CyberLordRunRules.SprintFor(4)<0,"the sprint ahead and on the forward diagonals only");
-        yield return $"Cyber Lord run takes: {count-c0} checks ({names.Length} Runner pack takes match the exporter's provenance: Mvm_Dash in eight directions, Mvm_Boost in three, Esc_BoostDash_Up_Fwd; no pack file in the project)";
+        yield return $"Cyber Lord run takes: {count-c0} checks ({names.Length} Runner pack takes match the exporter's provenance: Mvm_Dash in eight directions, Mvm_ChargeBoost in three, Esc_BoostDash_Up_Fwd; no pack file in the project)";
 
         // ------------------------------------------------------------------------------------------------------------------
         // 2. The carry
         // ------------------------------------------------------------------------------------------------------------------
         c0=count;
         float worst=0;string worstAt="";
-        var cases=new List<(string name,float speed,float dir,bool sprint)>();
+        var cases=new List<(string name,float speed,float dir,bool sprint)>();float sweptZ=0,rampSpike=0;
         for(int k=0;k<8;k++)cases.Add(("run "+NativePackCyberLordRun.Names[k].Substring(4),Rules.Speed,k*MeleeMath.TAU/8,false));
         cases.Add(("sprint",Rules.Speed*Rules.SprintMultiplier,0,true));cases.Add(("sprint forward-left",Rules.Speed*Rules.SprintMultiplier,MeleeMath.TAU/8,true));cases.Add(("sprint forward-right",Rules.Speed*Rules.SprintMultiplier,-MeleeMath.TAU/8,true));
         cases.Add(("block walk",Rules.Speed*.45f,0,false));
         foreach(var c in cases)
         {
             var p=new Pilot();p.A.Velocity=Velocity(c.speed,c.dir);p.A.Sprinting=c.sprint;string before=JsonSerializer.Serialize(p.A.ViewCopy());
-            float slip=0,zlo=9,zhi=-9;double chestYaw=0;int n=0;var prev=new Vector3[2];var had=new bool[2];
+            float slip=0,zlo=9,zhi=-9;double chestYaw=0;int n=0;var prev=new Vector3[2];var had=new bool[2];var fistMean=Vector3.Zero;
             for(int f=0;f<300;f++)
             {
                 float t=1+f*Dt;var v=p.A.Velocity;p.A.Position=new V3(v.x*(t-1),0,v.z*(t-1));p.Step(t);if(f<90)continue;
                 for(int i=0;i<2;i++){bool lf=i==0,on=p.M.Gait.Planted(lf);var at=p.World(lf?CapturedRig.LFoot:CapturedRig.RFoot);if(on&&had[i]){var d=at-prev[i];d.Y=0;slip=Math.Max(slip,d.Length()/Dt);}had[i]=on;prev[i]=at;}
-                var fist=p.InChest(CapturedRig.RHand);zlo=Math.Min(zlo,fist.Z);zhi=Math.Max(zhi,fist.Z);chestYaw+=Yaw(p.Pose.WorldRotation[CapturedRig.Chest]);n++;
+                var fist=p.InChest(CapturedRig.RHand);zlo=Math.Min(zlo,fist.Z);zhi=Math.Max(zhi,fist.Z);fistMean+=fist+p.InChest(CapturedRig.LHand);chestYaw+=Yaw(p.Pose.WorldRotation[CapturedRig.Chest]);n++;
                 foreach(var q in p.M.Rig.Q)Check(float.IsFinite(q.W)&&Math.Abs(q.Length()-1)<1e-3f,c.name+": finite rotations");
             }
             Check(slip<.03f,c.name+": the contact foot slips "+(slip*100).ToString("0.00")+" cm/s (under 3 cm/s)");if(slip>worst){worst=slip;worstAt=c.name;}
@@ -150,23 +151,32 @@ internal static class CyberLordRunChecks
                 int want=(int)Math.Round(MeleeMath.Wrap(c.dir)/(MeleeMath.TAU/8));want=((want%8)+8)%8;Check(cr.First==want&&cr.Mix<.05f||cr.Second==want&&cr.Mix>.95f,c.name+": its own take ("+cr.First+"/"+cr.Second+" at "+cr.Mix.ToString("0.00")+")");
                 Check(c.sprint?cr.Sprint>.999f:cr.Sprint<1e-3f,c.name+": the sprint weight follows the replicated flag ("+cr.Sprint+")");
                 Check(p.State==(c.sprint?"cyber-sprint":"cyber-run"),c.name+": presented as "+p.State);
-                Check(zhi-zlo>.08f,c.name+": the fist pumps ("+((zhi-zlo)*100).ToString("0")+" cm in the chest)");
+                // The run pumps its fists; the hardlight dash sprint sweeps them back past the hips (a different silhouette) and
+                // swings them a little at the stride.
+                if(!c.sprint)Check(zhi-zlo>.08f,c.name+": the fist pumps ("+((zhi-zlo)*100).ToString("0")+" cm in the chest)");
+                else{var mean=fistMean/(2*n);Check(mean.Z<-.2f&&mean.Y<-.2f&&zhi-zlo>.04f,c.name+": the fists swept back past the hips (mean "+mean.ToString("0.00")+" m in the chest), swinging "+((zhi-zlo)*100).ToString("0")+" cm");sweptZ=Math.Min(sweptZ,mean.Z);}
                 Check(Math.Abs(chestYaw/n)<8*D2R,c.name+": the chest stays on the aim (mean "+(chestYaw/n/D2R).ToString("0")+" degrees)");
             }
             Check(JsonSerializer.Serialize(p.A.ViewCopy())==before,c.name+": the actor is never written");
         }
         {
-            // The sprint ramps in and out on the replicated flag without a pop: the fists' chest-space step per frame stays near
-            // the steady run's.
-            var p=new Pilot();float steady=0,ramp=0,fast=0;Vector3? last=null;bool sprint=false;
+            // The sprint ramps in and out on the replicated flag without a pop: the fists sweep back and forward over the ramp
+            // smoothly (no frame's step stands out over both its neighbours'), and no step outruns the steady run's own swing by a quarter.
+            var p=new Pilot();float steady=0,ramp=0,fast=0,spike=0;Vector3? last=null;bool sprint=false;float d1=-1,d2=-1;
             for(int f=0;f<420;f++)
             {
                 float t=1+f*Dt;sprint=f>=200&&f<320;float sp=sprint?Rules.Speed*Rules.SprintMultiplier:Rules.Speed;p.A.Sprinting=sprint;p.A.Velocity=new V3(0,0,sp);p.A.Position=new V3(0,0,sp*(t-1));p.Step(t);
-                var h=p.InChest(CapturedRig.RHand);if(last.HasValue&&f>90){float d=(h-last.Value).Length();if(f<190)steady=Math.Max(steady,d);else if(f>=240&&f<310)fast=Math.Max(fast,d);else if(f>=195&&f<240||f>=315&&f<350)ramp=Math.Max(ramp,d);}last=h;
+                var h=p.InChest(CapturedRig.RHand);
+                if(last.HasValue&&f>90)
+                {
+                    float d=(h-last.Value).Length();if(f<190)steady=Math.Max(steady,d);else if(f>=240&&f<310)fast=Math.Max(fast,d);else if(f>=195&&f<240||f>=315&&f<350)ramp=Math.Max(ramp,d);
+                    if(d1>=0&&d2>=0&&(f>=196&&f<241||f>=316&&f<351))spike=Math.Max(spike,d1-Math.Max(d2,d));d2=d1;d1=d;
+                }
+                last=h;
             }
-            Check(ramp<Math.Max(steady,fast)*1.25f+.005f,"the sprint ramps in and out without a pop (largest fist step "+(ramp*100).ToString("0.0")+" cm; the steady run's "+(steady*100).ToString("0.0")+", the sprint's "+(fast*100).ToString("0.0")+")");
+            Check(spike<.02f&&ramp<Math.Max(steady,fast)*1.25f+.005f,"the sprint ramps in and out without a pop (largest fist step "+(ramp*100).ToString("0.0")+" cm, largest spike "+(spike*100).ToString("0.0")+" cm; the steady run's "+(steady*100).ToString("0.0")+", the sprint's "+(fast*100).ToString("0.0")+")");rampSpike=spike;
         }
-        yield return $"Cyber Lord run and sprint: {count-c0} checks ({cases.Count} cases: the run in eight directions at {Rules.Speed} m/s, the sprint ahead and on the diagonals at {Rules.Speed*Rules.SprintMultiplier:0.00}, the block walk; the contact foot slips at most {(worst*100):0.000} cm/s ({worstAt}); the takes follow the travel, the sprint the replicated flag without a pop, the fists pump, the chest on the aim, the actor untouched)";
+        yield return $"Cyber Lord run and sprint: {count-c0} checks ({cases.Count} cases: the run in eight directions at {Rules.Speed} m/s, the sprint ahead and on the diagonals at {Rules.Speed*Rules.SprintMultiplier:0.00}, the block walk; the contact foot slips at most {(worst*100):0.000} cm/s ({worstAt}); the takes follow the travel, the sprint the replicated flag without a pop (spike {(rampSpike*100):0.0} cm), the run's fists pump and the sprint's sweep back to {sweptZ:0.00} m behind the chest, the chest on the aim, the actor untouched)";
 
         // ------------------------------------------------------------------------------------------------------------------
         // 3. The boost (the second jump's pose)

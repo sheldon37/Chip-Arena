@@ -29,6 +29,22 @@ namespace ChipArena.UnityConversion
         /// <summary>The share of the takes' mean forward lean kept (the pack leans a sprinter's 40 degrees; the gait body adds its
         /// own run lean): the run and the sprint.</summary>
         public const float RunLean=1f,SprintLean=1f;
+        /// <summary>
+        /// The hardlight dash sprint (owner 2026-10-13: "change cyber lords sprint animation to be different than their run
+        /// animation (Currently its just the run animation sped up)"): over the Runner pack's ChargeBoost lean the fists are
+        /// swept back past the hips and trailed there, knuckles down and back, with a short alternating swing at the stride
+        /// (chest space, m; the fist axes); the hardlight streaks the effects trail from them (NativeCyberLordFx Sprint) make
+        /// the line. The sprint takes' own pump keeps SweptKeep of its share on top. In through the sprint ramp, so the run to
+        /// sprint blend never pops.
+        /// </summary>
+        public static readonly Vector3 SweptRight=new Vector3(-.21f,-.47f,-.34f),SweptLeft=new Vector3(.21f,-.47f,-.34f),SweptAxis=Vector3.Normalize(new Vector3(0,-.55f,-.83f)),SweptEdge=Vector3.Normalize(new Vector3(0,.83f,-.55f));
+        public const float SweptSwing=.055f,SweptKeep=.2f;
+        /// <summary>The fists' own ease into and out of the sweep (s; twice the body's NativeSprintRules.Blend), so the arms swing
+        /// back and forward over the toggle rather than snapping with the lean.</summary>
+        public const float SweptBlend=.3f;
+        /// <summary>The dash run's extra forward lean over the take's (rad, before the voxel posture keeps: the spine and the chest)
+        /// and the head's counter so the stare stays ahead.</summary>
+        public const float SweptSpine=.35f,SweptChest=.2f,SweptHead=-.4f;
         /// <summary>The sprint take for a run direction: ahead and the two forward diagonals; -1 for any other (the authority
         /// sprints only within 53 degrees of the facing).</summary>
         public static int SprintFor(int direction)=>direction==0?Sprint:direction==1?SprintLeft:direction==7?SprintRight:-1;
@@ -48,7 +64,7 @@ namespace ChipArena.UnityConversion
     {
         private readonly float[] rowA=new float[CapturedClip.Channels],rowB=new float[CapturedClip.Channels],mean=new float[CapturedClip.Channels],meanB=new float[CapturedClip.Channels],
             sprintRow=new float[CapturedClip.Channels],sprintMean=new float[CapturedClip.Channels];
-        private float dx,dz=1,last=-100,ramp;
+        private float dx,dz=1,last=-100,ramp,armRamp;
         private static readonly float[] headings=new float[CyberLordRunRules.Clips];
         private static bool warmed;
         /// <summary>Decodes every take, its cycle mean and strafe heading once, so no direction allocates when first used.</summary>
@@ -56,7 +72,10 @@ namespace ChipArena.UnityConversion
         {
             if(warmed)return;
             for(int i=0;i<CyberLordRunRules.Clips;i++){var c=CyberLordRunRules.Clip(i);c.Decode();if(c.Loop)c.CycleMean();}
-            for(int i=0;i<CyberLordRunRules.Boost;i++)headings[i]=-MeleeMath.Wrap(Chest(CyberLordRunRules.Clip(i))-Chest(CyberLordRunRules.Clip(i>=CyberLordRunRules.Sprint?CyberLordRunRules.Sprint:CyberLordRunRules.Run)));
+            // Every take's mean chest onto the forward run's (the ChargeBoost sprint carries its chest bladed 35 degrees off its
+            // hips even ahead, so the sprint takes fold onto the run's line too, not onto their own forward take's).
+            float ahead=Chest(CyberLordRunRules.Clip(CyberLordRunRules.Run));
+            for(int i=0;i<CyberLordRunRules.Boost;i++)headings[i]=-MeleeMath.Wrap(Chest(CyberLordRunRules.Clip(i))-ahead);
             warmed=true;
         }
         /// <summary>The travel direction (radians from the facing, + to the rig's left), its bracketing run takes (0..7) and their
@@ -111,7 +130,8 @@ namespace ChipArena.UnityConversion
             float ahead=Math.Max(0,(float)Math.Cos(dir)),aside=MeleeMath.Lerp(CyberLordRunRules.AsideTorso,1,ahead*ahead*ahead),phase=MeleeMath.Frac(r.Stride/MeleeMath.TAU);
             Pair(CyberLordRunRules.Run+d0,CyberLordRunRules.Run+d1,t,phase,CyberLordRunRules.TorsoKeep*aside,CyberLordRunRules.ArmKeep,CyberLordRunRules.FreeKeep,CyberLordRunRules.RunLean,rowA,mean,rowB,meanB);
             bool on=NativeSprintRules.Shows(a.Sprinting,a.Grounded,speed);ramp=dt<0?(on?1:0):NativeSprintRules.Step(ramp,on,dt);float sw=NativeSprintRules.Shape(ramp);Sprint=sw;
-            if(sw>1e-4f)
+            armRamp=dt<0?(on?1:0):MeleeMath.Clamp(armRamp+(on?1:-1)*dt/CyberLordRunRules.SweptBlend,0,1);float sa=NativeSprintRules.Shape(armRamp);
+            if(sw>1e-4f||sa>1e-4f)
             {
                 // The sprint's bracket: ahead and the forward diagonals (any other direction leans on the nearer diagonal).
                 int s0,s1;float st;
@@ -119,9 +139,31 @@ namespace ChipArena.UnityConversion
                 else if(d0==7&&d1==0){s0=CyberLordRunRules.SprintRight;s1=CyberLordRunRules.Sprint;st=t;}
                 else{s0=dir>0?CyberLordRunRules.SprintLeft:CyberLordRunRules.SprintRight;s1=-1;st=0;}
                 Pair(s0,s1,st,phase,CyberLordRunRules.SprintTorsoKeep*aside,CyberLordRunRules.SprintArmKeep,CyberLordRunRules.FreeKeep,CyberLordRunRules.SprintLean,sprintRow,sprintMean,rowB,meanB);
+                Swept(sprintRow,sprintMean,phase);
+                // The body on the sprint ramp, the fists on their own slower one (the run row kept in the free scratch row).
+                bool arms=Math.Abs(sa-sw)>1e-5f;if(arms)Array.Copy(rowA,rowB,CapturedClip.Channels);
                 MeleeCapture.BlendRowsTurning(rowA,sprintRow,sw,rowA);
+                if(arms){MeleeCapture.BlendRowsTurning(rowB,sprintRow,sa,rowB);Array.Copy(rowB,MeleeCapture.Grip,rowA,MeleeCapture.Grip,MeleeCapture.TwoHand-MeleeCapture.Grip);}
             }
             Array.Copy(rowA,into,CapturedClip.Channels);
+        }
+        /// <summary>The hardlight dash's fists over a sprint row (CyberLordRunRules.Swept*): swept back past the hips, the take's own
+        /// swing about its mean kept at SweptKeep, an alternating swing at the stride.</summary>
+        private static void Swept(float[] row,float[] mean,float phase)
+        {
+            float swing=CyberLordRunRules.SweptSwing*(float)Math.Sin(phase*MeleeMath.TAU),keep=CyberLordRunRules.SweptKeep;
+            for(int k=0;k<3;k++)
+            {
+                float rk=k==0?CyberLordRunRules.SweptRight.X:k==1?CyberLordRunRules.SweptRight.Y:CyberLordRunRules.SweptRight.Z,lk=k==0?CyberLordRunRules.SweptLeft.X:k==1?CyberLordRunRules.SweptLeft.Y:CyberLordRunRules.SweptLeft.Z;
+                float ax=k==0?CyberLordRunRules.SweptAxis.X:k==1?CyberLordRunRules.SweptAxis.Y:CyberLordRunRules.SweptAxis.Z,ed=k==0?CyberLordRunRules.SweptEdge.X:k==1?CyberLordRunRules.SweptEdge.Y:CyberLordRunRules.SweptEdge.Z;
+                row[MeleeCapture.Grip+k]=rk+(row[MeleeCapture.Grip+k]-mean[MeleeCapture.Grip+k])*keep+(k==2?swing:0);
+                row[MeleeCapture.LHand+k]=lk+(row[MeleeCapture.LHand+k]-mean[MeleeCapture.LHand+k])*keep-(k==2?swing:0);
+                row[MeleeCapture.Blade+k]=ax;row[MeleeCapture.LFwd+k]=ax;row[MeleeCapture.Edge+k]=ed;row[MeleeCapture.LUp+k]=ed;
+            }
+            // The deeper lean (forward about the joints' x), the head kept on the way ahead.
+            Write(row,MeleeCapture.Spine,MeleeMath.AxisAngle(MeleeMath.X,CyberLordRunRules.SweptSpine)*Rot(row,MeleeCapture.Spine));
+            Write(row,MeleeCapture.Chest,MeleeMath.AxisAngle(MeleeMath.X,CyberLordRunRules.SweptChest)*Rot(row,MeleeCapture.Chest));
+            Write(row,MeleeCapture.Head,MeleeMath.AxisAngle(MeleeMath.X,CyberLordRunRules.SweptHead)*Rot(row,MeleeCapture.Head));
         }
         /// <summary>The carry's share shown this frame (CyberLordMotion.BaseRow's travel weight), read by the seat.</summary>
         public float Weight;

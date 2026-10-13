@@ -1,5 +1,39 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — Cyber Lord ranged mode, dash sprint (owner: "Give cyber lord a 2nd set of abilities for a "Ranged" mode. So, new 1-4 if they switch to ranged :)[We can set this to the 5 hotkey to switch)"; "change cyber lords sprint animation to be different than their run animation. (Currently its just the run animation sped up)")
+- Branch `claude/cyberlord-ranged`, base `e2e894e`. Committed locally, not pushed; not merged or released.
+- Design (Claude's part; numbers in `Core/CyberLordRanged.cs` `CyberRangedSpec`, table and contract in `docs/CYBER-LORD.md` "Ranged mode"):
+  - Key 5 switches (.3 s, 1 s cooldown, refused mid-cast and never queued).
+  - The ranged set: LMB Bit Bolt (poke), 1 Ping Lance (long poke), 2 Lag Field (zone), 3 Proxy Swap (escape), 4 Root Access (finisher, on Kernel Panic's clock).
+  - Q, E, RMB and SHIFT are unchanged. Cooldowns and mana carry across modes.
+- Presentation, keyed only on a proposed replicated record read through `CyberLordFeed.RangedMode`:
+  - the key-5 reconfiguration (fists to emitters, a barrel and a coil; a glitch flash, shards and an RGB split);
+  - the emitter hold over the run;
+  - each cast's pose, effects, telegraphs (true-perspective ribbons) and impacts;
+  - first person in both modes;
+  - the HUD's two sets with a "5 · MELEE / 5 · RANGED" card, and seven art icons;
+  - existing-key audio, and reduced/low tiers.
+  - Without a record the feed falls back to the Siren's `SourceRanged` / `SourceModeAt`.
+  - Bit Bolts are `Spec cyberlord` / `Detail bit-bolt` bullets, which the default drawer now skips (the Data Packets stay its own).
+  - Dev Sandbox: "Preview Cyber Ranged" loops the set on your own pilot (`Runtime/NativeCyberLordRangedPreview.cs`).
+- Sprint: the Runner pack's Mvm_ChargeBoost (was Mvm_Boost) with the fists swept past the hips (`CyberLordRun.Swept`, own .3 s ease), a deeper lean and hardlight fist streaks easing with the replicated flag. Every take's chest is folded onto the forward run's line. The run and first person are unchanged.
+- Affected systems: Cyber Lord pose/look/effects/HUD/audio, the class icon art (7 new; others byte-identical), the default shot drawer's skip, and the Dev Sandbox menu.
+- Animation impacts: none on hit timing, hitboxes, damage, cooldowns, movement or networking. The drawn arms and chest move, and the blink dips the drawn hips 6 cm.
+- Checks (actual):
+  - Unity-stub runtime+editor compile: OK.
+  - `tools/check_relay.py`: passes, 35 managed groups plus WebSocket/LAN, including the new `Tests/CyberLordRangedChecks.cs` (14,866 checks, 0 bytes per frame) and the updated `CyberLordRunChecks` (the sprint's swept fists, no ramp spike).
+  - Python tests: 95, 1 skipped.
+  - `package_source.py`: OK.
+  - `git diff --check`: clean.
+  - The relay also passes from a sparse `git ls-files` copy.
+  - Offline WebGL renders (scratch harness, real Core and draw code) of the switch, stance and run, each ability (incl. the target's view), first person, the tiers, the HUD mock and run-vs-sprint.
+- Not run: the Unity Editor, Windows, two clients, the in-game Dev Sandbox button.
+- Risks:
+  - The rules are pending (the presentation shows nothing ranged in real matches until Astra replicates the record or the Siren fields).
+  - The HUD bar gains a ninth card.
+  - Ribbon beams are untested on the Unity shader path beyond the shared WebGL block.
+- Next step: Astra's ranged rules (the prompt is in `docs/CYBER-LORD.md`).
+
 ## 2026-10-13 — Claude — PvE chip selection: the wrist hologram and SELECTING CHIP tag (owner: "Lets also add a 'Chip Selection' Animation for PVE (Similar to what we had for Electron), what I mean is when other people are picking chips on PVE, we can see them looking at a holographic display through their wrist. Above, it'll show a small animated Text 'Selecting Chip',")
 - Branch `claude/pve-chip-select`, base shared `e2e894e`. Not pushed, merged or released. Contract: `docs/PVE-CHIP-SELECT.md`.
 - Electron baseline (`client/pve/hologram.ts`, rendered with its real modules): a cyan fan of three cards, a chip die and a cone over a remote chooser's head, red at 6 Hz when hit; head down .25 rad, right forearm raised; "Choosing chip" in the board.
