@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
         {
             if(MagicPose.School(a)==0||color<0)return;
             if(!moteClocks.TryGetValue(a.Id,out var clock)){clock=new NativeSpellMotes();moteClocks.Add(a.Id,clock);}
-            int n=clock.Step(a,time,Time.unscaledDeltaTime,BlastQuality,color,handMotes);if(n==0)return;var hand=rig.Bones[CapturedRig.RHand].localToWorldMatrix;
+            int n=clock.Step(a,time,Time.unscaledDeltaTime*clockRate,BlastQuality,color,handMotes);if(n==0)return;var hand=rig.Bones[CapturedRig.RHand].localToWorldMatrix;
             for(int i=0;i<n;i++){var m=handMotes[i];SourceBurst(hand.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(m.Local)))+Vector3.one*m.Jitter,m.Color,m.Count,m.Power);}
         }
         private void ClearRigDressing(){chipWaves.Clear();foreach(var clock in moteClocks.Values)clock.Reset();ClearRigTint();}
