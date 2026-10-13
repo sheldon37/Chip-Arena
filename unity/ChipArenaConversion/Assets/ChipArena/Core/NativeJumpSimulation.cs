@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
     public static class NativeJumpSimulation
     {
         public const float AirMultiplier=.9f;
-        public static bool CanAirJump(string spec)=>spec=="daggers"||spec=="bow";
+        public static bool CanAirJump(string spec)=>spec=="daggers"||spec=="bow"||spec=="cyberlord";
         public static NativeJumpKind Try(string spec,bool pressed,bool grounded,bool swimming,bool locked,
             float verticalSpeed,float jumpSpeed,ref int airJumps,out float launch)
         {
