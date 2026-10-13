@@ -1,5 +1,13 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — validate pinned inventory before Ward Zero replacement
+- Branch `codex/native-inventory-fix`, base shared/build `f6ed52c1`; owner failure on `18a94436`: `Content inventory differs from pinned source` in NativeParityChecks immediately after legacy-map defaults.
+- Cause: the Editor merged UnityMaps before source parity. Ward Zero now replaces legacy `siren`, leaving 14 legacy maps / 3,379 blocks rather than the pinned export's 15 / 3,451. Managed parity tests used the raw export, hiding the Editor ordering mismatch.
+- Move source parity before `NativeUnityMapLoader.Load`, then retain legacy-default checks and every later native gate. No inventory thresholds relaxed; no content, gameplay, map, animation, save or protocol change.
+- Regression: the Ward simulation group checks source parity with modeled JsonUtility defaults, then the real map merge; confirms 14 legacy maps and reproduces rejection of merged content. Also guards the Editor call order. Ward checks now 152.
+- Verification: fresh direct SDK Roslyn Core/Tests and relay compilation; full check_relay.py with compiled paths, exit 0, 621 PASS lines including real WebSocket/UDP/TCP checks; 101 Python tests OK (one skip); package_source.py --check passed (1,797 files); git diff --check clean. Direct compiler used because dotnet CLI/MSBuild process lookup fails in this container; no managed groups omitted.
+- Unity Editor/runtime compilation, PhysX and Windows build unavailable here. This resolves the reproduced inventory gate; downstream native gates still need the builder. Owner standing authorization permits PR merge and builder sync after validation. No compiled release claimed; source publication triggers the next unattended build.
+
 ## 2026-10-13 — Claude — relay green after the Ward Zero simulation import (PR #171)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), base `18a9443` (owner-merged PR #171). The relay stopped at `HulkSpitterChecks`: "a breach reads its entry and the map's named segment" text-matched the old `GameObject.Find(NativeBreach.ObjectName(entry.id))`, which #171 replaced with a search of `arena.AllBlocks` by the same name (a better lookup). The check now matches the new lookup; intent unchanged.
 - Also in `NativeHordeBreachPresentation.HordeBreachFrames` (runs every drawn frame): the entry lookup used `Array.Find` with a lambda capturing the frame, a closure allocation per breach per frame; now a plain loop. No behaviour change.

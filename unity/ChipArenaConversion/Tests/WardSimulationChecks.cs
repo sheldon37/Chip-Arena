@@ -14,7 +14,17 @@ namespace ChipArena.UnityConversion
             var options=new JsonSerializerOptions{IncludeFields=true};
             T Read<T>(string name)=>JsonSerializer.Deserialize<T>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources",name)),options);
             var content=Read<ConversionContent>("GameContent.json");var old=content.maps.Single(m=>m.id=="siren");
+            var parity=JsonSerializer.Deserialize<ParityFixtures>(File.ReadAllText(Path.Combine(root,"Tests/source-parity.json")),options);
+            // Model JsonUtility's omitted inline objects, then execute the Editor's corrected order.
+            foreach(var legacy in content.maps){legacy.bounds=new MapBounds();legacy.spawns=new MapSpawns();legacy.nav=new MapNav();}
+            Check(NativeParityChecks.Run(content,parity).Count>0,"pinned source parity passes before map replacement, with JsonUtility defaults");
+            string editor=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Editor/NativeBuildChecks.cs"));
+            int parityAt=editor.IndexOf("NativeParityChecks.Run(data,fixtures)",StringComparison.Ordinal),mergeAt=editor.IndexOf("NativeUnityMapLoader.Load(data)",StringComparison.Ordinal),legacyAt=editor.IndexOf("CheckLegacyMapDefaults(data)",StringComparison.Ordinal);
+            Check(parityAt>=0&&mergeAt>parityAt&&legacyAt>mergeAt,"Editor checks raw source parity before map loading, then validates normalized legacy maps");
             var maps=Read<UnityMapContent>("UnityMaps.json");NativeMapRules.Merge(content,maps,File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")));
+            Check(content.maps.Count(m=>!m.unity)==14,"Ward replacement removes exactly one legacy map");
+            bool rejectsMerged=false;try{NativeParityChecks.Run(content,parity);}catch(Exception e){rejectsMerged=e.Message=="Content inventory differs from pinned source";}
+            Check(rejectsMerged,"regression reproduces original failure when parity sees merged content; inventory gate remains strict");
             var map=content.maps.Single(m=>m.id=="siren");var pve=Read<NativePveContent>("PveContent.json");NativeWardEntries.Validate(pve,map);
             Check(map.name=="Ward Zero"&&map.look=="quarantine"&&map.music==old.music&&map.rotation==old.rotation,"identity preserved");
             Check(map.blocks.Length==616&&map.ramps.Length==8&&map.bounds.ceiling==13&&map.bounds.killY==-6,"complete import");
