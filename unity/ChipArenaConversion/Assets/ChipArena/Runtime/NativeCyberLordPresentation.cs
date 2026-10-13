@@ -59,6 +59,15 @@ namespace ChipArena.UnityConversion
             cyberFx.Clear();cyberViews.Clear();cyberFormAt.Clear();cyberSnapshot=null;
             for(int i=0;i<cyberCloneRigs.Length;i++){cyberCloneRigs[i]?.Dispose();cyberCloneRigs[i]=null;}
         }
+        /// <summary>The Dev Sandbox's "Preview Cyber Double Jump" (developer sandbox only): the local Cyber Lord's own jumps show the
+        /// second jump's boost (pose and effect) as if the authority had granted the air jump (Core/CyberLordRun.cs
+        /// CyberLordAirBoost.PreviewAt; no impulse). Off everywhere else; a granted air jump always wins.</summary>
+        public bool CyberBoostPreviewOn;
+        private void CyberBoostPreview(CapturedAnimation.Player rig,Actor a,float time)
+        {
+            float at=CyberBoostPreviewOn&&a.Id==LocalId&&CyberLordFeed.Handles(a)?CyberLordAirBoost.PreviewAt(rig.JumpTrack,time):-100;
+            rig.PreviewAirJumpAt=at;if(a.Id==LocalId)cyberFx.PreviewAirJump(a.Id,at);
+        }
         /// <summary>The live Kernel Panic sequence `a` is in (caster or victim), or null.</summary>
         private CyberLordView CyberSequenceOf(int id,float time)
         {
@@ -91,9 +100,9 @@ namespace ChipArena.UnityConversion
             float solid=cyberViews.TryGetValue(a.Id,out var v)?NativeCyberLordLook.BodySolid(v,time):1,formAt=cyberFormAt.TryGetValue(a.Id,out float f)?f:-100;var flare=cyberFx.FlareOf(a.Id,time);
             // The Hardlight Boot entrance forms and flares the look on its own clock (Core/NativeCyberLordIntro.cs).
             if(rig==introRig&&entranceScript is NativeCyberLordIntroScript intro){time=entranceTime;formAt=NativeCyberLordIntroScript.FormAt;flare=intro.Flare(time);solid=1;}
+            // The idle stance's scanline band over the hardlight parts and its fist clench (Core/CyberLordIdle.cs; none in first person or the entrance).
+            var glitch=!first&&rig!=introRig&&rig.CyberMotion!=null?rig.CyberMotion.IdleGlitch:default;bool reduced=WeaponEffectsQuality<.5f;flare=CyberLordIdlePose.Clench(glitch,flare);
             int n=NativeCyberLordLook.Pieces(time,formAt,flare,first,solid,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics,cyberPieces);
-            // The idle stance's scanline band over the hardlight parts (Core/CyberLordIdle.cs; none in first person or the entrance).
-            var glitch=!first&&rig!=introRig&&rig.CyberMotion!=null?rig.CyberMotion.IdleGlitch:default;bool reduced=WeaponEffectsQuality<.5f;
             for(int i=0;i<n;i++)QueueCyberPiece(cyberPieces[i],rig.Bones[cyberPieces[i].Bone].localToWorldMatrix,CyberLordIdlePose.ScanGain(glitch,cyberPieces[i],i,reduced),layer,camera);
         }
         private void QueueCyberPiece(in CyberPiece p,Matrix4x4 bone,float gain,int layer,Camera camera)

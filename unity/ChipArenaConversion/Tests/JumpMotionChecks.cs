@@ -61,13 +61,13 @@ internal static class JumpMotionChecks
     private static void Mapping(List<string> log)
     {
         var want=new Dictionary<string,int>{{"sword",NativeJumpRules.Sword},{"daggers",NativeJumpRules.Daggers},{"greatsword",NativeJumpRules.Greatsword},{"shield",NativeJumpRules.Shield},
-            {"rifle",NativeJumpRules.Shooting},{"machinegun",NativeJumpRules.Shooting},{"pistol",NativeJumpRules.Unarmed},{"emperor",NativeJumpRules.Unarmed},{"ansatsuken",NativeJumpRules.Unarmed},
+            {"rifle",NativeJumpRules.Shooting},{"machinegun",NativeJumpRules.Shooting},{"pistol",NativeJumpRules.Unarmed},{"emperor",NativeJumpRules.Unarmed},{"ansatsuken",NativeJumpRules.Unarmed},{"cyberlord",NativeJumpRules.Unarmed},
             {"fire",NativeJumpRules.Staff},{"water",NativeJumpRules.Staff},{"lightning",NativeJumpRules.Staff},{"darkness",NativeJumpRules.Staff},{"leet",NativeJumpRules.Staff},{"siren",NativeJumpRules.None}};
         foreach(var kv in want)Check(NativeJumpRules.SetFor(kv.Key)==kv.Value,kv.Key+" takes its pack set");
         Check(NativeJumpRules.SetFor(null)==NativeJumpRules.None&&NativeJumpRules.Clip(NativeJumpRules.None,1)==null&&NativeJumpRules.Clip(0,9)==null,"unknown specs and slots have no clip");
         Check(NativePackJumps.Sets[NativeJumpRules.Greatsword][1].Source.StartsWith("2Hand-Sword")&&NativePackJumps.Sets[NativeJumpRules.Shooting][1].Source.StartsWith("2Hand-Shooting")&&NativePackJumps.Sets[NativeJumpRules.Staff][1].Source.StartsWith("2Hand-Staff")&&NativePackJumps.Sets[NativeJumpRules.Unarmed][1].Source.StartsWith("Unarmed")&&NativePackJumps.Sets[NativeJumpRules.Shield][1].Source.StartsWith("Armed"),"the sets read their pack folders");
         Check(NativeJumpRules.Flips("daggers")&&!NativeJumpRules.Flips("sword")&&!NativeJumpRules.Flips("emperor"),"only the daggers flip on an air jump");
-        log.Add("pack sets: sword/daggers/shield Armed (daggers reverse grip, shield arm on its guard), greatsword 2Hand-Sword, rifle/machine gun 2Hand-Shooting, pistol and the DEV fighters Unarmed, magic and L33t H4x 2Hand-Staff, Siren none (her own air tuck)");
+        log.Add("pack sets: sword/daggers/shield Armed (daggers reverse grip, shield arm on its guard), greatsword 2Hand-Sword, rifle/machine gun 2Hand-Shooting, pistol, the DEV fighters and the Cyber Lord Unarmed, magic and L33t H4x 2Hand-Staff, Siren none (her own air tuck)");
     }
 
     // ---- a simulated jump (the authority's 60 Hz tick: jump 8.5, gravity 23) presented as a host or a guest draws it ----

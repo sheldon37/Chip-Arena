@@ -71,6 +71,9 @@ namespace ChipArena.UnityConversion
             }
             return n;
         }
+        /// <summary>The second jump's hardlight boost (Core/CyberLordRun.cs; NativeAudio's movement feel, on the jump track's air
+        /// jump): the Data Dash's whoosh, lighter, and a glitch tick.</summary>
+        public static int AirBoost(NativeKitSound[] o){int n=0;n=S(o,n,"move.roll","dash",.35f);n=S(o,n,"dev.leet.glitch","darkness",.22f);return n;}
         /// <summary>The bank keys this routing may play (Tests/CyberLordChecks: every one is an existing bank key).</summary>
         public static readonly string[] Keys={"dev.fist.swing","impact.energy","move.roll","dev.leet.glitch","field.repulsion","magic.shackles","status.shock-zap","blast.quake","blast.static",
             "melee.miss","blast.implosion","dev.fist.hit","magic.blink-strike","chip.split","melee.shield.block","status.burn-tick","blast.leet-nuke"};

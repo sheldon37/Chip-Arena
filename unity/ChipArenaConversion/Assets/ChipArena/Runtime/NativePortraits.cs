@@ -243,7 +243,7 @@ namespace ChipArena.UnityConversion
         private readonly CyberPiece[] cyberPieces=new CyberPiece[NativeCyberLordLook.Capacity];
         private void CyberLordPieces(Part[] body,float time,in CyberIdleGlitch glitch,Quaternion turn,Matrix4x4 root)
         {
-            int n=NativeCyberLordLook.Pieces(time,-100,default,false,1,Reduced?.3f:1,false,cyberPieces);
+            int n=NativeCyberLordLook.Pieces(time,-100,CyberLordIdlePose.Clench(glitch,default),false,1,Reduced?.3f:1,false,cyberPieces);
             for(int i=0;i<n;i++)
             {
                 var pc=cyberPieces[i];float gain=CyberLordIdlePose.ScanGain(glitch,pc,i,Reduced);

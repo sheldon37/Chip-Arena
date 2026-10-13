@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-12 Cyber Lord run/jump/idle: `claude/cyberlord-run` (base `b9b354f`, not pushed) adds the Runner-pack run and sprint, the double-jump presentation (dormant until Astra grants the air jump), the twitching idle, the DEV "Sheldon Idle" lobby pose (account save pending Astra), dash-spam trails and a Bow double-jump hold fix. Not merged or released; Unity Editor/Windows not run; see DEV_LOG.
+
 2026-10-12 Factory/Cyber City simulation: `codex/unity-stage-hazards-20261012` on shared `aead19c4` integrates both original layouts, timed hazards, crane cover, hazard-aware bot/horde navigation and the owner's map music. Selectable, excluded from Random. Managed/full relay, Python, updater and source-package checks pass; native source/updater CI passes. Legacy TypeScript checks retain confirmed baseline failures. New Unity build gates are unrun here. Unity/Windows/two-client acceptance and compiled Update publication remain pending; see DEV_LOG and the task PR. This supersedes the "not in UnityMaps" status in the design entries below.
 
 2026-10-12 Cyber City stage: `claude/stage-cybercity` (base `f575670`, shared `a53e752` merged) adds the Cyber City design (an 80 x 64 m neon interchange with a lethal maglev cut, electrified couplings and falling billboards), its draft blockout, the simulation contract and the dormant presentation. Merged into the shared head; not released. Unity Editor/Windows not run; Astra builds the sim from CYBERCITY-SIMULATION-CONTRACT.md.

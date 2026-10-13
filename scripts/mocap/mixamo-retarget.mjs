@@ -105,7 +105,7 @@ export function calibrate(obj,{mirror=false,grip='blade'}={}){
 
 /** Sample `clip` on `obj` at `fps`; returns one Float32Array row per frame in CHANNELS order. `mirror` reads the capture
  * left↔right (calibrate with the same flag); `oneHand` keeps the support hand off the weapon (one-handed weapons). */
-export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false,soften=false,poleTurn=0,splitTwist=false,bothHands=false,hilt=bothHands,heading=0,loop=false}={}){
+export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false,soften=false,poleTurn=0,splitTwist=false,canonicalTwist=false,bothHands=false,hilt=bothHands,heading=0,loop=false}={}){
  const mixer=new T.AnimationMixer(obj);mixer.clipAction(clip).play();const {wq,wp}=bones(obj,mirror);
  const n=Math.max(2,Math.round(clip.duration*fps)+1),rows=[];let yawPrev=0,hips0=null;
  const W={},Wp={};const names=['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftFoot','RightFoot','LeftHand','RightHand'];
@@ -137,7 +137,10 @@ export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=
   // the procedural feet the runtime gives it, the torso carrying the turn.
   if(heading){const P=local('Hips').clone(),S=local('Spine1').clone(),C=local('Spine2').clone(),PS=P.clone().multiply(S),y=a=>new T.Quaternion().setFromAxisAngle(UP,a);
    spineQ=P.clone().invert().multiply(y(.45*heading)).multiply(P).multiply(S);chestQ=PS.clone().invert().multiply(y(.55*heading)).multiply(PS).multiply(C);}
-  if(splitTwist){const s=(spineQ??local('Spine1')).clone(),c=(chestQ??local('Spine2')).clone(),tw=x=>2*Math.atan2(x.y,x.w),h=new T.Quaternion().setFromAxisAngle(UP,(tw(s)-tw(c))/2);
+  // `canonicalTwist`: each joint's twist is read from its quaternion on the w >= 0 hemisphere (q and -q are one rotation; a
+  // product that lands on w < 0 reads a twist 2π away, which turned the waist half round and the chest back for a few
+  // frames of the CLazy runs). Off by default, so every earlier export stays byte-identical.
+  if(splitTwist){const s=(spineQ??local('Spine1')).clone(),c=(chestQ??local('Spine2')).clone(),tw=x=>canonicalTwist&&x.w<0?2*Math.atan2(-x.y,-x.w):2*Math.atan2(x.y,x.w),h=new T.Quaternion().setFromAxisAngle(UP,(tw(s)-tw(c))/2);
    spineQ=s.multiply(h.clone().invert());chestQ=h.multiply(c);}
   for(const k of ['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftFoot','RightFoot']){rotvec((k==='Spine1'&&spineQ?tmp.copy(spineQ):k==='Spine2'&&chestQ?tmp.copy(chestQ):local(k)).normalize(),rv);if(k==='Spine1'&&rv.x>.45)rv.x=.45+(rv.x-.45)*.35;if(k==='Hips'&&rv.x>.12)rv.x=.12+(rv.x-.12)*.5;
    // `soften`: the voxel head is a big block, so a capture's deep neck/head bends (the Explosive pack's hunched combat

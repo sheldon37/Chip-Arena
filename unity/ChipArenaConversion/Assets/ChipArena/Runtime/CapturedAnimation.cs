@@ -287,6 +287,9 @@ namespace ChipArena.UnityConversion
             // The jump layer (Core/NativeJumpMotion) for the arena rigs (host, guests, killcam, spectators: where Hits is set),
             // one per rig across its routes; intro, portrait, corpse and viewer rigs keep their own motion.
             private NativeJumpMotion jump;private NativeJumpMotion JumpLayer=>Hits!=null?jump??=new NativeJumpMotion():null;
+            /// <summary>This rig's jump track (the jump layer's; null before the first arena pose), and the Dev Sandbox's stand-in air-jump
+            /// time for a Cyber Lord's boost preview (Core/CyberLordRun.cs CyberLordAirBoost.PreviewAt; -100: none, the replicated signal).</summary>
+            public NativeJumpTrack JumpTrack=>jump?.Track;public float PreviewAirJumpAt=-100;
             // The pack's directional melee travel carry (Core/NativeLocomotionCarry), on the same arena rigs.
             private NativeLocomotionCarry locomotion;private NativeLocomotionCarry Locomotion=>Hits!=null?locomotion??=new NativeLocomotionCarry():null;
             // The per-weapon sprint carry (Core/NativeSprintMotion), on the same arena rigs.
@@ -339,6 +342,7 @@ namespace ChipArena.UnityConversion
                 bool emperor=a.SourceSpec=="emperor",cyber=CyberLordMotion.Handles(a.SourceSpec),juggle=Juggled(a,time),down=!juggle&&NativeSpecialPose.Down(a,time),stun=!juggle&&!down&&a.StunUntil>time;
                 bool dodge=(emperor||cyber)&&a.Rolling(time)&&!juggle&&!down&&!stun;
                 var v=MeleeViewOf(a,time,fighterView);v.Reach=1;v.Juggle=juggle;v.Down=down;v.HitStunUntil=stun?a.StunUntil:0;NativeFighterPose.View(v,a,waveDash,time);
+                if(cyber&&!(a.AirJumps>0)&&PreviewAirJumpAt>-90)v.AirJumpAt=PreviewAirJumpAt;
                 // Only the Emperor's Shift is a dodge roll (souls-combat.ts usesRoll); the Demon Step is the Ansatsuken's own layer.
                 if(!dodge){v.RollAt=v.RollUntil=-100;}
                 float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
@@ -350,7 +354,7 @@ namespace ChipArena.UnityConversion
                 else if(down){r.WritePose(pose);NativeSpecialPose.Recover(pose,a,time);r.ReadPose(pose);State="recovery";}
                 else if(dodge){r.WritePose(pose);CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration);r.ReadPose(pose);State="roll (adapted)";}
                 // The DEV Cyber Lord's unarmed style (Core/CyberLordMotion: the pack's stance, combo and abilities on its replicated windows).
-                else if(cyber){cyberMotion??=new CyberLordMotion();cyberMotion.Reduced=ReducedEffects;State=cyberMotion.Style(melee,a,time,stun);}
+                else if(cyber){cyberMotion??=new CyberLordMotion();cyberMotion.Reduced=ReducedEffects;cyberMotion.PreviewAirJumpAt=PreviewAirJumpAt;State=cyberMotion.Style(melee,a,time,stun);}
                 else if(NativeSourceMotion.Fighter(fighterClip,a,time,stun,out string key,true)){NativeFighterPose.Style(melee,fighterClip,a,stun,time);State=stun?"hit reaction":key;}
                 melee.FighterFinish(v,time,dt);
                 r.WritePose(pose);WritePose();fresh=false;lastTime=time;
@@ -390,7 +394,7 @@ namespace ChipArena.UnityConversion
                     case PoseRoute.Bow:BowGaitPose(a,position,time);return;
                 }
                 // The DEV Cyber Lord's first-person fists (Core/CyberLordMotion.FirstPerson): never the sword set.
-                if(firstPerson&&CyberLordMotion.Handles(a.SourceSpec)){Weapon=a.Weapon;cyberMotion??=new CyberLordMotion();State=cyberMotion.FirstPerson(pose,a,time);WritePose();fresh=false;lastTime=time;return;}
+                if(firstPerson&&CyberLordMotion.Handles(a.SourceSpec)){Weapon=a.Weapon;cyberMotion??=new CyberLordMotion();cyberMotion.PreviewAirJumpAt=PreviewAirJumpAt;State=cyberMotion.FirstPerson(pose,a,time);WritePose();fresh=false;lastTime=time;return;}
                 // Generic: the Siren and the first-person view models (guns, magic and the rest). A magic-class pilot (the four
                 // schools and the L33t H4x staff, MagicPose.School) never plays the sword set's cuts, block or stagger here.
                 Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);bool magic=MagicPose.School(a)>0,sword=NativePoseRoute.SwordLayers(a),bow=NativeBowWire.Is(a);

@@ -1,0 +1,212 @@
+{
+ "pack": "CLazy Runner Action Animation Pack (owner licence; FBX never committed)",
+ "channels": 64,
+ "quantum": 0.00390625,
+ "clips": [
+  {
+   "clip": "cyberlord-run/run-forward",
+   "source": "Mvm_Dash",
+   "range": [
+    0,
+    16
+   ],
+   "fps": 30,
+   "frames": 17,
+   "loop": true,
+   "marks": [
+    0.017
+   ],
+   "sha256": "3a012202ae363a68b5713b21229c88cdcc327a8d415a76c47ea0e98377a2cd8a",
+   "input": "3f2f49ab606988d798ca1e3d7b0d6818990fee6159066f327fe0efc7a85ae82e",
+   "strikeFrom": "d777383bb4497c4dcb5572612dc8f16d1af35c574915ce9325c4f9baf553d6bb"
+  },
+  {
+   "clip": "cyberlord-run/run-forward-left",
+   "source": "Mvm_Dash_Front_L45",
+   "range": [
+    0,
+    16
+   ],
+   "fps": 30,
+   "frames": 17,
+   "loop": true,
+   "marks": [
+    0.017
+   ],
+   "sha256": "b8554d6911380ac00e808da247939c9a3169b3c4b5b755d3b4cc1f54f0862019",
+   "input": "3e8a4cfb53aadbdd17f1364c189dbb9de6970ab7a492b9466fe6abe6af28d9f2",
+   "strikeFrom": "dfcf97ed1de1fc389710d081dae0dcd023cb9083815e882ce000a4d110719e71"
+  },
+  {
+   "clip": "cyberlord-run/run-left",
+   "source": "Mvm_Dash_Front_L",
+   "range": [
+    0,
+    16
+   ],
+   "fps": 30,
+   "frames": 17,
+   "loop": true,
+   "marks": [
+    0.017
+   ],
+   "sha256": "97a7973203ade1710052d637caf0e895accf260932d73649616f76800d742163",
+   "input": "771e8ec17b090c7727a2ab37c712f968552720cfbd94cfdbcc9926a6170e05c7",
+   "strikeFrom": "a844fbe1918fcb050f3903c01c17805ed7bc771454425357e436b7de280a54b4"
+  },
+  {
+   "clip": "cyberlord-run/run-back-left",
+   "source": "Mvm_Dash_Back_L45",
+   "range": [
+    0,
+    16
+   ],
+   "fps": 30,
+   "frames": 17,
+   "loop": true,
+   "marks": [
+    0.517
+   ],
+   "sha256": "100220dcdbf85d32d52b633667c2e0ac2da124ab06380d1add6b573f2837b1ac",
+   "input": "6ce6158b9cf363965a9597c690cb2be00376f4a027c59087cd65815ad578bc8f",
+   "strikeFrom": "9cedcfce6672e23c095cdf68e3a66ca0069ca268022e4592d7771e29e189b0b1"
+  },
+  {
+   "clip": "cyberlord-run/run-back",
+   "source": "Mvm_Dash_Back",
+   "range": [
+    0,
+    16
+   ],
+   "fps": 30,
+   "frames": 17,
+   "loop": true,
+   "marks": [
+    0.067
+   ],
+   "sha256": "3f1c83f2033badfc11198d5cb3dc5e549fc8d7b8c38bff8508f4df53cd5c2931",
+   "input": "ba5168a14405ae1f4b96ff5ff94d080a37d7af1f3b2137efa78a2c9c5ca274ad",
+   "strikeFrom": "0e244105170c362032f6576f727019d4f540b6fb608313268f99d5aa8ebf9ed3"
+  },
+  {
+   "clip": "cyberlord-run/run-back-right",
+   "source": "Mvm_Dash_Back_R45",
+   "range": [
+    0,
+    16
+   ],
+   "fps": 30,
+   "frames": 17,
+   "loop": true,
+   "marks": [
+    0.05
+   ],
+   "sha256": "351a0d264d6d7f3bbff38e41f63b6a7c21dbef4184ac922a73cdc9f9e1ef979e",
+   "input": "73e5a8fe5013c0b82efd83c89b2c1d4b5c086edabdb0f00eb805736ea8b1e2fb",
+   "strikeFrom": "aa5aa07068cc66dd2b9c7e0ba8775498e1d9851447a8ed78143b37a8e494b7df"
+  },
+  {
+   "clip": "cyberlord-run/run-right",
+   "source": "Mvm_Dash_Front_R",
+   "range": [
+    0,
+    16
+   ],
+   "fps": 30,
+   "frames": 17,
+   "loop": true,
+   "marks": [
+    0.017
+   ],
+   "sha256": "c74c0e470aeefd58a52e1afb976dfc5438b076382132e9abd1960da9f8608f87",
+   "input": "861af40dc8cb53c4c41aa996befb16bc30b2fdda6d2d57e33356ef113d4522d5",
+   "strikeFrom": "849bb4352ecb366d04ab82bc54e3c8d35bb122ddf68aada275f4ae567a24c845"
+  },
+  {
+   "clip": "cyberlord-run/run-forward-right",
+   "source": "Mvm_Dash_Front_R45",
+   "range": [
+    0,
+    16
+   ],
+   "fps": 30,
+   "frames": 17,
+   "loop": true,
+   "marks": [
+    0.017
+   ],
+   "sha256": "f959620e67d648bbc6baa6fd2f901b0703d2105ed993df9eef454e0fb1b487f7",
+   "input": "d53d7fcb08e32f2f28469b867d82b6f4f40bb3a3f410ce99f41e9e029b073cb2",
+   "strikeFrom": "3d0b312a9cfa9f9fe5b1542593707d985d7db3eff8ceef34d2ccf4b0fb39c072"
+  },
+  {
+   "clip": "cyberlord-run/sprint-forward",
+   "source": "Mvm_Boost",
+   "range": [
+    0,
+    12
+   ],
+   "fps": 30,
+   "frames": 13,
+   "loop": true,
+   "marks": [
+    0.017
+   ],
+   "sha256": "0b07f77e2f380283b56d7075dea5a320f6b1ab311bfdf571c73f2c41318b595a",
+   "input": "0b30432648eb31dc2c88e2226c3182a5b31be7d02058d44cc1d457c352bd91fc",
+   "strikeFrom": "14696d984637865ae325258d2d791a2347fc38353afeb831c348ac2515d1f7a1"
+  },
+  {
+   "clip": "cyberlord-run/sprint-forward-left",
+   "source": "Mvm_Boost_Front_L45",
+   "range": [
+    0,
+    12
+   ],
+   "fps": 30,
+   "frames": 13,
+   "loop": true,
+   "marks": [
+    0.017
+   ],
+   "sha256": "ca27222e9cb0c8e8e96c3593ec3455f03c7fb1924f597bbb8eda8f13a40ff4b0",
+   "input": "0a364c98c668be6f824b7f9d385c3418476ac65185a2e363922f1cac7f4179f2",
+   "strikeFrom": "84668fdb7535aba317e0b7d7394036b0a2440758c58d64df68a0682d8a599ad9"
+  },
+  {
+   "clip": "cyberlord-run/sprint-forward-right",
+   "source": "Mvm_Boost_Front_R45",
+   "range": [
+    0,
+    12
+   ],
+   "fps": 30,
+   "frames": 13,
+   "loop": true,
+   "marks": [
+    0.05
+   ],
+   "sha256": "ec987713391364ea9af0fadce39559c3501afab600b2839a8a7134a1e9c70c7e",
+   "input": "59252daa3c983f8d5df9e434a6e7d216278d70d56d2a140eab5eb932c5134fd6",
+   "strikeFrom": "66361f16af6db36c75749c0cf383d48e6589efc7c9de6a045605f0a3fb5dd7ce"
+  },
+  {
+   "clip": "cyberlord-run/boost",
+   "source": "Esc_BoostDash_Up_Fwd",
+   "range": [
+    0,
+    15
+   ],
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.2667,
+    0.5
+   ],
+   "sha256": "023f7b27d39e783975c4fcff4d3ef05e9070e06e7682159583f5c1cdd8ca9818",
+   "input": "f5bf3b3e2bce7de6ef14d3580ad77951939c9fde589ed075c5d900c4393f3164"
+  }
+ ]
+}

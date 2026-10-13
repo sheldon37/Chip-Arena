@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         // This repaint's hovered item, shown on the pilot (null: the equipped one).
         private string lockerHat,lockerPose,lockerBody,lockerAccent,lockerWeapon,lockerKill,lockerBack;
         private readonly List<string> lockerHats=new List<string>(16),lockerKills=new List<string>(32),lockerIntros=new List<string>(32),lockerSkins=new List<string>(16);
-        private readonly Dictionary<string,ContentWeapon> lockerIntroWeapon=new Dictionary<string,ContentWeapon>();private NativeAccess lockerAccess;private string lockerAbilitySpec,lockerNameRaw,lockerName="Pilot";
+        private readonly Dictionary<string,ContentWeapon> lockerIntroWeapon=new Dictionary<string,ContentWeapon>();private NativeAccess lockerAccess;private int lockerPoses=NativeLobbyPoses.Count(false);private string lockerAbilitySpec,lockerNameRaw,lockerName="Pilot";
         private readonly List<NativeLocker.AbilityOption> lockerQ=new List<NativeLocker.AbilityOption>(4),lockerE=new List<NativeLocker.AbilityOption>(4);
         private readonly Dictionary<(int,string),string> lockerText=new Dictionary<(int,string),string>();private GUIStyle lockerField,lockerHex;private string lockerKillsLabel="",lockerSkinsLabel="",lockerAbilityHint;
         private struct LockerLook{public string Name,Weapon,Pose,Body,Accent,Hat,Kill,Intro,IntroText;public bool Override;public string Back,Skins,HatColor,BackColor;}
@@ -71,6 +71,8 @@ namespace ChipArena.UnityConversion
             lockerHats.Clear();foreach(var id in NativeCosmeticRules.Hats)if(NativeCosmeticRules.Allowed(access,"hat",id))lockerHats.Add(id);
             lockerKills.Clear();foreach(var id in NativeCosmeticRules.Kills)if(NativeCosmeticRules.Allowed(access,"effect",id))lockerKills.Add(id);
             lockerIntros.Clear();foreach(var id in NativeCosmeticRules.Intros)if(NativeCosmeticRules.Allowed(access,"intro",id))lockerIntros.Add(id);
+            // The idle poses: the source's four, then the DEV Sheldon Idle with live DEV access (Core/NativeLobbyPoses.cs).
+            lockerPoses=NativeLobbyPoses.Count(NativeCosmeticRules.Allowed(access,"pose",NativeLobbyPoses.SheldonKey));
             foreach(var id in lockerIntros)if(!lockerIntroWeapon.ContainsKey(id)&&id.StartsWith("weapon-",StringComparison.Ordinal)){var w=LockerWeaponById(id.Substring(7));if(w!=null)lockerIntroWeapon[id]=w;}
             // The body card first (Core/NativeBodySkins.cs: the Sheldon Clothes need live DEV access), then the weapons.
             lockerBodySheldon=NativeCosmeticRules.Allowed(access,"body",NativeBodySkins.SheldonClothes);lockerSkins.Clear();lockerSkins.Add(NativeBodySkins.Entry);
@@ -205,7 +207,7 @@ namespace ChipArena.UnityConversion
                 case NativeLocker.Appearance:
                     LkHead(true);prefs.name=GUILayout.TextField(prefs.name??"",20,lockerField);LkHead();LkReserve(LkBodyRowH());
                     LkHead();LkSwatches(ref prefs.bodyColor,"#e5e7eb");LkHead();LkSwatches(ref prefs.accentColor,"#70e1d0");
-                    LkHead();LkReserve(LkGrid(lockerW,lockerHats.Count,LkItemMin,LkItemH));LkHead();LkReserve(LkPickerH());LkHead();LkReserve(LkGrid(lockerW,NativeLobbyPoses.Keys.Length,LkRowMin,LkRowH));
+                    LkHead();LkReserve(LkGrid(lockerW,lockerHats.Count,LkItemMin,LkItemH));LkHead();LkReserve(LkPickerH());LkHead();LkReserve(LkGrid(lockerW,lockerPoses,LkRowMin,LkRowH));
                     LkHead();LkReserve(LkGrid(lockerW,NativePortraitBacks.Count,LkItemMin,LkItemH));LkHead();LkReserve(LkPickerH());break;
                 case NativeLocker.KillEffects:LkHead(true);LkReserve(LkGrid(lockerW,lockerKills.Count,LkItemMin,LkItemH));break;
                 case NativeLocker.Entrance:
@@ -249,11 +251,11 @@ namespace ChipArena.UnityConversion
                     // The hat's colour (NativeHatColorUI.cs): AUTO, swatches and a custom colour, tried on by hovering.
                     LkHeading(lockerSlots[k++],"HAT COLOUR",LkPickerHint(true));LkColorPicker(lockerSlots[k++],true);
                     LkHeading(lockerSlots[k++],"IDLE POSE","How your pilot waits in the lobby");grid=lockerSlots[k++];int pose=NativeLobbyPoses.Index(prefs.lobbyPose);
-                    for(int i=0;i<NativeLobbyPoses.Keys.Length;i++)
+                    for(int i=0;i<lockerPoses;i++)
                     {
-                        var r=LkCell(grid,i,LkRowMin,LkRowH);bool on=i==pose;
-                        if(LkRowCard(r,8200+i,on,NativeLobbyPoses.Icons[i],U.Hex(0xefb587),NativeLobbyPoses.Labels[i],NativeLocker.PoseText(i),null,out bool hot)&&!on)prefs.lobbyPose=NativeLobbyPoses.Keys[i];
-                        if(hot&&repaint)lockerPose=NativeLobbyPoses.Keys[i];
+                        var r=LkCell(grid,i,LkRowMin,LkRowH);bool on=i==pose;string id=NativeLobbyPoses.Key(i);
+                        if(LkRowCard(r,8200+i,on,NativeLobbyPoses.Icon(i),U.Hex(0xefb587),NativeLobbyPoses.Label(i),NativeLocker.PoseText(i),null,out bool hot,-1,NativeLocker.DevItem(id))&&!on)prefs.lobbyPose=id;
+                        if(hot&&repaint)lockerPose=id;
                     }
                     // Backdrops (Core/NativePortraitBacks.cs): each card plays its style live behind a bust; hovering one tries it
                     // on the stage, a click equips it (prefs.lobbyBack, sent with the profile by Save Pilot).
