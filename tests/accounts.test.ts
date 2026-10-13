@@ -112,3 +112,27 @@ test('Sheldon Idle persists only for live DEV accounts and stays outside the Ele
   }
  }finally{f.db.close();}
 });
+
+
+test('Cyber Lord skin survives save, reload and login in native order without unlocking the DEV class',async()=>{
+ const f=await fixture();try{
+  const dev:any=await(await f.request('login',{username:'Sheldon',password})).json();
+  const user:any=await(await f.request('register',{username:'cyber_skin',password})).json();
+  const expected='bow:prototype,cyberlord:prototype,body:prototype';
+  for(const [pilot,allowed,username] of [[dev,true,'Sheldon'],[user,false,'cyber_skin']] as const){
+   const save=await f.request('profile',{revision:0,profile:{developer:true,cosmetics:{preferredSpec:'cyberlord',weaponSkins:'body:prototype,cyberlord:prototype,bow:prototype'}}},pilot.session);
+   assert.equal(save.status,200);const saved:any=await save.json();
+   const read:any=await(await f.request('me',undefined,pilot.session)).json();
+   const login:any=await(await f.request('login',{username,password})).json();
+   for(const response of [saved,read,login]){
+    assert.equal(response.account.profile.cosmetics.weaponSkins,expected);
+    assert.equal(response.account.profile.cosmetics.preferredSpec,allowed?'cyberlord':undefined);
+    assert.equal(response.account.developer,allowed);
+   }
+   const access=await verifyPlayerToken(login.token,now,f.publicKey);assert.equal(access.developer,allowed);
+   // Standard is represented by omission; unsupported skins never replace it.
+   const reset:any=await(await f.request('profile',{revision:1,profile:{cosmetics:{weaponSkins:'cyberlord:prototype,cyberlord:standard,cyberlord:sheldon,bow:prototype'}}},pilot.session)).json();
+   assert.equal(reset.account.profile.cosmetics.weaponSkins,'bow:prototype');
+  }
+ }finally{f.db.close();}
+});

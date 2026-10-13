@@ -26,7 +26,7 @@ const LOBBY_BACKS=new Set(['tick-ring','clean-glow','sunburst','hex-field','circ
 // only non-default picks are kept, once per entry (the last wins), in entry order: the weapons, then the pilot's body (Core/
 // NativeBodySkins.cs: standard, prototype, or the DEV-only "sheldon" Sheldon Clothes, kept only on DEV accounts like the
 // Sheldon Head). Anything else is the Standard skin ('').
-const SKIN_WEAPONS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','emperor','ansatsuken','leet','bow','body'];
+const SKIN_WEAPONS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','emperor','ansatsuken','leet','bow','cyberlord','body'];
 const WEAPON_SKINS=new Set(['standard','prototype']);
 const BODY_SKINS=new Set(['standard','prototype','sheldon']);
 function weaponSkinMap(raw:unknown,developer=false){

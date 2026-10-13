@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — persist the Cyber Lord cosmetic skin in accounts
+- Branch `codex/cyberlord-account-skin`, base shared `bf083e7d`, then merged current `710deba8` (Ward hitch fix; only DEV_LOG conflicted, both entries retained). Added `cyberlord` between `bow` and `body` in `SKIN_WEAPONS`, matching NativeWeaponSkins order, so account saves/reads/login retain `cyberlord:prototype` instead of overwriting the native preference. Standard remains omission; unsupported skin IDs remain rejected.
+- No change to DEV class/preferredSpec gating, grants, seat frames or local preferences. A cosmetic pick alone does not unlock Cyber Lord. No account deployment; owner authorization remains required before deploying.
+- Regression uses the actual account endpoints and SQLite fixture for DEV and ordinary accounts: profile save, me/reload, second login, canonical bow/cyberlord/body order, signed DEV status, preferredSpec gating and resetting to Standard. `node --import tsx --test tests/accounts.test.ts`: 11/11 pass, zero skips. `npm ci --ignore-scripts` used locked dependencies without changing package files; diff check clean. Source branch/PR only, not merged or deployed.
+
 ## 2026-10-13 — Claude — Final killcam at the end of every round (owner: "The final killcam isn't playing, its supposed to be at the end of every round (per set)")
 - Branch `claude/sleepy-ritchie-g8ruhv` (shared), base `710deba`. Presentation only: no match, phase, network or damage change; hit timing, hitboxes, cooldowns and movement are untouched.
 - Cause: the final killcam was gated off in offline Play vs Bots (`InPractice=false` with `Practice=!Online`), and it also skipped environmental and stage-hazard deaths, self and team kills, and simultaneous knockouts. Now every round that ends on a death plays it: kills from the killer's view; other deaths from the victim's view as "FINAL ELIMINATION" with the cause; a draw shows the last death and a "NO WINNER · Draw" outcome. PvE/Siren and the Dev Sandbox stay excluded.
