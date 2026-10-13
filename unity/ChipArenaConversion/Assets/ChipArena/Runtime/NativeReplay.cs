@@ -11,11 +11,19 @@ namespace ChipArena.UnityConversion
         private readonly List<NativeGameFrame> replayFrames=new List<NativeGameFrame>();private int replayGeneration=-1,replayEntities,replaySeen,replayView,spectatorId;private float replayNext,replayDeath=-1,replayStart,replayEnd,replayStarted,replayWait;private bool replayWasAlive,replayRunning,replayBody;
         private readonly NativeReplayShots replayShots=new NativeReplayShots();private NativeGameFrame replayNextSource;
         private NativeArena replayArena;private Scene replayScene;private NativeGameFrame replaySource;private readonly Dictionary<Renderer,bool> liveVisibility=new Dictionary<Renderer,bool>();
+        private readonly List<Renderer> replayLiveRenderers=new List<Renderer>(1024);private bool replayWarmAttempt;private int replaySceneSerial;
         private bool ReplayActive=>replayRunning;
         private NativePilot Spectator=>arena?.Local?.Hp<=0?arena.Pilots.FirstOrDefault(p=>p.Seat.id==spectatorId&&p.Hp>0&&p.Seat.connected):null;
         private void ObserveReplay()
         {
             if(arena?.Local==null)return;if(replayGeneration!=arena.Generation){ClearReplay();replayGeneration=arena.Generation;}
+            if(!replayWarmAttempt&&!dedicated&&!match.Cooperative&&!arena.Sandbox&&(match.Phase==NativePhase.Countdown||match.Phase==NativePhase.Intro))
+            {
+                replayWarmAttempt=true;long at=System.Diagnostics.Stopwatch.GetTimestamp();
+                try{PrepareReplayArena(arena.NetworkFrame());}
+                catch(Exception e){ReleaseReplayArena();Debug.LogWarning("Replay warm-up deferred: "+e.Message);}
+                finally{hitchReplayPrepare+=HitchMs(at);}
+            }
             FinalKillWatch();
             var p=arena.Local;bool allowed=match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result||match.Phase==NativePhase.Match;if(!allowed){EndReplay();return;}
             if(p.Hp>0){if(!finalOn)EndReplay();spectatorId=0;}var d=p.Hp<=0?p.Death:null;bool fresh=d!=null&&replaySeen!=d.seed;
@@ -26,14 +34,28 @@ namespace ChipArena.UnityConversion
             while(replayFrames.Count>1&&!FinalKeeps()&&(replayFrames.Count>132||replayEntities>150000||arena.Time-replayFrames[0].time>6)){replayEntities-=ReplaySize(replayFrames[0]);replayFrames.RemoveAt(0);}
         }
         private static int ReplaySize(NativeGameFrame f)=>f.pilots.Length+f.props.Length+f.minions.Length+f.effects.Length+f.snapshot.Shots.Length+f.snapshot.Events.Length+(f.projectileEnds?.Length??0);
-        private void ClearReplay(){EndReplay();FinalClear();replayFrames.Clear();replayEntities=0;replayNext=0;replaySeen=0;replayWasAlive=false;spectatorId=0;}
+        private void ClearReplay(){EndReplay();ReleaseReplayArena();FinalClear();replayFrames.Clear();replayEntities=0;replayNext=0;replaySeen=0;replayWasAlive=false;spectatorId=0;replayWarmAttempt=false;}
+        // Build the map during countdown/intro, then keep it inactive between clips. ApplyFrame restores dynamic
+        // state on rewind; generation/map changes and leaving the match release the cached world via ClearReplay.
+        private void PrepareReplayArena(NativeGameFrame frame)
+        {
+            if(replayArena!=null)return;
+            replayScene=SceneManager.CreateScene("Killcam presentation "+(++replaySceneSerial),new CreateSceneParameters(LocalPhysicsMode.Physics3D));
+            replayArena=new NativeArena(content,new NativeMatch(content),arena.MapId){Replica=true,ReplaySampledShots=true,LocalId=arena.LocalId,ReplicaScene=replayScene};
+            replayArena.ApplyFrame(NativeFrameCodec.Clone(frame),arena.LocalId);replayArena.Root.SetActive(false);
+        }
+        private void ReleaseReplayArena()
+        {
+            var old=replayArena;replayArena=null;replaySource=null;replayNextSource=null;
+            try{old?.Dispose();}finally{if(replayScene.IsValid())SceneManager.UnloadSceneAsync(replayScene);replayScene=default;}
+        }
         private void EndReplay()
         {
-            replayDeath=-1;FinalStop();if(!replayRunning&&replayArena==null&&!replayScene.IsValid()&&liveVisibility.Count==0)return;
+            replayDeath=-1;FinalStop();if(!replayRunning&&liveVisibility.Count==0)return;
             if(replayRunning&&arena?.Local?.Hp<=0&&match?.Phase==NativePhase.Fight)replayReturnAt=Time.unscaledTime;
-            replayRunning=false;replaySource=null;replayNextSource=null;var old=replayArena;replayArena=null;
-            try{old?.Dispose();}
-            finally{if(replayScene.IsValid())SceneManager.UnloadSceneAsync(replayScene);replayScene=default;foreach(var pair in liveVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;liveVisibility.Clear();presentation?.ResetPresentation(true);nativeAudio?.ResetCursor();}
+            replayRunning=false;replaySource=null;replayNextSource=null;
+            if(replayArena?.Root!=null)replayArena.Root.SetActive(false);
+            foreach(var pair in liveVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;liveVisibility.Clear();presentation?.ResetPresentation(true);nativeAudio?.ResetCursor();replayLiveRenderers.Clear();
         }
         private void SpectatorControls()
         {
@@ -45,8 +67,10 @@ namespace ChipArena.UnityConversion
         }
         private bool RenderReplay()
         {
+            long at=System.Diagnostics.Stopwatch.GetTimestamp();
             try{return RenderReplayFrame();}
-            catch(Exception e){EndReplay();Debug.LogWarning("Death replay stopped: "+e.Message);return false;}
+            catch(Exception e){EndReplay();ReleaseReplayArena();Debug.LogWarning("Death replay stopped: "+e.Message);return false;}
+            finally{hitchReplayPlayback+=HitchMs(at);}
         }
         private bool RenderReplayFrame()
         {
@@ -54,12 +78,14 @@ namespace ChipArena.UnityConversion
             if(!replayRunning&&replayDeath>=0&&(arena.Time>=replayDeath+.6f||Time.unscaledTime>=replayWait))
             {
                 if(replayFrames.Count<2){replayDeath=-1;return false;}replayStart=Math.Max((float)replayFrames[0].time,replayDeath-3);replayEnd=replayDeath+1.25f;replayStarted=Time.unscaledTime;replayRunning=true;replayBody=false;
-                replayScene=SceneManager.CreateScene(finalOn?"Final killcam presentation":"Killcam presentation",new CreateSceneParameters(LocalPhysicsMode.Physics3D));replayArena=new NativeArena(content,new NativeMatch(content),arena.MapId){Replica=true,ReplaySampledShots=true,LocalId=arena.LocalId,ReplicaScene=replayScene};presentation.ResetPresentation(true);nativeAudio.ResetCursor();
+                long at=System.Diagnostics.Stopwatch.GetTimestamp();
+                try{PrepareReplayArena(replayFrames[0]);replayArena.Root.SetActive(true);presentation.ResetPresentation(true);nativeAudio.ResetCursor();}
+                finally{hitchReplayPrepare+=HitchMs(at);}
                 if(finalOn)FinalBegin();
             }
-            if(!replayRunning)return false;foreach(var r in arena.Root.GetComponentsInChildren<Renderer>()){if(!liveVisibility.ContainsKey(r))liveVisibility[r]=r.enabled;r.enabled=false;}float time=replayStart+ReplayClock(Time.unscaledTime-replayStarted);replayTime=time;if(time>replayEnd||time>replayFrames[replayFrames.Count-1].time+.5){EndReplay();return false;}
+            if(!replayRunning)return false;arena.Root.GetComponentsInChildren<Renderer>(false,replayLiveRenderers);foreach(var r in replayLiveRenderers){if(!liveVisibility.ContainsKey(r))liveVisibility[r]=r.enabled;if(r.enabled)r.enabled=false;}float time=replayStart+ReplayClock(Time.unscaledTime-replayStarted);replayTime=time;if(time>replayEnd||time>replayFrames[replayFrames.Count-1].time+.5){EndReplay();return false;}
             var a=replayFrames[0];var b=a;foreach(var f in replayFrames){if(f.time>time){b=f;break;}a=b=f;}
-            if(replaySource!=a){var copy=NativeFrameCodec.Clone(a);replayArena.ApplyFrame(copy,arena.LocalId);SceneManager.MoveGameObjectToScene(replayArena.Root,replayScene);replaySource=a;replayNextSource=null;}
+            if(replaySource!=a){long at=System.Diagnostics.Stopwatch.GetTimestamp();try{var copy=NativeFrameCodec.Clone(a);replayArena.ApplyFrame(copy,arena.LocalId);replaySource=a;replayNextSource=null;}finally{hitchReplayApply+=HitchMs(at);}}
             if(replayNextSource!=b){replayShots.Window(a.time,b.time,a.snapshot.Shots,b.snapshot.Shots,b.projectileEnds);replayNextSource=b;}
             for(int i=replayArena.Bullets.Count-1;i>=0;i--)
             {var shot=replayArena.Bullets[i];if(!replayShots.Sample(shot.Id,time,out var position,out var velocity)){replayArena.Bullets.RemoveAt(i);continue;}shot.Position=NativeArena.Vec(position);shot.Velocity=NativeArena.Vec(velocity);}

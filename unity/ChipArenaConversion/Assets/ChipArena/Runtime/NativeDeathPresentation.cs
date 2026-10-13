@@ -111,13 +111,13 @@ namespace ChipArena.UnityConversion
         public Vector3 Center=>Parts[1].position;
         /// <summary>Fixed 1/60 s physics: five seconds for transient effects, DOWNED.keepAge for PvE, and ten
         /// seconds to settle retained PvP remains (reawakened when support changes). A body built late (a guest's first sight of a death, a corpse rebuilt after the killcam) catches up
-        /// in one go, as the source steps without a cap, so its fall and blood are already where they are at that age; later
-        /// frames step at most 8 at a time.</summary>
+        /// over multiple frames, at most eight steps per frame including the first. This avoids blocking the first
+        /// replay/late-join frame for hundreds of PhysX steps.</summary>
         public void Step(float age)
         {
             if(RefreshWorld(age)&&RetainUntilRoundEnd)WakeRetained(age);
             float target=Math.Min(age,Death.kept?(float)NativeKillEffectRules.KeepAge:RetainUntilRoundEnd?settleAt:(float)NativeKillEffectRules.DeathSeconds);
-            if(frozen||target<clock){if(!frozen&&age>4.2f&&Death.kept)Freeze();SmoothAt(age);return;}int steps=(int)((target-clock)*60+1e-3f);if(stepped)steps=Math.Min(8,steps);stepped=true;
+            if(frozen||target<clock){if(!frozen&&age>4.2f&&Death.kept)Freeze();SmoothAt(age);return;}int steps=NativeCorpseRules.CatchUpSteps(clock,target);stepped=true;
             for(int step=0;step<steps;step++)
             {
                 if(Smooth&&step==steps-1){Remember();Twin?.Remember();}
@@ -125,7 +125,7 @@ namespace ChipArena.UnityConversion
                 if(weapon!=null&&!weapon.isKinematic)Force(weapon,weaponPart);Twin?.Forces();
                 physics.Simulate(1f/60);StepSpray();clock+=1f/60;if(Twin!=null){Twin.StepSpray();Twin.clock=clock;}
             }
-            if(age>4.2f&&Death.kept||RetainUntilRoundEnd&&age>=settleAt&&clock+1f/60>=settleAt)Freeze();SmoothAt(age);
+            if(age>4.2f&&Death.kept&&clock+1f/60>=NativeKillEffectRules.KeepAge||RetainUntilRoundEnd&&age>=settleAt&&clock+1f/60>=settleAt)Freeze();SmoothAt(age);
         }
         private void Freeze(){foreach(var b in Parts.Values)b.isKinematic=true;if(weapon!=null)weapon.isKinematic=true;frozen=true;Twin?.Freeze();}
         private bool Cue(float at)=>clock+1e-6f>=at&&clock<at+1f/60-1e-6f;

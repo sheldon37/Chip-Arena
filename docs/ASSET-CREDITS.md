@@ -103,11 +103,24 @@ SHA-256: `3093119a80cdac42bf46a3cbb44b5da2ec6920ec5580ef153f01ea3bc6417d25`.
 The Windows package includes `Music-Credits.txt`; this owner-supplied song is
 separate from the locally installed licensed effects bank.
 
-## Chip Arena Main
+## Main menu — Midnight Arena Skyline
 
-Owner-supplied on 2026-10-12 as the Unity main-menu music. The complete original
-MP3 is retained without transcoding (179.832 seconds, 48 kHz stereo, 4,176,048 bytes)
-in the existing `music/menu-afterglow` resource slot, preserving its importer GUID,
-looping, pause/resume and menu volume controls. Legacy Electron audio is unchanged.
-No seamless-loop edit or loudness remaster was made.
-SHA-256: `0fe130e6ad51201891e9060550067f2db759a02cac2dfe3fbd3fd1f30df34ad2`.
+Owner-supplied on 2026-10-13 as `Midnight_Arena_Skyline_2026-10-13T230445.mp4`.
+The full 120-second, 48 kHz stereo audio stream is extracted to MP3 (libmp3lame,
+VBR quality 2) in Unity's existing `music/menu-afterglow` resource slot. Importer
+GUID, streaming, loop, pause/resume and menu volume controls are retained.
+SHA-256: `2f2455bc7defe8e3c2d2fa07e580f080e5a1bd33bb3ee2dc64dd950714b69ebc`.
+
+## Ward Zero — Containment Sirens
+
+Owner-supplied on 2026-10-13 as `Containment_Sirens_2026-10-13T230740.mp4`.
+The full 120-second, 48 kHz stereo audio stream is extracted to MP3 (libmp3lame,
+VBR quality 2) in Unity's existing `music/restricted-zone-pulse` resource slot.
+Used for Ward Zero PvP/sandbox and the pre-boss PvE stage. Siren boss music and
+its synchronized intro remain on `black-siren-protocol`.
+SHA-256: `ae76da29e7023a038ef9022039ad399bbe93cb3935d4940192881c94bc62f5ee`.
+
+Both replacements preserve embedded musical effects (including the alarms), with
+no loudness remaster or seamless-loop edit. The video stream is not packaged.
+Legacy Electron music is unchanged. These are owner-supplied recordings; no
+additional artist identity or license terms were supplied with the uploads.

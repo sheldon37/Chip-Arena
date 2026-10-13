@@ -7,6 +7,13 @@ namespace ChipArena.UnityConversion
         public static void Run(ConversionContent content)
         {
             void Check(bool ok,string why){if(!ok)throw new Exception("Corpse lifetime: "+why);}
+            foreach(float age in new[]{0f,.016f,.1f,1f,4.2f,10f,60f,600f})
+            {
+                float clock=0,target=Math.Min(age,NativeCorpseRules.SettleSeconds);int frames=0;
+                do{int steps=NativeCorpseRules.CatchUpSteps(clock,target);Check(steps>=0&&steps<=8,"bounded first and subsequent catch-up frames");clock+=steps/60f;frames++;}while(clock+1f/60<target&&frames<100);
+                Check(clock<=target+.001f&&target-clock<1f/60+.001f,"bounded catch-up converges without advancing beyond target");
+            }
+            Check(NativeCorpseRules.CatchUpSteps(5,4)==0&&NativeCorpseRules.CatchUpSteps(5,5)==0,"rewind or held clock cannot simulate forwards");
             void Results(NativeMatch round,NativePhase next,string why)
             {
                 double diedAt=round.Time;int resets=0;round.ResetRound=()=>resets++;

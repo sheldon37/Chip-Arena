@@ -10,6 +10,14 @@ namespace ChipArena.UnityConversion
         private readonly HashSet<NativePropBody> seenObstacles=new HashSet<NativePropBody>();
         private readonly List<NativePropBody> staleObstacles=new List<NativePropBody>();
         private float worldAt=float.NegativeInfinity,settleAt=NativeCorpseRules.SettleSeconds;
+        internal static Bounds WorldBounds(BoxCollider box)
+        {
+            if(box.enabled)return box.bounds;
+            // Authored stair treads/ramp visuals have disabled gameplay boxes (Unity reports empty bounds).
+            // They still support cosmetic bodies, so calculate their transformed box bounds explicitly.
+            var t=box.transform;Vector3 half=box.size*.5f,x=t.TransformVector(Vector3.right*half.x),y=t.TransformVector(Vector3.up*half.y),z=t.TransformVector(Vector3.forward*half.z);
+            return new Bounds(t.TransformPoint(box.center),2*new Vector3(Mathf.Abs(x.x)+Mathf.Abs(y.x)+Mathf.Abs(z.x),Mathf.Abs(x.y)+Mathf.Abs(y.y)+Mathf.Abs(z.y),Mathf.Abs(x.z)+Mathf.Abs(y.z)+Mathf.Abs(z.z)));
+        }
         // Copy actual collider bounds, including Brickfall's StaticBlocks (slab, stairs and rubble). A large slab's
         // centre can be far from the body. Never truncate the list before its support surface has been considered.
         // Copies live only in the cosmetic scene; corpses never obstruct players, bullets or other bodies.
@@ -24,7 +32,9 @@ namespace ChipArena.UnityConversion
                 if(prop==null)continue;var original=prop.GetComponent<BoxCollider>();
                 // Cut treads retain their authored boxes for this separate cosmetic world; gameplay uses the smooth ramp.
                 if(original==null||(!original.enabled&&!NativeCyberCityStairs.IsTread(arena.MapId,prop.Definition?.id)&&!NativeMapRamps.IsVisual(arena.Map,prop.Definition?.id))||original.isTrigger||!original.gameObject.activeInHierarchy)continue;
-                var bounds=original.bounds;bool near=prop.Indestructible||bounds.SqrDistance(Death.position)<=radius2;
+                // Bounds distance keeps broad floors even when their centres are far away. Indestructible does not
+                // mean nearby: copying every static block created hundreds of colliders per Cyber City death.
+                var bounds=WorldBounds(original);bool near=bounds.SqrDistance(Death.position)<=radius2;
                 if(!near)foreach(var part in Parts.Values)if(bounds.SqrDistance(part.position)<=radius2){near=true;break;}
                 if(!near&&weapon!=null)near=bounds.SqrDistance(weapon.position)<=radius2;
                 if(!near)continue;seenObstacles.Add(prop);
