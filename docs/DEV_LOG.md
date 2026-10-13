@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — revive build gate follows the authoritative corpse anchor
+- Branch `codex/revive-build-validation`, base shared `d29fb7e3138b5191bdb44c38fd0e9c8e32b9bd43`.
+- Owner log `Latest-Build(1).txt`, source `7dc41e03c176`, stops in `ValidateFollowupParity`: the old fixture sets only `Death.position` and still expects a revive there. The ragdoll-anchor change deliberately revives at the current authority body position; the immutable death pose is no longer the revive target.
+- Updated only the build validation: cover the unchanged original body position, a moved corpse anchor, and an explicit pad override; preserve assertions for mana/stamina/ammo and the immutable death pose. Existing interaction validation separately exercises real anchor collision/replication. No gameplay or presentation changes.
+- Checks: Python unittest discovery ran 99 tests, OK (1 skipped); `package_source.py --check` passed (1,761 source files); `git diff --check` clean. Unity Editor/PhysX/Windows and managed relay checks were not run: Unity and .NET are unavailable in this environment.
+- Status: prepared on task branch for PR into shared Unity branch; not merged or published. Next: owner-approved integration into the shared/build branch and a fresh Windows builder run to execute this gate and the remaining gates.
+
 ## 2026-10-13 — Claude — Cyber Lord ranged mode, dash sprint (owner: "Give cyber lord a 2nd set of abilities for a "Ranged" mode. So, new 1-4 if they switch to ranged :)[We can set this to the 5 hotkey to switch)"; "change cyber lords sprint animation to be different than their run animation. (Currently its just the run animation sped up)")
 - Branch `claude/cyberlord-ranged`, base `e2e894e`. Committed locally, not pushed; not merged or released.
 - Design (Claude's part; numbers in `Core/CyberLordRanged.cs` `CyberRangedSpec`, table and contract in `docs/CYBER-LORD.md` "Ranged mode"):
