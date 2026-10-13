@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — brute drop build gate boundary precision
+- Branch `codex/unity-drop-radius-gate`, base shared `28db06347093`. Owner-provided Latest-Build.txt (modified 2026-10-13 06:26 UTC) fails `ValidateHordeDrops` at `actual radius/falloff 2.4`; Ward traversal and Hulk/crowd gates passed earlier in that build. This build does not include the separate dynamic Hulk breach branch.
+- Root cause: the isolated fixture at X=1000 rounds `(1000f + 2.4f) - 1000f` to 2.400024414, outside the 2.400000095 float radius. Keep Z=1000 for isolation and use X=0 for exact X-axis boundary probes. No gameplay radius, damage, timing or networking changes.
+- Verified: reproduced both float offsets; fresh managed Core/Tests compilation; 71 horde-drop and 49,154 Hulk/spitter checks pass; Editor fixture syntax check reports zero errors. Unity Editor/PhysX and the Windows builder are unavailable here; rerun NativeBuildChecks to confirm the actual failure is cleared and expose any later gates.
+- Local fix only, not pushed/merged/released. The prior automatic approval rejection of repository push remains unresolved; await explicit owner authorization before retrying publication. The dynamic breach implementation/handoff remains on its separate branch.
+
 ## 2026-10-13 — Claude — Merge #180, #147, #160, #178; final killcam reads the host decision
 - Branch `claude/sleepy-ritchie-g8ruhv` (shared), base `f4b5a12`. Merged Astra's PRs #180 (Cyber Lord skin in account saves), #147 (Cyber Lord cast interruptions), #160 (brute drops and landing slam) and #178 (replicated final killcam decision and 8.5 s qualifying Result). Only DEV_LOG conflicted; both sides' entries kept.
 - Presentation on top of #178: `FinalKillWatch` uses the host's `ResultAt` and, when `FinalVictim != 0`, that exact death (`NativeFinalKillcam.Decided`). Otherwise the local pick keeps the owner's "every round" rule. The Result overlay ages over `phaseEnd - resultAt` (`ResultSeconds`). No rule, phase or network change on Claude's side.

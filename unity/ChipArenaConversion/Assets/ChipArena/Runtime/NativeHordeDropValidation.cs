@@ -14,8 +14,9 @@ namespace ChipArena.UnityConversion
             foreach(var n in Minions.ToArray())RemoveMinion(n,false);
             Pve.Holding=false;Pve.Rate=0;Pve.DropCursor=0;pveEntries.Clear();
             var entries=Pve.Content.entries;var drop=entries.First(e=>NativeHordeDrop.Is(e)&&!e.hulk);
-            // Isolate the combat fixture from authored map walls/landing-clearance gates.
-            var fixtureDrop=new PveEntry{e=drop.e,id=drop.id,kind="drop",height=drop.height,from=new PvePoint{x=1000,z=1000},@exit=new PvePoint{x=1000,z=1000}};
+            // Isolate from map walls along Z, but keep the radius-probe axis at zero.
+            // At X=1000, (1000f+2.4f)-1000f is 2.400024f: outside the intended edge.
+            var fixtureDrop=new PveEntry{e=drop.e,id=drop.id,kind="drop",height=drop.height,from=new PvePoint{x=0,z=1000},@exit=new PvePoint{x=0,z=1000}};
             Pve.Content.entries=(PveEntry[])entries.Clone();Pve.Content.entries[drop.e]=fixtureDrop;drop=fixtureDrop;
             var pilot=Members().First();var landing=Vec(drop.@exit.Position());
             var wall=GameObject.CreatePrimitive(PrimitiveType.Cube);wall.name="Brute slam LOS gate";wall.transform.SetParent(root.transform);wall.layer=PropLayer;wall.SetActive(false);
