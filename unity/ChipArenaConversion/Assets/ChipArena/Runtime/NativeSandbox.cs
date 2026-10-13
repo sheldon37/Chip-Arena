@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         private bool SandboxHolds()=>SandboxAllowed&&(Pilots.Any(p=>InShaft(p))||DummyRespawn>0&&Local.Hp>0);
         private void SandboxStep()
         {
-            if(!SandboxAllowed)return;SandboxNextChip();foreach(var p in Pilots)if(p.Seat.bot&&p.Hp<=0&&p.Death!=null&&DummyRespawn>0&&!InShaft(p)&&Time-p.Death.at>=DummyRespawn)SandboxRestore(p);
+            if(!SandboxAllowed)return;StepWardSandbox();SandboxNextChip();foreach(var p in Pilots)if(p.Seat.bot&&p.Hp<=0&&p.Death!=null&&DummyRespawn>0&&!InShaft(p)&&Time-p.Death.at>=DummyRespawn)SandboxRestore(p);
             if(SandboxRepeat>0&&Time>=sandboxRepeatAt&&sandboxDummy!=null){SandboxCast(sandboxDummy.Seat.spec,sandboxKey);sandboxRepeatAt=Time+SandboxRepeat;}
         }
         private void SandboxRestore(NativePilot p)
@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ConversionGame
     {
-        private bool sandboxWanted;private string sandboxSearch="",dummySpec="pistol",dummyKey="ai",sandboxTarget="dummy",sandboxSort="rarity";private float sandboxSpeed=1;
+        private int wardSandboxEntry;private bool sandboxWanted;private string sandboxSearch="",dummySpec="pistol",dummyKey="ai",sandboxTarget="dummy",sandboxSort="rarity";private float sandboxSpeed=1;
         // main.ts drawSandbox's arena row, previews and DEBRIS LAUNCHER (8 kg at 15 m/s by default, up to 150 kg, wood /
         // stone / metal); the impact choice is NativeSandboxTools' face / edge / corner orientation.
         private string previewRarity="common",debrisMaterial="wood",debrisImpact="face";private float debrisMass=8,debrisSpeed=15;private string[] previewRarities,previewRarityNames;
@@ -55,6 +55,14 @@ namespace ChipArena.UnityConversion
             Field("Target");sandboxTarget=ChoiceGrid(new[]{"self","dummy"},sandboxTarget);GUILayout.BeginHorizontal();foreach(string action in new[]{"restore","hit","down","summons","vent"})if(GUILayout.Button(action,button)){arena.SandboxAction(action,sandboxTarget=="self");menu=false;}GUILayout.EndHorizontal();
             // Restore (every pilot, as the source's heal), Arena Reset and Test Block.
             Field("Arena");GUILayout.BeginHorizontal();
+            if(arena.Map.look=="quarantine")
+            {
+                var entries=NativeArena.StageContent.entries;wardSandboxEntry=Math.Max(0,Math.Min(entries.Length-1,wardSandboxEntry));
+                GUILayout.BeginHorizontal();if(GUILayout.Button("Previous entry",button))wardSandboxEntry=(wardSandboxEntry+entries.Length-1)%entries.Length;
+                GUILayout.Label(entries[wardSandboxEntry].id+" / "+entries[wardSandboxEntry].kind);
+                if(GUILayout.Button("Next entry",button))wardSandboxEntry=(wardSandboxEntry+1)%entries.Length;
+                if(GUILayout.Button("Spawn entry",button)){arena.SandboxWardEntry(entries[wardSandboxEntry].e);menu=false;}GUILayout.EndHorizontal();
+            }
             if(GUILayout.Button("Restore",button)){arena.SandboxAction("restore",true);arena.SandboxAction("restore");menu=false;}
             if(GUILayout.Button("Arena Reset",button)){arena.SandboxReset();menu=false;}
             if(GUILayout.Button("Test Block",button)){arena.SandboxTestBlock();menu=false;}

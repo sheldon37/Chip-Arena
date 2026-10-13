@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         private static void Timing(string root)
         {
             var sim=R(root,"Assets/ChipArena/Runtime/NativePveHorde.cs");
-            foreach(var s in new[]{"bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;","hit=a.Crawl||armless?.34f:a.Stats.hit;","m.LastAttack=Time;m.StrikeAt=Time+hit;a.Struck=false;a.RecoverAt=Time+Math.Max(a.Stats.cycle,hit+.05f);","(a.Crawl?.15f:armless?.45f:a.Stats.lunge)/Math.Max(.05f,hit)","Vector3 center=at+dir*1.2f;if(new Vector2(q.Body.position.x-center.x,q.Body.position.z-center.z).magnitude>1.6f)continue;","if(amount>=m.MaxHp*.25f||impulse>=400){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;a.RecoverAt=Time;}"})
+            foreach(var s in new[]{"bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;","hit=a.Crawl||armless?.34f:a.Stats.hit;","m.LastAttack=Time;m.StrikeAt=Time+hit;a.Struck=false;a.RecoverAt=Time+Math.Max(a.Stats.cycle,hit+.05f);","(a.Crawl?.15f:armless?.45f:a.Stats.lunge)/Math.Max(.05f,hit)","Vector3 center=at+dir*NativeHordeKinds.SmashAheadOf(NativeHordeKinds.Resolve(a.Stats.id));if(new Vector2(q.Body.position.x-center.x,q.Body.position.z-center.z).magnitude>NativeHordeKinds.SmashRadiusOf(NativeHordeKinds.Resolve(a.Stats.id)))continue;","if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;a.RecoverAt=Time;}"})
                 Check(sim.Contains(s),"the authority's attack rule is still `"+s+"` (update NativeHordeKinds to follow it)");
             Check(NativeHordeKinds.SmashAhead==1.2f&&NativeHordeKinds.SmashRadius==1.6f,"the slam telegraph is the authority's disc");
             int[] losts={0,2,8,4,16,2|4,8|16,2|16,32,1};
@@ -78,10 +78,11 @@ namespace ChipArena.UnityConversion
         private static void Volumes(string root)
         {
             var sim=R(root,"Assets/ChipArena/Runtime/NativePveHorde.cs");
-            Check(sim.Contains("var c=obj.AddComponent<CapsuleCollider>();c.radius=.42f;c.height=1.7f;"),"the add capsule is still .42 x 1.7 (NativeHordeKinds.AddRadius/AddHeight follow it)");
+            Check(sim.Contains("height=heavy?NativeHordeKinds.HulkHeight:1.7f"),"ordinary and Hulk heights");
+            Check(sim.Contains("c.radius=heavy?NativeHordeKinds.HulkRadius:.42f;c.height=height;"),"authority uses the Hulk capsule and keeps the ordinary radius");
             Check(sim.Contains("if(a.Crawl){m.Collider.height=.88f;m.Collider.radius=.32f;}"),"the crawl capsule is still .32 x .88");
             Check(NativeHordeKinds.AddRadius==.42f&&NativeHordeKinds.AddHeight==1.7f&&NativeHordeKinds.CrawlRadius==.32f&&NativeHordeKinds.CrawlHeight==.88f,"the presentation's capsules are the authority's");
-            for(int k=0;k<NativeHordeKinds.Count;k++)if(NativeHordeKinds.Shipped[k])Check(NativeHordeKinds.Radius[k]==NativeHordeKinds.AddRadius&&NativeHordeKinds.Height[k]==NativeHordeKinds.AddHeight&&NativeHordeKinds.Axis[k]==1&&NativeHordeKinds.Root[k]==.85f,"shipped "+NativeHordeKinds.Ids[k]+" is sculpted for the add capsule");
+            for(int k=0;k<NativeHordeKinds.Count;k++)if(NativeHordeKinds.Shipped[k]&&k!=NativeHordeKinds.Hulk)Check(NativeHordeKinds.Radius[k]==NativeHordeKinds.AddRadius&&NativeHordeKinds.Height[k]==NativeHordeKinds.AddHeight&&NativeHordeKinds.Axis[k]==1&&NativeHordeKinds.Root[k]==.85f,"shipped "+NativeHordeKinds.Ids[k]+" is sculpted for the add capsule");
             Check(NativeHordeKinds.RootHeight(NativeHordeKinds.Brute,true)==.44f&&NativeHordeKinds.RootHeight(NativeHordeKinds.Shambler,false)==.85f,"the floor under a root as the old presentation found it");
             // Nothing in the presentation touches a collider or a body.
             foreach(var f in new[]{"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs","Assets/ChipArena/Runtime/NativeHordeKindModels.cs"})

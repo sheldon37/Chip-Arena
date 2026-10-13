@@ -45,8 +45,8 @@ namespace ChipArena.UnityConversion
         public const float SlamRadius=2.4f,ShakeRange=12f;
         public static bool Is(PveEntry e)=>e!=null&&string.Equals(e.kind,Kind,StringComparison.Ordinal);
         /// <summary>The entry's drop height (today the profile's default: PveEntry has no height field yet).</summary>
-        public static float HeightOf(PveEntry e)=>DefaultHeight;
-        public static float HeightOf(PveEntry e,in DropProfile p)=>p.DefaultHeight;
+        public static float HeightOf(PveEntry e)=>e!=null&&e.height>0?e.height:DefaultHeight;
+        public static float HeightOf(PveEntry e,in DropProfile p)=>e!=null&&e.height>0?e.height:p.DefaultHeight;
         /// <summary>The fall from the top of the hop to the floor (s).</summary>
         public static float Fall(float height)=>Fall(height,Brute);
         public static float Fall(float height,in DropProfile p)=>(float)Math.Sqrt(2*(Math.Max(.5f,height)+p.Hop)/p.Gravity);

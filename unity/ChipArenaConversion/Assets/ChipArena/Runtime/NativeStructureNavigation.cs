@@ -15,15 +15,15 @@ namespace ChipArena.UnityConversion
         private Vector3 StructureNavMove(int actorId,Vector3 pos,Vector3 target,Vector3 fallback)
         {
             if(Map.nav==null)return fallback;
-            if(navMap!=MapId){navMap=MapId;navNodes=Map.nav.nodes.ToDictionary(n=>n.id);navEdges=Map.nav.nodes.ToDictionary(n=>n.id,n=>new List<MapNavLink>());foreach(var l in Map.nav.links){navEdges[l.a].Add(l);navEdges[l.b].Add(l);}}
-            if(Map.hazards!=null&&pos.y<0&&UnsafeStagePath(pos,pos))
+            if(navMap!=MapId){navMap=MapId;navNodes=Map.nav.nodes.ToDictionary(n=>n.id);navEdges=Map.nav.nodes.ToDictionary(n=>n.id,n=>new List<MapNavLink>());foreach(var l in Map.nav.links){navEdges[l.a].Add(l);if(l.kind!="drop")navEdges[l.b].Add(l);}}
+            if(Map.hazards!=null&&UnsafeStagePath(pos,pos))
             {var pocket=Map.nav.nodes.Where(n=>n.safe&&Math.Abs(n.pos.y-pos.y)<1.2&&!SceneLinecast(pos,Vec(n.pos),WorldMask)).OrderBy(n=>(Vec(n.pos)-pos).sqrMagnitude).FirstOrDefault();if(pocket!=null)return (Vec(pocket.pos)-pos).magnitude<.25f?Vector3.zero:new Vector3(pocket.pos.x-pos.x,0,pocket.pos.z-pos.z).normalized;}
             if(UnsafeStructure(pos)||UnsafeStagePath(pos,pos))
             {var safe=Map.nav.nodes.Where(n=>Math.Abs(n.pos.y-pos.y)<1.2&&!UnsafeStructure(Vec(n.pos))&&!UnsafeStagePath(Vec(n.pos),Vec(n.pos))&&!SceneLinecast(pos,Vec(n.pos),WorldMask)).OrderBy(n=>(Vec(n.pos)-pos).sqrMagnitude).FirstOrDefault();if(safe!=null)return new Vector3(safe.pos.x-pos.x,0,safe.pos.z-pos.z).normalized;}
             if(Map.hazards==null&&Math.Abs(target.y-pos.y)<1.1&&!SceneLinecast(pos,target,WorldMask)&&!UnsafeStructurePath(pos,target))return fallback;
             if(!navRoutes.TryGetValue(actorId,out var route)||Time-route.at>.7f||route.revision!=NavigationRevision||(route.target-target).sqrMagnitude>9)
             {
-                MapNavNode Nearest(Vector3 p)=>Map.nav.nodes.Where(n=>navEdges[n.id].Any(NavLinkEnabled)&&!UnsafeStructure(Vec(n.pos))&&!UnsafeStagePath(Vec(n.pos),Vec(n.pos))&&!SceneLinecast(p,Vec(n.pos),WorldMask)).OrderBy(n=>(Vec(n.pos)-p).sqrMagnitude).FirstOrDefault();
+                MapNavNode Nearest(Vector3 p)=>Map.nav.nodes.OrderBy(n=>(Vec(n.pos)-p).sqrMagnitude).FirstOrDefault(n=>navEdges[n.id].Any(NavLinkEnabled)&&!UnsafeStructure(Vec(n.pos))&&!UnsafeStagePath(Vec(n.pos),Vec(n.pos))&&!SceneLinecast(p,Vec(n.pos),WorldMask));
                 var start=Nearest(pos);var end=Nearest(target);var path=new List<string>();
                 if(start!=null&&end!=null)
                 {
@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
         private bool NavLinkActive(MapNavLink l)
         {
             if(!NavLinkEnabled(l))return false;Vector3 a=Vec(navNodes[l.a].pos),b=Vec(navNodes[l.b].pos);if(UnsafeStructurePath(a,b))return false;
-            if(l.kind=="stair")return true;
+            if(l.kind=="stair"||l.kind=="ramp"||l.kind=="drop")return true;
             return !SceneLinecast(a,b,WorldMask);
         }
     }

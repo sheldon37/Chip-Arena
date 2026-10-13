@@ -7,6 +7,7 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--wardzero-simulation"){var wardRoot=ProjectRoot();WardSimulationChecks.Run(wardRoot);WardZeroChecks.Run(wardRoot);StageVentChecks.Run(wardRoot);HordeKindChecks.Run(wardRoot);ZombieMotionChecks.Run(wardRoot);HulkSpitterChecks.Run(wardRoot);return 0;}
             if(args.Length==1&&args[0]=="--cloudflare-smoke"){CloudflareChecks.Live(ProjectRoot()).GetAwaiter().GetResult();return 0;}
             if(args.Length==2&&args[0]=="--relay-smoke")
             {var json=System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json"));using(var doc=System.Text.Json.JsonDocument.Parse(json))RelayChecks.Run(args[1],doc.RootElement.GetProperty("sourceCommit").GetString()).GetAwaiter().GetResult();return 0;}
@@ -14,7 +15,7 @@ internal static class Program
             CloudflareChecks.Run().GetAwaiter().GetResult();
             AnimationChecks.Run();
             string root=ProjectRoot();
-            InteractionChecks.Run(root);
+            WardSimulationChecks.Run(root);InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
             FactoryChecks.Run(root);StageHazardChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};

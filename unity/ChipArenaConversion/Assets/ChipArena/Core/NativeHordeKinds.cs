@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Ids={"shambler","runner","brute","spitter","crawler","bloater","hulk"};
         public static readonly string[] Names={"Shambler","Runner","Brute","Spitter","Crawler","Bloater","Hulk"};
         /// <summary>Kinds the shipped content spawns (the others are proposals until Astra adds them).</summary>
-        public static readonly bool[] Shipped={true,true,true,false,false,false,false};
+        public static readonly bool[] Shipped={true,true,true,false,false,false,true};
         /// <summary>The kind an add kind id draws as (an unknown or missing id: the shambler).</summary>
         public static int Resolve(string id){if(id!=null)for(int i=0;i<Count;i++)if(string.Equals(Ids[i],id,StringComparison.Ordinal))return i;return Shambler;}
         /// <summary>Whether an id names one of the kinds (no fallback).</summary>

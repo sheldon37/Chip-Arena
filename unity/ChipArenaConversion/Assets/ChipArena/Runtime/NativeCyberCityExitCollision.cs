@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -9,7 +10,8 @@ namespace ChipArena.UnityConversion
         private readonly List<Mesh> cutExitMeshes=new List<Mesh>();
         private void BuildCutExitCollision()
         {
-            foreach(var flight in NativeCyberCityStairs.Flights(Map))
+            foreach(var id in Map.navHints?.collisionOff??Array.Empty<string>())StaticBlocks.Single(p=>p.Definition.id==id).GetComponent<Collider>().enabled=false;
+            foreach(var flight in NativeCyberCityStairs.Flights(Map).Concat(NativeMapRamps.Flights(Map)))
             {
                 // Keep every original prop/renderer/id. Only their tread collision is replaced.
                 foreach(var step in flight.Steps)StaticBlocks.Single(p=>p.Definition.id==step.id).GetComponent<Collider>().enabled=false;

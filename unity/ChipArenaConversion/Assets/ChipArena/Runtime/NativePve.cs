@@ -20,6 +20,7 @@ namespace ChipArena.UnityConversion
         public NativePveState Pve{get;private set;}private int nextPick=1,nextRecruit=200;
         public void ConfigurePve(NativePveContent data,bool skip,uint seed=12345)
         {
+            if(Map.look=="quarantine")NativeWardEntries.Validate(data,Map);
             uint runSeed=NativePveRandom.Hash(seed,0);Pve=new NativePveState{Content=data,Skip=skip,SpawnRandom=new NativePveRandom(NativePveRandom.Hash(runSeed,"horde")),EconomyRandom=new NativePveRandom(NativePveRandom.Hash(runSeed,"economy"))};Match.Cooperative=Match.Teams=true;FriendlyFire=false;Pve.Boss=Pilots.Find(p=>p.Seat.AuthorityBoss);if(Pve.Boss==null)throw new InvalidOperationException("PvE requires a reserved authority boss seat");SetBossHidden(true);
             foreach(var def in data.machineBlocks){var obj=GameObject.CreatePrimitive(PrimitiveType.Cube);obj.name=def.id;obj.layer=PropLayer;obj.transform.SetParent(root.transform);obj.transform.position=Vec(def.pos);obj.transform.rotation=new Quaternion(def.rotation.x,def.rotation.y,def.rotation.z,def.rotation.w);obj.transform.localScale=Vec(def.size);var prop=obj.AddComponent<NativePropBody>();prop.Definition=def;prop.Indestructible=true;prop.Health=float.PositiveInfinity;obj.GetComponent<Renderer>().sharedMaterial=materials["foundation"];Props.Add(prop);}
         }
@@ -76,7 +77,7 @@ namespace ChipArena.UnityConversion
         }
         private void PveInteract(NativePilot p,NativePveRow row)
         {
-            float Flat(Vector3 q)=>new Vector2(q.x-p.Body.position.x,q.z-p.Body.position.z).magnitude;
+            float Flat(Vector3 q)=>Math.Abs(q.y-p.Body.position.y)>1.7f?float.PositiveInfinity:new Vector2(q.x-p.Body.position.x,q.z-p.Body.position.z).magnitude;
             var dead=Members().Where(q=>q.Hp<=0&&q.Seat.connected&&!InShaft(q)&&Flat(q.Body.position)<=2.2f).OrderBy(q=>Flat(q.Body.position)).FirstOrDefault();if(dead!=null){var target=Pve.Rows[dead.Seat.id];int price=NativePveRules.RevivePrice(target.Revived);if(row.Money<price){row.Notice="Not enough money to revive";row.NoticeUntil=Time+1.4f;return;}row.Money-=price;row.Spent+=price;row.Revives++;target.Revived++;RevivePve(dead);return;}
             var m=Pve.Content.machines.Where(x=>Flat(Vec(x.front.Position()))<=2.2f).OrderBy(x=>Flat(Vec(x.front.Position()))).FirstOrDefault();if(m==null)return;void Use(string result){Pve.Machines.RemoveAll(u=>Time-u.at>4);while(Pve.Machines.Count>=32)Pve.Machines.RemoveAt(0);Pve.Machines.Add(new NativeMachineUse{machine=m.m,owner=p.Seat.id,result=result,at=Time});}int cost=m.kind=="chip"?NativePveRules.ChipPrice(row.Bought):m.kind=="recruit"?300:75;
             if(row.Money<cost){row.Notice="Not enough money";row.NoticeUntil=Time+1.4f;Use("deny");return;}
@@ -108,7 +109,7 @@ namespace ChipArena.UnityConversion
         {
             if(Pve==null||!Pve.Holding)return false;var v=Pve;v.HoldLeft-=dt;if(v.HoldLeft>0)return true;string cinematic=v.Cinematic;v.Holding=false;
             if(cinematic=="victory"||cinematic=="defeat"){KillPveHorde();v.Outcome=cinematic;v.Stage="ended";Match.FinishCooperative(cinematic=="victory");return true;}
-            if(cinematic=="reveal"&&v.Reveal==1){var boss=v.Boss;v.MaxHp=NativePveRules.BossHp(PartySize);boss.Stats["hp"]=v.MaxHp;boss.Hp=v.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(PartySize);SetBossHidden(false);PlacePveBoss(new Vector3(0,.9f,24.2f));boss.Yaw=180;boss.Input=new InputFrame{Yaw=180};v.Floor=v.MaxHp*.75f;BeginPveHold("intro");return true;}
+            if(cinematic=="reveal"&&v.Reveal==1){var boss=v.Boss;v.MaxHp=NativePveRules.BossHp(PartySize);boss.Stats["hp"]=v.MaxHp;boss.Hp=v.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(PartySize);SetBossHidden(false);PlacePveBoss(BossSpawn);boss.Yaw=v.Content.boss.yaw;boss.Input=new InputFrame{Yaw=boss.Yaw};v.Floor=v.MaxHp*.75f;BeginPveHold("intro");return true;}
             if(cinematic=="intro"){BossSongLead+=v.HoldDuration;v.Stage="boss";v.StageAt=Time;v.Phase=1;}
             else if(cinematic=="reveal")
             {
@@ -151,7 +152,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             if(v.Stage=="boss")
-            {if(v.Hidden&&v.Possessed==0&&Time-v.PossessionAt>=60)FoundPveBoss(new Vector3(0,0,24.2f));else if(!v.Hidden&&v.Boss.Hp<=v.Floor+.0001f){if(v.Phase<4)BeginPveHold("reveal",v.Phase+1);else BeginPveHold("victory");}}
+            {if(v.Hidden&&v.Possessed==0&&Time-v.PossessionAt>=60)FoundPveBoss(BossRescue);else if(!v.Hidden&&v.Boss.Hp<=v.Floor+.0001f){if(v.Phase<4)BeginPveHold("reveal",v.Phase+1);else BeginPveHold("victory");}}
             if(!v.Holding&&!Members().Any(p=>p.Hp>0&&(p.Seat.connected||p.Seat.bot))&&!v.Rows.Values.Any(r=>r.SelfAt>=0&&r.Pilot.Hp<=0))BeginPveHold("defeat");
             if(v.Holding)return;StepPveHorde();
         }
