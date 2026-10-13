@@ -47,6 +47,10 @@ namespace ChipArena.UnityConversion
                 Place(Vec(entry.@exit.Position(.9f)));Clock(NativeBreach.SolidAt(record.restoreAt));PoseWardBreaches();Check(panel.enabled,"panel solid after rebuild");
                 var frame=NativeFrameCodec.Clone(NetworkFrame());
                 frame.pve=new NativePveFrame{breaches=wardBreaches.Select(b=>b.ViewCopy()).ToArray(),rows=Array.Empty<NativePveRowFrame>(),pickups=Array.Empty<NativePickupFrame>()};
+                // NetworkFrame uses wardBreaches outside PvE. Moving the fixture to PvE
+                // must clear that container: real frames never carry both forms together.
+                frame=NativeFrameCodec.Clone(frame);Check(!frame.Valid(Content),"duplicate Sandbox/PvE breach containers rejected");
+                frame.wardBreaches=null;
                 frame=NativeFrameCodec.Clone(frame);Check(frame.Valid(Content)&&frame.pve.breaches[0].restoreAt==record.restoreAt,"real JsonUtility breach frame");
                 frame.pve.breaches[0].restoreAt=float.NaN;Check(!frame.Valid(Content),"malformed breach rejected");
                 foreach(string kind in new[]{"burner","gas"})

@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — correct Ward breach-frame Editor fixture
+- Branch `codex/unity-breach-frame-gate`, base shared/builder `f4b5a9b6`. The 03:54 EDT desktop log fails `real JsonUtility breach frame` after integrating dynamic breaches and Claude's visuals.
+- Root cause: the non-PvE NetworkFrame now contains wardBreaches; the older test adds pve.breaches without clearing it. NativeGameFrame.Valid intentionally rejects both containers being present. The fixture now first asserts that rejection, clears wardBreaches when switching to PvE, then checks the real JsonUtility round trip and malformed-record rejection as before. Production serialization and validation remain unchanged.
+- Validation: Editor syntax check and diff check pass. Full Unity/PhysX build unavailable here; the corrected real JsonUtility fixture runs in the desktop build gate. Earlier managed validation does not execute this Editor-only test. Owner authorized fix/merge/builder sync; compiled update not yet verified.
+
 ## 2026-10-13 — Claude — Hulk dynamic wall breach visuals (owner: "make the hulk punch through any wall in ward zero if he cant fit")
 - Branch `claude/hulk-dynamic-breach-fx`, base `1ff52c5` (shared `4c1dd0b` + Astra's PR #183 merged). Implemented on the branch only; not pushed, merged or released.
 - Presentation of Astra's dynamic `NativeBreachRecord` (entry=-1, keyed by block + breakAt): `HordeBreachFrames` sends dynamic records from `arena.WardBreaches` (PvE, sandbox, guests, killcam replay alike; plain list loop, no boxed enumerator) to `HordeWallJob`. That finds the block once by `Definition.id` in `arena.StaticBlocks` and builds the whole-block wall from the definition centre, `holeSize`, `point` and `normal` (Core `NativeBreach.BlockWall`, from/exit = point ∓ normal·1.2 m). Seed = `NativeBreach.Seed(block, breakAt)` (FNV-1a over the id's chars + break ms).
