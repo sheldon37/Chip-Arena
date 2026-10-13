@@ -41,7 +41,7 @@ internal static class FinalKillcamChecks
         var lone=new[]{D(2,0,9,20)};Check(NativeFinalKillcam.Select(lone,1,Ffa(1,20),out _)==0&&!NativeFinalKillcam.Credited(lone[0],false),"environmental death: victim's view");
         var self=new[]{D(2,2,9,20)};Check(NativeFinalKillcam.Select(self,1,Ffa(1,20),out _)==0&&!NativeFinalKillcam.Credited(self[0],false),"self elimination: victim's view");
         var mate=new[]{D(5,6,9,30,1,1)};Check(NativeFinalKillcam.Select(mate,1,tc,out _)==0&&!NativeFinalKillcam.Credited(mate[0],true),"team kill: victim's view");
-        Check(NativeFinalKillcam.Credited(deaths[1],false)&&NativeFinalKillcam.Credited(teams[1],true),"a kill is watched from the killer");
+        Check(NativeFinalKillcam.Credited(deaths[1],false)&&NativeFinalKillcam.Credited(teams[1],true),"enemy kills retain killer credit in FFA and teams");
         Check(NativeFinalKillcam.SoloCause(true,false,null)=="Self-inflicted"&&NativeFinalKillcam.SoloCause(false,true,null)=="Friendly fire"&&NativeFinalKillcam.SoloCause(false,false,"collapse")=="Structural collapse"
             &&NativeFinalKillcam.SoloCause(false,false,"saw")=="Stage hazard"&&NativeFinalKillcam.SoloCause(false,false,null)=="Environment","uncredited cause lines");
         // No final killcam: a death well before the round resolved (the round ended on a disconnect after the grace), an
@@ -165,9 +165,9 @@ internal static class FinalKillcamChecks
         Check(Body(final,"private void FinalFrame()").Contains("if(finalOn)")&&Body(final,"private void FinalAudioBefore()").Contains("if(finalOn)")&&Body(final,"private void FinalAudioAfter()").Contains("if(finalOn)"),"clock and audio slowed only in the final killcam");
         Check(replay.IndexOf("FinalKillWatch();",StringComparison.Ordinal)<replay.IndexOf("if(fresh){replaySeen=d.seed;",StringComparison.Ordinal),"final kill decided before the normal one can arm");
         Check(replay.Contains("CreateScene(finalOn?\"Final killcam presentation\":\"Killcam presentation\""),"own scene name (a cut-over never collides with the unloading one)");
-        // Every round: practice counts, an uncredited death plays from the victim, and the clip's start frame survives the
+        // Every round: practice counts, every final death plays from the victim, and the clip's start frame survives the
         // history trim (the normal killcam's trim is unchanged).
-        Check(final.Contains("Practice=!Online,")&&final.Contains("replayView=credited?f.Killer:f.Victim;"),"practice and the victim's view wired");
+        Check(final.Contains("Practice=!Online,")&&final.Contains("replayView=f.Victim;")&&Body(final,"private Quaternion FinalLook(").Contains("victim==target"),"all final kills use the victim's recorded view and facing");
         Check(final.Contains("ResultAt=match.HasFinalKillcam?match.ResultAt:match.Time")&&final.Contains("int pick=match.HasFinalKillcam&&match.FinalVictim!=0?NativeFinalKillcam.Decided(finalDeaths,n,match.FinalVictim,match.FinalSeed):-1;")&&final.Contains("if(pick<0)pick=NativeFinalKillcam.Select("),"host decision first, local pick for every other round-ending death");
         Check(replay.Contains("while(replayFrames.Count>1&&!FinalKeeps()&&(replayFrames.Count>132||replayEntities>150000||arena.Time-replayFrames[0].time>6))")&&final.Contains("private bool FinalKeeps()=>finalOn&&"),"trim keeps the clip's frames only in the final killcam");
         // Presentation clocks default to today's behaviour.

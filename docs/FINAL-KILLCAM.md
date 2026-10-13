@@ -4,6 +4,8 @@ Owner request (2026-10-13): "Also, id like to add a final killcam. Similar to ki
 
 Owner follow-up (2026-10-13): "The final killcam isn't playing, its supposed to be at the end of every round (per set)". It was skipped in offline Play vs Bots, on environmental, self and team-kill deaths, and on draws; it now plays at the end of every round that ends on a death.
 
+Owner follow-up (2026-10-13): "Can we set the final kill to be from the perspective of the killed player?" Every final replay now follows the victim's recorded third-person view, for everyone watching. Killer credit and broadcast labels are unchanged.
+
 It is presentation only. Branch `claude/final-killcam`; Unity code in `unity/ChipArenaConversion/Assets/ChipArena`.
 
 - Core logic: `Core/NativeFinalKillcam.cs`. It is engine free and covered by `Tests/FinalKillcamChecks.cs`.
@@ -24,7 +26,7 @@ The final kill is the latest death of a pilot who is not on the winner's side (a
   - The host resolves in the same step as the death.
   - A guest's first Result frame is at most one 20 Hz send later.
   - A round that resolves later is not ended by that kill. Examples are the 12 s disconnect grace and a sandbox hold.
-- **Any cause:** a kill (`owner` is a pilot other than the victim and, in a teams match, not a teammate: `Credited`) plays from the killer's view. An environmental death, a self-elimination or a team kill plays from the victim's view as "FINAL ELIMINATION" with the cause (`SoloCause`). The fall and overtime credit that the authority already assigns (last attacker within 7 s) counts as a kill. A simultaneous knockout shows the last death and a "NO WINNER · Draw" outcome.
+- **Any cause:** every final replay plays from the victim's view. A kill (`owner` is a pilot other than the victim and, in a teams match, not a teammate: `Credited`) retains the killer's credit and "FINAL KILL" labels. An environmental death, a self-elimination or a team kill shows "FINAL ELIMINATION" with the cause (`SoloCause`). The fall and overtime credit that the authority already assigns (last attacker within 7 s) counts as a kill. A simultaneous knockout shows the last death and a "NO WINNER · Draw" outcome.
 - **Mode:** not PvE or cooperative (the Siren boss flow) and not the Dev Sandbox. Practice (offline Play vs Bots) shows it (`NativeFinalKillcam.InPractice`).
 - **History:** this client has recorded at least 0.5 s before the hit, and the clip fits into the time left (see below).
 
@@ -88,11 +90,11 @@ The clip always ends before the next phase. Under 1.67 s available, or under 0.5
   - Loops keep their own pitch.
   - Every voice is restored when the clip ends.
 - **Camera.**
-  - The killer's third-person view, as in the normal killcam.
+  - The victim's third-person view throughout the final replay, using their recorded position, yaw and pitch. Normal killcams retain their existing killer perspective.
   - While slowed, the boom pulls back by up to 1.9 m and up by up to 0.45 m.
   - The FOV opens by up to 7°.
-  - The look turns up to 45 % toward the killer–victim midpoint (within 22 m), so both stay in the shot.
-  - After the hit, a killer who is dead or far away hands the shot to the victim, as today ("FINAL MOMENTS").
+  - The look keeps the victim's facing; it does not turn toward the killer–victim midpoint.
+  - After the hit, the camera stays with the victim ("FINAL MOMENTS").
   - Reduced effects keep the FOV and halve the move.
 - **Broadcast frame (FINAL KILLCAM).** It is in the killcam's style, kept to the edges.
   - **Letterbox and frame:** a taller letterbox with gold rules, squeezing slightly while slowed. A vignette, and the killer's colour on the frame edge.
