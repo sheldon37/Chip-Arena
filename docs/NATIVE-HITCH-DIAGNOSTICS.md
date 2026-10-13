@@ -33,6 +33,8 @@ write files per frame. Log entries omit stack traces, credentials and usernames.
 - `arenaStepMs` and `physicsMs`: authority gameplay step versus BeforePhysics / PhysX / AfterPhysics, nested inside `simulationMs`.
 - `navigationMs` and `navigationSearches`: structural navigation work and search/tree-build count, nested inside the gameplay step. Both PvP bots and PvE enemies use this search.
 - `hordeMs` and `hordeSpawnMs`: horde update and enemy entry selection/creation, nested inside the gameplay step. Spawning and horde navigation can overlap the horde total; do not add these timings together. `pveStage`, `pvePhase` and `hordeCap` identify the active load.
+- `navigationNearestMs` and `navigationLinkMs`: finding usable nearby nodes versus evaluating graph links, nested inside navigation time. `navigationLinkChecks` counts link evaluations; these can far outnumber searches.
+- `deathBuildMs`, `deathStepMs`, `deathWoundMs`, `deathCreates`: regular corpse/effect setup, corpse stepping (including world refresh), wound-model work during death presentation, and new regular corpses. These narrow the overall death timer; other death effects can remain outside them. Timings can overlap and must not be summed.
 - `deathRecordMs`: pilot death-record creation only, nested inside the gameplay step (not every damage/cleanup operation).
 - `deathPresentationMs`: corpse/death presentation, including its creation and stepping, nested inside presentation time. This is separate from authority physics; use it to investigate deaths on other PvP maps.
 - GC counters are runtime collection-count deltas. Matching generation counters do not establish three separate sets of pauses, and these reports do not measure GC pause duration.
@@ -104,3 +106,21 @@ Managed crowd checks do not include Unity raycasts, physics or rendering. The
 native Ward build gate checks real Hulk movement, shared crowd search count and
 the possessed route cache. Windows phase-two load testing and a fresh hitch
 capture remain necessary before calling the performance problem resolved.
+
+## Owner captures and follow-up (2026-10-13 evening)
+
+Ward Zero local boss wave: 138.62 ms frame, 118.37 ms navigation, four searches,
+14 adds; physics .89 ms, death presentation .10 ms, replay inactive. The separate
+report-header simulationTickMs is a later tick, not the recorded hitch.
+Cyber City local practice Result/replay: 2382.46 ms frame, 2373.76 ms death
+presentation; replay prepare/apply zero, GC counters +17. Death presentation is
+nested inside replay playback, not another 2.37 seconds to add. The capture
+does not separate corpse construction, world refresh/stepping or wound meshes.
+No exact GC pause or allocation volume can be inferred from collection counts.
+
+Navigation now precomputes only static hazard-envelope membership for authored
+links/nodes during arena setup. Hazard clocks, structural state and collision
+linecasts remain live, with original route selection and safety gates. The
+index is rebuilt on map change. Managed equivalence and allocation checks cover
+all authored hazard maps; actual Windows navigation performance needs another
+capture. New death sub-timers diagnose the unresolved replay freeze.

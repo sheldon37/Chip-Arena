@@ -170,11 +170,13 @@ namespace ChipArena.UnityConversion
         }
         private static NativePilot PilotOf(NativeArena arena,int id){foreach(var p in arena.Pilots)if(p.Seat.id==id)return p;return null;}
         public double DiagnosticDeathPresentationMs {get;private set;}
+        public double DiagnosticDeathBuildMs {get;private set;}public double DiagnosticDeathStepMs {get;private set;}public double DiagnosticDeathWoundMs {get;private set;}public int DiagnosticDeathCreates {get;private set;}
         private void DeathPresentation(NativeArena arena)
         {
             long at=System.Diagnostics.Stopwatch.GetTimestamp();
+            double woundsBefore=sourceModels?.DiagnosticWoundMs??0;
             try{DeathPresentationCore(arena);}
-            finally{DiagnosticDeathPresentationMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
+            finally{DiagnosticDeathWoundMs+=(sourceModels?.DiagnosticWoundMs??0)-woundsBefore;DiagnosticDeathPresentationMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
         }
         private void DeathPresentationCore(NativeArena arena)
         {
@@ -205,7 +207,7 @@ namespace ChipArena.UnityConversion
             if(VentStyle(death.style)){PresentVent(arena,death,pilot,KillClock(arena)-death.at,live);return;}
             if(!corpses.TryGetValue(death.id,out var corpse))
             {
-                if(corpses.Count>=32&&!retain)return;CapturedAnimation.Player rig=null;bool temporary=false;
+                if(corpses.Count>=32&&!retain)return;long buildAt=System.Diagnostics.Stopwatch.GetTimestamp();DiagnosticDeathCreates++;CapturedAnimation.Player rig=null;bool temporary=false;
                 if(!rigs.TryGetValue(death.id,out rig)&&!minionRigs.TryGetValue(death.id,out rig)){rig=captured.Create(transform,death.id);var actor=death.actor??new Actor();actor.Hp=Math.Max(1,actor.Hp);rig.ActorPose(actor,death.position-Vector3.up*.865f,death.at);temporary=true;}
                 var slice=pilot?MeleeSlice(arena,death):null;
                 // A Factory saw splits the body in two (NativeBisectPresentation); every other death is one corpse as before.
@@ -217,8 +219,9 @@ namespace ChipArena.UnityConversion
                 int band=pilot&&live!=null&&(death.model??"pilot")=="pilot"?NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,live.Seat.AuthorityBoss,live.Seat.team,live.Seat.id==arena.LocalId):-1;
                 if(corpse.Bisect is BisectFx split){split.Band=band;corpse.SetupBisect(budget,Mathf.Clamp01(EffectsQuality),counted,NativeStructureFxPresentation.KillFloor(arena));}
                 else corpse.SetupKill(budget,Mathf.Clamp01(EffectsQuality),counted,hatModel,band,NativeStructureFxPresentation.KillFloor(arena));if(counted)killUsed+=corpse.FxCount;
+                DiagnosticDeathBuildMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-buildAt)*1000d/System.Diagnostics.Stopwatch.Frequency;
             }
-            corpse.Smooth=SlowBodies;corpse.Step(age);if(corpse.Bisect!=null)BisectBlood(corpse,death,KillClock(arena));string style=corpse.Style??"impact-ragdoll";bool stock=StockEnding(style);
+            long stepAt=System.Diagnostics.Stopwatch.GetTimestamp();corpse.Smooth=SlowBodies;corpse.Step(age);DiagnosticDeathStepMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-stepAt)*1000d/System.Diagnostics.Stopwatch.Frequency;if(corpse.Bisect!=null)BisectBlood(corpse,death,KillClock(arena));string style=corpse.Style??"impact-ragdoll";bool stock=StockEnding(style);
             // What the effect looks like (swarm, burst, fragments, spray fade and splats, the stock sink and shrink, the fades)
             // is a function of age alone, so it follows the presentation clock: arena.Time only moves when a 20 Hz host frame
             // lands on a guest and in the killcam, and at the 60 Hz fixed rate on the host (the source feeds DeathEffects the

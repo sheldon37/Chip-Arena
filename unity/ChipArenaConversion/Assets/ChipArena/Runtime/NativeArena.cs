@@ -86,7 +86,7 @@ namespace ChipArena.UnityConversion
             {materials[definition.id]=new Material(shader){color=ColorOf(definition.id=="foundation"?map.floor:definition.color)};surfaces[definition.id]=new PhysicsMaterial(definition.id){dynamicFriction=definition.friction,staticFriction=definition.friction,bounciness=0};}
             if(!surfaces.ContainsKey("pilot"))surfaces["pilot"]=new PhysicsMaterial("Pilot friction"){dynamicFriction=0,staticFriction=0,bounciness=0,frictionCombine=PhysicsMaterialCombine.Minimum};
             Structures=new NativeStructureState(map);foreach(var block in map.blocks)AddProp(block);
-            BuildCutExitCollision();NameWardPanels();
+            BuildCutExitCollision();NameWardPanels();PrepareNavigation();
             for(int i=0;i<Match.Seats.Count;i++)SpawnPilot(Match.Seats[i],i);
             Physics.SyncTransforms();
         }
