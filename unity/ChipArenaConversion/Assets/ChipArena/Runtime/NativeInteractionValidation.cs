@@ -45,8 +45,22 @@ namespace ChipArena.UnityConversion
             var reviveAt=victim.Body.position;Check(victim.Death.position==deathOrigin,"revive anchor rewrote immutable death pose");
             Check(!SetReviveAnchor(victim,new Vector3(float.NaN,0,0))&&victim.Body.position==reviveAt,"invalid corpse anchor moved body");
             var anchored=NativeFrameCodec.Clone(NetworkFrame());guest.ApplyFrame(anchored,victim.Seat.id);
-            Check((guest.Local.Body.position-reviveAt).sqrMagnitude<.001f&&!guest.SetReviveAnchor(guest.Local,Vector3.zero),"revive anchor replication/authority");
+            Check((guest.Local.Body.position-reviveAt).sqrMagnitude<.001f,"local corpse anchor retained prediction offset");
+            Check(!guest.SetReviveAnchor(guest.Local,Vector3.zero),"guest accepted authority-only corpse anchor");
+            // A second, nearby anchor is below both teleport thresholds. Dead input and rendering
+            // must not pull the guest back to its prior position between authority frames.
+            Check(SetReviveAnchor(victim,new Vector3(.5f,.4f,0)),"nearby ragdoll floor anchor refused");
+            reviveAt=victim.Body.position;anchored=NativeFrameCodec.Clone(NetworkFrame());
+            Check(anchored.Valid(Content),"updated corpse anchor frame invalid");guest.ApplyFrame(anchored,victim.Seat.id);
+            guest.PredictReplica(new InputFrame{Sequence=2,X=1,Jump=true});guest.InterpolateReplica(.016f);
+            Check((guest.Local.Body.position-reviveAt).sqrMagnitude<.001f,"dead input/interpolation displaced updated anchor");
             RevivePve(victim);Check(victim.Body.position==reviveAt,"revive returned to original kill location");
+            var anchorRevived=NativeFrameCodec.Clone(NetworkFrame());guest.ApplyFrame(anchorRevived,victim.Seat.id);
+            Check((guest.Local.Body.position-reviveAt).sqrMagnitude<.001f&&guest.predictor.Pending==0,"revival retained corpse offset or dead input");
+            victim.Hp=0;guest.ApplyFrame(NativeFrameCodec.Clone(NetworkFrame()),victim.Seat.id);
+            var nearbyPad=reviveAt+Vector3.right*.5f;RevivePve(victim,nearbyPad);
+            guest.ApplyFrame(NativeFrameCodec.Clone(NetworkFrame()),victim.Seat.id);
+            Check((guest.Local.Body.position-nearbyPad).sqrMagnitude<.001f,"nearby pad revival retained corpse smoothing");
             int seed=300;
             foreach(string style in new[]{"impact-ragdoll","dev-gibber","siren-crush","pad"})
             {
@@ -55,7 +69,8 @@ namespace ChipArena.UnityConversion
                 var actor=victim.Pose.ViewCopy();actor.Wounds=wound==null?Array.Empty<NativeWound>():new[]{wound};
                 victim.Death=new NativeDeath{id=victim.Seat.id,seed=seed++,kept=true,model="pilot",at=Time-5,position=new Vector3(0,1,0),style=style=="pad"?"impact-ragdoll":style,actor=actor,wound=wound};
                 victim.Hp=0;victim.Body.position=victim.Death.position;victim.Seat.alive=false;RevivePve(victim,style=="pad"?(Vector3?)new Vector3(5,1,0):null);
-                var revived=NativeFrameCodec.Clone(NetworkFrame());Check(revived.Valid(Content),"revive frame invalid: "+style);guest.ApplyFrame(revived,victim.Seat.id);guest.InterpolateReplica(1);
+                var revived=NativeFrameCodec.Clone(NetworkFrame());Check(revived.Valid(Content),"revive frame invalid: "+style);guest.ApplyFrame(revived,victim.Seat.id);
+                Check((guest.Local.Body.position-victim.Body.position).sqrMagnitude<.001f,"revive placement retained local smoothing: "+style);guest.InterpolateReplica(1);
                 Check(guest.Local.RevivedAt==victim.RevivedAt&&guest.Local.Death?.seed==victim.Death.seed,"revive identity lost: "+style);
                 position=victim.Body.position;hp=victim.Hp;bool place=style!="pad",missing=style=="dev-gibber"||style=="siren-crush";
                 foreach(float age in new[]{-.15f,.02f,.2f,.65f,.81f,1.1f,1.41f})

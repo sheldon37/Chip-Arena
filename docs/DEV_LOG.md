@@ -1,5 +1,13 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Astra — local corpse/revive replication placement
+- Branch `codex/revive-anchor-replication`, base shared/build `6751324831666caae6075ccd89ee51f06988edd1`. Owner's 03:11 UTC Windows build passed the previous revive gate and failed `Interaction feedback: revive anchor replication/authority`.
+- Root cause: `BufferReplica` reconciled the correct authority position, then added the old local-body offset for differences <=3 m. That locomotion smoothing incorrectly delayed corpse-anchor placement and nearby revives.
+- Reset local prediction and discard correction/pending input while dead and on revival (previous dead state or changed replicated `revivedAt`). Ordinary living movement retains reconciliation smoothing. No protocol/schema, host collision or presentation changes.
+- Extended the real Unity interaction gate: distinct position/authority failures, repeated nearby corpse anchor, dead input plus interpolation, pending-input clearing, immediate in-place/nearby-pad revival, and immediate placement across the existing hologram cases. Existing guest authority rejection remains required.
+- Checks: Python discovery 101 tests OK (1 skipped); source-package check passed (1,778 source files); diff whitespace clean. Unity/PhysX/Windows and managed relay execution unavailable here (no Unity/.NET); the owner builder must confirm the corrected gate and downstream gates. No claim of a successful compiled release.
+- Owner standing push/merge permission applies: this task is to be merged into the shared Unity branch and fast-forwarded to the builder branch after source checks. The prior PR #168 is merged and included in this base.
+
 ## 2026-10-13 — Astra — revive build gate follows the authoritative corpse anchor
 - Branch `codex/revive-build-validation`, base shared `d29fb7e3138b5191bdb44c38fd0e9c8e32b9bd43`.
 - Owner log `Latest-Build(1).txt`, source `7dc41e03c176`, stops in `ValidateFollowupParity`: the old fixture sets only `Death.position` and still expects a revive there. The ragdoll-anchor change deliberately revives at the current authority body position; the immutable death pose is no longer the revive target.
