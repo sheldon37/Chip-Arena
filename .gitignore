@@ -7,3 +7,22 @@ server-dist/
 .dev-logs/
 
 __pycache__/
+
+# Migration: reproducible outputs, local runtime inputs, and user data.
+/dist/
+/.cache/
+/releases/
+/runtime/
+/coverage/
+/playwright-report/
+/test-results/
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.dmp
+.claude/settings.local.json
+CLAUDE.local.md
+.DS_Store
+Thumbs.db
+account-session.dat
