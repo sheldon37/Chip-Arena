@@ -93,6 +93,12 @@ namespace ChipArena.UnityConversion
                     Check((finish[2]-flight.High).Length>2,"exit still proves over two metres beyond flight");
                 }
             }
+            var oldMuzzle=new V3(20,10,19);
+            Check(map.blocks.Any(b=>b.id=="siren-concourse-n-wall-9"&&NativeStageHazards.Touch(oldMuzzle,b.pos,b.size,.045f,.045f)),"old PvE contact muzzle overlaps authored concourse wall");
+            var isolatedMuzzle=new V3(1000,10,1001);
+            Check(!map.blocks.Any(b=>NativeStageHazards.Cross(isolatedMuzzle,isolatedMuzzle+new V3(0,0,2),b.pos,b.size,.045f)),"isolated contact lane clear of map blocks");
+            string contactGate=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeGameplayValidation.cs"));
+            Check(contactGate.Contains("add.Body.position=new Vector3(1000,10,1002)")&&contactGate.Contains("contact.Value.Collider==add.Collider"),"native contact fixture uses isolated lane and verifies actual first collider");
             var nodes=map.nav.nodes.ToDictionary(n=>n.id);
             foreach(var ramp in map.ramps)
             {
