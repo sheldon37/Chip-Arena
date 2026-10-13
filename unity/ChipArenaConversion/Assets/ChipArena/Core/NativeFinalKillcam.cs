@@ -123,8 +123,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<count&&deaths!=null&&i<deaths.Length;i++)if(deaths[i].Victim==victim&&deaths[i].Seed==seed)return i;
             return -1;
         }
-        /// <summary>The death has a killer to watch from: a pilot other than the victim, not on the victim's team in a teams
-        /// match. Otherwise (environment, self, team kill) the clip plays from the victim's view as their final moments.</summary>
+        /// <summary>The death has a killer to credit: a pilot other than the victim, not on the victim's team in a teams
+        /// match. Otherwise (environment, self, team kill) the labels describe an elimination. The camera always follows the victim.</summary>
         public static bool Credited(in FinalKillCandidate f,bool teams)=>f.Killer>0&&f.Killer!=f.Victim&&!(teams&&f.KillerSide==f.VictimSide);
         /// <summary>The broadcast frame's cause line for an uncredited final death (constant strings: the HUD allocates nothing).</summary>
         public static string SoloCause(bool self,bool teamKill,string damageKind)=>self?"Self-inflicted":teamKill?"Friendly fire":damageKind=="collapse"?"Structural collapse":!string.IsNullOrEmpty(damageKind)?"Stage hazard":"Environment";

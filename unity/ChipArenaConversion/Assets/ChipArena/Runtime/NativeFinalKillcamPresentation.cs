@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
         /// ObserveReplay, every frame: at the Fight -> Result step this client sees, picks the round's final kill from the
         /// replicated death records, fits the slow-motion clip into the Result time left, and starts it (cutting over a
         /// normal killcam that is playing or waiting). finalSeed then keeps the normal killcam from arming this round. A death
-        /// with no killer to watch (environment, self, team kill) plays from the victim's view as their final moments.
+        /// always plays from the victim's view; kill credit only controls the broadcast labels.
         /// </summary>
         private void FinalKillWatch()
         {
@@ -51,8 +51,9 @@ namespace ChipArena.UnityConversion
             var start=NativeFinalKillcam.Begin(replayRunning,replayDeath>=0,finalShown);if(start==NativeFinalKillcam.Start.Already)return;
             if(start==NativeFinalKillcam.Start.CutOver)EndReplay();
             finalSeed=f.Seed;finalShown=true;finalOn=true;finalCurve=curve;finalVictim=f.Victim;finalKiller=credited?f.Killer:0;finalSolo=!credited;
-            // Armed for RenderReplayFrame's start block: now, from the killer's view (the victim's with no killer to watch).
-            replayDeath=(float)f.At;replayWait=0;replayView=credited?f.Killer:f.Victim;FinalLabels(matchEnds,f.Killer);
+            // Everyone watches the final victim's recorded view, including the killer and spectators. Keep credit for
+            // the labels separate from the camera; the normal killcam still selects its own view in ObserveReplay.
+            replayDeath=(float)f.At;replayWait=0;replayView=f.Victim;FinalLabels(matchEnds,f.Killer);
             Debug.Log("Final killcam: "+(credited?"seat "+f.Killer+" on seat ":"final moments of seat ")+f.Victim+" · "+curve.Wall.ToString("0.00")+" s at x"+curve.Rate.ToString("0.00"));
         }
         private void FinalLabels(bool matchEnds,int source)
@@ -103,7 +104,7 @@ namespace ChipArena.UnityConversion
             NativeFinalKillcam.Wide(finalCurve.Slow(FinalWall),prefs.reducedEffects,out float boom,out float lift,out finalFov,out finalLook);
             float length=offset.magnitude;if(length>1e-4f)offset=offset/length*(length+boom);offset+=Vector3.up*lift;
         }
-        /// <summary>The look turns part way toward the killer-victim midpoint while slowed, so both stay in the shot.</summary>
+        /// <summary>Keep the victim's recorded facing when following them; only a different target uses midpoint framing.</summary>
         private Quaternion FinalLook(Vector3 eye,Quaternion rotation,NativePilot target,NativePilot victim)
         {
             if(finalLook<=0||victim==null||victim==target||target==null)return rotation;
