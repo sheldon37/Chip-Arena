@@ -18,7 +18,13 @@ namespace ChipArena.UnityConversion
         public static float Exposed(PveEntry entry,float walk,float active)=>NativeHordeDrop.Is(entry)?NativeHordeDrop.LandAt(active):entry.kind=="vent"?active-1.15f:walk;
         public static float TargetAt(PveEntry entry,float active)=>NativeHordeDrop.Is(entry)?NativeHordeDrop.LandAt(active):active;
         public static bool Held(PveEntry entry,float now,float active)=>NativeHordeDrop.Is(entry)&&now<NativeHordeDrop.LandAt(active);
-        public static bool Touch(V3 delta)=>Math.Abs(delta.y)<1.5f&&delta.x*delta.x+delta.z*delta.z<=NativeHordeDrop.SlamRadius*NativeHordeDrop.SlamRadius;
+        public static bool Touch(V3 delta)
+        {
+            // Keep both squares at the same explicit precision. Mono may retain extra
+            // precision for the runtime product while the constant float square is rounded.
+            double x=delta.x,z=delta.z,radius=NativeHordeDrop.SlamRadius;
+            return Math.Abs(delta.y)<1.5f&&x*x+z*z<=radius*radius;
+        }
         public static float Damage(float distance,bool blocked)=>blocked?0:DamageCentre+(DamageRim-DamageCentre)*MathUtil.Clamp(distance/NativeHordeDrop.SlamRadius,0,1);
         public static V3 Outward(V3 delta,V3 fallback)
         {var flat=new V3(delta.x,0,delta.z);return flat.Length>.0001f?flat.Normalized:new V3(fallback.x,0,fallback.z).Normalized;}
