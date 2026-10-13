@@ -19,6 +19,9 @@ namespace ChipArena.UnityConversion
     ///  - Backdrop (Core NativeCyberCityScenery): static instanced NativeBlockLit batches on NativeSceneryBuilder.BackdropLayer, no
     ///    shadows cast. Behind the menu a plate fills the slab.
     ///  - Atmosphere and hazard FX (Core NativeCyberCityFx) through one NativeFxDraw: a solid and an effects batch.
+    ///  - The way out of the Cut: the exits come from the map's data (Core NativeCyberCityExits: the maglev's envelope, the walls
+    ///    and the nav routes up to the street), so the kit's EXIT signs, door frames and climb lights and the FX's floor
+    ///    chevrons and stair-top glow follow whatever exits the map has. The local pilot's hint is NativeCutExitHud.
     /// Hazards: the map's `hazards` in UnityMaps.json (CYBERCITY-SIMULATION-CONTRACT.md §3), read once by the map id; absent or
     /// empty, every hazard rig rests (steady looks, no telegraph FX). Their state is the pure Core function of (round index,
     /// FightAt, presentation clock): NativeCyberCityHazards.Evaluate, the timing the contract pins. Nothing here writes sim data,
@@ -32,7 +35,7 @@ namespace ChipArena.UnityConversion
         private NativeCyberCityKit metroKit;private NativeCyberFxScene metroScene;private MapHazard[] metroHazards;private NativeHazardState[] metroStates=Array.Empty<NativeHazardState>();
         private NativePropBody[] metroParents=Array.Empty<NativePropBody>();private float[] metroSeeds=Array.Empty<float>();private MaterialPropertyBlock metroOne;private readonly Dictionary<string,int> metroIndex=new Dictionary<string,int>();
         private NativeCyberScreen[] metroScreens=new NativeCyberScreen[4];private int[] metroScreenBlock=Array.Empty<int>();private string[] metroScreenSegment=Array.Empty<string>();private Vector3[] metroRestCenter=Array.Empty<Vector3>();private Vector2[] metroRestHalf=Array.Empty<Vector2>();
-        private NativeArena metroArena;private int metroGeneration=-1;private Mesh metroPlate;private Matrix4x4 metroPlateMatrix;
+        private NativeArena metroArena;private int metroGeneration=-1;private Mesh metroPlate;private Matrix4x4 metroPlateMatrix;private NativeCyberCityExits metroExits;private ContentMap metroExitsMap;
         private static readonly int MetroSizeId=Shader.PropertyToID("_BlockSize"),MetroRestId=Shader.PropertyToID("_BlockRest"),MetroColorId=Shader.PropertyToID("_BlockColor"),MetroLookId=Shader.PropertyToID("_BlockLook");
 
         // SourceWorld: the arena or the killcam replay arena.
@@ -70,7 +73,9 @@ namespace ChipArena.UnityConversion
         private void MetroRebind(NativeArena arena)
         {
             metroArena=arena;metroGeneration=arena.Generation;var map=arena.Map;if(metroHazards==null)metroHazards=arena.Map.hazards??Array.Empty<MapHazard>();
-            metroKit=NativeCyberCityKit.Build(map.blocks,metroHazards);metroScene=NativeCyberFxScene.Build(map.blocks,metroHazards,metroKit,metroBackdrop);
+            // The exits, once per map content (the killcam's replay arena shares it, so switching to it rebuilds only the kit).
+            if(!ReferenceEquals(metroExitsMap,map)||metroExits==null){metroExitsMap=map;metroExits=NativeCyberCityExits.Build(map.blocks,map.nav,metroHazards);}
+            metroKit=NativeCyberCityKit.Build(map.blocks,metroHazards,metroExits);metroScene=NativeCyberFxScene.Build(map.blocks,metroHazards,metroKit,metroBackdrop);
             metroStates=new NativeHazardState[metroHazards.Length];metroSeeds=new float[metroKit.Parts.Length];for(int i=0;i<metroSeeds.Length;i++)metroSeeds[i]=NativeBlockLooks.Seed(map.blocks[metroKit.Parts[i].Parent].id+"#"+i);metroParents=new NativePropBody[map.blocks.Length];metroIndex.Clear();for(int i=0;i<map.blocks.Length;i++)if(map.blocks[i]?.id!=null)metroIndex[map.blocks[i].id]=i;
             // The billboards: each segment's screen block (the presentation's holo content follows it down).
             // Once it lands, the content lies on the segment's fallen-screen rubble plate (its `-0` rubble box, else the first).
@@ -208,7 +213,7 @@ namespace ChipArena.UnityConversion
         private void DisposeCyberCity()
         {
             CapturedAnimation.Release(metroMesh);CapturedAnimation.Release(metroMaterial);metroMesh=null;metroMaterial=null;metroPlate=null;metroDraw?.Dispose();metroDraw=null;
-            metroBack.Clear();metroCast.Clear();metroTrim.Clear();metroKit=null;metroScene=null;metroArena=null;metroGeneration=-1;metroHazards=null;metroPlateBlock=null;
+            metroBack.Clear();metroCast.Clear();metroTrim.Clear();metroKit=null;metroScene=null;metroArena=null;metroGeneration=-1;metroHazards=null;metroPlateBlock=null;metroExits=null;metroExitsMap=null;
         }
     }
 }
