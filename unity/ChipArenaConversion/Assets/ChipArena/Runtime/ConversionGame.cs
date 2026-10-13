@@ -307,7 +307,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnGUI()
         {
-            if(dedicated)return;if(SlenderGUI())return;Styles();GuiFrame();if(error.Length==0)NoticeToast();
+            if(dedicated)return;if(SlenderGUI())return;Styles();GuiFrame();if(error.Length==0)NoticeToast();BuildCorner();
         }
         private void GuiFrame()
         {

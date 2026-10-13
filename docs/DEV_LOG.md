@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-13 — Claude — build stamp in the bottom-right corner
+- Owner: "in one of the corners can we show the game version? (This way we keep track of builds)". Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), base `bfbc117`.
+- `Core/NativeBuildLabel.cs` + `Runtime/NativeBuildStamp.cs`: drawn after every screen (`ConversionGame.OnGUI`, menus, lobby, match, intros, killcam, chip selection), faint 10-unit mono under the ability cards (NativeArcadeHud.Bottom leaves 93 units) and below the menu footer: `BUILD <12-char source hash> · <UTC build time>` from the updater's installed identity, else the player folder's own `native-build.json` (any packaged build, starter-installed or not); without one, `DEV BUILD · SRC <content source commit>`. Same 12 characters as the menu footer and the update card. Presentation only; no updater, build or network change.
+- Checks: Unity runtime+editor build OK; relay 620 PASS / 0 FAIL (new `BuildLabelChecks`, 8 checks); Python unittest OK; package OK; sparse copy and diff-check below. Not run: the Unity Editor or a Windows player (the corner placement against every screen is reasoned from the HUD margins, not seen in-engine).
+
 ## 2026-10-13 — Claude — Windows updater check: duplicate launcher cases after the rename
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), base `b177323`; CI `native-updater-windows` failed on `51f0aa7` (PR #170).
 - Cause: PR #170 named the player `Chip Arena.exe`, the launcher's name, so `tools/check_updater_windows.py`'s four cases ran the launcher pair twice and the repeat's `mkdir` of its case folder raised `FileExistsError` (WinError 183).

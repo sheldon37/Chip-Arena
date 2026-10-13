@@ -47,6 +47,7 @@ internal static class Program
             ClassIconChecks.Run(root,data);
             RooftopChecks.Run(root);
             PortraitBackChecks.Run(root);
+            BuildLabelChecks.Run(root);
             HatLookChecks.Run(root);
             NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);WoundSkinChecks.Run(root);BisectChecks.Run(root);ReviveHoloChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
