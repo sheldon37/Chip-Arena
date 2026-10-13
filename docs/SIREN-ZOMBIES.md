@@ -346,3 +346,15 @@ Merged shared `b177323`: kept both Brute/Hulk `DropProfile` timelines and made b
 The 260 -> 420 conflict is **impulse**, not HP: Brute HP stays 240. Keep PR #160's 420 outward smash with upward pop. Keep the shared spitter proposal at `SpitHit = .8f`, matching §9's wind-up/interrupt presentation; this PR does not implement the pending spitter or Hulk simulation. `HulkSpitterChecks` and `HordeDropChecks` both run. The revamp's `hulk` entry routing and full Hulk/breach rules remain the separate §7-9 / WARDZERO-SIMULATION-CONTRACT §7 task; this change does not import the revamp or enable Hulk spawning.
 
 The Hulk proposal remains 900 impulse. Its check now pins 900 and >2x the stronger Brute (420); the old >=3x comparison assumed the superseded 260 Brute impulse. No Hulk rebalance.
+
+## Spitter / wave / shortcut implementation — 2026-10-13
+
+`codex/unity-spitters-wave-budget` supersedes the presentation-only spitter status above. Spitters are enabled in waves 2–3 and every Siren phase (weight .15; at most four). The stats mirror NativeHordeKinds: 45 HP and 30 kill reward. Authority launches the mouth arc at .8 s and cancels on any damaging pre-release hit (retry in 1.56 s). Crawling/armless spitters retain the mouth attack and .8 s telegraph. The server checks the launch arc for world obstruction; obstructed lobs are suppressed. Landing: 7 base damage within .6 m + pilot radius. Pool: radius 1.3, duration 4 s, poison 4 base DPS refreshed for .5 s every .25 s; pools share one strongest/latest PvE poison. Corrosion: 10 on landing and 6 every .5 s, through DamageProp; protected scenery and zombies are excluded. Direct damage/poison follow wave damage scaling.
+
+`NativePveFrame.acid` retains up to 16 records (id, actor, from, to, at, flight, damageScale); `NativeMinionFrame.spitCancelAt` retains cancellations. Presentation consumes records without a visual redesign, including late joins and replay; phase holds clear pools. Both peers must have matching PveContent, included in the join revision. Relay protocol stays 7.
+
+Hulks may now approach a nearby eligible interior wall when the same-floor direct route saves more than 1 m over the cached detour. The far side must fit the body and provide safe supported space. Knock/restoration timings are unchanged; the stuck detector remains the fallback. Eligible walls/colliders are cached and shortcut physics is limited to four checks/sec/Hulk.
+
+Waves use the existing finite 22/28/34 solo totals with existing party scaling, fixed at wave start. Clear requires no unspawned quota and no living enemies; no <=2 quiet clear or 150 s timeout. Boss reinforcement rules are unchanged. Catch-up creates at most two adds per tick, and crowd separation uses nearby spatial cells rather than rescanning the whole crowd.
+
+Editor/PhysX, Windows gameplay, and measured end-to-end FPS are pending. Detailed checks and handoff: DEV_LOG and the task PR.

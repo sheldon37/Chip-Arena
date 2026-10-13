@@ -214,7 +214,7 @@ namespace ChipArena.UnityConversion.Editor
                         if(map.id=="cybercity")arena.ValidateCyberCityExits();
                         if(map.look=="quarantine"){arena.ValidateWardSimulation();arena.ValidateWardTraversal();}
                         if(map.id=="brickfall"){arena.ValidateCorpsePhysics();arena.ValidateBrickfallRuntime();CheckBrickfallReplica(arena);}
-                        if(map.id=="siren"){arena.ValidatePveEconomy(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));arena.ValidateHordeDrops();}
+                        if(map.id=="siren"){arena.ValidatePveEconomy(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));arena.ValidateHordeDrops();arena.ValidatePveSpitters();}
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");
                     }
                     finally

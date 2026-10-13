@@ -19,7 +19,7 @@ internal static class Program
             CloudflareChecks.Run().GetAwaiter().GetResult();
             AnimationChecks.Run();
             string root=ProjectRoot();
-            NavSearchChecks.Run(root);WardSimulationChecks.Run(root);HulkBreachChecks.Run(root);InteractionChecks.Run(root);
+            PveSpitterChecks.Run(root);NavSearchChecks.Run(root);WardSimulationChecks.Run(root);HulkBreachChecks.Run(root);InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
             FactoryChecks.Run(root);StageHazardChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};

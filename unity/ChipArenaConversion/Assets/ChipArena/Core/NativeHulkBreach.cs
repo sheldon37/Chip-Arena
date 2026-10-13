@@ -30,16 +30,24 @@ namespace ChipArena.UnityConversion
         }
         // Swept Hulk-sized clearance box. Conservative at rounded capsule corners; no point-ray
         // shortcut through a narrow doorway. Ignore walls behind us or on a different floor.
-        public static bool Blocks(ContentBlock wall,V3 from,V3 toward,float radius,float height,out float distance,out V3 point)
+        public static bool Blocks(ContentBlock wall,V3 from,V3 toward,float radius,float height,out float distance,out V3 point,float reach=Reach)
         {
             var d=toward-from;d.y=0;float length=d.Length;distance=0;point=from;
-            if(length<.001f)return false;d=d/length;float lo=0,hi=Math.Min(length,Reach);
+            if(length<.001f)return false;d=d/length;float lo=0,hi=Math.Min(length,reach);
             var h=wall.size*.5f;var p=wall.pos;
             if(from.y+height*.5f<=p.y-h.y+.03f||from.y-height*.5f>=p.y+h.y-.03f)return false;
             if(V3.Dot(p-from,d)+Math.Abs(d.x)*h.x+Math.Abs(d.z)*h.z<0)return false;
             if(!Slab(from.x,d.x,p.x-h.x-radius,p.x+h.x+radius,ref lo,ref hi)||!Slab(from.z,d.z,p.z-h.z-radius,p.z+h.z+radius,ref lo,ref hi))return false;
             distance=lo;var at=from+d*lo;
             point=new V3(MathUtil.Clamp(at.x,p.x-h.x,p.x+h.x),MathUtil.Clamp(at.y,p.y-h.y,p.y+h.y),MathUtil.Clamp(at.z,p.z-h.z,p.z+h.z));return true;
+        }
+        public static bool Shorter(float route,float direct,float floorDifference)=>!float.IsNaN(route)&&!float.IsNaN(direct)&&direct>0&&Math.Abs(floorDifference)<.6f&&route>direct+1;
+        public static V3 Exit(ContentBlock wall,V3 from,V3 toward,float radius)
+        {
+            var d=toward-from;d.y=0;d=d.Normalized;bool x=wall.size.x<wall.size.z;
+            float component=x?d.x:d.z;if(Math.Abs(component)<.001f)return from;
+            float face=(x?wall.pos.x:wall.pos.z)+Math.Sign(component)*((x?wall.size.x:wall.size.z)*.5f+radius+.08f);
+            return from+d*((face-(x?from.x:from.z))/component);
         }
         private static bool Slab(float origin,float delta,float min,float max,ref float lo,ref float hi)
         {

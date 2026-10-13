@@ -10,7 +10,7 @@ const data={sourceCommit:inventory.sourceCommit,machines:layout.PVE_MACHINES,ent
 const native=JSON.parse(fs.readFileSync(path.join(project,'Assets/Conversion/Resources/PveContent.json'),'utf8'));
 if(native.boss){for(const key of ['entries','machines','pads','machineBlocks','boss','hideSpots'])data[key]=native[key];}
 else data.entries=[...data.entries,...native.entries.filter(e=>e.kind==='drop')];
-data.adds.find(a=>a.id==='brute').impulse=native.adds.find(a=>a.id==='brute').impulse;
+data.adds=native.adds;data.waves=native.waves;data.bossMix=native.bossMix;
 fs.writeFileSync(path.join(project,'Assets/Conversion/Resources/PveContent.json'),JSON.stringify(data)+'\n');
 const cases=[];for(const h of [1,2,3,4])for(const wave of [1,2,3])for(const relay of [false,true])cases.push({h,wave,relay,budget:waves.waveBudget(wave,h),flow:waves.waveFlow(wave,h,undefined,relay),hp:balance.bossHp(h),damage:balance.damageScale(h)});
 const schedules=[];for(const skip of [false,true])for(const resolvedAt of [undefined,1,9]){const schedule=new waves.WaveSchedule(3,skip);schedule.start(0);const events=[];for(let time=0;time<550;time+=.25)for(const event of schedule.step({time,remaining:time%33<30?0:5,resolvedAt}))events.push(event);schedules.push({skip,resolvedAt:resolvedAt??-1,events});}

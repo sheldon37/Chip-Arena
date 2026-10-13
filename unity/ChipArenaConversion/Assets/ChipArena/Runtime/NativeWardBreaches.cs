@@ -33,9 +33,12 @@ namespace ChipArena.UnityConversion
         }
         private readonly List<NativeBreachRecord> wardBreaches=new List<NativeBreachRecord>(64);
         public IEnumerable<NativeBreachRecord> WardBreaches=>wardBreaches;
+        private int hulkWallCount=-1;
+        private readonly List<(NativePropBody wall,Collider collider)> hulkWalls=new List<(NativePropBody,Collider)>();
         private void NameWardPanels()
         {
-            if(Map.look!="quarantine")return;
+            hulkWallCount=StaticBlocks.Count;hulkWalls.Clear();if(Map.look!="quarantine")return;
+            foreach(var wall in StaticBlocks)if(NativeHulkBreach.Eligible(Map,wall.Definition))hulkWalls.Add((wall,wall.GetComponent<Collider>()));
             foreach(var e in StageContent.entries.Where(e=>e.kind=="breach"))
             {var prop=StaticBlocks.FirstOrDefault(p=>p.Definition.id==e.block);if(prop!=null)prop.gameObject.name=NativeBreach.ObjectName(e.id);}
         }
@@ -86,12 +89,33 @@ namespace ChipArena.UnityConversion
             // Nav nodes are pilot-centre positions. A 3.06 m Hulk stands .63 m higher.
             var breach=m.Pve.WallBreach;
             if(breach!=null&&Time>=breach.breakAt&&Time<breach.breakAt+3f)return Vec(breach.normal);
+            if(m.Pve.HasBreachShortcut)return m.Pve.BreachShortcut;
             var navAt=WardNavPosition(m);
             return StructureNavMove(m.Id,navAt,target,fallback);
+        }
+        private bool FindHulkShortcut(NativeMinion m,Vector3 target,out Vector3 direction)
+        {
+            direction=Vector3.zero;var at=m.Body.position;var navAt=WardNavPosition(m);var delta=target-navAt;delta.y=0;float direct=delta.magnitude;
+            float routeLength=float.PositiveInfinity;
+            if(navRoutes.TryGetValue(m.Id,out var route)&&route.path.Count>0)
+            {routeLength=0;var last=navAt;for(int i=route.step;i<route.path.Count;i++){var point=Vec(navNodes[route.path[i]].pos);routeLength+=Vector3.Distance(last,point);last=point;}routeLength+=Vector3.Distance(last,target);}
+            if(!NativeHulkBreach.Shorter(routeLength,direct,navAt.y-target.y))return false;
+            var dir=delta.normalized;float pole=m.Collider.height*.5f-m.Collider.radius;
+            var scene=root.scene.GetPhysicsScene();
+            if(!scene.CapsuleCast(at+Vector3.up*pole,at-Vector3.up*pole,m.Collider.radius-.03f,dir,out var hit,Math.Min(6,direct),WorldMask,QueryTriggerInteraction.Ignore))return false;
+            var wall=hit.collider.GetComponent<NativePropBody>();if(wall==null||!NativeHulkBreach.Eligible(Map,wall.Definition))return false;
+            var exit=Vec(NativeHulkBreach.Exit(wall.Definition,Vec(at),Vec(at+dir*direct),m.Collider.radius));
+            var beyond=target+Vector3.up*(m.Collider.height/2-NativeLocomotionRules.HalfHeight)-exit;float length=beyond.magnitude;
+            if(Vector3.Dot(exit-at,dir)>=direct||length<.1f||UnsafeStructurePath(navAt,exit-Vector3.up*(m.Collider.height/2-NativeLocomotionRules.HalfHeight)))return false;
+            if(scene.CapsuleCast(exit+Vector3.up*pole,exit-Vector3.up*pole,m.Collider.radius-.03f,beyond.normalized,out _,length,WorldMask,QueryTriggerInteraction.Ignore))return false;
+            // Require a supported same-floor landing on the far side; never shortcut a shaft or ledge.
+            if(!scene.Raycast(exit,Vector3.down,out var floor,m.Collider.height/2+.2f,WorldMask,QueryTriggerInteraction.Ignore)||Math.Abs(floor.point.y-(at.y-m.Collider.height/2))>.25f)return false;
+            direction=dir;return true;
         }
         private bool StepHulkBreach(NativeMinion m,Vector3 target)
         {
             var a=m.Pve;
+            if(hulkWallCount!=StaticBlocks.Count)NameWardPanels();
             if(Replica||Map.id!="siren"||a.Stats.id!="hulk"||a.Crawl||Time<a.ActiveAt)return false;
             if(a.WallBreach!=null&&Time<a.WallBreach.breakAt)
             {m.Yaw=Mathf.Atan2(a.WallBreach.normal.x,a.WallBreach.normal.z)*Mathf.Rad2Deg;return true;}
@@ -101,18 +125,23 @@ namespace ChipArena.UnityConversion
             a.WallBreach=null;
             if(Time<a.StaggerAt||Time<a.RecoverAt||!a.Struck){a.WallProgress.tracking=false;return false;}
             var at=m.Body.position;var waypoint=target;
-            if(navRoutes.TryGetValue(m.Id,out var route)&&route.path.Count>0&&route.step<route.path.Count)
+            // Shortcut work is bounded to two Hulks at 4 Hz; the normal stuck probe remains cheap.
+            if(Time>=a.BreachThinkAt)
+            {a.BreachThinkAt=Time+.25f;a.HasBreachShortcut=FindHulkShortcut(m,target,out a.BreachShortcut);}
+            if(a.HasBreachShortcut)waypoint=at+a.BreachShortcut*6;
+            if(!a.HasBreachShortcut&&navRoutes.TryGetValue(m.Id,out var route)&&route.path.Count>0&&route.step<route.path.Count)
                 waypoint=Vec(navNodes[route.path[route.step]].pos);
             // The destination remains useful when the point-sized graph has no route through the blockage.
             var delta=waypoint-at;delta.y=0;if(delta.sqrMagnitude<.04f){waypoint=target;delta=target-at;delta.y=0;}
             NativePropBody chosen=null;Vector3 point=Vector3.zero;float nearest=float.MaxValue;
-            foreach(var prop in StaticBlocks)
+            foreach(var candidate in hulkWalls)
             {
-                if(!NativeHulkBreach.Eligible(Map,prop.Definition)||!prop.GetComponent<Collider>().enabled)continue;
+                var prop=candidate.wall;if(prop==null||candidate.collider==null||!candidate.collider.enabled)continue;
                 if(!NativeHulkBreach.Blocks(prop.Definition,Vec(at),Vec(waypoint),m.Collider.radius,m.Collider.height,out float distance,out var hit)||distance>=nearest)continue;
                 chosen=prop;nearest=distance;point=Vec(hit);
             }
-            if(!a.WallProgress.Step(Vec(at),Time,chosen!=null))return false;
+            if(chosen==null){a.WallProgress.Step(Vec(at),Time,false);return false;}
+            if(!a.HasBreachShortcut&&!a.WallProgress.Step(Vec(at),Time,true))return false;
             foreach(var b in wardBreaches)if(b.Dynamic&&b.block==chosen.Definition.id&&Time<NativeBreach.SolidAt(b.restoreAt))
             {a.WallBreach=b;return Time<b.breakAt;}
             // Bounded record count. Expired records are reusable; active entry breaches are never evicted.
@@ -120,7 +149,7 @@ namespace ChipArena.UnityConversion
             int reserved=0;foreach(var e in StageContent.entries)if(e.kind=="breach")reserved++;
             if(wardBreaches.Count>=64-reserved)return false;
             a.WallBreach=NativeHulkBreach.Begin(chosen.Definition,m.Id,Vec(point),Vec(delta),Time);
-            wardBreaches.Add(a.WallBreach);a.WallProgress.tracking=false;
+            wardBreaches.Add(a.WallBreach);a.HasBreachShortcut=false;a.WallProgress.tracking=false;
             m.Yaw=Mathf.Atan2(delta.x,delta.z)*Mathf.Rad2Deg;return true;
         }
     }

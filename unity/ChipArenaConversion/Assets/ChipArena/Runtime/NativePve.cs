@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
         private void BeginPveHold(string cinematic,int reveal=0)
         {
             var v=Pve;Emit(EventKind.PvePhase,v.Boss,reveal,v.Boss.Body.position,0,cinematic);v.Holding=true;v.Cinematic=cinematic;v.Reveal=reveal;if(cinematic=="intro"){BossSongAt=Time;BossSongLead=0;}v.HoldDuration=v.HoldLeft=cinematic=="reveal"?5:cinematic=="intro"?9.0678f:cinematic=="victory"?4:3;
-            CancelSiren(v.Boss);SirenFields.Clear();Bullets.RemoveAll(b=>b.SirenKind!=null);
+            CancelSiren(v.Boss);pveAcid.Clear();SirenFields.Clear();Bullets.RemoveAll(b=>b.SirenKind!=null);
             foreach(var p in Pilots){p.Dots.Clear();if(!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;}
             foreach(var row in v.Rows.Values)if(row.HealAt>=0&&row.HealPulses<4){Heal(row.Pilot,(float)row.Pilot.Stats["hp"]*.125f*(4-row.HealPulses));row.HealPulses=4;}
         }
@@ -143,18 +143,18 @@ namespace ChipArena.UnityConversion
             if(v.Stage=="opening"||v.Stage=="wave"||v.Stage=="intermission")
             {
                 if(v.Stage=="opening"&&v.ResolvedAt<0&&v.Rows.Values.Where(r=>!r.Pilot.Seat.bot&&r.Pilot.Seat.connected).All(r=>r.Open==null&&r.Picks.All(p=>p.Offers!=null)))v.ResolvedAt=Time;
-                int remaining=Math.Max(0,v.SpawnBudget-v.Spawned)+Minions.Count(m=>m.Pve!=null&&m.Hp>0);var transition=v.Schedule.Step(Time,remaining,v.ResolvedAt<0?(double?)null:v.ResolvedAt);v.StageUntil=(float)v.Schedule.Until;
+                int remaining=NativePveRules.Remaining(v.SpawnBudget,v.Spawned,Minions.Count(m=>m.Pve!=null&&m.Hp>0));var transition=v.Schedule.Step(Time,remaining,v.ResolvedAt<0?(double?)null:v.ResolvedAt);v.StageUntil=(float)v.Schedule.Until;
                 if(transition!=null)
                 {
                     if(transition.kind=="wave-start"){v.Stage="wave";v.Wave=transition.wave;v.StageAt=(float)transition.at;PveFlow();}
-                    else if(transition.kind=="wave-clear"){v.Stage="intermission";v.StageAt=(float)transition.at;v.Rate=0;KillPveHorde();foreach(var p in Members()){GrantPveMoney(p,100+50*v.Wave,"wave-clear");if(p.Seat.bot)GrantPvePick(p,"common",true,"wave");}RespawnPveParty();}
+                    else if(transition.kind=="wave-clear"){v.Stage="intermission";v.StageAt=(float)transition.at;v.Rate=0;pveAcid.Clear();foreach(var p in Members()){GrantPveMoney(p,100+50*v.Wave,"wave-clear");if(p.Seat.bot)GrantPvePick(p,"common",true,"wave");}RespawnPveParty();}
                     else{v.Rate=0;BeginPveHold("reveal",1);}
                 }
             }
             if(v.Stage=="boss")
             {if(v.Hidden&&v.Possessed==0&&Time-v.PossessionAt>=60)FoundPveBoss(BossRescue);else if(!v.Hidden&&v.Boss.Hp<=v.Floor+.0001f){if(v.Phase<4)BeginPveHold("reveal",v.Phase+1);else BeginPveHold("victory");}}
             if(!v.Holding&&!Members().Any(p=>p.Hp>0&&(p.Seat.connected||p.Seat.bot))&&!v.Rows.Values.Any(r=>r.SelfAt>=0&&r.Pilot.Hp<=0))BeginPveHold("defeat");
-            if(v.Holding)return;StepPveHorde();
+            if(v.Holding)return;StepPveHorde();StepPveAcid();
         }
     }
 }
