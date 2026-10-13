@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         {
             v=new NativeShotView{Kind=NativeShotKind.Bullet,Id=b.Id,X=b.Position.x,Y=b.Position.y,Z=b.Position.z,VX=b.Velocity.x,VY=b.Velocity.y,VZ=b.Velocity.z,Radius=b.Radius,FuseLeft=1e9};
             if(!tracker.Recall(ref v)){BulletIdentity(arena,b,ref v,tracker.ModuleCache);tracker.Remember(v);}
-            tracker.Present(ref v,clock);
+            if(!arena.ReplaySampledShots)tracker.Present(ref v,clock);
         }
         private static void BulletIdentity(NativeArena arena,NativeBullet b,ref NativeShotView v,Dictionary<long,NativeShotModules> cache)
         {

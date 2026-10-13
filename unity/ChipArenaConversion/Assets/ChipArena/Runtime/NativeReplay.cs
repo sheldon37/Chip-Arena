@@ -9,6 +9,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private readonly List<NativeGameFrame> replayFrames=new List<NativeGameFrame>();private int replayGeneration=-1,replayEntities,replaySeen,replayView,spectatorId;private float replayNext,replayDeath=-1,replayStart,replayEnd,replayStarted,replayWait;private bool replayWasAlive,replayRunning,replayBody;
+        private readonly NativeReplayShots replayShots=new NativeReplayShots();private NativeGameFrame replayNextSource;
         private NativeArena replayArena;private Scene replayScene;private NativeGameFrame replaySource;private readonly Dictionary<Renderer,bool> liveVisibility=new Dictionary<Renderer,bool>();
         private bool ReplayActive=>replayRunning;
         private NativePilot Spectator=>arena?.Local?.Hp<=0?arena.Pilots.FirstOrDefault(p=>p.Seat.id==spectatorId&&p.Hp>0&&p.Seat.connected):null;
@@ -24,13 +25,13 @@ namespace ChipArena.UnityConversion
             var frame=arena.NetworkFrame();replayFrames.Add(frame);replayEntities+=ReplaySize(frame);
             while(replayFrames.Count>1&&!FinalKeeps()&&(replayFrames.Count>132||replayEntities>150000||arena.Time-replayFrames[0].time>6)){replayEntities-=ReplaySize(replayFrames[0]);replayFrames.RemoveAt(0);}
         }
-        private static int ReplaySize(NativeGameFrame f)=>f.pilots.Length+f.props.Length+f.minions.Length+f.effects.Length+f.snapshot.Shots.Length+f.snapshot.Events.Length;
+        private static int ReplaySize(NativeGameFrame f)=>f.pilots.Length+f.props.Length+f.minions.Length+f.effects.Length+f.snapshot.Shots.Length+f.snapshot.Events.Length+(f.projectileEnds?.Length??0);
         private void ClearReplay(){EndReplay();FinalClear();replayFrames.Clear();replayEntities=0;replayNext=0;replaySeen=0;replayWasAlive=false;spectatorId=0;}
         private void EndReplay()
         {
             replayDeath=-1;FinalStop();if(!replayRunning&&replayArena==null&&!replayScene.IsValid()&&liveVisibility.Count==0)return;
             if(replayRunning&&arena?.Local?.Hp<=0&&match?.Phase==NativePhase.Fight)replayReturnAt=Time.unscaledTime;
-            replayRunning=false;replaySource=null;var old=replayArena;replayArena=null;
+            replayRunning=false;replaySource=null;replayNextSource=null;var old=replayArena;replayArena=null;
             try{old?.Dispose();}
             finally{if(replayScene.IsValid())SceneManager.UnloadSceneAsync(replayScene);replayScene=default;foreach(var pair in liveVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;liveVisibility.Clear();presentation?.ResetPresentation(true);nativeAudio?.ResetCursor();}
         }
@@ -53,14 +54,17 @@ namespace ChipArena.UnityConversion
             if(!replayRunning&&replayDeath>=0&&(arena.Time>=replayDeath+.6f||Time.unscaledTime>=replayWait))
             {
                 if(replayFrames.Count<2){replayDeath=-1;return false;}replayStart=Math.Max((float)replayFrames[0].time,replayDeath-3);replayEnd=replayDeath+1.25f;replayStarted=Time.unscaledTime;replayRunning=true;replayBody=false;
-                replayScene=SceneManager.CreateScene(finalOn?"Final killcam presentation":"Killcam presentation",new CreateSceneParameters(LocalPhysicsMode.Physics3D));replayArena=new NativeArena(content,new NativeMatch(content),arena.MapId){Replica=true,LocalId=arena.LocalId,ReplicaScene=replayScene};presentation.ResetPresentation(true);nativeAudio.ResetCursor();
+                replayScene=SceneManager.CreateScene(finalOn?"Final killcam presentation":"Killcam presentation",new CreateSceneParameters(LocalPhysicsMode.Physics3D));replayArena=new NativeArena(content,new NativeMatch(content),arena.MapId){Replica=true,ReplaySampledShots=true,LocalId=arena.LocalId,ReplicaScene=replayScene};presentation.ResetPresentation(true);nativeAudio.ResetCursor();
                 if(finalOn)FinalBegin();
             }
             if(!replayRunning)return false;foreach(var r in arena.Root.GetComponentsInChildren<Renderer>()){if(!liveVisibility.ContainsKey(r))liveVisibility[r]=r.enabled;r.enabled=false;}float time=replayStart+ReplayClock(Time.unscaledTime-replayStarted);replayTime=time;if(time>replayEnd||time>replayFrames[replayFrames.Count-1].time+.5){EndReplay();return false;}
             var a=replayFrames[0];var b=a;foreach(var f in replayFrames){if(f.time>time){b=f;break;}a=b=f;}
-            if(replaySource!=a){var copy=NativeFrameCodec.Clone(a);replayArena.ApplyFrame(copy,arena.LocalId);SceneManager.MoveGameObjectToScene(replayArena.Root,replayScene);replaySource=a;}
+            if(replaySource!=a){var copy=NativeFrameCodec.Clone(a);replayArena.ApplyFrame(copy,arena.LocalId);SceneManager.MoveGameObjectToScene(replayArena.Root,replayScene);replaySource=a;replayNextSource=null;}
+            if(replayNextSource!=b){replayShots.Window(a.time,b.time,a.snapshot.Shots,b.snapshot.Shots,b.projectileEnds);replayNextSource=b;}
+            for(int i=replayArena.Bullets.Count-1;i>=0;i--)
+            {var shot=replayArena.Bullets[i];if(!replayShots.Sample(shot.Id,time,out var position,out var velocity)){replayArena.Bullets.RemoveAt(i);continue;}shot.Position=NativeArena.Vec(position);shot.Velocity=NativeArena.Vec(velocity);}
             float blend=Mathf.Clamp01((time-(float)a.time)/Math.Max(.00001f,(float)(b.time-a.time)));
-            foreach(var p in replayArena.Pilots){var x=a.pilots.First(v=>v.id==p.Seat.id);var y=b.pilots.FirstOrDefault(v=>v.id==p.Seat.id);if(y!=null&&(x.hp>0)==(y.hp>0)){p.Body.transform.position=Vector3.Lerp(x.position,y.position,blend);p.Body.position=p.Body.transform.position;p.Yaw=Mathf.LerpAngle(x.yaw,y.yaw,blend);p.Pitch=Mathf.Lerp(x.pitch,y.pitch,blend);}}
+            foreach(var p in replayArena.Pilots){var x=a.pilots.First(v=>v.id==p.Seat.id);var y=b.pilots.FirstOrDefault(v=>v.id==p.Seat.id);ReplayPilotFrame(p,x,y,a.time,b.time,time);}
             foreach(var p in replayArena.Props){var x=a.props.FirstOrDefault(v=>v.id==p.Definition.id);var y=b.props.FirstOrDefault(v=>v.id==p.Definition.id);if(x!=null&&y!=null&&p.Body!=null&&(p.Fragment||string.IsNullOrEmpty(p.Definition.segment)))p.transform.SetPositionAndRotation(Vector3.Lerp(x.position,y.position,blend),Quaternion.Slerp(x.rotation,y.rotation,blend));}
             replayArena.PoseStructures(time);
             var target=replayArena.Pilots.Find(p=>p.Seat.id==replayView);var victim=ReplayVictim();if(time>replayDeath&&(target==null||target.Hp<=0||Vector3.Distance(target.Body.position,victim.Body.position)>24))replayBody=true;if(replayBody||target==null)target=victim;
@@ -68,6 +72,18 @@ namespace ChipArena.UnityConversion
             if(replayScene.GetPhysicsScene().SphereCast(focus,.12f,offset.normalized,out var hit,offset.magnitude,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))offset=offset.normalized*Math.Max(.15f,hit.distance-.1f);cameraView.transform.SetPositionAndRotation(focus+offset,finalOn?FinalLook(focus+offset,rotation,target,victim):rotation);cameraView.fieldOfView=NativeViewRules.ThirdFov+(finalOn?finalFov:0);viewModelCamera.enabled=false;presentation.FirstPerson=false;presentation.AimHeld=false;presentation.LocalId=target.Seat.id;
             presentation.WeaponLoadout=replayArena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;FinalFrame();
             presentation.Render(replayArena.Snapshot(),time,false);presentation.RenderAbilities(replayArena,null);presentation.RenderStatus(replayArena,cameraView,prefs.reducedEffects?.3f:1,false);presentation.RenderGlow(replayArena,cameraView);presentation.FinishSourceFrame();FinalAudioBefore();nativeAudio.Render(replayArena,false,cameraView);FinalAudioAfter();return true;
+        }
+        // The death can fall BETWEEN recorded snapshots. Seat the moving victim at the captured death position and
+        // switch their replay-only state at that same hit clock, rather than freezing them on the pre-hit frame.
+        public static void ReplayPilotFrame(NativePilot p,NativePilotFrame a,NativePilotFrame b,double from,double to,float now)
+        {
+            if(b==null)return;var death=b.death;
+            bool transition=a.hp>0&&b.hp<=0&&death!=null&&death.at>=from&&death.at<=to+.001;
+            if(!transition&&(a.hp>0)!=(b.hp>0))return;
+            float blend=Mathf.Clamp01((float)((now-from)/Math.Max(.000001,(transition?death.at:to)-from)));
+            p.Body.transform.position=Vector3.Lerp(a.position,transition?death.position:b.position,blend);p.Body.position=p.Body.transform.position;
+            p.Yaw=Mathf.LerpAngle(a.yaw,transition?death.yaw:b.yaw,blend);p.Pitch=Mathf.Lerp(a.pitch,transition?(death.actor?.Pitch??b.pitch):b.pitch,blend);
+            if(transition){bool dead=now>=death.at;p.Hp=dead?b.hp:a.hp;p.Death=dead?death:a.death;p.Collider.enabled=!dead&&p.Seat.connected;}
         }
         private float replayTime,replayReturnAt=-10;
         // killcam-hud.ts CAUSES for the causes the native death record can name.

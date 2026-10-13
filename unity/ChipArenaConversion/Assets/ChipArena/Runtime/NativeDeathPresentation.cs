@@ -194,7 +194,7 @@ namespace ChipArena.UnityConversion
         }
         private void PresentDeath(NativeArena arena,NativeDeath death,bool pilot)
         {
-            bool retain=NativeCorpseRules.Retain(pilot,arena.Match.Cooperative);float age=(SlowBodies?KillClock(arena):arena.Time)-death.at;var live=PilotOf(arena,death.id);bool revived=live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||NativeCorpseRules.Expired(age,death.kept,retain)||revived&&up>1.1f)return;
+            bool retain=NativeCorpseRules.Retain(pilot,arena.Match.Cooperative);float age=(SlowBodies||arena.ReplaySampledShots?KillClock(arena):arena.Time)-death.at;var live=PilotOf(arena,death.id);bool revived=live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||NativeCorpseRules.Expired(age,death.kept,retain)||revived&&up>1.1f)return;
             // The repair owns the kept body until it hands the pose to the live rig; never also draw the old revive fade.
             if(revived&&death.kept&&revivals.TryGetValue(death.id,out var repair)&&repair.At==live.RevivedAt)return;
             // Last Laugh: the crush clip, then the dropped body falls as a ragdoll (NativeSirenDropPresentation.cs).

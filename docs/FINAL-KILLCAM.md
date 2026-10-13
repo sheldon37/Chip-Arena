@@ -76,6 +76,12 @@ The fit returns the longest clip that fits all three limits:
 
 The clip always ends before the next phase. Under 1.67 s available, or under 0.5 s of history, there is no final killcam.
 
+## Recorded projectile impacts
+
+Normal and final replays interpolate native bullets between recorded frames instead of applying the live guest's forward velocity extrapolation. The authority retains each removed bullet's ID, stopping position and simulation time in the optional `projectileEnds` frame field (one second, at most 1,024 records). Guests preserve these records in their own replay history. The replay moves a terminating shot to that endpoint and removes it at its recorded time, including at quarter speed. Surviving piercing/reflected shots continue between their recorded positions; an old host without an endpoint holds the last known position until the next frame rather than inventing forward flight.
+
+When a moving pilot dies between captures, their replay position moves to the recorded death position and their alive/dead state changes at the death clock. This keeps the victim and projectile on the same timeline. These adjustments run only in the isolated replay scene; live collision, damage and movement are unchanged. Shots born and removed entirely between captures are still not reconstructed, and curved or bounced paths between captures remain approximations.
+
 ## Presentation
 
 - **Slowed playback.**
