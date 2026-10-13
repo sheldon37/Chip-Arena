@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-13 Expedition foundation: `codex/expedition-foundation` on shared `f043b7cb` adds dormant 1–8-player run/reward/vote/reprint rules, safe checkpoints/extraction journal, scaling and host-handoff contracts. Managed/relay, 473 focused assertions, Python and source checks pass. Not yet playable: scene/director, actual network drop-in/migration, account XP/perks and Unity/Windows acceptance remain. Visual API and complete design: `docs/EXPEDITION.md`. No compiled publication.
+
 2026-10-13 dynamic Hulk wall breach: `codex/unity-hulk-dynamic-breaches` on shared `9f394d6` adds interior-wall obstruction handling for PvE and Sandbox entry-spawned Hulks, timed reversible collision, occupancy holds and guest/replay records (protocol 7). On task branch; Claude's dynamic visual hookup (whole-block knock, burst and hologram restore, guests and killcam from the records) is on `claude/hulk-dynamic-breach-fx` (not pushed); real Unity/Windows acceptance remains pending. Not merged/released; see DEV_LOG for exact fields.
 
 2026-10-13 Hulk/crowd follow-up: `codex/unity-hulk-movement` on shared `f4b5a12a` fixes Hulk floor/waypoint anchors, removes possessed chase/hide route thrashing, and shares routes for large hordes without lowering phase-two mob limits. Release managed/relay, focused Ward, Python and source checks pass. Native gate and Windows phase-two performance remain unrun; build/playtest next. See NATIVE-HITCH-DIAGNOSTICS and latest DEV_LOG.
