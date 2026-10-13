@@ -74,6 +74,8 @@ namespace ChipArena.UnityConversion
             if(GUILayout.Button(presentation.SawSplitGallery?"Hide Saw Split":"Preview Saw Split",button)){presentation.SawSplitGallery=!presentation.SawSplitGallery;menu=false;}
             // The holographic revive (NativeReviveHoloPresentation.cs): a wounded, gibbed or split stand-in of you revived on a loop.
             if(GUILayout.Button(presentation.ReviveGallery?"Hide Revive":"Preview Revive",button)){presentation.ReviveGallery=!presentation.ReviveGallery;menu=false;}
+            // PvE chip selection (NativeChipSelectPresentation.cs): every pilot here raises its wrist display, with the tag, until hidden.
+            if(GUILayout.Button(presentation.ChipSelectPreview?"Hide Chip Selecting":"Preview Chip Selecting",button)){presentation.ChipSelectPreview=!presentation.ChipSelectPreview;menu=false;}
             GUILayout.EndHorizontal();previewRarity=ChoiceGrid(previewRarities,previewRarity,previewRarityNames);
             Field("Debris launcher");debrisMass=Mathf.Round(Slider("Mass (kg)",debrisMass,1,150));debrisSpeed=Mathf.Round(Slider("Speed (m/s)",debrisSpeed,1,100));
             debrisMaterial=ChoiceGrid(new[]{"wood","stone","metal"},debrisMaterial);debrisImpact=ChoiceGrid(new[]{"face","edge","corner"},debrisImpact);
