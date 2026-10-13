@@ -20,7 +20,8 @@ namespace ChipArena.UnityConversion
             foreach(var prop in arena.AllBlocks)
             {
                 if(prop==null)continue;var original=prop.GetComponent<BoxCollider>();
-                if(original==null||!original.enabled||original.isTrigger||!original.gameObject.activeInHierarchy)continue;
+                // Cut treads retain their authored boxes for this separate cosmetic world; gameplay uses the smooth ramp.
+                if(original==null||(!original.enabled&&!NativeCyberCityStairs.IsTread(arena.MapId,prop.Definition?.id))||original.isTrigger||!original.gameObject.activeInHierarchy)continue;
                 var bounds=original.bounds;bool near=prop.Indestructible||bounds.SqrDistance(Death.position)<=radius2;
                 if(!near)foreach(var part in Parts.Values)if(bounds.SqrDistance(part.position)<=radius2){near=true;break;}
                 if(!near&&weapon!=null)near=bounds.SqrDistance(weapon.position)<=radius2;
