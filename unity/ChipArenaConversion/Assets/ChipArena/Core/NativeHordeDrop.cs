@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// The brute's jump-down entrance (owner 2026-10-12: "For now, we will have them enter from the middle of the map by jumping
     /// down and creating a small slam effect on their landing. (I am planning to revamp this map, so keep this in mind)").
-    /// Presentation side of a contract the rules do not implement yet (docs/SIREN-ZOMBIES.md hands it to Astra): an add whose
+    /// Shared presentation/simulation contract (docs/SIREN-ZOMBIES.md): an add whose
     /// replicated entry is a map entry of kind <see cref="Kind"/> drops from <see cref="HeightOf"/> above that entry's landing
     /// point (PveEntry.exit), on this timeline from its replicated SpawnAt to its replicated ActiveAt:
     /// <list type="number">
@@ -24,17 +24,17 @@ namespace ChipArena.UnityConversion
         /// <summary>The map entry kind (PveEntry.kind) of a jump-down entrance.</summary>
         public const string Kind="drop";
         /// <summary>The fall height when the entry names none (m above the landing floor). The entry's own height
-        /// (the proposed PveEntry.height) replaces it once the content carries one.</summary>
+        /// (PveEntry.height) overrides it when positive.</summary>
         public const float DefaultHeight=6.5f;
         public const float Warn=.7f,Leap=.35f,Recover=.9f,Gravity=24f,Hop=.35f;
-        /// <summary>The landing slam's shown radius (m; the proposed rule's knock-back radius) and the shake's reach.</summary>
+        /// <summary>The landing slam's shown radius (m; the rule's knock-back radius) and the shake's reach.</summary>
         public const float SlamRadius=2.4f,ShakeRange=12f;
         public static bool Is(PveEntry e)=>e!=null&&string.Equals(e.kind,Kind,StringComparison.Ordinal);
-        /// <summary>The entry's drop height (today the default: PveEntry has no height field yet).</summary>
-        public static float HeightOf(PveEntry e)=>DefaultHeight;
+        /// <summary>Shared data accessor: omitted/zero height uses the default; positive height is map-authored.</summary>
+        public static float HeightOf(PveEntry e)=>e!=null&&MathUtil.Finite(e.height)&&e.height>0?e.height:DefaultHeight;
         /// <summary>The fall from the top of the hop to the floor (s).</summary>
         public static float Fall(float height)=>(float)Math.Sqrt(2*(Math.Max(.5f,height)+Hop)/Gravity);
-        /// <summary>The whole entrance, SpawnAt to ActiveAt, as the presentation plays it (the rules' timeline should match it).</summary>
+        /// <summary>The whole entrance, SpawnAt to ActiveAt, as the presentation plays it (shared with the rules).</summary>
         public static float Duration(float height)=>Warn+Leap+Fall(height)+Recover;
         /// <summary>When the brute touches down, from the replicated ActiveAt.</summary>
         public static float LandAt(float activeAt)=>activeAt-Recover;

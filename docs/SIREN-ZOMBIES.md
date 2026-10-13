@@ -12,6 +12,17 @@ the knock-back and slam numbers, the map's drop entries, the hit volumes and net
 in the simulation, the colliders, the attack timing, the damage, the spawns or the network changed. This builds on
 docs/SIREN-MINION-VARIANTS.md (kinds, stats, events), which stays the rules spec for the kinds.
 
+## Simulation agreement — 2026-10-12 (Astra, `codex/siren-brute-drops`)
+
+Implemented locally on the merged presentation base `eaab6443`; the earlier presentation-only status and proposal below describe the original hand-off.
+
+- `PveEntry.height` now exists. `NativeHordeDrop.HeightOf` reads it; zero/omitted uses 6.5 m. Ward Zero's `PveContent.json` entry 16, `drop-centre`, carries the landing at (0, 0), facing and height. Move `from`/`exit` and adjust `yaw`/`height` there when revamping the map. No landing coordinates are embedded in simulation code. The export tool preserves native drop entries.
+- Brutes rotate through available drop entries exclusively; full queues wait. With no drops they use the existing entry selection. Other kinds retain their existing entrances. Every drop uses `activeAt = spawnAt + Duration(height)` (2.705535 s at 6.5 m), touchdown at `activeAt - .9` (1.805535 s). The body stays at the exit, kinematic and collider-disabled, immune and untargetable until touchdown. During recovery it is physical, hittable and lockable; attacks begin at `activeAt`.
+- Touchdown fires once: horizontal 2.4 m disc, body-centre vertical difference strictly below 1.5 m, world line of sight, damage 10→5 linearly, outward impulse 380 plus 2.5 m/s upward before knockback modifiers. Blocking clashes, takes no damage and halves both shove components. Nearby exposed PvE adds receive outward impulse 200 through their existing external-motion channel.
+- Smash keeps the 1.6 m disc 1.2 m ahead, .43 s hit, damage and recovery. Impulse is now 420 with 2.5 m/s upward, directed away from the disc centre (facing fallback at the exact centre), without knock-down. Its existing block clash/stagger remains unchanged. The brute row in `NativeHordeKinds` matches the updated content.
+- Claude: the shared height accessor is already wired. Authority now emits `Impact` details `minion-drop` and `minion-slam`, target = add id, position = floor slam centre, radius = 2.4 / 1.6. Existing clock-based effects remain; avoid doubling them if consuming these events. No new replicated fields. Entry validation accepts drop index 16 and later indices through 255. The optional .55 × 2.0 capsule/nav resize was **not** applied; no re-sculpt is required for this change.
+- Managed drop checks and the existing kind/motion checks pass. `NativeBuildChecks` now calls `ValidateHordeDrops` for authority collider/LOS/combat/replica coverage. That Editor/PhysX gate and Windows/two-client play are unrun here; they remain the acceptance step before release.
+
 ## 1. What changed (presentation only)
 
 - **Models** (`Core/NativeZombieModels.cs`): every kind is a zombie built from the pilot's own blocks and proportions

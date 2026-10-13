@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
             var view=Entries.Where(e=>e.entry==entry.e).OrderByDescending(e=>e.closeAt).FirstOrDefault();bool first=view==null||Time>=view.closeAt;float start=Time;
             if(first){view=new NativeEntryView{entry=entry.e,kind=entry.kind,mode="spawn",openAt=Time,closeAt=Time};Entries.Add(view);}
             else if(pveEntries.TryGetValue(entry.e,out float last))start=Math.Max(Time,last+(entry.kind=="vent"?.8f:.7f));
-            var timeline=NativeEntryRules.Timeline(entry.kind,first);pveEntries[entry.e]=start;view.closeAt=Math.Max(view.closeAt,start+timeline.duration+1.2f);return(start,start+timeline.walk,start+timeline.duration,first);
+            var timeline=NativeEntryRules.Timeline(entry,first);pveEntries[entry.e]=start;view.closeAt=Math.Max(view.closeAt,start+timeline.duration+1.2f);return(start,start+timeline.walk,start+timeline.duration,first);
         }
         private void DiveEntry(PveEntry entry)
         {var view=Entries.Where(e=>e.entry==entry.e).OrderByDescending(e=>e.closeAt).FirstOrDefault();if(view==null||Time>=view.closeAt){view=new NativeEntryView{entry=entry.e,kind="vent",mode="dive",openAt=Time,closeAt=Time};Entries.Add(view);}view.closeAt=Math.Max(view.closeAt,Time+2.1f);}
