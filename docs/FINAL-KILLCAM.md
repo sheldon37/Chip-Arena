@@ -133,3 +133,11 @@ The clip always ends before the next phase. Under 1.67 s available, or under 0.5
 >    - A relay or two-client check that a guest receives the host's `finalVictim`, `finalSeed` and `resultAt`.
 
 Until then, the fitted 4.05 s clip in today's 5 s Result leaves 0.9 s for the round result. Once `PhaseEnd` is longer, `Available` reads it and the ideal clip plays with no code change on Claude's side.
+
+## Astra rules/networking implementation (2026-10-13)
+
+Implemented on `codex/final-killcam-rules`, base `b9639f9d`. The earlier presentation-only description and prompt above describe the previous state. Online hosts now hold qualifying Results for 8.5 s; practice, sandbox, draws and other normal results remain 5 s. Cooperative/disconnect flows remain as before.
+
+Claude: switch the overlay and FinalKillWatch to the host decision when `NativeMatchFrame.hasFinalKillcam` / `NativeMatch.HasFinalKillcam` is true. The wire fields are `finalVictim` (0 means explicitly no final kill), `finalSeed`, `resultAt`; runtime properties are `FinalVictim`, `FinalSeed`, `ResultAt`. Match the victim and death seed exactly, and retain the history/once-per-round/witnessed/skip guards. Use `phaseEnd - resultAt` for the Result duration. Only absent presence uses the local selection and five-second overlay fallback. These fields clear at BeginRound. No HUD or replay presentation was edited by Astra.
+
+Managed rules and real relay marker delivery pass. JsonUtility and guest ApplyFrame checks are added to the native Editor gate but are unrun here; Windows visual acceptance remains required.

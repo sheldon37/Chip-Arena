@@ -23,6 +23,7 @@ namespace ChipArena.UnityConversion
         {if(d!=null){if(!d.hasActor)d.actor=null;if(d.actor!=null&&!d.actor.HasKernel)d.actor.Kernel=null;if(!d.hasWound)d.wound=null;}}
         public void RestorePresence()
         {
+            if(!hasFinalKillcam){finalVictim=finalSeed=0;resultAt=0;}
             // JsonUtility turns null strings into empty strings. Runtime draft/end-state gates use null as "not chosen/ended".
             chosen=string.IsNullOrEmpty(chosen)?null:chosen;introStyle=string.IsNullOrEmpty(introStyle)?null:introStyle;
             if(!hasPve)pve=null;
