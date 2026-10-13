@@ -32,7 +32,7 @@ if errorlevel 1 (
   exit /b 1
 )
 echo Ready: "%~dp0Builds\Chip-Arena-Windows.zip"
-echo Preview newest build: "%~dp0Builds\Windows\ChipArena-Native-Conversion-TEST.exe"
+echo Preview newest build: "%~dp0Builds\Windows\Chip Arena.exe"
 echo The EXE carries the voxel CA icon. Keep the launcher and app folder together.
 echo First install: extract the ZIP outside this project, then open Chip Arena\Chip Arena.exe.
 echo Test future updates from that older installed copy, not from Builds\Windows.

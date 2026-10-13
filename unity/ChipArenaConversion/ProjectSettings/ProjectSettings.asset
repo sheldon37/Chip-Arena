@@ -6,7 +6,7 @@ PlayerSettings:
   serializedVersion: 28
   m_ColorSpace: 1
   companyName: ChipArenaConversion
-  productName: Chip Arena Native Conversion TEST
+  productName: Chip Arena
   bundleVersion: 0.1.0-native-foundation
   defaultScreenWidth: 1600
   defaultScreenHeight: 900
