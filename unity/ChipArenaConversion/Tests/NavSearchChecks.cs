@@ -41,6 +41,41 @@ internal static class NavSearchChecks
         for(int i=0;i<8;i++){var point=map.spawns.ffa[i].pos;Check(search.Nearest(point,usable).id==map.nav.nodes.OrderBy(n=>V3.Dot(n.pos-point,n.pos-point)).First(usable).id,"nearest equivalence");}
         var graph=new MapNav{nodes=new[]{new MapNavNode{id="upper",pos=new V3(0,6,0)},new MapNavNode{id="lower",pos=new V3(0,0,0)},new MapNavNode{id="isolated",pos=new V3(5,0,0)}},links=new[]{new MapNavLink{id="drop",a="upper",b="lower",kind="drop"}}};
         var small=new NativeNavSearch(graph);small.Find("upper","lower",all,result);Check(result.SequenceEqual(new[]{"upper","lower"}),"directed drop down");small.Find("lower","upper",all,result);Check(result.Count==0,"no reverse drop");small.Find("upper","isolated",all,result);Check(result.Count==0,"unreachable clears old path");small.Find("upper","upper",all,result);Check(result.SequenceEqual(new[]{"upper"}),"start equals end");small.Find("upper","lower",l=>false,result);Check(result.Count==0,"changed gate invalidates next search");
+        small.BuildFlow("lower",all);small.TraceFlow("upper",result);Check(result.SequenceEqual(new[]{"upper","lower"}),"flow follows drop downward");
+        small.BuildFlow("upper",all);small.TraceFlow("lower",result);Check(result.Count==0,"flow cannot reverse drop");small.TraceFlow("upper",result);Check(result.SequenceEqual(new[]{"upper"}),"flow at goal");
+        small.BuildFlow("lower",l=>false);small.TraceFlow("upper",result);Check(result.Count==0,"flow refresh closes gate");
+        small.BuildFlow("lower",all);small.TraceFlow("upper",result);Check(result.Count==2,"flow refresh reopens gate");small.TraceFlow("isolated",result);Check(result.Count==0,"flow unreachable clears stale route");
+        float Cost(List<string> path){float cost=0;for(int i=1;i<path.Count;i++)cost+=(nodes[path[i]].pos-nodes[path[i-1]].pos).Length;return cost;}
+        var flow=new NativeNavSearch(map.nav);var expectedPath=new List<string>(map.nav.nodes.Length);
+        for(int gate=0;gate<2;gate++)
+        {
+            var active=gate==0?all:closedHazards;string end=map.nav.nodes[map.nav.nodes.Length-1].id;flow.BuildFlow(end,active);
+            for(int i=0;i<16;i++)
+            {
+                string start=map.nav.nodes[i*379%map.nav.nodes.Length].id;search.Find(start,end,active,expectedPath);flow.TraceFlow(start,result);
+                Check((result.Count==0)==(expectedPath.Count==0),"flow reachability "+i);
+                Check(Math.Abs(Cost(result)-Cost(expectedPath))<.01f,"flow shortest cost "+i);
+                for(int j=1;j<result.Count;j++)Check(edges[result[j-1]].Any(l=>(l.a==result[j]||l.b==result[j])&&active(l)),"flow directed/live edge");
+            }
+        }
+        // Maximum hidden-phase load, with both destinations and dynamic gate variants.
+        var crowdWatch=new Stopwatch();long crowdBytes=GC.GetAllocatedBytesForCurrentThread();crowdWatch.Start();
+        for(int goal=0;goal<2;goal++)
+        {
+            flow.BuildFlow(map.nav.nodes[map.nav.nodes.Length-1-goal*211].id,goal==0?all:closedHazards);
+            for(int i=0;i<192;i++)flow.TraceFlow(map.nav.nodes[i*31%map.nav.nodes.Length].id,result);
+        }
+        crowdWatch.Stop();crowdBytes=GC.GetAllocatedBytesForCurrentThread()-crowdBytes;
+        Check(crowdBytes==0,"192-mob shared flow refresh allocates "+crowdBytes);
+        foreach(float floor in new[]{0f,6f})foreach(float height in new[]{1.7f,NativeHordeKinds.HulkHeight,.88f})
+        {
+            var center=new V3(3,floor+height/2+.025f,5);var anchor=NativeNavSearch.BodyAnchor(center,height/2);
+            Check(Math.Abs(anchor.y-floor-.875f)<.00001f&&anchor.x==3&&anchor.z==5,"feet-relative navigation anchor");
+            Check(anchor.y+.3f-floor<1.65f,"support ray reaches floor at every body height");
+            Check((anchor-new V3(3,floor+.9f,5)).Length<.65f,"waypoint reach at every body height");
+            if(height==NativeHordeKinds.HulkHeight)Check(center.y+.3f-floor>1.65f&&(center-new V3(3,floor+.9f,5)).Length>.65f,"reproduces old Hulk support and waypoint failures");
+        }
+        Console.WriteLine($"PASS crowd navigation: 2 shared flow builds + 384 routes (192 mobs/destination), {crowdWatch.Elapsed.TotalMilliseconds:F1} ms/{crowdBytes} bytes; shortest costs, directed drops, changing gates, Hulk/crawler floor anchors (managed, excludes PhysX)");
         var box=new MapVolume{center=new V3(1,2,3),size=new V3(2,4,6)};
         for(int i=0;i<100;i++){var a=new V3(i*.1f-5,2,3);var b=new V3(0,i*.1f-5,4);Check(NativeStageHazards.Cross(a,b,box.center,box.size)==NativeStructureRules.Crosses(a,b,box,.45f),"box overload");}
         long allocation=GC.GetAllocatedBytesForCurrentThread();bool hit=false;for(int i=0;i<10000;i++)hit|=NativeStageHazards.Cross(new V3(-2,2,3),new V3(2,2,3),box.center,box.size);Check(GC.GetAllocatedBytesForCurrentThread()==allocation&&hit,"hazard geometry allocates no temporary volume");

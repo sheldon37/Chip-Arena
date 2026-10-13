@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-13 Hulk/crowd follow-up: `codex/unity-hulk-movement` on shared `f4b5a12a` fixes Hulk floor/waypoint anchors, removes possessed chase/hide route thrashing, and shares routes for large hordes without lowering phase-two mob limits. Release managed/relay, focused Ward, Python and source checks pass. Native gate and Windows phase-two performance remain unrun; build/playtest next. See NATIVE-HITCH-DIAGNOSTICS and latest DEV_LOG.
+
 2026-10-13 Ward hitch fix: `codex/unity-wardzero-hitches` on `b9639f9` replaces allocating route searches used by PvP bots/PvE adds with reusable heap/buffers and removes hot hazard allocations. Exact-route and allocation regressions, full managed/relay and 101 Python tests pass. Adds navigation/physics/death timing fields. Pending source integration and desktop build/playtest; separate other-map PvP death hitch is not claimed fixed. See NATIVE-HITCH-DIAGNOSTICS and latest DEV_LOG.
 
 2026-10-13 Cyber Lord aura skin: `claude/cyberlord-aura` (base shared `ae3bbbb`, committed, not pushed) makes the Cyber Lord's Standard skin a glitchy cyber aura round the pilot's own hands (shards, RGB split, scanlines, rising data strands, glitch jumps, a soft haze; ranged mode condenses it into emitter glyphs). Today's hardlight gauntlets become its Prototype Series, unchanged (pinned). The pick is the new `cyberlord` entry of the cosmetic skin map; the account service does not keep it yet (Astra, see DEV_LOG). Presentation only. Unity Editor/Windows not run.
