@@ -44,7 +44,14 @@ namespace ChipArena.UnityConversion
                 StepPveHorde();Check(Near(pilot.Hp,92.5f)&&Events.Count(e=>e.Detail=="minion-drop")==1,"slam is once only");
                 Check(HitMinion(brute,pilot,1,Vector3.forward,0)>0,"hittable during recovery");
                 foreach(var sample in new[]{(0f,10f),(2.4f,5f),(2.41f,0f)})
-                {Pilot(new Vector3(sample.Item1,.9f,0));PveDropSlam(brute,landing);Check(Near(pilot.Hp,100-sample.Item2),"actual radius/falloff "+sample.Item1);}
+                {
+                    Pilot(new Vector3(sample.Item1,.9f,0));
+                    var delta=pilot.Body.position-(landing+Vector3.up*.9f);
+                    bool touch=NativeHordeDropRules.Touch(Vec(delta));
+                    bool visible=MeleeVisible(landing+Vector3.up*.45f,pilot.Body.position,brute.Owner,pilot.Collider,true);
+                    PveDropSlam(brute,landing);
+                    Check(Near(pilot.Hp,100-sample.Item2),$"actual radius/falloff {sample.Item1:R}; hp={pilot.Hp:R} expected={100-sample.Item2:R}; delta=({delta.x:R},{delta.y:R},{delta.z:R}); touch={touch} visible={visible} holding={Pve.Holding}");
+                }
                 Pilot(new Vector3(1,2.41f,0));PveDropSlam(brute,landing);Check(pilot.Hp==100,"strict vertical exclusion");
                 Pilot(new Vector3(1,.9f,0),true);Events.Clear();PveDropSlam(brute,landing);
                 Check(pilot.Hp==100&&Near(pilot.Knockback.x,190f/65)&&Near(pilot.Knockback.y,1.25f)&&Events.Any(e=>e.Detail=="clash"),"block clashes with half shove");
