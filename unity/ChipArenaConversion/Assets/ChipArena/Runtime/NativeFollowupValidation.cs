@@ -59,6 +59,16 @@ namespace ChipArena.UnityConversion
             var row=Pve.Rows[a.Seat.id];row.Notice="Only A";row.NoticeUntil=Time+1;Check(PveNotice(a.Seat.id)=="Only A"&&PveNotice(b.Seat.id)==null,"machine denial isolated to affected pilot");row.NoticeUntil=Time;Check(PveNotice(a.Seat.id)==null,"machine denial expires");
             var entry=Pve.Content.entries.First();Entries.Add(new NativeEntryView{entry=entry.e,kind=entry.kind,closeAt=Time-.1f});var planned=PlanEntry(entry);var follower=PlanEntry(entry);Check(!follower.first&&follower.spawn>planned.spawn,"entry reopening keeps follower spacing");
             var nav=new NativePveNavigation(this);float firstDistance=nav.Distance(new Vector3(0,1,0),new Vector3(5,1,5),1);for(int i=0;i<20;i++)Check(nav.Distance(new Vector3(0,1,0),new Vector3(5,1,5),1)==firstDistance,"navigation cache stable within a tick");
+            var victoryAdd=SpawnPveAdd("shambler",true);victoryAdd.Pve.ExposedAt=Time;
+            Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=Time,cooperative=true});
+            BeginPveHold("victory");float until=Pve.StageUntil;
+            Check(BossVictoryWalk&&!Pve.Holding&&!Minions.Any(m=>m.Pve!=null)&&MinionDeaths.Any(d=>d.id==victoryAdd.Id),"victory immediately clears adds without freezing movement");
+            Check(Math.Abs(until-Time-5)<.001f&&Match.Phase==NativePhase.Fight,"five-second live victory window");
+            var victoryFrame=NativeFrameCodec.Clone(NetworkFrame());Check(victoryFrame.pve.stage=="victory"&&!victoryFrame.pve.holding&&victoryFrame.pve.stageUntil==until,"guest victory window is replicated");
+            for(int i=0;i<299;i++)BossVictoryTick(new InputFrame{X=1,Yaw=90});
+            Check(Match.Phase==NativePhase.Fight,"results do not show before five seconds");
+            for(int i=0;i<3;i++)BossVictoryTick(default);
+            Check(Match.Phase==NativePhase.Match&&Pve.Stage=="ended"&&Pve.Outcome=="victory","results follow victory walk");
             Sandbox=true;Check(!SandboxConfigure(weapon:"sword")&&!SandboxLaunchDebris(40,20,"metal"),"sandbox commands cannot bypass signed developer authorization");
         }
     }

@@ -6183,3 +6183,20 @@ directed drops and changing gate tests pass. Full 35 managed/real relay checks,
 101 Python tests (one skipped), source package 1852 files and whitespace pass.
 Actual Windows/PhysX timing unrun; this is reduced measured managed work, not
 proof these 190 ms frames are eliminated. Merge/builder receipts in task PR.
+
+## 2026-10-14 — Codex: boss victory cleanup and five-second walk
+
+Branch `codex/boss-victory-walk`, base `6f20695`. Owner requests all adds killed
+at boss defeat and five seconds of movement before results. Common PvE victory
+entry now clears horde and boss-owned summons immediately (existing death record
+path), cancels boss attacks, clears projectiles/acid and closes open chip picks.
+Use a non-holding victory stage with a five-second simulation deadline instead
+of the previous four-second frozen victory hold. Reuse movement-only motor and
+guest prediction; damage is blocked and fight systems do not tick in the window.
+Existing stage/deadline network fields carry the state; no protocol change.
+Defeat/reveal/intro flows retained. Applies to bosses using this PvE victory flow;
+no unimplemented boss mode is claimed supported. Native Windows gate adds immediate
+add-death, replicated deadline and before/after-five-second result assertions.
+Full 35 managed/relay checks, Python 101 OK (one skipped), package 1852 files,
+syntax and whitespace pass. Actual Unity/PhysX gate and Windows host/guest playtest
+remain pending. Merge/builder sync receipts in PR.

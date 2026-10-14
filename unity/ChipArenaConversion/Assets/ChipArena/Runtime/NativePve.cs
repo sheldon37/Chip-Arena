@@ -97,8 +97,28 @@ namespace ChipArena.UnityConversion
         }
         private void PveDied(NativePilot p)
         {if(Pve==null||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;row.Deaths++;row.Open=null;if(Pve.Solo&&row.SelfRevives>0&&!p.Seat.bot)row.SelfAt=Time+5;}
+        public bool BossVictoryWalk=>Pve!=null&&Pve.Stage=="victory"&&Match.Phase==NativePhase.Fight;
+        private void BeginBossVictory()
+        {
+            var v=Pve;if(v.Stage=="victory"||v.Stage=="ended")return;
+            v.Holding=false;v.Cinematic=null;v.Outcome="victory";v.Stage="victory";v.StageAt=Time;v.StageUntil=Time+5;v.Rate=0;v.SpawnBudget=0;
+            CancelSiren(v.Boss);KillPveHorde();
+            foreach(var m in Minions.Where(m=>m.Owner==v.Boss).ToArray()){m.Hp=0;Emit(EventKind.Death,null,m.Id,m.Body.position,0);RemoveMinion(m,false);}
+            pveAcid.Clear();SirenFields.Clear();Bullets.Clear();
+            foreach(var row in v.Rows.Values)row.Open=null;
+            foreach(var p in Pilots){CancelAbilities(p);CancelMelee(p);CancelSpecial(p);CancelFighter(p);p.Dots.Clear();p.Knockback=p.MoveVelocity=Vector3.zero;}
+        }
+        private bool BossVictoryTick(InputFrame input)
+        {
+            if(!BossVictoryWalk)return false;
+            Match.Tick(1d/60);
+            if(Time<Pve.StageUntil)StepResultMovement(input);
+            else {Pve.Stage="ended";Match.FinishCooperative(true);foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;}
+            return true;
+        }
         private void BeginPveHold(string cinematic,int reveal=0)
         {
+            if(cinematic=="victory"){BeginBossVictory();return;}
             var v=Pve;Emit(EventKind.PvePhase,v.Boss,reveal,v.Boss.Body.position,0,cinematic);v.Holding=true;v.Cinematic=cinematic;v.Reveal=reveal;if(cinematic=="intro"){BossSongAt=Time;BossSongLead=0;}v.HoldDuration=v.HoldLeft=cinematic=="reveal"?5:cinematic=="intro"?9.0678f:cinematic=="victory"?4:3;
             CancelSiren(v.Boss);pveAcid.Clear();SirenFields.Clear();Bullets.RemoveAll(b=>b.SirenKind!=null);
             foreach(var p in Pilots){p.Dots.Clear();if(!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;}
@@ -129,7 +149,7 @@ namespace ChipArena.UnityConversion
         private void FoundPveBoss(Vector3 at)
         {var v=Pve;if(!v.Hidden||v.Phase!=2)return;SetBossHidden(false);v.Boss.Hp=v.MaxHp*.5f;v.Boss.Body.position=GroundPoint(at)+Vector3.up*.9f;v.Possessed=0;BeginPveHold("reveal",3);}
         private float PveDamageRoom(NativePilot p,float amount,NativePilot source)
-        {if(Pve==null)return amount;if(Pve.Holding||p==Pve.Boss&&Pve.Hidden)return 0;if(p==Pve.Boss)amount=Math.Min(amount,Math.Max(0,p.Hp-Pve.Floor));return amount;}
+        {if(Pve==null)return amount;if(Pve.Holding||Pve.Stage=="victory"||Pve.Stage=="ended"||p==Pve.Boss&&Pve.Hidden)return 0;if(p==Pve.Boss)amount=Math.Min(amount,Math.Max(0,p.Hp-Pve.Floor));return amount;}
         private void PveDamaged(NativePilot p,NativePilot source,float actual)
         {
             if(Pve==null||actual<=0)return;if(Pve.Rows.TryGetValue(p.Seat.id,out var row)&&p.Seat.bot&&row.Open!=null)row.ThinkAt=Time;
@@ -153,6 +173,7 @@ namespace ChipArena.UnityConversion
             }
             if(v.Stage=="boss")
             {if(v.Hidden&&v.Possessed==0&&Time-v.PossessionAt>=60)FoundPveBoss(BossRescue);else if(!v.Hidden&&v.Boss.Hp<=v.Floor+.0001f){if(v.Phase<4)BeginPveHold("reveal",v.Phase+1);else BeginPveHold("victory");}}
+            if(v.Stage=="victory")return;
             if(!v.Holding&&!Members().Any(p=>p.Hp>0&&(p.Seat.connected||p.Seat.bot))&&!v.Rows.Values.Any(r=>r.SelfAt>=0&&r.Pilot.Hp<=0))BeginPveHold("defeat");
             if(v.Holding)return;StepPveHorde();StepPveAcid();
         }
