@@ -1,74 +1,65 @@
 # Expedition — presentation contract (Claude)
 
-Integration follow-up: [EXPEDITION-INTEGRATION.md](EXPEDITION-INTEGRATION.md) records
-the new runtime bridge, updated commands/fields and remaining scene/migration
-dependencies. It supersedes the older missing-integration statements below.
+Integration bridge: [EXPEDITION-INTEGRATION.md](EXPEDITION-INTEGRATION.md) (Astra) records the runtime
+entry points, replication, hooks and remaining scene/migration dependencies. Rules and transactions:
+[`EXPEDITION.md`](EXPEDITION.md). This file covers what the screens read, what they send, and what
+presentation still needs from the integration.
 
-Presentation side of the Expedition PvE mode, recorded 2026-10-14 on
-`claude/expedition-presentation` (base shared `9270d95`, which contains Astra's
-rules foundation from PR #188). The rules and transactions are in
-[`EXPEDITION.md`](EXPEDITION.md). This file covers what the screens read, what
-they send, and what the integration still has to provide.
+History: views, screens, intents and the dev preview on `claude/expedition-presentation` (base shared
+`9270d95`); live binding, the new fields and the world pieces on `claude/expedition-live` (base shared
+`3c836c4`, Astra's PR #207, merged with shared `09096af`), both 2026-10-14.
 
 ## Status
 
-The screens, the projection they read and the intent path are built and checked
-against the real `NativeExpedition` authority. **No game mode uses them yet.**
-Nothing enables an Expedition menu entry. A dev-only preview (below) shows them
-over scripted scenarios.
+The screens draw in the real game **whenever a session is bound**: on the host after
+`ConversionGame.BindExpedition`, on a guest from the paired `ExpeditionViewReceiver`. Nothing binds a
+session yet and no menu entry exists, so Expedition stays unplayable until a scene and director exist.
+The `--ca-expedition-preview` dev preview is separate, labelled DEV ONLY, and binds nothing.
 
-The screens never change the run and never decide a rule. Every number comes from
-the authority: wallets, prices, allocations, dice rolls and winners, eligibility,
-countdowns and the scaling read-out. A control raises an intent. The intent counts
-as done only when the authority's state shows it. Refusals, missing hooks and the
-missing guest channel say what they are and never read as success.
+The screens never change the run and never decide a rule. Every number comes from the view: wallets,
+prices, quotes, allocations, dice rolls and winners, eligibility, votes, countdowns, cooldowns, transfer
+progress and link measurements. A control raises an intent; it counts as done only when the view shows
+it. Refusals, missing hooks, timeouts and unsupported operations say what they are and never read as
+success. Presentation never rolls dice, allocates rewards, buys, claims or keeps its own economy.
 
 ## Files
 
-All Core files are engine-free; Runtime files draw with the existing cyber HUD kit
-(`NativeHudChrome`, `NativeCyberTheme`, `NativeUi`).
+Core files are engine-free; Runtime files draw with the cyber HUD kit (`NativeHudChrome`,
+`NativeCyberTheme`, `NativeUi`).
 
 | File | Role |
 | --- | --- |
-| `Core/NativeExpeditionView.cs` | `ExpeditionView` DTO and `NativeExpeditionView.Build` (single-account projection), `Normalize` (receiver side), `Leaks` (privacy audit), `ExpeditionViewSources`, `ExpeditionTransferLog` |
-| `Core/NativeExpeditionCommands.cs` | `ExpeditionCommand`, `IExpeditionCommands`, host adapter (real authority commands), guest adapter (unavailable), `ExpeditionIntegrationHooks`, `ExpeditionIntentTracker` (state-driven confirmation) |
-| `Core/NativeExpeditionPresentation.cs` | Screen models: board, final area, objective line, countdowns, roster, loot rows, boss shares, dice reveal timing, extraction model, transfer steps, command captions |
-| `Core/NativeExpeditionPreview.cs` | DEV PREVIEW ONLY scenario driver (real authority, preview stand-ins for offers, prices and the save transaction) |
-| `Runtime/NativeExpeditionHud.cs` | Drawing: minimal HUD, world board, loot (with `Marker`), personal chips, sanctuary, building (with `Door`), victory, dice reveal, host-transfer overlay |
-| `Runtime/NativeExpeditionPreviewScreen.cs`, `Runtime/NativeExpeditionPreviewUI.cs` | Preview layout and its `--ca-expedition-preview` hook (one line in `ConversionGame.GuiFrame`) |
+| `Core/NativeExpeditionView.cs` | `ExpeditionView` DTO and `Build` (Astra's projection), `Normalize`, `Leaks` (privacy audit, now also flags a world anchor of a private reward), `ExpeditionViewSources`, `ExpeditionTransferLog` |
+| `Core/NativeExpeditionCommands.cs` | Intents, host commands, guest sender (an accepted reply shows as accepted, still pending), `ExpeditionIntentTracker` (state-driven confirmation) |
+| `Core/NativeExpeditionPresentation.cs` | Screen models: board, objective, countdowns, roster, loot, boss shares, dice timing, extraction (honest host refusal), continue model and rows, caches, pick history, quotes, candidates, transfer steps, captions, withdrawn-vote captions |
+| `Core/NativeExpeditionWorld.cs` | World pieces at real anchors, their labels (cached), culling, beacon-style geometry, the DEV greybox camera |
+| `Core/NativeExpeditionPreview.cs` | DEV PREVIEW scenario driver (real authority; stand-ins below) |
+| `Runtime/NativeExpeditionHud.cs` | Drawing: minimal HUD, board, loot (`Marker`), chips (with pick history), sanctuary (quotes), building (`Door`), victory (continue), caches, dice, transfer (candidates), transfer banner, world glyphs and labels |
+| `Runtime/NativeExpeditionScreen.cs` | The shared screen layout (live and preview), the dice overlay, the DEV greybox view |
+| `Runtime/NativeExpeditionLiveUI.cs` | Live binding: HUD in the scene, the J screen, intents through `ExpeditionCommands` |
+| `Runtime/NativeExpeditionWorldPresentation.cs` | 3D world pieces (one dynamic mesh, `NativeBeacon` shader) and their projected labels |
+| `Runtime/NativeExpeditionPreviewScreen.cs`, `Runtime/NativeExpeditionPreviewUI.cs` | DEV preview layout and its `--ca-expedition-preview` hook |
 | `Tests/ExpeditionPresentationChecks.cs` | Managed checks (`CoreTests.dll --expedition-view`, also in the full suite) |
 
-## The view (replication contract)
+`Runtime/ConversionGame.cs` has five hook lines: the J/Escape keys, local play paused while the screen is
+open (as the PvE chip screen does), the screen in `GuiFrame`, the in-scene HUD, and the world draw at the
+start of `LateFrame`.
 
-`NativeExpeditionView.Build(run, account, sources)` runs where the authority lives
-(the host). The DTO is field-only, so JsonUtility and the managed codec both
-round-trip it. Everything except `viewer` and `mine` is the same for every
-viewer (checked). It can therefore be sent as one public frame plus an owner-only
-`mine` block.
+## Live binding
 
-| Field | Source |
-| --- | --- |
-| `revision`, `epoch`, `run`, `world`, `area`, `host`, `phase`, `loop`, `elapsed`, `loading` | Snapshot |
-| `exitAt`, `extractAt`, `exitVotes[]`, `extractVotes[]` | Snapshot (authority clock times; compare with `elapsed`) |
-| `exitSeconds`, `extractSeconds` | `NativeExpedition.ExitSeconds` / `ExtractSeconds` (countdown bar length) |
-| `migrating`, `finalUnlocked`, `extractionUnlocked` | `Migrating`, `FinalUnlocked`, `ExtractionUnlocked` |
-| `living`, `extractNeeded` | Connected living count; strict majority `living/2+1` (as `RefreshVotes`) |
-| `difficulty`, `difficultyParty`, `difficultyStep` | `ExpeditionScaling.Evaluate(elapsed, party, loop, phase==Instance)`. `party` is the connected, not-extracted count (provisional until the director's roster lock) |
-| `savedRevision` | `sources.Saved.checkpoint.revision` (the last durably written savepoint) |
-| `members[]` | account, weapon, connected, alive, safe, extracted, carriedBy, host, exitVote, extractVote. No wallet, chips or perks |
-| `instances[]` | id, target, progress, entered, cleared, current, bosses[], defeated[] |
-| `loot[]` | Ordinary drops (`monster`, owner = whoever took it) and reserved boss rewards (`boss`, owner = survivor, `boss` = dice key). Owner and claimed/consumed only, never offers. Open ones, plus those settled in the current loop and area |
-| `dice[]` | Copies of the current loop's `ExpeditionDice` (eligible, rolls, winners, each) |
-| `mine` | Viewer only: wallet, catchup, chips, perks, alive/safe/connected/extracted, carriedBy, `carrying[]`, `canExtract` (`CanExtract`), `extractionSaved` (tombstone present in `sources.Saved`), `rewards[]` of any source (offers only while claimed and not consumed) |
-| `transfer` | `active` (`Migrating`), stage (Frozen / Committed / Aborted / Refused), handoff ids from `sources.Transfer`, transport `candidates[]`, `endpointMigration` |
-
-Rules the builder enforces: another account's offers, wallet, chips, purchases and
-catch-up rewards never appear in any view. A commit is reported only when the
-authority shows the new host at the new epoch. An abort is reported as a failure.
-
-Receivers call `NativeExpeditionView.Normalize` after decoding: JsonUtility turns
-absent strings into `""`. The screens also treat `""` as absent (checked over
-every preview step).
+- **Source:** `ConversionGame.ExpeditionView` (host: rebuilt from the bound session; guest: the paired
+  public + private frames). `ExpeditionCommands` sends: the host's session commands, or the guest channel.
+  The live UI caches the command path per binding.
+- **In the scene** (a live view, not a menu, intro or replay): the world pieces, the minimal HUD, a compact
+  host-transfer line while a transfer exists, the dice reveal of a new stored record (not modal; it closes
+  itself), and a `J · EXPEDITION` hint.
+- **J** opens the Expedition screen (board, phase panel, chips, caches, loot; the dice reveal is modal
+  there). J or Escape closes it. Victory opens it once per loop for the choice.
+- **Guests:** Pending ("sent to the host") → Pending ("accepted by the host", from an accepted reply) →
+  Confirmed only when the replicated view shows it. A refused reply shows Refused at once with its reason.
+  No reply and no reflection within 6 s shows Failed. A Confirmed reply counts as an acceptance only.
+- The tracker resets when the run changes. A confirmed vote the authority has since withdrawn reads
+  "Replaced by your Continue choice" / "Replaced by your extraction vote" / "Withdrawn since".
 
 ## Intents and confirmation
 
@@ -76,120 +67,133 @@ every preview step).
 | --- | --- | --- |
 | `VoteExit` / `CancelExit` | `VoteExit(account, yes)` | the viewer in / out of `exitVotes` (or the party has left that building) |
 | `VoteExtraction` / `CancelExtraction` | `VoteExtraction(account, yes)` | the viewer in / out of `extractVotes` (or extracted) |
-| `Extract` | `hooks.Extract` (the save-then-publish transaction) | `mine.extracted && mine.extractionSaved`. Extracted but unsaved stays "waiting for the save" |
-| `NextLoop` (host only) | `NextLoop()` | `loop` increased |
+| `VoteContinue` / `CancelContinue` | `VoteContinue(account, yes)` | the viewer in / out of `continueVotes` (or the loop advanced) |
+| `Extract` | `hooks.Extract` (save, then publish) | `mine.extracted && mine.extractionSaved` |
+| `NextLoop` | `AdvanceWhenReady()` | `loop` increased |
 | `Claim` | `hooks.Offers` then `Claim` | the reward `claimed` |
-| `Select` | `hooks.Eligible` then `Select` | the reward `consumed` (or settled out of the bounded view) |
-| `Reprint` | `hooks.Reprint` (cost, remote flag) then `Reprint` | the target alive |
+| `Select` | `hooks.Eligible` then `Select` | the reward `consumed` (or settled out of the view) |
+| `Reprint` | `hooks.Reprint` (evidence) then `Reprint` | the target alive |
 
-`false` from the authority shows **Refused**. A missing hook shows
-**Unavailable** with its reason. A guest shows **Unavailable** (no guest command
-channel). An accepted send with no reflection in 6 s shows **Failed**.
+Guests send the same intents over `expedition-command`; the host runs them through the same path.
 
-## Screens
+## Screens and the fields they read
 
-- **Minimal HUD:** wallet (top left, as the PvE money panel), objective tag (top
-  centre, `Objective`), the running countdown under it (`Departure` or
-  `GroupExtraction`: seconds, bar, votes), and a magenta "your chips waiting" tag.
-- **World board:** each building's state (open / sealed door with quota / boss /
-  cleared / unfinished), the final area (locked n/m, unlocked, engaged, defeated),
-  the clock, step, loop and the HP / damage / count multipliers, and the party
-  roster.
-- **Building:** sealed or open `Door`, quota bar, bosses down or alive, and the
-  departure vote (always shown; disabled until the door opens).
-- **Sanctuary:** checkpoint saved (revision), extract alone (`Extraction` model;
-  the host's control explains the transfer), the group extraction vote (votes,
-  majority needed, countdown), and the reprint machine (downed pilots, carried or
-  not).
-- **Personal chips:** wallet, catch-up, each owned reward labelled by source
-  (purchased, boss reserved, picked up, catch-up), Open → Claim, the viewer's own
-  offers → Select, and the held chips.
-- **Loot:** ordinary drops (cyan diamond, first pickup, taken by whom) against
-  reserved boss chips (magenta lock, yours or another survivor's, claimed or not).
-  A NOT ELIGIBLE row appears for each boss whose stored record does not list the
-  viewer.
-- **Dice reveal:** total, survivors, even share and dice extras (`ShareLine`).
-  Dice spin with no number, lock in order on the stored rolls, then the stored
-  winners light (+1). A tie at the cut is labelled as the host's seeded tie-break.
-  An even split shows no dice.
-- **Victory:** extract or stay, with each pilot's choice. The host starts the
-  harder loop; others are told there is no continue vote yet.
-- **Host transfer:** elect (authority), freeze (authority), store package and
-  destination ACK (transport: "Not implemented in this build"), then commit or
-  abort with the reason, and the transport's candidates.
+- **Minimal HUD:** `mine.wallet`/`catchup`; objective from phase/instances; the running countdown
+  (`exitAt`/`extractAt` against `elapsed`); "your chips waiting" from `mine.rewards`.
+- **World board:** `instances[]`, final area, `elapsed`, `difficulty*`, roster (`members[]`, `continueVotes`).
+- **Building:** `Door` (sealed/open), quota, bosses, departure vote.
+- **Sanctuary:** `savedRevision`; extract alone (`mine.canExtract`; the host with peers gets the honest
+  refusal: leaving needs a host transfer and this build cannot move the host, with the `HostTransfer`
+  reason on the control); group vote (`extractVotes`, `extractNeeded`); reprint machine with each downed
+  pilot's quote (`members[].reprintCost`: none shows "price unavailable", never $0, and its control stays off).
+- **Caches** (town): each `chests[]` offer before purchase: price, `STOCK <generation>`, "RESTOCKING · Ns"
+  only while `cooldown > elapsed`, "BOUGHT · YOURS" only for the viewer's own purchase of the current
+  generation (`mine.rewards`, `...:chest:<generation>`), the wallet's shortfall, and whether the cache has an
+  anchor here. Range is never claimed (the view carries none). Buying is not a control: no intent exists.
+- **Your chips:** wallet, rewards by source, Open → Pick, **picked this loop** (`mine.rewards[].selected`,
+  the viewer's only), held chips.
+- **Loot:** ordinary drops (cyan diamond, first pickup) against reserved boss chips (magenta lock), NOT
+  ELIGIBLE per boss whose record does not list the viewer.
+- **Dice reveal:** stored `dice[]` only (spins, locks on stored rolls, lights stored winners). The world
+  boss's record (`<loop>:<world>:final:boss`) is named WORLD BOSS and goes through the same loot, dice and
+  world screens; the victory panel adds a world-boss loot line.
+- **Victory:** extract alone and the group vote; **Continue** (`continueVotes`): n / remaining ready, the
+  button (downed pilots can agree), "everyone remaining must agree", the waiting reason when everyone
+  agreed but nobody is alive, and each pilot's choice (CONTINUE, CONTINUE · DOWN, DECIDING, VOTED TO EXTRACT,
+  DOWN · CAN STILL AGREE, EXTRACTED / OFFLINE · NOT COUNTED). Continue and the extraction vote replace each other.
+- **Host transfer:** elect and freeze (authority); reserve endpoint (`endpointReserved`), store package
+  (`packageStored`), destination ACK (`ackReceived`, "deadline set" from `deadline`) — done only as reported
+  and only with `endpointMigration`, otherwise "Endpoint migration is not supported in this build"; commit or
+  abort. Candidates: RTT, jitter and **ping timeouts** (`loss` is timed-out pings, not packet loss);
+  `reachable`/`capable` false read "NOT PROBED" / "NOT SUPPORTED YET". A link with no answered ping says so.
 
-## What the integration still has to provide (Astra)
+## World pieces
 
-1. **Replication.** A message carrying the built view per account, on revision
-   change. Guests keep the newest epoch/revision and drop older ones. Send the
-   public part once and `mine` only to its owner; the split is safe because the
-   public part is identical for every viewer.
-2. **Guest command channel.** A message `{transaction, intent, target, chip}`
-   authenticated to the sender's account. The host runs it through the same path
-   as `ExpeditionHostCommands` with the hooks, and replies `{transaction, state,
-   reason}` so refusals show at once. Confirmation still comes from the next view.
-3. **Hooks** (`ExpeditionIntegrationHooks`): catalog offers (Epic+ for bosses);
-   `NativeContentRules` eligibility; the durable extraction transaction (pass the
-   written savepoint as `sources.Saved`); and a reprint adapter (cost, range,
-   channel, medic/machine permission).
-4. **Missing fields.**
-   - `reprintCost` per downed member or machine, so the price shows before the press.
-   - World chest offers `{generation, price, cooldown}`, so purchases can be shown
-     before they happen. Today only recorded purchases are shown.
-   - `ExpeditionReward.selected` (the chosen chip id), for pick history.
-   - Transfer progress from the transport: `packageStored`, `endpointReserved`,
-     `ackReceived`, `deadline`. Plus `endpointMigration = true` once it exists.
-   - Measured candidates (`ExpeditionHostCandidate`: loss, latency, jitter,
-     reachable, capable) in `sources.Candidates`.
-5. **Continue choice.** There is no continue vote; `NextLoop` is host-only. A
-   per-pilot "ready for the next loop" display needs `continueVotes[]` or an
-   equivalent command and policy.
-6. **World pieces.** Rewards, chests, doors and machines have no positions. 3D
-   pickups need a spawn position per reward id and anchors for doors and machines.
-   The looks are already defined: `NativeExpeditionHud.Marker` and `Door`.
-7. **Final-boss rewards.** `FinishFinal` issues none. Once the encounter adapter
-   adds them as dice-keyed boss rewards, the same loot and dice screens apply.
-8. **Ineligibility detail.** The dice record lists survivors only. The screen says
-   "not alive and connected when it fell". Telling down, disconnected and not yet
-   joined apart would need per-account reasons.
+Built by `NativeExpeditionWorld.Build(view)` for the anchors whose `area` is the view's `area`:
+
+| Piece | Anchor | Look | Lines |
+| --- | --- | --- | --- |
+| Ordinary drop | reward anchor of a public `monster` loot entry | cyan diamond (3D octahedron), light column while open | FIRST PICKUP · ORDINARY DROP · ANYONE; YOURS; TAKEN · BY X |
+| Reserved boss chip | reward anchor of a `boss` loot entry | magenta chip tile with shackle; struck danger tile when the viewer is a member not in the record | YOURS / FOR X / NOT ELIGIBLE; RESERVED, CLAIMED, OPENED · PICK A CHIP; boss name |
+| Door | `door` anchor; building = instance named by the anchor's `area` (inside), else by its `id` (outdoor entrance) | ring + column, HUD `Door` hologram (sealed/open) | SEALED · QUOTA p / t or BOSS d / n DOWN; OPEN; ENTER TOGETHER · QUOTA t; UNFINISHED |
+| Reprint machine | `machine` anchor | pedestal, ring, column while someone is down | REPRINT MACHINE · NAME · $quote or PRICE UNAVAILABLE · +n MORE DOWN / CARRIED BY X |
+| Chip cache | `chest` anchor with an offer of the same id | crate, ring, column while buyable | $price · CHIP CACHE · STOCK G; RESTOCKING · Ns; BOUGHT · YOURS; $n SHORT |
+
+- A missing anchor, an anchor in another area, a reward not in the view (picked, private, unknown), a door
+  with no building and a chest without an offer draw nothing. There is never a guessed origin.
+- A boss's chips share its death point: they stand in a small ring round it and one label at the anchor
+  speaks for the cluster ("YOURS × 2 · ALSO FOR NOVA, ASTRA", "NOT ELIGIBLE · FOR ...").
+- Claimed ordinary drops show dimmed (taken); picked rewards disappear. No piece is local-authoritative:
+  claiming goes through the commands.
+- Drawing: one dynamic mesh with the revive beacon's shader and motes, in the theme palette; the HUD glyph
+  only for doors (anchors carry no facing). Labels: projected, sized by depth, hidden behind walls,
+  within 26 m, decluttered nearest first. Pieces are culled past 90 m. Reduced effects: no spin, bob or
+  mote scroll. Building, culling, geometry and labels reuse buffers and cache strings: no allocation per
+  frame for a steady view (checked).
+- Anchor `y` is treated as the floor under the piece.
 
 ## Dev preview
 
-Start the player with `--ca-expedition-preview`. The preview replaces the main
-menu and is labelled "DEV ONLY · NOT A GAME MODE". It plays six scenarios step by
-step:
+Start the player with `--ca-expedition-preview` ("DEV ONLY · NOT A GAME MODE", in place of the main menu).
+Scenarios: sanctuary, caches and first building; boss loot and dice; extraction and reprints; victory
+(world-boss dice, continue votes); host transfer; guest commands. View as any pilot; **Greybox** shows the
+current area's pieces at their anchors from a fixed camera with the live labels.
 
-- the town and first building;
-- boss loot with survivors and dice;
-- extraction, alone and as a group;
-- victory;
-- host transfer;
-- guest view and refusals.
+Preview stand-ins, labelled on screen: offers, prices, machine quotes (60 carried, 90 remote; one pilot
+without a quote), a temporary save folder, the greybox anchors and cache offers, a loopback guest channel
+(the real `ExpeditionGuestCommands` sender and reply path with 0.35 s latency and views published every
+0.5 s; one scripted lost message), and simulated transport progress (endpoint reserved, package stored,
+deadline, ACK). The transfer scenario first shows today's honest state: measured links, nothing probed, the
+host's request refused.
 
-You can view as any pilot. Viewing as the host sends real host commands; any
-other viewer is a guest.
+## What presentation still needs from Astra
 
-Preview stand-ins: offers come from a fixed chip list, wallet credits and prices
-are fixed, and saves go to a temporary folder deleted on exit. The host-transfer
-commit step uses a simulated ACK and says so. Exit preview returns to the menu.
+1. **Scene/director binding** (already Astra's list): create and bind the session, `SetWorld` anchors and
+   offers, `DropAt`/`DefeatBossAt`/`FinishFinalAt` positions, `CanClaim`, `ReprintEvidence`, chest restocking,
+   checkpoints. The scene's pickup interaction must send `ExpeditionIntent.Claim` (target = reward id)
+   through `ConversionGame.ExpeditionCommands`; no proximity prompt is drawn without a scene.
+2. **Purchase intent.** No `ExpeditionIntent` buys from a cache. Wanted: `Purchase` (target = chest id),
+   validated by the scene's proximity and the current offer, then `NativeExpedition.Purchase(account,
+   offer.generation, offer.price)`. Until then the caches panel says buying is not connected.
+3. **Sold state.** Another pilot's purchase is private, so others see a bought generation as unsold until
+   the scene restocks. Either restock (new generation + cooldown) on purchase, or add a public
+   `ExpeditionChestOffer.sold` (no buyer).
+4. **Door anchors.** Confirm the convention above, or add `ExpeditionWorldAnchor.building`. A facing
+   (`yaw`) would let doors draw 3D leaves instead of the HUD hologram.
+5. **Private reward anchors.** `PlaceReward` accepts chest and catch-up reward ids, and `Build` publishes
+   every anchor, revealing a private reward's id. Project only anchors of public loot (or refuse them in
+   `PlaceReward`). `Leaks` flags it; the world never draws it.
+6. **Display names.** `members[]` carries account ids only; guests cannot map them to seat names. Add a
+   public display name per member.
+7. **Transfer deadline clock.** `deadline` has no documented clock (the authority clock is frozen during a
+   handoff); the overlay says "deadline set" without a countdown until it is defined.
+8. **Probes and migration** (Astra's list): reachable/capable probes, endpoint migration, package/ACK.
+9. **Performance notes:** the host rebuilds the full view every frame and the host `ExpeditionCommands`
+   getter allocates per call; the world pieces themselves allocate nothing per frame.
+10. Optional per-account ineligibility reasons (unchanged).
 
 ## Verification
 
-`CoreTests.dll --expedition-view` (in the full suite too) checks:
+`CoreTests.dll --expedition-view` (also in the full suite) checks, among the earlier coverage:
 
-- host and guest views; privacy on every view;
-- the codec round trip, including JsonUtility-style decoding;
-- refused, unavailable, timed-out and awaiting-save states never read as success;
-- departure and pick confirmation edge cases;
-- dead-at-death boss eligibility;
-- uneven splits from 2/1 to 8/11, where the dice display equals the stored record;
-- independent picks;
-- individual extractions while others continue, the strict-majority group vote
-  and a failed save;
-- transfer freeze, abort, refusal and an unreflected commit;
-- every preview step for every viewer;
-- source scans: palette only, no authority reference in the screens, no
-  randomness, no menu entry.
+- guests over the real reply path (sender → wire → `ExpeditionCommandRouter` on a real session → reply,
+  views through `ExpeditionViewBatch` and the paired receiver): refused at once, accepted still pending,
+  confirmed only by the replicated view, failed on timeout (also when accepted but never reflected), a
+  replaced command's reply ignored, a Confirmed reply treated as an acceptance; the preview loopback too;
+- continue: downed consent, all remaining must agree, a living pilot required, extracted/offline not
+  counted, continue and extraction votes replacing each other with honest captions;
+- caches: price, stock, cooldown countdown against `elapsed`, restocking from the data only, the buyer's
+  private purchase, never "range";
+- reprint quotes: none, zero and negative read "price unavailable", never $0;
+- world-boss dice equal to the stored record for several splits, with the loot list and world pieces;
+- transfer: unprobed candidates refused with the reason, nothing fabricated without endpoint migration,
+  only reported steps done, unmeasured links;
+- world pieces only at real anchors of the area, the look per reward kind and eligibility, clusters, a
+  private anchor never drawn, geometry validity, reduced effects static, culling, and no allocation per frame;
+- every preview step for every viewer: leak-free, codec round trip, pieces at real anchors, history private;
+- source scans: palette only, no authority reference or mutator call in presentation, no randomness, no
+  session binding, no menu entry.
 
-Offline renders came from a scratch IMGUI recorder; they are not committed. Not
-run: Unity Editor/IMGUI input, Windows, multiplayer clients.
+Offline renders (scratch recorder plus a small software rasterizer of the same geometry; not committed):
+screens, greybox and 3D world pieces at 1280x720 to 3440x1440. Not run: Unity Editor/IMGUI input,
+Windows, real multiplayer clients, the 3D pieces in the engine.

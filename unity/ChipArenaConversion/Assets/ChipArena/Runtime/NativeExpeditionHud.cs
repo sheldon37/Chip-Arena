@@ -28,6 +28,10 @@ namespace ChipArena.UnityConversion
         {
             public Func<ExpeditionCommand,string> Blocked=_=>ExpeditionGuestCommands.NoChannel;
             public Func<ExpeditionCommand,ExpeditionCommandResult> State=_=>default;
+            /// <summary>The intent last sent under this command's key (ExpeditionIntentTracker.Last), so a vote withdrawn since reads so.</summary>
+            public Func<ExpeditionCommand,ExpeditionIntent> Last=_=>ExpeditionIntent.None;
+            /// <summary>The view the controls are drawn for (set by the caller each frame).</summary>
+            public ExpeditionView View;
             public Func<string,string> Name=a=>string.IsNullOrEmpty(a)?"?":a.ToUpperInvariant();
             public Func<string,string> ChipName=id=>id;
             /// <summary>A chip's rarity colour (content data), drawn as a tick, never as text.</summary>
@@ -73,6 +77,9 @@ namespace ChipArena.UnityConversion
             bool enabled=possible&&blocked==null&&state.state!=ExpeditionCommandState.Pending;
             pressed=U.Btn(r,label,primary&&enabled,enabled,a,13);
             string caption=P.Feedback(state,out var tone);
+            // A confirmed vote the authority has since withdrawn (a replacing vote, a downed pilot) no longer reads as confirmed.
+            if(state.state==ExpeditionCommandState.Confirmed&&c.View!=null&&ExpeditionIntentTracker.IsVote(command.intent))
+            {var sent=c.Last(command);if(sent!=ExpeditionIntent.None&&!P.VoteHeld(sent,c.View)){caption=P.Withdrawn(sent,c.View);tone=ExpeditionTone.Muted;}}
             if(caption==null&&possible&&blocked!=null&&!quiet){caption="Unavailable · "+blocked;tone=ExpeditionTone.Warn;}
             return Lines(r.x,r.yMax+4,Mathf.Max(r.width,260),caption,11,Tone(tone,a),3);
         }
@@ -217,6 +224,18 @@ namespace ChipArena.UnityConversion
                 var pick=c.State(new ExpeditionCommand(ExpeditionIntent.Select,reward.id));string caption=P.Feedback(pick,out var tone);
                 y=Lines(r.x+18,y,r.width-36,caption,11,Tone(tone,a),2)+8;
             }
+            // Your picks this loop (private): the chip chosen from each reward.
+            var picks=P.History(v);
+            if(picks.Length>0&&y+40<bottom)
+            {
+                Rule(r,y,a);y+=8;U.Text(Inner(r,y,14),"PICKED THIS LOOP · YOURS ONLY",10,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);y+=18;
+                for(int i=picks.Length-1;i>=0&&y+18<=bottom;i--)
+                {
+                    var row=Inner(r,y,18);U.Fill(new Rect(row.x,row.y+4,3,row.height-8),U.A(c.ChipTone(picks[i].chip),a));
+                    U.Text(new Rect(row.x+10,row.y,row.width-10,row.height),c.ChipName(picks[i].chip),12,C.Ink(a),TextAnchor.MiddleLeft,bold:true);
+                    U.Text(row,picks[i].from,10,C.Muted(a),TextAnchor.MiddleRight,mono:true,tracking:.08f);y+=20;
+                }
+            }
             // Held chips: yours, by count.
             Rule(r,bottom,a);float hy=bottom+8;U.Text(Inner(r,hy,14),"HELD",10,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);hy+=18;
             float x=r.x+18;
@@ -244,8 +263,8 @@ namespace ChipArena.UnityConversion
             var m=P.Extraction(v);float half=(r.width-36-16)/2,x0=r.x+18,x1=x0+half+16;
             // Individual extraction (left).
             U.Text(new Rect(x0,y,half,18),m.title,12,Tone(m.extracted?m.tone:ExpeditionTone.Warn,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
-            float ly=Lines(x0,y+22,half,m.detail,12,C.Ink(a),3)+6;
-            if(!m.extracted){ly=Action(new Rect(x0,ly,Mathf.Min(170,half),32),m.hostNeedsTransfer?"Transfer host & extract":"Extract",new ExpeditionCommand(ExpeditionIntent.Extract),m.can,c,a,true,out bool go);if(go)result=new ExpeditionCommand(ExpeditionIntent.Extract);}
+            float ly=Lines(x0,y+22,half,m.detail,12,m.hostNeedsTransfer?C.Warn(a):C.Ink(a),m.hostNeedsTransfer?5:3)+6;
+            if(!m.extracted){ly=Action(new Rect(x0,ly,Mathf.Min(m.hostNeedsTransfer?230:170,half),32),m.button,new ExpeditionCommand(ExpeditionIntent.Extract),m.can,c,a,!m.hostNeedsTransfer,out bool go);if(go)result=new ExpeditionCommand(ExpeditionIntent.Extract);}
             else{var st=c.State(new ExpeditionCommand(ExpeditionIntent.Extract));string cap=P.Feedback(st,out var t);ly=Lines(x0,ly,half,cap,11,Tone(t,a),2);}
             // Group extraction vote (right).
             var g=P.GroupExtraction(v);U.Text(new Rect(x1,y,half,18),g.label,12,C.Warn(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
@@ -265,9 +284,11 @@ namespace ChipArena.UnityConversion
             {
                 if(m.alive||m.extracted||y+34>r.yMax-12)continue;any=true;var row=Inner(r,y,30);
                 string who=c.Name(m.account)+(m.carriedBy==v.viewer?" · ON YOUR WRIST":P.Has(m.carriedBy)?" · CARRIED BY "+c.Name(m.carriedBy):" · NOT CARRIED")+(!m.connected?" · OFFLINE":"");
-                U.Text(new Rect(row.x,row.y,row.width-170,row.height),who,12,C.Ink(a),TextAnchor.MiddleLeft,bold:true);
-                var cmd=new ExpeditionCommand(ExpeditionIntent.Reprint,m.account);
-                float after=Action(new Rect(row.xMax-160,row.y,160,30),m.reprintCost>0?"Reprint · "+m.reprintCost:"Reprint · cost unavailable",cmd,v.mine.alive&&v.mine.safe&&m.connected,c,a,false,out bool go);if(go)result=cmd;y=Mathf.Max(row.yMax+6,after+4);
+                U.Text(new Rect(row.x,row.y,row.width-200,row.height),who,12,C.Ink(a),TextAnchor.MiddleLeft,bold:true);
+                var cmd=new ExpeditionCommand(ExpeditionIntent.Reprint,m.account);bool quoted=P.HasQuote(m),able=v.mine.alive&&v.mine.safe&&m.connected;
+                float after=Action(new Rect(row.xMax-190,row.y,190,30),"Reprint · "+P.Quote(m),cmd,able&&quoted,c,a,false,out bool go);if(go)result=cmd;
+                if(able&&!quoted&&!c.State(cmd).Shown)after=Math.Max(after,Lines(row.x,row.y+row.height-4,row.width-200,"Unavailable · "+P.NoQuote,11,C.Warn(a),2));
+                y=Mathf.Max(row.yMax+6,after+4);
             }
             if(!any)U.Text(Inner(r,y,18),"Nobody needs a reprint.",12,C.Muted(a),TextAnchor.MiddleLeft);
             return y+22;
@@ -322,16 +343,24 @@ namespace ChipArena.UnityConversion
         {U.BeginBand(r);try{
             var result=default(ExpeditionCommand);H.Panel(r,a,C.Warn(),14,H.Corners.Diagonal,true,.94f);
             float y=Header(r,"LOOP "+(v.loop+1)+" COMPLETE · EVERY BOSS DOWN","VICTORY",C.Warn(),a,34);
-            y=Lines(r.x+18,y,r.width-36,"Extract now with your build, or stay for loop "+(v.loop+2)+": the board resets, your build and the clock carry on, and enemies get harder. Each pilot chooses alone.",13,C.Ink(a),3)+10;
-            y=ExtractionBlock(r,y,v,c,a,ref result);Rule(r,y,a);y+=10;
-            // Each connected pilot chooses; the authority advances only after all remaining pilots consent.
-            U.Text(Inner(r,y,18),"CONTINUE · LOOP "+(v.loop+2),12,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);y+=22;
-            bool ready=v.continueVotes.Contains(v.viewer);
-            var next=new ExpeditionCommand(ready?ExpeditionIntent.CancelContinue:ExpeditionIntent.VoteContinue);
-            y=Action(new Rect(r.x+18,y,200,32),ready?"Cancel continue":"Continue to loop "+(v.loop+2),next,!v.mine.extracted&&v.mine.connected,c,a,true,out bool go)+6;if(go)result=next;
-            y=Lines(r.x+18,y,r.width-36,"Waiting until every connected pilot chooses Continue or finishes extracting.",12,C.Muted(a),3)+6;
+            y=Lines(r.x+18,y,r.width-36,"Extract now with your build, or stay for loop "+(v.loop+2)+": the board resets, your build and the clock carry on, and enemies get harder. Each pilot chooses alone.",13,C.Ink(a),3)+6;
+            // The world boss's loot, from its stored dice record (the reveal and your chips panel hold the detail).
+            foreach(var d in v.dice)
+            {
+                if(P.Name(d.boss)!=P.WorldBoss)continue;var share=P.Share(v,d);var line=Inner(r,y,18);Marker(new Rect(line.x,line.y+1,16,16),P.LootKind.Reserved,share.eligible?P.LootState.ReservedForYou:P.LootState.NotEligible,a);
+                U.Text(new Rect(line.x+24,line.y,line.width-24,18),"WORLD BOSS LOOT · "+P.ShareLine(share).ToUpperInvariant()+(share.eligible?" · YOURS "+share.yours:" · NOT ELIGIBLE"),11,share.eligible?C.Magenta(a):C.Danger(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.06f);y+=24;
+            }
+            y=ExtractionBlock(r,y+4,v,c,a,ref result);Rule(r,y,a);y+=10;
+            // Each connected pilot chooses; the authority advances only after all remaining pilots consent (downed ones can) and one is alive.
+            var k=P.Continue(v);var head=Inner(r,y,18);U.Text(head,k.label,12,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
+            U.Text(head,k.votes+" / "+k.remaining+" READY",13,Tone(k.allAgreed?k.tone:ExpeditionTone.Muted,a),TextAnchor.MiddleRight,bold:true,mono:true);y+=22;
+            H.Line(Inner(r,y,3),k.remaining>0?Mathf.Clamp01(k.votes/(float)k.remaining):0,Tone(k.allAgreed?k.tone:ExpeditionTone.Cyan,a),C.Void(.7f*a));y+=10;
+            var next=new ExpeditionCommand(k.voted?ExpeditionIntent.CancelContinue:ExpeditionIntent.VoteContinue);
+            y=Action(new Rect(r.x+18,y,220,32),k.button,next,k.canVote,c,a,!k.voted,out bool go)+6;if(go)result=next;
+            y=Lines(r.x+18,y,r.width-36,k.detail,12,k.needsLiving?C.Warn(a):C.Ink(a),3)+2;
+            y=Lines(r.x+18,y,r.width-36,"Continue and the group-extraction vote replace each other. Extracting alone stays your own choice.",11,C.Muted(a),2)+6;
             Rule(r,y,a);y+=10;U.Text(Inner(r,y,16),"CHOICES",11,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);y+=20;
-            foreach(var m in P.Roster(v))
+            foreach(var m in P.ContinueRows(v))
             {
                 if(y+20>r.yMax-10)break;var line=Inner(r,y,20);U.Text(line,c.Name(m.account)+(m.you?"  · YOU":""),13,m.you?C.CyanSoft(a):C.Ink(a),TextAnchor.MiddleLeft,bold:true);
                 StateTag(line.xMax,line.y,m.status,m.tone,a);y+=26;
@@ -378,6 +407,98 @@ namespace ChipArena.UnityConversion
             Lines(r.x+18,r.yMax-36,r.width-36,mine,12,share.eligible?C.Magenta(a):C.Danger(a),2,true);
         }finally{U.EndBand();}}
 
+        // ---- Host candidates -------------------------------------------------------------------------------------------------
+        /// <summary>The transport's measured links (RTT, jitter, ping timeouts) and what is not probed or supported yet.</summary>
+        public static float Candidates(Rect r,float y,ExpeditionView v,Controls c,float a)
+        {
+            U.Text(Inner(r,y+2,14),"CONNECTIONS · MEASURED BY THE TRANSPORT",10,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);y+=20;
+            foreach(var cand in P.Candidates(v))
+            {
+                if(y+30>r.yMax-6)break;var line=Inner(r,y,16);
+                U.Text(line,c.Name(cand.account)+(cand.elected?"  · ELECTED":""),12,cand.elected?C.Cyan(a):C.Ink(a),TextAnchor.MiddleLeft,bold:true);
+                U.Text(line,cand.rtt+(cand.jitter.Length>0?"  ·  "+cand.jitter:"")+"  ·  "+cand.timeouts,10,C.Ink(a),TextAnchor.MiddleRight,mono:true);
+                U.Text(new Rect(line.x,line.y+15,line.width,14),cand.probe+"  ·  "+cand.support,10,Tone(cand.tone,a),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.08f);y+=34;
+            }
+            return y;
+        }
+        /// <summary>A compact host-transfer line for the in-match HUD (the full overlay is on the Expedition screen).</summary>
+        public static void TransferBanner(Rect r,ExpeditionView v,float a=1)
+        {
+            if(v.transfer.stage==ExpeditionTransferStage.None)return;var steps=P.Transfer(v,out string headline,out var tone);
+            H.Panel(r,a,Tone(tone),R.TagCut);U.Text(new Rect(r.x+14,r.y+5,r.width-28,18),headline,12,Tone(tone,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
+            string now="";foreach(var s in steps)if(s.state==ExpeditionStep.Failed||s.state==ExpeditionStep.Active||s.state==ExpeditionStep.Unavailable){now=s.label+" · "+s.detail;break;}
+            U.Text(new Rect(r.x+14,r.y+24,r.width-28,16),now,10,C.Muted(a),TextAnchor.MiddleLeft,mono:true);
+        }
+
+        // ---- Chip caches -------------------------------------------------------------------------------------------------------
+        /// <summary>The scene's chip caches before purchase: price, stock generation, cooldown against the clock, and why buying
+        /// is not a control here (the scene's interaction at the cache).</summary>
+        public static void Caches(Rect r,ExpeditionView v,Controls c,float a=1)
+        {U.BeginBand(r);try{
+            H.Panel(r,a,C.Warn());float y=Header(r,"CHIP CACHES · THE BUYER OWNS THE CHIP","Caches",C.Ink(),a);
+            var rows=P.Caches(v);if(rows.Length==0){U.Text(Inner(r,y,18),"No chip caches in this world yet.",12,C.Muted(a),TextAnchor.MiddleLeft);return;}
+            foreach(var row in rows)
+            {
+                if(y+40>r.yMax-38)break;var line=Inner(r,y,36);CacheGlyph(new Rect(line.x,line.y+6,22,22),Tone(row.tone),row.restocking?.5f*a:a);
+                U.Text(new Rect(line.x+32,line.y,line.width-32,18),row.stock,11,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);
+                StateTag(line.xMax,line.y,row.state,row.tone,a);
+                U.Text(new Rect(line.x+32,line.y+18,line.width-32,16),row.detail,11,C.Muted(a),TextAnchor.MiddleLeft);y+=40;
+            }
+            Lines(r.x+18,r.yMax-36,r.width-36,P.NoPurchase,10,C.Muted(a),2);
+        }finally{U.EndBand();}}
+
+        // ---- World glyphs ------------------------------------------------------------------------------------------------------
+        /// <summary>The reprint machine's glyph: a pedestal frame with the reprint cross.</summary>
+        public static void MachineGlyph(Rect r,Color tone,float a)
+        {
+            H.Cut(r,C.Indigo(.85f*a),r.width*.18f);H.Outline(r,U.A(tone,a),r.width*.18f,H.Corners.Diagonal,1.5f);
+            float w=r.width*.14f,l=r.width*.52f;U.Fill(new Rect(r.center.x-w/2,r.center.y-l/2,w,l),U.A(tone,a));U.Fill(new Rect(r.center.x-l/2,r.center.y-w/2,l,w),U.A(tone,a));
+        }
+        /// <summary>A chip cache's glyph: a crate with its lid line and a chip tick.</summary>
+        public static void CacheGlyph(Rect r,Color tone,float a)
+        {
+            var body=new Rect(r.x,r.y+r.height*.28f,r.width,r.height*.72f);H.Cut(body,C.Indigo(.85f*a),r.width*.12f);H.Outline(body,U.A(tone,a),r.width*.12f,H.Corners.Diagonal,1.5f);
+            U.Fill(new Rect(r.x-r.width*.04f,r.y+r.height*.16f,r.width*1.08f,r.height*.12f),U.A(tone,a));U.Fill(new Rect(r.center.x-r.width*.1f,body.y+body.height*.3f,r.width*.2f,body.height*.4f),U.A(C.Ink(),a));
+        }
+        // Label declutter: the nearest pieces claim their label areas first; a farther label that would overlap is not drawn.
+        private static readonly Rect[] claimed=new Rect[128];private static int claimedCount;
+        public static void LabelsReset(){claimedCount=0;}
+        /// <summary>Reserves a piece's label area (call nearest first); false when the piece has no label at this size or a nearer
+        /// label already covers it. The same layout as Piece.</summary>
+        public static bool LabelClaim(in ExpeditionWorldPiece p,Vector2 label,float k,float minText=0)
+        {
+            float g=Mathf.Clamp(k*.5f,10,72),size=Mathf.Max(minText,Mathf.Clamp(k*.16f,0,14));if(p.quiet||size<8||string.IsNullOrEmpty(p.label))return false;
+            bool detail=!string.IsNullOrEmpty(p.detail),extra=!string.IsNullOrEmpty(p.extra);float block=size*1.4f+(detail?size*1.25f:0)+(extra?size*1.3f:0);
+            int chars=Math.Max(p.label.Length,Math.Max(detail?p.detail.Length:0,extra?p.extra.Length:0));float w=chars*size*.62f+12;
+            // A margin, so a farther piece's lines never read as part of a nearer label.
+            float y=p.kind==ExpeditionPieceKind.Pickup?label.y+g/2+4:label.y-g/2-6-block;var r=new Rect(label.x-w/2-10,y-12,w+20,block+24);
+            for(int i=0;i<claimedCount;i++){var c=claimed[i];if(r.x<c.xMax&&c.x<r.xMax&&r.y<c.yMax&&c.y<r.yMax)return false;}
+            if(claimedCount<claimed.Length)claimed[claimedCount++]=r;return true;
+        }
+        /// <summary>
+        /// A world piece's hologram label at its projected points (Core NativeExpeditionWorld): the glyph (the loot Marker, the Door, the
+        /// machine or cache glyph; skipped where the 3D piece draws its own shape) sized by `k` canvas units per metre, and its three
+        /// lines under the label point while labelled (a cluster's lead labels at its anchor; quiet pieces have none).
+        /// </summary>
+        public static void Piece(in ExpeditionWorldPiece p,Vector2 glyph,Vector2 label,float k,bool labelled,bool drawGlyph,float a,float minText=0)
+        {
+            float alpha=a*(p.settled?.55f:1),g=Mathf.Clamp(k*.5f,10,72);var r=new Rect(glyph.x-g/2,glyph.y-g/2,g,g);
+            if(drawGlyph)switch(p.kind)
+            {
+                case ExpeditionPieceKind.Pickup:Marker(r,p.look==ExpeditionPieceLook.Ordinary?P.LootKind.Ordinary:P.LootKind.Reserved,p.state,alpha);break;
+                case ExpeditionPieceKind.Door:Door(new Rect(glyph.x-g*.75f,glyph.y-g*.5f,g*1.5f,g),p.look==ExpeditionPieceLook.DoorSealed,p.tone,alpha);break;
+                case ExpeditionPieceKind.Machine:MachineGlyph(r,Tone(p.tone),alpha);break;
+                default:CacheGlyph(r,Tone(p.tone),alpha);break;
+            }
+            float size=Mathf.Max(minText,Mathf.Clamp(k*.16f,0,14));if(!labelled||p.quiet||size<8)return;
+            // Under a floating pickup; over the pieces that stand on the floor (door, machine, cache), clear of their shapes.
+            bool detail=!string.IsNullOrEmpty(p.detail),extra=!string.IsNullOrEmpty(p.extra);float block=size*1.4f+(detail?size*1.25f:0)+(extra?size*1.3f:0);
+            float y=p.kind==ExpeditionPieceKind.Pickup?label.y+g/2+4:label.y-g/2-6-block,w=Mathf.Max(220,g*4);var shade=C.Void(.85f*a);float la=p.labelAtAnchor?a:alpha;
+            U.Text(new Rect(label.x-w/2,y,w,size*1.5f),p.label,size,Tone(p.tone,la),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.1f,shadow:shade);y+=size*1.4f;
+            if(detail){U.Text(new Rect(label.x-w/2,y,w,size*1.4f),p.detail,size*.82f,C.Ink(la),TextAnchor.MiddleCenter,mono:true,shadow:shade);y+=size*1.25f;}
+            if(extra)U.Text(new Rect(label.x-w/2,y,w,size*1.3f),p.extra,size*.76f,C.Muted(la),TextAnchor.MiddleCenter,mono:true,shadow:shade);
+        }
+
         // ---- Host transfer ---------------------------------------------------------------------------------------------------
         /// <summary>The host-transfer overlay: headline, each step's state (authority and transport), and the transport's candidates.</summary>
         public static void Transfer(Rect r,ExpeditionView v,Controls c,float a=1)
@@ -394,16 +515,7 @@ namespace ChipArena.UnityConversion
                 float dy=line.y;foreach(var d in U.Wrap(s.detail,11,line.width-80-lw,false,s.state==ExpeditionStep.Failed?2:1)){U.Text(new Rect(line.x+80+lw,dy,line.width-80-lw,18),d,11,s.state==ExpeditionStep.Failed?C.Danger(a):C.Muted(a),TextAnchor.MiddleLeft);dy+=16;}
                 y=Mathf.Max(y+26,dy+8);
             }
-            if(v.transfer.candidates.Length>0&&y+20<r.yMax)
-            {
-                U.Text(Inner(r,y+2,14),"CONNECTIONS (TRANSPORT REPORT)",10,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);y+=20;
-                foreach(var cand in v.transfer.candidates)
-                {
-                    if(y+16>r.yMax-6)break;bool elected=cand.account==v.transfer.nextHost;var line=Inner(r,y,16);
-                    U.Text(line,c.Name(cand.account)+(elected?"  · ELECTED":""),11,elected?C.Cyan(a):C.Ink(a),TextAnchor.MiddleLeft,bold:elected);
-                    U.Text(line,(cand.reachable&&cand.capable?"":"UNREACHABLE  ")+"LOSS "+(cand.loss*100).ToString("0.#")+"%  ·  "+(cand.latencyMs+cand.jitterMs).ToString("0")+" MS",10,C.Muted(a),TextAnchor.MiddleRight,mono:true);y+=18;
-                }
-            }
+            if(v.transfer.candidates.Length>0&&y+20<r.yMax)y=Candidates(r,y,v,c,a);
         }finally{U.EndBand();}}
     }
 }
