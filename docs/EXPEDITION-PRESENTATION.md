@@ -1,5 +1,9 @@
 # Expedition — presentation contract (Claude)
 
+Integration follow-up: [EXPEDITION-INTEGRATION.md](EXPEDITION-INTEGRATION.md) records
+the new runtime bridge, updated commands/fields and remaining scene/migration
+dependencies. It supersedes the older missing-integration statements below.
+
 Presentation side of the Expedition PvE mode, recorded 2026-10-14 on
 `claude/expedition-presentation` (base shared `9270d95`, which contains Astra's
 rules foundation from PR #188). The rules and transactions are in

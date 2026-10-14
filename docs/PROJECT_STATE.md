@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 Expedition integration bridge: `codex/expedition-integration` on `65f9f131` adds opt-in room replication/private views, authenticated guest commands, catalog/save/reprint adapters, persistent anchors, final-boss rewards and individual continue choices. Focused checks pass; full suite/integration pending. No playable scene or endpoint migration. Runtime entry points and exact remaining dependencies: docs/EXPEDITION-INTEGRATION.md.
+
 2026-10-14 Expedition presentation: `claude/expedition-presentation` (base shared `9270d95`) adds the single-account Expedition view (also the guest replication contract), state-confirmed intents, and the Expedition screens: board, loot, chips, sanctuary, building, victory, dice reveal, transfer overlay and minimal HUD. A dev-only `--ca-expedition-preview` shows them. Managed/relay checks pass; Unity/Windows/multiplayer unrun. Not playable. Astra: replication message, guest command channel, hooks and missing fields (docs/EXPEDITION-PRESENTATION.md).
 
 2026-10-14 hazard kill credit: `codex/hazard-credit-ten` on `c895406d` uses an inclusive 10-second last-other-damager window for all stage hazards, PvE adds and no-source environmental deaths; self/zero damage cannot overwrite tags. Death record/feed agree. Brickfall structural attribution and its separate 6-second fallback remain. Focused managed checks/source validation pass; actual Unity/Windows acceptance and compiled publication pending.

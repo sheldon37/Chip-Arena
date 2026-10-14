@@ -9,8 +9,13 @@ namespace ChipArena.UnityConversion
         public bool DefeatBoss(string boss,int drops=-1)
         {
             if(!Mutable||s.phase!=ExpeditionPhase.Instance||!Current.bosses.Contains(boss)||Current.defeated.Contains(boss)||drops< -1||drops>256)return false;
+            if(!IssueBossRewards(EventKey("boss:"+boss),drops))return false;
+            Current.defeated=Add(Current.defeated,boss);Current.cleared=Current.defeated.Length==Current.bosses.Length;Changed();return true;
+        }
+        private bool IssueBossRewards(string key,int drops)
+        {
+            if(drops< -1||drops>256)return false;
             var eligible=Living();int total=drops<0?eligible.Length:drops;
-            string key=EventKey("boss:"+boss);
             if(!Key(key)||key.Length>120||s.dice.Any(d=>d.boss==key)||s.dice.Length>=ExpeditionValidation.MaxRecords||s.rewards.Length+total>ExpeditionValidation.MaxRecords)return false;
             var random=new NativePveRandom(NativePveRandom.Hash(s.seed,s.run,key));
             var rolls=eligible.Select(a=>1+(int)(random.Next()*100)).ToArray();
@@ -23,7 +28,7 @@ namespace ChipArena.UnityConversion
             foreach(string account in eligible)
                 for(int i=0;i<each+(winners.Contains(account)?1:0);i++)
                     s.rewards=Add(s.rewards,new ExpeditionReward{id=key+":"+(serial++),source="boss",owner=account,highQuality=true});
-            Current.defeated=Add(Current.defeated,boss);Current.cleared=Current.defeated.Length==Current.bosses.Length;Changed();return true;
+            return true;
         }
 
         /// <summary>Monster/elite spawn ID must be unique per loop/area. Unreserved drops are first-pickup.</summary>
@@ -68,7 +73,7 @@ namespace ChipArena.UnityConversion
             var held=p.chips.FirstOrDefault(c=>c.id==chip);
             if(held!=null&&held.count>=100000||held==null&&p.chips.Length>=2048)return false;
             if(held==null)p.chips=Add(p.chips,new ChipCount{id=chip,count=1});else held.count++;
-            reward.consumed=true;Changed();return true;
+            reward.selected=chip;reward.consumed=true;Changed();return true;
         }
     }
 }

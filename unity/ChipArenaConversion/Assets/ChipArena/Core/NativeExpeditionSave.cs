@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         public NativeExpedition Restore(string host)
         {
             if(!Valid()||!checkpoint.members.Any(p=>p.account==host&&!p.extracted)||extracted.Contains(host))throw new ArgumentException("Resume host must belong to this checkpoint and must not have extracted.");
-            var s=checkpoint.Copy();s.host=host;s.loading=false;s.exitAt=s.extractAt=-1;s.exitVotes=s.extractVotes=Array.Empty<string>();
+            var s=checkpoint.Copy();s.host=host;s.loading=false;s.exitAt=s.extractAt=-1;s.exitVotes=s.extractVotes=s.continueVotes=Array.Empty<string>();
             if(s.epoch==int.MaxValue)throw new InvalidOperationException("Authority epoch exhausted.");s.epoch++;
             foreach(var p in s.members){p.carriedBy=null;p.connected=p.account==host;p.safe=p.alive;p.extracted|=extracted.Contains(p.account);if(p.extracted)p.connected=p.alive=p.safe=false;}
             // A newcomer who extracted after this checkpoint still cannot rejoin its rollback.
@@ -59,6 +59,7 @@ namespace ChipArena.UnityConversion
         private readonly Func<ExpeditionSavepoint,string> encode;
         private readonly Func<string,ExpeditionSavepoint> decode;
         private const int MaxBytes=8*1024*1024;
+        public bool Exists=>File.Exists(path);
         public NativeExpeditionSaveStore(string directory,string run,Func<ExpeditionSavepoint,string> encode,Func<string,ExpeditionSavepoint> decode)
         {
             if(string.IsNullOrWhiteSpace(directory)||!ExpeditionValidation.Id(run)||run=="."||run==".."||run.Contains(":"))throw new ArgumentException("Invalid save location.");
