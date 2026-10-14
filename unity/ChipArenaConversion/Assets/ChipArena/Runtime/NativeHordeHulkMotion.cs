@@ -41,14 +41,17 @@ namespace ChipArena.UnityConversion
             hordeHulkStates[e.Target]=h;
         }
         /// <summary>
-        /// The proposed frame fields (docs/SIREN-ZOMBIES.md 10.5: NativeMinionFrame / NativePveAdd move, chargeAt, chargeEndAt,
-        /// chargeEnd, chargeTarget), the one place they are read once the rules replicate them. They do not exist yet, so this
-        /// reads nothing and the events above drive the moves. Binding them is these lines, nothing else:
-        ///   if(!hordeHulkStates.TryGetValue(m.Id,out var h))h=NoHulkState;
-        ///   if(h.MoveFor!=m.LastAttack){h.MoveFor=m.LastAttack;h.Move=NativeHulkMoves.Of(a.Move);}
-        ///   h.Charge.Frame(a.ChargeAt,a.ChargeEndAt,a.ChargeEnd,a.ChargeTarget);hordeHulkStates[m.Id]=h;
+        /// The frame fields (docs/SIREN-ZOMBIES.md 10.5; Astra's PR #215: NativeMinionFrame move, chargeAt, chargeEndAt, chargeEnd,
+        /// chargeTarget, applied to NativePveAdd through NativeHulkHunt on host and replicas), the one place they are read. The
+        /// events above stay as the fallback (a lost event is filled in by the frame, and a frame without an add reads nothing).
         /// </summary>
-        private void HordeHulkFrame(NativeMinion m){}
+        private void HordeHulkFrame(NativeMinion m)
+        {
+            var a=m?.Pve;if(a==null)return;
+            if(!hordeHulkStates.TryGetValue(m.Id,out var h))h=NoHulkState;
+            if(h.MoveFor!=m.LastAttack){h.MoveFor=m.LastAttack;h.Move=NativeHulkMoves.Of(a.Move);}
+            h.Charge.Frame(a.ChargeAt,a.ChargeEndAt,a.ChargeEnd,a.ChargeTarget);hordeHulkStates[m.Id]=h;
+        }
         private void ClearHordeHulkMoves(){hordeHulkStates.Clear();ClearHordeCharges();}
         /// <summary>The attack an add plays at LastAttack: the reported move (its strike and recovery the contract's, the effects
         /// of the nearest existing attack: a punch's thrust, a swipe's rake) or the content's attack as today.</summary>

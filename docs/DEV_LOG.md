@@ -7521,3 +7521,16 @@ Visuals only.
 - Native gate added and registered: `ValidateHulkHunt` exercises actual strike handlers, blocks, wind tracking/cancel/lock, a 50 m run and 1.5 m sidestep, end/cooldown, contact breaks/slowdown/protected geometry, real JsonUtility, guest late join and replay rewind. **Not executed here:** Unity runtime semantic compilation against engine DLLs, the native PhysX/JsonUtility gate, Windows player, two clients, visuals and performance. These remain required acceptance; managed checks are not substituted for them. No compiled update publication is claimed.
 
 - Verification/upload receipt: full managed + real-relay rerun exited 0 with **684 PASS groups**. PR **#215**, implementation **0ba2c74f00faa4ff3fb923c077547e53de85502a**, source tree **78c5e4f37a4db8e9e87674c7679069e01729f546** exactly matches the local tested tree. Pushed source, not merged or published: native Unity compilation/engine acceptance and Claude's field binding remain outstanding.
+
+## 2026-10-14 — Claude: Hulk v2 presentation bound to PR #215's fields; PR #215 merged into shared
+
+- Merged Astra's PR #215 (`codex/hulk-hunt-v2` `cea97a7`, Hulk hunted-pilot punch/swipe and locked cross-map charge
+  authority) into shared at `de7f75d`, keeping both sides of DEV_LOG/PROJECT_STATE. Owner standing authorization for
+  completed task PRs; the PR body listed Unity runtime compilation as not run, so it was compiled here against the Unity
+  6000.3.24f1 assemblies (runtime + editor OK) before merging.
+- `Runtime/NativeHordeHulkMotion.cs` `HordeHulkFrame` now reads the replicated `NativePveAdd` (`NativeHulkHunt`) fields:
+  `Move` keyed to `LastAttack`, and `ChargeAt`/`ChargeEndAt`/`ChargeEnd`/`ChargeTarget` into the per-add charge state, every
+  frame on host and replicas. The `hulk-move`/`hulk-charge`/`hulk-charge-end` events stay as the fallback. `HulkChargeChecks`
+  pins the binding. Presentation only: no hit timing, hitbox, damage, cooldown, movement or network change.
+- Live result once the builder publishes: Hulks punch, swipe and charge the hunted pilot with the wind-up tell, lane, crash-
+  through walls and the hunted pilot's warning. Not run: Unity Editor play, Windows, two clients, Astra's ValidateHulkHunt gate.
