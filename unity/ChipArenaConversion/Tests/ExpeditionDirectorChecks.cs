@@ -63,12 +63,24 @@ internal static class ExpeditionDirectorChecks
         Check(!d2.EnterDoor("stranger","city-door"),"nonmember cannot enter");
         Check(d2.EnterDoor("host","city-door")&&r2.Snapshot().loading,"entry freezes run behind barrier");var b2=d2.Barrier;
         Check(b2.target=="ward"&&b2.generation==1&&b2.required==2&&b2.ready==0,"target generation and counts");
+        var ticket=ExpeditionAreaReady.Capture(NativeExpeditionView.Build(r2,"guest",s2.Sources));
+        Check(ticket!=null&&ticket.run=="barrier-test"&&ticket.epoch==1&&ticket.target=="ward"&&ticket.generation==1&&ticket.layout==fingerprint,"capture detached load ticket");
+        Check(ExpeditionAreaReady.Capture(initial)==null,"inactive startup cannot acknowledge a load");
+        ExpeditionAreaReadyRequest TicketCopy()=>JsonSerializer.Deserialize<ExpeditionAreaReadyRequest>(JsonSerializer.Serialize(ticket,codec),codec);
+        var staleTicket=TicketCopy();staleTicket.run="previous-run";Check(!ExpeditionAreaReady.Accept(s2,"guest",staleTicket),"different run ACK refused");
+        staleTicket=TicketCopy();staleTicket.epoch++;Check(!ExpeditionAreaReady.Accept(s2,"guest",staleTicket),"different authority epoch ACK refused");
+        staleTicket=TicketCopy();staleTicket.generation++;Check(!ExpeditionAreaReady.Accept(s2,"guest",staleTicket),"different load generation ACK refused");
+        staleTicket=TicketCopy();staleTicket.target="city";Check(!ExpeditionAreaReady.Accept(s2,"guest",staleTicket),"different area ACK refused");
+        staleTicket=TicketCopy();staleTicket.layout=new string('b',64);Check(!ExpeditionAreaReady.Accept(s2,"guest",staleTicket),"different content fingerprint ACK refused");
+        Check(!ExpeditionAreaReady.Accept(s2,"stranger",ticket)&&!ExpeditionAreaReady.Accept(s2,"guest",null)&&d2.Barrier.ready==0,"unknown sender and null ACK leave readiness unchanged");
+        Check(ExpeditionAreaReady.Matches(ticket,NativeExpeditionView.Build(r2,"guest",s2.Sources)),"captured ticket matches current paired view");
         Check(!d2.Ready("guest","ward",0,fingerprint)&&!d2.Ready("guest","city",1,fingerprint)&&!d2.Ready("guest","ward",1,new string('b',64)),"stale target generation and fingerprint refused");
         Check(d2.Ready("host","ward",1,fingerprint)&&d2.Ready("host","ward",1,fingerprint)&&d2.Barrier.ready==1,"duplicate ACK does not inflate count");
         Check(!d2.CompleteAreaLoad((_,__)=>true),"missing peer freezes transfer");double clock=r2.Elapsed;s2.Tick(.2);Check(r2.Elapsed==clock,"loading pauses difficulty clock");
-        Check(d2.Ready("guest","ward",1,fingerprint),"second peer ready");
+        Check(ExpeditionAreaReady.Accept(s2,"guest",TicketCopy())&&ExpeditionAreaReady.Accept(s2,"guest",TicketCopy())&&d2.Barrier.ready==2,"serialized peer ticket accepted idempotently");
         Check(!d2.CompleteAreaLoad((_,__)=>false)&&r2.Snapshot().loading,"failed placement remains frozen");
         Check(d2.CompleteAreaLoad((area,assigned)=>area=="ward"&&assigned.Count==2&&assigned["host"].x!=assigned["guest"].x)&&!r2.Snapshot().loading,"party placed in distinct authored slots");
+        Check(!ExpeditionAreaReady.Accept(s2,"guest",ticket)&&!ExpeditionAreaReady.Matches(ticket,NativeExpeditionView.Build(r2,"guest",s2.Sources)),"completed load rejects stale completion");
         Check(d2.Closures.Single(c=>c.id=="ward-door").state=="sealing","instance door sealing");s2.Tick(1);Check(d2.Closures.Single(c=>c.id=="ward-door").state=="sealed","one second seal clock");
         r2.Progress("kill",1);r2.StartBosses(new[]{"TEST-boss"});Check(d2.RecordBossArrival("TEST-boss","test",a=>a=="test",new V3(3,4,5),80,100)&&!d2.RecordBossArrival("TEST-boss","test",a=>true,new V3(3,4,5),80,100),"boss arrival once per authority entity");
         var view=NativeExpeditionView.Build(r2,"host",s2.Sources);Check(view.bossArrivals.Length==1&&view.closures.Length==3&&!view.areaBarrier.active,"public state supplied");
@@ -102,6 +114,14 @@ internal static class ExpeditionDirectorChecks
         Check(!d2.RecordBossArrival("final","test",_=>true,new V3(float.NaN,0,0),100,100)&&!d2.RecordBossArrival("final","test",_=>true,new V3(),100,double.PositiveInfinity),"nonfinite spawn and health refused");
         Check(d2.RecordBossArrival("final","test",_=>true,new V3(-3,0,9),100,100),"final boss supplies spawn and health");
         Check(d2.FinalDefeated(new V3(-3,0,9))&&d2.BossArrivals.Single(a=>a.area=="city").hp==0,"final death publishes zero health");
+        // Victory and the next town loop share an area: they must still reset and place the party.
+        Check(r2.VoteContinue("host",true),"host consents to next loop");s2.Tick(0);
+        Check(r2.Snapshot().loop==1&&r2.Snapshot().loading&&d2.Barrier.active&&d2.Barrier.generation==3&&d2.Barrier.target=="city"&&d2.Barrier.ready==0,"same-area next loop starts fresh barrier before projection");
+        Check(d2.BossArrivals.Length==0&&d2.Closures.Single(c=>c.id=="final-gate").Blocking,"new loop clears boss arrivals and closes gate immediately");
+        Check(!ExpeditionAreaReady.Accept(s2,"host",ticket)&&!d2.CompleteAreaLoad((_,__)=>true),"old-loop ACK cannot release new loop");
+        var loopTicket=ExpeditionAreaReady.Capture(NativeExpeditionView.Build(r2,"host",s2.Sources));
+        Check(!ExpeditionAreaReady.Accept(s2,"guest",loopTicket),"disconnected peer cannot acknowledge");
+        Check(ExpeditionAreaReady.Accept(s2,"host",loopTicket)&&d2.CompleteAreaLoad((area,assigned)=>area=="city"&&assigned.Count==1&&assigned["host"].x==layout.Area("city").slots[0].x&&assigned["host"].z==layout.Area("city").slots[0].z),"new loop places living party at sanctuary slots");
         Console.WriteLine("PASS Expedition director ("+count+" checks)");
     }
 }

@@ -9,6 +9,7 @@ namespace ChipArena.UnityConversion
         private ExpeditionSession expeditionSession;private ExpeditionCommandRouter expeditionRouter;
         private ExpeditionViewReceiver expeditionReceiver;private ExpeditionGuestCommands expeditionGuest;
         private string expeditionStamp;private float expeditionNextSend;private IExpeditionCommands expeditionLocal;
+        private ExpeditionAreaReadyRequest expeditionLoadedTicket;private float expeditionNextReady;
         public ExpeditionView ExpeditionView{get;private set;}
         public IExpeditionCommands ExpeditionCommands=>server!=null?(IExpeditionCommands)expeditionGuest:
             expeditionLocal;
@@ -46,8 +47,33 @@ namespace ChipArena.UnityConversion
             return commands==null?ExpeditionCommandResult.Of(ExpeditionCommandState.Unavailable,"No Expedition session is bound."):
                 commands.Send(new ExpeditionCommand(purchase?ExpeditionIntent.Purchase:ExpeditionIntent.Claim,target));
         }
+        /// <summary>Scene loader captures ExpeditionAreaReady.Capture(view) BEFORE loading and reports
+        /// that ticket only after map, collision and layout verification succeed. Pending means queued;
+        /// only the public barrier counts/completion confirm it. Never call from presentation or a timer.</summary>
+        public ExpeditionCommandResult ReportExpeditionAreaLoaded(ExpeditionAreaReadyRequest ticket)
+        {
+            string id=account?.Access.AccountId;
+            if(string.IsNullOrEmpty(id)||account.Access.Expires<=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                return ExpeditionCommandResult.Of(ExpeditionCommandState.Unavailable,"Expedition account authentication is unavailable.");
+            if(server==null)
+                return ExpeditionAreaReady.Accept(expeditionSession,id,ticket)?ExpeditionCommandResult.Sent:
+                    ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,"The Expedition load ticket is stale or invalid.");
+            if(networkId<1||!ExpeditionAreaReady.Matches(ticket,ExpeditionView))
+                return ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,"The Expedition load ticket is stale or invalid.");
+            expeditionLoadedTicket=new ExpeditionAreaReadyRequest{run=ticket.run,epoch=ticket.epoch,target=ticket.target,layout=ticket.layout,generation=ticket.generation};
+            expeditionNextReady=0;ExpeditionReadyTick();
+            return ExpeditionCommandResult.Sent;
+        }
+        private void ExpeditionReadyTick()
+        {
+            if(expeditionLoadedTicket==null)return;
+            if(!ExpeditionAreaReady.Matches(expeditionLoadedTicket,ExpeditionView)){expeditionLoadedTicket=null;return;}
+            if(Time.unscaledTime<expeditionNextReady)return;
+            expeditionNextReady=Time.unscaledTime+.5f;
+            SendServer(new NativeNetMessage{type="expedition-area-ready",expeditionAreaReady=expeditionLoadedTicket});
+        }
         private void ResetExpeditionNetwork()
-        {expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
+        {expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
         private void ExpeditionNetworkTick()
         {
             try{ExpeditionNetworkStep();}
@@ -55,7 +81,8 @@ namespace ChipArena.UnityConversion
         }
         private void ExpeditionNetworkStep()
         {
-            if(expeditionSession==null||server!=null)return;
+            if(server!=null){ExpeditionReadyTick();return;}
+            if(expeditionSession==null)return;
             expeditionSession.Tick(Time.unscaledDeltaTime);
             // Projection and transport metrics are bounded to 20 Hz, including offline sessions.
             if(Time.unscaledTime<expeditionNextSend)return;expeditionNextSend=Time.unscaledTime+.05f;
@@ -79,6 +106,14 @@ namespace ChipArena.UnityConversion
         }
         private bool ExpeditionHostMessage(NativePeer peer,NativeNetMessage message)
         {
+            if(message.type=="expedition-area-ready")
+            {
+                // Sender identity comes only from the verified peer seat. Reuse the bounded command budget.
+                if(peer.Changes.Allow(Time.unscaledTime)&&peer.Seat?.access!=null&&
+                    peer.Seat.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                    ExpeditionAreaReady.Accept(expeditionSession,peer.Seat.access.AccountId,message.expeditionAreaReady);
+                return true;
+            }
             if(message.type!="expedition-command")return false;
             var request=message.expeditionCommand;ExpeditionCommandReply reply;
             if(!peer.Changes.Allow(Time.unscaledTime))reply=new ExpeditionCommandReply{transaction=request?.transaction,state=ExpeditionCommandState.Refused,reason="Too many commands. Try again shortly."};

@@ -7766,3 +7766,40 @@ Presentation only.
   | Source package | 2007 files |
   | `git diff --check` | clean |
   | CI-layout export | rc 0, 686 PASS |
+
+## 2026-10-14 — Astra: Expedition area-ready transport and loop lifecycle
+
+Task branch `codex/expedition-director-lifecycle`, shared/builder base `5aa2e0a`.
+Owner asked to continue remaining integration and provide an actionable Claude
+handoff. Verified current code already includes town dressing and PR #216's four
+state bindings; earlier status paragraphs were stale. New entry point for Claude:
+`docs/CLAUDE-EXPEDITION-HANDOFF.md`, linked from all three Expedition contracts.
+
+Added `expedition-area-ready` and its isolated JsonUtility envelope. A ticket
+captures run, epoch, target, generation and layout before a scene load. Host
+identity comes from the verified unexpired seat, never the message. Core rejects
+wrong/stale fences and nonmembers. Repeated valid tickets are idempotent. Guests
+retry their detached completed-load ticket at 2 Hz until the public barrier changes
+or the room resets; rate limiting cannot permanently lose a one-shot ready event.
+`ReportExpeditionAreaLoaded` queues readiness only; it neither loads the scene nor
+places pilots. The real scene adapter must call it only after successful loading
+and collision/layout verification, then host placement uses CompleteAreaLoad.
+
+Fixed same-area Continue: the next loop now creates a fresh loading barrier,
+clears old arrivals, closes the gate and uses sanctuary slots. Session synchronizes
+the director immediately after advancing, before projecting the new loop. Old
+ready tickets cannot release that barrier. No combat/balance/animation changes.
+
+Checks: optimized managed compilation; Expedition director 86 assertions pass,
+including serialized ACKs, duplicate/stale/wrong-run/epoch/area/layout cases,
+disconnected senders and same-area loop placement. Roslyn syntax: zero errors.
+Source package structure: 2,024 files passed. Native JsonUtility round-trip gate
+added, but Unity Editor/PhysX/Windows/two-client execution is unavailable here.
+Full managed/real-relay result is recorded below after completion.
+
+Still unfinished: scene creation/real geometry probes/closure collision, actual
+map load and placement hooks, encounters/combat callbacks, interaction input,
+director resume, endpoint/combat migration and progression. No playable Expedition
+or binary publication is claimed. Source promotion receipts belong in the PR.
+
+Final verification: full optimized managed/real-relay suite exited 0 (687 PASS groups); real loopback relay/LAN checks passed. No assertion waived. Diff check clean. Native Unity/Windows and compiled publication remain unrun.

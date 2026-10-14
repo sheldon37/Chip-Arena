@@ -57,10 +57,12 @@ namespace ChipArena.UnityConversion
         private void UpdateState()
         {
             var s=Session.Run.Snapshot();
-            if(s.loop!=observedLoop){arrivals.Clear();observedLoop=s.loop;}
-            if(s.area!=observedArea)
+            bool newLoop=s.loop!=observedLoop;
+            if(newLoop){arrivals.Clear();observedLoop=s.loop;}
+            // A new loop needs a fresh load/placement even though victory and town share a map.
+            if(newLoop||s.area!=observedArea)
             {
-                returnFrom=observedArea;observedArea=s.area;
+                returnFrom=newLoop?null:observedArea;observedArea=s.area;
                 BeginAreaLoad();s=Session.Run.Snapshot();
             }
             if(barrier.active)
