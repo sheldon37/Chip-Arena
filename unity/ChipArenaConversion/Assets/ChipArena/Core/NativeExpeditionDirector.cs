@@ -4,7 +4,7 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>Scene-independent orchestration. Physics and combat events are supplied only by the authority.
     /// This object never accepts guest positions, reward contents or cache prices.</summary>
-    public sealed class ExpeditionDirector
+    public sealed partial class ExpeditionDirector
     {
         public readonly ExpeditionSession Session;public readonly ExpeditionLayout Layout;
         private readonly Func<string,V3?> position;private readonly Func<V3,V3,bool> visible;
@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
             this.cachePrice=cachePrice;this.reprintCost=reprintCost;this.restockSeconds=restockSeconds;
             var s=session.Run.Snapshot();if(s.world!=layout.world||!s.instances.Select(i=>i.id).OrderBy(i=>i).SequenceEqual(layout.instances.OrderBy(i=>i)))throw new ArgumentException("Run and layout differ.");
             if(s.anchors.Length==0)session.SetWorld(layout.areas.SelectMany(a=>a.anchors).ToArray(),layout.areas.SelectMany(a=>a.anchors).Where(a=>a.kind=="chest").Select(a=>new ExpeditionChestOffer{id=a.id,generation=s.loop+":"+a.id+":0",price=cachePrice}).ToArray());
-            session.CanClaim=CanClaim;session.CanPurchase=CanPurchase;session.Sources.ReprintCost=_=>reprintCost;
+            session.CanClaim=CanClaim;session.CanPurchase=CanPurchase;session.Sources.ReprintCost=_=>reprintCost;InitializeState();if(layout.compatibility!=null)BindLayoutIdentity(layout.compatibility);
         }
         private bool Reach(string account,V3 point,double range)
         {var p=position(account);return p.HasValue&&(p.Value-point).Length<=range&&visible(p.Value,point);}
@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Run after combat and before projection. Session owns the elapsed clock; do not tick it twice.</summary>
         public void Step()
         {
-            var run=Session.Run;var s=run.Snapshot();if(run.Migrating||s.loading||s.phase==ExpeditionPhase.Ended)return;
+            UpdateState();var run=Session.Run;var s=run.Snapshot();if(run.Migrating||s.loading||s.phase==ExpeditionPhase.Ended)return;
             foreach(var member in s.members.Where(m=>m.connected&&m.alive&&!m.extracted))
             {bool safe=Sanctuary(member.account);if(safe!=member.safe)run.SetSafe(member.account,safe);}
             // The generation includes rule revision; every restock is unique across save/resume without a second journal.

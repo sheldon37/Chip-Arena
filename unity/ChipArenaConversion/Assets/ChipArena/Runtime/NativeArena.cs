@@ -78,7 +78,7 @@ namespace ChipArena.UnityConversion
         }
         public void Reset()
         {
-            if(!Replica&&RandomizeMapEachSet&&Match.Set!=mapSet){var maps=Content.maps.Where(m=>m.rotation&&m.id!=MapId).ToArray();if(mapSet>0&&maps.Length>0)MapId=maps[random.Next(maps.Length)].id;mapSet=Match.Set;}
+            if(!Replica&&RandomizeMapEachSet&&Match.Set!=mapSet){var maps=Content.maps.Where(m=>NativeMapRules.ArenaSelectable(m)&&m.rotation&&m.id!=MapId).ToArray();if(mapSet>0&&maps.Length>0)MapId=maps[random.Next(maps.Length)].id;mapSet=Match.Set;}
             DevHazardPulses.Clear();Generation++;Entries.Clear();MinionDeaths.Clear();DestroyScene();Pve=null;pveEntries.Clear();pveNavigation=null;remoteInputs.Clear();debrisLedger.Clear();contacts.Clear();root=new GameObject("Native match authority");
             if(ReplicaScene.IsValid())UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(root,ReplicaScene);
             var map=Content.Map(MapId);var shader=Resources.Load<Shader>("NativeLit");

@@ -392,7 +392,7 @@ namespace ChipArena.UnityConversion
                         // attack; Astra's minion-spit events replace the prediction).
                         if(arena?.Pve==null&&a>=H&&!hordeSpitEvents.Contains(j.Id)&&(!hordeSpat.TryGetValue(j.Id,out float last)||last!=now-a))
                         {
-                            hordeSpat[j.Id]=now-a;Vector3 to=j.HasTarget?new Vector3(j.Target.x,j.Ground,j.Target.z):floor+fwd*6;Vector3 flat=to-floor;flat.y=0;if(flat.magnitude>11)to=floor+flat.normalized*11;
+                            hordeSpat[j.Id]=now-a;Vector3 to=j.HasTarget?new Vector3(j.Target.x,j.Ground,j.Target.z):floor+fwd*6;Vector3 flat=to-floor;flat.y=0;if(flat.magnitude>NativeSpitterRules.Range)to=floor+flat.normalized*NativeSpitterRules.Range;
                             float flight=NativeHordeFx.Flight(Vector3.Distance(new Vector3(mouth.x,0,mouth.z),new Vector3(to.x,0,to.z)));
                             HordeLaunchGlob(mouth,to,now-a+H,flight,j.Seed^(uint)(hordeGlobNext*7919),j.Id,NativeSpitterRules.Radius,NativeSpitterRules.Duration,0);
                         }
@@ -427,26 +427,26 @@ namespace ChipArena.UnityConversion
             Vector3 d=b-a,toEye=eye-a;Vector3 s=Vector3.Cross(d,toEye).normalized*width;
             draw.Quad(draw.Effects,a-s,b-s*.2f,b+s*.2f,a+s,color,NativeFxDraw.Authored+NativeFxDraw.Additive);
         }
-        // Astra's spit events (once the rules emit them): a glob from From to Position over Amount seconds; its puddle Radius.
+        // The authority's acid records, on every peer (host, guests, late joins and the killcam's replay world): PvE's
+        // NativePveFrame.acid and, on any other map, the DEV monsters' devAcid (both read through NativeArena.PveAcidAt). The
+        // spit's Impact event is a transient notification the event buffer may drop in a busy tick, so it only tells the DEV
+        // preview which adds the authority spits for; every glob, splash and pool comes from a record (seed: the record's id), so
+        // PvE and DEV monsters on other maps draw the same acid.
         private int hordeSpitEvent;
         private void HordeSpitEvents(NativeArena arena,float now)
         {
-            if(arena.Pve!=null)
+            int recordCount=arena.PveAcidCount;
+            for(int i=0;i<hordeGlobs.Length;i++){if(!hordeGlobs[i].Record)continue;bool found=false;for(int k=0;k<recordCount;k++){var r=arena.PveAcidAt(k);if(hordeGlobs[i].Id==r.actor&&hordeGlobs[i].At==r.at){found=true;break;}}
+                // A record gone before its pool ended (a phase hold, a reset, cleared DEV monsters) takes its acid with it; one that ended on its own leaves its etch.
+                if(!found&&now<hordeGlobs[i].At+hordeGlobs[i].Flight+hordeGlobs[i].Duration-.05f)hordeGlobs[i].Flight=0;}
+            for(int k=0;k<recordCount;k++)
             {
-                int recordCount=arena.PveAcidCount;
-                for(int i=0;i<hordeGlobs.Length;i++){bool found=false;for(int k=0;k<recordCount;k++){var r=arena.PveAcidAt(k);if(hordeGlobs[i].Id==r.actor&&hordeGlobs[i].At==r.at){found=true;break;}}
-                    // A record gone before its pool ended (a phase hold, a reset) takes its acid with it; one that ended on its own leaves its etch.
-                    if(!found&&now<hordeGlobs[i].At+hordeGlobs[i].Flight+hordeGlobs[i].Duration-.05f)hordeGlobs[i].Flight=0;}
-                for(int k=0;k<recordCount;k++){var r=arena.PveAcidAt(k);bool found=false;for(int i=0;i<hordeGlobs.Length;i++)if(hordeGlobs[i].Flight>0&&hordeGlobs[i].Id==r.actor&&hordeGlobs[i].At==r.at){found=true;break;}if(!found)HordeLaunchGlob(NativeArena.Vec(r.from),NativeArena.Vec(r.to),r.at,r.flight,(uint)r.id,r.actor,NativeSpitterRules.Radius,NativeSpitterRules.Duration);}
-                return;
+                var r=arena.PveAcidAt(k);hordeSpitEvents.Add(r.actor);bool found=false;for(int i=0;i<hordeGlobs.Length;i++)if(hordeGlobs[i].Flight>0&&hordeGlobs[i].Id==r.actor&&hordeGlobs[i].At==r.at){found=true;break;}
+                if(!found)HordeLaunchGlob(NativeArena.Vec(r.from),NativeArena.Vec(r.to),r.at,r.flight,(uint)r.id,r.actor,NativeSpitterRules.Radius,NativeSpitterRules.Duration,record:true);
             }
+            if(arena.Pve!=null)return;
             var events=arena.Events;int newest=hordeSpitEvent;
-            for(int i=0;i<events.Count;i++)
-            {
-                var e=events[i];if(e.Id<=hordeSpitEvent)continue;if(e.Id>newest)newest=e.Id;if(e.Detail!="minion-spit")continue;
-                hordeSpitEvents.Add(e.Target);var from=NativeArena.Vec(e.From);var to=NativeArena.Vec(e.Position);
-                HordeLaunchGlob(from,to,e.Time,e.Amount>0?e.Amount:NativeHordeFx.Flight(Vector3.Distance(from,to)),NativeGoreRules.FnvDigits(e.Id),e.Target,e.Radius>0?e.Radius:NativeSpitterRules.Radius,NativeSpitterRules.Duration);
-            }
+            for(int i=0;i<events.Count;i++){var e=events[i];if(e.Id<=hordeSpitEvent)continue;if(e.Id>newest)newest=e.Id;if(e.Detail=="minion-spit")hordeSpitEvents.Add(e.Target);}
             if(newest<hordeSpitEvent)hordeSpitEvents.Clear();hordeSpitEvent=newest;
         }
         // ================================================================================================================

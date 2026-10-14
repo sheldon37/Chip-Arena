@@ -96,7 +96,7 @@ namespace ChipArena.UnityConversion
         {
             if(!ExpeditionValidation.Number(dt)||dt<0)throw new ArgumentOutOfRangeException(nameof(dt));
             // A stalled host cannot advance an unbounded amount in one UI update.
-            dt=Math.Min(dt,1);while(dt>0){double step=Math.Min(dt,.25);Run.Tick(step);dt-=step;}
+            dt=Math.Min(dt,1);while(dt>0){double step=Math.Min(dt,.25);Run.Tick(step);Sources.Director?.Step();dt-=step;}
             if(Run.Elapsed>=nextExtractionAttempt)
                 foreach(var who in Run.ExtractionDue())if(Extract(who).state!=ExpeditionCommandState.Pending)nextExtractionAttempt=Run.Elapsed+1;
             Run.AdvanceWhenReady();

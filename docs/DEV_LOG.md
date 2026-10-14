@@ -7164,6 +7164,251 @@ repair. Inspected both calls against NativeStageHazardsRuntime.cs's actual
 signature; full managed/relay and Python results above cover the unchanged Core.
 Native compile/fixture/build must rerun; failed d05cca70 was not published.
 
+## 2026-10-14 — Claude: Expedition layout M1 (town and Ward Zero instance drafts, manifest, dusk look)
+
+Branch `claude/expedition-layout`, base shared `afade5d`, merged shared `b22e59f` (PR #213, which
+brings Astra's director foundation). Commits: `3060dcb` (drafts), `1bef31b` (matched to Astra's
+loader), then this entry. The layout side of the agreed contract (`docs/EXPEDITION-LAYOUT.md`, "Layout
+draft M1"). These are **drafts, not game content**: nothing is added to Resources
+`UnityMaps.json` or `ExpeditionLayout.json`, because every UnityMaps map joins the PvP arena
+picker, the DEV map list and the Sandbox. The filter for that, `NativeMapRules.ArenaSelectable`,
+is only on Astra's unmerged `codex/expedition-layout-director` (`40b7c80`, PR #212).
+
+- **Generators** in `docs/arenas/scripts/`:
+  - `expedition_city.py`: the town, 120 × 120 m, a zombie city at dusk. Sanctuary plaza with 8
+    slots, the reprint machine and a cache. Streets lead to Ward Zero (door, volumes, 8 returns) and
+    to the reserved, sealed foundry and transit plots. There is a ring road, alleys, a gated final
+    plaza, and 50 spawns (doors, grates, roof drops, Hulk breaches). It has 124 static blocks and
+    46 pilot exclusion columns, with nothing in the prop frame.
+  - `expedition_ward_zero.py`: the current `siren` map copied unchanged, plus an exit frame on the
+    SW Intake wall, 8 entries, 2 caches and 3 boss points. Its spawns are `inherit:siren`.
+  - `expedition_layout.py`: the schema-1 manifest, with a per-area `blockHash`.
+  - `expedition_common.py`: the shared collision model (sphere-bottomed capsules), clearance,
+    hash and plan code.
+- **Fixtures**: `Tests/expedition-{city,ward-zero}-draft.json` and `Tests/expedition-layout-draft.json`.
+- **Look**: the `expedition-city` entry in `MapLooks.json` (dusk). The existing looks are unchanged,
+  and no map uses the new one yet.
+- **Checks**:
+  - The generators prove these:
+    - all town street floor is reached from the sanctuary;
+    - the final plaza is reached only through the gate volume (shut: 0 cells; open: 100%);
+    - every record is on floor with pilot or Hulk clearance;
+    - no spawn is in the sanctuary (nearest exit 8 m away);
+    - both instance floors are reached at 100%;
+    - all 53 inherited exits are on reached floor and unblocked by the overlay.
+  - The probes mirror Astra's `NativeExpeditionLayout.ValidateGeometry`.
+  - `Tests/test_expedition_layout_draft.py` covers byte-identical regeneration, the fixtures, the
+    pinned hashes and the look. Its script tests skip without `docs/`.
+  - `Tests/ExpeditionLayoutChecks.cs` (`--expedition-layout`, 173 checks) does these:
+    - imports the drafts through `NativeMapRules.Merge`, simulated;
+    - checks the town spawns with the `NativeWardEntries` rules and runs
+      `NativeWardEntries.Validate(pve, instance)`;
+    - runs the base's `NativeExpeditionLayout.Parse` and `ValidateGeometry`, with a capsule probe;
+    - reproduces `blockHash` from the C# float fields.
+- **Matched to Astra's loader:**
+  - Volumes use a centre `y` (`ExpeditionVolume.Contains`).
+  - Door anchors are clear floor points 0.6 m from the doorway.
+  - The instance's door volumes keep off the bounds edge.
+  - `40b7c80`'s full `Load` also accepts the manifest (scratch run with the drafts merged and
+    permissive probes).
+- **Siren finding for Astra:** two inherited Hulk exits are not Hulk-clear: `breach-gantry-e/w`,
+  0.65 m from the gantry rail. The geometry gate refuses exactly these two, and a Hulk-clear point
+  within 1 m routes. The fix is Siren content or the loader's choice; the options are in the doc.
+- **Proposed clarifications** for Astra to confirm: spawn `yaw` stays in radians (PveEntry);
+  instance exit volumes are inside; final-area spawns are those whose exit is inside the boss
+  trigger; Siren hazards are not carried into the instance. Siren's map and entries are unchanged.
+- **Not touched**: no hit timing, hitbox, damage, cooldown, movement, networking or animation
+  change.
+
+Checks on the final head are in the next entry. Renders (scratch, offline WebGL with
+NativeBlockLit and NativeNightSky) are a top-down plan per area plus eye-level and overview views.
+Not run: Unity Editor, PhysX, Windows, gameplay.
+
+Next for Astra:
+- merge PR #212's filter;
+- import with `tools/generate_expedition.py` (nav, UnityMaps, ExpeditionLayout.json, asset lock;
+  steps in the doc);
+- decide the Siren-only id paths and the gantry exits.
+
+Next for Claude:
+- 3D door leaves, gate and seal visuals;
+- the sanctuary boundary;
+- the town dressing kit;
+- generalizing the Ward Zero presentation to the instance after import.
+
+Open for the owner: scale, themes, the town's name, Ward Zero hazards in the instance.
+
+### 2026-10-14 — Claude: Expedition layout M1 checks (head `12f0680`, shared `b22e59f` included)
+
+| Check | Result |
+| --- | --- |
+| Unity runtime and editor compile | pass |
+| Managed and real relay (`check_relay.py`) | rc 0, 682 PASS lines, including `PASS expedition layout (173 checks …)` |
+| Python suite | 106 tests OK, 1 skipped (the Windows-only `cmd.exe` updater test) |
+| Source package | 1,956 files |
+| `git diff --check` | clean |
+| CI layout (exported index, no `docs/`, `ci-relay2.sh`) | rc 0, 682 PASS lines |
+
+In the CI layout, the layout test's two script tests skip and its three fixture tests pass. An
+earlier CI-layout run that used the shared-directory `ci-relay.sh` was stopped and is not counted.
+Not run: Unity Editor, PhysX, Windows, gameplay. The branch is pushed and unmerged; nothing is
+released or published.
+## 2026-10-14 — Astra: agreed Expedition layout validation and director state
+
+Branch `codex/expedition-layout-director`, based on local foundation `8379f4cf`
+(the tree published as `437279ec` on `codex/expedition-director`), including agreed
+shared `afade5dc`. Isolated checkout; foundation and Claude branches not rewritten.
+
+Added the schema-1 resource load gate, map/look isolation check, manifest/content
+fingerprint, strict spawn scalar/allow validation, gate uniqueness, rotated volume
+bounds, sanctuary containment, compulsory navigation evidence and pilot/Hulk slot
+clearance. Inherited Siren spawn permissions now retain every allowed archetype.
+
+Director supplies detached closure state/clocks, barrier target/generation/counts,
+authoritative sanctuary flags and boss arrivals through the existing public view.
+Entry and voted return freeze behind a fingerprint-checked barrier; stale/duplicate
+ACKs, missing peers and failed placements cannot release it. One-second closure
+states drive the collision predicate; final trigger requires an open gate. Added
+Expedition map exclusion to ordinary selection, random rotation and Sandbox changes.
+The filtered picker now looks up descriptions by map ID rather than old array index.
+No Siren geometry, balance, Electron CI, accounts or updater changes.
+
+The resource and scene adapter API/remaining integration are documented in
+EXPEDITION-LAYOUT.md. No layout asset was fabricated. Still pending Claude's actual
+maps/manifest, runtime PhysX/navigation probes, scene/collision and ready-message
+binding, encounter catalog/spawning and native gameplay validation. This branch
+is a contract/director implementation, not a playable Expedition or release.
+
+Verification: direct Roslyn compilation and 53 focused director checks passed.
+The broader suite caught absent-string normalization for the new barrier DTO;
+fixed to preserve host/guest view round-trips. Final broader result follows below.
+The dotnet SDK CLI fails container process introspection, so the existing direct
+Roslyn compiler workaround is used. Unity Editor/PhysX/Windows tests unrun.
+
+Verification/integration follow-up: the broad run passed the Expedition checks
+and continued through stage/navigation/render regressions, then stopped at the
+older foundation's DEV panel action-list assertion (new monster authority, old UI).
+Integrated current foundation `c7bc4017` (remote `2fef6816`; all 13 changed file blobs
+match exactly), preserving both log entries. Recompiled, then passed DEV tools
+4,190 checks, DEV authority 95 checks, Expedition rules 473 assertions, presentation
+8,357 checks, integration 59 assertions and director 53 checks. No clean full-suite
+pass is claimed; the remaining full run was not repeated after this upstream fix.
+Source package structure: 1,951 files; C# syntax: zero errors; diff check passed.
+PR #212 remains draft and unmerged; no builder/test-feed promotion. The task branch
+is rebased onto the published current foundation to keep this PR limited to the
+18 Expedition files; no shared branch is rewritten. Claude layout branch still
+absent on the remote at final inspection.
+
+## 2026-10-14 — Astra: import Expedition layout M1 and integrate PR #212
+
+Task branch `codex/expedition-layout-import`, exact shared base `5999aff`
+(tree `267bdc2002ede9f66b266c40462d636183ff5eca`, verified locally). Integrated
+PR #212 `40b7c80` with both sides' documentation preserved. Direct Git network
+access was unavailable; GitHub connector blobs reconstruct the exact base tree,
+and uploaded changes are verified by Git blob SHA and the final tree SHA.
+
+Imports `expedition-city` and `expedition-ward-zero` after Siren, their generated
+navigation and `Resources/ExpeditionLayout.json` (`exp-layout-2`), with receipts.
+The importer is `unity/ChipArenaConversion/tools/generate_expedition.py`; --check
+requires byte-identical output. Town: 4,057 nodes/7,367 links. Instance: 21,851
+nodes/39,988 links on a 0.5 m grid. A 1 m instance grid failed Hulk routing;
+the finer graph passes actual node/link capsule checks. Compact stable map-local
+nav IDs reduce the JSON payload without changing geometry or connectivity.
+
+All normal, saved, random, Sandbox and DEV map selectors exclude Expedition.
+Brickfall's count and the surface audit include both new maps. Ward instance:
+breaches, explicit vent entries and quarantine look enabled; timed PvP vent
+fallback and stage hazards off. Native build checks run traversal on both Ward
+maps, pinned Siren hazard/economy checks only on Siren. No new art authored.
+
+Gantry exits move x +/-35.2 -> +/-35.8, preserving y/z, normals, yaw, panels and
+entry timings; corrected in the Ward generator, fixture and PvE resource.
+Every inherited exit passes capsule clearance; no waived or relocated point.
+Spawn yaw stays radians; instance exit records stay inside; final-area spawns
+are classified by boss-trigger containment of their exit (nine); blockHash is
+the canonical geometry receipt checked against each imported map. Details in
+EXPEDITION-LAYOUT.md, M1 import decisions.
+
+Verification: optimized managed compilation; 179 focused layout checks including
+imported navigation, all inherited Hulk exits, isolation, yaw and final spawns;
+106 Python tests passed, one Windows cmd.exe-only skip; deterministic importer
+--check; source package 1,961 files; C# syntax scan zero errors; diff check clean.
+Initial full regression stopped at the old four-map surface-audit roster. That
+roster now includes all six maps and the audit passes. Full rerun result follows.
+
+Not run here: Unity Editor/PhysX, Windows player or live host/guest acceptance.
+This is asset/contract integration, not a playable Expedition or a compiled
+release. Desktop builder must validate and publish the native test update; scene
+binding, encounters, ready barriers, runtime probes and migration remain separate.
+
+Final full optimized managed/real-relay rerun: exit 0, 682 PASS groups, including
+179 Expedition layout assertions, 53 director assertions and the six-map surface
+audit. Real local WebSocket/UDP/TCP checks passed. No assertion was waived.
+Only a surface-test result label and XML comments changed after compilation.
+Source publication uses this checked tree; merge/builder receipts are in the PR.
+
+## 2026-10-14 — Claude — Spitter pool: the arrow in the middle, no green circle, a natural puddle (owner, Windows test build: "Spitter still needs some visual fixes, their pool produces an arrow in the middle for some reason? Also, make the pool look more natural. (No circle showing either, currently theres a green circle)")
+- Branch `claude/spitter-pool` on shared `b22e59f`, merged with shared `6da0330` (PR #214; no conflicts). Implementation commit `2e57085`, merge `e38b8b8`. Pushed on the branch; no PR, merge or release. Presentation only. The owner's longer spit range is Astra's rule (`NativeSpitterRules.Range`); not changed here.
+- **The arrow (root cause, traced and reproduced):**
+  1. `NativePveAcid.LaunchPveSpit` emits `Impact` "minion-spit" from `m.Owner`: Position = the landing (the pool's centre), Projectile 0, Normal zero, at launch.
+  2. A DEV monster's owner is the DEV who spawned it (`NativeDevMonsterAuthority`: `Owner=actor`). A regular PvE add's owner is the Siren seat (spec `siren`), so plain PvE never showed it.
+  3. `NativeBowPresentation.BowEvents` lodged an arrow for every `Impact` whose Source has spec `bow`: `NativeBowWire.Lodges` was `Kind==Impact && spec=="bow"`.
+  4. So with the DEV on the bow, `bowStuck.AddWall` put the real arrow model at the pool's centre. Its direction fell back to (landing − DEV).normalized, head buried .14 m. It appeared at launch, before the glob landed, and stayed `WallLife` 6 s against the pool's flight + 4 s. Host, guests and the killcam all showed it, since the event replicates.
+  - Reproduced in the scratch harness with the real Core predicate and `NativeBowStuck`: before, `Lodges` = True; after, False.
+  - The same bug planted arrows at a bow DEV's brute and Hulk landings and slams ("minion-drop", "minion-slam"). It also planted one at a spitter interrupted by a bow pilot ("minion-spit-cancel"), and made the bow thunk sound.
+- **Also drawn at the pool's position, now fixed:**
+  - The generic impact cue drew the spit's launch event as an impact on every spit, PvE included: a .09 s straight streak from the mouth and a 6-spark burst at the landing before the glob arrived.
+  - An add's events took the owner's weapon colour and the owner's water, kinetic and demolition surface procs.
+- **Traced and not involved:**
+  - the pool decals: closed fans; the `NativeFxDraw` layers are unbounded lists, so no truncated fan;
+  - `NativeVfxDraw` drops and blobs;
+  - the DEV overlays: hazard boxes, nav, anchors and shot paths draw no acid;
+  - horde telegraphs: the spit has none;
+  - combat glow and weapon impacts: they need a SurfaceId;
+  - Hulk motion: `hulk-` events only.
+- **Fix:**
+  - `NativeBowWire.Lodges` takes only an arrow's own impact: a projectile id, with an arrow's Detail or none. The thunk follows it.
+  - New Core `NativeImpactCues.AddEvent` (`minion-*`). An add's events take no owner colour or procs.
+  - The spit and spit-cancel notifications plan no impact cue.
+- **The green circle:** `decals.Ring` at .975–1.0 of the radius (`RimAlpha`) plus the glowing meniscus band. Both are removed, and `RimAlpha` is gone.
+- **Natural pool** (`NativeZombieFx` / `NativeZombieFxDraw`):
+  - Outline: lobed, per record seed. Its mean extent is exactly the radius on any 24+ point grid, with every lobe within 1 ± .11 (checked over 400 seeds).
+  - Spread: viscous, from 30% at landing, each lobe on its own clock, all arrived by 1.15 s.
+  - Thickness: a polar mesh (36 × 10, low tier 24). Dark, even deep core; mottled middle; a thin, lighter, translucent lip that is never thicker than the liquid inside it; a 2.6 cm feather.
+  - Sheen: soft, view-dependent (Fresnel), fading before the edge.
+  - Around it: six satellite splats just outside the widest lobe (they dry early), and the inside spatter, which the creeping liquid absorbs.
+  - Bubbles: a few that pop now and then, with a small ripple. Fumes are faint (alpha ≤ .1).
+  - Drying: over the last 1.3 s it thins into patches and recedes up to 22%, unevenly, then leaves a residue stain that fades over 5 s.
+  - The fizzle puddle uses the same body.
+  - Reduced effects and the low tier: half the satellites, bubbles, fumes and drops; no domes, pop drops or glints; the low outline is coarser.
+  - Census at the busiest frame (full): 42 billboards (was 54), 648 lit vertices (was 810), 822 decal vertices (was 482). The harness measured zero bytes allocated over 1,980 drawer frames.
+- **Host, guest and killcam:** PvE and the off-PvE DEV path now draw every glob and pool from the acid records (`pve.acid` / `devAcid`), seeded by the record id. The spit event is transient: the event buffer drops it past 32 effects in a tick. Before, off-PvE pools depended on it. Now the event only stops the DEV preview, and the preview's range clamp is `NativeSpitterRules.Range` (it was a literal 11).
+- **Longer range (Astra's rule, checked here):**
+  - 11 m: flight 1.34 s, peak 2.44 m, landing at 37°.
+  - 18 m: flight 2.12 s, peak 2.99 m, landing at 30°. The record limit (flight ≤ 3 s) allows up to about 25.9 m.
+  - Fumes are rate-bound, and the 24 glob slots still cover 16 records.
+  - What would look off:
+    - From the target, the glob is a small dot for about the first second.
+    - The 7 drips spread thinner along the arc.
+    - The splash is symmetric for a 30° landing.
+    - A 2 s lob with a long lead has no landing telegraph. If hits feel unfair, a faint landing marker is the presentation option.
+  - No code change is needed for 18 m.
+- **Gameplay unchanged:** hit timing, hitboxes, damage, cooldowns, movement, networking, the pool's 1.3 m / 4 s and the poison are as before. Only the visual body differs from the hazard: its lobes reach up to 11% past 1.3 m at points, and it recedes up to 22% in the last 1.3 s while the hazard stays at 1.3 m.
+- Files:
+  - Core: `NativeZombieFx.cs`, `NativeBow.cs`, `NativeImpactCues.cs`.
+  - Runtime: `NativeZombieFxDraw.cs`, `NativeHordeAcidPresentation.cs`, `NativeHordeKindPresentation.cs`, `NativeBlastPresentation.cs`, `NativeBowHud.cs`.
+  - Tests: `ZombieFxChecks.cs`.
+  - Docs: `SIREN-ZOMBIES.md`, PROJECT_STATE.
+- Renders (scratch harness, not Unity): `scratchpad/renders-spitter-pool/{full,reduced,low,range}`. Before is shared `b22e59f`; after is this branch. The real `NativeZombieFxDraw` and the bow's Core path are compiled against a UnityEngine stub, and the arrow is the real Core arrow mesh.
+- Checks on `e38b8b8` (actual):
+  - `unity-check.sh`: Runtime + Editor compile against Unity 6000.3.24f1, OK.
+  - `check_relay.py`: exit 0, 682 PASS lines, real relay included. Zombie fx: 764,681 checks (was 725,910): the lobed outline's mean extent is the radius and every lobe is within the tolerance, deterministic per seed, slow spread, uneven thickness, no ring at the radius, the spit's events lodge no arrow, zero allocation, Reduced and low tier budgets. Horde kinds 433,790, hulk and spitter 49,154 and bow 5,028 are unchanged and pass.
+  - CI layout (`ci-relay2.sh`, docs removed): exit 0, 682 PASS.
+  - Python: 106 OK (1 skip). `package_source.py` OK. `git diff --check` clean.
+  - Harness: the drawer allocates 0 bytes over 1,980 frames (three tiers, two pools).
+- Not run: Unity Editor, a Windows build, two clients, the arrow fix seen in game.
+- Next: the owner checks the pool in the next test build, spawning spitters on the bow. Astra owns the range change.
+
 ### 2026-10-14 — Claude: Hulk punches and charge at the hunted pilot (contract v2 + presentation)
 
 Branch `claude/hulk-charge` (base shared `b22e59f`, shared head merged before the final checks; see the merge commit).

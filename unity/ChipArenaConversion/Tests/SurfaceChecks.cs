@@ -135,7 +135,7 @@ namespace ChipArena.UnityConversion
             int checks=0;void Check(bool ok,string what){if(!ok)throw new Exception("Surfaces: "+what);checks++;}
             var options=new JsonSerializerOptions{IncludeFields=true};string Read(string f)=>File.ReadAllText(Path.Combine(root,f));
             var maps=JsonSerializer.Deserialize<UnityMapContent>(Read("Assets/Conversion/Resources/UnityMaps.json"),options).maps;
-            Check(maps.Select(m=>m.id).OrderBy(x=>x).SequenceEqual(new[]{"brickfall","cybercity","factory","siren"}),"the four Unity maps are audited");
+            Check(maps.Select(m=>m.id).OrderBy(x=>x).SequenceEqual(new[]{"brickfall","cybercity","expedition-city","expedition-ward-zero","factory","siren"}),"all six Unity maps are audited");
             foreach(var map in maps)
             {
                 string Snap()=>string.Join("|",map.blocks.Select(b=>b.id+":"+b.pos.x+","+b.pos.y+","+b.pos.z+":"+b.size.x+","+b.size.y+","+b.size.z+":"+(b.rotation==null?"-":b.rotation.x+","+b.rotation.y+","+b.rotation.z+","+b.rotation.w)+":"+b.material+":"+b.role+":"+b.hp+":"+b.parent+":"+b.segment));
@@ -188,7 +188,7 @@ namespace ChipArena.UnityConversion
             Check(R("Runtime/NativeArenaDressing.cs").Contains("lifts=NativeSurfaceLayers.Blocks(source)")&&R("Runtime/NativeArenaDressing.cs").Contains("Matrix4x4.TRS(pos+rot*e.Offset,rot,Vector3.one)"),"the dressing draws the blocks with their lifts");
             Check(R("Runtime/NativeWardZeroPresentation.cs").Contains("wzBlockLifts=NativeSurfaceLayers.Blocks(blocks)"),"the Ward Zero menu backdrop draws its blocks with the same lifts");
             Check(R("Runtime/NativeFactoryPresentation.cs").Contains("NativeFactoryKit.Bevel(p.Hx,p.Hy,p.Hz)"),"the Factory draw and the layers agree on the parts' chamfer");
-            Console.WriteLine("PASS surfaces: "+checks+" checks (coincident faces, duplicates, render-only lifts on four maps)");
+            Console.WriteLine("PASS surfaces: "+checks+" checks (coincident faces, duplicates, render-only lifts on six maps)");
         }
         /// <summary>The audit: every Unity map's coincident visible faces before and after the separation, the largest groups
         /// listed (the `--surface-audit` mode).</summary>
