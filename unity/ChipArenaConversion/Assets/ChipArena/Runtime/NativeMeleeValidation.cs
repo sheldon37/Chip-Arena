@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
                 foreach(string control in new[]{"juggle","down","stun","freeze"})foreach(bool active in new[]{false,true})
                 {
                     Setup("greatsword");a.Seat.bot=true;Check(TryMelee(a),"CC swing setup");
-                    var interrupted=a.Swing;float hit=(interrupted.HitAt+interrupted.HitUntil)/2,ready=a.Ready;
+                    var interrupted=a.Swing;float hit=(interrupted.HitAt+interrupted.HitUntil)/2,readyAt=a.Ready;
                     interrupted.Remaining=2;a.MeleeBufferedUntil=Time+2;
                     if(active)Advance(hit-Time);
                     if(control=="juggle")a.Juggle=new NativeJuggle{At=Time,Until=Time+1,Owner=b};
@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
                     if(control=="stun")a.StunEnd=Time+1;
                     if(control=="freeze")a.FrozenUntil=Time+1;
                     StepMelee(a);Check(a.Swing==null&&!a.HitPending&&a.MeleeBufferedUntil<0&&a.AttackEnd==0,"CC cancels swing/echo/buffer "+control);
-                    Check(a.Ready==ready,"CC refunded cooldown");
+                    Check(a.Ready==readyAt,"CC refunded cooldown");
                     a.Juggle=null;a.Down=null;a.StunEnd=a.FrozenUntil=0;Advance(Math.Max(0,hit-Time));StepMelee(a);
                     Check(b.Hp==100&&a.Swing==null,"interrupted swing resumed after CC "+control);
                 }

@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — editor compile fix after #203 (CC cancels swings)
+- Branch `claude/sleepy-ritchie-g8ruhv` on shared `9934671`. Astra's #203 (`c283f0e`) added `float ...,ready=a.Ready` inside a loop of `NativeMeleeValidation`'s try block, which already declares `float ready` later (line 118), so the editor assembly failed with CS0136 and the Unity project would not compile. CI's native-source job does not compile the editor scripts against Unity, so it stayed green.
+- Renamed the new local to `readyAt` (two uses). No logic, gate or timing change. Astra: no action needed beyond knowing the name changed.
+- Checks: Unity runtime+editor compile OK (failed before the rename); `git diff --check` clean. Unity Editor/Windows not run.
+
 ## 2026-10-14 — Claude — final killcam: no zoom jump when the bullet view hands off
 - Branch `claude/sleepy-ritchie-g8ruhv` on shared `2d3949c` (PR #201 side and projectile camera, PR #202 killer-aim opener). The bullet view sets the slow-motion FOV widening to 0, but FinalShot recomputes it every frame, so on the first frame after the hit the widening (up to 7 degrees at the slow-motion peak, which is the kill) returned at once: a visible zoom jump at impact while the eye and aim already blend over 0.65 s.
 - The widening now scales with the same pull-back blend (`finalFov*=blend` in FinalCamera's hand-off branch), so it eases back in with the camera. Presentation only; clip timing, camera positions, projectile attribution and networking unchanged. FinalKillcamChecks pins it; FINAL-KILLCAM.md notes it.
