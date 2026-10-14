@@ -613,7 +613,8 @@ namespace ChipArena.UnityConversion
             if(inspectSeat!=0)return;MenuStyles();float now=Time.unscaledTime;if(now-menuSeen>.25f)menuScreenAt=now;menuSeen=now;float age=now-menuScreenAt,W=U.W,H=U.H;
             menuBlockedNow=reportOpen;updateCard=Rect.zero;updateOpen=false;MenuShade(.9f);
             if(pauseScreen==PauseScreen.Settings){SettingsScreen(age,()=>{ApplySettings();Save();pauseScreen=PauseScreen.Menu;menuScreenAt=Time.unscaledTime;});return;}
-            if(pauseScreen==PauseScreen.Sandbox){if(arena.Sandbox&&account.Developer&&!Online){SandboxScreen(age);return;}pauseScreen=PauseScreen.Menu;}
+            // The sandbox tools moved to the DEV panel overlay (NativeDevPanel.cs).
+            if(pauseScreen==PauseScreen.Sandbox)pauseScreen=PauseScreen.Menu;
             if(!arena.Sandbox)Board(W);
             // A guest whose host is gone keeps a frozen replica: say so and offer the way back to Join Room to reclaim the seat.
             bool lost=arena.Replica&&server==null;
@@ -624,7 +625,8 @@ namespace ChipArena.UnityConversion
             var items=new List<(string icon,string label,bool primary,bool enabled,Action act)>();if(!lost)items.Add(("play","Resume",true,true,()=>menu=false));
             items.Add(("activity","Connection report",false,true,OpenConnectionReport));
             items.Add(("settings","Settings",false,true,()=>{pauseScreen=PauseScreen.Settings;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;}));
-            if(arena.Sandbox&&account.Developer&&!Online)items.Add(("flask-conical","Sandbox Tools",false,true,()=>{pauseScreen=PauseScreen.Sandbox;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;}));
+            // DEV Tools (NativeDevPanel.cs): the offline Developer Sandbox's tools, and with Settings · Developer · DEV Abuse any match's.
+            if(DevPanelAvailable)items.Add(("flask-conical","DEV Tools",false,true,()=>DevOpen(true)));
             if(!Online&&!lost)items.Add(("rotate-cw","Restart Match",false,true,StartMatch));
             if(!lost)items.Add(("undo-2","Return to Lobby",false,(Hosting||!Online)&&!returning,()=>{if(!Online)afterMatch=OfflineLobby();RequestLobbyReturn();menu=false;}));
             items.Add(("log-out","Return to Main Menu",lost,true,()=>{afterMatch=lost?MenuScreen.Join:MenuScreen.Home;if(Online)LeaveRoom();else ReturnToLobby();}));
@@ -654,11 +656,6 @@ namespace ChipArena.UnityConversion
         {
             var lines=new List<string>();string line="";foreach(var part in text.Split(new[]{"  ·  "},StringSplitOptions.None)){string next=line.Length==0?part:line+"  ·  "+part;if(line.Length>0&&U.Measure(next,size,false,true).x>width){lines.Add(line);line=part;}else line=next;}
             if(line.Length>0)lines.Add(line);return lines;
-        }
-        private void SandboxScreen(float age)
-        {
-            var l=BeginScreen("DEVELOPER SANDBOX","Sandbox tools",760,age,actions:false);if(l.Closed){pauseScreen=PauseScreen.Menu;menuScreenAt=Time.unscaledTime;return;}
-            ScreenBody(l,SandboxBody);
         }
     }
 }

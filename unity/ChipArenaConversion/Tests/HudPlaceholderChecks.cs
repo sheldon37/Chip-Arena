@@ -198,7 +198,8 @@ namespace ChipArena.UnityConversion
             Check(home.Contains("if(dev&&QuietRow(ref qy,\"catalogue\",\"CATALOGUE\",\"DEV\",qe))Go(MenuScreen.Catalogue);")&&home.Contains("if(l.Closed||!account.Developer){Go(MenuScreen.Home);return;}"),"Catalogue is a DEV-only link and screen");
             foreach(var call in new[]{"SandboxPreview(\"draft\")","SandboxPreview(\"rarity\",previewRarity)","SandboxPreview(\"knockout\")","SandboxPreview(\"my-death\")","SandboxLaunchDebris(debrisMass,debrisSpeed,debrisMaterial,debrisImpact)","SandboxReset()","SandboxTestBlock()"})
                 Check(sandbox.Contains(call),"sandbox panel calls "+call);
-            Check(sandbox.Contains("debrisMass=8,debrisSpeed=15")&&sandbox.Contains("Slider(\"Mass (kg)\",debrisMass,1,150)"),"debris launcher defaults and range (8 kg, 15 m/s, up to 150 kg)");
+            // The sandbox list became the DEV panel (NativeDevPanel.cs draws it; NativeSandbox.cs DevRun keeps the calls).
+            Check(sandbox.Contains("debrisMass=8,debrisSpeed=15")&&sandbox.Contains("Mathf.Clamp(debrisMass,1,150)")&&Runtime("NativeDevPanel.cs").Contains("\"Mass (kg)\",debrisMass,1,150,0"),"debris launcher defaults and range (8 kg, 15 m/s, up to 150 kg)");
 
             Console.WriteLine("PASS HUD placeholder parity: "+count+" checks ("+frames+" hit marker frames from hitmarker.ts, sprint, L33t, DEV fighter and Siren HUD markup from the pinned source, style values, runtime hooks)");
         }

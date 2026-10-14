@@ -288,19 +288,10 @@ namespace ChipArena.UnityConversion
     {
         private static readonly string[] StructureMaterials={"masonry","concrete","timber","metal","glass"},StructureSpots={"aim","dummy","ahead"};
         private string structureMaterial="masonry",structureSpot="aim";
-        // Dev Sandbox rows (dev accounts, offline sandbox only, like the other Sandbox previews): see the destruction kit before
-        // Brickfall exists. The stand-in quadrant plays stress → fall → land with its sounds and the camera shake; Material
-        // Bursts break one block of each material. Presentation only: nothing is added to the match or the killcam.
-        private void StructureFxRows()
-        {
-            var kit=presentation?.Structures;if(arena?.Sandbox!=true||!account.Developer||Online||kit==null)return;
-            Field("Destruction effects preview");structureMaterial=ChoiceGrid(StructureMaterials,structureMaterial);structureSpot=ChoiceGrid(StructureSpots,structureSpot);
-            GUILayout.BeginHorizontal();
-            if(GUILayout.Button("Play Collapse",button)){PreviewCollapse(kit);menu=false;}
-            if(GUILayout.Button("Material Bursts",button)){Vector3 spot=StructureSpot();kit.PreviewBursts(arena,spot,Quaternion.Euler(0,yaw,0)*Vector3.right);menu=false;}
-            if(GUILayout.Button("Clear Effects",button))kit.Clear();
-            GUILayout.EndHorizontal();
-        }
+        // The DEV panel's Arena tab (NativeDevPanel.cs, routes in NativeSandbox.cs DevRun; dev accounts, offline sandbox only, like the
+        // other Sandbox previews): see the destruction kit before Brickfall exists. The stand-in quadrant plays stress → fall → land
+        // with its sounds and the camera shake; Material Bursts break one block of each material. Presentation only: nothing is
+        // added to the match or the killcam.
         private Vector3 StructureSpot()
         {
             Vector3 me=arena.Local.Body.position,ahead=me+Quaternion.Euler(0,yaw,0)*Vector3.forward*12;

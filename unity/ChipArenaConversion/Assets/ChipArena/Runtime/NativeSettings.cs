@@ -30,6 +30,9 @@ namespace ChipArena.UnityConversion
             {
                 Field("Developer");bool console=GUILayout.Toggle(prefs.developmentConsole,"Show development console");
                 if(console!=prefs.developmentConsole){prefs.developmentConsole=console;SyncDevelopmentConsole();Save();}
+                // DEV Abuse (NativeDevPanel.cs, docs/DEV-TOOLS.md): off by default, saved; the DEV panel (F3) in any match, offline or
+                // online, host or guest, for this verified dev account only. The host never trusts it: its DEV commands check the seat.
+                if(NativeDevGate.ToggleVisible(account.Developer)){bool abuse=GUILayout.Toggle(prefs.devAbuse,"DEV Abuse: DEV tools in every match (F3)");if(abuse!=prefs.devAbuse){prefs.devAbuse=abuse;Save();}Fine("Off by default. Outside the Developer Sandbox the view tools work now; match actions wait for the host's DEV authority.");}
                 // The Siren minion kinds before their rules exist (NativeHordeKindPresentation.cs): every horde add drawn as one kind, or a
                 // mix by id. Looks only (the add's rules, timing and hit volume stay its own); this session only, never saved.
                 GUILayout.Label("Siren minion preview (looks only)",small);NativeHordeKinds.Preview=HordePreviewChoice(ChoiceGrid(HordePreviewIds,HordePreviewId(NativeHordeKinds.Preview),HordePreviewNames));

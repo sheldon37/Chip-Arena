@@ -22,6 +22,8 @@ namespace ChipArena.UnityConversion
         public bool developmentConsole;
         // The headwear and backdrop colours picked in the Locker (NativeHatLooks: "" Auto, else #rrggbb; absent in older saves: Auto).
         public string hatColor="",backColor="";
+        // DEV tools (NativeDevPanel.cs, docs/DEV-TOOLS.md): Settings · Developer · DEV Abuse (off by default) and the panel's chip favourites.
+        public bool devAbuse;public string devChipFavourites="";
     }
     public sealed partial class ConversionGame : MonoBehaviour
     {
@@ -120,11 +122,11 @@ namespace ChipArena.UnityConversion
             bool typing=GUIUtility.keyboardControl!=0;
             if(Input.GetKeyDown(KeyCode.M)&&!typing&&!BoardOpen){prefs.sound=!prefs.sound;if(nativeAudio!=null)nativeAudio.Muted=!prefs.sound;Save();Notice(prefs.sound?"Sound on · M to mute":"Sound muted · M to unmute");}
             if(Input.GetKeyDown(KeyCode.V)&&arena!=null&&!typing&&!BoardOpen&&!(arena.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)){prefs.firstPerson=!prefs.firstPerson;Save();Notice(CameraName+" · V to switch");}
-            CameraKeys(typing);
+            CameraKeys(typing);DevUpdate(typing);
             if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
-            bool play=arena!=null&&!menu&&!BoardOpen&&(match.Phase==NativePhase.Fight||match.ResultMovement&&!ReplayActive)&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
-            bool look=!BoardOpen&&(play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight);Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
+            bool play=arena!=null&&!menu&&!BoardOpen&&(match.Phase==NativePhase.Fight||match.ResultMovement&&!ReplayActive)&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true&&!DevHoldsPilot;
+            bool look=!BoardOpen&&DevLook(play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight);Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
             if(arena==null)return;
             if(generation!=arena.Generation){presentation.ResetPresentation();generation=arena.Generation;visualClock.Reset(match.Time);}
             SpectatorControls();var p=arena.ViewPilot;
@@ -179,6 +181,8 @@ namespace ChipArena.UnityConversion
                 if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)presentation.HordeShake(cameraView.transform,prefs.reducedEffects?.5f:1);
                 SprintSway();
             }
+            // The DEV fly camera (NativeDevPanel.cs) replaces the view after the pilot camera and its shakes; presentation only.
+            DevCamera();
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
             long snapshotAt=System.Diagnostics.Stopwatch.GetTimestamp();var frame=arena.Snapshot(true);hitchSnapshot+=HitchMs(snapshotAt);
@@ -327,6 +331,8 @@ namespace ChipArena.UnityConversion
             // DEV ONLY: the Expedition screens preview (--ca-expedition-preview), in place of the main menu (NativeExpeditionPreviewUI.cs).
             if(ExpeditionPreviewGui(width,height))return;
             if(match?.Phase!=NativePhase.Match)matchEndAt=-1;if(arena!=null)menuFromMatch=true;
+            // DEV hide-HUD / screenshot mode (F11, NativeDevPanel.cs): nothing over the match.
+            if(DevScreenshot())return;
             // The intro overlay replaces the whole HUD (main.ts drawHud), so nothing else draws while it runs.
             if(arena!=null&&!menu&&previewArena==null&&IntroActive){IntroOverlay();return;}
             // The killcam is a broadcast frame of the past: the live HUD steps aside while it plays (killcam.css).
@@ -363,6 +369,8 @@ namespace ChipArena.UnityConversion
                 else if(!menu&&match.Phase==NativePhase.Match)PveResultsPanel();
                 if(BoardOpen)Board(width);if(inspectSeat!=0)Inspect(width,height);LockHud(scale);
             }
+            // The DEV panel, its view tools and the DEV reveal (NativeDevPanel.cs, NativeDevOverlays.cs).
+            if(arena!=null)DevGui(width,height);
             if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);return;}
             // The menus (NativeHomeMenu): the home screen and its panels without a match, the pause menu during one.
             if(arena!=null)PauseMenu();else HomeMenu();

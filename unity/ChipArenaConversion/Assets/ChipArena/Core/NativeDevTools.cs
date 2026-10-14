@@ -1,0 +1,476 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+namespace ChipArena.UnityConversion
+{
+    // The DEV tools' engine-free rules (docs/DEV-TOOLS.md): who gets the DEV panel where (the offline Developer Sandbox, or any
+    // match with Settings · Developer · DEV Abuse on), what each panel action routes to (the existing NativeArena sandbox call,
+    // the proposed DEV command contract Astra implements, or the local view only), the contract's names and bounds, the
+    // dormant reveal (NativeSeat.devRevealed, proposed), and the presentation-only helpers the panel draws from (event log,
+    // graphs, fly camera, chip grid query, layout, cached labels). Nothing here touches the simulation; the Runtime panel
+    // (NativeDevPanel.cs) and the sandbox routes (NativeSandbox.cs) are the only callers.
+    public enum NativeDevTab{Pilot,Interact,Dummies,Chips,Arena,Hazards,Previews,Camera,Simulation}
+    // Sandbox: an existing sandbox control (SandboxAllowed on the authority) with no contract counterpart.
+    // Contract: a DEV command (docs/DEV-TOOLS.md); in the sandbox it runs the existing sandbox call when it has one.
+    // Preview: a local presentation preview that has only ever run in the sandbox (galleries, draft previews, structure FX).
+    // Presentation: read-only local view tools (fly camera, overlays, log, graphs, hide HUD): live wherever the panel is.
+    public enum NativeDevKind{Sandbox,Contract,Preview,Presentation}
+    public enum NativeDevState{Live,NeedsAuthority,SandboxOnly,Unavailable}
+    public enum NativeDevMode{Off,Sandbox,Abuse}
+
+    /// <summary>What this client knows about the match it is in. Sandbox: this client runs the offline Developer Sandbox's
+    /// authority (arena.Sandbox, offline, not a replica). Developer: the local account's verified, unexpired Developer claim.
+    /// Abuse: the local Settings · Developer · DEV Abuse opt-in (never trusted by a host). Authority: Astra's DEV command
+    /// link exists (NativeDevLink.Available).</summary>
+    public struct NativeDevContext
+    {
+        public bool InMatch,Sandbox,Online,Hosting,Developer,Abuse,Authority;
+        public static NativeDevContext Of(bool inMatch,bool sandbox,bool online,bool hosting,bool developer,bool abuse,bool authority)
+            =>new NativeDevContext{InMatch=inMatch,Sandbox=sandbox&&!online,Online=online,Hosting=hosting,Developer=developer,Abuse=abuse,Authority=authority};
+    }
+
+    public static class NativeDevGate
+    {
+        /// <summary>Settings · Developer shows the DEV Abuse toggle only to a verified, unexpired Developer account.</summary>
+        public static bool ToggleVisible(bool verifiedDeveloper)=>verifiedDeveloper;
+        /// <summary>The offline sandbox keeps its tools for a developer as today (no opt-in); any other match needs DEV Abuse.
+        /// Non-developers never get the panel, whatever the saved preference says.</summary>
+        public static NativeDevMode Mode(in NativeDevContext c)=>!c.Developer||!c.InMatch?NativeDevMode.Off:c.Sandbox?NativeDevMode.Sandbox:c.Abuse?NativeDevMode.Abuse:NativeDevMode.Off;
+        public static bool PanelAvailable(in NativeDevContext c)=>Mode(c)!=NativeDevMode.Off;
+        /// <summary>The local "DEV ABUSE ON" HUD tag: the opt-in is on and in effect in this match.</summary>
+        public static bool Indicator(in NativeDevContext c)=>c.Developer&&c.InMatch&&c.Abuse;
+    }
+
+    /// <summary>The DEV command contract's names and bounds (docs/DEV-TOOLS.md). Astra owns the authority side.</summary>
+    public static class NativeDevContract
+    {
+        public const string Gate="DevAllowed",Command="dev-command",Reply="dev-reply",Accepted="accepted",Refused="refused",Done="done";
+        public const string RevealedField="devRevealed";
+        public const int MaxArgs=4,MaxArgLength=32;
+        public const float TimeScaleMin=.1f,TimeScaleMax=2;
+        /// <summary>Personal actions: any dev seat, on itself or a target.</summary>
+        public static readonly string[] Personal={"restore","down","god","infinite-ammo","no-cooldowns","chip-add","chip-remove","weapon","teleport","spawn-dummy","clear-dummies","reveal"};
+        /// <summary>Room-wide actions: any dev seat (owner 2026-10-14: devs are not limited to rooms they host).</summary>
+        public static readonly string[] Room={"time-scale","arena-reset","round-end","hazard-trigger","debris"};
+        /// <summary>Interact actions on a target (proposals for Astra).</summary>
+        public static readonly string[] Interact={"launch","freeze","bring","send","swap-weapon","shrink","grow","debris-rain","hazard-at","spawn-dummies-around"};
+        public static bool Known(string action)=>Array.IndexOf(Personal,action)>=0||Array.IndexOf(Room,action)>=0||Array.IndexOf(Interact,action)>=0;
+        /// <summary>The client's shape check before a send: a known action, at most MaxArgs short arguments. The host validates
+        /// again (DevAllowed, ranges, rate limit, deduplication); this never stands in for it.</summary>
+        public static bool ShapeOk(string action,string[] args)
+        {
+            if(!Known(action))return false;if(args==null)return true;if(args.Length>MaxArgs)return false;
+            foreach(var a in args)if(a==null||a.Length>MaxArgLength)return false;return true;
+        }
+    }
+
+    public sealed class NativeDevAction
+    {
+        public readonly string Id,Label,Contract,Key;public readonly NativeDevTab Tab;public readonly NativeDevKind Kind;
+        /// <summary>True when the sandbox already has the call (NativeSandbox.cs DevRun): a Contract action runs it there.</summary>
+        public readonly bool SandboxRoute;
+        public NativeDevAction(string id,NativeDevTab tab,NativeDevKind kind,string label,string contract=null,bool sandboxRoute=false,string key=null)
+        {Id=id;Tab=tab;Kind=kind;Label=label;Contract=contract;SandboxRoute=sandboxRoute||kind==NativeDevKind.Sandbox||kind==NativeDevKind.Preview;Key=key;}
+    }
+
+    public static class NativeDevActions
+    {
+        public const string NeedsAuthority="Needs authority (Astra): not implemented";
+        public const string SandboxOnly="Sandbox only: runs in the offline Developer Sandbox";
+        public const string Off="DEV tools are not available in this match";
+        public const string InSandbox="Live in the sandbox";
+        public const string Local="Live: your view only, changes nothing in the match";
+        public const string ToHost="Live: sent to the host as a DEV command";
+        private const NativeDevKind S=NativeDevKind.Sandbox,C=NativeDevKind.Contract,P=NativeDevKind.Preview,V=NativeDevKind.Presentation;
+        private const NativeDevTab Pi=NativeDevTab.Pilot,In=NativeDevTab.Interact,Du=NativeDevTab.Dummies,Ch=NativeDevTab.Chips,Ar=NativeDevTab.Arena,Ha=NativeDevTab.Hazards,Pr=NativeDevTab.Previews,Ca=NativeDevTab.Camera,Si=NativeDevTab.Simulation;
+        /// <summary>Every panel action. The ids with a sandbox route are the cases of NativeSandbox.cs DevRun.</summary>
+        public static readonly NativeDevAction[] All=
+        {
+            // Pilot (self).
+            new NativeDevAction("me-restore",Pi,C,"Restore me","restore",true,"F5"),
+            new NativeDevAction("me-hit",Pi,S,"Hit me (18)"),
+            new NativeDevAction("me-down",Pi,C,"Down me","down",true),
+            new NativeDevAction("me-summons",Pi,S,"Clear enemy summons"),
+            new NativeDevAction("me-weapon",Pi,C,"Swap my weapon","weapon",true),
+            new NativeDevAction("me-god",Pi,C,"God mode","god"),
+            new NativeDevAction("me-ammo",Pi,C,"Infinite ammo","infinite-ammo"),
+            new NativeDevAction("me-cooldowns",Pi,C,"No cooldowns","no-cooldowns"),
+            new NativeDevAction("me-teleport",Pi,C,"Teleport to aim","teleport"),
+            new NativeDevAction("me-reveal",Pi,C,"Reveal: a developer is here","reveal"),
+            // Interact (a target pilot or bot; proposals for Astra, owner 2026-10-14).
+            new NativeDevAction("launch",In,C,"Launch","launch"),
+            new NativeDevAction("freeze",In,C,"Freeze","freeze"),
+            new NativeDevAction("bring",In,C,"Bring to me","bring"),
+            new NativeDevAction("send",In,C,"Send to aim","send"),
+            new NativeDevAction("swap-weapon",In,C,"Swap weapon","swap-weapon"),
+            new NativeDevAction("shrink",In,C,"Shrink","shrink"),
+            new NativeDevAction("grow",In,C,"Grow","grow"),
+            new NativeDevAction("debris-rain",In,C,"Debris rain","debris-rain"),
+            new NativeDevAction("hazard-at",In,C,"Hazard at target","hazard-at"),
+            new NativeDevAction("spawn-dummies-around",In,C,"Dummies around","spawn-dummies-around"),
+            new NativeDevAction("target-restore",In,C,"Restore target","restore"),
+            new NativeDevAction("target-down",In,C,"Down target","down"),
+            // Dummies.
+            new NativeDevAction("dummy-cast",Du,S,"Make dummy cast",key:"F7"),
+            new NativeDevAction("dummy-restore",Du,S,"Restore dummy"),
+            new NativeDevAction("dummy-hit",Du,S,"Hit dummy (18)"),
+            new NativeDevAction("dummy-down",Du,S,"Down dummy",key:"F6"),
+            new NativeDevAction("dummy-summons",Du,S,"Clear summons (dummy)"),
+            new NativeDevAction("dummy-respawn",Du,S,"Dummy respawn"),
+            new NativeDevAction("dummy-repeat",Du,S,"Repeat cast"),
+            new NativeDevAction("dummy-difficulty",Du,S,"Bot difficulty"),
+            new NativeDevAction("spawn-dummy",Du,C,"Spawn dummy","spawn-dummy"),
+            new NativeDevAction("clear-dummies",Du,C,"Clear dummies","clear-dummies"),
+            // Chips.
+            new NativeDevAction("chip-add",Ch,C,"Add chip","chip-add",true),
+            new NativeDevAction("chip-remove",Ch,C,"Remove chip","chip-remove",true),
+            new NativeDevAction("chip-cast",Ch,S,"Dummy casts with chip"),
+            new NativeDevAction("chip-cycle",Ch,S,"Cast every chip"),
+            // Arena.
+            new NativeDevAction("restore-all",Ar,S,"Restore all"),
+            new NativeDevAction("arena-reset",Ar,C,"Arena Reset","arena-reset",true),
+            new NativeDevAction("round-end",Ar,C,"End round","round-end"),
+            new NativeDevAction("test-block",Ar,S,"Test Block"),
+            new NativeDevAction("load-map",Ar,S,"Load map"),
+            new NativeDevAction("ward-spawn",Ar,S,"Spawn entry"),
+            new NativeDevAction("debris",Ar,C,"Launch at Opponent","debris",true),
+            new NativeDevAction("fx-collapse",Ar,P,"Play Collapse"),
+            new NativeDevAction("fx-bursts",Ar,P,"Material Bursts"),
+            new NativeDevAction("fx-clear",Ar,P,"Clear Effects"),
+            // Hazards.
+            new NativeDevAction("hazard-trigger",Ha,C,"Trigger","hazard-trigger"),
+            new NativeDevAction("me-vent",Ha,S,"Vent dive (me)"),
+            new NativeDevAction("dummy-vent",Ha,S,"Vent dive (dummy)"),
+            new NativeDevAction("splat-delay",Ha,S,"Vent splat delay"),
+            // Previews and galleries.
+            new NativeDevAction("preview-draft",Pr,P,"Preview Draft"),
+            new NativeDevAction("preview-rarity",Pr,P,"Preview Rarities"),
+            new NativeDevAction("preview-knockout",Pr,P,"Preview Knockout"),
+            new NativeDevAction("preview-death",Pr,P,"Preview My Death"),
+            new NativeDevAction("gallery-minions",Pr,P,"Siren Minions"),
+            new NativeDevAction("gallery-cyber-jump",Pr,P,"Cyber Double Jump"),
+            new NativeDevAction("gallery-saw",Pr,P,"Saw Split"),
+            new NativeDevAction("gallery-revive",Pr,P,"Revive"),
+            new NativeDevAction("gallery-chip-select",Pr,P,"Chip Selecting"),
+            new NativeDevAction("preview-reveal",Pr,P,"Preview DEV Reveal"),
+            // Camera and overlays (presentation only: live wherever the panel is).
+            new NativeDevAction("fly",Ca,V,"Fly camera",key:"F10"),
+            new NativeDevAction("fly-snap",Ca,V,"Snap to pilot",key:"Home"),
+            new NativeDevAction("overlay-hit",Ca,V,"Pilot hit volumes"),
+            new NativeDevAction("overlay-melee",Ca,V,"Melee hit volumes"),
+            new NativeDevAction("overlay-hazards",Ca,V,"Hazard boxes"),
+            new NativeDevAction("overlay-nav",Ca,V,"Nav graph"),
+            new NativeDevAction("overlay-anchors",Ca,V,"Expedition anchors"),
+            new NativeDevAction("overlay-shots",Ca,V,"Shot paths"),
+            new NativeDevAction("log",Ca,V,"Event log",key:"F1"),
+            new NativeDevAction("graph",Ca,V,"FPS / network graph",key:"F2"),
+            new NativeDevAction("hide-hud",Ca,V,"Hide HUD (screenshot)",key:"F11"),
+            // Simulation.
+            new NativeDevAction("time-scale",Si,C,"Simulation speed","time-scale",true),
+            new NativeDevAction("safe-mode",Si,S,"Safe mode"),
+        };
+        private static readonly Dictionary<string,NativeDevAction> byId=Index();
+        private static Dictionary<string,NativeDevAction> Index(){var d=new Dictionary<string,NativeDevAction>(StringComparer.Ordinal);foreach(var a in All)d[a.Id]=a;return d;}
+        public static NativeDevAction Find(string id)=>id!=null&&byId.TryGetValue(id,out var a)?a:null;
+        /// <summary>Whether `a` can run here and why: sandbox calls in the sandbox, the view tools wherever the panel is, DEV
+        /// commands only once Astra's authority link exists (until then disabled with NeedsAuthority, never a fake success).</summary>
+        public static NativeDevState Resolve(NativeDevAction a,in NativeDevContext c,out string reason)
+        {
+            var mode=NativeDevGate.Mode(c);
+            if(a==null||mode==NativeDevMode.Off){reason=Off;return NativeDevState.Unavailable;}
+            switch(a.Kind)
+            {
+                case NativeDevKind.Presentation:reason=Local;return NativeDevState.Live;
+                case NativeDevKind.Sandbox:case NativeDevKind.Preview:
+                    if(mode==NativeDevMode.Sandbox){reason=InSandbox;return NativeDevState.Live;}reason=SandboxOnly;return NativeDevState.SandboxOnly;
+                default:
+                    if(mode==NativeDevMode.Sandbox&&a.SandboxRoute){reason=InSandbox;return NativeDevState.Live;}
+                    if(c.Authority){reason=ToHost;return NativeDevState.Live;}
+                    reason=NeedsAuthority;return NativeDevState.NeedsAuthority;
+            }
+        }
+        /// <summary>True when a Live action runs the existing sandbox call (else, Live, it is a DEV command or a view tool).</summary>
+        public static bool RunsInSandbox(NativeDevAction a,in NativeDevContext c)=>a!=null&&NativeDevGate.Mode(c)==NativeDevMode.Sandbox&&a.SandboxRoute&&a.Kind!=NativeDevKind.Presentation;
+    }
+
+    /// <summary>The panel's hotkeys (none clashes with a binding in the code or docs; F3 matches the Electron DEV panel key).</summary>
+    public static class NativeDevKeys
+    {
+        public const string Panel="F3",Cursor="F4",RestoreMe="F5",DownDummy="F6",DummyCast="F7",Log="F1",Graph="F2",Fly="F10",HideHud="F11",Snap="Home";
+        public static readonly string[] All={Panel,Cursor,RestoreMe,DownDummy,DummyCast,Log,Graph,Fly,HideHud,Snap};
+        /// <summary>The footer legend: key, then what it does.</summary>
+        public static readonly string[] Legend={Panel,"panel",Cursor,"cursor",RestoreMe,"restore me",DownDummy,"down dummy",DummyCast,"dummy cast",Fly,"fly",HideHud,"hide HUD",Log,"log",Graph,"graph"};
+        /// <summary>While flying: WASD move, E / Space up, Q down, Shift fast, Ctrl slow, mouse wheel speed, Home snaps back.</summary>
+        public const string FlyHelp="WASD move · E/Space up · Q down · Shift fast · Ctrl slow · wheel speed · Home snap";
+    }
+
+    /// <summary>The authority's hit-volume numbers the overlays draw, read from the rules they mirror (DevToolsChecks probes
+    /// NativeCombatRules.Headshot and NativeMeleeRules.Contact at these values): the head box (+.64 m over the body, .17 m
+    /// half extents, yaw-aligned) and the melee sector (origin +.15 m, ±1.6 m tall, .24 rad plus the target's .45 m).</summary>
+    public static class NativeDevVolumes{public const float HeadY=.64f,HeadHalf=.17f,MeleeLift=.15f,MeleeHeight=1.6f,Cone=.24f,PilotExtra=.45f;}
+
+    // ---- The DEV command link (Astra wires it) -----------------------------------------------------------------------------
+    [Serializable] public sealed class NativeDevCommand{public int transaction;public string action;public int target;public string[] args=Array.Empty<string>();}
+    [Serializable] public sealed class NativeDevReply{public int transaction;public string state;public string reason;}
+    /// <summary>
+    /// The panel's end of the DEV command contract. Until Astra sets Sender (guest: send `dev-command` to the host; host:
+    /// call the DevAllowed validator directly) every contract action is disabled with NativeDevActions.NeedsAuthority and
+    /// nothing is sent. Receive takes the host's `dev-reply`; Status says what the host said, never more.
+    /// </summary>
+    public sealed class NativeDevLink
+    {
+        public Func<NativeDevCommand,bool> Sender;
+        public bool Available=>Sender!=null;
+        private int next;private readonly Dictionary<int,string> pending=new Dictionary<int,string>();
+        public int Pending=>pending.Count;
+        public string Status{get;private set;}="";public bool StatusRefused{get;private set;}public int StatusTransaction{get;private set;}
+        /// <summary>Sends `action` for seat `target`; null when there is no authority link, the shape is wrong or the send failed.</summary>
+        public NativeDevCommand Send(string action,int target,string[] args,string label)
+        {
+            if(Sender==null||!NativeDevContract.ShapeOk(action,args))return null;if(pending.Count>=32)pending.Clear();
+            var c=new NativeDevCommand{transaction=++next,action=action,target=target,args=args??Array.Empty<string>()};
+            if(!Sender(c))return null;pending[c.transaction]=label??action;Status=(label??action)+" · sent, waiting for the host";StatusRefused=false;StatusTransaction=c.transaction;return c;
+        }
+        /// <summary>The host's reply for a pending transaction; false for an unknown one (the line is unchanged).</summary>
+        public bool Receive(NativeDevReply r)
+        {
+            if(r==null||!pending.TryGetValue(r.transaction,out var label))return false;bool refused=r.state==NativeDevContract.Refused;
+            if(r.state!=NativeDevContract.Accepted)pending.Remove(r.transaction);
+            Status=label+" · "+(refused?"refused: "+(string.IsNullOrEmpty(r.reason)?"no reason given":r.reason):r.state==NativeDevContract.Done?"done":r.state==NativeDevContract.Accepted?"accepted":"unknown reply");
+            StatusRefused=refused||r.state!=NativeDevContract.Done&&r.state!=NativeDevContract.Accepted;StatusTransaction=r.transaction;return true;
+        }
+        public static string Number(float v)=>v.ToString("0.###",CultureInfo.InvariantCulture);
+    }
+
+    // ---- The reveal (dormant until NativeSeat.devRevealed exists) ---------------------------------------------------------
+    public static class NativeDevTags
+    {
+        /// <summary>Whether a pilot's DEV tag shows: the replicated, proposed NativeSeat.devRevealed (docs/DEV-TOOLS.md). The
+        /// field does not exist yet, so nobody is tagged. Astra: when it lands, return seat!=null&amp;&amp;seat.devRevealed
+        /// here (DevToolsChecks fails until this reads it).</summary>
+        public static bool Revealed(NativeSeat seat)=>false;
+        public const string Tag="DEV",Banner="A DEVELOPER IS HERE",Indicator="DEV ABUSE ON";
+    }
+    /// <summary>
+    /// The "a developer is here" moment everyone sees when a seat's devRevealed turns true (false to true only: a pilot
+    /// already revealed when first seen gets the tag, not the moment), or a local sandbox preview. Pure timing and a
+    /// deterministic shard burst; the Runtime draws it in the cyber style.
+    /// </summary>
+    public sealed class NativeDevReveal
+    {
+        public const float Seconds=3.6f,PreviewTag=6f;public const int Shards=36;
+        private readonly Dictionary<int,bool> seen=new Dictionary<int,bool>();
+        public int Seat{get;private set;}=-1;public string Name{get;private set;}="";public float At{get;private set;}=float.NaN;public bool Preview{get;private set;}
+        public void Reset(){seen.Clear();Seat=-1;Name="";At=float.NaN;Preview=false;}
+        public bool Observe(int seat,string name,bool revealed,float now)
+        {
+            bool had=seen.TryGetValue(seat,out bool was);if(!had||was!=revealed)seen[seat]=revealed;
+            if(revealed&&had&&!was){Start(seat,name,now,false);return true;}return false;
+        }
+        public void Start(int seat,string name,float now,bool preview){Seat=seat;Name=name??"";At=now;Preview=preview;}
+        public bool Active(float now)=>!float.IsNaN(At)&&now>=At&&now-At<Seconds;
+        public float Age(float now)=>float.IsNaN(At)?-1:now-At;
+        /// <summary>The sandbox preview also shows the tag on that pilot for a while (no seat is revealed for real).</summary>
+        public bool Previewing(int seat,float now)=>Preview&&seat==Seat&&!float.IsNaN(At)&&now>=At&&now-At<Seconds+PreviewTag;
+        // Timeline (seconds from the start): a scan flash, the banner opening from the centre, the eyebrow typed in, the
+        // name rising, a hold, then out.
+        public static float Flash(float age)=>age<0||age>.32f?0:age<.06f?age/.06f:1-(age-.06f)/.26f;
+        public static float Open(float age)=>Ease((age-.08f)/.38f);
+        public static float NameIn(float age)=>Ease((age-.55f)/.45f);
+        public static float Out(float age)=>1-Ease((age-(Seconds-.5f))/.5f);
+        public static float Alpha(float age)=>age<0||age>=Seconds?0:Math.Min(Clamp01(age/.08f),Out(age));
+        public static int Typed(float age,int length,bool reduced)=>reduced?length:Math.Max(0,Math.Min(length,(int)Math.Floor((age-.3f)/.035f)));
+        /// <summary>A shard of the burst: its offset from the banner centre in canvas units, alpha, size and colour slot (0 cyan,
+        /// 1 magenta, 2 violet, 3 ink). None with Reduced effects.</summary>
+        public static bool Shard(int i,float age,bool reduced,out float x,out float y,out float alpha,out float size,out int tone)
+        {
+            x=y=alpha=size=0;tone=0;if(reduced||i<0||i>=Shards)return false;float t=age-.42f-Hash(i,5)*.18f;if(t<0||t>1.7f)return false;
+            float angle=(float)(Hash(i,1)*Math.PI*2),speed=260+Hash(i,2)*520,k=1-(float)Math.Pow(1-Math.Min(1,t/1.7f),3);
+            x=(float)Math.Cos(angle)*speed*k;y=(float)Math.Sin(angle)*speed*k*.42f+t*t*60;alpha=Clamp01(1-t/1.7f)*Clamp01(t/.06f);size=3+Hash(i,3)*7;tone=(int)(Hash(i,4)*4)%4;return true;
+        }
+        /// <summary>The marker over the revealed pilot: a ring that pulses out, 0..1.</summary>
+        public static float Ring(float age)=>age<0?0:(age*1.25f)%1;
+        public static float Hash(int i,int salt){uint h=(uint)(i*73856093)^(uint)(salt*19349663)^0x9e3779b9u;h^=h>>16;h*=0x7feb352du;h^=h>>15;h*=0x846ca68bu;h^=h>>16;return (h&0xffffff)/16777216f;}
+        private static float Clamp01(float v)=>v<0?0:v>1?1:v;
+        private static float Ease(float t){t=Clamp01(t);return 1-(1-t)*(1-t)*(1-t);}
+    }
+
+    // ---- Event log -----------------------------------------------------------------------------------------------------------
+    [Flags] public enum NativeDevLogFilter{None=0,Damage=1,Deaths=2,Defense=4,Abilities=8,World=16,Pve=32,Heals=64,All=127}
+    public struct NativeDevLogEntry{public int Id,Source,Target;public EventKind Kind;public NativeDevLogFilter Category;public float Time,Amount;public string Text;}
+    /// <summary>The replicated event stream (arena.Events, host or guest) as a ring of formatted lines. A line's text is built
+    /// once, when its event arrives; drawing and filtering allocate nothing. Read-only.</summary>
+    public sealed class NativeDevLog
+    {
+        public const int Capacity=96;
+        public static readonly NativeDevLogFilter[] Filters={NativeDevLogFilter.Damage,NativeDevLogFilter.Deaths,NativeDevLogFilter.Defense,NativeDevLogFilter.Abilities,NativeDevLogFilter.World,NativeDevLogFilter.Pve,NativeDevLogFilter.Heals};
+        public static readonly string[] FilterNames={"DAMAGE","DEATHS","DEFENSE","ABILITIES","WORLD","PVE","HEALS"};
+        private readonly NativeDevLogEntry[] ring=new NativeDevLogEntry[Capacity];private int head,count,last,generation=int.MinValue;
+        private static string[] kindNames;
+        public int Count=>count;
+        /// <summary>The `index`th newest line (0 the newest).</summary>
+        public NativeDevLogEntry this[int index]=>ring[((head-1-index)%Capacity+Capacity)%Capacity];
+        public void Clear(){head=count=0;last=0;}
+        public static NativeDevLogFilter Category(EventKind k)
+        {
+            switch(k)
+            {
+                case EventKind.Hit:case EventKind.Headshot:case EventKind.Critical:case EventKind.BurnTick:case EventKind.PoisonTick:case EventKind.HazardHit:case EventKind.AbilityHit:case EventKind.Explosion:case EventKind.Arc:return NativeDevLogFilter.Damage;
+                case EventKind.Death:case EventKind.PveGib:return NativeDevLogFilter.Deaths;
+                case EventKind.Block:case EventKind.Dodge:case EventKind.BlockPulse:case EventKind.Absorb:case EventKind.Catch:return NativeDevLogFilter.Defense;
+                case EventKind.AbilityCast:case EventKind.Recast:case EventKind.Summon:case EventKind.Field:case EventKind.Teleport:case EventKind.Freeze:case EventKind.Mark:case EventKind.Leet:case EventKind.Emperor:case EventKind.Arcade:case EventKind.Siren:case EventKind.Vacuum:case EventKind.FissureStart:case EventKind.Split:return NativeDevLogFilter.Abilities;
+                case EventKind.PveBuy:case EventKind.PvePhase:case EventKind.PveRevive:case EventKind.PveMoney:case EventKind.Install:return NativeDevLogFilter.Pve;
+                case EventKind.Heal:return NativeDevLogFilter.Heals;
+                default:return NativeDevLogFilter.World;
+            }
+        }
+        public static string KindName(EventKind k)
+        {
+            if(kindNames==null){var values=(EventKind[])Enum.GetValues(typeof(EventKind));int max=0;foreach(var v in values)max=Math.Max(max,(int)v);var names=new string[max+1];foreach(var v in values)names[(int)v]=v.ToString().ToUpperInvariant();kindNames=names;}
+            int i=(int)k;return i>=0&&i<kindNames.Length&&kindNames[i]!=null?kindNames[i]:"EVENT";
+        }
+        /// <summary>Records the events newer than the last one seen (a new round or a reset stream starts over). `name` turns a
+        /// seat id into a name (0 or unknown: the world). Returns how many lines were added.</summary>
+        public int Observe(IReadOnlyList<ArenaEvent> events,int gen,Func<int,string> name)
+        {
+            if(events==null)return 0;if(gen!=generation){generation=gen;last=0;}
+            int newest=0;for(int i=0;i<events.Count;i++)if(events[i].Id>newest)newest=events[i].Id;if(newest>0&&newest<last)last=0;
+            int added=0;for(int i=0;i<events.Count;i++){var e=events[i];if(e.Id<=last)continue;Add(e,name);added++;}
+            if(newest>last)last=newest;return added;
+        }
+        private void Add(ArenaEvent e,Func<int,string> name)
+        {
+            var entry=new NativeDevLogEntry{Id=e.Id,Source=e.Source,Target=e.Target,Kind=e.Kind,Category=Category(e.Kind),Time=e.Time,Amount=e.Amount};
+            string who=e.Source!=0?name?.Invoke(e.Source)??("#"+e.Source):"world",whom=e.Target!=0&&e.Target!=e.Source?name?.Invoke(e.Target)??("#"+e.Target):null;
+            entry.Text=e.Time.ToString("0.0",CultureInfo.InvariantCulture).PadLeft(6)+"  "+KindName(e.Kind)+"  "+who+(whom!=null?" → "+whom:"")+(e.Amount!=0?"  "+e.Amount.ToString("0.#",CultureInfo.InvariantCulture):"")+(string.IsNullOrEmpty(e.Detail)?"":"  · "+e.Detail);
+            ring[head]=entry;head=(head+1)%Capacity;if(count<Capacity)count++;
+        }
+        /// <summary>Whether a line passes the filter (and, with `mine`, involves seat `self`).</summary>
+        public static bool Shows(in NativeDevLogEntry e,NativeDevLogFilter filter,bool mine,int self)=>(e.Category&filter)!=0&&(!mine||e.Source==self||e.Target==self);
+    }
+
+    /// <summary>A fixed ring of samples (frame time, simulation step, round trip) for the DEV graph; allocation-free.</summary>
+    public sealed class NativeDevGraph
+    {
+        private readonly float[] values;private int head,count;
+        public NativeDevGraph(int capacity=120){values=new float[Math.Max(2,capacity)];}
+        public int Capacity=>values.Length;public int Count=>count;
+        public void Push(float v){if(float.IsNaN(v)||float.IsInfinity(v))v=0;values[head]=v;head=(head+1)%values.Length;if(count<values.Length)count++;}
+        /// <summary>Sample `i` from the oldest (0) to the newest (Count-1).</summary>
+        public float At(int i)=>values[((head-count+i)%values.Length+values.Length)%values.Length];
+        public float Last=>count==0?0:At(count-1);
+        public float Max(){float m=0;for(int i=0;i<count;i++)m=Math.Max(m,At(i));return m;}
+        public float Average(){if(count==0)return 0;float s=0;for(int i=0;i<count;i++)s+=At(i);return s/count;}
+        public void Clear(){head=count=0;}
+    }
+
+    /// <summary>The detached fly camera: its own pose, moved by the local keys and mouse only. Pitch is the camera's x Euler
+    /// angle (down positive) and yaw its y, as the match camera's; the look mapping is the pilot camera's (x2 / x1.5 by the
+    /// mouse sensitivity). It never reads or writes the simulation.</summary>
+    public sealed class NativeDevFly
+    {
+        public const float MinSpeed=1,MaxSpeed=60,PitchLimit=89,FastScale=3,SlowScale=.25f;
+        public bool On;public float X,Y,Z,Yaw,Pitch,Speed=10;
+        public void Place(float x,float y,float z,float yaw,float pitch){X=x;Y=y;Z=z;Yaw=yaw;Pitch=Clamp(pitch,-PitchLimit,PitchLimit);}
+        public void Look(float mouseX,float mouseY,float sensitivity){Yaw=(Yaw+mouseX*2*sensitivity)%360;Pitch=Clamp(Pitch-mouseY*1.5f*sensitivity,-PitchLimit,PitchLimit);}
+        public void Wheel(float notches){if(notches!=0)Speed=Clamp(Speed*(float)Math.Pow(1.15,notches),MinSpeed,MaxSpeed);}
+        /// <summary>right / up / forward in -1..1 (forward along the view, up world-up), for `dt` seconds.</summary>
+        public void Move(float right,float up,float forward,bool fast,bool slow,float dt)
+        {
+            if(!(dt>0))return;dt=Math.Min(dt,.1f);float v=Clamp(Speed,MinSpeed,MaxSpeed)*(fast?FastScale:1)*(slow?SlowScale:1)*dt;
+            Forward(Yaw,Pitch,out float fx,out float fy,out float fz);double r=Yaw*Math.PI/180;float rx=(float)Math.Cos(r),rz=-(float)Math.Sin(r);
+            float len=(float)Math.Sqrt(right*right+up*up+forward*forward);if(len>1){right/=len;up/=len;forward/=len;}
+            X+=(fx*forward+rx*right)*v;Y+=(fy*forward+up)*v;Z+=(fz*forward+rz*right)*v;
+        }
+        public static void Forward(float yaw,float pitch,out float x,out float y,out float z)
+        {double a=yaw*Math.PI/180,b=pitch*Math.PI/180;x=(float)(Math.Sin(a)*Math.Cos(b));y=-(float)Math.Sin(b);z=(float)(Math.Cos(a)*Math.Cos(b));}
+        private static float Clamp(float v,float lo,float hi)=>v<lo?lo:v>hi?hi:v;
+    }
+
+    /// <summary>The Chips tab's query: search terms, sort, filter (all, favourites, installed, recent) over the content's chips;
+    /// recomputed only when an input changes, so a steady frame allocates nothing.</summary>
+    public sealed class NativeDevChips
+    {
+        public const int SortRarity=0,SortName=1,SortInstalled=2,FilterAll=0,FilterFavourites=1,FilterInstalled=2,FilterRecent=3,RecentMax=8;
+        public static readonly string[] SortNames={"RARITY","NAME","INSTALLED"},FilterNames={"ALL","FAVOURITES","INSTALLED","RECENT"};
+        private static readonly string[] Ranks={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren"};
+        public readonly List<int> Shown=new List<int>(256);public readonly HashSet<string> Favourites=new HashSet<string>(StringComparer.Ordinal);public readonly List<string> Recent=new List<string>(RecentMax);
+        public string Search="";public int Sort,Filter;private int revision;
+        private string keySearch;private int keySort=-1,keyFilter=-1,keyRevision=-1,keyInstalled=int.MinValue,keyLength=-1;private ContentChip[] keyChips;
+        private ContentChip[] sortChips;private Func<string,int> sortInstalled;private Comparison<int> comparison;
+        public static int Rank(string rarity){int r=Array.IndexOf(Ranks,rarity);return r<0?Ranks.Length:r;}
+        public void Favourite(string id){if(id==null)return;if(!Favourites.Remove(id))Favourites.Add(id);revision++;}
+        public void Touch(string id){if(id==null)return;Recent.Remove(id);Recent.Insert(0,id);if(Recent.Count>RecentMax)Recent.RemoveAt(Recent.Count-1);revision++;}
+        public string FavouritesText(){var list=new List<string>(Favourites);list.Sort(StringComparer.Ordinal);return string.Join(",",list);}
+        public void LoadFavourites(string text){Favourites.Clear();if(!string.IsNullOrEmpty(text))foreach(var id in text.Split(','))if(id.Length>0&&id.Length<=64)Favourites.Add(id);revision++;}
+        /// <summary>Refreshes Shown when the query or the target's chips (`installedSignature`) changed; true when it did.</summary>
+        public bool Update(ContentChip[] chips,Func<string,int> installed,int installedSignature)
+        {
+            chips=chips??Array.Empty<ContentChip>();
+            if(ReferenceEquals(keySearch,Search)&&keySort==Sort&&keyFilter==Filter&&keyRevision==revision&&keyInstalled==installedSignature&&keyLength==chips.Length&&ReferenceEquals(keyChips,chips))return false;
+            keySearch=Search;keySort=Sort;keyFilter=Filter;keyRevision=revision;keyInstalled=installedSignature;keyLength=chips.Length;keyChips=chips;
+            Shown.Clear();var terms=(Search??"").Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries);
+            for(int i=0;i<chips.Length;i++)
+            {
+                var c=chips[i];if(c==null)continue;bool ok=true;
+                foreach(var term in terms)if((c.name+" "+c.id+" "+c.description+" "+c.rarity).IndexOf(term,StringComparison.OrdinalIgnoreCase)<0){ok=false;break;}
+                if(!ok)continue;
+                if(Filter==FilterFavourites&&!Favourites.Contains(c.id)||Filter==FilterInstalled&&(installed==null||installed(c.id)<=0)||Filter==FilterRecent&&!Recent.Contains(c.id))continue;
+                Shown.Add(i);
+            }
+            sortChips=chips;sortInstalled=installed;comparison??=Compare;recentComparison??=CompareRecent;
+            Shown.Sort(Filter==FilterRecent?recentComparison:comparison);
+            return true;
+        }
+        private Comparison<int> recentComparison;
+        private int CompareRecent(int a,int b)=>Recent.IndexOf(sortChips[a].id).CompareTo(Recent.IndexOf(sortChips[b].id));
+        private int Compare(int a,int b)
+        {
+            var x=sortChips[a];var y=sortChips[b];int r=0;
+            if(Sort==SortRarity)r=Rank(x.rarity).CompareTo(Rank(y.rarity));
+            else if(Sort==SortInstalled&&sortInstalled!=null)r=-Math.Sign(sortInstalled(x.id)).CompareTo(Math.Sign(sortInstalled(y.id)));
+            if(r==0)r=string.CompareOrdinal(x.name??"",y.name??"");return r!=0?r:a.CompareTo(b);
+        }
+    }
+
+    /// <summary>The DEV panel's frame on the canvas (NativeUiMotion.Measure units): right-anchored, at most 720 wide, so a
+    /// 21:9 or 32:9 window keeps the fight in view; it fits a 1066x600 canvas (interface scale 1.5 at 1080p).</summary>
+    public struct NativeDevRects{public float X,Y,W,H,Rail,Header,Footer;public float BodyX=>X+Rail;public float BodyY=>Y+Header;public float BodyW=>W-Rail;public float BodyH=>H-Header-Footer;}
+    public static class NativeDevLayout
+    {
+        public const float Rail=84,Header=62,Footer=72,Top=60,Margin=18;
+        public static NativeDevRects Panel(float canvasW,float canvasH)
+        {
+            float w=Math.Max(420,Math.Min(720,canvasW*.36f));w=Math.Min(w,canvasW-2*Margin);float top=Math.Min(Top,canvasH*.08f),h=Math.Min(canvasH-top-Margin,860);
+            return new NativeDevRects{X=canvasW-Margin-w,Y=top,W=w,H=h,Rail=Rail,Header=Header,Footer=Footer};
+        }
+        public static readonly string[] TabNames={"PILOT","INTERACT","DUMMIES","CHIPS","ARENA","HAZARDS","PREVIEW","CAMERA","SIM"};
+        public static readonly string[] TabTitles={"Pilot","Interact","Dummies","Chips","Arena","Hazards","Previews & galleries","Camera & overlays","Simulation"};
+        public static readonly string[] TabIcons={"person-standing","hand","bot","cpu","brick-wall","radiation","sparkles","scan","gauge"};
+    }
+
+    /// <summary>Cached number labels for the panel (a steady frame builds no strings).</summary>
+    public static class NativeDevText
+    {
+        private static readonly string[] Units={""," kg"," m/s"," s","×"," ms"," fps"," m"," kB"};
+        private static readonly Dictionary<long,string> cache=new Dictionary<long,string>();
+        private static void Keep(long key,string s){if(cache.Count>8192)cache.Clear();cache[key]=s;}
+        public static string Int(int n)
+        {
+            if(n>=0&&n<1000)return NativeHudText.Int(n);long key=((long)1<<40)|(uint)n;if(cache.TryGetValue(key,out var s))return s;
+            s=n.ToString(CultureInfo.InvariantCulture);Keep(key,s);return s;
+        }
+        /// <summary>`v` with `decimals` (0..2) places and a unit suffix (one of Units), keyed by the rounded value.</summary>
+        public static string Value(float v,int decimals,string unit)
+        {
+            if(float.IsNaN(v)||float.IsInfinity(v))v=0;decimals=Math.Max(0,Math.Min(2,decimals));long scaled=(long)Math.Round(v*(decimals==0?1:decimals==1?10:100));
+            int u=Array.IndexOf(Units,unit);if(u<0)u=0;long key=((long)(2+decimals)<<40)|((long)u<<32)|(uint)(int)scaled;if(cache.TryGetValue(key,out var s))return s;
+            s=(scaled/(decimals==0?1.0:decimals==1?10.0:100.0)).ToString(decimals==0?"0":decimals==1?"0.0":"0.00",CultureInfo.InvariantCulture)+Units[u];Keep(key,s);return s;
+        }
+        public static string Count(int n,int max)
+        {
+            n=Math.Max(0,Math.Min(65535,n));max=Math.Max(0,Math.Min(65535,max));long key=((long)9<<40)|((long)n<<16)|(uint)max;if(cache.TryGetValue(key,out var s))return s;
+            s=n.ToString(CultureInfo.InvariantCulture)+"/"+max.ToString(CultureInfo.InvariantCulture);Keep(key,s);return s;
+        }
+    }
+}
