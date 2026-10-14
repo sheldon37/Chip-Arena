@@ -374,10 +374,49 @@ every map; decide whether that is wanted for DEV testing. The steps:
 - The final gate's leaves and seal.
 - The sanctuary boundary and the SAFE tint.
 - The transfer screen.
-- The town's dressing kit: facades, shopfronts, signage, street lamps, grates.
-- The Meridian frontage.
+- The town's dressing kit: facades, shopfronts, signage, street lamps, grates (done: "Town dressing" below).
+- The Meridian frontage (done).
 - The Ward Zero exit's outside plate, drawn beyond the jambs.
 - Generalizing `NativeWardZeroLooks.Active` to the instance once it is imported.
+
+### Town dressing (Claude, 2026-10-14, `claude/expedition-dressing`)
+
+Presentation only, on the imported `expedition-city` map: no block, collider, navigation, layout record or rule changes.
+The town draws as a ruined city at dusk in the blocky style. Doors, the final gate's leaves, the sanctuary boundary,
+transitions and boss intros are `claude/expedition-states`'s; this pass keeps their volumes clear.
+
+| Piece | Where | What |
+| --- | --- | --- |
+| Dressing kit | `Core/NativeExpeditionCityKit*.cs` | Parts laid on the 124 blocks by id stem, with the town's records from `Resources/ExpeditionLayout.json` kept clear. Facades: punched windows (dark glass with a dusk sheen, lit, TV, boarded, broken and sooted, three burning), sills, cornices, parapets, storefronts with original shop names (neon or painted), shutters, awnings, lobbies, depot doors, fire escapes, wall lamps, traffic signals, notices, posters, graffiti and green SANCTUARY arrows. Landmarks: the city hall (pilasters, tall windows, CITY HALL, banners, the clock stopped at 6:47), the Meridian Biocontainment frontage (cladding, cold ribbon windows, MERIDIAN BIOCONTAINMENT, MERIDIAN on the tower, the WARD ZERO canopy, beacons), the sealed CITY IRONWORKS foundry, the boarded CENTRAL STATION, the CHECKPOINT gatehouse (blast walls, razor wire, floodlights). Street: the vehicles dressed on their blocks (bus, ambulance, taxi, police cars with one live light bar, burnt and overturned wrecks), road paint, crosswalks, litter, blood, scorch marks, casings. Sanctuary: sandbags and sheet metal on the barricades, the brazier, four lamp posts with a string of bulbs. Spawns: a dark doorway with its frame at every door spawn, a grate at every vent, the breach panels as bricked-up shopfronts (their parts hide with the panel). |
+| Skyline | `Core/NativeExpeditionCityScenery.cs` | Ground plates to 320 m; blocks on a 24 m grid from 76 to 230 m, darkening toward the horizon, a few lit windows, seven burning towers, two cranes, aviation lights. Beyond ±66 m. |
+| Atmosphere | `Core/NativeExpeditionCityFx.cs` | Flames, embers and smoke at the fires; smoke columns from the burning towers; a helicopter with a searchlight sweeping the outskirts; lamp halos and pools; the bulbs; ground fog in the streets (none in blocks); falling ash. |
+| Lights | `Core/NativeExpeditionCityLights.cs` | The eight practical lights that matter to the camera, from the look's eight plus the kit's lamps, fires, floods and beacons (`NativeLighting.PickedLights`). |
+| Ambience | `NativeExpeditionCityAmbience` (in the FX file), `Runtime/NativeExpeditionCityAudio.cs` | Distant shots, bursts and explosions and the fires' crackle on existing audio keys (`rifle`, `machinegun`, `explosion`, `fire`); no new audio. |
+| Runtime | `Runtime/NativeExpeditionCityPresentation.cs` | Hooked from `SourceWorld`, gated on the map id; instanced `NativeBlockLit` draws. |
+| Look | `MapLooks.json` `expedition-city` (from `expedition_city.py --maplooks`) | Names its dressing, backdrop, atmosphere and ambience; per-car colours (police white, taxi, the overturned and burnt wrecks). |
+
+Placement rules (checked in `Tests/ExpeditionDressingChecks.cs`, from the records, not from the kit's own list):
+- Below 3.1 m (a Hulk is 3.06 m) nothing stands more than 0.25 m off a block. Flat paint (at most 6 cm) is the only
+  exception. Awnings hang with their valance above 3.1 m, and the planters carry only a low shrub, since a pilot can stand on one.
+- Nothing lies on a spawn's exit or its path, a door spawn's doorway (except its own frame), a vent (except its grate),
+  a drop column, a slot, a return, the approach, an interaction, anchor or boss point, the instance door's volumes or
+  the final gate's volume (plus a margin for the leaves).
+- The sanctuary floor holds only flat paint below 2.6 m. Its barricades, brazier and walls carry the rest.
+- Every block's parts depend only on its id, the geometry and the records. Building over the blocks in reverse order
+  gives every block the same parts.
+
+Budget at `6da0330`, with the full rules:
+
+| Item | Instances | Draws | Notes |
+| --- | --- | --- | --- |
+| Kit | 7,594 | 16 | One of the draws casts shadows (327 parts) |
+| Kit, low tier and compatibility rendering | 4,774 | 11 | Detail parts left out |
+| Skyline | 1,212 | 3 | Backdrop layer, no shadows, left out under compatibility rendering |
+| Atmosphere | at most 641 quads | 2 | Buffer 2,800 quads |
+| Practical lights | 8 of 67 candidates | | |
+
+For comparison, Ward Zero's kit is 7,124 parts in 15 draws, and Cyber City's skyline is 4,570 boxes in 10 draws.
+The drive, the atmosphere, the picker and the ambience allocate nothing per frame (checked over 120 frames).
 
 ### Open questions for the owner
 

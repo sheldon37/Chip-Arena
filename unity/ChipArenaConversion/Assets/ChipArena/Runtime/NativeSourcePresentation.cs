@@ -58,6 +58,7 @@ namespace ChipArena.UnityConversion
             FactoryScenery(arena);
             BrickfallScenery(arena);
             CyberCityScenery(arena);
+            ExpeditionCityScenery(arena);
             if(revamp)WardZeroScenery(arena);
             PveMachinePresentation(arena);
             // A dead add's rig stays posed until its death effects end (NativeMinionFxPresentation.cs: flames rise off its joints).
