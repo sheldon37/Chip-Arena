@@ -200,15 +200,19 @@ creating a small puddle of poison (Can corrode destructibles). Can interupt thei
   chest: the glob flies its arc (about 9 m/s across, `Flight(d) = max(.35, d / 9 + .12)` s, apex .9 + .08 d m) with a
   dripping, sizzling trail (`magic.darkness.shot`), splashes where it lands; a pilot within .6 m of the landing (plus its body radius) gets an
   acid splash that sizzles and drips off the body for 1.8 s (the poison itself is the existing status / damage screen).
-- Puddle: bubbles and fumes, creeps out to the radius (1.3 m proposed; never past it) with a clear bright edge, fades
-  over its 4 s. Destructible props (arena props and static blocks, e.g. Brickfall's structure blocks) the glob or the
+- Puddle (natural pass, 2026-10-14): a lobed liquid body, its own shape per record, whose mean extent is the radius
+  (1.3 m; lobes within ±11%), with no ring at the radius. It creeps out viscously, is dark in its deep core and lighter
+  and translucent at its thin edge, with a soft wet sheen; a few satellite splats lie outside it; a bubble pops now and
+  then; faint fumes. Over its last 1.3 s it dries into patches and recedes a little, leaving a residue stain. Destructible props (arena props and static blocks, e.g. Brickfall's structure blocks) the glob or the
   puddle touches corrode: smoking pits round the contact, a dripping corroded tint and hiss; when the block breaks the
   existing structure effects take over.
 - Interrupt: any damaging hit in the wind-up (`NativeHordeKinds.Interrupts`, inferred from the replicated hit and
   LastAttack until a cancel is replicated) cancels the shown spit: a flinch, the sac deflates over .35 s, the jaw snaps
   shut, the acid dribbles from the mouth and fizzles in a small pool at its feet (1.4 s); no glob.
-- Until the rules emit `minion-spit` the DEV preview predicts the glob from the strike; once they do, the presentation
-  launches it from the event (`From` mouth, `Position` landing, `Time` launch, `Amount` flight s, `Radius` puddle).
+- Every glob and pool comes from the authority's acid records (`NativePveFrame.acid` in PvE, `devAcid` for DEV monsters
+  on other maps; seeded by the record id). The `minion-spit` event only stops the DEV preview from predicting a glob for
+  that add. An add's events (`minion-*`) name its owner as Source, so they take no owner's bow arrow, thunk, weapon
+  colour or surface procs (`NativeImpactCues.AddEvent`); the spit's launch event draws no impact streak or sparks.
 
 ### Known limits (2026-10-13)
 
@@ -237,7 +241,7 @@ upright slam wave) and a decal layer queued before the effect billboards. No rul
 | glob in flight | acid record / `minion-spit` event (`from`, `to`, `at`, `flight`) | rides `NativeHordeFx.Glob` (the arc the server validates); lands at `at + flight` |
 | wind-up clot, jaw strings, drool | `LastAttack`, `NativeSpitterRules.Hit` | only before the release; the glob takes over at `LastAttack + Hit` |
 | splash, crown, spatter | the landing (`at + flight`) | every drop lands inside `NativeSpitterRules.Radius` |
-| pool film, ring, bubbles, fumes | the landing, `NativeSpitterRules.Radius` / `Duration` | liquid never past the radius; the ring holds the radius until `Duration`; evaporates over the last 1.3 s; an etch fades 5 s after |
+| pool body, sheen, satellites, bubbles, fumes, stain | the landing, `NativeSpitterRules.Radius` / `Duration` | lobed outline (per record seed) with a mean extent of the radius, lobes within ±11%; no ring; spreads over 1.15 s; dries over the last 1.3 s; the residue stain fades 5 s after |
 | smash impact | `LastAttack + hit` (the authority's strike) | wave, cracks, dust and landed rubble inside `NativeHordeKinds.SmashRadiusOf(kind)` round `SmashAheadOf(kind)` |
 | jump-in landing | `NativeHordeDrop.LandAt(ActiveAt, profile)` | inside the profile's `SlamRadius` (brute 2.4 m, Hulk 5.5 m) |
 | wall breach | `NativeBreach` blows (`.55/1.2/2.1` s after the knock start), `breakAt`, replicated `restoreAt` | chips, burst grit, sparks, dust curtain; hardlight remnants until `restoreAt`; motes in the rebuild |

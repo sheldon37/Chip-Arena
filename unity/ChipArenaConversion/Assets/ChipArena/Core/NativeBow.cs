@@ -61,8 +61,13 @@ namespace ChipArena.UnityConversion
         /// <summary>The hit Details an arrow makes (NativeProjectiles: the bullet's damage kind).</summary>
         public const string HitDirect="direct",HitSecondary="secondary";
         public static bool ArrowDetail(string detail)=>detail==HitDirect||detail==HitSecondary;
-        /// <summary>A bow arrow striking the world: an Impact event by a bow pilot.</summary>
-        public static bool Lodges(in ArenaEvent e,string sourceSpec)=>e.Kind==EventKind.Impact&&Is(sourceSpec);
+        /// <summary>A bow arrow striking the world: an Impact event by a bow pilot that an arrow made, i.e. one that names its
+        /// projectile (NativeProjectiles' prop impacts carry the bullet's id and Detail) with an arrow's Detail or none. Every other
+        /// Impact with a bow pilot as Source lodges nothing: an add's own events ("minion-spit", "minion-drop", "minion-slam",
+        /// "minion-spit-cancel") name its owner as Source (the DEV who spawned a DEV monster) and no projectile, and summon and
+        /// stage impacts likewise (owner 2026-10-14: "their pool produces an arrow in the middle": a bow DEV's spitter's spit
+        /// event lodged an arrow at its landing, the pool's centre, for six seconds).</summary>
+        public static bool Lodges(in ArenaEvent e,string sourceSpec)=>e.Kind==EventKind.Impact&&Is(sourceSpec)&&e.Projectile>0&&(e.Detail==null||Arrow(e.Detail,0,out _,out _));
     }
 
     /// <summary>

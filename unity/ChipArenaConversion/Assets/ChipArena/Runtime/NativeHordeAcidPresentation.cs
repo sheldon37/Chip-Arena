@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     //  - The glob flies its arc (Core/NativeHordeFx.Glob) with a dripping, sizzling trail and splashes where it lands.
     //  - A pilot it lands on is splashed: the acid bursts on the body, sizzles and drips off it a moment (the poison itself, its
     //    ticks and tint, are the existing poison status and damage screen once the rules apply it).
-    //  - The poison puddle bubbles and fumes, creeps out to the authority's radius with a clear bright edge, and fades by its end.
+    //  - The poison puddle bubbles and fumes, creeps out to the authority's radius (a lobed body, no ring), and dries by its end.
     //  - Destructible blocks the glob or puddle touches (the arena's props and static blocks, e.g. Brickfall's structure blocks)
     //    corrode: smoking pits eaten round the contact, a dripping corroded tint; when the block breaks its own structure effects
     //    take over (the corrosion ends with the block).
@@ -19,12 +19,16 @@ namespace ChipArena.UnityConversion
     // High-quality pass (owner 2026-10-14: "Improve visual fx from spitter/hulk zombie (make them high quality) acid needs to look
     // better"): everything above is drawn by Runtime/NativeZombieFxDraw.cs from Core/NativeZombieFx.cs (a glossy viscous core
     // with a membrane, halo, stringy tail, drips and glowing fumes; a crown, drops landing inside the pool and spatter; a lobed
-    // film to the authority's radius with a meniscus, a ring holding that radius, bubbles, glints, fumes, evaporation and an etch;
+    // film to the authority's radius, bubbles, glints, fumes, evaporation and an etch;
     // eaten blotches with cooling rims). The pool's radius and duration are the record's (NativeSpitterRules), never changed here.
+    // Natural pool (owner 2026-10-14: "their pool produces an arrow in the middle for some reason? Also, make the pool look more
+    // natural. (No circle showing either, currently theres a green circle)"): the lobed body whose mean extent is the radius, no
+    // ring (NativeZombieFxDraw.Pool). The arrow was the bow presentation lodging an arrow for the spit's Impact event, whose
+    // Source is the add's owner: a DEV on the bow who spawned the spitter (NativeBowWire.Lodges now takes only an arrow's own).
     // Fixed pools; no allocation per frame.
     public sealed partial class ArenaPresentation
     {
-        private struct HordeGlob{public Vector3 From,To;public float At,Flight,Floor;public uint Seed;public int Id;public float Radius,Duration;public bool Landed;}
+        private struct HordeGlob{public Vector3 From,To;public float At,Flight,Floor;public uint Seed;public int Id;public float Radius,Duration;public bool Landed,Record;}
         private readonly HordeGlob[] hordeGlobs=new HordeGlob[24];private int hordeGlobNext;private readonly Dictionary<int,float> hordeSpat=new Dictionary<int,float>();private readonly HashSet<int> hordeSpitEvents=new HashSet<int>();
         private struct HordeCorrode{public bool Live;public NativePropBody Prop;public Collider Col;public Vector3 Contact,Normal;public float Start,Duration;public uint Seed;}
         private readonly HordeCorrode[] hordeCorrodes=new HordeCorrode[16];private int hordeCorrodeNext;
@@ -37,13 +41,14 @@ namespace ChipArena.UnityConversion
         public const float AcidHitSeconds=1.8f;
 
         /// <summary>A glob in flight from the mouth `from` to `to`, launched at `at` over `flight` s; its puddle `radius` for `duration` s.
-        /// `lift`: how far `to` is above the floor (the authority's landing point is .025 m over it; the DEV preview's is on it).</summary>
-        private void HordeLaunchGlob(Vector3 from,Vector3 to,float at,float flight,uint seed,int id,float radius,float duration,float lift=.025f)
+        /// `lift`: how far `to` is above the floor (the authority's landing point is .025 m over it; the DEV preview's is on it);
+        /// `record`: launched from an authority acid record (it goes when its record goes early).</summary>
+        private void HordeLaunchGlob(Vector3 from,Vector3 to,float at,float flight,uint seed,int id,float radius,float duration,float lift=.025f,bool record=false)
         {
             // A free slot, else the one whose acid ended (or ends) first: a live glob is never taken while an ended one's etch is left.
             int o=0;float first=float.MaxValue;hordeGlobNext++;
             for(int i=0;i<hordeGlobs.Length;i++){if(hordeGlobs[i].Flight<=0){o=i;break;}float end=hordeGlobs[i].At+hordeGlobs[i].Flight+hordeGlobs[i].Duration;if(end<first){first=end;o=i;}}
-            hordeGlobs[o]=new HordeGlob{From=from,To=to,At=at,Flight=flight,Floor=to.y-lift,Seed=seed,Id=id,Radius=radius,Duration=duration};
+            hordeGlobs[o]=new HordeGlob{From=from,To=to,At=at,Flight=flight,Floor=to.y-lift,Seed=seed,Id=id,Radius=radius,Duration=duration,Record=record};
         }
         /// <summary>An interrupted spit (HordeHit): the acid dribbles from the mouth to the floor at `floor` and fizzles.</summary>
         private void HordeFizzle(HordeKindState s,float floor,float at)

@@ -192,10 +192,10 @@ namespace ChipArena.UnityConversion
                 // breaks), an impact's weapon colour.
                 int color=e.Color;
                 if(color==0&&e.Kind==EventKind.Break&&source?.Seat.spec!="siren")color=NativeImpactCues.MaterialColor(arena.Content?.materials,e.Detail);
-                else if(color==0&&e.Kind==EventKind.Impact){var w=NativeShotViews.Weapon(arena,source?.Seat.spec);if(w!=null)color=(int)w.color;}
+                else if(color==0&&e.Kind==EventKind.Impact&&!NativeImpactCues.AddEvent(e.Detail)){var w=NativeShotViews.Weapon(arena,source?.Seat.spec);if(w!=null)color=(int)w.color;}
                 var cue=new NativeImpactEvent{Kind=e.Kind,Detail=e.Detail,Position=e.Position,From=e.From,Amount=e.Amount,Radius=e.Radius,Color=color,TargetPilot=target!=null,Trails=Trails,HasTarget=target!=null,Target=target!=null?NativeArena.Vec(target.Body.position):default};
                 int count=NativeImpactCues.Plan(cue,plan);Run(count,quality);
-                if(e.Kind!=EventKind.Impact||e.Source<=0)continue;
+                if(e.Kind!=EventKind.Impact||e.Source<=0||NativeImpactCues.AddEvent(e.Detail))continue;
                 double x=e.Position.x,y=e.Position.y,z=e.Position.z;
                 NativeSeat seat=null;foreach(var s in arena.Match.Seats)if(s.id==e.Source){seat=s;break;}if(seat==null)continue;
                 bool water=seat.spec=="water",kinetic=seat.chips.TryGetValue("kinetic",out int kinetics)&&kinetics>0,demolition=seat.chips.TryGetValue("demolition",out int demolitions)&&demolitions>0;

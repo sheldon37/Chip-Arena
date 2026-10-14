@@ -58,7 +58,8 @@ namespace ChipArena.UnityConversion
         private void BowEventCue(NativeArena arena,in ArenaEvent e,NativePilot source,Vector3 pos)
         {
             if(source==null||!NativeBowWire.Is(source.Seat.spec))return;
-            if(e.Kind==EventKind.Impact){Cue(NativeBowSounds.Thunk.Key,NativeBowSounds.Thunk.Clip,pos,NativeBowSounds.Thunk.Gain);return;}
+            // Only an arrow's own impact thunks (an add's events name its DEV owner as Source: NativeBowWire.Lodges).
+            if(e.Kind==EventKind.Impact){if(NativeBowWire.Lodges(e,source.Seat.spec))Cue(NativeBowSounds.Thunk.Key,NativeBowSounds.Thunk.Clip,pos,NativeBowSounds.Thunk.Gain);return;}
             if(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot){bowStrikes[bowStrikeNext]=(e.Source,e.Time,pos);bowStrikeNext=(bowStrikeNext+1)%bowStrikes.Length;}
         }
         /// <summary>Once a frame: the arrows in flight, and a thunk where one vanished with no hit near it.</summary>
