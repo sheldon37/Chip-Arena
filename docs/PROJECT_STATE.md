@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 Expedition integration bridge: `codex/expedition-integration` on `65f9f131` adds opt-in room replication/private views, authenticated guest commands, catalog/save/reprint adapters, persistent anchors, final-boss rewards and individual continue choices. PR #207; focused and full managed/relay checks pass (674 groups before the independent Hulk-motion merge). No playable scene or endpoint migration; native acceptance remains unrun. Runtime entry points and exact remaining dependencies: docs/EXPEDITION-INTEGRATION.md.
+
 2026-10-14 Hulk/brute motion: `claude/hulk-motion` (base shared `9270d95`, merged with shared `83b2a98`, which includes `claude/zombie-fx`) gives the Hulk a heavy stride and pivot turns, and rebuilds the Hulk/brute smash, landing and wall-knock poses on the existing rule marks. The proposed charge, straight punch and swipe are animated and dormant until Astra implements the SIREN-ZOMBIES §10 contract. Managed checks pass; Unity/Windows/multiplayer unrun.
 
 2026-10-14 melee cut swing link: `claude/melee-slice-ids` (base shared `65f9f13`) binds the melee mesh cut to PR #205's hit metadata. The killing swing is found by the id its hit carries and cut through the attacker's position at contact; hits without an id keep the time rule. This closes the Astra dependency in BISECT-GIB "Melee cuts". Presentation only; managed checks pass; Unity/Windows/two-client viewing unrun. Pushed, not merged.

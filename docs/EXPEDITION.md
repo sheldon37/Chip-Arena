@@ -1,5 +1,9 @@
 # Expedition — programming and presentation contract
 
+Integration follow-up: [EXPEDITION-INTEGRATION.md](EXPEDITION-INTEGRATION.md) records
+the new runtime bridge, updated commands/fields and remaining scene/migration
+dependencies. It supersedes the older missing-integration statements below.
+
 Owner design recorded 2026-10-13. First implementation: `codex/expedition-foundation`,
 based on shared Unity commit `f043b7cb83f103cc0e78c7b3a33bd6a0cfc0574f`.
 

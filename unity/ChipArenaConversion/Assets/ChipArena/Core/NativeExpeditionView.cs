@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
 
     [Serializable] public sealed class ExpeditionViewMember
     {
-        public string account, weapon, carriedBy;
+        public string account, weapon, carriedBy;public int reprintCost;
         public bool connected, alive, safe, extracted, host, exitVote, extractVote;
     }
     [Serializable] public sealed class ExpeditionViewInstance
@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
     /// <summary>One of the viewer's own rewards (any source). Offers only while claimed and not yet selected.</summary>
     [Serializable] public sealed class ExpeditionViewReward
     {
-        public string id, source, boss;public bool claimed, consumed, highQuality;
+        public string id, source, boss, selected;public bool claimed, consumed, highQuality;
         public string[] offers=Array.Empty<string>();
     }
     [Serializable] public sealed class ExpeditionViewPersonal
@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
         public int nextEpoch;public long revision;
         public string[] leaving=Array.Empty<string>();
         /// <summary>The transport can move the session endpoint. No build has this yet, so the ACK step shows as unavailable.</summary>
-        public bool endpointMigration;
+        public bool endpointMigration, packageStored, endpointReserved, ackReceived;public double deadline=-1;
         /// <summary>Transport-reported connection quality (empty when the transport reports none).</summary>
         public ExpeditionHostCandidate[] candidates=Array.Empty<ExpeditionHostCandidate>();
     }
@@ -68,7 +68,9 @@ namespace ChipArena.UnityConversion
         public ExpeditionPhase phase;
         public double elapsed, exitAt=-1, extractAt=-1, exitSeconds, extractSeconds;
         public bool loading, migrating, finalUnlocked, extractionUnlocked;
-        public string[] exitVotes=Array.Empty<string>(), extractVotes=Array.Empty<string>();
+        public string[] exitVotes=Array.Empty<string>(), extractVotes=Array.Empty<string>(), continueVotes=Array.Empty<string>();
+        public ExpeditionWorldAnchor[] anchors=Array.Empty<ExpeditionWorldAnchor>();
+        public ExpeditionChestOffer[] chests=Array.Empty<ExpeditionChestOffer>();
         public ExpeditionDifficulty difficulty=new ExpeditionDifficulty();
         public ExpeditionViewMember[] members=Array.Empty<ExpeditionViewMember>();
         public ExpeditionViewInstance[] instances=Array.Empty<ExpeditionViewInstance>();
@@ -99,6 +101,10 @@ namespace ChipArena.UnityConversion
         public ExpeditionHostCandidate[] Candidates;
         /// <summary>The transport can move the endpoint (no build has this yet).</summary>
         public bool EndpointMigration;
+        public bool PackageStored, EndpointReserved, AckReceived;public double Deadline=-1;
+        public Func<string,int> ReprintCost;
+        public ExpeditionWorldAnchor[] Anchors;
+        public ExpeditionChestOffer[] Chests;
     }
 
     /// <summary>
@@ -147,12 +153,13 @@ namespace ChipArena.UnityConversion
                 epoch=s.epoch,revision=s.revision,run=s.run,world=s.world,area=s.area,host=s.host,viewer=viewer,phase=s.phase,loop=s.loop,
                 elapsed=s.elapsed,exitAt=s.exitAt,extractAt=s.extractAt,exitSeconds=NativeExpedition.ExitSeconds,extractSeconds=NativeExpedition.ExtractSeconds,loading=s.loading,migrating=run.Migrating,finalUnlocked=run.FinalUnlocked,
                 extractionUnlocked=run.ExtractionUnlocked,living=living,extractNeeded=Majority(living),
-                exitVotes=(string[])s.exitVotes.Clone(),extractVotes=(string[])s.extractVotes.Clone(),
+                exitVotes=(string[])s.exitVotes.Clone(),extractVotes=(string[])s.extractVotes.Clone(),continueVotes=(string[])s.continueVotes.Clone(),
+                anchors=(sources.Anchors??s.anchors).Select(a=>a.Copy()).ToArray(),chests=(sources.Chests??s.chests).Select(c=>c.Copy()).ToArray(),
                 difficultyParty=party,difficultyStep=(int)Math.Floor(s.elapsed/scaling.timeStepSeconds),
                 difficulty=scaling.Evaluate(s.elapsed,party,s.loop,s.phase==ExpeditionPhase.Instance),
                 savedRevision=sources.Saved!=null&&sources.Saved.checkpoint!=null&&sources.Saved.checkpoint.run==s.run?sources.Saved.checkpoint.revision:-1,
             };
-            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,weapon=p.weapon,carriedBy=p.carriedBy,connected=p.connected,alive=p.alive,
+            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
                 safe=p.safe,extracted=p.extracted,host=p.account==s.host,exitVote=s.exitVotes.Contains(p.account),extractVote=s.extractVotes.Contains(p.account)}).ToArray();
             v.instances=s.instances.Select(i=>new ExpeditionViewInstance{id=i.id,target=i.target,progress=i.progress,entered=i.entered,cleared=i.cleared,
                 current=s.phase==ExpeditionPhase.Instance&&i.id==s.area,bosses=(string[])i.bosses.Clone(),defeated=(string[])i.defeated.Clone()}).ToArray();
@@ -169,7 +176,7 @@ namespace ChipArena.UnityConversion
                     carrying=s.members.Where(p=>p.carriedBy==viewer).Select(p=>p.account).ToArray(),perks=(string[])me.perks.Clone(),
                     chips=me.chips.Select(c=>new ChipCount{id=c.id,count=c.count}).ToArray(),
                     rewards=s.rewards.Where(r=>r.owner==viewer&&(!r.consumed||r.id.StartsWith(loopKey,StringComparison.Ordinal))).Select(r=>new ExpeditionViewReward{id=r.id,source=r.source,boss=r.source=="boss"?BossKey(r.id):null,
-                        claimed=r.claimed,consumed=r.consumed,highQuality=r.highQuality,offers=r.claimed&&!r.consumed?(string[])r.offers.Clone():Array.Empty<string>()}).ToArray()};
+                        selected=r.selected,claimed=r.claimed,consumed=r.consumed,highQuality=r.highQuality,offers=r.claimed&&!r.consumed?(string[])r.offers.Clone():Array.Empty<string>()}).ToArray()};
             }
             v.transfer=Transfer(run,s,sources);
             return v;
@@ -178,7 +185,7 @@ namespace ChipArena.UnityConversion
         // Host-transfer state: the authority's frozen flag, plus the integration's log, reported only where the authority agrees.
         private static ExpeditionViewTransfer Transfer(NativeExpedition run,ExpeditionSnapshot s,ExpeditionViewSources sources)
         {
-            var t=new ExpeditionViewTransfer{active=run.Migrating,endpointMigration=sources.EndpointMigration,
+            var t=new ExpeditionViewTransfer{active=run.Migrating,endpointMigration=sources.EndpointMigration,packageStored=sources.PackageStored,endpointReserved=sources.EndpointReserved,ackReceived=sources.AckReceived,deadline=sources.Deadline,
                 candidates=(sources.Candidates??Array.Empty<ExpeditionHostCandidate>()).Where(c=>c!=null).Select(c=>new ExpeditionHostCandidate{account=c.account,reachable=c.reachable,
                     capable=c.capable,loss=c.loss,latencyMs=c.latencyMs,jitterMs=c.jitterMs}).ToArray()};
             var log=sources.Transfer;var h=log?.Handoff;
@@ -208,11 +215,14 @@ namespace ChipArena.UnityConversion
         public static ExpeditionView Normalize(ExpeditionView v)
         {
             if(v==null)return null;static string N(string s)=>string.IsNullOrEmpty(s)?null:s;
+            v.continueVotes??=Array.Empty<string>();v.anchors??=Array.Empty<ExpeditionWorldAnchor>();v.chests??=Array.Empty<ExpeditionChestOffer>();
+            v.members??=Array.Empty<ExpeditionViewMember>();v.loot??=Array.Empty<ExpeditionViewLoot>();v.instances??=Array.Empty<ExpeditionViewInstance>();v.dice??=Array.Empty<ExpeditionDice>();v.exitVotes??=Array.Empty<string>();v.extractVotes??=Array.Empty<string>();
             v.viewer=N(v.viewer);v.mine??=new ExpeditionViewPersonal();v.transfer??=new ExpeditionViewTransfer();v.difficulty??=new ExpeditionDifficulty();
+            v.mine.rewards??=Array.Empty<ExpeditionViewReward>();v.mine.chips??=Array.Empty<ChipCount>();v.mine.perks??=Array.Empty<string>();v.mine.carrying??=Array.Empty<string>();
             v.mine.account=N(v.mine.account);v.mine.carriedBy=N(v.mine.carriedBy);
             foreach(var m in v.members)m.carriedBy=N(m.carriedBy);
             foreach(var l in v.loot){l.owner=N(l.owner);l.boss=N(l.boss);}
-            foreach(var r in v.mine.rewards)r.boss=N(r.boss);
+            foreach(var r in v.mine.rewards){r.boss=N(r.boss);r.selected=N(r.selected);r.offers??=Array.Empty<string>();}
             var t=v.transfer;t.id=N(t.id);t.oldHost=N(t.oldHost);t.nextHost=N(t.nextHost);t.reason=N(t.reason);
             return v;
         }
