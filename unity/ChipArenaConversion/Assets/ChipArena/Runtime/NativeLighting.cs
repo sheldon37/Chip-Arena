@@ -128,8 +128,35 @@ namespace ChipArena.UnityConversion
             {
                 arenaPos[i]=new Vector4(pos[i*4],pos[i*4+1],pos[i*4+2],Math.Max(.0001f,pos[i*4+3]));var c=new Color(rgb[i*3],rgb[i*3+1],rgb[i*3+2]);if(!linear)c=c.gamma;arenaColor[i]=new Vector4(c.r,c.g,c.b,0);
             }
-            Shader.SetGlobalVectorArray(ArenaPosId,arenaPos);Shader.SetGlobalVectorArray(ArenaColorId,arenaColor);Shader.SetGlobalInt(ArenaCountId,arenaCount);
+            UploadArenaLights();
         }
+        // The hazard kit's share of the slots (Runtime NativeHazardKitPresentation, Core NativeKitLightPool): at most three lights
+        // sent each frame, merged into the free or least useful slots at the camera on every upload of that frame and the next
+        // (the kit sends again each frame; a map without a kit sends none, and the slots are exactly the look's or the pick's).
+        private static readonly float[] kitPos=new float[NativeKitLightPool.MaxBudget*4],kitRgb=new float[NativeKitLightPool.MaxBudget*3],mergePos=new float[NativeMapLooks.MaxLights*4],mergeRgb=new float[NativeMapLooks.MaxLights*3];
+        private static readonly Vector4[] uploadPos=new Vector4[NativeMapLooks.MaxLights],uploadColor=new Vector4[NativeMapLooks.MaxLights];private static int kitCount,kitFrame=-10;private static Vector3 kitEye;
+        /// <summary>The hazard kit's lights this frame (positions with ranges, linear colours times intensity; count 0 clears).</summary>
+        public static void KitLights(float[] pos,float[] rgb,int count,Vector3 eye)
+        {
+            int n=pos==null||rgb==null?0:Math.Min(Math.Min(count,NativeKitLightPool.MaxBudget),Math.Min(pos.Length/4,rgb.Length/3));bool had=kitCount>0;kitCount=n;kitFrame=Time.frameCount;kitEye=eye;
+            if(n>0){Array.Copy(pos,kitPos,n*4);Array.Copy(rgb,kitRgb,n*3);}if(n>0||had)UploadArenaLights();
+        }
+        private static void UploadArenaLights()
+        {
+            if(kitCount==0||Time.frameCount-kitFrame>1){Shader.SetGlobalVectorArray(ArenaPosId,arenaPos);Shader.SetGlobalVectorArray(ArenaColorId,arenaColor);Shader.SetGlobalInt(ArenaCountId,arenaCount);return;}
+            bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;int slots=NativeMapLooks.MaxLights;
+            for(int i=0;i<slots;i++)
+            {
+                bool used=i<arenaCount;var p=used?arenaPos[i]:new Vector4(0,-10000,0,1);var c=used?arenaColor[i]:Vector4.zero;
+                mergePos[i*4]=p.x;mergePos[i*4+1]=p.y;mergePos[i*4+2]=p.z;mergePos[i*4+3]=p.w;mergeRgb[i*3]=c.x;mergeRgb[i*3+1]=c.y;mergeRgb[i*3+2]=c.z;
+            }
+            // Kit colours are linear; a gamma project's slots hold gamma values (as PickedLights writes them).
+            var rgb=kitRgb;if(!linear){for(int k=0;k<kitCount;k++){var g=new Color(kitRgb[k*3],kitRgb[k*3+1],kitRgb[k*3+2]).gamma;kitScratch[k*3]=g.r;kitScratch[k*3+1]=g.g;kitScratch[k*3+2]=g.b;}rgb=kitScratch;}
+            NativeKitLightPool.Merge(mergePos,mergeRgb,slots,kitPos,rgb,kitCount,kitEye.x,kitEye.y,kitEye.z);int count=arenaCount;
+            for(int i=0;i<slots;i++){uploadPos[i]=new Vector4(mergePos[i*4],mergePos[i*4+1],mergePos[i*4+2],Math.Max(.0001f,mergePos[i*4+3]));uploadColor[i]=new Vector4(mergeRgb[i*3],mergeRgb[i*3+1],mergeRgb[i*3+2],0);if(mergePos[i*4+1]>-5000&&i>=count)count=i+1;}
+            Shader.SetGlobalVectorArray(ArenaPosId,uploadPos);Shader.SetGlobalVectorArray(ArenaColorId,uploadColor);Shader.SetGlobalInt(ArenaCountId,count);
+        }
+        private static readonly float[] kitScratch=new float[NativeKitLightPool.MaxBudget*3];
         /// <summary>
         /// The home screen's rooftop night (NativeRooftopPresentation): its own skybox, a dim navy fog for the pilots (the city's
         /// shaders draw their own haze), night trilight, and the key and rim recoloured as the city's magenta and cyan neon from
@@ -224,7 +251,7 @@ namespace ChipArena.UnityConversion
         private static void PracticalLights(float time)
         {
             var lights=current?.lights;for(int i=0;i<arenaColor.Length;i++)arenaColor[i]=i<arenaCount?arenaBase[i]*(float)NativeMapLooks.Flicker(lights[i],time):Vector4.zero;
-            Shader.SetGlobalVectorArray(ArenaPosId,arenaPos);Shader.SetGlobalVectorArray(ArenaColorId,arenaColor);Shader.SetGlobalInt(ArenaCountId,arenaCount);
+            UploadArenaLights();
         }
         // arena-lighting.ts palette, adapted to the built-in Unity renderer: the rig and the defaults each map's look (Apply) then sets.
         public static void Create(Transform parent)

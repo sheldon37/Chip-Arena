@@ -68,7 +68,7 @@ namespace ChipArena.UnityConversion
               int frequency=(int)(550+Mathf.Clamp01((at-mark.lockAt)/(mark.throwAt-mark.lockAt))*850);if(!beepClips.TryGetValue(frequency,out var clip)){float[] data=new float[2880];for(int n=0;n<data.Length;n++){float t=n/48000f;data[n]=Mathf.Sin(2*Mathf.PI*frequency*t)*.055f*Mathf.Pow(.001f/.055f,Math.Min(1,t/.055f));}clip=AudioClip.Create("Siren lock pulse",data.Length,1,48000,false);clip.SetData(data,0);beepClips[frequency]=clip;}var voice=Voice();if(voice==null)continue;voice.clip=clip;voice.volume=Effects;voice.panStereo=0;voice.pitch=1;voice.PlayDelayed(Math.Max(0,at-arena.Time));}
             }
         }
-        private void OnDestroy(){NativeUi.Sound-=UiHeard;ClearSceneAudio();ClearSlender();ClearHoverClips();foreach(var c in beepClips.Values)CapturedAnimation.Release(c);}
+        private void OnDestroy(){NativeUi.Sound-=UiHeard;ClearSceneAudio();ClearSlender();ClearHoverClips();ClearKitSynth();foreach(var c in beepClips.Values)CapturedAnimation.Release(c);}
         private bool Once(string key,float at){if(cues.TryGetValue(key,out float old)&&old==at)return false;cues[key]=at;return true;}
         private void Track(string id,float volume,bool pause=false,double? clock=null,object clockOwner=null,double clockEpoch=0)
         {
@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
             }
             musicClockOwner=clockOwner;musicEpoch=clockEpoch;
             // Owner trim: Ward Zero needs +3.52 dB; both PvE and map-selected playback use this slot.
-            music.volume=Muted?0:Mathf.Clamp01(volume*(id=="music/restricted-zone-pulse"?1.5f:1f));musicHeld=pause;if(music.clip==null)return;music.loop=clock==null;
+            music.volume=Muted?0:Mathf.Clamp01(volume*(id=="music/restricted-zone-pulse"?1.5f:1f)*kitMusic);musicHeld=pause;if(music.clip==null)return;music.loop=clock==null;
             if(pause){HoldMusic();return;}
             // Do not repeatedly Play or seek a clip still loading in the background. Once ready, cue the latest age,
             // not the age at which Resources.Load was first requested (especially on a guest joining the entrance).
@@ -102,12 +102,14 @@ namespace ChipArena.UnityConversion
         {
             // audio.ts update: falloff and pan are heard from the local pilot (`listener=self.pos`), turned by the view yaw.
             if(camera!=null){listener=camera.transform.position;yaw=camera.transform.eulerAngles.y*Mathf.Deg2Rad;}if(arena?.Local?.Body!=null)listener=arena.Local.Body.position;
-            Slender(arena,menu);StructureQueue(arena);EffectsFrame(arena,menu);if(arena==null){CyberCityCues(null,true);Track("music/menu-afterglow",Menu*MenuTrackGain);return;}
+            Slender(arena,menu);StructureQueue(arena);EffectsFrame(arena,menu);KitAudio(arena,menu);if(arena==null){CyberCityCues(null,true);Track("music/menu-afterglow",Menu*MenuTrackGain);return;}
             if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();installCue.Clear();phase="";countdown=-1;foreach(var v in voices){v.Stop();v.loop=false;}}
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             CyberCityCues(arena,menu);
             if(menu)Track("music/menu-afterglow",Menu*MenuTrackGain);
             else if(arena.BossSongTime>=0)Track("music/black-siren-protocol",Music*.55f,arena.Pve?.Holding==true&&arena.Pve.Cinematic!="intro",arena.BossTrack.Looped(arena.BossSongTime),arena,arena.BossSongAt);
+            // The DEV hazard kit gallery's music lock (Sandbox only): the boss song from the gallery's own clock, for its beat.
+            else if(!double.IsNaN(NativeHazardKitWorld.GallerySongAt(arena)))Track("music/black-siren-protocol",Music*.55f,false,arena.BossTrack.Looped(arena.Time-NativeHazardKitWorld.GallerySongAt(arena)),arena,NativeHazardKitWorld.GallerySongAt(arena));
             else if(arena.Pve!=null)Track("music/restricted-zone-pulse",Music*.55f*NativeStageMusic.Dip(match.Phase,true),!NativeStageMusic.Plays(match.Phase,true,false));
             else
             {

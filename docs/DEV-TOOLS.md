@@ -92,6 +92,8 @@ one wins.
   - **Previews**:
     - Preview Draft, Rarities, Knockout and My Death;
     - the galleries: Siren minions, Cyber double jump, saw split, revive, chip selecting;
+    - Preview Hazard Kit (every alarm, turret and saw cycling its states) and Lock Hazard Kit to music
+      (`docs/HAZARD-KIT.md` 12);
     - Preview DEV Reveal.
   - **Camera**:
     - the fly camera and its speed, and snap to pilot;

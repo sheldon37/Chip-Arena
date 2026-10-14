@@ -116,7 +116,7 @@ class EffectsAudioTests(unittest.TestCase):
 
     def test_contract_matches_the_core_bank(self):
         keys, schema, clips, budget = installer.contract()
-        self.assertEqual((len(keys), schema, clips, budget), (193, 1, 16, 12000000))
+        self.assertEqual((len(keys), schema, clips, budget), (212, 1, 16, 13000000))
         self.assertEqual(sum(1 for k in keys if k.startswith('intro.')), 20)  # the 19 entrances and the DEV Sheldon Intro
         self.assertEqual(keys['gun.machinegun.shot'], ('3d', .32))
         self.assertEqual(keys['ui.click'], ('2d', .25))

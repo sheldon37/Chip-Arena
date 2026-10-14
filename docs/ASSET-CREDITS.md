@@ -72,6 +72,35 @@ into the git-ignored `unity/ChipArenaConversion/Assets/LocalAssets/Resources/Eff
 `tools/package_source.py` skips that folder. Builds without it play the original synthesized sounds:
 CI, cloud builds, other checkouts and the public source zips.
 
+### Hazard kit additions (2026-10-14)
+
+The hazard kit's 19 keys (`docs/HAZARD-KIT.md`) add 46 clips, all from Universal Sound FX (Imphenzia, 17256).
+They are listed by key, with paths relative to `Assets/Universal Sound FX/`. The same file can serve two keys, as
+the start and end of a saw recording. The effects bank budget is 13 MB. Every key also has a synthesized built-in
+fallback, so builds without the LocalAssets sound complete.
+
+| Key | Source files |
+|---|---|
+| `alarm.biohazard` | `VEHICLES/Space/SPACECRAFT_Alien_14_Alarm_Pulse_Tone_loop_mono.wav`<br>`ALARMS/Digital/ALARM_Intrusion_06_loop_mono.wav` |
+| `alarm.lockdown` | `ALARMS/Digital/ALARM_Submarine_Slow_loop_stereo.wav`<br>`ALARMS/Digital/ALARM_Deep_Pulse_loop_mono.wav` |
+| `alarm.evacuation` | `EMERGENCY_SIRENS/POLICE_AMBULANCE_FIRETRUCK_Siren_Slow_01_loop_mono.wav`<br>`ALARMS/Air_Raid/Air_Raid_Bomb_Alarm_02_loop_mono.wav` |
+| `alarm.klaxon` | `ALARMS/Digital/ALARM_Submarine_loop_stereo.wav`<br>`ALARMS/Digital/ALARM_Military_Large_Echo_loop_stereo.wav`<br>`ALARMS/Digital/ALARM_Submarine_loop_stereo.wav` (time-stretched to two beats of Black Siren Protocol) |
+| `alarm.trip` | `CHARGE_UPS_DOWNS/CHARGE_Sci-Fi_High_Pass_Sweep_12_Semi_Up_1000ms_mono.wav`<br>`EMERGENCY_SIRENS/YELP_Siren_1_loop_mono.wav` |
+| `alarm.beacon` | `ENGINES_MOTORS_GENERATORS/MOTOR_Smooth_01_loop_mono.wav`<br>`ROBOTICS/Servos/ROBOTIC_Servo_Large_Slow_Rotation_loop_mono.wav` |
+| `turret.servo` | `ROBOTICS/Servos/ROBOTIC_Servo_Medium_Movement_Cycle_mono.wav`<br>`ROBOTICS/Servos/ROBOTIC_Servo_Small_Smooth_Cycle_mono.wav`<br>`ROBOTICS/Servos/ROBOTIC_Servo_Small_Smooth_Movement_Medium_mono.wav`<br>`ROBOTICS/Servos/ROBOTIC_Servo_Medium_Short_mono.wav` |
+| `turret.scan` | `FOLEY/COMPUTERS/COMPUTER_Sci-Fi_Processing_02_loop_mono.wav`<br>`ROBOTICS/Servos/ROBOTIC_Servo_Electric_Surge_loop_mono.wav` |
+| `turret.lock` | `USER_INTERFACES/Beeps/UI_Beep_Double_Clean_Up_stereo.wav`<br>`8BIT/Beeps/8BIT_RETRO_Beep_Smooth_Sine_mono.wav`<br>`FOLEY/COMPUTERS/COMPUTER_Beep_Small_mono.wav` |
+| `turret.spinup` | `ROBOTICS/Short_Bursts/ROBOTIC_Short_Burst_01_Zoom_mono.wav`<br>`MECHANICS/MECHANICS_Wind_Up_02_mono.wav` |
+| `turret.fire` | `WEAPONS/Firearms/Fire_Real_Time_Strategy_RTS/FIREARM_RTS_Machine_Gun_Model_02_Fire_Single_RR1_mono.wav`<br>`WEAPONS/Firearms/Fire_Real_Time_Strategy_RTS/FIREARM_RTS_Machine_Gun_Model_02_Fire_Single_RR2_mono.wav`<br>`WEAPONS/Firearms/Fire_Real_Time_Strategy_RTS/FIREARM_RTS_Machine_Gun_Model_02_Fire_Single_RR3_mono.wav` |
+| `turret.overheat` | `VEHICLES/Land/Trains/TRAIN_Steam_Train_Steam_Release_mono.wav`<br>`MACHINES/Industrial/PRESSURE_WASHER_Spray_Start_Run_Stop_01_mono.wav` |
+| `turret.break` | `ROBOTICS/Short_Bursts/ROBOTIC_Short_Burst_20_Stutter_Shut_Down_Tail_mono.wav`<br>`ROBOTICS/Short_Bursts/ROBOTIC_Short_Burst_36_Rapid_Shut_Down_mono.wav` |
+| `turret.spark` | `ELECTRICITY/ELECTRICITY_Sparks_02_mono.wav`<br>`ELECTRICITY/ELECTRICITY_Sparks_01_mono.wav`<br>`MECHANICS/MECHANICS_Spark_01_mono.wav` |
+| `saw.whine` | `TOOLS/Various/TOOL_Circular_Saw_Idle_Loop_01_loop_mono.wav`<br>`TOOLS/Various/TOOL_Circular_Saw_Idle_Loop_02_loop_mono.wav` |
+| `saw.spinup` | `TOOLS/Various/TOOL_Circular_Saw_01_mono.wav`<br>`TOOLS/Various/TOOL_Circular_Saw_02_mono.wav` |
+| `saw.spindown` | `TOOLS/Various/TOOL_Circular_Saw_01_mono.wav`<br>`MACHINES/Industrial/MACHINE_Industrial_Fan_Stop_High_01_mono.wav` |
+| `saw.scrape` | `SCRAPES_SCRATCHES/SCRAPE_Metal_on_Metal_Cling_Short_mono.wav`<br>`TOOLS/Various/WELDING_Sparks_03_mono.wav`<br>`TOOLS/Various/TOOL_Circular_Saw_Cut_Loop_02_loop_mono.wav` |
+| `saw.hit` | `GORE_SPLATS/GORE_Blade_Chop_mono.wav`<br>`HAZARDS_TRAPS/HAZARD_Blade_Cut_01_loop_mono.wav`<br>`GORE_SPLATS/GORE_Deep_Short_Squish_03_mono.wav` |
+
 ## Unity entrance music (Asset Store packs, owner licence)
 
 The Unity game's match-entrance music (the `intro.<style>` keys of the same licensed bank, one per non-DEV

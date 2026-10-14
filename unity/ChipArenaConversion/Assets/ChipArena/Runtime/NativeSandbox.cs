@@ -53,10 +53,10 @@ namespace ChipArena.UnityConversion
         private static readonly string[] DummyInputs={"ai","primary","e","q","block","dash","jump","1","2","3","4","mode"};
         private static readonly string[] DebrisMaterials={"wood","stone","metal"},DebrisImpacts={"face","edge","corner"};
         // The presentation galleries (presentation only, sandbox only, as before): the gallery action, and its button when off / on.
-        private static readonly string[] DevGalleries={"gallery-minions","gallery-cyber-jump","gallery-saw","gallery-revive","gallery-chip-select"};
-        private static readonly string[] DevGalleryShow={"Preview Siren Minions","Preview Cyber Double Jump","Preview Saw Split","Preview Revive","Preview Chip Selecting"};
-        private static readonly string[] DevGalleryHide={"Hide Siren Minions","Hide Cyber Double Jump","Hide Saw Split","Hide Revive","Hide Chip Selecting"};
-        private bool DevGalleryOn(int i)=>presentation!=null&&(i==0?presentation.MinionGallery:i==1?presentation.CyberBoostPreviewOn:i==2?presentation.SawSplitGallery:i==3?presentation.ReviveGallery:presentation.ChipSelectPreview);
+        private static readonly string[] DevGalleries={"gallery-minions","gallery-cyber-jump","gallery-saw","gallery-revive","gallery-chip-select","gallery-hazard-kit","gallery-hazard-music"};
+        private static readonly string[] DevGalleryShow={"Preview Siren Minions","Preview Cyber Double Jump","Preview Saw Split","Preview Revive","Preview Chip Selecting","Preview Hazard Kit","Lock Hazard Kit to music"};
+        private static readonly string[] DevGalleryHide={"Hide Siren Minions","Hide Cyber Double Jump","Hide Saw Split","Hide Revive","Hide Chip Selecting","Hide Hazard Kit","Unlock Hazard Kit music"};
+        private bool DevGalleryOn(int i)=>presentation!=null&&(i==0?presentation.MinionGallery:i==1?presentation.CyberBoostPreviewOn:i==2?presentation.SawSplitGallery:i==3?presentation.ReviveGallery:i==4?presentation.ChipSelectPreview:i==5?presentation.HazardKitGallery:presentation.HazardKitMusic);
         private string DevRun(string id)
         {
             var kit=presentation?.Structures;var entries=NativeArena.StageContent.entries;
@@ -109,6 +109,10 @@ namespace ChipArena.UnityConversion
                 case "gallery-saw":presentation.SawSplitGallery=!presentation.SawSplitGallery;return DevRan;
                 case "gallery-revive":presentation.ReviveGallery=!presentation.ReviveGallery;return DevRan;
                 case "gallery-chip-select":presentation.ChipSelectPreview=!presentation.ChipSelectPreview;return DevRan;
+                // The hazard kit gallery (NativeHazardKitPresentation.cs, docs/HAZARD-KIT.md): every kit piece in front of you
+                // cycling its states, and its music lock (the boss song plays locally; the alarms keep its beat). Presentation only.
+                case "gallery-hazard-kit":presentation.HazardKitGallery=!presentation.HazardKitGallery;return DevRan;
+                case "gallery-hazard-music":presentation.HazardKitMusic=!presentation.HazardKitMusic;return DevRan;
                 // The reveal moment on my own pilot, locally (no seat is revealed: devRevealed is the host's, docs/DEV-TOOLS.md).
                 case "preview-reveal":DevRevealStart(arena.Local.Seat.id,arena.Local.Seat.name,true);return DevRan;
                 // Hazards: the vent fall's splat delay (sandbox only, 1-30 s).

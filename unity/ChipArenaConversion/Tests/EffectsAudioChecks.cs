@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     // scenario and a sweep of kinds and flags; the seeded non-repeating variation bag; every key the code names exists; the
     // voice pool's caps (8 gated, 4 reserved, high steals low, 3 loops); text scans that every hook point goes through the
     // bank and that no bank audio sits under a tracked folder. With LocalAssets present: its manifest validates, names only
-    // known keys, covers every key the code names, and every clip exists with a .meta, fits its cap and the 12 MB budget.
+    // known keys, covers every key the code names, and every clip exists with a .meta, fits its cap and the 13 MB budget.
     internal static class EffectsAudioChecks
     {
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Effects audio: "+what);}
@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
             }
             passed.Add("hover audio: 10,000 stationary repaints cue once; slot/offer/keyboard edges, disabled/re-entry/reset, fixed 40/70 ms ticks and overlap budget pass");
             // ---------- key contract ----------
-            var keys=NativeSoundKeys.All;Check(keys.Length==193&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20,"173 effect keys and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
+            var keys=NativeSoundKeys.All;Check(keys.Length==212&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20,"192 effect keys (19 of them the hazard kit's) and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
             foreach(var k in keys)
             {
                 Check(Regex.IsMatch(k.Key,"^[a-z]+(\\.[a-z0-9-]+)+$")&&NativeSoundKeys.Known(k.Key),k.Key+" name");
@@ -241,7 +241,7 @@ namespace ChipArena.UnityConversion
                     string folder=Path.GetDirectoryName(local);var installed=NativeSoundBank.Parse(File.ReadAllText(local));
                     Check(installed.Errors.Count==0,"LocalAssets manifest: "+string.Join("; ",installed.Errors.Take(5)));
                     var missing=named.Where(k=>installed.Entry(k)==null).ToList();Check(missing.Count==0,"LocalAssets manifest lacks keys the code names: "+string.Join(", ",missing));
-                    long bytes=Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories).Sum(f=>new FileInfo(f).Length);Check(bytes<NativeSoundKeys.BudgetBytes,"EffectsAudio "+bytes+" bytes over the 12 MB budget");
+                    long bytes=Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories).Sum(f=>new FileInfo(f).Length);Check(bytes<NativeSoundKeys.BudgetBytes,"EffectsAudio "+bytes+" bytes over the 13 MB budget");
                     int clips=0;double seconds=0;var listed=new HashSet<string>(StringComparer.Ordinal);
                     foreach(var e in installed.Entries)for(int i=0;i<e.Count;i++)
                     {
@@ -253,7 +253,7 @@ namespace ChipArena.UnityConversion
                     }
                     var extra=Directory.EnumerateFiles(folder,"*.ogg",SearchOption.AllDirectories).Select(Path.GetFullPath).Where(f=>!listed.Contains(f)).ToList();Check(extra.Count==0,"unlisted clips: "+string.Join(", ",extra.Take(3)));
                     foreach(var dir in Directory.EnumerateDirectories(folder,"*",SearchOption.AllDirectories))Check(File.Exists(dir+".meta"),"folder meta "+dir);
-                    passed.Add("effects audio: LocalAssets present: "+installed.Count+" keys, "+clips+" clips, "+seconds.ToString("0")+" s, "+(bytes/1e6).ToString("0.00")+" MB < 12 MB; every clip has a .meta, fits its cap, 44.1 kHz, mono when positional; covers all "+named.Count+" named keys");
+                    passed.Add("effects audio: LocalAssets present: "+installed.Count+" keys, "+clips+" clips, "+seconds.ToString("0")+" s, "+(bytes/1e6).ToString("0.00")+" MB < 13 MB; every clip has a .meta, fits its cap, 44.1 kHz, mono when positional; covers all "+named.Count+" named keys");
                 }
             }
             return passed;

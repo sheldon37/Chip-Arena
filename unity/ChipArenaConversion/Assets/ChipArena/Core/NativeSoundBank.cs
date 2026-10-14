@@ -24,8 +24,9 @@ namespace ChipArena.UnityConversion
         public struct Def{public string Key;public NativeSoundSpace Space;public float Cap;public NativeSoundPriority Priority;}
         public const string Folder="EffectsAudio/",Manifest="EffectsAudio/manifest",LocalRoot="Assets/LocalAssets/Resources/EffectsAudio";
         public const int Schema=1,MaxClips=16;
-        /// <summary>Repository/build budget for the whole EffectsAudio folder (clips, metas and manifest), in bytes.</summary>
-        public const long BudgetBytes=12000000;
+        /// <summary>Repository/build budget for the whole EffectsAudio folder (clips, metas and manifest), in bytes: 12 MB until
+        /// the hazard kit's 46 clips (0.72 MB, docs/HAZARD-KIT.md), 13 MB since.</summary>
+        public const long BudgetBytes=13000000;
         private const NativeSoundSpace P=NativeSoundSpace.Positional,F=NativeSoundSpace.Flat,O=NativeSoundSpace.Loop;
         private const NativeSoundPriority H=NativeSoundPriority.High,N=NativeSoundPriority.Normal,L=NativeSoundPriority.Low;
         private static Def K(string key,NativeSoundSpace space,float cap,NativeSoundPriority priority)=>new Def{Key=key,Space=space,Cap=cap,Priority=priority};
@@ -63,6 +64,12 @@ namespace ChipArena.UnityConversion
             K("intro.weapon-machinegun",F,4.8f,H),K("intro.weapon-bow",F,4.8f,H),K("intro.weapon-fire",F,4.8f,H),K("intro.weapon-water",F,4.8f,H),K("intro.weapon-lightning",F,4.8f,H),K("intro.weapon-darkness",F,4.8f,H),
             K("intro.orbital-drop",F,4.8f,H),K("intro.grid-rez",F,4.8f,H),K("intro.holo-projection",F,4.8f,H),K("intro.blackout",F,4.8f,H),K("intro.skyline-zip",F,4.8f,H),K("intro.hero-landing",F,4.8f,H),
             K("intro.overclock",F,4.8f,H),K("intro.sheldon-intro",F,4.8f,H),
+            // The hazard kit (docs/HAZARD-KIT.md, Core NativeHazardKitSound): alarm loops per look, the klaxon blast, the trip sweep and
+            // the beacon motor; the sentry turret; the kit saws. Each has a built-in synthesized fallback (NativeKitSynth).
+            K("alarm.biohazard",O,3f,N),K("alarm.lockdown",O,3.2f,N),K("alarm.evacuation",O,4.5f,N),K("alarm.klaxon",P,1.2f,N),K("alarm.trip",P,1.5f,N),K("alarm.beacon",O,3.2f,L),
+            K("turret.servo",P,.9f,L),K("turret.scan",O,2.4f,L),K("turret.lock",P,.35f,H),K("turret.spinup",P,1.2f,N),K("turret.fire",P,.35f,N),K("turret.overheat",P,2.5f,N),
+            K("turret.break",P,1.8f,N),K("turret.spark",P,.6f,L),
+            K("saw.whine",O,2.4f,N),K("saw.spinup",P,1.6f,N),K("saw.spindown",P,1.8f,N),K("saw.scrape",P,1f,L),K("saw.hit",P,.8f,N),
         };
         private static Dictionary<string,int> index;
         public static bool Find(string key,out Def def)
