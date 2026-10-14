@@ -7149,3 +7149,17 @@ A source merge alone is not a released update. PR #212's schema loader work rema
 separate; this promotion includes only #211's DEV monsters and dormant foundation.
 
 Python packaging/updater/source tests: 101 run, 1 skipped, exit 0.
+
+### 2026-10-14 — Astra: native monster hazard-path compile repair
+
+PR #211 merged and builder synced to `d05cca70`. The desktop builder picked it
+up at 19:48 UTC but Unity compilation rejected two UnsafeStagePath call sites in
+NativeDevMonsterAuthority.cs (four CS1503 arguments). The method accepts Unity
+Vector3; these values were already Vector3 and the extra Vec calls converted them
+to Core V3. Pass the original vectors directly for spawn hazard rejection and
+chase hazard rejection. No placement, movement, damage or timing rule changes.
+
+Follow-up on `codex/dev-monsters-release`, equivalent to merged source plus this
+repair. Inspected both calls against NativeStageHazardsRuntime.cs's actual
+signature; full managed/relay and Python results above cover the unchanged Core.
+Native compile/fixture/build must rerun; failed d05cca70 was not published.

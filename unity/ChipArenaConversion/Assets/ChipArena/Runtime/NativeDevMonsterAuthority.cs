@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
             point=default;var physics=root.scene.GetPhysicsScene();
             if(!physics.Raycast(desired+Vector3.up*2,Vector3.down,out var hit,12,WorldMask,QueryTriggerInteraction.Ignore)||hit.normal.y<.65f)return false;
             point=hit.point+Vector3.up*(height/2+.04f+(air?6:0));
-            if((ClampMap(point)-point).sqrMagnitude>.01f||UnsafeStagePath(Vec(hit.point),Vec(hit.point)))return false;
+            if((ClampMap(point)-point).sqrMagnitude>.01f||UnsafeStagePath(hit.point,hit.point))return false;
             if(air&&SceneLinecast(hit.point+Vector3.up*.1f,point+Vector3.up*height/2,WorldMask))return false;
             float half=Math.Max(0,height/2-radius);
             return physics.OverlapCapsule(point+Vector3.up*half,point-Vector3.up*half,radius,devMonsterOverlap,ShotMask,QueryTriggerInteraction.Ignore)==0;
@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
                 }
                 if(distance<=stats.startRange&&Time>=m.NextAttack&&SummonVisible(m,at,target.Body.position,target.Collider)){m.LastAttack=Time;m.StrikeAt=Time+Math.Max(.1f,stats.hit);m.Body.linearVelocity=Vector3.up*velocity.y;continue;}
                 // Bounded direct chase on every map. Never request Ward graph state or walk blindly over a ledge/hazard.
-                var next=at+direction*Math.Max(.8f,m.Collider.radius*2);bool clear=SummonVisible(m,at,next,null)&&!UnsafeStagePath(Vec(at),Vec(next))&&root.scene.GetPhysicsScene().Raycast(next,Vector3.down,out var floor,m.Collider.height/2+1,WorldMask,QueryTriggerInteraction.Ignore)&&floor.normal.y>.65f;
+                var next=at+direction*Math.Max(.8f,m.Collider.radius*2);bool clear=SummonVisible(m,at,next,null)&&!UnsafeStagePath(at,next)&&root.scene.GetPhysicsScene().Raycast(next,Vector3.down,out var floor,m.Collider.height/2+1,WorldMask,QueryTriggerInteraction.Ignore)&&floor.normal.y>.65f;
                 float speed=clear?Math.Max(0,stats.run)*(Time<m.SlowUntil?m.SlowFactor:1):0;m.Body.linearVelocity=direction*speed+Vector3.up*velocity.y;
             }
         }
