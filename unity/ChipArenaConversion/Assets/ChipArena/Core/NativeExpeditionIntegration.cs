@@ -7,12 +7,12 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ExpeditionWorldAnchor
     {
-        public string id, area, kind;public float x,y,z;
+        public string id, area, kind, building;public float x,y,z,yaw; // yaw: degrees about world +Y; 0 faces +Z
         public ExpeditionWorldAnchor Copy()=>(ExpeditionWorldAnchor)MemberwiseClone();
     }
     [Serializable] public sealed class ExpeditionChestOffer
     {
-        public string id, generation;public int price;public double cooldown;
+        public string id, generation;public int price;public double cooldown;public bool sold;
         public ExpeditionChestOffer Copy()=>(ExpeditionChestOffer)MemberwiseClone();
     }
     /// <summary>Host scene supplies measured interaction evidence, never the guest command.</summary>
@@ -32,6 +32,15 @@ namespace ChipArena.UnityConversion
         private readonly ConversionContent content;private readonly Action<ExpeditionSavepoint> write;
         public Func<string,string,ExpeditionReprintEvidence> ReprintEvidence;
         public Func<string,string,bool> CanClaim;
+        public Func<string,string,bool> CanPurchase;
+        public ExpeditionCommandResult Purchase(string account,string chest)
+        {
+            var s=Run.Snapshot();var offer=s.chests.FirstOrDefault(c=>c.id==chest);
+            if(offer==null||offer.sold||offer.cooldown>s.elapsed)return ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,"This cache is unavailable, sold, or restocking.");
+            if(!s.anchors.Any(a=>a.id==chest&&a.kind=="chest"&&a.area==s.area)||CanPurchase?.Invoke(account,chest)!=true)
+                return ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,"Move within reach of this cache.");
+            return Run.Purchase(account,offer.generation,offer.price)?ExpeditionCommandResult.Sent:ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,"Purchase refused: check your wallet and pilot state.");
+        }
         public ExpeditionSession(NativeExpedition run,ConversionContent content,Action<ExpeditionSavepoint> write,ExpeditionSavepoint saved=null)
         {Run=run??throw new ArgumentNullException(nameof(run));this.content=content??throw new ArgumentNullException(nameof(content));this.write=write??throw new ArgumentNullException(nameof(write));
             if(saved!=null)
@@ -79,7 +88,7 @@ namespace ChipArena.UnityConversion
         }
         public ExpeditionIntegrationHooks Hooks()=>new ExpeditionIntegrationHooks
         {
-            Offers=Offers,Eligible=Eligible,Extract=Extract,
+            Offers=Offers,Eligible=Eligible,Extract=Extract,Purchase=Purchase,
             Reprint=(payer,target)=>{var e=ReprintEvidence?.Invoke(payer,target);return e?.Valid==true?(e.cost,e.remote):(0,false);}
         };
         public ExpeditionCommandResult Execute(string account,ExpeditionCommand command)=>new ExpeditionHostCommands(Run,account,Hooks()).Send(command);
@@ -88,8 +97,8 @@ namespace ChipArena.UnityConversion
             if(!ExpeditionValidation.Number(dt)||dt<0)throw new ArgumentOutOfRangeException(nameof(dt));
             // A stalled host cannot advance an unbounded amount in one UI update.
             dt=Math.Min(dt,1);while(dt>0){double step=Math.Min(dt,.25);Run.Tick(step);dt-=step;}
-            if(Run.Snapshot().elapsed>=nextExtractionAttempt)
-                foreach(var who in Run.ExtractionDue())if(Extract(who).state!=ExpeditionCommandState.Pending)nextExtractionAttempt=Run.Snapshot().elapsed+1;
+            if(Run.Elapsed>=nextExtractionAttempt)
+                foreach(var who in Run.ExtractionDue())if(Extract(who).state!=ExpeditionCommandState.Pending)nextExtractionAttempt=Run.Elapsed+1;
             Run.AdvanceWhenReady();
         }
         public void SetWorld(ExpeditionWorldAnchor[] anchors,ExpeditionChestOffer[] chests)
@@ -100,7 +109,7 @@ namespace ChipArena.UnityConversion
     public static class ExpeditionWorldRules
     {
         public static bool Valid(ExpeditionWorldAnchor[] anchors,ExpeditionChestOffer[] chests)=>!(anchors==null||chests==null||anchors.Length>ExpeditionValidation.MaxRecords||chests.Length>256||
-                anchors.Any(a=>a==null||!ExpeditionValidation.Id(a.id)||!ExpeditionValidation.Id(a.area)||!new[]{"reward","door","chest","machine"}.Contains(a.kind)||!ExpeditionValidation.Number(a.x)||!ExpeditionValidation.Number(a.y)||!ExpeditionValidation.Number(a.z))||
+                anchors.Any(a=>a==null||!ExpeditionValidation.Id(a.id)||!ExpeditionValidation.Id(a.area)||!new[]{"reward","door","chest","machine"}.Contains(a.kind)||!ExpeditionValidation.Number(a.x)||!ExpeditionValidation.Number(a.y)||!ExpeditionValidation.Number(a.z)||!ExpeditionValidation.Number(a.yaw)||!string.IsNullOrEmpty(a.building)&&!ExpeditionValidation.Id(a.building))||
                 anchors.Select(a=>a.id).Distinct().Count()!=anchors.Length||chests.Where(c=>c!=null).Select(c=>c.id).Distinct().Count()!=chests.Length||chests.Any(c=>c==null||!ExpeditionValidation.Id(c.id)||!ExpeditionValidation.Id(c.generation)||c.price<1||!ExpeditionValidation.Number(c.cooldown)||c.cooldown<0||!anchors.Any(a=>a.id==c.id&&a.kind=="chest")));
     }
     public sealed partial class NativeExpedition
@@ -109,6 +118,14 @@ namespace ChipArena.UnityConversion
         {
             if(!Mutable||!ExpeditionWorldRules.Valid(anchors,chests))return false;
             s.anchors=anchors.Select(a=>a.Copy()).ToArray();s.chests=chests.Select(c=>c.Copy()).ToArray();Changed();return true;
+        }
+        /// <summary>Scene supplies a fresh generation and authority-clock availability time. Never reuses a purchased generation.</summary>
+        public bool RestockChest(string chest,string generation,int price,double availableAt)
+        {
+            var offer=s.chests.FirstOrDefault(c=>c.id==chest);
+            if(!Mutable||offer==null||!Key(generation)||price<1||!ExpeditionValidation.Number(availableAt)||availableAt<s.elapsed||
+                s.chests.Any(c=>c.generation==generation)||s.rewards.Any(r=>r.source=="chest"&&r.id.EndsWith(":chest:"+generation,StringComparison.Ordinal)))return false;
+            offer.generation=generation;offer.price=price;offer.cooldown=availableAt;offer.sold=false;Changed();return true;
         }
         public bool DropAt(string spawn,float x,float y,float z)
         {
@@ -131,7 +148,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Call from the authenticated encounter/drop adapter at its actual death/spawn point.</summary>
         public bool PlaceReward(string reward,float x,float y,float z)
         {
-            if(!Mutable||!s.rewards.Any(r=>r.id==reward)||!ExpeditionValidation.Number(x)||!ExpeditionValidation.Number(y)||!ExpeditionValidation.Number(z))return false;
+            if(!Mutable||!s.rewards.Any(r=>r.id==reward&&(r.source=="monster"||r.source=="boss"))||!ExpeditionValidation.Number(x)||!ExpeditionValidation.Number(y)||!ExpeditionValidation.Number(z))return false;
             var anchor=new ExpeditionWorldAnchor{id=reward,area=s.area,kind="reward",x=x,y=y,z=z};
             var anchors=s.anchors.Where(a=>a.id!=reward).Concat(new[]{anchor}).ToArray();return SetWorld(anchors,s.chests);
         }

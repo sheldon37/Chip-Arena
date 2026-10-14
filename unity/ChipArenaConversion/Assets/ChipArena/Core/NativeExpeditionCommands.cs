@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     // intent, an IExpeditionCommands sends it, and ExpeditionIntentTracker shows it as confirmed only once the authority's state (the
     // next ExpeditionView) reflects it. A refusal, a missing hook or a missing transport is shown as such, never as success.
 
-    public enum ExpeditionIntent { None, VoteExit, CancelExit, VoteExtraction, CancelExtraction, Extract, NextLoop, Claim, Select, Reprint, VoteContinue, CancelContinue }
+    public enum ExpeditionIntent { None, VoteExit, CancelExit, VoteExtraction, CancelExtraction, Extract, NextLoop, Claim, Select, Reprint, VoteContinue, CancelContinue, Purchase }
     public enum ExpeditionCommandState { Idle, Pending, Confirmed, Refused, Unavailable, Failed }
 
     [Serializable] public struct ExpeditionCommand
@@ -48,6 +48,7 @@ namespace ChipArena.UnityConversion
         public Func<string,string,bool> Eligible;
         /// <summary>The durable individual extraction transaction (save the tombstone, then publish). Pending on success.</summary>
         public Func<string,ExpeditionCommandResult> Extract;
+        public Func<string,string,ExpeditionCommandResult> Purchase;
         /// <summary>(payer, victim) to the machine cost after proximity/permission checks; below 1 refuses. Remote recovery flag out.</summary>
         public Func<string,string,(int cost,bool remote)> Reprint;
         public const string NoOffers="Chip offers need the content catalog adapter (not connected).";
@@ -75,6 +76,7 @@ namespace ChipArena.UnityConversion
                 case ExpeditionIntent.NextLoop:return run.Snapshot().host==Viewer?null:"Only the host starts the next loop.";
                 case ExpeditionIntent.Claim:return hooks.Offers==null?ExpeditionIntegrationHooks.NoOffers:null;
                 case ExpeditionIntent.Select:return hooks.Eligible==null?ExpeditionIntegrationHooks.NoEligibility:null;
+                case ExpeditionIntent.Purchase:return hooks.Purchase==null?"Purchases need the scene proximity adapter (not connected).":null;
                 case ExpeditionIntent.Reprint:return hooks.Reprint==null?ExpeditionIntegrationHooks.NoReprint:null;
                 case ExpeditionIntent.None:return "Nothing to send.";
                 default:return null;
@@ -94,6 +96,7 @@ namespace ChipArena.UnityConversion
                 case ExpeditionIntent.VoteContinue:ok=run.VoteContinue(Viewer,true);break;
                 case ExpeditionIntent.CancelContinue:ok=run.VoteContinue(Viewer,false);break;
                 case ExpeditionIntent.Extract:return hooks.Extract(Viewer);
+                case ExpeditionIntent.Purchase:return hooks.Purchase(Viewer,c.target);
                 case ExpeditionIntent.Claim:{var offers=hooks.Offers(Viewer,c.target);ok=offers!=null&&offers.Length>0&&run.Claim(Viewer,c.target,offers);break;}
                 case ExpeditionIntent.Select:{var eligible=hooks.Eligible;ok=run.Select(Viewer,c.target,c.chip,chip=>eligible(Viewer,chip));break;}
                 case ExpeditionIntent.Reprint:{var (cost,remote)=hooks.Reprint(Viewer,c.target);ok=cost>=1&&run.Reprint(Viewer,c.target,cost,remote);break;}
@@ -145,8 +148,8 @@ namespace ChipArena.UnityConversion
     /// <summary>What the viewer's view showed when an intent was sent, so its effect can be recognised after the run moves on.</summary>
     public struct ExpeditionIntentBaseline
     {
-        public int loop;public string area;public bool reward;
-        public static ExpeditionIntentBaseline Of(ExpeditionCommand c,ExpeditionView v)=>v==null?default:new ExpeditionIntentBaseline{loop=v.loop,area=v.area,reward=v.Reward(c.target)!=null};
+        public int loop;public string area, generation;public bool reward;
+        public static ExpeditionIntentBaseline Of(ExpeditionCommand c,ExpeditionView v)=>v==null?default:new ExpeditionIntentBaseline{loop=v.loop,area=v.area,reward=v.Reward(c.target)!=null,generation=v.chests.FirstOrDefault(o=>o.id==c.target)?.generation};
     }
 
     public sealed class ExpeditionIntentTracker
@@ -210,6 +213,7 @@ namespace ChipArena.UnityConversion
                 case ExpeditionIntent.CancelContinue:return !v.continueVotes.Contains(me);
                 case ExpeditionIntent.Claim:{var r=v.Reward(c.target);return r!=null?r.claimed:before.reward;}
                 case ExpeditionIntent.Select:{var r=v.Reward(c.target);return r!=null?r.consumed:before.reward;}
+                case ExpeditionIntent.Purchase:return before.generation!=null&&v.mine.rewards.Any(r=>r.source=="chest"&&r.id==before.loop+":"+before.area+":chest:"+before.generation);
                 case ExpeditionIntent.Reprint:return v.Member(c.target)?.alive==true;
                 default:return false;
             }

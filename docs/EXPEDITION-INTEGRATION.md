@@ -20,7 +20,10 @@ positions for the anchor's area. `DropAt`, `DefeatBossAt`, `FinishFinalAt` assig
 actual encounter positions to every issued reward ID; `PlaceReward` supports
 subsequent authority placement. Missing anchors mean not placed, never a guessed
 origin. `cooldown` is an authority-clock deadline (compare with `elapsed`); scene
-code owns chest restocking and purchase proximity. No chest scheduler or city
+code owns chest restocking policy and supplies `CanPurchase` proximity evidence.
+`Purchase` commands use persisted offers and public sold status; `RestockChest`
+accepts only a fresh generation. See the presentation follow-up contract for
+`BindExpeditionScene`, `InteractExpedition`, building/yaw and clock semantics. No chest scheduler or city
 layout is invented by this bridge.
 
 ## Replication and authentication
