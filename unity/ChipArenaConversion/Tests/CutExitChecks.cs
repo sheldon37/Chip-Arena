@@ -199,10 +199,23 @@ namespace ChipArena.UnityConversion
             Check(finite,"the guidance quads are finite, opaque enough and in the known modes");
             Frame(fx,s1,20,1,false,100,5,0);int away=fx.Guide;Check(away<lanes/4,"chevrons far from the eye are culled ("+away+" quads seen from 100 m east)");
             var a=new NativeCyberCityFx();Frame(a,s1,23.5,1,false);Frame(fx,s1,23.5,1,false);Check(a.Quads.Count==fx.Quads.Count&&a.Quads.Colors.Take(a.Quads.Count*4).SequenceEqual(fx.Quads.Colors.Take(fx.Quads.Count*4)),"the guidance is a pure function of the frame");
-            // Nothing allocates per frame: the FX, the drives and the hint queries.
-            Frame(fx,s1,20,1,false);long before=GC.GetAllocatedBytesForCurrentThread();
-            for(int i=0;i<20;i++){Frame(fx,s1,20+i*.7,i%3==0?.3:1,i%5==0);foreach(var p in kit.Parts)NativeCyberCityKit.Drive(p,states,20+i,out _,out _,out _,out _);x.HintFor(-20+i,-4,1,1,0);x.Nearest(i,-1,out _);x.NearestOnSide(i,1,out _);NativeCyberCityExits.Tone(states[x.Maglev]);}
-            long used=GC.GetAllocatedBytesForCurrentThread()-before;Check(used==0,"no allocations per frame ("+used+" bytes over 20 frames)");
+            // Nothing allocates per frame: the FX, the drives and the hint queries. The measured pass is warmed by the identical
+            // pass first, so one-time runtime work on first use (type set-up, tier-up) is not counted as the frame's (CI 2026-10-14
+            // counted 3520 bytes once after only one warm frame); a failure names the calls that allocated.
+            long fxB=0,driveB=0,hintB=0,nearB=0,sideB=0,toneB=0;
+            void Pass(bool split)
+            {
+                for(int i=0;i<20;i++)
+                {
+                    long b0=GC.GetAllocatedBytesForCurrentThread();Frame(fx,s1,20+i*.7,i%3==0?.3:1,i%5==0);long b1=GC.GetAllocatedBytesForCurrentThread();
+                    foreach(var p in kit.Parts)NativeCyberCityKit.Drive(p,states,20+i,out _,out _,out _,out _);long b2=GC.GetAllocatedBytesForCurrentThread();
+                    x.HintFor(-20+i,-4,1,1,0);long b3=GC.GetAllocatedBytesForCurrentThread();x.Nearest(i,-1,out _);long b4=GC.GetAllocatedBytesForCurrentThread();
+                    x.NearestOnSide(i,1,out _);long b5=GC.GetAllocatedBytesForCurrentThread();NativeCyberCityExits.Tone(states[x.Maglev]);long b6=GC.GetAllocatedBytesForCurrentThread();
+                    if(split){fxB+=b1-b0;driveB+=b2-b1;hintB+=b3-b2;nearB+=b4-b3;sideB+=b5-b4;toneB+=b6-b5;}
+                }
+            }
+            Pass(false);long before=GC.GetAllocatedBytesForCurrentThread();Pass(true);long used=GC.GetAllocatedBytesForCurrentThread()-before;
+            Check(used==0,"no allocations per frame ("+used+" bytes over 20 frames: fx "+fxB+", drives "+driveB+", hint "+hintB+", nearest "+nearB+", side "+sideB+", tone "+toneB+")");
         }
         private static void Hooks(string root)
         {
