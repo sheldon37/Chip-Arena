@@ -7544,3 +7544,84 @@ Visuals only.
   `hp/maxHp` (`maxHp == 0` means unavailable on a legacy frame). See EXPEDITION-PRESENTATION.
   Implemented on task branch; PR carries source merge status. No binary built or test/live release published.
 - Final verification: full managed/real-relay suite passed (684 PASS groups, exit 0), including Expedition rules, presentation, integration, director and states. `git diff --check` clean.
+
+## 2026-10-14 — Claude: hazard kit (alarms, turret, saws; presentation, sound, contracts)
+
+Owner (2026-10-14): "hazards, alarms (useful for Ward Zero) ... alarms for immersion (we need to bring sounds in), saws,
+turrets, etc."; follow-up: "alarms can also be immersive for music in some cases". Split: presentation Claude, authority Astra.
+
+- Branch `claude/hazard-kit` on shared `6da0330`. Implementation `8e8ae4c`; merge of shared `f67a4f5` (which includes
+  `768ebc9`, Expedition states, Hulk charge and spitter pool) is `008765e`, with no conflicts. Pushed; no PR, merge or release.
+- **Kit** (`docs/HAZARD-KIT.md`): one record schema, trigger model and state model for these kinds:
+  `alarm-beacon`, `alarm-strobe`, `alarm-klaxon`, `alarm-sign`, `turret` and `saw`. Saw variants are floor-slot, wall,
+  ceiling-drop, rail and pendulum.
+  - Triggers: always, schedule, event or manual, plus `hazard` follow.
+  - Events, read from replicated state: round-start, wave-start, breach, boss-reveal, boss-phase, lockdown, door-seal,
+    dev-trigger, victory, defeat.
+  - States: idle, arming, active, cooldown, disabled, broken.
+  - Core is pure and allocation-free (`NativeHazardKit*.cs`); Runtime is `NativeHazardKitWorld`, `Presentation` and `Audio`.
+- **Ward Zero and its Expedition instance**: 30 alarm placements (`Resources/HazardKit.json`, by the `quarantine` look).
+  - Lockdown beacons and signs follow the 4 shutters.
+  - Biohazard strobes and signs sit at the breach panels.
+  - Klaxons fire on wave, breach, reveal and round start.
+  - Evacuation beacons and signs fire on the reveal and on defeat.
+  - Light reaches the walls through at most 3 merged practical-light slots.
+- **Photosensitivity**: Settings · Effects · Alarm lights. Full is at most 3 flashes a second; Reduced is soft, at most 2;
+  Calm has no flashes. Reduced effects forces at least Reduced.
+- **Music**: `music: "beat"` locks klaxon blasts, strobe flashes and beacon turns to Black Siren Protocol's shared beat map.
+  - A beat-fitted klaxon variant plays; the licensed one is time-stretched to 2 beats with pitch kept.
+  - `react`: a trip dips the music volume and swells it back, inside the music setting.
+  - Missing for more: beat maps for the other tracks (Containment Sirens has none), section markers or stems, and a
+    separate music source for a low-pass.
+- **Turret and saws**: full looks, tells, states and sound, shown only in the DEV preview. Nothing is placed and nothing
+  hurts until Astra's authority exists.
+- **Audio**: 19 new bank keys, each with a synthesized fallback, so builds without LocalAssets sound complete.
+  - Kit falloff, a combat duck and a cap across alarms; at most 3 low-priority loop voices, so reserved voices are untouched.
+  - The effects budget rises from 12 to 13 MB.
+  - Licensed clips: 46 from Universal Sound FX, in the full bank zip `scratchpad/LocalAssets-hazards.zip` (base
+    `LocalAssets-bow.zip`; installer `--check`: 212 keys, 511 clips, 12.22 MB). Names are in ASSET-CREDITS; no audio is
+    in git.
+- **DEV panel · Previews**: Preview Hazard Kit (16 pieces cycling every 12 s, saws with a scripted hit) and Lock Hazard Kit
+  to music.
+- Files:
+  - Core: `NativeHazardKit`, `NativeHazardKitClock`, `NativeHazardKitBuild`, `NativeHazardKitSound` (all new);
+    `NativeSoundBank`, `NativeDevTools`.
+  - Runtime: `NativeHazardKitWorld`, `NativeHazardKitPresentation`, `NativeHazardKitAudio` (all new); one-line hooks in
+    `NativeAudio`, `NativeLighting`, `NativeSourcePresentation`, `ArenaPresentation`, `ConversionGame`, `NativeSettings`
+    and `NativeSandbox`.
+  - Resources: `HazardKit.json`.
+  - Tests: `HazardKitChecks` (new); key and budget updates in `EffectsAudioChecks`, `test_effects_audio.py`, `DevToolsChecks`
+    and `Program`.
+  - `NativeEffectsAudio` (Hulk charge) is untouched.
+- **Gameplay unchanged**: no hit timing, hitbox, damage, cooldown, movement, collision or network change. Existing Factory
+  and Ward hazards are untouched, and the checks pin them.
+- **Astra contract summary** (paste-ready text in HAZARD-KIT 9 and 10):
+  - Turret, as a `hazards[]` kind:
+    - targeting by range, arc, LOS and team;
+    - 0.8 s lock before the first round;
+    - bursts with spread, damage, heat and overheat;
+    - HP and hacking (Disabled);
+    - replicated at 10-20 Hz: state and since, yaw/pitch, target seat, last shot and burst count, heat, health, hit
+      point. That is exactly `NativeTurretView`.
+  - Kit saws: generalise the Factory saw authority to the 5 variants. The live volume comes from the pure
+    `NativeKitSaw.Pose`, live while active with exposure > .3. Hit events carry kind `hazard` and the saw id, and drive
+    the blood and the chop.
+  - Low priority: a replicated wave start time, so late joiners agree exactly.
+- Renders (scratch harness, not Unity): `scratchpad/renders-hazard-kit/`, every piece and state plus the Ward Zero scenes.
+- Checks on `008765e` (actual):
+  - `unity-check.sh`: Runtime + Editor compile against Unity 6000.3.24f1, OK.
+  - `check_relay.py`: exit 0, 685 PASS. That includes the hazard kit's 6,412 checks: schema, Ward placements,
+    deterministic timelines, flash caps per mode, free and beat-locked, beat lock, klaxon fit, trip reaction, keys and
+    fallbacks, light budget, turret and saw timelines, gallery, no per-frame allocation, stage hazards untouched.
+  - CI layout (`ci-relay2.sh`): exit 0, 685 PASS.
+  - Python: 106 OK (1 skip). `package_source.py` OK (1,997 files). `git diff --check` clean.
+- Not run: Unity Editor, a Windows build, the alarms heard and seen in game, two clients.
+- Risks:
+  - Light slots are shared with Ward Zero's own picks; up to 3 are replaced near alarms.
+  - Klaxons at round start in PvP Ward Zero may be too much; trim the record if so.
+  - Factory lamps (6, 8 and 10 Hz) and Ward shutter Danger lamps (5 Hz) exceed 3 Hz. They are left unchanged
+    (owner call).
+- Next:
+  - The owner tries the DEV preview and Ward Zero in the next test build.
+  - Astra confirms or amends the turret and saw contracts.
+  - The Expedition closure view can call `NativeHazardKitWorld.Event(arena, "door-seal", ...)`.
