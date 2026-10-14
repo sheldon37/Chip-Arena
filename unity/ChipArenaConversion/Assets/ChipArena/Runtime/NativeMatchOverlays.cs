@@ -97,6 +97,7 @@ namespace ChipArena.UnityConversion
         // ---- Round result (.result-sequence) and the set-score overview it shows ----
         private void ResultOverlay()
         {
+            if(FinalWaiting)return;
             float left=Mathf.Max(0,(float)(match.PhaseEnd-match.Time)),age=FinalResultAge(ResultSeconds()-left),W=U.W,H=U.H;var winner=match.Seats.Find(s=>s.id==match.Winner);bool won=OnMySide(winner),final=match.Seats.Any(s=>s.score>=match.SetsToWin);
             string title=won?(final?"MATCH SECURED":match.SetWinner!=0?"SET SECURED":"ROUND SECURED"):winner!=null?"KNOCKOUT":"DOUBLE KNOCKOUT";
             float F=Mathf.Clamp(W*.046f,34,64),h2=Mathf.Clamp(W*.014f,15,19),bw=Mathf.Min(680,W*.85f),bx=(W-bw)/2;

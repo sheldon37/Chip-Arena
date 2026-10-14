@@ -19,7 +19,7 @@ The normal killcam contract (`docs/KILLCAM-HANDOFF.md`) is unchanged for every d
 
 ## Three-second start delay (2026-10-14)
 
-Final killcams now wait three real-time seconds before playback. The live camera remains visible during the wait; the final victim does not enter a normal killcam first. Replay history is pinned as soon as the final clip is selected. Ordinary non-final killcams keep their existing timing.
+Final killcams now wait three real-time seconds before playback. The live camera remains visible during the wait; the final victim does not enter a normal killcam first. Replay history is pinned as soon as the final clip is selected. Ordinary non-final killcams keep their existing timing. The round result banner does not start during the wait; it arrives with the hand-off after the clip, as before, so it plays once.
 
 The authority adds those three seconds to qualifying death-ending Results: 11.5 seconds for credited final kills and 8 seconds for local fallback clips (including practice, environmental deaths and draws). No-death, sandbox and cooperative results retain their existing timing. Clip fitting reserves the delay before choosing playback length, so the wait preserves the previous replay budget. The older duration descriptions below are historical.
 

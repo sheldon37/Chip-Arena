@@ -133,6 +133,9 @@ namespace ChipArena.UnityConversion
         private float ResultSeconds()=>match.HasFinalKillcam&&match.PhaseEnd>match.ResultAt?(float)(match.PhaseEnd-match.ResultAt):5;
         /// <summary>The round result's age after a final killcam: its banner arrives with the hand-off, not under the replay.</summary>
         private float FinalResultAge(float age)=>finalShown&&!finalOn&&finalEndedAt>0?Mathf.Min(age,Time.unscaledTime-finalEndedAt):age;
+        /// <summary>The three seconds before a final clip (NativeFinalKillcam.StartDelay) keep the live view, but not the round
+        /// result: it waits for the hand-off above and plays once, after the replay, instead of starting under the wait.</summary>
+        private bool FinalWaiting=>finalOn&&!replayRunning&&Time.unscaledTime<replayWait;
 
         // ---- FINAL KILLCAM broadcast frame (killcam-hud.ts style: everything on the edges, the centre left to the kill) ----
         private static readonly float[] finalVignetteAt={0,.55f,1,1.05f},finalVignetteAlpha={0,0,1,1},finalFlashAt={0,.75f,1},finalFlashAlpha={.5f,.125f,.125f},finalHitAt={0,.68f,1},finalHitAlpha={0,.2f,1},finalHandAt={0,.7f,1},finalHandAlpha={.33f,0,0};

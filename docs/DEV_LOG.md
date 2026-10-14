@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — round result waits out the final killcam's start delay
+- Branch `claude/sleepy-ritchie-g8ruhv` on shared `0712a69` (PR #195, owner's three-second final killcam delay). During the new wait the live HUD drew the round result sequence from its raw age (FinalResultAge only re-times it after the clip), so ROUND SECURED / KNOCKOUT animated in, was cut by the killcam, then replayed from the start after the hand-off.
+- `FinalWaiting` (final clip armed, not running, before `replayWait`) skips ResultOverlay; the banner now plays once, after the replay, as before the delay. If the clip cannot start, the banner shows once the wait ends. HUD-only: timing, Result length, clip fitting, history pinning and networking unchanged. FinalKillcamChecks pins the gate; FINAL-KILLCAM.md notes it.
+- Checks: Unity runtime+editor compile OK; check_relay exit 0 (641 PASS, final killcam 106 checks); Python 101 OK (1 skip); package_source OK; git diff --check clean over the PR range. Unity Editor/Windows not run.
+
 ## 2026-10-14 — Claude — chip-module allocation check re-measures a dirty pass
 - Branch `claude/sleepy-ritchie-g8ruhv` on shared `c20c87d` (PR #193). CI `native-source` (push run) failed once on `ChipModuleChecks`: "the per-frame module route allocates nothing (928 bytes over 50 frames)"; the pull-request run of the same commit passed, and #192/#193 touch no module code. Not reproducible locally.
 - Same rule as the wavedash check (7e33a89): after the warm-up, a non-zero 50-frame pass is measured once more and only the second must be zero, so a real per-frame allocation (present in both passes) still fails; the message reports both passes. Test-only change; no runtime, rules, timing or networking change.

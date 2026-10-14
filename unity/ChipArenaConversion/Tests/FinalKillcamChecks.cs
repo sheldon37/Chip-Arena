@@ -154,6 +154,7 @@ internal static class FinalKillcamChecks
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/"+f));
         string replay=R("Runtime/NativeReplay.cs"),final=R("Runtime/NativeFinalKillcamPresentation.cs"),match=R("Core/NativeMatch.cs"),overlays=R("Runtime/NativeMatchOverlays.cs");
         Check(NativeFinalKillcam.StartDelay==3,"three-second final delay");
+        Check(final.Contains("private bool FinalWaiting=>finalOn&&!replayRunning&&Time.unscaledTime<replayWait;")&&Body(overlays,"private void ResultOverlay()").Substring(1).TrimStart().StartsWith("if(FinalWaiting)return;",StringComparison.Ordinal),"round result waits out the final delay and plays once after the clip");
         Check(final.Contains("replayWait=Time.unscaledTime+NativeFinalKillcam.StartDelay;")&&final.Contains("NativeFinalKillcam.Available(match.PhaseEnd,match.Time+NativeFinalKillcam.StartDelay,matchEnds)"),"final playback reserves delay before fitting");
         Check(replay.IndexOf("if(finalOn&&!replayRunning&&Time.unscaledTime<replayWait)return false;",StringComparison.Ordinal)<replay.IndexOf("if(!replayRunning&&replayDeath>=0&&",StringComparison.Ordinal),"final delay gates the normal early-start path");
         Check(NativeFinalKillcam.Fit(NativeFinalKillcam.Available(31.5,20+NativeFinalKillcam.StartDelay,false),5.5f,NativeFinalKillcam.Behind(20,20),out var delayed,out _)&&Math.Abs(delayed.Wall-FinalKillcamCurve.Ideal.Wall)<1e-4f,"three-second delay retains ideal credited replay");
