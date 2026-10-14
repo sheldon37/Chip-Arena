@@ -50,6 +50,8 @@ proposal, not the different, unmerged experimental-lab contract in PR #105.
   damage expires after 10 seconds even while a segment queues. Without
   structural credit, use the victim's
   most recent pilot damager within 6 seconds, otherwise environmental credit.
+  This separate collapse rule is retained by the 2026-10-14 stage-hazard update;
+  authored hazards and the generic no-source death fallback now use 10 seconds.
 - `StructureStress`, `StructureFall`, `StructureLand` retain §5.4 payloads.
   Hit/Death events add `DamageKind=collapse`; Hit.Detail is the segment ID.
   First lost member is chosen in stable support-ID order. Seed is a stable UTF-8

@@ -104,6 +104,7 @@ namespace ChipArena.UnityConversion
         public V3 Position;
         public float Amount,Draw;
         // Native surface FX payload; the retained lab wire format is unchanged.
+        public bool Pierced; // Authoritative pass-through on this Hit; false on older frames.
         public bool WallSlam;public string Detail,DamageKind;public float Radius;public V3 From;public float Time;public V3 Normal;public string SurfaceId;public int Color,Projectile;
     }
 
