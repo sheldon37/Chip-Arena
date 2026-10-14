@@ -7126,3 +7126,26 @@ Final focused checks after merging the UI: managed compiler exit 0; DEV panel
 59 passed. Source-package structure (1,951 files), C# syntax (zero errors) and
 git diff --check passed. Full regression remains failed at Bisect performance,
 not waived. Implementation remains draft, unmerged and unreleased.
+
+
+### 2026-10-14 — Astra: promote the DEV monster authority integration (PR #211)
+
+Owner asked to fix the Monsters panel's unsupported-authority refusal. Verified
+shared `claude/sleepy-ritchie-g8ruhv` and builder `codex/unity-cloud-current`
+still at `debed457`, while PR #211 at `2fef6816` contains the actual authority and
+Claude's bound presentation. No additional Claude UI change is needed.
+
+Validation used isolated `codex/dev-monsters-release`, the exact PR source tree
+`7aca1c7355740fdd17fb34fd392dd9a516e54f7b`. The earlier temporary Roslyn fallback
+omitted Release optimizations. Recompiled with `-optimize+` and ran the complete
+managed suite through check_relay.py with a real local relay: exit 0, all groups
+passed (final harness reports 35 managed-core checks). Bisect's slowest split was
+374 ms against the unchanged 400 ms gate; the previous failure did not reproduce.
+No perf assertion, Electron CI policy, or gameplay code was changed for this rerun.
+
+Source promotion to shared and builder is authorized; native Unity/PhysX and
+Windows build validation must still run on the desktop builder before publication.
+A source merge alone is not a released update. PR #212's schema loader work remains
+separate; this promotion includes only #211's DEV monsters and dormant foundation.
+
+Python packaging/updater/source tests: 101 run, 1 skipped, exit 0.
