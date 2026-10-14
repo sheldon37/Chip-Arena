@@ -477,9 +477,9 @@
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/restricted-zone-pulse.mp3",
-      "bytes": 2580141,
-      "gitBlob": "8874efd788c247a158918b9b75e4f5ab03d6d922",
-      "source": "Owner upload: Containment_Sirens_2026-10-13T230740.mp4 (2026-10-13); full audio extracted to MP3 VBR q2"
+      "bytes": 2897721,
+      "gitBlob": "f66291bd6f905ce881d5d7e2ab58360ca1adfc78",
+      "source": "Owner upload: Siren_Ward_2026-10-14T022254.mp3 (2026-10-14); original MP3 retained"
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/skyline-run.mp3",

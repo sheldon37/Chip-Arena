@@ -19,11 +19,11 @@ SHA-256: 2f2455bc7defe8e3c2d2fa07e580f080e5a1bd33bb3ee2dc64dd950714b69ebc
 
 CHIP ARENA - WARD ZERO MUSIC
 
-Containment Sirens
-Owner-supplied recording, added 2026-10-13.
-Original file: Containment_Sirens_2026-10-13T230740.mp4
-Full 120-second audio stream extracted to MP3 VBR q2, 48 kHz stereo.
+Siren Ward
+Owner-supplied recording, added 2026-10-14.
+Original file: Siren_Ward_2026-10-14T022254.mp3
+Full original MP3 retained without transcoding: 120.033 seconds, 44.1 kHz stereo.
 Internal stage track ID: restricted-zone-pulse
-SHA-256: ae76da29e7023a038ef9022039ad399bbe93cb3935d4940192881c94bc62f5ee
+SHA-256: 9f1b0a124563d76b7bd723ce525b5e827fe8155a7c5eb372e799a4bf692d631e
 Siren boss music remains Black Siren Protocol.
-No loudness remaster or seamless-loop edit. Video streams are not included.
+No loudness remaster or seamless-loop edit.
