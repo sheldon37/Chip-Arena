@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — final killcam: no zoom jump when the bullet view hands off
+- Branch `claude/sleepy-ritchie-g8ruhv` on shared `2d3949c` (PR #201 side and projectile camera, PR #202 killer-aim opener). The bullet view sets the slow-motion FOV widening to 0, but FinalShot recomputes it every frame, so on the first frame after the hit the widening (up to 7 degrees at the slow-motion peak, which is the kill) returned at once: a visible zoom jump at impact while the eye and aim already blend over 0.65 s.
+- The widening now scales with the same pull-back blend (`finalFov*=blend` in FinalCamera's hand-off branch), so it eases back in with the camera. Presentation only; clip timing, camera positions, projectile attribution and networking unchanged. FinalKillcamChecks pins it; FINAL-KILLCAM.md notes it.
+- Checks: Unity runtime+editor compile OK; check_relay exit 0 (642 PASS, final killcam 110 checks); Python 101 OK (1 skip); package_source OK; git diff --check clean over the PR range. Unity Editor/Windows not run.
+
 ## 2026-10-14 — Claude — round result waits out the final killcam's start delay
 - Branch `claude/sleepy-ritchie-g8ruhv` on shared `0712a69` (PR #195, owner's three-second final killcam delay). During the new wait the live HUD drew the round result sequence from its raw age (FinalResultAge only re-times it after the clip), so ROUND SECURED / KNOCKOUT animated in, was cut by the killcam, then replayed from the start after the hand-off.
 - `FinalWaiting` (final clip armed, not running, before `replayWait`) skips ResultOverlay; the banner now plays once, after the replay, as before the delay. If the clip cannot start, the banner shows once the wait ends. HUD-only: timing, Result length, clip fitting, history pinning and networking unchanged. FinalKillcamChecks pins the gate; FINAL-KILLCAM.md notes it.

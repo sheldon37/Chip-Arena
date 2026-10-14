@@ -155,7 +155,8 @@ namespace ChipArena.UnityConversion
                 if(finalImpactWall<0)finalImpactWall=FinalWall;
                 float blend=NativeFinalKillcam.DeathPullback(FinalWall-finalImpactWall);
                 Vector3 eye=Vector3.Lerp(finalFlightEye,focus+offset,blend);
-                finalCameraAim=Vector3.Lerp(finalFlightAim,focus,blend);offset=eye-focus;
+                // The bullet view holds the slow-motion widening at 0; ease it back in with the pull-back, not as a jump at the hit.
+                finalCameraAim=Vector3.Lerp(finalFlightAim,focus,blend);offset=eye-focus;finalFov*=blend;
             }
         }
         private float FinalClearance(Vector3 focus,Vector3 offset)
