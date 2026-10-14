@@ -45,7 +45,8 @@ namespace ChipArena.UnityConversion
         {
             var d=me.Death;
             // demonScreen: the local pilot's own death by the Raging Demon (a PvE kept body has no baked demon scene).
-            if(me.Hp>0||d==null||d.kept||d.style!="dev-raging-demon")return;
+            // A hazard gib (a smash or a saw's split) plays instead of the kill effect's scene (owner 2026-10-14).
+            if(me.Hp>0||d==null||d.kept||d.style!="dev-raging-demon"||presentation.HazardGibbed(arena,d))return;
             // The baked scene ages on the match clock (PresentDeath); the camera follows the same age.
             if(!NativeDemonScreen.Screen(arena.Time-d.at,Fixture,0,false,default,view.aspect,out var f))return;
             if(screen==null)

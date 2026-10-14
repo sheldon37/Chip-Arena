@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         public readonly Matrix4x4[] Bind=new Matrix4x4[22];public readonly int[] Anchor=new int[22];
         private readonly Matrix4x4[] inverse=new Matrix4x4[22];private readonly Scene scene;private readonly PhysicsScene physics;private readonly GameObject root;private readonly PhysicsMaterial surface;
         private float clock;private bool frozen,stepped;private int weaponPart;private static readonly int[] Bones={1,2,5,7,8,11,12,14,15,18,19};
-        public NativeCorpse(NativeDeath death,CapturedAnimation.Player rig,NativeArena arena,SlicePlan slice=null):this(death,arena,RigBind(death,rig),RigAt(death,rig),RigTurn(rig),null,null,-1,slice){}
+        public NativeCorpse(NativeDeath death,CapturedAnimation.Player rig,NativeArena arena,SlicePlan slice=null,SmashPlan smash=null):this(death,arena,RigBind(death,rig),RigAt(death,rig),RigTurn(rig),null,null,-1,slice,smash:smash){}
         /// <summary>The melee slice this body was cut by (Core/NativeMeleeSlice), or null.</summary>
         internal readonly SlicePlan Slice;
         /// <summary>The ragdoll part roots cut off this body: the authority's severed part, the Gibber's, and the slice's joints.</summary>
@@ -25,11 +25,13 @@ namespace ChipArena.UnityConversion
         private static Quaternion[] RigTurn(CapturedAnimation.Player rig){var q=new Quaternion[22];for(int i=0;i<22;i++)q[i]=rig.Bones[i].rotation;return q;}
         /// <summary>The body from posed bones: world matrices, joint positions and rotations. A Siren crush drop
         /// (<paramref name="release"/> >= 0, NativeSirenDropPresentation.cs) takes each part's handed-over velocity, starts its
-        /// clock at the release, has no body for the crushed head and ignores earlier, non-fatal wounds.</summary>
-        private NativeCorpse(NativeDeath death,NativeArena arena,Matrix4x4[] bind,Vector3[] at,Quaternion[] turn,Vector3[] linear,Vector3[] angular,float release,SlicePlan slice=null,BisectCut halves=null,BisectRequest bisect=null,int half=0,NativeCorpse host=null)
+        /// clock at the release, has no body for the crushed head and ignores earlier, non-fatal wounds. A hazard gib (a smash,
+        /// NativeSmashPresentation.cs; a saw's halves: `stock`) is the stock ending whatever the death's style (owner 2026-10-14).</summary>
+        private NativeCorpse(NativeDeath death,NativeArena arena,Matrix4x4[] bind,Vector3[] at,Quaternion[] turn,Vector3[] linear,Vector3[] angular,float release,SlicePlan slice=null,BisectCut halves=null,BisectRequest bisect=null,int half=0,NativeCorpse host=null,SmashPlan smash=null,bool stock=false)
         {
             Slice=release>=0||slice==null||!slice.Any?null:slice;Halved=halves!=null&&bisect!=null&&release<0;if(Halved){Bisection=halves;Request=bisect;Half=half;Host=host;}
-            this.arena=arena;RetainUntilRoundEnd=NativeCorpseRules.Retain(arena.Pilots.Any(p=>p.Seat.id==death.id),arena.Match.Cooperative);Death=death;Style=death.kept&&!new[]{"impact-ragdoll","ragdoll","dev-gibber","siren-crush","vent-fall","vent-splat"}.Contains(death.style)?"impact-ragdoll":death.style;
+            Smash=release<0&&!Halved?smash:null;
+            this.arena=arena;RetainUntilRoundEnd=NativeCorpseRules.Retain(arena.Pilots.Any(p=>p.Seat.id==death.id),arena.Match.Cooperative);Death=death;Style=Smash!=null||stock&&release<0?"impact-ragdoll":death.kept&&!new[]{"impact-ragdoll","ragdoll","dev-gibber","siren-crush","vent-fall","vent-splat"}.Contains(death.style)?"impact-ragdoll":death.style;
             // A bisected body's second half shares its first half's physics scene (one step, one world copy).
             if(Host!=null)scene=Host.scene;else
 #if UNITY_EDITOR
@@ -37,11 +39,13 @@ namespace ChipArena.UnityConversion
 #endif
             scene=SceneManager.CreateScene("Cosmetic body "+death.id+" "+death.seed,new CreateSceneParameters(LocalPhysicsMode.Physics3D));physics=scene.GetPhysicsScene();root=new GameObject("Cosmetic body");SceneManager.MoveGameObjectToScene(root,scene);
             surface=new PhysicsMaterial("Body surface"){dynamicFriction=.7f,staticFriction=.7f,bounciness=Style=="ragdoll-pinball"?.82f:.15f};
-            for(int i=0;i<22;i++)Bind[i]=bind[i];bool drop=release>=0;DropAt=release;if(drop)clock=release;var wound=drop?null:death.wound;if(Halved)wound=null;
-            if(death.style=="dev-gibber"&&!drop)Severed.Add(wound?.part??5);else if(wound?.destroyed==true&&wound.kind=="sever")Severed.Add(wound.part);
+            for(int i=0;i<22;i++)Bind[i]=bind[i];bool drop=release>=0;DropAt=release;if(drop)clock=release;var wound=drop?null:death.wound;if(Halved||Smash!=null)wound=null;
+            if(Style=="dev-gibber"&&!drop)Severed.Add(wound?.part??5);else if(wound?.destroyed==true&&wound.kind=="sever")Severed.Add(wound.part);
             if(wound?.destroyed==true&&wound.kind=="crush")CrushPart=wound.part;
+            // A thrown smash crushes its plan's parts to fragments (the first is the corpse's own crush part).
+            if(Smash!=null&&!Smash.Pinned&&Smash.Crushed>0){CrushPart=Smash.Crush[0];for(int i=1;i<Smash.Crushed;i++)ExtraCrush.Add(Smash.Crush[i]);}
             if(Slice!=null){for(int i=0;i<Slice.Count;i++)if(!Severed.Contains(Slice.Joints[i])&&Slice.Joints[i]!=CrushPart)Severed.Add(Slice.Joints[i]);if(CrushPart<0)CrushPart=Slice.Crush;}
-            Severed.Remove(CapturedRig.Pelvis);if(CrushPart>=0)Severed.Remove(CrushPart);
+            Severed.Remove(CapturedRig.Pelvis);if(CrushPart>=0)Severed.Remove(CrushPart);foreach(int extra in ExtraCrush)Severed.Remove(extra);
             foreach(int b in Bones)
             {
                 if(drop&&b==CapturedRig.Head)continue;if(Halved&&!Bisection.Bodies[Half][b])continue;
@@ -84,12 +88,13 @@ namespace ChipArena.UnityConversion
             // A half holds still on the cutter (kinematic) until the request's hitch, then parts (NativeBisectCorpse.ReleaseHalves).
             if(Halved)foreach(var part in Parts.Values){part.linearVelocity=part.angularVelocity=Vector3.zero;part.isKinematic=true;}
             if(CrushPart>=0&&Parts.TryGetValue(CrushPart,out var crushed)){crushed.GetComponent<Collider>().enabled=false;crushed.isKinematic=true;}
+            foreach(int extra in ExtraCrush)if(Parts.TryGetValue(extra,out var more)){more.GetComponent<Collider>().enabled=false;more.isKinematic=true;}
             for(int i=0;i<22;i++){int a=i;while(a>=0&&!Parts.ContainsKey(a))a=CapturedRig.Bones[a].Parent;Anchor[i]=a<0?1:a;}
             if(Halved){StandIn();LoosePieces();}
             foreach(var pair in Parts)
             {
                 int b=pair.Key,parent=CapturedRig.Bones[b].Parent;while(parent>=0&&!Parts.ContainsKey(parent))parent=CapturedRig.Bones[parent].Parent;if(parent<0)continue;
-                bool detached=Cut(b);if(detached||CrushPart>=0&&parent==CrushPart)continue;
+                bool detached=Cut(b);if(detached||IsCrushed(parent))continue;
                 var joint=pair.Value.gameObject.AddComponent<ConfigurableJoint>();joint.connectedBody=Parts[parent];joint.autoConfigureConnectedAnchor=false;joint.anchor=Vector3.zero;joint.connectedAnchor=Parts[parent].transform.InverseTransformPoint(pair.Value.position);joint.xMotion=joint.yMotion=joint.zMotion=ConfigurableJointMotion.Locked;
                 joint.angularXMotion=joint.angularYMotion=joint.angularZMotion=ConfigurableJointMotion.Limited;
                 bool elbow=b==8||b==12,knee=b==15||b==19,head=b==5;
@@ -103,6 +108,7 @@ namespace ChipArena.UnityConversion
              // The source's weapon rides in its hand part (ragdoll.ts collect, weapon zone), so the style forces push it as that part.
              int k=0;foreach(int key in Parts.Keys){if(key==Anchor[hand]){weaponPart=k;break;}k++;}if(Halved)weapon.isKinematic=true;}
             var colliders=Parts.Values.Select(b=>b.GetComponent<Collider>()).ToArray();for(int a=0;a<colliders.Length;a++)for(int b=a+1;b<colliders.Length;b++)Physics.IgnoreCollision(colliders[a],colliders[b]);
+            SmashSetup();
             RefreshWorld(0);
             SetupCollapse(arena,null);Physics.SyncTransforms();
         }
@@ -121,7 +127,7 @@ namespace ChipArena.UnityConversion
             for(int step=0;step<steps;step++)
             {
                 if(Smooth&&step==steps-1){Remember();Twin?.Remember();}
-                DriveCollapse(clock);ReleaseHalves();int index=0;foreach(var body in Parts.Values){int i=index++;if(!body.isKinematic)Force(body,i);}
+                DriveCollapse(clock);ReleaseHalves();DriveSmash(clock);int index=0;foreach(var body in Parts.Values){int i=index++;if(!body.isKinematic)Force(body,i);}
                 if(weapon!=null&&!weapon.isKinematic)Force(weapon,weaponPart);Twin?.Forces();
                 physics.Simulate(1f/60);StepSpray();clock+=1f/60;if(Twin!=null){Twin.StepSpray();Twin.clock=clock;}
             }
@@ -183,7 +189,7 @@ namespace ChipArena.UnityConversion
         }
         private void DeathPresentationCore(NativeArena arena)
         {
-            if(NativeCorpseRules.RoundEnded(arena.Match.Cooperative,arena.Match.Phase)){if(corpses.Count>0||ventBodies.Count>0||carriedDeaths.Count>0||killPointMesh!=null)ClearCorpses();if(blood.Splats.Live>0||stainedWounds.Count>0)ClearBlood(true);killBlows.Clear();return;}
+            if(NativeCorpseRules.RoundEnded(arena.Match.Cooperative,arena.Match.Phase)){if(corpses.Count>0||ventBodies.Count>0||carriedDeaths.Count>0||killPointMesh!=null)ClearCorpses();hazardGibs.Clear();if(blood.Splats.Live>0||stainedWounds.Count>0)ClearBlood(true);killBlows.Clear();return;}
             staleCorpses.Clear();
             foreach(var item in corpses){var d=item.Value.Death;var live=PilotOf(arena,item.Key);if(!DeathListed(arena,item.Key,d.seed)||NativeCorpseRules.Expired(arena.Time-d.at,d.kept,item.Value.RetainUntilRoundEnd)||live!=null&&live.Hp>0&&arena.Time-live.RevivedAt>1.1f)staleCorpses.Add(item.Key);}
             foreach(int id in staleCorpses){corpses[id].Dispose();corpses.Remove(id);}
@@ -205,7 +211,10 @@ namespace ChipArena.UnityConversion
             // Last Laugh: the crush clip, then the dropped body falls as a ragdoll (NativeSirenDropPresentation.cs).
             // Finish authored kill cinematics, then keep their physical remains for the round. Siren drops already own a body.
             bool remains=retain&&NativeCorpseRules.EffectsFinished(age);
-            if(SourceMinionDeath(death,age)||SirenDrop(arena,death,age,up)||!remains&&SourceDeathScene(death,age,up))return;
+            // A hazard gib (a smash or a saw's split, NativeSmashPresentation.cs) plays whatever the death's style, instead of its
+            // kill effect's scene (owner 2026-10-14).
+            var gib=pilot?HazardGibOf(arena,death):null;
+            if(SourceMinionDeath(death,age)||SirenDrop(arena,death,age,up)||!remains&&gib==null&&SourceDeathScene(death,age,up))return;
             // Ward Zero vent deaths are vent-fall.ts's scripted victim (NativeVentDeathPresentation.cs), not a physics corpse.
             if(VentStyle(death.style)){PresentVent(arena,death,pilot,KillClock(arena)-death.at,live);return;}
             if(!corpses.TryGetValue(death.id,out var corpse))
@@ -216,6 +225,8 @@ namespace ChipArena.UnityConversion
                 // A blade's killing blow cuts the body's mesh along its swing, a Factory saw splits it in two (both
                 // NativeBisectPresentation); every other death, and a melee kill those keep as it was, is one corpse as before.
                 corpse=!pilot?null:slice!=null?MeleeBisect(arena,death,rig,slice):SawBisect(arena,death,rig);
+                // The train, a press ram or the crane's load smashes the body (NativeSmashPresentation.cs).
+                if(corpse==null&&gib?.Smash!=null)corpse=new NativeCorpse(death,rig,arena,null,gib.Smash);
                 if(corpse==null)corpse=new NativeCorpse(death,rig,arena,slice);corpses[death.id]=corpse;if(temporary)rig.Dispose();
                 // A cut body's blood is its seam's (BisectBlood); the fatal wound still bleeds as it falls.
                 BleedDeath(death,corpse.Bisect!=null?null:slice,KillClock(arena));
@@ -226,7 +237,7 @@ namespace ChipArena.UnityConversion
                 else corpse.SetupKill(budget,Mathf.Clamp01(EffectsQuality),counted,hatModel,band,NativeStructureFxPresentation.KillFloor(arena));if(counted)killUsed+=corpse.FxCount;
                 DiagnosticDeathBuildMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-buildAt)*1000d/System.Diagnostics.Stopwatch.Frequency;
             }
-            long stepAt=System.Diagnostics.Stopwatch.GetTimestamp();corpse.Smooth=SlowBodies;corpse.Step(age);DiagnosticDeathStepMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-stepAt)*1000d/System.Diagnostics.Stopwatch.Frequency;if(corpse.Bisect!=null)BisectBlood(corpse,death,KillClock(arena));string style=corpse.Style??"impact-ragdoll";bool stock=StockEnding(style);
+            long stepAt=System.Diagnostics.Stopwatch.GetTimestamp();corpse.Smooth=SlowBodies;corpse.Step(age);DiagnosticDeathStepMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-stepAt)*1000d/System.Diagnostics.Stopwatch.Frequency;if(corpse.Bisect!=null)BisectBlood(corpse,death,KillClock(arena));if(corpse.Smash!=null)SmashBlood(corpse,death,KillClock(arena));string style=corpse.Style??"impact-ragdoll";bool stock=StockEnding(style);
             // What the effect looks like (swarm, burst, fragments, spray fade and splats, the stock sink and shrink, the fades)
             // is a function of age alone, so it follows the presentation clock: arena.Time only moves when a 20 Hz host frame
             // lands on a guest and in the killcam, and at the 60 Hz fixed rate on the host (the source feeds DeathEffects the
@@ -241,6 +252,8 @@ namespace ChipArena.UnityConversion
             // ragdoll.ts update(): the stock sink and shrink, then RagdollVfx (centred on the presented pelvis) and its collapse.
             float sink=stock&&!retain?(float)NativeKillEffectRules.Sink(shown):0,scale=stock&&!retain?(float)NativeKillEffectRules.PartScale(shown):1;corpse.Present(overlay,sink,scale);
             if(remains){alpha=1;overlay=Matrix4x4.identity;corpse.Present(overlay,0,1);}
+            // A pinned smash flattens the whole body (and what it carried) onto the floor under its crusher, in the crusher's timing.
+            if(corpse.Smash!=null){overlay=SmashOverlay(corpse.Smash,shown)*overlay;corpse.Present(overlay,remains?0:sink,remains?1:scale);}
             if(corpse.Twin!=null)BisectPresent(corpse,shown,overlay,remains?0:sink,remains?1:scale);
             var swarm=remains?null:corpse.Swarm;
             if(swarm!=null)
@@ -319,7 +332,7 @@ namespace ChipArena.UnityConversion
         /// extra gush; the stump fountains add theirs where their drops land.</summary>
         private void BleedDeath(NativeDeath death,SlicePlan slice,float now)
         {
-            var w=death?.wound;if(w==null||!NativeBodyDamage.Valid(w)||now-death.at>.6f)return;var turn=Quaternion.Euler(0,death.yaw,0);
+            var w=death?.wound;if(w==null||!NativeBodyDamage.Valid(w)||now-death.at>.6f||NativeSmashGib.Stale(death.damageKind,death.at,w))return;var turn=Quaternion.Euler(0,death.yaw,0);
             Vector3 point=death.position+turn*new Vector3(-w.point.x,w.point.y,w.point.z),along=turn*new Vector3(-w.direction.x,w.direction.y,w.direction.z),normal=point-death.position;normal.y*=.3f;
             if(normal.sqrMagnitude<1e-4f)normal=-along;string kind=slice!=null&&slice.Count>0?"sever":slice!=null&&slice.Throat?"cut":null;
             if(slice!=null&&slice.Throat){point=death.position+turn*new Vector3(0,.42f,.12f);normal=turn*Vector3.forward;}
