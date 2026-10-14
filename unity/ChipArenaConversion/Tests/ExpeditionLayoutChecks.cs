@@ -14,8 +14,10 @@ namespace ChipArena.UnityConversion
     // (a simulated import; Resources are not touched), stay out of the random rotation, and the instance keeps Siren's
     // blocks; the town's spawns follow the existing entry rules (NativeWardEntries) and Siren's entries validate against the
     // instance ("inherit:siren"); manifest ids pass ExpeditionValidation.Id, anchors keep the public kinds, records point at
-    // anchors of their own area; each area's blockHash is reproduced here from float fields (the recipe Astra's loader uses);
-    // the expedition-city look validates and is the town's. Static data checks only: no scene, PhysX or network claim.
+    // anchors of their own area; NativeExpeditionLayout.Parse reads the manifest and its ValidateGeometry gate passes with
+    // a block-based capsule probe (the town fully; the instance save Siren's two gantry breach exits, which are not Hulk-clear);
+    // each area's blockHash is reproduced here from float fields; the expedition-city look validates and is the town's.
+    // Static data checks only: no scene, PhysX or network claim.
     internal static class ExpeditionLayoutChecks
     {
         private static int count;
@@ -33,6 +35,27 @@ namespace ChipArena.UnityConversion
         private sealed class Boss{public Vol trigger;public Slot[] points;}
         private sealed class Allow{public string id;public string[] allow;}
 #pragma warning restore CS0649
+        /// <summary>A capsule probe over the map's authored collision (blocks minus collisionOff, plus ramp wedges), as the
+        /// layout generators model it: floor under the point, nothing above the step or the capsule's spherical bottom.</summary>
+        private static bool Supported(ContentMap m,V3 p,float r,float h)
+        {
+            var off=new HashSet<string>(m.navHints?.collisionOff??Array.Empty<string>());bool floor=false;
+            double Surface(double d)=>p.y+r-Math.Sqrt(Math.Max(r*r-d*d,0))+.03;double step=p.y+.36,top=p.y+h+.05;
+            foreach(var b in m.blocks)
+            {
+                if(off.Contains(b.id))continue;double yaw=2*Math.Atan2(b.rotation.y,b.rotation.w),c=Math.Cos(yaw),s=Math.Sin(yaw),dx=p.x-b.pos.x,dz=p.z-b.pos.z;
+                double lx=dx*c-dz*s,lz=dx*s+dz*c,ex=Math.Max(Math.Abs(lx)-b.size.x/2,0),ez=Math.Max(Math.Abs(lz)-b.size.z/2,0),d=Math.Sqrt(ex*ex+ez*ez),y0=b.pos.y-b.size.y/2,y1=b.pos.y+b.size.y/2;
+                if(d<=1e-6&&Math.Abs(y1-p.y)<=.05)floor=true;
+                if(d<r&&y0<top&&y1>Math.Max(step,Surface(d)))return false;
+            }
+            double? Wedge(MapRamp w,double x,double z){double ax=w.high.x-w.low.x,az=w.high.z-w.low.z,L=Math.Sqrt(ax*ax+az*az),t=((x-w.low.x)*ax+(z-w.low.z)*az)/L,u=(-(x-w.low.x)*az+(z-w.low.z)*ax)/L;return t<0||t>L||Math.Abs(u)>w.width/2?(double?)null:w.low.y+(w.high.y-w.low.y)*t/L;}
+            foreach(var w in m.ramps??Array.Empty<MapRamp>())
+            {
+                var at=Wedge(w,p.x,p.z);if(at.HasValue&&Math.Abs(at.Value-p.y)<=.05)floor=true;
+                for(int k=0;k<8;k++)foreach(var f in new[]{.5,1.0}){double a=k*Math.PI/4;var hh=Wedge(w,p.x+Math.Sin(a)*r*f,p.z+Math.Cos(a)*r*f);if(hh.HasValue&&hh.Value>Math.Max(step,Surface(r*f)))return false;}
+            }
+            return floor;
+        }
         private static string I(float v,double k)=>((long)Math.Round(v*k)).ToString(CultureInfo.InvariantCulture);
         /// <summary>The manifest's blockHash recipe (docs/EXPEDITION-LAYOUT.md "Block hash"), from the map's float fields.</summary>
         public static string BlockHash(ContentMap m)
@@ -103,6 +126,19 @@ namespace ChipArena.UnityConversion
             Check(areas["exp-ward-zero"].spawns.ValueKind==JsonValueKind.String&&areas["exp-ward-zero"].spawns.GetString()=="inherit:siren","the instance inherits Siren's entries");
             NativeWardEntries.Validate(pve,inst);count++;
             Check(ids.Distinct(StringComparer.Ordinal).Count()==ids.Count&&ids.All(ExpeditionValidation.Id),"manifest ids unique and valid");
+            // Astra's own reader and geometry gate (Core NativeExpeditionLayout on this base), with the capsule probe above.
+            string manifestText=R("Tests/expedition-layout-draft.json");var parsed=NativeExpeditionLayout.Parse(manifestText);
+            Check(parsed.areas.Length==2&&parsed.Area("exp-city").spawns.Length==spawns.Length&&parsed.Area("exp-ward-zero").spawnSource=="inherit:siren"&&parsed.Area("exp-city").bossTrigger!=null&&parsed.Area("exp-city").slots.Length==8,"NativeExpeditionLayout.Parse reads the draft manifest");
+            Check(parsed.Area("exp-city").slots.All(p=>parsed.Area("exp-city").sanctuary.Any(v=>v.Contains(p.Position))),"every sanctuary slot inside the sanctuary volume (ExpeditionVolume.Contains)");
+            bool Probe(string id,V3 p,float r,float h)=>Supported(content.Map(id),p,r,h);
+            NativeExpeditionLayout.ValidateGeometry(new ExpeditionLayout{schema=1,revision=parsed.revision,world=parsed.world,instances=parsed.instances,areas=new[]{parsed.Area("exp-city")}},content,pve,Probe);count++;
+            // The instance inherits Siren's entries. Two of Siren's Hulk exits (the gantry breaches) sit 0.65 m from the gantry
+            // rail, so the Hulk probe refuses them as authored; every other inherited exit and every authored record passes.
+            var known=new[]{"breach-gantry-e","breach-gantry-w"};var instOnly=new ExpeditionLayout{schema=1,revision=parsed.revision,world=parsed.world,instances=parsed.instances,areas=new[]{parsed.Area("exp-ward-zero")}};
+            bool refused=false;try{NativeExpeditionLayout.ValidateGeometry(instOnly,content,pve,Probe);}catch(FormatException){refused=true;}
+            var tight=pve.entries.Where(e=>NativeWardEntries.Allows(e,"hulk")&&!Supported(inst,e.@exit.Position(),NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight)).Select(e=>e.id).OrderBy(x=>x).ToArray();
+            Check(refused&&tight.SequenceEqual(known),"the gate refuses exactly Siren's two gantry breach exits for a Hulk: "+string.Join(",",tight));
+            var rest=new NativePveContent{entries=pve.entries.Where(e=>!known.Contains(e.id)).ToArray()};NativeExpeditionLayout.ValidateGeometry(instOnly,content,rest,Probe);count++;
             // The look.
             var set=JsonSerializer.Deserialize<MapLookSet>(R("Assets/Conversion/Resources/MapLooks.json"),o);NativeMapLooks.Validate(set);
             var look=NativeMapLooks.ByLook(set,town.look);
@@ -110,7 +146,7 @@ namespace ChipArena.UnityConversion
             Check(NativeMapLooks.ByLook(set,inst.look)?.id=="siren-quarantine","the instance shares the quarantine look");
             int listed=0;foreach(var b in town.blocks){var c=NativeBlockLooks.Resolve(look.blockLooks,null,b.id,b.material,0);if(c.Listed)listed++;}
             Check(listed==town.blocks.Length,"every town block has a look ("+listed+"/"+town.blocks.Length+")");
-            Console.WriteLine("PASS expedition layout ("+count+" checks: both drafts validate and import beside today's maps outside the rotation; Siren's geometry kept; manifest ids, anchors, doors, interactions, sanctuary, gate, boss; town spawns within the entry rules, Siren's entries valid on the instance; blockHash reproduced; the dusk look)");
+            Console.WriteLine("PASS expedition layout ("+count+" checks: both drafts validate and import beside today's maps outside the rotation; Siren's geometry kept; manifest ids, anchors, doors, interactions, sanctuary, gate, boss; NativeExpeditionLayout parses it and its geometry gate passes the town and the instance save Siren's two gantry breach exits; town spawns within the entry rules, Siren's entries valid on the instance; blockHash reproduced; the dusk look)");
         }
     }
 }

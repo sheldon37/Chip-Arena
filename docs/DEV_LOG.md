@@ -7163,3 +7163,77 @@ Follow-up on `codex/dev-monsters-release`, equivalent to merged source plus this
 repair. Inspected both calls against NativeStageHazardsRuntime.cs's actual
 signature; full managed/relay and Python results above cover the unchanged Core.
 Native compile/fixture/build must rerun; failed d05cca70 was not published.
+
+## 2026-10-14 — Claude: Expedition layout M1 (town and Ward Zero instance drafts, manifest, dusk look)
+
+Branch `claude/expedition-layout`, base shared `afade5d`, merged shared `b22e59f` (PR #213, which
+brings Astra's director foundation). Commits: `3060dcb` (drafts), `1bef31b` (matched to Astra's
+loader), then this entry. The layout side of the agreed contract (`docs/EXPEDITION-LAYOUT.md`, "Layout
+draft M1"). These are **drafts, not game content**: nothing is added to Resources
+`UnityMaps.json` or `ExpeditionLayout.json`, because every UnityMaps map joins the PvP arena
+picker, the DEV map list and the Sandbox. The filter for that, `NativeMapRules.ArenaSelectable`,
+is only on Astra's unmerged `codex/expedition-layout-director` (`40b7c80`, PR #212).
+
+- **Generators** in `docs/arenas/scripts/`:
+  - `expedition_city.py`: the town, 120 × 120 m, a zombie city at dusk. Sanctuary plaza with 8
+    slots, the reprint machine and a cache. Streets lead to Ward Zero (door, volumes, 8 returns) and
+    to the reserved, sealed foundry and transit plots. There is a ring road, alleys, a gated final
+    plaza, and 50 spawns (doors, grates, roof drops, Hulk breaches). It has 124 static blocks and
+    46 pilot exclusion columns, with nothing in the prop frame.
+  - `expedition_ward_zero.py`: the current `siren` map copied unchanged, plus an exit frame on the
+    SW Intake wall, 8 entries, 2 caches and 3 boss points. Its spawns are `inherit:siren`.
+  - `expedition_layout.py`: the schema-1 manifest, with a per-area `blockHash`.
+  - `expedition_common.py`: the shared collision model (sphere-bottomed capsules), clearance,
+    hash and plan code.
+- **Fixtures**: `Tests/expedition-{city,ward-zero}-draft.json` and `Tests/expedition-layout-draft.json`.
+- **Look**: the `expedition-city` entry in `MapLooks.json` (dusk). The existing looks are unchanged,
+  and no map uses the new one yet.
+- **Checks**:
+  - The generators prove these:
+    - all town street floor is reached from the sanctuary;
+    - the final plaza is reached only through the gate volume (shut: 0 cells; open: 100%);
+    - every record is on floor with pilot or Hulk clearance;
+    - no spawn is in the sanctuary (nearest exit 8 m away);
+    - both instance floors are reached at 100%;
+    - all 53 inherited exits are on reached floor and unblocked by the overlay.
+  - The probes mirror Astra's `NativeExpeditionLayout.ValidateGeometry`.
+  - `Tests/test_expedition_layout_draft.py` covers byte-identical regeneration, the fixtures, the
+    pinned hashes and the look. Its script tests skip without `docs/`.
+  - `Tests/ExpeditionLayoutChecks.cs` (`--expedition-layout`, 173 checks) does these:
+    - imports the drafts through `NativeMapRules.Merge`, simulated;
+    - checks the town spawns with the `NativeWardEntries` rules and runs
+      `NativeWardEntries.Validate(pve, instance)`;
+    - runs the base's `NativeExpeditionLayout.Parse` and `ValidateGeometry`, with a capsule probe;
+    - reproduces `blockHash` from the C# float fields.
+- **Matched to Astra's loader:**
+  - Volumes use a centre `y` (`ExpeditionVolume.Contains`).
+  - Door anchors are clear floor points 0.6 m from the doorway.
+  - The instance's door volumes keep off the bounds edge.
+  - `40b7c80`'s full `Load` also accepts the manifest (scratch run with the drafts merged and
+    permissive probes).
+- **Siren finding for Astra:** two inherited Hulk exits are not Hulk-clear: `breach-gantry-e/w`,
+  0.65 m from the gantry rail. The geometry gate refuses exactly these two, and a Hulk-clear point
+  within 1 m routes. The fix is Siren content or the loader's choice; the options are in the doc.
+- **Proposed clarifications** for Astra to confirm: spawn `yaw` stays in radians (PveEntry);
+  instance exit volumes are inside; final-area spawns are those whose exit is inside the boss
+  trigger; Siren hazards are not carried into the instance. Siren's map and entries are unchanged.
+- **Not touched**: no hit timing, hitbox, damage, cooldown, movement, networking or animation
+  change.
+
+Checks on the final head are in the next entry. Renders (scratch, offline WebGL with
+NativeBlockLit and NativeNightSky) are a top-down plan per area plus eye-level and overview views.
+Not run: Unity Editor, PhysX, Windows, gameplay.
+
+Next for Astra:
+- merge PR #212's filter;
+- import with `tools/generate_expedition.py` (nav, UnityMaps, ExpeditionLayout.json, asset lock;
+  steps in the doc);
+- decide the Siren-only id paths and the gantry exits.
+
+Next for Claude:
+- 3D door leaves, gate and seal visuals;
+- the sanctuary boundary;
+- the town dressing kit;
+- generalizing the Ward Zero presentation to the instance after import.
+
+Open for the owner: scale, themes, the town's name, Ward Zero hazards in the instance.

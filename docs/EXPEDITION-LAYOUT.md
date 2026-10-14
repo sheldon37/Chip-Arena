@@ -179,7 +179,7 @@ loader checks (`NativeExpeditionLayout.ValidateGeometry` at `40b7c80`), so a dra
 | Draft map entries (UnityMaps.json shape) | `Tests/expedition-city-draft.json`, `Tests/expedition-ward-zero-draft.json` |
 | Draft manifest (`ExpeditionLayout.json`, schema 1) | `Tests/expedition-layout-draft.json`, revision `exp-layout-1` |
 | Town look | `Resources/MapLooks.json` entry `expedition-city`, written by `expedition_city.py --maplooks`; it validates, and the existing looks are unchanged |
-| Checks | `Tests/test_expedition_layout_draft.py` (scripts and fixtures; the script tests skip without `docs/`), `Tests/ExpeditionLayoutChecks.cs` (`CoreTests --expedition-layout`, also in the full suite) |
+| Checks | `Tests/test_expedition_layout_draft.py` (scripts and fixtures; the script tests skip without `docs/`). `Tests/ExpeditionLayoutChecks.cs` (`CoreTests --expedition-layout`, also in the full suite) simulates the import through `NativeMapRules.Merge`, applies the entry rules, runs the base's `NativeExpeditionLayout.Parse` and `ValidateGeometry` with a block-based capsule probe, and reproduces `blockHash`. |
 
 Run `python3 docs/arenas/scripts/expedition_layout.py --fixtures` to regenerate. When a record or a
 map hash changes, bump `REVISION` in that script and update `PINNED` in the Python test.
