@@ -8,11 +8,16 @@ describes the data between the two. It does not mean that a playable Expedition 
 
 **Status (2026-10-14, `claude/expedition-layout`):** layout draft M1 exists for the first slice: the town
 and the Ward Zero instance, their map entries and the schema-1 manifest. They are generated draft
-fixtures under `unity/ChipArenaConversion/Tests/`, **not** game content: nothing is in
-`Resources/UnityMaps.json` or `Resources/ExpeditionLayout.json` yet, because importing the maps
-needs Astra's filter first. Only the `expedition-city` look is in `Resources/MapLooks.json`, and
-no map uses it yet. See [Layout draft M1](#layout-draft-m1-2026-10-14) for the files, coordinates,
-clarifications, import step and next steps.
+fixtures under `unity/ChipArenaConversion/Tests/`, **not** game content. Nothing is in
+`Resources/UnityMaps.json` or `Resources/ExpeditionLayout.json` yet: the map filter they need,
+`NativeMapRules.ArenaSelectable`, is only on Astra's unmerged `codex/expedition-layout-director`
+(`40b7c80`, draft PR #212). That branch's loader reads the draft manifest:
+- `NativeExpeditionLayout.Parse` accepts it;
+- `Load` accepts it with the drafts merged in and permissive geometry probes. That checks map
+  isolation, volume bounds, sanctuary slots, slot spacing and the 53 inherited spawns.
+
+Only the `expedition-city` look is in `Resources/MapLooks.json`, and no map uses it yet. See
+[Layout draft M1](#layout-draft-m1-2026-10-14).
 
 ## Ids (accepted as proposed)
 
@@ -155,7 +160,13 @@ offline and fails the draft test first. Both run in the managed relay before the
 ## Layout draft M1 (2026-10-14)
 
 Claude, branch `claude/expedition-layout`. These are generated drafts for Astra to import. The
-greybox scale and themes are working values, not approved art.
+greybox scale and themes are working values, not approved art. The generators check what Astra's
+loader checks (`NativeExpeditionLayout.ValidateGeometry` at `40b7c80`), so a draft fails here first:
+- a 0.45 m by 1.8 m pilot probe at every slot, anchor, interaction and approach;
+- a Hulk probe (0.954 m by 3.06 m) at every slot, return and entry;
+- Hulk-sized and pilot routes from the first slot to every slot, boss point and approach;
+- every spawn exit routed back to that slot with its own capsule;
+- every volume strictly inside the bounds.
 
 ### Files
 
@@ -164,11 +175,11 @@ greybox scale and themes are working values, not approved art.
 | Town generator (`expedition-city`) | `docs/arenas/scripts/expedition_city.py` (`--json`, `--png`, `--maplooks`, `--ascii`) |
 | Ward Zero instance generator (`expedition-ward-zero`) | `docs/arenas/scripts/expedition_ward_zero.py` (`--json`, `--png`); reads `siren` from `Resources/UnityMaps.json` and the entries from `PveContent.json` |
 | Manifest generator (runs both, cross-checks) | `docs/arenas/scripts/expedition_layout.py` (`--fixtures` rewrites the three drafts) |
-| Shared collision, clearance, hash and plan code | `docs/arenas/scripts/expedition_common.py` |
+| Shared collision, clearance, hash and plan code | `docs/arenas/scripts/expedition_common.py`. Capsules have a spherical bottom, so a Hulk rides stairs and deck edges as PhysX does. |
 | Draft map entries (UnityMaps.json shape) | `Tests/expedition-city-draft.json`, `Tests/expedition-ward-zero-draft.json` |
 | Draft manifest (`ExpeditionLayout.json`, schema 1) | `Tests/expedition-layout-draft.json`, revision `exp-layout-1` |
-| Town look | `Resources/MapLooks.json` entry `expedition-city` (written by `expedition_city.py --maplooks`) |
-| Checks | `Tests/test_expedition_layout_draft.py` (scripts and fixtures), `Tests/ExpeditionLayoutChecks.cs` (`CoreTests --expedition-layout`, also in the full suite) |
+| Town look | `Resources/MapLooks.json` entry `expedition-city`, written by `expedition_city.py --maplooks`; it validates, and the existing looks are unchanged |
+| Checks | `Tests/test_expedition_layout_draft.py` (scripts and fixtures; the script tests skip without `docs/`), `Tests/ExpeditionLayoutChecks.cs` (`CoreTests --expedition-layout`, also in the full suite) |
 
 Run `python3 docs/arenas/scripts/expedition_layout.py --fixtures` to regenerate. When a record or a
 map hash changes, bump `REVISION` in that script and update `PINNED` in the Python test.
@@ -196,39 +207,43 @@ the next step on the visual side.
 
 | Record | Value |
 | --- | --- |
-| Sanctuary volume | centre (0, 0), base 0, 24 × 8 × 24, yaw 0 |
+| Sanctuary volume | centre (0, 4, 0), 24 × 8 × 24, yaw 0 |
 | Sanctuary slots | 8 on a 5.5 m ring at 22.5° + 45°·k, each facing the brazier at (0, 0) |
 | `exp-city:machine:0` | (5.3, 0, 5.3) yaw 225; interaction (4.66, 0, 4.66), range 2.5 |
 | `exp-city:cache:0..2` (`chest`) | sanctuary (−5.3, 0, −5.3) yaw 45; SE ring corner (31.5, 0, −31.5) yaw 315; NW forecourt (−34, 0, 33.4) yaw 90; interactions 0.8 m in front, range 2.0 |
-| `exp-city:door:exp-ward-zero` | (44, 0, 0), yaw 270, `building` `exp-ward-zero` (the facility's west face) |
-| Its interaction volume | centre (43, 0), base 0, 3 × 3 × 2, yaw 270 |
-| Its closure | centre (43.8, 0), base 0, 3.2 × 3.4 × 0.4, yaw 270 |
+| `exp-city:door:exp-ward-zero` | anchor (43.4, 0, 0), yaw 270, `building` `exp-ward-zero`. The doorway is in the facility's west face at x 44. |
+| Its interaction volume | centre (43, 1.5, 0), 3 × 3 × 2, yaw 270 |
+| Its closure | centre (43.8, 1.7, 0), 3.2 × 3.4 × 0.4, yaw 270 |
 | Its approach | (42.4, 0, 0) |
 | Its returns | x 39.6 and 38.0, z −3, −1, 1, 3, all yaw 270 |
-| `exp-city:gate:final` (`opens` `final`) | closure centre (0, 37), base 0, 12 × 6 × 0.6. It fills the 12 × 6 m opening under the gatehouse lintel. |
+| `exp-city:gate:final` (`opens` `final`) | closure centre (0, 3, 37), 12 × 6 × 0.6. It fills the 12 × 6 m opening under the gatehouse lintel. |
 | Final plaza | x −24..24, z 38..57 |
-| Boss trigger | centre (0, 47.5), base 0, 44 × 8 × 17 |
+| Boss trigger | centre (0, 4, 47.5), 44 × 8 × 17 |
 | Boss points | (0, 0, 47), (−11, 0, 46.5) and (11, 0, 46.5), all yaw 180 |
 | Spawns | 50: 24 doors, 10 vents, 12 drops (4 Hulk), 4 Hulk breaches; 9 of them in the final plaza |
 | Reserved doorways (not in the manifest) | `exp-foundry` (−44, 0, 0) yaw 90; `exp-transit` (0, 0, −44) yaw 0 |
 
 The analysis (`expedition_city.py`) proves the following:
-- With the gate shut, all 11,648 street cells are reached from the sanctuary slots, and none of
-  the 3,058 plaza cells are.
+- With the gate shut, all 11,605 street cells are reached from the sanctuary slots, and none of
+  the 3,056 plaza cells are.
 - With the gate open, every cell is reached. All 44 walking edges into the plaza lie in the gate
   volume's width (x −6..6).
 - All 276 boundary samples of the plaza are solid to 10 m or more under an exclusion column, or
   lie in the gate opening.
-- Every slot, return, approach, anchor and interaction is on reached floor at its own level with
-  0.6 m clear (1.0 m for piece footprints). The boss points have Hulk-sized clearance: 1.2 m to
-  3.4 m.
+- Every record is on reached floor at its own level:
+  - slots, returns and the approach: 0.6 m clear;
+  - piece footprints: 1.0 m clear;
+  - slots and returns: also Hulk-clear, tightest 1.28 m;
+  - boss points: 1.2 m clear up to 3.4 m.
 - Every spawn exit is on reached floor with its `clear` radius:
   - doors and vents 1.2 m;
   - brute drops 2.8 m over the whole fall;
   - Hulk drops 4.5 m;
   - breaches 1.2 m up to 3.4 m.
+- Every spawn exit routes back to slot 0 with its own capsule, and a Hulk reaches 99.5% of the
+  Hulk-standable street.
 - No spawn is inside the sanctuary volume, and the nearest exit is 8.0 m outside it.
-- Spawn exits are 3 m or more apart, and 6 m or more from the Ward Zero door, its approach and its
+- Spawn exits are 3 m or more apart, and 7 m or more from the Ward Zero door, its approach and its
   returns.
 
 ### Ward Zero instance (`exp-ward-zero`, map `expedition-ward-zero`)
@@ -241,9 +256,9 @@ tables (the validator requires them) and has no stage hazards (see below).
 
 | Record | Value |
 | --- | --- |
-| `exp-ward-zero:door:exit` | (−38, 0, −23.4), yaw 270: the SW Intake's west wall, the facility's way in and out |
-| Its interaction volume | centre (−37, −23.4), base 0, 3 × 3 × 2 |
-| Its closure | centre (−37.8, −23.4), base 0, 3.2 × 3.4 × 0.4, between the jambs |
+| `exp-ward-zero:door:exit` | anchor (−37.4, 0, −23.4), yaw 270. The doorway is in the SW Intake's west wall (x −38), the facility's way in and out. |
+| Its interaction volume | centre (−36.9, 1.5, −23.4), 3 × 3 × 2 |
+| Its closure | centre (−37.75, 1.7, −23.4), 3.2 × 3.4 × 0.4, between the jambs |
 | Its approach | (−36.4, 0, −23.4) |
 | Its 8 entries | x −35.0 and −33.6, z −26.2, −24.7, −22.1, −20.6, all yaw 90 |
 | `exp-ward-zero:cache:0` | (−12, 0, −10.5): the atrium's SW arcade, on the way in |
@@ -253,64 +268,81 @@ tables (the validator requires them) and has no stage hazards (see below).
 
 The analysis (`expedition_ward_zero.py`) proves the following:
 - Both floors are reached at 100% from the entry slots.
-- The overlay takes 4 floor cells, all at the frame.
-- All 53 inherited exits are still on reached floor at their own level.
+- The overlay takes 5 floor cells, all at the frame.
+- All 53 inherited exits are still on reached floor at their own level, and each routes to the
+  entries.
 - The nearest inherited exit at overlay height is 4.9 m from the frame, and its from–exit path is
   4.7 m from it.
 - The 8 breach panels are unchanged.
-- The nearest inherited exit is 13.5 m from the entry slots on foot.
-- Every record has clearance.
+- The entries are Hulk-clear: tightest 1.08 m.
+- Hulk-sized routes reach every entry, boss point and the approach.
 - No record is within 2 m of a Siren hazard volume.
 
 The drop-cradle landing is also boss point 0, as in Siren. The director should not schedule that
 drop while a boss stands there.
 
-### Clarifications proposed by the draft (Astra to confirm or amend)
+**Siren finding for Astra:** two inherited Hulk exits are not Hulk-clear:
+- `breach-gantry-e` at (35.2, 6, 2);
+- `breach-gantry-w` at (−35.2, 6, −2).
 
-1. **Volume `y` is the base.** `x` and `z` are the volume's centre, and `y` is the floor it stands
-   on. The volume spans `y` to `y + sy`, which keeps the rule "every `y` is a floor surface".
-2. **Spawn `yaw` is radians.** Spawn records keep PveEntry's unit, `atan2(dx, dz)`, because the
+Each is 0.65 m from its gantry rail's top bar (y 6.95–7.1). A Hulk-clear point within 1 m does
+route to the entries. `ValidateGeometry` probes inherited Hulk exits with the Hulk capsule, so it
+would refuse these two as authored. Changing them is Siren content, so it is Astra's or the
+owner's call. The options:
+- move the exits 0.6 m out from the rail;
+- let the loader resolve a Hulk exit to the nearest Hulk-clear point;
+- leave the two gantry breaches out of the Expedition instance.
+
+The generator lists exactly these two and fails on any other.
+
+### Clarifications (Astra to confirm; the first two match the `40b7c80` loader)
+
+1. **Volumes are centred.** `x`, `y`, `z` are a volume's centre: `ExpeditionVolume.Contains`
+   tests `|p.y − y| ≤ sy/2`. Every volume here stands on the floor, so its base `y − sy/2` is the
+   floor surface. Points (anchors, slots, approach, interactions, spawn `from` and `exit`) keep
+   `y` = the floor surface.
+2. **Door anchors are clear floor points.** The loader probes every anchor with a pilot capsule,
+   so a door anchor stands 0.6 m in front of its doorway on the party's side, not on the wall. The
+   doorway plane is the closure volume, and that is where the 3D leaves go.
+3. **Spawn `yaw` is radians.** Spawn records keep PveEntry's unit, `atan2(dx, dz)`, because the
    horde code multiplies it by `Rad2Deg`. Every other `yaw` in the manifest is in degrees.
-3. **Instance exit volumes are inside.** A door's `yaw` faces out of the building. Town doors put
-   their interaction, approach and returns on the yaw side. Instance exits put their interaction,
-   approach and entries on the opposite side, inside the building.
-4. **Caches get interaction records.** Every `machine` and `chest` anchor has exactly one
-   `interactions` record: the point 0.8–0.9 m in front of it and a range. Instances carry
-   `interactions` too.
+4. **Instance exit volumes are inside.** A door's `yaw` faces out of the building. Town doors put
+   their interaction, approach and returns on the yaw side. Instance exits put them, with the
+   entries, on the opposite side, inside the building.
 5. **Final-area spawns.** A town spawn whose exit lies inside `boss.trigger` belongs to the final
    plaza. Use it only once `FinalUnlocked` (the 9 `*square*` ids). Read the geometry, never the id.
-6. **`blockHash` per area.** Each area carries `blockHash`: SHA-256 (lowercase hex) of these UTF-8
-   lines, each ending in `\n`, in file order:
+6. **`blockHash` per area.** The loader ignores this extra field; its compatibility fingerprint
+   (manifest bytes plus `contentRevision`) already covers the maps. Use `blockHash` to check that
+   an imported map is the one the manifest was generated from. It is SHA-256 (lowercase hex) of
+   these UTF-8 lines, each ending in `\n`, in file order:
    - `B|id|material|role|hp|px|py|pz|sx|sy|sz|qx|qy|qz|qw` for each block;
    - `R|id|kind|lx|ly|lz|hx|hy|hz|width|bottom|b1,b2,…` for each ramp;
    - `C|id` for each `navHints.collisionOff` id;
    - `K|minX|maxX|minZ|maxZ|ceiling|killY` for the bounds.
 
-   Lengths, positions, sizes, `hp` and bounds are ×10⁴, and quaternion components ×10⁶, each
-   rounded to an integer. `ExpeditionLayoutChecks.BlockHash` reproduces the recipe from the C#
-   float fields. The loader should recompute it from the loaded map and refuse on a mismatch. The
-   layout revision is then the contract's: the manifest plus these hashes.
+   Lengths, `hp` and bounds are ×10⁴, and quaternion components ×10⁶, each rounded to an integer.
+   `ExpeditionLayoutChecks.BlockHash` reproduces the recipe from the C# float fields.
 7. **Siren's stage hazards are not carried.** Hazard ids must start with the map id, and
    `NativeWardZeroHazards` pins the `siren-*` table. Whether the instance runs the grid, burners,
    gas and shutters is Astra's (and the owner's) call. If yes, the generator can emit them renamed
    `expedition-ward-zero-*`. Every record already keeps 2 m from those volumes.
 
-### Import step (Astra), and the filter it needs first
+### Import step (Astra)
 
-The drafts stay out of Resources because every map in `UnityMaps.json` joins `content.maps`, and
-these list every map:
+The drafts stay out of Resources until the filter is on the shared branch. Every map in
+`UnityMaps.json` joins `content.maps`. On the shared branch these places list every map:
 - the PvP arena picker (`NativeRoomOptionsUI.RuleLists`);
 - `NativeRoomOptions.Normalize`;
 - the DEV panel map list (`NativeDevPanel.DevLists`);
-- the Sandbox map change (`NativeSandboxTools`, line 13);
-- the saved map preference (`ConversionGame`, line 64).
+- the Sandbox map change (`NativeSandboxTools`);
+- the saved map preference (`ConversionGame`).
 
-Random rotation is already safe, because both maps have `rotation: false` (NativeLobbyLogic,
-NativeArena). The steps:
+`40b7c80` (PR #212) adds `NativeMapRules.ArenaSelectable` for the picker, `Normalize`, rotation,
+stored selections and the Sandbox. It does not touch the DEV panel map list, which still lists
+every map; decide whether that is wanted for DEV testing. The steps:
 
-1. **Add the filter.** Add a predicate that keeps Expedition maps out of those five places, for
-   example `NativeMapRules.Expedition(m) => m.id.StartsWith("expedition-")` or an explicit field.
-   `BrickfallChecks` counts `legacy + 3` Unity maps and must learn the two new ones.
+1. **Merge the filter.** Merge PR #212's filter into the shared branch. `BrickfallChecks` counts
+   `legacy + 3` Unity maps and must learn the two new ones.
 2. **Write a generator.** Write `tools/generate_expedition.py`, modelled on
    `tools/generate_wardzero.py`:
    1. Load `expedition_layout.py` (or the three fixtures).
@@ -333,13 +365,12 @@ NativeArena). The steps:
 
    `NativeWardEntries.Validate(pve, instance)` already passes, so the inherited breach panels
    resolve.
-4. **Build the loader.** It refuses on a mismatched `blockHash`, as above. It also runs the
-   authoring gate (duplicates, area, bounds, navigation, pilot and Hulk clearance). The generators
-   check the same things offline.
+4. **Settle the gantry exits** (above), then bind the runtime probes. The generators run the same
+   probes offline.
 
 ### Next (Claude, visuals)
 
-- 3D door leaves and seals from the door yaw and its state clock.
+- 3D door leaves and seals at the closure volumes, from the yaw and the state clock.
 - The final gate's leaves and seal.
 - The sanctuary boundary and the SAFE tint.
 - The transfer screen.

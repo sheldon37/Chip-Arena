@@ -1,13 +1,15 @@
 # Shared helpers for the Expedition layout generators (expedition_city.py, expedition_ward_zero.py, expedition_layout.py).
 # Geometry in the Unity frame: x east, z north, y up, metres; yaw in degrees about +y, 0 faces +z, 90 faces +x.
-# The collision model is the one docs/arenas/scripts/wardzero_m1.py and Astra's tools/generate_wardzero.py use: authored
-# yaw-only boxes (collision as authored) plus closed walkable wedges (map ramps), a pilot capsule of radius 0.42 and
-# height 1.7 that steps 0.35 m. Static analysis only: no Unity or PhysX claims.
+# The collision model follows docs/arenas/scripts/wardzero_m1.py and Astra's tools/generate_wardzero.py: authored yaw-only
+# boxes (collision as authored) plus closed walkable wedges (map ramps), and a capsule with a spherical bottom that steps
+# 0.35 m. The probes are the ones Astra's layout loader uses (NativeExpeditionLayout: a 0.45 x 1.8 m pilot, a 0.954 x
+# 3.06 m Hulk). Static analysis only: no Unity or PhysX claims.
 # Deterministic: no clocks, no randomness, sorted outputs.
 import hashlib, math, struct, zlib
 
-RADIUS, HEIGHT, STEP = 0.42, 1.7, 0.35          # pilot capsule (NativeMapRules.PilotRadius, NativeHordeKinds.AddHeight)
-HULK_RADIUS, HULK_HEIGHT = 0.954, 3.06          # NativeHordeKinds.HulkRadius, AddHeight * HulkScale
+RADIUS, HEIGHT, STEP = 0.45, 1.8, 0.35          # the pilot probe of Astra's layout validator (NativeExpeditionLayout: .45 m, 1.8 m)
+HULK_RADIUS, HULK_HEIGHT = 0.954, 3.06          # NativeHordeKinds.HulkRadius, HulkHeight (the validator's Hulk probe)
+HULK_SLOT = HULK_RADIUS + 0.05                  # free radius required at every slot, return and entry (the validator probes them as Hulks too)
 PILOT_CLEAR = 0.6                               # free radius required at a slot or return (capsule radius + 0.18)
 HULK_CLEAR = 1.2                                # free radius required where a Hulk walks out (radius 0.954 + 0.25)
 HULK_BAND = 3.4                                 # headroom over a Hulk exit (doorways are 3.4 m)
@@ -24,9 +26,11 @@ def yaw_of(dx, dz):
     return r4(math.degrees(math.atan2(dx, dz)) % 360.0) if (dx or dz) else 0.0
 def yaw_rad(dx, dz): return r6(math.atan2(dx, dz)) if (dx or dz) else 0.0
 def forward(deg): a = math.radians(deg); return math.sin(a), math.cos(a)
-def vol(x, y, z, sx, sy, sz, yaw=0.0):
-    """A volume record: x, z are its centre, y is its base (the floor it stands on); it spans y .. y + sy."""
-    return dict(x=r4(x), y=r4(y), z=r4(z), sx=r4(sx), sy=r4(sy), sz=r4(sz), yaw=r4(yaw % 360.0))
+def vol(x, floor, z, sx, sy, sz, yaw=0.0):
+    """A volume record standing on `floor`: x, y, z are its centre (y = floor + sy / 2, as NativeExpeditionLayout's
+    ExpeditionVolume.Contains and its bounds check read it), sx, sy, sz its full size, yaw its turn about +y."""
+    return dict(x=r4(x), y=r4(floor + sy / 2), z=r4(z), sx=r4(sx), sy=r4(sy), sz=r4(sz), yaw=r4(yaw % 360.0))
+def vol_floor(V): return V['y'] - V['sy'] / 2
 def pt(x, y, z, yaw=None):
     d = dict(x=r4(x), y=r4(y), z=r4(z))
     if yaw is not None: d['yaw'] = r4(yaw % 360.0)
@@ -56,7 +60,7 @@ def corners(b):
     return out
 def vol_block(id, V):
     """A volume record as a pseudo block (collision or containment tests)."""
-    return dict(id=id, pos=dict(x=V['x'], y=V['y'] + V['sy'] / 2, z=V['z']), size=dict(x=V['sx'], y=V['sy'], z=V['sz']), rotation=qyaw(V['yaw']))
+    return dict(id=id, pos=dict(x=V['x'], y=V['y'], z=V['z']), size=dict(x=V['sx'], y=V['sy'], z=V['sz']), rotation=qyaw(V['yaw']))
 def ramp_block(r):
     """A ramp wedge's footprint as a yaw-rotated pseudo block (bottom to top)."""
     lx, lz, hx, hz = r['low']['x'], r['low']['z'], r['high']['x'], r['high']['z']; L = math.hypot(hx - lx, hz - lz)
@@ -64,7 +68,12 @@ def ramp_block(r):
                 rotation=qyaw(math.degrees(math.atan2(hx - lx, hz - lz))))
 def in_vol(V, x, y, z, pad=0.0):
     b = vol_block('', V); lx, lz = local_xz(b, x, z)
-    return abs(lx) <= V['sx'] / 2 + pad and abs(lz) <= V['sz'] / 2 + pad and V['y'] - 1e-6 - pad <= y <= V['y'] + V['sy'] + pad
+    return abs(lx) <= V['sx'] / 2 + pad and abs(lz) <= V['sz'] / 2 + pad and abs(y - V['y']) <= V['sy'] / 2 + 1e-6 + pad
+def vol_in_bounds(V, b, margin=0.01):
+    """NativeExpeditionLayout's volume bounds test (its rotated extents inside the map bounds), with a margin."""
+    a = math.radians(V['yaw']); c, s = abs(math.cos(a)), abs(math.sin(a)); rx = (c * V['sx'] + s * V['sz']) / 2; rz = (s * V['sx'] + c * V['sz']) / 2
+    return (V['x'] - rx >= b['minX'] + margin and V['x'] + rx <= b['maxX'] - margin and V['z'] - rz >= b['minZ'] + margin and V['z'] + rz <= b['maxZ'] - margin
+            and V['y'] - V['sy'] / 2 >= b['killY'] + margin and V['y'] + V['sy'] / 2 <= b['ceiling'] - margin)
 def vol_dist_xz(V, x, z): return dist_xz(vol_block('', V), x, z)
 
 # --- collision and walkable floor ------------------------------------------------------------------------------------
@@ -110,15 +119,23 @@ class Collider:
             if h is not None: out.add(round(h, 3))
         return sorted(out)
     def blocked(self, x, z, y, radius=RADIUS, height=HEIGHT):
-        lo, hi = y + STEP + 0.01, y + height + 0.05
+        """Whether a capsule (radius, height, a spherical bottom) standing at (x, y, z) overlaps anything. An obstacle at
+        horizontal distance d blocks when it rises above the step height and above the bottom sphere's surface there
+        (y + r - sqrt(r^2 - d^2)), so a capsule rides a slope or a deck edge as PhysX does; a flat-bottomed cylinder
+        would wrongly ground a Hulk on its own stair."""
+        hi = y + height + 0.05; step = y + STEP + 0.01
+        def surface(d): return y + radius - math.sqrt(max(radius * radius - d * d, 0.0)) + 0.03
         for b in self.near_r(x, z, radius) if radius > 1.0 else self.near(x, z):
-            if dist_xz(b, x, z) < radius:
+            d = dist_xz(b, x, z)
+            if d < radius:
                 y0, y1 = yspan(b)
-                if y0 < hi and y1 > lo: return True
+                if y0 < hi and y1 > max(step, surface(d)): return True
         for r in self.ramps:
-            for ox, oz in ((radius, 0), (-radius, 0), (0, radius), (0, -radius)):
-                h = self.wedge(r, x + ox, z + oz)
-                if h is not None and h > lo: return True
+            for k in range(8):
+                a = k * math.pi / 4
+                for f in (0.5, 1.0):
+                    h = self.wedge(r, x + math.sin(a) * radius * f, z + math.cos(a) * radius * f)
+                    if h is not None and h > max(step, surface(radius * f)): return True
         return False
     def clearance(self, x, z, ylo, yhi, maxr=8.0, skip=()):
         """The free radius at (x, z): the distance to the nearest colliding block or ramp wedge overlapping ylo..yhi
@@ -139,14 +156,15 @@ class Collider:
                 d = dist_xz(b, x, z)
                 if d < best[0]: best = (d, b['id'])
         return best
-    def build(self, keep=lambda y: True):
+    def build(self, keep=lambda y: True, radius=RADIUS, height=HEIGHT):
+        """The standable cells for a capsule of this radius and height (the pilot probe by default)."""
         self.graph = set(); self.by_cell = {}
         for i in range(self.nx):
             for j in range(self.nz):
                 x, z = self.cell_xz(i, j)
                 for y in self.surfaces(x, z):
                     if not keep(y): continue
-                    if not self.blocked(x, z, y): self.graph.add((i, j, y)); self.by_cell.setdefault((i, j), []).append((i, j, y))
+                    if not self.blocked(x, z, y, radius, height): self.graph.add((i, j, y)); self.by_cell.setdefault((i, j), []).append((i, j, y))
         return self.graph
     def neighbours(self, n):
         i, j, y = n

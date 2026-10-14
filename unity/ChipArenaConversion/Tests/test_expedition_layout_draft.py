@@ -10,7 +10,7 @@ from pathlib import Path
 R=Path(__file__).resolve().parents[1];D=R.parents[1]/'docs/arenas/scripts';SCRIPT=D/'expedition_layout.py'
 F={k:R/'Tests'/n for k,n in (('city','expedition-city-draft.json'),('ward','expedition-ward-zero-draft.json'),('json','expedition-layout-draft.json'))}
 REGEN='regenerate: python3 docs/arenas/scripts/expedition_layout.py --fixtures (and bump REVISION there when a record or hash changes)'
-PINNED=('exp-layout-1','670dc3f307deb0f8967a1549066665b26862bbab63a961ba745a7437d4f30745','5063452a19a77b30b8bf3a30bc990119b932798fa7daabf023bf7340276efb90')
+PINNED=('exp-layout-1','8173590f0998d13ca50fff2a325981ff7a2510199273e18a5f89647983fabfb2','5063452a19a77b30b8bf3a30bc990119b932798fa7daabf023bf7340276efb90')
 def load(k):return json.loads(F[k].read_text())
 def _i(x,k):return str(int(round(float(x)*k)))
 def block_hash(m):

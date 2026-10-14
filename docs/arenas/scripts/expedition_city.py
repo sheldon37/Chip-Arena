@@ -14,8 +14,9 @@
 # Deterministic: no clocks, no randomness, sorted outputs; the same run writes the same bytes.
 import argparse, json, math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from expedition_common import (Collider, Canvas, components, block_hash, id_ok, v, q, qyaw, vol, pt, vol_block, in_vol, vol_dist_xz,
-                               yaw_of, yaw_rad, forward, dist_xz, yspan, footprint, corners, r4, RADIUS, HEIGHT, PILOT_CLEAR, HULK_CLEAR, HULK_BAND)
+from expedition_common import (Collider, Canvas, components, block_hash, id_ok, v, q, qyaw, vol, vol_floor, vol_in_bounds, pt, vol_block, in_vol, vol_dist_xz,
+                               yaw_of, yaw_rad, forward, dist_xz, yspan, footprint, corners, r4, RADIUS, HEIGHT, PILOT_CLEAR, HULK_CLEAR, HULK_BAND,
+                               HULK_RADIUS, HULK_HEIGHT, HULK_SLOT)
 
 MAP = 'expedition-city'; AREA = 'exp-city'
 B = 60.0                       # bounds half extent (120 x 120)
@@ -151,19 +152,19 @@ BOSS_POINTS = [pt(0, 0, 47.0, 180.0), pt(-11.0, 0, 46.5, 180.0), pt(11.0, 0, 46.
 # STREET COVER: wrecks, barriers, dumpsters and crates (static; nothing enters the prop frame).
 def car(id, cx, cz, yaw, length=4.4, width=1.9, h=1.5, mat='metal'): obox(id, cx, cz, width, length, 0, h, yaw, material=mat, ch='c')
 def barrier(id, x0, x1, z0, z1): box(id, x0, x1, z0, z1, 0, 1.0, ch='=')
-car('car-av-0', -3.4, 15.2, 8); car('car-av-1', 3.4, 14.4, -14)                                          # avenue (south half)
+car('car-av-0', -3.4, 15.2, 8); car('car-av-1', 3.0, 16.4, -10)                                          # avenue (south half)
 barrier('barrier-av-0', 1.5, 5.6, 29.4, 30.0)                                                            # avenue, police line at the forecourt
-car('car-fc-0', -15.5, 32.6, 74); car('car-fc-1', 17.0, 33.0, -66); barrier('barrier-fc-0', -27.0, -23.0, 34.6, 35.2)   # forecourt police cars
+car('car-fc-0', -15.5, 31.3, 74); car('car-fc-1', 17.0, 33.0, -66); barrier('barrier-fc-0', -27.0, -23.0, 34.6, 35.2)   # forecourt police cars
 obox('bus-es', 17.4, -1.6, 2.6, 9.0, 0, 3.0, 82)                                                          # E street: the crashed bus
-car('car-es-0', 16.0, 2.8, 98); car('ambulance-wz', 37.2, -6.6, 22, length=5.6, width=2.3, h=2.5)
-obox('truck-ws', -16.5, 2.6, 2.5, 7.5, 0, 3.0, 84); car('car-ws-0', -16.0, -2.8, 100)                      # W street
+car('car-es-0', 16.0, 2.8, 98); car('ambulance-wz', 37.5, -7.6, 70, length=5.6, width=2.3, h=2.5)
+obox('truck-ws', -17.4, 2.8, 2.5, 7.5, 0, 3.0, 84); car('car-ws-0', -16.0, -2.8, 100)                      # W street
 for i, (cx, cz) in enumerate([(-38.6, 8.0), (-40.4, 8.0), (-39.5, 6.2)]): box(f'crate-fd-{i}', cx - 0.75, cx + 0.75, cz - 0.75, cz + 0.75, 0, 1.4, material='wood', ch='x')
 car('car-ss-0', -2.6, -19.0, 4); barrier('barrier-ss-0', 6.0, 9.5, -38.0, -37.4)   # S street, station square
 car('taxi-tr', -6.8, -39.5, 28)
 for i, (x0, z0, along) in enumerate([(28.0, 21.0, 'z'), (-29.3, -22.5, 'z'), (16.5, 20.0, 'x'), (-12.0, 20.0, 'x'), (25.5, -21.3, 'x'), (-17.5, -21.3, 'x'), (28.0, 8.0, 'z'), (-29.3, -10.0, 'z')]):
     if along == 'z': box(f'dumpster-{i}', x0, x0 + 1.3, z0, z0 + 2.0, 0, 1.3, material='metal', ch='u')
     else: box(f'dumpster-{i}', x0, x0 + 2.0, z0, z0 + 1.3, 0, 1.3, material='metal', ch='u')
-car('car-re-0', 30.6, -15.5, 4); car('car-rw-0', -31.0, 15.5, -6); car('car-rs-0', 14.5, -31.2, 86); car('car-rs-1', -17.0, -32.2, 92)
+car('car-re-0', 32.6, -15.5, 4); car('car-rw-0', -32.6, 15.5, -6); car('car-rs-0', 14.5, -31.2, 86); car('car-rs-1', -17.0, -32.2, 92)
 
 # =====================================================================================================================
 # HULK BREACH PANELS: bricked-up shopfronts 3.2 m wide and 4 m tall, 0.4 m proud of a building face, so a broken panel
@@ -233,9 +234,10 @@ entries.sort(key=lambda e: e['id'])
 for i, e in enumerate(entries): e['e'] = i
 
 # =====================================================================================================================
-# THE WARD ZERO DOORWAY (the town side): anchor at the doorway's floor centre facing out of it (-x); the closure fills
-# the doorway just in front of the face; the interaction volume and approach are in front; eight returns outside the
-# portico, facing the town.
+# THE WARD ZERO DOORWAY (the town side). The door faces out of the doorway (-x, yaw 270). Its anchor is the clear floor
+# point 0.6 m in front of the doorway (the loader probes every anchor with a pilot capsule); the closure fills the doorway
+# just in front of the face; the interaction volume and the approach are in front; eight returns outside the portico,
+# facing the town.
 def door_record(anchor, cx, cz, yaw, slots_key, slots):
     fx, fz = forward(yaw)
     return {'anchor': anchor,
@@ -248,7 +250,8 @@ RETURNS = [pt(x, 0, z, WZ_YAW) for x in (39.6, 38.0) for z in (-3.0, -1.0, 1.0, 
 DOOR_ANCHOR = f'{AREA}:door:exp-ward-zero'
 
 def area():
-    anchors = [dict(id=DOOR_ANCHOR, kind='door', building='exp-ward-zero', **pt(WZ_DOOR[0], 0, WZ_DOOR[1], WZ_YAW)),
+    fx, fz = forward(WZ_YAW)
+    anchors = [dict(id=DOOR_ANCHOR, kind='door', building='exp-ward-zero', **pt(WZ_DOOR[0] + fx * 0.6, 0, WZ_DOOR[1] + fz * 0.6, WZ_YAW)),
                dict(id=f'{AREA}:machine:0', kind='machine', building='', **MACHINE)]
     anchors += [dict(id=f'{AREA}:cache:{i}', kind='chest', building='', **c) for i, c in enumerate(CACHES)]
     def front(p, d):
@@ -410,7 +413,7 @@ def checks():
     out.append(f'final plaza enclosure: {total} boundary samples, {total - bad} solid to 10 m or more under an exclusion column or in the gate opening'); ok &= bad == 0
     lintel = next(b for b in blocks if b['id'] == MAP + '-gate-lintel')
     out.append(f'gate opening {GATE_W:g} x {GATE_H:g} m under the lintel (bottom {yspan(lintel)[0]:g} m); gate volume {GATE["sx"]:g} x {GATE["sy"]:g} x {GATE["sz"]:g} at z {GATE["z"]:g}')
-    ok &= abs(yspan(lintel)[0] - GATE['y'] - GATE['sy']) < 1e-6 and abs(lintel['size']['x'] - GATE['sx']) < 1e-6
+    ok &= abs(vol_floor(GATE)) < 1e-6 and abs(yspan(lintel)[0] - GATE['sy']) < 1e-6 and abs(lintel['size']['x'] - GATE['sx']) < 1e-6
     # Records on reached floor at their own level, with clearance.
     col = open_
     def onfloor(x, y, z):
@@ -476,7 +479,27 @@ def checks():
     # Door volumes: interaction and closure on the floor in front of the face, approach inside the interaction volume, returns outside it.
     ok_d = in_vol(d['interact'], d['approach']['x'], 0.0, d['approach']['z']) and not any(in_vol(d['interact'], p['x'], 0.0, p['z']) for p in RETURNS)
     ok_d &= shut.floor_under(d['interact']['x'], d['interact']['z'], 0.0) and shut.floor_under(d['closure']['x'], d['closure']['z'], 0.0)
-    out.append(f'Ward Zero door: anchor ({WZ_DOOR[0]:g}, 0, {WZ_DOOR[1]:g}) yaw {WZ_YAW:g}, closure {d["closure"]["sx"]:g} x {d["closure"]["sy"]:g} m on the facade, approach inside the interaction volume, returns outside it: {ok_d}'); ok &= ok_d
+    out.append(f'Ward Zero door: doorway ({WZ_DOOR[0]:g}, 0, {WZ_DOOR[1]:g}) yaw {WZ_YAW:g}, anchor 0.6 m out, closure {d["closure"]["sx"]:g} x {d["closure"]["sy"]:g} m on the facade, approach inside the interaction volume, returns outside it: {ok_d}'); ok &= ok_d
+    # The layout loader's own gate (NativeExpeditionLayout.ValidateGeometry), mirrored: every slot and return clear for a
+    # Hulk too; every anchor, interaction and approach clear for the pilot probe; from the first slot, a Hulk-sized route
+    # to every slot, return, boss point and approach; every spawn's exit routed back to that slot with its own capsule;
+    # every volume inside the bounds.
+    hulk = Collider(colliders, bounds=shut.bounds); hulk.build(keep=lambda y: abs(y) < 0.05, radius=HULK_RADIUS, height=HULK_HEIGHT)
+    hs = min((col.clearance(p['x'], p['z'], 0.35, HULK_HEIGHT + 0.05), n) for n, p in [(f'slot{i}', p) for i, p in enumerate(SLOTS)] + [(f'return{i}', p) for i, p in enumerate(RETURNS)])
+    out.append('slots and returns clear for a Hulk (%.3f m radius, %.2f m tall): tightest %.2f m (%s)' % (HULK_SLOT, HULK_HEIGHT, hs[0], hs[1])); ok &= hs[0] >= HULK_SLOT
+    pr = min((col.clearance(p['x'], p['z'], 0.35, HEIGHT + 0.05), n) for n, p in [(x['id'], x) for x in a['anchors']] + [(x['anchor'], x) for x in a['interactions']] + [('approach', d['approach'])])
+    out.append('anchors (doors too), interactions and the approach clear for the pilot probe (%.2f m, %.1f m): tightest %.2f m (%s)' % (RADIUS, HEIGHT, pr[0], pr[1])); ok &= pr[0] >= RADIUS
+    o_p = open_.node_at(SLOTS[0]['x'], 0, SLOTS[0]['z']); o_h = hulk.node_at(SLOTS[0]['x'], 0, SLOTS[0]['z'])
+    rp = open_.flood([o_p]); rh = hulk.flood([o_h])
+    need = SLOTS + RETURNS + BOSS_POINTS + [d['approach']]
+    miss = [p for p in need if hulk.node_at(p['x'], 0, p['z']) not in rh or open_.node_at(p['x'], 0, p['z']) not in rp]
+    out.append(f'Hulk-sized and pilot routes from slot 0 to every slot, return, boss point and approach: {len(need) - len(miss)} of {len(need)}; '
+               f'street floor a Hulk reaches from slot 0: {100 * len(rh) / max(1, len(hulk.graph)):.1f}% of {len(hulk.graph)} Hulk-standable cells'); ok &= not miss
+    miss = [e['id'] for e in entries if ('hulk' in e['allow'] and hulk.node_at(e['exit']['x'], 0, e['exit']['z']) not in rh) or open_.node_at(e['exit']['x'], 0, e['exit']['z']) not in rp]
+    out.append(f'spawn exits routed to slot 0 with their capsule (Hulk where allowed): {len(entries) - len(miss)} of {len(entries)}' + ''.join('\n   BAD ' + i for i in miss)); ok &= not miss
+    vols = [SANCTUARY, GATE, BOSS_TRIGGER, d['interact'], d['closure']]
+    vb = all(vol_in_bounds(V, game_map()['bounds']) for V in vols) and all(in_vol(SANCTUARY, p['x'], p['y'], p['z']) for p in SLOTS)
+    out.append(f'volumes inside the bounds (1 cm margin) and every sanctuary slot inside the sanctuary volume: {vb}'); ok &= vb
     bnd = all(abs(p['x']) <= B - 1.5 and abs(p['z']) <= B - 1.5 for p in [e['exit'] for e in entries] + SLOTS + RETURNS + BOSS_POINTS + CACHES + [MACHINE])
     out.append(f'every record inside the bounds less 1.5 m: {bnd}'); ok &= bnd
     # Ids and blocks.

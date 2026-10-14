@@ -14,8 +14,8 @@
 # Deterministic: no clocks, no randomness; the same inputs write the same bytes.
 import argparse, json, math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from expedition_common import (Collider, Canvas, components, block_hash, id_ok, v, q, vol, pt, vol_block, in_vol, yaw_of, forward, dist_xz,
-                               yspan, corners, footprint, ramp_block, r4, HEIGHT, PILOT_CLEAR, HULK_CLEAR, HULK_BAND)
+from expedition_common import (Collider, Canvas, components, block_hash, id_ok, v, q, vol, vol_in_bounds, pt, vol_block, in_vol, yaw_of, forward, dist_xz,
+                               yspan, corners, footprint, ramp_block, r4, RADIUS, HEIGHT, PILOT_CLEAR, HULK_CLEAR, HULK_BAND, HULK_RADIUS, HULK_HEIGHT, HULK_SLOT)
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
 RES = os.path.join(ROOT, 'unity', 'ChipArenaConversion', 'Assets', 'Conversion', 'Resources')
@@ -52,13 +52,16 @@ ENTRIES_IN = [pt(x, 0, z, 90.0) for x in (-35.0, -33.6) for z in (-26.2, -24.7, 
 CACHES = [pt(-12.0, 0, -10.5, yaw_of(12.0, 10.5)), pt(25.0, L1, 24.0, 180.0)]
 # Boss points: the Cradle (Siren's boss spawn, the Spine hatch's landing) and the atrium floor north and south of it.
 BOSS_POINTS = [pt(0, 0, 0, 180.0), pt(0, 0, 8.6, 180.0), pt(0, 0, -8.6, 0.0)]
+# Siren's own Hulk exits a Hulk-sized capsule cannot stand at (Siren content, inherited by `e`; not the overlay's): the
+# gantry breaches' exits are 0.65 m from the gantry rail's top bar. Reported for Astra; the check fails on any other.
+KNOWN_SIREN_HULK = {'breach-gantry-e', 'breach-gantry-w'}
 
 def door_record():
     fx, fz = forward(YAW); s = -1.0                       # an instance exit: the party's side is behind the yaw (inside)
-    cx, cz = DOOR
+    cx, cz = DOOR                                         # volumes keep 5-10 cm off the face (it is the bounds' edge, x -38)
     return {'anchor': f'{AREA}:door:exit',
-            'interact': vol(cx + s * fx * 1.0, 0, cz + s * fz * 1.0, 3.0, 3.0, 2.0, YAW),
-            'closure': vol(cx + s * fx * 0.2, 0, cz + s * fz * 0.2, DOOR_W, DOOR_H, 0.4, YAW),
+            'interact': vol(cx + s * fx * 1.1, 0, cz + s * fz * 1.1, 3.0, 3.0, 2.0, YAW),
+            'closure': vol(cx + s * fx * 0.25, 0, cz + s * fz * 0.25, DOOR_W, DOOR_H, 0.4, YAW),
             'approach': pt(cx + s * fx * 1.6, 0, cz + s * fz * 1.6),
             'entries': ENTRIES_IN}
 
@@ -73,7 +76,8 @@ def draft():
     return dict(schema=1, draft=True, note=f'Draft instance from docs/arenas/scripts/expedition_ward_zero.py: the current siren map (blockHash {block_hash(SIREN)}) plus the Expedition overlay; not game content. Import steps in docs/EXPEDITION-LAYOUT.md.',
                 materials=[], maps=[game_map()])
 def area():
-    anchors = [dict(id=f'{AREA}:door:exit', kind='door', building=AREA, **pt(DOOR[0], 0, DOOR[1], YAW))]
+    fx, fz = forward(YAW)                                 # the anchor: the clear floor point 0.6 m inside the doorway
+    anchors = [dict(id=f'{AREA}:door:exit', kind='door', building=AREA, **pt(DOOR[0] - fx * 0.6, 0, DOOR[1] - fz * 0.6, YAW))]
     anchors += [dict(id=f'{AREA}:cache:{i}', kind='chest', building='', **c) for i, c in enumerate(CACHES)]
     def front(p, d):
         fx, fz = forward(p['yaw']); return dict(x=r4(p['x'] + fx * d), y=p['y'], z=r4(p['z'] + fz * d))
@@ -152,7 +156,7 @@ def checks():
     cl = vol_block('', d['closure']); jam = [b for b in overlay if 'jamb' in b['id']]
     gap = min(dist_xz(b, x, z) for b in jam for x, z in corners(cl))
     ok_d &= gap < 0.05 and abs(d['closure']['sx'] - (z1 - z0)) < 1e-6
-    out.append(f'exit door: anchor ({DOOR[0]:g}, 0, {DOOR[1]:g}) yaw {YAW:g}, closure {d["closure"]["sx"]:g} x {d["closure"]["sy"]:g} m between the jambs, approach inside the interaction volume, entries outside it: {ok_d}'); ok &= ok_d
+    out.append(f'exit door: doorway ({DOOR[0]:g}, 0, {DOOR[1]:g}) yaw {YAW:g}, anchor 0.6 m inside, closure {d["closure"]["sx"]:g} x {d["closure"]["sy"]:g} m between the jambs, approach inside the interaction volume, entries outside it: {ok_d}'); ok &= ok_d
     # Spacing to the inherited entries (the party's first seconds; the cache and its buyers).
     recs = [(f'entry{i}', p) for i, p in enumerate(ENTRIES_IN)] + [('approach', d['approach'])] + [(c['id'], c) for c in a['anchors']]
     md = min((math.hypot(e['exit']['x'] - p['x'], e['exit']['z'] - p['z']), e['id'], n) for e in ENTRIES for n, p in recs if abs(e['exit']['y'] - p['y']) < 1)
@@ -178,6 +182,34 @@ def checks():
                 c, s = vz['center'], vz['size']
                 if c['y'] - s['y'] / 2 < p['y'] + 2 and c['y'] + s['y'] / 2 > p['y'] and math.hypot(max(abs(p['x'] - c['x']) - s['x'] / 2, 0), max(abs(p['z'] - c['z']) - s['z'] / 2, 0)) < 2.0: hz.append((n, h['id']))
     out.append(f'records within 2 m of a Siren hazard volume (not carried, kept clear in case the instance runs them): {len(hz)}'); ok &= not hz
+    # The layout loader's own gate (NativeExpeditionLayout.ValidateGeometry), mirrored: entries clear for a Hulk too;
+    # anchors, interactions and the approach clear for the pilot probe; from the first entry, Hulk-sized and pilot routes to
+    # every entry, boss point and the approach; every inherited exit routed back with its capsule (a Hulk where the entry
+    # rules allow one); the volumes inside the bounds.
+    hulk = Collider([b for b in m['blocks'] if b['id'] not in off], m['ramps'], m['bounds']); hulk.build(keep, HULK_RADIUS, HULK_HEIGHT)
+    hs = min((col.clearance(p['x'], p['z'], p['y'] + 0.35, p['y'] + HULK_HEIGHT + 0.05), f'entry{i}') for i, p in enumerate(ENTRIES_IN))
+    out.append('entry slots clear for a Hulk (%.3f m radius, %.2f m tall): tightest %.2f m (%s)' % (HULK_SLOT, HULK_HEIGHT, hs[0], hs[1])); ok &= hs[0] >= HULK_SLOT
+    pr = min((col.clearance(p['x'], p['z'], p['y'] + 0.35, p['y'] + HEIGHT + 0.05), n) for n, p in [(x['id'], x) for x in a['anchors']] + [(x['anchor'], x) for x in a['interactions']] + [('approach', d['approach'])])
+    out.append('anchors (the door too), interactions and the approach clear for the pilot probe (%.2f m, %.1f m): tightest %.2f m (%s)' % (RADIUS, HEIGHT, pr[0], pr[1])); ok &= pr[0] >= RADIUS
+    o = ENTRIES_IN[0]; rp = col.flood([col.node_at(o['x'], o['y'], o['z'])]); rh = hulk.flood([hulk.node_at(o['x'], o['y'], o['z'])])
+    need = ENTRIES_IN + BOSS_POINTS + [d['approach']]
+    miss = [p for p in need if hulk.node_at(p['x'], p['y'], p['z']) not in rh or col.node_at(p['x'], p['y'], p['z']) not in rp]
+    out.append(f'Hulk-sized and pilot routes from entry 0 to every entry, boss point and the approach: {len(need) - len(miss)} of {len(need)}'); ok &= not miss
+    def hulk_ok(e): return e['kind'] == 'breach' or e['kind'] == 'drop' and e.get('hulk')
+    miss = [e['id'] for e in ENTRIES if col.node_at(e['exit']['x'], e['exit']['y'], e['exit']['z']) not in rp]
+    out.append(f'inherited exits routed to entry 0 for the pilot probe: {len(ENTRIES) - len(miss)} of {len(ENTRIES)}' + ''.join('\n   BAD ' + i for i in miss)); ok &= not miss
+    hk = [e for e in ENTRIES if hulk_ok(e)]; tight = []; far = []
+    for e in hk:
+        x = e['exit']; n = hulk.node_at(x['x'], x['y'], x['z'], 0.36)
+        if n is None or n not in rh:
+            tight.append(e['id']); c = col.clearance(x['x'], x['z'], x['y'] + 0.36, x['y'] + HULK_HEIGHT + 0.05)
+            near = hulk.node_at(x['x'], x['y'], x['z'], 1.0)
+            if near is None or near not in rh: far.append(e['id'])
+            out.append(f"   Hulk exit {e['id']} ({x['x']:g}, {x['y']:g}, {x['z']:g}): free radius {c:.2f} m < {HULK_RADIUS:g} m ({col.nearest_block(x['x'], x['z'], x['y'] + 0.36, x['y'] + HULK_HEIGHT)[1]}); a Hulk-clear point within 1 m routes to entry 0: {near is not None and near in rh}")
+    out.append(f'inherited Hulk exits ({len(hk)}) Hulk-clear and routed to entry 0 for a Hulk: {len(hk) - len(tight)}; not Hulk-clear at the exit (Siren content, known: {sorted(KNOWN_SIREN_HULK)}): {sorted(tight)}')
+    ok &= set(tight) <= KNOWN_SIREN_HULK and not far
+    vb = all(vol_in_bounds(V, m['bounds']) for V in (d['interact'], d['closure']))
+    out.append(f'door volumes inside the bounds (1 cm margin): {vb}'); ok &= vb
     rec = [x['id'] for x in a['anchors']]
     out.append(f'record ids unique {len(set(rec)) == len(rec)}, pass the Expedition id rule {all(id_ok(i) for i in rec)}'); ok &= len(set(rec)) == len(rec) and all(id_ok(i) for i in rec)
     return ok, out, (col, reach)
