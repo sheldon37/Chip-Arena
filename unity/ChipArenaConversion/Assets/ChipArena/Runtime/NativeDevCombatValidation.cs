@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
                     CancelSiren(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.Fighter=null;p.Siren=null;p.Seat.chips.Clear();p.Seat.spec=p==a?spec:"pistol";p.Seat.access=grant;p.Seat.bot=false;p.Seat.alive=p.Seat.connected=true;
                     p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);p.Hp=p.Mana=p.Stamina=100;p.Grounded=p.GroundAttached=false;p.Ground=default;p.GroundPosition=default;p.Body.isKinematic=false;p.Collider.enabled=true;
                     p.Body.position=new Vector3(1000,10,p==a?1000:1006);p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;p.Down=null;p.Juggle=null;p.Roll=null;p.Dots.Clear();p.Death=null;p.Wounds.Clear();
-                    p.Ready=p.QReady=p.EReady=p.ReloadEnd=p.BlockEnd=p.RollEnd=p.StunEnd=p.FrozenUntil=p.ScareUntil=p.ShieldUntil=p.CastAt=p.AttackEnd=p.LaunchUntil=0;p.Ammo=Magazine(p);p.Input=new InputFrame();p.RegenAt=Time+20;
+                    p.Ready=p.QReady=p.EReady=p.ReloadEnd=p.BlockEnd=p.RollEnd=p.StunEnd=p.StaggerImmune=p.FrozenUntil=p.ScareUntil=p.ShieldUntil=p.CastAt=p.AttackEnd=p.LaunchUntil=0;p.Ammo=Magazine(p);p.Input=new InputFrame();p.RegenAt=Time+20;
                 }
                 Physics.SyncTransforms();
                 foreach(var p in new[]{a,b}){ProbePilotGround(p);Check(p.Grounded,"combat fixture floor, seat="+p.Seat.id);}
@@ -58,6 +58,10 @@ namespace ChipArena.UnityConversion
                 Setup();a.Input.AbilityEHeld=true;StepFighter(a);a.Seat.bot=true;var botInput=new InputFrame();
                 for(int n=0;n<100&&!botInput.AbilityQ;n++)BotAbilities(a,ref botInput,b.Body.position,Vector3.zero,2.6f,true,2);
                 Check(botInput.AbilityQ,"bot Q decision suppressed during wave");a.Input=botInput;StepFighter(a);Check(a.Fighter.Kind=="electric","bot Q did not cancel wave");
+                Setup();b.Seat.spec="greatsword";b.Weapon=Content.Weapon("greatsword");b.Stats=NativeContentRules.Stats(Content,"greatsword",b.Seat.chips);b.Seat.bot=true;
+                Check(TryMelee(b),"greatsword knockup fixture");b.StaggerImmune=Time+5;b.MeleeBufferedUntil=Time+1;
+                ConfirmFighter(a,b,8,true,.3f);
+                Check(b.Juggle!=null&&b.StunEnd==0&&b.Swing==null&&!b.HitPending&&b.MeleeBufferedUntil<0,"electric launch must interrupt even with stagger immunity");
                 Setup("ansatsuken");Check(StartFighter(a,"combo"),"arcade fixture");Check(!StartFighter(a,"shoryuken"),"arcade free cancel");a.Seat.chips["arcade-cancel"]=1;a.Fighter.LastHit=Time;Check(StartFighter(a,"shoryuken"),"arcade confirmed cancel regressed");
                 Setup("siren");var state=Siren(a);Check(StartSiren(a,"swipe")&&state.Move.Side==1&&state.Side==-1,"first swipe side");CancelSiren(a);a.Ready=0;
                 Check(StartSiren(a,"slam")&&state.Move.Side==1&&state.Side==-1,"slam consumed alternation");CancelSiren(a);a.Ready=0;state.Ranged=true;

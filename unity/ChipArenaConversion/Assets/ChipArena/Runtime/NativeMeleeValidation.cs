@@ -22,9 +22,9 @@ namespace ChipArena.UnityConversion
                 foreach(var p in new[]{a,b})
                 {
                     p.Seat.spec=p==a?spec:defender;p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);
-                    p.Seat.bot=false;p.Seat.alive=true;p.Hp=p.Stamina=p.Mana=100;p.Collider.enabled=true;p.Body.isKinematic=false;
+                    p.Seat.bot=false;p.Seat.alive=p.Seat.connected=true;p.Hp=p.Stamina=p.Mana=100;p.Collider.enabled=true;p.Body.isKinematic=false;
                     p.Ready=p.AttackEnd=p.BlockEnd=p.BlockReady=p.RollEnd=p.RollReady=p.StunEnd=p.StaggerImmune=p.ReloadEnd=0;p.CastAt=0;p.RegenAt=Time+10;
-                    p.MeleeKit=new NativeMeleeKit();p.MeleeBufferedUntil=-1;p.MeleeComboUntil=0;p.Pose.Sprinting=false;p.ArmourHitUntil=0;p.Swing=null;p.Special=null;p.Down=null;p.Roll=null;p.Combo=-1;p.RiposteAt=p.BlockAt=-100;p.RiposteBy=-1;p.Dots.Clear();CancelAbilities(p);
+                    p.MeleeKit=new NativeMeleeKit();p.MeleeBufferedUntil=-1;p.MeleeComboUntil=0;p.Pose.Sprinting=false;p.ArmourHitUntil=0;p.Swing=null;p.Special=null;p.Down=null;p.Juggle=null;p.FrozenUntil=p.ScareUntil=0;p.Roll=null;p.Combo=-1;p.RiposteAt=p.BlockAt=-100;p.RiposteBy=-1;p.Dots.Clear();CancelAbilities(p);
                     p.AirborneAt=-1;p.AirAttackUsed=false;p.Grounded=true;p.Input=new InputFrame{Yaw=p==a?0:180};p.Yaw=p.Input.Yaw;
                     Position(p,new Vector3(1000,100,p==a?1000:1002));
                 }
@@ -39,6 +39,24 @@ namespace ChipArena.UnityConversion
                     Position(b,new Vector3(1000,100,1002));Advance((a.Swing.HitAt+a.Swing.HitUntil)/2-Time);StepMelee(a);
                     NearNative(b.Hp,100-(float)a.Weapon.damage,"late entry into sweep "+spec);float hp=b.Hp;Advance(.001f);StepMelee(a);Check(b.Hp==hp,"duplicate primary contact");
                 }
+                // Cancel the actual committed contact and queued echoes, including a bot's greatsword.
+                foreach(string control in new[]{"juggle","down","stun","freeze"})foreach(bool active in new[]{false,true})
+                {
+                    Setup("greatsword");a.Seat.bot=true;Check(TryMelee(a),"CC swing setup");
+                    var interrupted=a.Swing;float hit=(interrupted.HitAt+interrupted.HitUntil)/2,ready=a.Ready;
+                    interrupted.Remaining=2;a.MeleeBufferedUntil=Time+2;
+                    if(active)Advance(hit-Time);
+                    if(control=="juggle")a.Juggle=new NativeJuggle{At=Time,Until=Time+1,Owner=b};
+                    if(control=="down")a.Down=new NativeRecovery{At=Time,Until=Time+1};
+                    if(control=="stun")a.StunEnd=Time+1;
+                    if(control=="freeze")a.FrozenUntil=Time+1;
+                    StepMelee(a);Check(a.Swing==null&&!a.HitPending&&a.MeleeBufferedUntil<0&&a.AttackEnd==0,"CC cancels swing/echo/buffer "+control);
+                    Check(a.Ready==ready,"CC refunded cooldown");
+                    a.Juggle=null;a.Down=null;a.StunEnd=a.FrozenUntil=0;Advance(Math.Max(0,hit-Time));StepMelee(a);
+                    Check(b.Hp==100&&a.Swing==null,"interrupted swing resumed after CC "+control);
+                }
+                Setup("greatsword");Check(TryMelee(a),"push swing setup");a.Knockback=Vector3.up*4;
+                Advance((a.Swing.HitAt+a.Swing.HitUntil)/2-Time);StepMelee(a);Check(b.Hp<100,"ordinary push incorrectly cancelled swing");
                 // Landing attacks use the real hit, block and roll handlers; airtime never resolves damage.
                 foreach(string spec in new[]{"daggers","sword","shield","greatsword"})
                 {

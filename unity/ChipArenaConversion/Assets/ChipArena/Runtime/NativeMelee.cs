@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
         }
         private bool TryMelee(NativePilot p,bool chained=false)
         {
-            if(SpecialBusy(p)||!NativeMeleeRules.Standard(p.Seat.spec)||Time<p.RollEnd||Incapacitated(p)||!chained&&(Time<p.AttackEnd||Time<p.Ready)||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||Time<p.BlockEnd&&!RiposteOpen(p))return false;
+            if(Frozen(p)||SpecialBusy(p)||!NativeMeleeRules.Standard(p.Seat.spec)||Time<p.RollEnd||Incapacitated(p)||!chained&&(Time<p.AttackEnd||Time<p.Ready)||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||Time<p.BlockEnd&&!RiposteOpen(p))return false;
             bool air=NativeAirAttackSimulation.Airborne(p.Grounded,NativeHazards.InLava(MapId,Vec(p.Body.position)));if(air&&(!NativeAirAttackSimulation.Starts(p.Grounded,p.AirborneAt,p.AirAttackUsed,Time,p.Input)||chained))return false;
             bool sprint=NativeSprintAttack.Starts(chained,Time>p.MeleeComboUntil?1:p.Combo+2,p.Grounded,p.Input,p.Pose.Sprinting);
             float cost=NativeSprintAttack.Cost(p.Weapon,p.Stats,sprint)*(air?(NativeAirAttackSimulation.DownPitch(p.Input.Pitch)?1.4f:1.25f):1);if(p.Stamina<cost)return false;
@@ -66,7 +66,10 @@ namespace ChipArena.UnityConversion
         }
         private void StepMelee(NativePilot p)
         {
-            var swing=p.Swing;if(swing==null)return;TurnMelee(p);
+            var swing=p.Swing;if(swing==null)return;
+            // A launch can bypass ordinary stagger immunity; never resolve its old swing.
+            if(p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Frozen(p)){CancelMelee(p);return;}
+            TurnMelee(p);
             if(NativeAirAttackSimulation.Falling(swing))
             {
                 if(Time>=swing.Until){CancelMelee(p);return;}
@@ -86,7 +89,8 @@ namespace ChipArena.UnityConversion
                 if(!NativeMeleeRules.Contact(swing,Time,Vec(delta),.45f)&&!NativeSprintAttack.Ring(swing,Time,Vec(delta),.45f,p.Grounded)||!swing.Contact("pilot:"+target.Seat.id,Time,Vec(delta),.45f,MeleeVisible(origin,target.Body.position,p,target.Collider),p.Grounded))continue;
                 float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),(swing.SprintAttack&&swing.Spec=="shield"?new Vector3(delta.x,0,delta.z):delta+Vector3.up*.15f).normalized,NativeSprintAttack.Impulse(swing,(float)p.Weapon.impulse)*(float)p.Stats["impulse"],false,melee:true,weaponHit:true,hitPoint:target.Collider.ClosestPoint(origin));
                 if(actual>0){ImpactChips(p,target,null,target.Body.position,delta.normalized,swing.Id,swing.Id);if(target.Hp>0)PrimaryMeleeImpact(p,target);}
-                if(p.Hp<=0||p.Swing!=swing)return; // A block or thorns death interrupts remaining contacts.
+                if(p.Hp<=0||Incapacitated(p)||Frozen(p)){CancelMelee(p);return;}
+                if(p.Swing!=swing)return; // A block or thorns death interrupts remaining contacts.
             }
             foreach(var m in Minions.ToArray())
             {Vector3 delta=m.Body.position-origin;if(m.Hp<=0||!CanHit(p,m)||!swing.Contact("minion:"+m.Id,Time,Vec(delta),.3f,MeleeVisible(origin,m.Body.position,p,m.Collider),p.Grounded))continue;Vector3 point=m.Body.position;float actual=MeleeMinionHit(m,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),delta.normalized,NativeSprintAttack.Impulse(swing,(float)p.Weapon.impulse)*(float)p.Stats["impulse"]);MinionWeaponHit(m,p,actual,(float)(p.Weapon.burn+p.Stats["burn"]),(float)p.Stats["poison"]);ImpactChips(p,null,null,point,delta.normalized,swing.Id,swing.Id);}

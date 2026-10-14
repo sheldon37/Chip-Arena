@@ -6235,3 +6235,22 @@ retained. Presentation-only; no damage/physics/network changes. All 35 managed/
 relay checks pass (110 final killcam checks), package 1852 files, runtime syntax
 and whitespace pass. Windows build/visual acceptance pending. Merge and builder
 sync receipts in task PR.
+
+## 2026-10-14 — Codex: cancel committed swings on crowd control
+
+Branch `codex/cc-cancel-swings`, started `2d3949c`, fast-forwarded to `5a4fdc6`
+to preserve the concurrent final-camera easing fix. Emperor juggle and Arcade
+uppercut downing now immediately cancel the target's primary swing even when
+ordinary stagger is resisted. StepMelee rejects dead/disconnected/incapacitated/
+frozen attackers before windup, contacts or extra strikes, and checks control
+after reactive pilot hits. Frozen attackers cannot start a new primary. Existing
+CancelMelee clears pending hits and buffered chains without refunding cooldown
+or stamina. No CC immunity, damage amount, contact timing or wire-format change.
+Unity gates add greatsword bot windup/active interruptions for juggle/down/stun/
+freeze, no resumption or queued echoes, ordinary push still hits, and actual
+Emperor confirmation during stagger immunity. Fixtures reset added CC state.
+All 35 managed/relay checks pass on the pre-camera-fast-forward build; the
+concurrent change only touches final camera presentation/tests, outside combat.
+Runtime syntax, package (1852 files), whitespace checks pass. New actual contact
+regressions require Unity/PhysX and are NOT executed locally; Windows builder
+and gameplay acceptance pending. Merge/builder sync receipts belong in task PR.
