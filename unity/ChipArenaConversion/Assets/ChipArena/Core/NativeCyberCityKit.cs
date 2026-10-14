@@ -72,14 +72,31 @@ namespace ChipArena.UnityConversion
 
         /// <summary>Builds the kit for a map's blocks (Cyber City ids only; anything else gets nothing) and its hazards.</summary>
         public static NativeCyberCityKit Build(ContentBlock[] blocks,MapHazard[] hazards)=>Build(blocks,hazards,null);
-        /// <summary>The kit with the Cut's exits dressed (<see cref="NativeCyberCityExits.Build(ContentMap)"/> on the same blocks).</summary>
-        public static NativeCyberCityKit Build(ContentBlock[] blocks,MapHazard[] hazards,NativeCyberCityExits exits)
+        /// <summary>The kit with the Cut's exits dressed (<see cref="NativeCyberCityExits.Build(ContentMap)"/> on the same blocks).
+        /// `layers`: parts that share a plane with a block or an earlier part stand clear of it (NativeSurfaceLayers.Over; off
+        /// only for the surface audit's before count).</summary>
+        public static NativeCyberCityKit Build(ContentBlock[] blocks,MapHazard[] hazards,NativeCyberCityExits exits,bool layers=true)
         {
             var k=new NativeCyberCityKit{blocks=blocks??Array.Empty<ContentBlock>()};
             if(exits!=null&&exits.Exits.Length>0&&exits.BlockOpening.Length==k.blocks.Length)k.Exits=exits;
             if(hazards!=null)for(int i=0;i<hazards.Length;i++){if(NativeCyberCityHazards.IsMaglev(hazards[i])&&k.Maglev<0)k.Maglev=i;if(NativeCyberCityHazards.IsGrid(hazards[i])){int side=hazards[i].center.x<0?0:1;if(k.Grids[side]<0)k.Grids[side]=i;}}
             for(int i=0;i<k.blocks.Length;i++){var bl=k.blocks[i];if(bl?.id==null)continue;k.parent=i;k.b=bl;k.hx=bl.size.x/2;k.hy=bl.size.y/2;k.hz=bl.size.z/2;k.Dress();}
-            k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Train=BuildTrain();k.parts.Clear();k.glows.Clear();return k;
+            k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Train=BuildTrain();k.parts.Clear();k.glows.Clear();if(layers)Layers(k.Parts,k.blocks);return k;
+        }
+        // Parts flush with a block or with an earlier part are drawn over it by the least whole steps (NativeSurfaceLayers): the
+        // offset moves half the lift along the block's axes and the half extent grows by half, so only the lifted face moves (the
+        // rest centre is the parent's plus the offset, so the pattern moves with it). Parts of one look, colour, flags and drive may
+        // lie either way over each other; a glowing part is never taken for another.
+        private static void Layers(NativeCyberCityPart[] parts,ContentBlock[] blocks)
+        {
+            var boxes=new NativeSurfaceLayers.Box[parts.Length];
+            for(int i=0;i<parts.Length;i++){var p=parts[i];boxes[i]=NativeSurfaceLayers.Parented(blocks[p.Parent],p.X,p.Y,p.Z,p.Hx,p.Hy,p.Hz,p.Gain==1?NativeSurfaceLayers.Key(p.Look,p.Color,p.Flags,p.Drive):-1);}
+            var lifts=NativeSurfaceLayers.Over(blocks,boxes,out _);
+            for(int i=0;i<parts.Length;i++)
+            {
+                NativeSurfaceLayers.Apply(lifts,i,out float sx,out float sy,out float sz,out float gx,out float gy,out float gz);if(gx==0&&gy==0&&gz==0)continue;
+                ref var p=ref parts[i];p.X+=sx;p.Y+=sy;p.Z+=sz;p.Hx+=gx;p.Hy+=gy;p.Hz+=gz;
+            }
         }
         /// <summary>The id with the map prefix removed (rubble keeps its "rubble-" marker in front), or null for other maps' ids.</summary>
         public static string Stem(string id)

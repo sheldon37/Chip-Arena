@@ -14,6 +14,9 @@ internal static class Program
             {var json=System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json"));using(var doc=System.Text.Json.JsonDocument.Parse(json))RelayChecks.Run(args[1],doc.RootElement.GetProperty("sourceCommit").GetString()).GetAwaiter().GetResult();return 0;}
             if(args.Length==1&&args[0]=="--cyber-ranged"){CyberRangedSimulationChecks.Run();CyberChecks.Run();foreach(var result in CyberLordRangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--horde-drops"){HordeDropChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--scenery"){SurfaceChecks.Scenery();return 0;}
+            if(args.Length==1&&args[0]=="--surfaces"){SurfaceChecks.Run(ProjectRoot());return 0;}
+            if(args.Length>=1&&args[0]=="--surface-audit"){if(args.Length>1&&args[1]=="differ")SurfaceChecks.Differ(ProjectRoot());else if(args.Length>1&&args[1]=="dupes")SurfaceChecks.Dupes(ProjectRoot());else SurfaceChecks.Audit(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--melee-bisect"){BisectChecks.Run(ProjectRoot());MeleeBisectChecks.Run(ProjectRoot());return 0;}
             CyberRangedSimulationChecks.Run();
             HitchChecks.Run();KernelPanicChecks.Run();OnlineRoomChecks.Run();
@@ -22,7 +25,7 @@ internal static class Program
             string root=ProjectRoot();
             PveSpitterChecks.Run(root);NavSearchChecks.Run(root);WardSimulationChecks.Run(root);HulkBreachChecks.Run(root);InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
-            FactoryChecks.Run(root);StageHazardChecks.Run(root);
+            FactoryChecks.Run(root);StageHazardChecks.Run(root);SurfaceChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};
             var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
             FinalKillMatchChecks.Run(data);BowInputChecks.Run(root,data);

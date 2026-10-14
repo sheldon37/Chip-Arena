@@ -49,10 +49,25 @@ namespace ChipArena.UnityConversion
             {if(sx>0&&sy>0&&sz>0)Boxes.Add(new NativeCyberBox{X=(float)x,Y=(float)y,Z=(float)z,Hx=(float)(sx/2),Hy=(float)(sy/2),Hz=(float)(sz/2),Yaw=(float)yaw,Look=look,Flags=flags,Color=color,Gain=(float)gain,Kind=kind});}
         }
 
-        /// <summary>The whole static backdrop, in build order (ground, tunnels, near ring, expressways, towers).</summary>
-        public static NativeCyberBox[] Build()
+        /// <summary>The whole static backdrop, in build order (ground, tunnels, near ring, expressways, towers). `layers`: faces
+        /// that share a plane with another box's (a trim flush on its tower, two plates meeting) are drawn apart by whole 2 mm
+        /// steps, a later box over an earlier one (Core NativeSurfaceLayers; off only for the surface audit's before count).</summary>
+        public static NativeCyberBox[] Build(bool layers=true)
         {
-            var s=new Sink();Ground(s);Tunnels(s);NearRing(s);Expressways(s);Towers(s);return s.Boxes.ToArray();
+            var s=new Sink();Ground(s);Tunnels(s);NearRing(s);Expressways(s);Towers(s);var o=s.Boxes.ToArray();if(layers)Layers(o);return o;
+        }
+        // The lifts: half along the box's own axes (turned by its yaw) moves the centre, half grows the half extent, so only the
+        // lifted face moves. Two boxes of one look, colour and flags (not glowing) may lie either way over each other.
+        private static void Layers(NativeCyberBox[] o)
+        {
+            var boxes=new NativeSurfaceLayers.Box[o.Length];
+            for(int i=0;i<o.Length;i++){var b=o[i];double h=b.Yaw*Math.PI/360;boxes[i]=new NativeSurfaceLayers.Box{X=b.X,Y=b.Y,Z=b.Z,Hx=b.Hx,Hy=b.Hy,Hz=b.Hz,Qy=Math.Sin(h),Qw=Math.Cos(h),Material=b.Gain==1?NativeSurfaceLayers.Key(b.Look,b.Color,b.Flags):-1};}
+            var lifts=NativeSurfaceLayers.Solve(boxes,0,null,false,out _,NativeSurfaceLayers.BackdropLift,NativeSurfaceLayers.Far);
+            for(int i=0;i<o.Length;i++)
+            {
+                NativeSurfaceLayers.Apply(lifts,i,out float sx,out float sy,out float sz,out float gx,out float gy,out float gz);if(gx==0&&gy==0&&gz==0)continue;
+                double t=o[i].Yaw*Math.PI/180,c=Math.Cos(t),n=Math.Sin(t);o[i].X+=(float)(c*sx+n*sz);o[i].Y+=sy;o[i].Z+=(float)(-n*sx+c*sz);o[i].Hx+=gx;o[i].Hy+=gy;o[i].Hz+=gz;
+            }
         }
         private static void Ground(Sink s)
         {

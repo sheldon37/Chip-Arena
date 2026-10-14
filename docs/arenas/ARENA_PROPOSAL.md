@@ -77,6 +77,8 @@ Ward Zero is the exception: a bespoke baked hall of 116,417 vertices in 4 batche
 | Menus | No arena blocks in the backdrop; the room options show each map's tag line (`ConversionGame.cs:341`), but there is no map card | The backdrop shows the full arena; an arena card around the tag line; an optional title card at countdown | n/a |
 | Audio | No ambience; collapse sounds like an explosion | Ambience beds plus positioned emitters; destruction cue set; one music track per map | ≤6 rubble voices |
 
+**Coplanar faces (2026-10-14).** Two drawn faces that face the same way, lie in one plane and overlap on their flat parts (inside the chamfer) z-fight. Core `NativeSurfaceLayers` separates them on every dressed map, render only: the face meant to be seen moves out in whole 2 mm steps, at most 16 mm (8 mm on today's maps). That is a kit part over its block, a later part over an earlier one, or the larger of two block faces. Kits may keep laying parts flush. A part that should not show over its block must not cover that block face: the Factory lathe collar is two strips, not a slab over the bed. The backdrops get the same pass at bake time (`NativeSceneryBuilder`, `NativeCyberCityScenery`), with their far settings. `CoreTests.dll --surface-audit` and `--scenery` list the pairs before and after; `--surfaces` is the regression check.
+
 ### 2.3 Destruction colour code (shared by every map)
 | What you see | Meaning |
 |---|---|

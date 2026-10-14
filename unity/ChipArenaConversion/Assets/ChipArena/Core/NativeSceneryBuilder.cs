@@ -46,13 +46,53 @@ namespace ChipArena.UnityConversion
         private static readonly int[] FaceBit={1,2,4,8,16,32};
         public void Box(double x,double y,double z,double sx,double sy,double sz,int hex,double pitch=0,double yaw=0,double roll=0,int glow=0,double level=0,double shade=1,double grime=0,int skip=0)
         {
-            if(!(sx>0&&sy>0&&sz>0))return;var g=groups[Current];
-            // R = Ry(yaw)·Rx(pitch)·Rz(roll), Unity's left-handed convention (Euler(0, 90, 0) turns +z to +x).
+            if(!(sx>0&&sy>0&&sz>0))return;
             double a=pitch*Math.PI/180,b=yaw*Math.PI/180,c=roll*Math.PI/180,ca=Math.Cos(a),sa=Math.Sin(a),cb=Math.Cos(b),sb=Math.Sin(b),cc=Math.Cos(c),sc=Math.Sin(c);
-            double m00=cb*cc+sb*sa*sc,m01=-cb*sc+sb*sa*cc,m02=sb*ca,m10=ca*sc,m11=ca*cc,m12=-sa,m20=-sb*cc+cb*sa*sc,m21=sb*sc+cb*sa*cc,m22=cb*ca;
+            double m00=cb*cc+sb*sa*sc,m01=-cb*sc+sb*sa*cc,m02=sb*ca,m20=-sb*cc+cb*sa*sc,m21=sb*sc+cb*sa*cc,m22=cb*ca;
             bool rotated=pitch!=0||yaw!=0||roll!=0;if(!rotated&&y-sy/2<=1e-4)skip|=8;
-            double hx=sx/2,hy=sy/2,hz=sz/2;
-            if(!double.IsNaN(ExcludeX)&&EntersRect(x,z,hx,hy,hz,m00,m01,m02,m20,m21,m22,ExcludeX,ExcludeZ))throw new InvalidOperationException("Scenery box enters the arena at "+x.ToString("0.##")+", "+y.ToString("0.##")+", "+z.ToString("0.##"));
+            if(!double.IsNaN(ExcludeX)&&EntersRect(x,z,sx/2,sy/2,sz/2,m00,m01,m02,m20,m21,m22,ExcludeX,ExcludeZ))throw new InvalidOperationException("Scenery box enters the arena at "+x.ToString("0.##")+", "+y.ToString("0.##")+", "+z.ToString("0.##"));
+            var p=new Pending{X=x,Y=y,Z=z,Sx=sx,Sy=sy,Sz=sz,Hex=hex,Pitch=pitch,Yaw=yaw,Roll=roll,Glow=glow,Level=level,Shade=shade,Grime=grime,Skip=skip,Group=Current};
+            groups[Current].Boxes++;if(baked)Emit(p,0,0,0,0,0,0);else pending.Add(p);
+        }
+        // The boxes wait for the first Bake: then faces that share a plane with another box's are drawn apart (Core
+        // NativeSurfaceLayers, in call order: a later box over an earlier one, two of one colour either way; the box grows by
+        // millimetres on that side only) and every box is emitted in call order into its group.
+        private struct Pending {public double X,Y,Z,Sx,Sy,Sz,Pitch,Yaw,Roll,Level,Shade,Grime;public int Hex,Glow,Skip,Group;}
+        private readonly List<Pending> pending=new List<Pending>();private bool baked;
+        /// <summary>The surface audit's hook (tests only; null in play): each builder's boxes, as the layers saw them, and their
+        /// lifts when it first bakes.</summary>
+        [ThreadStatic] public static Action<NativeSurfaceLayers.Box[],float[]> Audit;
+        private void Settle()
+        {
+            baked=true;if(pending.Count==0)return;var boxes=new NativeSurfaceLayers.Box[pending.Count];
+            for(int i=0;i<boxes.Length;i++)
+            {
+                var p=pending[i];Euler(p.Pitch,p.Yaw,p.Roll,out double ox,out double oy,out double oz,out double ow);
+                int skip=0;for(int f=0;f<6;f++){int axis=f>>1;if((p.Skip&FaceBit[axis*2+((f&1)==1?0:1)])!=0)skip|=1<<f;}
+                long key=p.Grime==0?(uint)(p.Hex&0xFFFFFF)|(long)(p.Glow&0xFFFFFF)<<24|(long)((int)Math.Round(p.Shade*255)&0xFF)<<48|(long)((int)Math.Round(p.Level*63)&0x3F)<<56:-1;
+                boxes[i]=new NativeSurfaceLayers.Box{X=p.X,Y=p.Y,Z=p.Z,Hx=p.Sx/2,Hy=p.Sy/2,Hz=p.Sz/2,Qx=ox,Qy=oy,Qz=oz,Qw=ow,Bevel=-1,Material=key,Skip=skip};
+            }
+            var lifts=NativeSurfaceLayers.Solve(boxes,0,null,false,out _,NativeSurfaceLayers.BackdropLift,NativeSurfaceLayers.Far);Audit?.Invoke(boxes,lifts);
+            for(int i=0;i<pending.Count;i++){NativeSurfaceLayers.Apply(lifts,i,out float sx,out float sy,out float sz,out float gx,out float gy,out float gz);Emit(pending[i],sx,sy,sz,gx,gy,gz);}
+            pending.Clear();
+        }
+        /// <summary>Unity's Quaternion.Euler(pitch, yaw, roll) (degrees; yaw · pitch · roll, the box rotation R above) as x, y, z, w.</summary>
+        public static void Euler(double pitch,double yaw,double roll,out double x,out double y,out double z,out double w)
+        {
+            double a=pitch*Math.PI/360,b=yaw*Math.PI/360,c=roll*Math.PI/360,sa=Math.Sin(a),ca=Math.Cos(a),sb=Math.Sin(b),cb=Math.Cos(b),sc=Math.Sin(c),cc=Math.Cos(c);
+            // (0, sb, 0, cb)·(sa, 0, 0, ca) then ·(0, 0, sc, cc).
+            double px=cb*sa,py=sb*ca,pz=-sb*sa,pw=cb*ca;
+            x=px*cc+py*sc;y=py*cc-px*sc;z=pw*sc+pz*cc;w=pw*cc-pz*sc;
+        }
+        // One box's faces into its group: (sx, sy, sz) moves its centre along its own axes and (gx, gy, gz) grows its half
+        // extents (the lifted faces).
+        private void Emit(Pending p,double sx,double sy,double sz,double gx,double gy,double gz)
+        {
+            var g=groups[p.Group];int skip=p.Skip;int hex=p.Hex,glow=p.Glow;double level=p.Level,shade=p.Shade,grime=p.Grime;
+            // R = Ry(yaw)·Rx(pitch)·Rz(roll), Unity's left-handed convention (Euler(0, 90, 0) turns +z to +x).
+            double a=p.Pitch*Math.PI/180,b=p.Yaw*Math.PI/180,c=p.Roll*Math.PI/180,ca=Math.Cos(a),sa=Math.Sin(a),cb=Math.Cos(b),sb=Math.Sin(b),cc=Math.Cos(c),sc=Math.Sin(c);
+            double m00=cb*cc+sb*sa*sc,m01=-cb*sc+sb*sa*cc,m02=sb*ca,m10=ca*sc,m11=ca*cc,m12=-sa,m20=-sb*cc+cb*sa*sc,m21=sb*sc+cb*sa*cc,m22=cb*ca;
+            double hx=p.Sx/2+gx,hy=p.Sy/2+gy,hz=p.Sz/2+gz,x=p.X+m00*sx+m01*sy+m02*sz,y=p.Y+m10*sx+m11*sy+m12*sz,z=p.Z+m20*sx+m21*sy+m22*sz;
             float r=(float)(Channel(hex,16)*shade),gr=(float)(Channel(hex,8)*shade),bl=(float)(Channel(hex,0)*shade);
             float er=glow==0?0:(float)(Channel(glow,16)*level),eg=glow==0?0:(float)(Channel(glow,8)*level),eb=glow==0?0:(float)(Channel(glow,0)*level),dark=(float)(1-grime);
             for(int f=0;f<6;f++)
@@ -76,7 +116,6 @@ namespace ChipArena.UnityConversion
                 if(!flip){g.T.Add(start);g.T.Add(start+1);g.T.Add(start+2);g.T.Add(start);g.T.Add(start+2);g.T.Add(start+3);}
                 else{g.T.Add(start);g.T.Add(start+2);g.T.Add(start+1);g.T.Add(start);g.T.Add(start+3);g.T.Add(start+2);}
             }
-            g.Boxes++;
         }
         /// <summary>
         /// Whether a box's ground footprint (its 8 corners projected on XZ, a convex polygon) overlaps the open rectangle
@@ -96,7 +135,7 @@ namespace ChipArena.UnityConversion
         }
         public NativeSceneryMesh Bake(int group)
         {
-            var g=groups[group];var m=new NativeSceneryMesh{Positions=g.P.ToArray(),Normals=g.N.ToArray(),Colors=g.C.ToArray(),Emission=g.E.ToArray(),Indices=g.T.ToArray(),Boxes=g.Boxes};
+            if(!baked)Settle();var g=groups[group];var m=new NativeSceneryMesh{Positions=g.P.ToArray(),Normals=g.N.ToArray(),Colors=g.C.ToArray(),Emission=g.E.ToArray(),Indices=g.T.ToArray(),Boxes=g.Boxes};
             m.MinX=m.MinY=m.MinZ=float.MaxValue;m.MaxX=m.MaxY=m.MaxZ=float.MinValue;
             for(int i=0;i<m.Positions.Length;i+=3){m.MinX=Math.Min(m.MinX,m.Positions[i]);m.MaxX=Math.Max(m.MaxX,m.Positions[i]);m.MinY=Math.Min(m.MinY,m.Positions[i+1]);m.MaxY=Math.Max(m.MaxY,m.Positions[i+1]);m.MinZ=Math.Min(m.MinZ,m.Positions[i+2]);m.MaxZ=Math.Max(m.MaxZ,m.Positions[i+2]);}
             if(m.Positions.Length==0)m.MinX=m.MinY=m.MinZ=m.MaxX=m.MaxY=m.MaxZ=0;

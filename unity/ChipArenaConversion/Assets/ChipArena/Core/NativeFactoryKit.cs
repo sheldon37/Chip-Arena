@@ -49,6 +49,8 @@ namespace ChipArena.UnityConversion
             var l=new Looks();for(int k=0;k<Kinds.Length;k++){var c=NativeBlockLooks.Resolve(kitLooks,null,Kinds[k],"",0xffffff);l.Look[k]=c.Look;l.Color[k]=c.Color;l.Flags[k]=c.Flags&~(NativeBlockLooks.Band|NativeBlockLooks.Tag);}
             return l;
         }
+        /// <summary>The chamfer a part is drawn with (Runtime/NativeFactoryPresentation): 3 cm, at most 30% of its thinnest half.</summary>
+        public static float Bevel(float hx,float hy,float hz)=>Math.Min(.03f,.3f*Math.Min(hx,Math.Min(hy,hz)));
         /// <summary>The static kit's part count at most (the draw budget: 2.4 dressing ≤60 draws of 500).</summary>
         public const int MaxParts=12000;
 
@@ -79,8 +81,10 @@ namespace ChipArena.UnityConversion
         private static bool Overlaps(Bx b,double x0,double x1,double y0,double y1,double z0,double z1)=>b.X0<x1&&b.X1>x0&&b.Y0<y1&&b.Y1>y0&&b.Z0<z1&&b.Z1>z0;
         private static bool Starts(string id,string prefix)=>id!=null&&id.StartsWith(prefix,StringComparison.Ordinal);
 
-        /// <summary>Builds the static kit for these blocks and hazards (FACTORY_PROPOSAL.md 5.3 lists what each prefix gets).</summary>
-        public static Writer Build(ContentBlock[] blocks,FactoryHazard[] hazards,Looks looks)
+        /// <summary>Builds the static kit for these blocks and hazards (FACTORY_PROPOSAL.md 5.3 lists what each prefix gets).
+        /// `layers`: parts that share a plane with a block or an earlier part stand clear of it (NativeSurfaceLayers.Over; off
+        /// only for the surface audit's before count).</summary>
+        public static Writer Build(ContentBlock[] blocks,FactoryHazard[] hazards,Looks looks,bool layers=true)
         {
             var w=new Writer(2048,true,looks);var all=new List<Bx>();
             foreach(var b in blocks??Array.Empty<ContentBlock>())
@@ -125,7 +129,36 @@ namespace ChipArena.UnityConversion
             foreach(var f in flights)Flight(w,f.Value,all);
             Roofs(w,all);
             foreach(var h in hazards??Array.Empty<FactoryHazard>())Fittings(w,h,all);
+            Unique(w);if(layers)Layers(w,blocks);
             return w;
+        }
+        // A part two dressers both place (a post at a corner two rails share, a floor line laid twice) is drawn once: the later of
+        // two parts with the same box (to 0.1 mm), look, colour, flags, rest, window and shadow is dropped.
+        private static void Unique(Writer w)
+        {
+            var seen=new HashSet<string>();int keep=0;
+            for(int i=0;i<w.Count;i++)
+            {
+                var p=w.Items[i];string R(float v)=>Math.Round(v*1e4).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                string key=string.Join(",",R(p.X),R(p.Y),R(p.Z),R(p.Hx),R(p.Hy),R(p.Hz),R(p.Qx),R(p.Qy),R(p.Qz),R(p.Qw),R(p.Rx),R(p.Ry),R(p.Rz),R(p.Window),p.Look,p.Color,p.Flags,p.Shadow?1:0);
+                if(seen.Add(key))w.Items[keep++]=p;
+            }
+            w.Count=keep;
+        }
+        // Parts flush with a block or with an earlier part are drawn over it by the least whole steps (NativeSurfaceLayers):
+        // the centre moves half the lift along the part's own axes and the half extent grows by half, so only the lifted face
+        // moves; the rest centre moves with it, so the pattern stays where it was.
+        private static void Layers(Writer w,ContentBlock[] blocks)
+        {
+            var boxes=new NativeSurfaceLayers.Box[w.Count];
+            for(int i=0;i<w.Count;i++){var p=w.Items[i];boxes[i]=new NativeSurfaceLayers.Box{X=p.X,Y=p.Y,Z=p.Z,Hx=p.Hx,Hy=p.Hy,Hz=p.Hz,Qx=p.Qx,Qy=p.Qy,Qz=p.Qz,Qw=p.Qw,Bevel=Bevel(p.Hx,p.Hy,p.Hz),Material=NativeSurfaceLayers.Key(p.Look,p.Color,p.Flags)};}
+            var lifts=NativeSurfaceLayers.Over(blocks,boxes,out _);
+            for(int i=0;i<w.Count;i++)
+            {
+                NativeSurfaceLayers.Apply(lifts,i,out float sx,out float sy,out float sz,out float gx,out float gy,out float gz);if(gx==0&&gy==0&&gz==0)continue;
+                ref var p=ref w.Items[i];var q=new FactoryQ{X=p.Qx,Y=p.Qy,Z=p.Qz,W=p.Qw};q.Rotate(sx,sy,sz,out double wx,out double wy,out double wz);
+                p.X+=(float)wx;p.Y+=(float)wy;p.Z+=(float)wz;p.Hx+=gx;p.Hy+=gy;p.Hz+=gz;p.Rx+=sx;p.Ry+=sy;p.Rz+=sz;
+            }
         }
 
         // ---------------- walkways ----------------
@@ -289,7 +322,9 @@ namespace ChipArena.UnityConversion
             double cx=(b.X0+b.X1)/2+.4;w.Box(cx-.35,cx+.35,b.Y1,b.Y1+.22,b.Z0+.05,b.Z1-.05,Machine);w.Box(cx-.12,cx+.12,b.Y1+.22,b.Y1+.24,cz-.12,cz+.12,Black);
             w.Box(b.X1-.75,b.X1-.15,b.Y1,b.Y1+.24,cz-.3,cz+.3,Machine);                                                                // tailstock
             w.Box(b.X0+.2,b.X1-.2,b.Y1-.32,b.Y1-.28,Math.Min(fz,fz+fo*.06),Math.Max(fz,fz+fo*.06),Chrome,false);                       // leadscrew
-            w.Box(b.X0,b.X1,0,.16,Math.Min(fz,fz+fo*.04),Math.Max(fz,fz+fo*.04),Black,false);w.Box(b.X0,b.X1,b.Y1-.06,b.Y1,b.Z0-.03,b.Z1+.03,Stripe,false);
+            // The kick plate, and the hazard collar along both sides of the bed's top edge (two strips, not a slab over the top, so
+            // the bed's top stays machine green).
+            w.Box(b.X0,b.X1,0,.16,Math.Min(fz,fz+fo*.04),Math.Max(fz,fz+fo*.04),Black,false);w.Box(b.X0,b.X1,b.Y1-.06,b.Y1,b.Z0-.03,b.Z0,Stripe,false);w.Box(b.X0,b.X1,b.Y1-.06,b.Y1,b.Z1,b.Z1+.03,Stripe,false);
         }
         private static void Mill(Writer w,Bx b)
         {

@@ -82,6 +82,9 @@ namespace ChipArena.UnityConversion
         public NativeWardRoute[] Routes=Array.Empty<NativeWardRoute>();
         private readonly List<NativeWardZeroPart> parts=new List<NativeWardZeroPart>();private readonly List<NativeWardGlow> glows=new List<NativeWardGlow>();private readonly List<NativeWardRoute> routes=new List<NativeWardRoute>();
         private ContentBlock[] blocks;private MapHazard[] hazards;private NativeWardEntry[] entries;private int parent;private ContentBlock b;private float hx,hy,hz;private short entryTag=-1;private bool detail;
+        // The rail posts placed so far, by world spot (millimetres).
+        private readonly HashSet<long> railPosts=new HashSet<long>();
+        private static long Spot(float x,float y,float z)=>((long)Math.Round(x*1000)&0x1FFFFF)<<42|((long)Math.Round(y*1000)&0x1FFFFF)<<21|((long)Math.Round(z*1000)&0x1FFFFF);
 
         private const int Bk=NativeCyberCityLooks.Bank;
         private const int LBurn=NativeWardZeroLooks.Burn,LTile=NativeWardZeroLooks.Tile,LPanel=NativeWardZeroLooks.Panel,LGlass=NativeWardZeroLooks.Glass,LLight=NativeWardZeroLooks.Light,LInk=NativeWardZeroLooks.Ink;
@@ -104,8 +107,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The id with the map prefix removed, or null for other maps' ids.</summary>
         public static string Stem(string id)=>id!=null&&id.StartsWith("siren-",StringComparison.Ordinal)?id.Substring(6):null;
 
-        /// <summary>Builds the kit for a map's blocks, its hazards and its PvE entries (any may be null).</summary>
-        public static NativeWardZeroKit Build(ContentBlock[] blocks,MapHazard[] hazards,NativeWardEntry[] entries)
+        /// <summary>Builds the kit for a map's blocks, its hazards and its PvE entries (any may be null). `layers`: parts that
+        /// share a plane with a block or an earlier part stand clear of it (NativeSurfaceLayers.Over; off only for the surface
+        /// audit's before count).</summary>
+        public static NativeWardZeroKit Build(ContentBlock[] blocks,MapHazard[] hazards,NativeWardEntry[] entries,bool layers=true)
         {
             var k=new NativeWardZeroKit{blocks=blocks??Array.Empty<ContentBlock>(),hazards=hazards??Array.Empty<MapHazard>(),entries=entries??Array.Empty<NativeWardEntry>()};
             var burn=new List<int>();var gas=new List<int>();var shut=new List<int>();
@@ -117,7 +122,22 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<k.entries.Length;i++)if(k.entries[i]!=null)k.DressEntry(i);
             foreach(int h in k.Shutters)k.ShutterRig(h);foreach(int h in k.Gases)k.GasRig(h);
             k.RouteMarks();
-            k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Routes=k.routes.ToArray();k.parts.Clear();k.glows.Clear();k.routes.Clear();return k;
+            k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Routes=k.routes.ToArray();k.parts.Clear();k.glows.Clear();k.routes.Clear();if(layers)Layers(k.Parts,k.blocks);return k;
+        }
+        // Parts flush with a block or with an earlier part are drawn over it by the least whole steps (NativeSurfaceLayers), at
+        // rest (a moving part's travel adds to the lifted place): the offset moves half the lift along the block's axes and the
+        // half extent grows by half, so only the lifted face moves. Parts of one look, colour, flags and drive may lie either way
+        // over each other (patches of ink); a glowing part is never taken for another.
+        private static void Layers(NativeWardZeroPart[] parts,ContentBlock[] blocks)
+        {
+            var boxes=new NativeSurfaceLayers.Box[parts.Length];
+            for(int i=0;i<parts.Length;i++){var p=parts[i];boxes[i]=NativeSurfaceLayers.Parented(blocks[p.Parent],p.X,p.Y,p.Z,p.Hx,p.Hy,p.Hz,p.Gain==1?NativeSurfaceLayers.Key(p.Look,p.Color,p.Flags,p.Drive):-1);}
+            var lifts=NativeSurfaceLayers.Over(blocks,boxes,out _);
+            for(int i=0;i<parts.Length;i++)
+            {
+                NativeSurfaceLayers.Apply(lifts,i,out float sx,out float sy,out float sz,out float gx,out float gy,out float gz);if(gx==0&&gy==0&&gz==0)continue;
+                ref var p=ref parts[i];p.X+=sx;p.Y+=sy;p.Z+=sz;p.Hx+=gx;p.Hy+=gy;p.Hz+=gz;
+            }
         }
         private void Use(int i){parent=i;b=blocks[i];hx=b.size.x/2;hy=b.size.y/2;hz=b.size.z/2;entryTag=-1;}
         private float Bottom=>b.pos.y-hy;private float Top=>b.pos.y+hy;
@@ -384,8 +404,9 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<26;i++){double u=Hash(b.id+"-ink",i);float px=(float)(Hash(b.id+"-ink",i,1)*2-1)*(hx-.6f),pz=(float)(Hash(b.id+"-ink",i,2)*2-1)*(hz-.6f);
                     P(px,hy+.008f,pz,.4f+1.2f*(float)Hash(b.id+"-ink",i,3),.012f,.4f+1.0f*(float)u,LInk,Bk,InkDeep,1,DriveInk,-1,.35f+.6f*(float)u,0,-.05f,0,fade:false);}
             }
-            // Upper floor lane lines on the concourses (the deck over the north and south halls).
-            if(Starts(s,"deck-"))for(float x=-36;x<=36;x+=2.4f){float z=(b.pos.z>0?1:-1)*16.7f;if(Math.Abs(z-b.pos.z)>hz||Solid(x,z,Upper+.05f,Upper+2))continue;detail=true;P(x-b.pos.x,hy+.006f,z-b.pos.z,1.2f,.01f,.12f,LTube,Bk,0xC8CC9A,.35f,fade:false);detail=false;}
+            // Upper floor lane lines on the concourses (the deck over the north and south halls): each dash on the deck under its
+            // middle (one deck each, so none is drawn twice).
+            if(Starts(s,"deck-"))for(float x=-36;x<=36;x+=2.4f){float z=(b.pos.z>0?1:-1)*16.7f;if(Math.Abs(z-b.pos.z)>hz||x<b.pos.x-hx||x>=b.pos.x+hx||Solid(x,z,Upper+.05f,Upper+2))continue;detail=true;P(x-b.pos.x,hy+.006f,z-b.pos.z,1.2f,.01f,.12f,LTube,Bk,0xC8CC9A,.35f,fade:false);detail=false;}
         }
 
         // ---------------- walls ----------------
@@ -452,7 +473,8 @@ namespace ChipArena.UnityConversion
                 return;
             }
             P(0,hy+.03f,0,alongX?len:.09f,.05f,alongX?.09f:len,LMetal,Bk,Steel);
-            int n=Math.Max(1,(int)(len/1.25f));detail=true;for(int i=0;i<=n;i++){float t=-len/2+len*i/n;P(alongX?t:0,-hy-.4f,alongX?0:t,.05f,.8f,.05f,LMetal,Bk,SteelDark);}
+            // Posts: where two rails meet end to end the first one's post serves both.
+            int n=Math.Max(1,(int)(len/1.25f));detail=true;for(int i=0;i<=n;i++){float t=-len/2+len*i/n;if(!railPosts.Add(Spot(b.pos.x+(alongX?t:0),b.pos.y-hy-.4f,b.pos.z+(alongX?0:t))))continue;P(alongX?t:0,-hy-.4f,alongX?0:t,.05f,.8f,.05f,LMetal,Bk,SteelDark);}
             P(0,-hy-.42f,0,alongX?len:.03f,.03f,alongX?.03f:len,LMetal,Bk,SteelDark);detail=false;
             if(live){for(int side=-1;side<=1;side+=2)P(alongX?0:side*(hx+.012f),0,alongX?side*(hz+.012f):0,alongX?len:.02f,.03f,alongX?.02f:len,LTube,Bk,0x7FE8FF,.8f,DriveGridBar,grid,.6f);
                 for(int e=-1;e<=1;e+=2)Lamp(alongX?e*(len/2-.1f):0,hy+.12f,alongX?0:e*(len/2-.1f),.14f,.14f,.14f,Safe,1.6f,DriveGridLamp,grid);}

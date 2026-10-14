@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
         private readonly List<MetroBatch> wzBatches=new List<MetroBatch>();private int wzUsed;private MaterialPropertyBlock wzOne,wzPit;private Material wzPitMaterial;
         private ContentMap wzMap;private NativeWardZeroKit wzKit;private NativeWardFxScene wzScene;private NativeWardZeroLights wzLights;private MapHazard[] wzHazards=Array.Empty<MapHazard>();private NativeHazardState[] wzStates=Array.Empty<NativeHazardState>();
         private NativeWardEntry[] wzEntries;private float[] wzOpen=Array.Empty<float>();private bool[] wzBreached=Array.Empty<bool>();private readonly bool[] wzSongOn=new bool[2];private readonly float[] wzSongWarn=new float[2];
-        private NativePropBody[] wzParents=Array.Empty<NativePropBody>();private float[] wzSeeds=Array.Empty<float>();private readonly Dictionary<string,int> wzIndex=new Dictionary<string,int>();
+        private NativePropBody[] wzParents=Array.Empty<NativePropBody>();private float[] wzSeeds=Array.Empty<float>(),wzBlockLifts=Array.Empty<float>();private readonly Dictionary<string,int> wzIndex=new Dictionary<string,int>();
         // By block index: the blocks a Hulk's breach has open (their parts hidden) and their knock's shudder (world m).
         private bool[] wzBlockOut=Array.Empty<bool>();private Vector3[] wzNudge=Array.Empty<Vector3>();
         private NativeEntryView[] wzWard;private NativeWardMood wzMood;private float wzLast=-1;private bool wzMoodSet;private NativeArena wzArena;private int wzGeneration=-1;
@@ -90,7 +90,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<blocks.Length;i++)
             {
                 var b=blocks[i];if(b?.id==null||Cutaway(b,cam))continue;var c=NativeBlockLooks.Resolve(look?.blockLooks,null,b.id,b.material,0x8A9496);var lin=MetroLinear(c.Color);
-                WzAdd(Matrix4x4.TRS(Vec(b.pos),Rot(b.rotation),Vector3.one),new Vector4(b.size.x/2,b.size.y/2,b.size.z/2,NativeBlockLooks.Chamfer),new Vector4(b.pos.x,b.pos.y,b.pos.z,0),new Vector4(lin.r,lin.g,lin.b,1),new Vector4(c.Look,1,NativeBlockLooks.Seed(b.id),c.Flags|NativeBlockLooks.Spin(b.id,0)));
+                NativeSurfaceLayers.Apply(wzBlockLifts,i,out float sx,out float sy,out float sz,out float gx,out float gy,out float gz);var rot=Rot(b.rotation);
+                WzAdd(Matrix4x4.TRS(Vec(b.pos)+rot*new Vector3(sx,sy,sz),rot,Vector3.one),new Vector4(b.size.x/2+gx,b.size.y/2+gy,b.size.z/2+gz,NativeBlockLooks.Chamfer),new Vector4(b.pos.x+sx,b.pos.y+sy,b.pos.z+sz,0),new Vector4(lin.r,lin.g,lin.b,1),new Vector4(c.Look,1,NativeBlockLooks.Seed(b.id),c.Flags|NativeBlockLooks.Spin(b.id,0)));
             }
             var parts=wzKit.Parts;bool low=LowGraphics;
             for(int i=0;i<parts.Length;i++)
@@ -131,6 +132,8 @@ namespace ChipArena.UnityConversion
             wzKit=NativeWardZeroKit.Build(blocks,wzHazards,wzEntries);wzScene=NativeWardFxScene.Build(blocks,wzHazards,wzKit,wzEntries);wzLights=NativeWardZeroLights.Build(wzKit);
             wzOpen=new float[wzEntries.Length];wzBreached=new bool[wzEntries.Length];wzParents=new NativePropBody[blocks.Length];wzBlockOut=new bool[blocks.Length];wzNudge=new Vector3[blocks.Length];wzIndex.Clear();for(int i=0;i<blocks.Length;i++)if(blocks[i]?.id!=null)wzIndex[blocks[i].id]=i;
             wzSeeds=new float[wzKit.Parts.Length];for(int i=0;i<wzSeeds.Length;i++)wzSeeds[i]=NativeBlockLooks.Seed(blocks[wzKit.Parts[i].Parent].id+"#"+i);
+            // The menu backdrop draws the blocks itself: with the faces the dressing lifts (NativeSurfaceLayers.Blocks), as in play.
+            wzBlockLifts=NativeSurfaceLayers.Blocks(blocks);
             if(wzWard==null){wzWard=new NativeEntryView[8];for(int i=0;i<8;i++)wzWard[i]=new NativeEntryView{entry=i,kind="vent",mode="dive"};}
         }
         // Each entry's open amount as arena.Entry(e) and NativeWardPresentation read it (drawn: a PvP dive opens half a second

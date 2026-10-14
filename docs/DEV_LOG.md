@@ -1,5 +1,51 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — dressed maps: coincident faces no longer z-fight
+- Branch `claude/map-surface-artifacts` on shared `0671054`. Task: the graphical artifacts on the new maps, including the green-panel surface artifacts (2026-10-13). Z-fighting was suspected, not confirmed.
+- **Confirmed cause (geometric audit, not the recording):** faces drawn at the same depth. Every block and kit part is a chamfered box through NativeBlockLit.
+  - The audit measured what each map draws: blocks as the dressing draws them, kit parts from the Factory, Cyber City and Ward Zero builders, each with its draw's chamfer.
+  - It found same-facing faces in one plane, overlapping on their flat parts, in four ways: a part laid flush on its block, two parts of one fitting, blocks running into each other, and exact duplicates.
+  - Visible pairs: Brickfall 102 (24.8 m²), Factory about 1,540 (222 m²), Cyber City 116 (8.2 m²), Ward Zero 4,234 (168 m²).
+  - Not depth precision or material state: the depths are equal by construction, and the cameras and the shader's depth state are standard.
+- **The green panels:**
+  - Factory lathes (MapLooks `steel-green`, "machine green"): the hazard collar was a slab whose top lay exactly on each bed top (6.4 m² per lathe, at cover height), so green and stripes fought across all six beds.
+  - Also involved: Ward Zero's green tank fluid against the steel caps, Brickfall's green bridge steel against the floors, and Cyber City's planters.
+- **Backdrops:** the skylines draw the same way.
+  - Before: Brickfall 2,404 pairs (812 m²), Factory 237 (1,046 m², two of its stacked tower stages drawn twice), Cyber City 1,259 (102 m², neon trims flush on the towers).
+  - Most are visible from inside the arena.
+- **Duplicates:**
+  - Ward Zero drew every concourse lane dash five times (each deck emitted the dashes over the whole run: 252 extra boxes) and two posts where rails meet.
+  - The Factory drew 6 parts twice.
+- **Fix (render only):**
+  - **New Core `NativeSurfaceLayers`:** moves only the face meant to be seen, outward by whole 2 mm steps. A kit part goes over its block, a later part over an earlier one, a larger block face over a smaller. Two parts with the same look and drive may go either way. Faces wholly inside another box are skipped.
+  - **Where it runs:** blocks are solved alone (`NativeArenaDressing`, Ward Zero menu backdrop); kits are solved over them (the three builders, `layers` default on).
+  - **Backdrops:** `NativeSceneryBuilder` now collects its boxes and emits them at the first `Bake`, after the same pass (same emission order). `NativeCyberCityScenery.Build` does the same.
+    - Backdrop settings (`NativeSurfaceLayers.Far`): overlaps under 2 cm wide are left alone (sub-pixel at 50 m and beyond), and members meeting at a corner may go either way.
+    - Backdrop lifts are capped at 64 mm.
+  - **Lift size:** at most 8 mm on maps and 4 mm on backdrops; about 90% of moved faces move 2 mm.
+  - **Generators:**
+    - The lathe collar is now two strips along the bed sides, so the top stays machine green.
+    - Each Ward lane dash sits on its own deck, and rail junctions share one post.
+    - The Factory static kit drops exact duplicates.
+    - The Factory draw and the layers share `NativeFactoryKit.Bevel`.
+- **Preserved:**
+  - Block data: colliders, ids (Cyber City `pit-*-stair-*` included), nav, hazards, destructibles and spawns.
+  - Cyber City's invisible Cut ramps: collider-only, untouched.
+  - Kit parts keep their parent, look, drive and travel.
+  - No camera or depth-state change.
+- **Checks:**
+  - Unity runtime+editor compile OK.
+  - check_relay exit 0: 649 PASS, including the new `SurfaceChecks` (36 checks).
+  - Python 101 OK (1 skip); package_source OK; `git diff --check` clean; sparse-copy relay 649 PASS.
+  - Audit after the fix: 0 coincident visible faces on all four maps, nothing drawn twice, the same every build.
+  - Backdrops after: Factory 0 and Cyber City 0. Brickfall keeps 48 same-colour pairs, all facing away from the arena.
+  - Cost: in .NET 8 here (Mono not measured), once per map load: Factory kit layers about 25 ms; Brickfall skyline solve about 120 ms (14,629 boxes); Factory skyline 13 ms.
+  - Tools: `CoreTests.dll --surface-audit` (before/after report, `differ`, `dupes`), `--scenery` (backdrops) and `--surfaces` (the regression check, 36 checks).
+- **Not run:**
+  - Unity views from different angles and distances, movement past surfaces, light and shadow inspection, and Windows.
+  - The Windows player's depth format was not measured. 2 mm is resolved at any map distance with a float depth buffer, and to about 30 m with a 24-bit one.
+  - The owner's Oct 13 recording was not available; it is needed to confirm the artifact seen is this one.
+
 ## 2026-10-14 — Claude — melee kills cut the body's mesh along the swing
 - Branch `claude/melee-mesh-slice` on shared `01eb518`. Task: melee deaths used preset joint detachment along the swing's plane; the buzzsaw's mesh split existed. A lethal sword, greatsword or dagger blow now runs through that split (Core `NativeMeleeBisect` from `NativeMeleeSlice`'s plan) with sealed caps, detached pieces and blood along the cut. See docs/BISECT-GIB.md "Melee cuts".
 - What changed:

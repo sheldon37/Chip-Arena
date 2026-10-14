@@ -32,6 +32,10 @@ namespace ChipArena.UnityConversion
     /// telegraph, then black until the segment lands; window-look blocks show it); a banded member's lamp strobes red there
     /// and at S2, glows amber while the members are locked, else stays dark (NativeBlockLooks.Lamp, Locked). With no stress
     /// record the per-block query is skipped (one check a frame; old maps never have one), and no band means no lamp work.
+    /// Faces that share a plane (Core NativeSurfaceLayers.Blocks, once per map): of two blocks' faces that face one way, lie in
+    /// one plane and overlap, the larger is drawn over the other by whole 2 mm steps (the block grows on that side only), so
+    /// the depth test never has to choose between them; colliders and the content never change. The kits do the same for their
+    /// parts over these lifted faces (NativeSurfaceLayers.Over).
     /// No allocations per frame in steady state; new props and new fragment looks allocate once.
     /// AllBlocks includes static, carried and rubble geometry. Only a segment's own members receive its visual telegraph;
     /// overlapping warnings do not sag neighbouring static floors or unrelated structures.
@@ -50,7 +54,7 @@ namespace ChipArena.UnityConversion
         /// ArenaPresentation.NudgeWardBlock; the block itself never moves); empty until a breach knocks, cleared with Hidden.</summary>
         public static readonly Dictionary<string,Vector3> Nudged=new Dictionary<string,Vector3>();
         private const float BoundsSize=200;
-        private sealed class Entry {public int Look,Color,Flags,Seen;public string Segment;public uint Hash;public float Seed,Max,S1,S2,Reach;public bool Pending;public Vector3 Last;public Vector4 Size,Rest,Linear;}
+        private sealed class Entry {public int Look,Color,Flags,Seen;public string Segment;public uint Hash;public float Seed,Max,S1,S2,Reach;public bool Pending;public Vector3 Last,Offset;public Vector4 Size,Rest,Linear;}
         private sealed class Batch {public readonly Matrix4x4[] Matrices=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];}
         private struct Gone {public Vector3 Position;public float Reach;public int Look,Color,Flags,Frame;public Vector4 Linear;}
         private struct Kept {public int Look,Color,Flags;}
@@ -63,6 +67,9 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,Kept> kept=new Dictionary<string,Kept>();
         private NativeArena liveArena;private int liveGeneration=-1,lastEvent;private float published=-1;
         private NativeArena drawn;private int generation=-1;private string mapId;private MapLook look;private MapLookBlock[] preview;private bool dressed;private int floor;
+        // The map's blocks' face lifts (Core NativeSurfaceLayers.Blocks: of two faces in one plane the larger is drawn over, by
+        // whole 2 mm steps; render only) and each block id's index into them; fragments and rubble take none.
+        private float[] lifts=Array.Empty<float>();private readonly Dictionary<string,int> liftIndex=new Dictionary<string,int>();private ContentBlock[] liftBlocks;
         private Mesh[] meshes;private Material material;private MaterialPropertyBlock block;private bool instancing;
         private static readonly int SizeId=Shader.PropertyToID("_BlockSize"),RestId=Shader.PropertyToID("_BlockRest"),ColorId=Shader.PropertyToID("_BlockColor"),LookId=Shader.PropertyToID("_BlockLook");
         private static readonly int HazeId=Shader.PropertyToID("_ArenaHaze"),HazeTopId=Shader.PropertyToID("_ArenaHazeTop"),DustId=Shader.PropertyToID("_ArenaDust"),CoatId=Shader.PropertyToID(NativeDustCoat.Global);
@@ -118,7 +125,7 @@ namespace ChipArena.UnityConversion
                 }
                 int flags=e.Flags|NativeBlockLooks.Spin(e.Hash,stage);if((e.Flags&NativeBlockLooks.Band)!=0)flags|=NativeBlockLooks.Lamp(stage,stressed,locked,redOn);
                 rest.w=coat.Local(pos.x,pos.z);var color=e.Linear;color.w=window;
-                Add(NativeBlockLooks.MeshFor(stage,size.y),Matrix4x4.TRS(pos,rot,Vector3.one),size,rest,color,new Vector4(e.Look,NativeBlockLooks.Normalised(f,e.S1,e.S2),e.Seed,flags));
+                Add(NativeBlockLooks.MeshFor(stage,size.y),Matrix4x4.TRS(pos+rot*e.Offset,rot,Vector3.one),size,rest,color,new Vector4(e.Look,NativeBlockLooks.Normalised(f,e.S1,e.S2),e.Seed,flags));
             }
             NativeLighting.ArenaRim();var k=look?.blocks;Color haze=k!=null?Linear(NativeArena.ColorOf(k.hazeColor)):Color.black;
             Shader.SetGlobalVector(HazeId,new Vector4(haze.r,haze.g,haze.b,k!=null?k.haze:0));Shader.SetGlobalFloat(HazeTopId,k!=null&&k.hazeTop>0?k.hazeTop:1);Shader.SetGlobalFloat(DustId,k!=null?k.dust:0);
@@ -128,6 +135,7 @@ namespace ChipArena.UnityConversion
         {
             foreach(var e in entries.Values)spare.Push(e);entries.Clear();drawn=arena;generation=arena.Generation;mapId=arena.MapId;
             var map=arena.Content.Map(mapId);look=NativeLighting.Look(map);preview=NativeLighting.LookSet().preview;dressed=NativeBlockLooks.Dressed(look,Preview);floor=map.floor;
+            var source=map.blocks;if(dressed&&!ReferenceEquals(source,liftBlocks)){liftBlocks=source;lifts=NativeSurfaceLayers.Blocks(source);liftIndex.Clear();if(source!=null)for(int i=0;i<source.Length;i++)if(source[i]?.id!=null&&!liftIndex.ContainsKey(source[i].id))liftIndex[source[i].id]=i;}
             materials.Clear();foreach(var m in arena.Content.materials)if(m!=null&&m.id!=null)materials[m.id]=m;
             // The killcam's replay arena (in its own scene) shares the live round's dust coat and fragment looks; a new round or arena
             // starts clean ones.
@@ -144,7 +152,12 @@ namespace ChipArena.UnityConversion
             e.Look=c.Look;e.Color=c.Color;e.Flags=prop.Fragment?c.Flags&~(NativeBlockLooks.Band|NativeBlockLooks.Tag)|NativeBlockLooks.Fragment:c.Flags;e.Pending=prop.Fragment&&parent==null;
             if(prop.Fragment&&kept.TryGetValue(b.id??"",out var k)){e.Look=k.Look;e.Color=k.Color;e.Flags=k.Flags;e.Pending=false;}
             e.Hash=NativeBlockLooks.Hash(b.id);e.Seed=NativeBlockLooks.Seed(b.id);e.Max=NativeBlockLooks.StageMax(b,m,out e.S1,out e.S2);e.Seen=0;
-            e.Size=new Vector4(b.size.x*.5f,b.size.y*.5f,b.size.z*.5f,NativeBlockLooks.Chamfer);e.Rest=new Vector4(b.pos.x,b.pos.y,b.pos.z,0);e.Reach=e.Size.magnitude+.3f;e.Last=prop.transform.position;
+            e.Size=new Vector4(b.size.x*.5f,b.size.y*.5f,b.size.z*.5f,NativeBlockLooks.Chamfer);e.Rest=new Vector4(b.pos.x,b.pos.y,b.pos.z,0);e.Offset=Vector3.zero;
+            // A map block's lifted faces: the centre moves half the lift along its own axes, the half extent grows by half and the rest
+            // centre moves with it (the pattern stays put).
+            if(!prop.Fragment&&b.id!=null&&liftIndex.TryGetValue(b.id,out int lifted))
+            {NativeSurfaceLayers.Apply(lifts,lifted,out float sx,out float sy,out float sz,out float gx,out float gy,out float gz);e.Size+=new Vector4(gx,gy,gz,0);e.Offset=new Vector3(sx,sy,sz);e.Rest+=new Vector4(sx,sy,sz,0);}
+            e.Reach=e.Size.magnitude+.3f;e.Last=prop.transform.position;
             var lin=Linear(NativeArena.ColorOf(e.Color));e.Linear=new Vector4(lin.r,lin.g,lin.b,1);
             prop.GetComponentsInChildren(true,renderers);foreach(var r in renderers)r.forceRenderingOff=true;renderers.Clear();
             return e;
