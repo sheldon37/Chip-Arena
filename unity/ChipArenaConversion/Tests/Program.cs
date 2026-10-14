@@ -10,7 +10,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition-integration"){ExpeditionIntegrationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition"){ExpeditionChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-view"){ExpeditionChecks.Run();ExpeditionPresentationChecks.Run(ProjectRoot());return 0;}
-            ExpeditionChecks.Run();
+            if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
+            DevAbuseChecks.Run();ExpeditionChecks.Run();
             if(args.Length==1&&args[0]=="--navigation"){NavSearchChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--wardzero-simulation"){var wardRoot=ProjectRoot();WardSimulationChecks.Run(wardRoot);HulkBreachChecks.Run(wardRoot);WardZeroChecks.Run(wardRoot);StageVentChecks.Run(wardRoot);HordeKindChecks.Run(wardRoot);ZombieMotionChecks.Run(wardRoot);HulkSpitterChecks.Run(wardRoot);HulkBreachFxChecks.Run(wardRoot);HulkMotionChecks.Run(wardRoot);return 0;}
             if(args.Length==1&&args[0]=="--cloudflare-smoke"){CloudflareChecks.Live(ProjectRoot()).GetAwaiter().GetResult();return 0;}
