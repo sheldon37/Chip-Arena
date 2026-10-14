@@ -7441,3 +7441,7 @@ lane, breaking walls on the way, from across the map when hunting a pilot it kno
 - Not run: Unity Editor play, Windows build, two-client/guest view, killcam. Nothing plays live until Astra emits the events or
   the fields. Risks: Unity's IMGUI HUD and the shaking walls' drawn copies are unverified in the Editor; the gallery's walls use the
   existing gallery breach clocks. Pushed, not merged or released. Next: Astra confirms or amends 10.5 and implements it.
+- Checks on `de61d6c` (shared `85c3753` merged, keeping both sides of DEV_LOG/PROJECT_STATE): Unity runtime+editor compile OK;
+  managed/relay 683 PASS (rc 0); CI-layout export 683 PASS (rc 0); Python 106 run, 1 skipped, OK; source package OK (1971 files);
+  git diff --check clean. The first CI-layout run failed on a HulkBreachFxChecks source pin of the HordeCues line; the audio hook
+  moved to EffectsFrame (`de61d6c`) and both runs then passed.
