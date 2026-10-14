@@ -1,5 +1,53 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — Spitter acid and Hulk/brute slam, landing and wall-break effects, high-quality pass (owner: "Improve visual fx from spitter/hulk zombie (make them high quality) acid needs to look better. Slam/landing/wall break [effects] also needs improvements from hulk/brute")
+- Branch `claude/zombie-fx` on the shared Unity head `9270d95` (`claude/sleepy-ritchie-g8ruhv`). Implemented and pushed on the branch; not merged or released. Effects only: the Hulk/brute body animation is the parallel `claude/hulk-motion` branch, and no pose, clip, gait or jaw code changed here.
+- **New:** Core `NativeZombieFx` (pure shapes; engine and clock free; no allocation) and Runtime `NativeZombieFxDraw`, which draws them through the shared renderer and its own decal layer.
+  - Renderer additions in `NativeVfxDraw`: `Blob` (a stretched lit glossy sphere), `Rubble` (lit chunks), `SlamWave` (Quake's upright wave), a glowing `Smoke` and a soft `Vapor` (optionally upright).
+  - `NativeFxDraw(int effectsQueue)`: the decals (pool film, spatter, etch, cracks, crush, corroded blotches, wall cracks) draw at Transparent-2, so fumes and dust over them stay in front. No shader edits.
+- **Acid** (radius and duration from `NativeSpitterRules`; the glob still rides `NativeHordeFx.Glob`, the arc the server validates):
+  - Glob: a glossy viscous core (stretched along its flight, wobbling, hot fresnel rim, inner glow), a translucent toon-water membrane, a halo, glowing vapour shed behind it, a stringy teardrop tail and drips falling with gravity.
+  - Wind-up: a clot gathers in the mouth, strings across the unhinging jaw snap as it opens wide, teardrop drool, a tighter throat glow.
+  - Landing: a flash, a crown of liquid, 14 drops thrown on arcs that all land inside the 1.3 m radius and leave spatter marks, a sizzle.
+  - Pool: a lobed liquid film (dark glossy core, bright meniscus) reaching 97% of the 1.3 m in .32 s and never passing it; a faint ring holds the exact radius until 4 s; glossy bubbles swell and pop; glints; vapour fumes thicken while it evaporates over its last 1.3 s; an etched mark fades over 5 s after.
+  - An authority acid record that ends on its own keeps its etch; one dropped early (phase hold, reset) still clears at once. The glob pool is 24 slots and never takes a live glob.
+  - Corrosion: a ragged eaten blotch with a cooling acid rim, glowing pits, drips running down, sizzle. A splashed pilot gets sheen, drops, drips on the body surface and sizzle; an interrupted spit dribbles teardrops into a small fizzling pool.
+- **Impacts:** smash, jump-in landing and a Hulk's death crash, each held where it struck (an impact pool keyed by add id and birth; before, a smash's marks followed the add and vanished with its next attack).
+  - Drawn: a flash; the upright slam wave reaching the authority's radius (the flat shock rings are gone); a crushed patch; jagged branching cracks with a hot ink seam; toon dust rolling low over the floor, its body inside the radius; a dust column; lit rubble on ballistic arcs bouncing twice to rest inside the radius; sparks.
+  - The Hulk's landing adds a second wave and the crater with its lit rubble rim.
+  - Radii: brute smash 1.6 m and Hulk smash 2.8 m (`SmashRadiusOf`, round `SmashAheadOf`); brute landing 2.4 m and Hulk landing 5.5 m (`DropProfile.SlamRadius`); crash 2.6 m as before.
+  - Unchanged: telegraph discs, shakes, the Hulk's shove and the cues. Hulk footfall dust is toon dust; its stomp cracks are decals.
+- **Wall breach** (entry and dynamic block):
+  - Each blow: a flash, soft dust off the struck face (grit out of the far face of a block), chips spalling to the floor, cracks dark with a softer hot seam.
+  - The break: a bigger toon dust burst, lit grit thrown out and bouncing, sparks from the struck spot, a dust curtain pouring off the gap's top edge, dust off the foot.
+  - While it waits: the stage hardlight glitches along the gap's outline (both faces for a block), waking toward `restoreAt`. In the rebuild, hardlight motes ride the pieces home.
+  - Unchanged: the pieces, panel, scan, wireframes and flash.
+- **Tiers:** Reduced effects and the low tier halve every stream and drop the extras (sparks, glints, membrane, glob fumes, bubble domes, shoulder sheen); thinner tiers draw larger dust puffs. The renderer's low tier also thins toon puffs. Distance banding is the minion effects' (40 m, heavy 80 m; halved past 24 m, heavy 48 m).
+- **Gameplay unchanged:** no hit timing, hitbox, damage, cooldown, pool radius or duration, movement, record, event or network change.
+- **Timing coupling for `claude/hulk-motion`** (also in SIREN-ZOMBIES.md): the effects fire on the replicated marks and never read a pose. Smash at LastAttack + hit; landing at `NativeHordeDrop.LandAt(ActiveAt, profile)`; breach blows at `NativeBreach.Blows` after the knock start (breakAt - 2.1). The takes must keep their impact frames on these marks.
+- **Superseded:** the flat-shape functions in `NativeHordeFx` (puddle, splash, shockwave, debris, dust wall) stay in Core under their existing checks; the runtime no longer calls them.
+- **Files:**
+  - Core: `NativeZombieFx.cs` (+ .meta).
+  - Runtime: `NativeZombieFxDraw.cs` (+ .meta), `NativeVfxDraw.cs`, `NativeFxDraw.cs`, `NativeHordeAcidPresentation.cs`, `NativeHordeKindPresentation.cs` (effect cases only), `NativeHordeZombiePresentation.cs`, `NativeHordeBreachPresentation.cs`, `NativeDevEffects.cs` (dispose).
+  - Tests: `ZombieFxChecks.cs` (+ .meta), `Program.cs`, `ZombieMotionChecks.cs` (the smash text check now names the impact call).
+  - Docs: SIREN-ZOMBIES.md, PROJECT_STATE.
+- **Checks (actual):**
+  - Unity 6000.3.24f1 runtime+editor compile OK.
+  - `check_relay.py` exit 0, 651 PASS (base 650 + `zombie fx`, 725,910 checks: sizes against the rules' radii and durations, timing from the strike and touchdown, tier budgets, determinism, zero allocation over 1,200 frames, a draw-only runtime). Unchanged: `hulk and spitter` 49,154, `hulk wall breach fx` 2,307,995, `zombie motion` 29,303, `horde kinds` 433,790.
+  - Python 101 OK (1 skip); `package_source.py` OK; `git diff --check` clean; sparse-copy relay exit 0.
+- **Offline renders** (scratch harness, not in the repo): the real `NativeZombieFxDraw` over the real `NativeVfxDraw` and `NativeFxDraw`, compiled against a UnityEngine stub. The NativeVfx, NativeVfxLit and NativeBloom SHARED blocks run as GLSL in WebGL2.
+  - "Before" is the base commit's draw code ported verbatim onto the same primitives.
+  - Sheets: 14 before/after at full tier, and 4 each at the reduced and low tiers.
+  - Peak per effect, full / low (billboards, lit vertices, decal vertices): Hulk landing 48/10, 1,644/840, 690/354; pool 54/25, 810/0, 482/419; block breach 61/30.
+  - The real drawer's calls allocate 0 bytes over 1,695 steady-state frames.
+- **Not run:** Unity Editor import and play, Windows, two-client and killcam playback, GPU cost. The harness has no zombie models (box proxies) and no breach scan or wireframes.
+- **Risks:**
+  - Dust and vapour density are tuned in a dark harness scene, not Unity's lighting.
+  - The flat pool and crack decals can clip on uneven floors or slopes (2–11 mm lifts).
+  - Rubble is cosmetic and can intersect props.
+  - Low-tier Hulk dust is sparse.
+- **Next:** the owner's look in the Dev Sandbox gallery and a build.
+
 ## 2026-10-14 — Claude — dressed maps: coincident faces no longer z-fight
 - Branch `claude/map-surface-artifacts` on shared `0671054`. Task: the graphical artifacts on the new maps, including the green-panel surface artifacts (2026-10-13). Z-fighting was suspected, not confirmed.
 - **Confirmed cause (geometric audit, not the recording):** faces drawn at the same depth. Every block and kit part is a chamfered box through NativeBlockLit.

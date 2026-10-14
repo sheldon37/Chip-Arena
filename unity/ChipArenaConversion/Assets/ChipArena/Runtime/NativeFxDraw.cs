@@ -44,11 +44,14 @@ namespace ChipArena.UnityConversion
         // Unit sphere for orbs (positions = normals) and the source's shell and jet geometry.
         private readonly Vector3[] orbPoints;private readonly int[] orbIndices;
         private readonly double[] shellPositions,shellUv,jetPositions,jetNormals,jetUv;private readonly int[] shellIndices,jetIndices;
-        public NativeFxDraw()
+        public NativeFxDraw():this((int)RenderQueue.Transparent+1){}
+        /// <summary>The same primitives with the effect layer in its own queue: the zombie effects' floor and wall decals
+        /// (Runtime/NativeZombieFxDraw.cs) draw before the effect billboards, so smoke and fumes over a decal stay in front of it.</summary>
+        public NativeFxDraw(int effectsQueue)
         {
             var shader=Resources.Load<Shader>("NativeSirenFx");if(shader==null)throw new InvalidOperationException("NativeSirenFx shader is missing");
             solid=new Material(shader){name="Native Siren solid",renderQueue=(int)RenderQueue.Geometry+10};solid.SetFloat("_Src",(float)BlendMode.One);solid.SetFloat("_Dst",(float)BlendMode.Zero);solid.SetFloat("_ZWrite",1);
-            effects=new Material(shader){name="Native Siren effects",renderQueue=(int)RenderQueue.Transparent+1};effects.SetOverrideTag("RenderType","Transparent");
+            effects=new Material(shader){name="Native Siren effects",renderQueue=effectsQueue};effects.SetOverrideTag("RenderType","Transparent");
             effects.SetFloat("_Src",(float)BlendMode.One);effects.SetFloat("_Dst",(float)BlendMode.OneMinusSrcAlpha);effects.SetFloat("_ZWrite",0);
             overlay=new Material(shader){name="Native Siren overlay",renderQueue=(int)RenderQueue.Overlay};overlay.SetOverrideTag("RenderType","Transparent");
             overlay.SetFloat("_Src",(float)BlendMode.One);overlay.SetFloat("_Dst",(float)BlendMode.OneMinusSrcAlpha);overlay.SetFloat("_ZWrite",0);overlay.SetFloat("_ZTest",(float)CompareFunction.Always);
