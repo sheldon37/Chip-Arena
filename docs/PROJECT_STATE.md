@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 Expedition view fields: `codex/expedition-view-fields` on shared `768ebc9` adds member `seat`, boss spawn `x/y/z` and `hp/maxHp`, and the layout fingerprint before the first area load. Claude binding contract: EXPEDITION-PRESENTATION and DEV_LOG. Scene/combat integration remains unfinished; no playable or released Expedition claim.
+
 2026-10-14 Expedition states: `claude/expedition-states` (base shared `6da0330`, merged shared `9cc6d29`) draws the Ward Zero biocontainment doors (leaves over the 1 s transitions, a seal over the closure while it blocks), the final gate (unlock, rise, lattice, beacon), the sanctuary edge and SAFE chip, the area transfer screen and the once-per-arrival boss intro. It is driven only by the director's view state and the layout fingerprint. Managed checks pass; Unity/Windows/two-client unrun. Astra: a member seat id, a boss position and boss HP (docs/EXPEDITION-PRESENTATION.md). Pushed, not merged.
 
 2026-10-14 Hulk charge at pilots: `claude/hulk-charge` (base shared `b22e59f`) proposes contract v2 (docs/SIREN-ZOMBIES.md 10.5: punch/swipe at the hunted pilot, a cross-map charge locked at the wind-up, breaking walls on contact, `chargeTarget`) and builds its presentation: tell and lock streak, held run, walls shaking before the crash-through, the hunted pilot's HUD/audio warning, punch/swipe impacts, a gallery demo. Dormant until Astra replicates it; managed checks and Unity compile pass; Unity/Windows unrun. Pushed, not merged.

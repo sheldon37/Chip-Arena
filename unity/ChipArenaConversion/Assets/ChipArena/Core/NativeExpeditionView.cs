@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
 
     [Serializable] public sealed class ExpeditionViewMember
     {
-        public string account, name, weapon, carriedBy;public int reprintCost;
+        public string account, name, weapon, carriedBy;public int reprintCost, seat;
         public bool connected, alive, safe, extracted, host, exitVote, extractVote;
     }
     [Serializable] public sealed class ExpeditionViewInstance
@@ -110,6 +110,8 @@ namespace ChipArena.UnityConversion
         public bool PackageStored, EndpointReserved, AckReceived;public double Deadline=-1, TransportClock=-1;
         public Func<string,int> ReprintCost;
         public Func<string,string> DisplayName;
+        /// <summary>Current authority account-to-pilot mapping; zero means no bound seat.</summary>
+        public Func<string,int> Seat;
         public ExpeditionWorldAnchor[] Anchors;
         public ExpeditionChestOffer[] Chests;
     }
@@ -172,7 +174,7 @@ namespace ChipArena.UnityConversion
                 difficulty=scaling.Evaluate(s.elapsed,party,s.loop,s.phase==ExpeditionPhase.Instance),
                 savedRevision=sources.Saved!=null&&sources.Saved.checkpoint!=null&&sources.Saved.checkpoint.run==s.run?sources.Saved.checkpoint.revision:-1,
             };
-            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
+            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,seat=Math.Max(0,sources.Seat?.Invoke(p.account)??0),name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
                 safe=p.safe,extracted=p.extracted,host=p.account==s.host,exitVote=s.exitVotes.Contains(p.account),extractVote=s.extractVotes.Contains(p.account)}).ToArray();
             v.instances=s.instances.Select(i=>new ExpeditionViewInstance{id=i.id,target=i.target,progress=i.progress,entered=i.entered,cleared=i.cleared,
                 current=s.phase==ExpeditionPhase.Instance&&i.id==s.area,bosses=(string[])i.bosses.Clone(),defeated=(string[])i.defeated.Clone()}).ToArray();

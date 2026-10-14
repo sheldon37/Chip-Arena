@@ -7514,3 +7514,33 @@ Visuals only.
     inserted into it. `d51bd52` moved the hook after the pinned line.
   - The run5 relay, run at the same time as the CI-layout run, stopped once on the existing Spawn-in zero-allocation check
     (696 bytes). The CI-layout run of the same commit and a solo relay rerun both pass it.
+
+
+## 2026-10-14 — Astra: Expedition public state fields for Claude
+
+- Branch `codex/expedition-view-fields`, based on shared `768ebc9812a4b730695ff5a41a0aa360101593a7`.
+  Supplies the four missing view inputs; presentation stays with Claude.
+- Exact public fields: `members[].seat` (`int`, current `NativeSeat.id`, 0 if unbound);
+  `bossArrivals[].x/y/z` (`float`, immutable world spawn position); `bossArrivals[].hp/maxHp`
+  (`double`, current health and maximum); `areaBarrier.layout` (validated fingerprint, now
+  populated on initial layout binding while the barrier is inactive at generation 0).
+- `BindExpedition` supplies `Sources.Seat` from the current match's account-to-seat mapping.
+  The callback is evaluated at projection time, so seat replacement does not retain an old id.
+  No account authorization, reward privacy, save schema, damage, timing or collision rules change.
+- Authority adapter contract: `RecordBossArrival(id, archetype, knownArchetype, spawn, hp, maxHp)`
+  now requires actual spawn/health; all repository callers updated. Call
+  `UpdateBossHealth(area, id, hp, maxHp)` after combat/scaling before projection. Nonfinite or
+  invalid health and unknown/wrong-area bosses are refused. Updates preserve the arrival
+  timestamp and point; `BossDefeated`/`FinalDefeated` publish zero HP while keeping max HP.
+  Existing public-view transport detects these source changes even at an unchanged rule revision.
+- Checks: focused Expedition director 70 checks passed (including initial constructor binding,
+  seats/rebinding, immutable spawn, live health, instance/final death, detached views and a
+  serialized public/private late-guest projection). Roslyn syntax scan: 0 errors. Source package
+  structure: 1980 files passed. Real JsonUtility envelope assertion added to the Unity build gate.
+- Not run: Unity Editor semantic compile/JsonUtility execution, Windows, real host/guest gameplay
+  or presentation acceptance (no Unity installation here). The playable scene/combat adapter and
+  session binding remain unfinished existing work; this is a view-contract implementation.
+- Handoff: Claude can bind SAFE tags to `seat`, the crack/roar to `x/y/z`, and boss bars to
+  `hp/maxHp` (`maxHp == 0` means unavailable on a legacy frame). See EXPEDITION-PRESENTATION.
+  Implemented on task branch; PR carries source merge status. No binary built or test/live release published.
+- Final verification: full managed/real-relay suite passed (684 PASS groups, exit 0), including Expedition rules, presentation, integration, director and states. `git diff --check` clean.
