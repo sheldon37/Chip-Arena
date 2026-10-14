@@ -136,10 +136,19 @@ namespace ChipArena.UnityConversion
             Vector3 left=side*boom+Vector3.up*2-axis*1.5f,right=-side*boom+Vector3.up*2-axis*1.5f;
             if(finalCameraSide==0)finalCameraSide=FinalClearance(focus,left)>=FinalClearance(focus,right)?1:-1;
             offset=finalCameraSide>0?left:right;finalCameraAim=focus;
-            if(finalProjectile>0&&time<replayDeath&&replayShots.Sample(finalProjectile,time,out var at,out var velocity)&&velocity.Length>.01f)
+            if(finalProjectile>0&&FinalWall>=.35f&&time<replayDeath&&replayShots.Sample(finalProjectile,time,out var at,out var velocity)&&velocity.Length>.01f)
             {
                 Vector3 direction=NativeArena.Vec(velocity).normalized;focus=NativeArena.Vec(at);offset=-direction*.65f+Vector3.up*.12f;
                 finalCameraAim=focus+direction*6;finalFlightEye=focus+offset;finalFlightAim=finalCameraAim;finalFlew=true;finalFov=0;return;
+            }
+            if(finalProjectile>0&&!finalFlew&&killer!=null&&time<replayDeath)
+            {
+                // Open on the killer's recorded aim before cutting to the actual shot's flight.
+                // Even when the shot predates our preroll, give the shooter a brief establishing view.
+                Quaternion aim=Quaternion.Euler(-killer.Pitch,killer.Yaw,0);
+                focus=killer.Body.position+Vector3.up*(NativeViewRules.EyeHeight+.22f)+Quaternion.Euler(0,killer.Yaw,0)*Vector3.right*.85f;
+                offset=aim*Vector3.back*NativeViewRules.ThirdDistance+Vector3.up*NativeViewRules.ThirdLift;
+                finalCameraAim=focus+aim*Vector3.forward*20;finalFov=0;return;
             }
             if(finalFlew)
             {

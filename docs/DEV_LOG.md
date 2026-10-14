@@ -6218,3 +6218,15 @@ source package 1852 files, C# syntax/whitespace pass. Added Unity death-field JS
 roundtrip/default gate; real Unity/Windows host/guest and visual framing remain
 unrun. These are camera heuristics, not a guarantee every occluded shot is visible.
 Merge/builder sync receipts in task PR.
+
+## 2026-10-14 — Codex: projectile final starts on killer viewpoint
+
+Branch `codex/final-projectile-killer-view`, base `cc52ed9`. Owner requests
+killer POV before projectile follow. Eligible flight clips now open on the
+killer's recorded over-shoulder aim; cut to the exact recorded shot when present,
+with minimum .35 wall seconds on the killer even if flight predates preroll.
+Existing side fallback, collision cast, impact pullback and two-second delay
+retained. Presentation-only; no damage/physics/network changes. All 35 managed/
+relay checks pass (110 final killcam checks), package 1852 files, runtime syntax
+and whitespace pass. Windows build/visual acceptance pending. Merge and builder
+sync receipts in task PR.
