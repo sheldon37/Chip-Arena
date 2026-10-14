@@ -83,9 +83,9 @@ namespace ChipArena.UnityConversion
             if(!Mutable||s.phase!=ExpeditionPhase.Town||!FinalUnlocked||Living().Length==0)return false;
             s.phase=ExpeditionPhase.FinalBoss;foreach(var p in s.members)p.safe=false;ResetVotes();Changed();return true;
         }
-        public bool FinishFinal()
+        public bool FinishFinal(int drops=-1)
         {
-            if(!Mutable||s.phase!=ExpeditionPhase.FinalBoss)return false;
+            if(!Mutable||s.phase!=ExpeditionPhase.FinalBoss||!IssueBossRewards(EventKey("final:boss"),drops))return false;
             s.phase=ExpeditionPhase.Victory;ResetVotes();Changed();return true;
         }
         public bool NextLoop()
@@ -94,6 +94,14 @@ namespace ChipArena.UnityConversion
             s.loop++;foreach(var i in s.instances){i.entered=i.cleared=false;i.progress=0;i.bosses=i.defeated=Array.Empty<string>();}
             s.area=s.world;s.phase=ExpeditionPhase.Town;ResetVotes();foreach(var p in s.members)if(Live(p))p.safe=true;Changed();return true;
         }
+        public bool VoteContinue(string account,bool yes)
+        {
+            var p=Member(account);if(!Mutable||s.phase!=ExpeditionPhase.Victory||p==null||!p.connected||p.extracted)return false;
+            s.continueVotes=Vote(s.continueVotes,account,yes);if(yes)s.extractVotes=Vote(s.extractVotes,account,false);RefreshVotes();Changed();return true;
+        }
+        public bool ContinueReady=>s.phase==ExpeditionPhase.Victory&&s.members.Any(p=>p.connected&&!p.extracted)&&
+            s.members.Where(p=>p.connected&&!p.extracted).All(p=>s.continueVotes.Contains(p.account));
+        public bool AdvanceWhenReady()=>ContinueReady&&NextLoop();
         public bool VoteExit(string account,bool yes)
         {
             if(!Mutable||s.phase!=ExpeditionPhase.Instance||!Current.cleared||!Live(Member(account)))return false;
@@ -102,12 +110,13 @@ namespace ChipArena.UnityConversion
         public bool VoteExtraction(string account,bool yes)
         {
             if(!Mutable||!ExtractionUnlocked||!Live(Member(account))||!Member(account).safe)return false;
-            s.extractVotes=Vote(s.extractVotes,account,yes);RefreshVotes();Changed();return true;
+            s.extractVotes=Vote(s.extractVotes,account,yes);if(yes)s.continueVotes=Vote(s.continueVotes,account,false);RefreshVotes();Changed();return true;
         }
         private static string[] Vote(string[] votes,string account,bool yes)=>yes?votes.Contains(account)?votes:Add(votes,account):votes.Where(a=>a!=account).ToArray();
-        private void ResetVotes(){s.exitVotes=s.extractVotes=Array.Empty<string>();s.exitAt=s.extractAt=-1;}
+        private void ResetVotes(){s.exitVotes=s.extractVotes=s.continueVotes=Array.Empty<string>();s.exitAt=s.extractAt=-1;}
         private void RefreshVotes()
         {
+            s.continueVotes=s.continueVotes.Where(a=>Member(a)?.connected==true&&!Member(a).extracted).ToArray();
             var live=Living();s.exitVotes=s.exitVotes.Where(live.Contains).ToArray();
             s.extractVotes=s.extractVotes.Where(a=>live.Contains(a)&&Member(a).safe).ToArray();
             if(s.exitVotes.Length==0)s.exitAt=-1;

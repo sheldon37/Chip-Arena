@@ -130,7 +130,7 @@ namespace ChipArena.UnityConversion
         public static RosterRow[] Roster(ExpeditionView v)
         {
             return v.members.Select(m=>new RosterRow{account=m.account,you=m.account==v.viewer,host=m.host,
-                status=m.extracted?"EXTRACTED":!m.connected?"OFFLINE":!m.alive?(Has(m.carriedBy)?"CARRIED BY "+Who(m.carriedBy):"DOWN"):m.safe?"IN RUN · SANCTUARY":"IN RUN",
+                status=m.extracted?"EXTRACTED":!m.connected?"OFFLINE":v.phase==ExpeditionPhase.Victory&&v.continueVotes.Contains(m.account)?"CONTINUING":!m.alive?(Has(m.carriedBy)?"CARRIED BY "+Who(m.carriedBy):"DOWN"):m.safe?"IN RUN · SANCTUARY":"IN RUN",
                 tone=m.extracted?ExpeditionTone.Warn:!m.connected?ExpeditionTone.Muted:!m.alive?ExpeditionTone.Danger:ExpeditionTone.Good}).ToArray();
         }
 
@@ -267,8 +267,8 @@ namespace ChipArena.UnityConversion
             steps.Add(new TransferStep{label="Freeze the run",detail=t.active?"Clock and commands frozen at revision "+t.revision:ended?"Released":"Not frozen",state=t.active||ended?ExpeditionStep.Done:ExpeditionStep.Pending});
             var transport=t.endpointMigration?(t.active?ExpeditionStep.Active:ended&&t.stage==ExpeditionTransferStage.Committed?ExpeditionStep.Done:ExpeditionStep.Pending):ExpeditionStep.Unavailable;
             string missing="Not implemented in this build";
-            steps.Add(new TransferStep{label="Store the live simulation at "+next,detail=t.endpointMigration?"Destination stores and verifies the package":missing,state=transport});
-            steps.Add(new TransferStep{label="Destination ACK",detail=t.endpointMigration?"Transaction, digest, revision and epoch "+t.nextEpoch:missing,state=transport});
+            steps.Add(new TransferStep{label="Store the live simulation at "+next,detail=t.endpointMigration?"Destination stores and verifies the package":missing,state=t.endpointMigration&&t.packageStored?ExpeditionStep.Done:transport});
+            steps.Add(new TransferStep{label="Destination ACK",detail=t.endpointMigration?"Transaction, digest, revision and epoch "+t.nextEpoch:missing,state=t.endpointMigration&&t.ackReceived?ExpeditionStep.Done:transport});
             switch(t.stage)
             {
                 case ExpeditionTransferStage.Committed:

@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     // intent, an IExpeditionCommands sends it, and ExpeditionIntentTracker shows it as confirmed only once the authority's state (the
     // next ExpeditionView) reflects it. A refusal, a missing hook or a missing transport is shown as such, never as success.
 
-    public enum ExpeditionIntent { None, VoteExit, CancelExit, VoteExtraction, CancelExtraction, Extract, NextLoop, Claim, Select, Reprint }
+    public enum ExpeditionIntent { None, VoteExit, CancelExit, VoteExtraction, CancelExtraction, Extract, NextLoop, Claim, Select, Reprint, VoteContinue, CancelContinue }
     public enum ExpeditionCommandState { Idle, Pending, Confirmed, Refused, Unavailable, Failed }
 
     [Serializable] public struct ExpeditionCommand
@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         public ExpeditionIntent intent;public string target, chip;
         public ExpeditionCommand(ExpeditionIntent intent,string target=null,string chip=null){this.intent=intent;this.target=target;this.chip=chip;}
         /// <summary>Commands that replace each other share a key (a vote and its cancel; one pick per reward).</summary>
-        public string Key=>(intent==ExpeditionIntent.CancelExit?ExpeditionIntent.VoteExit:intent==ExpeditionIntent.CancelExtraction?ExpeditionIntent.VoteExtraction:intent==ExpeditionIntent.Select?ExpeditionIntent.Claim:intent)+":"+target;
+        public string Key=>(intent==ExpeditionIntent.CancelContinue?ExpeditionIntent.VoteContinue:intent==ExpeditionIntent.CancelExit?ExpeditionIntent.VoteExit:intent==ExpeditionIntent.CancelExtraction?ExpeditionIntent.VoteExtraction:intent==ExpeditionIntent.Select?ExpeditionIntent.Claim:intent)+":"+target;
     }
     public struct ExpeditionCommandResult
     {
@@ -90,7 +90,9 @@ namespace ChipArena.UnityConversion
                 case ExpeditionIntent.CancelExit:ok=run.VoteExit(Viewer,false);break;
                 case ExpeditionIntent.VoteExtraction:ok=run.VoteExtraction(Viewer,true);break;
                 case ExpeditionIntent.CancelExtraction:ok=run.VoteExtraction(Viewer,false);break;
-                case ExpeditionIntent.NextLoop:ok=run.NextLoop();break;
+                case ExpeditionIntent.NextLoop:ok=run.AdvanceWhenReady();break;
+                case ExpeditionIntent.VoteContinue:ok=run.VoteContinue(Viewer,true);break;
+                case ExpeditionIntent.CancelContinue:ok=run.VoteContinue(Viewer,false);break;
                 case ExpeditionIntent.Extract:return hooks.Extract(Viewer);
                 case ExpeditionIntent.Claim:{var offers=hooks.Offers(Viewer,c.target);ok=offers!=null&&offers.Length>0&&run.Claim(Viewer,c.target,offers);break;}
                 case ExpeditionIntent.Select:{var eligible=hooks.Eligible;ok=run.Select(Viewer,c.target,c.chip,chip=>eligible(Viewer,chip));break;}
@@ -101,14 +103,33 @@ namespace ChipArena.UnityConversion
         }
     }
 
-    /// <summary>A guest's intents: no Expedition command channel exists yet, so every control is unavailable.</summary>
+    /// <summary>Guest sender. A reply can refuse immediately; success still requires the replicated view.</summary>
     public sealed class ExpeditionGuestCommands:IExpeditionCommands
     {
         public const string NoChannel="Guest commands need the Expedition command channel (not built yet).";
         public string Viewer{get;}
-        public ExpeditionGuestCommands(string viewer){Viewer=viewer;}
-        public string Blocked(ExpeditionCommand c)=>NoChannel;
-        public ExpeditionCommandResult Send(ExpeditionCommand c)=>ExpeditionCommandResult.Of(ExpeditionCommandState.Unavailable,NoChannel);
+        private readonly Func<ExpeditionView> view;private readonly Action<ExpeditionCommandRequest> send;
+        private readonly Dictionary<string,ExpeditionCommandRequest> latest=new Dictionary<string,ExpeditionCommandRequest>();
+        private readonly Dictionary<string,ExpeditionCommandResult> replies=new Dictionary<string,ExpeditionCommandResult>();
+        public ExpeditionGuestCommands(string viewer,Func<ExpeditionView> view=null,Action<ExpeditionCommandRequest> send=null){Viewer=viewer;this.view=view;this.send=send;}
+        public string Blocked(ExpeditionCommand c)=>send==null?NoChannel:view?.Invoke()==null?"Waiting for Expedition state.":null;
+        public ExpeditionCommandResult Send(ExpeditionCommand c)
+        {
+            var blocked=Blocked(c);if(blocked!=null)return ExpeditionCommandResult.Of(ExpeditionCommandState.Unavailable,blocked);
+            var v=view();var request=new ExpeditionCommandRequest{run=v.run,epoch=v.epoch,transaction=Guid.NewGuid().ToString("N"),intent=c.intent,target=c.target,chip=c.chip};
+            if(latest.TryGetValue(c.Key,out var old))replies.Remove(old.transaction);
+            latest[c.Key]=request;
+            try{send(request);return ExpeditionCommandResult.Sent;}
+            catch(Exception e)when(e is InvalidOperationException||e is System.IO.IOException){return ExpeditionCommandResult.Of(ExpeditionCommandState.Failed,"Could not send to the Expedition host.");}
+        }
+        public void Reply(ExpeditionCommandReply reply)
+        {
+            if(reply==null||!latest.Values.Any(c=>c.transaction==reply.transaction))return;
+            // Never trust an ACK to confirm a UI action without state reflection.
+            if(reply.state==ExpeditionCommandState.Refused||reply.state==ExpeditionCommandState.Unavailable||reply.state==ExpeditionCommandState.Failed)
+                replies[reply.transaction]=ExpeditionCommandResult.Of(reply.state,reply.reason);
+        }
+        public ExpeditionCommandResult Result(ExpeditionCommand command)=>latest.TryGetValue(command.Key,out var request)&&replies.TryGetValue(request.transaction,out var result)?result:default;
     }
 
     /// <summary>
@@ -125,13 +146,14 @@ namespace ChipArena.UnityConversion
     public sealed class ExpeditionIntentTracker
     {
         public const double Timeout=6;
-        private sealed class Entry{public ExpeditionCommand command;public ExpeditionCommandResult result;public double at;public ExpeditionIntentBaseline before;}
+        private sealed class Entry{public ExpeditionCommand command;public ExpeditionCommandResult result;public double at;public ExpeditionIntentBaseline before;public ExpeditionGuestCommands feedback;}
         private readonly Dictionary<string,Entry> entries=new Dictionary<string,Entry>();
         public const string NoConfirmation="No confirmation from the authority.";
         public const string AwaitingSave="Extracted. Waiting for the save to be confirmed.";
 
         /// <summary>Sends through the viewer's command path and records the result.</summary>
-        public ExpeditionCommandResult Submit(IExpeditionCommands commands,ExpeditionCommand command,ExpeditionView before,double now)=>Record(commands.Viewer,command,commands.Send(command),before,now);
+        public ExpeditionCommandResult Submit(IExpeditionCommands commands,ExpeditionCommand command,ExpeditionView before,double now)
+        {var result=Record(commands.Viewer,command,commands.Send(command),before,now);entries[commands.Viewer+"|"+command.Key].feedback=commands as ExpeditionGuestCommands;return result;}
         /// <summary>Records an intent's send result for a viewer (also for intents the host received from that viewer).</summary>
         public ExpeditionCommandResult Record(string viewer,ExpeditionCommand command,ExpeditionCommandResult result,ExpeditionView before,double now)
         {
@@ -143,6 +165,7 @@ namespace ChipArena.UnityConversion
             if(view==null||!entries.TryGetValue(view.viewer+"|"+command.Key,out var e))return default;
             if(e.result.state==ExpeditionCommandState.Pending)
             {
+                var feedback=e.feedback?.Result(e.command)??default;if(feedback.Shown){e.result=feedback;return e.result;}
                 bool extracted=e.command.intent==ExpeditionIntent.Extract&&view.mine.extracted;
                 if(Reflected(e.command,view,e.before))e.result=ExpeditionCommandResult.Of(ExpeditionCommandState.Confirmed,"Confirmed by the authority (revision "+view.revision+").");
                 else if(extracted)e.result.reason=AwaitingSave;
@@ -171,6 +194,8 @@ namespace ChipArena.UnityConversion
                 // Extraction is complete only after the durable save holds its tombstone (docs/EXPEDITION.md save transaction).
                 case ExpeditionIntent.Extract:return v.mine.extracted&&v.mine.extractionSaved;
                 case ExpeditionIntent.NextLoop:return v.loop>before.loop;
+                case ExpeditionIntent.VoteContinue:return v.continueVotes.Contains(me)||v.loop>before.loop;
+                case ExpeditionIntent.CancelContinue:return !v.continueVotes.Contains(me);
                 case ExpeditionIntent.Claim:{var r=v.Reward(c.target);return r!=null?r.claimed:before.reward;}
                 case ExpeditionIntent.Select:{var r=v.Reward(c.target);return r!=null?r.consumed:before.reward;}
                 case ExpeditionIntent.Reprint:return v.Member(c.target)?.alive==true;

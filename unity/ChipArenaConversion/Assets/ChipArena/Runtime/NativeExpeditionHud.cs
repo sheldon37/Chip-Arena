@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using C=ChipArena.UnityConversion.NativeCyberTheme;
 using H=ChipArena.UnityConversion.NativeHudChrome;
@@ -266,7 +267,7 @@ namespace ChipArena.UnityConversion
                 string who=c.Name(m.account)+(m.carriedBy==v.viewer?" · ON YOUR WRIST":P.Has(m.carriedBy)?" · CARRIED BY "+c.Name(m.carriedBy):" · NOT CARRIED")+(!m.connected?" · OFFLINE":"");
                 U.Text(new Rect(row.x,row.y,row.width-170,row.height),who,12,C.Ink(a),TextAnchor.MiddleLeft,bold:true);
                 var cmd=new ExpeditionCommand(ExpeditionIntent.Reprint,m.account);
-                float after=Action(new Rect(row.xMax-160,row.y,160,30),"Reprint",cmd,v.mine.alive&&v.mine.safe&&m.connected,c,a,false,out bool go);if(go)result=cmd;y=Mathf.Max(row.yMax+6,after+4);
+                float after=Action(new Rect(row.xMax-160,row.y,160,30),m.reprintCost>0?"Reprint · "+m.reprintCost:"Reprint · cost unavailable",cmd,v.mine.alive&&v.mine.safe&&m.connected,c,a,false,out bool go);if(go)result=cmd;y=Mathf.Max(row.yMax+6,after+4);
             }
             if(!any)U.Text(Inner(r,y,18),"Nobody needs a reprint.",12,C.Muted(a),TextAnchor.MiddleLeft);
             return y+22;
@@ -323,14 +324,12 @@ namespace ChipArena.UnityConversion
             float y=Header(r,"LOOP "+(v.loop+1)+" COMPLETE · EVERY BOSS DOWN","VICTORY",C.Warn(),a,34);
             y=Lines(r.x+18,y,r.width-36,"Extract now with your build, or stay for loop "+(v.loop+2)+": the board resets, your build and the clock carry on, and enemies get harder. Each pilot chooses alone.",13,C.Ink(a),3)+10;
             y=ExtractionBlock(r,y,v,c,a,ref result);Rule(r,y,a);y+=10;
-            // Continue: the host starts the next loop for everyone still in the run.
+            // Each connected pilot chooses; the authority advances only after all remaining pilots consent.
             U.Text(Inner(r,y,18),"CONTINUE · LOOP "+(v.loop+2),12,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);y+=22;
-            var next=new ExpeditionCommand(ExpeditionIntent.NextLoop);
-            if(v.ViewerIsHost())
-            {
-                y=Action(new Rect(r.x+18,y,200,32),"Start loop "+(v.loop+2),next,!v.mine.extracted&&v.living>0,c,a,true,out bool go)+6;if(go)result=next;
-            }
-            else y=Lines(r.x+18,y,r.width-36,v.mine.extracted?"You extracted; the others decide for themselves.":"You stay unless you extract. The host starts loop "+(v.loop+2)+" for everyone still in the run (there is no continue vote yet).",12,C.Muted(a),3)+6;
+            bool ready=v.continueVotes.Contains(v.viewer);
+            var next=new ExpeditionCommand(ready?ExpeditionIntent.CancelContinue:ExpeditionIntent.VoteContinue);
+            y=Action(new Rect(r.x+18,y,200,32),ready?"Cancel continue":"Continue to loop "+(v.loop+2),next,!v.mine.extracted&&v.mine.connected,c,a,true,out bool go)+6;if(go)result=next;
+            y=Lines(r.x+18,y,r.width-36,"Waiting until every connected pilot chooses Continue or finishes extracting.",12,C.Muted(a),3)+6;
             Rule(r,y,a);y+=10;U.Text(Inner(r,y,16),"CHOICES",11,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);y+=20;
             foreach(var m in P.Roster(v))
             {
@@ -344,7 +343,7 @@ namespace ChipArena.UnityConversion
         {U.BeginBand(r);try{
             bool final=v.phase==ExpeditionPhase.FinalBoss;H.Panel(r,a,final?C.Magenta():C.Muted());
             float y=Header(r,final?"FINAL AREA · LOOP "+(v.loop+1):"RUN ENDED",final?"World boss":"Everyone has extracted",final?C.Magenta():C.Ink(),a);
-            Lines(r.x+18,y,r.width-36,final?"Every building is cleared. Rewards for the world boss need its encounter adapter.":"Extractions are final once saved; extracted pilots cannot rejoin this run.",12,C.Muted(a),3);
+            Lines(r.x+18,y,r.width-36,final?"Every building is cleared. World-boss rewards are reserved for pilots alive and connected when it falls.":"Extractions are final once saved; extracted pilots cannot rejoin this run.",12,C.Muted(a),3);
         }finally{U.EndBand();}}
 
         // ---- Dice reveal -----------------------------------------------------------------------------------------------------
