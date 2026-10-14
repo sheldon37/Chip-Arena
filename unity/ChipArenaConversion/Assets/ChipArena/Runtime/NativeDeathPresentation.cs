@@ -316,6 +316,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>A pilot's lethal melee blow by a standard melee weapon cuts the body along its swing (Core/NativeMeleeSlice):
         /// planned from the killing blow's replicated swing as the hit ledger read it (or, unseen, from the wound and the seed).
+        /// The ledger finds that blow by the swing id the killing hit carries, with the attacker's position at contact, or by
+        /// time for a hit without one (NativeHitLedger.Blow), so host, guests and the replay pick the same swing.
         /// Not for a revivable PvE body, nor a style that shows no body. The blow first seen for a death is kept for the round
         /// (<see cref="killBlows"/>): the killcam's reset clears the ledger, and the body rebuilt after it, and the replay's,
         /// must be cut the same way.</summary>

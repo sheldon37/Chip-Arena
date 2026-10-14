@@ -63,7 +63,7 @@ Owner task (2026-10-14): connect the melee impact information to the slicing pre
   - Everything else keeps today's joint slice exactly: gore off, a killer's purchased kill effect, a dagger's slit throat (no part comes off), every shield kill (crush, or the Aegis edge's joint).
   - Horde zombies keep their own launch path. They only gain the air-flag fix below.
 - **The plane.** It is the one `NativeMeleeSlice.Plan` already derived: the posed blade of the attack index the attacker played (`MeleeSwing.VisibleSweep`), turned by its committed yaw (locked during the hit window), through where that blade passes the victim. Jump attacks and vertical kit kills chop top-down; spins, Flash Step and Kunai cut level.
-  - New: the attacker's position comes from the **Hit event's own direction** (`ArenaEvent.Normal`, the authority's unit vector from the attacker's body centre to the target's at the hit's tick). Only the attacker's distance is the frame's. The plan also records where the plane meets the body (`SlicePlan.Point`) and the weapon (`Spec`).
+  - The attacker's position is the authority's at contact when the killing hit carries its swing's id (see "Exact swing link" below). Without an id it comes from the **Hit event's own direction** (`ArenaEvent.Normal`, the authority's unit vector from the attacker's body centre to the target's at the hit's tick), and only the attacker's distance is the frame's. The plan also records where the plane meets the body (`SlicePlan.Point`) and the weapon (`Spec`).
 - **Through the body** (a sword's trunk cut, every greatsword cleave, a sword or greatsword chop): the whole body is cut by that plane. Half 0 keeps the pelvis. The part above a level or sloping cut slides off along the swing (down the slope) and topples the way the blade went. A chop's halves fall apart to the sides.
 - **Only a part** (a sword's head or arm cut, a dagger's limb on a finisher or kit kill, a dagger chop's arm): only that part's bodies are cut (`Mask`: the neck with the head, an upper arm with its forearm, a forearm).
   - The cut falls where the swing's plane crosses the part, kept inside it. The swing's bevel is kept within 35° of square across a limb and 15° across the neck.
@@ -77,20 +77,25 @@ Owner task (2026-10-14): connect the melee impact information to the slicing pre
   - If the split is not in by the end of the hitch, the halves keep holding (`NativeCorpse.SplitReady`, at most `HoldLimit` = 1.5 s more) instead of blocking the frame.
   - Bodies first seen late (a late join, a body rebuilt after a killcam) also split in the background now, for saws too; they used to split at once on the main thread.
 - **Host, guests and the replay.** Every peer builds the cut from the same replicated swing, Hit event and death record.
+  - Every peer picks the same killing blow: by the swing's id when the killing hit carries one, else by time (see below).
   - The killcam's reset clears the hit ledger, so each death's first-seen blow is kept for the round (`killBlows`). The body rebuilt after a killcam and the replay's body are cut the same way. The cache is cleared at round end and on a full reset.
   - The ledger now reads a jump attack from the swing's replicated `AirAttack`. `!Grounded` was always false at a landing attack's hit, so landing kills never chopped.
-- **Measured agreement.** A guest whose frame comes 30–150 ms after the hit, with the attacker 3–15 cm further along its lunge, gets the same plane orientation. The cut position can still be up to 7.6 cm off, and in 48 of 691 random blows a different part is taken (head vs arm by the height thresholds).
+- **Measured agreement.** With the swing's id (every current host's primary swing), a guest cuts exactly as the host. Without one (a Q/E kit or E special kill, an older host's frame or replay), a guest whose frame comes 30–150 ms after the hit, with the attacker 3–15 cm further along its lunge, gets the same plane orientation. Its cut position can still be up to 7.6 cm off, and in 48 of 691 random blows a different part is taken (head vs arm by the height thresholds).
 
-### Simulation/network contract still needed (Astra)
+### Exact swing link (Astra, PR #205)
 
-The attacker's position at the hit's tick is not replicated. The Hit event's `From` is the hit point (`Emit` defaults it to the position), so a guest takes the attacker's distance from its snapshot, which can be a tick or two late. A plane through a sloping blade moves by that error times its slope. For an exact cut on every peer:
+Since PR #205 (merged), every primary melee swing's Hit/Headshot event carries two fields, extra strikes and minion targets included. Damage, hit detection, timing, kill credit and the wire format are unchanged; both fields already existed, are serialized and are validated.
 
-- **Melee Hit/Headshot events** (primary swings in `StepMelee`, the landing arc and ring, sprint rings, melee Q/E kit and E special hits) should carry:
-  - **`From`:** the attacker's Rigidbody position (body centre, the point `Damage`'s normal starts from) at the hit's tick, Unity world.
-  - **`Projectile`:** the swing's `Id` (or the kit cast's id), greater than 0.
-- **Damage, hit detection, interruption, kill credit and the wire format are unchanged.** Both fields already exist, are serialized and are validated (`NativeNetworkFrame`). No Hit event sets `Projectile` today.
-- **Check before changing it:** today only the Cyber Lord's effect records (`NativeCyberLordFx`) keep a Hit's `From`, for the Cyber Lord's own hits. Impact cues read `From` only on Impact and Pong events, and the hit ledger takes the attacker from the actor. Melee weapon hits are therefore free to carry the attacker there.
-- **The presentation side is already in place.** The ledger keeps them (`MeleeBlow.Exact`/`Struck`), and `NativeMeleeSlice.Attacker` uses `From` when it agrees with the event's direction within 2°, else falls back. It is dormant until the fields are filled. The checks prove a late guest then cuts exactly as the host.
+- **`Projectile`** is the swing's `Id`, on the swing's contacts in `StepMelee` (sprint attacks and a jump attack's landing contact included). An extra strike shares its swing's id. Q/E kit, E special, plunge (down-attack) and thrown-blade hits keep 0.
+- **`From`** is the attacker's Rigidbody position captured at contact: its **body centre**, not its feet. Every pilot melee hit carries it, with or without an id.
+
+The presentation binds them as follows (`NativeHitLedger`, `NativeMeleeSlice`):
+
+- **The killing hit.** The ledger links each pilot's Death event to the last damaging Hit on that pilot in the same tick. `Damage` emits that Hit just before the Death. The ledger keeps each target's last four melee blows, each with the swing id its hit carried (`MeleeBlow.Swing`).
+- **By the swing's id.** When the killing hit carries an id, the blow is the one read from that hit: the same attacker, the same id and the same tick. A newer blow by another swing does not replace it, and an extra strike's kill takes the strike that landed it. If no such blow was read (its attacker was missing from the frame), there is no blow, rather than another swing's.
+- **By time (unchanged).** A killing hit without an id, or a death whose Death event was not read, keeps the old rule: the latest melee blow on the pilot, if it landed within 0.02 s of the death.
+- **At contact.** With the id, `NativeMeleeSlice.Attacker` puts the attacker's feet `RootHeight` (0.865 m) under the hit's `From`, if `From` agrees with the event's direction within 2°. Otherwise it falls back to the direction at the frame's distance. The swing's plane and the thrown test (beyond reach) both use that position. A late frame, even one showing the attacker far off after a dash, no longer moves the cut or turns a contact swing into a throw.
+- **Unchanged:** cases without an id cut exactly as before. Horde adds keep their own last-blow window (`NativeHordeKindPresentation`) and do not read the id.
 
 ### Checks
 
@@ -100,6 +105,7 @@ The attacker's position at the hit's tick is not replicated. The Hit event's `Fr
 - **Body splits:** representative horizontal, diagonal and vertical cuts on the Standard body (and the Sheldon Clothes and Prototype bodies for chops and heads) split sealed, whole and capped on the plane, and a part cut takes only its part.
 - **Blood and allocation:** the seam's gushes run along the cut, and the hold and gushes allocate nothing per frame.
 - **Agreement:** host vs a late guest, and the exact contract path.
+- **Swing link:** the killing swing is found by its id over a newer blow by another swing; an extra strike's kill takes its own strike; host, a late guest and the replay cut identically through the attacker at contact; a far frame is not a throw. Without an id (a kit kill, an older host, no Death read) the time rule and the frame's plan are unchanged.
 - **Wiring and isolation:** the ledger read and the runtime wiring are checked, and no simulation or wire file references any of it.
 
 ## Factory saws
