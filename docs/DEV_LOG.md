@@ -7346,3 +7346,201 @@ Final full optimized managed/real-relay rerun: exit 0, 682 PASS groups, includin
 audit. Real local WebSocket/UDP/TCP checks passed. No assertion was waived.
 Only a surface-test result label and XML comments changed after compilation.
 Source publication uses this checked tree; merge/builder receipts are in the PR.
+
+## 2026-10-14 — Claude — Spitter pool: the arrow in the middle, no green circle, a natural puddle (owner, Windows test build: "Spitter still needs some visual fixes, their pool produces an arrow in the middle for some reason? Also, make the pool look more natural. (No circle showing either, currently theres a green circle)")
+- Branch `claude/spitter-pool` on shared `b22e59f`, merged with shared `6da0330` (PR #214; no conflicts). Implementation commit `2e57085`, merge `e38b8b8`. Pushed on the branch; no PR, merge or release. Presentation only. The owner's longer spit range is Astra's rule (`NativeSpitterRules.Range`); not changed here.
+- **The arrow (root cause, traced and reproduced):**
+  1. `NativePveAcid.LaunchPveSpit` emits `Impact` "minion-spit" from `m.Owner`: Position = the landing (the pool's centre), Projectile 0, Normal zero, at launch.
+  2. A DEV monster's owner is the DEV who spawned it (`NativeDevMonsterAuthority`: `Owner=actor`). A regular PvE add's owner is the Siren seat (spec `siren`), so plain PvE never showed it.
+  3. `NativeBowPresentation.BowEvents` lodged an arrow for every `Impact` whose Source has spec `bow`: `NativeBowWire.Lodges` was `Kind==Impact && spec=="bow"`.
+  4. So with the DEV on the bow, `bowStuck.AddWall` put the real arrow model at the pool's centre. Its direction fell back to (landing − DEV).normalized, head buried .14 m. It appeared at launch, before the glob landed, and stayed `WallLife` 6 s against the pool's flight + 4 s. Host, guests and the killcam all showed it, since the event replicates.
+  - Reproduced in the scratch harness with the real Core predicate and `NativeBowStuck`: before, `Lodges` = True; after, False.
+  - The same bug planted arrows at a bow DEV's brute and Hulk landings and slams ("minion-drop", "minion-slam"). It also planted one at a spitter interrupted by a bow pilot ("minion-spit-cancel"), and made the bow thunk sound.
+- **Also drawn at the pool's position, now fixed:**
+  - The generic impact cue drew the spit's launch event as an impact on every spit, PvE included: a .09 s straight streak from the mouth and a 6-spark burst at the landing before the glob arrived.
+  - An add's events took the owner's weapon colour and the owner's water, kinetic and demolition surface procs.
+- **Traced and not involved:**
+  - the pool decals: closed fans; the `NativeFxDraw` layers are unbounded lists, so no truncated fan;
+  - `NativeVfxDraw` drops and blobs;
+  - the DEV overlays: hazard boxes, nav, anchors and shot paths draw no acid;
+  - horde telegraphs: the spit has none;
+  - combat glow and weapon impacts: they need a SurfaceId;
+  - Hulk motion: `hulk-` events only.
+- **Fix:**
+  - `NativeBowWire.Lodges` takes only an arrow's own impact: a projectile id, with an arrow's Detail or none. The thunk follows it.
+  - New Core `NativeImpactCues.AddEvent` (`minion-*`). An add's events take no owner colour or procs.
+  - The spit and spit-cancel notifications plan no impact cue.
+- **The green circle:** `decals.Ring` at .975–1.0 of the radius (`RimAlpha`) plus the glowing meniscus band. Both are removed, and `RimAlpha` is gone.
+- **Natural pool** (`NativeZombieFx` / `NativeZombieFxDraw`):
+  - Outline: lobed, per record seed. Its mean extent is exactly the radius on any 24+ point grid, with every lobe within 1 ± .11 (checked over 400 seeds).
+  - Spread: viscous, from 30% at landing, each lobe on its own clock, all arrived by 1.15 s.
+  - Thickness: a polar mesh (36 × 10, low tier 24). Dark, even deep core; mottled middle; a thin, lighter, translucent lip that is never thicker than the liquid inside it; a 2.6 cm feather.
+  - Sheen: soft, view-dependent (Fresnel), fading before the edge.
+  - Around it: six satellite splats just outside the widest lobe (they dry early), and the inside spatter, which the creeping liquid absorbs.
+  - Bubbles: a few that pop now and then, with a small ripple. Fumes are faint (alpha ≤ .1).
+  - Drying: over the last 1.3 s it thins into patches and recedes up to 22%, unevenly, then leaves a residue stain that fades over 5 s.
+  - The fizzle puddle uses the same body.
+  - Reduced effects and the low tier: half the satellites, bubbles, fumes and drops; no domes, pop drops or glints; the low outline is coarser.
+  - Census at the busiest frame (full): 42 billboards (was 54), 648 lit vertices (was 810), 822 decal vertices (was 482). The harness measured zero bytes allocated over 1,980 drawer frames.
+- **Host, guest and killcam:** PvE and the off-PvE DEV path now draw every glob and pool from the acid records (`pve.acid` / `devAcid`), seeded by the record id. The spit event is transient: the event buffer drops it past 32 effects in a tick. Before, off-PvE pools depended on it. Now the event only stops the DEV preview, and the preview's range clamp is `NativeSpitterRules.Range` (it was a literal 11).
+- **Longer range (Astra's rule, checked here):**
+  - 11 m: flight 1.34 s, peak 2.44 m, landing at 37°.
+  - 18 m: flight 2.12 s, peak 2.99 m, landing at 30°. The record limit (flight ≤ 3 s) allows up to about 25.9 m.
+  - Fumes are rate-bound, and the 24 glob slots still cover 16 records.
+  - What would look off:
+    - From the target, the glob is a small dot for about the first second.
+    - The 7 drips spread thinner along the arc.
+    - The splash is symmetric for a 30° landing.
+    - A 2 s lob with a long lead has no landing telegraph. If hits feel unfair, a faint landing marker is the presentation option.
+  - No code change is needed for 18 m.
+- **Gameplay unchanged:** hit timing, hitboxes, damage, cooldowns, movement, networking, the pool's 1.3 m / 4 s and the poison are as before. Only the visual body differs from the hazard: its lobes reach up to 11% past 1.3 m at points, and it recedes up to 22% in the last 1.3 s while the hazard stays at 1.3 m.
+- Files:
+  - Core: `NativeZombieFx.cs`, `NativeBow.cs`, `NativeImpactCues.cs`.
+  - Runtime: `NativeZombieFxDraw.cs`, `NativeHordeAcidPresentation.cs`, `NativeHordeKindPresentation.cs`, `NativeBlastPresentation.cs`, `NativeBowHud.cs`.
+  - Tests: `ZombieFxChecks.cs`.
+  - Docs: `SIREN-ZOMBIES.md`, PROJECT_STATE.
+- Renders (scratch harness, not Unity): `scratchpad/renders-spitter-pool/{full,reduced,low,range}`. Before is shared `b22e59f`; after is this branch. The real `NativeZombieFxDraw` and the bow's Core path are compiled against a UnityEngine stub, and the arrow is the real Core arrow mesh.
+- Checks on `e38b8b8` (actual):
+  - `unity-check.sh`: Runtime + Editor compile against Unity 6000.3.24f1, OK.
+  - `check_relay.py`: exit 0, 682 PASS lines, real relay included. Zombie fx: 764,681 checks (was 725,910): the lobed outline's mean extent is the radius and every lobe is within the tolerance, deterministic per seed, slow spread, uneven thickness, no ring at the radius, the spit's events lodge no arrow, zero allocation, Reduced and low tier budgets. Horde kinds 433,790, hulk and spitter 49,154 and bow 5,028 are unchanged and pass.
+  - CI layout (`ci-relay2.sh`, docs removed): exit 0, 682 PASS.
+  - Python: 106 OK (1 skip). `package_source.py` OK. `git diff --check` clean.
+  - Harness: the drawer allocates 0 bytes over 1,980 frames (three tiers, two pools).
+- Not run: Unity Editor, a Windows build, two clients, the arrow fix seen in game.
+- Next: the owner checks the pool in the next test build, spawning spitters on the bow. Astra owns the range change.
+
+### 2026-10-14 — Claude: Hulk punches and charge at the hunted pilot (contract v2 + presentation)
+
+Branch `claude/hulk-charge` (base shared `b22e59f`, shared head merged before the final checks; see the merge commit).
+Owner (Windows test build): the Hulk only slams; it must punch and charge at the player, the charge avoidable by leaving its
+lane, breaking walls on the way, from across the map when hunting a pilot it knows. Split: rules Astra, visuals Claude.
+
+- Contract v2 (PROPOSED, Astra to confirm): docs/SIREN-ZOMBIES.md 10.5 and its paste-ready prompt at the end of that file;
+  numbers mirrored in Core/NativeHulkMoves.cs. Punch/swipe at the hunted pilot (smash for 2+ in its disc, walls, props); charge
+  from >= 7 m with no maximum range, .9 s wind-up tracking the target, heading locked at its end through the yaw, 6 m/s straight
+  (was 4.5), breakables broken on contact without stopping (x.6 for .3 s each: eligible wall blocks, in-bounds breach panels,
+  destructible props/structure; never shell, floors, boundary), ends pilot / solid / spent (4 m past the locked point or 16 s),
+  10 s cooldown. New replicated field proposed: `chargeTarget` (hunted seat) beside move/chargeAt/chargeEndAt/chargeEnd; Impact
+  events kept as the fallback (`hulk-charge` Amount = hunted seat).
+- Presentation (works today from the events; the frame fields bind in HordeHulkFrame, three lines): Core/NativeHulkCharge.cs
+  (tracker with the lock from the yaw and a stall fallback, lane test, warning, HUD layout, tremble); Runtime
+  NativeHordeHulkCharge.cs (tell, lock streak, run streaks, walls shaking/dusting ahead, crash-through dust/shake, ends, punch and
+  swipe trail/burst/struck-pilot kick, gallery's fourth Hulk with a cross-map charge through two walls and hardlight dummies),
+  NativeHulkWarningHud.cs (brackets/chevrons for the hunted pilot only, never over the crosshair), NativeHulkChargeAudio.cs
+  (bellow, rumble, footfalls through walls; existing bank keys); hooks in NativeHordeHulkMotion / NativeHordeKindPresentation /
+  NativeHordeBreachPresentation (a charged break has no knock) / NativeFightHud / ConversionGame (hands the warning to audio).
+  NativeHordeHeavy: stride table extended to 7.5 m/s, a stronger crash-through flinch.
+- Impact on hit timing, hitboxes, damage, cooldowns, movement, networking: none from this branch (no rules or network file
+  touched). The proposed numbers above are for Astra; the drawn facing in the run is the locked heading, which is the authority's
+  yaw by contract.
+- Checks: Tests/HulkChargeChecks.cs (241k: run held 30 s at 4.5/6/7.5 m/s with planted feet and steady lean, lock from yaw,
+  flinch on a break in the run, warning only for the target and urgency monotonic with distance and closing speed, marker clear
+  of the crosshair, event/frame fallback and stall, lane and tremble, zero allocation, runtime write-free); HulkMotionChecks updated
+  for 6 m/s; Unity runtime+editor compile. Full run5/ci-layout results: see the follow-up line below. Renders (software harness):
+  scratchpad renders-hulk-charge (wind-up/lock, 30 s run, crash-through, warning HUD, punch, swipe, ends).
+- Not run: Unity Editor play, Windows build, two-client/guest view, killcam. Nothing plays live until Astra emits the events or
+  the fields. Risks: Unity's IMGUI HUD and the shaking walls' drawn copies are unverified in the Editor; the gallery's walls use the
+  existing gallery breach clocks. Pushed, not merged or released. Next: Astra confirms or amends 10.5 and implements it.
+- Checks on `de61d6c` (shared `85c3753` merged, keeping both sides of DEV_LOG/PROJECT_STATE): Unity runtime+editor compile OK;
+  managed/relay 683 PASS (rc 0); CI-layout export 683 PASS (rc 0); Python 106 run, 1 skipped, OK; source package OK (1971 files);
+  git diff --check clean. The first CI-layout run failed on a HulkBreachFxChecks source pin of the HordeCues line; the audio hook
+  moved to EffectsFrame (`de61d6c`) and both runs then passed.
+
+### 2026-10-14 — Claude: Expedition doors, final gate, sanctuary, transfer screen and boss intro
+
+Branch `claude/expedition-states`, base shared `6da0330`, merged shared `9cc6d29`. Implementation commit `f9ba939`.
+Visuals only.
+
+- **Inputs.** Everything is driven by Astra's director state in the public view: `closures[]`, `areaBarrier`,
+  `bossArrivals[]` and `members[].safe`. It also reads the static `Resources/ExpeditionLayout.json`. That layout binds only
+  when `areaBarrier.layout` equals this client's fingerprint (`NativeExpeditionLayout.Compatibility`), and the 3D pieces draw
+  only while the arena holds the area's map. Host and guests read the same fields; a missing record draws nothing.
+- **Doors.** A biocontainment airlock unit at every door closure (the Ward Zero portico and the instance exit). The leaves
+  ease over exactly 1 s from `began`. A hardlight seal covers exactly the closure face for as long as `Blocking` holds
+  (sealing, sealed and the whole opening second), so nothing looks open while it blocks. The HUD door hologram stays as the
+  fallback for a door without a closure record.
+- **Final gate.** The clamps unlock, then the portcullis rises into the lintel. The magenta lattice dissolves but holds until
+  `open`. A beacon pillar, ground rings and FINAL GATE OPEN play the first time this client sees FinalUnlocked open the gate;
+  a gate first seen open cues nothing.
+- **Sanctuary.** A warm floor edge, a low curtain, motes and a ripple where a pilot crosses. It is lit only in the Town and
+  Victory phases; otherwise it shows a dim outline. The SAFE · SANCTUARY chip and the PARTY n / m SAFE line come from `safe`
+  only and claim no damage protection.
+- **Transfer screen.** ENTERING WARD ZERO, RETURNING TO THE CITY or ENTERING THE CITY, with ready / required pips and a bar.
+  It draws over every screen, after the build label, which it draws again so the label and the notice toast stay on top
+  (BuildLabelChecks pins the OnGUI line). It fades in over 0.25 s, holds until the area's map is loaded, then fades out over
+  0.45 s.
+- **Boss intro.** Plays once per arrival, timed from `spawned`. The archetype name keeps TEST. The sting is at the screen
+  edges and never moves the camera. Late joiners (more than 3 s) see only the HUD boss plate (name, ACTIVE or DOWN; no health).
+- **Files.** New: Core `NativeExpeditionStates.cs`, `NativeExpeditionStateScene.cs`; Runtime
+  `NativeExpeditionStatesPresentation.cs`, `NativeExpeditionStatesHud.cs`; `Tests/ExpeditionStatesChecks.cs`. Hooks: one
+  line each in `ExpeditionWorldFrame`, `ExpeditionWorldLabels`, `ExpeditionLiveHud` and `OnGUI`. Docs:
+  EXPEDITION-PRESENTATION.md, section "Doors, gate, sanctuary, transfer and boss arrival".
+- **Names.** `NativeExpeditionPresentation.Name` drops a layout id's `exp-` prefix. The objective line read EXP WARD ZERO
+  with the imported ids.
+- **Missing from Astra's state** (listed in the doc's needs, items 11 to 14):
+  - a seat or pilot id per member, for SAFE tags over other pilots (today: the HUD chip and party line only);
+  - a position or entity id per boss arrival, for the ground crack and roar (built and checked, not drawn live);
+  - boss health;
+  - `areaBarrier.layout` is null until the first `BeginAreaLoad`, so nothing binds before it.
+- **Space taken.** The door unit takes the facility's west face at x 43.4–44.0, z −3.5..3.5, y 0–4, and the instance exit
+  around its jambs. The `claude/expedition-dressing` facades should keep clear of it.
+- **Impact.** No change to hit timing, hitboxes, damage, cooldowns, movement or networking. No collision, director, network
+  or save file was touched.
+- **Checks.** `CoreTests --expedition-states` passed: 14,931 checks against the real director, including zero allocation over
+  240 frames and the source scans. `--expedition-view`, `--expedition-director` and `--expedition-integration` pass. The Unity
+  runtime and editor compile passed on the merged head. Full run5 and CI-layout results follow below.
+- **Renders.** Scratch, not committed: `scratchpad/renders-expedition-states/`, made with the WebGL harness (NativeBlockLit,
+  NativeNightSky, NativeSirenFx quads) on the imported maps, plus the IMGUI recorder:
+  - town door sealed, sealing, opening, open and close up;
+  - gate sealed, opening at 0.3 and 0.7 s, and open with the beacon;
+  - sanctuary edge with ripples, the final-boss phase and the low tier;
+  - Ward Zero exit sealed, sealing, opening and open, and the boss crack;
+  - transfer screen at 1066x600 and 3440x1440;
+  - boss banner, SAFE chip and gate notice.
+- **Not run.** Unity Editor play, Windows, two clients or a guest, PhysX. Nothing plays live until a scene binds a session.
+  Pushed, not merged or released.
+- **Checks on `d51bd52`** (shared `9cc6d29` merged; both sides of DEV_LOG and PROJECT_STATE kept):
+
+  | Check | Result |
+  | --- | --- |
+  | Unity runtime and editor compile | OK |
+  | Managed and real relay | rc 0, 684 PASS, including `PASS Expedition states (14931 checks)` and the build label |
+  | CI-layout export | rc 0, 684 PASS |
+  | Python | 106 tests, 1 skipped, OK |
+  | Source package | 1980 files |
+  | `git diff --check` | clean |
+
+  - The run on `68ebd63` failed BuildLabelChecks: the OnGUI line was pinned and the transfer screen hook had been
+    inserted into it. `d51bd52` moved the hook after the pinned line.
+  - The run5 relay, run at the same time as the CI-layout run, stopped once on the existing Spawn-in zero-allocation check
+    (696 bytes). The CI-layout run of the same commit and a solo relay rerun both pass it.
+
+
+## 2026-10-14 — Astra: Expedition public state fields for Claude
+
+- Branch `codex/expedition-view-fields`, based on shared `768ebc9812a4b730695ff5a41a0aa360101593a7`.
+  Supplies the four missing view inputs; presentation stays with Claude.
+- Exact public fields: `members[].seat` (`int`, current `NativeSeat.id`, 0 if unbound);
+  `bossArrivals[].x/y/z` (`float`, immutable world spawn position); `bossArrivals[].hp/maxHp`
+  (`double`, current health and maximum); `areaBarrier.layout` (validated fingerprint, now
+  populated on initial layout binding while the barrier is inactive at generation 0).
+- `BindExpedition` supplies `Sources.Seat` from the current match's account-to-seat mapping.
+  The callback is evaluated at projection time, so seat replacement does not retain an old id.
+  No account authorization, reward privacy, save schema, damage, timing or collision rules change.
+- Authority adapter contract: `RecordBossArrival(id, archetype, knownArchetype, spawn, hp, maxHp)`
+  now requires actual spawn/health; all repository callers updated. Call
+  `UpdateBossHealth(area, id, hp, maxHp)` after combat/scaling before projection. Nonfinite or
+  invalid health and unknown/wrong-area bosses are refused. Updates preserve the arrival
+  timestamp and point; `BossDefeated`/`FinalDefeated` publish zero HP while keeping max HP.
+  Existing public-view transport detects these source changes even at an unchanged rule revision.
+- Checks: focused Expedition director 70 checks passed (including initial constructor binding,
+  seats/rebinding, immutable spawn, live health, instance/final death, detached views and a
+  serialized public/private late-guest projection). Roslyn syntax scan: 0 errors. Source package
+  structure: 1980 files passed. Real JsonUtility envelope assertion added to the Unity build gate.
+- Not run: Unity Editor semantic compile/JsonUtility execution, Windows, real host/guest gameplay
+  or presentation acceptance (no Unity installation here). The playable scene/combat adapter and
+  session binding remain unfinished existing work; this is a view-contract implementation.
+- Handoff: Claude can bind SAFE tags to `seat`, the crack/roar to `x/y/z`, and boss bars to
+  `hp/maxHp` (`maxHp == 0` means unavailable on a legacy frame). See EXPEDITION-PRESENTATION.
+  Implemented on task branch; PR carries source merge status. No binary built or test/live release published.
+- Final verification: full managed/real-relay suite passed (684 PASS groups, exit 0), including Expedition rules, presentation, integration, director and states. `git diff --check` clean.

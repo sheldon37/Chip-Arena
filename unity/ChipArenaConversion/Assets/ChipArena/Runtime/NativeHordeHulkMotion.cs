@@ -7,70 +7,103 @@ namespace ChipArena.UnityConversion
 {
     // The heavy kinds' body animation, runtime side (owner 2026-10-14: "Slam/landing/wall break animation also needs improvements
     // from hulk/brute. Hulk zombie needs adjustments on their movement ... I'd like them to all have a charge animation (they can
-    // charge through walls) and a couple of punch animations (like a straight punch, and a swipe)"). Presentation only: reads
-    // the replicated add state, the breach records and the event feed, writes only the motion input (Core/NativeHordeHeavy).
+    // charge through walls) and a couple of punch animations (like a straight punch, and a swipe)"; from the Windows test build:
+    // "The hulk needs to punch and charge at the player too, not just the wall ... They literally can charge from across the map
+    // to the player breaking the walls if they are hunting them and 'know' where they are"). Presentation only: reads the
+    // replicated add state, the breach records and the event feed, writes only the motion input (Core/NativeHordeHeavy).
     //  - A wall knock (a breach entrance, or a Hulk breaking a wall block) poses the three blows and the carry through the hole on
     //    Core/NativeBreach's clock (the same clock the breach's cracks, burst and sounds use).
-    //  - The proposed moves (Core/NativeHulkMoves, docs/SIREN-ZOMBIES.md section 10) are dormant: they play only once the rules
-    //    report them. Until the frame fields exist the presentation accepts the same state as Impact events ("hulk-move",
-    //    "hulk-charge", "hulk-charge-end"); HordeHulkState is the one place that reads it, so the frame fields replace the events
-    //    there alone.
-    //  - The Dev Sandbox gallery's third Hulk shows them on a script: a turn in place, the heavy walk and run, a straight punch,
-    //    a swipe with the left arm, a charge into a solid stop, and a wall knock with its carry.
+    //  - The proposed moves (Core/NativeHulkMoves, docs/SIREN-ZOMBIES.md section 10, contract v2 in 10.5) are dormant: they play
+    //    only once the rules report them. Until the frame fields exist the presentation accepts the same state as Impact events
+    //    ("hulk-move", "hulk-charge" with the hunted seat, "hulk-charge-end"); HordeHulkState (a Core NativeHulkCharge.State per
+    //    add) is the one place that holds it, and HordeHulkFrame the one place the frame fields will be read.
+    //  - A charge: the wind-up turns with the replicated yaw; its heading locks from the yaw on the first frame past the wind-up
+    //    and the run holds the lowered shoulder for as long as the authority runs it (cross-map), on the heavy gait's planted feet
+    //    at its real speed; a wall it crashes through (a breach record of this Hulk broken in its run) flinches the shoulder and it
+    //    runs on. The charge's tell, lane, warning and effects: Runtime/NativeHordeHulkCharge.cs.
+    //  - The Dev Sandbox gallery's third Hulk shows the moves on a script: a turn in place, the heavy walk and run, a straight punch,
+    //    a swipe with the left arm, a charge into a solid stop, and a wall knock with its carry; the fourth (NativeHordeHulkCharge)
+    //    a punch and a swipe at a hardlight dummy, then a wind-up at the local pilot and a cross-map charge through two walls.
     public sealed partial class ArenaPresentation
     {
         // ---- the proposed moves' state per add (from the events until the frame fields exist) ----
-        private struct HordeHulkState{public float MoveFor,ChargeAt,ChargeEndAt;public NativeHulkMoves.Move Move;public NativeHulkMoves.ChargeEnd How;}
+        private struct HordeHulkState{public float MoveFor;public NativeHulkMoves.Move Move;public NativeHulkCharge.State Charge;}
         private readonly Dictionary<int,HordeHulkState> hordeHulkStates=new Dictionary<int,HordeHulkState>();
-        private static HordeHulkState NoHulkState=>new HordeHulkState{MoveFor=-100,ChargeAt=-100,ChargeEndAt=-100};
+        private static HordeHulkState NoHulkState=>new HordeHulkState{MoveFor=-100,Charge=NativeHulkCharge.State.None};
         /// <summary>HordeKindsBegin: a new event that reports a heavy add's move or charge.</summary>
         private void HordeHulkEvent(in ArenaEvent e)
         {
             if(e.Kind!=EventKind.Impact||e.Detail==null||!e.Detail.StartsWith("hulk-",StringComparison.Ordinal))return;
             if(!hordeHulkStates.TryGetValue(e.Target,out var h))h=NoHulkState;
             if(e.Detail==NativeHulkMoves.MoveEvent){h.MoveFor=e.Time;h.Move=NativeHulkMoves.Of((int)e.Amount);}
-            else if(e.Detail==NativeHulkMoves.ChargeEvent){h.ChargeAt=e.Time;h.ChargeEndAt=-100;h.How=NativeHulkMoves.ChargeEnd.Running;}
-            else if(e.Detail==NativeHulkMoves.ChargeEndEvent){h.ChargeEndAt=e.Time;h.How=NativeHulkMoves.EndOf((int)e.Amount);}
-            else return;
+            // NativeHulkMoves.ChargeEvent (Amount the hunted seat) and NativeHulkMoves.ChargeEndEvent (Amount how it ended).
+            else if(!h.Charge.Event(e.Detail,e.Amount,e.Time))return;
             hordeHulkStates[e.Target]=h;
         }
-        private void ClearHordeHulkMoves()=>hordeHulkStates.Clear();
+        /// <summary>
+        /// The proposed frame fields (docs/SIREN-ZOMBIES.md 10.5: NativeMinionFrame / NativePveAdd move, chargeAt, chargeEndAt,
+        /// chargeEnd, chargeTarget), the one place they are read once the rules replicate them. They do not exist yet, so this
+        /// reads nothing and the events above drive the moves. Binding them is these lines, nothing else:
+        ///   if(!hordeHulkStates.TryGetValue(m.Id,out var h))h=NoHulkState;
+        ///   if(h.MoveFor!=m.LastAttack){h.MoveFor=m.LastAttack;h.Move=NativeHulkMoves.Of(a.Move);}
+        ///   h.Charge.Frame(a.ChargeAt,a.ChargeEndAt,a.ChargeEnd,a.ChargeTarget);hordeHulkStates[m.Id]=h;
+        /// </summary>
+        private void HordeHulkFrame(NativeMinion m){}
+        private void ClearHordeHulkMoves(){hordeHulkStates.Clear();ClearHordeCharges();}
         /// <summary>The attack an add plays at LastAttack: the reported move (its strike and recovery the contract's, the effects
         /// of the nearest existing attack: a punch's thrust, a swipe's rake) or the content's attack as today.</summary>
         private NativeHulkMoves.Move HordeHulkAttack(NativeMinion m,bool crawl,int lost,ref NativeHordeKinds.Attack attack,ref float strike,ref float recover)
         {
+            HordeHulkFrame(m);
             if(!hordeHulkStates.TryGetValue(m.Id,out var h)||Math.Abs(h.MoveFor-m.LastAttack)>.02f||h.Move==NativeHulkMoves.Move.Content)return NativeHulkMoves.Move.Content;
             if(crawl||NativeHordeKinds.Armless(lost))return NativeHulkMoves.Move.Content;
             strike=NativeHulkMoves.Strike(h.Move,strike,crawl,lost);recover=NativeHulkMoves.Recover(h.Move,recover,crawl,lost);
             attack=h.Move==NativeHulkMoves.Move.Punch?NativeHordeKinds.Attack.Lunge:NativeHordeKinds.Attack.Swipe;return h.Move;
         }
         /// <summary>The knock and the charge into the motion input: a breach entrance's knock (SpawnAt to ActiveAt), a wall block's
-        /// knock and carry (the dynamic record's actor), a reported charge.</summary>
+        /// knock and carry (the dynamic record's actor), a reported charge (its phase from Core NativeHulkCharge.State: the wind-up,
+        /// the run on the heading locked from the replicated yaw, the stop), and a wall it crashed through on the run.</summary>
         private void HordeHulkInput(ref HordeMotionInput f,NativeMinion m,float now,bool entering,bool breach)
         {
-            var a=m.Pve;
+            var a=m.Pve;hordeChargePending=false;
             if(breach&&entering&&now>=a.SpawnAt){f.Knocking=true;f.KnockAge=now-a.SpawnAt;}
             else if(!entering&&HordeWallCarry(m.Id,now,out float knockAt)){f.Knocking=true;f.KnockAge=now-knockAt;}
-            if(!hordeHulkStates.TryGetValue(m.Id,out var h)||h.ChargeAt<-90||now<h.ChargeAt)return;
-            bool ended=h.ChargeEndAt>-90&&h.ChargeEndAt>=h.ChargeAt;
-            if(ended?now-h.ChargeEndAt>NativeHulkMoves.Stop(h.How)+NativeHulkMoves.BlendOut:now-h.ChargeAt>NativeHulkMoves.ChargeWind+NativeHulkMoves.ChargeRun+1)return;
-            f.Charging=true;f.ChargeAge=now-h.ChargeAt;f.ChargeEnded=ended;f.ChargeEndAge=ended?now-h.ChargeEndAt:0;f.ChargeHow=ended?h.How:NativeHulkMoves.ChargeEnd.Running;
-            // A wall it ran through on the run (a dynamic breach of this actor broken after the wind-up): the shoulder's jolt.
-            if(HordeWallBroke(m.Id,h.ChargeAt+NativeHulkMoves.ChargeWind,now,out float brokeAt)){f.ChargeBroke=true;f.ChargeBreakAge=now-brokeAt;}
+            if(entering||!hordeHulkStates.TryGetValue(m.Id,out var h)||!h.Charge.Known)return;
+            float sc=NativeHordeKinds.Scale[f.Kind>=0&&f.Kind<NativeHordeKinds.Count?f.Kind:NativeHordeKinds.Hulk];var vel=new Vector3(f.Velocity.X,0,f.Velocity.Z)*sc;
+            var floor=new Vector3(f.Root.X*sc,f.Ground*sc,f.Root.Z*sc);
+            var ph=h.Charge.Step(now,m.Yaw,vel.magnitude,ToN(floor),out float age,out float endAge);hordeHulkStates[m.Id]=h;
+            if(ph==NativeHulkMoves.ChargePhase.None)return;
+            bool stop=ph==NativeHulkMoves.ChargePhase.Stop;
+            f.Charging=true;f.ChargeAge=age;f.ChargeEnded=stop;f.ChargeEndAge=stop?endAge:0;f.ChargeHow=stop?h.Charge.How:NativeHulkMoves.ChargeEnd.Running;
+            // The run keeps the heading locked at the wind-up's end (the authority holds the yaw on it).
+            if(ph==NativeHulkMoves.ChargePhase.Run&&h.Charge.Locked)f.Yaw=h.Charge.LockYaw;
+            // A wall it ran through (a breach of this actor broken in the run): the shoulder's flinch.
+            if(HordeWallBroke(m.Id,h.Charge.ChargeAt+NativeHulkMoves.ChargeWind-.05f,now,out float brokeAt)){f.ChargeBroke=true;f.ChargeBreakAge=now-brokeAt;}
+            HordeChargeBegin(m.Id,h.Charge,ph,age,endAge,floor,vel,h.Charge.Locked&&ph!=NativeHulkMoves.ChargePhase.Wind?h.Charge.LockYaw:m.Yaw,f.Seed,false,f.ChargeBroke?f.ChargeBreakAge:float.NaN);
         }
         /// <summary>Whether Hulk `actor` is knocking a wall block or carrying through the hole it broke (the dynamic record's knock
-        /// start to its break plus the carry), and when its knock began.</summary>
+        /// start to its break plus the carry), and when its knock began. A wall it crashed through on a charge has neither.</summary>
         private bool HordeWallCarry(int actor,float now,out float knockAt)
         {
-            for(int i=0;i<hordeBreaches.Length;i++){var b=hordeBreaches[i];if(b.Live&&b.Dynamic&&b.Actor==actor&&now>=b.SpawnAt&&now<b.SpawnAt+NativeHordeGait.KnockEnd+NativeHulkMoves.BlendOut){knockAt=b.SpawnAt;return true;}}
+            for(int i=0;i<hordeBreaches.Length;i++){var b=hordeBreaches[i];if(b.Live&&b.Dynamic&&!b.Charged&&b.Actor==actor&&now>=b.SpawnAt&&now<b.SpawnAt+NativeHordeGait.KnockEnd+NativeHulkMoves.BlendOut){knockAt=b.SpawnAt;return true;}}
             knockAt=0;return false;
         }
-        /// <summary>The newest wall block Hulk `actor` broke between `from` and `now` (its break time).</summary>
+        /// <summary>The newest wall Hulk `actor` broke between `from` and `now` (a wall block's record or a breach panel's naming it
+        /// as the actor; its break time).</summary>
         private bool HordeWallBroke(int actor,float from,float now,out float breakAt)
         {
-            breakAt=float.NegativeInfinity;for(int i=0;i<hordeBreaches.Length;i++){var b=hordeBreaches[i];if(b.Live&&b.Dynamic&&b.Actor==actor&&b.BreakAt>=from&&b.BreakAt<=now&&b.BreakAt>breakAt)breakAt=b.BreakAt;}
+            breakAt=float.NegativeInfinity;for(int i=0;i<hordeBreaches.Length;i++){var b=hordeBreaches[i];if(b.Live&&b.Actor==actor&&b.BreakAt>=from&&b.BreakAt<=now&&b.BreakAt>breakAt)breakAt=b.BreakAt;}
             return !float.IsNegativeInfinity(breakAt);
         }
+        /// <summary>The Hulk's bellow through a charge's wind-up (its jaw gapes as it rears): the wind-up's age, else `roar` (the
+        /// seeded roar's age or NaN). The jaw only; the keyed wind-up replaces the roar's body.</summary>
+        private float HordeHulkBellow(int id,float now,float roar)
+        {
+            if(!hordeHulkStates.TryGetValue(id,out var h)||!h.Charge.Known||h.Charge.Ended)return roar;float age=now-h.Charge.ChargeAt;
+            return age>=0&&age<NativeHulkMoves.ChargeWind?Mathf.Min(age,NativeHordeRoar.Seconds-.5f):roar;
+        }
+        /// <summary>Whether a break by Hulk `actor` at `breakAt` came in its charge's run (no knock: it crashed through on contact).</summary>
+        private bool HordeChargedBreak(int actor,float breakAt)=>actor!=0&&hordeHulkStates.TryGetValue(actor,out var h)&&h.Charge.RanThrough(breakAt);
 
         // ---- the Dev Sandbox gallery's moves Hulk ----
         public const float GalleryMovesLoop=27;
@@ -125,7 +158,7 @@ namespace ChipArena.UnityConversion
             f.Yaw=yaw;f.Ground=ground*inv;f.Root=ToN(pos)*inv;f.Velocity=ToN(vel)*inv;f.AttackAge=age;f.Strike=strike;f.Recover=recover;f.Attack=attack;
             ref var input=ref hordeInput[0];input=f;
             s.Gait.Pose(input,minionPose,s.React);s.Distance=Vector3.Distance(pos,hordeEye);
-            HordeKindJob(s,id,k,attack,age,strike,recover,pos,yaw,ground,st,me,rig,now);if(s.Gait.Landed!=0)HordeDust(s,k,ground,now);
+            HordeKindJob(s,id,k,attack,age,strike,recover,pos,yaw,ground,st,me,rig,now,f.Side);if(s.Gait.Landed!=0)HordeDust(s,k,ground,now);
             s.Jaw=NativeHordeJaw.Open(k,attack,age,strike,float.NaN,float.NaN,now,seed);
             NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,s.Gait.Yaw,0));rig.Root.transform.localScale=Vector3.one*sc;
             var glow=HordeGlow(id);HordeQueue(rig,NativeHordeModels.Id(k,1,NativeHordeModels.Full),id,0,0,0,glow,1);HordeQueueJaw(rig,k,1,NativeHordeModels.Full,s.Jaw,glow,1);HordeAdd(rig,id,float.NaN,float.NaN,ground,ground,float.NaN,vel,0,true,k*8+1);

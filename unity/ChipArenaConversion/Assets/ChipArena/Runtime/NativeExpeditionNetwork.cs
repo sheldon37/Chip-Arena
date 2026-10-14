@@ -22,6 +22,7 @@ namespace ChipArena.UnityConversion
             expeditionSession=session;expeditionRouter=new ExpeditionCommandRouter(session);expeditionStamp=null;expeditionNextSend=0;
             expeditionLocal=new ExpeditionLocalCommands(session,id);
             session.Sources.DisplayName=who=>who==account?.Access.AccountId?NativeCosmeticRules.Name(account.Account?.profile?.name):peers.FirstOrDefault(p=>p.Seat?.access?.AccountId==who)?.Seat.name;
+            session.Sources.Seat=who=>match?.Seats.FirstOrDefault(s=>s.access?.AccountId==who)?.id??0;
             ExpeditionView=NativeExpeditionView.Build(session.Run,id,session.Sources);
         }
         /// <summary>Uses the existing durable desktop store. Scene supplies anchors and interaction evidence before binding.</summary>

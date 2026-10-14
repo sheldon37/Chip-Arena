@@ -53,6 +53,13 @@ internal static class ExpeditionDirectorChecks
         layout.Area("city").gates[0].closure.x=49;rejected=false;try{NativeExpeditionLayout.ValidateGeometry(layout,geometry,null,(_,p,r,h)=>true,(_,a,b,r,h)=>true);}catch(FormatException){rejected=true;}Check(rejected,"volume extents refuse out-of-bounds");layout=NativeExpeditionLayout.Parse(json);
         var r2=NativeExpedition.Create("barrier-test","city","host","pistol",19,new[]{new ExpeditionInstance{id="ward",target=1}});r2.Join("guest","pistol");
         var s2=new ExpeditionSession(r2,content,_=>{});var d2=new ExpeditionDirector(s2,layout,_=>new V3(0,0,0),(_,__)=>true,10,20,30);string fingerprint=new string('a',64);d2.BindLayoutIdentity(fingerprint);
+        s2.Sources.Seat=who=>who=="host"?1:who=="guest"?7:0;
+        var initial=NativeExpeditionView.Build(r2,"guest",s2.Sources);
+        Check(initial.areaBarrier.layout==fingerprint&&!initial.areaBarrier.active&&initial.areaBarrier.generation==0,"layout published before first area load");
+        Check(initial.Member("host").seat==1&&initial.Member("guest").seat==7,"all members carry their authority seat");
+        layout.compatibility=fingerprint;
+        var startup=new ExpeditionDirector(new ExpeditionSession(NativeExpedition.Create("startup","city","host","pistol",1,new[]{new ExpeditionInstance{id="ward",target=1}}),content,_=>{}),layout,_=>new V3(),(_,__)=>true,10,20,30);
+        Check(startup.Barrier.layout==fingerprint&&!startup.Barrier.active,"constructor publishes validated layout without explicit binding or load");
         Check(!d2.EnterDoor("stranger","city-door"),"nonmember cannot enter");
         Check(d2.EnterDoor("host","city-door")&&r2.Snapshot().loading,"entry freezes run behind barrier");var b2=d2.Barrier;
         Check(b2.target=="ward"&&b2.generation==1&&b2.required==2&&b2.ready==0,"target generation and counts");
@@ -63,13 +70,38 @@ internal static class ExpeditionDirectorChecks
         Check(!d2.CompleteAreaLoad((_,__)=>false)&&r2.Snapshot().loading,"failed placement remains frozen");
         Check(d2.CompleteAreaLoad((area,assigned)=>area=="ward"&&assigned.Count==2&&assigned["host"].x!=assigned["guest"].x)&&!r2.Snapshot().loading,"party placed in distinct authored slots");
         Check(d2.Closures.Single(c=>c.id=="ward-door").state=="sealing","instance door sealing");s2.Tick(1);Check(d2.Closures.Single(c=>c.id=="ward-door").state=="sealed","one second seal clock");
-        r2.Progress("kill",1);r2.StartBosses(new[]{"TEST-boss"});Check(d2.RecordBossArrival("TEST-boss","test",a=>a=="test")&&!d2.RecordBossArrival("TEST-boss","test",a=>true),"boss arrival once per authority entity");
+        r2.Progress("kill",1);r2.StartBosses(new[]{"TEST-boss"});Check(d2.RecordBossArrival("TEST-boss","test",a=>a=="test",new V3(3,4,5),80,100)&&!d2.RecordBossArrival("TEST-boss","test",a=>true,new V3(3,4,5),80,100),"boss arrival once per authority entity");
         var view=NativeExpeditionView.Build(r2,"host",s2.Sources);Check(view.bossArrivals.Length==1&&view.closures.Length==3&&!view.areaBarrier.active,"public state supplied");
+        var boss=view.bossArrivals.Single();
+        Check(boss.x==3&&boss.y==4&&boss.z==5&&boss.hp==80&&boss.maxHp==100,"arrival has actual spawn position and health");
+        Check(!d2.UpdateBossHealth("city","TEST-boss",50,100)&&!d2.UpdateBossHealth("ward","absent",50,100),"health update scopes boss and area");
+        Check(!d2.UpdateBossHealth("ward","TEST-boss",double.NaN,100)&&!d2.UpdateBossHealth("ward","TEST-boss",101,100)&&!d2.UpdateBossHealth("ward","TEST-boss",1,0)&&!d2.UpdateBossHealth("ward","TEST-boss",-1,100),"invalid health refused");
+        long revision=r2.Snapshot().revision;
+        Check(d2.UpdateBossHealth("ward","TEST-boss",25,120),"damage and max health changes recorded");
+        Check(r2.Snapshot().revision==revision&&boss.hp==80,"health is detached source state, not a rules revision");
+        ExpeditionView Receive()
+        {
+            var batch=ExpeditionViewBatch.Build(r2,new[]{"guest"},s2.Sources);
+            var receiver=new ExpeditionViewReceiver("guest");
+            receiver.Public(JsonSerializer.Deserialize<ExpeditionView>(JsonSerializer.Serialize(batch.Public,codec),codec));
+            receiver.Private(JsonSerializer.Deserialize<ExpeditionPrivateFrame>(JsonSerializer.Serialize(batch.Private.Single(),codec),codec));
+            return receiver.View;
+        }
+        var remote=Receive();
+        Check(remote.Member("host").seat==1&&remote.Member("guest").seat==7&&remote.areaBarrier.layout==fingerprint,"late guest receives seats and fingerprint through public/private wire");
+        Check(remote.bossArrivals.Single().hp==25&&remote.bossArrivals.Single().maxHp==120&&remote.bossArrivals.Single().x==3&&remote.bossArrivals.Single().spawned==boss.spawned,"late guest receives latest health and original spawn");
+        remote.bossArrivals[0].hp=999;Check(d2.BossArrivals[0].hp==25,"boss projection detached");
+        s2.Sources.Seat=who=>who=="guest"?4:0;
+        Check(Receive().Member("guest").seat==4&&Receive().Member("host").seat==0,"seat rebind and unavailable pilot refresh without a rules revision");
         view.closures[0].state="tampered";Check(d2.Closures[0].state!="tampered","projection detached from authority");
-        Check(d2.BossDefeated("TEST-boss",new V3(0,0,0)),"complete instance");d2.Step();Check(d2.Closures.Single(c=>c.id=="final-gate").state=="opening"&&d2.Closures.Single(c=>c.id=="final-gate").Blocking,"final gate starts opening with collision");s2.Tick(1);Check(!d2.Closures.Single(c=>c.id=="final-gate").Blocking,"gate clears collision at one second");
+        Check(d2.BossDefeated("TEST-boss",new V3(0,0,0)),"complete instance");Check(Receive().bossArrivals.Single().hp==0&&d2.BossArrivals.Single().maxHp==120&&!d2.UpdateBossHealth("ward","TEST-boss",10,120),"death preserves max health and cannot be revived by stale updates");d2.Step();Check(d2.Closures.Single(c=>c.id=="final-gate").state=="opening"&&d2.Closures.Single(c=>c.id=="final-gate").Blocking,"final gate starts opening with collision");s2.Tick(1);Check(!d2.Closures.Single(c=>c.id=="final-gate").Blocking,"gate clears collision at one second");
         r2.VoteExit("host",true);r2.VoteExit("guest",true);s2.Tick(.1);Check(d2.Barrier.active&&d2.Barrier.target=="city"&&d2.Barrier.generation==2,"return starts new generation");
         Check(!d2.Ready("guest","ward",1,fingerprint),"late ACK rejected across return");r2.Disconnect("guest");d2.Step();Check(d2.Barrier.required==1,"disconnected peer removed from barrier");
         d2.Ready("host","city",2,fingerprint);Check(d2.CompleteAreaLoad((area,assigned)=>area=="city"&&assigned.Count==1),"return uses town door slots");d2.Step();Check(NativeExpeditionView.Build(r2,"host",s2.Sources).Member("host").safe,"authority sanctuary membership");
+        Check(d2.TryBeginFinal(),"final encounter begins after gate and return");
+        Check(!d2.RecordBossArrival("final","test",_=>true,new V3(float.NaN,0,0),100,100)&&!d2.RecordBossArrival("final","test",_=>true,new V3(),100,double.PositiveInfinity),"nonfinite spawn and health refused");
+        Check(d2.RecordBossArrival("final","test",_=>true,new V3(-3,0,9),100,100),"final boss supplies spawn and health");
+        Check(d2.FinalDefeated(new V3(-3,0,9))&&d2.BossArrivals.Single(a=>a.area=="city").hp==0,"final death publishes zero health");
         Console.WriteLine("PASS Expedition director ("+count+" checks)");
     }
 }

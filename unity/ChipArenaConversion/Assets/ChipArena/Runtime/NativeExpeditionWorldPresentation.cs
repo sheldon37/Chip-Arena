@@ -70,6 +70,8 @@ namespace ChipArena.UnityConversion
         /// <summary>LateUpdate: the 3D pieces at the bound view's anchors.</summary>
         private void ExpeditionWorldFrame()
         {
+            // The doors, final gate and sanctuary, and the transfer screen's fade (NativeExpeditionStatesPresentation.cs).
+            ExpeditionStatesFrame();
             if(!ExpeditionWorldShown){expeditionWorld?.Clear();expeditionLabelWorld.Pieces.Clear();return;}
             if(expeditionWorld==null&&!expeditionWorldFailed){expeditionWorld=NativeExpeditionWorldPresentation.Create();expeditionWorldFailed=expeditionWorld==null;}
             if(expeditionWorld!=null)expeditionWorld.Frame(LiveExpedition,cameraView.transform.position,Time.unscaledTime,prefs.reducedEffects);
@@ -102,8 +104,9 @@ namespace ChipArena.UnityConversion
             for(int i=1;i<n;i++){int j=i;while(j>0&&labelDepth[j-1]>labelDepth[j]){Swap(j,j-1);j--;}}
             NativeExpeditionHud.LabelsReset();
             for(int i=0;i<n;i++){var p=pieces[labelOrder[i]];labelShown[i]=NativeExpeditionWorld.Labelled(p,eye.x,eye.y,eye.z)&&NativeExpeditionHud.LabelClaim(p,labelAt[i],labelK[i]);}
-            // The 3D pieces draw their own diamond, chip tile, machine and crate; the door's leaves are the HUD's Door hologram.
-            for(int i=n-1;i>=0;i--){var p=pieces[labelOrder[i]];NativeExpeditionHud.Piece(p,labelGlyph[i],labelAt[i],labelK[i],labelShown[i],expeditionWorld==null||p.kind==ExpeditionPieceKind.Door,1);}
+            // The 3D pieces draw their own diamond, chip tile, machine and crate; a door with 3D leaves this frame (its closure in
+            // the view, the layout bound) needs no glyph, any other door keeps the HUD's Door hologram.
+            for(int i=n-1;i>=0;i--){var p=pieces[labelOrder[i]];NativeExpeditionHud.Piece(p,labelGlyph[i],labelAt[i],labelK[i],labelShown[i],expeditionWorld==null||p.kind==ExpeditionPieceKind.Door&&!expeditionStates.HasLeaf(p.anchor),1);}
         }
         private static void Swap(int a,int b)
         {

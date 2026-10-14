@@ -53,8 +53,10 @@ namespace ChipArena.UnityConversion
             var run=Session.Run;if(!run.Progress("kill:"+spawn,progress))return false;
             if(drop&&!run.DropAt(spawn,at.x,at.y,at.z))throw new InvalidOperationException("Encounter drop could not be recorded.");return true;
         }
-        public bool BossDefeated(string boss,V3 at)=>Session.Run.DefeatBossAt(boss,at.x,at.y,at.z);
-        public bool FinalDefeated(V3 at)=>Session.Run.FinishFinalAt(at.x,at.y,at.z);
+        public bool BossDefeated(string boss,V3 at)
+        {var area=Session.Run.Snapshot().area;if(!Session.Run.DefeatBossAt(boss,at.x,at.y,at.z))return false;BossDown(area,boss);return true;}
+        public bool FinalDefeated(V3 at)
+        {if(!Session.Run.FinishFinalAt(at.x,at.y,at.z))return false;BossDown(Layout.world);return true;}
         /// <summary>Run after combat and before projection. Session owns the elapsed clock; do not tick it twice.</summary>
         public void Step()
         {
