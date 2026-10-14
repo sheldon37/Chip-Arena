@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 hit/wound handoff: `codex/hit-wound-metadata` on shared `9270d957` supplies primary swing IDs/contact origins and bullet IDs on Hit/Headshot (minions included), optional authoritative `Pierced`, bow puncture/cavity trauma, and hazard death IDs without stale fatal wounds. Local checks and native-gate coverage are in DEV_LOG; actual Unity/Windows and compiled publication remain pending. Expedition/Hulk follow-up contracts remain pending.
+
 2026-10-14 map surfaces: `claude/map-surface-artifacts` (base shared `0671054`) ends the z-fighting on the dressed maps. Drawn faces that share a plane are separated by 2 mm steps (render only; collision, ids and nav unchanged). The skylines (Brickfall, Factory, Cyber City) get the same treatment. The Factory lathe collar no longer covers the green bed top, and Ward Zero's duplicated lane dashes and posts are gone. Managed audit: 0 coincident visible faces on all four maps. Unity views and Windows unrun; the owner's Oct 13 recording is requested to confirm the artifact.
 
 2026-10-14 melee mesh cuts: `claude/melee-mesh-slice` (base shared `01eb518`) cuts a blade-killed pilot's mesh along the killing swing: whole body, or only the head or limb the blade took. Sealed caps, seam blood, no frame stall. Gore off, kill effects, slit throats and shields are unchanged. Managed checks pass; Unity/Windows/two-client viewing unrun. Astra: replicate the attacker's position on melee Hit events for an exact guest cut (BISECT-GIB "Melee cuts").

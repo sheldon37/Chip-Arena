@@ -15,6 +15,17 @@ internal static class NativeSystemsChecks
     private static T Decode<T>(JsonElement e)=>JsonSerializer.Deserialize<T>(e.GetRawText(),Options);
     public static void Run(string root,ConversionContent content)
     {
+        foreach(float speed in new[]{10f,80f,200f})foreach(int part in new[]{CapturedRig.Head,CapturedRig.Spine,CapturedRig.LArm})foreach(bool lethal in new[]{false,true})
+        {
+            var wound=NativeBodyDamage.Resolve(NativeBodyDamage.Projectile("bow",speed,.045f),part,39,lethal);
+            Check(wound.trauma=="pierce"&&(wound.kind=="puncture"||wound.kind=="cavity")&&!wound.destroyed&&NativeBodyDamage.Valid(wound),"arrows puncture/cavitate without burning or bullet severing");
+        }
+        Check(NativeBodyDamage.Projectile("pistol",120,.045f).kind=="bullet"&&NativeBodyDamage.Projectile("fire",40,.1f).kind=="energy","gun and magic wound kinds preserved");
+        var metadataHit=new ArenaEvent{Kind=EventKind.Headshot,Projectile=42,Pierced=true,From=new V3(1,2,3)};
+        var hitCopy=JsonSerializer.Deserialize<ArenaEvent>(JsonSerializer.Serialize(metadataHit,new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true}),Options);
+        Check(hitCopy.Projectile==42&&hitCopy.Pierced&&hitCopy.From.x==1,"hit metadata JSON round trip");
+        var oldHit=JsonSerializer.Deserialize<ArenaEvent>("{\"Kind\":0,\"Projectile\":7}",Options);
+        Check(!oldHit.Pierced&&oldHit.Projectile==7,"old frames default to no pass-through claim");
         var push=new V3(0,5,9);var carried=NativeMeleeRules.External(ref push,1f/60,out _,true);Near(carried.z,9,"wave push is not dragged during dash");Near(carried.y,5,"wave preserves one-shot lift");Near(push.y,0,"lift consumed once");
         var dragged=NativeMeleeRules.External(ref push,1f/60,out _);Near(dragged.z,9*Math.Exp(-3.1/60),"post-wave drag");Near(dragged.y,0,"no repeated lift");
         Check(NativeIntroRules.Style(new NativeSeat{spec="siren"})==NativeIntroRules.Default,"ungranted Siren standard intro");Check(NativeIntroRules.Style(new NativeSeat{spec="siren",AuthorityBoss=true})=="dev-siren","boss intro preserved");Check(NativeIntroRules.Style(new NativeSeat{spec="rifle"})=="weapon-rifle","weapon intro preserved");Check(NativeIntroRules.Style(new NativeSeat{spec="siren",overrideIntro=true,intro="missing-style"})==NativeIntroRules.Default,"unknown override normalized");Check(NativeIntroRules.Style(new NativeSeat{spec="pistol",overrideIntro=true,intro="neon-drop"})=="weapon-pistol","retired override plays the signature");

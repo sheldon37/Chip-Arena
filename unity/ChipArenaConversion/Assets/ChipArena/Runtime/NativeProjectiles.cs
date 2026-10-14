@@ -158,12 +158,12 @@ namespace ChipArena.UnityConversion
             if(b.Pong&&target==null&&minion==null&&b.Bounces>0){b.Contacts[hit.Collider.GetInstanceID()]=Time;return PongBounce(b,owner,hit.Point,Vector3.Reflect(b.Velocity,hit.Normal));}
             if(minion!=null)
             {
-                float actual=HitMinion(minion,owner,b.Damage,b.Velocity.normalized,b.Impulse,hit.Point,b.Detail=="bit-bolt"?"bit-bolt":b.Reflections>0?"reflected":b.Direct?"direct":"secondary");if(b.Direct||b.WeaponFx&&b.Reflections==0)MinionWeaponHit(minion,owner,actual,b.Burn,b.Poison);
+                float actual=HitMinion(minion,owner,b.Damage,b.Velocity.normalized,b.Impulse,hit.Point,b.Detail=="bit-bolt"?"bit-bolt":b.Reflections>0?"reflected":b.Direct?"direct":"secondary",projectile:b.Id,pierced:!b.Pong&&b.Pierces>0);if(b.Direct||b.WeaponFx&&b.Reflections==0)MinionWeaponHit(minion,owner,actual,b.Burn,b.Poison);
                 if((b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,null,null,hit.Point,b.Velocity.normalized,b.Attack,b.Id,minion);
             }
             else if(target!=null)
             {
-                bool head=!b.CyberPacket&&NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-b.Velocity.normalized*.1f),Vec(b.Velocity),b.Radius,target.Down!=null||target.Juggle!=null);float actual=Damage(target,owner,b.Damage*(head?1.5f*(b.Spec=="bow"&&b.Draw>=1?1.25f:1):1),b.Velocity.normalized,b.Impulse,head,primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude,b.Radius),hitPoint:hit.Point,weaponHit:b.Direct&&b.Reflections==0,damageKind:b.Detail=="bit-bolt"?"bit-bolt":b.CyberPacket?"packet-burst":b.Reflections>0?"reflected":b.Direct?"direct":"secondary");
+                bool head=!b.CyberPacket&&NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-b.Velocity.normalized*.1f),Vec(b.Velocity),b.Radius,target.Down!=null||target.Juggle!=null);float actual=Damage(target,owner,b.Damage*(head?1.5f*(b.Spec=="bow"&&b.Draw>=1?1.25f:1):1),b.Velocity.normalized,b.Impulse,head,primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude,b.Radius),hitPoint:hit.Point,weaponHit:b.Direct&&b.Reflections==0,projectile:b.Id,pierced:!b.Pong&&b.Pierces>0,damageKind:b.Detail=="bit-bolt"?"bit-bolt":b.CyberPacket?"packet-burst":b.Reflections>0?"reflected":b.Direct?"direct":"secondary");
                 if(actual>0&&target.Hp<=0&&target.Death!=null&&Math.Abs(target.Death.at-Time)<.001f)target.Death.projectile=b.Id;
                 if(actual>0&&b.Detail=="bit-bolt")owner.Mana=Math.Min((float)owner.Stats["maxMana"],owner.Mana+CyberRangedSpec.BoltMana);
                 if(actual>0&&b.Detail=="rain"){target.SlowFactor=Math.Min(target.SlowFactor,.8f);target.SlowEnd=Math.Max(target.SlowEnd,Time+1.5f);}

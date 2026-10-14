@@ -87,13 +87,13 @@ namespace ChipArena.UnityConversion
             {
                 if(target.Hp<=0||!CanHit(p,target))continue;var delta=target.Body.position-origin;
                 if(!NativeMeleeRules.Contact(swing,Time,Vec(delta),.45f)&&!NativeSprintAttack.Ring(swing,Time,Vec(delta),.45f,p.Grounded)||!swing.Contact("pilot:"+target.Seat.id,Time,Vec(delta),.45f,MeleeVisible(origin,target.Body.position,p,target.Collider),p.Grounded))continue;
-                float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),(swing.SprintAttack&&swing.Spec=="shield"?new Vector3(delta.x,0,delta.z):delta+Vector3.up*.15f).normalized,NativeSprintAttack.Impulse(swing,(float)p.Weapon.impulse)*(float)p.Stats["impulse"],false,melee:true,weaponHit:true,hitPoint:target.Collider.ClosestPoint(origin));
+                float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),(swing.SprintAttack&&swing.Spec=="shield"?new Vector3(delta.x,0,delta.z):delta+Vector3.up*.15f).normalized,NativeSprintAttack.Impulse(swing,(float)p.Weapon.impulse)*(float)p.Stats["impulse"],false,melee:true,weaponHit:true,hitPoint:target.Collider.ClosestPoint(origin),projectile:swing.Id);
                 if(actual>0){ImpactChips(p,target,null,target.Body.position,delta.normalized,swing.Id,swing.Id);if(target.Hp>0)PrimaryMeleeImpact(p,target);}
                 if(p.Hp<=0||Incapacitated(p)||Frozen(p)){CancelMelee(p);return;}
                 if(p.Swing!=swing)return; // A block or thorns death interrupts remaining contacts.
             }
             foreach(var m in Minions.ToArray())
-            {Vector3 delta=m.Body.position-origin;if(m.Hp<=0||!CanHit(p,m)||!swing.Contact("minion:"+m.Id,Time,Vec(delta),.3f,MeleeVisible(origin,m.Body.position,p,m.Collider),p.Grounded))continue;Vector3 point=m.Body.position;float actual=MeleeMinionHit(m,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),delta.normalized,NativeSprintAttack.Impulse(swing,(float)p.Weapon.impulse)*(float)p.Stats["impulse"]);MinionWeaponHit(m,p,actual,(float)(p.Weapon.burn+p.Stats["burn"]),(float)p.Stats["poison"]);ImpactChips(p,null,null,point,delta.normalized,swing.Id,swing.Id);}
+            {Vector3 delta=m.Body.position-origin;if(m.Hp<=0||!CanHit(p,m)||!swing.Contact("minion:"+m.Id,Time,Vec(delta),.3f,MeleeVisible(origin,m.Body.position,p,m.Collider),p.Grounded))continue;Vector3 point=m.Body.position;float actual=MeleeMinionHit(m,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),delta.normalized,NativeSprintAttack.Impulse(swing,(float)p.Weapon.impulse)*(float)p.Stats["impulse"],projectile:swing.Id);MinionWeaponHit(m,p,actual,(float)(p.Weapon.burn+p.Stats["burn"]),(float)p.Stats["poison"]);ImpactChips(p,null,null,point,delta.normalized,swing.Id,swing.Id);}
             foreach(var prop in Props.ToArray())
             {
                 if(prop==null||prop.Indestructible)continue;Vector3 delta=prop.transform.position-origin;float extra=Math.Min(.8f,prop.Definition.size.Length*.3f);

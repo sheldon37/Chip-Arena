@@ -211,10 +211,10 @@ namespace ChipArena.UnityConversion
                 else{Damage(q,null,damage,push,impulse,false,primary:false,melee:true);if(a.Stats.id=="hulk")q.Knockback.y=Math.Max(q.Knockback.y,4);}
             }
         }
-        private float HitPveAdd(NativeMinion m,NativePilot source,float amount,Vector3 dir,float impulse,Vector3? point,string kind,float radius,bool head)
+        private float HitPveAdd(NativeMinion m,NativePilot source,float amount,Vector3 dir,float impulse,Vector3? point,string kind,float radius,bool head,int projectile=0,bool pierced=false,Vector3? from=null)
         {
             var a=m.Pve;if(source==null||a.Travelling||Time<a.ExposedAt||Pve?.Holding==true)return 0;
-            if(Pve==null){float hit=Math.Min(m.Hp,amount);m.Hp-=hit;m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,m.Body.position,hit,kind);if(m.Hp<=0)RemoveMinion(m);return hit;}float actual=0;
+            if(Pve==null){float hit=Math.Min(m.Hp,amount);m.Hp-=hit;m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,m.Body.position,hit,kind,from:from,projectile:projectile,pierced:pierced);if(m.Hp<=0)RemoveMinion(m);return hit;}float actual=0;
             foreach(var share in NativeHordeDamage.Shares(amount,new V3(-m.Body.position.x,m.Body.position.y,m.Body.position.z),-m.Yaw,a.Crawl,point.HasValue?(V3?)new V3(-point.Value.x,point.Value.y,point.Value.z):null,kind,radius>0?radius:3,head,Pve.SpawnRandom.Next))
             {
                 int limb=(a.Lost&share.part)!=0?0:share.part;float applied=share.damage*(limb==1?1.5f:limb==0?1:.9f),taken=Math.Max(0,Math.Min(m.Hp,applied));m.Hp-=taken;actual+=taken;
@@ -227,7 +227,7 @@ namespace ChipArena.UnityConversion
             {a.SpitCancelAt=Time;a.Struck=true;a.RecoverAt=NativeSpitterRules.Retry(Time);Emit(EventKind.Impact,source,m.Id,m.Body.position,0,"minion-spit-cancel");}
             a.LastHit=source;a.LastDamage=Time;a.Dealt.TryGetValue(source.Seat.id,out float dealt);a.Dealt[source.Seat.id]=dealt+actual;
             if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;if(a.Stats.id!="spitter"||actual<=0)a.RecoverAt=Time;}if(Time>=a.ExposedAt)a.External=Vector3.ClampMagnitude(a.External+new Vector3(dir.x,0,dir.z)*NativePveParity.AddImpulse(impulse),6);
-            m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,normal:dir.x*dir.x+dir.z*dir.z>1e-12f?dir:Vector3.zero);
+            m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,normal:dir.x*dir.x+dir.z*dir.z>1e-12f?dir:Vector3.zero,from:from,projectile:projectile,pierced:pierced);
             MinionImpact(m,source,actual,point,kind,dir);
             if(m.Hp<=0){Vector3 at=m.Body.position;PveAddKilled(m,source);RemoveMinion(m,false);if(a.Possessed)FoundPveBoss(at);}return actual;
         }

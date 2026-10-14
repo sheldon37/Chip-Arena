@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Linq;
 using UnityEngine;
 
 namespace ChipArena.UnityConversion
@@ -22,6 +23,7 @@ namespace ChipArena.UnityConversion
                 foreach(var p in new[]{a,b})
                 {
                     p.Seat.spec=p==a?spec:defender;p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);
+                    p.Wounds.Clear();p.Death=null;Events.Clear();
                     p.Seat.bot=false;p.Seat.alive=p.Seat.connected=true;p.Hp=p.Stamina=p.Mana=100;p.Collider.enabled=true;p.Body.isKinematic=false;
                     p.Ready=p.AttackEnd=p.BlockEnd=p.BlockReady=p.RollEnd=p.RollReady=p.StunEnd=p.StaggerImmune=p.ReloadEnd=0;p.CastAt=0;p.RegenAt=Time+10;
                     p.MeleeKit=new NativeMeleeKit();p.MeleeBufferedUntil=-1;p.MeleeComboUntil=0;p.Pose.Sprinting=false;p.ArmourHitUntil=0;p.Swing=null;p.Special=null;p.Down=null;p.Juggle=null;p.FrozenUntil=p.ScareUntil=0;p.Roll=null;p.Combo=-1;p.RiposteAt=p.BlockAt=-100;p.RiposteBy=-1;p.Dots.Clear();CancelAbilities(p);
@@ -37,7 +39,23 @@ namespace ChipArena.UnityConversion
                     Check(!TryBlock(a),"block cancelled a committed primary");StepMelee(a);Check(b.Hp==100,"windup hit early");
                     Position(b,new Vector3(1000,100,998));Advance(a.Swing.HitAt-Time+.001f);StepMelee(a);Check(b.Hp==100,"rear target hit");
                     Position(b,new Vector3(1000,100,1002));Advance((a.Swing.HitAt+a.Swing.HitUntil)/2-Time);StepMelee(a);
-                    NearNative(b.Hp,100-(float)a.Weapon.damage,"late entry into sweep "+spec);float hp=b.Hp;Advance(.001f);StepMelee(a);Check(b.Hp==hp,"duplicate primary contact");
+                    NearNative(b.Hp,100-(float)a.Weapon.damage,"late entry into sweep "+spec);var hitEvent=Events.Last(e=>e.Kind==EventKind.Hit&&e.Target==b.Seat.id);
+                    Check(hitEvent.Projectile==a.Swing.Id&&hitEvent.Projectile>0&&Vec(hitEvent.From)==a.Body.position,"authoritative melee origin and swing id "+spec);
+                    float hp=b.Hp;Advance(.001f);StepMelee(a);Check(b.Hp==hp,"duplicate primary contact");
+                }
+                // Metadata must identify the arrow on both ordinary and head hits, including terminal hits.
+                foreach(bool head in new[]{false,true})foreach(int pierces in new[]{0,1})
+                {
+                    Setup("bow");b.Hp=1;
+                    var point=b.Body.position+Vector3.up*(head?.6f:0);
+                    var arrow=new NativeBullet{Id=nextBullet++,Owner=a.Seat.id,Original=a.Seat.id,Spec="bow",Direct=true,Damage=10,Radius=.045f,Velocity=Vector3.forward*80,Pierces=pierces,Attack=nextAttack++};
+                    bool stopped=BulletImpact(arrow,a,new NativeContact{Collider=b.Collider,Point=point,Contact=point,Normal=Vector3.back});
+                    var evt=Events.Last(e=>e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot);
+                    Check(evt.Projectile==arrow.Id&&evt.Pierced==(pierces>0)&&stopped==(pierces==0),"arrow id and pass-through agree with actual continuation");
+                    Check(evt.Kind==(head?EventKind.Headshot:EventKind.Hit),"head and body metadata paths");
+                    Check(b.Death?.wound?.trauma=="pierce"&&b.Death.wound.kind!="scorch"&&b.Death.projectile==arrow.Id,"fatal arrow wound and replay identity");
+                    var copy=NativeFrameCodec.Clone(NetworkFrame());var copied=copy.snapshot.Events.Last(e=>e.Id==evt.Id);
+                    Check(copy.Valid(Content)&&copied.Projectile==evt.Projectile&&copied.Pierced==evt.Pierced,"arrow metadata survives real frame JSON");
                 }
                 // Cancel the actual committed contact and queued echoes, including a bot's greatsword.
                 foreach(string control in new[]{"juggle","down","stun","freeze"})foreach(bool active in new[]{false,true})
