@@ -667,7 +667,7 @@ namespace ChipArena.UnityConversion
         private readonly HashSet<int> hordeHulks=new HashSet<int>();
         private void HordeCues(NativeArena arena)
         {
-            if(arena==null)return;HordeWallCues(arena);HulkChargeCues(arena);if(arena.Pve==null)return;if(arena.Generation!=hordeCueGeneration){hordeCueGeneration=arena.Generation;hordeStrides.Clear();hordeLast.Clear();hordeBreachCues.Clear();hordeHulks.Clear();}float t=arena.Time;
+            if(arena==null)return;HordeWallCues(arena);if(arena.Pve==null)return;if(arena.Generation!=hordeCueGeneration){hordeCueGeneration=arena.Generation;hordeStrides.Clear();hordeLast.Clear();hordeBreachCues.Clear();hordeHulks.Clear();}float t=arena.Time;
             foreach(var m in arena.Minions)
             {
                 var a=m.Pve;if(a==null||m.Hp<=0||a.Stats==null||a.Travelling)continue;
