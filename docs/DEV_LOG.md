@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — update available: the home circle beats, the other screens show a pill
+- Branch `claude/update-pulse` on shared `c895406`. Owner: "make it more visible when updates are available~ Like make the button pulse or something".
+- Home Update Game circle (`NativeHomeMenu.UpdateCircle`), Available state only, on a 1.6 s beat: the halo swells on the beat, two sonar rings run out from the disc, the disc kicks 6% larger, the download arrow dips, a magenta pip marks it new and AVAILABLE flashes toward white (it used to fade its label slightly). Reduced effects keep the breathing halo and the pip only. Other states draw as before.
+- Panel screens (Play, Create, Join, Lobby, Boss, Customize, Settings, Account, DEV, Catalogue), which never showed the circle: an UPDATE READY pill beside the top-bar wordmark on the same beat. A click goes home with the update card open (Customize with unsaved changes asks first through its own confirm); in a room it reads LEAVE THE ROOM TO INSTALL and does nothing, as `NativeUpdater.CanInstall` already refuses there. While downloading, verifying or preparing it shows that state steadily with a progress hairline.
+- Presentation only: `NativeUpdater` states, checks, install gating and the once-per-launch automatic check are unchanged. A build left open will not notice an update published after launch until the player checks; a periodic re-check would be an updater change (Astra).
+- Checks (merged on shared `d2b847c`): Unity runtime+editor build OK; check_relay 657 PASS (Rooftop home menu 229 checks, now including the beat, the reduced-effects gate and the pill routing); Python 101 OK (1 skip); package_source 1873 files; diff-check clean. Not run: Unity Editor or Windows view of the pulse; no offline render of it.
+
 ## 2026-10-14 — Astra — authoritative hit metadata and hazard/arrow wounds
 - Branch `codex/hit-wound-metadata`, base shared/builder `9270d957`. Implements Claude's owner-forwarded visual handoff. Relevant open PR #62 remains the shared presentation integration; no overlapping open task PR was found.
 - Primary melee Hit events now carry `Projectile = swing.Id` and `From = attacker.Body.position` captured at contact, including extra strikes and minion targets. All pilot melee Damage calls carry their contact-time source position; abilities without a primary swing keep ID 0 rather than borrowing an unrelated swing. Bullet Hit/Headshot events carry `b.Id`, including reflected shots and minions. Event defaults for unrelated damage remain unchanged.
