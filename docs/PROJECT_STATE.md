@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 spitter pool: `claude/spitter-pool` (base shared `b22e59f`, merged shared `6da0330`) removes the arrow in the pool's middle. The spit's Impact event names the add's owner, a DEV on the bow, so the bow presentation lodged an arrow there; `NativeBowWire.Lodges` now takes only an arrow's own impact. It also drops the green ring and draws a natural lobed puddle whose mean extent is the 1.3 m radius. PvE and off-PvE DEV pools come from the records. Presentation only; managed/CI-layout checks in DEV_LOG; Unity/Windows unrun. Pushed, not merged.
+
 2026-10-14 Expedition M1 import: `codex/expedition-layout-import` on shared `5999aff` integrates PR #212, imports both maps/nav and exp-layout-2 manifest, isolates all arena/DEV selectors, fixes inherited gantry exits and defines instance Ward behavior. Validation and promotion receipts: latest DEV_LOG. Asset integration only; Expedition runtime/PhysX/host-guest acceptance remains pending.
 
 2026-10-14 Expedition layout M1: `claude/expedition-layout` (merged shared `b22e59f`) has the town (`expedition-city`) and Ward Zero instance (`expedition-ward-zero`) generators, draft maps and the schema-1 manifest as Tests fixtures (not in Resources), and the `expedition-city` dusk look. Proven offline and against the base `NativeExpeditionLayout` gate; Siren's two gantry breach exits are not Hulk-clear (Astra). Next: Astra merges the PR #212 filter and imports (`docs/EXPEDITION-LAYOUT.md`); Claude door, gate and sanctuary visuals and the town kit. Not playable or released.

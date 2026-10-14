@@ -7346,3 +7346,65 @@ Final full optimized managed/real-relay rerun: exit 0, 682 PASS groups, includin
 audit. Real local WebSocket/UDP/TCP checks passed. No assertion was waived.
 Only a surface-test result label and XML comments changed after compilation.
 Source publication uses this checked tree; merge/builder receipts are in the PR.
+
+## 2026-10-14 — Claude — Spitter pool: the arrow in the middle, no green circle, a natural puddle (owner, Windows test build: "Spitter still needs some visual fixes, their pool produces an arrow in the middle for some reason? Also, make the pool look more natural. (No circle showing either, currently theres a green circle)")
+- Branch `claude/spitter-pool` on shared `b22e59f`, merged with shared `6da0330` (PR #214; no conflicts). Implementation commit `2e57085`, merge `e38b8b8`. Pushed on the branch; no PR, merge or release. Presentation only. The owner's longer spit range is Astra's rule (`NativeSpitterRules.Range`); not changed here.
+- **The arrow (root cause, traced and reproduced):**
+  1. `NativePveAcid.LaunchPveSpit` emits `Impact` "minion-spit" from `m.Owner`: Position = the landing (the pool's centre), Projectile 0, Normal zero, at launch.
+  2. A DEV monster's owner is the DEV who spawned it (`NativeDevMonsterAuthority`: `Owner=actor`). A regular PvE add's owner is the Siren seat (spec `siren`), so plain PvE never showed it.
+  3. `NativeBowPresentation.BowEvents` lodged an arrow for every `Impact` whose Source has spec `bow`: `NativeBowWire.Lodges` was `Kind==Impact && spec=="bow"`.
+  4. So with the DEV on the bow, `bowStuck.AddWall` put the real arrow model at the pool's centre. Its direction fell back to (landing − DEV).normalized, head buried .14 m. It appeared at launch, before the glob landed, and stayed `WallLife` 6 s against the pool's flight + 4 s. Host, guests and the killcam all showed it, since the event replicates.
+  - Reproduced in the scratch harness with the real Core predicate and `NativeBowStuck`: before, `Lodges` = True; after, False.
+  - The same bug planted arrows at a bow DEV's brute and Hulk landings and slams ("minion-drop", "minion-slam"). It also planted one at a spitter interrupted by a bow pilot ("minion-spit-cancel"), and made the bow thunk sound.
+- **Also drawn at the pool's position, now fixed:**
+  - The generic impact cue drew the spit's launch event as an impact on every spit, PvE included: a .09 s straight streak from the mouth and a 6-spark burst at the landing before the glob arrived.
+  - An add's events took the owner's weapon colour and the owner's water, kinetic and demolition surface procs.
+- **Traced and not involved:**
+  - the pool decals: closed fans; the `NativeFxDraw` layers are unbounded lists, so no truncated fan;
+  - `NativeVfxDraw` drops and blobs;
+  - the DEV overlays: hazard boxes, nav, anchors and shot paths draw no acid;
+  - horde telegraphs: the spit has none;
+  - combat glow and weapon impacts: they need a SurfaceId;
+  - Hulk motion: `hulk-` events only.
+- **Fix:**
+  - `NativeBowWire.Lodges` takes only an arrow's own impact: a projectile id, with an arrow's Detail or none. The thunk follows it.
+  - New Core `NativeImpactCues.AddEvent` (`minion-*`). An add's events take no owner colour or procs.
+  - The spit and spit-cancel notifications plan no impact cue.
+- **The green circle:** `decals.Ring` at .975–1.0 of the radius (`RimAlpha`) plus the glowing meniscus band. Both are removed, and `RimAlpha` is gone.
+- **Natural pool** (`NativeZombieFx` / `NativeZombieFxDraw`):
+  - Outline: lobed, per record seed. Its mean extent is exactly the radius on any 24+ point grid, with every lobe within 1 ± .11 (checked over 400 seeds).
+  - Spread: viscous, from 30% at landing, each lobe on its own clock, all arrived by 1.15 s.
+  - Thickness: a polar mesh (36 × 10, low tier 24). Dark, even deep core; mottled middle; a thin, lighter, translucent lip that is never thicker than the liquid inside it; a 2.6 cm feather.
+  - Sheen: soft, view-dependent (Fresnel), fading before the edge.
+  - Around it: six satellite splats just outside the widest lobe (they dry early), and the inside spatter, which the creeping liquid absorbs.
+  - Bubbles: a few that pop now and then, with a small ripple. Fumes are faint (alpha ≤ .1).
+  - Drying: over the last 1.3 s it thins into patches and recedes up to 22%, unevenly, then leaves a residue stain that fades over 5 s.
+  - The fizzle puddle uses the same body.
+  - Reduced effects and the low tier: half the satellites, bubbles, fumes and drops; no domes, pop drops or glints; the low outline is coarser.
+  - Census at the busiest frame (full): 42 billboards (was 54), 648 lit vertices (was 810), 822 decal vertices (was 482). The harness measured zero bytes allocated over 1,980 drawer frames.
+- **Host, guest and killcam:** PvE and the off-PvE DEV path now draw every glob and pool from the acid records (`pve.acid` / `devAcid`), seeded by the record id. The spit event is transient: the event buffer drops it past 32 effects in a tick. Before, off-PvE pools depended on it. Now the event only stops the DEV preview, and the preview's range clamp is `NativeSpitterRules.Range` (it was a literal 11).
+- **Longer range (Astra's rule, checked here):**
+  - 11 m: flight 1.34 s, peak 2.44 m, landing at 37°.
+  - 18 m: flight 2.12 s, peak 2.99 m, landing at 30°. The record limit (flight ≤ 3 s) allows up to about 25.9 m.
+  - Fumes are rate-bound, and the 24 glob slots still cover 16 records.
+  - What would look off:
+    - From the target, the glob is a small dot for about the first second.
+    - The 7 drips spread thinner along the arc.
+    - The splash is symmetric for a 30° landing.
+    - A 2 s lob with a long lead has no landing telegraph. If hits feel unfair, a faint landing marker is the presentation option.
+  - No code change is needed for 18 m.
+- **Gameplay unchanged:** hit timing, hitboxes, damage, cooldowns, movement, networking, the pool's 1.3 m / 4 s and the poison are as before. Only the visual body differs from the hazard: its lobes reach up to 11% past 1.3 m at points, and it recedes up to 22% in the last 1.3 s while the hazard stays at 1.3 m.
+- Files:
+  - Core: `NativeZombieFx.cs`, `NativeBow.cs`, `NativeImpactCues.cs`.
+  - Runtime: `NativeZombieFxDraw.cs`, `NativeHordeAcidPresentation.cs`, `NativeHordeKindPresentation.cs`, `NativeBlastPresentation.cs`, `NativeBowHud.cs`.
+  - Tests: `ZombieFxChecks.cs`.
+  - Docs: `SIREN-ZOMBIES.md`, PROJECT_STATE.
+- Renders (scratch harness, not Unity): `scratchpad/renders-spitter-pool/{full,reduced,low,range}`. Before is shared `b22e59f`; after is this branch. The real `NativeZombieFxDraw` and the bow's Core path are compiled against a UnityEngine stub, and the arrow is the real Core arrow mesh.
+- Checks on `e38b8b8` (actual):
+  - `unity-check.sh`: Runtime + Editor compile against Unity 6000.3.24f1, OK.
+  - `check_relay.py`: exit 0, 682 PASS lines, real relay included. Zombie fx: 764,681 checks (was 725,910): the lobed outline's mean extent is the radius and every lobe is within the tolerance, deterministic per seed, slow spread, uneven thickness, no ring at the radius, the spit's events lodge no arrow, zero allocation, Reduced and low tier budgets. Horde kinds 433,790, hulk and spitter 49,154 and bow 5,028 are unchanged and pass.
+  - CI layout (`ci-relay2.sh`, docs removed): exit 0, 682 PASS.
+  - Python: 106 OK (1 skip). `package_source.py` OK. `git diff --check` clean.
+  - Harness: the drawer allocates 0 bytes over 1,980 frames (three tiers, two pools).
+- Not run: Unity Editor, a Windows build, two clients, the arrow fix seen in game.
+- Next: the owner checks the pool in the next test build, spawning spitters on the bow. Astra owns the range change.
