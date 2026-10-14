@@ -6151,3 +6151,18 @@ slider, and separate boss music. Updated asset receipt and packaged credits.
 Full ffmpeg decode, source package (1852 files) and whitespace checks passed.
 No code change; Unity import, Windows build/listening remain pending. Merge and
 builder sync receipts in task PR; compiled update availability not yet verified.
+
+## 2026-10-14 — Codex: verify after the complete update download
+
+Branch `codex/update-verification`, base `775dcfd`. Owner requested eliminating
+repeated verification during downloads. The client previously hashed each part,
+copied it into the archive, then hashed the archive. It now streams bounded parts
+directly into the archive and hashes only the finished, closed download. Keeps
+HTTP/size checks, cancellation cleanup, full SHA-256 and installer revalidation
+before replacing files. Eliminates repeated UI Verifying transitions and part
+copy/hash disk passes. Tradeoff: content corruption is detected after all parts
+arrive rather than at a part boundary. Existing installer verification remains.
+57 managed installer checks passed; 16 Python updater tests OK (one skipped);
+source package 1852 files, runtime syntax zero errors and whitespace passed.
+Unity live download/Windows end-to-end unrun. Merge/builder receipts in PR.
+This new downloader only applies after the current installed game is updated.
