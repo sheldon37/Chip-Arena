@@ -23,11 +23,11 @@ namespace ChipArena.UnityConversion
         private static void Check(bool ok,string what){if(!ok)throw new Exception("DEV tools: "+what);count++;}
         public static void Run(string root)
         {
-            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
+            rootPath=root;string R(string f)=>f.Length==0?"":File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
             Toggle(R);Matrix();Routes(R);Authority(R);ReadOnly(R);Volumes();Reveal();Hazards(root,R);Log();Chips();Layout(root);Allocations();Sources(root,R);
-            Console.WriteLine("PASS DEV tools ("+count+" checks: the DEV Abuse toggle only for a verified dev, off by default; the panel in the sandbox and, with DEV Abuse, every offline / host / guest match, never for a non-dev; "+NativeDevActions.All.Count(a=>a.SandboxRoute&&a.Kind!=NativeDevKind.Presentation)+" sandbox routes on the old NativeArena calls; DEV commands only through SendDevCommand with the opt-in in a round, on the authority's limits, nothing done before its reply, a timeout unknown; forced hazard pulses from the replicated records; overlays and fly camera read-only on the authority's own volumes; no per-frame allocation; palette, hooks, hotkeys and metas)");
+            Console.WriteLine("PASS DEV tools ("+count+" checks: the DEV Abuse toggle only for a verified dev, off by default; the panel in the sandbox and, with DEV Abuse, every offline / host / guest match, never for a non-dev; "+NativeDevActions.All.Count(a=>a.SandboxRoute&&a.Kind!=NativeDevKind.Presentation)+" sandbox routes on the old NativeArena calls; DEV commands only through SendDevCommand with the opt-in in a round, on the authority's limits, nothing done before its reply, a timeout unknown; forced hazard pulses from the replicated records; the proposed monster commands (args, HOST NEEDS MONSTER COMMANDS, adapter off, rift, ward entries); overlays and fly camera read-only on the authority's own volumes; no per-frame allocation; palette, hooks, hotkeys and metas)");
         }
-        private static NativeDevContext Ctx(bool inMatch=true,bool sandbox=false,bool online=false,bool hosting=false,bool dev=true,bool abuse=false,bool commands=false,bool fight=true)=>NativeDevContext.Of(inMatch,sandbox,online,hosting,dev,abuse,commands,fight);
+        private static NativeDevContext Ctx(bool inMatch=true,bool sandbox=false,bool online=false,bool hosting=false,bool dev=true,bool abuse=false,bool commands=false,bool fight=true,bool monsters=true)=>NativeDevContext.Of(inMatch,sandbox,online,hosting,dev,abuse,commands,fight,monsters);
         private static void Toggle(Func<string,string> R)
         {
             Check(NativeDevGate.ToggleVisible(true)&&!NativeDevGate.ToggleVisible(false),"the toggle shows only for a verified dev");
@@ -114,7 +114,9 @@ namespace ChipArena.UnityConversion
                     Check(s==NativeDevState.Live&&why==NativeDevActions.ToHost,a.Id+" goes to the match's DEV authority with the opt-in in a round");
                     Check(NativeDevActions.Resolve(a,off,out why)==NativeDevState.NeedsOptIn&&why==NativeDevActions.OptIn,a.Id+" says to turn on DEV Abuse without the session opt-in");
                     Check(NativeDevActions.Resolve(a,idle,out why)==NativeDevState.NotNow&&why==NativeDevActions.NotNow,a.Id+" waits for an active round (the authority refuses otherwise)");
-                    Check(NativeDevContract.Known(a.Contract),a.Id+" sends the authority's action "+a.Contract);
+                    Check(NativeDevContract.Known(a.Contract)||a.Proposed,a.Id+" sends the authority's action "+a.Contract+" (or a proposed monster command)");
+                    if(a.Proposed)Check(NativeDevActions.Resolve(a,Ctx(online:true,abuse:true,commands:true,monsters:false),out why)==NativeDevState.NeedsHost&&why==NativeDevActions.NeedsHost&&NativeDevActions.Resolve(a,Ctx(sandbox:true,abuse:true,commands:true,monsters:false),out _)==NativeDevState.NeedsHost,a.Id+" waits for an authority that offers monster commands (HOST NEEDS MONSTER COMMANDS), the sandbox included");
+                    else Check(NativeDevActions.Resolve(a,Ctx(online:true,abuse:true,commands:true,monsters:false),out _)==NativeDevState.Live,a.Id+" does not need the monster protocol");
                 }
                 else if(a.Kind==NativeDevKind.Presentation)Check(s==NativeDevState.Live&&NativeDevActions.Resolve(a,off,out _)==NativeDevState.Live,a.Id+" (a view tool) is live wherever the panel is");
                 else Check(s==NativeDevState.SandboxOnly&&why==NativeDevActions.SandboxOnly,a.Id+" stays sandbox only");
@@ -129,6 +131,7 @@ namespace ChipArena.UnityConversion
             var mine=NativeDevContract.Personal.Concat(NativeDevContract.Room).Concat(NativeDevContract.Interact).ToArray();
             Check(mine.Length==NativeDevRules.Actions.Length&&new HashSet<string>(mine).SetEquals(NativeDevRules.Actions),"the panel's action groups are the authority's actions");
             foreach(var name in NativeDevRules.Actions)Check(NativeDevActions.All.Any(a=>a.Contract==name),"the panel has a button for "+name);
+            Monsters(R);
             // The limits the panel clamps to are the validator's (probed at each edge).
             bool V(string action,params string[] args)=>NativeDevRules.Validate(new NativeDevCommand{transaction="t1",action=action,target=0,args=args})==null;
             string N(float v)=>NativeDevLink.Number(v);
@@ -172,6 +175,46 @@ namespace ChipArena.UnityConversion
             Check(!Regex.IsMatch(panel+R("Runtime/NativeDevOverlays.cs"),@"\b(DevGod|DevInfiniteAmmo|DevNoCooldowns|devRevealed|devScale|devCommandsRan|devDummy|DevTimeScale)\s*=[^=]")&&R("Runtime/NativeDevOverlays.cs").IndexOf("devLink",StringComparison.Ordinal)<0,"the presentation never writes the replicated DEV state (no optimistic effects)");
             Check(panel.Contains("me.Seat.devCommandsRan")&&panel.Contains("p.Seat.devDummy?NativeDevTags.DevDummy")&&panel.Contains("arena.DevTimeScale")&&panel.Contains("me.DevGod")&&panel.Contains("DevOldHost"),"the panel shows the replicated state: progression, DEV dummies, room speed, pilot flags, an older host");
         }
+        private static void Monsters(Func<string,string> R)
+        {
+            // The proposed arguments: [kind, count 1-8, place, behaviour]; clear-monsters none.
+            string[] A(params string[] v)=>v;
+            Check(NativeDevContract.ShapeOk("spawn-monster",0,A("shambler","3","near","hunt"))&&NativeDevContract.ShapeOk("spawn-monster",4,A("hulk","1","entries","idle"))&&NativeDevContract.ShapeOk("clear-monsters",0,null),"the proposed shapes pass the panel's check");
+            foreach(var bad in new[]{A("shambler","0","near","hunt"),A("shambler","9","near","hunt"),A("shambler","3","inside","hunt"),A("shambler","3","near","sleep"),A("","3","near","hunt"),A("shambler","3","near"),A(new string('x',65),"3","near","hunt"),A("shambler","2.5","aim","frenzy")})
+                Check(!NativeDevContract.ShapeOk("spawn-monster",0,bad),"spawn-monster refuses "+string.Join("|",bad));
+            Check(!NativeDevContract.ShapeOk("clear-monsters",0,A("all"))&&!NativeDevContract.ShapeOk("spawn-monster",-1,A("shambler","3","near","hunt")),"clear takes no arguments; a target is a seat");
+            Check(NativeDevMonsters.ClampCount(0)==1&&NativeDevMonsters.ClampCount(99)==8&&NativeDevMonsters.ClampCount(5)==5,"the count clamps to 1-8");
+            Check(NativeDevMonsters.Places.SequenceEqual(new[]{"near","aim","drop","entries"})&&NativeDevMonsters.Behaviours.SequenceEqual(new[]{"hunt","frenzy","idle"})&&NativeDevMonsters.PlaceHelp.Length==4&&NativeDevMonsters.BehaviourHelp.Length==3&&NativeDevMonsters.Protocol==2,"places, behaviours and the protocol as proposed");
+            Check(NativeDevMonsters.RoomCap==24&&NativeDevMonsters.KindCap("hulk")==2&&NativeDevMonsters.KindCap("spitter")==NativeSpitterRules.Cap&&NativeDevMonsters.KindCap("shambler")==24,"caps: 24 a room, 2 hulks, NativeSpitterRules.Cap spitters");
+            // The kinds come from the content's adds (no hard-coded list).
+            var pve=JsonSerializer.Deserialize<NativePveContent>(File.ReadAllText(Path.Combine(RootOf(R),"Assets/Conversion/Resources/PveContent.json")),new JsonSerializerOptions{IncludeFields=true});
+            var kinds=NativeDevMonsters.Kinds(pve.adds);Check(kinds.SequenceEqual(pve.adds.Select(a=>a.id))&&kinds.Contains("hulk")&&kinds.Contains("spitter")&&!kinds.Contains("crawler"),"the kinds are the content's adds ("+string.Join(",",kinds)+")");
+            foreach(var k in kinds)Check(NativeDevMonsters.Icon(k)!="ghost","kind "+k+" has its own icon");
+            var tab=R("Runtime/NativeDevMonsters.cs");
+            Check(tab.Contains("NativeDevMonsters.Kinds(adds)")&&tab.Contains("var adds=NativeArena.StageContent.adds;"),"the tab lists the kinds from the arena content");
+            // The adapter: off until Astra's flag exists; everything goes through it.
+            Check(tab.Contains("public static bool DevMonsterOf(NativeMinion m)=>false;")||Regex.IsMatch(tab,@"public static bool DevMonsterOf\(NativeMinion m\)=>m!=null&&m\.\w*[Dd]evMonster\w*;"),"the adapter is off by default (or bound to the replicated flag in one line)");
+            int uses=Regex.Matches(tab+R("Runtime/NativeDevOverlays.cs")+R("Runtime/NativeDevPanel.cs"),@"NativeDevMonsterAdapter\.DevMonsterOf\(").Count;Check(uses>=3,"the tag, the rift and the count all go through the adapter ("+uses+")");
+            foreach(var f in Directory.GetFiles(Path.Combine(RootOf(R),"Assets/ChipArena/Runtime"),"*.cs"))if(!f.EndsWith("NativeDevMonsters.cs",StringComparison.Ordinal))Check(!Regex.IsMatch(File.ReadAllText(f),@"\.DevMonster\b|devMonster\b")||!f.Contains("NativeDev"),Path.GetFileName(f)+" reads DEV monsters only through the adapter");
+            Check(tab.Contains("if(NativeDevMonsterAdapter.Entered(m)||NativeDevMonsterAdapter.SpawnAge(m,now)>NativeDevMonsterLook.FreshAge||blasts==null)continue;")&&R("Runtime/NativeDevPanel.cs").Contains("presentation.DevMonsterRifts(arena,prefs.reducedEffects);")&&R("Runtime/NativeBlastPresentation.cs").Contains("public void DevMonsterRift(Vector3 at,float height,bool reduced,double quality){int n=NativeDevMonsterLook.Rift(NativeArena.Vec(at),height,reduced,plan);Run(n,quality);}"),"the rift plays once per new DEV monster (not entry spawns, not late joins) through the shared effects renderer");
+            Check(R("Runtime/NativeDevOverlays.cs").Contains("DevTags(height);devLines=0;DevPulseMarks();DevMonsterTags();"),"the DEV MONSTER tag draws for every client");
+            // The panel: one path through SendDevCommand, gated by the host's protocol; the ward entries kept in the sandbox.
+            var panel=R("Runtime/NativeDevPanel.cs");
+            Check(panel.Contains("private bool DevMonsterCommands=>server!=null?devHostProtocol>=NativeDevMonsters.Protocol:NativeDevContract.Known(NativeDevMonsters.Spawn);")&&panel.Contains("private bool DevOldHost=>server!=null&&devHostProtocol<1;"),"monster commands need devProtocol 2 from a host (or the local authority's own); an older host is protocol 0");
+            Check(panel.Contains("case \"spawn-monster\":return new[]{devMonsterKind??\"\",NativeDevText.Int(NativeDevMonsters.ClampCount(devMonsterCount)),NativeDevMonsters.Places[Mathf.Clamp(devMonsterPlace,0,NativeDevMonsters.Places.Length-1)],NativeDevMonsters.Behaviours[Mathf.Clamp(devMonsterBehaviour,0,NativeDevMonsters.Behaviours.Length-1)]};")&&panel.Contains("if(a.Tab==NativeDevTab.Interact||a.Tab==NativeDevTab.Monsters||a.Id==\"debris\")return devTarget==arena?.LocalId?0:devTarget;"),"spawn-monster sends the four clamped arguments for the picked target (0: me)");
+            Check(NativeDevActions.Find("ward-spawn").Tab==NativeDevTab.Monsters&&tab.Contains("DevAct(new Rect(x+half+8,y,half,32),\"ward-spawn\");")&&tab.Contains("e.kind==\"breach\"||e.hulk?\"HULK\":e.kind==\"drop\"?\"BRUTE\":\"SHAMBLER\"")&&R("Runtime/NativeWardBreaches.cs").Contains("e.kind==\"breach\"||e.hulk?\"hulk\":e.kind==\"drop\"?\"brute\":\"shambler\""),"Ward Zero's sandbox entry spawn moved to Monsters, labelled with what SandboxWardEntry spawns");
+            Check(tab.Contains("if(devMode!=NativeDevMode.Sandbox)return y;\n            y=DevHead(x,y,w,\"WARD ZERO ENTRIES (SANDBOX)\");"),"the Ward Zero entry picker shows only in the sandbox (where ward-spawn runs)");
+            Check(tab.Contains("string info=U.Measure(devMonsterInfo[i],10,false,true).x<=r.width-46?devMonsterInfo[i]:devMonsterHp[i];")&&tab.Contains("y+=40;y=DevNote(x,y,w,devMonsterCapNote,C.Muted());"),"kind cards fall back to HP alone when narrow; the caps note wraps under the stepper");
+            // The rift look: the DEV palette, fewer cues with Reduced effects, deterministic.
+            var plan=new NativeImpactCommand[NativeImpactCues.MaxCommands];int full=NativeDevMonsterLook.Rift(new V3(1,0,2),2.6f,false,plan);bool magenta=plan.Take(full).Any(c=>c.Color==NativeDevMonsterLook.Magenta),beams=plan.Take(full).Count(c=>c.Op==NativeImpactOp.Beam)==3;
+            int reduced=NativeDevMonsterLook.Rift(new V3(1,0,2),2.6f,true,plan);Check(full>8&&full<=plan.Length&&magenta&&beams&&reduced<=3&&reduced<full,"the rift: "+full+" cues (3 beams, magenta), "+reduced+" with Reduced effects");
+            var theme=R("Runtime/NativeCyberTheme.cs");Check(theme.Contains("MagentaHex=0x"+NativeDevMonsterLook.Magenta.ToString("x6"))&&theme.Contains("CyanHex=0x"+NativeDevMonsterLook.Cyan.ToString("x6"))&&theme.Contains("VioletHex=0x"+NativeDevMonsterLook.Violet.ToString("x6"))&&theme.Contains("CyanSoftHex=0x"+NativeDevMonsterLook.CyanSoft.ToString("x6")),"the rift's colours are the cyber palette's");
+            // First seen: once per id, a new round starts over.
+            var seen=new NativeDevMonsterSeen();Check(!seen.Observe(1,7,false,0)&&seen.Observe(1,8,true,1)&&!seen.Observe(1,8,true,2)&&Math.Abs(seen.Age(8,3)-2)<1e-5&&seen.Age(9,3)<0&&seen.Observe(2,8,true,4),"a DEV monster's summon moment is its first sighting, again after a new round");
+            // The link shows how many spawned (the reply's reason on done).
+            var link=new NativeDevLink();link.Sender=(a,t,g)=>"m1";link.Send("restore",0,null,"Spawn monsters",0);Check(link.Receive(new NativeDevReply{transaction="m1",state="done",reason="Spawned 3 of 5 (cap)."})&&link.Status=="Spawn monsters · done: Spawned 3 of 5 (cap).","a done reply's reason (how many spawned) shows");
+        }
+        private static string rootPath;private static string RootOf(Func<string,string> R)=>rootPath;
         private static string Method(string src,string signature)
         {
             int a=src.IndexOf(signature,StringComparison.Ordinal);Check(a>=0,"source has "+signature);int depth=0,i=src.IndexOf('{',a);
@@ -279,7 +322,7 @@ namespace ChipArena.UnityConversion
                 Check(p.X>=0&&p.X+p.W<=l.Width-NativeDevLayout.Margin+.01f&&p.Y>=0&&p.Y+p.H<=l.Height-NativeDevLayout.Margin+.01f,at+": the panel fits the canvas");
                 Check(p.W<=720&&p.W<=l.Width*.45f&&p.BodyH>=300&&p.BodyW>=330,at+": it leaves the fight in view and keeps a usable body ("+p.W+" x "+p.BodyH+")");
             }
-            Check(NativeDevLayout.TabNames.Length==9&&NativeDevLayout.TabTitles.Length==9&&NativeDevLayout.TabIcons.Length==9&&Enum.GetValues(typeof(NativeDevTab)).Length==9,"nine tabs");
+            Check(NativeDevLayout.TabNames.Length==NativeDevLayout.Tabs&&NativeDevLayout.TabTitles.Length==NativeDevLayout.Tabs&&NativeDevLayout.TabIcons.Length==NativeDevLayout.Tabs&&Enum.GetValues(typeof(NativeDevTab)).Length==NativeDevLayout.Tabs&&NativeDevLayout.Tabs==10&&NativeDevLayout.TabNames[(int)NativeDevTab.Monsters]=="MONSTERS","ten tabs, Monsters among them");
             using var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/Icons.json")));var icons=new HashSet<string>(doc.RootElement.GetProperty("icons").EnumerateArray().Select(e=>e.GetProperty("id").GetString()));
             var art=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ClassIcons.json"))).RootElement;var artIcons=new HashSet<string>(art.GetProperty("icons").EnumerateArray().Select(e=>e.GetProperty("id").GetString()));
             foreach(var id in NativeDevLayout.TabIcons.Concat(new[]{"x","scan","bot","sparkles"}))Check(icons.Contains(id)||artIcons.Contains(id),"icon "+id+" exists");
@@ -287,6 +330,7 @@ namespace ChipArena.UnityConversion
             Check(NativeDevActions.All.Select(a=>a.Id).Distinct().Count()==NativeDevActions.All.Length&&NativeDevActions.All.All(a=>NativeDevActions.Find(a.Id)==a)&&NativeDevActions.Find("nope")==null,"action ids are unique and found");
             Check(NativeDevActions.All.Where(a=>a.Key!=null).All(a=>NativeDevKeys.All.Contains(a.Key)),"every action key is a panel hotkey");
         }
+        private static readonly NativeDevMonsterSeen monsterSeen=new NativeDevMonsterSeen();private static readonly string[] monsterArgs={"brute","3","near","hunt"};
         private static readonly string[] PulseKinds={"saw-rail","press","vent","grid","maglev","burner","gas","shutter","crane","x"};private static readonly NativeImpactCommand[] pulsePlan=new NativeImpactCommand[NativeImpactCues.MaxCommands];
         private static void Allocations()
         {
@@ -320,6 +364,8 @@ namespace ChipArena.UnityConversion
                     sink+=(int)(NativeDevReveal.Alpha(frame*.1f)+NativeDevReveal.Open(frame*.1f)+NativeDevReveal.NameIn(frame*.1f)+NativeDevReveal.Flash(frame*.01f)+NativeDevReveal.Ring(frame))+NativeDevReveal.Typed(frame*.1f,19,false);
                     long b8=GC.GetAllocatedBytesForCurrentThread();
                     var p=NativeDevLayout.Panel(1600+frame,900);sink+=(int)(p.BodyX+p.BodyY+p.BodyW+p.BodyH);foreach(var k in PulseKinds)sink+=NativeDevHazardLook.Plan(k,new V3(frame,0,0),1.5f,pulsePlan);
+                    sink+=NativeDevMonsterLook.Rift(new V3(frame,0,0),2.6f,frame%2==0,pulsePlan);sink+=monsterSeen.Observe(1,frame%5,true,frame)?1:0;sink+=(int)monsterSeen.Age(frame%5,frame);
+                    sink+=NativeDevMonsters.ArgsOk("spawn-monster",monsterArgs)?1:0;sink+=NativeDevMonsters.KindCap("hulk")+NativeDevMonsters.ClampCount(frame)+NativeDevMonsters.Icon("brute").Length;
                     long b9=GC.GetAllocatedBytesForCurrentThread();
                     if(split){gate+=b1-b0;actions+=b2-b1;logB+=b3-b2;graphB+=b4-b3;flyB+=b5-b4;chipB+=b6-b5;text+=b7-b6;revealB+=b8-b7;layout+=b9-b8;}
                 }
@@ -338,7 +384,7 @@ namespace ChipArena.UnityConversion
         }
         private static void Sources(string root,Func<string,string> R)
         {
-            string panel=R("Runtime/NativeDevPanel.cs"),overlays=R("Runtime/NativeDevOverlays.cs"),core=R("Core/NativeDevTools.cs"),both=panel+overlays;
+            string panel=R("Runtime/NativeDevPanel.cs"),overlays=R("Runtime/NativeDevOverlays.cs"),core=R("Core/NativeDevTools.cs"),both=panel+overlays+R("Runtime/NativeDevMonsters.cs");
             Check(!core.Contains("UnityEngine"),"the DEV rules are engine-free Core");
             Check(!both.Contains("GUILayout")&&!both.Contains("using System.Linq")&&!both.Contains("$\"")&&!Regex.IsMatch(both,@"(?<!Mathf|Math|NativeDevText)\.(Where|Select|ToList|Any|First|FirstOrDefault|OrderBy|Count|Sum|Max|Min)\("),"kit-drawn, no LINQ or interpolation in the panel and overlays");
             Check(!Regex.IsMatch(both,@"0x[0-9a-fA-F]{6}|U\.Hex\(|NativeUi\.Hex\(|new Color\("),"colours only from the cyber palette (and the content's rarity colours)");
@@ -363,7 +409,7 @@ namespace ChipArena.UnityConversion
             foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Editor"),"*.cs"))foreach(var k in NativeDevKeys.All)Check(!File.ReadAllText(f).Contains("KeyCode."+k+")"),Path.GetFileName(f)+" does not bind "+k);
             // New scripts carry their own metas.
             var guids=new HashSet<string>();
-            foreach(var f in new[]{"Core/NativeDevTools.cs","Runtime/NativeDevPanel.cs","Runtime/NativeDevOverlays.cs"})
+            foreach(var f in new[]{"Core/NativeDevTools.cs","Runtime/NativeDevPanel.cs","Runtime/NativeDevOverlays.cs","Runtime/NativeDevMonsters.cs"})
             {
                 var meta=Path.Combine(root,"Assets/ChipArena",f+".meta");Check(File.Exists(meta),f+" has a meta");var g=Regex.Match(File.ReadAllText(meta),@"guid: ([0-9a-f]{32})").Groups[1].Value;Check(g.Length==32&&guids.Add(g),f+" has its own guid");
             }

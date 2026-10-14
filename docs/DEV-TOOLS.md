@@ -63,6 +63,12 @@ one wins.
     - parameters: launch speed, freeze seconds, dummies around, debris-rain material, swap weapon;
     - launch, freeze, bring, send to aim, swap weapon, debris rain, shrink, grow, hazard at target, dummies around,
       debris at target, restore target and down target.
+  - **Monsters** (see "Monsters" below; proposed commands):
+    - a kind card per content add, with HP, speed and the hulk and spitter caps;
+    - a count stepper (1–8), place (near, aim, drop, entries) and behaviour (hunt, frenzy, idle);
+    - the Interact target picker (who they hunt, where near and drop place them);
+    - Spawn monsters, Clear DEV monsters and the live DEV MONSTERS n/24 count;
+    - in the sandbox, the Ward Zero entry picker (moved from Arena).
   - **Dummies**:
     - the sandbox dummy's weapon, input and cast;
     - restore, down, hit and clear summons for the dummy;
@@ -76,7 +82,6 @@ one wins.
   - **Arena**:
     - restore all, Arena Reset, Test Block, End round;
     - map and Load map;
-    - the Ward Zero entries;
     - the debris launcher;
     - the destruction effects preview.
   - **Hazards**:
@@ -113,6 +118,7 @@ Every button resolves through Core `NativeDevActions.Resolve`.
 | Needs opt-in | OPT-IN | A DEV command while DEV Abuse is off. |
 | Not now | ROUND | A DEV command outside an active round. The authority refuses those. |
 | Sandbox only | SBX | A sandbox control or local preview outside the Developer Sandbox. |
+| Needs host | HOST | A proposed command the match's authority does not offer yet ("HOST NEEDS MONSTER COMMANDS"). |
 
 - Clicking a disabled button only says why. Nothing reports success on its own:
   - **done** means the authority replied `done`;
@@ -214,6 +220,79 @@ Every button resolves through Core `NativeDevActions.Resolve`.
 - `devCommandsRan` / `NativeMatch.CanEarnProgression`: NO PROGRESSION THIS MATCH on your own HUD and panel once a
   command ran for your account.
 
+## Monsters (proposed, Astra to confirm)
+
+Owner, 2026-10-14: "Allow options to spawn monsters in the dev menu". The panel, the tag and the rift are Claude's and
+are on the branch. The commands, caps, placement, behaviour and the replicated flag are Astra's. Until Astra confirms
+them in `docs/DEV-ABUSE-AUTHORITY.md`, this section is a proposal, and that document wins wherever the two differ.
+
+**Proposed contract**
+
+- `spawn-monster`, target seat (0 = the sender), args `[kind, count, place, behaviour]`:
+  - `kind`: a content add id (`PveContent.json` adds: shambler, runner, brute, spitter, hulk). The panel lists them from
+    the content, at most 64 characters.
+  - `count`: 1–8. The host clamps to its caps: 24 DEV monsters a room, 2 hulks, `NativeSpitterRules.Cap` spitters (4).
+    The `done` reply's `reason` says how many spawned (the panel shows "done: reason").
+  - `place`:
+    - `near`: a ring 4–7 m round the target;
+    - `aim`: where the sender's crosshair hits, up to 40 m;
+    - `drop`: about 6 m above the target;
+    - `entries`: the map's vent, door, drop and breach entrances nearest the target; refused on a map without them.
+  - `behaviour`: `hunt` (only the target), `frenzy` (the nearest living pilot) or `idle` (stands until hit, then hunts its
+    attacker).
+- `clear-monsters`: no args. It clears the room's DEV monsters only.
+- The host advertises `devProtocol 2`. Like every DEV command: Fight phase only, match-only, no XP, drops or credit,
+  `devCommandsRan` set, a `DEV_ACTION` log line.
+- Replicated: `NativeMinionFrame.devMonster` (a DEV monster), for the tag, the rift and the count.
+- The sandbox runs the same command locally, on the same path.
+
+**Panel behaviour**
+
+- Spawn and Clear resolve like every DEV command, plus one state: **HOST**, "HOST NEEDS MONSTER COMMANDS", until the
+  authority offers them.
+  - Online: the host's advertised protocol is 2 or more.
+  - Offline and in the sandbox: the local `NativeDevRules.Actions` lists `spawn-monster`.
+- Argument shapes come from Core `NativeDevMonsters.ArgsOk` until `NativeDevRules.Validate` knows the actions; after
+  that, Validate decides.
+- The target is the Interact picker's (your own seat sends 0). `DevArgs` sends the selected kind, the clamped count, and
+  the place and behaviour ids.
+- The Ward Zero entry picker (`arena.SandboxWardEntry`, sandbox route `ward-spawn`) shows only in the sandbox:
+  - a filter (ALL, VENT, DOOR, DROP, BREACH, CELL), previous and next, and "Nearest to me";
+  - each entry's kind, level and what `SandboxWardEntry` spawns there (a breach or hulk entry: HULK; a drop: BRUTE;
+    otherwise SHAMBLER).
+
+**Presentation (every client)**
+
+- Both effects read one adapter, `NativeDevMonsterAdapter.DevMonsterOf(minion)` in `Runtime/NativeDevMonsters.cs`. It
+  returns false until Astra's flag exists, so nothing shows today. **Binding is one line:** replace its body with the
+  minion's replicated flag (for example `m!=null&&m.DevMonster`).
+- **DEV MONSTER tag:** a magenta tag over each living DEV monster in view, within 40 m, hidden behind walls. It breathes
+  unless Reduced effects is on.
+- **Summon-in rift:** plays once, the first time a DEV monster is seen, on the shared effects renderer
+  (`NativeBlastPresentation.DevMonsterRift`, Core `NativeDevMonsterLook.Rift`). It is a magenta ground ring, three tall
+  beams (magenta, cyan, violet), glitch streaks up the column and two spark bursts. With Reduced effects it keeps the
+  ring, one beam and a smaller burst.
+  - An entry spawn keeps its own vent, door, drop or breach animation instead.
+  - A monster already older than .6 s when first seen (a late join) gets no rift.
+- No hit timing, hitbox, damage, cooldown, movement or networking change: presentation only.
+
+**Contract changes for Astra to confirm**
+
+1. `SendDevCommand`'s guest check refuses unless `devHostProtocol==1`. It should be `>=1`, or every guest of a
+   protocol-2 host is refused. The panel already reads an older host as `devHostProtocol<1`.
+2. `SendDevCommand` needs `DevAbuseEnabled` in the sandbox too. "The sandbox runs the same command locally" needs either
+   that opt-in or a sandbox exemption for these two commands.
+3. Add `spawn-monster` and `clear-monsters` to `NativeDevRules.Actions` and `Validate`: kind at most 64 characters,
+   count 1–8, the place and behaviour ids above.
+4. `aim` cannot carry x y z in the four args. Use the sender's replicated input `AimTarget` (the pilot's crosshair, not
+   the fly camera). It is still set while the panel holds the pilot still.
+5. Replicas build `NativeMinion.Pve` from `addKind` only on a PvE stage or the Siren map (`NativeNetworkFrame.cs`). DEV
+   monsters on other maps need that add state on replicas, for the zombie presentation and the adapter's entry and
+   spawn-age reads.
+6. Put the replicated flag on `NativeMinion`, set from `NativeMinionFrame.devMonster`, and bind the adapter (point 1 of
+   "Presentation").
+7. Put the spawned count in the `done` reply's `reason`, for example "3 spawned (cap 24)".
+
 ## Guardrails (owner direction 2026-10-14, defaults)
 
 - Every DEV action is match-only and ends with the match.
@@ -249,9 +328,11 @@ Stealth joining stays out of scope, as `DEV-ABUSE-AUTHORITY.md` states.
   - the replicated-state reads and the hazard pulse looks;
   - read-only overlays and the fly camera;
   - the allocation-free frame;
-  - the palette, hooks, hotkeys and metas.
+  - the palette, hooks, hotkeys and metas;
+  - the proposed monster commands: argument shapes and clamps, HOST NEEDS MONSTER COMMANDS until the authority offers
+    them, kinds from the content, the adapter off by default, the rift and the seen tracker, and the ward entries.
 - The Unity runtime and editor compile was checked against the real assemblies.
-- Offline renders of every tab, the reveal and the HUD tools were made in the scratch IMGUI harness. They are not
+- Offline renders of every tab (Monsters included), the reveal and the HUD tools were made in the scratch IMGUI harness. They are not
   committed.
 - **Not run:** the Unity Editor, Windows, PhysX, two clients over a real network, the native build gate
   (`ValidateDevAbuseAuthority` is Astra's), and in-game look and feel.

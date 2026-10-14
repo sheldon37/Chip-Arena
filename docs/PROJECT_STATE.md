@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 DEV monsters UI: `claude/dev-monsters` (base shared `6f30f82`, merged shared `afade5d`) adds the DEV panel's Monsters tab (kinds from content, count, place, behaviour, target, spawn/clear, n/24 count, sandbox Ward Zero entries), the DEV MONSTER tag and the summon-in rift. The commands are a proposal (`docs/DEV-TOOLS.md` "Monsters"): disabled as HOST NEEDS MONSTER COMMANDS and the adapter off until Astra adds `spawn-monster`/`clear-monsters`, devProtocol 2 and `devMonster`. Next: Astra confirms or amends the contract; then the adapter binding is one line.
+
 2026-10-14 Expedition layout contract: agreed (Claude) on Astra's `codex/expedition-director` proposal with amendments; see `docs/EXPEDITION-LAYOUT.md`. Next: Claude town/Ward Zero layout generator, manifest and visuals; Astra loader/validator and director. No playable Expedition yet.
 
 2026-10-14 dagger arms: `claude/dagger-arm` (base shared `c134dc2`, merged shared `9770b7d`) holds the dagger sprint's fists low and close with a light pump; each elbow flexed 38-41° and each forearm swung about 80° a stride, now 4-5° and 20°. It also steadies the run's rear (right) blade, which two floor corrections fought over (wrist 10.6° → 4.8° a stride). Presentation only; daggers only. Managed/CI-layout checks pass; Unity/Windows unrun. Pushed, not merged. Shared follow-ups (jump-landing arm pop, direction-blend kink) in DEV_LOG.
