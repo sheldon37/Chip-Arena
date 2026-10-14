@@ -8,7 +8,12 @@ namespace ChipArena.UnityConversion
     {
         private readonly MapNavNode[] nodes;
         private readonly Dictionary<string,int> index=new Dictionary<string,int>();
-        private readonly List<MapNavLink>[] edges,incoming;
+        private readonly struct Edge
+        {
+            public readonly MapNavLink Link;public readonly int Next;public readonly float Cost;
+            public Edge(MapNavLink link,int next,float cost){Link=link;Next=next;Cost=cost;}
+        }
+        private readonly List<Edge>[] edges,incoming;
         private readonly float[] distance,estimate;
         private readonly int[] previous,heap,position;
         private readonly bool[] closed;
@@ -31,11 +36,16 @@ namespace ChipArena.UnityConversion
         }
         public NativeNavSearch(MapNav graph)
         {
-            nodes=graph.nodes;int n=nodes.Length;edges=new List<MapNavLink>[n];incoming=new List<MapNavLink>[n];
+            nodes=graph.nodes;int n=nodes.Length;edges=new List<Edge>[n];incoming=new List<Edge>[n];
             nearestOrder=new int[n];nearestDistance=new float[n];nearestComparer=new NearestComparer(nearestDistance);
             distance=new float[n];estimate=new float[n];previous=new int[n];heap=new int[n];position=new int[n];closed=new bool[n];
-            for(int i=0;i<n;i++){index.Add(nodes[i].id,i);edges[i]=new List<MapNavLink>();incoming[i]=new List<MapNavLink>();}
-            foreach(var link in graph.links){edges[index[link.a]].Add(link);incoming[index[link.b]].Add(link);if(link.kind!="drop"){edges[index[link.b]].Add(link);incoming[index[link.a]].Add(link);}}
+            for(int i=0;i<n;i++){index.Add(nodes[i].id,i);edges[i]=new List<Edge>();incoming[i]=new List<Edge>();}
+            foreach(var link in graph.links)
+            {
+                int a=index[link.a],b=index[link.b];float cost=(nodes[b].pos-nodes[a].pos).Length;
+                edges[a].Add(new Edge(link,b,cost));incoming[b].Add(new Edge(link,a,cost));
+                if(link.kind!="drop"){edges[b].Add(new Edge(link,a,cost));incoming[a].Add(new Edge(link,b,cost));}
+            }
         }
         public void Find(string startId,string endId,Func<MapNavLink,bool> active,List<string> path)
         {
@@ -45,11 +55,12 @@ namespace ChipArena.UnityConversion
             while(count>0)
             {
                 int at=Pop();if(at==end){for(int p=end;p>=0;p=previous[p])path.Add(nodes[p].id);path.Reverse();return;}closed[at]=true;
-                foreach(var link in edges[at])
+                foreach(var edge in edges[at])
                 {
-                    int next=index[link.a==nodes[at].id?link.b:link.a];if(closed[next]||!active(link))continue;
-                    float cost=distance[at]+(nodes[next].pos-nodes[at].pos).Length;
-                    if(cost>=distance[next])continue;distance[next]=cost;previous[next]=at;PushOrDecrease(next);
+                    int next=edge.Next;if(closed[next])continue;
+                    float cost=distance[at]+edge.Cost;
+                    // World/hazard queries are expensive. A non-improving edge cannot change the route.
+                    if(cost>=distance[next]||!active(edge.Link))continue;distance[next]=cost;previous[next]=at;PushOrDecrease(next);
                 }
             }
         }
@@ -63,11 +74,12 @@ namespace ChipArena.UnityConversion
             while(count>0)
             {
                 int at=Pop();closed[at]=true;
-                foreach(var link in incoming[at])
+                foreach(var edge in incoming[at])
                 {
-                    int next=index[link.a==nodes[at].id?link.b:link.a];if(closed[next]||!active(link))continue;
-                    float cost=distance[at]+(nodes[next].pos-nodes[at].pos).Length;
-                    if(cost>=distance[next])continue;distance[next]=cost;previous[next]=at;PushOrDecrease(next);
+                    int next=edge.Next;if(closed[next])continue;
+                    float cost=distance[at]+edge.Cost;
+                    // World/hazard queries are expensive. A non-improving edge cannot change the route.
+                    if(cost>=distance[next]||!active(edge.Link))continue;distance[next]=cost;previous[next]=at;PushOrDecrease(next);
                 }
             }
         }

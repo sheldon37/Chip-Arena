@@ -6166,3 +6166,20 @@ arrive rather than at a part boundary. Existing installer verification remains.
 source package 1852 files, runtime syntax zero errors and whitespace passed.
 Unity live download/Windows end-to-end unrun. Merge/builder receipts in PR.
 This new downloader only applies after the current installed game is updated.
+
+## 2026-10-14 — Codex: prune redundant Ward navigation checks
+
+Branch `codex/ward-nav-link-cache`, base shared/builder `975b1a3`. Owner captures
+at 02:42:11/02:43:42 UTC show navigation 123.4/171.3 ms, link checks 59,718/79,302,
+12/16 searches across 6/4 fixed ticks; no GC, replay inactive. These are navigation
+stalls, distinct from earlier death presentation loading. Core pathfinder checked
+live links before rejecting non-improving route costs and repeatedly resolved
+endpoint strings/distance. Cache fixed edge endpoints/distances at graph creation;
+reject non-improving candidates before live callbacks in A* and reverse flows.
+No cache of hazard or physics decisions and no search cadence/gameplay change.
+16 legacy-identical Ward routes/gates now call live checks 20,624 vs 34,416
+(40.1% fewer); warm allocations remain zero. Existing flow shortest-cost,
+directed drops and changing gate tests pass. Full 35 managed/real relay checks,
+101 Python tests (one skipped), source package 1852 files and whitespace pass.
+Actual Windows/PhysX timing unrun; this is reduced measured managed work, not
+proof these 190 ms frames are eliminated. Merge/builder receipts in task PR.
