@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class ExpeditionBossArrivalView
     {
         public string id,area,archetype;public double spawned;
+        // Immutable world spawn position for arrival effects; health is refreshed by the combat authority.
+        public float x,y,z;public double hp,maxHp;
         public ExpeditionBossArrivalView Copy()=>(ExpeditionBossArrivalView)MemberwiseClone();
     }
     public sealed partial class ExpeditionDirector
@@ -35,7 +37,7 @@ namespace ChipArena.UnityConversion
         public void BindLayoutIdentity(string fingerprint)
         {
             if(string.IsNullOrEmpty(fingerprint)||fingerprint.Length!=64||fingerprint.Any(c=>!Uri.IsHexDigit(c))||barrier.active)throw new ArgumentException("Validated layout fingerprint required.");
-            LayoutIdentity=fingerprint;
+            LayoutIdentity=fingerprint;barrier.layout=fingerprint;
         }
         private void InitializeState()
         {
@@ -110,12 +112,25 @@ namespace ChipArena.UnityConversion
             if(a==null||!Session.Run.Enter(a.building))return false;UpdateState();return barrier.active;
         }
         // Register only after the combat authority successfully creates this entity. Archetype is catalog-checked by the caller.
-        public bool RecordBossArrival(string id,string archetype,Func<string,bool> knownArchetype)
+        public bool RecordBossArrival(string id,string archetype,Func<string,bool> knownArchetype,V3 spawn,double hp,double maxHp)
         {
-            var s=Session.Run.Snapshot();if(s.loading||Session.Run.Migrating||!ExpeditionValidation.Id(id)||knownArchetype?.Invoke(archetype)!=true||arrivals.Any(a=>a.id==id&&a.area==s.area)||arrivals.Count>=128)return false;
+            var s=Session.Run.Snapshot();if(!ValidBossHealth(hp,maxHp)||hp==0||!ExpeditionValidation.Number(spawn.x)||!ExpeditionValidation.Number(spawn.y)||!ExpeditionValidation.Number(spawn.z)||s.loading||Session.Run.Migrating||!ExpeditionValidation.Id(id)||knownArchetype?.Invoke(archetype)!=true||arrivals.Any(a=>a.id==id&&a.area==s.area)||arrivals.Count>=128)return false;
             if(s.phase!=ExpeditionPhase.FinalBoss&&(s.phase!=ExpeditionPhase.Instance||!s.instances.Single(i=>i.id==s.area).bosses.Contains(id)))return false;
-            arrivals.Add(new ExpeditionBossArrivalView{id=id,area=s.area,archetype=archetype,spawned=s.elapsed});return true;
+            arrivals.Add(new ExpeditionBossArrivalView{id=id,area=s.area,archetype=archetype,spawned=s.elapsed,x=spawn.x,y=spawn.y,z=spawn.z,hp=hp,maxHp=maxHp});return true;
         }
+        private static bool ValidBossHealth(double hp,double maxHp)=>ExpeditionValidation.Number(hp)&&ExpeditionValidation.Number(maxHp)&&maxHp>0&&hp>=0&&hp<=maxHp;
+        /// <summary>Combat authority calls after damage/healing and before projection; never a guest command.
+        /// Area scopes encounter ids. Does not reset spawned or replay the arrival effect.</summary>
+        public bool UpdateBossHealth(string area,string id,double hp,double maxHp)
+        {
+            if(!ValidBossHealth(hp,maxHp))return false;
+            var s=Session.Run.Snapshot();var arrival=arrivals.FirstOrDefault(a=>a.area==area&&a.id==id);
+            if(arrival==null||area!=s.area||s.loading||Session.Run.Migrating||
+                s.instances.Any(i=>i.id==area&&i.defeated.Contains(id))||area==Layout.world&&s.phase!=ExpeditionPhase.FinalBoss)return false;
+            arrival.hp=hp;arrival.maxHp=maxHp;return true;
+        }
+        private void BossDown(string area,string id=null)
+        {foreach(var a in arrivals.Where(a=>a.area==area&&(id==null||a.id==id)))a.hp=0;}
         public bool TryBeginFinal()
         {
             var s=Session.Run.Snapshot();var area=Layout.Area(s.area);

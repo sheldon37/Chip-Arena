@@ -247,7 +247,7 @@ namespace ChipArena.UnityConversion
         private static void Boss(ConversionContent content,ExpeditionLayout layout)
         {
             var p=Start(content,layout);p.At=new V3(43,0,0);p.Director.EnterDoor("host",CityDoor);p.Director.Ready("host",Ward,1,p.Fingerprint);p.Director.Ready("guest",Ward,1,p.Fingerprint);p.Director.CompleteAreaLoad((_,__)=>true);
-            Check(p.Run.Progress("kill",1)&&p.Run.StartBosses(new[]{"TEST-boss"})&&p.Director.RecordBossArrival("TEST-boss","test-hulk",a=>a=="test-hulk"),"the authority records the arrival");
+            Check(p.Run.Progress("kill",1)&&p.Run.StartBosses(new[]{"TEST-boss"})&&p.Director.RecordBossArrival("TEST-boss","test-hulk",a=>a=="test-hulk",new V3(0,0,0),100,100),"the authority records the arrival");
             var v=p.View();var arrival=v.bossArrivals.Single();var cues=new ExpeditionStateCues();var model=new ExpeditionBossModel();int intros=0,frames=0;double start=arrival.spawned;bool was=false;
             for(double t=start-.5;t<start+8;t+=1/60.0)
             {
