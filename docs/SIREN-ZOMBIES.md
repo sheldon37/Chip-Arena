@@ -200,15 +200,19 @@ creating a small puddle of poison (Can corrode destructibles). Can interupt thei
   chest: the glob flies its arc (about 9 m/s across, `Flight(d) = max(.35, d / 9 + .12)` s, apex .9 + .08 d m) with a
   dripping, sizzling trail (`magic.darkness.shot`), splashes where it lands; a pilot within .6 m of the landing (plus its body radius) gets an
   acid splash that sizzles and drips off the body for 1.8 s (the poison itself is the existing status / damage screen).
-- Puddle: bubbles and fumes, creeps out to the radius (1.3 m proposed; never past it) with a clear bright edge, fades
-  over its 4 s. Destructible props (arena props and static blocks, e.g. Brickfall's structure blocks) the glob or the
+- Puddle (natural pass, 2026-10-14): a lobed liquid body, its own shape per record, whose mean extent is the radius
+  (1.3 m; lobes within ±11%), with no ring at the radius. It creeps out viscously, is dark in its deep core and lighter
+  and translucent at its thin edge, with a soft wet sheen; a few satellite splats lie outside it; a bubble pops now and
+  then; faint fumes. Over its last 1.3 s it dries into patches and recedes a little, leaving a residue stain. Destructible props (arena props and static blocks, e.g. Brickfall's structure blocks) the glob or the
   puddle touches corrode: smoking pits round the contact, a dripping corroded tint and hiss; when the block breaks the
   existing structure effects take over.
 - Interrupt: any damaging hit in the wind-up (`NativeHordeKinds.Interrupts`, inferred from the replicated hit and
   LastAttack until a cancel is replicated) cancels the shown spit: a flinch, the sac deflates over .35 s, the jaw snaps
   shut, the acid dribbles from the mouth and fizzles in a small pool at its feet (1.4 s); no glob.
-- Until the rules emit `minion-spit` the DEV preview predicts the glob from the strike; once they do, the presentation
-  launches it from the event (`From` mouth, `Position` landing, `Time` launch, `Amount` flight s, `Radius` puddle).
+- Every glob and pool comes from the authority's acid records (`NativePveFrame.acid` in PvE, `devAcid` for DEV monsters
+  on other maps; seeded by the record id). The `minion-spit` event only stops the DEV preview from predicting a glob for
+  that add. An add's events (`minion-*`) name its owner as Source, so they take no owner's bow arrow, thunk, weapon
+  colour or surface procs (`NativeImpactCues.AddEvent`); the spit's launch event draws no impact streak or sparks.
 
 ### Known limits (2026-10-13)
 
@@ -237,7 +241,7 @@ upright slam wave) and a decal layer queued before the effect billboards. No rul
 | glob in flight | acid record / `minion-spit` event (`from`, `to`, `at`, `flight`) | rides `NativeHordeFx.Glob` (the arc the server validates); lands at `at + flight` |
 | wind-up clot, jaw strings, drool | `LastAttack`, `NativeSpitterRules.Hit` | only before the release; the glob takes over at `LastAttack + Hit` |
 | splash, crown, spatter | the landing (`at + flight`) | every drop lands inside `NativeSpitterRules.Radius` |
-| pool film, ring, bubbles, fumes | the landing, `NativeSpitterRules.Radius` / `Duration` | liquid never past the radius; the ring holds the radius until `Duration`; evaporates over the last 1.3 s; an etch fades 5 s after |
+| pool body, sheen, satellites, bubbles, fumes, stain | the landing, `NativeSpitterRules.Radius` / `Duration` | lobed outline (per record seed) with a mean extent of the radius, lobes within ±11%; no ring; spreads over 1.15 s; dries over the last 1.3 s; the residue stain fades 5 s after |
 | smash impact | `LastAttack + hit` (the authority's strike) | wave, cracks, dust and landed rubble inside `NativeHordeKinds.SmashRadiusOf(kind)` round `SmashAheadOf(kind)` |
 | jump-in landing | `NativeHordeDrop.LandAt(ActiveAt, profile)` | inside the profile's `SlamRadius` (brute 2.4 m, Hulk 5.5 m) |
 | wall breach | `NativeBreach` blows (`.55/1.2/2.1` s after the knock start), `breakAt`, replicated `restoreAt` | chips, burst grit, sparks, dust curtain; hardlight remnants until `restoreAt`; motes in the rebuild |
@@ -290,7 +294,7 @@ are dormant.
   model and not used: a boxer's bladed stance and timing. The punches, swipe, charge, knock and landing poses are keyed
   poses in the existing pose system. No licensed file was read or committed.
 
-### 10.2 Proposed: the straight punch and the swipe (dormant)
+### 10.2 Proposed: the straight punch and the swipe (dormant; the choice is amended by 10.5)
 
 The rules choose one move when an attack starts and replicate it with `LastAttack`:
 
@@ -312,7 +316,7 @@ on its own side by .39, held to .64, crossing in front at .78, carried across to
 standing at 2.4. The effects job draws the punch with the existing lunge streaks and the swipe with the claw crescent at
 the move's strike (no new effect; a dedicated pass is a later FX task).
 
-### 10.3 Proposed: the charge (dormant)
+### 10.3 Proposed: the charge (dormant; v1, superseded by 10.5 for the start, speed, run length, walls and replication)
 
 | item | proposal |
 |---|---|
@@ -347,6 +351,100 @@ head snaps back, the arms fly out, a dazed slump and reel, standing by 1.6 s. Sp
 - Checks: `Tests/HulkMotionChecks.cs` (17,582: stride and cadence, planted feet, pivots, every contact on its mark, the
   proposed key poses on their contract times, determinism, no allocation, runtime draws only). Unity Editor, Windows,
   two-client play and the killcam were not run; the poses were reviewed on the harness's software renders only.
+
+### 10.5 Contract v2: punches and a charge at the hunted pilot (proposed 2026-10-14, Astra to confirm)
+
+Owner (2026-10-14, Windows test build): "The hulk needs to punch and charge at the player too, not just the wall. The charge
+is avoidable if they move out of the way in time. (Hulk can collide and break walls too.) They literally can charge from
+across the map to the player breaking the walls if they are hunting them and 'know' where they are." and "Its currently only
+using the ground slam".
+
+PROPOSED, Astra to confirm. Astra's implementation wins where it differs; record the final numbers here and in
+`Core/NativeHulkMoves.cs` (the presentation mirrors them; `Tests/HulkChargeChecks.cs` pins the contract checks). Claude's
+presentation is built against this contract on `claude/hulk-charge` and plays as soon as the events (or the frame fields
+through the one binding point) arrive.
+
+**A. Attacks at pilots (Hulk; the brute may share them later).** When an attack starts the authority chooses a move from the
+hunted pilot (`NativeHulkMoves.Choose`, a reference you may adopt or replace):
+
+| situation (from the add's root, horizontal) | move |
+|---|---|
+| two or more pilots inside the smash disc (2.8 m, 2 m ahead) | 0 smash (content attack, unchanged) |
+| the hunted pilot 1.2-3.4 m ahead within 20 deg of the facing (`PunchCone`, `PunchMin`, `PunchReach`) | 1 straight punch |
+| the hunted pilot within 3.2 m inside 150 deg (too close for the punch, or wide of it) | 2 swipe |
+| anything else (walls and props, a pilot outside both) | 0 smash |
+| crawling or armless | today's attack |
+
+Timings, volumes, damage, impulse, block and stagger are 10.2's (punch .62 / 2.0, capsule .6-3.4 m r .75, 24 dmg, 750 + 2.5 up;
+swipe .78 / 2.4, 3.2 m 150 deg sector, 20 dmg, 650 across + 40% out + 2 up; a block clashes: no damage, half the shove). The
+"at least every third attack is a smash" rule of v1 is dropped (the owner: it only uses the slam).
+
+**B. The charge at the hunted pilot.**
+
+| item | proposal |
+|---|---|
+| start | a Hulk active, not attacking, staggered, entering or knocking, hunting a pilot it **knows** the position of: line of sight from its eye (2.6 m) to the pilot's chest now, or seen within `ChargeMemory` 2.5 s (aim at the last seen point), or the hunt state reveals the pilot (Siren / director / DEV hunt). The authority defines "knows". Horizontal distance at least `ChargeMinRange` 7 m, same floor (abs dy < 1.5), off cooldown. **No maximum range**: it may cross the map. The lane from the Hulk to the target point (its capsule swept) must hold no unbreakable solid and keep a floor under it (breakables, pilots and adds ignored by this test) |
+| wind-up | `ChargeWind` .9 s standing; the yaw turns to track the target (up to 410 deg/s); a 25% stagger cancels it (cooldown 4 s) |
+| lock | at chargeAt + .9 the heading **locks** to the yaw then (replicated through the add's yaw, held unchanged for the run) and the target point is the pilot's position then (known or last known); no lead |
+| run | `ChargeSpeed` 6 m/s (v1 4.5) straight along the locked heading: no pathing, no homing, no attacks; it takes hits (they do not stop it) |
+| breakables in the lane | broken on contact **without stopping**; speed x `ChargeSlow` .6 for `ChargeSlowFor` .3 s after each, then 6 m/s again |
+| which breakables | (a) Ward Zero / Expedition interior wall blocks `NativeHulkBreach.Eligible` allows: a dynamic `NativeBreachRecord` {block, actor, point = contact, normal = heading, holeSize = the block's size, breakAt = contact, restoreAt = DefaultRestoreAt}, collision off at once, the usual rebuild and occupancy hold; (b) Hulk breach panels (`breach:<id>` segments, e.g. Ward Zero's and the Expedition town's) whose far side is in bounds: the entry `NativeBreachRecord` {entry, actor = the Hulk, breakAt = contact}, collision off at once, the usual restore; a panel on the boundary stops it as Solid; (c) destructible structure blocks and props (`arena.Props` / structure segments, not `Indestructible`, not machine fixtures): destroyed through the existing `DamageProp` / fracture path (its replicated props, segments and events), impulse along the heading. **Never**: the map shell and bounds walls, floors, ceilings, stairs and ramps, hazard objects, door frames, indestructible props |
+| optional record flag | `NativeBreachRecord.charged` (bool) for (a) and (b); the presentation infers it from the actor's running charge when absent |
+| other adds in the lane | shoved aside (impulse 450 away from the lane, no damage); they never stop it |
+| end: pilot | any living pilot whose capsule meets the Hulk's swept capsule (abs dy < 2), not only the target: 28 x wave scale damage, impulse 1000 along the heading + 4.5 m/s up; a block: no damage, half the shove; held `Stop(Pilot)` 1.0 s |
+| end: solid | an unbreakable solid, a boundary panel or a floor gap / ledge ahead: stunned `Stop(Solid)` 1.6 s (hittable, staggerable) |
+| end: spent | `ChargeOvershoot` 4 m past the locked target point's projection on the lane, or the longest run `ChargeRun` 16 s (96 m): a braking stop, held `Stop(Spent)` .7 s |
+| cooldown | `ChargeCooldown` 10 s from the end |
+| avoidable | a pilot who leaves the lane (about 1.4 m from its line: .95 + .45) before the body reaches them is missed: from 7 m that is 1.17 s of run after the lock, after a .9 s tell |
+
+**C. Replication (what the presentation reads).** On `NativeMinionFrame` and `NativePveAdd` (host, guests, late joins,
+replay / killcam restore them):
+
+| field | meaning |
+|---|---|
+| `move` (int) | 0 smash/content, 1 punch, 2 swipe; written with LastAttack |
+| `chargeAt` (float) | the wind-up's start; -100 none |
+| `chargeEndAt` (float) | the end; -100 while winding up or running |
+| `chargeEnd` (int) | 0 running, 1 pilot, 2 solid, 3 spent |
+| `chargeTarget` (int) | the hunted pilot's seat id (0 none): only that pilot's view gets the warning |
+| yaw (existing) | the locked heading during the run |
+| breach / structure records and events (existing) | the walls broken on the run, so every peer breaks the same ones |
+
+Impact events stay the fallback (keep emitting them even with the fields; the presentation accepts either): `hulk-move`
+(Target add id, Amount move id, Time LastAttack); `hulk-charge` (Target add id, **Amount the hunted seat id**, Position start,
+Normal facing, Time chargeAt); `hulk-charge-end` (Target add id, Amount 1/2/3, Position contact, Time end).
+
+**D. What the presentation does with it (claude/hulk-charge).**
+
+- Punch and swipe from the move id (event today, field later): the keyed poses of 10.2 on their strike times, the striking
+  fist's glow through the wind-up, a trail over the drive (straight back for the punch, along the sweep for the swipe), the
+  swipe's crescent at the Hulk's scale, a burst at the fist on the strike, and for a pilot inside the proposed volume
+  (`NativeHulkMoves.InPunch` / `InSwipe`, the presentation's guess as the smash's disc already is) a burst at the chest, a
+  streak along the shove and a kick of that pilot's view.
+- The charge (Core `NativeHulkCharge.State`, Runtime `NativeHordeHulkMotion.cs` / `NativeHordeHulkCharge.cs`): the wind-up's
+  tell (rearing, the jaw bellowing, the seam glow gathering, the right foot scraped back with dust and a furrow, a faint line
+  along its facing); at the lock a ground streak sweeps 12 m along the locked heading with the lane's edges and chevrons; the run
+  holds the lowered shoulder for as long as the authority runs it (held at 4.5 / 6 / 7.5 m/s for 30 s on the heavy gait's planted
+  feet; a lost end is caught by the add standing still); walls in its lane (the eligible blocks, the breach panels, the gallery's
+  walls) shake and dust from .55 s before contact (a rattled drawn copy or the revamp's block dressing nudged; colliders never
+  moved); a break of this Hulk's in its run bursts with no knock and flinches the shoulder (it runs on); the ends' impacts,
+  shakes and the struck pilot's kick.
+- The warning, for `chargeTarget` only: a HUD bracket round the Hulk on screen (danger red in its lane, warn amber out of it;
+  corners over the crosshair's clear circle are left out, so nothing sits on the aim), chevron arrows toward it off screen or
+  behind (behind always points down), deeper, larger and faster as the urgency rises (distance and closing speed; never falls as
+  it closes), a soft edge glow when near; the wind-up's bellow, a rumble at the launch and when close, its footfalls heard through
+  walls; a gentle shake at each footfall as it closes. Settings · camera shake gates the shakes; Reduced effects halves them,
+  stills the pulse and thins the effects.
+- The Dev Sandbox gallery's fourth Hulk (to the local pilot's left) plays it all without the rules: a punch and a swipe at a
+  hardlight dummy, a turn to the pilot, the wind-up and lock at them (the warning plays), a 34 m charge through two walls of its
+  own, then alternately a pilot hit (a second dummy) and a solid stop (a dark pillar).
+- Binding the frame fields is the body of `HordeHulkFrame` in `Runtime/NativeHordeHulkMotion.cs` (three lines, written in its doc
+  comment); nothing else changes.
+
+**E. Animation impacts (Claude's work).** No hit timing, hitbox, damage, cooldown, movement, spawn, record or network change.
+The presented facing in the run is the locked heading (the authority's yaw by contract). A crash-through flinch is drawn in the
+run (pose only; the speed change is the authority's). The proposed rule numbers above (6 m/s, 16 s, 4 m overshoot, 2.5 s memory,
+10 s cooldown, .6 x for .3 s, the move choice) are proposals for Astra.
 
 ## Prompt for Astra
 
@@ -524,4 +622,46 @@ C. Hand back to Claude in DEV_LOG: the field names as implemented; Claude switch
    and punch effects pass. Tests: move choice and timing, both volumes, block, stagger cancel, the charge's wind-up
    lock, each end, the wall break without a knock, replication through JsonUtility and replay. Keep HordeKindChecks,
    ZombieMotionChecks, HulkSpitterChecks, ZombieFxChecks and HulkMotionChecks passing.
+```
+
+## Prompt for Astra: the Hulk's punches and charge at the hunted pilot, contract v2 (2026-10-14)
+
+```
+Task: Siren Hulk attacks and charge at pilots, simulation side. Owner 2026-10-14 (Windows test build): "The hulk needs to
+punch and charge at the player too, not just the wall. The charge is avoidable if they move out of the way in time. (Hulk can
+collide and break walls too.) They literally can charge from across the map to the player breaking the walls if they are
+hunting them and 'know' where they are." and "Its currently only using the ground slam". Contract: docs/SIREN-ZOMBIES.md 10.5
+(proposed; your implementation wins, record the final numbers there and in Core/NativeHulkMoves.cs). Claude's presentation is on
+claude/hulk-charge and plays as soon as the state below is replicated.
+
+A. Attacks: choose the move at the attack's start from the hunted pilot (NativeHulkMoves.Choose is a reference): 2+ pilots in
+   the smash disc -> smash; pilot 1.2-3.4 m inside 20 deg -> punch (1); within 3.2 m inside 150 deg -> swipe (2); else smash.
+   Crawling/armless: today's attack. Timings/volumes/damage/impulse/block as section 10.2. Drop v1's every-third-attack smash.
+B. Charge: start when hunting a pilot it knows (LOS now, or seen within 2.5 s -> last seen point, or the Siren/director/DEV hunt
+   state), >= 7 m horizontal, same floor, off cooldown (10 s from the previous end), the lane to the target point free of
+   unbreakable solids and with floor under it. No maximum range. Wind-up .9 s tracking the target (25% stagger cancels, 4 s
+   cooldown). At chargeAt+.9 lock the heading to the yaw (hold the yaw there) and the target point; run 6 m/s straight, no homing,
+   no attacks, hits do not stop it.
+   Breakables on contact, without stopping (speed x.6 for .3 s each): eligible interior wall blocks (dynamic NativeBreachRecord,
+   breakAt = contact, normal = heading, collision off at once, usual rebuild/occupancy hold), in-bounds Hulk breach panels (entry
+   record, actor = the Hulk, breakAt = contact; a boundary panel stops it as Solid), destructible props/structure blocks (destroy
+   through DamageProp/fracture, impulse along the heading). Never shell/bounds walls, floors, ceilings, stairs/ramps, hazards,
+   door frames, indestructibles, machine fixtures. Optional NativeBreachRecord.charged. Adds in the lane: shoved aside 450, no
+   damage.
+   Ends: pilot (any pilot meeting the swept capsule, |dy|<2): 28 x wave scale, 1000 along heading + 4.5 up, block halves shove
+   and no damage, held 1.0 s. Solid (unbreakable, boundary panel, ledge/floor gap): stunned 1.6 s. Spent: 4 m past the locked
+   target point's projection or 16 s of run: held .7 s.
+C. Replicate on NativeMinionFrame + NativePveAdd (host, guests, late join, replay): move (int), chargeAt (-100 none),
+   chargeEndAt (-100 while running), chargeEnd (0 running, 1 pilot, 2 solid, 3 spent), chargeTarget (hunted seat id, 0 none);
+   the yaw holds the locked heading; walls through the existing breach/structure records and events. Keep the Impact events too:
+   hulk-move (Target add, Amount move), hulk-charge (Target add, Amount hunted seat, Position start, Normal facing, Time),
+   hulk-charge-end (Target add, Amount 1/2/3, Position contact, Time).
+D. Tests: move choice; each volume and the block; the wind-up's tracking and stagger cancel; the lock (heading and target point
+   fixed after .9 s); a cross-map run; each breakable kind broken without stopping and the slow-down; never the shell/floor;
+   each end; the cooldown; a pilot stepping 1.5 m out of the lane after the lock is missed; replication through JsonUtility,
+   late join and replay. Keep HordeKindChecks, ZombieMotionChecks, HulkSpitterChecks, ZombieFxChecks, HulkMotionChecks and
+   HulkChargeChecks passing (update NativeHulkMoves' mirrored constants if you change a number).
+E. Hand back to Claude in DEV_LOG: the field names as implemented. Claude fills HordeHulkFrame (Runtime/NativeHordeHulkMotion.cs,
+   three lines in its doc comment) and wires the move's strike cue. Do not change presentation files beyond NativeHulkMoves'
+   mirrored numbers.
 ```

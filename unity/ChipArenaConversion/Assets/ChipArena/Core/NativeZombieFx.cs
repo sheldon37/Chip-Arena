@@ -13,8 +13,8 @@ namespace ChipArena.UnityConversion
     /// toon puffs, teardrops, glows, the upright slam wave) and a decal layer drawn before the effect billboards.
     /// <list type="bullet">
     /// <item>Sizes and times are the authority's: the glob rides NativeHordeFx.Glob's arc (the server validates that arc; it is
-    /// not changed here), the pool's liquid never spreads past NativeSpitterRules.Radius and its ring marks that radius until
-    /// NativeSpitterRules.Duration ends, every splash drop lands inside it; an impact's wave, cracks, dust ring and landed debris
+    /// not changed here), the pool's lobed body has the mean extent of NativeSpitterRules.Radius (within 1 ± Lobes of it; no
+    /// ring) until NativeSpitterRules.Duration ends, every splash drop lands inside it; an impact's wave, cracks, dust ring and landed debris
     /// stay inside the authority's radius (the smash's NativeHordeKinds.SmashRadiusOf disc, the drop's DropProfile.SlamRadius).</item>
     /// <item>Tiers (<see cref="Tier"/>): Reduced effects and the low graphics tier halve every stream (<see cref="Count"/>) and
     /// drop the extras (<see cref="Extras"/>: sparks, glints, fumes trailing the glob, the membrane); the renderer's low tier also
@@ -152,59 +152,146 @@ namespace ChipArena.UnityConversion
         public static float SpatterSize(uint seed,int i,out float turn){turn=H(seed,i,155)*Tau;return .05f+.07f*H(seed,i,156);}
 
         // ================================================================================================================
-        // The pool: a lobed liquid film that spreads to the authority's radius (never past it), bubbles, fumes, glints, and
-        // evaporates over its last seconds; a faint ring holds the radius until the pool ends; an etched mark stays a while.
+        // The pool (owner 2026-10-14: "make the pool look more natural (No circle showing either, currently theres a green
+        // circle)"): a body of liquid with a lobed outline, its own per record seed, whose mean extent is the authority's radius
+        // (the lobes swing within 1 ± Lobes of it, so where it hurts still reads); it creeps out viscously from the landing,
+        // is thick and dark in its deep core and thin, lighter and translucent at its edge, with a soft wet sheen; a few satellite
+        // splats lie outside it; a bubble swells and pops now and then; faint fumes; over its last seconds it dries unevenly,
+        // thinning into patches and receding a little, and leaves a residue stain that fades. No ring or band at the radius.
         // ================================================================================================================
-        public const int Edge=28,PoolBubbles=9,PoolFumes=8,Glints=3;
-        public const float SpreadSeconds=.32f,EvaporateSeconds=1.3f,EtchSeconds=5;
-        /// <summary>The pool `since` s after the landing, lasting `duration`: how far its liquid has spread (a share of the authority's
-        /// radius) and how wet it still is (1 .. 0 as it evaporates over its last <see cref="EvaporateSeconds"/>); false outside it.</summary>
+        public const int Edge=28,PoolEdge=36,PoolEdgeLow=24,PoolBubbles=6,PoolFumes=5,Glints=3,Satellites=6;
+        /// <summary>How far the outline swings round the authority's radius (a share): its mean is exactly 1, every point within 1 ± Lobes.</summary>
+        public const float Lobes=.11f;
+        /// <summary>SpreadStart: the share of its outline the liquid covers as it lands; SpreadSeconds: when the slowest lobe arrives.</summary>
+        public const float SpreadStart=.3f,SpreadSeconds=1.15f,EvaporateSeconds=1.3f,EtchSeconds=5,BubblePop=.3f,StainMax=.36f;
+        // The outline's harmonics (lobes, then a fine wobble) and their falloff.
+        private static readonly int[] LobeHarmonic={2,3,4,5,6,7,11,13};
+        private static readonly float[] LobeWeight={.6f,.45f,.37f,.31f,.27f,.24f,.05f,.04f};
+        /// <summary>The pool `since` s after the landing, lasting `duration`: how far its liquid has spread on average (a share of its
+        /// outline) and how wet it still is (1 .. 0 as it dries over its last <see cref="EvaporateSeconds"/>); false outside it.</summary>
         public static bool Pool(float since,float duration,out float spread,out float wet)
         {
             spread=wet=0;if(since<0||since>duration||!(duration>0))return false;float evap=Math.Min(EvaporateSeconds,duration*.4f);
-            wet=1-Sm((since-(duration-evap))/evap);spread=(.3f+.7f*Sm(since/SpreadSeconds))*(.97f+.03f*Sm(since/Math.Max(.4f,duration*.5f)));return true;
+            wet=1-Sm((since-(duration-evap))/evap);float x=Clamp01(since/(SpreadSeconds*.78f));spread=SpreadStart+(1-SpreadStart)*(1-(1-x)*(1-x)*(1-x));return true;
         }
-        /// <summary>The liquid's edge at vertex k of <see cref="Edge"/> (counter-clockwise from +x): its reach as a share of the
-        /// authority's radius, at most `spread` (so never past the radius): slow lobes that creep and wobble, retreating unevenly
-        /// as it dries.</summary>
-        public static float EdgeAt(uint seed,int k,float since,float spread,float wet)
+        /// <summary>The lobed outline at `angle` (rad, counter-clockwise from +x), a share of the authority's radius: a sum of the
+        /// seed's lobes drifting slowly (viscous creep), normalised so it stays within 1 ± <see cref="Lobes"/>. Over any uniform set
+        /// of <see cref="PoolEdgeLow"/> or more angles its mean is exactly 1: the body's mean extent is the authority's radius.</summary>
+        public static float Outline(uint seed,float angle,float since)
         {
-            float a=Tau*k/Edge,p1=H(seed,1,161)*Tau,p2=H(seed,2,161)*Tau,p3=H(seed,3,161)*Tau,t=Math.Max(0,since);
-            float lobe=.5f+.5f*(.55f*(float)Math.Sin(3*a+p1+.55f*t)+.3f*(float)Math.Sin(5*a+p2-.8f*t)+.15f*(float)Math.Sin(9*a+p3+1.6f*t));
-            float dry=.5f+.5f*(float)Math.Sin(2*a+p2*1.7f+.3f);float shrink=(1-wet)*(.25f+.55f*dry);
-            return Clamp01(spread*(1-.13f*lobe)*(1-shrink));
+            float sum=0,norm=0,t=Math.Max(0,since);
+            for(int i=0;i<LobeHarmonic.Length;i++)
+            {
+                int n=LobeHarmonic[i];float w=LobeWeight[i]*(.45f+.55f*H(seed,n,251));norm+=w;
+                sum+=w*(float)Math.Sin(n*angle+Tau*H(seed,n,252)+t*(H(seed,n,253)-.5f)*.16f);
+            }
+            return 1+Lobes*sum/norm;
         }
-        /// <summary>The faint ring that marks the authority's radius: on within .2 s of the landing, held, out over the last .3 s.</summary>
-        public static float RimAlpha(float since,float duration)=>since<0||since>duration?0:Sm(since/.2f)*(1-Sm((since-(duration-.3f))/.3f));
-        /// <summary>Bubble i on the pool: its offset from the centre (m), size (m) and pop (0 swelling .. 1 burst); false while it rests.</summary>
+        // A smooth 0..1 wave round the outline (which lobes lead the spread, which recede first, how strong the residue is).
+        private static float Round(uint seed,int k,float angle,int a,int b)=>.5f+.5f*(.62f*(float)Math.Sin(a*angle+Tau*H(seed,k,261))+.38f*(float)Math.Sin(b*angle+Tau*H(seed,k+1,261)));
+        /// <summary>How much of its outline the liquid has reached at `angle` `since` s after the landing (SpreadStart .. 1): each
+        /// lobe creeps out on its own clock, slowing as it arrives, the slowest by <see cref="SpreadSeconds"/>.</summary>
+        public static float Reach(uint seed,float angle,float since)
+        {
+            if(!(since>0))return SpreadStart;float x=since/(SpreadSeconds*(.55f+.45f*Round(seed,1,angle,2,5)));if(x>=1)return 1;
+            return SpreadStart+(1-SpreadStart)*(1-(1-x)*(1-x)*(1-x));
+        }
+        /// <summary>How far the drying liquid has receded at `angle` (a share, 0 wet .. at most .22 dry): unevenly round the edge.</summary>
+        public static float Recede(uint seed,float angle,float wet)=>(1-Clamp01(wet))*(.05f+.17f*Round(seed,3,angle,3,7));
+        /// <summary>The liquid body's edge at `angle` (a share of the authority's radius) `since` s after the landing of a pool lasting
+        /// `duration`: the outline, as far as it has spread, less what has dried back.</summary>
+        public static float EdgeAt(uint seed,float angle,float since,float duration)
+        {
+            float wet=since>duration?0:1;if(since>=0&&since<=duration)Pool(since,duration,out _,out wet);
+            return Outline(seed,angle,since)*Reach(seed,angle,since)*(1-Recede(seed,angle,wet));
+        }
+        /// <summary>A smooth blotchy mottle over the floor (x, z: m from the landing), 0..1: three seeded, turned egg-crate layers
+        /// (no direction dominates, so no stripes), drifting slowly.</summary>
+        public static float Mottle(uint seed,float x,float z,float since)
+        {
+            float v=0,t=Math.Max(0,since);
+            for(int i=0;i<3;i++)
+            {
+                float ang=Tau*H(seed,i,241),c=(float)Math.Cos(ang),sn=(float)Math.Sin(ang),f=(3.6f+2.4f*H(seed,i,242))*(1+.7f*i),u=x*c+z*sn,w=z*c-x*sn;
+                v+=(i==0?.55f:i==1?.3f:.15f)*(float)(Math.Sin(u*f+Tau*H(seed,i,243)+t*(.2f+.1f*i))*Math.Sin(w*f*.9f+Tau*H(seed,i,244)-t*.15f));
+            }
+            return Clamp01(.5f+.9f*v);
+        }
+        /// <summary>The liquid's thickness (0 bare floor .. 1 its deep core) at `rho` (0 the centre .. 1 the body's edge at that angle)
+        /// over the floor point (x, z: m from the landing) while `wet`: deepest in the middle, mottled, thinning to a thin lip at the
+        /// edge; drying thins it everywhere, the thin and mottled parts first, so the film breaks up into patches before it is gone.</summary>
+        public static float Thickness(uint seed,float rho,float x,float z,float since,float wet)
+        {
+            float r=Clamp01(rho),m=Mottle(seed,x,z,since),profile=.16f+.84f*(1-(float)Math.Pow(r,3.2f));
+            // The mottle is weaker in the deep core (an even dark middle) and full toward the edge.
+            float dry=1-Clamp01(wet),mot=(m-.5f)*(.35f+.65f*Sm(r/.55f));return Clamp01(profile*(1+1.12f*mot)*(1-.6f*dry)-dry*(.12f+.4f*(.5f-mot)));
+        }
+        /// <summary>The soft wet sheen at `rho` round `angle` (0..1, before the view): a little stronger toward the curved edge, broken
+        /// up round it and fading out before the very edge, so it never draws a clean outline; gone as the liquid dries.</summary>
+        public static float Sheen(uint seed,float rho,float angle,float wet)
+        {
+            float r=Clamp01(rho),edge=Sm((r-.5f)/.4f);
+            return Clamp01(wet)*(.45f+.55f*edge)*(.35f+.65f*Round(seed,5,angle,4,9))*(1-Sm((r-.93f)/.07f));
+        }
+        /// <summary>The sheen a viewer sees off the liquid at that point: the sky's reflection, strong at grazing angles (a low
+        /// shoulder camera sees the far half glisten) and faint from straight above. `up` is the eye direction's height (0..1).</summary>
+        public static float Fresnel(float up){float c=1-Clamp01(up);return .1f+.9f*c*c*c;}
+        /// <summary>The residue stain the pool leaves where it dried (the contact line pinned at its outline): showing as it starts to
+        /// dry, held at <see cref="StainMax"/>, fading over <see cref="EtchSeconds"/> after the pool.</summary>
+        public static bool Etch(float since,float duration,out float alpha)
+        {
+            alpha=0;float evap=Math.Min(EvaporateSeconds,duration*.4f),from=duration-evap;if(since<from||since>duration+EtchSeconds)return false;
+            alpha=StainMax*Sm((since-from)/(evap*.8f))*(1-Sm((since-duration)/EtchSeconds));return alpha>.005f;
+        }
+        /// <summary>The stain's edge at `angle`: the body's outline where it began to dry (a share of the radius).</summary>
+        public static float EtchEdge(uint seed,float angle,float duration)
+        {float at=Math.Max(0,duration-Math.Min(EvaporateSeconds,duration*.4f));return Outline(seed,angle,at)*Reach(seed,angle,at)*.985f;}
+        /// <summary>How heavy the residue is at the stain's edge round `angle` (0..1): uneven, so the dried rim is no clean ring.</summary>
+        public static float Residue(uint seed,float angle)=>Round(seed,7,angle,4,11);
+        /// <summary>Satellite splat i thrown outside the body: its centre (x, z from the landing, m; always past the outline's widest
+        /// lobe), the outward direction it is stretched along, its length and width (m) and when its drop lands (s after the glob).</summary>
+        public static void Satellite(uint seed,int i,float radius,out Vector2 at,out Vector2 along,out float length,out float width,out float land)
+        {
+            float a=Tau*(i+.7f*H(seed,i,271))/Satellites,d=Math.Max(.05f,radius)*(1+Lobes+.03f+.18f*H(seed,i,272));along=new Vector2((float)Math.Cos(a),(float)Math.Sin(a));at=along*d;
+            length=.06f+.08f*H(seed,i,273);width=length*(.66f+.24f*H(seed,i,274));float e=SatelliteElevation(seed,i);land=2*(float)Math.Sqrt(d*G/Math.Sin(2*e))*(float)Math.Sin(e)/G;
+        }
+        private static float SatelliteElevation(uint seed,int i)=>.55f+.3f*H(seed,i,275);
+        /// <summary>Satellite i's drop in flight from the landing: offset (m), velocity, size; false once it has landed.</summary>
+        public static bool SatelliteDrop(uint seed,int i,float since,float radius,out Vector3 offset,out Vector3 velocity,out float size)
+        {
+            offset=velocity=Vector3.Zero;size=0;Satellite(seed,i,radius,out var at,out var along,out float length,out _,out float land);if(since<0||since>land)return false;
+            float d=at.Length(),e=SatelliteElevation(seed,i),v=(float)Math.Sqrt(d*G/Math.Sin(2*e)),vx=v*(float)Math.Cos(e),vy=v*(float)Math.Sin(e);var dir=new Vector3(along.X,0,along.Y);
+            offset=dir*(vx*since)+new Vector3(0,vy*since-.5f*G*since*since+.02f,0);velocity=dir*vx+new Vector3(0,vy-G*since,0);size=.4f*length;return true;
+        }
+        /// <summary>A satellite's wetness: a thin splat dries well before the body (1 .. 0 from 42% to 80% of the pool's duration).</summary>
+        public static float SatelliteWet(float since,float duration)=>1-Sm((since-duration*.42f)/(duration*.38f));
+        /// <summary>Bubble i on the pool: a slot that now and then swells a small bubble in the thick part (a new place each time) and
+        /// pops it, a ripple spreading; its offset from the centre (m), size (m) and pop (0 swelling, then 0..1 over the ripple's
+        /// <see cref="BubblePop"/> s); false while the slot rests.</summary>
         public static bool PoolBubble(uint seed,int i,float since,float duration,float radius,out Vector3 offset,out float size,out float pop)
         {
-            offset=Vector3.Zero;size=pop=0;if(!Pool(since,duration,out float spread,out float wet)||since<.18f||wet<.15f)return false;
-            float period=.55f+.7f*H(seed,i,171),u=((since+H(seed,i,172)*period)%period)/period,a=Tau*H(seed,i,173),r=radius*spread*.78f*(float)Math.Sqrt(H(seed,i,174));
-            float big=(.03f+.04f*H(seed,i,175))*(.5f+.5f*wet);if(u<.8f){size=big*(.3f+.7f*Sm(u/.8f));pop=0;}else{pop=(u-.8f)/.2f;size=big*(1+.9f*pop);}
-            offset=new Vector3((float)Math.Cos(a)*r,u<.8f?size*.35f:.006f,(float)Math.Sin(a)*r);return true;
+            offset=Vector3.Zero;size=pop=0;if(!Pool(since,duration,out float spread,out float wet)||since<.35f||wet<.3f)return false;
+            float period=2f+1.8f*H(seed,i,171),phase=since+H(seed,i,172)*period;int cycle=(int)Math.Floor(phase/period);float u=phase-cycle*period;int c=i*131+cycle;
+            float life=.5f+.45f*H(seed,c,176);if(u>life+BubblePop)return false;
+            float a=Tau*H(seed,c,173),r=radius*spread*.6f*(float)Math.Sqrt(H(seed,c,174)),big=(.016f+.026f*H(seed,c,175))*(.6f+.4f*wet);
+            if(u<life){size=big*(.25f+.75f*Sm(u/life));pop=0;}else{pop=Math.Max(1e-4f,(u-life)/BubblePop);size=big;}
+            offset=new Vector3((float)Math.Cos(a)*r,pop>0?.004f:size*.3f,(float)Math.Sin(a)*r);return true;
         }
-        /// <summary>Fume i rising off the pool (thicker while it evaporates, clearing after it ends): offset (m), size (m), opacity and
+        /// <summary>Fume i rising off the pool, faint (thicker while it dries, clearing after it ends): offset (m), size (m), opacity and
         /// its age share (the toon puff's erosion).</summary>
         public static bool PoolFume(uint seed,int i,float since,float duration,float radius,out Vector3 offset,out float size,out float alpha,out float u)
         {
-            offset=Vector3.Zero;size=alpha=u=0;if(since<.1f||since>duration+.7f)return false;Pool(Math.Min(since,duration),duration,out float spread,out float wet);
-            float period=1f+.6f*H(seed,i,181);u=((since+H(seed,i,182)*period)%period)/period;float a=Tau*H(seed,i,183),r=radius*Math.Max(.2f,spread)*.62f*(float)Math.Sqrt(H(seed,i,184)),drift=.22f*u;
-            offset=new Vector3((float)Math.Cos(a)*r+drift*(H(seed,i,185)-.3f),.06f+.85f*u*(.8f+.4f*H(seed,i,186)),(float)Math.Sin(a)*r+drift*(H(seed,i,187)-.5f));
-            float scale=Math.Min(1.3f,radius/1.3f);size=(.24f+.46f*u)*scale;float activity=(.6f+.55f*(1-wet))*(1-Sm((since-duration)/.7f));alpha=Math.Min(.6f,.5f*Sm(u/.15f)*(1-u)*activity);return alpha>.005f;
+            offset=Vector3.Zero;size=alpha=u=0;if(since<.15f||since>duration+.7f)return false;Pool(Math.Min(since,duration),duration,out float spread,out float wet);
+            float period=1.3f+.7f*H(seed,i,181);u=((since+H(seed,i,182)*period)%period)/period;float a=Tau*H(seed,i,183),r=radius*Math.Max(.2f,spread)*.58f*(float)Math.Sqrt(H(seed,i,184)),drift=.18f*u;
+            offset=new Vector3((float)Math.Cos(a)*r+drift*(H(seed,i,185)-.3f),.1f+.65f*u*(.8f+.4f*H(seed,i,186)),(float)Math.Sin(a)*r+drift*(H(seed,i,187)-.5f));
+            float scale=Math.Min(1.3f,radius/1.3f);size=(.1f+.18f*u)*scale;float activity=(.5f+.3f*(1-wet))*(1-Sm((since-duration)/.5f));alpha=Math.Min(.1f,.1f*Sm(u/.25f)*(1-u)*activity);return alpha>.005f;
         }
-        /// <summary>A glint sliding over the wet film: offset (m) and strength.</summary>
+        /// <summary>A glint sliding over the wet film: offset (m) and strength (soft).</summary>
         public static bool Glint(uint seed,int i,float since,float duration,float radius,out Vector3 offset,out float alpha)
         {
-            offset=Vector3.Zero;alpha=0;if(!Pool(since,duration,out float spread,out float wet))return false;float a=Tau*H(seed,i,191)+.35f*since*(H(seed,i,192)<.5f?1:-1),r=radius*spread*(.25f+.45f*H(seed,i,193));
-            offset=new Vector3((float)Math.Cos(a)*r,.012f,(float)Math.Sin(a)*r);alpha=wet*Sm(since/.25f)*(.55f+.45f*(float)Math.Sin(since*(2.2f+H(seed,i,194))+i*2.1f));return alpha>.01f;
+            offset=Vector3.Zero;alpha=0;if(!Pool(since,duration,out float spread,out float wet))return false;float a=Tau*H(seed,i,191)+.25f*since*(H(seed,i,192)<.5f?1:-1),r=radius*spread*(.25f+.4f*H(seed,i,193));
+            offset=new Vector3((float)Math.Cos(a)*r,.012f,(float)Math.Sin(a)*r);alpha=.45f*wet*Sm(since/.4f)*(.4f+.6f*Math.Max(0,(float)Math.Sin(since*(1.7f+H(seed,i,194))+i*2.1f)));return alpha>.01f;
         }
-        /// <summary>The etched mark the acid leaves on the floor: its reach (a share of the radius, the liquid's shape where it began
-        /// to dry, inside it) and darkness; it shows as the liquid dries and fades over <see cref="EtchSeconds"/> after the pool.</summary>
-        public static bool Etch(float since,float duration,out float alpha)
-        {alpha=0;if(since<.3f||since>duration+EtchSeconds)return false;alpha=.5f*Sm((since-.3f)/1.2f)*(1-Sm((since-duration)/EtchSeconds));return alpha>.005f;}
-        /// <summary>The etch's edge at vertex k: the liquid's edge as it began to dry, a little inside it.</summary>
-        public static float EtchEdge(uint seed,int k,float duration){float at=Math.Max(SpreadSeconds,duration-EvaporateSeconds);Pool(at,duration,out float s,out _);return EdgeAt(seed,k,at,s,1)*.9f;}
 
         // ================================================================================================================
         // Corrosion on a block's face, and on a splashed pilot
