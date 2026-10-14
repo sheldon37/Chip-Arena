@@ -141,7 +141,8 @@ namespace ChipArena.UnityConversion
         // right: the rig's right hand (the gun hand; the casting hand on the mirrored staff set), left: its left (the pistol's
         // free hand, the long guns' support hand, the staff hand), each damped about its cycle mean; leftFwd the left fist's
         // weapon axis (the staff, NativePackRangedLocomotion's staff set).
-        private Vector3 right,rightMean,left,leftMean,leftFwd;private Quaternion rightQ=Quaternion.Identity,leftQ=Quaternion.Identity;
+        // rightMeanQ: the right hand's cycle-mean frame (the casting hand's steady sprint orientation, Magic).
+        private Vector3 right,rightMean,left,leftMean,leftFwd;private Quaternion rightQ=Quaternion.Identity,rightMeanQ=Quaternion.Identity,leftQ=Quaternion.Identity;
         private Vector3 rightS,rightV,leftS,leftV,fwdS,fwdV;private bool followHas;
         private void Follow(ref Vector3 x,ref Vector3 v,Vector3 target,float dt)
         {
@@ -192,6 +193,12 @@ namespace ChipArena.UnityConversion
         {
             Sample(NativePackRangedLocomotion.Sprint,0,phase,rowA,mean);Damp(rowA,mean,MeleeCapture.Spine,MeleeCapture.Head+3,torsoKeep);
         }
+        // A row's grip frame (its blade and edge; identity when they are degenerate).
+        private static Quaternion Grip(float[] f)
+        {
+            Vector3 blade=Row(f,MeleeCapture.Blade),edge=Row(f,MeleeCapture.Edge);edge-=blade*Vector3.Dot(edge,blade);
+            return edge.LengthSquared()<1e-8f?Quaternion.Identity:MeleeMath.Basis(Vector3.Normalize(edge),Vector3.Cross(Vector3.Normalize(blade),Vector3.Normalize(edge)),Vector3.Normalize(blade));
+        }
         private static readonly int[] TorsoBones={CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LClav,CapturedRig.RClav};
         private static readonly int[] TorsoChannels={MeleeCapture.Spine,MeleeCapture.Chest,MeleeCapture.Neck,MeleeCapture.Head,MeleeCapture.LClav,MeleeCapture.RClav};
         // The row's torso over the rig at `w` (the neck and head at the style's share), its hands accumulated at `w` into the
@@ -207,9 +214,7 @@ namespace ChipArena.UnityConversion
             Vector3 g=Row(rowA,MeleeCapture.Grip),gm=Row(mean,MeleeCapture.Grip),l=Row(rowA,MeleeCapture.LHand),lm=Row(mean,MeleeCapture.LHand);
             right=Vector3.Lerp(right,gm+(g-gm)*rightKeep,w);rightMean=Vector3.Lerp(rightMean,gm,w);
             left=Vector3.Lerp(left,lm+(l-lm)*leftKeep,w);leftMean=Vector3.Lerp(leftMean,lm,w);
-            Vector3 blade=Row(rowA,MeleeCapture.Blade),edge=Row(rowA,MeleeCapture.Edge);edge-=blade*Vector3.Dot(edge,blade);
-            Quaternion gq=edge.LengthSquared()<1e-8f?Quaternion.Identity:MeleeMath.Basis(Vector3.Normalize(edge),Vector3.Cross(Vector3.Normalize(blade),Vector3.Normalize(edge)),Vector3.Normalize(blade));
-            rightQ=MeleeMath.Slerp(rightQ,gq,w);leftQ=MeleeMath.Slerp(leftQ,Frame(Row(rowA,MeleeCapture.LFwd),Row(rowA,MeleeCapture.LUp)),w);
+            rightQ=MeleeMath.Slerp(rightQ,Grip(rowA),w);rightMeanQ=MeleeMath.Slerp(rightMeanQ,Grip(mean),w);leftQ=MeleeMath.Slerp(leftQ,Frame(Row(rowA,MeleeCapture.LFwd),Row(rowA,MeleeCapture.LUp)),w);
             leftFwd=Vector3.Lerp(leftFwd,Row(mean,MeleeCapture.LFwd)+(Row(rowA,MeleeCapture.LFwd)-Row(mean,MeleeCapture.LFwd))*leftKeep,w);
         }
         /// <summary>
@@ -243,7 +248,7 @@ namespace ChipArena.UnityConversion
             NativeLocoRules.Bracket(dir,out int a,out int b,out float t);t=t*t*(3-2*t);Direction=dir;First=a;Second=b;Mix=t;
             float slow=(1-MeleeMath.Ease((speedV-NativeLocoRules.SlowFrom)/(NativeLocoRules.SlowTo-NativeLocoRules.SlowFrom)))*Math.Max(0,(float)Math.Cos(dir));
             float ahead=Math.Max(0,(float)Math.Cos(dir)),aside=MeleeMath.Lerp(NativeLocoRules.AsideTorso,1,ahead*ahead*ahead);sprint=MeleeMath.Clamp(sprint,0,1);asideKeep=aside;
-            Vector3 pelvis=r.E[CapturedRig.Pelvis];right=rightMean=left=leftMean=leftFwd=Vector3.Zero;rightQ=leftQ=Quaternion.Identity;Quaternion gaze=r.ChainQuat(CapturedRig.Head,-1);
+            Vector3 pelvis=r.E[CapturedRig.Pelvis];right=rightMean=left=leftMean=leftFwd=Vector3.Zero;rightQ=rightMeanQ=leftQ=Quaternion.Identity;Quaternion gaze=r.ChainQuat(CapturedRig.Head,-1);
             // The weapon hand keeps HandKeep and the free hand FreeKeep; on the mirrored staff set (and the bow's) the left hand holds it.
             bool staff=s==NativeRangedLocoRules.Staff||s==NativeRangedLocoRules.Bow;float rk=staff?st.FreeKeep:st.HandKeep,lk=staff?st.HandKeep:st.FreeKeep;
             Family(s,NativeLocoRules.Walk,phase,a,b,t,slow,st.TorsoWalk*aside);Lay(r,w,st,rk,lk);
@@ -361,7 +366,10 @@ namespace ChipArena.UnityConversion
             // The mirrored capture: the rig's grip channels are the free (casting) hand, its left-hand channels the staff hand.
             r.Hand(true,left,r.ChainQuat(CapturedRig.LHand,CapturedRig.Chest),w);
             // The capture's free hand swings wide of its narrow shoulders; the voxel shoulders are far wider, so its line comes in.
-            Vector3 cast=right;cast.X=rightMean.X*NativeRangedLocoRules.CastIn+(right.X-rightMean.X);r.Hand(false,cast,rightQ,w);
+            // Sprinting, the casting hand holds the carry's cycle-mean frame (owner 2026-10-14: "while sprinting, the hand keeps
+            // rotating"): the sprint carry (NativeSprintMotion.Magic) moves the hand but keeps this frame, and the clip's own
+            // free-hand frame turns about 115 degrees every stride (its orientation is never damped as the positions are).
+            Vector3 cast=right;cast.X=rightMean.X*NativeRangedLocoRules.CastIn+(right.X-rightMean.X);r.Hand(false,cast,MeleeMath.Slerp(rightQ,rightMeanQ,Sprint),w);
             // The staff follows the pack's staff a little, and stands up against the chest's lean (it rides in chest space);
             // the sprint carry tilts it itself.
             Vector3 f=leftFwd.LengthSquared()<1e-6f?Vector3.UnitY:Vector3.Normalize(leftFwd),c=Vector3.Transform(Vector3.UnitZ,r.ChainQuat(CapturedRig.Chest,-1));

@@ -161,6 +161,15 @@ namespace ChipArena.UnityConversion
             blade=Vector3.Normalize(blade);Vector3 edge=edgeHint-blade*Vector3.Dot(edgeHint,blade);edge=edge.LengthSquared()<1e-8f?Vector3.UnitX:Vector3.Normalize(edge);
             return MeleeMath.Basis(edge,Vector3.Cross(blade,edge),blade);
         }
+        /// <summary>
+        /// The daggers' sprint blade lies (chest space; owner 2026-10-14: "while running/sprinting, the back arm wiggles a bit"):
+        /// the run carry's mean reverse-grip lie of each fist, tipped back along the forearm (right .34 rad, left .3: about 6 cm
+        /// over the guard at the lowest of a straight sprint). The fists once kept the live run carry's lie, which carries the
+        /// run's per-stride wrist motion and, under the sprint lean, hung the .84 m blades 7-15 cm below the floor guard's plane
+        /// each pump: MeleeCapture.KeepBladesOffFloor then flicked each wrist up by up to 12 degrees and let go every stride.
+        /// </summary>
+        public static readonly Quaternion DaggerRight=Weapon(new Vector3(-.09f,-.93f,-.36f),new Vector3(-.26f,-.33f,.91f)),
+            DaggerLeft=Weapon(new Vector3(.58f,-.75f,-.33f),new Vector3(.75f,.32f,.58f));
         // The forward lean on the spine about the pelvis's own side axis (premultiplied, so the steady torso's counter-twist
         // never turns it into a roll), half of it given back at the neck so the gaze stays level.
         private static void LeanSpine(MeleeRig r,string spec,float w)
@@ -185,9 +194,10 @@ namespace ChipArena.UnityConversion
                     r.BraceWeapon(new Vector3(-.27f,-.36f+.02f*fR,-.15f+.04f*fR),Weapon(new Vector3(-.22f,.14f,-.96f),new Vector3(0,-1,0)),w,Vector3.Normalize(new Vector3(-1,-.2f,-.7f)),false);
                     r.Hand(true,new Vector3(.24f,-.15f+.03f*Math.Max(0,fL),.06f+.22f*fL),qL,w,poleL);break;
                 case "daggers":
+                    // Each reverse-grip fist pumps at its own steady blade lie (DaggerRight, DaggerLeft), not the live run carry's.
                     LeanSpine(r,p.Spec,w);
-                    r.BraceWeapon(new Vector3(-.23f,-.18f+.05f*Math.Max(0,fR),.02f+.3f*fR),qR,w,poleR,false);
-                    r.Hand(true,new Vector3(.23f,-.18f+.05f*Math.Max(0,fL),.02f+.3f*fL),qL,w,poleL);break;
+                    r.BraceWeapon(new Vector3(-.23f,-.18f+.05f*Math.Max(0,fR),.02f+.3f*fR),DaggerRight,w,poleR,false);
+                    r.Hand(true,new Vector3(.23f,-.18f+.05f*Math.Max(0,fL),.02f+.3f*fL),DaggerLeft,w,poleL);break;
                 case "shield":
                     // The shield shoulder (the right) leads: the chest turns toward it and the head keeps the facing.
                     LeanSpine(r,p.Spec,w);r.AddE(CapturedRig.Spine,0,.16f*w,0);r.AddE(CapturedRig.Chest,0,.12f*w,0);r.AddE(CapturedRig.Head,0,-.28f*w,0);

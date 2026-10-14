@@ -158,8 +158,36 @@ namespace ChipArena.UnityConversion
         // connection pill at the right in the lobby. The PROTOTYPE tag lives in the footer.
         private void TopBar(bool home)
         {
-            if(home)return;Wordmark(30,31,16,1,-1);
+            if(home)return;float ww=Wordmark(30,31,16,1,-1);UpdatePill(30+ww+22,27);
             if(menuScreen==MenuScreen.Lobby&&InRoom)ConnectionPill(U.W-30,24);
+        }
+        // The update waiting, beside the panel screens' wordmark (owner 2026-10-14: "make it more visible when updates are
+        // available~ Like make the button pulse"): the Update Game circle lives on the home screen only, so the other screens
+        // carry a pill on the same beat. A click takes the player home with the update card open; in a room it only says
+        // what is needed (installing waits for the room to close, NativeUpdater.CanInstall). While a download, verification or
+        // preparation runs it shows that state steadily instead. Nothing else: no pill while idle, current or off.
+        private void UpdatePill(float x,float y)
+        {
+            var u=Updater;if(u==null)return;var s=u.State;bool ready=s==NativeUpdateState.Available,busy=s==NativeUpdateState.Downloading||s==NativeUpdateState.Verifying||s==NativeUpdateState.Preparing;
+            if(!ready&&!busy)return;UpdateBeatAt(ready,out float kick,out float breathe,out float wave);
+            string label=ready?(InRoom?"UPDATE READY  ·  LEAVE THE ROOM TO INSTALL":"UPDATE READY"):UpdateChip(u);
+            float w=U.Measure(label,10,true,true,.14f).x+44;var r=new Rect(x,y,w,24);bool can=ready&&!InRoom&&!MenuBlocked();float h=U.HoverAmount(9106,r,can);
+            U.Glow(r,C.Cyan((ready?.10f+.26f*kick+.12f*breathe:.08f)+.14f*h),10);
+            if(wave>=0){float g=8*wave;U.Pill(new Rect(r.x-g,r.y-g,r.width+2*g,r.height+2*g),Color.clear,C.Cyan(.55f*(1-wave)*(1-wave)));}
+            U.Pill(r,C.Navy(.92f),U.A(U.Mix(C.CyanSoft(),C.Cyan(),Mathf.Max(h,kick)),.9f));
+            NativeIcons.Draw(new Rect(r.x+9,r.y+4+2*kick,16,16),"download",ready?C.Cyan():C.CyanSoft());
+            U.Text(new Rect(r.x+30,r.y,w-36,24),label,10,ready?U.Mix(C.Cyan(),Color.white,.5f*kick+.3f*h):C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
+            if(s==NativeUpdateState.Downloading){float f=Mathf.Clamp01(u.Progress);if(f>0)U.Fill(new Rect(r.x+12,r.yMax-3,(r.width-24)*f,2),C.Cyan(.9f));}
+            if(can&&U.Button(r)){Click();if(menuScreen==MenuScreen.Customize&&LockerDirty())LockerBack();else{Go(MenuScreen.Home);updateOpen=true;}}
+        }
+        // The update's beat (UpdateBeat seconds), shared by the circle and the pill: `kick` jumps to 1 on the beat and decays
+        // (a heartbeat), `breathe` is a slow sine, `wave` the sonar ring's progress (-1 for none). Reduced effects keep the
+        // breathing glow only: no kick, no ring.
+        private const float UpdateBeat=1.6f;
+        private void UpdateBeatAt(bool ready,out float kick,out float breathe,out float wave)
+        {
+            float t=Time.unscaledTime,beat=Mathf.Repeat(t/UpdateBeat,1);bool calm=prefs.reducedEffects;
+            kick=ready&&!calm?Mathf.Exp(-6*beat):0;breathe=ready?.5f+.5f*Mathf.Sin(t*Mathf.PI*2/UpdateBeat):0;wave=ready&&!calm?beat:-1;
         }
         // The footer on every menu screen: a hairline, the PROTOTYPE tag, the build and controls at the left and the arena
         // and pilot counts at the right, in mono.
@@ -179,21 +207,27 @@ namespace ChipArena.UnityConversion
         private void UpdateCircle(Vector2 c,float r,float alpha)
         {
             var u=Updater;var s=u.State;float t=Time.unscaledTime;bool spin=s==NativeUpdateState.Checking||s==NativeUpdateState.Verifying||s==NativeUpdateState.Preparing||s==NativeUpdateState.Restarting;
-            bool busy=s==NativeUpdateState.Downloading||s==NativeUpdateState.Verifying||s==NativeUpdateState.Preparing||s==NativeUpdateState.Restarting,live=s==NativeUpdateState.Available||busy;
+            bool busy=s==NativeUpdateState.Downloading||s==NativeUpdateState.Verifying||s==NativeUpdateState.Preparing||s==NativeUpdateState.Restarting,live=s==NativeUpdateState.Available||busy,ready=s==NativeUpdateState.Available;
             var hit=new Rect(c.x-r-12,c.y-r-12,2*r+24,2*r+24);bool blocked=MenuBlocked();float h=Mathf.Max(U.HoverAmount(9101,hit,!blocked),updateOpen?1:0);
-            Color accent=s==NativeUpdateState.Error?C.Danger():live?C.Cyan():C.Muted();float pulse=s==NativeUpdateState.Available?.5f+.5f*Mathf.Sin(t*3.7f):0;
-            U.RadialStops(new Rect(c.x-r*2.1f,c.y-r*2.1f,r*4.2f,r*4.2f),U.A(live?C.Cyan():C.Muted(),((live?.20f:.10f)+.08f*h+.08f*pulse)*alpha),new[]{0f,.29f,1f},new[]{1f,1f,0f});
-            for(int k=0;k<48;k++){float a=k/48f*Mathf.PI*2+t*.12f,d=k%4==0?2.6f:1.6f;var dot=new Vector2(c.x+Mathf.Cos(a)*(r+9),c.y+Mathf.Sin(a)*(r+9));U.Disc(new Rect(dot.x-d/2,dot.y-d/2,d,d),live?C.CyanSoft(.6f*alpha):C.Muted(.4f*alpha));}
+            // An update waiting beats (owner 2026-10-14: "make the button pulse"): the halo swells on each beat, two sonar rings
+            // run out from the disc, the disc kicks a little larger and the download arrow dips, a magenta pip marks it new, and
+            // AVAILABLE flashes toward white. Reduced effects keep the breathing halo and the pip.
+            UpdateBeatAt(ready,out float kick,out float breathe,out float wave);
+            Color accent=s==NativeUpdateState.Error?C.Danger():live?C.Cyan():C.Muted();float swell=r*(2.1f+.5f*kick);
+            U.RadialStops(new Rect(c.x-swell,c.y-swell,2*swell,2*swell),U.A(live?C.Cyan():C.Muted(),((live?.20f:.10f)+.08f*h+(ready?.10f+.22f*kick+.10f*breathe:0))*alpha),new[]{0f,.29f,1f},new[]{1f,1f,0f});
+            if(wave>=0)for(int k=0;k<2;k++){float p=Mathf.Repeat(wave-.5f*k,1),q=1-(1-p)*(1-p),R=r+6+42*q,th=2.5f;U.RadialStops(new Rect(c.x-R,c.y-R,2*R,2*R),C.Cyan(.6f*(1-p)*(1-p)*alpha),new[]{0f,(R-2*th)/R,(R-th)/R,1f},new[]{0f,0f,1f,0f});}
+            for(int k=0;k<48;k++){float a=k/48f*Mathf.PI*2+t*(ready?.3f:.12f),d=k%4==0?2.6f:1.6f;var dot=new Vector2(c.x+Mathf.Cos(a)*(r+9),c.y+Mathf.Sin(a)*(r+9));U.Disc(new Rect(dot.x-d/2,dot.y-d/2,d,d),live?C.CyanSoft((ready?.6f+.4f*Mathf.Max(kick,breathe):.6f)*alpha):C.Muted(.4f*alpha));}
             if(s==NativeUpdateState.Downloading){float p=Mathf.Clamp01(u.Progress);var ring=new Rect(c.x-r-4.5f,c.y-r-4.5f,2*r+9,2*r+9);U.Glow(ring,C.Cyan(.25f*alpha),6);U.Pie(ring,C.Cyan(alpha),p);}
-            var disc=new Rect(c.x-r,c.y-r,2*r,2*r);U.Disc(disc,C.Void(.95f*alpha));U.RadialStops(disc,U.Hex(0x1e2c60,.95f*alpha),new[]{0f,.75f,1f},new[]{1f,.35f,0f});
-            U.RadialStops(disc,U.A(U.Mix(C.CyanSoft(.45f),C.Cyan(),h),alpha),new[]{0f,.94f,.97f,1f},new[]{0f,0f,1f,0f});U.RadialStops(new Rect(c.x-r+5,c.y-r+5,2*r-10,2*r-10),C.Cyan(.12f*alpha),new[]{0f,.94f,.97f,1f},new[]{0f,0f,1f,0f});
+            float rr=r*(1+.06f*kick);var disc=new Rect(c.x-rr,c.y-rr,2*rr,2*rr);U.Disc(disc,C.Void(.95f*alpha));U.RadialStops(disc,U.Hex(0x1e2c60,.95f*alpha),new[]{0f,.75f,1f},new[]{1f,.35f,0f});
+            U.RadialStops(disc,U.A(U.Mix(C.CyanSoft(.45f),C.Cyan(),Mathf.Max(h,kick)),alpha),new[]{0f,.94f,.97f,1f},new[]{0f,0f,1f,0f});U.RadialStops(new Rect(c.x-rr+5,c.y-rr+5,2*rr-10,2*rr-10),C.Cyan((.12f+.2f*kick)*alpha),new[]{0f,.94f,.97f,1f},new[]{0f,0f,1f,0f});
             if(spin)for(int i=0;i<8;i++){float a=t*4-i*.32f;var d=new Rect(c.x+Mathf.Cos(a)*(r+3)-1.6f,c.y+Mathf.Sin(a)*(r+3)-1.6f,3.2f,3.2f);U.Disc(d,U.A(accent,alpha*(1-i/8f)));}
             if(s==NativeUpdateState.Downloading)U.Text(disc,Mathf.RoundToInt(Mathf.Clamp01(u.Progress)*100)+"%",15,C.Ink(alpha),TextAnchor.MiddleCenter,bold:true);
-            else NativeIcons.Draw(new Rect(c.x-12,c.y-12,24,24),s==NativeUpdateState.Current?"check":s==NativeUpdateState.Error?"circle-alert":"download",U.A(live?C.CyanSoft():s==NativeUpdateState.Error?C.Danger():C.Muted(),alpha));
+            else NativeIcons.Draw(new Rect(c.x-12,c.y-12+3*kick,24,24),s==NativeUpdateState.Current?"check":s==NativeUpdateState.Error?"circle-alert":"download",U.A(live?(ready?U.Mix(C.CyanSoft(),Color.white,.6f*kick):C.CyanSoft()):s==NativeUpdateState.Error?C.Danger():C.Muted(),alpha));
+            if(ready){var pip=new Rect(c.x+rr*.7f-6,c.y-rr*.7f-6,12,12);U.Glow(pip,C.Magenta((.35f+.3f*breathe)*alpha),7);U.Disc(pip,C.Magenta(alpha));U.Disc(new Rect(pip.x+3.5f,pip.y+3.5f,5,5),new Color(1,1,1,.85f*alpha));}
             UpdateLines(u,out string top,out string bottom);float lx=c.x-r-14,ly=c.y-r-18;
             U.Text(new Rect(lx-260,ly-22,260,16),top,11,C.Ink(.94f*alpha),TextAnchor.MiddleRight,bold:true,tracking:.2f,shadow:C.Void(.8f*alpha));
-            U.Text(new Rect(lx-260,ly-6,260,16),bottom,11,U.A(s==NativeUpdateState.Error?C.Danger():live?C.Cyan():C.Ink(.94f),alpha*(1-.45f*pulse)),TextAnchor.MiddleRight,bold:true,tracking:.2f,shadow:C.Void(.8f*alpha));
-            U.Polygon(new Rect(lx+4,ly+6,10,12),Arrow,new[]{0f,1f},new[]{1f,1f},U.A(accent,.85f*alpha));
+            U.Text(new Rect(lx-260,ly-6,260,16),bottom,11,U.A(s==NativeUpdateState.Error?C.Danger():ready?U.Mix(C.Cyan(),Color.white,.55f*kick):live?C.Cyan():C.Ink(.94f),alpha),TextAnchor.MiddleRight,bold:true,tracking:.2f,shadow:C.Void(.8f*alpha));
+            U.Polygon(new Rect(lx+4-3*kick,ly+6,10,12),Arrow,new[]{0f,1f},new[]{1f,1f},U.A(accent,(.85f+.15f*kick)*alpha));
             if(U.Button(hit)&&!blocked){updateOpen=!updateOpen;Click();if(updateOpen&&!u.Busy&&(s==NativeUpdateState.Idle||s==NativeUpdateState.Current||s==NativeUpdateState.Error))u.CheckForUpdates();}
             if(busy)updateOpen=true;
             updateAnchor=new Vector2(Mathf.Min(U.W-16,c.x+r+24+UpdateCardWidth),Mathf.Max(70,c.y-r-8));
