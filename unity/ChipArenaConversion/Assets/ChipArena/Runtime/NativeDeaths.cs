@@ -5,7 +5,7 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeDeath
-    {public NativeDeath ViewCopy(){var d=(NativeDeath)MemberwiseClone();d.actor=actor?.ViewCopy();return d;}public bool hasActor,hasWound;public int id,owner,seed,lost;public float at,yaw,force,landAt;public string style,model,damageKind;public Vector3 position,velocity,direction;public bool melee,kept,kneel;public Actor actor;public NativeWound wound;}
+    {public NativeDeath ViewCopy(){var d=(NativeDeath)MemberwiseClone();d.actor=actor?.ViewCopy();return d;}public bool hasActor,hasWound;public int id,owner,seed,lost,projectile;public float at,yaw,force,landAt;public string style,model,damageKind;public Vector3 position,velocity,direction;public bool melee,kept,kneel;public Actor actor;public NativeWound wound;}
     public sealed partial class NativePilot
     {public readonly List<NativeWound> Wounds=new List<NativeWound>();public NativeDeath Death;public NativePilot LastAttacker;public float LastAttackerAt;public float RevivedAt=-100;}
     public sealed partial class NativeArena

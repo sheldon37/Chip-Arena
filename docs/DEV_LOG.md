@@ -6200,3 +6200,21 @@ add-death, replicated deadline and before/after-five-second result assertions.
 Full 35 managed/relay checks, Python 101 OK (one skipped), package 1852 files,
 syntax and whitespace pass. Actual Unity/PhysX gate and Windows host/guest playtest
 remain pending. Merge/builder sync receipts in PR.
+
+## 2026-10-14 — Codex: final killcam side/flight/aftermath camera
+
+Branch `codex/final-killcam-camera`, base `76a65eb`. Owner requested side angles,
+long-range projectile perspective until impact, then wider death framing.
+Direct projectile damage stamps the exact fatal shot ID into optional death
+field projectile. Replay follows that ID only with >=2 samples and >=18 m of
+recorded distance; no proximity-based attribution. Missing history, melee/splash
+and old hosts use elevated side framing. Compare left/right boom clearance once,
+retain the side, sphere-cast camera clearance each frame, and frame both nearby
+actors before smoothly centering/widening on the victim. Flight-to-aftermath blend
+is .65 wall seconds. Preroll still limits recorded flight. Ordinary killcam timing
+and camera unchanged; final two-second wait retained. No damage balance change.
+Full 35 managed/relay checks (final camera 109 checks), Python 101 OK (one skipped),
+source package 1852 files, C# syntax/whitespace pass. Added Unity death-field JSON
+roundtrip/default gate; real Unity/Windows host/guest and visual framing remain
+unrun. These are camera heuristics, not a guarantee every occluded shot is visible.
+Merge/builder sync receipts in task PR.

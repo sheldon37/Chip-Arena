@@ -12,6 +12,7 @@ namespace ChipArena.UnityConversion
     {
         private bool finalOn,finalShown,finalSolo;private int finalSeed,finalVictim,finalKiller;private NativePhase finalPhase=NativePhase.Lobby;
         private FinalKillcamCurve finalCurve;private FinalKillSkip finalSkip;private float finalEndedAt=-10,finalFov,finalLook;
+        private int finalProjectile,finalCameraSide;private bool finalFlew;private float finalImpactWall;private Vector3 finalCameraAim,finalFlightEye,finalFlightAim;
         private readonly FinalKillCandidate[] finalDeaths=new FinalKillCandidate[16];
         // The broadcast frame's text and colours, fixed when the clip starts (no per-frame strings).
         private string finalKillerName="",finalVictimName="",finalHow="",finalWinnerLabel="",finalWinnerName="",finalOutcome="",finalRound="",finalTag="FINAL KILL";
@@ -51,7 +52,7 @@ namespace ChipArena.UnityConversion
             var start=NativeFinalKillcam.Begin(replayRunning,replayDeath>=0,finalShown);if(start==NativeFinalKillcam.Start.Already)return;
             if(start==NativeFinalKillcam.Start.CutOver)EndReplay();
             finalSeed=f.Seed;finalShown=true;finalOn=true;finalCurve=curve;finalVictim=f.Victim;finalKiller=credited?f.Killer:0;finalSolo=!credited;
-            // Everyone watches the final victim's recorded view, including the killer and spectators. Keep credit for
+            // The final victim anchors side/aftermath framing. Keep credit for
             // the labels separate from the camera; the normal killcam still selects its own view in ObserveReplay.
             replayDeath=(float)f.At;replayWait=Time.unscaledTime+NativeFinalKillcam.StartDelay;replayView=f.Victim;FinalLabels(matchEnds,f.Killer);
             Debug.Log("Final killcam: "+(credited?"seat "+f.Killer+" on seat ":"final moments of seat ")+f.Victim+" · "+curve.Wall.ToString("0.00")+" s at x"+curve.Rate.ToString("0.00"));
@@ -84,6 +85,7 @@ namespace ChipArena.UnityConversion
         {
             float history=replayDeath-(float)replayFrames[0].time;
             if(history<finalCurve.Preroll-1e-3f&&!NativeFinalKillcam.Fit(finalCurve.Wall,history,NativeFinalKillcam.Behind(match.Time,replayDeath),out finalCurve,out finalSkip)){EndReplay();return;}
+            PrepareFinalCamera();
             replayStart=replayDeath-finalCurve.Preroll;replayEnd=replayStart+finalCurve.Span;presentation.SlowBodies=true;presentation.ClockRate=1;
         }
         /// <summary>The replay clock: wall seconds since the clip started -> replay seconds since its start (the normal
@@ -104,13 +106,56 @@ namespace ChipArena.UnityConversion
             NativeFinalKillcam.Wide(finalCurve.Slow(FinalWall),prefs.reducedEffects,out float boom,out float lift,out finalFov,out finalLook);
             float length=offset.magnitude;if(length>1e-4f)offset=offset/length*(length+boom);offset+=Vector3.up*lift;
         }
-        /// <summary>Keep the victim's recorded facing when following them; only a different target uses midpoint framing.</summary>
+        private void PrepareFinalCamera()
+        {
+            finalProjectile=0;finalCameraSide=0;finalFlew=false;finalImpactWall=-1;
+            var death=arena.Pilots.Find(p=>p.Seat.id==finalVictim)?.Death;if(death==null||death.projectile<=0)return;
+            int samples=0;float distance=0;
+            foreach(var frame in replayFrames)
+            {
+                if(frame.time>replayDeath)break;
+                foreach(var shot in frame.snapshot.Shots)if(shot.Id==death.projectile)
+                {samples++;distance=Math.Max(distance,Vector3.Distance(NativeArena.Vec(shot.Position),death.position));}
+            }
+            if(NativeFinalKillcam.FlightCamera(distance,samples))finalProjectile=death.projectile;
+        }
+        // Stable left/right choice avoids cuts as the actors turn. Collision is tested again every replay frame.
+        private void FinalCamera(float time,NativePilot victim,ref Vector3 focus,ref Vector3 offset)
+        {
+            if(victim==null)return;
+            var killer=replayArena.Pilots.Find(p=>p.Seat.id==finalKiller);
+            Vector3 body=victim.Hp<=0&&victim.Death!=null?victim.Death.position:victim.Body.position;
+            Vector3 axis=killer!=null?body-killer.Body.position:Quaternion.Euler(0,victim.Yaw,0)*Vector3.forward;
+            float separation=axis.magnitude;axis.y=0;if(axis.sqrMagnitude<.01f)axis=Vector3.forward;axis.Normalize();
+            Vector3 side=Vector3.Cross(Vector3.up,axis);
+            bool near=killer!=null&&separation<18;
+            float aftermath=NativeFinalKillcam.DeathPullback(Math.Max(0,time-replayDeath));
+            Vector3 aftermathFocus=body+Vector3.up*.35f;
+            focus=near?Vector3.Lerp(Vector3.Lerp(killer.Body.position,body,.6f)+Vector3.up*.5f,aftermathFocus,aftermath):aftermathFocus;
+            float boom=Mathf.Lerp(near?Mathf.Clamp(separation*.65f+3,4,12):4.5f,6,aftermath);
+            Vector3 left=side*boom+Vector3.up*2-axis*1.5f,right=-side*boom+Vector3.up*2-axis*1.5f;
+            if(finalCameraSide==0)finalCameraSide=FinalClearance(focus,left)>=FinalClearance(focus,right)?1:-1;
+            offset=finalCameraSide>0?left:right;finalCameraAim=focus;
+            if(finalProjectile>0&&time<replayDeath&&replayShots.Sample(finalProjectile,time,out var at,out var velocity)&&velocity.Length>.01f)
+            {
+                Vector3 direction=NativeArena.Vec(velocity).normalized;focus=NativeArena.Vec(at);offset=-direction*.65f+Vector3.up*.12f;
+                finalCameraAim=focus+direction*6;finalFlightEye=focus+offset;finalFlightAim=finalCameraAim;finalFlew=true;finalFov=0;return;
+            }
+            if(finalFlew)
+            {
+                if(finalImpactWall<0)finalImpactWall=FinalWall;
+                float blend=NativeFinalKillcam.DeathPullback(FinalWall-finalImpactWall);
+                Vector3 eye=Vector3.Lerp(finalFlightEye,focus+offset,blend);
+                finalCameraAim=Vector3.Lerp(finalFlightAim,focus,blend);offset=eye-focus;
+            }
+        }
+        private float FinalClearance(Vector3 focus,Vector3 offset)
+        {
+            return replayScene.GetPhysicsScene().SphereCast(focus,.18f,offset.normalized,out var hit,offset.magnitude,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)?hit.distance:offset.magnitude;
+        }
         private Quaternion FinalLook(Vector3 eye,Quaternion rotation,NativePilot target,NativePilot victim)
         {
-            if(finalLook<=0||victim==null||victim==target||target==null)return rotation;
-            Vector3 body=victim.Hp>0||victim.Death==null?victim.Body.position:victim.Death.position;
-            Vector3 a=target.Body.position+Vector3.up*.6f,b=body+Vector3.up*.3f;if((b-a).sqrMagnitude>22*22)return rotation;
-            Vector3 to=(a+b)*.5f-eye;return to.sqrMagnitude<.01f?rotation:Quaternion.Slerp(rotation,Quaternion.LookRotation(to),finalLook);
+            Vector3 to=finalCameraAim-eye;return to.sqrMagnitude<.001f?rotation:Quaternion.LookRotation(to);
         }
         private void FinalAudioBefore(){if(finalOn)nativeAudio.ReplayRestore();}
         private void FinalAudioAfter(){if(finalOn){float w=FinalWall;nativeAudio.ReplaySlow(NativeFinalKillcam.Pitch(finalCurve.Speed(w)),NativeFinalKillcam.Duck(finalCurve.Slow(w)));}}

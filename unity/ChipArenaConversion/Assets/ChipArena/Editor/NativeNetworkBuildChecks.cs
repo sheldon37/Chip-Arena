@@ -79,6 +79,8 @@ namespace ChipArena.UnityConversion.Editor
                 var replayPilot=replica.Local;var beforeDeath=copy.pilots.First(p=>p.id==replayPilot.Seat.id);
                 float deathAt=(float)copy.time+.025f;
                 var afterDeath=new NativePilotFrame{hp=0,death=new NativeDeath{id=replayPilot.Seat.id,seed=987654,at=deathAt,position=beforeDeath.position+Vector3.right*.3f,yaw=beforeDeath.yaw,actor=replayPilot.Pose.ViewCopy()}};
+                afterDeath.death.projectile=912345;
+                if(JsonUtility.FromJson<NativeDeath>(JsonUtility.ToJson(afterDeath.death)).projectile!=912345||JsonUtility.FromJson<NativeDeath>("{}").projectile!=0)throw new Exception("Fatal projectile field round trip/default failed");
                 replica.ReplaySampledShots=true;
                 ConversionGame.ReplayPilotFrame(replayPilot,beforeDeath,afterDeath,copy.time,copy.time+.05,deathAt-.0125f);
                 if(replayPilot.Hp<=0||Vector3.Distance(replayPilot.Body.position,beforeDeath.position+Vector3.right*.15f)>.001f)throw new Exception("Moving replay victim froze before contact");
