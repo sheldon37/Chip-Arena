@@ -11,6 +11,15 @@ namespace ChipArena.UnityConversion.Editor
         private static void CheckNetworkSerialization(NativeArena authority)
         {
             CheckAccountCompatibility();
+            var expedition=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-public",expeditionPublic=new ExpeditionView
+            {
+                members=new[]{new ExpeditionViewMember{account="pilot",seat=7,safe=true}},
+                areaBarrier=new ExpeditionAreaBarrierView{layout=new string('a',64)},
+                bossArrivals=new[]{new ExpeditionBossArrivalView{id="boss",area="ward",archetype="test-hulk",spawned=2,x=3,y=4,z=5,hp=25,maxHp=120}}
+            }})).expeditionPublic;
+            if(expedition.members.Single().seat!=7||!expedition.members[0].safe||expedition.areaBarrier.layout!=new string('a',64)||expedition.areaBarrier.active||
+                expedition.bossArrivals.Single().x!=3||expedition.bossArrivals[0].y!=4||expedition.bossArrivals[0].z!=5||expedition.bossArrivals[0].hp!=25||expedition.bossArrivals[0].maxHp!=120||expedition.bossArrivals[0].spawned!=2)
+                throw new Exception("Expedition public JsonUtility envelope lost pilot, boss or startup layout state");
             var preferences=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{map="random",lobbyPose="crossed-arms",fullscreen=true}));
             if(preferences.map!="random"||preferences.lobbyPose!="crossed-arms"||!preferences.fullscreen)throw new Exception("Saved pilot pose/map/fullscreen did not round trip");
             var profile=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{lobbyPose="crossed-arms"}}}));

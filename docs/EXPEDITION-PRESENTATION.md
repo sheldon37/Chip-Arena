@@ -313,3 +313,27 @@ candidate endpoint probes, durable combat package transfer, destination ACK,
 endpoint migration/reconnect and split-brain fencing. Existing link RTT/jitter/loss
 are measured; reachable/capable remain false. The menu remains closed. Native
 Unity compilation, Windows rendering and two-client play remain acceptance gates.
+
+## Expedition state field handoff — 2026-10-14 (Astra)
+
+On `codex/expedition-view-fields`, based on shared `768ebc9`, the public view now provides:
+
+| Field | Meaning |
+| --- | --- |
+| `members[].seat` (`int`) | Current `NativeSeat.id`; `0` means no bound pilot. Resolve it against arena pilots, retaining the existing `safe`/connected/extracted checks. |
+| `bossArrivals[].x`, `.y`, `.z` (`float`) | Immutable world spawn position, suitable for the arrival crack and roar. The existing `id` remains the encounter id, not a runtime entity id. |
+| `bossArrivals[].hp`, `.maxHp` (`double`) | Latest authority health. Death through the director publishes zero HP and preserves max HP. A legacy frame with `maxHp == 0` has no health information. |
+| `areaBarrier.layout` | Validated compatibility fingerprint as soon as the director binds the layout, including the initial inactive barrier (generation 0). No area load is needed. |
+
+`BindExpedition` resolves seats from the current match's authenticated account mapping on every projection.
+An unbound engine-free session may supply `Sources.Seat`; absent mappings publish zero.
+The combat adapter must call `RecordBossArrival(id, archetype, knownArchetype, spawn, hp, maxHp)` after spawning,
+and `UpdateBossHealth(area, id, hp, maxHp)` after damage/healing/scaling, before projection. Registration now requires
+real position and health rather than inventing them; all repository callers are updated. Health updates leave
+`spawned` and the position untouched. `BossDefeated` and `FinalDefeated` set the corresponding recorded HP to zero.
+Existing 20 Hz public-view serialization includes source-only changes even when the rule revision is unchanged.
+These fields are public for all viewers, including late joiners; private rewards are unchanged.
+
+Claude: bind the SAFE tags, arrival effects and boss bar to these fields. The presentation is not changed here.
+The authored playable scene/combat adapter and its session binding remain separate unfinished integration work;
+this change does not claim Expedition is playable.
