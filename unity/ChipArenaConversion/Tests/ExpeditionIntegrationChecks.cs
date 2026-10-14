@@ -83,6 +83,36 @@ internal static class ExpeditionIntegrationChecks
         Check(!evidence.Valid,"out of range reprint denied");evidence.distance=2;Check(evidence.Valid,"valid machine channel");evidence.uninterrupted=false;Check(!evidence.Valid,"interrupted channel denied");
         var metrics=new NativeConnectionMetrics();int a=metrics.Ping(0);metrics.Pong(a,.1);int b=metrics.Ping(1);metrics.Pong(b,1.15);metrics.Ping(2);metrics.Ping(11);
         var report=metrics.Report(true);Check(Math.Abs(report.loss-1d/3)<.001&&Math.Abs(report.jitterMs-50)<.001,"measured loss and successive RTT jitter");
+        run=Ready();run.Credit("host","cachecash",100);run.Credit("guest","cachecash2",100);session=new ExpeditionSession(run,data,_=>{});
+        session.SetWorld(new[]{new ExpeditionWorldAnchor{id="cache",area="city",kind="chest"},new ExpeditionWorldAnchor{id="entrance",area="city",kind="door",building="ward",yaw=90}},new[]{new ExpeditionChestOffer{id="cache",generation="stock1",price=30,cooldown=run.Elapsed+1}});
+        var purchase=new ExpeditionCommand(ExpeditionIntent.Purchase,"cache");
+        Check(session.Execute("guest",purchase).state==ExpeditionCommandState.Refused,"cooldown refuses purchase");session.Tick(1);
+        Check(session.Execute("guest",purchase).state==ExpeditionCommandState.Refused,"missing scene evidence fails closed");
+        session.CanPurchase=(a,c)=>a=="guest"&&c=="cache";
+        Check(session.Execute("host",purchase).state==ExpeditionCommandState.Refused,"proximity uses authenticated buyer");
+        var baseline=ExpeditionIntentBaseline.Of(purchase,NativeExpeditionView.Build(run,"guest"));
+        router=new ExpeditionCommandRouter(session);var buy=new ExpeditionCommandRequest{run="integration",epoch=1,transaction="buy",intent=ExpeditionIntent.Purchase,target="cache"};
+        Check(router.Execute("guest",buy).state==ExpeditionCommandState.Pending,"purchase intent uses host offer");
+        Check(router.Execute("guest",buy).state==ExpeditionCommandState.Pending&&run.Snapshot().members.First(m=>m.account=="guest").wallet==70,"duplicate purchase reply without double debit");
+        Check(session.Execute("host",purchase).state==ExpeditionCommandState.Refused,"sold stock cannot be bought by another pilot");
+        var publicView=NativeExpeditionView.Build(run,"host");
+        Check(publicView.chests[0].sold&&publicView.mine.rewards.All(r=>r.source!="chest")&&NativeExpeditionView.Leaks(publicView,run.Snapshot()).Count==0,"public sold status contains no private purchase");
+        var pieces=new NativeExpeditionWorld();pieces.Build(publicView);
+        Check(pieces.Pieces.Single(p=>p.anchor=="cache").label=="SOLD"&&!pieces.Pieces.Single(p=>p.anchor=="cache").actionable,"sold cache is not offered to others");
+        Check(pieces.Pieces.Single(p=>p.anchor=="entrance").target=="ward"&&pieces.Pieces.Single(p=>p.anchor=="entrance").yaw==90,"explicit building and facing reach world pieces");
+        Check(!run.RestockChest("cache","stock1",30,run.Elapsed),"restock rejects reused generation");
+        Check(run.RestockChest("cache","stock2",40,run.Elapsed+1),"scene restocks with fresh generation");
+        Check(!run.Snapshot().chests[0].sold&&session.Execute("guest",purchase).state==ExpeditionCommandState.Refused,"restock retains its cooldown");
+        Check(ExpeditionIntentTracker.Reflected(purchase,NativeExpeditionView.Build(run,"guest"),baseline),"purchase confirmation survives immediate restock");
+        Check(!ExpeditionIntentTracker.Reflected(purchase,NativeExpeditionView.Build(run,"host"),baseline),"someone else's purchase cannot confirm mine");
+        session.Sources.DisplayName=a=>a=="guest"?"Guest Pilot":"<Host>\n";
+        var named=NativeExpeditionView.Build(run,"guest",session.Sources);
+        Check(named.Member("guest").name=="Guest Pilot"&&named.Member("host").name=="Host","public names are bounded sanitized display text");
+        var privateReward=run.Snapshot().rewards.Single(r=>r.source=="chest").id;
+        Check(!run.PlaceReward(privateReward,0,0,0),"private purchase cannot acquire world anchor");
+        session.Sources.Anchors=new[]{new ExpeditionWorldAnchor{id=privateReward,area="city",kind="reward"},new ExpeditionWorldAnchor{id="unknown",area="city",kind="reward"}};
+        Check(NativeExpeditionView.Build(run,"guest",session.Sources).anchors.Length==0,"source overrides cannot leak private or unknown reward anchors");
+        var persisted=new NativeExpedition(Copy(run.Snapshot()));Check(persisted.Snapshot().anchors.Single(a=>a.id=="entrance").yaw==90,"door facing survives save codec");
         Console.WriteLine("PASS Expedition integration ("+count+" assertions)");
     }
 }

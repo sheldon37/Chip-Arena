@@ -197,3 +197,49 @@ host's request refused.
 Offline renders (scratch recorder plus a small software rasterizer of the same geometry; not committed):
 screens, greybox and 3D world pieces at 1280x720 to 3440x1440. Not run: Unity Editor/IMGUI input,
 Windows, real multiplayer clients, the 3D pieces in the engine.
+
+
+## Astra follow-up contract — 2026-10-14
+
+Implemented on `codex/expedition-live-integration`, based on Claude `22c14c2`:
+
+- `ExpeditionIntent.Purchase` takes the chest id in `target`. The host resolves
+  generation and price from the persisted offer, rejects cooldown/sold/wrong-area
+  caches, and calls `CanPurchase(account, chest)` before charging. The callback
+  must measure actual scene proximity; missing evidence refuses. Guest payloads
+  never choose price or generation. Transaction retries return the original reply.
+- `ExpeditionChestOffer.sold` is public. The buyer and reward remain private.
+  `RestockChest(id, freshGeneration, price, availableAt)` is a scene-authority
+  event; availability uses gameplay `elapsed`. Reused generations are refused.
+  Purchase tracking retains the generation at submission, so a later restock
+  does not hide confirmation. Sold caches display as unavailable to other pilots.
+- `ExpeditionWorldAnchor.building` explicitly identifies the building. When
+  absent, the existing inside `area` / outside `id` convention remains supported.
+  `yaw` is degrees around world +Y, zero facing +Z; world pieces carry it through.
+  Claude owns rendering door leaves from this field.
+- Public projection filters private and unknown reward anchors, including source
+  overrides and legacy saves. `PlaceReward` now rejects private reward ids.
+- Members carry `name`, sanitized/bounded display text supplied by the host from
+  account/verified-seat profiles. Identity and authorization still use account id.
+  Live control labels use this name; an absent name falls back to the account id.
+- `transfer.deadline` and `transfer.clock` use host monotonic transport seconds.
+  Both are -1 when absent. Countdown at receipt is max(0, deadline-clock); a UI
+  may subtract local monotonic time since receipt, never compare deadline directly
+  with its own clock, UTC, or `view.elapsed`. Transport time continues while rules
+  are frozen. The preview uses its independent Clock. No real migration timeout
+  is claimed while endpointMigration is false.
+- `BindExpeditionScene` installs authored anchors/offers plus claim, purchase,
+  reprint-evidence and quote callbacks, then binds the durable session.
+  `InteractExpedition(rewardId)` sends Claim through ExpeditionCommands;
+  `InteractExpedition(chestId, true)` sends Purchase through the same path.
+  These are scene integration entry points, not a new scene/director or input map.
+- `ExpeditionCommands` returns a stable object per binding. Projection and link
+  metrics run at most 20 Hz, including offline; rules continue ticking per frame.
+  Idle extraction checks read elapsed without cloning the entire snapshot.
+
+Still absent: an authored playable city/instance director, its real positions,
+combat callbacks, pickup input, machine channels and restock schedule; actual
+candidate endpoint probes, durable combat package transfer, destination ACK,
+endpoint migration/reconnect and split-brain fencing. Existing link RTT/jitter/loss
+are measured; reachable/capable remain false. The menu remains closed. Native
+Unity compilation, Windows rendering and two-client play remain acceptance gates.

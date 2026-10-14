@@ -344,6 +344,7 @@ namespace ChipArena.UnityConversion
                 var o=v.chests[i];var r=new CacheRow{id=o.id,price=Money(o.price),stock="STOCK "+Who(o.generation),restocking=NativeExpeditionWorld.Restocking(o,v.elapsed),bought=NativeExpeditionWorld.Bought(v,o),affordable=member&&v.mine.wallet>=o.price};
                 foreach(var a in v.anchors)if(a!=null&&a.id==o.id&&a.kind==NativeExpeditionWorld.Chest){r.anchored=true;r.here|=a.area==v.area;}
                 if(r.restocking){r.seconds=Left(o.cooldown,v.elapsed);r.state="RESTOCKING · "+r.seconds+"s";r.tone=ExpeditionTone.Muted;r.detail="The cache refills when its cooldown ends.";}
+                else if(o.sold&&!r.bought){r.state="SOLD";r.tone=ExpeditionTone.Muted;r.detail="Waiting for the next cache generation.";}
                 else if(r.bought){r.state="BOUGHT · YOURS";r.tone=ExpeditionTone.Good;r.detail="This chip belongs to you, the buyer.";}
                 else
                 {
@@ -356,7 +357,7 @@ namespace ChipArena.UnityConversion
             return rows;
         }
         /// <summary>Purchases are a scene interaction at the cache (proximity, then the authority's Purchase); no intent exists for it.</summary>
-        public const string NoPurchase="Buying needs the chip-cache interaction at the cache (scene adapter; not connected).";
+        public const string NoPurchase="Buy at the cache; the host checks distance and availability.";
 
         // ---- Personal pick history -------------------------------------------------------------------------------------------
         public struct PickRow{public string reward, source, chip, from;}

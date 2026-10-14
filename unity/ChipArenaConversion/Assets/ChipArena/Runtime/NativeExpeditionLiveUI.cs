@@ -44,6 +44,7 @@ namespace ChipArena.UnityConversion
                 expeditionLiveChips=new Dictionary<string,ContentChip>();if(content?.chips!=null)foreach(var c in content.chips)if(c!=null&&c.id!=null)expeditionLiveChips[c.id]=c;
                 expeditionLiveControls=new NativeExpeditionHud.Controls
                 {
+                    Name=id=>expeditionLiveView?.Member(id)?.name??id,
                     ChipName=id=>id!=null&&expeditionLiveChips.TryGetValue(id,out var c)&&!string.IsNullOrEmpty(c.name)?c.name:id,
                     ChipTone=id=>id!=null&&expeditionLiveChips.TryGetValue(id,out var c)?NativeChipCard.Rarity(c.rarity):C.CyanSoft(),
                     Blocked=cmd=>{var commands=LiveExpeditionCommands();return commands==null?"Expedition is not bound.":commands.Blocked(cmd);},

@@ -1,6 +1,8 @@
 # Chip Arena — current state
 
-2026-10-14 DEV panel / DEV Abuse UI: `claude/dev-tools` (base shared `09096af`, merged shared `22c14c2` with PR #208) replaces the sandbox list with a cyber DEV panel (F3; nine tabs) and adds Settings · Developer · DEV Abuse (verified devs, off by default). Commands go through Astra's `SendDevCommand`; the reveal, pills, DEV time, hazard pulses and the no-progression note come from replicated state. View tools are read-only. Managed/relay checks pass; Unity Editor/Windows/two-client unrun. Pushed, not merged. See docs/DEV-TOOLS.md and DEV_LOG.
+2026-10-14 DEV panel / DEV Abuse UI: `claude/dev-tools` (base shared `09096af`, merged shared `1e22711`, which includes PR #208 and #209) replaces the sandbox list with a cyber DEV panel (F3; nine tabs) and adds Settings · Developer · DEV Abuse (verified devs, off by default). Commands go through Astra's `SendDevCommand`; the reveal, pills, DEV time, hazard pulses and the no-progression note come from replicated state. View tools are read-only. Managed/relay checks pass; Unity Editor/Windows/two-client unrun. Pushed, not merged. See docs/DEV-TOOLS.md and DEV_LOG.
+
+Expedition follow-ups (`codex/expedition-live-integration`, Claude base `22c14c2`): purchase/sold/privacy, door/name/clock contract and 20 Hz projection implemented. Authored scene/director and endpoint migration remain absent; see `EXPEDITION-PRESENTATION.md`.
 
 2026-10-14 DEV Abuse authority: `codex/dev-abuse-authority` on shared `09096aff` adds verified developer guest/host commands, bounded arguments/rate/dedup, match-only effects, reveal/clock/status replication, local audit and progression exclusion. Claude UI remains separate; contract: docs/DEV-ABUSE-AUTHORITY.md. Focused (82 assertions) and full managed/relay (677 groups) checks pass. Actual Unity/Windows/live multiplayer acceptance and compiled publication remain unrun.
 

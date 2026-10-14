@@ -5,6 +5,7 @@
   - Panel commit `5239175`.
   - Merged shared `c134dc2` (PR #208, Astra's DEV Abuse authority) in `03907c5`. The UI is bound to it in that same merge, because the panel's placeholder DTOs clashed with Astra's.
   - Merged shared `22c14c2` (Expedition live presentation) in `179adf2`.
+  - Merged shared `1e22711` (PR #209, Expedition live integration) in the commit that carries this line. Only PROJECT_STATE conflicted; both entries are kept.
   - Pushed; no PR, merge or release.
 - Owner clarification, through the lead, folded in: surprise first, then a reveal (`devRevealed` replaces `devActive`); devs are not limited to rooms they host; an Interact tab; and the guardrails below.
 - **Panel** (`Runtime/NativeDevPanel.cs`, `Runtime/NativeDevOverlays.cs`, Core `NativeDevTools.cs`) replaces the pause menu's GUILayout Sandbox Tools list:
@@ -66,7 +67,7 @@
   - Tests that scanned the old list: `HudPlaceholderChecks` and `StructureFxChecks`.
   - Not touched: `NativeArena*`, `NativeSandboxTools`, the network and frame code, `NativeAccess` and `NativeAdmin`.
 - **Animation and rules impact:** none. No hit timing, hitbox, damage, cooldown, movement or networking change. The overlays and fly camera write nothing; the pilot's input is neutral only while the dev flies or uses the cursor.
-- **Checks (actual, on the final merged head):**
+- **Checks (actual, on the merged head with shared `1e22711`):**
   - Unity runtime+editor compile OK against the real 6000.3.24f1 assemblies.
   - Full relay: exit 0, 678 PASS groups, including DEV tools (3823 checks) and Astra's DEV Abuse authority (82).
   - Python: 101 tests OK (1 skipped).
@@ -6759,3 +6760,26 @@ Added an actual-Unity build gate for every effect in local/encoded-guest paths,
 JsonUtility/replica state and account isolation. This gate, actual Unity compile,
 PhysX, Windows and live host/guest acceptance remain unrun locally. No compiled
 release claimed; publication/merge receipts belong in the task PR.
+
+
+### 2026-10-14 — Astra: Expedition live contract follow-ups
+
+Branch `codex/expedition-live-integration`, base Claude `22c14c2` on shared
+`c134dc2`. Adds host-proximity Purchase intent, public sold state and explicit
+restock event; preserves private reward ownership and confirms purchases across
+restock. Filters private/unknown anchors, including legacy saves and overrides.
+Adds explicit door building/yaw, sanitized public member names, and a separate
+transport clock for transfer countdowns. Stable command getter; 20 Hz projection
+and metrics; no full snapshot merely to check extraction elapsed. Provides a
+scene-binding overload and command-based pickup/cache interaction entry point.
+No hit timing, damage, hitbox, cooldown or animation changes.
+
+Playable scene/director, actual scene measurements/events, endpoint probes,
+combat package/ACK and endpoint migration remain missing dependencies. No success
+flags are fabricated. Test results and publication are recorded in the task PR;
+Unity/Windows/two-client acceptance remains unrun in this environment.
+
+Local focused verification: authority 473 assertions, integration 59 assertions,
+presentation 8,357 checks passed. Runtime/editor syntax: zero errors. Source
+package check: 1,935 files passed. Full managed/real-relay run is in progress;
+final result belongs in the PR before merge. Syntax is not a native compilation.
