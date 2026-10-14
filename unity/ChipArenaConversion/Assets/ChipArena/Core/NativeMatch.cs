@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     public enum NativePhase { Lobby, Countdown, Fight, Result, Draft, Match, Intro }
     [Serializable] public sealed class NativeSeat
     {
-        public double disconnectedAt=-1;public bool overrideIntro;public string lobbyPose="weapon";public string intro=NativeIntroRules.Default,introText="Ready to make an impact";public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll";internal bool AuthorityBoss=false;public NativeAccess access=NativeAccess.Guest;public int id,team,roundWins,score;public string name,spec="pistol",difficulty="normal";public bool bot,connected=true,alive=true;
+        internal NativeAccess devWeaponAccess=null;public bool devRevealed,devCommandsRan,devDummy;public float devScale=1;public double disconnectedAt=-1;public bool overrideIntro;public string lobbyPose="weapon";public string intro=NativeIntroRules.Default,introText="Ready to make an impact";public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll";internal bool AuthorityBoss=false;public NativeAccess access=NativeAccess.Guest;public int id,team,roundWins,score;public string name,spec="pistol",difficulty="normal";public bool bot,connected=true,alive=true;
         public readonly Dictionary<string,int> chips=new Dictionary<string,int>();public List<string> offers=new List<string>();
         public string lobbyBack=NativePortraitBacks.Default;
         // Headwear and backdrop colours (NativeHatLooks: "" Auto, the look every seat had before; bots stay Auto).
@@ -56,6 +56,7 @@ namespace ChipArena.UnityConversion
         public void ApplyNetwork(NativeMatchFrame f){HasFinalKillcam=f.hasFinalKillcam;FinalVictim=f.hasFinalKillcam?f.finalVictim:0;FinalSeed=f.hasFinalKillcam?f.finalSeed:0;ResultAt=f.hasFinalKillcam?f.resultAt:0;IntroSeat=f.introSeat;IntroStarted=f.introStarted;IntroStyle=f.introStyle;Phase=f.phase;Time=f.time;PhaseEnd=f.phaseEnd;FightAt=f.fightAt;ReadyAt=f.readyAt;Round=f.round;Set=f.set;Winner=f.winner;SetWinner=f.setWinner;DraftSeat=f.draftSeat;Chosen=string.IsNullOrEmpty(f.chosen)?null:f.chosen;chosenAt=f.chosenAt;Result=f.result;Teams=f.teams;Cooperative=f.cooperative;}
         public bool SameSide(NativeSeat a,NativeSeat b)=>a!=null&&b!=null&&(a.id==b.id||Teams&&a.team==b.team);
         public NativeSeat Seat(int id)=>Seats.Find(p=>p.id==id);
+        public bool CanEarnProgression(int id)=>Seat(id)!=null&&!Seat(id).bot&&!Seat(id).devCommandsRan;
         public bool Start()
         {
             if(Phase!=NativePhase.Lobby&&Phase!=NativePhase.Match)return false;
@@ -129,6 +130,8 @@ namespace ChipArena.UnityConversion
             bool delayedFinal=!Cooperative&&IsSandbox?.Invoke()!=true&&roundDeaths.Any(d=>Seat(d.Victim)!=null&&(Winner==0||!SameSide(Seat(d.Victim),Seat(Winner)))&&d.At>=FightAt&&d.At<=Time+1e-4&&Time-d.At<=NativeFinalKillcam.Window);
             Phase=NativePhase.Result;PhaseEnd=Time+5+(FinalVictim!=0?FinalKillcamHold:0)+(delayedFinal?NativeFinalKillcam.StartDelay:0);
         }
+        public void DevEndRound()
+        {if(Phase!=NativePhase.Fight)return;Winner=SetWinner=0;FinalVictim=FinalSeed=0;HasFinalKillcam=false;ResultAt=Time;Result="Round ended by developer";Phase=Cooperative?NativePhase.Match:NativePhase.Result;PhaseEnd=Cooperative?0:Time+5;}
         // shared/teams.ts order for the native integer teams.
         public static readonly string[] TeamNames={"Red","Blue","Green","Yellow","Purple","Orange","Cyan","Pink"};
         public void FinishCooperative(bool victory){if(!Cooperative)return;Phase=NativePhase.Match;Result= victory?"The Siren has fallen — victory":"Party defeated";PhaseEnd=0;}

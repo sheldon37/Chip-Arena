@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
         private bool StartKernelPanic(NativePilot p)
         {
             long now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            if(p.Cyber.Ranged?.Ranged==true||CyberSwitching(p)||p.Seat.spec!="cyberlord"||!p.Seat.access.DeveloperWeapon("cyberlord",now)||p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Time<p.Ready||Time<p.KernelReady||Time<p.AttackEnd||Time<p.RollEnd||Time<p.BlockEnd||p.AbilityCast!=null||p.Special!=null||p.Mana<NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"])return false;
+            if(p.Cyber.Ranged?.Ranged==true||CyberSwitching(p)||p.Seat.spec!="cyberlord"||!(p.Seat.access.DeveloperWeapon("cyberlord",now)||p.Seat.devWeaponAccess?.DeveloperWeapon("cyberlord",now)==true)||p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Time<p.Ready||Time<p.KernelReady||Time<p.AttackEnd||Time<p.RollEnd||Time<p.BlockEnd||p.AbilityCast!=null||p.Special!=null||p.Mana<NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"])return false;
             p.Mana-=NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"];
             NativeCyberRules.Interrupt(p.Cyber,Time);p.CyberLinkTick=0;
             p.KernelReady=Time+NativeKernelPanicRules.Cooldown;p.KernelTravelled=0;

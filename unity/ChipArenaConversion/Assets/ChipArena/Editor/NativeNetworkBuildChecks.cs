@@ -232,6 +232,7 @@ namespace ChipArena.UnityConversion.Editor
         }
         private static void CheckCombatParity(ConversionContent content)
         {
+            NativeArena.ValidateDevAbuseAuthority(content);
             var scene=EditorSceneManager.NewPreviewScene();NativeArena arena=null;
             try
             {
