@@ -54,6 +54,25 @@
   - Effects owner: a charge and punch effects pass.
   - Owner: review in the Dev Sandbox gallery.
 
+## 2026-10-14 — Claude — melee cut: the killing swing by its id, the attacker at contact
+- Branch `claude/melee-slice-ids` on shared `65f9f13`, which includes Astra's merged PR #205 (`f654074`, "authoritative hit metadata"). Not merged; the lead reviews. Task: bind the melee mesh-slice gib to #205's fields instead of finding the killing blow by time alone. Primary swing Hit/Headshot events carry `Projectile = swing.Id` (an extra strike shares it) and `From` = the attacker's body centre at contact. Presentation only.
+- **Ledger (Core `NativeHitLedger`):**
+  - It keeps each target's last four melee blows with their swing id (`MeleeBlow.Swing`), and links each Death event to the last damaging Hit in its tick.
+  - `Blow()`: when the killing hit carries an id, the blow is that attacker's, with that id, in that tick. A newer blow by another swing no longer wins, and an extra strike's kill takes its own strike. If that swing's blow was never read, there is no blow, rather than another swing's.
+  - Id 0 (Q/E kit, E special, plunge, thrown blades, older frames and replays) or no Death read keeps the old rule: the latest blow within 0.02 s.
+- **Plan (Core `NativeMeleeSlice`):**
+  - `MeleeBlow.From` stays the frame's feet and `Struck` is the hit's `From` (body centre). `Attacker` keeps its rule (an id, and within 2° of the event's direction) and now reports when it used the contact position.
+  - The thrown test (beyond reach) reads that same position. Cases without an id plan exactly as before.
+- **Docs and comments:** the stale "no hit carries it yet" comments in `MeleeBlow`, the ledger, `Plan`/`Attacker`, `NativeDeathPresentation.MeleeSlice` and `NativeHitPresentation` are updated. In docs/BISECT-GIB.md "Melee cuts", the Astra contract section is replaced by "Exact swing link".
+- **Unchanged:** simulation, rules, networking and wire fields. No edits to NativeArena, NativeMelee*, NativeNetworkFrame or NativeFrameCodec. Horde add cuts keep their own last-blow window and do not read the id. Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks:**
+  - Unity runtime and editor compile OK.
+  - check_relay exit 0 with 673 PASS lines. Melee bisect has 14,223 checks, up from 14,078 with the new swing-link block: 12 blows across sword, greatsword and daggers, cuts 1–4.
+  - Python 101 OK (1 skip); package_source OK (1897 files); `git diff --check` clean.
+  - Mutation checks: restoring the time-only `Blow()` fails "the killing hit's swing id finds its blow", and reading the thrown test from the frame fails "the thrown test reads the attacker at contact".
+- **Not run:** Unity Editor or PhysX play, Windows, real host/guest multiplayer, and the killcam on a device.
+- **Risks:** a busy tick that drops the killing Hit (the 32-per-tick transient event cap) falls back to the time rule, as before. A killing swing whose attacker is missing from the frame now gets the level fallback cut instead of another swing's blow.
+
 ## 2026-10-14 — Claude — Expedition presentation: views, screens, intents and dev preview
 - Branch `claude/expedition-presentation` on shared `9270d95`, which includes Astra's #188 rules foundation. Shared `33f214d` and then `0ae174f` were merged in afterwards; only the DEV_LOG and PROJECT_STATE top entries conflicted, and every entry is kept. Task: the owner's Expedition presentation request (world/town UI, personal wallet and chips, ordinary vs reserved boss loot, authoritative dice, victory/extraction choices, host transfer, minimal HUD). Contract: docs/EXPEDITION-PRESENTATION.md, linked from EXPEDITION.md.
 - **Projection (Core `NativeExpeditionView`):**

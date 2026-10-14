@@ -7,12 +7,14 @@ namespace ChipArena.UnityConversion
     /// <summary>A melee blow as the hit ledger read it from the frame that carried its Hit event (every peer, from replicated
     /// data only): when it landed, the attacker's weapon, its committed swing (Unity yaw in degrees, attack index, hit window),
     /// whether it was a jump attack (the swing's own replicated air flag), an E special or a Q/E kit ability (their kinds), and
-    /// where the attacker stood (Unity, its feet, as that frame had it). `Toward` (`Aimed`): the Hit event's own direction, the
-    /// authority's unit vector from the attacker's body centre to the target's at the hit's tick (its Damage step's hit
-    /// normal; the swing's .15 m origin lift cancels out), exact on every peer, where `From` is the frame's, a tick or two late.
-    /// `Struck` (`Exact`): the attacker's body centre at the hit's tick, once the authority sends it on melee hits (the contract
-    /// in docs/BISECT-GIB.md "Melee cuts": ArenaEvent.From with the swing's id in Projectile; no hit carries it yet).</summary>
-    public struct MeleeBlow{public float At,CommitYaw,SwingAt,SwingUntil,Yaw,Amount;public int Source,Index;public string Spec,Special,Kit,Detail;public bool Air,Aimed,Exact;public V3 From,Toward,Struck;}
+    /// where the attacker stood (Unity, its feet: Actor.Position, as that frame had it). `Toward` (`Aimed`): the Hit event's own
+    /// direction, the authority's unit vector from the attacker's body centre to the target's at the hit's tick (its Damage
+    /// step's hit normal; the swing's .15 m origin lift cancels out), exact on every peer, where `From` is the frame's, a tick
+    /// or two late. `Swing`: the swing's id the hit carries (ArenaEvent.Projectile; every primary swing's hit since PR #205,
+    /// extra strikes and minion targets included, an extra strike sharing its swing's id; 0 for Q/E kit and E special hits
+    /// and older frames), which the ledger finds the killing blow by. `Struck` (`Exact`, the id present): the hit's own From,
+    /// the attacker's body centre (not its feet) captured at contact (docs/BISECT-GIB.md "Melee cuts").</summary>
+    public struct MeleeBlow{public float At,CommitYaw,SwingAt,SwingUntil,Yaw,Amount;public int Source,Index,Swing;public string Spec,Special,Kit,Detail;public bool Air,Aimed,Exact;public V3 From,Toward,Struck;}
 
     public enum SliceKind{None,Clean,Cleave,Slit,Limb,Crush,Chop}
 
@@ -104,9 +106,11 @@ namespace ChipArena.UnityConversion
         /// was seen); `spec`: the killer's weapon; `wound`: the authority's fatal wound (its local point gives the contact height
         /// when no swing is known); the victim's Unity position (body centre, as NativeDeath.position) and yaw (degrees); the
         /// blow's From is the attacker's Actor.Position (its feet); `seed`: the death's seed. With the Hit event's direction
-        /// (`blow.Aimed`) the attacker stands where that direction puts it, at the frame's distance: the bearing and height are
-        /// the authority's at the hit's tick, so only the distance is the frame's, and a slash's plane (its normal across the
-        /// bearing) does not move with it. False (and an empty plan) when this is not a standard melee kill.
+        /// (`blow.Aimed`) the attacker stands where that direction puts it (`Attacker`): at the authority's own
+        /// position at contact when the hit carries its swing's id (`blow.Exact`, its `Struck`), else at the frame's distance
+        /// (the bearing and height are the authority's at the hit's tick, so only the distance is the frame's, and a slash's
+        /// plane, its normal across the bearing, does not move with it). Whether the blow was thrown (beyond the weapon's reach)
+        /// reads the same position. False (and an empty plan) when this is not a standard melee kill.
         /// </summary>
         public static bool Plan(in MeleeBlow blow,bool hasBlow,string spec,NativeWound wound,V3 victim,float victimYaw,int seed,SlicePlan into)
         {
@@ -115,16 +119,18 @@ namespace ChipArena.UnityConversion
             Vector3 J(int bone)=>vp+Vector3.Transform(Rest(bone),vq);
             string kit=hasBlow?blow.Kit:null,special=hasBlow?blow.Special:null;
             bool air=hasBlow&&blow.Air&&kit==null&&special==null;
+            // The attacker's feet (Actor.Position is the feet; the victim's death position is its body centre), at contact when
+            // the hit carries it.
+            bool exact=false;Vector3 attacker=hasBlow?Source(blow.From):vp+Vector3.Transform(new Vector3(0,0,1.4f),vq);
+            if(hasBlow&&blow.Aimed)attacker=Attacker(blow,victim,out exact);
             // Thrown: the attacker stood well beyond the weapon's reach (a dagger or the Aegis shield in flight).
             float reach=spec=="greatsword"?3.4f:spec=="sword"?2.5f:spec=="shield"?2.1f:1.75f;
-            bool thrown=hasBlow&&Math.Sqrt((blow.From.x-victim.x)*(blow.From.x-victim.x)+(blow.From.z-victim.z)*(blow.From.z-victim.z))>reach+1.6f;
+            Vector3 vs=Source(victim);
+            bool thrown=hasBlow&&(exact?Math.Sqrt((attacker.X-vs.X)*(attacker.X-vs.X)+(attacker.Z-vs.Z)*(attacker.Z-vs.Z)):Math.Sqrt((blow.From.x-victim.x)*(blow.From.x-victim.x)+(blow.From.z-victim.z)*(blow.From.z-victim.z)))>reach+1.6f;
             bool chop=air||Is(kit,"earthsplitter")||Is(kit,"wolf-knight")||Is(kit,"rising-dragon")||Is(kit,"skyfall")||Is(special,"slam")||Is(special,"launch");
             bool spin=Is(kit,"whirlwind")||Is(kit,"spin")||Is(special,"spin")||Is(kit,"hurricane");
             // The plane (source world): normal n through C; the blade's travel t.
             Vector3 n,t,c;
-            // The attacker's feet (Actor.Position is the feet; the victim's death position is its body centre).
-            Vector3 attacker=hasBlow?Source(blow.From):vp+Vector3.Transform(new Vector3(0,0,1.4f),vq);
-            if(hasBlow&&blow.Aimed)attacker=Attacker(blow,victim);
             float yaw=hasBlow?blow.CommitYaw:victimYaw+180;var aq=Facing(yaw);
             Vector3 toVictim=vp-attacker;toVictim.Y=0;if(toVictim.LengthSquared()<1e-4f)toVictim=Vector3.Transform(new Vector3(0,0,1),aq);toVictim=Vector3.Normalize(toVictim);
             // The attacker's left across the blow (source frame +x is a rig's left).
@@ -206,18 +212,21 @@ namespace ChipArena.UnityConversion
             return into.Any;
         }
         /// <summary>
-        /// The attacker's feet (source frame) at the hit's tick: the authority's own body centre when the hit carries it and it
-        /// agrees with the event's direction (within 2°), else back from the victim's body centre along the Hit event's
-        /// direction by the frame's horizontal distance, its height from the direction's rise. An upright direction (a blow from
-        /// straight above) or a missing one keeps the frame's position.
+        /// The attacker's feet (source frame) at the hit's tick. With the swing's id (`Exact`) the hit's From is the authority's
+        /// body centre at contact (PR #205): its feet are RootHeight under it, when it agrees with the event's direction (within
+        /// 2°: a From the direction contradicts, such as a hit point, is not the attacker). Else back from the victim's
+        /// body centre along the Hit event's direction by the frame's horizontal distance, its height from the direction's rise.
+        /// An upright direction (a blow from straight above) or a missing one keeps the frame's position. `exact`: the contact
+        /// position was used.
         /// </summary>
-        public static Vector3 Attacker(in MeleeBlow blow,V3 victim)
+        public static Vector3 Attacker(in MeleeBlow blow,V3 victim)=>Attacker(blow,victim,out _);
+        public static Vector3 Attacker(in MeleeBlow blow,V3 victim,out bool exact)
         {
-            Vector3 from=Source(blow.From),centre=Source(victim);var d=Source(blow.Toward);float flat=(float)Math.Sqrt(d.X*d.X+d.Z*d.Z);
+            Vector3 from=Source(blow.From),centre=Source(victim);var d=Source(blow.Toward);float flat=(float)Math.Sqrt(d.X*d.X+d.Z*d.Z);exact=false;
             if(blow.Exact&&blow.Aimed)
             {
                 var struck=Source(blow.Struck);var to=centre-struck;float far=to.Length();
-                if(far>.3f&&far<8&&Vector3.Dot(to/far,CapturedRig.Unit(d,Vector3.Zero))>Math.Cos(2*Math.PI/180))return struck-new Vector3(0,RootHeight,0);
+                if(far>.3f&&far<8&&Vector3.Dot(to/far,CapturedRig.Unit(d,Vector3.Zero))>Math.Cos(2*Math.PI/180)){exact=true;return struck-new Vector3(0,RootHeight,0);}
             }
             if(!blow.Aimed||!(flat>.2f)||float.IsNaN(d.Y))return from;
             float reach=(float)Math.Sqrt((centre.X-from.X)*(centre.X-from.X)+(centre.Z-from.Z)*(centre.Z-from.Z));

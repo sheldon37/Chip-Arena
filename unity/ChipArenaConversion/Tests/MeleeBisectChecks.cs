@@ -205,6 +205,78 @@ namespace ChipArena.UnityConversion
                 Check(ledger2.Blow(2,1,out var b2)&&b2.Exact&&b2.Struck.y==NativeMeleeSlice.RootHeight,"a melee hit carrying its swing's id gives the attacker's position at the hit");
             }
 
+            // ---- 4b. The killing swing by the id its hit carries (PR #205), the attacker at contact; the time rule without one ----
+            {
+                int samples=0,lagged=0,thrownOld=0;float worstContact=0;
+                bool Same(SlicePlan x,SlicePlan y,float tol)
+                {
+                    if(x.Kind!=y.Kind||x.Count!=y.Count||x.Crush!=y.Crush||x.Throat!=y.Throat)return false;for(int i=0;i<x.Count;i++)if(x.Joints[i]!=y.Joints[i])return false;
+                    return Vector3.Distance(x.Point,y.Point)<=tol&&Vector3.Distance(x.Normal,y.Normal)<=tol;
+                }
+                foreach(var spec in new[]{"sword","greatsword","daggers"})for(int index=1;index<=4;index++)
+                {
+                    // The authority's lethal blow: the attacker's feet a0 (body centre `centre`) at contact, the victim's body centre
+                    // `victim`, the Hit's direction centre to centre and its From the attacker's centre. A guest's frame shows the
+                    // attacker 12 cm further along its lunge (2 cm aside); the next tick another pilot's swing (57) lands a blow
+                    // inside the old 0.02 s window.
+                    float yaw=12+index*31,dist=spec=="greatsword"?1.5f:1.15f,face=yaw+180-index*7;var wound=Wound(spec);
+                    var fwd=new Vector3((float)Math.Sin(yaw*D),0,(float)Math.Cos(yaw*D));var a0=new V3(.4f,0,-.3f);
+                    var victim=new V3(a0.x+fwd.X*dist,NativeMeleeSlice.RootHeight,a0.z+fwd.Z*dist);var centre=new V3(a0.x,NativeMeleeSlice.RootHeight,a0.z);
+                    var to=Vector3.Normalize(new Vector3(victim.x-centre.x,victim.y-centre.y,victim.z-centre.z));var toward=new V3(to.X,to.Y,to.Z);
+                    var late=new V3(a0.x+fwd.X*.12f+fwd.Z*.02f,0,a0.z+fwd.Z*.12f-fwd.X*.02f);var point=new V3(victim.x-to.X*.4f,victim.y,victim.z-to.Z*.4f);
+                    Actor Attacker(V3 feet,int combo,string kit=null)=>new Actor{Id=1,SourceSpec=spec,CommitYaw=yaw,Combo=combo,SwingAt=.95f,SwingUntil=1.1f,Grounded=true,Position=feet,Hp=100,MeleeKit=kit!=null?new NativeMeleeKit{Kind=kit}:null};
+                    var dead=new Actor{Id=2,SourceSpec="pistol",Position=new V3(victim.x,0,victim.z),Hp=0};
+                    var other=new Actor{Id=3,SourceSpec="greatsword",CommitYaw=-80,Grounded=true,Position=new V3(victim.x+1.3f,0,victim.z),Hp=100};
+                    // `ids`: a current host (the swing's id in Projectile, the attacker's centre in From); else an older one (From
+                    // left at the hit point, no id).
+                    ArenaEvent Hit(int id,float t,int source,int swing,bool ids,string detail="direct",float amount=30)=>new ArenaEvent{Id=id,Kind=EventKind.Hit,Source=source,Target=2,Time=t,Amount=amount,Detail=detail,Position=point,
+                        From=ids?(source==1?centre:new V3(other.Position.x,NativeMeleeSlice.RootHeight,other.Position.z)):point,Normal=source==1?toward:new V3(-1,0,0),Projectile=ids?swing:0};
+                    var killed=new ArenaEvent{Id=11,Kind=EventKind.Death,Source=1,Target=2,Time=1,Position=victim};
+                    NativeHitLedger Feed(V3 feet,bool ids,bool otherSwing=true,bool deathRead=true,bool attackerSeen=true)
+                    {
+                        var l=new NativeHitLedger();var actors=attackerSeen?new[]{Attacker(feet,2),dead,other}:new[]{dead,other};
+                        l.Observe(new Snapshot{Actors=actors,Events=deathRead?new[]{Hit(10,1,1,41,ids),killed}:new[]{Hit(10,1,1,41,ids)}});
+                        if(otherSwing)l.Observe(new Snapshot{Actors=new[]{Attacker(feet,2),dead,other},Events=new[]{Hit(12,1+1/60f,3,57,ids,amount:40)}});
+                        return l;
+                    }
+                    SlicePlan P(in MeleeBlow b){var p=new SlicePlan();NativeMeleeSlice.Plan(b,true,spec,wound,victim,face,index,p);return p;}
+                    string tag=spec+" cut "+index;samples++;
+
+                    // The id beats the newer blow by the other swing; the time rule alone (an older host) takes that one.
+                    var host=Feed(a0,true);var guest=Feed(late,true);
+                    bool hostSaw=host.Blow(2,1,out var hb),guestSaw=guest.Blow(2,1,out var gb);
+                    Check(hostSaw&&guestSaw&&hb.Swing==41&&gb.Source==1&&gb.Swing==41&&gb.Spec==spec&&gb.Index==3&&gb.At==1&&gb.Exact&&gb.Struck.x==centre.x&&gb.Struck.y==centre.y&&gb.Struck.z==centre.z,tag+": the killing hit's swing id finds its blow, not the newer one by another swing");
+                    Check(Feed(late,false).Blow(2,1,out var ob)&&ob.Source==3&&!ob.Exact&&ob.Swing==0,tag+": without ids the time rule is unchanged (the latest blow within 0.02 s)");
+                    Check(!Feed(late,true,attackerSeen:false).Blow(2,1,out _)&&Feed(late,false,attackerSeen:false).Blow(2,1,out var ob2)&&ob2.Source==3,tag+": the killing swing's blow unread (its attacker not in the frame): none, not another swing's");
+                    // Host, a late guest and the killcam replay (the ledger cleared and fed the same frames) cut the same.
+                    var replay=Feed(late,true);replay.Clear();replay.Observe(new Snapshot{Actors=new[]{Attacker(late,2),dead,other},Events=new[]{Hit(10,1,1,41,true),killed}});
+                    replay.Observe(new Snapshot{Actors=new[]{Attacker(late,2),dead,other},Events=new[]{Hit(12,1+1/60f,3,57,true,amount:40)}});
+                    Check(replay.Blow(2,1,out var rb)&&rb.Swing==41&&rb.Source==1,tag+": the replay finds the same swing");
+                    var ph=P(hb);var pg=P(gb);var pr=P(rb);Check(Same(ph,pg,0)&&Same(ph,pr,0),tag+": host, a late guest and the replay cut identically with the swing's id");
+                    // From at contact: the cut is the one through the attacker's feet at the hit (its own frame on time, no id).
+                    var contact=hb;contact.Exact=false;contact.Swing=0;contact.Struck=default;var pc=P(contact);
+                    Check(Same(pg,pc,1e-4f),tag+": the guest cuts through the attacker at contact (the hit's From, its body centre less "+NativeMeleeSlice.RootHeight+" m), not the frame's feet");
+                    worstContact=Math.Max(worstContact,Vector3.Distance(pg.Point,pc.Point));
+                    // Without an id the late frame's distance is kept, exactly as before (no other swing in the window).
+                    Check(Feed(late,false,otherSwing:false).Blow(2,1,out var fb)&&fb.Source==1&&!fb.Exact&&fb.From.x==late.x&&fb.From.z==late.z,tag+": the fallback reads the frame's attacker");
+                    var expect=new MeleeBlow{At=1,Source=1,Spec=spec,CommitYaw=yaw,Index=3,SwingAt=.95f,SwingUntil=1.1f,From=late,Detail="direct",Amount=30,Toward=toward,Aimed=true,Struck=point};
+                    var pf=P(fb);Check(Same(pf,P(expect),0),tag+": the fallback plans from the frame's swing and feet as before");if(!Same(pf,pc,1e-4f))lagged++;
+                    // A frame that shows the attacker far off after the blow (a dash on) does not turn a contact swing into a throw.
+                    var far=new V3(a0.x-fwd.X*3.8f,0,a0.z-fwd.Z*3.8f);Check(Feed(far,true).Blow(2,1,out var db)&&Same(P(db),pc,1e-4f),tag+": the thrown test reads the attacker at contact");
+                    if(Feed(far,false,otherSwing:false).Blow(2,1,out var dob)&&!Same(P(dob),pc,1e-4f))thrownOld++;
+                    // An extra strike shares its swing's id: the strike in the kill's tick (index 3), not the swing's first (index 2).
+                    var echo=new NativeHitLedger();echo.Observe(new Snapshot{Actors=new[]{Attacker(late,1),dead,other},Events=new[]{Hit(8,.9f,1,41,true,amount:20)}});
+                    echo.Observe(new Snapshot{Actors=new[]{Attacker(late,2),dead,other},Events=new[]{Hit(10,1,1,41,true),killed,Hit(12,1+1/60f,3,57,true,amount:40)}});
+                    Check(echo.Blow(2,1,out var eb)&&eb.Index==3&&eb.At==1&&eb.Swing==41,tag+": an extra strike's kill takes the strike that landed it");
+                    // A kit hit (no id) that kills after a swing's blow keeps the time rule; so does a kill whose Death was not read.
+                    var kit=new NativeHitLedger();kit.Observe(new Snapshot{Actors=new[]{Attacker(late,2,"flash-step"),dead,other},Events=new[]{Hit(9,1-1/60f,1,41,true,amount:20),Hit(10,1,1,0,true,"ability"),killed}});
+                    Check(kit.Blow(2,1,out var kb)&&kb.Kit=="flash-step"&&kb.Swing==0&&!kb.Exact,tag+": a Q/E kit kill (id 0) keeps the time rule");
+                    Check(Feed(late,true,deathRead:false).Blow(2,1,out var nb)&&nb.Source==3,tag+": no Death event read: the time rule");
+                }
+                Check(lagged>0&&thrownOld>0,"the swing's id corrects what the late frame got wrong ("+lagged+"/"+samples+" late-frame cuts moved, "+thrownOld+" far frames read as a throw)");
+                report.Add("killing swing by its id ("+samples+" blows, sword/greatsword/daggers, cuts 1-4): the id beats a newer blow by another swing in the old window, an extra strike's kill takes its own strike, host/late guest/replay identical, the cut through the attacker at contact (within "+(worstContact*1000).ToString("0.000")+" mm; the late frame moved "+lagged+", a far frame threw "+thrownOld+"); without an id (kit, older host, no Death read) the time rule is unchanged");
+            }
+
             // ---- 5. After the split nothing allocates: the hold and the seam's gushes are pure functions ----
             {
                 var r=picks["sword through horizontal"].Request;
