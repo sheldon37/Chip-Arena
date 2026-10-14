@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         public readonly List<NativeFighterEcho> FighterEchoes=new List<NativeFighterEcho>();public readonly List<NativeStormTrail> StormTrails=new List<NativeStormTrail>();
-        private bool Dev(NativePilot p,string spec)=>p!=null&&p.Seat.spec==spec&&(p.Seat.AuthorityBoss&&spec=="siren"||p.Seat.access.Allows("weapon:"+spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
+        private bool Dev(NativePilot p,string spec)=>p!=null&&p.Seat.spec==spec&&(p.Seat.AuthorityBoss&&spec=="siren"||p.Seat.access.Allows("weapon:"+spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())||p.Seat.devWeaponAccess?.Allows("weapon:"+spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())==true);
         private NativeFighter Fighter(NativePilot p)=>p.Fighter??(p.Fighter=new NativeFighter());
         private void CancelFighter(NativePilot p){if(p.Fighter==null)return;p.Fighter.Kind=null;p.Fighter.Charge=p.Fighter.StepUntil=p.Fighter.WaveUntil=0;p.Fighter.Count=p.Fighter.Next=0;}
         private bool FighterReady(NativePilot p)=>p.Hp>0&&p.Seat.connected&&!Incapacitated(p)&&Time>=p.BlockEnd&&Time>=p.RollEnd;

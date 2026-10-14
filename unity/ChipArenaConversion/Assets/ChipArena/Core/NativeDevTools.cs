@@ -3,36 +3,40 @@ using System.Collections.Generic;
 using System.Globalization;
 namespace ChipArena.UnityConversion
 {
-    // The DEV tools' engine-free rules (docs/DEV-TOOLS.md): who gets the DEV panel where (the offline Developer Sandbox, or any
-    // match with Settings · Developer · DEV Abuse on), what each panel action routes to (the existing NativeArena sandbox call,
-    // the proposed DEV command contract Astra implements, or the local view only), the contract's names and bounds, the
-    // dormant reveal (NativeSeat.devRevealed, proposed), and the presentation-only helpers the panel draws from (event log,
-    // graphs, fly camera, chip grid query, layout, cached labels). Nothing here touches the simulation; the Runtime panel
-    // (NativeDevPanel.cs) and the sandbox routes (NativeSandbox.cs) are the only callers.
+    // The DEV tools' engine-free rules (docs/DEV-TOOLS.md; the authority is Astra's, docs/DEV-ABUSE-AUTHORITY.md): who gets the
+    // DEV panel where (the offline Developer Sandbox, or any match with Settings · Developer · DEV Abuse on), what each panel
+    // action routes to (the existing NativeArena sandbox call, a DEV command through ConversionGame.SendDevCommand, or the
+    // local view only), the commands' argument limits (NativeDevRules.Validate's), the reveal from the replicated
+    // NativeSeat.devRevealed, and the presentation-only helpers the panel draws from (event log, graphs, fly camera, chip grid
+    // query, forced hazard pulse looks, layout, cached labels). Nothing here touches the simulation.
     public enum NativeDevTab{Pilot,Interact,Dummies,Chips,Arena,Hazards,Previews,Camera,Simulation}
-    // Sandbox: an existing sandbox control (SandboxAllowed on the authority) with no contract counterpart.
-    // Contract: a DEV command (docs/DEV-TOOLS.md); in the sandbox it runs the existing sandbox call when it has one.
+    // Sandbox: an existing sandbox control (SandboxAllowed on the authority) with no command counterpart.
+    // Contract: a DEV command; in the sandbox it runs the existing sandbox call when it has one.
     // Preview: a local presentation preview that has only ever run in the sandbox (galleries, draft previews, structure FX).
     // Presentation: read-only local view tools (fly camera, overlays, log, graphs, hide HUD): live wherever the panel is.
     public enum NativeDevKind{Sandbox,Contract,Preview,Presentation}
-    public enum NativeDevState{Live,NeedsAuthority,SandboxOnly,Unavailable}
+    // NeedsOptIn: a DEV command while ConversionGame.DevAbuseEnabled is off. NotNow: a DEV command outside an active round.
+    public enum NativeDevState{Live,NeedsOptIn,SandboxOnly,NotNow,Unavailable}
     public enum NativeDevMode{Off,Sandbox,Abuse}
 
     /// <summary>What this client knows about the match it is in. Sandbox: this client runs the offline Developer Sandbox's
     /// authority (arena.Sandbox, offline, not a replica). Developer: the local account's verified, unexpired Developer claim.
-    /// Abuse: the local Settings · Developer · DEV Abuse opt-in (never trusted by a host). Authority: Astra's DEV command
-    /// link exists (NativeDevLink.Available).</summary>
+    /// Abuse: the saved Settings · Developer · DEV Abuse opt-in. Commands: ConversionGame.DevAbuseEnabled, the session opt-in
+    /// SendDevCommand needs (never trusted by a host: it checks the verified seat). Fight: the match is in an active round,
+    /// which every DEV command needs.</summary>
     public struct NativeDevContext
     {
-        public bool InMatch,Sandbox,Online,Hosting,Developer,Abuse,Authority;
-        public static NativeDevContext Of(bool inMatch,bool sandbox,bool online,bool hosting,bool developer,bool abuse,bool authority)
-            =>new NativeDevContext{InMatch=inMatch,Sandbox=sandbox&&!online,Online=online,Hosting=hosting,Developer=developer,Abuse=abuse,Authority=authority};
+        public bool InMatch,Sandbox,Online,Hosting,Developer,Abuse,Commands,Fight;
+        public static NativeDevContext Of(bool inMatch,bool sandbox,bool online,bool hosting,bool developer,bool abuse,bool commands,bool fight=true)
+            =>new NativeDevContext{InMatch=inMatch,Sandbox=sandbox&&!online,Online=online,Hosting=hosting,Developer=developer,Abuse=abuse,Commands=commands,Fight=fight};
     }
 
     public static class NativeDevGate
     {
         /// <summary>Settings · Developer shows the DEV Abuse toggle only to a verified, unexpired Developer account.</summary>
         public static bool ToggleVisible(bool verifiedDeveloper)=>verifiedDeveloper;
+        /// <summary>The session opt-in (ConversionGame.DevAbuseEnabled) follows the saved toggle, for a verified developer only.</summary>
+        public static bool CommandsEnabled(bool saved,bool verifiedDeveloper)=>saved&&verifiedDeveloper;
         /// <summary>The offline sandbox keeps its tools for a developer as today (no opt-in); any other match needs DEV Abuse.
         /// Non-developers never get the panel, whatever the saved preference says.</summary>
         public static NativeDevMode Mode(in NativeDevContext c)=>!c.Developer||!c.InMatch?NativeDevMode.Off:c.Sandbox?NativeDevMode.Sandbox:c.Abuse?NativeDevMode.Abuse:NativeDevMode.Off;
@@ -41,27 +45,24 @@ namespace ChipArena.UnityConversion
         public static bool Indicator(in NativeDevContext c)=>c.Developer&&c.InMatch&&c.Abuse;
     }
 
-    /// <summary>The DEV command contract's names and bounds (docs/DEV-TOOLS.md). Astra owns the authority side.</summary>
+    /// <summary>The DEV command names and the limits the panel clamps to (NativeDevRules.Validate's; DevToolsChecks probes them).</summary>
     public static class NativeDevContract
     {
-        public const string Gate="DevAllowed",Command="dev-command",Reply="dev-reply",Accepted="accepted",Refused="refused",Done="done";
+        public const string Gate="NativeDevRules.DevAllowed",Command="dev-command",Reply="dev-reply",Accepted="accepted",Refused="refused",Done="done";
         public const string RevealedField="devRevealed";
-        public const int MaxArgs=4,MaxArgLength=32;
-        public const float TimeScaleMin=.1f,TimeScaleMax=2;
+        public const int MaxArgs=4,MaxArgLength=64,ChipCountMax=100,AroundMin=1,AroundMax=7,TeamMax=7;
+        public const float TimeScaleMin=.1f,TimeScaleMax=2,DebrisMassMin=1,DebrisMassMax=500,DebrisSpeedMin=1,DebrisSpeedMax=100,FreezeMax=30,LaunchMin=1,LaunchMax=100;
+        public static readonly string[] SpawnInputs={"ai","idle","primary","q","e","block","dash","jump","1","2","3","4","5"};
         /// <summary>Personal actions: any dev seat, on itself or a target.</summary>
         public static readonly string[] Personal={"restore","down","god","infinite-ammo","no-cooldowns","chip-add","chip-remove","weapon","teleport","spawn-dummy","clear-dummies","reveal"};
-        /// <summary>Room-wide actions: any dev seat (owner 2026-10-14: devs are not limited to rooms they host).</summary>
+        /// <summary>Room-wide actions: any dev seat, host or guest (owner 2026-10-14: devs are not limited to rooms they host).</summary>
         public static readonly string[] Room={"time-scale","arena-reset","round-end","hazard-trigger","debris"};
-        /// <summary>Interact actions on a target (proposals for Astra).</summary>
+        /// <summary>Interact actions on a target.</summary>
         public static readonly string[] Interact={"launch","freeze","bring","send","swap-weapon","shrink","grow","debris-rain","hazard-at","spawn-dummies-around"};
-        public static bool Known(string action)=>Array.IndexOf(Personal,action)>=0||Array.IndexOf(Room,action)>=0||Array.IndexOf(Interact,action)>=0;
-        /// <summary>The client's shape check before a send: a known action, at most MaxArgs short arguments. The host validates
-        /// again (DevAllowed, ranges, rate limit, deduplication); this never stands in for it.</summary>
-        public static bool ShapeOk(string action,string[] args)
-        {
-            if(!Known(action))return false;if(args==null)return true;if(args.Length>MaxArgs)return false;
-            foreach(var a in args)if(a==null||a.Length>MaxArgLength)return false;return true;
-        }
+        public static bool Known(string action)=>Array.IndexOf(NativeDevRules.Actions,action)>=0;
+        /// <summary>The client's shape check before a send: Astra's own validator (actions, at most four arguments of at most 64
+        /// characters, the per-action ranges). The host validates again with the verified grant; this never stands in for it.</summary>
+        public static bool ShapeOk(string action,int target,string[] args)=>NativeDevRules.Validate(new NativeDevCommand{transaction="panel",action=action,target=target,args=args??Array.Empty<string>()})==null;
     }
 
     public sealed class NativeDevAction
@@ -75,12 +76,13 @@ namespace ChipArena.UnityConversion
 
     public static class NativeDevActions
     {
-        public const string NeedsAuthority="Needs authority (Astra): not implemented";
+        public const string OptIn="Turn on DEV Abuse (Settings · Developer) to send DEV commands";
+        public const string NotNow="DEV commands run during an active round";
         public const string SandboxOnly="Sandbox only: runs in the offline Developer Sandbox";
         public const string Off="DEV tools are not available in this match";
         public const string InSandbox="Live in the sandbox";
         public const string Local="Live: your view only, changes nothing in the match";
-        public const string ToHost="Live: sent to the host as a DEV command";
+        public const string ToHost="Live: the match's DEV authority checks your verified grant, then runs it";
         private const NativeDevKind S=NativeDevKind.Sandbox,C=NativeDevKind.Contract,P=NativeDevKind.Preview,V=NativeDevKind.Presentation;
         private const NativeDevTab Pi=NativeDevTab.Pilot,In=NativeDevTab.Interact,Du=NativeDevTab.Dummies,Ch=NativeDevTab.Chips,Ar=NativeDevTab.Arena,Ha=NativeDevTab.Hazards,Pr=NativeDevTab.Previews,Ca=NativeDevTab.Camera,Si=NativeDevTab.Simulation;
         /// <summary>Every panel action. The ids with a sandbox route are the cases of NativeSandbox.cs DevRun.</summary>
@@ -97,7 +99,7 @@ namespace ChipArena.UnityConversion
             new NativeDevAction("me-cooldowns",Pi,C,"No cooldowns","no-cooldowns"),
             new NativeDevAction("me-teleport",Pi,C,"Teleport to aim","teleport"),
             new NativeDevAction("me-reveal",Pi,C,"Reveal: a developer is here","reveal"),
-            // Interact (a target pilot or bot; proposals for Astra, owner 2026-10-14).
+            // Interact (a target pilot or bot).
             new NativeDevAction("launch",In,C,"Launch","launch"),
             new NativeDevAction("freeze",In,C,"Freeze","freeze"),
             new NativeDevAction("bring",In,C,"Bring to me","bring"),
@@ -110,17 +112,18 @@ namespace ChipArena.UnityConversion
             new NativeDevAction("spawn-dummies-around",In,C,"Dummies around","spawn-dummies-around"),
             new NativeDevAction("target-restore",In,C,"Restore target","restore"),
             new NativeDevAction("target-down",In,C,"Down target","down"),
+            new NativeDevAction("target-debris",In,C,"Debris at target","debris"),
             // Dummies.
             new NativeDevAction("dummy-cast",Du,S,"Make dummy cast",key:"F7"),
-            new NativeDevAction("dummy-restore",Du,S,"Restore dummy"),
+            new NativeDevAction("dummy-restore",Du,C,"Restore dummy","restore",true),
             new NativeDevAction("dummy-hit",Du,S,"Hit dummy (18)"),
-            new NativeDevAction("dummy-down",Du,S,"Down dummy",key:"F6"),
+            new NativeDevAction("dummy-down",Du,C,"Down dummy","down",true,"F6"),
             new NativeDevAction("dummy-summons",Du,S,"Clear summons (dummy)"),
             new NativeDevAction("dummy-respawn",Du,S,"Dummy respawn"),
             new NativeDevAction("dummy-repeat",Du,S,"Repeat cast"),
             new NativeDevAction("dummy-difficulty",Du,S,"Bot difficulty"),
             new NativeDevAction("spawn-dummy",Du,C,"Spawn dummy","spawn-dummy"),
-            new NativeDevAction("clear-dummies",Du,C,"Clear dummies","clear-dummies"),
+            new NativeDevAction("clear-dummies",Du,C,"Clear DEV dummies","clear-dummies"),
             // Chips.
             new NativeDevAction("chip-add",Ch,C,"Add chip","chip-add",true),
             new NativeDevAction("chip-remove",Ch,C,"Remove chip","chip-remove",true),
@@ -173,7 +176,8 @@ namespace ChipArena.UnityConversion
         private static Dictionary<string,NativeDevAction> Index(){var d=new Dictionary<string,NativeDevAction>(StringComparer.Ordinal);foreach(var a in All)d[a.Id]=a;return d;}
         public static NativeDevAction Find(string id)=>id!=null&&byId.TryGetValue(id,out var a)?a:null;
         /// <summary>Whether `a` can run here and why: sandbox calls in the sandbox, the view tools wherever the panel is, DEV
-        /// commands only once Astra's authority link exists (until then disabled with NeedsAuthority, never a fake success).</summary>
+        /// commands with the DEV Abuse opt-in during an active round (the host then checks the verified grant and says done or
+        /// refused with its reason; the panel never reports success on its own).</summary>
         public static NativeDevState Resolve(NativeDevAction a,in NativeDevContext c,out string reason)
         {
             var mode=NativeDevGate.Mode(c);
@@ -185,12 +189,15 @@ namespace ChipArena.UnityConversion
                     if(mode==NativeDevMode.Sandbox){reason=InSandbox;return NativeDevState.Live;}reason=SandboxOnly;return NativeDevState.SandboxOnly;
                 default:
                     if(mode==NativeDevMode.Sandbox&&a.SandboxRoute){reason=InSandbox;return NativeDevState.Live;}
-                    if(c.Authority){reason=ToHost;return NativeDevState.Live;}
-                    reason=NeedsAuthority;return NativeDevState.NeedsAuthority;
+                    if(!c.Commands){reason=OptIn;return NativeDevState.NeedsOptIn;}
+                    if(!c.Fight){reason=NotNow;return NativeDevState.NotNow;}
+                    reason=ToHost;return NativeDevState.Live;
             }
         }
         /// <summary>True when a Live action runs the existing sandbox call (else, Live, it is a DEV command or a view tool).</summary>
         public static bool RunsInSandbox(NativeDevAction a,in NativeDevContext c)=>a!=null&&NativeDevGate.Mode(c)==NativeDevMode.Sandbox&&a.SandboxRoute&&a.Kind!=NativeDevKind.Presentation;
+        /// <summary>The badge a disabled button wears.</summary>
+        public static string Badge(NativeDevState s)=>s==NativeDevState.NeedsOptIn?"OPT-IN":s==NativeDevState.NotNow?"ROUND":s==NativeDevState.SandboxOnly?"SBX":s==NativeDevState.Unavailable?"OFF":null;
     }
 
     /// <summary>The panel's hotkeys (none clashes with a binding in the code or docs; F3 matches the Electron DEV panel key).</summary>
@@ -209,47 +216,67 @@ namespace ChipArena.UnityConversion
     /// half extents, yaw-aligned) and the melee sector (origin +.15 m, ±1.6 m tall, .24 rad plus the target's .45 m).</summary>
     public static class NativeDevVolumes{public const float HeadY=.64f,HeadHalf=.17f,MeleeLift=.15f,MeleeHeight=1.6f,Cone=.24f,PilotExtra=.45f;}
 
-    // ---- The DEV command link (Astra wires it) -----------------------------------------------------------------------------
-    [Serializable] public sealed class NativeDevCommand{public int transaction;public string action;public int target;public string[] args=Array.Empty<string>();}
-    [Serializable] public sealed class NativeDevReply{public int transaction;public string state;public string reason;}
+    // ---- The DEV command link (Astra's ConversionGame.SendDevCommand / DevReplyReceived, docs/DEV-ABUSE-AUTHORITY.md) -------------
+    public enum NativeDevOutcome{None,Sent,Accepted,Done,Refused,Unknown}
     /// <summary>
-    /// The panel's end of the DEV command contract. Until Astra sets Sender (guest: send `dev-command` to the host; host:
-    /// call the DevAllowed validator directly) every contract action is disabled with NativeDevActions.NeedsAuthority and
-    /// nothing is sent. Receive takes the host's `dev-reply`; Status says what the host said, never more.
+    /// The panel's view of the DEV commands it sent. Sender is Astra's ConversionGame.SendDevCommand (it returns the transaction
+    /// id and may reply at once: the offline host runs the command synchronously, a guest is refused locally by an older host);
+    /// Receive takes DevReplyReceived. Status says only what the authority answered: done, refused with its reason, accepted,
+    /// or, after the ten-second timeout, that the outcome is unknown (never undone, never success). The panel draws the effect
+    /// from replicated state, not from this line.
     /// </summary>
     public sealed class NativeDevLink
     {
-        public Func<NativeDevCommand,bool> Sender;
+        public const float Timeout=10.5f;public const string TimeoutMarker="outcome is unknown";
+        public Func<string,int,string[],string> Sender;
         public bool Available=>Sender!=null;
-        private int next;private readonly Dictionary<int,string> pending=new Dictionary<int,string>();
+        private readonly Dictionary<string,string> pending=new Dictionary<string,string>();private readonly Dictionary<string,float> sentAt=new Dictionary<string,float>();
+        private string sending;private NativeDevReply early;
         public int Pending=>pending.Count;
-        public string Status{get;private set;}="";public bool StatusRefused{get;private set;}public int StatusTransaction{get;private set;}
-        /// <summary>Sends `action` for seat `target`; null when there is no authority link, the shape is wrong or the send failed.</summary>
-        public NativeDevCommand Send(string action,int target,string[] args,string label)
+        public string Status{get;private set;}="";public NativeDevOutcome Outcome{get;private set;}public string StatusTransaction{get;private set;}
+        public bool StatusBad=>Outcome==NativeDevOutcome.Refused||Outcome==NativeDevOutcome.Unknown;
+        /// <summary>Sends `action` for seat `target` (0: the sender); the transaction, or null when nothing could be sent.</summary>
+        public string Send(string action,int target,string[] args,string label,float now=0)
         {
-            if(Sender==null||!NativeDevContract.ShapeOk(action,args))return null;if(pending.Count>=32)pending.Clear();
-            var c=new NativeDevCommand{transaction=++next,action=action,target=target,args=args??Array.Empty<string>()};
-            if(!Sender(c))return null;pending[c.transaction]=label??action;Status=(label??action)+" · sent, waiting for the host";StatusRefused=false;StatusTransaction=c.transaction;return c;
+            if(Sender==null||!NativeDevContract.ShapeOk(action,target,args))return null;label??=action;sending=label;early=null;string t;
+            try{t=Sender(action,target,args??Array.Empty<string>());}finally{sending=null;}
+            if(t==null)return null;
+            if(early!=null&&early.transaction==t){var r=early;early=null;Apply(label,t,r);return t;}
+            pending[t]=label;sentAt[t]=now;Status=label+" · sent, waiting for the host";Outcome=NativeDevOutcome.Sent;StatusTransaction=t;return t;
         }
-        /// <summary>The host's reply for a pending transaction; false for an unknown one (the line is unchanged).</summary>
+        /// <summary>A reply for a transaction this link sent (false otherwise; the line is unchanged).</summary>
         public bool Receive(NativeDevReply r)
         {
-            if(r==null||!pending.TryGetValue(r.transaction,out var label))return false;bool refused=r.state==NativeDevContract.Refused;
-            if(r.state!=NativeDevContract.Accepted)pending.Remove(r.transaction);
-            Status=label+" · "+(refused?"refused: "+(string.IsNullOrEmpty(r.reason)?"no reason given":r.reason):r.state==NativeDevContract.Done?"done":r.state==NativeDevContract.Accepted?"accepted":"unknown reply");
-            StatusRefused=refused||r.state!=NativeDevContract.Done&&r.state!=NativeDevContract.Accepted;StatusTransaction=r.transaction;return true;
+            if(r==null||r.transaction==null)return false;
+            if(sending!=null&&!pending.ContainsKey(r.transaction)){early=r;return true;}
+            if(!pending.TryGetValue(r.transaction,out var label))return false;
+            if(r.state!=NativeDevContract.Accepted){pending.Remove(r.transaction);sentAt.Remove(r.transaction);}
+            Apply(label,r.transaction,r);return true;
+        }
+        /// <summary>The backstop: a command with no reply after Timeout seconds reads as unknown.</summary>
+        public void Tick(float now)
+        {
+            if(sentAt.Count==0)return;string stale=null;foreach(var kv in sentAt)if(now-kv.Value>Timeout){stale=kv.Key;break;}if(stale==null)return;
+            string label=pending.TryGetValue(stale,out var l)?l:"DEV command";pending.Remove(stale);sentAt.Remove(stale);
+            Status=label+" · outcome unknown: no host reply in 10 s";Outcome=NativeDevOutcome.Unknown;StatusTransaction=stale;
+        }
+        private void Apply(string label,string transaction,NativeDevReply r)
+        {
+            string reason=string.IsNullOrEmpty(r.reason)?null:r.reason;bool unknown=r.state==NativeDevContract.Refused&&reason!=null&&reason.IndexOf(TimeoutMarker,StringComparison.OrdinalIgnoreCase)>=0;
+            Outcome=unknown?NativeDevOutcome.Unknown:r.state==NativeDevContract.Done?NativeDevOutcome.Done:r.state==NativeDevContract.Accepted?NativeDevOutcome.Accepted:r.state==NativeDevContract.Refused?NativeDevOutcome.Refused:NativeDevOutcome.Unknown;
+            Status=label+" · "+(unknown?"outcome unknown: no host reply in 10 s":Outcome==NativeDevOutcome.Done?"done":Outcome==NativeDevOutcome.Accepted?"accepted, waiting for the result":Outcome==NativeDevOutcome.Refused?"refused: "+(reason??"no reason given"):"unknown reply");
+            StatusTransaction=transaction;
         }
         public static string Number(float v)=>v.ToString("0.###",CultureInfo.InvariantCulture);
     }
 
-    // ---- The reveal (dormant until NativeSeat.devRevealed exists) ---------------------------------------------------------
+    // ---- The reveal (NativeSeat.devRevealed) -------------------------------------------------------------------------------
     public static class NativeDevTags
     {
-        /// <summary>Whether a pilot's DEV tag shows: the replicated, proposed NativeSeat.devRevealed (docs/DEV-TOOLS.md). The
-        /// field does not exist yet, so nobody is tagged. Astra: when it lands, return seat!=null&amp;&amp;seat.devRevealed
-        /// here (DevToolsChecks fails until this reads it).</summary>
-        public static bool Revealed(NativeSeat seat)=>false;
-        public const string Tag="DEV",Banner="A DEVELOPER IS HERE",Indicator="DEV ABUSE ON";
+        /// <summary>Whether a pilot's DEV tag shows: the replicated NativeSeat.devRevealed (Astra's reveal command sets it, for
+        /// the match), never the access grant.</summary>
+        public static bool Revealed(NativeSeat seat)=>seat!=null&&seat.devRevealed;
+        public const string Tag="DEV",Banner="A DEVELOPER IS HERE",Indicator="DEV ABUSE ON",NoProgress="NO PROGRESSION THIS MATCH",DevDummy="DEV DUMMY";
     }
     /// <summary>
     /// The "a developer is here" moment everyone sees when a seat's devRevealed turns true (false to true only: a pilot
@@ -293,6 +320,48 @@ namespace ChipArena.UnityConversion
         public static float Hash(int i,int salt){uint h=(uint)(i*73856093)^(uint)(salt*19349663)^0x9e3779b9u;h^=h>>16;h*=0x7feb352du;h^=h>>15;h*=0x846ca68bu;h^=h>>16;return (h&0xffffff)/16777216f;}
         private static float Clamp01(float v)=>v<0?0:v>1?1:v;
         private static float Ease(float t){t=Clamp01(t);return 1-(1-t)*(1-t)*(1-t);}
+    }
+
+    // ---- Forced hazard pulses (NativeGameFrame.devHazards / NativeArena.DevHazardPulses) ----------------------------------
+    /// <summary>
+    /// The look of a DEV-forced hazard pulse (hazard-trigger at the hazard's anchor, hazard-at translated to a target): one
+    /// burst of the shared effects renderer's hazard cues (NativeImpactCues' saw sparks and spokes, its lava fire, impacts,
+    /// beams and lines), keyed by the authored hazard's kind, sized from its volume, at the record's world position. Each
+    /// record plays once (its id and simulation time); the scheduled hazard presentation is untouched.
+    /// </summary>
+    public static class NativeDevHazardLook
+    {
+        public const int GridColor=0x7ff3ff,GridCore=0x22e6ff,MaglevColor=0xe8fbff,SteamColor=0xdfe8f0,GasColor=0x9cff57,DustColor=0xb2a89b,ShutterColor=0xffc24d,DangerColor=0xff4d6d;
+        /// <summary>The reach of a hazard's pulse: its radius, else half its volume's widest side, clamped to .6-6 m.</summary>
+        public static float Reach(MapHazard h)
+        {
+            if(h==null)return 1.5f;float r=h.radius>0?h.radius:Math.Max(h.size.x,Math.Max(h.size.y,h.size.z))*.5f;
+            if(!(r>0)&&h.zones!=null)foreach(var z in h.zones)if(z!=null)r=Math.Max(r,Math.Max(z.size.x,z.size.z)*.5f);return Math.Max(.6f,Math.Min(6,r>0?r:1.5f));
+        }
+        public static int Plan(string kind,V3 at,float reach,NativeImpactCommand[] o)
+        {
+            int n=0;double r=Math.Max(.6,Math.Min(6,reach));
+            switch(kind)
+            {
+                case "saw-rail":case "saw-slot":
+                    n=NativeImpactCues.Burst(o,n,at,NativeImpactCues.SawColor,NativeImpactCues.SawCount,NativeImpactCues.SawPower);n=NativeImpactCues.Burst(o,n,at,NativeImpactCues.SawSparkColor,NativeImpactCues.SawSparkCount,NativeImpactCues.SawSparkPower);
+                    for(int k=0;k<6;k++){double a=k*Math.PI/3;n=NativeImpactCues.Beam(o,n,at,new V3((float)(at.x+Math.Cos(a)*r),(float)(at.y+Math.Sin(a)*r*.5),at.z),NativeImpactCues.SawSpokeColor);}break;
+                case "press":case "crane":
+                    n=NativeImpactCues.Impact(o,n,at,r,DustColor,true);n=NativeImpactCues.Burst(o,n,at,DustColor,NativeImpactCues.BreakCount,NativeImpactCues.HitPower);n=NativeImpactCues.Burst(o,n,at,NativeImpactCues.SawColor,NativeImpactCues.HitCount*2,NativeImpactCues.HitPower);break;
+                case "vent":n=NativeImpactCues.Impact(o,n,at,r,SteamColor,true);n=NativeImpactCues.Burst(o,n,at,SteamColor,NativeImpactCues.BreakCount,NativeImpactCues.HitPower*.6);break;
+                case "grid":case "maglev":
+                    {
+                        int c0=kind=="grid"?GridColor:MaglevColor;n=NativeImpactCues.Impact(o,n,at,r,GridCore,true);
+                        for(int k=0;k<8;k++){double a=k*Math.PI/4+.3;n=NativeImpactCues.Line(o,n,at,new V3((float)(at.x+Math.Cos(a)*r),at.y+.2f,(float)(at.z+Math.Sin(a)*r)),c0,GridCore,.35,.3);}
+                        n=NativeImpactCues.Burst(o,n,at,c0,NativeImpactCues.HitCount*2,NativeImpactCues.HitPower);break;
+                    }
+                case "burner":n=NativeImpactCues.Burst(o,n,at,NativeImpactCues.LavaColor,NativeImpactCues.LavaCount*2,NativeImpactCues.LavaPower);n=NativeImpactCues.Impact(o,n,at,r,NativeImpactCues.LavaColor,true);break;
+                case "gas":n=NativeImpactCues.Impact(o,n,at,r,GasColor,true);n=NativeImpactCues.Burst(o,n,at,GasColor,NativeImpactCues.BreakCount,NativeImpactCues.HitPower*.5);break;
+                case "shutter":n=NativeImpactCues.Impact(o,n,at,r,ShutterColor,true);n=NativeImpactCues.Line(o,n,new V3(at.x-(float)r,at.y+1,at.z),new V3(at.x+(float)r,at.y+1,at.z),ShutterColor,MaglevColor,.1,.4);break;
+                default:n=NativeImpactCues.Impact(o,n,at,r,DangerColor,true);n=NativeImpactCues.Burst(o,n,at,DangerColor,NativeImpactCues.BreakCount,NativeImpactCues.HitPower);break;
+            }
+            return Math.Min(n,o.Length);
+        }
     }
 
     // ---- Event log -----------------------------------------------------------------------------------------------------------

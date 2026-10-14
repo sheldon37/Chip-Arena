@@ -14,13 +14,17 @@ namespace ChipArena.UnityConversion
     /// Previews, Camera, Simulation), a header with the mode and authority state, a footer with the last action's verdict and
     /// the hotkeys. Every button resolves through Core NativeDevActions: the sandbox's own calls in the offline Developer
     /// Sandbox (NativeSandbox.cs DevRun, unchanged arguments), the view tools anywhere the panel is, DEV commands through
-    /// NativeDevLink once Astra's authority exists (until then disabled with "Needs authority (Astra): not implemented").
+    /// NativeDevLink to Astra's DEV authority (with the DEV Abuse opt-in, during an active round; disabled with the reason otherwise).
     /// Repaint draws allocate nothing once warm (cached labels, no LINQ, no closures).
+    /// DEV commands are Astra's (docs/DEV-ABUSE-AUTHORITY.md): SendDevCommand with the session opt-in DevAbuseEnabled (the saved
+    /// toggle, verified developers only), replies through DevReplyReceived; the panel shows what the authority answered and
+    /// draws every effect from replicated state (devGod / devInfiniteAmmo / devNoCooldowns, devTimeScale, devRevealed,
+    /// devDummy, devCommandsRan), never optimistically.
     /// </summary>
     public sealed partial class ConversionGame
     {
-        /// <summary>The DEV command link; Astra sets Sender and feeds Receive (docs/DEV-TOOLS.md).</summary>
-        internal readonly NativeDevLink devLink=new NativeDevLink();
+        /// <summary>The panel's end of Astra's DEV commands: Sender is SendDevCommand, Receive takes DevReplyReceived.</summary>
+        internal readonly NativeDevLink devLink=new NativeDevLink();private bool devReplyHooked;
         private bool devOpen,devCursorFree,devHideHud,devLogOn,devGraphOn,devTyping,devLogMine,devChipSelf=true,devBodyHot,devSearchFocus;
         private bool devOverlayHit,devOverlayMelee,devOverlayHazards,devOverlayNav,devOverlayAnchors,devOverlayShots;
         private NativeDevTab devTab=NativeDevTab.Pilot;private readonly float[] devScroll=new float[9],devContent=new float[9];
@@ -33,7 +37,7 @@ namespace ChipArena.UnityConversion
         private Rect devBody,devPanelRect,devSearchRect;private Vector2 devMouse;private int devWid,devDrag=-1,devTarget;
         // Panel values the sandbox routes and DEV commands read (NativeSandbox.cs DevRun, DevArgs).
         private string devWeapon="pistol",devTargetWeapon="pistol",devMap,devDifficulty="normal",devRainMaterial="wood";
-        private float devRespawn=5,devRepeat,devSplat=10,devSpeed=1,devLaunchForce=20,devFreezeSeconds=3;private int devAroundCount=3,devHazard;
+        private float devRespawn=5,devRepeat,devSplat=10,devSpeed=1,devLaunchForce=20,devFreezeSeconds=3;private int devAroundCount=3,devHazard,devSpawnTeam=-1;private string devSpawnInput="ai";
         private Vector3 devPilotCamPos;private Quaternion devPilotCamRot;private bool devPilotCamValid;
         private string[] devWeaponIds,devWeaponNames,devMapIds,devMapNames;private readonly Dictionary<string,Color> devRarityColor=new Dictionary<string,Color>();
         private readonly Dictionary<string,string> devRarityName=new Dictionary<string,string>(),devChipFit=new Dictionary<string,string>();private float devChipFitWidth;
@@ -41,7 +45,11 @@ namespace ChipArena.UnityConversion
         private static GUIStyle devSearchStyle;
 
         // ---- Context ----------------------------------------------------------------------------------------------------
-        private NativeDevContext DevContext()=>NativeDevContext.Of(arena!=null&&match!=null,arena!=null&&arena.Sandbox&&!arena.Replica,Online,Hosting,account!=null&&account.Developer,prefs!=null&&prefs.devAbuse,devLink.Available);
+        private NativeDevContext DevContext()=>NativeDevContext.Of(arena!=null&&match!=null,arena!=null&&arena.Sandbox&&!arena.Replica,Online,Hosting,account!=null&&account.Developer,prefs!=null&&prefs.devAbuse,DevAbuseEnabled&&devLink.Available,match!=null&&match.Phase==NativePhase.Fight);
+        /// <summary>A guest of a host without devProtocol 1: SendDevCommand refuses at once (the panel says so in its header).</summary>
+        private bool DevOldHost=>server!=null&&devHostProtocol!=1;
+        private string DevSender(string action,int target,string[] args)=>SendDevCommand(action,target,args);
+        private void DevOnReply(NativeDevReply reply)=>devLink.Receive(reply);
         /// <summary>The DEV panel is open for this match (the pause menu's DEV Tools item, F3).</summary>
         private bool DevPanelAvailable=>arena!=null&&NativeDevGate.PanelAvailable(DevContext());
         /// <summary>The pilot holds still (neutral input) while the fly camera runs or the panel has the cursor or the keyboard.</summary>
@@ -49,7 +57,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The match camera's cursor lock: free while the panel has the cursor, locked while flying.</summary>
         private bool DevLook(bool look)=>devOpen&&devCursorFree?false:look||devFly.On&&!menu&&arena!=null;
         private NativePilot DevLocal(){if(arena==null)return null;foreach(var p in arena.Pilots)if(p.Seat.id==arena.LocalId)return p;return null;}
-        private NativePilot DevDummy(){if(arena==null)return null;foreach(var p in arena.Pilots)if(p.Seat.bot)return p;return null;}
+        // The dummy the Dummies tab acts on: a DEV-created dummy first, else the first bot (the sandbox's dummy).
+        private NativePilot DevDummy(){if(arena==null)return null;foreach(var p in arena.Pilots)if(p.Seat.devDummy&&p.Seat.connected)return p;foreach(var p in arena.Pilots)if(p.Seat.bot&&!p.Seat.AuthorityBoss)return p;return null;}
         private NativePilot DevPilot(int seat){if(arena==null)return null;foreach(var p in arena.Pilots)if(p.Seat.id==seat)return p;return null;}
         private string DevName(int seat){var p=DevPilot(seat);return p!=null?p.Seat.name:null;}
         private void DevOpen(bool cursor){if(!DevPanelAvailable)return;devOpen=true;devCursorFree=cursor;menu=false;pauseScreen=PauseScreen.Menu;}
@@ -58,7 +67,11 @@ namespace ChipArena.UnityConversion
         // ---- Update (UpdateFrame, after CameraKeys) -----------------------------------------------------------------------
         private void DevUpdate(bool typing)
         {
-            if(arena!=devArena)DevResetArena();if(arena==null)return;
+            if(arena!=devArena)DevResetArena();
+            // The session opt-in follows the saved Settings · Developer toggle, for a verified developer only (default off).
+            DevAbuseEnabled=NativeDevGate.CommandsEnabled(prefs!=null&&prefs.devAbuse,account!=null&&account.Developer);
+            if(!devReplyHooked){devReplyHooked=true;devLink.Sender=DevSender;DevReplyReceived+=DevOnReply;}
+            devLink.Tick(Time.unscaledTime);if(arena==null)return;
             var c=DevContext();
             // Every client follows the reveal state (dormant until Astra replicates devRevealed).
             float now=Time.unscaledTime;foreach(var p in arena.Pilots)if(devReveal.Observe(p.Seat.id,p.Seat.name,NativeDevTags.Revealed(p.Seat),now))DevRevealStart(p.Seat.id,p.Seat.name,false);
@@ -106,41 +119,44 @@ namespace ChipArena.UnityConversion
             if(state!=NativeDevState.Live){DevSay((a?.Label??id)+" · "+reason,true);return;}
             if(a.Kind==NativeDevKind.Presentation){DevView(id);return;}
             if(NativeDevActions.RunsInSandbox(a,c)){string result=DevRun(id);if(!quiet||result==DevRefused)DevSay(a.Label+" · "+result,result==DevRefused);return;}
-            var sent=devLink.Send(a.Contract,DevCommandTarget(a),DevArgs(a),a.Label);
-            if(sent==null)DevSay(a.Label+" · not sent: the authority link refused it",true);
+            var sent=devLink.Send(a.Contract,DevCommandTarget(a),DevArgs(a),a.Label,Time.unscaledTime);
+            if(sent==null)DevSay(a.Label+" · not sent: its arguments are outside the command's limits",true);
         }
         private void DevSend(string id,params string[] args)
         {
             var a=NativeDevActions.Find(id);var c=DevContext();if(NativeDevActions.Resolve(a,c,out string reason)!=NativeDevState.Live){DevSay((a?.Label??id)+" · "+reason,true);return;}
-            if(devLink.Send(a.Contract,DevCommandTarget(a),args,a.Label)==null)DevSay(a.Label+" · not sent: the authority link refused it",true);
+            if(devLink.Send(a.Contract,DevCommandTarget(a),args,a.Label,Time.unscaledTime)==null)DevSay(a.Label+" · not sent: its arguments are outside the command's limits",true);
         }
+        // The command's target seat (0: the sender, as SendDevCommand reads it).
         private int DevCommandTarget(NativeDevAction a)
         {
-            if(a.Tab==NativeDevTab.Interact)return devTarget;if(a.Tab==NativeDevTab.Chips)return devChipSeat;
-            if(a.Tab==NativeDevTab.Dummies&&a.Id!="spawn-dummy"&&a.Id!="clear-dummies")return DevDummy()?.Seat.id??0;
-            return arena?.LocalId??0;
+            if(a.Tab==NativeDevTab.Interact||a.Id=="debris")return devTarget;if(a.Tab==NativeDevTab.Chips)return devChipSeat==arena?.LocalId?0:devChipSeat;
+            if(a.Id=="dummy-restore"||a.Id=="dummy-down")return DevDummy()?.Seat.id??0;
+            return 0;
         }
-        // The contract arguments (bounded strings; NativeDevContract.ShapeOk checks them before a send).
+        // The command arguments (docs/DEV-ABUSE-AUTHORITY.md "Action arguments"), clamped to NativeDevRules.Validate's limits.
         private string[] DevArgs(NativeDevAction a)
         {
             string N(float v)=>NativeDevLink.Number(v);
-            switch(a.Id)
+            switch(a.Contract)
             {
-                case "me-weapon":return new[]{devWeapon};
+                case "weapon":return new[]{devWeapon};
                 case "swap-weapon":return new[]{devTargetWeapon};
-                case "me-teleport":case "send":{var at=AimPoint(60);return new[]{N(at.x),N(at.y),N(at.z)};}
-                case "launch":return new[]{N(devLaunchForce)};
-                case "freeze":return new[]{N(devFreezeSeconds)};
+                case "teleport":case "send":{var at=AimPoint(60);return new[]{N(Mathf.Clamp(at.x,-1000,1000)),N(Mathf.Clamp(at.y,-100,500)),N(Mathf.Clamp(at.z,-1000,1000))};}
+                case "launch":return new[]{N(Mathf.Clamp(devLaunchForce,NativeDevContract.LaunchMin,NativeDevContract.LaunchMax))};
+                case "freeze":return new[]{N(Mathf.Clamp(devFreezeSeconds,0,NativeDevContract.FreezeMax))};
                 case "debris-rain":return new[]{devRainMaterial};
-                case "spawn-dummies-around":return new[]{NativeDevText.Int(devAroundCount)};
-                case "spawn-dummy":return new[]{dummySpec,dummyKey,NativeDevText.Int(DevLocal()?.Seat.team==0?1:0)};
+                case "spawn-dummies-around":return new[]{NativeDevText.Int(Mathf.Clamp(devAroundCount,NativeDevContract.AroundMin,NativeDevContract.AroundMax))};
+                case "spawn-dummy":return new[]{dummySpec,devSpawnInput,NativeDevText.Int(Mathf.Clamp(DevSpawnTeam(),0,NativeDevContract.TeamMax))};
                 case "chip-add":case "chip-remove":return new[]{devChipId??"","1"};
                 case "time-scale":return new[]{N(Mathf.Clamp(devSpeed,NativeDevContract.TimeScaleMin,NativeDevContract.TimeScaleMax))};
                 case "hazard-trigger":{var hz=arena?.Map.hazards;return new[]{hz!=null&&devHazard>=0&&devHazard<hz.Length?hz[devHazard].id:""};}
-                case "debris":return new[]{N(debrisMass),N(debrisSpeed),debrisMaterial,debrisImpact};
+                case "debris":return new[]{N(Mathf.Clamp(debrisMass,NativeDevContract.DebrisMassMin,NativeDevContract.DebrisMassMax)),N(Mathf.Clamp(debrisSpeed,NativeDevContract.DebrisSpeedMin,NativeDevContract.DebrisSpeedMax)),debrisMaterial,debrisImpact};
             }
             return Array.Empty<string>();
         }
+        // A spawned dummy's team: the panel's pick, else the team after mine (hostile in a team match).
+        private int DevSpawnTeam(){if(devSpawnTeam>=0)return devSpawnTeam;var me=DevLocal();return me==null?1:(me.Seat.team+1)%(NativeDevContract.TeamMax+1);}
         // The view tools (presentation only).
         private void DevView(string id)
         {
@@ -163,7 +179,9 @@ namespace ChipArena.UnityConversion
         // ---- Camera (LateFrame, after the pilot camera and its shakes) ----------------------------------------------------
         private void DevCamera()
         {
-            if(cameraView==null)return;var t=cameraView.transform;devPilotCamPos=t.position;devPilotCamRot=t.rotation;devPilotCamValid=true;
+            if(cameraView==null||arena==null)return;var t=cameraView.transform;devPilotCamPos=t.position;devPilotCamRot=t.rotation;devPilotCamValid=true;
+            // Forced hazard pulses (NativeGameFrame.devHazards): every client plays each record once with the hazard cues.
+            presentation.DevHazardPulses(arena);
             if(!devFly.On)return;if(!DevPanelAvailable){devFly.On=false;return;}
             t.SetPositionAndRotation(new Vector3(devFly.X,devFly.Y,devFly.Z),Quaternion.Euler(devFly.Pitch,devFly.Yaw,0));
             // Third person from the fly camera: my own body drawn, no view model.
@@ -183,9 +201,9 @@ namespace ChipArena.UnityConversion
         private void DevGui(float W,float Hh)
         {
             if(menu||arena==null)return;float now=Time.unscaledTime;
-            DevRevealMoment(W,Hh,now);
+            DevRevealMoment(W,Hh,now);DevTimeTag(W);
             devCtx=DevContext();devMode=NativeDevGate.Mode(devCtx);if(devMode==NativeDevMode.Off)return;
-            if(devLink.Status!=devLinkSeen){devLinkSeen=devLink.Status;if(devLinkSeen.Length>0)DevSay(devLinkSeen,devLink.StatusRefused);}
+            if(devLink.Status!=devLinkSeen){devLinkSeen=devLink.Status;if(devLinkSeen.Length>0)DevSay(devLinkSeen,devLink.StatusBad);}
             if(NativeDevGate.Indicator(devCtx))DevIndicator();
             if(devGraphOn)DevGraphPanel(W);if(devLogOn)DevLogPanel(W,Hh);if(devFly.On)DevFlyTag(W);
             if(devOpen)DevPanel(W,Hh);
@@ -237,7 +255,9 @@ namespace ChipArena.UnityConversion
             rx=DevTagRight(rx,p.y+15,devMode==NativeDevMode.Sandbox?"SANDBOX":"DEV ABUSE",accent);
             float ry=p.y+38,lx=close.xMax;
             lx=DevTagRight(lx,ry,!devCtx.Online?"OFFLINE":devCtx.Hosting?"ONLINE · HOST":"ONLINE · GUEST",C.CyanSoft());
-            if(devMode==NativeDevMode.Abuse)DevTagRight(lx,ry,devLink.Available?"AUTHORITY LINKED":"AUTHORITY: ASTRA PENDING",devLink.Available?C.Good():C.Warn());
+            if(DevOldHost)lx=DevTagRight(lx,ry,"HOST: NO DEV PROTOCOL",C.Danger());
+            else lx=DevTagRight(lx,ry,DevAbuseEnabled?"DEV COMMANDS ON":"DEV COMMANDS: OPT-IN",DevAbuseEnabled?C.Good():C.Warn());
+            var me=DevLocal();if(me!=null&&me.Seat.devCommandsRan)DevTagRight(lx,ry,NativeDevTags.NoProgress,C.Magenta());
         }
         // A small right-aligned tag ending at `right`; returns the next tag's right edge.
         private float DevTagRight(float right,float y,string text,Color tone)
@@ -264,11 +284,11 @@ namespace ChipArena.UnityConversion
             if(devHoverLabel!=null)
             {
                 float lw=U.Measure(devHoverLabel,11,true).x;U.Text(new Rect(x,y,lw+4,18),devHoverLabel,11,C.Ink(),TextAnchor.MiddleLeft,bold:true);
-                bool needs=ReferenceEquals(devHoverReason,NativeDevActions.NeedsAuthority)||ReferenceEquals(devHoverReason,NativeDevActions.SandboxOnly)||ReferenceEquals(devHoverReason,NativeDevActions.Off);
+                bool needs=ReferenceEquals(devHoverReason,NativeDevActions.OptIn)||ReferenceEquals(devHoverReason,NativeDevActions.NotNow)||ReferenceEquals(devHoverReason,NativeDevActions.SandboxOnly)||ReferenceEquals(devHoverReason,NativeDevActions.Off);
                 var lines=U.Wrap(devHoverReason,11,Mathf.Max(20,w-lw-10),false,1);if(lines.Count>0)U.Text(new Rect(x+lw+10,y,w-lw-10,18),lines[0],11,needs?C.Warn():C.Muted(),TextAnchor.MiddleLeft);
             }
             else if(devStatus.Length>0){float age=Time.unscaledTime-devStatusAt;Color tone=devStatusBad?C.Warn():age<1.2f?C.Good():C.Muted();U.Fill(new Rect(x,y+5,6,6),tone);var lines=U.Wrap(devStatus,11,w-14,false,1);if(lines.Count>0)U.Text(new Rect(x+14,y,w-14,18),lines[0],11,tone,TextAnchor.MiddleLeft);}
-            else U.Text(new Rect(x,y,w,18),devMode==NativeDevMode.Sandbox?"Sandbox: every action runs here.":"DEV Abuse: view tools are live; match actions wait for the host's authority.",11,C.Muted(),TextAnchor.MiddleLeft);
+            else U.Text(new Rect(x,y,w,18),devMode==NativeDevMode.Sandbox?"Sandbox: the sandbox's own tools run here; DEV commands need the DEV Abuse opt-in.":"DEV Abuse: DEV commands go to the match's authority, which checks your verified grant.",11,C.Muted(),TextAnchor.MiddleLeft);
             // The hotkeys.
             float kx=x,ky=y+28;var legend=NativeDevKeys.Legend;
             for(int i=0;i+1<legend.Length;i+=2)
@@ -279,6 +299,13 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Widgets ----------------------------------------------------------------------------------------------------
+        // A small state pill (lit when on); returns the next pill's x.
+        private float DevPill(float x,float y,string text,bool on,Color tone)
+        {
+            float w=U.Measure(text,8,true,true,.1f).x+16;var r=new Rect(x,y,w,18);
+            if(Event.current.type==EventType.Repaint&&DevVisible(r)){H.Tag(r,on?tone:C.Dim(),on?1:.55f,on);U.Text(new Rect(r.x+5,r.y,r.width-6,r.height),text,8,on?C.Ink():C.Dim(),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.1f);}
+            return x+w+6;
+        }
         private bool DevVisible(Rect r)=>r.yMax>=devBody.y&&r.y<=devBody.yMax;
         private bool DevClick(Rect r)=>devBodyHot&&DevVisible(r)&&U.Button(r);
         private float DevHead(float x,float y,float w,string title)
@@ -297,11 +324,11 @@ namespace ChipArena.UnityConversion
             if(h>.5f){devHoverLabel=label;devHoverReason=reason;}
             if(Event.current.type==EventType.Repaint&&DevVisible(r))
             {
-                Color tone=live?C.Cyan():state==NativeDevState.NeedsAuthority?C.Warn():C.Dim();
+                Color tone=live?C.Cyan():state==NativeDevState.SandboxOnly||state==NativeDevState.Unavailable?C.Dim():C.Warn();
                 var d=new Rect(r.x,r.y-h,r.width,r.height);H.Cut(d,on?C.Cyan(.24f):U.Mix(C.Indigo(.92f),C.Indigo(),h),5,H.Corners.Diagonal);
                 H.Outline(d,U.A(tone,live?.45f+.5f*h+(on?.3f:0):.4f+.3f*h),5);if(on)U.Fill(new Rect(d.x+3,d.y+d.height*.25f,2,d.height*.5f),C.Cyan());
                 float right=d.xMax-8;
-                if(!live){string badge=state==NativeDevState.NeedsAuthority?"ASTRA":"SBX";float bw=U.Measure(badge,8,true,true,.08f).x+10;var b=new Rect(right-bw,d.center.y-7,bw,14);H.Tag(b,tone,.9f,false);U.Text(b,badge,8,tone,TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);right=b.x-6;}
+                if(!live){string badge=NativeDevActions.Badge(state);float bw=U.Measure(badge,8,true,true,.08f).x+10;var b=new Rect(right-bw,d.center.y-7,bw,14);H.Tag(b,tone,.9f,false);U.Text(b,badge,8,tone,TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);right=b.x-6;}
                 else if(key!=null){float kw=H.KeyWidth(key,15);H.Key(new Rect(right-kw,d.center.y-7.5f,kw,15),key);right-=kw+6;}
                 U.Text(new Rect(d.x+12,d.y,right-d.x-12,d.height),label,12,live?C.Ink():C.Ink(.5f),TextAnchor.MiddleLeft,bold:true);
             }
@@ -326,7 +353,7 @@ namespace ChipArena.UnityConversion
                 var sw=new Rect(r.xMax-44,r.center.y-8,34,16);H.Cut(sw,value?C.Cyan(live?.85f:.35f):C.Edge(.8f),3,H.Corners.All);
                 U.Fill(new Rect(value?sw.xMax-14:sw.x+2,sw.y+2,12,12),value?C.Void():live?C.Ink(.8f):C.Dim());
                 float right=sw.x-8;
-                if(!live){string badge=state==NativeDevState.NeedsAuthority?"ASTRA":"SBX";float bw=U.Measure(badge,8,true,true,.08f).x+10;var b=new Rect(right-bw,r.center.y-7,bw,14);Color t=state==NativeDevState.NeedsAuthority?C.Warn():C.Dim();H.Tag(b,t,.9f,false);U.Text(b,badge,8,t,TextAnchor.MiddleCenter,bold:true,mono:true);right=b.x-6;}
+                if(!live){string badge=NativeDevActions.Badge(state);float bw=U.Measure(badge,8,true,true,.08f).x+10;var b=new Rect(right-bw,r.center.y-7,bw,14);Color t=state==NativeDevState.SandboxOnly||state==NativeDevState.Unavailable?C.Dim():C.Warn();H.Tag(b,t,.9f,false);U.Text(b,badge,8,t,TextAnchor.MiddleCenter,bold:true,mono:true);right=b.x-6;}
                 else if(key!=null){float kw=H.KeyWidth(key,15);H.Key(new Rect(right-kw,r.center.y-7.5f,kw,15),key);right-=kw+6;}
                 U.Text(new Rect(r.x+12,r.y,right-r.x-12,r.height),label,12,live?C.Ink():C.Ink(.5f),TextAnchor.MiddleLeft);
             }
@@ -353,7 +380,7 @@ namespace ChipArena.UnityConversion
                 U.Text(new Rect(r.x,r.y,r.width,18),label,12,live?C.Ink():C.Ink(.5f),TextAnchor.MiddleLeft);
                 float vw=U.Measure(NativeDevText.Value(value,decimals,unit),11,true,true).x;
                 U.Text(new Rect(r.xMax-vw-4,r.y,vw+4,18),NativeDevText.Value(value,decimals,unit),11,live?C.CyanSoft():C.Dim(),TextAnchor.MiddleRight,bold:true,mono:true);
-                if(!live){string badge=state==NativeDevState.NeedsAuthority?"ASTRA":"SBX";float bw=U.Measure(badge,8,true,true,.08f).x+10;var b=new Rect(r.xMax-vw-16-bw,r.y+2,bw,14);Color t=state==NativeDevState.NeedsAuthority?C.Warn():C.Dim();H.Tag(b,t,.9f,false);U.Text(b,badge,8,t,TextAnchor.MiddleCenter,bold:true,mono:true);}
+                if(!live){string badge=NativeDevActions.Badge(state);float bw=U.Measure(badge,8,true,true,.08f).x+10;var b=new Rect(r.xMax-vw-16-bw,r.y+2,bw,14);Color t=state==NativeDevState.SandboxOnly||state==NativeDevState.Unavailable?C.Dim():C.Warn();H.Tag(b,t,.9f,false);U.Text(b,badge,8,t,TextAnchor.MiddleCenter,bold:true,mono:true);}
                 float k=Mathf.Clamp01((value-min)/Mathf.Max(1e-5f,max-min));H.Line(track,k,live?C.Cyan():C.Dim(),C.Edge(.7f));
                 var thumb=new Rect(track.x+track.width*k-5,track.y-4,10,16);H.Cut(thumb,live?(devDrag==id?C.CyanSoft():C.Ink()):C.Dim(),2,H.Corners.All);
             }
@@ -398,14 +425,19 @@ namespace ChipArena.UnityConversion
                 H.Bar(new Rect(card.xMax-120,card.y+28,108,5),Mathf.Max(0,me.Hp),max,10,C.Cyan(),C.Edge(.6f));
             }
             y+=52;
+            // What the authority says about me (replicated: devGod / devInfiniteAmmo / devNoCooldowns, devRevealed, devScale, devCommandsRan).
+            if(me!=null){float px=x;px=DevPill(px,y,"GOD",me.DevGod,C.Good());px=DevPill(px,y,"INF AMMO",me.DevInfiniteAmmo,C.Good());px=DevPill(px,y,"NO CD",me.DevNoCooldowns,C.Good());px=DevPill(px,y,"REVEALED",me.Seat.devRevealed,C.Magenta());px=DevPill(px,y,me.Seat.devScale<1?"SHRUNK":"GROWN",me.Seat.devScale!=1,C.Violet());y+=26;
+                if(me.Seat.devCommandsRan)y=DevNote(x,y,w,"No progression this match: DEV commands ran for your account (NativeMatch.CanEarnProgression).",C.Magenta());}
             y=DevActs(x,y,w,2,DevPilotActs);
+            if(me!=null&&me.Seat.devRevealed)y=DevNote(x,y,w,"Revealed for this match: everyone sees your DEV tag.",C.Magenta());
             y=DevHead(x,y,w,"DEV COMMANDS");
             foreach(var id in DevPersonalToggles)
             {
-                var a=NativeDevActions.Find(id);var state=NativeDevActions.Resolve(a,devCtx,out string reason);float half=(w-8)/2;
+                var a=NativeDevActions.Find(id);var state=NativeDevActions.Resolve(a,devCtx,out string reason);float half=(w-8)/2;var me2=me;
                 U.Text(new Rect(x,y,w-half*.9f,32),a.Label,12,state==NativeDevState.Live?C.Ink():C.Ink(.55f),TextAnchor.MiddleLeft);
                 var on=new Rect(x+w-half*.9f,y,half*.45f-4,32);var off=new Rect(on.xMax+8,y,half*.45f-4,32);
-                if(DevButton(on,"ON",state,reason))DevSend(id,"on");if(DevButton(off,"OFF",state,reason))DevSend(id,"off");y+=40;
+                bool now=me2!=null&&(id=="me-god"?me2.DevGod:id=="me-ammo"?me2.DevInfiniteAmmo:me2.DevNoCooldowns);
+                if(DevButton(on,"ON",state,reason,now))DevSend(id,"on");if(DevButton(off,"OFF",state,reason,!now))DevSend(id,"off");y+=40;
             }
             y=DevHead(x,y,w,"WEAPON");
             {var a=NativeDevActions.Find("me-weapon");var state=NativeDevActions.Resolve(a,devCtx,out string reason);int k=DevChoice(x,ref y,w,devWeaponNames,DevIndex(devWeaponIds,devWeapon),NativeDevState.Live,reason,4);devWeapon=devWeaponIds.Length>0?devWeaponIds[k]:devWeapon;}
@@ -415,13 +447,13 @@ namespace ChipArena.UnityConversion
             return y;
         }
         private static readonly string[] DevPersonalToggles={"me-god","me-ammo","me-cooldowns"};
-        private static readonly string[] DevPilotActs={"me-restore","me-down","me-hit","me-summons","me-teleport","me-reveal"},DevInteractActs={"launch","freeze","bring","send","swap-weapon","debris-rain","shrink","grow","hazard-at","spawn-dummies-around","target-restore","target-down"};
+        private static readonly string[] DevPilotActs={"me-restore","me-down","me-hit","me-summons","me-teleport","me-reveal"},DevInteractActs={"launch","freeze","bring","send","swap-weapon","debris-rain","shrink","grow","hazard-at","spawn-dummies-around","target-debris","target-restore","target-down"};
         private static readonly string[] DevDummyActs={"dummy-restore","dummy-down","dummy-hit","dummy-summons"},DevDummyCommands={"spawn-dummy","clear-dummies"},DevArenaActs={"restore-all","arena-reset","test-block","round-end"};
         private static readonly string[] DevFxActs={"fx-collapse","fx-bursts","fx-clear"},DevVentActs={"me-vent","dummy-vent"},DevPreviewActs={"preview-draft","preview-knockout","preview-death","preview-rarity"};
         private float DevInteractTab(float x,float y,float w)
         {
             DevLists();
-            y=DevNote(x,y,w,"Match-only fun with the room: every action ends with the match and never touches anyone's progression. Proposals for Astra (docs/DEV-TOOLS.md).",C.Muted());
+            y=DevNote(x,y,w,"Match-only fun with the room: every action ends with the match and never reduces anyone's progression, purchases or rewards. Shrink and grow are looks only; hit volumes keep their size.",C.Muted());
             y=DevHead(x,y,w,"TARGET");
             if(DevPilot(devTarget)==null){foreach(var p in arena.Pilots)if(p.Seat.connected&&p.Seat.id!=arena.LocalId&&!p.Seat.AuthorityBoss){devTarget=p.Seat.id;break;}}
             foreach(var p in arena.Pilots)
@@ -432,15 +464,15 @@ namespace ChipArena.UnityConversion
                     H.Cut(r,on?C.Cyan(.18f):U.Mix(C.Indigo(.55f),C.Indigo(.95f),h),5,H.Corners.Diagonal);if(on)H.Outline(r,C.Cyan(.7f),5);
                     U.Fill(new Rect(r.x+4,r.y+6,2,r.height-12),match.Teams?TeamColor(p.Seat.team):SeatColor(p.Seat));NativeIcons.Draw(new Rect(r.x+14,r.y+7,16,16),p.Seat.bot?"bot":NativeIcons.Spec(p.Seat.spec),on?C.Cyan():C.Muted());
                     U.Text(new Rect(r.x+38,r.y,w-170,r.height),p.Seat.name,12,C.Ink(),TextAnchor.MiddleLeft,bold:on);
-                    U.Text(new Rect(r.xMax-130,r.y,120,r.height),p.Seat.id==arena.LocalId?"YOU":p.Seat.bot?"BOT":"PILOT",9,p.Seat.id==arena.LocalId?C.CyanSoft():C.Muted(),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.1f);
+                    U.Text(new Rect(r.xMax-130,r.y,120,r.height),p.Seat.id==arena.LocalId?"YOU":p.Seat.devDummy?NativeDevTags.DevDummy:p.Seat.bot?"BOT":"PILOT",9,p.Seat.id==arena.LocalId?C.CyanSoft():p.Seat.devDummy?C.Magenta():C.Muted(),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.1f);
                     U.Text(new Rect(r.xMax-210,r.y,70,r.height),p.Hp>0?NativeDevText.Int(Mathf.CeilToInt(p.Hp)):"OUT",10,p.Hp>0?C.Good():C.Danger(),TextAnchor.MiddleRight,mono:true);
                 }
                 if(DevClick(r))devTarget=p.Seat.id;y+=34;
             }
             y=DevHead(x,y,w,"PARAMETERS");NativeDevActions.Resolve(NativeDevActions.Find("launch"),devCtx,out string why);
-            devLaunchForce=DevSlider(new Rect(x,y,w,34),"Launch force",devLaunchForce,5,60,0,"",NativeDevState.Live,why,out _);y+=42;
-            devFreezeSeconds=DevSlider(new Rect(x,y,w,34),"Freeze seconds",devFreezeSeconds,1,10,1," s",NativeDevState.Live,why,out _);y+=42;
-            devAroundCount=Mathf.RoundToInt(DevSlider(new Rect(x,y,w,34),"Dummies around",devAroundCount,1,6,0,"",NativeDevState.Live,why,out _));y+=42;
+            devLaunchForce=DevSlider(new Rect(x,y,w,34),"Launch speed (up)",devLaunchForce,NativeDevContract.LaunchMin,NativeDevContract.LaunchMax,0," m/s",NativeDevState.Live,why,out _);y+=42;
+            devFreezeSeconds=DevSlider(new Rect(x,y,w,34),"Freeze seconds",devFreezeSeconds,0,NativeDevContract.FreezeMax,1," s",NativeDevState.Live,why,out _);y+=42;
+            devAroundCount=Mathf.RoundToInt(DevSlider(new Rect(x,y,w,34),"Dummies around",devAroundCount,NativeDevContract.AroundMin,NativeDevContract.AroundMax,0,"",NativeDevState.Live,why,out _));y+=42;
             devRainMaterial=DebrisMaterials[DevChoice(x,ref y,w,DebrisMaterials,DevIndex(DebrisMaterials,devRainMaterial),NativeDevState.Live,why,3,"Debris rain material")];
             devTargetWeapon=devWeaponIds.Length>0?devWeaponIds[DevChoice(x,ref y,w,devWeaponNames,DevIndex(devWeaponIds,devTargetWeapon),NativeDevState.Live,why,4,"Swap weapon to")]:devTargetWeapon;
             y=DevHead(x,y,w,"PLAY WITH THEM");
@@ -459,7 +491,11 @@ namespace ChipArena.UnityConversion
             float v=DevSlider(new Rect(x,y,w,34),"Dummy respawn seconds (0 disables)",shown,0,30,0," s",sr,rw,out bool moved);if(moved){devRespawn=v;DevInvoke("dummy-respawn",true);}y+=42;
             shown=devMode==NativeDevMode.Sandbox?arena.SandboxRepeat:devRepeat;v=DevSlider(new Rect(x,y,w,34),"Repeat cast seconds (0 disables)",shown,0,60,0," s",sr,rw,out moved);if(moved){devRepeat=v;DevInvoke("dummy-repeat",true);}y+=42;
             {var dr=NativeDevActions.Resolve(NativeDevActions.Find("dummy-difficulty"),devCtx,out string dw);int k=DevChoice(x,ref y,w,DevDifficulties,DevIndex(DevDifficulties,devDifficulty),dr,dw,4,"Bot difficulty");if(DevDifficulties[k]!=devDifficulty){devDifficulty=DevDifficulties[k];DevInvoke("dummy-difficulty");}}
-            y=DevHead(x,y,w,"DEV COMMANDS");y=DevActs(x,y,w,2,DevDummyCommands);
+            y=DevHead(x,y,w,"SPAWN (DEV COMMAND)");
+            {var sp=NativeDevActions.Resolve(NativeDevActions.Find("spawn-dummy"),devCtx,out string sw);devSpawnInput=NativeDevContract.SpawnInputs[DevChoice(x,ref y,w,NativeDevContract.SpawnInputs,DevIndex(NativeDevContract.SpawnInputs,devSpawnInput),sp,sw,7,"Spawned dummy input")];
+             float team=DevSlider(new Rect(x,y,w,34),"Spawned dummy team",DevSpawnTeam(),0,NativeDevContract.TeamMax,0,"",sp,sw,out bool teamMoved);if(teamMoved)devSpawnTeam=Mathf.RoundToInt(team);y+=42;
+             y=DevNote(x,y,w,"Spawns with the dummy weapon above. Clear removes only DEV-created dummies; eight pilot slots include dummies.",C.Muted());}
+            y=DevActs(x,y,w,2,DevDummyCommands);
             return y;
         }
         // The Chips tab's fixed toolbar: target, search, sort, filter; returns the grid's top.
@@ -520,15 +556,15 @@ namespace ChipArena.UnityConversion
             float bx=r.x+10,by=r.yMax-28,bw=(r.width-20-5*4)/6;
             if(DevMini(new Rect(bx,by,bw,22),"−",add,addWhy,"Remove one"))DevChip(chip.id,target,-1,1);bx+=bw+4;
             if(DevMini(new Rect(bx,by,bw,22),"+",add,addWhy,"Add one"))DevChip(chip.id,target,1,1);bx+=bw+4;
-            if(DevMini(new Rect(bx,by,bw,22),"MAX",add,addWhy,"Stack to the max"))DevChip(chip.id,target,1,Mathf.Max(0,chip.max-n));bx+=bw+4;
-            if(DevMini(new Rect(bx,by,bw,22),"CLR",add,addWhy,"Remove the stack"))DevChip(chip.id,target,-1,n);bx+=bw+4;
+            if(DevMini(new Rect(bx,by,bw,22),"MAX",add,addWhy,"Stack to the max"))DevChip(chip.id,target,1,Mathf.Min(NativeDevContract.ChipCountMax,Mathf.Max(0,chip.max-n)));bx+=bw+4;
+            if(DevMini(new Rect(bx,by,bw,22),"CLR",add,addWhy,"Remove the stack"))DevChip(chip.id,target,-1,Mathf.Min(NativeDevContract.ChipCountMax,n));bx+=bw+4;
             if(DevMini(new Rect(bx,by,bw,22),devChips.Favourites.Contains(chip.id)?"★":"☆",NativeDevState.Live,"Favourite (saved)","Favourite")){devChips.Favourite(chip.id);prefs.devChipFavourites=devChips.FavouritesText();Save();}bx+=bw+4;
             if(DevMini(new Rect(bx,by,bw,22),"CAST",cast,castWhy,"Dummy casts with this chip")){devChipId=chip.id;DevInvoke("chip-cast");devChips.Touch(chip.id);}
         }
         private bool DevMini(Rect r,string label,NativeDevState state,string reason,string hover)
         {
             int id=9000+devWid++;bool live=state==NativeDevState.Live;float h=devBodyHot&&DevVisible(r)?U.HoverAmount(id,r):0;if(h>.5f){devHoverLabel=hover;devHoverReason=reason;}
-            if(Event.current.type==EventType.Repaint&&DevVisible(r)){H.Cut(r,U.Mix(C.Navy(.9f),C.Indigo(),h),3,H.Corners.BR);H.Outline(r,live?C.Cyan(.3f+.5f*h):state==NativeDevState.NeedsAuthority?C.Warn(.4f):C.Edge(.6f),3,H.Corners.BR);U.Text(r,label,10,live?C.Ink():C.Ink(.4f),TextAnchor.MiddleCenter,bold:true,mono:true);}
+            if(Event.current.type==EventType.Repaint&&DevVisible(r)){H.Cut(r,U.Mix(C.Navy(.9f),C.Indigo(),h),3,H.Corners.BR);H.Outline(r,live?C.Cyan(.3f+.5f*h):state==NativeDevState.SandboxOnly||state==NativeDevState.Unavailable?C.Edge(.6f):C.Warn(.4f),3,H.Corners.BR);U.Text(r,label,10,live?C.Ink():C.Ink(.4f),TextAnchor.MiddleCenter,bold:true,mono:true);}
             return DevClick(r);
         }
         // `count` steps of one chip (the sandbox call per step, as the old +/− did; a DEV command carries the count).
@@ -563,11 +599,13 @@ namespace ChipArena.UnityConversion
             y=DevHead(x,y,w,"DEBRIS LAUNCHER");
             {
                 var dr=NativeDevActions.Resolve(NativeDevActions.Find("debris"),devCtx,out string dw);
-                debrisMass=DevSlider(new Rect(x,y,w,34),"Mass (kg)",debrisMass,1,150,0," kg",dr,dw,out _);y+=42;
+                // The sandbox's launcher keeps its 150 kg; a DEV command takes up to 500 kg (NativeDevRules.Validate).
+                if(devMode==NativeDevMode.Sandbox)debrisMass=DevSlider(new Rect(x,y,w,34),"Mass (kg)",debrisMass,1,150,0," kg",dr,dw,out _);
+                else debrisMass=DevSlider(new Rect(x,y,w,34),"Mass (kg)",debrisMass,NativeDevContract.DebrisMassMin,NativeDevContract.DebrisMassMax,0," kg",dr,dw,out _);y+=42;
                 debrisSpeed=DevSlider(new Rect(x,y,w,34),"Speed (m/s)",debrisSpeed,1,100,0," m/s",dr,dw,out _);y+=42;
                 debrisMaterial=DebrisMaterials[DevChoice(x,ref y,w,DebrisMaterials,DevIndex(DebrisMaterials,debrisMaterial),dr,dw,3,"Material")];
                 debrisImpact=DebrisImpacts[DevChoice(x,ref y,w,DebrisImpacts,DevIndex(DebrisImpacts,debrisImpact),dr,dw,3,"Impact")];
-                DevAct(new Rect(x,y,w,34),"debris");y+=42;
+                DevAct(new Rect(x,y,w,34),"debris",devMode==NativeDevMode.Sandbox?null:"Launch at the Interact target");y+=42;
             }
             if(presentation?.Structures!=null)
             {
@@ -640,6 +678,7 @@ namespace ChipArena.UnityConversion
              float v=DevSlider(new Rect(x,y,w,34),"Simulation speed",shown,NativeDevContract.TimeScaleMin,NativeDevContract.TimeScaleMax,2,"×",tr,tw,out bool moved);y+=42;
              if(moved){devSpeed=v;if(devMode==NativeDevMode.Sandbox)DevInvoke("time-scale",true);}
              if(devMode!=NativeDevMode.Sandbox){DevAct(new Rect(x,y,w,32),"time-scale","Send speed to the room");y+=40;}}
+            y=DevStat(x,y,w,"ROOM SPEED (AUTHORITY)",NativeDevText.Value(arena.DevTimeScale,2,"×"));
             y=DevHead(x,y,w,"RULES");DevToggleAct(new Rect(x,y,w,32),"safe-mode",arena.SafeMode,"Safe mode: the player retains 1 HP");y+=40;
             y=DevHead(x,y,w,"STATE (READ-ONLY)");
             y=DevStat(x,y,w,"PHASE",DevPhaseName(match.Phase));y=DevStat(x,y,w,"SET",NativeDevText.Int(match.Set));y=DevStat(x,y,w,"ROUND",NativeDevText.Int(match.Round));

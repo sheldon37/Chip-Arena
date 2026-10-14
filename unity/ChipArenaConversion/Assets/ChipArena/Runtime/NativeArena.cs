@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
         public void Reset()
         {
             if(!Replica&&RandomizeMapEachSet&&Match.Set!=mapSet){var maps=Content.maps.Where(m=>m.rotation&&m.id!=MapId).ToArray();if(mapSet>0&&maps.Length>0)MapId=maps[random.Next(maps.Length)].id;mapSet=Match.Set;}
-            Generation++;Entries.Clear();MinionDeaths.Clear();DestroyScene();Pve=null;pveEntries.Clear();pveNavigation=null;remoteInputs.Clear();debrisLedger.Clear();contacts.Clear();root=new GameObject("Native match authority");
+            DevHazardPulses.Clear();Generation++;Entries.Clear();MinionDeaths.Clear();DestroyScene();Pve=null;pveEntries.Clear();pveNavigation=null;remoteInputs.Clear();debrisLedger.Clear();contacts.Clear();root=new GameObject("Native match authority");
             if(ReplicaScene.IsValid())UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(root,ReplicaScene);
             var map=Content.Map(MapId);var shader=Resources.Load<Shader>("NativeLit");
             foreach(var definition in Content.materials)if(!materials.ContainsKey(definition.id))
@@ -106,12 +106,12 @@ namespace ChipArena.UnityConversion
         public NativePilot Local=>Pilots.Find(p=>p.Seat.id==LocalId);
         public void Step(InputFrame input)
         {
-            if(BossVictoryTick(input))return;CancelInvalidKernel();if(PveHoldTick(1f/60))return;foreach(var p in Pilots)if(!p.Seat.connected&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12){p.Hp=0;p.Seat.alive=false;}SandboxStep();Match.Tick(1d/60);if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();StepHazards();StepAuthoredHazards();StepSirenStage();StepStructures();StepKernelWorld();if(Match.ResultMovement){StepResultMovement(input);StepResultProjectiles();return;}if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
+            if(BossVictoryTick(input))return;CancelInvalidKernel();if(PveHoldTick(1f/60))return;foreach(var p in Pilots)if(!p.Seat.connected&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12){p.Hp=0;p.Seat.alive=false;}DevStep();SandboxStep();Match.Tick(1d/60);if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();StepHazards();StepAuthoredHazards();StepSirenStage();StepStructures();StepKernelWorld();if(Match.ResultMovement){StepResultMovement(input);StepResultProjectiles();return;}if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
             Events.RemoveAll(e=>Time-e.Time>1); // Preserve the full burst for its natural glow lifetime.
             // Establish every defense before resolving attacks.
             foreach(var p in Pilots)
             {
-                if(p.Hp<=0||!p.Seat.connected)continue;p.Input=p.Seat.bot?AvoidVents(p,SandboxInput(p,Bot(p))):p.Seat.id==LocalId?input:RemoteInput(p.Seat.id);p.Input=p.Input.Sanitized();PveInput(p);
+                if(p.Hp<=0||!p.Seat.connected)continue;p.Input=p.Seat.bot?AvoidVents(p,DevDummyInput(p,SandboxInput(p,DevBot(p)))):p.Seat.id==LocalId?input:RemoteInput(p.Seat.id);p.Input=p.Input.Sanitized();PveInput(p);
                 ProbePilotGround(p);
             }
             RouteLeetInputs();
@@ -224,7 +224,7 @@ namespace ChipArena.UnityConversion
         private bool Invulnerable(NativePilot p)=>p.Roll!=null&&Time>=p.RollAt+p.Roll.iframeStart&&Time<p.RollAt+p.Roll.iframeStart+p.Roll.iframeSeconds;
         private float Damage(NativePilot target,NativePilot source,float amount,Vector3 direction,float impulse,bool head,bool forced=false,bool direct=true,bool primary=true,bool melee=false,bool stage=false,NativeBodyImpact impact=null,Vector3? hitPoint=null,bool rollAvoidable=true,bool weaponHit=false,EventKind eventKind=EventKind.Hit,string damageKind=null,bool sirenCrush=false,string collapseSegment=null,float finalCap=float.PositiveInfinity,int kernelStep=0,string stageHazard=null,bool stageLethal=false,int projectile=0,bool pierced=false)
         {
-            if(BossVictoryWalk||Pve?.Stage=="ended")return 0;
+            if(target.DevGod||BossVictoryWalk||Pve?.Stage=="ended")return 0;
             if(!NativeKernelPanicRules.AllowsDamage(target.Kernel,target.Seat.id,source?.Kernel,source?.Seat.id??0,kernelStep))return 0;
             if(target.Hp<=0||!target.Seat.connected||source!=null&&!forced&&!(collapseSegment!=null&&source==target)&&!(kernelStep>0?NativeCombatRules.CanHit(source.Seat,target.Seat,Match.Teams,FriendlyFire):CanHit(source,target))||float.IsNaN(amount)||float.IsInfinity(amount)||amount<=0||!forced&&(target.ScareBy!=null||kernelStep==0&&(Time<target.ShieldUntil||!stage&&NativeSpecialRules.Protected(target.Down,Time)||rollAvoidable&&Invulnerable(target))))return 0;
             if(source!=null&&!forced&&direct&&(primary||melee)&&Time<target.BlockEnd){BlockProc(target,source,hitPoint??target.Collider.ClosestPoint(target.Body.position-direction.normalized*2),"clash");if(melee)SuccessfulMeleeBlock(target,source,amount,direction,impulse);return 0;}
@@ -299,7 +299,7 @@ namespace ChipArena.UnityConversion
             if(Replica&&replicaFrame!=null)return ReplicaSnapshot();
             foreach(var p in Pilots)
             {
-                var a=p.Pose;a.BowDrawAt=p.BowDrawAt;a.BowDraw=p.BowDraw;a.BowReleaseAt=p.BowReleaseAt;a.BowRainAt=p.BowRainAt;a.BowRainTarget=Vec(p.BowRainTarget);a.Cyber=CyberSnapshot(p);a.Kernel=p.Kernel?.ViewCopy();a.Wounds=p.Wounds.ToArray();a.Weapon=p.Seat.spec=="pistol"?WeaponId.Pistol:p.Seat.spec=="rifle"?WeaponId.Rifle:p.Seat.spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;a.VisualSet=p.Seat.spec=="daggers"?1:p.Seat.spec=="greatsword"?2:p.Seat.spec=="shield"?3:0;a.MagicVisual=p.Seat.spec=="fire"?1:p.Seat.spec=="water"?2:p.Seat.spec=="lightning"?3:p.Seat.spec=="darkness"?4:0;a.SourceSpec=p.Seat.spec;a.BodyColor=p.Seat.bodyColor;a.AccentColor=p.Seat.accentColor;a.Hat=p.Seat.hat;a.HatColor=p.Seat.hatColor;a.SourceAction=p.Fighter?.Kind;a.SourceAt=p.Fighter?.At??0;a.SourceUntil=p.Fighter?.Until??0;a.SourceTotal=p.Fighter?.Total??0;a.SourceIndex=p.Fighter?.Index??0;a.RigScale=p.Siren?.Scale??1;
+                var a=p.Pose;a.BowDrawAt=p.BowDrawAt;a.BowDraw=p.BowDraw;a.BowReleaseAt=p.BowReleaseAt;a.BowRainAt=p.BowRainAt;a.BowRainTarget=Vec(p.BowRainTarget);a.Cyber=CyberSnapshot(p);a.Kernel=p.Kernel?.ViewCopy();a.Wounds=p.Wounds.ToArray();a.Weapon=p.Seat.spec=="pistol"?WeaponId.Pistol:p.Seat.spec=="rifle"?WeaponId.Rifle:p.Seat.spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;a.VisualSet=p.Seat.spec=="daggers"?1:p.Seat.spec=="greatsword"?2:p.Seat.spec=="shield"?3:0;a.MagicVisual=p.Seat.spec=="fire"?1:p.Seat.spec=="water"?2:p.Seat.spec=="lightning"?3:p.Seat.spec=="darkness"?4:0;a.SourceSpec=p.Seat.spec;a.BodyColor=p.Seat.bodyColor;a.AccentColor=p.Seat.accentColor;a.Hat=p.Seat.hat;a.HatColor=p.Seat.hatColor;a.SourceAction=p.Fighter?.Kind;a.SourceAt=p.Fighter?.At??0;a.SourceUntil=p.Fighter?.Until??0;a.SourceTotal=p.Fighter?.Total??0;a.SourceIndex=p.Fighter?.Index??0;a.RigScale=(p.Siren?.Scale??1)*p.Seat.devScale;
                 if(p.Seat.spec=="cyberlord"){a.SourceRanged=p.Cyber.Ranged?.Ranged??false;a.SourceModeAt=p.Cyber.Ranged?.ModeAt??-100;}
                 if(p.Seat.spec=="siren"){var m=p.Siren?.Move;a.SourceAction=NativeSirenRules.GrabPose(m?.Caught!=null,Time,m?.Until??0)?"grab":m?.Rule.Id;a.SourceAt=m?.Caught!=null?m.CaughtAt:m?.At??0;a.SourceUntil=m?.Until??0;a.SourceSide=m?.Side??1;a.SourceRanged=p.Siren?.Ranged??false;a.SourceModeAt=p.Siren?.ModeAt??-100;}
                 var hold=p.HeldBy?.Siren?.Move;bool held=hold?.Caught==p&&p.Hp>0&&p.Seat.connected;
@@ -314,6 +314,6 @@ namespace ChipArena.UnityConversion
             }
             return new Snapshot{Tick=(int)Math.Round(Match.Time*60),Actors=Pilots.Where(p=>p.Seat.connected).Select(p=>{if(!interpolated)return p.Pose;var shown=p.Pose.ViewCopy();shown.Position=Vec(p.Body.transform.position-Vector3.up*.865f);return shown;}).ToArray(),Covers=Array.Empty<Cover>(),Shots=Bullets.Select(b=>new Shot{Id=b.Id,Owner=b.Owner,Original=b.Original,Spec=b.Spec,Draw=b.Draw,Detail=b.Detail,SirenKind=b.SirenKind,SirenTarget=b.SirenTarget,LeetKind=b.LeetKind,Born=b.Born,Burn=b.Burn,Poison=b.Poison,Hadoken=b.Hadoken,Super=b.Super,Direct=b.Direct,ChipImpact=b.ChipImpact,WeaponFx=b.WeaponFx,Pong=b.Pong,Boomerang=b.Boomerang,Zigzag=b.Zigzag,Mods=b.Mods.Select(c=>new ChipCount{id=c.Key,count=c.Value}).ToArray(),Position=Vec(b.Position),Velocity=Vec(b.Velocity),Radius=b.Radius,MagicVisual=b.Spec=="fire"?1:b.Spec=="water"?2:b.Spec=="lightning"?3:b.Spec=="darkness"?4:0,Weapon=Content.Weapon(b.Spec).@class=="ranged"?WeaponId.Pistol:WeaponId.Sword}).ToArray(),Events=Events.ToArray()};
         }
-        public void Dispose(){DestroyScene();foreach(var m in materials.Values)CapturedAnimation.Release(m);materials.Clear();foreach(var m in surfaces.Values)CapturedAnimation.Release(m);surfaces.Clear();}
+        public void Dispose(){DevDispose();DestroyScene();foreach(var m in materials.Values)CapturedAnimation.Release(m);materials.Clear();foreach(var m in surfaces.Values)CapturedAnimation.Release(m);surfaces.Clear();}
     }
 }

@@ -27,8 +27,8 @@ namespace ChipArena.UnityConversion
         private void DevWorld(float scale,float height)
         {
             if(Event.current.type!=EventType.Repaint||arena==null||cameraView==null)return;
-            DevTags(height);
-            if(!DevPanelAvailable)return;devLines=0;
+            DevTags(height);devLines=0;DevPulseMarks();
+            if(!DevPanelAvailable)return;
             if(devOverlayHazards)DevHazardBoxes();if(devOverlayNav)DevNavGraph();if(devOverlayAnchors)DevAnchors();
             if(devOverlayHit)DevHitVolumes();if(devOverlayMelee)DevMeleeVolumes();if(devOverlayShots)DevShotPaths();
         }
@@ -143,6 +143,23 @@ namespace ChipArena.UnityConversion
             }
         }
 
+        // A DEV-forced hazard pulse's mark for everyone: a short magenta ring and "DEV" over the pulse for its two seconds.
+        private void DevPulseMarks()
+        {
+            foreach(var h in arena.DevHazardPulses)
+            {
+                if(h==null)continue;float age=arena.Time-h.at;if(age<0||age>2)continue;float a=1-age/2,r=.8f+age*1.6f;
+                DevRing(h.position+Vector3.up*.05f,r,C.Magenta(.85f*a),20);DevLabel(h.position+Vector3.up*2.2f,NativeDevTags.Tag,C.Magenta(a));
+            }
+        }
+        // The room's DEV time scale (NativeGameFrame.devTimeScale) for everyone while it is not 1.
+        private void DevTimeTag(float W)
+        {
+            if(Event.current.type!=EventType.Repaint||arena==null||Mathf.Abs(arena.DevTimeScale-1)<.001f)return;
+            string v=NativeDevText.Value(arena.DevTimeScale,2,"×");float vw=U.Measure(v,10,true,true).x,tw=U.Measure("DEV TIME",9,true,true,.14f).x;var r=new Rect(W*.5f-(tw+vw+34)*.5f,52,tw+vw+34,22);
+            H.Tag(r,C.Magenta(),1);U.Text(new Rect(r.x+12,r.y,tw+4,r.height),"DEV TIME",9,C.Magenta(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);U.Text(new Rect(r.xMax-vw-12,r.y,vw+4,r.height),v,10,C.Ink(),TextAnchor.MiddleRight,bold:true,mono:true);
+        }
+
         // ---- DEV tags: nameplates and the kill feed (every client; dormant until devRevealed exists) ----------------------
         private NativeSeat DevSeat(int id){if(match==null)return null;foreach(var s in match.Seats)if(s.id==id)return s;return null;}
         private bool DevTagged(NativeSeat seat,float now)=>seat!=null&&(NativeDevTags.Revealed(seat)||devReveal.Previewing(seat.id,now));
@@ -153,7 +170,7 @@ namespace ChipArena.UnityConversion
             {
                 if(!p.Seat.connected||p.Hp<=0||!DevTagged(p.Seat,now)||FirstPersonView&&p==arena.ViewPilot)continue;
                 // Where the overhead bar's name sits (NativeCombatHud.cs: the bar at the body + 1.3 m, the name 27 over it), with its range and occlusion.
-                var at=p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:1);float metres=Vector3.Distance(eye,at);if(metres>32||!DevScreen(at,out var bar))continue;
+                var at=p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:p.Seat.devScale);float metres=Vector3.Distance(eye,at);if(metres>32||!DevScreen(at,out var bar))continue;
                 Vector3 delta=at-eye;if(physics.Raycast(eye,delta.normalized,out _,delta.magnitude-.08f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))continue;
                 float nameW=Mathf.Min(220,U.Measure(p.Seat.name,12).x),w=30,h=15;var r=new Rect(Mathf.Round(bar.x-nameW*.5f-w-5),Mathf.Round(bar.y-27+4),w,h);
                 DevDevTag(r,1,now);
@@ -228,16 +245,22 @@ namespace ChipArena.UnityConversion
             float tw=U.Measure(NativeDevTags.Indicator,10,true,true,.14f).x,kw=H.KeyWidth(NativeDevKeys.Panel,14);var r=new Rect(24,22,tw+kw+40,24);
             U.Glow(r,C.Magenta(.25f*breath),10);H.Tag(r,C.Magenta(),1);U.Fill(new Rect(r.x+10,r.center.y-3,6,6),C.Magenta(breath));
             U.Text(new Rect(r.x+22,r.y,tw+4,r.height),NativeDevTags.Indicator,10,C.Ink(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);H.Key(new Rect(r.xMax-kw-8,r.center.y-7,kw,14),NativeDevKeys.Panel,1,C.Magenta());
+            // My replicated DEV state under it: god, infinite ammo, no cooldowns, scale, and the progression note.
+            var me=DevLocal();if(me==null)return;float px=r.x,py=r.yMax+4;
+            if(me.DevGod)px=DevHudPill(px,py,"GOD",C.Good());if(me.DevInfiniteAmmo)px=DevHudPill(px,py,"INF AMMO",C.Good());if(me.DevNoCooldowns)px=DevHudPill(px,py,"NO CD",C.Good());
+            if(me.Seat.devScale!=1)px=DevHudPill(px,py,me.Seat.devScale<1?"SHRUNK":"GROWN",C.Violet());if(me.Seat.devCommandsRan)DevHudPill(px,py,NativeDevTags.NoProgress,C.Magenta());
         }
+        private float DevHudPill(float x,float y,string text,Color tone)
+        {float w=U.Measure(text,8,true,true,.1f).x+16;var r=new Rect(x,y,w,17);H.Tag(r,tone,1);U.Text(new Rect(r.x+5,r.y,r.width-6,r.height),text,8,C.Ink(),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.1f);return x+w+5;}
         private void DevFlyTag(float W)
         {
-            if(Event.current.type!=EventType.Repaint)return;float y=devGraphOn?150:56;var lines=U.Wrap(NativeDevKeys.FlyHelp,10,560,false,1);float w=Mathf.Min(620,W-40);var r=new Rect(W*.5f-w*.5f,y,w,40);
+            if(Event.current.type!=EventType.Repaint)return;float y=(devGraphOn?150:56)+(Mathf.Abs(arena.DevTimeScale-1)<.001f?0:24);var lines=U.Wrap(NativeDevKeys.FlyHelp,10,560,false,1);float w=Mathf.Min(620,W-40);var r=new Rect(W*.5f-w*.5f,y,w,40);
             H.Panel(r,1,C.Cyan(),NativeHudCyber.TagCut,H.Corners.Diagonal,true,.8f);U.Text(new Rect(r.x+14,r.y+4,140,16),"FLY CAMERA",10,C.Cyan(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
             U.Text(new Rect(r.xMax-170,r.y+4,156,16),NativeDevText.Value(devFly.Speed,0," m/s"),10,C.CyanSoft(),TextAnchor.MiddleRight,bold:true,mono:true);if(lines.Count>0)U.Text(new Rect(r.x+14,r.y+20,r.width-28,16),lines[0],10,C.Muted(),TextAnchor.MiddleLeft,mono:true);
         }
         private void DevGraphPanel(float W)
         {
-            if(Event.current.type!=EventType.Repaint)return;float w=340,hgt=86;var r=new Rect(W*.5f-w*.5f,56,w,hgt);H.Panel(r,1,C.Cyan(),NativeHudCyber.TagCut,H.Corners.Diagonal,true,.86f);
+            if(Event.current.type!=EventType.Repaint)return;float w=340,hgt=86,top=Mathf.Abs(arena.DevTimeScale-1)<.001f?56:80;var r=new Rect(W*.5f-w*.5f,top,w,hgt);H.Panel(r,1,C.Cyan(),NativeHudCyber.TagCut,H.Corners.Diagonal,true,.86f);
             float frame=devFrameGraph.Average(),fps=frame>0?1000/frame:0;
             U.Text(new Rect(r.x+12,r.y+6,90,14),NativeDevText.Value(fps,0," fps"),11,C.Ink(),TextAnchor.MiddleLeft,bold:true,mono:true);
             U.Text(new Rect(r.x+96,r.y+6,90,14),NativeDevText.Value(frame,1," ms"),10,C.CyanSoft(),TextAnchor.MiddleLeft,mono:true);
@@ -266,6 +289,23 @@ namespace ChipArena.UnityConversion
 
     public sealed partial class ArenaPresentation
     {
+        // The forced hazard pulses seen this frame and the frame before (a record lives two seconds; each plays once).
+        private HashSet<long> devPulsesNow=new HashSet<long>(),devPulsesBefore=new HashSet<long>();
+        /// <summary>Plays each new NativeArena.DevHazardPulses record (host: the authority's list; guest: NativeGameFrame.devHazards)
+        /// once through the shared effects renderer with its hazard's cues (Core NativeDevHazardLook), at the record's position.
+        /// A record first seen late (a join) is skipped. Presentation only; the scheduled hazard looks are not retimed.</summary>
+        public void DevHazardPulses(NativeArena arena)
+        {
+            var swap=devPulsesBefore;devPulsesBefore=devPulsesNow;devPulsesNow=swap;devPulsesNow.Clear();if(arena==null)return;
+            var hazards=arena.Map.hazards;
+            foreach(var h in arena.DevHazardPulses)
+            {
+                if(h?.id==null)continue;long key=((long)h.id.GetHashCode()<<32)^(uint)BitConverter.SingleToInt32Bits(h.at);devPulsesNow.Add(key);
+                if(devPulsesBefore.Contains(key)||arena.Time-h.at>.6f||blasts==null)continue;
+                MapHazard hz=null;if(hazards!=null)foreach(var x in hazards)if(x!=null&&x.id==h.id){hz=x;break;}
+                blasts.DevHazardPulse(h.position,hz?.kind,NativeDevHazardLook.Reach(hz),BlastQuality);
+            }
+        }
         /// <summary>The `index`th death announcement shown at `time`, in DeathMessages' order (its 1.05-5.15 s window), or null.</summary>
         public NativeBroadcastItem DeathItemAt(float time,int index)
         {

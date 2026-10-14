@@ -12,7 +12,9 @@ namespace ChipArena.UnityConversion
     // Runtime NativeDevPanel / NativeDevOverlays / NativeSandbox DevRun). Against the engine-free rules: the toggle only for a
     // verified dev and off by default; the panel's availability across sandbox, offline match, online host and guest, dev and
     // not; every sandbox action routing to the same NativeArena call with the same arguments and limits as the old list;
-    // authority actions disabled with the reason outside the sandbox and nothing reported done until a host reply; the view
+    // DEV commands only through Astra's SendDevCommand (docs/DEV-ABUSE-AUTHORITY.md) with the session opt-in in an active round,
+    // clamped to NativeDevRules.Validate's limits, nothing reported done before the authority's reply and a timeout shown as
+    // unknown; the replicated DEV state drawn, never written; forced hazard pulses from the replicated records; the view
     // tools (overlays, fly camera) read-only and drawn from the authority's own volumes; no per-frame allocation (warmed by the
     // identical pass first); the cyber palette, no GUILayout or LINQ in the panel, the hooks, the hotkeys and the metas.
     internal static class DevToolsChecks
@@ -22,16 +24,19 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
-            Toggle(R);Matrix();Routes(R);Authority(R);ReadOnly(R);Volumes();Reveal();Log();Chips();Layout(root);Allocations();Sources(root,R);
-            Console.WriteLine("PASS DEV tools ("+count+" checks: the DEV Abuse toggle only for a verified dev, off by default; the panel in the sandbox and, with DEV Abuse, every offline / host / guest match, never for a non-dev; "+NativeDevActions.All.Count(a=>a.SandboxRoute&&a.Kind!=NativeDevKind.Presentation)+" sandbox routes on the old NativeArena calls; contract actions disabled with the reason until Astra's authority, nothing done before a reply; overlays and fly camera read-only on the authority's own volumes; no per-frame allocation; palette, hooks, hotkeys and metas)");
+            Toggle(R);Matrix();Routes(R);Authority(R);ReadOnly(R);Volumes();Reveal();Hazards(root,R);Log();Chips();Layout(root);Allocations();Sources(root,R);
+            Console.WriteLine("PASS DEV tools ("+count+" checks: the DEV Abuse toggle only for a verified dev, off by default; the panel in the sandbox and, with DEV Abuse, every offline / host / guest match, never for a non-dev; "+NativeDevActions.All.Count(a=>a.SandboxRoute&&a.Kind!=NativeDevKind.Presentation)+" sandbox routes on the old NativeArena calls; DEV commands only through SendDevCommand with the opt-in in a round, on the authority's limits, nothing done before its reply, a timeout unknown; forced hazard pulses from the replicated records; overlays and fly camera read-only on the authority's own volumes; no per-frame allocation; palette, hooks, hotkeys and metas)");
         }
-        private static NativeDevContext Ctx(bool inMatch=true,bool sandbox=false,bool online=false,bool hosting=false,bool dev=true,bool abuse=false,bool authority=false)=>NativeDevContext.Of(inMatch,sandbox,online,hosting,dev,abuse,authority);
+        private static NativeDevContext Ctx(bool inMatch=true,bool sandbox=false,bool online=false,bool hosting=false,bool dev=true,bool abuse=false,bool commands=false,bool fight=true)=>NativeDevContext.Of(inMatch,sandbox,online,hosting,dev,abuse,commands,fight);
         private static void Toggle(Func<string,string> R)
         {
             Check(NativeDevGate.ToggleVisible(true)&&!NativeDevGate.ToggleVisible(false),"the toggle shows only for a verified dev");
             var game=R("Runtime/ConversionGame.cs");Check(Regex.IsMatch(game,@"public bool devAbuse;")&&!Regex.IsMatch(game,@"devAbuse\s*=\s*true"),"DEV Abuse is a saved preference, false unless the dev turns it on");
             var settings=R("Runtime/NativeSettings.cs");int dev=settings.IndexOf("if(account.Developer)",StringComparison.Ordinal),toggle=settings.IndexOf("NativeDevGate.ToggleVisible(account.Developer)",StringComparison.Ordinal),credits=settings.IndexOf("Field(\"Credits\")",StringComparison.Ordinal);
-            Check(dev>0&&toggle>dev&&toggle<credits&&settings.Contains("prefs.devAbuse=abuse;Save();"),"Settings · Developer shows the toggle inside the verified-dev block and saves it on change");
+            Check(dev>0&&toggle>dev&&toggle<credits&&settings.Contains("prefs.devAbuse=abuse;DevAbuseEnabled=NativeDevGate.CommandsEnabled(abuse,account.Developer);Save();"),"Settings · Developer shows the toggle inside the verified-dev block, saves it and sets the session opt-in");
+            Check(NativeDevGate.CommandsEnabled(true,true)&&!NativeDevGate.CommandsEnabled(true,false)&&!NativeDevGate.CommandsEnabled(false,true),"the session opt-in follows the saved toggle for a verified dev only");
+            var net=R("Runtime/NativeDevNetwork.cs");Check(net.Contains("public bool DevAbuseEnabled {get;set;}")&&!Regex.IsMatch(net+R("Runtime/NativeDevPanel.cs"),@"DevAbuseEnabled\s*=\s*true"),"DevAbuseEnabled defaults off and is set only from the toggle");
+            Check(R("Runtime/NativeDevPanel.cs").Contains("DevAbuseEnabled=NativeDevGate.CommandsEnabled(prefs!=null&&prefs.devAbuse,account!=null&&account.Developer);"),"the saved toggle applies to the session (default off)");
             Check(R("Runtime/NativeAdmin.cs").Contains("public bool Developer=>Access.Developer&&Access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();"),"account.Developer is the verified, unexpired claim");
             Check(!NativeAccess.Guest.Developer&&NativeAccess.Verify("forged.token",s=>new NativePlayerClaim{developer=true,exp=double.MaxValue},0).Developer==false,"an unsigned claim never becomes a developer");
             var panel=R("Runtime/NativeDevPanel.cs");Check(panel.Contains("account!=null&&account.Developer")&&panel.Contains("prefs!=null&&prefs.devAbuse")&&panel.Contains("arena.Sandbox&&!arena.Replica"),"the panel's context reads the verified account, the opt-in and the offline sandbox");
@@ -100,34 +105,72 @@ namespace ChipArena.UnityConversion
         }
         private static void Authority(Func<string,string> R)
         {
-            var abuse=Ctx(online:true,abuse:true);var sandbox=Ctx(sandbox:true);var linked=Ctx(online:true,abuse:true,authority:true);
+            var off=Ctx(online:true,abuse:true);var idle=Ctx(online:true,abuse:true,commands:true,fight:false);var live=Ctx(online:true,abuse:true,commands:true);var sandbox=Ctx(sandbox:true);var sandboxOn=Ctx(sandbox:true,abuse:true,commands:true);
             foreach(var a in NativeDevActions.All)
             {
-                var s=NativeDevActions.Resolve(a,abuse,out string why);
-                if(a.Kind==NativeDevKind.Contract)Check(s==NativeDevState.NeedsAuthority&&why=="Needs authority (Astra): not implemented",a.Id+" waits for Astra's authority outside the sandbox");
-                else if(a.Kind==NativeDevKind.Presentation)Check(s==NativeDevState.Live,a.Id+" (a view tool) is live in DEV Abuse");
+                var s=NativeDevActions.Resolve(a,live,out string why);
+                if(a.Kind==NativeDevKind.Contract)
+                {
+                    Check(s==NativeDevState.Live&&why==NativeDevActions.ToHost,a.Id+" goes to the match's DEV authority with the opt-in in a round");
+                    Check(NativeDevActions.Resolve(a,off,out why)==NativeDevState.NeedsOptIn&&why==NativeDevActions.OptIn,a.Id+" says to turn on DEV Abuse without the session opt-in");
+                    Check(NativeDevActions.Resolve(a,idle,out why)==NativeDevState.NotNow&&why==NativeDevActions.NotNow,a.Id+" waits for an active round (the authority refuses otherwise)");
+                    Check(NativeDevContract.Known(a.Contract),a.Id+" sends the authority's action "+a.Contract);
+                }
+                else if(a.Kind==NativeDevKind.Presentation)Check(s==NativeDevState.Live&&NativeDevActions.Resolve(a,off,out _)==NativeDevState.Live,a.Id+" (a view tool) is live wherever the panel is");
                 else Check(s==NativeDevState.SandboxOnly&&why==NativeDevActions.SandboxOnly,a.Id+" stays sandbox only");
                 var t=NativeDevActions.Resolve(a,sandbox,out why);
-                Check(a.Kind==NativeDevKind.Contract&&!a.SandboxRoute?t==NativeDevState.NeedsAuthority:t==NativeDevState.Live,a.Id+" in the sandbox: "+(a.SandboxRoute?"its sandbox call":"needs authority"));
-                var u=NativeDevActions.Resolve(a,linked,out why);Check(a.Kind==NativeDevKind.Contract?u==NativeDevState.Live&&why==NativeDevActions.ToHost:u==NativeDevActions.Resolve(a,abuse,out _),a.Id+" once the authority link exists");
-                Check(NativeDevActions.Resolve(a,Ctx(dev:false,online:true,abuse:true),out why)==NativeDevState.Unavailable,a.Id+" never for a non-dev");
-                if(a.Kind==NativeDevKind.Contract)Check(NativeDevContract.Known(a.Contract),a.Id+" sends the contract action "+a.Contract);
+                Check(a.Kind==NativeDevKind.Contract&&!a.SandboxRoute?t==NativeDevState.NeedsOptIn:t==NativeDevState.Live,a.Id+" in the sandbox: "+(a.SandboxRoute?"its sandbox call":"a DEV command with the opt-in"));
+                Check(NativeDevActions.Resolve(a,sandboxOn,out _)==NativeDevState.Live,a.Id+" in the sandbox with the opt-in");
+                Check(a.Kind!=NativeDevKind.Contract||NativeDevActions.RunsInSandbox(a,sandboxOn)==a.SandboxRoute,a.Id+": the sandbox keeps its own call where it has one");
+                Check(NativeDevActions.Resolve(a,Ctx(dev:false,online:true,abuse:true,commands:true),out why)==NativeDevState.Unavailable,a.Id+" never for a non-dev");
             }
-            foreach(var name in NativeDevContract.Personal.Concat(NativeDevContract.Room).Concat(NativeDevContract.Interact))Check(NativeDevActions.All.Any(a=>a.Contract==name),"the panel has a button for "+name);
-            Check(NativeDevContract.Command=="dev-command"&&NativeDevContract.Reply=="dev-reply"&&NativeDevContract.Gate=="DevAllowed"&&NativeDevContract.RevealedField=="devRevealed"&&new[]{NativeDevContract.Accepted,NativeDevContract.Refused,NativeDevContract.Done}.SequenceEqual(new[]{"accepted","refused","done"}),"the wire names");
-            // The link: nothing without a sender; a reply alone says done.
-            var link=new NativeDevLink();Check(!link.Available&&link.Send("restore",1,null,"Restore me")==null&&link.Status==""&&link.Pending==0,"no authority link: nothing is sent and no status claims success");
-            var sent=new List<NativeDevCommand>();link.Sender=c=>{sent.Add(c);return true;};
-            var cmd=link.Send("launch",4,new[]{"20"},"Launch");Check(cmd!=null&&cmd.action=="launch"&&cmd.target==4&&cmd.args.SequenceEqual(new[]{"20"})&&cmd.transaction==1&&sent.Count==1&&link.Status.Contains("waiting")&&!link.Status.Contains("done"),"a send waits for the host");
-            Check(link.Send("noclip",1,null,"x")==null&&link.Send("launch",1,new[]{"1","2","3","4","5"},"x")==null&&link.Send("launch",1,new[]{new string('x',33)},"x")==null&&sent.Count==1,"unknown actions and oversized arguments are never sent");
-            Check(link.Receive(new NativeDevReply{transaction=1,state="accepted"})&&link.Status.Contains("accepted")&&link.Pending==1,"accepted keeps the transaction");
-            Check(link.Receive(new NativeDevReply{transaction=1,state="done"})&&link.Status=="Launch · done"&&link.Pending==0&&!link.StatusRefused,"done only on the host's reply");
-            var r2=link.Send("freeze",4,new[]{"3"},"Freeze");Check(link.Receive(new NativeDevReply{transaction=r2.transaction,state="refused",reason="rate limited"})&&link.Status=="Freeze · refused: rate limited"&&link.StatusRefused,"a refusal shows its reason");
-            Check(!link.Receive(new NativeDevReply{transaction=99,state="done"})&&link.Status=="Freeze · refused: rate limited","an unknown transaction changes nothing");
+            Check(NativeDevActions.Badge(NativeDevState.NeedsOptIn)=="OPT-IN"&&NativeDevActions.Badge(NativeDevState.NotNow)=="ROUND"&&NativeDevActions.Badge(NativeDevState.SandboxOnly)=="SBX"&&NativeDevActions.Badge(NativeDevState.Live)==null,"disabled buttons wear their reason's badge");
+            // The panel covers exactly the authority's actions.
+            var mine=NativeDevContract.Personal.Concat(NativeDevContract.Room).Concat(NativeDevContract.Interact).ToArray();
+            Check(mine.Length==NativeDevRules.Actions.Length&&new HashSet<string>(mine).SetEquals(NativeDevRules.Actions),"the panel's action groups are the authority's actions");
+            foreach(var name in NativeDevRules.Actions)Check(NativeDevActions.All.Any(a=>a.Contract==name),"the panel has a button for "+name);
+            // The limits the panel clamps to are the validator's (probed at each edge).
+            bool V(string action,params string[] args)=>NativeDevRules.Validate(new NativeDevCommand{transaction="t1",action=action,target=0,args=args})==null;
+            string N(float v)=>NativeDevLink.Number(v);
+            Check(V("debris",N(NativeDevContract.DebrisMassMin),"1","wood","face")&&V("debris",N(NativeDevContract.DebrisMassMax),N(NativeDevContract.DebrisSpeedMax),"wood","corner")&&!V("debris",N(NativeDevContract.DebrisMassMax+.5f),"1","wood","face")&&!V("debris","1",N(NativeDevContract.DebrisSpeedMax+.5f),"wood","face")&&!V("debris",N(NativeDevContract.DebrisMassMin-.5f),"1","wood","face"),"debris 1-500 kg, 1-100 m/s");
+            Check(V("freeze","0")&&V("freeze",N(NativeDevContract.FreezeMax))&&!V("freeze",N(NativeDevContract.FreezeMax+.1f)),"freeze 0-30 s");
+            Check(V("launch",N(NativeDevContract.LaunchMin))&&V("launch",N(NativeDevContract.LaunchMax))&&!V("launch",N(NativeDevContract.LaunchMax+.1f))&&!V("launch","0.5"),"launch 1-100 m/s");
+            Check(V("spawn-dummies-around",NativeDevContract.AroundMin.ToString())&&V("spawn-dummies-around",NativeDevContract.AroundMax.ToString())&&!V("spawn-dummies-around","8")&&!V("spawn-dummies-around","0"),"dummies around 1-7");
+            Check(V("time-scale",N(NativeDevContract.TimeScaleMin))&&V("time-scale",N(NativeDevContract.TimeScaleMax))&&!V("time-scale","2.1")&&!V("time-scale","0.05"),"time scale .1-2");
+            Check(V("chip-add","vital","1")&&V("chip-add","vital",NativeDevContract.ChipCountMax.ToString())&&!V("chip-add","vital","101")&&!V("chip-add","vital","0"),"chip count 1-100");
+            foreach(var input in NativeDevContract.SpawnInputs)Check(V("spawn-dummy","pistol",input,"0")&&V("spawn-dummy","pistol",input,NativeDevContract.TeamMax.ToString()),"spawn input "+input);
+            Check(!V("spawn-dummy","pistol","mode","0")&&!V("spawn-dummy","pistol","ai","8"),"spawn inputs and teams outside the authority's are not offered");
+            Check(NativeDevContract.MaxArgs==4&&NativeDevContract.MaxArgLength==64&&!V("weapon",new string('x',65))&&!NativeDevContract.ShapeOk("launch",0,new[]{"1","2"}),"four arguments of at most 64 characters, per action");
+            // The panel's arguments: each action's arity (docs/DEV-ABUSE-AUTHORITY.md "Action arguments") and a sample the validator accepts.
+            var arity=new Dictionary<string,(int n,string[] sample)>{["god"]=(1,new[]{"on"}),["infinite-ammo"]=(1,new[]{"off"}),["no-cooldowns"]=(1,new[]{"on"}),["chip-add"]=(2,new[]{"vital","1"}),["chip-remove"]=(2,new[]{"vital","1"}),["weapon"]=(1,new[]{"pistol"}),["swap-weapon"]=(1,new[]{"sword"}),["teleport"]=(3,new[]{"1","2","3"}),["send"]=(3,new[]{"1","2","3"}),["launch"]=(1,new[]{"20"}),["freeze"]=(1,new[]{"3"}),["spawn-dummy"]=(3,new[]{"pistol","ai","1"}),["spawn-dummies-around"]=(1,new[]{"3"}),["time-scale"]=(1,new[]{"0.5"}),["hazard-trigger"]=(1,new[]{"saw-1"}),["debris"]=(4,new[]{"8","15","wood","face"}),["debris-rain"]=(1,new[]{"stone"})};
+            var panelSrc=R("Runtime/NativeDevPanel.cs");var args=Method(panelSrc,"private string[] DevArgs(NativeDevAction a)");
+            foreach(var name in NativeDevRules.Actions)
+            {
+                var (n,sample)=arity.TryGetValue(name,out var e)?e:(0,Array.Empty<string>());Check(NativeDevContract.ShapeOk(name,0,sample),name+" takes "+n+" arguments");
+                var m=Regex.Match(args,@"case """+Regex.Escape(name)+@""":(?:case ""[a-z-]+"":)*(?:\{[^\n]*?)?return new\[\]\{(.*?)\};");int got=m.Success?Regex.Split(Regex.Replace(m.Groups[1].Value,@"\([^()]*(\([^()]*\))*[^()]*\)",""),",").Length:0;
+                if(name=="god"||name=="infinite-ammo"||name=="no-cooldowns"){Check(panelSrc.Contains("if(DevButton(on,\"ON\",state,reason,now))DevSend(id,\"on\");if(DevButton(off,\"OFF\",state,reason,!now))DevSend(id,\"off\");"),name+" sends on / off");continue;}
+                Check(got==n,"DevArgs gives "+name+" "+n+" arguments (found "+got+")");
+            }
+            Check(panelSrc.Contains("DevSend(a.Id,id,NativeDevText.Int(count));")&&panelSrc.Contains("Mathf.Min(NativeDevContract.ChipCountMax,"),"chip stacks send their count, at most 100");
+            foreach(var c in new[]{"NativeDevContract.LaunchMin,NativeDevContract.LaunchMax","0,NativeDevContract.FreezeMax","NativeDevContract.AroundMin,NativeDevContract.AroundMax","NativeDevContract.TimeScaleMin,NativeDevContract.TimeScaleMax","NativeDevContract.DebrisMassMin,NativeDevContract.DebrisMassMax","NativeDevContract.DebrisSpeedMin,NativeDevContract.DebrisSpeedMax","0,NativeDevContract.TeamMax"})Check(args.Contains(c),"DevArgs clamps to "+c);
+            Check(NativeDevContract.Command=="dev-command"&&NativeDevContract.Reply=="dev-reply"&&NativeDevContract.RevealedField=="devRevealed"&&new[]{NativeDevContract.Accepted,NativeDevContract.Refused,NativeDevContract.Done}.SequenceEqual(new[]{"accepted","refused","done"}),"the wire names");
+            // The link: nothing without a sender; only the authority's reply says done; the timeout reads as unknown.
+            var link=new NativeDevLink();Check(!link.Available&&link.Send("restore",0,null,"Restore me")==null&&link.Status==""&&link.Pending==0,"no link: nothing is sent and no status claims success");
+            var sent=new List<(string a,int t,string[] g)>();int next=0;NativeDevReply now=null;link.Sender=(a,t,g)=>{sent.Add((a,t,g));string id="tx"+(++next);if(now!=null){now.transaction=id;link.Receive(now);now=null;}return id;};
+            var tx=link.Send("launch",4,new[]{"20"},"Launch",1);Check(tx=="tx1"&&sent.Count==1&&sent[0].a=="launch"&&sent[0].t==4&&sent[0].g.SequenceEqual(new[]{"20"})&&link.Outcome==NativeDevOutcome.Sent&&link.Status=="Launch · sent, waiting for the host","a send waits for the authority");
+            Check(link.Send("noclip",0,null,"x")==null&&link.Send("launch",0,new[]{"500"},"x")==null&&sent.Count==1,"unknown actions and out-of-range arguments are never sent");
+            Check(link.Receive(new NativeDevReply{transaction="tx1",state="accepted",reason=""})&&link.Outcome==NativeDevOutcome.Accepted&&link.Pending==1,"accepted keeps waiting");
+            Check(link.Receive(new NativeDevReply{transaction="tx1",state="done",reason=""})&&link.Status=="Launch · done"&&link.Pending==0&&!link.StatusBad,"done only on the authority's reply");
+            now=new NativeDevReply{state="refused",reason="Target must be alive."};var t2=link.Send("freeze",4,new[]{"3"},"Freeze",2);
+            Check(t2=="tx2"&&link.Status=="Freeze · refused: Target must be alive."&&link.StatusBad&&link.Pending==0,"an immediate refusal (the offline host, an older host) shows its reason");
+            link.Send("bring",4,null,"Bring",3);Check(link.Receive(new NativeDevReply{transaction="tx3",state="refused",reason="Host reply timed out; command outcome is unknown."})&&link.Outcome==NativeDevOutcome.Unknown&&link.Status=="Bring · outcome unknown: no host reply in 10 s","the authority's timeout reads as unknown, never undone or done");
+            link.Send("grow",4,null,"Grow",4);link.Tick(4+NativeDevLink.Timeout-.1f);Check(link.Outcome==NativeDevOutcome.Sent,"no backstop before the timeout");link.Tick(4+NativeDevLink.Timeout+.1f);Check(link.Outcome==NativeDevOutcome.Unknown&&link.Pending==0&&link.Status.Contains("outcome unknown"),"the backstop also reads as unknown");
+            Check(!link.Receive(new NativeDevReply{transaction="tx99",state="done",reason=""})&&link.Outcome==NativeDevOutcome.Unknown,"a reply for another transaction changes nothing");
             var panel=R("Runtime/NativeDevPanel.cs");
             Check(panel.Contains("if(state!=NativeDevState.Live){DevSay((a?.Label??id)+\" · \"+reason,true);return;}")&&!Regex.IsMatch(panel,"DevSay\\([^;]*(\"done|NativeDevContract\\.Done|accepted)"),"a disabled action only says why; the panel never reports a command done itself");
-            Check(Regex.Matches(panel,@"devLink\.Send\(").Count==2&&panel.Contains("if(devLink.Status!=devLinkSeen){devLinkSeen=devLink.Status;"),"commands go out only through the link; the status line shows the link's");
-            Check(R("Runtime/NativeDevOverlays.cs").IndexOf("devLink",StringComparison.Ordinal)<0&&!Regex.IsMatch(panel+R("Runtime/NativeDevOverlays.cs"),@"devRevealed\s*="),"the presentation never sets devRevealed or sends from the overlays");
+            Check(Regex.Matches(panel,@"devLink\.Send\(").Count==2&&panel.Contains("if(devLink.Status!=devLinkSeen){devLinkSeen=devLink.Status;")&&panel.Contains("private string DevSender(string action,int target,string[] args)=>SendDevCommand(action,target,args);")&&panel.Contains("DevReplyReceived+=DevOnReply;")&&Regex.Matches(panel,"SendDevCommand\\(").Count==1,"commands go out only through SendDevCommand; the status line shows the authority's replies");
+            Check(!Regex.IsMatch(panel+R("Runtime/NativeDevOverlays.cs"),@"\b(DevGod|DevInfiniteAmmo|DevNoCooldowns|devRevealed|devScale|devCommandsRan|devDummy|DevTimeScale)\s*=[^=]")&&R("Runtime/NativeDevOverlays.cs").IndexOf("devLink",StringComparison.Ordinal)<0,"the presentation never writes the replicated DEV state (no optimistic effects)");
+            Check(panel.Contains("me.Seat.devCommandsRan")&&panel.Contains("p.Seat.devDummy?NativeDevTags.DevDummy")&&panel.Contains("arena.DevTimeScale")&&panel.Contains("me.DevGod")&&panel.Contains("DevOldHost"),"the panel shows the replicated state: progression, DEV dummies, room speed, pilot flags, an older host");
         }
         private static string Method(string src,string signature)
         {
@@ -168,9 +211,8 @@ namespace ChipArena.UnityConversion
         }
         private static void Reveal()
         {
-            var seat=new NativeSeat{id=3,name="Sheldon"};Check(!NativeDevTags.Revealed(seat)&&!NativeDevTags.Revealed(null),"dormant: nobody is tagged until devRevealed exists");
-            var field=typeof(NativeSeat).GetField(NativeDevContract.RevealedField);
-            if(field!=null){field.SetValue(seat,true);Check(NativeDevTags.Revealed(seat),"NativeSeat.devRevealed exists: NativeDevTags.Revealed must read it");field.SetValue(seat,false);Check(!NativeDevTags.Revealed(seat),"and follow it back");}
+            var seat=new NativeSeat{id=3,name="Sheldon",access=NativeAccess.Guest};Check(!NativeDevTags.Revealed(seat)&&!NativeDevTags.Revealed(null),"nobody is tagged until revealed");
+            Check(typeof(NativeSeat).GetField(NativeDevContract.RevealedField)!=null,"NativeSeat.devRevealed is the replicated field");seat.devRevealed=true;Check(NativeDevTags.Revealed(seat),"the tag follows devRevealed");seat.devRevealed=false;Check(!NativeDevTags.Revealed(seat),"and only it (never the access grant)");
             var r=new NativeDevReveal();Check(!r.Observe(3,"Sheldon",true,0)&&!r.Active(0),"a pilot already revealed when first seen gets the tag, not the moment");
             Check(!r.Observe(4,"Astra",false,1)&&r.Observe(4,"Astra",true,2)&&r.Active(2)&&r.Seat==4&&!r.Preview&&r.Active(2+NativeDevReveal.Seconds-.01f)&&!r.Active(2+NativeDevReveal.Seconds),"false to true plays the moment for its length");
             Check(!r.Observe(4,"Astra",true,3)&&!r.Observe(4,"Astra",false,4)&&r.Observe(4,"Astra",true,5),"it plays again only on a new reveal");
@@ -181,6 +223,26 @@ namespace ChipArena.UnityConversion
             int shards=0;for(int i=0;i<NativeDevReveal.Shards;i++)if(NativeDevReveal.Shard(i,1,false,out float x,out float y,out float a,out float size,out int tone)){shards++;Check(!float.IsNaN(x+y+a+size)&&a>=0&&a<=1&&tone>=0&&tone<4,"shard "+i+" is finite");}
             Check(shards>NativeDevReveal.Shards/2&&!NativeDevReveal.Shard(0,1,true,out _,out _,out _,out _,out _),"the burst shows, and none with Reduced effects");
             Check(NativeDevReveal.Shard(5,1.1f,false,out float x1,out float y1,out _,out _,out _)&&NativeDevReveal.Shard(5,1.1f,false,out float x2,out float y2,out _,out _,out _)&&x1==x2&&y1==y2,"the burst is deterministic (every client draws the same)");
+        }
+        private static void Hazards(string root,Func<string,string> R)
+        {
+            // Every authored hazard kind gets a pulse look from the shared cues, sized from its volume.
+            var o=new JsonSerializerOptions{IncludeFields=true};var maps=JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),o).maps;
+            var plan=new NativeImpactCommand[NativeImpactCues.MaxCommands];int kinds=0;var seen=new HashSet<string>();
+            foreach(var m in maps)foreach(var h in m.hazards??Array.Empty<MapHazard>())
+            {
+                float reach=NativeDevHazardLook.Reach(h);Check(reach>=.6f&&reach<=6,h.id+" pulse reach "+reach);
+                int n=NativeDevHazardLook.Plan(h.kind,new V3(1,2,3),reach,plan);Check(n>0&&n<=plan.Length,h.kind+" pulse plans "+n+" cues");
+                for(int i=0;i<n;i++)Check(!double.IsNaN(plan[i].Radius)&&!float.IsNaN(plan[i].A.x+plan[i].B.x)&&plan[i].Color!=0,h.kind+" cue "+i+" is finite and coloured");
+                if(seen.Add(h.kind))kinds++;
+            }
+            Check(kinds>=8&&NativeDevHazardLook.Plan("unknown",new V3(),1,plan)>0&&NativeDevHazardLook.Reach(null)==1.5f,"every hazard kind ("+kinds+") and an unknown one have a pulse");
+            Check(NativeDevHazardLook.Plan("saw-slot",new V3(),1,plan)>0&&plan[0].Color==NativeImpactCues.SawColor&&NativeDevHazardLook.Plan("burner",new V3(),1,plan)>0&&plan[0].Color==NativeImpactCues.LavaColor,"saws and burners use the existing saw and fire cues");
+            var blast=R("Runtime/NativeBlastPresentation.cs");var overlays=R("Runtime/NativeDevOverlays.cs");var panel=R("Runtime/NativeDevPanel.cs");
+            Check(blast.Contains("public void DevHazardPulse(Vector3 at,string kind,float reach,double quality){int n=NativeDevHazardLook.Plan(kind,NativeArena.Vec(at),reach,plan);Run(n,quality);}")&&overlays.Contains("foreach(var h in arena.DevHazardPulses)")&&overlays.Contains("if(devPulsesBefore.Contains(key)||arena.Time-h.at>.6f||blasts==null)continue;")&&panel.Contains("presentation.DevHazardPulses(arena);"),"each forced pulse record plays once through the shared effects renderer, from the replicated records");
+            Check(!Regex.IsMatch(overlays,@"NativeFactoryHazards|NativeCyberCityHazards\.Evaluate|NativeWardZeroHazards|hazardClock"),"the scheduled hazard presentation is not retimed");
+            // Grown or shrunk pilots keep their nameplates over their heads (devScale is in the rig's scale already).
+            foreach(var f in new[]{"NativeCombatHud.cs","NativeChipSelectHud.cs","NativeDevOverlays.cs"})Check(R("Runtime/"+f).Contains("Vector3.up*1.3f*(p.Seat.spec==\"siren\"?p.Pose.RigScale:p.Seat.devScale)"),f+" lifts the nameplate with devScale");
         }
         private static void Log()
         {
@@ -225,9 +287,10 @@ namespace ChipArena.UnityConversion
             Check(NativeDevActions.All.Select(a=>a.Id).Distinct().Count()==NativeDevActions.All.Length&&NativeDevActions.All.All(a=>NativeDevActions.Find(a.Id)==a)&&NativeDevActions.Find("nope")==null,"action ids are unique and found");
             Check(NativeDevActions.All.Where(a=>a.Key!=null).All(a=>NativeDevKeys.All.Contains(a.Key)),"every action key is a panel hotkey");
         }
+        private static readonly string[] PulseKinds={"saw-rail","press","vent","grid","maglev","burner","gas","shutter","crane","x"};private static readonly NativeImpactCommand[] pulsePlan=new NativeImpactCommand[NativeImpactCues.MaxCommands];
         private static void Allocations()
         {
-            var contexts=new[]{Ctx(sandbox:true),Ctx(abuse:true),Ctx(online:true,hosting:true,abuse:true),Ctx(online:true,abuse:true,authority:true),Ctx(dev:false,abuse:true)};
+            var contexts=new[]{Ctx(sandbox:true),Ctx(abuse:true),Ctx(online:true,hosting:true,abuse:true),Ctx(online:true,abuse:true,commands:true),Ctx(dev:false,abuse:true)};
             var events=new NativeEventBuffer();for(int i=1;i<=40;i++)events.Add(new ArenaEvent{Id=i,Kind=(EventKind)(i%10),Source=1+i%3,Target=2,Amount=i,Time=i*.1f});
             var log=new NativeDevLog();Func<int,string> name=id=>id==1?"A":id==2?"B":"C";log.Observe(events,1,name);
             var graph=new NativeDevGraph(120);var fly=new NativeDevFly();var chips=new ContentChip[30];for(int i=0;i<chips.Length;i++)chips[i]=new ContentChip{id="c"+i,name="Chip "+i,rarity=i%2==0?"rare":"common",description="d",max=3};
@@ -256,7 +319,7 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i<NativeDevReveal.Shards;i++)if(NativeDevReveal.Shard(i,1+frame*.02f,false,out float sx,out _,out _,out _,out _))sink+=(int)sx;
                     sink+=(int)(NativeDevReveal.Alpha(frame*.1f)+NativeDevReveal.Open(frame*.1f)+NativeDevReveal.NameIn(frame*.1f)+NativeDevReveal.Flash(frame*.01f)+NativeDevReveal.Ring(frame))+NativeDevReveal.Typed(frame*.1f,19,false);
                     long b8=GC.GetAllocatedBytesForCurrentThread();
-                    var p=NativeDevLayout.Panel(1600+frame,900);sink+=(int)(p.BodyX+p.BodyY+p.BodyW+p.BodyH);
+                    var p=NativeDevLayout.Panel(1600+frame,900);sink+=(int)(p.BodyX+p.BodyY+p.BodyW+p.BodyH);foreach(var k in PulseKinds)sink+=NativeDevHazardLook.Plan(k,new V3(frame,0,0),1.5f,pulsePlan);
                     long b9=GC.GetAllocatedBytesForCurrentThread();
                     if(split){gate+=b1-b0;actions+=b2-b1;logB+=b3-b2;graphB+=b4-b3;flyB+=b5-b4;chipB+=b6-b5;text+=b7-b6;revealB+=b8-b7;layout+=b9-b8;}
                 }
