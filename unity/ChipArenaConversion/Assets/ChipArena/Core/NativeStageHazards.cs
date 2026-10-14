@@ -5,6 +5,8 @@ namespace ChipArena.UnityConversion
     // Simulation-owned adapter for both authored clocks. No Unity objects or mutable clock state.
     public static class NativeStageHazards
     {
+        public const float KillCreditSeconds=10;
+        public static bool RecentDamage(float age)=>age>=0&&age<=KillCreditSeconds;
         public static bool City(MapHazard h)=>h.kind=="maglev"||h.kind=="grid";
         public static bool Ward(MapHazard h)=>h.kind=="burner"||h.kind=="gas"||h.kind=="shutter";
         public static bool DeathKind(string kind)=>string.IsNullOrEmpty(kind)||kind=="collapse"||kind=="maglev"||kind=="grid"||kind=="burner"||kind=="gas"||kind=="hazard";
