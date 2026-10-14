@@ -7671,3 +7671,13 @@ Presentation only.
   hand: the scene has no pilots).
 - **Impact.** No change to rules, collision, director, network or save code, or to hit timing, damage or movement.
 - **Not run.** Unity Editor play, Windows, two clients or a guest. Nothing plays live until a scene binds a session.
+- **Checks on `d569905`.** run5, then the CI-layout run, one after the other:
+
+  | Check | Result |
+  | --- | --- |
+  | Unity runtime and editor compile | OK |
+  | Managed and real relay | rc 0, 686 PASS |
+  | Python | 106 tests, 1 skipped, OK |
+  | Source package | 2007 files |
+  | `git diff --check` | clean |
+  | CI-layout export | rc 0, 686 PASS |
