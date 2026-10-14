@@ -10,6 +10,35 @@ namespace ChipArena.UnityConversion
     {public string run,transaction,target,chip;public int epoch;public ExpeditionIntent intent;}
     [Serializable] public sealed class ExpeditionCommandReply
     {public string transaction,reason;public ExpeditionCommandState state;}
+    /// <summary>Captured before an area load; report this same ticket only after that load succeeds.
+    /// No sender identity or placement coordinates are accepted from the payload.</summary>
+    [Serializable] public sealed class ExpeditionAreaReadyRequest
+    {public string run,target,layout;public int epoch;public long generation;}
+    public static class ExpeditionAreaReady
+    {
+        public static ExpeditionAreaReadyRequest Capture(ExpeditionView view)
+        {
+            var barrier=view?.areaBarrier;
+            if(view==null||!view.loading||barrier?.active!=true||barrier.generation<1||
+                !ExpeditionValidation.Id(view.run)||view.epoch<1||!ExpeditionValidation.Id(barrier.target)||
+                barrier.layout==null||barrier.layout.Length!=64||barrier.layout.Any(c=>!Uri.IsHexDigit(c)))return null;
+            return new ExpeditionAreaReadyRequest{run=view.run,epoch=view.epoch,target=barrier.target,layout=barrier.layout,generation=barrier.generation};
+        }
+        public static bool Matches(ExpeditionAreaReadyRequest ticket,ExpeditionView view)
+        {
+            var current=Capture(view);
+            return ticket!=null&&current!=null&&ticket.run==current.run&&ticket.epoch==current.epoch&&
+                ticket.target==current.target&&ticket.layout==current.layout&&ticket.generation==current.generation;
+        }
+        public static bool Accept(ExpeditionSession session,string authenticatedAccount,ExpeditionAreaReadyRequest ticket)
+        {
+            if(session==null||ticket==null||session.Run.Migrating)return false;
+            var state=session.Run.Snapshot();var director=session.Sources.Director;
+            return state.loading&&ticket.run==state.run&&ticket.epoch==state.epoch&&
+                director!=null&&ReferenceEquals(director.Session,session)&&
+                director.Ready(authenticatedAccount,ticket.target,ticket.generation,ticket.layout);
+        }
+    }
     public sealed class ExpeditionViewBatch
     {
         public ExpeditionView Public;public ExpeditionPrivateFrame[] Private;

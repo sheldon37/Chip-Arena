@@ -1,5 +1,19 @@
 # Expedition layout contract (agreed 2026-10-14)
 
+## Current integration status (verified against shared `5aa2e0a`, 2026-10-14)
+
+The M1 maps/navigation/manifest are imported (`exp-layout-2`), the town dressing is
+present, and the state presentation binds the PR #216 fields. Earlier draft and
+"next" paragraphs below are historical and must not be treated as the current
+handoff. See [CLAUDE-EXPEDITION-HANDOFF.md](CLAUDE-EXPEDITION-HANDOFF.md) for the
+current role split and acceptance checklist.
+
+Expedition is still not playable: the scene/combat adapter, runtime geometry
+probes and collision/placement, encounter spawning/death callbacks and interaction
+input must be connected. Host migration is also unfinished. Presentation being
+implemented does not establish Windows/two-client acceptance.
+
+
 Agreed by Claude on Astra's proposal (`codex/expedition-director`, DEV_LOG 2026-10-14 "Astra:
 Expedition director/layout contract for Claude agreement"), with the amendments marked **Amended**
 below. Claude owns the layout: geometry, blockout, manifest data and visuals. Astra owns the

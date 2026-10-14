@@ -1,5 +1,19 @@
 # Expedition runtime integration — 2026-10-14
 
+## Current integration status (verified against shared `5aa2e0a`, 2026-10-14)
+
+The M1 maps/navigation/manifest are imported (`exp-layout-2`), the town dressing is
+present, and the state presentation binds the PR #216 fields. Earlier draft and
+"next" paragraphs below are historical and must not be treated as the current
+handoff. See [CLAUDE-EXPEDITION-HANDOFF.md](CLAUDE-EXPEDITION-HANDOFF.md) for the
+current role split and acceptance checklist.
+
+Expedition is still not playable: the scene/combat adapter, runtime geometry
+probes and collision/placement, encounter spawning/death callbacks and interaction
+input must be connected. Host migration is also unfinished. Presentation being
+implemented does not establish Windows/two-client acceptance.
+
+
 Branch `codex/expedition-integration`, base shared/builder `65f9f131`.
 This is an integration bridge for the presentation contract, **not a playable
 scene or a completed host-migration transport**. The normal menu remains closed.
@@ -97,3 +111,35 @@ per-account boss-ineligibility reasons are unchanged. `difficultyParty` remains
 connected, not-extracted pilots until the director establishes its roster policy.
 Unity/Windows rendering, two real clients and disk behavior require native
 acceptance; managed checks cannot establish those outcomes.
+
+## Area-ready transport (codex/expedition-director-lifecycle)
+
+`expedition-area-ready` now carries an `ExpeditionAreaReadyRequest`: `run`, `epoch`,
+`target`, `generation` and `layout`. It has no account or placement coordinates.
+The host takes account identity from the verified, unexpired peer seat and applies
+the existing command rate budget. The Core router checks the run/epoch and active
+loading state before the director checks membership, target, generation and
+fingerprint. Duplicate tickets are idempotent; they never finish placement.
+
+Scene adapter sequence (Astra-owned, still to implement):
+1. Capture `ExpeditionAreaReady.Capture(ConversionGame.ExpeditionView)` before
+   starting the load. Retain that exact ticket through asynchronous completion.
+2. Load that target map and validate its layout/collision. Only after success,
+   call `ReportExpeditionAreaLoaded(ticket)`. Never capture a new ticket in an old
+   load's completion callback, and never acknowledge from the presentation timer.
+3. On guests, Pending means queued. The client retries the same detached ticket
+   at 2 Hz while the corresponding barrier remains active, so a rate-budget
+   refusal does not permanently strand a successful load. A changed/completed
+   barrier or room reset cancels the retry. Readiness and completion are confirmed
+   only by the public barrier; no local success screen is synthesized.
+4. The host reports its own successful load through the same Core router. It then
+   calls `CompleteAreaLoad` with real atomic placement; a failed placement keeps
+   the barrier frozen. Neither an ACK nor the new message calls it automatically.
+
+Continue into a new loop now clears arrivals and starts a new barrier even when
+`area` remains the city. The session synchronizes this immediately after advancing
+so projection cannot publish a new loop with the previous loop's ready count.
+The placement uses sanctuary slots, not a stale instance-return doorway.
+
+This closes the wire path, not the scene loader or combat integration. No menu is
+opened and no endpoint migration capability is advertised by this change.

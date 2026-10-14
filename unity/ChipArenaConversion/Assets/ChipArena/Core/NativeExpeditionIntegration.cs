@@ -99,7 +99,7 @@ namespace ChipArena.UnityConversion
             dt=Math.Min(dt,1);while(dt>0){double step=Math.Min(dt,.25);Run.Tick(step);Sources.Director?.Step();dt-=step;}
             if(Run.Elapsed>=nextExtractionAttempt)
                 foreach(var who in Run.ExtractionDue())if(Extract(who).state!=ExpeditionCommandState.Pending)nextExtractionAttempt=Run.Elapsed+1;
-            Run.AdvanceWhenReady();
+            if(Run.AdvanceWhenReady())Sources.Director?.Step();
         }
         public void SetWorld(ExpeditionWorldAnchor[] anchors,ExpeditionChestOffer[] chests)
         {
