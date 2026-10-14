@@ -93,7 +93,8 @@ namespace ChipArena.UnityConversion
             }
             // Fire escapes on alley and side faces of the tall residential blocks (all above 3 m).
             if((kind==Residential||kind==Civic)&&storeys>=2&&f.Front>=1&&Hash(id,f.Index,77)<(f.Front==1?.85:.4))FireEscape(f,ground,storey,storeys,ww,bay);
-            if(kind==Hotel&&f.Front==2)HotelSign(f,ground,h);
+            // The hotel's blade sign over the forecourt (its north face).
+            if(kind==Hotel&&f.Front>=1&&f.Axis==2&&f.Sign>0)HotelSign(f,ground,h);
         }
         private void Window(Face f,double u,double y0,double w,double h,bool brick,int row,int col,bool burning)
         {

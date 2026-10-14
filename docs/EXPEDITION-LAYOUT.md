@@ -405,15 +405,15 @@ Placement rules (checked in `Tests/ExpeditionDressingChecks.cs`, from the record
 - Every block's parts depend only on its id, the geometry and the records. Building over the blocks in reverse order
   gives every block the same parts.
 
-Budget at `6da0330`, with the full rules:
+Budget, with the full rules:
 
 | Item | Instances | Draws | Notes |
 | --- | --- | --- | --- |
-| Kit | 7,594 | 16 | One of the draws casts shadows (327 parts) |
-| Kit, low tier and compatibility rendering | 4,774 | 11 | Detail parts left out |
+| Kit | 7,631 | 16 | One of the draws casts shadows (328 parts) |
+| Kit, low tier and compatibility rendering | 4,811 | 11 | Detail parts left out |
 | Skyline | 1,212 | 3 | Backdrop layer, no shadows, left out under compatibility rendering |
-| Atmosphere | at most 641 quads | 2 | Buffer 2,800 quads |
-| Practical lights | 8 of 67 candidates | | |
+| Atmosphere | at most 642 quads | 2 | Buffer 2,800 quads |
+| Practical lights | 8 of 68 candidates | | |
 
 For comparison, Ward Zero's kit is 7,124 parts in 15 draws, and Cyber City's skyline is 4,570 boxes in 10 draws.
 The drive, the atmosphere, the picker and the ambience allocate nothing per frame (checked over 120 frames).
