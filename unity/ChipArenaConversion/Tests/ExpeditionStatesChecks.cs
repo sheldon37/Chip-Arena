@@ -84,7 +84,7 @@ namespace ChipArena.UnityConversion
             float rise=NativeExpeditionStates.GateRise(opening,10.1,out float unlock);Check(rise==0&&unlock>0&&unlock<1,"the gate unlocks before it rises");
             rise=NativeExpeditionStates.GateRise(opening,11,out unlock);Check(rise==1&&unlock==1,"the gate is up at the end of the opening second");
             rise=NativeExpeditionStates.GateRise(C("sealed"),11,out unlock);Check(rise==0&&unlock==0,"a sealed gate is down and locked");
-            Check(NativeExpeditionStates.AreaName(Ward)=="WARD ZERO"&&NativeExpeditionStates.BossName("test-hulk")=="TEST HULK"&&NativeExpeditionStates.BossName("TEST")=="TEST","area and boss names; TEST kept");
+            Check(NativeExpeditionPresentation.Name(Ward)=="WARD ZERO"&&NativeExpeditionPresentation.Name("0:"+Ward+":boss:TEST-boss")=="TEST BOSS"&&NativeExpeditionPresentation.Name("exp")=="EXP"&&NativeExpeditionStates.AreaName(Ward)=="WARD ZERO"&&NativeExpeditionStates.BossName("test-hulk")=="TEST HULK"&&NativeExpeditionStates.BossName("TEST")=="TEST","area and boss names; TEST kept");
             Check(NativeExpeditionStates.BossName("hulk_test").Contains("TEST")&&NativeExpeditionStates.BossName("scientist")=="SCIENTIST","a test archetype always shows TEST");
         }
 

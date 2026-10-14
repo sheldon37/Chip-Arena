@@ -168,6 +168,9 @@ view's `elapsed`, run forward by local time between views (at most 0.25 s, becau
 | Boss plates | the same arrivals; the building's `defeated`/`cleared`, or the final-boss phase | One plate per boss: BOSS, the name and ACTIVE or DOWN. No health, because the view carries none. A plate waits for its own intro; late joiners see only the plate. |
 | Boss crack | a boss position | Cracks, roar rings, dust and a flash at the boss's feet for 2.6 s. **Not drawn live:** the view carries no boss position (see below). |
 
+Names: every screen drops a layout area id's `exp-` prefix (`NativeExpeditionPresentation.Name`), so the imported
+`exp-ward-zero` reads WARD ZERO in the objective line, the board and the banners.
+
 Drawing: the kit boxes are NativeBlockLit instances, lit by the arena look and casting shadows, in chunks of 500; the hardlight,
 glow and dust are one NativeSirenFx effects batch. Doors and the gate are culled past 140 m, sanctuary segments past 90 m. The
 clock, cues, scene and HUD models allocate nothing per frame (checked); HUD strings are cached.

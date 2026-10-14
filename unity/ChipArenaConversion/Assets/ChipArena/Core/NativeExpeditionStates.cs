@@ -77,12 +77,9 @@ namespace ChipArena.UnityConversion
                 default:unlock=0;return 0;
             }
         }
-        /// <summary>A layout area id as the screens name it: "exp-ward-zero" is WARD ZERO (the manifest's "exp-" prefix dropped).</summary>
-        public static string AreaName(string id)
-        {
-            if(string.IsNullOrEmpty(id))return "";if(id.StartsWith("exp-",StringComparison.Ordinal)&&id.Length>4)id=id.Substring(4);
-            return NativeExpeditionPresentation.Name(id);
-        }
+        /// <summary>A layout area id as the screens name it: "exp-ward-zero" is WARD ZERO (NativeExpeditionPresentation.Name drops
+        /// the manifest's "exp-" prefix).</summary>
+        public static string AreaName(string id)=>NativeExpeditionPresentation.Name(id);
         /// <summary>A boss archetype as the intro names it. Test encounters keep TEST in the name until a boss design exists.</summary>
         public static string BossName(string archetype)
         {

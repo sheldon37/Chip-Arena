@@ -322,17 +322,18 @@ namespace ChipArena.UnityConversion
         /// position it knows; the view carries none today, so nothing is drawn there yet.</summary>
         public void BossCrack(float x,float y,float z,double age,int seed,in ExpeditionEye eye,bool reduced)
         {
-            if(!(age>=0)||age>2.6)return;float a=(float)age,grow=NativeExpeditionStates.Ease(a/.35f),fade=a<1.4f?1:(2.6f-a)/1.2f,fy=y+.02f;
+            if(!(age>=0)||age>2.6)return;float a=(float)age,grow=NativeExpeditionStates.Ease(a/.35f),fade=a<1.4f?1:(2.6f-a)/1.2f,fy=y+.045f;
             for(int i=0;i<7;i++)
             {
                 double ang=(i+NativeExpeditionStates.Hash(seed,i))*Math.PI*2/7;float len=(2.8f+2*NativeExpeditionStates.Hash(seed,i+20))*grow,px=x,pz=z;
                 for(int k=0;k<4;k++)
                 {
-                    ang+=(NativeExpeditionStates.Hash(seed*13+i,k)-.5f)*.7f;float l=len/4,nx=px+l*(float)Math.Cos(ang),nz=pz+l*(float)Math.Sin(ang),w=.16f*(1-k*.18f);
-                    Strip(px,pz,nx,nz,fy,w,CrackHex,1,.55f*fade,false);Strip(px,pz,nx,nz,fy+.004f,w*.35f,k<2?EmberHex:MagentaHex,2.2f,.9f*fade,true);px=nx;pz=nz;
+                    ang+=(NativeExpeditionStates.Hash(seed*13+i,k)-.5f)*.7f;float l=len/4,nx=px+l*(float)Math.Cos(ang),nz=pz+l*(float)Math.Sin(ang),w=.4f*(1-k*.2f);
+                    Strip(px,pz,nx,nz,fy,w,CrackHex,1,.7f*fade,false);Strip(px,pz,nx,nz,fy+.004f,w*.3f,k<2?EmberHex:MagentaHex,2.6f,.95f*fade,true);px=nx;pz=nz;
                 }
             }
-            for(int k=0;k<2;k++){float ak=a-k*.25f;if(ak<0||ak>.9f)continue;float r=.8f+9*NativeExpeditionStates.Ease(ak/.9f);Ring(x,fy+.01f,z,r-(.5f-.3f*ak/.9f),r,40,EmberHex,1.6f,.45f*(1-ak/.9f));}
+            Quads.Add(x-1.4f,fy-.002f,z-1.4f,x+1.4f,fy-.002f,z-1.4f,x+1.4f,fy-.002f,z+1.4f,x-1.4f,fy-.002f,z+1.4f,0,0,0,.75f*fade,1,false,1);
+            for(int k=0;k<2;k++){float ak=a-k*.25f;if(ak<0||ak>.9f)continue;float r=.8f+9*NativeExpeditionStates.Ease(ak/.9f);Ring(x,fy+.01f,z,r-(.3f-.2f*ak/.9f),r,40,EmberHex,1.4f,.3f*(1-ak/.9f));}
             int dust=reduced?4:10;
             for(int i=0;i<dust;i++)
             {

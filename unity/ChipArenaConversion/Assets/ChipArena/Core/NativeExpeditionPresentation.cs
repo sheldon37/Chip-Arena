@@ -20,13 +20,15 @@ namespace ChipArena.UnityConversion
         /// <summary>A replicated id is present. Unity's JsonUtility decodes a null string as "", so empty means absent.</summary>
         public static bool Has(string s)=>!string.IsNullOrEmpty(s);
         private static string Who(string s)=>Has(s)?s.ToUpperInvariant():"?";
-        /// <summary>"ward-zero" to "WARD ZERO"; a boss dice key ("0:ward-zero:boss:scientist") to its boss id; the world boss's
-        /// key ("0:zombie-city:final:boss", issued by the authority's FinishFinal) to WORLD BOSS.</summary>
+        /// <summary>"ward-zero" to "WARD ZERO" (a layout area's "exp-" prefix dropped: "exp-ward-zero" is WARD ZERO too); a boss
+        /// dice key ("0:ward-zero:boss:scientist") to its boss id; the world boss's key ("0:zombie-city:final:boss", issued by the
+        /// authority's FinishFinal) to WORLD BOSS.</summary>
         public const string WorldBoss="WORLD BOSS";
         public static string Name(string id)
         {
             if(string.IsNullOrEmpty(id))return "";if(id=="final:boss"||id.EndsWith(":final:boss",StringComparison.Ordinal))return WorldBoss;
             int b=id.LastIndexOf(":boss:",StringComparison.Ordinal);if(b>=0)id=id.Substring(b+6);
+            if(id.Length>4&&id.StartsWith("exp-",StringComparison.Ordinal))id=id.Substring(4);
             return id.Replace('-',' ').Replace('_',' ').ToUpperInvariant();
         }
         /// <summary>Elapsed time as m:ss or h:mm:ss (never negative).</summary>
