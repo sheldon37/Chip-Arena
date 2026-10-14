@@ -6140,3 +6140,14 @@ Full 35 managed/real relay checks pass; Python 101 OK (one skipped), source pack
 visual acceptance unrun locally; builder is next. Guest playback uses observed
 real time and can start slightly after its authoritative movement cutoff due to
 network latency. Implemented on branch; merge and builder sync recorded in PR.
+
+## 2026-10-14 — Codex: replace Ward Zero music with Siren Ward
+
+Branch `codex/ward-song-replacement`, base shared `6f07ffb`. Owner supplied
+Siren_Ward_2026-10-14T022254.mp3 and requested replacement/push. Original MP3
+copied byte-for-byte to Unity restricted-zone-pulse (120.033 s, stereo 44.1 kHz).
+Retains importer GUID/streaming, Ward PvP/PvE routing, 1.5x gain, Stage Music
+slider, and separate boss music. Updated asset receipt and packaged credits.
+Full ffmpeg decode, source package (1852 files) and whitespace checks passed.
+No code change; Unity import, Windows build/listening remain pending. Merge and
+builder sync receipts in task PR; compiled update availability not yet verified.
