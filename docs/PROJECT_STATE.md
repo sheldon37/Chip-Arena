@@ -1,6 +1,9 @@
 # Chip Arena — current state
 
+2026-10-14 Expedition M1 import: `codex/expedition-layout-import` on shared `5999aff` integrates PR #212, imports both maps/nav and exp-layout-2 manifest, isolates all arena/DEV selectors, fixes inherited gantry exits and defines instance Ward behavior. Validation and promotion receipts: latest DEV_LOG. Asset integration only; Expedition runtime/PhysX/host-guest acceptance remains pending.
+
 2026-10-14 Expedition layout M1: `claude/expedition-layout` (merged shared `b22e59f`) has the town (`expedition-city`) and Ward Zero instance (`expedition-ward-zero`) generators, draft maps and the schema-1 manifest as Tests fixtures (not in Resources), and the `expedition-city` dusk look. Proven offline and against the base `NativeExpeditionLayout` gate; Siren's two gantry breach exits are not Hulk-clear (Astra). Next: Astra merges the PR #212 filter and imports (`docs/EXPEDITION-LAYOUT.md`); Claude door, gate and sanctuary visuals and the town kit. Not playable or released.
+2026-10-14 `codex/expedition-layout-director`: agreed schema resource gate, geometry/navigation refusal hooks, public closure/barrier/boss state and normal-mode map isolation implemented on the foundation. Actual layout assets and runtime scene/combat/transport adapters remain pending; not playable or released. See EXPEDITION-LAYOUT and latest DEV_LOG.
 
 2026-10-14 Astra implementation branch `codex/expedition-director`: DEV monster protocol 2 authority/replication and tested Expedition loader/director foundation. Not merged/released; native monster validation and playable Expedition runtime/probes/migration remain unfinished. See latest DEV_LOG and DEV-ABUSE-AUTHORITY.md.
 

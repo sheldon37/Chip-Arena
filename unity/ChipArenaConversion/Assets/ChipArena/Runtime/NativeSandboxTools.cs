@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
         public bool SandboxConfigure(string map=null,string weapon=null,string difficulty=null)
         {
             if(!SandboxAllowed)return false;
-            if(map!=null&&!Content.maps.Any(m=>m.id==map)||weapon!=null&&!Content.weapons.Any(w=>w.id==weapon&&(!w.devOnly||Local.Seat.access.Allows("weapon:"+weapon,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))))return false;
+            if(map!=null&&!Content.maps.Any(m=>m.id==map&&NativeMapRules.ArenaSelectable(m))||weapon!=null&&!Content.weapons.Any(w=>w.id==weapon&&(!w.devOnly||Local.Seat.access.Allows("weapon:"+weapon,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))))return false;
             if(difficulty!=null)foreach(var p in Pilots.Where(p=>p.Seat.bot))p.Seat.difficulty=NativeLobbyRules.Difficulty(difficulty);
             if(weapon!=null){Local.Seat.spec=weapon;Local.Seat.chips.Clear();}if(map!=null)MapId=map;if(map!=null||weapon!=null){sandboxDummy=null;Reset();}return true;
         }

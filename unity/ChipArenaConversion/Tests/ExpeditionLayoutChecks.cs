@@ -11,11 +11,11 @@ namespace ChipArena.UnityConversion
     // The Expedition layout drafts (docs/EXPEDITION-LAYOUT.md; written by docs/arenas/scripts/expedition_layout.py --fixtures):
     // Tests/expedition-city-draft.json, Tests/expedition-ward-zero-draft.json and Tests/expedition-layout-draft.json. Not game
     // content yet. Checks: both maps pass the UnityMaps validator and import beside today's maps through NativeMapRules.Merge
-    // (a simulated import; Resources are not touched), stay out of the random rotation, and the instance keeps Siren's
+    // (a validated import alongside the generated Resources maps), stay out of the random rotation, and the instance keeps Siren's
     // blocks; the town's spawns follow the existing entry rules (NativeWardEntries) and Siren's entries validate against the
     // instance ("inherit:siren"); manifest ids pass ExpeditionValidation.Id, anchors keep the public kinds, records point at
     // anchors of their own area; NativeExpeditionLayout.Parse reads the manifest and its ValidateGeometry gate passes with
-    // a block-based capsule probe (the town fully; the instance save Siren's two gantry breach exits, which are not Hulk-clear);
+    // a block-based capsule probe (the town fully; the instance with all inherited exits Hulk-clear);
     // each area's blockHash is reproduced here from float fields; the expedition-city look validates and is the town's.
     // Static data checks only: no scene, PhysX or network claim.
     internal static class ExpeditionLayoutChecks
@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             Check(!town.rotation&&!inst.rotation,"neither draft joins the random rotation");
             NativeMapRules.Validate(town);NativeMapRules.Validate(inst);count+=2;
             var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);int rotation=content.maps.Count(m=>m.rotation);
-            NativeMapRules.Merge(content,new UnityMapContent{schema=1,materials=unity.materials,maps=unity.maps.Concat(new[]{town,inst}).ToArray()},unityText);
+            NativeMapRules.Merge(content,new UnityMapContent{schema=1,materials=unity.materials,maps=unity.maps.Where(m=>NativeMapRules.ArenaSelectable(m)).Concat(new[]{town,inst}).ToArray()},unityText);
             Check(content.Map("expedition-city")!=null&&content.Map("expedition-ward-zero")!=null&&content.Map("siren").blocks.Length==siren.blocks.Length&&content.maps.Count(m=>m.rotation)==rotation,"the drafts import beside today's maps; Ward Zero and the rotation unchanged");
             Check(town.blocks.All(b=>b.id.StartsWith("expedition-city-",StringComparison.Ordinal)&&b.role=="static"&&new[]{"stone","brick","metal","wood","foundation"}.Contains(b.material)),"town blocks: own ids, static, existing materials");
             Check(town.blocks.Length>=100&&town.blocks.Length<=400&&town.pilotBlocks.Length>0,"town block budget and its exclusion columns");
@@ -131,14 +131,38 @@ namespace ChipArena.UnityConversion
             Check(parsed.areas.Length==2&&parsed.Area("exp-city").spawns.Length==spawns.Length&&parsed.Area("exp-ward-zero").spawnSource=="inherit:siren"&&parsed.Area("exp-city").bossTrigger!=null&&parsed.Area("exp-city").slots.Length==8,"NativeExpeditionLayout.Parse reads the draft manifest");
             Check(parsed.Area("exp-city").slots.All(p=>parsed.Area("exp-city").sanctuary.Any(v=>v.Contains(p.Position))),"every sanctuary slot inside the sanctuary volume (ExpeditionVolume.Contains)");
             bool Probe(string id,V3 p,float r,float h)=>Supported(content.Map(id),p,r,h);
-            NativeExpeditionLayout.ValidateGeometry(new ExpeditionLayout{schema=1,revision=parsed.revision,world=parsed.world,instances=parsed.instances,areas=new[]{parsed.Area("exp-city")}},content,pve,Probe);count++;
-            // The instance inherits Siren's entries. Two of Siren's Hulk exits (the gantry breaches) sit 0.65 m from the gantry
-            // rail, so the Hulk probe refuses them as authored; every other inherited exit and every authored record passes.
-            var known=new[]{"breach-gantry-e","breach-gantry-w"};var instOnly=new ExpeditionLayout{schema=1,revision=parsed.revision,world=parsed.world,instances=parsed.instances,areas=new[]{parsed.Area("exp-ward-zero")}};
-            bool refused=false;try{NativeExpeditionLayout.ValidateGeometry(instOnly,content,pve,Probe);}catch(FormatException){refused=true;}
-            var tight=pve.entries.Where(e=>NativeWardEntries.Allows(e,"hulk")&&!Supported(inst,e.@exit.Position(),NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight)).Select(e=>e.id).OrderBy(x=>x).ToArray();
-            Check(refused&&tight.SequenceEqual(known),"the gate refuses exactly Siren's two gantry breach exits for a Hulk: "+string.Join(",",tight));
-            var rest=new NativePveContent{entries=pve.entries.Where(e=>!known.Contains(e.id)).ToArray()};NativeExpeditionLayout.ValidateGeometry(instOnly,content,rest,Probe);count++;
+            // Validate the actual imported navigation, with authored capsule clearance on nodes and links.
+            foreach(var m in new[]{town,inst})m.nav=unity.maps.Single(x=>x.id==m.id).nav;
+            var searches=new Dictionary<string,NativeNavSearch>();
+            var nodeClear=new Dictionary<string,bool>();var edgeClear=new Dictionary<string,bool>();
+            bool Reach(string id,V3 from,V3 to,float radius,float height)
+            {
+                var map=content.Map(id);if(!searches.TryGetValue(id,out var search))searches[id]=search=new NativeNavSearch(map.nav);
+                string prefix=id+":"+radius.ToString(CultureInfo.InvariantCulture)+":";
+                V3 Floor(MapNavNode n)=>n.pos-new V3(0,.9f,0);
+                bool Clear(MapNavNode n){string key=prefix+n.id;if(!nodeClear.TryGetValue(key,out bool ok))nodeClear[key]=ok=Supported(map,Floor(n),radius,height);return ok;}
+                bool Near(MapNavNode n,V3 p)=>Math.Abs(Floor(n).y-p.y)<.6f&&(Floor(n)-p).Length<1.5f&&Clear(n);
+                var a=search.Nearest(from+new V3(0,.9f,0),n=>Near(n,from));var b=search.Nearest(to+new V3(0,.9f,0),n=>Near(n,to));
+                if(a==null||b==null){Console.WriteLine($"NO NODE {id} {from.x},{from.y},{from.z} -> {to.x},{to.y},{to.z} r={radius}");return false;}
+                var index=map.nav.nodes.ToDictionary(n=>n.id);
+                bool Active(MapNavLink e)
+                {
+                    string key=prefix+e.id;if(edgeClear.TryGetValue(key,out bool ok))return ok;
+                    var p=index[e.a];var q=index[e.b];ok=Clear(p)&&Clear(q);
+                    if(e.kind!="drop")for(int k=1;ok&&k<8;k++)ok=Supported(map,Floor(p)+(Floor(q)-Floor(p))*(k/8f),radius,height);
+                    edgeClear[key]=ok;return ok;
+                }
+                var path=new List<string>();search.Find(a.id,b.id,Active,path);if(path.Count==0)Console.WriteLine($"NO ROUTE {id} {from.x},{from.y},{from.z} -> {to.x},{to.y},{to.z} r={radius} nodes={a.id},{b.id}");return path.Count>0;
+            }
+            NativeExpeditionLayout.ValidateGeometry(parsed,content,pve,Probe,Reach);count++;
+            Check(pve.entries.Where(e=>e.id.StartsWith("breach-gantry-",StringComparison.Ordinal)).All(e=>Supported(inst,e.@exit.Position(),NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight)),"both authored gantry exits are Hulk-clear");
+            Check(new[]{town,inst}.All(m=>!NativeMapRules.ArenaSelectable(m)&&m.nav.nodes.Length>0&&m.nav.links.Length>0),"imported navigation and arena isolation");
+            Check(NativeWardZeroLooks.Active(inst)&&!NativeWardZeroLooks.Active(town)&&inst.hazards.Length==0,"instance look enabled without Siren hazards");
+            var normalized=new NativeRoomOptions{map=inst.id};normalized.Normalize(content);Check(NativeMapRules.ArenaSelectable(content.Map(normalized.map)),"room normalization refuses instance");
+            Check(R("Assets/ChipArena/Runtime/NativeDevPanel.cs").Contains("if(!NativeMapRules.ArenaSelectable(m))continue;"),"DEV map selector isolates Expedition");
+            Check(manifestText==R("Assets/Conversion/Resources/ExpeditionLayout.json"),"resource equals frozen manifest");
+            Check(parsed.Area("exp-city").spawns.Count(e=>parsed.Area("exp-city").bossTrigger.Contains(e.entry.@exit.Position()))==9,"nine final-area spawns classified by exit geometry");
+            Check(parsed.Area("exp-city").spawns.Select(e=>e.entry.yaw).SequenceEqual(spawns.Select(e=>e.yaw)),"spawn yaw preserved in radians");
             // The look.
             var set=JsonSerializer.Deserialize<MapLookSet>(R("Assets/Conversion/Resources/MapLooks.json"),o);NativeMapLooks.Validate(set);
             var look=NativeMapLooks.ByLook(set,town.look);
@@ -146,7 +170,7 @@ namespace ChipArena.UnityConversion
             Check(NativeMapLooks.ByLook(set,inst.look)?.id=="siren-quarantine","the instance shares the quarantine look");
             int listed=0;foreach(var b in town.blocks){var c=NativeBlockLooks.Resolve(look.blockLooks,null,b.id,b.material,0);if(c.Listed)listed++;}
             Check(listed==town.blocks.Length,"every town block has a look ("+listed+"/"+town.blocks.Length+")");
-            Console.WriteLine("PASS expedition layout ("+count+" checks: both drafts validate and import beside today's maps outside the rotation; Siren's geometry kept; manifest ids, anchors, doors, interactions, sanctuary, gate, boss; NativeExpeditionLayout parses it and its geometry gate passes the town and the instance save Siren's two gantry breach exits; town spawns within the entry rules, Siren's entries valid on the instance; blockHash reproduced; the dusk look)");
+            Console.WriteLine("PASS expedition layout ("+count+" checks: both drafts validate and import beside today's maps outside the rotation; Siren's geometry kept; manifest ids, anchors, doors, interactions, sanctuary, gate, boss; NativeExpeditionLayout parses it and its geometry gate passes the town and instance with generated navigation and zero clearance exceptions; town spawns within the entry rules, Siren's entries valid on the instance; blockHash reproduced; the dusk look)");
         }
     }
 }
