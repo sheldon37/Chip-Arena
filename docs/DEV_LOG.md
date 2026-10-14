@@ -7445,3 +7445,72 @@ lane, breaking walls on the way, from across the map when hunting a pilot it kno
   managed/relay 683 PASS (rc 0); CI-layout export 683 PASS (rc 0); Python 106 run, 1 skipped, OK; source package OK (1971 files);
   git diff --check clean. The first CI-layout run failed on a HulkBreachFxChecks source pin of the HordeCues line; the audio hook
   moved to EffectsFrame (`de61d6c`) and both runs then passed.
+
+### 2026-10-14 — Claude: Expedition doors, final gate, sanctuary, transfer screen and boss intro
+
+Branch `claude/expedition-states`, base shared `6da0330`, merged shared `9cc6d29`. Implementation commit `f9ba939`.
+Visuals only.
+
+- **Inputs.** Everything is driven by Astra's director state in the public view: `closures[]`, `areaBarrier`,
+  `bossArrivals[]` and `members[].safe`. It also reads the static `Resources/ExpeditionLayout.json`. That layout binds only
+  when `areaBarrier.layout` equals this client's fingerprint (`NativeExpeditionLayout.Compatibility`), and the 3D pieces draw
+  only while the arena holds the area's map. Host and guests read the same fields; a missing record draws nothing.
+- **Doors.** A biocontainment airlock unit at every door closure (the Ward Zero portico and the instance exit). The leaves
+  ease over exactly 1 s from `began`. A hardlight seal covers exactly the closure face for as long as `Blocking` holds
+  (sealing, sealed and the whole opening second), so nothing looks open while it blocks. The HUD door hologram stays as the
+  fallback for a door without a closure record.
+- **Final gate.** The clamps unlock, then the portcullis rises into the lintel. The magenta lattice dissolves but holds until
+  `open`. A beacon pillar, ground rings and FINAL GATE OPEN play the first time this client sees FinalUnlocked open the gate;
+  a gate first seen open cues nothing.
+- **Sanctuary.** A warm floor edge, a low curtain, motes and a ripple where a pilot crosses. It is lit only in the Town and
+  Victory phases; otherwise it shows a dim outline. The SAFE · SANCTUARY chip and the PARTY n / m SAFE line come from `safe`
+  only and claim no damage protection.
+- **Transfer screen.** ENTERING WARD ZERO, RETURNING TO THE CITY or ENTERING THE CITY, with ready / required pips and a bar.
+  It draws over every screen, after the build label, which it draws again so the label and the notice toast stay on top
+  (BuildLabelChecks pins the OnGUI line). It fades in over 0.25 s, holds until the area's map is loaded, then fades out over
+  0.45 s.
+- **Boss intro.** Plays once per arrival, timed from `spawned`. The archetype name keeps TEST. The sting is at the screen
+  edges and never moves the camera. Late joiners (more than 3 s) see only the HUD boss plate (name, ACTIVE or DOWN; no health).
+- **Files.** New: Core `NativeExpeditionStates.cs`, `NativeExpeditionStateScene.cs`; Runtime
+  `NativeExpeditionStatesPresentation.cs`, `NativeExpeditionStatesHud.cs`; `Tests/ExpeditionStatesChecks.cs`. Hooks: one
+  line each in `ExpeditionWorldFrame`, `ExpeditionWorldLabels`, `ExpeditionLiveHud` and `OnGUI`. Docs:
+  EXPEDITION-PRESENTATION.md, section "Doors, gate, sanctuary, transfer and boss arrival".
+- **Names.** `NativeExpeditionPresentation.Name` drops a layout id's `exp-` prefix. The objective line read EXP WARD ZERO
+  with the imported ids.
+- **Missing from Astra's state** (listed in the doc's needs, items 11 to 14):
+  - a seat or pilot id per member, for SAFE tags over other pilots (today: the HUD chip and party line only);
+  - a position or entity id per boss arrival, for the ground crack and roar (built and checked, not drawn live);
+  - boss health;
+  - `areaBarrier.layout` is null until the first `BeginAreaLoad`, so nothing binds before it.
+- **Space taken.** The door unit takes the facility's west face at x 43.4–44.0, z −3.5..3.5, y 0–4, and the instance exit
+  around its jambs. The `claude/expedition-dressing` facades should keep clear of it.
+- **Impact.** No change to hit timing, hitboxes, damage, cooldowns, movement or networking. No collision, director, network
+  or save file was touched.
+- **Checks.** `CoreTests --expedition-states` passed: 14,931 checks against the real director, including zero allocation over
+  240 frames and the source scans. `--expedition-view`, `--expedition-director` and `--expedition-integration` pass. The Unity
+  runtime and editor compile passed on the merged head. Full run5 and CI-layout results follow below.
+- **Renders.** Scratch, not committed: `scratchpad/renders-expedition-states/`, made with the WebGL harness (NativeBlockLit,
+  NativeNightSky, NativeSirenFx quads) on the imported maps, plus the IMGUI recorder:
+  - town door sealed, sealing, opening, open and close up;
+  - gate sealed, opening at 0.3 and 0.7 s, and open with the beacon;
+  - sanctuary edge with ripples, the final-boss phase and the low tier;
+  - Ward Zero exit sealed, sealing, opening and open, and the boss crack;
+  - transfer screen at 1066x600 and 3440x1440;
+  - boss banner, SAFE chip and gate notice.
+- **Not run.** Unity Editor play, Windows, two clients or a guest, PhysX. Nothing plays live until a scene binds a session.
+  Pushed, not merged or released.
+- **Checks on `d51bd52`** (shared `9cc6d29` merged; both sides of DEV_LOG and PROJECT_STATE kept):
+
+  | Check | Result |
+  | --- | --- |
+  | Unity runtime and editor compile | OK |
+  | Managed and real relay | rc 0, 684 PASS, including `PASS Expedition states (14931 checks)` and the build label |
+  | CI-layout export | rc 0, 684 PASS |
+  | Python | 106 tests, 1 skipped, OK |
+  | Source package | 1980 files |
+  | `git diff --check` | clean |
+
+  - The run on `68ebd63` failed BuildLabelChecks: the OnGUI line was pinned and the transfer screen hook had been
+    inserted into it. `d51bd52` moved the hook after the pinned line.
+  - The run5 relay, run at the same time as the CI-layout run, stopped once on the existing Spawn-in zero-allocation check
+    (696 bytes). The CI-layout run of the same commit and a solo relay rerun both pass it.
