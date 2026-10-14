@@ -225,6 +225,27 @@ creating a small puddle of poison (Can corrode destructibles). Can interupt thei
   their root are skipped, and a MaterialPropertyBlock tint on a jolting prop is not carried over.
 - The Hulk's proposed capsule (r .95, h 3.06) is not applied anywhere. Its hit volume is whatever the rules give it.
 
+### High-quality effects pass (2026-10-14, presentation only)
+
+Owner: "Improve visual fx from spitter/hulk zombie (make them high quality) acid needs to look better. Slam/landing/wall
+break [effects] also needs improvements from hulk/brute". Core `NativeZombieFx` (pure shapes) drawn by Runtime
+`NativeZombieFxDraw` through the shared effects renderer (lit glossy blobs and rubble, toon puffs, teardrops, glows, the
+upright slam wave) and a decal layer queued before the effect billboards. No rule, record, radius or time changes:
+
+| effect | driven by | size / time it keeps to |
+|---|---|---|
+| glob in flight | acid record / `minion-spit` event (`from`, `to`, `at`, `flight`) | rides `NativeHordeFx.Glob` (the arc the server validates); lands at `at + flight` |
+| wind-up clot, jaw strings, drool | `LastAttack`, `NativeSpitterRules.Hit` | only before the release; the glob takes over at `LastAttack + Hit` |
+| splash, crown, spatter | the landing (`at + flight`) | every drop lands inside `NativeSpitterRules.Radius` |
+| pool film, ring, bubbles, fumes | the landing, `NativeSpitterRules.Radius` / `Duration` | liquid never past the radius; the ring holds the radius until `Duration`; evaporates over the last 1.3 s; an etch fades 5 s after |
+| smash impact | `LastAttack + hit` (the authority's strike) | wave, cracks, dust and landed rubble inside `NativeHordeKinds.SmashRadiusOf(kind)` round `SmashAheadOf(kind)` |
+| jump-in landing | `NativeHordeDrop.LandAt(ActiveAt, profile)` | inside the profile's `SlamRadius` (brute 2.4 m, Hulk 5.5 m) |
+| wall breach | `NativeBreach` blows (`.55/1.2/2.1` s after the knock start), `breakAt`, replicated `restoreAt` | chips, burst grit, sparks, dust curtain; hardlight remnants until `restoreAt`; motes in the rebuild |
+
+Timing coupling with the Hulk/brute body animation (separate branch): the effects fire on the replicated marks above, so a
+smash or landing pose must put its impact frame on `LastAttack + hit` / `LandAt`, and a breach punch on the `NativeBreach`
+blows, as today's takes do. The effects never read a pose.
+
 ## Prompt for Astra
 
 ```

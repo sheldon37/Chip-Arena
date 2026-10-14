@@ -549,6 +549,35 @@ namespace ChipArena.UnityConversion
         /// <summary>A linear colour from an sRGB hex (exactly Core's NativeBlastSim.Linear).</summary>
         public static Color Linear(int hex){NativeBlastSim.Linear(hex,out double r,out double g,out double b);return new Color((float)r,(float)g,(float)b,0);}
 
+        // ---- the zombie effects (owner 2026-10-14, Runtime/NativeZombieFxDraw.cs): the same primitives, placed by the caller ----
+        /// <summary>A lit sphere stretched by `scale` (its radii, m) and turned by `rotation`: a glossy viscous clot (the spitter's
+        /// acid), with its own specular strength, gloss, emission and fresnel rim (all linear, HDR allowed).</summary>
+        public void Blob(Vector3 at,Quaternion rotation,Vector3 scale,Color albedo,float spec,float gloss,Color emissive,Color rim)=>LitMesh(orb,at,rotation,scale,albedo,spec,gloss,emissive,rim);
+        /// <summary>A lit rubble chunk (NativeVfxMeshes.Chunks by `seed`) of about `size` m, turned by `rotation`: the impacts'
+        /// debris and a breach's grit, flat-shaded like the blasts' rubble, a little of `emissive` to read in the dark.</summary>
+        public void Rubble(Vector3 at,Quaternion rotation,float size,int seed,Color albedo,Color emissive)
+        {
+            if(!(size>1e-4f))return;var shape=chunks[(seed%NativeVfxMeshes.ChunkVariants+NativeVfxMeshes.ChunkVariants)%NativeVfxMeshes.ChunkVariants];
+            LitMesh(shape,at,rotation,Vector3.one*(size*DebrisScale),albedo,.12f,.22f,emissive,albedo*.5f+new Color(.03f,.03f,.035f,0));
+        }
+        /// <summary>An upright slam wave (Quake's look: an open cylinder on the floor at `centre`, bright at its foot, fading to its
+        /// top, lit only at its silhouette): its radius and height (m), progress 0..1 (hot to cool), fade, its colours (linear,
+        /// HDR) and seed.</summary>
+        public void SlamWave(Vector3 centre,float radius,float height,float progress,float fade,Color hot,Color cool,float seed)
+        {
+            if(!(fade>0)||radius<1e-3f||!(height>0))return;float gain=SlamShock*fade;var h=new Color(hot.r*gain,hot.g*gain,hot.b*gain,progress);var c=new Vector4(cool.r*gain,cool.g*gain,cool.b*gain,progress);
+            int first=shocks.Add(slamP.Length,slamT.Length,out int ti);var verts=shocks.Vertices;var tris=shocks.Indices;
+            for(int k=0;k<slamP.Length;k++){var q=slamP[k];verts[first+k]=new MeshVertex{Position=centre+new Vector3(q.x*radius,q.y*height,q.z*radius),Normal=slamN[k],Color=h,A=c,B=new Vector4(seed,2,q.y,radius)};}
+            for(int k=0;k<slamT.Length;k++)tris[ti+k]=first+slamT[k];
+        }
+        /// <summary><see cref="Smoke"/> with its own glow in its colour (acid fumes, the toxic cloud's look): `glow` 0..about .5.</summary>
+        public void Smoke(Vector3 at,Color albedo,float opacity,float size,float u,float seed,float floor,float glow)=>Toon(at,albedo,Mathf.Clamp01(opacity),size,ToonSmokeMode,u,seed,floor,glow);
+        /// <summary>A soft vapour puff (the mist's look: the base layer's lit atlas puff eroding over u) glowing a little in its own
+        /// colour: acid fumes, fine dust sifting or pouring.</summary>
+        public void Vapor(Vector3 at,Color albedo,float opacity,float size,float u,float seed,float floor,float glow)=>Puff(at,albedo,Mathf.Clamp01(opacity),size,SmokeMode,u,seed,floor,glow:glow);
+        /// <summary>The same vapour stretched upright by `aspect` (height over width) and kept unrolled: dust pouring in a sheet.</summary>
+        public void Vapor(Vector3 at,Color albedo,float opacity,float size,float u,float seed,float floor,float glow,float aspect)=>Puff(at,albedo,Mathf.Clamp01(opacity),size,SmokeMode,u,seed,floor,aspect,true,glow);
+
         // ---- submission ----
         private void Upload()
         {

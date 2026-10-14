@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using NVector=System.Numerics.Vector3;
+using NVector2=System.Numerics.Vector2;
 
 namespace ChipArena.UnityConversion
 {
@@ -25,9 +26,19 @@ namespace ChipArena.UnityConversion
     // its block dressing and its kit parts hidden: the authority removes its whole collider) and its pieces, which tile the whole
     // block (Core NativeBreach.BuildBlock), burst out along the facing with dust; the hologram rebuilds the whole block, then its
     // own look comes back. Keyed by the block and the break, seeded from both (NativeBreach.Seed), so every peer draws the same.
+    // High-quality pass (owner 2026-10-14: "Slam/landing/wall break [effects] also needs improvements from hulk/brute"), drawn by
+    // Runtime/NativeZombieFxDraw.cs on the same timeline (NativeBreach's blows, break, restoreAt): each blow's flash, toon dust and
+    // chips spalling to the floor, the cracks dark with a hot seam in the decal layer; at the break toon dust bursting out, lit
+    // grit thrown out and bouncing, sparks out of the struck spot, a dust curtain pouring off the gap's top edge, dust off the
+    // foot; while it waits the stage's hardlight glitching along the gap's outline, waking toward the restore; hardlight motes
+    // riding the pieces home in the rebuild. The pieces themselves, the panel, the scan and the flash are as before.
     // The pools and meshes are made once per breach (lazily, never in a field initializer); nothing is allocated per frame.
     public sealed partial class ArenaPresentation
     {
+        // A whole block's outline (wall-local, round its face) for the hardlight remnants; filled per draw, never reallocated.
+        private readonly NVector2[] hordeBlockOutline=new NVector2[4];
+        // How hot the cracks' seams are `into` s into the knock (each blow lights them, then they cool).
+        private static float BreachHeat(float into){float hot=0;for(int k=0;k<NativeBreach.Blows.Length-1;k++){float a=into-NativeBreach.Blows[k];if(a>=0&&a<.6f)hot=Mathf.Max(hot,1-a/.6f);}return hot;}
         private sealed class HordeBreachState
         {
             public bool Live,Panel,Hidden;public PveEntry Entry;public float SpawnAt,BreakAt,RestoreAt;public uint Seed;public int Kind;
@@ -189,22 +200,21 @@ namespace ChipArena.UnityConversion
             {
                 var b=hordeBreaches[i];if(!b.Live)continue;var h=b.Hole;var w=h.Wall;var phase=NativeBreach.At(now,b.SpawnAt,b.BreakAt,b.RestoreAt,out float into);float face=w.Thickness*.5f+.012f;
                 if(h.Full){DrawBlockBreachFx(draw,b,phase,into,now,eye,right,up,low,dust);continue;}
-                Vector3 hole=BreachPoint(w,h.Center.X,h.Center.Y,face);
+                Vector3 hole=BreachPoint(w,h.Center.X,h.Center.Y,face);var z=zombieFx;bool near=z!=null&&z.Within(Vector3.Distance(eye,hole),true);int ink=NativeHordeKinds.Seam[NativeHordeKinds.Hulk];
                 if(phase==NativeBreach.Phase.Knock)
                 {
-                    float cracked=NativeBreach.Cracked(into);
-                    for(int k=0;k<NativeBreach.CrackLines;k++)if(NativeBreach.Crack(h,k,cracked,out var ca,out var cb,out float cw))
-                    {Vector3 p0=BreachPoint(w,ca.X,ca.Y,face),p1=BreachPoint(w,cb.X,cb.Y,face);var side=Vector3.Cross(p1-p0,new Vector3(w.Normal.X,w.Normal.Y,w.Normal.Z)).normalized*cw;draw.Quad(draw.Effects,p0-side,p1-side*.2f,p1+side*.2f,p0+side,new Color(.02f,.015f,.02f,.9f),NativeFxDraw.Authored);}
-                    // Dust shaken out on each blow.
-                    for(int k=0;k<NativeBreach.Blows.Length-1;k++){float a=into-NativeBreach.Blows[k];if(a<0||a>.8f)continue;for(int d=0;d<6;d+=low?2:1){float hx=(NativeGoreRules.FnvDigits(d+k*7)%100/100f-.5f)*h.HalfWidth*1.6f;var p=BreachPoint(w,h.Center.X+hx,h.Center.Y+h.HalfHeight*(.2f+.12f*d)-a*a*2.5f,face+.05f+a*.4f);draw.Sprite(draw.Effects,p,right,up,.22f+.35f*a,Alpha(dust,.5f*(1-a/.8f)),NativeFxDraw.Authored);}}
+                    if(!near)continue;float cracked=NativeBreach.Cracked(into),hot=BreachHeat(into);
+                    for(int k=0;k<NativeBreach.CrackLines;k++)if(NativeBreach.Crack(h,k,cracked,out var ca,out var cb,out float cw))z.WallCrack(w,ca,cb,cw,face,.9f,hot,ink);
+                    // Each blow from behind: a flash, dust shaken out of the cracks and chips spalling off the face.
+                    for(int k=0;k<NativeBreach.Blows.Length-1;k++){float a=into-NativeBreach.Blows[k];if(a>=0)z.Knock(w,k,a,h.Center.X,h.Center.Y+h.HalfHeight*.3f,h.Floor,1,false,b.Seed);}
                     continue;
                 }
                 float sinceBreak=now-b.BreakAt;
-                if(phase==NativeBreach.Phase.Broken&&into<1.6f)
+                if(phase==NativeBreach.Phase.Broken&&near)
                 {
-                    // The burst: dust thrown out of the hole into the arena, a flash.
-                    for(int d=0;d<14;d+=low?2:1){float ang=d*2.39996f,rr=(.3f+.7f*((d*37)%10)/10f);float out_=into*(2.2f+1.5f*rr);var p=BreachPoint(w,h.Center.X+Mathf.Cos(ang)*h.HalfWidth*rr,Mathf.Max(-w.Height*.5f+.2f,h.Center.Y+Mathf.Sin(ang)*h.HalfHeight*rr*.8f-into*.5f),face+out_);draw.Sprite(draw.Effects,p,right,up,(.5f+1.4f*into)*(.7f+.3f*rr),Alpha(dust,.55f*(1-into/1.6f)),NativeFxDraw.Authored);}
-                    if(into<.15f)draw.Sprite(draw.Effects,hole,right,up,3f*(1-into/.15f),new Color(1,.9f,.8f,.6f*(1-into/.15f)),NativeFxDraw.Authored+NativeFxDraw.Additive);
+                    // The burst (dust, grit, sparks, the curtain off the gap's top, dust off its foot), then the hardlight remnants.
+                    if(into<3.4f)z.Burst(w,into,h.Center.X,h.Center.Y,h.Center.Y+h.HalfHeight,h.HalfWidth*2,h.Floor,h.HalfWidth*2,b.Seed,false);
+                    z.Remnants(w,h.Center,h.Rim,NativeBreach.Outline,h.Floor,face+.01f,false,into,b.RestoreAt-now,b.Seed);
                 }
                 // Without the segment's material the pieces are drawn here (a stone colour).
                 if(!b.Panel&&phase!=NativeBreach.Phase.Solid)for(int k=0;k<h.Chunks;k++)
@@ -226,6 +236,7 @@ namespace ChipArena.UnityConversion
                     for(int k=0;k<h.Chunks;k++)
                     {
                         NativeBreach.PieceAt(h,k,phase,into,sinceBreak,out var at,out var spin,out float holo,out float solid);NativeBreach.Restore(h,k,into,out float back,out _);if(back<=0)continue;
+                        if(near){var wc=w.ToWorld(at);z.Motes(new Vector3(wc.X,wc.Y,wc.Z),k,back,solid,into,b.Seed);}
                         float edge=holo>0?.9f*holo:.6f*(1-solid);if(edge<.02f)continue;
                         HordeWireBox(draw,w,at,spin,h.Size[k],Alpha(HardlightColor,edge),eye);
                     }
@@ -250,33 +261,29 @@ namespace ChipArena.UnityConversion
         // block's own look comes back.
         private void DrawBlockBreachFx(NativeFxDraw draw,HordeBreachState b,NativeBreach.Phase phase,float into,float now,Vector3 eye,Vector3 right,Vector3 up,bool low,Color dust)
         {
-            var h=b.Hole;var w=h.Wall;float face=w.Thickness*.5f+.012f;var normal=new Vector3(w.Normal.X,w.Normal.Y,w.Normal.Z);
+            var h=b.Hole;var w=h.Wall;float face=w.Thickness*.5f+.012f;var zf=zombieFx;bool near=zf!=null&&zf.Within(Vector3.Distance(eye,BreachPoint(w,h.Strike.X,h.Strike.Y,0)),true);int ink=NativeHordeKinds.Seam[NativeHordeKinds.Hulk];
             if(phase==NativeBreach.Phase.Knock)
             {
-                float cracked=NativeBreach.Cracked(into);
-                for(int k=0;k<NativeBreach.CrackLines;k++)if(NativeBreach.Crack(h,k,cracked,out var ca,out var cb,out float cw))for(int f=-1;f<=1;f+=2)
-                {Vector3 p0=BreachPoint(w,ca.X,ca.Y,face*f),p1=BreachPoint(w,cb.X,cb.Y,face*f);var side=Vector3.Cross(p1-p0,normal).normalized*cw;draw.Quad(draw.Effects,p0-side,p1-side*.2f,p1+side*.2f,p0+side,new Color(.02f,.015f,.02f,.9f),NativeFxDraw.Authored);}
+                float cracked=NativeBreach.Cracked(into),hot=BreachHeat(into);
+                if(near)for(int k=0;k<NativeBreach.CrackLines;k++)if(NativeBreach.Crack(h,k,cracked,out var ca,out var cb,out float cw))for(int f=-1;f<=1;f+=2)zf.WallCrack(w,ca,cb,cw,face*f,.9f,f<0?hot:hot*.5f,ink);
                 for(int k=0;k<NativeBreach.Blows.Length-1;k++)
                 {
-                    float a=into-NativeBreach.Blows[k];if(a<0||a>.8f)continue;
-                    for(int d=0;d<6;d+=low?2:1)
-                    {
-                        float hx=NativeGoreRules.FnvDigits(d+k*7)%100/100f-.5f,hy=NativeGoreRules.FnvDigits(d+k*7+40)%100/100f-.5f;
-                        draw.Sprite(draw.Effects,BreachPoint(w,h.Strike.X+hx*(.9f+1.4f*a),h.Strike.Y+hy*.8f-a*a*1.5f,-(face+.06f+a*.6f)),right,up,.24f+.5f*a,Alpha(dust,.55f*(1-a/.8f)),NativeFxDraw.Authored);
-                        draw.Sprite(draw.Effects,BreachPoint(w,h.Strike.X+hx*1.3f,h.Strike.Y+hy*.6f-a*a*2.5f,face+.05f+a*.35f),right,up,.18f+.3f*a,Alpha(dust,.4f*(1-a/.8f)),NativeFxDraw.Authored);
-                    }
+                    float a=into-NativeBreach.Blows[k];if(a<0)continue;
+                    // The blow from the Hulk's side (-normal): its flash, dust and chips there, grit out of the far face.
+                    if(near)zf.Knock(w,k,a,h.Strike.X,h.Strike.Y,h.Floor,-1,true,b.Seed);
                     // The blow felt by the views near it (no kick: it is the wall that is struck).
                     if(a<.12f)NativeHordeFx.AddShake(hordeShakes,ToN(BreachPoint(w,h.Strike.X,h.Strike.Y,0)),now-a,.06f,12,0,b.Seed^(uint)(k+1)*2654435761u);
                 }
                 return;
             }
             float sinceBreak=now-b.BreakAt;
-            if(phase==NativeBreach.Phase.Broken&&into<1.6f)
+            if(phase==NativeBreach.Phase.Broken&&near)
             {
-                for(int d=0;d<14;d+=low?2:1){float ang=d*2.39996f,rr=.3f+.7f*((d*37)%10)/10f,out_=into*(2.2f+1.5f*rr);var p=BreachPoint(w,h.Strike.X+Mathf.Cos(ang)*1.3f*rr,Mathf.Max(h.Floor+.2f,h.Strike.Y+Mathf.Sin(ang)*1.1f*rr-into*.5f),face+out_);draw.Sprite(draw.Effects,p,right,up,(.5f+1.4f*into)*(.7f+.3f*rr),Alpha(dust,.55f*(1-into/1.6f)),NativeFxDraw.Authored);}
-                int foot=Mathf.Clamp(Mathf.RoundToInt(h.HalfWidth*2/1.2f),2,12);float rise=Mathf.Clamp01((into-.25f)/1.1f);
-                if(rise>0)for(int d=0;d<foot;d+=low?2:1){float u=(d+.5f)/foot*2-1,rr=(d*53)%10/10f;var p=BreachPoint(w,u*h.HalfWidth*.95f,h.Floor+.3f+rise*.9f,face+rise*(1f+1.6f*rr));draw.Sprite(draw.Effects,p,right,up,(.8f+1.8f*rise)*(.8f+.4f*rr),Alpha(dust,.5f*(1-rise)),NativeFxDraw.Authored);}
-                if(into<.15f)draw.Sprite(draw.Effects,BreachPoint(w,h.Strike.X,h.Strike.Y,face),right,up,3f*(1-into/.15f),new Color(1,.9f,.8f,.6f*(1-into/.15f)),NativeFxDraw.Authored+NativeFxDraw.Additive);
+                // The burst out along the Hulk's facing (dust, grit, sparks, the curtain off the gap's top, dust off its foot), then the
+                // hardlight remnants round the whole block's outline on both faces.
+                if(into<3.4f)zf.Burst(w,into,h.Strike.X,h.Strike.Y,h.HalfHeight,h.HalfWidth*2,h.Floor,h.HalfWidth*2,b.Seed,true);
+                hordeBlockOutline[0]=new NVector2(-h.HalfWidth,Mathf.Max(h.Floor,-h.HalfHeight));hordeBlockOutline[1]=new NVector2(h.HalfWidth,Mathf.Max(h.Floor,-h.HalfHeight));hordeBlockOutline[2]=new NVector2(h.HalfWidth,h.HalfHeight);hordeBlockOutline[3]=new NVector2(-h.HalfWidth,h.HalfHeight);
+                zf.Remnants(w,NVector2.Zero,hordeBlockOutline,4,h.Floor,face+.01f,true,into,b.RestoreAt-now,b.Seed);
             }
             if(!b.Panel&&phase!=NativeBreach.Phase.Solid)for(int k=0;k<h.Chunks;k++)
             {
@@ -300,6 +307,7 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<h.Chunks;k++)
                 {
                     NativeBreach.PieceAt(h,k,phase,into,sinceBreak,out var at,out var spin,out float holo,out float solid);NativeBreach.Restore(h,k,into,out float back,out _);if(back<=0)continue;
+                    if(near){var wc=w.ToWorld(at);zf.Motes(new Vector3(wc.X,wc.Y,wc.Z),k,back,solid,into,b.Seed);}
                     float edge=holo>0?.9f*holo:.6f*(1-solid);if(edge<.02f)continue;
                     HordeWireBox(draw,w,at,spin,h.Size[k],Alpha(HardlightColor,edge),eye);
                 }
