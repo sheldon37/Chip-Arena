@@ -38,8 +38,8 @@
     - the punch at full reach on its strike (both arms), the swipe crossing on its strike, the charge's scrape, lead shoulder and ends;
     - determinism, no allocation, a runtime that only draws.
   - Existing `HordeKindChecks`, `ZombieMotionChecks`, `HulkSpitterChecks` (capsule, floor and landing bounds kept), `HulkBreachFxChecks` and `ZombieFxChecks` pass.
-  - Full `tools/check_relay.py` exit 0: 660 PASS lines, 35 managed-core checks, including `hulk motion` and `zombie fx`. SPARSE_RESULT
-  - Python 101 OK (1 skip). `package_source.py` OK (1887 source files; Builds removed). `git diff --check` clean.
+  - Full `tools/check_relay.py` on the final merged head: exit 0, 674 PASS lines, 35 managed-core checks, including `hulk motion` and `zombie fx`. The tracked-files sparse copy also exits 0 (674 PASS).
+  - Python 101 OK (1 skip). `package_source.py` OK (1911 source files; Builds removed). `git diff --check` clean.
   - Offline software renders (scratchpad `hulk-motion/harness/renders`): before and after gait, turn, smash, landing, knock, punch, swipe and charge sheets.
 - **Not run:** Unity Editor play, Windows build, two-client play, the killcam, the Dev Sandbox gallery in engine, and a visual review in real lighting.
 - **Risks:**
