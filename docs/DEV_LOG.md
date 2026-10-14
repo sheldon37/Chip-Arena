@@ -7563,3 +7563,86 @@ Visuals only.
   `hp/maxHp` (`maxHp == 0` means unavailable on a legacy frame). See EXPEDITION-PRESENTATION.
   Implemented on task branch; PR carries source merge status. No binary built or test/live release published.
 - Final verification: full managed/real-relay suite passed (684 PASS groups, exit 0), including Expedition rules, presentation, integration, director and states. `git diff --check` clean.
+
+## 2026-10-14 — Claude: Expedition town dressing (ruined city at dusk)
+
+Branch `claude/expedition-dressing`, base shared `6da0330` (PR #214, the M1 import), merged shared
+`9cc6d29` and then `768ebc9` (the Expedition states). Commits:
+- `9044eec`: the dressing;
+- `bd3dd4b`: the first merge;
+- `83a5726`: the hotel sign and budget lines;
+- `398231e`: the merge of `768ebc9`, with Program.cs keeping both check entries;
+- `5370bf5`: keeps the states' Ward Zero airlock unit clear (x 43.4-44.0, z -3.5..3.5, y 0-4);
+- then this entry.
+
+Presentation only. No block, collider, navigation, layout record, spawn, rule or network change.
+Doors, the gate's portcullis, the sanctuary edge, transitions and boss intros belong to the states
+work. This pass keeps their space clear and does not touch their files. Details, rules and budget:
+`docs/EXPEDITION-LAYOUT.md`, "Town dressing".
+
+- **Kit** (`Core/NativeExpeditionCityKit*.cs`):
+  - Facades on every exposed building face: windows (dark with a dusk sheen, lit, TV, boarded,
+    broken and sooted, three burning), sills, cornices and parapets.
+  - Storefronts with original shop names (neon, a letter dead on some, or painted), shutters and
+    awnings.
+  - Lobbies, depot doors, fire escapes, wall lamps (working, flickering, dead), flashing signals,
+    notices, posters, short graffiti and a few story lines.
+  - Green SANCTUARY arrows for wayfinding.
+  - Landmarks: the city hall, the Meridian frontage (MERIDIAN BIOCONTAINMENT, WARD ZERO,
+    beacons), the sealed CITY IRONWORKS, the boarded CENTRAL STATION and the CHECKPOINT gatehouse.
+  - Vehicles dressed on their blocks. Road paint, litter, blood, scorch, casings.
+  - The sanctuary's sandbags, brazier, lamp posts and bulbs.
+  - A doorway at every door spawn, a grate at every vent, and the breach panels as bricked-up
+    shopfronts.
+- **Skyline, atmosphere, lights, ambience** (`NativeExpeditionCity{Scenery,Fx,Lights}`,
+  `NativeExpeditionCityAmbience`):
+  - Skyline: burning towers, cranes.
+  - Atmosphere: flames, embers and smoke; smoke columns; a helicopter searchlight; halos and pools;
+    ground fog and ash.
+  - Lights: eight practical lights picked from 68 candidates.
+  - Ambience: distant shots, bursts and booms and the fires' crackle on existing audio keys.
+- **Runtime**: `NativeExpeditionCityPresentation` and `NativeExpeditionCityAudio`, with one-line
+  hooks in `NativeSourcePresentation` (SourceWorld), `ArenaPresentation` (dispose) and `NativeAudio`.
+  All are gated on map id `expedition-city`. The blocks are static, so part matrices and steady
+  colours are made once.
+- **Look**: `expedition_city.py --maplooks` names the dressing, backdrop, atmosphere and ambience,
+  and gives the wrecks their own colours. No other look changes.
+- **Budget**:
+  - Kit: 7,631 parts in 16 instanced draws, one of them casting (328). The low tier and
+    compatibility rendering draw 4,811 in 11.
+  - Skyline: 1,212 boxes in 3 draws, backdrop layer. Left out under compatibility rendering.
+  - Effects: at most 642 quads in 2 draws.
+  - Ward Zero's kit, for comparison, is 7,124 parts in 15 draws.
+- **Checks** (`Tests/ExpeditionDressingChecks.cs`, `CoreTests --expedition-dressing`, also in the
+  full suite):
+  - Determinism per block id: a reversed block order gives the same parts.
+  - Placement against the layout's records, recomputed in the test: the 0.25 m wall band below
+    3.1 m; nothing on exits, paths, doorways, vents, drop columns, slots, returns, the approach,
+    interactions, anchors, boss points, the door and gate volumes, or the sanctuary floor.
+  - No parts on the other five maps.
+  - Budgets.
+  - Zero bytes allocated over 120 frames of drive, effects, picker and ambience.
+  - The surface audit now covers the town's kit and skyline: 0 coincident faces after the layers.
+- **Renders** (scratch `renders-expedition-dressing/`): before and after, plan, overviews,
+  eye-level and shoulder-camera views. Also the low tier and before/after sheets. Offline WebGL
+  through NativeBlockLit and NativeNightSky, not Unity.
+- **Animation impact**: none. No hit timing, hitbox, damage, cooldown, movement or networking change.
+- **Checks on `5370bf5`**:
+  - `run5`: Unity 6000.3 runtime and editor compile OK.
+  - Managed core and real relay: 685 PASS groups. These include `expedition dressing`, `Expedition
+    states` (14,931) and `surfaces` (45, six maps).
+  - Python: 106 OK, 1 skip.
+  - Source package: 1,999 files.
+  - Diff check: clean.
+  - `ci-relay2` (CI layout): rc 0, 685 PASS.
+  - Earlier, on `83a5726` before the states merge, the same suites passed (684 groups).
+- **Not run**: Unity Editor play, Windows build, multiplayer, and real frame timing (the budget
+  is instance and draw counts, not milliseconds). The ambience was not heard.
+- **Risks and next steps**:
+  - The look's dusk is dark in shadowed streets. Judge it in a Windows build.
+  - The one-line hooks in NativeSourcePresentation, ArenaPresentation and NativeAudio may conflict
+    with other branches.
+  - The picked lights replace the look's eight on the town. A later light from another system
+    would need to join the picker.
+  - Owner questions: the names, the story graffiti, the blood with gore off, the helicopter, the
+    distant gunfire, the skyline density and the dusk brightness.

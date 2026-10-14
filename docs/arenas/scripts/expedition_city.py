@@ -328,12 +328,16 @@ def look():
                            BL('expedition-city-crate-*', 'timber', 0, 'crates'),
                            BL('expedition-city-dumpster-*', 'steel-green', 0x3C4A3C, 'dumpsters'),
                            BL('expedition-city-barrier-*', 'concrete-board', 0xB0A898, 'jersey barriers'),
-                           BL('expedition-city-car-*', 'plain', 0x4E4846, 'wrecked cars (burnt out)'),
-                           BL('expedition-city-bus-*', 'plain', 0x7A6A3A, 'the crashed bus'), BL('expedition-city-truck-*', 'plain', 0x4A4E52, 'the truck'),
-                           BL('expedition-city-ambulance-*', 'plain', 0xB8B8B0, 'the ambulance'), BL('expedition-city-taxi-*', 'plain', 0x9A7A2A, 'the taxi'),
+                           BL('expedition-city-car-fc-0', 'plain', 0xD4D4D0, 'police car (dark light bar)'), BL('expedition-city-car-fc-1', 'plain', 0xD4D4D0, 'police car (its light bar still flashing)'),
+                           BL('expedition-city-car-av-0', 'plain', 0x3A4A62, 'abandoned sedan'), BL('expedition-city-car-es-0', 'plain', 0x7A2A24, 'abandoned sedan'),
+                           BL('expedition-city-car-ws-0', 'plain', 0x3A5A44, 'abandoned sedan'), BL('expedition-city-car-rw-0', 'plain', 0x9A7A3A, 'overturned car'),
+                           BL('expedition-city-car-rs-1', 'plain', 0x5A2A30, 'overturned car'),
+                           BL('expedition-city-car-*', 'plain', 0x2E2826, 'wrecked cars (burnt out)'),
+                           BL('expedition-city-bus-*', 'plain', 0xA89458, 'the crashed bus (its front burnt)'), BL('expedition-city-truck-*', 'plain', 0xA8A69E, 'the box truck'),
+                           BL('expedition-city-ambulance-*', 'plain', 0xD8D8D0, 'the ambulance'), BL('expedition-city-taxi-*', 'plain', 0xD0A830, 'the taxi'),
                            BL('material:brick', 'brick-red', 0x7A4A3E, 'tenements, shops and corners'), BL('material:stone', 'concrete-board', 0x8A8478, 'towers and civic blocks'),
                            BL('material:metal', 'corrugated', 0x5A6062, 'depots'), BL('material:wood', 'timber', 0, 'anything else wood')],
-            'kitLooks': [], 'dressing': '', 'backdrop': '', 'atmosphere': '', 'ambience': '',
+            'kitLooks': [], 'dressing': MAP, 'backdrop': MAP, 'atmosphere': MAP, 'ambience': MAP,
             'blocks': dict(dressed=True, dust=0.06, haze=0.3, hazeTop=3.2, hazeColor=0x5E4A62)}
 
 MAPLOOKS = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'unity', 'ChipArenaConversion', 'Assets', 'Conversion', 'Resources', 'MapLooks.json'))
