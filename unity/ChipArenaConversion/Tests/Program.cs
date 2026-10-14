@@ -12,6 +12,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition"){ExpeditionChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-view"){ExpeditionChecks.Run();ExpeditionPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-layout"){ExpeditionLayoutChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--expedition-states"){ExpeditionStatesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
             DevAbuseChecks.Run();ExpeditionChecks.Run();
             if(args.Length==1&&args[0]=="--navigation"){NavSearchChecks.Run(ProjectRoot());return 0;}
@@ -34,7 +35,7 @@ internal static class Program
             CloudflareChecks.Run().GetAwaiter().GetResult();
             AnimationChecks.Run();
             string root=ProjectRoot();
-            ExpeditionPresentationChecks.Run(root);ExpeditionIntegrationChecks.Run(root);ExpeditionDirectorChecks.Run(root);
+            ExpeditionPresentationChecks.Run(root);ExpeditionIntegrationChecks.Run(root);ExpeditionDirectorChecks.Run(root);ExpeditionStatesChecks.Run(root);
             PveSpitterChecks.Run(root);NavSearchChecks.Run(root);WardSimulationChecks.Run(root);HulkBreachChecks.Run(root);InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
             FactoryChecks.Run(root);StageHazardChecks.Run(root);SurfaceChecks.Run(root);

@@ -40,6 +40,11 @@ Core files are engine-free; Runtime files draw with the cyber HUD kit (`NativeHu
 | `Runtime/NativeExpeditionWorldPresentation.cs` | 3D world pieces (one dynamic mesh, `NativeBeacon` shader) and their projected labels |
 | `Runtime/NativeExpeditionPreviewScreen.cs`, `Runtime/NativeExpeditionPreviewUI.cs` | DEV preview layout and its `--ca-expedition-preview` hook |
 | `Tests/ExpeditionPresentationChecks.cs` | Managed checks (`CoreTests.dll --expedition-view`, also in the full suite) |
+| `Core/NativeExpeditionStates.cs` | Closure phase math, the presentation clock, cue memory (gate beacon, boss intros, sanctuary crossings), the layout rig, and the transfer, SAFE and boss models |
+| `Core/NativeExpeditionStateScene.cs` | Door, final gate, sanctuary and boss-crack geometry: kit boxes (NativeBlockLit) and effect quads (NativeSirenFx) |
+| `Runtime/NativeExpeditionStatesPresentation.cs` | Draws the scene (instanced kit, one effects batch); layout binding; the LateUpdate, in-scene HUD and transfer-screen hooks |
+| `Runtime/NativeExpeditionStatesHud.cs` | Transfer screen, SAFE chip, boss intro and plates, final gate notice |
+| `Tests/ExpeditionStatesChecks.cs` | Managed checks (`CoreTests.dll --expedition-states`, also in the full suite) |
 
 `Runtime/ConversionGame.cs` has five hook lines: the J/Escape keys, local play paused while the screen is
 open (as the PvE chip screen does), the screen in `GuiFrame`, the in-scene HUD, and the world draw at the
@@ -115,7 +120,7 @@ Built by `NativeExpeditionWorld.Build(view)` for the anchors whose `area` is the
 | --- | --- | --- | --- |
 | Ordinary drop | reward anchor of a public `monster` loot entry | cyan diamond (3D octahedron), light column while open | FIRST PICKUP · ORDINARY DROP · ANYONE; YOURS; TAKEN · BY X |
 | Reserved boss chip | reward anchor of a `boss` loot entry | magenta chip tile with shackle; struck danger tile when the viewer is a member not in the record | YOURS / FOR X / NOT ELIGIBLE; RESERVED, CLAIMED, OPENED · PICK A CHIP; boss name |
-| Door | `door` anchor; building = instance named by the anchor's `area` (inside), else by its `id` (outdoor entrance) | ring + column, HUD `Door` hologram (sealed/open) | SEALED · QUOTA p / t or BOSS d / n DOWN; OPEN; ENTER TOGETHER · QUOTA t; UNFINISHED |
+| Door | `door` anchor; building = instance named by the anchor's `area` (inside), else by its `id` (outdoor entrance) | ring + column; the 3D leaves where the door has them (below), else the HUD `Door` hologram (sealed/open) | SEALED · QUOTA p / t or BOSS d / n DOWN; OPEN; ENTER TOGETHER · QUOTA t; UNFINISHED |
 | Reprint machine | `machine` anchor | pedestal, ring, column while someone is down | REPRINT MACHINE · NAME · $quote or PRICE UNAVAILABLE · +n MORE DOWN / CARRIED BY X |
 | Chip cache | `chest` anchor with an offer of the same id | crate, ring, column while buyable | $price · CHIP CACHE · STOCK G; RESTOCKING · Ns; BOUGHT · YOURS; $n SHORT |
 
@@ -126,11 +131,51 @@ Built by `NativeExpeditionWorld.Build(view)` for the anchors whose `area` is the
 - Claimed ordinary drops show dimmed (taken); picked rewards disappear. No piece is local-authoritative:
   claiming goes through the commands.
 - Drawing: one dynamic mesh with the revive beacon's shader and motes, in the theme palette; the HUD glyph
-  only for doors (anchors carry no facing). Labels: projected, sized by depth, hidden behind walls,
+  only for doors without 3D leaves this frame. Labels: projected, sized by depth, hidden behind walls,
   within 26 m, decluttered nearest first. Pieces are culled past 90 m. Reduced effects: no spin, bob or
   mote scroll. Building, culling, geometry and labels reuse buffers and cache strings: no allocation per
   frame for a steady view (checked).
 - Anchor `y` is treated as the floor under the piece.
+
+## Doors, gate, sanctuary, transfer and boss arrival
+
+Claude, `claude/expedition-states` (shared base `6da0330`), 2026-10-14. All of it reads Astra's director state in the public
+view: `closures[]`, `areaBarrier`, `bossArrivals[]` and `members[].safe`. It also reads the static manifest
+`Resources/ExpeditionLayout.json`, which every client holds. Host and guests read the same fields, so they draw the same thing.
+Nothing here writes the view, calls the director or touches collision.
+
+**Binding.** The client parses the manifest once and computes its fingerprint: `NativeExpeditionLayout.Compatibility`, the
+manifest bytes plus the content revision. The rig of the view's area is used only when `areaBarrier.layout` equals that
+fingerprint, and the 3D pieces draw only while the arena holds that area's map. Anything missing draws nothing:
+- no fingerprint (before the first `BeginAreaLoad`), or a different one;
+- another map loaded;
+- a door without a closure record. Its HUD `Door` hologram stays as the fallback.
+
+**Clock.** Closure `began` and boss `spawned` are on the authority's run clock (`elapsed`). The presentation clock is the last
+view's `elapsed`, run forward by local time between views (at most 0.25 s, because views arrive at 20 Hz). It holds still while
+`loading` or `migrating`, never steps back by a sliver, and starts over for a new run.
+
+| Piece | Reads | Look |
+| --- | --- | --- |
+| Door leaves | each closure whose id is a door anchor of the area; the closure volume (size, yaw) for the doorway plane; the approach for the party's side | An airlock unit at the closure volume: pockets either side, a header, a hazard-striped sill and jamb bands, status lamps and signs in the state colour (green open, amber moving, red sealed), and a dark airlock behind with a teal light. Two leaves meet in the doorway plane and slide into the pockets. Ward Zero's portico and exit are biocontainment doors: clinical white leaves, hazard edges, a teal band and dark portholes. `Shut` is 0 when open, 1 when sealed, and eases over exactly 1 s from `began` while sealing or opening. Three lock bolts engage over the last 15% of sealing and draw back over the first 15% of opening. |
+| Door seal | `Blocking` (state is not `open`: the collider's own predicate) | A hardlight seal over exactly the closure face: fill, bright border, slanted hazard hems, scanlines and a sweep. Amber while sealing or opening (it flashes on at the start of sealing), red while sealed. It stays up through the whole opening second and is gone the moment the view says `open`, so nothing looks open while it blocks. After that, sparks drift off for 0.5 s. |
+| Final gate | the gate's closure (`exp-city:gate:final`) and its volume, facing the sanctuary | A steel portcullis that fills the gatehouse opening. Opening: lock clamps draw back into the towers over the first quarter, then the gate rises over the rest of the second into the lintel (sealing reverses this). A magenta hardlight lattice stays up while it blocks. During opening, cells dissolve with white flashes but at least a fifth remain, plus the frame and fill, until `open`. |
+| Gate beacon | this client saw the gate go from sealed or sealing to opening or open, or first saw it opening; timed from `began` | A magenta pillar rising 70 m off the gatehouse, three ground rings and a face flash for 7 s, and the HUD notice FINAL GATE OPEN · THE FINAL AREA IS UNLOCKED for 4 s. A gate first seen open (a resume or late join) cues nothing. |
+| Sanctuary boundary | the area's sanctuary volumes; the phase | A warm floor edge (a bright core fading inward), a low curtain with a slow wave, warm rising motes and corner glows. A shimmer ripple and ring appear where a pilot crosses (presentation's own position test; it never grants SAFE). Lit only in the Town and Victory phases, the ones in which the authority grants `safe`; otherwise a dim cool outline. The low tier keeps the floor edge; reduced effects stop the wave and motes. |
+| SAFE chip | `mine.safe` (member, connected, not extracted); `members[].safe` for the party line | SAFE · SANCTUARY under the wallet, and PARTY n / m SAFE with up to three names. It is the authority's sanctuary membership (checkpoint, extraction, remote reprint). It never claims damage protection and is never derived from a position. |
+| Transfer screen | `areaBarrier` (active, target, ready, required); `loading`; `instances[].entered` | Full screen over everything: AREA TRANSFER · LOADING; ENTERING WARD ZERO for an instance target; RETURNING TO THE CITY for the world once a building was entered this loop, else ENTERING THE CITY. One pip per member the barrier waits for (up to 8), PARTY READY n / m, a bar, the paused-clock note and a loader. It fades in over 0.25 s and holds after the barrier drops until the arena holds the area's map (at most 3 s), then fades out over 0.45 s. |
+| Boss intro | `bossArrivals[]` of the view's area, once per arrival, timed from `spawned` | BOSS ARRIVAL · area tag, the archetype's name (test archetypes keep TEST), a rule and a 0.6 s glitch split, and a short sting: a magenta pulse at the screen edges. It never moves the camera or covers the crosshair. 3.4 s. An arrival first seen more than 3 s after its spawn gets no intro. |
+| Boss plates | the same arrivals; the building's `defeated`/`cleared`, or the final-boss phase | One plate per boss: BOSS, the name and ACTIVE or DOWN. No health, because the view carries none. A plate waits for its own intro; late joiners see only the plate. |
+| Boss crack | a boss position | Cracks, roar rings, dust and a flash at the boss's feet for 2.6 s. **Not drawn live:** the view carries no boss position (see below). |
+
+Drawing: the kit boxes are NativeBlockLit instances, lit by the arena look and casting shadows, in chunks of 500; the hardlight,
+glow and dust are one NativeSirenFx effects batch. Doors and the gate are culled past 140 m, sanctuary segments past 90 m. The
+clock, cues, scene and HUD models allocate nothing per frame (checked); HUD strings are cached.
+
+Space the door unit takes, so other kit stays clear of it: in the closure frame, |u| up to W + 0.3 (7 m wide for a 3.2 m
+doorway), 0 to H + 0.55 high, and from the wall face (−D/2 + 0.01) to 0.3 m in front of the closure, sill 0.6 m. The town
+portico is x 43.4–44.0, z −3.5..3.5, y 0–4. The Ward Zero exit is x −37.95..−37.5, z −26.9..−19.9, and encloses the overlay's
+jambs and lintel.
 
 ## Dev preview
 
@@ -171,6 +216,15 @@ host's request refused.
 9. **Performance notes:** the host rebuilds the full view every frame and the host `ExpeditionCommands`
    getter allocates per call; the world pieces themselves allocate nothing per frame.
 10. Optional per-account ineligibility reasons (unchanged).
+11. **Member to pilot binding.** `members[]` has no seat or pilot id, so a guest cannot put a SAFE tag (or any member tag) over
+    another pilot. Today the SAFE state shows as the HUD chip and party line only. A public `seat` per member would let the world
+    tags follow the pilots.
+12. **Boss position.** `bossArrivals[]` has no position or entity id, so the ground crack and roar are not drawn live
+    (`NativeExpeditionStateScene.BossCrack` is ready for one). Either one would bind them.
+13. **Boss health.** The view has no boss HP, so the HUD boss plates show the name and ACTIVE or DOWN only. The combat HUD's
+    own bar stays the health readout once the encounter adapter binds one.
+14. **Layout fingerprint before the first load.** `areaBarrier.layout` is null until the first `BeginAreaLoad`. The state
+    pieces bind only from then on, as the contract's initial load implies.
 
 ## Verification
 
@@ -193,6 +247,19 @@ host's request refused.
 - every preview step for every viewer: leak-free, codec round trip, pieces at real anchors, history private;
 - source scans: palette only, no authority reference or mutator call in presentation, no randomness, no
   session binding, no menu entry.
+
+`CoreTests.dll --expedition-states` (also in the full suite), against the real director: closure phases and the 1 s
+transitions (monotonic, exact at `began` and `began + 1`, bolts, the gate's unlock then rise); the presentation clock (lead
+cap, frozen while loading or migrating, no slivers back, run reset). Doors through the director's real entry and clear: the
+seal covers exactly the closure face from the first instant of sealing through the whole opening, and is gone at `open`. The
+leaves part by the shut amount, cover the whole doorway when shut, sit in the pockets when open, and stay inside the closure
+depth. No closure record, no rig and another area's rig each draw nothing. The gate: lattice up through opening, a monotonic
+rise, the beacon timed from `began`, no cue for a gate first seen open. SAFE only from `mine.safe` and `members[].safe`:
+crossings make ripples, never chips; non-members and strangers get none; the final-boss phase dims the boundary. Transfer
+text and counts from the barrier, return vs first entry, display clamping and the fade. One intro per arrival over 500
+frames, intros timed from `spawned`, late joiners get only the plate, a new loop replays and other areas play nothing; the
+crack is deterministic. The imported manifest's doors and gate get rigs facing their approach. No allocation over 240 frames.
+Source scans: no randomness, no authority reference or mutator, no writes to view state, no collision, palette-only HUD.
 
 Offline renders (scratch recorder plus a small software rasterizer of the same geometry; not committed):
 screens, greybox and 3D world pieces at 1280x720 to 3440x1440. Not run: Unity Editor/IMGUI input,

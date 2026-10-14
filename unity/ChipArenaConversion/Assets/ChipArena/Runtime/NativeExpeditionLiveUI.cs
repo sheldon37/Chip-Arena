@@ -99,7 +99,10 @@ namespace ChipArena.UnityConversion
             ExpeditionLiveSync();var v=expeditionLiveView;if(v==null||expeditionScreenOpen)return;
             ExpeditionWorldLabels();
             E.Minimal(v,width);
-            if(v.transfer.stage!=ExpeditionTransferStage.None)E.TransferBanner(new Rect(width/2-220,NativeExpeditionPresentation.Active(v).active?116:58,440,46),v);
+            bool countdown=NativeExpeditionPresentation.Active(v).active;
+            if(v.transfer.stage!=ExpeditionTransferStage.None)E.TransferBanner(new Rect(width/2-220,countdown?116:58,440,46),v);
+            // The SAFE chip, the boss plates and intro, the final gate's notice (NativeExpeditionStatesPresentation.cs).
+            ExpeditionStatesHud(v,width,height,58+(countdown?58:0)+(v.transfer.stage!=ExpeditionTransferStage.None?54:0));
             int waiting=0;foreach(var r in v.mine.rewards)if(!r.consumed)waiting++;var hint=new Rect(width-24-150,waiting>0&&!v.mine.extracted?62:24,150,28);NativeHudChrome.Tag(hint,C.Cyan(),.9f);U.Text(new Rect(hint.x+12,hint.y,hint.width-12,hint.height),"J · EXPEDITION",11,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
             // The reveal of a new stored dice record: not modal in the scene (the pointer stays with play); it closes by itself.
             if(expeditionLiveDice.Open)NativeExpeditionScreen.DiceOverlay(expeditionLiveDice,v,LiveExpeditionControls(),width,height,Time.unscaledTime,prefs.reducedEffects,false);
