@@ -135,11 +135,13 @@ namespace ChipArena.UnityConversion
             var rig=ExpeditionRigFor(v);if(rig==null)return;
             foreach(var g in rig.Gates)if(expeditionCues.Cue(g.Id,t,out double age)&&age<NativeExpeditionStates.GateNoticeSeconds){NativeExpeditionStatesHud.GateNotice(width,height,(float)age,reduced);break;}
         }
-        /// <summary>OnGUI, over everything (menus included): the area transfer screen while the barrier is up and its fade.</summary>
+        /// <summary>OnGUI, after every screen (menus included): the area transfer screen while the barrier is up and its fade. The
+        /// notice toast and the build label are drawn again over it (both are pure draws), so they stay on top of every screen.</summary>
         private void ExpeditionTransferGui()
         {
             if(Event.current.type!=EventType.Repaint||error.Length>0||expeditionTransferFade.Alpha<=0||LiveExpedition==null)return;
             GUI.matrix=Matrix4x4.Scale(Vector3.one*U.S);NativeExpeditionStatesHud.Transfer(expeditionTransfer,U.W,U.H,expeditionTransferFade.Alpha,Time.unscaledTime,prefs.reducedEffects);
+            NoticeToast();BuildCorner();
         }
     }
 }

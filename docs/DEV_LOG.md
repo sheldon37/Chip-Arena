@@ -7466,7 +7466,9 @@ Visuals only.
   Victory phases; otherwise it shows a dim outline. The SAFE · SANCTUARY chip and the PARTY n / m SAFE line come from `safe`
   only and claim no damage protection.
 - **Transfer screen.** ENTERING WARD ZERO, RETURNING TO THE CITY or ENTERING THE CITY, with ready / required pips and a bar.
-  It draws over everything, fades in over 0.25 s, holds until the area's map is loaded, then fades out over 0.45 s.
+  It draws over every screen, after the build label, which it draws again so the label and the notice toast stay on top
+  (BuildLabelChecks pins the OnGUI line). It fades in over 0.25 s, holds until the area's map is loaded, then fades out over
+  0.45 s.
 - **Boss intro.** Plays once per arrival, timed from `spawned`. The archetype name keeps TEST. The sting is at the screen
   edges and never moves the camera. Late joiners (more than 3 s) see only the HUD boss plate (name, ACTIVE or DOWN; no health).
 - **Files.** New: Core `NativeExpeditionStates.cs`, `NativeExpeditionStateScene.cs`; Runtime
