@@ -1,7 +1,7 @@
 # Chip Arena — development log
 
 ## 2026-10-14 — Claude — Expedition presentation: views, screens, intents and dev preview
-- Branch `claude/expedition-presentation` on shared `9270d95`, which includes Astra's #188 rules foundation. Shared `33f214d` was merged in afterwards; only the DEV_LOG and PROJECT_STATE top entries conflicted, and every entry is kept. Task: the owner's Expedition presentation request (world/town UI, personal wallet and chips, ordinary vs reserved boss loot, authoritative dice, victory/extraction choices, host transfer, minimal HUD). Contract: docs/EXPEDITION-PRESENTATION.md, linked from EXPEDITION.md.
+- Branch `claude/expedition-presentation` on shared `9270d95`, which includes Astra's #188 rules foundation. Shared `33f214d` and then `0ae174f` were merged in afterwards; only the DEV_LOG and PROJECT_STATE top entries conflicted, and every entry is kept. Task: the owner's Expedition presentation request (world/town UI, personal wallet and chips, ordinary vs reserved boss loot, authoritative dice, victory/extraction choices, host transfer, minimal HUD). Contract: docs/EXPEDITION-PRESENTATION.md, linked from EXPEDITION.md.
 - **Projection (Core `NativeExpeditionView`):**
   - `Build(run, account, sources)` gives one account's view: public run state plus only that account's wallet, rewards (offers only while a pick is pending) and chips.
   - It also carries the scaling read-out, the dice records, public loot (owner and claimed state, no offers) and the transfer state.
@@ -31,7 +31,7 @@
     - independent picks; individual extractions while others continue; majority vote; failed save;
     - transfer freeze/abort/refusal/unreflected commit;
     - every preview step for every viewer; source scans.
-  - check_relay exit 0: 651 PASS on the branch and 658 on the merge with `33f214d`. Python 101 OK (1 skip); package_source OK; `git diff --check` clean; sparse-copy relay exit 0.
+  - check_relay exit 0: 651 PASS on the branch, 658 after merging `33f214d`, 659 after `0ae174f`. Python 101 OK (1 skip); package_source OK; `git diff --check` clean; sparse-copy relay exit 0.
   - Offline renders of 23 frames (scratch IMGUI recorder, 1280x720 to 3440x1440, UI scale 1.5), not committed.
 - **Not run:** Unity Editor/IMGUI input, Windows, real host/guest or multiplayer clients (no transport exists for Expedition).
 - **Astra dependencies** (details in the contract doc):
@@ -43,6 +43,15 @@
   - world positions for drops, chests, doors and machines (3D pieces not built: no scene, no positions);
   - final-boss reward issuance.
 - **Risks:** owner taste on layout and density. `difficultyParty` uses connected, not-extracted pilots until the director locks a roster.
+
+## 2026-10-14 — Astra — consistent ten-second hazard kill credit
+- Branch `codex/hazard-credit-ten`, base shared/builder `c895406d` (PR #205), integrated with concurrent shared `33f214d8` preserving Claude's sprint and update-pulse changes. Owner requests credit to the most recent player damager for hazard deaths within 10 seconds. Current open PRs inspected; no overlapping credit change.
+- `NativeStageHazards.KillCreditSeconds=10` and `RecentDamage` supply one inclusive, nonnegative window for Factory, Cyber City, Ward Zero and PvE add hazard attribution. The generic no-source death fallback also uses 10 seconds (decision: consistent environmental deaths). Damage selects this source before emitting Death so the feed and persisted owner agree, including legacy environmental deaths.
+- Actual positive damage from another pilot updates LastAttacker beside existing structural last-damage tracking; removed tracking from wound presentation input. Self/zero damage cannot erase or extend a valid tag. Latest actual damaging hit wins, not greatest damage.
+- Decision: preserve Brickfall's separately agreed structural attribution and 6-second victim-tag fallback. Collapse bypasses the generic fallback. Ward shutters continue dealing no damage and pushing occupants clear; no new lethal behavior introduced.
+- Updated Factory/Cyber City/Ward Zero contracts and clarified Brickfall exclusion. No presentation, protocol, damage amounts, hit volumes, animation or hazard timing changes.
+- Verification: fresh .NET 8 Roslyn compile of all managed Core plus StageHazardChecks; stage simulation suite passed, including ten boundary/invalid-age cases and Brickfall exclusion. Runtime/Editor syntax (UNITY_EDITOR/ARENA_VALIDATE) zero errors; source package 1873 files after integration; whitespace clean. Added real Unity authority gate cases for 9.99/10/10.01 seconds across stage kinds and no-source fallback, Death owner/event agreement, latest damager, self/zero and future tags; existing train test uses exactly 10 seconds and saw expiry is 10.01 seconds.
+- Unity runtime/editor assembly compile and actual Physics/build gates remain unrun here; Windows host/guest gameplay and compiled Update publication require the desktop builder. Standing push/merge/shared+builder synchronization applies. Full unrelated presentation suite not rerun for this focused rule change.
 
 ## 2026-10-14 — Claude — update available: the home circle beats, the other screens show a pill
 - Branch `claude/update-pulse` on shared `c895406`. Owner: "make it more visible when updates are available~ Like make the button pulse or something".

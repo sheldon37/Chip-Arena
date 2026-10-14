@@ -13,7 +13,6 @@ namespace ChipArena.UnityConversion
         public readonly List<NativeDeath> MinionDeaths=new List<NativeDeath>();
         private void Wound(NativePilot p,NativePilot source,float amount,bool lethal,bool head,bool melee,bool direct,Vector3 dir,NativeBodyImpact impact,Vector3? point)
         {
-            if(source!=null){p.LastAttacker=source;p.LastAttackerAt=Time;}
             if(impact==null&&source!=null)impact=melee?NativeBodyDamage.Melee(source.Seat.spec,(float)source.Stats["attackRate"]):direct?NativeBodyDamage.Projectile(source.Seat.spec,(float)source.Weapon.speed,.045f):null;
             if(impact==null)return;Vector3 hit=point??(p.Body.position+Vector3.up*(head?.6f:0));Vector3 local=Quaternion.Euler(0,-p.Yaw,0)*(hit-p.Body.position);var wound=NativeBodyDamage.Resolve(impact,NativeBodyDamage.Part(new V3(-local.x,local.y,local.z),0,head),amount,lethal,head);if(wound==null)return;
             wound.id=nextEvent++;wound.at=Time;if(head)local.y=Mathf.Clamp(local.y,.48f,.8f);wound.point=new V3(Mathf.Clamp(-local.x,-.5f,.5f),Mathf.Clamp(local.y,-.9f,.9f),Mathf.Clamp(local.z,-.4f,.4f));var localDirection=Quaternion.Euler(0,-p.Yaw,0)*dir.normalized;wound.direction=new V3(-localDirection.x,localDirection.y,localDirection.z);p.Wounds.Add(wound);while(p.Wounds.Count>8)p.Wounds.RemoveAt(0);
@@ -27,7 +26,7 @@ namespace ChipArena.UnityConversion
         }
         private void RecordDeathCore(NativePilot p,NativePilot source,Vector3 direction,float force,bool melee,bool sirenCrush,string damageKind,bool stage,string hazardId)
         {
-            if(damageKind!="collapse"&&damageKind!="hazard"&&damageKind!="maglev"&&damageKind!="grid"&&source==null&&Time-p.LastAttackerAt<=7)source=p.LastAttacker;
+            if(damageKind!="collapse"&&source==null)source=StageCredit(p);
             // A hold interrupted by a bystander is not a Siren crush; only the timed crush hit sets this flag.
             string style=NativeSirenRules.DeathStyle(p.Seat.spec,sirenCrush,source?.Seat.killEffect);
             p.Pose.Wounds=p.Wounds.ToArray();p.Death=new NativeDeath{damageKind=damageKind,hazardId=hazardId,id=p.Seat.id,owner=source?.Seat.id??0,at=Time,seed=nextEvent++,yaw=sirenCrush&&source!=null?NativeSirenRules.CrushDeathYaw(source.Yaw):p.Yaw,force=force,style=style,model=p.Seat.spec=="siren"?"siren":"pilot",position=p.Body.position,velocity=p.Body.isKinematic?Vector3.zero:p.Body.linearVelocity+p.Knockback,direction=direction,melee=melee,kept=Pve!=null&&!p.Seat.AuthorityBoss,actor=p.Pose.ViewCopy(),wound=stage?null:p.Wounds.LastOrDefault()};

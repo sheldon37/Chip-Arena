@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
     {
         private readonly Dictionary<string,BoxCollider> stageLoads=new Dictionary<string,BoxCollider>();
         private int StageRound=>NativeStructureFx.RoundIndex(Match.Set,Match.Round);
-        private NativePilot StageCredit(NativePilot victim,float seconds)=>victim.LastAttacker!=null&&victim.LastAttacker!=victim&&Time-victim.LastAttackerAt>=0&&Time-victim.LastAttackerAt<=seconds?victim.LastAttacker:null;
+        private NativePilot StageCredit(NativePilot victim)=>victim.LastAttacker!=null&&victim.LastAttacker!=victim&&NativeStageHazards.RecentDamage(Time-victim.LastAttackerAt)?victim.LastAttacker:null;
         private void PoseStageLoads(double now,bool advance=false)
         {
             foreach(var h in Map.hazards??Array.Empty<MapHazard>())
@@ -78,7 +78,7 @@ namespace ChipArena.UnityConversion
                 {
                     if(m.Hp<=0)continue;float half=m.Collider.height/2;bool touch=h.kind=="grid"?NativeStageHazards.GridTouch(h,Vec(m.Body.position),half):NativeWardZeroHazards.IsBurst(h)?NativeStageHazards.BurstTouch(h,Vec(m.Body.position),m.Collider.radius,half):NativeStageHazards.Touch(Vec(m.Body.position),center,size,m.Collider.radius,half);
                     if(!touch)continue;float actual=Math.Min(m.Hp,lethal?m.Hp:h.damage*ticks);m.Hp-=actual;m.LastHitAt=Time;Emit(EventKind.HazardHit,null,m.Id,m.Body.position,actual,h.id,damageKind:kind);
-                    if(m.Hp<=0){if(!m.Body.isKinematic)m.Body.linearVelocity+=velocity;var at=m.Body.position;bool possessed=m.Pve?.Possessed==true;var credit=Pve!=null&&m.Pve?.LastHit!=null&&Time-m.Pve.LastDamage<=7?m.Pve.LastHit:null;if(credit!=null)PveAddKilled(m,credit);else Emit(EventKind.Death,null,m.Id,at,0,h.id,damageKind:kind);RemoveMinion(m,false);var death=MinionDeaths.LastOrDefault(d=>d.id==m.Id);if(death!=null)death.damageKind=kind;if(possessed)FoundPveBoss(at);}
+                    if(m.Hp<=0){if(!m.Body.isKinematic)m.Body.linearVelocity+=velocity;var at=m.Body.position;bool possessed=m.Pve?.Possessed==true;var credit=Pve!=null&&m.Pve?.LastHit!=null&&NativeStageHazards.RecentDamage(Time-m.Pve.LastDamage)?m.Pve.LastHit:null;if(credit!=null)PveAddKilled(m,credit);else Emit(EventKind.Death,null,m.Id,at,0,h.id,damageKind:kind);RemoveMinion(m,false);var death=MinionDeaths.LastOrDefault(d=>d.id==m.Id);if(death!=null)death.damageKind=kind;if(possessed)FoundPveBoss(at);}
                 }
             }
         }

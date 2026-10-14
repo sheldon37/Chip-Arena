@@ -1,5 +1,13 @@
 # Ward Zero revamp simulation contract (draft for Astra)
 
+Owner update 2026-10-14: hazard kills credit the most recent other pilot who
+actually dealt damage within **10 seconds, inclusive**. Zero/self damage does
+not replace or refresh that tag. The same window covers PvE add hazard credit
+and the generic no-source environmental-death fallback; Death event credit
+matches the persistent death record. Brickfall collapse keeps its separate
+structural attribution and 6-second victim-tag fallback. Ward shutters remain
+non-damaging pushes; any resulting environmental death uses the rule above.
+
 2026-10-13 · Claude (presentation lane) · for Astra (simulation, collision, spawning, hazards, nav, networking, tests) and the owner.
 Design: `docs/arenas/WARDZERO_PROPOSAL.md`. Draft data: `docs/arenas/scripts/wardzero_m1.py` (`--json` writes the map in the
 UnityMaps.json shape plus a top-level `pve` block; frozen as `unity/ChipArenaConversion/Tests/wardzero-draft.json`).
@@ -191,7 +199,7 @@ Do:
    Add the native traversal gate across both floors (all 8 routes, up and down, host/guest walk/sprint, landing
    and mid-flight at centre/left/right, bot path), in the Editor menu and the build checks.
 4. Hazards (sections 4-6): kinds burner, gas, shutter beside the existing grid; validation; damage kinds burner and
-   gas through the normal tick path (no stagger, credit by the 7 s rule, RecordDeath and NativeNetworkFrame accept
+   gas through the normal tick path (no stagger, credit by the 10 s rule, RecordDeath and NativeNetworkFrame accept
    them); the shutter's collider, push and no-trap rule; take ownership of Core/NativeWardZeroHazards.cs (change
    it if you need to; the presentation follows).
 5. PvE content (section 7): PvePoint.y and the PveEntry fields (surface, level, song, pit, height, clear, hulk,

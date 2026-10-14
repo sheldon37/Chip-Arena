@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
             if(MapId=="cybercity")
             {
                 var h=Map.hazards.Single(x=>x.kind=="maglev");Clock(29);var s=NativeCyberCityHazards.Evaluate(h,StageRound,10,29);Check(NativeCyberCityHazards.TrainBox(h,s,out var c,out _),"train live");
-                Restore(Vec(c));victim.Stats["damageTaken"]=0;victim.ShieldUntil=100;victim.LastAttacker=attacker;victim.LastAttackerAt=22.1f;StepAuthoredHazards();Check(victim.Hp==0&&victim.Death.damageKind=="maglev"&&victim.Death.owner==attacker.Seat.id,"instant kill, immunity bypass and 7 second credit");
+                Restore(Vec(c));victim.Stats["damageTaken"]=0;victim.ShieldUntil=100;victim.LastAttacker=attacker;victim.LastAttackerAt=19f;StepAuthoredHazards();Check(victim.Hp==0&&victim.Death.damageKind=="maglev"&&victim.Death.owner==attacker.Seat.id,"instant kill, immunity bypass and inclusive 10 second credit");
                 Check(victim.Death.wound==null&&victim.Wounds.Count==1&&victim.Death.hazardId==h.id,"train clears fatal wound only and records hazard");
                 var deathFrame=NativeFrameCodec.Clone(NetworkFrame());
                 Check(deathFrame.Valid(Content)&&deathFrame.pilots[0].death.hazardId==h.id&&deathFrame.pilots[0].death.wound==null,"hazard id and absent wound survive JSON");
@@ -30,12 +30,33 @@ namespace ChipArena.UnityConversion
             }
             else
             {
-                var h=Map.hazards.First(x=>x.kind=="saw-slot");double clock=h.start+h.offset+h.warn+h.rise+1;Clock(14+clock);var s=NativeFactoryHazards.State(h,StageRound,clock);Restore(new Vector3(s.BoxCenter.x,.85f,s.BoxCenter.z));Clock(14+clock);victim.Stats["damageTaken"]=0;victim.ShieldUntil=100;victim.LastAttacker=attacker;victim.LastAttackerAt=Time-6.01f;StepAuthoredHazards();Check(victim.Hp==0&&victim.Death.damageKind=="hazard"&&victim.Death.owner==0,"instant saw and expired 6 second credit");
+                var h=Map.hazards.First(x=>x.kind=="saw-slot");double clock=h.start+h.offset+h.warn+h.rise+1;Clock(14+clock);var s=NativeFactoryHazards.State(h,StageRound,clock);Restore(new Vector3(s.BoxCenter.x,.85f,s.BoxCenter.z));Clock(14+clock);victim.Stats["damageTaken"]=0;victim.ShieldUntil=100;victim.LastAttacker=attacker;victim.LastAttackerAt=Time-10.01f;StepAuthoredHazards();Check(victim.Hp==0&&victim.Death.damageKind=="hazard"&&victim.Death.owner==0,"instant saw and expired 10 second credit");
                 Check(victim.Death.wound==null&&victim.Wounds.Count==1&&victim.Death.hazardId==h.id,"factory clears fatal wound only and records hazard");
                 Restore(new Vector3(s.BoxCenter.x,.85f,s.BoxCenter.z+.6f));StepAuthoredHazards();Check(victim.Hp==1000,"saw sidestep");
                 Restore(new Vector3(s.BoxCenter.x,.85f,s.BoxCenter.z));Clock(13.999);StepAuthoredHazards();Check(victim.Hp==1000,"arm grace");
                 var crane=Map.hazards.Single(x=>x.kind=="crane");double impact=14+crane.start+crane.offset+crane.travel+crane.warn+crane.rise;Clock(impact+.1);PoseStageLoads(Match.Time);Check(stageLoads[crane.id].enabled,"landed collider");Clock(impact+crane.dwell+.1);PoseStageLoads(Match.Time);Check(stageLoads[crane.id].enabled,"regrip collider");Clock(impact+crane.dwell+1.51);PoseStageLoads(Match.Time);Check(!stageLoads[crane.id].enabled,"hoist collider removed");
             }
+            // Authority path: every stage kind and the no-source fallback share the inclusive window.
+            foreach(string kind in new[]{"hazard","maglev","grid","burner","gas",null})foreach(float age in new[]{9.99f,10f,10.01f})
+            {
+                Clock(30);Restore(new Vector3(35,1.1f,25));
+                Damage(victim,attacker,1,Vector3.zero,0,false,forced:true,direct:false,primary:false);
+                Check(victim.LastAttacker==attacker&&victim.LastAttackerAt==Time,"positive damage records tag");
+                Clock(30+age);
+                Damage(victim,null,victim.Hp,Vector3.zero,0,false,forced:true,direct:false,primary:false,stage:kind!=null,damageKind:kind,stageHazard:kind==null?null:"credit-fixture",stageLethal:kind!=null);
+                int owner=age<=10?attacker.Seat.id:0;
+                Check(victim.Death.owner==owner&&Events.Last(e=>e.Kind==EventKind.Death).Source==owner,"death record/feed credit boundary "+kind+" "+age);
+            }
+            Clock(30);Restore(new Vector3(35,1.1f,25));
+            Damage(victim,attacker,1,Vector3.zero,0,false,forced:true,direct:false,primary:false);
+            var newer=new NativePilot{Seat=new NativeSeat{id=987,connected=true},Stats=attacker.Stats,Weapon=attacker.Weapon,Body=attacker.Body};
+            Clock(31);Damage(victim,newer,1,Vector3.zero,0,false,forced:true,direct:false,primary:false);
+            Check(StageCredit(victim)==newer&&victim.LastAttackerAt==31,"latest actual damager replaces earlier tag");
+            Clock(32);Damage(victim,attacker,0,Vector3.zero,0,false,forced:true,direct:false,primary:false);
+            Damage(victim,victim,1,Vector3.zero,0,false,forced:true,direct:false,primary:false);
+            Check(StageCredit(victim)==newer&&victim.LastAttackerAt==31,"zero and self damage neither replace nor refresh tag");
+            victim.LastAttacker=victim;Check(StageCredit(victim)==null,"no self credit");
+            victim.LastAttacker=attacker;victim.LastAttackerAt=Time+1;Check(StageCredit(victim)==null,"no future credit");
             Clock(30);Restore(new Vector3(35,1.1f,25));var frame=NativeFrameCodec.Clone(NetworkFrame());Check(frame.Valid(Content),"real JsonUtility frame");
             Check(frame.pilots[0].death==null&&!frame.pilots[0].hasDeath,"absent death survives JSON");
             foreach(var kind in new[]{"maglev","grid","hazard"})

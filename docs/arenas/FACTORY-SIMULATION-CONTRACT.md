@@ -1,5 +1,13 @@
 # Factory simulation contract — H0 draft
 
+Owner update 2026-10-14: hazard kills credit the most recent other pilot who
+actually dealt damage within **10 seconds, inclusive**. Zero/self damage does
+not replace or refresh that tag. The same window covers PvE add hazard credit
+and the generic no-source environmental-death fallback; Death event credit
+matches the persistent death record. Brickfall collapse keeps its separate
+structural attribution and 6-second victim-tag fallback. Ward shutters remain
+non-damaging pushes; any resulting environmental death uses the rule above.
+
 ## Simulation agreement — 2026-10-12, Astra
 
 Task `codex/unity-stage-hazards-20261012`, base shared `aead19c4` (includes
@@ -15,9 +23,9 @@ owner-selected map music, PR #146). Both maps are selectable with rotation false
   authored. No new visual IDs or geometry changes for Claude. It adds supported
   navigation on all accessible elevations, optional `MapNavLink.hazards[]` (a
   crossing may touch multiple hazards), and `MapNavNode.safe` for cut refuges.
-- Damage runs only in Fight. Maglev uses the swept train union and 7-second pilot
+- Damage runs only in Fight. Maglev uses the swept train union and 10-second pilot
   credit; grid uses eight scheduled ticks, mitigation and feet height. Factory
-  lethals bypass mitigation and defensive saves, with 6-second credit. Vents keep
+  lethals bypass mitigation and defensive saves, with 10-second credit. Vents keep
   the draft's damage=0; the tick path supports enabling damage later. Existing
   Kernel Panic pair isolation still applies. Adds receive environmental deaths.
 - Crane cover is a simulation-owned collider outside the prop frame, evaluated
@@ -113,7 +121,7 @@ public static void Validate(FactoryHazard[] hz);
 1. **Hits.** Each tick, for each hazard whose state is `Lethal`, test every pilot capsule (radius 0.42, half height 0.85) against `BoxCenter`/`BoxSize`, and the slot box clipped to y ≥ 0. Do the same for bots and PvE adds.
 2. **Instant kill.** A `lethal` hazard sets health to 0 whatever the armour, block, damage multipliers or i-frames (owner decision 5; recommended) and emits `HazardHit` (Detail = kind: `saw`, `crane`, `press`) and a `Death` with `DamageKind` `hazard` (Detail = hazard id). Kill feed tags: SAW, CRUSHED, PRESSED.
 3. **Vents.** `damage` per `tick` while inside the column and `Bursting`. A `HazardHit` with Detail `vent` goes through the normal damage path (multipliers apply), with no push.
-4. **Credit.** The last pilot who damaged the victim within 6 s (Brickfall decision 7), else environmental. No self-credit.
+4. **Credit.** The last pilot who damaged the victim within 10 s (owner direction 2026-10-14), else environmental. No self-credit.
 5. **The landed load** is a static box (`size`, centre (X, size.y/2, Z)) present while `Landed || Regrip`. It is removed when `Hoisting` begins; pilots on it fall. Pose it from the state on every client and in the killcam (it is not a replicated prop). Bots treat it as cover and an obstacle.
 6. **Arming.** Nothing moves or hurts before FightAt + 4 s. Through the countdown, intros and the draft every hazard is `Parked`.
 7. **Spawn safety.** No spawn within 3 m of any hazard's swept footprint (the draft's closest is 9.1 m). Sandbox respawns also skip points inside or within 3 m of a live volume.
@@ -148,7 +156,7 @@ public static void Validate(FactoryHazard[] hz);
 
 > **Astra:** the owner asked for "a couple of more stages on the same quality of brick fall. A larger map with stage hazards. One is a factory (with like instant kill buzzsaws or things that can fall on players … I can have astra handle the coding portion.)" Claude designed the **Factory** (map id `factory`) and built its presentation on `claude/stage-factory` (base `f575670`). Read `docs/arenas/FACTORY_PROPOSAL.md` and `docs/arenas/FACTORY-SIMULATION-CONTRACT.md`. The map is an 80×64 m steel works: two roofed halls, each with a floor-slot buzzsaw lane and a rail saw across its catwalk; an open crane bay where an overhead crane drops a steel bundle into one of four painted zones every 20 s; a die press in each bay wall; optional steam vents. Claude owns all presentation (looks, kit, rigs, telegraphs, effects, audio). You own collision, hazard rules, spawns, bots, networking and tests. Work on a `codex/` task branch from the newest Unity integration head (check it first) merged with `claude/stage-factory`.
 > 1. Generate the `factory` map into `UnityMaps.json` from `python3 docs/arenas/scripts/factory_m1.py --out DIR` (`factory_m1.json`: 353 blocks with roles, spawns, bounds, 11 pilot blocks, 11 hazards). Keep the id prefixes listed in the contract §1; adjust geometry as the sim needs (the dressing follows). Add `hazards` to ContentMap with the `FactoryHazard` element (or a shared class agreed with the Cyber City contract). Validate with `NativeFactoryHazards.Validate`. Make the map selectable with `rotation:false`.
-> 2. Take ownership of `Core/NativeFactoryHazards.cs` (pure clock, states, cue times). Keep the §3 signatures. Implement §4: lethal volumes from `State().Lethal`/`BoxCenter`/`BoxSize` per tick for pilots, bots and adds; instant kill with `HazardHit` (saw/crane/press) and `Death` `DamageKind` `hazard`; vent tick damage; credit to the last damager within 6 s; the crane's landed-load collider while `Landed || Regrip`, posed on every client and in the killcam; no hazard motion or damage before FightAt + 4 s.
+> 2. Take ownership of `Core/NativeFactoryHazards.cs` (pure clock, states, cue times). Keep the §3 signatures. Implement §4: lethal volumes from `State().Lethal`/`BoxCenter`/`BoxSize` per tick for pilots, bots and adds; instant kill with `HazardHit` (saw/crane/press) and `Death` `DamageKind` `hazard`; vent tick damage; credit to the last damager within 10 s; the crane's landed-load collider while `Landed || Regrip`, posed on every client and in the killcam; no hazard motion or damage before FightAt + 4 s.
 > 3. Nav: the §6 phase-gated links for bots and the PvE horde, so they wait for the saws, tunnels and zones.
 > 4. Tests: §7. Run the repo checks and record actual results, unrun Unity/Windows/multiplayer checks and risks in DEV_LOG and the PR.
 > Do not change visuals, shaders, MapLooks.json or the presentation files. If an id or a hazard field must change, note it in DEV_LOG and the PR so Claude can follow.
