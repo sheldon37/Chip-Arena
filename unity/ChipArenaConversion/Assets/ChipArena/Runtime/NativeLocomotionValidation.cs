@@ -54,9 +54,23 @@ namespace ChipArena.UnityConversion
                 Box(origin-new Vector3(0,1,0),new Vector3(30,1,30),Quaternion.identity);
                 Place(origin+Vector3.up);var resultStart=p.Body.position;int ammo=p.Ammo;float hp=p.Hp;
                 Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Result,time=10,resultAt=10,phaseEnd=20.5,hasFinalKillcam=true});
+                var shotStart=origin+Vector3.up*2;
+                var bullet=new NativeBullet{Id=nextBullet++,Owner=p.Seat.id,Original=p.Seat.id,Spec="pistol",Position=shotStart,Velocity=Vector3.forward*10,Life=2,Travel=40,Radius=.05f,Damage=999};
+                var ability=new NativeAbilityShot{Owner=p,Definition=Content.abilities.First(d=>d.id=="rocket"),Position=shotStart+Vector3.right,Velocity=Vector3.forward*10,Life=2,MaxTravel=40,Radius=.05f,Gravity=2,Damage=999};
+                var melee=new NativeMeleeShot{Owner=p,Original=p,Position=shotStart+Vector3.left,Velocity=Vector3.forward*10,Life=2,Travel=40,Radius=.05f,Damage=999};
+                Bullets.Add(bullet);AbilityShots.Add(ability);MeleeShots.Add(melee);
                 for(int i=0;i<30;i++){Step(new InputFrame{X=1,Yaw=90,Shoot=true,Attack=true,AbilityQ=true});physics.Simulate(1f/60);}
                 Check(p.Body.position.x>resultStart.x+1,"survivor cannot move during final wait");
                 Check(p.Ammo==ammo&&p.Hp==hp&&!p.Input.Shoot&&!p.Input.AbilityQ,"result movement admits combat");
+                Check(bullet.Position.z>shotStart.z+4&&ability.Position.z>shotStart.z+4&&melee.Position.z>shotStart.z+4,"projectiles froze during result movement");
+                Check(ability.Position.y<shotStart.y&&bullet.Life<1.6f&&melee.Travel<36,"result flight ignores gravity/lifetime/range");
+                // A lethal incoming shot is consumed at the survivor without applying damage.
+                var incoming=new NativeBullet{Owner=0,Spec="pistol",Position=p.Body.position-Vector3.forward*2,Velocity=Vector3.forward*240,Life=1,Travel=20,Radius=.05f,Damage=999};Bullets.Add(incoming);
+                Step(new InputFrame());Check(!Bullets.Contains(incoming)&&p.Hp==hp,"result projectile damages survivor or ignores contact");
+                Box(shotStart+Vector3.forward*6,new Vector3(5,2,.2f),Quaternion.identity);Physics.SyncTransforms();
+                for(int i=0;i<12;i++)Step(new InputFrame());
+                Check(!Bullets.Contains(bullet)&&!AbilityShots.Contains(ability)&&!MeleeShots.Contains(melee),"result shots pass through scenery");
+                var expired=new NativeBullet{Position=shotStart,Life=0,Travel=1};Bullets.Add(expired);Step(new InputFrame());Check(!Bullets.Contains(expired),"expired result shot retained");
                 Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Result,time=12,resultAt=10,phaseEnd=20.5,hasFinalKillcam=true});
                 Step(new InputFrame{X=1});Check(p.Body.linearVelocity==Vector3.zero,"movement continues after replay boundary");
                 Clear();Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10,fightAt=0});

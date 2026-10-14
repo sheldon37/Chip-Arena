@@ -6254,3 +6254,20 @@ concurrent change only touches final camera presentation/tests, outside combat.
 Runtime syntax, package (1852 files), whitespace checks pass. New actual contact
 regressions require Unity/PhysX and are NOT executed locally; Windows builder
 and gameplay acceptance pending. Merge/builder sync receipts belong in task PR.
+
+## 2026-10-14 — Codex: keep shots moving during final replay wait
+
+Branch `codex/result-projectile-motion`, base `9ded619`. ResultMovement returned
+after the player motor, so all in-flight projectiles froze during its two seconds.
+The authority now coasts existing bullets, ability shots and thrown melee shots
+using their current velocity/gravity, lifetime and range. Swept contacts/ceiling
+consume them harmlessly; resting grenades expire on their fuse. This is deliberately
+post-round cleanup, not live combat: no new shots, homing/ricochet targeting,
+explosions, chip procs, damage or round-result changes. Existing snapshot positions
+and bullet terminal records carry movement/removal to guests; no protocol change.
+Unity locomotion gate adds three-family movement/gravity/range/lifetime checks,
+lethal incoming shot with unchanged survivor HP, cover consumption and expiry.
+All 35 managed/relay checks, runtime syntax, package (1852 files), whitespace
+pass. Actual Unity/PhysX regressions and Windows host/guest visual acceptance
+remain unrun locally. Merge/builder sync receipts in task PR; compiled update
+must pass the desktop builder before publication.
