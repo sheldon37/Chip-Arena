@@ -477,13 +477,18 @@ and a live playtest. The closing-damage figures assume perfect aim against a non
   stun, juggle, knockdown, special or death drops it. The blend is a 0.15 s ramp, eased at both ends.
 - **Per-weapon carry** (`Core/NativeSprintMotion`, over each route's run, the gait's planted feet unchanged):
   - sword: the blade swept low behind the hip, the free arm pumping (a ninja run);
-  - daggers: both reverse-grip fists pumping hard and low;
+  - daggers: both reverse-grip fists pumping hard and low, each blade at a steady lie tipped back along the forearm
+    (`DaggerRight`, `DaggerLeft`; 2026-10-14: the live run-carry lie wobbled each stride and dipped the tips under the
+    floor guard, which flicked the wrists, the owner's "back arm wiggles"); in the run and walk the left (back) dagger
+    hand keeps the weapon hand's share of the pack swing (`NativeLocoRules.LeftKeep`), not the empty free hand's;
   - shield: up in front of the chest, the shield shoulder leading;
   - greatsword: on the right shoulder in both hands, with a heavier bob;
   - pistol: port arms;
   - rifle: high port, both hands;
   - machine gun: a low ready, both hands;
-  - magic and L33t H4x: both hands trailing back, the staff angled back.
+  - magic and L33t H4x: both hands trailing back, the staff angled back; the casting hand holds the staff run's
+    cycle-mean frame at the sprint weight (2026-10-14: the clip's free-hand frame turned about 115° a stride, the
+    owner's "hand keeps rotating"; `NativeRangedLocomotion.Magic`).
 
   The DEV fighters and the Siren keep their own locomotion. Each route also gets a small extra forward lean (sword .07,
   daggers .1, greatsword .14, shield .03, pistol .04, rifle .03, machine gun .02, magic .04 rad).
