@@ -412,7 +412,7 @@ namespace ChipArena.UnityConversion
         private void DevLists()
         {
             if(devWeaponIds!=null)return;var ids=new List<string>();var names=new List<string>();foreach(var w in content.weapons)if(AllowedWeapon(w)){ids.Add(w.id);names.Add(w.name.ToUpperInvariant());}devWeaponIds=ids.ToArray();devWeaponNames=names.ToArray();
-            ids.Clear();names.Clear();foreach(var m in content.maps){ids.Add(m.id);names.Add(m.name.ToUpperInvariant());}devMapIds=ids.ToArray();devMapNames=names.ToArray();
+            ids.Clear();names.Clear();foreach(var m in content.maps){if(!NativeMapRules.ArenaSelectable(m))continue;ids.Add(m.id);names.Add(m.name.ToUpperInvariant());}devMapIds=ids.ToArray();devMapNames=names.ToArray();
             if(previewRarities==null){var tiers=new List<RarityData>(content.rarities);tiers.Sort((a,b)=>NativeDevChips.Rank(a.id).CompareTo(NativeDevChips.Rank(b.id)));previewRarities=new string[tiers.Count];previewRarityNames=new string[tiers.Count];for(int i=0;i<tiers.Count;i++){previewRarities[i]=tiers[i].id;previewRarityNames[i]=tiers[i].name;}}
             devRarityColor.Clear();devRarityName.Clear();foreach(var r in content.rarities){devRarityColor[r.id]=ColorUtility.TryParseHtmlString(r.color,out var col)?col:C.Ink();devRarityName[r.id]=r.name.ToUpperInvariant();}
         }

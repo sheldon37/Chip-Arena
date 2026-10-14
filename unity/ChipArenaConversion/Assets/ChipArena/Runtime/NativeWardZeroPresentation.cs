@@ -146,7 +146,7 @@ namespace ChipArena.UnityConversion
             for(int e=0;e<wzOpen.Length;e++)
             {
                 NativeEntryView forced=null;for(int k=views.Count-1;k>=0;k--){var v=views[k];if(v!=null&&v.entry==e&&t>=v.openAt-1.5f&&t<=v.closeAt+1){forced=v;break;}}
-                if(forced==null&&e<8){var w=wzWard[e];float offset=e*1.5f,start=offset+((float)Math.Floor((t-offset-5.5f)/12)+1)*12;w.openAt=start;w.closeAt=start+4.5f;forced=w;}
+                if(forced==null&&arena.MapId=="siren"&&e<8){var w=wzWard[e];float offset=e*1.5f,start=offset+((float)Math.Floor((t-offset-5.5f)/12)+1)*12;w.openAt=start;w.closeAt=start+4.5f;forced=w;}
                 wzOpen[e]=NativeVentRules.Open(forced,t,true);
             }
         }

@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
                 if(prefs.MigrateAccountService())Save();prefs.cameraMode=NativeCameraModes.Sanitize(prefs.cameraMode);
                 // A retired entrance pick (neon-drop, vector-slide, signal-spin, arc-salute, pulse-wave) becomes the weapon signature.
                 {string intro=prefs.intro;bool pick=prefs.overrideIntro;NativeIntroRules.Migrate(ref intro,ref pick);if(intro!=prefs.intro||pick!=prefs.overrideIntro){prefs.intro=intro;prefs.overrideIntro=pick;Save();}}
-                if(prefs.map!="random"&&!content.maps.Any(m=>m.id==prefs.map))prefs.map="moonlit";
+                if(prefs.map!="random"&&!content.maps.Any(m=>m.id==prefs.map&&NativeMapRules.ArenaSelectable(m)))prefs.map="moonlit";
                 if(!content.weapons.Any(w=>w.id==prefs.weapon&&!w.devOnly))prefs.weapon="pistol";prefs.bots=Mathf.Clamp(prefs.bots,prefs.pve?0:1,prefs.pve?3:7);
                 InitializeAccount();Application.runInBackground=true;Application.targetFrameRate=144;QualitySettings.vSyncCount=0;Time.fixedDeltaTime=1f/60;Time.maximumDeltaTime=.1f;
                 previousSimulation=Physics.simulationMode;previousGravity=Physics.gravity;ownsPhysics=true;Physics.simulationMode=SimulationMode.Script;
@@ -449,7 +449,7 @@ namespace ChipArena.UnityConversion
         private void MapGrid()
         {
             var o=rules;RuleField(7464,"ARENA");RuleSelect(7466,RoomOpt.Map,null,mapLabels,MapIndex(o));
-            int k=Array.IndexOf(mapIds,o.map);string desc=o.map=="random"?"Choose from all arenas when the match is created.":k>=0?content.maps[k].tag:null;RuleFine(7470,desc,rulesNarrow?0:4,rulesNarrow?4:6);
+            int k=Array.IndexOf(mapIds,o.map);string desc=o.map=="random"?"Choose from all arenas when the match is created.":k>=0?content.Map(o.map).tag:null;RuleFine(7470,desc,rulesNarrow?0:4,rulesNarrow?4:6);
         }
         private void Catalogue()
         {

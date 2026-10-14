@@ -64,6 +64,9 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class ExpeditionView
     {
+        public ExpeditionClosureView[] closures=Array.Empty<ExpeditionClosureView>();
+        public ExpeditionBossArrivalView[] bossArrivals=Array.Empty<ExpeditionBossArrivalView>();
+        public ExpeditionAreaBarrierView areaBarrier=new ExpeditionAreaBarrierView();
         public int schema=1, epoch, loop, living, extractNeeded, difficultyParty, difficultyStep;
         public long revision, savedRevision=-1;
         public string run, world, area, host, viewer;
@@ -94,6 +97,7 @@ namespace ChipArena.UnityConversion
     public sealed class ExpeditionViewSources
     {
         /// <summary>The authority's scaling configuration (default: ExpeditionScaling's documented provisional values).</summary>
+        public ExpeditionDirector Director;
         public ExpeditionScaling Scaling;
         /// <summary>The last savepoint NativeExpeditionSaveStore.Write durably wrote. Extraction is only "saved" once its tombstone is in it.</summary>
         public ExpeditionSavepoint Saved;
@@ -187,6 +191,7 @@ namespace ChipArena.UnityConversion
                     rewards=s.rewards.Where(r=>r.owner==viewer&&(!r.consumed||r.id.StartsWith(loopKey,StringComparison.Ordinal))).Select(r=>new ExpeditionViewReward{id=r.id,source=r.source,boss=r.source=="boss"?BossKey(r.id):null,
                         selected=r.selected,claimed=r.claimed,consumed=r.consumed,highQuality=r.highQuality,offers=r.claimed&&!r.consumed?(string[])r.offers.Clone():Array.Empty<string>()}).ToArray()};
             }
+            v.closures=sources.Director?.Closures??Array.Empty<ExpeditionClosureView>();v.bossArrivals=sources.Director?.BossArrivals??Array.Empty<ExpeditionBossArrivalView>();v.areaBarrier=sources.Director?.Barrier??new ExpeditionAreaBarrierView();
             v.transfer=Transfer(run,s,sources);
             return v;
         }
@@ -224,6 +229,7 @@ namespace ChipArena.UnityConversion
         public static ExpeditionView Normalize(ExpeditionView v)
         {
             if(v==null)return null;static string N(string s)=>string.IsNullOrEmpty(s)?null:s;
+            v.closures??=Array.Empty<ExpeditionClosureView>();v.bossArrivals??=Array.Empty<ExpeditionBossArrivalView>();v.areaBarrier??=new ExpeditionAreaBarrierView();v.areaBarrier.target=N(v.areaBarrier.target);v.areaBarrier.layout=N(v.areaBarrier.layout);
             v.continueVotes??=Array.Empty<string>();v.anchors??=Array.Empty<ExpeditionWorldAnchor>();v.chests??=Array.Empty<ExpeditionChestOffer>();
             v.members??=Array.Empty<ExpeditionViewMember>();v.loot??=Array.Empty<ExpeditionViewLoot>();v.instances??=Array.Empty<ExpeditionViewInstance>();v.dice??=Array.Empty<ExpeditionDice>();v.exitVotes??=Array.Empty<string>();v.extractVotes??=Array.Empty<string>();
             v.viewer=N(v.viewer);v.mine??=new ExpeditionViewPersonal();v.transfer??=new ExpeditionViewTransfer();v.difficulty??=new ExpeditionDifficulty();

@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     {
         public readonly List<NativeEntryView> Entries=new List<NativeEntryView>();
         public NativeEntryView Entry(int index)
-        {if(Pve==null){var forced=Entries.LastOrDefault(e=>e.entry==index&&Time>=e.openAt-1.5f&&Time<=e.closeAt+1);return forced??(index<8?NativeVentRules.Ward(index,Time):null);}return Entries.Where(e=>e.entry==index).OrderByDescending(e=>NativeVentRules.Open(e,Time)).FirstOrDefault();}
+        {if(Pve==null){var forced=Entries.LastOrDefault(e=>e.entry==index&&Time>=e.openAt-1.5f&&Time<=e.closeAt+1);return forced??(MapId=="siren"&&index<8?NativeVentRules.Ward(index,Time):null);}return Entries.Where(e=>e.entry==index).OrderByDescending(e=>NativeVentRules.Open(e,Time)).FirstOrDefault();}
         private int EntryQueue(int entry)=>Minions.Count(m=>m.Pve!=null&&!m.Pve.Travelling&&m.Pve.Entry.e==entry&&Time<m.Pve.ActiveAt);
         private bool VentHazard(int entry,float span=1.95f)
         {if(BossSongTime<0||entry<0||entry>=8)return false;for(float t=0;t<=span+.0001f;t+=.25f){var h=BossTrack.Vent(BossSongTime+t,SongVent(entry).song);if(h.active||h.warning>0)return true;}return false;}
@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         public bool InShaft(NativePilot p)=>p.Death!=null&&(p.Death.style=="vent-fall"||p.Death.style=="vent-splat"&&Time<p.Death.landAt);
         private void StepVents()
         {
-            if(MapId!="siren"||Match.Phase!=NativePhase.Fight||Pve?.Holding==true)return;Entries.RemoveAll(e=>Time>e.closeAt+1);
+            if(!NativeMapRules.WardInstance(MapId)||Match.Phase!=NativePhase.Fight||Pve?.Holding==true)return;Entries.RemoveAll(e=>Time>e.closeAt+1);
             foreach(var p in Pilots)
             {
                 if(p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss)
@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
         }
         private InputFrame AvoidVents(NativePilot p,InputFrame input)
         {
-            if(MapId!="siren"||!p.Seat.bot||p.Seat.AuthorityBoss)return input;Vector3 move=new Vector3(input.X,0,input.Z);float length=move.magnitude;if(length<.01f)return input;Vector3 dir=move/length,pos=p.Body.position,look=pos+dir*1.3f;
+            if(!NativeMapRules.WardInstance(MapId)||!p.Seat.bot||p.Seat.AuthorityBoss)return input;Vector3 move=new Vector3(input.X,0,input.Z);float length=move.magnitude;if(length<.01f)return input;Vector3 dir=move/length,pos=p.Body.position,look=pos+dir*1.3f;
             for(int e=0;e<8;e++)
             {var entry=Entry(e);if(entry==null||Time<entry.openAt-1.5f||Time>entry.closeAt+.4f)continue;Vector3 v=StageVents[e];bool Near(Vector3 q)=>Math.Abs(q.y-v.y)<2.5f&&Math.Abs(q.x-v.x)<1.9f&&Math.Abs(q.z-v.z)<1.9f;if(!Near(pos)&&!Near(look))continue;Vector3 outwards=new Vector3(pos.x-v.x,0,pos.z-v.z).normalized;if(outwards.sqrMagnitude<.01f)outwards=-dir;float side=Vector3.Dot(dir,new Vector3(-outwards.z,0,outwards.x))>=0?1:-1;var steered=Vector3.ClampMagnitude(new Vector3(-outwards.z,0,outwards.x)*side*length*.9f+outwards*length*.45f,1);input.X=steered.x;input.Z=steered.z;break;}return input;
         }
