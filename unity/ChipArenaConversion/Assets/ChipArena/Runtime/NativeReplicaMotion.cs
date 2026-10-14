@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
         {body.interpolation=RigidbodyInterpolation.None;body.transform.position=position;body.position=position;}
         private NativePredictionState PredictionState(NativePilotFrame frame)
         {
-            if(Match.ResultMovement)return new NativePredictionState{Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),Time=Time,
+            if(Match.ResultMovement||BossVictoryWalk)return new NativePredictionState{Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),Time=Time,
                 CanMove=frame.hp>0,CanSprint=frame.hp>0&&frame.stamina>0,Grounded=Local?.Pose.Grounded??false,Stamina=frame.stamina,
                 Speed=Local==null?6.8f:(float)(6.8*Local.Stats["speed"]),Gravity=Local==null?23:(float)(23*Local.Stats["playerGravity"]),
                 JumpSpeed=Local==null?8.5f:(float)(Rules.JumpSpeed*Local.Stats["jumpPower"]),JumpSpec=Local?.Seat.spec,AirJumps=Local?.Pose.AirJumps??0};
