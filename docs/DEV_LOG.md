@@ -7646,3 +7646,28 @@ work. This pass keeps their space clear and does not touch their files. Details,
     would need to join the picker.
   - Owner questions: the names, the story graffiti, the blood with gore off, the helicopter, the
     distant gunfire, the skyline density and the dusk brightness.
+
+### 2026-10-14 — Claude: bind the Expedition state presentation to PR #216's view fields
+
+Branch `claude/expedition-states-bind`, base shared `26d01e5` (contains PR #216, Hulk PR #215 and the town dressing).
+Presentation only.
+
+- **SAFE tags.** `ExpeditionSafeTags` lists the `members[].seat` of every member with `safe` who is connected, alive and
+  not extracted. Seat 0 means unbound and gets no tag. The runtime draws SAFE over each pilot whose `Seat.id` is listed, in
+  the slot above the overhead name, behind-wall hidden, within 55 m, and never over my own pilot in first person. Every
+  viewer sees the same tags.
+- **Boss crack and roar.** They draw at `bossArrivals[].x/y/z`, timed from `spawned`, once per arrival and only for
+  arrivals seen within 3 s. Only a record with `maxHp` above 0 (the current contract) carries a position. The seed is now
+  a stable FNV hash of area and id: .NET string hashes differ per process, and every client must draw the same cracks.
+- **Boss plates.** The bar and percentage come from the view's current `hp/maxHp`; a living boss never reads 0%. DOWN shows
+  once the boss is defeated or `hp` is 0. A legacy record (`maxHp` 0) has no bar and reads ACTIVE.
+- **Startup binding.** `NativeExpeditionStates.Bound` checks `areaBarrier.layout` against this client's fingerprint, which
+  the director now publishes on the initial inactive barrier. Doors, gate and sanctuary draw from the run's start.
+- **Docs.** EXPEDITION-PRESENTATION.md: the states section and needs items 11 to 14, now done.
+- **Checks.** `CoreTests --expedition-states` passed: 14,971 checks. They cover startup binding (host and decoded guest
+  view), seats, the crack position, the same crack on two clients, health, legacy records and zero allocation.
+  `--expedition-director` (70), `--expedition-view` and the Unity compile pass. Full run5, then CI-layout: results follow.
+- **Renders.** Scratch, in `renders-expedition-states/`: the boss plate at 62% and the SAFE tag style (the tags are placed by
+  hand: the scene has no pilots).
+- **Impact.** No change to rules, collision, director, network or save code, or to hit timing, damage or movement.
+- **Not run.** Unity Editor play, Windows, two clients or a guest. Nothing plays live until a scene binds a session.

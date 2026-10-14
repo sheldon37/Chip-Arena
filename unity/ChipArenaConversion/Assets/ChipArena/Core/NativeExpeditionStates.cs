@@ -89,6 +89,14 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether the sanctuary is lit: the phases in which the authority grants `safe` (town and victory). In any other
         /// phase the boundary stays a dim outline, so it never looks like shelter the authority is not giving.</summary>
         public static bool SanctuaryLit(ExpeditionView v)=>v!=null&&(v.phase==ExpeditionPhase.Town||v.phase==ExpeditionPhase.Victory);
+        /// <summary>Whether the view names this client's layout: areaBarrier.layout is the authority's validated fingerprint
+        /// (manifest bytes plus content revision), published as soon as the director binds the layout (the initial inactive
+        /// barrier included), so the state pieces bind before the first area load. Anything else binds nothing.</summary>
+        public static bool Bound(ExpeditionView v,string fingerprint)=>v?.areaBarrier?.layout!=null&&fingerprint!=null&&v.areaBarrier.layout==fingerprint;
+        /// <summary>A stable string hash (FNV-1a over the characters; .NET's string hash differs per process), for patterns that
+        /// must match on every client.</summary>
+        public static int StableHash(string s,int h=unchecked((int)2166136261))
+        {unchecked{if(s!=null)for(int i=0;i<s.Length;i++){h^=s[i];h*=16777619;}return h;}}
         /// <summary>A deterministic hash in [0,1) (no randomness: every client draws the same pattern).</summary>
         public static float Hash(int a,int b)
         {unchecked{uint h=(uint)a*0x8DA6B343u^(uint)b*0xD8163841u^0x9E3779B9u;h^=h>>15;h*=0x2C1B3C6Du;h^=h>>12;h*=0x297A2D39u;h^=h>>15;return (h&0xFFFFFF)/16777216f;}}
@@ -129,7 +137,9 @@ namespace ChipArena.UnityConversion
     public sealed class ExpeditionStateCues
     {
         private struct Closure{public string Id;public ExpeditionClosurePhase Last;public double CueAt;}
-        public struct Arrival{public string Area,Id,Archetype;public double Spawned;public bool Intro;}
+        /// <summary>An arrival as first seen: its intro flag, and its immutable spawn point when the record carries one (a record
+        /// from the current contract has maxHp above 0; a legacy one has neither position nor health).</summary>
+        public struct Arrival{public string Area,Id,Archetype;public double Spawned;public bool Intro,Placed;public float X,Y,Z;public int Seed;}
         public struct Ripple{public int Volume;public float X,Y,Z,Along;public double At;}
         public const int RippleSlots=16;
         private readonly List<Closure> closures=new List<Closure>(16);
@@ -162,9 +172,12 @@ namespace ChipArena.UnityConversion
             {
                 var a=boss[i];if(a?.id==null||a.area==null||FindArrival(a.area,a.id)>=0)continue;
                 // First seen: an intro only while it is still on (a late joiner past LateJoin sees the HUD plate alone).
-                arrivals.Add(new Arrival{Area=a.area,Id=a.id,Archetype=a.archetype,Spawned=a.spawned,Intro=t-a.spawned<=NativeExpeditionStates.LateJoin});
+                bool placed=a.maxHp>0&&Finite(a.x)&&Finite(a.y)&&Finite(a.z);
+                arrivals.Add(new Arrival{Area=a.area,Id=a.id,Archetype=a.archetype,Spawned=a.spawned,Intro=t-a.spawned<=NativeExpeditionStates.LateJoin,
+                    Placed=placed,X=a.x,Y=a.y,Z=a.z,Seed=NativeExpeditionStates.StableHash(a.id,NativeExpeditionStates.StableHash(a.area))});
             }
         }
+        private static bool Finite(float f)=>!float.IsNaN(f)&&!float.IsInfinity(f);
         private int Find(string id){for(int i=0;i<closures.Count;i++)if(closures[i].Id==id)return i;return -1;}
         private int FindArrival(string area,string id){for(int i=0;i<arrivals.Count;i++)if(arrivals[i].Id==id&&arrivals[i].Area==area)return i;return -1;}
         /// <summary>The age of closure `id`'s opening cue at t, when one is due (0..CueSeconds); false otherwise.</summary>
@@ -344,26 +357,48 @@ namespace ChipArena.UnityConversion
         }
     }
 
-    /// <summary>The boss intro banner and the HUD boss plates for the current area (archetype names keep TEST; no health: the
-    /// view carries none).</summary>
+    /// <summary>The SAFE tags over the pilots: the seat (members[].seat, the authority's account-to-pilot mapping) of every
+    /// connected, living, not extracted member the authority has in the sanctuary (members[].safe). Seat 0 is unbound: no tag.
+    /// Public state, the same for every viewer.</summary>
+    public sealed class ExpeditionSafeTags
+    {
+        public const int Max=16;public const string Text="SAFE";
+        public readonly int[] Seats=new int[Max];public int Count;
+        public void From(ExpeditionView v)
+        {
+            Count=0;if(v?.members==null)return;
+            foreach(var m in v.members)if(m!=null&&m.seat>0&&m.safe&&m.connected&&m.alive&&!m.extracted&&Count<Max&&!Has(m.seat))Seats[Count++]=m.seat;
+        }
+        public bool Has(int seat){for(int i=0;i<Count;i++)if(Seats[i]==seat)return true;return false;}
+    }
+
+    /// <summary>The boss intro banner and the HUD boss plates for the current area (archetype names keep TEST), with the boss's
+    /// health from bossArrivals[].hp / maxHp (a legacy record with maxHp 0 has none: no bar).</summary>
     public sealed class ExpeditionBossModel
     {
         public const int Plates=3;public const string Eyebrow="BOSS ARRIVAL";
         public int Intro=-1;public double Age;public string Name,Area;
         public readonly string[] PlateNames=new string[Plates];public readonly bool[] PlateDown=new bool[Plates];public readonly double[] PlateAge=new double[Plates];public int PlateCount;
+        /// <summary>Each plate's health fraction (0..1), or -1 without health; its percentage label (cached), or null.</summary>
+        public readonly float[] PlateHealth=new float[Plates];public readonly string[] PlatePercent=new string[Plates];
         private readonly Dictionary<string,string> names=new Dictionary<string,string>(StringComparer.Ordinal),areas=new Dictionary<string,string>(StringComparer.Ordinal);
         private string NameOf(string archetype){string k=archetype??"";if(!names.TryGetValue(k,out var s)){if(names.Count>128)names.Clear();s=names[k]=NativeExpeditionStates.BossName(archetype);}return s;}
         private string AreaOf(string area){string k=area??"";if(!areas.TryGetValue(k,out var s)){if(areas.Count>32)areas.Clear();s=areas[k]=Eyebrow+" · "+NativeExpeditionStates.AreaName(area);}return s;}
-        public void From(ExpeditionView v,ExpeditionStateCues cues,double t)
+        public void From(ExpeditionView v,ExpeditionStateCues cues,double t,ExpeditionLabels labels=null)
         {
             Intro=-1;Name=Area=null;PlateCount=0;if(v==null||cues==null)return;
             int i=cues.Intro(v.area,t,out double age);if(i>=0){var a=cues.ArrivalAt(i);Intro=i;Age=age;Name=NameOf(a.Archetype);Area=AreaOf(a.Area);}
             for(int k=0;k<cues.ArrivalCount&&PlateCount<Plates;k++)
             {
-                var a=cues.ArrivalAt(k);if(a.Area!=v.area)continue;bool down=Down(v,a.Area,a.Id);
-                PlateNames[PlateCount]=NameOf(a.Archetype);PlateDown[PlateCount]=down;PlateAge[PlateCount]=a.Intro?t-a.Spawned:double.PositiveInfinity;PlateCount++;
+                var a=cues.ArrivalAt(k);if(a.Area!=v.area)continue;var live=Live(v,a.Area,a.Id);
+                float health=live!=null&&live.maxHp>0&&live.hp>=0?(float)Math.Min(1,live.hp/live.maxHp):-1;bool down=Down(v,a.Area,a.Id)||health==0;
+                PlateNames[PlateCount]=NameOf(a.Archetype);PlateDown[PlateCount]=down;PlateAge[PlateCount]=a.Intro?t-a.Spawned:double.PositiveInfinity;
+                PlateHealth[PlateCount]=health;PlatePercent[PlateCount]=health<0||labels==null?null:labels.Int("",(int)Math.Ceiling(health*100-1e-6),"%");PlateCount++;
             }
         }
+        /// <summary>The view's current record of an arrival (its live health), or null.</summary>
+        public static ExpeditionBossArrivalView Live(ExpeditionView v,string area,string id)
+        {var list=v?.bossArrivals;if(list!=null)for(int i=0;i<list.Length;i++){var a=list[i];if(a!=null&&a.id==id&&a.area==area)return a;}return null;}
         /// <summary>Whether an arrived boss is down in the view: its building lists it defeated (or is cleared); the final boss once
         /// the run has left the final-boss phase.</summary>
         public static bool Down(ExpeditionView v,string area,string id)

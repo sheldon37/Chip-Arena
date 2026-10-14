@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 Expedition states bound: `claude/expedition-states-bind` (base shared `26d01e5`) binds PR #216's fields. SAFE tags over pilots come from `members[].seat`; the boss crack and roar draw at `bossArrivals[].x/y/z`; the boss plates show `hp/maxHp`; doors, gate and sanctuary bind from the run's start through the layout fingerprint. Presentation only; managed checks pass; Unity/Windows/two-client unrun. Pushed, not merged.
+
 2026-10-14 Expedition view fields: `codex/expedition-view-fields` on shared `768ebc9` adds member `seat`, boss spawn `x/y/z` and `hp/maxHp`, and the layout fingerprint before the first area load. Claude binding contract: EXPEDITION-PRESENTATION and DEV_LOG. Scene/combat integration remains unfinished; no playable or released Expedition claim.
 
 2026-10-14 Expedition town dressing: `claude/expedition-dressing` (base shared `6da0330`, merged shared `768ebc9`) dresses the `expedition-city` greybox as a ruined city at dusk: facades, landmarks, dressed vehicles, the sanctuary, doorways and grates at the spawns, a skyline, fire, fog and helicopter effects, picked lights and distant cues. It is presentation only and keeps the records and the states' door unit clear. The kit is 7,631 parts in 16 draws; the skyline is 1,212 in 3. Managed and relay checks pass. Unity Editor and Windows are unrun. Pushed, not merged. See EXPEDITION-LAYOUT "Town dressing" and DEV_LOG.
