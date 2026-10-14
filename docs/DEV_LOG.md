@@ -7237,3 +7237,19 @@ Next for Claude:
 - generalizing the Ward Zero presentation to the instance after import.
 
 Open for the owner: scale, themes, the town's name, Ward Zero hazards in the instance.
+
+### 2026-10-14 — Claude: Expedition layout M1 checks (head `12f0680`, shared `b22e59f` included)
+
+| Check | Result |
+| --- | --- |
+| Unity runtime and editor compile | pass |
+| Managed and real relay (`check_relay.py`) | rc 0, 682 PASS lines, including `PASS expedition layout (173 checks …)` |
+| Python suite | 106 tests OK, 1 skipped (the Windows-only `cmd.exe` updater test) |
+| Source package | 1,956 files |
+| `git diff --check` | clean |
+| CI layout (exported index, no `docs/`, `ci-relay2.sh`) | rc 0, 682 PASS lines |
+
+In the CI layout, the layout test's two script tests skip and its three fixture tests pass. An
+earlier CI-layout run that used the shared-directory `ci-relay.sh` was stopped and is not counted.
+Not run: Unity Editor, PhysX, Windows, gameplay. The branch is pushed and unmerged; nothing is
+released or published.
