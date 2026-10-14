@@ -246,6 +246,9 @@ namespace ChipArena.UnityConversion
                 var a=s.rewards.FirstOrDefault(x=>x.id==l.id);
                 if(a==null||a.source!="monster"&&a.source!="boss")leaks.Add("private reward "+l.id+" in public loot");
             }
+            // A reward anchor names its reward in public: only public loot may have one (a purchase's or catch-up's would reveal it).
+            foreach(var a in v.anchors)
+                if(a!=null&&a.kind=="reward"){var r=s.rewards.FirstOrDefault(x=>x.id==a.id);if(r!=null&&r.source!="monster"&&r.source!="boss")leaks.Add("world anchor of private reward "+a.id);}
             var mine=s.members.FirstOrDefault(p=>p.account==viewer);
             if(mine==null&&(v.mine.wallet!=0||v.mine.chips.Length>0||v.mine.rewards.Length>0))leaks.Add("personal state for a non-member");
             if(mine!=null&&v.mine.wallet!=mine.wallet)leaks.Add("wallet is not the viewer's");

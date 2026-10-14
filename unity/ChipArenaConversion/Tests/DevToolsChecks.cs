@@ -345,7 +345,7 @@ namespace ChipArena.UnityConversion
             Check(panel.Contains("ColorUtility.TryParseHtmlString(r.color,out var col)"),"rarity colours from the content");
             // Hooks (one line each in the shared files).
             var game=R("Runtime/ConversionGame.cs");
-            Check(game.Contains("CameraKeys(typing);DevUpdate(typing);")&&game.Contains("if(DevScreenshot())return;")&&game.Contains("if(arena!=null)DevGui(width,height);\n            if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);return;}"),"ConversionGame calls the panel's update, screenshot mode and GUI");
+            Check(game.Contains("CameraKeys(typing);DevUpdate(typing);")&&game.Contains("if(DevScreenshot())return;")&&game.Contains("if(arena!=null)DevGui(width,height);\n            if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);"),"ConversionGame calls the panel's update, screenshot mode and GUI");
             int shake=game.IndexOf("SprintSway();",StringComparison.Ordinal),fly=game.IndexOf("DevCamera();",StringComparison.Ordinal),render=game.IndexOf("presentation.Render(frame,renderTime,false);",StringComparison.Ordinal);
             Check(shake>0&&fly>shake&&render>fly,"the fly camera replaces the view after the pilot camera's shakes, before the frame draws");
             var combat=R("Runtime/NativeCombatHud.cs");Check(combat.Contains("ChipSelectTags(scale,height);")&&combat.IndexOf("DevWorld(scale,height);",StringComparison.Ordinal)>combat.IndexOf("ChipSelectTags(scale,height);",StringComparison.Ordinal)&&combat.Contains("DevFeedTags(r,lines.Length,e);"),"the DEV tags over the nameplates and on the kill feed");

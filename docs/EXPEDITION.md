@@ -179,16 +179,16 @@ panel, personal chip UI, reprint machine and dice display against this contract.
 ## Presentation contract (Claude)
 
 The screens read one projection per account, `NativeExpeditionView.Build(run,
-account, sources)`. It holds the public run state plus only that account's
-wallet, rewards (offers while a pick is pending) and chips. The same DTO is the
-guest replication contract. Screens send intents through `IExpeditionCommands`
-(host-local commands; guests unavailable until a command channel exists) and
-confirm them only from the authority's state.
+account, sources)`: the public run state plus only that account's wallet,
+rewards (offers while a pick is pending), picks and chips. Screens send intents
+through `IExpeditionCommands` (the host's session commands, or the guest command
+channel) and confirm them only from the replicated state. They draw whenever a
+session is bound (host or guest); nothing binds one yet and there is no menu
+entry. World pieces stand only at real anchors.
 
-Fields, screens, the dev preview (`--ca-expedition-preview`) and the remaining
-integration needs are in [`EXPEDITION-PRESENTATION.md`](EXPEDITION-PRESENTATION.md):
-replication message, guest command channel, hooks, reprint cost, chest offers,
-transfer progress, continue vote and world positions. Not playable; no menu entry.
+Fields, screens, world pieces, the dev preview (`--ca-expedition-preview`) and
+what presentation still needs are in
+[`EXPEDITION-PRESENTATION.md`](EXPEDITION-PRESENTATION.md). Not playable.
 
 ## Verification
 

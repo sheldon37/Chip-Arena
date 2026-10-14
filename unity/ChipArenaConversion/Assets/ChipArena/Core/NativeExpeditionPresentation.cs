@@ -20,10 +20,13 @@ namespace ChipArena.UnityConversion
         /// <summary>A replicated id is present. Unity's JsonUtility decodes a null string as "", so empty means absent.</summary>
         public static bool Has(string s)=>!string.IsNullOrEmpty(s);
         private static string Who(string s)=>Has(s)?s.ToUpperInvariant():"?";
-        /// <summary>"ward-zero" to "WARD ZERO"; a boss dice key ("0:ward-zero:boss:scientist") to its boss id.</summary>
+        /// <summary>"ward-zero" to "WARD ZERO"; a boss dice key ("0:ward-zero:boss:scientist") to its boss id; the world boss's
+        /// key ("0:zombie-city:final:boss", issued by the authority's FinishFinal) to WORLD BOSS.</summary>
+        public const string WorldBoss="WORLD BOSS";
         public static string Name(string id)
         {
-            if(string.IsNullOrEmpty(id))return "";int b=id.LastIndexOf(":boss:",StringComparison.Ordinal);if(b>=0)id=id.Substring(b+6);
+            if(string.IsNullOrEmpty(id))return "";if(id=="final:boss"||id.EndsWith(":final:boss",StringComparison.Ordinal))return WorldBoss;
+            int b=id.LastIndexOf(":boss:",StringComparison.Ordinal);if(b>=0)id=id.Substring(b+6);
             return id.Replace('-',' ').Replace('_',' ').ToUpperInvariant();
         }
         /// <summary>Elapsed time as m:ss or h:mm:ss (never negative).</summary>
@@ -242,10 +245,155 @@ namespace ChipArena.UnityConversion
             else if(!m.open)m.detail="Only at the sanctuary.";
             else if(!me.alive)m.detail="Get reprinted first.";
             else if(!me.safe)m.detail="Reach the sanctuary first.";
-            else if(m.hostNeedsTransfer)m.detail="You are the host: leaving moves the host to the best connection first.";
+            else if(m.hostNeedsTransfer){m.detail=HostCannotLeave;m.button="Extract · needs host transfer";}
             else if(me.canExtract)m.detail="Leave now with your build. The others can continue.";
             else m.detail="Not available right now.";
             return m;
+        }
+
+        /// <summary>
+        /// Whether a confirmed vote still holds in the view: the authority can withdraw it later (Continue and the extraction vote
+        /// replace each other; a downed, departed or extracted pilot's votes drop). Non-vote intents always hold.
+        /// </summary>
+        public static bool VoteHeld(ExpeditionIntent sent,ExpeditionView v)
+        {
+            string me=v.viewer;if(!Has(me))return true;
+            switch(sent)
+            {
+                case ExpeditionIntent.VoteExit:return v.exitVotes.Contains(me);
+                case ExpeditionIntent.CancelExit:return !v.exitVotes.Contains(me);
+                case ExpeditionIntent.VoteExtraction:return v.extractVotes.Contains(me)||v.mine.extracted;
+                case ExpeditionIntent.CancelExtraction:return !v.extractVotes.Contains(me);
+                case ExpeditionIntent.VoteContinue:return v.continueVotes.Contains(me);
+                case ExpeditionIntent.CancelContinue:return !v.continueVotes.Contains(me);
+                default:return true;
+            }
+        }
+        /// <summary>The caption of a confirmed vote the authority has since withdrawn.</summary>
+        public static string Withdrawn(ExpeditionIntent sent,ExpeditionView v)
+        {
+            string me=v.viewer;
+            if(sent==ExpeditionIntent.VoteExtraction&&v.continueVotes.Contains(me))return "Replaced by your Continue choice.";
+            if(sent==ExpeditionIntent.VoteContinue&&v.extractVotes.Contains(me))return "Replaced by your extraction vote.";
+            return "Withdrawn since · the authority no longer counts this vote.";
+        }
+
+        /// <summary>Why the host cannot extract while others remain (ExpeditionHostCommands refuses it: no endpoint migration).</summary>
+        public const string HostCannotLeave="You are the host. While others remain, leaving needs a host transfer, and this build cannot move the host yet (no endpoint migration). The others can extract; you can once you are the last pilot.";
+
+        // ---- Continue into the next loop -------------------------------------------------------------------------------------
+        public struct ContinueModel
+        {
+            public bool open, voted, canVote, allAgreed, needsLiving, down, extracted;public int votes, remaining, living;public string label, detail, button;public ExpeditionTone tone;
+        }
+        /// <summary>
+        /// The victory's continue choice, from the view's continueVotes (the authority's VoteContinue policy as it applies
+        /// it): every connected pilot still in the run must choose Continue, downed pilots included; extracting pilots and offline ones
+        /// do not count; the next loop starts only once everyone remaining agrees and at least one of them is alive. Choosing Continue
+        /// withdraws your group-extraction vote and voting to extract withdraws Continue; extracting alone stays your own choice.
+        /// </summary>
+        public static ContinueModel Continue(ExpeditionView v)
+        {
+            var c=new ContinueModel{open=v.phase==ExpeditionPhase.Victory&&!v.migrating&&!v.loading,label="CONTINUE · LOOP "+(v.loop+2),tone=ExpeditionTone.CyanSoft};
+            foreach(var m in v.members)
+            {
+                if(m==null||!m.connected||m.extracted)continue;c.remaining++;if(m.alive)c.living++;if(v.continueVotes.Contains(m.account))c.votes++;
+            }
+            bool member=Has(v.mine.account)&&Has(v.viewer);c.voted=member&&v.continueVotes.Contains(v.viewer);c.extracted=member&&v.mine.extracted;c.down=member&&!v.mine.alive&&!v.mine.extracted;
+            c.canVote=c.open&&member&&v.mine.connected&&!v.mine.extracted;c.allAgreed=c.remaining>0&&c.votes>=c.remaining;c.needsLiving=c.allAgreed&&c.living==0;
+            c.button=c.voted?"Cancel continue":"Continue to loop "+(v.loop+2);
+            string next="loop "+(v.loop+2);
+            if(!c.open)c.detail=v.migrating?"Frozen during the host transfer.":"Opens at victory.";
+            else if(c.extracted)c.detail="You extracted; the others decide for themselves.";
+            else if(c.needsLiving){c.detail="Everyone remaining agreed, but at least one pilot must be alive: reprint someone to start "+next+".";c.tone=ExpeditionTone.Warn;}
+            else if(c.allAgreed){c.detail="Everyone remaining agreed · "+next+" starts now.";c.tone=ExpeditionTone.Good;}
+            else c.detail=c.votes+" / "+c.remaining+" ready · everyone still in the run must choose Continue"+(c.down?" (you are down, and you can still agree)":", downed pilots too")+". Extracting pilots don't count.";
+            return c;
+        }
+        public struct ContinueRow{public string account, status;public ExpeditionTone tone;public bool you, ready, down, counted;}
+        /// <summary>Each pilot's victory choice: ready (Continue), deciding, voted to extract, down (can still agree), offline or extracted (not counted).</summary>
+        public static ContinueRow[] ContinueRows(ExpeditionView v)
+        {
+            var rows=new ContinueRow[v.members.Length];
+            for(int i=0;i<rows.Length;i++)
+            {
+                var m=v.members[i];var r=new ContinueRow{account=m.account,you=Has(v.viewer)&&m.account==v.viewer,ready=v.continueVotes.Contains(m.account),down=!m.alive&&!m.extracted,counted=m.connected&&!m.extracted};
+                if(m.extracted){r.status="EXTRACTED · NOT COUNTED";r.tone=ExpeditionTone.Warn;}
+                else if(!m.connected){r.status="OFFLINE · NOT COUNTED";r.tone=ExpeditionTone.Muted;}
+                else if(r.ready){r.status=r.down?"CONTINUE · DOWN":"CONTINUE";r.tone=ExpeditionTone.Good;}
+                else if(m.extractVote){r.status="VOTED TO EXTRACT";r.tone=ExpeditionTone.Warn;}
+                else if(r.down){r.status="DOWN · CAN STILL AGREE";r.tone=ExpeditionTone.Danger;}
+                else{r.status="DECIDING";r.tone=ExpeditionTone.Muted;}
+                rows[i]=r;
+            }
+            return rows;
+        }
+
+        // ---- Chip caches (world chest offers) ----------------------------------------------------------------------------------
+        public struct CacheRow{public string id, price, stock, state, detail;public int seconds;public bool restocking, bought, anchored, here, affordable;public ExpeditionTone tone;}
+        /// <summary>
+        /// The scene's chip caches before any purchase: price, stock generation and cooldown (an authority-clock deadline compared with
+        /// elapsed). "Restocking" only while the cooldown is ahead; range is never claimed (the scene checks purchase proximity and
+        /// the view carries none). "Bought" only for the viewer's own purchase of the current generation; others' purchases are private.
+        /// </summary>
+        public static CacheRow[] Caches(ExpeditionView v)
+        {
+            var rows=new CacheRow[v.chests.Length];bool member=Has(v.mine.account);
+            for(int i=0;i<rows.Length;i++)
+            {
+                var o=v.chests[i];var r=new CacheRow{id=o.id,price=Money(o.price),stock="STOCK "+Who(o.generation),restocking=NativeExpeditionWorld.Restocking(o,v.elapsed),bought=NativeExpeditionWorld.Bought(v,o),affordable=member&&v.mine.wallet>=o.price};
+                foreach(var a in v.anchors)if(a!=null&&a.id==o.id&&a.kind==NativeExpeditionWorld.Chest){r.anchored=true;r.here|=a.area==v.area;}
+                if(r.restocking){r.seconds=Left(o.cooldown,v.elapsed);r.state="RESTOCKING · "+r.seconds+"s";r.tone=ExpeditionTone.Muted;r.detail="The cache refills when its cooldown ends.";}
+                else if(r.bought){r.state="BOUGHT · YOURS";r.tone=ExpeditionTone.Good;r.detail="This chip belongs to you, the buyer.";}
+                else
+                {
+                    r.state=r.price;r.tone=ExpeditionTone.Warn;
+                    r.detail=!member?"You are not in this run.":r.affordable?"The chip belongs to whoever buys it.":"Your wallet is "+Money(o.price-v.mine.wallet)+" short.";
+                }
+                if(!r.anchored)r.detail+=" No world position yet.";else if(!r.here)r.detail+=" In another area.";
+                rows[i]=r;
+            }
+            return rows;
+        }
+        /// <summary>Purchases are a scene interaction at the cache (proximity, then the authority's Purchase); no intent exists for it.</summary>
+        public const string NoPurchase="Buying needs the chip-cache interaction at the cache (scene adapter; not connected).";
+
+        // ---- Personal pick history -------------------------------------------------------------------------------------------
+        public struct PickRow{public string reward, source, chip, from;}
+        /// <summary>The viewer's own picks this loop (the selected chip of each consumed reward): private, from mine.rewards only.</summary>
+        public static PickRow[] History(ExpeditionView v)
+        {
+            var rows=new List<PickRow>();
+            foreach(var r in v.mine.rewards)
+                if(r!=null&&r.consumed&&Has(r.selected))rows.Add(new PickRow{reward=r.id,source=r.source,chip=r.selected,from=r.source=="boss"?Name(r.boss):r.source=="chest"?"CACHE":r.source=="monster"?"DROP":r.source=="catchup"?"CATCH-UP":Name(r.source)});
+            return rows.ToArray();
+        }
+
+        // ---- Reprint quotes ----------------------------------------------------------------------------------------------------
+        /// <summary>The machine's quote for a downed pilot (Sources.ReprintCost); none reads "price unavailable", never $0.</summary>
+        public static bool HasQuote(ExpeditionViewMember m)=>m!=null&&m.reprintCost>0;
+        public static string Quote(ExpeditionViewMember m)=>HasQuote(m)?Money(m.reprintCost):"price unavailable";
+        public const string NoQuote="The machine has not quoted a price for this pilot.";
+
+        // ---- Host candidates (transport measurements) ----------------------------------------------------------------------------
+        public struct CandidateRow{public string account, rtt, jitter, timeouts, probe, support;public bool elected, ready, measured;public ExpeditionTone tone;}
+        /// <summary>
+        /// The transport's measured links: RTT and jitter of answered pings and the share of ping probes that timed out (not
+        /// network-layer packet loss). Reachable and capable show only as reported: false reads "not probed" / "not supported yet".
+        /// </summary>
+        public static CandidateRow[] Candidates(ExpeditionView v)
+        {
+            var list=v.transfer.candidates;var rows=new CandidateRow[list.Length];
+            for(int i=0;i<rows.Length;i++)
+            {
+                var c=list[i];var r=new CandidateRow{account=c.account,elected=Has(c.account)&&c.account==v.transfer.nextHost,ready=c.reachable&&c.capable,measured=!(c.latencyMs<=0&&c.loss>=1)};
+                r.rtt=r.measured?"RTT "+c.latencyMs.ToString("0",CultureInfo.InvariantCulture)+" MS":"NO ANSWERED PINGS";
+                r.jitter=r.measured?"JITTER "+c.jitterMs.ToString("0",CultureInfo.InvariantCulture)+" MS":"";
+                r.timeouts="PING TIMEOUTS "+(Math.Max(0,Math.Min(1,c.loss))*100).ToString("0",CultureInfo.InvariantCulture)+"%";
+                r.probe=c.reachable?"REACHABLE":"NOT PROBED";r.support=c.capable?"CAPABLE":"NOT SUPPORTED YET";
+                r.tone=r.ready?ExpeditionTone.Good:ExpeditionTone.Warn;rows[i]=r;
+            }
+            return rows;
         }
 
         // ---- Host transfer -----------------------------------------------------------------------------------------------------
@@ -263,12 +411,15 @@ namespace ChipArena.UnityConversion
                 headline="HOST TRANSFER REFUSED";tone=ExpeditionTone.Danger;
                 steps.Add(new TransferStep{label="Elect the best connection",detail=Has(t.reason)?t.reason:"No eligible connection.",state=ExpeditionStep.Failed});return steps.ToArray();
             }
-            steps.Add(new TransferStep{label="Elect the best connection",detail=Has(t.nextHost)?next+" (lowest loss, then latency + jitter)":"Waiting for the authority",state=Has(t.nextHost)?ExpeditionStep.Done:ExpeditionStep.Active});
+            steps.Add(new TransferStep{label="Elect the best connection",detail=Has(t.nextHost)?next+" (fewest ping timeouts, then RTT + jitter)":"Waiting for the authority",state=Has(t.nextHost)?ExpeditionStep.Done:ExpeditionStep.Active});
             steps.Add(new TransferStep{label="Freeze the run",detail=t.active?"Clock and commands frozen at revision "+t.revision:ended?"Released":"Not frozen",state=t.active||ended?ExpeditionStep.Done:ExpeditionStep.Pending});
             var transport=t.endpointMigration?(t.active?ExpeditionStep.Active:ended&&t.stage==ExpeditionTransferStage.Committed?ExpeditionStep.Done:ExpeditionStep.Pending):ExpeditionStep.Unavailable;
-            string missing="Not implemented in this build";
-            steps.Add(new TransferStep{label="Store the live simulation at "+next,detail=t.endpointMigration?"Destination stores and verifies the package":missing,state=t.endpointMigration&&t.packageStored?ExpeditionStep.Done:transport});
-            steps.Add(new TransferStep{label="Destination ACK",detail=t.endpointMigration?"Transaction, digest, revision and epoch "+t.nextEpoch:missing,state=t.endpointMigration&&t.ackReceived?ExpeditionStep.Done:transport});
+            // Transport progress shows done only as the transport reports it (endpointReserved / packageStored / ackReceived), and
+            // only where the transport supports endpoint migration at all.
+            string missing="Endpoint migration is not supported in this build";
+            steps.Add(new TransferStep{label="Reserve the endpoint at "+next,detail=t.endpointMigration?(t.endpointReserved?"Endpoint reserved":"Waiting for the destination to reserve it"):missing,state=t.endpointMigration&&t.endpointReserved?ExpeditionStep.Done:transport});
+            steps.Add(new TransferStep{label="Store the live simulation at "+next,detail=t.endpointMigration?(t.packageStored?"Package stored and verified":"Destination stores and verifies the package"):missing,state=t.endpointMigration&&t.packageStored?ExpeditionStep.Done:transport});
+            steps.Add(new TransferStep{label="Destination ACK",detail=t.endpointMigration?(t.ackReceived?"ACK received for epoch "+t.nextEpoch:"Transaction, digest, revision and epoch "+t.nextEpoch+(t.deadline>=0?" · deadline set":" · no deadline reported")):missing,state=t.endpointMigration&&t.ackReceived?ExpeditionStep.Done:transport});
             switch(t.stage)
             {
                 case ExpeditionTransferStage.Committed:
