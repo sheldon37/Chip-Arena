@@ -10,6 +10,27 @@
 - Unity runtime/editor assembly compilation, actual PhysX gates, Windows visuals and host/guest gameplay are unrun in this environment. Compiled Update publication requires desktop builder success. Standing push/merge/builder-sync authorization applies; no live/account deployment.
 - Upcoming Expedition public/private replication, guest commands, transport handoff and Hulk/brute charge/attacks are deliberately deferred until Claude's exact contracts arrive. Existing dormant foundation is preserved.
 
+## 2026-10-14 — Claude — sprint arms: the daggers' back arm and the magic casting hand
+- Owner: daggers, "while running/sprinting, the back arm wiggles a bit"; magic, "while sprinting, the hand keeps rotating". Branch `claude/sprint-arm-fix` on shared `9270d95` (`claude/sleepy-ritchie-g8ruhv`). Pushed; no PR; not merged or released.
+- **Causes** (scratch probe over steady 6.8 m/s runs and 9.18 m/s sprints, chest space, 60 and 240 Hz):
+  - Magic: `NativeSprintMotion.Magic` moves both hands but keeps each hand's frame from the pose beneath it. For the casting hand that is the staff run clip's raw free-hand frame (`NativeRangedLocomotion` `rightQ`), never damped about its cycle mean as the positions are. It turned 115° (yaw) and 43° (roll) every stride while the sprint held the hand nearly still; all five schools. Not an accumulating angle (drift over 20 s under 1°).
+  - Daggers, run and walk: `NativeLocomotionCarry` gave the daggers' left (back) hand the free hand's share of the pack swing (35% run, 45% walk), made for the sword's empty fist. That hand holds the second .84 m blade: its tip travelled 71 cm a stride (front blade 52).
+  - Daggers, sprint: the carry pumps both fists 30 cm but kept each fist's live run-carry frame (`qR`/`qL`): the run's per-stride wrist motion (±7°), and under the sprint lean the blades hung 7-15 cm below the floor guard's plane. `MeleeCapture.KeepBladesOffFloor` lifted each wrist by up to 12° and let go every stride (a flick).
+- **Fix** (presentation only):
+  - `NativeRangedLocomotion` keeps the casting hand's cycle-mean frame (`rightMeanQ`, from the same blended rows); `Magic` slerps the hand onto it by the sprint weight. The run (sprint weight 0) is bit-identical.
+  - `NativeLocoRules.LeftKeep`: the daggers' left hand keeps the weapon hand's share (15% run, 25% walk). Other sets are unchanged.
+  - `NativeSprintMotion.DaggerRight/DaggerLeft`: steady chest-space blade lies for the dagger sprint (the run carry's mean lie tipped .34/.3 rad back along the forearm) replace `qR`/`qL` in the daggers case only. The pump targets are unchanged.
+- **Before → after** (new `Tests/SprintArmChecks.cs`, also `CoreTests --sprint-arms`; it prints every measure before checking bounds):
+  - Magic sprint casting hand: span 134.4° → 0.1°, 254° → 0° of turn a stride, 20 s drift 0.89° → 0.00° (each school). Run-sprint-run largest step 31.7/32.5 → 27.5° a frame (steady run 27.2).
+  - Daggers run, back blade: tip travel 71.1 → 30.4 cm a stride, lie spread 5.46° → 2.35° rms (front blade 51.5 cm, 3.79°, unchanged).
+  - Daggers sprint, back/front: lie span 17.3/23.6° → 0.0/0.1°, wrist flick 21,023/24,822 → 0 °/s², lowest tip 0.0 cm (held at the guard) → 6.5/6.3 cm over it. Tip pump 57/43 → 60/60 cm; blend step 15.1 → 14.6° a frame.
+  - Probe, bit-identical: sword run and sprint, greatsword, shield and pistol sprints, the fire run.
+- Animation impact: hand frames and the dagger left hand's swing share only. No change to hit timing, hitboxes, damage, cooldowns, movement or sprint speed, sprint rules, prediction or networking. Swings, sprint attacks and the floor guard are untouched.
+- Checks: `unity-check.sh` runtime+editor OK. `check_relay.py` (staged sparse copy) exit 0, 657 PASS lines (managed run 2.5 min under load). Python 101 OK (1 skipped). `package_source.py` passed (1,873 files; Builds removed). `git diff --check` clean.
+- Renders: offline voxel harness over the real Core poses (fxref port, not Unity), scratch `sprint-probe/rend-after/cmp-*.png`. Before/after side, front and shoulder-camera strips of the dagger run and sprint, and of the fire and darkness sprints.
+- Not run: Unity Editor, Windows play, two-client play.
+- Risks: the steady dagger blades sit about 17-20° further back along the forearm than the old average (owner taste). On a hard strafing weave (±25° at 2 Hz in the probe), the right tip can still touch the guard for a few frames (flick 9.5k vs 22k °/s² before). Seen but not changed (not reported): the plain magic run's casting hand still turns about 115° a stride, and the pistol's free fist turns 66° a stride in its sprint, both from the same raw clip frame. Next: the owner's look on Windows.
+
 ## 2026-10-14 — Claude — dressed maps: coincident faces no longer z-fight
 - Branch `claude/map-surface-artifacts` on shared `0671054`. Task: the graphical artifacts on the new maps, including the green-panel surface artifacts (2026-10-13). Z-fighting was suspected, not confirmed.
 - **Confirmed cause (geometric audit, not the recording):** faces drawn at the same depth. Every block and kit part is a chamfered box through NativeBlockLit.

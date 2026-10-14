@@ -27,6 +27,10 @@ namespace ChipArena.UnityConversion
         /// MeleeMotion's walk and run shares. The direction follows the travel at DirectionRate (1/s).
         /// </summary>
         public const float WalkArmKeep=.25f,RunArmKeep=.15f,WalkFreeKeep=.45f,RunFreeKeep=.35f,AsideTorso=.3f,DirectionRate=9,SlowFrom=1.2f,SlowTo=2.4f;
+        /// <summary>The left hand's share: the free hand's, except the daggers', whose left (back) hand holds the second blade and
+        /// keeps the weapon hand's share (owner 2026-10-14: "while running/sprinting, the back arm wiggles a bit": the free
+        /// hand's livelier pump, made for an empty fist, swung its .84 m blade through 72 cm of tip travel a stride).</summary>
+        public static float LeftKeep(int set,bool run)=>set==Daggers?(run?RunArmKeep:WalkArmKeep):run?RunFreeKeep:WalkFreeKeep;
         /// <summary>First person: the share of the walk and run clips' motion the melee view arms keep (the view layer's bob
         /// carries the stride; the captured pump at the gait's cadence wiggled the view weapon).</summary>
         public const float FirstPersonCarry=.3f;
@@ -123,12 +127,12 @@ namespace ChipArena.UnityConversion
             float ahead=Math.Max(0,(float)Math.Cos(dir)),aside=MeleeMath.Lerp(NativeLocoRules.AsideTorso,1,ahead*ahead*ahead);
             if(carry*run<.999f)
             {
-                Family(s,NativeLocoRules.Walk,phase,a,b,t,slow,MeleeMotion.WalkTorsoKeep*aside,NativeLocoRules.WalkArmKeep,NativeLocoRules.WalkFreeKeep);
+                Family(s,NativeLocoRules.Walk,phase,a,b,t,slow,MeleeMotion.WalkTorsoKeep*aside,NativeLocoRules.WalkArmKeep,NativeLocoRules.LeftKeep(s,false));
                 MeleeCapture.Apply(r,set,rowA,CaptureOptions.Of(carry,set.Fit,legs:0,root:0));
             }
             if(run>.001f)
             {
-                Family(s,NativeLocoRules.Run,phase,a,b,t,0,MeleeMotion.RunTorsoKeep*aside,NativeLocoRules.RunArmKeep,NativeLocoRules.RunFreeKeep);
+                Family(s,NativeLocoRules.Run,phase,a,b,t,0,MeleeMotion.RunTorsoKeep*aside,NativeLocoRules.RunArmKeep,NativeLocoRules.LeftKeep(s,true));
                 MeleeCapture.Apply(r,set,rowA,CaptureOptions.Of(carry*run,set.Fit,legs:0,root:0));
             }
             return true;
