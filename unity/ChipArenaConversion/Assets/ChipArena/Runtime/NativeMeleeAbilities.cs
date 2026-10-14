@@ -221,10 +221,10 @@ namespace ChipArena.UnityConversion
             }
             else if(!sky&&t.pilot!=null)StaggerMelee(t.pilot,.4f);
         }
-        private float MeleeMinionHit(NativeMinion m,NativePilot p,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind="melee",bool empower=true)
+        private float MeleeMinionHit(NativeMinion m,NativePilot p,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind="melee",bool empower=true,int projectile=0)
         {
             bool boosted=empower&&p.Seat.spec=="daggers"&&Time<p.MeleeKit.EmpowerUntil;
-            float actual=HitMinion(m,p,damage*(boosted?1.4f:1),direction,impulse,point,kind);
+            float actual=HitMinion(m,p,damage*(boosted?1.4f:1),direction,impulse,point,kind,projectile:projectile,from:p.Body.position);
             if(boosted&&actual>0)p.MeleeKit.EmpowerUntil=0;return actual;
         }
         private float MeleeAbilityHit(NativePilot p,int id,float damage,Vector3 direction,float impulse,string fx,Vector3 point,bool wallSlam=false)
