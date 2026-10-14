@@ -84,6 +84,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<events.Count;i++)
             {
                 var e=events[i];if(e.Id<=hordeKindEvent)continue;if(e.Id>newest)newest=e.Id;
+                HordeHulkEvent(e);
                 if((e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot)||e.Target<10000||!(e.Amount>0))continue;
                 var m=HordeMinion(arena,e.Target);if(m!=null&&m.Pve==null)continue;
                 HordeHit(arena,m,e);
@@ -197,6 +198,8 @@ namespace ChipArena.UnityConversion
             else
             {
                 var st=st0;var attack=attack0;float strike=strike0,recover=recover0;
+                // A heavy add's reported move (a punch or a swipe: Runtime/NativeHordeHulkMotion; the content's attack until reported).
+                var move=HordeHulkAttack(m,a.Crawl,a.Lost,ref attack,ref strike,ref recover);
                 float age=now-m.LastAttack;if(age<0||age>recover+.3f||entering)age=float.NaN;
                 bool breach=entering&&NativeBreach.Is(a.Entry),knocking=false;float breakAt=breach?NativeBreach.BreakAt(a.ActiveAt):float.NaN;
                 // A door or cell walks the add in (the authority moves it from behind the opening): the gait plants its steps on that
@@ -222,7 +225,8 @@ namespace ChipArena.UnityConversion
                 ref var f=ref hordeInput[0];float inv=1/sc;
                 f=new HordeMotionInput{Kind=kind,Look=s.Look,Id=m.Id,Seed=NativeHordeKinds.Seed(m.Id),Time=now,Yaw=yaw,Ground=ground*inv,Root=new NVector(pos.x,ground+NativeHordeKinds.DrawRoot(kind,a.Crawl),pos.z)*inv,Velocity=new NVector(velocity.x,velocity.y,velocity.z)*inv,
                     Crawl=a.Crawl,Possessed=a.Possessed,Lost=a.Lost,AttackAge=age,Strike=strike,Recover=recover,Attack=attack,Side=HordeSide(m.LastAttack,a.Lost),Health=m.MaxHp>0?m.Hp/m.MaxHp:1,
-                    HasTarget=target!=null,Target=target!=null?ToN(target.Body.position)*inv:default,Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=(breach?breakAt:a.WalkAt)-a.SpawnAt,Roaring=!float.IsNaN(roar),RoarAge=roar};
+                    HasTarget=target!=null,Target=target!=null?ToN(target.Body.position)*inv:default,Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=(breach?breakAt:a.WalkAt)-a.SpawnAt,Roaring=!float.IsNaN(roar),RoarAge=roar,Move=move};
+                HordeHulkInput(ref f,m,now,entering,breach);
                 s.Gait.Pose(f,minionPose,s.React);yaw=s.Gait.Yaw;pos.y=ground+NativeHordeKinds.DrawRoot(kind,a.Crawl);
                 HordeKindJob(s,m.Id,kind,attack,knocking?float.NaN:age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time);
                 if(s.Gait.Landed!=0)HordeDust(s,kind,ground,now);
@@ -570,7 +574,7 @@ namespace ChipArena.UnityConversion
             var me=arena.Local;if(me?.Body==null)return;float now=hordeClock;
             if(float.IsNaN(galleryStart)||galleryRigs[0]==null){galleryStart=now;galleryYaw=me.Yaw;float r=galleryYaw*Mathf.Deg2Rad;galleryAt=me.Body.position+new Vector3(Mathf.Sin(r),0,Mathf.Cos(r))*6;galleryAt.y=me.Body.position.y;}
             float yawToMe=galleryYaw+180,yr=galleryYaw*Mathf.Deg2Rad;Vector3 across=new Vector3(Mathf.Cos(yr),0,-Mathf.Sin(yr));float ground=galleryAt.y-.85f;
-            HordeGalleryHulk(me,now,across,yawToMe,ground);HordeGalleryBreach(arena,me,now,yawToMe,ground);
+            HordeGalleryHulk(me,now,across,yawToMe,ground);HordeGalleryBreach(arena,me,now,yawToMe,ground);HordeGalleryHulkMoves(me,now,across,yawToMe,ground);
             for(int k=0;k<NativeHordeKinds.Count;k++)
             {
                 if(k==NativeHordeKinds.Hulk)continue;
@@ -637,11 +641,11 @@ namespace ChipArena.UnityConversion
                 HordeAdd(rig,id,float.NaN,float.NaN,ground,ground,float.NaN,vel,0,true,k*8);
             }
         }
-        private void ClearHordeGallery(){for(int k=0;k<galleryRigs.Length;k++){galleryRigs[k]?.Dispose();galleryRigs[k]=null;galleryStates[k]=null;}galleryStart=float.NaN;ClearHordeHulkGallery();}
+        private void ClearHordeGallery(){for(int k=0;k<galleryRigs.Length;k++){galleryRigs[k]?.Dispose();galleryRigs[k]=null;galleryStates[k]=null;}galleryStart=float.NaN;ClearHordeHulkGallery();ClearHordeHulkMovesGallery();}
         /// <summary>A new arena, generation or rewind: forget every add's state, the dead, the parts and the effects in flight.</summary>
         private void ClearHordeKinds(NativeArena arena)
         {
-            foreach(var s in hordeKindStates.Values)hordeKindSpare.Push(s);hordeKindStates.Clear();hordeDead.Clear();hordeKindArena=arena;hordeKindGeneration=arena?.Generation??-1;hordeKindEvent=0;hordeSpitEvent=0;hordeSpitEvents.Clear();hordeSpat.Clear();
+            foreach(var s in hordeKindStates.Values)hordeKindSpare.Push(s);hordeKindStates.Clear();hordeDead.Clear();ClearHordeHulkMoves();hordeKindArena=arena;hordeKindGeneration=arena?.Generation??-1;hordeKindEvent=0;hordeSpitEvent=0;hordeSpitEvents.Clear();hordeSpat.Clear();
             for(int i=0;i<hordeParts.Length;i++)hordeParts[i].Live=false;ClearHordeAcid();ClearHordeBreaches();for(int i=0;i<hordeDust.Length;i++)hordeDust[i].Power=0;hordeJobCount=0;hordeBurstCount=0;ClearHordeZombieFx();
         }
     }
