@@ -153,6 +153,9 @@ internal static class FinalKillcamChecks
     {
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/"+f));
         string replay=R("Runtime/NativeReplay.cs"),final=R("Runtime/NativeFinalKillcamPresentation.cs"),match=R("Core/NativeMatch.cs"),overlays=R("Runtime/NativeMatchOverlays.cs");
+        Check(!NativeFinalKillcam.FlightCamera(17.99f,10)&&!NativeFinalKillcam.FlightCamera(30,1)&&NativeFinalKillcam.FlightCamera(18,2),"flight camera requires distant recorded projectile");
+        Check(NativeFinalKillcam.DeathPullback(-1)==0&&NativeFinalKillcam.DeathPullback(1)==1&&Math.Abs(NativeFinalKillcam.DeathPullback(.325f)-.5f)<.001f,"death pullback bounded smooth blend");
+        Check(R("Runtime/NativeProjectiles.cs").Contains("target.Death.projectile=b.Id")&&final.Contains("shot.Id==death.projectile"),"camera uses exact fatal projectile attribution");
         Check(NativeFinalKillcam.StartDelay==2,"two-second final delay");
         Check(final.Contains("private bool FinalWaiting=>finalOn&&!replayRunning&&Time.unscaledTime<replayWait;")&&Body(overlays,"private void ResultOverlay()").Substring(1).TrimStart().StartsWith("if(FinalWaiting)return;",StringComparison.Ordinal),"round result waits out the final delay and plays once after the clip");
         Check(final.Contains("replayWait=Time.unscaledTime+NativeFinalKillcam.StartDelay;")&&final.Contains("NativeFinalKillcam.Available(match.PhaseEnd,match.Time+NativeFinalKillcam.StartDelay,matchEnds)"),"final playback reserves delay before fitting");
@@ -165,7 +168,7 @@ internal static class FinalKillcamChecks
         Check(final.Contains("private float ReplayClock(float wall)=>finalOn?finalCurve.Replay(wall):wall;")&&replay.Contains("float time=replayStart+ReplayClock(Time.unscaledTime-replayStarted);"),"normal killcam keeps normal speed");
         Check(replay.Contains("if(menu||arena.Local.Hp>0&&!finalOn){EndReplay();return false;}")&&replay.Contains("if(p.Hp>0){if(!finalOn)EndReplay();spectatorId=0;}"),"normal killcam still ends for a living pilot");
         Check(Body(final,"private NativePilot ReplayVictim()").Contains("if(!finalOn)return replayArena.Local;"),"normal camera still falls back to my pilot");
-        Check(replay.Contains("if(finalOn)FinalShot(ref offset);")&&replay.Contains("finalOn?FinalLook(focus+offset,rotation,target,victim):rotation")&&replay.Contains("NativeViewRules.ThirdFov+(finalOn?finalFov:0)"),"camera changes only in the final killcam");
+        Check(replay.Contains("if(finalOn){FinalShot(ref offset);FinalCamera(time,victim,ref focus,ref offset);}")&&replay.Contains("finalOn?FinalLook(focus+offset,rotation,target,victim):rotation")&&replay.Contains("NativeViewRules.ThirdFov+(finalOn?finalFov:0)"),"camera changes only in the final killcam");
         Check(replay.Contains("if(replayRunning&&finalOn){FinalKillcamHud();return;}")&&replay.IndexOf("if(replayRunning&&finalOn)",StringComparison.Ordinal)<replay.IndexOf("NativeHudChrome.Glitch(camLine,\"KILL CAM\"",StringComparison.Ordinal),"normal KILL CAM frame unchanged");
         Check(Body(final,"private void FinalFrame()").Contains("if(finalOn)")&&Body(final,"private void FinalAudioBefore()").Contains("if(finalOn)")&&Body(final,"private void FinalAudioAfter()").Contains("if(finalOn)"),"clock and audio slowed only in the final killcam");
         Check(replay.IndexOf("FinalKillWatch();",StringComparison.Ordinal)<replay.IndexOf("if(fresh){replaySeen=d.seed;",StringComparison.Ordinal),"final kill decided before the normal one can arm");
@@ -173,7 +176,7 @@ internal static class FinalKillcamChecks
         Check(Body(replay,"private void EndReplay()").Contains("replayArena.Root.SetActive(false)")&&!Body(replay,"private void EndReplay()").Contains("Dispose()")&&Body(replay,"private void ClearReplay()").Contains("ReleaseReplayArena();"),"normal/final cut-over reuses the world; round/leave clears it");
         // Every round: practice counts, every final death plays from the victim, and the clip's start frame survives the
         // history trim (the normal killcam's trim is unchanged).
-        Check(final.Contains("Practice=!Online,")&&final.Contains("replayView=f.Victim;")&&Body(final,"private Quaternion FinalLook(").Contains("victim==target"),"all final kills use the victim's recorded view and facing");
+        Check(final.Contains("Practice=!Online,")&&final.Contains("replayView=f.Victim;")&&final.Contains("finalCameraSide=FinalClearance(focus,left)>=FinalClearance(focus,right)?1:-1"),"final kills anchor on victim and select a clear side");
         Check(final.Contains("ResultAt=match.HasFinalKillcam?match.ResultAt:match.Time")&&final.Contains("int pick=match.HasFinalKillcam&&match.FinalVictim!=0?NativeFinalKillcam.Decided(finalDeaths,n,match.FinalVictim,match.FinalSeed):-1;")&&final.Contains("if(pick<0)pick=NativeFinalKillcam.Select("),"host decision first, local pick for every other round-ending death");
         Check(replay.Contains("while(replayFrames.Count>1&&!FinalKeeps()&&(replayFrames.Count>132||replayEntities>150000||arena.Time-replayFrames[0].time>6))")&&final.Contains("private bool FinalKeeps()=>finalOn&&"),"trim keeps the clip's frames only in the final killcam");
         // Presentation clocks default to today's behaviour.

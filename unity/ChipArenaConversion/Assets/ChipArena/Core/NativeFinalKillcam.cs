@@ -84,6 +84,8 @@ namespace ChipArena.UnityConversion
         public const double Window=.5;
         /// <summary>Seconds to leave the final death on the live camera before replay begins.</summary>
         public const float StartDelay=2;
+        public static bool FlightCamera(float distance,int samples)=>distance>=18&&samples>=2;
+        public static float DeathPullback(float age){float t=Math.Max(0,Math.Min(1,age/.65f));return t*t*(3-2*t);}
         /// <summary>Practice (offline Play vs Bots) shows the final killcam too: the owner wants it at the end of every round.</summary>
         public const bool InPractice=true;
         /// <summary>Wall seconds the round result keeps after the clip (its banner arrives over the hand-off flash).</summary>

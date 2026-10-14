@@ -17,6 +17,12 @@ It is presentation only. Branch `claude/final-killcam`; Unity code in `unity/Chi
 
 The normal killcam contract (`docs/KILLCAM-HANDOFF.md`) is unchanged for every death that is not the final kill.
 
+## Side and projectile camera (2026-10-14)
+
+The final camera now selects the clearer of two elevated side positions, keeping attacker/victim in frame for nearby kills and centering on the victim through the aftermath. A sphere cast continues to shorten the boom around obstacles. The selected side stays stable within the clip. This supersedes the older victim-facing camera descriptions below; normal killcams are unchanged.
+
+Direct projectile damage records the fatal projectile ID in the optional death field `projectile`. If that exact shot has at least two recorded samples and at least 18 metres of recorded separation from the victim, the final camera follows just behind it during flight. At impact (or loss of the recorded trajectory), a 0.65 wall-second smooth blend moves to the wider victim view. No projectile association is guessed from nearby shots. Melee, splash, absent shot history and old hosts use side framing. The recorded preroll still limits how much flight can be shown. Windows visual acceptance, wall/corridor framing and real host/guest playback remain required.
+
 ## Two-second start delay and movement (2026-10-14)
 
 Final killcams wait two real-time seconds before playback. Surviving players can walk, sprint, jump and turn during the authority's two-second Result movement window. Attack and ability inputs are discarded; the round winner is already fixed. Dead players remain dead. The local controls stop when the replay begins, and authority movement stops at the result-time boundary. Guests receive that window through existing result time/duration fields. Network arrival latency can offset a guest's locally observed playback start slightly.
