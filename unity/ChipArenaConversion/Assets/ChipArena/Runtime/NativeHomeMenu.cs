@@ -197,7 +197,7 @@ namespace ChipArena.UnityConversion
             float pw=U.Measure("PROTOTYPE",9,true,true,.15f).x+12;var tag=new Rect(x0,fy-9,pw,18);U.Round(tag,C.Navy(.8f),4,C.Cyan(.55f));U.Text(tag,"PROTOTYPE",9,C.Cyan(),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.15f);
             string build=Updater?.Installed!=null?"BUILD "+NativeUpdater.Short(Updater.Installed.version):"NATIVE BUILD";
             U.Text(new Rect(x0+pw+14,fy-8,W-2*x0-pw-14,16),build+"   /   DESKTOP CONTROLS",10.5f,C.Ink(.78f),TextAnchor.MiddleLeft,mono:true);
-            U.Text(new Rect(x0,fy-8,W-2*x0,16),content.maps.Count(m=>m.rotation)+" ARENAS   ·   2–8 PILOTS",10.5f,C.Ink(.78f),TextAnchor.MiddleRight,mono:true);
+            U.Text(new Rect(x0,fy-8,W-2*x0,16),content.maps.Count(m=>NativeMapRules.ArenaSelectable(m)&&m.rotation)+" ARENAS   ·   2–8 PILOTS",10.5f,C.Ink(.78f),TextAnchor.MiddleRight,mono:true);
         }
         // The Update Game control, a circle beside the menu (main.ts drawUpdateControl's role): a dotted ring turning slowly, a
         // navy disc with the state's icon (the download's percentage while downloading, its ring filling; a spinner while

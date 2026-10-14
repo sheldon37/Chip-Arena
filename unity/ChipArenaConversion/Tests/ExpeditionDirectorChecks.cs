@@ -40,6 +40,36 @@ internal static class ExpeditionDirectorChecks
         Check(!director.MonsterDefeated("spawn-1",new V3(1,0,1),1,true),"duplicate death does not issue rewards twice");
         Check(run.Snapshot().rewards.Length==2,"cache and monster rewards only");
         run.StartBosses(new[]{"TEST-boss"});Check(director.BossDefeated("TEST-boss",new V3(1,0,1)),"boss rewards positioned");
+        Refuse(json.Replace("\"clear\":2","\"clear\":0"),"zero spawn clearance");
+        Refuse(json.Replace("\"level\":0","\"level\":0.5"),"fractional spawn level");
+        Refuse(json.Replace("\"final-gate\"","\"cache\""),"gate collides with public anchor ID");
+        Refuse(json.Replace("\"opens\":\"final\"","\"opens\":\"other\""),"unsupported gate condition");
+        Refuse(json.Replace("[\"shambler\"]","[\"shambler\",\"shambler\"]"),"duplicate spawn allow");
+        Check(!NativeMapRules.ArenaSelectable(new ContentMap{id="expedition-city",rotation=true})&&NativeMapRules.ArenaSelectable(new ContentMap{id="siren"}),"expedition filtered even when rotation true");
+        var geometry=new ConversionContent{maps=new[]{"city-map","ward-map"}.Select(id=>new ContentMap{id=id,bounds=new MapBounds{minX=-50,maxX=50,minZ=-50,maxZ=50,killY=-8,ceiling=40}}).ToArray()};
+        int probes=0;NativeExpeditionLayout.ValidateGeometry(layout,geometry,null,(_,p,r,h)=>{probes++;return true;},(_,a,b,r,h)=>true);Check(probes>30,"geometry validates slots, anchors and heavy clearance");
+        bool rejected=false;try{NativeExpeditionLayout.ValidateGeometry(layout,geometry,null,(_,p,r,h)=>true,(_,a,b,r,h)=>false);}catch(FormatException){rejected=true;}Check(rejected,"disconnected navigation refuses");
+        rejected=false;try{NativeExpeditionLayout.ValidateGeometry(layout,geometry,null,(_,p,r,h)=>h<NativeHordeKinds.HulkHeight,(_,a,b,r,h)=>true);}catch(FormatException){rejected=true;}Check(rejected,"Hulk clearance refuses");
+        layout.Area("city").gates[0].closure.x=49;rejected=false;try{NativeExpeditionLayout.ValidateGeometry(layout,geometry,null,(_,p,r,h)=>true,(_,a,b,r,h)=>true);}catch(FormatException){rejected=true;}Check(rejected,"volume extents refuse out-of-bounds");layout=NativeExpeditionLayout.Parse(json);
+        var r2=NativeExpedition.Create("barrier-test","city","host","pistol",19,new[]{new ExpeditionInstance{id="ward",target=1}});r2.Join("guest","pistol");
+        var s2=new ExpeditionSession(r2,content,_=>{});var d2=new ExpeditionDirector(s2,layout,_=>new V3(0,0,0),(_,__)=>true,10,20,30);string fingerprint=new string('a',64);d2.BindLayoutIdentity(fingerprint);
+        Check(!d2.EnterDoor("stranger","city-door"),"nonmember cannot enter");
+        Check(d2.EnterDoor("host","city-door")&&r2.Snapshot().loading,"entry freezes run behind barrier");var b2=d2.Barrier;
+        Check(b2.target=="ward"&&b2.generation==1&&b2.required==2&&b2.ready==0,"target generation and counts");
+        Check(!d2.Ready("guest","ward",0,fingerprint)&&!d2.Ready("guest","city",1,fingerprint)&&!d2.Ready("guest","ward",1,new string('b',64)),"stale target generation and fingerprint refused");
+        Check(d2.Ready("host","ward",1,fingerprint)&&d2.Ready("host","ward",1,fingerprint)&&d2.Barrier.ready==1,"duplicate ACK does not inflate count");
+        Check(!d2.CompleteAreaLoad((_,__)=>true),"missing peer freezes transfer");double clock=r2.Elapsed;s2.Tick(.2);Check(r2.Elapsed==clock,"loading pauses difficulty clock");
+        Check(d2.Ready("guest","ward",1,fingerprint),"second peer ready");
+        Check(!d2.CompleteAreaLoad((_,__)=>false)&&r2.Snapshot().loading,"failed placement remains frozen");
+        Check(d2.CompleteAreaLoad((area,assigned)=>area=="ward"&&assigned.Count==2&&assigned["host"].x!=assigned["guest"].x)&&!r2.Snapshot().loading,"party placed in distinct authored slots");
+        Check(d2.Closures.Single(c=>c.id=="ward-door").state=="sealing","instance door sealing");s2.Tick(1);Check(d2.Closures.Single(c=>c.id=="ward-door").state=="sealed","one second seal clock");
+        r2.Progress("kill",1);r2.StartBosses(new[]{"TEST-boss"});Check(d2.RecordBossArrival("TEST-boss","test",a=>a=="test")&&!d2.RecordBossArrival("TEST-boss","test",a=>true),"boss arrival once per authority entity");
+        var view=NativeExpeditionView.Build(r2,"host",s2.Sources);Check(view.bossArrivals.Length==1&&view.closures.Length==3&&!view.areaBarrier.active,"public state supplied");
+        view.closures[0].state="tampered";Check(d2.Closures[0].state!="tampered","projection detached from authority");
+        Check(d2.BossDefeated("TEST-boss",new V3(0,0,0)),"complete instance");d2.Step();Check(d2.Closures.Single(c=>c.id=="final-gate").state=="opening"&&d2.Closures.Single(c=>c.id=="final-gate").Blocking,"final gate starts opening with collision");s2.Tick(1);Check(!d2.Closures.Single(c=>c.id=="final-gate").Blocking,"gate clears collision at one second");
+        r2.VoteExit("host",true);r2.VoteExit("guest",true);s2.Tick(.1);Check(d2.Barrier.active&&d2.Barrier.target=="city"&&d2.Barrier.generation==2,"return starts new generation");
+        Check(!d2.Ready("guest","ward",1,fingerprint),"late ACK rejected across return");r2.Disconnect("guest");d2.Step();Check(d2.Barrier.required==1,"disconnected peer removed from barrier");
+        d2.Ready("host","city",2,fingerprint);Check(d2.CompleteAreaLoad((area,assigned)=>area=="city"&&assigned.Count==1),"return uses town door slots");d2.Step();Check(NativeExpeditionView.Build(r2,"host",s2.Sources).Member("host").safe,"authority sanctuary membership");
         Console.WriteLine("PASS Expedition director ("+count+" checks)");
     }
 }

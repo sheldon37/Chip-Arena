@@ -25,6 +25,7 @@ namespace ChipArena.UnityConversion
     public static class NativeMapRules
     {
         public const float PilotRadius=.42f;
+        public static bool ArenaSelectable(ContentMap map)=>map!=null&&!map.id.StartsWith("expedition-",StringComparison.Ordinal);
         public static bool Finite(V3 p)=>MathUtil.Finite(p.x)&&MathUtil.Finite(p.y)&&MathUtil.Finite(p.z);
         public static bool Box(V3 p,V3 size)=>Finite(p)&&Finite(size)&&size.x>0&&size.y>0&&size.z>0;
         public static string Revision(string text) { using(var hash=SHA256.Create())return BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(text))).Replace("-","").ToLowerInvariant(); }

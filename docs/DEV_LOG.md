@@ -7126,3 +7126,49 @@ Final focused checks after merging the UI: managed compiler exit 0; DEV panel
 59 passed. Source-package structure (1,951 files), C# syntax (zero errors) and
 git diff --check passed. Full regression remains failed at Bisect performance,
 not waived. Implementation remains draft, unmerged and unreleased.
+
+## 2026-10-14 — Astra: agreed Expedition layout validation and director state
+
+Branch `codex/expedition-layout-director`, based on local foundation `8379f4cf`
+(the tree published as `437279ec` on `codex/expedition-director`), including agreed
+shared `afade5dc`. Isolated checkout; foundation and Claude branches not rewritten.
+
+Added the schema-1 resource load gate, map/look isolation check, manifest/content
+fingerprint, strict spawn scalar/allow validation, gate uniqueness, rotated volume
+bounds, sanctuary containment, compulsory navigation evidence and pilot/Hulk slot
+clearance. Inherited Siren spawn permissions now retain every allowed archetype.
+
+Director supplies detached closure state/clocks, barrier target/generation/counts,
+authoritative sanctuary flags and boss arrivals through the existing public view.
+Entry and voted return freeze behind a fingerprint-checked barrier; stale/duplicate
+ACKs, missing peers and failed placements cannot release it. One-second closure
+states drive the collision predicate; final trigger requires an open gate. Added
+Expedition map exclusion to ordinary selection, random rotation and Sandbox changes.
+The filtered picker now looks up descriptions by map ID rather than old array index.
+No Siren geometry, balance, Electron CI, accounts or updater changes.
+
+The resource and scene adapter API/remaining integration are documented in
+EXPEDITION-LAYOUT.md. No layout asset was fabricated. Still pending Claude's actual
+maps/manifest, runtime PhysX/navigation probes, scene/collision and ready-message
+binding, encounter catalog/spawning and native gameplay validation. This branch
+is a contract/director implementation, not a playable Expedition or release.
+
+Verification: direct Roslyn compilation and 53 focused director checks passed.
+The broader suite caught absent-string normalization for the new barrier DTO;
+fixed to preserve host/guest view round-trips. Final broader result follows below.
+The dotnet SDK CLI fails container process introspection, so the existing direct
+Roslyn compiler workaround is used. Unity Editor/PhysX/Windows tests unrun.
+
+Verification/integration follow-up: the broad run passed the Expedition checks
+and continued through stage/navigation/render regressions, then stopped at the
+older foundation's DEV panel action-list assertion (new monster authority, old UI).
+Integrated current foundation `c7bc4017` (remote `2fef6816`; all 13 changed file blobs
+match exactly), preserving both log entries. Recompiled, then passed DEV tools
+4,190 checks, DEV authority 95 checks, Expedition rules 473 assertions, presentation
+8,357 checks, integration 59 assertions and director 53 checks. No clean full-suite
+pass is claimed; the remaining full run was not repeated after this upstream fix.
+Source package structure: 1,951 files; C# syntax: zero errors; diff check passed.
+PR #212 remains draft and unmerged; no builder/test-feed promotion. The task branch
+is rebased onto the published current foundation to keep this PR limited to the
+18 Expedition files; no shared branch is rewritten. Claude layout branch still
+absent on the remote at final inspection.

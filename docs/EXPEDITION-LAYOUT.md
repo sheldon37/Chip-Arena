@@ -143,3 +143,54 @@ animations:
 Astra's validator owns refusal at load time: duplicates, bad area, out of bounds, navigation, and
 pilot and Hulk clearance at every slot, spawn and return. Claude's generator runs the same checks
 offline and fails the draft test first. Both run in the managed relay before the manifest ships.
+
+## Loader/director integration API (Astra, 2026-10-14)
+
+`NativeExpeditionLayout.Load` reads the `ExpeditionLayout` resource (the agreed
+`Assets/Conversion/Resources/ExpeditionLayout.json`). Supply loaded content,
+PveContent, a MapLooks lookup, support/clearance probes and a navigation probe.
+It refuses absent dependencies and invalid geometry; `Parse` alone is not an
+import gate. Probe positions are floor-surface points, and radii/heights are metres.
+The navigation callback must check the actual route at that clearance, not merely
+whether both endpoints have a nearby node. Sanctuary, entry and return slots are
+checked for both pilot and Hulk clearance, per the authoring gate above.
+
+The returned `compatibility` fingerprints manifest bytes plus the loaded content
+revision (which covers UnityMaps and PveContent). Use this complete fingerprint
+for readiness and eventual handoff compatibility, not just the human revision label.
+`ResolveSpawns` preserves inherited Siren records and derives their allowed kinds
+with `NativeWardEntries.Allows`; it never edits Siren geometry or entries.
+
+Normal map lists, random rotation, stored room selections and Sandbox map changes
+exclude the reserved `expedition-` map namespace, even if `rotation` is true.
+Claude can import those maps into UnityMaps without exposing them in those lists.
+Normal Unity map validation still applies (including spawn/nav tables). This does
+not enable an Expedition menu entry or bypass the layout's geometry gate.
+
+Construct `ExpeditionDirector` with the validated layout, host-measured positions
+and line of sight. The session ticks it before projecting the public view:
+
+- `ExpeditionView.closures`: id, area, state and `began` in run elapsed seconds.
+  Collision is active during sealing/sealed/opening and releases when the full
+  1.0-second opening completes. Closing activates collision at sealing start.
+  Visuals read these fields; the scene collision adapter reads `Blocking`.
+- `areaBarrier`: active, target, layout fingerprint, generation, ready and required.
+  Call `BeginAreaLoad` for initial scene loading. `EnterDoor` checks the authenticated
+  member's location and enters the paired area; voted returns begin a fresh barrier.
+  `Ready` requires matching target/generation/fingerprint and connected membership.
+  The transport must bind that call to the current run/epoch and authenticated seat.
+  `CompleteAreaLoad` requires every remaining connected member, including dead
+  members, to be ready; its callback atomically places living members in distinct
+  authored entries/returns/sanctuary slots. Failure keeps the run frozen. Loading
+  pauses the gameplay clock. Disconnects remove readiness requirements.
+- `members[].safe`: existing public field, now updated from sanctuary volumes.
+- `bossArrivals`: id, area, archetype and `spawned` in authority run seconds.
+  Call `RecordBossArrival` only after a catalog-validated combat entity is created;
+  duplicate entity reports are refused. `TryBeginFinal` requires an open final gate
+  and a living member inside the manifest's final trigger.
+
+Current boundary: the scene/PhysX probes, load/ACK transport messages, collision
+adapter, encounter catalog/entity spawning and playable menu still need binding
+and native tests against Claude's generated assets. The callbacks are not a claim
+that those adapters exist. Host endpoint migration remains unavailable; no
+mid-combat save or migration support is added by these public view records.
