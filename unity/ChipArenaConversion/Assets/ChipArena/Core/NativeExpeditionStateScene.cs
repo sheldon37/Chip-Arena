@@ -33,12 +33,12 @@ namespace ChipArena.UnityConversion
     public sealed class NativeExpeditionStateScene
     {
         public const int QuadCapacity=4096,PartCapacity=640,MaxDoors=16;
-        public const float CullDistance=140,SanctuaryCull=90;
+        public const float CullDistance=140,SanctuaryCull=90;public const double CrackSeconds=2.6;
         public readonly NativeFxQuads Quads=new NativeFxQuads(QuadCapacity);
         public readonly List<ExpeditionKitBox> Parts=new List<ExpeditionKitBox>(PartCapacity);
         private readonly bool[] leaf=new bool[MaxDoors];private readonly float[] edges=new float[5];private ExpeditionStateRig built;
-        /// <summary>Doors and gates drawn this frame (for checks), and whether each door's seal is up.</summary>
-        public int DoorsDrawn,GatesDrawn;
+        /// <summary>Doors, gates and boss cracks drawn this frame (for checks).</summary>
+        public int DoorsDrawn,GatesDrawn,CracksDrawn;
 
         // ---- Colours (sRGB): Ward Zero's clinical palette and the hazard colours, the HUD's magenta for the final gate ----
         public const int SteelHex=0x2C3140,SteelLightHex=0x6B7385,ClinicalHex=0xC9CFCC,HeavyHex=0x3E6B5A,VoidHex=0x07090D,
@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
             MagentaHex=NativeCyberCityLooks.MagentaHex,WarmHex=0xFFC27A,EmberHex=NativeCyberCityLooks.WarmHex,CoolHex=0x8AA6C4,DustHex=0x2A2630,CrackHex=0x050206;
         private const int Metal=NativeCyberCityLooks.Metal,Tube=NativeCyberCityLooks.Tube,Holo=NativeCyberCityLooks.Holo,Bank=NativeCyberCityLooks.Bank;
 
-        public void Clear(){Quads.Clear();Parts.Clear();Array.Clear(leaf,0,leaf.Length);DoorsDrawn=GatesDrawn=0;}
+        public void Clear(){Quads.Clear();Parts.Clear();Array.Clear(leaf,0,leaf.Length);DoorsDrawn=GatesDrawn=CracksDrawn=0;}
         /// <summary>Whether door anchor `anchor` has 3D leaves this frame (else its HUD hologram stands in).</summary>
         public bool HasLeaf(string anchor){if(built==null)return false;int i=built.Door(anchor);return i>=0&&i<MaxDoors&&leaf[i];}
 
@@ -64,6 +64,14 @@ namespace ChipArena.UnityConversion
                 if(cues!=null&&cues.Cue(c.id,t,out double age))Beacon(f,age,eye,reduced);
             }
             for(int s=0;s<rig.Sanctuary.Length;s++)Sanctuary(rig.Sanctuary[s],s,NativeExpeditionStates.SanctuaryLit(v),cues,t,eye,reduced,low);
+            // Boss arrivals of this area with an intro (seen within LateJoin of their spawn) and a recorded spawn point: the crack
+            // and roar at that point, timed from `spawned`, so it plays once and in step for everyone.
+            if(cues!=null)for(int i=0;i<cues.ArrivalCount;i++)
+            {
+                var a=cues.ArrivalAt(i);if(!a.Intro||!a.Placed||a.Area!=rig.Area)continue;double age=t-a.Spawned;if(age<0||age>CrackSeconds)continue;
+                float dx=a.X-eye.X,dz=a.Z-eye.Z;if(dx*dx+dz*dz>CullDistance*CullDistance)continue;
+                BossCrack(a.X,a.Y,a.Z,age,a.Seed,eye,reduced);CracksDrawn++;
+            }
         }
         private static bool Near(in ExpeditionFrame f,in ExpeditionEye e,float range){float dx=f.Cx-e.X,dz=f.Cz-e.Z;return dx*dx+dz*dz<=range*range;}
 
@@ -318,11 +326,11 @@ namespace ChipArena.UnityConversion
 
         // ---- A boss's arrival at its position (only where the caller has one) ----------------------------------------------
         /// <summary>Ground cracks, two roar rings, dust and a flash at a boss's feet, `age` seconds after its authority spawn
-        /// (nothing outside 0..2.6 s). Deterministic per `seed` (the arrival). The live game calls it only for an arrival whose
-        /// position it knows; the view carries none today, so nothing is drawn there yet.</summary>
+        /// (nothing outside 0..CrackSeconds). Deterministic per `seed` (the arrival's stable hash). Build draws it at each arrival's
+        /// recorded spawn point (bossArrivals[].x/y/z).</summary>
         public void BossCrack(float x,float y,float z,double age,int seed,in ExpeditionEye eye,bool reduced)
         {
-            if(!(age>=0)||age>2.6)return;float a=(float)age,grow=NativeExpeditionStates.Ease(a/.35f),fade=a<1.4f?1:(2.6f-a)/1.2f,fy=y+.045f;
+            if(!(age>=0)||age>CrackSeconds)return;float a=(float)age,grow=NativeExpeditionStates.Ease(a/.35f),fade=a<1.4f?1:(2.6f-a)/1.2f,fy=y+.045f;
             for(int i=0;i<7;i++)
             {
                 double ang=(i+NativeExpeditionStates.Hash(seed,i))*Math.PI*2/7;float len=(2.8f+2*NativeExpeditionStates.Hash(seed,i+20))*grow,px=x,pz=z;

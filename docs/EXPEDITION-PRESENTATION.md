@@ -43,7 +43,7 @@ Core files are engine-free; Runtime files draw with the cyber HUD kit (`NativeHu
 | `Core/NativeExpeditionStates.cs` | Closure phase math, the presentation clock, cue memory (gate beacon, boss intros, sanctuary crossings), the layout rig, and the transfer, SAFE and boss models |
 | `Core/NativeExpeditionStateScene.cs` | Door, final gate, sanctuary and boss-crack geometry: kit boxes (NativeBlockLit) and effect quads (NativeSirenFx) |
 | `Runtime/NativeExpeditionStatesPresentation.cs` | Draws the scene (instanced kit, one effects batch); layout binding; the LateUpdate, in-scene HUD and transfer-screen hooks |
-| `Runtime/NativeExpeditionStatesHud.cs` | Transfer screen, SAFE chip, boss intro and plates, final gate notice |
+| `Runtime/NativeExpeditionStatesHud.cs` | Transfer screen, SAFE chip and SAFE tags, boss intro and plates (with health), final gate notice |
 | `Tests/ExpeditionStatesChecks.cs` | Managed checks (`CoreTests.dll --expedition-states`, also in the full suite) |
 
 `Runtime/ConversionGame.cs` has five hook lines: the J/Escape keys, local play paused while the screen is
@@ -139,15 +139,18 @@ Built by `NativeExpeditionWorld.Build(view)` for the anchors whose `area` is the
 
 ## Doors, gate, sanctuary, transfer and boss arrival
 
-Claude, `claude/expedition-states` (shared base `6da0330`), 2026-10-14. All of it reads Astra's director state in the public
-view: `closures[]`, `areaBarrier`, `bossArrivals[]` and `members[].safe`. It also reads the static manifest
+Claude, `claude/expedition-states` (shared base `6da0330`), 2026-10-14; bound to PR #216's fields on
+`claude/expedition-states-bind`. All of it reads Astra's director state in the public view: `closures[]`, `areaBarrier`,
+`bossArrivals[]` (with `x/y/z`, `hp/maxHp`) and `members[]` (`safe`, `seat`). It also reads the static manifest
 `Resources/ExpeditionLayout.json`, which every client holds. Host and guests read the same fields, so they draw the same thing.
 Nothing here writes the view, calls the director or touches collision.
 
 **Binding.** The client parses the manifest once and computes its fingerprint: `NativeExpeditionLayout.Compatibility`, the
 manifest bytes plus the content revision. The rig of the view's area is used only when `areaBarrier.layout` equals that
-fingerprint, and the 3D pieces draw only while the arena holds that area's map. Anything missing draws nothing:
-- no fingerprint (before the first `BeginAreaLoad`), or a different one;
+fingerprint (`NativeExpeditionStates.Bound`). The director publishes it as soon as it binds the layout, on the initial
+inactive barrier (generation 0), so the doors, gate and sanctuary draw from the run's start. The 3D pieces draw only while
+the arena holds that area's map. Anything missing draws nothing:
+- no fingerprint, or a different one;
 - another map loaded;
 - a door without a closure record. Its HUD `Door` hologram stays as the fallback.
 
@@ -163,10 +166,11 @@ view's `elapsed`, run forward by local time between views (at most 0.25 s, becau
 | Gate beacon | this client saw the gate go from sealed or sealing to opening or open, or first saw it opening; timed from `began` | A magenta pillar rising 70 m off the gatehouse, three ground rings and a face flash for 7 s, and the HUD notice FINAL GATE OPEN · THE FINAL AREA IS UNLOCKED for 4 s. A gate first seen open (a resume or late join) cues nothing. |
 | Sanctuary boundary | the area's sanctuary volumes; the phase | A warm floor edge (a bright core fading inward), a low curtain with a slow wave, warm rising motes and corner glows. A shimmer ripple and ring appear where a pilot crosses (presentation's own position test; it never grants SAFE). Lit only in the Town and Victory phases, the ones in which the authority grants `safe`; otherwise a dim cool outline. The low tier keeps the floor edge; reduced effects stop the wave and motes. |
 | SAFE chip | `mine.safe` (member, connected, not extracted); `members[].safe` for the party line | SAFE · SANCTUARY under the wallet, and PARTY n / m SAFE with up to three names. It is the authority's sanctuary membership (checkpoint, extraction, remote reprint). It never claims damage protection and is never derived from a position. |
+| SAFE tags | `members[].seat` of each member with `safe`, connected, alive, not extracted (`ExpeditionSafeTags`); seat 0 is unbound | SAFE (green tick and diamond, no shield) over that pilot, in the slot above the overhead name: within 55 m, hidden behind walls (the health bars' ray), faded past 35 m, never over my own pilot in first person. Public: every viewer sees the same tags. |
 | Transfer screen | `areaBarrier` (active, target, ready, required); `loading`; `instances[].entered` | Full screen over every screen, with the notice toast and build label kept on top: AREA TRANSFER · LOADING; ENTERING WARD ZERO for an instance target; RETURNING TO THE CITY for the world once a building was entered this loop, else ENTERING THE CITY. One pip per member the barrier waits for (up to 8), PARTY READY n / m, a bar, the paused-clock note and a loader. It fades in over 0.25 s and holds after the barrier drops until the arena holds the area's map (at most 3 s), then fades out over 0.45 s. |
 | Boss intro | `bossArrivals[]` of the view's area, once per arrival, timed from `spawned` | BOSS ARRIVAL · area tag, the archetype's name (test archetypes keep TEST), a rule and a 0.6 s glitch split, and a short sting: a magenta pulse at the screen edges. It never moves the camera or covers the crosshair. 3.4 s. An arrival first seen more than 3 s after its spawn gets no intro. |
-| Boss plates | the same arrivals; the building's `defeated`/`cleared`, or the final-boss phase | One plate per boss: BOSS, the name and ACTIVE or DOWN. No health, because the view carries none. A plate waits for its own intro; late joiners see only the plate. |
-| Boss crack | a boss position | Cracks, roar rings, dust and a flash at the boss's feet for 2.6 s. **Not drawn live:** the view carries no boss position (see below). |
+| Boss plates | the same arrivals; `hp/maxHp` from the view's current record; the building's `defeated`/`cleared`, the final-boss phase, or `hp` 0 | One plate per boss: BOSS, the name, a health bar and percentage (a living boss never reads 0%), DOWN once defeated. A legacy record (`maxHp` 0) has no bar and reads ACTIVE. A plate waits for its own intro; late joiners see only the plate. |
+| Boss crack | the arrival's `x/y/z` (only on a record with `maxHp` above 0, the current contract); its intro flag; `spawned` | Cracks, roar rings, dust and a flash at the recorded spawn point for 2.6 s from `spawned`, once per arrival and only for arrivals seen within 3 s of their spawn. The pattern's seed is a stable hash of area and id (FNV-1a), so every client draws the same cracks. |
 
 Names: every screen drops a layout area id's `exp-` prefix (`NativeExpeditionPresentation.Name`), so the imported
 `exp-ward-zero` reads WARD ZERO in the objective line, the board and the banners.
@@ -219,15 +223,12 @@ host's request refused.
 9. **Performance notes:** the host rebuilds the full view every frame and the host `ExpeditionCommands`
    getter allocates per call; the world pieces themselves allocate nothing per frame.
 10. Optional per-account ineligibility reasons (unchanged).
-11. **Member to pilot binding.** `members[]` has no seat or pilot id, so a guest cannot put a SAFE tag (or any member tag) over
-    another pilot. Today the SAFE state shows as the HUD chip and party line only. A public `seat` per member would let the world
-    tags follow the pilots.
-12. **Boss position.** `bossArrivals[]` has no position or entity id, so the ground crack and roar are not drawn live
-    (`NativeExpeditionStateScene.BossCrack` is ready for one). Either one would bind them.
-13. **Boss health.** The view has no boss HP, so the HUD boss plates show the name and ACTIVE or DOWN only. The combat HUD's
-    own bar stays the health readout once the encounter adapter binds one.
-14. **Layout fingerprint before the first load.** `areaBarrier.layout` is null until the first `BeginAreaLoad`. The state
-    pieces bind only from then on, as the contract's initial load implies.
+11. ~~Member to pilot binding~~: done. PR #216 `members[].seat`; SAFE tags over the pilots on `claude/expedition-states-bind`.
+12. ~~Boss position~~: done. `bossArrivals[].x/y/z`; the crack and roar draw there.
+13. ~~Boss health~~: done. `bossArrivals[].hp/maxHp`; the HUD boss plates show it. The combat adapter must call
+    `UpdateBossHealth` for the bar to move.
+14. ~~Layout fingerprint before the first load~~: done. `areaBarrier.layout` from the layout binding; the state pieces bind
+    from the run's start.
 
 ## Verification
 
@@ -260,8 +261,12 @@ depth. No closure record, no rig and another area's rig each draw nothing. The g
 rise, the beacon timed from `began`, no cue for a gate first seen open. SAFE only from `mine.safe` and `members[].safe`:
 crossings make ripples, never chips; non-members and strangers get none; the final-boss phase dims the boundary. Transfer
 text and counts from the barrier, return vs first entry, display clamping and the fade. One intro per arrival over 500
-frames, intros timed from `spawned`, late joiners get only the plate, a new loop replays and other areas play nothing; the
-crack is deterministic. The imported manifest's doors and gate get rigs facing their approach. No allocation over 240 frames.
+frames, intros timed from `spawned`, late joiners get only the plate, a new loop replays and other areas play nothing.
+Binding: the startup view (generation 0, inactive) and a guest's decoded copy bind; another or no fingerprint does not. Seats:
+a tag per safe member's seat, the same for every viewer, none for seat 0, unsafe, downed or disconnected members, and a
+replaced seat moves the tag. Boss: the crack at the recorded point from `spawned`, identical on another client, none for late
+joiners, legacy records or another area's rig; plate health and percentage from `UpdateBossHealth`, never 0% alive, DOWN at
+zero on defeat with max kept, no bar on a legacy record. The imported manifest's doors and gate get rigs facing their approach. No allocation over 240 frames.
 Source scans: no randomness, no authority reference or mutator, no writes to view state, no collision, palette-only HUD.
 
 Offline renders (scratch recorder plus a small software rasterizer of the same geometry; not committed):

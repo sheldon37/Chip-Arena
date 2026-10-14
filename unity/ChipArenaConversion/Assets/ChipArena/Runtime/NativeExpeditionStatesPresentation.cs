@@ -88,13 +88,14 @@ namespace ChipArena.UnityConversion
         private readonly ExpeditionTransferModel expeditionTransfer=new ExpeditionTransferModel();
         private readonly ExpeditionTransferFade expeditionTransferFade=new ExpeditionTransferFade();
         private readonly ExpeditionSafeModel expeditionSafe=new ExpeditionSafeModel();
-        private readonly ExpeditionBossModel expeditionBoss=new ExpeditionBossModel();
+        private readonly ExpeditionBossModel expeditionBoss=new ExpeditionBossModel();private readonly ExpeditionSafeTags expeditionSafeTags=new ExpeditionSafeTags();
         private NativeExpeditionStatesDraw expeditionStatesDraw;private bool expeditionStatesFailed;private double expeditionStateTime;
 
         /// <summary>
         /// The rig of the view's area from the layout manifest every client holds (parsed once), only when the view names this
-        /// exact layout: areaBarrier.layout is the authority's validated fingerprint (manifest bytes plus content revision). Any
-        /// other layout, or none yet, binds nothing, and the doors keep their HUD holograms.
+        /// exact layout (NativeExpeditionStates.Bound): areaBarrier.layout is the authority's validated fingerprint (manifest bytes
+        /// plus content revision), published from the director's layout binding on, before the first area load. Any other layout,
+        /// or none, binds nothing, and the doors keep their HUD holograms.
         /// </summary>
         private ExpeditionStateRig ExpeditionRigFor(ExpeditionView v)
         {
@@ -105,7 +106,7 @@ namespace ChipArena.UnityConversion
                 try{var asset=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName);if(asset!=null){expeditionLayout=NativeExpeditionLayout.Parse(asset.text);expeditionLayoutFingerprint=NativeExpeditionLayout.Compatibility(asset.text,content);}}
                 catch(Exception e)when(e is FormatException||e is ArgumentException||e is InvalidOperationException){Debug.LogWarning("Expedition layout presentation disabled: "+e.Message);expeditionLayout=null;}
             }
-            if(expeditionLayout==null||v.areaBarrier?.layout==null||v.areaBarrier.layout!=expeditionLayoutFingerprint)return null;
+            if(expeditionLayout==null||!NativeExpeditionStates.Bound(v,expeditionLayoutFingerprint))return null;
             if(expeditionRig==null||expeditionRig.Area!=v.area)expeditionRig=ExpeditionStateRig.For(expeditionLayout,v.area);
             return expeditionRig;
         }
@@ -125,15 +126,34 @@ namespace ChipArena.UnityConversion
             if(expeditionStatesDraw==null&&!expeditionStatesFailed){expeditionStatesDraw=NativeExpeditionStatesDraw.Create();expeditionStatesFailed=expeditionStatesDraw==null;}
             if(expeditionStatesDraw==null)expeditionStates.Clear();else expeditionStatesDraw.Draw(expeditionStates,cameraView,presentation.UsesInstancing,Time.unscaledTime);
         }
-        /// <summary>The in-scene HUD pieces: the SAFE chip, the boss plates, the boss intro and the final gate's notice.</summary>
+        /// <summary>The in-scene HUD pieces: the SAFE tags over the pilots, the SAFE chip, the boss plates (with health), the boss
+        /// intro and the final gate's notice.</summary>
         private void ExpeditionStatesHud(ExpeditionView v,float width,float height,float countdownBottom)
         {
             if(Event.current.type!=EventType.Repaint)return;double t=expeditionStateTime;bool reduced=prefs.reducedEffects;
+            ExpeditionSafeTagsHud(v);
             expeditionSafe.From(v,expeditionStateLabels);NativeExpeditionStatesHud.Safe(v,expeditionSafe,24,90);
-            expeditionBoss.From(v,expeditionCues,t);NativeExpeditionStatesHud.BossPlates(expeditionBoss,width,countdownBottom,Time.unscaledTime,reduced);
+            expeditionBoss.From(v,expeditionCues,t,expeditionStateLabels);NativeExpeditionStatesHud.BossPlates(expeditionBoss,width,countdownBottom,Time.unscaledTime,reduced);
             if(expeditionBoss.Intro>=0)NativeExpeditionStatesHud.BossIntro(expeditionBoss,width,height,(float)expeditionBoss.Age,reduced);
             var rig=ExpeditionRigFor(v);if(rig==null)return;
             foreach(var g in rig.Gates)if(expeditionCues.Cue(g.Id,t,out double age)&&age<NativeExpeditionStates.GateNoticeSeconds){NativeExpeditionStatesHud.GateNotice(width,height,(float)age,reduced);break;}
+        }
+        /// <summary>
+        /// SAFE over every pilot whose seat (members[].seat) the authority has in the sanctuary (ExpeditionSafeTags), in the slot
+        /// over the overhead name the health bars use (the body + 1.3 m, as the chip-select tag): within 55 m, not behind walls
+        /// (the bars' occlusion ray), faded past 35 m, never over my own pilot in first person. No seat, no tag.
+        /// </summary>
+        private void ExpeditionSafeTagsHud(ExpeditionView v)
+        {
+            expeditionSafeTags.From(v);if(expeditionSafeTags.Count==0||arena==null||cameraView==null||!ExpeditionWorldShown)return;
+            var physics=arena.Root.scene.GetPhysicsScene();var eye=cameraView.transform.position;
+            foreach(var p in arena.Pilots)
+            {
+                if(p?.Body==null||!p.Seat.connected||p.Hp<=0||!expeditionSafeTags.Has(p.Seat.id)||FirstPersonView&&p==arena.ViewPilot)continue;
+                var at=p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:p.Seat.devScale);var s=cameraView.WorldToScreenPoint(at);float metres=Vector3.Distance(eye,at);
+                if(s.z<=0||metres>55)continue;Vector3 d=at-eye;if(physics.Raycast(eye,d.normalized,out _,d.magnitude-.08f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))continue;
+                NativeExpeditionStatesHud.SafeTag(new Vector2(s.x/U.S,(Screen.height-s.y)/U.S),Mathf.Clamp01(1-(metres-35)/20));
+            }
         }
         /// <summary>OnGUI, after every screen (menus included): the area transfer screen while the barrier is up and its fade. The
         /// notice toast and the build label are drawn again over it (both are pure draws), so they stay on top of every screen.</summary>

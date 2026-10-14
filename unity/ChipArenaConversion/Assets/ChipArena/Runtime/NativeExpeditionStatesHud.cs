@@ -87,22 +87,36 @@ namespace ChipArena.UnityConversion
             if(!reduced&&age<.5f){float sy=top-30+(F+50)*(age/.5f);U.Fill(new Rect(W*.2f,sy,W*.6f,H.Snap(1)),C.CyanSoft(.5f*(1-age/.5f)));}
             U.Pop();
         }
-        /// <summary>The HUD boss plates: each arrived boss of this area by archetype, ACTIVE or DOWN (no health: the view has none).
-        /// A plate waits for its intro to finish, so late joiners see only the plate.</summary>
+        /// <summary>The HUD boss plates: each arrived boss of this area by archetype, its health bar and percentage from
+        /// bossArrivals[].hp / maxHp (none on a legacy record: ACTIVE), DOWN once defeated. A plate waits for its intro to finish,
+        /// so late joiners see only the plate.</summary>
         public static void BossPlates(ExpeditionBossModel m,float W,float y,float t,bool reduced)
         {
             float pw=380,x=W/2-pw/2;
             for(int i=0;i<m.PlateCount;i++)
             {
                 double age=m.PlateAge[i];float a=age==double.PositiveInfinity?1:Mathf.Clamp01((float)(age-(NativeExpeditionStates.IntroSeconds-.4))/.4f);if(a<=0)continue;
-                bool down=m.PlateDown[i];Color tone=down?C.Muted():C.Magenta();var r=new Rect(x,y,pw,32);H.Panel(r,a,tone,R.TagCut);
+                bool down=m.PlateDown[i];float health=m.PlateHealth[i];Color tone=down?C.Muted():C.Magenta();var r=new Rect(x,y,pw,health>=0?40:32);H.Panel(r,a,tone,R.TagCut);
                 if(!down&&!reduced)U.Glow(new Rect(r.x,r.yMax-2,r.width,2),C.Magenta(.25f*a*(.6f+.4f*Mathf.Sin(t*3))),4);
-                U.Text(new Rect(r.x+14,r.y,60,r.height),Boss,10,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
-                U.Text(new Rect(r.x+64,r.y,pw-150,r.height),m.PlateNames[i],14,down?C.Muted(a):C.Ink(a),TextAnchor.MiddleLeft,bold:true,tracking:.06f);
-                string state=down?Down:Active;float sw=U.Measure(state,10,true,true,.12f).x+22;var st=new Rect(r.xMax-12-sw,r.y+6,sw,20);H.Tag(st,tone,a);
+                U.Text(new Rect(r.x+14,r.y,60,32),Boss,10,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
+                U.Text(new Rect(r.x+64,r.y,pw-150,32),m.PlateNames[i],14,down?C.Muted(a):C.Ink(a),TextAnchor.MiddleLeft,bold:true,tracking:.06f);
+                string state=down?Down:m.PlatePercent[i]??Active;float sw=U.Measure(state,10,true,true,.12f).x+22;var st=new Rect(r.xMax-12-sw,r.y+6,sw,20);H.Tag(st,tone,a);
                 U.Text(new Rect(st.x+10,st.y,sw-10,st.height),state,10,U.A(tone,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
-                y+=38;
+                if(health>=0)H.Line(new Rect(r.x+14,r.y+31,pw-28,4),health,down?C.Muted(a):C.Magenta(a),C.Void(.8f*a));
+                y+=r.height+6;
             }
+        }
+        // ---- SAFE over a pilot ------------------------------------------------------------------------------------------
+        private static float safeWidth;
+        /// <summary>The SAFE tag over a pilot: `bar` is the overhead bar's top centre (canvas units); it sits over the name row,
+        /// in the chip-select tag's slot. A green tick and diamond, no shield (it is sanctuary membership, not protection).</summary>
+        public static void SafeTag(Vector2 bar,float a)
+        {
+            if(a<=0)return;if(safeWidth<=0)safeWidth=U.Measure(ExpeditionSafeTags.Text,10,true,true,.14f).x;
+            float h=18,w=20+safeWidth+10;var r=new Rect(Mathf.Round(Mathf.Clamp(bar.x-w/2,8,U.W-8-w)),Mathf.Round(bar.y-27-4-h),w,h);
+            H.Cut(r,C.Navy(.82f*a),R.TagCut);H.Outline(r,C.Good(.6f*a),R.TagCut);U.Fill(new Rect(r.x+2,r.y+r.height*.28f,2,r.height*.44f),C.Good(a));
+            U.Fill(new Rect(r.x+9,r.center.y-3,6,6),C.Good(a));
+            U.Text(new Rect(r.x+20,r.y,safeWidth+6,h),ExpeditionSafeTags.Text,10,C.Good(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f,shadow:new Color(0,0,0,.7f*a));
         }
         /// <summary>FINAL GATE OPEN, for GateNoticeSeconds from the gate's opening (this client saw it open).</summary>
         public static void GateNotice(float W,float Hh,float age,bool reduced)

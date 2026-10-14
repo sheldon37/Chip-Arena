@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
         {
             count=0;Root=root;var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),new JsonSerializerOptions{IncludeFields=true});
             var layout=NativeExpeditionLayout.Parse(LayoutJson());
-            Phases();Clock();Doors(content,layout);GateAndCue(content,layout);Sanctuary(content,layout);Transfer(content,layout);Boss(content,layout);
+            Phases();Clock();Startup(content,layout);Doors(content,layout);GateAndCue(content,layout);Sanctuary(content,layout);Seats(content,layout);Transfer(content,layout);Boss(content,layout);
             Manifest(root);NoAllocation(content,layout);Sources(root);
             Console.WriteLine("PASS Expedition states ("+count+" checks)");
         }
@@ -96,6 +96,18 @@ namespace ChipArena.UnityConversion
             v.elapsed=50.05;Check(c.Observe(v,105.01)>=50.25-1e-9,"never steps back by a sliver");v.elapsed=50.4;Check(Math.Abs(c.Observe(v,105.02)-50.4)<1e-9,"follows a newer view");
             v.loading=true;v.elapsed=50.45;Check(Math.Abs(c.Observe(v,106)-50.45)<1e-9,"holds still while the run is loading");v.loading=false;v.migrating=true;Check(Math.Abs(c.Observe(v,107)-50.45)<1e-9,"and during a host transfer");
             Check(c.Observe(new ExpeditionView{run="b",elapsed=3},108)==3,"a new run starts it over");Check(c.Observe(null,109)==0,"no view, no clock");
+        }
+
+        // 2b. Binding before the first area load: the director publishes its layout fingerprint on the initial inactive barrier.
+        private static void Startup(ConversionContent content,ExpeditionLayout layout)
+        {
+            var p=Start(content,layout);var v=p.View();var rig=ExpeditionStateRig.For(layout,City);
+            Check(!v.areaBarrier.active&&v.areaBarrier.generation==0&&v.areaBarrier.layout==p.Fingerprint&&NativeExpeditionStates.Bound(v,p.Fingerprint),"the startup view names the layout before any area load");
+            Check(!NativeExpeditionStates.Bound(v,new string('d',64))&&!NativeExpeditionStates.Bound(v,null)&&!NativeExpeditionStates.Bound(new ExpeditionView(),p.Fingerprint)&&!NativeExpeditionStates.Bound(null,p.Fingerprint),"another layout, no fingerprint or no view binds nothing");
+            var scene=new NativeExpeditionStateScene();var cues=new ExpeditionStateCues();cues.Observe(v,v.elapsed);scene.Build(v,rig,cues,v.elapsed,Eye(36,1.7f,-3,44,2,0),false,false);
+            Check(scene.HasLeaf(CityDoor)&&scene.GatesDrawn==1,"the town's door and gate draw from the run's start");
+            var replicated=JsonSerializer.Deserialize<ExpeditionView>(JsonSerializer.Serialize(v,new JsonSerializerOptions{IncludeFields=true}),new JsonSerializerOptions{IncludeFields=true});
+            Check(NativeExpeditionStates.Bound(NativeExpeditionView.Normalize(replicated),p.Fingerprint),"a guest's decoded startup view binds the same way");
         }
 
         // 3. Doors through the real director: entry seals both doors over one second; leaves and seal follow closures[].
@@ -225,6 +237,21 @@ namespace ChipArena.UnityConversion
         }
         private static float EdgeAlpha(NativeExpeditionStateScene s){float best=0;for(int i=0;i<s.Quads.Count;i++)best=Math.Max(best,s.Quads.Colors[i*4+3]);return best;}
 
+        // 5b. SAFE tags over the pilots: members[].seat (the authority's account-to-pilot mapping) of the safe members only.
+        private static void Seats(ConversionContent content,ExpeditionLayout layout)
+        {
+            var p=Start(content,layout);int guestSeat=7;p.Session.Sources.Seat=a=>a=="host"?3:a=="guest"?guestSeat:0;var tags=new ExpeditionSafeTags();
+            p.At=new V3(1,0,1);p.Director.Step();var v=p.View();Check(v.Member("host").seat==3&&v.Member("guest").seat==7,"seats from the authority's mapping");
+            tags.From(v);Check(tags.Count==2&&tags.Has(3)&&tags.Has(7)&&!tags.Has(0),"a SAFE tag over each safe member's pilot");
+            var stranger=p.View("stranger");tags.From(stranger);Check(tags.Count==2,"the tags are public: every viewer sees the same");
+            p.At=new V3(30,0,30);p.Director.Step();tags.From(p.View());Check(tags.Count==0,"nobody safe, no tags (wherever the pilots stand)");
+            p.At=new V3(1,0,1);p.Director.Step();guestSeat=0;tags.From(p.View());Check(tags.Count==1&&tags.Has(3),"an unbound seat (0) has no tag");
+            guestSeat=9;tags.From(p.View());Check(tags.Has(9)&&!tags.Has(7),"a replaced seat moves the tag: the mapping is read per projection");
+            p.Run.Defeat("guest");tags.From(p.View());Check(!tags.Has(9),"a downed member has no tag");
+            p.Run.Disconnect("host");tags.From(p.View());Check(tags.Count==0,"a disconnected member has no tag");
+            var forged=new ExpeditionView{members=new[]{new ExpeditionViewMember{account="x",seat=4,safe=false,connected=true,alive=true}}};tags.From(forged);Check(tags.Count==0,"a seat without `safe` never shows SAFE");
+        }
+
         // 6. The transfer screen: the barrier's target, ready / required from the view, the fade with the map load.
         private static void Transfer(ConversionContent content,ExpeditionLayout layout)
         {
@@ -247,27 +274,42 @@ namespace ChipArena.UnityConversion
         private static void Boss(ConversionContent content,ExpeditionLayout layout)
         {
             var p=Start(content,layout);p.At=new V3(43,0,0);p.Director.EnterDoor("host",CityDoor);p.Director.Ready("host",Ward,1,p.Fingerprint);p.Director.Ready("guest",Ward,1,p.Fingerprint);p.Director.CompleteAreaLoad((_,__)=>true);
-            Check(p.Run.Progress("kill",1)&&p.Run.StartBosses(new[]{"TEST-boss"})&&p.Director.RecordBossArrival("TEST-boss","test-hulk",a=>a=="test-hulk",new V3(0,0,0),100,100),"the authority records the arrival");
-            var v=p.View();var arrival=v.bossArrivals.Single();var cues=new ExpeditionStateCues();var model=new ExpeditionBossModel();int intros=0,frames=0;double start=arrival.spawned;bool was=false;
+            Check(p.Run.Progress("kill",1)&&p.Run.StartBosses(new[]{"TEST-boss"})&&p.Director.RecordBossArrival("TEST-boss","test-hulk",a=>a=="test-hulk",new V3(0,0,8.6f),100,100),"the authority records the arrival");
+            var v=p.View();var arrival=v.bossArrivals.Single();var cues=new ExpeditionStateCues();var model=new ExpeditionBossModel();var labels=new ExpeditionLabels();int intros=0,frames=0;double start=arrival.spawned;bool was=false;
+            Check(arrival.x==0&&arrival.z==8.6f&&arrival.hp==100&&arrival.maxHp==100,"the view carries the spawn point and health");
             for(double t=start-.5;t<start+8;t+=1/60.0)
             {
-                cues.Observe(v,t);model.From(v,cues,t);bool on=model.Intro>=0;if(on&&!was)intros++;was=on;frames++;
+                cues.Observe(v,t);model.From(v,cues,t,labels);bool on=model.Intro>=0;if(on&&!was)intros++;was=on;frames++;
                 if(on)Check(model.Name=="TEST HULK"&&model.Area=="BOSS ARRIVAL · WARD ZERO"&&Math.Abs(model.Age-(t-start))<1e-9,"the intro is timed from `spawned`");
-                Check(model.PlateCount==1&&model.PlateNames[0]=="TEST HULK"&&!model.PlateDown[0],"the plate names the boss");
+                Check(model.PlateCount==1&&model.PlateNames[0]=="TEST HULK"&&!model.PlateDown[0]&&model.PlateHealth[0]==1&&model.PlatePercent[0]=="100%","the plate names the boss with its health");
             }
             Check(intros==1,"exactly one intro per arrival ("+intros+" over "+frames+" frames)");
             var late=new ExpeditionStateCues();late.Observe(v,start+NativeExpeditionStates.LateJoin+.2);model.From(v,late,start+NativeExpeditionStates.LateJoin+.2);
             Check(model.Intro<0&&model.PlateCount==1&&double.IsPositiveInfinity(model.PlateAge[0]),"a late joiner sees only the HUD plate");
             var early=new ExpeditionStateCues();early.Observe(v,start+2.5);model.From(v,early,start+2.5);Check(model.Intro>=0&&Math.Abs(model.Age-2.5)<1e-9,"a joiner within LateJoin sees the rest of the intro, in step");
-            p.Director.BossDefeated("TEST-boss",new V3(0,0,0));var down=p.View();cues.Observe(down,start+9);model.From(down,cues,start+9);Check(model.PlateDown[0],"the plate reads DOWN once the building lists it defeated");
+            // Live health from the combat authority; the intro and the spawn point are untouched by it.
+            Check(p.Director.UpdateBossHealth(Ward,"TEST-boss",61.5,100),"health update");var hurt=p.View();model.From(hurt,cues,start+9,labels);
+            Check(Math.Abs(model.PlateHealth[0]-.615f)<1e-5f&&model.PlatePercent[0]=="62%"&&!model.PlateDown[0]&&hurt.bossArrivals[0].spawned==start&&hurt.bossArrivals[0].z==8.6f,"the plate follows the boss's health (62%)");
+            Check(p.Director.UpdateBossHealth(Ward,"TEST-boss",.2,100),"near death");model.From(p.View(),cues,start+9,labels);Check(model.PlatePercent[0]=="1%"&&!model.PlateDown[0],"a living boss never reads 0%");
+            p.Director.BossDefeated("TEST-boss",new V3(0,0,0));var down=p.View();cues.Observe(down,start+9);model.From(down,cues,start+9,labels);
+            Check(model.PlateDown[0]&&model.PlateHealth[0]==0&&down.bossArrivals[0].maxHp==100,"DOWN at zero health once defeated (max kept)");
+            var legacy=Area(v,Ward);legacy.bossArrivals[0].hp=0;legacy.bossArrivals[0].maxHp=0;var lc=new ExpeditionStateCues();lc.Observe(legacy,start);model.From(legacy,lc,start+.1,labels);
+            Check(model.PlateHealth[0]<0&&model.PlatePercent[0]==null&&!model.PlateDown[0],"a legacy record (maxHp 0) has no health bar and is not down");
             // Another area's arrival plays nothing here; a new loop forgets the arrivals (the director clears them).
             var other=Area(v,City);var oc=new ExpeditionStateCues();oc.Observe(other,start);model.From(other,oc,start);Check(model.Intro<0&&model.PlateCount==0,"another area's boss plays nothing");
             var next=Area(v,Ward);next.loop=1;cues.Observe(next,start+.5);model.From(next,cues,start+.5);Check(model.Intro>=0,"a new loop's arrival with the same id plays again");
-            // The bound crack: deterministic, finite, gone after 2.6 s.
-            var scene=new NativeExpeditionStateScene();var eye=Eye(-9,2.2f,-10,0,.8f,0);scene.Clear();scene.BossCrack(0,0,0,.5,7,eye,false);int n=scene.Quads.Count;var first=scene.Quads.Corners.Take(n*12).ToArray();
-            scene.Clear();scene.BossCrack(0,0,0,.5,7,eye,false);Check(n>40&&scene.Quads.Corners.Take(n*12).SequenceEqual(first),"the crack is deterministic");
-            scene.Clear();scene.BossCrack(0,0,0,2.7,7,eye,false);Check(scene.Quads.Count==0,"and over after 2.6 s");
-            Check(!File.ReadAllText(Path.Combine(Root,"Assets/ChipArena/Runtime/NativeExpeditionStatesPresentation.cs")).Contains("BossCrack("),"the live game draws no crack without a boss position binding");
+            // The crack and roar at the recorded spawn point, from `spawned`, once per arrival, the same on every client.
+            var rig=ExpeditionStateRig.For(layout,Ward);var scene=new NativeExpeditionStateScene();var eye=Eye(-5.5f,2.3f,2.5f,0,.3f,8.6f);var bc=new ExpeditionStateCues();bc.Observe(v,start);
+            v.closures=Array.Empty<ExpeditionClosureView>();scene.Build(v,rig,bc,start+.5,eye,false,false);int n=scene.Quads.Count;var first=scene.Quads.Corners.Take(n*12).ToArray();
+            Check(scene.CracksDrawn==1&&n>40,"the crack plays at the boss's spawn");
+            float cx=0,cz=0;for(int i=0;i<n;i++){cx+=first[i*12];cz+=first[i*12+2];}Check(Math.Abs(cx/n)<1.5f&&Math.Abs(cz/n-8.6f)<1.5f,"centred on the recorded point (0, 8.6)");
+            var again=new ExpeditionStateCues();again.Observe(v,start);var scene2=new NativeExpeditionStateScene();scene2.Build(v,rig,again,start+.5,eye,false,false);
+            Check(scene2.Quads.Count==n&&scene2.Quads.Corners.Take(n*12).SequenceEqual(first),"another client draws the identical crack (stable seed)");
+            Check(NativeExpeditionStates.StableHash("TEST-boss")==NativeExpeditionStates.StableHash("TEST-boss")&&NativeExpeditionStates.StableHash("TEST-boss")!=NativeExpeditionStates.StableHash("TEST-bosz"),"stable per-arrival seed");
+            scene.Build(v,rig,bc,start+NativeExpeditionStateScene.CrackSeconds+.1,eye,false,false);Check(scene.CracksDrawn==0,"over after CrackSeconds");
+            var lateCues=new ExpeditionStateCues();lateCues.Observe(v,start+NativeExpeditionStates.LateJoin+.2);scene.Build(v,rig,lateCues,start+1,eye,false,false);Check(scene.CracksDrawn==0,"a late joiner sees no crack");
+            scene.Build(legacy,rig,lc,start+.5,eye,false,false);Check(scene.CracksDrawn==0,"a legacy record without a position draws no crack");
+            scene.Build(v,ExpeditionStateRig.For(layout,City),bc,start+.5,eye,false,false);Check(scene.CracksDrawn==0,"nothing without this area's rig");
         }
 
         // 8. The imported manifest: every door and gate of exp-layout-2 has a rig whose leaves stay in the closure volume.
@@ -290,19 +332,19 @@ namespace ChipArena.UnityConversion
         {
             var p=Start(content,layout);p.At=new V3(1,0,1);p.Director.Step();var v=p.View();
             foreach(var c in v.closures)if(c.id==CityDoor){c.state="sealing";c.began=v.elapsed;}else if(c.id==Gate){c.state="opening";c.began=v.elapsed;}
-            v.bossArrivals=new[]{new ExpeditionBossArrivalView{id="b",area=City,archetype="test-hulk",spawned=v.elapsed}};v.areaBarrier=new ExpeditionAreaBarrierView{active=true,target=Ward,ready=1,required=2};
+            v.bossArrivals=new[]{new ExpeditionBossArrivalView{id="b",area=City,archetype="test-hulk",spawned=v.elapsed,x=0,y=0,z=47,hp=40,maxHp=120}};foreach(var m in v.members)m.seat=m.account=="host"?1:2;v.areaBarrier=new ExpeditionAreaBarrierView{active=true,target=Ward,ready=1,required=2};
             var rig=ExpeditionStateRig.For(layout,City);var clock=new ExpeditionPresentationClock();var cues=new ExpeditionStateCues();var scene=new NativeExpeditionStateScene();var labels=new ExpeditionLabels();
-            var transfer=new ExpeditionTransferModel();var fade=new ExpeditionTransferFade();var safe=new ExpeditionSafeModel();var boss=new ExpeditionBossModel();var eye=Eye(-6,2,10,0,3,37);
+            var transfer=new ExpeditionTransferModel();var fade=new ExpeditionTransferFade();var safe=new ExpeditionSafeModel();var boss=new ExpeditionBossModel();var tags=new ExpeditionSafeTags();var eye=Eye(-6,2,10,0,3,37);
             double local=100;
             void Frame(int i)
             {
                 local+=1/60.0;double t=clock.Observe(v,local);cues.Observe(v,t);cues.Pilot(1,(i%40)<20?11.5f:12.5f,0,0,rig,t);cues.Pilot(2,0,0,0,rig,t);
-                scene.Build(v,rig,cues,t,eye,false,false);scene.BossCrack(0,0,47,.5,3,eye,false);scene.HasLeaf(CityDoor);
-                transfer.From(v,labels);fade.Step(transfer.Active,false,1/60f);safe.From(v,labels);boss.From(v,cues,t);
+                scene.Build(v,rig,cues,t,eye,false,false);scene.HasLeaf(CityDoor);
+                transfer.From(v,labels);fade.Step(transfer.Active,false,1/60f);safe.From(v,labels);boss.From(v,cues,t,labels);tags.From(v);
             }
             for(int i=0;i<120;i++)Frame(i);long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<240;i++)Frame(i);long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
             Check(bytes==0,"the state presentation allocates nothing per frame ("+bytes+" bytes over 240 frames)");
-            Check(scene.Parts.Count>40&&scene.Quads.Count>200&&scene.Quads.Count<NativeExpeditionStateScene.QuadCapacity&&scene.Parts.Count<NativeExpeditionStateScene.PartCapacity,"the measured frame drew doors, gate, sanctuary and crack within capacity");
+            Check(scene.Parts.Count>40&&scene.Quads.Count>200&&scene.CracksDrawn==1&&tags.Count==2&&boss.PlatePercent[0]=="34%"&&scene.Quads.Count<NativeExpeditionStateScene.QuadCapacity&&scene.Parts.Count<NativeExpeditionStateScene.PartCapacity,"the measured frame drew doors, gate, sanctuary, crack, tags and plate within capacity");
             for(int i=0;i<scene.Quads.Count*12;i++)Check(!float.IsNaN(scene.Quads.Corners[i])&&!float.IsInfinity(scene.Quads.Corners[i]),"finite quads");
             foreach(var b in scene.Parts)Check(b.Hx>0&&b.Hy>0&&b.Hz>0&&!float.IsNaN(b.X+b.Y+b.Z),"valid kit boxes");
         }
