@@ -6081,3 +6081,25 @@ Unity compilation, Windows listening/performance and compiled publication not
 run here. Next: builder compile and fresh Ward + replay Connection reports with
 new fields before calling either hitch fixed. Gameplay, animation and network
 protocol remain unchanged.
+
+## 2026-10-13 · Codex · First-use death animation loading and Ward music gain
+Branch `codex/death-warmup-ward-volume`, base shared `09b9079`; preserves the
+concurrent chip-module validation adjustment. Owner supplied Factory 2431.90 ms
+frame / 2423.03 ms death presentation, regular corpse build only 25.09 ms, step
+.0007 ms, wounded model .0048 ms, GC counters +17. Ward replay preceding it had
+591.24 ms death presentation with zero regular corpse/wound sub-timers.
+Inspection found synchronous first-use gzip/base64/JSON loading of SourceMotion
+(14,413,209 decompressed JSON bytes) and SceneMotion (94,316,897 bytes). A missing
+cinematic death key still loads SceneMotion before regular corpse fallback.
+Prewarm both existing static caches during client Awake before presentation,
+after headless/duplicate-instance exits. Log MOTION_BANKS_READY time/counts.
+This removes that first-use loading from combat/replay, moving cost/memory to
+startup. No forced GC, clip changes, damage/physics/network changes. It targets
+a strong candidate consistent with the reports, not a measured proof of the
+exact cause or a claim all death stalls are fixed. Actual fresh-process Windows
+playtest remains necessary.
+Ward's replacement music slot gains 1.5x (+3.52 dB), retaining Stage Music, mute
+and existing boss-song timing/level. Covers PvE and Ward PvP/sandbox playback;
+menu trim retained. Source C# syntax, package (1852 files) and whitespace pass;
+Python 101 tests OK (one skipped). Full managed/real relay suite passed (641 PASS lines).
+Windows compilation/listening/playtest and compiled channel delivery pending.

@@ -78,7 +78,8 @@ namespace ChipArena.UnityConversion
                 music.Stop();musicPaused=musicStarting=musicPlayed=false;musicSync.Reset();track=id;music.clip=string.IsNullOrEmpty(id)?null:Clip(id);
             }
             musicClockOwner=clockOwner;musicEpoch=clockEpoch;
-            music.volume=Muted?0:volume;musicHeld=pause;if(music.clip==null)return;music.loop=clock==null;
+            // Owner trim: Ward Zero needs +3.52 dB; both PvE and map-selected playback use this slot.
+            music.volume=Muted?0:Mathf.Clamp01(volume*(id=="music/restricted-zone-pulse"?1.5f:1f));musicHeld=pause;if(music.clip==null)return;music.loop=clock==null;
             if(pause){HoldMusic();return;}
             // Do not repeatedly Play or seek a clip still loading in the background. Once ready, cue the latest age,
             // not the age at which Resources.Load was first requested (especially on a guest joining the entrance).

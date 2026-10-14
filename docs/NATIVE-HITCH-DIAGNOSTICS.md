@@ -124,3 +124,22 @@ linecasts remain live, with original route selection and safety gates. The
 index is rebuilt on map change. Managed equivalence and allocation checks cover
 all authored hazard maps; actual Windows navigation performance needs another
 capture. New death sub-timers diagnose the unresolved replay freeze.
+
+## First-use animation banks (2026-10-13 evening)
+
+New Factory capture: 2431.90 ms frame / 2423.03 ms death presentation, but
+only 25.09 ms regular corpse creation, .0007 ms stepping and .0048 ms wounded
+models, with 17 GC increments. Ward replay earlier spent 591.24 ms in death
+presentation with none of those sub-timers active.
+The fallback death animation paths call static bank loaders: SourceMotion
+expands to 14,413,209 bytes of JSON; SceneMotion to 94,316,897 bytes. SceneMotion
+previously loaded even for a missing cinematic death key before falling back
+to a regular corpse. Loading is a strong candidate consistent with the captures,
+not a directly measured attribution from these fields. Both banks now prewarm
+during client Awake, after the dedicated/duplicate-instance exits and before
+presentation setup. Their existing static caches serve subsequent matches and
+replays. Player.log emits MOTION_BANKS_READY with clip counts and elapsed time.
+This moves decompression/JSON allocation to startup, so startup can take longer
+and the bank memory is resident earlier. No explicit GC or animation changes.
+A fresh process followed by the same Ward/Factory replay is the acceptance test;
+other unmeasured death-effect paths can still stall.
