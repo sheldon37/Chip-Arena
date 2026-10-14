@@ -98,6 +98,9 @@ namespace ChipArena.UnityConversion
                 {
                     Point(d.approach,.6,2.2,"the door's approach");foreach(var q in d.returns??Array.Empty<ExpeditionPoint>())Point(q,.6,2.2,"a door return");
                     foreach(var v in new[]{d.interact,d.closure}){var x=Aabb(v);Check(!BoxHit(w,x[0],x[1],x[2],x[3],x[4],x[5]),"nothing in the instance door's volumes: "+at);}
+                    // The airlock unit claude/expedition-states draws round the closure (x 43.4-44.0, z -3.5..3.5, y 0-4 at the town's door).
+                    {var c=d.closure;double a=c.yaw*Math.PI/180,cs=Math.Abs(Math.Cos(a)),sn=Math.Abs(Math.Sin(a)),hw=c.sx/2+1.9,hd=.75;double ux=cs*hw+sn*hd,uz=sn*hw+cs*hd;
+                     Check(!BoxHit(w,c.x-ux,c.x+ux,0,4.1,c.z-uz,c.z+uz),"nothing in the door's airlock unit space: "+at);}
                 }
                 foreach(var g in area.gates){var x=Aabb(g.closure);Check(!BoxHit(w,x[0]-.5,x[1]+.5,x[2],x[3]+.5,x[4]-.5,x[5]+.5),"nothing in the final gate's volume: "+at);}
                 // The sanctuary's floor: flat paint only below 2.6 m, except on and against the barricades and the brazier.

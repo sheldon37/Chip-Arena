@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
             foreach(var d in area?.doors??Array.Empty<ExpeditionDoorLayout>())
             {
                 if(d.closure==null)continue;double a=d.closure.yaw*Math.PI/180;var f=FaceAt(d.closure.x+Math.Sin(a)*.2,d.closure.z+Math.Cos(a)*.2,-Math.Sin(a),-Math.Cos(a));
-                if(f!=null){double u=U(f,d.closure.x,d.closure.z);f.Keep.Add(new[]{u-d.closure.sx/2-.6,u+d.closure.sx/2+.6,-1,d.closure.sy+.6});}
+                if(f!=null){double u=U(f,d.closure.x,d.closure.z),w=d.closure.sx/2+UnitWing+.1;f.Keep.Add(new[]{u-w,u+w,-1,UnitTop});}
             }
             // The reserved doorways (docs/EXPEDITION-LAYOUT.md: exp-foundry at (-44, 0, 0) facing +x, exp-transit at (0, 0, -44) facing +z).
             var fd=FaceAt(-44,0,1,0);if(fd!=null)fd.Keep.Add(new[]{-3.9,3.9,-1,5.4});var tr=FaceAt(0,-44,0,1);if(tr!=null)tr.Keep.Add(new[]{-4.4,4.4,-1,4.0});
@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
                 double cell=.11;Text(f,"MERIDIAN BIOCONTAINMENT",0,7.25,.07,cell,.05,Glow(0xE8F8FF,1.5f,RoleSign,DriveSteady),0,13,Glow(0x2A3236,.05f,RoleSign));
                 FBox(f,0,7.25+2.5*cell,.035,TextWidth("MERIDIAN BIOCONTAINMENT",cell)+.6,.9,.04,P(NativeBlockLooks.Plain,0x1E2A2E,RoleSign));
                 Notice(f,-6.5,2.0,.07,true);Notice(f,6.5,1.8,.07,false);Poster(f,8.4,1.7,.07,.8);
-                FBox(f,3.2,1.3,.065,.5,1.1,.012,With(P(NativeBlockLooks.Plain,BloodHex,RoleLandmark),detail:true),14);FBox(f,3.35,.6,.065,.08,.9,.012,With(P(NativeBlockLooks.Plain,BloodDryHex,RoleLandmark),detail:true));
+                FBox(f,4.6,1.3,.065,.5,1.1,.012,With(P(NativeBlockLooks.Plain,BloodHex,RoleLandmark),detail:true),14);FBox(f,4.75,.6,.065,.08,.9,.012,With(P(NativeBlockLooks.Plain,BloodDryHex,RoleLandmark),detail:true));
                 Message(f,"MERIDIAN LIED",-12,2.4,.07,5.5,.12);
             }
         }

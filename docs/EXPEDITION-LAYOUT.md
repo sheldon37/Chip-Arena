@@ -383,7 +383,8 @@ every map; decide whether that is wanted for DEV testing. The steps:
 
 Presentation only, on the imported `expedition-city` map: no block, collider, navigation, layout record or rule changes.
 The town draws as a ruined city at dusk in the blocky style. Doors, the final gate's leaves, the sanctuary boundary,
-transitions and boss intros are `claude/expedition-states`'s; this pass keeps their volumes clear.
+transitions and boss intros are `claude/expedition-states`'s (merged into the shared head at `768ebc9`); this pass keeps
+their volumes clear.
 
 | Piece | Where | What |
 | --- | --- | --- |
@@ -399,8 +400,10 @@ Placement rules (checked in `Tests/ExpeditionDressingChecks.cs`, from the record
 - Below 3.1 m (a Hulk is 3.06 m) nothing stands more than 0.25 m off a block. Flat paint (at most 6 cm) is the only
   exception. Awnings hang with their valance above 3.1 m, and the planters carry only a low shrub, since a pilot can stand on one.
 - Nothing lies on a spawn's exit or its path, a door spawn's doorway (except its own frame), a vent (except its grate),
-  a drop column, a slot, a return, the approach, an interaction, anchor or boss point, the instance door's volumes or
-  the final gate's volume (plus a margin for the leaves).
+  a drop column, a slot, a return, the approach, an interaction, anchor or boss point, the instance door's volumes, the
+  airlock unit `claude/expedition-states` draws round that door (2 m either side of the leaves, to 4.2 m, 0.85 m either side
+  of the doorway plane; at the town's door x 43.4-44.0, z -3.5..3.5, y 0-4), or the final gate's volume (plus a margin for
+  the portcullis).
 - The sanctuary floor holds only flat paint below 2.6 m. Its barricades, brazier and walls carry the rest.
 - Every block's parts depend only on its id, the geometry and the records. Building over the blocks in reverse order
   gives every block the same parts.

@@ -204,14 +204,22 @@ namespace ChipArena.UnityConversion
             foreach(var d in area.doors??Array.Empty<ExpeditionDoorLayout>())
             {
                 Volume(d.interact,.4f);Volume(d.closure,.6f);Point(d.approach,.9f,2.4f);
+                // The doorway's airlock unit (claude/expedition-states: pockets 2 m either side of the leaves, header to 4 m, a sill
+                // 0.6 m out toward the party).
+                if(d.closure!=null){var unit=Unit(d.closure);Keep(unit[0],unit[1],-1,unit[3],unit[4],unit[5],-1,2);}
                 foreach(var p in d.returns??Array.Empty<ExpeditionPoint>())Point(p,.9f,2.4f);foreach(var p in d.entries??Array.Empty<ExpeditionPoint>())Point(p,.9f,2.4f);
             }
             foreach(var g in area.gates??Array.Empty<ExpeditionGateLayout>())Volume(g.closure,.8f,.6f);
             // The sanctuary's floor: nothing but flat paint below head height, away from its barricades and brazier (checked in Blocked).
             foreach(var v in area.sanctuary??Array.Empty<ExpeditionVolume>()){var b=Aabb(v,0);keeps.Add(new NativeCityKeep{X0=b[0]+.9f,X1=b[1]-.9f,Y0=b[2]+Flat+.001f,Y1=b[2]+2.6f,Z0=b[4]+.9f,Z1=b[5]-.9f,Spawn=-1,Kind=3});}
         }
+        /// <summary>The space a door's airlock unit takes round its closure volume (world AABB, as Aabb returns it): the leaves'
+        /// pockets and lamps <see cref="UnitWing"/> m either side, the header to <see cref="UnitTop"/> m, <see cref="UnitDepth"/> m
+        /// either side of the doorway plane.</summary>
+        public static float[] Unit(ExpeditionVolume v)=>Aabb(new ExpeditionVolume{x=v.x,y=UnitTop/2,z=v.z,sx=v.sx+2*UnitWing,sy=UnitTop,sz=2*UnitDepth,yaw=v.yaw},0);
+        public const float UnitWing=2.0f,UnitTop=4.2f,UnitDepth=.85f;
         private void Volume(ExpeditionVolume v,float pad,float top=0){if(v==null)return;var b=Aabb(v,pad);Keep(b[0],b[1],b[2]-.2f,b[3]+top,b[4],b[5],-1,2);}
-        private static float[] Aabb(ExpeditionVolume v,float pad)
+        public static float[] Aabb(ExpeditionVolume v,float pad)
         {
             double a=v.yaw*Math.PI/180,c=Math.Abs(Math.Cos(a)),s=Math.Abs(Math.Sin(a));float hx=(float)(c*v.sx/2+s*v.sz/2)+pad,hz=(float)(s*v.sx/2+c*v.sz/2)+pad;
             return new[]{v.x-hx,v.x+hx,v.y-v.sy/2,v.y+v.sy/2+pad,v.z-hz,v.z+hz};
