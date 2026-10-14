@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — chip-module allocation check re-measures a dirty pass
+- Branch `claude/sleepy-ritchie-g8ruhv` on shared `c20c87d` (PR #193). CI `native-source` (push run) failed once on `ChipModuleChecks`: "the per-frame module route allocates nothing (928 bytes over 50 frames)"; the pull-request run of the same commit passed, and #192/#193 touch no module code. Not reproducible locally.
+- Same rule as the wavedash check (7e33a89): after the warm-up, a non-zero 50-frame pass is measured once more and only the second must be zero, so a real per-frame allocation (present in both passes) still fails; the message reports both passes. Test-only change; no runtime, rules, timing or networking change.
+- Checks: Unity runtime+editor compile OK; check_relay exit 0 (641 PASS); Python 101 OK (1 skip); package_source OK; git diff --check clean over the PR range. Unity Editor/Windows not run.
+
 ## 2026-10-13 — Astra — kill/death hitch reduction and owner music replacements
 - Owner reports final-killcam startup freezes and intermittent kill freezes on Cyber City, then requests trying the fixes and replacing menu/Ward music. Branch `codex/killcam-hitches-and-music`, base shared/builder `33939f4`. Relevant open PR #188 (Expedition) is isolated and unchanged.
 - Verified source causes: replay constructed the full map at each clip start (Cyber City 702 blocks); each corpse copied all indestructible collision irrespective of distance (668 static Cyber City blocks); first corpse update could simulate 600 PhysX steps before yielding. These are code findings, not measured Windows timings.

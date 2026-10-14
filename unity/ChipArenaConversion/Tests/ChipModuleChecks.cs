@@ -358,8 +358,12 @@ namespace ChipArena.UnityConversion
                 }
             }
             foreach(var spec in allocSpecs)allocLoads[spec]=Loadouts(data,spec).ToArray();
-            Frame_();long before=GC.GetAllocatedBytesForCurrentThread();for(int r=0;r<50;r++)Frame_();long allocated=GC.GetAllocatedBytesForCurrentThread()-before;
-            Check(allocated==0,"the per-frame module route allocates nothing ("+allocated+" bytes over 50 frames)");
+            // A one-off allocation by the runtime on this thread lands on whichever frame it coincides with (CI once measured
+            // 928 bytes on a commit that changed none of this), so a dirty pass is measured once more: a real per-frame
+            // allocation in the module route shows in both passes (the WavedashChecks rule).
+            long Pass(){long before=GC.GetAllocatedBytesForCurrentThread();for(int r=0;r<50;r++)Frame_();return GC.GetAllocatedBytesForCurrentThread()-before;}
+            Frame_();long first=Pass(),allocated=first==0?0:Pass();
+            Check(allocated==0,"the per-frame module route allocates nothing ("+allocated+" bytes over 50 frames"+(first!=0?"; first pass "+first+" bytes":"")+")");
 
             // 9. Presentation only: no simulation, network or rules file reads the modules; the Runtime routes each skin.
             foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Core"),"*.cs"))if(!Path.GetFileName(f).StartsWith("NativeChipModules",StringComparison.Ordinal))Check(!File.ReadAllText(f).Contains("NativeChipModules"),Path.GetFileName(f)+" (Core) never reads the chip modules");
