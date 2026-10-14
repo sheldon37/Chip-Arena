@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
             return Slab(a.x,b.x,center.x,size.x)&&Slab(a.y,b.y,center.y,size.y)&&Slab(a.z,b.z,center.z,size.z);
         }
         public static float DamageScale(string role,string kind,float demolition)
-        {if(role=="static"||role=="carried"||role=="rubble")return 0;if(role=="structural")return kind=="blast"?Math.Max(0,Math.Min(1.5f,demolition)):0;if(role=="masonry")return (kind=="blast"?1.5f:kind=="melee"?.5f:kind=="bullet"?.25f:1)*demolition;return demolition;}
+        {if(role=="static"||role=="carried"||role=="rubble")return 0;if(role=="structural")return kind=="hulk-charge"?1:kind=="blast"?Math.Max(0,Math.Min(1.5f,demolition)):0;if(role=="masonry")return (kind=="blast"?1.5f:kind=="melee"?.5f:kind=="bullet"?.25f:1)*demolition;return demolition;}
         public static float Allowance(float maxHp,float already)=>Math.Max(0,Math.Min(60,.6f*maxHp)-already);
         public static int Credit(IEnumerable<StructureDamage> hits,ISet<string> members,float time)
         {var best=hits.Where(x=>x.pilot>0&&x.amount>0&&x.at<=time&&time-x.at<=10&&members.Contains(x.member)).GroupBy(x=>x.pilot).OrderByDescending(g=>g.Sum(x=>x.amount)).ThenByDescending(g=>g.Max(x=>x.at)).ThenBy(g=>g.Key).FirstOrDefault();return best?.Key??0;}

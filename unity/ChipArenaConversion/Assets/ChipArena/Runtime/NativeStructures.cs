@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         private bool FilterStructureDamage(NativePropBody prop,ref float amount,NativePilot source,string kind,float demolition)
         {
             var b=prop.Definition;if(string.IsNullOrEmpty(b.role))return true;
-            if(b.role=="structural"&&!NativeStructureRules.Armed(Match.Phase,Match.FightAt,Time))return false;
+            if(b.role=="structural"&&kind!="hulk-charge"&&!NativeStructureRules.Armed(Match.Phase,Match.FightAt,Time))return false;
             amount*=NativeStructureRules.DamageScale(b.role,kind,demolition);if(amount<=0||!MathUtil.Finite(amount))return false;
             if(b.role=="structural"&&source!=null)structuralDamage.Add(new StructureDamage{member=b.id,pilot=source.Seat.id,amount=Math.Min(prop.Health,amount),at=Time});return true;
         }

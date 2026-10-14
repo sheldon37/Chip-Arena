@@ -302,7 +302,7 @@ The rules choose one move when an attack starts and replicate it with `LastAttac
 |---|---|
 | `NativePveAdd.Move`, `NativeMinionFrame.move` | int: 0 the content attack (the smash, as today), 1 straight punch, 2 swipe; written with `LastAttack` |
 | side (the striking arm) | not replicated: `NativeHulkMoves.Side(lastAttack, lost)` on every peer and the host (the presentation's existing hash) |
-| choice | Hulk: punch when the target is 1.2-3.2 m away inside a 40 deg cone; swipe when it (or two or more pilots) is within 3 m inside 150 deg; otherwise the smash (and at least every third attack). Deterministic from `SpawnRandom`. Crawling or armless: today's attack timing |
+| choice | Hulk v2: smash for 2+ pilots in its disc; otherwise punch at 1.2–3.4 m within 20 degrees of facing, swipe within 3.2 m inside a 150-degree sector, else smash. No every-third-attack rule. Crawling or armless: today's attack timing |
 | punch timing | hit `.62` s (`NativeHulkMoves.PunchHit`), cycle `2.0` (`RecoverAt = LastAttack + max(cycle, hit + .05)`) |
 | punch volume | a capsule along the facing from .6 to 3.4 m ahead, radius .75, abs(dy) < 2.5, melee line of sight; damage 24 x wave scale; impulse 750 along the facing plus 2.5 m/s up; a block clashes, no damage, half the shove |
 | swipe timing | hit `.78` s (`SwipeHit`), cycle `2.4` |
@@ -352,7 +352,23 @@ head snaps back, the arms fly out, a dazed slump and reel, standing by 1.6 s. Sp
   proposed key poses on their contract times, determinism, no allocation, runtime draws only). Unity Editor, Windows,
   two-client play and the killcam were not run; the poses were reviewed on the harness's software renders only.
 
-### 10.5 Contract v2: punches and a charge at the hunted pilot (proposed 2026-10-14, Astra to confirm)
+### 10.5 Contract v2: punches and a charge at the hunted pilot (authority implemented on codex/hulk-hunt-v2)
+
+Authority follows the v2 numbers below. `NativePveAdd` inherits `NativeHulkHunt`: `Move`, `ChargeAt`,
+`ChargeEndAt`, `ChargeEnd`, `ChargeTarget`; the wire fields are `move`, `chargeAt`, `chargeEndAt`,
+`chargeEnd`, `chargeTarget`. Start/end sentinels are -100. A canceled wind-up clears both timestamps
+and the target, emits the spent end event for the event-only presentation, and retries after 4 s.
+Siren's assigned non-possessed target and the DEV hunt seat are explicit knowledge; other hunts use
+current LOS or the last visible point for 2.5 s. Wind-up keeps tracking only while this knowledge is
+available. After lock neither target changes nor damage steer the charge.
+
+Contact damage follows the existing pilot damage/modifier path; block halves both horizontal shove
+and the upward pop. Structural charge damage has its own `hulk-charge` kind through DamageProp and
+fracture (not credited as a player explosion). Broken debris and shoved adds have collision ignored
+only for the charging Hulk until its end/removal. `NativeBreachRecord.charged` marks instant breaks;
+records retain the normal rebuild/occupancy rules. Geometry checks fail closed for unknown colliders.
+Native PhysX/JsonUtility/late-join/replay acceptance is registered in `ValidateHulkHunt`; this is not a
+claim those Unity gates have executed. Claude still owns the `HordeHulkFrame` field binding.
 
 Owner (2026-10-14, Windows test build): "The hulk needs to punch and charge at the player too, not just the wall. The charge
 is avoidable if they move out of the way in time. (Hulk can collide and break walls too.) They literally can charge from

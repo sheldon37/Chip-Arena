@@ -3,6 +3,8 @@ using System;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
+    /// Authority now adopts these v2 numbers in NativeHulkHunt / NativeHulkHuntRuntime (2026-10-14).
+    /// Historical presentation design notes below; frame binding remains Claude's follow-up.
     /// The heavy kinds' proposed moves (owner 2026-10-14: "I'd like them to all have a charge animation (they can charge through
     /// walls) and a couple of punch animations (like a straight punch, and a swipe)"; and from the Windows test build: "The hulk
     /// needs to punch and charge at the player too, not just the wall. The charge is avoidable if they move out of the way in

@@ -6779,7 +6779,6 @@ pass. Actual Unity/PhysX regressions and Windows host/guest visual acceptance
 remain unrun locally. Merge/builder sync receipts in task PR; compiled update
 must pass the desktop builder before publication.
 
-
 ## 2026-10-14 — Astra/Codex: DEV Abuse host authority
 
 Branch `codex/dev-abuse-authority`, base shared `09096aff`. Owner explicitly
@@ -6814,7 +6813,6 @@ Added an actual-Unity build gate for every effect in local/encoded-guest paths,
 JsonUtility/replica state and account isolation. This gate, actual Unity compile,
 PhysX, Windows and live host/guest acceptance remain unrun locally. No compiled
 release claimed; publication/merge receipts belong in the task PR.
-
 
 ### 2026-10-14 — Astra: Expedition live contract follow-ups
 
@@ -7047,7 +7045,6 @@ Electron CI option A or B is still the owner's call.
 Checks: documentation-only change (EXPEDITION-LAYOUT.md, DEV_LOG, PROJECT_STATE). No code; no
 Unity, Windows or gameplay claim.
 
-
 ## 2026-10-14 — Astra: DEV monster authority and Expedition director foundation
 
 Branch `codex/expedition-director`, implementation based on shared `6f30f826`,
@@ -7100,7 +7097,6 @@ but no Unity Editor, PhysX, Windows two-client or native test release pass is
 claimed. Keep the implementation PR draft until native validation and remaining
 runtime work are complete; no shared/builder promotion from this work yet.
 
-
 ### Astra follow-up: Claude Monsters UI integrated on the draft
 
 Shared advanced to `debed457` (Claude UI `12ef8804`) during implementation. Merged
@@ -7126,7 +7122,6 @@ Final focused checks after merging the UI: managed compiler exit 0; DEV panel
 59 passed. Source-package structure (1,951 files), C# syntax (zero errors) and
 git diff --check passed. Full regression remains failed at Bisect performance,
 not waived. Implementation remains draft, unmerged and unreleased.
-
 
 ### 2026-10-14 — Astra: promote the DEV monster authority integration (PR #211)
 
@@ -7514,3 +7509,15 @@ Visuals only.
     inserted into it. `d51bd52` moved the hook after the pinned line.
   - The run5 relay, run at the same time as the CI-layout run, stopped once on the existing Spawn-in zero-allocation check
     (696 bytes). The CI-layout run of the same commit and a solo relay rerun both pass it.
+
+## 2026-10-14 — Astra — Hulk hunted-pilot attacks and charge authority v2
+
+- Branch `codex/hulk-hunt-v2`, base shared/builder `9cc6d299`. Source implementation; merge/publication status belongs to the receipt below.
+- Adds target-based punch/swipe/smash selection (2+ in smash disc wins; no every-third rule), the .62/2.0 punch and .78/2.4 swipe, their actual capsule/sector hit filters, wave-scaled damage and block-half shove. Crawling/armless content attacks remain. Siren horde and DEV Hulk attacks share the authority handlers; other DEV kinds retain their original interrupt behavior.
+- Charge: explicit Siren target/DEV hunt knowledge or current/recent LOS (2.5 s remembered point), same supported floor, >=7 m without a maximum range, .9 s tracking then immutable heading/point, 6 m/s. 25%-max-HP stagger cancels only the wind-up (4 s retry). Running hits cannot steer/cancel it. Earliest pilot swept contact ends it (28 x wave, 1000/65 horizontal velocity +4.5 up before modifiers, blocking halves both); solid/gap -> 1.6 s stun; 4 m overshoot/16 s -> .7 s hold. Ordinary cooldown is 10 s from end.
+- Contacts open eligible interior blocks through instant dynamic breach records, in-bounds entrance panels through their entry record (actor = Hulk), and props/structure through `DamageProp`/fracture with a dedicated `hulk-charge` structural damage kind. No player explosion credit is fabricated. Shell/bounds, floors/ceilings, stairs/ramps, hazard objects, door frames, indestructible objects and local machine fixtures fail closed. Each break slows to .6 for .3 s. Its own debris and shoved adds cannot physically trap the charging body; per-Hulk collision exclusions clear on end/removal. Adds receive 450 through their existing external-impulse adapter, without damage.
+- **Exact Claude binding:** `NativePveAdd.Move` (int), `ChargeAt` (float), `ChargeEndAt` (float), `ChargeEnd` (int), `ChargeTarget` (int), inherited from `NativeHulkHunt`. Wire names on `NativeMinionFrame`: `move`, `chargeAt`, `chargeEndAt`, `chargeEnd`, `chargeTarget`. Both timestamps default to -100; end stays -100 while charging; end ids 0 running / 1 pilot / 2 solid / 3 spent. Cancellation clears timestamps/target; yaw carries the locked heading. `NativeBreachRecord.charged` is a bool; dynamic and entrance breaks carry `actor` and contact `breakAt`. Frames capture/apply all five fields; replay uses those same frame copies. Impact events retain the requested amounts and positions. Claude: fill `HordeHulkFrame` in `Runtime/NativeHordeHulkMotion.cs`; presentation files were left to you.
+- Checks: managed Core/relay assemblies compiled with warnings as errors using .NET 8 Roslyn; focused `--hulk-charge` passes **all six requested existing suites** plus **184 new authority assertions**. C# syntax parsing with `UNITY_EDITOR` passes (0 errors), `package_source.py --check` passes (1979 files), `git diff --check` clean. Two source-pin failures found during the first full run were corrected while preserving the unchanged content attack/recovery and stagger statements. Full rerun receipt follows.
+- Native gate added and registered: `ValidateHulkHunt` exercises actual strike handlers, blocks, wind tracking/cancel/lock, a 50 m run and 1.5 m sidestep, end/cooldown, contact breaks/slowdown/protected geometry, real JsonUtility, guest late join and replay rewind. **Not executed here:** Unity runtime semantic compilation against engine DLLs, the native PhysX/JsonUtility gate, Windows player, two clients, visuals and performance. These remain required acceptance; managed checks are not substituted for them. No compiled update publication is claimed.
+
+- Verification/upload receipt: full managed + real-relay rerun exited 0 with **684 PASS groups**. PR **#215**, implementation **0ba2c74f00faa4ff3fb923c077547e53de85502a**, source tree **78c5e4f37a4db8e9e87674c7679069e01729f546** exactly matches the local tested tree. Pushed source, not merged or published: native Unity compilation/engine acceptance and Claude's field binding remain outstanding.
