@@ -17,11 +17,11 @@ It is presentation only. Branch `claude/final-killcam`; Unity code in `unity/Chi
 
 The normal killcam contract (`docs/KILLCAM-HANDOFF.md`) is unchanged for every death that is not the final kill.
 
-## Three-second start delay (2026-10-14)
+## Two-second start delay and movement (2026-10-14)
 
-Final killcams now wait three real-time seconds before playback. The live camera remains visible during the wait; the final victim does not enter a normal killcam first. Replay history is pinned as soon as the final clip is selected. Ordinary non-final killcams keep their existing timing. The round result banner does not start during the wait; it arrives with the hand-off after the clip, as before, so it plays once.
+Final killcams wait two real-time seconds before playback. Surviving players can walk, sprint, jump and turn during the authority's two-second Result movement window. Attack and ability inputs are discarded; the round winner is already fixed. Dead players remain dead. The local controls stop when the replay begins, and authority movement stops at the result-time boundary. Guests receive that window through existing result time/duration fields. Network arrival latency can offset a guest's locally observed playback start slightly.
 
-The authority adds those three seconds to qualifying death-ending Results: 11.5 seconds for credited final kills and 8 seconds for local fallback clips (including practice, environmental deaths and draws). No-death, sandbox and cooperative results retain their existing timing. Clip fitting reserves the delay before choosing playback length, so the wait preserves the previous replay budget. The older duration descriptions below are historical.
+Replay history is pinned as soon as the final clip is selected. The Result budget adds two seconds: 10.5 seconds for credited final kills and 7 seconds for fallback clips (including practice, environmental deaths and draws). No-death, sandbox and cooperative results retain their existing timing. Clip fitting reserves the wait, preserving the previous playback budget. Ordinary non-final killcams retain their timing. Older duration descriptions below are historical.
 
 ## The final-kill rule (every client, from data it already has)
 

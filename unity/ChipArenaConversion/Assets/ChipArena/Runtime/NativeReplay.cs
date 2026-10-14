@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
         private bool RenderReplayFrame()
         {
             if(menu||arena.Local.Hp>0&&!finalOn){EndReplay();return false;}
-            // A final replay reserves its history immediately but leaves the live view up for three seconds.
+            // A final replay reserves its history immediately but leaves the live view up for two seconds.
             // This separate gate prevents the normal killcam's .6-second condition bypassing the delay.
             if(finalOn&&!replayRunning&&Time.unscaledTime<replayWait)return false;
             if(!replayRunning&&replayDeath>=0&&(arena.Time>=replayDeath+.6f||Time.unscaledTime>=replayWait))

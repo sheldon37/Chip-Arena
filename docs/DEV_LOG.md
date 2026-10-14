@@ -6123,3 +6123,20 @@ preserved playback budget. Full 35 managed/real relay checks pass; Python 101
 OK (one skipped), runtime syntax zero errors, source package 1852 files and
 whitespace pass. Implemented on branch; merge/builder sync next. Unity Editor,
 Windows build and visual timing acceptance not exercised locally.
+
+## 2026-10-14 — Codex: two-second final wait with survivor movement
+
+Branch `codex/final-killcam-movement`, base shared/builder `b892a6c` (retains
+Claude's delayed result overlay). Owner requests two seconds and movement until
+playback. StartDelay=2; Result budgets become 10.5/7 seconds. Existing replicated
+result time/budget drives the authority and guest movement window. Live input
+allows movement/look/sprint/jump; a dedicated Result motor uses ground collision,
+acceleration and jump rules without attacks/abilities/DOT updates. Guest prediction
+uses a locomotion-only state. Dead pilots stay dead and round winner stays fixed.
+Normal killcams unchanged. Added host/guest timing boundary checks and a real
+Windows locomotion gate for movement, discarded combat and stopping at expiry.
+Full 35 managed/real relay checks pass; Python 101 OK (one skipped), source package
+1852 files, runtime syntax zero errors, whitespace pass. Windows/PhysX gate and
+visual acceptance unrun locally; builder is next. Guest playback uses observed
+real time and can start slightly after its authoritative movement cutoff due to
+network latency. Implemented on branch; merge and builder sync recorded in PR.

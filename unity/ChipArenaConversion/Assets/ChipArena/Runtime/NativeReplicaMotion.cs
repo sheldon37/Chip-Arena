@@ -17,6 +17,10 @@ namespace ChipArena.UnityConversion
         {body.interpolation=RigidbodyInterpolation.None;body.transform.position=position;body.position=position;}
         private NativePredictionState PredictionState(NativePilotFrame frame)
         {
+            if(Match.ResultMovement)return new NativePredictionState{Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),Time=Time,
+                CanMove=frame.hp>0,CanSprint=frame.hp>0&&frame.stamina>0,Grounded=Local?.Pose.Grounded??false,Stamina=frame.stamina,
+                Speed=Local==null?6.8f:(float)(6.8*Local.Stats["speed"]),Gravity=Local==null?23:(float)(23*Local.Stats["playerGravity"]),
+                JumpSpeed=Local==null?8.5f:(float)(Rules.JumpSpeed*Local.Stats["jumpPower"]),JumpSpec=Local?.Seat.spec,AirJumps=Local?.Pose.AirJumps??0};
             var p=Local;bool unlocked=p!=null&&!(p.Pose.Kernel?.Busy(Time)??false)&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.frozenUntil<=Time&&frame.scareUntil<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&(p.Pose.AttackUntil<=Time||p.Pose.CommitUntil>Time||p.Seat.spec=="cyberlord"||NativeWhirlwindRules.Busy(p.Pose.MeleeKit,Time));
             var a=p?.Pose;NativeMeleeSwing swing=null;
             if(p!=null&&a.CommitUntil>Time&&NativeMeleeRules.Standard(p.Seat.spec))

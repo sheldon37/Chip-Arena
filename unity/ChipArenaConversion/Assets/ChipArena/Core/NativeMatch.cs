@@ -31,6 +31,8 @@ namespace ChipArena.UnityConversion
         public int FinalSeed { get;private set; }
         public double ResultAt { get;private set; }
         public bool HasFinalKillcam { get;private set; }
+        // The extended result budget also identifies fallback/practice final replays on guests.
+        public bool ResultMovement=>Phase==NativePhase.Result&&!Cooperative&&HasFinalKillcam&&PhaseEnd-ResultAt>=5+NativeFinalKillcam.StartDelay&&Time-ResultAt<NativeFinalKillcam.StartDelay;
         public double FightAt { get;private set; }
         public int Round { get;private set; }=1;
         public int Set { get;private set; }=1;
