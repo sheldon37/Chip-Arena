@@ -27,12 +27,12 @@ namespace ChipArena.UnityConversion
             var previous=from;var nf=new System.Numerics.Vector3(from.x,from.y,from.z);var nt=new System.Numerics.Vector3(to.x,to.y,to.z);
             for(int i=1;i<=24;i++)
             {NativeHordeFx.Glob(nf,nt,flight,flight*i/24,out var v);var current=new Vector3(v.X,v.Y,v.Z);if(SceneLinecast(previous,current,WorldMask))return;previous=current;}
-            var r=new NativeAcidRecord{id=++nextAcid,actor=m.Id,from=Vec(from),to=Vec(to),at=Time,flight=flight,damageScale=a.DamageScale};
+            var r=new NativeAcidRecord{devMonster=m.DevMonster,devTarget=m.DevMonster&&m.DevBehaviour!="frenzy"?target.Seat.id:0,id=++nextAcid,actor=m.Id,from=Vec(from),to=Vec(to),at=Time,flight=flight,damageScale=a.DamageScale};
             pveAcid.Add(new PveAcidState{Record=r,PoisonAt=Time+flight,CorrodeAt=Time+flight+NativeSpitterRules.CorrosionInterval});
             Emit(EventKind.Impact,m.Owner,m.Id,to,flight,"minion-spit",radius:NativeSpitterRules.Radius,from:from);
         }
         private bool AcidTouches(NativePilot p,NativeAcidRecord r,float radius)
-        {return p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss&&NativeSpitterRules.Touch(r.to,Vec(p.Body.position),p.Collider.height/2,p.Collider.radius,radius)&&!SceneLinecast(Vec(r.to)+Vector3.up*.1f,p.Body.position,WorldMask);}
+        {return (!r.devMonster||r.devTarget==0||r.devTarget==p.Seat.id)&&p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss&&NativeSpitterRules.Touch(r.to,Vec(p.Body.position),p.Collider.height/2,p.Collider.radius,radius)&&!SceneLinecast(Vec(r.to)+Vector3.up*.1f,p.Body.position,WorldMask);}
         private void StepPveAcid()
         {
             for(int i=pveAcid.Count-1;i>=0;i--)
@@ -42,13 +42,13 @@ namespace ChipArena.UnityConversion
                 if(!a.Landed)
                 {
                     a.Landed=true;
-                    foreach(var p in Pilots)if(AcidTouches(p,r,NativeSpitterRules.DirectRadius))Damage(p,null,NativeSpitterRules.Damage*r.damageScale,Vector3.zero,0,false,primary:false,damageKind:"acid");
-                    CorrodePve(r,NativeSpitterRules.DirectRadius,NativeSpitterRules.DirectCorrosion);
+                    foreach(var p in Pilots)if(AcidTouches(p,r,NativeSpitterRules.DirectRadius))Damage(p,null,NativeSpitterRules.Damage*r.damageScale,Vector3.zero,0,false,primary:false,damageKind:r.devMonster?"dev-monster":"acid");
+                    if(!r.devMonster)CorrodePve(r,NativeSpitterRules.DirectRadius,NativeSpitterRules.DirectCorrosion);
                 }
                 while(a.PoisonAt<=Time+1e-6&&a.PoisonAt<end)
-                {foreach(var p in Pilots)if(AcidTouches(p,r,NativeSpitterRules.Radius))RefreshPvePoison(p,NativeSpitterRules.Dps*r.damageScale,NativeSpitterRules.DotDuration);a.PoisonAt+=NativeSpitterRules.DotInterval;}
+                {foreach(var p in Pilots)if(AcidTouches(p,r,NativeSpitterRules.Radius))RefreshPvePoison(p,NativeSpitterRules.Dps*r.damageScale,NativeSpitterRules.DotDuration,r.devMonster);a.PoisonAt+=NativeSpitterRules.DotInterval;}
                 while(a.CorrodeAt<=Time+1e-6&&a.CorrodeAt<=end)
-                {CorrodePve(r,NativeSpitterRules.Radius,NativeSpitterRules.Corrosion);a.CorrodeAt+=NativeSpitterRules.CorrosionInterval;}
+                {if(!r.devMonster)CorrodePve(r,NativeSpitterRules.Radius,NativeSpitterRules.Corrosion);a.CorrodeAt+=NativeSpitterRules.CorrosionInterval;}
                 if(Time>end)pveAcid.RemoveAt(i);
             }
         }
@@ -60,9 +60,9 @@ namespace ChipArena.UnityConversion
             {if(p==null||p.Fragment||!p.isActiveAndEnabled)continue;var col=p.GetComponent<Collider>();if(col==null||!col.enabled)continue;var at=Vec(acid.to)+Vector3.up*.05f;var point=col.ClosestPoint(at);if((point-at).sqrMagnitude>radius*radius||SceneLinecast(at,point,out var hit,WorldMask)&&hit.collider!=col)continue;DamageProp(p,damage,Vector3.zero,point,null,"acid");}
         }
         private readonly List<NativePropBody> acidProps=new List<NativePropBody>();
-        private void RefreshPvePoison(NativePilot target,double dps,double duration)
+        private void RefreshPvePoison(NativePilot target,double dps,double duration,bool dev=false)
         {
-            const string key="pve:poison";target.Dots.TryGetValue(key,out var old);bool live=old!=null&&old.Until>=Match.Time;
+            string key=dev?"dev-monster:poison":"pve:poison";target.Dots.TryGetValue(key,out var old);bool live=old!=null&&old.Until>=Match.Time;
             if(!live)target.Dots[key]=new NativeDot{Source=0,Dps=dps,Next=Match.Time+.25,Until=Match.Time+duration};
             else{old.Dps=Math.Max(old.Dps,dps);old.Until=Math.Max(old.Until,Match.Time+duration);}
         }

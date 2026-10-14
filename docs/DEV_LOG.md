@@ -6953,6 +6953,20 @@ and reveal delivery to every player remain unrun. This container has no Unity
 Editor or Windows client. Documentation-only verification: id-validator compatibility,
 existing API/schema inspection and git diff --check; no gameplay pass claimed.
 
+### 2026-10-14 — Owner approval to implement Expedition; DEV monster authority
+
+Owner now says "Go ahead and build": proceed with the proposed director/layout
+contract above; Claude retains layout/blockout/visuals. This supersedes the
+implementation pause, not the missing authored geometry or native acceptance.
+The added DEV monster contract uses spawn-monster [kind,count,place,behaviour],
+target 0=self, clear-monsters, protocol 2, verified developer authority and the
+existing dedupe/rate/audit/progression quarantine. Monster caps count actual live
+entities; partial placement reports the actual number. No valid position means
+refusal, never an invented origin. Non-PvE AI must not invoke Siren's wave/economy
+state. Clears and match exit remove only DEV monsters and their lingering attacks.
+Claude's dev-monsters branch was not available on the remote at inspection.
+Electron CI is unchanged pending the requested owner choice.
+
 ## 2026-10-14 — Claude: Expedition director/layout contract AGREED (with amendments)
 
 Reply to Astra's proposal above (`codex/expedition-director` `d89e11a`, merged into shared with
@@ -7002,3 +7016,56 @@ Electron CI option A or B is still the owner's call.
 
 Checks: documentation-only change (EXPEDITION-LAYOUT.md, DEV_LOG, PROJECT_STATE). No code; no
 Unity, Windows or gameplay claim.
+
+
+## 2026-10-14 — Astra: DEV monster authority and Expedition director foundation
+
+Branch `codex/expedition-director`, implementation based on shared `6f30f826`,
+then merged Claude's agreed layout contract at `afade5dc` without replacing either
+log entry. Owner authorized implementation. PR #210 was the earlier contract PR,
+now merged; this implementation requires a new PR.
+
+DEV protocol 2 adds spawn-monster/clear-monsters to the existing verified-seat,
+rate-limited, deduplicated command path, including local Developer Sandbox.
+Catalog checks, count/room/archetype caps, supported placement and actual-count
+replies are implemented. AI runs independently of Siren waves on every map,
+with target-only hunt, nearest living frenzy, and idle-until-hit. DEV monsters
+are damageable by every pilot, cannot enter possession/wave completion/reward
+paths, and clean up with their acid/poison at round end. Guest frames carry
+`devMonster`; off-PvE acid uses `devAcid`. Kill records/feed mark DEV MONSTER,
+without spawner credit; existing last-damager credit is retained. Aim uses the
+host-observed signed pitch convention. No account writes are introduced.
+
+Contract detail: `entries` currently resolves Ward's compatible authored exits
+on Siren; it does not play the regular wave traversal or breach walls. Other
+maps without an authored adapter refuse it. Claude owns the summon-in visuals.
+The direct chase stops at blocked paths rather than claiming navmesh routing.
+See DEV-ABUSE-AUTHORITY.md for the exact UI/replication handoff.
+
+Expedition foundation follows EXPEDITION-LAYOUT.md, including its string/array
+spawn union through the existing bounded JSON parser. Missing coordinates,
+duplicate anchors, incomplete doors/slots, absent interaction points and invalid
+spawn kinds refuse. A separate geometry pass requires a real support/clearance
+callback and map bounds; parsing alone is not geometry validation. Volume
+centres use the contract's centre/full-size/yaw convention. No fabricated layout
+asset is included. The scene-independent director supplies proximity/LOS,
+reprint evidence validation, reward-position callbacks, fresh-generation restock
+and dirty sanctuary checkpoints. Clock-only revisions do not rewrite saves;
+failed writes retain the previous written savepoint and report failure.
+
+This is NOT a playable Expedition. Still to implement: runtime scene creation,
+geometry/navigation probes, encounter catalog and spawning, combat/sanctuary
+binding, area load/ready barrier, pickup/cache/reprint input, gated menu, public
+door/gate/barrier/boss state, durable director resume, endpoint probes and full
+combat authority migration. Claude's map/manifest assets are also not present.
+Candidates remain incapable/unreachable; no render frame is promoted to authority.
+Electron CI option A/B remains the owner's call and is unchanged. Optional melee
+arc replication remains deferred.
+
+Checks so far: direct Roslyn managed compilation succeeded; DEV authority 95
+checks and Expedition director 20 checks passed; C# syntax scan and source-package
+structure check passed. Full managed/relay regression result recorded below when
+complete. The Unity authority fixture includes monster/guest/cleanup assertions,
+but no Unity Editor, PhysX, Windows two-client or native test release pass is
+claimed. Keep the implementation PR draft until native validation and remaining
+runtime work are complete; no shared/builder promotion from this work yet.

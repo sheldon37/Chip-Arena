@@ -3,9 +3,9 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeAcidRecord
     {
-        public int id,actor;public V3 from,to;public float at,flight,damageScale=1;
+        public bool devMonster;public int devTarget;public int id,actor;public V3 from,to;public float at,flight,damageScale=1;
         public NativeAcidRecord Copy()=>(NativeAcidRecord)MemberwiseClone();
-        public bool Valid()=>id>0&&actor>=10000&&Good(at)&&at>=0&&Good(flight)&&flight>=.35f&&flight<=3&&Good(damageScale)&&damageScale>0&&damageScale<=100&&Point(from)&&Point(to);
+        public bool Valid()=>devTarget>=0&&id>0&&actor>=10000&&Good(at)&&at>=0&&Good(flight)&&flight>=.35f&&flight<=3&&Good(damageScale)&&damageScale>0&&damageScale<=100&&Point(from)&&Point(to);
         private static bool Good(float v)=>!float.IsNaN(v)&&!float.IsInfinity(v);
         private static bool Point(V3 v)=>Good(v.x)&&Good(v.y)&&Good(v.z)&&Math.Abs(v.x)<10000&&Math.Abs(v.y)<10000&&Math.Abs(v.z)<10000;
         public static bool ValidAll(NativeAcidRecord[] records)

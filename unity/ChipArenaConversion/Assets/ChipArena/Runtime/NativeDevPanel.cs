@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         // ---- Context ----------------------------------------------------------------------------------------------------
         private NativeDevContext DevContext()=>NativeDevContext.Of(arena!=null&&match!=null,arena!=null&&arena.Sandbox&&!arena.Replica,Online,Hosting,account!=null&&account.Developer,prefs!=null&&prefs.devAbuse,DevAbuseEnabled&&devLink.Available,match!=null&&match.Phase==NativePhase.Fight);
         /// <summary>A guest of a host without devProtocol 1: SendDevCommand refuses at once (the panel says so in its header).</summary>
-        private bool DevOldHost=>server!=null&&devHostProtocol!=1;
+        private bool DevOldHost=>server!=null&&devHostProtocol<1;
         private string DevSender(string action,int target,string[] args)=>SendDevCommand(action,target,args);
         private void DevOnReply(NativeDevReply reply)=>devLink.Receive(reply);
         /// <summary>The DEV panel is open for this match (the pause menu's DEV Tools item, F3).</summary>

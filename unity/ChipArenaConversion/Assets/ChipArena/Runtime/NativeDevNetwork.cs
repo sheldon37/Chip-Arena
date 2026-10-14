@@ -15,10 +15,10 @@ namespace ChipArena.UnityConversion
         {
             string transaction=Guid.NewGuid().ToString("N");var command=new NativeDevCommand{transaction=transaction,action=action,target=target,args=args};
             string invalid=NativeDevRules.Validate(command);
-            if(!DevAbuseEnabled||arena==null||invalid!=null){DevReply(new NativeDevReply{transaction=transaction,state="refused",reason=invalid??(!DevAbuseEnabled?"Enable DEV Abuse first.":"No active match.")});return transaction;}
+            if((!DevAbuseEnabled&&!(arena?.Sandbox==true&&!Online&&account?.Developer==true))||arena==null||invalid!=null){DevReply(new NativeDevReply{transaction=transaction,state="refused",reason=invalid??(!DevAbuseEnabled?"Enable DEV Abuse first.":"No active match.")});return transaction;}
             if(server!=null)
             {
-                if(devHostProtocol!=1){DevReply(new NativeDevReply{transaction=transaction,state="refused",reason="This host does not support DEV commands."});return transaction;}
+                if(devHostProtocol<(action=="spawn-monster"||action=="clear-monsters"?2:1)){DevReply(new NativeDevReply{transaction=transaction,state="refused",reason="This host does not support DEV commands."});return transaction;}
                 if(devPending.Count>=32){DevReply(new NativeDevReply{transaction=transaction,state="refused",reason="Too many pending DEV commands."});return transaction;}
                 devPending[transaction]=Time.unscaledTime;SendServer(new NativeNetMessage{type="dev-command",devCommand=command});
             }

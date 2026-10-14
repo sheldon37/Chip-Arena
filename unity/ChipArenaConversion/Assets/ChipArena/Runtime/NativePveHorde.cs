@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         private NativeMinion SpawnPveAddCore(string kind,bool force,int forcedEntry)
         {
             var v=Pve??wardSandboxState;if(v==null||kind==null)return null;
-            if(Minions.Count(m=>m.Pve!=null)>=v.Cap&&v.Cap>0)return null;
+            if(Minions.Count(m=>m.Pve!=null&&!m.DevMonster)>=v.Cap&&v.Cap>0)return null;
             if(kind=="spitter"&&Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")>=NativeSpitterRules.Cap)return null;
             if(kind=="hulk"&&Minions.Count(m=>m.Pve?.Stats.id=="hulk")>=Math.Max(1,Math.Min(2,v.Cap/2)))return null;
             var members=(Pve==null?Pilots.Where(p=>!p.Seat.AuthorityBoss):Members()).Where(p=>p.Hp>0).ToArray();
@@ -113,12 +113,12 @@ namespace ChipArena.UnityConversion
         private void StepPveHordeCore()
         {
             var v=Pve;const float dt=1f/60;pveNavigation=pveNavigation??new NativePveNavigation(this);
-            int active=Minions.Count(m=>m.Pve!=null),entering=Minions.Count(m=>m.Pve!=null&&Time<m.Pve.ActiveAt);
+            int active=Minions.Count(m=>m.Pve!=null&&!m.DevMonster),entering=Minions.Count(m=>m.Pve!=null&&!m.DevMonster&&Time<m.Pve.ActiveAt);
             if(v.Rate>0&&Time>=v.SpawnAt&&active<v.Cap&&entering<(v.Hidden?64:16)&&(v.SpawnBudget<0||v.Spawned<v.SpawnBudget))
             {int count=NativePveRules.SpawnAllowance(v.SpawnBudget,v.Spawned,active,v.Cap,Math.Min(2,1+(int)((Time-v.SpawnAt)*v.Rate)));for(int n=0;n<count&&active<v.Cap;n++){var mix=v.Stage=="boss"?v.Content.bossMix[v.Phase-1].mix:v.Content.waves[v.Wave-1].mix;var created=SpawnPveAdd(PickHordeKind(mix,v));if(created==null)break;v.Spawned++;active++;v.SpawnAt+=1/v.Rate;if(v.SpawnBudget>=0&&v.Spawned>=v.SpawnBudget)break;}}else if(active>=v.Cap||entering>=(v.Hidden?64:16))v.SpawnAt=Time;
             var enemies=hordeEnemies;enemies.Clear();foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss)enemies.Add(p);
             var adds=hordeAdds;adds.Clear();hordeTargets.Clear();hordeGrid.Clear();
-            foreach(var m in Minions)if(m.Pve!=null){adds.Add(m);if(m.Pve.Target!=null){int id=m.Pve.Target.Seat.id;hordeTargets.TryGetValue(id,out int count);hordeTargets[id]=count+1;}if(m.Hp>0&&Time>=m.Pve.ActiveAt)hordeGrid.Add(adds.Count-1,m.Body.position.x,m.Body.position.z);}
+            foreach(var m in Minions)if(m.Pve!=null&&!m.DevMonster){adds.Add(m);if(m.Pve.Target!=null){int id=m.Pve.Target.Seat.id;hordeTargets.TryGetValue(id,out int count);hordeTargets[id]=count+1;}if(m.Hp>0&&Time>=m.Pve.ActiveAt)hordeGrid.Add(adds.Count-1,m.Body.position.x,m.Body.position.z);}
             foreach(var m in adds)
             {
                 if(m.Hp<=0)continue;var a=m.Pve;
@@ -233,6 +233,7 @@ namespace ChipArena.UnityConversion
         }
         private void PveAddKilled(NativeMinion m,NativePilot source)
         {
+            if(m.DevMonster)return; // Defense in depth: environmental kills can also reach this adapter.
             var a=m.Pve;var recruit=Pve.Recruits.Find(r=>r.Pilot==source);NativePilot paid=recruit?.Owner??source;bool head=(a.Lost&1)!=0;float reward=a.Stats.reward;
             if(recruit!=null)GrantPveMoney(paid,(reward+(head?10:0))*.5f,"recruit");else{GrantPveMoney(paid,reward,"kill");if(head)GrantPveMoney(paid,10,"head");}
             if(Pve.Rows.TryGetValue(paid.Seat.id,out var row))row.Kills++;

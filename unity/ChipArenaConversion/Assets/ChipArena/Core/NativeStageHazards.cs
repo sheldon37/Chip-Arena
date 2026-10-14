@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
         public static bool RecentDamage(float age)=>age>=0&&age<=KillCreditSeconds;
         public static bool City(MapHazard h)=>h.kind=="maglev"||h.kind=="grid";
         public static bool Ward(MapHazard h)=>h.kind=="burner"||h.kind=="gas"||h.kind=="shutter";
-        public static bool DeathKind(string kind)=>string.IsNullOrEmpty(kind)||kind=="collapse"||kind=="maglev"||kind=="grid"||kind=="burner"||kind=="gas"||kind=="hazard";
+        public static bool DeathKind(string kind)=>string.IsNullOrEmpty(kind)||kind=="collapse"||kind=="maglev"||kind=="grid"||kind=="burner"||kind=="gas"||kind=="hazard"||kind=="dev-monster";
         public static void Validate(ContentMap map)
         {
             var hs=map.hazards??Array.Empty<MapHazard>();

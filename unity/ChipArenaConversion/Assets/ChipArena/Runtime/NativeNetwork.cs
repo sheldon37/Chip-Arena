@@ -91,7 +91,7 @@ namespace ChipArena.UnityConversion
                     if(arena!=null||peers.Count(p=>p.Seat!=null)>=(prefs.pve?dedicated?4:3:dedicated?8:7)){c.Send(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="The room is full or the match has started."}));return;}
                     int id=dedicated?1:2;while(peers.Any(p=>p.Seat?.id==id))id++;peer.Seat=SanitizedSeat(id,message.profile,message.token);peer.Resume=RandomToken(32);
                 }
-                c.Send(NativeNetCodec.Encode(new NativeNetMessage{type="welcome",devProtocol=1,source=content.sourceCommit,contentRevision=content.contentRevision,id=peer.Seat.id,resume=peer.Resume,epoch=networkEpoch}));LobbyBroadcast();return;
+                c.Send(NativeNetCodec.Encode(new NativeNetMessage{type="welcome",devProtocol=2,source=content.sourceCommit,contentRevision=content.contentRevision,id=peer.Seat.id,resume=peer.Resume,epoch=networkEpoch}));LobbyBroadcast();return;
             }
             if(DevHostMessage(peer,message))return;
             if(ExpeditionHostMessage(peer,message))return;

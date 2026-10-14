@@ -27,7 +27,7 @@ internal static class DevAbuseChecks
         seat.access=Grant(expires:1);Check(Run(decoded).state=="refused","expiry rechecked before replay");seat.access=Grant();
         Check(NativeDevRules.Validate(C("x","time-scale","NaN"))!=null,"NaN rejected");Check(NativeDevRules.Validate(C("x","time-scale","2.1"))!=null,"range rejected");Check(NativeDevRules.Validate(C("x","send","1","2","Infinity"))!=null,"infinite point rejected");
         Check(NativeDevRules.Validate(C("x","restore",new string('x',65)))!=null,"oversized argument");Check(NativeDevRules.Validate(C("x","restore","1","2","3","4","5"))!=null,"bounded list");
-        var arguments=new Dictionary<string,string[]>{["god"]=new[]{"on"},["infinite-ammo"]=new[]{"off"},["no-cooldowns"]=new[]{"on"},["chip-add"]=new[]{"chip", "2"},["chip-remove"]=new[]{"chip","1"},["weapon"]=new[]{"pistol"},["teleport"]=new[]{"1","2","3"},["send"]=new[]{"1","2","3"},["spawn-dummy"]=new[]{"pistol","ai","1"},["launch"]=new[]{"30"},["freeze"]=new[]{"2"},["swap-weapon"]=new[]{"rifle"},["debris-rain"]=new[]{"wood"},["spawn-dummies-around"]=new[]{"3"},["time-scale"]=new[]{"0.1"},["hazard-trigger"]=new[]{"press"},["debris"]=new[]{"8","15","wood","face"}};
+        var arguments=new Dictionary<string,string[]>{["spawn-monster"]=new[]{"shambler","2","near","hunt"},["god"]=new[]{"on"},["infinite-ammo"]=new[]{"off"},["no-cooldowns"]=new[]{"on"},["chip-add"]=new[]{"chip", "2"},["chip-remove"]=new[]{"chip","1"},["weapon"]=new[]{"pistol"},["teleport"]=new[]{"1","2","3"},["send"]=new[]{"1","2","3"},["spawn-dummy"]=new[]{"pistol","ai","1"},["launch"]=new[]{"30"},["freeze"]=new[]{"2"},["swap-weapon"]=new[]{"rifle"},["debris-rain"]=new[]{"wood"},["spawn-dummies-around"]=new[]{"3"},["time-scale"]=new[]{"0.1"},["hazard-trigger"]=new[]{"press"},["debris"]=new[]{"8","15","wood","face"}};
         double t=1;foreach(var action in NativeDevRules.Actions){var cmd=C("action-"+action,action,arguments.TryGetValue(action,out var a)?a:Array.Empty<string>());Check(NativeDevRules.Validate(cmd)==null,"schema "+action);Check(Run(cmd,t++).state=="done","dispatch "+action);}
         var failure=new NativeDevCommands();var fail=C("failure");int attempts=0;
         NativeDevReply Fail()=>failure.Run(seat,fail,1,1,1,1,1,0,()=>{attempts++;throw new Exception();});
@@ -35,6 +35,15 @@ internal static class DevAbuseChecks
         var match=new NativeMatch(null);var victim=new NativeSeat{id=1};match.Seats.Add(victim);match.Seats.Add(seat);seat.devCommandsRan=true;
         Check(!match.CanEarnProgression(2)&&match.CanEarnProgression(1),"only actor progression blocked");
         Check(!victim.devRevealed&&!victim.devCommandsRan&&victim.chips.Count==0&&victim.spec=="pistol","victim untouched by routing");
+        Check(NativeDevRules.MonsterAllowance("shambler",8,23,0,0)==1,"partial room cap");
+        Check(NativeDevRules.MonsterAllowance("hulk",8,0,1,0)==1,"hulk cap includes existing monsters");
+        Check(NativeDevRules.MonsterAllowance("spitter",8,0,0,NativeSpitterRules.Cap)==0,"spitter cap");
+        Check(NativeDevRules.MonsterAllowance("runner",8,24,0,0)==0,"full room refuses");
+        foreach(var args in new[]{new[]{"hulk","0","near","hunt"},new[]{"hulk","9","near","hunt"},new[]{"hulk","1","arbitrary","hunt"},new[]{"hulk","1","drop","anything"}})
+            Check(NativeDevRules.Validate(C("bad-monster","spawn-monster",args))!=null,"invalid monster request");
+        var counted=new NativeDevCommands();int spawned=0;var spawn=C("spawn","spawn-monster","runner","8","near","hunt");
+        NativeDevReply Spawn()=>counted.Run(seat,spawn,1,1,1,1,1,0,()=>{spawned++;return null;},completedReason:()=>"Spawned 3 DEV monsters.");
+        Check(Spawn().reason=="Spawned 3 DEV monsters."&&Spawn().reason=="Spawned 3 DEV monsters."&&spawned==1,"partial spawn reply is replayed without respawning");
         Console.WriteLine("PASS DEV Abuse authority ("+checks+" checks)");
     }
 }
