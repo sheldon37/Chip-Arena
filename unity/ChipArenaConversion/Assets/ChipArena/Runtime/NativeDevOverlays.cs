@@ -218,8 +218,9 @@ namespace ChipArena.UnityConversion
             }
             if(open<.6f)return;float ta=a*Mathf.Clamp01((open-.6f)/.4f);
             // The eyebrow, typed in; the name rising with a glitch; the DEV badge; the guardrail line.
-            var t2=NativeDevTags.Banner;int typed=NativeDevReveal.Typed(age,t2.Length,reduced);var eyebrow=new Rect(r.x,r.y+16,r.width,18);
-            U.Text(eyebrow,devBannerTyped[typed],14,C.CyanSoft(ta),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.32f,glow:C.Cyan(.4f*ta));
+            // Typed left to right inside the full line's box, so the letters never shift as it types.
+            var t2=NativeDevTags.Banner;int typed=NativeDevReveal.Typed(age,t2.Length,reduced);float full=U.Measure(t2,14,true,true,.32f).x;var eyebrow=new Rect(cx-full*.5f,r.y+16,full+8,18);
+            U.Text(eyebrow,devBannerTyped[typed],14,C.CyanSoft(ta),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.32f,glow:C.Cyan(.4f*ta));
             float ni=NativeDevReveal.NameIn(age);if(ni>0)
             {
                 float na=ta*ni,dy=14*(1-ni);string name=devRevealUpper.Length>0?devRevealUpper:"DEVELOPER";float nw=Mathf.Min(r.width-140,U.Measure(name,36,true,false,.04f).x);var line=new Rect(cx-nw*.5f,r.y+40+dy,nw,44);

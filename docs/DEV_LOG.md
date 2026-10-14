@@ -1,5 +1,96 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — DEV panel and DEV Abuse UI on Astra's authority (owner: "Improve sandbox tools- Better UI, more control. With this in mind, give a "DEV Abuse" Toggle in dev settings, this will allow dev options in matches (online included) for only dev accounts")
+- Branch `claude/dev-tools`, base shared `09096af`.
+  - Panel commit `5239175`.
+  - Merged shared `c134dc2` (PR #208, Astra's DEV Abuse authority) in `03907c5`. The UI is bound to it in that same merge, because the panel's placeholder DTOs clashed with Astra's.
+  - Merged shared `22c14c2` (Expedition live presentation) in `179adf2`.
+  - Pushed; no PR, merge or release.
+- Owner clarification, through the lead, folded in: surprise first, then a reveal (`devRevealed` replaces `devActive`); devs are not limited to rooms they host; an Interact tab; and the guardrails below.
+- **Panel** (`Runtime/NativeDevPanel.cs`, `Runtime/NativeDevOverlays.cs`, Core `NativeDevTools.cs`) replaces the pause menu's GUILayout Sandbox Tools list:
+  - It is a kit-drawn cyber overlay on the right of the match.
+  - **F3** opens it and **F4** frees the cursor (the pilot holds still while the cursor is free). F5, F6 and F7 are restore me, down dummy and dummy cast. F1 is the event log, F2 the graph, F10 the fly camera, F11 hides the HUD, and Home snaps the fly camera back. None clashes with the code or docs; J is the Expedition screen.
+  - The tab rail: Pilot, Interact (target picker), Dummies, Chips (searchable grid, rarity colours and icons, n/max, − + MAX CLR, favourites saved in prefs, recent, CAST), Arena, Hazards, Previews, Camera & overlays, and Simulation.
+  - The header shows the mode, the context, the opt-in, an older host and NO PROGRESSION.
+  - The footer shows the hovered reason or the last verdict, and the hotkeys.
+  - It is right-anchored, at most 720 wide, and fits 1066x600 through 3440x1440.
+  - No per-frame allocation once warm.
+- **Sandbox routes:**
+  - `NativeSandbox.cs` `DevRun` keeps every old call with the same arguments and limits, one case per action. Its NativeArena half is untouched.
+  - It also offers existing sandbox calls the old list did not: weapon, map, difficulty, Cast every chip, chip cast and splat delay.
+- **DEV Abuse:**
+  - Settings · Developer gets the toggle: verified, unexpired developers only; off by default; saved as `prefs.devAbuse`.
+  - The toggle sets Astra's session opt-in `DevAbuseEnabled`. Each frame the opt-in follows the saved pref, for a verified developer only.
+  - The panel is available in any match (offline, host, guest) with the toggle on. In the sandbox it is available as before, with no opt-in.
+  - A small DEV ABUSE ON tag shows on your own HUD.
+- **Bound to Astra's API (`docs/DEV-ABUSE-AUTHORITY.md`):**
+  - Commands go only through `SendDevCommand`, with the opt-in, during an active round.
+  - Arguments follow Astra's table and are clamped to `NativeDevRules.Validate`: debris 1–500 kg, 1–100 m/s; freeze 0–30; launch 1–100; around 1–7; time-scale .1–2; chips 1–100; spawn inputs and team 0–7.
+  - Replies come from `DevReplyReceived`: done, refused with its reason, accepted. Both the 10 s timeout and a backstop read as outcome unknown.
+  - Disabled buttons wear OPT-IN, ROUND or SBX with the reason. Nothing is optimistic.
+- **Replicated presentation:**
+  - The reveal moment and the DEV tags on nameplates and kill-feed lines come from `devRevealed` only. The moment is a magenta banner: "A DEVELOPER IS HERE", the name with a glitch, a DEV badge, shards, and a ring over the pilot. The sandbox can preview it.
+  - devGod, devInfiniteAmmo and devNoCooldowns show as pills.
+  - devTimeScale shows as a DEV TIME tag for everyone, plus the room speed.
+  - devHazards plays each forced pulse once through the shared effects renderer with that hazard's cues (`NativeDevHazardLook` and `NativeBlastPresentation.DevHazardPulse`), with a DEV ring. The scheduled hazard looks are not retimed.
+  - devDummy labels show in the target picker.
+  - devCommandsRan shows the NO PROGRESSION THIS MATCH note.
+  - devScale raises the nameplate, chip-select and DEV tags.
+- **View tools (read-only, live wherever the panel is):**
+  - A fly camera that moves only the match camera.
+  - Overlays: pilot capsules and `NativeCombatRules`' head box; the live swing's `NativeMeleeRules` sector (authority only, so none on a guest); hazard boxes; the nav graph; Expedition anchors; shot paths on a copy with `NativeSpecialRules.Ballistic`.
+  - The event log with filters, and the FPS / step / RTT graph.
+  - Hide HUD.
+- **Guardrails, written into `docs/DEV-TOOLS.md` as defaults:**
+  - DEV actions are match-only.
+  - Nobody's progression, purchases or rewards are reduced.
+  - The dev's seat earns no progression in a match where commands ran.
+  - The host logs actions.
+  - No tag shows before the reveal.
+  - Shrink and grow are visual only.
+- **Shared-file edits:** each is one hook line or an exact replacement.
+  - `ConversionGame.cs`:
+    - the prefs fields;
+    - `DevUpdate`;
+    - `&&!DevHoldsPilot` and `DevLook(` in the play and look lines;
+    - `DevCamera()`;
+    - `DevScreenshot()`;
+    - `DevGui`.
+    - Merged with the Expedition hooks; both sides kept.
+  - `NativeHomeMenu.cs`: the DEV Tools item replaces Sandbox Tools.
+  - `NativeSettings.cs`: the toggle.
+  - `NativeCombatHud.cs`: `DevWorld`, `DevFeedTags`, and the devScale nameplate lift.
+  - `NativeChipSelectHud.cs`: the devScale lift.
+  - `NativeStructureFxPresentation.cs`: the GUILayout rows are removed.
+  - `NativeBlastPresentation.cs`: `DevHazardPulse`.
+  - Tests that scanned the old list: `HudPlaceholderChecks` and `StructureFxChecks`.
+  - Not touched: `NativeArena*`, `NativeSandboxTools`, the network and frame code, `NativeAccess` and `NativeAdmin`.
+- **Animation and rules impact:** none. No hit timing, hitbox, damage, cooldown, movement or networking change. The overlays and fly camera write nothing; the pilot's input is neutral only while the dev flies or uses the cursor.
+- **Checks (actual, on the final merged head):**
+  - Unity runtime+editor compile OK against the real 6000.3.24f1 assemblies.
+  - Full relay: exit 0, 678 PASS groups, including DEV tools (3823 checks) and Astra's DEV Abuse authority (82).
+  - Python: 101 tests OK (1 skipped).
+  - `package_source.py`: 1942 files OK.
+  - `git diff --check` clean.
+  - CI-layout relay (the staged index exported with `git checkout-index`, `docs/` removed): exit 0, 678 PASS groups.
+  - Offline IMGUI renders of every tab (sandbox and guest), the opt-in state, 3440x1440 chips, interface scale 1.5, the reveal and the HUD log/graph were checked in a scratch harness. They are not committed.
+- **Not verified:**
+  - the Unity Editor, Windows or PhysX;
+  - two clients over a real network;
+  - Astra's native gate `ValidateDevAbuseAuthority`;
+  - the real IMGUI search field, slider drag and cursor lock behaviour;
+  - the fly camera feel;
+  - the forced pulse looks in game;
+  - the reveal on screen at 3440x1440.
+- **Risks:**
+  - The overlays draw IMGUI lines, capped at 900 a frame.
+  - Melee volumes are host only.
+  - A grown pilot's third-person camera is not scaled; the eye stays at the authority's height.
+  - The panel blurs the scene behind it (`U.Backdrop`) while open.
+- **Next:**
+  - the owner's in-game pass: the reveal wording and sound, and whether non-devs see the DEV TIME tag;
+  - a Windows build and two-client check of the commands and the reveal.
+
 ## 2026-10-14 — Claude — Expedition presentation: live binding, new fields and world pieces
 - Branch `claude/expedition-live` on shared `3c836c4` (Astra's PR #207 integration bridge), merged with shared `09096af` (melee-slice ids, cut-exits CI fix) and then shared `c134dc2` (PR #208 DEV Abuse authority; only PROJECT_STATE conflicted, both entries kept; both sides' ConversionGame lines merged cleanly). Implementation commit `3bc2405`, merge `be7a6c3`. Presentation only; Astra's integration, authority, wire and network files are untouched. Contract: docs/EXPEDITION-PRESENTATION.md (rewritten); EXPEDITION.md's presentation paragraph refreshed.
 - **Live binding** (`Runtime/NativeExpeditionLiveUI.cs`): draws whenever a session is bound — host `ConversionGame.ExpeditionView` after `BindExpedition`, guest paired-receiver view — and sends through `ExpeditionCommands` (cached per binding). In the scene: world pieces, minimal HUD, a compact transfer line, the dice reveal of a new stored record (not modal). J opens the shared screen (board, phase panel, chips, caches, loot); Escape or J closes it; victory opens it once per loop. Local play input pauses while it is open, as the PvE chip screen does. Nothing binds a session yet and no menu entry exists.

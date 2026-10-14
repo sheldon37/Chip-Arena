@@ -288,7 +288,7 @@ namespace ChipArena.UnityConversion
                 var lines=U.Wrap(devHoverReason,11,Mathf.Max(20,w-lw-10),false,1);if(lines.Count>0)U.Text(new Rect(x+lw+10,y,w-lw-10,18),lines[0],11,needs?C.Warn():C.Muted(),TextAnchor.MiddleLeft);
             }
             else if(devStatus.Length>0){float age=Time.unscaledTime-devStatusAt;Color tone=devStatusBad?C.Warn():age<1.2f?C.Good():C.Muted();U.Fill(new Rect(x,y+5,6,6),tone);var lines=U.Wrap(devStatus,11,w-14,false,1);if(lines.Count>0)U.Text(new Rect(x+14,y,w-14,18),lines[0],11,tone,TextAnchor.MiddleLeft);}
-            else U.Text(new Rect(x,y,w,18),devMode==NativeDevMode.Sandbox?"Sandbox: the sandbox's own tools run here; DEV commands need the DEV Abuse opt-in.":"DEV Abuse: DEV commands go to the match's authority, which checks your verified grant.",11,C.Muted(),TextAnchor.MiddleLeft);
+            else{var lines=U.Wrap(devMode==NativeDevMode.Sandbox?"Sandbox: the sandbox's own tools run here; DEV commands need the DEV Abuse opt-in.":"DEV Abuse: DEV commands go to the match's authority, which checks your verified grant.",11,w,false,1);if(lines.Count>0)U.Text(new Rect(x,y,w,18),lines[0],11,C.Muted(),TextAnchor.MiddleLeft);}
             // The hotkeys.
             float kx=x,ky=y+28;var legend=NativeDevKeys.Legend;
             for(int i=0;i+1<legend.Length;i+=2)
@@ -426,7 +426,7 @@ namespace ChipArena.UnityConversion
             }
             y+=52;
             // What the authority says about me (replicated: devGod / devInfiniteAmmo / devNoCooldowns, devRevealed, devScale, devCommandsRan).
-            if(me!=null){float px=x;px=DevPill(px,y,"GOD",me.DevGod,C.Good());px=DevPill(px,y,"INF AMMO",me.DevInfiniteAmmo,C.Good());px=DevPill(px,y,"NO CD",me.DevNoCooldowns,C.Good());px=DevPill(px,y,"REVEALED",me.Seat.devRevealed,C.Magenta());px=DevPill(px,y,me.Seat.devScale<1?"SHRUNK":"GROWN",me.Seat.devScale!=1,C.Violet());y+=26;
+            if(me!=null){float px=x;px=DevPill(px,y,"GOD",me.DevGod,C.Good());px=DevPill(px,y,"INF AMMO",me.DevInfiniteAmmo,C.Good());px=DevPill(px,y,"NO CD",me.DevNoCooldowns,C.Good());px=DevPill(px,y,"REVEALED",me.Seat.devRevealed,C.Magenta());px=DevPill(px,y,me.Seat.devScale<1?"SHRUNK":me.Seat.devScale>1?"GROWN":"SCALED",me.Seat.devScale!=1,C.Violet());y+=26;
                 if(me.Seat.devCommandsRan)y=DevNote(x,y,w,"No progression this match: DEV commands ran for your account (NativeMatch.CanEarnProgression).",C.Magenta());}
             y=DevActs(x,y,w,2,DevPilotActs);
             if(me!=null&&me.Seat.devRevealed)y=DevNote(x,y,w,"Revealed for this match: everyone sees your DEV tag.",C.Magenta());
@@ -482,7 +482,7 @@ namespace ChipArena.UnityConversion
         private float DevDummiesTab(float x,float y,float w)
         {
             DevLists();var cast=NativeDevActions.Resolve(NativeDevActions.Find("dummy-cast"),devCtx,out string why);
-            y=DevHead(x,y,w,"DUMMY WEAPON");{int k=DevChoice(x,ref y,w,devWeaponNames,DevIndex(devWeaponIds,dummySpec),cast,why,4,"Dummy weapon");if(devWeaponIds.Length>0)dummySpec=devWeaponIds[k];}
+            y=DevHead(x,y,w,"DUMMY WEAPON");{int k=DevChoice(x,ref y,w,devWeaponNames,DevIndex(devWeaponIds,dummySpec),NativeDevState.Live,"The sandbox dummy's cast and the spawned dummy's weapon",4,"Dummy weapon");if(devWeaponIds.Length>0)dummySpec=devWeaponIds[k];}
             y=DevHead(x,y,w,"DUMMY INPUT");dummyKey=DummyInputs[DevChoice(x,ref y,w,DummyInputs,DevIndex(DummyInputs,dummyKey),cast,why,6,"Dummy input")];
             DevAct(new Rect(x,y,w,34),"dummy-cast");y+=42;
             y=DevHead(x,y,w,"DUMMY ACTIONS");y=DevActs(x,y,w,2,DevDummyActs);
@@ -490,7 +490,7 @@ namespace ChipArena.UnityConversion
             var sr=NativeDevActions.Resolve(NativeDevActions.Find("dummy-respawn"),devCtx,out string rw);float shown=devMode==NativeDevMode.Sandbox?arena.DummyRespawn:devRespawn;
             float v=DevSlider(new Rect(x,y,w,34),"Dummy respawn seconds (0 disables)",shown,0,30,0," s",sr,rw,out bool moved);if(moved){devRespawn=v;DevInvoke("dummy-respawn",true);}y+=42;
             shown=devMode==NativeDevMode.Sandbox?arena.SandboxRepeat:devRepeat;v=DevSlider(new Rect(x,y,w,34),"Repeat cast seconds (0 disables)",shown,0,60,0," s",sr,rw,out moved);if(moved){devRepeat=v;DevInvoke("dummy-repeat",true);}y+=42;
-            {var dr=NativeDevActions.Resolve(NativeDevActions.Find("dummy-difficulty"),devCtx,out string dw);int k=DevChoice(x,ref y,w,DevDifficulties,DevIndex(DevDifficulties,devDifficulty),dr,dw,4,"Bot difficulty");if(DevDifficulties[k]!=devDifficulty){devDifficulty=DevDifficulties[k];DevInvoke("dummy-difficulty");}}
+            {var dr=NativeDevActions.Resolve(NativeDevActions.Find("dummy-difficulty"),devCtx,out string dw);if(Event.current.type==EventType.Repaint&&DevVisible(new Rect(x,y,w,18)))U.Text(new Rect(x,y,w,18),"Bot difficulty",12,dr==NativeDevState.Live?C.Ink():C.Ink(.5f),TextAnchor.MiddleLeft);y+=22;int k=DevChoice(x,ref y,w,DevDifficulties,DevIndex(DevDifficulties,devDifficulty),dr,dw,4,"Bot difficulty");if(DevDifficulties[k]!=devDifficulty){devDifficulty=DevDifficulties[k];DevInvoke("dummy-difficulty");}}
             y=DevHead(x,y,w,"SPAWN (DEV COMMAND)");
             {var sp=NativeDevActions.Resolve(NativeDevActions.Find("spawn-dummy"),devCtx,out string sw);devSpawnInput=NativeDevContract.SpawnInputs[DevChoice(x,ref y,w,NativeDevContract.SpawnInputs,DevIndex(NativeDevContract.SpawnInputs,devSpawnInput),sp,sw,7,"Spawned dummy input")];
              float team=DevSlider(new Rect(x,y,w,34),"Spawned dummy team",DevSpawnTeam(),0,NativeDevContract.TeamMax,0,"",sp,sw,out bool teamMoved);if(teamMoved)devSpawnTeam=Mathf.RoundToInt(team);y+=42;
