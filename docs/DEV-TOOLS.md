@@ -336,3 +336,15 @@ Stealth joining stays out of scope, as `DEV-ABUSE-AUTHORITY.md` states.
   committed.
 - **Not run:** the Unity Editor, Windows, PhysX, two clients over a real network, the native build gate
   (`ValidateDevAbuseAuthority` is Astra's), and in-game look and feel.
+
+
+### Astra authority binding (draft PR #211)
+
+The implementation branch now provides protocol 2, the two monster commands,
+actual-count replies and the replicated DevMonster flag. The adapter is bound.
+`entries` currently places at compatible authored Ward exits on Siren and uses
+the summon rift; it does not run wave entrance traversal or breach walls. Maps
+without authored entrances refuse that mode. `aim` traces the host-observed view
+ray against world geometry up to 40 m instead of accepting a client point.
+Other modes use supported ground/headroom checks. See DEV-ABUSE-AUTHORITY.md.
+This binding is on the implementation draft, not a claim of a native playtest.

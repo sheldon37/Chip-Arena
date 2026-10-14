@@ -17,10 +17,11 @@ namespace ChipArena.UnityConversion
     {
         // ---- BIND HERE: one line, once NativeMinion carries the replicated devMonster flag -----------------------------------
         // Replace the body with:  m!=null&&m.DevMonster   (or the field name Astra gives it).
-        public static bool DevMonsterOf(NativeMinion m)=>false;
+        public static bool DevMonsterOf(NativeMinion m)=>m!=null&&m.DevMonster;
         // ------------------------------------------------------------------------------------------------------------------------
         /// <summary>An entry spawn (vent, door, drop, breach, cell) keeps its own entrance animation instead of the rift.</summary>
-        public static bool Entered(NativeMinion m)=>m?.Pve?.Entry!=null;
+        // DEV entries are placed at their authored exit, without wave traversal; use the summon rift.
+        public static bool Entered(NativeMinion m)=>!DevMonsterOf(m)&&m?.Pve?.Entry!=null;
         /// <summary>Seconds since the monster spawned, where the authority says (a PvE add's SpawnAt, replicated); 0 if unknown.</summary>
         public static float SpawnAge(NativeMinion m,float now)=>m?.Pve!=null?now-m.Pve.SpawnAt:0;
     }

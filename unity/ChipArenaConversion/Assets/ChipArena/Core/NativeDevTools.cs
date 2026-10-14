@@ -61,6 +61,7 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Room={"time-scale","arena-reset","round-end","hazard-trigger","debris"};
         /// <summary>Interact actions on a target.</summary>
         public static readonly string[] Interact={"launch","freeze","bring","send","swap-weapon","shrink","grow","debris-rain","hazard-at","spawn-dummies-around"};
+        public static readonly string[] Monsters={"spawn-monster","clear-monsters"};
         public static bool Known(string action)=>Array.IndexOf(NativeDevRules.Actions,action)>=0;
         /// <summary>The client's shape check before a send: Astra's own validator (actions, at most four arguments of at most 64
         /// characters, the per-action ranges); a proposed monster command the validator does not know yet is checked against

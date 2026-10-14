@@ -11,6 +11,7 @@ namespace ChipArena.UnityConversion
     {public string id;public Vector3 position;public float at;}
     public sealed partial class NativeArena
     {
+        private string devActionMessage;
         private readonly NativeDevCommands devCommands=new NativeDevCommands();
         private readonly Dictionary<int,string> devOriginalWeapons=new Dictionary<int,string>();
         public bool DevClockChanged;public float DevTimeScale=1;
@@ -18,7 +19,7 @@ namespace ChipArena.UnityConversion
         public NativeDevReply DevCommand(NativeSeat sender,NativeDevCommand command,int epoch,int generation,int expectedEpoch,double clock)
         {
             if(Replica)return new NativeDevReply{transaction=command?.transaction,state="refused",reason="Only the match authority can execute DEV commands."};
-            var reply=devCommands.Run(sender,command,epoch,generation,expectedEpoch,Generation,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),clock,()=>ApplyDevCommand(sender,command));
+            devActionMessage=null;var reply=devCommands.Run(sender,command,epoch,generation,expectedEpoch,Generation,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),clock,()=>ApplyDevCommand(sender,command),completedReason:()=>devActionMessage);
             return reply;
         }
         private string ApplyDevCommand(NativeSeat sender,NativeDevCommand c)
@@ -61,6 +62,8 @@ namespace ChipArena.UnityConversion
             Debug.Log("DEV_ACTION seat="+sender.id+" transaction="+c.transaction+" action="+c.action+" target="+target.Seat.id);
             switch(c.action)
             {
+                case "spawn-monster":return DevSpawnMonsters(actor,target,a[0],I(1),a[2],a[3]);
+                case "clear-monsters":DevClearMonsters();break;
                 case "restore":DevCancel(target);SandboxRestore(target);break;
                 case "down":DevCancel(target);bool god=target.DevGod;target.DevGod=false;Damage(target,null,target.Hp+1,Vector3.up,0,false,forced:true,stageLethal:true);target.DevGod=god;break;
                 case "god":target.DevGod=a[0]=="on";break;
@@ -120,6 +123,7 @@ namespace ChipArena.UnityConversion
         private void DevStep()
         {
             if(Replica)return;
+            if(Match.Phase!=NativePhase.Fight)DevClearMonsters();
             foreach(var p in Pilots.Where(p=>p.Hp>0))
             {
                 if(p.DevInfiniteAmmo){p.Ammo=Magazine(p);p.ReloadEnd=0;}
