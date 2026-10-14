@@ -1,5 +1,13 @@
 # Cyber City simulation contract (H0 draft)
 
+Owner update 2026-10-14: hazard kills credit the most recent other pilot who
+actually dealt damage within **10 seconds, inclusive**. Zero/self damage does
+not replace or refresh that tag. The same window covers PvE add hazard credit
+and the generic no-source environmental-death fallback; Death event credit
+matches the persistent death record. Brickfall collapse keeps its separate
+structural attribution and 6-second victim-tag fallback. Ward shutters remain
+non-damaging pushes; any resulting environmental death uses the rule above.
+
 ## Cut exits — 2026-10-13, Astra / Claude handoff
 
 Owner reports pilots cannot climb out. `codex/cut-stair-physx` replaces only
@@ -46,9 +54,9 @@ owner-selected map music, PR #146). Both maps are selectable with rotation false
   authored. No new visual IDs or geometry changes for Claude. It adds supported
   navigation on all accessible elevations, optional `MapNavLink.hazards[]` (a
   crossing may touch multiple hazards), and `MapNavNode.safe` for cut refuges.
-- Damage runs only in Fight. Maglev uses the swept train union and 7-second pilot
+- Damage runs only in Fight. Maglev uses the swept train union and 10-second pilot
   credit; grid uses eight scheduled ticks, mitigation and feet height. Factory
-  lethals bypass mitigation and defensive saves, with 6-second credit. Vents keep
+  lethals bypass mitigation and defensive saves, with 10-second credit. Vents keep
   the draft's damage=0; the tick path supports enabling damage later. Existing
   Kernel Panic pair isolation still applies. Adds receive environmental deaths.
 - Crane cover is a simulation-owned collider outside the prop frame, evaluated
@@ -126,7 +134,7 @@ bool NativeHazardState.Clear(double margin);  // Idle with at least `margin` s b
 **Maglev (`DamageKind = "maglev"`, Detail = hazard id):**
 - Each simulation step in Fight, take the train's box at the step's start and end (`TrainBox` at t - dt and t) and use their union (the train moves 2.2 m per 20 Hz step), so nobody passes through between steps.
 - A living pilot (or PvE add) whose capsule intersects the union dies: an instant kill on a path that ignores shields, armour and damage caps (as `lethal` says), the same way the overtime damage uses `forced`. Spawn protection does not save a pilot in the train (no spawn is within 6 m of the Cut). Death impulse along the train's direction (about 30 m/s) plus 6 m/s up, for the ragdoll.
-- Credit: the existing rule (`NativeDeaths`: the victim's last pilot attacker within 7 s, otherwise environmental), so knocking someone into the train scores. No self-credit.
+- Credit: the existing rule (`NativeDeaths`: the victim's last pilot attacker within 10 s, otherwise environmental), so knocking someone into the train scores. No self-credit.
 - The train has no collider: it does not block shots, carry pilots or push. The alcoves (|z| 3..4.2, recessed under 1.6 m lintels) and everything above y -0.9 (the bridges and couplings) are outside the box.
 
 **Couplings (`DamageKind = "grid"`, Detail = hazard id):**
@@ -142,7 +150,7 @@ bool NativeHazardState.Clear(double margin);  // Idle with at least `margin` s b
 - Alcove and stair-exit nodes in the Cut are safe nodes: a bot on the Cut floor when the maglev leaves Idle routes to the nearest one (the farthest floor point is 3.0 m from a pocket) and holds there until Clear.
 - Bots wait at the coupling pylons from Warn to Clear. Fell zones and crush boxes are avoided while a billboard segment is stressed or falling (Brickfall's rule); rubble becomes low cover.
 - Cut edges have only 6 cm presentation kerbs: the nav must not route a bot off an edge except through authored drop links (the obstacle ray must not treat the 4 m drop as walkable).
-- PvE adds die in both hazards like pilots (environmental credit unless a pilot hit them within 7 s). Proposed horde entries: the tunnel mouths (behind the pilot blocks), the market booths, the yard canopies.
+- PvE adds die in both hazards like pilots (environmental credit unless a pilot hit them within 10 s). Proposed horde entries: the tunnel mouths (behind the pilot blocks), the market booths, the yard canopies.
 
 ## 7. Events, replication and protocol
 - **No new event kinds.** Hit and Death carry `DamageKind` `maglev` or `grid`, Detail the hazard id. `RecordDeath` must keep the kind (today it only records `collapse`), and `NativeNetworkFrame`'s death validation must accept `maglev` and `grid` (it accepts only null, empty and `collapse`).
@@ -157,7 +165,7 @@ bool NativeHazardState.Clear(double margin);  // Idle with at least `margin` s b
 ## 9. Tests for Astra
 1. Loader: the Cyber City entry loads; old maps get `hazards = null`; each §3 validation rule rejects a broken copy.
 2. Timing: the §4 round 1 table at fight 10 s; even-round direction and coupling order; `At` is Idle in Countdown/Intro/Draft; purity (same inputs, same state); host and replay match frame give equal states.
-3. Maglev kill: a pilot at (20, -3, 0) dies when the head passes (DamageKind `maglev`, Detail `cybercity-maglev`); a pilot in an alcove (x -28, y -3, z 3.6) and one standing on the plaza bridge (y 0) survive; a pilot crossing the box between two steps still dies (swept union); spawn protection does not apply; credit to a pusher within 7 s; nothing outside Fight.
+3. Maglev kill: a pilot at (20, -3, 0) dies when the head passes (DamageKind `maglev`, Detail `cybercity-maglev`); a pilot in an alcove (x -28, y -3, z 3.6) and one standing on the plaza bridge (y 0) survive; a pilot crossing the box between two steps still dies (swept union); spawn protection does not apply; credit to a pusher within 10 s; nothing outside Fight.
 4. Grid: 8 ticks of 13 per live window to a pilot standing on the deck; none in Warn or Clear; none to a pilot 1.1 m above the deck; one per tick per pilot; mitigation applies; no stagger.
 5. Billboards: Validate passes; one strut destroyed -> stressed -> falling after the telegraph -> rubble; crush cap; events as Brickfall.
 6. Network: a death frame with `maglev` or `grid` validates; an unknown kind still fails.
@@ -188,7 +196,7 @@ Do:
 4. Simulation: the maglev instant kill from the swept TrainBox union, the coupling tick damage, both only in
    Fight (§5), using NativeCyberCityHazards' pure timing (owned by you once merged; change it if you need to,
    the presentation follows). DamageKind `maglev`/`grid`, Detail = hazard id, RecordDeath keeps the kind,
-   NativeNetworkFrame accepts both, NativeStagger None for both, credit by the existing 7 s rule.
+   NativeNetworkFrame accepts both, NativeStagger None for both, credit by the existing 10 s rule.
 5. Bots and PvE: hazard-gated nav links (NativeHazardState.Clear), safe nodes in the alcoves, edge handling.
 6. Switch the presentation's hazard source to arena.Map.hazards (§8, one line each in
    Runtime/NativeCyberCityPresentation.cs and Runtime/NativeCyberCityAudio.cs) and delete

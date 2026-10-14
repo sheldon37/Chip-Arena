@@ -9,6 +9,10 @@ internal static class StageHazardChecks
     public static void Run(string root)
     {
         void Check(bool ok,string reason){if(!ok)throw new Exception("Stage simulation: "+reason);}
+        foreach(float age in new[]{0f,6.01f,7.01f,9.999f,10f})Check(NativeStageHazards.RecentDamage(age),"inclusive credit "+age);
+        foreach(float age in new[]{-.001f,10.001f,float.NaN,float.PositiveInfinity,float.NegativeInfinity})Check(!NativeStageHazards.RecentDamage(age),"expired/invalid credit "+age);
+        Check(NativeStructureRules.FallbackCredit(0,2,0,6)==2&&NativeStructureRules.FallbackCredit(0,2,0,6.01f)==0,"Brickfall separate six-second fallback retained");
+        Console.WriteLine("PASS stage kill credit: 10 boundary/invalid-age cases; separate Brickfall fallback");
         var opt=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};string json=File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json"));
         var set=JsonSerializer.Deserialize<UnityMapContent>(json,opt);var city=set.maps.Single(m=>m.id=="cybercity");var factory=set.maps.Single(m=>m.id=="factory");
         foreach(var map in new[]{city,factory})
