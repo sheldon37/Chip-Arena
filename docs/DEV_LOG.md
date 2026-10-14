@@ -1,5 +1,35 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — DEV monsters: the panel's Monsters tab, the DEV MONSTER tag and the summon-in rift (owner: "Allow options to spawn monsters in the dev menu")
+- Branch `claude/dev-monsters` on shared `6f30f82`, fast-forwarded to shared `afade5d` (docs only). Implementation commit `12ef880`. Pushed on the branch; no PR, merge or release.
+- Split: Claude has the panel and the presentation; Astra has the commands, caps, placement, behaviour and the replicated flag. No simulation, network, frame, access or admin file changed.
+- **Proposed contract** (`docs/DEV-TOOLS.md` "Monsters", for Astra to confirm or amend):
+  - `spawn-monster` [kind, count 1–8, place near/aim/drop/entries, behaviour hunt/frenzy/idle] at a target seat;
+  - `clear-monsters`;
+  - devProtocol 2, the room caps 24 / 2 hulks / spitter cap;
+  - a replicated `NativeMinionFrame.devMonster`.
+- **Panel** (`Runtime/NativeDevMonsters.cs`, `NativeDevPanel.cs`, Core `NativeDevTools.cs`):
+  - a tenth tab, Monsters: kind cards from the content's adds (HP, speed, caps), a count stepper, place and behaviour with a help line each, the Interact target picker (now shared), Spawn monsters, Clear DEV monsters and the live DEV MONSTERS n/24 count;
+  - a new state, HOST ("HOST NEEDS MONSTER COMMANDS"), until a host advertises devProtocol 2 or the local rules list the command;
+  - argument shapes from Core `NativeDevMonsters.ArgsOk` until `NativeDevRules.Validate` knows the actions;
+  - the sandbox Ward Zero entry spawn moved from Arena into Monsters (sandbox only), with a kind filter, Nearest to me and what `SandboxWardEntry` spawns at each entry.
+- **Presentation**: one adapter, `NativeDevMonsterAdapter.DevMonsterOf`, returns false until Astra's flag exists. Binding it is one line. It keys:
+  - a DEV MONSTER tag over each DEV monster in view;
+  - a magenta summon-in rift on the shared effects renderer (ring, three beams, glitch streaks, bursts; Reduced effects keep ring, one beam, one burst), once per monster, skipping entry spawns (their own animations play) and late joins.
+- Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **For Astra** (also in DEV-TOOLS.md):
+  1. `SendDevCommand`'s guest check `devHostProtocol!=1` refuses every guest of a protocol-2 host; it should be `>=1`.
+  2. The sandbox needs the DEV Abuse opt-in for `SendDevCommand`; exempt these two in the sandbox or keep the opt-in.
+  3. Add both actions to `NativeDevRules.Actions` / `Validate`.
+  4. `aim` should use the sender's replicated `AimTarget`; four args cannot carry x y z.
+  5. Replicas build `m.Pve` only on a PvE stage or Siren; DEV monsters elsewhere need the add state replicated.
+  6. A `NativeMinion` field from `devMonster`, then bind the adapter.
+  7. The spawned count in the `done` reason.
+- Checks (on `12ef880`): `unity-check.sh` runtime+editor OK. `check_relay.py` exit 0, 680 PASS lines (DEV tools 4175 checks, DEV Abuse authority 82, the real WebSocket relay included). CI layout (the exported index, `docs` removed): `check_relay.py` exit 0, 680 PASS lines. Python 101 tests OK (1 skipped). `package_source.py` OK (Builds removed). `git diff --check` clean.
+- Renders: scratch IMGUI harness, not Unity (`devpanel-harness/out/png/monsters-*.png`: sandbox with the ward picker, guest of an older host, guest of a protocol-2 host, interface scale 1.5). Fixed from them: kind cards fall back to HP alone when narrow, the caps note wraps under the stepper, the ward picker hides outside the sandbox. The rift itself needs Unity.
+- Not run: Unity Editor, Windows play, two clients, the rift and tag in game (nothing is a DEV monster until the flag exists).
+- Next: Astra confirms or amends the contract and adds the commands and the flag; then bind the adapter and look at the rift in game.
+
 ## 2026-10-14 — Claude — daggers: the sprint's arms held still, the run's rear blade steadied (owner: "Was the dagger run fixed? It still looks like its doing the same thing with the arm"; then "We can probably keep the arms more still (it looks like theyre trying to move the forearms too much with sprinting)")
 - Branch `claude/dagger-arm` on shared `c134dc2`, merged with shared `9770b7d` (PR #209 and the DEV tools; no conflicts). Implementation commit `4260b70`. Pushed on the branch; no PR, merge or release. Follows "sprint arms" below (`b72fb1c`, which shipped in the test build).
 - **Measured** (scratch probe over the real Core poses: every chain joint on both arms, in chest space and in the heading frame a following camera sees; walk, run, sprint, strafes, backpedal, diagonals, turning, mouse-look sway, lock-on circling, starts and stops, run-sprint-run, jump landings, guard, swings; 60, 144 and 240 Hz and uneven frames; a 20 Hz snapshot replica with its 100 ms buffer, also with late snapshots). Ranked by size:
