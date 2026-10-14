@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
             float n;switch(kind)
             {
                 case "sever":n=26+10*s;break;case "cut":n=12+14*s;break;case "cavity":n=16+8*s;break;case "puncture":n=8+6*s;break;case "crush":n=16+8*s;break;
-                case "bruise":n=2+2*s;break;default:return 0;
+                case "bruise":n=2+2*s;break;case "squirt":n=14+8*s;break;case "drip":return 1;default:return 0;
             }
             n*=q<1?.35f+.55f*q:1;if(low)n*=.55f;return Math.Max(kind=="bruise"?1:3,(int)Math.Round(n));
         }
@@ -62,6 +62,10 @@ namespace ChipArena.UnityConversion
                 }
                 case "crush":velocity=normal*(1.6f+1.8f*H(1))+side*R(4)*3.2f+up*(1.2f+1.6f*H(3))+along*R(5)*1.6f;return;
                 case "bruise":velocity=normal*(.6f+.5f*H(1))+up*(.4f+.4f*H(3))+side*R(4)*.6f;size*=.7f;return;
+                // A crush squeezing blood out from under what crushed it (NativeSmashGib): low, flat jets along `along`.
+                case "squirt":velocity=along*(2.6f+3.4f*H(1))+side*R(4)*1.8f+up*(.15f+.75f*H(3));size*=.9f;delay*=.6f;return;
+                // A single drop leaving a wound (an arrow's entry, NativeArrowGib): it barely leaves the skin and falls.
+                case "drip":velocity=normal*(.08f+.22f*H(1))+side*R(4)*.18f-up*(.05f+.25f*H(3));size=MinDrop+(MaxDrop-MinDrop)*.45f*H(9);delay=0;return;
                 default:
                 {
                     // Cuts (and severs): over half is cast off the blade along its travel, the rest jets out of the wound.
@@ -215,12 +219,15 @@ namespace ChipArena.UnityConversion
             float dt=time-budgetAt[slot];if(dt<-.25f)dt=BudgetBurst;budgetAt[slot]=time;budgetLeft[slot]=Math.Min(BudgetBurst*scale,budgetLeft[slot]+Math.Max(0,dt)*BudgetRate*scale);
             int granted=kill?wanted:Math.Min(wanted,(int)Math.Floor(budgetLeft[slot]));if(!kill&&granted<1&&budgetLeft[slot]>=.5f)granted=1;budgetLeft[slot]=Math.Max(0,budgetLeft[slot]-granted);return granted;
         }
-        public int Spray(string kind,float severity,uint seed,long key,Vector3 origin,Vector3 normal,Vector3 along,float time,float quality,bool low,bool stain,int extra=0,int target=-1,bool kill=false,bool ink=false)
+        /// <remarks>`carry` (m/s, Unity world; zero for none): what threw the blood moves it on, each drop taking a seeded share
+        /// (.45 to 1) of it, so a passing train or a crusher's squeeze sprays along its travel (NativeSmashGib).</remarks>
+        public int Spray(string kind,float severity,uint seed,long key,Vector3 origin,Vector3 normal,Vector3 along,float time,float quality,bool low,bool stain,int extra=0,int target=-1,bool kill=false,bool ink=false,Vector3 carry=default)
         {
             int count=NativeBloodRules.Count(kind,severity,quality,low)+Math.Max(0,extra);if(target>=0)count=Allow(target,count,time,quality,low,kill);
+            bool carried=carry.LengthSquared()>1e-6f&&carry.LengthSquared()<1e6f;
             for(int i=0;i<count;i++)
             {
-                NativeBloodRules.Drop(kind,seed,i,count,normal,along,out var v,out float size,out float delay);
+                NativeBloodRules.Drop(kind,seed,i,count,normal,along,out var v,out float size,out float delay);if(carried)v+=carry*(.45f+.55f*NativeBloodRules.Hash(seed,i,23));
                 int slot=cursor++%Max;Drops[slot]=new Drop{Live=true,Position=origin,Velocity=v,Size=size,Born=time,Delay=delay,Seed=seed^(uint)(i*0x9e3779b1u),Key=key*64+i,Stain=stain,Ink=ink};
             }
             return count;

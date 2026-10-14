@@ -157,7 +157,7 @@ namespace ChipArena.UnityConversion
             Check(calls==6,"every WoundedPilot caller is listed and passes its body ("+calls+")");
             Check(R("NativeReviveHoloPresentation.cs").Contains("string healed=skin>=0?BodyModel(skin,BodyTier(at,false)):BodyAt(r.Id,at,out skin);"),"the revive's fifth argument is the body skin model at the body's distance");
             var kill=R("NativeKillEffectPresentation.cs");
-            Check(!kill.Contains("NativeKillEffectRules.BoxColor(")&&Regex.Matches(kill,@"NativeBodyModels\.GibColor\(bodySkin,").Count==3,"voxel bursts, crush debris and stump caps take the skin's colours");
+            Check(!kill.Contains("NativeKillEffectRules.BoxColor(")&&Regex.Matches(kill,@"NativeBodyModels\.GibColor\(bodySkin,").Count==4,"voxel bursts, crush debris (a smash's too) and stump caps take the skin's colours");
             // Presentation only: no simulation file reads the skin cut.
             foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Core"),"*.cs").Where(f=>!f.EndsWith("NativeWoundSkin.cs")&&!f.EndsWith("NativeBodyModels.cs")))
                 Check(!File.ReadAllText(f).Contains("NativeWoundSkin")&&!File.ReadAllText(f).Contains("WoundLook("),Path.GetFileName(f)+" (rules, hit volumes, motion) never reads the skin cut");

@@ -133,15 +133,17 @@ namespace ChipArena.UnityConversion
         private NativeBowStuck.BoneOf bowBone;private Func<int,NMatrix> bowJoint;private CapturedAnimation.Player bowJointRig;
         /// <summary>The stuck arrows (the checks).</summary>
         internal NativeBowStuck BowStuck=>bowStuck;
-        private void BowClear(){bowLast.Clear();bowHandled.Clear();for(int i=0;i<bowHits.Length;i++)bowHits[i]=(0,-100,Vector3.zero);bowStuck.Clear();bowShots.Clear();bowVelocity.Clear();bowSlow.Clear();bowRainSeen.Clear();bowAlive.Clear();bowCursor=0;}
+        private void BowClear(){ArrowClear();bowLast.Clear();bowHandled.Clear();for(int i=0;i<bowHits.Length;i++)bowHits[i]=(0,-100,Vector3.zero);bowStuck.Clear();bowShots.Clear();bowVelocity.Clear();bowSlow.Clear();bowRainSeen.Clear();bowAlive.Clear();bowCursor=0;}
         private static NMatrix BowN(in Matrix4x4 m)=>new NMatrix(m.m00,m.m10,m.m20,m.m30,m.m01,m.m11,m.m21,m.m31,m.m02,m.m12,m.m22,m.m32,m.m03,m.m13,m.m23,m.m33);
         private static NVector BowN(Vector3 v)=>new NVector(v.x,v.y,v.z);
         private static Vector3 BowU(NVector v)=>new Vector3(v.X,v.Y,v.Z);
-        /// <summary>A pilot's joint for a stuck arrow: its corpse's after a death (severed parts keep their own), else its posed rig.</summary>
-        private bool BowBone(int target,int bone,out NMatrix world)
+        /// <summary>A pilot's joint for a stuck arrow: its corpse's as drawn after a death (severed parts keep their own; a split
+        /// body's arrow rides the half it sat on, NativeArrowGibPresentation.ArrowHalf; a crushed part's arrows go with it), else
+        /// its posed rig.</summary>
+        private bool BowBone(int target,int bone,NVector local,out NMatrix world)
         {
             world=NMatrix.Identity;
-            if(corpses.TryGetValue(target,out var corpse)){world=BowN(corpse.Bone(bone));return true;}
+            if(corpses.TryGetValue(target,out var corpse)){var half=ArrowHalf(corpse,bone,local);if(!half.ShownBone(bone))return false;world=BowN(half.PresentedBone(bone));return true;}
             if(bowArena!=null){var p=PilotOf(bowArena,target);if(p==null||p.Hp<=0)return false;}
             if(rigs.TryGetValue(target,out var rig)&&rig?.Bones!=null){world=BowN(rig.Bones[bone].localToWorldMatrix);return true;}
             return false;
@@ -161,7 +163,7 @@ namespace ChipArena.UnityConversion
             float q=Mathf.Clamp01(WeaponEffectsQuality);bool low=LowGraphics;
             BowVanished(arena,time);
             NativeBowFx.Draw(bowSink,bowScene,time,q,low);
-            bowStuck.Update(time);bowBone??=BowBone;bowStuck.Draw(bowSink,time,bowBone);
+            bowStuck.Update(time);bowBone??=BowBone;bowStuck.Draw(bowSink,time,bowBone);ArrowBleeds(time);
             // The slow tint on pilots a rain arrow hit.
             foreach(var p in arena.Pilots){if(p.Hp<=0||!bowSlow.TryGetValue(p.Seat.id,out float at))continue;float w=NativeBowFx.SlowWeight(at,time);if(w>0)NativeBowFx.SlowTint(bowSink,BowN(p.Body.position-Vector3.up*.865f),w,time,p.Seat.id,q,low);}
         }
@@ -183,7 +185,8 @@ namespace ChipArena.UnityConversion
                 if(e.Detail=="field"||!rigs.TryGetValue(e.Target,out var rig)||rig?.Bones==null)continue;
                 // The struck joint (nearest the replicated hit point on the posed rig) and the arrow in its frame.
                 bowJointRig=rig;bowJoint??=b=>BowN(bowJointRig.Bones[b].localToWorldMatrix);int bone=NativeBowStuck.Nearest(bowJoint,BowN(at));
-                var inv=rig.Bones[bone].worldToLocalMatrix;bowStuck.AddPilot(e.Id,e.Target,bone,BowN(inv.MultiplyPoint3x4(at)),BowN(inv.MultiplyVector(dir)),e.Time,draw,std,LowGraphics);
+                // Lodged halfway into the part, or gone through it (NativeArrowGibPresentation.cs).
+                ArrowStrike(arena,e,rig,bone,at,dir,draw,std);
             }
             bowCursor=Math.Max(bowCursor,newest);
             // Bounded maps: drop shots and velocities no longer in flight.

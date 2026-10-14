@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
         /// or below 0.</summary>
         internal float FxAge(float clockAge){if(clockAge>fxAge)fxAge=clockAge;return fxAge;}
         private Matrix4x4 Presented(int b){int a=Anchor[b];return PartMatrix(a)*CollapseFoot(b)*inverse[a]*Bind[b];}
-        private bool Shown(int b)=>CrushPart<0||Anchor[b]!=CrushPart;
+        private bool Shown(int b)=>!IsCrushed(Anchor[b]);
         internal bool Crushed=>CrushPart>=0&&Parts.ContainsKey(CrushPart);
         /// <summary>The slice's further stump fountains (a cleave's second and third cuts, a crush beside a cut), each on its part.</summary>
         internal NativeKillSpray[] ExtraSprays=Array.Empty<NativeKillSpray>();private int[] extraPart=Array.Empty<int>();private Vector3[] extraPoint=Array.Empty<Vector3>(),extraNormal=Array.Empty<Vector3>();
@@ -68,7 +68,7 @@ namespace ChipArena.UnityConversion
         internal void SetupKill(int budget,double quality,bool counted,bool hat,int band=-1,NativeKillFloor floor=null)
         {
             Band=band>=0&&band<NativeStatusVisuals.TeamColors.Length?band:-1;
-            Counted=counted;bool low=quality<.5;var wound=Death.wound;bool crush=Crushed;int parts=Parts.Count-(crush?1:0);budget=Math.Max(0,budget);int crushPart=CrushPart;
+            Counted=counted;bool low=quality<.5;var wound=Smash!=null?null:Death.wound;bool crush=Crushed;int parts=Parts.Count-(crush?1+ExtraCrush.Count:0);budget=Math.Max(0,budget);int crushPart=CrushPart;
             bool rig=(Death.model??"pilot")=="pilot";var bind=new double[22][];for(int i=0;i<22;i++)bind[i]=Source(Bind[i]);
             int body=NativeKillEffectRules.ParseHex(Death.actor?.BodyColor,0xe5e7eb),accent=NativeKillEffectRules.ParseHex(Death.actor?.AccentColor,0x70e1d0);
             var scratch=new double[16];var world=new double[16];
@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<n;i++){var c=buffer[i];cells.Add(Mirror(c.X,c.Y,c.Z,c.Qx,c.Qy,c.Qz,c.Qw,c.Sx,c.Sy,c.Sz));cellColors.Add(new Color((float)c.R,(float)c.G,(float)c.B,1));}
                 Caps.Add(new KillCap{Part=on,Local=inverse[on]*Unity(cap),Start=start,Count=n});return true;
             }
-            int Parent(int b){int p=CapturedRig.Bones[b].Parent;while(p>=0&&(!Parts.ContainsKey(p)||crush&&p==crushPart))p=CapturedRig.Bones[p].Parent;return p;}
+            int Parent(int b){int p=CapturedRig.Bones[b].Parent;while(p>=0&&(!Parts.ContainsKey(p)||crush&&IsCrushed(p)))p=CapturedRig.Bones[p].Parent;return p;}
             int NearestRoot(int b){int p=CapturedRig.Bones[b].Parent;while(p>=0&&!Parts.ContainsKey(p))p=CapturedRig.Bones[p].Parent;return p;}
             void Anchor(int joint,int part)
             {
@@ -139,7 +139,32 @@ namespace ChipArena.UnityConversion
                 Anchor(CapturedRig.Head,CapturedRig.Spine);Vector3 forward=((Vector3)Bind[CapturedRig.Head].GetColumn(2)).normalized;
                 sprayNormal=inverse[CapturedRig.Spine].MultiplyVector((forward*.85f+Vector3.down*.3f).normalized).normalized;emitters.Add((sprayPart,sprayPoint,sprayNormal,false));
             }
-            if(crush)
+            if(crush&&Smash!=null)
+            {
+                // A thrown smash (NativeSmashGib, NativeSmashPresentation.cs): each crushed part's children capped ragged where they
+                // tore off, each stump capped and spraying, and all their boxes (and what their sockets carried) one burst of
+                // fragments thrown along the smash's travel at its pace.
+                int many=1+ExtraCrush.Count;var sources=new List<double>();var sourceColors=new List<double>();int sourceCount=0;var loose=new List<double>();int s0=NativeKillBoxes.SpecIndex(Death.actor?.SourceSpec);
+                void Loose(int bone){var m=bind[bone];loose.Add(m[12]);loose.Add(m[13]);loose.Add(m[14]);}
+                for(int ci=0;ci<many;ci++)
+                {
+                    int crushed=ci==0?crushPart:ExtraCrush[ci-1];if(!Parts.ContainsKey(crushed))continue;
+                    foreach(var b in Parts.Keys)if(!IsCrushed(b)&&NearestRoot(b)==crushed)AddCap(b,b,false,true,b);
+                    int stump=Parent(crushed);if(stump>=0){Anchor(crushed,stump);if(AddCap(crushed,stump,true,true,stump))FromCap();emitters.Add((sprayPart,sprayPoint,sprayNormal,true));}
+                    for(int i=0;i<RigCount;i++){var b=RigBoxes[i];if(b.Root!=crushed||b.Zone!=0||b.Hidden)continue;NativeKillEffectRules.BoxWorld(b,bind[b.Bone],scratch,world);sources.AddRange(world);NativeKillEffectRules.Linear(NativeBodyModels.GibColor(bodySkin,b,body,accent),out double r,out double g,out double bb);sourceColors.Add(r);sourceColors.Add(g);sourceColors.Add(bb);sourceCount++;}
+                    if(crushed==5&&hat&&LooseHat<0){var socket=NativeKillBoxes.HatSocket;HatStart=Bind[5].MultiplyPoint3x4(new Vector3(-socket[0],socket[1],socket[2]));LooseHat=loose.Count/3;loose.Add(-HatStart.x);loose.Add(HatStart.y);loose.Add(HatStart.z);}
+                    if(crushed==8&&s0>=0){if(Shown(NativeKillBoxes.Offhands[s0]))Loose(9);if(NativeKillBoxes.Magic[s0])Loose(9);}
+                    if(crushed==12&&s0>=0&&!NativeKillBoxes.Magic[s0]&&Shown(NativeKillBoxes.Weapons[s0]))Loose(13);
+                }
+                int left=Math.Max(0,budget-parts-Caps.Count),most=Math.Min(low?24:64,left*55/100);
+                if(sourceCount>0||loose.Count>0)
+                {
+                    NativeSmashGib.Fragments(Smash,out var inherit,out float kick,out float severity);var t=Smash.Travel;var o=Death.position;
+                    Debris=new NativeKillDebris(sources.ToArray(),sourceColors.ToArray(),sourceCount,loose.ToArray(),loose.Count/3,-o.x,o.y,o.z,-t.X,t.Y,t.Z,-inherit.X,inherit.Y,inherit.Z,kick,severity,unchecked((uint)Death.seed),most,Smash.Floor);
+                    if(LooseHat>=Debris.Loose)LooseHat=-1;
+                }
+            }
+            else if(crush)
             {
                 int crushed=crushPart;float momentum=wound!=null&&wound.kind=="crush"&&wound.part==crushed?wound.momentum:40,severity=wound!=null&&wound.kind=="crush"&&wound.part==crushed?wound.severity:1;foreach(var b in Parts.Keys)if(b!=crushed&&NearestRoot(b)==crushed)AddCap(b,b,false,true,b);
                 stumpParent=Parent(crushed);if(stumpParent>=0){Anchor(crushed,stumpParent);if(AddCap(crushed,stumpParent,true,true,stumpParent))FromCap();emitters.Add((sprayPart,sprayPoint,sprayNormal,true));}

@@ -118,7 +118,7 @@ internal static class SirenDropChecks
         // drop, the PvE repair rebuilds from it, and the drop ignores earlier non-fatal wounds.
         string Text(string p)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",p));
         Check(Text("NativeSiren.cs").Contains("m.CrushAt=Time+3.2f;m.Until=Time+3.8f"),"Last Laugh crush/release timing changed");
-        var death=Text("NativeDeathPresentation.cs");Check(death.Contains("SirenDrop(arena,death,age,up)||!remains&&SourceDeathScene(death,age,up)")&&death.Contains("var wound=drop?null:death.wound;")&&death.Contains("if(drop&&b==CapturedRig.Head)continue;"),"death presentation hook");
+        var death=Text("NativeDeathPresentation.cs");Check(death.Contains("SirenDrop(arena,death,age,up)||!remains&&gib==null&&SourceDeathScene(death,age,up)")&&death.Contains("var wound=drop?null:death.wound;")&&death.Contains("if(drop&&b==CapturedRig.Head)continue;"),"death presentation hook");
         Check(Text("NativeInteractionPresentation.cs").Contains("SirenDropPose(WeaponLoadout,d,age,r.Body,r.Missing)"),"PvE repair hook");
         var drop=Text("NativeSirenDropPresentation.cs");Check(drop.Contains("NativeSirenDrop.Handoff(")&&drop.Contains("NativeSirenDrop.FlameShown(")&&drop.Contains("NativeSirenDrop.GibAt(")&&drop.Contains("NativeSirenDrop.Burn("),"drop presentation uses the Core rules");
         // The weapon falls out of the hand at the release (kills.ts keeps it in the victim's hand) and a kept body is never left to

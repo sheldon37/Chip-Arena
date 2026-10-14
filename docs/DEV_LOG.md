@@ -60,6 +60,39 @@
 - Presentation only: `NativeUpdater` states, checks, install gating and the once-per-launch automatic check are unchanged. A build left open will not notice an update published after launch until the player checks; a periodic re-check would be an updater change (Astra).
 - Checks (merged on shared `d2b847c`): Unity runtime+editor build OK; check_relay 657 PASS (Rooftop home menu 229 checks, now including the beat, the reduced-effects gate and the pill routing); Python 101 OK (1 skip); package_source 1873 files; diff-check clean. Not run: Unity Editor or Windows view of the pulse; no offline render of it.
 
+## 2026-10-14 — Claude — smash gib (train, press, crane) and arrow gibbing
+- Branch `claude/gore-smash-arrows`, base shared `9270d95`; shared `c895406` (PR #205, Astra's hit metadata) merged in before binding to its fields. Not pushed or merged; the lead reviews. Docs: BISECT-GIB "Hazard gib gate", "Smash gib", "Arrow gibbing".
+- Owner requests (verbatim): "Need to add a "smash" gib, something that can be used when getting hit by the train on cyber city, or smashed from things on factory." and "Add gibbing from arrows (Can pierce through enemies if player has pierce modifiers, can go in body/head and stop halfway) Blood coming out of arrow gibbing points".
+- **Smash** (Core `NativeSmashGib`, Runtime `NativeSmashPresentation`), planned from the replicated death record only:
+  - **Cause:** `maglev` is the train; `hazard` on the Factory is the record's `hazardId`, else reconstructed from the pure hazard clock (a general finder that agrees with the saws' own). Press and crane smash; saws split; vents and everything else keep their death.
+  - **Pinned** (a ram or the load coming down over the body): kinematic ragdoll posed by a seeded sprawl, drawn squashed about the floor under the crusher's own underside, flat for the round. Blood squirts out from under the edges, a pool is laid round the body, and a low mist leaves the edges.
+  - **Thrown** (the train; a crusher's edge): a 0.05 s (edge 0.03 s) hit-stop on the corpse, then flight along the travel. The train crushes 3–4 of the head, upper arms and thighs to fragments (several crushed parts now supported in `SetupKill`), carried at most 30 m/s. A blood burst and mist ride the travel, streaks land on the track bed, and an impact flash shows.
+- **Owner decisions (2026-10-14), presentation only:** "Keep the smash even with kill effects" and "Always show gib in saws too".
+  - The train, press, crane and saw gibs share one gate, `NativeSmashGib.Applies`: gore on, pilot body, not kept, not a Siren or vent ending. Any other style gibs.
+  - The gibbed corpse is the stock ending. The kill effect's body, death scene and Raging Demon screen don't play.
+  - The replicated style, kill feed, credit and kill sound are unchanged. No style is named, so a later kill-effect revamp needs no change here.
+  - Melee cuts keep `NativeBisect.Applies`.
+- **Arrows** (Core `NativeArrowGib`, Runtime `NativeArrowGibPresentation`):
+  - Only `direct`/`secondary` bow hits stick: thorns, chain, blast, reflected and field hits no longer stick arrows.
+  - A hit's `Projectile` id with `Pierced` decides lodge (false) or pass (true). Hits with id 0 (older frames) fall back to matching the live arrow's path and its chip pierces, lodging in doubt.
+  - A lodged arrow buries about the middle of the struck part on the joint's body boxes (head about halfway), replacing the fixed 0.14 m.
+  - A pass-through leaves bleeding entry and exit holes and a cavity spray from the exit; the flying arrow continues.
+  - Arrow points drip a decaying trickle (≈6 drops over 6.5 s). At most 12 bleed at once (5 reduced or low); none with gore off or for the first-person local pilot. The wound's own spray stays the existing wound path's (now puncture/cavity), so nothing doubles.
+  - Arrows ride the corpse as drawn, and a split body's arrow rides the half its point was on (the twin was ignored before). Arrows in a crushed part go with it.
+- **Stale wound:** the authority now clears it on stage deaths. A one-line presentation guard (`NativeSmashGib.Stale`) also stops `BleedDeath` re-bleeding an older wound for any stage death.
+- **Blood sim:** new presentation spray kinds `squirt` and `drip`, and an optional carry velocity on `NativeBloodSim.Spray`. Existing kinds are unchanged. No new DamageKind.
+- **Animation/timing impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The only timing is the cosmetic corpse hit-stop above. No simulation, rules or wire file is edited (checked).
+- **Checks:**
+  - Unity runtime+editor compile OK.
+  - New `GibChecks` (1,892 checks; `--gib`) cover classification on the real map hazards (maglev, press, crane, crane edge, saw, vent, named ids), the owner gate (confetti/voxel-burst still smash and split, gore off none), determinism, the squash never above the crusher, the sprawl rigid and on the floor, thrown flight and clamps, the stale guard, lodge depth (chest middle, head about halfway), fate (flag; fallback pierce-0 lodges, pierce-1 passes then lodges, volley neighbours), sticking hits, the split half, the bleed cap and trickle, zero allocation and wiring/isolation.
+  - BisectChecks 1,932 and MeleeBisectChecks 14,078 pass. BowChecks 5,028 pass (Sticks pin updated).
+  - Pins updated: SirenDrop hook string, WoundSkin GibColor count 3→4, the BisectChecks saw gate.
+  - check_relay exit 0 (663 PASS, real relay included); Python 101 OK (1 skip); package_source OK (1881 files); `git diff --check` clean.
+- **Not run:** Unity Editor play, PhysX corpse behaviour (the thrown flight, the pinned kinematic pose), Windows, two-client and killcam viewing. No visual verification; the sprawl and squash are checked numerically only.
+- **Risks:** the pinned pancake can poke out of a narrow footprint for a body near its edge; JsonUtility gives older frames an empty `hazardId` (treated as absent); the fallback without projectile ids misses a pierce when the arrow also stops in the same frame (it lodges).
+- **Astra dependencies:** 1 Hit/Headshot `Projectile` = bullet id, 2 `Pierced`, 3 bow wound kind pierce, 4 `hazardId` and the cleared stage wound. All four were delivered in PR #205 (`c895406`) and are bound here. None outstanding.
+- **Next:** the lead's review, then Windows/Unity viewing of a press, crane and train death and of arrow pierces. The owner may want a player Gore setting wired to `ArenaPresentation.Gore`.
+
 ## 2026-10-14 — Astra — authoritative hit metadata and hazard/arrow wounds
 - Branch `codex/hit-wound-metadata`, base shared/builder `9270d957`. Implements Claude's owner-forwarded visual handoff. Relevant open PR #62 remains the shared presentation integration; no overlapping open task PR was found.
 - Primary melee Hit events now carry `Projectile = swing.Id` and `From = attacker.Body.position` captured at contact, including extra strikes and minion targets. All pilot melee Damage calls carry their contact-time source position; abilities without a primary swing keep ID 0 rather than borrowing an unrelated swing. Bullet Hit/Headshot events carry `b.Id`, including reflected shots and minions. Event defaults for unrelated damage remain unchanged.
@@ -6283,7 +6316,6 @@ and existing boss-song timing/level. Covers PvE and Ward PvP/sandbox playback;
 menu trim retained. Source C# syntax, package (1852 files) and whitespace pass;
 Python 101 tests OK (one skipped). Full managed/real relay suite passed (641 PASS lines).
 Windows compilation/listening/playtest and compiled channel delivery pending.
-
 
 ## 2026-10-14 — Codex: final killcam starts after three seconds
 

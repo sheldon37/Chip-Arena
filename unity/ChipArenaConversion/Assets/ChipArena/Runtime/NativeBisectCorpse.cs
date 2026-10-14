@@ -27,11 +27,11 @@ namespace ChipArena.UnityConversion
         private bool standIn;
         /// <summary>Both halves of a bisected death from a posed rig: `split` gets the bind matrices and the pelvis (Unity world)
         /// and returns the cut and its request (null: no split, the caller makes the whole corpse).</summary>
-        internal static NativeCorpse Bisected(NativeDeath death,CapturedAnimation.Player rig,NativeArena arena,Func<Matrix4x4[],Vector3,(BisectCut cut,BisectRequest request)> split)
+        internal static NativeCorpse Bisected(NativeDeath death,CapturedAnimation.Player rig,NativeArena arena,Func<Matrix4x4[],Vector3,(BisectCut cut,BisectRequest request)> split,bool stock=false)
         {
             var bind=RigBind(death,rig);var at=RigAt(death,rig);var turn=RigTurn(rig);var (cut,request)=split(bind,at[CapturedRig.Pelvis]);if(cut==null||request==null)return null;
-            var first=new NativeCorpse(death,arena,bind,at,turn,null,null,-1,null,cut,request,0,null);
-            var second=new NativeCorpse(death,arena,bind,at,turn,null,null,-1,null,cut,request,1,first);first.Twin=second;
+            var first=new NativeCorpse(death,arena,bind,at,turn,null,null,-1,null,cut,request,0,null,stock:stock);
+            var second=new NativeCorpse(death,arena,bind,at,turn,null,null,-1,null,cut,request,1,first,stock:stock);first.Twin=second;
             foreach(var a in first.Parts.Values)foreach(var b in second.Parts.Values)Physics.IgnoreCollision(a.GetComponent<Collider>(),b.GetComponent<Collider>());
             Physics.SyncTransforms();return first;
         }
@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
             standIn=Halved&&!Bisection.Rooted[Half]&&Parts.ContainsKey(CapturedRig.Pelvis);if(!standIn)return;
             var root=Parts[CapturedRig.Pelvis];root.GetComponent<Collider>().enabled=false;root.isKinematic=true;
         }
-        private bool Still(int part)=>part==CrushPart||standIn&&part==CapturedRig.Pelvis;
+        private bool Still(int part)=>IsCrushed(part)||standIn&&part==CapturedRig.Pelvis||Pinned;
         private void PartHalf(float at)
         {
             if(parted||at+1e-6f<Request.Hitch)return;parted=true;
