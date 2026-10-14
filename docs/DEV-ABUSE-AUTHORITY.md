@@ -171,3 +171,8 @@ its separate DEV Abuse toggle; host verification remains mandatory.
 The native authority fixture now covers spawn replies, damage eligibility,
 idle wake, frame encoding/guest apply, clear isolation and phase cleanup.
 These Unity/PhysX checks are added, not run in this container.
+
+
+Claude's Monsters presentation at shared `debed457` is integrated on this draft.
+`NativeDevMonsterAdapter.DevMonsterOf` now reads `m.DevMonster`; authority lives
+in `NativeDevMonsterAuthority.cs` to preserve Claude's presentation file.

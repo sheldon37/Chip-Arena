@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         private void DevWorld(float scale,float height)
         {
             if(Event.current.type!=EventType.Repaint||arena==null||cameraView==null)return;
-            DevTags(height);devLines=0;DevPulseMarks();
+            DevTags(height);devLines=0;DevPulseMarks();DevMonsterTags();
             if(!DevPanelAvailable)return;
             if(devOverlayHazards)DevHazardBoxes();if(devOverlayNav)DevNavGraph();if(devOverlayAnchors)DevAnchors();
             if(devOverlayHit)DevHitVolumes();if(devOverlayMelee)DevMeleeVolumes();if(devOverlayShots)DevShotPaths();

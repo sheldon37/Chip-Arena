@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         internal readonly NativeDevLink devLink=new NativeDevLink();private bool devReplyHooked;
         private bool devOpen,devCursorFree,devHideHud,devLogOn,devGraphOn,devTyping,devLogMine,devChipSelf=true,devBodyHot,devSearchFocus;
         private bool devOverlayHit,devOverlayMelee,devOverlayHazards,devOverlayNav,devOverlayAnchors,devOverlayShots;
-        private NativeDevTab devTab=NativeDevTab.Pilot;private readonly float[] devScroll=new float[9],devContent=new float[9];
+        private NativeDevTab devTab=NativeDevTab.Pilot;private readonly float[] devScroll=new float[NativeDevLayout.Tabs],devContent=new float[NativeDevLayout.Tabs];
         private readonly NativeDevFly devFly=new NativeDevFly();private readonly NativeDevLog devLog=new NativeDevLog();private NativeDevLogFilter devLogFilter=NativeDevLogFilter.All&~NativeDevLogFilter.World;
         private readonly NativeDevGraph devFrameGraph=new NativeDevGraph(120),devStepGraph=new NativeDevGraph(120),devRttGraph=new NativeDevGraph(60);private float devRttAt;
         private readonly NativeDevChips devChips=new NativeDevChips();private bool devChipsLoaded;private string devChipId;private int devChipSeat;
@@ -45,9 +45,12 @@ namespace ChipArena.UnityConversion
         private static GUIStyle devSearchStyle;
 
         // ---- Context ----------------------------------------------------------------------------------------------------
-        private NativeDevContext DevContext()=>NativeDevContext.Of(arena!=null&&match!=null,arena!=null&&arena.Sandbox&&!arena.Replica,Online,Hosting,account!=null&&account.Developer,prefs!=null&&prefs.devAbuse,DevAbuseEnabled&&devLink.Available,match!=null&&match.Phase==NativePhase.Fight);
-        /// <summary>A guest of a host without devProtocol 1: SendDevCommand refuses at once (the panel says so in its header).</summary>
+        private NativeDevContext DevContext()=>NativeDevContext.Of(arena!=null&&match!=null,arena!=null&&arena.Sandbox&&!arena.Replica,Online,Hosting,account!=null&&account.Developer,prefs!=null&&prefs.devAbuse,DevAbuseEnabled&&devLink.Available,match!=null&&match.Phase==NativePhase.Fight,DevMonsterCommands);
+        /// <summary>A guest of a host without DEV commands (devProtocol 0): SendDevCommand refuses at once (the header says so).</summary>
         private bool DevOldHost=>server!=null&&devHostProtocol<1;
+        /// <summary>The match's authority offers the proposed monster commands: a guest's host advertised devProtocol 2 or later;
+        /// offline or hosting, the local NativeDevRules knows spawn-monster (docs/DEV-TOOLS.md "Monsters").</summary>
+        private bool DevMonsterCommands=>server!=null?devHostProtocol>=NativeDevMonsters.Protocol:NativeDevContract.Known(NativeDevMonsters.Spawn);
         private string DevSender(string action,int target,string[] args)=>SendDevCommand(action,target,args);
         private void DevOnReply(NativeDevReply reply)=>devLink.Receive(reply);
         /// <summary>The DEV panel is open for this match (the pause menu's DEV Tools item, F3).</summary>
@@ -130,7 +133,7 @@ namespace ChipArena.UnityConversion
         // The command's target seat (0: the sender, as SendDevCommand reads it).
         private int DevCommandTarget(NativeDevAction a)
         {
-            if(a.Tab==NativeDevTab.Interact||a.Id=="debris")return devTarget;if(a.Tab==NativeDevTab.Chips)return devChipSeat==arena?.LocalId?0:devChipSeat;
+            if(a.Tab==NativeDevTab.Interact||a.Tab==NativeDevTab.Monsters||a.Id=="debris")return devTarget==arena?.LocalId?0:devTarget;if(a.Tab==NativeDevTab.Chips)return devChipSeat==arena?.LocalId?0:devChipSeat;
             if(a.Id=="dummy-restore"||a.Id=="dummy-down")return DevDummy()?.Seat.id??0;
             return 0;
         }
@@ -152,6 +155,7 @@ namespace ChipArena.UnityConversion
                 case "time-scale":return new[]{N(Mathf.Clamp(devSpeed,NativeDevContract.TimeScaleMin,NativeDevContract.TimeScaleMax))};
                 case "hazard-trigger":{var hz=arena?.Map.hazards;return new[]{hz!=null&&devHazard>=0&&devHazard<hz.Length?hz[devHazard].id:""};}
                 case "debris":return new[]{N(Mathf.Clamp(debrisMass,NativeDevContract.DebrisMassMin,NativeDevContract.DebrisMassMax)),N(Mathf.Clamp(debrisSpeed,NativeDevContract.DebrisSpeedMin,NativeDevContract.DebrisSpeedMax)),debrisMaterial,debrisImpact};
+                case "spawn-monster":return new[]{devMonsterKind??"",NativeDevText.Int(NativeDevMonsters.ClampCount(devMonsterCount)),NativeDevMonsters.Places[Mathf.Clamp(devMonsterPlace,0,NativeDevMonsters.Places.Length-1)],NativeDevMonsters.Behaviours[Mathf.Clamp(devMonsterBehaviour,0,NativeDevMonsters.Behaviours.Length-1)]};
             }
             return Array.Empty<string>();
         }
@@ -181,7 +185,7 @@ namespace ChipArena.UnityConversion
         {
             if(cameraView==null||arena==null)return;var t=cameraView.transform;devPilotCamPos=t.position;devPilotCamRot=t.rotation;devPilotCamValid=true;
             // Forced hazard pulses (NativeGameFrame.devHazards): every client plays each record once with the hazard cues.
-            presentation.DevHazardPulses(arena);
+            presentation.DevHazardPulses(arena);presentation.DevMonsterRifts(arena,prefs.reducedEffects);
             if(!devFly.On)return;if(!DevPanelAvailable){devFly.On=false;return;}
             t.SetPositionAndRotation(new Vector3(devFly.X,devFly.Y,devFly.Z),Quaternion.Euler(devFly.Pitch,devFly.Yaw,0));
             // Third person from the fly camera: my own body drawn, no view model.
@@ -229,6 +233,7 @@ namespace ChipArena.UnityConversion
             {
                 case NativeDevTab.Pilot:y=DevPilotTab(x,y,w);break;
                 case NativeDevTab.Interact:y=DevInteractTab(x,y,w);break;
+                case NativeDevTab.Monsters:y=DevMonstersTab(x,y,w);break;
                 case NativeDevTab.Dummies:y=DevDummiesTab(x,y,w);break;
                 case NativeDevTab.Chips:y=DevChipsGrid(x,y,w);break;
                 case NativeDevTab.Arena:y=DevArenaTab(x,y,w);break;
@@ -454,7 +459,20 @@ namespace ChipArena.UnityConversion
         {
             DevLists();
             y=DevNote(x,y,w,"Match-only fun with the room: every action ends with the match and never reduces anyone's progression, purchases or rewards. Shrink and grow are looks only; hit volumes keep their size.",C.Muted());
-            y=DevHead(x,y,w,"TARGET");
+            y=DevHead(x,y,w,"TARGET");y=DevTargetPicker(x,y,w);
+            y=DevHead(x,y,w,"PARAMETERS");NativeDevActions.Resolve(NativeDevActions.Find("launch"),devCtx,out string why);
+            devLaunchForce=DevSlider(new Rect(x,y,w,34),"Launch speed (up)",devLaunchForce,NativeDevContract.LaunchMin,NativeDevContract.LaunchMax,0," m/s",NativeDevState.Live,why,out _);y+=42;
+            devFreezeSeconds=DevSlider(new Rect(x,y,w,34),"Freeze seconds",devFreezeSeconds,0,NativeDevContract.FreezeMax,1," s",NativeDevState.Live,why,out _);y+=42;
+            devAroundCount=Mathf.RoundToInt(DevSlider(new Rect(x,y,w,34),"Dummies around",devAroundCount,NativeDevContract.AroundMin,NativeDevContract.AroundMax,0,"",NativeDevState.Live,why,out _));y+=42;
+            devRainMaterial=DebrisMaterials[DevChoice(x,ref y,w,DebrisMaterials,DevIndex(DebrisMaterials,devRainMaterial),NativeDevState.Live,why,3,"Debris rain material")];
+            devTargetWeapon=devWeaponIds.Length>0?devWeaponIds[DevChoice(x,ref y,w,devWeaponNames,DevIndex(devWeaponIds,devTargetWeapon),NativeDevState.Live,why,4,"Swap weapon to")]:devTargetWeapon;
+            y=DevHead(x,y,w,"PLAY WITH THEM");
+            y=DevActs(x,y,w,2,DevInteractActs);
+            return y;
+        }
+        // Every connected pilot and bot (DEV DUMMY labelled); the Interact and Monsters tabs share the pick.
+        private float DevTargetPicker(float x,float y,float w)
+        {
             if(DevPilot(devTarget)==null){foreach(var p in arena.Pilots)if(p.Seat.connected&&p.Seat.id!=arena.LocalId&&!p.Seat.AuthorityBoss){devTarget=p.Seat.id;break;}}
             foreach(var p in arena.Pilots)
             {
@@ -469,14 +487,6 @@ namespace ChipArena.UnityConversion
                 }
                 if(DevClick(r))devTarget=p.Seat.id;y+=34;
             }
-            y=DevHead(x,y,w,"PARAMETERS");NativeDevActions.Resolve(NativeDevActions.Find("launch"),devCtx,out string why);
-            devLaunchForce=DevSlider(new Rect(x,y,w,34),"Launch speed (up)",devLaunchForce,NativeDevContract.LaunchMin,NativeDevContract.LaunchMax,0," m/s",NativeDevState.Live,why,out _);y+=42;
-            devFreezeSeconds=DevSlider(new Rect(x,y,w,34),"Freeze seconds",devFreezeSeconds,0,NativeDevContract.FreezeMax,1," s",NativeDevState.Live,why,out _);y+=42;
-            devAroundCount=Mathf.RoundToInt(DevSlider(new Rect(x,y,w,34),"Dummies around",devAroundCount,NativeDevContract.AroundMin,NativeDevContract.AroundMax,0,"",NativeDevState.Live,why,out _));y+=42;
-            devRainMaterial=DebrisMaterials[DevChoice(x,ref y,w,DebrisMaterials,DevIndex(DebrisMaterials,devRainMaterial),NativeDevState.Live,why,3,"Debris rain material")];
-            devTargetWeapon=devWeaponIds.Length>0?devWeaponIds[DevChoice(x,ref y,w,devWeaponNames,DevIndex(devWeaponIds,devTargetWeapon),NativeDevState.Live,why,4,"Swap weapon to")]:devTargetWeapon;
-            y=DevHead(x,y,w,"PLAY WITH THEM");
-            y=DevActs(x,y,w,2,DevInteractActs);
             return y;
         }
         private float DevDummiesTab(float x,float y,float w)
@@ -584,18 +594,6 @@ namespace ChipArena.UnityConversion
             y=DevHead(x,y,w,"ARENA");y=DevActs(x,y,w,2,DevArenaActs);
             y=DevHead(x,y,w,"MAP");{var mr=NativeDevActions.Resolve(NativeDevActions.Find("load-map"),devCtx,out string mw);int k=DevChoice(x,ref y,w,devMapNames,DevIndex(devMapIds,devMap),mr,mw,3,"Map");if(devMapIds.Length>0)devMap=devMapIds[k];}
             DevAct(new Rect(x,y,w,32),"load-map","Load map (resets the arena)");y+=40;
-            if(arena.Map.look=="quarantine")
-            {
-                var entries=NativeArena.StageContent.entries;y=DevHead(x,y,w,"WARD ZERO ENTRIES");
-                if(entries.Length>0)
-                {
-                    wardSandboxEntry=Mathf.Clamp(wardSandboxEntry,0,entries.Length-1);var st=NativeDevActions.Resolve(NativeDevActions.Find("ward-spawn"),devCtx,out string sw);float bw=44;
-                    if(DevButton(new Rect(x,y,bw,32),"‹",st,sw))wardSandboxEntry=(wardSandboxEntry+entries.Length-1)%entries.Length;
-                    if(Event.current.type==EventType.Repaint&&DevVisible(new Rect(x,y,w,32))){U.Text(new Rect(x+bw+10,y,w*.5f,16),entries[wardSandboxEntry].id,12,C.Ink(),TextAnchor.MiddleLeft,bold:true);U.Text(new Rect(x+bw+10,y+16,w*.5f,14),entries[wardSandboxEntry].kind,9,C.Muted(),TextAnchor.MiddleLeft,mono:true);}
-                    if(DevButton(new Rect(x+w*.5f+bw,y,bw,32),"›",st,sw))wardSandboxEntry=(wardSandboxEntry+1)%entries.Length;
-                    DevAct(new Rect(x+w*.5f+bw*2+8,y,w*.5f-bw*2-8,32),"ward-spawn");y+=40;
-                }
-            }
             y=DevHead(x,y,w,"DEBRIS LAUNCHER");
             {
                 var dr=NativeDevActions.Resolve(NativeDevActions.Find("debris"),devCtx,out string dw);
