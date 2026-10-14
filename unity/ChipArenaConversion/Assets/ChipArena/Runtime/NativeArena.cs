@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
         public NativePilot Local=>Pilots.Find(p=>p.Seat.id==LocalId);
         public void Step(InputFrame input)
         {
-            CancelInvalidKernel();if(PveHoldTick(1f/60))return;foreach(var p in Pilots)if(!p.Seat.connected&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12){p.Hp=0;p.Seat.alive=false;}SandboxStep();Match.Tick(1d/60);if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();StepHazards();StepAuthoredHazards();StepSirenStage();StepStructures();StepKernelWorld();if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
+            CancelInvalidKernel();if(PveHoldTick(1f/60))return;foreach(var p in Pilots)if(!p.Seat.connected&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12){p.Hp=0;p.Seat.alive=false;}SandboxStep();Match.Tick(1d/60);if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();StepHazards();StepAuthoredHazards();StepSirenStage();StepStructures();StepKernelWorld();if(Match.ResultMovement){StepResultMovement(input);return;}if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
             Events.RemoveAll(e=>Time-e.Time>1); // Preserve the full burst for its natural glow lifetime.
             // Establish every defense before resolving attacks.
             foreach(var p in Pilots)
@@ -122,6 +122,27 @@ namespace ChipArena.UnityConversion
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Body.position.y<(Map.bounds?.killY??-6)){if(Pve!=null&&p==Pve.Boss)PlacePveBoss(BossSpawn);else Damage(p,null,p.Hp+1,Vector3.zero,0,false,true);}
             float overtime=NativeCombatRules.Overtime(Match.Time-Match.FightAt,Content.config.FirstOrDefault(v=>v.name=="maxRoundSeconds")?.value??100,Match.Cooperative,SandboxAllowed);if(overtime>0)foreach(var p in Pilots)if(p.Hp>0)Damage(p,null,overtime,Vector3.zero,0,false,forced:true);
             StepPve();Match.Resolve();CancelInvalidKernel();
+        }
+        // Result movement has no attack, ability, DOT or bot-combat updates: the winner is already fixed.
+        private void StepResultMovement(InputFrame localInput)
+        {
+            const float dt=1f/60;
+            foreach(var p in Pilots)
+            {
+                if(p.Hp<=0||!p.Seat.connected||p.Body==null||p.Body.isKinematic)continue;
+                var raw=(p.Seat.bot?new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch}:p.Seat.id==LocalId?localInput:RemoteInput(p.Seat.id)).Sanitized();
+                p.Input=new InputFrame{X=raw.X,Z=raw.Z,Yaw=raw.Yaw,Pitch=raw.Pitch,Sprint=raw.Sprint,Jump=raw.Jump};
+                p.Yaw=raw.Yaw;p.Pitch=raw.Pitch;ProbePilotGround(p);
+                var move=new Vector3(raw.X,0,raw.Z);bool sprint=raw.Sprint&&p.Stamina>0&&move.magnitude>.5f&&Vector3.Dot(move.normalized,Quaternion.Euler(0,p.Yaw,0)*Vector3.forward)>=.6f;
+                if(sprint)p.Stamina=Math.Max(0,p.Stamina-12*dt);
+                float speed=(float)(6.8*p.Stats["speed"])*(sprint?1.35f:1);
+                p.MoveVelocity=new Vector3(Mathf.MoveTowards(p.MoveVelocity.x,move.x*speed,35*dt),0,Mathf.MoveTowards(p.MoveVelocity.z,move.z*speed,35*dt));
+                var velocity=new Vector3(p.MoveVelocity.x,p.Body.linearVelocity.y,p.MoveVelocity.z);
+                var jump=NativeJumpSimulation.Try(p.Seat.spec,raw.Jump,p.Grounded,false,false,velocity.y,(float)(Rules.JumpSpeed*p.Stats["jumpPower"]),ref p.AirJumps,out float launch);
+                bool jumped=jump!=NativeJumpKind.None;if(jumped){velocity.y=launch;p.Grounded=false;if(jump==NativeJumpKind.Air)p.AirJumpAt=Time;}
+                velocity.y-=(float)(23*(p.Stats["playerGravity"]-1)*dt);p.Body.useGravity=!GroundMotion(p,ref velocity,jumped,false,0);
+                p.Body.linearVelocity=velocity;p.Pose.Sprinting=sprint;
+            }
         }
         private void StepPilot(NativePilot p)
         {

@@ -51,6 +51,15 @@ namespace ChipArena.UnityConversion
                 // Keep the real clock/motor/physics running, but suspend round resolution for this isolated gate only.
                 Match.HoldResolution=()=>true;
                 Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10,fightAt=0});
+                Box(origin-new Vector3(0,1,0),new Vector3(30,1,30),Quaternion.identity);
+                Place(origin+Vector3.up);var resultStart=p.Body.position;int ammo=p.Ammo;float hp=p.Hp;
+                Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Result,time=10,resultAt=10,phaseEnd=20.5,hasFinalKillcam=true});
+                for(int i=0;i<30;i++){Step(new InputFrame{X=1,Yaw=90,Shoot=true,Attack=true,AbilityQ=true});physics.Simulate(1f/60);}
+                Check(p.Body.position.x>resultStart.x+1,"survivor cannot move during final wait");
+                Check(p.Ammo==ammo&&p.Hp==hp&&!p.Input.Shoot&&!p.Input.AbilityQ,"result movement admits combat");
+                Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Result,time=12,resultAt=10,phaseEnd=20.5,hasFinalKillcam=true});
+                Step(new InputFrame{X=1});Check(p.Body.linearVelocity==Vector3.zero,"movement continues after replay boundary");
+                Clear();Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10,fightAt=0});
                 foreach(var map in Content.maps.Where(m=>!m.unity))
                 {
                     // Every distinct authored pitch/width in each map, including Canal/Spikevault/Lavaworks >45°.
