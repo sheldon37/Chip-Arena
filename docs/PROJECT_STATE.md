@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 final killcam delay: `codex/final-killcam-delay` on `db9563e` waits three real-time seconds with the live view before playback, pins history, and extends eligible Result phases by three seconds. Managed/relay, Python, syntax and source checks pass; Windows build and visual acceptance pending.
+
 2026-10-13 first-use death loading: `codex/death-warmup-ward-volume` on `09b9079` prewarms the 14 MB/94 MB motion JSON banks before client presentation, removing their lazy loading from death/replay paths. Adds startup load timing; raises Ward music gain 1.5x (+3.52 dB) under Stage Music. New Factory capture excludes expensive regular corpse setup/step/wounded models; cold bank load is a strong candidate, not proven attribution. Windows replay acceptance remains pending.
 
 2026-10-13 runtime hitch follow-up: `codex/ward-navigation-audio` on `1a13677` responds to measured Ward navigation (118 ms) and Cyber City replay death presentation (2374 ms). Adds a static hazard broad phase with live safety checks, granular navigation/death timings, and Menu Music / Stage Music / Sounds labels over existing independent saved controls. Managed checks pass; Windows build/playtest pending. Replay death spike remains unresolved pending sub-timings. See DEV_LOG and NATIVE-HITCH-DIAGNOSTICS.

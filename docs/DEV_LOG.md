@@ -6103,3 +6103,18 @@ and existing boss-song timing/level. Covers PvE and Ward PvP/sandbox playback;
 menu trim retained. Source C# syntax, package (1852 files) and whitespace pass;
 Python 101 tests OK (one skipped). Full managed/real relay suite passed (641 PASS lines).
 Windows compilation/listening/playtest and compiled channel delivery pending.
+
+
+## 2026-10-14 — Codex: final killcam starts after three seconds
+
+Branch `codex/final-killcam-delay`, base shared `db9563e`. Owner requested a
+three-second pause after the last kill before replay. Arm and pin final history
+immediately, suppress the victim's normal killcam, and gate playback on unscaled
+time while the live view continues. Add three seconds to eligible authority
+Result durations (11.5 credited; 8 fallback/practice/draw) and reserve the wait
+when fitting the clip. Normal killcam timing, damage, hitboxes and protocol stay
+unchanged. Regression checks cover durations, fallback cases, wait wiring and
+preserved playback budget. Full 35 managed/real relay checks pass; Python 101
+OK (one skipped), runtime syntax zero errors, source package 1852 files and
+whitespace pass. Implemented on branch; merge/builder sync next. Unity Editor,
+Windows build and visual timing acceptance not exercised locally.
