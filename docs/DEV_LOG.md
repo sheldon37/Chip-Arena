@@ -7499,3 +7499,18 @@ Visuals only.
   - boss banner, SAFE chip and gate notice.
 - **Not run.** Unity Editor play, Windows, two clients or a guest, PhysX. Nothing plays live until a scene binds a session.
   Pushed, not merged or released.
+- **Checks on `d51bd52`** (shared `9cc6d29` merged; both sides of DEV_LOG and PROJECT_STATE kept):
+
+  | Check | Result |
+  | --- | --- |
+  | Unity runtime and editor compile | OK |
+  | Managed and real relay | rc 0, 684 PASS, including `PASS Expedition states (14931 checks)` and the build label |
+  | CI-layout export | rc 0, 684 PASS |
+  | Python | 106 tests, 1 skipped, OK |
+  | Source package | 1980 files |
+  | `git diff --check` | clean |
+
+  - The run on `68ebd63` failed BuildLabelChecks: the OnGUI line was pinned and the transfer screen hook had been
+    inserted into it. `d51bd52` moved the hook after the pinned line.
+  - The run5 relay, run at the same time as the CI-layout run, stopped once on the existing Spawn-in zero-allocation check
+    (696 bytes). The CI-layout run of the same commit and a solo relay rerun both pass it.
