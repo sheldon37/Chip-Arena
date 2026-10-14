@@ -109,7 +109,9 @@ internal static class SprintMotionChecks
         Distinct(Melee);Distinct(Ranged);
         // The shape of each carry in chest space (x the rig's left, y up, z forward).
         Check(now["sword"].Right.Z<-.05f&&now["sword"].Right.Y<-.2f,"sword: the blade hand low behind the hip ("+now["sword"].Right+")");
-        Check(now["daggers"].ZPump>.3f,"daggers: the fists pump hard ("+now["daggers"].ZPump.ToString("0.00")+" m)");
+        // The daggers' fists are held low and close with a light pump (owner 2026-10-14: "keep the arms more still"; it was a
+        // 60 cm pump; Tests/SprintArmChecks measures the arms).
+        Check(now["daggers"].ZPump>=.08f&&now["daggers"].ZPump<=.2f&&now["daggers"].Right.Y<-.05f,"daggers: the fists held low with a light pump ("+now["daggers"].ZPump.ToString("0.00")+" m, "+now["daggers"].Right+")");
         Check(now["shield"].Right.Z>.2f&&now["shield"].Right.Y>-.1f,"shield: up in front of the chest ("+now["shield"].Right+")");
         Check(now["greatsword"].Right.Y>0&&Vector3.Distance(now["greatsword"].Right,now["greatsword"].Left)<.25f,"greatsword: both hands up at the shoulder ("+now["greatsword"].Right+")");
         Check(now["pistol"].ZPump>.3f&&now["pistol"].Right.Y<-.05f,"pistol: both fists pump hard, the gun hand low ("+now["pistol"].ZPump.ToString("0.00")+" m, "+now["pistol"].Right+")");
@@ -120,7 +122,7 @@ internal static class SprintMotionChecks
         Check(now["darkness"].Right.Y<-.2f&&now["darkness"].Right.Z<-.2f&&now["darkness"].Right.Y<now["water"].Right.Y,"darkness: the hands back and low ("+now["darkness"].Right+")");
         Check(now["leet"].Right.Z<-.3f&&now["leet"].Right.Y>now["fire"].Right.Y+.1f,"L33t H4x: the arms flung straight back, higher than fire's ("+now["leet"].Right+")");
         Distinct(Magic);
-        log.Add("12 weapons sprinting at "+SprintSpeed+" m/s: distinct carries (blade low behind, pumping daggers, shield up, greatsword on the shoulder, the pistol tucked with both fists pumping, high port, the machine gun on the shoulder, fire's hands clawing low past the hips, water's out wide, lightning's tight in front, darkness back and low, L33t H4x's flung back), the feet exactly the gait's (worst "+(worstFeet*1000).ToString("0.0")+" mm), the steady torso within bounds (head sway "+torso+")");
+        log.Add("12 weapons sprinting at "+SprintSpeed+" m/s: distinct carries (blade low behind, daggers held low with a light pump, shield up, greatsword on the shoulder, the pistol tucked with both fists pumping, high port, the machine gun on the shoulder, fire's hands clawing low past the hips, water's out wide, lightning's tight in front, darkness back and low, L33t H4x's flung back), the feet exactly the gait's (worst "+(worstFeet*1000).ToString("0.0")+" mm), the steady torso within bounds (head sway "+torso+")");
     }
     private static void Blend(List<string> log)
     {

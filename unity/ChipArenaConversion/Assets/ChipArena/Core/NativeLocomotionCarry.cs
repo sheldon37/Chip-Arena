@@ -31,6 +31,18 @@ namespace ChipArena.UnityConversion
         /// keeps the weapon hand's share (owner 2026-10-14: "while running/sprinting, the back arm wiggles a bit": the free
         /// hand's livelier pump, made for an empty fist, swung its .84 m blade through 72 cm of tip travel a stride).</summary>
         public static float LeftKeep(int set,bool run)=>set==Daggers?(run?RunArmKeep:WalkArmKeep):run?RunFreeKeep:WalkFreeKeep;
+        /// <summary>The daggers' right (rear) blade in the run, tipped back along the forearm (rad, about the chest's side axis;
+        /// owner 2026-10-14: "Was the dagger run fixed? It still looks like its doing the same thing with the arm"). In the
+        /// daggers' stance the right fist is the rear one, and the near arm under the shoulder camera. The pack run's mean lie
+        /// hung that blade's tip 25 cm under the floor guard's plane each stride, so two corrections lifted it at different
+        /// points of the stride (the blade clearance's floor term as the capture is applied, then MeleeCapture.KeepBladesOffFloor
+        /// over the leaned, counter-twisted pose): its wrist turned through 10.6 degrees a stride, much of it at twice the stride
+        /// rate, against the clip's own 4.8. Tipped back (near the sprint's DaggerRight lie), the tip rides over the plane and
+        /// neither engages. In the run the daggers' shoulders (both clavicles) also keep only the arms' share of the clip's
+        /// per-stride shrug: the left one's full captured shrug turned it 17-24 degrees a stride and, under the sprint's held
+        /// fists, rocked that arm alone (its forearm's turn rate kinked at the clip's key rate). The walk's blade already clears
+        /// the plane and the walk keeps its lie and shoulders; other sets are unchanged.</summary>
+        public const float RearBladeTip=.7f;
         /// <summary>First person: the share of the walk and run clips' motion the melee view arms keep (the view layer's bob
         /// carries the stride; the captured pump at the gait's cadence wiggled the view weapon).</summary>
         public const float FirstPersonCarry=.3f;
@@ -97,6 +109,9 @@ namespace ChipArena.UnityConversion
             Write(row,MeleeCapture.Spine,turn*Rot(row,MeleeCapture.Spine));Write(avg,MeleeCapture.Spine,turn*Rot(avg,MeleeCapture.Spine));
         }
         private static void Damp(float[] f,float[] m,int from,int to,float keep){for(int c=from;c<to;c++)f[c]=m[c]+(f[c]-m[c])*keep;}
+        // The daggers' rear blade in the run (NativeLocoRules.RearBladeTip): its blade and edge turned back about the chest's side axis.
+        private static readonly Quaternion RearTip=MeleeMath.AxisAngle(MeleeMath.X,NativeLocoRules.RearBladeTip);
+        private static void TipBack(float[] f,int i){Vector3 d=Vector3.Transform(Row(f,i),RearTip);f[i]=d.X;f[i+1]=d.Y;f[i+2]=d.Z;}
         // A family's pose for the travel direction: the two bracketing clips blended (and the slow walk under SlowTo ahead).
         private void Family(int set,int first,float phase,int a,int b,float t,float slow,float torsoKeep,float armKeep,float freeKeep)
         {
@@ -104,6 +119,7 @@ namespace ChipArena.UnityConversion
             if(t>1e-4f){Sample(set,first+b,phase,rowB,meanB);MeleeCapture.BlendRowsTurning(rowA,rowB,t,rowA);MeleeCapture.BlendRows(mean,meanB,t,mean);}
             if(slow>1e-4f){Sample(set,NativeLocoRules.Slow,phase,rowB,meanB);MeleeCapture.BlendRowsTurning(rowA,rowB,slow,rowA);MeleeCapture.BlendRows(mean,meanB,slow,mean);}
             Damp(rowA,mean,MeleeCapture.Spine,MeleeCapture.Head+3,torsoKeep);Damp(rowA,mean,MeleeCapture.Grip,MeleeCapture.LHand,armKeep);Damp(rowA,mean,MeleeCapture.LHand,MeleeCapture.TwoHand,freeKeep);
+            if(set==NativeLocoRules.Daggers&&first==NativeLocoRules.Run){Damp(rowA,mean,MeleeCapture.LClav,MeleeCapture.LHip,armKeep);TipBack(rowA,MeleeCapture.Blade);TipBack(rowA,MeleeCapture.Edge);}
         }
         /// <summary>
         /// The travel carry at `carry` (walk) and `carry` x `run` (run) for the stride phase `phase` (0..1); false (the route

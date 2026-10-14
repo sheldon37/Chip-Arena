@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Lightning's crackle and L33t H4x's glitch (Hz): the twitch steps, the glitch's held frames and its bursts (s).</summary>
         public const float TwitchRate=18,GlitchRate=10,GlitchCycle=1.4f,GlitchBurst=.24f;
         /// <summary>The carry each weapon sprints with (the DEV fighters and the Siren keep their own locomotion).</summary>
-        public const string Ninja="blade swept low behind",Pump="daggers pumping low",ShieldUp="shield up, shoulder-led",Shoulder="blade on the shoulder",
+        public const string Ninja="blade swept low behind",Pump="daggers held low, a light pump",ShieldUp="shield up, shoulder-led",Shoulder="blade on the shoulder",
             Tucked="pistol tucked, arms pumping",HighPort="high port, leaning in",Hip="shoulder carry, lumbering",Embers="embers trailing, attacking",
             Glide="flowing glide",Crackle="crackling stride",Stalk="low stalking glide",Glitch="glitch stride",Trail="hands trailing back",None="none";
         public static string CarryOf(string spec)
@@ -123,7 +123,7 @@ namespace ChipArena.UnityConversion
     /// run carry and the gait (the stride, its cadence and the planted feet stay the gait's, so nothing slides; the steady
     /// torso keeps its counter-twist):
     ///  - sword: the blade swept low behind the hip, the free arm pumping (a ninja run);
-    ///  - daggers: both reverse-grip fists pumping hard and low, the deepest lean;
+    ///  - daggers: both reverse-grip fists held low and close beside the hips with a light pump, the deepest lean;
     ///  - shield: the shield up in front of the chest, the shield shoulder leading;
     ///  - greatsword: the blade on the right shoulder in both hands, heavier strides (a deeper bob);
     ///  - pistol: both arms pumping hard, the pistol tucked muzzle-down in the gun fist;
@@ -163,13 +163,25 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>
         /// The daggers' sprint blade lies (chest space; owner 2026-10-14: "while running/sprinting, the back arm wiggles a bit"):
-        /// the run carry's mean reverse-grip lie of each fist, tipped back along the forearm (right .34 rad, left .3: about 6 cm
-        /// over the guard at the lowest of a straight sprint). The fists once kept the live run carry's lie, which carries the
-        /// run's per-stride wrist motion and, under the sprint lean, hung the .84 m blades 7-15 cm below the floor guard's plane
-        /// each pump: MeleeCapture.KeepBladesOffFloor then flicked each wrist up by up to 12 degrees and let go every stride.
+        /// the run carry's mean reverse-grip lie of each fist, tipped back along the forearm (right .34 rad, left .3; with the
+        /// held carry below, each tip rides about 17 cm over the floor guard's plane at its lowest in a straight sprint). The
+        /// fists once kept the live run carry's lie, which carries the run's per-stride wrist motion and, under the sprint lean,
+        /// hung the .84 m blades 7-15 cm below the floor guard's plane each pump: MeleeCapture.KeepBladesOffFloor then flicked
+        /// each wrist up by up to 12 degrees and let go every stride.
         /// </summary>
         public static readonly Quaternion DaggerRight=Weapon(new Vector3(-.09f,-.93f,-.36f),new Vector3(-.26f,-.33f,.91f)),
             DaggerLeft=Weapon(new Vector3(.58f,-.75f,-.33f),new Vector3(.75f,.32f,.58f));
+        /// <summary>
+        /// The daggers' sprint carry (chest space, m; owner 2026-10-14: "We can probably keep the arms more still (it looks like
+        /// theyre trying to move the forearms too much with sprinting)"): each reverse-grip fist held low beside the hip
+        /// (DaggerX out, DaggerY down, DaggerZ forward: clear of the waist), its elbow tucked back (DaggerElbowR, DaggerElbowL),
+        /// with a light pump of DaggerPump fore and aft at the stride and a smooth lift of DaggerLift as it comes forward. The
+        /// pump was .3 (60 cm of fist travel at the sprint's 3.7 Hz stride: each elbow flexed about 40 degrees and each forearm
+        /// swung about 80 a stride) about fists at (.23, -.18, .02), inside the hips' width, and its lift rode Math.Max(0, cos),
+        /// a kink in the fist's speed twice a stride.
+        /// </summary>
+        public const float DaggerX=.34f,DaggerY=-.12f,DaggerZ=.1f,DaggerPump=.06f,DaggerLift=.02f;
+        public static readonly Vector3 DaggerElbowR=Vector3.Normalize(new Vector3(-.6f,-.8f,-1)),DaggerElbowL=Vector3.Normalize(new Vector3(.6f,-.8f,-1));
         // The forward lean on the spine about the pelvis's own side axis (premultiplied, so the steady torso's counter-twist
         // never turns it into a roll), half of it given back at the neck so the gaze stays level.
         private static void LeanSpine(MeleeRig r,string spec,float w)
@@ -194,10 +206,11 @@ namespace ChipArena.UnityConversion
                     r.BraceWeapon(new Vector3(-.27f,-.36f+.02f*fR,-.15f+.04f*fR),Weapon(new Vector3(-.22f,.14f,-.96f),new Vector3(0,-1,0)),w,Vector3.Normalize(new Vector3(-1,-.2f,-.7f)),false);
                     r.Hand(true,new Vector3(.24f,-.15f+.03f*Math.Max(0,fL),.06f+.22f*fL),qL,w,poleL);break;
                 case "daggers":
-                    // Each reverse-grip fist pumps at its own steady blade lie (DaggerRight, DaggerLeft), not the live run carry's.
+                    // Each reverse-grip fist held low and close with a light pump (DaggerX..DaggerLift), at its own steady blade lie
+                    // (DaggerRight, DaggerLeft), not the live run carry's.
                     LeanSpine(r,p.Spec,w);
-                    r.BraceWeapon(new Vector3(-.23f,-.18f+.05f*Math.Max(0,fR),.02f+.3f*fR),DaggerRight,w,poleR,false);
-                    r.Hand(true,new Vector3(.23f,-.18f+.05f*Math.Max(0,fL),.02f+.3f*fL),DaggerLeft,w,poleL);break;
+                    r.BraceWeapon(new Vector3(-DaggerX,DaggerY+DaggerLift*(.5f+.5f*fR),DaggerZ+DaggerPump*fR),DaggerRight,w,DaggerElbowR,false);
+                    r.Hand(true,new Vector3(DaggerX,DaggerY+DaggerLift*(.5f+.5f*fL),DaggerZ+DaggerPump*fL),DaggerLeft,w,DaggerElbowL);break;
                 case "shield":
                     // The shield shoulder (the right) leads: the chest turns toward it and the head keeps the facing.
                     LeanSpine(r,p.Spec,w);r.AddE(CapturedRig.Spine,0,.16f*w,0);r.AddE(CapturedRig.Chest,0,.12f*w,0);r.AddE(CapturedRig.Head,0,-.28f*w,0);

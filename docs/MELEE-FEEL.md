@@ -477,10 +477,14 @@ and a live playtest. The closing-damage figures assume perfect aim against a non
   stun, juggle, knockdown, special or death drops it. The blend is a 0.15 s ramp, eased at both ends.
 - **Per-weapon carry** (`Core/NativeSprintMotion`, over each route's run, the gait's planted feet unchanged):
   - sword: the blade swept low behind the hip, the free arm pumping (a ninja run);
-  - daggers: both reverse-grip fists pumping hard and low, each blade at a steady lie tipped back along the forearm
-    (`DaggerRight`, `DaggerLeft`; 2026-10-14: the live run-carry lie wobbled each stride and dipped the tips under the
-    floor guard, which flicked the wrists, the owner's "back arm wiggles"); in the run and walk the left (back) dagger
-    hand keeps the weapon hand's share of the pack swing (`NativeLocoRules.LeftKeep`), not the empty free hand's;
+  - daggers: both reverse-grip fists held low and close beside the hips, elbows tucked back, with a light 12 cm pump
+    (`DaggerX`..`DaggerLift`; 2026-10-14, owner: "keep the arms more still (it looks like theyre trying to move the
+    forearms too much with sprinting)": the old 60 cm pump flexed each elbow about 40 degrees a stride), each blade at a
+    steady lie tipped back along the forearm (`DaggerRight`, `DaggerLeft`; 2026-10-14: the live run-carry lie wobbled each
+    stride and dipped the tips under the floor guard, which flicked the wrists). In the run and walk the left dagger hand
+    keeps the weapon hand's share of the pack swing (`NativeLocoRules.LeftKeep`), not the empty free hand's. In the run
+    the right (rear) blade's lie is tipped back (`NativeLocoRules.RearBladeTip`), so the blade clearance's floor term and
+    the final floor guard no longer both lift it each stride, and the shoulders keep the arms' share of the clip's shrug;
   - shield: up in front of the chest, the shield shoulder leading;
   - greatsword: on the right shoulder in both hands, with a heavier bob;
   - pistol: port arms;
