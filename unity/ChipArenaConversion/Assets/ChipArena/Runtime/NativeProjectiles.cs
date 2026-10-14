@@ -58,6 +58,40 @@ namespace ChipArena.UnityConversion
         }
         private void EndBullet(NativeBullet b)
         {if(Bullets.Remove(b)&&b.Id>0)shotEnds.Record(b.Id,Time,Vec(b.Position));}
+        // Let already-launched shots finish during the final replay wait. Do not invoke
+        // combat handlers: impacts, chip procs, echoes and explosions cannot change the result.
+        private bool CoastResultShot(ref Vector3 position,ref Vector3 velocity,float gravity,float radius,ref float life,ref float travel,NativePilot owner)
+        {
+            if(life<=0||travel<=0)return true;
+            float h=Math.Min(1f/60,life);var v=Vec(velocity);
+            Vector3 delta=Vector3.ClampMagnitude(Vec(NativeSpecialRules.Ballistic(ref v,gravity,h)),travel);velocity=Vec(v);life-=h;travel-=delta.magnitude;
+            var hit=SweepNative(position,delta,radius,c=>owner==null||c!=owner.Collider);
+            bool ceiling=NativeSpecialRules.Ceiling(Vec(position),Vec(delta),radius,out float fraction,out V3 center);
+            if(ceiling&&(!hit.HasValue||delta.magnitude*fraction<=hit.Value.Distance)){position=Vec(center);return true;}
+            if(hit.HasValue){position=hit.Value.Point;return true;}
+            position+=delta;return life<=0||travel<=0||position.y<-15;
+        }
+        private void StepResultProjectiles()
+        {
+            for(int i=Bullets.Count-1;i>=0;i--)
+            {
+                var b=Bullets[i];var owner=Pilots.Find(p=>p.Seat.id==b.Owner);float before=b.Travel;
+                bool done=CoastResultShot(ref b.Position,ref b.Velocity,b.Gravity,b.Radius,ref b.Life,ref b.Travel,owner);b.Travelled+=before-b.Travel;
+                if(done)EndBullet(b);
+            }
+            for(int i=AbilityShots.Count-1;i>=0;i--)
+            {
+                var s=AbilityShots[i];float remaining=Math.Max(0,s.MaxTravel-s.Travel);bool done;
+                if(s.Resting){s.Life-=1f/60;done=s.Life<=0;}
+                else {done=CoastResultShot(ref s.Position,ref s.Velocity,s.Gravity,s.Radius,ref s.Life,ref remaining,s.Owner);s.Travel=s.MaxTravel-remaining;}
+                if(done||s.Definition?.id=="frag-grenade"&&Time>=s.Fuse)AbilityShots.RemoveAt(i);
+            }
+            for(int i=MeleeShots.Count-1;i>=0;i--)
+            {
+                var s=MeleeShots[i];
+                if(CoastResultShot(ref s.Position,ref s.Velocity,s.Gravity,s.Radius,ref s.Life,ref s.Travel,s.Owner))MeleeShots.RemoveAt(i);
+            }
+        }
         private void StepBullets()
         {
             const float dt=1f/60;
