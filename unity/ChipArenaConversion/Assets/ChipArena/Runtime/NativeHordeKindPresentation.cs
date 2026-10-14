@@ -336,12 +336,14 @@ namespace ChipArena.UnityConversion
         {
             HordeKindsCamera(camera);if(fxDraw==null||camera==null||arena==null){hordeJobCount=0;return;}
             var draw=fxDraw;float quality=Mathf.Clamp01(EffectsQuality),now=hordeClock;Vector3 eye=camera.transform.position,right=camera.transform.right,up=camera.transform.up;bool low=quality<.5f;
+            // The acid and the impacts' high-quality pass (NativeZombieFxDraw: the shared effects renderer and its decal layer).
+            zombieFx??=new NativeZombieFxDraw();var zfx=zombieFx;zfx.Begin(vfx,eye,right,up,NativeZombieFx.Tier(LowGraphics,quality));
             HordeSpitEvents(arena,now);HordeLocal(arena);
             for(int n=0;n<hordeJobCount;n++){hordeJobOrder[n]=n;hordeJobRank[n]=Vector3.Distance(hordeJobs[n].Root,eye);}
             Array.Sort(hordeJobRank,hordeJobOrder,0,hordeJobCount);int budget=NativeMinionFx.FullRigs;
             for(int r=0;r<hordeJobCount;r++)
             {
-                var j=hordeJobs[hordeJobOrder[r]];float dist=hordeJobRank[r];double band=NativeMinionFx.Band(dist,quality);if(band<0||budget<=0)continue;budget--;bool half=band<.5;
+                var j=hordeJobs[hordeJobOrder[r]];float dist=hordeJobRank[r];double band=NativeMinionFx.Band(dist,quality);if(band<0||budget<=0)continue;budget--;bool half=band<.5;zfx.Within(dist,j.Kind==NativeHordeKinds.Hulk);
                 var seam=NativeArena.ColorOf(NativeHordeKinds.Seam[j.Kind]);float a=j.Age,H=j.Strike;float yr=j.Yaw*Mathf.Deg2Rad;Vector3 fwd=new Vector3(Mathf.Sin(yr),0,Mathf.Cos(yr)),side=new Vector3(fwd.z,0,-fwd.x);
                 Vector3 floor=new Vector3(j.Root.x,j.Ground+.012f,j.Root.z);
                 switch(j.Attack)
@@ -352,20 +354,14 @@ namespace ChipArena.UnityConversion
                         // fill closes in to the rim at the strike.
                         bool hulk=j.Kind==NativeHordeKinds.Hulk;float R=hulk?j.Radius:NativeHordeKinds.SmashRadius;Vector3 c=floor+fwd*NativeHordeKinds.SmashAheadOf(j.Kind);
                         if(NativeHordeFx.SlamTelegraph(a,H,R,out float rim,out float fill,out float fa)){draw.Ring(draw.Effects,c,R-.11f,R,Alpha(seam,rim),NativeFxDraw.Authored+NativeFxDraw.Additive);if(fill>.02f)draw.Ring(draw.Effects,c+Vector3.up*.002f,0,fill,Alpha(seam,fa),NativeFxDraw.Authored+NativeFxDraw.Additive);}
-                        if(hulk)
+                        // The strike (at LastAttack + the authority's hit, the take's impact mark): one impact on the authority's disc,
+                        // held where it struck (NativeZombieFx.Smash: the upright wave to the disc's rim, cracks, floor-hugging dust, lit
+                        // rubble bouncing to rest inside it, sparks), the shake, and the Hulk's shove for the pilot it hits.
+                        if(a>=H)
                         {
-                            // The Hulk's: a shockwave twice the disc, cracks run out past it, heavy debris and a dust ring, the floor
-                            // shaken far, and a shove for the pilot it hits (a kick up and back, rolled; the authority throws it).
-                            if(NativeHordeFx.Wave(a-H,R+2.4f,.75f,out float wr,out float wi,out float wa)){draw.Ring(draw.Effects,c+Vector3.up*.008f,wi,wr,Alpha(new Color(1,.82f,.7f),wa),NativeFxDraw.Authored+NativeFxDraw.Additive);draw.Ring(draw.Effects,c+Vector3.up*.01f,wi*.85f,wr*.8f,Alpha(seam,wa*.6f),NativeFxDraw.Authored+NativeFxDraw.Additive);
-                                draw.Sprite(draw.Effects,c+Vector3.up*.4f,right,up,3.4f*(1-Mathf.Clamp01((a-H)/.3f)),Alpha(seam,wa),NativeFxDraw.Authored+NativeFxDraw.Additive);}
-                            for(int i=0;i<NativeHordeFx.DebrisCount;i+=half?2:1)if(NativeHordeFx.HeavyDebris(j.Seed,i,a-H,R,out var o,out float sz,out float spin,out float da))draw.Cube(draw.Solid,c+new Vector3(o.X,o.Y+sz*.5f,o.Z),Quaternion.Euler(spin*57.3f,spin*40f,spin*17f),Vector3.one*sz*da,new Color(.07f,.06f,.09f),NativeFxDraw.Authored);
-                            if(a>=H){HordeHeavyCracks(draw,c,a-H,j.Seed^0x71,R*1.25f,2.5f,seam);HordeSlamExtras(draw,c,a-H,j.Seed^0x5a3,R,right,up,half||low,seam);if(a-H<.12f)HordeSmashShake(c,now-(a-H),j.Seed^(uint)j.Id,R,true);HordeShove(draw,arena,c,R,a-H,fwd,right,up);}
-                            break;
+                            HordeImpactAt(j.Id,c,now-(a-H),j.Seed^0x5a3,NativeZombieFx.Smash(j.Kind),NativeHordeKinds.Seam[j.Kind]);
+                            if(a-H<.12f)HordeSmashShake(c,now-(a-H),j.Seed^(uint)j.Id,R,hulk);if(hulk)HordeShove(draw,arena,c,R,a-H,fwd,right,up);
                         }
-                        if(NativeHordeFx.Shockwave(a-H,out float rr,out float inner,out float al)){draw.Ring(draw.Effects,c+Vector3.up*.006f,inner,rr,Alpha(new Color(1,.85f,.7f),al),NativeFxDraw.Authored+NativeFxDraw.Additive);draw.Sprite(draw.Effects,c+Vector3.up*.25f,right,up,1.8f*(1-Mathf.Clamp01((a-H)/.3f)),Alpha(seam,al),NativeFxDraw.Authored+NativeFxDraw.Additive);}
-                        for(int i=0;i<NativeHordeFx.DebrisCount;i+=half?2:1)if(NativeHordeFx.Debris(j.Seed,i,a-H,out var o,out float sz,out float spin,out float da))draw.Cube(draw.Solid,c+new Vector3(o.X,o.Y+sz*.5f,o.Z),Quaternion.Euler(spin*57.3f,spin*40f,spin*17f),Vector3.one*sz*da,new Color(.07f,.06f,.09f),NativeFxDraw.Authored);
-                        // The zombie brute's hammer: dust round the disc, cracks out of it, and the shake (a kick inside the disc).
-                        if(a>=H){HordeSlamExtras(draw,c,a-H,j.Seed^0x5a3,NativeHordeKinds.SmashRadius,right,up,half||low,seam);if(a-H<.12f)HordeSmashShake(c,now-(a-H),j.Seed^(uint)j.Id,NativeHordeKinds.SmashRadius);}
                         break;
                     }
                     case NativeHordeKinds.Attack.Lunge:case NativeHordeKinds.Attack.Pounce:
@@ -386,15 +382,15 @@ namespace ChipArena.UnityConversion
                     {
                         // The wind-up: the throat and sac swell and glow acid green under the unhinging jaw, drool runs off it.
                         float sw=NativeHordeFx.Swell(j.Attack,a,H);Vector3 mouth=j.Mouth,throat=Vector3.Lerp(j.Neck,j.Mouth,.45f)+Vector3.down*.04f;
-                        if(sw>0){draw.Sprite(draw.Effects,throat,right,up,.32f+.42f*sw,Alpha(seam,.6f*sw),NativeFxDraw.Authored+NativeFxDraw.Additive);if(a<H)draw.Sprite(draw.Effects,mouth,right,up,.12f+.16f*sw,Alpha(seam,.75f*sw),NativeFxDraw.Authored+NativeFxDraw.Additive);}
-                        for(int i=0;i<NativeHordeFx.DroolDrops;i+=half?2:1)if(NativeHordeFx.Drool(j.Seed,i,a,H,out var o,out float sz,out float da))draw.Sprite(draw.Effects,mouth+new Vector3(o.X,o.Y,o.Z)+fwd*o.Z,right,up,sz*2.2f,Alpha(seam,da),NativeFxDraw.Authored+NativeFxDraw.Additive);
+                        if(sw>0)draw.Sprite(draw.Effects,throat,right,up,.24f+.3f*sw,Alpha(seam,.35f*sw),NativeFxDraw.Authored+NativeFxDraw.Additive);
+                        zfx.Windup(mouth,throat,fwd,Vector3.up,a,H,NativeHordeJaw.Open(j.Kind,j.Attack,a,H,float.NaN,float.NaN,now,j.Seed),sw,j.Seed);
                         // The glob leaves the mouth at the strike (the DEV preview predicts where it lands, facing its pilot, once per
                         // attack; Astra's minion-spit events replace the prediction).
                         if(arena?.Pve==null&&a>=H&&!hordeSpitEvents.Contains(j.Id)&&(!hordeSpat.TryGetValue(j.Id,out float last)||last!=now-a))
                         {
                             hordeSpat[j.Id]=now-a;Vector3 to=j.HasTarget?new Vector3(j.Target.x,j.Ground,j.Target.z):floor+fwd*6;Vector3 flat=to-floor;flat.y=0;if(flat.magnitude>11)to=floor+flat.normalized*11;
                             float flight=NativeHordeFx.Flight(Vector3.Distance(new Vector3(mouth.x,0,mouth.z),new Vector3(to.x,0,to.z)));
-                            HordeLaunchGlob(mouth,to,now-a+H,flight,j.Seed^(uint)(hordeGlobNext*7919),j.Id,1.3f,4);
+                            HordeLaunchGlob(mouth,to,now-a+H,flight,j.Seed^(uint)(hordeGlobNext*7919),j.Id,NativeSpitterRules.Radius,NativeSpitterRules.Duration,0);
                         }
                         break;
                     }
@@ -409,9 +405,9 @@ namespace ChipArena.UnityConversion
             hordeJobCount=0;
             DrawHordeDrops(draw,now,right,up,low);
             HordeAcidDraw(draw,arena,now,eye,right,up,quality);DrawHordeStomps(draw,now,low);DrawHordeBreachFx(draw,now,eye,right,up,low);
-            // Footfall dust.
-            for(int i=0;i<hordeDust.Length;i++){var d=hordeDust[i];if(d.Power<=0)continue;float since=now-d.Born;if(since<0||since>.5f)continue;for(int k=0;k<NativeHordeFx.DustCount;k+=low?2:1)if(NativeHordeFx.Dust(d.Seed,k,since,d.Power,out var o,out float sz,out float al))draw.Sprite(draw.Effects,d.At+new Vector3(o.X,o.Y,o.Z),right,up,sz*2.4f,Alpha(new Color(.42f,.38f,.48f),al),NativeFxDraw.Authored);}
-            HordePartsFx(draw,now,right,up);
+            // Footfall dust (toon puffs kicked round the foot).
+            for(int i=0;i<hordeDust.Length;i++){var d=hordeDust[i];if(d.Power<=0)continue;float since=now-d.Born;if(since<0||since>.5f)continue;if(zfx.Within(Vector3.Distance(eye,d.At),d.Power>1.5f))zfx.Footfall(d.At,since,d.Power,d.Seed);}
+            HordePartsFx(draw,now,right,up);zfx.Submit(camera,now);
         }
         private readonly double[] hordeSlash=new double[16],hordeSlashA=new double[16],hordeSlashB=new double[16];
         // The Siren's claw crescent (NativeSirenFx.SlashMatrix shape) at a horde add's chest, smaller: source frame (x mirrored).
@@ -434,7 +430,9 @@ namespace ChipArena.UnityConversion
             if(arena.Pve!=null)
             {
                 int recordCount=arena.PveAcidCount;
-                for(int i=0;i<hordeGlobs.Length;i++){bool found=false;for(int k=0;k<recordCount;k++){var r=arena.PveAcidAt(k);if(hordeGlobs[i].Id==r.actor&&hordeGlobs[i].At==r.at){found=true;break;}}if(!found)hordeGlobs[i].Flight=0;}
+                for(int i=0;i<hordeGlobs.Length;i++){bool found=false;for(int k=0;k<recordCount;k++){var r=arena.PveAcidAt(k);if(hordeGlobs[i].Id==r.actor&&hordeGlobs[i].At==r.at){found=true;break;}}
+                    // A record gone before its pool ended (a phase hold, a reset) takes its acid with it; one that ended on its own leaves its etch.
+                    if(!found&&now<hordeGlobs[i].At+hordeGlobs[i].Flight+hordeGlobs[i].Duration-.05f)hordeGlobs[i].Flight=0;}
                 for(int k=0;k<recordCount;k++){var r=arena.PveAcidAt(k);bool found=false;for(int i=0;i<hordeGlobs.Length;i++)if(hordeGlobs[i].Flight>0&&hordeGlobs[i].Id==r.actor&&hordeGlobs[i].At==r.at){found=true;break;}if(!found)HordeLaunchGlob(NativeArena.Vec(r.from),NativeArena.Vec(r.to),r.at,r.flight,(uint)r.id,r.actor,NativeSpitterRules.Radius,NativeSpitterRules.Duration);}
                 return;
             }
@@ -443,7 +441,7 @@ namespace ChipArena.UnityConversion
             {
                 var e=events[i];if(e.Id<=hordeSpitEvent)continue;if(e.Id>newest)newest=e.Id;if(e.Detail!="minion-spit")continue;
                 hordeSpitEvents.Add(e.Target);var from=NativeArena.Vec(e.From);var to=NativeArena.Vec(e.Position);
-                HordeLaunchGlob(from,to,e.Time,e.Amount>0?e.Amount:NativeHordeFx.Flight(Vector3.Distance(from,to)),NativeGoreRules.FnvDigits(e.Id),e.Target,e.Radius>0?e.Radius:1.3f,4);
+                HordeLaunchGlob(from,to,e.Time,e.Amount>0?e.Amount:NativeHordeFx.Flight(Vector3.Distance(from,to)),NativeGoreRules.FnvDigits(e.Id),e.Target,e.Radius>0?e.Radius:NativeSpitterRules.Radius,NativeSpitterRules.Duration);
             }
             if(newest<hordeSpitEvent)hordeSpitEvents.Clear();hordeSpitEvent=newest;
         }

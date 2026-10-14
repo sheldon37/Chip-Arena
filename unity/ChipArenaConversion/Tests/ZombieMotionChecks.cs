@@ -225,7 +225,7 @@ namespace ChipArena.UnityConversion
             var z=R(root,"Assets/ChipArena/Runtime/NativeHordeZombiePresentation.cs");
             foreach(var bad in new[]{".Hp=","Damage(","Emit(","StaggerAt=","RecoverAt=","StrikeAt=","LastAttack=","Body.position=","linearVelocity=","AddComponent<"})Check(!z.Contains(bad)&&!p.Contains(bad),"the zombie presentation never writes `"+bad+"`");
             Check(R(root,"Assets/ChipArena/Runtime/ConversionGame.cs").Contains("if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)presentation.HordeShake(cameraView.transform,prefs.reducedEffects?.5f:1);"),"the slams' shake follows Settings · camera shake on the live local view");
-            Check(p.Contains("HordeSlamExtras(draw,c,a-H,")&&p.Contains("HordeSmashShake(c,"),"the smash throws dust and cracks and shakes");
+            Check(p.Contains("HordeImpactAt(j.Id,c,now-(a-H),j.Seed^0x5a3,NativeZombieFx.Smash(j.Kind),")&&p.Contains("HordeSmashShake(c,"),"the smash throws dust and cracks and shakes");
             Check(p.Contains("BankPlay(NativeHordeKinds.StrikeCue(NativeHordeKinds.Attack.Smash),m.Body.position"),"the landing thuds on existing bank keys");
             foreach(var f in new[]{"NativeZombieClips.cs","NativeZombieMotion.cs","NativeZombieModels.cs","NativeHordeDrop.cs"}){var t=R(root,"Assets/ChipArena/Core/"+f);Check(!t.Contains("NativeArena")&&!t.Contains("NativePilot")&&!t.Contains("UnityEngine")&&!t.Contains("new Random("),f+" reads no authority state, no engine and no clock-free randomness");}
         }

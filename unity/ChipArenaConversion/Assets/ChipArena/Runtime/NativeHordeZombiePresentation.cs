@@ -18,13 +18,21 @@ namespace ChipArena.UnityConversion
     //    felt (the Hulk's rolled and bigger). Settings · camera shake gates all of them (Reduced effects halves them).
     //  - The Hulk's footfalls shake the ground a little and leave cracks round its feet; its death crashes down with a thud of
     //    dust and a shake.
+    // High-quality pass (owner 2026-10-14: "Slam/landing/wall break [effects] also needs improvements from hulk/brute"): every
+    // strike, landing and crash is one impact (Core/NativeZombieFx.Impact on the authority's radius: the smash's disc, the drop
+    // profile's slam radius) held where it struck and drawn by Runtime/NativeZombieFxDraw.cs: a flash, the upright slam wave to
+    // the radius (never a flat ring), a crushed patch and jagged branching cracks with a hot seam, toon dust rolling out low over
+    // the floor, a dust column, lit rubble thrown on arcs that bounces and comes to rest inside the radius, sparks; the Hulk's
+    // landing a second wave and its crater's rubble rim. Timed only from the replicated clocks (LastAttack + hit, LandAt), so
+    // the body's animation (its own branch) and these effects meet on the same marks.
     // Fixed pools: no allocation per frame.
     public sealed partial class ArenaPresentation
     {
         private struct HordeDropDraw{public int Id,Kind;public Vector3 Land;public float Age,Span,Height;public uint Seed;}
         private readonly HordeDropDraw[] hordeDrops=new HordeDropDraw[8];private int hordeDropCount;
-        private struct HordeLanding{public bool Live,Heavy;public int Id;public Vector3 At;public float Born,Radius;public uint Seed;}
-        private readonly HordeLanding[] hordeLandings=new HordeLanding[8];
+        private struct HordeLanding{public bool Live,Heavy;public int Id;public Vector3 At;public float Born,Radius;public uint Seed;public NativeZombieFx.Impact Profile;public int Ink;}
+        private readonly HordeLanding[] hordeLandings=new HordeLanding[16];
+        private NativeZombieFxDraw zombieFx;
         private readonly NativeHordeFx.Shake[] hordeShakes=new NativeHordeFx.Shake[NativeHordeFx.ShakeSlots];
         /// <summary>The camera's slam shake this frame is read against (the arena's local pilot, for the kick inside a disc).</summary>
         private Vector3 hordeLocalAt;private bool hordeLocalKnown;
@@ -44,14 +52,17 @@ namespace ChipArena.UnityConversion
             // Touchdown (once per drop): the slam's effects, the shake and the cue run on from here.
             float landAge=span-p.Recover;if(age<landAge||age>landAge+.6f)return;float born=hordeClock-(age-landAge);
             for(int i=0;i<hordeLandings.Length;i++)if(hordeLandings[i].Live&&hordeLandings[i].Id==id&&Mathf.Abs(hordeLandings[i].Born-born)<.1f)return;
-            HordeLandAt(id,land,born,seed,p.SlamRadius,p.Heavy);
+            HordeImpactAt(id,land,born,seed,NativeZombieFx.Landing(p),NativeHordeKinds.Seam[p.Heavy?NativeHordeKinds.Hulk:NativeHordeKinds.Brute]);
             NativeHordeFx.AddShake(hordeShakes,ToN(land),born,p.ShakePeak,p.ShakeRange,p.Heavy&&hordeLocalKnown&&Vector3.Distance(hordeLocalAt,land)<p.SlamRadius?p.ShakeKick:0,seed,p.Heavy?1.3f:NativeHordeFx.ShakeSeconds,p.Heavy?3:0);
             if(p.Heavy)HordeJoltProps(land,p.SlamRadius*1.6f,born,seed);
         }
-        private void HordeLandAt(int id,Vector3 at,float born,uint seed,float radius,bool heavy)
+        /// <summary>An impact (a smash's strike, a landing, a crash) at `at` on the floor, born at `born`: kept where it struck until
+        /// its marks are gone; the same one twice (an add's id and its birth) is ignored, so the first sight fixes its place.</summary>
+        private void HordeImpactAt(int id,Vector3 at,float born,uint seed,in NativeZombieFx.Impact p,int ink)
         {
-            int o=0;for(int i=0;i<hordeLandings.Length;i++){if(!hordeLandings[i].Live){o=i;break;}if(hordeLandings[i].Born<hordeLandings[o].Born)o=i;}
-            hordeLandings[o]=new HordeLanding{Live=true,Heavy=heavy,Id=id,At=at,Born=born,Seed=seed,Radius=radius};
+            int o=0;for(int i=0;i<hordeLandings.Length;i++){if(hordeLandings[i].Live&&hordeLandings[i].Id==id&&Mathf.Abs(hordeLandings[i].Born-born)<.1f)return;}
+            for(int i=0;i<hordeLandings.Length;i++){if(!hordeLandings[i].Live){o=i;break;}if(hordeLandings[i].Born<hordeLandings[o].Born)o=i;}
+            hordeLandings[o]=new HordeLanding{Live=true,Heavy=p.Heavy,Id=id,At=at,Born=born,Seed=seed,Radius=p.Radius,Profile=p,Ink=ink};
         }
         /// <summary>The smash's strike (DrawHordeKindFx, once per blow): the shake round the disc and the kick for a pilot in it.</summary>
         private void HordeSmashShake(Vector3 center,float born,uint seed,float radius,bool hulk=false)
@@ -81,7 +92,7 @@ namespace ChipArena.UnityConversion
         private void HordeCrash(int id,Vector3 floor,float born,uint seed)
         {
             for(int i=0;i<hordeLandings.Length;i++)if(hordeLandings[i].Live&&hordeLandings[i].Id==id&&Mathf.Abs(hordeLandings[i].Born-born)<.1f)return;
-            HordeLandAt(id,floor,born,seed,2.6f,false);NativeHordeFx.AddShake(hordeShakes,ToN(floor),born,.1f,16,0,seed,.8f,0);
+            HordeImpactAt(id,floor,born,seed,NativeZombieFx.Crash,NativeHordeKinds.Seam[NativeHordeKinds.Hulk]);NativeHordeFx.AddShake(hordeShakes,ToN(floor),born,.1f,16,0,seed,.8f,0);
         }
         // The props near a heavy landing jolt: drawn jumping and settling (their renderer hidden meanwhile), their colliders untouched.
         private void HordeJoltProps(Vector3 at,float radius,float born,uint seed)
@@ -131,30 +142,13 @@ namespace ChipArena.UnityConversion
                 }
             }
             hordeDropCount=0;
+            // The impacts: the landings, the smashes and the crashes, each where it struck, on its own profile (NativeZombieFxDraw).
+            var z=zombieFx;
             for(int i=0;i<hordeLandings.Length;i++)
             {
-                var l=hordeLandings[i];if(!l.Live)continue;float since=now-l.Born,stay=l.Heavy?NativeHordeFx.CraterSeconds:1.8f;if(since<-.05f||since>stay){if(since>stay)hordeLandings[i].Live=false;continue;}
-                var c=l.At+Vector3.up*.02f;var ink=NativeArena.ColorOf(NativeHordeKinds.Seam[l.Heavy?NativeHordeKinds.Hulk:NativeHordeKinds.Brute]);
-                if(l.Heavy){HordeHeavyLanding(draw,c,since,l.Seed,l.Radius,right,up,low,ink);continue;}
-                if(NativeHordeFx.LandWave(since,out float rr,out float inner,out float al)){float k=l.Radius/NativeHordeDrop.SlamRadius;draw.Ring(draw.Effects,c,inner*k,rr*k,Alpha(new Color(1,.85f,.7f),al),NativeFxDraw.Authored+NativeFxDraw.Additive);draw.Ring(draw.Effects,c+Vector3.up*.003f,inner*.8f*k,rr*.82f*k,Alpha(ink,al*.6f),NativeFxDraw.Authored+NativeFxDraw.Additive);
-                    draw.Sprite(draw.Effects,c+Vector3.up*.35f,right,up,2.4f*(1-Mathf.Clamp01(since/.25f)),Alpha(ink,al),NativeFxDraw.Authored+NativeFxDraw.Additive);}
-                HordeSlamExtras(draw,c,since,l.Seed,l.Radius,right,up,low,ink);
-                for(int k=0;k<NativeHordeFx.DebrisCount;k+=low?2:1)if(NativeHordeFx.LandDebris(l.Seed,k,since,out var o,out float sz,out float spin,out float da))draw.Cube(draw.Solid,c+new Vector3(o.X,o.Y+sz*.5f,o.Z),Quaternion.Euler(spin*57.3f,spin*40f,spin*17f),Vector3.one*sz*da,new Color(.07f,.06f,.09f),NativeFxDraw.Authored);
+                var l=hordeLandings[i];if(!l.Live)continue;float since=now-l.Born,stay=NativeZombieFx.Life(l.Profile);if(since<-.05f||since>stay){if(since>stay)hordeLandings[i].Live=false;continue;}
+                if(z!=null&&z.Within(Vector3.Distance(z.Eye,l.At),l.Heavy))z.Impact(l.At+Vector3.up*.012f,since,l.Seed,l.Profile,l.Ink);
             }
-        }
-        // The Hulk's landing: a big shockwave and a second, the crater and its rubble rim, cracks far out, a wall of dust, debris.
-        private void HordeHeavyLanding(NativeFxDraw draw,Vector3 c,float since,uint seed,float radius,Vector3 right,Vector3 up,bool low,Color ink)
-        {
-            if(NativeHordeFx.Wave(since,radius+1.5f,.8f,out float wr,out float wi,out float wa)){draw.Ring(draw.Effects,c+Vector3.up*.01f,wi,wr,Alpha(new Color(1,.86f,.72f),wa),NativeFxDraw.Authored+NativeFxDraw.Additive);draw.Ring(draw.Effects,c+Vector3.up*.012f,wi*.85f,wr*.82f,Alpha(ink,wa*.65f),NativeFxDraw.Authored+NativeFxDraw.Additive);}
-            if(NativeHordeFx.Wave(since-.18f,radius*.75f,.6f,out float w2,out float i2,out float a2))draw.Ring(draw.Effects,c+Vector3.up*.014f,i2,w2,Alpha(ink,a2*.7f),NativeFxDraw.Authored+NativeFxDraw.Additive);
-            if(since<.3f){float k=1-since/.3f;draw.Sprite(draw.Effects,c+Vector3.up*.6f,right,up,5.5f*k,Alpha(ink,k),NativeFxDraw.Authored+NativeFxDraw.Additive);draw.Sprite(draw.Effects,c+Vector3.up*.3f,right,up,3.5f*k,Alpha(new Color(1,.9f,.8f),.8f*k),NativeFxDraw.Authored+NativeFxDraw.Additive);}
-            float cr=radius*.32f;
-            if(NativeHordeFx.Crater(since,cr,out float r,out float ca)){draw.Ring(draw.Solid,c-Vector3.up*.008f,0,r,new Color(.025f*ca+.0f,.02f*ca,.03f*ca),NativeFxDraw.Authored);draw.Ring(draw.Effects,c-Vector3.up*.006f,r*.6f,r*.96f,Alpha(ink,ca*.25f*(1-Mathf.Clamp01(since/3))),NativeFxDraw.Authored+NativeFxDraw.Additive);
-                for(int k=0;k<NativeHordeFx.CraterChunks;k+=low?2:1)if(NativeHordeFx.CraterChunk(seed,k,since,cr,out var co,out float cs,out float tilt,out float cal))draw.Cube(draw.Solid,c+new Vector3(co.X,co.Y,co.Z),Quaternion.Euler(tilt*57.3f,k*37,tilt*30),new Vector3(cs*1.3f,cs*.7f,cs),new Color(.08f,.07f,.09f),NativeFxDraw.Authored);}
-            HordeHeavyCracks(draw,c,since,seed^0x77,radius*1.35f,NativeHordeFx.CraterSeconds,ink);
-            for(int k=0;k<NativeHordeFx.DustWallCount;k+=low?2:1)if(NativeHordeFx.DustWall(seed,k,since,radius,out var o,out float sz,out float al))draw.Sprite(draw.Effects,c+new Vector3(o.X,o.Y,o.Z),right,up,sz*2,Alpha(new Color(.43f,.39f,.47f),al),NativeFxDraw.Authored);
-            for(int k=0;k<NativeHordeFx.DebrisCount;k+=low?2:1)if(NativeHordeFx.HeavyDebris(seed^0x9e3,k,since,radius,out var o2,out float s2,out float spin,out float da))draw.Cube(draw.Solid,c+new Vector3(o2.X,o2.Y+s2*.5f,o2.Z),Quaternion.Euler(spin*57.3f,spin*40f,spin*17f),Vector3.one*s2*da,new Color(.07f,.06f,.09f),NativeFxDraw.Authored);
-            HordeSlamExtras(draw,c,since,seed,radius*.7f,right,up,low,ink);
         }
         /// <summary>Long cracks run out of a heavy impact to `radius`, staying `stay` s (the seam's light in them at first).</summary>
         private void HordeHeavyCracks(NativeFxDraw draw,Vector3 c,float since,uint seed,float radius,float stay,Color seam)
@@ -179,25 +173,14 @@ namespace ChipArena.UnityConversion
                 for(int s=0;s<3;s++){var a=p.Body.position+Vector3.up*(-.3f+.35f*s)-dir*(.2f+since*2);var b=a-dir*(.9f*k);var w=Vector3.Cross(dir,Vector3.up)*.03f;draw.Quad(draw.Effects,a-w,b-w*.2f,b+w*.2f,a+w,new Color(1,.9f,.8f,.45f*k),NativeFxDraw.Authored+NativeFxDraw.Additive);}
             }
         }
-        /// <summary>The Hulk's footfall cracks (DevEffects).</summary>
+        /// <summary>The Hulk's footfall cracks (DevEffects; decals, NativeZombieFxDraw.StompCracks).</summary>
         private void DrawHordeStomps(NativeFxDraw draw,float now,bool low)
         {
+            var z=zombieFx;
             for(int i=0;i<hordeStomps.Length;i++)
             {
                 ref var s=ref hordeStomps[i];if(!s.Live)continue;float since=now-s.Born;if(since>NativeHordeFx.StompSeconds||since<-1){s.Live=false;continue;}
-                for(int k=0;k<NativeHordeFx.StompCracks;k+=low?2:1)if(NativeHordeFx.StompCrack(s.Seed,k,since,out float ang,out float len,out float a))
-                {var dir=new Vector3(Mathf.Cos(ang),0,Mathf.Sin(ang));var side=new Vector3(-dir.z,0,dir.x)*.03f;var p0=s.At+dir*.18f+Vector3.up*.006f;var p1=p0+dir*len;draw.Quad(draw.Effects,p0-side,p1-side*.15f,p1+side*.15f,p0+side,new Color(.015f,.01f,.02f,a),NativeFxDraw.Authored);}
-            }
-        }
-        /// <summary>The slam's dust ring, ink splash and cracks round a centre (the smash's disc and the drop's landing).</summary>
-        private void HordeSlamExtras(NativeFxDraw draw,Vector3 c,float since,uint seed,float radius,Vector3 right,Vector3 up,bool low,Color seam)
-        {
-            for(int k=0;k<NativeHordeFx.SlamDust;k+=low?2:1)if(NativeHordeFx.SlamPuff(seed,k,since,radius,out var o,out float sz,out float al))draw.Sprite(draw.Effects,c+new Vector3(o.X,o.Y,o.Z),right,up,sz*2,Alpha(new Color(.42f,.38f,.48f),al),NativeFxDraw.Authored);
-            for(int k=0;k<NativeHordeFx.Cracks;k++)if(NativeHordeFx.Crack(seed,k,since,radius,out float ang,out float len,out float ca))
-            {
-                var dir=new Vector3(Mathf.Cos(ang),0,Mathf.Sin(ang));var side=new Vector3(-dir.z,0,dir.x)*.025f;var p0=c+dir*.25f+Vector3.up*.004f;var p1=p0+dir*len;
-                draw.Quad(draw.Effects,p0-side,p1-side*.2f,p1+side*.2f,p0+side,new Color(.015f,.01f,.02f,ca),NativeFxDraw.Authored);
-                if(since<.5f)draw.Quad(draw.Effects,p0-side*.5f,p1-side*.1f,p1+side*.1f,p0+side*.5f,Alpha(seam,ca*(1-since/.5f)),NativeFxDraw.Authored+NativeFxDraw.Additive);
+                if(z!=null&&z.Within(Vector3.Distance(z.Eye,s.At),true))z.StompCracks(s.At,since,s.Seed);
             }
         }
         /// <summary>A new arena or a rewind: the drops, landings, shakes and jolts in flight are forgotten (the props given back).</summary>
