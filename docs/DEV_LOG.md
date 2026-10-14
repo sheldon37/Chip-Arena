@@ -7652,8 +7652,11 @@ work. This pass keeps their space clear and does not touch their files. Details,
 Owner (2026-10-14): "hazards, alarms (useful for Ward Zero) ... alarms for immersion (we need to bring sounds in), saws,
 turrets, etc."; follow-up: "alarms can also be immersive for music in some cases". Split: presentation Claude, authority Astra.
 
-- Branch `claude/hazard-kit` on shared `6da0330`. Implementation `8e8ae4c`; merge of shared `f67a4f5` (which includes
-  `768ebc9`, Expedition states, Hulk charge and spitter pool) is `008765e`, with no conflicts. Pushed; no PR, merge or release.
+- Branch `claude/hazard-kit` on shared `6da0330`. Implementation `8e8ae4c`.
+  - Merge `008765e` takes shared `f67a4f5` (Expedition states, Hulk charge, spitter pool), with no conflicts.
+  - Merge `10dc07c` takes shared `26d01e5` (Hulk PR #215, PR #216, Expedition town dressing). Conflicts: `ArenaPresentation`
+    OnDestroy and the `Tests/Program` full run, where both sides are kept, and this log.
+  - Pushed; no PR, merge or release.
 - **Kit** (`docs/HAZARD-KIT.md`): one record schema, trigger model and state model for these kinds:
   `alarm-beacon`, `alarm-strobe`, `alarm-klaxon`, `alarm-sign`, `turret` and `saw`. Saw variants are floor-slot, wall,
   ceiling-drop, rail and pendulum.
@@ -7710,13 +7713,14 @@ turrets, etc."; follow-up: "alarms can also be immersive for music in some cases
     the blood and the chop.
   - Low priority: a replicated wave start time, so late joiners agree exactly.
 - Renders (scratch harness, not Unity): `scratchpad/renders-hazard-kit/`, every piece and state plus the Ward Zero scenes.
-- Checks on `008765e` (actual):
+- Checks on `10dc07c` (actual; `run5.sh`, then `ci-relay2.sh`):
   - `unity-check.sh`: Runtime + Editor compile against Unity 6000.3.24f1, OK.
-  - `check_relay.py`: exit 0, 685 PASS. That includes the hazard kit's 6,412 checks: schema, Ward placements,
+  - `check_relay.py`: exit 0, 687 PASS. That includes the hazard kit's 6,412 checks: schema, Ward placements,
     deterministic timelines, flash caps per mode, free and beat-locked, beat lock, klaxon fit, trip reaction, keys and
     fallbacks, light budget, turret and saw timelines, gallery, no per-frame allocation, stage hazards untouched.
-  - CI layout (`ci-relay2.sh`): exit 0, 685 PASS.
-  - Python: 106 OK (1 skip). `package_source.py` OK (1,997 files). `git diff --check` clean.
+  - CI layout (`ci-relay2.sh`): exit 0, 687 PASS.
+  - Python: 106 OK (1 skip). `package_source.py` OK (2,024 files). `git diff --check` clean.
+  - The same suite passed on `008765e` (685 PASS).
 - Not run: Unity Editor, a Windows build, the alarms heard and seen in game, two clients.
 - Risks:
   - Light slots are shared with Ward Zero's own picks; up to 3 are replaced near alarms.

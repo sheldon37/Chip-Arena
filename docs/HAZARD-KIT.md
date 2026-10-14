@@ -32,7 +32,7 @@ Code (all under `unity/ChipArenaConversion/Assets/ChipArena/`):
 | `alarm-strobe` | Strobe panel: a xenon flash behind a cage | wall, ceiling | none |
 | `alarm-klaxon` | Klaxon horn: a red-painted bell, an indicator lamp, a shudder on each blast | wall, ceiling | none |
 | `alarm-sign` | Lit warning sign: a backlit face with hazard-striped rails. Text from the look (BIOHAZARD, LOCKDOWN, EVACUATE) or `text` (A-Z and spaces, up to 14 characters) | wall, ceiling | none |
-| `turret` | Sentry: a twin-barrel head on a yoke, with a laser sight, ammo box and vent fins. Looks `security`, `industrial` | floor, ceiling, wall | Astra (section 9) |
+| `turret` | Sentry: a head on a yaw ring and yoke, with a sensor eye, twin rotary barrel packs, a laser sight, heat fins and a status light. Looks `security`, `industrial` | floor, ceiling, wall | Astra (section 9) |
 | `saw` | Variants `floor-slot`, `wall`, `ceiling-drop`, `rail`, `pendulum`. Looks `industrial`, `surgical` | by variant | Astra (section 10) |
 
 Alarm palettes are listed below. Each look's default sign text and loop key are the defaults in `NativeHazardKit.Look`.
@@ -64,8 +64,8 @@ unless noted.
 | `rate` | A klaxon's blast period (s, default 1.6), or a turret's rounds per second |
 | `radius`, `speed`, `length` | Saw blade radius (m), travel speed (m/s), pendulum arm (m) |
 | `gain` | Sound trim (0..4) |
-| `music` | `free` (default) or `beat` (section 6) |
-| `react` | The music dips and swells when this alarm trips within earshot (section 6) |
+| `music` | `free` (default) or `beat` (section 7) |
+| `react` | The music dips and swells when this alarm trips within earshot (section 7) |
 | `text` | A sign's words |
 | `trigger` | `mode`, `events[]`, `hazard`, `first`, `period`, `offset`, `warn`, `active`, `cooldown`, `radius` (section 4) |
 | `sounds` | `loop`, `pulse`, `start`, `stop` key overrides; `gain`, `inner`, `outer` falloff radii (m) |

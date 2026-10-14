@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-14 Hazard kit: `claude/hazard-kit` (base shared `6da0330`, merged shared `f67a4f5`) adds alarm beacons, strobes, klaxons and lit signs. 30 are placed in Ward Zero and its instance, tied to lockdowns, breaches, waves and the reveal. They can lock to the boss song's beat with a music dip and swell. Settings · Alarm lights caps flashes at 3 Hz (2 Hz reduced, none calm). There are 19 sound keys with fallbacks. Turret and saw looks are DEV preview only. Presentation only; managed/relay checks pass; Unity/Windows unrun. Astra: turret and kit saw authority contracts in docs/HAZARD-KIT.md.
+2026-10-14 Hazard kit: `claude/hazard-kit` (base shared `6da0330`, merged shared `26d01e5`) adds alarm beacons, strobes, klaxons and lit signs. 30 are placed in Ward Zero and its instance, tied to lockdowns, breaches, waves and the reveal. They can lock to the boss song's beat with a music dip and swell. Settings · Alarm lights caps flashes at 3 Hz (2 Hz reduced, none calm). There are 19 sound keys with fallbacks. Turret and saw looks are DEV preview only. Presentation only; managed/relay checks pass; Unity/Windows unrun. Astra: turret and kit saw authority contracts in docs/HAZARD-KIT.md.
 
 2026-10-14 Expedition view fields: `codex/expedition-view-fields` on shared `768ebc9` adds member `seat`, boss spawn `x/y/z` and `hp/maxHp`, and the layout fingerprint before the first area load. Claude binding contract: EXPEDITION-PRESENTATION and DEV_LOG. Scene/combat integration remains unfinished; no playable or released Expedition claim.
 
