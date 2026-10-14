@@ -6632,3 +6632,39 @@ All 35 managed/relay checks, runtime syntax, package (1852 files), whitespace
 pass. Actual Unity/PhysX regressions and Windows host/guest visual acceptance
 remain unrun locally. Merge/builder sync receipts in task PR; compiled update
 must pass the desktop builder before publication.
+
+
+## 2026-10-14 — Astra/Codex: DEV Abuse host authority
+
+Branch `codex/dev-abuse-authority`, base shared `09096aff`. Owner explicitly
+authorizes verified developer guests to override host/room ownership for match
+commands. Added a separate channel without weakening the offline sandbox gate.
+Every request checks the verified seat grant and expiry; bounded positional args,
+unscaled per-account token bucket, stable transaction outcomes, stale match/
+generation refusal, and local host action log. Payload cannot supply identity.
+
+Implemented personal, troll and room actions; fixed original weapon restoration
+on disposal and PvE preservation on arena reset. Dummies stay within eight seats
+and reuse cleared slots; no account/profile/purchase/reward writes. Invoking
+account seats lose progression eligibility for the match, retained across reset/
+reconnect; current PvP/PvE has no persistent XP writer. Reveal, visual-only scale,
+cheat flags, time scale and one-shot authored hazard pulses replicate. Collider
+sizes and reach do not scale. Normal non-DEV/sandbox behavior retained. Stealth
+join is intentionally absent.
+
+Claude's `claude/dev-tools` branch/DEV-TOOLS.md were absent from the remote.
+`docs/DEV-ABUSE-AUTHORITY.md` documents the UI API, args, bounds, refusal states,
+replicated fields, hazard visual hookup and future progression writer requirement.
+No UI/tag/hazard-pulse drawing completion is claimed.
+
+Verification: 82 focused managed checks pass (forged/expired/non-DEV/scoped
+claims, every action schema/dispatch, rate/dedup/reset/failure semantics and
+receipt eligibility). Source package 1927 files, runtime/editor syntax and
+whitespace pass. Clean full managed/relay suite passes (677 PASS groups;
+35 managed-core categories, exit 0). Optional host capability negotiation and
+legacy scale normalization preserve older non-DEV frame decoding. An earlier run exited without an assertion
+while its assembly was rebuilt; the clean rerun uses fixed compiled binaries.
+Added an actual-Unity build gate for every effect in local/encoded-guest paths,
+JsonUtility/replica state and account isolation. This gate, actual Unity compile,
+PhysX, Windows and live host/guest acceptance remain unrun locally. No compiled
+release claimed; publication/merge receipts belong in the task PR.

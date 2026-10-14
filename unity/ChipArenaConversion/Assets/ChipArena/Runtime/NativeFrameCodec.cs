@@ -23,6 +23,8 @@ namespace ChipArena.UnityConversion
         {if(d!=null){if(!d.hasActor)d.actor=null;if(d.actor!=null&&!d.actor.HasKernel)d.actor.Kernel=null;if(!d.hasWound)d.wound=null;}}
         public void RestorePresence()
         {
+            if(devTimeScale==0)devTimeScale=1;
+            if(seats!=null)foreach(var seat in seats)if(seat!=null&&seat.devScale==0)seat.devScale=1;
             if(!hasFinalKillcam){finalVictim=finalSeed=0;resultAt=0;}
             // JsonUtility turns null strings into empty strings. Runtime draft/end-state gates use null as "not chosen/ended".
             chosen=string.IsNullOrEmpty(chosen)?null:chosen;introStyle=string.IsNullOrEmpty(introStyle)?null:introStyle;
@@ -43,6 +45,10 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeNetCodec
     {
+        [Serializable] private sealed class DevCommandEnvelope
+        {public int version=NativeConnection.Protocol,epoch,generation;public string type="dev-command";public NativeDevCommand devCommand;}
+        [Serializable] private sealed class DevReplyEnvelope
+        {public int version=NativeConnection.Protocol,epoch;public string type="dev-reply";public NativeDevReply devReply;}
         [Serializable] private sealed class FrameEnvelope
         {public int version=NativeConnection.Protocol,epoch;public string type="frame";public NativeGameFrame frame;}
         [Serializable] private sealed class LobbyEnvelope
@@ -57,6 +63,8 @@ namespace ChipArena.UnityConversion
         {public int version=NativeConnection.Protocol;public string type="expedition-reply";public ExpeditionCommandReply expeditionReply;}
         public static string Encode(NativeNetMessage message)
         {
+            if(message.type=="dev-command")return JsonUtility.ToJson(new DevCommandEnvelope{epoch=message.epoch,generation=message.generation,devCommand=message.devCommand});
+            if(message.type=="dev-reply")return JsonUtility.ToJson(new DevReplyEnvelope{epoch=message.epoch,devReply=message.devReply});
             if(message.type=="expedition-public")return JsonUtility.ToJson(new ExpeditionPublicEnvelope{expeditionPublic=message.expeditionPublic});
             if(message.type=="expedition-private")return JsonUtility.ToJson(new ExpeditionPrivateEnvelope{expeditionPrivate=message.expeditionPrivate});
             if(message.type=="expedition-command")return JsonUtility.ToJson(new ExpeditionCommandEnvelope{expeditionCommand=message.expeditionCommand});
@@ -70,6 +78,8 @@ namespace ChipArena.UnityConversion
         public static NativeNetMessage Decode(string json)
         {
             var message=JsonUtility.FromJson<NativeNetMessage>(json);
+            if(message?.type=="dev-command")message.devCommand=JsonUtility.FromJson<DevCommandEnvelope>(json).devCommand;
+            if(message?.type=="dev-reply")message.devReply=JsonUtility.FromJson<DevReplyEnvelope>(json).devReply;
             if(message?.type=="expedition-public")message.expeditionPublic=JsonUtility.FromJson<ExpeditionPublicEnvelope>(json).expeditionPublic;
             if(message?.type=="expedition-private")message.expeditionPrivate=JsonUtility.FromJson<ExpeditionPrivateEnvelope>(json).expeditionPrivate;
             if(message?.type=="expedition-command")message.expeditionCommand=JsonUtility.FromJson<ExpeditionCommandEnvelope>(json).expeditionCommand;
