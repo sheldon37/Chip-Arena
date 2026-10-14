@@ -20,9 +20,9 @@ namespace ChipArena.UnityConversion.Editor
             if(expedition.members.Single().seat!=7||!expedition.members[0].safe||expedition.areaBarrier.layout!=new string('a',64)||expedition.areaBarrier.active||
                 expedition.bossArrivals.Single().x!=3||expedition.bossArrivals[0].y!=4||expedition.bossArrivals[0].z!=5||expedition.bossArrivals[0].hp!=25||expedition.bossArrivals[0].maxHp!=120||expedition.bossArrivals[0].spawned!=2)
                 throw new Exception("Expedition public JsonUtility envelope lost pilot, boss or startup layout state");
-            var ready=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-area-ready",
+            var areaReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-area-ready",
                 expeditionAreaReady=new ExpeditionAreaReadyRequest{run="run",epoch=3,target="ward",generation=7,layout=new string('b',64)}})).expeditionAreaReady;
-            if(ready==null||ready.run!="run"||ready.epoch!=3||ready.target!="ward"||ready.generation!=7||ready.layout!=new string('b',64))
+            if(areaReady==null||areaReady.run!="run"||areaReady.epoch!=3||areaReady.target!="ward"||areaReady.generation!=7||areaReady.layout!=new string('b',64))
                 throw new Exception("Expedition area-ready JsonUtility envelope lost load fences");
             var preferences=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{map="random",lobbyPose="crossed-arms",fullscreen=true}));
             if(preferences.map!="random"||preferences.lobbyPose!="crossed-arms"||!preferences.fullscreen)throw new Exception("Saved pilot pose/map/fullscreen did not round trip");
