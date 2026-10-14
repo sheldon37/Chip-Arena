@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         public bool CanInstall { get { return State==NativeUpdateState.Available&&canInstall!=null&&canInstall(); } }
         private string root,transaction;private Func<bool> canInstall;private Action beforeQuit;
         private NativeUpdateManifest manifest;private bool cancelled;private UnityWebRequest active;
-        private IEnumerator running;private FileStream downloadFile,downloadLock;
+        private IEnumerator running;private FileStream downloadLock;
 
         public void Initialize(Func<bool> installationAllowed,Action saveBeforeQuit)
         {
@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
                     if(!more)yield break;yield return routine.Current;
                 }
             }
-            finally{(routine as IDisposable)?.Dispose();running=null;active=null;downloadFile=null;downloadLock=null;}
+            finally{(routine as IDisposable)?.Dispose();running=null;active=null;downloadLock=null;}
         }
         private IEnumerator Check()
         {
@@ -103,27 +103,27 @@ namespace ChipArena.UnityConversion
             using(downloadLock=new FileStream(Path.Combine(work,"download.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None))
             {
                 string token=Guid.NewGuid().ToString("N");transaction=Path.Combine(work,token);Directory.CreateDirectory(transaction);
-                string zip=Path.Combine(transaction,"download.zip"),partPath=Path.Combine(transaction,"part.tmp");bool handedOff=false;
+                string zip=Path.Combine(transaction,"download.zip");bool handedOff=false;
                 try
                 {
                     long done=0;State=NativeUpdateState.Downloading;
                     using(var archive=new FileStream(zip,FileMode.CreateNew,FileAccess.Write,FileShare.None))
-                    foreach(var part in manifest.parts)
                     {
-                        using(downloadFile=new FileStream(partPath,FileMode.Create,FileAccess.Write,FileShare.None))
-                        using(var request=new UnityWebRequest(NativeUpdateRules.PartUrl(part),UnityWebRequest.kHttpVerbGET))
+                        foreach(var part in manifest.parts)
                         {
-                            var handler=new BoundedDownload(downloadFile,part.bytes);request.downloadHandler=handler;request.timeout=300;request.redirectLimit=0;active=request;
-                            var op=request.SendWebRequest();
-                            while(!op.isDone)
-                            {if(cancelled)throw new OperationCanceledException();Progress=(float)((done+handler.Bytes)/(double)manifest.bytes);Status="Downloading update · "+(Progress*100).ToString("0")+"%";yield return null;}
-                            if(cancelled)throw new OperationCanceledException();CheckResponse(request,handler);downloadFile.Flush(true);
+                            using(var request=new UnityWebRequest(NativeUpdateRules.PartUrl(part),UnityWebRequest.kHttpVerbGET))
+                            {
+                                var handler=new BoundedDownload(archive,part.bytes);request.downloadHandler=handler;request.timeout=300;request.redirectLimit=0;active=request;
+                                var op=request.SendWebRequest();
+                                while(!op.isDone)
+                                {if(cancelled)throw new OperationCanceledException();Progress=(float)((done+handler.Bytes)/(double)manifest.bytes);Status="Downloading update · "+(Progress*100).ToString("0")+"%";yield return null;}
+                                if(cancelled)throw new OperationCanceledException();CheckResponse(request,handler);
+                                if(handler.Bytes!=part.bytes)throw new IOException("The update download ended before its declared size.");
+                            }
+                            done+=part.bytes;
                         }
-                        State=NativeUpdateState.Verifying;Status="Verifying downloaded files…";
-                        var verify=Task.Run(()=>NativeUpdateRules.VerifyFile(partPath,part.bytes,part.sha256));
-                        while(!verify.IsCompleted)yield return null;if(verify.IsFaulted)throw verify.Exception.GetBaseException();
-                        using(var input=File.OpenRead(partPath))input.CopyTo(archive);File.Delete(partPath);done+=part.bytes;State=NativeUpdateState.Downloading;
-                    }
+                        archive.Flush(true);
+                    } // Close the complete archive before its single download verification pass.
                     State=NativeUpdateState.Verifying;Status="Verifying complete update…";Progress=1;
                     var whole=Task.Run(()=>NativeUpdateRules.VerifyFile(zip,manifest.bytes,manifest.sha256));while(!whole.IsCompleted)yield return null;if(whole.IsFaulted)throw whole.Exception.GetBaseException();
                     if(!canInstall())throw new InvalidOperationException("The update is ready, but a match or room is active. Leave it and retry.");
@@ -147,7 +147,7 @@ namespace ChipArena.UnityConversion
                 }
                 finally
                 {
-                    if(!handedOff){if(File.Exists(partPath))File.Delete(partPath);if(File.Exists(zip))File.Delete(zip);}
+                    if(!handedOff){if(File.Exists(zip))File.Delete(zip);}
                 }
             }
         }
@@ -158,7 +158,7 @@ namespace ChipArena.UnityConversion
         {
             cancelled=true;
             try{if(active!=null)active.Abort();}catch(ObjectDisposedException){}
-            finally{(running as IDisposable)?.Dispose();downloadFile?.Dispose();downloadLock?.Dispose();}
+            finally{(running as IDisposable)?.Dispose();downloadLock?.Dispose();}
         }
         private sealed class BoundedDownload : DownloadHandlerScript
         {
