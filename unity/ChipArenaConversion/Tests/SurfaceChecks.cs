@@ -57,6 +57,13 @@ namespace ChipArena.UnityConversion
                 var kit=NativeCyberCityKit.Build(blocks,map.hazards??Array.Empty<MapHazard>(),NativeCyberCityExits.Build(blocks,map.nav,map.hazards??Array.Empty<MapHazard>()),layers);
                 for(int i=0;i<kit.Parts.Length;i++){var p=kit.Parts[i];var b=blocks[p.Parent];var q=Q(b.rotation);o.Add(Make(b.id+"#kit"+i,true,V(b.pos)+Vector3.Transform(new Vector3(p.X,p.Y,p.Z),q),new Vector3(p.Hx,p.Hy,p.Hz),q,p.Look,p.Color));}
             }
+            if(map.id==NativeExpeditionCityKit.MapId)
+            {
+                // The town's dressing kit with its records (Resources/ExpeditionLayout.json): each part turned with its block, then by its own turn.
+                var layout=NativeExpeditionLayout.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ExpeditionLayout.json")));
+                var kit=NativeExpeditionCityKit.Build(blocks,layout.areas.First(a=>a.map==map.id),layers);
+                for(int i=0;i<kit.Parts.Length;i++){var p=kit.Parts[i];var b=blocks[p.Parent];var q=Q(b.rotation);o.Add(Make(b.id+"#kit"+i,true,V(b.pos)+Vector3.Transform(new Vector3(p.X,p.Y,p.Z),q),new Vector3(p.Hx,p.Hy,p.Hz),Quaternion.Normalize(q*new Quaternion(p.Qx,p.Qy,p.Qz,p.Qw)),p.Look,p.Color));}
+            }
             if(map.id=="siren")
             {
                 var entries=JsonSerializer.Deserialize<NativeWardEntrySet>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/PveContent.json")),options)?.entries??Array.Empty<NativeWardEntry>();
@@ -176,9 +183,9 @@ namespace ChipArena.UnityConversion
                 &&Within(a.X,b.X,half)&&Within(a.Y,b.Y,half)&&Within(a.Z,b.Z,half)&&b.Hx>=a.Hx&&b.Hy>=a.Hy&&b.Hz>=a.Hz&&Within(a.Hx,b.Hx,full)&&Within(a.Hy,b.Hy,full)&&Within(a.Hz,b.Hz,full);}),"cybercity: the layers keep every part (glows still name theirs), moving it at most 8 mm");
             Check(cyber.blocks.Count(b=>b.id.StartsWith("cybercity-pit-",StringComparison.Ordinal)&&b.id.Contains("-stair-"))>0&&exits.Exits.Length==4,"cybercity: the pit stair ids and the Cut's four exits stand as authored");
             // The backdrops (the skylines around the maps): the same, with their far settings.
-            foreach(var which in new[]{"factory","brickfall","cybercity"})
+            foreach(var which in new[]{"factory","brickfall","cybercity",NativeExpeditionCityKit.MapId})
             {
-                var sw=System.Diagnostics.Stopwatch.StartNew();if(which=="factory")NativeFactoryScenery.Build();else if(which=="brickfall")NativeBrickfallScenery.Build();else NativeCyberCityScenery.Build();long ms=sw.ElapsedMilliseconds;
+                var sw=System.Diagnostics.Stopwatch.StartNew();if(which=="factory")NativeFactoryScenery.Build();else if(which=="brickfall")NativeBrickfallScenery.Build();else if(which=="cybercity")NativeCyberCityScenery.Build();else NativeExpeditionCityScenery.Build();long ms=sw.ElapsedMilliseconds;
                 var boxes=Backdrop(which,true,out int unresolved,out float most);var clashes=Clashes(boxes,null,Near,1e-4f,(float)NativeSurfaceLayers.Far.MinWidth);
                 int toward=clashes.Count(c=>Vector3.Dot(c.Normal,new Vector3(0,10,0)-c.At)>0),differ=clashes.Count(c=>boxes[c.A].Color!=boxes[c.B].Color);
                 Check(toward==0&&differ==0&&unresolved==0&&most<=NativeSurfaceLayers.BackdropLift+1e-6f,which+" backdrop: no coincident faces toward the arena or of two colours ("+clashes.Count+" same-colour pairs facing away), lifts within 64 mm");
@@ -257,6 +264,13 @@ namespace ChipArena.UnityConversion
             {
                 var back=NativeCyberCityScenery.Build(layers);var raw=NativeCyberCityScenery.Build(false);
                 for(int i=0;i<back.Length;i++){var b=back[i];o.Add(Make("scenery#"+i+"/k"+b.Kind,true,new Vector3(b.X,b.Y,b.Z),new Vector3(b.Hx,b.Hy,b.Hz),Quaternion.CreateFromAxisAngle(Vector3.UnitY,b.Yaw*(float)Math.PI/180),b.Look,b.Color));
+                    most=Math.Max(most,Math.Max(b.Hx-raw[i].Hx,Math.Max(b.Hy-raw[i].Hy,b.Hz-raw[i].Hz))*2);}
+                return o;
+            }
+            if(which==NativeExpeditionCityKit.MapId)
+            {
+                var back=NativeExpeditionCityScenery.Build(layers);var raw=NativeExpeditionCityScenery.Build(false);
+                for(int i=0;i<back.Length;i++){var b=back[i];o.Add(Make("town-scenery#"+i+"/k"+b.Kind,true,new Vector3(b.X,b.Y,b.Z),new Vector3(b.Hx,b.Hy,b.Hz),Quaternion.CreateFromAxisAngle(Vector3.UnitY,b.Yaw*(float)Math.PI/180),b.Look,b.Color));
                     most=Math.Max(most,Math.Max(b.Hx-raw[i].Hx,Math.Max(b.Hy-raw[i].Hy,b.Hz-raw[i].Hz))*2);}
                 return o;
             }

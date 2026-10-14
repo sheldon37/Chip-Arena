@@ -12,6 +12,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition"){ExpeditionChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-view"){ExpeditionChecks.Run();ExpeditionPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-layout"){ExpeditionLayoutChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--expedition-dressing"){ExpeditionDressingChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-states"){ExpeditionStatesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
             DevAbuseChecks.Run();ExpeditionChecks.Run();
@@ -23,7 +24,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--cyber-ranged"){CyberRangedSimulationChecks.Run();CyberChecks.Run();foreach(var result in CyberLordRangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--horde-drops"){HordeDropChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());HulkMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-motion"){HulkMotionChecks.Run(ProjectRoot());return 0;}
-            if(args.Length==1&&args[0]=="--hulk-charge"){HulkMotionChecks.Run(ProjectRoot());HulkChargeChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--hulk-charge"){HulkMotionChecks.Run(ProjectRoot());HulkChargeChecks.Run(ProjectRoot());HulkHuntChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-tools"){DevToolsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hazard-kit"){HazardKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--scenery"){SurfaceChecks.Scenery();return 0;}
@@ -81,11 +82,11 @@ internal static class Program
             HudPlaceholderChecks.Run(root);HudCyberChecks.Run(root,data);
             DeathFxChecks.Run(root);CorpseChecks.Run(data);
             StageVentChecks.Run(root);MinionFxChecks.Run(root);MinionHintChecks.Run(root);
-            HordeDropChecks.Run(root);HordeKindChecks.Run(root);ZombieMotionChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);
+            HordeDropChecks.Run(root);HordeKindChecks.Run(root);ZombieMotionChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             CameraRigChecks.Run(root);
             StructureFxChecks.Run(root);
-            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);HazardKitChecks.Run(root);
+            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);HazardKitChecks.Run(root);
             DevToolsChecks.Run(root);
             SpawnInChecks.Run(root,data);
             VfxChecks.Run(root);VfxRuntimeChecks.Run(root);

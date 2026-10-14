@@ -6779,7 +6779,6 @@ pass. Actual Unity/PhysX regressions and Windows host/guest visual acceptance
 remain unrun locally. Merge/builder sync receipts in task PR; compiled update
 must pass the desktop builder before publication.
 
-
 ## 2026-10-14 — Astra/Codex: DEV Abuse host authority
 
 Branch `codex/dev-abuse-authority`, base shared `09096aff`. Owner explicitly
@@ -6814,7 +6813,6 @@ Added an actual-Unity build gate for every effect in local/encoded-guest paths,
 JsonUtility/replica state and account isolation. This gate, actual Unity compile,
 PhysX, Windows and live host/guest acceptance remain unrun locally. No compiled
 release claimed; publication/merge receipts belong in the task PR.
-
 
 ### 2026-10-14 — Astra: Expedition live contract follow-ups
 
@@ -7047,7 +7045,6 @@ Electron CI option A or B is still the owner's call.
 Checks: documentation-only change (EXPEDITION-LAYOUT.md, DEV_LOG, PROJECT_STATE). No code; no
 Unity, Windows or gameplay claim.
 
-
 ## 2026-10-14 — Astra: DEV monster authority and Expedition director foundation
 
 Branch `codex/expedition-director`, implementation based on shared `6f30f826`,
@@ -7100,7 +7097,6 @@ but no Unity Editor, PhysX, Windows two-client or native test release pass is
 claimed. Keep the implementation PR draft until native validation and remaining
 runtime work are complete; no shared/builder promotion from this work yet.
 
-
 ### Astra follow-up: Claude Monsters UI integrated on the draft
 
 Shared advanced to `debed457` (Claude UI `12ef8804`) during implementation. Merged
@@ -7126,7 +7122,6 @@ Final focused checks after merging the UI: managed compiler exit 0; DEV panel
 59 passed. Source-package structure (1,951 files), C# syntax (zero errors) and
 git diff --check passed. Full regression remains failed at Bisect performance,
 not waived. Implementation remains draft, unmerged and unreleased.
-
 
 ### 2026-10-14 — Astra: promote the DEV monster authority integration (PR #211)
 
@@ -7515,6 +7510,30 @@ Visuals only.
   - The run5 relay, run at the same time as the CI-layout run, stopped once on the existing Spawn-in zero-allocation check
     (696 bytes). The CI-layout run of the same commit and a solo relay rerun both pass it.
 
+## 2026-10-14 — Astra — Hulk hunted-pilot attacks and charge authority v2
+
+- Branch `codex/hulk-hunt-v2`, base shared/builder `9cc6d299`. Source implementation; merge/publication status belongs to the receipt below.
+- Adds target-based punch/swipe/smash selection (2+ in smash disc wins; no every-third rule), the .62/2.0 punch and .78/2.4 swipe, their actual capsule/sector hit filters, wave-scaled damage and block-half shove. Crawling/armless content attacks remain. Siren horde and DEV Hulk attacks share the authority handlers; other DEV kinds retain their original interrupt behavior.
+- Charge: explicit Siren target/DEV hunt knowledge or current/recent LOS (2.5 s remembered point), same supported floor, >=7 m without a maximum range, .9 s tracking then immutable heading/point, 6 m/s. 25%-max-HP stagger cancels only the wind-up (4 s retry). Running hits cannot steer/cancel it. Earliest pilot swept contact ends it (28 x wave, 1000/65 horizontal velocity +4.5 up before modifiers, blocking halves both); solid/gap -> 1.6 s stun; 4 m overshoot/16 s -> .7 s hold. Ordinary cooldown is 10 s from end.
+- Contacts open eligible interior blocks through instant dynamic breach records, in-bounds entrance panels through their entry record (actor = Hulk), and props/structure through `DamageProp`/fracture with a dedicated `hulk-charge` structural damage kind. No player explosion credit is fabricated. Shell/bounds, floors/ceilings, stairs/ramps, hazard objects, door frames, indestructible objects and local machine fixtures fail closed. Each break slows to .6 for .3 s. Its own debris and shoved adds cannot physically trap the charging body; per-Hulk collision exclusions clear on end/removal. Adds receive 450 through their existing external-impulse adapter, without damage.
+- **Exact Claude binding:** `NativePveAdd.Move` (int), `ChargeAt` (float), `ChargeEndAt` (float), `ChargeEnd` (int), `ChargeTarget` (int), inherited from `NativeHulkHunt`. Wire names on `NativeMinionFrame`: `move`, `chargeAt`, `chargeEndAt`, `chargeEnd`, `chargeTarget`. Both timestamps default to -100; end stays -100 while charging; end ids 0 running / 1 pilot / 2 solid / 3 spent. Cancellation clears timestamps/target; yaw carries the locked heading. `NativeBreachRecord.charged` is a bool; dynamic and entrance breaks carry `actor` and contact `breakAt`. Frames capture/apply all five fields; replay uses those same frame copies. Impact events retain the requested amounts and positions. Claude: fill `HordeHulkFrame` in `Runtime/NativeHordeHulkMotion.cs`; presentation files were left to you.
+- Checks: managed Core/relay assemblies compiled with warnings as errors using .NET 8 Roslyn; focused `--hulk-charge` passes **all six requested existing suites** plus **184 new authority assertions**. C# syntax parsing with `UNITY_EDITOR` passes (0 errors), `package_source.py --check` passes (1979 files), `git diff --check` clean. Two source-pin failures found during the first full run were corrected while preserving the unchanged content attack/recovery and stagger statements. Full rerun receipt follows.
+- Native gate added and registered: `ValidateHulkHunt` exercises actual strike handlers, blocks, wind tracking/cancel/lock, a 50 m run and 1.5 m sidestep, end/cooldown, contact breaks/slowdown/protected geometry, real JsonUtility, guest late join and replay rewind. **Not executed here:** Unity runtime semantic compilation against engine DLLs, the native PhysX/JsonUtility gate, Windows player, two clients, visuals and performance. These remain required acceptance; managed checks are not substituted for them. No compiled update publication is claimed.
+
+- Verification/upload receipt: full managed + real-relay rerun exited 0 with **684 PASS groups**. PR **#215**, implementation **0ba2c74f00faa4ff3fb923c077547e53de85502a**, source tree **78c5e4f37a4db8e9e87674c7679069e01729f546** exactly matches the local tested tree. Pushed source, not merged or published: native Unity compilation/engine acceptance and Claude's field binding remain outstanding.
+
+## 2026-10-14 — Claude: Hulk v2 presentation bound to PR #215's fields; PR #215 merged into shared
+
+- Merged Astra's PR #215 (`codex/hulk-hunt-v2` `cea97a7`, Hulk hunted-pilot punch/swipe and locked cross-map charge
+  authority) into shared at `de7f75d`, keeping both sides of DEV_LOG/PROJECT_STATE. Owner standing authorization for
+  completed task PRs; the PR body listed Unity runtime compilation as not run, so it was compiled here against the Unity
+  6000.3.24f1 assemblies (runtime + editor OK) before merging.
+- `Runtime/NativeHordeHulkMotion.cs` `HordeHulkFrame` now reads the replicated `NativePveAdd` (`NativeHulkHunt`) fields:
+  `Move` keyed to `LastAttack`, and `ChargeAt`/`ChargeEndAt`/`ChargeEnd`/`ChargeTarget` into the per-add charge state, every
+  frame on host and replicas. The `hulk-move`/`hulk-charge`/`hulk-charge-end` events stay as the fallback. `HulkChargeChecks`
+  pins the binding. Presentation only: no hit timing, hitbox, damage, cooldown, movement or network change.
+- Live result once the builder publishes: Hulks punch, swipe and charge the hunted pilot with the wind-up tell, lane, crash-
+  through walls and the hunted pilot's warning. Not run: Unity Editor play, Windows, two clients, Astra's ValidateHulkHunt gate.
 
 ## 2026-10-14 — Astra: Expedition public state fields for Claude
 
@@ -7544,6 +7563,89 @@ Visuals only.
   `hp/maxHp` (`maxHp == 0` means unavailable on a legacy frame). See EXPEDITION-PRESENTATION.
   Implemented on task branch; PR carries source merge status. No binary built or test/live release published.
 - Final verification: full managed/real-relay suite passed (684 PASS groups, exit 0), including Expedition rules, presentation, integration, director and states. `git diff --check` clean.
+
+## 2026-10-14 — Claude: Expedition town dressing (ruined city at dusk)
+
+Branch `claude/expedition-dressing`, base shared `6da0330` (PR #214, the M1 import), merged shared
+`9cc6d29` and then `768ebc9` (the Expedition states). Commits:
+- `9044eec`: the dressing;
+- `bd3dd4b`: the first merge;
+- `83a5726`: the hotel sign and budget lines;
+- `398231e`: the merge of `768ebc9`, with Program.cs keeping both check entries;
+- `5370bf5`: keeps the states' Ward Zero airlock unit clear (x 43.4-44.0, z -3.5..3.5, y 0-4);
+- then this entry.
+
+Presentation only. No block, collider, navigation, layout record, spawn, rule or network change.
+Doors, the gate's portcullis, the sanctuary edge, transitions and boss intros belong to the states
+work. This pass keeps their space clear and does not touch their files. Details, rules and budget:
+`docs/EXPEDITION-LAYOUT.md`, "Town dressing".
+
+- **Kit** (`Core/NativeExpeditionCityKit*.cs`):
+  - Facades on every exposed building face: windows (dark with a dusk sheen, lit, TV, boarded,
+    broken and sooted, three burning), sills, cornices and parapets.
+  - Storefronts with original shop names (neon, a letter dead on some, or painted), shutters and
+    awnings.
+  - Lobbies, depot doors, fire escapes, wall lamps (working, flickering, dead), flashing signals,
+    notices, posters, short graffiti and a few story lines.
+  - Green SANCTUARY arrows for wayfinding.
+  - Landmarks: the city hall, the Meridian frontage (MERIDIAN BIOCONTAINMENT, WARD ZERO,
+    beacons), the sealed CITY IRONWORKS, the boarded CENTRAL STATION and the CHECKPOINT gatehouse.
+  - Vehicles dressed on their blocks. Road paint, litter, blood, scorch, casings.
+  - The sanctuary's sandbags, brazier, lamp posts and bulbs.
+  - A doorway at every door spawn, a grate at every vent, and the breach panels as bricked-up
+    shopfronts.
+- **Skyline, atmosphere, lights, ambience** (`NativeExpeditionCity{Scenery,Fx,Lights}`,
+  `NativeExpeditionCityAmbience`):
+  - Skyline: burning towers, cranes.
+  - Atmosphere: flames, embers and smoke; smoke columns; a helicopter searchlight; halos and pools;
+    ground fog and ash.
+  - Lights: eight practical lights picked from 68 candidates.
+  - Ambience: distant shots, bursts and booms and the fires' crackle on existing audio keys.
+- **Runtime**: `NativeExpeditionCityPresentation` and `NativeExpeditionCityAudio`, with one-line
+  hooks in `NativeSourcePresentation` (SourceWorld), `ArenaPresentation` (dispose) and `NativeAudio`.
+  All are gated on map id `expedition-city`. The blocks are static, so part matrices and steady
+  colours are made once.
+- **Look**: `expedition_city.py --maplooks` names the dressing, backdrop, atmosphere and ambience,
+  and gives the wrecks their own colours. No other look changes.
+- **Budget**:
+  - Kit: 7,631 parts in 16 instanced draws, one of them casting (328). The low tier and
+    compatibility rendering draw 4,811 in 11.
+  - Skyline: 1,212 boxes in 3 draws, backdrop layer. Left out under compatibility rendering.
+  - Effects: at most 642 quads in 2 draws.
+  - Ward Zero's kit, for comparison, is 7,124 parts in 15 draws.
+- **Checks** (`Tests/ExpeditionDressingChecks.cs`, `CoreTests --expedition-dressing`, also in the
+  full suite):
+  - Determinism per block id: a reversed block order gives the same parts.
+  - Placement against the layout's records, recomputed in the test: the 0.25 m wall band below
+    3.1 m; nothing on exits, paths, doorways, vents, drop columns, slots, returns, the approach,
+    interactions, anchors, boss points, the door and gate volumes, or the sanctuary floor.
+  - No parts on the other five maps.
+  - Budgets.
+  - Zero bytes allocated over 120 frames of drive, effects, picker and ambience.
+  - The surface audit now covers the town's kit and skyline: 0 coincident faces after the layers.
+- **Renders** (scratch `renders-expedition-dressing/`): before and after, plan, overviews,
+  eye-level and shoulder-camera views. Also the low tier and before/after sheets. Offline WebGL
+  through NativeBlockLit and NativeNightSky, not Unity.
+- **Animation impact**: none. No hit timing, hitbox, damage, cooldown, movement or networking change.
+- **Checks on `5370bf5`**:
+  - `run5`: Unity 6000.3 runtime and editor compile OK.
+  - Managed core and real relay: 685 PASS groups. These include `expedition dressing`, `Expedition
+    states` (14,931) and `surfaces` (45, six maps).
+  - Python: 106 OK, 1 skip.
+  - Source package: 1,999 files.
+  - Diff check: clean.
+  - `ci-relay2` (CI layout): rc 0, 685 PASS.
+  - Earlier, on `83a5726` before the states merge, the same suites passed (684 groups).
+- **Not run**: Unity Editor play, Windows build, multiplayer, and real frame timing (the budget
+  is instance and draw counts, not milliseconds). The ambience was not heard.
+- **Risks and next steps**:
+  - The look's dusk is dark in shadowed streets. Judge it in a Windows build.
+  - The one-line hooks in NativeSourcePresentation, ArenaPresentation and NativeAudio may conflict
+    with other branches.
+  - The picked lights replace the look's eight on the town. A later light from another system
+    would need to join the picker.
+  - Owner questions: the names, the story graffiti, the blood with gore off, the helicopter, the
+    distant gunfire, the skyline density and the dusk brightness.
 
 ## 2026-10-14 — Claude: hazard kit (alarms, turret, saws; presentation, sound, contracts)
 

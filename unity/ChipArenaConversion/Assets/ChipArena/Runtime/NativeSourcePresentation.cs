@@ -58,6 +58,7 @@ namespace ChipArena.UnityConversion
             FactoryScenery(arena);
             BrickfallScenery(arena);
             CyberCityScenery(arena);
+            ExpeditionCityScenery(arena);
             if(revamp)WardZeroScenery(arena);
             // The hazard kit (NativeHazardKitPresentation.cs): the map's alarm placements, or the DEV preview gallery.
             HazardKitWorld(arena);

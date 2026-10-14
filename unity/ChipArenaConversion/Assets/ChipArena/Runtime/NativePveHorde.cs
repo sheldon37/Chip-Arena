@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 namespace ChipArena.UnityConversion
 {
-    public sealed class NativePveAdd
+    public sealed class NativePveAdd : NativeHulkHunt
     {
         public Vector3 BreachShortcut;public float BreachThinkAt;public bool HasBreachShortcut;public float SpitCancelAt=-100;public NativeHulkBreach.Progress WallProgress;public NativeBreachRecord WallBreach;public PveAddStats Stats;public PveEntry Entry;public int Lost,Side=1;public float ActiveAt,ExposedAt,SpawnAt,ThinkAt,RecoverAt,StaggerAt,DamageScale,HpScale,PossessedAt,SlowUntil,SlowFactor=1,LastDamage=-100,VentReady,WalkAt,DiveAt,VentUntil;public bool Landed,DropLanded,Struck=true,Possessed,Crawl,Limp,First=true,Travelling;public float HideThinkAt;public Vector3 HideDestination;public Vector3 External;public NativePilot Target;public NativeMinion KillerSummon;public NativePilot LastHit;
         public readonly Dictionary<int,float> Dealt=new Dictionary<int,float>();public readonly Dictionary<int,float> Parts=new Dictionary<int,float>();
@@ -137,12 +137,14 @@ namespace ChipArena.UnityConversion
                 {
                     a.ThinkAt=Time+.75f;target=enemies.Where(p=>p.Hp>0&&p.Seat.connected&&(!a.Possessed||!p.Seat.bot)).OrderBy(p=>pveNavigation.Distance(at,p.Body.position,p.Seat.id)+3*Math.Max(0,HordeTargetCount(p.Seat.id)-6)-(a.Target==p?2:0)-(v.Recruits.Any(r=>r.Pilot==p&&r.Role=="tank")&&Vector3.Distance(p.Body.position,at)<8?6:0)).FirstOrDefault();a.Target=target;if(target!=null&&TryVentTravel(m,target))continue;
                 }
+                if(StepHulkHunt(m,target))continue;
                 if(target!=null&&StepHulkBreach(m,target.Body.position)){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}
                 if(!a.Struck&&Time>=m.StrikeAt){a.Struck=true;PveAddStrike(m);if(m.Hp<=0)continue;}
                 if(target==null){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}Vector3 d=target.Body.position-at;float distance=new Vector2(d.x,d.z).magnitude;
                 bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,start=a.Stats.id=="spitter"?a.Stats.startRange:a.Crawl?1:armless?.95f:a.Stats.startRange,hit=a.Stats.id=="spitter"?a.Stats.hit:a.Crawl||armless?.34f:a.Stats.hit;
+                if(a.Stats.id=="hulk"&&!a.Crawl&&!armless)start=Math.Max(start,NativeHulkMoves.PunchReach);
                 if(a.Struck&&!a.Possessed&&Time>=a.RecoverAt&&Time>=a.StaggerAt&&distance<=start&&(a.Stats.id!="spitter"||distance>=4)&&Math.Abs(d.y)<1.6f&&(a.Stats.id!="hulk"&&a.Stats.id!="spitter"||MeleeVisible(at,target.Body.position,m.Owner,target.Collider,true)))
-                {m.LastAttack=Time;m.StrikeAt=Time+hit;a.Struck=false;a.RecoverAt=Time+Math.Max(a.Stats.cycle,hit+.05f);a.Side=-a.Side;if(a.Side==1&&right)a.Side=-1;else if(a.Side==-1&&left)a.Side=1;m.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;}
+                {if(a.Stats.id=="hulk")hit=ChooseHulkMove(m,target,hit);m.LastAttack=Time;m.StrikeAt=Time+hit;a.Struck=false;a.RecoverAt=Time+Math.Max(a.Stats.cycle,hit+.05f);if(a.Move!=0)a.RecoverAt=Time+NativeHulkMoves.Recover(NativeHulkMoves.Of(a.Move),a.Stats.cycle,a.Crawl,a.Lost);a.Side=-a.Side;if(a.Side==1&&right)a.Side=-1;else if(a.Side==-1&&left)a.Side=1;m.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;}
                 Vector3 move=Vector3.zero;
                 if(Time<a.StaggerAt){}
                 else if(!a.Struck){m.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;if(a.Stats.id!="spitter"&&distance>.8f)move=Vec(V3.Forward(m.Yaw))*((a.Crawl?.15f:armless?.45f:a.Stats.lunge)/Math.Max(.05f,hit));}
@@ -194,7 +196,7 @@ namespace ChipArena.UnityConversion
         }
         private void PveAddStrike(NativeMinion m)
         {
-            var a=m.Pve;if(a.Stats.id=="spitter"){LaunchPveSpit(m);return;}Vector3 at=m.Body.position,dir=Vec(V3.Forward(m.Yaw));bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float damage=a.Stats.damage*a.DamageScale*(a.Crawl?.6f:armless?.35f:left!=right?.65f:1),reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,impulse=a.Stats.impulse*(a.Crawl||armless?.5f:1);
+            var a=m.Pve;if(a.Stats.id=="hulk"&&a.Move!=0&&!a.Crawl&&!NativeHordeKinds.Armless(a.Lost)){HulkMoveStrike(m);return;}if(a.Stats.id=="spitter"){LaunchPveSpit(m);return;}Vector3 at=m.Body.position,dir=Vec(V3.Forward(m.Yaw));bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float damage=a.Stats.damage*a.DamageScale*(a.Crawl?.6f:armless?.35f:left!=right?.65f:1),reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,impulse=a.Stats.impulse*(a.Crawl||armless?.5f:1);
             bool smash=a.Stats.attack=="smash"&&!a.Crawl;
             if(smash&&a.Stats.id=="brute")Emit(EventKind.Impact,m.Owner,m.Id,at+dir*1.2f-Vector3.up*.9f,0,"minion-slam",radius:1.6f);
             foreach(var q in Pilots)
@@ -214,7 +216,7 @@ namespace ChipArena.UnityConversion
         private float HitPveAdd(NativeMinion m,NativePilot source,float amount,Vector3 dir,float impulse,Vector3? point,string kind,float radius,bool head,int projectile=0,bool pierced=false,Vector3? from=null)
         {
             var a=m.Pve;if(source==null||a.Travelling||Time<a.ExposedAt||Pve?.Holding==true)return 0;
-            if(Pve==null){float hit=Math.Min(m.Hp,amount);m.Hp-=hit;m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,m.Body.position,hit,kind,from:from,projectile:projectile,pierced:pierced);if(m.Hp<=0)RemoveMinion(m);return hit;}float actual=0;
+            if(Pve==null){float hit=Math.Min(m.Hp,amount);m.Hp-=hit;m.LastHitAt=Time;CancelHulkWind(m,hit);if(!a.Charging&&NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),hit,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;}Emit(EventKind.Hit,source,m.Id,m.Body.position,hit,kind,from:from,projectile:projectile,pierced:pierced);if(m.Hp<=0)RemoveMinion(m);return hit;}float actual=0;
             foreach(var share in NativeHordeDamage.Shares(amount,new V3(-m.Body.position.x,m.Body.position.y,m.Body.position.z),-m.Yaw,a.Crawl,point.HasValue?(V3?)new V3(-point.Value.x,point.Value.y,point.Value.z):null,kind,radius>0?radius:3,head,Pve.SpawnRandom.Next))
             {
                 int limb=(a.Lost&share.part)!=0?0:share.part;float applied=share.damage*(limb==1?1.5f:limb==0?1:.9f),taken=Math.Max(0,Math.Min(m.Hp,applied));m.Hp-=taken;actual+=taken;
@@ -226,7 +228,8 @@ namespace ChipArena.UnityConversion
             if(NativeSpitterRules.Interrupt(actual,Time,m.LastAttack,a.Struck)&&a.Stats.id=="spitter")
             {a.SpitCancelAt=Time;a.Struck=true;a.RecoverAt=NativeSpitterRules.Retry(Time);Emit(EventKind.Impact,source,m.Id,m.Body.position,0,"minion-spit-cancel");}
             a.LastHit=source;a.LastDamage=Time;a.Dealt.TryGetValue(source.Seat.id,out float dealt);a.Dealt[source.Seat.id]=dealt+actual;
-            if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;if(a.Stats.id!="spitter"||actual<=0)a.RecoverAt=Time;}if(Time>=a.ExposedAt)a.External=Vector3.ClampMagnitude(a.External+new Vector3(dir.x,0,dir.z)*NativePveParity.AddImpulse(impulse),6);
+            CancelHulkWind(m,actual>0?amount:0);
+            if(!a.Charging)if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;if(a.Stats.id!="spitter"||actual<=0)a.RecoverAt=Time;}if(Time>=a.ExposedAt)a.External=Vector3.ClampMagnitude(a.External+new Vector3(dir.x,0,dir.z)*NativePveParity.AddImpulse(impulse),6);
             m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,normal:dir.x*dir.x+dir.z*dir.z>1e-12f?dir:Vector3.zero,from:from,projectile:projectile,pierced:pierced);
             MinionImpact(m,source,actual,point,kind,dir);
             if(m.Hp<=0){Vector3 at=m.Body.position;PveAddKilled(m,source);RemoveMinion(m,false);if(a.Possessed)FoundPveBoss(at);}return actual;

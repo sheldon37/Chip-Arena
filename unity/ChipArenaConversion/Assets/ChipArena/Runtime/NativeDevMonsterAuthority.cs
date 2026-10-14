@@ -61,8 +61,9 @@ namespace ChipArena.UnityConversion
         {
             if((float.IsNaN(amount)||float.IsInfinity(amount))||amount<=0)return 0;float actual=Math.Min(amount,m.Hp);m.Hp-=actual;m.LastHitAt=Time;
             if(m.DevBehaviour=="idle"&&m.DevHunt==0&&source!=null)m.DevHunt=source.Seat.id;
-            m.Pve.StaggerAt=Time+m.Pve.Stats.stagger;m.StrikeAt=-1;
-            if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);
+            CancelHulkWind(m,actual);
+            if(m.Pve.Stats.id!="hulk"||!m.Pve.Charging&&NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(m.Pve.Stats.id),actual,m.MaxHp,impulse>=400)){m.Pve.StaggerAt=Time+m.Pve.Stats.stagger;m.StrikeAt=-1;m.Pve.Struck=true;}
+            if(!m.Body.isKinematic&&!m.Pve.Charging)m.Body.AddForce(direction*impulse,ForceMode.Impulse);
             Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind??"direct");
             if(m.Hp<=0)RemoveMinion(m,false);return actual; // no PvE economy, quota, XP, drops or kill receipt
         }
@@ -76,17 +77,19 @@ namespace ChipArena.UnityConversion
                 foreach(var pair in m.Dots.ToArray()){var dot=pair.Value;while(m.Hp>0&&dot.Next<=Time&&dot.Next<=dot.Until){HitDevMonster(m,Pilots.Find(p=>p.Seat.id==dot.Source),(float)(dot.Dps*.25),Vector3.zero,0,null,"field");dot.Next+=.25;}if(Time>dot.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0)continue;
                 var target=m.DevBehaviour=="frenzy"?Pilots.Where(p=>p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss).OrderBy(p=>(p.Body.position-m.Body.position).sqrMagnitude).FirstOrDefault():Pilots.Find(p=>p.Seat.id==m.DevHunt&&p.Hp>0&&p.Seat.connected);
                 var at=m.Body.position;var velocity=m.Body.linearVelocity;var stats=m.Pve.Stats;m.Pve.Target=target;
-                if(target==null||Time<m.Pve.StaggerAt){m.Body.linearVelocity=Vector3.up*velocity.y;m.StrikeAt=-1;continue;}
+                if(StepHulkHunt(m,target))continue;
+                if(target==null||Time<m.Pve.StaggerAt||Time<m.Pve.RecoverAt){m.Body.linearVelocity=Vector3.up*velocity.y;m.StrikeAt=-1;continue;}
                 var delta=target.Body.position-at;delta.y=0;float distance=delta.magnitude;var direction=delta.normalized;m.Yaw=Mathf.Atan2(direction.x,direction.z)*Mathf.Rad2Deg;
                 if(m.StrikeAt>=0)
                 {
-                    m.Body.linearVelocity=Vector3.up*velocity.y;if(Time<m.StrikeAt)continue;m.StrikeAt=-1;m.NextAttack=Time+Math.Max(.2f,stats.cycle-stats.hit);
+                    m.Body.linearVelocity=Vector3.up*velocity.y;if(Time<m.StrikeAt)continue;m.StrikeAt=-1;m.Pve.Struck=true;m.NextAttack=stats.id=="hulk"?m.LastAttack+NativeHulkMoves.Recover(NativeHulkMoves.Of(m.Pve.Move),stats.cycle,m.Pve.Crawl,m.Pve.Lost):Time+Math.Max(.2f,stats.cycle-stats.hit);if(stats.id=="hulk")m.Pve.RecoverAt=m.NextAttack;
+                    if(stats.id=="hulk"){PveAddStrike(m);continue;}
                     if(stats.id=="spitter"){LaunchPveSpit(m);continue;}
                     if(distance<=stats.reach&&Math.Abs(target.Body.position.y-at.y)<2.5f&&SummonVisible(m,at,target.Body.position,target.Collider))
                     {if(Time<target.BlockEnd)BlockProc(target,null,target.Body.position,"clash");else Damage(target,null,stats.damage,direction,stats.impulse,false,direct:false,primary:false,melee:true,damageKind:"dev-monster");}
                     continue;
                 }
-                if(distance<=stats.startRange&&Time>=m.NextAttack&&SummonVisible(m,at,target.Body.position,target.Collider)){m.LastAttack=Time;m.StrikeAt=Time+Math.Max(.1f,stats.hit);m.Body.linearVelocity=Vector3.up*velocity.y;continue;}
+                if(distance<=(stats.id=="hulk"?NativeHulkMoves.PunchReach:stats.startRange)&&Time>=m.NextAttack&&SummonVisible(m,at,target.Body.position,target.Collider)){float hit=stats.id=="hulk"?ChooseHulkMove(m,target,stats.hit):stats.hit;m.LastAttack=Time;m.StrikeAt=Time+Math.Max(.1f,hit);m.Pve.Struck=false;m.Body.linearVelocity=Vector3.up*velocity.y;continue;}
                 // Bounded direct chase on every map. Never request Ward graph state or walk blindly over a ledge/hazard.
                 var next=at+direction*Math.Max(.8f,m.Collider.radius*2);bool clear=SummonVisible(m,at,next,null)&&!UnsafeStagePath(at,next)&&root.scene.GetPhysicsScene().Raycast(next,Vector3.down,out var floor,m.Collider.height/2+1,WorldMask,QueryTriggerInteraction.Ignore)&&floor.normal.y>.65f;
                 float speed=clear?Math.Max(0,stats.run)*(Time<m.SlowUntil?m.SlowFactor:1):0;m.Body.linearVelocity=direction*speed+Vector3.up*velocity.y;

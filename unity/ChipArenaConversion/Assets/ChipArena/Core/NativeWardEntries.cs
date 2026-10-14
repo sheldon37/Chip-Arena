@@ -4,7 +4,7 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeBreachRecord
     {
-        public int entry;public float breakAt,restoreAt;
+        public bool charged;public int entry;public float breakAt,restoreAt;
         // Dynamic wall records use entry=-1. V3 fields are world-space, holeSize is full XYZ extent.
         public string block;public int actor;public V3 point,normal,holeSize;
         public bool Dynamic=>!string.IsNullOrEmpty(block);

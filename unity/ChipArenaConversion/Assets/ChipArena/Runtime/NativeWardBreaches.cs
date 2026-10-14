@@ -23,6 +23,8 @@ namespace ChipArena.UnityConversion
                 if(Time<m.Pve.ActiveAt){WardEntryPose(m);continue;}
                 if(m.Body.isKinematic){m.Body.isKinematic=false;m.Collider.enabled=true;m.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;}
                 if(m.Pve.Stats.id!="hulk"||Local==null||Local.Hp<=0)continue;
+                if(StepHulkHunt(m,Local))continue;
+                if(Time<m.Pve.RecoverAt||Time<m.Pve.StaggerAt){m.Body.linearVelocity=Vector3.up*m.Body.linearVelocity.y;continue;}
                 var at=m.Body.position;var target=Local.Body.position;var delta=target-at;delta.y=0;
                 var dir=WardHulkDirection(m,target,delta.normalized);
                 var move=delta.magnitude>m.Pve.Stats.startRange?dir*m.Pve.Stats.run:Vector3.zero;
