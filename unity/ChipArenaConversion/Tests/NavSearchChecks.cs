@@ -29,14 +29,18 @@ internal static class NavSearchChecks
         var nodes=map.nav.nodes.ToDictionary(n=>n.id);var edges=map.nav.nodes.ToDictionary(n=>n.id,n=>new List<MapNavLink>());
         foreach(var l in map.nav.links){edges[l.a].Add(l);if(l.kind!="drop")edges[l.b].Add(l);}
         Legacy(nodes,edges,map.nav.nodes[0].id,map.nav.nodes[map.nav.nodes.Length-1].id,all);
+        int oldLinkChecks=0,newLinkChecks=0;
         long oldBytes=0,newBytes=0;double oldMs=0,newMs=0;
         for(int i=0;i<16;i++)
         {
             string a=map.nav.nodes[i*379%map.nav.nodes.Length].id,b=map.nav.nodes[(map.nav.nodes.Length-1-i*211)%map.nav.nodes.Length].id;var active=i%2==0?all:closedHazards;
-            long before=GC.GetAllocatedBytesForCurrentThread();var watch=Stopwatch.StartNew();var expected=Legacy(nodes,edges,a,b,active);watch.Stop();oldMs+=watch.Elapsed.TotalMilliseconds;oldBytes+=GC.GetAllocatedBytesForCurrentThread()-before;
-            search.Find(a,b,active,result);Check(result.SequenceEqual(expected),"Ward route/tie equivalence "+i);
+            Func<MapNavLink,bool> oldActive=l=>{oldLinkChecks++;return active(l);},newActive=l=>{newLinkChecks++;return active(l);};
+            long before=GC.GetAllocatedBytesForCurrentThread();var watch=Stopwatch.StartNew();var expected=Legacy(nodes,edges,a,b,oldActive);watch.Stop();oldMs+=watch.Elapsed.TotalMilliseconds;oldBytes+=GC.GetAllocatedBytesForCurrentThread()-before;
+            search.Find(a,b,newActive,result);Check(result.SequenceEqual(expected),"Ward route/tie equivalence "+i);
             before=GC.GetAllocatedBytesForCurrentThread();watch.Restart();search.Find(a,b,active,result);watch.Stop();newMs+=watch.Elapsed.TotalMilliseconds;newBytes+=GC.GetAllocatedBytesForCurrentThread()-before;
         }
+        Check(newLinkChecks<oldLinkChecks,"reject non-improving links before live checks");
+        Console.WriteLine($"PASS Ward live link queries: legacy {oldLinkChecks}, optimized {newLinkChecks} across 16 identical routes/gates; fixed graph endpoints/costs cached, live hazard/physics results never cached");
         Check(newBytes==0,"warmed route searches allocate "+newBytes+" bytes");
         Func<MapNavNode,bool> usable=n=>!n.safe;
         for(int i=0;i<8;i++){var point=map.spawns.ffa[i].pos;Check(search.Nearest(point,usable).id==map.nav.nodes.OrderBy(n=>V3.Dot(n.pos-point,n.pos-point)).First(usable).id,"nearest equivalence");}
