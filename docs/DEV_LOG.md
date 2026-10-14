@@ -6807,3 +6807,148 @@ Local focused verification: authority 473 assertions, integration 59 assertions,
 presentation 8,357 checks passed. Runtime/editor syntax: zero errors. Source
 package check: 1,935 files passed. Full managed/real-relay run is in progress;
 final result belongs in the PR before merge. Syntax is not a native compilation.
+
+## 2026-10-14 — Astra: Expedition director/layout contract for Claude agreement
+
+Branch `codex/expedition-director`, inspected base shared/builder `6f30f826`.
+Status: **proposed contract, awaiting Claude/owner confirmation before runtime
+implementation**, as requested by the owner. This entry does not claim agreement,
+a playable Expedition, probes, migration, or a release. Preserve Claude's DEV
+panel and dagger pose work. Astra owns director/combat/network/persistence;
+Claude owns layout/blockout/visuals. No new geometry is assigned by this proposal.
+
+### Stable identity proposal
+
+| Role | Run/area id | Layout/map id | Required anchor ids |
+| --- | --- | --- | --- |
+| Outdoor town | `exp-city` (also `world`) | `expedition-city` | `exp-city:machine:0`, `exp-city:cache:0` |
+| Ward Zero instance | `exp-ward-zero` | `expedition-ward-zero` | `exp-ward-zero:door:exit`, `exp-ward-zero:cache:0` |
+| Second instance | `exp-foundry` | `expedition-foundry` | `exp-foundry:door:exit`, `exp-foundry:cache:0` |
+| Third instance | `exp-transit` | `expedition-transit` | `exp-transit:door:exit`, `exp-transit:cache:0` |
+
+Foundry/transit are proposed stable ids, not approved art themes. Claude may
+change them before accepting this contract. Do not repurpose existing `siren`,
+Factory or Cyber City map ids: current PvP/Siren encounters must keep working.
+The first playable slice may contain town plus Ward Zero only; the manifest's
+instance list defines the clear requirement, with no invisible extra objectives.
+Additional authored instances use the same contract without changing code.
+
+For each instance `I`, the town has anchor `exp-city:door:I`, with `area=exp-city`,
+`kind=door`, `building=I`. Its indoor door is `I:door:exit`, with `area=I`,
+`kind=door`, `building=I`. Always supply `building`; do not infer identity from
+position or a cosmetic name. Coordinates are metres in that area's world frame;
++Y is up, yaw is degrees about +Y, zero faces +Z. Door visuals use that yaw.
+Door collider planes, approach points and spawn points are authored separately:
+Astra toggles collision from authority state; Claude animates from the same state.
+Town entrances load the whole party into one instance; no split-area simulation.
+Cleared-instance departure returns the party to the matching outdoor doorway's
+return slots, not to the sanctuary. One source of geometry feeds both sides.
+
+Caches use `area:cache:N`; machines use `area:machine:N`. All ids are case-sensitive,
+unique within the manifest and at most 128 characters using the existing id
+validator. Cache stock generation is director-owned (`loop:area:cache:N:serial`),
+never an object name or client value. Reward anchor ids remain exactly the ids
+issued by the authority; do not preauthor them. Actual enemy death positions feed
+`DropAt`, `DefeatBossAt` and `FinishFinalAt`. Private rewards never get anchors.
+
+### Layout data Claude supplies; Astra validates and consumes
+
+Proposed source: `Resources/ExpeditionLayout.json`, schema 1, plus the associated
+map/blockout data. Keep layout data separate from presentation and the director.
+The manifest needs: stable layout revision; world and instance ids/map references;
+area anchors; eight safe entry slots and eight outside-return slots per doorway;
+town sanctuary volume; doorway interaction/closure volumes; machine interaction
+points; cache positions; enemy spawn entries with archetype restrictions and safe
+clearance; boss spawn points and a final-boss trigger/spawn point. Floor coordinates
+must match the collider surface. Spawn facing is explicit. No origin fallback.
+
+Spawn slots, sanctuary, triggers and boss-spawn records are director metadata,
+not new `ExpeditionWorldAnchor.kind` values. Existing public anchor kinds stay
+`door`, `machine`, `chest`, `reward`. Missing/duplicate/bad-area/out-of-bounds records
+refuse loading with a diagnostic; no silently substituted map or guessed point.
+The authoring gate must check navigation, pilot/Hulk clearance and obstruction at
+spawn/return points. Layout revision participates in room compatibility and handoff.
+
+Astra adds a separate encounter catalog: quota, spawn budget/cap/rate and mix,
+boss entity ids/archetypes, currency/drop policy, cache price/restock interval,
+reprint price/range/channel. These are explicit provisional playtest values, not
+new owner-approved balance. Existing Siren boss behavior is not silently reused
+as the proposed Zombie Scientist. A test encounter must be named as such until
+its boss design is supplied. Each encounter locks connected, non-extracted pilots
+for scaling at spawn-batch start; already spawned actors retain their scaling.
+
+### Director and interaction commitments after agreement
+
+- Verified developer host gets an Expedition test entry. Normal PvP/Siren menu
+  routes stay unchanged. Invited authenticated guests require the same Expedition
+  protocol/content/layout revisions. Start is refused until the layout validates.
+- Create/join the account-bound run, create its durable session, set authored world
+  data and bind it. Map load uses an epoch/generation-fenced readiness barrier;
+  combat/time do not advance until the required connected peers are ready.
+- Authority derives safe/dead/connected state from actual actors. Sanctuary blocks
+  incoming/outgoing damage, aggro pulling and cross-boundary pickups. UI alone
+  cannot grant safe status. Purchases/pickups never trust guest positions.
+- The scene interaction sends Claim/Purchase via ExpeditionCommands, including
+  host-local input. Pick the nearest eligible target in view, within the authored
+  range, with line of sight; target selection never mutates rules directly.
+  The director supplies CanClaim/CanPurchase from current host actor positions.
+- Reprint evidence comes from an uninterrupted authoritative machine channel,
+  target/carry state, range and configured price. Moving, taking damage, becoming
+  downed, changing target or changing area cancels it. Field medic permission is
+  unavailable until a real equipped/authorized medic effect exists.
+- Once-only encounter death ids drive quota, wallet credit, ordinary drops, boss
+  allocation and the final victory. Preserve personal chip selection and apply
+  the resulting build to combat actors. No account XP writer is added here.
+- Persist restock serials/timers; schedule against gameplay elapsed. Checkpoint at
+  initial sanctuary readiness and on returning to an eligible sanctuary (dirty
+  state only), and before voluntary close/resume where permitted. Extraction
+  remains save-before-publish. Report write failures and preserve tombstones.
+
+### Probes and migration follow the working director
+
+Normal guest rendering frames are not a complete authority package. Define and
+test a versioned serializer for director/rules, layout revision, all live combat
+actors/abilities/projectiles/status clocks, RNG streams, destructible world,
+rewards/restock state, pending inputs and membership before promoting any peer.
+Do not serialize signed account bearer tokens into the package or broadcast it.
+
+Candidate reachability requires an authenticated challenge to its newly reserved
+endpoint from every remaining participant, not a ping on its old client link.
+Capability requires compatible content/layout/protocol, successful package decode,
+and durable destination storage. Expiring probe results drive reachable/capable;
+existing measured loss/RTT/jitter determine election among verified candidates.
+Reserve endpoints only through supported LAN/relay APIs; provider limitations
+must refuse migration rather than claim it succeeded.
+
+Freeze rules and combat together. Destination durably stores the exact package,
+checks its digest and ACKs transaction/source revision/next epoch. Old authority
+writes committed extraction tombstones and the transfer decision before notifying
+peers; destination remains frozen until it has that committed decision. Reconnects
+reverify accounts, bind stable seats, reject stale epochs and wait at a barrier.
+Before commitment, timeout aborts without extraction; after commitment, never
+resume the old authority. Post-commit reconnect failures remain frozen/recoverable
+from the decision journal. Sudden host crash is not falsely advertised as supported
+until a separate recovery protocol exists. Deadline uses the transport monotonic
+clock, not paused gameplay elapsed. Tests must cover failure at every transition,
+replayed ACKs, partial deliveries and old-host fencing, then real two-client runs.
+
+### Owner decisions and acceptance gates
+
+Claude/owner: confirm or amend the area/anchor ids, door convention and manifest
+shape above in DEV_LOG before Astra implements against them. Do not treat a PR
+merge of this proposal as evidence that Claude accepted the layout interface.
+
+Electron CI is intentionally unchanged pending the owner's requested choice:
+(A) repair the Electron failures while preserving the tests' intent, or
+(B) scope Unity-only changes to mandatory Unity checks, preserving Electron checks
+for Electron/shared/build-tool changes and mixed PRs. Current `checks.yml` routes
+all non-doc changes through npm verification and Required checks depends on it.
+A scoped solution must not turn a Unity-only PR green without native verification.
+The reported 12 TS tests, three-file tsc errors and websocket assertion were not
+rerun during this contract inspection; they are owner-reported baseline failures.
+
+Optional guest melee-arc replication is deferred until the required director and
+migration work. Real Windows host/guest DEV commands, ValidateDevAbuseAuthority,
+and reveal delivery to every player remain unrun. This container has no Unity
+Editor or Windows client. Documentation-only verification: id-validator compatibility,
+existing API/schema inspection and git diff --check; no gameplay pass claimed.
