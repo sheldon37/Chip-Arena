@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
     /// three blows on the wall (a right, a left, the shoulder that breaks it on the break, then the lowered-shoulder carry
     /// through), and the proposed straight punch, swipe and charge (wind-up, lowered-shoulder run, the hit, the solid stop, the
     /// spent run), dormant until the rules replicate them.</item>
-    /// <item>The landings (<see cref="Drop(CapturedRig.Pose,uint,float,float,float,in NativeHordeDrop.DropProfile,out float,out NativeHordeDrop.Phase)"/>):
+    /// <item>The landings (Drop):
     /// fists raised for the last of the fall, then the Hulk's three-point landing (a fist on the floor) and the brute's two-fist
     /// landing at LandAt exactly, held through the slam and rising out of it by ActiveAt.</item>
     /// </list>
@@ -144,7 +144,7 @@ namespace ChipArena.UnityConversion
         // recovery, 3 the offset times the strike, 4 the strike plus the offset times (recovery - strike). Eases: 0 smooth,
         // 1 in (accelerating into the key: a blow's contact), 2 out (settling into it), 3 linear. Hands are rig-frame wrist
         // targets (+x the add's left, +z ahead, the floor at -.85) with a weight (0: the arm is the gait's or the take's).
-        public const int KBx=0,KBy=1,KBz=2,KPp=3,KPy=4,KPr=5,KSp=6,KSy=7,KSr=8,KCp=9,KCy=10,KCr=11,KHp=12,KHy=13,KHr=14,KRx=15,KRy=16,KRz=17,KRw=18,KLx=19,KLy=20,KLz=21,KLw=22,KN=23,KHead=3;
+        public const int KBx=0,KBy=1,KBz=2,KPp=3,KPy=4,KPr=5,KSp=6,KSy=7,KSr=8,KCp=9,KCy=10,KCr=11,KHp=12,KHy=13,KHr=14,KRx=15,KRy=16,KRz=17,KRw=18,KLx=19,KLy=20,KLz=21,KLw=22,KN=23;
         private static float[] K(int a,float o,int e=0,float bx=0,float by=0,float bz=0,float pp=0,float py=0,float pr=0,float sp=0,float sy=0,float sr=0,float cp=0,float cy=0,float cr=0,float hp=0,float hy=0,float hr=0,
             float rx=0,float ry=0,float rz=0,float rw=0,float lx=0,float ly=0,float lz=0,float lw=0)
             =>new[]{a,o,e,bx,by,bz,pp,py,pr,sp,sy,sr,cp,cy,cr,hp,hy,hr,rx,ry,rz,rw,lx,ly,lz,lw};
@@ -319,7 +319,7 @@ namespace ChipArena.UnityConversion
         /// <summary>This frame's keyed move, its age, and whether it replaces the attack's take (punch, swipe, knock, charge).</summary>
         public Keyed Move{get;private set;}
         public float MoveAge{get;private set;}
-        private float[][] moveTable;private float moveH,moveR,moveW,moveEnd;private int moveSide;
+        private float[][] moveTable;private float moveH,moveR,moveW;private int moveSide;
         private readonly float[] keyNow=new float[KN],keyLag=new float[KN],keyLag2=new float[KN],keyTimes=new float[16];
         private bool Replaces=>Move==Keyed.Punch||Move==Keyed.Swipe||Move==Keyed.Knock||Move==Keyed.ChargeWind||Move==Keyed.ChargeRun||Move==Keyed.ChargeStop;
         /// <summary>Which keyed move the input asks for: a charge, a knock, the proposed punch or swipe, or the smash's overlay.</summary>
@@ -352,7 +352,7 @@ namespace ChipArena.UnityConversion
         {
             if(moveTable==null||moveW<=0)return;
             // (The trunk reaches each key with the hips, so a fist is at full reach on the contact; the head follows a beat late.)
-            moveEnd=Keys(moveTable,moveH,moveR,MoveAge,moveSide,keyNow,keyTimes);Keys(moveTable,moveH,moveR,MoveAge-.06f,moveSide,keyLag2,keyTimes);
+            Keys(moveTable,moveH,moveR,MoveAge,moveSide,keyNow,keyTimes);Keys(moveTable,moveH,moveR,MoveAge-.06f,moveSide,keyLag2,keyTimes);
             for(int c=0;c<KN;c++)keyLag[c]=c>=KHp&&c<=KHr?keyLag2[c]:keyNow[c];
             // The charge's wind-up trembles as it builds; a solid stop leaves the head reeling; a wall broken on the run jolts it.
             if(Move==Keyed.ChargeWind){float k=Sm(MoveAge/.4f);keyNow[KBx]+=(float)Math.Sin(MoveAge*41)*.006f*k;keyLag[KCr]+=(float)Math.Sin(MoveAge*37+1)*.02f*k;}

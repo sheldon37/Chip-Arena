@@ -1,5 +1,59 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — Hulk/brute body animation: heavy stride, slam, landing, wall knock; proposed charge and punches (owner: "Slam/landing/wall break animation also needs improvements from hulk/brute. Hulk zombie needs adjustments on their movement (normal zombie movement looks odd at their size). I'd like them to all have a charge animation (they can charge through walls) and a couple of punch animations (like a straight punch, and a swipe)")
+- Branch `claude/hulk-motion`, base shared `9270d95`. Implementation commit `8e36e27`; merged with shared `0ae174f` and `claude/zombie-fx` `3567d7a` (conflicts in `Tests/Program.cs`, DEV_LOG and PROJECT_STATE resolved keeping both sides). Pushed on the branch; no PR, merge or release.
+- Scope: body animation only. The effects are `claude/zombie-fx`; they fire on the rule marks and never read a pose, and this branch changes no effect code. Rules (the charge, the punch choice, their volumes and replication) are Astra's: contract and prompt in `docs/SIREN-ZOMBIES.md` §10.
+- **Live, driven by existing state:**
+  - Hulk heavy locomotion (`Core/NativeHordeHeavy.cs`, a partial of `NativeHordeGait`). It replaces the zombie take scaled up with the Hulk's own stride table: about .93 steps/s with .8 m steps walking and 1.2/s with 1 m running. The body sways over the stance foot, the pelvis and shoulders roll and counter-turn, each footfall sends a jolt down the body, arms hang wide and swing late, steps are stamped, and the idle runs slower. Feet plant under the hips' balance offset. 15% of the walk take remains under it.
+  - Turn in place: pivot steps (the foot on the turning side first, about 70°/s). Wind-ups, knocks and the charge's wind-up turn fast.
+  - Hulk and brute smash: keys over the pack's hammer (rise, drop, both fists to the floor). The take's impact frame stays exactly at `LastAttack + hit`.
+  - Landings: fists overhead for the fall's last .3 s. Touchdown at `LandAt`: the Hulk's three-point landing, the brute's on both fists. Deepest by +.15 s, standing by `ActiveAt`.
+  - Breach knock (entry breach and dynamic wall block): a right at .55 s, a left at 1.2 s, the shoulder on the break at 2.1 s (`NativeBreach.Blows`), then a lowered-shoulder carry to 3.4 s. It replaces the hammer take the knock used.
+- **Dormant (proposed contract, `Core/NativeHulkMoves.cs`):**
+  - Straight punch: hit .62 s, cycle 2.0.
+  - Swipe: hit .78 s, cycle 2.4. The striking arm is `Side(LastAttack)`.
+  - Charge: .9 s wind-up (foot scrape, lowered shoulder), 4.5 m/s lowered-shoulder run up to 2.4 s, a wall-break jolt, and three ends (pilot 1.0 s, solid stun 1.6 s, spent .7 s).
+  - `Runtime/NativeHordeHulkMotion.cs` reads them from the proposed events `hulk-move` / `hulk-charge` / `hulk-charge-end`. No rule emits these, so nothing plays in a match. It is the one place to switch to the proposed frame fields (`move`, `chargeAt`, `chargeEndAt`, `chargeEnd`).
+  - A reported punch or swipe drives the existing lunge or claw effect job at the move's strike.
+- Dev Sandbox gallery: a third Hulk plays a turn in place, the walk and run, a punch, a left swipe, a charge into a solid stop, and a knock with its carry.
+- **Animation sources:**
+  - The zombie pack's idle, hammer and jump takes (already exported; no new export, no licensed file read or committed).
+  - The Explosive unarmed cross, jab, running attack and dash (already exported for the Cyber Lord) were rendered on the Hulk and rejected: a boxer's bladed stance and timing.
+  - Everything else is keyed poses in the existing pose system.
+- **Animation impacts:**
+  - Hit timing, hitboxes, damage, cooldowns, movement speed, spawns, records and networking: none.
+  - Contact frames stay on the marks the rules and effects use: `LastAttack + hit`, `LandAt`, and `NativeBreach.Blows` after the knock start.
+  - The presented Hulk facing lags the authority's while pivoting in place (about 1.7 s for 120°). The authority's facing and every blow's aim are unchanged.
+  - During a keyed blow, knock or charge, a fist may be drawn up to .18 rig m (.32 m) past the usual reach limit round the capsule.
+  - The brute's smash and landing poses changed (their timing did not).
+- **Checks (actual):**
+  - Unity runtime+editor compile OK, before and after the merges.
+  - New `Tests/HulkMotionChecks.cs`, 17,582 checks:
+    - stride and cadence;
+    - planted feet that never move, with the drawn ankle on its spot within .012 rig m at walk, run and 4.5 m/s, straight and turning ±20°/s;
+    - pivots;
+    - smash fists at the strike (Hulk and brute) with the take's impact exact;
+    - landings at LandAt;
+    - the knock's blows within .05 s of `NativeBreach.Blows`;
+    - the punch at full reach on its strike (both arms), the swipe crossing on its strike, the charge's scrape, lead shoulder and ends;
+    - determinism, no allocation, a runtime that only draws.
+  - Existing `HordeKindChecks`, `ZombieMotionChecks`, `HulkSpitterChecks` (capsule, floor and landing bounds kept), `HulkBreachFxChecks` and `ZombieFxChecks` pass.
+  - Full `tools/check_relay.py` exit 0: 660 PASS lines, 35 managed-core checks, including `hulk motion` and `zombie fx`. The tracked-files sparse copy also exits 0 (660 PASS).
+  - Python 101 OK (1 skip). `package_source.py` OK (1887 source files; Builds removed). `git diff --check` clean.
+  - Offline software renders (scratchpad `hulk-motion/harness/renders`): before and after gait, turn, smash, landing, knock, punch, swipe and charge sheets.
+- **Not run:** Unity Editor play, Windows build, two-client play, the killcam, the Dev Sandbox gallery in engine, and a visual review in real lighting.
+- **Risks:**
+  - The heavy gait and keyed poses were judged on software renders only.
+  - The dormant moves have no effects pass and no strike cue of their own yet.
+  - The breach effects would show knock cracks for a charge breach until a `charged` record flag exists.
+  - The checked bound (.012 rig m) holds for the three checked Hulks at walk, run and charge, straight and turning ±20°/s.
+  - Outside it, the drawn ankle can trail its planted spot for a frame or two: up to .036 rig m (6.5 cm) at turns of 35°/s or tighter, and about .02 (3.6 cm) on some seeds' running strides when the hips' balance shifts. The planted target itself never moves.
+- **Next:**
+  - Astra: implement §10 (prompt at the end of `docs/SIREN-ZOMBIES.md`).
+  - Claude: switch `HordeHulkState` to the frame fields and wire the move's strike cue.
+  - Effects owner: a charge and punch effects pass.
+  - Owner: review in the Dev Sandbox gallery.
+
 ## 2026-10-14 — Claude — Spitter acid and Hulk/brute slam, landing and wall-break effects, high-quality pass (owner: "Improve visual fx from spitter/hulk zombie (make them high quality) acid needs to look better. Slam/landing/wall break [effects] also needs improvements from hulk/brute")
 - Branch `claude/zombie-fx` on the shared Unity head `9270d95` (`claude/sleepy-ritchie-g8ruhv`). Implemented and pushed on the branch; not merged or released. Effects only: the Hulk/brute body animation is the parallel `claude/hulk-motion` branch, and no pose, clip, gait or jaw code changed here.
 - **New:** Core `NativeZombieFx` (pure shapes; engine and clock free; no allocation) and Runtime `NativeZombieFxDraw`, which draws them through the shared renderer and its own decal layer.

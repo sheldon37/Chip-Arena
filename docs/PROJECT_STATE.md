@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 Hulk/brute motion: `claude/hulk-motion` (base shared `9270d95`, merged with shared `0ae174f` and `claude/zombie-fx` `3567d7a`) gives the Hulk a heavy stride and pivot turns, and rebuilds the Hulk/brute smash, landing and wall-knock poses on the existing rule marks. The proposed charge, straight punch and swipe are animated and dormant until Astra implements the SIREN-ZOMBIES §10 contract. Managed checks pass; Unity/Windows/multiplayer unrun.
+
 2026-10-14 zombie effects: `claude/zombie-fx` (base shared `9270d95`) rebuilds the spitter's acid and the Hulk/brute impacts on the shared effects renderer. Acid: a glossy viscous glob with membrane, fumes and a stringy tail, a crown and spatter, and a lobed bubbling pool that keeps to the rule's 1.3 m / 4 s, evaporates and etches, plus corrosion. Impacts: an upright slam wave, branching cracks, floor-hugging dust, bouncing rubble and sparks, all inside the authority's radii; breach chips, a dust curtain and hardlight remnants. Presentation only; pushed, not merged. Unity Editor/Windows not run; see DEV_LOG.
 
 2026-10-14 hazard kill credit: `codex/hazard-credit-ten` on `c895406d` uses an inclusive 10-second last-other-damager window for all stage hazards, PvE adds and no-source environmental deaths; self/zero damage cannot overwrite tags. Death record/feed agree. Brickfall structural attribution and its separate 6-second fallback remain. Focused managed checks/source validation pass; actual Unity/Windows acceptance and compiled publication pending.

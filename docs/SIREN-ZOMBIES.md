@@ -246,6 +246,108 @@ Timing coupling with the Hulk/brute body animation (separate branch): the effect
 smash or landing pose must put its impact frame on `LastAttack + hit` / `LandAt`, and a breach punch on the `NativeBreach`
 blows, as today's takes do. The effects never read a pose.
 
+## 10. The heavy kinds' body animation (owner 2026-10-14)
+
+Owner: "Slam/landing/wall break animation also needs improvements from hulk/brute. Hulk zombie needs adjustments on their
+movement (normal zombie movement looks odd at their size). I'd like them to all have a charge animation (they can charge
+through walls) and a couple of punch animations (like a straight punch, and a swipe)."
+
+Split: Claude built the body animation on `claude/hulk-motion` (`Core/NativeHordeHeavy.cs`, `Core/NativeHulkMoves.cs`,
+`Runtime/NativeHordeHulkMotion.cs`, hooks in `Core/NativeHordeMotion.cs` and `Runtime/NativeHordeKindPresentation.cs`,
+`Tests/HulkMotionChecks.cs`). The effects are `claude/zombie-fx` (section 9's high-quality pass); they fire on the same
+rule marks and never read a pose. The rules below marked *proposed* are Astra's to implement; until then those animations
+are dormant.
+
+### 10.1 What plays today, and what drives it
+
+| animation | driven by (existing state) | contact frame |
+|---|---|---|
+| Hulk heavy walk / run | replicated position and velocity (the gait's own stride) | each footfall (`Landed`): the stomp dust, cracks and step cue already key on it |
+| Hulk turn in place | the replicated yaw while standing | a pivot step per up to 50 degrees, the foot on the turning side first |
+| Hulk and brute smash | `LastAttack`, the content's `hit` / `cycle` (unchanged) | both fists down by the floor at `LastAttack + hit`; the pack's hammer take still lands its impact frame there |
+| Hulk and brute jump-in landing | entry, `SpawnAt`, `ActiveAt` (`NativeHordeDrop`) | touchdown at `LandAt = ActiveAt - profile.Recover`: Hulk three-point (a fist on the floor), brute both fists; deepest by +.15 s, risen by `ActiveAt` |
+| breach knock (entry breach; a Hulk breaking a wall block) | entry `SpawnAt` / the dynamic record's `breakAt` | a right on `NativeBreach.Blows[0]` (.55 s), a left on `[1]` (1.2 s), the shoulder on `[2]` = the break (2.1 s), then a lowered-shoulder carry to 3.4 s |
+
+- **Heavy locomotion** (Hulk only): its own stride table instead of a zombie take scaled up: about .93 steps/s with .8 m
+  steps walking (.75 m/s), 1.2 steps/s with 1 m steps running (1.15 m/s), quick 1.35 m steps at a 4.5 m/s charge. The
+  body sways over the stance foot, the pelvis and shoulders roll and counter-turn, the knees stay bent, each footfall
+  sends a jolt down the body (chest and head a beat late), the arms hang wide and swing late, the feet are lifted and
+  stamped down, the head stays steady. Standing it breathes; its idle and twitches run slower (a big body's time). Only
+  15% of a zombie walk take remains under it. The feet plant under the hips' balance offset, so a planted foot never
+  slides and the drawn ankle stays on its spot (checked at walk, run and charge speed, straight and turning 20 deg/s).
+  The audio step spacing (`NativeHordeGait.Stride`) reads the same stride.
+- **Turn in place**: standing, the presented facing turns only on pivot steps (about 70 deg/s); a wind-up, a knock or a
+  charge's wind-up turns fast (410 deg/s) so a blow faces where the authority aims it. Walking turns at 135 deg/s.
+- **Smash** (Hulk and brute): keys over the pack's hammer: rising tall with the fists overhead, dropping into the blow,
+  both fists driven to the floor on the strike, a short heavy hold, a heave back up by the recovery. The take's impact
+  frame stays exactly at `LastAttack + hit` (checked).
+- **Landings** (both profiles): both fists raised for the fall's last .3 s, the touchdown pose at `LandAt` exactly, the
+  deepest just after, standing by `ActiveAt`. The Hulk's mirrors its planted fist by its seed.
+- **Breach knock**: the entry breach's and a dynamic wall block's knock both follow `NativeBreach.Blows`; the knock
+  replaces the hammer take the knock used before (the job and its effects are unchanged).
+- Sources: the zombie pack's idle under the heavy gait, its hammer and jump takes (already exported; no new export). The
+  Explosive pack's unarmed cross, jab, running attack and dash (already exported for the Cyber Lord) were tried on the Hulk
+  model and not used: a boxer's bladed stance and timing. The punches, swipe, charge, knock and landing poses are keyed
+  poses in the existing pose system. No licensed file was read or committed.
+
+### 10.2 Proposed: the straight punch and the swipe (dormant)
+
+The rules choose one move when an attack starts and replicate it with `LastAttack`:
+
+| field / name | proposal |
+|---|---|
+| `NativePveAdd.Move`, `NativeMinionFrame.move` | int: 0 the content attack (the smash, as today), 1 straight punch, 2 swipe; written with `LastAttack` |
+| side (the striking arm) | not replicated: `NativeHulkMoves.Side(lastAttack, lost)` on every peer and the host (the presentation's existing hash) |
+| choice | Hulk: punch when the target is 1.2-3.2 m away inside a 40 deg cone; swipe when it (or two or more pilots) is within 3 m inside 150 deg; otherwise the smash (and at least every third attack). Deterministic from `SpawnRandom`. Crawling or armless: today's attack timing |
+| punch timing | hit `.62` s (`NativeHulkMoves.PunchHit`), cycle `2.0` (`RecoverAt = LastAttack + max(cycle, hit + .05)`) |
+| punch volume | a capsule along the facing from .6 to 3.4 m ahead, radius .75, abs(dy) < 2.5, melee line of sight; damage 24 x wave scale; impulse 750 along the facing plus 2.5 m/s up; a block clashes, no damage, half the shove |
+| swipe timing | hit `.78` s (`SwipeHit`), cycle `2.4` |
+| swipe volume | a 3.2 m sector, 150 deg about the facing, abs(dy) < 2.5; damage 20; impulse 650 across the facing in the sweep's direction (from the swinging arm's side), 40% outward, plus 2 m/s up; block as the punch |
+| stagger | as today: a hit of 25% max hp in the wind-up cancels it |
+| event (optional) | `Impact` Detail `hulk-move` at `LastAttack`: Target add id, Amount move id, Time `LastAttack` |
+
+Key poses (the presentation's, from `LastAttack`): punch: fist cocked by the shoulder by .34 s, held to .5, driven
+straight to full reach at .62, held .12, recoiled, standing at 2.0; mirrored for the left arm. Swipe: arm drawn back wide
+on its own side by .39, held to .64, crossing in front at .78, carried across to the other side by .94, over-balanced,
+standing at 2.4. The effects job draws the punch with the existing lunge streaks and the swipe with the claw crescent at
+the move's strike (no new effect; a dedicated pass is a later FX task).
+
+### 10.3 Proposed: the charge (dormant)
+
+| item | proposal |
+|---|---|
+| start | a Hulk not attacking, staggered or entering, its target 7-16 m away on the same floor with a clear straight line, cooldown 9 s |
+| wind-up | `.9` s (`ChargeWind`) standing, the heading locked at its start; a 25% stagger in it cancels the charge |
+| run | 4.5 m/s (`ChargeSpeed`) along the heading for at most 2.4 s (`ChargeRun`); no pathing, no attacks; takes hits |
+| a pilot in the way | stops; 28 damage, impulse 1000 along the heading plus 4.5 m/s up (a block: no damage, half the shove); the Hulk is held 1.0 s (`Stop(Pilot)`) |
+| an eligible wall (`NativeHulkBreach.Eligible`) | broken without stopping: a dynamic `NativeBreachRecord` with `breakAt` = the contact, no knock, collision off at once, the usual rebuild; proposed record flag `charged` so the breach's knock cracks are skipped |
+| anything else solid | stops; the Hulk is stunned 1.6 s (`Stop(Solid)`, hittable, a punish window) |
+| spent | slows to a stop; held .7 s (`Stop(Spent)`) |
+| replication | `NativeMinionFrame.chargeAt` (start, -100 none), `chargeEndAt` (-100 while running), `chargeEnd` (0 running, 1 pilot, 2 solid, 3 spent); host, guests, late joins and the killcam all read them |
+| events (optional) | `hulk-charge` at the start (Target add id, Position start, Normal heading, Time), `hulk-charge-end` at the end (Amount 1/2/3, Position contact, Time) |
+
+Key poses (from `chargeAt` / `chargeEndAt`): rearing up, then the right foot scraped back and braced, the shoulder
+lowered and coiled, a lunge forward on the launch (.9 s); the run holds the lowered right shoulder, the lead arm tucked,
+the other arm pumping on the heavy gait's charge stride; a wall broken on the run jolts the shoulder. A pilot hit: the
+shoulder drives through, a recoil with the head snapped up, standing by 1.0 s. A solid stop: the body bounces back, the
+head snaps back, the arms fly out, a dazed slump and reel, standing by 1.6 s. Spent: a braking lean, standing by .7 s.
+
+### 10.4 Wiring and status
+
+- `Runtime/NativeHordeHulkMotion.cs` `HordeHulkEvent` / `HordeHulkState` is the one place the presentation reads the
+  proposed state: today from the events above (none are emitted, so nothing plays). When the frame fields exist, read
+  `move`, `chargeAt`, `chargeEndAt`, `chargeEnd` there instead; the poses need nothing else. The audio's strike cue still
+  uses the content's strike for a reported move (a follow-up with the frame fields).
+- The Dev Sandbox gallery's third Hulk (beside the first) plays all of it on a script: a turn in place, the heavy walk and
+  run, a straight punch, a swipe with the left arm, a charge into a solid stop, a wall knock and its carry.
+- Animation impacts: no hit timing, hit volume, damage, cooldown, movement, spawn, record or network change. The presented
+  Hulk facing lags the authority's while it pivots in place (about 1.7 s for 120 deg); the authority's own facing and
+  every blow's aim are unchanged. During a keyed blow, knock or charge a fist may be drawn up to .18 rig m (.32 m) past
+  the usual reach limit round the hit capsule (a punch at full extension).
+- Checks: `Tests/HulkMotionChecks.cs` (17,582: stride and cadence, planted feet, pivots, every contact on its mark, the
+  proposed key poses on their contract times, determinism, no allocation, runtime draws only). Unity Editor, Windows,
+  two-client play and the killcam were not run; the poses were reviewed on the harness's software renders only.
+
 ## Prompt for Astra
 
 ```
@@ -379,3 +481,47 @@ Hulks may now approach a nearby eligible interior wall when the same-floor direc
 Waves use the existing finite 22/28/34 solo totals with existing party scaling, fixed at wave start. Clear requires no unspawned quota and no living enemies; no <=2 quiet clear or 150 s timeout. Boss reinforcement rules are unchanged. Catch-up creates at most two adds per tick, and crowd separation uses nearby spatial cells rather than rescanning the whole crowd.
 
 Editor/PhysX, Windows gameplay, and measured end-to-end FPS are pending. Detailed checks and handoff: DEV_LOG and the task PR.
+
+## Prompt for Astra: the heavy kinds' charge and punches (2026-10-14)
+
+```
+Task: Siren Hulk charge, straight punch and swipe, simulation side. Owner 2026-10-14: "I'd like them to all have a charge
+animation (they can charge through walls) and a couple of punch animations (like a straight punch, and a swipe)." Claude's
+animation is on claude/hulk-motion (docs/SIREN-ZOMBIES.md section 10, Core/NativeHulkMoves.cs, Core/NativeHordeHeavy.cs,
+Runtime/NativeHordeHulkMotion.cs); it is authored to the numbers below and dormant until you replicate the state. Numbers
+are proposals; record changes in section 10 and keep NativeHulkMoves' mirrored constants equal (Tests/HulkMotionChecks).
+Do not change the existing smash, drop or breach marks (LastAttack + hit, LandAt, NativeBreach.Blows): the effects
+(claude/zombie-fx) and the animation key on them.
+
+A. Attack moves (Hulk; the brute may use the same later)
+1. When an attack starts choose a move: 1 straight punch (target 1.2-3.2 m inside a 40 deg cone), 2 swipe (target, or two
+   or more pilots, within 3 m inside 150 deg), else 0 = the content smash (at least every third attack). Deterministic
+   from SpawnRandom. Crawling or armless keep today's attack.
+2. Timing: punch hit .62 / cycle 2.0, swipe hit .78 / cycle 2.4 (StrikeAt = LastAttack + hit; RecoverAt = LastAttack +
+   max(cycle, hit + .05)). The 25% stagger cancels a wind-up as today.
+3. Volumes: punch = capsule along the facing from .6 to 3.4 m, radius .75, |dy| < 2.5, melee LOS; 24 damage x wave scale;
+   impulse 750 along the facing + 2.5 m/s up. Swipe = 3.2 m sector, 150 deg, |dy| < 2.5; 20 damage; impulse 650 across
+   the facing in the sweep direction (from NativeHulkMoves.Side(LastAttack, lost)'s side to the other), 40% outward,
+   + 2 m/s up. A block clashes: no damage, half the shove.
+4. Replicate: NativePveAdd.Move and NativeMinionFrame.move (int) written with LastAttack; guests, late joins and the
+   killcam restore it. Optional Impact Detail "hulk-move" at LastAttack (Target add id, Amount move id).
+
+B. Charge (Hulk)
+1. Start when not attacking, staggered or entering, the target 7-16 m away on the same floor with a clear straight line;
+   cooldown 9 s. Wind-up .9 s standing, heading locked; a 25% stagger in it cancels.
+2. Run 4.5 m/s along the heading up to 2.4 s; no pathing, no attacks; it takes hits.
+3. Ends: a pilot in the way -> stop, 28 damage, impulse 1000 along the heading + 4.5 up (block: no damage, half shove),
+   held 1.0 s. An eligible interior wall (NativeHulkBreach.Eligible) -> broken without stopping: a dynamic breach record
+   with breakAt = contact, no knock (add a `charged` flag so the breach effects skip the knock cracks), collision off at
+   once, the usual rebuild and occupancy hold. Anything else solid -> stop, stunned 1.6 s (hittable). Run out -> stop,
+   held .7 s.
+4. Replicate on NativeMinionFrame: chargeAt (-100 none), chargeEndAt (-100 while running), chargeEnd (0 running,
+   1 pilot, 2 solid, 3 spent). Optional events "hulk-charge" (start: Target, Position, Normal heading, Time) and
+   "hulk-charge-end" (Amount 1/2/3, Position contact, Time).
+
+C. Hand back to Claude in DEV_LOG: the field names as implemented; Claude switches Runtime/NativeHordeHulkMotion.cs
+   (HordeHulkState) from the events to the fields, wires the move's strike cue, and asks the effects owner for a charge
+   and punch effects pass. Tests: move choice and timing, both volumes, block, stagger cancel, the charge's wind-up
+   lock, each end, the wall break without a knock, replication through JsonUtility and replay. Keep HordeKindChecks,
+   ZombieMotionChecks, HulkSpitterChecks, ZombieFxChecks and HulkMotionChecks passing.
+```
