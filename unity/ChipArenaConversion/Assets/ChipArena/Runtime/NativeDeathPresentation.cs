@@ -85,7 +85,7 @@ namespace ChipArena.UnityConversion
             if(Halved)foreach(var part in Parts.Values){part.linearVelocity=part.angularVelocity=Vector3.zero;part.isKinematic=true;}
             if(CrushPart>=0&&Parts.TryGetValue(CrushPart,out var crushed)){crushed.GetComponent<Collider>().enabled=false;crushed.isKinematic=true;}
             for(int i=0;i<22;i++){int a=i;while(a>=0&&!Parts.ContainsKey(a))a=CapturedRig.Bones[a].Parent;Anchor[i]=a<0?1:a;}
-            if(Halved)LoosePieces();
+            if(Halved){StandIn();LoosePieces();}
             foreach(var pair in Parts)
             {
                 int b=pair.Key,parent=CapturedRig.Bones[b].Parent;while(parent>=0&&!Parts.ContainsKey(parent))parent=CapturedRig.Bones[parent].Parent;if(parent<0)continue;
@@ -158,6 +158,9 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private readonly Dictionary<int,NativeCorpse> corpses=new Dictionary<int,NativeCorpse>();private readonly List<int> staleCorpses=new List<int>();
+        /// <summary>Each melee death's killing blow as first seen (key: id and seed), kept across the killcam's reset and cleared
+        /// with the round (MeleeSlice).</summary>
+        private readonly Dictionary<long,(bool has,MeleeBlow blow)> killBlows=new Dictionary<long,(bool has,MeleeBlow blow)>();
         private void ClearCorpses(){foreach(var c in corpses.Values)c.Dispose();corpses.Clear();carriedDeaths.Clear();ClearVents();ClearSawGallery();ReleaseKillEffects();}
         // The clock kill effects are presented on (see PresentDeath): FieldClock, the continuous snapshot clock a guest renders at
         // (PresentationClock on the host and in the killcam replay).
@@ -180,7 +183,7 @@ namespace ChipArena.UnityConversion
         }
         private void DeathPresentationCore(NativeArena arena)
         {
-            if(NativeCorpseRules.RoundEnded(arena.Match.Cooperative,arena.Match.Phase)){if(corpses.Count>0||ventBodies.Count>0||carriedDeaths.Count>0||killPointMesh!=null)ClearCorpses();if(blood.Splats.Live>0||stainedWounds.Count>0)ClearBlood(true);return;}
+            if(NativeCorpseRules.RoundEnded(arena.Match.Cooperative,arena.Match.Phase)){if(corpses.Count>0||ventBodies.Count>0||carriedDeaths.Count>0||killPointMesh!=null)ClearCorpses();if(blood.Splats.Live>0||stainedWounds.Count>0)ClearBlood(true);killBlows.Clear();return;}
             staleCorpses.Clear();
             foreach(var item in corpses){var d=item.Value.Death;var live=PilotOf(arena,item.Key);if(!DeathListed(arena,item.Key,d.seed)||NativeCorpseRules.Expired(arena.Time-d.at,d.kept,item.Value.RetainUntilRoundEnd)||live!=null&&live.Hp>0&&arena.Time-live.RevivedAt>1.1f)staleCorpses.Add(item.Key);}
             foreach(int id in staleCorpses){corpses[id].Dispose();corpses.Remove(id);}
@@ -210,10 +213,12 @@ namespace ChipArena.UnityConversion
                 if(corpses.Count>=32&&!retain)return;long buildAt=System.Diagnostics.Stopwatch.GetTimestamp();DiagnosticDeathCreates++;CapturedAnimation.Player rig=null;bool temporary=false;
                 if(!rigs.TryGetValue(death.id,out rig)&&!minionRigs.TryGetValue(death.id,out rig)){rig=captured.Create(transform,death.id);var actor=death.actor??new Actor();actor.Hp=Math.Max(1,actor.Hp);rig.ActorPose(actor,death.position-Vector3.up*.865f,death.at);temporary=true;}
                 var slice=pilot?MeleeSlice(arena,death):null;
-                // A Factory saw splits the body in two (NativeBisectPresentation); every other death is one corpse as before.
-                corpse=pilot&&slice==null?SawBisect(arena,death,rig):null;
+                // A blade's killing blow cuts the body's mesh along its swing, a Factory saw splits it in two (both
+                // NativeBisectPresentation); every other death, and a melee kill those keep as it was, is one corpse as before.
+                corpse=!pilot?null:slice!=null?MeleeBisect(arena,death,rig,slice):SawBisect(arena,death,rig);
                 if(corpse==null)corpse=new NativeCorpse(death,rig,arena,slice);corpses[death.id]=corpse;if(temporary)rig.Dispose();
-                BleedDeath(death,slice,KillClock(arena));
+                // A cut body's blood is its seam's (BisectBlood); the fatal wound still bleeds as it falls.
+                BleedDeath(death,corpse.Bisect!=null?null:slice,KillClock(arena));
                 bool counted=pilot&&!death.kept&&!remains;int budget=death.kept?NativeKillEffectRules.KeptBudget:counted?NativeKillEffectRules.MaxDeathVoxels-killUsed:NativeKillEffectRules.MaxDeathVoxels;
                 bool hatModel=!string.IsNullOrEmpty(death.actor?.Hat)&&death.actor.Hat!="none"&&sourceModels.Has(HatModel(death.actor.Hat,death.actor.HatColor));
                 int band=pilot&&live!=null&&(death.model??"pilot")=="pilot"?NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,live.Seat.AuthorityBoss,live.Seat.team,live.Seat.id==arena.LocalId):-1;
@@ -298,11 +303,16 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>A pilot's lethal melee blow by a standard melee weapon cuts the body along its swing (Core/NativeMeleeSlice):
         /// planned from the killing blow's replicated swing as the hit ledger read it (or, unseen, from the wound and the seed).
-        /// Not for a revivable PvE body, nor a style that shows no body.</summary>
+        /// Not for a revivable PvE body, nor a style that shows no body. The blow first seen for a death is kept for the round
+        /// (<see cref="killBlows"/>): the killcam's reset clears the ledger, and the body rebuilt after it, and the replay's,
+        /// must be cut the same way.</summary>
         private SlicePlan MeleeSlice(NativeArena arena,NativeDeath death)
         {
             if(death==null||!death.melee||death.kept||(death.model??"pilot")!="pilot"||death.style=="voxel-burst"||death.style=="vent-fall"||death.style=="vent-splat"||death.damageKind=="collapse")return null;
-            bool has=hitLedger.Blow(death.id,death.at,out var blow);string spec=has?blow.Spec:PilotOf(arena,death.owner)?.Seat.spec;if(!NativeMeleeSlice.Covers(spec))return null;
+            long key=((long)death.id<<32)^(uint)death.seed;bool has;MeleeBlow blow;
+            if(killBlows.TryGetValue(key,out var seen)){has=seen.has;blow=seen.blow;}
+            else{has=hitLedger.Blow(death.id,death.at,out blow);if(killBlows.Count>=64)killBlows.Clear();killBlows[key]=(has,blow);}
+            string spec=has?blow.Spec:PilotOf(arena,death.owner)?.Seat.spec;if(!NativeMeleeSlice.Covers(spec))return null;
             var plan=new SlicePlan();return NativeMeleeSlice.Plan(blow,has,spec,death.wound,NativeArena.Vec(death.position),death.yaw,death.seed,plan)?plan:null;
         }
         /// <summary>The fatal wound bleeds as the body falls (the live rig that would have sprayed it is gone), with a slice's

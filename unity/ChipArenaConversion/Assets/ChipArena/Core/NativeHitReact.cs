@@ -272,8 +272,12 @@ namespace ChipArena.UnityConversion
             if(!blades.TryGetValue(e.Source,out var b))blades[e.Source]=b=new Blade();
             b.At[b.Next]=e.Time;b.Next=(b.Next+1)%BladeSlots;b.Count=Math.Min(BladeSlots,b.Count+1);
             var a=attacker;bool special=a.SpecialKind!=null&&e.Time>=a.SpecialAt-.05f&&e.Time<=a.SpecialUntil+.05f,kit=e.Detail=="ability"&&a.MeleeKit!=null&&!string.IsNullOrEmpty(a.MeleeKit.Kind);
-            blows[e.Target]=new MeleeBlow{At=e.Time,Source=e.Source,Spec=a.SourceSpec,CommitYaw=a.CommitYaw,Index=a.Combo+1,SwingAt=a.SwingAt,SwingUntil=a.SwingUntil,Air=!a.Grounded,
-                Special=special?a.SpecialKind:null,Kit=kit?a.MeleeKit.Kind:null,From=a.Position,Yaw=a.Yaw,Detail=e.Detail,Amount=e.Amount};
+            // Air: the swing's own replicated flag (a landing attack hits at ground contact, so the attacker is grounded by then);
+            // Toward: the event's direction, the authority's at the hit's tick; Struck: the attacker's body centre then, once the
+            // authority sends it (a melee hit with its swing's id in Projectile; NativeMeleeSlice.Attacker checks it).
+            float aim=e.Normal.x*e.Normal.x+e.Normal.y*e.Normal.y+e.Normal.z*e.Normal.z;
+            blows[e.Target]=new MeleeBlow{At=e.Time,Source=e.Source,Spec=a.SourceSpec,CommitYaw=a.CommitYaw,Index=a.Combo+1,SwingAt=a.SwingAt,SwingUntil=a.SwingUntil,Air=a.AirAttack,
+                Special=special?a.SpecialKind:null,Kit=kit?a.MeleeKit.Kind:null,From=a.Position,Yaw=a.Yaw,Detail=e.Detail,Amount=e.Amount,Toward=e.Normal,Aimed=aim>.81f&&aim<1.21f,Exact=e.Projectile>0,Struck=e.From};
         }
         public void Observe(Snapshot s)
         {

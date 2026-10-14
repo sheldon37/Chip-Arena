@@ -51,6 +51,10 @@ namespace ChipArena.UnityConversion
         public readonly bool[][] Bodies={new bool[22],new bool[22]};
         public readonly Vector3[][] Min={new Vector3[22],new Vector3[22]},Max={new Vector3[22],new Vector3[22]};
         public readonly float[] Recess=new float[22];
+        /// <summary>Whether each half has geometry of its own on the pelvis. A half without (the head off a neck cut, the torso
+        /// off a level cut) still keeps the pelvis as its corpse's root, a stand-in with no geometry (NativeCorpse makes it a
+        /// still, collisionless root its pieces never hang from).</summary>
+        public readonly bool[] Rooted={true,true};
         public Vector3 Point,Normal;public int CutTriangles,CapTriangles;
     }
 
@@ -74,7 +78,16 @@ namespace ChipArena.UnityConversion
         /// and radius. Blood is flung off its rim and sparks leave it along the rim's motion.</summary>
         public Vector3 Hub,Axle;public float Rate,Radius;
         public uint Seed;
+        /// <summary>The ragdoll bodies the cut may cross (bit b set: <see cref="NativeBisect.Bodies"/> joint b and what moves
+        /// with it): the rest stay whole on half 0, whichever side they are on. All of them by default (a saw goes through
+        /// everything); a melee cut that takes off only a head or a limb names that part's bodies (NativeMeleeBisect).</summary>
+        public uint Mask=uint.MaxValue;
+        /// <summary>The seam the cut's blood leaves (unit, in the plane, through <see cref="Point"/>, <see cref="SeamHalf"/> m
+        /// either way), in order along it; a zero half length is the saw's vertical seam over the body's height.</summary>
+        public Vector3 Seam;public float SeamHalf;
         public float Side(Vector3 p)=>Vector3.Dot(p-Point,Normal);
+        /// <summary>The half that joint `bone` (at `p`, Unity world) ends up on: a body outside <see cref="Mask"/> stays on half 0.</summary>
+        public int HalfOf(int bone,Vector3 p)=>NativeBisect.Masked(Mask,bone)&&Side(p)>=0?1:0;
     }
 
     /// <summary>A spark of the cut at one moment: its head, velocity (m/s), width (m), age 0..1 and heat 0..1.</summary>
@@ -101,6 +114,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The ragdoll bodies (NativeCorpse's part roots): a joint's geometry moves with its nearest one.</summary>
         public static readonly int[] Bodies={1,2,5,7,8,11,12,14,15,18,19};
         public static int Anchor(int bone){for(int b=bone;b>=0&&b<CapturedRig.Bones.Length;b=CapturedRig.Bones[b].Parent)if(Array.IndexOf(Bodies,b)>=0)return b;return CapturedRig.Pelvis;}
+        /// <summary>Whether `mask` (<see cref="BisectRequest.Mask"/>) lets the cut cross joint `bone`'s body.</summary>
+        public static bool Masked(uint mask,int bone)=>((mask>>Anchor(bone))&1)!=0;
+        /// <summary>The mask of the given bodies (their joints in <see cref="Bodies"/>).</summary>
+        public static uint MaskOf(params int[] bodies){uint m=0;foreach(int b in bodies)m|=1u<<Anchor(b);return m;}
         /// <summary>The recess (m) a body's cut keeps per overlap colour, and the most colours used.</summary>
         public const float Recess=.0003f;public const int Colours=4;
         /// <summary>Cap cell sizes (m) by body tier (Full, Reduced, Low).</summary>
@@ -131,9 +148,10 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// Splits the body: `sources` the meshes it draws, `draw` each joint's draw matrix (System.Numerics row vectors: mesh
         /// point times matrix is the world point), `looks` the cap look of each group (null: no cap), `tier` the body tier (cap
-        /// cell size) and `seed` the cap's cell pattern.
+        /// cell size), `seed` the cap's cell pattern and `mask` the bodies the cut may cross (<see cref="BisectRequest.Mask"/>:
+        /// a source of any other body goes whole to half 0, uncut).
         /// </summary>
-        public static BisectCut Split(IReadOnlyList<BisectSource> sources,Matrix4x4[] draw,in BisectPlane plane,BisectLook[] looks,int tier,uint seed)
+        public static BisectCut Split(IReadOnlyList<BisectSource> sources,Matrix4x4[] draw,in BisectPlane plane,BisectLook[] looks,int tier,uint seed,uint mask=uint.MaxValue)
         {
             var cut=new BisectCut();var n=CapturedRig.Unit(plane.Normal,Vector3.UnitX);var p0=plane.Point;cut.Normal=n;cut.Point=p0;
             Basis(n,out var t1,out var t2);int groups=Math.Max(1,looks?.Length??1);float cell=Cells[Math.Max(0,Math.Min(Cells.Length-1,tier))];
@@ -150,7 +168,7 @@ namespace ChipArena.UnityConversion
             const float Reach=Recess*(Colours-1)+1e-5f;
             for(int i=0;i<count;i++)
             {
-                var s=sources[i];if(s?.Mesh==null||s.Bone<0||s.Bone>=22){side[i]=2;continue;}var f=frames[s.Bone];dist[i]=Distances(s.Mesh,f);
+                var s=sources[i];if(s?.Mesh==null||s.Bone<0||s.Bone>=22){side[i]=2;continue;}if(!Masked(mask,s.Bone)){side[i]=s.Mesh.Positions.Count==0?2:0;continue;}var f=frames[s.Bone];dist[i]=Distances(s.Mesh,f);
                 if(s.Fill!=null)fill[i]=Distances(s.Fill,f);
                 float lo=float.MaxValue,hi=float.MinValue;foreach(float x in dist[i]){if(x<lo)lo=x;if(x>hi)hi=x;}
                 side[i]=dist[i].Length==0?2:hi<-Reach?0:lo>Reach?1:-1;
@@ -200,9 +218,13 @@ namespace ChipArena.UnityConversion
                     if(cap.Indices.Count==0)continue;cut.Pieces.Add(new BisectPiece{Half=h,Source=-1,Bone=body,Body=body,Group=g,Mesh=cap});cut.CapTriangles+=cap.Indices.Count/3;Grow(cut,h,body,cap.Positions,Matrix4x4.Identity);
                 }
             }
-            // Both halves keep the pelvis (the corpse's root), even when every pelvis mesh fell to one side.
-            for(int h=0;h<2;h++)if(!cut.Bodies[h][CapturedRig.Pelvis]){cut.Bodies[h][CapturedRig.Pelvis]=true;cut.Min[h][CapturedRig.Pelvis]=new Vector3(-.05f);cut.Max[h][CapturedRig.Pelvis]=new Vector3(.05f);}
-            return cut;
+            Root(cut);return cut;
+        }
+        /// <summary>Both halves keep the pelvis (the corpse's root), even when every pelvis mesh fell to one side: that half's is
+        /// a stand-in (<see cref="BisectCut.Rooted"/> false).</summary>
+        private static void Root(BisectCut cut)
+        {
+            for(int h=0;h<2;h++)if(!cut.Bodies[h][CapturedRig.Pelvis]){cut.Rooted[h]=false;cut.Bodies[h][CapturedRig.Pelvis]=true;cut.Min[h][CapturedRig.Pelvis]=new Vector3(-.05f);cut.Max[h][CapturedRig.Pelvis]=new Vector3(.05f);}
         }
         /// <summary>
         /// The split's plan, before (and much faster than) the split: which ragdoll bodies each half keeps and their bounds in
@@ -210,7 +232,7 @@ namespace ChipArena.UnityConversion
         /// plane. A caller can build the halves' corpses from it while <see cref="Split"/> runs elsewhere (it only reads the
         /// sources). No pieces.
         /// </summary>
-        public static BisectCut Plan(IReadOnlyList<BisectSource> sources,Matrix4x4[] draw,in BisectPlane plane)
+        public static BisectCut Plan(IReadOnlyList<BisectSource> sources,Matrix4x4[] draw,in BisectPlane plane,uint mask=uint.MaxValue)
         {
             var cut=new BisectCut();var n=CapturedRig.Unit(plane.Normal,Vector3.UnitX);var p0=plane.Point;cut.Normal=n;cut.Point=p0;var inv=new Matrix4x4[22];
             for(int k=0;k<22;k++)if(!Matrix4x4.Invert(draw[k],out inv[k]))inv[k]=Matrix4x4.Identity;
@@ -218,6 +240,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<(sources?.Count??0);i++)
             {
                 var s=sources[i];if(s?.Mesh==null||s.Bone<0||s.Bone>=22)continue;int body=Anchor(s.Bone);var m=s.Mesh;var toWorld=draw[s.Bone];var toBody=toWorld*inv[body];
+                if(!Masked(mask,s.Bone)){Grow(cut,0,body,m.Positions,toBody);continue;}
                 var d=new float[m.Positions.Count];
                 for(int v=0;v<d.Length;v++){d[v]=Vector3.Dot(Vector3.Transform(m.Positions[v],toWorld)-p0,n);one[0]=m.Positions[v];Grow(cut,d[v]>=0?1:0,body,one,toBody);}
                 for(int t=0;t+2<m.Indices.Count;t+=3)for(int e=0;e<3;e++)
@@ -225,8 +248,7 @@ namespace ChipArena.UnityConversion
                     int a=m.Indices[t+e],b=m.Indices[t+(e+1)%3];if(d[a]>=0==d[b]>=0)continue;float l=d[a]/(d[a]-d[b]);one[0]=m.Positions[a]+(m.Positions[b]-m.Positions[a])*l;Grow(cut,0,body,one,toBody);Grow(cut,1,body,one,toBody);
                 }
             }
-            for(int h=0;h<2;h++)if(!cut.Bodies[h][CapturedRig.Pelvis]){cut.Bodies[h][CapturedRig.Pelvis]=true;cut.Min[h][CapturedRig.Pelvis]=new Vector3(-.05f);cut.Max[h][CapturedRig.Pelvis]=new Vector3(.05f);}
-            return cut;
+            Root(cut);return cut;
         }
         private static bool Finite(Vector3 v)=>!(float.IsNaN(v.X)||float.IsNaN(v.Y)||float.IsNaN(v.Z)||float.IsInfinity(v.X)||float.IsInfinity(v.Y)||float.IsInfinity(v.Z));
         /// <summary>Two unit vectors completing `n` (u x v = n), the same for the same normal.</summary>
@@ -604,6 +626,13 @@ namespace ChipArena.UnityConversion
         {
             at=0;origin=normal=along=Vector3.Zero;blade=k>=CutGushes;if(r==null||k<0||k>=Gushes)return false;
             var travel=CapturedRig.Unit(r.Travel,Vector3.Cross(Vector3.UnitY,r.Normal));
+            if(!blade&&r.SeamHalf>0)
+            {
+                // A blade's seam (a melee cut): in order along it, the way the blade passed, each spray out of one face or the
+                // other and flicked on along the swing.
+                float u=(k+.5f)/CutGushes*2-1;at=r.Hitch*.9f*k/(CutGushes-1);var seam=CapturedRig.Unit(r.Seam,travel);
+                origin=r.Point+seam*(u*r.SeamHalf)+r.Normal*(((k&1)==0?-1:1)*.01f);normal=CapturedRig.Unit(r.Normal*((k&1)==0?-1:1)+Vector3.UnitY*.35f,r.Normal);along=travel;return true;
+            }
             if(!blade)
             {
                 float f=(k+.5f)/CutGushes;at=r.Hitch*.9f*k/(CutGushes-1);float y=low+.12f+(high-low-.22f)*(.15f+.7f*(1-f));

@@ -17,7 +17,14 @@ namespace ChipArena.UnityConversion
         internal object Bisect;internal Action OnRelease;
         /// <summary>Waits for the split's geometry (it may run on a worker during the hold): called before the halves part.</summary>
         internal Action AwaitSplit;
+        /// <summary>Whether the split's geometry is in (or can be had without waiting). Until it is, the halves keep holding past
+        /// the request's hitch, for at most <see cref="HoldLimit"/> s more, rather than block the frame on the worker: a melee
+        /// cut's hitch is shorter than a split takes.</summary>
+        internal Func<bool> SplitReady;
+        internal const float HoldLimit=1.5f;
         private bool parted;
+        /// <summary>This half's pelvis is a stand-in (Core BisectCut.Rooted false): still, collisionless, nothing hangs from it.</summary>
+        private bool standIn;
         /// <summary>Both halves of a bisected death from a posed rig: `split` gets the bind matrices and the pelvis (Unity world)
         /// and returns the cut and its request (null: no split, the caller makes the whole corpse).</summary>
         internal static NativeCorpse Bisected(NativeDeath death,CapturedAnimation.Player rig,NativeArena arena,Func<Matrix4x4[],Vector3,(BisectCut cut,BisectRequest request)> split)
@@ -33,7 +40,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The hand the dropped weapon leaves (the magic weapons' off hand, else the right).</summary>
         private static int WeaponHand(NativeDeath death){var s=death.actor?.SourceSpec;return s=="fire"||s=="water"||s=="lightning"||s=="darkness"||s=="leet"?9:13;}
         /// <summary>Whether this corpse drops the weapon: every whole body does; of two halves, the one the hand is on.</summary>
-        private bool HoldsWeapon(Vector3[] at)=>!Halved||(Request.Side(N(at[WeaponHand(Death)]))>=0?1:0)==Half;
+        private bool HoldsWeapon(Vector3[] at)=>!Halved||Request.HalfOf(WeaponHand(Death),N(at[WeaponHand(Death)]))==Half;
         /// <summary>A half body's collider bounds in its own frame: the half's geometry on that joint (Core BisectCut).</summary>
         private Bounds HalfBounds(int b,Matrix4x4 toLocal)
         {
@@ -46,11 +53,23 @@ namespace ChipArena.UnityConversion
             foreach(var pair in Parts)
             {
                 int b=pair.Key,p=CapturedRig.Bones[b].Parent;while(p>=0&&Array.IndexOf(Bones,p)<0)p=CapturedRig.Bones[p].Parent;
-                if(p>=0&&!Parts.ContainsKey(p)&&!Severed.Contains(b))Severed.Add(b);
+                if(p>=0&&(!Parts.ContainsKey(p)||standIn&&p==CapturedRig.Pelvis)&&!Severed.Contains(b))Severed.Add(b);
             }
         }
         /// <summary>At the hitch's end both halves part: each body the half's velocity plus its tumble about the half's centre.</summary>
-        private void ReleaseHalves(){if(!Halved||Host!=null||parted||clock+1e-6f<Request.Hitch)return;AwaitSplit?.Invoke();PartHalf(clock);Twin?.PartHalf(clock);}
+        private void ReleaseHalves()
+        {
+            if(!Halved||Host!=null||parted||clock+1e-6f<Request.Hitch)return;if(SplitReady!=null&&!SplitReady()&&clock<Request.Hitch+HoldLimit)return;
+            AwaitSplit?.Invoke();PartHalf(clock);Twin?.PartHalf(clock);
+        }
+        /// <summary>A half whose pelvis is a stand-in: the stand-in stays put with no collider (the other bodies of that half are
+        /// loose of it, LoosePieces), so a torso cut off above the hips cannot stand on an invisible pelvis.</summary>
+        private void StandIn()
+        {
+            standIn=Halved&&!Bisection.Rooted[Half]&&Parts.ContainsKey(CapturedRig.Pelvis);if(!standIn)return;
+            var root=Parts[CapturedRig.Pelvis];root.GetComponent<Collider>().enabled=false;root.isKinematic=true;
+        }
+        private bool Still(int part)=>part==CrushPart||standIn&&part==CapturedRig.Pelvis;
         private void PartHalf(float at)
         {
             if(parted||at+1e-6f<Request.Hitch)return;parted=true;
@@ -58,7 +77,7 @@ namespace ChipArena.UnityConversion
             Vector3 centre=Vector3.zero;float mass=0;foreach(var body in Parts.Values){centre+=body.position*body.mass;mass+=body.mass;}centre=mass>0?centre/mass:Parts[CapturedRig.Pelvis].position;
             foreach(var pair in Parts)
             {
-                var body=pair.Value;if(pair.Key==CrushPart)continue;body.isKinematic=false;
+                var body=pair.Value;if(Still(pair.Key))continue;body.isKinematic=false;
                 body.linearVelocity=Vector3.ClampMagnitude(v+Vector3.Cross(w,body.position-centre),(float)NativeKillEffectRules.MaxBodySpeed);body.angularVelocity=w;
             }
             if(weapon!=null){weapon.isKinematic=false;weapon.linearVelocity=v+Vector3.Cross(w,weapon.position-centre);weapon.angularVelocity=w+new Vector3(1,2,1);}
@@ -72,7 +91,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The second half wakes with its first (a retained body's support changed).</summary>
         private void Thaw(float age)
         {
-            if(!frozen)return;foreach(var pair in Parts)if(pair.Key!=CrushPart&&parted)pair.Value.isKinematic=false;
+            if(!frozen)return;foreach(var pair in Parts)if(!Still(pair.Key)&&parted)pair.Value.isKinematic=false;
             if(weapon!=null&&parted)weapon.isKinematic=false;frozen=false;clock=age;stepped=true;
         }
         /// <summary>

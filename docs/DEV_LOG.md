@@ -1,5 +1,26 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — melee kills cut the body's mesh along the swing
+- Branch `claude/melee-mesh-slice` on shared `01eb518`. Task: melee deaths used preset joint detachment along the swing's plane; the buzzsaw's mesh split existed. A lethal sword, greatsword or dagger blow now runs through that split (Core `NativeMeleeBisect` from `NativeMeleeSlice`'s plan) with sealed caps, detached pieces and blood along the cut. See docs/BISECT-GIB.md "Melee cuts".
+- What changed:
+  - **Cut shapes:** through-cuts for trunk, cleave and chops; part-only cuts for head and limbs (new `BisectRequest.Mask`, swing bevel kept within 35° of square across a limb, 15° across the neck).
+  - **Blood and corpses:** the seam's blood runs along the blade's pass (`Seam`). A half without pelvis geometry gets a still, collisionless stand-in root, so a torso cut off above the hips doesn't stand on an invisible pelvis. The weapon, halo and team bands follow the mask.
+  - **No stall:** the halves hold until the worker's split is in instead of blocking the frame. Late and rebuilt bodies also split in the background now, saws included.
+  - **Killcam:** each death's first-seen blow is cached for the round, because the killcam reset clears the ledger.
+  - **Authoritative inputs:** the ledger keeps the Hit event's direction (`Toward`), so the attacker's bearing is the authority's. It reads jump attacks from the swing's `AirAttack`, which also fixes landing kills never chopping, horde blows included.
+- Unchanged: damage, hit detection, interruption, kill credit, death styles and the wire. Gore off, purchased kill effects, dagger slit throats and shield kills keep the joint slice. PvP bodies are still retained to round end, both halves. Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking. The cut adds a cosmetic 0.045–0.13 s hit-stop on the corpse only.
+- Checks:
+  - Unity runtime+editor compile OK.
+  - check_relay exit 0: 648 PASS, including the new `MeleeBisectChecks` (14,078 checks) and `BisectChecks` (1,929, pins updated). The new checks cover 500 random lethal blows per weapon; sealed, volume-conserving, plane-aligned horizontal/diagonal/vertical splits on Standard, Sheldon Clothes and Prototype; seam gushes; host vs late guest; the replay; the ledger; and wiring isolation.
+  - Python 101 OK (1 skip); package_source OK; `git diff --check` clean.
+  - Split cost here: at most 8 ms and 5.6 MB per through-cut, about 1 ms and 0.7 MB per part cut, on a worker.
+  - Not run: Unity Editor play, PhysX corpse behaviour, Windows frame times, two-client and replay viewing.
+- Remaining simulation dependency (Astra):
+  - **Missing input:** the attacker's position at the hit tick isn't replicated, so a guest takes the attacker's distance from its frame.
+  - **Measured effect:** a guest 30–150 ms late gets an identical plane orientation, but the cut can be up to 7.6 cm off. In 48 of 691 random blows it takes a different part (e.g. head vs arm).
+  - **Request:** melee Hit/Headshot events should set `From` to the attacker's Rigidbody position at that tick and `Projectile` to the swing's Id (>0). Both fields already exist on the wire.
+  - **Presentation side:** it reads them when present (dormant until then), and the checks prove the guest then matches the host exactly.
+
 ## 2026-10-14 — Claude — editor compile fix after #203 (CC cancels swings)
 - Branch `claude/sleepy-ritchie-g8ruhv` on shared `9934671`. Astra's #203 (`c283f0e`) added `float ...,ready=a.Ready` inside a loop of `NativeMeleeValidation`'s try block, which already declares `float ready` later (line 118), so the editor assembly failed with CS0136 and the Unity project would not compile. CI's native-source job does not compile the editor scripts against Unity, so it stayed green.
 - Renamed the new local to `readyAt` (two uses). No logic, gate or timing change. Astra: no action needed beyond knowing the name changed.

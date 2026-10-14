@@ -169,14 +169,14 @@ namespace ChipArena.UnityConversion
             Check(bonesList==string.Join(",",NativeBisect.Bodies),"NativeBisect.Bodies are the corpse's ragdoll bodies ("+bonesList+")");
             Check(bisect.Contains("death.damageKind!=\"hazard\"||!NativeFactoryHazards.Active(arena.MapId)||!NativeBisect.Applies(Gore,death.style,death.kept,death.model)")
                 &&bisect.Contains("NativeSawBisect.Find(hazards,round,arena.Match.FightAt,death.at,NativeArena.Vec(death.position))")&&bisect.Contains("NativeSawBisect.Request(saw,round,clock,CutNum(pelvis)"),"a split needs a Factory hazard death, gore on and a stock ending; the saw and plane come from the record");
-            Check(death.Contains("corpse=pilot&&slice==null?SawBisect(arena,death,rig):null;")&&death.Contains("if(corpse==null)corpse=new NativeCorpse(death,rig,arena,slice);"),"no split (gore off, any other death): the corpse is made exactly as before");
+            Check(death.Contains("corpse=!pilot?null:slice!=null?MeleeBisect(arena,death,rig,slice):SawBisect(arena,death,rig);")&&death.Contains("if(corpse==null)corpse=new NativeCorpse(death,rig,arena,slice);"),"no split (gore off, any other death): the corpse is made exactly as before");
             Check(death.Contains("if(corpse.Bisect!=null)recolored=BisectDraw(corpse,death,model,bodySkin,alpha,clock);")&&death.Contains("if(corpse.Twin!=null)KillSpray(corpse.Twin,shown,alpha,clock);")&&death.Contains("if(corpse.Bisect!=null)BisectBlood(corpse,death,KillClock(arena));"),"a split body draws its halves instead of the whole, with both fountains and the cut's blood");
             Check(death.Contains("DriveCollapse(clock);ReleaseHalves();")&&death.Contains("Twin?.Forces();")&&death.Contains("if(Twin!=null){Twin.StepSpray();Twin.clock=clock;}")&&death.Contains("if(Host!=null)scene=Host.scene;else")&&death.Contains("Twin?.Dispose();Twin=null;OnRelease?.Invoke();"),"one scene and one step for both halves; released together");
             Check(death.Contains("if(Halved)foreach(var part in Parts.Values){part.linearVelocity=part.angularVelocity=Vector3.zero;part.isKinematic=true;}")&&corpse.Contains("if(parted||at+1e-6f<Request.Hitch)return;parted=true;"),"the halves hold on the blade until the hitch, then part");
-            Check(death.Contains("&&death.actor.SourceSpec!=\"siren\"&&HoldsWeapon(at))")&&corpse.Contains("private bool HoldsWeapon(Vector3[] at)=>!Halved||(Request.Side(N(at[WeaponHand(Death)]))>=0?1:0)==Half;"),"the weapon drops whole, with the half its hand is on");
+            Check(death.Contains("&&death.actor.SourceSpec!=\"siren\"&&HoldsWeapon(at))")&&corpse.Contains("private bool HoldsWeapon(Vector3[] at)=>!Halved||Request.HalfOf(WeaponHand(Death),N(at[WeaponHand(Death)]))==Half;"),"the weapon drops whole, with the half its hand is on");
             Check(corpse.Contains("foreach(var a in first.Parts.Values)foreach(var b in second.Parts.Values)Physics.IgnoreCollision("),"the halves never collide with each other");
-            Check(models.Contains("var transient=new HashSet<Part>();")&&models.Contains("Cut=NativeBisect.Split(Sources,Draw,Plane,new[]{Look,BisectLook.Hat},Tier,Seed);")&&models.Contains("job.Task=System.Threading.Tasks.Task.Run(job.Split);"),"the halves are cut once from the body model and hat the corpse draws (on a worker while the body holds); wound meshes are copied");
-            Check(bisect.Contains("var plan=NativeBisect.Plan(fx.Job.Sources,fx.Job.Draw,fx.Job.Plane);")&&corpse.Contains("AwaitSplit?.Invoke();PartHalf(clock);")&&bisect.Contains("if(!fx.Settled){if(fx.Job!=null&&fx.Job.Done)Settle(corpse);if(!fx.Settled)return false;}"),"the corpses come from the plan; the whole body draws until the split is in, which the halves wait for before they part");
+            Check(models.Contains("var transient=new HashSet<Part>();")&&models.Contains("Cut=NativeBisect.Split(Sources,Draw,Plane,new[]{Look,BisectLook.Hat},Tier,Seed,Mask);")&&models.Contains("job.Task=System.Threading.Tasks.Task.Run(job.Split);"),"the halves are cut once from the body model and hat the corpse draws (on a worker while the body holds); wound meshes are copied");
+            Check(bisect.Contains("var plan=NativeBisect.Plan(fx.Job.Sources,fx.Job.Draw,fx.Job.Plane,r.Mask);")&&corpse.Contains("AwaitSplit?.Invoke();PartHalf(clock);")&&bisect.Contains("if(!fx.Settled){if(fx.Job!=null&&fx.Job.Done)Settle(corpse);if(!fx.Settled)return false;}"),"the corpses come from the plan; the whole body draws until the split is in, which the halves wait for before they part");
             Check(factory.Contains("factoryStage.Blood=SawBlood(arena,NativeFactoryStage.Hazards(arena.MapId));")&&factory.Contains("rigBuilder.Build(hz,round,clock,Blood);")&&bisect.Contains("if(!Gore||hazards==null)return null;"),"the blade keeps its blood from replicated deaths, none with gore off");
             Check(R("NativeSandbox.cs").Contains("\"Preview Saw Split\"")&&bisect.Contains("if(!SawSplitGallery||!arena.Sandbox)"),"the Dev Sandbox previews the split (presentation only)");
             foreach(var f in new[]{"Runtime/NativeArena.cs","Runtime/NativeDeaths.cs","Runtime/NativeStageHazardsRuntime.cs","Runtime/NativeNetworkFrame.cs","Runtime/NativeFrameCodec.cs","Core/NativeFactoryHazards.cs","Core/NativeStageHazards.cs"})
@@ -232,7 +232,7 @@ namespace ChipArena.UnityConversion
             }
             return w;
         }
-        private static List<BisectSource> Sources(Dictionary<string,List<Model>> bank,NativeWoundPart[] woundParts,int skin,int tier,NativeWound[] wounds,string hat,out BisectLook[] looks)
+        internal static List<BisectSource> Sources(Dictionary<string,List<Model>> bank,NativeWoundPart[] woundParts,int skin,int tier,NativeWound[] wounds,string hat,out BisectLook[] looks)
         {
             var o=new List<BisectSource>();var groups=wounds==null||wounds.Length==0?new WoundCarveGroup[0]:NativeWoundAnchors.Carve(wounds.SelectMany(w=>NativeWoundAnchors.Of(woundParts,w,false,WoundSkinCases.Body)));
             if(skin==NativeBodySkins.PrototypeIndex)
@@ -263,7 +263,7 @@ namespace ChipArena.UnityConversion
         private static Vector3 Mi(Vector3 v)=>new Vector3(-v.X,v.Y,v.Z);
         private static Quaternion Mi(Quaternion q)=>new Quaternion(q.X,-q.Y,-q.Z,q.W);
         /// <summary>The rest pose (arms eased out) standing at `feet`, turned by `yaw` (Unity degrees): each joint's draw matrix.</summary>
-        private static Matrix4x4[] Pose(Vector3 feet,float yaw)
+        internal static Matrix4x4[] Pose(Vector3 feet,float yaw)
         {
             var p=new CapturedRig.Pose();p.Rotation[CapturedRig.LArm]=CapturedRig.Rot(CapturedRig.Z,.16f);p.Rotation[CapturedRig.RArm]=CapturedRig.Rot(CapturedRig.Z,-.16f);
             p.Rotation[CapturedRig.LElbow]=CapturedRig.Rot(CapturedRig.X,-.35f);p.Rotation[CapturedRig.RElbow]=CapturedRig.Rot(CapturedRig.X,-.2f);p.Rotation[CapturedRig.LKnee]=CapturedRig.Rot(CapturedRig.X,.2f);p.World();
@@ -273,8 +273,8 @@ namespace ChipArena.UnityConversion
 
         // ---- geometry ----
         private static readonly Vector3[] FleshColours={NativePortraitRules.Linear(0xa8141f),NativePortraitRules.Linear(0x780a14),NativePortraitRules.Linear(0x4f0610),NativePortraitRules.Linear(0xbd1a24),NativePortraitRules.Linear(0x2c0307)};
-        private static bool Flesh(Vector3 c)=>FleshColours.Any(f=>Vector3.Distance(f,c)<1e-4f);
-        private static string Digest(BisectCut cut,List<BisectSource> sources)
+        internal static bool Flesh(Vector3 c)=>FleshColours.Any(f=>Vector3.Distance(f,c)<1e-4f);
+        internal static string Digest(BisectCut cut,List<BisectSource> sources)
         {
             var sb=new StringBuilder();
             foreach(var p in cut.Pieces){sb.Append(p.Half).Append(',').Append(p.Source).Append(',').Append(p.Bone).Append(',').Append(p.Whole).Append(';');if(p.Mesh==null)continue;foreach(var q in p.Mesh.Positions)sb.Append(q.X.ToString("R")).Append(q.Y.ToString("R")).Append(q.Z.ToString("R"));foreach(var c in p.Mesh.Colors)sb.Append(c.X.ToString("R"));foreach(int i in p.Mesh.Indices)sb.Append(i).Append(' ');}
@@ -288,17 +288,19 @@ namespace ChipArena.UnityConversion
             return true;
         }
         /// <summary>World triangles: the whole body (`cut` null) or one half's pieces.</summary>
-        private static List<(Vector3 a,Vector3 b,Vector3 c)> World(List<BisectSource> sources,Matrix4x4[] bones,BisectCut cut,int half)
+        internal static List<(Vector3 a,Vector3 b,Vector3 c)> World(List<BisectSource> sources,Matrix4x4[] bones,BisectCut cut,int half)
         {
             var o=new List<(Vector3,Vector3,Vector3)>();
             void Add(WeaponSection m,int bone){var M=bones[bone];for(int k=0;k+2<m.Indices.Count;k+=3)o.Add((Vector3.Transform(m.Positions[m.Indices[k]],M),Vector3.Transform(m.Positions[m.Indices[k+1]],M),Vector3.Transform(m.Positions[m.Indices[k+2]],M)));}
             if(cut==null){foreach(var s in sources)Add(s.Mesh,s.Bone);return o;}
             foreach(var p in cut.Pieces)if(p.Half==half)Add(p.Whole?sources[p.Source].Mesh:p.Mesh,p.Bone);return o;
         }
-        private static double Volume(List<(Vector3 a,Vector3 b,Vector3 c)> t,Vector3 origin){double v=0;foreach(var (a,b,c) in t)v+=Vector3.Dot(a-origin,Vector3.Cross(b-origin,c-origin))/6.0;return v;}
+        internal static double Volume(List<(Vector3 a,Vector3 b,Vector3 c)> t,Vector3 origin){double v=0;foreach(var (a,b,c) in t)v+=Vector3.Dot(a-origin,Vector3.Cross(b-origin,c-origin))/6.0;return v;}
         private static double Area(WeaponSection m,Matrix4x4 M){double s=0;for(int k=0;k+2<m.Indices.Count;k+=3){var a=Vector3.Transform(m.Positions[m.Indices[k]],M);var b=Vector3.Transform(m.Positions[m.Indices[k+1]],M);var c=Vector3.Transform(m.Positions[m.Indices[k+2]],M);s+=Vector3.Cross(b-a,c-a).Length()*.5;}return s;}
         /// <summary>Rays from nine directions across the cut (a 1.5 cm grid): how many meet a back face first (see-through).</summary>
-        private static int Sweep(List<(Vector3 a,Vector3 b,Vector3 c)> t,Vector3 n,Vector3 c,out int rays)
+        /// <summary>`inPlane` (>= 0): skip the rays that run in the cut's own plane through `c` (within that distance of it): a
+        /// ray inside a cap's plane can never meet the cap and only grazes the cut edge, so its first hit means nothing.</summary>
+        internal static int Sweep(List<(Vector3 a,Vector3 b,Vector3 c)> t,Vector3 n,Vector3 c,out int rays,float inPlane=-1)
         {
             const float Step=.0153f;const int Half=60,G=2*Half+1;NativeBisect.Basis(n,out var u,out var v);int back=0;rays=0;
             foreach(var d in new[]{n,-n,Vector3.Normalize(n+u*.6f),Vector3.Normalize(-n+v*.5f),u,v,-u,-v,Vector3.Normalize(n*.3f+u+v)})
@@ -312,7 +314,8 @@ namespace ChipArena.UnityConversion
                 }
                 for(int i=-Half;i<=Half;i++)for(int j=-Half;j<=Half;j++)
                 {
-                    var list=bins[(i+Half)*G+j+Half];if(list==null)continue;var o=c+e1*(i*Step+.00037f)+e2*(j*Step+.00051f)-d*3;rays++;float best=float.MaxValue;bool front=true;
+                    var list=bins[(i+Half)*G+j+Half];if(list==null)continue;var o=c+e1*(i*Step+.00037f)+e2*(j*Step+.00051f)-d*3;
+                    if(inPlane>=0&&Math.Abs(Vector3.Dot(d,n))<1e-3f&&Math.Abs(Vector3.Dot(o-c,n))<=inPlane)continue;rays++;float best=float.MaxValue;bool front=true;
                     foreach(int k in list){var (a,b,cc)=t[k];if(Hit(o,d,a,b,cc,out float tt,out bool f)&&tt<best){best=tt;front=f;}}
                     if(best<float.MaxValue&&!front)back++;
                 }

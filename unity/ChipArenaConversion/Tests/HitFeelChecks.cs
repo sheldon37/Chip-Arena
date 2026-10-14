@@ -345,7 +345,7 @@ internal static class HitFeelChecks
         string core=Path.Combine(root,"Assets/ChipArena/Core"),rt=Path.Combine(root,"Assets/ChipArena/Runtime");
         foreach(var f in new[]{"NativeStagger.cs","NativeBlood.cs","NativeMeleeSlice.cs"}){var text=File.ReadAllText(Path.Combine(core,f));Check(!text.Contains("NativeArena")&&!text.Contains("NativePilot")&&!text.Contains("Random("),f+" reads no authority state and no clock-free randomness");}
         var blood=File.ReadAllText(Path.Combine(rt,"NativeBloodPresentation.cs"));Check(!blood.Contains(".Hp=")&&!blood.Contains("Damage(")&&!blood.Contains("Emit(")&&blood.Contains("NativeArena.WorldMask"),"the blood presentation only sweeps the arena's colliders");
-        var death=File.ReadAllText(Path.Combine(rt,"NativeDeathPresentation.cs"));Check(death.Contains("hitLedger.Blow(death.id,death.at,out var blow)")&&death.Contains("new NativeCorpse(death,rig,arena,slice)"),"the slice is planned from the ledger's replicated blow");
+        var death=File.ReadAllText(Path.Combine(rt,"NativeDeathPresentation.cs"));Check(death.Contains("has=hitLedger.Blow(death.id,death.at,out blow)")&&death.Contains("new NativeCorpse(death,rig,arena,slice)"),"the slice is planned from the ledger's replicated blow");
         var deaths=File.ReadAllText(Path.Combine(rt,"NativeDeaths.cs"));Check(!deaths.Contains("Slice")&&!deaths.Contains("Stagger"),"the authority's wounds and deaths are unchanged");
         log.Add("presentation keyed to replicated data only: the same hips at 30 and 144 Hz ("+same+" samples within "+(worst*1e6).ToString("0")+" µm), the authoritative pilot untouched, the rules read no authority state, the authority's wound code unchanged");
     }

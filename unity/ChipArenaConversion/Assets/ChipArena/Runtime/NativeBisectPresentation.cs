@@ -47,27 +47,47 @@ namespace ChipArena.UnityConversion
             double clock=NativeFactoryHazards.Clock(NativePhase.Fight,arena.Match.FightAt,death.at);var saw=hazards[index];
             return SplitCorpse(arena,death,rig,-1,pelvis=>NativeSawBisect.Request(saw,round,clock,CutNum(pelvis),unchecked((uint)death.seed*2654435761u)));
         }
+        /// <summary>
+        /// A pilot killed by a blade blow, cut along the swing (Core NativeMeleeBisect, from the plan NativeMeleeSlice made of
+        /// the killing blow's replicated swing and the Hit event's direction): the body, or only the head or limb the blade
+        /// took, split with sealed caps, the part flung along the swing, the seam's blood along the cut. Null keeps the joint
+        /// slice as before: gore off, a kill effect that shows its own ending, a Siren or a revivable body, a dagger's slit
+        /// throat, any shield kill, or models missing.
+        /// </summary>
+        private NativeCorpse MeleeBisect(NativeArena arena,NativeDeath death,CapturedAnimation.Player rig,SlicePlan slice)
+        {
+            if(sourceModels==null||death==null||!NativeMeleeBisect.Cuts(slice)||!NativeBisect.Applies(Gore,death.style,death.kept,death.model))return null;
+            uint seed=unchecked((uint)death.seed*2654435761u^0x6d2b79f5u);var velocity=CutNum(death.velocity);
+            return SplitCorpse(arena,death,rig,-1,(bind,pelvis)=>
+            {
+                var joints=new NVector3[22];for(int b=0;b<22;b++)joints[b]=CutNum(bind[b].GetColumn(3));
+                return NativeMeleeBisect.Request(slice,joints,velocity,seed);
+            });
+        }
         /// <summary>Splits a death's body by the request `cut` makes for its pelvis; `skin` -1 the pilot's own (its wound cuts
         /// included), else that skin unwounded (the Dev Sandbox preview).</summary>
-        private NativeCorpse SplitCorpse(NativeArena arena,NativeDeath death,CapturedAnimation.Player rig,int skin,Func<Vector3,BisectRequest> cut)
+        private NativeCorpse SplitCorpse(NativeArena arena,NativeDeath death,CapturedAnimation.Player rig,int skin,Func<Vector3,BisectRequest> cut)=>SplitCorpse(arena,death,rig,skin,(bind,pelvis)=>cut(pelvis));
+        /// <summary>As above, the request made from the posed joints too (each joint's draw matrix, the corpse's bind).</summary>
+        private NativeCorpse SplitCorpse(NativeArena arena,NativeDeath death,CapturedAnimation.Player rig,int skin,Func<Matrix4x4[],Vector3,BisectRequest> cut)
         {
             var a=death.actor;var fx=new BisectFx{Key="bisect-"+death.id+"-"+death.seed+"-"+(++bisectKeys),Seed=unchecked((uint)death.seed*2246822519u+7u),Fixed=skin>=0};
             fx.Halo=a?.Hat==NativeAuditorHalo.Hat;fx.Hat=!fx.Halo&&!string.IsNullOrEmpty(a?.Hat)&&a.Hat!="none"?HatModel(a.Hat,a.HatColor):null;if(fx.Hat!=null&&!sourceModels.Has(fx.Hat))fx.Hat=null;
             // The corpses come from the split's plan (which bodies each half keeps, and their bounds); the split itself runs on a
-            // worker while the body holds on the blade (the whole body draws meanwhile, still), and is waited for before the halves
-            // part. A body first seen after its hold (a late join, a corpse rebuilt after the killcam) splits at once.
+            // worker while the body holds on the blade (the whole body draws meanwhile, still). The halves keep holding past the
+            // hitch until it is in (NativeCorpse.SplitReady, at most HoldLimit more) instead of blocking the frame on it; a body
+            // first seen late (a late join, a corpse rebuilt after the killcam) splits in the background the same way.
             bool background=SplitInBackground&&Application.platform!=RuntimePlatform.WebGLPlayer&&!fx.Fixed;
             var corpse=NativeCorpse.Bisected(death,rig,arena,(bind,pelvis)=>
             {
-                fx.Bind=bind;fx.Request=cut(pelvis);int tier=BodyTier(pelvis,false);string model;
+                fx.Bind=bind;fx.Request=cut(bind,pelvis);if(fx.Request==null)return (null,null);int tier=BodyTier(pelvis,false);string model;
                 if(skin>=0){fx.Skin=skin;model=BodyModel(skin,tier);}
                 else model=sourceModels.WoundedPilot(death.id,a?.Wounds,a?.BodyColor,ForceCompatibilityRendering,BodyAt(death.id,pelvis,out fx.Skin));
                 fx.Look=NativeBodyModels.CutLook(fx.Skin);fx.Model=model;var r=fx.Request;
-                fx.Job=sourceModels.BisectBegin(fx.Key+"/"+model,model,fx.Hat,bind,new BisectPlane(r.Point,r.Normal),fx.Look,tier,fx.Seed);if(fx.Job==null)return (null,null);
-                var plan=NativeBisect.Plan(fx.Job.Sources,fx.Job.Draw,fx.Job.Plane);background&=arena.Time-death.at<.5f*r.Hitch;NativeSourceModels.BisectRun(fx.Job,background);return (plan,r);
+                fx.Job=sourceModels.BisectBegin(fx.Key+"/"+model,model,fx.Hat,bind,new BisectPlane(r.Point,r.Normal),fx.Look,tier,fx.Seed,r.Mask);if(fx.Job==null)return (null,null);
+                var plan=NativeBisect.Plan(fx.Job.Sources,fx.Job.Draw,fx.Job.Plane,r.Mask);NativeSourceModels.BisectRun(fx.Job,background);return (plan,r);
             });
             if(corpse==null){ReleaseBisect(fx);return null;}
-            corpse.Bisect=fx;corpse.OnRelease=()=>ReleaseBisect(fx);corpse.AwaitSplit=()=>Settle(corpse);if(!background)Settle(corpse);return corpse;
+            corpse.Bisect=fx;corpse.OnRelease=()=>ReleaseBisect(fx);corpse.AwaitSplit=()=>Settle(corpse);corpse.SplitReady=()=>fx.Settled||fx.Job==null||fx.Job.Done;if(!background)Settle(corpse);return corpse;
         }
         /// <summary>The split is done (or is waited for): its halves are registered, and the corpses take its exact pieces (their
         /// fountains start at their cut faces). A failed split keeps the whole body.</summary>
@@ -79,7 +99,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Another tier of the body (the camera's distance changed), split at once.</summary>
         private string[] Halves(BisectFx fx,string model,int tier)
         {
-            var r=fx.Request;var names=sourceModels.Bisect(fx.Key+"/"+model,model,fx.Hat,fx.Bind,new BisectPlane(r.Point,r.Normal),fx.Look,tier,fx.Seed,out var cut);
+            var r=fx.Request;var names=sourceModels.Bisect(fx.Key+"/"+model,model,fx.Hat,fx.Bind,new BisectPlane(r.Point,r.Normal),fx.Look,tier,fx.Seed,out var cut,r.Mask);
             if(names!=null)fx.Models[model]=names;return names;
         }
         private void ReleaseBisect(BisectFx fx){if(sourceModels==null)return;foreach(var model in fx.Models.Keys)sourceModels.ReleaseBisect(fx.Key+"/"+model);fx.Models.Clear();}
@@ -108,11 +128,11 @@ namespace ChipArena.UnityConversion
                 if(names[2+h]!=null)sourceModels.QueueShadowless(names[2+h],Matrix4x4.identity,half.PresentedBone,null,hat,null,alpha);
                 var drop=half.PresentedWeapon;if(drop.HasValue&&corpse.LooseModel!=null)sourceModels.QueueShadowless(corpse.LooseModel,drop.Value,null,null,null,null,alpha);
             }
-            var r=fx.Request;NativeCorpse Side(Vector3 p)=>r.Side(CutNum(p))>=0?corpse.Twin:corpse;
-            if(fx.Halo)AuditorHalo(a?.Hat,Side(corpse.Bind[CapturedRig.Head].GetColumn(3)).PresentedBone(CapturedRig.Head),clock,alpha,HaloReduced,0,null,color:a?.HatColor);
+            var r=fx.Request;NativeCorpse Side(int bone,Vector3 p)=>r.HalfOf(bone,CutNum(p))==1?corpse.Twin:corpse;
+            if(fx.Halo)AuditorHalo(a?.Hat,Side(CapturedRig.Head,corpse.Bind[CapturedRig.Head].GetColumn(3)).PresentedBone(CapturedRig.Head),clock,alpha,HaloReduced,0,null,color:a?.HatColor);
             if(fx.Band>=0&&alpha>.5f&&StatusReady())for(int k=0;k<bandLocal.Length;k++)
             {
-                int bone=NativeStatusVisuals.BandBones[k];var on=Side((corpse.Bind[bone]*bandLocal[k]).GetColumn(3));teamBands[fx.Band].Add(on.PresentedBone(bone)*bandLocal[k]);
+                int bone=NativeStatusVisuals.BandBones[k];var on=Side(bone,(corpse.Bind[bone]*bandLocal[k]).GetColumn(3));teamBands[fx.Band].Add(on.PresentedBone(bone)*bandLocal[k]);
             }
             return true;
         }

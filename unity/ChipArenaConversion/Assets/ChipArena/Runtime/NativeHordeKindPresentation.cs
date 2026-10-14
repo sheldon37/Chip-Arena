@@ -136,7 +136,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
                 s.Push=push;
-                if(melee&&actor!=null&&NativeHitRules.Standard(spec)){s.Spec=spec;s.HasBlow=true;s.BlowAt=e.Time;s.Blow=new MeleeBlow{At=e.Time,Source=e.Source,Spec=spec,CommitYaw=actor.CommitYaw,Index=actor.Combo+1,SwingAt=actor.SwingAt,SwingUntil=actor.SwingUntil,Air=!actor.Grounded,Special=actor.SpecialKind!=null&&e.Time>=actor.SpecialAt-.05f&&e.Time<=actor.SpecialUntil+.05f?actor.SpecialKind:null,Kit=e.Detail=="ability"&&actor.MeleeKit!=null&&!string.IsNullOrEmpty(actor.MeleeKit.Kind)?actor.MeleeKit.Kind:null,From=actor.Position,Yaw=actor.Yaw,Detail=e.Detail,Amount=e.Amount};}
+                if(melee&&actor!=null&&NativeHitRules.Standard(spec)){s.Spec=spec;s.HasBlow=true;s.BlowAt=e.Time;s.Blow=new MeleeBlow{At=e.Time,Source=e.Source,Spec=spec,CommitYaw=actor.CommitYaw,Index=actor.Combo+1,SwingAt=actor.SwingAt,SwingUntil=actor.SwingUntil,Air=actor.AirAttack,Special=actor.SpecialKind!=null&&e.Time>=actor.SpecialAt-.05f&&e.Time<=actor.SpecialUntil+.05f?actor.SpecialKind:null,Kit=e.Detail=="ability"&&actor.MeleeKit!=null&&!string.IsNullOrEmpty(actor.MeleeKit.Kind)?actor.MeleeKit.Kind:null,From=actor.Position,Yaw=actor.Yaw,Detail=e.Detail,Amount=e.Amount,Toward=e.Normal,Aimed=Mathf.Abs(e.Normal.x*e.Normal.x+e.Normal.y*e.Normal.y+e.Normal.z*e.Normal.z-1)<.19f};}
             }
             else if(hordeDead.TryGetValue(e.Target,out var dead)&&Math.Abs(dead.At-e.Time)<.1f){dead.Push=push;dead.Melee|=melee;hordeDead[e.Target]=dead;}
             // The Siren's ink out of the wound, landing and staying as splats (directed hits within 30 m of the camera).

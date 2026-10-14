@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 melee mesh cuts: `claude/melee-mesh-slice` (base shared `01eb518`) cuts a blade-killed pilot's mesh along the killing swing: whole body, or only the head or limb the blade took. Sealed caps, seam blood, no frame stall. Gore off, kill effects, slit throats and shields are unchanged. Managed checks pass; Unity/Windows/two-client viewing unrun. Astra: replicate the attacker's position on melee Hit events for an exact guest cut (BISECT-GIB "Melee cuts").
+
 2026-10-14 final camera: `codex/final-killcam-camera` on `76a65eb` adds side framing and exact-fatal-projectile follow for long recorded flights, then a wider death view. Optional death projectile ID; side fallback for missing history/splash/melee. Windows visual/host-guest acceptance pending.
 
 2026-10-14 boss victory: `codex/boss-victory-walk` on `6f20695` clears hostile adds immediately and provides five seconds of movement before cooperative results. Existing PvE stage/deadline replication carries the timer to guests; combat disabled during victory. Windows gameplay acceptance pending.

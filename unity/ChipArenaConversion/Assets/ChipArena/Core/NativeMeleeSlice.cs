@@ -6,22 +6,29 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>A melee blow as the hit ledger read it from the frame that carried its Hit event (every peer, from replicated
     /// data only): when it landed, the attacker's weapon, its committed swing (Unity yaw in degrees, attack index, hit window),
-    /// whether it was a jump attack, an E special or a Q/E kit ability (their kinds), and where the attacker stood (Unity).</summary>
-    public struct MeleeBlow{public float At,CommitYaw,SwingAt,SwingUntil,Yaw,Amount;public int Source,Index;public string Spec,Special,Kit,Detail;public bool Air;public V3 From;}
+    /// whether it was a jump attack (the swing's own replicated air flag), an E special or a Q/E kit ability (their kinds), and
+    /// where the attacker stood (Unity, its feet, as that frame had it). `Toward` (`Aimed`): the Hit event's own direction, the
+    /// authority's unit vector from the attacker's body centre to the target's at the hit's tick (its Damage step's hit
+    /// normal; the swing's .15 m origin lift cancels out), exact on every peer, where `From` is the frame's, a tick or two late.
+    /// `Struck` (`Exact`): the attacker's body centre at the hit's tick, once the authority sends it on melee hits (the contract
+    /// in docs/BISECT-GIB.md "Melee cuts": ArenaEvent.From with the swing's id in Projectile; no hit carries it yet).</summary>
+    public struct MeleeBlow{public float At,CommitYaw,SwingAt,SwingUntil,Yaw,Amount;public int Source,Index;public string Spec,Special,Kit,Detail;public bool Air,Aimed,Exact;public V3 From,Toward,Struck;}
 
     public enum SliceKind{None,Clean,Cleave,Slit,Limb,Crush,Chop}
 
     /// <summary>How a lethal melee blow takes the body apart (presentation only): the ragdoll joints it severs (part roots,
     /// at most three), a part it crushes instead, a slit throat, the cut plane and the blade's travel (Unity world, unit), and
-    /// how hard the severed parts fly along the swing (m/s), how fast they spin (rad/s) and how much the stumps bleed.</summary>
+    /// how hard the severed parts fly along the swing (m/s), how fast they spin (rad/s) and how much the stumps bleed.
+    /// `Point` is where the plane meets the body (Unity world: on the victim's centre line at `Height`, or for an upright
+    /// plane its crossing beside the centre line, kept within the body); `Spec` the killer's weapon.</summary>
     public sealed class SlicePlan
     {
         public const int Max=3;
         public readonly int[] Joints=new int[Max];public int Count;public int Crush=-1;public bool Throat;public SliceKind Kind;
-        public Vector3 Normal,Travel;public float Height,Kick,Spin,Blood=1;
+        public Vector3 Normal,Travel,Point;public float Height,Kick,Spin,Blood=1;public string Spec;
         public bool Has(int joint){for(int i=0;i<Count;i++)if(Joints[i]==joint)return true;return false;}
         public bool Any=>Count>0||Crush>=0||Throat;
-        public void Clear(){Count=0;Crush=-1;Throat=false;Kind=SliceKind.None;Normal=Travel=Vector3.Zero;Height=Kick=Spin=0;Blood=1;}
+        public void Clear(){Count=0;Crush=-1;Throat=false;Kind=SliceKind.None;Normal=Travel=Point=Vector3.Zero;Height=Kick=Spin=0;Blood=1;Spec=null;}
         internal void Add(int joint){if(Count<Max&&!Has(joint))Joints[Count++]=joint;}
     }
 
@@ -45,6 +52,8 @@ namespace ChipArena.UnityConversion
     /// Dragon) split top-down: head, the arm under the blade and, for the heavy ones, the waist.</item>
     /// </list>
     /// Only for a pilot's lethal melee blow by a standard melee weapon; living pilots never lose limbs. Pure, deterministic.
+    /// Where it applies (a blade, gore on, a stock ending) NativeMeleeBisect turns this plan into a cut of the body's mesh; the
+    /// joints here stay the presentation everywhere else.
     /// </summary>
     public static class NativeMeleeSlice
     {
@@ -94,8 +103,10 @@ namespace ChipArena.UnityConversion
         /// The dismemberment of a lethal melee blow. `blow`: the ledger's record of the killing blow (`hasBlow` false when none
         /// was seen); `spec`: the killer's weapon; `wound`: the authority's fatal wound (its local point gives the contact height
         /// when no swing is known); the victim's Unity position (body centre, as NativeDeath.position) and yaw (degrees); the
-        /// blow's From is the attacker's Actor.Position (its feet); `seed`: the death's seed.
-        /// False (and an empty plan) when this is not a standard melee kill.
+        /// blow's From is the attacker's Actor.Position (its feet); `seed`: the death's seed. With the Hit event's direction
+        /// (`blow.Aimed`) the attacker stands where that direction puts it, at the frame's distance: the bearing and height are
+        /// the authority's at the hit's tick, so only the distance is the frame's, and a slash's plane (its normal across the
+        /// bearing) does not move with it. False (and an empty plan) when this is not a standard melee kill.
         /// </summary>
         public static bool Plan(in MeleeBlow blow,bool hasBlow,string spec,NativeWound wound,V3 victim,float victimYaw,int seed,SlicePlan into)
         {
@@ -113,6 +124,7 @@ namespace ChipArena.UnityConversion
             Vector3 n,t,c;
             // The attacker's feet (Actor.Position is the feet; the victim's death position is its body centre).
             Vector3 attacker=hasBlow?Source(blow.From):vp+Vector3.Transform(new Vector3(0,0,1.4f),vq);
+            if(hasBlow&&blow.Aimed)attacker=Attacker(blow,victim);
             float yaw=hasBlow?blow.CommitYaw:victimYaw+180;var aq=Facing(yaw);
             Vector3 toVictim=vp-attacker;toVictim.Y=0;if(toVictim.LengthSquared()<1e-4f)toVictim=Vector3.Transform(new Vector3(0,0,1),aq);toVictim=Vector3.Normalize(toVictim);
             // The attacker's left across the blow (source frame +x is a rig's left).
@@ -143,6 +155,11 @@ namespace ChipArena.UnityConversion
             if(n.LengthSquared()<1e-8f)n=Vector3.UnitY;n=Vector3.Normalize(n);if(t.LengthSquared()<1e-8f)t=right;t=Vector3.Normalize(t-n*Vector3.Dot(t,n));if(t.LengthSquared()<1e-8f)t=right;
             // The plane's height on the victim's centre line, kept on the body.
             float h0=Math.Abs(n.Y)>.25f?c.Y-(n.X*(vp.X-c.X)+n.Z*(vp.Z-c.Z))/n.Y:c.Y;h0=MeleeMath.Clamp(h0-vp.Y,.3f,1.5f);
+            // Where the plane meets the body: on the centre line at that height; an upright plane (a chop) where it passes beside
+            // the centre line, at most .2 m off it.
+            Vector3 axisAt=vp+new Vector3(0,h0,0),point=axisAt;
+            if(Math.Abs(n.Y)<=.25f)point=axisAt+n*MeleeMath.Clamp(Vector3.Dot(n,c-axisAt),-.2f,.2f);
+            into.Point=Unity(point);into.Spec=spec;
             float S(int bone)=>Math.Abs(Vector3.Dot(n,J(bone)-c));
             int Near(params int[] options){int pick=options[0];float least=float.MaxValue;foreach(int o in options){float s=S(o);if(s<least-.03f){least=s;pick=o;}else if(Math.Abs(s-least)<=.03f){/* the side the blade enters first */float e0=Vector3.Dot(J(pick)-vp,t),e1=Vector3.Dot(J(o)-vp,t);if(e1<e0){pick=o;least=Math.Min(least,s);}}}return pick;}
             // A clean cut takes the head, an arm or the trunk (a blade crossing below the waist cuts the trunk on its way through:
@@ -187,6 +204,24 @@ namespace ChipArena.UnityConversion
                 }
             }
             return into.Any;
+        }
+        /// <summary>
+        /// The attacker's feet (source frame) at the hit's tick: the authority's own body centre when the hit carries it and it
+        /// agrees with the event's direction (within 2°), else back from the victim's body centre along the Hit event's
+        /// direction by the frame's horizontal distance, its height from the direction's rise. An upright direction (a blow from
+        /// straight above) or a missing one keeps the frame's position.
+        /// </summary>
+        public static Vector3 Attacker(in MeleeBlow blow,V3 victim)
+        {
+            Vector3 from=Source(blow.From),centre=Source(victim);var d=Source(blow.Toward);float flat=(float)Math.Sqrt(d.X*d.X+d.Z*d.Z);
+            if(blow.Exact&&blow.Aimed)
+            {
+                var struck=Source(blow.Struck);var to=centre-struck;float far=to.Length();
+                if(far>.3f&&far<8&&Vector3.Dot(to/far,CapturedRig.Unit(d,Vector3.Zero))>Math.Cos(2*Math.PI/180))return struck-new Vector3(0,RootHeight,0);
+            }
+            if(!blow.Aimed||!(flat>.2f)||float.IsNaN(d.Y))return from;
+            float reach=(float)Math.Sqrt((centre.X-from.X)*(centre.X-from.X)+(centre.Z-from.Z)*(centre.Z-from.Z));
+            return new Vector3(centre.X-d.X/flat*reach,centre.Y-d.Y/flat*reach-RootHeight,centre.Z-d.Z/flat*reach);
         }
         /// <summary>The old presentation's only input: whether the authority's fatal wound itself severed (or crushed) a part.</summary>
         public static bool WoundTakesPart(NativeWound w)=>w!=null&&w.destroyed&&(w.kind=="sever"||w.kind=="crush");

@@ -36,6 +36,8 @@ namespace ChipArena.UnityConversion
                 // mean nearby: copying every static block created hundreds of colliders per Cyber City death.
                 var bounds=WorldBounds(original);bool near=bounds.SqrDistance(Death.position)<=radius2;
                 if(!near)foreach(var part in Parts.Values)if(bounds.SqrDistance(part.position)<=radius2){near=true;break;}
+                // A split body's other half (a head or limb thrown clear) needs its floor too.
+                if(!near&&Twin!=null)foreach(var pair in Twin.Parts)if(!Twin.Still(pair.Key)&&bounds.SqrDistance(pair.Value.position)<=radius2){near=true;break;}
                 if(!near&&weapon!=null)near=bounds.SqrDistance(weapon.position)<=radius2;
                 if(!near)continue;seenObstacles.Add(prop);
                 bool added=!obstacles.TryGetValue(prop,out var copy);
@@ -57,7 +59,7 @@ namespace ChipArena.UnityConversion
             if(!stepped)return;Twin?.Thaw(age);
             if(frozen)
             {
-                foreach(var pair in Parts)if(pair.Key!=CrushPart)pair.Value.isKinematic=false;
+                foreach(var pair in Parts)if(!Still(pair.Key))pair.Value.isKinematic=false;
                 if(weapon!=null)weapon.isKinematic=false;frozen=false;clock=age;
             }
             settleAt=age+NativeCorpseRules.SettleSeconds;

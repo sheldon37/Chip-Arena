@@ -66,17 +66,18 @@ namespace ChipArena.UnityConversion
         /// done (possibly on a worker: Core NativeBisect.Split only reads them), and the models it became.</summary>
         public sealed class BisectJob
         {
-            public string Key;public List<BisectSource> Sources;public NMatrix[] Draw;public BisectPlane Plane;public BisectLook Look;public int Tier;public uint Seed;
+            public string Key;public List<BisectSource> Sources;public NMatrix[] Draw;public BisectPlane Plane;public BisectLook Look;public int Tier;public uint Seed,Mask=uint.MaxValue;
             public volatile BisectCut Cut;public System.Threading.Tasks.Task Task;public Exception Error;public string[] Names;public bool Finished;
             public bool Done=>Finished||(Task==null?Cut!=null||Error!=null:Task.IsCompleted);
-            public void Split(){try{Cut=NativeBisect.Split(Sources,Draw,Plane,new[]{Look,BisectLook.Hat},Tier,Seed);}catch(Exception e){Error=e;}}
+            public void Split(){try{Cut=NativeBisect.Split(Sources,Draw,Plane,new[]{Look,BisectLook.Hat},Tier,Seed,Mask);}catch(Exception e){Error=e;}}
         }
         /// <summary>
         /// Gathers model `body` and hat model `hat` (null for none), posed by `bind` (each joint's draw matrix: mesh to world, as a
         /// corpse's Bind), for a split along `plane` under `key`; `look` is the body's cap (NativeBodyModels.CutLook), `tier` its
-        /// detail (cap cells). Null when a model is missing or lacks its Core arrays (the caller keeps the whole body).
+        /// detail (cap cells), `mask` the bodies the cut may cross (BisectRequest.Mask). Null when a model is missing or lacks
+        /// its Core arrays (the caller keeps the whole body).
         /// </summary>
-        public BisectJob BisectBegin(string key,string body,string hat,Matrix4x4[] bind,in BisectPlane plane,BisectLook look,int tier,uint seed)
+        public BisectJob BisectBegin(string key,string body,string hat,Matrix4x4[] bind,in BisectPlane plane,BisectLook look,int tier,uint seed,uint mask=uint.MaxValue)
         {
             ReleaseBisect(key);if(body==null||!models.TryGetValue(body,out var bodyParts))return null;
             Part[] hatParts=hat!=null&&models.TryGetValue(hat,out var hp)?hp:Array.Empty<Part>();
@@ -84,7 +85,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in bodyParts){if(p.Core==null||p.Bone<0||p.Bone>=22)return null;parts.Add(p);sources.Add(new BisectSource{Bone=p.Bone,Group=0,Mesh=p.Core,Fill=p.Fill,Cap=!p.Open});}
             foreach(var p in hatParts){if(p.Core==null||p.Bone<0||p.Bone>=22)continue;parts.Add(p);sources.Add(new BisectSource{Bone=p.Bone,Group=1,Mesh=p.Core,Cap=!p.Open});}
             var draw=new NMatrix[22];for(int b=0;b<22;b++)draw[b]=Num(bind[b]);
-            jobParts[key]=parts.ToArray();return new BisectJob{Key=key,Sources=sources,Draw=draw,Plane=plane,Look=look,Tier=tier,Seed=seed};
+            jobParts[key]=parts.ToArray();return new BisectJob{Key=key,Sources=sources,Draw=draw,Plane=plane,Look=look,Tier=tier,Seed=seed,Mask=mask};
         }
         /// <summary>Runs the split now, or on a worker thread (`background`; it touches nothing of Unity's).</summary>
         public static void BisectRun(BisectJob job,bool background)
@@ -122,9 +123,9 @@ namespace ChipArena.UnityConversion
             made.Models=names;halves[job.Key]=made;job.Names=names;return names;
         }
         /// <summary>A split made at once (a body seen long after its death, another detail tier, the Dev Sandbox preview).</summary>
-        public string[] Bisect(string key,string body,string hat,Matrix4x4[] bind,in BisectPlane plane,BisectLook look,int tier,uint seed,out BisectCut cut)
+        public string[] Bisect(string key,string body,string hat,Matrix4x4[] bind,in BisectPlane plane,BisectLook look,int tier,uint seed,out BisectCut cut,uint mask=uint.MaxValue)
         {
-            var job=BisectBegin(key,body,hat,bind,plane,look,tier,seed);cut=null;if(job==null)return null;BisectRun(job,false);var names=BisectFinish(job);cut=job.Cut;return names;
+            var job=BisectBegin(key,body,hat,bind,plane,look,tier,seed,mask);cut=null;if(job==null)return null;BisectRun(job,false);var names=BisectFinish(job);cut=job.Cut;return names;
         }
         /// <summary>Drops a bisected body's models and the meshes they own (and every draw queued on them).</summary>
         public void ReleaseBisect(string key)
