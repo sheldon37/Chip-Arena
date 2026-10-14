@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 Hulk v2 authority: `codex/hulk-hunt-v2` on `9cc6d299` implements hunted-pilot punch/swipe and cross-map locked charge, contact destruction, DEV parity and five replicated fields. Six requested managed suites and new authority checks pass; native Unity/Windows acceptance and Claude's `HordeHulkFrame` binding remain. See latest DEV_LOG for exact fields and publication status.
+
 2026-10-14 Hulk charge at pilots: `claude/hulk-charge` (base shared `b22e59f`) proposes contract v2 (docs/SIREN-ZOMBIES.md 10.5: punch/swipe at the hunted pilot, a cross-map charge locked at the wind-up, breaking walls on contact, `chargeTarget`) and builds its presentation: tell and lock streak, held run, walls shaking before the crash-through, the hunted pilot's HUD/audio warning, punch/swipe impacts, a gallery demo. Dormant until Astra replicates it; managed checks and Unity compile pass; Unity/Windows unrun. Pushed, not merged.
 
 2026-10-14 spitter pool: `claude/spitter-pool` (base shared `b22e59f`, merged shared `6da0330`) removes the arrow in the pool's middle. The spit's Impact event names the add's owner, a DEV on the bow, so the bow presentation lodged an arrow there; `NativeBowWire.Lodges` now takes only an arrow's own impact. It also drops the green ring and draws a natural lobed puddle whose mean extent is the 1.3 m radius. PvE and off-PvE DEV pools come from the records. Presentation only; managed/CI-layout checks in DEV_LOG; Unity/Windows unrun. Pushed, not merged.
