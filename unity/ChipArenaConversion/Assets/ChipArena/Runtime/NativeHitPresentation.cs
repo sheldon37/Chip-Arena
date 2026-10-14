@@ -5,7 +5,8 @@ namespace ChipArena.UnityConversion
     // Melee hit reactions (Core/NativeHitReact), presentation only. The ledger classifies each frame's Hit / Block / Emperor /
     // Arcade events (melee or not, the attacker's weapon heft and position) for every rig's hit layer, so host, guests and
     // the killcam replay pose the same reactions from the same replicated data; nothing here feeds back into authority, aim
-    // or input.
+    // or input. It also keeps each pilot's recent blade blows and links its Death event to the hit that killed it, so the
+    // melee cut (MeleeSlice) takes the killing swing by the id that hit carries.
     public sealed partial class ArenaPresentation
     {
         private readonly NativeHitLedger hitLedger=new NativeHitLedger();

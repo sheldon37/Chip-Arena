@@ -208,8 +208,9 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>
-    /// Client-only record of the latest classified hit on, and block by, each pilot (host, guests and the killcam each keep
-    /// their own, fed every rendered frame from the snapshot's events; events are read once by id). No allocation once warm.
+    /// Client-only record of the latest classified hit on, and block by, each pilot, its recent melee blows and the hit that
+    /// killed it (host, guests and the killcam each keep their own, fed every rendered frame from the snapshot's events; events
+    /// are read once by id). No allocation once warm.
     /// </summary>
     public sealed class NativeHitLedger
     {
@@ -219,10 +220,10 @@ namespace ChipArena.UnityConversion
         private int last;
         /// <summary>Bumped by every <see cref="Clear"/>, so a rig's stagger knows its hits started over.</summary>
         public int Epoch{get;private set;}
-        public void Clear(){hits.Clear();blocks.Clear();strikes.Clear();foreach(var r in staggers.Values)r.Clear();foreach(var b in blades.Values)b.Clear();blows.Clear();last=0;Epoch++;}
+        public void Clear(){hits.Clear();blocks.Clear();strikes.Clear();foreach(var r in staggers.Values)r.Clear();foreach(var b in blades.Values)b.Clear();foreach(var b in blows.Values)b.Clear();lastHits.Clear();kills.Clear();last=0;Epoch++;}
         private static Actor Find(Actor[] actors,int id){if(actors==null||id<=0)return null;for(int i=0;i<actors.Length;i++)if(actors[i]!=null&&actors[i].Id==id)return actors[i];return null;}
         // ---- felt hits (Core/NativeStagger), melee kill blows (Core/NativeMeleeSlice) and blade blood (Core/NativeBlood) ----
-        public const int StaggerSlots=8,BladeSlots=6;
+        public const int StaggerSlots=8,BladeSlots=6,BlowSlots=4;
         private sealed class Ring
         {
             public readonly StaggerHit[] Items=new StaggerHit[StaggerSlots];public int Count,Head;
@@ -232,7 +233,18 @@ namespace ChipArena.UnityConversion
         }
         private sealed class Blade{public readonly float[] At=new float[BladeSlots];public int Count,Next;public void Clear(){Count=0;Next=0;}}
         private readonly Dictionary<int,Ring> staggers=new Dictionary<int,Ring>();private readonly Dictionary<int,Blade> blades=new Dictionary<int,Blade>();
-        private readonly Dictionary<int,MeleeBlow> blows=new Dictionary<int,MeleeBlow>();private int serial;
+        // Each target's last few melee blows, newest first by Back(0).
+        private sealed class Blows
+        {
+            public readonly MeleeBlow[] Items=new MeleeBlow[BlowSlots];public int Count,Next;
+            public void Clear(){Count=0;Next=0;}
+            public ref MeleeBlow Back(int i)=>ref Items[(Next-1-i+2*BlowSlots)%BlowSlots];
+            public void Add(in MeleeBlow b){Items[Next]=b;Next=(Next+1)%BlowSlots;if(Count<BlowSlots)Count++;}
+        }
+        // The last damaging hit on each target, and the one that killed it (the last in its Death event's tick: Damage emits the
+        // Hit just before the Death): its attacker and the id it carries (ArenaEvent.Projectile, a primary swing's Id).
+        private struct LastHit{public int Source,Swing;public float At;}
+        private readonly Dictionary<int,Blows> blows=new Dictionary<int,Blows>();private readonly Dictionary<int,LastHit> lastHits=new Dictionary<int,LastHit>(),kills=new Dictionary<int,LastHit>();private int serial;
         private struct Blast{public int Source;public float At;public V3 Position;}
         private readonly Blast[] blasts=new Blast[16];private int blastCount;
         /// <summary>The recent staggering hits on `target`, oldest first, into `into` (at most <see cref="StaggerSlots"/>).</summary>
@@ -241,8 +253,27 @@ namespace ChipArena.UnityConversion
             if(into==null||!staggers.TryGetValue(target,out var r))return 0;int n=Math.Min(r.Count,into.Length);
             for(int i=0;i<n;i++)into[i]=r.Items[(r.Head+r.Count-n+i)%StaggerSlots];return n;
         }
-        /// <summary>The latest melee blow on `target` landed at `at` (within a tick), with its attacker's replicated swing.</summary>
-        public bool Blow(int target,float at,out MeleeBlow blow)=>blows.TryGetValue(target,out blow)&&Math.Abs(blow.At-at)<.02f;
+        /// <summary>
+        /// The melee blow that killed `target` at `at`, with its attacker's replicated swing.
+        /// <list type="bullet">
+        /// <item>By its swing: when the killing hit (the last damaging hit on `target` in the tick of its Death event) carries
+        /// its swing's id (ArenaEvent.Projectile: every primary swing since PR #205, shared by its extra strikes), the blow is
+        /// the one read from that hit: that attacker, that id, that tick, even when another blow on `target` is newer. False
+        /// when this ledger read no such blow (no blade's swing, or its attacker missing from the frame).</item>
+        /// <item>By time (unchanged): a killing hit without an id (a Q/E kit or E special hit, an older host's frame or replay)
+        /// or no Death event read: the latest melee blow on `target`, if it landed within .02 s of `at`.</item>
+        /// </list>
+        /// </summary>
+        public bool Blow(int target,float at,out MeleeBlow blow)
+        {
+            blow=default;if(!blows.TryGetValue(target,out var r)||r.Count==0)return false;
+            if(kills.TryGetValue(target,out var k)&&k.Swing>0&&Math.Abs(k.At-at)<.004f)
+            {
+                for(int i=0;i<r.Count;i++){ref var b=ref r.Back(i);if(b.Swing==k.Swing&&b.Source==k.Source&&Math.Abs(b.At-k.At)<.004f){blow=b;return true;}}
+                return false;
+            }
+            blow=r.Back(0);return Math.Abs(blow.At-at)<.02f;
+        }
         /// <summary>How bloody `source`'s blade is at `time` (0..1): each damaging melee hit adds .4, kept for 4 s and gone by 10 s.</summary>
         public float BladeBlood(int source,float time)
         {
@@ -273,11 +304,13 @@ namespace ChipArena.UnityConversion
             b.At[b.Next]=e.Time;b.Next=(b.Next+1)%BladeSlots;b.Count=Math.Min(BladeSlots,b.Count+1);
             var a=attacker;bool special=a.SpecialKind!=null&&e.Time>=a.SpecialAt-.05f&&e.Time<=a.SpecialUntil+.05f,kit=e.Detail=="ability"&&a.MeleeKit!=null&&!string.IsNullOrEmpty(a.MeleeKit.Kind);
             // Air: the swing's own replicated flag (a landing attack hits at ground contact, so the attacker is grounded by then);
-            // Toward: the event's direction, the authority's at the hit's tick; Struck: the attacker's body centre then, once the
-            // authority sends it (a melee hit with its swing's id in Projectile; NativeMeleeSlice.Attacker checks it).
+            // Toward: the event's direction, the authority's at the hit's tick; Swing: the swing's id a primary swing's hit carries
+            // in Projectile (PR #205; 0 for kit, special and older hits); Struck: the hit's From, with an id the attacker's body
+            // centre at contact (NativeMeleeSlice.Attacker checks it against Toward).
             float aim=e.Normal.x*e.Normal.x+e.Normal.y*e.Normal.y+e.Normal.z*e.Normal.z;
-            blows[e.Target]=new MeleeBlow{At=e.Time,Source=e.Source,Spec=a.SourceSpec,CommitYaw=a.CommitYaw,Index=a.Combo+1,SwingAt=a.SwingAt,SwingUntil=a.SwingUntil,Air=a.AirAttack,
-                Special=special?a.SpecialKind:null,Kit=kit?a.MeleeKit.Kind:null,From=a.Position,Yaw=a.Yaw,Detail=e.Detail,Amount=e.Amount,Toward=e.Normal,Aimed=aim>.81f&&aim<1.21f,Exact=e.Projectile>0,Struck=e.From};
+            if(!blows.TryGetValue(e.Target,out var ring))blows[e.Target]=ring=new Blows();
+            ring.Add(new MeleeBlow{At=e.Time,Source=e.Source,Spec=a.SourceSpec,CommitYaw=a.CommitYaw,Index=a.Combo+1,SwingAt=a.SwingAt,SwingUntil=a.SwingUntil,Air=a.AirAttack,
+                Special=special?a.SpecialKind:null,Kit=kit?a.MeleeKit.Kind:null,From=a.Position,Yaw=a.Yaw,Detail=e.Detail,Amount=e.Amount,Toward=e.Normal,Aimed=aim>.81f&&aim<1.21f,Swing=e.Projectile,Exact=e.Projectile>0,Struck=e.From});
         }
         public void Observe(Snapshot s)
         {
@@ -299,6 +332,7 @@ namespace ChipArena.UnityConversion
                 if((e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&e.Target>0)
                 {
                     var attacker=Find(s.Actors,e.Source);var target=Find(s.Actors,e.Target);string spec=e.Source==0?null:attacker?.SourceSpec;
+                    if(e.Amount>0)lastHits[e.Target]=new LastHit{Source=e.Source,Swing=e.Projectile,At=e.Time};
                     bool fighter=strikes.TryGetValue(e.Target,out var st)&&st.Source==e.Source&&Math.Abs(st.At-e.Time)<.004f;
                     // The target's replicated reaction is from this hit's tick.
                     bool reacted=target!=null&&Math.Abs(target.ReactionAt-e.Time)<.004f;
@@ -325,6 +359,9 @@ namespace ChipArena.UnityConversion
                     if(attacker==null||NativeHitRules.Standard(spec)||NativeHitRules.Fighter(spec)||spec=="siren")
                         blocks[e.Source]=new HitSource{Known=true,Melee=true,At=e.Time,Heft=attacker==null?.9f:NativeHitRules.Heft(spec,0),HasFrom=attacker!=null,From=attacker!=null?attacker.Position:e.Position};
                 }
+                // The killing hit: the last damaging hit on the target in its death's tick (none: the death's own tick had no hit).
+                else if(e.Kind==EventKind.Death&&e.Target>0)
+                    kills[e.Target]=lastHits.TryGetValue(e.Target,out var killing)&&Math.Abs(killing.At-e.Time)<.004f?killing:new LastHit{At=e.Time};
             }
             if(newest>last)last=newest;
         }
