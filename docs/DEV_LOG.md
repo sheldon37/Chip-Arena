@@ -1,5 +1,49 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — Expedition presentation: views, screens, intents and dev preview
+- Branch `claude/expedition-presentation` on shared `9270d95`, which includes Astra's #188 rules foundation. Task: the owner's Expedition presentation request (world/town UI, personal wallet and chips, ordinary vs reserved boss loot, authoritative dice, victory/extraction choices, host transfer, minimal HUD). Contract: docs/EXPEDITION-PRESENTATION.md, linked from EXPEDITION.md.
+- **Projection (Core `NativeExpeditionView`):**
+  - `Build(run, account, sources)` gives one account's view: public run state plus only that account's wallet, rewards (offers only while a pick is pending) and chips.
+  - It also carries the scaling read-out, the dice records, public loot (owner and claimed state, no offers) and the transfer state.
+  - This field-only DTO is the guest replication contract. Its public part is identical for every viewer. `Normalize` handles JsonUtility's empty strings.
+- **Intents (Core `NativeExpeditionCommands`):**
+  - The host-local adapter calls the real commands; `false` shows Refused.
+  - Integration hooks cover offers, eligibility, extraction transaction and reprint cost. A missing hook shows Unavailable with the reason; the guest adapter is always Unavailable (no channel).
+  - `ExpeditionIntentTracker` confirms an intent only when the view shows it. Extraction counts only once the saved tombstone is present; otherwise it is "waiting for the save". No reflection within 6 s shows Failed.
+- **Screens:**
+  - Core `NativeExpeditionPresentation` models; Runtime `NativeExpeditionHud` drawing in the cyber HUD kit.
+  - Minimal HUD (wallet, objective, countdown, your chips waiting); world board (buildings, sealed door/quota/boss, final area, clock/step/loop/multipliers, party).
+  - Loot (ordinary cyan diamond, first pickup vs reserved magenta lock; claimed state; NOT ELIGIBLE per boss) and personal chips (source labels, Open/Pick, held).
+  - Sanctuary (checkpoint, extract alone, majority group vote, reprint machine), building (`Door`, bosses, departure vote) and victory (extract or stay, each pilot's choice, host starts the loop).
+  - Dice reveal: spins with no number, locks on the stored rolls, lights the stored winners, labels a tie-break. Host-transfer overlay: authority steps, transport steps "not implemented", abort shown as a failure.
+- **Dev preview** (`--ca-expedition-preview`, in place of the main menu, labelled DEV ONLY):
+  - Six scripted scenarios on a real `NativeExpedition`; view as any pilot.
+  - Preview stand-ins: offers, prices, a temp save folder, and a simulated ACK labelled as such.
+  - One line added to `ConversionGame.GuiFrame`. No menu entry.
+- **Unchanged:** rules, simulation, networking, Siren/PvP. Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks:**
+  - Unity runtime+editor compile OK.
+  - New `ExpeditionPresentationChecks` (`CoreTests.dll --expedition-view`, 5,897 checks) covers:
+    - host/guest views, privacy audit, codec and JsonUtility-style round trips;
+    - refused/unavailable/timeout/awaiting-save;
+    - dead-at-death ineligible vs dying later eligible;
+    - uneven splits 2/1 to 8/11 where the display equals the stored dice;
+    - independent picks; individual extractions while others continue; majority vote; failed save;
+    - transfer freeze/abort/refusal/unreflected commit;
+    - every preview step for every viewer; source scans.
+  - check_relay exit 0 (651 PASS); Python 101 OK (1 skip); package_source OK; `git diff --check` clean; sparse-copy relay exit 0.
+  - Offline renders of 23 frames (scratch IMGUI recorder, 1280x720 to 3440x1440, UI scale 1.5), not committed.
+- **Not run:** Unity Editor/IMGUI input, Windows, real host/guest or multiplayer clients (no transport exists for Expedition).
+- **Astra dependencies** (details in the contract doc):
+  - a replication message for the view (public part plus owner-only `mine`);
+  - a guest command channel with result replies;
+  - hooks: catalog offers, eligibility, save-then-publish extraction with `sources.Saved`, reprint adapter;
+  - fields: `reprintCost`, chest offers `{generation, price, cooldown}`, `ExpeditionReward.selected`, transport transfer progress (`packageStored`/`endpointReserved`/`ackReceived`/`deadline`) and measured candidates;
+  - a continue vote if wanted;
+  - world positions for drops, chests, doors and machines (3D pieces not built: no scene, no positions);
+  - final-boss reward issuance.
+- **Risks:** owner taste on layout and density. `difficultyParty` uses connected, not-extracted pilots until the director locks a roster.
+
 ## 2026-10-14 — Claude — dressed maps: coincident faces no longer z-fight
 - Branch `claude/map-surface-artifacts` on shared `0671054`. Task: the graphical artifacts on the new maps, including the green-panel surface artifacts (2026-10-13). Z-fighting was suspected, not confirmed.
 - **Confirmed cause (geometric audit, not the recording):** faces drawn at the same depth. Every block and kit part is a chamfered box through NativeBlockLit.
