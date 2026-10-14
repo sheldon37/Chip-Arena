@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
             if(!SandboxAllowed||Pve!=null)return;
             foreach(var m in Minions)
             {
-                if(m.Pve==null||m.Hp<=0)continue;
+                if(m.Pve==null||m.DevMonster||m.Hp<=0)continue;
                 if(Time<m.Pve.ActiveAt){WardEntryPose(m);continue;}
                 if(m.Body.isKinematic){m.Body.isKinematic=false;m.Collider.enabled=true;m.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;}
                 if(m.Pve.Stats.id!="hulk"||Local==null||Local.Hp<=0)continue;

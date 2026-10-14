@@ -28,7 +28,7 @@ produce a refusal with a reason.
 
 ## Wire and reliability
 
-Hosts advertise `devProtocol:1` in `welcome`. A guest gets an immediate local
+Hosts advertise `devProtocol:2` in `welcome`. A guest gets an immediate local
 refusal for an older host without that capability. Missing legacy scale fields
 normalize to 1; other new state fields default false. Relay protocol stays 7.
 
@@ -120,7 +120,7 @@ chat or voice, and reveal must end hidden presence.
 
 ## Verification
 
-Managed `--dev-abuse`: 82 checks for verified/non-dev/expired/forged grants,
+Managed `--dev-abuse`: 95 checks for verified/non-dev/expired/forged grants,
 scoped weapon non-authority, all action schemas/dispatch, bounded values,
 rate/dedup/stale reset semantics, failure replay and progression isolation.
 
@@ -133,3 +133,46 @@ This gate requires Unity; adding it is not evidence that it has run.
 Unity compilation, PhysX, Windows rendered gameplay, live host/guest networking,
 UI integration, reveal/hazard visuals and compiled test-channel publication
 remain acceptance steps. No native/Windows pass is claimed from managed tests.
+
+## DEV monsters — protocol 2
+
+`spawn-monster` uses target seat (0 = sender), with exactly four arguments:
+`[kind, count, place, behaviour]`. Kinds must exist in PveContent and be one of
+shambler, runner, brute, spitter or hulk. Count is 1–8; actual placement is capped
+by 24 live DEV monsters, 2 live hulks and NativeSpitterRules.Cap live spitters.
+Hulk/spitter caps include ordinary monsters. Successful replies report the actual
+count in `reason`; retries replay it without another spawn. No valid placement
+refuses. `clear-monsters` removes only DEV monsters and their acid/poison.
+
+Placement uses host-observed positions and view input. `near` checks a 4–7 m
+ring, `aim` requires a world hit within 40 m, and `drop` checks headroom about
+6 m above supported ground near the target. `entries` uses compatible authored
+Ward entrances on Siren, placing at the supported exit; it does not destroy a
+breach wall or run the normal wave entrance sequence. Other maps currently have
+no authored monster entry adapter and refuse `entries`. This is a contract
+clarification for Claude's summon-in effect, which owns the visual arrival.
+
+`hunt` attacks only the selected pilot; `frenzy` chooses the nearest living pilot;
+`idle` waits for damage and then hunts its first attacker. The bounded direct
+chase uses world obstruction, ground and stage hazard checks on every map. It
+stops at obstacles; it does not promise a full navmesh path around them.
+Every pilot can damage DEV monsters, including the developer who spawned them.
+They do not enter Siren's wave completion, possession or reward paths.
+
+`NativeMinionFrame.devMonster` replicates on all maps. Off-PvE spit projectiles
+and pools use optional `NativeGameFrame.devAcid`; PvE retains `pve.acid`.
+Damage/death records carry `damageKind = "dev-monster"` and kill-feed text marks
+DEV MONSTER. No spawning-player credit is assigned; the existing ten-second
+last-damager rule still applies. Match exit clears monsters and lingering attacks.
+No XP, drops, economy or progression receipt is issued for killing them.
+The same command path works in the local Developer Sandbox without requiring
+its separate DEV Abuse toggle; host verification remains mandatory.
+
+The native authority fixture now covers spawn replies, damage eligibility,
+idle wake, frame encoding/guest apply, clear isolation and phase cleanup.
+These Unity/PhysX checks are added, not run in this container.
+
+
+Claude's Monsters presentation at shared `debed457` is integrated on this draft.
+`NativeDevMonsterAdapter.DevMonsterOf` now reads `m.DevMonster`; authority lives
+in `NativeDevMonsterAuthority.cs` to preserve Claude's presentation file.

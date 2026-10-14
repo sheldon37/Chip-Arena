@@ -32,6 +32,18 @@ namespace ChipArena.UnityConversion
                     Check(!dev.devRevealed&&!victim.devRevealed,"hidden defaults");
                     var denied=arena.DevCommand(victim,new NativeDevCommand{transaction="denied",action="restore"},7,arena.Generation,7,0);Check(denied.state=="refused"&&!string.IsNullOrEmpty(denied.reason),"non-dev refusal reason");
                     var savedAccess=victim.access;var savedProfile=new NativeProfile();string profile=JsonUtility.ToJson(savedProfile);
+                    Physics.SyncTransforms();
+                    var monsterReply=Send("spawn-monster",1,"shambler","8","near","idle");
+                    int spawned=arena.Minions.Count(m=>m.DevMonster);Check(spawned>0&&spawned<=8&&monsterReply.reason.Contains(spawned.ToString()),"actual spawn count in reply");
+                    var monster=arena.Minions.First(m=>m.DevMonster);Check(arena.CanHit(arena.Pilots.First(p=>p.Seat.id==2),monster)&&arena.CanHit(Target(),monster),"developer and target can damage monsters");
+                    Check(monster.DevHunt==0,"idle starts without target");arena.HitMinion(monster,Target(),1,Vector3.zero,0);Check(monster.DevHunt==1,"idle wakes for attacker");
+                    var monsterFrame=NativeFrameCodec.Clone(arena.NetworkFrame());Check(monsterFrame.Valid(content)&&monsterFrame.minions.Count(m=>m.devMonster)==spawned,"monster flag through valid wire frame");
+                    var monsterReplica=new NativeArena(content,new NativeMatch(content),arena.MapId){ReplicaScene=scene};
+                    try{monsterReplica.ApplyFrame(monsterFrame,1);Check(monsterReplica.Minions.Count(m=>m.DevMonster&&m.Pve!=null)==spawned,"guest reconstructs monster on non-PvE map");}finally{monsterReplica.Dispose();}
+                    int ordinary=arena.Minions.Count(m=>!m.DevMonster);Send("clear-monsters");Check(!arena.Minions.Any(m=>m.DevMonster)&&arena.Minions.Count==ordinary,"clear isolates DEV monsters");
+                    var bad=arena.DevCommand(dev,new NativeDevCommand{transaction="unknown-monster",action="spawn-monster",target=1,args=new[]{"absent","1","near","hunt"}},7,arena.Generation,7,++clock);Check(bad.state=="refused","unknown catalog kind refused");
+                    Send("spawn-monster",1,"runner","1","near","hunt");
+                    match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Result,time=10});arena.DevStep();Check(!arena.Minions.Any(m=>m.DevMonster)&&!arena.pveAcid.Any(a=>a.Record.devMonster),"round end cleans monsters and attacks");match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});
                     Send("god",1,"on");float hp=Target().Hp;arena.Damage(Target(),null,10000,Vector3.zero,0,false,forced:true);Check(Target().Hp==hp,"god prevents forced damage");Send("god",1,"off");
                     Send("infinite-ammo",1,"on");Target().Ammo=0;arena.DevStep();Check(Target().Ammo==arena.Magazine(Target()),"infinite ammo");Send("infinite-ammo",1,"off");
                     Send("no-cooldowns",1,"on");Target().QReady=1000;arena.DevStep();Check(Target().QReady==arena.Time,"cooldown bypass");Send("no-cooldowns",1,"off");

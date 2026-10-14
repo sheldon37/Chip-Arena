@@ -134,7 +134,7 @@ namespace ChipArena.UnityConversion
             else if(cinematic=="reveal")
             {
                 v.Phase=v.Reveal;v.Floor=v.Phase==2?v.MaxHp*.5f:v.Phase==3?v.MaxHp*.25f:0;
-                if(v.Phase==2){SetBossHidden(true);v.PossessionAt=Time;var candidates=Minions.Where(m=>m.Pve!=null&&m.Hp>0&&!m.Pve.Crawl&&!m.Pve.Travelling&&Time>=m.Pve.ActiveAt).OrderByDescending(m=>Members().Where(p=>p.Hp>0&&!p.Seat.bot).Select(p=>(p.Body.position-m.Body.position).sqrMagnitude).DefaultIfEmpty(0).Min()).ThenBy(m=>m.Id).Take(5).ToArray();var add=candidates.Length>0?candidates[(int)(v.SpawnRandom.Next()*candidates.Length)]:SpawnPveAdd("shambler",true);if(add!=null){v.Possessed=add.Id;add.Pve.Possessed=true;add.Pve.PossessedAt=Time;add.Pve.Lost=0;add.Pve.Parts.Clear();add.Pve.Struck=true;add.Pve.RecoverAt=Time;add.MaxHp*=3;add.Hp=add.MaxHp;}}
+                if(v.Phase==2){SetBossHidden(true);v.PossessionAt=Time;var candidates=Minions.Where(m=>m.Pve!=null&&!m.DevMonster&&m.Hp>0&&!m.Pve.Crawl&&!m.Pve.Travelling&&Time>=m.Pve.ActiveAt).OrderByDescending(m=>Members().Where(p=>p.Hp>0&&!p.Seat.bot).Select(p=>(p.Body.position-m.Body.position).sqrMagnitude).DefaultIfEmpty(0).Min()).ThenBy(m=>m.Id).Take(5).ToArray();var add=candidates.Length>0?candidates[(int)(v.SpawnRandom.Next()*candidates.Length)]:SpawnPveAdd("shambler",true);if(add!=null){v.Possessed=add.Id;add.Pve.Possessed=true;add.Pve.PossessedAt=Time;add.Pve.Lost=0;add.Pve.Parts.Clear();add.Pve.Struck=true;add.Pve.RecoverAt=Time;add.MaxHp*=3;add.Hp=add.MaxHp;}}
                 if(v.Phase==3){var s=Siren(v.Boss);s.Scale=s.Reach=1.5f;v.Boss.Collider.height=2.55f;v.Boss.Collider.radius=.63f;v.Boss.Body.position+=Vector3.up*.425f;}
                 if(v.Phase==4){var s=Siren(v.Boss);s.Cooldown=0;s.MaxRains=2;s.MaxEruptions=4;foreach(var key in s.Ready.Keys.ToArray())s.Ready[key]=Time;}
                 foreach(var p in Members())GrantPveMoney(p,250,"boss-threshold");RespawnPveParty();
@@ -163,7 +163,7 @@ namespace ChipArena.UnityConversion
             if(v.Stage=="opening"||v.Stage=="wave"||v.Stage=="intermission")
             {
                 if(v.Stage=="opening"&&v.ResolvedAt<0&&v.Rows.Values.Where(r=>!r.Pilot.Seat.bot&&r.Pilot.Seat.connected).All(r=>r.Open==null&&r.Picks.All(p=>p.Offers!=null)))v.ResolvedAt=Time;
-                int remaining=NativePveRules.Remaining(v.SpawnBudget,v.Spawned,Minions.Count(m=>m.Pve!=null&&m.Hp>0));var transition=v.Schedule.Step(Time,remaining,v.ResolvedAt<0?(double?)null:v.ResolvedAt);v.StageUntil=(float)v.Schedule.Until;
+                int remaining=NativePveRules.Remaining(v.SpawnBudget,v.Spawned,Minions.Count(m=>m.Pve!=null&&!m.DevMonster&&m.Hp>0));var transition=v.Schedule.Step(Time,remaining,v.ResolvedAt<0?(double?)null:v.ResolvedAt);v.StageUntil=(float)v.Schedule.Until;
                 if(transition!=null)
                 {
                     if(transition.kind=="wave-start"){v.Stage="wave";v.Wave=transition.wave;v.StageAt=(float)transition.at;PveFlow();}

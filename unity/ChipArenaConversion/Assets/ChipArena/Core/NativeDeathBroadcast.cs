@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         public void Add(int seed,int victim,int owner,float deathAt,float now,string name,string killer,string damageKind=null)
         {
             if(seen.ContainsKey(seed))return;seen[seed]=deathAt;if(now-deathAt>2||now<deathAt)return;float at=Math.Max(deathAt,next);next=at+NativeBroadcastFx.Spacing;
-            Items.Add(new NativeBroadcastItem{Seed=seed,Victim=victim,Owner=owner,Slot=slot++%3,At=at,Name=name,Upper=(name??"").ToUpperInvariant(),Killer=killer,DamageKind=damageKind,Text=damageKind=="collapse"?name+" — COLLAPSE"+(killer==null?".":" ("+killer+")."):killer==null?name+" made an oopsie.":name+" was killed by "+killer+"."});
+            Items.Add(new NativeBroadcastItem{Seed=seed,Victim=victim,Owner=owner,Slot=slot++%3,At=at,Name=name,Upper=(name??"").ToUpperInvariant(),Killer=killer,DamageKind=damageKind,Text=damageKind=="dev-monster"?name+" — DEV MONSTER"+(killer==null?".":" ("+killer+")."):damageKind=="collapse"?name+" — COLLAPSE"+(killer==null?".":" ("+killer+")."):killer==null?name+" made an oopsie.":name+" was killed by "+killer+"."});
         }
         /// <summary>death-announcements.ts update: only the newest three launched broadcasts show (active.filter(started).slice(-3)).</summary>
         public bool Shown(int index,float time)
