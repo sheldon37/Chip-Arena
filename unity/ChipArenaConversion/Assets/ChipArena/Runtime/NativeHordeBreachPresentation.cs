@@ -44,8 +44,9 @@ namespace ChipArena.UnityConversion
             public bool Live,Panel,Hidden;public PveEntry Entry;public float SpawnAt,BreakAt,RestoreAt;public uint Seed;public int Kind;
             public NativeBreach.Hole Hole;public Renderer[] Renderers;public MeshFilter[] Filters;public Material[][] Materials;public Material Material;public Mesh PanelMesh;public int Layer;
             // A Hulk's breach of a wall block (a dynamic record): the block (its key, with BreakAt), the Hulk pounding it, and
-            // whether the knock's shudder is on the block's dressing this frame.
-            public bool Dynamic,Nudged;public string Block;public int Actor;
+            // whether the knock's shudder is on the block's dressing this frame. A wall (block or panel) a charging Hulk crashed
+            // through on contact is `Charged`: no knock before its break (SpawnAt is BreakAt), no carry after it.
+            public bool Dynamic,Nudged,Charged;public string Block;public int Actor;
         }
         private readonly HordeBreachState[] hordeBreaches=MakeBreaches();
         private static HordeBreachState[] MakeBreaches(){var b=new HordeBreachState[64];for(int i=0;i<b.Length;i++)b[i]=new HordeBreachState();return b;}
@@ -54,12 +55,14 @@ namespace ChipArena.UnityConversion
         private static readonly Color HardlightColor=new Color(.38f,.92f,1f);
 
         /// <summary>HordeKindAdd (and the gallery): an add entering through a breach this frame; the breach starts on its first sight.</summary>
-        private void HordeBreachJob(NativeArena arena,PveEntry entry,float spawnAt,float breakAt,Vector3 from,Vector3 exit,int kind,uint seed,GameObject segment=null)
+        private void HordeBreachJob(NativeArena arena,PveEntry entry,float spawnAt,float breakAt,Vector3 from,Vector3 exit,int kind,uint seed,GameObject segment=null,int actor=0,bool charged=false)
         {
+            // A panel crashed through on a charge breaks on contact: no knock.
+            if(charged)spawnAt=breakAt;
             if(entry==null)return;HordeBreachState free=null;
-            for(int i=0;i<hordeBreaches.Length;i++){var b=hordeBreaches[i];if(b.Live&&!b.Dynamic&&b.Entry.e==entry.e&&b.Entry.id==entry.id){if(Mathf.Abs(b.SpawnAt-spawnAt)<.05f)return;HordeBreachRelease(b);free=b;break;}if(!b.Live&&free==null)free=b;}
+            for(int i=0;i<hordeBreaches.Length;i++){var b=hordeBreaches[i];if(b.Live&&!b.Dynamic&&b.Entry.e==entry.e&&b.Entry.id==entry.id){if(Mathf.Abs(b.BreakAt-breakAt)<.05f)return;HordeBreachRelease(b);free=b;break;}if(!b.Live&&free==null)free=b;}
             if(free==null)return;
-            var s=free;s.Live=true;s.Entry=entry;s.SpawnAt=spawnAt;s.BreakAt=breakAt;s.RestoreAt=NativeBreach.DefaultRestoreAt(breakAt);s.Seed=seed;s.Kind=kind;s.Hidden=false;s.Dynamic=false;s.Nudged=false;s.Block=null;s.Actor=0;
+            var s=free;s.Live=true;s.Entry=entry;s.SpawnAt=spawnAt;s.BreakAt=breakAt;s.RestoreAt=NativeBreach.DefaultRestoreAt(breakAt);s.Seed=seed;s.Kind=kind;s.Hidden=false;s.Dynamic=false;s.Nudged=false;s.Block=null;s.Actor=actor;s.Charged=charged;
             // The map's segment (by name; looked up once per breach), else the wall the entry implies.
             var go=segment;
             if(go==null)foreach(var prop in arena.AllBlocks)if(prop!=null&&prop.gameObject.name==NativeBreach.ObjectName(entry.id)){go=prop.gameObject;break;}
@@ -111,7 +114,8 @@ namespace ChipArena.UnityConversion
             PveEntry entry=null;foreach(var e in NativeArena.StageContent.entries)if(e!=null&&e.e==frame.entry){entry=e;break;}
             if(entry==null)return;
             float spawn=frame.breakAt-NativeBreach.Knock;
-            HordeBreachJob(arena,entry,spawn,frame.breakAt,NativeArena.Vec(entry.from.Position()),NativeArena.Vec(entry.@exit.Position()),NativeHordeKinds.Hulk,(uint)(frame.entry+1));
+            // A panel a charging Hulk crashed through (the record names it as the actor, broken in its run) has no knock.
+            HordeBreachJob(arena,entry,spawn,frame.breakAt,NativeArena.Vec(entry.from.Position()),NativeArena.Vec(entry.@exit.Position()),NativeHordeKinds.Hulk,(uint)(frame.entry+1),null,frame.actor,HordeChargedBreak(frame.actor,frame.breakAt));
             foreach(var b in hordeBreaches)if(b.Live&&!b.Dynamic&&b.Entry.e==frame.entry&&Mathf.Abs(b.BreakAt-frame.breakAt)<.01f)b.RestoreAt=frame.restoreAt;
         }
         /// <summary>
@@ -128,7 +132,10 @@ namespace ChipArena.UnityConversion
             NativePropBody prop=null;var statics=arena.StaticBlocks;for(int i=0;i<statics.Count;i++){var p=statics[i];if(p!=null&&p.Definition!=null&&p.Definition.id==r.block){prop=p;break;}}
             var blocks=arena.Map?.blocks;var def=prop!=null?prop.Definition:null;if(def==null&&blocks!=null)for(int i=0;i<blocks.Length;i++)if(blocks[i]!=null&&blocks[i].id==r.block){def=blocks[i];break;}
             if(def==null)return;
-            var s=free;s.Live=true;s.Dynamic=true;s.Entry=null;s.Block=r.block;s.Actor=r.actor;s.SpawnAt=NativeBreach.KnockAt(r.breakAt);s.BreakAt=r.breakAt;s.RestoreAt=r.restoreAt;s.Seed=NativeBreach.Seed(r.block,r.breakAt);s.Kind=NativeHordeKinds.Hulk;s.Hidden=false;s.Nudged=false;
+            // A block a charging Hulk crashed through on contact (broken in its run; the proposed record flag `charged` when it
+            // exists) bursts at its break with no knock before it.
+            bool charged=HordeChargedBreak(r.actor,r.breakAt);
+            var s=free;s.Live=true;s.Dynamic=true;s.Entry=null;s.Block=r.block;s.Actor=r.actor;s.Charged=charged;s.SpawnAt=charged?r.breakAt:NativeBreach.KnockAt(r.breakAt);s.BreakAt=r.breakAt;s.RestoreAt=r.restoreAt;s.Seed=NativeBreach.Seed(r.block,r.breakAt);s.Kind=NativeHordeKinds.Hulk;s.Hidden=false;s.Nudged=false;
             s.Renderers=null;s.Filters=null;s.Materials=null;s.Material=null;s.Panel=false;
             if(prop!=null&&BreachMeshes(s,prop.gameObject)>0){s.Material=s.Materials[0].Length>0?s.Materials[0][0]:null;s.Panel=s.Material!=null;}
             var q=def.rotation!=null?new System.Numerics.Quaternion(def.rotation.x,def.rotation.y,def.rotation.z,def.rotation.w):System.Numerics.Quaternion.Identity;
@@ -140,7 +147,7 @@ namespace ChipArena.UnityConversion
         /// its knock began (the three blows land on NativeBreach.Blows after it).</summary>
         private bool HordeWallKnock(int actor,float now,out float knockAt)
         {
-            for(int i=0;i<hordeBreaches.Length;i++){var b=hordeBreaches[i];if(b.Live&&b.Dynamic&&b.Actor==actor&&now>=b.SpawnAt&&now<b.BreakAt){knockAt=b.SpawnAt;return true;}}
+            for(int i=0;i<hordeBreaches.Length;i++){var b=hordeBreaches[i];if(b.Live&&b.Dynamic&&!b.Charged&&b.Actor==actor&&now>=b.SpawnAt&&now<b.BreakAt){knockAt=b.SpawnAt;return true;}}
             knockAt=0;return false;
         }
         // Whether the revamp's block dressing draws the block (its renderers forced off): the knock then shudders the dressing.
@@ -158,7 +165,7 @@ namespace ChipArena.UnityConversion
         private void HordeBreachShow(HordeBreachState b){HordeBreachSettle(b);if(!b.Hidden)return;if(b.Renderers!=null)for(int i=0;i<b.Renderers.Length;i++)if(b.Renderers[i]!=null)b.Renderers[i].enabled=true;b.Hidden=false;if(b.Dynamic)SetWardBlockBreach(b.Block,false);else SetWardBreach(b.Entry?.id,false);}
         // The knock's shudder off the block's dressing again (it stands still: broken, whole, or released).
         private void HordeBreachSettle(HordeBreachState b){if(!b.Nudged)return;b.Nudged=false;NudgeWardBlock(b.Block,Vector3.zero);}
-        private void HordeBreachRelease(HordeBreachState b){HordeBreachShow(b);b.Live=false;b.Entry=null;b.Block=null;b.Dynamic=false;}
+        private void HordeBreachRelease(HordeBreachState b){HordeBreachShow(b);b.Live=false;b.Entry=null;b.Block=null;b.Dynamic=false;b.Charged=false;b.Actor=0;}
 
         /// <summary>SourceWorld (HordeKindsEnd): the breaches' solid draws (the shuddering segment, the broken panel, the pieces).</summary>
         private void HordeBreachesDraw(float now)

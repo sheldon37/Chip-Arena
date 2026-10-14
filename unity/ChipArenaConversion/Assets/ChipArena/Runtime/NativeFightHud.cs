@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
             HealReadout(box);
             if(match.Phase==NativePhase.Fight&&(p.Seat.spec=="ansatsuken"||p.Seat.spec=="emperor"))FighterHud(p,W,H);
             if(p.Seat.spec=="siren")SirenHud(p,W);
-            Hitmarker();BowMeter(p);CutExitHint(p);
+            Hitmarker();BowMeter(p);CutExitHint(p);HulkWarningHud(p);
         }
         // The top-centre status tag (SET / ROUND, the PvE stage): a chamfered navy tag 26 high at y 20, mono 12 tracked,
         // with a tone diamond either side.

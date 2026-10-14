@@ -7163,3 +7163,36 @@ Follow-up on `codex/dev-monsters-release`, equivalent to merged source plus this
 repair. Inspected both calls against NativeStageHazardsRuntime.cs's actual
 signature; full managed/relay and Python results above cover the unchanged Core.
 Native compile/fixture/build must rerun; failed d05cca70 was not published.
+
+### 2026-10-14 — Claude: Hulk punches and charge at the hunted pilot (contract v2 + presentation)
+
+Branch `claude/hulk-charge` (base shared `b22e59f`, shared head merged before the final checks; see the merge commit).
+Owner (Windows test build): the Hulk only slams; it must punch and charge at the player, the charge avoidable by leaving its
+lane, breaking walls on the way, from across the map when hunting a pilot it knows. Split: rules Astra, visuals Claude.
+
+- Contract v2 (PROPOSED, Astra to confirm): docs/SIREN-ZOMBIES.md 10.5 and its paste-ready prompt at the end of that file;
+  numbers mirrored in Core/NativeHulkMoves.cs. Punch/swipe at the hunted pilot (smash for 2+ in its disc, walls, props); charge
+  from >= 7 m with no maximum range, .9 s wind-up tracking the target, heading locked at its end through the yaw, 6 m/s straight
+  (was 4.5), breakables broken on contact without stopping (x.6 for .3 s each: eligible wall blocks, in-bounds breach panels,
+  destructible props/structure; never shell, floors, boundary), ends pilot / solid / spent (4 m past the locked point or 16 s),
+  10 s cooldown. New replicated field proposed: `chargeTarget` (hunted seat) beside move/chargeAt/chargeEndAt/chargeEnd; Impact
+  events kept as the fallback (`hulk-charge` Amount = hunted seat).
+- Presentation (works today from the events; the frame fields bind in HordeHulkFrame, three lines): Core/NativeHulkCharge.cs
+  (tracker with the lock from the yaw and a stall fallback, lane test, warning, HUD layout, tremble); Runtime
+  NativeHordeHulkCharge.cs (tell, lock streak, run streaks, walls shaking/dusting ahead, crash-through dust/shake, ends, punch and
+  swipe trail/burst/struck-pilot kick, gallery's fourth Hulk with a cross-map charge through two walls and hardlight dummies),
+  NativeHulkWarningHud.cs (brackets/chevrons for the hunted pilot only, never over the crosshair), NativeHulkChargeAudio.cs
+  (bellow, rumble, footfalls through walls; existing bank keys); hooks in NativeHordeHulkMotion / NativeHordeKindPresentation /
+  NativeHordeBreachPresentation (a charged break has no knock) / NativeFightHud / ConversionGame (hands the warning to audio).
+  NativeHordeHeavy: stride table extended to 7.5 m/s, a stronger crash-through flinch.
+- Impact on hit timing, hitboxes, damage, cooldowns, movement, networking: none from this branch (no rules or network file
+  touched). The proposed numbers above are for Astra; the drawn facing in the run is the locked heading, which is the authority's
+  yaw by contract.
+- Checks: Tests/HulkChargeChecks.cs (241k: run held 30 s at 4.5/6/7.5 m/s with planted feet and steady lean, lock from yaw,
+  flinch on a break in the run, warning only for the target and urgency monotonic with distance and closing speed, marker clear
+  of the crosshair, event/frame fallback and stall, lane and tremble, zero allocation, runtime write-free); HulkMotionChecks updated
+  for 6 m/s; Unity runtime+editor compile. Full run5/ci-layout results: see the follow-up line below. Renders (software harness):
+  scratchpad renders-hulk-charge (wind-up/lock, 30 s run, crash-through, warning HUD, punch, swipe, ends).
+- Not run: Unity Editor play, Windows build, two-client/guest view, killcam. Nothing plays live until Astra emits the events or
+  the fields. Risks: Unity's IMGUI HUD and the shaking walls' drawn copies are unverified in the Editor; the gallery's walls use the
+  existing gallery breach clocks. Pushed, not merged or released. Next: Astra confirms or amends 10.5 and implements it.

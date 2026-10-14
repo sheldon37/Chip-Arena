@@ -21,6 +21,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--cyber-ranged"){CyberRangedSimulationChecks.Run();CyberChecks.Run();foreach(var result in CyberLordRangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--horde-drops"){HordeDropChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());HulkMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-motion"){HulkMotionChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--hulk-charge"){HulkMotionChecks.Run(ProjectRoot());HulkChargeChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-tools"){DevToolsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--scenery"){SurfaceChecks.Scenery();return 0;}
             if(args.Length==1&&args[0]=="--surfaces"){SurfaceChecks.Run(ProjectRoot());return 0;}
@@ -77,7 +78,7 @@ internal static class Program
             HudPlaceholderChecks.Run(root);HudCyberChecks.Run(root,data);
             DeathFxChecks.Run(root);CorpseChecks.Run(data);
             StageVentChecks.Run(root);MinionFxChecks.Run(root);MinionHintChecks.Run(root);
-            HordeDropChecks.Run(root);HordeKindChecks.Run(root);ZombieMotionChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);
+            HordeDropChecks.Run(root);HordeKindChecks.Run(root);ZombieMotionChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             CameraRigChecks.Run(root);
             StructureFxChecks.Run(root);

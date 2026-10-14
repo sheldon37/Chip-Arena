@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-14 Hulk charge at pilots: `claude/hulk-charge` (base shared `b22e59f`) proposes contract v2 (docs/SIREN-ZOMBIES.md 10.5: punch/swipe at the hunted pilot, a cross-map charge locked at the wind-up, breaking walls on contact, `chargeTarget`) and builds its presentation: tell and lock streak, held run, walls shaking before the crash-through, the hunted pilot's HUD/audio warning, punch/swipe impacts, a gallery demo. Dormant until Astra replicates it; managed checks and Unity compile pass; Unity/Windows unrun. Pushed, not merged.
+
 2026-10-14 Astra implementation branch `codex/expedition-director`: DEV monster protocol 2 authority/replication and tested Expedition loader/director foundation. Not merged/released; native monster validation and playable Expedition runtime/probes/migration remain unfinished. See latest DEV_LOG and DEV-ABUSE-AUTHORITY.md.
 
 2026-10-14 DEV monsters UI: `claude/dev-monsters` (base shared `6f30f82`, merged shared `afade5d`) adds the DEV panel's Monsters tab (kinds from content, count, place, behaviour, target, spawn/clear, n/24 count, sandbox Ward Zero entries), the DEV MONSTER tag and the summon-in rift. The commands are a proposal (`docs/DEV-TOOLS.md` "Monsters"): disabled as HOST NEEDS MONSTER COMMANDS and the adapter off until Astra adds `spawn-monster`/`clear-monsters`, devProtocol 2 and `devMonster`. Next: Astra confirms or amends the contract; then the adapter binding is one line.
