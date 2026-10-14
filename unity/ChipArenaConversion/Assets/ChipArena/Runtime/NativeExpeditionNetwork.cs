@@ -8,10 +8,10 @@ namespace ChipArena.UnityConversion
     {
         private ExpeditionSession expeditionSession;private ExpeditionCommandRouter expeditionRouter;
         private ExpeditionViewReceiver expeditionReceiver;private ExpeditionGuestCommands expeditionGuest;
-        private string expeditionStamp;private float expeditionNextSend;
+        private string expeditionStamp;private float expeditionNextSend;private IExpeditionCommands expeditionLocal;
         public ExpeditionView ExpeditionView{get;private set;}
         public IExpeditionCommands ExpeditionCommands=>server!=null?(IExpeditionCommands)expeditionGuest:
-            expeditionSession==null?null:new ExpeditionLocalCommands(expeditionSession,account?.Access.AccountId);
+            expeditionLocal;
 
         /// <summary>Scene/director entry point. No menu is enabled until authored scene and combat adapters exist.</summary>
         public void BindExpedition(ExpeditionSession session)
@@ -20,13 +20,33 @@ namespace ChipArena.UnityConversion
             var id=account?.Access.AccountId;
             if(session==null||string.IsNullOrEmpty(id)||session.Run.Snapshot().host!=id)throw new ArgumentException("Expedition host must be the signed-in account.");
             expeditionSession=session;expeditionRouter=new ExpeditionCommandRouter(session);expeditionStamp=null;expeditionNextSend=0;
+            expeditionLocal=new ExpeditionLocalCommands(session,id);
+            session.Sources.DisplayName=who=>who==account?.Access.AccountId?NativeCosmeticRules.Name(account.Account?.profile?.name):peers.FirstOrDefault(p=>p.Seat?.access?.AccountId==who)?.Seat.name;
             ExpeditionView=NativeExpeditionView.Build(session.Run,id,session.Sources);
         }
         /// <summary>Uses the existing durable desktop store. Scene supplies anchors and interaction evidence before binding.</summary>
         public ExpeditionSession CreateExpeditionSession(NativeExpedition run)
         {var store=NativeExpeditionPersistence.Open(run.Snapshot().run);var saved=store.Read();if(store.Exists&&saved==null)throw new InvalidOperationException("Existing Expedition save is unreadable; refusing to overwrite it.");return new ExpeditionSession(run,content,store.Write,saved);}
+        /// <summary>Authored scene supplies actual positions and measured interactions; this overload completes session binding.</summary>
+        public ExpeditionSession BindExpeditionScene(NativeExpedition run,ExpeditionWorldAnchor[] anchors,ExpeditionChestOffer[] chests,
+            Func<string,string,bool> canClaim,Func<string,string,bool> canPurchase,
+            Func<string,string,ExpeditionReprintEvidence> reprint,Func<string,int> reprintCost)
+        {
+            if(server!=null||run==null||run.Snapshot().host!=account?.Access.AccountId)throw new InvalidOperationException("Only the signed-in authority can bind the scene.");
+            if(canClaim==null||canPurchase==null||reprint==null||reprintCost==null)throw new ArgumentException("Scene interaction evidence is required.");
+            var session=CreateExpeditionSession(run);session.SetWorld(anchors,chests);
+            session.CanClaim=canClaim;session.CanPurchase=canPurchase;session.ReprintEvidence=reprint;session.Sources.ReprintCost=reprintCost;
+            BindExpedition(session);return session;
+        }
+        /// <summary>Pickup/cache interactions use the same authenticated command path locally and online.</summary>
+        public ExpeditionCommandResult InteractExpedition(string target,bool purchase=false)
+        {
+            var commands=ExpeditionCommands;
+            return commands==null?ExpeditionCommandResult.Of(ExpeditionCommandState.Unavailable,"No Expedition session is bound."):
+                commands.Send(new ExpeditionCommand(purchase?ExpeditionIntent.Purchase:ExpeditionIntent.Claim,target));
+        }
         private void ResetExpeditionNetwork()
-        {expeditionSession=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
+        {expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
         private void ExpeditionNetworkTick()
         {
             try{ExpeditionNetworkStep();}
@@ -36,11 +56,13 @@ namespace ChipArena.UnityConversion
         {
             if(expeditionSession==null||server!=null)return;
             expeditionSession.Tick(Time.unscaledDeltaTime);
+            // Projection and transport metrics are bounded to 20 Hz, including offline sessions.
+            if(Time.unscaledTime<expeditionNextSend)return;expeditionNextSend=Time.unscaledTime+.05f;
             // Link metrics are measured. No endpoint has been reserved/probed, so nobody is migration-capable yet.
             expeditionSession.Sources.Candidates=peers.Where(p=>p.Seat?.access?.AccountId!=null&&p.Connection!=null).Select(p=>
             {var m=p.Connection.Metrics.Report(!p.Connection.Closed);return new ExpeditionHostCandidate{account=p.Seat.access.AccountId,loss=m.loss,latencyMs=m.rttMs,jitterMs=m.jitterMs,reachable=false,capable=false};}).ToArray();
             ExpeditionView=NativeExpeditionView.Build(expeditionSession.Run,account?.Access.AccountId,expeditionSession.Sources);
-            if(!Hosting||Time.unscaledTime<expeditionNextSend)return;expeditionNextSend=Time.unscaledTime+.05f;
+            if(!Hosting)return;
             var snapshot=expeditionSession.Run.Snapshot();
             var recipients=peers.Where(p=>p.Connection?.Closed==false&&p.Seat?.access!=null&&p.Seat.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()&&snapshot.members.Any(m=>m.account==p.Seat.access.AccountId)).ToArray();
             var batch=ExpeditionViewBatch.Build(expeditionSession.Run,recipients.Select(p=>p.Seat.access.AccountId),expeditionSession.Sources);

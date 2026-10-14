@@ -447,15 +447,15 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<80;i++)run.Tick(.25);rows=P.Caches(NativeExpeditionView.Build(run,"p0"));Check(!rows[1].restocking&&rows[1].state=="$400"&&!rows[1].affordable&&rows[1].detail.Contains("$100 short"),"restocked: the price, and the wallet's shortfall");
             Check(run.Purchase("p0","g1",100),"p0 buys c1");
             var mine=P.Caches(NativeExpeditionView.Build(run,"p0"));var theirs=P.Caches(NativeExpeditionView.Build(run,"p1"));
-            Check(mine[0].bought&&mine[0].state=="BOUGHT · YOURS"&&!theirs[0].bought&&theirs[0].state=="$100","the buyer sees the purchase; it is private to them");
+            Check(mine[0].bought&&mine[0].state=="BOUGHT · YOURS"&&!theirs[0].bought&&theirs[0].state=="SOLD","sold state is public; buyer ownership stays private");
             Check(!Json(NativeExpeditionView.Build(run,"p1")).Contains(":chest:g1"),"another pilot's purchase never reaches the view");
             foreach(var r in mine.Concat(theirs))Check(!(r.state+r.detail).ToUpperInvariant().Contains("RANGE"),"purchase range is never claimed");
             var w=new NativeExpeditionWorld();w.Build(NativeExpeditionView.Build(run,"p0"));var pieces=w.Pieces.Where(x=>x.kind==ExpeditionPieceKind.Chest).ToArray();
             Check(pieces.Length==2&&pieces.First(x=>x.target=="c1").label=="BOUGHT · YOURS"&&pieces.First(x=>x.target=="c2").label=="$400"&&pieces.First(x=>x.target=="c2").extra=="$200 SHORT","cache pieces at their anchors, from the offer (wallet 200 after the purchase)");
-            w.Build(NativeExpeditionView.Build(run,"p1"));Check(w.Pieces.First(x=>x.target=="c1").label=="$100","others see the cache unsold (purchases are private)");
+            w.Build(NativeExpeditionView.Build(run,"p1"));Check(w.Pieces.First(x=>x.target=="c1").label=="SOLD","others see sold stock without buyer ownership");
             Check(run.SetWorld(run.Snapshot().anchors,new[]{new ExpeditionChestOffer{id="c1",generation="g2",price=120,cooldown=run.Snapshot().elapsed+15},new ExpeditionChestOffer{id="c2",generation="g7",price=400},new ExpeditionChestOffer{id="c3",generation="s1",price=50}}),"the scene restocks c1");
             w.Build(NativeExpeditionView.Build(run,"p0"));var c1=w.Pieces.First(x=>x.target=="c1");Check(c1.label=="RESTOCKING"&&c1.detail=="15s"&&c1.extra=="STOCK G2"&&c1.settled,"restocking piece from the cooldown");
-            Check(P.NoPurchase.Contains("not connected"),"buying is not offered as a control");
+            Check(P.NoPurchase.Contains("host checks distance"),"purchase hint describes host proximity enforcement");
         }
 
         // 15. Reprint quotes: Sources.ReprintCost per downed pilot; none (or below 1) is "price unavailable", never $0.
@@ -508,8 +508,9 @@ namespace ChipArena.UnityConversion
             w.Build(NativeExpeditionView.Build(run,"p0"));Check(w.Pieces.Single(x=>x.anchor=="wz-gate").label=="OPEN","cleared: the door opens");
             // A private reward's anchor is a leak the audit flags, and it is never drawn.
             Check(run.VoteExit("p0",true)&&run.VoteExit("p1",true),"leave");run.Tick(.25);Check(run.SetSafe("p0",true)&&run.Credit("p0","c",100)&&run.Purchase("p0","g",50),"purchase");
-            string chest=run.Snapshot().rewards.First(r=>r.source=="chest").id;Check(run.PlaceReward(chest,1,0,1),"the authority accepts a position for it");
-            var v=NativeExpeditionView.Build(run,"p1");Check(NativeExpeditionView.Leaks(v,run.Snapshot()).Any(l=>l.Contains("world anchor of private reward")),"the privacy audit flags it");
+            string chest=run.Snapshot().rewards.First(r=>r.source=="chest").id;Check(!run.PlaceReward(chest,1,0,1),"private reward placement refused");
+            var legacy=run.Snapshot();legacy.anchors=legacy.anchors.Append(new ExpeditionWorldAnchor{id=chest,area="city",kind="reward",x=1,z=1}).ToArray();run=new NativeExpedition(legacy);
+            var v=NativeExpeditionView.Build(run,"p1");Check(NativeExpeditionView.Leaks(v,run.Snapshot()).Count==0&&!v.anchors.Any(a=>a.id==chest),"legacy private anchors are filtered before publication");
             w.Build(v);Check(!w.Pieces.Any(x=>x.target==chest||x.anchor==chest),"and the world never draws it");
             // Geometry: every piece emits valid triangles; actionable pieces carry the motes column; reduced effects are static.
             var sink=new Collect();foreach(var x in w.Pieces){int before=sink.Vertices;NativeExpeditionWorld.Emit(sink,x,1.3,false);Check(sink.Vertices>before&&sink.Valid,"geometry for "+x.anchor);}

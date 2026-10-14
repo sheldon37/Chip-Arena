@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         public string label, detail, extra;
         /// <summary>The anchor's position, and where the piece is drawn (the anchor, or a small ring round it where several
         /// reserved boss chips share the boss's death point).</summary>
-        public float ax, ay, az, x, y, z;
+        public float ax, ay, az, x, y, z, yaw;
         public ExpeditionTone tone;
         /// <summary>Yours (your drop, your reserved chip, your cache purchase); something you can act on; settled (taken, claimed,
         /// restocking, not for you), drawn dimmed.</summary>
@@ -135,7 +135,7 @@ namespace ChipArena.UnityConversion
         private static bool Here(ExpeditionView v,ExpeditionWorldAnchor a)=>a!=null&&a.id!=null&&a.area!=null&&a.area==v.area&&Finite(a.x)&&Finite(a.y)&&Finite(a.z);
         private static bool Finite(float f)=>!float.IsNaN(f)&&!float.IsInfinity(f);
         private static ExpeditionWorldPiece At(ExpeditionWorldAnchor a,ExpeditionPieceKind kind,ExpeditionPieceLook look,string target)
-            =>new ExpeditionWorldPiece{kind=kind,look=look,anchor=a.id,target=target,ax=a.x,ay=a.y,az=a.z,x=a.x,y=a.y,z=a.z};
+            =>new ExpeditionWorldPiece{kind=kind,look=look,anchor=a.id,target=target,ax=a.x,ay=a.y,az=a.z,x=a.x,y=a.y,z=a.z,yaw=a.yaw};
 
         // ---- Rewards: ordinary drops (first pickup) and reserved boss chips (one pilot each) ----------------------------------
         private void RewardPiece(ExpeditionView v,ExpeditionWorldAnchor a)
@@ -188,7 +188,7 @@ namespace ChipArena.UnityConversion
         // ---- Doors: the building named by the anchor's area (inside), else by its id (the outdoor entrance) --------------------
         /// <summary>The building a door anchor belongs to (index into instances), or -1: the anchor's area names it (the door
         /// inside that building), else its id (the entrance in the world area). Any other door anchor is not drawn.</summary>
-        public int DoorBuilding(ExpeditionWorldAnchor a){if(a==null)return -1;if(a.area!=null&&buildings.TryGetValue(a.area,out int i))return i;return a.id!=null&&buildings.TryGetValue(a.id,out i)?i:-1;}
+        public int DoorBuilding(ExpeditionWorldAnchor a){if(a==null)return -1;if(!string.IsNullOrEmpty(a.building))return buildings.TryGetValue(a.building,out int explicitBuilding)?explicitBuilding:-1;if(a.area!=null&&buildings.TryGetValue(a.area,out int i))return i;return a.id!=null&&buildings.TryGetValue(a.id,out i)?i:-1;}
         private void DoorPiece(ExpeditionView v,ExpeditionWorldAnchor a)
         {
             int bi=DoorBuilding(a);if(bi<0)return;var b=v.instances[bi];
@@ -233,6 +233,7 @@ namespace ChipArena.UnityConversion
             var p=At(a,ExpeditionPieceKind.Chest,ExpeditionPieceLook.Chest,o.id);
             string stock=Labels.Join("STOCK ",Labels.Who(o.generation));
             if(Restocking(o,v.elapsed)){p.label="RESTOCKING";p.detail=Labels.Int("",NativeExpeditionPresentation.Left(o.cooldown,v.elapsed),"s");p.extra=stock;p.tone=ExpeditionTone.Muted;p.settled=true;}
+            else if(o.sold&&!Bought(v,o)){p.label="SOLD";p.detail="WAITING FOR RESTOCK";p.extra=stock;p.tone=ExpeditionTone.Muted;p.settled=true;}
             else if(Bought(v,o)){p.label="BOUGHT · YOURS";p.detail=Labels.Money(o.price);p.extra=stock;p.tone=ExpeditionTone.Good;p.mine=true;p.settled=true;}
             else
             {

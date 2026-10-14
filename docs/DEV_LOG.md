@@ -6668,3 +6668,26 @@ Added an actual-Unity build gate for every effect in local/encoded-guest paths,
 JsonUtility/replica state and account isolation. This gate, actual Unity compile,
 PhysX, Windows and live host/guest acceptance remain unrun locally. No compiled
 release claimed; publication/merge receipts belong in the task PR.
+
+
+### 2026-10-14 — Astra: Expedition live contract follow-ups
+
+Branch `codex/expedition-live-integration`, base Claude `22c14c2` on shared
+`c134dc2`. Adds host-proximity Purchase intent, public sold state and explicit
+restock event; preserves private reward ownership and confirms purchases across
+restock. Filters private/unknown anchors, including legacy saves and overrides.
+Adds explicit door building/yaw, sanitized public member names, and a separate
+transport clock for transfer countdowns. Stable command getter; 20 Hz projection
+and metrics; no full snapshot merely to check extraction elapsed. Provides a
+scene-binding overload and command-based pickup/cache interaction entry point.
+No hit timing, damage, hitbox, cooldown or animation changes.
+
+Playable scene/director, actual scene measurements/events, endpoint probes,
+combat package/ACK and endpoint migration remain missing dependencies. No success
+flags are fabricated. Test results and publication are recorded in the task PR;
+Unity/Windows/two-client acceptance remains unrun in this environment.
+
+Local focused verification: authority 473 assertions, integration 59 assertions,
+presentation 8,357 checks passed. Runtime/editor syntax: zero errors. Source
+package check: 1,935 files passed. Full managed/real-relay run is in progress;
+final result belongs in the PR before merge. Syntax is not a native compilation.

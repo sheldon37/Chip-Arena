@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
         }
 
         public ExpeditionViewSources Sources=>new ExpeditionViewSources{Saved=Saved,Transfer=Transfer,Candidates=Candidates,EndpointMigration=SimulatedEndpoint,
-            EndpointReserved=SimulatedReserved,PackageStored=SimulatedPackage,AckReceived=SimulatedAck,Deadline=SimulatedDeadline,ReprintCost=Quote};
+            EndpointReserved=SimulatedReserved,PackageStored=SimulatedPackage,AckReceived=SimulatedAck,Deadline=SimulatedDeadline,TransportClock=Clock,ReprintCost=Quote};
         /// <summary>The authority's projection for a viewer right now (what the host builds).</summary>
         public ExpeditionView View(string viewer=null)=>NativeExpeditionView.Build(Run,viewer??Viewer,Sources);
         public bool IsHost(string viewer)=>Run.Snapshot().host==viewer;
