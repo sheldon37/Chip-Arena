@@ -11,6 +11,8 @@ namespace ChipArena.UnityConversion
     public static class NativeSourceMotion
     {
         private static Dictionary<string,SourceMotionClip> clips;
+        // Decode the shared bank during startup, before any combat or replay can request a clip.
+        public static void Prewarm()=>Ensure();
         private static void Ensure(){if(clips!=null)return;var data=JsonUtility.FromJson<SourceMotionSet>(NativeSourceModels.Decode("SourceMotion"));clips=new Dictionary<string,SourceMotionClip>();foreach(var c in data.clips){if(c.frames<2||c.duration<=0||c.values==null||c.values.Length!=c.frames*22*7||c.values.Any(v=>!MathUtil.Finite(v))||c.key.StartsWith("intro-")&&(c.roots==null||c.roots.Length!=c.frames*10||c.cameras==null||c.cameras.Length!=c.frames*10||c.roots.Any(v=>!MathUtil.Finite(v))||c.cameras.Any(v=>!MathUtil.Finite(v))))throw new InvalidOperationException("Invalid motion clip "+c.key);clips.Add(c.key,c);}
             // The weapon intros' clearance plans are built with the clips (NativeIntroMotion.Prepare), not on an entrance's first frame.
             foreach(var c in data.clips)if(c.key.StartsWith("intro-weapon-",StringComparison.Ordinal))NativeIntroMotion.Prepare(c.key.Substring(6),c.values,c.frames,c.duration);}
