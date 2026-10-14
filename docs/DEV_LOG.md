@@ -7253,3 +7253,96 @@ In the CI layout, the layout test's two script tests skip and its three fixture 
 earlier CI-layout run that used the shared-directory `ci-relay.sh` was stopped and is not counted.
 Not run: Unity Editor, PhysX, Windows, gameplay. The branch is pushed and unmerged; nothing is
 released or published.
+## 2026-10-14 — Astra: agreed Expedition layout validation and director state
+
+Branch `codex/expedition-layout-director`, based on local foundation `8379f4cf`
+(the tree published as `437279ec` on `codex/expedition-director`), including agreed
+shared `afade5dc`. Isolated checkout; foundation and Claude branches not rewritten.
+
+Added the schema-1 resource load gate, map/look isolation check, manifest/content
+fingerprint, strict spawn scalar/allow validation, gate uniqueness, rotated volume
+bounds, sanctuary containment, compulsory navigation evidence and pilot/Hulk slot
+clearance. Inherited Siren spawn permissions now retain every allowed archetype.
+
+Director supplies detached closure state/clocks, barrier target/generation/counts,
+authoritative sanctuary flags and boss arrivals through the existing public view.
+Entry and voted return freeze behind a fingerprint-checked barrier; stale/duplicate
+ACKs, missing peers and failed placements cannot release it. One-second closure
+states drive the collision predicate; final trigger requires an open gate. Added
+Expedition map exclusion to ordinary selection, random rotation and Sandbox changes.
+The filtered picker now looks up descriptions by map ID rather than old array index.
+No Siren geometry, balance, Electron CI, accounts or updater changes.
+
+The resource and scene adapter API/remaining integration are documented in
+EXPEDITION-LAYOUT.md. No layout asset was fabricated. Still pending Claude's actual
+maps/manifest, runtime PhysX/navigation probes, scene/collision and ready-message
+binding, encounter catalog/spawning and native gameplay validation. This branch
+is a contract/director implementation, not a playable Expedition or release.
+
+Verification: direct Roslyn compilation and 53 focused director checks passed.
+The broader suite caught absent-string normalization for the new barrier DTO;
+fixed to preserve host/guest view round-trips. Final broader result follows below.
+The dotnet SDK CLI fails container process introspection, so the existing direct
+Roslyn compiler workaround is used. Unity Editor/PhysX/Windows tests unrun.
+
+Verification/integration follow-up: the broad run passed the Expedition checks
+and continued through stage/navigation/render regressions, then stopped at the
+older foundation's DEV panel action-list assertion (new monster authority, old UI).
+Integrated current foundation `c7bc4017` (remote `2fef6816`; all 13 changed file blobs
+match exactly), preserving both log entries. Recompiled, then passed DEV tools
+4,190 checks, DEV authority 95 checks, Expedition rules 473 assertions, presentation
+8,357 checks, integration 59 assertions and director 53 checks. No clean full-suite
+pass is claimed; the remaining full run was not repeated after this upstream fix.
+Source package structure: 1,951 files; C# syntax: zero errors; diff check passed.
+PR #212 remains draft and unmerged; no builder/test-feed promotion. The task branch
+is rebased onto the published current foundation to keep this PR limited to the
+18 Expedition files; no shared branch is rewritten. Claude layout branch still
+absent on the remote at final inspection.
+
+## 2026-10-14 — Astra: import Expedition layout M1 and integrate PR #212
+
+Task branch `codex/expedition-layout-import`, exact shared base `5999aff`
+(tree `267bdc2002ede9f66b266c40462d636183ff5eca`, verified locally). Integrated
+PR #212 `40b7c80` with both sides' documentation preserved. Direct Git network
+access was unavailable; GitHub connector blobs reconstruct the exact base tree,
+and uploaded changes are verified by Git blob SHA and the final tree SHA.
+
+Imports `expedition-city` and `expedition-ward-zero` after Siren, their generated
+navigation and `Resources/ExpeditionLayout.json` (`exp-layout-2`), with receipts.
+The importer is `unity/ChipArenaConversion/tools/generate_expedition.py`; --check
+requires byte-identical output. Town: 4,057 nodes/7,367 links. Instance: 21,851
+nodes/39,988 links on a 0.5 m grid. A 1 m instance grid failed Hulk routing;
+the finer graph passes actual node/link capsule checks. Compact stable map-local
+nav IDs reduce the JSON payload without changing geometry or connectivity.
+
+All normal, saved, random, Sandbox and DEV map selectors exclude Expedition.
+Brickfall's count and the surface audit include both new maps. Ward instance:
+breaches, explicit vent entries and quarantine look enabled; timed PvP vent
+fallback and stage hazards off. Native build checks run traversal on both Ward
+maps, pinned Siren hazard/economy checks only on Siren. No new art authored.
+
+Gantry exits move x +/-35.2 -> +/-35.8, preserving y/z, normals, yaw, panels and
+entry timings; corrected in the Ward generator, fixture and PvE resource.
+Every inherited exit passes capsule clearance; no waived or relocated point.
+Spawn yaw stays radians; instance exit records stay inside; final-area spawns
+are classified by boss-trigger containment of their exit (nine); blockHash is
+the canonical geometry receipt checked against each imported map. Details in
+EXPEDITION-LAYOUT.md, M1 import decisions.
+
+Verification: optimized managed compilation; 179 focused layout checks including
+imported navigation, all inherited Hulk exits, isolation, yaw and final spawns;
+106 Python tests passed, one Windows cmd.exe-only skip; deterministic importer
+--check; source package 1,961 files; C# syntax scan zero errors; diff check clean.
+Initial full regression stopped at the old four-map surface-audit roster. That
+roster now includes all six maps and the audit passes. Full rerun result follows.
+
+Not run here: Unity Editor/PhysX, Windows player or live host/guest acceptance.
+This is asset/contract integration, not a playable Expedition or a compiled
+release. Desktop builder must validate and publish the native test update; scene
+binding, encounters, ready barriers, runtime probes and migration remain separate.
+
+Final full optimized managed/real-relay rerun: exit 0, 682 PASS groups, including
+179 Expedition layout assertions, 53 director assertions and the six-map surface
+audit. Real local WebSocket/UDP/TCP checks passed. No assertion was waived.
+Only a surface-test result label and XML comments changed after compilation.
+Source publication uses this checked tree; merge/builder receipts are in the PR.

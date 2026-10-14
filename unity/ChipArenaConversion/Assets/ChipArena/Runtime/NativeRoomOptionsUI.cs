@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         // by class (lobby-ui.ts botLoadouts; NativeRoomOptions.Normalize keeps no DEV weapon for a bot).
         private void RuleLists()
         {
-            if(mapIds!=null)return;var maps=content.maps??new ContentMap[0];mapIds=new string[maps.Length];mapLabels=new string[maps.Length+1];mapLabels[0]="Random";
+            if(mapIds!=null)return;var maps=System.Array.FindAll(content.maps??new ContentMap[0],NativeMapRules.ArenaSelectable);mapIds=new string[maps.Length];mapLabels=new string[maps.Length+1];mapLabels[0]="Random";
             for(int i=0;i<maps.Length;i++){mapIds[i]=maps[i].id;mapLabels[i+1]=maps[i].name;}
             var weapons=new List<ContentWeapon>();foreach(var c in NativeLoadoutText.Classes)foreach(var w in content.weapons)if(!w.devOnly&&w.@class==c)weapons.Add(w);
             botWeaponIds=new string[weapons.Count];botWeaponLabels=new string[weapons.Count+1];botWeaponLabels[0]="Random weapon";for(int i=0;i<weapons.Count;i++){botWeaponIds[i]=weapons[i].id;botWeaponLabels[i+1]=weapons[i].name;}

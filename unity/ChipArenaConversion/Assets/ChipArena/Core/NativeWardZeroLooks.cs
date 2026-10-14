@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     /// <para>The gate. The game already has a Ward Zero (map id "siren", built from GameContent.json and drawn from the
     /// exported source models by NativeWardPresentation). The revamp keeps that id and replaces the map when Astra imports the
     /// draft (docs/arenas/scripts/wardzero_m1.py); until then nothing here runs. <see cref="Active"/> is true only for a map
-    /// with the id "siren" whose `look` is <see cref="Look"/> ("quarantine"): the draft carries that look and today's Ward
+    /// with the id "siren" or "expedition-ward-zero" whose `look` is <see cref="Look"/> ("quarantine"): the draft carries that look and today's Ward
     /// Zero carries none, so the current map, its presentation and its lighting stay exactly as they are.</para>
     /// <para>The surfaces sit in the Cyber City bank's unused slots (the shader's FLAG_CYBER, NativeCyberCityLooks.Bank): with
     /// the flag the look id names a slot, so the base keys, their shader ids, every old map and Cyber City's eight slots stay
@@ -30,9 +30,9 @@ namespace ChipArena.UnityConversion
     public static class NativeWardZeroLooks
     {
         public const string MapId="siren",Look="quarantine";
-        /// <summary>Whether a map is the revamped Ward Zero (the id the game uses and the draft's look); every new Ward Zero hook
+        /// <summary>Whether a map is revamped Ward Zero or its Expedition instance with the quarantine look; every Ward Zero hook
         /// is inert on any other map, today's Ward Zero included.</summary>
-        public static bool Active(ContentMap map)=>map!=null&&map.id==MapId&&map.look==Look;
+        public static bool Active(ContentMap map)=>map!=null&&NativeMapRules.WardInstance(map.id)&&map.look==Look;
         public const int Tile=1,Burn=3,Panel=2,Glass=13,Light=14,Ink=15;
         /// <summary>Keys by slot of the shared bank (null: a slot this bank does not use; Cyber City's are its own).</summary>
         public static readonly string[] Keys={null,"ward-tile","ward-panel","ward-burner",null,null,null,null,null,null,null,null,null,"ward-glass","ward-light","ward-ink"};

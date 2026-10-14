@@ -327,6 +327,7 @@ for (bid, axis, u, face, sign, y0) in breaches:
     n = (0, 0, sign) if axis == 'z' else (sign, 0, 0)
     frm = (u, y0, face - sign * 1.0) if axis == 'z' else (face - sign * 1.0, y0, u)
     ext = (u, y0, face + sign * (BREACH_T + 2.4)) if axis == 'z' else (face + sign * (BREACH_T + 2.4), y0, u)
+    if bid == 'breach-gantry-e': ext = (ext[0] + 0.6, ext[1], ext[2])
     entry('breach', bid, frm, ext, surface='wall', extra=dict(block=MAP + '-' + bid, center=v(c['x'], c['y'], c['z']), size=v(sz['x'], sz['y'], sz['z']), normal=v(*n)))
 # Order: the eight song vents first (0..7), then the rest by id; the index is the entry's `e`.
 song = sorted([e for e in entries if e['song'] >= 0], key=lambda e: e['id']); rest = sorted([e for e in entries if e['song'] < 0], key=lambda e: e['id'])

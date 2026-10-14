@@ -116,7 +116,7 @@ namespace ChipArena.UnityConversion
         {
             var a=m.Pve;
             if(hulkWallCount!=StaticBlocks.Count)NameWardPanels();
-            if(Replica||Map.id!="siren"||a.Stats.id!="hulk"||a.Crawl||Time<a.ActiveAt)return false;
+            if(Replica||!NativeMapRules.WardInstance(Map.id)||a.Stats.id!="hulk"||a.Crawl||Time<a.ActiveAt)return false;
             if(a.WallBreach!=null&&Time<a.WallBreach.breakAt)
             {m.Yaw=Mathf.Atan2(a.WallBreach.normal.x,a.WallBreach.normal.z)*Mathf.Rad2Deg;return true;}
             // Traverse the opened block even when the authored graph had no link through solid wall.

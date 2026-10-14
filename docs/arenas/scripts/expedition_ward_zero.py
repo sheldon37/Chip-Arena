@@ -54,7 +54,7 @@ CACHES = [pt(-12.0, 0, -10.5, yaw_of(12.0, 10.5)), pt(25.0, L1, 24.0, 180.0)]
 BOSS_POINTS = [pt(0, 0, 0, 180.0), pt(0, 0, 8.6, 180.0), pt(0, 0, -8.6, 0.0)]
 # Siren's own Hulk exits a Hulk-sized capsule cannot stand at (Siren content, inherited by `e`; not the overlay's): the
 # gantry breaches' exits are 0.65 m from the gantry rail's top bar. Reported for Astra; the check fails on any other.
-KNOWN_SIREN_HULK = {'breach-gantry-e', 'breach-gantry-w'}
+KNOWN_SIREN_HULK = set()  # Authored gantry exits are now Hulk-clear; no exceptions.
 
 def door_record():
     fx, fz = forward(YAW); s = -1.0                       # an instance exit: the party's side is behind the yaw (inside)
