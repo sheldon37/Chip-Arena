@@ -17,9 +17,10 @@ namespace ChipArena.UnityConversion
     /// a translucent membrane (a toon water puff), an emissive halo and glowing fumes shed behind it, a stringy tail of teardrops
     /// and drips falling off it; the clot gathering in the mouth with strings across the unhinging jaw; at the landing a flash, a
     /// crown of liquid, drops thrown on arcs that land inside the pool's radius and leave spatter; the pool's lobed liquid film
-    /// (a dark glossy core, a bright meniscus) creeping to the authority's radius, never past it, a faint ring holding that radius
-    /// until the pool ends, glossy bubbles that swell and pop, glints sliding over it and fumes thickening as it evaporates, then
-    /// an etched mark fading; corroded faces eaten in a ragged blotch with a cooling acid rim, glowing pits, drips running down and
+    /// (natural pass, owner 2026-10-14: a lobed body, its own per record seed, whose mean extent is the authority's radius, with
+    /// no ring at it; dark and thick in its core, lighter and translucent at its thin lip, a soft view-dependent wet sheen;
+    /// satellite splats outside it) creeping out viscously, a bubble swelling and popping now and then, glints and faint fumes,
+    /// drying into patches and receding a little, then a residue stain fading; corroded faces eaten in a ragged blotch with a cooling acid rim, glowing pits, drips running down and
     /// sizzle; a splashed pilot's sheen, drops, drips and sizzle; the interrupted spit's dribble and fizzle.</item>
     /// <item>Impacts (smash, jump-in landing, a Hulk's crash): a flash, the upright slam wave (never a flat ring) reaching the
     /// authority's radius, a crushed patch and jagged branching cracks with a hot seam, toon dust rolling out low over the floor
@@ -146,63 +147,164 @@ namespace ChipArena.UnityConversion
                 vfx.Drop(mouth+side*o.X+Vector3.up*o.Y+fwd*o.Z*.5f,Vector3.down*(.03f+.4f*(-o.Y)),A(DropColor,DropColor.a*da),sz*1.8f,.1f,F(seed,20+i));
         }
         /// <summary>The landing `since` s after the glob touched down at `c` (floor height `floor`), its pool of `radius` (the
-        /// authority's) for `duration` s: the flash, crown, drops and spatter, the sizzle.</summary>
+        /// authority's) for `duration` s: the flash, crown, drops (those landing inside the body leave a spatter mark until the
+        /// spreading liquid takes it in; the satellites' drops fly past its edge), the sizzle.</summary>
         public void Splash(Vector3 c,float floor,float since,float radius,float duration,uint seed)
         {
             if(vfx==null||since<0)return;var g=new Vector3(c.x,floor,c.z);
-            if(NativeZombieFx.SplashFlash(since,out float fs,out float fa)){vfx.Glow(g+Vector3.up*.12f,AcidHot*(.65f*fa),fs,NativeVfxDraw.CoreGlow,0,F(seed,0));}
+            if(NativeZombieFx.SplashFlash(since,out float fs,out float fa)){vfx.Glow(g+Vector3.up*.12f,AcidHot*(.5f*fa),fs*.85f,NativeVfxDraw.CoreGlow,0,F(seed,0));}
             for(int k=0;k<N(NativeZombieFx.CrownLobes);k++)if(NativeZombieFx.Crown(seed,k,since,out var o,out float s,out float a))
             {var off=U(o);var flat=new Vector3(off.x,0,off.z).normalized;vfx.Water(g+off,MembraneLit,NativeZombieFx.AcidShadeHex,a,s*2.2f,(flat*.4f+Vector3.up)*.06f,since/NativeZombieFx.CrownSeconds*.5f,F(seed,k),floor);}
             for(int i=0;i<N(NativeZombieFx.SplashDrops);i++)if(NativeZombieFx.SplashDrop(seed,i,since,radius,out var o,out var v,out float s))vfx.Drop(g+U(o),U(v)*.035f,DropColor,s*1.6f,.15f,F(seed,60+i));
-            // Spatter: each drop's mark where it landed, wet with the pool, then drying into the etch.
-            NativeZombieFx.Pool(Math.Min(since,duration),duration,out _,out float wet);float spatterAlpha=since>duration?0:.85f*(.35f+.65f*wet);
+            for(int i=0;i<N(NativeZombieFx.Satellites);i++)if(NativeZombieFx.SatelliteDrop(seed,i,since,radius,out var o,out var v,out float s))vfx.Drop(g+U(o),U(v)*.035f,DropColor,s*1.6f,.15f,F(seed,80+i));
+            // Spatter: each drop's wet mark where it landed, until the creeping liquid reaches it and takes it in.
+            NativeZombieFx.Pool(Math.Min(since,duration),duration,out _,out float wet);float spatterAlpha=since>duration?0:.8f*wet;
             if(spatterAlpha>0)for(int i=0;i<N(NativeZombieFx.SplashDrops);i++)
             {
                 float land=NativeZombieFx.SplashLand(seed,i,radius);if(since<land)continue;var at=NativeZombieFx.SpatterAt(seed,i,radius);float size=NativeZombieFx.SpatterSize(seed,i,out float turn)*Sm((since-land)/.08f);
-                var pc=new Vector3(g.x+at.X,floor+.008f,g.z+at.Y);int n=8;for(int k=0;k<n;k++){float ang=turn+k*Mathf.PI*2/n,rr=size*(.65f+.35f*NativeHordeFx.Hash(seed,i*8+k,157));ringA[k]=pc+new Vector3(Mathf.Cos(ang)*rr,0,Mathf.Sin(ang)*rr);}
-                Fan(pc,ringA,n,S(0x163a06,spatterAlpha),S(0x2f6a10,spatterAlpha*.8f),Authored);
-                if(extras&&since-land<.6f)vfx.Glow(pc+Vector3.up*.02f,AcidGlow*(.6f*(1-(since-land)/.6f)),size*2.2f,NativeVfxDraw.Mote,0,F(seed,i));
+                float dist=at.Length(),body=radius*NativeZombieFx.EdgeAt(seed,Mathf.Atan2(at.Y,at.X),since,duration),shown=spatterAlpha*(1-Sm((body-dist+size)/(size*2+1e-3f)));if(shown<=.01f)continue;
+                var pc=new Vector3(g.x+at.X,floor+.0075f,g.z+at.Y);int n=8;for(int k=0;k<n;k++){float ang=turn+k*Mathf.PI*2/n,rr=size*(.65f+.35f*NativeHordeFx.Hash(seed,i*8+k,157));ringA[k]=pc+new Vector3(Mathf.Cos(ang)*rr,0,Mathf.Sin(ang)*rr);}
+                Fan(pc,ringA,n,Shade(.62f,shown),Shade(.2f,shown*.85f),Authored);
             }
             // The sizzle where it struck.
             for(int k=0;k<N(4);k++)if(NativeHordeFx.Sizzle(seed^0x51u,k,since,.25f,out var so,out float ss,out float sa)&&since<1.2f)vfx.Smoke(g+U(so)+Vector3.up*.04f,Sizzle,sa*(1-since/1.2f),ss*2.4f,((since*1.4f)%1),F(seed,90+k),floor);
         }
-        /// <summary>The pool of `radius` (the authority's) at `c` on the floor `floor`, `since` s after the landing, for `duration` s:
-        /// the etch, the liquid film and its meniscus, the ring at the radius, bubbles, glints and fumes.</summary>
-        public void Pool(Vector3 c,float floor,float since,float radius,float duration,uint seed)
+
+        // ---- the liquid body (a decal on the floor: no ring, no band at the radius) ----
+        // Rings of the body, a share of its edge at each angle: the deep core, the mottled middle, the thinning lip, the edge, and a
+        // feather just past it (transparent) so the boundary is soft but defined.
+        private static readonly float[] BodyRings={.14f,.3f,.46f,.6f,.72f,.82f,.9f,.96f,1f,1.02f},SheenRings={.3f,.6f,.82f,.93f,1f},StainRings={.3f,.6f,.85f,.97f,1.04f};
+        /// <summary>The thickness of the lip at the body's very edge (a thin wet meniscus: defined, lighter, translucent).</summary>
+        private const float LipThickness=.17f;
+        private readonly float[] bodyEdge=new float[NativeZombieFx.PoolEdge];private int bodyN;
+        // The liquid's colour for its thickness (0 its thin lip .. 1 the deep core) at `alpha`: dark and nearly opaque where deep, a
+        // lighter, yellower green and translucent where thin (the floor shows through), gone where dried to nothing.
+        private static Color Shade(float thick,float alpha)
         {
-            if(vfx==null||since<0)return;var g=new Vector3(c.x,floor,c.z);int n=NativeZombieFx.Edge;
-            if(NativeZombieFx.Etch(since,duration,out float etch))
-            {for(int k=0;k<n;k++){float a=k*Mathf.PI*2/n,r=radius*NativeZombieFx.EtchEdge(seed,k,duration);ringA[k]=g+new Vector3(Mathf.Cos(a)*r,.004f,Mathf.Sin(a)*r);}Fan(g+Vector3.up*.004f,ringA,n,S(NativeZombieFx.EtchHex,etch),S(0x2a2a12,etch*.7f),Authored);}
-            if(!NativeZombieFx.Pool(since,duration,out float spread,out float wet))return;
-            float film=.92f*(float)Math.Pow(wet,.6f);
+            float t=Mathf.Clamp01(thick);Color c;float o;
+            if(t<.3f){float k=t/.3f;c=Color.Lerp(LipTone,ThinTone,k);o=Mathf.Lerp(.6f,.8f,k);}
+            else if(t<.62f){float k=(t-.3f)/.32f;c=Color.Lerp(ThinTone,MidTone,k);o=Mathf.Lerp(.8f,.92f,k);}
+            else{float k=(t-.62f)/.38f;c=Color.Lerp(MidTone,DeepTone,k);o=Mathf.Lerp(.92f,.96f,k);}
+            c.a=o*alpha*Sm(t/.3f);return c;
+        }
+        private static readonly Color LipTone=S(0x6c9f2b,1),ThinTone=S(0x357212,1),MidTone=S(0x1c500a,1),DeepTone=S(0x0c2a04,1),SheenTone=S(0xc4f08a,1),StainTone=S(0x2f3410,1),ResidueTone=S(0x444a17,1);
+        // The outline (radius times NativeZombieFx.EdgeAt round the circle) into bodyEdge, on the tier's vertex count.
+        private void BodyOutline(float radius,uint seed,float since,float duration,bool spreading)
+        {
+            bodyN=Tier==NativeZombieFx.Low?NativeZombieFx.PoolEdgeLow:NativeZombieFx.PoolEdge;
+            for(int k=0;k<bodyN;k++){float a=k*Mathf.PI*2/bodyN;bodyEdge[k]=radius*(spreading?NativeZombieFx.EdgeAt(seed,a,since,duration):NativeZombieFx.Outline(seed,a,since));}
+        }
+        // The body over bodyEdge at `g`: its film (thickness-shaded, mottled, patchy as it dries) and its sheen (additive, the view's
+        // Fresnel, broken round the edge). `film` fades the whole.
+        private void LiquidBody(Vector3 g,uint seed,float since,float wet,float film,float lift)
+        {
+            var layer=decals.Effects;int n=bodyN,rings=BodyRings.Length;var uv=new Vector4(0,0,NativeFxDraw.Flat,Authored);
+            // The centre takes the innermost ring's mean, so the fan round it never shows spokes.
+            float centre=0;for(int k=0;k<n;k++){float a=k*Mathf.PI*2/n,r=bodyEdge[k]*BodyRings[0];centre+=NativeZombieFx.Thickness(seed,BodyRings[0],Mathf.Cos(a)*r,Mathf.Sin(a)*r,since,wet);}
+            int s=layer.Vertex(g+Vector3.up*lift,Vector3.up,Shade(centre/n,film),uv,Vector4.zero,Vector4.zero);
+            film*=.4f+.6f*wet;
             for(int k=0;k<n;k++)
             {
-                float a=k*Mathf.PI*2/n,e=radius*NativeZombieFx.EdgeAt(seed,k,since,spread,wet);var d=new Vector3(Mathf.Cos(a),0,Mathf.Sin(a));
-                ringA[k]=g+d*(e*.72f)+Vector3.up*.009f;ringB[k]=g+d*(e*.93f)+Vector3.up*.009f;ringC[k]=g+d*e+Vector3.up*.009f;
+                float a=k*Mathf.PI*2/n,ca=Mathf.Cos(a),sa=Mathf.Sin(a),e=bodyEdge[k],inner=0;
+                for(int j=0;j<rings;j++)
+                {
+                    float rho=BodyRings[j],x=ca*e*rho,z=sa*e*rho,th=NativeZombieFx.Thickness(seed,rho,x,z,since,wet);
+                    // The edge: a thin lip, never more than the liquid just inside it (so drying never leaves an outline); then the feather.
+                    if(j==rings-2)th=Mathf.Min(LipThickness,inner);inner=th;
+                    layer.Vertex(g+new Vector3(x,lift,z),Vector3.up,j==rings-1?A(LipTone,0):Shade(th,film),uv,Vector4.zero,Vector4.zero);
+                }
             }
-            // The film: a dark glossy core, lighter toward the edge, a bright meniscus round it (glowing, the acid's light).
-            Fan(g+Vector3.up*.009f,ringA,n,S(NativeZombieFx.AcidCoreHex,film),S(0x24560c,film*.95f),Authored);
-            Band(ringA,ringB,n,S(0x24560c,film*.95f),S(0x3f8a16,film*.85f),Authored);
-            Band(ringB,ringC,n,S(0x3f8a16,film*.85f),S(0x6fd030,film*.55f),Authored);
-            Band(ringB,ringC,n,S(NativeZombieFx.AcidHex,.0f),S(NativeZombieFx.AcidHex,.55f*wet),Glowing);
-            // The authority's radius, held until the pool ends.
-            float rim=NativeZombieFx.RimAlpha(since,duration);if(rim>0)decals.Ring(decals.Effects,g+Vector3.up*.006f,.975f,radius,S(NativeZombieFx.AcidHex,.38f*rim),Glowing);
-            // Bubbles swelling and popping, glossy domes on the full tier.
+            Grid(layer,s,n,rings);
+            // The sheen: the sky's reflection off the wet surface (stronger at grazing views), never a clean outline.
+            if(!(wet>.02f))return;var gl=new Vector4(0,0,NativeFxDraw.Flat,Glowing);int sr=SheenRings.Length;
+            s=layer.Vertex(g+Vector3.up*(lift+.001f),Vector3.up,Sheened(g,0,0,seed,0,0,wet,film),gl,Vector4.zero,Vector4.zero);
+            for(int k=0;k<n;k++)
+            {
+                float a=k*Mathf.PI*2/n,ca=Mathf.Cos(a),sa=Mathf.Sin(a),e=bodyEdge[k];
+                for(int j=0;j<sr;j++){float rho=SheenRings[j];layer.Vertex(g+new Vector3(ca*e*rho,lift+.001f,sa*e*rho),Vector3.up,Sheened(g,ca*e*rho,sa*e*rho,seed,rho,a,wet,film),gl,Vector4.zero,Vector4.zero);}
+            }
+            Grid(layer,s,n,sr);
+        }
+        private Color Sheened(Vector3 g,float x,float z,uint seed,float rho,float angle,float wet,float film)
+        {
+            var to=eye-(g+new Vector3(x,0,z));float l=to.magnitude;float k=NativeZombieFx.Sheen(seed,rho,angle,wet)*NativeZombieFx.Fresnel(l>1e-4f?to.y/l:1)*.42f*film;
+            return new Color(SheenTone.r,SheenTone.g,SheenTone.b,k);
+        }
+        // A polar grid: the centre vertex `s`, then `n` spokes of `rings` vertices each (spoke-major).
+        private static void Grid(NativeFxDraw.Layer layer,int s,int n,int rings)
+        {
+            for(int k=0;k<n;k++)
+            {
+                int a0=s+1+k*rings,b0=s+1+((k+1)%n)*rings;layer.Triangle(s,a0,b0);
+                for(int j=0;j<rings-1;j++){layer.Triangle(a0+j,a0+j+1,b0+j+1);layer.Triangle(a0+j,b0+j+1,b0+j);}
+            }
+        }
+        // The residue stain where the pool dried (its outline pinned where it began to dry): a faint mottled floor stain, a little
+        // heavier and yellower toward its edge, unevenly, feathered out.
+        private void Stain(Vector3 g,float radius,uint seed,float duration,float alpha)
+        {
+            var layer=decals.Effects;int n=Tier==NativeZombieFx.Low?NativeZombieFx.PoolEdgeLow:NativeZombieFx.PoolEdge,rings=StainRings.Length;var uv=new Vector4(0,0,NativeFxDraw.Flat,Authored);
+            int s=layer.Vertex(g+Vector3.up*.004f,Vector3.up,A(StainTone,alpha*.5f),uv,Vector4.zero,Vector4.zero);
+            for(int k=0;k<n;k++)
+            {
+                float a=k*Mathf.PI*2/n,ca=Mathf.Cos(a),sa=Mathf.Sin(a),e=radius*NativeZombieFx.EtchEdge(seed,a,duration),res=NativeZombieFx.Residue(seed,a);
+                for(int j=0;j<rings;j++)
+                {
+                    float rho=StainRings[j],x=ca*e*rho,z=sa*e*rho,m=NativeZombieFx.Mottle(seed^0x5eedu,x,z,0);
+                    Color col=j==rings-1?A(StainTone,0):j==rings-2?A(Color.Lerp(StainTone,ResidueTone,res*m),alpha*(.4f+.35f*res*m)):A(StainTone,alpha*(.3f+.4f*m));
+                    layer.Vertex(g+new Vector3(x,.004f,z),Vector3.up,col,uv,Vector4.zero,Vector4.zero);
+                }
+            }
+            Grid(layer,s,n,rings);
+        }
+        // Satellite splat i outside the body: stretched outward, wet (the liquid's colour) drying early into a stain.
+        private void SatelliteSplat(Vector3 g,uint seed,int i,float radius,float since,float duration)
+        {
+            NativeZombieFx.Satellite(seed,i,radius,out var at,out var along,out float length,out float width,out float land);if(since<land)return;
+            float grow=Sm((since-land)/.07f),w=NativeZombieFx.SatelliteWet(since,duration),fade=1-Sm((since-duration)/NativeZombieFx.EtchSeconds);if(fade<=0)return;
+            Vector3 c=g+new Vector3(at.X,.007f,at.Y),f=new Vector3(along.X,0,along.Y),side=new Vector3(-along.Y,0,along.X);int n=10;
+            for(int k=0;k<n;k++)
+            {
+                float ph=k*Mathf.PI*2/n,cp=Mathf.Cos(ph),lump=.82f+.3f*NativeHordeFx.Hash(seed,i*16+k,277),tail=1+.32f*Mathf.Pow(Mathf.Max(0,cp),3);
+                ringA[k]=c+f*(cp*length*.5f*tail*lump*grow)+side*(Mathf.Sin(ph)*width*.5f*lump*grow);
+            }
+            Color inner=Color.Lerp(A(StainTone,.5f*NativeZombieFx.StainMax),Shade(.5f,1),w),outer=Color.Lerp(A(ResidueTone,.4f*NativeZombieFx.StainMax),Shade(.12f,1),w);inner.a*=fade;outer.a*=fade;
+            Fan(c,ringA,n,inner,outer,Authored);
+        }
+        /// <summary>The pool of `radius` (the authority's) at `c` on the floor `floor`, `since` s after the landing, for `duration` s:
+        /// the residue stain as it dries, the lobed liquid body (mean extent the radius; no ring) and its sheen, the satellite
+        /// splats, bubbles now and then, glints and faint fumes.</summary>
+        public void Pool(Vector3 c,float floor,float since,float radius,float duration,uint seed)
+        {
+            if(vfx==null||since<0)return;var g=new Vector3(c.x,floor,c.z);
+            if(NativeZombieFx.Etch(since,duration,out float etch))Stain(g,radius,seed,duration,etch);
+            if(!NativeZombieFx.Pool(since,duration,out float spread,out float wet))return;
+            BodyOutline(radius,seed,since,duration,true);LiquidBody(g,seed,since,wet,Sm(since/.05f),.008f);
+            for(int i=0;i<N(NativeZombieFx.Satellites);i++)SatelliteSplat(g,seed,i,radius,since,duration);
+            // Bubbles: one swells now and then and pops, a ripple spreading (glossy domes on the full tier).
             for(int i=0;i<N(NativeZombieFx.PoolBubbles);i++)if(NativeZombieFx.PoolBubble(seed,i,since,duration,radius,out var o,out float s,out float pop))
             {
                 var p=g+U(o)+Vector3.up*.009f;
-                if(pop<=0){if(extras&&i<5)vfx.Blob(p,Quaternion.identity,new Vector3(s,s*.75f,s),CoreAlbedo*1.4f,1.6f,.95f,CoreEmit*.7f,CoreRim*.8f);vfx.Glow(p+Vector3.up*s*.4f,AcidGlow*.55f,s*2.6f,NativeVfxDraw.Ring,0,F(seed,i));}
-                else{vfx.Glow(p,AcidGlow*(.9f*(1-pop)),s*3.2f,NativeVfxDraw.Ring,pop,F(seed,i));if(pop<.6f)for(int m=0;m<2;m++){float ang=(i*2+m)*2.4f;var dir=new Vector3(Mathf.Cos(ang)*.35f,1,Mathf.Sin(ang)*.35f);vfx.Drop(p+dir*(.03f+.25f*pop),dir*.05f,DropColor,.016f,pop,seed+i*3+m);}}
+                if(pop<=0){if(extras)vfx.Blob(p,Quaternion.identity,new Vector3(s,s*.7f,s),CoreAlbedo*1.3f,1.6f,.95f,CoreEmit*.25f,CoreRim*.5f);continue;}
+                Ripple(p+Vector3.up*.002f,s*(1+3.2f*pop),.3f*(1-pop)*(1-pop)*wet);
+                if(extras&&pop<.4f)for(int m=0;m<2;m++){float ang=(i*2+m)*2.4f;var dir=new Vector3(Mathf.Cos(ang)*.35f,1,Mathf.Sin(ang)*.35f);vfx.Drop(p+dir*(.02f+.18f*pop),dir*.04f,DropColor,.012f,pop,seed+i*3+m);}
             }
-            if(extras)for(int i=0;i<NativeZombieFx.Glints;i++)if(NativeZombieFx.Glint(seed,i,since,duration,radius,out var o,out float ga))vfx.Glow(g+U(o),new Color(1.1f,1.5f,.9f,0)*ga,.1f,NativeVfxDraw.Mote,0,F(seed,i));
-            for(int i=0;i<N(NativeZombieFx.PoolFumes);i++)if(NativeZombieFx.PoolFume(seed,i,since,duration,radius,out var o,out float s,out float a,out float u))vfx.Vapor(g+U(o),FumeAlbedo,a*.5f,s*1.9f,u,F(seed,200+i),floor,.45f);
+            if(extras)for(int i=0;i<NativeZombieFx.Glints;i++)if(NativeZombieFx.Glint(seed,i,since,duration,radius,out var o,out float ga))vfx.Glow(g+U(o),new Color(1.1f,1.5f,.9f,0)*ga,.07f,NativeVfxDraw.Mote,0,F(seed,i));
+            for(int i=0;i<N(NativeZombieFx.PoolFumes);i++)if(NativeZombieFx.PoolFume(seed,i,since,duration,radius,out var o,out float s,out float a,out float u))vfx.Vapor(g+U(o),FumeAlbedo,a,s*1.7f,u,F(seed,200+i),floor,.45f);
         }
-        /// <summary>The fumes still clearing after the pool ended (its last puffs, up to .7 s after).</summary>
+        // A bubble's ripple: a thin, faint, lighter ring a few centimetres across (12 segments).
+        private void Ripple(Vector3 c,float r,float alpha)
+        {
+            if(alpha<=.005f)return;int n=12;for(int k=0;k<n;k++){float a=k*Mathf.PI*2/n;var d=new Vector3(Mathf.Cos(a),0,Mathf.Sin(a));ringB[k]=c+d*(r*.72f);ringC[k]=c+d*r;}
+            Band(ringB,ringC,n,A(SheenTone,0),A(SheenTone,alpha),Glowing);
+        }
+        /// <summary>After the pool: its residue stain and the satellites' stains fading, the last fumes clearing.</summary>
         public void PoolAfter(Vector3 c,float floor,float since,float radius,float duration,uint seed)
         {
             if(vfx==null||since<=duration)return;var g=new Vector3(c.x,floor,c.z);
-            if(NativeZombieFx.Etch(since,duration,out float etch)){int n=NativeZombieFx.Edge;for(int k=0;k<n;k++){float a=k*Mathf.PI*2/n,r=radius*NativeZombieFx.EtchEdge(seed,k,duration);ringA[k]=g+new Vector3(Mathf.Cos(a)*r,.004f,Mathf.Sin(a)*r);}Fan(g+Vector3.up*.004f,ringA,n,S(NativeZombieFx.EtchHex,etch),S(0x2a2a12,etch*.7f),Authored);}
-            for(int i=0;i<N(NativeZombieFx.PoolFumes);i++)if(NativeZombieFx.PoolFume(seed,i,since,duration,radius,out var o,out float s,out float a,out float u))vfx.Vapor(g+U(o),FumeAlbedo,a*.5f,s*1.9f,u,F(seed,200+i),floor,.45f);
+            if(NativeZombieFx.Etch(since,duration,out float etch))Stain(g,radius,seed,duration,etch);
+            for(int i=0;i<N(NativeZombieFx.Satellites);i++)SatelliteSplat(g,seed,i,radius,since,duration);
+            for(int i=0;i<N(NativeZombieFx.PoolFumes);i++)if(NativeZombieFx.PoolFume(seed,i,since,duration,radius,out var o,out float s,out float a,out float u))vfx.Vapor(g+U(o),FumeAlbedo,a,s*1.7f,u,F(seed,200+i),floor,.45f);
         }
         /// <summary>A face the acid eats (`at` the contact, `n` its normal, `tu`/`tv` along it, `down` down it): the ragged blotch
         /// and its cooling acid rim, glowing pits, drips running down, sizzle; `since` s after contact, for `duration`.</summary>
@@ -250,8 +352,8 @@ namespace ChipArena.UnityConversion
             var c=new Vector3(mouth.x,floor+.008f,mouth.z);
             if(NativeHordeFx.FizzlePool(since,out float r,out float pa))
             {
-                int n=16;for(int k=0;k<n;k++){float a=k*Mathf.PI*2/n,rr=r*(.85f+.15f*NativeHordeFx.Hash(seed,k,158));ringA[k]=c+new Vector3(Mathf.Cos(a)*rr,0,Mathf.Sin(a)*rr);}
-                Fan(c,ringA,n,S(NativeZombieFx.AcidCoreHex,.8f*pa),S(0x4fa21c,.5f*pa),Authored);decals.Ring(decals.Effects,c+Vector3.up*.002f,.82f,r,S(NativeZombieFx.AcidHex,.5f*pa),Glowing);
+                // A small lobed puddle like the spit's own (no ring), thinning as it fizzles away.
+                BodyOutline(r,seed,since,NativeHordeFx.FizzleSeconds,false);LiquidBody(new Vector3(c.x,floor,c.z),seed,since,Mathf.Clamp01(pa/.7f),Mathf.Clamp01(pa/.7f),.008f);
                 for(int k=0;k<N(3);k++)if(NativeHordeFx.Sizzle(seed,k,since,r,out var so,out float ss,out float sa))vfx.Smoke(c+U(so)*.8f,Sizzle,sa*pa,ss*1.8f,(since+k*.3f)%1,F(seed,20+k),floor);
             }
         }

@@ -32,8 +32,9 @@ namespace ChipArena.UnityConversion
         // The heavy stride: rig metres per cycle (two steps) against the rig speed, the stance share, the stamp's lift
         // ================================================================================================================
         // (The Hulk's .75 / 1.15 m/s are .42 / .64 on the rig: steps of about .8 / 1 m in the world, under one a second; a
-        // charge's 4.5 m/s (2.5 on the rig) runs long and low on short quick strides, the legs being a pilot's grown.)
-        private static readonly float[] HeavyV={0,.2f,.4167f,.639f,1.2f,2.5f},HeavyS={.5f,.68f,.88f,1.06f,1.3f,1.5f};
+        // charge runs long and low on short quick strides, the legs being a pilot's grown: 4.5 m/s (2.5 on the rig) on 1.35 m steps,
+        // the v2 contract's 6 m/s (3.33) on 1.6 m steps at 3.75 a second, up to 7.5 m/s held on the planted feet.)
+        private static readonly float[] HeavyV={0,.2f,.4167f,.639f,1.2f,2.5f,3.333f,4.2f},HeavyS={.5f,.68f,.88f,1.06f,1.3f,1.5f,1.78f,2.02f};
         /// <summary>The heavy stride at rig speed `v` (m per cycle of two steps).</summary>
         public static float HeavyStride(float v)
         {
@@ -357,7 +358,9 @@ namespace ChipArena.UnityConversion
             // The charge's wind-up trembles as it builds; a solid stop leaves the head reeling; a wall broken on the run jolts it.
             if(Move==Keyed.ChargeWind){float k=Sm(MoveAge/.4f);keyNow[KBx]+=(float)Math.Sin(MoveAge*41)*.006f*k;keyLag[KCr]+=(float)Math.Sin(MoveAge*37+1)*.02f*k;}
             if(Move==Keyed.ChargeStop&&f.ChargeHow==NativeHulkMoves.ChargeEnd.Solid){float k=Sm((MoveAge-.4f)/.2f)*(1-Sm((MoveAge-1.2f)/.4f));keyLag[KHr]+=(float)Math.Sin(MoveAge*7.5f)*.22f*k;keyLag[KHy]+=(float)Math.Sin(MoveAge*5.1f+1)*.15f*k;}
-            if(f.Charging&&f.ChargeBroke&&f.ChargeBreakAge>=0&&f.ChargeBreakAge<.4f){float j=Sm(f.ChargeBreakAge/.04f)*(1-Sm((f.ChargeBreakAge-.06f)/.3f));keyNow[KBz]-=.08f*j;keyLag[KCp]+=.14f*j;keyLag[KHp]+=.18f*j;keyLag[KCy]+=.12f*j;}
+            // A wall it crashes through on the run (NativeHulkCharge.Flinch): the leading shoulder driven back and the chest rocked into
+            // it, the head ducked behind it, the body jolted back a step's worth; then the run's pose again (it keeps running).
+            if(f.Charging&&f.ChargeBroke){float j=NativeHulkCharge.Flinch(f.ChargeBreakAge);if(j>0){keyNow[KBz]-=.09f*j;keyNow[KBy]-=.03f*j;keyNow[KPy]-=.08f*j;keyLag[KCp]+=.14f*j;keyLag[KCy]-=.2f*j;keyLag[KCr]+=.07f*j;keyLag[KHp]+=.2f*j;keyLag[KHy]+=.1f*j;}}
             KeyTrunk(p,keyNow,keyLag,moveW);
         }
         /// <summary>The keyed move's hands (after the legs, before the reactions' arms and the reach limit).</summary>

@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
             Check(run>=1f&&run<=1.4f,"and runs at a little over one ("+run+"/s)");
             float stepW=st.walk/walk,stepR=st.run/run,leg=.5f*Sc;
             Check(stepW/leg>=.75f&&stepW/leg<=1.05f&&stepR/leg>=.95f&&stepR/leg<=1.25f,"its steps are long for its legs (walk "+stepW+" m, run "+stepR+" m, legs "+leg+" m)");
-            Check(NativeHulkMoves.ChargeSpeed/charge<=1.5f&&charge<=3.8f,"a charge runs on quick strides its legs can reach ("+charge+"/s)");
+            Check(NativeHulkMoves.ChargeSpeed/charge<=1.7f&&charge<=3.9f,"a charge runs on quick strides its legs can reach ("+charge+"/s)");
             Check(walk<.4f*WorldSteps(NativeHordeKinds.Brute,bs.walk),"a far slower cadence than the brute's ("+walk+" against "+WorldSteps(NativeHordeKinds.Brute,bs.walk)+"/s)");
             Check(NativeHordeGait.Stamp(0)==0&&NativeHordeGait.Stamp(1)<1e-4f&&NativeHordeGait.Stamp(.5f)>.95f&&NativeHordeGait.Stamp(.92f)<NativeHordeGait.Stamp(.75f),"a step is lifted, carried and stamped down");
             Check(NativeHordeGait.Jolt(-.1f)==0&&NativeHordeGait.Jolt(.04f)>.9f&&NativeHordeGait.Jolt(.04f)<1.1f&&NativeHordeGait.Jolt(.7f)==0,"each footfall's jolt is bounded and brief");

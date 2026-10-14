@@ -86,6 +86,10 @@ namespace ChipArena.UnityConversion
         public static int Line(NativeImpactCommand[] o,int n,V3 a,V3 b,int c0,int c1,double jitter=.25,double life=.14,double sweep=0)=>Put(o,n,new NativeImpactCommand{Op=NativeImpactOp.Line,A=a,B=b,Color=c0,Color1=c1,Jitter=jitter,Life=life,Sweep=sweep});
         public static int Paddle(NativeImpactCommand[] o,int n,V3 at,V3 dir,int color)=>Put(o,n,new NativeImpactCommand{Op=NativeImpactOp.Paddle,A=at,B=dir,Color=color});
         private static int Leet(NativeImpactCommand[] o,int n,V3 at,bool nuke)=>Burst(o,n,at,LeetColor,nuke?NukeCount:LeetCount,nuke?NukePower:LeetPower);
+        /// <summary>An add's own event (NativePve*, the DEV monsters: "minion-spit", "minion-spit-cancel", "minion-drop",
+        /// "minion-slam"): its Source is only the add's owner (the Siren, or the DEV who spawned a DEV monster), never that pilot's
+        /// weapon striking, so it takes neither the owner's weapon colour nor the owner's surface procs or arrows.</summary>
+        public static bool AddEvent(string detail)=>detail!=null&&detail.StartsWith("minion-",StringComparison.Ordinal);
         /// <summary>The draws event-vfx.ts EventVfx.event makes for the source event a Unity event stands for. Returns the count.</summary>
         public static int Plan(in NativeImpactEvent e,NativeImpactCommand[] o)
         {
@@ -101,6 +105,10 @@ namespace ChipArena.UnityConversion
                 case EventKind.Block:case EventKind.Collapse:n=Burst(o,n,at,color!=0?color:BurstColor,HitCount,HitPower);break;
                 case EventKind.Break:n=Burst(o,n,at,color!=0?color:BurstColor,BreakCount,HitPower);break;
                 case EventKind.Impact:
+                    // A spit's Impact marks the launch (Time) and names the landing (Position); its cancel names the spitter. Neither
+                    // is an impact: a straight streak from the mouth and sparks where the glob has yet to land are not drawn (the
+                    // acid draws the glob, its splash and pool, and the fizzle: NativeZombieFxDraw).
+                    if(e.Detail=="minion-spit"||e.Detail=="minion-spit-cancel")break;
                     if(e.Trails&&from)n=Beam(o,n,e.From,at,color!=0?color:StreakColor);
                     n=Burst(o,n,at,color!=0?color:BurstColor,HitCount,HitPower);break;
                 case EventKind.Critical:n=Impact(o,n,at,CriticalRadius,CriticalColor);break;
