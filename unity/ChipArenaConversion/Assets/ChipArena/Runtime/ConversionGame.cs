@@ -324,6 +324,8 @@ namespace ChipArena.UnityConversion
             // One canvas for every overlay and the menus (NativeUiMotion.Measure): 900 units tall at 16:9, wider at 21:9 (2150 at 3440x1440).
             var ui=NativeUi.Begin(prefs?.uiScale??1);float scale=ui.Scale,width=ui.Width,height=ui.Height;GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
+            // DEV ONLY: the Expedition screens preview (--ca-expedition-preview), in place of the main menu (NativeExpeditionPreviewUI.cs).
+            if(ExpeditionPreviewGui(width,height))return;
             if(match?.Phase!=NativePhase.Match)matchEndAt=-1;if(arena!=null)menuFromMatch=true;
             // The intro overlay replaces the whole HUD (main.ts drawHud), so nothing else draws while it runs.
             if(arena!=null&&!menu&&previewArena==null&&IntroActive){IntroOverlay();return;}

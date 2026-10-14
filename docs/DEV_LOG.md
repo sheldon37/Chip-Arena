@@ -1,7 +1,7 @@
 # Chip Arena — development log
 
 ## 2026-10-14 — Claude — Hulk/brute body animation: heavy stride, slam, landing, wall knock; proposed charge and punches (owner: "Slam/landing/wall break animation also needs improvements from hulk/brute. Hulk zombie needs adjustments on their movement (normal zombie movement looks odd at their size). I'd like them to all have a charge animation (they can charge through walls) and a couple of punch animations (like a straight punch, and a swipe)")
-- Branch `claude/hulk-motion`, base shared `9270d95`. Implementation commit `8e36e27`; merged with shared `0ae174f` and `claude/zombie-fx` `3567d7a` (conflicts in `Tests/Program.cs`, DEV_LOG and PROJECT_STATE resolved keeping both sides). Pushed on the branch; no PR, merge or release.
+- Branch `claude/hulk-motion`, base shared `9270d95`. Implementation commit `8e36e27`; merged with `claude/zombie-fx` `3567d7a` and the shared head up to `83b2a98` (which includes it). Conflicts in `Tests/Program.cs`, DEV_LOG and PROJECT_STATE were resolved keeping both sides. Pushed on the branch; no PR, merge or release.
 - Scope: body animation only. The effects are `claude/zombie-fx`; they fire on the rule marks and never read a pose, and this branch changes no effect code. Rules (the charge, the punch choice, their volumes and replication) are Astra's: contract and prompt in `docs/SIREN-ZOMBIES.md` §10.
 - **Live, driven by existing state:**
   - Hulk heavy locomotion (`Core/NativeHordeHeavy.cs`, a partial of `NativeHordeGait`). It replaces the zombie take scaled up with the Hulk's own stride table: about .93 steps/s with .8 m steps walking and 1.2/s with 1 m running. The body sways over the stance foot, the pelvis and shoulders roll and counter-turn, each footfall sends a jolt down the body, arms hang wide and swing late, steps are stamped, and the idle runs slower. Feet plant under the hips' balance offset. 15% of the walk take remains under it.
@@ -38,7 +38,7 @@
     - the punch at full reach on its strike (both arms), the swipe crossing on its strike, the charge's scrape, lead shoulder and ends;
     - determinism, no allocation, a runtime that only draws.
   - Existing `HordeKindChecks`, `ZombieMotionChecks`, `HulkSpitterChecks` (capsule, floor and landing bounds kept), `HulkBreachFxChecks` and `ZombieFxChecks` pass.
-  - Full `tools/check_relay.py` exit 0: 660 PASS lines, 35 managed-core checks, including `hulk motion` and `zombie fx`. The tracked-files sparse copy also exits 0 (660 PASS).
+  - Full `tools/check_relay.py` exit 0: 660 PASS lines, 35 managed-core checks, including `hulk motion` and `zombie fx`. SPARSE_RESULT
   - Python 101 OK (1 skip). `package_source.py` OK (1887 source files; Builds removed). `git diff --check` clean.
   - Offline software renders (scratchpad `hulk-motion/harness/renders`): before and after gait, turn, smash, landing, knock, punch, swipe and charge sheets.
 - **Not run:** Unity Editor play, Windows build, two-client play, the killcam, the Dev Sandbox gallery in engine, and a visual review in real lighting.
@@ -53,6 +53,130 @@
   - Claude: switch `HordeHulkState` to the frame fields and wire the move's strike cue.
   - Effects owner: a charge and punch effects pass.
   - Owner: review in the Dev Sandbox gallery.
+
+## 2026-10-14 — Claude — Expedition presentation: views, screens, intents and dev preview
+- Branch `claude/expedition-presentation` on shared `9270d95`, which includes Astra's #188 rules foundation. Shared `33f214d` and then `0ae174f` were merged in afterwards; only the DEV_LOG and PROJECT_STATE top entries conflicted, and every entry is kept. Task: the owner's Expedition presentation request (world/town UI, personal wallet and chips, ordinary vs reserved boss loot, authoritative dice, victory/extraction choices, host transfer, minimal HUD). Contract: docs/EXPEDITION-PRESENTATION.md, linked from EXPEDITION.md.
+- **Projection (Core `NativeExpeditionView`):**
+  - `Build(run, account, sources)` gives one account's view: public run state plus only that account's wallet, rewards (offers only while a pick is pending) and chips.
+  - It also carries the scaling read-out, the dice records, public loot (owner and claimed state, no offers) and the transfer state.
+  - This field-only DTO is the guest replication contract. Its public part is identical for every viewer. `Normalize` handles JsonUtility's empty strings.
+- **Intents (Core `NativeExpeditionCommands`):**
+  - The host-local adapter calls the real commands; `false` shows Refused.
+  - Integration hooks cover offers, eligibility, extraction transaction and reprint cost. A missing hook shows Unavailable with the reason; the guest adapter is always Unavailable (no channel).
+  - `ExpeditionIntentTracker` confirms an intent only when the view shows it. Extraction counts only once the saved tombstone is present; otherwise it is "waiting for the save". No reflection within 6 s shows Failed.
+- **Screens:**
+  - Core `NativeExpeditionPresentation` models; Runtime `NativeExpeditionHud` drawing in the cyber HUD kit.
+  - Minimal HUD (wallet, objective, countdown, your chips waiting); world board (buildings, sealed door/quota/boss, final area, clock/step/loop/multipliers, party).
+  - Loot (ordinary cyan diamond, first pickup vs reserved magenta lock; claimed state; NOT ELIGIBLE per boss) and personal chips (source labels, Open/Pick, held).
+  - Sanctuary (checkpoint, extract alone, majority group vote, reprint machine), building (`Door`, bosses, departure vote) and victory (extract or stay, each pilot's choice, host starts the loop).
+  - Dice reveal: spins with no number, locks on the stored rolls, lights the stored winners, labels a tie-break. Host-transfer overlay: authority steps, transport steps "not implemented", abort shown as a failure.
+- **Dev preview** (`--ca-expedition-preview`, in place of the main menu, labelled DEV ONLY):
+  - Six scripted scenarios on a real `NativeExpedition`; view as any pilot.
+  - Preview stand-ins: offers, prices, a temp save folder, and a simulated ACK labelled as such.
+  - One line added to `ConversionGame.GuiFrame`. No menu entry.
+- **Unchanged:** rules, simulation, networking, Siren/PvP. Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks:**
+  - Unity runtime+editor compile OK.
+  - New `ExpeditionPresentationChecks` (`CoreTests.dll --expedition-view`, 5,897 checks) covers:
+    - host/guest views, privacy audit, codec and JsonUtility-style round trips;
+    - refused/unavailable/timeout/awaiting-save;
+    - dead-at-death ineligible vs dying later eligible;
+    - uneven splits 2/1 to 8/11 where the display equals the stored dice;
+    - independent picks; individual extractions while others continue; majority vote; failed save;
+    - transfer freeze/abort/refusal/unreflected commit;
+    - every preview step for every viewer; source scans.
+  - check_relay exit 0: 651 PASS on the branch, 658 after merging `33f214d`, 659 after `0ae174f`. Python 101 OK (1 skip); package_source OK; `git diff --check` clean; sparse-copy relay exit 0.
+  - Offline renders of 23 frames (scratch IMGUI recorder, 1280x720 to 3440x1440, UI scale 1.5), not committed.
+- **Not run:** Unity Editor/IMGUI input, Windows, real host/guest or multiplayer clients (no transport exists for Expedition).
+- **Astra dependencies** (details in the contract doc):
+  - a replication message for the view (public part plus owner-only `mine`);
+  - a guest command channel with result replies;
+  - hooks: catalog offers, eligibility, save-then-publish extraction with `sources.Saved`, reprint adapter;
+  - fields: `reprintCost`, chest offers `{generation, price, cooldown}`, `ExpeditionReward.selected`, transport transfer progress (`packageStored`/`endpointReserved`/`ackReceived`/`deadline`) and measured candidates;
+  - a continue vote if wanted;
+  - world positions for drops, chests, doors and machines (3D pieces not built: no scene, no positions);
+  - final-boss reward issuance.
+- **Risks:** owner taste on layout and density. `difficultyParty` uses connected, not-extracted pilots until the director locks a roster.
+
+## 2026-10-14 — Astra — consistent ten-second hazard kill credit
+- Branch `codex/hazard-credit-ten`, base shared/builder `c895406d` (PR #205), integrated with concurrent shared `33f214d8` preserving Claude's sprint and update-pulse changes. Owner requests credit to the most recent player damager for hazard deaths within 10 seconds. Current open PRs inspected; no overlapping credit change.
+- `NativeStageHazards.KillCreditSeconds=10` and `RecentDamage` supply one inclusive, nonnegative window for Factory, Cyber City, Ward Zero and PvE add hazard attribution. The generic no-source death fallback also uses 10 seconds (decision: consistent environmental deaths). Damage selects this source before emitting Death so the feed and persisted owner agree, including legacy environmental deaths.
+- Actual positive damage from another pilot updates LastAttacker beside existing structural last-damage tracking; removed tracking from wound presentation input. Self/zero damage cannot erase or extend a valid tag. Latest actual damaging hit wins, not greatest damage.
+- Decision: preserve Brickfall's separately agreed structural attribution and 6-second victim-tag fallback. Collapse bypasses the generic fallback. Ward shutters continue dealing no damage and pushing occupants clear; no new lethal behavior introduced.
+- Updated Factory/Cyber City/Ward Zero contracts and clarified Brickfall exclusion. No presentation, protocol, damage amounts, hit volumes, animation or hazard timing changes.
+- Verification: fresh .NET 8 Roslyn compile of all managed Core plus StageHazardChecks; stage simulation suite passed, including ten boundary/invalid-age cases and Brickfall exclusion. Runtime/Editor syntax (UNITY_EDITOR/ARENA_VALIDATE) zero errors; source package 1873 files after integration; whitespace clean. Added real Unity authority gate cases for 9.99/10/10.01 seconds across stage kinds and no-source fallback, Death owner/event agreement, latest damager, self/zero and future tags; existing train test uses exactly 10 seconds and saw expiry is 10.01 seconds.
+- Unity runtime/editor assembly compile and actual Physics/build gates remain unrun here; Windows host/guest gameplay and compiled Update publication require the desktop builder. Standing push/merge/shared+builder synchronization applies. Full unrelated presentation suite not rerun for this focused rule change.
+
+## 2026-10-14 — Claude — update available: the home circle beats, the other screens show a pill
+- Branch `claude/update-pulse` on shared `c895406`. Owner: "make it more visible when updates are available~ Like make the button pulse or something".
+- Home Update Game circle (`NativeHomeMenu.UpdateCircle`), Available state only, on a 1.6 s beat: the halo swells on the beat, two sonar rings run out from the disc, the disc kicks 6% larger, the download arrow dips, a magenta pip marks it new and AVAILABLE flashes toward white (it used to fade its label slightly). Reduced effects keep the breathing halo and the pip only. Other states draw as before.
+- Panel screens (Play, Create, Join, Lobby, Boss, Customize, Settings, Account, DEV, Catalogue), which never showed the circle: an UPDATE READY pill beside the top-bar wordmark on the same beat. A click goes home with the update card open (Customize with unsaved changes asks first through its own confirm); in a room it reads LEAVE THE ROOM TO INSTALL and does nothing, as `NativeUpdater.CanInstall` already refuses there. While downloading, verifying or preparing it shows that state steadily with a progress hairline.
+- Presentation only: `NativeUpdater` states, checks, install gating and the once-per-launch automatic check are unchanged. A build left open will not notice an update published after launch until the player checks; a periodic re-check would be an updater change (Astra).
+- Checks (merged on shared `d2b847c`): Unity runtime+editor build OK; check_relay 657 PASS (Rooftop home menu 229 checks, now including the beat, the reduced-effects gate and the pill routing); Python 101 OK (1 skip); package_source 1873 files; diff-check clean. Not run: Unity Editor or Windows view of the pulse; no offline render of it.
+
+## 2026-10-14 — Claude — smash gib (train, press, crane) and arrow gibbing
+- Branch `claude/gore-smash-arrows`, base shared `9270d95`; shared `c895406` (PR #205, Astra's hit metadata) merged in before binding to its fields. Not pushed or merged; the lead reviews. Docs: BISECT-GIB "Hazard gib gate", "Smash gib", "Arrow gibbing".
+- Owner requests (verbatim): "Need to add a "smash" gib, something that can be used when getting hit by the train on cyber city, or smashed from things on factory." and "Add gibbing from arrows (Can pierce through enemies if player has pierce modifiers, can go in body/head and stop halfway) Blood coming out of arrow gibbing points".
+- **Smash** (Core `NativeSmashGib`, Runtime `NativeSmashPresentation`), planned from the replicated death record only:
+  - **Cause:** `maglev` is the train; `hazard` on the Factory is the record's `hazardId`, else reconstructed from the pure hazard clock (a general finder that agrees with the saws' own). Press and crane smash; saws split; vents and everything else keep their death.
+  - **Pinned** (a ram or the load coming down over the body): kinematic ragdoll posed by a seeded sprawl, drawn squashed about the floor under the crusher's own underside, flat for the round. Blood squirts out from under the edges, a pool is laid round the body, and a low mist leaves the edges.
+  - **Thrown** (the train; a crusher's edge): a 0.05 s (edge 0.03 s) hit-stop on the corpse, then flight along the travel. The train crushes 3–4 of the head, upper arms and thighs to fragments (several crushed parts now supported in `SetupKill`), carried at most 30 m/s. A blood burst and mist ride the travel, streaks land on the track bed, and an impact flash shows.
+- **Owner decisions (2026-10-14), presentation only:** "Keep the smash even with kill effects" and "Always show gib in saws too".
+  - The train, press, crane and saw gibs share one gate, `NativeSmashGib.Applies`: gore on, pilot body, not kept, not a Siren or vent ending. Any other style gibs.
+  - The gibbed corpse is the stock ending. The kill effect's body, death scene and Raging Demon screen don't play.
+  - The replicated style, kill feed, credit and kill sound are unchanged. No style is named, so a later kill-effect revamp needs no change here.
+  - Melee cuts keep `NativeBisect.Applies`.
+- **Arrows** (Core `NativeArrowGib`, Runtime `NativeArrowGibPresentation`):
+  - Only `direct`/`secondary` bow hits stick: thorns, chain, blast, reflected and field hits no longer stick arrows.
+  - A hit's `Projectile` id with `Pierced` decides lodge (false) or pass (true). Hits with id 0 (older frames) fall back to matching the live arrow's path and its chip pierces, lodging in doubt.
+  - A lodged arrow buries about the middle of the struck part on the joint's body boxes (head about halfway), replacing the fixed 0.14 m.
+  - A pass-through leaves bleeding entry and exit holes and a cavity spray from the exit; the flying arrow continues.
+  - Arrow points drip a decaying trickle (≈6 drops over 6.5 s). At most 12 bleed at once (5 reduced or low); none with gore off or for the first-person local pilot. The wound's own spray stays the existing wound path's (now puncture/cavity), so nothing doubles.
+  - Arrows ride the corpse as drawn, and a split body's arrow rides the half its point was on (the twin was ignored before). Arrows in a crushed part go with it.
+- **Stale wound:** the authority now clears it on stage deaths. A one-line presentation guard (`NativeSmashGib.Stale`) also stops `BleedDeath` re-bleeding an older wound for any stage death.
+- **Blood sim:** new presentation spray kinds `squirt` and `drip`, and an optional carry velocity on `NativeBloodSim.Spray`. Existing kinds are unchanged. No new DamageKind.
+- **Animation/timing impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The only timing is the cosmetic corpse hit-stop above. No simulation, rules or wire file is edited (checked).
+- **Checks:**
+  - Unity runtime+editor compile OK.
+  - New `GibChecks` (1,892 checks; `--gib`) cover classification on the real map hazards (maglev, press, crane, crane edge, saw, vent, named ids), the owner gate (confetti/voxel-burst still smash and split, gore off none), determinism, the squash never above the crusher, the sprawl rigid and on the floor, thrown flight and clamps, the stale guard, lodge depth (chest middle, head about halfway), fate (flag; fallback pierce-0 lodges, pierce-1 passes then lodges, volley neighbours), sticking hits, the split half, the bleed cap and trickle, zero allocation and wiring/isolation.
+  - BisectChecks 1,932 and MeleeBisectChecks 14,078 pass. BowChecks 5,028 pass (Sticks pin updated).
+  - Pins updated: SirenDrop hook string, WoundSkin GibColor count 3→4, the BisectChecks saw gate.
+  - check_relay exit 0 (663 PASS, real relay included); Python 101 OK (1 skip); package_source OK (1881 files); `git diff --check` clean.
+- **Not run:** Unity Editor play, PhysX corpse behaviour (the thrown flight, the pinned kinematic pose), Windows, two-client and killcam viewing. No visual verification; the sprawl and squash are checked numerically only.
+- **Risks:** the pinned pancake can poke out of a narrow footprint for a body near its edge; JsonUtility gives older frames an empty `hazardId` (treated as absent); the fallback without projectile ids misses a pierce when the arrow also stops in the same frame (it lodges).
+- **Astra dependencies:** 1 Hit/Headshot `Projectile` = bullet id, 2 `Pierced`, 3 bow wound kind pierce, 4 `hazardId` and the cleared stage wound. All four were delivered in PR #205 (`c895406`) and are bound here. None outstanding.
+- **Next:** the lead's review, then Windows/Unity viewing of a press, crane and train death and of arrow pierces. The owner may want a player Gore setting wired to `ArenaPresentation.Gore`.
+
+## 2026-10-14 — Astra — authoritative hit metadata and hazard/arrow wounds
+- Branch `codex/hit-wound-metadata`, base shared/builder `9270d957`. Implements Claude's owner-forwarded visual handoff. Relevant open PR #62 remains the shared presentation integration; no overlapping open task PR was found.
+- Primary melee Hit events now carry `Projectile = swing.Id` and `From = attacker.Body.position` captured at contact, including extra strikes and minion targets. All pilot melee Damage calls carry their contact-time source position; abilities without a primary swing keep ID 0 rather than borrowing an unrelated swing. Bullet Hit/Headshot events carry `b.Id`, including reflected shots and minions. Event defaults for unrelated damage remain unchanged.
+- Optional `ArenaEvent.Pierced` is true exactly when a bullet contact has remaining pierces and is not Pong (the branch that continues through the target). Older frames default false: true confirms pass-through; false alone cannot prove a stop when supporting older hosts, so retain the path-based fallback. Existing fields and optional additions serialize through snapshots/replay; no protocol bump or damageKind whitelist change.
+- Bow impact trauma is now `pierce`, using existing puncture/cavity resolution and existing physical coefficients. Audited wound consumers: wound/corpse geometry and blood/embers use these values; damage, hit volumes, status and health rules do not. Bullet-only kneel still requires `trauma == "bullet"`, so arrows do not acquire it.
+- Stage deaths clear only `death.wound`; previous body wounds remain in `actor.Wounds`. This prevents replaying an earlier injury as the fatal hit (and stale bullet kneeling). Authored stage deaths retain optional `NativeDeath.hazardId`, bounded to 100 characters by frame validation; `hazard`/`maglev`/`grid` kinds and kill-credit rules stay intact. Claude can bind the new hazard ID and Pierced flag; no presentation work taken over.
+- Verification: fresh managed Core/Tests and relay compilation via .NET 8 Roslyn (SDK CLI is blocked here by its /proc process-stat lookup); managed/relay run recorded on task PR. Python 101 tests OK (1 skip); source package 1872 files; all Runtime/Editor syntax checked with UNITY_EDITOR/ARENA_VALIDATE; whitespace clean. Added managed bow-kind and event JSON regressions, plus real Unity gates for primary contact origins, arrow body/head/terminal/piercing metadata and JsonUtility, and stale stage wounds/hazard IDs.
+- Unity runtime/editor assembly compilation, actual PhysX gates, Windows visuals and host/guest gameplay are unrun in this environment. Compiled Update publication requires desktop builder success. Standing push/merge/builder-sync authorization applies; no live/account deployment.
+- Upcoming Expedition public/private replication, guest commands, transport handoff and Hulk/brute charge/attacks are deliberately deferred until Claude's exact contracts arrive. Existing dormant foundation is preserved.
+
+## 2026-10-14 — Claude — sprint arms: the daggers' back arm and the magic casting hand
+- Owner: daggers, "while running/sprinting, the back arm wiggles a bit"; magic, "while sprinting, the hand keeps rotating". Branch `claude/sprint-arm-fix` on shared `9270d95` (`claude/sleepy-ritchie-g8ruhv`). Pushed; no PR; not merged or released.
+- **Causes** (scratch probe over steady 6.8 m/s runs and 9.18 m/s sprints, chest space, 60 and 240 Hz):
+  - Magic: `NativeSprintMotion.Magic` moves both hands but keeps each hand's frame from the pose beneath it. For the casting hand that is the staff run clip's raw free-hand frame (`NativeRangedLocomotion` `rightQ`), never damped about its cycle mean as the positions are. It turned 115° (yaw) and 43° (roll) every stride while the sprint held the hand nearly still; all five schools. Not an accumulating angle (drift over 20 s under 1°).
+  - Daggers, run and walk: `NativeLocomotionCarry` gave the daggers' left (back) hand the free hand's share of the pack swing (35% run, 45% walk), made for the sword's empty fist. That hand holds the second .84 m blade: its tip travelled 71 cm a stride (front blade 52).
+  - Daggers, sprint: the carry pumps both fists 30 cm but kept each fist's live run-carry frame (`qR`/`qL`): the run's per-stride wrist motion (±7°), and under the sprint lean the blades hung 7-15 cm below the floor guard's plane. `MeleeCapture.KeepBladesOffFloor` lifted each wrist by up to 12° and let go every stride (a flick).
+- **Fix** (presentation only):
+  - `NativeRangedLocomotion` keeps the casting hand's cycle-mean frame (`rightMeanQ`, from the same blended rows); `Magic` slerps the hand onto it by the sprint weight. The run (sprint weight 0) is bit-identical.
+  - `NativeLocoRules.LeftKeep`: the daggers' left hand keeps the weapon hand's share (15% run, 25% walk). Other sets are unchanged.
+  - `NativeSprintMotion.DaggerRight/DaggerLeft`: steady chest-space blade lies for the dagger sprint (the run carry's mean lie tipped .34/.3 rad back along the forearm) replace `qR`/`qL` in the daggers case only. The pump targets are unchanged.
+- **Before → after** (new `Tests/SprintArmChecks.cs`, also `CoreTests --sprint-arms`; it prints every measure before checking bounds):
+  - Magic sprint casting hand: span 134.4° → 0.1°, 254° → 0° of turn a stride, 20 s drift 0.89° → 0.00° (each school). Run-sprint-run largest step 31.7/32.5 → 27.5° a frame (steady run 27.2).
+  - Daggers run, back blade: tip travel 71.1 → 30.4 cm a stride, lie spread 5.46° → 2.35° rms (front blade 51.5 cm, 3.79°, unchanged).
+  - Daggers sprint, back/front: lie span 17.3/23.6° → 0.0/0.1°, wrist flick 21,023/24,822 → 0 °/s², lowest tip 0.0 cm (held at the guard) → 6.5/6.3 cm over it. Tip pump 57/43 → 60/60 cm; blend step 15.1 → 14.6° a frame.
+  - Probe, bit-identical: sword run and sprint, greatsword, shield and pistol sprints, the fire run.
+- Animation impact: hand frames and the dagger left hand's swing share only. No change to hit timing, hitboxes, damage, cooldowns, movement or sprint speed, sprint rules, prediction or networking. Swings, sprint attacks and the floor guard are untouched.
+- Checks: `unity-check.sh` runtime+editor OK. `check_relay.py` (staged sparse copy) exit 0, 657 PASS lines (managed run 2.5 min under load). Python 101 OK (1 skipped). `package_source.py` passed (1,873 files; Builds removed). `git diff --check` clean.
+- Renders: offline voxel harness over the real Core poses (fxref port, not Unity), scratch `sprint-probe/rend-after/cmp-*.png`. Before/after side, front and shoulder-camera strips of the dagger run and sprint, and of the fire and darkness sprints.
+- Not run: Unity Editor, Windows play, two-client play.
+- Risks: the steady dagger blades sit about 17-20° further back along the forearm than the old average (owner taste). On a hard strafing weave (±25° at 2 Hz in the probe), the right tip can still touch the guard for a few frames (flick 9.5k vs 22k °/s² before). Seen but not changed (not reported): the plain magic run's casting hand still turns about 115° a stride, and the pistol's free fist turns 66° a stride in its sprint, both from the same raw clip frame. Next: the owner's look on Windows.
 
 ## 2026-10-14 — Claude — Spitter acid and Hulk/brute slam, landing and wall-break effects, high-quality pass (owner: "Improve visual fx from spitter/hulk zombie (make them high quality) acid needs to look better. Slam/landing/wall break [effects] also needs improvements from hulk/brute")
 - Branch `claude/zombie-fx` on the shared Unity head `9270d95` (`claude/sleepy-ritchie-g8ruhv`). Implemented and pushed on the branch; not merged or released. Effects only: the Hulk/brute body animation is the parallel `claude/hulk-motion` branch, and no pose, clip, gait or jaw code changed here.
@@ -101,53 +225,6 @@
   - Rubble is cosmetic and can intersect props.
   - Low-tier Hulk dust is sparse.
 - **Next:** the owner's look in the Dev Sandbox gallery and a build.
-
-## 2026-10-14 — Astra — consistent ten-second hazard kill credit
-- Branch `codex/hazard-credit-ten`, base shared/builder `c895406d` (PR #205), integrated with concurrent shared `33f214d8` preserving Claude's sprint and update-pulse changes. Owner requests credit to the most recent player damager for hazard deaths within 10 seconds. Current open PRs inspected; no overlapping credit change.
-- `NativeStageHazards.KillCreditSeconds=10` and `RecentDamage` supply one inclusive, nonnegative window for Factory, Cyber City, Ward Zero and PvE add hazard attribution. The generic no-source death fallback also uses 10 seconds (decision: consistent environmental deaths). Damage selects this source before emitting Death so the feed and persisted owner agree, including legacy environmental deaths.
-- Actual positive damage from another pilot updates LastAttacker beside existing structural last-damage tracking; removed tracking from wound presentation input. Self/zero damage cannot erase or extend a valid tag. Latest actual damaging hit wins, not greatest damage.
-- Decision: preserve Brickfall's separately agreed structural attribution and 6-second victim-tag fallback. Collapse bypasses the generic fallback. Ward shutters continue dealing no damage and pushing occupants clear; no new lethal behavior introduced.
-- Updated Factory/Cyber City/Ward Zero contracts and clarified Brickfall exclusion. No presentation, protocol, damage amounts, hit volumes, animation or hazard timing changes.
-- Verification: fresh .NET 8 Roslyn compile of all managed Core plus StageHazardChecks; stage simulation suite passed, including ten boundary/invalid-age cases and Brickfall exclusion. Runtime/Editor syntax (UNITY_EDITOR/ARENA_VALIDATE) zero errors; source package 1873 files after integration; whitespace clean. Added real Unity authority gate cases for 9.99/10/10.01 seconds across stage kinds and no-source fallback, Death owner/event agreement, latest damager, self/zero and future tags; existing train test uses exactly 10 seconds and saw expiry is 10.01 seconds.
-- Unity runtime/editor assembly compile and actual Physics/build gates remain unrun here; Windows host/guest gameplay and compiled Update publication require the desktop builder. Standing push/merge/shared+builder synchronization applies. Full unrelated presentation suite not rerun for this focused rule change.
-
-## 2026-10-14 — Claude — update available: the home circle beats, the other screens show a pill
-- Branch `claude/update-pulse` on shared `c895406`. Owner: "make it more visible when updates are available~ Like make the button pulse or something".
-- Home Update Game circle (`NativeHomeMenu.UpdateCircle`), Available state only, on a 1.6 s beat: the halo swells on the beat, two sonar rings run out from the disc, the disc kicks 6% larger, the download arrow dips, a magenta pip marks it new and AVAILABLE flashes toward white (it used to fade its label slightly). Reduced effects keep the breathing halo and the pip only. Other states draw as before.
-- Panel screens (Play, Create, Join, Lobby, Boss, Customize, Settings, Account, DEV, Catalogue), which never showed the circle: an UPDATE READY pill beside the top-bar wordmark on the same beat. A click goes home with the update card open (Customize with unsaved changes asks first through its own confirm); in a room it reads LEAVE THE ROOM TO INSTALL and does nothing, as `NativeUpdater.CanInstall` already refuses there. While downloading, verifying or preparing it shows that state steadily with a progress hairline.
-- Presentation only: `NativeUpdater` states, checks, install gating and the once-per-launch automatic check are unchanged. A build left open will not notice an update published after launch until the player checks; a periodic re-check would be an updater change (Astra).
-- Checks (merged on shared `d2b847c`): Unity runtime+editor build OK; check_relay 657 PASS (Rooftop home menu 229 checks, now including the beat, the reduced-effects gate and the pill routing); Python 101 OK (1 skip); package_source 1873 files; diff-check clean. Not run: Unity Editor or Windows view of the pulse; no offline render of it.
-
-## 2026-10-14 — Astra — authoritative hit metadata and hazard/arrow wounds
-- Branch `codex/hit-wound-metadata`, base shared/builder `9270d957`. Implements Claude's owner-forwarded visual handoff. Relevant open PR #62 remains the shared presentation integration; no overlapping open task PR was found.
-- Primary melee Hit events now carry `Projectile = swing.Id` and `From = attacker.Body.position` captured at contact, including extra strikes and minion targets. All pilot melee Damage calls carry their contact-time source position; abilities without a primary swing keep ID 0 rather than borrowing an unrelated swing. Bullet Hit/Headshot events carry `b.Id`, including reflected shots and minions. Event defaults for unrelated damage remain unchanged.
-- Optional `ArenaEvent.Pierced` is true exactly when a bullet contact has remaining pierces and is not Pong (the branch that continues through the target). Older frames default false: true confirms pass-through; false alone cannot prove a stop when supporting older hosts, so retain the path-based fallback. Existing fields and optional additions serialize through snapshots/replay; no protocol bump or damageKind whitelist change.
-- Bow impact trauma is now `pierce`, using existing puncture/cavity resolution and existing physical coefficients. Audited wound consumers: wound/corpse geometry and blood/embers use these values; damage, hit volumes, status and health rules do not. Bullet-only kneel still requires `trauma == "bullet"`, so arrows do not acquire it.
-- Stage deaths clear only `death.wound`; previous body wounds remain in `actor.Wounds`. This prevents replaying an earlier injury as the fatal hit (and stale bullet kneeling). Authored stage deaths retain optional `NativeDeath.hazardId`, bounded to 100 characters by frame validation; `hazard`/`maglev`/`grid` kinds and kill-credit rules stay intact. Claude can bind the new hazard ID and Pierced flag; no presentation work taken over.
-- Verification: fresh managed Core/Tests and relay compilation via .NET 8 Roslyn (SDK CLI is blocked here by its /proc process-stat lookup); managed/relay run recorded on task PR. Python 101 tests OK (1 skip); source package 1872 files; all Runtime/Editor syntax checked with UNITY_EDITOR/ARENA_VALIDATE; whitespace clean. Added managed bow-kind and event JSON regressions, plus real Unity gates for primary contact origins, arrow body/head/terminal/piercing metadata and JsonUtility, and stale stage wounds/hazard IDs.
-- Unity runtime/editor assembly compilation, actual PhysX gates, Windows visuals and host/guest gameplay are unrun in this environment. Compiled Update publication requires desktop builder success. Standing push/merge/builder-sync authorization applies; no live/account deployment.
-- Upcoming Expedition public/private replication, guest commands, transport handoff and Hulk/brute charge/attacks are deliberately deferred until Claude's exact contracts arrive. Existing dormant foundation is preserved.
-
-## 2026-10-14 — Claude — sprint arms: the daggers' back arm and the magic casting hand
-- Owner: daggers, "while running/sprinting, the back arm wiggles a bit"; magic, "while sprinting, the hand keeps rotating". Branch `claude/sprint-arm-fix` on shared `9270d95` (`claude/sleepy-ritchie-g8ruhv`). Pushed; no PR; not merged or released.
-- **Causes** (scratch probe over steady 6.8 m/s runs and 9.18 m/s sprints, chest space, 60 and 240 Hz):
-  - Magic: `NativeSprintMotion.Magic` moves both hands but keeps each hand's frame from the pose beneath it. For the casting hand that is the staff run clip's raw free-hand frame (`NativeRangedLocomotion` `rightQ`), never damped about its cycle mean as the positions are. It turned 115° (yaw) and 43° (roll) every stride while the sprint held the hand nearly still; all five schools. Not an accumulating angle (drift over 20 s under 1°).
-  - Daggers, run and walk: `NativeLocomotionCarry` gave the daggers' left (back) hand the free hand's share of the pack swing (35% run, 45% walk), made for the sword's empty fist. That hand holds the second .84 m blade: its tip travelled 71 cm a stride (front blade 52).
-  - Daggers, sprint: the carry pumps both fists 30 cm but kept each fist's live run-carry frame (`qR`/`qL`): the run's per-stride wrist motion (±7°), and under the sprint lean the blades hung 7-15 cm below the floor guard's plane. `MeleeCapture.KeepBladesOffFloor` lifted each wrist by up to 12° and let go every stride (a flick).
-- **Fix** (presentation only):
-  - `NativeRangedLocomotion` keeps the casting hand's cycle-mean frame (`rightMeanQ`, from the same blended rows); `Magic` slerps the hand onto it by the sprint weight. The run (sprint weight 0) is bit-identical.
-  - `NativeLocoRules.LeftKeep`: the daggers' left hand keeps the weapon hand's share (15% run, 25% walk). Other sets are unchanged.
-  - `NativeSprintMotion.DaggerRight/DaggerLeft`: steady chest-space blade lies for the dagger sprint (the run carry's mean lie tipped .34/.3 rad back along the forearm) replace `qR`/`qL` in the daggers case only. The pump targets are unchanged.
-- **Before → after** (new `Tests/SprintArmChecks.cs`, also `CoreTests --sprint-arms`; it prints every measure before checking bounds):
-  - Magic sprint casting hand: span 134.4° → 0.1°, 254° → 0° of turn a stride, 20 s drift 0.89° → 0.00° (each school). Run-sprint-run largest step 31.7/32.5 → 27.5° a frame (steady run 27.2).
-  - Daggers run, back blade: tip travel 71.1 → 30.4 cm a stride, lie spread 5.46° → 2.35° rms (front blade 51.5 cm, 3.79°, unchanged).
-  - Daggers sprint, back/front: lie span 17.3/23.6° → 0.0/0.1°, wrist flick 21,023/24,822 → 0 °/s², lowest tip 0.0 cm (held at the guard) → 6.5/6.3 cm over it. Tip pump 57/43 → 60/60 cm; blend step 15.1 → 14.6° a frame.
-  - Probe, bit-identical: sword run and sprint, greatsword, shield and pistol sprints, the fire run.
-- Animation impact: hand frames and the dagger left hand's swing share only. No change to hit timing, hitboxes, damage, cooldowns, movement or sprint speed, sprint rules, prediction or networking. Swings, sprint attacks and the floor guard are untouched.
-- Checks: `unity-check.sh` runtime+editor OK. `check_relay.py` (staged sparse copy) exit 0, 657 PASS lines (managed run 2.5 min under load). Python 101 OK (1 skipped). `package_source.py` passed (1,873 files; Builds removed). `git diff --check` clean.
-- Renders: offline voxel harness over the real Core poses (fxref port, not Unity), scratch `sprint-probe/rend-after/cmp-*.png`. Before/after side, front and shoulder-camera strips of the dagger run and sprint, and of the fire and darkness sprints.
-- Not run: Unity Editor, Windows play, two-client play.
-- Risks: the steady dagger blades sit about 17-20° further back along the forearm than the old average (owner taste). On a hard strafing weave (±25° at 2 Hz in the probe), the right tip can still touch the guard for a few frames (flick 9.5k vs 22k °/s² before). Seen but not changed (not reported): the plain magic run's casting hand still turns about 115° a stride, and the pistol's free fist turns 66° a stride in its sprint, both from the same raw clip frame. Next: the owner's look on Windows.
 
 ## 2026-10-14 — Claude — dressed maps: coincident faces no longer z-fight
 - Branch `claude/map-surface-artifacts` on shared `0671054`. Task: the graphical artifacts on the new maps, including the green-panel surface artifacts (2026-10-13). Z-fighting was suspected, not confirmed.
@@ -6341,7 +6418,6 @@ and existing boss-song timing/level. Covers PvE and Ward PvP/sandbox playback;
 menu trim retained. Source C# syntax, package (1852 files) and whitespace pass;
 Python 101 tests OK (one skipped). Full managed/real relay suite passed (641 PASS lines).
 Windows compilation/listening/playtest and compiled channel delivery pending.
-
 
 ## 2026-10-14 — Codex: final killcam starts after three seconds
 

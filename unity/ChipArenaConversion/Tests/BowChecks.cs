@@ -129,9 +129,9 @@ internal static class BowChecks
         foreach(var (detail,kind,amount) in new[]{(NativeBowWire.DetailQuick,NativeBow.Arrow.Quick,.2f),(NativeBowWire.DetailFull,NativeBow.Arrow.Full,1f),(NativeBowWire.DetailVolley,NativeBow.Arrow.Volley,.7f),(NativeBowWire.DetailRain,NativeBow.Arrow.Rain,1f)})
         {var e=new ArenaEvent{Kind=EventKind.Shot,Detail=detail,Draw=amount};Check(NativeBowWire.Shot(e,out var k,out float d)&&k==kind&&Math.Abs(d-amount)<1e-6f,detail+" shot event");}
         Check(!NativeBowWire.Shot(new ArenaEvent{Kind=EventKind.Shot,Detail="pistol"},out _,out _)&&!NativeBowWire.Shot(new ArenaEvent{Kind=EventKind.Hit,Detail="bow"},out _,out _),"other events are not bow shots");
-        Check(NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Headshot},"bow")&&!NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Hit,Detail="field"},"bow")&&!NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Hit},"rifle"),"only a bow pilot's direct hits stick an arrow");
+        Check(NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Headshot,Detail="direct"},"bow")&&NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Hit,Detail="secondary"},"bow")&&!NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Hit,Detail="field"},"bow")&&!NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Hit,Detail="direct"},"rifle"),"only a bow pilot's arrow hits stick an arrow");
         Check(Math.Abs(NativeBowWire.SpeedDraw(NativeBow.SpeedQuick))<1e-6f&&Math.Abs(NativeBowWire.SpeedDraw(NativeBow.SpeedFull)-1)<1e-6f&&NativeBowWire.SpeedDraw(float.NaN)==0,"an unseen shot's draw from its launch speed");
-        log.Add("keying: the bow read depends only on the replicated bow fields (malformed ones read as absent, the cast stamp as fallback); 240 frames are identical in any evaluation order; shot events carry the kind and draw; only a bow pilot's direct hits stick");
+        log.Add("keying: the bow read depends only on the replicated bow fields (malformed ones read as absent, the cast stamp as fallback); 240 frames are identical in any evaluation order; shot events carry the kind and draw; only a bow pilot's arrow hits (direct, secondary) stick");
     }
 
     // ---- 4. third-person poses: reach, the string hand on the nock, the aim on the crosshair ----
@@ -262,7 +262,7 @@ internal static class BowChecks
         public int Total=>Glows+Streaks+Smokes+Sprites+Lines+Bands+Arrows;
         public void Reset(){Glows=Streaks=Smokes=Sprites=Lines=Bands=Arrows=0;Hash=0;}
     }
-    private static bool Bone(int target,int bone,out Matrix4x4 m){m=Matrix4x4.CreateTranslation(target,bone*.1f,0);return target!=99;}
+    private static bool Bone(int target,int bone,Vector3 local,out Matrix4x4 m){m=Matrix4x4.CreateTranslation(target,bone*.1f,0);return target!=99;}
     private static void Stuck(List<string> log)
     {
         var s=new NativeBowStuck();var sink=new ArrowSink();

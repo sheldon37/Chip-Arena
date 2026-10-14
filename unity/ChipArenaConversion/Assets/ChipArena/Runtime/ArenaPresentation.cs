@@ -126,7 +126,7 @@ namespace ChipArena.UnityConversion
         /// kit keeps its decals and structure records (NativeStructureFxPresentation.Reset), which the event buffer cannot rebuild.</summary>
         public void ResetPresentation(bool keepWorldMarks=false)
         {
-            ClearSourceActors();ClearSpawnIn();combatGlow?.Clear();blasts?.Clear();ClearStructureFx(keepWorldMarks);ClearBlood(!keepWorldMarks);if(!keepWorldMarks)killBlows.Clear();fieldTelegraphs?.Clear();shots?.Clear();vfx?.Clear();meleeFlash?.Clear();ClearMeleeKit();ClearCyberLord();ClearMagicFx();shotTracker.Clear();hitLedger.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            ClearSourceActors();ClearSpawnIn();combatGlow?.Clear();blasts?.Clear();ClearStructureFx(keepWorldMarks);ClearBlood(!keepWorldMarks);if(!keepWorldMarks)killBlows.Clear();if(!keepWorldMarks)hazardGibs.Clear();fieldTelegraphs?.Clear();shots?.Clear();vfx?.Clear();meleeFlash?.Clear();ClearMeleeKit();ClearCyberLord();ClearMagicFx();shotTracker.Clear();hitLedger.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();

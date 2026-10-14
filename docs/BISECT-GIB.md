@@ -15,6 +15,10 @@ The bisect gib is presentation only. No hitbox, damage, timing, network or hazar
 | Runtime | `Runtime/NativeBisectModels.cs` | Gathers the meshes a body draws, runs the split (on a worker), and uploads the half models |
 | Runtime | `Runtime/NativeBisectCorpse.cs` | Two `NativeCorpse` halves in one physics scene: a hold, then they part |
 | Runtime | `Runtime/NativeBisectPresentation.cs` | The saw death, its blood and sparks, the `Gore` switch and the Dev Sandbox preview |
+| Core | `Core/NativeSmashGib.cs` | The smash gib: which hazard, the plan, the squash and sprawl, the throw, the blood, the hazard gib gate |
+| Core | `Core/NativeArrowGib.cs` | Arrow gibbing: the lodge depth, lodge or pass, the arrow points' blood |
+| Runtime | `Runtime/NativeSmashPresentation.cs` | The smashed corpse (pinned or thrown), its overlay, blood, mist and flash |
+| Runtime | `Runtime/NativeArrowGibPresentation.cs` | Arrow strikes, holes, the trickle and the split body's half |
 
 ## Core API
 
@@ -39,7 +43,8 @@ The bisect gib is presentation only. No hitbox, damage, timing, network or hazar
   - `Mask`: the ragdoll bodies the cut may cross (bit = the body's joint). Everything else stays whole on half 0, whichever side it is on. All bodies by default; a melee head or limb cut names that part's (`NativeBisect.MaskOf`). `HalfOf(bone, point)` says which half a joint ends up on (the dropped weapon, an Auditor halo and the team bands use it).
   - `Seam`, `SeamHalf`: the line the cut's blood leaves along (unit, in the plane, through `Point`), in order the way the blade passed. Zero keeps the saw's vertical seam over the body's height.
 - **`NativeBisect.Request(cause, point, normal, travel, seed, part, lift, push, topple, hitch, blood, sparks)`** builds a request from a plane and a few feel numbers.
-- **`NativeBisect.Applies(gore, style, kept, model)`** decides whether a death splits: gore on, a pilot body, not a kept (revivable) PvE body, and a stock ending (`impact-ragdoll`/`ragdoll`). A killer's purchased kill effect keeps its own look.
+- **`NativeBisect.Applies(gore, style, kept, model)`** decides whether a melee death is cut: gore on, a pilot body, not a kept (revivable) PvE body, and a stock ending (`impact-ragdoll`/`ragdoll`). A killer's purchased kill effect keeps its own look.
+- **The hazard gibs (the Factory saws' split and the smash) use `NativeSmashGib.Applies` instead** (see "Hazard gib gate" below): any style except the Siren and vent endings.
 - **After the split nothing allocates.** `Shudder(r, age)` (the hold's tremble), `Sparks(r, age, quality, into)` (at most `MaxSparks`, into a caller array) and `Gush(r, k, ...)` (the blood sprays) are pure functions of the request and the age.
 
 ## Adding a cause
@@ -99,15 +104,72 @@ The attacker's position at the hit's tick is not replicated. The Hit event's `Fr
 
 ## Factory saws
 
-- The authority kills with the first lethal hazard touching the body, in `Map.hazards` order. `NativeSawBisect.Find` repeats that from the death record: the record's time (and one frame earlier), the round and `FightAt`. If the first touching hazard is not a saw (the crane, a press, a lethal vent), the death is not split. If nothing touches (the record's float time missed the tick), it takes the nearest lethal saw within 0.75 m.
+- **Which saw.** The record names its hazard (`NativeDeath.hazardId`, Astra 2026-10-14): a named saw splits, a named press, crane or vent does not. An older frame without the id is reconstructed: the authority kills with the first lethal hazard touching the body, in `Map.hazards` order, and `NativeSawBisect.Find` repeats that from the death record (the record's time and one frame earlier, the round and `FightAt`). If the first touching hazard is not a saw (the crane, a press, a lethal vent), the death is not split. If nothing touches (the record's float time missed the tick), it takes the nearest lethal saw within 0.75 m. `NativeSmashGib.Saw` does both.
+- **Any style splits** (owner, 2026-10-14: "Always show gib in saws too"). The hazard gib gate applies, and the halves are the stock ending; a purchased kill effect's body does not play.
 - **Slot saw** (axle z): the halves part to the sides and topple outward. **Rail saw** (axle x): the cut is front and back.
 - The halves hold on the blade for 0.17 s (slot) or 0.13 s (rail). They shudder, with sparks and blood out of the seam, then part through the existing ragdoll path.
 - Each half's trunk fountains. The blood along the cut and flung off the rim lands as the round's splats. The blade keeps a drying blood smear (`NativeFactoryRig.Build(..., blood)`). The weapon drops whole, with the half its hand is on.
 
+## Hazard gib gate (owner decisions, 2026-10-14)
+
+Owner: "Keep the smash even with kill effects", then "Always show gib in saws too".
+
+- **`NativeSmashGib.Applies(gore, style, kept, model)`** gates the train, press, crane and saw gibs alike. It needs:
+  - gore on;
+  - a pilot's own body (not a Siren);
+  - not a kept (revivable) PvE body;
+  - not a Siren ending (`siren-dissipate`, `siren-crush`) or a vent ending (`vent-fall`, `vent-splat`).
+- **Every other style gibs**, including a purchased kill effect from a credited pusher (`NativeSirenRules.DeathStyle` gives a hazard death the pusher's effect).
+- **The override is presentation only.** The replicated `style`, the kill feed, the credit and the kill-effect sound cue are unchanged. The gibbed corpse is the stock ending (`NativeCorpse.Style` is `impact-ragdoll`). The kill effect's body, its death scene and the Raging Demon victim screen do not play.
+- **No style is named.** The gate reads no kill-effect style by name, so it holds if the kill effects are later revamped or removed.
+- **Melee cuts keep their own stock-ending gate** (`NativeBisect.Applies`), unchanged in this task.
+
+## Smash gib
+
+Owner request (2026-10-14): "Need to add a "smash" gib, something that can be used when getting hit by the train on cyber city, or smashed from things on factory."
+
+Presentation only, from the replicated death record (kind, time, place, yaw, seed, `hazardId`), the map's hazards, the round and `FightAt`. No new death kind exists, and no hit, damage, timing, network or hazard rule reads it.
+
+- **Which cause** (`NativeSmashGib.Plan`):
+  - `maglev`: Cyber City's train (the named maglev, else the map's).
+  - `hazard` on the Factory: the named hazard, else reconstructed (`NativeSmashGib.Killer`: the first live hazard touching the body in map order on the death's tick or the one before, a bursting vent included, else the nearest lethal one within 0.75 m; for saws it agrees with `NativeSawBisect.Find`).
+  - A press or the crane smashes; a saw splits (above); a vent, grid or anything else keeps its death.
+- **Pinned** (a press ram or the crane's load coming down, the body's centre within 0.2 m of its footprint):
+  - The body is crushed where it stood. Its ragdoll bodies are kinematic, posed by a seeded sprawl (`Sprawl`): it buckles and goes down on its back or face round the pelvis, legs and arms thrown out, the head turned aside.
+  - It is drawn squashed about the floor (`Squash`, `Overlay`) as the crusher's own underside comes down (the hazard's pure state at the death's clock plus the age), never standing above it. It is flat (8.5% height, spread up to 1.3) the moment the crusher is down, and stays flat for the round.
+  - Press: the ram slams in about 0.1 s, holds 0.6 s and lifts. Crane: the load lands in about 0.1 s, stays 6.65 s and is hoisted.
+  - Blood squirts out from under the crusher's edges at the floor the moment it is down (8 `squirt` sprays), a low blood mist leaves the edges, and a pool of up to 16 splats is laid round the body on the bed or floor.
+- **Thrown** (the train; a crusher that only clipped the body or struck it as it rose):
+  - The body holds for a hit-stop (0.05 s train, 0.03 s edge), then flies along the travel (the train's direction, or out from under the edge) and tumbles.
+  - Several parts are crushed to fragments (`CrushSet`): the train takes 3 or 4 of the head, upper arms and thighs, the most exposed to the train first, by the death's yaw and seed so every peer agrees; an edge takes 1 or 2.
+  - The fragments are carried along the travel at most 30 m/s; the torn children are capped ragged and each stump sprays.
+  - Blood: a heavy burst along the travel, carried at the train's pace (`sever`/`crush` sprays with a carry velocity), a blood mist riding the travel, streaks on the track bed ahead, and the train's impact flash for 0.12 s.
+- **Budgets.** Reduced effects and the low graphics tier thin the sprays, splats and mist. The fragments share the kill-effect budget. Gore off: no smash.
+- **Late joiners and the killcam** build the same plan; gushes first seen 0.6 s late are skipped, the splats are laid once per round.
+
+## Arrow gibbing
+
+Owner request (2026-10-14): "Add gibbing from arrows (Can pierce through enemies if player has pierce modifiers, can go in body/head and stop halfway) Blood coming out of arrow gibbing points".
+
+- **Which hits.** Only a bow pilot's arrow hits stick or gib: the Hit Detail `direct` (the drawn arrow, the Volley's, the Rain's) or `secondary` (a projectile chip's copy: split shards, extra fan arrows). `reflected` (a blocker's returned shot, now the blocker's), `thorns`, `chain`, chip `blast`, `field` and ability or stage hits are not arrows.
+- **Lodge or pass** (`NativeArrowGib.Fate`):
+  - A hit with its projectile id (every current host: `ArenaEvent.Projectile`) is decided by its own replicated flag, `ArenaEvent.Pierced`: true passes through, false lodges.
+  - An older frame's hit (no id) falls back to the paths: the shooter's live arrow whose line passes nearest the hit (0.3 m) passes only when it is already past the hit and its chips' pierces (less the ones it was seen to spend) allow it. In doubt it lodges.
+- **Halfway** (`Lodge`): an arrow that stops buries about the middle of the struck part along its flight, measured on the joint's body boxes (`CapturedRig.Boxes`), 50% ±10% seeded. A head shot stops about halfway into the head. This replaces the fixed 0.14 m bury for pilots; a miss of the boxes keeps it.
+- **Through**: no arrow stays. The entry and the far side of the part along the flight become bleeding holes; the exit sprays a `cavity` cone along the flight; the flying arrow goes on.
+- **Blood from the arrow points**:
+  - The wound's own spray is the existing wound path's (the bow's wound is now a puncture or cavity, Astra 2026-10-14), so nothing doubles it.
+  - Each lodged arrow's entry, and both holes of a pass-through, drip a short, decaying trickle (about 6 drops over 6.5 s), riding the joint, alive or ragdolled.
+  - A killing full-draw arrow bleeds a little more, and a pass-through's exit sprays harder.
+  - At most 12 points bleed at once (5 with reduced effects or the low tier), and the exit spray stays under the per-target blood budget.
+  - No blood with gore off, and none from the local pilot in first person.
+- **Riding the body.** Arrows follow the corpse as drawn (sink, shrink and a smash's squash included). A split body's arrow rides the half its point sat on as the body died (`Half`). An arrow in a crushed part goes with it.
+- **Unchanged:** damage, the headshot rule, hitboxes, hit timing, cooldowns, movement and the wire.
+
 ## Switches and preview
 
-- **`ArenaPresentation.Gore`** (default true). False keeps every death as it was: no split, no cut blood, no blade blood. There is no player setting for it yet; this is the field one would drive.
+- **`ArenaPresentation.Gore`** (default true). False keeps every death as it was: no split, no smash, no cut blood, no blade blood, no arrow-point blood. There is no player setting for it yet; this is the field one would drive.
 - **Effects settings.** Reduced effects and the low graphics tier thin the sparks and blood; the split itself stays.
 - **`SplitInBackground`** is false on WebGL, where the split runs at once. A body first seen after its hold (a late join, a corpse rebuilt after the killcam) also splits at once.
 - **Dev Sandbox: "Preview Saw Split".** It cycles every skin through the slot and rail cuts on a stand-in 3.2 m ahead, every 3.4 s.
-- **Checks: `Tests/BisectChecks.cs`** (and `Tests/MeleeBisectChecks.cs` for melee cuts). They cover determinism, volume, silhouette, the see-through sweep, the cap area, every skin and tier with a headshot, the saw plane, the gore-off fallback, no allocation after the split, and the wiring.
+- **Checks: `Tests/BisectChecks.cs`** (and `Tests/MeleeBisectChecks.cs` for melee cuts, `Tests/GibChecks.cs` for the smash and arrow gibbing: `CoreTests.dll --gib`). They cover determinism, volume, silhouette, the see-through sweep, the cap area, every skin and tier with a headshot, the saw plane, the gore-off fallback, no allocation after the split, and the wiring.

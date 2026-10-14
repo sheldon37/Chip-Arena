@@ -50,8 +50,17 @@ namespace ChipArena.UnityConversion
         public static int Projectile(in ArenaEvent e)=>e.Projectile;
         /// <summary>The draw an arrow in flight shows when its shot event was not seen: from its launch speed (45 to 110 m/s).</summary>
         public static float SpeedDraw(float speed)=>F(speed)?NativeBow.Clamp01((speed-NativeBow.SpeedQuick)/(NativeBow.SpeedFull-NativeBow.SpeedQuick)):0;
-        /// <summary>A replicated hit that sticks an arrow: a direct Hit or Headshot by a bow pilot (the attacker's spec, from its seat).</summary>
-        public static bool Sticks(in ArenaEvent e,string sourceSpec)=>(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&Is(sourceSpec)&&e.Detail!="field"&&e.DamageKind!="collapse";
+        /// <summary>
+        /// A replicated hit that sticks an arrow: a Hit or Headshot by a bow pilot (the attacker's spec, from its seat) that an arrow
+        /// made. The bullet hit's Detail names it: "direct" (the drawn arrow, the Volley's and the Rain's) or "secondary" (a
+        /// projectile chip's copy: the split shards and the extra fan arrows, still arrows). Everything else a bow pilot's hit can
+        /// be is not an arrow and sticks none: "reflected" (a blocker sent a shot back, now the blocker's, any weapon's),
+        /// "thorns", "chain", "blast" (chip blasts), "field", ability and stage kinds.
+        /// </summary>
+        public static bool Sticks(in ArenaEvent e,string sourceSpec)=>(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&Is(sourceSpec)&&ArrowDetail(e.Detail)&&e.DamageKind!="collapse";
+        /// <summary>The hit Details an arrow makes (NativeProjectiles: the bullet's damage kind).</summary>
+        public const string HitDirect="direct",HitSecondary="secondary";
+        public static bool ArrowDetail(string detail)=>detail==HitDirect||detail==HitSecondary;
         /// <summary>A bow arrow striking the world: an Impact event by a bow pilot.</summary>
         public static bool Lodges(in ArenaEvent e,string sourceSpec)=>e.Kind==EventKind.Impact&&Is(sourceSpec);
     }

@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
             if(frozen)
             {
                 foreach(var pair in Parts)if(!Still(pair.Key))pair.Value.isKinematic=false;
-                if(weapon!=null)weapon.isKinematic=false;frozen=false;clock=age;
+                if(weapon!=null&&!Pinned)weapon.isKinematic=false;frozen=false;clock=age;
             }
             settleAt=age+NativeCorpseRules.SettleSeconds;
         }

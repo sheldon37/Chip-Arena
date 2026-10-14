@@ -172,6 +172,20 @@ transfer/reconnect and save transactions; then account XP/perks and additional
 buildings/final boss. Visual work can start with the board, sealed door, departure
 panel, personal chip UI, reprint machine and dice display against this contract.
 
+## Presentation contract (Claude)
+
+The screens read one projection per account, `NativeExpeditionView.Build(run,
+account, sources)`. It holds the public run state plus only that account's
+wallet, rewards (offers while a pick is pending) and chips. The same DTO is the
+guest replication contract. Screens send intents through `IExpeditionCommands`
+(host-local commands; guests unavailable until a command channel exists) and
+confirm them only from the authority's state.
+
+Fields, screens, the dev preview (`--ca-expedition-preview`) and the remaining
+integration needs are in [`EXPEDITION-PRESENTATION.md`](EXPEDITION-PRESENTATION.md):
+replication message, guest command channel, hooks, reprint cost, chest offers,
+transfer progress, continue vote and world positions. Not playable; no menu entry.
+
 ## Verification
 
 `Tests/ExpeditionChecks.cs`, invoked by the full managed suite or `--expedition`,

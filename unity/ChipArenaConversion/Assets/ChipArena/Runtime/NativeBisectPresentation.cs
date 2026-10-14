@@ -38,14 +38,17 @@ namespace ChipArena.UnityConversion
         private static Vector3 CutVec(NVector3 v)=>new Vector3(v.X,v.Y,v.Z);
 
         /// <summary>A pilot death a Factory saw made, split: both half corpses (the second the first's Twin), or null for the
-        /// current death (not a saw, gore off, a kill effect that shows no body, a Siren or a revivable body, models missing).</summary>
+        /// current death (not a saw, gore off, a Siren, vent or revivable body, models missing). The saw is the one the record
+        /// names (NativeDeath.hazardId), else found from the pure clock (NativeSawBisect.Find, older frames). Owner 2026-10-14
+        /// ("Always show gib in saws too"): it splits whatever the death's style (the hazard gib gate, NativeSmashGib.Applies),
+        /// its halves the stock ending; a purchased kill effect's body does not play.</summary>
         private NativeCorpse SawBisect(NativeArena arena,NativeDeath death,CapturedAnimation.Player rig)
         {
-            if(sourceModels==null||death==null||death.damageKind!="hazard"||!NativeFactoryHazards.Active(arena.MapId)||!NativeBisect.Applies(Gore,death.style,death.kept,death.model))return null;
+            if(sourceModels==null||death==null||death.damageKind!="hazard"||!NativeFactoryHazards.Active(arena.MapId)||!NativeSmashGib.Applies(Gore,death.style,death.kept,death.model))return null;
             var hazards=arena.Map?.hazards;if(hazards==null||hazards.Length==0)return null;int round=NativeStructureFx.RoundIndex(arena.Match.Set,arena.Match.Round);
-            int index=NativeSawBisect.Find(hazards,round,arena.Match.FightAt,death.at,NativeArena.Vec(death.position));if(index<0)return null;
+            int index=HazardGibOf(arena,death)?.Saw??-1;if(index<0||index>=hazards.Length)return null;
             double clock=NativeFactoryHazards.Clock(NativePhase.Fight,arena.Match.FightAt,death.at);var saw=hazards[index];
-            return SplitCorpse(arena,death,rig,-1,pelvis=>NativeSawBisect.Request(saw,round,clock,CutNum(pelvis),unchecked((uint)death.seed*2654435761u)));
+            return SplitCorpse(arena,death,rig,-1,pelvis=>NativeSawBisect.Request(saw,round,clock,CutNum(pelvis),unchecked((uint)death.seed*2654435761u)),true);
         }
         /// <summary>
         /// A pilot killed by a blade blow, cut along the swing (Core NativeMeleeBisect, from the plan NativeMeleeSlice made of
@@ -66,9 +69,10 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Splits a death's body by the request `cut` makes for its pelvis; `skin` -1 the pilot's own (its wound cuts
         /// included), else that skin unwounded (the Dev Sandbox preview).</summary>
-        private NativeCorpse SplitCorpse(NativeArena arena,NativeDeath death,CapturedAnimation.Player rig,int skin,Func<Vector3,BisectRequest> cut)=>SplitCorpse(arena,death,rig,skin,(bind,pelvis)=>cut(pelvis));
-        /// <summary>As above, the request made from the posed joints too (each joint's draw matrix, the corpse's bind).</summary>
-        private NativeCorpse SplitCorpse(NativeArena arena,NativeDeath death,CapturedAnimation.Player rig,int skin,Func<Matrix4x4[],Vector3,BisectRequest> cut)
+        private NativeCorpse SplitCorpse(NativeArena arena,NativeDeath death,CapturedAnimation.Player rig,int skin,Func<Vector3,BisectRequest> cut,bool stock=false)=>SplitCorpse(arena,death,rig,skin,(bind,pelvis)=>cut(pelvis),stock);
+        /// <summary>As above, the request made from the posed joints too (each joint's draw matrix, the corpse's bind). `stock`:
+        /// the halves are the stock ending whatever the death's style (a hazard gib).</summary>
+        private NativeCorpse SplitCorpse(NativeArena arena,NativeDeath death,CapturedAnimation.Player rig,int skin,Func<Matrix4x4[],Vector3,BisectRequest> cut,bool stock=false)
         {
             var a=death.actor;var fx=new BisectFx{Key="bisect-"+death.id+"-"+death.seed+"-"+(++bisectKeys),Seed=unchecked((uint)death.seed*2246822519u+7u),Fixed=skin>=0};
             fx.Halo=a?.Hat==NativeAuditorHalo.Hat;fx.Hat=!fx.Halo&&!string.IsNullOrEmpty(a?.Hat)&&a.Hat!="none"?HatModel(a.Hat,a.HatColor):null;if(fx.Hat!=null&&!sourceModels.Has(fx.Hat))fx.Hat=null;
@@ -85,7 +89,7 @@ namespace ChipArena.UnityConversion
                 fx.Look=NativeBodyModels.CutLook(fx.Skin);fx.Model=model;var r=fx.Request;
                 fx.Job=sourceModels.BisectBegin(fx.Key+"/"+model,model,fx.Hat,bind,new BisectPlane(r.Point,r.Normal),fx.Look,tier,fx.Seed,r.Mask);if(fx.Job==null)return (null,null);
                 var plan=NativeBisect.Plan(fx.Job.Sources,fx.Job.Draw,fx.Job.Plane,r.Mask);NativeSourceModels.BisectRun(fx.Job,background);return (plan,r);
-            });
+            },stock);
             if(corpse==null){ReleaseBisect(fx);return null;}
             corpse.Bisect=fx;corpse.OnRelease=()=>ReleaseBisect(fx);corpse.AwaitSplit=()=>Settle(corpse);corpse.SplitReady=()=>fx.Settled||fx.Job==null||fx.Job.Done;if(!background)Settle(corpse);return corpse;
         }
@@ -171,7 +175,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.Pilots)
             {
                 var d=p.Death;if(d==null||d.damageKind!="hazard")continue;long key=((long)d.id<<32)^(uint)d.seed;
-                if(!sawKills.TryGetValue(key,out int index)){index=NativeSawBisect.Find(hazards,round,arena.Match.FightAt,d.at,NativeArena.Vec(d.position));sawKills[key]=index;}
+                if(!sawKills.TryGetValue(key,out int index)){index=NativeSmashGib.Saw(hazards,d.hazardId,round,arena.Match.FightAt,d.at,NativeArena.Vec(d.position));sawKills[key]=index;}
                 if(index<0||index>=sawBlood.Length)continue;double at=NativeFactoryHazards.Clock(NativePhase.Fight,arena.Match.FightAt,d.at);if(double.IsNaN(sawBlood[index])||at>sawBlood[index])sawBlood[index]=at;
             }
             return sawBlood;
