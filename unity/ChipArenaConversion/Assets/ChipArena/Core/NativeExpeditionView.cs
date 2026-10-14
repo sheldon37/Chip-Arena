@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
 
     [Serializable] public sealed class ExpeditionViewMember
     {
-        public string account, weapon, carriedBy;public int reprintCost;
+        public string account, name, weapon, carriedBy;public int reprintCost;
         public bool connected, alive, safe, extracted, host, exitVote, extractVote;
     }
     [Serializable] public sealed class ExpeditionViewInstance
@@ -56,7 +56,9 @@ namespace ChipArena.UnityConversion
         public int nextEpoch;public long revision;
         public string[] leaving=Array.Empty<string>();
         /// <summary>The transport can move the session endpoint. No build has this yet, so the ACK step shows as unavailable.</summary>
-        public bool endpointMigration, packageStored, endpointReserved, ackReceived;public double deadline=-1;
+        public bool endpointMigration, packageStored, endpointReserved, ackReceived;
+        /// <summary>Deadline and clock use the host transport monotonic seconds, never gameplay elapsed or guest time. -1 means absent.</summary>
+        public double deadline=-1, clock=-1;
         /// <summary>Transport-reported connection quality (empty when the transport reports none).</summary>
         public ExpeditionHostCandidate[] candidates=Array.Empty<ExpeditionHostCandidate>();
     }
@@ -101,8 +103,9 @@ namespace ChipArena.UnityConversion
         public ExpeditionHostCandidate[] Candidates;
         /// <summary>The transport can move the endpoint (no build has this yet).</summary>
         public bool EndpointMigration;
-        public bool PackageStored, EndpointReserved, AckReceived;public double Deadline=-1;
+        public bool PackageStored, EndpointReserved, AckReceived;public double Deadline=-1, TransportClock=-1;
         public Func<string,int> ReprintCost;
+        public Func<string,string> DisplayName;
         public ExpeditionWorldAnchor[] Anchors;
         public ExpeditionChestOffer[] Chests;
     }
@@ -133,6 +136,12 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>Strict majority of connected living participants (NativeExpedition.RefreshVotes).</summary>
         public static int Majority(int living)=>living/2+1;
+        private static string DisplayName(string name,string fallback)
+        {
+            if(string.IsNullOrWhiteSpace(name))return fallback;
+            var clean=new string(name.Where(c=>c!='<'&&c!='>'&&!char.IsControl(c)&&char.GetUnicodeCategory(c)!=System.Globalization.UnicodeCategory.Format).Take(20).ToArray()).Trim();
+            return clean.Length==0?fallback:clean;
+        }
         /// <summary>A boss reward's dice record key: the reward id without its ":serial" suffix (NativeExpedition.DefeatBoss).</summary>
         public static string BossKey(string rewardId){int i=rewardId==null?-1:rewardId.LastIndexOf(':');return i>0?rewardId.Substring(0,i):null;}
 
@@ -154,12 +163,12 @@ namespace ChipArena.UnityConversion
                 elapsed=s.elapsed,exitAt=s.exitAt,extractAt=s.extractAt,exitSeconds=NativeExpedition.ExitSeconds,extractSeconds=NativeExpedition.ExtractSeconds,loading=s.loading,migrating=run.Migrating,finalUnlocked=run.FinalUnlocked,
                 extractionUnlocked=run.ExtractionUnlocked,living=living,extractNeeded=Majority(living),
                 exitVotes=(string[])s.exitVotes.Clone(),extractVotes=(string[])s.extractVotes.Clone(),continueVotes=(string[])s.continueVotes.Clone(),
-                anchors=(sources.Anchors??s.anchors).Select(a=>a.Copy()).ToArray(),chests=(sources.Chests??s.chests).Select(c=>c.Copy()).ToArray(),
+                anchors=(sources.Anchors??s.anchors).Where(a=>a!=null&&(a.kind!="reward"||s.rewards.Any(r=>r.id==a.id&&(r.source=="monster"||r.source=="boss")))).Select(a=>a.Copy()).ToArray(),chests=(sources.Chests??s.chests).Select(c=>{var o=c.Copy();o.sold|=s.rewards.Any(r=>r.source=="chest"&&r.id==s.loop+":"+(s.anchors.FirstOrDefault(a=>a.id==o.id&&a.kind=="chest")?.area??s.area)+":chest:"+o.generation);return o;}).ToArray(),
                 difficultyParty=party,difficultyStep=(int)Math.Floor(s.elapsed/scaling.timeStepSeconds),
                 difficulty=scaling.Evaluate(s.elapsed,party,s.loop,s.phase==ExpeditionPhase.Instance),
                 savedRevision=sources.Saved!=null&&sources.Saved.checkpoint!=null&&sources.Saved.checkpoint.run==s.run?sources.Saved.checkpoint.revision:-1,
             };
-            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
+            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
                 safe=p.safe,extracted=p.extracted,host=p.account==s.host,exitVote=s.exitVotes.Contains(p.account),extractVote=s.extractVotes.Contains(p.account)}).ToArray();
             v.instances=s.instances.Select(i=>new ExpeditionViewInstance{id=i.id,target=i.target,progress=i.progress,entered=i.entered,cleared=i.cleared,
                 current=s.phase==ExpeditionPhase.Instance&&i.id==s.area,bosses=(string[])i.bosses.Clone(),defeated=(string[])i.defeated.Clone()}).ToArray();
@@ -185,7 +194,7 @@ namespace ChipArena.UnityConversion
         // Host-transfer state: the authority's frozen flag, plus the integration's log, reported only where the authority agrees.
         private static ExpeditionViewTransfer Transfer(NativeExpedition run,ExpeditionSnapshot s,ExpeditionViewSources sources)
         {
-            var t=new ExpeditionViewTransfer{active=run.Migrating,endpointMigration=sources.EndpointMigration,packageStored=sources.PackageStored,endpointReserved=sources.EndpointReserved,ackReceived=sources.AckReceived,deadline=sources.Deadline,
+            var t=new ExpeditionViewTransfer{active=run.Migrating,endpointMigration=sources.EndpointMigration,packageStored=sources.PackageStored,endpointReserved=sources.EndpointReserved,ackReceived=sources.AckReceived,deadline=sources.Deadline,clock=sources.TransportClock,
                 candidates=(sources.Candidates??Array.Empty<ExpeditionHostCandidate>()).Where(c=>c!=null).Select(c=>new ExpeditionHostCandidate{account=c.account,reachable=c.reachable,
                     capable=c.capable,loss=c.loss,latencyMs=c.latencyMs,jitterMs=c.jitterMs}).ToArray()};
             var log=sources.Transfer;var h=log?.Handoff;
@@ -220,7 +229,8 @@ namespace ChipArena.UnityConversion
             v.viewer=N(v.viewer);v.mine??=new ExpeditionViewPersonal();v.transfer??=new ExpeditionViewTransfer();v.difficulty??=new ExpeditionDifficulty();
             v.mine.rewards??=Array.Empty<ExpeditionViewReward>();v.mine.chips??=Array.Empty<ChipCount>();v.mine.perks??=Array.Empty<string>();v.mine.carrying??=Array.Empty<string>();
             v.mine.account=N(v.mine.account);v.mine.carriedBy=N(v.mine.carriedBy);
-            foreach(var m in v.members)m.carriedBy=N(m.carriedBy);
+            foreach(var m in v.members){m.carriedBy=N(m.carriedBy);m.name=N(m.name)??m.account;}
+            foreach(var a in v.anchors)a.building=N(a.building);
             foreach(var l in v.loot){l.owner=N(l.owner);l.boss=N(l.boss);}
             foreach(var r in v.mine.rewards){r.boss=N(r.boss);r.selected=N(r.selected);r.offers??=Array.Empty<string>();}
             var t=v.transfer;t.id=N(t.id);t.oldHost=N(t.oldHost);t.nextHost=N(t.nextHost);t.reason=N(t.reason);
@@ -246,6 +256,9 @@ namespace ChipArena.UnityConversion
                 var a=s.rewards.FirstOrDefault(x=>x.id==l.id);
                 if(a==null||a.source!="monster"&&a.source!="boss")leaks.Add("private reward "+l.id+" in public loot");
             }
+            // A reward anchor names its reward in public: only public loot may have one (a purchase's or catch-up's would reveal it).
+            foreach(var a in v.anchors)
+                if(a!=null&&a.kind=="reward"){var r=s.rewards.FirstOrDefault(x=>x.id==a.id);if(r!=null&&r.source!="monster"&&r.source!="boss")leaks.Add("world anchor of private reward "+a.id);}
             var mine=s.members.FirstOrDefault(p=>p.account==viewer);
             if(mine==null&&(v.mine.wallet!=0||v.mine.chips.Length>0||v.mine.rewards.Length>0))leaks.Add("personal state for a non-member");
             if(mine!=null&&v.mine.wallet!=mine.wallet)leaks.Add("wallet is not the viewer's");

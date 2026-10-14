@@ -162,6 +162,9 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<n&&i<hits.Length;i++){var h=hits[i];if(h.normal.y>.5f&&h.distance>1e-3f&&h.distance<best){best=h.distance;floor=h.point.y;}}
             return floor;
         }
+        /// <summary>A DEV-forced hazard pulse (Core NativeDevHazardLook, from NativeArena.DevHazardPulses): its hazard cues run once
+        /// through the same pools as every other blast. Presentation only; the scheduled hazard looks are untouched.</summary>
+        public void DevHazardPulse(Vector3 at,string kind,float reach,double quality){int n=NativeDevHazardLook.Plan(kind,NativeArena.Vec(at),reach,plan);Run(n,quality);}
         // Runs a plan of source draws; its impacts first get the floor under them.
         private void Run(int count,double quality)
         {

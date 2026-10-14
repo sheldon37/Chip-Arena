@@ -1,5 +1,120 @@
 # Chip Arena — development log
 
+## 2026-10-14 — Claude — DEV panel and DEV Abuse UI on Astra's authority (owner: "Improve sandbox tools- Better UI, more control. With this in mind, give a "DEV Abuse" Toggle in dev settings, this will allow dev options in matches (online included) for only dev accounts")
+- Branch `claude/dev-tools`, base shared `09096af`.
+  - Panel commit `5239175`.
+  - Merged shared `c134dc2` (PR #208, Astra's DEV Abuse authority) in `03907c5`. The UI is bound to it in that same merge, because the panel's placeholder DTOs clashed with Astra's.
+  - Merged shared `22c14c2` (Expedition live presentation) in `179adf2`.
+  - Merged shared `1e22711` (PR #209, Expedition live integration) in the commit that carries this line. Only PROJECT_STATE conflicted; both entries are kept.
+  - Pushed; no PR, merge or release.
+- Owner clarification, through the lead, folded in: surprise first, then a reveal (`devRevealed` replaces `devActive`); devs are not limited to rooms they host; an Interact tab; and the guardrails below.
+- **Panel** (`Runtime/NativeDevPanel.cs`, `Runtime/NativeDevOverlays.cs`, Core `NativeDevTools.cs`) replaces the pause menu's GUILayout Sandbox Tools list:
+  - It is a kit-drawn cyber overlay on the right of the match.
+  - **F3** opens it and **F4** frees the cursor (the pilot holds still while the cursor is free). F5, F6 and F7 are restore me, down dummy and dummy cast. F1 is the event log, F2 the graph, F10 the fly camera, F11 hides the HUD, and Home snaps the fly camera back. None clashes with the code or docs; J is the Expedition screen.
+  - The tab rail: Pilot, Interact (target picker), Dummies, Chips (searchable grid, rarity colours and icons, n/max, − + MAX CLR, favourites saved in prefs, recent, CAST), Arena, Hazards, Previews, Camera & overlays, and Simulation.
+  - The header shows the mode, the context, the opt-in, an older host and NO PROGRESSION.
+  - The footer shows the hovered reason or the last verdict, and the hotkeys.
+  - It is right-anchored, at most 720 wide, and fits 1066x600 through 3440x1440.
+  - No per-frame allocation once warm.
+- **Sandbox routes:**
+  - `NativeSandbox.cs` `DevRun` keeps every old call with the same arguments and limits, one case per action. Its NativeArena half is untouched.
+  - It also offers existing sandbox calls the old list did not: weapon, map, difficulty, Cast every chip, chip cast and splat delay.
+- **DEV Abuse:**
+  - Settings · Developer gets the toggle: verified, unexpired developers only; off by default; saved as `prefs.devAbuse`.
+  - The toggle sets Astra's session opt-in `DevAbuseEnabled`. Each frame the opt-in follows the saved pref, for a verified developer only.
+  - The panel is available in any match (offline, host, guest) with the toggle on. In the sandbox it is available as before, with no opt-in.
+  - A small DEV ABUSE ON tag shows on your own HUD.
+- **Bound to Astra's API (`docs/DEV-ABUSE-AUTHORITY.md`):**
+  - Commands go only through `SendDevCommand`, with the opt-in, during an active round.
+  - Arguments follow Astra's table and are clamped to `NativeDevRules.Validate`: debris 1–500 kg, 1–100 m/s; freeze 0–30; launch 1–100; around 1–7; time-scale .1–2; chips 1–100; spawn inputs and team 0–7.
+  - Replies come from `DevReplyReceived`: done, refused with its reason, accepted. Both the 10 s timeout and a backstop read as outcome unknown.
+  - Disabled buttons wear OPT-IN, ROUND or SBX with the reason. Nothing is optimistic.
+- **Replicated presentation:**
+  - The reveal moment and the DEV tags on nameplates and kill-feed lines come from `devRevealed` only. The moment is a magenta banner: "A DEVELOPER IS HERE", the name with a glitch, a DEV badge, shards, and a ring over the pilot. The sandbox can preview it.
+  - devGod, devInfiniteAmmo and devNoCooldowns show as pills.
+  - devTimeScale shows as a DEV TIME tag for everyone, plus the room speed.
+  - devHazards plays each forced pulse once through the shared effects renderer with that hazard's cues (`NativeDevHazardLook` and `NativeBlastPresentation.DevHazardPulse`), with a DEV ring. The scheduled hazard looks are not retimed.
+  - devDummy labels show in the target picker.
+  - devCommandsRan shows the NO PROGRESSION THIS MATCH note.
+  - devScale raises the nameplate, chip-select and DEV tags.
+- **View tools (read-only, live wherever the panel is):**
+  - A fly camera that moves only the match camera.
+  - Overlays: pilot capsules and `NativeCombatRules`' head box; the live swing's `NativeMeleeRules` sector (authority only, so none on a guest); hazard boxes; the nav graph; Expedition anchors; shot paths on a copy with `NativeSpecialRules.Ballistic`.
+  - The event log with filters, and the FPS / step / RTT graph.
+  - Hide HUD.
+- **Guardrails, written into `docs/DEV-TOOLS.md` as defaults:**
+  - DEV actions are match-only.
+  - Nobody's progression, purchases or rewards are reduced.
+  - The dev's seat earns no progression in a match where commands ran.
+  - The host logs actions.
+  - No tag shows before the reveal.
+  - Shrink and grow are visual only.
+- **Shared-file edits:** each is one hook line or an exact replacement.
+  - `ConversionGame.cs`:
+    - the prefs fields;
+    - `DevUpdate`;
+    - `&&!DevHoldsPilot` and `DevLook(` in the play and look lines;
+    - `DevCamera()`;
+    - `DevScreenshot()`;
+    - `DevGui`.
+    - Merged with the Expedition hooks; both sides kept.
+  - `NativeHomeMenu.cs`: the DEV Tools item replaces Sandbox Tools.
+  - `NativeSettings.cs`: the toggle.
+  - `NativeCombatHud.cs`: `DevWorld`, `DevFeedTags`, and the devScale nameplate lift.
+  - `NativeChipSelectHud.cs`: the devScale lift.
+  - `NativeStructureFxPresentation.cs`: the GUILayout rows are removed.
+  - `NativeBlastPresentation.cs`: `DevHazardPulse`.
+  - Tests that scanned the old list: `HudPlaceholderChecks` and `StructureFxChecks`.
+  - Not touched: `NativeArena*`, `NativeSandboxTools`, the network and frame code, `NativeAccess` and `NativeAdmin`.
+- **Animation and rules impact:** none. No hit timing, hitbox, damage, cooldown, movement or networking change. The overlays and fly camera write nothing; the pilot's input is neutral only while the dev flies or uses the cursor.
+- **Checks (actual, on the merged head with shared `1e22711`):**
+  - Unity runtime+editor compile OK against the real 6000.3.24f1 assemblies.
+  - Full relay: exit 0, 678 PASS groups, including DEV tools (3823 checks) and Astra's DEV Abuse authority (82).
+  - Python: 101 tests OK (1 skipped).
+  - `package_source.py`: 1942 files OK.
+  - `git diff --check` clean.
+  - CI-layout relay (the staged index exported with `git checkout-index`, `docs/` removed): exit 0, 678 PASS groups.
+  - Offline IMGUI renders of every tab (sandbox and guest), the opt-in state, 3440x1440 chips, interface scale 1.5, the reveal and the HUD log/graph were checked in a scratch harness. They are not committed.
+- **Not verified:**
+  - the Unity Editor, Windows or PhysX;
+  - two clients over a real network;
+  - Astra's native gate `ValidateDevAbuseAuthority`;
+  - the real IMGUI search field, slider drag and cursor lock behaviour;
+  - the fly camera feel;
+  - the forced pulse looks in game;
+  - the reveal on screen at 3440x1440.
+- **Risks:**
+  - The overlays draw IMGUI lines, capped at 900 a frame.
+  - Melee volumes are host only.
+  - A grown pilot's third-person camera is not scaled; the eye stays at the authority's height.
+  - The panel blurs the scene behind it (`U.Backdrop`) while open.
+- **Next:**
+  - the owner's in-game pass: the reveal wording and sound, and whether non-devs see the DEV TIME tag;
+  - a Windows build and two-client check of the commands and the reveal.
+
+## 2026-10-14 — Claude — Expedition presentation: live binding, new fields and world pieces
+- Branch `claude/expedition-live` on shared `3c836c4` (Astra's PR #207 integration bridge), merged with shared `09096af` (melee-slice ids, cut-exits CI fix) and then shared `c134dc2` (PR #208 DEV Abuse authority; only PROJECT_STATE conflicted, both entries kept; both sides' ConversionGame lines merged cleanly). Implementation commit `3bc2405`, merge `be7a6c3`. Presentation only; Astra's integration, authority, wire and network files are untouched. Contract: docs/EXPEDITION-PRESENTATION.md (rewritten); EXPEDITION.md's presentation paragraph refreshed.
+- **Live binding** (`Runtime/NativeExpeditionLiveUI.cs`): draws whenever a session is bound — host `ConversionGame.ExpeditionView` after `BindExpedition`, guest paired-receiver view — and sends through `ExpeditionCommands` (cached per binding). In the scene: world pieces, minimal HUD, a compact transfer line, the dice reveal of a new stored record (not modal). J opens the shared screen (board, phase panel, chips, caches, loot); Escape or J closes it; victory opens it once per loop. Local play input pauses while it is open, as the PvE chip screen does. Nothing binds a session yet and no menu entry exists.
+- **Guest commands:** Pending "sent to the host" → Pending "accepted by the host" (from an accepted reply) → Confirmed only from the replicated view; a refused reply shows at once with its reason; no reply/no reflection in 6 s is Failed; a Confirmed reply is only an acceptance. One presentation change in `Core/NativeExpeditionCommands.cs` (guest reasons, accepted replies, the tracker keeps Pending for them).
+- **New fields bound:**
+  - Continue (`continueVotes`): n / remaining ready, downed pilots can agree, everyone remaining must agree, the waiting reason when nobody is alive, each pilot's choice. Continue and the extraction vote replace each other; a confirmed vote withdrawn since says so.
+  - Caches (`chests`): price, stock generation, "restocking" only while `cooldown > elapsed`, the buyer's own purchase, the wallet's shortfall. No range claim. Buying is not a control (no intent).
+  - Pick history (`mine.rewards[].selected`, viewer only); reprint quotes (`members[].reprintCost`, none = "price unavailable", never $0, control off).
+  - World-boss dice through the same loot, dice and world screens (WORLD BOSS name, victory loot line).
+  - Transfer: reserve endpoint / store package / ACK (deadline set) done only as reported and only with `endpointMigration`; candidates show RTT, jitter and ping timeouts; reachable/capable false read NOT PROBED / NOT SUPPORTED YET. The host's extraction with peers shows the honest refusal and its reason.
+- **World pieces** (`Core/NativeExpeditionWorld.cs`, `Runtime/NativeExpeditionWorldPresentation.cs`): only at real anchors of the current area. Ordinary drop = cyan diamond (first pickup / yours / taken), reserved boss chip = magenta tile with shackle (yours / for X / not eligible, claimed, opened), doors (sealed or open, quota, boss count), reprint machine (quote), chip caches (price, cooldown). A boss's chips ring its death point under one label. One dynamic mesh with the revive beacon's shader and motes; HUD glyph only for doors (anchors carry no facing); labels projected, depth-sized, wall-occluded, within 26 m and decluttered; culled past 90 m; reduced effects static; no allocation per frame. Nothing is claimed locally.
+- **Dev preview:** shared layout, a Greybox view of the anchors, reworked scenarios (caches and restock; drops and boss chips at positions; quotes with and without a price; world-boss dice and continue votes; today's honest transfer refusal, then simulated progress; guest Pending/Refused/Accepted/Failed over a loopback channel using the real guest sender). Stand-ins labelled DEV ONLY.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. ConversionGame: five hook lines (keys, play-input pause while the screen is open, screen, HUD, world draw at the start of `LateFrame`).
+- **Checks (actual):**
+  - Unity runtime+editor compile OK (real 6000.3 assemblies).
+  - `--expedition-view` 8,355 checks pass (was 5,901), incl. guests over Astra's real `ExpeditionCommandRouter`/`ExpeditionViewBatch`/receiver path, continue policy, caches, quotes, world-boss dice equal to the record, honest transfer, world pieces only at anchors per kind and eligibility, a private reward's anchor flagged and never drawn, no other player's private data, 0 bytes over 60 warmed passes (warmed with the identical pass), palette/source scans (no mutator call, no binding, no randomness). `--expedition` 473 and `--expedition-integration` 41 pass.
+  - Full `tools/check_relay.py` (default 300 s test timeout) on the merged head `be7a6c3`: exit 0, 677 PASS lines (131 s), incl. Expedition 473 / presentation 8,355 / integration 41 and DEV Abuse 82. Earlier on the branch: 676 PASS before `c134dc2`; one run had failed `BloomChecks` because the world draw sat in `LateUpdate`'s scanned line, so it moved to the start of `LateFrame`.
+  - Python 101 OK (1 skip). `package_source.py` OK (1,935 source files; Builds removed). `git diff --check` clean. CI layout (`git checkout-index` of the merged index, `docs` removed): check_relay exit 0, 677 PASS.
+  - Offline renders (scratch IMGUI recorder plus a software rasterizer of the same geometry; not committed): sanctuary/caches, ward greybox, 3D drops and boss-chip clusters (owner and not-eligible views), quotes, victory/continue, world-boss dice, transfer refused/progress, guest refusal, town 3D and greybox, 1280x720 and 3440x1440.
+- **Not run:** Unity Editor/IMGUI input, Windows, the 3D pieces in the engine (shader, depth, raycast occlusion), two real clients, a bound session (none exists).
+- **Astra, still needed** (exact list in the contract doc): a `Purchase` intent (target chest id, scene proximity, current offer); a public sold state or restock-on-purchase; confirm the door anchor → building convention (area = building inside, id = building outside) or add `building` (and `yaw` for 3D leaves); keep private reward anchors out of the view (`PlaceReward` accepts chest/catch-up ids and `Build` publishes them); a display name per member; the clock of `transfer.deadline`; probes/migration as already listed; the scene's pickup interaction sending `Claim` through `ExpeditionCommands`. Perf notes: the host rebuilds the full view every frame and the host `ExpeditionCommands` getter allocates per call.
+- **Risks:** layout and density judged on renders only; labels of distant pieces can still be hidden by the declutter; anchor `y` is treated as the floor; the preview's simulated transport progress must not be mistaken for the live transport (labelled).
+
 ## 2026-10-14 — Claude — CI: the cut-exits allocation check warms with its own pass
 - Shared `390dbd8` (the hulk-motion merge) failed `native-source` once in CI: `Cut exits: no allocations per frame (3520 bytes over 20 frames)` (CutExitChecks.Fx). The preceding head `83b2a98` passed, and the same head passes locally every time (worktree, CI's sparse `unity/ChipArenaConversion`-only layout, the check alone under tiering/PGO/OSR/GC settings, and the full suite on CI's exact SDK 8.0.426 / runtime 8.0.32), so it is order- and timing-dependent, not a per-frame allocation in the code under test.
 - Cause, as far as it can be shown here: the measured 20 frames were warmed by one frame only and were the first calls of the kit drives and the hint queries with that mix of tiers and positions, so one-time runtime work on first use counted against the frame. Fix (test only): the identical 20-frame pass runs once before the measured pass, as HulkMotionChecks warms 400 frames; a real per-frame allocation still fails (every pass allocates), and the failure now names the calls that allocated (fx, drives, hint, nearest, side, tone).
@@ -6645,3 +6760,26 @@ Added an actual-Unity build gate for every effect in local/encoded-guest paths,
 JsonUtility/replica state and account isolation. This gate, actual Unity compile,
 PhysX, Windows and live host/guest acceptance remain unrun locally. No compiled
 release claimed; publication/merge receipts belong in the task PR.
+
+
+### 2026-10-14 — Astra: Expedition live contract follow-ups
+
+Branch `codex/expedition-live-integration`, base Claude `22c14c2` on shared
+`c134dc2`. Adds host-proximity Purchase intent, public sold state and explicit
+restock event; preserves private reward ownership and confirms purchases across
+restock. Filters private/unknown anchors, including legacy saves and overrides.
+Adds explicit door building/yaw, sanitized public member names, and a separate
+transport clock for transfer countdowns. Stable command getter; 20 Hz projection
+and metrics; no full snapshot merely to check extraction elapsed. Provides a
+scene-binding overload and command-based pickup/cache interaction entry point.
+No hit timing, damage, hitbox, cooldown or animation changes.
+
+Playable scene/director, actual scene measurements/events, endpoint probes,
+combat package/ACK and endpoint migration remain missing dependencies. No success
+flags are fabricated. Test results and publication are recorded in the task PR;
+Unity/Windows/two-client acceptance remains unrun in this environment.
+
+Local focused verification: authority 473 assertions, integration 59 assertions,
+presentation 8,357 checks passed. Runtime/editor syntax: zero errors. Source
+package check: 1,935 files passed. Full managed/real-relay run is in progress;
+final result belongs in the PR before merge. Syntax is not a native compilation.

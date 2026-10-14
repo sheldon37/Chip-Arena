@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.Pilots)
             {
                 if(!p.Seat.connected||FirstPersonView&&p==arena.ViewPilot||!presentation.ChipSelectTagState(p.Seat.id,out float weight,out float age,out bool attacked))continue;
-                var at=p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:1);var screen=cameraView.WorldToScreenPoint(at)/scale;float metres=Vector3.Distance(eye,at);
+                var at=p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:p.Seat.devScale);var screen=cameraView.WorldToScreenPoint(at)/scale;float metres=Vector3.Distance(eye,at);
                 bool inFront=screen.z>0&&metres<55;Vector3 delta=at-eye;bool seen=inFront&&!physics.Raycast(eye,delta.normalized,out _,delta.magnitude-.08f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);
                 chipTagSeen.TryGetValue(p.Seat.id,out float visible);visible=NativeChipSelectTag.Visible(visible,seen,dt);chipTagSeen[p.Seat.id]=visible;
                 float alpha=NativeChipSelectTag.Alpha(weight,age,metres,visible);if(!inFront||alpha<=.01f)continue;

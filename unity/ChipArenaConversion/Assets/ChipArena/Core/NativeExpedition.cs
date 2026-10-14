@@ -18,6 +18,7 @@ namespace ChipArena.UnityConversion
                 instances=instances?.Select(i=>i.Copy()).ToArray(),members=new[]{new ExpeditionMember{account=host,weapon=weapon,connected=true}}});
         }
         public ExpeditionSnapshot Snapshot()=>s.Copy();
+        public double Elapsed=>s.elapsed;
         public bool Migrating=>handoff!=null;
         public bool FinalUnlocked=>s.instances.All(i=>i.cleared);
         public bool ExtractionUnlocked=>s.instances.Any(i=>i.cleared)||s.loop>0;

@@ -1,6 +1,12 @@
 # Chip Arena — current state
 
+2026-10-14 DEV panel / DEV Abuse UI: `claude/dev-tools` (base shared `09096af`, merged shared `1e22711`, which includes PR #208 and #209) replaces the sandbox list with a cyber DEV panel (F3; nine tabs) and adds Settings · Developer · DEV Abuse (verified devs, off by default). Commands go through Astra's `SendDevCommand`; the reveal, pills, DEV time, hazard pulses and the no-progression note come from replicated state. View tools are read-only. Managed/relay checks pass; Unity Editor/Windows/two-client unrun. Pushed, not merged. See docs/DEV-TOOLS.md and DEV_LOG.
+
+Expedition follow-ups (`codex/expedition-live-integration`, Claude base `22c14c2`): purchase/sold/privacy, door/name/clock contract and 20 Hz projection implemented. Authored scene/director and endpoint migration remain absent; see `EXPEDITION-PRESENTATION.md`.
+
 2026-10-14 DEV Abuse authority: `codex/dev-abuse-authority` on shared `09096aff` adds verified developer guest/host commands, bounded arguments/rate/dedup, match-only effects, reveal/clock/status replication, local audit and progression exclusion. Claude UI remains separate; contract: docs/DEV-ABUSE-AUTHORITY.md. Focused (82 assertions) and full managed/relay (677 groups) checks pass. Actual Unity/Windows/live multiplayer acceptance and compiled publication remain unrun.
+
+2026-10-14 Expedition live presentation: `claude/expedition-live` (base shared `3c836c4`, merged shared `c134dc2`) draws the Expedition HUD, screens and 3D world pieces whenever a session is bound (host or guest; nothing binds one yet, no menu entry), with guest Pending/Accepted/Confirmed/Refused/Failed, continue votes, caches, pick history, reprint quotes, world-boss dice and honest transfer metrics. Managed/relay checks pass; Unity Editor/Windows/two clients unrun. Astra follow-ups (purchase intent, door anchors, private anchors, display names, deadline clock): docs/EXPEDITION-PRESENTATION.md.
 
 2026-10-14 Expedition integration bridge: `codex/expedition-integration` on `65f9f131` adds opt-in room replication/private views, authenticated guest commands, catalog/save/reprint adapters, persistent anchors, final-boss rewards and individual continue choices. PR #207; focused and full managed/relay checks pass (674 groups before the independent Hulk-motion merge). No playable scene or endpoint migration; native acceptance remains unrun. Runtime entry points and exact remaining dependencies: docs/EXPEDITION-INTEGRATION.md.
 

@@ -43,7 +43,9 @@ namespace ChipArena.UnityConversion
         {
             string id=EventKey("chest:"+chestGeneration);var buyer=Member(account);
             if(!Mutable||!Live(buyer)||price<1||buyer.wallet<price||!Key(chestGeneration)||!Key(id)||s.rewards.Length>=ExpeditionValidation.MaxRecords||s.rewards.Any(r=>r.id==id))return false;
-            buyer.wallet-=price;s.rewards=Add(s.rewards,new ExpeditionReward{id=id,source="chest",owner=account});Changed();return true;
+            buyer.wallet-=price;s.rewards=Add(s.rewards,new ExpeditionReward{id=id,source="chest",owner=account});
+            foreach(var offer in s.chests.Where(c=>c.generation==chestGeneration))offer.sold=true;
+            Changed();return true;
         }
 
         public bool IssueCatchup(string account)

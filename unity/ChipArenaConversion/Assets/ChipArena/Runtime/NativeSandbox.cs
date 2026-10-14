@@ -41,59 +41,83 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ConversionGame
     {
-        private int wardSandboxEntry;private bool sandboxWanted;private string sandboxSearch="",dummySpec="pistol",dummyKey="ai",sandboxTarget="dummy",sandboxSort="rarity";private float sandboxSpeed=1;
+        private int wardSandboxEntry;private bool sandboxWanted;private string dummySpec="pistol",dummyKey="ai";private float sandboxSpeed=1;
         // main.ts drawSandbox's arena row, previews and DEBRIS LAUNCHER (8 kg at 15 m/s by default, up to 150 kg, wood /
         // stone / metal); the impact choice is NativeSandboxTools' face / edge / corner orientation.
         private string previewRarity="common",debrisMaterial="wood",debrisImpact="face";private float debrisMass=8,debrisSpeed=15;private string[] previewRarities,previewRarityNames;
-        // Sandbox tools (pause menu of a developer sandbox match, started from the home screen's Developer Sandbox link).
-        private void SandboxBody()
+        // The DEV panel's sandbox routes (NativeDevPanel.cs draws the panel; Core NativeDevActions lists every action). Each
+        // case is the call the old pause-menu Sandbox Tools list made, with the same arguments and limits; the panel reaches it
+        // only when NativeDevActions says it runs in the sandbox (a developer's offline Developer Sandbox, SandboxAllowed on
+        // the authority). Returns the status line's verdict: the bool calls report a refusal, the void ones that they ran.
+        private const string DevRan="ran in the sandbox",DevRefused="refused by the sandbox";
+        private static readonly string[] DummyInputs={"ai","primary","e","q","block","dash","jump","1","2","3","4","mode"};
+        private static readonly string[] DebrisMaterials={"wood","stone","metal"},DebrisImpacts={"face","edge","corner"};
+        // The presentation galleries (presentation only, sandbox only, as before): the gallery action, and its button when off / on.
+        private static readonly string[] DevGalleries={"gallery-minions","gallery-cyber-jump","gallery-saw","gallery-revive","gallery-chip-select"};
+        private static readonly string[] DevGalleryShow={"Preview Siren Minions","Preview Cyber Double Jump","Preview Saw Split","Preview Revive","Preview Chip Selecting"};
+        private static readonly string[] DevGalleryHide={"Hide Siren Minions","Hide Cyber Double Jump","Hide Saw Split","Hide Revive","Hide Chip Selecting"};
+        private bool DevGalleryOn(int i)=>presentation!=null&&(i==0?presentation.MinionGallery:i==1?presentation.CyberBoostPreviewOn:i==2?presentation.SawSplitGallery:i==3?presentation.ReviveGallery:presentation.ChipSelectPreview);
+        private string DevRun(string id)
         {
-            if(arena?.Sandbox!=true||!account.Developer||Online)return;
-            Field("Simulation");sandboxSpeed=Slider("Simulation speed",sandboxSpeed,.1f,2);Time.timeScale=sandboxSpeed;Time.fixedDeltaTime=1f/60;
-            arena.SafeMode=GUILayout.Toggle(arena.SafeMode,"Safe mode — player retains 1 HP");arena.DummyRespawn=Mathf.Round(Slider("Dummy respawn seconds (0 disables)",arena.DummyRespawn,0,30));arena.SandboxRepeat=Mathf.Round(Slider("Repeat cast seconds (0 disables)",arena.SandboxRepeat,0,60));if(arena.SandboxRepeat>0)arena.SandboxRepeat=Math.Max(2,arena.SandboxRepeat);
-            Field("Dummy weapon");dummySpec=ChoiceGrid(content.weapons.Where(AllowedWeapon).Select(w=>w.id).ToArray(),dummySpec);Field("Dummy input");dummyKey=ChoiceGrid(new[]{"ai","primary","e","q","block","dash","jump","1","2","3","4","mode"},dummyKey);if(GUILayout.Button("Make dummy cast",button)){arena.SandboxCast(dummySpec,dummyKey);menu=false;}
-            Field("Target");sandboxTarget=ChoiceGrid(new[]{"self","dummy"},sandboxTarget);GUILayout.BeginHorizontal();foreach(string action in new[]{"restore","hit","down","summons","vent"})if(GUILayout.Button(action,button)){arena.SandboxAction(action,sandboxTarget=="self");menu=false;}GUILayout.EndHorizontal();
-            // Restore (every pilot, as the source's heal), Arena Reset and Test Block.
-            Field("Arena");GUILayout.BeginHorizontal();
-            if(arena.Map.look=="quarantine")
+            var kit=presentation?.Structures;var entries=NativeArena.StageContent.entries;
+            switch(id)
             {
-                var entries=NativeArena.StageContent.entries;wardSandboxEntry=Math.Max(0,Math.Min(entries.Length-1,wardSandboxEntry));
-                GUILayout.BeginHorizontal();if(GUILayout.Button("Previous entry",button))wardSandboxEntry=(wardSandboxEntry+entries.Length-1)%entries.Length;
-                GUILayout.Label(entries[wardSandboxEntry].id+" / "+entries[wardSandboxEntry].kind);
-                if(GUILayout.Button("Next entry",button))wardSandboxEntry=(wardSandboxEntry+1)%entries.Length;
-                if(GUILayout.Button("Spawn entry",button)){arena.SandboxWardEntry(entries[wardSandboxEntry].e);menu=false;}GUILayout.EndHorizontal();
+                // Pilot (self) and the dummy: restore, hit (18), down, enemy summons, the Siren vent dive.
+                case "me-restore":arena.SandboxAction("restore",true);return DevRan;
+                case "me-hit":arena.SandboxAction("hit",true);return DevRan;
+                case "me-down":arena.SandboxAction("down",true);return DevRan;
+                case "me-summons":arena.SandboxAction("summons",true);return DevRan;
+                case "me-vent":arena.SandboxAction("vent",true);return DevRan;
+                case "dummy-restore":arena.SandboxAction("restore");return DevRan;
+                case "dummy-hit":arena.SandboxAction("hit");return DevRan;
+                case "dummy-down":arena.SandboxAction("down");return DevRan;
+                case "dummy-summons":arena.SandboxAction("summons");return DevRan;
+                case "dummy-vent":arena.SandboxAction("vent");return DevRan;
+                // My weapon (the sandbox's own configure: it resets the arena), the dummy's cast and the bots' difficulty.
+                case "me-weapon":return arena.SandboxConfigure(weapon:devWeapon)?DevRan:DevRefused;
+                case "dummy-cast":arena.SandboxCast(dummySpec,dummyKey);return DevRan;
+                case "dummy-difficulty":return arena.SandboxConfigure(difficulty:devDifficulty)?DevRan:DevRefused;
+                case "dummy-respawn":arena.DummyRespawn=Mathf.Round(Mathf.Clamp(devRespawn,0,30));return DevRan;
+                case "dummy-repeat":arena.SandboxRepeat=Mathf.Round(Mathf.Clamp(devRepeat,0,60));if(arena.SandboxRepeat>0)arena.SandboxRepeat=Math.Max(2,arena.SandboxRepeat);return DevRan;
+                // Chips on the Chips tab's target, one at a time (the sandbox keeps the content's max and eligibility).
+                case "chip-add":arena.SandboxChip(devChipSeat,devChipId,1);return DevRan;
+                case "chip-remove":arena.SandboxChip(devChipSeat,devChipId,-1);return DevRan;
+                case "chip-cast":return arena.SandboxCastChip(devChipId)?DevRan:DevRefused;
+                case "chip-cycle":arena.SandboxCastEveryChip();return DevRan;
+                // Arena: Restore (every pilot, as the source's heal), Arena Reset, Test Block, the map, Ward Zero's entries.
+                case "restore-all":arena.SandboxAction("restore",true);arena.SandboxAction("restore");return DevRan;
+                case "arena-reset":arena.SandboxReset();return DevRan;
+                case "test-block":arena.SandboxTestBlock();return DevRan;
+                case "load-map":return arena.SandboxConfigure(map:devMap)?DevRan:DevRefused;
+                case "ward-spawn":if(arena.Map.look!="quarantine"||entries.Length==0)return DevRefused;wardSandboxEntry=Math.Max(0,Math.Min(entries.Length-1,wardSandboxEntry));return arena.SandboxWardEntry(entries[wardSandboxEntry].e)?DevRan:DevRefused;
+                // DEBRIS LAUNCHER: 1-150 kg, 1-100 m/s, wood / stone / metal, face / edge / corner.
+                case "debris":debrisMass=Mathf.Round(Mathf.Clamp(debrisMass,1,150));debrisSpeed=Mathf.Round(Mathf.Clamp(debrisSpeed,1,100));return arena.SandboxLaunchDebris(debrisMass,debrisSpeed,debrisMaterial,debrisImpact)?DevRan:DevRefused;
+                // Destruction effects preview (NativeStructureFxPresentation.cs): presentation only, nothing is added to the match.
+                case "fx-collapse":if(kit==null)return DevRefused;PreviewCollapse(kit);return DevRan;
+                case "fx-bursts":if(kit==null)return DevRefused;{Vector3 spot=StructureSpot();kit.PreviewBursts(arena,spot,Quaternion.Euler(0,yaw,0)*Vector3.right);}return DevRan;
+                case "fx-clear":if(kit==null)return DevRefused;kit.Clear();return DevRan;
+                // Preview Draft, Preview Rarities (a draft of the chosen tier), Preview Knockout (the dummy) and Preview My Death.
+                case "preview-draft":arena.SandboxPreview("draft");return DevRan;
+                case "preview-rarity":arena.SandboxPreview("rarity",previewRarity);return DevRan;
+                case "preview-knockout":arena.SandboxPreview("knockout");return DevRan;
+                case "preview-death":arena.SandboxPreview("my-death");return DevRan;
+                // The galleries: the Siren minion kinds (NativeHordeKindPresentation.cs), the Cyber Lord's second-jump boost
+                // (NativeCyberLordPresentation.cs), the saw split (NativeBisectPresentation.cs), the holographic revive
+                // (NativeReviveHoloPresentation.cs) and PvE chip selection (NativeChipSelectPresentation.cs). Presentation only.
+                case "gallery-minions":presentation.MinionGallery=!presentation.MinionGallery;return DevRan;
+                case "gallery-cyber-jump":presentation.CyberBoostPreviewOn=!presentation.CyberBoostPreviewOn;return DevRan;
+                case "gallery-saw":presentation.SawSplitGallery=!presentation.SawSplitGallery;return DevRan;
+                case "gallery-revive":presentation.ReviveGallery=!presentation.ReviveGallery;return DevRan;
+                case "gallery-chip-select":presentation.ChipSelectPreview=!presentation.ChipSelectPreview;return DevRan;
+                // The reveal moment on my own pilot, locally (no seat is revealed: devRevealed is the host's, docs/DEV-TOOLS.md).
+                case "preview-reveal":DevRevealStart(arena.Local.Seat.id,arena.Local.Seat.name,true);return DevRan;
+                // Hazards: the vent fall's splat delay (sandbox only, 1-30 s).
+                case "splat-delay":arena.SandboxSplatDelay=Mathf.Round(Mathf.Clamp(devSplat,1,30));return DevRan;
+                // Simulation speed (.1-2, NativeSandboxTools) and safe mode (the player keeps 1 HP).
+                case "time-scale":SetSandboxTimeScale(devSpeed);Time.fixedDeltaTime=1f/60;return DevRan;
+                case "safe-mode":arena.SafeMode=!arena.SafeMode;return DevRan;
             }
-            if(GUILayout.Button("Restore",button)){arena.SandboxAction("restore",true);arena.SandboxAction("restore");menu=false;}
-            if(GUILayout.Button("Arena Reset",button)){arena.SandboxReset();menu=false;}
-            if(GUILayout.Button("Test Block",button)){arena.SandboxTestBlock();menu=false;}
-            GUILayout.EndHorizontal();
-            // Preview Draft, Preview Rarities (a draft of the chosen tier), Preview Knockout (the dummy) and Preview My Death.
-            Field("Previews");if(previewRarities==null){var tiers=content.rarities.OrderBy(r=>NativeChipRanks.RarityRank(r.id)).ToArray();previewRarities=tiers.Select(r=>r.id).ToArray();previewRarityNames=tiers.Select(r=>r.name).ToArray();}
-            GUILayout.BeginHorizontal();
-            if(GUILayout.Button("Preview Draft",button)){arena.SandboxPreview("draft");menu=false;}
-            if(GUILayout.Button("Preview Rarities",button)){arena.SandboxPreview("rarity",previewRarity);menu=false;}
-            if(GUILayout.Button("Preview Knockout",button)){arena.SandboxPreview("knockout");menu=false;}
-            if(GUILayout.Button("Preview My Death",button)){arena.SandboxPreview("my-death");menu=false;}
-            // The Siren minion gallery (NativeHordeKindPresentation.cs): every kind looping its set before you, presentation only.
-            if(GUILayout.Button(presentation.MinionGallery?"Hide Siren Minions":"Preview Siren Minions",button)){presentation.MinionGallery=!presentation.MinionGallery;menu=false;}
-            // The Cyber Lord's second-jump boost (NativeCyberLordPresentation.cs): shown on your own jumps until the rules grant the air jump.
-            if(GUILayout.Button(presentation.CyberBoostPreviewOn?"Hide Cyber Double Jump":"Preview Cyber Double Jump",button)){presentation.CyberBoostPreviewOn=!presentation.CyberBoostPreviewOn;menu=false;}
-            // Ranged mode now runs through the real sandbox authority, inputs, damage and replicas.
-            GUILayout.Label("Cyber Lord: 5 switches mode; LMB and 1-4 use the active kit",button);
-            // The saw split (NativeBisectPresentation.cs): a stand-in of you split by a phantom blade on a loop, presentation only.
-            if(GUILayout.Button(presentation.SawSplitGallery?"Hide Saw Split":"Preview Saw Split",button)){presentation.SawSplitGallery=!presentation.SawSplitGallery;menu=false;}
-            // The holographic revive (NativeReviveHoloPresentation.cs): a wounded, gibbed or split stand-in of you revived on a loop.
-            if(GUILayout.Button(presentation.ReviveGallery?"Hide Revive":"Preview Revive",button)){presentation.ReviveGallery=!presentation.ReviveGallery;menu=false;}
-            // PvE chip selection (NativeChipSelectPresentation.cs): every pilot here raises its wrist display, with the tag, until hidden.
-            if(GUILayout.Button(presentation.ChipSelectPreview?"Hide Chip Selecting":"Preview Chip Selecting",button)){presentation.ChipSelectPreview=!presentation.ChipSelectPreview;menu=false;}
-            GUILayout.EndHorizontal();previewRarity=ChoiceGrid(previewRarities,previewRarity,previewRarityNames);
-            Field("Debris launcher");debrisMass=Mathf.Round(Slider("Mass (kg)",debrisMass,1,150));debrisSpeed=Mathf.Round(Slider("Speed (m/s)",debrisSpeed,1,100));
-            debrisMaterial=ChoiceGrid(new[]{"wood","stone","metal"},debrisMaterial);debrisImpact=ChoiceGrid(new[]{"face","edge","corner"},debrisImpact);
-            if(GUILayout.Button("Launch at Opponent",button)&&arena.SandboxLaunchDebris(debrisMass,debrisSpeed,debrisMaterial,debrisImpact))menu=false;
-            StructureFxRows();
-            Field("Chips");sandboxSort=ChoiceGrid(new[]{"name","rarity","installed"},sandboxSort);sandboxSearch=GUILayout.TextField(sandboxSearch,100);var target=sandboxTarget=="self"?arena.Local:arena.Pilots.FirstOrDefault(p=>p.Seat.bot);if(target==null)return;
-            foreach(var chip in content.chips.OrderBy(c=>sandboxSort=="rarity"?NativeChipRanks.RarityRank(c.rarity).ToString("D2"):sandboxSort=="installed"?(target.Seat.chips.ContainsKey(c.id)?"0":"1"):c.name).ThenBy(c=>c.name).Where(c=>sandboxSearch.Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries).All(term=>(c.name+" "+c.id+" "+c.description).IndexOf(term,StringComparison.OrdinalIgnoreCase)>=0)))
-            {target.Seat.chips.TryGetValue(chip.id,out int count);GUILayout.BeginHorizontal();GUILayout.Label(chip.name+" ×"+count,small);if(GUILayout.Button("+",GUILayout.Width(32)))arena.SandboxChip(target.Seat.id,chip.id,1);if(GUILayout.Button("−",GUILayout.Width(32)))arena.SandboxChip(target.Seat.id,chip.id,-1);GUILayout.EndHorizontal();}
+            return DevRefused;
         }
     }
 }

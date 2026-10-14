@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     // intent, an IExpeditionCommands sends it, and ExpeditionIntentTracker shows it as confirmed only once the authority's state (the
     // next ExpeditionView) reflects it. A refusal, a missing hook or a missing transport is shown as such, never as success.
 
-    public enum ExpeditionIntent { None, VoteExit, CancelExit, VoteExtraction, CancelExtraction, Extract, NextLoop, Claim, Select, Reprint, VoteContinue, CancelContinue }
+    public enum ExpeditionIntent { None, VoteExit, CancelExit, VoteExtraction, CancelExtraction, Extract, NextLoop, Claim, Select, Reprint, VoteContinue, CancelContinue, Purchase }
     public enum ExpeditionCommandState { Idle, Pending, Confirmed, Refused, Unavailable, Failed }
 
     [Serializable] public struct ExpeditionCommand
@@ -48,6 +48,7 @@ namespace ChipArena.UnityConversion
         public Func<string,string,bool> Eligible;
         /// <summary>The durable individual extraction transaction (save the tombstone, then publish). Pending on success.</summary>
         public Func<string,ExpeditionCommandResult> Extract;
+        public Func<string,string,ExpeditionCommandResult> Purchase;
         /// <summary>(payer, victim) to the machine cost after proximity/permission checks; below 1 refuses. Remote recovery flag out.</summary>
         public Func<string,string,(int cost,bool remote)> Reprint;
         public const string NoOffers="Chip offers need the content catalog adapter (not connected).";
@@ -75,6 +76,7 @@ namespace ChipArena.UnityConversion
                 case ExpeditionIntent.NextLoop:return run.Snapshot().host==Viewer?null:"Only the host starts the next loop.";
                 case ExpeditionIntent.Claim:return hooks.Offers==null?ExpeditionIntegrationHooks.NoOffers:null;
                 case ExpeditionIntent.Select:return hooks.Eligible==null?ExpeditionIntegrationHooks.NoEligibility:null;
+                case ExpeditionIntent.Purchase:return hooks.Purchase==null?"Purchases need the scene proximity adapter (not connected).":null;
                 case ExpeditionIntent.Reprint:return hooks.Reprint==null?ExpeditionIntegrationHooks.NoReprint:null;
                 case ExpeditionIntent.None:return "Nothing to send.";
                 default:return null;
@@ -94,6 +96,7 @@ namespace ChipArena.UnityConversion
                 case ExpeditionIntent.VoteContinue:ok=run.VoteContinue(Viewer,true);break;
                 case ExpeditionIntent.CancelContinue:ok=run.VoteContinue(Viewer,false);break;
                 case ExpeditionIntent.Extract:return hooks.Extract(Viewer);
+                case ExpeditionIntent.Purchase:return hooks.Purchase(Viewer,c.target);
                 case ExpeditionIntent.Claim:{var offers=hooks.Offers(Viewer,c.target);ok=offers!=null&&offers.Length>0&&run.Claim(Viewer,c.target,offers);break;}
                 case ExpeditionIntent.Select:{var eligible=hooks.Eligible;ok=run.Select(Viewer,c.target,c.chip,chip=>eligible(Viewer,chip));break;}
                 case ExpeditionIntent.Reprint:{var (cost,remote)=hooks.Reprint(Viewer,c.target);ok=cost>=1&&run.Reprint(Viewer,c.target,cost,remote);break;}
@@ -103,10 +106,13 @@ namespace ChipArena.UnityConversion
         }
     }
 
-    /// <summary>Guest sender. A reply can refuse immediately; success still requires the replicated view.</summary>
+    /// <summary>Guest sender. A reply can refuse immediately; success still requires the replicated view. An accepted reply only
+    /// says so (still Pending): ExpeditionIntentTracker confirms from the view, and an unanswered, unreflected send times out.</summary>
     public sealed class ExpeditionGuestCommands:IExpeditionCommands
     {
         public const string NoChannel="Guest commands need the Expedition command channel (not built yet).";
+        public const string SentToHost="Sent to the host · waiting for its reply.";
+        public const string AcceptedByHost="Accepted by the host · waiting for the state to show it.";
         public string Viewer{get;}
         private readonly Func<ExpeditionView> view;private readonly Action<ExpeditionCommandRequest> send;
         private readonly Dictionary<string,ExpeditionCommandRequest> latest=new Dictionary<string,ExpeditionCommandRequest>();
@@ -119,7 +125,7 @@ namespace ChipArena.UnityConversion
             var v=view();var request=new ExpeditionCommandRequest{run=v.run,epoch=v.epoch,transaction=Guid.NewGuid().ToString("N"),intent=c.intent,target=c.target,chip=c.chip};
             if(latest.TryGetValue(c.Key,out var old))replies.Remove(old.transaction);
             latest[c.Key]=request;
-            try{send(request);return ExpeditionCommandResult.Sent;}
+            try{send(request);return ExpeditionCommandResult.Of(ExpeditionCommandState.Pending,SentToHost);}
             catch(Exception e)when(e is InvalidOperationException||e is System.IO.IOException){return ExpeditionCommandResult.Of(ExpeditionCommandState.Failed,"Could not send to the Expedition host.");}
         }
         public void Reply(ExpeditionCommandReply reply)
@@ -128,6 +134,9 @@ namespace ChipArena.UnityConversion
             // Never trust an ACK to confirm a UI action without state reflection.
             if(reply.state==ExpeditionCommandState.Refused||reply.state==ExpeditionCommandState.Unavailable||reply.state==ExpeditionCommandState.Failed)
                 replies[reply.transaction]=ExpeditionCommandResult.Of(reply.state,reply.reason);
+            // Accepted (the host's Pending; a Confirmed reply is treated the same): shown as accepted, still waiting for the state.
+            else if(reply.state==ExpeditionCommandState.Pending||reply.state==ExpeditionCommandState.Confirmed)
+                replies[reply.transaction]=ExpeditionCommandResult.Of(ExpeditionCommandState.Pending,AcceptedByHost);
         }
         public ExpeditionCommandResult Result(ExpeditionCommand command)=>latest.TryGetValue(command.Key,out var request)&&replies.TryGetValue(request.transaction,out var result)?result:default;
     }
@@ -139,8 +148,8 @@ namespace ChipArena.UnityConversion
     /// <summary>What the viewer's view showed when an intent was sent, so its effect can be recognised after the run moves on.</summary>
     public struct ExpeditionIntentBaseline
     {
-        public int loop;public string area;public bool reward;
-        public static ExpeditionIntentBaseline Of(ExpeditionCommand c,ExpeditionView v)=>v==null?default:new ExpeditionIntentBaseline{loop=v.loop,area=v.area,reward=v.Reward(c.target)!=null};
+        public int loop;public string area, generation;public bool reward;
+        public static ExpeditionIntentBaseline Of(ExpeditionCommand c,ExpeditionView v)=>v==null?default:new ExpeditionIntentBaseline{loop=v.loop,area=v.area,reward=v.Reward(c.target)!=null,generation=v.chests.FirstOrDefault(o=>o.id==c.target)?.generation};
     }
 
     public sealed class ExpeditionIntentTracker
@@ -165,7 +174,10 @@ namespace ChipArena.UnityConversion
             if(view==null||!entries.TryGetValue(view.viewer+"|"+command.Key,out var e))return default;
             if(e.result.state==ExpeditionCommandState.Pending)
             {
-                var feedback=e.feedback?.Result(e.command)??default;if(feedback.Shown){e.result=feedback;return e.result;}
+                // A refusal or failure from the host shows at once; an accepted reply only updates the pending caption.
+                var feedback=e.feedback?.Result(e.command)??default;
+                if(feedback.Shown&&feedback.state!=ExpeditionCommandState.Pending){e.result=feedback;return e.result;}
+                if(feedback.state==ExpeditionCommandState.Pending)e.result.reason=feedback.reason;
                 bool extracted=e.command.intent==ExpeditionIntent.Extract&&view.mine.extracted;
                 if(Reflected(e.command,view,e.before))e.result=ExpeditionCommandResult.Of(ExpeditionCommandState.Confirmed,"Confirmed by the authority (revision "+view.revision+").");
                 else if(extracted)e.result.reason=AwaitingSave;
@@ -176,6 +188,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The latest intent sent under this command's key (a vote or its cancel), or None.</summary>
         public ExpeditionIntent Last(string viewer,ExpeditionCommand command)=>entries.TryGetValue(viewer+"|"+command.Key,out var e)?e.command.intent:ExpeditionIntent.None;
         public void Clear()=>entries.Clear();
+        /// <summary>A vote or its cancel: the authority can withdraw it later (a replacing vote, a downed or departed pilot).</summary>
+        public static bool IsVote(ExpeditionIntent i)=>i==ExpeditionIntent.VoteExit||i==ExpeditionIntent.CancelExit||i==ExpeditionIntent.VoteExtraction||
+            i==ExpeditionIntent.CancelExtraction||i==ExpeditionIntent.VoteContinue||i==ExpeditionIntent.CancelContinue;
 
         /// <summary>
         /// Whether the authority's view shows the intent's effect. A departure vote also counts once the party has left that
@@ -198,6 +213,7 @@ namespace ChipArena.UnityConversion
                 case ExpeditionIntent.CancelContinue:return !v.continueVotes.Contains(me);
                 case ExpeditionIntent.Claim:{var r=v.Reward(c.target);return r!=null?r.claimed:before.reward;}
                 case ExpeditionIntent.Select:{var r=v.Reward(c.target);return r!=null?r.consumed:before.reward;}
+                case ExpeditionIntent.Purchase:return before.generation!=null&&v.mine.rewards.Any(r=>r.source=="chest"&&r.id==before.loop+":"+before.area+":chest:"+before.generation);
                 case ExpeditionIntent.Reprint:return v.Member(c.target)?.alive==true;
                 default:return false;
             }

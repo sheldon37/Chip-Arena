@@ -8,8 +8,9 @@ namespace ChipArena.UnityConversion
     // DEV PREVIEW ONLY (Claude, 2026-10-14): the Expedition screens (NativeExpeditionPreviewScreen) over a real rules authority driven by
     // scripted scenarios (Core/NativeExpeditionPreview.cs). Shown in place of the main menu only when the player is started with
     // --ca-expedition-preview, in the style of --ca-dress-blocks; no menu button leads here and nothing about the Expedition mode
-    // becomes playable. Viewing as the host sends the host's own commands; any other viewer is a guest, whose controls say the
-    // guest command channel does not exist yet. Saves go to a temporary folder, deleted when the preview closes or a scenario loads.
+    // becomes playable. Viewing as the host sends the host's own commands; any other viewer is a guest on the preview's loopback
+    // command channel (the real guest sender and reply path, with latency). It binds no session: the live screens
+    // (NativeExpeditionLiveUI.cs) draw only for a bound one. Saves go to a temporary folder, deleted when the preview closes or a scenario loads.
     public sealed partial class ConversionGame
     {
         private static int expeditionPreviewFlag=-1;
