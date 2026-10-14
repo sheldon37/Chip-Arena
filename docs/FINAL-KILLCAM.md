@@ -17,6 +17,12 @@ It is presentation only. Branch `claude/final-killcam`; Unity code in `unity/Chi
 
 The normal killcam contract (`docs/KILLCAM-HANDOFF.md`) is unchanged for every death that is not the final kill.
 
+## Three-second start delay (2026-10-14)
+
+Final killcams now wait three real-time seconds before playback. The live camera remains visible during the wait; the final victim does not enter a normal killcam first. Replay history is pinned as soon as the final clip is selected. Ordinary non-final killcams keep their existing timing.
+
+The authority adds those three seconds to qualifying death-ending Results: 11.5 seconds for credited final kills and 8 seconds for local fallback clips (including practice, environmental deaths and draws). No-death, sandbox and cooperative results retain their existing timing. Clip fitting reserves the delay before choosing playback length, so the wait preserves the previous replay budget. The older duration descriptions below are historical.
+
 ## The final-kill rule (every client, from data it already has)
 
 Each client checks once, on the first frame where it sees the match phase go from Fight to Result. A late joiner never sees that step, so it skips. The candidates are the pilots' replicated death records.

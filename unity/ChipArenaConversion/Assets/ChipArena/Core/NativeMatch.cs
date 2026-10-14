@@ -110,18 +110,22 @@ namespace ChipArena.UnityConversion
             }
             else Result="Simultaneous knockout · replay this round; set progress stays";
             FinalVictim=FinalSeed=0;ResultAt=Time;HasFinalKillcam=true;
+            var roundDeaths=(RoundDeaths?.Invoke()??Enumerable.Empty<FinalKillCandidate>()).ToArray();
             if(FinalKillcams&&!Cooperative&&IsSandbox?.Invoke()!=true&&Winner!=0)
             {
                 var win=Seat(Winner);
                 // Select the latest opponent death first. An invalid final death must not fall back to an earlier kill.
-                var latest=(RoundDeaths?.Invoke()??Enumerable.Empty<FinalKillCandidate>())
+                var latest=roundDeaths
                     .Where(d=>Seat(d.Victim)!=null&&!SameSide(Seat(d.Victim),win)&&!double.IsNaN(d.At)&&!double.IsInfinity(d.At)&&d.At>=FightAt&&d.At<=Time+1e-4&&d.Seed>=0)
                     .OrderByDescending(d=>d.At).ThenByDescending(d=>d.Seed).FirstOrDefault();
                 var victim=Seat(latest.Victim);var killer=Seat(latest.Killer);
                 if(victim!=null&&Time-latest.At<=.5&&killer!=null&&!SameSide(killer,victim))
                 {FinalVictim=latest.Victim;FinalSeed=latest.Seed;}
             }
-            Phase=NativePhase.Result;PhaseEnd=Time+5+(FinalVictim!=0?FinalKillcamHold:0);
+            // Practice, environmental deaths and draws also have a locally selected final replay.
+            // Keep its pre-roll delay in the authority timeline so guests cannot advance early.
+            bool delayedFinal=!Cooperative&&IsSandbox?.Invoke()!=true&&roundDeaths.Any(d=>Seat(d.Victim)!=null&&(Winner==0||!SameSide(Seat(d.Victim),Seat(Winner)))&&d.At>=FightAt&&d.At<=Time+1e-4&&Time-d.At<=NativeFinalKillcam.Window);
+            Phase=NativePhase.Result;PhaseEnd=Time+5+(FinalVictim!=0?FinalKillcamHold:0)+(delayedFinal?NativeFinalKillcam.StartDelay:0);
         }
         // shared/teams.ts order for the native integer teams.
         public static readonly string[] TeamNames={"Red","Blue","Green","Yellow","Purple","Orange","Cyan","Pink"};

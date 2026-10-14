@@ -47,13 +47,13 @@ namespace ChipArena.UnityConversion
             // the clip into the Result time.
             var f=finalDeaths[pick];bool credited=NativeFinalKillcam.Credited(f,match.Teams),matchEnds=(!Online||Hosting)&&match.Seats.Any(s=>s.score>=match.SetsToWin);
             float history=replayFrames.Count>1?(float)(f.At-replayFrames[0].time):0;
-            if(!NativeFinalKillcam.Fit(NativeFinalKillcam.Available(match.PhaseEnd,match.Time,matchEnds),history,NativeFinalKillcam.Behind(match.Time,f.At),out var curve,out finalSkip)){Debug.Log("Final killcam skipped: "+finalSkip);return;}
+            if(!NativeFinalKillcam.Fit(NativeFinalKillcam.Available(match.PhaseEnd,match.Time+NativeFinalKillcam.StartDelay,matchEnds),history,NativeFinalKillcam.Behind(match.Time,f.At),out var curve,out finalSkip)){Debug.Log("Final killcam skipped: "+finalSkip);return;}
             var start=NativeFinalKillcam.Begin(replayRunning,replayDeath>=0,finalShown);if(start==NativeFinalKillcam.Start.Already)return;
             if(start==NativeFinalKillcam.Start.CutOver)EndReplay();
             finalSeed=f.Seed;finalShown=true;finalOn=true;finalCurve=curve;finalVictim=f.Victim;finalKiller=credited?f.Killer:0;finalSolo=!credited;
             // Everyone watches the final victim's recorded view, including the killer and spectators. Keep credit for
             // the labels separate from the camera; the normal killcam still selects its own view in ObserveReplay.
-            replayDeath=(float)f.At;replayWait=0;replayView=f.Victim;FinalLabels(matchEnds,f.Killer);
+            replayDeath=(float)f.At;replayWait=Time.unscaledTime+NativeFinalKillcam.StartDelay;replayView=f.Victim;FinalLabels(matchEnds,f.Killer);
             Debug.Log("Final killcam: "+(credited?"seat "+f.Killer+" on seat ":"final moments of seat ")+f.Victim+" · "+curve.Wall.ToString("0.00")+" s at x"+curve.Rate.ToString("0.00"));
         }
         private void FinalLabels(bool matchEnds,int source)
@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
             finalOutcome=match.Result??"";finalRound="ROUND "+match.Round+"  ·  SET "+match.Set;
         }
         /// <summary>RenderReplayFrame's start block, final killcam: the clip window from the fitted curve and the slowed
-        /// presentation. If history was trimmed since the pick (normally not: both run in one frame), refit to it.</summary>
+        /// presentation. If history was trimmed since the pick (normally not: FinalKeeps pins it during the delay), refit to it.</summary>
         private void FinalBegin()
         {
             float history=replayDeath-(float)replayFrames[0].time;

@@ -153,6 +153,10 @@ internal static class FinalKillcamChecks
     {
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/"+f));
         string replay=R("Runtime/NativeReplay.cs"),final=R("Runtime/NativeFinalKillcamPresentation.cs"),match=R("Core/NativeMatch.cs"),overlays=R("Runtime/NativeMatchOverlays.cs");
+        Check(NativeFinalKillcam.StartDelay==3,"three-second final delay");
+        Check(final.Contains("replayWait=Time.unscaledTime+NativeFinalKillcam.StartDelay;")&&final.Contains("NativeFinalKillcam.Available(match.PhaseEnd,match.Time+NativeFinalKillcam.StartDelay,matchEnds)"),"final playback reserves delay before fitting");
+        Check(replay.IndexOf("if(finalOn&&!replayRunning&&Time.unscaledTime<replayWait)return false;",StringComparison.Ordinal)<replay.IndexOf("if(!replayRunning&&replayDeath>=0&&",StringComparison.Ordinal),"final delay gates the normal early-start path");
+        Check(NativeFinalKillcam.Fit(NativeFinalKillcam.Available(31.5,20+NativeFinalKillcam.StartDelay,false),5.5f,NativeFinalKillcam.Behind(20,20),out var delayed,out _)&&Math.Abs(delayed.Wall-FinalKillcamCurve.Ideal.Wall)<1e-4f,"three-second delay retains ideal credited replay");
         // The normal killcam for every other death: the same arming (and only while no final kill is decided), the same
         // .6 s / 1.6 s start, the same 3 s + 1.25 s window at normal speed, the same KILL CAM frame.
         Check(replay.Contains("if(fresh){replaySeen=d.seed;if(NativeFinalKillcam.ArmNormal(finalSeed)&&replayWasAlive&&replayFrames.Count>1&&arena.Time-replayFrames[0].time>=.2f){replayDeath=d.at;replayWait=Time.unscaledTime+1.6f;replayView=d.owner>0?d.owner:p.Seat.id;}}"),"normal arming unchanged");

@@ -82,6 +82,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The round-ending death is at most this long before the first Result frame a client saw (the host
         /// resolves in the same step as the death; a guest's first Result frame is at most one 20 Hz send later).</summary>
         public const double Window=.5;
+        /// <summary>Seconds to leave the final death on the live camera before replay begins.</summary>
+        public const float StartDelay=3;
         /// <summary>Practice (offline Play vs Bots) shows the final killcam too: the owner wants it at the end of every round.</summary>
         public const bool InPractice=true;
         /// <summary>Wall seconds the round result keeps after the clip (its banner arrives over the hand-off flash).</summary>
