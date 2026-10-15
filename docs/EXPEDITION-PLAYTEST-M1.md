@@ -121,3 +121,13 @@ phase; 25% enters enrage; only the final phase death advances the Expedition.
 Boss damage/threshold/possession money goes to the Expedition wallet. Scaling
 uses the existing Expedition spawn multiplier; victory/area progression stays
 with the director. Native acceptance exercises both encounters through all phases.
+
+Owner acceptance update (2026-10-15): open a queued chip with C and try moving
+the mouse horizontally and vertically, both with and without Alt. Yaw/pitch must
+stay fixed; an existing lock-on must not track a moving target. Digits and Alt-click
+still select. After the final selection, keep trying to look while the tray is gone:
+the camera stays held until the wrist plant completes (Install + 1.95 s), then
+normal look resumes. Choose later before the final pick releases immediately.
+Damage and world/run clocks continue throughout. Native M1 acceptance and source
+checks enforce the corresponding authority and input gates; Windows visual
+acceptance remains required.
