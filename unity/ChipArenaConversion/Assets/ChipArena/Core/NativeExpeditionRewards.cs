@@ -66,6 +66,22 @@ namespace ChipArena.UnityConversion
             reward.owner=account;reward.claimed=true;reward.offers=(string[])offers.Clone();Changed();return true;
         }
 
+        // Choosing is presentation presence only: no movement/action lock, damage immunity or clock pause.
+        public bool IsChoosing(string account)
+        {var p=Member(account);return Mutable&&Live(p)&&p.choosing;}
+        public bool IsChoosingSeat(int seat,Func<string,int> seatOf)
+        {
+            if(!Mutable||seatOf==null)return false;
+            foreach(var p in s.members)if(p.choosing&&Live(p)&&seatOf(p.account)==seat)return true;
+            return false;
+        }
+        public bool SetChoosing(string account,bool open,string rewardId=null)
+        {
+            var p=Member(account);if(!Running||p==null)return false;
+            if(open&&(!Mutable||!Live(p)||!s.rewards.Any(r=>r.owner==account&&r.claimed&&!r.consumed&&(rewardId==null||r.id==rewardId))))return false;
+            if(p.choosing!=open){p.choosing=open;Changed();}return true;
+        }
+
         /// <summary>Authority supplies catalog eligibility at selection time; pending selections may change exclusions.</summary>
         public bool Select(string account,string rewardId,string chip,Func<string,bool> eligible)
         {
@@ -75,7 +91,7 @@ namespace ChipArena.UnityConversion
             var held=p.chips.FirstOrDefault(c=>c.id==chip);
             if(held!=null&&held.count>=100000||held==null&&p.chips.Length>=2048)return false;
             if(held==null)p.chips=Add(p.chips,new ChipCount{id=chip,count=1});else held.count++;
-            reward.selected=chip;reward.consumed=true;Changed();return true;
+            reward.selected=chip;reward.consumed=true;if(!s.rewards.Any(r=>r.owner==account&&r.claimed&&!r.consumed))p.choosing=false;Changed();return true;
         }
     }
 }

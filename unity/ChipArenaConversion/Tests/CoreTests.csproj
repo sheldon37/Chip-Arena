@@ -7,6 +7,12 @@
     <DefineConstants>ARENA_TESTS</DefineConstants>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <!-- Every method compiled once, fully, on its first call: no tier-0 code, on-stack replacement or re-JIT while a
+         check runs. The 145 "allocates nothing per frame" checks read GC.GetAllocatedBytesForCurrentThread around loops;
+         with tiering on, an OSR compile of the measuring method (and the static constructors it runs) could land inside
+         that window on CI and count as the code's (BlockLookChecks 680 bytes, GunMotionChecks 5328, AuditorHaloChecks 5024
+         on 2026-10-15; each passed on rerun). -->
+    <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
   <ItemGroup><Compile Include="../Assets/ChipArena/Core/*.cs" /></ItemGroup>
   <ItemGroup><Compile Include="../Assets/ChipArena/Editor/NativeTunnelBuild.cs" /></ItemGroup>

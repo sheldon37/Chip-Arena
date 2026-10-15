@@ -20,6 +20,14 @@ namespace ChipArena.UnityConversion
     {
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Block looks: "+what);count++;}
+        // The coat's frames are measured in their own method after one warm pass: measured inline in Run (a long iterator), a
+        // runtime compile on this thread inside the window (tiering or on-stack replacement of the iterator, and the static
+        // constructors an optimising compile runs) counted as the coat's (CI, 680 bytes on 23c701d; it passed locally and on
+        // earlier heads). A coat that allocates per frame still allocates on the measured pass.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static long CoatFrameBytes(NativeDustCoat coat){CoatFrames(coat);long before=GC.GetAllocatedBytesForCurrentThread();CoatFrames(coat);return GC.GetAllocatedBytesForCurrentThread()-before;}
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void CoatFrames(NativeDustCoat coat){for(int i=0;i<300;i++){coat.At(i*.1);coat.Local(i%30-15,0);}coat.At(-1);coat.At(30);}
         private static double Lin(int c)=>c/255.0<=.04045?c/255.0/12.92:Math.Pow((c/255.0+.055)/1.055,2.4);
         public static IEnumerable<string> Run(string root,ConversionContent content)
         {
@@ -303,7 +311,7 @@ namespace ChipArena.UnityConversion
                 a.Land(12,4,4,6,.7f);b.Land(12,4,4,6,.7f);a.At(20);b.At(20);bool same=a.Wide==b.Wide;for(float x=-40;x<=40;x+=1.3f)for(float z=-40;z<=40;z+=1.7f)same&=Math.Abs(a.Local(x,z)-b.Local(x,z))<1e-5f;Check(same,"the coat does not depend on the order entries arrive in (to float rounding)");
                 a.At(5);b.At(29.9);b.At(5);same=true;for(float x=-40;x<=40;x+=1.3f)for(float z=-40;z<=40;z+=1.7f)same&=Math.Abs(a.Local(x,z)-b.Local(x,z))<1e-5f;Check(same,"stepping back to a clock gives the coat built straight to it");
                 var big=new NativeDustCoat();for(int i=0;i<NativeDustCoat.BreakSlots+88;i++)big.Break(i*.05,(i%40)-20,0,(i/40)-8);big.At(1000);Check(big.Breaks==NativeDustCoat.BreakSlots&&big.Sample(0,0)>0,"breaks past the slots fold into the base");
-                big.At(0);long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<300;i++){big.At(i*.1);big.Local(i%30-15,0);}big.At(-1);big.At(30);long after=GC.GetAllocatedBytesForCurrentThread();Check(after==before,"the coat allocates nothing per frame ("+(after-before)+" bytes)");
+                big.At(0);long bytes=CoatFrameBytes(big);Check(bytes==0,"the coat allocates nothing per frame ("+bytes+" bytes)");
             }
             Check(NativeDustCoat.Global=="_ArenaDustCoat"&&shader.Contains("float _ArenaDustCoat;")&&shader.Contains("saturate(_ArenaDust+"+G(NativeDustCoat.WideShare)+"*_ArenaDustCoat+dust)"),"the shader adds the map base, .6 x the map-wide level and the block's own coat");
             Check(NativeBlockLooks.FlashFalloff(0,8)==1&&NativeBlockLooks.FlashFalloff(8,8)==0&&NativeBlockLooks.FlashFalloff(9,8)==0&&NativeBlockLooks.FlashFalloff(1,0)==0&&NativeBlockLooks.FlashFalloff(7.99,8)<.002,"flash fall-off 1 at the flash, 0 at its range, continuous at the cut");

@@ -372,3 +372,17 @@ These fields are public for all viewers, including late joiners; private rewards
 Claude: bind the SAFE tags, arrival effects and boss bar to these fields. The presentation is not changed here.
 The authored playable scene/combat adapter and its session binding remain separate unfinished integration work;
 this change does not claim Expedition is playable.
+
+
+## Chip screen authority contract — 2026-10-15
+
+For `claude/expedition-chip-screen`, use the existing authenticated `ExpeditionCommands` channel:
+
+- On opening a pending personal pick, send `new ExpeditionCommand(ExpeditionIntent.OpenChoice, rewardId)`. The target is optional (any claimed, unconsumed personal reward then suffices). Opening another account's reward, an empty queue, or opening during loading is refused.
+- On closing the chip screen (C, Escape, cancellation, or UI teardown), send `new ExpeditionCommand(ExpeditionIntent.CloseChoice)`. This is idempotent and may close during loading. Do not open choosing merely because a reward was collected or the J board is visible.
+- Read `view.Member(account).choosing` / `view.members[].choosing` for the wrist hologram. This is a public boolean only: offers, wallet, held chips and machine/catch-up rewards remain private. Existing guest request run/epoch/authentication and transaction replay protections apply.
+- Owner correction: choosing is informational only. Do not freeze pilots or cancel movement, attacks, abilities, block, roll or machine interaction because the chip screen is open. Pilots remain vulnerable to ordinary damage; enemies, teammates, difficulty and run clock continue. The chip screen must not add a choosing-based gameplay input lock. Current selection remains open across queued picks; consuming the final claimed reward clears the flag automatically. Close, death, disconnect, extraction, area loading and save resume clear it.
+- Successful `Select` emits exactly one ordinary arena `EventKind.Install`, with the selecting pilot as owner/target, current position, chip id, and resulting stack count. Refused/repeated selections emit none. Inventory synchronization and snapshot restoration do not replay installs.
+- Notices now say C for chip choices; J still opens the Expedition board. The C key and screen/hologram bindings belong to Claude's presentation branch and were not present on shared when this authority patch was authored.
+
+Optional Boss Test offer parity (implemented/Siren filtering, tier weights, money chips, stale-offer reroll) and tiered physical machine pickups remain deferred. Existing Expedition offer/economy rules are unchanged.

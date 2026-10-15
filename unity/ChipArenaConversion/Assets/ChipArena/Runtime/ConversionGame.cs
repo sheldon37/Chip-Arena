@@ -460,7 +460,7 @@ namespace ChipArena.UnityConversion
         private void Catalogue()
         {
             Fine("Reference catalogue: the source's weapons and Chips. Importing a definition does not enable its mechanic.");Field("Search");search=GUILayout.TextField(search);
-            foreach(var w in content.weapons.Where(w=>(w.name+" "+w.id).IndexOf(search,StringComparison.OrdinalIgnoreCase)>=0)){GUILayout.Label(w.name+(w.devOnly?" — signed unlock required":""),label);GUILayout.Label(w.description,small);}
+            foreach(var w in content.weapons.Where(w=>(w.name+" "+w.id).IndexOf(search,StringComparison.OrdinalIgnoreCase)>=0)){GUILayout.Label(w.name+(w.devOnly?" — signed unlock required":""),label);GUILayout.Label(NativeLoadoutText.Text(w),small);}
             foreach(var c in content.chips.Where(c=>(c.name+" "+c.description).IndexOf(search,StringComparison.OrdinalIgnoreCase)>=0)){GUILayout.Label(c.name+"  /  "+c.rarity+(NativeArena.ImplementedChip(c)?"  /  draft enabled":"  /  pending"),label);GUILayout.Label(c.description,small);}
         }
         // The pilot board (G / Tab) at the top right, where the source keeps scores: each row opens that pilot's build.
