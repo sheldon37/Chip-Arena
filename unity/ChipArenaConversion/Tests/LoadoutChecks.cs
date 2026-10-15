@@ -35,8 +35,10 @@ internal static class LoadoutChecks
         yield return "Weapon card stat lines match the source's specialization chips for all 15 weapons, the Bow's draw range and the DEV Cyber Lord's jab, in any locale";
         var hinted=data.weapons.Where(w=>NativeLoadoutText.Description(w).EndsWith(" Projectiles fall; aim higher at range.",StringComparison.Ordinal)).Select(w=>w.id).ToArray();
         if(string.Join(",",hinted)!="pistol,rifle,machinegun,fire,water,lightning,darkness,bow")throw new Exception("Gravity hint weapons: "+string.Join(",",hinted));
-        if(data.weapons.Any(w=>!NativeLoadoutText.Description(w).StartsWith(w.description,StringComparison.Ordinal)))throw new Exception("Descriptions must stay verbatim");
-        yield return "Descriptions stay verbatim and only the eight falling-projectile weapons (the Bow's arrows too) get the aim-higher hint";
+        // Verbatim, except the DEV Cyber Lord's: its content still names the v1 kit, so the menus show Kit v2's (NativeCyberLordText).
+        if(data.weapons.Any(w=>w.id!=CyberLordSpec.Id&&!NativeLoadoutText.Description(w).StartsWith(w.description,StringComparison.Ordinal)))throw new Exception("Descriptions must stay verbatim");
+        if(NativeLoadoutText.Description(data.Weapon(CyberLordSpec.Id))!=NativeCyberLordText.Description||!NativeCyberLordText.Description.Contains("Q Uplink; E Overclock"))throw new Exception("The Cyber Lord's description shows Kit v2: "+NativeLoadoutText.Description(data.Weapon(CyberLordSpec.Id)));
+        yield return "Descriptions stay verbatim (the DEV Cyber Lord's shows Kit v2) and only the eight falling-projectile weapons (the Bow's arrows too) get the aim-higher hint";
         string List(string c,bool developer,Func<ContentWeapon,bool> allows)=>string.Join(",",data.weapons.Where(w=>NativeLoadoutText.InClass(w,c,developer,allows(w))).Select(w=>w.id));
         void Expect(string what,string actual,string wanted){if(actual!=wanted)throw new Exception(what+": "+actual+" expected "+wanted);}
         Func<ContentWeapon,bool> guest=w=>!w.devOnly,dev=w=>true,granted=w=>!w.devOnly||w.id=="siren";

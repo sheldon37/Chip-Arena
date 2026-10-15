@@ -178,6 +178,10 @@ namespace ChipArena.UnityConversion
         private static AbilityOption FromContent(ContentAbility a,ContentWeapon w)
         {
             bool hold=a.kind=="ads";
+            // The DEV Cyber Lord's Q, E and 1-3 show Kit v2, the shipped kit (NativeCyberLordText, CyberKit2Spec: the HUD cards'
+            // names, art icons, cooldowns and costs) over the v1 strings its content still carries; the content id stays.
+            int k2=NativeCyberLordText.Slot(w,a);
+            if(k2>=0)return new AbilityOption{Id=a.id,Name=CyberKit2Spec.Names[k2],Text=NativeCyberLordText.Texts[k2],Icon=CyberKit2Spec.Icons[k2],Cooldown=CyberKit2Spec.Cooldowns[k2],Cost=CyberKit2Spec.Costs[k2],Meta=Meta(CyberKit2Spec.Cooldowns[k2],CyberKit2Spec.Costs[k2],CostUnit(w),false)};
             return new AbilityOption{Id=a.id,Name=a.name,Text=a.text,Icon=AbilityIcon(a.id,w),Cooldown=a.cooldown,Cost=a.cost,Meta=Meta(a.cooldown,a.cost,CostUnit(w),hold)};
         }
         /// <summary>What a weapon's abilities spend: melee kits stamina, the rest mana; the DEV Cyber Lord is a melee class whose

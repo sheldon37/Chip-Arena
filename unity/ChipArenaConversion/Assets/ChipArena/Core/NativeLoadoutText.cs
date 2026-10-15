@@ -33,7 +33,10 @@ namespace ChipArena.UnityConversion
             }
             return (fallback??first)?.id??current;
         }
-        public static string Description(ContentWeapon w)=>(w?.description??"")+(w!=null&&w.gravity>0?" Projectiles fall; aim higher at range.":"");
+        public static string Description(ContentWeapon w)=>Text(w)+(w!=null&&w.gravity>0?" Projectiles fall; aim higher at range.":"");
+        // The weapon's description as the menus show it: content's, verbatim, except the DEV Cyber Lord's, whose content still
+        // names its v1 kit (NativeCyberLordText.Description: Kit v2, the shipped kit).
+        public static string Text(ContentWeapon w)=>w==null?"":w.id==CyberLordSpec.Id?NativeCyberLordText.Description:w.description??"";
         // The weapon tiles' info strip (shown on hover, under the grid): a one-line role drawn from each description, without
         // ability names so it stays true as kits change. Another weapon shows its description's first sentence.
         public static string Role(ContentWeapon w)
@@ -72,6 +75,50 @@ namespace ChipArena.UnityConversion
             if(w.cost!=0)s+=" · "+w.cost.ToString(inv)+(melee?" STAMINA":" MANA");
             if(melee)s+=" · "+w.range.ToString(inv)+" M";
             return s;
+        }
+    }
+
+    /// <summary>
+    /// The DEV Cyber Lord's menu text for Kit v2, the shipped kit (Astra's authority, PR #231; the names, keys, icons, cooldowns
+    /// and costs from CyberKit2Spec, docs/CYBER-LORD.md "Kit v2"). Astra's content (GameContent.json from
+    /// tools/native-content.json) still carries the v1 kit's names and text under its v1 ids (data-dash, firewall, packet-burst,
+    /// siphon-link, system-crash), so the presentation shows these in their place: the weapon description (NativeLoadoutText),
+    /// the Locker's ability rows (NativeLocker.SlotOptions) and the catalogue. The ids stay; Kernel Panic, unchanged in v2,
+    /// keeps its content entry. Presentation only.
+    /// </summary>
+    public static class NativeCyberLordText
+    {
+        private static string N(float x)=>x.ToString("0.#",CultureInfo.InvariantCulture);
+        /// <summary>One line per v2 slot (CyberKit2Spec order), for the Locker's ability cards.</summary>
+        public static readonly string[] Texts=
+        {
+            "Fire a hardlight cable up to "+N(CyberKit2Spec.UplinkRange)+" m: zip to the surface it hits, or yank an enemy in and stun them. A miss retracts.",
+            "Overclock for "+N(CyberKit2Spec.OverclockSeconds)+" s: faster movement and attacks, cooldowns recover twice as fast, melee hits arc to a nearby enemy and ranged throws split in three.",
+            "Five hardlight strikes: jab, cross, spinning backfist, rising uppercut and a Pulse Palm shockwave.",
+            "Three hardlight clones copy your combo for "+N(CyberKit2Spec.ForkSeconds)+" s, then dash to enemies and burst.",
+            "Dash-slash "+N(CyberKit2Spec.CutDistance)+" m through enemies; everyone you pass is marked, and the marks detonate together.",
+            "Leap, aim a landing up to "+N(CyberKit2Spec.MeteorRange)+" m away, then dive with a giant hardlight fist that launches enemies.",
+            "Lunge up to "+N(NativeKernelPanicRules.Range)+" m with a wide sweep; connect to isolate one enemy for a cinematic combo.",
+            "Cyber fireballs from alternating hands while you move; every third is an Overflow from both hands with a bigger blast.",
+            "Chain lightning: a bolt to the aimed enemy hops to up to "+CyberKit2Spec.Hops+" more, weaker each hop, slowing each.",
+            "Throw an orb that becomes a black hole, pulling enemies in for "+N(CyberKit2Spec.HoleSeconds)+" s before it implodes and throws them out.",
+            "Mark a floor point up to "+N(CyberKit2Spec.StormRange)+" m away; "+CyberKit2Spec.Drops+" cyber meteors rain into the ring.",
+            "Call down an orbital laser for "+N(CyberKit2Spec.OrbitalSeconds)+" s and steer it with your aim; shares Kernel Panic's cooldown.",
+        };
+        /// <summary>The weapon description: both modes' keys and names.</summary>
+        public static readonly string Description=BuildDescription();
+        private static string BuildDescription()
+        {
+            string Keys(int from,int to){var b=new System.Text.StringBuilder();for(int s=from;s<=to;s++){if(b.Length>0)b.Append("; ");b.Append(CyberKit2Spec.Keys[s]).Append(' ').Append(CyberKit2Spec.Names[s]);}return b.ToString();}
+            return "DEV hardlight brawler and cyber mage. "+Keys(CyberKit2Spec.Q,CyberKit2Spec.Panic)+". "+CyberRangedSpec.ModeKey+" Reconfigure to ranged: "+Keys(CyberKit2Spec.RangedLmb,CyberKit2Spec.Orbital)+".";
+        }
+        /// <summary>The v2 slot a Cyber Lord content ability's key shows (q Uplink, e Overclock, 1 Fork Bomb, 2 Glitch Cut, 3
+        /// Meteor Byte), else -1 (4 is Kernel Panic, unchanged: its content entry stands; any other weapon or key).</summary>
+        public static int Slot(ContentWeapon w,ContentAbility a)
+        {
+            if(w==null||a==null||w.id!=CyberLordSpec.Id||a.spec!=CyberLordSpec.Id)return -1;
+            switch(a.slot){case "q":return CyberKit2Spec.Q;case "e":return CyberKit2Spec.E;case "1":return CyberKit2Spec.Fork;case "2":return CyberKit2Spec.Cut;case "3":return CyberKit2Spec.Meteor;}
+            return -1;
         }
     }
 }
