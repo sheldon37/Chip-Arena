@@ -102,7 +102,7 @@ namespace ChipArena.UnityConversion
             if(age>=NativeDraftPlant.Contact&&(siren||plant.ChipShown))
             {
                 float scale=NativeDraftPlant.HeldChipScale(age,(float)time,reduced);var at=siren?palm:Stage(plant.Chip);var turn=siren?draftRig.Bones[hand].rotation*Quaternion.Euler(90,0,0):CapturedAnimation.Quat(CapturedRig.Mirror(plant.ChipRotation));
-                if(scale>.001f){draftChip=Matrix4x4.TRS(at,turn,Vector3.one*scale);sourceModels.Queue("pve-pickup",draftChip,draftChipBone,partTint:draftChipPart);}
+                if(scale>.001f){draftChip=Matrix4x4.TRS(at,turn,Vector3.one*scale);sourceModels.Queue(sourceModels.MachineModel(NativeMachineModels.PickupId,"pve-pickup"),draftChip,draftChipBone,partTint:draftChipPart);}
             }
             // The plant pulse: two rarity rings expanding around the forearm, a spark at the cuff and the rim light's flash.
             if(pulse>=0)
