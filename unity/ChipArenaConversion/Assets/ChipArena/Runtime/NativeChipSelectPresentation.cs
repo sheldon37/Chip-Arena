@@ -29,6 +29,8 @@ namespace ChipArena.UnityConversion
             public int Pick=-1,Count=3,Seed,C0=NativeChipSelectHolo.Cyan,C1=NativeChipSelectHolo.Cyan,C2=NativeChipSelectHolo.Cyan;public bool Rainbow;public float Beat;
             // Posed this frame (the hologram and the tag draw only then), the rig root's frame then, and the look's clocks.
             public int Frame=-1;public Matrix4x4 Root;public float Weight,Age,Redeal,Time,Scale=1,RootScale=1;public ChipSelectGesture Gesture;
+            // The Expedition chip screen's side (NativeChipScreen.OnLeft of the posed class).
+            public bool ScreenLeft;
             // The Expedition wrist plant (Core/NativeChipPlant.cs): its layer, whether it is posed this frame, its cue's key, the card it
             // took, the chip's colour, whether another pick follows (latched over the return) and, after a plant that did not stay, until
             // when the look waits before it rises again.
@@ -115,7 +117,7 @@ namespace ChipArena.UnityConversion
                 Flinch=flinch,Hush=planting?NativeChipPlant.Hush(cue.Age):0};
             chipLayerPlanting=planting;chipLayerPlant=new ChipPlantInput{Age=cue.Age,Weight=look,Flinch=flinch,Chosen=slot.PlantChosen,Cards=slot.Count,Stay=slot.PlantStay};
             chipSelectLayer??=ChipLayer;rig.Overlay(chipSelectLayer);
-            slot.Frame=Time.frameCount;slot.Root=rig.Root.transform.localToWorldMatrix;slot.Weight=look;slot.Time=time;slot.Age=slot.Track.Age(time);slot.Redeal=slot.Track.SinceChange(time);slot.Gesture=slot.Pose.Gesture;slot.Scale=slot.RootScale=1;
+            slot.Frame=Time.frameCount;slot.Root=rig.Root.transform.localToWorldMatrix;slot.Weight=look;slot.Time=time;slot.Age=slot.Track.Age(time);slot.Redeal=slot.Track.SinceChange(time);slot.Gesture=slot.Pose.Gesture;slot.Scale=slot.RootScale=1;slot.ScreenLeft=NativeChipScreen.OnLeft(a.SourceSpec);
         }
         // The overlay (cached once: no closure per frame): the hologram pose, then the wrist plant over it.
         private bool ChipLayer(CapturedRig.Pose pose)
@@ -184,6 +186,8 @@ namespace ChipArena.UnityConversion
                 var plant=slot.Plant;look.Plant=true;look.Fold=plant.Fold;look.Fade=plant.Fade;look.Chosen=plant.Card;look.ChipShown=plant.ChipShown;look.ChipSize=plant.ChipSize*slot.RootScale;look.ChipRgb=slot.PlantRgb;look.Pulse=plant.Pulse;
                 look.Gesture=new ChipSelectGesture{Card=plant.Card,SinceContact=-1};frame.Chip=P(plant.Chip);frame.ChipRight=D(plant.ChipRight);frame.ChipUp=D(plant.ChipUp);frame.CuffNormal=D(plant.CuffNormal);
             }
+            // An Expedition: the wrist projects the chip screen instead of the small panel (NativeChipScreenPresentation.cs).
+            if(!first&&ExpeditionChoosing!=null)return BuildChipScreen(sink,slot,frame,look,id);
             return NativeChipSelectHolo.Build(sink,frame,look);
         }
         // The Electron alarm (hologram.ts underAttack): a damaging hit on the pilot in the last AttackedSeconds (the snapshot's events; the

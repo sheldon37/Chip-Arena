@@ -108,6 +108,12 @@ namespace ChipArena.UnityConversion
             current=current*Matrix4x4.TRS(p+(Vector3)(translate*S),Quaternion.Euler(0,0,degrees),new Vector3(scale,sy,1))*Matrix4x4.Translate(-p);
         }
         public static void Pop(){current=stack.Count>0?stack.Pop():Matrix4x4.identity;}
+        /// <summary>Draws what follows through an affine map of the virtual canvas, point (x, y) to origin + axisU x + axisV y (virtual
+        /// units; IMGUI maps the pointer back through it too): a HUD drawn onto a projected world screen. Pop ends it.</summary>
+        public static void PushAffine(Vector2 origin,Vector2 axisU,Vector2 axisV)
+        {
+            stack.Push(current);var m=Matrix4x4.identity;m.m00=axisU.x;m.m10=axisU.y;m.m01=axisV.x;m.m11=axisV.y;m.m03=origin.x*S;m.m13=origin.y*S;current=current*m;
+        }
         public static void Fill(Rect r,Color c){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),white);GUI.color=o;GUI.matrix=m;}
         // Vertical gradient: `bottom` underneath, `top` laid over it with an alpha ramp that is full at the top edge.
         public static void Gradient(Rect r,Color top,Color bottom)
