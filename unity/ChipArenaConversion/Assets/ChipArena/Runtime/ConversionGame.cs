@@ -130,15 +130,16 @@ namespace ChipArena.UnityConversion
             // C in an Expedition opens its chip screen instead (ExpeditionLiveKeys, NativeExpeditionChipScreen.cs).
             if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null&&LiveExpedition==null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
-            bool play=arena!=null&&!menu&&!BoardOpen&&!ExpeditionScreenOpen&&(match.Phase==NativePhase.Fight||match.ResultMovement&&!ReplayActive)&&arena.Local.Hp>0&&!PvePickOpen&&!ExpeditionPickOpen&&arena.Pve?.Holding!=true&&!DevHoldsPilot;
-            bool look=!BoardOpen&&DevLook(play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight);Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
+            bool play=arena!=null&&!menu&&!BoardOpen&&!ExpeditionScreenOpen&&(match.Phase==NativePhase.Fight||match.ResultMovement&&!ReplayActive)&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true&&!DevHoldsPilot;
+            // Holding Alt over the Expedition chip tray frees the cursor to click a card (NativeExpeditionChipScreen.cs).
+            bool look=!BoardOpen&&!ExpeditionPickPointer&&DevLook(play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight);Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
             if(arena==null)return;
             if(generation!=arena.Generation){presentation.ResetPresentation();generation=arena.Generation;visualClock.Reset(match.Time);}
             SpectatorControls();var p=arena.ViewPilot;
             UpdateLock();if(play)
             {
                 var ads=content.Ads(p.Seat.spec);bool aiming=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&Input.GetKey(KeyCode.Q);
-                if(!lockPoint.HasValue&&!cinematic.Directing){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);}
+                if(!lockPoint.HasValue&&!cinematic.Directing&&!ExpeditionPickPointer){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);}
                 if(Input.GetKeyDown(KeyCode.W)){if(Time.unscaledTime-lastW<.3f)sprint=true;lastW=Time.unscaledTime;}if(!Input.GetKey(KeyCode.W))sprint=false;
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
                 pending.X=move.x;pending.Z=move.z;pending.Yaw=yaw;pending.Pitch=-pitch;pending.Sprint=sprint;pending.Aim=aiming;
@@ -148,6 +149,8 @@ namespace ChipArena.UnityConversion
                 for(int key=0;key<(arena.Local?.Seat.spec=="cyberlord"?5:4);key++)if(Input.GetKeyDown(KeyCode.Alpha1+key))pending.SirenAbility=(byte)(key+1);
                 pending.AbilityQ|=p.Seat.spec=="emperor"&&Input.GetKeyDown(KeyCode.Q)||p.Seat.spec=="siren"&&Input.GetKeyDown(prefs.sirenMode=="F"?KeyCode.F:prefs.sirenMode=="V"?KeyCode.V:KeyCode.Q);
                 pending.Interact|=Input.GetKeyDown(KeyCode.F)&&!(p.Seat.spec=="siren"&&prefs.sirenMode=="F");pending.Block|=Input.GetMouseButtonDown(1);pending.Reload|=Input.GetKeyDown(KeyCode.R);pending.Roll|=Input.GetKeyDown(KeyCode.LeftShift);pending.Jump|=Input.GetKeyDown(KeyCode.Space);
+                // The Expedition chip tray takes the digit keys (and the mouse buttons while Alt is held): client routing, no lock.
+                ExpeditionPickRoute();
                 if(match.ResultMovement||arena.BossVictoryWalk)pending=new InputFrame{X=pending.X,Z=pending.Z,Yaw=yaw,Pitch=-pitch,Sprint=sprint,Jump=pending.Jump};
             }
             else pending=new InputFrame{Yaw=yaw,Pitch=-pitch};
@@ -160,7 +163,7 @@ namespace ChipArena.UnityConversion
             // A bound Expedition session's world pieces (NativeExpeditionWorldPresentation.cs): one mesh drawn for this frame.
             NativeUiBlur.Frame();ExpeditionWorldFrame();if(cameraView==null)return;cinematic.BeginFrame();if(PreviewFrame())return;long replayAt=System.Diagnostics.Stopwatch.GetTimestamp();ObserveReplay();hitchReplay+=HitchMs(replayAt);if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();nativeAudio.HulkWarning=presentation.HulkWarning;nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
             if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroClockAge(),cameraView);return;}introClock.Reset();NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
-            var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&!ExpeditionPickOpen&&arena.Pve?.Holding!=true;
+            var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
             UpdateCamera();
             if(play)
             {

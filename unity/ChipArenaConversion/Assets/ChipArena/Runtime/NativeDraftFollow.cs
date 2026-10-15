@@ -5,22 +5,15 @@ namespace ChipArena.UnityConversion
     // The Siren / Ward Zero pick's follow-through (presentation only). The rules close the pick the moment it is made, so the
     // stage keeps a snapshot of the offers and plays the PvP draft's pick on it (the others shatter, the card flies to the
     // palm, the pilot plants the chip into the other wrist with its pulse) until NativeDraftPlant.ReturnEnd. Play resumes with
-    // the pick, so any key or click, being attacked, or leaving the fight ends it early. An Expedition pick (pveFollowReward,
-    // NativeExpeditionChipScreen.cs) plays the same, reads "Installing" until the view confirms it and ends if the authority refuses it.
+    // the pick, so any key or click, being attacked, or leaving the fight ends it early.
     public sealed partial class ConversionGame
     {
         private readonly List<ContentChip> pveFollowChips=new List<ContentChip>();
-        private int pveFollowIndex=-1,pveFollowSeat=-1,pveFollowOwned;private float pveFollowAt,pveFollowOpened;private string pveFollowTier,pveFollowSource,pveFollowReward,pveFollowEyebrow;
+        private int pveFollowIndex=-1,pveFollowSeat=-1,pveFollowOwned;private float pveFollowAt,pveFollowOpened;private string pveFollowTier,pveFollowSource;
         private void RecordPvePick(List<ContentChip> chips,int index,NativePvePick pick)
         {
             pveFollowChips.Clear();pveFollowChips.AddRange(chips);pveFollowIndex=index;pveFollowAt=Time.unscaledTime;pveFollowOpened=pveOpenAt;
-            pveFollowSeat=arena.Local.Seat.id;pveFollowTier=pick.Tier;pveFollowSource=pick.Source;pveFollowOwned=arena.Local.Seat.chips.TryGetValue(chips[index].id,out int n)?n:0;pveFollowReward=pveFollowEyebrow=null;
-        }
-        // An Expedition pick: its reward, the header's eyebrow and tone, and the copies held before it (the view's own count).
-        private void RecordExpeditionPick(List<ContentChip> chips,int index,ExpeditionViewReward reward,int owned)
-        {
-            pveFollowChips.Clear();pveFollowChips.AddRange(chips);pveFollowIndex=index;pveFollowAt=Time.unscaledTime;pveFollowOpened=pveOpenAt;
-            pveFollowSeat=arena.Local.Seat.id;pveFollowTier=NativeExpeditionPick.Tone(reward);pveFollowSource=reward.source;pveFollowOwned=owned;pveFollowReward=reward.id;pveFollowEyebrow=NativeExpeditionPick.Eyebrow(reward);
+            pveFollowSeat=arena.Local.Seat.id;pveFollowTier=pick.Tier;pveFollowSource=pick.Source;pveFollowOwned=arena.Local.Seat.chips.TryGetValue(chips[index].id,out int n)?n:0;
         }
         private void EndPveFollow(){pveFollowIndex=-1;pveFollowChips.Clear();}
         private float PveFollowAge=>Time.unscaledTime-pveFollowAt;
@@ -29,7 +22,7 @@ namespace ChipArena.UnityConversion
             get
             {
                 if(pveFollowIndex<0)return false;
-                if(pveFollowIndex>=pveFollowChips.Count||PveFollowAge>NativeDraftPlant.ReturnEnd||menu||arena==null||arena.Pve==null&&pveFollowReward==null||arena.Pve?.Holding==true||ExpeditionFollowEnded||arena.Local.Seat.id!=pveFollowSeat||arena.Local.Hp<=0||ReplayActive||match.Phase!=NativePhase.Fight){EndPveFollow();return false;}
+                if(pveFollowIndex>=pveFollowChips.Count||PveFollowAge>NativeDraftPlant.ReturnEnd||menu||arena==null||arena.Pve==null||arena.Pve.Holding||arena.Local.Seat.id!=pveFollowSeat||arena.Local.Hp<=0||ReplayActive||match.Phase!=NativePhase.Fight){EndPveFollow();return false;}
                 return true;
             }
         }
@@ -41,10 +34,10 @@ namespace ChipArena.UnityConversion
             float age=PveFollowAge;if(Event.current.type==EventType.Repaint)draftHover=-1;
             if(age>.12f&&Input.anyKeyDown||PveUnderAttack()){EndPveFollow();return;}
             bool rainbow=pveFollowTier=="rainbow";
-            string source=pveFollowEyebrow??(rainbow?"RAINBOW · 8 MAX-RARITY CHOICES":pveFollowSource=="start"?"BEGINNING CHIP":(pveFollowSource=="wave"?"WAVE REWARD · ":"DISPENSED · ")+TierName(pveFollowTier).ToUpperInvariant());
-            DraftShades(pveTray,W,H);DraftHeader(source,rainbow?Color.white:NativeChipCard.Rarity(pveFollowTier),pveFollowReward==null?"Upgrade secured":ExpeditionFollowTitle(age),"",W,H,out _);
+            string source=rainbow?"RAINBOW · 8 MAX-RARITY CHOICES":pveFollowSource=="start"?"BEGINNING CHIP":(pveFollowSource=="wave"?"WAVE REWARD · ":"DISPENSED · ")+TierName(pveFollowTier).ToUpperInvariant();
+            DraftShades(pveTray,W,H);DraftHeader(source,rainbow?Color.white:NativeChipCard.Rarity(pveFollowTier),"Upgrade secured","",W,H,out _);
             var tray=pveTray;if(tray!=null&&tray.Cards.Length==pveFollowChips.Count)PickedTray(tray,pveFollowChips,pveFollowIndex,pveFollowOwned,age);
-            Nameplate(arena.Local.Seat,"Installing",28,H-22-66);if(pveFollowReward!=null)ExpeditionFollowStatus(W,H,age);
+            Nameplate(arena.Local.Seat,"Installing",28,H-22-66);
         }
     }
 }

@@ -66,8 +66,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The pieces of the bound view this frame (the 3D renderer's, or the labels' own when the shader is missing).</summary>
         private NativeExpeditionWorld ExpeditionPieces=>expeditionWorld!=null?expeditionWorld.World:expeditionLabelWorld;
         /// <summary>The world pieces are drawn in the world: a bound view, a camera, and a live scene view (not a menu, intro or replay).</summary>
-        // Not under the chip pick screen: its 3D stage renders with the same camera (NativeExpeditionChipScreen.cs, DraftFrame).
-        private bool ExpeditionWorldShown=>LiveExpedition!=null&&cameraView!=null&&!menu&&arena!=null&&!IntroActive&&!ReplayActive&&!PvePickScreen;
+        private bool ExpeditionWorldShown=>LiveExpedition!=null&&cameraView!=null&&!menu&&arena!=null&&!IntroActive&&!ReplayActive;
         /// <summary>LateUpdate: the 3D pieces at the bound view's anchors.</summary>
         private void ExpeditionWorldFrame()
         {

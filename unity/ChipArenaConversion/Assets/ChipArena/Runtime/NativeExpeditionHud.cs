@@ -221,7 +221,7 @@ namespace ChipArena.UnityConversion
             {
                 bool can=c.Choose!=null&&blocked==null;
                 if(U.Btn(new Rect(r.x+18,y+2,r.width-36,34),"C · CHOOSE CHIP ("+waiting+")",can,can,a,13)&&can)c.Choose();y+=42;
-                y=Lines(r.x+18,y,r.width-36,c.Choose==null?"Picks open on the chip screen in a live run.":"Opens the chip screen. C opens it anywhere in the run.",10,C.Muted(a),2)+8;
+                y=Lines(r.x+18,y,r.width-36,c.Choose==null?"Picks open on the chip tray in a live run.":"Opens the chip tray over the live view. C opens it anywhere in the run.",10,C.Muted(a),2)+8;
             }
             // Your picks this loop (private): the chip chosen from each reward.
             var picks=P.History(v);

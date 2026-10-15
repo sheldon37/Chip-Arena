@@ -13,11 +13,10 @@ namespace ChipArena.UnityConversion
         private readonly NativeDraftHover draftHeld=new NativeDraftHover();private double draftHeldTurn=double.NaN;
         private readonly Dictionary<Renderer,bool> pickVisibility=new Dictionary<Renderer,bool>();
         // The Siren personal pick replaces the arena view for the local player only (pve/chip-screen.ts): the fight keeps
-        // simulating, so the live renderers are hidden instead of deactivating the arena. An Expedition's pick uses the same screen
-        // (ExpeditionPickOpen, NativeExpeditionChipScreen.cs).
+        // simulating, so the live renderers are hidden instead of deactivating the arena.
         private void HideLive(){foreach(var r in arena.Root.GetComponentsInChildren<Renderer>()){if(!pickVisibility.ContainsKey(r))pickVisibility[r]=r.enabled;r.enabled=false;}}
         private void RestoreLive(){foreach(var pair in pickVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;pickVisibility.Clear();}
-        private bool PvePickScreen=>!menu&&arena!=null&&(PveFollowing||PvePickOpen||ExpeditionPickOpen)&&arena.Pve?.Holding!=true&&arena.Local.Hp>0&&!ReplayActive&&match.Phase==NativePhase.Fight;
+        private bool PvePickScreen=>!menu&&arena!=null&&(PveFollowing||PvePickOpen)&&arena.Pve?.Holding!=true&&arena.Local.Hp>0&&!ReplayActive&&match.Phase==NativePhase.Fight;
         private bool DraftFrame()
         {
             bool pve=PvePickScreen,active=!menu&&arena!=null&&match.Phase==NativePhase.Draft;
@@ -27,8 +26,7 @@ namespace ChipArena.UnityConversion
             if(!draftViewing||draftViewSeat!=seat.id){RestoreLive();presentation.ResetPresentation();draftHover=-1;draftFocus=-1;draftHeld.Reset();ResetHolo();draftViewSeat=seat.id;draftViewing=true;draftCards=Array.Empty<Rect>();draftTrayLine=draftTrayBottom=-1;}
             float scale=NativeUiMotion.Measure(Screen.width,Screen.height,prefs.uiScale).Scale,width=Screen.width/scale,height=Screen.height/scale;
             // The Siren pick's follow-through (NativeDraftFollow) plays the pick on its snapshot of the offers.
-            // An Expedition pick reads its reward's offers (expeditionPickChips) and tone instead of the PvE row.
-            bool follow=pve&&PveFollowing,exp=pve&&!follow&&ExpeditionPickOpen;var row=pve&&!follow&&!exp?arena.Pve.Rows[seat.id]:null;int count=follow?pveFollowChips.Count:exp?expeditionPickChips.Count:pve?row.Open?.Offers?.Count??0:seat.offers.Count;
+            bool follow=pve&&PveFollowing;var row=pve?arena.Pve.Rows[seat.id]:null;int count=follow?pveFollowChips.Count:pve?row.Open?.Offers?.Count??0:seat.offers.Count;
             float age=follow?PveFollowAge:pve||match.Chosen==null?-1:(float)(match.Time-match.ChosenAt);var chosenChip=follow?pveFollowChips[pveFollowIndex]:!pve&&match.Chosen!=null?content.Chip(match.Chosen):null;
             // The considered card (NativeDraftStage.Focus): the chosen one, the local picker's hovered or focused card (held
             // across the gaps between cards until another is highlighted or the turn ends; draftHover is only set on the local
@@ -40,7 +38,7 @@ namespace ChipArena.UnityConversion
             if(chosen>=0)draftHeld.Reset();else draftHeld.Step(draftHover,Time.unscaledDeltaTime);int focus=NativeDraftStage.Focus(chosen,draftHeld.Card,since,n,prefs.reducedEffects);bool consider=chosen<0&&draftHeld.Reaching;
             if(pve)HideLive();else arena.Root.SetActive(false);viewModelCamera.enabled=false;
             // Stage lights take the picker's colour, blending to the chip's rarity over .5 s after the pick (the Siren pick: its tier).
-            string tier=follow?pveFollowTier:exp?expeditionPickTone:row?.Open?.Tier;Color chipTint=chosenChip!=null?RarityColor(chosenChip.rarity):default;
+            string tier=follow?pveFollowTier:row?.Open?.Tier;Color chipTint=chosenChip!=null?RarityColor(chosenChip.rarity):default;
             Color tint=pve?(tier=="rainbow"?Color.white:RarityColor(tier??"common")):SeatColor(seat);if(age>=0&&chosenChip!=null)tint=Color.Lerp(tint,chipTint,Mathf.Clamp01(age/.5f));
             // The backdrop's heading band (the heading's bottom row, NativeDraftScreen.DraftHeader) and its variant: the PvE / Siren
             // personal pick's ward, the rainbow pick's prism.

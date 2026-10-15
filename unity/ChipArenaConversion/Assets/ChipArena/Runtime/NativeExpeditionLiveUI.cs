@@ -13,8 +13,8 @@ namespace ChipArena.UnityConversion
     // once and whose acceptances stay pending until the replicated view shows them). No menu entry leads here and nothing binds a
     // session yet: Expedition stays unplayable until a scene and director exist. In the scene: the world pieces, the minimal HUD, a
     // compact transfer line and the dice reveal. J opens the Expedition screen (board, phase panel, chips, caches, loot); victory
-    // opens it once per loop for the choice. Chip picks happen on the Boss Test's chip screen (C, NativeExpeditionChipScreen.cs), not
-    // on J. The DEV preview (--ca-expedition-preview) is separate and binds nothing.
+    // opens it once per loop for the choice. Chip picks happen on the Boss Test's chip tray over the live view
+    // (C, NativeExpeditionChipScreen.cs), not on J. The DEV preview (--ca-expedition-preview) is separate and binds nothing.
     public sealed partial class ConversionGame
     {
         private readonly ExpeditionIntentTracker expeditionIntents=new ExpeditionIntentTracker();
@@ -70,8 +70,8 @@ namespace ChipArena.UnityConversion
             var commands=LiveExpeditionCommands();if(commands==null||expeditionLiveView==null||command.intent==ExpeditionIntent.None)return;
             expeditionIntents.Submit(commands,command,expeditionLiveView,Time.unscaledTime);
         }
-        /// <summary>Update: J toggles the Expedition screen; Escape closes it. C opens or closes the chip screen (from J it closes J and
-        /// opens it), and Escape there is Choose later, as on the Boss Test's. True only for those Escapes (consumed: no pause menu).</summary>
+        /// <summary>Update: J toggles the Expedition screen; Escape closes it. C opens or closes the chip tray (from J it closes J and opens
+        /// it), and Escape over the tray is Choose later, as on the Boss Test's. True only for those Escapes (consumed: no pause menu).</summary>
         private bool ExpeditionLiveKeys()
         {
             ExpeditionPickStep();
@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
             if(Input.GetKeyDown(KeyCode.J))expeditionScreenOpen=!expeditionScreenOpen;
             if(expeditionScreenOpen&&Input.GetKeyDown(KeyCode.Escape)){expeditionScreenOpen=false;return true;}
             if(Input.GetKeyDown(KeyCode.C)){bool fromJ=expeditionScreenOpen;expeditionScreenOpen=false;ExpeditionPickKey(fromJ);}
-            if(ExpeditionPickOpen&&Input.GetKeyDown(KeyCode.Escape)&&!StageInputHeld){expeditionPick.Later();return true;}
+            if(ExpeditionPickShown&&Input.GetKeyDown(KeyCode.Escape)&&!StageInputHeld){expeditionPick.Later();return true;}
             return false;
         }
 
@@ -114,6 +114,8 @@ namespace ChipArena.UnityConversion
             ExpeditionChipsTag(v);
             // The reveal of a new stored dice record: not modal in the scene (the pointer stays with play); it closes by itself.
             if(expeditionLiveDice.Open)NativeExpeditionScreen.DiceOverlay(expeditionLiveDice,v,LiveExpeditionControls(),width,height,Time.unscaledTime,prefs.reducedEffects,false);
+            // The chip tray over the live view, on top of the HUD (NativeExpeditionChipScreen.cs).
+            ExpeditionPickGui(width,height);
         }
     }
 }

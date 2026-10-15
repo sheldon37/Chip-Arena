@@ -8,8 +8,8 @@ namespace ChipArena.UnityConversion
     // instead of selecting on the J menu." Presentation only. It reads the viewer's own ExpeditionView rewards (offers exist only while a
     // pick is pending, so nothing here can show another pilot's choice), the public members[].choosing flag and the intent tracker's state,
     // and returns the intents for the caller to send through ExpeditionCommands: Claim (open an unopened reward), OpenChoice / CloseChoice
-    // (the host holds a choosing pilot, D18) and Select. Runtime/NativeExpeditionChipScreen.cs draws it with PveChipScreen's tray, stage
-    // and follow-through.
+    // (the host's public choosing presence: no hold, no immunity; the owner keeps choosers mobile and vulnerable, PR #234) and Select.
+    // Runtime/NativeExpeditionChipScreen.cs draws it as the Boss Test's tray over the live view.
     public static class NativeExpeditionPick
     {
         /// <summary>The viewer is a member still in the run (an extracted pilot's unopened rewards can no longer be opened).</summary>
@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The pick screen's state across frames: the Boss Test's open pick (NativePveRow.Open) for an Expedition, against the choosing
-    /// authority (PR #233, docs/EXPEDITION-PRESENTATION.md "Chip screen authority contract").
+    /// authority (PR #233, corrected by PR #234: presence only; docs/EXPEDITION-PRESENTATION.md "Chip screen authority contract").
     ///  - It opens only on request: C, or the J panel's CHOOSE CHIP line (Show / Toggle). Collecting a reward never opens it (the
     ///    contract: "do not open choosing merely because a reward was collected"); the CHIPS tag counts it, as the Boss Test queues a
     ///    dispensed chip.
@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
         public string Choice{get;private set;}
         private bool choiceSeen,closeSent;private string run;
 
-        /// <summary>The view shows the viewer choosing (the host's public flag; held at the host while it is set).</summary>
+        /// <summary>The view shows the viewer choosing (the host's public flag; presence only, the pilot is never held).</summary>
         public static bool ChoosingNow(ExpeditionView v)=>v?.viewer!=null&&v.Member(v.viewer)?.choosing==true;
         public ExpeditionPickPhase Phase(ExpeditionView v)
         {
@@ -112,7 +112,7 @@ namespace ChipArena.UnityConversion
         {
             var act=default(ExpeditionPickAction);
             if(v==null){Reset();return act;}
-            if(v.run!=run){Reset();run=v.run;}
+            if(v.run!=run){if(run!=null)Reset();run=v.run;}
             bool choosing=ChoosingNow(v);if(!choosing)closeSent=false;else if(Choice!=null)choiceSeen=true;
             if(!NativeExpeditionPick.Mine(v)){Open=false;Reward=Claiming=Sent=Chip=Refusal=Choice=null;return act;}
             // The pick in flight: confirmed once the reward is consumed (or settled out of the view, as the tracker reads it).
@@ -139,7 +139,7 @@ namespace ChipArena.UnityConversion
                 else if(NativeExpeditionPick.Ready(r)){if(r.id!=Reward)Refusal=null;Reward=r.id;}
                 else if(canShow&&!v.loading){Reward=Claiming=r.id;Refusal=null;act.Send=new ExpeditionCommand(ExpeditionIntent.Claim,r.id);return act;}
             }
-            // The host's hold follows the screen: OpenChoice when it shows a ready reward the view does not show choosing for (again after
+            // The host's choosing presence follows the screen: OpenChoice when it shows a ready reward the view does not show choosing for (again after
             // the host cleared it: a load, the final claimed pick), CloseChoice once when it closes while the view still shows choosing.
             if(Open&&Sent==null&&Claiming==null&&NativeExpeditionPick.Ready(v.Reward(Reward)))
             {
@@ -147,7 +147,7 @@ namespace ChipArena.UnityConversion
                 {
                     if(Choice!=Reward||choiceSeen){Choice=Reward;choiceSeen=closeSent=false;act.Send=new ExpeditionCommand(ExpeditionIntent.OpenChoice,Reward);return act;}
                     var cmd=new ExpeditionCommand(ExpeditionIntent.OpenChoice,Choice);var s=state(cmd);bool sent=last(cmd)==ExpeditionIntent.OpenChoice;
-                    if(!sent||NativeExpeditionPick.Ended(s.state)){act.Notice="Chip screen could not hold you · "+NativeExpeditionPick.Caption(s,sent);Open=false;}
+                    if(!sent||NativeExpeditionPick.Ended(s.state)){act.Notice="Chip choice could not open · "+NativeExpeditionPick.Caption(s,sent);Open=false;}
                 }
             }
             if(!Open){Choice=null;choiceSeen=false;}
@@ -161,8 +161,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Opens the screen when a reward waits (C, the J panel's CHOOSE CHIP line); false when nothing waits.</summary>
         public bool Show(ExpeditionView v)
         {
-            if(Open)return true;if(!NativeExpeditionPick.Mine(v)||!v.mine.alive||NativeExpeditionPick.Next(v,Reward)==null)return false;
-            Open=true;Refusal=null;return true;
+            if(Open)return true;var next=NativeExpeditionPick.Mine(v)&&v.mine.alive?NativeExpeditionPick.Next(v,Reward):null;if(next==null)return false;
+            Open=true;Reward=next.id;Refusal=null;return true;
         }
         /// <summary>Choose later (C, Escape, the footer button): closes the screen on this client; the next Step sends CloseChoice. An open
         /// or a pick in flight still settles.</summary>

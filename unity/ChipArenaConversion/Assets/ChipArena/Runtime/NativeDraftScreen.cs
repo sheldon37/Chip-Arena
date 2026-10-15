@@ -238,48 +238,29 @@ namespace ChipArena.UnityConversion
         private void PveChipScreen()
         {
             if(PveFollowing){PveFollowScreen(U.W,U.H);return;}
-            // An Expedition's pick: the same screen over the viewer's own claimed reward (NativeExpeditionChipScreen.cs).
-            if(ExpeditionPickOpen){ExpeditionChipScreen();return;}
             var v=arena.Pve;if(v==null||!v.Rows.TryGetValue(arena.Local.Seat.id,out var row)||row.Open==null||row.Open.Offers==null)return;var pick=row.Open;float W=U.W,H=U.H;
             if(pveOpenId!=pick.Id){pveOpenId=pick.Id;pveOpenAt=Time.unscaledTime;draftFocus=-1;ResetHolo();}float elapsed=Time.unscaledTime-pveOpenAt;
             var chips=pick.Offers.Select(id=>arena.PveChip(id)).Where(c=>c!=null).ToList();bool rainbow=pick.Tier=="rainbow";Color tier=rainbow?Color.white:NativeChipCard.Rarity(pick.Tier);
             string source=rainbow?"RAINBOW · 8 MAX-RARITY CHOICES":pick.Source=="start"?"BEGINNING CHIP":(pick.Source=="wave"?"WAVE REWARD · ":"DISPENSED · ")+TierName(pick.Tier).ToUpperInvariant();
             DraftShades(pveTray,W,H);DraftHeader(source,tier,"Make your next move","Choose one Chip. This choice is yours alone.",W,H,out float top);
-            PickMeta(W,Math.Max(0,row.Picks.Count-1));
+            // Meta (top right): the queue and the vulnerability warning.
+            float x=W-28,y=22;string warn="YOU ARE VULNERABLE WHILE CHOOSING";float ww=U.Measure(warn,11,true,true,.08f).x;U.Text(new Rect(x-ww,y,ww+2,24),warn,11,U.Hex(0xd8dae4),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);
+            int queued=Math.Max(0,row.Picks.Count-1);if(queued>0){string q=(queued+" more waiting").ToUpperInvariant();float qw=U.Measure(q,11,true,true,.08f).x+20;var r=new Rect(x-ww-12-qw,y,qw,24);U.Pill(r,U.Hex(0xff6b35,.13f),Color.clear);U.Text(r,q,11,U.Hex(0xffb38f),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);}
             pveTray=LayoutTray(chips,top,W,H);LowerTray(pveTray,top,H-142);draftCards=pveTray.Cards;draftTrayLine=pveTray.Top/H;draftTrayBottom=pveTray.Bottom/H;
             int choice=DrawTray(pveTray,chips,i=>arena.Local.Seat.chips.TryGetValue(chips[i].id,out int n)?n:0,elapsed,true,-1,i=>false,true);int key=DraftKeys(chips.Count,true,true);if(key>=0)choice=key;
             if(choice>=0){RecordPvePick(chips,choice,pick);pveOpenId=-1;ChoosePveChip(pick.Id,chips[choice].id);return;}
             Nameplate(arena.Local.Seat,"Your pick",28,H-22-66);
-            if(PickFooter(W,H,chips.Count))PveOpen(false);
-            PickAlarm(W,H,PveUnderAttack());
+            // Footer: how to pick, and Choose later (C / Esc).
+            string how="Press 1–"+Mathf.Clamp(chips.Count,1,9)+" or click a chip";float hw=U.Measure(how,12,false,true).x,bw=200,fw=hw+12+bw+24;var foot=new Rect(W-28-fw,H-22-56,fw,56);U.Round(foot,U.Hex(0x0d0f16,.9f),12);
+            U.Text(new Rect(foot.x+12,foot.y,hw+4,foot.height),how,12,U.Hex(0x9799a6),TextAnchor.MiddleLeft,mono:true);if(U.Btn(new Rect(foot.xMax-12-bw,foot.y+8,bw,40),"Choose later  C · Esc",false,true,1,14))PveOpen(false);
+            // Under attack: the blinking alarm and the red vignette, updated without moving the cards.
+            if(PveUnderAttack())
+            {
+                bool on=Mathf.Repeat(Time.unscaledTime,.25f)<.125f;U.Round(new Rect(0,0,W,H),Color.clear,2,U.Hex(0xff2b3d,on?1:.15f),4);U.Glow(new Rect(-30,-30,W+60,H+60),U.Hex(0xff1f33,(on?.6f:.09f)),-60);
+                string alarm="WARNING — YOU ARE UNDER ATTACK",sub="Choose later to defend yourself";float aw=U.Measure(alarm,14,true,true,.14f).x+U.Measure(sub,12).x+56;var ar=new Rect(W/2-aw/2,H-100-36,aw,36);
+                U.Round(ar,on?U.Hex(0x5a0d18):U.Hex(0x2a070c),8,U.Hex(0xff3b4b));U.Text(new Rect(ar.x+12,ar.y,aw,ar.height),"☠  "+alarm,14,Color.white,TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);U.Text(new Rect(ar.x,ar.y,aw-12,ar.height),sub,12,U.Hex(0xffb3ba),TextAnchor.MiddleRight);
+            }
             if(rainbow)U.Round(new Rect(0,0,W,H),Color.clear,2,Color.HSVToRGB(Mathf.Repeat(Time.unscaledTime/3,1),.7f,1),2);
-        }
-        // The personal pick screen's chrome, shared by the Boss Test and the Expedition. Meta (top right): the queue and the
-        // vulnerability warning.
-        private static void PickMeta(float W,int queued)
-        {
-            float x=W-28,y=22;string warn="YOU ARE VULNERABLE WHILE CHOOSING";float ww=U.Measure(warn,11,true,true,.08f).x;U.Text(new Rect(x-ww,y,ww+2,24),warn,11,U.Hex(0xd8dae4),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);
-            if(queued>0){string q=(queued+" more waiting").ToUpperInvariant();float qw=U.Measure(q,11,true,true,.08f).x+20;var r=new Rect(x-ww-12-qw,y,qw,24);U.Pill(r,U.Hex(0xff6b35,.13f),Color.clear);U.Text(r,q,11,U.Hex(0xffb38f),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);}
-        }
-        // Footer: how to pick, and Choose later (C / Esc); true when Choose later was pressed.
-        private static bool PickFooter(float W,float H,int count)
-        {
-            string how="Press 1–"+Mathf.Clamp(count,1,9)+" or click a chip";float hw=U.Measure(how,12,false,true).x,bw=200,fw=hw+12+bw+24;var foot=new Rect(W-28-fw,H-22-56,fw,56);U.Round(foot,U.Hex(0x0d0f16,.9f),12);
-            U.Text(new Rect(foot.x+12,foot.y,hw+4,foot.height),how,12,U.Hex(0x9799a6),TextAnchor.MiddleLeft,mono:true);return U.Btn(new Rect(foot.xMax-12-bw,foot.y+8,bw,40),"Choose later  C · Esc",false,true,1,14);
-        }
-        // Under attack: the blinking alarm and the red vignette, updated without moving the cards.
-        private static void PickAlarm(float W,float H,bool attacked)
-        {
-            if(!attacked)return;
-            bool on=Mathf.Repeat(Time.unscaledTime,.25f)<.125f;U.Round(new Rect(0,0,W,H),Color.clear,2,U.Hex(0xff2b3d,on?1:.15f),4);U.Glow(new Rect(-30,-30,W+60,H+60),U.Hex(0xff1f33,(on?.6f:.09f)),-60);
-            string alarm="WARNING — YOU ARE UNDER ATTACK",sub="Choose later to defend yourself";float aw=U.Measure(alarm,14,true,true,.14f).x+U.Measure(sub,12).x+56;var ar=new Rect(W/2-aw/2,H-100-36,aw,36);
-            U.Round(ar,on?U.Hex(0x5a0d18):U.Hex(0x2a070c),8,U.Hex(0xff3b4b));U.Text(new Rect(ar.x+12,ar.y,aw,ar.height),"☠  "+alarm,14,Color.white,TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);U.Text(new Rect(ar.x,ar.y,aw-12,ar.height),sub,12,U.Hex(0xffb3ba),TextAnchor.MiddleRight);
-        }
-        // A status line over the footer (the Expedition pick's pending, refused or unavailable caption), right-aligned with it.
-        private static void PickStatus(float W,float H,string text,Color tone)
-        {
-            if(string.IsNullOrEmpty(text))return;float tw=Mathf.Min(U.Measure(text,12,true).x,W*.5f);var r=new Rect(W-28-tw-28,H-22-56-10-30,tw+28,30);
-            U.Round(r,U.Hex(0x0d0f16,.9f),8,U.A(tone,.7f));U.Text(new Rect(r.x+14,r.y,r.width-20,r.height),text,12,tone,TextAnchor.MiddleLeft,bold:true);
         }
     }
 }
