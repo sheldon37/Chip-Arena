@@ -8371,3 +8371,47 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - On an 8-offer row, adjacent Epic+ fins come within about 2 px.
   - A first card drawn before the background bake finishes bakes on the spot (a small hitch).
 - **Impact:** presentation only; chip rules, stats, drops, rarity and draft logic are unchanged.
+
+## 2026-10-15 — Claude: Cyber Lord ranged cyber mage and Kit v2 ranged presentation
+
+- **Branch:** `claude/cyberlord-v2-ranged` (`a674ad1`), based on `claude/cyberlord-v2` `071ad52`, merged onto shared `1e5bc54`.
+- **Owner request:** ranged Cyber Lord should be a cyber mage throwing "Cyber-themed fire balls", with good animation (it was "too bland ... inconsistent"), a good sprint, and movement while attacking.
+- **Live now on the v1 rules (presentation only):**
+  - **Plasma Byte fireball:** today's Bit Bolt projectile draws as a cyber fireball.
+    - White core in magenta and cyan plasma, flame tongues, RGB glitch, a voxel ember tail, and a brightness boost at range.
+    - It leaves the drawn hand and eases onto the authority path.
+    - A cast flash, a fireball held over the palm, and a plasma splash on impact (flash, ring, petals, hex shards, scorch).
+    - Sound keys: `magic.fire.shot` / `magic.fire.hit`.
+  - **Throw set (`CyberLordRangedMotion`):**
+    - Alternating-hand throws: the ball is loaded beside the head with a chest twist, released on the replicated release time, then follow-through and recovery. Aim pitch is followed.
+    - The arms and chest are layered over locomotion, so the legs keep running and strafing.
+    - One consistent stance for idle, run and casts.
+  - **Ranged sprint:** a leaning glide, arms swept back, plasma streaming from the hands, legs planted.
+- **Waits for Astra's Version 2 record:**
+  - The abilities:
+    - Plasma Byte and its Overflow (a two-handed push).
+    - 1 Daisy Chain: charged lightning hopping on HopAt.
+    - 2 Singularity: a thrown orb becomes a black hole with photon rings, lensing, an accretion disk and debris spirals, then implodes.
+    - 3 Packet Storm: a call beam, a hex ring, a sky portal, per-drop warnings and 10 meteors.
+    - 4 Orbital Uplink: a call-down ring, then a steerable column with a burning trail.
+  - Their cast poses, HUD cards (CHARGE/ACTIVE/CALL/STEER, the shared ultimate clock), five line icons (`ClassIcons.json` regenerated) and 25 sound slots on existing keys.
+  - Nothing v2 draws unless a record has `Version == 2`.
+- **Preview:** Dev Sandbox → DEV panel → Previews → GALLERIES → "Preview Cyber Kit 2 (ranged)". As Cyber Lord, press 5 for ranged; the preview loops every ranged v2 cast on your pilot (the orbital follows your aim) while you move.
+- **Astra contract additions** (in `docs/CYBER-LORD.md` "Ranged presentation (Kit v2 branch)"):
+  - Write the v2 record from the start of every cast.
+  - Per-slot `CutAt`.
+  - `PlasmaShot` and the bullet Details `plasma-byte` / `plasma-overflow`.
+  - Daisy Chain: `ChainCount`, `ChainIds`, `ChainPoints`, `ChainFrom`.
+  - Singularity: `OrbPoint`, lifted .9 m off the floor.
+  - Orbital Uplink: `Release` is the column's start; also `OrbitalCentre`, `OrbitalPoint`, `OrbitalPointAt`, `OrbitalAim`.
+  - A note: v1 spawns the hand-0 bolt .18 m to the pilot's left while the presentation throws it from the right hand; the fireball eases from the drawn hand to hide this.
+- **Checks on the branch (run5):** Unity 6000.3.24f1 runtime and editor compile OK; relay 695 PASS (new `CyberKit2RangedChecks`, `--cyber-kit2-ranged`, 24,854 checks: contract, body continuity, effects, HUD, icons and sounds, 0 bytes allocated over 400 frames); Python 106 OK; package OK; diff-check OK.
+  - `CyberLordRangedChecks`' stance expectation is updated to the new loaded stance.
+  - `CyberLordChecks`' viewer-name scan now uses word boundaries.
+- **Renders:** offline only (the scratchpad's `renders-cyberlord-v2-ranged`). No Unity, Windows, audio or two-client run.
+- **Risks:**
+  - First-person throws are modest.
+  - Orbital Uplink is very bright up close (dimmed inside 1 m of its axis).
+  - A 40 m fireball is a small dot.
+  - v2 is validated only against the preview and test records.
+- **Animation impact:** only the drawn arms, chest, pitch, neck and effects change; releases stay on the replicated times. No change to damage, hit timing, hitboxes, cooldowns, movement or networking.
