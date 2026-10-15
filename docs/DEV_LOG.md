@@ -8249,3 +8249,48 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - **Known risk:**
   - The point follows the rig's flat floor plane, as the feet do. Going down stairs or slopes, the blade behind can dip into the ground.
   - The jump layer's support-hand snap on take-off and landing is unchanged (it already happens in the run).
+
+## 2026-10-15 — Claude: menu screen transitions and stage loading screen
+
+- **Branch:** `claude/transitions-loading` (`edbfaa7`), based on shared `7009887`, merged onto shared `02fa0c2`.
+  - The merge renames the PvE screen's transition title to START EXPEDITION / PVE · EXPEDITION, matching the home menu rename.
+- **Owner request:** "When navigating rooms from menu, show a screen transition that matches our style of the game ... Introduce loading on stages (Like on expedition, we load in when we enter an instance that way we get time to load all assets prior to entering.)"
+- **Menu transitions** (Core `NativeScreenTransition`; Runtime `NativeMenuTransitionUI`, `NativeScreenTransitionHud`):
+  - Covers every `Go(screen)` between menu screens: home ↔ panels, room routing, lobby ↔ Customize/Settings, leave/logout, Escape and the Sandbox link.
+  - `Go` runs its side effects at once; only the shown screen swaps, under full cover.
+  - Look: seven chamfered void bands slam in as a diagonal shard front with cyan chevron edges, a magenta tick, circuit traces and a chip motif. The destination title flashes with a glitch, then the bands run out (mirrored toward Home).
+  - Timing: 0.2 s cover, 0.07 s hold, 0.3 s reveal. Input is held for at most 0.27 s.
+  - Reduced effects: a 0.33 s fade.
+  - Skipped over a match, on the first pass after a match, and under the loading screen.
+- **Stage loading** (Core `NativeStageLoading`, `NativeStageSchematic`; Runtime `NativeStageLoadingUI`, `NativeStageLoadingHud`, `NativeStagePrewarm`):
+  - When it shows:
+    - Requested loads (start match or sandbox or boss fight, DEV Expedition M1, lobby Start, pause restart or return) close the shutters first, then run under them.
+    - Observed loads (a guest's first arena, map swaps, an Expedition area barrier, returns) cover at once.
+  - What it shows: the stage name typed in, mode tag and tag line, a holographic stage scan built from the stage's real blocks, the step, percent bar and a tip, and party pips or "PILOTS READY".
+  - Preload, one step per frame while covered:
+    - the stage's lazily built kits (Factory, Brickfall, Cyber City, Expedition town, Ward Zero, hazard kit);
+    - two hidden frames;
+    - every Resources shader warmed once into a hidden 32×32 camera under the stage's fog;
+    - the effects-audio queue.
+  - When it opens:
+    - After the preload and a 0.35 s minimum hold, or at once on live fight, a refused start or an error.
+    - A game hold keeps it up to 20 s.
+    - A slow preload never holds past the clock's budget (countdown 1 s, intro or draft 2 s, otherwise 6 s).
+    - It steps in LateUpdate's `finally` and cancels on any exception, so it never sticks.
+- **For Astra** (network load gate; nothing on the network side is implemented):
+  - The client exposes `StagePresentation` (`StageReadiness`: Serial, Map, Generation, Epoch, Ready, Preloaded, Seconds) and `StagePresentationReady`, and reads `StageGate` (`Waiting`, `Ready`, `Required`, `Remaining`).
+  - Proposed messages:
+    - Guest → host: an idempotent `stage-ready {epoch, map, serial}`, sent once ready (again after a reconnect).
+    - Host → all: `stageGate {waiting, ready, required, remainingSeconds}`.
+  - The host keeps the match clock unstarted until every client present at stage creation reports, a ~12 s timeout passes, or the unready clients drop. Late joiners are not gated.
+  - Expedition: delay `ReportExpeditionAreaLoaded` / `CompleteAreaLoad` until `StagePresentationReady` for the target map, so the area barrier waits for presentation ("load in before entering the instance").
+  - Without the gate:
+    - the first ≤1 s of a countdown (≤2 s of an intro) can pass under the screen;
+    - a live Expedition area swap gets only a quick shutter.
+- **Checks on the branch (run5):** Unity 6000.3.24f1 runtime and editor compile OK; relay 691 PASS (new `TransitionLoadingChecks`, `--transitions`, 3,409 assertions: timelines, input hold, layouts from 720p to 4K and 3440×1440, the load state machine and budgets, stage scans, zero per-frame allocation, wiring scans); Python 106 OK; package OK; diff-check OK.
+- **Renders:** offline IMGUI emulation only (the scratchpad's `renders-transitions-loading`). Real Windows load timing, hitch removal and shader-variant matching on DX11/DX12 are unmeasured.
+- **Risks:**
+  - User-started loads begin about 0.3 s later (after the cover).
+  - The screen being left is drawn during the 0.2 s cover after Go's side effects.
+  - Per-death meshes, pilot rigs and runtime keywords cannot be preloaded.
+- **Animation impact:** none on gameplay timing, hitboxes, damage, cooldowns, movement or networking.
