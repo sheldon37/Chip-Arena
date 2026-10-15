@@ -17,8 +17,8 @@ namespace ChipArena.UnityConversion
     ///   24 Hz steps). It leaves the throwing hand: for its first moments it eases from the hand onto the replicated path, so the
     ///   ball the hand throws is the one that flies. At range it keeps a minimum on-screen size, so it reads at 40 m.
     /// - The Overflow: bigger, with code bytes orbiting it.
-    /// - The hand: a fireball held over each palm in ranged mode (the loaded hand's full, the forward hand's smaller), spent on
-    ///   the throw and re-forming; a bright cast flash with a fan of flame where it leaves the hand.
+    /// - The hand: a fireball held in each cupped palm in ranged mode, spent on the throw and re-forming; a bright cast flash
+    ///   with a fan of flame where it leaves the hand.
     /// - The splash: a plasma burst (a white flash, flame petals blown out round the surface normal, a hex ring), hex shards with
     ///   gravity and a scorch flicker (upright flame licks and a wisp of smoke); Kit v2's splash radius as a fading shell.
     /// Reduced effects: no glitch, flicker or strobe, fewer embers and shards. The low tier: fewer tongues and embers, no smoke.
@@ -137,11 +137,11 @@ namespace ChipArena.UnityConversion
                 }
                 if(!me&&!low)for(int i=0;i<(reduced?3:7);i++){var dir=Vector3.Normalize(aim*1.2f+side*(H(seed+i,11)-.5f)*1.4f+up*(H(seed+i,13)-.3f));float sp=4+5*H(seed+i,17);s.Streak(at+dir*(sp*age),dir*sp,Lin(i%2==0?HotWhite:Magenta,2.2f*k),.02f,.1f,.02f,.9f,1-k,seed+i);}
             }
-            // The held fireballs over the palms (the loaded hand's full, the forward hand's a smaller flame).
+            // The held fireballs in the cupped palms (the stance holds one in each; a hand that holds less carries a smaller flame).
             for(int h=0;h<2;h++)
             {
                 bool left=h==1;float load=left?loadL:loadR,form=left?formL:formR,size=(.5f+.5f*load)*form*mode;if(size<=1e-3f)continue;long seed=a.Id*977L+h*31;
-                var fist=left?lf:rf;var at=fist+Up2*((me?.06f:.075f)+(me?.03f:.04f)*load)+aim*(me?.03f:.06f);float fl=reduced?1:.85f+.3f*H(seed+step,3),g=view*size;
+                var fist=left?lf:rf;var at=fist+Up2*((me?.06f:.05f)+(me?.03f:.03f)*load)+aim*(me?.03f:.05f);float fl=reduced?1:.85f+.3f*H(seed+step,3),g=view*size;
                 s.Sprite(me,at,Lin(Magenta,1.9f*fl),.22f*g,Soft);s.Sprite(me,at,Lin(Cyan,2.2f),.12f*g,Hot);s.Sprite(me,at,Lin(HotWhite,3.2f),.055f*g,Hot);
                 var sway=reduced?Vector3.Zero:new Vector3(H(seed+step,5)-.5f,0,H(seed+step,7)-.5f)*(.05f*g);
                 Flame(s,me,at-Up2*(.02f*g),at+Up2*(.2f*g)+sway,Lin(Magenta,1.8f*fl),.11f*g,reduced?.4f:H(seed+step,9));
