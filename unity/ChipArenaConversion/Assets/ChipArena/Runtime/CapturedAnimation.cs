@@ -389,9 +389,27 @@ namespace ChipArena.UnityConversion
                 v.Down=NativeSpecialPose.Down(a,time);v.DownPhase=v.Down?NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):null;v.WeaponAway=a.WeaponAway;
                 return v;
             }
+            // The route the last ActorPose took (its gait's feet are the footfalls, FootContacts).
+            private PoseRoute route=PoseRoute.Generic;
+            /// <summary>The drawn gait's planted feet after the last ActorPose (bit 1 the left foot, 2 the right): the footfalls'
+            /// source (Core NativeStepTracker); -1 where the route has no gait (the generic path: the Siren, the view models).</summary>
+            public int FootContacts
+            {
+                get
+                {
+                    switch(route)
+                    {
+                        case PoseRoute.CapturedMelee:case PoseRoute.Fighter:return melee==null?-1:(melee.Gait.Planted(true)?1:0)|(melee.Gait.Planted(false)?2:0);
+                        case PoseRoute.Magic:return magicMotion==null?-1:(magicMotion.Planted(true)?1:0)|(magicMotion.Planted(false)?2:0);
+                        case PoseRoute.Gun:return gunMotion==null?-1:(gunMotion.Planted(true)?1:0)|(gunMotion.Planted(false)?2:0);
+                        case PoseRoute.Bow:return bowMotion==null?-1:(bowMotion.Planted(true)?1:0)|(bowMotion.Planted(false)?2:0);
+                        default:return -1;
+                    }
+                }
+            }
             public void ActorPose(Actor a,Vector3 position,float time,bool firstPerson=false)
             {
-                switch(NativePoseRoute.For(a,firstPerson))
+                switch(route=NativePoseRoute.For(a,firstPerson))
                 {
                     case PoseRoute.CapturedMelee:MeleePose(a,position,time);return;
                     case PoseRoute.Magic:MagicGaitPose(a,position,time);return;

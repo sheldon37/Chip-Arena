@@ -69,39 +69,35 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeAudio
     {
         // ---------- the town zombies' voices (Core NativeHordeRoam): sparse low moans while calm, a shriek on noticing ----------
-        // The town's roaming population only (adds with the host's record: the instance hordes sound as today). Bank keys
-        // pve.zombie.moan / pve.zombie.shriek when the owner's LocalAssets bank has them, else existing bank stand-ins (the add
-        // death's groan pitched down, the Siren's rush); silent without the bank, as every horde cue. The moments are a pure
-        // function of the add's seed, the clock and the record (the same on every peer), positional, attenuated with distance
-        // (NativeEventSounds.Falloff), never more than one moan a MoanGap, and low priority.
+        // The town's roaming population (adds with the host's record); every other add calls as it hunts (NativeZombieAudio.cs). The
+        // moments are a pure function of the add's seed, the clock and the record (the same on every peer); the calls go through
+        // the zombies' voice (Core NativeZombieVoices: one at a time per add, the horde capped, a moan gap): pve.zombie.moan /
+        // pve.zombie.shriek from the bank, else their stand-ins (the add death's groan pitched down, the Siren's rush), else the
+        // built-in synthesized takes. Returns whether the add is calm (it then moans instead of its hunting calls).
         private readonly Dictionary<int,NativeHordeRoamTrack> hordeRoamTracks=new Dictionary<int,NativeHordeRoamTrack>();private readonly Stack<NativeHordeRoamTrack> hordeRoamSpare=new Stack<NativeHordeRoamTrack>();
-        private readonly Dictionary<int,float> hordeRoamSeen=new Dictionary<int,float>();private readonly List<int> hordeRoamStale=new List<int>();private float hordeMoanNext=-1,hordeRoamSweep;
-        private void HordeRoamCue(NativeArena arena,NativeMinion m,int kind,Vector3 pos,float t)
+        private readonly Dictionary<int,float> hordeRoamSeen=new Dictionary<int,float>();private readonly List<int> hordeRoamStale=new List<int>();private float hordeRoamSweep;
+        private bool HordeRoamCue(NativeArena arena,NativeMinion m,int kind,Vector3 pos,float t)
         {
-            if(!NativeHordeRoamRecord.On(m))return;var wire=NativeHordeRoamRecord.Read(m);if(wire.State==HordeRoamState.None)return;
+            if(!NativeHordeRoamRecord.On(m))return false;var wire=NativeHordeRoamRecord.Read(m);if(wire.State==HordeRoamState.None)return false;
             if(!hordeRoamTracks.TryGetValue(m.Id,out var track)){track=hordeRoamSpare.Count>0?hordeRoamSpare.Pop():new NativeHordeRoamTrack();track.Reset();hordeRoamTracks[m.Id]=track;}hordeRoamSeen[m.Id]=t;
-            var r=track.Read(true,wire,m.Id,t,0,false);
-            if(t<hordeMoanNext-5)hordeMoanNext=-1;uint seed=NativeHordeKinds.Seed(m.Id);
+            var r=track.Read(true,wire,m.Id,t,0,false);uint seed=NativeHordeKinds.Seed(m.Id);
             // The shriek with the scream's opening (once per alert).
             if(!float.IsNaN(r.AlertAge))
             {
                 float at=NativeHordeRoam.ShriekAt(t-r.AlertAge);
-                if(t>=at&&t-at<.12f&&Once("add"+m.Id+"y",Mathf.Round(at*20)/20)&&!BankPlay("pve.zombie.shriek",pos,NativeHordeRoam.ShriekGain,0,null,false,null,NativeHordeRoam.MoanRate(seed,kind)))
-                    BankPlay("siren.rush",pos,NativeHordeRoam.ShriekGain*.75f,0,null,false,null,1.08f*NativeHordeRoam.MoanRate(seed,kind));
+                if(t>=at&&t-at<.12f&&zombieVoices.First(m.Id,NativeZombieVoices.AlertSlot,Mathf.Round(at*20)/20))ZombieCall(m.Id,NativeZombieCall.Shriek,pos,seed,kind,t);
             }
+            bool calm=NativeHordeRoam.Calm(r.State);
             // A moan now and then while it wanders, idles or searches, near the listener only.
-            if(NativeHordeRoam.Calm(r.State)&&(pos-listener).sqrMagnitude<NativeHordeRoam.MoanRange*NativeHordeRoam.MoanRange)
+            if(calm&&(pos-listener).sqrMagnitude<NativeHordeRoam.MoanRange*NativeHordeRoam.MoanRange)
             {
                 float at=NativeHordeRoam.MoanAt(seed,t);
-                if(!float.IsNaN(at)&&t>=at&&t-at<.12f&&t>=hordeMoanNext&&Once("add"+m.Id+"n",at))
-                {
-                    hordeMoanNext=t+NativeHordeRoam.MoanGap;float rate=NativeHordeRoam.MoanRate(seed,kind),gain=NativeHordeRoam.MoanGain*(r.State==HordeRoamState.Idle?.8f:1);
-                    if(!BankPlay("pve.zombie.moan",pos,gain,0,null,false,NativeSoundPriority.Low,rate))BankPlay("pve.add.death",pos,gain*.85f,0,null,false,NativeSoundPriority.Low,.74f*rate);
-                }
+                if(!float.IsNaN(at)&&t>=at&&t-at<.12f&&zombieVoices.First(m.Id,NativeZombieVoices.CallSlot,at))ZombieCall(m.Id,NativeZombieCall.Moan,pos,seed,kind,t,r.State==HordeRoamState.Idle?.8f:1);
             }
+            return calm;
         }
         // A new arena forgets every track.
-        private void HordeRoamClear(){foreach(var pair in hordeRoamTracks)hordeRoamSpare.Push(pair.Value);hordeRoamTracks.Clear();hordeRoamSeen.Clear();hordeMoanNext=-1;hordeRoamSweep=0;}
+        private void HordeRoamClear(){foreach(var pair in hordeRoamTracks)hordeRoamSpare.Push(pair.Value);hordeRoamTracks.Clear();hordeRoamSeen.Clear();hordeRoamSweep=0;}
         // Tracks of adds gone for 2 s go back to the spares (swept every 2 s; no allocation once warm).
         private void HordeRoamSweep(float t)
         {
