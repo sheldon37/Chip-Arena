@@ -1,5 +1,9 @@
 name: Native Unity conversion source checks
 on:
+  pull_request:
+    paths:
+      - 'unity/ChipArenaConversion/**'
+      - '.github/workflows/unity-conversion.yml'
   push:
     branches: ['codex/unity-*', 'claude/**']
     # The publisher requires both native jobs on the exact cloud head, including
@@ -8,12 +12,12 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: unity-conversion-${{ github.ref }}
+  group: unity-conversion-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   native-source:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -22,6 +26,16 @@ jobs:
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
           dotnet-version: '8.0.x'
+      - name: Compile player, Runtime and Editor against pinned Unity assemblies
+        run: python3 unity/ChipArenaConversion/tools/check_unity_compile.py --download --output "$RUNNER_TEMP/unity-compile"
+      - name: Retain Unity semantic compile logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: unity-semantic-compile-${{ github.run_id }}
+          path: ${{ runner.temp }}/unity-compile/*.log
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Native source parity, managed regressions and real relay
         run: python3 unity/ChipArenaConversion/tools/check_relay.py
       - name: Source package validation

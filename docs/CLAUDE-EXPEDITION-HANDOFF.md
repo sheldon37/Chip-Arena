@@ -1,8 +1,13 @@
 # Expedition — current Claude handoff
 
-Verified shared/builder base: `5aa2e0a48cfb7677c8e564f46ba7f1fba7826648`,
-`codex/unity-cloud-current` (2026-10-14). Fetch before branching; preserve newer work.
-Astra follow-up branch: `codex/expedition-director-lifecycle`.
+Shared/builder base at this handoff: `f156a21761bc612ce7d053fd4a0bf89af8c5ba75`
+(2026-10-15). Fetch `claude/sleepy-ritchie-g8ruhv` and preserve newer work.
+PR #218 (`codex/unity-expedition-safe-ci`) fixes premature SAFE and adds real
+Unity-assembly compilation. Check its merge/check status before starting.
+
+Presentation acceptance is already merged (`75cbd30`), including Editor compile
+repair `139f58f`. Do not repeat the old acceptance implementation task.
+The next blocking work belongs to Astra: a playable runtime integration slice.
 
 ## Already present — do not rebuild
 
@@ -17,7 +22,7 @@ Astra follow-up branch: `codex/expedition-director-lifecycle`.
   Claude binding merged at `5aa2e0a`).
 - Hulk v2 presentation binding also exists; it is not an outstanding Expedition task.
 
-## Claude next: presentation acceptance and necessary fixes
+## Claude next: live presentation acceptance after runtime integration
 
 Read AGENTS.md, current PROJECT_STATE/DEV_LOG and EXPEDITION-PRESENTATION.md before
 editing. Own presentation only; Astra owns runtime scene/combat/network/persistence.
@@ -43,8 +48,9 @@ Do not fabricate ready ACKs, boss HP, SAFE flags, collision or migration success
 
 ## Astra remaining
 
-This follow-up implements the fenced area-ready message and same-area loop reset;
-it does not implement the map loader. Remaining work:
+PR #217 already implements fenced area-ready transport and same-area loop reset.
+The map loader is still missing. First playable milestone: see
+[EXPEDITION-PLAYTEST-M1.md](EXPEDITION-PLAYTEST-M1.md). Remaining work:
 - authored scene creation, real geometry/navigation probes and closure collision;
 - map loading, authenticated door interaction and real party placement/ready hooks;
 - encounter catalog/spawning, combat/death/health callbacks and pilot-state binding;

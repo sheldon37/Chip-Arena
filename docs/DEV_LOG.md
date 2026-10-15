@@ -7976,3 +7976,67 @@ nothing outside `unity/` and `docs/` changed. No release or test-channel publica
 - Move the pilot across the gap, synchronize the edge placement, and derive the charge point from the pilot. Assert supported start / unsupported next step and forward heading before requiring the original solid/gap stop. No runtime gameplay changes or weakened acceptance.
 - Source package/diff checks passed. Managed gameplay suites are unchanged from PR #221; Unity runtime/editor reference compilation receipt follows. Full native Windows acceptance and update publication still require the builder rerun.
 - Unity runtime + editor reference compilation passed (zero errors, existing warnings). Native floor-gap and subsequent frame/replay checks remain unrun here.
+
+## 2026-10-14 — Astra: SAFE evidence and Unity semantic CI (draft)
+
+Branch `codex/unity-expedition-safe-ci`, base shared `f156a217`, preserving
+Claude's acceptance work and Editor compile repair `139f58f`.
+
+Confirmed the two reported premature SAFE grants. Join now explicitly starts
+unsafe (the member DTO defaults safe=true, so omitting the initializer is not
+enough). NextLoop clears SAFE for all members. Starting any area load also clears
+prior sanctuary evidence and refreshes extraction votes, so a failed/frozen
+placement cannot retain an old SAFE flag. Only subsequent authority position
+evaluation restores it. Added focused join/loading/failed-placement/next-Step
+regressions to ExpeditionDirectorChecks.
+
+Added a semantic compilation step to native-source for player, editor-context
+Runtime, and Editor assemblies, using Unity's pinned Linux Editor reference
+assemblies and .NET SDK Roslyn. It downloads from the version/revision in
+ProjectVersion.txt; missing/ambiguous references or compiler errors fail the job.
+PRs touching Unity now run this workflow too. No license activation, player
+package, secret or self-hosted runner is required. The initial download is large;
+native-source timeout is 30 minutes and compiler logs are retained. Existing
+managed, source package and Windows updater checks remain.
+
+IMPORTANT: the execution environment disconnected and no executor tools are
+available this turn. Changes are inspected remotely only, NOT locally compiled
+or tested. The archive URL, exact reference set and workflow execution need CI
+verification. Keep this PR draft and unmerged pending those results; no check
+or release is claimed. In particular the previous syntax/managed checks missed
+CS0136; they must not be described as a Unity compile substitute.
+
+The live Expedition scene/director/map-load/closure-collider/combat adapter is
+still absent and has NOT been implemented in this draft. The four PR #216 fields
+are complete. No new presentation handoff is needed; resume authority integration
+in a functioning execution environment and retain Claude's blocker list.
+
+## 2026-10-15 — Astra: PR #218 verification and playtest handoff
+
+Same branch/base as above. Executor access restored. Fixed the semantic compiler
+reference set to use Unity's modular UnityEngine/UnityEditor assemblies together;
+root Managed contains legacy monolithic copies and Cecil dependencies that must
+not be mixed with this profile. Actual local compilation passed for player,
+editor-context Runtime and Editor against pinned 6000.3.24f1 assemblies (existing
+warnings only). Source package validation passed. Expedition suites passed,
+including director 98, acceptance 66,840 and states 9,658 checks. The first full
+managed/real-relay run stopped after 192 PASS groups at Bisect's 912 ms timing
+assertion while compilation/download/Python checks overlapped; no test weakened.
+A sequential retry and remote CI are required before promotion.
+
+Updated stale CLAUDE-EXPEDITION-HANDOFF and added EXPEDITION-PLAYTEST-M1: one real
+local route first, then host/guest. Existing presentation is complete; Astra's
+runtime construction, loader, real placement, colliders and combat callbacks are
+the remaining playability blocker. No Unity play, Windows gameplay, publication
+or playable Expedition claim. This entry records branch work, not a merge.
+
+## 2026-10-15 — Astra: repair PR #218 history truncation
+
+Commit 8241703 accidentally replaced DEV_LOG with only the new 20-line entry
+when building the remote commit. Restored the intact local log, including every
+byte from afb2dae and both PR #218 entries. Audited all other files from that
+commit against the intended local tree. The full sequential managed/real-relay
+retry passed (688 PASS groups); Python passed 106 tests with one skipped.
+Local player/Runtime/Editor Unity assembly compilation and packaging passed.
+No runtime integration or playable build is claimed. PR remains unmerged;
+Electron baseline failures remain and native CI status must be checked.
