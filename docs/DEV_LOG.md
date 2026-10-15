@@ -8912,3 +8912,36 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - Durable saves pinned to the exp-layout-2 fingerprint will not resume on the new town (the director refuses them).
   - The gate leaf hinge overlaps its post by a few centimetres at 160 degrees.
 - **Movement, collision and networking impact:** the town's colliders and navigation change as listed above. There is no change to hit timing, hitboxes, damage, cooldowns, movement rules, networking or saves code.
+
+
+## 2026-10-15 — Astra — Expedition hub authority
+
+- Branch `codex/expedition-hub-authority`, base Claude hub `3c13863` (contains shared
+  `f29d7c9`; shared subsequently merged that hub at `6558b024`). Owner approved gate,
+  permanent horde ward, anti-camping, and living-player hub spawn rules in chat.
+- Implements four host-operated gates, 2.5 s clear auto-close, capsule occupancy
+  protection, collider motion thresholds, anti-vault columns and permanent horde-only
+  collision layer 28. Scoped horde routing rejects gate links; no town vent bypass.
+- Adds .25 s holster/instant exit, 1.5 s old-target aggro grace/no new safe targets,
+  projectile/acid/melee-shot ward and central damage guards, origin-preserving DoT
+  credit, ring rewards and safe summon/recruit damage checks.
+- Town refill: living connected/unextracted member cap `min(16,2+2*n)`, one attempt
+  per 3 s, authored weighted near/mid/far exits and rosters, no Hulks, silent
+  far/idle/lost-target despawn and population shrink; final boss restores its cap.
+  No optional income soft cap. Far-distance test uses conservative Euclidean >60 m
+  rather than an expensive per-mob walked-distance search. See EXPEDITION-HUB.md.
+- Public `ExpeditionView.hub` is detached, serializable, privacy-safe, carried by
+  the existing 20 Hz transport and bound to Claude's Authority/AuthorityClock hooks.
+  Source-only updates at unchanged run revision are covered by receiver checks.
+- Checks: Unity 6000.3.24f1 / C# 9 player, editor-context runtime, Editor semantic
+  compilation PASS; managed/real relay suite 722 PASS lines, exit 0; focused hub
+  authority 80 checks and existing hub 169 checks PASS; Python 107 tests OK (1 skip).
+  Native acceptance extended for colliders, obstruction, holster/aggro timing,
+  cadence/cap, damage and outside DoTs; Windows/PhysX execution pending builder.
+- Presentation ownership preserved: only binds Claude's existing gate/ward/holster
+  hooks. Gameplay changes affect input, collision, damage eligibility, AI and economy;
+  weapon hit windows, damage values and animations otherwise unchanged.
+- Full multiplayer Expedition launch remains a separate pre-existing integration
+  gap; replicated hub DTO is tested, live two-client play is not claimed.
+- Publication: source branch/shared/builder promotion and Windows package status
+  recorded in PR/final handoff. No native release is inferred from these checks.

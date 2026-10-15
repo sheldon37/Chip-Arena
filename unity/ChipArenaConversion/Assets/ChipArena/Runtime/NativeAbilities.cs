@@ -78,6 +78,7 @@ namespace ChipArena.UnityConversion
             if(d.kind=="strike"||d.kind=="line"||d.kind=="zone")point=GroundPoint(point);
             Vector3 dir=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));
             if(d.id=="blink-strike"){dir=new Vector3(p.Input.X,0,p.Input.Z);if(dir.sqrMagnitude<.01f)dir=Quaternion.Euler(0,p.Input.Yaw,0)*Vector3.forward;point=p.Body.position+dir.normalized*(float)d.range;}
+            if(HubInside(p.Body.position)||HubCross(p.Body.position,point))return;
             p.AbilityCast=new NativeAbilityCast{Definition=d,Point=point,Direction=dir,Release=Time+NativeAbilityRules.CastTime(d.windup,p.Stats)};
             p.Pose.AbilityId=d.id;p.Pose.AbilityAt=Time;p.Pose.AbilityRelease=p.AbilityCast.Release;p.BufferedSlot=null;
         }
@@ -96,6 +97,7 @@ namespace ChipArena.UnityConversion
         }
         private void ExecuteAbility(NativePilot p,NativeAbilityCast cast,float scale)
         {
+            if(HubInside(p.Body.position)||HubCross(p.Body.position,cast.Point))return;
             var d=cast.Definition;int group=++abilityGroup;
             float damage=(float)d.damage*scale,radius=NativeAbilityRules.Radius(d,p.Stats);
             if(d.id=="singularity"&&Has(p,"abyssal-core"))radius*=1.25f;
@@ -180,10 +182,10 @@ namespace ChipArena.UnityConversion
             foreach(var p in Pilots)
             {
                 Vector3 delta=p.Body.position-at;float fall=NativeAbilityRules.BlastFalloff(delta.magnitude,radius);
-                if(p.Hp<=0||!p.Seat.connected||!CanHit(owner,p)||fall<=0||SceneLinecast(at,p.Body.position,WorldMask))continue;
+                if(p.Hp<=0||!p.Seat.connected||!CanHit(owner,p)||fall<=0||HubCross(at,p.Body.position)||SceneLinecast(at,p.Body.position,WorldMask))continue;
                 if(AbilityHit(p,owner,damage*fall,delta.normalized,impulse*fall,damageKind:"blast")>0)hits.Add(p);
             }
-            foreach(var m in Minions.ToArray()){Vector3 delta=m.Body.position-at;float fall=NativeAbilityRules.BlastFalloff(delta.magnitude,radius);if(m.Hp>0&&CanHit(owner,m)&&fall>0&&MeleeVisible(at,m.Body.position,owner,m.Collider)){float actual=HitMinion(m,owner,damage,delta.normalized,impulse*fall,at,"blast",radius);AbilityOnDamage(owner,actual);if(actual>0)onMinion?.Invoke();}}
+            foreach(var m in Minions.ToArray()){Vector3 delta=m.Body.position-at;float fall=NativeAbilityRules.BlastFalloff(delta.magnitude,radius);if(m.Hp>0&&CanHit(owner,m)&&fall>0&&!HubCross(at,m.Body.position)&&MeleeVisible(at,m.Body.position,owner,m.Collider)){float actual=HitMinion(m,owner,damage,delta.normalized,impulse*fall,at,"blast",radius,from:at);AbilityOnDamage(owner,actual);if(actual>0)onMinion?.Invoke();}}
             foreach(var prop in Props.ToArray())if(prop!=null&&!prop.Indestructible)
             {
                 if(!string.IsNullOrEmpty(prop.Definition.role)){StructureBlast(prop,owner,at,radius,damage*propScale,impulse);continue;}
@@ -224,6 +226,7 @@ namespace ChipArena.UnityConversion
                 if(!s.Resting)
                 {
                     Vector3 delta=Vector3.ClampMagnitude(s.Velocity*dt+Vector3.down*(.5f*s.Gravity*dt*dt),Math.Max(0,s.MaxTravel-s.Travel));s.Velocity.y-=s.Gravity*dt;
+                    if(HubInside(s.Position)||HubCross(s.Position,s.Position+delta,s.Radius)){AbilityShots.RemoveAt(i);continue;}
                     if(CyberAbsorb(s.Owner,s.Position,s.Position+delta,s.Radius)){AbilityShots.RemoveAt(i);continue;}
                     var hits=ProjectileHits(s.Position,s.Radius,delta);
                     bool contact=false;

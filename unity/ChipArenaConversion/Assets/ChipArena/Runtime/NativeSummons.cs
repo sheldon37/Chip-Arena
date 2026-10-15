@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
         }
         private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false,int projectile=0,bool pierced=false,Vector3? from=null)
         {
-            if(m.Hp<=0||!CanHit(owner,m))return 0;if(m.DevMonster)return HitDevMonster(m,owner,damage,direction,impulse,point,kind);if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head,projectile,pierced,from);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,from:from,projectile:projectile,pierced:pierced);MinionImpact(m,owner,actual,point,kind,direction);if(m.Hp<=0)RemoveMinion(m);return actual;
+            if(m.Hp<=0||!CanHit(owner,m)||HubDamageBlocked(owner,m.Body.position,from,projectile))return 0;if(m.DevMonster)return HitDevMonster(m,owner,damage,direction,impulse,point,kind);if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head,projectile,pierced,from);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,from:from,projectile:projectile,pierced:pierced);MinionImpact(m,owner,actual,point,kind,direction);if(m.Hp<=0)RemoveMinion(m);return actual;
         }
         private void MinionImpact(NativeMinion m,NativePilot owner,float actual,Vector3? point,string kind,Vector3 direction)
         {
@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
             if(owner.Weapon.chain>0){var near=NearAbilityEnemies(owner,m.Body.position,4,2).FirstOrDefault(x=>x.m!=m);if(near.p!=null)Damage(near.p,owner,(float)owner.Weapon.chain,Vector3.zero,0,false,direct:false,primary:false);else if(near.m!=null)HitMinion(near.m,owner,(float)owner.Weapon.chain,Vector3.zero,0,kind:"chain");}
             Heal(owner,actual*(float)(owner.Weapon.drain+owner.Stats["lifeSteal"]));if(m.Hp<=0)return;
             foreach(var item in new[]{(kind:"fire",dps:burn,duration:2f),(kind:"poison",dps:poison,duration:4f)})
-            {if(item.dps<=0)continue;string key=owner.Seat.id+":"+item.kind;m.Dots.TryGetValue(key,out var old);bool live=old!=null&&old.Until>=Time;m.Dots[key]=new NativeDot{Source=owner.Seat.id,Dps=Math.Max(item.dps,live?old.Dps:0),Next=live?old.Next:Time+.25,Until=Time+item.duration};}
+            {if(item.dps<=0)continue;string key=owner.Seat.id+":"+item.kind;m.Dots.TryGetValue(key,out var old);bool live=old!=null&&old.Until>=Time;m.Dots[key]=new NativeDot{HubNoReward=m.Pve!=null?!m.Pve.HubCredit:HubInside(owner.Body.position),Source=owner.Seat.id,Dps=Math.Max(item.dps,live?old.Dps:0),Next=live?old.Next:Time+.25,Until=Time+item.duration};}
         }
         private bool SummonVisible(NativeMinion from,Vector3 a,Vector3 b,Collider target)
         {
@@ -67,6 +67,7 @@ namespace ChipArena.UnityConversion
                 if(!Minions.Contains(m)||m.Pve!=null)continue;if(m.Owner.Hp<=0||Time>=m.Until||m.Body.position.y<(Map.bounds?.killY??-6)){RemoveMinion(m);continue;}
                 foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time+1e-8&&d.Next<=d.Until+1e-8){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)(d.Dps*.25),Vector3.zero,0,kind:"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0||m.Kind=="slender")continue;
                 bool toy=m.Kind=="toy";float windup=toy?.45f:.42f,recover=toy?.55f:.48f;Vector3 at=m.Body.position,velocity=m.Body.linearVelocity;
+                if(HubInside(at)){m.StrikeAt=-1;continue;}
                 if(m.StrikeAt>=0)
                 {
                     Vector3? goal=m.Foe?.Hp>0?m.Foe.Body.position:m.Other?.Hp>0?m.Other.Body.position:(Vector3?)null;
@@ -74,10 +75,10 @@ namespace ChipArena.UnityConversion
                     if(Time<m.StrikeAt){m.Body.linearVelocity=new Vector3(0,velocity.y,0);continue;}
                     m.StrikeAt=-1;m.NextAttack=Time+recover;if(!toy)m.Body.linearVelocity=Quaternion.Euler(0,m.Yaw,0)*Vector3.forward*4.5f+Vector3.up*velocity.y;
                     if(!goal.HasValue)continue;Vector3 origin=at+Vector3.up*(toy?.25f:0),target=goal.Value+Vector3.up*(toy?.35f:0),aim=target-origin;Collider collider=m.Foe?.Hp>0?m.Foe.Collider:m.Other.Collider;
-                    if(toy)Fx(target,.1f,0,origin,m.Owner,"minionShot");if(aim.magnitude>(toy?9.5f:2.4f)||!SummonVisible(m,origin+Vector3.up*(toy?0:.3f),target+Vector3.up*(toy?0:.3f),collider))continue;
+                    if(toy)Fx(target,.1f,0,origin,m.Owner,"minionShot");if(HubCross(origin,target)||aim.magnitude>(toy?9.5f:2.4f)||!SummonVisible(m,origin+Vector3.up*(toy?0:.3f),target+Vector3.up*(toy?0:.3f),collider))continue;
                     float damage=(toy?8:12)*(float)m.Owner.Stats["damage"],impulse=toy?50:120;Vector3 flat=new Vector3(aim.x,0,aim.z).normalized;
                     if(m.Foe?.Hp>0){if(Time<m.Foe.BlockEnd){BlockProc(m.Foe,m.Owner,m.Foe.Collider.ClosestPoint(at),"clash");if(!toy)m.Body.AddForce((at-m.Foe.Body.position).normalized*400,ForceMode.Impulse);}else Damage(m.Foe,m.Owner,damage,flat,impulse*(float)m.Owner.Stats["impulse"],false,direct:false,primary:false);}
-                    else if(m.Other?.Hp>0)HitMinion(m.Other,m.Owner,damage,flat,impulse);continue;
+                    else if(m.Other?.Hp>0)HitMinion(m.Other,m.Owner,damage,flat,impulse,from:origin);continue;
                 }
                 if(Time<m.NextAttack&&m.LastAttack>=0&&Time-m.LastAttack<windup+recover){if(Time-m.LastAttack>windup+.12f)m.Body.linearVelocity=new Vector3(0,velocity.y,0);continue;}
                 m.Foe=null;m.Other=null;float best=float.PositiveInfinity;

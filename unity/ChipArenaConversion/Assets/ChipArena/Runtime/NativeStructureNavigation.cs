@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
             {var pocket=NearestEscapeNode(pos,true);if(pocket!=null)return (Vec(pocket.pos)-pos).magnitude<.25f?Vector3.zero:new Vector3(pocket.pos.x-pos.x,0,pocket.pos.z-pos.z).normalized;}
             if(UnsafeStructure(pos)||unsafeStage)
             {var safe=NearestEscapeNode(pos,false);if(safe!=null)return new Vector3(safe.pos.x-pos.x,0,safe.pos.z-pos.z).normalized;}
-            if(Map.hazards==null&&Math.Abs(target.y-pos.y)<1.1&&!SceneLinecast(pos,target,WorldMask)&&!UnsafeStructurePath(pos,target))return fallback;
+            if(!hubNav&&Map.hazards==null&&Math.Abs(target.y-pos.y)<1.1&&!SceneLinecast(pos,target,WorldMask)&&!UnsafeStructurePath(pos,target))return fallback;
             if(!navRoutes.TryGetValue(actorId,out var route)||Time-route.at>.7f||route.revision!=NavigationRevision||(route.target-target).sqrMagnitude>9)
             {
                 var start=NearestNavNode(pos);var path=route.path??new List<string>();path.Clear();
@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
                 {var end=NearestNavNode(target);NavigationSearches++;if(start!=null&&end!=null)navSearch.Find(start.id,end.id,navActive,path);}
                 route=(Time,NavigationRevision,target,path,0);navRoutes[actorId]=route;
             }
-            if(route.path.Count==0)return Map.hazards!=null||UnsafeStructurePath(pos,pos+fallback*2)?Vector3.zero:fallback;
+            if(route.path.Count==0)return hubNav||Map.hazards!=null||UnsafeStructurePath(pos,pos+fallback*2)?Vector3.zero:fallback;
             while(route.step<route.path.Count-1&&(Vec(navNodes[route.path[route.step]].pos)-pos).magnitude<.65f)route.step++;
             if(route.step>0)
             {
@@ -105,6 +105,7 @@ namespace ChipArena.UnityConversion
         }
         private bool NavLinkEnabled(MapNavLink l)
         {
+            if(hubNav&&hubBlockedLinks.Contains(l.id))return false;
             if(!StageLinkOpen(l))return false;
             foreach(var id in l.requires??Array.Empty<string>())if(Structures.Get(id).state!=0)return false;
             foreach(var id in l.after??Array.Empty<string>())if(Structures.Get(id).state!=3)return false;

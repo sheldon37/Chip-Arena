@@ -360,3 +360,50 @@ Also: an offline emulation of the M1 runtime startup gate (scratch probe, PhysX-
 - Should hub money be soft-capped per loop, and should the hub ever spawn Hulks (for example a late-loop event)?
 - Are the district names (Meridian Approach, Ironworks Yard, Station Road) and the palisade on the north and west mouths
   right?
+
+
+## Authority implementation — 2026-10-15
+
+Owner-approved rules are implemented on `codex/expedition-hub-authority`, based on
+Claude's hub `3c13863` (includes shared `f29d7c9`). This section supersedes the
+"waiting on Astra" status above for that branch; native release remains gated.
+
+- Four gates start shut, accept F from either side, reopen/hold when a player capsule
+  overlaps, and auto-close after 2.5 seconds with a clear sensor. Collision releases
+  .5 seconds into opening and returns .65 seconds into closing. Closed gates also
+  have pilot anti-vault columns. Occupancy includes downed bodies and overhead pilots.
+- Horde-only layer 28 barriers remain solid at every gate regardless of its state.
+  Horde navigation rejects crossing links and direct shortcuts; vent travel is
+  disabled in the town. Intruding horde actors are removed without rewards.
+- Weapons/ability input is cleared and pending attacks cancelled .25 seconds after
+  entry; movement and interactions remain. Leaving clears the timer immediately.
+  The ward is immediate and rejects cross-boundary projectiles, acid arcs, melee
+  projectiles, blasts, fields, and damage application, including outside-to-outside
+  paths through sanctuary. Remote placed standard abilities cannot be placed across it.
+- Existing targets retain at most 1.5 seconds of aggro inside; no new inside targets
+  are selected. Untargeted hub mobs return toward their entrance instead of piling
+  against the fence. Inside-origin damage is rejected before payout. Accepted
+  outside-origin DoTs can still pay after the shooter retreats; recruits use the
+  same damage boundary. No optional $600 soft cap was added.
+- Population is `min(16, 2 + 2 * living connected unextracted members)` (zero if none).
+  One spawn attempt every 3 seconds, with no catch-up burst; roster/weights follow
+  the authored rings and never include Hulks. Existing entrance clearance and
+  queue checks apply, with 20 m pilot exclusion and 30 m visible-spawn exclusion.
+  Far brutes are rare after six run minutes. Final-plaza spawns are not used.
+- The spawn ring fixes its lifetime base reward multiplier (.4/.6/.8), rounded
+  before existing chip bonuses. Headshot bonus $5; existing recruit/assist ratios.
+  Excess population after deaths/disconnects is culled silently. Far timeout is
+  15 seconds beyond **60 m Euclidean distance** from everyone (a conservative
+  lower bound on walked distance); idle timeout 180 seconds, lost-target timeout
+  30 seconds. Final boss arrival clears hub mobs and restores the boss add cap.
+- `ExpeditionView.hub` carries detached serializable `ExpeditionHubView` (Gates,
+  Count, Holster, Ward). Existing public/private transport carries it at 20 Hz,
+  including source-only changes at the same run revision. ConversionGame binds it
+  and `elapsed` to `NativeExpeditionHubLive`. No private rewards enter this field.
+
+Verification: engine-free gate/ward/cap/reward/wire checks plus the existing hub
+layout/visual checks; native Unity acceptance now also exercises gate colliders,
+occupancy, holster timing, aggro grace, spawning, damage and outside DoTs. The latter
+requires the desktop builder/Unity and is not established by a semantic compile.
+Full multiplayer Expedition launch remains the existing separate integration task;
+this change supplies the public hub state contract, not a new multiplayer launcher.

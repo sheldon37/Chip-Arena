@@ -118,6 +118,7 @@ namespace ChipArena.UnityConversion
             Vector3 direction=action.Fx!=null?Vec(action.Aim):p.Input.AbilityTarget.Length>.01f?(Vec(p.Input.AbilityTarget)-start).normalized:Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));
             var shot=new NativeMeleeShot{Id=nextBullet++,Original=p,Owner=p,Spec=p.Seat.spec,Shield=shield,At=Time,Position=start,Velocity=direction*speed,Damage=(float)(p.Weapon.damage*p.Stats["damage"]),Impulse=(shield?280:95)*(float)p.Stats["impulse"],Radius=shield?.28f:.095f,Life=shield?3:2,Travel=shield?19:32,Gravity=gravity,Burn=(float)p.Stats["burn"],Poison=(float)p.Stats["poison"]};
             shot.Fx=action.Fx;if(shot.Fx!=null)shot.Damage=(shot.Shield?20:18)*(float)p.Stats["damage"];
+            if(HubInside(p.Body.position)||HubCross(p.Body.position,start,shot.Radius))return;
             MeleeShots.Add(shot);action.Shot=shot.Id;p.LastShot=Time;
         }
         private Collider[] meleeOverlaps=new Collider[16];private RaycastHit[] meleeSweeps=new RaycastHit[32];
@@ -191,7 +192,7 @@ namespace ChipArena.UnityConversion
                 else
                 {
                     float h=Math.Min(dt,s.Life);var velocity=Vec(s.Velocity);Vector3 delta=Vec(NativeSpecialRules.Ballistic(ref velocity,s.Gravity,h));s.Velocity=Vec(velocity);s.Life-=h;
-                    delta=Vector3.ClampMagnitude(delta,s.Travel);s.Travel-=delta.magnitude;if(CyberAbsorb(s.Owner,s.Position,s.Position+delta,s.Radius)){MeleeShots.RemoveAt(i);continue;}var hit=SweepMeleeShot(s,delta);
+                    delta=Vector3.ClampMagnitude(delta,s.Travel);s.Travel-=delta.magnitude;if(HubInside(s.Position)||HubCross(s.Position,s.Position+delta,s.Radius)){MeleeShotFinished(s);MeleeShots.RemoveAt(i);continue;}if(CyberAbsorb(s.Owner,s.Position,s.Position+delta,s.Radius)){MeleeShots.RemoveAt(i);continue;}var hit=SweepMeleeShot(s,delta);
                     bool ceiling=NativeSpecialRules.Ceiling(Vec(s.Position),Vec(delta),s.Radius,out float fraction,out V3 center);
                     if(ceiling&&(!hit.HasValue||delta.magnitude*fraction<=hit.Value.Distance)){s.Position=Vec(center);Emit(EventKind.CeilingHit,s.Owner,0,s.Position,0,"ABSORB",color:0x75ddff);if(s.Shield)s.Returning=true;else remove=true;}
                     else if(hit.HasValue)remove=HitMeleeShot(s,hit.Value);else s.Position+=delta;
