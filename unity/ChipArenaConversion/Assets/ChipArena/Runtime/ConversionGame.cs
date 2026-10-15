@@ -131,7 +131,7 @@ namespace ChipArena.UnityConversion
             if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null&&LiveExpedition==null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
             bool play=arena!=null&&!menu&&!BoardOpen&&!ExpeditionScreenOpen&&(match.Phase==NativePhase.Fight||match.ResultMovement&&!ReplayActive)&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true&&!DevHoldsPilot;
-            // Holding Alt over the Expedition chip tray frees the cursor to click a card (NativeExpeditionChipScreen.cs).
+            // The Expedition chip pick frees the cursor to click a card for the whole hold, no Alt (NativeExpeditionChipScreen.cs).
             bool look=!BoardOpen&&DevLook(play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight)&&!ExpeditionPickPointer;Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
             if(arena==null)return;
             if(generation!=arena.Generation){presentation.ResetPresentation();generation=arena.Generation;visualClock.Reset(match.Time);}
@@ -139,7 +139,9 @@ namespace ChipArena.UnityConversion
             UpdateLock();if(play)
             {
                 var ads=content.Ads(p.Seat.spec);bool aiming=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&Input.GetKey(KeyCode.Q);
-                if(!lockPoint.HasValue&&!cinematic.Directing&&!ExpeditionCameraHeld&&!ExpeditionPickPointer){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);}
+                // Choosing in an Expedition holds the camera (ExpeditionCameraHeld, PR #241) and takes the mouse as the chip cursor (no Alt);
+                // mouse look waits a couple of frames after the pointer locks again (NativeExpeditionChipScreen.cs).
+                if(!lockPoint.HasValue&&!ExpeditionLookSettling&&!cinematic.Directing&&!ExpeditionCameraHeld&&!ExpeditionPickPointer){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);}
                 if(Input.GetKeyDown(KeyCode.W)){if(Time.unscaledTime-lastW<.3f)sprint=true;lastW=Time.unscaledTime;}if(!Input.GetKey(KeyCode.W))sprint=false;
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
                 pending.X=move.x;pending.Z=move.z;pending.Yaw=yaw;pending.Pitch=-pitch;pending.Sprint=sprint;pending.Aim=aiming;
@@ -173,6 +175,9 @@ namespace ChipArena.UnityConversion
                 // The shoulder cameras send the look that points the pilot at the crosshair point (NativeShoulderCamera.cs).
                 ConvergeAim(p);
             }
+            // Held choosing a chip in an Expedition, the camera swings round to face my pilot (NativeChooserCameraPresentation.cs): after
+            // the aim above, so the look sent and AimTarget are the gameplay camera's, and before the shakes, which shake the camera shown.
+            ChooserCamera();
             // renderer.ts:136/:149 camera shake with event-vfx.ts:29 (NativeShakeRules): a fresh (.4 s) hit, impact, break, block or
             // collapse aimed at the view pilot, never a burn/poison tick, sets .12 while Settings · camera shake is on. The amount
             // falls by the frame time (at most .05 s) in every frame, so a shake held back never plays late; only a live local
@@ -277,6 +282,8 @@ namespace ChipArena.UnityConversion
         }
         private void UpdateCamera()
         {
+            // The gameplay field of view under last frame's chooser shot comes back first (NativeChooserCameraPresentation.cs).
+            ChooserCameraRestore();
             // C16: the Last Laugh cutscene directs this camera for the pilots in it (the demon victim screen has its own).
             if(cinematic.Direct(arena,presentation,cameraView,match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result)){viewModelCamera.enabled=false;sprintKick=0;shoulderView=convergeAim=false;aimSkip=0;return;}
             var p=Spectator??arena.ViewPilot;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
@@ -369,7 +376,7 @@ namespace ChipArena.UnityConversion
                 var p=arena.Local;bool fighting=match.Phase==NativePhase.Fight||match.Phase==NativePhase.Countdown;
                 if(!menu&&(fighting||match.Phase==NativePhase.Result))FightHud(p);
                 if(!menu&&fighting)KernelPanicBanner();
-                if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive)Crosshair();
+                if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive&&!ChooserFramed)Crosshair();
                 if(!menu&&match.Phase==NativePhase.Fight)
                 {
                     if(arena.Downed(p))Prompt(U.H/2+80,"RECOVERING  ·  WASD chooses roll direction",14,NativeCyberTheme.Ink());

@@ -73,15 +73,24 @@ Core files are engine-free; Runtime files draw with the cyber HUD kit (`NativeHu
 | `Runtime/NativeExpeditionStatesHud.cs` | Transfer screen, SAFE chip and SAFE tags, boss intro and plates (with health), final gate notice |
 | `Tests/ExpeditionStatesChecks.cs` | Managed checks (`CoreTests.dll --expedition-states`, also in the full suite) |
 | `Core/NativeExpeditionPick.cs` | Chip picks: reward rules, header, waiting counts, the tray's flow (Claim / OpenChoice / CloseChoice / Select), choosers from `members[].choosing` |
-| `Runtime/NativeExpeditionChipScreen.cs` | The Boss Test's chip tray over the live view, its follow-through, input routing, the CHIPS tag, the wrist-look and wrist-plant hooks and the plant's install cue |
+| `Runtime/NativeExpeditionChipScreen.cs` | The chip cards drawn on my wrist screen (the Boss Test's tray pieces through the screen's canvas maps; the 2D tray where the screen cannot be read), the follow-through, input routing and the chip cursor, the CHIPS tag, the wrist-look and wrist-plant hooks and the plant's install cue |
+| `Core/NativeChipScreen.cs` | The wrist chip screen: its place, unfold and fold, cards, a pick's flying card, the canvas maps and the cursor hit test |
+| `Runtime/NativeChipScreenPresentation.cs` | Builds every Expedition chooser's screen in place of the small wrist panel; my screen's state for the HUD and the chooser camera |
+| `Tests/ChipScreenChecks.cs` | Managed checks (`CoreTests.dll --chip-screen`, also in the full suite) |
 | `Core/NativeChipPlant.cs` | The wrist plant after each pick: its timeline (the Boss Test plant's), cue and pose layer over the wrist-hologram pose |
 | `Tests/ExpeditionPickChecks.cs` | Managed checks (`CoreTests.dll --expedition-pick`, also in the full suite) |
+| `Core/NativeChooserCamera.cs` | The chooser camera: the swing round to a front three-quarter shot while I am held choosing, its framing, collision fallback and hand-offs |
+| `Runtime/NativeChooserCameraPresentation.cs` | Applies it after the aim and before the shakes while the camera is held; restores the field of view |
+| `Tests/ChooserCameraChecks.cs` | Managed checks (`CoreTests.dll --chooser-camera`, also in the full suite) |
 
 `Runtime/ConversionGame.cs` has these hook lines: the J/Escape/C keys (`ExpeditionLiveKeys`), local play
 paused while the J screen is open, the J screen in `GuiFrame`, the in-scene HUD (which draws the chip tray), and
 the world draw at the start of `LateFrame`. For chip picks there are also the Boss Test's C kept out of an
-Expedition, Alt freeing the cursor (`look` and mouse look), `ExpeditionPickRoute()` after the play input, and
-`ExpeditionPlantAudio()` after `PveFollowAudio()` in `LateFrame` (my plant holds my Install cue for its seat).
+Expedition, the chip cursor freeing the cursor with no Alt (`look` and mouse look), `ExpeditionPickRoute()` after the play input, and
+`ExpeditionPlantAudio()` after `PveFollowAudio()` in `LateFrame` (my plant holds my Install cue for its seat). The
+chooser camera adds `ChooserCamera()` in `LateFrame` after the aim (`ConvergeAim`) and before the shakes,
+`ChooserCameraRestore()` first in `UpdateCamera`, and `ChooserFramed` on the crosshair and on my own overhead health
+bar (`NativeCombatHud.cs`) and SELECTING CHIP tag (`NativeChipSelectHud.cs`).
 
 ## Live binding
 
@@ -123,12 +132,13 @@ unchanged.
   extraction. A load ends with `OpenChoice` again. Closing it (C, Escape, Choose later, or the tray closing
   itself) sends `CloseChoice` once while the view still shows choosing. A refused or unconfirmed `Claim` or
   `OpenChoice` closes the tray with a notice.
-- **Picking.** 1–9, arrows and Enter, or a click while Alt is held, sends `Select(reward, chip)` through
+- **Picking.** 1–9, arrows and Enter, or a click on a card (no Alt), sends `Select(reward, chip)` through
   `ExpeditionLiveSubmit`.
   - **Follow-through.** It runs on the same pieces for the plant's span (`NativeChipPlant.Span`, 1.95 s). The others
-    shatter. The chosen card flies into my wrist hologram and shrinks into it as the hand takes it there: the plant's
-    contact, at the projected `ArenaPresentation.ChipSelectFocus` (the view model's in first person). Without the
-    hologram in view, it flies toward the hands below the bottom edge.
+    shatter on my wrist screen. The chosen card flies off it into my hand and shrinks to the chip as the hand takes it
+    there: the plant's contact (.62 s), at the plant's chip projected onto the screen's canvas. On the 2D tray it flies
+    into my wrist hologram (`ArenaPresentation.ChipSelectFocus`, the view model's in first person), or toward the hands
+    below the bottom edge.
   - **Status.** It reads "Installing" until the view shows the reward consumed, then "Upgrade secured", with the tracked
     caption while a guest waits. A refusal returns to that reward's tray with its caption.
   - **Queue.** The next waiting reward follows, as the Boss Test opens its next queued pick.
@@ -140,12 +150,20 @@ unchanged.
   attack, the Boss Test's blinking border and alarm show over the header ("C closes the chips to move and fight"). Its
   full-screen red wash is kept faint (12% blinking, 6% steady with Reduced effects), so the fight stays readable.
 - **Input (client routing; host enforces the hold).** While the tray is drawn, digits 1–9 pick a chip, so the abilities
-  they would start are dropped. Holding Alt frees the cursor to click a card and routes mouse attack/block to the tray. Camera yaw/pitch and lock-on tracking freeze for the entire choosing hold, through the final wrist plant, regardless of Alt or tray visibility. The host cancels and blocks movement/actions, preserves the held orientation and refuses machine interaction while choosing. Damage and the world/difficulty clock continue. An explicit close releases an unfinished tray; an automatic close after the final pick cannot shorten its plant.
-  Without Alt the locked cursor never hovers or clicks a card.
+  they would start are dropped. Owner 2026-10-15: "The mouse should be taken over for the chip selection, we shouldnt
+  have to hold alt to click." While the camera is held (`ExpeditionCameraHeld`, Astra's PR #241) and my screen or its
+  follow-through is up, the cursor is unlocked and shown (`ExpeditionPickPointer`), clicks pick the card under it and
+  mouse attack/block go to the tray; Alt changes nothing. Camera yaw/pitch and lock-on tracking freeze for the entire
+  choosing hold, through the final wrist plant. When the hold ends the cursor re-locks and mouse look returns after the
+  re-lock settles (two frames, so the cursor's travel is not read as a turn). The host cancels and blocks
+  movement/actions, preserves the held orientation and refuses machine interaction while choosing. Damage and the
+  world/difficulty clock continue. An explicit close releases an unfinished tray; an automatic close after the final
+  pick cannot shorten its plant. A locked cursor never hovers or clicks a card.
 - **Wrist look and SELECTING CHIP tag.** These come from `members[].choosing` for every pilot, as the Boss Test
-  reads each row's replicated open pick (`ArenaPresentation.ExpeditionChoosing`). Another pilot's hologram shows
-  three cyan cards; the offers stay private. Mine carries my offers' rarities. The authority holds me, so mine also
-  shows in first person under the tray and through the plant. A damaging hit flinches the look
+  reads each row's replicated open pick (`ArenaPresentation.ExpeditionChoosing`). In an Expedition the raised wrist
+  projects the chip screen (below) in place of the small panel. Another pilot's screen shows three blank cyan cards;
+  their offers and count stay private. Mine carries my offers' rarities. In first person the chooser camera swings
+  out to show it on my body (below); the first-person look shows only while the camera is still at the eye. A damaging hit flinches the look
   (`NativeChipSelect.Flinch`): it yields up to 45% to the route's pose, so the hit reaction shows through. The hologram
   blinks red as before.
 - **Wrist plant** (`Core/NativeChipPlant.cs`; docs/PVE-CHIP-SELECT.md "Expedition wrist plant"). Each pick plays it on
@@ -162,6 +180,67 @@ unchanged.
   - **Another pilot's** runs from the authority's `Install` event for them. Their flag reads choosing through the final
     plant as well, so a queued pick cannot be told from a final one. Their look lowers after each plant, then rises
     again after 0.5 s if they are still choosing.
+- **Wrist chip screen** (owner 2026-10-15: "...we should also make it a holographic screen projected from the wrist.
+  That way its easier to notice were selecting a chip"; `Core/NativeChipScreen.cs`,
+  `Runtime/NativeChipScreenPresentation.cs`). In an Expedition the 2D bottom tray gives way to a world-space screen.
+  The Boss Test keeps its tray and stage.
+  - **Place.** A beam fans from the display-wrist emitter into a 1.06 × .52 m hardlight screen. It floats .74 m ahead,
+    .42 m out to the side and .36 m over the body centre, turned 30 degrees toward the other front quarter, where the
+    camera stands. The side is the display wrist's (`NativeChipScreen.OnLeft`). The rifle, the machine gun and the
+    greatsword hold that wrist across the body in both hands, so their screen floats on the side the wrist is held.
+  - **Look.** The chip hologram's shader kinds (chamfered frame with brackets, scanlines, grid, beam sheets and edges,
+    emitter ring, motes; additive). It flickers as it boots, then keeps the hologram's flicker and glitch, and blinks
+    red under attack. It is flat: the faces are drawn as affine bands and would not register on a curve.
+  - **Open and close.** It unfolds out of the wrist: its centre travels out of the emitter, the width opens first, then
+    the height, and the cards are dealt. It folds back the same way when the look lowers, and with each pick's fold.
+  - **Cards.** The HUD draws the real faces (`DrawTray` / `NativeChipCard`, badges, hover lift, holo scan) over my
+    screen, mapped through three canvas bands (header, cards, footer), each fitted to where the camera projects its
+    four corners. This keeps the faces within 1% of the frame width of the world cards, which dim to a backing glow
+    under them. The header (eyebrow, Choose a chip, YOU ARE VULNERABLE WHILE CHOOSING, N MORE WAITING, status), the key
+    line (1–N PICK · CLICK A CARD · C OR ESC CLOSES) and Choose later sit on the screen. IMGUI maps the cursor back
+    through the same matrix, so the card under the cursor is the one picked.
+  - **Fallback.** Until the screen faces the camera with its cards at least 20% of the width wide, no faces are drawn
+    (keys still work). If the settled camera still cannot read it (a corridor or closet left only a shot from behind),
+    the 2D tray shows instead.
+  - **A pick.** The chosen card flies off the screen into the hand by the plant's contact (.62 s), bowing toward the
+    viewer and shrinking to the chip. The others fade (`NativeChipPlant.Fade`), and the screen folds into the wrist
+    (`NativeChipPlant.Fold`) as the chip seats (1.14 s). It opens again for a queued pick. The timing is the Boss Test
+    plant's (.62 / 1.14 / 1.95 s). Mine flies on the HUD's faces; another pilot's flies blank on their screen.
+  - **First person.** The chooser camera swings out to the third-person shot, so the screen is seen in the world, not
+    projected at the eye. The first-person wrist panel stays for the Boss Test.
+- **Chooser camera** (owner 2026-10-15: "Lets swing the camera to us when choosing,"; `Core/NativeChooserCamera.cs`,
+  `Runtime/NativeChooserCameraPresentation.cs`). The shoulder camera showed only my back, so while I am held choosing
+  the camera swings round to face me and my wrist screen. Presentation only: no input, look or hold changes.
+  - **When.** While the camera is held (`ExpeditionCameraHeld`, Astra's PR #241: the view's public choosing flag,
+    through the final plant, alive). It stays through every queued pick and the final plant, and eases back at the
+    release (C or Escape closing the choice, the final plant ending), on death or extraction.
+  - **Swing.** .42 s each way (smoothstep). The path orbits my axis from the gameplay camera (every Settings · Camera mode)
+    to the front shot, one way round for the whole swing. Each way is reversible mid-swing. At weight 0 nothing is
+    applied, and `UpdateCamera` rebuilds the camera from the unchanged look and restores the field of view first, so
+    gameplay resumes exactly where it would be.
+  - **Shot.** A front three-quarter view from the other front quarter from my screen (`NativeChooserCamera.SideOf`),
+    24 degrees off my facing, 50 degree field of view, looking 7 degrees down. It frames my crown, my display wrist
+    (eased), my far shoulder and the open screen's corners, backed off until they fit 78% across and 74% up the frame.
+    The cards' row then spans 38–47% of the width (4:3 to 21:9, standing or bowed).
+  - **Turning.** Astra's hold keeps my yaw and pitch, so I do not turn while choosing. If the facing still changes,
+    the shot follows it (eased at 9/s) and stays in front. The look pitch does not move it.
+  - **Collision.** The shoulder rigs' sphere cast (radius .12, padding .2). The shot takes the first clear angle of
+    24, 48, 80, the same on the other side, straight on, then behind either shoulder (125). It keeps a working choice
+    for .4 s, eases between choices, and shortens the distance when nothing is clear. Every frame the camera is cast
+    from the point it orbits and pulled in at once (eased back out at 12/s), so it never enters a wall, fence, gate or
+    door. When the middle of the swing's way round is less than 60% clear and the other way is clearly clearer, it
+    swings the other way, so it does not squeeze past my head.
+  - **First person.** The camera leaves through the front of my face and turns round. The view model is off while swung,
+    and my body is drawn once the camera is .45 m from the eye, while it is still out of view. First person returns
+    when the swing ends.
+  - **Hits.** Damage, the hologram's red blink, the flinch and the damage screen are unchanged. The one camera shake applies
+    to the camera shown, after the swing, and the first-person hit kick is off while my body is shown. The damage screen's
+    directions follow the camera shown.
+  - **HUD.** The crosshair and my own overhead health bar and SELECTING CHIP tag are hidden under the shot (other pilots'
+    are unchanged). The cards are on my screen, not over me.
+  - **Hand-off.** Death or extraction eases back onto the death camera (the same rig). A cutscene, a spectated pilot, a
+    new area, or any screen that skipped the live camera (the killcam, loading) drops the swing at once.
+  - Other pilots' view is unchanged.
 
 ## Intents and confirmation
 

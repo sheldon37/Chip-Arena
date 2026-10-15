@@ -1,5 +1,78 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Claude — Expedition wrist chip screen, chip cursor without Alt, chooser camera on the screen
+- Owner direction: "we should also make it a holographic screen projected from the wrist. That way its easier to notice were selecting a chip". Then: "The mouse should be taken over for the chip selection, we shouldnt have to hold alt to click."
+- Branch `claude/expedition-chooser-camera`, stage 2.
+  - Base: stage 1 `7830bee` plus shared `19927e0` (Astra's PR #241, merged in `ca08ef2`).
+  - Shared `c65f464` is merged before the final checks.
+- **Builds on PR #241.** That PR provides `ExpeditionCameraHeld`: the host keeps yaw and pitch through Install + 1.95 s, and the client blocks mouse look and lock-on. My own look-lock code was removed in its favour, so the yaw-freeze handoff to Astra is no longer needed.
+- **Screen** (`Core/NativeChipScreen.cs`, `Runtime/NativeChipScreenPresentation.cs`):
+  - In an Expedition, every choosing pilot's display wrist projects a 1.06 × .52 m hardlight screen in place of the small panel. A beam fans from the emitter. The screen floats ahead, on the side of the display wrist, at chest height, turned 30° toward the camera.
+  - It uses the hologram shader's kinds: scanlines, boot flicker, additive glow, and a red blink under attack. It unfolds out of the wrist and folds back.
+  - The rifle, machine gun and greatsword hold that wrist across the body, so their screen goes on that side (`OnLeft`) and the beam does not cross the chest.
+  - Other pilots see three blank cyan backs, with no offers and no count.
+  - On a pick, the card flies off the screen into the hand by the contact (.62 s). The others fade and the screen folds as the chip seats. Timing is unchanged (.62 / 1.14 / 1.95 s).
+  - The Boss Test is untouched.
+- **Faces and cursor** (`Runtime/NativeExpeditionChipScreen.cs`, `NativeUi.PushAffine`):
+  - The real tray pieces (`DrawTray`, `PickedTray`, header, key line, Choose later) draw over my screen. Each of three bands (header, cards, footer) gets its own affine map, fitted to where the camera projects that band's corners.
+  - IMGUI maps the cursor back through the same matrix, so a click picks the card under it. The world cards dim to a glow under the faces.
+  - The 2D tray is used only where the settled camera cannot read the screen.
+  - The cursor is unlocked and shown while `ExpeditionCameraHeld` and my screen or its follow-through is up. Alt is no longer read. Mouse look returns after a two-frame re-lock settle.
+  - The key lines now read CLICK A CARD.
+- **Camera** (`Core/NativeChooserCamera.cs`):
+  - The shot now frames my crown, wrist, far shoulder and the open screen. It stands 24° off my facing, in the other front quarter from the screen, so the cards span 38–47% of the frame width.
+  - Fallback angles: 24, 48, 80, 0, 125.
+  - When a wall blocks the short way round, the swing goes the other way instead of passing the head.
+  - First person uses the swung third-person shot; the screen is not projected at the eye.
+  - Swing timing (.42 s) and the hand-offs are unchanged.
+- **Impact.** No change to hit timing, hitboxes, damage, cooldowns, movement or networking (no wire fields). Input: only the chip cursor (the mouse while held: unlocked, clicks to the tray). The look lock is Astra's.
+- **Source guards.** `ExpeditionPickChecks` changed, per the owner's no-Alt direction: "HOLD ALT TO CLICK" became "CLICK A CARD", and the Alt-key guard became a no-Alt guard on `ExpeditionPickPointer`. Astra's authority, M1 and look-lock strings are kept.
+- **Checks.**
+  - New `ChipScreenChecks` (`--chip-screen`), 9 groups:
+    - place per side; unfold and fold; cards;
+    - band maps against the true projection (faces within 0.92% of the width);
+    - the cursor picking the card under it with no Alt (72 hits, 20 misses);
+    - the fly by the contact; others blank; quad bound and zero allocation; hooks.
+  - `ChooserCameraChecks` reworked for the screen, 12 groups:
+    - every class's side over its real route;
+    - framing (4:3–21:9, standing and bowed, both wrists);
+    - collision (6 spots × 5 modes × both wrists, with the 2D-tray fallbacks listed);
+    - the clear way round.
+    - Swing bounds were raised for the larger orbit: first frame 8 cm; 50 cm and 10° per 60 Hz frame; classic 70 cm.
+  - `--expedition-pick` and `--chip-select` pass. `unity-check.sh` runtime and editor build OK.
+  - Full five-check run (`run5b`) on the merge with shared `c65f464`. Unity runtime and editor build, the real relay suite (753 PASS lines), the source package (2161 files) and the diff check all exit 0.
+    - The Python suite failed one pin: `test_chip_select` expects `FirstPersonView&&p==arena.ViewPilot` in the SELECTING CHIP tag, and stage 1 had folded it into `(FirstPersonView||ChooserFramed)`. That line is now written as two terms.
+  - Final five-check run on the merge with shared `e0a0d2f` (head `8c8cc04`): all five exit 0.
+    - Unity runtime and editor build.
+    - Relay suite: 754 PASS lines, including 9 chip-screen and 12 chooser-camera groups.
+    - Python: 107 tests, 1 skipped.
+    - Source package: 2168 files.
+    - Diff check.
+- **Not run.** Unity Editor or play, Windows build, two-client play. Also unrun: IMGUI's cursor mapping under a sheared `GUI.matrix` on real Unity (the managed check models it).
+- **Risks.**
+  - The faces are affine, so the far card's corners can sit up to about 1% of the width off the world card; the dim glow hides it.
+  - The screen is flat, not curved.
+  - A bowed look's helmet can overlap the screen's near edge; the faces draw over it.
+  - In a corridor or closet the camera ends behind (125°) and the 2D tray shows. Both ways round blocked: it still passes about 0.45 m from the head.
+  - Siren scale: the screen scales with the rig.
+- **Renders.** Offline, not Unity: `renders-expedition-chooser-cam/` in the scratchpad. Local view, hover, under attack, the pick flying into the wrist, the plant, others' blank cards, sword, fire, a tight spot. Strips: unfold, pick and release, queued, others. Every mode, every class, tight spots, first person.
+
+## 2026-10-15 — Claude — Expedition chooser camera: swing round to face my pilot while choosing (owner: "Lets swing the camera to us when choosing,")
+- Branch `claude/expedition-chooser-camera`, base shared `425cb2d`, fast-forwarded to shared `617fee5` (docs only). Stage 1 of the branch; the owner's later hologram-screen and look-lock direction follows in the next entry.
+- **Why.** In the default shoulder camera only my back showed while choosing, and the tray covered the rest (the chip-hold look's open risk).
+- **What** (`Core/NativeChooserCamera.cs`, `Runtime/NativeChooserCameraPresentation.cs`):
+  - While I am held choosing (tray wanted open, follow-through, my plant, or the view's flag), the camera swings .42 s (smoothstep) from any Settings · Camera mode round to a front three-quarter shot, and back at the release, C or Escape.
+  - The side is where the class holds its wrist hologram (`SideOf`, verified on all 16 routes): left for pistol, shield, gauntlets; right for long guns, blades, staffs, bow, Cyber Lord.
+  - Framing from the drawn head and hologram panel: crown 7% from the top, the hologram above the tray, bowed looks included.
+  - Collision uses the shoulder rigs' cast, a fallback order of angles, a .4 s dwell, and a per-frame pull-in eased out at 12/s.
+  - First person leaves through the face; my body is drawn once 0.45 m clear and out of view.
+  - Death or extraction eases out; a cutscene, spectating, new area or skipped frame drops it at once.
+- **Hooks.** `ChooserCamera()` in LateFrame after `ConvergeAim` and before the shakes (AimTarget and the sent look stay the gameplay camera's). `ChooserCameraRestore()` first in `UpdateCamera`. The crosshair and my own overhead bar and SELECTING CHIP tag are hidden under the shot.
+- **Impact.** No change to hit timing, hitboxes, damage, cooldowns, movement or networking. No input, look or play gate in this stage. One camera shake, on the camera shown.
+- **Checks.** New `ChooserCameraChecks` (`--chooser-camera`): side per class over the real routes, ease timing at 30-240 Hz, the exact gameplay camera before and after, turning and jitter, every mode, framing over three aspects, six collision spots x 5 modes, first person, hand-offs, zero allocation, and the runtime hooks. All 12 pass. `unity-check.sh` runtime+editor build OK. The full five-check run is recorded at the branch's final head.
+- **Renders.** Scratch `renders-expedition-chooser-cam/` (offline, not Unity): before and after with the tray, plant, under attack, a strip, every mode, turning, tight spots, first person, side per class.
+- **Risks.** In a 1.6 m corridor the swing passes about 0.45 m behind the head for about 0.2 s; it never enters the wall. The first-person swing turns the pilot into view late (the body only appears out of view). My SAFE tag in the sanctuary still shows over my head; that hub file was left untouched (the hub-fix work is concurrent).
+
 ## 2026-10-15 — Claude: town zombie roaming presentation (wander, idle variants, alert scream, search)
 
 - **Branch:** `claude/hub-zombie-wander`, based on shared `claude/sleepy-ritchie-g8ruhv` `ee46074`, merged with shared `72aa185` (Astra's hub zombie perception PR #242; signed merge `c197d54`, no conflicts) and `c65f464` (hub gate collision PR #243 and the hub fixes; signed merge `ecf67f8`, no conflicts). Implementation `0bf6ff9`; docs on top. Pushed, not merged, no PR, not released.
@@ -88,6 +161,7 @@
 - **Risks:** the metal leaves now roll 2.08 m in 0.38 s (brisk; a slower roll would leave them in the opening when the collider releases); the closing is 0.2 s quicker; the curtain stands 8 cm off the walls; in the Expedition a downed pilot's self-revive progress shows only in its label.
 - **Collision, movement, networking:** none changed. No collider, layout, navigation, rule, timing constant, hit timing, hitbox, damage, cooldown, movement or wire change; animation is the gate leaves only (no gameplay reads them).
 - **Astra next step:** the run-through fix (EXPEDITION-HUB.md "Run-through report"): real-overlap occupancy instead of radius + 0.15 m; re-open on occupancy only before a closing blocks; occupancy holds the collider off only in that window; optionally keep the collider's state across a reversal. `Tests/ExpeditionHubAuthorityChecks.cs:21` would move with it.
+
 
 ## 2026-10-15 — Astra — Expedition choosing also holds camera
 - Owner follow-up supersedes the earlier camera-survives behavior. Branch `codex/expedition-camera-hold`, base shared `ee46074c`.

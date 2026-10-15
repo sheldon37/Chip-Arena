@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-15 Claude Expedition chooser camera and wrist chip screen (`claude/expedition-chooser-camera`, merged into shared): while choosing, the camera swings (.42 s) to a front three-quarter shot of my pilot and a hologram screen projected from the display wrist. The chip cards are on that screen, and the cursor is free to click them with no Alt. Others see blank backs. The 2D tray remains only where the screen cannot be read. It builds on Astra's look lock (PR #241). Managed checks pass; Unity, Windows and two-client play are unrun. See DEV_LOG.
+
 2026-10-15 Claude town zombie roaming presentation (`claude/hub-zombie-wander`, merged into shared): binds Astra's replicated `hubState`/`hubAlertAt`/`hubLookYaw` through one mapping. Zombies shamble slowly while wandering, idle in five variants per zombie, and on alert snap the head, scream and burst into the chase; searching zombies scan and sniff. Moans and an alert shriek use the sound bank only. Also fixes horde heads turning away from pilots. Presentation only; managed checks and offline renders; Unity, Windows and two-client play unrun. Optional for Astra: `hubStateAt`, `hubTarget`. See DEV_LOG.
 
 2026-10-15 Astra hub gate collision fix (`codex/hub-gate-collision`, base `72aa1858`): actual capsule overlap, safety reopening only before the collider becomes solid, and persistent solidity across reversals. Claude's no-input walk-through repro now asserts PASS for all four gates. Contract/report: EXPEDITION-HUB.md. Native Windows/PhysX validation remains pending.
