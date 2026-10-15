@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
             K("melee.shield.bash",P,.7f,N),K("melee.shield.block",P,.9f,N),K("melee.shield.throw",P,1f,N),K("melee.sword.hit",P,.7f,N),K("melee.sword.swing",P,.6f,N),
             K("move.jump",P,.4f,N),K("move.land",P,.4f,N),K("move.roll",P,.6f,N),K("move.step.concrete",P,.35f,L),K("move.step.gravel",P,.35f,L),K("move.step.metal",P,.35f,L),K("move.step.snow",P,.4f,L),K("move.step.stone",P,.35f,L),
             K("move.step.wood",P,.35f,L),
-            K("pve.add.death",P,1.2f,N),K("pve.buy",F,1.5f,N),K("pve.clear",F,2.5f,N),K("pve.gib",P,.7f,N),K("pve.money",F,.6f,L),K("pve.pickup",F,1f,N),K("pve.revive",F,2f,N),K("pve.wave",F,3f,N),
+            K("pve.add.death",P,1.2f,N),K("pve.zombie.moan",P,2.5f,L),K("pve.zombie.shriek",P,1.6f,N),K("pve.buy",F,1.5f,N),K("pve.clear",F,2.5f,N),K("pve.gib",P,.7f,N),K("pve.money",F,.6f,L),K("pve.pickup",F,1f,N),K("pve.revive",F,2f,N),K("pve.wave",F,3f,N),
             K("siren.claw",P,.8f,N),K("siren.damnation",P,1.5f,N),K("siren.dissipate",P,4f,N),K("siren.eruption",P,2.5f,N),K("siren.hellfire",P,.9f,N),K("siren.laugh",P,3f,N),K("siren.mark",P,2.5f,N),K("siren.reveal",F,4f,N),
             K("siren.rush",P,1.2f,N),K("siren.slam",P,2.5f,N),K("siren.vents",P,2f,N),
             K("status.burn-tick",P,.35f,L),K("status.freeze",P,1.5f,N),K("status.frost-shatter",P,1.5f,N),K("status.poison-tick",P,.35f,L),K("status.shock-zap",P,.4f,N),

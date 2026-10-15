@@ -47,7 +47,9 @@ namespace ChipArena.UnityConversion
             /// <summary>The drawn scale (the Hulk's), the jaw's opening, the roar's age (NaN none), the mouth in the world, the sac's
             /// swell when a hit cut the spit off.</summary>
             public float Scale=1,Jaw,RoarAge=float.NaN,CancelSwell;public Vector3 Mouth;public bool MouthKnown;
-            public void Reset(int id){Id=id;Kind=-1;Tier=-1;Lost=-1;CancelAt=float.NaN;CancelFor=-100;HasBlow=false;BlowAt=-100;Push=NVector2.Zero;Spec=null;Gait.Reset();React.Clear();Possessed=false;Scale=1;Jaw=0;RoarAge=float.NaN;CancelSwell=0;MouthKnown=false;}
+            /// <summary>The add's roaming read (Runtime/NativeHordeRoamPresentation.cs).</summary>
+            public readonly NativeHordeRoamTrack Roam=new NativeHordeRoamTrack();
+            public void Reset(int id){Id=id;Kind=-1;Tier=-1;Lost=-1;CancelAt=float.NaN;CancelFor=-100;HasBlow=false;BlowAt=-100;Push=NVector2.Zero;Spec=null;Gait.Reset();React.Clear();Possessed=false;Scale=1;Jaw=0;RoarAge=float.NaN;CancelSwell=0;MouthKnown=false;Roam.Reset();}
         }
         private readonly Dictionary<int,HordeKindState> hordeKindStates=new Dictionary<int,HordeKindState>();private readonly Stack<HordeKindState> hordeKindSpare=new Stack<HordeKindState>();
         private readonly List<int> hordeKindStale=new List<int>();private int hordeKindFrame,hordeKindEvent,hordeKindGeneration=-1;private NativeArena hordeKindArena;private float hordeKindTime=float.NaN;
@@ -173,7 +175,7 @@ namespace ChipArena.UnityConversion
             float ground=pos.y-NativeHordeKinds.RootHeight(real,a.Crawl);
             bool entering=!a.Travelling&&now<a.ActiveAt;uint seed=NativeHordeKinds.Seed(m.Id);
             var st0=a.Stats;var attack0=NativeHordeKinds.AttackOf(kind,st0?.attack,a.Crawl);float strike0=NativeHordeKinds.Strike(st0,a.Crawl,a.Lost),recover0=NativeHordeKinds.Recover(st0,a.Crawl,a.Lost);
-            float roar=float.NaN,jawAge=float.NaN;
+            float roar=float.NaN,jawAge=float.NaN,roamScream=0;
             if(a.Travelling)
             {
                 // Diving into a vent: it throws itself forward into the shaft on the zombie take (hidden after .9 s).
@@ -222,10 +224,12 @@ namespace ChipArena.UnityConversion
                 if(!float.IsNaN(age)&&s.CancelFor==m.LastAttack&&now>=s.CancelAt)age=float.NaN;
                 if(!entering)roar=HordeHulkBellow(m.Id,now,NativeHordeRoar.Age(kind,seed,now,a.ActiveAt,age,recover));
                 var target=HordeTarget(arena,pos);
+                // The roaming read (the town's record: wander, idle, alert, search; else inferred): calm, no pilot for the head or stance.
+                var roam=HordeRoam(arena,m,s,now,entering,ref target);roamScream=NativeHordeRoam.Scream(roam.AlertAge);
                 ref var f=ref hordeInput[0];float inv=1/sc;
                 f=new HordeMotionInput{Kind=kind,Look=s.Look,Id=m.Id,Seed=NativeHordeKinds.Seed(m.Id),Time=now,Yaw=yaw,Ground=ground*inv,Root=new NVector(pos.x,ground+NativeHordeKinds.DrawRoot(kind,a.Crawl),pos.z)*inv,Velocity=new NVector(velocity.x,velocity.y,velocity.z)*inv,
                     Crawl=a.Crawl,Possessed=a.Possessed,Lost=a.Lost,AttackAge=age,Strike=strike,Recover=recover,Attack=attack,Side=HordeSide(m.LastAttack,a.Lost),Health=m.MaxHp>0?m.Hp/m.MaxHp:1,
-                    HasTarget=target!=null,Target=target!=null?ToN(target.Body.position)*inv:default,Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=(breach?breakAt:a.WalkAt)-a.SpawnAt,Roaring=!float.IsNaN(roar),RoarAge=roar,Move=move};
+                    HasTarget=target!=null,Target=target!=null?ToN(target.Body.position)*inv:default,Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=(breach?breakAt:a.WalkAt)-a.SpawnAt,Roaring=!float.IsNaN(roar),RoarAge=roar,Move=move};f.Roam=roam;
                 HordeHulkInput(ref f,m,now,entering,breach);
                 s.Gait.Pose(f,minionPose,s.React);yaw=s.Gait.Yaw;pos.y=ground+NativeHordeKinds.DrawRoot(kind,a.Crawl);HordeHulkPosed(s,now);
                 HordeKindJob(s,m.Id,kind,attack,knocking?float.NaN:age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time,f.Side);
@@ -234,7 +238,7 @@ namespace ChipArena.UnityConversion
             }
             // The hinged jaw (the spitter's unhinging spit, the Hulk's roar) and the mouth the spit leaves from.
             s.RoarAge=roar;float cancelAge=s.CancelFor==m.LastAttack&&!float.IsNaN(s.CancelAt)?now-s.CancelAt:float.NaN;
-            s.Jaw=NativeHordeJaw.Open(kind,attack0,jawAge,strike0,cancelAge,roar,now,seed);HordeMouth(s,pos);
+            s.Jaw=NativeHordeJaw.Open(kind,attack0,jawAge,strike0,cancelAge,roar,now,seed);if(roamScream>0&&NativeHordeJaw.Hinged(kind))s.Jaw=Mathf.Max(s.Jaw,.95f*roamScream);HordeMouth(s,pos);
             NativePoseWriter.Write(rig.Bones,minionPose,"a horde rig");
             rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,yaw,0));rig.Root.transform.localScale=Vector3.one*sc;
             float swell=HordeSwellNow(s,m,now);var glow=HordeGlowFor(m.Id,s,m,now);float flash=HitFlashCode(m.Id,now);
@@ -667,7 +671,7 @@ namespace ChipArena.UnityConversion
         private readonly HashSet<int> hordeHulks=new HashSet<int>();
         private void HordeCues(NativeArena arena)
         {
-            if(arena==null)return;HordeWallCues(arena);if(arena.Pve==null)return;if(arena.Generation!=hordeCueGeneration){hordeCueGeneration=arena.Generation;hordeStrides.Clear();hordeLast.Clear();hordeBreachCues.Clear();hordeHulks.Clear();}float t=arena.Time;
+            if(arena==null)return;HordeWallCues(arena);if(arena.Pve==null)return;if(arena.Generation!=hordeCueGeneration){hordeCueGeneration=arena.Generation;hordeStrides.Clear();hordeLast.Clear();hordeBreachCues.Clear();hordeHulks.Clear();HordeRoamClear();}float t=arena.Time;HordeRoamSweep(t);
             foreach(var m in arena.Minions)
             {
                 var a=m.Pve;if(a==null||m.Hp<=0||a.Stats==null||a.Travelling)continue;
@@ -697,6 +701,8 @@ namespace ChipArena.UnityConversion
                     continue;
                 }
                 var attack=NativeHordeKinds.AttackOf(kind,a.Stats.attack,a.Crawl);float strike=NativeHordeKinds.Strike(a.Stats,a.Crawl,a.Lost);Vector3 pos=m.Body.position;
+                // A town zombie's moans and its shriek on its alert (Runtime/NativeHordeRoamPresentation.cs).
+                HordeRoamCue(arena,m,kind,pos,t);
                 // The cue keys are only built inside a cue's window (no string per add per frame).
                 string wind=NativeHordeKinds.WindupCue(attack);if(wind!=null&&t>=m.LastAttack&&t-m.LastAttack<.15f&&Once("add"+m.Id+"w",m.LastAttack))BankPlay(wind,pos,NativeHordeKinds.WindupGain);
                 float at2=m.LastAttack+strike;if(t>=at2&&t-at2<.12f&&Once("add"+m.Id+"s",m.LastAttack)){BankPlay(NativeHordeKinds.StrikeCue(attack),pos,NativeHordeKinds.StrikeGain);string under=NativeHordeKinds.StrikeUnder(attack);if(under!=null)BankPlay(under,pos,NativeHordeKinds.UnderGain,0,null,false,null,kind==NativeHordeKinds.Hulk?.6f:.8f);if(kind==NativeHordeKinds.Hulk)BankPlay("blast.quake",pos,.6f,0,null,false,null,.9f);}

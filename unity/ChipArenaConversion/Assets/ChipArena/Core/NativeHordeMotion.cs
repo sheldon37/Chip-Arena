@@ -30,6 +30,9 @@ namespace ChipArena.UnityConversion
         /// <summary>A wall knock (Core/NativeBreach: a breach entrance, or a Hulk breaking a wall block): `KnockAge` s since the
         /// knocking began, its blows on NativeBreach.Blows, the break at NativeBreach.Knock, the carry through the hole after.</summary>
         public bool Knocking;public float KnockAge;
+        /// <summary>The horde's roaming read (Core/NativeHordeRoam: wander, idle variants, alert, search); off by
+        /// default, when the gait is exactly today's.</summary>
+        public HordeRoamPose Roam;
     }
 
     /// <summary>
@@ -142,13 +145,15 @@ namespace ChipArena.UnityConversion
             if(f.HasTarget)
             {
                 var to=new Vector2(f.Target.X-f.Root.X,f.Target.Z-f.Root.Z);float dist=to.Length();
-                if(dist>.05f){to/=dist;float ang=(float)Math.Atan2(Vector2.Dot(to,Right),Vector2.Dot(to,Forward));lookYaw=Math.Max(-1.1f,Math.Min(1.1f,ang));lookPitch=(float)Math.Atan2(f.Target.Y+.5f-(f.Root.Y+.6f),dist);}
+                // (The rig's yaw turns toward its left and its pitch bends down: the angle to a pilot on the right or above is negated.)
+                if(dist>.05f){to/=dist;float ang=(float)Math.Atan2(Vector2.Dot(to,Right),Vector2.Dot(to,Forward));lookYaw=-Math.Max(-1.1f,Math.Min(1.1f,ang));lookPitch=-(float)Math.Atan2(f.Target.Y+.5f-(f.Root.Y+.6f),dist);}
                 alert=Clamp01((14-dist)/6)*(1-moving*.6f);
             }
+            RoamPrepare(f,moving,lookYaw,lookPitch);
             if(quad){CrawlerPose(f,p,defs[NativeHordeKinds.Crawler],v,RunBlend(NativeHordeKinds.Crawler,v),moving,alert,lookYaw,cock,swing,follow,settle,attackW,react);return;}
             float run=RunBlend(kind,v),hurt=1-Clamp01(f.Health*1.6f),t=f.Time,sprint=heavy?Sprint(v):0;var d=defs[kind];
             // ---- the capture: the walk and run takes at the stride's phase, the idle (the door's wake while it waits) ----
-            NativeZombieClips.SamplePhase(walkClip,Phase,rowW);NativeZombieClips.SamplePhase(runClip,Phase,rowR);NativeZombieClips.Blend(rowW,rowR,run,rowA);
+            NativeZombieClips.SamplePhase(walkClip,Phase,rowW);RoamWalkRow();NativeZombieClips.SamplePhase(runClip,Phase,rowR);NativeZombieClips.Blend(rowW,rowR,run,rowA);
             float wake=f.Entering&&f.EntryAge<f.EntryWalk?f.EntryAge:float.NaN;
             if(!float.IsNaN(wake))NativeZombieClips.Sample(NativeZombieMotion.Wake,Math.Min(wake,NativeZombieClips.Duration(NativeZombieMotion.Wake)),rowI);
             else NativeZombieClips.Sample(idleClip,t*idleRate+idlePhase,rowI);
@@ -158,7 +163,7 @@ namespace ChipArena.UnityConversion
             // the body reads along its path and the planted feet stay under it.
             row[0]*=.62f;
             if(heavy)HeavyArms(row,moving,run,sprint,t);
-            float ground=Lerp(NativeZombieMotion.Ground(idleClip),Lerp(NativeZombieMotion.Ground(walkClip),NativeZombieMotion.Ground(runClip),run),moving);
+            float ground=Lerp(NativeZombieMotion.Ground(idleClip),Lerp(WalkGround(),NativeZombieMotion.Ground(runClip),run),moving);
             // ---- the blow: the pack's take retimed onto the authority's strike, over the trunk and arms ----
             bool attacking=!float.IsNaN(age)&&age>=0&&age<f.Recover+.25f;
             // The heavy kinds' keyed moves (Core/NativeHordeHeavy): a punch, a swipe, a knock or a charge replaces the take and the
@@ -182,6 +187,8 @@ namespace ChipArena.UnityConversion
             // ---- the Hulk's roar: arms flung wide on another reel's start, chest out (Core/NativeHordeRoar) ----
             float roarW=f.Roaring&&!Replaces?NativeHordeRoar.Weight(f.RoarAge):0;
             if(roarW>0){NativeZombieClips.Sample(NativeZombieMotion.Roar,.12f+.26f*Sm(f.RoarAge/.55f),rowA);Upper(row,rowA,.9f*roarW,0,.4f);}
+            // ---- a town zombie's scream on its alert (Core/NativeHordeRoamMotion) ----
+            RoamUpper(row,moving);
             // ---- the authority's stagger: a captured knockback reel over the trunk and arms ----
             float reel=react!=null?react.Reel(t):float.NaN;
             if(!float.IsNaN(reel)){int kc=NativeZombieMotion.Knock(seed^(uint)(id*31));NativeZombieClips.Sample(kc,Math.Min(1.15f,reel*.9f),rowA);Upper(row,rowA,Sm(reel/.12f)*(1-Sm((reel-.75f)/.45f))*.85f,.5f,.5f);}
@@ -190,7 +197,7 @@ namespace ChipArena.UnityConversion
             p.World();
             for(int i=0;i<2;i++){int hip=i==0?CapturedRig.LHip:CapturedRig.RHip;mocapHip[i]=p.WorldPosition[hip];mocapKnee[i]=p.WorldPosition[hip+1];mocapAnkle[i]=p.WorldPosition[hip+2];mocapFoot[i]=p.WorldRotation[hip+2];}
             // ---- the body over the capture: alert and hurt sag it; the procedural attacks' trunk ----
-            var b=p.Position[CapturedRig.Body];b.Y-=alert*.04f+hurt*.05f;
+            var b=p.Position[CapturedRig.Body];b.Y-=alert*.04f+hurt*.05f;RoamBody(ref b,f,moving);
             AttackBody(f,cock,swing,follow,settle,out float aPitch,out float aYaw,out float aRoll,out float aCrouch,out float aHead);
             if(ac>=0){aPitch=aYaw=aRoll=aCrouch=aHead=0;}
             if(roarW>0){float tremble=(float)Math.Sin(f.RoarAge*31)*.035f*roarW;aPitch+=-.32f*roarW;aHead+=(-.55f+tremble)*roarW*(1-Sm((f.RoarAge-.9f)/.6f))+.15f*roarW*Sm((f.RoarAge-.9f)/.6f);aCrouch+=.03f*roarW;}
@@ -199,9 +206,11 @@ namespace ChipArena.UnityConversion
             // ---- the Hulk's heavy body over its stride, then a keyed move's body and trunk ----
             if(heavy)HeavyTrunk(p,f,moving,run,sprint);
             MoveTrunk(p,f);
+            RoamTrunk(p,f,moving);
             // ---- head: tracks its pilot, the Siren's crooked tilt and twitches ----
             float twitch=heavy?.35f*Twitch(t*.75f):Twitch(t);float headPitch=lookPitch*.6f*alert+aHead,headYaw=lookYaw*(.55f+.35f*alert)*(1-attackW*.5f)+twitch*.5f,headRoll=tilt+twitch*.8f;
-            Bend(p,CapturedRig.Neck,headPitch*.45f,headYaw*.45f,headRoll*.4f);Bend(p,CapturedRig.Head,headPitch*.55f,headYaw*.55f,headRoll*.6f);
+            RoamHead(f,moving,ref headPitch,ref headYaw,ref headRoll);
+            Bend(p,CapturedRig.Neck,headPitch*.45f,headYaw*.45f,headRoll*.4f);Bend(p,CapturedRig.Head,headPitch*.55f,headYaw*.55f,headRoll*.6f);RoamAim(p);
             // ---- reactions over the trunk (hips shove, recoil, head snap) ----
             react?.Trunk(p,f.Time,Forward,Right);
             {var before=p.Position[CapturedRig.Body];Balance(p,kind);if(heavy)HeavyBalanced(p.Position[CapturedRig.Body]-before);}
@@ -324,11 +333,11 @@ namespace ChipArena.UnityConversion
                 if(NativeZombieMotion.Captured(kind)){walkClip=NativeZombieMotion.Walk(kind,seed);runClip=NativeZombieMotion.Run(kind,seed);idleClip=NativeZombieMotion.Idle(kind,seed);idlePhase=H(8)*NativeZombieClips.Duration(idleClip);}
                 else walkClip=runClip=idleClip=-1;
                 // (The Hulk's idle sways slower: a big body's time runs about the square root of its size slower.)
-                HeavyReset();if(heavy)idleRate*=.75f;
+                HeavyReset();if(heavy)idleRate*=.75f;RoamReset(seed);
                 Forward=Dir(Yaw);Right=new Vector2(Forward.Y,-Forward.X);
                 for(int i=0;i<4;i++){feet[i]=default;feet[i].W=Home(i,new Vector2(f.Root.X,f.Root.Z),d);FootWorld[i]=new Vector3(feet[i].W.X,f.Ground,feet[i].W.Y);FootAir[i]=false;if(heavy)feet[i].Cycle=-1;}
             }
-            time=f.Time;dt=Math.Max(0,Math.Min(MaxDt,dt));lastDt=dt;
+            time=f.Time;dt=Math.Max(0,Math.Min(MaxDt,dt));lastDt=dt;roamTake=RoamTakeOf(f);
             // The facing turns quickly toward the authority's yaw (which snaps), faster while winding up an attack, so the strike faces
             // where the authority aims it.
             bool winding=!float.IsNaN(f.AttackAge)&&f.AttackAge>=0&&f.AttackAge<f.Strike;
@@ -350,10 +359,10 @@ namespace ChipArena.UnityConversion
             if(heavy){stride=HeavyStride(Speed);rateHz=moving?Math.Max(.2f,Speed)/stride*cadence:0;duty0=duty1=HeavyDuty(Speed);off1=.5f;}
             else if(!quad)
             {
-                float run=RunBlend(kind,Speed);rateHz=Lerp(NativeZombieMotion.Cadence(walkClip,Speed,kind),NativeZombieMotion.Cadence(runClip,Speed,kind),run)*cadence;
+                float run=RunBlend(kind,Speed);rateHz=Lerp(WalkCadence(Speed),NativeZombieMotion.Cadence(runClip,Speed,kind),run)*cadence;
                 // A run's stance is short (a walking take run fast keeps its feet down no more than half the cycle).
-                duty0=Lerp(NativeZombieMotion.Duty(walkClip,0),Math.Min(.55f,NativeZombieMotion.Duty(runClip,0)),run);duty1=Lerp(NativeZombieMotion.Duty(walkClip,1),Math.Min(.55f,NativeZombieMotion.Duty(runClip,1)),run);
-                off1=Lerp(NativeZombieMotion.Offset(walkClip,1),NativeZombieMotion.Offset(runClip,1),run);stride=Math.Max(.2f,Speed)/Math.Max(.2f,rateHz);
+                duty0=Lerp(WalkDuty(0),Math.Min(.55f,NativeZombieMotion.Duty(runClip,0)),run);duty1=Lerp(WalkDuty(1),Math.Min(.55f,NativeZombieMotion.Duty(runClip,1)),run);
+                off1=Lerp(WalkOffset(),NativeZombieMotion.Offset(runClip,1),run);stride=Math.Max(.2f,Speed)/Math.Max(.2f,rateHz);
                 if(!moving)rateHz=0;
             }
             else{stride=ProceduralStride(gk,Speed);duty0=duty1=Duty(gk,Speed);off1=.5f;rateHz=moving?Speed/Math.Max(.2f,stride)*cadence:0;}
