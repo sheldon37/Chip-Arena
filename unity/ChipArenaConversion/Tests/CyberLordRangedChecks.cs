@@ -183,8 +183,9 @@ internal static class CyberLordRangedChecks
                     var (gt,gr)=history.Dequeue();var want=hostFrames.Dequeue();copied.Record=gr;CyberLordFeed.RangedSource=copied;guest.Step(gt);
                     for(int i=0;i<want.Length;i++)worstGuest=Math.Max(worstGuest,1-Math.Abs(Quaternion.Dot(want[i],guest.M.Rig.Q[i])));
                 }
-                // The hold: both emitters ahead of the chest, on the aim.
-                if(Math.Abs(t-3.2f)<Dt*.5f){Check(host.State=="cyber-ranged-aim"&&hands[0].Z>.2f&&hands[1].Z>.2f&&Vector3.Distance(hands[0],hands[1])<.35f,"the hold: both emitters ahead of the chest ("+hands[0].ToString("0.00")+", "+hands[1].ToString("0.00")+")");}
+                // The stance (the cyber mage's set, 2026-10-15): the next throw's hand loaded beside the head, the other forward on
+                // the aim (before: both emitters held out together ahead of the chest).
+                if(Math.Abs(t-3.2f)<Dt*.5f){var hi=hands[0].Y>hands[1].Y?hands[0]:hands[1];var lo=hands[0].Y>hands[1].Y?hands[1]:hands[0];Check(host.State=="cyber-ranged-aim"&&hi.Y>.2f&&hi.Z<.1f&&lo.Z>.25f,"the stance: one hand loaded beside the head, the other forward on the aim ("+hands[0].ToString("0.00")+", "+hands[1].ToString("0.00")+")");}
             }
             Check(JsonSerializer.Serialize(host.A.ViewCopy())==before,"the actor is never written");
             foreach(var want in new[]{"cyber-reconfigure","cyber-ranged-aim","cyber-bit-bolt","cyber-ping-lance","cyber-lag-field","cyber-proxy-swap","cyber-root-charge","cyber-root-fire"})Check(seen.Contains(want),"shows "+want+" ("+string.Join(", ",seen)+")");

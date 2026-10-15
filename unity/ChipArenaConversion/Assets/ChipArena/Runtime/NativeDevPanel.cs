@@ -642,6 +642,7 @@ namespace ChipArena.UnityConversion
             y=DevHead(x,y,w,"GALLERIES");
             for(int i=0;i<DevGalleries.Length;i++){bool on=DevGalleryOn(i);DevToggleAct(new Rect(x,y,w,32),DevGalleries[i],on,on?DevGalleryHide[i]:DevGalleryShow[i]);y+=38;}
             y=DevNote(x,y,w,"Cyber Lord: 5 switches mode; LMB and 1-4 use the active kit.",C.Muted());
+            y=DevNote(x,y,w,"Cyber Kit 2 (ranged): as a Cyber Lord press 5 for ranged; the preview then loops Plasma Byte, Daisy Chain, Singularity, Packet Storm and Orbital Uplink on your pilot, locally. Move while it plays.",C.Muted());
             y=DevHead(x,y,w,"DEV REVEAL");DevAct(new Rect(x,y,w,32),"preview-reveal");y+=40;
             y=DevNote(x,y,w,"Plays the \"a developer is here\" moment on your pilot, locally. In a match it plays for the whole room once the host reveals you (DEV command reveal).",C.Muted());
             return y;

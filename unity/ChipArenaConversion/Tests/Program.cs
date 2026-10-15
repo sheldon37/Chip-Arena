@@ -23,6 +23,7 @@ internal static class Program
             if(args.Length==2&&args[0]=="--relay-smoke")
             {var json=System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json"));using(var doc=System.Text.Json.JsonDocument.Parse(json))RelayChecks.Run(args[1],doc.RootElement.GetProperty("sourceCommit").GetString()).GetAwaiter().GetResult();return 0;}
             if(args.Length==1&&args[0]=="--cyber-ranged"){CyberRangedSimulationChecks.Run();CyberChecks.Run();foreach(var result in CyberLordRangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
+            if(args.Length==1&&args[0]=="--cyber-kit2-ranged"){foreach(var result in CyberLordRangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);foreach(var result in CyberKit2RangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--horde-drops"){HordeDropChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());HulkMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-motion"){HulkMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-charge"){HulkMotionChecks.Run(ProjectRoot());HulkChargeChecks.Run(ProjectRoot());HulkHuntChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());return 0;}
@@ -132,6 +133,7 @@ internal static class Program
             foreach(var result in CyberLordRunChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CyberLordRangedChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CyberLordAuraChecks.Run(root))Console.WriteLine("PASS "+result);
+            foreach(var result in CyberKit2RangedChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in SheldonIdleChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in BowFlipChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in MapLookChecks.Run(root,data))Console.WriteLine("PASS "+result);

@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Start of Render: this frame's Cyber Lord views (CyberLordFeed), the cyber events, the look's form times.</summary>
         private void BeginCyberLord(Snapshot s,float time)
         {
-            cyberSnapshot=s;cyberClock=time;CyberRangedStep(s,time);if(s?.Actors==null)return;cyberFx.Observe(s.Events,time);
+            cyberSnapshot=s;cyberClock=time;CyberRangedStep(s,time);CyberKit2Step(s,time);if(s?.Actors==null)return;cyberFx.Observe(s.Events,time);
             foreach(var a in s.Actors)
             {
                 if(!CyberLordFeed.Handles(a))continue;if(!cyberViews.TryGetValue(a.Id,out var v)){v=new CyberLordView();cyberViews.Add(a.Id,v);}CyberLordFeed.Read(a,v);
@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
         }
         private void ClearCyberLord()
         {
-            cyberFx.Clear();cyberViews.Clear();cyberFormAt.Clear();cyberSnapshot=null;cyberRanged.Clear();cyberRangedStart=-100;
+            cyberFx.Clear();cyberViews.Clear();cyberFormAt.Clear();cyberSnapshot=null;cyberRanged.Clear();cyberRangedStart=-100;cyberKit2.Clear();cyberKit2Start=-100;
             for(int i=0;i<cyberCloneRigs.Length;i++){cyberCloneRigs[i]?.Dispose();cyberCloneRigs[i]=null;}
         }
         /// <summary>The Dev Sandbox's "Preview Cyber Double Jump" (developer sandbox only): the local Cyber Lord's own jumps show the
@@ -126,7 +126,7 @@ namespace ChipArena.UnityConversion
         {
             var s=cyberSnapshot;if(s?.Actors==null||vfx==null||sourceModels==null||cyberViews.Count==0&&cyberFx.Records.Count==0)return;var draw=WeaponFxDraw;if(draw==null)return;
             bool viewOk=FirstPerson&&!ScopeActive&&ViewCamera!=null&&viewRig!=null;float q=Mathf.Clamp01(WeaponEffectsQuality);
-            cyberArena=arena;cyberScene??=new CyberScene(this);cyberSink??=new CyberSink(this);cyberScene.Bind(s,camera,arena,cyberRanged);cyberSink.Bind(vfx,draw,viewOk);
+            cyberArena=arena;cyberScene??=new CyberScene(this);cyberSink??=new CyberSink(this);cyberScene.Bind(s,camera,arena,cyberRanged,cyberKit2);cyberSink.Bind(vfx,draw,viewOk);
             cyberFx.Draw(cyberSink,cyberScene,cyberClock,q,LowGraphics);
             CyberAuraHaze(s,cyberClock,q,viewOk);
             CyberGhosts(s,cyberClock,q);
@@ -203,7 +203,7 @@ namespace ChipArena.UnityConversion
         {
             private readonly ArenaPresentation p;private readonly List<Actor> actors=new List<Actor>();private Camera camera;private readonly CyberShotList shots=new CyberShotList();
             public CyberScene(ArenaPresentation owner){p=owner;}
-            public void Bind(Snapshot s,Camera c,NativeArena arena,CyberRangedPreview preview){camera=c;actors.Clear();if(s.Actors!=null)actors.AddRange(s.Actors);shots.Bind(arena,preview);}
+            public void Bind(Snapshot s,Camera c,NativeArena arena,CyberRangedPreview preview,CyberKit2RangedPreview kit2){camera=c;actors.Clear();if(s.Actors!=null)actors.AddRange(s.Actors);shots.Bind(arena,preview,kit2);}
             public int CyberShots=>shots.Shots;public CyberShot CyberShotAt(int i)=>shots.ShotAt(i);public int CyberImpacts=>shots.Impacts;public CyberImpact CyberImpactAt(int i)=>shots.ImpactAt(i);
             public IReadOnlyList<Actor> Actors=>actors;
             public NVector Feet(Actor a){var v=p.visualPositions.TryGetValue(a.Id,out var at)?at:ArenaPresentation.Vec(a.Position);return new NVector(v.x,v.y,v.z);}
@@ -217,7 +217,7 @@ namespace ChipArena.UnityConversion
             public float Floor(NVector at)=>0;
         }
         // The effects' primitives onto the shared effects renderer, the weapons drawer and the glow pieces (view: the first-person layer).
-        private sealed class CyberSink:ICyberFxSink
+        private sealed class CyberSink:ICyberFxSink,ICyberFxFlames
         {
             private readonly ArenaPresentation p;private NativeVfxDraw vfx;private NativeWeaponFxDraw draw;private bool viewOk;
             public CyberSink(ArenaPresentation owner){p=owner;}
@@ -228,6 +228,8 @@ namespace ChipArena.UnityConversion
             public void Smoke(NVector at,NVector albedo,float opacity,float size,float u,float seed,float floor)=>vfx.Smoke(U(at),C(albedo),opacity,size,u,seed,floor);
             public void Sprite(bool view,NVector at,NVector color,float size,int profile){if(view&&!viewOk)return;draw.Glow(view,U(at),C(color),size,profile);}
             public void Line(bool view,NVector tail,NVector head,NVector color,float width,bool shard){if(view&&!viewOk)return;draw.Axis(view,U(tail),U(head),C(color),width,shard?NativeWeaponFxDraw.ShardMode:NativeWeaponFxDraw.StreakMode,shard?0:.85f);}
+            // The flame cards (the weapons drawer's FlameMode): the fireballs' tongues, the splashes' petals, the burns.
+            public void Flame(bool view,NVector tail,NVector head,NVector color,float width,float seed){if(view&&!viewOk)return;draw.Axis(view,U(tail),U(head),C(color),width,NativeWeaponFxDraw.FlameMode,seed);}
             public void Band(bool view,NVector a,NVector b,NVector c,NVector d,float ua,float ub,NVector color)
             {if(view&&!viewOk)return;draw.Quad(view,U(a),U(b),U(c),U(d),new Vector2(ua,-1),new Vector2(ub,-1),new Vector2(ub,1),new Vector2(ua,1),C(color),NativeWeaponFxDraw.Ribbon,0);}
             public void Voxel(bool view,WeaponShape shape,NVector at,NQuaternion rotation,NVector scale,NVector color)
@@ -274,7 +276,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeAudio
     {
         private readonly NativeKitSound[] cyberSounds=new NativeKitSound[NativeCyberLordSounds.Max];private readonly CyberLordView cyberView=new CyberLordView();
-        private readonly Dictionary<int,string[]> cyberKeys=new Dictionary<int,string[]>();
+        private readonly Dictionary<int,string[]> cyberKeys=new Dictionary<int,string[]>(),cyberKeys2=new Dictionary<int,string[]>();
         /// <summary>A Cyber Lord pilot's state cues (the swing, each release, the wall's end, the link's end, Kernel Panic's beats), each once while fresh.</summary>
         private void CyberLordCues(NativePilot p,Vector3 pos,bool mine,float t)
         {
@@ -283,6 +285,14 @@ namespace ChipArena.UnityConversion
             for(int slot=0;slot<NativeCyberLordSounds.Slots;slot++)
             {
                 int n=NativeCyberLordSounds.State(cyberView,slot,cyberSounds,out float at);if(n==0||!(t>=at&&t-at<.15f)||!Once(keys[slot],at))continue;
+                for(int i=0;i<n;i++)Cue(cyberSounds[i].Key,cyberSounds[i].Clip,pos,cyberSounds[i].Gain,mine:mine);
+            }
+            // Kit v2's ranged set (Core/CyberKit2RangedHud.cs CyberKit2RangedSounds), only on a live v2 record.
+            if(!cyberView.Kit2R.Live)return;
+            if(!cyberKeys2.TryGetValue(id,out var keys2)){keys2=new string[CyberKit2RangedSounds.Slots];for(int i=0;i<keys2.Length;i++)keys2[i]=id+":cyber2-"+i;cyberKeys2.Add(id,keys2);}
+            for(int slot=0;slot<CyberKit2RangedSounds.Slots;slot++)
+            {
+                int n=CyberKit2RangedSounds.State(cyberView,slot,cyberSounds,out float at);if(n==0||!(t>=at&&t-at<.15f)||!Once(keys2[slot],at))continue;
                 for(int i=0;i<n;i++)Cue(cyberSounds[i].Key,cyberSounds[i].Clip,pos,cyberSounds[i].Gain,mine:mine);
             }
         }

@@ -283,6 +283,42 @@ icons['ability-cyber-melee']=()=>{
   const palm=poly([[7.6,11.8],[16.8,11.8],[16.8,15.4],[15.3,17]  ,[9.1,17],[7.6,15.6]]),thumb=poly([[6.4,12.7],[11.6,12.2],[13.3,13.3],[12,14.5],[7.8,14.6],[6.4,13.9]]);
   return [L(frame,{evenodd:true,opacity:TONE}),L(palm,{knock:1}),L(knuckles,{knock:.45}),L(thumb,{knock:.6})];
 };
+// KIT V2, THE CYBER MAGE'S RANGED SET (Core/CyberKit2Ranged.cs).
+// PLASMA BYTE (LMB): a cyber fireball, its hot core set in the ball, flame tongues streaming back, bytes shed in its wake.
+icons['ability-plasma-byte']=()=>{
+  const c=[8.6,15.4],ball=circ(c[0],c[1],5.4),core=circ(c[0],c[1],2.2),gap=ring(c[0],c[1],2.2,3.2);
+  const tongues=[taper([10.4,11.2],[21.4,1.6],5.2,.6),taper([13,14.2],[23.2,7.4],3,.4),taper([6.6,10.6],[13.2,1.8],2.6,.4)];
+  const bytes=[crect(17.6,10.6,1.8,1.8,.3),crect(20.6,12.6,1.4,1.4,.2),crect(14.4,4.6,1.4,1.4,.2)];
+  return [L(tongues,{opacity:TONE}),L(bytes,{opacity:TONE}),L(ball,{knock:GAP}),L(gap,{cut:true}),L(core)];
+};
+// DAISY CHAIN (1): a lightning bolt hopping from node to node, each node a struck pilot's ring.
+icons['ability-daisy-chain']=()=>{
+  const nodes=[[3.6,19.6],[11.6,8.4],[20.4,15.6]];
+  const bolt=line([[3.6,19.6],[6.2,13.2],[8,15.2],[11.6,8.4],[14.2,13.4],[16.4,11.4],[20.4,15.6]]);
+  const fork=line([[14.2,13.4],[15.2,18.6]]),spark=line([[6.2,13.2],[4.4,10.2]]);
+  return [L([fork,spark],{line:1.1,opacity:TONE}),L(bolt,{line:2,knock:.5}),L(nodes.map(n=>ring(n[0],n[1],1.4,2.9)),{knock:.7}),L(nodes.map(n=>circ(n[0],n[1],.8)))];
+};
+// SINGULARITY (2): a black hole: a ring of light round an empty core, three spiral arms of matter wound in toward it,
+// debris drawn along them.
+icons['ability-singularity']=()=>{
+  const hole=ring(12,12,3.4,5.4);
+  const arm=k=>{const pts=[];for(let i=0;i<=14;i++){const u=i/14,r=11.2-5*u,a=k*120+u*150;pts.push(at(12,12,r,a));}return line(pts);};
+  const arms=[0,1,2].map(arm),debris=[crect(1.6,9.4,1.8,1.8,.3).rot(20,2.5,10.3),crect(17.6,20.2,1.6,1.6,.3),crect(19.8,2.6,1.4,1.4,.2)];
+  return [L(arms,{line:1.7,opacity:TONE}),L(debris),L(hole,{knock:1})];
+};
+// PACKET STORM (3): cyber meteors (turned cubes) streaking down onto a ring.
+icons['ability-packet-storm']=()=>{
+  const cube=(x,y,s)=>crect(x-s/2,y-s/2,s,s,s*.18).rot(45,x,y),fall=(x,y,s)=>taper([x+s*.3,y-s*.3],[x+s*2.4,y-s*2.4],s*.9,.2);
+  const meteors=[[6.6,12.4,4.6],[15.2,8.6,3.6],[19.4,14.6,3]];const ringB=ellipseBand(12,19.8,10,2.6,1.8,0,360,0,48);
+  return [L(ringB),L(meteors.map(m=>fall(m[0],m[1],m[2])),{opacity:TONE}),L(meteors.map(m=>cube(m[0],m[1],m[2])),{knock:.8})];
+};
+// ORBITAL UPLINK (4): a satellite's beam pouring down onto a targeting ring.
+icons['ability-orbital-uplink']=()=>{
+  const sat=hexP(2.6,12,3.4),panels=[crect(4.4,2.6,4.6,1.6,.3),crect(15,2.6,4.6,1.6,.3)];
+  const beam=poly([[10.6,6.8],[13.4,6.8],[15.2,18.4],[8.8,18.4]]),core=crect(11.4,8.4,1.2,9.4,.3);
+  const target=ellipseBand(12,19.2,9.4,2.8,1.6,0,360,0,48),ticks=[crect(1.4,18.6,1.6,1.2,.2),crect(21,18.6,1.6,1.2,.2)];
+  return [L(panels,{opacity:TONE}),L(target,{opacity:TONE}),L(ticks),L(beam,{knock:.6}),L(core,{cut:true}),L(sat,{knock:.6})];
+};
 // Horizontal slab clip of a polygon path made by poly() (Sutherland–Hodgman against y0 <= y <= y1).
 function clipPoly(pathP,y0,y1)
 {

@@ -82,17 +82,15 @@ namespace ChipArena.UnityConversion
                     {float off=(reduced?.02f:.03f+.03f*H(seed+step,9))*(1-u/.6f);ghosts[ghostCount++]=new CyberGhost{Kind=CyberGhost.Split,Actor=a.Id,Offset=r*off,Tint=Lin(Magenta,1.4f),Opacity=.4f*(1-u/.6f)};ghosts[ghostCount++]=new CyberGhost{Kind=CyberGhost.Split,Actor=a.Id,Offset=-r*off,Tint=Lin(Cyan,1.4f),Opacity=.4f*(1-u/.6f)};}
                 }
             }
-            // The live emitters' soft glow in ranged mode.
-            float mode=v.ModeWeight(time);if(mode>.5f&&!me&&!low){float pulse=.5f+.5f*(float)Math.Sin(time*(reduced?2:5)+a.Id);for(int h=0;h<2;h++)s.Glow(h==0?le:re,Lin(Cyan,.35f*mode*(.6f+.4f*pulse)),0,.18f,Mote,(time*.7f)%1f,a.Id*7+h);}
+            // The cyber mage's hands (NativeCyberLordPlasmaFx.cs): the fireballs held over the palms and the throws' cast flash.
+            PlasmaHands(s,scene,a,v,time,q,low,me,aim);
             // ---- the casts ----
             for(int slot=0;slot<CyberRangedSpec.Slots;slot++)
             {
                 var p=v.RPhase(slot,time);float rel=v.RRelease[slot],age=time-rel;long seed=a.Id*7919L+(long)Math.Round(v.RAt[slot]*240)+slot*101;
                 switch(slot)
                 {
-                    case CyberRangedSpec.Bolt:
-                        if(v.RReleased(CyberRangedSpec.Bolt)&&p.Live&&age>=0&&age<MuzzleLife){var at=v.BoltHand==1?le:re;float k=1-age/MuzzleLife;s.Sprite(me,at,Lin(White,3*k),me?.05f:.16f,Hot);s.Sprite(me,at,Lin(Cyan,2*k),(me?.04f:.1f)+(me?.05f:.18f)*(1-k),RingSprite);}
-                        break;
+                    case CyberRangedSpec.Bolt:break; // the throw's flash is PlasmaHands'
                     case CyberRangedSpec.Lance:
                         if(p.Live&&p.Part==0)
                         {
@@ -282,10 +280,12 @@ namespace ChipArena.UnityConversion
             float dt=time-sprintAt[slot];sprintRamp[slot]=dt<0||dt>1?(on?1:0):NativeSprintRules.Step(sprintRamp[slot],on,dt);sprintAt[slot]=time;
             return NativeSprintRules.Shape(sprintRamp[slot]);
         }
-        private void Sprint(ICyberFxSink s,ICyberFxScene scene,Actor a,float time,float q,bool low,bool me)
+        private void Sprint(ICyberFxSink s,ICyberFxScene scene,Actor a,CyberLordView v,float time,float q,bool low,bool me)
         {
             float w=SprintRamp(a,time);if(me||!a.Alive||w<=1e-3f)return;float vx=a.Velocity.x,vz=a.Velocity.z,speed=(float)Math.Sqrt(vx*vx+vz*vz);if(speed<.5f)return;
             bool reduced=q<.5f;var dir=new Vector3(vx/speed,0,vz/speed);var vel=dir*speed;var r=Right(dir);
+            // The ranged glide (Core/CyberLordRangedMotion.cs): energy streaming off the trailing palms instead of the fists' streaks.
+            float mode=v.ModeWeight(time);if(mode>1e-3f)Glide(s,scene,a,dir,speed,time,w*mode,reduced,low);if(mode>=.999f)return;w*=1-mode;
             for(int h=0;h<2;h++)
             {
                 if(!scene.Fist(a,h==0,out var fist))continue;long seed=a.Id*733L+h*17;float k=w*(reduced?.55f:1);
@@ -295,29 +295,51 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<bits;i++){float t=H(seed+i*7+step,3);var at=fist-dir*(StreakLength*w*(.2f+.8f*t))+Up*((H(seed+i+step,5)-.5f)*.08f)+r*((H(seed+i+step,7)-.5f)*.08f);float z=.025f*(1-t*.6f);s.Voxel(false,WeaponShape.Cube,at,Quaternion.Identity,new Vector3(z,z,z),Lin(i%2==0?Cyan:Magenta,2*k*(1-t*.5f)));}
             }
         }
+        /// <summary>The ranged glide's streams: from each trailing palm a magenta flame ribbon with a cyan heart streams back along
+        /// the run, shedding pixel embers; a soft glow on the palm. Grows and fades on the sprint's eased ramp (`w`).</summary>
+        public const float StreamLength=1.5f;
+        private void Glide(ICyberFxSink s,ICyberFxScene scene,Actor a,Vector3 dir,float speed,float time,float w,bool reduced,bool low)
+        {
+            int step=(int)(time*24);var r=Right(dir);
+            for(int h=0;h<2;h++)
+            {
+                if(!scene.Fist(a,h==0,out var fist))continue;long seed=a.Id*733L+h*17+5;float k=w*(reduced?.6f:1),fl=reduced?1:.85f+.3f*H(seed+step,3);
+                var palm=fist-dir*.04f;var lift=Up*(.05f*(float)Math.Sin(time*7+h*3));
+                Flame(s,false,palm,palm-dir*(StreamLength*w)+lift+Up*.06f,Lin(Magenta,1.7f*k*fl),.17f*w,reduced?.4f:H(seed+step,5));
+                Flame(s,false,palm,palm-dir*(StreamLength*.7f*w)+lift*.5f,Lin(Cyan,2.4f*k),.12f*w,reduced?.6f:H(seed+step,7));Flame(s,false,palm,palm-dir*(StreamLength*.3f*w),Lin(HotWhite,2.2f*k),.05f*w,reduced?.2f:H(seed+step,8));
+                s.Sprite(false,palm,Lin(HotWhite,2.4f*k),.08f,Hot);if(!low)s.Glow(palm,Lin(Plasma,.35f*k),0,.35f,Mote,MeleeMath.Frac(time*.9f+h*.5f),seed);
+                int bits=reduced?1:low?2:5;
+                for(int i=0;i<bits;i++){float u=MeleeMath.Frac(time*2.2f+i/(float)bits+H(seed,9));int gen=(int)Math.Floor(time*2.2f+i/(float)bits+H(seed,9));var at=palm-dir*(StreamLength*w*u)+Up*((H(seed+gen*7+i,11)-.5f)*.25f*u)+r*((H(seed+gen*5+i,13)-.5f)*.3f*u);float z=.035f*(1-u);s.Voxel(false,WeaponShape.Cube,at,Quaternion.CreateFromAxisAngle(Up,u*5+i),new Vector3(z,z,z),Lin(i%2==0?Magenta:Cyan,2.4f*k*(1-u*.5f)));}
+            }
+        }
         /// <summary>The scene's hardlight shots (the bolts) and the ranged impacts (the preview's, and the ranged hit / impact events).</summary>
         private void RangedShots(ICyberFxSink s,ICyberFxScene scene,float time,float q,bool low)
         {
             bool reduced=q<.5f;eye=scene.Eye;
             if(scene is ICyberShots shots)
             {
-                for(int i=0;i<shots.CyberShots;i++)
+                // The fireballs (Bit Bolts today, Kit v2's Plasma Bytes): NativeCyberLordPlasmaFx.cs.
+                PlasmaShots(s,scene,shots,time,q,low);
+                for(int i=0;i<shots.CyberImpacts;i++)
                 {
-                    var b=shots.CyberShotAt(i);float speed=b.Velocity.Length();if(speed<1e-3f)continue;var dir=b.Velocity/speed;var r=Vector3.Normalize(Vector3.Cross(Up,dir));if(!(r.LengthSquared()>.5f))r=Vector3.UnitX;
-                    long seed=b.Id*131L;float age=time-b.Born;
-                    s.Sprite(false,b.Position,Lin(White,3),.09f,Hot);s.Streak(b.Position,b.Velocity,Lin(Cyan,2.2f),.05f,.55f,.03f,.85f,Clamp01(age/.6f),seed);
-                    // The RGB split: a magenta tail one side, a cyan the other.
-                    s.Line(false,b.Position-dir*.55f+r*.018f,b.Position+r*.018f,Lin(Magenta,1.6f),.016f,false);if(!low)s.Line(false,b.Position-dir*.45f-r*.018f,b.Position-r*.018f,Lin(Cyan,1.6f),.016f,false);
-                    if(!reduced&&!low)for(int j=0;j<2;j++){var pp=b.Position-dir*(.25f+.25f*j)+r*((H(seed+j+(int)(time*24),3)-.5f)*.06f);float z=.022f;s.Voxel(false,WeaponShape.Cube,pp,Quaternion.Identity,new Vector3(z,z,z),Lin(j==0?Cyan:Magenta,2));}
+                    var im=shots.CyberImpactAt(i);long seed=im.Owner*977L+(long)Math.Round(im.At*240);
+                    if(im.Slot==CyberRangedSpec.Bolt)PlasmaSplash(s,im.Position,im.Normal,time-im.At,im.Kind,im.Pilot,Splash(im.Kind),seed,reduced,low);
+                    else Impact(s,im.Slot,im.Position,im.Normal,time-im.At,im.Pilot,seed,reduced,low);
                 }
-                for(int i=0;i<shots.CyberImpacts;i++){var im=shots.CyberImpactAt(i);Impact(s,im.Slot,im.Position,im.Normal,time-im.At,im.Pilot,im.Owner*977L+(long)Math.Round(im.At*240),reduced,low);}
             }
             for(int i=0;i<records.Count;i++)
             {
-                var rec=records[i];int slot=rec.Hit>=CyberHit.Bolt&&rec.Hit<=CyberHit.Root?rec.Hit-CyberHit.Bolt:-1;if(slot<0||rec.Kind==EventKind.Heal)continue;
-                var n=rec.From-rec.Position;n=n.LengthSquared()>1e-6f?Vector3.Normalize(n):Up;Impact(s,slot,rec.Position,n,time-rec.Time,rec.Kind!=EventKind.Impact,rec.Id*31L,reduced,low);
+                var rec=records[i];if(rec.Kind==EventKind.Heal)continue;
+                // The world's normal when the event carries it, else back toward where it came from.
+                var n=rec.Normal.LengthSquared()>1e-6f?Vector3.Normalize(rec.Normal):rec.From-rec.Position;n=n.LengthSquared()>1e-6f?Vector3.Normalize(n):Up;
+                int kind=rec.Hit==CyberKit2RangedFeed.PlasmaHit?1:rec.Hit==CyberKit2RangedFeed.OverflowHit?2:rec.Hit==CyberHit.Bolt?0:-1;
+                if(kind>=0){if(rec.Kind!=EventKind.Absorb)PlasmaSplash(s,rec.Position,n,time-rec.Time,kind,rec.Kind!=EventKind.Impact,Splash(kind),rec.Id*31L,reduced,low);continue;}
+                int slot=rec.Hit>=CyberHit.Bolt&&rec.Hit<=CyberHit.Root?rec.Hit-CyberHit.Bolt:-1;if(slot<0)continue;
+                Impact(s,slot,rec.Position,n,time-rec.Time,rec.Kind!=EventKind.Impact,rec.Id*31L,reduced,low);
             }
         }
+        // A fireball kind's splash radius (Kit v2's; today's Bit Bolt has none).
+        private static float Splash(int kind)=>kind==1?CyberKit2Spec.PlasmaSplashRadius:kind==2?CyberKit2Spec.OverflowSplashRadius:0;
         // One ranged impact: a hex ring off the surface, a flash and pixel shards; on a pilot, the ping reticle (the lance) or
         // a bigger hex shatter (the beam).
         private void Impact(ICyberFxSink s,int slot,Vector3 at,Vector3 normal,float age,bool pilot,long seed,bool reduced,bool low)

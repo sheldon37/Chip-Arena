@@ -90,20 +90,22 @@ namespace ChipArena.UnityConversion
         // The scene's hardlight shots (ICyberShots on CyberScene): the replicated bolts, then the preview's.
         private sealed class CyberShotList
         {
-            private readonly List<CyberShot> bolts=new List<CyberShot>(32);private CyberRangedPreview preview;
-            public void Bind(NativeArena arena,CyberRangedPreview pv)
+            private readonly List<CyberShot> bolts=new List<CyberShot>(32);private CyberRangedPreview preview;private CyberKit2RangedPreview kit2;
+            public void Bind(NativeArena arena,CyberRangedPreview pv,CyberKit2RangedPreview k2=null)
             {
-                bolts.Clear();preview=pv!=null&&pv.Any?pv:null;if(arena?.Bullets==null)return;
+                bolts.Clear();preview=pv!=null&&pv.Any?pv:null;kit2=k2!=null&&k2.Any?k2:null;if(arena?.Bullets==null)return;
                 foreach(var b in arena.Bullets)
                 {
+                    // (Kind: a v1 Bit Bolt, or Kit v2's Plasma Byte / Overflow by its Detail.)
                     int slot=CyberLordFeed.ShotSlot(b.Spec,b.Detail);if(slot<0)continue;
-                    bolts.Add(new CyberShot{Id=b.Id,Owner=b.Owner,Slot=slot,Position=N(b.Position),Velocity=N(b.Velocity),Born=b.Born});
+                    bolts.Add(new CyberShot{Id=b.Id,Owner=b.Owner,Slot=slot,Kind=CyberKit2RangedFeed.ShotKind(b.Detail),Position=N(b.Position),Velocity=N(b.Velocity),Born=b.Born});
                 }
             }
-            public int Shots=>bolts.Count+(preview?.CyberShots??0);
-            public CyberShot ShotAt(int i)=>i<bolts.Count?bolts[i]:preview.CyberShotAt(i-bolts.Count);
-            public int Impacts=>preview?.CyberImpacts??0;
-            public CyberImpact ImpactAt(int i)=>preview.CyberImpactAt(i);
+            private int Previewed=>preview?.CyberShots??0;
+            public int Shots=>bolts.Count+Previewed+(kit2?.CyberShots??0);
+            public CyberShot ShotAt(int i)=>i<bolts.Count?bolts[i]:i<bolts.Count+Previewed?preview.CyberShotAt(i-bolts.Count):kit2.CyberShotAt(i-bolts.Count-Previewed);
+            public int Impacts=>(preview?.CyberImpacts??0)+(kit2?.CyberImpacts??0);
+            public CyberImpact ImpactAt(int i){int n=preview?.CyberImpacts??0;return i<n?preview.CyberImpactAt(i):kit2.CyberImpactAt(i-n);}
         }
     }
 }

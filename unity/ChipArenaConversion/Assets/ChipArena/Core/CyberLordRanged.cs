@@ -80,10 +80,12 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>A Cyber Lord hardlight projectile the effects draw (a replicated shot of Spec cyberlord, or the preview's).</summary>
-    public struct CyberShot{public int Id,Owner,Slot;public Vector3 Position,Velocity;public float Born;}
+    public struct CyberShot{public int Id,Owner,Slot;public Vector3 Position,Velocity;public float Born;
+        /// <summary>The fireball's kind (CyberKit2RangedFeed.ShotKind): 0 a v1 Bit Bolt, 1 a Plasma Byte, 2 an Overflow.</summary>
+        public int Kind;}
     /// <summary>Where a ranged cast ended (the preview's stand-in for the contract's Hit / Impact events with the ranged Details):
     /// its owner and slot, the point and the surface's normal toward the caster, when, and whether a pilot was hit.</summary>
-    public struct CyberImpact{public int Owner,Slot;public Vector3 Position,Normal;public float At;public bool Pilot;}
+    public struct CyberImpact{public int Owner,Slot;public Vector3 Position,Normal;public float At;public bool Pilot;public int Kind;}
     /// <summary>Where the ranged record comes from before the rules replicate it (the runtime's preview; the checks' fixture).</summary>
     public interface ICyberRangedSource{CyberRangedRecord Of(int actor);}
     /// <summary>The scene's hardlight shots (optional on an ICyberFxScene: the runtime's replicated and previewed bolts).</summary>
