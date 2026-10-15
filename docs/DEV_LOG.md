@@ -1,5 +1,13 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Astra — Expedition chip choosing authority and install events
+- Branch `codex/expedition-chip-authority`, base shared/builder `3ced89cc`. Required portion of Claude's `claude/expedition-chip-screen` handoff. That presentation branch was not on the remote during implementation; no UI/render ownership changes.
+- Append `OpenChoice` / `CloseChoice` intents (preserve existing enum values), validate pending personal rewards through the authenticated host path, and project only the public member `choosing` boolean. Host holds just the choosing pilot using the existing freeze/cancel path with camera rotation; run/combat clocks continue. Close/final selection/death/disconnect/extraction/loading/save resume clear state. Seat lookup is allocation-free. Machine interaction refuses while choosing.
+- A committed successful Select invokes the session install hook once; the arena emits normal Install metadata for sounds/cues. Duplicate/refused selects and inventory synchronization do not emit. Update both M1 notice locations to C. Optional offer-rule parity and tiered physical pickups deferred.
+- Contract and Claude UI wiring steps: `docs/EXPEDITION-PRESENTATION.md`, "Chip screen authority contract". Public offers remain prohibited. No hit timing, damage, cooldown, balance or asset changes; choosing cancels existing combat/movement actions as required by D18.
+- Validation: 80 focused Expedition integration assertions pass; native authority freeze/camera/install/duplicate checks added to the Windows M1 acceptance gate. Pinned Unity 6000.3.24f1 / C# 9 Player, Runtime and Editor compilation passes. Full managed/real-relay regression passes (712 PASS groups, exit 0); the source guard now permits the read-only IsChoosing query and explicitly prohibits presentation calling SetChoosing. One concurrent compiler launch failed in the SDK process lookup; the sequential rerun passed. Promotion receipt follows in the PR. Native Unity/PhysX, Windows, live host/guest, sounds and wrist-hologram acceptance cannot run here; UI binding still belongs to Claude.
+
+
 ## 2026-10-15 — Astra — Windows air-jump JSON build gate
 - Branch `codex/fix-air-jump-build`, base shared/builder `25a26ef6` (PR #231 merged). Drive log at 13:09Z exits 1 in ValidateAirJumps because the cloned frame is invalid.
 - Cyber v2 added nullable Kit2/Kit2R records and a validator requiring them absent for version 0. Unity inline JSON expands absent records, so default/legacy actor kits fail validation. Preserve explicit record presence through the existing frame codec for snapshot actors, pilot death actors and corpse actors. Keep strict v2 validation; no gameplay, movement, cooldown or presentation changes.

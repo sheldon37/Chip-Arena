@@ -61,6 +61,11 @@ namespace ChipArena.UnityConversion
         public void BindExpeditionCombat(ExpeditionDirector director,ExpeditionAreaLayout area,NativePveContent data)
         {
             Expedition=director;expeditionArea=area;
+            director.Session.Installed=(account,chip,count)=>
+            {
+                var pilot=Pilots.FirstOrDefault(p=>p.Seat.id==director.Session.Sources.Seat?.Invoke(account));
+                if(pilot!=null)Emit(EventKind.Install,pilot,pilot.Seat.id,pilot.Body.position,count,chip);
+            };
             // Clone content so the ordinary Siren mode and authored resources remain unchanged.
             data=JsonUtility.FromJson<NativePveContent>(JsonUtility.ToJson(data));
             data.entries=NativeExpeditionLayout.ResolveSpawns(area,data).Select(s=>s.entry).ToArray();
@@ -88,6 +93,8 @@ namespace ChipArena.UnityConversion
             p.Body.position=Vec(slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);p.Yaw=slot.yaw;
             p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;Physics.SyncTransforms();return true;
         }
+        private bool ExpeditionChoosing(NativePilot pilot)=>pilot!=null&&Expedition!=null&&
+            Expedition.Session.Run.IsChoosingSeat(pilot.Seat.id,Expedition.Session.Sources.Seat);
         private ExpeditionMember ExpeditionMemberFor(NativePilot pilot)
             =>Expedition?.Session.Run.Snapshot().members.FirstOrDefault(m=>Expedition.Session.Sources.Seat?.Invoke(m.account)==pilot.Seat.id);
         public void SyncExpeditionInventory()
@@ -106,18 +113,18 @@ namespace ChipArena.UnityConversion
         {
             notice=null;if(Expedition==null||Replica||Pve==null||Pve.Holding||pilot==null||pilot.Hp<=0||!pilot.Seat.connected)return false;
             var session=Expedition.Session;var run=session.Run;var state=run.Snapshot();var member=ExpeditionMemberFor(pilot);
-            if(state.loading||member==null||!member.alive||member.extracted)return false;
+            if(state.loading||member==null||!member.alive||member.extracted||run.IsChoosing(member.account))return false;
             var feet=Vec(pilot.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight);
             foreach(var reward in state.rewards.Where(r=>!r.claimed&&(r.owner==null||r.owner==member.account)))
                 if(Expedition.CanClaim(member.account,reward.id))
-                {var result=session.Execute(member.account,new ExpeditionCommand(ExpeditionIntent.Claim,reward.id));notice=result.state==ExpeditionCommandState.Pending?"Chip collected · J to choose":result.reason;return true;}
+                {var result=session.Execute(member.account,new ExpeditionCommand(ExpeditionIntent.Claim,reward.id));notice=result.state==ExpeditionCommandState.Pending?"Chip collected · C to choose":result.reason;return true;}
             var cache=expeditionArea.interactions.Where(i=>state.chests.Any(c=>c.id==i.anchor)&&Expedition.CanPurchase(member.account,i.anchor))
                 .OrderBy(i=>(new V3(i.x,i.y,i.z)-feet).Length).FirstOrDefault();
             if(cache!=null)
             {
                 var result=session.Execute(member.account,new ExpeditionCommand(ExpeditionIntent.Purchase,cache.anchor));
                 if(result.state==ExpeditionCommandState.Pending)
-                {OpenExpeditionPurchases(member.account);notice="Cache purchased · J to choose your chip";}
+                {OpenExpeditionPurchases(member.account);notice="Cache purchased · C to choose your chip";}
                 else notice=result.reason;
                 SyncExpeditionInventory();return true;
             }
@@ -162,7 +169,7 @@ namespace ChipArena.UnityConversion
                 else{row.HealAt=Time;row.HealReady=Time+12;row.HealPulses=0;}
             }
             row.Spent+=cost;Emit(EventKind.PveBuy,pilot,machine.m,pilot.Body.position,cost,machine.kind);
-            return Use(machine.kind,machine.kind=="chip"?"Chip purchased · J to choose":machine.kind=="recruit"?"Recruit hired for this area":"Healing started");
+            return Use(machine.kind,machine.kind=="chip"?"Chip purchased · C to choose":machine.kind=="recruit"?"Recruit hired for this area":"Healing started");
         }
         private void StepExpeditionCombat()
         {

@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
                 session.ReprintEvidence=(_,__)=>null;
                 BindExpedition(session);expeditionLoadedGeneration=-1;expeditionDirector.BeginAreaLoad();
                 menu=false;pending=new InputFrame();sprint=false;pitch=12;expeditionScreenOpen=false;
-                if(!ExpeditionM1Load())return;Notice("DEV Expedition M1 · F at doors · J for exit, Continue or extraction. F at caches and Ward machines · J for chip choices. Local only.");
+                if(!ExpeditionM1Load())return;Notice("DEV Expedition M1 · F at doors · J for exit, Continue or extraction. F at caches and Ward machines · C for chip choices. Local only.");
             }
             catch(Exception e){Debug.LogException(e);expeditionError=e.Message;networkStatus="Expedition M1 refused: "+e.Message;arena?.Dispose();arena=null;match=null;expeditionDirector=null;ResetExpeditionNetwork();menu=true;}
         }

@@ -43,8 +43,18 @@ namespace ChipArena.UnityConversion
                 Check(TryExpeditionInteract(Local,out _)&&Wallet()==925,"sold cache refuses duplicate input");
                 director.Step();Check(TryExpeditionInteract(Local,out _)&&Wallet()==925,"restocking cache refuses purchase");
                 var pick=run.Snapshot().rewards.Single();Check(pick.claimed&&pick.owner=="native-host"&&pick.offers.Length>0,"purchased cache offers belong to buyer");
+                Check(session.Execute("native-host",new ExpeditionCommand(ExpeditionIntent.OpenChoice,pick.id)).state==ExpeditionCommandState.Pending,"open choice intent");
+                var heldAt=Local.Body.position;Local.Input=new InputFrame{X=1,Z=1,Jump=true,Roll=true,Block=true,Yaw=37,Pitch=12};
+                Local.MoveVelocity=Local.Knockback=Vector3.forward*10;Local.Body.linearVelocity=Vector3.forward*10;Local.RollEnd=Time+1;
+                RouteLeetInputs();RestoreLeetInputs();
+                Check(Frozen(Local)&&Local.Body.position==heldAt&&Local.Body.linearVelocity==Vector3.zero&&Local.MoveVelocity==Vector3.zero&&Local.Knockback==Vector3.zero&&Local.RollEnd==0&&Local.BlockEnd==0,"authority holds choosing pilot and cancels roll/block momentum");
+                Check(Local.Yaw==37&&Local.Pitch==12,"chooser can turn camera");
+                int installBefore=Events.Count(e=>e.Kind==EventKind.Install);
                 Check(session.Execute("native-host",new ExpeditionCommand(ExpeditionIntent.Select,pick.id,pick.offers[0])).state==ExpeditionCommandState.Pending,"choose purchased chip");
                 SyncExpeditionInventory();Check(Local.Seat.chips.TryGetValue(pick.offers[0],out int held)&&held==1,"choice applied to live combat inventory");
+                Check(!Frozen(Local)&&Events.Count(e=>e.Kind==EventKind.Install)==installBefore+1,"selection releases final hold and emits Install");
+                Check(session.Execute("native-host",new ExpeditionCommand(ExpeditionIntent.Select,pick.id,pick.offers[0])).state==ExpeditionCommandState.Refused&&Events.Count(e=>e.Kind==EventKind.Install)==installBefore+1,"duplicate emits no Install");
+                RestoreLeetInputs();Local.Body.useGravity=true;
                 var chipMachine=data.machines.First(m=>m.kind=="chip");Stand(chipMachine.front.Position());
                 Check(TryExpeditionInteract(Local,out _)&&Wallet()==750&&run.Snapshot().rewards.Length==2,"Ward dispenser uses run wallet and personal reward queue");
                 var med=data.machines.First(m=>m.kind=="med");Stand(med.front.Position());Local.Hp=(float)Local.Stats["hp"]*.4f;
