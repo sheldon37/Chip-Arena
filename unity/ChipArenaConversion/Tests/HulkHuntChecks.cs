@@ -7,6 +7,13 @@ internal static class HulkHuntChecks
     {
         int n=0;void Check(bool ok,string why){n++;if(!ok)throw new Exception("Hulk hunt: "+why);}
         bool Near(float a,float b)=>Math.Abs(a-b)<.001f;
+        foreach(float start in new[]{10f,430f,10000f})
+        {
+            var wind=new NativeHulkHunt();wind.BeginCharge(start,1,new V3(),new V3(0,0,50));
+            for(int tick=1;tick<=56&&!wind.ChargeLocked;tick++)
+            {wind.LockCharge(start+tick/60f);if(tick<=53)Check(!wind.ChargeLocked,"wind-up cannot lock early at "+start);}
+            Check(wind.ChargeLocked&&wind.Charging,"fixed ticks reach wind-up lock at "+start);
+        }
         var h=new NativeHulkHunt();Check(!h.Charging&&h.ChargeAt==-100&&h.ChargeEndAt==-100,"idle sentinel");
         h.BeginCharge(10,3,new V3(0,1.53f,0),new V3(0,.9f,50));
         Check(h.Charging&&h.ChargeTarget==3&&!h.ChargeLocked,"start target");

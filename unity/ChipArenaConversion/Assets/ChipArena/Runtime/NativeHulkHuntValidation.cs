@@ -41,13 +41,18 @@ namespace ChipArena.UnityConversion
                 foreach(int move in new[]{1,2}){a.Move=move;Place(0,1002);p.BlockEnd=Time+1;HulkMoveStrike(m);Check(p.Hp==1000&&Math.Abs(p.Knockback.y-(move==1?1.25f:1))<.001f,"block half shove "+move);}p.BlockEnd=0;
                 ResetHulk(420);Place(0,1050);Check(StepHulkHunt(m,p)&&a.Charging,"cross-map start");Place(5,1050);Clock(420.5f);StepHulkHunt(m,p);Check(m.Yaw>0&&!a.ChargeLocked,"wind tracks");
                 CancelHulkWind(m,m.MaxHp*.25f);Check(!a.Charging&&Math.Abs(a.ChargeReadyAt-Time-4)<.001f,"stagger cancel cooldown");
-                ResetHulk(430);Place(0,1050);Check(StepHulkHunt(m,p)&&a.Charging,"sidestep charge starts");Clock(a.ChargeAt+NativeHulkMoves.ChargeWind);StepHulkHunt(m,p);
-                Check(a.ChargeLocked&&a.Charging,"sidestep charge locks before target moves");var heading=a.ChargeHeading;var point=a.ChargePoint;
+                ResetHulk(430);Place(0,1050);Check(StepHulkHunt(m,p)&&a.Charging,"sidestep charge starts");
+                // Keep the target still until an actual fixed tick locks the wind-up. A
+                // float timestamp at exactly start + .9 can round below the deadline.
+                for(int tick=1;tick<=56&&a.Charging&&!a.ChargeLocked;tick++){Clock(430+tick/60f);StepHulkHunt(m,p);}
+                string windState="locked="+a.ChargeLocked+", charging="+a.Charging+", end="+a.ChargeEnd+", time="+Time.ToString("R")+", position="+m.Body.position.ToString("F4");
+                Check(a.ChargeLocked,"sidestep charge locks within wind-up plus two ticks: "+windState);
+                Check(a.Charging,"sidestep charge remains running before target moves: "+windState);var heading=a.ChargeHeading;var point=a.ChargePoint;float lockedAt=Time;
                 Place(1.5f,1050);
                 // Advance the isolated PhysX scene, as the live arena does. Teleporting an
                 // interpolated Rigidbody and syncing transforms is not a physics tick.
                 var physics=root.scene.GetPhysicsScene();
-                for(int i=1;i<=560&&a.Charging;i++){Clock(430.9f+i/60f);StepHulkHunt(m,p);physics.Simulate(1f/60);}
+                for(int i=1;i<=560&&a.Charging;i++){Clock(lockedAt+i/60f);StepHulkHunt(m,p);physics.Simulate(1f/60);}
                 string runState="end="+a.ChargeEnd+", charging="+a.Charging+", position="+m.Body.position.ToString("F4")+", velocity="+m.Body.linearVelocity.ToString("F4")+", hp="+p.Hp+", yaw="+m.Yaw+", time="+Time;
                 Check(a.ChargeEnd==3,"cross-map overshoot end: "+runState);
                 Check(p.Hp==1000,"cross-map sidestep avoids damage: "+runState);
