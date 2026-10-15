@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
             if(sourceModels==null)return;
             // The revamped Ward Zero (NativeWardZeroPresentation.cs) replaces today's exported hall and its motion; until it is
             // imported the map carries no look and this is today's path.
-            bool revamp=arena.MapId==NativeWardZeroLooks.MapId&&NativeWardZeroLooks.Active(arena.Map);
+            bool revamp=NativeWardZeroLooks.Active(arena.Map);
             if(!revamp)sourceModels.Queue("map-"+arena.MapId,Matrix4x4.identity);HazardPresentation(arena);SceneryMotion(arena);if(arena.MapId=="siren"&&!revamp)WardPresentation(arena);
             FactoryScenery(arena);
             BrickfallScenery(arena);
