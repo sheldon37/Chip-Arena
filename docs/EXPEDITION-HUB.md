@@ -486,6 +486,55 @@ visual/two-client play must be verified by the builder/playtest; semantic compil
 alone is not that verification.
 
 
+### Presentation of the roaming (Claude, 2026-10-15)
+
+Branch `claude/hub-zombie-wander` (presentation only; reads the reaction state above, writes nothing). The owner's
+request is met by Astra's behaviour; this layer makes each state read on the body, the same on host, guests and the
+killcam.
+
+- **One mapping.** `NativeHordeRoam.FromHub` (`Core/NativeHordeRoam.cs`) maps `NativePveAdd.Hub` one for one to the
+  presentation's states and reads `hubAlertAt` and `hubLookYaw`. `NativeHordeRoamRecord.Read`
+  (`Runtime/NativeHordeRoamPresentation.cs`) is the only place the presentation reads the record; the pose and the
+  voices both go through it.
+- **Wander.** The stride's walk part blends to the pack's slow forward walk (`walk-4`; the only take that plants cleanly
+  at the host's 0.4-1.1 m/s pace for every hub kind; walk-6 and the chases drag a planted ankle 5-7 cm there). The trunk
+  lolls with the stride, the head glances about every few seconds, and an occasional stumble dips the trunk.
+- **Idle.** Five variants per add (sway, twitch, look around, slump, rock) on a schedule hashed from the add's seed
+  against the clock: 4.5-7.5 s slots, all five in every five slots, never one twice in a row, 0.8 s crossfades. A
+  crowd is out of step, and every peer draws the same variant at the same moment.
+- **Alert** (from `hubAlertAt`, so a late joiner draws the same moment). The head snaps to `hubLookYaw` in 0.14 s,
+  with a small overshoot and an aim correction onto it. The chest follows while the host turns the body. A scream
+  starts at +0.2 s and lasts 0.95 s: head back, a tremble, the arms flung on a reel's start, and hinged jaws open.
+  The burst throws the trunk forward from the chase's first frame.
+- **Chase.** Today's chase look. The head and alert stance follow the nearest pilot within 14 m, but only when that
+  pilot lies within 75° of `hubLookYaw`. Otherwise they follow the look direction.
+- **Search.** A wide head scan and sniffing (head up, quick nods, chest lifting) over the host's slow turn in place.
+- **Blends.** States blend over 0.5 s from the frame each peer first sees the change, since the start is not
+  replicated.
+- **No record** (instance hordes, DEV monsters, the town's final encounter, an add still entering). The inference
+  from motion only tells standing apart from hunting. Such an add shows the idle variants after standing 1.5 s with
+  no pilot within 14 m and no attack for 3 s. Slowed by a limp or a frost field, it still reads as a chase.
+  Otherwise it looks as before.
+- **Head look-at fix (every horde add).** The gait's look-at was mirrored: heads turned away from the pilot and looked
+  down at one above. It now turns toward the pilot and looks up at one above.
+- **Voices** (the roaming population only; bank-only, silent without LocalAssets).
+  - Sparse, low moans while wandering, idling or searching: within 24 m, 7-13 s slots per add with three slots in
+    ten silent, at most one a 0.9 s across the horde, attenuated with distance.
+  - A shriek with the scream.
+  - New bank keys `pve.zombie.moan` / `pve.zombie.shriek`. Until the owner supplies clips, the stand-ins are
+    `pve.add.death` pitched down and `siren.rush`.
+- **Unchanged.** Hit timing, hitboxes (Balance and KeepHands still hold the trunk and claws to the capsule), damage,
+  cooldowns, movement and the network frame. The scream is cosmetic: it alerts no other zombie.
+
+**Gaps for Astra (optional; visuals only, nothing blocks):**
+
+- `hubStateAt` (the current state's start, arena seconds). Blends would then start on the host's frame on every peer.
+  A late joiner within 0.5 s of a change would match the host's blend instead of starting its own.
+- `hubTarget` (the hunted seat, 0 none). The alert stance and the chase's head would then track the actual hunted pilot
+  instead of the nearest within 14 m near the look direction.
+
+Checks: `Tests/HordeRoamChecks.cs` (`CoreTests --horde-roam`). Offline renders are in the scratchpad (DEV_LOG).
+
 ## Hub fixes — 2026-10-15 (Claude)
 
 Branch `claude/expedition-hub-fixes` (base shared `425cb2d`, merged with shared `ee46074`). Owner report (verbatim): "Also
