@@ -8462,3 +8462,40 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - The emergency mood is darker and redder in the ground halls; the green evacuation beacons sweep a wider wash.
   - Slot lights still pass through decks (pre-existing).
 - **Impact:** presentation only; it reads replicated mood, hazard clocks and kit events. Nothing for Astra.
+
+## 2026-10-15 — Claude: Cyber Lord hardlight combo and Kit v2 melee and shared presentation
+
+- **Branch:** `claude/cyberlord-v2-melee` (`46df17a`, `4ea2d38`, `03d8e04`), based on `claude/cyberlord-v2` `071ad52`, merged onto shared `d5c686f` after the ranged branch.
+- **Owner request:** "much better combo animation on melee"; overhaul every ability except melee 4 (Kernel Panic); sprint must look fine.
+- **Live now on the v1 rules (presentation only):**
+  - The combo's jab, cross and Pulse Palm are re-authored as a hardlight boxing string on v1's replicated windows (Core `CyberLordCombo`, `CyberLordComboFx`; `CyberLordMotion` strike path).
+    - Step-in footwork, hip and shoulder drive, the rear hand guarding the chin, chained follow-through.
+    - Each apex lands on the replicated hit.
+    - Planted feet slide at most 1.3 mm per frame.
+  - Effects: hardlight fist ribbons, snap flares, pixel bits, and the palm's hex shock rings and shards.
+  - Kernel Panic, the run and the sprint are unchanged; they were rendered and are consistent with the new string.
+- **Waits for Astra's Version 2 record** (Core `CyberKit2Melee*`, Runtime `NativeCyberKit2MeleePresentation`):
+  - The five-step string: jab, cross, spinning backfist, rising uppercut, palm.
+  - Q Uplink (zip, yank, miss), E Overclock (afterimages, white-hot aura, HUD edge glitch, chained arcs), 1 Fork Bomb (three clones in formation mirroring the swings, then bursting), 2 Glitch Cut (dash streak, marks, freeze-frame detonation flash), 3 Meteor Byte (crouch, leap, hover with a giant fist and floor reticle, dive, crater shockwave).
+  - Their HUD cards, six line icons (`ClassIcons.json` regenerated from the merged exporter: 41 icons) and cues on existing sound keys.
+  - With no record, or a Version other than 2, v1 poses and effects are bit-identical (checked).
+- **Merge fixes** (the ranged and melee branches both used the same names):
+  - The DEV gallery is split into "Preview Cyber Kit v2 ranged" (`gallery-cyber-kit2-ranged`, `CyberKit2RangedPreviewOn`) and "Preview Cyber Kit v2 melee" (`gallery-cyber-kit2-melee`, `CyberKit2MeleePreviewOn`). Turning one on turns the other off.
+  - The ranged preview's members were renamed (`cyberKit2R`, `CyberKit2RStep`, …) so both previews build as parts of `ArenaPresentation`.
+  - The icon exporter keeps both icon sets.
+- **Preview:** Dev Sandbox, play as Cyber Lord → DEV panel → Previews → GALLERIES → "Preview Cyber Kit v2 melee". A 17 s loop on your pilot: the five-step string, an Uplink zip and a yank on the dummy, Overclock, Fork Bomb with its burst, Glitch Cut, and Meteor Byte 10 m ahead.
+- **Astra contract additions** (in `docs/CYBER-LORD.md` "Melee and shared presentation (v2)"):
+  - Uplink `LatchAt`, with outcome 0 while the cable flies.
+  - Caster points are Rigidbody centres; clones, bursts and the meteor target are floor points.
+  - Per-slot `CutAt`; combo step -1 when none.
+  - New Details `cyber-spin` and `cyber-rise`; the `overclock` arc event's From is the hop origin.
+  - The host's body paths should follow `CyberKit2Melee.ZipBody`, `YankBody`, `CutBody` and `MeteorBody`, or those helpers should change with them.
+- **Checks on the branch (run5):** Unity 6000.3.24f1 runtime and editor compile OK; relay 696 PASS (new `CyberKit2MeleeChecks`, 16,827 checks: helpers, Version 2 gating, Kernel Panic unchanged, string continuity and planted feet, v2 poses, deterministic effects, 0 bytes per frame, HUD, icons and sounds, wiring); Python OK; package OK; diff-check OK.
+  - `CyberLordChecks` now checks the authored strikes; the captured-take path is still checked.
+  - Merged-tree results are in the push notes.
+- **Renders:** offline only (the scratchpad's `renders-cyberlord-v2-melee`). No Unity, Windows, first-person or two-client run.
+- **Risks:**
+  - The v2 spinning backfist turns about 250° inside its .12 s windup (a stylised whip).
+  - A jab from the low idle raises the arm 1.3–1.8 rad in one frame.
+  - The preview's drawn-body shift goes through new `ArenaPresentation` hooks (inert with the preview off).
+- **Animation impact:** presentation only; it reads the replicated windows. No change to hit timing, hitboxes, damage, cooldowns, movement or networking.

@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-15 Claude batch (shared `claude/sleepy-ritchie-g8ruhv`): Start Expedition menu entry, greatsword drag sprint, menu transitions + stage loading screen, blade blood/muzzle/slash fixes, chip cartridge redesign, Ward Zero relight (ceiling light field, alarm beams), Cyber Lord ranged cyber mage + hardlight combo, Cyber Lord Kit v2 presentation (sandbox previews). Offline renders and managed checks only. Waiting on Astra: Cyber Lord Kit v2 rules and wire record (`docs/CYBER-LORD.md` "Kit v2"), no move lock for ranged casts, and the stage-load gate (DEV_LOG "menu screen transitions and stage loading screen"). Unverified in Unity: the Ward Zero field shader read and the chip hologram shader.
+
 2026-10-15 Claude machines and chips redesign (`claude/machines-cards-merge` on `1f844ef`): sculpted PvE chip, recruit and med machines, dispensed chip, and restyled chip cards. Presentation only; colliders and animations unchanged. See DEV_LOG.
 
 2026-10-15 Expedition Ward rendering correction: owner reports missing scene detail after #227. Outer renderer dispatch still restricted WardZeroScenery to literal siren despite the inner alias-aware gate. Fix on `codex/expedition-ward-render` removes that restriction for live/backdrop; build receipt in PR, manual visual parity still pending.
