@@ -8952,3 +8952,14 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   gap; replicated hub DTO is tested, live two-client play is not claimed.
 - Publication: source branch/shared/builder promotion and Windows package status
   recorded in PR/final handoff. No native release is inferred from these checks.
+
+
+### Native builder follow-up (2026-10-15, Astra)
+
+The 7abe9a8 Windows attempt logged PASS for the hub native collider, obstruction,
+holster/aggro, spawn, damage and DoT checks. A subsequent validation pass reused an
+arena after the M1 checks changed its map and failed while adding an already-known
+closure key. General NativeArena.Reset now clears Expedition closure/nav/death caches
+and the boss handle, matching ExpeditionMap's teardown. This fixes repeat binding,
+not a skipped test. All three Unity semantic compile targets pass; the builder must
+rerun the unchanged native acceptance gates before publication.
