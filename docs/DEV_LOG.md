@@ -6,6 +6,7 @@
   - one area per run and one host arena, so split hub/instance parties are not supported (design: "No split indoor/outdoor simulation");
   - HOST ROOM rooms play Wave Defense only, and the guest Expedition path is missing.
 - Contract: EXPEDITION-HUB.md "Join circle at the instance doors" (a proposed rule pending the owner's confirmation, view fields, Claude's layout and presentation part) and "Expedition co-op hosting" (Astra's blocking list; Claude's menu part after it).
+- Sound requests (owner: Astra builds the Windows ElevenLabs batch generator; Claude owns the manifest and importer): `docs/audio/sound-requests.json` (schema `chip-arena.sound-requests/1`, 17 keys, 88 files) and `docs/audio/SOUND-REQUESTS.md` (output folder, receipt, importer CLI `tools/import_sound_requests.py`, landing with `claude/footstep-zombie-audio`).
 - Next: Astra implements the join rule and parser, and the co-op room start. Claude then updates the hub layout (exp-layout-4), draws the circle and countdown, and adds Expedition to the room Mode select.
 
 ## 2026-10-15 — Claude: HTTPS room round trip leaves PR CI (Electron game test)
