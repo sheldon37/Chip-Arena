@@ -124,6 +124,8 @@ namespace ChipArena.UnityConversion
                     float rate=v.OverclockAt>-90&&v.ComboAt>=v.OverclockAt&&v.ComboAt<v.OverclockUntil?1+CyberKit2Spec.OverclockRate:1;
                     m.Swing=new CyberCombo.Swing(kind,v.ComboAt,v.ComboAt+CyberCombo.Windup(kind)/rate,v.ComboAt+CyberCombo.Seconds(kind)/rate);m.Weight=CyberLordMotion.StrikeIn(m.Swing,time)*m.FadeOut;
                 }
+                // the simulation's step, when the authority moves the pilot through the string (else the in-capsule step)
+                m.Swing=m.Swing.Stepped(v);
                 m.StrikeFrom=v.ComboStep>0?CyberCombo.Previous(kind,true):-1;if(m.StrikeFrom>=0)m.Weight=m.FadeOut;return m;
             }
             return CyberLordMotion.Move.None;

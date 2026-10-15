@@ -293,11 +293,11 @@ striking limb on the replicated hit (checked, with and without the Overclock's c
 
 | Step (wire kind) | Technique | Striking limb |
 |---|---|---|
-| 1 `cyber-jab` | Glitch-step jab: the windup snaps forward in three frame-skip holds (`CyberCombo.Stutter`) as the lead foot steps in 16 cm and back out; the lead fist drives out, the rear fist chambers palm up at the hip; RGB afterimages trail the step-in. | lead fist |
+| 1 `cyber-jab` | Glitch-step jab: the windup snaps forward in three frame-skip holds (`CyberCombo.Stutter`) as the lead foot steps in 30 cm (16 before the momentum pass) and back out; the lead fist drives out, the rear fist chambers palm up at the hip; RGB afterimages trail the step-in. | lead fist |
 | 2 `cyber-cross` | Rear roundhouse kick (mid): the rear knee chambers, the hips turn over (1.7 rad) on the lead foot pivoting on its ball, the body leans away, the shin snaps across the front at belt height; the rear arm counter-swings down and back, the lead fist guards. | rear foot |
 | 3 `cyber-spin` | Spinning heel kick: a full turn to the right on the lead foot's ball (it pivots with the hips), the head spotting, the rear knee chambered behind the hip, the heel driven out at the target with the back turned (3.25 rad into the turn), sweeping on and landing bladed. | rear heel |
 | 4 `cyber-rise` | Launcher: a deep drop, then a hop (the drawn body up 9-10 cm, the lead foot off the floor 6 cm) with the rear knee driven up to hip height in front (a jumping knee) as the rear fist rises through the chin line on the hit and on overhead. | rear fist, knee |
-| 5 `cyber-palm` | Pulse Palm: the lead knee rises and stomps 16 cm in and 8 cm out into a low horse stance (the rear foot turns its toes forward), both palms thrust on the hit and held dead still for a glitch freeze-frame (`CyberCombo.PalmFreeze`, a quarter of the follow-through). | both palms |
+| 5 `cyber-palm` | Pulse Palm: the lead knee rises and stomps 30 cm in (16 before the momentum pass) and 8 cm out into a low horse stance (the rear foot turns its toes forward), both palms thrust on the hit and held dead still for a glitch freeze-frame (`CyberCombo.PalmFreeze`, a quarter of the follow-through). | both palms |
 
 v1's three records (jab, cross, palm) draw steps 1, 2 and 5. Chained steps blend from the pose the rig actually showed; the
 first eases in from the stance (or the melee idle, `Core/CyberLordIdle.cs`, unchanged). The striking leg follows the keys'
@@ -306,8 +306,8 @@ foot rises straight off the floor before the keys carry it across (`Lift`), then
 striking leg leaves the floor (the jab's step, the launcher's hop and the palm's stomp are low). A planted foot never slides
 (its ball is pinned flat or pivoting; checked under 2 mm per frame, measured 0.1-0.4 mm), nothing goes through the floor, and a
 planted foot the hips have left out of reach makes the drawn body sink (at most 10 cm, `CyberComboFeet.Reach` / `MaxSink`)
-rather than lift off. Every foot is down by the window's end. The drawn body's offset from the capsule stays under 8 cm and
-returns as the string settles. An interrupted step (`CutAt`) keeps its own motion on its nominal windows and fades over the
+rather than lift off. Every foot is down by the window's end. The drawn body's offset from the capsule stays under 20 cm
+(`CyberCombo.MaxShift`; 8 cm before the momentum pass below) and returns as the string settles. An interrupted step (`CutAt`) keeps its own motion on its nominal windows and fades over the
 settle (a cut kick lowers its leg instead of snapping it home); a raised guard still takes over at the cut. The idle's
 twitches under a strike keep the planted feet (`MeleeRig.HoldAnkles`). Reduced effects keep the smooth clock (no frame-skip).
 
@@ -325,6 +325,42 @@ stance's push toward the view, `ViewLift`, eases off under a step: `StrikePush`)
 the rear hand counter-swings out of view, and the spinning heel kick keeps both hands in front (the followed turn is left out
 of the view model). Fork Bomb clones copy the whole string, kicks included, on their own rigs (checked).
 Kernel Panic, its clones and the entrance keep their takes.
+
+**Momentum pass (2026-10-15, `claude/cyberlord-melee-momentum`).** Owner: "Add more momentum to the basic melee/ranged
+attacked, like for melee: Step in, make a more natural movement when attacking." The simulation roots the pilot through every
+string step (`CyberKit2Spec.MoveScale[2]` is 0: `NativeArena.StepPilot` locks the yaw and zeroes `MoveVelocity`, and
+`NativeCyberKit2Runtime` zeroes it again on Begin; `NativeMeleeRules.Step` only moves weapon swings), so the step is drawn
+inside the capsule today and is ready for a real one (the contract below):
+- Every key is carried by its momentum (`CyberCombo.B.Drive`: the hips' shift and both fists together, so the arms keep their
+  shape): the body sits back 3.5 cm in the anticipation, drives in over the stepping foot to the hit (jab 18 cm ahead of the
+  capsule, roundhouse, heel kick and launcher 13, palm 19), carries on a little past it as it sinks onto the plant (up to 20
+  cm, `MaxShift`, well inside the .42 m capsule) and is back over the capsule by the step's end. The trunk leans into the
+  punches and the palm (`Tilt`).
+- Footwork (`CyberCombo.Feet`): the jab's lead foot steps in 30 cm and back out while the rear heel drives off the floor; the
+  roundhouse skips in on the lead foot (11 cm, turned out) before pivoting; the heel kick steps in across the line, turns on it
+  and steps back; the launcher's lead foot hops 8 cm forward; the palm stomps 30 cm in. Each comes back to its spot by the
+  step's end (in and out), so a string chains from the stance as before. A step lands with its heel rising over its first
+  frames (no heel pop on a step's first frame).
+- Overlapping action (`CyberCombo.Overlap`): the chest's turn trails the hips by 10 ms, the head by 24 ms and a punch's free
+  hand by 20 ms (the Overclock compresses them). The hips, the body, the striking fist or leg are never delayed: every apex is
+  still on the replicated hit (checked).
+- Entering a string at a run (the rules stop the capsule dead on the step): a foot the stride had in the air settles onto its
+  spot over the windup instead of snapping to the floor (it dropped 19 cm in a frame), a foot off its spot re-squares with a
+  short step, and the drawn body carries the run on 5.5 cm (`CyberComboFeet.RunCarry`, read off the capsule's own travel
+  before the swing) and eases back.
+- Known risks fixed: out of the low melee idle the jab's arms rise in three even frame-skip snaps of at most .36 m (they
+  jumped .59 m in one); the idle no longer counts a v2 string or ability as quiet when only the record says so
+  (`CyberLordIdle.Busy`; the runtime's attack window already did, the Dev Sandbox preview and the fixtures did not). The
+  spinning heel kick's coil takes .1 rad more of the turn (a slightly gentler whip into the hit).
+- First person (the camera never moves): the view model's fists ride the body's drive (`ViewDrive`, 70% of it, along the view)
+  and dip as the body sinks onto the plant (`ViewDip`, 35%).
+- With the simulation's step (below), the swing reads it (`CyberCombo.Swing.Step` / `Stepped`, mapped in
+  `CyberKit2MeleeFeed.Step`): the step-ins land where the capsule stops (an in-capsule step gives way to the real travel, `In`
+  and `Carry`), the rear foot follows up on the step window (`Real` moves), the keys' surge gives way to the travel
+  (`SurgeGive`), the feet stay planted in the world, the drift guard treats the step as the body's own travel, and the fighter
+  route plants the gait while the pilot is stepped (`CyberLordMotion.Stepping`, `MeleeView.Planted`). Checked on an emulated
+  step: no planted foot slides, each strike ends squared up in its stance 1.6 m further on, the body stays within 20 cm of the
+  capsule, two rigs agree, no allocation.
 
 **The v2 path (waits for the record).** Files: `Core/CyberKit2Melee.cs` (the proposed record `CyberKit2MeleeRecord`, its
 source, the view `CyberLordView.Kit2`, the one mapping `CyberKit2MeleeFeed`, the shared body paths and the fixture),
@@ -371,6 +407,35 @@ changes).**
   `cyber-cross`, `cyber-palm`). The `overclock` arc event's From should be the struck pilot's point it hops from.
 - The body paths the effects assume (`CyberKit2Melee.ZipBody`, `YankBody`, `CutBody`, `MeteorBody`): the poses always read
   the replicated body; if the host moves bodies differently, report it and the helpers follow.
+
+### Melee step contract (proposed, for Astra)
+
+Presentation is ready for it and dormant until it lands (today every string step stays rooted and is stepped inside the
+capsule). Numbers are `CyberCombo.StepDistance` / `StepFrom*` / `StepTo*`; W is the step's windup, F its follow-through
+(both compressed by the Overclock), the profile is a smoothstep `u*u*(3-2u)` over the window, along the facing at Begin:
+
+| Step | Distance | Window | Travelled by the Release |
+|---|---|---|---|
+| 1 jab | .40 m | At + .25 W to Hit + .30 F | about .23 m |
+| 2 roundhouse | .25 m | At + .10 W to Hit | .25 m |
+| 3 spinning heel kick | .30 m | At + .30 W to Hit + .35 F | about .17 m |
+| 4 launcher | .20 m | At + .40 W to Hit + .10 F | about .17 m |
+| 5 Pulse Palm | .45 m | At + .20 W to At + .90 W | .45 m |
+
+- Grounded steps only. The distance is decided at Begin and stops short: at least 1.0 m centre to centre before the nearest
+  hittable pilot or add inside the step's hit cone and `ComboRange` (a lock-on target first), at a wall (sweep the capsule,
+  as the Flash Step's forward step does), and at a ledge (no step off a drop higher than `StepHeight`). The pilot still cannot
+  steer during the step (`MoveScale[2]` stays 0) and the yaw stays locked.
+- Replicate the distance the capsule will actually travel in the actor's existing step fields (`StepAt`, `StepUntil`,
+  `StepDistance`: on the wire and validated for the weapons' swings; zero for the Cyber Lord today). If a correction shortens
+  a step after Begin, update `StepDistance` too; a body that ends up more than 15 cm from the replicated path hands its feet
+  back to the gait (that is the presentation's drift guard, not a pop). If the record should carry it instead, only
+  `CyberKit2MeleeFeed.Step` changes.
+- Owner prediction (`NativePrediction`) applies the same step so the owner never sees a correction, and guests read the
+  replicated fields and positions like any other pilot.
+- Unchanged unless Astra decides otherwise: the hit times (Release), range, arcs, damage, cooldowns, the combo reset and the
+  Overclock rates. Note that the cone is resolved from where the capsule is at the Release, so the reach grows by the share
+  already travelled (last column), as the weapons' steps do; resolving from the swing's start position keeps today's reach.
 
 ## The contract and the one field mapping
 
@@ -990,6 +1055,10 @@ warp is presentation only, and the bodies stand where the snapshot puts them.
 - The martial string (2026-10-15) moves only the drawn rig on the replicated windows: the drawn body shifts up to 8 cm off
   the capsule (step-ins, the heel kick's pivot, the palm's stance) and returns, rises up to 10 cm in the launcher's hop and
   sinks up to 10 cm to keep a planted foot in reach; the kicks' legs, the hop and the stomp land by each window's end.
+- The momentum pass (2026-10-15) raises that shift to at most 20 cm (25 cm entering at a run), still inside the .42 m capsule
+  and back over it by each step's end; the lead foot steps up to 30 cm out and back. The capsule stays rooted: hit timing,
+  hit cones, damage, cooldowns, movement and the network frame are unchanged. The proposed simulation step (the contract
+  above) would move the capsule; nothing does yet.
 - The capsule, movement speed, jump height, hit timing, cooldowns and the network frame are untouched.
 
 ## What the rules side still needs to provide (Astra)
@@ -1009,6 +1078,7 @@ Still pending or limited:
   is the rule, and the older drawn trails are cosmetic.
 - The Sheldon Idle save: the prompt is under "Sheldon Idle" above.
 - The ranged mode (key 5 and its LMB and 1-4): the prompt is under "Ranged mode" above.
+- The melee string's step (optional, owner's momentum request): "Melee step contract (proposed, for Astra)" above.
 
 ## Checks and renders
 

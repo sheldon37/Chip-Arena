@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         public static bool StrikeOf(CyberLordView v,float time,out CyberCombo.Swing sw)
         {
             sw=default;var k=v.Kit2;
-            if(k.Live){if(!(k.ComboAt>-90)||time<k.ComboAt||time>k.ComboUntil+.2f)return false;sw=new CyberCombo.Swing(CyberCombo.V2Kind(k.ComboStep),k.ComboAt,Math.Max(k.ComboAt+.02f,Math.Min(k.ComboUntil-.02f,k.ComboHit)),k.ComboUntil);return true;}
+            if(k.Live){if(!(k.ComboAt>-90)||time<k.ComboAt||time>k.ComboUntil+.2f)return false;sw=new CyberCombo.Swing(CyberCombo.V2Kind(k.ComboStep),k.ComboAt,Math.Max(k.ComboAt+.02f,Math.Min(k.ComboUntil-.02f,k.ComboHit)),k.ComboUntil).Stepped(k);return true;}
             if(!(v.ComboAt>-90)||time<v.ComboAt||time>v.ComboUntil+.2f)return false;
             sw=new CyberCombo.Swing(CyberCombo.V1Kind(v.ComboStep),v.ComboAt,Math.Max(v.ComboAt+.02f,Math.Min(v.ComboUntil-.02f,v.ComboHit)),v.ComboUntil);return true;
         }
@@ -204,7 +204,7 @@ namespace ChipArena.UnityConversion
             // the stomp: blocks popping up round the lead foot (the step lands on the hit)
             if(!me)
             {
-                var land=CyberCombo.LandSpot(sw.Kind,CyberCombo.LeadFoot);var foot=BodyToWorld(feet,v.Yaw,new Vector3(land.X,-CyberLordFeed.BodyCentre,land.Z+.06f));int blocks=low?3:Count(7,q,low);
+                var land=CyberCombo.LandSpot(sw,CyberCombo.LeadFoot);var foot=BodyToWorld(feet,v.Yaw,new Vector3(land.X,-CyberLordFeed.BodyCentre,land.Z+.06f));int blocks=low?3:Count(7,q,low);
                 for(int i=0;i<blocks;i++){float ang=H(seed+i,21)*MeleeMath.TAU,rad=.15f+.3f*H(seed+i,23)*Smooth(u*2);float up=Math.Max(0,1.8f*age-5*age*age)*(.5f+H(seed+i,25));var p=foot+(r*(float)Math.Cos(ang)+f*(float)Math.Sin(ang))*rad+Up*(.03f+up);float z=.035f*(1-u);
                     if(z>.004f)s.Voxel(false,WeaponShape.Cube,p,Quaternion.CreateFromAxisAngle(Up,ang+age*6),new Vector3(z,z*1.6f,z),Lin(i%3==0?Magenta:Cyan,1.8f));}
             }

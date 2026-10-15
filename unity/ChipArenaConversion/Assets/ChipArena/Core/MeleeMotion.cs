@@ -13,6 +13,9 @@ namespace ChipArena.UnityConversion
         public bool Commit,Followup;public float CommitAt,CommitUntil,CommitYaw,StepAt,StepUntil,StepDistance;
         // The swing's feel flags (NativeMeleeFeel): a lock-on opener's long lunge and a swing entered from a sprint.
         public bool OpenerLunge,SprintAttack;
+        // The fighter route's own plant (FighterBase): a style's strike the simulation steps the pilot through (the Cyber Lord's
+        // string under the proposed melee step, CyberLordMotion.Stepping) keeps the gait from striding under its planted feet.
+        public bool Planted;
         // The jump attack's explicit flag once the simulation replicates one (1 air, 0 ground); -1 until then, when the
         // presented airtime decides (NativeAirAttackRules.Air).
         public int AirAttack=-1;
@@ -843,7 +846,7 @@ namespace ChipArena.UnityConversion
         public void FighterBase(MeleeView p,float time,float dt)
         {
             var r=Rig;r.Reset();r.LegsAuthored=r.LegsLayered=r.MocapPosed=false;r.WeaponVisible=!p.WeaponAway;r.WeaponReach=1;FighterSeat=null;
-            bool planted=p.Committed(time)||p.HitStunUntil>time||p.Rolling(time);
+            bool planted=p.Planted||p.Committed(time)||p.HitStunUntil>time||p.Rolling(time);
             if(planted)r.Motion*=(float)Math.Exp(-MeleeMath.Clamp(dt,0,.05f)*22);
             var vel=p.Vel;if(planted)p.Vel=new Vector3(0,vel.Y,0);gait.Locomotion(r,p,time,dt,planted);p.Vel=vel;SprintLean(p,dt);
         }

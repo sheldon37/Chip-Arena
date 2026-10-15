@@ -66,6 +66,9 @@ namespace ChipArena.UnityConversion
         public bool Live;
         /// <summary>The combo's swing: its step (0..4), start, hit (the release) and end (cut where an interrupt cut it).</summary>
         public int ComboStep;public float ComboAt=-100,ComboHit=-100,ComboUntil=-100;
+        /// <summary>The combo step's simulation step, when the authority moves the pilot through it (docs/CYBER-LORD.md "Melee step
+        /// contract"; today's rules root the pilot, so it stays 0): the window (absolute) and the distance along the facing (m).</summary>
+        public float StepAt=-100,StepUntil=-100,StepDistance;
         public readonly float[] At=new float[CyberKit2Spec.Slots],Release=new float[CyberKit2Spec.Slots],Until=new float[CyberKit2Spec.Slots],RecoverUntil=new float[CyberKit2Spec.Slots],Ready=new float[CyberKit2Spec.Slots];
         public readonly bool[] Cut=new bool[CyberKit2Spec.Slots];
         public Vector3 UplinkFrom,UplinkAnchor;public int UplinkTarget,UplinkOutcome;public float UplinkLatchAt=-100,UplinkArriveAt=-100;
@@ -76,7 +79,7 @@ namespace ChipArena.UnityConversion
         public Vector3 MeteorFrom,MeteorTarget;public float LandAt=-100;
         public void Clear()
         {
-            Live=false;ComboStep=0;ComboAt=ComboHit=ComboUntil=-100;for(int i=0;i<CyberKit2Spec.Slots;i++){At[i]=Release[i]=Until[i]=RecoverUntil[i]=Ready[i]=-100;Cut[i]=false;}
+            Live=false;ComboStep=0;ComboAt=ComboHit=ComboUntil=-100;StepAt=StepUntil=-100;StepDistance=0;for(int i=0;i<CyberKit2Spec.Slots;i++){At[i]=Release[i]=Until[i]=RecoverUntil[i]=Ready[i]=-100;Cut[i]=false;}
             UplinkFrom=UplinkAnchor=default;UplinkTarget=UplinkOutcome=0;UplinkLatchAt=UplinkArriveAt=-100;OverclockAt=OverclockUntil=-100;ForkAt=ForkUntil=-100;
             for(int i=0;i<CyberKit2Spec.Clones;i++){Clone[i]=Burst[i]=default;CloneYaw[i]=0;CloneStrikeAt[i]=BurstAt[i]=-100;CloneTarget[i]=0;}
             CutFrom=CutTo=default;MarkedCount=0;for(int i=0;i<Marked.Length;i++)Marked[i]=0;DetonateAt=-100;MeteorFrom=MeteorTarget=default;LandAt=-100;
@@ -113,10 +116,21 @@ namespace ChipArena.UnityConversion
         public static CyberKit2MeleeRecord Of(Actor a)=>a==null?null:CyberLordFeed.Kit2MeleeSource?.Of(a.Id)??CyberKit2Melee.Clones.Of(a.Id);
         public static void Read(Actor a,CyberLordView v,CyberKit2MeleeRecord authority=null)
         {
-            var k=v.Kit2;k.Clear();var r=authority??Of(a);if(r==null||r.Version!=CyberKit2Spec.Version)return;Map(r,k);
+            var k=v.Kit2;k.Clear();var r=authority??Of(a);if(r==null||r.Version!=CyberKit2Spec.Version)return;Map(r,k);Step(a,k);
             // v2 replaces the v1 combo and the v1 Q, E, 1, 2 and 3 (Kernel Panic, slot Four, and the ranged mode stay).
             v.ComboStep=0;v.ComboAt=v.ComboUntil=v.ComboHit=-100;for(int i=0;i<CyberLordSpec.Four;i++)v.At[i]=v.Release[i]=v.Until[i]=v.RecoverUntil[i]=v.Ready[i]=-100;
             v.DashFrom=v.DashTo=default;v.TrailUntil=-100;v.WallBorn=v.WallUntil=-100;v.LinkTarget=0;v.LinkAt=v.LinkUntil=-100;v.CrashBorn=v.CrashUntil=-100;
+        }
+        /// <summary>
+        /// The combo step's simulation step (docs/CYBER-LORD.md "Melee step contract"): the actor's replicated step fields
+        /// (StepAt, StepUntil, StepDistance: already on the wire and validated for the weapons' swings) when the authority fills
+        /// them for the current string step. Today's rules root the pilot and leave them 0, so the presentation steps inside the
+        /// capsule; the one place to change if the authority carries the step in the v2 record instead.
+        /// </summary>
+        public static void Step(Actor a,CyberKit2MeleeView k)
+        {
+            if(a==null||!(a.StepDistance>0)||!(a.StepUntil>a.StepAt)||!(k.ComboAt>-90)||a.StepAt<k.ComboAt-1e-3f||a.StepAt>k.ComboUntil)return;
+            k.StepAt=a.StepAt;k.StepUntil=a.StepUntil;k.StepDistance=Math.Min(CyberCombo.MaxTravel,a.StepDistance);
         }
         private const float C=CyberLordFeed.BodyCentre;
         private static Vector3 Feet(V3 p)=>new Vector3(p.x,p.y-C,p.z);
