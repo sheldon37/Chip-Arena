@@ -79,9 +79,13 @@ Intended launch steps for the resulting Windows test build:
    clears the runtime binding. Local death requires restart in this milestone.
 
 Scope: single signed-in local pilot; ordinary Expedition access remains closed.
-Claim/purchase/reprint deliberately refuse until their evidence and live inventory
-adapters exist; no loot or account progression is awarded by this test. The
-existing preview remains separate. No host/guest/migration or saved-combat resume
+F purchases nearby caches and Ward chip/med/recruit machines using the personal
+Expedition wallet. F also claims nearby world rewards; J opens personal chip
+choices, which are applied to live combat stats. Cache stock/restocking and machine
+range, health/cooldown and recruit caps are enforced. Recruits last for the current
+area; they do not become party members. The city machine is a teammate reprint
+station, not a shop; solo death still requires restarting. No account progression
+is awarded by this test. The existing preview remains separate. No host/guest/migration or saved-combat resume
 claim. Claude's live visual pass starts only after an exact native build is posted.
 
 Spitter authority range is 18 m (previously 11 m maximum aim, with the content's
@@ -109,3 +113,11 @@ shambler 25, runner 20, spitter 30, brute 80, Hulk 300. Existing headshot (+10 b
 bonuses), assist (40% reward after at least 20% damage) and money-chip formulas are
 reused. Death callbacks and wallet events are deduplicated. Currency is personal
 and persists with the run; buying/claiming/reprinting remains unavailable in M1.
+
+### Siren and interaction follow-up (2026-10-15)
+Both Expedition Sirens use the ordinary boss-test health gates and reveal logic:
+75% enters Find Me and possesses an add; killing that add reveals the 50% growth
+phase; 25% enters enrage; only the final phase death advances the Expedition.
+Boss damage/threshold/possession money goes to the Expedition wallet. Scaling
+uses the existing Expedition spawn multiplier; victory/area progression stays
+with the director. Native acceptance exercises both encounters through all phases.

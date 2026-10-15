@@ -31,11 +31,11 @@ namespace ChipArena.UnityConversion
                 var session=CreateExpeditionSession(run);
                 expeditionDirector=new ExpeditionDirector(session,expeditionM1Layout,id=>arena?.Pilots.FirstOrDefault(p=>p.Seat.access?.AccountId==id) is NativePilot p?NativeArena.Vec(p.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight):(V3?)null,
                     (a,b)=>arena.ExpeditionVisible(a,b),100,100,60);
-                // These interactions require separate economic/combat binding. Do not offer fake evidence.
-                session.CanClaim=(_,__)=>false;session.CanPurchase=(_,__)=>false;session.ReprintEvidence=(_,__)=>null;
+                // Director supplies measured cache/drop proximity; local solo reprinting has no living payer.
+                session.ReprintEvidence=(_,__)=>null;
                 BindExpedition(session);expeditionLoadedGeneration=-1;expeditionDirector.BeginAreaLoad();
                 menu=false;pending=new InputFrame();sprint=false;pitch=12;expeditionScreenOpen=false;
-                if(!ExpeditionM1Load())return;Notice("DEV Expedition M1 · F at doors · J for exit, Continue or extraction. Local only; loot/reprint unavailable.");
+                if(!ExpeditionM1Load())return;Notice("DEV Expedition M1 · F at doors · J for exit, Continue or extraction. F at caches and Ward machines · J for chip choices. Local only.");
             }
             catch(Exception e){Debug.LogException(e);expeditionError=e.Message;networkStatus="Expedition M1 refused: "+e.Message;arena?.Dispose();arena=null;match=null;expeditionDirector=null;ResetExpeditionNetwork();menu=true;}
         }
@@ -70,7 +70,9 @@ namespace ChipArena.UnityConversion
             if(!ExpeditionM1)return true;if(!ExpeditionM1Load())return false;
             var s=expeditionSession.Run.Snapshot();
             if(s.phase==ExpeditionPhase.Ended||s.members.All(m=>m.extracted)||!s.members.Any(m=>m.alive&&!m.extracted))return false;
-            arena.ExpeditionSyncClosures();
+            arena.ExpeditionSyncClosures();arena.SyncExpeditionInventory();
+            if(pending.Interact&&arena.TryExpeditionInteract(arena.Local,out var interactionNotice))
+            {pending.Interact=false;if(!string.IsNullOrEmpty(interactionNotice))Notice(interactionNotice);}
             if(pending.Interact&&s.phase==ExpeditionPhase.Town)
             {
                 foreach(var door in expeditionM1Layout.Area(s.area).doors)if(expeditionDirector.EnterDoor(s.host,door.anchor)){pending=new InputFrame();return false;}

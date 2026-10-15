@@ -168,6 +168,13 @@ namespace ChipArena.UnityConversion
             else if(target.carriedBy!=payer)return false;
             buyer.wallet-=cost;target.alive=true;target.safe=buyer.safe;target.carriedBy=null;Changed();return true;
         }
+        /// <summary>Authority-only service payment, after live range/capacity checks. Event ID prevents duplicate debits.</summary>
+        public bool Spend(string account,string eventId,int amount)
+        {
+            string key=EventKey("spend:"+eventId)+":"+account;var buyer=Member(account);
+            if(!Mutable||!Live(buyer)||!Key(eventId)||amount<1||buyer.wallet<amount||!CanRecord(key))return false;
+            buyer.wallet-=amount;Record(key);Changed();return true;
+        }
         public bool Credit(string account,string eventId,int amount)
         {
             string key=EventKey(eventId)+":"+account;if(!Mutable||!Key(eventId)||amount<1||!CanRecord(key))return false;

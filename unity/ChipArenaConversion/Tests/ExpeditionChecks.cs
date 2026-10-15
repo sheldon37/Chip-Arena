@@ -35,6 +35,13 @@ namespace ChipArena.UnityConversion
         public static void Run()
         {
             assertions=0;
+            var services=NewRun();Check(services.Credit("p0","service-money",300),"fund service wallet");
+            Check(services.Spend("p0","med-1",75)&&services.Snapshot().members[0].wallet==225,"service charges personal wallet");
+            Check(!services.Spend("p0","med-1",75)&&services.Snapshot().members[0].wallet==225,"duplicate service cannot charge twice");
+            Check(!services.Spend("p1","med-1",75)&&services.Snapshot().members[1].wallet==0,"cannot use another pilot wallet");
+            Check(!services.Spend("p0","invalid",0)&&!services.Spend("p0","invalid",-1)&&!services.Spend("p0","too-much",226),"invalid and unaffordable service rejected");
+            var restoredService=new NativeExpedition(services.Snapshot());Check(!restoredService.Spend("p0","med-1",75),"service dedup survives restoration");
+            Check(services.Defeat("p0")&&!services.Spend("p0","dead",75),"dead pilot cannot purchase services");
             for(int n=1;n<=8;n++)
             {
                 var run=NewRun(n);if(n==8)Check(!run.Join("overflow","sword"),"eight-player ceiling");
