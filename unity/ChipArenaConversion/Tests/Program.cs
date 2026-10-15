@@ -14,6 +14,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition-view"){ExpeditionChecks.Run();ExpeditionPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-layout"){ExpeditionLayoutChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-dressing"){ExpeditionDressingChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--expedition-hub"){ExpeditionHubChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-states"){ExpeditionStatesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-acceptance"){ExpeditionAcceptanceChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-pick"){ExpeditionPickChecks.Run(ProjectRoot());return 0;}
@@ -99,7 +100,7 @@ internal static class Program
             SummonCeilingPickupChecks.Run(root,data);
             CameraRigChecks.Run(root);
             StructureFxChecks.Run(root);
-            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
+            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);ExpeditionHubChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
             DevToolsChecks.Run(root);
             SpawnInChecks.Run(root,data);
             VfxChecks.Run(root);VfxRuntimeChecks.Run(root);

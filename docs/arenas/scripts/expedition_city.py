@@ -1,15 +1,19 @@
-# Expedition town M1 draft blockout: `expedition-city`, a zombie city at dusk (120 x 120 m, one street level).
-# A draft for Astra: it is NOT wired into the game. It emits a map entry in the UnityMaps.json shape (blocks, bounds,
-# spawn tables, pilot exclusion columns) and the town's area record for ExpeditionLayout.json (docs/EXPEDITION-LAYOUT.md):
-# door anchor, returns, interaction and closure volumes, the reprint machine and caches, the sanctuary volume and its
-# eight slots, the final gate, the enemy spawns (PveEntry shape plus `allow`) and the final boss trigger and points.
+# Expedition town blockout: `expedition-city`, a zombie city at dusk (one street level), now the hub of exp-layout-3.
+# It emits a map entry in the UnityMaps.json shape (blocks, bounds, spawn tables, pilot exclusion columns) and the town's area
+# record for ExpeditionLayout.json (docs/EXPEDITION-LAYOUT.md, docs/EXPEDITION-HUB.md): door anchor, returns, interaction and
+# closure volumes, the reprint machine and caches, the sanctuary volume and its eight slots, the final gate, the enemy spawns
+# (PveEntry shape plus `allow`), the final boss trigger and points, and (exp-layout-3) the `hub` record: the sanctuary fence, its
+# four animated gates, the hub spawn zones by ring, the wilds, the instance routes and the reserved doorways.
 # It prints its checks: floor reachability from the sanctuary with the final gate shut and open, every record on walkable
 # floor at its own level with pilot clearance (Hulk clearance where Hulks are allowed), the final plaza reachable only
-# through the gate volume, no spawn inside or near the sanctuary.
+# through the gate volume, no spawn inside or near the sanctuary; the fence closed except at its gates, every instance door
+# reached from the sanctuary only through a gate and at least ROUTE_MIN m of running from it, the spawn zones outside the
+# fence and clear of the gates.
 # Usage: python3 docs/arenas/scripts/expedition_city.py [--json out.json] [--png plan.png] [--look look.json] [--ascii]
-# Plan: a ring-and-cross town. The sanctuary plaza (24 m) sits at the centre; four streets leave it: north up the avenue
-# to the final gate, east to the Meridian Biocontainment frontage (Ward Zero), west to the foundry plot and south to the
-# transit station plot (both reserved, sealed). A ring road links the four arms; alleys cut the inner blocks.
+# Plan: a ring-and-cross town with three districts of wilds. The fenced sanctuary plaza (24 m) sits at the centre; four streets
+# leave it through four gates: north up the avenue to the final gate, east to the Meridian Approach and the Meridian
+# Biocontainment frontage (Ward Zero) out at x 84, west to the Ironworks Yard and the foundry plot at x -84, south down Station
+# Road to the transit station plot at z -84 (both reserved, sealed). A ring road links the four arms; alleys cut the inner blocks.
 # Coordinates: Unity frame, x east, z north, y up, metres. The whole walkable town is at y 0.
 # Deterministic: no clocks, no randomness, sorted outputs; the same run writes the same bytes.
 import argparse, json, math, os, sys
@@ -19,8 +23,10 @@ from expedition_common import (Collider, Canvas, components, block_hash, id_ok, 
                                HULK_RADIUS, HULK_HEIGHT, HULK_SLOT)
 
 MAP = 'expedition-city'; AREA = 'exp-city'
-B = 60.0                       # bounds half extent (120 x 120)
-EDGE = 62.0                    # the perimeter masses run 2 m past the bounds
+BOUNDS = dict(minX=-96.0, maxX=96.0, minZ=-96.0, maxZ=60.0)   # 192 x 156 m: the 120 m city plus the three wilds districts
+EX0, EX1, EZ0, EZ1 = -98.0, 98.0, -98.0, 62.0                  # the perimeter masses run 2 m past the bounds
+B = 60.0                       # the old city's half extent (its north edge is still the town's)
+EDGE = 62.0                    # the old city's perimeter line (the city's own masses still end there)
 CEIL, KILL = 40.0, -8.0
 SANCT = 12.0                   # sanctuary plaza half extent (24 m)
 FP = (-24.0, 24.0, 38.0, 57.0)  # the final plaza (x0, x1, z0, z1)
@@ -57,8 +63,8 @@ def strips(u0, u1, h, openings):
 # =====================================================================================================================
 # GROUND: the street slab (asphalt) with the two plazas' paving set flush into it (all tops at y 0).
 holes = [(-SANCT, SANCT, -SANCT, SANCT), (FP[0], FP[1], FP[2], FP[3])]
-for i, (a, b, lo, hi) in enumerate(strips(-EDGE, EDGE, 2 * EDGE, [(h[0], h[1], h[2] + EDGE, h[3] + EDGE) for h in holes])):
-    box(f'slab-{i}', a, b, lo - EDGE, hi - EDGE, -0.5, 0, material='foundation', ch='.')
+for i, (a, b, lo, hi) in enumerate(strips(EX0, EX1, EZ1 - EZ0, [(h[0], h[1], h[2] - EZ0, h[3] - EZ0) for h in holes])):
+    box(f'slab-{i}', a, b, lo + EZ0, hi + EZ0, -0.5, 0, material='foundation', ch='.')
 box('sanctuary-paving', -SANCT, SANCT, -SANCT, SANCT, -0.5, 0, ch=',')
 box('square-paving', FP[0], FP[1], FP[2], FP[3], -0.5, 0, ch=',')
 
@@ -72,16 +78,26 @@ BUILDINGS = [
     ('nw-shops', -28, -12, 5, 12, 7, 'brick'), ('nw-tenement', -28, -6, 12, 20, 12, 'brick'), ('nw-tower', -15, -6, 23.5, 30, 16, 'stone'), ('nw-block', -28, -18.5, 23.5, 30, 13, 'brick'),
     ('se-shops', 12, 28, -12, -5, 8, 'stone'), ('se-tenement', 5, 28, -20, -12, 11, 'brick'), ('se-row', 5, 15, -28, -23.5, 9, 'brick'), ('se-loft', 18.5, 28, -28, -23.5, 14, 'brick'),
     ('sw-shops', -28, -12, -12, -5, 9, 'brick'), ('sw-tenement', -28, -5, -20, -12, 12, 'brick'), ('sw-row', -15, -5, -28, -23.5, 10, 'stone'), ('sw-loft', -28, -18.5, -28, -23.5, 13, 'brick'),
-    # east: the Meridian Biocontainment frontage (Ward Zero) between an annex and a depot
-    ('e-annex', 34, 44, 10, 30, 11, 'stone'), ('e-tower', 44, EDGE, 20, 30, 17, 'brick'), ('wz-facility', 44, EDGE, -20, 20, 13, 'stone'),
+    # east: the city's edge (an annex and a depot either side of the old forecourt), then the Meridian Approach (the east
+    # wilds) out to the Meridian Biocontainment frontage (Ward Zero) at x 84 between its two annexes
+    ('e-annex', 34, 44, 10, 30, 11, 'stone'), ('e-tower', 44, EDGE, 20, 30, 17, 'brick'),
     ('e-depot', 34, 44, -34, -10, 9, 'metal'), ('e-block', 44, EDGE, -34, -20, 15, 'brick'),
-    # west: the foundry plot (exp-foundry, reserved and sealed)
-    ('w-annex', -44, -34, 10, 30, 10, 'brick'), ('w-tower', -EDGE, -44, 20, 30, 15, 'brick'), ('foundry-hall', -EDGE, -44, -20, 20, 14, 'metal'),
+    ('e-ware-n', EDGE, EX1, 30, EZ1, 10, 'metal'), ('e-ware-s', EDGE, EX1, -EDGE, -30, 11, 'brick'),
+    ('wz-facility', 84, EX1, -20, 20, 13, 'stone'), ('meridian-annex-n', 84, EX1, 20, 30, 9, 'stone'), ('meridian-annex-s', 84, EX1, -30, -20, 9, 'stone'),
+    # west: the city's edge, then the Ironworks Yard (the west wilds) out to the foundry plot (exp-foundry, reserved and sealed) at x -84
+    ('w-annex', -44, -34, 10, 30, 10, 'brick'), ('w-tower', -EDGE, -44, 20, 30, 15, 'brick'),
     ('w-depot', -44, -34, -34, -10, 10, 'metal'), ('w-block', -EDGE, -44, -34, -20, 13, 'brick'),
-    # south: the transit station plot (exp-transit, reserved and sealed) between two kiosks
-    ('transit-hall', -20, 20, -EDGE, -44, 8, 'stone'), ('kiosk-e', 10, 20, -44, -34, 6, 'stone'), ('kiosk-w', -20, -10, -44, -34, 6, 'stone'),
+    ('w-ware-n', EX0, -EDGE, 30, EZ1, 11, 'brick'), ('w-ware-s', EX0, -EDGE, -EDGE, -30, 12, 'metal'),
+    ('foundry-hall', EX0, -84, -20, 20, 14, 'metal'), ('foundry-annex-n', EX0, -84, 20, 30, 10, 'metal'), ('foundry-annex-s', EX0, -84, -30, -20, 10, 'metal'),
+    # south: two kiosks at the city's edge, then Station Road (the south wilds) out to the transit station plot (exp-transit,
+    # reserved and sealed) at z -84 between its two annexes
+    ('kiosk-e', 10, 20, -44, -34, 6, 'stone'), ('kiosk-w', -20, -10, -44, -34, 6, 'stone'),
     ('s-block-e', 20, 44, -EDGE, -34, 12, 'brick'), ('s-corner-e', 44, EDGE, -EDGE, -34, 18, 'brick'),
     ('s-block-w', -44, -20, -EDGE, -34, 11, 'brick'), ('s-corner-w', -EDGE, -44, -EDGE, -34, 16, 'brick'),
+    ('transit-hall', -20, 20, EZ0, -84, 8, 'stone'), ('transit-annex-e', 20, 30, EZ0, -84, 7, 'stone'), ('transit-annex-w', -30, -20, EZ0, -84, 7, 'stone'),
+    # the outer corners behind the wilds (solid blocks of the dead city)
+    ('se-outer', 30, EDGE, EZ0, -EDGE, 15, 'brick'), ('se-yard', EDGE, EX1, EZ0, -EDGE, 12, 'metal'),
+    ('sw-outer', -EDGE, -30, EZ0, -EDGE, 14, 'brick'), ('sw-yard', EX0, -EDGE, EZ0, -EDGE, 13, 'brick'),
     # north: the final plaza between two flanks and the city hall; the corners close the forecourt
     ('nw-corner', -EDGE, -36, 30, EDGE, 20, 'brick'), ('ne-corner', 36, EDGE, 30, EDGE, 21, 'brick'),
     ('flank-w', -36, -24, 36, EDGE, 15, 'stone'), ('flank-e', 24, 36, 36, EDGE, 15, 'stone'), ('city-hall', -24, 24, 57, EDGE, 16, 'stone'),
@@ -90,15 +106,17 @@ HEIGHTS = {}
 for name, x0, x1, z0, z1, h, mat in BUILDINGS:
     box('bldg-' + name, x0, x1, z0, z1, 0, h, material=mat, ch='#', pilot=True); HEIGHTS[name] = h
 # Skyline pieces on the roofs (out of reach under the exclusion columns; they read at dusk).
-box('bldg-wz-tower', 50, EDGE, -8, 8, 13, 24, ch='#', pilot=True)                       # the Meridian tower
-box('bldg-foundry-stack', -57.5, -54.5, -13.5, -10.5, 14, 32, material='brick', ch='#', pilot=True)
+box('bldg-wz-tower', 88, EX1, -8, 8, 13, 24, ch='#', pilot=True)                        # the Meridian tower
+box('bldg-foundry-stack', -93.5, -90.5, -13.5, -10.5, 14, 32, material='brick', ch='#', pilot=True)
 box('bldg-city-hall-clock', -5, 5, 57, EDGE, 16, 27, ch='#', pilot=True)
 ROOF = [('ne-tenement-tank', 21, 23.5, 14, 16.5, 13, 15.8, 'metal'), ('nw-tenement-tank', -16, -13.5, 14.5, 17, 12, 14.8, 'metal'),
         ('se-loft-stair', 22, 25, -27, -24.5, 14, 16.6, 'stone'), ('sw-tenement-stair', -20, -17, -18.5, -16, 12, 14.6, 'stone'),
         ('ne-tower-plant', 8, 12, 25, 28.5, 18, 20.2, 'metal'), ('e-tower-tank', 50, 53, 23, 26, 17, 20.0, 'metal'),
         ('w-tower-stair', -55, -52, 22.5, 25.5, 15, 17.6, 'stone'), ('s-block-e-tank', 30, 33, -50, -47, 12, 15.0, 'metal'),
         ('nw-corner-tank', -50, -46, 44, 48, 20, 23.2, 'metal'), ('ne-corner-stair', 44, 47, 40, 43, 21, 23.6, 'stone'),
-        ('transit-vent-0', -12, -8, -54, -50, 8, 9.6, 'metal'), ('transit-vent-1', 8, 12, -54, -50, 8, 9.6, 'metal')]
+        ('transit-vent-0', -12, -8, -94, -90, 8, 9.6, 'metal'), ('transit-vent-1', 8, 12, -94, -90, 8, 9.6, 'metal'),
+        ('e-ware-n-tank', 74, 78, 44, 48, 10, 13.6, 'metal'), ('w-ware-s-stair', -80, -77, -50, -47, 12, 14.6, 'stone'),
+        ('se-outer-tank', 44, 48, -80, -76, 15, 18.0, 'metal'), ('sw-yard-tank', -80, -76, -80, -76, 13, 16.4, 'metal')]
 for name, x0, x1, z0, z1, y0, y1, mat in ROOF: box('roof-' + name, x0, x1, z0, z1, y0, y1, material=mat, ch='^')
 
 # =====================================================================================================================
@@ -111,25 +129,50 @@ box('gate-lintel', -GATE_W / 2, GATE_W / 2, GZ0, GZ1, GATE_H, 12, ch='G', pilot=
 GATE = vol(0, 0, (GZ0 + GZ1) / 2, GATE_W, GATE_H, 0.6, 0)
 
 # =====================================================================================================================
-# INSTANCE FRONTAGES. Ward Zero (east): a portico on two pylons over the doorway in the facility's west face (x 44).
-WZ_DOOR = (44.0, 0.0)          # doorway centre on the facade; the anchor faces out of the doorway (-x, yaw 270)
-box('wz-portico-pylon-s', 40.6, 41.4, -4.6, -3.8, 0, 4.4, ch='P'); box('wz-portico-pylon-n', 40.6, 41.4, 3.8, 4.6, 0, 4.4, ch='P')
-box('wz-portico-canopy', 40.4, 44, -4.8, 4.8, 4.4, 4.8, ch='^')
+# INSTANCE FRONTAGES, out at the far end of the wilds. Ward Zero (east): a portico on two pylons over the doorway in the
+# facility's west face (x 84).
+WZ_DOOR = (84.0, 0.0)          # doorway centre on the facade; the anchor faces out of the doorway (-x, yaw 270)
+box('wz-portico-pylon-s', 80.6, 81.4, -4.6, -3.8, 0, 4.4, ch='P'); box('wz-portico-pylon-n', 80.6, 81.4, 3.8, 4.6, 0, 4.4, ch='P')
+box('wz-portico-canopy', 80.4, 84, -4.8, 4.8, 4.4, 4.8, ch='^')
 # Foundry (west) and transit (south): reserved plots with sealed facades; their doorways join the manifest later at
-# these points without moving geometry.
-RESERVED = {'exp-foundry': dict(x=-44.0, y=0.0, z=0.0, yaw=90.0), 'exp-transit': dict(x=0.0, y=0.0, z=-44.0, yaw=0.0)}
-box('foundry-shutter', -44.4, -44, -3.5, 3.5, 0, 5.0, material='metal', ch='S')
-box('transit-boards', -4, 4, -44.3, -44, 0, 3.6, material='wood', ch='S')
-box('transit-canopy', -6, 6, -44, -41, 4.6, 5.0, ch='^')
-box('transit-canopy-pylon-w', -6, -5.4, -41.6, -41, 0, 4.6, ch='P'); box('transit-canopy-pylon-e', 5.4, 6, -41.6, -41, 0, 4.6, ch='P')
+# these points without moving geometry (the hub record lists them).
+RESERVED = {'exp-foundry': dict(x=-84.0, y=0.0, z=0.0, yaw=90.0), 'exp-transit': dict(x=0.0, y=0.0, z=-84.0, yaw=0.0)}
+box('foundry-shutter', -84.4, -84, -3.5, 3.5, 0, 5.0, material='metal', ch='S')
+box('transit-boards', -4, 4, -84.3, -84, 0, 3.6, material='wood', ch='S')
+box('transit-canopy', -6, 6, -84, -81, 4.6, 5.0, ch='^')
+box('transit-canopy-pylon-w', -6, -5.4, -81.6, -81, 0, 4.6, ch='P'); box('transit-canopy-pylon-e', 5.4, 6, -81.6, -81, 0, 4.6, ch='P')
 
 # =====================================================================================================================
-# THE SANCTUARY: the paved plaza inside a ring of barricades (1.1 m, 6 m gaps on the four streets), a brazier at its
-# centre, the reprint machine and a cache on its diagonals. Its volume is the whole plaza.
-for side, (ax, sg) in {'n': ('z', 1), 's': ('z', -1), 'e': ('x', 1), 'w': ('x', -1)}.items():
-    for k, (a, b) in enumerate([(-11.4 if ax == 'z' else -10.6, -3.0), (3.0, 11.4 if ax == 'z' else 10.6)]):
-        if ax == 'z': box(f'sanctuary-barricade-{side}-{k}', a, b, *sorted((sg * 10.6, sg * 11.4)), 0, 1.1, ch='=')
-        else: box(f'sanctuary-barricade-{side}-{k}', *sorted((sg * 10.6, sg * 11.4)), a, b, 0, 1.1, ch='=')
+# THE SANCTUARY: the paved plaza (24 m), walled by the inner blocks and, across the four street mouths, a 3.2 m fence (under
+# pilot exclusion columns) with a 4 m gate in each: wooden palisade on the north and west mouths (the civic and residential
+# side), scrap-metal panels on the east and south (toward the Meridian and the station yards). A brazier at its centre, the
+# reprint machine and a cache on its diagonals. Its volume is the whole plaza; the fence stands just outside it, so the
+# sanctuary ends at the fence's inner face and a gate's threshold is outside it. The gate openings carry no collider in the
+# map: a gate's collision is the director's (the `hub` record's closure volume), like the doors' and the final gate's.
+FENCE_T, FENCE_H = 0.4, 3.2    # fence thickness and height (a Hulk is 3.06 m; the pilot columns start at 3.1 m)
+HUB_GATE_W = 4.0               # the clear width of every hub gate opening (two pilots abreast; Hulk-clear)
+GATE_LEAF_H = 3.0              # the drawn leaves' height (the closure volume is the fence's full 3.2 m)
+# (side, the fence plane's axis ('z': a fence along x at z = +-12), outward sign, the mouth's span along the fence, kind,
+#  outward yaw: the way a pilot walks to leave)
+MOUTHS = [('north', 'z', 1, -6.0, 6.0, 'wood', 0.0), ('east', 'x', 1, -5.0, 5.0, 'metal', 90.0),
+          ('south', 'z', -1, -5.0, 5.0, 'metal', 180.0), ('west', 'x', -1, -5.0, 5.0, 'wood', 270.0)]
+FENCES, HUB_GATES = [], []
+for side, ax, sg, a, b, kind, yaw in MOUTHS:
+    p0, p1 = sorted((sg * SANCT, sg * (SANCT + FENCE_T)))
+    for k, (u0, u1) in enumerate([(a, -HUB_GATE_W / 2), (HUB_GATE_W / 2, b)]):
+        bid = f'sanctuary-fence-{kind}-{side}-{k}'
+        blk = box(bid, u0, u1, p0, p1, 0, FENCE_H, material='wood' if kind == 'wood' else 'metal', ch='F', pilot=True) if ax == 'z' else \
+              box(bid, p0, p1, u0, u1, 0, FENCE_H, material='wood' if kind == 'wood' else 'metal', ch='F', pilot=True)
+        FENCES.append(dict(block=blk['id'], kind=kind, side=side, gate=f'{AREA}:hub-gate:{side}'))
+    c = sg * (SANCT + FENCE_T / 2); cx, cz = (0.0, c) if ax == 'z' else (c, 0.0); fx, fz = forward(yaw)
+    HUB_GATES.append({'id': f'{AREA}:hub-gate:{side}', 'kind': kind, 'motion': 'swing' if kind == 'wood' else 'slide', 'side': side,
+                      'x': r4(cx), 'y': 0.0, 'z': r4(cz), 'yaw': yaw, 'width': HUB_GATE_W, 'height': GATE_LEAF_H,
+                      # A slide gate's leaves run on the fence's inner side (d -0.38..-0.22), so its closure reaches 0.2 m inward.
+                      'closure': vol(cx, 0, cz, HUB_GATE_W, FENCE_H, FENCE_T, yaw) if kind == 'wood' else vol(cx - fx * 0.09, 0, cz - fz * 0.09, HUB_GATE_W, FENCE_H, 0.62, yaw),
+                      'interact': vol(cx, 0, cz, HUB_GATE_W + 0.4, 3.0, 4.4, yaw),
+                      'sensor': vol(cx, 0, cz, HUB_GATE_W + 2.0, 3.4, 8.0, yaw),
+                      'inside': pt(cx - fx * 1.6, 0, cz - fz * 1.6), 'outside': pt(cx + fx * 1.6, 0, cz + fz * 1.6),
+                      'fence': [f['block'] for f in FENCES if f['side'] == side]})
 box('sanctuary-brazier', -0.8, 0.8, -0.8, 0.8, 0, 0.9, material='metal', ch='*')
 SANCTUARY = vol(0, 0, 0, 2 * SANCT, 8, 2 * SANCT, 0)
 SLOT_R = 5.5
@@ -152,12 +195,12 @@ BOSS_POINTS = [pt(0, 0, 47.0, 180.0), pt(-11.0, 0, 46.5, 180.0), pt(11.0, 0, 46.
 # STREET COVER: wrecks, barriers, dumpsters and crates (static; nothing enters the prop frame).
 def car(id, cx, cz, yaw, length=4.4, width=1.9, h=1.5, mat='metal'): obox(id, cx, cz, width, length, 0, h, yaw, material=mat, ch='c')
 def barrier(id, x0, x1, z0, z1): box(id, x0, x1, z0, z1, 0, 1.0, ch='=')
-car('car-av-0', -3.4, 15.2, 8); car('car-av-1', 3.0, 16.4, -10)                                          # avenue (south half)
+car('car-av-0', -3.6, 17.4, 8); car('car-av-1', 3.2, 18.4, -10)                                          # avenue (south half)
 barrier('barrier-av-0', 1.5, 5.6, 29.4, 30.0)                                                            # avenue, police line at the forecourt
 car('car-fc-0', -15.5, 31.3, 74); car('car-fc-1', 17.0, 33.0, -66); barrier('barrier-fc-0', -27.0, -23.0, 34.6, 35.2)   # forecourt police cars
-obox('bus-es', 17.4, -1.6, 2.6, 9.0, 0, 3.0, 82)                                                          # E street: the crashed bus
-car('car-es-0', 16.0, 2.8, 98); car('ambulance-wz', 37.5, -7.6, 70, length=5.6, width=2.3, h=2.5)
-obox('truck-ws', -17.4, 2.8, 2.5, 7.5, 0, 3.0, 84); car('car-ws-0', -16.0, -2.8, 100)                      # W street
+obox('bus-es', 19.0, -3.4, 2.6, 9.0, 0, 3.0, 88)                                                          # E street: the crashed bus
+car('car-es-0', 19.0, 3.4, 96); car('ambulance-wz', WZ_DOOR[0] - 6.5, -7.6, 70, length=5.6, width=2.3, h=2.5)
+obox('truck-ws', -17.6, 3.6, 2.5, 7.5, 0, 3.0, 86); car('car-ws-0', -17.0, -3.6, 94)                      # W street
 for i, (cx, cz) in enumerate([(-38.6, 8.0), (-40.4, 8.0), (-39.5, 6.2)]): box(f'crate-fd-{i}', cx - 0.75, cx + 0.75, cz - 0.75, cz + 0.75, 0, 1.4, material='wood', ch='x')
 car('car-ss-0', -2.6, -19.0, 4); barrier('barrier-ss-0', 6.0, 9.5, -38.0, -37.4)   # S street, station square
 car('taxi-tr', -6.8, -39.5, 28)
@@ -165,6 +208,49 @@ for i, (x0, z0, along) in enumerate([(28.0, 21.0, 'z'), (-29.3, -22.5, 'z'), (16
     if along == 'z': box(f'dumpster-{i}', x0, x0 + 1.3, z0, z0 + 2.0, 0, 1.3, material='metal', ch='u')
     else: box(f'dumpster-{i}', x0, x0 + 2.0, z0, z0 + 1.3, 0, 1.3, material='metal', ch='u')
 car('car-re-0', 32.6, -15.5, 4); car('car-rw-0', -32.6, 15.5, -6); car('car-rs-0', 14.5, -31.2, 86); car('car-rs-1', -17.0, -32.2, 92)
+
+# =====================================================================================================================
+# THE WILDS: three districts between the city's edge (|x| 44, z -44) and the instance plots, where the hub's zombies roam
+# (docs/EXPEDITION-HUB.md). Darker and foggier than the city (the dressing's and the atmosphere's job); their blocks are low
+# cover in the open: a checkpoint chicane at each district's mouth, then wrecks, containers, rubble heaps, ruined wall stubs,
+# dead trees, a power pylon and floodlight bases. Each district is a volume of the hub record (`wilds`).
+#   east  Meridian Approach: x 44..62 (z -20..20) and 62..84 (z -30..30), out to the Meridian frontage;
+#   west  Ironworks Yard:    the mirror, out to the sealed foundry plot (rail yard: boxcars, a slag heap, a tank);
+#   south Station Road:      x -20..20 (z -62..-44) and -30..30 (z -84..-62), out to the sealed station (bus terminal).
+WILDS = [('meridian-approach', 'east', 44.0, 84.0, -30.0, 30.0), ('ironworks-yard', 'west', -84.0, -44.0, -30.0, 30.0), ('station-road', 'south', -30.0, 30.0, -84.0, -44.0)]
+def wild(id, x0, x1, z0, z1, h, material='stone', y0=0.0): return box('wild-' + id, x0, x1, z0, z1, y0, y0 + h, material=material, ch='w')
+def container(id, cx, cz, along, y0=0.0):
+    hx, hz = (3.05, 1.2) if along == 'x' else (1.2, 3.05); return wild('container-' + id, cx - hx, cx + hx, cz - hz, cz + hz, 2.6, 'metal', y0)
+def boxcar(id, cx, cz, along):
+    hx, hz = (6.0, 1.5) if along == 'x' else (1.5, 6.0); return wild('boxcar-' + id, cx - hx, cx + hx, cz - hz, cz + hz, 4.2, 'metal')
+def tree(id, x, z): return wild('tree-' + id, x - 0.3, x + 0.3, z - 0.3, z + 0.3, 3.2, 'wood')
+# East: Meridian Approach.
+barrier('barrier-e-0', 47.0, 47.6, -14.0, -4.5); barrier('barrier-e-1', 47.0, 47.6, 4.5, 14.0)
+wild('booth-e-0', 49.6, 52.0, -10.6, -8.2, 2.7); wild('sandbag-e-0', 53.0, 56.0, 13.0, 14.2, 1.1, 'wood'); wild('sandbag-e-1', 53.0, 56.0, -15.2, -14.0, 1.1, 'wood')
+obox('truck-e-0', 58.2, 7.4, 2.5, 7.5, 0, 3.0, 72); car('car-e-apc', 56.0, -6.0, 106, length=6.0, width=2.6, h=2.4)
+tree('e-0', 45.8, 17.6); tree('e-1', 60.4, -17.4)
+container('e-0', 70.2, 16.2, 'x'); container('e-1', 70.6, 16.2, 'x', 2.6); container('e-2', 69.0, -19.8, 'x'); container('e-3', 79.4, -19.0, 'x')
+wild('rubble-e-0', 70.0, 75.0, -3.0, 2.6, 1.2); wild('wall-e-0', 62.4, 62.8, -12.0, -5.0, 2.6, 'brick'); wild('wall-e-1', 75.0, 80.0, 10.0, 10.4, 2.2, 'brick')
+car('car-e-1', 66.0, 8.4, 32); car('car-e-2', 77.4, 17.4, -24)
+wild('pylon-e-0', 73.4, 75.6, 23.4, 25.6, 1.0); wild('flood-e-0', 78.9, 80.1, 12.4, 13.6, 1.4, 'metal'); wild('flood-e-1', 78.9, 80.1, -13.6, -12.4, 1.4, 'metal')
+tree('e-2', 63.8, 15.0); tree('e-3', 81.2, -14.8)
+# West: Ironworks Yard (rails along x at z 7 and -7; their paint is the dressing's).
+barrier('barrier-w-0', -47.6, -47.0, -14.0, -4.5); barrier('barrier-w-1', -47.6, -47.0, 4.5, 14.0)
+boxcar('w-0', -57.0, 11.0, 'x'); boxcar('w-1', -77.0, 13.0, 'x'); boxcar('w-2', -69.0, -11.5, 'x')
+wild('rubble-w-0', -75.0, -70.0, -3.0, 3.0, 1.4); wild('rubble-w-1', -55.0, -51.0, -16.0, -12.6, 1.0)
+wild('tank-w-0', -72.0, -68.0, 22.0, 26.0, 5.5, 'metal'); wild('pylon-w-0', -79.6, -77.4, -25.6, -23.4, 1.0)
+for i, (cx, cz) in enumerate([(-61.5, 4.5), (-60.0, 5.6), (-80.5, -5.0)]): box(f'crate-w-{i}', cx - 0.75, cx + 0.75, cz - 0.75, cz + 0.75, 0, 1.4, material='wood', ch='x')
+container('w-0', -66.0, -22.6, 'x'); wild('wall-w-0', -64.0, -63.6, 4.0, 12.0, 2.4, 'brick'); car('car-w-0', -52.6, -6.0, 64)
+tree('w-0', -45.8, -17.6); tree('w-1', -60.4, 17.4); tree('w-2', -81.2, 14.8)
+wild('flood-w-0', -80.1, -78.9, 12.4, 13.6, 1.4, 'metal')
+# South: Station Road (a bus terminal).
+barrier('barrier-s-0', -14.0, -4.5, -47.6, -47.0); barrier('barrier-s-1', 4.5, 14.0, -47.6, -47.0)
+obox('bus-s-0', -9.6, -56.0, 2.6, 11.0, 0, 3.0, 14); obox('bus-s-1', 13.4, -71.0, 2.6, 11.0, 0, 3.0, 96)
+wild('booth-s-0', 4.0, 6.4, -63.2, -60.8, 2.7); wild('rubble-s-0', -5.0, 1.0, -70.0, -66.6, 1.1)
+wild('shelter-s-0', -25.0, -21.4, -67.0, -66.4, 2.6, 'metal'); wild('shelter-s-1', 21.4, 25.0, -78.6, -78.0, 2.6, 'metal')
+car('taxi-s-0', 8.8, -51.6, 140); car('car-s-1', -17.6, -76.0, 58); car('car-s-2', -16.4, -48.6, 12)
+tree('s-0', -2.4, -62.6); tree('s-1', 6.6, -79.6); tree('s-2', -26.8, -80.2)
+wild('wall-s-0', -14.0, -8.0, -66.4, -66.0, 2.2, 'brick'); wild('flood-s-0', -12.6, -11.4, -80.1, -78.9, 1.4, 'metal')
 
 # =====================================================================================================================
 # HULK BREACH PANELS: bricked-up shopfronts 3.2 m wide and 4 m tall, 0.4 m proud of a building face, so a broken panel
@@ -178,6 +264,7 @@ def breach_panel(name, face, axis, u, sign):
     breaches.append((name, face, axis, u, sign, blk))
 breach_panel('ring-e', 34.0, 'x', -21.0, -1); breach_panel('ring-w', -34.0, 'x', 22.0, 1)
 breach_panel('ring-s', -34.0, 'z', -28.0, 1); breach_panel('forecourt-e', 36.0, 'z', 30.0, -1)
+breach_panel('mer-ware', -30.0, 'z', 76.5, 1); breach_panel('iron-ware', 30.0, 'z', -76.5, -1); breach_panel('station-outer', 30.0, 'x', -70.0, -1)
 
 # =====================================================================================================================
 # ENEMY SPAWNS (the existing PveEntry shape plus `allow`): shopfront and side doors, street grates and manholes, drops off
@@ -202,9 +289,9 @@ def drop(name, x, z, height, dx, dz, hulk=False):
     entry('drop', name, (x, 0, z), (x, 0, z), (dx, dz), ['hulk'] if hulk else ['brute'], height=height, clear=4.5 if hulk else 2.8, hulk=hulk)
 # Doors: the four arms (beyond the sanctuary's 8 m buffer), the ring, the alleys, the forecourt and the final plaza.
 door('avenue-e', 6.0, 'x', 28.0, -1); door('avenue-w', -6.0, 'x', 25.0, 1)
-door('east-n', 5.0, 'z', 21.5, -1); door('east-s', -5.0, 'z', 25.0, 1, allow=BIG)
+door('east-n', 5.0, 'z', 23.0, -1); door('east-s', -5.0, 'z', 25.0, 1, allow=BIG)
 door('west-n', 5.0, 'z', -23.0, -1); door('west-s', -5.0, 'z', -26.0, 1)
-door('south-e', 5.0, 'x', -26.5, -1); door('south-w', -5.0, 'x', -25.0, 1)
+door('south-e', 5.0, 'x', -27.0, -1); door('south-w', -5.0, 'x', -25.0, 1)
 door('ring-e-0', 34.0, 'x', 20.0, -1, allow=BIG); door('ring-e-1', 28.0, 'x', -26.0, 1); door('ring-w-0', -34.0, 'x', -20.0, 1, allow=BIG); door('ring-w-1', -28.0, 'x', 27.0, -1)
 door('ring-s-0', -34.0, 'z', 26.0, 1, allow=BIG); door('ring-s-1', -28.0, 'z', -23.0, -1)
 door('alley-ne', 15.0, 'x', 27.0, 1, out=1.75); door('alley-nw', 20.0, 'z', -16.0, 1, out=1.75); door('alley-se', -20.0, 'z', 23.0, -1, out=1.75); door('alley-sw', -15.0, 'x', -26.0, -1, out=1.75)
@@ -212,17 +299,28 @@ door('forecourt-e', 30.0, 'z', 10.5, 1); door('forecourt-w', 30.0, 'z', -23.0, 1
 door('square-hall-w', FP[3], 'z', -10.0, -1, allow=BIG); door('square-hall-e', FP[3], 'z', 10.0, -1, allow=BIG)
 door('square-flank-w', -24.0, 'x', 45.0, 1); door('square-flank-e', 24.0, 'x', 50.0, -1)
 # Vents: storm grates and manholes on the avenue, the ring and the plazas.
-vent('avenue', -1.5, 23.0, 0, -1)
+vent('avenue', 0.0, 21.2, 0, 1)
 vent('ring-ne', 31.0, 26.5, 0, -1); vent('ring-se', 31.0, -11.0, 0, 1); vent('ring-sw', -31.0, -12.0, 0, -1); vent('ring-nw', -30.5, 9.0, 0, 1)
 vent('ring-s-e', 8.5, -30.5, 1, 0); vent('ring-s-w', -8.0, -31.0, 1, 0); vent('forecourt', -4.0, 32.8, 1, 0)
 vent('square-w', -6.0, 41.5, 1, 0); vent('square-e', 6.0, 41.5, -1, 0)
 # Drops off roof edges (brutes: 3.3 m out from the facade, a 2.8 m clear landing; Hulks: 4.5 m clear in the open).
 drop('avenue-w', -2.7, 28.6, HEIGHTS['nw-tower'], 1, 0); drop('avenue-e', 2.7, 24.5, HEIGHTS['ne-tower'], -1, 0)
-drop('east', 26.5, 1.7, HEIGHTS['ne-shops'], 0, -1); drop('west', -21.0, -1.7, HEIGHTS['sw-shops'], 0, 1); drop('south', 1.7, -20.0, HEIGHTS['se-tenement'], -1, 0)
+drop('east', 26.5, 1.7, HEIGHTS['ne-shops'], 0, -1); drop('west', -22.5, -1.7, HEIGHTS['sw-shops'], 0, 1); drop('south', 1.7, -24.0, HEIGHTS['se-row'], -1, 0)
 drop('fd-forecourt', -39.0, -6.4, HEIGHTS['w-depot'], 0, 1)
 drop('square-w', -20.7, 52.0, HEIGHTS['flank-w'], 1, 0); drop('square-e', 20.7, 42.0, HEIGHTS['flank-e'], -1, 0)
 drop('hulk-east', 31.0, 0.0, HEIGHTS['ne-shops'], -1, 0, hulk=True); drop('hulk-west', -31.0, 0.0, HEIGHTS['nw-shops'], 1, 0, hulk=True)
-drop('hulk-station', 0.0, -36.0, HEIGHTS['transit-hall'], 0, 1, hulk=True); drop('hulk-square', 0.0, 42.5, HEIGHTS['city-hall'], 0, -1, hulk=True)
+drop('hulk-station', 0.0, -76.0, HEIGHTS['transit-hall'], 0, 1, hulk=True); drop('hulk-square', 0.0, 42.5, HEIGHTS['city-hall'], 0, -1, hulk=True)
+# The wilds (the far ring): doors in the warehouses, annexes and blocks that line them, manholes, drops off their roofs.
+door('mer-tower', 62.0, 'x', 25.5, 1, allow=BIG); door('mer-block', 62.0, 'x', -25.0, 1); door('mer-ware-n-0', 30.0, 'z', 71.0, -1, allow=BIG); door('mer-ware-n-1', 30.0, 'z', 77.0, -1)
+door('mer-ware-s', -30.0, 'z', 71.5, 1); door('mer-annex-n', 84.0, 'x', 25.0, -1, allow=BIG); door('mer-annex-s', 84.0, 'x', -25.0, -1)
+door('iron-tower', -62.0, 'x', 25.5, -1); door('iron-block', -62.0, 'x', -25.0, -1, allow=BIG); door('iron-ware-n', 30.0, 'z', -71.0, -1)
+door('iron-ware-s-0', -30.0, 'z', -73.0, 1, allow=BIG); door('iron-ware-s-1', -30.0, 'z', -79.0, 1); door('iron-annex-n', -84.0, 'x', 25.0, 1); door('iron-annex-s', -84.0, 'x', -25.0, 1, allow=BIG)
+door('station-block-e', -62.0, 'z', 25.0, -1); door('station-block-w', -62.0, 'z', -25.0, -1, allow=BIG); door('station-outer-w', -30.0, 'x', -71.0, 1)
+door('station-outer-e', 30.0, 'x', -76.0, -1, allow=BIG); door('station-annex-e', -84.0, 'z', 25.0, 1); door('station-annex-w', -84.0, 'z', -25.0, 1)
+vent('mer-0', 57.0, -12.5, 0, 1); vent('mer-1', 71.5, 9.0, 1, 0); vent('iron-0', -57.0, -3.0, 0, -1); vent('iron-1', -72.0, 20.5, 1, 0)
+vent('station-0', -13.0, -52.0, 1, 0); vent('station-1', 13.0, -79.0, -1, 0)
+drop('mer-tower', 65.3, 21.0, HEIGHTS['e-tower'], 1, 0); drop('iron-tower', -65.3, 21.0, HEIGHTS['w-tower'], -1, 0); drop('station-block', 16.7, -53.0, HEIGHTS['s-block-e'], -1, 0)
+drop('hulk-meridian', 68.5, -8.5, HEIGHTS['e-block'], 0, 1, hulk=True); drop('hulk-ironworks', -62.0, -4.0, HEIGHTS['w-block'], 0, 1, hulk=True)
 # Breaches: from 1 m behind the panel to 2.4 m in front of it.
 for name, face, axis, u, sign, blk in breaches:
     c, sz = blk['pos'], blk['size']; n = (sign, 0) if axis == 'x' else (0, sign)
@@ -246,8 +344,80 @@ def door_record(anchor, cx, cz, yaw, slots_key, slots):
             'approach': pt(cx + fx * 1.6, 0, cz + fz * 1.6),
             slots_key: slots}
 WZ_YAW = 270.0
-RETURNS = [pt(x, 0, z, WZ_YAW) for x in (39.6, 38.0) for z in (-3.0, -1.0, 1.0, 3.0)]
+RETURNS = [pt(WZ_DOOR[0] + dx, 0, z, WZ_YAW) for dx in (-4.4, -6.0) for z in (-3.0, -1.0, 1.0, 3.0)]
 DOOR_ANCHOR = f'{AREA}:door:exp-ward-zero'
+
+# =====================================================================================================================
+# THE HUB RECORD (exp-layout-3; docs/EXPEDITION-HUB.md). Director metadata for the director (Astra) and the presentation, no
+# balance (the manifest's rule): the fence and its four gates (closure, interaction and auto-close sensor volumes, inside and
+# outside threshold points), the hub spawn zones by ring (the ring's density, money and kinds are the doc's proposals), the
+# wilds districts, the instance routes measured on the walkable floor, and the reserved doorways. The loader ignores the field;
+# nothing here is read by today's runtime.
+ROUTE_MIN = 70.0               # m of running from a hub gate's threshold to an instance door's approach (target)
+RUN, SPRINT = 6.8, 6.8 * 1.35  # m/s: NativeArena's 6.8 x speed (1.0) and the 1.35 sprint multiplier
+GATE_APRON, ZONE_APRON = 10.0, 8.0   # no spawn exit / zone volume within this of a hub gate's threshold
+RINGS = ('near', 'mid', 'far')   # docs/EXPEDITION-HUB.md proposes each ring's density, money and kinds (balance stays out of the manifest)
+# (name, ring, x0, x1, z0, z1): the inner streets beyond the gates' aprons, the ring road and the city's edge, the wilds.
+ZONES = [('near-north', 'near', -28, 28, 20.5, 30), ('near-east', 'near', 20.5, 28, -20.5, 20.5), ('near-south', 'near', -28, 28, -30, -20.5), ('near-west', 'near', -28, -20.5, -20.5, 20.5),
+         ('mid-north', 'mid', -36, 36, 30, 36), ('mid-east', 'mid', 28, 44, -34, 30), ('mid-south', 'mid', -28, 28, -44, -30), ('mid-west', 'mid', -44, -28, -34, 30),
+         ('far-east', 'far', 44, 84, -30, 30), ('far-south', 'far', -30, 30, -84, -44), ('far-west', 'far', -84, -44, -30, 30)]
+_PATHS = {}
+def zone_of(e):
+    """The hub zone a spawn belongs to: the first listed whose volume holds its exit (none for the final plaza's)."""
+    x, z = e['exit']['x'], e['exit']['z']
+    if in_vol(BOSS_TRIGGER, x, 0, z): return None
+    return next((name for name, ring, x0, x1, z0, z1 in ZONES if x0 - 1e-6 <= x <= x1 + 1e-6 and z0 - 1e-6 <= z <= z1 + 1e-6), None)
+def gate_paths():
+    """Walking distances (m) on the pilot's floor with every gate open: from each hub gate's threshold, 8-connected on the
+    0.5 m grid (no corner cutting). Cached: {gate id: {node: metres}} and the collider."""
+    if _PATHS: return _PATHS['by'], _PATHS['col']
+    import heapq
+    col = Collider(list(blocks), bounds=dict(BOUNDS)); col.build(keep=lambda y: abs(y) < 0.05)
+    by = {}
+    for g in HUB_GATES:
+        start = col.node_at(g['x'], 0, g['z']); dist = {start: 0.0}; heap = [(0.0, start)]
+        while heap:
+            d, n = heapq.heappop(heap)
+            if d > dist.get(n, 1e18): continue
+            i, j, y = n
+            for di in (-1, 0, 1):
+                for dj in (-1, 0, 1):
+                    if not di and not dj: continue
+                    ms = [m for m in col.by_cell.get((i + di, j + dj), ()) if abs(m[2] - y) <= 0.36]
+                    if not ms: continue
+                    if di and dj and not (col.by_cell.get((i + di, j)) and col.by_cell.get((i, j + dj))): continue
+                    nd = d + col.cell * (1.41421356 if di and dj else 1.0)
+                    for m in ms:
+                        if nd < dist.get(m, 1e18): dist[m] = nd; heapq.heappush(heap, (nd, m))
+        by[g['id']] = dist
+    _PATHS['by'] = by; _PATHS['col'] = col; return by, col
+def gate_distance(x, z, gate=None):
+    """The walking distance from the nearest hub gate's threshold (or `gate`'s) to (x, z), and that gate's id."""
+    by, col = gate_paths(); n = col.node_at(x, 0, z, 0.8)
+    if n is None: return None, None
+    best = min(((d.get(n, 1e18), gid) for gid, d in by.items() if gate is None or gid == gate))
+    return (r4(best[0]) if best[0] < 1e17 else None), best[1]
+def door_gate_route(target, gate_side):
+    gid = f'{AREA}:hub-gate:{gate_side}'; d, _ = gate_distance(target['x'], target['z'], gid)
+    g = next(x for x in HUB_GATES if x['id'] == gid); straight = math.hypot(target['x'] - g['x'], target['z'] - g['z'])
+    return dict(gate=gid, path=d, straight=r4(straight), run=r4(d / RUN), sprint=r4(d / SPRINT))
+def hub():
+    fx, fz = forward(WZ_YAW); approach = pt(WZ_DOOR[0] + fx * 1.6, 0, WZ_DOOR[1] + fz * 1.6)
+    zones = []
+    for name, ring, x0, x1, z0, z1 in ZONES:
+        V = vol((x0 + x1) / 2, 0, (z0 + z1) / 2, x1 - x0, 8, z1 - z0, 0)
+        inside = [e['e'] for e in entries if zone_of(e) == name]
+        ds = [gate_distance(e['exit']['x'], e['exit']['z'])[0] for e in entries if e['e'] in inside]
+        zones.append(dict(id=f'{AREA}:zone:{name}', ring=ring, volume=V, spawns=inside, gateDistance=[r4(min(ds)), r4(max(ds))] if ds else [0.0, 0.0]))
+    wilds = [dict(id=f'{AREA}:wilds:{name}', side=side, volume=vol((x0 + x1) / 2, 0, (z0 + z1) / 2, x1 - x0, 8, z1 - z0, 0)) for name, side, x0, x1, z0, z1 in WILDS]
+    routes = [dict(to='exp-ward-zero', approach=approach, **door_gate_route(approach, 'east'))]
+    reserved = []
+    for k, p_ in sorted(RESERVED.items()):
+        fx2, fz2 = forward(p_['yaw']); ap = pt(p_['x'] + fx2 * 1.6, 0, p_['z'] + fz2 * 1.6)
+        reserved.append(dict(building=k, x=p_['x'], y=p_['y'], z=p_['z'], yaw=p_['yaw'], approach=ap, **door_gate_route(ap, 'west' if k == 'exp-foundry' else 'south')))
+    return {'fence': {'height': FENCE_H, 'thickness': FENCE_T, 'segments': [dict(f) for f in FENCES]},
+            'gates': [dict(g) for g in HUB_GATES], 'apron': dict(spawn=GATE_APRON, zone=ZONE_APRON),
+            'zones': zones, 'wilds': wilds, 'routes': routes, 'reserved': reserved}
 
 def area():
     fx, fz = forward(WZ_YAW)
@@ -262,7 +432,7 @@ def area():
             'anchors': anchors, 'doors': [door_record(DOOR_ANCHOR, WZ_DOOR[0], WZ_DOOR[1], WZ_YAW, 'returns', RETURNS)], 'interactions': inter,
             'sanctuary': {'volumes': [SANCTUARY], 'slots': SLOTS},
             'gates': [{'id': f'{AREA}:gate:final', 'opens': 'final', 'closure': GATE}],
-            'spawns': entries, 'boss': {'trigger': BOSS_TRIGGER, 'points': BOSS_POINTS}}
+            'spawns': entries, 'boss': {'trigger': BOSS_TRIGGER, 'points': BOSS_POINTS}, 'hub': hub()}
 
 # =====================================================================================================================
 # THE MAP ENTRY (UnityMaps.json shape). The PvP spawn tables the map validator requires stand on the sanctuary slots
@@ -279,7 +449,7 @@ def game_map():
     sp = [dict(pos=v(s['x'], 1.1, s['z']), yaw=s['yaw']) for s in SLOTS]
     return dict(id=MAP, name='Expedition City', tag='A zombie city at dusk. The sanctuary holds; the streets do not.', theme='expedition', music=None,
                 ambience='', look=MAP, sky=0x2A2448, floor=0x2C2A30, accent=0xFF8A4C, rotation=False,
-                bounds=dict(minX=-B, maxX=B, minZ=-B, maxZ=B, ceiling=CEIL, killY=KILL),
+                bounds=dict(**BOUNDS, ceiling=CEIL, killY=KILL),
                 spawns=dict(ffa=sp, teams=[dict(side=0, points=sp[:4]), dict(side=1, points=sp[4:])]),
                 blocks=[clean(b) for b in blocks], segments=[], hazards=[], pilotBlocks=pilot_blocks(), nav=dict(nodes=[], links=[]),
                 ramps=[], navHints=dict(drops=[], safe=[], collisionOff=[]))
@@ -305,16 +475,18 @@ def look():
                         stars=0.22, crater=0, cloudSpeed=0.25, elevation=9, bearing=288, dir=dict(x=0, y=0, z=0)),
             'lights': [L('sanctuary-brazier', 0, 1.4, 0, 0xFF8A3C, 1.8, 13, 'fire', rate=5, depth=0.3),
                        L('sanctuary-lamp-ne', 9.5, 4.2, 9.5, 0xFFC27A, 1.2, 10), L('sanctuary-lamp-sw', -9.5, 4.2, -9.5, 0xFFC27A, 1.2, 10),
-                       L('meridian-portico', 42.4, 4.0, 0, 0x9FE8FF, 1.4, 12, 'stutter', period=9, length=0.2, depth=0.6),
-                       L('final-gate', 0, 9.0, 34.0, 0xFF3B30, 1.3, 16), L('wreck-fire-es', 21.5, 1.6, -2.7, 0xFF6A1E, 1.6, 9, 'fire', rate=6.5, depth=0.4, phase=0.4),
+                       L('meridian-portico', 82.4, 4.0, 0, 0x9FE8FF, 1.4, 12, 'stutter', period=9, length=0.2, depth=0.6),
+                       L('final-gate', 0, 9.0, 34.0, 0xFF3B30, 1.3, 16), L('wreck-fire-es', 22.6, 1.6, -3.9, 0xFF6A1E, 1.6, 9, 'fire', rate=6.5, depth=0.4, phase=0.4),
                        L('sodium-ring-e', 31.0, 5.5, -26.0, 0xFF9A3C, 1.1, 12), L('sodium-ring-w', -31.0, 5.5, 26.0, 0xFF9A3C, 1.1, 12)],
             'blockLooks': [BL('expedition-city-slab-*', 'asphalt', 0x3A3840, 'the street slab'),
                            BL('expedition-city-sanctuary-paving', 'cobble', 0x7A6E66, 'the sanctuary plaza'),
                            BL('expedition-city-square-paving', 'cobble', 0x6E6A70, 'the final plaza'),
-                           BL('expedition-city-sanctuary-barricade-*', 'timber', 0x8A6A4A, 'sanctuary barricades'),
+                           BL('expedition-city-sanctuary-fence-wood-*', 'timber', 0x6E5236, 'the sanctuary palisade (north and west mouths)'),
+                           BL('expedition-city-sanctuary-fence-metal-*', 'corrugated', 0x5E625E, 'the sanctuary scrap-metal fence (east and south mouths)'),
                            BL('expedition-city-sanctuary-brazier', 'tar', 0x2A2422, 'the brazier'),
                            BL('expedition-city-gate-*', 'concrete-board', 0x8C8478, 'the final gatehouse'),
                            BL('expedition-city-bldg-wz-*', 'concrete-board', 0xB8BEC4, 'Meridian Biocontainment (Ward Zero)'),
+                           BL('expedition-city-bldg-meridian-*', 'concrete-board', 0xA8AEB2, 'the Meridian annexes'),
                            BL('expedition-city-wz-*', 'concrete-board', 0xD0D6DA, 'the Meridian portico'),
                            BL('expedition-city-bldg-foundry-*', 'corrugated', 0x6A5A50, 'the foundry (reserved)'),
                            BL('expedition-city-foundry-*', 'corrugated', 0x5A6062, 'the foundry shutter (sealed)'),
@@ -326,6 +498,17 @@ def look():
                            BL('expedition-city-roof-*', 'tar', 0x2E2A2C, 'roof clutter'),
                            BL('expedition-city-square-*', 'concrete-board', 0x8A8478, 'the dais and planters'),
                            BL('expedition-city-crate-*', 'timber', 0, 'crates'),
+                           BL('expedition-city-wild-container-*', 'corrugated', 0x6A4434, 'shipping containers (the wilds)'),
+                           BL('expedition-city-wild-boxcar-*', 'corrugated', 0x5A3428, 'rail boxcars (Ironworks Yard)'),
+                           BL('expedition-city-wild-rubble-*', 'concrete-board', 0x5E5854, 'rubble and slag heaps'),
+                           BL('expedition-city-wild-wall-*', 'brick-red', 0x5E3A30, 'ruined wall stubs'),
+                           BL('expedition-city-wild-booth-*', 'concrete-board', 0x8E8A80, 'checkpoint and ticket booths'),
+                           BL('expedition-city-wild-sandbag-*', 'plain', 0x7E7252, 'sandbag nests'),
+                           BL('expedition-city-wild-tree-*', 'timber', 0x2A221C, 'dead trees'),
+                           BL('expedition-city-wild-pylon-*', 'concrete-board', 0x6A665E, 'power pylon footings'),
+                           BL('expedition-city-wild-flood-*', 'steel-green', 0x3A3E3A, 'floodlight tower footings'),
+                           BL('expedition-city-wild-tank-*', 'corrugated', 0x464A46, 'the coal hopper tank'),
+                           BL('expedition-city-wild-shelter-*', 'steel-green', 0x3A4A44, 'bus shelters (their back panels)'),
                            BL('expedition-city-dumpster-*', 'steel-green', 0x3C4A3C, 'dumpsters'),
                            BL('expedition-city-barrier-*', 'concrete-board', 0xB0A898, 'jersey barriers'),
                            BL('expedition-city-car-fc-0', 'plain', 0xD4D4D0, 'police car (dark light bar)'), BL('expedition-city-car-fc-1', 'plain', 0xD4D4D0, 'police car (its light bar still flashing)'),
@@ -372,7 +555,7 @@ def checks():
     out, ok = [], True
     colliders = [b for b in blocks]
     gate_block = vol_block(MAP + '-gate-closure', GATE)
-    shut = Collider(colliders + [gate_block], bounds=dict(minX=-B, maxX=B, minZ=-B, maxZ=B)); shut.build(keep=lambda y: abs(y) < 0.05)
+    shut = Collider(colliders + [gate_block], bounds=dict(BOUNDS)); shut.build(keep=lambda y: abs(y) < 0.05)
     open_ = Collider(colliders, bounds=shut.bounds); open_.build(keep=lambda y: abs(y) < 0.05)
     def in_fp(n, col):
         x, z = col.cell_xz(n[0], n[1]); return FP[0] < x < FP[1] and GATE['z'] < z < FP[3]
@@ -484,6 +667,61 @@ def checks():
     ok_d = in_vol(d['interact'], d['approach']['x'], 0.0, d['approach']['z']) and not any(in_vol(d['interact'], p['x'], 0.0, p['z']) for p in RETURNS)
     ok_d &= shut.floor_under(d['interact']['x'], d['interact']['z'], 0.0) and shut.floor_under(d['closure']['x'], d['closure']['z'], 0.0)
     out.append(f'Ward Zero door: doorway ({WZ_DOOR[0]:g}, 0, {WZ_DOOR[1]:g}) yaw {WZ_YAW:g}, anchor 0.6 m out, closure {d["closure"]["sx"]:g} x {d["closure"]["sy"]:g} m on the facade, approach inside the interaction volume, returns outside it: {ok_d}'); ok &= ok_d
+    # ---------------- the hub (exp-layout-3): fence, gates, routes, zones ----------------
+    H = a['hub']; gates = H['gates']
+    # The fence is closed except at its gates: with every gate's closure solid, the slots reach only the sanctuary's own floor.
+    closed = Collider(colliders + [gate_block] + [vol_block(MAP + '-hub-closure-' + g['side'], g['closure']) for g in gates], bounds=dict(BOUNDS)); closed.build(keep=lambda y: abs(y) < 0.05)
+    reach_c = closed.flood([closed.node_at(p_['x'], 0, p_['z']) for p_ in SLOTS])
+    outside = [n for n in reach_c if not in_vol(SANCTUARY, closed.cell_xz(n[0], n[1])[0], 0, closed.cell_xz(n[0], n[1])[1], pad=0.3)]
+    out.append(f'fence closed except at its gates: with the {len(gates)} gate closures solid the slots reach {len(reach_c)} cells, {len(outside)} of them outside the sanctuary volume'); ok &= len(reach_c) > 0 and not outside
+    # With the gates open, every walking edge across the sanctuary's edge lies in a gate's opening.
+    crossings = []; bad_cross = []
+    for n in reach_o:
+        for m in open_.neighbours(n):
+            (ax0, az0), (ax1, az1) = open_.cell_xz(n[0], n[1]), open_.cell_xz(m[0], m[1])
+            if in_vol(SANCTUARY, ax0, 0, az0) != in_vol(SANCTUARY, ax1, 0, az1):
+                mx, mz = (ax0 + ax1) / 2, (az0 + az1) / 2; crossings.append((mx, mz))
+                if not any(in_vol(g['closure'], mx, 1.0, mz, pad=0.5) for g in gates): bad_cross.append((mx, mz))
+    out.append(f'walking edges across the sanctuary edge: {len(crossings)}, all inside a hub gate opening: {not bad_cross}' + ''.join(f'\n   BAD crossing ({x:.2f}, {z:.2f})' for x, z in bad_cross[:8])); ok &= len(crossings) > 0 and not bad_cross
+    # Each gate: its closure fills exactly the opening between its two fence sections (nothing in the map collides there), on the
+    # floor, the fence's full height; a Hulk passes it open; the interaction volume holds both threshold points; the sensor holds it.
+    for g in gates:
+        fb = [b for b in blocks if b['id'] in g['fence']]; cl = g['closure']; ax = 'x' if g['yaw'] % 180 == 0 else 'z'
+        ends = sorted(abs((footprint(b)[1] if (footprint(b)[0] + footprint(b)[1]) / 2 < cl['x'] else footprint(b)[0]) - cl['x']) if ax == 'x' else abs((footprint(b)[3] if (footprint(b)[2] + footprint(b)[3]) / 2 < cl['z'] else footprint(b)[2]) - cl['z']) for b in fb)
+        clear_open = open_.clearance(cl['x'], cl['z'], 0.05, FENCE_H - 0.05, maxr=3.0)
+        hulk_ok = open_.blocked(cl['x'], cl['z'], 0.0, HULK_RADIUS, HULK_HEIGHT) is False
+        ok_g = len(fb) == 2 and all(abs(e - cl['sx'] / 2) < 1e-3 for e in ends) and abs(vol_floor(cl)) < 1e-6 and abs(cl['sy'] - FENCE_H) < 1e-6 and clear_open >= cl['sx'] / 2 - 1e-3 and hulk_ok
+        ok_g &= in_vol(g['interact'], g['inside']['x'], 1.0, g['inside']['z']) and in_vol(g['interact'], g['outside']['x'], 1.0, g['outside']['z']) and in_vol(SANCTUARY, g['inside']['x'], 0.0, g['inside']['z']) and not in_vol(SANCTUARY, g['outside']['x'], 0.0, g['outside']['z'])
+        ok_g &= all(in_vol(g['sensor'], x_, 1.0, z_) for x_, z_ in corners(vol_block('', g['interact'])))
+        out.append(f"hub gate {g['side']} ({g['kind']}, {g['motion']}): opening {cl['sx']:g} m between its fence sections (ends {', '.join(f'{e:.2f}' for e in ends)} m from the centre), closure on the floor {cl['sy']:g} m tall, open clearance {clear_open:.2f} m, Hulk passes: {hulk_ok}; thresholds in the interaction volume, inside in the sanctuary, outside not: {ok_g}"); ok &= ok_g
+    pbs = pilot_blocks(); fence_cols = all(any(p_['id'] == f['block'] + '-top' for p_ in pbs) for f in H['fence']['segments'])
+    out.append(f"fence: {len(H['fence']['segments'])} sections, {FENCE_H:g} m tall under pilot exclusion columns: {fence_cols}"); ok &= fence_cols
+    # Routes: the instance door is reached only through a gate (closed: no; this gate alone open: yes), at least ROUTE_MIN m from it.
+    for r in H['routes'] + H['reserved']:
+        target = r['approach']; label = r.get('to', r.get('building'))
+        only = Collider(colliders + [gate_block] + [vol_block('', g['closure']) for g in gates if g['id'] != r['gate']], bounds=dict(BOUNDS)); only.build(keep=lambda y: abs(y) < 0.05)
+        rch = only.flood([only.node_at(SLOTS[0]['x'], 0, SLOTS[0]['z'])]); tn = only.node_at(target['x'], 0, target['z']); cn = closed.node_at(target['x'], 0, target['z'])
+        ok_r = tn in rch and cn not in reach_c and r['path'] is not None and r['path'] >= ROUTE_MIN
+        out.append(f"route to {label}: through {r['gate'].split(':')[-1]} only (all gates shut: unreached; that gate open: reached): {tn in rch and cn not in reach_c}; {r['path']:.1f} m walked from the gate's threshold ({r['straight']:.1f} m straight; target {ROUTE_MIN:g} m), {r['run']:.1f} s running, {r['sprint']:.1f} s sprinting"); ok &= ok_r
+    # Zones: outside the sanctuary and clear of the gates; every spawn but the final plaza's in exactly one; rings ordered by distance.
+    sv = vol_block('', SANCTUARY); bad_z = []
+    for zn in H['zones']:
+        zb = vol_block('', zn['volume']); zx0, zx1, zz0, zz1 = footprint(zb)
+        if zx1 > -SANCT and zx0 < SANCT and zz1 > -SANCT and zz0 < SANCT: bad_z.append(zn['id'] + ' overlaps the sanctuary')
+        for g in gates:
+            dg = math.hypot(max(zx0 - g['x'], 0, g['x'] - zx1), max(zz0 - g['z'], 0, g['z'] - zz1))
+            if dg < ZONE_APRON: bad_z.append(f"{zn['id']} {dg:.1f} m from {g['side']} gate")
+    near_exit = min((math.hypot(e['exit']['x'] - g['x'], e['exit']['z'] - g['z']), e['id'], g['side']) for e in entries for g in gates)
+    counted = sorted(e for zn in H['zones'] for e in zn['spawns']); want = sorted(e['e'] for e in entries if not in_vol(BOSS_TRIGGER, e['exit']['x'], 0, e['exit']['z']))
+    rings = {k: [zn['gateDistance'] for zn in H['zones'] if zn['ring'] == k] for k in RINGS}
+    lo = {k: min(d[0] for d in v) for k, v in rings.items()}; hi = {k: max(d[1] for d in v) for k, v in rings.items()}
+    ordered = lo['near'] < lo['mid'] < lo['far'] and hi['near'] < hi['mid'] < hi['far'] and lo['far'] > hi['mid']
+    out.append(f"hub zones: {len(H['zones'])} ({', '.join(f'{k} {len(v)}' for k, v in rings.items())}), outside the sanctuary and {ZONE_APRON:g} m or more from every gate: {not bad_z}" + ''.join('\n   BAD ' + b for b in bad_z)); ok &= not bad_z
+    out.append(f"spawn exits {GATE_APRON:g} m or more from every gate's threshold: nearest {near_exit[0]:.1f} m ({near_exit[1].split(':')[-1]}, {near_exit[2]} gate)"); ok &= near_exit[0] >= GATE_APRON
+    out.append(f"every spawn outside the final plaza in exactly one zone: {counted == want} ({len(counted)} of {len(entries)}; the final plaza's {len(entries) - len(want)} are the final encounter's)"); ok &= counted == want
+    out.append('zone rings by walking distance from the gates: ' + ', '.join(f"{k} {lo[k]:.0f}-{hi[k]:.0f} m" for k in RINGS) + f': ordered {ordered}'); ok &= ordered
+    wv = all(vol_in_bounds(w_['volume'], game_map()['bounds']) for w_ in H['wilds']) and all(vol_in_bounds(zn['volume'], game_map()['bounds']) for zn in H['zones'])
+    out.append(f"wilds {[w_['id'].split(':')[-1] for w_ in H['wilds']]} and zones inside the bounds: {wv}"); ok &= wv
     # The layout loader's own gate (NativeExpeditionLayout.ValidateGeometry), mirrored: every slot and return clear for a
     # Hulk too; every anchor, interaction and approach clear for the pilot probe; from the first slot, a Hulk-sized route
     # to every slot, return, boss point and approach; every spawn's exit routed back to that slot with its own capsule;
@@ -504,7 +742,7 @@ def checks():
     vols = [SANCTUARY, GATE, BOSS_TRIGGER, d['interact'], d['closure']]
     vb = all(vol_in_bounds(V, game_map()['bounds']) for V in vols) and all(in_vol(SANCTUARY, p['x'], p['y'], p['z']) for p in SLOTS)
     out.append(f'volumes inside the bounds (1 cm margin) and every sanctuary slot inside the sanctuary volume: {vb}'); ok &= vb
-    bnd = all(abs(p['x']) <= B - 1.5 and abs(p['z']) <= B - 1.5 for p in [e['exit'] for e in entries] + SLOTS + RETURNS + BOSS_POINTS + CACHES + [MACHINE])
+    bnd = all(BOUNDS['minX'] + 1.5 <= p['x'] <= BOUNDS['maxX'] - 1.5 and BOUNDS['minZ'] + 1.5 <= p['z'] <= BOUNDS['maxZ'] - 1.5 for p in [e['exit'] for e in entries] + SLOTS + RETURNS + BOSS_POINTS + CACHES + [MACHINE])
     out.append(f'every record inside the bounds less 1.5 m: {bnd}'); ok &= bnd
     # Ids and blocks.
     ids = [b['id'] for b in blocks]; mats = sorted({b['material'] for b in blocks})
@@ -515,8 +753,8 @@ def checks():
     out.append(f'blocks {len(blocks)} ({", ".join(f"{k} {n}" for k, n in sorted(roles.items()))}), unique ids {len(set(ids)) == len(ids)}; materials {mats}; rotated {sum(1 for b in blocks if b["rotation"] != q())}; '
                f'buildings {len(BUILDINGS)} (+3 skyline), cover {sum(1 for b in blocks if b["_ch"] in "c=uxod")}, pilot exclusion columns {len(pilot_blocks())}; initial prop frame (non-static) {sum(1 for b in blocks if b["role"] != "static")}')
     ok &= len(set(ids)) == len(ids) and set(mats) <= {'stone', 'brick', 'metal', 'wood', 'foundation'}
-    inb = all(abs(b['pos']['x']) + b['size']['x'] / 2 <= EDGE + 1e-6 and abs(b['pos']['z']) + b['size']['z'] / 2 <= EDGE + 1e-6 and yspan(b)[1] <= CEIL for b in blocks)
-    out.append(f'every block within x, z +-{EDGE:g} and under the {CEIL:g} m ceiling: {inb}'); ok &= inb
+    inb = all(footprint(b)[0] >= EX0 - 1e-6 and footprint(b)[1] <= EX1 + 1e-6 and footprint(b)[2] >= EZ0 - 1e-6 and footprint(b)[3] <= EZ1 + 1e-6 and yspan(b)[1] <= CEIL for b in blocks)
+    out.append(f'every block within x {EX0:g}..{EX1:g}, z {EZ0:g}..{EZ1:g} and under the {CEIL:g} m ceiling: {inb}'); ok &= inb
     out.append(f'blockHash {a["blockHash"]}')
     out.append('reserved doorways (sealed facades, not in the manifest yet): ' + '; '.join(f'{k} ({p["x"]:g}, {p["y"]:g}, {p["z"]:g}) yaw {p["yaw"]:g}' for k, p in sorted(RESERVED.items())))
     return ok, out, (shut, reach, open_, reach_o)
@@ -524,13 +762,16 @@ def checks():
 # =====================================================================================================================
 # PLAN (top-down PNG): buildings shaded by height, walkable floor, the sanctuary and its slots, the gate, the boss
 # trigger and points, the door with its volumes and returns, the machine and caches, the spawns by kind.
-def plan(path, graphs, scale=8):
+def plan(path, graphs, scale=6):
     shut, reach, open_, reach_o = graphs
-    M = 40; W, H = int(2 * EDGE * scale) + 2 * M + 300, int(2 * EDGE * scale) + 2 * M + 30
+    M = 40; W, H = int((EX1 - EX0) * scale) + 2 * M + 330, int((EZ1 - EZ0) * scale) + 2 * M + 30
     cv = Canvas(W, H)
-    def X(x): return int(round((x + EDGE) * scale)) + M
-    def Y(z): return int(round((EDGE - z) * scale)) + M + 20
-    cv.rect(X(-EDGE), Y(EDGE), X(EDGE), Y(-EDGE), (24, 22, 28))
+    def X(x): return int(round((x - EX0) * scale)) + M
+    def Y(z): return int(round((EZ1 - z) * scale)) + M + 20
+    cv.rect(X(EX0), Y(EZ1), X(EX1), Y(EZ0), (24, 22, 28))
+    H_ = area()['hub']
+    for w_ in H_['wilds']:
+        V = w_['volume']; cv.rect(X(V['x'] - V['sx'] / 2), Y(V['z'] + V['sz'] / 2), X(V['x'] + V['sx'] / 2), Y(V['z'] - V['sz'] / 2), (30, 26, 40))
     for n in open_.graph:
         x, z = open_.cell_xz(n[0], n[1]); c = (64, 60, 66) if n in reach else (88, 58, 70)
         cv.rect(X(x - 0.25), Y(z + 0.25), X(x + 0.25), Y(z - 0.25), c)
@@ -544,6 +785,8 @@ def plan(path, graphs, scale=8):
             if b['_ch'] == '^': c = (110, 104, 110)
         elif b['_ch'] == 'B': c = (230, 200, 60)
         elif b['_ch'] in 'PS': c = (150, 170, 190)
+        elif b['_ch'] == 'F': c = (196, 140, 80) if '-wood-' in b['id'] else (150, 156, 164)
+        elif b['_ch'] == 'w': c = (120, 104, 96)
         else: c = (160, 112, 72)
         cv.poly([(X(x), Y(z)) for x, z in corners(b)], c)
     for b in blocks:
@@ -578,26 +821,40 @@ def plan(path, graphs, scale=8):
         fx, fz = e['from']['x'], e['from']['z']
         if e['kind'] in ('door', 'vent', 'breach'): cv.line(X(fx), Y(fz), X(x), Y(z), c, 2)
         cv.disc(X(x), Y(z), r, c)
+    # the hub: zones by ring, the gates (closure, threshold points), the routes as straight arrows with their walked length
+    RC = {'near': (120, 220, 140), 'mid': (240, 200, 90), 'far': (255, 110, 90)}
+    for zn in H_['zones']:
+        V = zn['volume']; cv.frame(X(V['x'] - V['sx'] / 2) + 2, Y(V['z'] + V['sz'] / 2) + 2, X(V['x'] + V['sx'] / 2) - 2, Y(V['z'] - V['sz'] / 2) - 2, RC[zn['ring']], 1)
+        cv.text(X(V['x'] - V['sx'] / 2) + 5, Y(V['z'] + V['sz'] / 2) + 5, zn['id'].split(':')[-1].upper(), RC[zn['ring']])
+    for g in H_['gates']:
+        cv.poly([(X(x), Y(z)) for x, z in corners(vol_block('', g['closure']))], (90, 255, 220) if g['kind'] == 'metal' else (255, 170, 60))
+        for k_, c_ in (('inside', (90, 255, 140)), ('outside', (255, 120, 90))): cv.disc(X(g[k_]['x']), Y(g[k_]['z']), 3, c_)
+    for r in H_['routes'] + H_['reserved']:
+        g = next(x for x in H_['gates'] if x['id'] == r['gate']); ap = r['approach']
+        for k_ in range(0, 100, 4): t0, t1 = k_ / 100, (k_ + 2) / 100; cv.line(X(g['x'] + (ap['x'] - g['x']) * t0), Y(g['z'] + (ap['z'] - g['z']) * t0), X(g['x'] + (ap['x'] - g['x']) * t1), Y(g['z'] + (ap['z'] - g['z']) * t1), (255, 255, 255), 2)
+        mx, mz = (g['x'] + ap['x']) / 2, (g['z'] + ap['z']) / 2; cv.text(X(mx) - 40, Y(mz) + 8, '%.0f M  %.1f S' % (r['path'], r['run']), (255, 255, 255))
     # legend
-    lx = X(EDGE) + 20; ly = 60
-    cv.text(M, 10, 'EXPEDITION CITY M1 DRAFT  120 X 120 M  NORTH UP  1 PX = %d CM' % (100 // scale), (232, 251, 255))
+    lx = X(EX1) + 20; ly = 60
+    cv.text(M, 10, 'EXPEDITION CITY HUB (EXP-LAYOUT-3)  192 X 156 M  NORTH UP  1 PX = %d CM' % (100 // scale), (232, 251, 255))
     for label, c in [('SANCTUARY VOLUME', (90, 255, 140)), ('SLOT  (FACING)', (255, 255, 255)), ('WARD ZERO DOOR', (0, 160, 255)), ('INTERACT VOLUME', (80, 220, 255)),
                      ('CLOSURE', (255, 255, 120)), ('RETURNS, APPROACH', (80, 220, 255)), ('FINAL GATE', (255, 60, 50)), ('BOSS TRIGGER', (230, 80, 230)),
                      ('BOSS POINT', (255, 90, 255)), ('MACHINE', (120, 255, 160)), ('CACHE', (255, 200, 40)), ('DOOR SPAWN', KC['door']), ('VENT SPAWN', KC['vent']),
                      ('DROP (RING: CLEAR)', KC['drop']), ('BREACH (HULK)', KC['breach']), ('BIG DOT: HULK', (255, 255, 255)), ('BREACH PANEL', (230, 200, 60)),
-                     ('COVER', (160, 112, 72)), ('STREET (REACHED, GATE SHUT)', (64, 60, 66)), ('FLOOR BEHIND THE GATE', (88, 58, 70)), ('BUILDING (LIGHTER = TALLER)', (160, 140, 150))]:
+                     ('COVER', (160, 112, 72)), ('STREET (REACHED, GATE SHUT)', (64, 60, 66)), ('FLOOR BEHIND THE GATE', (88, 58, 70)), ('BUILDING (LIGHTER = TALLER)', (160, 140, 150)),
+                     ('FENCE: WOOD PALISADE', (196, 140, 80)), ('FENCE: SCRAP METAL', (150, 156, 164)), ('HUB GATE (WOOD, SWING)', (255, 170, 60)), ('HUB GATE (METAL, SLIDE)', (90, 255, 220)),
+                     ('WILDS COVER', (120, 104, 96)), ('WILDS DISTRICT', (30, 26, 40)), ('ZONE: NEAR', RC['near']), ('ZONE: MID', RC['mid']), ('ZONE: FAR', RC['far']), ('ROUTE: WALKED M, RUN S', (255, 255, 255))]:
         cv.rect(lx, ly, lx + 14, ly + 10, c); cv.text(lx + 20, ly, label, (210, 214, 220)); ly += 22
     for label, x, z in (('SANCTUARY', -6.5, -9.0), ('FINAL PLAZA', -8.5, 55.5), ('FINAL GATE', -6.5, 34.2), ('AVENUE', -3.0, 18.0), ('RING ROAD', 28.6, -12.0),
-                        ('MERIDIAN', 45.0, -22.5), ('(WARD ZERO)', 45.0, -25.0), ('FORECOURT', -10.0, 31.6)):
+                        ('MERIDIAN', 85.0, -36.0), ('(WARD ZERO)', 85.0, -38.5), ('FORECOURT', -10.0, 31.6), ('MERIDIAN APPROACH', 50.0, -33.0), ('IRONWORKS YARD', -80.0, -33.0), ('STATION ROAD', -48.0, -86.0)):
         cv.text(X(x), Y(z), label, (240, 236, 220))
     cv.save(path)
 
 def ascii_map():
     out = []
-    for r in range(60):
-        z = B - 2 * r - 1; line = ''
-        for c in range(120):
-            x = -B + c + 0.5; ch = ' '
+    for r in range(int((BOUNDS['maxZ'] - BOUNDS['minZ']) / 2)):
+        z = BOUNDS['maxZ'] - 2 * r - 1; line = ''
+        for c in range(int(BOUNDS['maxX'] - BOUNDS['minX'])):
+            x = BOUNDS['minX'] + c + 0.5; ch = ' '
             for b in blocks:
                 if yspan(b)[1] > 0.01 and dist_xz(b, x, z) <= 1e-9 and not b['id'].endswith('paving') and '-slab-' not in b['id']: ch = b['_ch']
             if ch == ' ': ch = '.'

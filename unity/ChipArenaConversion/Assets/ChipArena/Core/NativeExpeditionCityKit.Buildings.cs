@@ -15,6 +15,9 @@ namespace ChipArena.UnityConversion
                 case "ne-tower":case "nw-tower":return Office;case "ne-hotel":return Hotel;case "e-depot":case "w-depot":return Depot;case "kiosk-e":case "kiosk-w":return Kiosk;
                 case "wz-facility":return Meridian;case "wz-tower":return MeridianTower;case "foundry-hall":return Foundry;case "foundry-stack":return Stack;case "transit-hall":return Transit;
                 case "city-hall":return CityHall;case "city-hall-clock":return Clock;case "e-annex":case "flank-e":case "flank-w":case "sw-row":return Civic;
+                // The hub's wilds (exp-layout-3): warehouses and yards, the Meridian and station annexes.
+                case "e-ware-n":case "e-ware-s":case "w-ware-n":case "w-ware-s":case "se-yard":case "sw-yard":case "foundry-annex-n":case "foundry-annex-s":return Depot;
+                case "meridian-annex-n":case "meridian-annex-s":case "transit-annex-e":case "transit-annex-w":return Civic;
                 default:return Residential;
             }
         }
@@ -99,6 +102,8 @@ namespace ChipArena.UnityConversion
         private void Window(Face f,double u,double y0,double w,double h,bool brick,int row,int col,bool burning)
         {
             string id=blocks[f.Block].id;double s=Hash(id,f.Index*97+row,col);double y1=y0+h,yc=(y0+y1)/2;Use(f,u-w/2-.15,u+w/2+.15,y0-.15,y1+.25);
+            // The wilds are dark: no lit window or television, more boarded and broken panes.
+            if(WildFace(f,u))s=.1+s*.9;
             Begin();
             if(row<2)FBox(f,u,y0-.05,.07,w+.22,.09,.14,With(P(NativeBlockLooks.ConcreteBoard,SillHex,RoleFacade),detail:row>0));
             if(brick&&row==0)FBox(f,u,y1+.1,.04,w+.24,.2,.08,With(P(NativeBlockLooks.ConcreteBoard,LintelHex,RoleFacade),detail:true));

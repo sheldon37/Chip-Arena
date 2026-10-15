@@ -55,6 +55,17 @@ namespace ChipArena.UnityConversion
 
         // ---- Sanctuary membership ----------------------------------------------------------------------------------------
         /// <summary>The SAFE chip at (x, y) when the authority has the local pilot in the sanctuary, and the party line under it.</summary>
+        /// <summary>SANCTUARY · WEAPONS HOLSTERED (the proposed sanctuary rule, docs/EXPEDITION-HUB.md): a warm tag with a
+        /// holstered-weapon pip; `preview` marks the DEV preview's (magenta edge, DEV PREVIEW under it).</summary>
+        public const string HolsterChip="SANCTUARY · WEAPONS HOLSTERED";
+        public static void Holster(float x,float y,bool preview)
+        {
+            float w=U.Measure(HolsterChip,12,true,true,.14f).x+46;var r=new Rect(x,y,w,28);var warm=new Color(1f,.82f,.48f,1);
+            H.Tag(r,preview?C.Magenta():warm,1);U.Glow(r,new Color(warm.r,warm.g,warm.b,.12f),6);
+            var pip=new Rect(r.x+12,r.y+8,16,12);U.Fill(new Rect(pip.x,pip.y+4,16,3),warm);U.Fill(new Rect(pip.x+2,pip.y,3,12),warm);U.Fill(new Rect(pip.x+11,pip.y,3,12),warm);
+            U.Text(new Rect(r.x+34,r.y,w-34,r.height),HolsterChip,12,warm,TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
+            if(preview)U.Text(new Rect(x+2,y+30,320,15),"DEV PREVIEW · NOT A GAME RULE YET",10,C.Magenta(.9f),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f,shadow:new Color(0,0,0,.7f));
+        }
         public static void Safe(ExpeditionView v,ExpeditionSafeModel m,float x,float y)
         {
             if(!m.Shown&&m.Line==null)return;

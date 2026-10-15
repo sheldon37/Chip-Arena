@@ -8807,3 +8807,70 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - The chest squaring reads the posed shoulders each frame.
   - The v1 casts now play from an eased-in hold out front.
 - **Animation impact:** presentation only; releases stay on the replicated times. No change to hit timing, hitboxes, damage, cooldowns, movement or networking.
+
+## 2026-10-15 — Claude: Expedition hub (fenced sanctuary, gates, wilds), exp-layout-3
+
+- **Branch:** `claude/expedition-hub`, based on shared `claude/sleepy-ritchie-g8ruhv` `ec7a7eb`. Pushed, not merged, not released. Design and contract: `docs/EXPEDITION-HUB.md`.
+- **Owner request (2026-10-15):**
+  - extend the hub;
+  - zombies around it, fewer than in an instance, for money and danger;
+  - a longer run to the instances;
+  - fence the safe hub, with animated wooden and metal gates players open;
+  - no zombies inside;
+  - no camping in the safe zone.
+- **Layout (generator `expedition_city.py`, revision exp-layout-3, re-imported):**
+  - The town grows from 120 x 120 m to 192 x 156 m (x ±96, z −96..60).
+  - Three wilds districts lead to the instance plots: the Meridian Approach, the Ironworks Yard and Station Road.
+  - The Ward Zero door moves from x 44 to x 84. The reserved doorways move to (−84, 0) and (0, −84).
+  - The run from the gate to Ward Zero is 72.9 m walked (target 70 m or more): 10.7 s running, 7.9 s sprinting. It was about 31 m.
+  - The 24 m sanctuary is unchanged, but its four mouths are closed by a 3.2 m fence (8 sections, wood north and west, metal east and south) with four 4 m gates.
+  - 84 spawns (34 new in the wilds), grouped into 11 zones in rings: near 10–29 m, mid 18–45 m, far 47–82 m from a gate. Spawns stay 10 m or more from a gate, zones 8 m.
+  - An additive `hub` record goes in the manifest: gates, fence, zones, wilds, routes, aprons. No balance is in the manifest. The final gate stays the only `gates[]` record.
+- **Collider changes (expedition-city only):**
+  - removed: the 8 barricades (1.1 m);
+  - added: 8 fence sections with exclusion columns (from 3.1 m), 18 building and roof blocks, 58 wilds cover blocks, 3 breach panels;
+  - five slabs resized;
+  - moved: the Meridian, foundry and transit landmarks (40 m out), and 7 vehicles to clear the gate aprons;
+  - navigation regenerated (9,505 nodes).
+  - The gate openings have no collider (see below).
+  - Ward Zero, Siren and the other maps are unchanged.
+- **Visuals (live on the branch):**
+  - The fence: palisade logs, or scrap sheets with razor wire, sandbags, and gate posts with lamps.
+  - SANCTUARY headers outside, and the destination with its walked metres inside.
+  - The wood gate swings and the metal gate slides (`NativeExpeditionHubGates`), with eased motion, overshoot or judder, reversal from the current pose, and latch, creak and slam cues on existing keys. There is dust and track sparks.
+  - The ward shimmer and the SANCTUARY · WEAPONS HOLSTERED tag draw only when the view says so.
+  - The wilds are dark: thicker fog, dead lamps, no lit windows. Floodlights, fires and pylons mark the way, with chevrons and metres along the route.
+  - The DEV panel has Camera → "Hub gates preview" (it changes nothing in the simulation).
+- **Honest gap:**
+  - Without a gate state, gates are drawn resting open: the openings are passable and carry no collider, so drawing them shut would fake a barrier. This deliberately differs from the brief's "draw closed"; flip `NativeExpeditionHubGates.RestOpen` if the owner prefers.
+  - M1 spawns no town enemies, so the wilds are empty until the hub director exists.
+- **Astra contract (proposal; details in `EXPEDITION-HUB.md`):**
+  - Replicated `{id, open, changedAt}` per hub gate, plus `holster`/`ward` flags in the view.
+  - Gate authority: interact, auto-close 2.5 s after the sensor empties, never closing onto a member; the closure collider releases 0.5 s into an opening and blocks 0.65 s into a closing; an exclusion column while shut.
+  - A horde-only ward blocker in every closure, with nav links through closures disabled; zombies never open gates.
+  - Sanctuary rules (anti-camping): holster inside (0.25 s in, instant out); the ward blocks projectiles both ways; aggro drops 1.5 s after a target enters; no kill money for damage dealt from inside.
+  - Hub spawn director:
+    - cap 2 + 2 per member (at most 16), one every 3 s;
+    - ring weights 0.35/0.7/1.0 and money x0.4/0.6/0.8;
+    - no Hulks;
+    - despawn out of range or idle.
+- **Checks run (merged tree, at `ec7a7eb` plus this change):**
+  - Generator and city checks pass. `test_expedition_layout_draft` passes (6 tests). `generate_expedition.py --check` passes.
+  - CoreTests:
+    - `--expedition-hub` PASS (169 checks, new);
+    - `--expedition-dressing` PASS (2,235,476 assertions; kit budget raised to 13,000 parts in 26 draws for the doubled town);
+    - `--expedition-layout` 261, `--expedition-acceptance` 81,598, `--expedition-states` 9,666, `--expedition-view` 8,354, `--expedition-integration` 80, `--expedition` 481 and `--dev-tools` 4,527, all PASS.
+  - An offline M1 startup-gate probe (scratch, approximates PhysX, with the runtime's drop-link policy) found 0 failures on both areas.
+  - run5:
+    - Unity 6000.3.24f1 runtime and editor compile OK;
+    - relay 720 PASS, 0 FAIL;
+    - Python 107 tests OK (1 skipped);
+    - package OK;
+    - diff-check OK.
+  - Not run: Unity Editor or player, Windows, live M1 entry, two clients.
+  - Renders are offline only (the scratchpad's `renders-expedition-hub`).
+- **Risks:**
+  - The bigger town costs more: kit 12.7k parts, FX grid 98 x 80 cells.
+  - Durable saves pinned to the exp-layout-2 fingerprint will not resume on the new town (the director refuses them).
+  - The gate leaf hinge overlaps its post by a few centimetres at 160 degrees.
+- **Movement, collision and networking impact:** the town's colliders and navigation change as listed above. There is no change to hit timing, hitboxes, damage, cooldowns, movement rules, networking or saves code.

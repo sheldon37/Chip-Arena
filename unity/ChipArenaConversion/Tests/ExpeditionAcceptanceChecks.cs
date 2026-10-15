@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 namespace ChipArena.UnityConversion
 {
     // Expedition presentation acceptance (Claude, 2026-10-15; docs/EXPEDITION-PRESENTATION.md "Acceptance pass"). One run
-    // played through Astra's real session and director on the imported manifest (exp-layout-2) and its real fingerprint: the
+    // played through Astra's real session and director on the imported manifest (exp-layout-3) and its real fingerprint: the
     // host's own view and guests' views decoded from the real public/private wire (ExpeditionViewBatch, JSON, the paired
     // ExpeditionViewReceiver) with latency, each through the real presentation models (clock, cues, scene, transfer, boss, SAFE),
     // checked on every 60 Hz frame. The test plays the scene adapter (loads, ready tickets, placement) and combat callbacks the
@@ -62,6 +62,9 @@ namespace ChipArena.UnityConversion
             public readonly Dictionary<string,ExpeditionStateRig> Rigs=new Dictionary<string,ExpeditionStateRig>();
             public ExpeditionStateRig Rig(string area){if(area==null)return null;if(!Rigs.TryGetValue(area,out var r))r=Rigs[area]=ExpeditionStateRig.For(Layout,area);return r;}
         }
+        /// <summary>A point at the town door's interaction volume (its centre, `out` metres toward the town along its x, `side` along
+        /// its z), 1 m up: where the party stands to enter (the door moved out to the wilds in exp-layout-3).</summary>
+        private static V3 DoorAt(World w,float toward,float side){var v=w.Layout.Area(City).doors.Single(d=>d.anchor==CityDoor).interact;return new V3(v.x+toward,1,v.z+side);}
         private static World Start(ConversionContent content,ExpeditionLayout layout,string fingerprint,string run="accept-run")
         {
             var w=new World{Layout=layout,Fingerprint=fingerprint};
@@ -195,7 +198,7 @@ namespace ChipArena.UnityConversion
                 Check(c.Tags.Count==2&&c.Tags.Has(1)&&c.Tags.Has(2),c.Name+": SAFE over both pilots in the sanctuary");
             }
             // Walk out of the sanctuary to the town door: real crossings ripple (on the guest too, from its position stream).
-            Walk(w,new Dictionary<string,V3>{["host"]=new V3(43,1,0),["guest"]=new V3(42.6f,1,1)});Play(w,.3);
+            Walk(w,new Dictionary<string,V3>{["host"]=DoorAt(w,0,0),["guest"]=DoorAt(w,-.4f,1)});Play(w,.3);
             Check(host.Ripples>=2&&guest.Ripples>=2,"walking out of the sanctuary ripples at the boundary ("+host.Ripples+", "+guest.Ripples+")");
             foreach(var c in new[]{host,guest})Check(c.Tags.Count==0,c.Name+": no SAFE once the authority has the pilots outside");
             // Enter Ward Zero: the barrier, the transfer screen on both, the loads and the placement.
@@ -269,7 +272,7 @@ namespace ChipArena.UnityConversion
 
             // Loop 2 reuses the boss ids: each intro and crack plays again, once; the gate's beacon cues again.
             var party=new[]{"host","guest","late","mid","fresh"};
-            Walk(w,party.Select((a,i)=>(a,new V3(42.2f+.2f*i,1,-1+.5f*i))).ToDictionary(p=>p.a,p=>p.Item2),12);
+            Walk(w,party.Select((a,i)=>(a,DoorAt(w,-.8f+.2f*i,-1+.5f*i))).ToDictionary(p=>p.a,p=>p.Item2),12);
             Check(w.Director.EnterDoor("host",CityDoor),"enter again in loop 2");Until(w,()=>!w.Director.Barrier.active&&w.Clients.All(c=>c.View.area==Ward&&!c.View.areaBarrier.active),5,"loop 2 entry");Play(w,1.2);
             Check(w.Run.Progress("kill",1)&&w.Run.StartBosses(new[]{Boss})&&w.Director.RecordBossArrival(Boss,Hulk,a=>a==Hulk,spawn,100,100),"loop 2 boss arrives");Play(w,4);
             string k1="1:"+Ward+":"+Boss;foreach(var c in w.Clients)Check(c.Intro(k1)==1&&c.Crack(k1)==1&&c.Intro(k0)==(c==late||c==fresh||c==mid?0:1),c.Name+": loop 2's arrival with the same id gets its own intro and crack");
@@ -300,7 +303,7 @@ namespace ChipArena.UnityConversion
             ExpeditionStateRig rig=NativeExpeditionStates.Bound(v,new string('e',64))?city:null;scene.Build(v,rig,cues,v.elapsed,EyeFor(City),false,false);
             Check(scene.Parts.Count==0&&scene.Quads.Count==0&&!scene.HasLeaf(CityDoor),"a mismatched layout draws nothing in the world");
             // The view names Ward Zero before the arena holds it: the host's frame right after EnterDoor.
-            w.At["host"]=new V3(43,1,0);w.At["guest"]=new V3(42.6f,1,1);w.Director.Step();Check(w.Director.EnterDoor("host",CityDoor),"enter");
+            w.At["host"]=DoorAt(w,0,0);w.At["guest"]=DoorAt(w,-.4f,1);w.Director.Step();Check(w.Director.EnterDoor("host",CityDoor),"enter");
             var entering=NativeExpeditionView.Build(w.Run,"host",w.Session.Sources);var r=NativeExpeditionStates.Bound(entering,fingerprint)?ExpeditionStateRig.For(layout,entering.area):null;
             Check(entering.area==Ward&&r?.Area==Ward&&!NativeExpeditionStates.MapReady(r,"expedition-city"),"while the city is still loaded the Ward Zero rig (and every anchor of it) waits for its map");
             var t=new ExpeditionTransferModel();t.From(entering,new ExpeditionLabels());Check(t.Active&&t.Title=="ENTERING WARD ZERO"&&t.ReadyCount==0&&t.Required==2,"and the transfer screen is up");
