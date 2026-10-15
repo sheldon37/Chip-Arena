@@ -165,6 +165,15 @@ namespace ChipArena.UnityConversion
                 }
             }
             Check(poses==24,"every gate checked at six poses");
+            // 3. The hub keeps its safe zone unseen (owner, 2026-10-15): no edge, curtain, motes or ripple, while the crossing cues still
+            //    record (the SAFE tag and chip read membership, not the drawing).
+            var cues=new ExpeditionStateCues();var townView=new ExpeditionView{area="exp-city",phase=ExpeditionPhase.Town};cues.Observe(townView,20);
+            var sv=rig.Sanctuary[0];ExpeditionStateRig.Along(sv,ExpeditionStateRig.Perimeter(sv)*.1f,out float ex,out float ez,out float enx,out float enz);float ey=sv.y-sv.sy/2+.05f;
+            cues.Pilot(7,ex+enx*.3f,ey,ez+enz*.3f,rig,20);cues.Pilot(7,ex-enx*.3f,ey,ez-enz*.3f,rig,20.2);
+            var hidden=new NativeExpeditionStateScene{HideSanctuaryEdge=true};hidden.Build(townView,rig,cues,20.3,eye,false,false);
+            var shown=new NativeExpeditionStateScene();shown.Build(townView,rig,cues,20.3,eye,false,false);
+            int recorded=0;foreach(var r in cues.Ripples)if(!double.IsNegativeInfinity(r.At))recorded++;
+            Check(hidden.Quads.Count==0&&hidden.Parts.Count==0&&shown.Quads.Count>40&&recorded>=1,"the hub's safe zone draws no border (hidden "+hidden.Quads.Count+" quads, shown "+shown.Quads.Count+"); the crossing still records ("+recorded+")");
         }
         // ---------------- the leaves in step with the authority's collider ----------------
         // Whether the leaves at pose `p` leave the opening walkable: no leaf part below 2.2 m in the passage through the gate,
@@ -347,6 +356,7 @@ namespace ChipArena.UnityConversion
             string Src(string f)=>R("Assets/ChipArena/Runtime/"+f);
             Check(Src("NativeExpeditionCityPresentation.cs").Contains("DrawTownFx(now,eye);ExpeditionHubFrame(eye,now);")&&Src("NativeExpeditionCityPresentation.cs").Contains("NativeExpeditionCityKit.Build(blocks,townArea,townHub,map.bounds)"),"the town presentation draws the hub and builds the kit with the hub record");
             Check(Src("NativeExpeditionCityAudio.cs").Contains("townTime=time;ExpeditionHubCues();")&&Src("NativeExpeditionHubPresentation.cs").Contains("NativeExpeditionHubLive.Authority?.Holster==true"),"the gates' cues play with the picture; the holster tag waits for the authority's rule");
+            Check(Src("NativeExpeditionStatesPresentation.cs").Contains("var hub=NativeExpeditionHubLive.Layout;expeditionStates.HideSanctuaryEdge=hub!=null&&hub.Area==rig.Area;\n            expeditionStates.Build(v,rig,"),"the fenced hub hides its safe-zone border every frame before the scene is built; instances keep theirs");
             Check(Src("NativeDevPanel.cs").Contains("case \"preview-hub-gates\":NativeExpeditionHubPreview.On=")&&NativeDevActions.Find("preview-hub-gates")?.Kind==NativeDevKind.Presentation,"the DEV preview is a view tool in the DEV panel");
             Console.WriteLine("PASS expedition hub ("+count+" checks: the additive hub record; fence closed but for its gates; each instance through its gate and "+RouteMin+" m or more away; zones outside the fence and clear of the gates; gate models inside their closures shut and clear through their travel; no shared planes on the gates, the ward or the sanctuary edge; leaves in step with the authority's collider; the presentation clock; continuous motion; resting open without state; DEV preview; cues; dressing; no per-frame allocation; hooks)");
         }

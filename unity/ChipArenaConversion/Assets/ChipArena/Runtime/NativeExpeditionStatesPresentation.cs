@@ -125,6 +125,8 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.Pilots){if(p?.Body==null||!p.Seat.connected||p.Hp<=0)continue;var at=p.Body.position;expeditionCues.Pilot(p.Seat.id,at.x,at.y-.765f,at.z,rig,t);}
             var c=cameraView.transform;Vector3 e=c.position,r=c.right,u=c.up;
             var eye=new ExpeditionEye{X=e.x,Y=e.y,Z=e.z,Rx=r.x,Ry=r.y,Rz=r.z,Ux=u.x,Uy=u.y,Uz=u.z};
+            // The fenced hub keeps its safe zone unseen (Core HideSanctuaryEdge): its record is the town's hub, published by the hub frame.
+            var hub=NativeExpeditionHubLive.Layout;expeditionStates.HideSanctuaryEdge=hub!=null&&hub.Area==rig.Area;
             expeditionStates.Build(v,rig,expeditionCues,t,eye,prefs.reducedEffects,presentation.LowGraphics);
             if(expeditionStatesDraw==null&&!expeditionStatesFailed){expeditionStatesDraw=NativeExpeditionStatesDraw.Create();expeditionStatesFailed=expeditionStatesDraw==null;}
             if(expeditionStatesDraw==null)expeditionStates.Clear();else expeditionStatesDraw.Draw(expeditionStates,cameraView,presentation.UsesInstancing,Time.unscaledTime);

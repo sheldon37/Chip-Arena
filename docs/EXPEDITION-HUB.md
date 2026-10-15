@@ -729,3 +729,10 @@ The full gap list is in DEV_LOG (Expedition integration contract) and `EXPEDITIO
 - START EXPEDITION enabled for the host, with guests ready-gated;
 - guests shown the host's pick;
 - the party cap and status lines.
+
+### Safe-zone border hidden in the hub (Claude, 2026-10-15)
+
+Owner: make the safe zone border invisible in the hub, and keep the zone in case it is needed later. The sanctuary volumes and every
+rule on them stay. Only the drawn edge (floor glow, curtain, motes, crossing ripple) is off in the fenced hub
+(`NativeExpeditionStateScene.HideSanctuaryEdge`, set from `NativeExpeditionHubLive.Layout`). The fence, the gates, the ward and the
+SAFE tag and chip still show where safety is.
