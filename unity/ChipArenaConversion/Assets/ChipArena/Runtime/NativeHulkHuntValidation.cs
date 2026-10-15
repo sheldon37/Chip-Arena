@@ -87,7 +87,13 @@ namespace ChipArena.UnityConversion
                 }
                 ResetHulk(480);Place(0,1050);a.BeginCharge(479,p.Seat.id,Vec(m.Body.position),Vec(p.Body.position));
                 var solid=AddProp(new ContentBlock{id="hulk-shell-stop",material="foundation",role="static",pos=new V3(0,2,1001),size=new V3(5,4,.2f),rotation=new ContentRotation()});Physics.SyncTransforms();StepHulkHunt(m,p);Check(a.ChargeEnd==2&&Math.Abs(a.StaggerAt-Time-1.6f)<.001f,"solid stun");solid.GetComponent<Collider>().enabled=false;
-                ResetHulk(490);m.Body.position=new Vector3(0,m.Collider.height/2+.025f,1086.99f);a.BeginCharge(489,p.Seat.id,Vec(m.Body.position),new V3(0,.9f,1089));StepHulkHunt(m,p);Check(a.ChargeEnd==2,"floor gap stop");
+                // The hunted pilot must be across the gap: an unlocked charge tracks
+                // that pilot before locking, so leaving it at 1050 turns back onto floor.
+                ResetHulk(490);Place(0,1089);m.Body.position=new Vector3(0,m.Collider.height/2+.025f,1086.99f);Physics.SyncTransforms();
+                a.BeginCharge(489,p.Seat.id,Vec(m.Body.position),Vec(p.Body.position));
+                Check(HulkFloor(m,m.Body.position)&&!HulkFloor(m,m.Body.position+Vector3.forward*(NativeHulkMoves.ChargeSpeed/60f)),"gap fixture starts supported with unsupported next step");
+                StepHulkHunt(m,p);Check(a.ChargeHeading.z>0,"gap charge faces pilot across edge");
+                Check(a.ChargeEnd==2,"floor gap stop: end="+a.ChargeEnd+", position="+m.Body.position.ToString("F4"));
                 ResetHulk(510);Place(0,1050);a.Move=2;a.BeginCharge(509,p.Seat.id,Vec(m.Body.position),Vec(p.Body.position));StepHulkHunt(m,p);
                 var frame=NativeFrameCodec.Clone(NetworkFrame());var mf=frame.minions.Single(x=>x.id==m.Id);Check(mf.move==2&&mf.chargeAt==509&&mf.chargeEndAt==-100&&mf.chargeTarget==p.Seat.id,"JsonUtility running state");
                 var guest=new NativeArena(Content,new NativeMatch(Content),MapId){Replica=true,ReplicaScene=root.scene};
