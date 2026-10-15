@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
         }
         private void ExpeditionM1AfterStep()
         {
-            if(!ExpeditionM1)return;
+            if(!ExpeditionM1||arena.Pve?.Holding==true)return;
             expeditionSession.Tick(1d/60);arena.ExpeditionSyncClosures();
             ExpeditionView=NativeExpeditionView.Build(expeditionSession.Run,account.Access.AccountId,expeditionSession.Sources);
         }

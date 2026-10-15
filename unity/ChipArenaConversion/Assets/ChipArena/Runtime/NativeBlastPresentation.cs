@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.Pilots)if(p.Seat.spec=="siren"){sirenSeats.Add(p.Seat.id);Vector3 at=p.Body.position;sirens.Add(new NativeBlastFrame.SirenSite{X=at.x,Y=at.y,Z=at.z,Reach=.6,Below=true});}
             if(sirenSeats.Count>0)foreach(var b in arena.Bullets)if(sirenSeats.Contains(b.Owner))sirens.Add(new NativeBlastFrame.SirenSite{X=b.Position.x,Y=b.Position.y,Z=b.Position.z,Reach=Math.Max(1,b.Velocity.magnitude*.1f)+b.Radius});
             foreach(var f in arena.SirenFields)sirens.Add(new NativeBlastFrame.SirenSite{X=f.Position.x,Y=f.Position.y,Z=f.Position.z,Reach=NativeBlastFrame.SameSpot});
-            if(arena.MapId=="siren")foreach(var v in NativeArena.StageVents)sirens.Add(new NativeBlastFrame.SirenSite{X=v.x,Y=v.y,Z=v.z,Reach=NativeBlastFrame.SameSpot});
+            if(NativeMapRules.WardInstance(arena.MapId))foreach(var v in NativeArena.StageVents)sirens.Add(new NativeBlastFrame.SirenSite{X=v.x,Y=v.y,Z=v.z,Reach=NativeBlastFrame.SameSpot});
         }
         private bool AtSiren(Vector3 at)=>NativeBlastFrame.AtSiren(sirens,at.x,at.y,at.z)||NativeBlastFrame.AtSiren(sirensBefore,at.x,at.y,at.z);
         // The authoritative event the match emitted with this record: ChipBlast and AbilityBlast emit an Explosion, Vacuum() a

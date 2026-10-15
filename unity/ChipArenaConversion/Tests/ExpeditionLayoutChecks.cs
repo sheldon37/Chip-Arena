@@ -157,7 +157,7 @@ namespace ChipArena.UnityConversion
             NativeExpeditionLayout.ValidateGeometry(parsed,content,pve,Probe,Reach);count++;
             Check(pve.entries.Where(e=>e.id.StartsWith("breach-gantry-",StringComparison.Ordinal)).All(e=>Supported(inst,e.@exit.Position(),NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight)),"both authored gantry exits are Hulk-clear");
             Check(new[]{town,inst}.All(m=>!NativeMapRules.ArenaSelectable(m)&&m.nav.nodes.Length>0&&m.nav.links.Length>0),"imported navigation and arena isolation");
-            Check(NativeWardZeroLooks.Active(inst)&&!NativeWardZeroLooks.Active(town)&&inst.hazards.Length==0,"instance look enabled without Siren hazards");
+            Check(NativeWardZeroLooks.Active(inst)&&!NativeWardZeroLooks.Active(town)&&inst.hazards.Length==12&&ReferenceEquals(inst.hazards,siren.hazards),"instance uses the exact boss-test Ward hazard table");
             var normalized=new NativeRoomOptions{map=inst.id};normalized.Normalize(content);Check(NativeMapRules.ArenaSelectable(content.Map(normalized.map)),"room normalization refuses instance");
             Check(R("Assets/ChipArena/Runtime/NativeDevPanel.cs").Contains("if(!NativeMapRules.ArenaSelectable(m))continue;"),"DEV map selector isolates Expedition");
             Check(manifestText==R("Assets/Conversion/Resources/ExpeditionLayout.json"),"resource equals frozen manifest");

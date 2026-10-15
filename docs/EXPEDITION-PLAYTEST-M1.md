@@ -87,3 +87,25 @@ claim. Claude's live visual pass starts only after an exact native build is post
 Spitter authority range is 18 m (previously 11 m maximum aim, with the content's
 shorter attack-start distance). Both attack initiation and the aim clamp use the
 same authority range; visual assets and the legacy content export are unchanged.
+
+
+### Boss-test scene parity and kill rewards (2026-10-15)
+
+Ward Zero retains every boss-test block and ramp, with only the three exit-frame
+blocks added. At the shared map-load boundary it now inherits the exact boss-test
+hazard array (including IDs used by the lamps and alarms). Its raw draft omits that
+array to avoid a second tuning copy. The quarantine look, full dressing, practical
+lights, boss-test machine fixtures, song vents and owner-muted alarm sound remain
+the same. Expedition publishes the existing wave/boss stage names so horde and boss
+lighting actually activate; boss lighting follows the boss's health quarters.
+
+Each boss arrival plays the existing Siren intro scene (9.0678 seconds); combat and
+the Expedition clock pause for it. After the intro, Expedition still owns the kill
+quota and loop transitions. This does not replace the M1 quota with the boss-test
+wave schedule or possession phase sequence.
+
+Confirmed non-DEV zombie kills credit the responsible player's Expedition wallet:
+shambler 25, runner 20, spitter 30, brute 80, Hulk 300. Existing headshot (+10 before
+bonuses), assist (40% reward after at least 20% damage) and money-chip formulas are
+reused. Death callbacks and wallet events are deduplicated. Currency is personal
+and persists with the run; buying/claiming/reprinting remains unavailable in M1.

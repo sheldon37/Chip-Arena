@@ -22,6 +22,10 @@ namespace ChipArena.UnityConversion
         {
             if(Map.look=="quarantine")NativeWardEntries.Validate(data,Map);
             uint runSeed=NativePveRandom.Hash(seed,0);Pve=new NativePveState{Content=data,Skip=skip,SpawnRandom=new NativePveRandom(NativePveRandom.Hash(runSeed,"horde")),EconomyRandom=new NativePveRandom(NativePveRandom.Hash(runSeed,"economy"))};Match.Cooperative=Match.Teams=true;FriendlyFire=false;Pve.Boss=Pilots.Find(p=>p.Seat.AuthorityBoss);if(Pve.Boss==null)throw new InvalidOperationException("PvE requires a reserved authority boss seat");SetBossHidden(true);
+            BuildPveMachines(data);
+        }
+        private void BuildPveMachines(NativePveContent data)
+        {
             foreach(var def in data.machineBlocks){var obj=GameObject.CreatePrimitive(PrimitiveType.Cube);obj.name=def.id;obj.layer=PropLayer;obj.transform.SetParent(root.transform);obj.transform.position=Vec(def.pos);obj.transform.rotation=new Quaternion(def.rotation.x,def.rotation.y,def.rotation.z,def.rotation.w);obj.transform.localScale=Vec(def.size);var prop=obj.AddComponent<NativePropBody>();prop.Definition=def;prop.LocalFixture=true;prop.Indestructible=true;prop.Health=float.PositiveInfinity;obj.GetComponent<Renderer>().sharedMaterial=materials["foundation"];Props.Add(prop);}
         }
         private IEnumerable<NativePilot> Members()=>Pilots.Where(p=>!p.Seat.AuthorityBoss&&!p.Seat.devDummy&&!Pve.Recruits.Any(r=>r.Pilot==p));

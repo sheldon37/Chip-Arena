@@ -43,6 +43,10 @@ namespace ChipArena.UnityConversion
             foreach(var m in c.maps){m.bounds=null;m.spawns=null;m.nav=null;m.segments=null;m.pilotBlocks=null;m.hazards=null;m.ramps=null;m.navHints=null;}
             c.contentRevision=Revision(text);c.materials=c.materials.Concat(u.materials).ToArray();
             if(c.materials.Select(m=>m.id).Distinct().Count()!=c.materials.Length)throw new InvalidOperationException("Duplicate material");
+            // The Expedition instance shares Ward Zero's authored hazards, including their IDs
+            // (used by lights/alarms), so boss-test tuning cannot drift between the two modes.
+            var ward=u.maps.SingleOrDefault(m=>m.id=="siren");var instance=u.maps.SingleOrDefault(m=>m.id=="expedition-ward-zero");
+            if(instance!=null){if(ward==null)throw new InvalidOperationException("Expedition Ward Zero requires the boss-test map");instance.hazards=ward.hazards;}
             foreach(var m in u.maps){m.unity=true;Validate(m);}
             // Ward Zero deliberately replaces its exported legacy map, preserving its public ID.
             if(u.maps.GroupBy(m=>m.id).Any(g=>g.Count()>1)||u.maps.Any(m=>m.id!="siren"&&c.maps.Any(old=>old.id==m.id)))throw new InvalidOperationException("Duplicate Unity map");
