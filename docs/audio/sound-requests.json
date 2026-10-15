@@ -1,131 +1,231 @@
 {
- "version": 1,
- "purpose": "Sound requests for the Unity Chip Arena effects bank (owner, 2026-10-15). A generator (e.g. ElevenLabs Sound Effects, run by the owner with their own API key, never committed) reads this; the importer converts '<key>_NN.<ext>' files into the LocalAssets bank.",
- "naming": "<key>_NN.<mp3|wav>, NN from 01; one distinct generation per file",
- "suffix": "isolated, dry close-mic recording, no reverb, no music, no background noise",
- "promptInfluence": 0.65,
- "notes": {
-  "zombies": "Zombies are infected people in torn clothes, not monsters: human throats gone wrong, raspy, wet and broken.",
-  "priority": "1 = needed most (zombie voices), 2 = special zombies and zombie steps, 3 = optional (player steps already exist)"
+ "schema": "chip-arena.sound-requests/1",
+ "purpose": "Sound requests for the Unity Chip Arena effects bank (owner, 2026-10-15). Contract: docs/audio/SOUND-REQUESTS.md.",
+ "file": {
+  "pattern": "<key>_<NN>.<ext>",
+  "variant": "NN = 01..count, two digits",
+  "ext": [
+   "mp3",
+   "wav"
+  ]
+ },
+ "generation": {
+  "service": "ElevenLabs Sound Effects",
+  "promptInfluence": 0.65,
+  "outputFormat": "mp3_44100_192",
+  "oneGenerationPerFile": true,
+  "promptIsComplete": true
+ },
+ "edit": {
+  "sampleRate": 44100,
+  "channels": 1,
+  "codec": "vorbis",
+  "trimSilenceDbfs": -50,
+  "fadeOutMs": 20
  },
  "sounds": [
   {
    "key": "pve.zombie.moan",
-   "count": 6,
-   "seconds": 2.5,
+   "category": "voice",
    "priority": 1,
+   "count": 6,
+   "generateSeconds": 3.0,
+   "targetSeconds": {
+    "min": 1.4,
+    "max": 2.4
+   },
    "prompt": "Low, slow zombie moan from a damaged human throat, raspy and wet, long exhale that cracks and trails off, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.groan",
-   "count": 6,
-   "seconds": 1.0,
+   "category": "voice",
    "priority": 1,
+   "count": 6,
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.5,
+    "max": 1.1
+   },
    "prompt": "Short guttural zombie groan, a single grunted breath with a wet rattle, human but wrong, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.shriek",
-   "count": 4,
-   "seconds": 1.2,
+   "category": "voice",
    "priority": 1,
+   "count": 4,
+   "generateSeconds": 2.0,
+   "targetSeconds": {
+    "min": 0.8,
+    "max": 1.5
+   },
    "prompt": "Sudden feral zombie shriek when it spots its prey, a raw tearing human scream that rises sharply then breaks, aggressive, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.attack",
-   "count": 6,
-   "seconds": 0.5,
+   "category": "voice",
    "priority": 1,
+   "count": 6,
+   "generateSeconds": 1.0,
+   "targetSeconds": {
+    "min": 0.3,
+    "max": 0.7
+   },
    "prompt": "Vicious zombie snarl as it lunges and swipes, short explosive growl with teeth and spit, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.hurt",
-   "count": 6,
-   "seconds": 0.4,
+   "category": "voice",
    "priority": 1,
+   "count": 6,
+   "generateSeconds": 0.8,
+   "targetSeconds": {
+    "min": 0.2,
+    "max": 0.6
+   },
    "prompt": "Zombie getting hit, a short choked grunt of pain, wet and raspy, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.death",
-   "count": 5,
-   "seconds": 1.3,
+   "category": "voice",
    "priority": 1,
+   "count": 5,
+   "generateSeconds": 2.0,
+   "targetSeconds": {
+    "min": 0.8,
+    "max": 1.6
+   },
    "prompt": "Zombie dying, a final gurgling death rattle that collapses into a wet exhale, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.runner.snarl",
-   "count": 4,
-   "seconds": 0.8,
+   "category": "voice",
    "priority": 2,
+   "count": 4,
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.5,
+    "max": 1.0
+   },
    "prompt": "Fast aggressive zombie panting snarl, quick ragged breaths and a hissing growl, frantic, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.spitter.gurgle",
-   "count": 3,
-   "seconds": 0.8,
+   "category": "voice",
    "priority": 2,
+   "count": 3,
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.6,
+    "max": 1.0
+   },
    "prompt": "Zombie throat filling with thick acid fluid, a bubbling wet gurgle building up before it spits, disgusting, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.spitter.spit",
-   "count": 3,
-   "seconds": 0.5,
+   "category": "voice",
    "priority": 2,
+   "count": 3,
+   "generateSeconds": 1.0,
+   "targetSeconds": {
+    "min": 0.3,
+    "max": 0.6
+   },
    "prompt": "Zombie hocking and spitting a big glob of acid, a forceful wet hork and splatter release, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.brute.grunt",
-   "count": 4,
-   "seconds": 0.8,
+   "category": "voice",
    "priority": 2,
+   "count": 4,
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.5,
+    "max": 1.0
+   },
    "prompt": "Huge hulking zombie brute grunt, very deep chesty bellow, heavy and threatening, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.step.shuffle",
-   "count": 8,
-   "seconds": 0.4,
+   "category": "step",
    "priority": 2,
+   "count": 8,
+   "generateSeconds": 1.0,
+   "targetSeconds": {
+    "min": 0.2,
+    "max": 0.45
+   },
    "prompt": "Single shuffling footstep of a limping zombie on concrete, one torn shoe scuffing and dragging along the ground, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.step.run",
-   "count": 6,
-   "seconds": 0.2,
+   "category": "step",
    "priority": 2,
+   "count": 6,
+   "generateSeconds": 0.6,
+   "targetSeconds": {
+    "min": 0.12,
+    "max": 0.3
+   },
    "prompt": "Single fast running footstep on concrete, worn shoe slapping the ground hard, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.step.heavy",
-   "count": 5,
-   "seconds": 0.5,
+   "category": "step",
    "priority": 2,
+   "count": 5,
+   "generateSeconds": 1.0,
+   "targetSeconds": {
+    "min": 0.3,
+    "max": 0.6
+   },
    "prompt": "Single heavy stomping footstep of a huge creature on concrete, deep thud with a little debris rattle, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "pve.zombie.step.crawl",
-   "count": 4,
-   "seconds": 0.5,
+   "category": "step",
    "priority": 2,
+   "count": 4,
+   "generateSeconds": 1.0,
+   "targetSeconds": {
+    "min": 0.3,
+    "max": 0.6
+   },
    "prompt": "A body dragging itself across concrete, hands slapping and clothing scraping, one pull, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "move.step.concrete",
-   "count": 6,
-   "seconds": 0.25,
+   "category": "step",
    "priority": 3,
+   "count": 6,
+   "generateSeconds": 0.6,
+   "targetSeconds": {
+    "min": 0.12,
+    "max": 0.33
+   },
    "prompt": "Single footstep of an armored soldier boot on concrete, firm heel strike with a faint metallic armor clink, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "move.step.metal",
-   "count": 6,
-   "seconds": 0.25,
+   "category": "step",
    "priority": 3,
+   "count": 6,
+   "generateSeconds": 0.6,
+   "targetSeconds": {
+    "min": 0.12,
+    "max": 0.33
+   },
    "prompt": "Single footstep of an armored soldier boot on a metal floor grate, hard metallic clank, isolated, dry close-mic recording, no reverb, no music, no background noise"
   },
   {
    "key": "move.step.gravel",
-   "count": 6,
-   "seconds": 0.3,
+   "category": "step",
    "priority": 3,
+   "count": 6,
+   "generateSeconds": 0.6,
+   "targetSeconds": {
+    "min": 0.12,
+    "max": 0.33
+   },
    "prompt": "Single footstep of an armored soldier boot on loose gravel and rubble, crunchy, isolated, dry close-mic recording, no reverb, no music, no background noise"
   }
  ]
