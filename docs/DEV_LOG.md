@@ -8574,3 +8574,31 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - Optional: the weapon's stat fields (damage 12, interval .28, range 2.2: the tile's "12 DMG · 3.6 / SEC · 2.2 M") and `secondary` (firewall, 12 s, 35) are v1's; v2's combo reach is 2.4 m.
   - Once the content reads v2, the overrides show the same strings and can be removed.
 - **Animation impact:** none. No pose, effect, hit timing, hitbox, damage, cooldown, movement or networking change.
+
+## 2026-10-15 — Claude: dust-coat allocation check measured in a warmed method
+
+- **Branch:** `claude/coat-alloc-warmup` on shared `3d6d736`. Test-only change in `Tests/BlockLookChecks.cs`.
+- **Failure:** CI `native-source` on `23c701d` failed "Block looks: the coat allocates nothing per frame (680 bytes)".
+  - The same check passed locally on that head (relay 713 PASS) and on CI for every earlier head and for `3d6d736`.
+  - `NativeDustCoat.At`/`Local` use only fixed arrays.
+- **Likely cause:** the bytes were measured inline in `Run`, a long iterator. A runtime compile on the measuring thread (tiering or on-stack replacement of the iterator, and the static constructors an optimising compile runs) can fall inside the window.
+- **Fix:** the frames now run once to warm up, then are measured on a second pass in a separate non-inlined method. A coat that allocates per frame still fails.
+- **For Astra:** your `GunMotionChecks` pistol flake (5328 bytes) looks like the same class of problem. Most of the 145 `GC.GetAllocatedBytesForCurrentThread` checks measure inline in long iterators. Options:
+  - a shared warm-then-measure helper; or
+  - `<TieredCompilation>false</TieredCompilation>` for the test project only, so no compile happens mid-window.
+- **Checks (run5 on the branch):** Unity runtime and editor compile OK; relay 713 PASS; Python 106 OK; package OK (rerun after the session disk filled during the first package step); diff-check OK.
+- **Animation impact:** none.
+
+## 2026-10-15 — Claude: managed tests run without tiered compilation
+
+- **Branch:** `claude/tests-no-tiering` on shared `4103b82`. Changes only `Tests/CoreTests.csproj`: `<TieredCompilation>false</TieredCompilation>`.
+- **Why:** three different "allocates nothing per frame" checks failed once each on CI today, then passed on rerun:
+  - `BlockLookChecks` coat, 680 bytes;
+  - Astra's `GunMotionChecks` pistol, 5328 bytes;
+  - `AuditorHaloChecks`, 5024 bytes over 5000 frames on `4103b82` (1 of 4 runs).
+
+  The halo check already measures in its own method, after a 200-frame warm-up. That points at the measuring method itself: with tiering on, its loop is swapped to an on-stack-replacement compile mid-window, and that compile and the static constructors it runs are counted on the thread. With tiering off, every method is compiled once, fully, on its first call, so nothing compiles inside a window.
+- **Effect:** the generated `CoreTests.runtimeconfig.json` carries `System.Runtime.TieredCompilation: false`. The game build, Unity and the relay are untouched, and every check keeps its meaning. A real per-frame allocation still fails.
+- **Checks (run5 on the branch):** Unity runtime and editor compile OK; relay 713 PASS; Python 106 OK; package OK; diff-check OK. 487 s in all, no slower than before.
+- **For Astra:** this covers the pistol flake you reran in PR #234. Revert the single property if you prefer a per-check warm-up.
+- **Animation impact:** none.
