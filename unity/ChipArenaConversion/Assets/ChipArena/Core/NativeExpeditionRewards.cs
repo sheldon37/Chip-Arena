@@ -66,7 +66,7 @@ namespace ChipArena.UnityConversion
             reward.owner=account;reward.claimed=true;reward.offers=(string[])offers.Clone();Changed();return true;
         }
 
-        // D18: only the choosing pilot is held; combat and the difficulty clock keep running.
+        // Choosing is presentation presence only: no movement/action lock, damage immunity or clock pause.
         public bool IsChoosing(string account)
         {var p=Member(account);return Mutable&&Live(p)&&p.choosing;}
         public bool IsChoosingSeat(int seat,Func<string,int> seatOf)
