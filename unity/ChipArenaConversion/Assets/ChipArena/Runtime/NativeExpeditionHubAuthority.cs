@@ -14,13 +14,13 @@ namespace ChipArena.UnityConversion
         private readonly List<NativePilot> hubLiving=new List<NativePilot>();
         private float hubSpawnAt,hubMaintainAt;
         private bool hubNav;
-        private sealed class HubMob{public string Ring;public Vector3 Home;public float FarAt=-1,IdleAt,LostAt=-1;}
+        private sealed class HubMob{public string Ring;public Vector3 Home;public ExpeditionHubZone Zone;public Vector3[] Points;public HubZombieBrain Brain;public int Visible,Sound;public float SenseAt,FarAt=-1,IdleAt,LostAt=-1;}
         private bool HubOn=>Expedition!=null&&hubAuthority!=null&&expeditionArea?.role=="world";
         private double HubClock=>Expedition.Session.Run.Snapshot().elapsed;
         private bool HubInside(Vector3 p)=>HubOn&&ExpeditionHubRules.Inside(expeditionArea.sanctuary,Vec(p));
         private bool HubCross(Vector3 a,Vector3 b,float radius=0)=>HubOn&&ExpeditionHubRules.Crosses(expeditionArea.sanctuary,Vec(a),Vec(b),radius);
         private void ResetHub()
-        {hubAuthority=null;hubDoors.Clear();hubTops.Clear();hubEntered.Clear();hubMobs.Clear();hubBlockedLinks.Clear();hubLiving.Clear();hubNav=false;}
+        {hubAuthority=null;hubDoors.Clear();hubTops.Clear();hubEntered.Clear();hubMobs.Clear();hubBlockedLinks.Clear();hubLiving.Clear();hubSounds.Clear();hubFeet.Clear();hubSoundId=0;hubNav=false;}
         private void BindHub()
         {
             ResetHub();Expedition.Session.Sources.Hub=()=>HubOn?hubAuthority.View():null;
@@ -64,7 +64,8 @@ namespace ChipArena.UnityConversion
         private bool HubInteract(NativePilot p)
         {
             if(!HubOn||p.Hp<=0||!p.Seat.connected||p.Seat.AuthorityBoss||p.Seat.bot)return false;
-            bool used=hubAuthority.Interact(Vec(p.Body.position),HubClock,HubOccupied);if(used)StepHubGates();return used;
+            var before=hubAuthority.View();bool used=hubAuthority.Interact(Vec(p.Body.position),HubClock,HubOccupied);
+            if(used){var after=hubAuthority.View();for(int i=0;i<after.Count;i++)if(after.Gates[i].Open&&!before.Gates[i].Open)HubNoise(p,p.Body.position,HubNoiseKind.Gate);StepHubGates();}return used;
         }
         private void HubInput(NativePilot p)
         {
@@ -92,17 +93,10 @@ namespace ChipArena.UnityConversion
         }
         private Vector3 HubNavMove(NativeMinion m,Vector3 from,Vector3 to,Vector3 fallback,int? crowd=null)
         {bool old=hubNav;hubNav=HubOn;try{return StructureNavMove(m.Id,from,to,fallback,HubOn?null:crowd);}finally{hubNav=old;}}
-        private void HubIdle(NativeMinion m)
-        {
-            if(!hubMobs.TryGetValue(m.Id,out var info))return;
-            var at=m.Body.position;var delta=info.Home-at;Vector3 dir=delta.magnitude<1?Vector3.zero:HubNavMove(m,at,info.Home,delta.normalized);
-            Vector3 move=dir*m.Pve.Stats.walk;if(HubCross(at,at+move/60,m.Collider.radius))move=Vector3.zero;
-            m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);if(move.sqrMagnitude>.01)m.Yaw=Mathf.Atan2(move.x,move.z)*Mathf.Rad2Deg;
-        }
         private void StepHubPopulation()
         {
             if(!HubOn)return;StepHubGates();var state=Expedition.Session.Run.Snapshot();
-            if(state.phase!=ExpeditionPhase.Town)return;
+            if(state.phase!=ExpeditionPhase.Town)return;StepHubNoise();
             hubLiving.Clear();foreach(var member in state.members)if(member.alive&&member.connected&&!member.extracted)
             {var p=Pilots.Find(pilot=>pilot.Seat.id==Expedition.Session.Sources.Seat?.Invoke(member.account));if(p!=null&&p.Hp>0)hubLiving.Add(p);}
             Pve.Cap=ExpeditionHubRules.Cap(hubLiving.Count);Pve.Rate=0;
@@ -118,7 +112,7 @@ namespace ChipArena.UnityConversion
                     // Euclidean >60 is a conservative lower bound on walked distance (never despawns a nearby pilot's mob).
                     bool far=hubLiving.All(p=>(p.Body.position-m.Body.position).sqrMagnitude>3600);
                     if(!far)info.FarAt=-1;else if(info.FarAt<0)info.FarAt=Time;
-                    bool aggro=m.Pve.Target!=null&&HubCanTarget(m.Pve.Target,m.Pve.Target);
+                    bool aggro=(info.Brain.View.State==HubZombieState.Alert||info.Brain.View.State==HubZombieState.Chase)&&m.Pve.Target!=null&&HubCanTarget(m.Pve.Target,m.Pve.Target);
                     if(aggro){info.IdleAt=Time;info.LostAt=-1;}else if(info.LostAt<0&&m.Pve.Target!=null)info.LostAt=Time;
                     if(info.FarAt>=0&&Time-info.FarAt>=ExpeditionHubRules.FarSeconds||Time-info.IdleAt>=ExpeditionHubRules.IdleSeconds||info.LostAt>=0&&Time-info.LostAt>=ExpeditionHubRules.LostSeconds)
                     {hubMobs.Remove(m.Id);RemoveMinion(m,false);}
@@ -143,7 +137,9 @@ namespace ChipArena.UnityConversion
             double kindRoll=Pve.SpawnRandom.Next()*kinds.Sum(k=>k=="brute"?.15:1);string kind=kinds[kinds.Length-1];
             foreach(string candidate in kinds){kindRoll-=candidate=="brute"?.15:1;if(kindRoll<0){kind=candidate;break;}}
             var mob=SpawnPveAdd(kind,true,selected.entry.e);
-            if(mob!=null){mob.Pve.HubRing=chosen.Ring;hubMobs[mob.Id]=new HubMob{Ring=chosen.Ring,Home=Vec(selected.entry.@exit.Position(.85f)),IdleAt=Time};}
+            if(mob!=null){mob.Pve.HubRing=chosen.Ring;var home=Vec(selected.entry.@exit.Position(.85f));var brain=new HubZombieBrain(mob.Id,Time,Vec(home),mob.Yaw);
+                var points=(Map.nav?.nodes??Array.Empty<MapNavNode>()).Where(n=>chosen.Volume.Contains(new V3(n.pos.x,chosen.Volume.y,n.pos.z))&&!HubInside(Vec(n.pos))).Select(n=>Vec(n.pos)).ToArray();
+                mob.Pve.Hub=brain.View;hubMobs[mob.Id]=new HubMob{Ring=chosen.Ring,Zone=chosen,Points=points,Brain=brain,Home=home,IdleAt=Time,SenseAt=Time+(mob.Id%5)*.04f};}
         }
     }
 }

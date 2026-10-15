@@ -45,11 +45,12 @@ namespace ChipArena.UnityConversion
                 var pick=run.Snapshot().rewards.Single();Check(pick.claimed&&pick.owner=="native-host"&&pick.offers.Length>0,"purchased cache offers belong to buyer");
                 Check(session.Execute("native-host",new ExpeditionCommand(ExpeditionIntent.OpenChoice,pick.id)).state==ExpeditionCommandState.Pending,"open choice intent");
                 Check(NativeExpeditionView.Build(run,"native-host",session.Sources).Member("native-host").choosing,"chooser presence is public");
+                float heldYaw=Local.Yaw,heldPitch=Local.Pitch;
                 Local.Input=new InputFrame{X=1,Z=1,Jump=true,Roll=true,Block=true,Yaw=37,Pitch=12};
                 Local.MoveVelocity=Local.Knockback=Vector3.forward*10;Local.Body.linearVelocity=Vector3.forward*10;
                 PveInput(Local);RouteLeetInputs();
                 Check(Frozen(Local)&&Local.Input.X==0&&Local.Input.Z==0&&!Local.Input.Jump&&!Local.Input.Roll&&!Local.Input.Block,"choosing suppresses movement and actions");
-                Check(Local.Yaw==37&&Local.Pitch==12,"choosing preserves camera rotation");
+                Check(Local.Yaw==heldYaw&&Local.Pitch==heldPitch&&Local.Input.Yaw==heldYaw&&Local.Input.Pitch==heldPitch,"choosing freezes camera yaw and pitch");
                 Check(!TryExpeditionInteract(Local,out _),"choosing refuses machine interaction");
                 Check(Local.MoveVelocity==Vector3.zero&&Local.Knockback==Vector3.zero&&Local.Body.linearVelocity==Vector3.zero,"choosing cancels momentum");
                 RestoreLeetInputs();Local.Input=new InputFrame();Local.MoveVelocity=Local.Knockback=Local.Body.linearVelocity=Vector3.zero;
@@ -61,7 +62,11 @@ namespace ChipArena.UnityConversion
                 Check(Frozen(Local)&&Events.Count(e=>e.Kind==EventKind.Install)==installBefore+1,"selection holds through wrist plant and emits Install");
                 Check(session.Execute("native-host",new ExpeditionCommand(ExpeditionIntent.Select,pick.id,pick.offers[0])).state==ExpeditionCommandState.Refused&&Events.Count(e=>e.Kind==EventKind.Install)==installBefore+1,"duplicate emits no Install");
                 run.SetChoosing("native-host",false);Check(Frozen(Local),"automatic tray close cannot cut final plant short");
+                Local.Input=new InputFrame{Yaw=91,Pitch=-24};RouteLeetInputs();
+                Check(Local.Yaw==heldYaw&&Local.Pitch==heldPitch&&Local.Input.Yaw==heldYaw&&Local.Input.Pitch==heldPitch,"final wrist plant still freezes camera yaw and pitch");
+                RestoreLeetInputs();
                 for(int i=0;i<8;i++)run.Tick(.25);Check(!Frozen(Local),"plant completion releases hold");
+                RouteLeetInputs();Check(Local.Input.Yaw==91&&Local.Input.Pitch==-24,"plant completion releases camera input");
                 RestoreLeetInputs();Local.Body.useGravity=true;
                 var chipMachine=data.machines.First(m=>m.kind=="chip");Stand(chipMachine.front.Position());
                 Check(TryExpeditionInteract(Local,out _)&&Wallet()==750&&run.Snapshot().rewards.Length==2,"Ward dispenser uses run wallet and personal reward queue");

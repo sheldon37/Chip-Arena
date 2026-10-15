@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
         }
         private void RemoveMinion(NativeMinion m,bool explode=true)
         {
-            if(!Minions.Remove(m))return;ClearHulkCollisions(m);navRoutes.Remove(m.Id);RecordMinionDeath(m);Vector3 pos=m.Body.position;m.Hp=0;m.Collider.enabled=false;CapturedAnimation.Release(m.Body.gameObject);
+            if(!Minions.Remove(m))return;hubMobs.Remove(m.Id);ClearHulkCollisions(m);navRoutes.Remove(m.Id);RecordMinionDeath(m);Vector3 pos=m.Body.position;m.Hp=0;m.Collider.enabled=false;CapturedAnimation.Release(m.Body.gameObject);
             if(explode&&!m.DevMonster&&m.Kind=="zombie"&&Has(m.Owner,"corpse-party")&&Match.Phase==NativePhase.Fight)ChipBlast(m.Owner,pos,3.5f,30,300,effect:"corpse-party");
         }
         private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false,int projectile=0,bool pierced=false,Vector3? from=null)
