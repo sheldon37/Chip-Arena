@@ -90,6 +90,9 @@ namespace ChipArena.UnityConversion
         private readonly ExpeditionSafeModel expeditionSafe=new ExpeditionSafeModel();
         private readonly ExpeditionBossModel expeditionBoss=new ExpeditionBossModel();private readonly ExpeditionSafeTags expeditionSafeTags=new ExpeditionSafeTags();
         private NativeExpeditionStatesDraw expeditionStatesDraw;private bool expeditionStatesFailed;private double expeditionStateTime;
+        /// <summary>This frame: the arena holds the bound area's map (NativeExpeditionStates.MapReady), else nothing anchored to the
+        /// area is drawn (the world pieces and their holograms included).</summary>
+        private bool expeditionMapReady=true;
 
         /// <summary>
         /// The rig of the view's area from the layout manifest every client holds (parsed once), only when the view names this
@@ -115,7 +118,7 @@ namespace ChipArena.UnityConversion
         private void ExpeditionStatesFrame()
         {
             var v=LiveExpedition;double t=expeditionStateTime=expeditionClock.Observe(v,Time.unscaledTime);expeditionCues.Observe(v,t);
-            var rig=ExpeditionRigFor(v);bool mapReady=rig==null||arena!=null&&arena.MapId==rig.Map;
+            var rig=ExpeditionRigFor(v);bool mapReady=expeditionMapReady=NativeExpeditionStates.MapReady(rig,arena?.MapId);
             expeditionTransfer.From(v,expeditionStateLabels);expeditionTransferFade.Step(expeditionTransfer.Active,mapReady,Time.unscaledDeltaTime);
             if(!ExpeditionWorldShown||rig==null||!mapReady){expeditionStates.Clear();if(!ExpeditionWorldShown)expeditionCues.ForgetPilots();return;}
             // Sanctuary crossings: every connected pilot standing (feet just over the floor).
@@ -141,7 +144,8 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// SAFE over every pilot whose seat (members[].seat) the authority has in the sanctuary (ExpeditionSafeTags), in the slot
         /// over the overhead name the health bars use (the body + 1.3 m, as the chip-select tag): within 55 m, not behind walls
-        /// (the bars' occlusion ray), faded past 35 m, never over my own pilot in first person. No seat, no tag.
+        /// (the bars' occlusion ray), faded past 35 m, never over my own pilot in first person (ExpeditionSafeTags.Alpha). No seat,
+        /// no tag.
         /// </summary>
         private void ExpeditionSafeTagsHud(ExpeditionView v)
         {
@@ -149,10 +153,11 @@ namespace ChipArena.UnityConversion
             var physics=arena.Root.scene.GetPhysicsScene();var eye=cameraView.transform.position;
             foreach(var p in arena.Pilots)
             {
-                if(p?.Body==null||!p.Seat.connected||p.Hp<=0||!expeditionSafeTags.Has(p.Seat.id)||FirstPersonView&&p==arena.ViewPilot)continue;
-                var at=p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:p.Seat.devScale);var s=cameraView.WorldToScreenPoint(at);float metres=Vector3.Distance(eye,at);
-                if(s.z<=0||metres>55)continue;Vector3 d=at-eye;if(physics.Raycast(eye,d.normalized,out _,d.magnitude-.08f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))continue;
-                NativeExpeditionStatesHud.SafeTag(new Vector2(s.x/U.S,(Screen.height-s.y)/U.S),Mathf.Clamp01(1-(metres-35)/20));
+                if(p?.Body==null||!p.Seat.connected||p.Hp<=0||!expeditionSafeTags.Has(p.Seat.id))continue;
+                var at=p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:p.Seat.devScale);var s=cameraView.WorldToScreenPoint(at);
+                float alpha=ExpeditionSafeTags.Alpha(Vector3.Distance(eye,at),p==arena.ViewPilot,FirstPersonView);
+                if(s.z<=0||alpha<=0)continue;Vector3 d=at-eye;if(physics.Raycast(eye,d.normalized,out _,d.magnitude-.08f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))continue;
+                NativeExpeditionStatesHud.SafeTag(new Vector2(s.x/U.S,(Screen.height-s.y)/U.S),alpha);
             }
         }
         /// <summary>OnGUI, after every screen (menus included): the area transfer screen while the barrier is up and its fade. The

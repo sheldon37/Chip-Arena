@@ -134,21 +134,23 @@ namespace ChipArena.UnityConversion
             bool moving=phase==ExpeditionClosurePhase.Sealing||phase==ExpeditionClosurePhase.Opening;
             int state=phase==ExpeditionClosurePhase.Open?SafeHex:phase==ExpeditionClosurePhase.Sealed?RedHex:AmberHex;
             float blink=moving&&!reduced?(Math.Floor(t*8)%2==0?1:.3f):1;bool bio=door.Look==ExpeditionDoorLook.Biocontainment;
-            // The airlock unit: pockets either side, the header, the sill, hazard bands, lamps, signs, the dark airlock behind.
+            // The airlock unit: pockets either side, the header, the sill, hazard bands, lamps, signs, the dark airlock behind. The
+            // pockets and the header frame the doorway from outside: nothing solid stands inside the closure face (|u| < W/2,
+            // 0..H), which is the opening the collider frees (the Ward Zero exit's jambs and lintel bound exactly that face).
             for(int k=-1;k<=1;k+=2)
             {
-                float a=k*(half-.12f),b=k*X;Box(f,Math.Min(a,b),Math.Max(a,b),0,H-.06f,dB,dF,Metal,Bank,SteelHex,1,1,s+k+1);
-                a=k*(half-.12f);b=k*(half+.2f);Box(f,Math.Min(a,b),Math.Max(a,b),.15f,H-.2f,dF,dF+.015f,NativeBlockLooks.Demolition,0,0xF4B321,1,1,s+4+k);
+                float a=k*half,b=k*X;Box(f,Math.Min(a,b),Math.Max(a,b),0,H,dB,dF,Metal,Bank,SteelHex,1,1,s+k+1);
+                a=k*half;b=k*(half+.32f);Box(f,Math.Min(a,b),Math.Max(a,b),.15f,H-.2f,dF,dF+.015f,NativeBlockLooks.Demolition,0,0xF4B321,1,1,s+4+k);
                 a=k*(half+.53f);b=k*(half+.97f);Box(f,Math.Min(a,b),Math.Max(a,b),H+.12f,H+.26f,dF,dF+.03f,Tube,Bank,state,3,blink,s+7+k);
                 if(!low){a=k*(half+.6f);b=k*(half+1.2f);Box(f,Math.Min(a,b),Math.Max(a,b),2.05f,2.45f,dF,dF+.012f,Holo,Bank,state,1,.55f,s+10+k);}
             }
-            Box(f,-X,X,H-.06f,H+.55f,dB,dF,Metal,Bank,SteelHex,1,1,s+13);
+            Box(f,-X,X,H,H+.55f,dB,dF,Metal,Bank,SteelHex,1,1,s+13);
             Box(f,-(half+.3f),half+.3f,H+.08f,H+.3f,dF,dF+.015f,NativeBlockLooks.Demolition,0,0xF4B321,1,1,s+14);
-            Box(f,-(half-.14f),half-.14f,H-.105f,H-.07f,dF-.12f,dF-.03f,Tube,Bank,state,2,.9f*blink,s+15);
+            Box(f,-(half-.14f),half-.14f,H+.02f,H+.06f,dF,dF+.03f,Tube,Bank,state,2,.9f*blink,s+15);
             Box(f,-X,X,0,.03f,dB,dF+.3f,NativeBlockLooks.Demolition,0,0xF4B321,1,1,s+16);
-            Box(f,-(half-.12f),half-.12f,.002f,H-.07f,dB,dB+.015f,NativeBlockLooks.Plain,0,VoidHex,1,1,s+17);
+            Box(f,-half,half,.002f,H-.002f,dB,dB+.015f,NativeBlockLooks.Plain,0,VoidHex,1,1,s+17);
             if(!low)Box(f,-(half-.35f),half-.35f,H-.42f,H-.36f,dB+.015f,dB+.04f,Tube,Bank,TealHex,1.4f,.7f,s+18);
-            // The leaves: shut they meet at the doorway's centre line; open they sit inside the pockets (u beyond half - 0.12).
+            // The leaves: shut they meet at the doorway's centre line; open they sit inside the pockets (u beyond W/2).
             for(int k=-1;k<=1;k+=2)
             {
                 float shift=k*open*(P+.02f),lo=k<0?-P:0,hi=k<0?0:P;

@@ -23,6 +23,8 @@ namespace ChipArena.UnityConversion
         public const double LateJoin=3;
         /// <summary>The boss intro's length from the authority spawn time, and the final gate's beacon cue from its opening.</summary>
         public const double IntroSeconds=3.4,CueSeconds=7,GateNoticeSeconds=4;
+        /// <summary>A held gate cue starts this long after the client is back in the gate's area (the transfer screen's fade-out).</summary>
+        public const double ArriveDelay=.5;
         public const string Open="open",Sealing="sealing",Sealed="sealed",Opening="opening";
 
         /// <summary>The closure's phase. An unknown or missing state reads sealed: the collider blocks on anything but "open".</summary>
@@ -93,6 +95,11 @@ namespace ChipArena.UnityConversion
         /// (manifest bytes plus content revision), published as soon as the director binds the layout (the initial inactive
         /// barrier included), so the state pieces bind before the first area load. Anything else binds nothing.</summary>
         public static bool Bound(ExpeditionView v,string fingerprint)=>v?.areaBarrier?.layout!=null&&fingerprint!=null&&v.areaBarrier.layout==fingerprint;
+        /// <summary>Whether the arena holds the map of the bound area (its rig's map). The view names the next area as soon as the
+        /// authority moves the run, before the scene has loaded it: until the arena holds that map nothing anchored to the area
+        /// (doors, gate, sanctuary, world pieces and their holograms) is drawn, so nothing stands in the previous map. Without a
+        /// rig (layout not bound) there is no map to compare: true, and the world pieces keep their anchor fallback.</summary>
+        public static bool MapReady(ExpeditionStateRig rig,string arenaMap)=>rig==null||rig.Map!=null&&arenaMap==rig.Map;
         /// <summary>A stable string hash (FNV-1a over the characters; .NET's string hash differs per process), for patterns that
         /// must match on every client.</summary>
         public static int StableHash(string s,int h=unchecked((int)2166136261))
@@ -127,29 +134,37 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// What presentation remembers between views (allocation-free once each closure and arrival has been seen):
     ///  - the final gate's beacon cue: this client saw the gate go from sealed/sealing to opening/open (or first saw it opening),
-    ///    timed from the authority's `began`, so everyone's beacon plays in step; a gate first seen open (a resume, a late join)
-    ///    cues nothing;
+    ///    timed from the authority's `began` when the client is in the gate's area, so everyone's beacon plays in step. An opening
+    ///    seen from elsewhere (the party is inside the last building when it is cleared) is held until the client is back in the
+    ///    gate's area with no barrier up, then cued ArriveDelay after that view's authority time. A gate first seen open (a resume,
+    ///    a late join) cues nothing; sealing again (a new loop) drops a held cue;
     ///  - the boss intro: once per arrival, timed from its authority `spawned`; an arrival first seen more than LateJoin seconds
     ///    after its spawn is marked seen without an intro;
     ///  - the sanctuary crossings: a pilot's inside/outside flip against the sanctuary volumes starts a shimmer at the boundary.
+    ///    A placement is not a crossing: while the view is loading (an area barrier is up) the sides are forgotten, and a pilot
+    ///    that moved more than TeleportMetres between two samples (a placement or respawn seen late on a guest) only records
+    ///    its new side.
     /// A new run forgets everything; a new loop forgets the arrivals (the director clears them per loop).
     /// </summary>
     public sealed class ExpeditionStateCues
     {
-        private struct Closure{public string Id;public ExpeditionClosurePhase Last;public double CueAt;}
+        private struct Closure{public string Id;public ExpeditionClosurePhase Last;public double CueAt;public bool Pending;}
+        private struct Side{public int Volume;public float X,Z;}
         /// <summary>An arrival as first seen: its intro flag, and its immutable spawn point when the record carries one (a record
         /// from the current contract has maxHp above 0; a legacy one has neither position nor health).</summary>
         public struct Arrival{public string Area,Id,Archetype;public double Spawned;public bool Intro,Placed;public float X,Y,Z;public int Seed;}
         public struct Ripple{public int Volume;public float X,Y,Z,Along;public double At;}
         public const int RippleSlots=16;
+        /// <summary>Further than this between two samples (horizontal metres) is a placement or respawn, never a walk across.</summary>
+        public const float TeleportMetres=3;
         private readonly List<Closure> closures=new List<Closure>(16);
         private readonly List<Arrival> arrivals=new List<Arrival>(16);
         public readonly Ripple[] Ripples=new Ripple[RippleSlots];private int nextRipple;
-        private readonly Dictionary<int,int> inside=new Dictionary<int,int>(32);
-        private string run;private int loop=int.MinValue;private ExpeditionStateRig crossingRig;
+        private readonly Dictionary<int,Side> inside=new Dictionary<int,Side>(32);
+        private string run;private int loop=int.MinValue;private bool placing;private ExpeditionStateRig crossingRig;
         public int ArrivalCount=>arrivals.Count;
         public Arrival ArrivalAt(int i)=>arrivals[i];
-        public void Reset(){closures.Clear();arrivals.Clear();inside.Clear();for(int i=0;i<Ripples.Length;i++)Ripples[i].At=double.NegativeInfinity;nextRipple=0;run=null;loop=int.MinValue;crossingRig=null;}
+        public void Reset(){closures.Clear();arrivals.Clear();inside.Clear();for(int i=0;i<Ripples.Length;i++)Ripples[i].At=double.NegativeInfinity;nextRipple=0;run=null;loop=int.MinValue;placing=false;crossingRig=null;}
         public ExpeditionStateCues(){Reset();}
 
         public void Observe(ExpeditionView v,double t)
@@ -157,14 +172,24 @@ namespace ChipArena.UnityConversion
             if(v==null){if(run!=null)Reset();return;}
             if(v.run!=run){Reset();run=v.run;}
             if(v.loop!=loop){arrivals.Clear();loop=v.loop;}
+            // An area barrier (the run loading) ends in a placement: forget the pilots' sides until it is over.
+            placing=v.loading||v.areaBarrier!=null&&v.areaBarrier.active;if(placing)inside.Clear();
             var list=v.closures;
             if(list!=null)for(int i=0;i<list.Length;i++)
             {
-                var c=list[i];if(c?.id==null)continue;var phase=NativeExpeditionStates.Phase(c);int k=Find(c.id);
-                if(k<0){closures.Add(new Closure{Id=c.id,Last=phase,CueAt=phase==ExpeditionClosurePhase.Opening?c.began:double.NaN});continue;}
+                // Here: this client stands in the closure's area with no barrier up. The final gate opens when the last building
+                // is cleared, so the party is usually inside it (another area) when it does: that opening is held (Pending) and
+                // cued when the client is next here, ArriveDelay after the arrival's authority time (the transfer screen fading).
+                var c=list[i];if(c?.id==null)continue;var phase=NativeExpeditionStates.Phase(c);int k=Find(c.id);bool here=c.area!=null&&c.area==v.area&&!placing;
+                if(k<0){bool opening=phase==ExpeditionClosurePhase.Opening;closures.Add(new Closure{Id=c.id,Last=phase,CueAt=opening&&here?c.began:double.NaN,Pending=opening&&!here});continue;}
                 var m=closures[k];
                 if((m.Last==ExpeditionClosurePhase.Sealed||m.Last==ExpeditionClosurePhase.Sealing)&&(phase==ExpeditionClosurePhase.Opening||phase==ExpeditionClosurePhase.Open))
-                    m.CueAt=phase==ExpeditionClosurePhase.Opening?c.began:c.began-NativeExpeditionStates.TransitionSeconds;
+                {
+                    if(here){m.CueAt=phase==ExpeditionClosurePhase.Opening?c.began:c.began-NativeExpeditionStates.TransitionSeconds;m.Pending=false;}
+                    else{m.CueAt=double.NaN;m.Pending=true;}
+                }
+                else if(phase==ExpeditionClosurePhase.Sealed||phase==ExpeditionClosurePhase.Sealing)m.Pending=false;
+                if(m.Pending&&here){m.CueAt=v.elapsed+NativeExpeditionStates.ArriveDelay;m.Pending=false;}
                 m.Last=phase;closures[k]=m;
             }
             var boss=v.bossArrivals;
@@ -200,14 +225,16 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// A pilot's position this frame (world metres) against the sanctuary volumes of `rig`: a flip of inside/outside starts a
         /// shimmer at the nearest boundary point. Purely visual: it says where the boundary is, never that the pilot is safe
-        /// (the SAFE tags read members[].safe only). The first sight of a pilot only records its side.
+        /// (the SAFE tags read members[].safe only). The first sight of a pilot only records its side, and so does a sample during
+        /// an area barrier (forgotten) or one more than TeleportMetres from the last (a placement or respawn).
         /// </summary>
         public void Pilot(int id,float x,float y,float z,ExpeditionStateRig rig,double t)
         {
-            if(rig==null||rig.Sanctuary.Length==0)return;if(!ReferenceEquals(rig,crossingRig)){inside.Clear();crossingRig=rig;}
+            if(rig==null||rig.Sanctuary.Length==0||placing)return;if(!ReferenceEquals(rig,crossingRig)){inside.Clear();crossingRig=rig;}
             int now=-1;for(int i=0;i<rig.Sanctuary.Length;i++)if(rig.Sanctuary[i].Contains(new V3(x,y,z))){now=i;break;}
-            if(!inside.TryGetValue(id,out int was)){inside[id]=now;return;}
-            if(was==now)return;inside[id]=now;int vi=now>=0?now:was;
+            if(!inside.TryGetValue(id,out var last)){inside[id]=new Side{Volume=now,X=x,Z=z};return;}
+            float jx=x-last.X,jz=z-last.Z;bool jump=!(jx*jx+jz*jz<=TeleportMetres*TeleportMetres);inside[id]=new Side{Volume=now,X=x,Z=z};
+            int was=last.Volume;if(was==now||jump)return;int vi=now>=0?now:was;
             ExpeditionStateRig.Boundary(rig.Sanctuary[vi],x,z,out float bx,out float bz,out float along);
             Ripples[nextRipple]=new Ripple{Volume=vi,X=bx,Y=rig.Sanctuary[vi].y-rig.Sanctuary[vi].sy/2,Z=bz,Along=along,At=t};nextRipple=(nextRipple+1)%Ripples.Length;
         }
@@ -305,16 +332,18 @@ namespace ChipArena.UnityConversion
     /// <summary>The area transfer screen (areaBarrier while active): the entry by target, the party's ready / required, the pips.</summary>
     public sealed class ExpeditionTransferModel
     {
-        public const string Back="RETURNING TO THE CITY",First="ENTERING THE CITY",Eyebrow="AREA TRANSFER · LOADING",Waiting="WAITING FOR THE PARTY",Paused="THE RUN CLOCK IS PAUSED WHILE THE PARTY LOADS";
+        public const string Back="RETURNING TO THE CITY",First="ENTERING THE CITY",Loop="STARTING LOOP ",Eyebrow="AREA TRANSFER · LOADING",Waiting="WAITING FOR THE PARTY",Paused="THE RUN CLOCK IS PAUSED WHILE THE PARTY LOADS";
         public bool Active;public string Title,Ready,Detail;public int ReadyCount,Required;public float Fill;
         private readonly Dictionary<string,string> titles=new Dictionary<string,string>(StringComparer.Ordinal);
         /// <summary>Reads the barrier: an instance target is ENTERING its name, the world RETURNING TO THE CITY once a building was
-        /// entered this loop (else ENTERING THE CITY, the run's first load). Counts are the authority's, clamped for display only.</summary>
+        /// entered this loop, STARTING LOOP n for a later loop's fresh barrier (Continue: the city reloads into itself and the
+        /// director resets every building's `entered`), else ENTERING THE CITY (the run's first load). Counts are the authority's,
+        /// clamped for display only.</summary>
         public void From(ExpeditionView v,ExpeditionLabels labels)
         {
             var b=v?.areaBarrier;Active=b!=null&&b.active;if(!Active)return;
             bool world=b.target!=null&&b.target==v.world;bool entered=false;foreach(var i in v.instances)if(i!=null&&i.entered)entered=true;
-            if(world)Title=entered?Back:First;
+            if(world)Title=entered?Back:v.loop>0?labels.Int(Loop,v.loop+1):First;
             else{string key=b.target??"";if(!titles.TryGetValue(key,out var s)){if(titles.Count>64)titles.Clear();s=titles[key]="ENTERING "+(b.target==null?"THE NEXT AREA":NativeExpeditionStates.AreaName(b.target));}Title=s;}
             Required=Math.Max(0,b.required);ReadyCount=Math.Max(0,Math.Min(b.ready,Required));Fill=Required>0?ReadyCount/(float)Required:0;
             Ready=Required>0?labels.Pair("PARTY READY ",ReadyCount,Required):Waiting;Detail=v.loading?Paused:null;
@@ -363,7 +392,16 @@ namespace ChipArena.UnityConversion
     public sealed class ExpeditionSafeTags
     {
         public const int Max=16;public const string Text="SAFE";
+        /// <summary>Tags show within Range metres of the camera, fading out from FadeFrom.</summary>
+        public const float Range=55,FadeFrom=35;
         public readonly int[] Seats=new int[Max];public int Count;
+        /// <summary>A tag's opacity at `metres` from the camera: none past Range (or not finite), fading from FadeFrom, and none over
+        /// my own pilot in first person. Occlusion (walls between the camera and the tag) is the caller's ray, as the health bars'.</summary>
+        public static float Alpha(float metres,bool own,bool firstPerson)
+        {
+            if(own&&firstPerson||!(metres>=0&&metres<=Range))return 0;
+            return Math.Min(1,Math.Max(0,1-(metres-FadeFrom)/(Range-FadeFrom)));
+        }
         public void From(ExpeditionView v)
         {
             Count=0;if(v?.members==null)return;
