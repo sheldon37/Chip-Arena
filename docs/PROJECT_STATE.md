@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-15 Expedition Ward rendering correction: owner reports missing scene detail after #227. Outer renderer dispatch still restricted WardZeroScenery to literal siren despite the inner alias-aware gate. Fix on `codex/expedition-ward-render` removes that restriction for live/backdrop; build receipt in PR, manual visual parity still pending.
+
 2026-10-15 Expedition follow-up (`codex/unity-expedition-intros-wallet`, base `6b7e127`): owner requests full boss-test Ward Zero scene, boss intro scenes and zombie money. Adds shared hazard-table inheritance, existing wave/boss lighting states and machine/song-vent bindings; existing Siren intro at every boss arrival; idempotent personal wallet payouts using boss-test zombie rewards. Quota/loop structure stays M1. Validation/promotion receipts in PR and DEV_LOG.
 
 2026-10-15 Claude M1 acceptance (`claude/expedition-m1-acceptance`, base `6b7e127`): no live run yet (no playable build; this environment has no Unity or Windows player). The `8c5e83d` receipt is not verifiable from published artifacts. Offline emulation predicts the full startup gate passes after PR #226. For Astra: the boss arrival is recorded .85 m above the floor (crack floats), and the stair/ramp foot clearance in the runtime probe is still rejected. See DEV_LOG.

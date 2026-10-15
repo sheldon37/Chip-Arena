@@ -83,7 +83,7 @@ namespace ChipArena.UnityConversion
         // outer walls toward the camera left out), at rest in the calm mood, no effects. False when the map is not the revamp.
         private bool WardZeroBackdrop(string mapId,float time,Camera camera)
         {
-            var map=NativeLighting.CurrentMap;if(mapId!=NativeWardZeroLooks.MapId||map==null||map.id!=mapId||!NativeWardZeroLooks.Active(map)||!EnsureWardZero())return false;
+            var map=NativeLighting.CurrentMap;if(map==null||map.id!=mapId||!NativeWardZeroLooks.Active(map)||!EnsureWardZero())return false;
             if(!ReferenceEquals(map,wzMap))WardZeroBuild(map);wzArena=null;wzMoodSet=false;wzLast=-1;
             wzMood=NativeWardZeroMood.Preset("calm");for(int i=0;i<wzStates.Length;i++)wzStates[i]=NativeCyberCityHazards.Idle();Array.Clear(wzOpen,0,wzOpen.Length);
             var look=NativeLighting.Look(map);wzUsed=0;Vector3 cam=camera!=null?camera.transform.position:new Vector3(40,30,40);var blocks=map.blocks;
