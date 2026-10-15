@@ -1,5 +1,13 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Astra — Shut hub gate contact and reversal fix
+- Branch `codex/hub-gate-collision`, base shared/builder `72aa1858`. Read Claude's Run-through report and PENDING reproduction from `claude/expedition-hub-fixes` (`d39e08c2`); his presentation changes are separate.
+- Reproduced the original PENDING: no F, a north-gate contact opens it and the pilot crosses 0.117 s later with the leaves drawn 0% open. Imported that diagnostic and promoted it to a hard regression across all four gates, asserting both solidity and no crossing.
+- Replaced radius+.15 planar occupancy with actual upright capsule/yaw-box overlap, world center/height/radius and 1 cm inward skin. Contact, rounded-box corners and overhead capsules no longer falsely occupy the closure.
+- Authority remembers collider solidity across reversals. Only a still-released closing can safety-reopen; the threshold tick checks overlap before making it solid. An already solid gate cannot open from occupancy. Runtime door/no-vault colliders now follow authority directly, with no occupancy-off override.
+- Verified: CoreTests --expedition-hub exits 0: 133 authority checks, 3,773 perception checks and 1,133 hub checks; the former PENDING is PASS. Tests include early reversals both ways, solid-contact rejection, threshold overlap safety and real capsule geometry. All three pinned Unity 6000.3.24f1/C# 9 assembly compile targets pass; diff check clean. Full unrelated managed suite not rerun for this isolated gate fix.
+- Native acceptance extended for capsule contact/penetration/height and actual reversal collider states, compiled but not executed here. Windows/PhysX and manual play remain pending. No gate animation/wire changes, combat, rewards or perception changes. Report/contract updated in EXPEDITION-HUB.md; implemented/tested on branch, promotion receipt in PR.
+
 ## 2026-10-15 — Astra — Town zombie roaming and perception
 - Branch `codex/hub-zombie-perception`, base shared/builder `19927e00`. Owner request applies to tracked town/hub spawns only; instance/Boss Test hordes and DEV monsters keep their AI.
 - Host brain adds zone-nav wandering at a slow shamble, seeded 2–6 s idles, 110-degree/18 m LOS vision and 3 m close LOS notice. Eight accepted-action noise categories have separate documented radii; source/listener segments cannot cross the sanctuary. Actual displacement/ground transitions drive footsteps/landing; failed input does not create combat noise.

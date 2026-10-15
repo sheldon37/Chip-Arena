@@ -92,6 +92,25 @@ namespace ChipArena.UnityConversion
             return false;
         }
 
+        // Claude's run-through repro, promoted from a diagnostic to a hard regression on all four gates.
+        private static void PendingAuthority(ExpeditionHubLayout hub)
+        {
+            foreach(var g in hub.Gates)
+            {
+                int i=Array.IndexOf(hub.Gates,g);var a=new ExpeditionHubAuthority(hub,0);double yaw=g.Yaw*Math.PI/180,ox=Math.Sin(yaw),oz=Math.Cos(yaw),r=NativeLocomotionRules.Radius;
+                double face=(g.Closure.x-g.X)*ox+(g.Closure.z-g.Z)*oz+g.Closure.sz/2,d=face+3,touch=face+r+.01,t=10;
+                for(int k=0;k<240;k++,t+=1/60.0)
+                {
+                    var center=new V3((float)(g.X+ox*d),.9f,(float)(g.Z+oz*d));
+                    a.Step(t,v=>ExpeditionHubRules.CapsuleOverlaps(v,center,1.8f,(float)r));bool solid=a.Blocking(i,t);
+                    Check(!a.View().Gates[i].Open&&solid,g.Side+": walking into shut gate cannot open or release it");
+                    double next=d-6.8/60;if(solid&&next<touch)next=touch;d=next;
+                }
+                Check(d>=touch-1e-6,g.Side+": pilot remains outside solid closure");
+            }
+            Console.WriteLine("PASS (was PENDING) Expedition hub: all four shut gates stop a pilot who walks into them; no interact, no opening or collider release");
+        }
+
         public static void Run(string root)
         {
             ExpeditionHubAuthorityChecks.Run(root);HubPerceptionChecks.Run(root);
@@ -199,6 +218,7 @@ namespace ChipArena.UnityConversion
             Check(Src("NativeExpeditionCityPresentation.cs").Contains("DrawTownFx(now,eye);ExpeditionHubFrame(eye,now);")&&Src("NativeExpeditionCityPresentation.cs").Contains("NativeExpeditionCityKit.Build(blocks,townArea,townHub,map.bounds)"),"the town presentation draws the hub and builds the kit with the hub record");
             Check(Src("NativeExpeditionCityAudio.cs").Contains("townTime=time;ExpeditionHubCues();")&&Src("NativeExpeditionHubPresentation.cs").Contains("NativeExpeditionHubLive.Authority?.Holster==true"),"the gates' cues play with the picture; the holster tag waits for the authority's rule");
             Check(Src("NativeDevPanel.cs").Contains("case \"preview-hub-gates\":NativeExpeditionHubPreview.On=")&&NativeDevActions.Find("preview-hub-gates")?.Kind==NativeDevKind.Presentation,"the DEV preview is a view tool in the DEV panel");
+            PendingAuthority(hub);
             Console.WriteLine("PASS expedition hub ("+count+" checks: the additive hub record; fence closed but for its gates; each instance through its gate and "+RouteMin+" m or more away; zones outside the fence and clear of the gates; gate models inside their closures shut and clear through their travel; continuous motion; resting open without state; DEV preview; cues; dressing; no per-frame allocation; hooks)");
         }
     }
