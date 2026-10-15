@@ -117,7 +117,9 @@ namespace ChipArena.UnityConversion
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;
             // A bound Expedition session's screen: J toggles it, Escape closes it (NativeExpeditionLiveUI.cs).
             if(ExpeditionLiveKeys())return;
-            if(Input.GetKeyDown(KeyCode.Escape)&&previewArena!=null){EndPreview();return;}if(Input.GetKeyDown(KeyCode.Escape)&&inspectSeat!=0){inspectSeat=0;return;}if(Input.GetKeyDown(KeyCode.Escape)&&ReplayActive){EndReplay();return;}if(Input.GetKeyDown(KeyCode.Escape)){if(arena==null)MenuBack();else if(PvePickOpen)PveOpen(false);else if(menu&&pauseScreen!=PauseScreen.Menu){if(pauseScreen==PauseScreen.Settings){ApplySettings();Save();}pauseScreen=PauseScreen.Menu;}else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
+            // Escape waits while the stage loading screen closes or is closed (NativeStageLoadingUI.cs).
+            bool escape=Input.GetKeyDown(KeyCode.Escape)&&!StageInputHeld;
+            if(escape&&previewArena!=null){EndPreview();return;}if(escape&&inspectSeat!=0){inspectSeat=0;return;}if(escape&&ReplayActive){EndReplay();return;}if(escape){if(arena==null)MenuBack();else if(PvePickOpen)PveOpen(false);else if(menu&&pauseScreen!=PauseScreen.Menu){if(pauseScreen==PauseScreen.Settings){ApplySettings();Save();}pauseScreen=PauseScreen.Menu;}else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
             // M mutes anywhere and V switches the camera during a match (main.ts keydown), neither while a text field has focus
             // or the board is open; both confirm with a notice. V toggles first person and the chosen third-person camera; X
             // swaps the shoulder (NativeShoulderCamera.cs).
@@ -150,7 +152,8 @@ namespace ChipArena.UnityConversion
             else pending=new InputFrame{Yaw=yaw,Pitch=-pitch};
         }
         // The damage screen reads the frame after the live view is placed, so it runs after every early return of LateFrame.
-        private void LateUpdate(){long at=System.Diagnostics.Stopwatch.GetTimestamp();try{LateFrame();DamageScreen();GlitchScreen();}finally{FinishHitchFrame(HitchMs(at));}}
+        // The stage loading screen steps last, even when the frame threw (NativeStageLoadingUI.cs): it never sticks on an error.
+        private void LateUpdate(){long at=System.Diagnostics.Stopwatch.GetTimestamp();try{try{LateFrame();DamageScreen();GlitchScreen();}finally{FinishHitchFrame(HitchMs(at));}}finally{StageLoadingStep();}}
         private void LateFrame()
         {
             // A bound Expedition session's world pieces (NativeExpeditionWorldPresentation.cs): one mesh drawn for this frame.
@@ -324,7 +327,8 @@ namespace ChipArena.UnityConversion
         }
         private void OnGUI()
         {
-            if(dedicated)return;if(SlenderGUI())return;Styles();GuiFrame();if(error.Length==0)NoticeToast();BuildCorner();ExpeditionTransferGui();
+            // The stage loading screen holds the GUI's input while it closes and while it is closed; it draws over every screen.
+            if(dedicated)return;if(SlenderGUI())return;Styles();StageInputGate();GuiFrame();if(error.Length==0)NoticeToast();BuildCorner();ExpeditionTransferGui();StageLoadingGui();
         }
         private void GuiFrame()
         {
@@ -476,6 +480,6 @@ namespace ChipArena.UnityConversion
                 if(NativeUi.Button(r))inspectSeat=p.id;cy+=46;
             }
         }
-        private void OnDestroy(){NativeUiBlur.Release(true);NativeDamageScreenPass.Release(true);NativeGlitchScreenPass.Release(true);singleInstance?.Dispose();cinematic.Dispose();CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
+        private void OnDestroy(){StageLoadingRelease();NativeUiBlur.Release(true);NativeDamageScreenPass.Release(true);NativeGlitchScreenPass.Release(true);singleInstance?.Dispose();cinematic.Dispose();CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
     }
 }

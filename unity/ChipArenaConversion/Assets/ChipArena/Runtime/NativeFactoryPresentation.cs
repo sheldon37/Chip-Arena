@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
     /// carries them): with no factory map or no hazards the rigs, their fittings and their effects simply do not draw.
     /// Crane impacts also dust the round's coat (NativeDustCoat.Land, idempotent on time and place).
     /// </summary>
-    public sealed class NativeFactoryStage : MonoBehaviour
+    public sealed partial class NativeFactoryStage : MonoBehaviour
     {
         private sealed class Batch {public readonly Matrix4x4[] M=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];public int Count;public bool Shadow;}
         private Mesh block;private Material lit;private MaterialPropertyBlock props;private bool failed;

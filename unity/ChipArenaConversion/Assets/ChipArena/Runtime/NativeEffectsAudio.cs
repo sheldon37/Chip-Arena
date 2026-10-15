@@ -36,6 +36,11 @@ namespace ChipArena.UnityConversion
             bankVoiceClip=new AudioClip[voices.Length];bankVoicePriority=new NativeSoundPriority[voices.Length];bankVoiceEnd=new double[voices.Length];busyScratch=new bool[voices.Length];heldScratch=new NativeSoundPriority[voices.Length];
         }
         private AudioClip BankClip(string path){if(!bankClips.TryGetValue(path,out var c)){c=Resources.Load<AudioClip>(path);bankClips[path]=c;}return c;}
+        /// <summary>Bank clips still queued to load (a few load each frame after startup); the bank's manifest is read first.</summary>
+        public int PreloadPending{get{if(!bankLoaded)LoadBank();return bankPreload.Count;}}
+        /// <summary>Loads up to <paramref name="count"/> queued bank clips now: the stage loading screen drains the queue behind its
+        /// cover, so no clip loads on its first play in a match. Returns how many loaded.</summary>
+        public int Preload(int count){if(!bankLoaded)LoadBank();int n=0;for(;n<count&&bankPreload.Count>0;n++)BankClip(bankPreload.Dequeue());return n;}
         /// <summary>
         /// The music clip of entrance <paramref name="style"/>: its intro key's first clip (NativeSoundBank.IntroClip) while
         /// LocalAssets has one that loads, with the entry's gain trim; else exactly today's sting <paramref name="sting"/> at gain 1.

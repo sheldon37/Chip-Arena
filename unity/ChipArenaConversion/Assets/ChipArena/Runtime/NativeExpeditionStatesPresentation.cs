@@ -164,7 +164,8 @@ namespace ChipArena.UnityConversion
         /// notice toast and the build label are drawn again over it (both are pure draws), so they stay on top of every screen.</summary>
         private void ExpeditionTransferGui()
         {
-            if(Event.current.type!=EventType.Repaint||error.Length>0||expeditionTransferFade.Alpha<=0||LiveExpedition==null)return;
+            // The stage loading screen (NativeStageLoadingUI.cs) carries an area load while it is up, the party's readiness with it.
+            if(Event.current.type!=EventType.Repaint||error.Length>0||expeditionTransferFade.Alpha<=0||LiveExpedition==null||StageLoadingShown)return;
             GUI.matrix=Matrix4x4.Scale(Vector3.one*U.S);NativeExpeditionStatesHud.Transfer(expeditionTransfer,U.W,U.H,expeditionTransferFade.Alpha,Time.unscaledTime,prefs.reducedEffects);
             NoticeToast();BuildCorner();
         }
