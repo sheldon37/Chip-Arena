@@ -22,8 +22,8 @@ namespace ChipArena.UnityConversion
             foreach(int slot in NativeCyberLordHud.Order)
             {
                 if(ranged&&slot>=CyberLordSpec.One)continue;
-                var c=NativeCyberLordHud.Of(v,slot,t,p.Mana,slot==CyberLordSpec.Four?p.KernelReady:float.NaN);
-                cards.Add(new Card{Key=NativeCyberLordHud.Labels[slot],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});
+                bool v2=CyberKit2MeleeHud.Replaces(v,slot);var c=v2?CyberKit2MeleeHud.Of(v,slot,t,p.Mana):NativeCyberLordHud.Of(v,slot,t,p.Mana,slot==CyberLordSpec.Four?p.KernelReady:float.NaN);
+                cards.Add(new Card{Key=v2?CyberKit2MeleeHud.Labels[slot]:NativeCyberLordHud.Labels[slot],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});
             }
             if(ranged)foreach(int slot in NativeCyberLordHud.RangedOrder)
             {
@@ -95,6 +95,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Everyone else: the slim banner under the round tag for 1.5 s from the connect (never near the crosshair).</summary>
         private void KernelPanicBanner()
         {
+            CyberKit2Screen();
             if(arena==null||presentation==null||Event.current.type!=EventType.Repaint)return;var v=presentation.KernelPanicCutInView(arena.Time,out float age);if(v==null||KernelPanicCutIn.Splashes(v,arena.LocalId))return;
             float k=KernelPanicCutIn.Banner(age);if(k<=0)return;float w=KernelPanicCutIn.BannerWidth,h=KernelPanicCutIn.BannerHeight;var r=new Rect(U.W/2-w/2,KernelPanicCutIn.BannerTop-(1-k)*(h+12),w,h);
             NativeHudChrome.Cut(r,C.Navy(NativeHudCyber.PanelAlpha*k),NativeHudCyber.TagCut,NativeHudChrome.Corners.All);NativeHudChrome.Outline(r,C.Magenta(.8f*k),NativeHudCyber.TagCut,NativeHudChrome.Corners.All);

@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
         private static readonly (string id,string call)[] NewCalls=
         {
             ("me-weapon","arena.SandboxConfigure(weapon:devWeapon)"),("dummy-difficulty","arena.SandboxConfigure(difficulty:devDifficulty)"),("load-map","arena.SandboxConfigure(map:devMap)"),
-            ("chip-cast","arena.SandboxCastChip(devChipId)"),("chip-cycle","arena.SandboxCastEveryChip()"),("gallery-hazard-kit","presentation.HazardKitGallery=!presentation.HazardKitGallery"),("gallery-hazard-music","presentation.HazardKitMusic=!presentation.HazardKitMusic"),("splat-delay","arena.SandboxSplatDelay=Mathf.Round(Mathf.Clamp(devSplat,1,30))"),("preview-reveal","DevRevealStart(arena.Local.Seat.id,arena.Local.Seat.name,true)"),
+            ("chip-cast","arena.SandboxCastChip(devChipId)"),("chip-cycle","arena.SandboxCastEveryChip()"),("gallery-hazard-kit","presentation.HazardKitGallery=!presentation.HazardKitGallery"),("gallery-hazard-music","presentation.HazardKitMusic=!presentation.HazardKitMusic"),("gallery-cyber-kit2","presentation.CyberKit2PreviewOn=!presentation.CyberKit2PreviewOn"),("splat-delay","arena.SandboxSplatDelay=Mathf.Round(Mathf.Clamp(devSplat,1,30))"),("preview-reveal","DevRevealStart(arena.Local.Seat.id,arena.Local.Seat.name,true)"),
         };
         private static Dictionary<string,string> Cases(string sandbox)
         {

@@ -145,11 +145,11 @@ namespace ChipArena.UnityConversion
             foreach(Actor a in s.Actors)
             {
                 Vector3 old; Vector3 target=Vec(a.Position);
-                if(!visualPositions.TryGetValue(a.Id,out old)||(old-target).sqrMagnitude>64) old=target;
+                if(!visualPositions.TryGetValue(a.Id,out old)||(CyberKit2Unshift(a.Id,ref old)-target).sqrMagnitude>64) old=target;
                 Vector3 p=smooth?Vector3.Lerp(old,target,1-Mathf.Exp(-18*Time.unscaledDeltaTime)):target;
                 // The match-start spawn-in (NativeSpawnInPresentation.cs): the beam holds the feet; the rig is posed on the ground
                 // while it does and in the air for its drop, with the replicated flag restored after posing.
-                p=SpawnPlace(a,p,renderTime);
+                p=SpawnPlace(a,p,renderTime);p=CyberKit2Place(a,p);
                 visualPositions[a.Id]=p;
                 if(a.Alive&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon))){bool ground=a.Grounded;a.Grounded=SpawnContact(a.Id,ground);try{PrepareCapturedPose(a,p,renderTime);}finally{a.Grounded=ground;}SpawnBones(a);}
             }
