@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
     // (Shatter, FlyToPalm), docked at the bottom centre between the health box and the cooldowns so the crosshair and the world stay in
     // view. No 3D draft stage and the arena stays drawn. It sends Claim / OpenChoice / CloseChoice / Select through ExpeditionLiveSubmit
     // (host: the session's commands; guest: the command channel). The authority holds the chooser in place from OpenChoice (PR #237:
-    // movement and actions cancelled, camera rotation kept, damage and the clocks live) and, after the final pick, until its Install plus
+    // movement and actions cancelled, camera yaw/pitch frozen, damage and the clocks live) and, after the final pick, until its Install plus
     // NativeDraftPlant.ReturnEnd. Meanwhile members[].choosing drives every choosing pilot's wrist-hologram look and SELECTING CHIP tag
     // (ArenaPresentation.ExpeditionChoosing), mine included in first person, and each pick plays the wrist plant (Core/NativeChipPlant.cs:
     // the chosen card leaves the hologram as the chip and goes into the cuff, the install cue at the seat; ArenaPresentation.ExpeditionPlant:
@@ -56,6 +56,8 @@ namespace ChipArena.UnityConversion
         /// screenshot mode, leaves it off): only then do the digits pick, Alt free the cursor and Escape close it.</summary>
         private bool ExpeditionPickShown=>ExpeditionPickOverlay&&Time.frameCount-expeditionPickDrawn<=2;private int expeditionPickDrawn=-10;
         /// <summary>Alt is held over the tray: the cursor is free to click a card; mouse look, attack and block wait until it is released.</summary>
+        // Public choosing includes the final plant, even after the tray has closed.
+        private bool ExpeditionCameraHeld=>arena?.Local?.Hp>0&&ExpeditionPickFlow.ChoosingNow(LiveExpedition);
         private bool ExpeditionPickPointer=>ExpeditionPickShown&&(Input.GetKey(KeyCode.LeftAlt)||Input.GetKey(KeyCode.RightAlt));
 
         /// <summary>Update (ExpeditionLiveKeys): follows the bound view, sends the flow's intent (Claim, OpenChoice or CloseChoice), shows a
@@ -73,7 +75,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>
         /// Update, after the play input is read (the tray's own keys only: the hold itself is the authority's, PR #237, which cancels the
-        /// chooser's movement and actions and keeps its camera rotation). While the tray is up the digit keys pick a chip, so the abilities
+        /// chooser's movement and actions and freezes its camera yaw/pitch). While the tray is up the digit keys pick a chip, so the abilities
         /// they would start (1 / 2 / the 1-5 kit keys) are dropped; while Alt frees the pointer, the mouse buttons click cards instead of
         /// attacking or blocking.
         /// </summary>
