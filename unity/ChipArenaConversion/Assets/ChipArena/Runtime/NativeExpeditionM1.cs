@@ -56,9 +56,12 @@ namespace ChipArena.UnityConversion
                     arena.Local.Hp=hp;arena.Local.Mana=mana;arena.Local.Stamina=stamina;arena.Local.Ammo=ammo;
                     Physics.SyncTransforms();
                     if(NativeExpeditionLayout.Compatibility(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text,content)!=ticket.layout)throw new InvalidOperationException("Layout changed during load.");
-                    if(ReportExpeditionAreaLoaded(ticket).state!=ExpeditionCommandState.Pending)throw new InvalidOperationException("Area readiness was rejected.");
+
                     expeditionLoadedGeneration=barrier.generation;
                 }
+                if(!StagePresentationReady||StagePresentation.Map!=expeditionM1Layout.Area(barrier.target).map)return false;
+                var readyTicket=ExpeditionAreaReady.Capture(NativeExpeditionView.Build(expeditionSession.Run,account.Access.AccountId,expeditionSession.Sources));
+                if(ReportExpeditionAreaLoaded(readyTicket).state!=ExpeditionCommandState.Pending)throw new InvalidOperationException("Area readiness was rejected.");
                 if(!expeditionDirector.CompleteAreaLoad((area,placements)=>placements.Count==1&&placements.All(p=>arena.ExpeditionPlace(p.Key,p.Value))))throw new InvalidOperationException("Party placement failed; area remains frozen.");
                 expeditionDirector.Step();ExpeditionView=NativeExpeditionView.Build(expeditionSession.Run,account.Access.AccountId,expeditionSession.Sources);
                 yaw=arena.Local.Yaw;generation=arena.Generation;visualClock.Reset(match.Time);presentation.ResetPresentation();NativeLighting.Apply(content.Map(arena.MapId),cameraView);return true;

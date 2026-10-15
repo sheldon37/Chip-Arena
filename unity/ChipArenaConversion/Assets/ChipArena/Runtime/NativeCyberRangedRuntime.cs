@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         private NativeCyberKit CyberSnapshot(NativePilot p)
         {
             var copy=p.Cyber.ViewCopy();
-            if(p.Seat.spec=="cyberlord"){copy.Ranged??=new NativeCyberRangedState();copy.Ranged.Ready[CyberRangedSpec.Root]=p.KernelReady;}
+            if(p.Seat.spec=="cyberlord"){copy.Ranged??=new NativeCyberRangedState();copy.Ranged.Ready[CyberRangedSpec.Root]=p.KernelReady;if(copy.Version==2){copy.Kit2R.Ready[4]=copy.Kit2.Ready[6]=p.KernelReady;if(p.Kernel?.Id>0){copy.Kit2.Until[6]=p.Kernel.Until;if(p.Kernel.Outcome==3)copy.Kit2.CutAt[6]=p.Kernel.Until;copy.Kit2.Release[6]=Math.Min(copy.Kit2.Release[6],copy.Kit2.Until[6]);}}}
             return copy;
         }
         private bool CyberSwitching(NativePilot p)=>p.Seat.spec=="cyberlord"&&NativeCyberRangedRules.Switching(p.Cyber,Time);

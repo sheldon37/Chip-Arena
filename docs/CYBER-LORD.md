@@ -29,6 +29,16 @@ double-jump presentation, the twitching idle (also the DEV "Sheldon Idle" lobby 
   replicated state as it is. Two-client gameplay and the Unity runtime are unrun, so the checks still drive the
   presentation through fixtures that write her fields the way her host does.
 
+## Authority integration (2026-10-15)
+
+`codex/unity-cyber-v2-stage-gate` implements the v2 authority from shared `c9a87f6`.
+`NativeCyberKit.Version=2` owns `Kit2` and `Kit2R`, reusing the proposed records below.
+No CyberKit2Spec numbers changed. Per-projectile `Draw` carries the hand, while
+`Kit2R.PlasmaShot` carries the throw index. `UplinkFrom` becomes the latch-time body
+centre when the cable connects so moving during flight never snaps the caster back.
+The optional generic barrel/muzzle offset remains deferred. See DEV_LOG and the PR
+for tests and promotion status; managed compilation is not Windows play acceptance.
+
 ## Kit v2 (2026-10-15): design and the rules contract
 
 Owner (2026-10-15): "fix Cyber Lord class- its current abilities are ... boring lol. Cyberlord isn't intended to be

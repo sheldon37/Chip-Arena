@@ -111,9 +111,9 @@ namespace ChipArena.UnityConversion
         public static Kit2Hit Hit(string detail){if(detail==null)return Kit2Hit.None;for(int i=0;i<Details.Length;i++)if(detail==Details[i])return (Kit2Hit)(i+1);return Kit2Hit.None;}
         /// <summary>The record for a pilot: the preview's or fixtures' source, else a fork-bomb clone's stand-in.</summary>
         public static CyberKit2MeleeRecord Of(Actor a)=>a==null?null:CyberLordFeed.Kit2MeleeSource?.Of(a.Id)??CyberKit2Melee.Clones.Of(a.Id);
-        public static void Read(Actor a,CyberLordView v)
+        public static void Read(Actor a,CyberLordView v,CyberKit2MeleeRecord authority=null)
         {
-            var k=v.Kit2;k.Clear();var r=Of(a);if(r==null||r.Version!=CyberKit2Spec.Version)return;Map(r,k);
+            var k=v.Kit2;k.Clear();var r=authority??Of(a);if(r==null||r.Version!=CyberKit2Spec.Version)return;Map(r,k);
             // v2 replaces the v1 combo and the v1 Q, E, 1, 2 and 3 (Kernel Panic, slot Four, and the ranged mode stay).
             v.ComboStep=0;v.ComboAt=v.ComboUntil=v.ComboHit=-100;for(int i=0;i<CyberLordSpec.Four;i++)v.At[i]=v.Release[i]=v.Until[i]=v.RecoverUntil[i]=v.Ready[i]=-100;
             v.DashFrom=v.DashTo=default;v.TrailUntil=-100;v.WallBorn=v.WallUntil=-100;v.LinkTarget=0;v.LinkAt=v.LinkUntil=-100;v.CrashBorn=v.CrashUntil=-100;

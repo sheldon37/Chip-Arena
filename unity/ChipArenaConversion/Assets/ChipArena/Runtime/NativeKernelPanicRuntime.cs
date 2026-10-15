@@ -20,9 +20,11 @@ namespace ChipArena.UnityConversion
             if(p.Cyber.Ranged?.Ranged==true||CyberSwitching(p)||p.Seat.spec!="cyberlord"||!(p.Seat.access.DeveloperWeapon("cyberlord",now)||p.Seat.devWeaponAccess?.DeveloperWeapon("cyberlord",now)==true)||p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Time<p.Ready||Time<p.KernelReady||Time<p.AttackEnd||Time<p.RollEnd||Time<p.BlockEnd||p.AbilityCast!=null||p.Special!=null||p.Mana<NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"])return false;
             p.Mana-=NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"];
             NativeCyberRules.Interrupt(p.Cyber,Time);p.CyberLinkTick=0;
+            NativeCyberKit2Rules.Ensure(p.Cyber);
             p.KernelReady=Time+NativeKernelPanicRules.Cooldown;p.KernelTravelled=0;
             (p.Cyber.Ranged??=new NativeCyberRangedState()).Ready[4]=p.KernelReady;
             p.Kernel=new NativeKernelPanic{Id=nextAttack++,Caster=p.Seat.id,Seed=random.Next(),At=Time,Until=Time+NativeKernelPanicRules.Windup+NativeKernelPanicRules.Range/NativeKernelPanicRules.LungeSpeed,Ready=p.KernelReady,CasterStart=Vec(p.Body.position),Anchor=Vec(p.Body.position),Facing=V3.Forward(p.Input.Yaw)};
+            p.Cyber.Kit2.At[6]=Time;p.Cyber.Kit2.Release[6]=Time+NativeKernelPanicRules.Windup;p.Cyber.Kit2.Until[6]=p.Kernel.Until;p.Cyber.Kit2.Ready[6]=p.Cyber.Kit2R.Ready[4]=p.KernelReady;p.Cyber.Kit2.CutAt[6]=-100;
             p.Yaw=p.Input.Yaw;p.AttackAt=p.LastAttack=Time;p.AttackEnd=p.Ready=p.Kernel.Until;p.MoveVelocity=Vector3.zero;if(!p.Body.isKinematic){var v=p.Body.linearVelocity;p.Body.linearVelocity=new Vector3(0,v.y,0);}
             return true;
         }

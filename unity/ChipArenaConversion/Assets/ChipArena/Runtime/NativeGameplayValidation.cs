@@ -40,7 +40,8 @@ namespace ChipArena.UnityConversion
                 Check(new[]{"data-dash","firewall","packet-burst","siphon-link","system-crash"}.Contains(ability.id),"unhandled Cyber Lord ability "+ability.id);
                 var savedAccess=a.Seat.access;
                 var grant=new NativeAccess();typeof(NativeAccess).GetProperty("Developer").GetSetMethod(true).Invoke(grant,new object[]{true});typeof(NativeAccess).GetProperty("Expires").GetSetMethod(true).Invoke(grant,new object[]{double.MaxValue});
-                float Ready()=>ability.slot=="q"?a.Cyber.QReady:ability.slot=="e"?a.Cyber.EReady:ability.slot=="1"?a.Cyber.PacketReady:ability.slot=="2"?a.Cyber.LinkReady:a.Cyber.CrashReady;
+                int kitSlot=ability.slot=="q"?0:ability.slot=="e"?1:ability.slot=="1"?3:ability.slot=="2"?4:5;
+                float Ready()=>Math.Max(0,a.Cyber.Kit2?.Ready[kitSlot]??0);
                 void Prepare(NativeAccess access,float mana)
                 {
                     Setup(CyberLordSpec.Id);a.Seat.access=access;a.Cyber=new NativeCyberKit();a.Kernel=null;a.KernelPinned=false;
@@ -56,21 +57,13 @@ namespace ChipArena.UnityConversion
                     Prepare(grant,0);StepAbilities(a);
                     Check(a.Cyber.Kind==""&&a.AbilityCast==null&&a.Mana==0&&Ready()==0,"Cyber Lord unfunded refusal "+ability.id);
                     Prepare(grant,100);float at=Time;StepAbilities(a);
-                    float expectedMana=100-(float)(ability.cost*a.Stats["resourceCost"]*a.Stats["abilityCost"]);
-                    Check(a.Cyber.Kind==ability.id&&a.Cyber.At==at&&a.AbilityCast==null,"Cyber Lord input dispatch "+ability.id);
-                    Check(Math.Abs(a.Mana-expectedMana)<.001f&&a.ECharges==0,"Cyber Lord commitment cost/no E charges "+ability.id);
-                    Check(Math.Abs(Ready()-(at+ability.cooldown*a.Stats["abilityCooldown"]))<.001f,"Cyber Lord cooldown "+ability.id);
-                    // These casts use the Cyber Lord clock contract, not generic ContentAbility windup metadata.
-                    int slot=CyberLordSpec.Slot(ability.id);
-                    Check(Math.Abs(a.Cyber.Release-(at+CyberLordSpec.CastWindup[slot]))<.001f,"Cyber Lord release clock "+ability.id);
-                    Check(Math.Abs(a.Cyber.Until-(at+CyberLordSpec.CastSeconds[slot]))<.001f,"Cyber Lord recovery clock "+ability.id);
-                    if(ability.slot=="q")Check(a.QReady==Ready()&&a.Cyber.DashUntil>at,"Data Dash state and HUD cooldown");
-                    if(ability.slot=="e")Check(a.EReady==Ready()&&a.Cyber.WallUntil==at+4,"Firewall state and HUD cooldown");
-                    if(ability.slot=="2")Check(a.Cyber.LinkTarget==b.Seat.id&&a.Cyber.LinkUntil==at+2.5f,"Siphon Link target and duration");
-                    float ready=Ready();Advance(a.Cyber.Until-Time+.01f);StepAbilities(a);
-                    if(ability.id=="data-dash")
-                        Check(a.Cyber.At>at&&Ready()==a.Cyber.At&&Math.Abs(a.Mana-(2*expectedMana-100))<.001f,"Data Dash recasts after recovery without cooldown");
-                    else Check(a.Cyber.At==at&&Ready()==ready&&Math.Abs(a.Mana-expectedMana)<.001f,"Cyber Lord cooldown prevents repeat after recovery "+ability.id);
+                    float expectedMana=100-CyberKit2Spec.Costs[kitSlot]*(float)(a.Stats["resourceCost"]*a.Stats["abilityCost"]);
+                    Check(a.Cyber.Version==2&&a.Cyber.Kind==CyberKit2Spec.Ids[kitSlot]&&a.Cyber.At==at&&a.AbilityCast==null,"Cyber v2 input dispatch "+ability.slot);
+                    Check(Math.Abs(a.Mana-expectedMana)<.001f&&a.ECharges==0,"Cyber v2 cost/no E charges "+ability.slot);
+                    Check(Math.Abs(Ready()-(at+CyberKit2Spec.Cooldowns[kitSlot]*a.Stats["abilityCooldown"]))<.001f,"Cyber v2 cooldown "+ability.slot);
+                    Check(Math.Abs(a.Cyber.Release-(at+CyberKit2Spec.Windup[kitSlot]))<.001f,"Cyber v2 release "+ability.slot);
+                    Check(Math.Abs(a.Cyber.Until-(at+CyberKit2Spec.Seconds[kitSlot]))<.001f,"Cyber v2 duration "+ability.slot);
+                    float ready=Ready();Advance(a.Cyber.Until-Time+.01f);StepAbilities(a);Check(Ready()==ready,"Cyber v2 cooldown refusal "+ability.slot);
                 }
                 finally{a.Seat.access=savedAccess;a.Cyber=new NativeCyberKit();a.CyberTrailTick=a.CyberWallTick=a.CyberLinkTick=0;}
             }

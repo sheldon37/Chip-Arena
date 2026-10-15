@@ -11,6 +11,7 @@ namespace ChipArena.UnityConversion
     {
         [NonSerialized] public NativeDevCommand devCommand;[NonSerialized] public NativeDevReply devReply;
         [NonSerialized] public ExpeditionView expeditionPublic;[NonSerialized] public ExpeditionPrivateFrame expeditionPrivate;[NonSerialized] public ExpeditionCommandRequest expeditionCommand;[NonSerialized] public ExpeditionCommandReply expeditionReply;[NonSerialized] public ExpeditionAreaReadyRequest expeditionAreaReady;
+        public string stageMap;public int stageSerial,stageReady,stageRequired;public bool stageWaiting;public float remainingSeconds;
         public int devProtocol;public int version=NativeConnection.Protocol,id,epoch,generation,pick,team;public string type,source,contentRevision,room,resume,token,chip,error;public bool ready;
         [NonSerialized] public NativeRoomOptions options;public NativeProfile profile;public InputFrame input;[NonSerialized] public NativeGameFrame frame;public NativeSeatFrame[] seats;
     }
@@ -74,7 +75,7 @@ namespace ChipArena.UnityConversion
                 if(server.Closed||(DateTime.UtcNow-server.LastReceived).TotalSeconds>12){networkStatus=joinError.Length>0?joinError:"Disconnected. Rejoin this host within 90 seconds to reclaim your seat.";joinError="";server.Dispose();server=null;menu=true;pending=new InputFrame();}
             }
             if(Online&&Time.unscaledTime>=nextPing){nextPing=Time.unscaledTime+1;void Probe(NativeConnection c){if(c==null||c.Closed)return;c.Send(NativeNetCodec.Encode(new NativeNetMessage{type="ping",id=c.Metrics.Ping(NativeConnectionMetrics.Now)}));}Probe(server);foreach(var p in peers)Probe(p.Connection);}
-            ExpeditionNetworkTick();DevNetworkTick();
+            ExpeditionNetworkTick();DevNetworkTick();StageNetworkTick();
             if(arena?.Replica==true)arena.InterpolateReplica(Time.unscaledDeltaTime*arena.DevTimeScale);
         }
         private void HostMessage(NativePeer peer,NativeNetMessage message)
@@ -93,6 +94,7 @@ namespace ChipArena.UnityConversion
                 }
                 c.Send(NativeNetCodec.Encode(new NativeNetMessage{type="welcome",devProtocol=2,source=content.sourceCommit,contentRevision=content.contentRevision,id=peer.Seat.id,resume=peer.Resume,epoch=networkEpoch}));LobbyBroadcast();return;
             }
+            if(StageHostMessage(peer,message))return;
             if(DevHostMessage(peer,message))return;
             if(ExpeditionHostMessage(peer,message))return;
             var seat=peer.Seat;
@@ -128,6 +130,7 @@ namespace ChipArena.UnityConversion
         private void ClientMessage(NativeNetMessage message)
         {
             if(message==null||message.version!=NativeConnection.Protocol)throw new ArgumentException();if(message.type=="ping"){server.Send(NativeNetCodec.Encode(new NativeNetMessage{type="pong",id=message.id}));return;}if(message.type=="pong"){server.Metrics.Pong(message.id,NativeConnectionMetrics.Now);return;}
+            if(StageClientMessage(message))return;
             if(DevClientMessage(message))return;
             if(ExpeditionClientMessage(message))return;
             if(message.type=="error"){networkStatus=message.error?.Substring(0,Math.Min(message.error.Length,160))??"Room rejected the request.";if(networkId<1){joinError=networkStatus;server.Dispose();}return;}

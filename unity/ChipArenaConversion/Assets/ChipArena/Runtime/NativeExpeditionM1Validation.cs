@@ -27,6 +27,7 @@ namespace ChipArena.UnityConversion
                 Check(ExpeditionAreaReady.Accept(session,"native-host",ticket),"matching ready ticket accepted");
                 Check(!director.CompleteAreaLoad((_,__)=>false)&&run.Snapshot().loading&&!run.Snapshot().members[0].safe,"failed placement stays frozen and unsafe");
                 Check(director.CompleteAreaLoad((_,points)=>{Local.Body.position=Vec(points["native-host"].Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);return true;}),"placement completes");
+                var entryFeet=Vec(Local.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight);
                 var add=SpawnPveAdd("shambler",true);Check(add!=null,"real encounter entity created");
                 add.Pve.SpawnAt=add.Pve.ActiveAt=add.Pve.ExposedAt=Time-1;add.Pve.Struck=true;add.Collider.enabled=true;add.Body.isKinematic=false;
                 HitPveAdd(add,Local,1000000,Vector3.zero,0,null,"projectile",0,false);
@@ -55,7 +56,7 @@ namespace ChipArena.UnityConversion
                 Check(TryExpeditionInteract(Local,out _)&&Wallet()==375&&Pve.Hires.Count==1,"recruit purchase queues paid hire");
                 for(int tick=0;tick<4;tick++)Match.Tick(.25);StepPveServices();Check(Pve.Recruits.Count==1&&Pve.Hires.Count==0,"paid recruit actually spawns");
                 Stand(new V3(0,1000,0));Check(!TryExpeditionInteract(Local,out _)&&Wallet()==375,"out of range interaction cannot spend");
-                Stand(area.slots[0].Position);
+                Stand(entryFeet);
                 void FinishIntro()
                 {
                     Check(Pve.Holding&&Pve.Cinematic=="intro","boss arrival starts the existing intro scene");

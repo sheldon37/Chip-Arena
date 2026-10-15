@@ -9,56 +9,27 @@ namespace ChipArena.UnityConversion
     {
         private void BotCyber(NativePilot p,ref InputFrame input,Vector3 target,float distance,bool visible)
         {
-            if(!CyberAllowed(p))return;var ranged=p.Cyber.Ranged??(p.Cyber.Ranged=new NativeCyberRangedState());
-            input.Shoot=visible&&(ranged.Ranged?distance<=40:distance<=2.2f);input.Attack=input.Shoot;
-            if(CyberBusy(p))return;var enemy=Pilots.FirstOrDefault(q=>q.Hp>0&&CanHit(p,q)&&Vector3.Distance(q.Body.position,target)<.1f);
-            bool Ready(int slot)=>Time>=(slot==4?p.KernelReady:ranged.Ready[slot])&&p.Mana>=CyberRangedSpec.Costs[slot]*(float)(p.Stats["resourceCost"]*(slot==4?1:p.Stats["abilityCost"]));
-            int chosen=NativeCyberRangedRules.BotSlot(distance,p.Hp/(float)p.Stats["hp"],enemy==null?1:enemy.Hp/(float)enemy.Stats["hp"],enemy!=null&&Time<enemy.BlockEnd,visible,Ready);
-            if(ranged.Ranged&&chosen==CyberRangedSpec.Swap)input.SirenAbility=3;
-            else if(Time>=ranged.ModeReady&&(ranged.Ranged?distance<5:distance>8))input.SirenAbility=5;
-            else if(ranged.Ranged){if(chosen>0)input.SirenAbility=(byte)chosen;}
-            if(input.SirenAbility>0){input.Attack=input.Shoot=input.Roll=input.AbilityQ=input.AbilityE=false;return;}
-            if(ranged.Ranged||!visible)return;
-            if(distance<=NativeKernelPanicRules.Range&&p.Mana>=NativeKernelPanicRules.Mana&&Time>=p.KernelReady&&enemy!=null&&Time>=enemy.BlockEnd)input.SirenAbility=4;
-            else if(p.Mana>=40&&Time>=p.Cyber.CrashReady&&Pilots.Count(q=>q.Hp>0&&CanHit(p,q)&&Vector3.Distance(q.Body.position,p.Body.position)<=4)>=2)input.SirenAbility=3;
-            else if(distance<=6&&p.Mana>=15&&Time>=p.Cyber.PacketReady)input.SirenAbility=1;
-            else if(distance>3&&distance<=12&&p.Mana>=20&&Time>=p.Cyber.QReady)input.AbilityQ=true;
-            else if(distance<=12&&p.Hp<70&&p.Mana>=25&&Time>=p.Cyber.LinkReady)input.SirenAbility=2;
-            if(input.SirenAbility>0||input.AbilityQ)input.Attack=input.Shoot=input.Roll=false;
+            if(!CyberAllowed(p))return;NativeCyberKit2Rules.Ensure(p.Cyber);var s=p.Cyber;
+            input.Shoot=input.Attack=visible&&distance<=(s.Ranged.Ranged?45:2.4f);
+            if(CyberBusy(p))return;
+            bool Ready(int slot)=>Time>=(slot>=7?s.Kit2R.Ready[slot-7]:s.Kit2.Ready[slot])&&p.Mana>=CyberKit2Spec.Costs[slot];
+            if(Time>=s.Ranged.ModeReady&&(s.Ranged.Ranged?distance<5:distance>8))input.SirenAbility=5;
+            else if(visible&&Ready(1)&&!NativeCyberKit2Rules.Overclock(s,Time))input.AbilityE=true;
+            else if(visible&&distance>6&&distance<24&&Ready(0))input.AbilityQ=true;
+            else if(visible&&s.Ranged.Ranged){for(int n=4;n>=1;n--)if(Ready(7+n)){input.SirenAbility=(byte)n;break;}}
+            else if(visible){if(distance<NativeKernelPanicRules.Range&&Time>=p.KernelReady&&p.Mana>=NativeKernelPanicRules.Mana)input.SirenAbility=4;else for(int n=3;n>=1;n--)if(Ready(2+n)){input.SirenAbility=(byte)n;break;}}
+            if(input.SirenAbility>0||input.AbilityQ||input.AbilityE)input.Attack=input.Shoot=input.Roll=false;
         }
+
         private bool CyberAllowed(NativePilot p)=>p.Seat.spec=="cyberlord"&&(p.Seat.access.DeveloperWeapon("cyberlord",DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())||p.Seat.devWeaponAccess?.DeveloperWeapon("cyberlord",DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())==true);
-        private bool CyberBusy(NativePilot p)=>KernelBusy(p)||Incapacitated(p)||Time<p.RollEnd||Time<p.BlockEnd||Time<p.AttackEnd||Time<p.Ready;
+        private bool CyberBusy(NativePilot p)=>Cyber2MotionPending(p)||KernelBusy(p)||Incapacitated(p)||Time<p.RollEnd||Time<p.BlockEnd||Time<p.AttackEnd||Time<p.Ready;
         private bool CyberPay(NativePilot p,float cost)
         {cost*=(float)(p.Stats["resourceCost"]*p.Stats["abilityCost"]);if(p.Mana<cost)return false;p.Mana-=cost;return true;}
         private float CyberScale(NativePilot p)=>NativeAbilityRules.Scale(p.Stats,p.Mana>=.75f*p.Stats["maxMana"]);
         private void CyberBegin(NativePilot p,string kind,float windup,float duration)
         {var s=p.Cyber;p.CyberAttack=nextAttack++;s.Kind=kind;s.CutAt=-1;s.At=Time;s.Release=Time+windup;s.Until=Time+duration;s.Resolved=false;s.Facing=V3.Forward(p.Input.Yaw);p.Yaw=p.Input.Yaw;p.AttackAt=p.LastAttack=Time;p.AttackEnd=p.Ready=s.Until;p.MoveVelocity=Vector3.zero;Emit(EventKind.AbilityCast,p,0,p.Body.position,0,kind);}
         private void StepCyberInput(NativePilot p)
-        {
-            if(!CyberAllowed(p))return;var i=p.Input;var s=p.Cyber;s.Ranged??=new NativeCyberRangedState();
-            if(i.CancelAbilities){NativeCyberRules.Interrupt(s,Time);p.CyberLinkTick=0;return;}if(i.SirenAbility==5){CyberSwitch(p);return;}if(CyberBusy(p))return;float cd=(float)p.Stats["abilityCooldown"];
-            if(i.AbilityQ&&Time>=s.QReady&&CyberPay(p,20))
-            {
-                CyberBegin(p,"data-dash",0,.2f);s.QReady=p.QReady=Time+NativeCyberRules.DashCooldown*cd;s.DashAt=Time;s.DashUntil=Time+.2f;s.TrailUntil=s.DashUntil+1.2f;
-                s.DashFrom=Vec(p.Body.position);s.DashTo=Vec(KernelTravel(p.Body.position,p.Body.position+Vec(s.Facing)*7));p.CyberTrailTick=s.DashUntil+.3f;
-                CyberArea(p,18,"data-dash",q=>NativeCyberRules.SegmentDistance(Vec(q),s.DashFrom,s.DashTo)<=.42f);
-                Emit(EventKind.Teleport,p,0,Vec(s.DashTo),0,"data-dash",from:Vec(s.DashFrom));
-            }
-            else if(i.AbilityE&&Time>=s.EReady&&CyberPay(p,35))
-            {CyberBegin(p,"firewall",0,.2f);s.EReady=p.EReady=Time+12*cd;s.WallAt=Time;s.WallUntil=Time+4;s.WallYaw=p.Yaw;s.WallPoint=Vec(p.Body.position-Vector3.up*.865f+Vec(s.Facing)*.8f);p.CyberWallTick=Time+.25f;}
-            else if(s.Ranged.Ranged)CyberRangedInput(p);
-            else if(i.SirenAbility==1&&Time>=s.PacketReady&&CyberPay(p,15))
-            {CyberBegin(p,"packet-burst",.08f,.25f);s.PacketReady=Time+4*cd;s.PacketAt=s.At;s.PacketRelease=s.Release;s.PacketUntil=s.Until;s.PacketCutAt=-1;}
-            else if(i.SirenAbility==2&&Time>=s.LinkReady)
-            {
-                var target=CyberAim(p,12);if(target==null||!CyberPay(p,25))return;
-                CyberBegin(p,"siphon-link",0,.2f);s.LinkReady=Time+10*cd;s.LinkAt=Time;s.LinkUntil=Time+2.5f;s.LinkTarget=target.Seat.id;p.CyberLinkTick=Time+.25f;
-            }
-            else if(i.SirenAbility==3&&Time>=s.CrashReady&&CyberPay(p,40))
-            {CyberBegin(p,"system-crash",.5f,.8f);s.CrashReady=Time+14*cd;s.CrashAt=Time;s.CrashUntil=Time+.8f;s.CrashPoint=Vec(p.Body.position);}
-            else if(i.Attack||i.Shoot)
-            {if(Time>s.LastComboEnd+.6f)s.Combo=-1;s.Combo=(s.Combo+1)%3;float rate=(float)p.Stats["attackRate"];CyberBegin(p,new[]{"cyber-jab","cyber-cross","cyber-palm"}[s.Combo],(s.Combo==2?.18f:.1f)/rate,NativeCyberRules.ComboSeconds[s.Combo]/rate);s.LastComboEnd=s.Until;p.Combo=s.Combo;}
-        }
+        {if(CyberAllowed(p))Cyber2Input(p);}
         private NativePilot CyberAim(NativePilot p,float range)
         {
             Vector3 from=p.Body.position+Vector3.up*.3f;V3 end=Vec(from)+GunRules.Direction(p.Input.Yaw,p.Input.Pitch)*range;NativePilot best=null;float nearest=2;
@@ -69,7 +40,7 @@ namespace ChipArena.UnityConversion
         private float CyberHit(NativePilot p,NativePilot q,float amount,string detail,bool primary=false,float stun=0)
         {
             float actual=Damage(q,p,amount*(primary?(float)p.Stats["damage"]:CyberScale(p)),q.Body.position-p.Body.position,120,false,primary:primary,melee:primary,weaponHit:primary,damageKind:detail);
-            if(actual>0){if(primary)p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+6);if(stun>0&&q.Hp>0)StaggerMelee(q,stun);if(primary)ImpactChips(p,q,null,q.Body.position,(q.Body.position-p.Body.position).normalized,p.CyberAttack,p.CyberAttack);}
+            if(actual>0){if(primary)Cyber2Arc(p,q.Seat.id,q.Body.position);if(primary)p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+6);if(stun>0&&q.Hp>0)StaggerMelee(q,stun);if(primary)ImpactChips(p,q,null,q.Body.position,(q.Body.position-p.Body.position).normalized,p.CyberAttack,p.CyberAttack);}
             return actual;
         }
         private void CyberArea(NativePilot p,float amount,string detail,Func<Vector3,bool> contains,bool primary=false,float stun=0,bool launch=false)
@@ -80,13 +51,14 @@ namespace ChipArena.UnityConversion
                 float actual=CyberHit(p,q,amount,detail,primary,stun);if(actual>0&&launch&&q.Hp>0)LaunchMelee(q,p,3.8f);
             }
             foreach(var m in Minions.ToArray())
-            {if(p.Hp<=0)return;if(m.Hp>0&&CanHit(p,m)&&contains(m.Body.position)&&MeleeVisible(p.Body.position,m.Body.position,p,m.Collider))HitMinion(m,p,amount*(primary?(float)p.Stats["damage"]:CyberScale(p)),m.Body.position-p.Body.position,120,m.Body.position,detail);}
+            {if(p.Hp<=0)return;if(m.Hp>0&&CanHit(p,m)&&contains(m.Body.position)&&MeleeVisible(p.Body.position,m.Body.position,p,m.Collider)){var point=m.Body.position;float dealt=HitMinion(m,p,amount*(primary?(float)p.Stats["damage"]:CyberScale(p)),point-p.Body.position,120,point,detail);if(primary&&dealt>0)Cyber2Arc(p,m.Id,point);}}
         }
         private void StepCyberWorld()
         {
             foreach(var p in Pilots)
             {
                 var s=p.Cyber;if(!CyberAllowed(p)||p.Hp<=0||!p.Seat.connected){p.Cyber=new NativeCyberKit();continue;}
+                if(s.Version==2){Cyber2World(p);continue;}
                 if(Incapacitated(p)||Time<p.BlockEnd||Time<p.RollEnd||KernelBusy(p)){NativeCyberRules.Interrupt(s,Time);p.CyberLinkTick=0;}
                 if(!s.Resolved&&Time>=s.Release)
                 {

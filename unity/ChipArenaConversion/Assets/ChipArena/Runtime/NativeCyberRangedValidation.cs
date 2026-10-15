@@ -30,37 +30,24 @@ namespace ChipArena.UnityConversion
                 }
                 Physics.SyncTransforms();
             }
-            void Cast(byte slot){a.Input=new InputFrame{SirenAbility=slot,Shoot=slot==0,Yaw=0};StepCyberInput(a);Check(a.Cyber.Kind==CyberRangedSpec.Ids[slot],"cast "+slot);}
+            void Cast(byte slot){a.Input=new InputFrame{SirenAbility=slot,Shoot=slot==0,Yaw=0,AbilityTarget=new V3(0,99.125f,8)};StepCyberInput(a);Check(a.Cyber.Version==2&&a.Cyber.Kind==CyberKit2Spec.Ids[7+slot],"v2 cast "+slot);Check(a.Cyber.Valid(),"record valid from cast start");}
             void Release(){Clock(a.Cyber.Release+.0001f);StepCyberWorld();Physics.SyncTransforms();}
             try
             {
-                Setup(false);a.Seat.access=NativeAccess.Guest;a.Input.SirenAbility=5;StepCyberInput(a);Check(!a.Cyber.Ranged.Ranged,"DEV gate");a.Seat.access=grant;
-                foreach(string refusal in new[]{"stun","roll","juggle","dead","cast","swing","dash","link","root","kernel"})
-                {
-                    Setup(false);a.Input.SirenAbility=5;
-                    if(refusal=="stun")a.StunEnd=11;else if(refusal=="roll")a.RollEnd=11;else if(refusal=="juggle")a.Juggle=new NativeJuggle{Until=11};else if(refusal=="dead")a.Hp=0;
-                    else if(refusal=="cast")a.CastAt=11;else if(refusal=="swing")a.AttackEnd=11;else if(refusal=="dash")a.Cyber.DashUntil=11;else if(refusal=="link")a.Cyber.LinkUntil=11;
-                    else if(refusal=="root")a.Cyber.Until=11;else a.Kernel=new NativeKernelPanic{Id=1,At=10,Until=11};
-                    StepCyberInput(a);Check(!a.Cyber.Ranged.Ranged,"switch refusal "+refusal);a.Input=a.Input.HeldOnly();Clock(12);StepCyberInput(a);Check(!a.Cyber.Ranged.Ranged,"refused switch not queued "+refusal);
-                }
-                Setup(false);a.Input=new InputFrame{SirenAbility=5,Z=1};StepCyberInput(a);Check(a.Cyber.Ranged.Ranged,"switch accepts");Check(!TryBlock(a)&&!TryRoll(a),"switch refuses block/roll");a.Input=new InputFrame{Z=1};StepPilot(a);Check(a.MoveVelocity.z>0,"switch allows movement");Clock(10.5f);a.Input.SirenAbility=5;StepCyberInput(a);Check(a.Cyber.Ranged.Ranged,"switch cooldown");Clock(11);StepCyberInput(a);Check(!a.Cyber.Ranged.Ranged,"switch back");
-                Setup();a.Mana=40;Cast(0);Release();var bolt=Bullets.Single();Near(bolt.Damage,9,"bolt damage");Near(bolt.Radius,.12f,"bolt radius");Near(bolt.Velocity.magnitude,64,"bolt speed");Near(bolt.Travel,40,"bolt range");Check(bolt.Spec=="cyberlord"&&bolt.Detail=="bit-bolt","bolt wire tag");
-                BulletImpact(bolt,a,new NativeContact{Collider=b.Collider,Point=b.Body.position,Contact=b.Body.position,Normal=Vector3.back});Near(b.Hp,91,"bolt no head multiplier");Near(a.Mana,43,"bolt mana hit");Check(Events.Any(e=>e.Kind==EventKind.Hit&&e.Detail=="bit-bolt"),"bolt hit detail");
-                BulletImpact(bolt,a,new NativeContact{Collider=floor.GetComponent<Collider>(),Point=floor.transform.position,Contact=floor.transform.position,Normal=Vector3.up});Check(Events.Any(e=>e.Kind==EventKind.Impact&&e.Detail=="bit-bolt"),"world impact detail");
-                Setup();Cast(1);Near(a.Mana,85,"lance mana");Release();Near(b.Hp,78,"lance first");Near(c.Hp,78,"lance second");Check(Events.Count(e=>e.Kind==EventKind.Hit&&e.Detail=="ping-lance")==2,"lance pierce details");
-                Setup();cover.SetActive(true);Physics.SyncTransforms();Cast(1);Release();Near(b.Hp,100,"lance stopped by world");Check(a.Cyber.Ranged.LanceTo.z<4,"lance endpoint at world");
-                Setup();b.Seat.spec="cyberlord";b.Cyber.WallAt=9;b.Cyber.WallUntil=20;b.Cyber.WallPoint=new V3(0,99.135f,4);Cast(1);Release();Near(b.Hp,100,"lance firewall");Check(Events.Any(e=>e.Kind==EventKind.Absorb),"firewall absorb event");
-                Setup();b.Hp=50;Cast(4);Near(a.Mana,40,"root mana");Near(a.KernelReady,30,"shared ultimate clock");Release();Near(b.Hp,0,"root missing-health lethal");Near(c.Hp,100,"root first target only");
-                Setup();b.Hp=50;b.BlockEnd=20;Cast(4);Release();Near(b.Hp,20,"root block halves 60");
-                Setup();Cast(4);Clock(10.5f);a.StunEnd=12;StepCyberWorld();Near(a.Cyber.Ranged.Release[4],10.5f,"root cut release");Near(a.Cyber.Ranged.Until[4],10.5f,"root cut until");Clock(12);StepCyberWorld();Near(b.Hp,100,"interrupted root never fires");
-                Setup();Cast(4);Clock(11.4f);a.Input.SirenAbility=5;StepCyberInput(a);Clock(12);Check(!StartKernelPanic(a),"Root blocks Kernel shared clock");
-                Setup(false);a.Input.SirenAbility=4;Check(StartKernelPanic(a),"Kernel starts in melee");Near(a.Cyber.Ranged.Ready[4],a.KernelReady,"Kernel seeds Root clock");
-                Setup();a.Input=new InputFrame{SirenAbility=2,AbilityTarget=new V3(0,99.125f,8)};StepCyberInput(a);Release();var ranged=a.Cyber.Ranged;Check(ranged.FieldLand>Time&&ranged.FieldUntil>ranged.FieldLand,"field flight/lifetime");float land=ranged.FieldLand+.35f;for(int tick=0;tick<8;tick++){Clock(land+tick*.5f+.0001f);StepCyberWorld();}Near(b.Hp,44,"field eight ticks");Near(b.SlowFactor,.65f,"field slow");
-                Setup();b.Body.position=new Vector3(0,100,2);Physics.SyncTransforms();Cast(3);Release();Check(a.Body.position.z<-.1f&&a.Body.position.z>=-9.001f,"swap backward constrained");Clock(a.Cyber.Ranged.MineAt+.0001f);StepCyberWorld();Near(b.Hp,82,"mine damage");Near(b.Knockback.magnitude,3,"mine shove");StepCyberWorld();Near(b.Hp,82,"mine only once");
-                var frame=NativeFrameCodec.Clone(NetworkFrame());Check(frame.Valid(Content),"real frame validity");var record=frame.snapshot.Actors.First(x=>x.Id==a.Seat.id).Cyber.Ranged;Near(record.SwapFrom.z,0,"JSON swap origin");Near(record.MineAt,a.Cyber.Ranged.MineAt,"JSON mine clock");guest.ApplyFrame(frame,b.Seat.id);var guestRecord=guest.Snapshot().Actors.First(x=>x.Id==a.Seat.id).Cyber.Ranged;Near(guestRecord.SwapTo.z,record.SwapTo.z,"guest record application");record.Ready[0]=float.NaN;Check(!frame.Valid(Content),"malformed ranged frame rejected");
-                Setup(false);var input=new InputFrame();BotCyber(a,ref input,b.Body.position,12,true);Check(input.SirenAbility==5,"bot switches at range");Setup();input=new InputFrame();BotCyber(a,ref input,b.Body.position,15,true);Check(input.SirenAbility==2,"bot field");b.Hp=50;input=new InputFrame();BotCyber(a,ref input,b.Body.position,15,true);Check(input.SirenAbility==4,"bot root");
-                a.Hp=0;StepCyberWorld();Check(a.Cyber.Ranged==null,"death resets to melee");
-                Debug.Log("PASS Cyber ranged authority: switch refusals/no queue, movement, shots, pierce/world/Firewall, shared ultimate, interrupt, field/mine, real JSON/guest bounds and bots");
+                Setup();a.MoveVelocity=new Vector3(2,0,1);Cast(0);Check(a.MoveVelocity.x==2,"throw retains movement");Release();Check(Bullets.Count==1&&Bullets[0].Detail=="plasma-byte"&&Bullets[0].Draw==0,"first right-hand plasma");Near(Bullets[0].Damage,10,"plasma direct");Near(Bullets[0].Velocity.magnitude,38,"plasma speed");
+                Clock(a.Cyber.Until+.001f);Cast(0);Release();Check(Bullets.Last().Draw==1,"second left hand");Clock(a.Cyber.Until+.001f);Cast(0);Release();Check(Bullets.Last().Detail=="plasma-overflow"&&Bullets.Last().Draw==2,"third both hands overflow");Near(Bullets.Last().Damage,18,"overflow damage");
+                Setup();Cast(1);Release();Near(b.Hp,80,"chain first hit");Clock(a.Cyber.Release+CyberKit2Spec.HopDelay+.001f);StepCyberWorld();Near(c.Hp,83,"chain second hit falloff");Check(a.Cyber.Kit2R.ChainCount==2&&a.Cyber.Kit2R.ChainIds[0]==b.Seat.id,"chain record order");StepCyberWorld();Near(c.Hp,83,"chain hop exactly once");
+                Setup();cover.SetActive(true);Physics.SyncTransforms();Cast(1);Release();Near(b.Hp,100,"chain cannot target through wall");
+                Setup();Cast(4);Clock(10.3f);a.StunEnd=12;StepCyberWorld();Near(a.Cyber.Kit2R.CutAt[4],10.3f,"orbital cut timestamp");Clock(12);StepCyberWorld();Near(b.Hp,100,"cut orbital has no ticks");
+                Setup();Cast(4);float ultimate=a.KernelReady;Clock(a.Cyber.Until+.01f);a.Input=new InputFrame{SirenAbility=5};StepCyberInput(a);Clock(a.Cyber.Until+.01f);Check(!StartKernelPanic(a)&&a.KernelReady==ultimate,"orbital shares Kernel clock");
+                Setup(false);a.Input=new InputFrame{SirenAbility=4};Check(StartKernelPanic(a),"unchanged Kernel starts");Check(a.Cyber.Version==2&&a.Cyber.Kit2R.Ready[4]==a.KernelReady,"Kernel publishes v2 ultimate clock");
+                Setup();a.Input=new InputFrame{AbilityE=true};StepCyberInput(a);Release();Check(NativeCyberKit2Rules.Overclock(a.Cyber,Time),"Overclock active on release");Clock(a.Cyber.Until+.001f);Cast(0);Release();Check(Bullets.Count==3,"Overclock splits plasma into three");Near(Bullets[1].Damage,4,"side projectile share");
+                Setup(false);for(int n=0;n<5;n++){a.Input=new InputFrame{Shoot=true,Yaw=0};StepCyberInput(a);Check(a.Cyber.Combo==n&&a.Cyber.Kind==CyberKit2Spec.ComboKinds[n],"five-step combo "+n);Release();Clock(a.Cyber.Until+.001f);}
+                Setup();Cast(2);Release();Check(a.Cyber.Kit2R.OrbLand>Time&&Math.Abs(a.Cyber.Kit2R.Implode-a.Cyber.Kit2R.OrbLand-2.5f)<.001f,"orb flight and lifetime");
+                var frame=NativeFrameCodec.Clone(NetworkFrame());Check(frame.Valid(Content),"real v2 frame validity");var record=frame.snapshot.Actors.First(x=>x.Id==a.Seat.id).Cyber;Check(record.Version==2,"JSON version");Near(record.Kit2R.OrbLand,a.Cyber.Kit2R.OrbLand,"JSON orb clock");guest.ApplyFrame(frame,b.Seat.id);Check(guest.Snapshot().Actors.First(x=>x.Id==a.Seat.id).Cyber.Version==2,"guest v2 application");record.Kit2R.Ready[0]=float.NaN;Check(!frame.Valid(Content),"malformed v2 frame rejected");
+                Setup(false);var input=new InputFrame();BotCyber(a,ref input,b.Body.position,12,true);Check(input.SirenAbility==5,"bot switches at range");Setup();input=new InputFrame();BotCyber(a,ref input,b.Body.position,15,true);Check(input.AbilityE,"bot Overclock");
+                a.Hp=0;StepCyberWorld();Check(a.Cyber.Version==0&&a.Cyber.Ranged==null,"death clears v2 state");
+                Debug.Log("PASS Cyber v2 authority: cast records, moving plasma, hands/Overflow, chain/LOS/falloff, interrupt, shared ultimate, Overclock, five-hit combo, orb, JSON/guest bounds, bots");
             }
             finally{UnityEngine.Object.DestroyImmediate(cover);UnityEngine.Object.DestroyImmediate(floor);}
         }

@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
         }
         private void StageReady(bool preloaded)=>stageReadiness=new StageReadiness{Serial=stageLoad.Serial,Map=arena?.MapId,Generation=arena?.Generation??-1,Epoch=networkEpoch,Ready=true,Preloaded=preloaded,Seconds=Time.unscaledTime-stageStartedAt};
         // The stage the load waits for is in place: the menu for a return; the arena (on the area's map for an area load).
-        private bool StageInPlace=>stageLoad.Kind==StageLoadKind.Return?arena==null:arena!=null&&(stageLoad.Kind!=StageLoadKind.Area||expeditionMapReady);
+        private bool StageInPlace=>stageLoad.Kind==StageLoadKind.Return?arena==null:arena!=null&&(stageLoad.Kind!=StageLoadKind.Area||(ExpeditionM1&&expeditionDirector.Barrier.active?arena.MapId==expeditionM1Layout.Area(expeditionDirector.Barrier.target).map:expeditionMapReady));
         private StageLoadSignals StageSignals()
         {
             var k=stageLoad.Kind;bool back=k==StageLoadKind.Return;

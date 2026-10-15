@@ -254,7 +254,7 @@ namespace ChipArena.UnityConversion
         private void FixedUpdate(){long at=System.Diagnostics.Stopwatch.GetTimestamp();try{FixedFrame();}finally{hitchFixed+=HitchMs(at);hitchTicks++;}}
         private void FixedFrame()
         {
-            if(arena==null||menu&&!Online)return;if(arena.Replica){if(server!=null){pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});arena.PredictReplica(pending);pending=pending.HeldOnly();}return;}if(!ExpeditionM1BeforeStep())return;timer.Restart();bool held=arena.Pve?.Holding==true;
+            if(arena==null||menu&&!Online)return;if(arena.Replica){if(StageGate.Waiting){pending=pending.HeldOnly();return;}if(server!=null){pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});arena.PredictReplica(pending);pending=pending.HeldOnly();}return;}if(!StageAuthorityReady()||!ExpeditionM1BeforeStep())return;timer.Restart();bool held=arena.Pve?.Holding==true;
             double nearestBefore=arena.NavigationNearestMs,linksBefore=arena.NavigationLinkMs;int linkChecksBefore=arena.NavigationLinkChecks;
             double navBefore=arena.NavigationMs,deathBefore=arena.DeathRecordMs,hordeBefore=arena.HordeMs,spawnBefore=arena.HordeSpawnMs;int searchesBefore=arena.NavigationSearches;
             long stepAt=System.Diagnostics.Stopwatch.GetTimestamp();

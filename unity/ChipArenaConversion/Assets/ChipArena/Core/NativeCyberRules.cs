@@ -3,14 +3,15 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeCyberKit
     {
+        public int Version;public CyberKit2MeleeRecord Kit2;public CyberKit2RangedRecord Kit2R;
         public NativeCyberRangedState Ranged;
         public string Kind="";public float At,Release,Until,CutAt=-1,LastComboEnd=-100;public int Combo=-1;public bool Resolved;
         public float PacketAt,PacketRelease,PacketUntil,PacketCutAt=-1;
         public float QReady,EReady,PacketReady,LinkReady,CrashReady;
         public float DashAt,DashUntil,TrailUntil,WallAt,WallUntil,WallYaw,LinkAt,LinkUntil,CrashAt,CrashUntil;
         public int LinkTarget;public V3 Facing,DashFrom,DashTo,WallPoint,CrashPoint;
-        public NativeCyberKit ViewCopy(){var c=(NativeCyberKit)MemberwiseClone();c.Ranged=Ranged?.ViewCopy();return c;}
-        public bool Valid()=>(Ranged==null||Ranged.Valid())&&Finite(CutAt)&&Finite(PacketAt)&&Finite(PacketRelease)&&Finite(PacketUntil)&&Finite(PacketCutAt)&&Finite(At)&&Finite(Release)&&Finite(Until)&&Finite(LastComboEnd)&&Combo>=-1&&Combo<=2&&Finite(QReady)&&Finite(EReady)&&Finite(PacketReady)&&Finite(LinkReady)&&Finite(CrashReady)&&Finite(DashAt)&&Finite(DashUntil)&&Finite(TrailUntil)&&Finite(WallAt)&&Finite(WallUntil)&&Finite(WallYaw)&&Finite(LinkAt)&&Finite(LinkUntil)&&Finite(CrashAt)&&Finite(CrashUntil)&&Vec(Facing)&&Vec(DashFrom)&&Vec(DashTo)&&Vec(WallPoint)&&Vec(CrashPoint)&&LinkTarget>=0&&(Kind==""||Kind=="cyber-jab"||Kind=="cyber-cross"||Kind=="cyber-palm"||Kind=="data-dash"||Kind=="firewall"||Kind=="packet-burst"||Kind=="siphon-link"||Kind=="system-crash"||Kind=="mode-switch"||CyberRangedSpec.Slot(Kind)>=0);
+        public NativeCyberKit ViewCopy(){var c=(NativeCyberKit)MemberwiseClone();c.Ranged=Ranged?.ViewCopy();c.Kit2=Kit2?.ViewCopy();c.Kit2R=Kit2R?.ViewCopy();return c;}
+        public bool Valid()=>NativeCyberKit2Rules.Valid(this)&&(Ranged==null||Ranged.Valid())&&Finite(CutAt)&&Finite(PacketAt)&&Finite(PacketRelease)&&Finite(PacketUntil)&&Finite(PacketCutAt)&&Finite(At)&&Finite(Release)&&Finite(Until)&&Finite(LastComboEnd)&&Combo>=-1&&Combo<=(Version==2?4:2)&&Finite(QReady)&&Finite(EReady)&&Finite(PacketReady)&&Finite(LinkReady)&&Finite(CrashReady)&&Finite(DashAt)&&Finite(DashUntil)&&Finite(TrailUntil)&&Finite(WallAt)&&Finite(WallUntil)&&Finite(WallYaw)&&Finite(LinkAt)&&Finite(LinkUntil)&&Finite(CrashAt)&&Finite(CrashUntil)&&Vec(Facing)&&Vec(DashFrom)&&Vec(DashTo)&&Vec(WallPoint)&&Vec(CrashPoint)&&LinkTarget>=0&&(Kind==""||Kind=="cyber-jab"||Kind=="cyber-cross"||Kind=="cyber-palm"||Kind=="data-dash"||Kind=="firewall"||Kind=="packet-burst"||Kind=="siphon-link"||Kind=="system-crash"||Kind=="mode-switch"||Version==2&&(CyberKit2Spec.Slot(Kind)>=0||Kind=="cyber-spin"||Kind=="cyber-rise")||CyberRangedSpec.Slot(Kind)>=0);
         static bool Finite(float n)=>!float.IsNaN(n)&&!float.IsInfinity(n)&&Math.Abs(n)<1e8;
         static bool Vec(V3 v)=>Finite(v.x)&&Finite(v.y)&&Finite(v.z);
     }
@@ -20,6 +21,7 @@ namespace ChipArena.UnityConversion
         // Preserve the first cancellation time; repeated blocked/stunned ticks must not move it.
         public static void Interrupt(NativeCyberKit s,float time)
         {
+            if(s.Version==2)NativeCyberKit2Rules.Interrupt(s,time);
             if(s.Kind!=""&&time>=s.At&&time<s.Until){s.CutAt=time;
                 int slot=CyberRangedSpec.Slot(s.Kind);
                 if(slot>=0&&s.Ranged!=null)
@@ -35,6 +37,7 @@ namespace ChipArena.UnityConversion
         }
         public static void Predict(NativeCyberKit s,InputFrame input,float time,V3 position,ref float mana,float rate,float costScale,float cooldownScale,Func<V3,V3,V3> constrain,float ultimateCostScale=1)
         {
+            if(s.Version==2){NativeCyberKit2Rules.Predict(s,input,time,position,ref mana,rate,costScale,cooldownScale,ultimateCostScale);return;}
             if(input.Block||input.Roll||input.CancelAbilities){Interrupt(s,time);return;}
             if(time<s.Until)return;
             if(input.SirenAbility==5){NativeCyberRangedRules.Switch(s,time,false);return;}
