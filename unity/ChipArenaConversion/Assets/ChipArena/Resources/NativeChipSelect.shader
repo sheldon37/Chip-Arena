@@ -6,7 +6,7 @@
 //              parameter (panel: the unfold; card: 1 lit; cone: 1 the faint back sheet; ring: its thickness; line: 1 across x)
 //   TEXCOORD1  x: HDR gain (over 1 the bloom picks it up), y: a seed (the scan's phase per hologram)
 // _ChipHolo: x the presentation clock, y the scanline travel (0 with Reduced effects), z unused, w 1 on the low graphics tier
-// (no panel grid, no card pins). Every pattern is drawn here from the uv, so the mesh is plain quads.
+// (no panel grid, no card pads). Every pattern is drawn here from the uv, so the mesh is plain quads.
 Shader "ChipArena/NativeChipSelect"
 {
     SubShader
@@ -37,6 +37,10 @@ Shader "ChipArena/NativeChipSelect"
             float Rounded(float2 p,float2 b,float r){float2 q=abs(p)-b+r;return length(max(q,0.))+min(max(q.x,q.y),0.)-r;}
             float Line(float d,float w){return 1.-smoothstep(0.,w,abs(d));}
             float Box(float2 p,float2 c,float2 h){float2 q=abs(p-c)-h;return step(max(q.x,q.y),0.);}
+            // The chip cartridge (Core/NativeChipCartridge.cs): a box with its shoulders cut deep and its lower corners shallow
+            // (y up), and a pointy-top hexagon (apothem a).
+            float Cartridge(float2 p){float2 q=float2(abs(p.x),p.y-.02);float box=max(q.x-.36,abs(q.y)-.44);return max(box,max((q.x+q.y-.68)*.7071,(q.x-q.y-.74)*.7071));}
+            float Hexagon(float2 p,float a){p=abs(p);return max(p.x,p.x*.5+p.y*.866)-a;}
             float4 frag(v2f i):SV_Target
             {
                 float2 uv=i.uv.xy;float kind=i.uv.z,param=i.uv.w,t=_ChipHolo.x,low=_ChipHolo.w;
@@ -54,13 +58,14 @@ Shader "ChipArena/NativeChipSelect"
                 }
                 else if(kind<1.5)
                 {
-                    // A card: the rounded chip card (aspect .76) with its rim, a die with pins and two text bars; brighter when lit.
-                    float2 p=(uv-.5)*float2(.76,1.);float d=Rounded(p,float2(.36,.48),.07);float inside=step(d,0.);
+                    // A card: the chip cartridge (aspect .76) with its rim, the hex core on its top-left shoulder, the name and two text
+                    // bars, and the edge connector's pads under it (a key gap a third along); brighter when lit.
+                    float2 p=(uv-.5)*float2(.76,1.);float d=Cartridge(p);float inside=step(d,0.);
                     float rim=Line(d+.025,.022);
-                    float2 die=p-float2(0,.12);float dd=max(abs(die.x),abs(die.y))-.15;float body=step(dd,0.)*.55+Line(dd,.018)*.6;
-                    float pins=0;if(low<.5){for(int k=-1;k<=1;k++){pins+=Box(p,float2(k*.09,.12+.21),float2(.022,.035));pins+=Box(p,float2(k*.09,.12-.21),float2(.022,.035));}}
-                    float bars=Box(p,float2(0,-.2),float2(.25,.028))*.8+Box(p,float2(-.05,-.31),float2(.2,.022))*.55;
-                    a=rim*(1.+param*.6)+inside*(.22+.16*param)+(body+pins*.6+bars)*inside*(.55+.45*param);a*=scan;
+                    float hd=Hexagon(p-float2(-.21,.31),.1);float core=step(hd,-.03)*.75+Line(hd,.018)*.8;
+                    float bars=Box(p,float2(.1,.31),float2(.14,.032))*.8+Box(p,float2(0,.0),float2(.27,.024))*.6+Box(p,float2(-.04,-.11),float2(.23,.02))*.5;
+                    float pads=0;if(low<.5){for(int k=-3;k<=3;k++){if(k!=-1)pads+=Box(p,float2(k*.075,-.455),float2(.024,.03));}}
+                    a=rim*(1.+param*.6)+inside*(.22+.16*param)+(core+bars)*inside*(.55+.45*param)+pads*.6*(.55+.45*param);a*=scan;
                 }
                 else if(kind<2.5)
                 {

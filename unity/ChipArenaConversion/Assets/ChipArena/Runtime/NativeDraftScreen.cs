@@ -101,7 +101,7 @@ namespace ChipArena.UnityConversion
                 U.Push(r.center,new Vector2(reveal.Dx,reveal.Dy),reveal.Scale*reveal.ScaleX,reveal.Degrees,reveal.Scale*reveal.ScaleY);TrayStand(r,c.rarity,reveal.Alpha,h);U.Pop();
                 U.Push(r.center,new Vector2(reveal.Dx,reveal.Dy+NativeHoloScan.Lift(h)),reveal.Scale*reveal.ScaleX,reveal.Degrees,reveal.Scale*reveal.ScaleY);
                 // The Siren pick's number badge sits on the card's top-left corner, under the holo scan's brackets (NativeChipCard).
-                var look=new ChipLook{Alpha=reveal.Alpha,Hover=h,Time=now,SweepAt=-10,Bright=reveal.Bright,Focus=enabled&&draftFocus==i,Enabled=enabled,Plain=reveal.Degrees!=0,Holo=h,HoloAt=i<n?cardHoloAt[i]:-10,Calm=calm,Recede=recede,Ghost=ghost,Badge=badges&&i<9?i+1:0};
+                var look=new ChipLook{Alpha=reveal.Alpha,Hover=h,Time=now,SweepAt=-10,Bright=reveal.Bright,Focus=enabled&&draftFocus==i,Enabled=enabled,Plain=reveal.Degrees!=0,Holo=h,HoloAt=i<n?cardHoloAt[i]:-10,Calm=calm,Recede=recede,Ghost=ghost,Badge=badges&&i<9?i+1:0,Unbuilt=1-reveal.Build};
                 NativeChipCard.Draw(r,c,copies(i),tray.Size,look);
                 U.Pop();if(enabled&&reveal.Alpha>.5f&&U.SilentButton(r))clicked=i;
             }
@@ -181,19 +181,21 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<chips.Count&&i<tray.Cards.Length;i++)if(i!=index)Shatter(tray.Cards[i],chips[i],age-i*.035f,i,tray.Size);
             if(index>=0&&index<tray.Cards.Length)FlyToPalm(tray.Cards[index],chips[index],copies,age,tray.Size,index<cardHolo.Length?cardHolo[index]:0);
         }
-        // chipFracture .85 s: still until 8%, a flash at 18%, then six shards fly apart, spin, shrink and fade.
+        // chipFracture .85 s: still until 8%, a flash at 18%, then six shards of the cartridge fly apart, spin, shrink and fade (each
+        // a chamfered fragment of its body with the bezel's edge and the tier's light inside).
         private void Shatter(Rect r,ContentChip chip,float t,int index,ChipSize size)
         {
             if(t<0){NativeChipCard.Draw(r,chip,0,size,ChipLook.Idle(Time.unscaledTime));return;}float k=t/.85f;if(k>=1)return;
             if(k<.18f){NativeChipCard.Draw(r,chip,0,size,ChipLook.Idle(Time.unscaledTime));if(k>.08f)NativeChipArt.Package(r,size.Radius,0,new Color(1,1,1,.5f*(k-.08f)/.1f));return;}
-            float u=M.Bezier(.15f,.65f,.3f,1,(k-.18f)/.82f);Color rare=NativeChipCard.Rarity(chip.rarity),edge=U.Mix(U.Hex(0x2a3a6b),rare,.5f);
+            float u=M.Bezier(.15f,.65f,.3f,1,(k-.18f)/.82f);Color rare=NativeChipCard.Rarity(chip.rarity),edge=U.Mix(U.Hex(NativeChipCartridge.Of(chip.rarity).MetalMid),rare,.45f);
             float[] xs={0,.52f,1},ys={0,.38f,.71f,1};
             for(int n=0;n<6;n++)
             {
                 int col=n%2,row=n/2;var piece=new Rect(r.x+r.width*xs[col],r.y+r.height*ys[row],r.width*(xs[col+1]-xs[col]),r.height*(ys[row+1]-ys[row]));
                 float dx=(n%2==1?1:-1)*(45+index*5),dy=(n-2.5f)*44,spin=(n%2==1?1:-1)*(15+n*7);
                 U.Push(piece.center,new Vector2(dx*u,dy*u),1-.18f*u,spin*u);float a=1-u,glow=Mathf.Lerp(2.4f,.5f,u);
-                U.Round(piece,U.Hex(0x111622,a),3,U.A(edge,a));U.Fill(new Rect(piece.x+2,piece.y+2,piece.width-4,piece.height-4),U.A(rare,.12f*a*glow));U.Pop();
+                var cut=n%2==0?NativeHudChrome.Corners.TL|NativeHudChrome.Corners.BR:NativeHudChrome.Corners.TR|NativeHudChrome.Corners.BL;
+                NativeHudChrome.Cut(piece,U.Hex(0x0d1018,a),5,cut);NativeHudChrome.Cut(new Rect(piece.x+2,piece.y+2,piece.width-4,piece.height-4),U.A(rare,.12f*a*glow),4,cut);NativeHudChrome.Outline(piece,U.A(edge,a),5,cut,1.5f);U.Pop();
             }
         }
         // draft-view.ts: translate toward the palm by fly, scale 1-.88 fly, rotate -9 deg x fly, fade with the grab (the stage's

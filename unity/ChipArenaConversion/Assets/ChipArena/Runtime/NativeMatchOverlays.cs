@@ -249,7 +249,8 @@ namespace ChipArena.UnityConversion
                 U.Text(cell,Fit(label,ls,room,false,0),ls,NativeCyberTheme.Muted(e),TextAnchor.MiddleLeft);U.Text(cell,stats[i].value,12,NativeCyberTheme.Ink(e),TextAnchor.MiddleRight,bold:true,mono:true);
             }
         }
-        // .pve-result-chip badges (flex-wrap, gap 4): rarity-tinted fill and edge, the chip icon in the rarity colour, the name
+        // .pve-result-chip badges (flex-wrap, gap 4): rarity-tinted fill and edge, the chip's cartridge badge (NativeChipArt.Badge: its
+        // tier by colour, crest and rank dots), the name
         // (11 px, 600) and ×count in mono; "No chips installed" when empty. Returns the bottom edge.
         private float ChipBadges(Rect r,NativeSeat seat,float e)
         {
@@ -259,7 +260,7 @@ namespace ChipArena.UnityConversion
             foreach(var (chip,count) in chips)
             {
                 Color rarity=RarityColor(chip.rarity);float w=BadgeWidth(chip.name,count);if(x>r.x&&x+w>r.xMax){x=r.x;y+=28;}var b=new Rect(x,y,Mathf.Min(w,r.width),24);
-                U.Round(b,U.A(U.Mix(U.Hex(0x0d0e12),rarity,.14f),e),6,U.A(U.Mix(Color.black,rarity,.6f),e));NativeIcons.Draw(new Rect(b.x+7,b.center.y-6,12,12),NativeIcons.Chip(chip.id),U.A(rarity,e));
+                U.Round(b,U.A(U.Mix(U.Hex(0x0d0e12),rarity,.14f),e),6,U.A(U.Mix(Color.black,rarity,.6f),e));NativeChipArt.Badge(new Rect(b.x+5,b.y+1.5f,14,21),chip.rarity,e);
                 float nw=U.Measure(chip.name,11,true).x;U.Text(new Rect(b.x+23,b.y,Mathf.Min(nw+2,b.width-30),b.height),chip.name,11,U.Hex(0xe9eaf0,e),TextAnchor.MiddleLeft,bold:true);
                 if(count>1)U.Text(new Rect(b.x+23+nw+4,b.y,30,b.height),"×"+count,10,U.A(rarity,e),TextAnchor.MiddleLeft,bold:true,mono:true);x+=w+4;
             }

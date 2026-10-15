@@ -555,7 +555,7 @@ namespace ChipArena.UnityConversion
             if(Event.current.type==EventType.Repaint)
             {
                 H.Cut(r,U.Mix(C.Indigo(.75f),C.Indigo(),h),6,H.Corners.Diagonal);H.Outline(r,U.A(tone,n>0?.75f:.25f+.3f*h),6);U.Fill(new Rect(r.x,r.y+6,3,r.height-12),U.A(tone,n>0?1:.5f));
-                NativeIcons.Draw(new Rect(r.x+12,r.y+10,20,20),NativeIcons.Chip(chip.id),tone);
+                NativeChipArt.Badge(new Rect(r.x+8,r.y+7,14,22),chip.rarity,1);NativeIcons.Draw(new Rect(r.x+24,r.y+11,14,14),NativeIcons.Chip(chip.id),tone);
                 if(!devChipFit.TryGetValue(chip.id,out var name)){name=DevFit(chip.name,12,r.width-108);devChipFit[chip.id]=name;}
                 U.Text(new Rect(r.x+40,r.y+6,r.width-100,18),name,12,C.Ink(),TextAnchor.MiddleLeft,bold:true);
                 U.Text(new Rect(r.x+40,r.y+22,r.width-100,14),devRarityName.TryGetValue(chip.rarity??"",out var rn)?rn:"",8,U.A(tone,.9f),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);

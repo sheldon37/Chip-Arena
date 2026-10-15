@@ -10,8 +10,9 @@ namespace ChipArena.UnityConversion
     // deterministically with clean geometry; the bodies keep the bank's part convention (0 the body, 1 the tinted lights) and
     // stay inside the machine collider (PveContent machineBlocks) apart from the allowed front trim and crown; the moving parts
     // keep the source pivots the presentation turns them about; see-through sections carry partial alpha and nothing else does;
-    // the display stocks every rarity; the chip lights both faces in its tint; budgets hold; the draws use the sculpted ids
-    // with the exported ones as the fallback, and the exported models stay in the bank.
+    // the display stocks every rarity; the chip (a cartridge per tier) lights both faces in its tint and wears its tier's
+    // ornaments; budgets hold; the draws use the sculpted ids with the exported ones as the fallback, and the exported models
+    // stay in the bank.
     internal static class MachineModelChecks
     {
         private static int count;
@@ -51,21 +52,43 @@ namespace ChipArena.UnityConversion
             foreach(int hex in NativeMachineModels.RarityColors){var c=NativePortraitRules.Linear(hex);Check(lights.Any(v=>Vector3.Distance(Norm(new Vector3(v.X,v.Y,v.Z)),Norm(c))<.02f),"a rarity lamp or stock die in #"+hex.ToString("x6"));}
             // Deny reads red: every body keeps pale lights (the deny tint keeps red only).
             foreach(var kind in NativeMachineModels.Kinds){var b=NativeMachineModels.Build(kind);Check(b.Sections.Where(s=>s.Bone==NativeMachineModels.Lights).SelectMany(s=>s.Emission).Any(v=>v.X>.5f),kind+" has a light with a red share for the deny flash");}
-            // The dispensed chip: centred, thin, a die on both faces in the tint, gold leads.
-            var pickup=NativeMachineModels.Pickup();Clean(pickup,"chip");Check(Same(pickup,NativeMachineModels.Pickup()),"chip builds the same twice");
-            pickup.Bounds(-1,out var cmin,out var cmax);
-            Check(Math.Abs(cmin.X+cmax.X)<.01f&&Math.Abs(cmin.Z+cmax.Z)<.01f&&Math.Abs(cmin.Y+cmax.Y)<.01f&&cmax.X<=.56f&&cmax.Y<=.1f,"the chip is centred and thin ("+cmin+" .. "+cmax+")");
-            var die=pickup.Sections.Where(s=>s.Bone==NativeMachineModels.Lights).SelectMany(s=>s.Positions).ToList();
-            Check(die.Any(p=>p.Y>.07f)&&die.Any(p=>p.Y<-.07f),"the chip lights both faces");
-            Check(pickup.Sections.Where(s=>s.Bone==NativeMachineModels.Lights).SelectMany(s=>s.Colors).All(c=>Math.Abs(c.X-c.Y)<1e-4f&&Math.Abs(c.Y-c.Z)<1e-4f),"the chip's lights are neutral (the tint is the rarity)");
-            Check(pickup.Sections.Select(s=>s.Bone).Distinct().OrderBy(b=>b).SequenceEqual(new[]{0,1})&&pickup.Triangles<=3200,"the chip keeps bones 0 and 1 within budget ("+pickup.Triangles+")");
+            // The dispensed / held chip: the neural core cartridge, one model per tier (Core/NativeChipCartridge.cs). Each builds the
+            // same twice with clean geometry; it is centred on its spin and stays a slim cartridge (its body .8 wide, the hand's
+            // PickupWidth; fins inside the old leads' reach; under a quarter as thick as wide); the core's crystal, inlay, traces
+            // and the edge band light both faces in neutral colours (the draw tints them with the rarity); the glass domes are
+            // see-through; the ring (bone 2) belongs to Epic and up; budgets hold; the tiers differ by ornament (the crest rises
+            // over the top edge, the fins widen it, the gold reads gold) as well as by tint.
+            var common=NativeMachineModels.Pickup("common");common.Bounds(-1,out var c0,out var c1);float commonTall=c1.Z-c0.Z;
+            Check(Same(NativeMachineModels.Pickup(),common)&&NativeMachineModels.PickupModel("common")==NativeMachineModels.PickupId&&NativeMachineModels.PickupModel("bogus")==NativeMachineModels.PickupId,"the common cartridge is the fallback model");
+            foreach(var tier in NativeMachineModels.PickupTiers)
+            {
+                var look=NativeChipCartridge.Of(tier);var pickup=NativeMachineModels.Pickup(tier,out var core);string id=NativeMachineModels.PickupModel(tier);Clean(pickup,"chip "+tier);Alpha(pickup,"chip "+tier);
+                Check(Same(pickup,NativeMachineModels.Pickup(tier)),tier+" chip builds the same twice");Check(tier=="common"||id==NativeMachineModels.PickupId+"-"+tier,tier+" chip has its own id");
+                pickup.Bounds(-1,out var cmin,out var cmax);
+                Check(Math.Abs(cmin.X+cmax.X)<.01f&&Math.Abs(cmin.Z+cmax.Z)<.01f&&Math.Abs(cmin.Y+cmax.Y)<.01f&&cmax.X<=.56f&&cmax.Y<=.115f,tier+" chip is centred and slim ("+cmin+" .. "+cmax+")");
+                Check(cmax.Y<(cmax.X*2)*.25f,tier+" chip under a quarter as thick as wide");
+                var lit=pickup.Sections.Where(s=>s.Bone==NativeMachineModels.Lights).SelectMany(s=>s.Positions).ToList();
+                Check(lit.Any(p=>p.Y>.07f)&&lit.Any(p=>p.Y<-.07f),tier+" chip lights both faces");
+                Check(pickup.Sections.Where(s=>s.Bone==NativeMachineModels.Lights||s.Bone==NativeMachineModels.Orbit).SelectMany(s=>s.Colors).All(c=>Math.Abs(c.X-c.Y)<1e-4f&&Math.Abs(c.Y-c.Z)<1e-4f),tier+" chip's lights are neutral (the tint is the rarity)");
+                var bones=pickup.Sections.Select(s=>s.Bone).Distinct().OrderBy(b=>b).ToArray();var want=look.Ring?new[]{NativeMachineModels.Glass,0,1,NativeMachineModels.Orbit}:new[]{NativeMachineModels.Glass,0,1};
+                Check(bones.SequenceEqual(want),tier+" chip bones "+string.Join(",",bones));
+                Check(pickup.Triangles<=(look.Ornaments>=4?3600:3200),tier+" chip budget ("+pickup.Triangles+")");
+                // The ring's pivot is the core: inside the chip, above its middle (the core sits in the upper half), on the face plane.
+                Check(Math.Abs(core.X)<1e-3f&&Math.Abs(core.Y)<1e-3f&&core.Z>.02f&&core.Z<cmax.Z,tier+" ring pivot at the core ("+core+")");
+                if(look.Ring){pickup.Bounds(NativeMachineModels.Orbit,out var omin,out var omax);var mid=(omin+omax)*.5f;Check(Math.Abs(mid.X-core.X)<.01f&&Math.Abs(mid.Z-core.Z)<.01f,tier+" ring centred on its pivot");}
+                // Ornament by shape: the crest rises over the common chip's top, the fins widen it.
+                bool crest=look.Crest!=NativeChipCartridge.Crest.None;Check(!crest||cmax.Z-cmin.Z>commonTall+.04f,tier+" crest rises over the top edge");
+                Check(look.Fins?cmax.X>.45f:cmax.X<=.43f,tier+" fins "+(look.Fins?"widen it":"absent")+" ("+cmax.X+")");
+                if(look.Metal==NativeChipCartridge.Metal.Gold)Check(pickup.Sections.Where(s=>s.Bone==NativeMachineModels.Body).SelectMany(s=>s.Colors).Count(c=>c.X>c.Y*1.4f&&c.Y>c.Z*1.6f&&c.X>.4f)>200,"legendary chip is gold");
+            }
             // Runtime: the bank builds them, the draws prefer them, the exported models stay.
             var bank=R("Assets/ChipArena/Runtime/NativeSourceModels.cs");var reg=R("Assets/ChipArena/Runtime/NativeMachineModels.cs");var draft=R("Assets/ChipArena/Runtime/NativeDraftPresentation.cs");
-            Check(bank.Contains("HordeKindModels();MachineSkins();")&&reg.Contains("NativeMachineModels.Build(kind)")&&reg.Contains("NativeMachineModels.Pickup()")&&reg.Contains("NativeSourceTransparent"),"the bank builds the sculpted models (glass see-through)");
-            Check(pres.Contains("MachineModel(NativeMachineModels.BodyId(m.kind),\"machine-\"+m.kind)")&&pres.Contains("MachineModel(NativeMachineModels.MovingId(m.kind),\"machine-moving-\"+m.kind)")&&pres.Contains("MachineModel(NativeMachineModels.PickupId,\"pve-pickup\")"),"the machine draws prefer the sculpted models");
-            Check(draft.Contains("MachineModel(NativeMachineModels.PickupId,\"pve-pickup\")"),"the draft tray's chip is the sculpted chip");
+            Check(bank.Contains("HordeKindModels();MachineSkins();")&&reg.Contains("NativeMachineModels.Build(kind)")&&reg.Contains("NativeMachineModels.Pickup(tier,out var core)")&&reg.Contains("foreach(var tier in NativeMachineModels.PickupTiers)")&&reg.Contains("NativeSourceTransparent"),"the bank builds the sculpted models (glass see-through), a chip per tier");
+            Check(pres.Contains("MachineModel(NativeMachineModels.BodyId(m.kind),\"machine-\"+m.kind)")&&pres.Contains("MachineModel(NativeMachineModels.MovingId(m.kind),\"machine-moving-\"+m.kind)")&&pres.Contains("MachineModel(NativeMachineModels.PickupModel(k.Tier),\"pve-pickup\")"),"the machine draws prefer the sculpted models, the dispensed chip its tier's");
+            Check(pres.Contains("sourceModels.PickupOrbit(model,t)")&&pres.Contains("b==NativeMachineModels.Orbit?orbit:root")&&pres.Contains("NativeChipCartridge.Breath("),"the dispensed chip's ring orbits and its core breathes");
+            Check(draft.Contains("MachineModel(NativeMachineModels.PickupModel(chipTier),\"pve-pickup\")")&&draft.Contains("chosenChip?.rarity")&&draft.Contains("b==NativeMachineModels.Orbit?draftChipOrbit:draftChip"),"the draft tray's chip is the chosen tier's cartridge, its ring orbiting");
             Check(!reg.Contains("Update(")&&!reg.Contains("LateUpdate"),"built once at load, nothing per frame");
-            Console.WriteLine("PASS machine models ("+count+" checks: chip dispenser, recruit pod and med station sculpted inside their colliders with the bank's tinted-light part, the flap, door and pulse about the presentation's pivots, see-through glass and pulse, every rarity stocked, red-capable lights for the deny flash, the dispensed chip lit on both faces in its tint, budgets, deterministic builds, and the draws preferring the sculpted models with the exported ones kept as the fallback)");
+            Console.WriteLine("PASS machine models ("+count+" checks: chip dispenser, recruit pod and med station sculpted inside their colliders with the bank's tinted-light part, the flap, door and pulse about the presentation's pivots, see-through glass and pulse, every rarity stocked, red-capable lights for the deny flash, the dispensed chip a cartridge per tier lit on both faces in its tint with its tier's ornaments and orbiting ring, budgets, deterministic builds, and the draws preferring the sculpted models with the exported ones kept as the fallback)");
         }
         private static Vector3 Norm(Vector3 v){float m=Math.Max(v.X,Math.Max(v.Y,v.Z));return m>1e-6f?v/m:v;}
         private static void Clean(WeaponMesh mesh,string what)

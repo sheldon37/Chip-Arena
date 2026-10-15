@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
             // The backdrop's heading band (the heading's bottom row, NativeDraftScreen.DraftHeader) and its variant: the PvE / Siren
             // personal pick's ward, the rainbow pick's prism.
             presentation.DraftHeadLine=draftHeadLine;presentation.DraftWard=pve;presentation.DraftPrism=pve&&tier=="rainbow";
-            presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.PilotBand(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team,seat.id==arena.LocalId);draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,draftTrayBottom,tint,cameraView,prefs.reducedEffects,out var catchAt,chipTint)/scale;draftPalm.y=height-draftPalm.y;
+            presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.PilotBand(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team,seat.id==arena.LocalId);draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,draftTrayBottom,tint,cameraView,prefs.reducedEffects,out var catchAt,chipTint,chosenChip?.rarity)/scale;draftPalm.y=height-draftPalm.y;
             draftCatch=catchAt/scale;draftCatch.y=height-draftCatch.y;return true;
         }
     }
@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
         // The stage motion (NativeDraftStage: the pilot close, from the solar plexus up, the bow and the gaze springs, the
         // considering lift, the slowed catch in front of the chest and the wrist plant) and the cached draw delegates of the
         // pilot and the held chip (no per-frame closures).
-        private readonly NativeDraftStage draftStage=new NativeDraftStage();private Matrix4x4 draftChip;private Color draftChipTint;
+        private readonly NativeDraftStage draftStage=new NativeDraftStage();private Matrix4x4 draftChip,draftChipOrbit;private Color draftChipTint;
         private Func<int,Matrix4x4> draftBone,draftChipBone;private Func<int,Color> draftChipPart;
         // The pick's age on the stage's smooth clock (-1 before the pick), for the tray's fly, shatter and spotlight.
         public float DraftAge=>draftStage.Age;
@@ -75,13 +75,13 @@ namespace ChipArena.UnityConversion
         // lifts toward it (the local picker's highlighted card), `cards` the card centres as screen fractions (the first
         // `count`), `trayLine` / `trayBottom` the tray's top and bottom edges (fractions from the top; negative until the tray is
         // laid out). `chipTint` is the chosen chip's rarity (sRGB) for its die and the plant pulse (the stage tint when not
-        // given). Returns the reaching palm in screen pixels and, in `catchAt`, where that palm meets the card at the contact
+        // given), `chipTier` its tier (the cartridge drawn: NativeMachineModels.PickupModel). Returns the reaching palm in screen pixels and, in `catchAt`, where that palm meets the card at the contact
         // (NativeDraftStage.CatchPalm: the chosen card flies straight there, into the hand raised in front of the chest; the palm
         // before the pick). No table is drawn: the close framing ends at the solar plexus, under the tray's lower shade.
-        public Vector2 RenderDraft(NativeSeat seat,float age,int focus,bool consider,NVector2[] cards,int count,float trayLine,float trayBottom,Color tint,Camera camera,bool reduced,out Vector2 catchAt,Color chipTint=default)
+        public Vector2 RenderDraft(NativeSeat seat,float age,int focus,bool consider,NVector2[] cards,int count,float trayLine,float trayBottom,Color tint,Camera camera,bool reduced,out Vector2 catchAt,Color chipTint=default,string chipTier=null)
         {
             if(draftRig==null){draftRig=captured.Create(transform,-101);draftStage.Reset();}sourceModels.Begin();foreach(var b in batches)b.Clear();FirstPerson=false;combatGlow?.Clear();particles.Clear();
-            if(draftBone==null){draftBone=b=>draftRig.Bones[b].localToWorldMatrix;draftChipBone=b=>draftChip;draftChipPart=b=>b==1?draftChipTint:Color.white;}
+            if(draftBone==null){draftBone=b=>draftRig.Bones[b].localToWorldMatrix;draftChipBone=b=>b==NativeMachineModels.Orbit?draftChipOrbit:draftChip;draftChipPart=b=>b==1||b==NativeMachineModels.Orbit?draftChipTint:Color.white;}
             // The stage runs on the frame clock: the idle (and the Siren's) on its own presentation clock, the pick's age eased
             // onto the authoritative one (simulation ticks and network frames would otherwise step it).
             float dt=Time.unscaledDeltaTime;bool siren=seat.spec=="siren";var stage=draftStage;var draftPose=stage.Pose;age=stage.SmoothAge(age,dt);stage.Begin(dt,reduced);double time=stage.Clock;
@@ -102,7 +102,7 @@ namespace ChipArena.UnityConversion
             if(age>=NativeDraftPlant.Contact&&(siren||plant.ChipShown))
             {
                 float scale=NativeDraftPlant.HeldChipScale(age,(float)time,reduced);var at=siren?palm:Stage(plant.Chip);var turn=siren?draftRig.Bones[hand].rotation*Quaternion.Euler(90,0,0):CapturedAnimation.Quat(CapturedRig.Mirror(plant.ChipRotation));
-                if(scale>.001f){draftChip=Matrix4x4.TRS(at,turn,Vector3.one*scale);sourceModels.Queue(sourceModels.MachineModel(NativeMachineModels.PickupId,"pve-pickup"),draftChip,draftChipBone,partTint:draftChipPart);}
+                if(scale>.001f){draftChip=Matrix4x4.TRS(at,turn,Vector3.one*scale);string model=sourceModels.MachineModel(NativeMachineModels.PickupModel(chipTier),"pve-pickup");draftChipOrbit=draftChip*sourceModels.PickupOrbit(model,reduced?0:(float)time);sourceModels.Queue(model,draftChip,draftChipBone,partTint:draftChipPart);}
             }
             // The plant pulse: two rarity rings expanding around the forearm, a spark at the cuff and the rim light's flash.
             if(pulse>=0)

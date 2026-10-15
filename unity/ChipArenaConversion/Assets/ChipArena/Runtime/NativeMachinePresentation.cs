@@ -27,7 +27,10 @@ namespace ChipArena.UnityConversion
                 Color tint=Color.white,shown=Color.white;
                 if(k.Tier=="rainbow"){NativePickupFx.Rainbow(t,out float r,out float g,out float b);tint=new Color(r,g,b);shown=tint.gamma;}
                 else{foreach(var rarity in arena.Content.rarities)if(rarity.id==k.Tier){ColorUtility.TryParseHtmlString(rarity.color,out shown);break;}tint=shown.linear;}
-                var root=Matrix4x4.TRS(NativeArena.Vec(pose.position),Quaternion.Euler(0,pose.spin*Mathf.Rad2Deg,0)*Quaternion.Euler(-1.25f*Mathf.Rad2Deg,0,0),Vector3.one*.62f);sourceModels.Queue(sourceModels.MachineModel(NativeMachineModels.PickupId,"pve-pickup"),root,b=>root,partTint:b=>b==1?tint:Color.white);
+                // The tier's cartridge (NativeChipCartridge): its lights breathing in the tint, its ring (Epic and up) orbiting the core.
+                var root=Matrix4x4.TRS(NativeArena.Vec(pose.position),Quaternion.Euler(0,pose.spin*Mathf.Rad2Deg,0)*Quaternion.Euler(-1.25f*Mathf.Rad2Deg,0,0),Vector3.one*.62f);string model=sourceModels.MachineModel(NativeMachineModels.PickupModel(k.Tier),"pve-pickup");
+                var orbit=root*sourceModels.PickupOrbit(model,t);var lit=tint*(.85f+.3f*NativeChipCartridge.Breath(NativeChipCartridge.Of(k.Tier),t,false));
+                sourceModels.Queue(model,root,b=>b==NativeMachineModels.Orbit?orbit:root,partTint:b=>b==1||b==NativeMachineModels.Orbit?lit:Color.white);
                 if(glow==null)continue;bool mine=k.Owner!=null&&k.Owner.Seat.id==arena.LocalId;Vector3 at=NativeArena.Vec(pose.position);
                 glow.Glow(at+Vector3.up*NativePickupFx.GlowLift,new Color(shown.r,shown.g,shown.b,NativePickupFx.GlowOpacity(mine,t)),mine);
                 if(NativePickupFx.BeamShown(k.Tier,pose.progress))glow.Beam(new Vector3(at.x,0,at.z),new Color(shown.r,shown.g,shown.b,NativePickupFx.BeamOpacity(mine,t)));

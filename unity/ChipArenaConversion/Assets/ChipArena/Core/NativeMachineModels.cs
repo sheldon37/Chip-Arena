@@ -233,42 +233,190 @@ namespace ChipArena.UnityConversion
             for(int i=from;i<section.Colors.Count;i++){var c=section.Colors[i];section.Colors[i]=new Vector4(c.X,c.Y,c.Z,alpha);}
         }
 
-        // ---- the dispensed chip (chip-model.ts's unit chip, about 1.1 across before the draw's .62): faces +-y ----
-        /// <summary>The chip: package, heat spreaders and gold leads (bone 0); the die, its core, rims and traces (bone 1, the
-        /// rarity tint), on both faces so it reads in its tier colour as it spins.</summary>
-        public static WeaponMesh Pickup()
+        // ---- the dispensed chip: the neural core cartridge (Core/NativeChipCartridge.cs), one model per tier; faces +-y ----
+        /// <summary>The model id of a tier's dispensed / held chip (the common cartridge for an unknown tier).</summary>
+        public static string PickupModel(string tier)=>NativeChipCartridge.Known(tier)&&tier!="common"?PickupId+"-"+tier:PickupId;
+        /// <summary>The tiers with a model of their own (PickupModel), the rainbow pick's prism among them.</summary>
+        public static readonly string[] PickupTiers={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren",NativeChipCartridge.Rainbow};
+        /// <summary>The section bone of the orbiting ring and its satellites (Epic and up), turned by the draws about PickupAxis.</summary>
+        public const int Orbit=2;
+        /// <summary>The cartridge's body is .8 wide (NativeDraftPlant.PickupWidth) and .96 tall before the draw's scale.</summary>
+        public const float PickupBodyWidth=.8f,PickupBodyHeight=.96f;
+        /// <summary>The ring's axis: through the core's centre along the faces' normal (model +y). Model space, the chip centred.</summary>
+        public static Vector3 PickupAxis(string tier){Pickup(tier,out var core);return core;}
+        /// <summary>The common cartridge (the fallback model).</summary>
+        public static WeaponMesh Pickup()=>Pickup("common",out _);
+        public static WeaponMesh Pickup(string tier)=>Pickup(tier,out _);
+        /// <summary>A tier's cartridge: the body, faceted bezels, the cores' collars, the gold connector and the tier's metal and
+        /// ornaments (bone 0); the inlays, traces, edge band and the crystals (bone 1, the rarity tint); the glass domes (bone -2,
+        /// see-through); the ring and its satellites (bone 2, Epic and up). Both faces carry the full face, so the tier reads in
+        /// its colour and ornament as it spins; the band round the edge carries it edge on. Centred on its bounds; `core` is the
+        /// core's centre (the ring's pivot).</summary>
+        public static WeaponMesh Pickup(string tier,out Vector3 core)
         {
-            var mesh=new WeaponMesh{Spec="pve-pickup",Tier=0};var s=new WeaponSculpt(mesh,0);
-            s.Into(Body);
-            s.Push(WeaponSculpt.Rx(Up));
-            Panel(s,ShellDark,.8f,.8f,.09f,0,0,-.05f,.05f,.016f);
-            // The rarity band round the package's edge: the tier reads from any side as the chip spins, edge on included.
-            s.Into(Lights);Panel(s,Light(0xffffff,1.5f,.55f),.814f,.814f,.095f,0,0,-.013f,.013f,0);s.Into(Body);
-            foreach(int face in new[]{-1,1})
+            var l=NativeChipCartridge.Of(NativeChipCartridge.Known(tier)?tier:"common");var mesh=new WeaponMesh{Spec="pve-pickup-"+l.Tier,Tier=0};var s=new WeaponSculpt(mesh,0);
+            float w=PickupBodyWidth,h=PickupBodyHeight,tc=.15f,bc=.07f,zf=.045f;var outline=Ccw(NativeChipCartridge.UnitOutline(w,h,tc,bc));var cy=.13f;
+            var metal=MetalPaint(l,0);var land=MetalPaint(l,1);var body=WeaponPaint.Solid(l.Body,.04f);var dark=WeaponPaint.Solid(0x07080b);
+            // Built in the faces plane (+z the front face, +y the crest) and stood so that, under the draws -1.25 tilt, the crest
+            // is up and the faces turn to the player as it spins.
+            s.Push(WeaponSculpt.Rx(-Up));
+            // The body (a chamfered slab) and the tier's band of light round its edge (the tier reads edge on).
+            s.Into(Body);s.Slab(_=>metal,body,body,Flat(outline,0),-zf,zf,.01f);
+            s.Into(Lights);s.Slab(_=>Light(0xffffff,1.5f,.55f),Light(0xffffff,1.5f,.55f),Light(0xffffff,1.5f,.55f),Flat(Grown(outline,.004f),0),-.011f,.011f,0);
+            // Each face built once and mirrored to the back (the kit turns the winding under the mirror).
+            foreach(int face in new[]{1,-1})
             {
-                float y0=face>0?.05f:-.072f,y1=face>0?.072f:-.05f;Panel(s,Spreader,.6f,.6f,.07f,0,0,y0,y1,.008f);
-                float z=face*.0735f;Panel(s,Black,.42f,.42f,.05f,0,0,face>0?.072f:-.076f,face>0?.076f:-.072f,.003f);
-                s.Into(Lights);
-                Panel(s,Light(0xffffff,1.15f,.55f),.36f,.36f,.04f,0,0,face>0?.076f:-.078f,face>0?.078f:-.076f,0);
-                Panel(s,Light(0xffffff,2.1f,.8f),.18f,.18f,.024f,0,0,face>0?.078f:-.0795f,face>0?.0795f:-.078f,0);
-                foreach(int k in new[]{-1,1}){s.Box(Light(0xffffff,1f,.5f),V(0,k*.24f,z),V(.49f,.008f,.004f));s.Box(Light(0xffffff,1f,.5f),V(k*.24f,0,z),V(.008f,.49f,.004f));}
-                for(int side=0;side<4;side++)for(int i=0;i<3;i++)
-                {
-                    float u=-.13f+i*.13f;var along=side<2?new Vector2(u,(side==0?1:-1)*.335f):new Vector2((side==2?1:-1)*.335f,u);
-                    var size=side<2?V(.012f,.08f,.003f):V(.08f,.012f,.003f);s.Box(Light(0xffffff,.8f,.45f),V(along.X,along.Y,face*.0515f),size);
-                }
-                s.Cylinder(Light(0xffffff,1.6f,.6f),.018f,face>0?.05f:-.054f,face>0?.054f:-.05f,10,0,-.33f,.33f);
-                s.Into(Body);
+                s.Push(WeaponSculpt.S(1,1,face));Face(s,mesh,l,outline,zf,cy,w,h,tc,bc,metal,land,dark,face);s.Pop();
             }
-            // Gull-wing leads, five a side, out of the package's edge and down to the seating plane.
-            for(int side=0;side<4;side++)for(int i=0;i<5;i++)
+            // The edge connector: the substrate tab under the body and the gold pads on both faces (a key notch a third along).
+            s.Into(Body);s.Box(dark,V(0,-h/2-.035f,0),V(.58f,.08f,.03f),.006f);
+            for(int i=0;i<10;i++){if(i==3)continue;float x=-.252f+i*.056f;foreach(int face in new[]{1,-1})s.Box(Gold,V(x,-h/2-.04f,face*.0165f),V(.036f,.068f,.004f),.0012f);}
+            // Fins (Epic and up): swept blades off both sides, their leading edges lit.
+            if(l.Fins)foreach(int side in new[]{-1,1})
             {
-                float u=-.28f+i*.14f;
-                if(side<2){float y=side==0?1:-1;s.Box(Gold,V(u,y*.44f,0),V(.045f,.09f,.016f),.003f);s.Box(Gold,V(u,y*.495f,-.026f),V(.045f,.03f,.06f),.003f);}
-                else{float x=side==2?1:-1;s.Box(Gold,V(x*.44f,u,0),V(.09f,.045f,.016f),.003f);s.Box(Gold,V(x*.495f,u,-.026f),V(.03f,.045f,.06f),.003f);}
+                var blade=new[]{new Vector2(0,.22f),new Vector2(.09f,.15f),new Vector2(.125f,0),new Vector2(.07f,-.06f),new Vector2(0,-.1f)};var o=new Vector3[blade.Length];
+                for(int i=0;i<blade.Length;i++)o[i]=new Vector3(side*(w/2-.01f+blade[i].X),blade[i].Y,0);if(side>0)Array.Reverse(o);
+                s.Into(Body);s.Slab(_=>metal,land,land,o,-.016f,.016f,.006f);
+                s.Into(Lights);for(int i=1;i<4;i++)Line(s,Light(0xffffff,1.6f,.5f),new Vector2(o[i-1].X,o[i-1].Y),new Vector2(o[i].X,o[i].Y),0,.012f,.036f);
             }
+            Crest(s,l,h,tc);
             s.Pop();
+            // Centred on its bounds (the spin's axis); the core's centre goes to the draws as the ring's pivot.
+            mesh.Bounds(-1,out var min,out var max);var mid=(min+max)*.5f;
+            foreach(var sec in mesh.Sections)for(int i=0;i<sec.Positions.Count;i++)sec.Positions[i]-=mid;
+            core=Vector3.Transform(new Vector3(0,cy,0),WeaponSculpt.Rx(-Up))-mid;
             return mesh;
+        }
+        // One face (+z, before the pickup's turn): the faceted bezel and its inlay (Rare and up: a second inlay; Uncommon and up:
+        // lit seams), the traces, the core (collar, well, crystal, glass dome; Rare and up: a holographic film), the corner gems
+        // (Legendary, Mythic) and the ring with its satellites (Epic and up; Mythic's are crystal shards).
+        private static void Face(WeaponSculpt s,WeaponMesh mesh,in NativeChipCartridge.Look l,Vector2[] outline,float zf,float cy,float w,float h,float tc,float bc,WeaponPaint metal,WeaponPaint land,WeaponPaint dark,int face)
+        {
+            var o=Flat(outline,0);
+            s.Into(Body);Strip(s,metal,WeaponSculpt.Inset(o,0,zf),WeaponSculpt.Inset(o,.014f,zf+.03f));Strip(s,land,WeaponSculpt.Inset(o,.014f,zf+.03f),WeaponSculpt.Inset(o,.05f,zf+.03f));Strip(s,metal,WeaponSculpt.Inset(o,.05f,zf+.03f),WeaponSculpt.Inset(o,.068f,zf+.004f));
+            s.Into(Lights);Strip(s,Light(0xffffff,1.8f,.55f),WeaponSculpt.Inset(o,.068f,zf+.004f),WeaponSculpt.Inset(o,.078f,zf+.004f));
+            if(l.SecondInlay)Strip(s,Light(0xffffff,1.4f,.5f),WeaponSculpt.Inset(o,.029f,zf+.0305f),WeaponSculpt.Inset(o,.035f,zf+.0305f));
+            if(l.Seams)Strip(s,Light(0xffffff,1.2f,.45f),WeaponSculpt.Inset(o,.0135f,zf+.0303f),WeaponSculpt.Inset(o,.0175f,zf+.0303f));
+            var trace=Light(0xffffff,.42f,.3f);foreach(var t in PickupTraces)for(int i=1;i<t.Length;i++)Line(s,trace,t[i-1]+new Vector2(0,cy),t[i]+new Vector2(0,cy),zf+.0012f,.006f,.002f);
+            // Relief: hex screws in the four corners of the face.
+            s.Into(Body);foreach(var sp in ScrewSpots(w,h,tc,bc)){s.Cylinder(land,.017f,zf,zf+.008f,6,0,sp.X,sp.Y);s.Box(dark,V(sp.X,sp.Y,zf+.0085f),V(.022f,.005f,.002f));}
+            var hc=new Vector2(0,cy);
+            s.Into(Body);Strip(s,metal,Hex3(hc,.25f,zf),Hex3(hc,.235f,zf+.045f));Strip(s,land,Hex3(hc,.235f,zf+.045f),Hex3(hc,.19f,zf+.045f));Strip(s,metal,Hex3(hc,.19f,zf+.045f),Hex3(hc,.166f,zf+.012f));
+            s.Into(Lights);Strip(s,Light(0xffffff,2.2f,.6f),Hex3(hc,.166f,zf+.0125f),Hex3(hc,.152f,zf+.0125f));
+            s.Into(Body);Disc(s,dark,Hex3(hc,.152f,zf+.012f));
+            s.Into(Lights);Crystal(s,l,new Vector3(0,cy,zf+.02f));
+            s.Into(Glass);var dome=new Vector3(0,cy,zf+.012f);Clear(mesh,DomeAlpha,()=>s.Sphere(WeaponPaint.Glow(0xe8f0ff,.08f,.5f),dome,new Vector3(.155f,.155f,.05f),4,12));
+            if(l.Holo)Clear(mesh,HoloAlpha,()=>s.Sphere(WeaponPaint.Glow(0xb8ffe8,.18f,.6f),dome+new Vector3(0,0,.002f),new Vector3(.148f,.148f,.046f),4,12));
+            s.Into(Body);if(l.Gems)foreach(var g in GemSpots(w,h,tc,bc))s.Gem(GemPaint(l),new Vector3(g.X,g.Y,zf+.036f),.026f,.04f,8,.6f,0,.55f);
+            if(l.Ring)
+            {
+                s.Into(Orbit);var c3=new Vector3(0,cy,zf+.036f);s.Torus(Light(0xffffff,1.3f,.5f),c3,.3f,.006f,32,4);
+                for(int k=0;k<3;k++){double a=k*Math.PI*2/3+(face>0?0:Math.PI/3);var at=c3+new Vector3(.3f*(float)Math.Cos(a),.3f*(float)Math.Sin(a),0);
+                    if(l.Fractured)s.Gem(Light(0xffffff,2f,.6f),at,.022f,.06f,4,.5f,(float)a);else s.Sphere(Light(0xffffff,2.2f,.6f),at,new Vector3(.018f,.018f,.018f),3,6,true);}
+            }
+        }
+        /// <summary>Alpha of the core's glass dome and the rarer tiers' holographic film.</summary>
+        public const float DomeAlpha=.22f,HoloAlpha=.14f;
+        // The traces in the face's plane (model units, the core at the origin): from the collar out to the edges, PCB style.
+        private static readonly Vector2[][] PickupTraces=
+        {
+            new[]{new Vector2(.22f,-.1f),new Vector2(.28f,-.16f),new Vector2(.28f,-.3f)},
+            new[]{new Vector2(.12f,-.24f),new Vector2(.12f,-.34f),new Vector2(.2f,-.42f),new Vector2(.25f,-.42f)},
+            new[]{new Vector2(-.12f,-.24f),new Vector2(-.12f,-.36f),new Vector2(-.24f,-.48f)},
+            new[]{new Vector2(0,-.26f),new Vector2(0,-.5f)},
+            new[]{new Vector2(-.22f,-.1f),new Vector2(-.28f,-.16f),new Vector2(-.28f,-.26f)},
+        };
+        private static WeaponPaint MetalPaint(in NativeChipCartridge.Look l,int part)
+        {
+            int hex=part==0?l.MetalMid:Mix(l.MetalMid,l.MetalHi,.35f);float sheen=l.Metal==NativeChipCartridge.Metal.Gold?.16f:l.Metal==NativeChipCartridge.Metal.BlackChrome?.12f:.06f;
+            if(l.Metal==NativeChipCartridge.Metal.Gold)hex=part==0?0xd9a441:0xf0c768;
+            return WeaponPaint.Solid(hex,sheen);
+        }
+        private static WeaponPaint GemPaint(in NativeChipCartridge.Look l)=>l.Metal==NativeChipCartridge.Metal.Gold?WeaponPaint.Glow(0xffa63d,.9f,.6f):WeaponPaint.Glow(0xff3a52,.9f,.55f);
+        private static int Mix(int a,int b,float t){int C(int s)=>(int)Math.Round(((a>>s)&255)+(((b>>s)&255)-((a>>s)&255))*t);return (C(16)<<16)|(C(8)<<8)|C(0);}
+        private static Vector2[] Ccw(Vector2[] o){var r=(Vector2[])o.Clone();Array.Reverse(r);return r;}
+        private static Vector3[] Flat(Vector2[] o,float z){var r=new Vector3[o.Length];for(int i=0;i<o.Length;i++)r[i]=new Vector3(o[i].X,o[i].Y,z);return r;}
+        private static Vector2[] Grown(Vector2[] o,float d){var r=WeaponSculpt.Inset(Flat(o,0),-d,0);var v=new Vector2[r.Length];for(int i=0;i<r.Length;i++)v[i]=new Vector2(r[i].X,r[i].Y);return v;}
+        // A pointy-top hexagon (counter-clockwise) of radius r about c at depth z.
+        private static Vector3[] Hex3(Vector2 c,float r,float z){var o=new Vector3[6];for(int i=0;i<6;i++){double a=Math.PI/2+i*Math.PI/3;o[i]=new Vector3(c.X+r*(float)Math.Cos(a),c.Y+r*(float)Math.Sin(a),z);}return o;}
+        // A band of quads between two matching rings, each turned to face +z (the face being built).
+        private static void Strip(WeaponSculpt s,in WeaponPaint c,Vector3[] a,Vector3[] b)
+        {
+            int n=a.Length;
+            for(int i=0;i<n;i++){int j=(i+1)%n;Vector3 p=a[i],q=a[j],r=b[j],t=b[i];var nrm=Vector3.Cross(r-p,t-q);if(nrm.Z<0)s.Quad(c,p,t,r,q);else s.Quad(c,p,q,r,t);}
+        }
+        // A flat convex polygon facing +z.
+        private static void Disc(WeaponSculpt s,in WeaponPaint c,Vector3[] ring)
+        {
+            for(int i=1;i+1<ring.Length;i++){var nrm=Vector3.Cross(ring[i]-ring[0],ring[i+1]-ring[0]);if(nrm.Z<0)s.Tri(c,ring[0],ring[i+1],ring[i]);else s.Tri(c,ring[0],ring[i],ring[i+1]);}
+        }
+        // The crystal in the core: a faceted hexagonal gem (Mythic: a fractured cluster of three shards; Rainbow: a prism).
+        private static void Crystal(WeaponSculpt s,in NativeChipCartridge.Look l,Vector3 at)
+        {
+            var glow=Light(0xffffff,3f,.7f);
+            if(l.Fractured){s.Gem(glow,at,.072f,.06f,5,.35f,.3f,.5f);s.Gem(glow,at+new Vector3(.054f,.036f,0),.042f,.045f,4,.3f,.8f);s.Gem(glow,at+new Vector3(-.048f,-.042f,0),.036f,.04f,4,.3f,.2f);return;}
+            if(l.Crest==NativeChipCartridge.Crest.Prism){s.Gem(glow,at,.09f,.06f,3,.3f,(float)Math.PI/2,.6f);return;}
+            s.Gem(glow,at,.102f,.06f,6,.3f,0,.55f);
+        }
+        // A spike rising from (x, y) on the top edge, leaning `lean` radians off upright: a pyramid of `sides`, base radius r.
+        private static void Spike(WeaponSculpt s,in WeaponPaint c,float x,float y,float lean,float r,float height,int sides,float phase)
+        {
+            s.Push(WeaponSculpt.Rx(Up)*WeaponSculpt.Rz(-lean)*WeaponSculpt.T(x,y,0));s.Gem(c,Vector3.Zero,r,height,sides,0,phase);s.Pop();
+        }
+        // The screws' seats inside the bezel's corners.
+        private static Vector2[] ScrewSpots(float w,float h,float tc,float bc)
+        {
+            float x=w/2-.115f;return new[]{new Vector2(-x+.04f,h/2-.115f-.02f),new Vector2(x-.04f,h/2-.115f-.02f),new Vector2(x,-h/2+.115f),new Vector2(-x,-h/2+.115f)};
+        }
+        // The four cut corners' gem seats (model units, centred).
+        private static Vector2[] GemSpots(float w,float h,float tc,float bc)
+        {
+            float a=tc*.5f+.03f,b=bc*.5f+.028f;return new[]{new Vector2(-w/2+a,h/2-a),new Vector2(w/2-a,h/2-a),new Vector2(w/2-b,-h/2+b),new Vector2(-w/2+b,-h/2+b)};
+        }
+        // The crest on the top edge's middle: Legendary's crown, Mythic's shards, the kits' marks, Rainbow's prism (fixed colours
+        // on the body; the tier's light where it glows).
+        private static void Crest(WeaponSculpt s,in NativeChipCartridge.Look l,float h,float tc)
+        {
+            float top=h/2;s.Into(Body);
+            switch(l.Crest)
+            {
+                case NativeChipCartridge.Crest.Crown:
+                    s.Box(Gold,V(0,top+.012f,0),V(.3f,.03f,.05f),.008f);
+                    foreach(var (x,ht) in new[]{(-.1f,.06f),(0f,.1f),(.1f,.06f)}){Spike(s,Gold,x,top+.02f,0,.03f,ht,4,(float)Math.PI/4);s.Sphere(Gold,new Vector3(x,top+.025f+ht,0),new Vector3(.013f,.013f,.013f),3,6,true);}
+                    foreach(int face in new[]{1,-1}){s.Push(WeaponSculpt.S(1,1,face));s.Gem(WeaponPaint.Glow(0xffa63d,1.1f,.6f),new Vector3(0,top+.012f,.026f),.02f,.026f,8,.4f,0,.5f);s.Pop();}
+                    break;
+                case NativeChipCartridge.Crest.Shards:
+                    s.Box(MetalPaint(l,0),V(0,top+.01f,0),V(.26f,.024f,.045f),.006f);s.Into(Lights);
+                    foreach(var (x,ht,lean) in new[]{(-.09f,.07f,-.35f),(-.04f,.11f,-.12f),(.01f,.14f,.05f),(.06f,.1f,.2f),(.1f,.065f,.4f)})Spike(s,Light(0xffffff,2f,.6f),x,top+.015f,lean,.022f,ht,4,.4f);
+                    break;
+                case NativeChipCartridge.Crest.Bolts:
+                    s.Box(MetalPaint(l,1),V(0,top+.012f,0),V(.2f,.03f,.05f),.008f);
+                    foreach(int side in new[]{-1,1})
+                    {
+                        var bolt=WeaponPaint.Glow(0xff2448,2f,.5f);float x=side*.07f;
+                        Line(s,bolt,new Vector2(x,top+.02f),new Vector2(x+side*.022f,top+.08f),0,.022f,.024f);Line(s,bolt,new Vector2(x+side*.022f,top+.08f),new Vector2(x-side*.008f,top+.085f),0,.018f,.022f);Line(s,bolt,new Vector2(x-side*.008f,top+.085f),new Vector2(x+side*.03f,top+.17f),0,.012f,.02f);
+                    }
+                    break;
+                case NativeChipCartridge.Crest.Knot:
+                    {var red=WeaponPaint.Solid(0xff344f,.1f);s.Sphere(red,new Vector3(0,top+.02f,0),new Vector3(.035f,.03f,.03f),4,8);
+                    foreach(int side in new[]{-1,1}){s.Push(WeaponSculpt.Rz(side*.45f)*WeaponSculpt.T(side*.065f,top+.035f,0));s.Torus(red,Vector3.Zero,.04f,.014f,12,6,0,(float)(Math.PI*2),.55f);s.Pop();}
+                    s.Box(red,V(.09f,top-.01f,0),V(.16f,.03f,.012f),.004f,0,0,-.35f);s.Box(red,V(.07f,top-.045f,0),V(.12f,.028f,.012f),.004f,0,0,-.6f);}
+                    break;
+                case NativeChipCartridge.Crest.Terminal:
+                    s.Box(MetalPaint(l,0),V(0,top+.03f,0),V(.18f,.07f,.05f),.01f);s.Into(Lights);
+                    foreach(int face in new[]{1,-1}){float z=face*.0255f;Line(s,Light(0xffffff,2f,.5f),new Vector2(-.05f,top+.045f),new Vector2(-.025f,top+.03f),z,.009f,.002f);Line(s,Light(0xffffff,2f,.5f),new Vector2(-.025f,top+.03f),new Vector2(-.05f,top+.015f),z,.009f,.002f);Line(s,Light(0xffffff,2f,.5f),new Vector2(-.01f,top+.015f),new Vector2(.03f,top+.015f),z,.009f,.002f);}
+                    break;
+                case NativeChipCartridge.Crest.Flames:
+                    foreach(var (x,ht,lean) in new[]{(-.11f,.07f,1),(-.055f,.11f,-1),(0f,.15f,1),(.055f,.12f,-1),(.11f,.075f,1)})
+                    {
+                        var f=new[]{new Vector2(-.028f,0),new Vector2(.028f,0),new Vector2(.02f,ht*.45f),new Vector2(lean*.02f,ht),new Vector2(-.018f,ht*.5f)};var o=new Vector3[f.Length];for(int i=0;i<f.Length;i++)o[i]=new Vector3(x+f[i].X,top-.01f+f[i].Y,0);
+                        s.Slab(_=>WeaponPaint.Glow(0xa99fe0,1.2f,.4f),WeaponPaint.Solid(0x030205),WeaponPaint.Solid(0x030205),o,-.014f,.014f,0);
+                    }
+                    break;
+                case NativeChipCartridge.Crest.Prism:
+                    s.Into(Lights);Spike(s,Light(0xffffff,2.2f,.6f),0,top+.01f,0,.05f,.16f,3,(float)Math.PI/2);
+                    break;
+            }
         }
 
     }

@@ -146,6 +146,8 @@ namespace ChipArena.UnityConversion
         }
         public static void Radial(Rect r,Color c){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),LightRamp(c)?radialL:radial);GUI.color=o;GUI.matrix=m;}
         public static void Image(Rect r,Texture t,Color c){if(t==null||c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;}
+        // Part `uv` of texture `t` (texture coordinates, v up; a negative width mirrors it) stretched over `r`: nine-slices.
+        public static void Slice(Rect r,Texture t,Rect uv,Color c){if(t==null||c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTextureWithTexCoords(P(r),t,uv);GUI.color=o;GUI.matrix=m;}
         // A CSS repeating pattern: texture `t` (wrap mode Repeat) repeated over `r` every `period` virtual px from its top-left
         // corner shifted by `phase`, in one draw; `flipY` mirrors it vertically (scaleY(-1)).
         public static void Tile(Rect r,Texture t,Color c,Vector2 period,Vector2 phase=default,bool flipY=false)
