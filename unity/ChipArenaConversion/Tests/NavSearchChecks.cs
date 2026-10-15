@@ -44,6 +44,25 @@ internal static class NavSearchChecks
         Check(newBytes==0,"warmed route searches allocate "+newBytes+" bytes");
         Func<MapNavNode,bool> usable=n=>!n.safe;
         for(int i=0;i<8;i++){var point=map.spawns.ffa[i].pos;Check(search.Nearest(point,usable).id==map.nav.nodes.OrderBy(n=>V3.Dot(n.pos-point,n.pos-point)).First(usable).id,"nearest equivalence");}
+        // Reproduce the emergency escape query: filter-before-sort evaluates
+        // visibility across the entire floor, even when a nearby escape is clear.
+        int oldEscapeChecks=0,newEscapeChecks=0,escapeCases=0;
+        foreach(var escapeMap in set.maps.Where(m=>m.nav!=null))
+        {
+            var escapeSearch=new NativeNavSearch(escapeMap.nav);
+            foreach(var spawn in escapeMap.spawns.ffa.Take(8))foreach(bool pocket in new[]{false,true})foreach(int blocked in new[]{0,3,int.MaxValue})
+            {
+                var point=spawn.pos;var ordered=escapeMap.nav.nodes.OrderBy(n=>V3.Dot(n.pos-point,n.pos-point)).ToArray();
+                var obstruction=new HashSet<MapNavNode>(ordered.Take(blocked));
+                bool Eligible(MapNavNode n)=>(!pocket||n.safe)&&Math.Abs(n.pos.y-point.y)<1.2;
+                bool OldUsable(MapNavNode n){if(!Eligible(n))return false;oldEscapeChecks++;return !obstruction.Contains(n);}
+                bool NewUsable(MapNavNode n){if(!Eligible(n))return false;newEscapeChecks++;return !obstruction.Contains(n);}
+                var expected=escapeMap.nav.nodes.Where(OldUsable).OrderBy(n=>V3.Dot(n.pos-point,n.pos-point)).FirstOrDefault();
+                Check(escapeSearch.Nearest(point,NewUsable)==expected,"escape destination equivalence "+escapeMap.id);escapeCases++;
+            }
+        }
+        Check(newEscapeChecks<oldEscapeChecks,"escape query reduces visibility checks");
+        Console.WriteLine($"PASS escape navigation: {escapeCases} clear/blocked/unreachable floor/pocket cases; visibility predicates {oldEscapeChecks} -> {newEscapeChecks}, same destinations (simulated obstruction, not PhysX)");
         var graph=new MapNav{nodes=new[]{new MapNavNode{id="upper",pos=new V3(0,6,0)},new MapNavNode{id="lower",pos=new V3(0,0,0)},new MapNavNode{id="isolated",pos=new V3(5,0,0)}},links=new[]{new MapNavLink{id="drop",a="upper",b="lower",kind="drop"}}};
         var small=new NativeNavSearch(graph);small.Find("upper","lower",all,result);Check(result.SequenceEqual(new[]{"upper","lower"}),"directed drop down");small.Find("lower","upper",all,result);Check(result.Count==0,"no reverse drop");small.Find("upper","isolated",all,result);Check(result.Count==0,"unreachable clears old path");small.Find("upper","upper",all,result);Check(result.SequenceEqual(new[]{"upper"}),"start equals end");small.Find("upper","lower",l=>false,result);Check(result.Count==0,"changed gate invalidates next search");
         small.BuildFlow("lower",all);small.TraceFlow("upper",result);Check(result.SequenceEqual(new[]{"upper","lower"}),"flow follows drop downward");
