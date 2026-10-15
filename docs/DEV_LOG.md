@@ -1,3 +1,10 @@
+## 2026-10-15 — Claude: owner chose the join circle rule; individual instance entry is the target
+
+- Branch `claude/join-circle-owner-choice`, base `claude/updater-parent-exit-race` (`515d6ee`, on shared `4f086ae`). Docs only.
+- Owner: "Option 2 , but ideally were gonna let players individually enter instances". `docs/EXPEDITION-HUB.md`, "Join circle at the instance doors", now states the chosen rule for Astra: anyone in the circle starts a party countdown (proposed 5 s, tunable), cancelled when nobody is left inside; at zero the whole party enters. View fields: `joinInside`, `joinStartedAt`, `joinBy`, `members[].atJoin`.
+- Added "Next: individual instance entry" for Astra to scope (per-member areas, more than one simulated arena, per-area frames, barriers and saves). The join circle carries over: then only the members inside enter.
+- Next: Astra implements the parser and rule; then Claude moves the circle off the door (layout exp-layout-4) and draws the ring, countdown and HUD banner.
+
 ## 2026-10-15 — Claude: updater survives a module read while the game starts or closes
 
 - Branch `claude/updater-parent-exit-race`, base shared `4f086ae`. Fix to Astra's updater (`Updater/Launcher.cs`) because it turned PR #62 red; for Astra's review.

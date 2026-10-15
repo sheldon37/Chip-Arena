@@ -679,17 +679,22 @@ run around the hub, the other wants to go inside ward zero. Could this still run
 `Core/NativeExpeditionDirectorState.cs:110-115`, `Runtime/NativeExpeditionM1.cs:77-82`). Then every living member is placed on the
 instance `entries`. The run has one `area`, and the host simulates one arena, so a split party (hub and Ward Zero at once) is not
 supported. It contradicts `EXPEDITION.md` ("No split indoor/outdoor simulation") and would need per-member areas, concurrent arenas,
-per-peer frames and per-area barriers: a large redesign. The owner is asked to decide; the proposal below keeps one area.
+per-peer frames and per-area barriers: a large redesign.
 
-**Proposed rule (Astra; pending the owner's confirmation):**
+**Owner decision (2026-10-15):** "Option 2 , but ideally were gonna let players individually enter instances". So: anyone in the
+circle starts the countdown and pulls the whole party in (rule below, now). Letting each player enter an instance alone, while
+others stay in the hub, is the owner's target design (see "Next: individual instance entry" below).
+
+**Rule (Astra; owner-chosen 2026-10-15):**
 1. Each instance door gets a **join circle**: a vertical cylinder `join {x, y, z, r, h}`. For Ward Zero: centre 5 m out from the
    doorway on the approach line (x 79, z 0), r 2.5 m, h 3 m, between the portico pylons (z ±3.8).
-2. When every living, connected, unextracted member stands inside it (capsule centre in the cylinder), a 3 s **deploy countdown**
-   starts. It cancels if anyone steps out, dies or disconnects. At zero the run enters (`EnterDoor` path, barrier, ready, placement
-   unchanged). The F door entry is retired; F stays for caches, machines, rewards and gates. Guests count through their pilot on
-   the host.
-3. Public view per door: `joinInside` (count), `joinNeeded` (count), `joinStartedAt` (authority seconds, −1 none), and per member
-   `atJoin` (bool) for "who is missing".
+2. When **any** living, connected, unextracted member stands inside it (capsule centre in the cylinder), a **deploy countdown**
+   starts for the whole party (proposed 5 s, so members away from the door see the warning; tunable). It cancels if nobody is left
+   inside (stepped out, died or disconnected). At zero the whole party enters, wherever each member is (`EnterDoor` path, barrier,
+   ready, placement unchanged). The F door entry is retired; F stays for caches, machines, rewards and gates. Guests count through
+   their pilot on the host.
+3. Public view per door: `joinInside` (count), `joinStartedAt` (authority seconds, −1 none), `joinBy` (seat that started it), and per
+   member `atJoin` (bool).
 4. The phase is Town only; quota, closures and the exit vote are unchanged.
 
 **Claude's part:**
@@ -697,8 +702,14 @@ per-peer frames and per-area barriers: a large redesign. The owner is asked to d
   circle centre. The revision bumps to exp-layout-4 (saves pinned to exp-layout-3 will not resume). This needs Astra's parser to
   accept `join` first.
 - Presentation: a ground ring at the circle (an owner-requested exception to the no-rings rule; `ExpeditionPresentationChecks` is
-  updated), split into `joinNeeded` segments that fill as members step in. A countdown sweep and a label: STAND IN THE CIRCLE TO
-  DEPLOY · 2/3, or DEPLOYING 3…2…1. Missing members are named on the HUD.
+  updated) that lights when someone stands in it, a countdown sweep, and a label: STAND IN THE CIRCLE TO DEPLOY, or DEPLOYING TO
+  WARD ZERO 5…1. Members outside get a HUD banner naming who started it and the time left.
+
+**Next: individual instance entry (owner target; Astra design first).** Each member may be in the hub or an instance at the same
+time. That needs per-member areas, the host simulating more than one arena (or a hub arena plus instance arenas), frames scoped per
+area, per-area load barriers and saves, and rules for revive, death, reprint, quota and extraction across areas. Astra to scope it
+and say what changes in the wire, director and save formats. The join circle carries over: at zero, the members inside enter and
+the rest stay in the hub.
 
 ## Expedition co-op hosting (owner request 2026-10-15) — for Astra
 
