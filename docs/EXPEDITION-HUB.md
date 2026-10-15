@@ -407,3 +407,78 @@ occupancy, holster timing, aggro grace, spawning, damage and outside DoTs. The l
 requires the desktop builder/Unity and is not established by a semantic compile.
 Full multiplayer Expedition launch remains the existing separate integration task;
 this change supplies the public hub state contract, not a new multiplayer launcher.
+
+## Town zombie roaming and perception (owner, 2026-10-15)
+
+Authority implementation: `Core/NativeHubPerception.cs` and
+`Runtime/NativeHubPerceptionRuntime.cs`, only for the hub population tracked by
+`hubMobs`. Instance/Boss Test hordes and DEV monsters retain their existing AI.
+
+- **Wander / idle:** choose authored navigation points in the zombie's spawn
+  zone, normally 3–14 m away. Shamble at `min(1.1 m/s, stats.walk * .55)`, with
+  existing crawl/limp, slow and stagger modifiers. Idle for a host-random 2–6 s
+  on arrival; a blocked patrol leg times out after 15 s. After chasing outside
+  its zone, return toward its spawn before resuming the zone patrol. Horde gate
+  links stay excluded; movement still checks support and the sanctuary boundary.
+- **Vision:** 18 m, horizontal 110° forward cone; within 3 m, notice in any
+  direction. Both require scene line of sight. Range uses three-dimensional
+  distance. Sanctuary occupancy or a segment across its fence rejects sight.
+- **Hearing:** actual grounded displacement generates steps, at most every .6 s
+  walking / .3 s sprinting; a grounded transition generates landing noise.
+  Accepted attacks/casts/shots/explosions and successful manual gate openings
+  generate their own noises. Merely pressing a blocked action does not count.
+  Noise can pass ordinary scenery, but never the sanctuary fence; source and
+  listener paths are checked, including two exterior points across the sanctuary.
+
+| Noise | Radius |
+| --- | ---: |
+| Walking | 5 m |
+| Sprinting | 10 m |
+| Landing | 12 m |
+| Fighting / melee attack | 14 m |
+| Firing (including bow) | 28 m |
+| Explosion | 36 m |
+| Casting | 22 m |
+| Opening a gate from outside | 16 m |
+
+- **Alert / chase:** a sight or noise sample starts a .4–.8 s stationary turn
+  toward that sample, then chase. Repeated observations do not restart the
+  reaction. Existing attacks cannot run during the reaction. Optional screams
+  and zombie-to-zombie alert propagation are not enabled.
+- **Memory / search:** only sight/noise updates the known position. Without a
+  fresh observation for 3 s, investigate that position (up to 10 s), search in
+  place for up to 4 s on arrival, then wander again. Memory pursuit and search
+  cannot attack using the hidden target's live position. Reacquisition from
+  search starts a new alert. Existing sanctuary aggro grace remains 1.5 s;
+  entering safety does not expose further positions. Existing far (60 m / 15 s),
+  idle (180 s) and lost-aggro (30 s) despawn rules remain active.
+- **Cost:** senses run every .2 s per zombie, staggered initially; vision rejects
+  range/cone/fence before querying the scene. The host keeps at most 64 noises,
+  expires them after .75 s, and each zombie consumes each event once. Each
+  zombie owns its random stream, independent of spawn/economy randomness.
+
+### Shared reaction state / Claude handoff
+
+`NativeMinionFrame` adds three scalar fields, copied into `NativePveAdd.Hub` on
+host and guest. They also survive `NativeFrameCodec` replay/late-join capture:
+
+| Field | Meaning |
+| --- | --- |
+| `hubState` | `HubZombieState`: 0 none/non-hub, 1 wander, 2 idle, 3 alert, 4 chase, 5 search |
+| `hubAlertAt` | Start of latest alert in **arena simulation seconds**, -100 before first alert |
+| `hubLookYaw` | Desired horizontal look direction in degrees, +Z = 0; `V3.Forward` gives the vector |
+
+`NativePveAdd.Hub` exposes `State`, `AlertAt`, `LookYaw`; it is null for non-hub
+adds. A default/older frame's state 0 clears the view. The receiver validates
+state range and finite time/yaw. No client runs perception, randomness or timers.
+Body position/velocity/yaw already replicate, so the real idle, shamble and turn
+are visible without a presentation rewrite. Claude may layer a bespoke reaction
+using this state; there is no new scream audio or animation asset in this change.
+Attack timing/damage, spawn caps/cadence, ring payouts and gate rules are unchanged.
+
+Acceptance: managed checks cover cone/LOS inputs, every noise radius, fence
+segments, seeded reaction/idle/memory/search traces and public-state roundtrips.
+Native hub acceptance adds real scene LOS, heard rear-target reaction,
+JsonUtility and guest/late-join reconstruction. Native execution and Windows
+visual/two-client play must be verified by the builder/playtest; semantic compile
+alone is not that verification.

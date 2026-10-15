@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed class NativePveAdd : NativeHulkHunt
     {
-        public string HubRing;public bool HubCredit;
+        public string HubRing;public bool HubCredit;public HubZombieView Hub;
         public Vector3 BreachShortcut;public float BreachThinkAt;public bool HasBreachShortcut;public float SpitCancelAt=-100;public NativeHulkBreach.Progress WallProgress;public NativeBreachRecord WallBreach;public PveAddStats Stats;public PveEntry Entry;public int Lost,Side=1;public float ActiveAt,ExposedAt,SpawnAt,ThinkAt,RecoverAt,StaggerAt,DamageScale,HpScale,PossessedAt,SlowUntil,SlowFactor=1,LastDamage=-100,VentReady,WalkAt,DiveAt,VentUntil;public bool Landed,DropLanded,Struck=true,Possessed,Crawl,Limp,First=true,Travelling;public float HideThinkAt;public Vector3 HideDestination;public Vector3 External;public NativePilot Target;public NativeMinion KillerSummon;public NativePilot LastHit;
         public readonly Dictionary<int,float> Dealt=new Dictionary<int,float>();public readonly Dictionary<int,float> Parts=new Dictionary<int,float>();
     }
@@ -134,7 +134,9 @@ namespace ChipArena.UnityConversion
                 // Landed drops can take hits/DoTs and be shoved during recovery, but cannot move voluntarily or attack.
                 if(Time<a.ActiveAt){a.External*=Mathf.Exp(-6*dt);m.Body.linearVelocity=new Vector3(a.External.x,m.Body.linearVelocity.y,a.External.z);continue;}
                 Vector3 at=m.Body.position,navAt=Vec(NativeNavSearch.BodyAnchor(Vec(at),m.Collider.height/2));var target=a.Target;
-                if(Time>=a.ThinkAt||target==null||target.Hp<=0||!target.Seat.connected||!HubCanTarget(target,target))
+                bool roaming=HubOn&&hubMobs.ContainsKey(m.Id);
+                if(roaming){if(StepHubMind(m,enemies,out target))continue;}
+                else if(Time>=a.ThinkAt||target==null||target.Hp<=0||!target.Seat.connected||!HubCanTarget(target,target))
                 {
                     if(target!=null&&!HubCanTarget(target,target)){a.Struck=true;if(hubMobs.TryGetValue(m.Id,out var hubMob)&&hubMob.LostAt<0)hubMob.LostAt=Time;}
                     a.ThinkAt=Time+.75f;target=enemies.Where(p=>p.Hp>0&&p.Seat.connected&&HubCanTarget(p,a.Target)&&(!a.Possessed||!p.Seat.bot)).OrderBy(p=>pveNavigation.Distance(at,p.Body.position,p.Seat.id)+3*Math.Max(0,HordeTargetCount(p.Seat.id)-6)-(a.Target==p?2:0)-(v.Recruits.Any(r=>r.Pilot==p&&r.Role=="tank")&&Vector3.Distance(p.Body.position,at)<8?6:0)).FirstOrDefault();a.Target=target;if(target!=null&&TryVentTravel(m,target))continue;
@@ -142,7 +144,7 @@ namespace ChipArena.UnityConversion
                 if(StepHulkHunt(m,target))continue;
                 if(target!=null&&StepHulkBreach(m,target.Body.position)){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}
                 if(!a.Struck&&Time>=m.StrikeAt){a.Struck=true;PveAddStrike(m);if(m.Hp<=0)continue;}
-                if(target==null){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);HubIdle(m);continue;}Vector3 d=target.Body.position-at;float distance=new Vector2(d.x,d.z).magnitude;
+                if(target==null){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}Vector3 d=target.Body.position-at;float distance=new Vector2(d.x,d.z).magnitude;
                 bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,start=a.Stats.id=="spitter"?NativeSpitterRules.Range:a.Crawl?1:armless?.95f:a.Stats.startRange,hit=a.Stats.id=="spitter"?a.Stats.hit:a.Crawl||armless?.34f:a.Stats.hit;
                 if(a.Stats.id=="hulk"&&!a.Crawl&&!armless)start=Math.Max(start,NativeHulkMoves.PunchReach);
                 if(a.Struck&&!a.Possessed&&Time>=a.RecoverAt&&Time>=a.StaggerAt&&distance<=start&&(a.Stats.id!="spitter"||distance>=4)&&Math.Abs(d.y)<1.6f&&(a.Stats.id!="hulk"&&a.Stats.id!="spitter"||MeleeVisible(at,target.Body.position,m.Owner,target.Collider,true)))
