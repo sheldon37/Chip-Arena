@@ -8654,3 +8654,69 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
      Then `Resolve` lets the host launch (`X.LaunchKind.ExpeditionM1` becomes a room start).
   4. **Guests seeing the host's selection:** item 1, plus a lobby broadcast when the pick changes.
 - **Next:** owner review in Unity or Windows (look, 720p at 1.5, controller); Astra's items 1-3.
+
+## 2026-10-15 — Claude: Expedition chip picks on the Boss Test's chip tray, over the live view
+
+- **Owner requests:**
+  - "We should also utilize the same chip selection screen (That we utilize in the Boss Test) instead of selecting on the J menu."
+  - Then, relayed by the lead after PR #234: choosers stay mobile and vulnerable.
+- **Branch:** `claude/expedition-chip-screen`, based on shared `3ced89c`.
+  - It merges shared `23c701d` (PR #233, the choosing authority), `3d6d736` (PR #234, the mobile correction) and `d6968b6`.
+  - Commits: `eabfaf5` (first, full-screen version), `2ebf410` (contract), `d8e33e2` (overlay), `2983177`, `1b87e30`, and this log.
+  - Pushed; not merged; no PR.
+- **What changed (presentation and client input routing only):**
+  - **Picking happens on the Boss Test's chip tray, drawn over the live view.**
+    - The same `PveChipScreen` cards (`DrawTray`: entrances, holo highlight, number badges, hover cue) and `DraftKeys`.
+    - Docked at the bottom centre between the health box and the cooldowns; the crosshair and the world stay visible.
+    - No 3D draft stage and the arena is never hidden. The Boss Test path (`NativeDraftScreen`, `NativeDraftPresentation`, `NativeDraftFollow`) is byte-identical to shared.
+  - **It opens only on C**, or on the J panel's new `C · CHOOSE CHIP (N)` line. Collecting a reward never opens it (Astra's contract).
+    - The Boss Test's `CHIPS N` tag with its C key counts waiting rewards in the scene. `PveChipsTag` is extracted from `PveHud` unchanged, and replaces the minimal HUD's tag in the scene.
+    - An unopened reward (reserved boss chip, catch-up, unopened purchase) is opened with `Claim`, sent only while the tray can show.
+  - **Choosing presence:**
+    - Showing a claimed reward sends `OpenChoice(reward)`, once. The host keeps the flag across queued picks.
+    - C, Escape, Choose later, or the tray closing itself sends `CloseChoice`, once, while the view still shows choosing.
+    - A refused or unconfirmed `Claim` / `OpenChoice` closes the tray with a notice.
+  - **Picking:**
+    - 1–9, arrows/Enter, or a click while Alt is held, sends `Select(reward, chip)` through `ExpeditionLiveSubmit`.
+    - The follow-through runs on the same pieces: the others shatter, the chosen card drops out of view.
+    - The heading reads "Installing" until the view shows the reward consumed, then "Upgrade secured"; a guest's tracked caption shows meanwhile.
+    - A refusal returns to that reward's tray with its caption. The next waiting reward follows, as the Boss Test's queue does.
+    - The install cue is Astra's `Install` event.
+  - **Header:**
+    - Built from the reward's source and kind; there is no tier. Boss rewards read "BOSS REWARD · <boss> · EPIC OR BETTER" in the epic tone.
+    - YOU ARE VULNERABLE WHILE CHOOSING, N MORE WAITING (my other unpicked rewards) and the key line.
+    - Under attack: the Boss Test's blinking border and alarm. Its full-screen wash is kept faint (12% blinking, 6% steady with Reduced effects) so the fight stays readable.
+  - **Input (client routing, never a lock):**
+    - While the tray is drawn, digits 1–9 pick, so the abilities they would start are dropped.
+    - Holding Alt frees the cursor to click a card; mouse look, attack and block pause only while it is held.
+    - WASD, jump, sprint, roll, Q, E, F and reload are untouched.
+    - Chosen over a cursor toggle: releasing Alt always returns the mouse to aiming, so the player cannot be left without camera control mid-fight.
+  - **Wrist look and SELECTING CHIP tag:**
+    - Driven for every pilot by the view's public `members[].choosing` (`ArenaPresentation.ExpeditionChoosing`), as the Boss Test reads each row's replicated open pick.
+    - Others show three cyan cards; their offers stay private. Mine shows my offers' rarities.
+    - Mine steps aside in first person while my tray is on screen.
+  - **J panel:** lists the waiting rewards (READY · N OFFERS / UNOPENED), CHOOSE CHIP, picks this loop and held chips. There is no PICK or Open there.
+- **Files:**
+  - New: `Core/NativeExpeditionPick.cs` (rules, flow, choosers), `Runtime/NativeExpeditionChipScreen.cs`, `Tests/ExpeditionPickChecks.cs` (`--expedition-pick`; also in the full run).
+  - Edited: `ConversionGame.cs` (Boss Test C kept out of an Expedition; Alt `look` and mouse-look terms; `ExpeditionPickRoute()` after the play input), `NativeExpeditionLiveUI.cs`, `NativeExpeditionHud.cs`, `NativePveUI.cs`, `NativeChipSelectPresentation.cs`, `docs/EXPEDITION-PRESENTATION.md` ("Chip picks").
+- **Checks (run5 on the merged branch):**
+  - Unity 6000.3.24f1 runtime and editor compile OK.
+  - Relay 714 PASS, including the new `ExpeditionPickChecks`: 225 checks against the real authority, view, host commands and tracker, plus source scans.
+    - The default 300 s test-process limit was raised to 2400 s with `CHIP_TEST_TIMEOUT_SECONDS`: other agents kept the shared machine at load 20–30 on 4 cores.
+    - A first run at 300 s timed out after 248 groups with no failure. A second run caught `DevToolsChecks`' pin on the cursor line (fixed in `1b87e30`).
+  - Python 106 OK (1 skipped), package OK, diff-check OK.
+- **Renders:** offline only, in the scratchpad's `renders-expedition-chip-screen`.
+  - The branch's real tray, overlay, header, alarm and tag methods are composited over stand-in Ward Zero and city frames. The follow-through frames use the overlay's real header and `PickedTray` calls with the confirmation state given.
+  - Frames: entrance, idle, Alt hover, key focus, under attack, refused, the follow-through (installing, flying, secured, guest pending), the CHIPS tag, 1280×720 and 3440×1440, and the J panel from the DEV preview.
+  - The under-attack frame shows a full-screen pink wash in the offline renderer: it stretches the 4 px nine-sliced border as one texture. In Unity that is a thin edge.
+- **Not run:** Unity Editor/player, Windows, two-client play.
+- **Risks:**
+  - The overlay's fit next to the real health box and cooldown strip is checked only by layout numbers (canvas tray x 412–1188 of 1600).
+  - A choosing pilot's raised-wrist pose overlays their attack animations in third person.
+  - The digits drop every digit ability while the tray is drawn, including 4–9 with three offers.
+  - Alt+Tab on Windows is still the OS's.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The wrist pose overlay is the Boss Test's.
+- **Astra prompt (remaining, optional):**
+  1. Boss Test offer parity for Expedition picks: the implemented / Siren filter, tier weights, money chips and stale-offer reroll. Offers carry no tier, so the tray names the source instead.
+  2. Tiered physical pickups dispensed by the Ward machines (the Boss Test's walk-over chip) instead of a direct claim.
+  - The choosing presence, OpenChoice / CloseChoice, Install on Select and the C notices are done (PRs #233 and #234).

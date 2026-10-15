@@ -17,7 +17,8 @@ namespace ChipArena.UnityConversion
     /// shows the command's tracked state (pending, confirmed by the authority, refused, unavailable with the reason, failed).
     ///  - Minimal in-match HUD: personal wallet, objective line, the running countdown, chips waiting for you.
     ///  - World board (buildings, sealed doors, quotas, final area, loop and difficulty clock, party), loot (ordinary first-pickup
-    ///    drops against reserved boss chips, eligibility and claimed state), personal chip panel, sanctuary (checkpoint,
+    ///    drops against reserved boss chips, eligibility and claimed state), personal chip panel (waiting rewards, held chips; picks
+    ///    happen on the Boss Test's chip screen, NativeExpeditionChipScreen.cs), sanctuary (checkpoint,
     ///    individual and group extraction, reprint machine), building (door, bosses, departure vote), victory choices,
     ///    the dice reveal of a stored record, and the host-transfer overlay.
     /// </summary>
@@ -36,6 +37,8 @@ namespace ChipArena.UnityConversion
             public Func<string,string> ChipName=id=>id;
             /// <summary>A chip's rarity colour (content data), drawn as a tick, never as text.</summary>
             public Func<string,Color> ChipTone=_=>C.CyanSoft();
+            /// <summary>Opens the chip pick screen (the chip panel's CHOOSE CHIP line); null where there is none (the DEV preview).</summary>
+            public Action Choose;
         }
 
         public static Color Tone(ExpeditionTone t,float a=1)
@@ -88,8 +91,9 @@ namespace ChipArena.UnityConversion
 
         // ---- Minimal in-match HUD ------------------------------------------------------------------------------------------
         /// <summary>The minimal HUD: wallet top left (as the PvE money panel), the objective tag top centre with the running
-        /// countdown under it, and a magenta tag top right while chips of yours wait to be opened or picked.</summary>
-        public static void Minimal(ExpeditionView v,float W,float a=1)
+        /// countdown under it, and a magenta tag top right while chips of yours wait to be opened or picked (`chips`; in the scene the
+        /// Boss Test's CHIPS tag with its C key stands in for it).</summary>
+        public static void Minimal(ExpeditionView v,float W,float a=1,bool chips=true)
         {
             if(P.Has(v.mine.account)&&!v.mine.extracted)
             {
@@ -109,10 +113,10 @@ namespace ChipArena.UnityConversion
                 U.Text(new Rect(cr.x+14,cr.y+33,cr.width-28,14),cd.votes+" / "+cd.needed+(cd.label=="GROUP EXTRACTION"?" VOTES · ONLY VOTERS LEAVE":" VOTED"),10,C.Muted(a),TextAnchor.MiddleLeft,mono:true,tracking:.08f);
             }
             int waiting=0;foreach(var r in v.mine.rewards)if(!r.consumed)waiting++;
-            if(waiting>0&&!v.mine.extracted)
+            if(chips&&waiting>0&&!v.mine.extracted)
             {
-                string chips="YOUR CHIPS · "+waiting+" WAITING";float cw=U.Measure(chips,12,true,true,.1f).x+30;var cr=new Rect(W-24-cw,24,cw,30);
-                H.Tag(cr,C.Magenta(),a);U.Text(new Rect(cr.x+14,cr.y,cw,cr.height),chips,12,C.Magenta(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
+                string tag="YOUR CHIPS · "+waiting+" WAITING";float cw=U.Measure(tag,12,true,true,.1f).x+30;var cr=new Rect(W-24-cw,24,cw,30);
+                H.Tag(cr,C.Magenta(),a);U.Text(new Rect(cr.x+14,cr.y,cw,cr.height),tag,12,C.Magenta(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
             }
         }
 
@@ -189,8 +193,10 @@ namespace ChipArena.UnityConversion
         // ---- Personal chip panel ---------------------------------------------------------------------------------------------
         private static string SourceLabel(string source)=>source=="chest"?"PURCHASED · YOURS":source=="boss"?"BOSS · RESERVED FOR YOU":source=="monster"?"DROP · PICKED UP":source=="catchup"?"CATCH-UP":source.ToUpperInvariant();
         private static ExpeditionTone SourceTone(string source)=>source=="chest"?ExpeditionTone.Warn:source=="boss"?ExpeditionTone.Magenta:source=="catchup"?ExpeditionTone.Good:ExpeditionTone.Cyan;
-        /// <summary>Your wallet, your rewards (purchased, reserved, picked up, catch-up) with your own offers to pick from, and the
-        /// chips you hold. Only the viewer's state exists in the view, so nothing here can show another pilot's choice.</summary>
+        /// <summary>Your wallet, your waiting rewards (purchased, reserved, picked up, catch-up: ready with offers, or unopened) and the
+        /// CHOOSE CHIP line that opens the Boss Test's chip screen on them (owner 2026-10-15: picks happen there, not on the J screen),
+        /// your picks this loop and the chips you hold. Only the viewer's state exists in the view, so nothing here can show another
+        /// pilot's choice.</summary>
         public static ExpeditionCommand Chips(Rect r,ExpeditionView v,Controls c,float a=1)
         {U.BeginBand(r);try{
             var result=default(ExpeditionCommand);H.Panel(r,a,C.Magenta());float y=Header(r,"PERSONAL · ONLY YOU SEE THIS","Your chips",C.Ink(),a);
@@ -201,28 +207,21 @@ namespace ChipArena.UnityConversion
             // One reason for every control here, rather than the same caption under each reward.
             string blocked=me.extracted?"You extracted: rewards you had not opened can no longer be opened.":c.Blocked(new ExpeditionCommand(ExpeditionIntent.Claim))??c.Blocked(new ExpeditionCommand(ExpeditionIntent.Select));
             if(blocked!=null&&me.rewards.Length>0)y=Lines(r.x+18,y,r.width-36,(me.extracted?"":"Unavailable · ")+blocked,11,me.extracted?C.Muted(a):C.Warn(a),3)+8;
+            // Waiting rewards, one row each (ready with its offers, or unopened). The Boss Test's chip screen opens and picks them.
+            int waiting=0,listed=0;
             foreach(var reward in me.rewards)
             {
-                if(reward.consumed)continue;if(y+56>bottom)break;var head=Inner(r,y,18);
-                U.Text(head,SourceLabel(reward.source),11,Tone(SourceTone(reward.source),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);
-                if(P.Has(reward.boss))U.Text(head,P.Name(reward.boss),10,C.Muted(a),TextAnchor.MiddleRight,mono:true);y+=22;
-                if(!reward.claimed)
-                {
-                    y=Action(new Rect(r.x+18,y,150,30),"Open",new ExpeditionCommand(ExpeditionIntent.Claim,reward.id),!me.extracted,c,a,true,out bool open,true)+8;if(open)result=new ExpeditionCommand(ExpeditionIntent.Claim,reward.id);continue;
-                }
-                U.Text(Inner(r,y,14),"CHOOSE ONE · THIS PICK IS YOURS ALONE",10,C.Muted(a),TextAnchor.MiddleLeft,mono:true,tracking:.08f);y+=18;
-                foreach(var offer in reward.offers)
-                {
-                    if(y+34>bottom)break;var cell=Inner(r,y,30);var cmd=new ExpeditionCommand(ExpeditionIntent.Select,reward.id,offer);
-                    string offerBlocked=c.Blocked(cmd);var st=c.State(cmd);bool enabled=offerBlocked==null&&st.state!=ExpeditionCommandState.Pending&&!me.extracted;
-                    float hover=U.HoverAmount(offer.GetHashCode()^reward.id.GetHashCode(),cell,enabled);
-                    H.Cut(cell,C.Indigo((.75f+.2f*hover)*a),R.TagCut);H.Outline(cell,U.Mix(C.Edge(a),C.Cyan(a),hover),R.TagCut);U.Fill(new Rect(cell.x+6,cell.y+7,3,cell.height-14),U.A(c.ChipTone(offer),a));
-                    U.Text(new Rect(cell.x+16,cell.y,cell.width-90,cell.height),c.ChipName(offer),13,C.Ink(a*(enabled?1:.6f)),TextAnchor.MiddleLeft,bold:true);
-                    U.Text(new Rect(cell.x,cell.y,cell.width-10,cell.height),"PICK",10,enabled?C.Cyan(a):C.Muted(a),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.12f);
-                    if(U.Button(cell,enabled))result=cmd;y+=34;
-                }
-                var pick=c.State(new ExpeditionCommand(ExpeditionIntent.Select,reward.id));string caption=P.Feedback(pick,out var tone);
-                y=Lines(r.x+18,y,r.width-36,caption,11,Tone(tone,a),2)+8;
+                if(reward.consumed)continue;waiting++;bool boss=P.Has(reward.boss);if(y+(boss?36:22)>bottom-62)continue;var head=Inner(r,y,18);listed++;
+                float tag=StateTag(head.xMax,head.y-1,reward.claimed?"READY · "+reward.offers.Length+" OFFERS":"UNOPENED",reward.claimed?ExpeditionTone.Magenta:ExpeditionTone.Muted,a);
+                U.Text(new Rect(head.x,head.y,tag-head.x-6,head.height),SourceLabel(reward.source),11,Tone(SourceTone(reward.source),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);y+=22;
+                if(boss){U.Text(Inner(r,y-4,14),P.Name(reward.boss),10,C.Muted(a),TextAnchor.MiddleLeft,mono:true);y+=14;}
+            }
+            if(listed<waiting){U.Text(Inner(r,y,14),"+"+(waiting-listed)+" more",10,C.Muted(a),TextAnchor.MiddleLeft,mono:true);y+=18;}
+            if(waiting>0&&!me.extracted)
+            {
+                bool can=c.Choose!=null&&blocked==null;
+                if(U.Btn(new Rect(r.x+18,y+2,r.width-36,34),"C · CHOOSE CHIP ("+waiting+")",can,can,a,13)&&can)c.Choose();y+=42;
+                y=Lines(r.x+18,y,r.width-36,c.Choose==null?"Picks open on the chip tray in a live run.":"Opens the chip tray over the live view. C opens it anywhere in the run.",10,C.Muted(a),2)+8;
             }
             // Your picks this loop (private): the chip chosen from each reward.
             var picks=P.History(v);

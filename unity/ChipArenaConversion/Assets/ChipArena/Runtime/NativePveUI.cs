@@ -37,12 +37,17 @@ namespace ChipArena.UnityConversion
                 var mr=new Rect(24,24,220,58);NativeHudChrome.Panel(mr,1,NativeCyberTheme.Warn());NativeUi.Text(new Rect(mr.x+14,mr.y+8,mr.width-28,26),"$"+row.Money,22,NativeCyberTheme.Warn(),TextAnchor.MiddleLeft,bold:true,mono:true,glow:NativeCyberTheme.Warn(.3f));
                 NativeUi.Text(new Rect(mr.x+14,mr.y+34,mr.width-28,16),row.Kills+" kills  ·  F interact / revive",11,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft);
                 if(row.Picks.Count!=pvePending){if(row.Picks.Count>pvePending)pvePendingAt=Time.unscaledTime;pvePending=row.Picks.Count;}
-                // The pending chips tag (magenta: a reward waiting), pulsing for 6 s after a new pick; still with Reduced effects.
-                if(row.Picks.Count>0&&!PvePickOpen){float since=Time.unscaledTime-pvePendingAt,pulse=since<6&&!prefs.reducedEffects?1+.07f*(.5f-.5f*Mathf.Cos(since*2*Mathf.PI)):1;string chips="CHIPS "+row.Picks.Count;float cw=NativeUi.Measure(chips,12,true,true,.1f).x+44;var cr=new Rect(W-24-cw,H-104-30,cw,30);
-                    NativeUi.Push(cr.center,Vector2.zero,pulse);if(since<6&&pulse>1)NativeUi.Glow(cr,NativeCyberTheme.Magenta(.4f*(pulse-1)/.07f),24);NativeHudChrome.Tag(cr,NativeCyberTheme.Magenta());NativeUi.Text(new Rect(cr.x+14,cr.y,cw,cr.height),chips,12,NativeCyberTheme.Magenta(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
-                    NativeHudChrome.Key(new Rect(cr.xMax-26,cr.y+6,18,18),"C");NativeUi.Pop();}
+                if(row.Picks.Count>0&&!PvePickOpen)PveChipsTag(W,H,row.Picks.Count,Time.unscaledTime-pvePendingAt);
                 if(p.Hp<=0)Prompt(H/2+5,arena.InShaft(p)?"FALLING THROUGH THE VENT":row.SelfAt>=0?"Self-revive in "+Math.Ceiling(row.SelfAt-arena.Time)+"s":"DOWNED  ·  A teammate can revive you",16,NativeCyberTheme.Danger());
             }
+        }
+        // The pending chips tag (magenta: a reward waiting) with the C key, above the cooldown cards, pulsing for 6 s after a new pick
+        // (`since` seconds ago); still with Reduced effects. The Boss Test's, also drawn for an Expedition (NativeExpeditionChipScreen.cs).
+        private void PveChipsTag(float W,float H,int count,float since)
+        {
+            float pulse=since<6&&!prefs.reducedEffects?1+.07f*(.5f-.5f*Mathf.Cos(since*2*Mathf.PI)):1;string chips="CHIPS "+count;float cw=NativeUi.Measure(chips,12,true,true,.1f).x+44;var cr=new Rect(W-24-cw,H-104-30,cw,30);
+            NativeUi.Push(cr.center,Vector2.zero,pulse);if(since<6&&pulse>1)NativeUi.Glow(cr,NativeCyberTheme.Magenta(.4f*(pulse-1)/.07f),24);NativeHudChrome.Tag(cr,NativeCyberTheme.Magenta());NativeUi.Text(new Rect(cr.x+14,cr.y,cw,cr.height),chips,12,NativeCyberTheme.Magenta(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
+            NativeHudChrome.Key(new Rect(cr.xMax-26,cr.y+6,18,18),"C");NativeUi.Pop();
         }
     }
 }

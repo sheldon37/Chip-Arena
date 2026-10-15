@@ -127,17 +127,19 @@ namespace ChipArena.UnityConversion
             if(Input.GetKeyDown(KeyCode.M)&&!typing&&!BoardOpen){prefs.sound=!prefs.sound;if(nativeAudio!=null)nativeAudio.Muted=!prefs.sound;Save();Notice(prefs.sound?"Sound on · M to mute":"Sound muted · M to unmute");}
             if(Input.GetKeyDown(KeyCode.V)&&arena!=null&&!typing&&!BoardOpen&&!(arena.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)){prefs.firstPerson=!prefs.firstPerson;Save();Notice(CameraName+" · V to switch");}
             CameraKeys(typing);DevUpdate(typing);
-            if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
+            // C in an Expedition opens its chip screen instead (ExpeditionLiveKeys, NativeExpeditionChipScreen.cs).
+            if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null&&LiveExpedition==null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
             bool play=arena!=null&&!menu&&!BoardOpen&&!ExpeditionScreenOpen&&(match.Phase==NativePhase.Fight||match.ResultMovement&&!ReplayActive)&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true&&!DevHoldsPilot;
-            bool look=!BoardOpen&&DevLook(play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight);Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
+            // Holding Alt over the Expedition chip tray frees the cursor to click a card (NativeExpeditionChipScreen.cs).
+            bool look=!BoardOpen&&DevLook(play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight)&&!ExpeditionPickPointer;Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
             if(arena==null)return;
             if(generation!=arena.Generation){presentation.ResetPresentation();generation=arena.Generation;visualClock.Reset(match.Time);}
             SpectatorControls();var p=arena.ViewPilot;
             UpdateLock();if(play)
             {
                 var ads=content.Ads(p.Seat.spec);bool aiming=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&Input.GetKey(KeyCode.Q);
-                if(!lockPoint.HasValue&&!cinematic.Directing){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);}
+                if(!lockPoint.HasValue&&!cinematic.Directing&&!ExpeditionPickPointer){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);}
                 if(Input.GetKeyDown(KeyCode.W)){if(Time.unscaledTime-lastW<.3f)sprint=true;lastW=Time.unscaledTime;}if(!Input.GetKey(KeyCode.W))sprint=false;
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
                 pending.X=move.x;pending.Z=move.z;pending.Yaw=yaw;pending.Pitch=-pitch;pending.Sprint=sprint;pending.Aim=aiming;
@@ -147,6 +149,8 @@ namespace ChipArena.UnityConversion
                 for(int key=0;key<(arena.Local?.Seat.spec=="cyberlord"?5:4);key++)if(Input.GetKeyDown(KeyCode.Alpha1+key))pending.SirenAbility=(byte)(key+1);
                 pending.AbilityQ|=p.Seat.spec=="emperor"&&Input.GetKeyDown(KeyCode.Q)||p.Seat.spec=="siren"&&Input.GetKeyDown(prefs.sirenMode=="F"?KeyCode.F:prefs.sirenMode=="V"?KeyCode.V:KeyCode.Q);
                 pending.Interact|=Input.GetKeyDown(KeyCode.F)&&!(p.Seat.spec=="siren"&&prefs.sirenMode=="F");pending.Block|=Input.GetMouseButtonDown(1);pending.Reload|=Input.GetKeyDown(KeyCode.R);pending.Roll|=Input.GetKeyDown(KeyCode.LeftShift);pending.Jump|=Input.GetKeyDown(KeyCode.Space);
+                // The Expedition chip tray takes the digit keys (and the mouse buttons while Alt is held): client routing, no lock.
+                ExpeditionPickRoute();
                 if(match.ResultMovement||arena.BossVictoryWalk)pending=new InputFrame{X=pending.X,Z=pending.Z,Yaw=yaw,Pitch=-pitch,Sprint=sprint,Jump=pending.Jump};
             }
             else pending=new InputFrame{Yaw=yaw,Pitch=-pitch};

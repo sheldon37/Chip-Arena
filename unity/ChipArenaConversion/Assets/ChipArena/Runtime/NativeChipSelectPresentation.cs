@@ -41,6 +41,13 @@ namespace ChipArena.UnityConversion
         public bool ChipSelectPreview;private float chipPreviewAt=float.NaN;
         // The stand-in offers of the preview (a rare, an epic and a legendary card).
         private static readonly string[] ChipPreviewRarities={"rare","epic","legendary"};
+        /// <summary>
+        /// An Expedition's open picks, set by ConversionGame while a run is bound (NativeExpeditionChipScreen.cs; null otherwise, and the
+        /// PvE rows drive the look). It returns pilot `id`'s open pick, or null when it is not choosing: the view's public
+        /// members[].choosing (the host's flag, PR #233) as a stand-in NativePvePick with a stable id and the time it was first seen. My
+        /// own carries my shown reward's offers and tone; anyone else's has no Offers (the view's privacy rule), so its cards draw cyan.
+        /// </summary>
+        public Func<int,NativePvePick> ExpeditionChoosing;
 
         // Whether pilot `id` shows the look, and its open pick (null in the preview).
         private bool ChipSelecting(int id,float time,out NativePvePick pick)
@@ -48,7 +55,9 @@ namespace ChipArena.UnityConversion
             pick=null;var arena=WeaponLoadout;if(arena==null)return false;var p=LoadoutPilot(id);if(p==null)return false;
             if(arena.Sandbox&&ChipSelectPreview){if(float.IsNaN(chipPreviewAt))chipPreviewAt=time;return p.Hp>0&&p.Seat.connected;}
             if(!arena.Sandbox||!ChipSelectPreview)chipPreviewAt=float.NaN;
-            var v=arena.Pve;if(v==null||!v.Rows.TryGetValue(id,out var row))return false;pick=row.Open;
+            var v=arena.Pve;
+            if(ExpeditionChoosing!=null){pick=ExpeditionChoosing(id);return NativeChipSelect.Selecting(true,pick?.Id??0,p.Hp>0,p.Seat.connected,v?.Holding==true,!string.IsNullOrEmpty(v?.Cinematic),false);}
+            if(v==null||!v.Rows.TryGetValue(id,out var row))return false;pick=row.Open;
             return NativeChipSelect.Selecting(true,row.Open?.Id??0,p.Hp>0,p.Seat.connected,v.Holding,!string.IsNullOrEmpty(v.Cinematic),v.Stage=="ended");
         }
         // The open pick's cards and beat, read once when it changes (PveChip searches the content).
@@ -58,7 +67,7 @@ namespace ChipArena.UnityConversion
             int count=pick?.Offers?.Count??ChipPreviewRarities.Length;slot.Count=Mathf.Clamp(count,1,3);slot.Beat=pick!=null?pick.At:chipPreviewAt;
             for(int i=0;i<3;i++)
             {
-                string rarity=pick==null?ChipPreviewRarities[i]:i<count?arena?.PveChip(pick.Offers[i])?.rarity:null;
+                string rarity=pick==null?ChipPreviewRarities[i]:i<count&&pick.Offers!=null?arena?.PveChip(pick.Offers[i])?.rarity:null;
                 int hex=rarity==null?NativeChipSelectHolo.Cyan:ColorHex(NativeChipCard.Rarity(rarity));if(i==0)slot.C0=hex;else if(i==1)slot.C1=hex;else slot.C2=hex;
             }
         }
