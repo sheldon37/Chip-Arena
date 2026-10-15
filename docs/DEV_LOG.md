@@ -8206,3 +8206,22 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - **Check:** `Tests/RooftopChecks` pins the order, the keys and that the old label is gone.
 - **Checks (run5):** Unity 6000.3.24f1 runtime and editor compile OK; relay 690 PASS; Python OK; package OK; diff-check OK. No offline menu render (the menu render harness is stale against this tree) and no Windows run.
 - **Impact:** menu presentation only; no change to the flow, networking or saves.
+
+## 2026-10-15 — Claude: Cyber Lord kit v2 design and Astra rules prompt
+
+- **Branch:** `claude/cyberlord-v2` (`071ad52`), based on shared `7009887`, merged into shared with this entry.
+- **Owner request:** Cyber Lord's abilities are boring. It is a fun DEV class, not a balanced one. Keep melee 4 (Kernel Panic) and replace the rest. Ranged is a cyber mage throwing "Cyber-themed fire balls" and should be able to move while attacking. Make the combo animation much better, fix the ranged sprint, and use beautiful effects.
+- **Design and contract:**
+  - `docs/CYBER-LORD.md`, new section "Kit v2 (2026-10-15)", holds the kit table, the movement change and the Astra prompt.
+  - `Core/CyberLordKit2.cs` (`CyberKit2Spec`) holds the ids, windows and proposed numbers, plus pure helpers the host and clients share: storm drops, clone formation, chain falloff, leap arc and dive, orbital chase, and the Overflow cadence.
+- **The kit:**
+  - Both modes: Q Uplink (grapple: zip to terrain or yank a pilot), E Overclock (6 s power state).
+  - Melee: a five-step Hardlight Combo, 1 Fork Bomb (three clones copy the swings, then burst), 2 Glitch Cut (dash-slash; the marks detonate together), 3 Meteor Byte (leap, aim, dive), 4 Kernel Panic (unchanged).
+  - Ranged: Plasma Byte fireballs (every third an Overflow), 1 Daisy Chain, 2 Singularity, 3 Packet Storm, 4 Orbital Uplink (shares Kernel Panic's ultimate clock).
+  - Key 5 is unchanged.
+- **For Astra:** build the v2 rules and wire record from the doc's prompt.
+  - Includes: no movement lock for the ranged casts and Q/E (`MoveScale`), prediction, bots and the sandbox keys.
+  - Set `NativeCyberKit.Version = 2` when the kit is live. Until then v1 stays live and the presentation keeps drawing v1.
+- **Behaviour change in this merge:** none. The spec class is not read by the game yet.
+- **Presentation in progress:** on `claude/cyberlord-v2-ranged` (fireballs, throws over locomotion, ranged sprint, ranged abilities) and `claude/cyberlord-v2-melee` (combo, Q/E, melee abilities), with a sandbox preview for v2. Not merged.
+- **Checks:** Unity 6000.3.24f1 runtime and editor compile OK on the design branch. Merged-tree results are in the push notes.
