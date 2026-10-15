@@ -342,6 +342,8 @@ namespace ChipArena.UnityConversion
             if(arena!=null&&!menu&&previewArena==null&&IntroActive){IntroOverlay();return;}
             // The killcam is a broadcast frame of the past: the live HUD steps aside while it plays (killcam.css).
             if(arena!=null&&!menu&&previewArena==null&&ReplayActive){ReplayHud(width,height);return;}
+            // The chip art's layers warm on a worker once a match is on screen (NativeChipArt.Warm), ready before the first draft.
+            if(arena!=null&&Event.current.type==EventType.Repaint)NativeChipArt.Warm();
             // Chip selection is a full screen: the PvP draft, and the Siren personal pick (main HUD hidden while it is open).
             if(arena!=null&&!menu&&previewArena==null&&match.Phase==NativePhase.Draft){DraftScreen();return;}
             if(previewArena==null&&PvePickScreen){PveChipScreen();return;}

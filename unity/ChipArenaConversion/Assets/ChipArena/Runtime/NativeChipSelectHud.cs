@@ -38,9 +38,9 @@ namespace ChipArena.UnityConversion
             U.Glow(r,U.A(tone,NativeChipSelectTag.Glow(Time.unscaledTime,reduced)*alpha),10);
             NativeHudChrome.Cut(r,C.Navy(.82f*alpha),NativeHudCyber.TagCut);NativeHudChrome.Outline(r,U.A(tone,.6f*alpha),NativeHudCyber.TagCut);
             U.Fill(new Rect(r.x+2,r.y+r.height*.28f,2,r.height*.44f),U.A(tone,alpha));
-            // The chip glyph: a die with two pins on each side.
-            float gx=r.x+8,gy=r.center.y-glyph/2;var die=new Rect(gx+2,gy+2,glyph-4,glyph-4);NativeHudChrome.Outline(die,U.A(ink,alpha),0,NativeHudChrome.Corners.None);U.Fill(new Rect(die.x+2,die.y+2,die.width-4,die.height-4),U.A(tone,.8f*alpha));
-            for(int k=0;k<2;k++){float y=gy+3+k*3;U.Fill(new Rect(gx,y,2,1),U.A(ink,alpha));U.Fill(new Rect(gx+glyph-2,y,2,1),U.A(ink,alpha));}
+            // The chip glyph: a tiny cartridge (its shoulders cut, the core lit, the connector's pads under it).
+            float gx=r.x+8,gy=r.center.y-glyph/2-1;var body=new Rect(gx+1,gy,glyph-2,glyph-1);NativeHudChrome.Outline(body,U.A(ink,alpha),2.5f,NativeHudChrome.Corners.Top);U.Fill(new Rect(body.center.x-1.5f,body.y+2.5f,3,3),U.A(tone,alpha));
+            for(int k=0;k<3;k++)U.Fill(new Rect(gx+2+k*2,body.yMax+.5f,1,1.5f),U.A(ink,alpha));
             // The text, typed in (left-aligned in the full text's box so the letters never shift), and the cursor while it types.
             float tx=gx+glyph+gap;int shown=NativeChipSelectTag.Shown(age,reduced);var text=new Rect(tx,r.y,chipTagWidth+4,h);
             U.Text(text,NativeChipSelectTag.Typed[shown],size,U.A(ink,alpha),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:NativeChipSelectTag.Tracking,shadow:new Color(0,0,0,.7f*alpha));

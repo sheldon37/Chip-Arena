@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
                     var r=new Rect(tx0+i*(cw+16),y,cw,Mathf.Max(236,NativeChipCard.Height(track[i],cw,size)));
                     // The booting chip: siren-boot's bar, unfold and jolt, and the die's power-on flicker (Core).
                     bool boot=i==chip-1;float ba=1,bsx=1,bsy=1,btx=0,bright=1;if(boot&&!still){Smile.SirenBoot(since,out ba,out bsx,out bsy,out btx);bright=Smile.BootBright(since);}
-                    var look=ChipLook.Idle(still?0:clock);look.Alpha=ba*fade*(boot?1:.8f);look.Bright=bright;
+                    var look=ChipLook.Idle(still?0:clock);look.Alpha=ba*fade*(boot?1:.8f);look.Bright=bright;look.Calm=still;if(boot&&!still)look.Unbuilt=1-Mathf.Clamp01(since/NativeChipCard.RevealSeconds("siren"));
                     U.Push(r.center,new Vector2(btx,0),bsx,0,bsy);
                     // .pve-boot: 0 0 0 1px #b7a8ff99, 0 0 60px #7d5cff99, 0 20px 60px #000.
                     if(boot){U.Glow(new Rect(r.x,r.y+20,r.width,r.height),new Color(0,0,0,look.Alpha),60);U.Glow(r,U.Hex(0x7d5cff,.6f*look.Alpha),60);NativeChipArt.PackageEdge(r,size.Radius,1,U.Hex(0xb7a8ff,.6f*look.Alpha),1);}
