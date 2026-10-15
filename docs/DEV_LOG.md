@@ -1,3 +1,10 @@
+## 2026-10-15 — Claude: join circle enters only the members inside
+
+- Branch `claude/join-circle-owner-choice`, base shared `04c135b`. Docs only.
+- Owner follow-up: "It doesn't have to pull the whole party in, just whoever is wanting to run the instance". `docs/EXPEDITION-HUB.md` now makes the circle a personal entry: at the end of a short countdown (proposed 3 s) only the members inside enter, and the rest stay in the hub. This replaces the earlier whole-party pull from the same day.
+- This depends on split-area parties ("Split-area parties", for Astra to scope: per-member areas, the host simulating the hub plus occupied instances, per-area frames, barriers, saves and cross-area rules). Proposed interim if the circle ships first: the countdown starts only when every living member is inside.
+- Next: Astra scopes split areas and the rule; then Claude moves the circle off the door (exp-layout-4) and draws the ring, countdown, deploy note and party area list.
+
 ## 2026-10-15 — Claude: owner chose the join circle rule; individual instance entry is the target
 
 - Branch `claude/join-circle-owner-choice`, base `claude/updater-parent-exit-race` (`515d6ee`, on shared `4f086ae`). Docs only.
