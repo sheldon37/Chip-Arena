@@ -1,3 +1,12 @@
+## 2026-10-15 — Claude: HTTPS room round trip leaves PR CI (Electron game test)
+
+- Branch `claude/ci-drop-https-relay`, base shared `cfd2a76`. Follows the owner's CI direction ("remove those electron game tests if they are just going to cause failures each time").
+- Problem: PR #62 `verify` failed on `1f21a6e` in `test:https` (`tests/https-network.ts`): "Snapshot disagreement at tick 0". `src/` and `tests/` were unchanged since the green `d882454`.
+- Cause (a race in the test, not the relay): the host broadcasts more than one snapshot at the same tick (on `welcome('host')`, then on the guest's join, both before the clock steps), and the test keeps one expected state per tick (`states.set(tick, ...)`). When the guest receives the earlier tick-0 snapshot it is compared against the later one. Whether that happens depends on timing.
+- Why it leaves CI rather than being patched: the test plays the frozen Electron game over the room `/exchange` path. The Unity client uses only `/api/accounts` and `/api/directory` (`NativeAccount.cs`, `NativeAdmin.cs`, `NativeRoomDirectory.cs`).
+- Change: `scripts/ci-scope.mjs` no longer selects `relay-full`; PRs that are not docs-only or Unity-only run `verify:relay` (types, the 5 relay test files, the relay build). `verify:relay-full` (adds `test:https`) stays for local use and the manual `workflow_dispatch`. DEVELOPMENT.md updated. If anyone keeps running `test:https`, the fix is to keep every snapshot per tick and accept a match against any of them.
+- Checks: `npm run verify:relay` passed (types; 34/34 relay tests; relay build). `ci-scope.mjs` gives `relay` for PR #62's whole diff, `native` for a Unity-only diff and `docs` for an empty one. Local `test:https` runs on the unchanged code passed; the CI failure did not reproduce locally.
+
 ## 2026-10-15 — Astra: hub overlap physics-pose build fix
 
 - Branch `codex/hub-native-overlap`, base `1f21a6e`. Owner log started 22:11:58Z successfully fetched this source, then failed native hub validation: capsule inside opening is an actual overlap. The earlier fetch failure has recovered.
