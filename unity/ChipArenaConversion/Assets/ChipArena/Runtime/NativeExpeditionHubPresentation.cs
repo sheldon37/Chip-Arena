@@ -88,34 +88,27 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private ExpeditionHubLayout townHub;private readonly NativeExpeditionHubGates hubGates=new NativeExpeditionHubGates();private readonly ExpeditionHubView hubPreview=new ExpeditionHubView();
-        private readonly List<float[]> hubWard=new List<float[]>();private NativeExpeditionHubDraw hubDraw;private bool hubDrawFailed;
+        private readonly List<float[]> hubWard=new List<float[]>();private NativeExpeditionHubDraw hubDraw;private bool hubDrawFailed;private readonly ExpeditionHubClock hubClock=new ExpeditionHubClock();
         /// <summary>The hub gates drawn last frame (budget lines).</summary>
         public int HubGatesDrawn=>hubGates.GatesDrawn;
         // The ward's segments: the outer face of every fence section, a line on the street side of the fence (once per map).
-        private void HubWardSegments(ContentMap map)
-        {
-            hubWard.Clear();
-            foreach(var b in map?.blocks??Array.Empty<ContentBlock>())
-            {
-                var s=NativeExpeditionCityKit.Stem(b?.id);if(s==null||!s.StartsWith("sanctuary-fence-",StringComparison.Ordinal))continue;bool alongX=b.size.x>b.size.z;float top=b.pos.y+b.size.y/2;
-                if(alongX){float z=b.pos.z+Mathf.Sign(b.pos.z)*(b.size.z/2+.03f);hubWard.Add(new[]{b.pos.x-b.size.x/2,z,b.pos.x+b.size.x/2,z,top});}
-                else{float x=b.pos.x+Mathf.Sign(b.pos.x)*(b.size.x/2+.03f);hubWard.Add(new[]{x,b.pos.z-b.size.z/2,x,b.pos.z+b.size.z/2,top});}
-            }
-        }
+        private void HubWardSegments(ContentMap map)=>NativeExpeditionHubGates.WardSegments(map?.blocks,hubWard);
         /// <summary>From ExpeditionCityScenery: the gates at their state's pose (or resting open), their dust, and the ward when
         /// its rule is on; the DEV preview's synthetic state when that tool is on.</summary>
         private void ExpeditionHubFrame(Camera eye,float now)
         {
             if(townHub==null||eye==null)return;ExpeditionHubView v;double t;
             if(NativeExpeditionHubPreview.On){t=Time.unscaledTime;NativeExpeditionHubPreview.Fill(hubPreview,townHub,t);v=hubPreview;}
-            else{v=NativeExpeditionHubLive.Authority;t=NativeExpeditionHubLive.AuthorityClock;}
+            // The authority's clock carried forward between view updates (ExpeditionHubClock), so the leaves move every frame and
+            // keep step with the collider instead of stepping at the 20 Hz projection.
+            else{v=NativeExpeditionHubLive.Authority;t=hubClock.Read(NativeExpeditionHubLive.AuthorityClock,Time.unscaledTimeAsDouble);}
             NativeExpeditionHubLive.Shown=v;NativeExpeditionHubLive.ShownClock=t;NativeExpeditionHubLive.Layout=townHub;
             var c=eye.transform;Vector3 e=c.position,r=c.right,u=c.up;var view=new ExpeditionEye{X=e.x,Y=e.y,Z=e.z,Rx=r.x,Ry=r.y,Rz=r.z,Ux=u.x,Uy=u.y,Uz=u.z};
             hubGates.Build(townHub,v,hubWard,t,view,LowGraphics);
             if(hubDraw==null&&!hubDrawFailed){hubDraw=NativeExpeditionHubDraw.Create();hubDrawFailed=hubDraw==null;}
             hubDraw?.Draw(hubGates,eye,UsesInstancing,now);
         }
-        private void DisposeExpeditionHub(){hubDraw?.Dispose();hubDraw=null;hubGates.Forget();NativeExpeditionHubLive.Shown=null;}
+        private void DisposeExpeditionHub(){hubDraw?.Dispose();hubDraw=null;hubGates.Forget();hubClock.Reset();NativeExpeditionHubLive.Shown=null;}
     }
 
     public sealed partial class ConversionGame

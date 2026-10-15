@@ -263,24 +263,27 @@ namespace ChipArena.UnityConversion
         public static bool Labelled(in ExpeditionWorldPiece p,float ex,float ey,float ez)=>Distance2(p,ex,ey,ez)<=LabelDistance*LabelDistance;
 
         // ---- Geometry -------------------------------------------------------------------------------------------------------
+        /// <summary>Whether a map is an Expedition map (the town and the instances: their ids start "expedition-"). The
+        /// Expedition draws no floor ring round an interactable (owner, 2026-10-15); other modes keep theirs.</summary>
+        public static bool ExpeditionMap(string mapId)=>mapId!=null&&mapId.StartsWith("expedition-",StringComparison.Ordinal);
         /// <summary>How high the piece's glyph floats over its anchor (metres).</summary>
         public static float GlyphHeight(ExpeditionPieceKind kind)=>kind==ExpeditionPieceKind.Door?1.6f:kind==ExpeditionPieceKind.Machine?1.7f:kind==ExpeditionPieceKind.Chest?1.15f:1.05f;
-        /// <summary>The floor ring radius of a piece (metres).</summary>
+        /// <summary>A piece's footprint radius (metres): its light column stands inside it. No ring is drawn on the floor (owner,
+        /// 2026-10-15: no circle outlines round the Expedition's doors, caches, machines and drops).</summary>
         public static float RingRadius(ExpeditionPieceKind kind)=>kind==ExpeditionPieceKind.Door?1.35f:kind==ExpeditionPieceKind.Machine?.95f:kind==ExpeditionPieceKind.Chest?.75f:.42f;
         /// <summary>The bob of a floating glyph (none with reduced effects).</summary>
         public static float Bob(in ExpeditionWorldPiece p,double t,bool reduced)=>reduced?0:(float)(.05*Math.Sin(t*2.1+(p.x+p.z)*.7));
 
         /// <summary>
-        /// The piece's hologram in the beacon style (Resources/NativeBeacon.shader: additive, double-sided): a floor ring, a light
-        /// column of rising motes while it is actionable, and the solid glyph (an ordinary drop's diamond, a reserved chip's tile with
-        /// its shackle, a struck tile when not eligible, the machine's pedestal, the cache's crate). Doors draw ring and column here;
-        /// their leaves are the HUD Door hologram at the projected point (anchors carry no facing). Static with reduced effects.
+        /// The piece's hologram in the beacon style (Resources/NativeBeacon.shader: additive, double-sided): a light column of rising
+        /// motes while it is actionable, and the solid glyph (an ordinary drop's diamond, a reserved chip's tile with its shackle, a
+        /// struck tile when not eligible, the machine's pedestal, the cache's crate). Doors draw their column here; their leaves are
+        /// the HUD Door hologram at the projected point (anchors carry no facing). No ring on the floor round any piece (owner,
+        /// 2026-10-15): the column, the glyph, the label and the interact prompt find it. Static with reduced effects.
         /// </summary>
         public static void Emit(IExpeditionWorldSink sink,in ExpeditionWorldPiece p,double t,bool reduced)
         {
             float fade=p.settled?.42f:1,spin=reduced?0:(float)(t*.9%(Math.PI*2)),r=RingRadius(p.kind);
-            Band(sink,p.x,p.y+.03f,p.z,r-.05f,r,32,32,spin,p.tone,.38f,fade);
-            if(p.actionable)Band(sink,p.x,p.y+.03f,p.z,r+.04f,r+.12f,32,24,-spin,p.tone,1,fade);
             if(p.actionable)Column(sink,p.x,p.y,p.z,r*.62f,r*.8f,p.kind==ExpeditionPieceKind.Door?2.9f:p.kind==ExpeditionPieceKind.Machine?2.6f:1.9f,p.tone,.55f);
             float gy=p.y+GlyphHeight(p.kind)+Bob(p,t,reduced),yaw=reduced?0:(float)(t*1.1%(Math.PI*2));
             switch(p.look)
@@ -296,7 +299,8 @@ namespace ChipArena.UnityConversion
                     Box(sink,p.x,p.y+.26f,p.z,.36f,.24f,.26f,0,p.tone,.4f,fade);Box(sink,p.x,p.y+.53f,p.z,.38f,.04f,.28f,0,p.tone,.9f,fade);break;
             }
         }
-        /// <summary>A flat ring band on the floor: `count` of `segments` segments from angle `spin`.</summary>
+        /// <summary>A flat ring band on the floor: `count` of `segments` segments from angle `spin` (no longer drawn round the
+        /// pieces; kept for callers).</summary>
         public static void Band(IExpeditionWorldSink sink,float cx,float cy,float cz,float r0,float r1,int segments,int count,float spin,ExpeditionTone tone,float level,float alpha)
         {
             for(int i=0;i<count;i++)

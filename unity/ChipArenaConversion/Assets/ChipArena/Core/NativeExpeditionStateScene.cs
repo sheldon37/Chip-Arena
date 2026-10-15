@@ -26,7 +26,8 @@ namespace ChipArena.UnityConversion
     ///  - The final gate: a steel portcullis that rises into the gatehouse over the opening second after its lock clamps draw
     ///    back, behind a hardlight lattice that dissolves cell by cell but keeps a fifth of its cells until the state is open.
     ///    A beacon pillar and ground rings play once when this client sees FinalUnlocked open the gate (ExpeditionStateCues).
-    ///  - The sanctuary: a soft warm edge on the floor along every volume's footprint, a low shimmering curtain, rising motes and
+    ///  - The sanctuary: a soft warm edge on the floor along every volume's footprint, a low shimmering curtain just inside it
+    ///    (<see cref="CurtainInset"/>, clear of the walls, fence and gates that stand on the edge), rising motes and
     ///    a ripple where a pilot crosses; outside the town and victory phases only a dim cool outline.
     ///  - A boss's ground crack and roar rings (<see cref="BossCrack"/>), only where the caller has the boss's position.
     /// </summary>
@@ -34,6 +35,12 @@ namespace ChipArena.UnityConversion
     {
         public const int QuadCapacity=4096,PartCapacity=640,MaxDoors=16;
         public const float CullDistance=140,SanctuaryCull=90;public const double CrackSeconds=2.6;
+        /// <summary>How far inside the sanctuary's edge its curtain stands (m). The edge is where walls stand: the plaza's
+        /// building faces and, in the fenced hub (exp-layout-3), the fence's inner face and the shut wooden gates' leaves. A
+        /// curtain in that plane shares it with them and flickers through them (z-fighting); 8 cm in, it stands clear of every
+        /// face there, the metal leaves' sheets and frames and the shopfronts' trim included (ExpeditionHubChecks holds it so),
+        /// and still reads as the edge's.</summary>
+        public const float CurtainInset=.08f;
         public readonly NativeFxQuads Quads=new NativeFxQuads(QuadCapacity);
         public readonly List<ExpeditionKitBox> Parts=new List<ExpeditionKitBox>(PartCapacity);
         private readonly bool[] leaf=new bool[MaxDoors];private readonly float[] edges=new float[5];private ExpeditionStateRig built;
@@ -288,7 +295,8 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<n;i++)
                 {
                     float s0=edges[e]+i*seg,s1=s0+seg,mid=(s0+s1)/2;
-                    ExpeditionStateRig.Along(v,s0,out float x0,out float z0,out _,out _);ExpeditionStateRig.Along(v,s1-1e-3f,out float x1,out float z1,out _,out _);
+                    ExpeditionStateRig.Along(v,s0,out float x0,out float z0,out float cnx,out float cnz);ExpeditionStateRig.Along(v,s1-1e-3f,out float x1,out float z1,out _,out _);
+                    x0+=cnx*CurtainInset;z0+=cnz*CurtainInset;x1+=cnx*CurtainInset;z1+=cnz*CurtainInset;
                     float ddx=(x0+x1)/2-eye.X,ddz=(z0+z1)/2-eye.Z;if(ddx*ddx+ddz*ddz>SanctuaryCull*SanctuaryCull)continue;
                     float wave=reduced||!lit?.5f:.5f+.5f*(float)Math.Sin(mid*.9-t*1.6),boost=0;
                     if(cues!=null)for(int r=0;r<cues.Ripples.Length;r++)
