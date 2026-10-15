@@ -220,7 +220,7 @@ internal static class CyberLordChecks
         var sources=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories);
         var viewers=sources.Where(f=>{var t=File.ReadAllText(f);return t.Contains("CyberLordView")||t.Contains("ICyberFxSink");}).Select(Rel).Where(f=>f!="Core/NativeCyberLord.cs"&&f!="Core/CyberLordFixture.cs").OrderBy(f=>f).ToArray();
         foreach(var want in new[]{"Core/CyberLordMotion.cs","Core/NativeCyberLordFx.cs","Core/NativeCyberLordSounds.cs","Core/NativeCyberLordHud.cs","Core/NativeKernelPanicView.cs","Core/NativeCyberLordIntro.cs","Runtime/NativeCyberLordPresentation.cs","Runtime/NativeCyberLordScreen.cs"})Check(viewers.Contains(want),want+" draws from the view");
-        foreach(var f in viewers){var src=File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));Check(!Regex.IsMatch(src,@"\.(Cyber|Kernel)\b")&&!src.Contains("NativeCyberKit")&&!src.Contains("CyberKit"),f+" reads Astra's state only through the view");}
+        foreach(var f in viewers){var src=File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));Check(!Regex.IsMatch(src,@"\.(Cyber|Kernel)\b")&&!src.Contains("NativeCyberKit")&&!Regex.IsMatch(src,@"\bCyberKit\b"),f+" reads Astra's state only through the view");}
         var naming=sources.Where(f=>Regex.IsMatch(File.ReadAllText(f),@"\.Cyber\b")).Select(Rel).ToArray();
         Check(naming.Contains("Core/NativeCyberLord.cs")&&naming.Contains("Runtime/NativeCyberLord.cs")&&naming.All(f=>!viewers.Contains(f)),"the files naming Actor.Cyber are the feed, the fixtures and her simulation ("+naming.Length+")");
         string feedSrc=File.ReadAllText(Path.Combine(core,"NativeCyberLord.cs"));Check(Regex.Matches(feedSrc,@"a\.Cyber\b").Count==1&&Regex.Matches(feedSrc,@"a\.Kernel\b").Count==1&&!Regex.IsMatch(feedSrc,@"\b(p|s|state)\.Cyber\b"),"CyberLordFeed.Read is the only reader of the kit and of Astra's Kernel");
@@ -264,15 +264,22 @@ internal static class CyberLordChecks
         // Each take's impact on its replicated hit: the combo's SwingAt (the rules' hit), each ability's release, the opener's
         // connect, and each Kernel Panic step's hit (KernelPanicPath.HitAge, which the hit-stops and fixture events share).
         var cl=CyberLordFixture.Pilot(1,Vector3.Zero,0);var view=new CyberLordView();
+        // The combo is the authored hardlight string (Core/CyberLordCombo.cs, 2026-10-15: the owner's "much better combo
+        // animation on melee"): each step's strike sits on its replicated swing with the striking fist's reach peaking on the
+        // replicated hit (Tests/CyberKit2MeleeChecks pins the poses); Kernel Panic's clones and the entrance keep the takes.
         for(int step=0;step<3;step++)
         {
-            CyberLordFixture.Combo(cl,step,10);CyberLordFeed.Read(cl,view);var m=CyberLordMotion.Of(view,view.ComboHit,false,0);int clip=CyberLordMotion.ComboClip(step);
-            Check(m.Clip==clip&&m.State==(step==0?"cyber-jab":step==1?"cyber-cross":"cyber-palm"),"combo step "+step+" plays its take");Near(m.Time,CyberLordMotion.Impact(clip),"combo step "+step+" impact on the replicated hit",2e-3f);
+            CyberLordFixture.Combo(cl,step,10);CyberLordFeed.Read(cl,view);var m=CyberLordMotion.Of(view,view.ComboHit,false,0);int kind=CyberCombo.V1Kind(step);
+            Check(m.Strike==kind+1&&m.Clip<0&&m.State==(step==0?"cyber-jab":step==1?"cyber-cross":"cyber-palm"),"combo step "+step+" plays its strike");
+            Check(m.Swing.At==view.ComboAt&&Math.Abs(m.Swing.Hit-view.ComboHit)<1e-5f&&m.Swing.Until==view.ComboUntil,"combo step "+step+" strikes on its replicated swing");
             Near(view.ComboHit,10+CyberLordSpec.ComboWindups[step],"step "+step+" hit on the kit's Release");
-            float prev=-1;for(float t=10;t<view.ComboUntil;t+=1/240f){var mm=CyberLordMotion.Of(view,t,false,0);Check(mm.Time>=prev-1e-5f,"combo "+step+" take time runs forward");prev=mm.Time;}
-            Check(CyberLordMotion.Of(view,view.ComboUntil+CyberLordMotion.BlendOut+.01f,false,0).Clip<0,"combo "+step+" ends with its window");
+            var legacy=CyberLordMotion.Of(view,view.ComboHit,false,0,true);int clip=CyberLordMotion.ComboClip(step);
+            Check(legacy.Clip==clip,"the legacy path (Kernel Panic's clones, the entrance) still plays take "+clip);Near(legacy.Time,CyberLordMotion.Impact(clip),"combo step "+step+" legacy impact on the replicated hit",2e-3f);
+            float prev=-1;for(float t=10;t<view.ComboUntil;t+=1/240f){var mm=CyberLordMotion.Of(view,t,false,0,true);Check(mm.Time>=prev-1e-5f,"combo "+step+" take time runs forward");prev=mm.Time;}
+            Check(!CyberLordMotion.Of(view,view.ComboUntil+CyberCombo.Settle+.01f,false,0).Active&&CyberLordMotion.Of(view,view.ComboUntil+CyberLordMotion.BlendOut+.01f,false,0,true).Clip<0,"combo "+step+" ends with its window and settle");
         }
-        CyberLordFixture.Combo(cl,1,20);CyberLordFeed.Read(cl,view);var chain=CyberLordMotion.Of(view,20.01f,false,0);Check(chain.From==CyberLordMotion.Jab&&chain.FromWeight>0,"a chained cross starts from the jab's end");
+        CyberLordFixture.Combo(cl,1,20);CyberLordFeed.Read(cl,view);var chain=CyberLordMotion.Of(view,20.01f,false,0);Check(chain.StrikeFrom==CyberCombo.Jab&&chain.Weight>.99f,"a chained cross carries on from the jab");
+        var chainLegacy=CyberLordMotion.Of(view,20.01f,false,0,true);Check(chainLegacy.From==CyberLordMotion.Jab&&chainLegacy.FromWeight>0,"a legacy chained cross starts from the jab's end");
         var abilityStates=new[]{"cyber-data-dash","cyber-firewall","cyber-packet-burst","cyber-siphon-link","cyber-system-crash"};
         for(int slot=0;slot<5;slot++)
         {

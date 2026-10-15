@@ -32,6 +32,9 @@ namespace ChipArena.UnityConversion
         public static int ComboClip(int step)=>step==1?Cross:step==2?Palm:Jab;
         /// <summary>Blend in / out (s) of a move over the stance and carry.</summary>
         public const float BlendIn=.06f,BlendOut=.14f,ChainBlend=.07f;
+        /// <summary>A strike's ease in from the stance: over most of its windup (at least BlendIn, at most .14 s), so the hands rise
+        /// straight into the blow and the blow lands at full weight.</summary>
+        public static float StrikeIn(in CyberCombo.Swing s,float time)=>MeleeMath.Smooth(Ramp(time,s.At,s.At+Math.Min(.14f,Math.Max(BlendIn,(s.Hit-s.At)*.9f))));
 
         /// <summary>One frame's move: the take and its clip time, its weight over the base, and the legs and root shares it owns.</summary>
         public struct Move
@@ -41,7 +44,12 @@ namespace ChipArena.UnityConversion
             public int From;public float FromTime,FromWeight;
             /// <summary>Kernel Panic victim tumble: body pitch (rad, + forward), roll and spin about +y.</summary>
             public float Pitch,Roll,Spin;
-            public static Move None=>new Move{Clip=-1,From=-1,State=null};
+            /// <summary>A hardlight combo strike (Core/CyberLordCombo.cs: authored pose to pose, no take): its kind + 1 (0 none), its
+            /// swing, and the kind a chained strike comes from (-1: from the stance).</summary>
+            public int Strike,StrikeFrom;public CyberCombo.Swing Swing;public float FadeOut;
+            /// <summary>Whether anything plays (a take or a strike).</summary>
+            public bool Active=>Clip>=0||Strike>0;
+            public static Move None=>new Move{Clip=-1,From=-1,State=null,StrikeFrom=-1};
         }
         private static readonly float[] knots=new float[6],marks=new float[6];
         private static readonly float[][] At={null,null,new float[2],new float[3],new float[4]},Marks={null,null,new float[2],new float[3],new float[4]};
@@ -59,7 +67,11 @@ namespace ChipArena.UnityConversion
         /// The Cyber Lord's move at `time` from its view (caster role), or Move.None for the stance / carry. Order: the Kernel
         /// Panic sequence, the Kernel Panic opener, the newest live ability, the combo swing, then the guard.
         /// </summary>
-        public static Move Of(CyberLordView v,float time,bool blocking,float blockAt)
+        /// <summary>Kernel Panic's fork-bomb clone stand-ins (NativeCyberLordFx.CloneActor) and the entrance keep the v1 takes for
+        /// their strikes: Kernel Panic and the Hardlight Boot are unchanged.</summary>
+        public static bool LegacyCombo(int id)=>id<=-1000&&id>-2000;
+        public static Move Of(CyberLordView v,float time,bool blocking,float blockAt)=>Of(v,time,blocking,blockAt,LegacyCombo(v.Id));
+        public static Move Of(CyberLordView v,float time,bool blocking,float blockAt,bool legacy)
         {
             var m=Move.None;
             // 4 Kernel Panic: the cut-in freeze and the five steps, then the recovery.
@@ -69,12 +81,16 @@ namespace ChipArena.UnityConversion
             }
             var op=v.Phase(CyberLordSpec.Four,time);
             if(op.Live&&!(v.PanicConnect>-90&&time>=v.PanicConnect&&v.PanicConnect>=op.At-.01f))return Opener(v,op,time);
+            // Kit v2 (Core/CyberKit2MeleeMotion.cs): its abilities and five-step string replace v1's Q to 3 and combo.
+            if(v.Kit2.Live&&!legacy){var k2=CyberKit2MeleeMotion.Of(v,time);if(k2.Active&&!(blocking&&time>=k2.Swing.Until))return k2;if(blocking)return new Move{Clip=Guard,Time=time,Weight=Ease((time-blockAt)/BlendIn),State="cyber-guard",From=-1,StrikeFrom=-1};return m;}
             // The newest live ability (to the end of its recovery and blend out), unless a combo swing started after it.
             int newest=-1;float at=-100;
             for(int s=0;s<CyberLordSpec.Four;s++){float start=v.At[s],end=Math.Max(v.Until[s],v.RecoverUntil[s]);if(start>-90&&time>=start&&time<end+BlendOut&&start>at){newest=s;at=start;}}
-            bool combo=v.ComboAt>-90&&time>=v.ComboAt&&time<v.ComboUntil+BlendOut;
+            bool combo=v.ComboAt>-90&&time>=v.ComboAt&&time<v.ComboUntil+(legacy?BlendOut:CyberCombo.Settle);
+            // (A strike's settle yields to a raised guard at once.)
+            if(combo&&!legacy&&blocking&&time>=v.ComboUntil)combo=false;
             if(newest>=0&&!(combo&&v.ComboAt>at))return Ability(v,newest,time);
-            if(combo)return ComboMove(v,time);
+            if(combo)return legacy?ComboMove(v,time):StrikeMove(v,time);
             if(blocking){var g=new Move{Clip=Guard,Time=time,Weight=Ease((time-blockAt)/BlendIn),State="cyber-guard",From=-1};return g;}
             return m;
         }
@@ -89,6 +105,16 @@ namespace ChipArena.UnityConversion
             m.Weight=Ease(Ramp(time,v.ComboAt,v.ComboAt+BlendIn))*(1-Ease(Ramp(time,v.ComboUntil,v.ComboUntil+BlendOut)));
             // A chained step starts from the previous step's last pose, not the stance.
             if(step>0&&time<v.ComboAt+ChainBlend){int prev=ComboClip(step-1);var pc=Clip(prev);m.From=prev;m.FromTime=Math.Min(pc.Duration,Impact(prev)+(pc.Duration-Impact(prev))*.75f);m.FromWeight=1-Ease(Ramp(time,v.ComboAt,v.ComboAt+ChainBlend));m.Weight=1;}
+            return m;
+        }
+        // The hardlight string (Core/CyberLordCombo.cs): the step's authored strike on its replicated swing, eased in from the
+        // stance (a first step) or carried on from the step before (a chained one: the caller blends from where the rig was),
+        // and back out to the stance over CyberCombo.Settle after the swing.
+        private static Move StrikeMove(CyberLordView v,float time)
+        {
+            int kind=CyberCombo.V1Kind(v.ComboStep);var m=Move.None;m.Strike=kind+1;m.Swing=new CyberCombo.Swing(kind,v.ComboAt,Math.Max(v.ComboAt+.02f,Math.Min(v.ComboUntil-.02f,v.ComboHit)),v.ComboUntil);
+            m.StrikeFrom=v.ComboStep>0?CyberCombo.Previous(kind,false):-1;m.State=CyberCombo.States[kind];m.Legs=0;m.Root=1;m.Time=time;
+            m.FadeOut=1-Ease(Ramp(time,v.ComboUntil,v.ComboUntil+CyberCombo.Settle));m.Weight=(m.StrikeFrom>=0?1:StrikeIn(m.Swing,time))*m.FadeOut;
             return m;
         }
         // Each ability's take on its cast (windup to the take's impact), active and recovery windows.
@@ -186,6 +212,73 @@ namespace ChipArena.UnityConversion
             return m;
         }
 
+        // ---- the hardlight strikes on a rig (Core/CyberLordCombo.cs) ----
+        /// <summary>
+        /// Two rows blended for a hardlight strike: as MeleeCapture.BlendRowsTurning, but each hand's whole frame (the right's
+        /// blade and edge, the left's forward and up) turns as one rotation and each elbow's pole along the great circle, so a fist
+        /// rising from the hanging idle into the guard (frames half a turn apart) never flips its wrist or elbow mid-blend.
+        /// `o` may be `a` or `b`.
+        /// </summary>
+        public static void StrikeBlend(float[] a,float[] b,float k,float[] o)
+        {
+            if(k<=0){if(o!=a)Array.Copy(a,o,o.Length);return;}if(k>=1){if(o!=b)Array.Copy(b,o,o.Length);return;}
+            Quaternion ra=HandFrame(a,MeleeCapture.Blade,MeleeCapture.Edge,true),rb=HandFrame(b,MeleeCapture.Blade,MeleeCapture.Edge,true);
+            Quaternion la=HandFrame(a,MeleeCapture.LFwd,MeleeCapture.LUp,false),lb=HandFrame(b,MeleeCapture.LFwd,MeleeCapture.LUp,false);
+            Vector3 rpa=Ch(a,MeleeCapture.RPole),rpb=Ch(b,MeleeCapture.RPole),lpa=Ch(a,MeleeCapture.LPole),lpb=Ch(b,MeleeCapture.LPole);
+            Vector3 rha=Ch(a,MeleeCapture.Grip),rhb=Ch(b,MeleeCapture.Grip),lha=Ch(a,MeleeCapture.LHand),lhb=Ch(b,MeleeCapture.LHand);
+            MeleeCapture.BlendRows(a,b,k,o);
+            // the fists swing round their shoulders (direction turned, distance lerped), not straight through them
+            Put(o,MeleeCapture.Grip,Swing(rha,rhb,k,RShoulder));Put(o,MeleeCapture.LHand,Swing(lha,lhb,k,LShoulder));
+            var r=MeleeMath.Slerp(ra,rb,k);Put(o,MeleeCapture.Blade,Vector3.Transform(Vector3.UnitZ,r));Put(o,MeleeCapture.Edge,Vector3.Transform(Vector3.UnitX,r));
+            var l=MeleeMath.Slerp(la,lb,k);Put(o,MeleeCapture.LFwd,Vector3.Transform(Vector3.UnitZ,l));Put(o,MeleeCapture.LUp,Vector3.Transform(Vector3.UnitY,l));
+            Put(o,MeleeCapture.RPole,TurnPole(rpa,rpb,k));Put(o,MeleeCapture.LPole,TurnPole(lpa,lpb,k));
+        }
+        private static Vector3 Ch(float[] f,int i)=>new Vector3(f[i],f[i+1],f[i+2]);
+        private static void Put(float[] f,int i,Vector3 v){f[i]=v.X;f[i+1]=v.Y;f[i+2]=v.Z;}
+        // A hand's frame from its main axis (z) and its second (the right's edge: x; the left's up: y).
+        private static Quaternion HandFrame(float[] f,int main,int second,bool secondIsX)
+        {
+            var z=Ch(f,main);if(z.LengthSquared()<1e-10f)z=Vector3.UnitZ;z=Vector3.Normalize(z);var s=Ch(f,second);s-=z*Vector3.Dot(s,z);
+            if(s.LengthSquared()<1e-8f){s=Math.Abs(z.Y)<.9f?Vector3.UnitY:Vector3.UnitX;s-=z*Vector3.Dot(s,z);}s=Vector3.Normalize(s);
+            return secondIsX?MeleeMath.Basis(s,Vector3.Cross(z,s),z):MeleeMath.Basis(Vector3.Cross(s,z),s,z);
+        }
+        // The shoulders in chest space (as MeleeCapture's poles read them; +x is the pilot's left).
+        private static readonly Vector3 LShoulder=new Vector3(.345f,.18f,0),RShoulder=new Vector3(-.345f,.18f,0);
+        private static Vector3 Swing(Vector3 a,Vector3 b,float k,Vector3 shoulder)
+        {
+            Vector3 da=a-shoulder,db=b-shoulder;float la=da.Length(),lb=db.Length();if(la<1e-3f||lb<1e-3f)return Vector3.Lerp(a,b,k);
+            var d=Vector3.Transform(da/la,MeleeMath.Slerp(Quaternion.Identity,MeleeMath.FromTo(da/la,db/lb),k));return shoulder+d*(la+(lb-la)*k);
+        }
+        // A pole hint along the great circle (its length lerped); a missing one takes the other's direction.
+        private static Vector3 TurnPole(Vector3 a,Vector3 b,float k)
+        {
+            float la=a.Length(),lb=b.Length();if(la<1e-4f||lb<1e-4f)return Vector3.Lerp(a,b,k);
+            var d=Vector3.Transform(a/la,MeleeMath.Slerp(Quaternion.Identity,MeleeMath.FromTo(a/la,b/lb),k));return d*(la+(lb-la)*k);
+        }
+        /// <summary>A rig's memory of the row it showed last frame, so a strike carries on from wherever the body was as it began
+        /// (a chained step, a guard, a cast, the run); without one a chained step starts from its predecessor's ready pose.
+        /// Presentation state only: a rewound clock starts the strike over.</summary>
+        private sealed class StrikeMemory
+        {
+            private readonly float[] last=new float[CapturedClip.Channels],from=new float[CapturedClip.Channels],pose=new float[CyberCombo.N],scratch=new float[CyberCombo.N];
+            private float lastAt=-100,fromAt=-100;private bool hasFrom;private Vector2 lastShift,fromShift;
+            public void Note(float[] row,float time,Vector2 shift){Array.Copy(row,last,last.Length);lastAt=time;lastShift=shift;}
+            /// <summary>The strike's row at `time` (its torso turn at `torso`) and the body's shift; returns its weight over the base.</summary>
+            public float Row(in Move m,float time,float torso,float[] into,out Vector2 shift,out float air)
+            {
+                var sw=m.Swing;
+                if(Math.Abs(sw.At-fromAt)>1e-4f||time<fromAt-1e-3f){fromAt=sw.At;hasFrom=lastAt>-90&&time>=lastAt-1e-4f&&time-lastAt<.1f;if(hasFrom){Array.Copy(last,from,from.Length);fromShift=lastShift;}}
+                bool canonical=!hasFrom&&m.StrikeFrom>=0;
+                CyberCombo.Pose(sw,time,pose,canonical?sw.Before(m.StrikeFrom):sw,canonical,scratch);CyberCombo.Row(pose,torso,into);
+                float w=hasFrom?m.FadeOut:m.Weight;shift=new Vector2(pose[CyberCombo.ShX],pose[CyberCombo.ShZ]);air=Clamp01(pose[CyberCombo.Air]);
+                if(hasFrom){float k=Ease((time-sw.At)/Math.Max(1e-4f,(sw.Hit-sw.At)*CyberCombo.ChainShare));if(k<1){StrikeBlend(from,into,k,into);shift=Vector2.Lerp(fromShift,shift,k);}}
+                shift*=w;return w;
+            }
+        }
+        private readonly StrikeMemory third=new StrikeMemory(),first=new StrikeMemory();
+        /// <summary>The strikes' feet on this rig.</summary>
+        public readonly CyberComboFeet ComboFeet=new CyberComboFeet();
+
         // ---- applying a move to the gait rig ----
         private readonly float[] row=new float[CapturedClip.Channels],baseRow=new float[CapturedClip.Channels],fromRow=new float[CapturedClip.Channels],runRow=new float[CapturedClip.Channels],heldRow=new float[CapturedClip.Channels];
         private readonly CyberLordView view=new CyberLordView();
@@ -264,7 +357,7 @@ namespace ChipArena.UnityConversion
         public string RangedState{get;private set;}
         public string Style(MeleeMotion motion,Actor a,float time,bool stun)
         {
-            var r=motion.Rig;CyberLordFeed.Read(a,view);motion.FighterSeat=carry;
+            var r=motion.Rig;CyberLordFeed.Read(a,view);motion.FighterSeat=carry;ComboFeet.Before(r,time);
             // The idle stance (CyberLordIdle): its weight first, so the base under it is the sword idle (no alert bob in the hips).
             float idle=Idle.Update(a,view,time,Ease((r.Motion-.10f)/.65f),stun);
             // The ranged mode holds its emitters up instead (Core/CyberLordRangedMotion.cs): no idle stance there.
@@ -275,20 +368,35 @@ namespace ChipArena.UnityConversion
             bool airBlocked=stun||a.Hp<=0||a.Rolling(time)||a.JuggleUntil>time||NativeSpecialPose.Active(a,time)||NativeSpecialPose.Down(a,time);
             var track=motion.JumpLayer?.Track??ownTrack;track.Explicit=true;track.Observe(time,a.Grounded,r.GroupPosition.Y,airBlocked);track.AirJumpSignal(CyberLordAirBoost.Signal(a,PreviewAirJumpAt));
             BoostWeight=BoostRow(track,time,airBlocked,baseRow,false,1);
-            bool blocking=!stun&&time<a.BlockUntil;var m=stun?Move.None:Of(view,time,blocking,a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration);
-            float legs=0,root=1-travel*.85f;
-            if(m.Clip>=0&&m.Weight>1e-4f)
+            bool blocking=!stun&&time<a.BlockUntil;var m=stun?Move.None:Of(view,time,blocking,a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration,LegacyCombo(a.Id));
+            float legs=0,root=1-travel*.85f,strike=0,air=0;var shift=Vector2.Zero;
+            if(m.Strike>0&&m.Weight>1e-4f)
             {
-                Clip(m.Clip).Sample(m.Time,row);
-                if(m.From>=0&&m.FromWeight>1e-4f){Clip(m.From).Sample(m.FromTime,fromRow);MeleeCapture.BlendRowsTurning(row,fromRow,m.FromWeight,row);}
-                MeleeCapture.BlendRowsTurning(baseRow,row,m.Weight,row);legs=m.Legs*m.Weight;root=MeleeMath.Lerp(root,m.Root,m.Weight);
+                // A hardlight strike is authored on the voxel body already (no posture), over the postured base.
+                baseRow[MeleeCapture.Yaw]=0;Posture(baseRow);strike=third.Row(m,time,1,row,out shift,out air);
+                StrikeBlend(baseRow,row,strike,row);if(m.Root>=1)root=MeleeMath.Lerp(root,1,strike);legs=air*strike;
             }
-            else Array.Copy(baseRow,row,CapturedClip.Channels);
-            // The capture's heading is the stance's (carried by the torso): the pelvis keeps the gait's facing.
-            row[MeleeCapture.Yaw]=0;Posture(row);
-            if(!a.Grounded&&m.Clip<0)root*=.3f;
-            MeleeCapture.Apply(r,Unarmed,row,CaptureOptions.Of(1,Unarmed.Fit,MeleeClear.None,legs:legs,root:Math.Max(0,root)));FaceForward(r,FaceWeight);
+            else
+            {
+                if(m.Clip>=0&&m.Weight>1e-4f)
+                {
+                    Clip(m.Clip).Sample(m.Time,row);
+                    if(m.From>=0&&m.FromWeight>1e-4f){Clip(m.From).Sample(m.FromTime,fromRow);MeleeCapture.BlendRowsTurning(row,fromRow,m.FromWeight,row);}
+                    MeleeCapture.BlendRowsTurning(baseRow,row,m.Weight,row);legs=m.Legs*m.Weight;root=MeleeMath.Lerp(root,m.Root,m.Weight);
+                }
+                else Array.Copy(baseRow,row,CapturedClip.Channels);
+                // The capture's heading is the stance's (carried by the torso): the pelvis keeps the gait's facing.
+                row[MeleeCapture.Yaw]=0;Posture(row);
+            }
+            third.Note(row,time,shift);
+            if(!a.Grounded&&!m.Active)root*=.3f;
+            MeleeCapture.Apply(r,Unarmed,row,CaptureOptions.Of(1,Unarmed.Fit,MeleeClear.None,legs:legs,root:Math.Max(0,root)));FaceForward(r,FaceWeight*(1-.85f*strike));
             if(legs>.05f)r.LegsAuthored=true;
+            // The strike's weight shift and its footwork (Core/CyberLordCombo.cs CyberComboFeet): the feet step, pivot and hop
+            // under it at full weight through its settle (a fading foot would slide), and the gait keeps them exactly where they
+            // were left, stepping them back to its stance on its own.
+            if(strike>1e-4f){var b=r.P[CapturedRig.Body];b.X+=shift.X;b.Z+=shift.Y;r.P[CapturedRig.Body]=b;}
+            ComboFeet.Pose(r,m.Swing,time,strike>1e-4f&&a.Grounded&&CyberCombo.PlantsFeet(m.Swing.Kind)?1-air:0);motion.Gait.SyncTolerance=ComboFeet.Active?0:MeleeGait.SyncNear;
             // The idle's twitching over the sword idle once the pilot has stood still (CyberLordIdle), under any move still blending out.
             float under=idle*(m.Clip>=0?1-Clamp01(m.Weight):1);IdleWeight=under;
             IdleGlitch=CyberLordIdlePose.Glitch(a.Id,time,under,Reduced);
@@ -311,17 +419,27 @@ namespace ChipArena.UnityConversion
             bool blocking=time<a.BlockUntil,stun=a.StunUntil>time;
             // The second jump's boost: a gentler share of its fists (the view's own hop carries the body; no camera motion).
             bool airBlocked=stun||a.Hp<=0||a.Rolling(time);ownTrack.Explicit=true;ownTrack.Observe(time,a.Grounded,a.Position.y,airBlocked);ownTrack.AirJumpSignal(CyberLordAirBoost.Signal(a,PreviewAirJumpAt));
-            BoostWeight=BoostRow(ownTrack,time,airBlocked,baseRow,true,CyberLordAirBoost.FirstPerson);var m=stun?Move.None:Of(view,time,blocking,a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration);
-            if(m.Clip>=0&&m.Weight>1e-4f)
+            BoostWeight=BoostRow(ownTrack,time,airBlocked,baseRow,true,CyberLordAirBoost.FirstPerson);var m=stun?Move.None:Of(view,time,blocking,a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration,LegacyCombo(a.Id));
+            if(m.Strike>0&&m.Weight>1e-4f)
             {
-                Clip(m.Clip).Sample(m.Time,row);
-                if(m.From>=0&&m.FromWeight>1e-4f){Clip(m.From).Sample(m.FromTime,fromRow);MeleeCapture.BlendRowsTurning(row,fromRow,m.FromWeight,row);}
-                MeleeCapture.BlendRowsTurning(baseRow,row,m.Weight,row);
+                // A strike keeps a third of its torso turn in view (built in), over the postured base kept the same way.
+                baseRow[MeleeCapture.Yaw]=0;Posture(baseRow);for(int i=MeleeCapture.Pelvis;i<MeleeCapture.Neck;i++)baseRow[i]*=.35f;
+                float w=first.Row(m,time,.35f,row,out _,out _);StrikeBlend(baseRow,row,w,row);
             }
-            else Array.Copy(baseRow,row,CapturedClip.Channels);
-            row[MeleeCapture.Yaw]=0;Posture(row);
-            // First person: the torso's capture twist would swing the fists out of view; keep a third of it.
-            for(int i=MeleeCapture.Pelvis;i<MeleeCapture.Neck;i++)row[i]*=.35f;
+            else
+            {
+                if(m.Clip>=0&&m.Weight>1e-4f)
+                {
+                    Clip(m.Clip).Sample(m.Time,row);
+                    if(m.From>=0&&m.FromWeight>1e-4f){Clip(m.From).Sample(m.FromTime,fromRow);MeleeCapture.BlendRowsTurning(row,fromRow,m.FromWeight,row);}
+                    MeleeCapture.BlendRowsTurning(baseRow,row,m.Weight,row);
+                }
+                else Array.Copy(baseRow,row,CapturedClip.Channels);
+                row[MeleeCapture.Yaw]=0;Posture(row);
+                // First person: the torso's capture twist would swing the fists out of view; keep a third of it.
+                for(int i=MeleeCapture.Pelvis;i<MeleeCapture.Neck;i++)row[i]*=.35f;
+            }
+            first.Note(row,time,Vector2.Zero);
             for(int k=0;k<3;k++){row[MeleeCapture.Grip+k]+=k==0?ViewLift.X:k==1?ViewLift.Y:ViewLift.Z;row[MeleeCapture.LHand+k]+=k==0?-ViewLift.X:k==1?ViewLift.Y:ViewLift.Z;}
             MeleeCapture.Apply(r,Unarmed,row,CaptureOptions.Of(1,Unarmed.Fit,MeleeClear.None,legs:0,root:0));
             // The ranged mode's emitters in the lower view (the camera carries the aim: no pitch here).
@@ -332,7 +450,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The upper body alone (the dev-cyberlord entrance over its keyed legs): the stance and the view's move on `r`.</summary>
         public string Upper(CyberLordView v,float time,MeleeRig r)
         {
-            r.Reset();StanceRow(time,baseRow);var m=Of(v,time,false,0);
+            r.Reset();StanceRow(time,baseRow);var m=Of(v,time,false,0,true);
             if(m.Clip>=0&&m.Weight>1e-4f)
             {
                 Clip(m.Clip).Sample(m.Time,row);
