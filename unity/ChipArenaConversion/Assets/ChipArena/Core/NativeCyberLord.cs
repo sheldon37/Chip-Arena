@@ -225,6 +225,7 @@ namespace ChipArena.UnityConversion
                 if(until>=slam-Eps){v.CrashAt=Feet3(s.CrashPoint);v.CrashBorn=slam;v.CrashUntil=slam+CyberLordSpec.CrashStun;}
             }
             CyberKit2MeleeFeed.Read(a,v,s?.Version==2?s.Kit2:null);
+            if(s?.Version==2&&s.Kit2R!=null)v.Ready[CyberLordSpec.Four]=s.Kit2R.Ready[CyberKit2Ranged.Orbital];
             return true;
         }
         private const float Eps=.002f;
