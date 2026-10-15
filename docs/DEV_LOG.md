@@ -8225,3 +8225,27 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - **Behaviour change in this merge:** none. The spec class is not read by the game yet.
 - **Presentation in progress:** on `claude/cyberlord-v2-ranged` (fireballs, throws over locomotion, ranged sprint, ranged abilities) and `claude/cyberlord-v2-melee` (combo, Q/E, melee abilities), with a sandbox preview for v2. Not merged.
 - **Checks:** Unity 6000.3.24f1 runtime and editor compile OK on the design branch. Merged-tree results are in the push notes.
+
+## 2026-10-15 — Claude: greatsword drag sprint
+
+- **Branch:** `claude/greatsword-sprint` (`448a3b9`), based on shared `7009887`, merged onto shared `5d60575`.
+- **Owner request:** "Fix sprint animation for greatsword (Utilize the normal run animation with sword on ground, but lean forward abit to show a natural sprint movement)."
+- **Change (`Core/NativeSprintMotion.cs`, `Runtime/CapturedAnimation.cs`):**
+  - The greatsword sprint keeps the normal greatsword run unchanged (legs, stride, cadence, torso, right fist) instead of the old shoulder carry.
+  - That run already trails the blade. The sprint pitches only the right wrist so the point rides a fixed 2 cm above the floor-guard plane, so the guard never flicks the wrist.
+  - Point height is 2.00 cm in a steady sprint at 60, 144 and 240 Hz, uneven frames and the replica, and 1.65–2.32 cm under look, weave and turns.
+  - The extra lean is .20 rad (was .14): the chest averages 27° against the run's 15.6°; the head only +6.3°.
+  - The free arm keeps the run's guard fist, swung from the shoulder in step with the legs.
+  - First person: the view blade drops 7 cm and tips 18° down instead of lifting onto the shoulder.
+  - Optional faint scrape sparks at the point (`NativeSprintFx.Scrape`), only while dragging, fewer with Reduced effects or Low graphics, not drawn for your own first-person pilot.
+- **Transitions at 60 Hz:**
+  - Run to sprint: the right arm moves 1.3° per frame (was 16.7°).
+  - Into the sprint attack: 9.4° (was 20.3°).
+- **Checks:**
+  - On the branch (run5): Unity 6000.3.24f1 runtime and editor compile OK; relay 696 PASS (new `GreatswordSprintChecks`); Python 106 OK; package OK; diff-check OK.
+  - `SprintMotionChecks` updated to the drag carry.
+- **Renders:** offline voxel harness only (side, back and front; run to sprint, sprint to stop, sprint attack). Not seen in Unity or on Windows. First person was checked by numbers only.
+- **Animation impact:** presentation only; no change to hit timing, hitboxes, damage, cooldowns, movement, sprint speed, stamina or networking. Nothing for Astra.
+- **Known risk:**
+  - The point follows the rig's flat floor plane, as the feet do. Going down stairs or slopes, the blade behind can dip into the ground.
+  - The jump layer's support-hand snap on take-off and landing is unchanged (it already happens in the run).
