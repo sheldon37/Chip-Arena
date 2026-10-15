@@ -128,6 +128,54 @@ namespace ChipArena.UnityConversion
             }
             finally{Expedition=null;Reset();}
         }
+        public void ValidateExpeditionCoop()
+        {
+            if(MapId!="expedition-city")return;
+            void Check(bool ok,string why){if(!ok)throw new Exception("Expedition native co-op: "+why);}
+            string json=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;
+            var layout=NativeExpeditionLayout.Parse(json);layout.compatibility=NativeExpeditionLayout.Compatibility(json,Content);
+            var fixture=new NativeMatch(Content){Cooperative=true,Teams=true,ShowIntros=false,FinalKillcams=false};
+            fixture.Seats.Add(new NativeSeat{id=1,name="Host",spec="pistol",team=0});
+            fixture.Seats.Add(new NativeSeat{id=2,name="Guest",spec="pistol",team=0});
+            fixture.Seats.Add(new NativeSeat{id=900,name="Boss",spec="siren",team=1,bot=true,AuthorityBoss=true});
+            using(var host=new NativeArena(Content,fixture,MapId){LocalId=1,ReplicaScene=root.scene})
+            {
+                Check(fixture.Start(),"fixture starts");host.Reset();
+                var run=NativeExpedition.Create("native-coop",layout.world,"host","pistol",99,layout.instances.Select(id=>new ExpeditionInstance{id=id,target=1}).ToArray());
+                Check(run.Join("guest","pistol"),"guest joins");
+                var session=new ExpeditionSession(run,Content,_=>{});session.Sources.Seat=id=>id=="host"?1:id=="guest"?2:0;
+                var director=new ExpeditionDirector(session,layout,id=>Vec(host.Pilots.Single(p=>p.Seat.id==session.Sources.Seat(id)).Body.position-Vector3.up*NativeLocomotionRules.HalfHeight),(a,b)=>host.ExpeditionVisible(a,b),100,100,60);
+                session.ReprintEvidence=host.ExpeditionReprintEvidence;
+                var area=layout.Area(layout.world);host.BindExpeditionCombat(director,area,JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
+                Check(director.BeginAreaLoad(),"start barrier");
+                var ticket=ExpeditionAreaReady.Capture(NativeExpeditionView.Build(run,"host",session.Sources));
+                Check(ExpeditionAreaReady.Accept(session,"host",ticket)&&!director.CompleteAreaLoad((_,points)=>host.PlaceExpeditionParty(points)),"waits for guest");
+                Check(ExpeditionAreaReady.Accept(session,"guest",ticket)&&director.CompleteAreaLoad((_,points)=>host.PlaceExpeditionParty(points)),"two native capsules placed");
+                var guest=host.Pilots.Single(p=>p.Seat.id==2);
+                Check((guest.Body.position-host.Local.Body.position).sqrMagnitude>1,"distinct placements");
+                host.Local.Hp=0;host.RecordExpeditionDeaths();Check(!run.Snapshot().members.Single(m=>m.account=="host").alive&&run.Snapshot().members.Single(m=>m.account=="guest").alive,"host death leaves guest active");
+                var machine=area.anchors.First(a=>a.kind=="machine");var interaction=area.interactions.Single(i=>i.anchor==machine.id);
+                guest.Body.position=new Vector3(interaction.x,interaction.y+NativeLocomotionRules.HalfHeight,interaction.z);Physics.SyncTransforms();director.Step();
+                Check(run.Credit("guest","test-reprint",100),"guest funds");
+                Check(host.TryExpeditionInteract(guest,out _)&&host.expeditionChannels.ContainsKey("guest"),"guest F starts measured reprint");
+                session.Tick(3.1);host.StepExpeditionReprints();
+                Check(run.Snapshot().members.Single(m=>m.account=="host").alive&&host.Local.Hp>0&&host.Local.Collider.enabled,"guest reprints host into live capsule");
+                using(var replica=new NativeArena(Content,new NativeMatch(Content),MapId){LocalId=2,ReplicaScene=root.scene})
+                {
+                    replica.ApplyFrame(NativeFrameCodec.Clone(host.NetworkFrame()),2);
+                    var view=NativeExpeditionView.Build(run,"guest",session.Sources);
+                    replica.ApplyExpeditionCollision(view,area,json);
+                    Check(replica.hubDoors.Count==host.hubDoors.Count&&replica.hubDoors.Select(b=>b.enabled).SequenceEqual(host.hubDoors.Select(b=>b.enabled)),"replica builds the same closed gates");
+                    var wire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-public",epoch=7,generation=host.Generation,expeditionPublic=view}));
+                    Check(wire.epoch==7&&wire.generation==host.Generation&&wire.expeditionPublic.hub.Gates.All(g=>g.Blocking),"JsonUtility preserves map generation and gate solidity");
+                    var gate=host.hubAuthority.Layout.Gates[0];guest.Body.position=new Vector3(gate.Interact.x,gate.Interact.y,gate.Interact.z);Physics.SyncTransforms();
+                    Check(host.TryExpeditionInteract(guest,out _),"guest gate interaction");session.Tick(1);host.StepHubGates();
+                    view=NativeExpeditionView.Build(run,"guest",session.Sources);replica.ApplyExpeditionCollision(view,area,json);
+                    Check(!host.hubDoors[0].enabled&&!replica.hubDoors[0].enabled,"guest follows authority release marker");
+                }
+                Debug.Log("PASS Expedition native co-op placement, guest reprint, collider replication and wire generation");
+            }
+        }
         public void ValidateExpeditionM1Geometry()
         {
             if(MapId=="expedition-city")

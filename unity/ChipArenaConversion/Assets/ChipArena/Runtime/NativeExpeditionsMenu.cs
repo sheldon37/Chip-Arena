@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private int expPick=-1,expTurnFrom,expTurnDir=1,expArea=-1,expPadFrame=-1;private float expTurnAt=-10,expSeenAt=-10,expDrawerAt=-10,expDrawerContent=400,expAge;
-        private X.Mode expMode;private bool expModeChosen,expDrawer;private Vector2 expDrawerScroll;private int[] expWaveCounts;
+        private X.Mode expMode;private bool expDrawer;private Vector2 expDrawerScroll;private int[] expWaveCounts;
         private readonly List<LobbyPilot> expParty=new List<LobbyPilot>(K.PartyCap);
         private const float ExpTurn=.38f,ExpTurnCalm=.16f;
         private static Rect ExpRect(X.Box b)=>new Rect(b.X,b.Y,b.W,b.H);
@@ -40,8 +40,8 @@ namespace ChipArena.UnityConversion
         {
             float now=Time.unscaledTime;var seat=ExpSeat;bool room=seat!=X.Seat.Solo;if(room)roomGuest=seat==X.Seat.Guest;expAge=age;
             if(now-expSeenAt>.25f)ExpOpen(seat);expSeenAt=now;
-            // A guest sees the room's run: the default expedition in Wave Defense (no room field carries the host's pick yet).
-            if(seat==X.Seat.Guest){expPick=K.Default;expMode=X.Mode.Waves;}
+            // Guests read the host's replicated mode. Only the implemented catalogue entry can launch.
+            if(seat==X.Seat.Guest){expPick=K.Default;expMode=receivedOptions?.expedition==true?X.Mode.Expedition:X.Mode.Waves;}
             var L=X.Measure(U.W,U.H);float e=In(age,0,.26f);var pick=K.At(expPick);var party=room?LobbyRoster():ExpSoloParty();
             var o=RulesNow();int start=X.StartOf(o?.skipWaves??prefs.skipWaves),guests=0;foreach(var p in party)if(!p.bot&&!p.you&&p.connected)guests++;
             bool busy=seat==X.Seat.Guest?server==null:server!=null;
@@ -61,11 +61,11 @@ namespace ChipArena.UnityConversion
             finally{U.Pop();menuBlockedNow=held;}
             ExpDrawer(L,seat,e,now);
         }
-        // The screen opened (or came back from a match, Customize or Settings): the default pick, and the mode (a room opens on Wave Defense).
+        // Reopening the screen preserves the selected room mode.
         private void ExpOpen(X.Seat seat)
         {
             if(expPick<0)expPick=K.Default;expDrawer=false;expDrawerAt=-10;expTurnAt=-10;expArea=-1;
-            if(!expModeChosen||seat!=X.Seat.Solo)expMode=X.DefaultMode(seat,account.Developer);
+            expMode=prefs.expedition?X.Mode.Expedition:X.Mode.Waves;
         }
         // Offline, the party is the pilot and the party bots the match will seat (LobbyBots: the same names, weapons and colours).
         private List<LobbyPilot> ExpSoloParty()
@@ -76,8 +76,8 @@ namespace ChipArena.UnityConversion
             return list;
         }
         private static int ExpBots(List<LobbyPilot> party){int n=0;foreach(var p in party)if(p.bot)n++;return n;}
-        private void ExpSetBots(int n)=>ApplyRule(RoomOpt.Bots,Mathf.Clamp(n,0,K.PartyCap-1),0);
-        private void ExpSetMode(X.Mode m){expModeChosen=true;if(m==expMode)return;expMode=m;Click();}
+        private void ExpSetBots(int n){if(expMode!=X.Mode.Expedition)ApplyRule(RoomOpt.Bots,Mathf.Clamp(n,0,K.PartyCap-1),0);}
+        private void ExpSetMode(X.Mode m){if(server!=null)return;expMode=m;ApplyRule(RoomOpt.Versus,m==X.Mode.Expedition?2:1,0);Click();}
         private void ExpTurnTo(int index,int dir)
         {
             int next=K.Wrap(index);if(next==expPick)return;expTurnFrom=expPick;expPick=next;expTurnDir=dir<0?-1:1;expTurnAt=Time.unscaledTime;expArea=-1;Click();
@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
             switch(go.Kind)
             {
                 case X.LaunchKind.ExpeditionM1:RequestStage(StageLoadKind.Expedition,StartExpeditionM1);break;
-                case X.LaunchKind.WaveMatch:prefs.pve=true;sandboxWanted=false;RequestStage(StageLoadKind.Boss,StartMatch);break;
+                case X.LaunchKind.WaveMatch:prefs.expedition=false;prefs.pve=true;sandboxWanted=false;RequestStage(StageLoadKind.Boss,StartMatch);break;
                 case X.LaunchKind.Ready:GuestReady(!networkReady);break;
             }
         }
@@ -193,7 +193,7 @@ namespace ChipArena.UnityConversion
             float lh=L.PartyLabel-8,ly=p.y;
             U.Text(new Rect(p.x,ly,90,lh),"PARTY",11,C.CyanSoft(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);float lx=p.x+U.Measure("PARTY",11,true,true,.26f).x+12;
             string count=n+" / "+L.Slots;U.Text(new Rect(lx,ly,80,lh),count,11,C.Ink(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);lx+=U.Measure(count,11,true,true,.1f).x+14;
-            string note=room?(bots>0?bots+(bots==1?" BOT":" BOTS")+" · A FRIEND WHO JOINS REPLACES THE NEWEST":"FRIENDS JOIN WITH THE ROOM CODE"):"BOTS FILL THE EMPTY SEATS";
+            string note=expMode==X.Mode.Expedition?"1–4 SIGNED-IN PLAYERS · JOIN BEFORE LAUNCH":room?(bots>0?bots+(bots==1?" BOT":" BOTS")+" · A FRIEND WHO JOINS REPLACES THE NEWEST":"FRIENDS JOIN WITH THE ROOM CODE"):"BOTS FILL THE EMPTY SEATS";
             float nw=U.Measure(note,9.5f,true,true,.16f).x;
             if(room)
             {
@@ -203,7 +203,7 @@ namespace ChipArena.UnityConversion
                 U.Fill(new Rect(lx,ly+lh/2,Mathf.Max(0,pill.x-14-(lx+nw+20<pill.x-14?nw+14:0)-lx),H.Px),C.Edge(.7f*a));
             }
             else{U.Text(new Rect(p.xMax-nw-2,ly,nw+4,lh),note,9.5f,C.Muted(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);U.Fill(new Rect(lx,ly+lh/2,Mathf.Max(0,p.xMax-nw-16-lx),H.Px),C.Edge(.7f*a));}
-            int newest=-1;for(int i=0;i<n;i++)if(party[i].bot)newest=i;bool canAdd=edit&&n<L.Slots&&bots<K.PartyCap-1;
+            int newest=-1;for(int i=0;i<n;i++)if(party[i].bot)newest=i;bool canAdd=edit&&expMode!=X.Mode.Expedition&&n<L.Slots&&bots<K.PartyCap-1;
             for(int i=0;i<L.Slots;i++)
             {
                 float ce=a*In(expAge,.06f+i*.04f,.32f);var slot=ExpRect(L.Slot(i));slot.y+=10*(1-ce);
@@ -473,8 +473,7 @@ namespace ChipArena.UnityConversion
             U.Text(new Rect(lr.x,lr.y,200,lh),"MODE",11,C.CyanSoft(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);float lx=lr.x+U.Measure("MODE",11,true,true,.26f).x+12,rx=lr.xMax;
             if(edit){U.Text(new Rect(rx-60,lr.y,60,lh),"SWITCH",9.5f,C.Muted(.85f*a),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);rx-=U.Measure("SWITCH",9.5f,true,true,.16f).x+8;float kw=H.KeyWidth("TAB",18);rx-=kw;H.Key(new Rect(rx,lr.y+(lh-18)/2,kw,18),"TAB",.9f*a);rx-=12;}
             U.Fill(new Rect(lx,lr.y+lh/2,Mathf.Max(0,rx-lx),H.Px),C.Edge(.7f*a));
-            bool dev=account.Developer,room=seat!=X.Seat.Solo;
-            string runChip=pick.Locked?K.ComingSoon:room?"SOLO ONLY · FOR NOW":dev?"DEV · M1 · OFFLINE":"DEV ONLY";Color runTone=pick.Locked?C.Muted():room||!dev?C.Warn():C.Violet();
+            string runChip=pick.Locked?K.ComingSoon:"1–4 PLAYERS";Color runTone=pick.Locked?C.Muted():C.Violet();
             string waveChip=pick.Locked||!pick.WaveDefense?K.ComingSoon:"CO-OP · UP TO 4";Color waveTone=pick.Locked?C.Muted():C.Good();
             if(ExpModeTile(ExpRect(m.Expedition),0,"route",X.ExpeditionLabel,compact?"The full run":"The full run · hub, three areas, the final boss",runChip,runTone,expMode==X.Mode.Expedition,edit,a,now,compact))ExpSetMode(X.Mode.Expedition);
             if(ExpModeTile(ExpRect(m.Waves),1,"waves",X.WavesLabel,compact?"Waves, then the Siren":"Ward Zero's waves, then the Siren · today's boss test",waveChip,waveTone,expMode==X.Mode.Waves,edit,a,now,compact))ExpSetMode(X.Mode.Waves);
@@ -671,7 +670,8 @@ namespace ChipArena.UnityConversion
         private void ExpDrawerBody(X.Seat seat,float width)
         {
             BeginRules(false,width);var o=rules;
-            if(o==null)Fine("The host sets the party bots. Ready up when your loadout is set.");
+            if(expMode==X.Mode.Expedition)Fine("Expedition supports 1–4 signed-in players. Bots are available in Wave Defense.");
+            else if(o==null)Fine("The host sets the party bots. Ready up when your loadout is set.");
             else
             {
                 RuleSelect(7580,RoomOpt.Bots,"Party bots",PartyBotLabels,Mathf.Clamp(o.bots,0,K.PartyCap-1));

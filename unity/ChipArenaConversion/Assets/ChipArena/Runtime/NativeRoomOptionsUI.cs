@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
     {
         private enum RoomOpt{Mode,Versus,FriendlyFire,Sets,Rounds,Map,RandomMap,Bots,Difficulty,SkipBotDrafts,SkipIntros,BothDraft,Choices,Timer,Mirror,Stationary,BotWeapon,BotTeam,HostTeam,SkipWaves,Online,Connection}
         private enum RulesPart{All,Essential,Advanced}
-        private static readonly string[] ModeLabels={"Free-for-all","Teams"},VersusLabels={"Versus","Boss Test"},ConnectionLabels={"Online","Local network (LAN)"};
+        private static readonly string[] ModeLabels={"Free-for-all","Teams"},VersusLabels={"Versus","Boss Test","Expedition"},ConnectionLabels={"Online","Local network (LAN)"};
         private static readonly string[] SetLabels=Numbered(10,5),RoundLabels=Numbered(10,2),ChoiceLabels=Numbered(12,6);
         private static readonly string[] DifficultyIds={"dummy","easy","normal","hard"},DifficultyLabels={"Dummy","Easy","Normal","Hard"};
         private static readonly string[] BetweenSetsLabels={"Players who lost the set draft","All players draft"},PartyBotLabels={"0","1","2","3"};
@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
         private NativeRoomOptions RulesNow()
         {
             if(RulesGuest&&menuScreen==MenuScreen.Lobby)return GuestRules;var m=rulesMirror;
-            m.map=prefs.map;m.cooperative=prefs.pve;m.teams=prefs.teams;m.friendlyFire=prefs.friendlyFire;m.bots=prefs.bots;m.rounds=prefs.rounds;m.sets=prefs.sets;m.choices=prefs.choices;m.selectionSeconds=prefs.selectionSeconds;
+            m.map=prefs.map;m.cooperative=prefs.pve;m.expedition=prefs.pve&&prefs.expedition;m.teams=prefs.teams;m.friendlyFire=prefs.friendlyFire;m.bots=prefs.bots;m.rounds=prefs.rounds;m.sets=prefs.sets;m.choices=prefs.choices;m.selectionSeconds=prefs.selectionSeconds;
             m.skipBotDrafts=prefs.skipBotDrafts;m.bothDraft=prefs.bothDraft;m.skipPlayerIntros=prefs.skipPlayerIntros;m.randomizeMap=prefs.randomizeMap;m.mirrorWeapons=prefs.mirrorWeapons;m.stationary=prefs.stationary;m.skipWaves=prefs.skipWaves;
             m.botDifficulty=prefs.botDifficulty;m.botOptions=prefs.botOptions??Array.Empty<NativeBotOption>();m.hostTeam=prefs.team;return m;
         }
@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
             switch(opt)
             {
                 case RoomOpt.Mode:o.teams=v==1;break;
-                case RoomOpt.Versus:o.cooperative=v==1;break;
+                case RoomOpt.Versus:o.cooperative=v!=0;o.expedition=v==2;break;
                 case RoomOpt.FriendlyFire:o.friendlyFire=v==1;break;
                 case RoomOpt.Sets:o.sets=v+1;break;
                 case RoomOpt.Rounds:o.rounds=v+1;break;

@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
             SendServer(new NativeNetMessage{type="expedition-area-ready",expeditionAreaReady=expeditionLoadedTicket});
         }
         private void ResetExpeditionNetwork()
-        {expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
+        {expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
         private void ExpeditionNetworkTick()
         {
             try{ExpeditionNetworkStep();}
@@ -82,8 +82,9 @@ namespace ChipArena.UnityConversion
         }
         private void ExpeditionNetworkStep()
         {
-            if(server!=null){ExpeditionReadyTick();return;}
+            if(server!=null){ExpeditionReplicaTick();ExpeditionReadyTick();return;}
             if(expeditionSession==null)return;
+            if(ExpeditionM1&&expeditionDirector.Barrier.active&&expeditionLoadedGeneration!=expeditionDirector.Barrier.generation)return;
             if(!ExpeditionM1)expeditionSession.Tick(Time.unscaledDeltaTime);
             // Projection and transport metrics are bounded to 20 Hz, including offline sessions.
             if(Time.unscaledTime<expeditionNextSend)return;expeditionNextSend=Time.unscaledTime+.05f;
@@ -95,7 +96,7 @@ namespace ChipArena.UnityConversion
             var snapshot=expeditionSession.Run.Snapshot();
             var recipients=peers.Where(p=>p.Connection?.Closed==false&&p.Seat?.access!=null&&p.Seat.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()&&snapshot.members.Any(m=>m.account==p.Seat.access.AccountId)).ToArray();
             var batch=ExpeditionViewBatch.Build(expeditionSession.Run,recipients.Select(p=>p.Seat.access.AccountId),expeditionSession.Sources);
-            string common=NativeNetCodec.Encode(new NativeNetMessage{type="expedition-public",expeditionPublic=batch.Public});
+            string common=NativeNetCodec.Encode(new NativeNetMessage{type="expedition-public",epoch=networkEpoch,generation=arena?.Generation??0,expeditionPublic=batch.Public});
             // Also refresh when source-only progress/save metadata or the peer set changes at an unchanged rule revision.
             string stamp=common+"|"+string.Join(",",recipients.Select(p=>p.Resume));if(stamp==expeditionStamp)return;expeditionStamp=stamp;
             byte[] packet=NativeConnection.Encode(common);
@@ -132,7 +133,7 @@ namespace ChipArena.UnityConversion
                 expeditionReceiver=new ExpeditionViewReceiver(id);
                 expeditionGuest=new ExpeditionGuestCommands(id,()=>ExpeditionView,request=>SendServer(new NativeNetMessage{type="expedition-command",expeditionCommand=request}));
             }
-            if(message.type=="expedition-public")expeditionReceiver.Public(message.expeditionPublic);
+            if(message.type=="expedition-public"){expeditionReplicaGeneration=message.generation;expeditionReceiver.Public(message.expeditionPublic);}
             else if(message.type=="expedition-private")expeditionReceiver.Private(message.expeditionPrivate);
             else expeditionGuest.Reply(message.expeditionReply);
             ExpeditionView=expeditionReceiver.View;return true;

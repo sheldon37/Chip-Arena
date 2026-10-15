@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
         public void SandboxCastEveryChip(){if(!SandboxAllowed)return;sandboxChipQueue=Content.chips.Select(c=>c.id).ToArray();sandboxChipIndex=0;sandboxChipAt=Time;}
         private void SandboxNextChip(){if(sandboxChipQueue==null||Time<sandboxChipAt)return;while(sandboxChipIndex<sandboxChipQueue.Length){var id=sandboxChipQueue[sandboxChipIndex++];if(!SandboxCastChip(id))continue;sandboxChipAt=Time+5;return;}sandboxChipQueue=null;}
         public void SetPilotConnected(int id,bool connected)
-        {var p=Pilots.Find(p=>p.Seat.id==id);if(p==null)return;if(!connected)p.Seat.disconnectedAt=Time;else{if(p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12)p.Hp=0;p.Seat.disconnectedAt=-1;p.Seat.alive=p.Hp>0;}p.Seat.connected=connected;p.Collider.enabled=connected&&p.Hp>0;p.Body.isKinematic=!connected||p.Hp<=0;ClearRemoteInput(id);if(!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;}
+        {var p=Pilots.Find(p=>p.Seat.id==id);if(p==null)return;if(!connected)p.Seat.disconnectedAt=Time;else{if(Expedition==null&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12)p.Hp=0;p.Seat.disconnectedAt=-1;p.Seat.alive=p.Hp>0;}p.Seat.connected=connected;p.Collider.enabled=connected&&p.Hp>0;p.Body.isKinematic=!connected||p.Hp<=0;ClearRemoteInput(id);if(!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;}
     }
     public sealed partial class ConversionGame
     {

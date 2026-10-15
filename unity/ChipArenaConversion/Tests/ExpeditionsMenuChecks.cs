@@ -75,8 +75,8 @@ namespace ChipArena.UnityConversion
             X.Launch R(K.Expedition p,X.Mode m,int s,X.Seat seat,bool dev=true,bool busy=false,bool ready=true,int guests=0)=>X.Resolve(p,m,s,seat,dev,busy,ready,guests);
             var a=R(siren,X.Mode.Expedition,0,X.Seat.Solo);Check(a.Enabled&&a.Kind==X.LaunchKind.ExpeditionM1&&a.Label==X.ExpeditionLabel,"solo developer: Start Expedition runs DEV M1");
             Check(!R(siren,X.Mode.Expedition,0,X.Seat.Solo,busy:true).Enabled,"not while a connection is open");
-            a=R(siren,X.Mode.Expedition,0,X.Seat.Solo,dev:false);Check(!a.Enabled&&a.Reason==X.DevOnly,"a player: Start Expedition stays developer-only, with the reason");
-            foreach(int g in new[]{0,2}){a=R(siren,X.Mode.Expedition,0,X.Seat.Host,guests:g);Check(!a.Enabled&&a.Kind==X.LaunchKind.None&&a.Reason.StartsWith(X.CoopPending,StringComparison.Ordinal),"a room cannot start the full run ("+g+" guests): "+a.Reason);}
+            a=R(siren,X.Mode.Expedition,0,X.Seat.Solo,dev:false);Check(a.Enabled&&a.Kind==X.LaunchKind.ExpeditionM1,"signed-in players can launch Expedition without a developer role");
+            foreach(int g in new[]{0,2}){a=R(siren,X.Mode.Expedition,0,X.Seat.Host,guests:g);Check(a.Enabled&&a.Kind==X.LaunchKind.ExpeditionM1,"ready host can launch Expedition with "+g+" guests");}
             foreach(var seat in new[]{X.Seat.Solo,X.Seat.Host})
             {
                 a=R(siren,X.Mode.Waves,0,seat);Check(a.Enabled&&a.Kind==X.LaunchKind.WaveMatch&&a.Detail=="WARD ZERO · WAVE 1",seat+": Wave 1 launches the boss-test match");
@@ -158,15 +158,15 @@ namespace ChipArena.UnityConversion
                 ["Go(MenuScreen.Home)"]="close",
             };
             foreach(var kv in calls)Check(exp.Contains(kv.Key),"reachable: "+kv.Value+" ("+kv.Key+")");
-            Check(Regex.IsMatch(exp,@"case X\.LaunchKind\.WaveMatch:prefs\.pve=true;sandboxWanted=false;RequestStage\(StageLoadKind\.Boss,StartMatch\);"),"Wave Defense starts exactly as Start Boss Fight did");
+            Check(Regex.IsMatch(exp,@"case X\.LaunchKind\.WaveMatch:prefs\.expedition=false;prefs\.pve=true;sandboxWanted=false;RequestStage\(StageLoadKind\.Boss,StartMatch\);"),"Wave Defense starts exactly as Start Boss Fight did");
             Check(home.Contains("if(expDrawer&&(at==MenuScreen.Boss||at==MenuScreen.Lobby)){ExpToggleDrawer();return;}"),"Escape closes the loadout drawer first");
             // A guest is read-only: the shown pick and mode are the room's; turns, modes, waves and bots need Editable.
-            Check(exp.Contains("if(seat==X.Seat.Guest){expPick=K.Default;expMode=X.Mode.Waves;}"),"a guest sees the room's run: the default expedition in Wave Defense");
+            Check(exp.Contains("if(seat==X.Seat.Guest){expPick=K.Default;expMode=receivedOptions?.expedition==true?X.Mode.Expedition:X.Mode.Waves;}"),"a guest sees the room's run: the default expedition in Wave Defense");
             Check(Regex.Matches(exp,@"if\(edit\)ExpTurnTo").Count==2&&exp.Contains("if(!edit)return;if(!X.WaveSupported(start))")&&exp.Contains("bool live=ExpLive(a)&&edit;float h=U.HoverAmount(9500+index")&&exp.Contains("ExpPartyCard(slot,party[i],i,ce,now,seat,edit&&i==newest,bots)")&&exp.Contains("bool canAdd=edit&&"),"a guest's keys, mode tiles, wave row and bot buttons do nothing");
             Check(exp.Contains("BeginRules(false,width);var o=rules;"),"the drawer's party rows go through BeginRules (read-only on a guest connection)");
             // Presentation only: no room field or message added (Astra's contract in DEV_LOG).
             var fields=typeof(NativeRoomOptions).GetFields().Select(f=>f.Name).OrderBy(s=>s,StringComparer.Ordinal).ToArray();
-            Check(string.Join(",",fields)=="botDifficulty,botOptions,bothDraft,bots,choices,cooperative,friendlyFire,hostTeam,map,mirrorWeapons,randomizeMap,rounds,selectionSeconds,sets,skipBotDrafts,skipPlayerIntros,skipWaves,stationary,teams","NativeRoomOptions keeps its fields ("+string.Join(",",fields)+")");
+            Check(string.Join(",",fields)=="botDifficulty,botOptions,bothDraft,bots,choices,cooperative,expedition,friendlyFire,hostTeam,map,mirrorWeapons,randomizeMap,rounds,selectionSeconds,sets,skipBotDrafts,skipPlayerIntros,skipWaves,stationary,teams","NativeRoomOptions keeps its fields ("+string.Join(",",fields)+")");
             Check(!exp.Contains("type=\"expedition")&&!Regex.IsMatch(exp,@"new NativeNetMessage\{type=""(?!profile"")"),"the screen sends no new message");
             // The transitions read EXPEDITIONS / PVE for this screen and a PvE room.
             Check(Regex.Match(mt,"MenuTitles=\\{([^}]*)\\}").Groups[1].Value.Split(',')[5].Trim()=="\"EXPEDITIONS\""&&Regex.Match(mt,"MenuEyebrows=\\{([^}]*)\\}").Groups[1].Value.Split(',')[5].Trim()=="\"PVE\"","the transition titles EXPEDITIONS / PVE");

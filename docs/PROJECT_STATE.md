@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-15 Owner requests for Astra (EXPEDITION-HUB.md): (1) join circle at instance doors (stand in a bigger circle away from the door to deploy; proposed all-members-inside + 3 s countdown, pending owner confirmation; split hub/instance parties not supported today); (2) co-op Expedition hosting from a room (HOST ROOM plays Wave Defense only; guest Expedition path missing). Claude does layout, ring/HUD and the room Mode select after Astra's parts.
+2026-10-15 Astra Expedition co-op (`codex/expedition-coop`, base `d6562d98`): implemented room mode, 1–4 signed-in humans, all-client load/placement, guest interactions, all-member death/reprint and replicated gate collision through existing room transport. Managed/relay checks and Unity semantic compile pass; Windows/PhysX/two-client gameplay unrun. Join-circle proposal remains pending; parties share one area. See EXPEDITION-HUB.md and DEV_LOG for policy and release status.
 
 2026-10-15 Claude hub safe-zone border hidden (`claude/hub-safezone-invisible`, merged into shared): the fenced hub draws no sanctuary edge; zone, membership and SAFE tag unchanged. Presentation only.
 

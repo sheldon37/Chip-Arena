@@ -5,11 +5,12 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeBotOption {public string weapon="random",difficulty="normal";public int team=-1;}
     [Serializable] public sealed class NativeRoomOptions
     {
-        public string map="moonlit",botDifficulty="normal";public bool cooperative,teams,friendlyFire,skipBotDrafts,bothDraft,skipPlayerIntros,randomizeMap,mirrorWeapons,stationary,skipWaves;
+        public string map="moonlit",botDifficulty="normal";public bool expedition,cooperative,teams,friendlyFire,skipBotDrafts,bothDraft,skipPlayerIntros,randomizeMap,mirrorWeapons,stationary,skipWaves;
         public int bots=3,rounds=2,sets=5,choices=6,selectionSeconds=18,hostTeam;public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();
         public void Normalize(ConversionContent content)
         {
             if(map!="random"&&!content.maps.Any(m=>m.id==map&&NativeMapRules.ArenaSelectable(m)))map=content.maps.First(m=>m.id!="siren"&&NativeMapRules.ArenaSelectable(m)).id;
+            if(expedition){cooperative=true;bots=0;}
             bots=Math.Max(0,Math.Min(cooperative?3:7,bots));rounds=Math.Max(1,Math.Min(10,rounds));sets=Math.Max(1,Math.Min(20,sets));choices=Math.Max(1,Math.Min(12,choices));selectionSeconds=Math.Max(5,Math.Min(120,selectionSeconds));hostTeam=Math.Max(0,Math.Min(7,hostTeam));
             botDifficulty=NativeLobbyRules.Difficulty(botDifficulty);botOptions=(botOptions??Array.Empty<NativeBotOption>()).Take(7).Select(b=>b??new NativeBotOption()).ToArray();
             foreach(var b in botOptions){if(b.weapon!="random"&&!content.weapons.Any(w=>w.id==b.weapon&&!w.devOnly))b.weapon="random";b.team=Math.Max(-1,Math.Min(7,b.team));b.difficulty=NativeLobbyRules.Difficulty(b.difficulty);}
