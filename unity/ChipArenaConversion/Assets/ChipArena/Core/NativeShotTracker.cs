@@ -25,9 +25,9 @@ namespace ChipArena.UnityConversion
         public const double ExtrapolationMax=.08;
         private sealed class Track
         {
-            public NativeShotView Identity;public int Frame,Count,Head;public double FirstSeen;
+            public NativeShotView Identity;public int Frame,Count,Head;public double FirstSeen;public NativeShotLaunch.State Launch;
             public readonly double[] T=new double[Samples],M=new double[Samples*6];
-            public void Reset(){Identity=default;Count=Head=0;FirstSeen=double.NaN;}
+            public void Reset(){Identity=default;Count=Head=0;FirstSeen=double.NaN;Launch=default;}
             public double Newest=>Count==0?double.NaN:T[(Head+Count-1)%Samples];
             public void Push(double time,in NativeShotView v)
             {
@@ -39,6 +39,12 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<long,Track> tracks=new Dictionary<long,Track>();private readonly Stack<Track> spare=new Stack<Track>();private readonly List<long> stale=new List<long>();
         private readonly double[] frames=new double[Frames];private int frameHead,frameCount;
         private object owner;private int generation=int.MinValue,frame;private bool replica;
+        /// <summary>
+        /// The gun muzzles drawn this frame (seat id to world point): the presentation records each posed gun's crown (the
+        /// first-person view weapon's mapped into the match camera) before the rounds are drawn; a round first seen this frame
+        /// leaves from its firer's (NativeShotLaunch). The presentation clears it at the start of each frame.
+        /// </summary>
+        public readonly Dictionary<int,System.Numerics.Vector3> Muzzles=new Dictionary<int,System.Numerics.Vector3>();
         /// <summary>The statsFor(mods) module inputs per distinct chip set (NativeShotViews.Modules).</summary>
         public readonly Dictionary<long,NativeShotModules> ModuleCache=new Dictionary<long,NativeShotModules>();
         public int Live=>tracks.Count;
@@ -73,6 +79,21 @@ namespace ChipArena.UnityConversion
         {
             if(!tracks.TryGetValue(NativeShotScene.Key(v.Kind,v.Id),out var t))return false;
             var m=t.Identity;m.X=v.X;m.Y=v.Y;m.Z=v.Z;m.VX=v.VX;m.VY=v.VY;m.VZ=v.VZ;m.Radius=v.Radius;m.FuseLeft=v.FuseLeft;v=m;t.Frame=frame;return true;
+        }
+        /// <summary>
+        /// A gun round seen for the first time (Remember first): drawn from its firer's muzzle this frame when there is one,
+        /// joining its simulated path from o (the simulation's start). Nothing changes without a recorded muzzle.
+        /// </summary>
+        public bool Launch(in NativeShotView v,int firer,double ox,double oy,double oz)
+        {
+            if(!NativeShotLaunch.Gun(v)||!Muzzles.TryGetValue(firer,out var m)||!tracks.TryGetValue(NativeShotScene.Key(v.Kind,v.Id),out var t)||t.Launch.Live)return false;
+            return NativeShotLaunch.Begin(m.X,m.Y,m.Z,ox,oy,oz,v.VX,v.VY,v.VZ,out t.Launch);
+        }
+        /// <summary>Moves v onto its drawn launch path (after Present); unchanged for a round without one.</summary>
+        public void Launched(ref NativeShotView v)
+        {
+            if(v.Kind!=NativeShotKind.Bullet||!tracks.TryGetValue(NativeShotScene.Key(v.Kind,v.Id),out var t)||!t.Launch.Live)return;
+            NativeShotLaunch.Apply(ref t.Launch,ref v);
         }
         public void Remember(in NativeShotView v)
         {

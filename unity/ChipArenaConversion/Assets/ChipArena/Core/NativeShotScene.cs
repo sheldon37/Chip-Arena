@@ -61,6 +61,9 @@ namespace ChipArena.UnityConversion
         {
             var shape=NativeShotRules.PrimaryShape(v);double r=s.Radius,k=shape==NativeShotShape.Box?1:r,sx=1,sy=1,sz=1;
             if(v.Class=="ranged"){sx=sy=Math.Max(.075,r*2);sz=v.Bowling?r*2:.65;}
+            // A round drawn from the muzzle (NativeShotLaunch) grows out of it: centred on the round, never longer than twice the
+            // distance past the crown, so it never pokes back through the gun.
+            if(v.Launched)sz=Math.Min(sz,Math.Max(sx,2*v.Flown));
             if(v.SwordBeam){sx=1;sy=.08;sz=.4;}
             int n=v.Elements;
             if(n>0&&time>s.NextPuff)

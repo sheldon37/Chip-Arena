@@ -40,8 +40,25 @@ namespace ChipArena.UnityConversion
         public static void Bullet(NativeArena arena,NativeBullet b,NativeShotTracker tracker,double clock,out NativeShotView v)
         {
             v=new NativeShotView{Kind=NativeShotKind.Bullet,Id=b.Id,X=b.Position.x,Y=b.Position.y,Z=b.Position.z,VX=b.Velocity.x,VY=b.Velocity.y,VZ=b.Velocity.z,Radius=b.Radius,FuseLeft=1e9};
-            if(!tracker.Recall(ref v)){BulletIdentity(arena,b,ref v,tracker.ModuleCache);tracker.Remember(v);}
+            if(!tracker.Recall(ref v)){BulletIdentity(arena,b,ref v,tracker.ModuleCache);tracker.Remember(v);Launch(arena,b,tracker,v);}
             if(!arena.ReplaySampledShots)tracker.Present(ref v,clock);
+            tracker.Launched(ref v);
+        }
+        /// <summary>
+        /// A gun round's launch from its firer's drawn muzzle (Core/NativeShotLaunch), the first time it is seen: its start is
+        /// the simulation's, read from the round's own Shot event (same firer, same time; replicated to guests and the killcam),
+        /// and trusted only when the round's motion traces back to it.
+        /// </summary>
+        private static void Launch(NativeArena arena,NativeBullet b,NativeShotTracker tracker,in NativeShotView v)
+        {
+            if(!NativeShotLaunch.Gun(v)||!tracker.Muzzles.ContainsKey(Firer(b)))return;double age=arena.Time-b.Born;if(!(age>=-.02&&age<=NativeShotLaunch.MaxAge))return;
+            var events=arena.Events;int firer=Firer(b),found=-1;
+            for(int i=events.Count-1;i>=0;i--){var e=events[i];if(e.Kind==EventKind.Shot&&e.Source==firer&&Math.Abs(e.Time-b.Born)<.002f){found=i;break;}}
+            if(found<0)return;var start=events[found].Position;
+            double ox=start.x,oy=start.y,oz=start.z,a=Math.Max(0,age);
+            double bx=b.Position.x-b.Velocity.x*a-ox,by=b.Position.y-b.Velocity.y*a-oy,bz=b.Position.z-b.Velocity.z*a-oz;
+            if(bx*bx+by*by+bz*bz>NativeShotLaunch.Agree*NativeShotLaunch.Agree)return;
+            tracker.Launch(v,firer,ox,oy,oz);
         }
         private static void BulletIdentity(NativeArena arena,NativeBullet b,ref NativeShotView v,Dictionary<long,NativeShotModules> cache)
         {

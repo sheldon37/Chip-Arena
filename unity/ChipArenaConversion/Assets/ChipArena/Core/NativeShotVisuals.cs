@@ -110,6 +110,9 @@ namespace ChipArena.UnityConversion
         public int VelocityChips;
         /// <summary>Chip module inputs; read once, the first frame an id is seen.</summary>
         public NativeShotModules Modules;
+        /// <summary>A gun round drawn from the posed muzzle (NativeShotLaunch): its position and velocity are on the drawn path,
+        /// and Flown is how far past the muzzle it is drawn (the tracer and the round never reach back into the barrel).</summary>
+        public bool Launched;public double Flown;
         public int Elements=>(Fire?1:0)+(Poison?1:0);
     }
     /// <summary>The statsFor(p.mods) values chip-effects.ts reads, plus the raw velocity and meteor stacks.</summary>

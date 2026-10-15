@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
         private void WeaponDressing(CapturedAnimation.Player rig,Actor a,float time,bool first,int layer,Camera camera,float reach)
         {
             if(sourceModels==null||Viewer||rig==introRig)return;string spec=a.SourceSpec;
-            MuzzleFx(rig,a,time,first);BladeBlood(rig,a,time,first,layer,camera,reach);
+            MuzzleRecord(rig,a,first);MuzzleFx(rig,a,time,first);BladeBlood(rig,a,time,first,layer,camera,reach);
             var pilot=LoadoutPilot(a.Id);
             if(!first)SampleSweep(rig,a,time,reach,pilot?.Seat.chips);
             if(pilot?.Stats==null||pilot.Weapon==null||pilot.Seat.chips==null)return;var chips=pilot.Seat.chips;var stats=pilot.Stats;bool daggers=spec=="daggers";
@@ -78,15 +78,19 @@ namespace ChipArena.UnityConversion
             }
         }
         // A blade that drew blood carries it on its edge (Core/NativeBlood: the ledger's melee hits by this pilot, fading over
-        // ten seconds; the ledger and so the blood clear with the round), both daggers, third and first person.
+        // ten seconds; the ledger and so the blood clear with the round), both daggers, third and first person. The pieces lie on
+        // the drawn blade of the skin the pilot shows (Core/NativeBladeProfile: the Standard bevels or the Prototype edge strips;
+        // the Standard left dagger is built mirrored) and stretch with it under reach (SkinPiece).
         private void BladeBlood(CapturedAnimation.Player rig,Actor a,float time,bool first,int layer,Camera camera,float reach)
         {
-            string spec=a.SourceSpec;if(spec!="sword"&&spec!="daggers"&&spec!="greatsword"||a.WeaponAway)return;float amount=hitLedger.BladeBlood(a.Id,time);if(amount<.02f)return;
+            string spec=a.SourceSpec;if(!NativeBladeProfile.Bladed(spec)||a.WeaponAway)return;float amount=hitLedger.BladeBlood(a.Id,time);if(amount<.02f)return;
+            bool standard=WeaponSkin(a)==NativeWeaponSkins.StandardIndex&&NativeWeaponModels.Designed(spec);
             for(int hand=0;hand<(spec=="daggers"?2:1);hand++)
             {
+                if(hand==0&&a.MainWeaponAway&&spec=="daggers")continue;// the thrown dagger's hand is empty (NativeSourcePresentation)
                 var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);
-                for(int i=0;i<NativeBloodRules.Slivers;i++)if(NativeBloodRules.Sliver(spec,i,amount,out var c,out var size))
-                {var piece=new WeaponPiece{Shape=WeaponShape.Cube,Color=i%2==0?NativeBloodRules.Rim:NativeBloodRules.Core,Position=c,Scale=size,Rotation=System.Numerics.Quaternion.Identity,Orbit=-1};QueuePiece(piece,SkinPiece(a,piece,parent),layer,camera);}
+                int count=NativeBladeBlood.Pieces(spec,standard,amount,hand==1&&standard&&NativeWeaponModels.Get(spec).MirrorLeft,weaponPieces);
+                for(int i=0;i<count;i++){var piece=weaponPieces[i];QueuePiece(piece,SkinPiece(a,piece,parent),layer,camera);}
             }
         }
         // standard-melee-effects.ts:21: a thrown dagger or shield keeps the owner's enchant (elements and stacks), flying with it.
@@ -101,8 +105,10 @@ namespace ChipArena.UnityConversion
         // off-hand blade (Combo+1 is the attack index MeleeMotion animates).
         private void SampleSweep(CapturedAnimation.Player rig,Actor a,float time,float reach,System.Collections.Generic.IReadOnlyDictionary<string,int> chips)
         {
-            // A standard melee strike draws its slash crescent instead (NativeSlashFx, owner 2026-10-11 weapons milestone).
-            if(!meleeSweeps.Enabled||a.WeaponAway||NativeSlashFx.Replaces(a,time)||!NativeWeaponDressing.BladeTip(a.SourceSpec,out var tip)||!NativeWeaponDressing.Sweeping(a,time))return;
+            // A standard melee strike draws its slash crescent instead (NativeSlashFx, owner 2026-10-11 weapons milestone), swept
+            // from this same blade (Core/NativeSlashTrail).
+            if(NativeSlashFx.Replaces(a,time)){SlashSample(rig,a,time,reach);return;}
+            if(!meleeSweeps.Enabled||a.WeaponAway||!NativeWeaponDressing.BladeTip(a.SourceSpec,out var tip)||!NativeWeaponDressing.Sweeping(a,time))return;
             int hand=a.SourceSpec=="daggers"&&(a.Combo+1)%2==0?CapturedRig.LHand:CapturedRig.RHand;var m=SourceWeaponBone(rig,a,time,false,hand,reach);
             meleeSweeps.Add(SweepKey.Of(a),a.SourceSpec,NativeWeaponDressing.SweepColor(chips),CapturedAnimation.Num(m.MultiplyPoint3x4(Vector3.zero)),CapturedAnimation.Num(m.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(tip)))),time);
         }

@@ -29,6 +29,28 @@ namespace ChipArena.UnityConversion
         }
         private static WeaponPaint BladeBand(int side,WeaponPaint edge,WeaponPaint flat,WeaponPaint fuller)
             =>side==0||side==6||side==7||side==13?edge:side>=2&&side<=4||side>=9&&side<=11?fuller:flat;
+        // ---- the blade sections the models are lofted from (shared with NativeBladeProfile, so effects can hug the drawn blade) ----
+        // Sword: ring z, width, fuller width; thickness and edge bevel per ring (the first two rings are the unsharpened ricasso).
+        // The blade is built under S(SwordBladeScale).
+        internal static readonly float[] SwordBladeZ={.232f,.30f,.31f,.46f,.70f,.90f,1.03f,1.16f,1.228f,1.275f},SwordBladeW={.064f,.064f,.084f,.08f,.074f,.066f,.06f,.048f,.028f,0},SwordBladeF={0,0,.026f,.026f,.022f,.01f,0,0,0,0};
+        internal static float SwordBladeT(int i)=>i<2?.019f:i>=8?.012f:.0165f;
+        internal static float SwordBladeE(int i)=>i<2?.004f:.017f;
+        internal static readonly Vector3 SwordBladeScale=V(1.2f,1.6f,1);
+        // Daggers: ring z, spine x and edge x (the curved wedge), thickness per ring; built under S(DaggerBladeScale).
+        internal static readonly float[] DaggerBladeZ={.178f,.22f,.30f,.40f,.50f,.60f,.68f,.74f,.79f,.832f},DaggerBladeXs={-.02f,-.02f,-.018f,-.013f,-.007f,0,.005f,.008f,.009f,.006f},DaggerBladeXe={.028f,.032f,.037f,.04f,.04f,.036f,.03f,.022f,.012f,.006f};
+        internal static float DaggerBladeT(int i)=>i>=8?.008f:.011f;
+        internal static readonly Vector3 DaggerBladeScale=V(1.3f,1.5f,1);
+        /// <summary>The full-detail dagger's smoothed ring between control rings i and i+1 (i+1 below the last ring).</summary>
+        internal static void DaggerMid(int i,out float z,out float xs,out float xe,out float t)
+        {
+            float[] Z=DaggerBladeZ;int j=Math.Max(0,i-1),l=Math.Min(Z.Length-1,i+2);float Mid(float[] v)=>(v[i]+v[i+1])*.5625f-(v[j]+v[l])*.0625f;
+            z=(Z[i]+Z[i+1])/2;xs=Mid(DaggerBladeXs);xe=Mid(DaggerBladeXe);t=i+1>=8?.009f:.011f;
+        }
+        // Greatsword: ring z, width, fuller width; thickness per ring, one edge bevel; built under S(GreatswordBladeScale).
+        internal static readonly float[] GreatswordBladeZ={.48f,.62f,.9f,1.18f,1.42f,1.58f,1.645f,1.685f},GreatswordBladeW={.13f,.124f,.114f,.104f,.094f,.074f,.044f,0},GreatswordBladeF={.04f,.04f,.034f,.02f,0,0,0,0};
+        internal static float GreatswordBladeT(int i)=>i>=6?.014f:.021f;
+        internal const float GreatswordBladeE=.026f;
+        internal static readonly Vector3 GreatswordBladeScale=V(1.15f,1.4f,1);
         // A wrapped grip: octagonal rings with raised wrap bands (full detail) between two metal ferrules.
         private static void WrappedGrip(WeaponSculpt k,float z0,float z1,float r,float swell,WeaponPaint wrap,WeaponPaint cord,WeaponPaint ferrule,int bands,float squash=1)
         {
@@ -59,10 +81,10 @@ namespace ChipArena.UnityConversion
             if(k.Mid)for(int s=-1;s<=1;s+=2)k.Box(gem,V(0,s*.0232f,.207f),V(.018f,.0016f,.03f),0);
             // Blade: the ricasso (unsharpened), the shoulder, then a fullered blade narrowing to a reinforced point.
             k.Into(RightHand,WeaponStretch.Blade);
-            float[] z={.232f,.30f,.31f,.46f,.70f,.90f,1.03f,1.16f,1.228f,1.275f},w={.064f,.064f,.084f,.08f,.074f,.066f,.06f,.048f,.028f,0},f={0,0,.026f,.026f,.022f,.01f,0,0,0,0};
-            var rings=new List<Vector3[]>();for(int i=0;i<z.Length;i++){bool ric=i<2;rings.Add(BladeRing(z[i],w[i],ric?.019f:i>=8?.012f:.0165f,ric?.004f:.017f,f[i],.0034f));}
+            float[] z=SwordBladeZ,w=SwordBladeW,f=SwordBladeF;
+            var rings=new List<Vector3[]>();for(int i=0;i<z.Length;i++)rings.Add(BladeRing(z[i],w[i],SwordBladeT(i),SwordBladeE(i),f[i],.0034f));
             if(!k.Mid){rings.RemoveAt(7);rings.RemoveAt(5);rings.RemoveAt(3);}
-            k.Push(S(1.2f,1.6f,1));
+            k.Push(S(SwordBladeScale.X,SwordBladeScale.Y,1));
             k.Loft(rings,(i,j)=>i==0?BladeBand(j,flat.Scaled(.92f),flat.Scaled(.92f),flat.Scaled(.92f)):BladeBand(j,edge,flat,fuller),0,true,false);
             if(k.Mid)for(int s=-1;s<=1;s+=2)k.Box(gem,V(0,s*(.00825f-.0034f+.0005f),.6f),V(.0042f,.0012f,.5f),0);
             // Maker's mark on the ricasso: a small accent chevron.
@@ -99,14 +121,14 @@ namespace ChipArena.UnityConversion
             if(k.Mid)k.Tube(_=>metal,new[]{V(.036f,0,.17f),V(.05f,0,.162f),V(.058f,0,.15f)},i=>.0062f-i*.0012f,k.Sides(6),Vector3.UnitY,1,true);
             k.Pop();
             // The curved blade: spine and edge lines over z, the tip just off the axis by the blade-tip socket.
-            k.Into(RightHand,WeaponStretch.Blade);k.Push(S(1.3f,1.5f,1));
-            float[] z={.178f,.22f,.30f,.40f,.50f,.60f,.68f,.74f,.79f,.832f},xs={-.02f,-.02f,-.018f,-.013f,-.007f,0,.005f,.008f,.009f,.006f},xe={.028f,.032f,.037f,.04f,.04f,.036f,.03f,.022f,.012f,.006f};
+            k.Into(RightHand,WeaponStretch.Blade);k.Push(S(DaggerBladeScale.X,DaggerBladeScale.Y,1));
+            float[] z=DaggerBladeZ,xs=DaggerBladeXs,xe=DaggerBladeXe;
             var blade=new List<Vector3[]>();
             for(int i=0;i<z.Length;i++)
             {
-                if(!k.Mid&&(i==2||i==4||i==6))continue;blade.Add(Wedge(z[i],xs[i],xe[i],i>=8?.008f:.011f));
+                if(!k.Mid&&(i==2||i==4||i==6))continue;blade.Add(Wedge(z[i],xs[i],xe[i],DaggerBladeT(i)));
                 // Full detail: a smoothed curve (midpoints between the control rings, eased toward the neighbours).
-                if(k.Fine&&i+1<z.Length-1){int j=Math.Max(0,i-1),l=Math.Min(z.Length-1,i+2);float Mid(float[] v)=>(v[i]+v[i+1])*.5625f-(v[j]+v[l])*.0625f;blade.Add(Wedge((z[i]+z[i+1])/2,Mid(xs),Mid(xe),i+1>=8?.009f:.011f));}
+                if(k.Fine&&i+1<z.Length-1){DaggerMid(i,out float mz,out float ms,out float me,out float mt);blade.Add(Wedge(mz,ms,me,mt));}
             }
             k.Loft(blade,(i,j)=>j==0||j==6?edge:j==3?spine:j==2||j==4?metal:coat,0,true,false);
             // Jimping on the spine just ahead of the guard.
@@ -137,7 +159,7 @@ namespace ChipArena.UnityConversion
             k.Box(gold,V(0,0,.228f),V(.076f,.05f,.07f),.012f);
             if(k.Mid)for(int s=-1;s<=1;s+=2){k.Push(Rx(Pi/2)*T(0,s*.032f,.236f));k.Torus(gold,V(0,0,0),.03f,.0055f,k.Sides(14),k.Sides(6));k.Pop();k.Box(gem,V(0,s*.0182f,.23f),V(.02f,.0016f,.034f),0);}
             // Blade: the wrapped ricasso, the lugs (parierhaken), then a long fullered blade to a reinforced point.
-            k.Into(RightHand,WeaponStretch.Blade);k.Push(S(1.15f,1.4f,1));
+            k.Into(RightHand,WeaponStretch.Blade);k.Push(S(GreatswordBladeScale.X,GreatswordBladeScale.Y,1));
             k.Loft(new[]{BladeRing(.262f,.056f,.024f,.004f,0,0),BladeRing(.47f,.056f,.024f,.004f,0,0)},(i,j)=>steel,0,false,false);
             WrappedGrip(k,.29f,.43f,.031f,0,wrap,cord,gold,4,.44f);
             for(int s=-1;s<=1;s+=2)
@@ -146,8 +168,8 @@ namespace ChipArena.UnityConversion
                 k.Tube(i=>i==3?steel.Scaled(1.15f):steel,lug,i=>.0115f-i*.0025f,k.Sides(6),Vector3.UnitY,0,true,false,.7f);
             }
             k.Box(gold,V(0,0,.472f),V(.07f,.032f,.016f),.005f);
-            float[] z={.48f,.62f,.9f,1.18f,1.42f,1.58f,1.645f,1.685f},w={.13f,.124f,.114f,.104f,.094f,.074f,.044f,0},f={.04f,.04f,.034f,.02f,0,0,0,0};
-            var rings=new List<Vector3[]>();for(int i=0;i<z.Length;i++)rings.Add(BladeRing(z[i],w[i],i>=6?.014f:.021f,.026f,f[i],.0045f));
+            float[] z=GreatswordBladeZ,w=GreatswordBladeW,f=GreatswordBladeF;
+            var rings=new List<Vector3[]>();for(int i=0;i<z.Length;i++)rings.Add(BladeRing(z[i],w[i],GreatswordBladeT(i),GreatswordBladeE,f[i],.0045f));
             if(!k.Mid){rings.RemoveAt(4);rings.RemoveAt(2);}
             k.Loft(rings,(i,j)=>BladeBand(j,edge,flat,fuller),0,true,false);
             if(k.Mid)for(int s=-1;s<=1;s+=2)k.Box(gem,V(0,s*(.0105f-.0045f+.0006f),.78f),V(.006f,.0012f,.56f),0);

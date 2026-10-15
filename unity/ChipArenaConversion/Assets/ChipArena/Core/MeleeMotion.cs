@@ -80,6 +80,13 @@ namespace ChipArena.UnityConversion
         private readonly Vector3[] keptAxes={Vector3.UnitX,Vector3.UnitX};
         private readonly Vector3[] entryAnkles=new Vector3[2];
         public string State{get;private set;}="idle";
+        /// <summary>
+        /// The blade's own clock for the captured cut posed this frame (presentation reads it: the slash crescent samples the
+        /// blade by it): the swing's start, the age the cut was posed at (after the hit-stop hold and an air attack's landing
+        /// freeze, so it runs behind the replicated window while the blade does), and the windup and window it was posed with.
+        /// CutAge is NaN when this frame posed no cut. Read only; nothing in the pose depends on it.
+        /// </summary>
+        public float CutAt=float.NaN,CutAge=float.NaN,CutWindup,CutWindow;
         public static bool Handles(string spec)=>MeleeSet.For(spec)!=null;
         public const float GuardHold=2.4f,GuardFade=.8f,HoldRelease=.22f,StepReach=.475f;
         public static float Recovery(string spec)=>spec=="greatsword"?.5f:spec=="daggers"?.15f:.3f;
@@ -512,7 +519,7 @@ namespace ChipArena.UnityConversion
         {
             var clip=NativeAirAttackRules.Clip(p.Spec);float rate=p.AttackRate>0?p.AttackRate:1,recoverySeconds=a.Recovery,landed=AirWatch.Landed(time),standY=Rig.P[CapturedRig.Body].Y;
             float age=a.Age-lag,landAge=float.IsNaN(landed)?float.NaN:AirWatch.ImpactAt-p.LastAttack;
-            age-=NativeAirAttackRules.Frozen(age,landAge,a.Windup,a.Window,AirWatch.Strength);
+            age-=NativeAirAttackRules.Frozen(age,landAge,a.Windup,a.Window,AirWatch.Strength);CutAge=age;
             clip.Sample(NativeAirAttackRules.ClipTime(clip,age,a.Windup,a.Window,recoverySeconds),row);
             bool recovering=age>a.Windup+a.Window;
             if(recovering&&set.Idle!=null)
@@ -785,7 +792,7 @@ namespace ChipArena.UnityConversion
             if(planted)r.Motion*=(float)Math.Exp(-MeleeMath.Clamp(dt,0,.05f)*22);
             var vel=planted?new Vector3(0,p.Vel.Y,0):p.Vel;var shown=p;if(planted){shown=p.Clone();shown.Vel=vel;}
             gait.Locomotion(r,shown,time,dt,planted);SprintLean(p,dt);gaitPelvis=r.E[CapturedRig.Pelvis];
-            var a=AttackPose(p,time);TrackSwing(p,a,time);WatchAir(p,a,time);WatchPlunge(p,time);airLive=false;plungeStuck=false;
+            var a=AttackPose(p,time);TrackSwing(p,a,time);WatchAir(p,a,time);WatchPlunge(p,time);airLive=false;plungeStuck=false;CutAge=float.NaN;
             // Source order (sampleCharacter): juggle, knockdown, hitstun, roll, then block, special, cut or guard; the light hit
             // reaction rides the last three. Native layers pose juggles, knockdowns, rolls and specials over the captured guard.
             if(p.Juggle||p.Down){Ready(set,p,time,MeleeReady(p,time));overlay?.Invoke(r);r.MocapPosed=false;}
@@ -813,7 +820,8 @@ namespace ChipArena.UnityConversion
                     bool chained=Chained(p);CarryHold(RunCarry(),time,p);float entry=chained?ChainEntry(a.Windup):PhraseEntry(p,a.Windup),k=a.Age<entry?MeleeMath.Ease(a.Age/entry):1,carry=MeleeReady(p,time);
                     StartFeet(p,a,time);bool plunge=PlungeSwing(p),air=!plunge&&AirSwing(p),sprint=!plunge&&!air&&SprintSwing(p);
                     if(k<1){entryAnkles[0]=r.AnkleInGroup(true);entryAnkles[1]=r.AnkleInGroup(false);if(chained)ChainBase(set,p,time);else if(!(p.Followup&&FollowupBase(set,p)))Ready(set,p,time,carry);}
-                    if(plunge)PlungeCut(set,p,time);else if(air)AirCut(set,p,a,HitStop(p,a),k,time);else if(sprint)SprintCut(set,p,a,HitStop(p,a),k);else Cut(set,p,a,HitStop(p,a),k);swingNow.Drawn=time;swingNow.Air=airLive=air;swingNow.Sprint=sprint;swingNow.Plunge=plunge;leapLive=sprint&&NativeSprintAttackRules.Leaps(p.Spec);plungeLive=plunge;
+                    float lag=plunge?0:HitStop(p,a);CutAt=p.LastAttack;CutWindup=a.Windup;CutWindow=a.Window;CutAge=a.Age-lag;
+                    if(plunge)PlungeCut(set,p,time);else if(air)AirCut(set,p,a,lag,k,time);else if(sprint)SprintCut(set,p,a,lag,k);else Cut(set,p,a,lag,k);swingNow.Drawn=time;swingNow.Air=airLive=air;swingNow.Sprint=sprint;swingNow.Plunge=plunge;leapLive=sprint&&NativeSprintAttackRules.Leaps(p.Spec);plungeLive=plunge;
                 }
                 var light=ReactionOf(p);if(light!=null)React(p,light,time,false);
             }
