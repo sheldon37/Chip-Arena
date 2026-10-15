@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
                     cells.TryGetValue(key,out var c);c.X+=g.X;c.Y+=g.Y;c.Z+=g.Z;c.Count++;c.Kind=NativeWardZeroKit.GlowFluor;c.Param+=g.Param;cells[key]=c;continue;
                 }
                 byte k=g.Kind;if(k==NativeWardZeroKit.GlowScreen||k==NativeWardZeroKit.GlowSign)continue;
-                float range=k==NativeWardZeroKit.GlowHighBay?16:k==NativeWardZeroKit.GlowSpine?24:k==NativeWardZeroKit.GlowTank?7:k==NativeWardZeroKit.GlowFurnace?(g.Size>4?11:7):k==NativeWardZeroKit.GlowInk?8:k==NativeWardZeroKit.GlowStrobe?(g.Hazard>=0?12:BeaconRange):12;
+                float range=k==NativeWardZeroKit.GlowHighBay?16:k==NativeWardZeroKit.GlowSpine?SpineRange:k==NativeWardZeroKit.GlowTank?7:k==NativeWardZeroKit.GlowFurnace?(g.Size>4?11:7):k==NativeWardZeroKit.GlowInk?8:k==NativeWardZeroKit.GlowStrobe?(g.Hazard>=0?12:BeaconRange):12;
                 list.Add(new NativeWardLight{X=g.X,Y=k==NativeWardZeroKit.GlowFurnace?g.Y+1.2f:g.Y-(k==NativeWardZeroKit.GlowSpine?1.5f:.3f),Z=g.Z,Range=range,R=g.R,G=g.G,B=g.B,Kind=k,Alarm=(byte)(k==NativeWardZeroKit.GlowStrobe&&g.Hazard>=0?(int)g.Param:0),Hazard=g.Hazard,Param=g.Param,Count=1});
             }
             foreach(var c in cells.Values){var x=c;x.X/=c.Count;x.Y=x.Y/c.Count-.5f;x.Z/=c.Count;x.Param/=c.Count;x.Range=c.Y/c.Count>8?13:9.5f;var f=NativeWardZeroLooks.FluorHex;x.R=(float)NativeSceneryBuilder.Channel(f,16);x.G=(float)NativeSceneryBuilder.Channel(f,8);x.B=(float)NativeSceneryBuilder.Channel(f,0);list.Add(x);}
@@ -61,9 +61,9 @@ namespace ChipArena.UnityConversion
             {
                 case NativeWardZeroKit.GlowFluor:{k=.42f*(c.Y>8?1.35f:1)*(float)Math.Sqrt(c.Count)*m.Fluor*(1-.35f*m.Flicker)*(1+.15f*m.Beat);float red=m.Red*.7f;r=r*(1-red)+1f*red;g*=1-red*.9f;b*=1-red*.85f;break;}
                 case NativeWardZeroKit.GlowHighBay:k=.75f*m.Fluor*(1+.2f*m.Beat);break;
-                case NativeWardZeroKit.GlowSpine:{k=1.0f*(.55f+.45f*m.Fluor)+.8f*m.Beat*m.Groove;float ink=m.Ink*.6f;r=r*(1-ink)+.55f*ink;g*=1-ink*.75f;b=b*(1-ink)+1f*ink;break;}
+                case NativeWardZeroKit.GlowSpine:{k=SpinePower*((.55f+.45f*m.Fluor)+.8f*m.Beat*m.Groove);float ink=m.Ink*.6f;r=r*(1-ink)+.55f*ink;g*=1-ink*.75f;b=b*(1-ink)+1f*ink;break;}
                 case NativeWardZeroKit.GlowInk:{k=(.2f+3.2f*m.Ink)*(1+.6f*m.Beat);var v=NativeWardZeroLooks.InkHex;r=(float)NativeSceneryBuilder.Channel(v,16);g=(float)NativeSceneryBuilder.Channel(v,8);b=(float)NativeSceneryBuilder.Channel(v,0);break;}
-                case NativeWardZeroKit.GlowTank:k=.6f*(.6f+.4f*m.Fluor)+.3f*m.Beat*m.Groove;break;
+                case NativeWardZeroKit.GlowTank:k=TankPower*(.6f*(.6f+.4f*m.Fluor)+.3f*m.Beat*m.Groove);break;
                 case NativeWardZeroKit.GlowFurnace:k=s.Phase==NativeHazardPhase.Active?2.4f+.4f*(float)Math.Sin(time*19+c.X):s.Phase==NativeHazardPhase.Warn?.7f+1.1f*s.Level:s.Phase==NativeHazardPhase.Clear?.5f+1.2f*s.Level:c.Range<10?.55f:.05f;break;
                 case NativeWardZeroKit.GlowStrobe:
                 {
@@ -131,6 +131,11 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>An emergency beacon's reach and strength (its beam carries the light round the room).</summary>
         public const float BeaconRange=22,BeaconPower=1.9f;
+        /// <summary>The Spine's light: a pool on the Cradle and the floor round it (owner's second darkening, 2026-10-15: it was 24 m
+        /// at full power and lit the whole atrium and its decks).</summary>
+        public const float SpineRange=15,SpinePower=.6f;
+        /// <summary>The specimen tanks' glow on the lab round them (the same darkening: it was full power).</summary>
+        public const float TankPower=.75f;
         /// <summary>A candidate's beam this frame (NativeWardLight.cginc WardBeam): an emergency beacon's one beam, turning as its
         /// effects' beam does (NativeWardZeroFx.BeaconFx); a shutter's alarm turns two beams while it warns, closes or is shut;
         /// every other light is a point light (0). Both turn 1.1 times a second, so a wall sees at most 2.2 sweeps a second

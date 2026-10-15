@@ -8720,3 +8720,62 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   1. Boss Test offer parity for Expedition picks: the implemented / Siren filter, tier weights, money chips and stale-offer reroll. Offers carry no tier, so the tray names the source instead.
   2. Tiered physical pickups dispensed by the Ward machines (the Boss Test's walk-over chip) instead of a direct claim.
   - The choosing presence, OpenChoice / CloseChoice, Install on Select and the C notices are done (PRs #233 and #234).
+
+## 2026-10-15 — Claude: Ward Zero darker; PvE machines stand where they work
+
+- **Branch:** `claude/ward-darker-machines`, based on shared `claude/sleepy-ritchie-g8ruhv` `3ced89c`; code commit `bc2db19`. Pushed, not merged.
+- **Owner report:** "Ward Zero still needs to darker and some of the machines don't work (I think one of the chip machines are backwards and that one works?)"
+- **Machines — root causes (all presentation; probe numbers on `siren` and `expedition-ward-zero`):**
+  - Fronts and layout were already right: on all 8 machines the model front (+z) is 0.0° from the authority front (0.70 m out). Every back is 0.55–0.60 m from a wall, the fronts are open, and the collider yaws match.
+  - `NativeMachinePresentation` drew every model at y 0. The upper floor's chip-2 (-12, 6, 18.45), chip-3 (12, 6, -18.45), med-0 (15.45, 6, -12.2) and med-1 (-15.45, 6, 12.2) stood on the ground floor 6 m below their spots, so they never worked there:
+    - PvE needs |dy| ≤ 1.7 m from the body;
+    - the Expedition needs ≤ 2.2 m from the feet (it measured 5.96 m, and the line was blocked by the deck).
+    - Upstairs, the four working machines had no model.
+  - The dressed quarantine look drew each `pve-machine-*` collider (1.3 × 2.2 × 0.9, material foundation) as a dark asphalt block over its model. The block's front face (model z .25) hid 99%/94%/100% of the chip, recruit and med fronts (97–99% of their lights). The working machines read as blank backs: the "backwards" machine that works.
+  - The Expedition town clones the Ward's PvE content, so it drew and priced all 8 machines, which it has no colliders or service for: 2 in streets and 6 inside tenement blocks.
+  - The HUD price labels were at y 2.62 and the dispensed chip left from y 1.02 (both on the ground floor). The use prompt ignored the Expedition's line test.
+- **Machine fixes (Runtime/Core presentation only):**
+  - `NativeMachineRules.Root/Slot/Label/Present` place the model, the chip's slot and the price at the spot on its own floor, only where machines are served.
+  - `NativeArenaDressing` never draws a machine collider (its cube stays off).
+  - `NativeCombatHud.MachineInReach` makes the prompt mirror `PveInteract` and `TryExpeditionInteract`.
+  - Approach lines: the Expedition's line from every walkable node in front is clear (58 on `siren`, 248 on the instance). 16/18 nodes beside a machine meet its own collider, and the prompt no longer shows there.
+  - Ward kit trim on the back wall (wainscot, baseboard, chair rail) sits inside the machine bodies; nothing is in front.
+- **Ward Zero darker (PvE map and Expedition instance):**
+  - The instance carries `look: quarantine` (the same MapLooks entry) and bakes its own field through the same `WardZeroScenery` path; both are checked.
+  - Look:
+    - key .10 → .06;
+    - ambient .09/.075/.09 → .055/.045/.055;
+    - fog 0x070D10 8–95 m → 0x04080A 6–80 m;
+    - background/zenith 0x030907 → 0x020504, horizon → 0x04080A;
+    - haze .42 0x142123 → .36 0x0B1416.
+  - Field:
+    - Gain .34 → .22;
+    - pools PoolIn/PoolOut .1/.33 → .09/.28;
+    - Spill .05 → .025, Bounce .35 → .12;
+    - lit faint floor .032 → .015;
+    - bodies now take `Actor` .8 of the field (`WF_ACTOR`).
+  - The Spine's light (range 24, full power) was the main fill of the whole atrium; it is now range 15 at .6. Tanks are at .75.
+  - FX floor pools .04/.14 → .025/.085, and the haze sprites are ×.6.
+- **Measured (siren calm, every walkable node):**
+  - floor min .0345 → .0158, p10 .078 → .024, median .154 → .037;
+  - north hall pool/gap 4.3 → 8.1×; lit, the pools keep .57× and the gaps .31×;
+  - darkest point (-34.5, 6, 29.5).
+  - Image mean luma is down 37% in calm (14 views), 39% horde, 28% emergency, 44% alarm and 37% in the Expedition instance.
+- **Minimums lowered on purpose** (`WardLightingChecks`, old → new):
+  - floor calm .03 → .015, horde .025 → .012, boss .015 → .008, emergency .008 → .006;
+  - body calm .015 → .007, horde .012 → .0055, boss .008 → .0038, emergency .004 → .003.
+- **Checks (run5 on the code commit's tree):**
+  - Unity 6000.3.24f1 runtime and editor compile OK.
+  - relay 713 PASS, including:
+    - new `MachinePlacementChecks` (451 checks, `--machines` and the full run);
+    - `WardLightingChecks` (2,638 checks, with the second-darkening pins);
+    - `MachineModelChecks` (408 checks).
+  - Python 106 OK; package OK; diff-check OK.
+- **Renders:** offline only. The scratchpad's `renders-ward-darker` holds before/after singles and `compare/` sheets per camera and mood (calm, horde, emergency, alarm, the Expedition instance, machines).
+- **Not run:** Unity shader compile, Windows play and the in-engine prompt.
+- **Risks:**
+  - Monsters away from pools and alarm light read mostly as silhouettes, while pilots keep their trims and rim.
+  - The atrium is much darker without the Spine's 24 m fill.
+  - The emergency mood reads redder because its beams now dominate.
+- **Astra:** nothing required; authority and layout are correct. Optional cleanup: `NativeExpeditionM1Arena.BindExpeditionCombat` (line 65) clones all eight Ward machines into `Pve.Content` for the town too. Stripping `machines`/`machineBlocks` there for non-Ward areas would make the content match what is served; presentation now gates on `NativeMachineRules.Present` either way.
+- **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement, collider or network change.

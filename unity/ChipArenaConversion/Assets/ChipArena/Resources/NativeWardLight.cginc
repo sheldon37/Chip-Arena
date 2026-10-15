@@ -9,7 +9,8 @@
 //  - WardBeam: a practical slot's beam (Core NativeWardZeroLights.Beam, NativeKitLightPool's beacons): w 0 a plain point
 //    light, 1..7.3 one beam at yaw w - 1, 8..14.3 two opposite beams at yaw w - 8 (rad from +z toward +x), so a rotating
 //    beacon throws its light round the room instead of a glow.
-//  - ActorLights: the slots and the field on a source model (wrapped, so a body under a light reads in the round).
+//  - ActorLights: the slots and the field (its WF_ACTOR share) on a source model (wrapped, so a body under a light reads in
+//    the round).
 // Unset globals are 0: the field and the beams are off and both shaders draw exactly as before.
 sampler3D _WardField;
 float4 WardTap(float3 uvw){return tex3Dlod(_WardField,float4(uvw,0.0));}
@@ -21,6 +22,8 @@ float4 _WardFieldBox;float4 _WardFieldLevel;float4 _WardFieldColor;
 #define WF_FLAT 0.3
 #define WF_SIDE 0.55
 #define WF_DOWN 0.2
+// NativeWardZeroField.Actor: the share of the field a body takes.
+#define WF_ACTOR 0.8
 #define WF_Y0 0.25
 #define WF_Y1 1.85
 #define WF_Y3 5.05
@@ -48,7 +51,7 @@ float3 WardField(float3 world,float3 n)
 }
 float3 ActorLights(float3 world,float3 n)
 {
-    float3 sum=WardField(world,n);
+    float3 sum=WardField(world,n)*WF_ACTOR;
     for(int k=0;k<8;k++)
     {
         float3 d=_ArenaLightPos[k].xyz-world;float len=max(length(d),0.0001);float q=len/max(_ArenaLightPos[k].w,0.0001);float a=saturate(1.0-q*q);

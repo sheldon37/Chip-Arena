@@ -17,12 +17,21 @@ namespace ChipArena.UnityConversion
     // is darker than the old troffer slots made it; the emergency and the alarms throw red, turning beams (the ward's beacons,
     // the shutters' alarms, the hazard kit's beacons through the slot merge); the shader block matches the Core; the runtime
     // hooks bake off the main thread and switch the field off for every other map and stage; nothing allocates per frame.
+    // The second darkening (owner, 2026-10-15: "Ward Zero still needs to [be] darker"): the base fill, fog, background and haze,
+    // the field's gain, faint floor, spill and bounce, the Spine's reach and the tanks' glow, the bodies' share of the field and the
+    // FX floor pools are all below 3ced89c's,
+    // the gaps between the pools darker while the pools keep most of their light; the readable minimums below are 3ced89c's
+    // lowered on purpose (old -> new beside each). The Expedition's Ward instance takes the same look and its own field.
     internal static class WardLightingChecks
     {
         private static int count;private static readonly List<string> facts=new List<string>();
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Ward lighting: "+what);count++;}
         // The quarantine look as it was before the relighting (7009887).
         private const float OldKey=.14f,OldSkyScale=.12f,OldEquatorScale=.1f,OldGroundScale=.12f,OldFogEnd=110;private const int OldFog=0x0B1418,OldBackground=0x05080B,OldHaze=0x1C2E30;
+        // The quarantine look, the field and the FX as 3ced89c had them (before the second darkening), and what that bake gave on
+        // "siren" (calm: the median and 10th-percentile walkable floor, the north hall's pool light).
+        private const float PrevKey=.1f,PrevSkyScale=.09f,PrevEquatorScale=.075f,PrevGroundScale=.09f,PrevFogEnd=95,PrevHazeAmount=.42f,PrevFloor=.095f,PrevSpill=.05f,PrevBounce=.35f,PrevGain=.34f,PrevSpineRange=24;
+        private const int PrevFog=0x070D10,PrevBackground=0x030907,PrevHaze=0x142123;private const double PrevPoolAlpha=.14,PrevPoolShare=.04,PrevCalmMedian=.1537,PrevCalmP10=.0781,PrevHallPool=1.231,PrevHallGap=.284,PrevHallRatio=4.34;
         public static void Run(string root)
         {
             count=0;facts.Clear();var o=new JsonSerializerOptions{IncludeFields=true};string U(string f)=>Path.Combine(root,"Assets/Conversion/Resources",f);
@@ -31,12 +40,12 @@ namespace ChipArena.UnityConversion
             Base(look);Synthetic();Moods();
             foreach(var id in new[]{"siren","expedition-ward-zero"})
             {
-                var map=maps.maps.Single(m=>m.id==id);Check(NativeWardZeroLooks.Active(map),id+" carries the quarantine look");
+                var map=maps.maps.Single(m=>m.id==id);Check(NativeWardZeroLooks.Active(map)&&ReferenceEquals(NativeMapLooks.ByLook(set,map.look),look),id+" carries the quarantine look (one MapLooks entry for both)");
                 var kit=NativeWardZeroKit.Build(map.blocks,map.hazards,entries);var field=Bake(kit,map);
                 Map(id,map,kit,field);Readable(id,map,kit,field,look);
             }
             Alarms(root,maps.maps.Single(m=>m.id=="siren"),entries);Shader(root);Hooks(root);
-            Console.WriteLine("PASS ward lighting ("+count+" checks: the base fill below 7009887's; the ceiling light field deterministic, pools with darker gaps, walls and decks shade it, bounce and a floor; every walkable node on both floors readable in every mood, darker than the troffer slots overall; red emergency circuits and turning alarm beams from the ward and the hazard kit; shader block equals the Core; bake off the main thread, off on every other map and stage; no per-frame allocation; "+string.Join(", ",facts)+")");
+            Console.WriteLine("PASS ward lighting ("+count+" checks: the base fill below 7009887's and, darker again, 3ced89c's (fog, background, haze, the field's gain, floor, spill and bounce, the Spine and tanks, the bodies' share, the FX pools); the ceiling light field deterministic, pools with darker gaps, walls and decks shade it, bounce and a floor; every walkable node on both floors readable in every mood, darker than the troffer slots overall; red emergency circuits and turning alarm beams from the ward and the hazard kit; shader block equals the Core; bake off the main thread, off on every other map and stage; no per-frame allocation; "+string.Join(", ",facts)+")");
         }
         private static double Lum(int hex)=>NativeSceneryBuilder.Channel(hex,16)*.2126+NativeSceneryBuilder.Channel(hex,8)*.7152+NativeSceneryBuilder.Channel(hex,0)*.0722;
         private static double Lum(MapLookColor c)=>NativeEntranceLight.ToLinear(c.r)*.2126+NativeEntranceLight.ToLinear(c.g)*.7152+NativeEntranceLight.ToLinear(c.b)*.0722;
@@ -55,6 +64,18 @@ namespace ChipArena.UnityConversion
             Check(q.rim.intensity>=.2f&&q.rim.shadows=="none","the rim the characters read by stays");
             var st=new MapLookState();NativeMapLooks.Applied(q,0,false,st);Check(Math.Abs(st.KeyIntensity-q.key.intensity)<1e-6&&Lum(st.AmbientSky)<Lum(MapLookColor.Of(q.ambient.sky).Scaled(OldSkyScale)),"Apply writes the lower values");
             facts.Add("ambient "+(after/before).ToString("F2")+"x, key "+q.key.intensity+" (was "+OldKey+")");
+            // Darker again than 3ced89c.
+            double prev=Lum(a.sky)*PrevSkyScale+Lum(a.equator)*PrevEquatorScale+Lum(a.ground)*PrevGroundScale;
+            Check(q.key.intensity<=PrevKey*.7f&&after<=prev*.65&&a.skyScale<PrevSkyScale&&a.equatorScale<PrevEquatorScale&&a.groundScale<PrevGroundScale,"the key and every ambient band are well below 3ced89c's (ambient "+(after/prev).ToString("F2")+"x, key "+q.key.intensity+" was "+PrevKey+")");
+            Check(Lum(q.fog.color)<Lum(PrevFog)&&q.fog.end<PrevFogEnd&&Lum(q.background)<Lum(PrevBackground)&&Lum(q.sky.horizon)<Lum(PrevFog)&&Lum(q.sky.zenith)<Lum(PrevBackground),"the fog, background and sky are darker than 3ced89c's");
+            Check(Lum(q.blocks.hazeColor)<Lum(PrevHaze)&&q.blocks.haze<PrevHazeAmount,"the ground haze is darker and thinner than 3ced89c's");
+            // The field's light is its raw bake times Gain: the faint floor and the bounce are judged lit.
+            float g=NativeWardZeroField.Gain;
+            Check(g<PrevGain&&NativeWardZeroField.Floor*g<=PrevFloor*PrevGain*.6f&&NativeWardZeroField.Spill<PrevSpill&&NativeWardZeroField.Bounce*g<=PrevBounce*PrevGain*.5f,"the field's gain, faint floor, spill and bounce are lower (gain "+g+" was "+PrevGain+", lit floor "+(NativeWardZeroField.Floor*g).ToString("F4")+" was "+(PrevFloor*PrevGain).ToString("F4")+", lit bounce "+(NativeWardZeroField.Bounce*g).ToString("F3")+" was "+(PrevBounce*PrevGain).ToString("F3")+")");
+            Check(NativeWardZeroLights.SpineRange<PrevSpineRange&&NativeWardZeroLights.SpinePower<1&&NativeWardZeroLights.TankPower<1,"the Spine lights the Cradle, not the whole atrium (range "+NativeWardZeroLights.SpineRange+" was "+PrevSpineRange+"), and the tanks glow less");
+            Check(NativeWardZeroField.Actor>=.6f&&NativeWardZeroField.Actor<1,"bodies take a share of the field ("+NativeWardZeroField.Actor+"), not all of it");
+            Check(NativeWardZeroFx.PoolAlpha<PrevPoolAlpha&&NativeWardZeroFx.PoolShare<PrevPoolShare&&NativeWardZeroFx.HazeShade<1,"the FX floor pools and the low haze are fainter than 3ced89c's");
+            facts.Add("ambient "+(after/prev).ToString("F2")+"x 3ced89c's");
         }
         // A troffer and a wall, a deck, and a room with no light: the bake's geometry rules on a map of its own.
         private static void Synthetic()
@@ -70,11 +91,11 @@ namespace ChipArena.UnityConversion
             float At(float x,float y,float z,float ny=1){f.Sample(x,y,z,0,ny,0,out float a,out float b,out float c,out float d);return a+b+c+d;}
             float under=At(2.4f,0,0),gap=At(0,0,0),east=At(4.6f,0,0),room=At(7.3f,0,0);
             Check(under>2.5f*gap,"a pool under each troffer, darker between them ("+under.ToString("F2")+" vs "+gap.ToString("F2")+")");
-            Check(room<=NativeWardZeroField.Floor*1.01f&&room>=NativeWardZeroField.Floor*.99f&&east>1.5f*room,"a wall shades the closed room behind it, which keeps only the floor's faint light ("+room.ToString("F3")+" vs "+east.ToString("F3")+")");
+            Check(room<=NativeWardZeroField.Floor*1.01f&&room>=NativeWardZeroField.Floor*.99f&&east>room+.015f,"a wall shades the closed room behind it, which keeps only the floor's faint light ("+room.ToString("F3")+" vs "+east.ToString("F3")+")");
             Check(At(-6,0,0)<.25f*At(-6,6,0)&&At(-6,6,0)>.5f,"the deck shades the floor under it from the troffer over it");
             // Past the pools' edge (no pool there): more than the spill and the floor, the bounce.
             float spill=0;foreach(var x in new[]{-2.4f,2.4f})spill+=NativeWardZeroField.Falloff(x,5.46f,0,5.5f,5.5f,5.5f*NativeWardZeroField.TrofferReach,4.6f,.25f,0);
-            Check(east>NativeWardZeroField.Floor+spill+.01f,"the pools' bounce reaches past their edge ("+east.ToString("F3")+" over "+(NativeWardZeroField.Floor+spill).ToString("F3")+")");
+            Check(east>NativeWardZeroField.Floor+spill+.004f,"the pools' bounce reaches past their edge ("+east.ToString("F3")+" over "+(NativeWardZeroField.Floor+spill).ToString("F3")+")");
             // The shader's facing: a wall takes Side, a ceiling Down of what a floor takes at the same point.
             Check(Math.Abs(NativeWardZeroField.Facing(1)-1)<1e-6&&Math.Abs(NativeWardZeroField.Facing(0)-NativeWardZeroField.Side)<1e-6&&Math.Abs(NativeWardZeroField.Facing(-1)-NativeWardZeroField.Down)<1e-6,"facing: floor 1, wall Side, ceiling Down");
             // The tank (glass) and thin blocks leave the light through.
@@ -111,7 +132,12 @@ namespace ChipArena.UnityConversion
             Check(hall.Length>=3,id+": troffers down the north hall");
             float At(float x,float z){f.Sample(x,0,z,0,1,0,out float a,out float b,out float c,out float d);return a+b+c+d;}
             float pool=0,gap=0;for(int i=0;i+1<hall.Length;i++){pool+=At(hall[i].X,hall[i].Z);gap+=At((hall[i].X+hall[i+1].X)/2,hall[i].Z);}
-            Check(pool>1.8f*gap,id+": the north hall's floor has pools and darker gaps ("+(pool/gap).ToString("F1")+"x)");
+            // Darker gaps than 3ced89c's (its ratio was 4.3); lit (times Gain), the pools keep over half their light, the gaps under
+            // a third.
+            float pools=pool/(hall.Length-1)*NativeWardZeroField.Gain,gaps=gap/(hall.Length-1)*NativeWardZeroField.Gain;
+            Check(pool>5f*gap,id+": the north hall's floor has pools and dark gaps ("+(pool/gap).ToString("F1")+"x, was "+PrevHallRatio+")");
+            Check(pools>=PrevHallPool*PrevGain*.5&&gaps<=PrevHallGap*PrevGain*.35,id+": the pools keep over half their light, the gaps under a third ("+(pools/(PrevHallPool*PrevGain)).ToString("F2")+"x and "+(gaps/(PrevHallGap*PrevGain)).ToString("F2")+"x 3ced89c's)");
+            if(id=="siren")facts.Add("north hall pool/gap "+(pool/gap).ToString("F1")+"x (was "+PrevHallRatio+")");
             long before=GC.GetAllocatedBytesForCurrentThread();float s=0;for(int i=0;i<500;i++){f.Sample(i%60-30,i%2==0?0:6,i%40-20,0,1,0,out float a,out _,out _,out _);s+=a;}
             Check(GC.GetAllocatedBytesForCurrentThread()-before==0&&s>0,id+": sampling allocates nothing");
         }
@@ -133,7 +159,10 @@ namespace ChipArena.UnityConversion
                 }
                 return sum;
             }
-            var floorMin=new Dictionary<string,double>{["calm"]=.03,["horde"]=.025,["boss"]=.015,["emergency"]=.008};var actorMin=new Dictionary<string,double>{["calm"]=.015,["horde"]=.012,["boss"]=.008,["emergency"]=.004};
+            // The minimums, lowered on purpose for the second darkening (3ced89c's in the comments): the darkest walkable floor and a
+            // body there (before its rim and trims) keep about half the light they had.
+            var floorMin=new Dictionary<string,double>{["calm"]=.015/*.03*/,["horde"]=.012/*.025*/,["boss"]=.008/*.015*/,["emergency"]=.006/*.008*/};
+            var actorMin=new Dictionary<string,double>{["calm"]=.007/*.015*/,["horde"]=.0055/*.012*/,["boss"]=.0038/*.008*/,["emergency"]=.003/*.004*/};
             var lv=new float[4];double calmNew=0,calmOld=0;
             foreach(var mood in new[]{"calm","horde","boss","emergency"})
             {
@@ -144,15 +173,16 @@ namespace ChipArena.UnityConversion
                     double x=n.pos.x,y=n.pos.y-.9,z=n.pos.z;lights.Settle(x,y+1.7,z,m,states,12);
                     f.Sample((float)x,(float)y,(float)z,0,1,0,out float c0,out float c1,out float c2,out float c3);double e=amb+(c0*lv[0]+c1*lv[1]+c2*lv[2]+c3*lv[3])*fl+Slots(lights,x,y,z,0,1,0,false);
                     floor.Add(e);if(e<low){low=e;darkest="("+x.ToString("F1",CultureInfo.InvariantCulture)+", "+y.ToString("F1",CultureInfo.InvariantCulture)+", "+z.ToString("F1",CultureInfo.InvariantCulture)+")";}
-                    double a=0;for(int k=0;k<4;k++){float nx=(float)Math.Sin(k*Math.PI/2),nz=(float)Math.Cos(k*Math.PI/2);f.Sample((float)x,(float)y+1.2f,(float)z,nx,0,nz,out c0,out c1,out c2,out c3);a+=((c0*lv[0]+c1*lv[1]+c2*lv[2]+c3*lv[3])*fl+Slots(lights,x,y+1.2,z,nx,0,nz,true))/4;}
+                    double a=0;for(int k=0;k<4;k++){float nx=(float)Math.Sin(k*Math.PI/2),nz=(float)Math.Cos(k*Math.PI/2);f.Sample((float)x,(float)y+1.2f,(float)z,nx,0,nz,out c0,out c1,out c2,out c3);a+=((c0*lv[0]+c1*lv[1]+c2*lv[2]+c3*lv[3])*fl*NativeWardZeroField.Actor+Slots(lights,x,y+1.2,z,nx,0,nz,true))/4;}
                     actor.Add(ambE+a);
                     if(mood=="calm"){old.Settle(x,y+1.7,z,m,states,12);olds.Add(amb*OldSkyScale/look.ambient.skyScale+Slots(old,x,y,z,0,1,0,false));}
                 }
                 floor.Sort();actor.Sort();
                 Check(floor[0]>=floorMin[mood],id+" "+mood+": every walkable floor keeps a readable light (darkest "+floor[0].ToString("F4")+" at "+darkest+")");
                 Check(actor[0]>=actorMin[mood],id+" "+mood+": a body standing anywhere keeps a readable light, before its rim and trims ("+actor[0].ToString("F4")+")");
-                if(mood=="calm"){olds.Sort();calmNew=floor[floor.Count/2];calmOld=olds[olds.Count/2];Check(floor[floor.Count*19/20]<olds[olds.Count*19/20]*.75,id+": the brightest floors are well below the old troffer slots'");}
-                if(id=="siren")facts.Add(mood+" floor min "+floor[0].ToString("F3")+" median "+floor[floor.Count/2].ToString("F3"));
+                if(mood=="calm"){olds.Sort();calmNew=floor[floor.Count/2];calmOld=olds[olds.Count/2];Check(floor[floor.Count*19/20]<olds[olds.Count*19/20]*.75,id+": the brightest floors are well below the old troffer slots'");
+                    Check(calmNew<=PrevCalmMedian*.5&&floor[floor.Count/10]<=PrevCalmP10*.5,id+": darker than 3ced89c: the calm median floor "+calmNew.ToString("F3")+" (was "+PrevCalmMedian+"), the 10th percentile "+floor[floor.Count/10].ToString("F3")+" (was "+PrevCalmP10+")");}
+                if(id=="siren")facts.Add(mood+" floor min "+floor[0].ToString("F4")+" median "+floor[floor.Count/2].ToString("F3")+" actor min "+actor[0].ToString("F4"));
             }
             Check(calmNew<=calmOld*.7,id+": the calm ward's median floor is at least 30% darker than the old troffer slots made it ("+calmNew.ToString("F3")+" vs "+calmOld.ToString("F3")+")");
             if(id=="siren")facts.Add("calm median floor "+(calmNew/calmOld).ToString("F2")+"x the old slots'");
@@ -197,6 +227,9 @@ namespace ChipArena.UnityConversion
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources",f));var c=R("NativeWardLight.cginc");var block=R("NativeBlockLit.shader");var src=R("NativeSourceLit.shader");
             float D(string n){var m=Regex.Match(c,@"#define "+n+@" ([0-9.]+)\r?\n");Check(m.Success,n+" defined");return float.Parse(m.Groups[1].Value,CultureInfo.InvariantCulture);}
             Check(D("WF_SPLIT")==NativeWardZeroField.Split&&D("WF_OFFSET")==NativeWardZeroField.Offset&&D("WF_FLAT")==NativeWardZeroField.FlatOffset&&D("WF_SIDE")==NativeWardZeroField.Side&&D("WF_DOWN")==NativeWardZeroField.Down,"the field's offsets and facing match the Core");
+            Check(D("WF_ACTOR")==NativeWardZeroField.Actor&&c.Contains("float3 sum=WardField(world,n)*WF_ACTOR;"),"bodies take the Core's share of the field");
+            var fx=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeWardZeroFx.cs"));
+            Check(fx.Contains("Math.Min(PoolAlpha,PoolShare*level)")&&fx.Contains("double rr=HazeShade*(")&&fx.Contains("gg=HazeShade*(")&&fx.Contains("bb=HazeShade*("),"the FX floor pools and the haze take the fainter constants");
             var y=NativeWardZeroField.SliceY;Check(D("WF_Y0")==y[0]&&D("WF_Y1")==y[1]&&D("WF_Y3")==y[3]&&D("WF_Y4")==y[4]&&D("WF_Y5")==y[5]&&D("WF_Y7")==y[7]&&NativeWardZeroField.Slices==8&&c.Contains("(s+0.5)/8.0"),"the slices match the Core");
             Check(Math.Abs(y[2]-y[1]-(y[1]-y[0]))<1e-5&&Math.Abs(y[3]-y[2]-(y[1]-y[0]))<1e-5&&Math.Abs(y[6]-y[5]-(y[5]-y[4]))<1e-5&&Math.Abs(y[7]-y[6]-(y[5]-y[4]))<1e-5,"each floor's slices are evenly spaced (the texture interpolates them)");
             Check(D("WB_FLOOR")==NativeWardZeroLights.BeamFloor&&c.Contains("float c2=c*c;return WB_FLOOR+(1.0-WB_FLOOR)*c2*c2*c2;")&&c.Contains("float two=step(7.5,w);float yaw=w-1.0-7.0*two;"),"the beam matches NativeWardZeroLights.BeamFactor");
@@ -218,6 +251,9 @@ namespace ChipArena.UnityConversion
             Check(p.Contains("if(!ReferenceEquals(wzBakeMap,wzMap))return;")&&p.Contains("ReleaseWardField();NativeLighting.WardFieldOff();"),"a bake for an old map is dropped; Dispose releases the volume");
             Check(kit.Contains("NativeLighting.KitLights(kitLights.Pos,kitLights.Rgb,kitLights.Count,e,kitLights.Beam);"),"the hazard kit hands its beams to the slots");
             Check(!File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeWardZeroField.cs")).Contains("UnityEngine"),"NativeWardZeroField is engine-free Core");
+            // The Expedition's Ward instance: the lighting takes a map's own look field first (the instance carries "quarantine", so
+            // the same MapLooks entry), and the Ward presentation, field bake included, runs on the drawn arena's own map.
+            Check(lit.Contains("public static MapLook Look(ContentMap map)=>(string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??")&&p.Contains("var map=arena.Map;if(!NativeWardZeroLooks.Active(map)||!EnsureWardZero())return;")&&p.Contains("if(!ReferenceEquals(map,wzMap))WardZeroBuild(map);"),"the Expedition's Ward instance takes the quarantine look and bakes its own map's field");
         }
     }
 }

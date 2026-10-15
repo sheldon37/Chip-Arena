@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
         /// ArenaPresentation.NudgeWardBlock; the block itself never moves); empty until a breach knocks, cleared with Hidden.</summary>
         public static readonly Dictionary<string,Vector3> Nudged=new Dictionary<string,Vector3>();
         private const float BoundsSize=200;
-        private sealed class Entry {public int Look,Color,Flags,Seen;public string Segment;public uint Hash;public float Seed,Max,S1,S2,Reach;public bool Pending;public Vector3 Last,Offset;public Vector4 Size,Rest,Linear;}
+        private sealed class Entry {public int Look,Color,Flags,Seen;public string Segment;public uint Hash;public float Seed,Max,S1,S2,Reach;public bool Pending,Machine;public Vector3 Last,Offset;public Vector4 Size,Rest,Linear;}
         private sealed class Batch {public readonly Matrix4x4[] Matrices=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];}
         private struct Gone {public Vector3 Position;public float Reach;public int Look,Color,Flags,Frame;public Vector4 Linear;}
         private struct Kept {public int Look,Color,Flags;}
@@ -109,7 +109,7 @@ namespace ChipArena.UnityConversion
             removed.Clear();for(int s=0;s<counts.Length;s++)counts[s]=0;
             foreach(var p in arena.AllBlocks)
             {
-                if(p==null||p.Definition==null||!entries.TryGetValue(p,out var e))continue;if(Hidden.Count>0&&p.Definition.id!=null&&Hidden.Contains(p.Definition.id))continue;var t=p.transform;Vector3 pos=t.position;Quaternion rot=t.rotation;
+                if(p==null||p.Definition==null||!entries.TryGetValue(p,out var e)||e.Machine)continue;if(Hidden.Count>0&&p.Definition.id!=null&&Hidden.Contains(p.Definition.id))continue;var t=p.transform;Vector3 pos=t.position;Quaternion rot=t.rotation;
                 if(e.Pending){e.Pending=false;Inherit(e,p.Definition.id,pos,frame);}e.Last=pos;if(Nudged.Count>0&&p.Definition.id!=null&&Nudged.TryGetValue(p.Definition.id,out var nudge))pos+=nudge;
                 float f=NativeBlockLooks.Fraction(p.Health,e.Max,p.Indestructible);int stage=NativeBlockLooks.Stage(f,e.S1,e.S2);Vector4 size=e.Size,rest=e.Rest;
                 // S3 is a stub of the block's lower 24% (same base, same rest-space pattern).
@@ -159,6 +159,9 @@ namespace ChipArena.UnityConversion
             {NativeSurfaceLayers.Apply(lifts,lifted,out float sx,out float sy,out float sz,out float gx,out float gy,out float gz);e.Size+=new Vector4(gx,gy,gz,0);e.Offset=new Vector3(sx,sy,sz);e.Rest+=new Vector4(sx,sy,sz,0);}
             e.Reach=e.Size.magnitude+.3f;e.Last=prop.transform.position;
             var lin=Linear(NativeArena.ColorOf(e.Color));e.Linear=new Vector4(lin.r,lin.g,lin.b,1);
+            // A PvE machine's collider stays hidden (its cube off, no dressed block): the sculpted model is the machine
+            // (NativeMachinePresentation), and a block over it would hide its front.
+            e.Machine=prop.LocalFixture&&!prop.Fragment&&NativeMachineModels.IsCollider(b.id);
             prop.GetComponentsInChildren(true,renderers);foreach(var r in renderers)r.forceRenderingOff=true;renderers.Clear();
             return e;
         }

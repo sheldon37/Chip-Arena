@@ -18,6 +18,10 @@ namespace ChipArena.UnityConversion
         public const string Chip="chip",Recruit="recruit",Med="med";
         public static readonly string[] Kinds={Chip,Recruit,Med};
         public static string BodyId(string kind)=>"machine-std-"+kind;
+        /// <summary>The machine colliders' ids (PveContent machineBlocks): the authority's hidden boxes, never drawn (the dressing
+        /// skips them; the model is the machine).</summary>
+        public const string ColliderPrefix="pve-machine-";
+        public static bool IsCollider(string id)=>id!=null&&id.StartsWith(ColliderPrefix,StringComparison.Ordinal);
         public static string MovingId(string kind)=>"machine-std-moving-"+kind;
         public const string PickupId="pve-pickup-std";
         /// <summary>Section bones: the body, the tinted lights, and the see-through parts of a moving model (glass, the pulse).</summary>

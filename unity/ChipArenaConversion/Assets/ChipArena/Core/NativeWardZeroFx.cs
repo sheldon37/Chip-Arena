@@ -74,6 +74,10 @@ namespace ChipArena.UnityConversion
         public const int Capacity=4200;
         public readonly NativeFxQuads Quads=new NativeFxQuads(Capacity);
         public const int HazeFull=46,MoteFull=90,HaloRange=46,PoolRange=32;
+        /// <summary>The floor pools' glow (alpha: <see cref="PoolShare"/> times the fixture's level, at most <see cref="PoolAlpha"/>; was
+        /// .04 and .14 before the owner's second darkening, 2026-10-15) and the low haze's shade (times its grey-teal, red and violet;
+        /// it never lifts the dark).</summary>
+        public const double PoolShare=.025,PoolAlpha=.085,HazeShade=.6;
         public int Halos,Pools,Shafts,Haze,Motes,Steam,Sparks,Drips,Ink,Telegraph,Entrances,Guide;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz;private NativeFxLight light;
 
@@ -167,7 +171,7 @@ namespace ChipArena.UnityConversion
                 }
                 if(level<.05f)continue;double r=g.R,gg=g.G,b=g.B;float red=m.Red*.4f;r=r*(1-red)+red;gg*=1-red*.8f;b*=1-red*.8f;
                 // A faint glow over the floor's pool (the light itself is the ceiling light field's, NativeWardZeroField).
-                Flat(g.X,g.Floor+.03,g.Z,1,0,rad,rad,r,gg,b,Math.Min(.14,.04*level),1,true);n++;Pools++;
+                Flat(g.X,g.Floor+.03,g.Z,1,0,rad,rad,r,gg,b,Math.Min(PoolAlpha,PoolShare*level),1,true);n++;Pools++;
             }
         }
         private void ShaftFx(NativeWardFxScene s,in NativeWardMood m,double time,double q,bool low)
@@ -190,7 +194,7 @@ namespace ChipArena.UnityConversion
         {
             // Low haze round the eye on its own floor, drifting, in the mood's colour (a dark grey-teal that never lifts the dark,
             // red, violet).
-            int n=Count(HazeFull,q,low);double floor=ey>6.6?6:0;double rr=.17*(1-m.Red)+.5*m.Red+.12*m.Ink,gg=.21*(1-m.Red)+.07*m.Red,bb=.23*(1-m.Red)+.09*m.Red+.25*m.Ink;
+            int n=Count(HazeFull,q,low);double floor=ey>6.6?6:0;double rr=HazeShade*(.17*(1-m.Red)+.5*m.Red+.12*m.Ink),gg=HazeShade*(.21*(1-m.Red)+.07*m.Red),bb=HazeShade*(.23*(1-m.Red)+.09*m.Red+.25*m.Ink);
             for(int i=0;i<n;i++)
             {
                 double a=H(i,1)*Math.PI*2,rad=4+H(i,2)*24,drift=time*(.15+.1*H(i,3));double x=ex+Math.Sin(a+drift*.05)*rad+Math.Sin(drift+i)*1.5,z=ez+Math.Cos(a+drift*.05)*rad+Math.Cos(drift*.8+i)*1.5;

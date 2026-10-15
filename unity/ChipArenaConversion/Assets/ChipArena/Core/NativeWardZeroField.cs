@@ -35,24 +35,29 @@ namespace ChipArena.UnityConversion
         public static float OffsetFor(float ny)=>Offset*(1-(1-FlatOffset)*Math.Abs(ny));
         /// <summary>The share a wall (<see cref="Side"/>) and a ceiling (<see cref="Down"/>) take of a floor's light.</summary>
         public const float Side=.55f,Down=.2f;
+        /// <summary>The share of the field a body takes (pilots, monsters, machines: NativeWardLight.cginc ActorLights), so a
+        /// figure in a gap sinks into the dark with the floor round it and still reads under a pool.</summary>
+        public const float Actor=.8f;
         /// <summary>A fixture's pool on its floor: full inside <see cref="PoolIn"/> times its height over the floor of the point
-        /// under it, gone by <see cref="PoolOut"/> times it (a troffer 5.5 m up: 0.55 m and 1.8 m; one 6.9 m up: 0.7 m and 2.3 m); a
+        /// under it, gone by <see cref="PoolOut"/> times it (a troffer 5.5 m up: 0.5 m and 1.54 m; one 6.9 m up: 0.62 m and 1.93 m); a
         /// high-bay's is <see cref="BayScale"/> times wider. <see cref="Spill"/>: the weak light round it.</summary>
-        public const float PoolIn=.1f,PoolOut=.33f,BayScale=1f,Spill=.05f;
+        public const float PoolIn=.09f,PoolOut=.28f,BayScale=1f,Spill=.025f;
         /// <summary>Reach (times the fixture's height over its floor) and strength of a troffer and of a high-bay.</summary>
         public const float TrofferReach=1.55f,BayReach=1.3f,TrofferPower=1f,BayPower=.9f;
-        /// <summary>The field's colour: the troffers' white times <see cref="Gain"/> (linear).</summary>
-        public const float Gain=.34f;
+        /// <summary>The field's colour: the troffers' white times <see cref="Gain"/> (linear). The owner's second darkening
+        /// (2026-10-15) took Gain .34 to .22, the pools .1/.33 to .09/.28, Spill .05 to .025, Bounce .35 to .12 and the lit faint floor
+        /// (Floor times Gain) from .032 to .015.</summary>
+        public const float Gain=.22f;
         /// <summary>The light the pools throw back off the floor (white tile): each floor's pools spread through the open space
         /// round them (<see cref="BounceSteps"/> passes of a neighbour average that walls stop, so it turns through doorways
         /// and never through a wall) and <see cref="Bounce"/> of it lights every height of that floor: the walls and ceiling
         /// beside a pool, the gaps between pools.</summary>
-        public const float Bounce=.35f;public const int BounceSteps=160;
+        public const float Bounce=.12f;public const int BounceSteps=160;
         /// <summary>A fixture's light below this at a texel is left out (a pool's centre is about 1).</summary>
         public const float MinLight=.002f;
         /// <summary>The faint light every open texel keeps (exit signs, status lamps, the glow off the white tile), shared by the
         /// four circuits: nowhere a pilot can stand is black.</summary>
-        public const float Floor=.095f;
+        public const float Floor=.07f;
         /// <summary>How many cells into a thick block the light round it is carried (4 m).</summary>
         public const int DilatePasses=8;
         public int Nx,Nz,Fixtures;public float MinX,MinZ;public float[] Data=Array.Empty<float>();public double BakeMs;

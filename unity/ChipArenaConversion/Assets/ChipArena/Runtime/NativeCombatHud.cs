@@ -131,6 +131,15 @@ namespace ChipArena.UnityConversion
             if((rows&NativeHudCyber.Rows.Charge)!=0&&p.Fighter!=null){NativeHudChrome.Line(row,Mathf.Clamp01(p.Fighter.Charge),NativeCyberTheme.CyanSoft(tagAlpha),track);row.y+=row.height+gap;}
         }
         private static void OverheadTag(Rect row,string text,Color c)=>U.Text(new Rect(row.xMax+6,row.center.y-6,90,12),text,9,c,TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f,shadow:new Color(0,0,0,.8f*c.a));
+        // The use prompt shows only where the authority serves the machine: within 2.2 m of its front point, flat and on the body's
+        // own floor in a PvE round (NativeArena.PveInteract), from the feet with a clear line in an Expedition Ward instance
+        // (NativeArena.TryExpeditionInteract), so a body beside the machine, behind its own collider, is not told to press F.
+        private static bool MachineInReach(NativeArena arena,NativePilot p,PveMachine m)
+        {
+            var front=NativeArena.Vec(m.front.Position());var body=p.Body.position;
+            if(arena.Expedition==null)return Math.Abs(front.y-body.y)<=1.7f&&new Vector2(front.x-body.x,front.z-body.z).magnitude<=2.2f;
+            var feet=body-Vector3.up*NativeLocomotionRules.HalfHeight;return (front-feet).magnitude<=2.2f&&arena.ExpeditionVisible(NativeArena.Vec(feet),m.front.Position());
+        }
         private void CombatWorldHud(float scale,float width,float height)
         {
             if(menu||arena?.Local==null||cameraView==null||IntroActive||ReplayActive)return;
@@ -177,8 +186,9 @@ namespace ChipArena.UnityConversion
             LeetStatus();var local=arena.Local;
             if(arena.Pve!=null)
             {
-                var row=arena.Pve.Rows.TryGetValue(local.Seat.id,out var r)?r:null;
-                foreach(var m in arena.Pve.Content.machines)if(ScreenPoint(new Vector3(m.x,2.62f,m.z),24,out var point)){int price=m.kind=="chip"?NativePveRules.ChipPrice(row?.Bought??0):m.kind=="recruit"?300:75;string value=m.kind=="med"&&row?.HealReady>arena.Time?Math.Ceiling(row.HealReady-arena.Time)+"s":"$"+price;var style=new GUIStyle(small){alignment=TextAnchor.MiddleCenter};GUI.Label(new Rect(point.x-80,height-point.y,160,50),m.kind.ToUpperInvariant()+"\n"+value,style);if(Vector3.Distance(local.Body.position,NativeArena.Vec(m.front.Position(.9f)))<2.2f)GUI.Label(new Rect(width/2-170,height-165,340,32),"F · "+(m.kind=="chip"?"Buy Chip":m.kind=="recruit"?"Hire recruit":"Heal")+"  "+value,label);}
+                var row=arena.Pve.Rows.TryGetValue(local.Seat.id,out var r)?r:null;bool machines=NativeMachineRules.Present(arena.MapId,arena.Expedition!=null);
+                // Each machine's price over it on its own floor; none where the authority serves none (the Expedition town).
+                if(machines)foreach(var m in arena.Pve.Content.machines)if(ScreenPoint(NativeArena.Vec(NativeMachineRules.Label(m)),24,out var point)){int price=m.kind=="chip"?NativePveRules.ChipPrice(row?.Bought??0):m.kind=="recruit"?300:75;string value=m.kind=="med"&&row?.HealReady>arena.Time?Math.Ceiling(row.HealReady-arena.Time)+"s":"$"+price;var style=new GUIStyle(small){alignment=TextAnchor.MiddleCenter};GUI.Label(new Rect(point.x-80,height-point.y,160,50),m.kind.ToUpperInvariant()+"\n"+value,style);if(MachineInReach(arena,local,m))GUI.Label(new Rect(width/2-170,height-165,340,32),"F · "+(m.kind=="chip"?"Buy Chip":m.kind=="recruit"?"Hire recruit":"Heal")+"  "+value,label);}
                 // The owner's pickups wear the glow texture's YOURS (NativePickupGlowPresentation.cs); this flat label stands in only without it.
                 if(presentation?.PickupLabelDrawn!=true)foreach(var k in arena.Pve.Pickups)if(k.Owner==local&&arena.Time>=k.Born&&ScreenPoint(k.Position+Vector3.up*.65f,30,out var point))GUI.Label(new Rect(point.x-40,height-point.y,90,25),"YOURS",small);
             }
