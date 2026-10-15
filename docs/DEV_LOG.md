@@ -33,7 +33,7 @@
   - planted feet at the host's wander pace, limp included.
 
   `EffectsAudioChecks` and `test_effects_audio.py` now count 214 keys. The Runtime assigns `f.Roam` after the input's initializer, so `HulkMotionChecks`' source check still finds its literal.
-- **Checks run (merged tree, shared `c65f464` plus this work):** RUN5_RESULTS
+- **Checks run (merged tree, shared `c65f464` plus this work):** run5 on `f9e1ac4`: Unity 6000.3.24f1 runtime and editor compile OK (rc 0); relay 733 PASS lines, 0 FAIL (rc 0); Python 107 tests OK, 1 skipped (rc 0); package OK (rc 0); diff-check OK (rc 0). The first run5 on `ecf67f8` caught two source/contract mirrors (Hulk motion's input literal, the Python key count), both fixed in `f9e1ac4`. Focused: `CoreTests --horde-roam` (horde roam 13,275, zombie motion 29,604, horde kinds 433,790) and `--hulk-charge` PASS. Runtime binding is compile-checked only.
 - **Not run:** Unity Editor or player, Windows build, live hub play, two clients (guest view of the alert and blends), audio listening (the stand-in clips were chosen by spectral analysis only).
 - **Renders (offline, scratchpad `renders-zombie-wander/`):**
   - `idle-variants`: five variants across a slot;
