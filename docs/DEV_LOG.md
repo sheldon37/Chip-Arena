@@ -5,6 +5,14 @@
 - Preserve the failing native assertion; add enabled/connected/body-capsule preconditions and check immediate occupancy before Transform synchronization. Managed regression guards physics-pose routing. Unity docs state a Rigidbody.position assignment updates Transform after the next physics step.
 - Verification/promotion in PR. Windows/PhysX execution remains required on the builder; no completed player build claimed.
 
+## 2026-10-15 — Claude: asset receipt for the hub music (shared check fix)
+
+- Branch `claude/hub-music-asset-lock`, base shared `aab5d7b` (after Astra's PR #244, owner-supplied Safe Hub Under Siege music, and PR #245).
+- Problem: the source package check (`tools/package_source.py`, run5 step 4) failed on shared `1f21a6e`: `Unexpected large source asset: Assets/ChipArena/Resources/Audio/music/safe-hub-under-siege.mp3`. Source assets over 1 MB need a receipt in `tools/asset-lock.json`, as the Brickfall, Factory and Cyber City owner tracks have.
+- Fix: one receipt entry (2897720 bytes, git blob `8ba16db7`, source "Owner-supplied Safe Hub Under Siege.mp3 (2026-10-15)"). The track, its importer settings and Astra's music selection are unchanged.
+- Checks: run5 on `1f21a6e` + this fix: Unity runtime and editor compile OK (rc 0), relay 754 PASS (rc 0), Python 107 OK / 1 skipped (rc 0), package 2170 source files (rc 0, was rc 1 without the receipt), diff-check clean (rc 0). Re-run on `aab5d7b` + this fix: the same five checks pass (754 PASS; package 2170 source files).
+- Also seen on PR #62 at `1f21a6e`: CI `verify` failed in the HTTPS relay round trip (`tests/https-network.ts`, "Snapshot disagreement at tick 0"). `src/` and `tests/` are unchanged since the green `d882454`, so this is intermittent; it is being measured separately.
+
 ## 2026-10-15 — Astra: owner-supplied Expedition hub music
 
 - Branch `codex/hub-music`, base shared/builder `d882454`. Owner directly requested the attached Safe Hub Under Siege MP3 as hub music. Added the unmodified track with streaming importer and selected it on expedition-city before the generic PvE fallback, after boss music priority. Menu, Ward Zero and boss tracks retain their selection.

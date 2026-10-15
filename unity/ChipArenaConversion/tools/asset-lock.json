@@ -644,6 +644,12 @@
       "source": "Owner-supplied Neon Riot Circuit.mp3 (2026-10-12)"
     },
     {
+      "path": "Assets/ChipArena/Resources/Audio/music/safe-hub-under-siege.mp3",
+      "bytes": 2897720,
+      "gitBlob": "8ba16db73a3cc68ee60544c864d73281a66f94d0",
+      "source": "Owner-supplied Safe Hub Under Siege.mp3 (2026-10-15)"
+    },
+    {
       "path": "Assets/Conversion/Resources/UnityMaps.json",
       "bytes": 15367279,
       "gitBlob": "31b8feb36276c11fcf7769e39641f63506fda847",
