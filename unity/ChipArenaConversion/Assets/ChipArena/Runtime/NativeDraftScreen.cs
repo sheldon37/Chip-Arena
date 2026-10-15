@@ -185,15 +185,15 @@ namespace ChipArena.UnityConversion
         private void Shatter(Rect r,ContentChip chip,float t,int index,ChipSize size)
         {
             if(t<0){NativeChipCard.Draw(r,chip,0,size,ChipLook.Idle(Time.unscaledTime));return;}float k=t/.85f;if(k>=1)return;
-            if(k<.18f){NativeChipCard.Draw(r,chip,0,size,ChipLook.Idle(Time.unscaledTime));if(k>.08f)U.Round(r,new Color(1,1,1,.5f*(k-.08f)/.1f),9);return;}
-            float u=M.Bezier(.15f,.65f,.3f,1,(k-.18f)/.82f);Color rare=NativeChipCard.Rarity(chip.rarity),edge=U.Mix(U.Hex(0x34363f),rare,.52f);
+            if(k<.18f){NativeChipCard.Draw(r,chip,0,size,ChipLook.Idle(Time.unscaledTime));if(k>.08f)NativeChipArt.Package(r,size.Radius,0,new Color(1,1,1,.5f*(k-.08f)/.1f));return;}
+            float u=M.Bezier(.15f,.65f,.3f,1,(k-.18f)/.82f);Color rare=NativeChipCard.Rarity(chip.rarity),edge=U.Mix(U.Hex(0x2a3a6b),rare,.5f);
             float[] xs={0,.52f,1},ys={0,.38f,.71f,1};
             for(int n=0;n<6;n++)
             {
                 int col=n%2,row=n/2;var piece=new Rect(r.x+r.width*xs[col],r.y+r.height*ys[row],r.width*(xs[col+1]-xs[col]),r.height*(ys[row+1]-ys[row]));
                 float dx=(n%2==1?1:-1)*(45+index*5),dy=(n-2.5f)*44,spin=(n%2==1?1:-1)*(15+n*7);
                 U.Push(piece.center,new Vector2(dx*u,dy*u),1-.18f*u,spin*u);float a=1-u,glow=Mathf.Lerp(2.4f,.5f,u);
-                U.Round(piece,U.Hex(0x14151b,a),3,U.A(edge,a));U.Fill(new Rect(piece.x+2,piece.y+2,piece.width-4,piece.height-4),U.A(rare,.12f*a*glow));U.Pop();
+                U.Round(piece,U.Hex(0x111622,a),3,U.A(edge,a));U.Fill(new Rect(piece.x+2,piece.y+2,piece.width-4,piece.height-4),U.A(rare,.12f*a*glow));U.Pop();
             }
         }
         // draft-view.ts: translate toward the palm by fly, scale 1-.88 fly, rotate -9 deg x fly, fade with the grab (the stage's
@@ -205,7 +205,7 @@ namespace ChipArena.UnityConversion
         private void FlyToPalm(Rect r,ContentChip chip,int copies,float age,ChipSize size,float level=0)
         {
             float fly=NativeDraftStage.Fly(age),fade=NativeDraftStage.Fade(age);if(fade>=1)return;Vector2 target=draftCatch!=Vector2.zero?draftCatch:draftPalm;if(target==Vector2.zero)target=r.center;bool calm=prefs.reducedEffects;
-            U.Push(r.center,(target-r.center)*fly+new Vector2(0,NativeHoloScan.Lift(level)*(1-fly)),1-.88f*fly,-9*fly);var rare=NativeChipCard.Rarity(chip.rarity);U.Glow(r,U.A(rare,.55f*(1-fade)),42);U.Round(new Rect(r.x-2,r.y-2,r.width+4,r.height+4),Color.clear,10,U.A(rare,1-fade),2);
+            U.Push(r.center,(target-r.center)*fly+new Vector2(0,NativeHoloScan.Lift(level)*(1-fly)),1-.88f*fly,-9*fly);var rare=NativeChipCard.Rarity(chip.rarity);U.Glow(r,U.A(rare,.55f*(1-fade)),42);NativeChipArt.PackageEdge(r,size.Radius,2,U.A(rare,1-fade),2);
             var look=ChipLook.Idle(Time.unscaledTime);look.Alpha=1-fade;look.Plain=true;look.Calm=calm;look.Charge=NativeHoloScan.DieRest*Mathf.Clamp01(level)+NativeHoloScan.LockFlare(age,calm);NativeChipCard.Draw(r,chip,copies,size,look);
             NativeChipArt.HoloLock(r,size.Radius,chip.rarity,rare,age,calm,1-fade);U.Pop();
         }
