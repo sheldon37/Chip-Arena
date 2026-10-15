@@ -1,6 +1,10 @@
 # Chip Arena — current state
 
+2026-10-15 Astra hub gate collision fix (`codex/hub-gate-collision`, base `72aa1858`): actual capsule overlap, safety reopening only before the collider becomes solid, and persistent solidity across reversals. Claude's no-input walk-through repro now asserts PASS for all four gates. Contract/report: EXPEDITION-HUB.md. Native Windows/PhysX validation remains pending.
+
 2026-10-15 Astra town zombie perception (`codex/hub-zombie-perception`, base `19927e00`): zone roaming/idle, sight and eight player-noise categories, alert/chase/last-known-position search, and three replicated reaction fields implemented for hub spawns only. Sanctuary grace/despawn rules retained. Contract and Claude presentation handoff: EXPEDITION-HUB.md; verification/promotion receipt: DEV_LOG and PR. Native Windows and two-client play remain pending.
+
+2026-10-15 Claude Expedition hub fixes (`claude/expedition-hub-fixes`, merged into shared): gate Z-fighting fixed (the sanctuary curtain lay in the plane of the walls, the fence and the shut wooden leaves; metal rails were flush with their stiles); the leaves retimed to the authority's collider (clear at 0.48 s, meet at 0.67 s) on a smoothed clock; no floor rings round the Expedition's doors, caches, machines, drops or revive beacons. Presentation only. The run-through was Astra's (EXPEDITION-HUB.md "Run-through report") and is fixed by `codex/hub-gate-collision` (PR #243); the repro is now a hard check. Unity/Windows/two-client unrun.
 
 2026-10-15 Claude CI scope (`claude/ci-retire-electron-game-checks`, owner request): PR `Checks` no longer runs the frozen Electron game's suites. Unity-only PRs skip it (Unity workflows cover them); others run `verify:relay` / `verify:relay-full` (types, relay tests, relay build, HTTPS relay round trip). Electron suites remain local (`npm test`, `verify`). See DEV_LOG.
 

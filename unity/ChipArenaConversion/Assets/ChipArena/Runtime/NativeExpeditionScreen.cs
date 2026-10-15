@@ -99,7 +99,6 @@ namespace ChipArena.UnityConversion
             // Back to front.
             for(int i=0;i<n;i++){var p=world.Pieces[i];cam.Project(p.x,p.y,p.z,out _,out _,out depth[i]);order[i]=i;}
             for(int i=1;i<n;i++){int k=order[i],j=i-1;while(j>=0&&depth[order[j]]<depth[k]){order[j+1]=order[j];j--;}order[j+1]=k;}
-            float squash=Mathf.Clamp(Mathf.Abs(cam.fy),.2f,1);
             // Nearest first claims the label areas (order is far to near).
             E.LabelsReset();
             for(int o=n-1;o>=0;o--)
@@ -110,9 +109,8 @@ namespace ChipArena.UnityConversion
             }
             for(int o=0;o<n;o++)
             {
-                var p=world.Pieces[order[o]];if(!cam.Project(p.x,p.y,p.z,out float fx,out float fy,out float fd))continue;float k=cam.Scale(fd),rr=NativeExpeditionWorld.RingRadius(p.kind)*k;
-                // The floor ring and a thin stalk up to the glyph, in the piece's tone.
-                var ring=new Rect(fx-rr,fy-rr*squash,rr*2,rr*2*squash);U.Round(ring,U.A(E.Tone(p.tone),p.settled?.06f:.14f),Mathf.Min(ring.width,ring.height)/2,E.Tone(p.tone,p.settled?.4f:.9f),1.5f);
+                var p=world.Pieces[order[o]];if(!cam.Project(p.x,p.y,p.z,out float fx,out float fy,out float fd))continue;float k=cam.Scale(fd);
+                // A thin stalk up to the glyph, in the piece's tone (no floor ring: the live pieces draw none, owner 2026-10-15).
                 if(!cam.Project(p.x,p.y+NativeExpeditionWorld.GlyphHeight(p.kind)+NativeExpeditionWorld.Bob(p,t,reduced),p.z,out float gx2,out float gy2,out _))continue;
                 if(p.actionable)U.Fill(new Rect(fx-1,gy2,2,Mathf.Max(0,fy-gy2)),E.Tone(p.tone,.35f));
                 var label=new Vector2(gx2,gy2);if(p.labelAtAnchor&&cam.Project(p.ax,p.ay+NativeExpeditionWorld.GlyphHeight(p.kind),p.az,out float lx,out float ly,out _))label=new Vector2(lx,ly);

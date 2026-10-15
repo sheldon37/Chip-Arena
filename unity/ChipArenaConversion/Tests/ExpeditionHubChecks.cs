@@ -92,6 +92,154 @@ namespace ChipArena.UnityConversion
             return false;
         }
 
+        // ---------------- Z-fighting: faces that share a plane (owner, 2026-10-15: "Z-fighting on the gates") ----------------
+        private static void QMul(double ax,double ay,double az,double aw,double bx,double by,double bz,double bw,out double x,out double y,out double z,out double w)
+        {x=aw*bx+ax*bw+ay*bz-az*by;y=aw*by-ax*bz+ay*bw+az*bx;z=aw*bz+ax*by-ay*bx+az*bw;w=aw*bw-ax*bx-ay*by-az*bz;}
+        private static NativeSurfaceLayers.Box Box(NativeHubPart p)=>new NativeSurfaceLayers.Box{X=p.X,Y=p.Y,Z=p.Z,Hx=p.Hx,Hy=p.Hy,Hz=p.Hz,Qx=p.Qx,Qy=p.Qy,Qz=p.Qz,Qw=p.Qw,Material=-1};
+        // A flat quad (an effect: the ward's shimmer, the sanctuary's curtain) as a box 0.2 mm thick in its plane, no bevel.
+        private static NativeSurfaceLayers.Box Box(NativeFxQuads q,int i)
+        {
+            int o=i*12;double ax=q.Corners[o],ay=q.Corners[o+1],az=q.Corners[o+2],ux=q.Corners[o+3]-ax,uy=q.Corners[o+4]-ay,uz=q.Corners[o+5]-az,vx=q.Corners[o+9]-ax,vy=q.Corners[o+10]-ay,vz=q.Corners[o+11]-az;
+            double lu=Math.Sqrt(ux*ux+uy*uy+uz*uz),lv=Math.Sqrt(vx*vx+vy*vy+vz*vz);if(lu<1e-6||lv<1e-6)return default;ux/=lu;uy/=lu;uz/=lu;vx/=lv;vy/=lv;vz/=lv;
+            double nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,ln=Math.Sqrt(nx*nx+ny*ny+nz*nz);if(ln<1e-6)return default;nx/=ln;ny/=ln;nz/=ln;vx=ny*uz-nz*uy;vy=nz*ux-nx*uz;vz=nx*uy-ny*ux;
+            double tr=ux+vy+nz,qw,qx,qy,qz;
+            if(tr>0){double k=Math.Sqrt(tr+1)*2;qw=.25*k;qx=(vz-ny)/k;qy=(nx-uz)/k;qz=(uy-vx)/k;}
+            else if(ux>vy&&ux>nz){double k=Math.Sqrt(1+ux-vy-nz)*2;qw=(vz-ny)/k;qx=.25*k;qy=(vx+uy)/k;qz=(nx+uz)/k;}
+            else if(vy>nz){double k=Math.Sqrt(1+vy-ux-nz)*2;qw=(nx-uz)/k;qx=(vx+uy)/k;qy=.25*k;qz=(ny+vz)/k;}
+            else{double k=Math.Sqrt(1+nz-ux-vy)*2;qw=(uy-vx)/k;qx=(nx+uz)/k;qy=(ny+vz)/k;qz=.25*k;}
+            return new NativeSurfaceLayers.Box{X=(ax+q.Corners[o+6])/2,Y=(ay+q.Corners[o+7])/2,Z=(az+q.Corners[o+8])/2,Hx=lu/2,Hy=lv/2,Hz=1e-4,Qx=qx,Qy=qy,Qz=qz,Qw=qw,Bevel=-1,Material=-1};
+        }
+        // Faces of `free` (settled in order, nothing may move) left within NativeSurfaceLayers.Step of a face they overlap, among
+        // themselves and against `fixedBoxes`: a pair the depth test cannot tell apart.
+        private static int Shared(NativeSurfaceLayers.Box[] fixedBoxes,IList<NativeSurfaceLayers.Box> free)
+        {
+            var all=new NativeSurfaceLayers.Box[fixedBoxes.Length+free.Count];Array.Copy(fixedBoxes,all,fixedBoxes.Length);for(int i=0;i<free.Count;i++)all[fixedBoxes.Length+i]=free[i];
+            NativeSurfaceLayers.Solve(all,fixedBoxes.Length,new float[fixedBoxes.Length*6],false,out int unresolved,0);return unresolved;
+        }
+        // The map's blocks as the arena draws them (their own lifts) and the town kit's parts (already layered), round the
+        // sanctuary; the gates' parts at a pose; the ward's and the sanctuary edge's quads.
+        private static void Faces(ContentMap town,ExpeditionAreaLayout area,ExpeditionHubLayout hub,ExpeditionLayout layout)
+        {
+            var blocks=town.blocks;var lifts=NativeSurfaceLayers.Blocks(blocks);var near=new List<NativeSurfaceLayers.Box>();
+            for(int i=0;i<blocks.Length;i++)
+            {
+                var b=blocks[i];if(Math.Abs(b.pos.x)>30||Math.Abs(b.pos.z)>30)continue;NativeSurfaceLayers.Apply(lifts,i,out float sx,out float sy,out float sz,out float gx,out float gy,out float gz);
+                var r=b.rotation;double qx=r?.x??0,qy=r?.y??0,qz=r?.z??0,qw=r?.w??1;NativeExpeditionCityKit.Rotate(qx,qy,qz,qw,sx,sy,sz,out double ox,out double oy,out double oz);
+                near.Add(new NativeSurfaceLayers.Box{X=b.pos.x+ox,Y=b.pos.y+oy,Z=b.pos.z+oz,Hx=b.size.x/2+gx,Hy=b.size.y/2+gy,Hz=b.size.z/2+gz,Qx=qx,Qy=qy,Qz=qz,Qw=qw,Material=-1});
+            }
+            var kit=NativeExpeditionCityKit.Build(blocks,area,hub,town.bounds);
+            foreach(var p in kit.Parts)
+            {
+                var bx=NativeSurfaceLayers.Parented(blocks[p.Parent],p.X,p.Y,p.Z,p.Hx,p.Hy,p.Hz,-1);if(Math.Abs(bx.X)>30||Math.Abs(bx.Z)>30)continue;
+                QMul(bx.Qx,bx.Qy,bx.Qz,bx.Qw,p.Qx,p.Qy,p.Qz,p.Qw,out bx.Qx,out bx.Qy,out bx.Qz,out bx.Qw);near.Add(bx);
+            }
+            var statics=near.ToArray();var scene=new NativeExpeditionHubGates();int poses=0;
+            // 0. Nothing collider-only is drawn at a gate: the closures (Astra's renderer-less gate, no-vault and horde-ward
+            //    colliders) are not map blocks, no drawn block stands in a closure, and the fence's exclusion columns are
+            //    pilotBlocks (position clamps), never blocks.
+            foreach(var g in hub.Gates)
+            {
+                int inOpening=blocks.Count(b=>b.pos.y-b.size.y/2<g.Closure.y+g.Closure.sy/2-.01&&b.pos.y+b.size.y/2>.01&&ExpeditionHubRules.Intersects(g.Closure,new V3(b.pos.x,0,b.pos.z),new V3(b.pos.x,0,b.pos.z),Math.Min(b.size.x,b.size.z)/2-.01f));
+                Check(inOpening==0&&!blocks.Any(b=>b.id.Contains("hub-gate")||b.id.Contains("closure")),g.Side+": no drawn map block in its closure, none is a gate or closure collider ("+inOpening+")");
+            }
+            Check(town.pilotBlocks.Where(x=>x.id.Contains("sanctuary-fence")).All(x=>!blocks.Any(b=>b.id==x.id)),"the fence's exclusion columns are never drawn blocks");
+            // 1. The gates' own parts, against each other and the fence, posts, header and dressing, through their travel.
+            foreach(var g in hub.Gates)foreach(var (open,latch) in new[]{(0f,0f),(0f,1f),(.3f,1f),(.6f,1f),(1f,1f),(1.05f,1f)})
+            {
+                scene.Parts.Clear();scene.Model(g,new ExpeditionGatePose{Open=open,Latch=latch});int shared=Shared(statics,scene.Parts.Select(Box).ToArray());poses++;
+                Check(shared==0,g.Side+" ("+(g.Wood?"wood":"metal")+") at "+open.ToString("0.00")+" open: no gate face shares a plane with another gate part, the fence, its posts or the dressing ("+shared+")");
+            }
+            // 2. The effects drawn over them: the ward's shimmer (on the fence's outer face and across each opening) and the
+            //    sanctuary's lit edge (its curtain stands just inside the plaza's walls, the fence and the wooden leaves), with the
+            //    gates shut and open.
+            var eye=new ExpeditionEye{X=0,Y=1.7f,Z=0,Rx=1,Uy=1};var ward=new List<float[]>();NativeExpeditionHubGates.WardSegments(blocks,ward);
+            var rig=ExpeditionStateRig.For(layout,"exp-city");var edge=new NativeExpeditionStateScene();edge.Build(new ExpeditionView{area="exp-city",phase=ExpeditionPhase.Town},rig,null,20,eye,false,false);
+            foreach(bool open in new[]{false,true})
+            {
+                var v=new ExpeditionHubView{Gates=hub.Gates.Select(x=>new ExpeditionGateState{Id=x.Id,Open=open,ChangedAt=10}).ToArray(),Count=hub.Gates.Length,Ward=true,Holster=true};
+                scene.Forget();scene.Build(hub,v,ward,20,eye,false);var opaque=statics.Concat(scene.Parts.Select(Box)).ToArray();
+                foreach(var (name,q) in new[]{("ward",scene.Quads),("sanctuary edge",edge.Quads)})
+                {
+                    int n=0,shared=0;for(int i=0;i<q.Count;i++){var b=Box(q,i);if(!(b.Hx>0))continue;n++;shared+=Shared(opaque,new[]{b});}
+                    Check(n>40&&shared==0,"gates "+(open?"open":"shut")+": none of the "+n+" "+name+" quads lies in the plane of a face it overlaps ("+shared+")");
+                }
+            }
+            Check(poses==24,"every gate checked at six poses");
+        }
+        // ---------------- the leaves in step with the authority's collider ----------------
+        // Whether the leaves at pose `p` leave the opening walkable: no leaf part below 2.2 m in the passage through the gate,
+        // the closure the collider fills and the 2 m inside it where the wooden leaves swing (its width less 0.2 m at either
+        // post, where the hinges and pockets are).
+        private static bool Walkable(NativeExpeditionHubGates scene,ExpeditionHubGate g,in ExpeditionGatePose p)
+        {
+            scene.Parts.Clear();scene.Model(g,p);double a=g.Yaw*Math.PI/180,c=Math.Cos(a),s=Math.Sin(a),half=g.Width/2-.2;var v=g.Closure;double cd=(v.x-g.X)*s+(v.z-g.Z)*c;
+            foreach(var q in scene.Parts)
+            {
+                if(q.Fixed)continue;
+                foreach(var k in Corners(q)){double x=k.x-g.X,z=k.z-g.Z,u=x*c-z*s,d=x*s+z*c;if(k.y<2.2&&Math.Abs(u)<half&&d-cd<v.sz/2&&d-cd>-v.sz/2-2)return false;}
+            }
+            return true;
+        }
+        // The real authority (ExpeditionHubAuthority: interact, auto-close, Blocking) against the drawn leaves, every 1/240 s.
+        private static void Timing(ExpeditionHubLayout hub)
+        {
+            var scene=new NativeExpeditionHubGates();var model=new NativeExpeditionHubGates();
+            foreach(var g in hub.Gates)
+            {
+                int i=Array.IndexOf(hub.Gates,g);var a=new ExpeditionHubAuthority(hub,0);scene.Forget();double t0=10;
+                Check(a.Interact(g.Inside.Position,t0,_=>false)&&a.View().Gates[i].Open,g.Side+": the authority opens");
+                int blockedOpen=0,drawnShutPassable=0,openAtBlock=0,early=0;double t1=-1;
+                for(double t=t0;t<t0+6;t+=1/240.0)
+                {
+                    a.Step(t,_=>false);var view=a.View();if(t1<0&&!view.Gates[i].Open)t1=t;bool solid=a.Blocking(i,t);var p=scene.Pose(g,view,t,hub);bool walk=Walkable(model,g,p);
+                    bool drawnShut=p.Open<.01f&&!p.Moving;
+                    if(view.Gates[i].Open&&!solid&&!walk)blockedOpen++;                       // released, a leaf still in the way
+                    if(drawnShut&&!solid)drawnShutPassable++;                                    // drawn shut, walkable
+                    if(!view.Gates[i].Open&&solid&&p.Open>.04f&&t-t1>=NativeExpeditionHubGates.MeetAt(hub))openAtBlock++;  // solid and met, still drawn open
+                    if(view.Gates[i].Open&&t-t0<hub.Release-.25&&walk)early++;                   // drawn open long before it is
+                }
+                Check(t1>0&&Math.Abs(t1-(t0+hub.AutoClose))<.02,g.Side+": with nobody near it the authority closes it 2.5 s later ("+(t1-t0).ToString("0.000")+" s)");
+                Check(blockedOpen==0,g.Side+": once the collider releases (0.5 s into the opening) the leaves are clear of the opening ("+blockedOpen+" samples with a leaf in the way)");
+                Check(drawnShutPassable==0,g.Side+": never drawn shut while the opening can be walked through ("+drawnShutPassable+")");
+                Check(openAtBlock==0,g.Side+": the leaves meet as the collider turns solid again (0.65 s into the closing), never left standing open across it ("+openAtBlock+")");
+                Check(early==0,g.Side+": not drawn open while its latch lifts ("+early+")");
+                var mid=scene.Pose(g,new ExpeditionHubView{Gates=new[]{new ExpeditionGateState{Id=g.Id,Open=false,ChangedAt=t1}},Count=1},t1+hub.Block-.15,hub);
+                Check(mid.Moving&&mid.Open>.2f,g.Side+": visibly still closing 0.15 s before it blocks ("+mid.Open.ToString("0.00")+" open)");
+                var clear=NativeExpeditionHubGates.PoseOf(g,true,0,0,NativeExpeditionHubGates.ClearAt(g,hub),hub);
+                Check(Walkable(model,g,clear)&&NativeExpeditionHubGates.ClearAt(g,hub)<hub.Release,g.Side+": clear of the opening at "+NativeExpeditionHubGates.ClearAt(g,hub).ToString("0.00")+" s, before the release");
+            }
+        }
+        // ---------------- the presentation clock ----------------
+        private static void Clock()
+        {
+            var c=new ExpeditionHubClock();double prev=-1,maxLead=0;bool monotonic=true,onUpdate=true;
+            for(int f=0;f<600;f++)
+            {
+                double now=f/60.0,auth=f/3*.05;double r=c.Read(auth,now);if(r<prev-1e-9)monotonic=false;prev=r;maxLead=Math.Max(maxLead,r-auth);
+                if(f%3==0&&Math.Abs(r-auth)>1e-9)onUpdate=false;
+            }
+            Check(monotonic&&onUpdate&&maxLead<=ExpeditionHubClock.MaxLead,"the presentation clock moves every frame between 20 Hz updates, never backwards, and meets each update (lead "+maxLead.ToString("0.000")+" s)");
+            var stall=new ExpeditionHubClock();stall.Read(5,0);Check(Math.Abs(stall.Read(5,3)-(5+ExpeditionHubClock.MaxLead))<1e-9,"a stalled authority clock is carried at most "+ExpeditionHubClock.MaxLead+" s ahead");
+        }
+        // Claude's run-through repro, promoted from a diagnostic to a hard regression on all four gates.
+        private static void PendingAuthority(ExpeditionHubLayout hub)
+        {
+            foreach(var g in hub.Gates)
+            {
+                int i=Array.IndexOf(hub.Gates,g);var a=new ExpeditionHubAuthority(hub,0);double yaw=g.Yaw*Math.PI/180,ox=Math.Sin(yaw),oz=Math.Cos(yaw),r=NativeLocomotionRules.Radius;
+                double face=(g.Closure.x-g.X)*ox+(g.Closure.z-g.Z)*oz+g.Closure.sz/2,d=face+3,touch=face+r+.01,t=10;
+                for(int k=0;k<240;k++,t+=1/60.0)
+                {
+                    var center=new V3((float)(g.X+ox*d),.9f,(float)(g.Z+oz*d));
+                    a.Step(t,v=>ExpeditionHubRules.CapsuleOverlaps(v,center,1.8f,(float)r));bool solid=a.Blocking(i,t);
+                    Check(!a.View().Gates[i].Open&&solid,g.Side+": walking into shut gate cannot open or release it");
+                    double next=d-6.8/60;if(solid&&next<touch)next=touch;d=next;
+                }
+                Check(d>=touch-1e-6,g.Side+": pilot remains outside solid closure");
+            }
+            Console.WriteLine("PASS (was PENDING) Expedition hub: all four shut gates stop a pilot who walks into them; no interact, no opening or collider release");
+        }
+
         public static void Run(string root)
         {
             ExpeditionHubAuthorityChecks.Run(root);HubPerceptionChecks.Run(root);
@@ -162,7 +310,7 @@ namespace ChipArena.UnityConversion
                 var op=NativeExpeditionHubGates.PoseOf(g,true,10,0,10+hub.Open+.6,hub);var cl=NativeExpeditionHubGates.PoseOf(g,false,10,1,10+hub.Close+.6,hub);
                 Check(Math.Abs(op.Open-1)<.01&&op.Latch==1&&!op.Moving&&Math.Abs(cl.Open)<.01&&cl.Latch<.01&&!cl.Moving,g.Side+": an opening ends open and unlatched, a closing shut and latched");
                 var mem=new NativeExpeditionHubGates();var v=new ExpeditionHubView{Gates=new[]{new ExpeditionGateState{Id=g.Id,Open=true,ChangedAt=20}},Count=1};
-                double turn=20+NativeExpeditionHubGates.LatchLift+(g.Wood?.1:.3);mem.Pose(g,v,20.1,hub);float before=mem.Pose(g,v,turn,hub).Open;v.Gates[0]=new ExpeditionGateState{Id=g.Id,Open=false,ChangedAt=turn};float after=mem.Pose(g,v,turn+.001,hub).Open;
+                double turn=20+NativeExpeditionHubGates.Unlatch(g)+(g.Wood?.1:.15);mem.Pose(g,v,20.1,hub);float before=mem.Pose(g,v,turn,hub).Open;v.Gates[0]=new ExpeditionGateState{Id=g.Id,Open=false,ChangedAt=turn};float after=mem.Pose(g,v,turn+.001,hub).Open;
                 Check(before>.15&&before<.95&&Math.Abs(before-after)<.02&&mem.Pose(g,v,turn+hub.Close+.6,hub).Open<.01,g.Side+": shut mid-opening, the leaves turn back from where they were ("+before.ToString("0.00")+" → "+after.ToString("0.00")+")");
                 float maxOpen=0;for(double t=0;t<1.5;t+=.01)maxOpen=Math.Max(maxOpen,NativeExpeditionHubGates.PoseOf(g,true,0,0,t,hub).Open);Check(maxOpen<=1.08f,g.Side+": the overshoot stays within the travel checked ("+maxOpen.ToString("0.000")+")");
                 // Sound: each transition's three cues, once, however the clock is cut.
@@ -177,13 +325,14 @@ namespace ChipArena.UnityConversion
             // The DEV preview: every gate cycles open and shut on its own clock; the ward and holster read on; it says so.
             var pv=new ExpeditionHubView();int opens=0,shuts=0;for(double t=0;t<16;t+=.5){NativeExpeditionHubPreview.Fill(pv,hub,t);opens+=pv.Gates.Take(pv.Count).Count(s=>s.Open);shuts+=pv.Gates.Take(pv.Count).Count(s=>!s.Open);}
             Check(pv.Preview&&pv.Holster&&pv.Ward&&pv.Count==4&&opens>20&&shuts>20,"the DEV preview cycles every gate and turns the ward and holster on, marked as a preview");
-            var ward2=new List<float[]>();foreach(var b in town.blocks.Where(b=>NativeExpeditionCityKit.Stem(b.id).StartsWith("sanctuary-fence-",StringComparison.Ordinal)))ward2.Add(new[]{b.pos.x-b.size.x/2,b.pos.z,b.pos.x+b.size.x/2,b.pos.z,3.2f});
+            var ward2=new List<float[]>();NativeExpeditionHubGates.WardSegments(town.blocks,ward2);Check(ward2.Count==8,"a ward segment along every fence section");
             rest.Build(hub,pv,ward2,3,eye,false);Check(rest.WardQuads>40&&rest.Parts.Count>0,"with the ward on, the fence line and every opening shimmer ("+rest.WardQuads+" quads)");
             // No allocation per frame.
-            var hot=new NativeExpeditionHubGates();var hv=new ExpeditionHubView();for(int f=0;f<10;f++){NativeExpeditionHubPreview.Fill(hv,hub,f*.016);hot.Build(hub,hv,ward2,f*.016,eye,false);}
-            long before2=GC.GetAllocatedBytesForCurrentThread();for(int f=10;f<130;f++){NativeExpeditionHubPreview.Fill(hv,hub,f*.05);hot.Build(hub,hv,ward2,f*.05,eye,false);}
+            var hot=new NativeExpeditionHubGates();var hv=new ExpeditionHubView();var hclock=new ExpeditionHubClock();for(int f=0;f<10;f++){NativeExpeditionHubPreview.Fill(hv,hub,f*.016);hot.Build(hub,hv,ward2,hclock.Read(f*.05,f*.016),eye,false);}
+            long before2=GC.GetAllocatedBytesForCurrentThread();for(int f=10;f<130;f++){NativeExpeditionHubPreview.Fill(hv,hub,f*.05);hot.Build(hub,hv,ward2,hclock.Read(Math.Floor(f/3.0)*.05,f*.0167),eye,false);}
             long spent=GC.GetAllocatedBytesForCurrentThread()-before2;Check(spent==0,"the gates, their dust and the ward allocate nothing per frame ("+spent+" bytes over 120 frames)");
             Check(hot.Parts.Count<=NativeExpeditionHubGates.PartCapacity&&hot.Quads.Count<NativeExpeditionHubGates.QuadCapacity,"the busiest frame fits its buffers ("+hot.Parts.Count+" parts, "+hot.Quads.Count+" quads)");
+            Faces(town,area,hub,layout);Timing(hub);Clock();PendingAuthority(hub);
             // ---------------- the dressing ----------------
             var kit=NativeExpeditionCityKit.Build(town.blocks,area,hub,town.bounds);
             foreach(var f in hub.Fence){int i=Array.FindIndex(town.blocks,b=>b.id==f.Block);Check(kit.Parts.Count(p=>p.Parent==i)>=10,f.Block+" is dressed ("+(f.Kind=="wood"?"palisade logs":"scrap sheets")+")");}
@@ -199,7 +348,7 @@ namespace ChipArena.UnityConversion
             Check(Src("NativeExpeditionCityPresentation.cs").Contains("DrawTownFx(now,eye);ExpeditionHubFrame(eye,now);")&&Src("NativeExpeditionCityPresentation.cs").Contains("NativeExpeditionCityKit.Build(blocks,townArea,townHub,map.bounds)"),"the town presentation draws the hub and builds the kit with the hub record");
             Check(Src("NativeExpeditionCityAudio.cs").Contains("townTime=time;ExpeditionHubCues();")&&Src("NativeExpeditionHubPresentation.cs").Contains("NativeExpeditionHubLive.Authority?.Holster==true"),"the gates' cues play with the picture; the holster tag waits for the authority's rule");
             Check(Src("NativeDevPanel.cs").Contains("case \"preview-hub-gates\":NativeExpeditionHubPreview.On=")&&NativeDevActions.Find("preview-hub-gates")?.Kind==NativeDevKind.Presentation,"the DEV preview is a view tool in the DEV panel");
-            Console.WriteLine("PASS expedition hub ("+count+" checks: the additive hub record; fence closed but for its gates; each instance through its gate and "+RouteMin+" m or more away; zones outside the fence and clear of the gates; gate models inside their closures shut and clear through their travel; continuous motion; resting open without state; DEV preview; cues; dressing; no per-frame allocation; hooks)");
+            Console.WriteLine("PASS expedition hub ("+count+" checks: the additive hub record; fence closed but for its gates; each instance through its gate and "+RouteMin+" m or more away; zones outside the fence and clear of the gates; gate models inside their closures shut and clear through their travel; no shared planes on the gates, the ward or the sanctuary edge; leaves in step with the authority's collider; the presentation clock; continuous motion; resting open without state; DEV preview; cues; dressing; no per-frame allocation; hooks)");
         }
     }
 }
