@@ -141,7 +141,7 @@ namespace ChipArena.UnityConversion
                 if(target!=null&&StepHulkBreach(m,target.Body.position)){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}
                 if(!a.Struck&&Time>=m.StrikeAt){a.Struck=true;PveAddStrike(m);if(m.Hp<=0)continue;}
                 if(target==null){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}Vector3 d=target.Body.position-at;float distance=new Vector2(d.x,d.z).magnitude;
-                bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,start=a.Stats.id=="spitter"?a.Stats.startRange:a.Crawl?1:armless?.95f:a.Stats.startRange,hit=a.Stats.id=="spitter"?a.Stats.hit:a.Crawl||armless?.34f:a.Stats.hit;
+                bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,start=a.Stats.id=="spitter"?NativeSpitterRules.Range:a.Crawl?1:armless?.95f:a.Stats.startRange,hit=a.Stats.id=="spitter"?a.Stats.hit:a.Crawl||armless?.34f:a.Stats.hit;
                 if(a.Stats.id=="hulk"&&!a.Crawl&&!armless)start=Math.Max(start,NativeHulkMoves.PunchReach);
                 if(a.Struck&&!a.Possessed&&Time>=a.RecoverAt&&Time>=a.StaggerAt&&distance<=start&&(a.Stats.id!="spitter"||distance>=4)&&Math.Abs(d.y)<1.6f&&(a.Stats.id!="hulk"&&a.Stats.id!="spitter"||MeleeVisible(at,target.Body.position,m.Owner,target.Collider,true)))
                 {if(a.Stats.id=="hulk")hit=ChooseHulkMove(m,target,hit);m.LastAttack=Time;m.StrikeAt=Time+hit;a.Struck=false;a.RecoverAt=Time+Math.Max(a.Stats.cycle,hit+.05f);if(a.Move!=0)a.RecoverAt=Time+NativeHulkMoves.Recover(NativeHulkMoves.Of(a.Move),a.Stats.cycle,a.Crawl,a.Lost);a.Side=-a.Side;if(a.Side==1&&right)a.Side=-1;else if(a.Side==-1&&left)a.Side=1;m.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;}
@@ -236,6 +236,7 @@ namespace ChipArena.UnityConversion
         }
         private void PveAddKilled(NativeMinion m,NativePilot source)
         {
+            if(Expedition!=null){ExpeditionKilled(m,source);return;}
             if(m.DevMonster)return; // Defense in depth: environmental kills can also reach this adapter.
             var a=m.Pve;var recruit=Pve.Recruits.Find(r=>r.Pilot==source);NativePilot paid=recruit?.Owner??source;bool head=(a.Lost&1)!=0;float reward=a.Stats.reward;
             if(recruit!=null)GrantPveMoney(paid,(reward+(head?10:0))*.5f,"recruit");else{GrantPveMoney(paid,reward,"kill");if(head)GrantPveMoney(paid,10,"head");}

@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
             {
                 foreach(var m in Minions.ToArray())RemoveMinion(m,false);pveEntries.Clear();pveAcid.Clear();Clock(400);
                 Map.bounds=new MapBounds{minX=-20,maxX=20,minZ=980,maxZ=1020,ceiling=20,killY=-6};
-                AddProp(new ContentBlock{id="acid-check-floor",material="foundation",role="static",pos=new V3(0,-.5f,1000),size=new V3(30,1,30),rotation=new ContentRotation()});
+                AddProp(new ContentBlock{id="acid-check-floor",material="foundation",role="static",pos=new V3(0,-.5f,1000),size=new V3(40,1,40),rotation=new ContentRotation()});
                 Pve.Holding=false;Pve.Stage="wave";Pve.Wave=2;Pve.Cap=8;Pve.Rate=0;Pve.SpawnBudget=0;
                 Pve.Content.entries=new[]{new PveEntry{e=0,id="acid-check-entry",kind="door",from=new PvePoint{z=1000},@exit=new PvePoint{z=1000}}};
                 p.Seat.chips.Clear();p.Seat.spec="pistol";p.Weapon=Content.Weapon("pistol");p.Stats=NativeContentRules.Stats(Content,"pistol",p.Seat.chips);p.Hp=1000;p.Stats["hp"]=1000;p.Stats["damageTaken"]=1;
@@ -39,6 +39,11 @@ namespace ChipArena.UnityConversion
                 Check(frame.minions.Single(m=>m.id==spit.Id).spitCancelAt==Time,"real JsonUtility carries cancellation");
                 var guest=new NativeArena(Content,new NativeMatch(Content),MapId){Replica=true,ReplicaScene=root.scene};
                 try{guest.ApplyFrame(frame,LocalId);Check(guest.PveAcidCount==1&&guest.PveAcidAt(0).to.z==record.to.z,"guest / late join restores live puddle");frame.pve.acid=Array.Empty<NativeAcidRecord>();guest.ApplyFrame(frame,LocalId);Check(guest.PveAcidCount==0,"absent records clear on rewind/transition");}finally{guest.Dispose();}
+                pveAcid.Clear();p.Dots.Clear();p.Body.position=new Vector3(0,p.Collider.height/2+.025f,1018);p.Body.linearVelocity=Vector3.zero;
+                spit.Body.position=new Vector3(0,.875f,1000);spit.Pve.Struck=true;spit.Pve.RecoverAt=spit.Pve.StaggerAt=0;spit.Pve.Target=p;spit.Pve.ThinkAt=Time+20;Physics.SyncTransforms();
+                StepPveHorde();Check(!spit.Pve.Struck,"spitter starts a real attack at 18 m");
+                Clock(spit.StrikeAt+.001);StepPveHorde();Check(pveAcid.Count==1&&pveAcid[0].Record.to.z>1017&&pveAcid[0].Record.flight<=3,"extended attack launches a valid long-range arc");
+                p.Body.position=new Vector3(0,p.Collider.height/2+.025f,1019);spit.Pve.Struck=true;spit.Pve.RecoverAt=0;Physics.SyncTransforms();StepPveHorde();Check(spit.Pve.Struck,"does not initiate outside 18 m");
                 Debug.Log("PASS native spitter arc/landing/DoT/nonstacking/corrosion/interrupt/JsonUtility/guest state");
             }
             finally{Pve.Content.entries=entries;Map.bounds=bounds;Reset();}

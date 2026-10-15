@@ -8078,3 +8078,14 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - Publication: owner asked to publish. Pushed to the builder branch for the desktop builder, which compiles in Unity,
   validates and publishes the native test update. Not run here: Unity Editor/player, Windows, the test-channel
   publish itself, or host/guest play.
+
+
+## 2026-10-15 — Astra: Expedition M1 runtime and 18 m spitter authority
+
+- Branch `codex/unity-expedition-m1`, integrated on shared `3a15faf` (includes Claude's Ward Zero silence and `150075d` fix). PR #223 already merged the C# 9 compiler pin and builder was synced to `3a15faf`.
+- Adds a signed-in DEV, local-only Test Boss → DEV Expedition M1 entry. Constructs the real director, switches the arena map, validates native support/navigation, reports fenced readiness, places the local pilot, then releases the load barrier. Actual door/gate colliders follow director blocking state. Failed placement stays frozen/unsafe.
+- Uses real catalog enemies for the provisional 12-kill Ward quota, then a TEST Siren and a final TEST Siren. Real confirmed deaths advance the quota; real boss damage calls UpdateBossHealth immediately, with per-tick reconciliation. Boss arrivals/deaths feed the director. Existing Expedition scaling applies at spawn. Return, final, Continue and durable local extraction use the session; local death requires restart.
+- Existing preview remains separate; unsupported claims/purchases/reprints and account progression are unavailable. This is not host/guest, migration or saved-combat resume. Turret and kit-saw authority is deferred. No animation/assets/timing changes; spitter authority attack start and aim clamp both become 18 m, retaining existing projectile speed and pool behavior.
+- Native build acceptance now checks real placement/navigation on both maps and real combat damage/death through return/final/Continue/extraction; spitter acceptance covers 18 m launch and 19 m refusal. These compile but have NOT been executed under Unity here.
+- Actual checks: C# 9 compilation against Unity 6000.3.24f1 assemblies passes player, editor-context Runtime and Editor; Python 106 tests pass (1 skipped); source package passes 2,032 files. Managed/relay regression passes all 688 PASS groups (rc 0) with a 1,200 s budget after the default 300 s run timed out without an assertion failure.
+- Status: implemented on branch, not yet a released/playable build. DEV_LOG history preserved. Intended launch and Claude checklist are in EXPEDITION-PLAYTEST-M1.md. Native builder receipt and observed Windows route are still required; do not substitute semantic compilation for a playtest. Claude should begin local visuals only on that exact successful native build, then host/guest after its runtime support exists.

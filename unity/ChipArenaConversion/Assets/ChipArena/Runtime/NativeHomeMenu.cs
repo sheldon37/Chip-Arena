@@ -501,7 +501,8 @@ namespace ChipArena.UnityConversion
             var l=BeginScreen("PVE · BOSS TEST","Test Boss",650,age,true,head:122);if(l.Closed){Go(MenuScreen.Home);return;}
             BossCard(new Rect(l.Panel.x+32,l.Panel.y+104,l.Panel.width-64,108),l.Enter);
             ScreenBody(l,()=>BossBody());if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Up to four pilots: party bots fill the empty seats.");
-            int a=ScreenActions(l,("play","Start Boss Fight",true,server==null),("network","Host Co-op Room",false,true));
+            int a=account.Developer?ScreenActions(l,("play","Start Boss Fight",true,server==null),("network","Host Co-op Room",false,true),("play","DEV Expedition M1",false,!Online)):ScreenActions(l,("play","Start Boss Fight",true,server==null),("network","Host Co-op Room",false,true));
+            if(a==2){StartExpeditionM1();return;}
             if(a==0){prefs.pve=true;sandboxWanted=false;StartMatch();}else if(a==1){prefs.pve=true;Go(MenuScreen.Create);}
         }
         // .pve-boss-card.active: the Siren on a violet radial with the skull, beside the greyed "More bosses" card.
@@ -627,7 +628,7 @@ namespace ChipArena.UnityConversion
             items.Add(("settings","Settings",false,true,()=>{pauseScreen=PauseScreen.Settings;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;}));
             // DEV Tools (NativeDevPanel.cs): the offline Developer Sandbox's tools, and with Settings · Developer · DEV Abuse any match's.
             if(DevPanelAvailable)items.Add(("flask-conical","DEV Tools",false,true,()=>DevOpen(true)));
-            if(!Online&&!lost)items.Add(("rotate-cw","Restart Match",false,true,StartMatch));
+            if(!Online&&!lost)items.Add(("rotate-cw",ExpeditionM1?"Restart Expedition M1":"Restart Match",false,true,()=>{if(ExpeditionM1)StartExpeditionM1();else StartMatch();}));
             if(!lost)items.Add(("undo-2","Return to Lobby",false,(Hosting||!Online)&&!returning,()=>{if(!Online)afterMatch=OfflineLobby();RequestLobbyReturn();menu=false;}));
             items.Add(("log-out","Return to Main Menu",lost,true,()=>{afterMatch=lost?MenuScreen.Join:MenuScreen.Home;if(Online)LeaveRoom();else ReturnToLobby();}));
             string hints="WASD move · double-tap W sprint · LMB fire / attack · RMB block · Q / E abilities · R reload · Shift roll · Space jump · V camera · X shoulder · Tab lock-on / board · G scores · Esc menu";

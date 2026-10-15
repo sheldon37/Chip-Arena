@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
             SendServer(new NativeNetMessage{type="expedition-area-ready",expeditionAreaReady=expeditionLoadedTicket});
         }
         private void ResetExpeditionNetwork()
-        {expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
+        {expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
         private void ExpeditionNetworkTick()
         {
             try{ExpeditionNetworkStep();}
@@ -83,7 +83,7 @@ namespace ChipArena.UnityConversion
         {
             if(server!=null){ExpeditionReadyTick();return;}
             if(expeditionSession==null)return;
-            expeditionSession.Tick(Time.unscaledDeltaTime);
+            if(!ExpeditionM1)expeditionSession.Tick(Time.unscaledDeltaTime);
             // Projection and transport metrics are bounded to 20 Hz, including offline sessions.
             if(Time.unscaledTime<expeditionNextSend)return;expeditionNextSend=Time.unscaledTime+.05f;
             // Link metrics are measured. No endpoint has been reserved/probed, so nobody is migration-capable yet.

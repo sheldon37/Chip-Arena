@@ -12,7 +12,10 @@ namespace ChipArena.UnityConversion
             int checks=0;void Check(bool ok,string why){checks++;if(!ok)throw new Exception("PvE spitter/waves: "+why);}
             var options=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};var data=JsonSerializer.Deserialize<NativePveContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/PveContent.json")),options);
             var revised=NativeMapRules.PveRevision("ward","spitter");Check(revised!=NativeMapRules.PveRevision("ward","legacy")&&!NativeMapRules.Compatible(NativeConnection.Protocol,"test","ward",new ConversionContent{sourceCommit="test",contentRevision=revised}),"older peers cannot join spitter content; relay protocol unchanged");
-            var spit=data.adds.Single(x=>x.id=="spitter");Check(spit.attack=="spit"&&spit.hit==NativeSpitterRules.Hit&&spit.cycle==NativeSpitterRules.Cycle&&spit.reach==11&&spit.hp==45,"content uses actual spit timings");
+            Check(NativeSpitterRules.Range==18,"extended authority spit range");
+            Check(Math.Abs(NativeSpitterRules.Lead(new V3(0,0,0),new V3(30,0,0),new V3(0,0,0)).Length-18)<.001,"out-of-range aim clamps to 18 m");
+            Check(NativeHordeFx.Flight(18)<=3,"extended spit stays within replicated flight limit");
+            var spit=data.adds.Single(x=>x.id=="spitter");Check(spit.attack=="spit"&&spit.hit==NativeSpitterRules.Hit&&spit.cycle==NativeSpitterRules.Cycle&&spit.reach==11&&spit.hp==45,"content retains source timings and legacy reach; authority range is versioned separately");
             Check(data.waves.Skip(1).All(x=>x.mix.Any(m=>m.name=="spitter"&&m.value>0))&&data.bossMix.All(x=>x.mix.Any(m=>m.name=="spitter"&&m.value>0)),"spitters enabled after first wave and throughout boss");
             foreach(bool skip in new[]{false,true})foreach(double resolved in new[]{-1d,1,9})
             {
@@ -36,7 +39,7 @@ namespace ChipArena.UnityConversion
             Check(NativeSpitterRules.Interrupt(1,10.79f,10,false)&&!NativeSpitterRules.Interrupt(0,10.4f,10,false)&&!NativeSpitterRules.Interrupt(1,10.8f,10,false)&&!NativeSpitterRules.Interrupt(1,10.4f,10,true),"only damaging pre-release hit interrupts");
             Check(Math.Abs(NativeSpitterRules.Retry(10)-11.56f)<.001f,"partial retry");
             Check(NativeHordeKinds.Strike(spit,true,2|4)==.8f&&NativeHordeKinds.AttackOf(NativeHordeKinds.Spitter,"spit",true)==NativeHordeKinds.Attack.Spit,"damaged spitter keeps mouth wind-up");
-            var lead=NativeSpitterRules.Lead(new V3(),new V3(8,0,0),new V3(20,0,0));Check(Math.Abs(lead.Length-11)<.001f,"lead clamped to range");
+            var lead=NativeSpitterRules.Lead(new V3(),new V3(8,0,0),new V3(20,0,0));Check(Math.Abs(lead.Length-NativeSpitterRules.Range)<.001f,"lead clamped to range");
             Check(NativeSpitterRules.Touch(new V3(),new V3(0,.85f,0),.85f,.42f,1.3f)&&!NativeSpitterRules.Touch(new V3(),new V3(0,6.85f,0),.85f,.42f,1.3f),"puddles cannot poison through floors");
             Check(NativeSpitterRules.KeepDistance(3)==-1&&NativeSpitterRules.KeepDistance(6)==0&&NativeSpitterRules.KeepDistance(10)==1,"retreat / hold / advance");
             var acid=new NativeAcidRecord{id=1,actor=10001,from=new V3(0,1.2f,0),to=new V3(0,0,8),at=10,flight=1,damageScale=1};

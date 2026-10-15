@@ -275,7 +275,7 @@ namespace ChipArena.UnityConversion
         private void LeaveLostHost(){afterMatch=MenuScreen.Join;ReturnToLobby();}
         private void ReturnToLobby()
         {
-            ClearReplay();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();matchEndAt=-1;menu=true;
+            ResetExpeditionNetwork();ClearReplay();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();matchEndAt=-1;menu=true;
             if(Hosting){networkEpoch++;foreach(var p in peers)p.Ready=false;LobbyBroadcast();}
         }
     }

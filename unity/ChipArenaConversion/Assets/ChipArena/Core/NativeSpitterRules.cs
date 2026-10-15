@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     public static class NativeSpitterRules
     {
         public const int Cap=4;
-        public const float Hit=.8f,Cycle=2.6f,Range=11,Radius=1.3f,Duration=4,DirectRadius=.6f,Damage=7,Dps=4,DotDuration=.5f,DotInterval=.25f,CorrosionInterval=.5f,Corrosion=6,DirectCorrosion=10;
+        public const float Hit=.8f,Cycle=2.6f,Range=18,Radius=1.3f,Duration=4,DirectRadius=.6f,Damage=7,Dps=4,DotDuration=.5f,DotInterval=.25f,CorrosionInterval=.5f,Corrosion=6,DirectCorrosion=10;
         public static bool Interrupt(float damage,float now,float attack,bool struck)=>damage>0&&!struck&&now>=attack&&now<attack+Hit;
         public static float Retry(float now)=>now+Cycle*.6f;
         public static V3 Lead(V3 origin,V3 target,V3 velocity)
