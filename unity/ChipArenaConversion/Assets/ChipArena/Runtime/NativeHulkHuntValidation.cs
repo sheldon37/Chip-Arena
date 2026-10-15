@@ -41,10 +41,17 @@ namespace ChipArena.UnityConversion
                 foreach(int move in new[]{1,2}){a.Move=move;Place(0,1002);p.BlockEnd=Time+1;HulkMoveStrike(m);Check(p.Hp==1000&&Math.Abs(p.Knockback.y-(move==1?1.25f:1))<.001f,"block half shove "+move);}p.BlockEnd=0;
                 ResetHulk(420);Place(0,1050);Check(StepHulkHunt(m,p)&&a.Charging,"cross-map start");Place(5,1050);Clock(420.5f);StepHulkHunt(m,p);Check(m.Yaw>0&&!a.ChargeLocked,"wind tracks");
                 CancelHulkWind(m,m.MaxHp*.25f);Check(!a.Charging&&Math.Abs(a.ChargeReadyAt-Time-4)<.001f,"stagger cancel cooldown");
-                ResetHulk(430);Place(0,1050);StepHulkHunt(m,p);Clock(430.9f);StepHulkHunt(m,p);var heading=a.ChargeHeading;var point=a.ChargePoint;
+                ResetHulk(430);Place(0,1050);Check(StepHulkHunt(m,p)&&a.Charging,"sidestep charge starts");Clock(a.ChargeAt+NativeHulkMoves.ChargeWind);StepHulkHunt(m,p);
+                Check(a.ChargeLocked&&a.Charging,"sidestep charge locks before target moves");var heading=a.ChargeHeading;var point=a.ChargePoint;
                 Place(1.5f,1050);
-                for(int i=1;i<=560&&a.Charging;i++){Clock(430.9f+i/60f);StepHulkHunt(m,p);m.Body.position+=m.Body.linearVelocity/60f;Physics.SyncTransforms();}
-                Check(a.ChargeEnd==3&&p.Hp==1000&&m.Body.position.z>1053,"cross-map run, sidestep missed, overshoot end");
+                // Advance the isolated PhysX scene, as the live arena does. Teleporting an
+                // interpolated Rigidbody and syncing transforms is not a physics tick.
+                var physics=root.scene.GetPhysicsScene();
+                for(int i=1;i<=560&&a.Charging;i++){Clock(430.9f+i/60f);StepHulkHunt(m,p);physics.Simulate(1f/60);}
+                string runState="end="+a.ChargeEnd+", charging="+a.Charging+", position="+m.Body.position.ToString("F4")+", velocity="+m.Body.linearVelocity.ToString("F4")+", hp="+p.Hp+", yaw="+m.Yaw+", time="+Time;
+                Check(a.ChargeEnd==3,"cross-map overshoot end: "+runState);
+                Check(p.Hp==1000,"cross-map sidestep avoids damage: "+runState);
+                Check(m.Body.position.z>1053,"cross-map travels past target: "+runState);
                 Check((a.ChargeHeading-heading).Length==0&&(a.ChargePoint-point).Length==0&&m.Yaw==0,"locked point and yaw");Check(Math.Abs(a.ChargeReadyAt-a.ChargeEndAt-10)<.001f,"cooldown from end");
                 ResetHulk(450);Place(0,1001.2f);a.BeginCharge(449,p.Seat.id,Vec(m.Body.position),new V3(0,.9f,1050));StepHulkHunt(m,p);Check(a.ChargeEnd==1&&p.Hp==972&&p.Knockback.y==4.5f&&a.RecoverAt==Time+1,"pilot swept end");
                 ResetHulk(460);Place(0,1001.2f);p.BlockEnd=Time+1;a.BeginCharge(459,p.Seat.id,Vec(m.Body.position),new V3(0,.9f,1050));StepHulkHunt(m,p);Check(a.ChargeEnd==1&&p.Hp==1000&&p.Knockback.y==2.25f,"charge block");p.BlockEnd=0;
