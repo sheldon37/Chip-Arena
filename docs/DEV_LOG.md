@@ -40,6 +40,8 @@
     - the clear way round.
     - Swing bounds were raised for the larger orbit: first frame 8 cm; 50 cm and 10° per 60 Hz frame; classic 70 cm.
   - `--expedition-pick` and `--chip-select` pass. `unity-check.sh` runtime and editor build OK.
+  - Full five-check run (`run5b`) on the merge with shared `c65f464`. Unity runtime and editor build, the real relay suite (753 PASS lines), the source package (2161 files) and the diff check all exit 0.
+    - The Python suite failed one pin: `test_chip_select` expects `FirstPersonView&&p==arena.ViewPilot` in the SELECTING CHIP tag, and stage 1 had folded it into `(FirstPersonView||ChooserFramed)`. That line is now written as two terms.
 - **Not run.** Unity Editor or play, Windows build, two-client play. Also unrun: IMGUI's cursor mapping under a sheared `GUI.matrix` on real Unity (the managed check models it).
 - **Risks.**
   - The faces are affine, so the far card's corners can sit up to about 1% of the width off the world card; the dim glow hides it.
