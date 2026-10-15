@@ -13,7 +13,9 @@ using ChipArena.UnityConversion;
 //  2. the feed: only a Version 2 record maps (through CyberLordFeed alone); anything else leaves v1 exactly as it was, poses
 //     and effects included; Kernel Panic is untouched by a live v2 record;
 //  3. the hardlight string (v1's three steps live today, v2's five): every pose finite and continuous across the steps, on
-//     uneven and rewound clocks; each blow's apex on its replicated hit; the feet planted (no slide on the floor);
+//     uneven and rewound clocks; each blow's apex on its replicated hit; the feet planted (no slide on the floor); its
+//     momentum (3c): the body driven into each blow inside the capsule, the step-ins, the overlap trails, the proposed
+//     simulation step planted in the world, a strike entered at a run, the jab out of the idle;
 //  4. every v2 ability's poses, effects (deterministic from the view, nothing flat on the floor, the low tiers lighter, no
 //     allocation), HUD cards with their art icons, screen overlays and sound cues on existing bank keys;
 //  5. the Runtime wiring (source text; Unity cannot run here).
@@ -94,7 +96,9 @@ internal static class CyberKit2MeleeChecks
     private sealed class Rig
     {
         public readonly MeleeMotion Mo=new MeleeMotion();public readonly CyberLordMotion Cy=new CyberLordMotion();public readonly MeleeView Mv=new MeleeView{Id="1",Spec=CyberLordSpec.Id,Grounded=true,Hp=100};
-        public string Step(Actor a,float t,float dt){Mo.Rig.GroupPosition=new Vector3(0,.865f,0);Mo.Rig.GroupYaw=0;Mo.FighterBase(Mv,t,dt);var st=Cy.Style(Mo,a,t,false);Mo.FighterFinish(Mv,t,dt);return st;}
+        /// <summary>The capsule's centre (the group's position); the strings stand at the origin unless a check moves it.</summary>
+        public Vector3 At=new Vector3(0,.865f,0);
+        public string Step(Actor a,float t,float dt){Mo.Rig.GroupPosition=At;Mo.Rig.GroupYaw=0;Mo.FighterBase(Mv,t,dt);var st=Cy.Style(Mo,a,t,false);Mo.FighterFinish(Mv,t,dt);return st;}
         private static readonly Vector3 FistLocal=new Vector3(0,-.06f,.03f);
         public Vector3 Fist(bool left){var r=Mo.Rig;int b=left?CapturedRig.LHand:CapturedRig.RHand;return r.ChainPoint(b,-1)+Vector3.Transform(FistLocal,r.ChainQuat(b,-1));}
         public Vector3 Ankle(bool left)=>Mo.Rig.ChainPoint(left?CapturedRig.LFoot:CapturedRig.RFoot,-1);
@@ -272,7 +276,8 @@ internal static class CyberKit2MeleeChecks
             int Kind(int i)=>v2?CyberCombo.V2Kind(i):CyberCombo.V1Kind(i);
             void Cast(float t){for(int i=n-1;i>=0;i--)if(t>=at[i]){if(v2){if(rec.At[CyberKit2Spec.MeleeLmb]!=at[i])CyberKit2MeleeFixture.Combo(rec,i,at[i],rate);}else if(a.AttackAt!=at[i])CyberLordFixture.Combo(a,i,at[i]);break;}}
             var rig=new Rig();rig.Cy.Reduced=reduced;var states=new List<string>();var trace=new List<Pose>();
-            for(float t=0;t<t0+1.2f;t+=Dt){Cast(t);var st=rig.Step(a,t,Dt);if(states.Count==0||states[^1]!=st)states.Add(st);Check(rig.Finite(),tag+": a finite pose at "+t.ToString("0.000"));trace.Add(rig.Capture(t));}
+            // (the pilot walks in until .2 s, so the string starts from the fighting stance, not the idle: CyberLordIdle's .9 s)
+            for(float t=0;t<t0+1.2f;t+=Dt){Cast(t);a.Velocity=t<.2f?new V3(0,0,1):default;var st=rig.Step(a,t,Dt);if(states.Count==0||states[^1]!=st)states.Add(st);Check(rig.Finite(),tag+": a finite pose at "+t.ToString("0.000"));trace.Add(rig.Capture(t));}
             var want=Enumerable.Range(0,n).Select(i=>CyberCombo.States[Kind(i)]).ToArray();
             Check(want.All(states.Contains)&&states.IndexOf(want[0])<states.IndexOf(want[n-1]),tag+" plays every step in order ("+string.Join(",",states)+")");
             // continuity: no bone pops between frames, the fists never jump
@@ -308,7 +313,8 @@ internal static class CyberKit2MeleeChecks
                         Check(h.RF.Y>prev.RF.Y&&h.RF.Y>.3f&&top.T>=h.T-Dt&&top.T<=Hit(i)+.12f,name+": the uppercut is climbing through its hit and peaks just after ("+h.RF.Y.ToString("0.00")+" m, top at "+top.T.ToString("0.000")+")");
                         var knee=seg.OrderByDescending(x=>x.RK.Y).First();Check(knee.T>=Hit(i)-1.5f*Dt&&knee.T<=Hit(i)+.08f&&knee.RK.Y>-.2f,name+": the jumping knee is up at the hit ("+knee.RK.Y.ToString("0.00")+" m at "+knee.T.ToString("0.000")+")");break;
                     }
-                    default:Check(Peak(x=>(x.LF.Z+x.RF.Z)*.5f,.7f,out var p),name+": both palms reach furthest on the hit ("+p.T.ToString("0.000")+" vs "+Hit(i).ToString("0.000")+")");break;
+                    // (the palm holds its reach dead still through the freeze-frame: the frame it first comes within 1 cm of it)
+                    default:{float top=seg.Max(x=>(x.LF.Z+x.RF.Z)*.5f);var p=seg.First(x=>(x.LF.Z+x.RF.Z)*.5f>=top-.01f);Check(Math.Abs(p.T-Hit(i))<=1.5f*Dt+1e-4f&&top>.7f,name+": both palms reach full extension on the hit and hold it ("+p.T.ToString("0.000")+" vs "+Hit(i).ToString("0.000")+", "+top.ToString("0.00")+" m)");break;}
                 }
                 // the striking leg drawn on its keys on the hit's first frame (the reach the keys ask for is reachable)
                 int leg=CyberCombo.Leg[kind];
@@ -345,7 +351,7 @@ internal static class CyberKit2MeleeChecks
             Check(lowest>-.006f&&lowAnkle>-1e-3f,tag+": no foot goes through the floor (lowest sole point "+(lowest*1000).ToString("0.0")+" mm, ankle "+(lowAnkle*1000).ToString("0.0")+" mm)");
             // the drawn body stays near the capsule (small step-ins and hops) and is back over it once the string has settled
             float bodyOff=trace.Max(x=>new Vector2(x.Body.X,x.Body.Z).Length());var settled=trace.Last();
-            Check(bodyOff<.11f&&new Vector2(settled.Body.X,settled.Body.Z).Length()<.03f,tag+": the drawn body stays within "+(bodyOff*100).ToString("0.0")+" cm of the capsule and returns ("+(new Vector2(settled.Body.X,settled.Body.Z).Length()*100).ToString("0.0")+" cm)");
+            Check(bodyOff<=CyberCombo.MaxShift&&new Vector2(settled.Body.X,settled.Body.Z).Length()<.03f,tag+": the drawn body stays within "+(bodyOff*100).ToString("0.0")+" cm of the capsule and returns ("+(new Vector2(settled.Body.X,settled.Body.Z).Length()*100).ToString("0.0")+" cm)");
             // the lead foot steps in on the jab (real footwork, not a stance hold)
             var jab=trace.First(x=>x.T>=Hit(0)+.05f);Check(jab.LA.Z-trace[0].LA.Z>.1f,tag+": the jab steps the lead foot in ("+(jab.LA.Z-trace[0].LA.Z).ToString("0.000")+" m)");
             // the glitch-step's frame-skip: the jab's windup holds and snaps (never with reduced effects, which move every frame)
@@ -396,6 +402,131 @@ internal static class CyberKit2MeleeChecks
             CyberLordFeed.Kit2MeleeSource=null;
         }
         yield return $"Cyber Lord hardlight martial string: {count-c0} checks ({strings}; every apex on its replicated hit; only the striking leg lifts; no slide or floor penetration; chains, resets and a cut; uneven and rewound clocks)";
+        // ---- 3c. momentum (owner 2026-10-15: "Step in, make a more natural movement when attacking"): the body travels into
+        // every strike. Rooted (today's rules): inside the capsule, the lead foot stepping in and out, the rear heel driving.
+        // With the proposed simulation step (docs/CYBER-LORD.md "Melee step contract", emulated here on the actor's step
+        // fields): the capsule's own travel, the feet planted in the world and the stance squared up where it stops. Entered at
+        // a run: the feet settle instead of snapping down and the body carries on. Out of the idle: no half-metre pop.
+        c0=count;
+        {
+            var src=new CyberKit2MeleeSource();CyberLordFeed.Kit2MeleeSource=src;var rec=src.For(1);
+            var at=Steps(.5f,5,1);float end=at[4]+CyberKit2Spec.ComboSeconds[4]+.5f;float Hit(int i)=>at[i]+CyberKit2Spec.ComboWindups[i];float End(int i)=>at[i]+CyberKit2Spec.ComboSeconds[i];
+            int Current(float t){for(int i=4;i>=0;i--)if(t>=at[i])return i;return -1;}
+            // (the actor's attack window as the runtime sets it, so the idle stance stands aside through the string as in play)
+            void Cast(Actor a,float t,int last=4){int i=Math.Min(last,Current(t));if(i<0)return;if(rec.At[CyberKit2Spec.MeleeLmb]!=at[i])CyberKit2MeleeFixture.Combo(rec,i,at[i]);a.AttackAt=at[i];a.AttackUntil=End(i);}
+            bool Planted(Vector3 ball)=>OnFloor(ball);
+            // rooted
+            var a=CyberLordFixture.Pilot(1,Vector3.Zero,0);var rig=new Rig();var tr=new List<Pose>();
+            for(float t=0;t<end;t+=Dt){Cast(a,t);a.Velocity=t<.2f?new V3(0,0,1):default;rig.Step(a,t,Dt);tr.Add(rig.Capture(t));}
+            string drives="";
+            for(int i=0;i<5;i++)
+            {
+                int kind=CyberCombo.V2Kind(i);string name="rooted "+CyberCombo.Techniques[kind];var seg=tr.Where(x=>x.T>=at[i]-1e-4f&&x.T<End(i)-1e-4f).ToList();var h=seg.First(x=>x.T>=Hit(i)-1e-4f);
+                float back=seg.Where(x=>x.T<Hit(i)).Min(x=>x.Body.Z),peak=seg.Max(x=>x.Body.Z),peakAt=seg.First(x=>x.Body.Z>=peak-1e-4f).T,want=kind==CyberCombo.Jab||kind==CyberCombo.Palm?.15f:.08f;
+                Check(h.Body.Z>=want&&h.Body.Z-back>=want*.9f,name+": the body drives in to the blow ("+(h.Body.Z*100).ToString("0")+" cm ahead of the capsule on the hit, "+((h.Body.Z-back)*100).ToString("0")+" cm from its anticipation)");
+                Check(peakAt>=Hit(i)-1.5f*Dt-1e-4f&&peakAt<=Hit(i)+(End(i)-Hit(i))*.5f&&peak<=CyberCombo.MaxShift,name+": its momentum carries it on to its furthest just after the hit ("+(peak*100).ToString("0")+" cm at "+peakAt.ToString("0.000")+"), inside the capsule");
+                Check(seg[^1].Body.Z<h.Body.Z*.5f,name+": and it comes back over the capsule by the step's end ("+(seg[^1].Body.Z*100).ToString("0")+" cm)");
+                drives+=(i>0?", ":"")+(h.Body.Z*100).ToString("0");
+            }
+            float LeadReach(int i)=>tr.Where(x=>x.T>=at[i]&&x.T<End(i)).Max(x=>x.LA.Z)-tr.First(x=>x.T>=at[i]-1e-4f).LA.Z;
+            Check(LeadReach(0)>.25f&&LeadReach(4)>.25f,"rooted: the jab steps the lead foot in "+(LeadReach(0)*100).ToString("0")+" cm and the palm stomps it in "+(LeadReach(4)*100).ToString("0")+" cm");
+            foreach(int i in new[]{0,4}){var s0=tr.First(x=>x.T>=at[i]-1e-4f);var e0=tr.Last(x=>x.T<=End(i)-1e-4f);Check(Math.Abs(e0.LA.Z-s0.LA.Z)<.02f&&e0.LA.Y<MeleeRig.FLOOR+.006f,"rooted "+CyberCombo.Techniques[i]+": the lead foot is back on its spot by the end (in and out: "+((e0.LA.Z-s0.LA.Z)*100).ToString("0.0")+" cm)");}
+            {var h=tr.First(x=>x.T>=Hit(0)-1e-4f);Check(h.RA.Y>MeleeRig.FLOOR+.015f&&OnFloor(h.RB),"rooted jab: the rear heel drives off the floor on the hit, its ball planted ("+((h.RA.Y-MeleeRig.FLOOR)*100).ToString("0.0")+" cm)");}
+            // overlapping action: on the hit the striking limb, the hips and the body are exactly the keys' (the apex stays on
+            // the replicated hit); the head, the chest's turn and a punch's free hand trail them
+            {
+                var o=new float[CyberCombo.N];var plain=new float[CyberCombo.N];var lag=new float[CyberCombo.N];var scratch=new float[CyberCombo.N];
+                for(int kind=0;kind<CyberCombo.Kinds;kind++)
+                {
+                    var sw=new CyberCombo.Swing(kind,1,1+CyberCombo.Windup(kind),1+CyberCombo.Seconds(kind));CyberCombo.Pose(sw,sw.Hit,o,sw,false,scratch);CyberCombo.Sample(sw,sw.Hit,plain);
+                    bool Same(int c,int n,float[] b){for(int k=c;k<c+n;k++)if(o[k]!=b[k])return false;return true;}
+                    int hand=CyberCombo.Hand[kind];
+                    Check(Same(CyberCombo.HY,6,plain)&&Same(CyberCombo.Drop,3,plain)&&Same(CyberCombo.KX,8,plain)&&(hand!=0&&hand!=2||Same(CyberCombo.L,3,plain)&&Same(CyberCombo.LK,3,plain))&&(hand!=1&&hand!=2||Same(CyberCombo.R,3,plain)&&Same(CyberCombo.RK,3,plain)),
+                        CyberCombo.Techniques[kind]+": the hips, body, kicking leg and striking hand are on their keys at the hit");
+                    CyberCombo.Sample(sw,sw.Hit-CyberCombo.HeadLag,lag);Check(Same(CyberCombo.NY,3,lag),CyberCombo.Techniques[kind]+": the head trails by "+(CyberCombo.HeadLag*1000).ToString("0")+" ms");
+                    if(hand==0||hand==1){CyberCombo.Sample(sw,sw.Hit-CyberCombo.HandLag,lag);int f=hand==0?CyberCombo.R:CyberCombo.L;Check(Same(f,3,lag)&&!Same(f,3,plain),CyberCombo.Techniques[kind]+": the free hand trails the punch");}
+                }
+                var view=new CyberCombo.Swing(CyberCombo.Jab,1,1+CyberCombo.Windup(0)/1.6f,1+CyberCombo.Seconds(0)/1.6f);CyberCombo.Pose(view,view.Hit,o,view,false,scratch);CyberCombo.Sample(view,view.Hit-CyberCombo.HeadLag/1.6f,lag);
+                Check(Math.Abs(o[CyberCombo.NY]-lag[CyberCombo.NY])<1e-5f,"the trail compresses with the Overclock's pace");
+            }
+            // with the proposed simulation step: the capsule moves each step's StepDistance over its window (the actor's step
+            // fields, as the contract has the authority fill them); the feet stay planted in the world
+            {
+                var ra=CyberLordFixture.Pilot(1,Vector3.Zero,0);var rr=new Rig();var real=new List<(Pose p,Vector3 at)>();var start=new float[6];var win=new CyberCombo.Swing[5];
+                for(int i=0;i<5;i++){win[i]=new CyberCombo.Swing(CyberCombo.V2Kind(i),at[i],Hit(i),End(i));start[i+1]=start[i]+CyberCombo.StepDistance[i];}
+                float Travel(float t){int i=Current(t);if(i<0)return 0;float u=(t-win[i].StepAt)/(win[i].StepUntil-win[i].StepAt);u=Math.Clamp(u,0,1);return start[i]+CyberCombo.StepDistance[i]*u*u*(3-2*u);}
+                void Frame(Rig r,Actor ac,float t)
+                {
+                    Cast(ac,t);int i=Current(t);
+                    if(i>=0){ac.StepAt=win[i].StepAt;ac.StepUntil=win[i].StepUntil;ac.StepDistance=CyberCombo.StepDistance[i];}
+                    // (the velocity the replication carries: the last tick's travel; the route hides it from the gait while stepping)
+                    float z=Travel(t),v=(z-Travel(t-Dt))/Dt;ac.Position=new V3(0,0,z);ac.Velocity=new V3(0,0,t<.2f?1:v);r.At=new Vector3(0,.865f,z);r.Mv.Vel=new Vector3(0,0,v);r.Mv.Planted=CyberLordMotion.Stepping(ac,t);r.Step(ac,t,Dt);
+                }
+                bool mapped=false;var fv=new CyberLordView();int faded=0;
+                for(float t=0;t<end;t+=Dt)
+                {
+                    Frame(rr,ra,t);real.Add((rr.Capture(t),rr.At));int i=Current(t);
+                    if(i>=0&&t>=at[i]+.02f&&t<End(i)){if(!rr.Cy.ComboFeet.Active)faded++;if(i==2&&t>=Hit(i)){CyberLordFeed.Read(ra,fv);mapped|=Math.Abs(fv.Kit2.StepDistance-CyberCombo.StepDistance[2])<1e-5f&&fv.Kit2.StepAt==win[2].StepAt;}}
+                }
+                Check(mapped,"the actor's step fields reach the view through CyberLordFeed (Kit2.StepAt / StepUntil / StepDistance)");
+                Check(faded==0,"with the simulation's step the strike's feet keep the body (no fade to the gait: the travel is the swing's own) ("+faded+" frames handed back)");
+                float slide=0,low=1;string where="";
+                for(int k=1;k<real.Count;k++)foreach(bool left in new[]{true,false})
+                {
+                    var p=left?real[k-1].p.LB:real[k-1].p.RB;var q=left?real[k].p.LB:real[k].p.RB;var wp=p+real[k-1].at;var wq=q+real[k].at;
+                    if(Planted(p)&&Planted(q)){float d=new Vector2(wq.X-wp.X,wq.Z-wp.Z).Length();if(d>slide){slide=d;where=(left?"lead":"rear")+" at "+real[k].p.T.ToString("0.000");}}
+                }
+                foreach(var x in real)low=Math.Min(low,x.p.Sole.Min(s=>s.Y)-Floor);
+                Check(slide<.002f&&low>-.006f,"with the simulation's step no planted foot slides in the world (at most "+(slide*1000).ToString("0.0")+" mm per frame, "+where+") or sinks through the floor");
+                float off=0;
+                for(int i=0;i<5;i++)
+                {
+                    var e=real.Last(x=>x.p.T<=End(i)-1e-4f).p;var r0=tr.Last(x=>x.T<=End(i)-1e-4f);
+                    off=Math.Max(off,Math.Max(new Vector2(e.LB.X-r0.LB.X,e.LB.Z-r0.LB.Z).Length(),new Vector2(e.RB.X-r0.RB.X,e.RB.Z-r0.RB.Z).Length()));
+                }
+                Check(off<.05f,"with the simulation's step each strike ends squared up in its stance where the capsule stopped (feet within "+(off*100).ToString("0.0")+" cm of the rooted string's)");
+                float bodyOff=real.Max(x=>new Vector2(x.p.Body.X,x.p.Body.Z).Length());Check(bodyOff<=CyberCombo.MaxShift,"with the simulation's step the drawn body stays within "+(bodyOff*100).ToString("0")+" cm of the moving capsule");
+                var rb=new Rig();var rc=CyberLordFixture.Pilot(1,Vector3.Zero,0);float worst=0;var rd=new Rig();
+                for(float t=0;t<at[2];t+=Dt){Frame(rb,ra.ViewCopy(),t);Frame(rd,rc,t);worst=Math.Max(worst,MaxDiff(rb.Snapshot(),rd.Snapshot()));}
+                Check(worst==0,"with the simulation's step two rigs of one replicated string pose identically");
+                long before=GC.GetAllocatedBytesForCurrentThread();for(float t=0;t<end;t+=Dt)Frame(rr,ra,t);long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
+                Check(bytes==0,"with the simulation's step a 60 Hz string allocates "+bytes+" bytes");
+            }
+            // entered at a run (6.8 m/s; the rules stop the capsule dead on the jab): no foot snaps down, nothing slides, the
+            // body carries on a few centimetres
+            {
+                var rn=CyberLordFixture.Pilot(1,Vector3.Zero,0);var rg=new Rig();var run=new List<(Pose p,Vector3 at)>();float stop=at[0];
+                for(float t=0;t<End(1)+.4f;t+=Dt)
+                {
+                    Cast(rn,t,1);bool moving=t<stop;float z=-(stop-Math.Min(t,stop))*6.8f;rn.Velocity=moving?new V3(0,0,6.8f):default;rn.Position=new V3(0,0,z);rg.At=new Vector3(0,.865f,z);rg.Mv.Vel=moving?new Vector3(0,0,6.8f):Vector3.Zero;
+                    rg.Step(rn,t,Dt);Check(rg.Finite(),"finite entering the string at a run");run.Add((rg.Capture(t),rg.At));
+                }
+                float drop=0,slide=0;
+                for(int k=1;k<run.Count;k++)
+                {
+                    if(run[k].p.T<stop)continue;var p0=run[k-1].p;var p1=run[k].p;if(p1.T<=Hit(0)+.02f)drop=Math.Max(drop,Math.Max(p0.LA.Y-p1.LA.Y,p0.RA.Y-p1.RA.Y));
+                    foreach(bool left in new[]{true,false}){var p=left?p0.LB:p0.RB;var q=left?p1.LB:p1.RB;if(run[k-1].p.T>=stop&&Planted(p)&&Planted(q))slide=Math.Max(slide,new Vector2(q.X-p.X,q.Z-p.Z).Length());}
+                }
+                Check(drop<.1f,"entering the string at a run: a foot the stride had in the air settles down (at most "+(drop*100).ToString("0.0")+" cm a frame), never snaps to the floor");
+                Check(slide<.002f,"entering the string at a run: no planted foot slides (at most "+(slide*1000).ToString("0.0")+" mm per frame)");
+                var e=run.Last(x=>x.p.T<=End(0)-1e-4f).p;Check(e.LA.Y<MeleeRig.FLOOR+.006f&&e.RA.Y<MeleeRig.FLOOR+.006f,"entering the string at a run: both feet are down by the jab's end");
+                var hr=run.First(x=>x.p.T>=Hit(0)-1e-4f).p;var h0=tr.First(x=>x.T>=Hit(0)-1e-4f);
+                Check(hr.Body.Z>=h0.Body.Z+.03f&&hr.Body.Z<=CyberCombo.MaxCarried,"entering the string at a run: the body carries the run on into the jab ("+(hr.Body.Z*100).ToString("0")+" cm vs "+(h0.Body.Z*100).ToString("0")+" standing)");
+            }
+            // out of the idle (stood still 2 s): the arms rise into the jab without the old half-metre pop, and still land it
+            {
+                var quiet=new CyberKit2MeleeSource();CyberLordFeed.Kit2MeleeSource=quiet;var qr=quiet.For(1);
+                var ri=CyberLordFixture.Pilot(1,Vector3.Zero,0);var rgi=new Rig();float jab=2.5f,step=0,reach=0;Vector3 lf=default;bool idle=false;
+                for(float t=0;t<jab+.3f;t+=Dt)
+                {
+                    if(t>=jab&&qr.At[CyberKit2Spec.MeleeLmb]!=jab){CyberKit2MeleeFixture.Combo(qr,0,jab);}if(t>=jab){ri.AttackAt=jab;ri.AttackUntil=jab+CyberKit2Spec.ComboSeconds[0];}
+                    rgi.Step(ri,t,Dt);if(t<jab&&t>jab-.05f)idle|=rgi.Cy.IdleWeight>.9f;var f=rgi.Fist(true);if(t>=jab)step=Math.Max(step,(f-lf).Length());lf=f;if(Math.Abs(t-(jab+CyberKit2Spec.ComboWindups[0]))<Dt*.6f)reach=f.Z;
+                }
+                Check(idle&&step<.45f&&reach>.7f,"out of the idle the jab's arms rise in frame-skip steps of at most "+step.ToString("0.00")+" m (was .59) and land the blow ("+reach.ToString("0.00")+" m)");
+            }
+            CyberLordFeed.Kit2MeleeSource=null;
+            yield return $"Cyber Lord martial string momentum: {count-c0} checks (rooted drives on the hits {drives} cm, lead steps in and out, rear heel push-off; overlap trails with apexes kept; the proposed sim step planted in the world, squared up, mapped through the feed, deterministic, 0 bytes; a run settles and carries; no pop out of the idle)";
+        }
         // ---- 3b. the string's effects on the striking limb, reduced effects (no strobe) and the first-person view model ----
         c0=count;
         {
