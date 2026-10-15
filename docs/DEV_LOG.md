@@ -1,5 +1,56 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Claude: town zombie roaming presentation (wander, idle variants, alert scream, search)
+
+- **Branch:** `claude/hub-zombie-wander`, based on shared `claude/sleepy-ritchie-g8ruhv` `ee46074`, merged with shared `72aa185` (Astra's hub zombie perception PR #242; signed merge `c197d54`, no conflicts) and `c65f464` (hub gate collision PR #243 and the hub fixes; signed merge `ecf67f8`, no conflicts). Implementation `0bf6ff9`; docs on top. Pushed, not merged, no PR, not released.
+- **Owner request (verbatim):** "Monsters outside of the hub should walk around, every now and then stand idle for moments. Only start chasing the player when they detect them (Either through vision or audio)". The behaviour is Astra's (PR #242). This is the presentation over its replicated `hubState` / `hubAlertAt` / `hubLookYaw`. My own contract draft was dropped.
+- **Research (before Astra's change, shared `ee46074`):**
+  - Hub mobs re-picked the nearest pilot by nav distance every 0.75 s with no sight or hearing (`Runtime/NativePveHorde.cs:137-140`). They walked at `walk` beyond 7 m and ran within it (`:155`). Untargeted, they walked home (`HubIdle`).
+  - The frame carried no AI state.
+  - The presentation chose gaits by speed only (`Core/NativeHordeMotion.cs` `RunBlend`). Its alert head-tracked the nearest pilot within 14 m (`Runtime/NativeHordeKindPresentation.cs` `HordeTarget`).
+  - Horde audio had no voices (`HordeCues`: wind-up, strike, steps, the Hulk's roar on `structure.groan`).
+  - Exported takes: one idle (idle-3) plus the two shamble-in-place takes. The local pack also has Zombie_Idle_1/2/4, Shamble_Long_1/2, more forward walks and 90/180° turns in place. It has no scream, roar or sniff takes.
+- **What changed (presentation):** see `docs/EXPEDITION-HUB.md` "Presentation of the roaming".
+  - One mapping: `NativeHordeRoam.FromHub`, read only through `NativeHordeRoamRecord.Read`.
+  - Wander on the slow `walk-4` take at the host's pace, with lolling, glances and occasional stumbles.
+  - Five deterministic per-add idle variants (sway, twitch, look around, slump, rock), out of step across a crowd.
+  - Alert from `hubAlertAt`: head snap to `hubLookYaw`, chest turn, scream with the arms flung and hinged jaws open, then the burst into the chase.
+  - Search: head scan and sniffing.
+  - 0.5 s state blends.
+  - Adds without the record infer only idle versus hunting.
+  - Bank-only moans and an alert shriek for the roaming population. New keys `pve.zombie.moan` and `pve.zombie.shriek`, with the stand-ins `pve.add.death` and `siren.rush`.
+- **Bug fixed (every horde add, Ward Zero too):** the gait's look-at sign was mirrored. Heads turned away from the pilot and looked down at one above. They now turn toward it (`Core/NativeHordeMotion.cs`, one line).
+- **Animation impact:** presentation only. Hit timing, hitboxes (Balance and KeepHands unchanged), damage, cooldowns, movement authority and networking are unchanged. No new wire fields.
+  - The drawn trunk bends up to about 0.3 rad (slump, stumble, burst). The body dips up to 6 cm and shifts up to 5 cm inside the capsule.
+  - The scream's arms stay within the existing hand reach clamp.
+- **Checks added:** `Tests/HordeRoamChecks.cs` (`CoreTests --horde-roam`, 13,275 checks), covering:
+  - the mapping, driven by the real `HubZombieBrain`;
+  - the motion-inferred fallback;
+  - deterministic idle variety;
+  - zero allocation over 1,200 frames of 16 adds;
+  - the alert snap, scream and burst from `hubAlertAt`, matching for a late joiner;
+  - the head look-at direction;
+  - planted feet at the host's wander pace, limp included.
+
+  `EffectsAudioChecks` and `test_effects_audio.py` now count 214 keys. The Runtime assigns `f.Roam` after the input's initializer, so `HulkMotionChecks`' source check still finds its literal.
+- **Checks run (merged tree, shared `c65f464` plus this work):** RUN5_RESULTS
+- **Not run:** Unity Editor or player, Windows build, live hub play, two clients (guest view of the alert and blends), audio listening (the stand-in clips were chosen by spectral analysis only).
+- **Renders (offline, scratchpad `renders-zombie-wander/`):**
+  - `idle-variants`: five variants across a slot;
+  - `idle-crowd`;
+  - `wander`: one cycle per hub kind at the host's pace;
+  - `wander-stumble-glance`;
+  - `alert-chase`: a shambler at -0.2 to +1.4 s;
+  - `alert-kinds`: runner, spitter, brute;
+  - `search`: approach, in place, back to the wander.
+- **Risks:**
+  - State starts are seen per peer (at most one 20 Hz frame of difference). A guest that joins within 0.5 s of a change blends from its own first frame.
+  - The chase head follows the nearest pilot near the look direction, not the hunted seat.
+  - The brute's heavy stride lags a planted ankle a few frames below its 1.3 m/s walk on every take (its gait's own; worst 3 cm at its 0.72 m/s wander in probes, 13 cm limping at 0.39 m/s).
+  - The moan and shriek stand-ins may sound wrong until real clips exist.
+- **Astra (optional):** `hubStateAt` and `hubTarget` would make the blends and the chase head exact on every peer (EXPEDITION-HUB.md "Gaps for Astra"). Nothing blocks.
+- **Next:** the owner checks the hub in a native build (wander, idles, alert scream, search, the voices). If wanted, export Zombie_Idle_1/2/4 and the turns in place for richer idles and a captured alert turn.
+
 ## 2026-10-15 — Astra — Shut hub gate contact and reversal fix
 - Branch `codex/hub-gate-collision`, base shared/builder `72aa1858`. Read Claude's Run-through report and PENDING reproduction from `claude/expedition-hub-fixes` (`d39e08c2`); his presentation changes are separate.
 - Reproduced the original PENDING: no F, a north-gate contact opens it and the pilot crosses 0.117 s later with the leaves drawn 0% open. Imported that diagnostic and promoted it to a hard regression across all four gates, asserting both solidity and no crossing.

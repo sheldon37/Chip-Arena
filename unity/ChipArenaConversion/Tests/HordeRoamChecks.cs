@@ -272,7 +272,7 @@ namespace ChipArena.UnityConversion
             foreach(var bad in new[]{".Hp=","Damage(","Emit(","StaggerAt=","RecoverAt=","StrikeAt=","LastAttack=","Body.position=","linearVelocity=","Hub=","AddComponent<"})Check(!rp.Contains(bad),"the roaming presentation never writes `"+bad+"`");
             Check(rp.Split("BankPlay(").Length-1==rp.Split("Play(").Length-1,"the voices are bank-only (silent without LocalAssets)");
             var kp=R(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs");
-            Check(kp.Contains("var roam=HordeRoam(arena,m,s,now,entering,ref target);")&&kp.Contains("Move=move,Roam=roam};")&&kp.Contains("HordeRoamCue(arena,m,kind,pos,t);"),"hooked where the adds are posed and cued");
+            Check(kp.Contains("var roam=HordeRoam(arena,m,s,now,entering,ref target);")&&kp.Contains("RoarAge=roar,Move=move};f.Roam=roam;")&&kp.Contains("HordeRoamCue(arena,m,kind,pos,t);"),"hooked where the adds are posed and cued");
             var keys=new HashSet<string>(NativeSoundKeys.All.Select(d=>d.Key));Check(keys.Contains("pve.zombie.moan")&&keys.Contains("pve.zombie.shriek")&&keys.Contains("pve.add.death")&&keys.Contains("siren.rush"),"the voice keys and their stand-ins are bank keys");
         }
 

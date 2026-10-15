@@ -229,7 +229,7 @@ namespace ChipArena.UnityConversion
                 ref var f=ref hordeInput[0];float inv=1/sc;
                 f=new HordeMotionInput{Kind=kind,Look=s.Look,Id=m.Id,Seed=NativeHordeKinds.Seed(m.Id),Time=now,Yaw=yaw,Ground=ground*inv,Root=new NVector(pos.x,ground+NativeHordeKinds.DrawRoot(kind,a.Crawl),pos.z)*inv,Velocity=new NVector(velocity.x,velocity.y,velocity.z)*inv,
                     Crawl=a.Crawl,Possessed=a.Possessed,Lost=a.Lost,AttackAge=age,Strike=strike,Recover=recover,Attack=attack,Side=HordeSide(m.LastAttack,a.Lost),Health=m.MaxHp>0?m.Hp/m.MaxHp:1,
-                    HasTarget=target!=null,Target=target!=null?ToN(target.Body.position)*inv:default,Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=(breach?breakAt:a.WalkAt)-a.SpawnAt,Roaring=!float.IsNaN(roar),RoarAge=roar,Move=move,Roam=roam};
+                    HasTarget=target!=null,Target=target!=null?ToN(target.Body.position)*inv:default,Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=(breach?breakAt:a.WalkAt)-a.SpawnAt,Roaring=!float.IsNaN(roar),RoarAge=roar,Move=move};f.Roam=roam;
                 HordeHulkInput(ref f,m,now,entering,breach);
                 s.Gait.Pose(f,minionPose,s.React);yaw=s.Gait.Yaw;pos.y=ground+NativeHordeKinds.DrawRoot(kind,a.Crawl);HordeHulkPosed(s,now);
                 HordeKindJob(s,m.Id,kind,attack,knocking?float.NaN:age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time,f.Side);

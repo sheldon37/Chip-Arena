@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-15 Claude town zombie roaming presentation (`claude/hub-zombie-wander`, on shared `c65f464`): binds Astra's replicated `hubState`/`hubAlertAt`/`hubLookYaw` through one mapping. Zombies shamble slowly while wandering, idle in five variants per zombie, and on alert snap the head, scream and burst into the chase; searching zombies scan and sniff. Moans and an alert shriek use the sound bank only. Also fixes horde heads turning away from pilots. Presentation only; managed checks and offline renders; Unity, Windows and two-client play unrun. Optional for Astra: `hubStateAt`, `hubTarget`. See DEV_LOG.
+
 2026-10-15 Astra hub gate collision fix (`codex/hub-gate-collision`, base `72aa1858`): actual capsule overlap, safety reopening only before the collider becomes solid, and persistent solidity across reversals. Claude's no-input walk-through repro now asserts PASS for all four gates. Contract/report: EXPEDITION-HUB.md. Native Windows/PhysX validation remains pending.
 
 2026-10-15 Astra town zombie perception (`codex/hub-zombie-perception`, base `19927e00`): zone roaming/idle, sight and eight player-noise categories, alert/chase/last-known-position search, and three replicated reaction fields implemented for hub spawns only. Sanctuary grace/despawn rules retained. Contract and Claude presentation handoff: EXPEDITION-HUB.md; verification/promotion receipt: DEV_LOG and PR. Native Windows and two-client play remain pending.
