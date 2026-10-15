@@ -8415,3 +8415,50 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - A 40 m fireball is a small dot.
   - v2 is validated only against the preview and test records.
 - **Animation impact:** only the drawn arms, chest, pitch, neck and effects change; releases stay on the replicated times. No change to damage, hit timing, hitboxes, cooldowns, movement or networking.
+
+## 2026-10-15 — Claude: Ward Zero relit by its ceiling lights and alarms
+
+- **Branch:** `claude/ward-lighting` (`e97b577`), based on shared `7009887`, merged onto shared `d7f13f7`.
+- **Owner request:** "Make more use of lighting system on ward zero, I think it's "too bright" ... Lower the brightness (still enough to where things are visible) make use of our lighting from the ceiling lights and alarms."
+- **Base fill lowered** (quarantine look in `MapLooks.json`):
+  - moon key .14 → .10;
+  - ambient sky/equator/ground .12/.10/.12 → .09/.075/.09;
+  - fog 0x0B1418 at 10–110 m → 0x070D10 at 8–95 m;
+  - background, horizon and haze darker.
+  - Rim .2 is kept. The FX floor pools (alpha ≤ .32 → ≤ .14) and the haze are toned down.
+- **Ceiling light field (Core `NativeWardZeroField`; `NativeWardLight.cginc` in `NativeBlockLit`):**
+  - The bake:
+    - All 302 live troffers and high-bays are baked once per map, on a worker thread, into a 160×128×8 half-float 3D texture (.5 m cells, four height slices per floor).
+    - Each fixture lights a pool on the floor below with darker gaps between.
+    - Walls and decks block the light; it bounces round corners and through doorways, and there is a faint floor level everywhere.
+  - Brownouts and emergency:
+    - Fixtures sit on four circuits. In failing moods a whole circuit browns out, with its fixture surfaces dimming too.
+    - In an emergency the backup circuits stay on in red.
+  - Cost: about 1.3 MB of texture; per block pixel, one 3D read on Ward Zero only.
+- **Alarms and beacons light the space:**
+  - With the troffers in the field, the eight practical slots go to the Spine, ink, tanks, furnaces, beacons and alarms (39 candidates instead of 189).
+  - Emergency beacons: steady red pulsing on the beat, range 22, one rotating beam.
+  - Shutter alarms: two turning beams while they warn or close.
+  - Hazard-kit beacons: light at the bulb with two turning beams.
+  - Each beam turns 1.1 times a second, so a wall sees at most 2.2 sweeps a second (under the 3 Hz flash limit, tested).
+  - Alarm audio stays muted.
+- **Characters:**
+  - Pilots, monsters and machines take the field and the slots (`NativeSourceLit` with `_ArenaActorLit`). In the old look they read as near-black silhouettes.
+  - Only in Ward Zero's live arena and killcam; never on other maps, intros, entrances, the draft or the rooftop.
+- **Expedition:** the Expedition's Ward Zero instance shares the path and the field.
+- **Measurements:**
+  - At every walkable point (calm): median floor light is 0.43× the old troffer level; the darkest point went from .0065 to .034.
+  - Every mood clears a minimum on both maps.
+  - Average image brightness in the calm views is down about 34%.
+- **Checks on the branch (run5):** Unity 6000.3.24f1 runtime and editor compile OK; relay 691 PASS (new `WardLightingChecks`, `--ward-lighting`, 2,623 checks); Python 106 OK; package OK; diff-check OK.
+  - `WardZeroChecks` and `BlockLookChecks` pins are updated.
+  - The shared shader code compiles with glslangValidator (syntax only).
+- **Renders:** offline only (the scratchpad's `renders-ward-lighting`, before/after per camera and mood, stand-in actors).
+- **Not run:**
+  - No Unity shader compile: the 3D texture read in the surface shader, the Texture3D upload and the global sampler binding are unverified in engine.
+  - No Windows play or GPU profiling.
+- **Risks:**
+  - Until the 1–2.6 s bake finishes (likely at map load) the old troffer slots light the ward, then the field snaps on.
+  - The emergency mood is darker and redder in the ground halls; the green evacuation beacons sweep a wider wash.
+  - Slot lights still pass through decks (pre-existing).
+- **Impact:** presentation only; it reads replicated mood, hazard clocks and kit events. Nothing for Astra.
