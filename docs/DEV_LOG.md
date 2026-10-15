@@ -1,5 +1,17 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Claude — Cyber Lord melee step handed to Astra (owner approved)
+- Owner, 2026-10-15: "Yes give the melee step to Astra." Branch `claude/cyberlord-melee-step-handoff`, base shared `425cb2d`. Docs only.
+- **Astra next:** implement the real per-step simulation step for the Cyber Lord melee string, as specified in `docs/CYBER-LORD.md`, "Melee step contract" (now owner-approved). In short:
+  - Distances .40 / .25 / .30 / .20 / .45 m along the facing at Begin, smoothstep over each step's window (`CyberCombo.StepDistance` / `StepFrom*` / `StepTo*`; Overclock compresses the windows).
+  - Grounded only. Stop at least 1.0 m short of a target in the hit cone (lock-on target first), at walls (capsule sweep) and at ledges. No steering; yaw stays locked (`MoveScale[2]` stays 0).
+  - Replicate the travelled distance in the actor's existing `StepAt` / `StepUntil` / `StepDistance` (already on the wire for weapons), and have `NativePrediction` apply the same step.
+  - Hit times, damage, cooldowns, combo reset and Overclock rates unchanged unless Astra decides otherwise.
+  - Open choice, Astra's: resolve the cone from the capsule at the Release (reach grows by about .23 m on the jab and .45 m on the palm, matching what is drawn) or from the step's start (today's reach). Presentation prefers the Release position with the reach trimmed if needed; record the choice in the contract.
+- Presentation is merged on shared (`claude/cyberlord-melee-momentum`, `fdbb6a5`) and reads the step only through `CyberKit2MeleeFeed.Step`. Once the fields are filled, the in-capsule lunge gives way to the real travel and the feet stay planted; `Tests/CyberKit2MeleeChecks.cs` already emulates the step. Nothing else on the presentation side needs to change.
+- Animation impacts: none from this entry. The step itself will change movement and, depending on the cone choice, reach; both are Astra's.
+- Checks: docs only; `git diff --check` and the Python suite. Not run: everything else (no code changed).
+
 ## 2026-10-15 — Claude — Expedition chip hold: the wrist-hologram look and the wrist plant after each pick (owner: "Can we change the chip selection to just pressing C and it'll be us in a "Chip Selection" animation? I purposely wanted to make people vulnerable when doing this." / "(Like we had for ward zero, but can keep the open view. I just want players to stay in place while doing this.)" / "Still make them put their chip in their wrist after selected, then they are free to move. (Can be closed out with C if they decide to choose later of course.)")
 - Branch `claude/expedition-chip-animation`, base shared `6558b02`.
   - Merged shared `46ecc2e` (hub authority PRs #235/#236 and Astra's chooser hold PR #237), `48a5d78` (Cyber Lord plasma casts, PR #238) and `fdbb6a5` (Cyber Lord melee step-in). No file overlaps; this branch's pose code does not touch `MeleeView.Planted` or the Cyber Lord idle check.

@@ -408,9 +408,9 @@ changes).**
 - The body paths the effects assume (`CyberKit2Melee.ZipBody`, `YankBody`, `CutBody`, `MeteorBody`): the poses always read
   the replicated body; if the host moves bodies differently, report it and the helpers follow.
 
-### Melee step contract (proposed, for Astra)
+### Melee step contract (owner-approved 2026-10-15, for Astra)
 
-Presentation is ready for it and dormant until it lands (today every string step stays rooted and is stepped inside the
+**Owner approved 2026-10-15: implement this step** (owner: "Yes give the melee step to Astra"). Presentation is ready for it and dormant until it lands (today every string step stays rooted and is stepped inside the
 capsule). Numbers are `CyberCombo.StepDistance` / `StepFrom*` / `StepTo*`; W is the step's windup, F its follow-through
 (both compressed by the Overclock), the profile is a smoothstep `u*u*(3-2u)` over the window, along the facing at Begin:
 
@@ -436,6 +436,9 @@ capsule). Numbers are `CyberCombo.StepDistance` / `StepFrom*` / `StepTo*`; W is 
 - Unchanged unless Astra decides otherwise: the hit times (Release), range, arcs, damage, cooldowns, the combo reset and the
   Overclock rates. Note that the cone is resolved from where the capsule is at the Release, so the reach grows by the share
   already travelled (last column), as the weapons' steps do; resolving from the swing's start position keeps today's reach.
+- Presentation's preference, Astra's call: resolve from the capsule at the Release, so the drawn fist and the hit agree; if the
+  extra reach is too strong, trim the reach rather than resolving from the start (from the start, edge hits would visibly
+  connect and not land). Record the choice here.
 
 ## The contract and the one field mapping
 
@@ -1078,7 +1081,7 @@ Still pending or limited:
   is the rule, and the older drawn trails are cosmetic.
 - The Sheldon Idle save: the prompt is under "Sheldon Idle" above.
 - The ranged mode (key 5 and its LMB and 1-4): the prompt is under "Ranged mode" above.
-- The melee string's step (optional, owner's momentum request): "Melee step contract (proposed, for Astra)" above.
+- The melee string's step (owner-approved 2026-10-15): "Melee step contract" above.
 
 ## Checks and renders
 
