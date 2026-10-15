@@ -29,6 +29,77 @@ double-jump presentation, the twitching idle (also the DEV "Sheldon Idle" lobby 
   replicated state as it is. Two-client gameplay and the Unity runtime are unrun, so the checks still drive the
   presentation through fixtures that write her fields the way her host does.
 
+## Kit v2 (2026-10-15): design and the rules contract
+
+Owner (2026-10-15): "fix Cyber Lord class- its current abilities are ... boring lol. Cyberlord isn't intended to be
+balanced, I want to have a very fun dev class to play. I like the melee "4" ability, but we need to change the other ones
+completely. Ranged is also intended to be like a cyber mage- throwing like "Cyber-themed fire balls" for their basic attack.
+Currently the animations are too bland with a lot of inconsistent things (Animation is bad right now on the ranged
+especially) ... make the class a lot more fun to use, make sure the animations are great, beautiful fx, better basic
+attacks, (much better combo animation on melee), overhaul abilities except melee special attack "4", make sure sprint works
+fine (sprint animation on ranged doesn't look good at all), allow movement during ranged attacks on this class (Previously
+it would make us stop to attack)".
+
+Who builds what: Claude designs the kit and builds the presentation (poses, effects, HUD cards, icons, sounds routing, the
+sandbox preview). Astra builds the rules: the casts, damage, movement, the wire record, prediction, bots and the sandbox
+inputs. The numbers live in `Core/CyberLordKit2.cs` (`CyberKit2Spec`); its pure helpers (the storm's drops, the clones'
+formation, the chain's falloff, the leap arc and dive, the orbital chase, the Overflow cadence) are shared: the host resolves
+with them and every client draws with them. It is a DEV power fantasy, not balanced.
+
+### The kit
+
+| Key | Ability | What it does | Numbers (`CyberKit2Spec`) |
+|---|---|---|---|
+| Q (both) | Uplink | A hardlight cable along the aim. Terrain: the pilot zips to the anchor, keeping momentum (attack or jump out of it). An enemy: yanked to 2 m in front and stunned. A boss is not moved: the caster zips to it. A miss retracts. | 24 m, cable 90 m/s, zip 30 m/s for at most .8 s, yank .35 s, stun .6 s; 6 s, 10 mana |
+| E (both) | Overclock | A 6 s power state: faster movement and attacks, cooldowns recover twice as fast, melee hits chain an arc to a nearby enemy, the ranged LMB splits into three. | +35% move, +60% attack rate, x2 recovery, arc 8 in 6 m, split 7° at 40%; 16 s, 30 mana |
+| LMB (melee) | Hardlight Combo | Five steps: jab, cross, spinning backfist (an arc round the pilot), rising uppercut (a short launch), Pulse Palm (a cone shockwave). | .24/.26/.32/.34/.42 s, windups .08/.08/.12/.12/.16, damage 9/10/12/12/18, reset .7 s, reach 2.4 m, spin arc 3.5 rad, launch 6 m/s (juggle .8 s), palm shove 9 m/s |
+| 1 (melee) | Fork Bomb | Three hardlight clones keep formation for 5 s and copy every combo swing on the nearest enemy near them; at the end (or a recast) each dashes to an enemy and bursts. | 35% of the swing within 3 m; burst dash .3 s within 10 m, 20 in 2.5 m; 14 s, 35 mana |
+| 2 (melee) | Glitch Cut | An instant dash-slash through enemies along the aim; everyone passed is marked and all marks detonate together after a beat (a freeze-frame). | 9 m in .14 s, 1.2 m wide, marks burst .45 s after, 25 each; 8 s, 20 mana |
+| 3 (melee) | Meteor Byte | Crouch, leap 5 m, hover while a reticle follows the aim, then dive with a giant hardlight fist: a shockwave that launches. | leap .45 s, hover .25 s, dive .2 s, 14 m reach, 35 in 4 m, launch 7 m/s (juggle 1 s); 12 s, 35 mana |
+| 4 (melee) | Kernel Panic | Unchanged (the owner's favourite). | NativeKernelPanicRules |
+| LMB (ranged) | Plasma Byte | Cyber fireballs from alternating hands, every third an Overflow from both hands; small splash. Fired while moving at full speed. | every .3 s, 38 m/s, radius .22, 10 direct + 6 splash in 1.6 m; Overflow radius .35, 18 + 10 in 2.6 m; 45 m; +3 mana per pilot hit |
+| 1 (ranged) | Daisy Chain | Chain lightning: a bolt to the aimed enemy, then up to five more, each a little weaker, slowing each. | 28 m, 6° assist, hops within 8 m, 20 then -15% a hop, .06 s apart, 30% slow .6 s; 6 s, 20 mana |
+| 2 (ranged) | Singularity | A thrown orb stops on the first surface or pilot and becomes a black hole that pulls enemies in, ticking, then implodes and throws them out. | orb 18 m/s to 24 m, 2.5 s, pull 7 m (6 m/s at the edge, 12 at the core), 5 per .5 s, implosion 40 in 4 m, shove 8 m/s; 15 s, 40 mana |
+| 3 (ranged) | Packet Storm | A ring on the aimed floor point; ten cyber meteors rain into it. | 30 m, radius 6, 10 drops over 1.6 s (each seen falling .35 s), 14 in 2 m; 12 s, 35 mana |
+| 4 (ranged) | Orbital Uplink | Call down a steerable orbital laser that chases the aim's floor point; the caster moves slowly while steering. Shares Kernel Panic's ultimate clock. | call-down .6 s, 4 s, radius 2.2, chase 9 m/s within 35 m, 30 per s in .25 s ticks, 40% slow, caster at 60% speed |
+| 5 | Reconfigure | Unchanged (the mode switch). | CyberRangedSpec |
+
+Movement: every ranged cast and Q/E keep the pilot moving (`MoveScale`; Orbital Uplink at .6). Today the host zeroes the
+move velocity and holds AttackEnd for each cast (`NativeArena.CyberBegin`); for v2's ranged casts it must not. Glitch Cut,
+Meteor Byte and Kernel Panic move the body themselves.
+
+### Astra prompt: kit v2 rules
+
+Please build the v2 rules from `Core/CyberLordKit2.cs` (numbers, windows, the shared helpers) and replace the v1 kit (Data
+Dash, Firewall, Packet Burst, Siphon Link, System Crash; Bit Bolt, Ping Lance, Lag Field, Proxy Swap, Root Access) except
+Kernel Panic and the key-5 switch. Proposed wire record, read only by `CyberLordFeed`:
+- `NativeCyberKit.Version` = 2 when the v2 kit is live (the presentation keeps v1 until it sees 2).
+- Per slot (`CyberKit2Spec` order): At, Release, Until, Ready (and a cut time when an interrupt ends a cast).
+- Combo: the step 0-4. Plasma: the shot count since the chain began and each fireball as a projectile with Spec
+  `cyberlord`, Detail `plasma-byte` or `plasma-overflow`, its hand.
+- Uplink: From, Anchor (the hit point), the yanked pilot (0 none), the outcome (zip, yank, miss), ArriveAt.
+- Overclock: At, Until.
+- Fork Bomb: At, Until; per clone its position and yaw (the host's, per tick), its last strike time and target, its burst
+  time and point.
+- Glitch Cut: From, To, the marked pilots (up to 8), DetonateAt.
+- Meteor Byte: From, Target (the reticle at the dive's start), LandAt.
+- Daisy Chain: the struck pilots in order (up to 6) and their points, At.
+- Singularity: From, Point (where it stopped), LandAt, ImplodeAt.
+- Packet Storm: Centre, Seed, Release (drops from `StormDrop`).
+- Orbital Uplink: CallAt, Start, Until, the column's floor point (per tick; `OrbitalStep`), an early end time.
+- Event Details: `uplink-zip`, `uplink-yank`, `overclock`, `fork-strike`, `fork-burst`, `glitch-mark`, `glitch-detonate`,
+  `meteor-impact`, `plasma-hit`, `plasma-overflow-hit`, `chain-hop`, `singularity-tick`, `singularity-implode`,
+  `storm-drop`, `orbital-tick`.
+- Prediction for the caster's own movement during ranged casts; bots that use the kit; the sandbox's numeric keys.
+Report any number or field you change; the presentation follows the record.
+
+### Presentation status
+
+Built by Claude on `claude/cyberlord-v2-*` branches: the ranged cyber-mage animation (throws layered over the run so the
+legs keep moving), the Plasma Byte fireball look on today's Bit Bolt events, the ranged sprint, the melee combo animation,
+and every v2 ability's poses, effects, HUD cards and icons, previewed in the sandbox until the v2 record lands. Status per
+branch is in DEV_LOG.
+
 ## The contract and the one field mapping
 
 Everything reads replicated data through **`CyberLordFeed`** (`Core/NativeCyberLord.cs`). It is the only presentation
