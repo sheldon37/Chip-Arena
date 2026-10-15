@@ -8588,3 +8588,17 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - `<TieredCompilation>false</TieredCompilation>` for the test project only, so no compile happens mid-window.
 - **Checks (run5 on the branch):** Unity runtime and editor compile OK; relay 713 PASS; Python 106 OK; package OK (rerun after the session disk filled during the first package step); diff-check OK.
 - **Animation impact:** none.
+
+## 2026-10-15 — Claude: managed tests run without tiered compilation
+
+- **Branch:** `claude/tests-no-tiering` on shared `4103b82`. Changes only `Tests/CoreTests.csproj`: `<TieredCompilation>false</TieredCompilation>`.
+- **Why:** three different "allocates nothing per frame" checks failed once each on CI today, then passed on rerun:
+  - `BlockLookChecks` coat, 680 bytes;
+  - Astra's `GunMotionChecks` pistol, 5328 bytes;
+  - `AuditorHaloChecks`, 5024 bytes over 5000 frames on `4103b82` (1 of 4 runs).
+
+  The halo check already measures in its own method, after a 200-frame warm-up. That points at the measuring method itself: with tiering on, its loop is swapped to an on-stack-replacement compile mid-window, and that compile and the static constructors it runs are counted on the thread. With tiering off, every method is compiled once, fully, on its first call, so nothing compiles inside a window.
+- **Effect:** the generated `CoreTests.runtimeconfig.json` carries `System.Runtime.TieredCompilation: false`. The game build, Unity and the relay are untouched, and every check keeps its meaning. A real per-frame allocation still fails.
+- **Checks (run5 on the branch):** Unity runtime and editor compile OK; relay 713 PASS; Python 106 OK; package OK; diff-check OK. 487 s in all, no slower than before.
+- **For Astra:** this covers the pistol flake you reran in PR #234. Revert the single property if you prefer a per-check warm-up.
+- **Animation impact:** none.
