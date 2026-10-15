@@ -87,8 +87,11 @@ namespace ChipArena.UnityConversion
         public bool Ranged;public float ModeAt=-100,ModeReady=-100;
         public readonly float[] RAt=new float[CyberRangedSpec.Slots],RRelease=new float[CyberRangedSpec.Slots],RUntil=new float[CyberRangedSpec.Slots],RRecover=new float[CyberRangedSpec.Slots],RReady=new float[CyberRangedSpec.Slots];
         public int BoltHand;public Vector3 LanceFrom,LanceTo,FieldFrom,FieldPoint,SwapFrom,SwapTo,RootFrom,RootTo;public float FieldLand=-100,FieldUntil=-100,MineAt=-100;
+        /// <summary>Kit v2's ranged set (Core/CyberKit2Ranged.cs): live only when its record's Version is 2.</summary>
+        public readonly CyberKit2RangedView Kit2R=new CyberKit2RangedView();
         public void Clear()
         {
+            Kit2R.Clear();
             Id=0;Alive=false;Feet=default;Yaw=0;ComboStep=0;ComboAt=ComboUntil=ComboHit=-100;for(int i=0;i<CyberLordSpec.Slots;i++)At[i]=Release[i]=Until[i]=RecoverUntil[i]=Ready[i]=-100;
             DashFrom=DashTo=default;TrailUntil=-100;WallAt=default;WallYaw=0;WallBorn=WallUntil=-100;LinkTarget=0;LinkAt=LinkUntil=-100;CrashAt=default;CrashBorn=CrashUntil=-100;
             PanicId=PanicOutcome=PanicSeed=PanicVictim=PanicNext=0;PanicConnect=PanicStart=PanicEndedAt=-100;PanicAnchor=default;PanicYaw=0;PanicWall=false;PanicPointCount=0;
@@ -175,6 +178,8 @@ namespace ChipArena.UnityConversion
             // Kernel Panic: Astra's state, on both participants; the caster's own cast only (a victim's copy belongs to its caster).
             var kp=a.Kernel;bool own=kp!=null&&kp.Id>0&&kp.Caster==a.Id;if(own)Kernel(kp,v);float k=own?kp.At:-100;
             var s=a.Cyber;RangedMode(a,v,s?.Ranged);
+            // Kit v2's ranged set (the proposed record; Astra's replaces the source here): mapped only when its Version is 2.
+            CyberKit2RangedFeed.Map(Kit2RangedSource?.Of(a.Id),v.Kit2R);
             if(s==null)return true;
             v.Ready[CyberLordSpec.Q]=s.QReady;v.Ready[CyberLordSpec.E]=s.EReady;v.Ready[CyberLordSpec.One]=s.PacketReady;v.Ready[CyberLordSpec.Two]=s.LinkReady;v.Ready[CyberLordSpec.Three]=s.CrashReady;
             // The kit keeps one window, the current or last cast's (Kind, At, Release, Until); the host's reset kit is all zeros.
@@ -222,6 +227,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The ranged mode's record before the rules replicate it (docs/CYBER-LORD.md "Ranged mode"): the runtime's Dev
         /// Sandbox preview, the checks' and render harness's fixture; null reads the actor alone.</summary>
         public static ICyberRangedSource RangedSource;
+        /// <summary>Kit v2's ranged record before the rules replicate it (docs/CYBER-LORD.md "Kit v2"): the Dev Sandbox preview, the
+        /// checks' and the render harness's fixture; null reads none (v1 draws).</summary>
+        public static ICyberKit2RangedSource Kit2RangedSource;
         /// <summary>The ranged mode into the view: the record's, else the actor's mode fields (Actor.SourceRanged / SourceModeAt,
         /// the Siren's mode on the wire today; the contract has the host set them for the Cyber Lord too).</summary>
         private static void RangedMode(Actor a,CyberLordView v,NativeCyberRangedState state)
@@ -249,7 +257,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>A replicated shot's ranged slot: a Cyber Lord's shot (Spec cyberlord) with a ranged Detail (the contract's
         /// Bit Bolt: Detail bit-bolt), else -1.</summary>
-        public static int ShotSlot(string spec,string detail)=>spec==CyberLordSpec.Id&&detail!=null?CyberRangedSpec.Slot(detail):-1;
+        public static int ShotSlot(string spec,string detail)=>spec==CyberLordSpec.Id&&detail!=null?(CyberKit2RangedFeed.ShotKind(detail)>0?CyberRangedSpec.Bolt:CyberRangedSpec.Slot(detail)):-1;
         /// <summary>Slot `slot`'s window: a cut cast ends where it was cut, its release no later, with no settle.</summary>
         private static void Window(CyberLordView v,int slot,float at,float release,float until,bool cut)
         {
@@ -318,7 +326,7 @@ namespace ChipArena.UnityConversion
         {
             if(detail==null)return CyberHit.None;
             for(int i=0;i<Details.Length;i++)if(detail==Details[i])return (CyberHit)(i+1);
-            return CyberHit.None;
+            return CyberKit2RangedFeed.Hit(detail);
         }
         /// <summary>The Kernel Panic step (1..5) of an event, 0 for none.</summary>
         public static int PanicStep(CyberHit h)=>h>=CyberHit.Panic1&&h<=CyberHit.Panic5?h-CyberHit.Panic1+1:0;

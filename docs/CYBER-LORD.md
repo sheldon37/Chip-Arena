@@ -99,6 +99,123 @@ Built by Claude on `claude/cyberlord-v2-*` branches: the ranged cyber-mage anima
 legs keep moving), the Plasma Byte fireball look on today's Bit Bolt events, the ranged sprint, the melee combo animation,
 and every v2 ability's poses, effects, HUD cards and icons, previewed in the sandbox until the v2 record lands. Status per
 branch is in DEV_LOG.
+- Ranged (`claude/cyberlord-v2-ranged`): live today on the v1 rules: the cyber mage's stance, the alternate-hand throws on
+  the Bit Bolt window, the fireball and its splash on today's bullets and events, the held fireballs and cast flash, the
+  glide sprint and the fire sounds. Built and previewed, waiting for the v2 record: the Overflow, Daisy Chain, Singularity,
+  Packet Storm and Orbital Uplink (poses, effects, HUD cards, icons, sounds). Details below.
+
+### Ranged presentation (Kit v2 branch)
+
+**Live today on the v1 rules** (`Core/CyberLordRangedMotion.cs`, `Core/NativeCyberLordPlasmaFx.cs`):
+- **The stance**: a pitcher's set. The next throw's hand is loaded beside the head (`CyberRangedPose.Loaded`, the elbow set out
+  and back), the other forward on the aim (`Guard`); the chest coils .17 rad toward the loaded side (less while running) and
+  the neck takes the coil back out, so the head stays on the aim. The loaded hand half-follows the pitch, the forward hand all
+  of it. The run adds a 1.6 cm bob at the stride; the legs are always the gait's.
+- **The throws** (the newest window: v1's Bit Bolt, `RAt`/`RRelease`/`RUntil`/`BoltHand`; v2's Plasma Byte once its record
+  is live): the loaded hand whips overhand from behind the shoulder on a curve through the release point (`ReleaseAt`),
+  accelerating into the replicated release and decelerating out to full extension (`Extend`) one windup later, then
+  settles forward while the other hand loads. The chest winds a little further, uncoils .3 rad through the release (the
+  throwing shoulder forward) and comes round to the next stance's coil. A window starts and ends on the stance it inherits
+  (the loaded hand is always the next throw's), so throws chain at any interval with no pop; a cut throw settles back.
+  The Overflow (v2, every third) gathers both hands at the chest and pushes them out together, the chest leaning back then in.
+- **The glide** (the ranged sprint, on the carry's eased sprint ramp): both arms swept back and out square to the run
+  (`Glide`, from the shoulders' line whatever the torso's twist), the palms trailing and lifting at the stride, the dash
+  sprint's lean lifted .3 rad. A throw from the glide swings forward from behind and back. Energy streams off the palms
+  (`NativeCyberLordFx.Glide`: a magenta flame ribbon with a cyan and white heart, 1.5 m at full sprint, shedding pixels).
+  The melee mode keeps the dash sprint's swept fists and streaks.
+- **The Plasma Byte fireball** on every Cyber Lord shot (today's `bit-bolt` bullets; v2's `plasma-byte` / `plasma-overflow`):
+  a white-hot core in a cyan heart and a magenta plasma body with a soft halo, three flame tongues streaming back (the
+  weapons drawer's flame cards through the optional `ICyberFxFlames`; a sink without it draws a streak), a short cyan motion
+  streak, a tail of pixel embers drifting where it passed, and on random 24 Hz steps an RGB-split copy of the core with a
+  scanline tear. For its first .12 s it eases from the throwing hand onto the replicated path (the hand from the owner's view:
+  `BoltHand` or the v2 shot's hand), so the ball the hand throws is the one that flies. Its halo, body and core keep a
+  minimum angular size (`FarHalo` .03, `FarBody` .014, `FarCore` .006 rad), so it reads at 40 m. Sizes by kind: a Bit Bolt
+  .85, a Plasma Byte 1, an Overflow 1.6 with code bytes orbiting it. A tongue is never drawn back past the eye (first person).
+- **The splash** (a Hit / Impact with the fireball's Detail, the preview's impacts): a white flash, a plasma glow swelling,
+  a cyan hex ring, nine plasma petals blown out round the surface normal (the event's Normal), hex shards flung with gravity,
+  and on the world a scorch flicker (upright flame licks and a wisp of smoke for .8 s). v2's splash radius draws as a fading
+  shell (1.6 m, the Overflow 2.6 m); today's Bit Bolt has no splash.
+- **The hands**: a fireball held over each palm in ranged mode (the loaded hand's full, the forward hand's smaller;
+  `CyberRangedPose.Hands` from the same windows as the pose), spent on the throw and re-forming over .22 s; a cast flash and
+  a fan of flame where it leaves the hand.
+- **Sounds**: each throw `magic.fire.shot` (shipped `fire`) with a faint `dev.leet.glitch`; its hits `magic.fire.hit`.
+- v1's other casts (Ping Lance, Lag Field, Proxy Swap, Root Access) keep their looks from the new stance (the swap's tuck
+  eases over .15 s, the lob's back-swing is shorter), the coil easing out as they start.
+
+**Kit v2's ranged set** (previewed until the v2 record replicates; `Core/CyberKit2Ranged.cs`, `Core/NativeCyberLordKit2RangedFx.cs`,
+`Core/CyberKit2RangedHud.cs`):
+- **The record and its one mapping**: `CyberKit2RangedRecord` is the proposed wire record of the ranged half (fields below).
+  `CyberLordFeed.Read` maps it into the view's one field (`CyberLordView.Kit2R`, a `CyberKit2RangedView`) through
+  `CyberKit2RangedFeed.Map` only when its `Version` is 2; any other version leaves v1 exactly as it is. Until Astra's record
+  lands, `CyberLordFeed.Kit2RangedSource` supplies it (the sandbox preview, the fixtures). When it lands, the one line in
+  `CyberLordFeed.Read` reads her record instead. Event Details map through `CyberKit2RangedFeed.Hit` (values past v1's
+  `CyberHit` list, so the shared enum is unchanged); `CyberLordFeed.ShotSlot` takes `plasma-byte` and `plasma-overflow` as
+  the Cyber Lord's shots (the default drawer skips them) and `CyberShot.Kind` carries which.
+- **1 Daisy Chain**: the right arm thrown out at the first strike through the .12 s windup with the left hand bracing its
+  forearm, a tremor through the hops; arcs crackling off the hand through the windup. Then a jagged two-strand bolt (a cyan
+  body, a white core, a soft cyan halo, a fork and magenta glitch sparks, re-seeded at 30 Hz) from the hand to the first
+  pilot and on to each next on `HopAt(i)` (Release + i x HopDelay), each dimmer with the hop's damage falloff, lingering .2 s
+  past the cast; a white flash and a cyan ring on each struck pilot and the slow's static crawling over them for .6 s. The
+  struck pilot's live chest is used when it is in the scene, else the replicated point.
+- **2 Singularity**: the orb (a black sphere with a magenta rim) gathered between the hands low at the chest and pushed out
+  and up together; it flies trailing violet and two orbiting sparks to its stop. The hole (`OrbPoint`, lifted .9 m off a
+  floor): a black event horizon, a white and a magenta photon ring, light bent in camera-facing arcs round it, a tilted
+  accretion disk (two dashed rings turning and streaks spiralling in, violet to magenta to white), debris drawn in from the
+  7 m reach along spirals, faint streaks at the reach's edge, an inward pulse each .5 s tick and the pulled pilots stretched
+  toward it. The implosion: the hole collapses to a white point over .12 s, then a cyan shell, a ring at the hole's height
+  and radial streaks out to the 4 m radius, shards flung, a little smoke.
+- **3 Packet Storm**: the right arm raised to the sky through the windup (a beam of data from the hand), then brought down to
+  point at the ring. A floating 6 m hex ring with stuttering upright posts at its corners and an inner dashed ring turning
+  the other way, a glitch portal 16 m overhead. Each of the ten drops (`StormDrop` from the replicated seed) is telegraphed
+  .55 s ahead by upright brackets and a light column, falls for its .35 s as a glowing cube trailing flame and pixels on a
+  slant, and lands in a white burst, a floating ring out to its 2 m radius, flame petals, shards, a data pillar and smoke.
+- **4 Orbital Uplink**: through the .6 s call-down the left hand rises to the sky with a data line up from it and the right
+  arm points at the call-down point, where a targeting ring closes from 3.6 m to 2.2 m with turning brackets, a crosshair
+  and a spotter line. Then the column (a white core in a cyan sheath with a deep-blue glow and magenta edges, code blocks
+  pouring down it, a pulse on each .25 s tick) stands on `OrbitalAt(t)`: the replicated point advanced toward the replicated
+  aim with `OrbitalStep`, so it chases smoothly between snapshots. The ground burns round its foot (upright flame licks,
+  embers, smoke, a floating ring) and along its recent path (a small per-pilot ring of points noted every .08 s, fading over
+  .8 s). The caster steers with a pointing arm that follows the column, the left hand held up; a faint link runs from the
+  hand to the column's foot. The column narrows away over .25 s at its end. A camera in or near the column (a pilot it
+  chases, or a chase camera it sweeps past) sees its light dimmed (30% within 1 m of its axis, full from 7 m).
+- **Poses**: each cast's targets blend over the stance on its window (in over .12-.2 s, out over its settle), so the legs keep
+  the gait's walk, run or strafe; the states are `cyber-plasma-byte`, `cyber-plasma-overflow`, `cyber-daisy-chain`,
+  `cyber-singularity`, `cyber-packet-storm`, `cyber-orbital-call`, `cyber-orbital-steer` (and `cyber-ranged-sprint`).
+- **HUD** (`CyberKit2RangedHud`; the drawer shows it once the record is live and the pilot is in ranged mode, v1's set
+  otherwise): `1 · DAISY CHAIN`, `2 · SINGULARITY`, `3 · PACKET STORM`, `4 · ORBITAL UPLINK` with CHARGE through a windup,
+  ACTIVE through the cast and its lasting effect (the hole to its implosion, the storm to its last drop), CALL and STEER for
+  the column, the cooldown from the replicated ready (Orbital Uplink also waiting on Kernel Panic's clock), LOW MANA, READY.
+- **Icons** (`tools/export_class_icons.mjs`): `ability-plasma-byte` (a fireball with flame tongues and shed bytes),
+  `ability-daisy-chain` (a bolt hopping between three struck rings), `ability-singularity` (a hole with spiral arms),
+  `ability-packet-storm` (meteor cubes streaking onto a ring), `ability-orbital-uplink` (a satellite's beam onto a ring).
+  The melee branch adds its own.
+- **Sounds** (`CyberKit2RangedSounds`, existing keys with shipped fallbacks): each throw `magic.fire.shot` (the Overflow adds
+  `blast.fire`); the chain's charge `chip.delayed.charge`, its strike `magic.lightning.shot` and each hop `status.shock-zap`;
+  the orb's throw `gun.frag.throw`, the hole `magic.singularity` and `field.black-hole`, the implosion `blast.implosion` and
+  `blast.nova`; the storm's call `magic.meteor.incoming` and each drop `blast.meteor`; the column's mark `gun.orbital.mark`,
+  its start `blast.shock` and `field.storm`, its end `dev.leet.glitch`; the hits by Detail. A cut cast is silent past its cut.
+- **Tiers**: Reduced never strobes or flickers (steady glitches, fewer pieces), the low tier halves the counts and drops smoke.
+  Nothing lies flat within 12 cm of the floor (rings float at .22 m, telegraphs stand up; arcs below a hole's floor are not
+  drawn).
+- **The Dev Sandbox preview**: DEV panel, Previews tab, GALLERIES, "Preview Cyber Kit 2 (ranged)" (`gallery-cyber-kit2`,
+  `Runtime/NativeCyberLordKit2Preview.cs`). As a Cyber Lord, press 5 for ranged: the loop then plays six throws (two
+  Overflows), Daisy Chain over the nearest pilots on the aim (an arc of points when none), Singularity where the aim meets the
+  world, Packet Storm on the aimed floor point and Orbital Uplink steered by the live aim, on your pilot, locally. Move while
+  it plays: the legs stay the run's. Nothing reaches the authority.
+
+**Contract additions for Astra** (fields the presentation needs beyond the list above; the proposal is
+`CyberKit2RangedRecord`, Unity-serializable, with `Valid()` bounds):
+- Write a Version 2 record for every Cyber Lord from the start (all windows -100), not on its first cast: the stance's loaded
+  hand is the next throw's, and v1's first bolt loads the other hand.
+- Per slot a `CutAt` (the interrupt's time, -100 none) alongside At / Release / Until / Ready.
+- `PlasmaShot`: the newest throw's index since the chain began (the hand is `PlasmaHand(PlasmaShot)`, the Overflow every
+  third); the bullets' Detail `plasma-byte` or `plasma-overflow`.
+- Daisy Chain: `ChainCount`, `ChainIds[6]`, `ChainPoints[6]` (the struck body centres) and `ChainFrom`.
+- Singularity: `OrbPoint` is the hole's centre, lifted `HoleLift` (.9 m) off a floor the orb stopped on.
+- Orbital Uplink: Release is the column's start and Until its end; `OrbitalCentre` (the call-down point), `OrbitalPoint` at
+  the host tick `OrbitalPointAt` and `OrbitalAim` (the aim's floor point, clamped to `OrbitalRange`).
+- v1 today: `CyberRangedRelease` spawns a bolt `.18` m to the pilot's left for `BoltHand` 0 (the presentation's right hand);
+  the drawn fireball eases from the right hand regardless, but the spawn's side could follow the hand.
 
 ## The contract and the one field mapping
 
@@ -497,12 +614,14 @@ host, guests, spectators and the killcam draw the same frame.
   ahead of each palm (see "Skins"). With the Prototype Series the fist shells dim and shrink while the emitters build in
   piece by piece: a hex ring, a core and prongs on each hand, a three-ring barrel on the right forearm and a coil on the
   left. The mode eases over the .3 s from the replicated switch time.
-- **The ranged stance and run** (`Core/CyberLordRangedMotion.cs` `CyberRangedPose`): both emitters are held on the aim
-  ahead of the shoulders, following the pitch (the chest takes .3 of it). The hold rides over the run carry's planted legs.
-  A melee take (the guard, Q, E) owns the frame by its weight; a sprint forward lowers the hold. The idle stance yields to it.
+- **The ranged stance and run** (`Core/CyberLordRangedMotion.cs` `CyberRangedPose`; the cyber mage since 2026-10-15, see
+  "Ranged presentation (Kit v2 branch)" below): a pitcher's set, the next throw's hand loaded beside the head with a fireball
+  over it, the other hand forward on the aim, the chest coiled toward the loaded side and the head on the aim. It rides over
+  the run carry's planted legs with a small bob at the stride. A melee take (the guard, Q, E) owns the frame by its weight;
+  the sprint becomes the glide. The idle stance yields to it.
 - **The casts**, each on its replicated window:
-  - Bit Bolt: the firing emitter thrusts and kicks, a muzzle flash, then the bolt (a white head, an RGB-split tail and
-    trailing pixels). It lands in a hex flash with shards.
+  - Bit Bolt: thrown overhand from the loaded hand as a Plasma Byte fireball (see below), the other hand loading behind it;
+    a cast flash and a fan of flame at the hand. It lands in a plasma burst with hex shards and a scorch flicker.
   - Ping Lance: the cannon arm cocks back over the charge, glowing, with the dashed telegraph down the aim; then it thrusts,
     and the lance (a white core in a cyan sheath with pings running along it) leaves a hex reticle on a struck pilot.
   - Lag Field: an underhand lob arcing about the shoulder. A tumbling data cube flies with upright posts rising round the
@@ -527,7 +646,7 @@ host, guests, spectators and the killcam draw the same frame.
   `ability-cyber-ranged` and `ability-cyber-melee`.
 - **Audio** (`Core/NativeCyberLordSounds.cs`): existing bank keys only, with shipped fallbacks:
   - the switch (`dev.leet.glitch`, `chip.delayed.charge`);
-  - each bolt (`magic.lightning.shot`);
+  - each bolt (`magic.fire.shot` and a faint `dev.leet.glitch`; its landings `magic.fire.hit`);
   - the lance's charge and shot (`chip.delayed.charge`, `magic.flame-lance`);
   - the lob, the landing and the collapse (`gun.frag.throw`, `field.time`);
   - the blink (`chip.teleport`), and the mine's arm, beep and burst (`chip.mine.arm`, `chip.bomb.fuse-beep`, `blast.mine`);
@@ -538,11 +657,12 @@ host, guests, spectators and the killcam draw the same frame.
 - **Tiers**: reduced effects never flicker or strobe, soften the flashes (the beam at .65) and thin the pieces; the low tier
   drops the secondary lines and glows. Nothing lies flat within 12 cm of the floor: the field's rings float from .5 m, and
   the posts stand up.
-- **The sprint** in either mode keeps the hardlight dash sprint (see "Run and sprint").
+- **The sprint**: the melee mode keeps the hardlight dash sprint (see "Run and sprint"); the ranged mode glides (see
+  below).
 
-Animation impacts: none on the rules. The poses move only the drawn arms, chest and (through the blink) a 6 cm dip of the
-drawn hips. Hit timing, hitboxes, damage, cooldowns, movement and the network frame are untouched; the presentation never
-drives a window.
+Animation impacts: none on the rules. The poses move only the drawn arms, chest (its coil and pitch) and (through the blink)
+a 6 cm dip of the drawn hips. Hit timing, hitboxes, damage, cooldowns, movement and the network frame are untouched; the
+presentation never drives a window.
 
 ### The contract
 
@@ -770,6 +890,21 @@ Still pending or limited:
   copied record drawing the same, the sprint streaks easing with the flag;
 - the look's emitters (melee piece for piece unchanged), the HUD's two sets and the key-5 card, the sounds, and zero
   per-frame allocation.
+
+`Tests/CyberKit2RangedChecks.cs` (`--cyber-kit2-ranged`) covers the cyber mage and Kit v2's ranged set on the proposed record:
+- the contract: only CyberLordFeed maps (and reads the source of) the record, only on Version 2 (v1 untouched otherwise);
+  bounds, the JSON round trip and the deep copy; the seven Details and the fireballs' shot kinds; the throws' hands and the
+  chain's reset; the storm's drops, the orbital chase (never overshooting, kept in range) and the chain's hop times and
+  falloff from CyberKit2Spec's helpers; the preview touching no rule, actor or event;
+- the body: every v2 state, finite and continuous (no frame jump or spike), each throw's hand driving forward fastest on its
+  replicated release (right, left, both, and v1's Bit Bolt), the legs the gait's while throwing and casting on a diagonal run
+  on uneven frames, a rewound clock, the glide, a 6-frame delayed guest copy posing the same frames, first person;
+- the effects: each on its window, determinism (a second instance and a copied record draw the identical frame), the chain
+  hop by hop, a cut orb drawing nothing, the fireball's size at range, nothing flat on the floor, the tiers;
+- the HUD cards' states, the five icons, the sounds (existing keys, shipped fallbacks, once each, a cut cast silent, v1's
+  bolt as a fire whoosh), and zero allocation per frame.
+`Tests/CyberLordRangedChecks.cs` keeps pinning v1's ranged mode; its stance check now reads the cyber mage's set (one hand
+loaded beside the head, the other forward on the aim) instead of both emitters held together.
 
 `Tests/SheldonIdleChecks.cs` covers the Sheldon Idle: the DEV-only listing and the gate on the account load and the host
 seat, the fallback for unknown ids, the match never reading the pick, the Cyber Lord stance's body and twitches for 17

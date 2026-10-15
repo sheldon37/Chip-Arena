@@ -51,7 +51,8 @@ namespace ChipArena.UnityConversion
                 // The fork bomb's three clone strikes on their staggered beats (the host's three step-4 hits land together).
                 case Clone1:case Clone2:case Clone3:if(v.PanicStart>-90){at=v.PanicStart+KernelPanicPath.Clones[slot-Clone1];n=S(o,n,"dev.fist.hit",slot==Clone2?"arcade-kick":"arcade-punch",.6f);}break;
                 case Switch:if(v.ModeAt>-90){at=v.ModeAt;n=S(o,n,"dev.leet.glitch","darkness",.4f);n=S(o,n,"chip.delayed.charge","electric-hook",v.Ranged?.35f:.22f);}break;
-                case BoltShot:if(v.RReleased(CyberRangedSpec.Bolt)){at=v.RRelease[CyberRangedSpec.Bolt];n=S(o,n,"magic.lightning.shot","lightning",.28f);}break;
+                // Each bolt is thrown as a Plasma Byte fireball (2026-10-15): a fire whoosh with a faint glitch.
+                case BoltShot:if(v.RReleased(CyberRangedSpec.Bolt)){at=v.RRelease[CyberRangedSpec.Bolt];n=S(o,n,"magic.fire.shot","fire",.3f);n=S(o,n,"dev.leet.glitch","darkness",.07f);}break;
                 case LanceCharge:if(v.RAt[CyberRangedSpec.Lance]>-90){at=v.RAt[CyberRangedSpec.Lance];n=S(o,n,"chip.delayed.charge","electric-hook",.3f);}break;
                 case LanceFire:if(v.RReleased(CyberRangedSpec.Lance)){at=v.RRelease[CyberRangedSpec.Lance];n=S(o,n,"magic.flame-lance","lightning",.5f);n=S(o,n,"dev.leet.glitch","metal",.2f);}break;
                 case FieldThrow:if(v.RReleased(CyberRangedSpec.Field)){at=v.RRelease[CyberRangedSpec.Field];n=S(o,n,"gun.frag.throw","dash",.45f);}break;
@@ -88,11 +89,13 @@ namespace ChipArena.UnityConversion
                 case CyberHit.PanicWave:if(strike&&!targetMe)n=S(o,n,"impact.energy","stone",.45f);break;
                 case CyberHit.Panic5:if(strike){n=S(o,n,"blast.leet-nuke","explosion",1);n=S(o,n,"blast.quake","stone",.8f);}break;
                 // The ranged set (the shot and cast sounds come from the view's windows; these are the landings).
-                case CyberHit.Bolt:if(kind==EventKind.Absorb)n=S(o,n,"melee.shield.block","parry",.3f);else if(strike&&!targetMe)n=S(o,n,"impact.energy","lightning",.35f);else if(kind==EventKind.Impact)n=S(o,n,"impact.energy","electric-hook",.15f);break;
+                case CyberHit.Bolt:if(kind==EventKind.Absorb)n=S(o,n,"melee.shield.block","parry",.3f);else if(strike&&!targetMe)n=S(o,n,"magic.fire.hit","fire",.38f);else if(kind==EventKind.Impact)n=S(o,n,"magic.fire.hit","fire",.18f);break;
                 case CyberHit.Lance:if(kind==EventKind.Absorb)n=S(o,n,"melee.shield.block","parry",.4f);else if(strike)n=S(o,n,"status.shock-zap","lightning",.45f);break;
                 case CyberHit.Field:if(strike)n=S(o,n,"status.burn-tick","burn-tick",.22f);break;
                 case CyberHit.Swap:if(strike&&!targetMe)n=S(o,n,"impact.energy","stone",.4f);break;
                 case CyberHit.Root:if(kind==EventKind.Absorb)n=S(o,n,"melee.shield.block","parry",.6f);else if(strike){n=S(o,n,"dev.fist.hit","arcade-heavy",.8f);n=S(o,n,"blast.nova","explosion",.5f);}break;
+                // Kit v2's ranged events (Core/CyberKit2Ranged.cs).
+                default:if(CyberKit2RangedFeed.Is(hit))n=CyberKit2RangedSounds.Event(kind,hit,targetMe,o);break;
             }
             return n;
         }
@@ -102,7 +105,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The bank keys this routing may play (Tests/CyberLordChecks: every one is an existing bank key).</summary>
         public static readonly string[] Keys={"dev.fist.swing","impact.energy","move.roll","dev.leet.glitch","field.repulsion","magic.shackles","status.shock-zap","blast.quake","blast.static",
             "melee.miss","blast.implosion","dev.fist.hit","magic.blink-strike","chip.split","melee.shield.block","status.burn-tick","blast.leet-nuke",
-            "chip.delayed.charge","magic.lightning.shot","magic.flame-lance","gun.frag.throw","field.time","chip.teleport","chip.mine.arm","chip.bomb.fuse-beep","blast.mine","blast.shock","blast.nova"};
-        public static readonly string[] Clips={"arcade-punch","electric-hook","dash","darkness","parry","metal","lightning","stone","explosion","arcade-heavy","demon-step","arcade-kick","burn-tick"};
+            "chip.delayed.charge","magic.lightning.shot","magic.flame-lance","gun.frag.throw","field.time","chip.teleport","chip.mine.arm","chip.bomb.fuse-beep","blast.mine","blast.shock","blast.nova","magic.fire.shot","magic.fire.hit"};
+        public static readonly string[] Clips={"arcade-punch","electric-hook","dash","darkness","parry","metal","lightning","stone","explosion","arcade-heavy","demon-step","arcade-kick","burn-tick","fire"};
     }
 }

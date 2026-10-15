@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed partial class NativeCyberLordFx
     {
-        public struct Record{public int Id,Source,Target;public EventKind Kind;public CyberHit Hit;public float Time,Amount;public Vector3 Position,From;}
+        public struct Record{public int Id,Source,Target;public EventKind Kind;public CyberHit Hit;public float Time,Amount;public Vector3 Position,From,Normal;}
         private readonly List<Record> records=new List<Record>(MaxRecords);private int cursor,drainSource;private float clock=float.NegativeInfinity,drainAt=-100;
         public IReadOnlyList<Record> Records=>records;
         public const int MaxRecords=128;public const float RecordSeconds=4;
@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
                 else if(hit==CyberHit.None&&CyberLordFeed.SiphonHeal(e.Kind,e.Detail,e.Source,e.Target,e.Time,drainSource,drainAt))hit=CyberHit.Siphon;
                 if(hit==CyberHit.None||time-e.Time>RecordSeconds)continue;
                 if(records.Count>=MaxRecords)records.RemoveAt(0);
-                records.Add(new Record{Id=e.Id,Source=e.Source,Target=e.Target,Kind=e.Kind,Hit=hit,Time=e.Time,Amount=e.Amount,Position=N(e.Position),From=N(e.From)});
+                records.Add(new Record{Id=e.Id,Source=e.Source,Target=e.Target,Kind=e.Kind,Hit=hit,Time=e.Time,Amount=e.Amount,Position=N(e.Position),From=N(e.From),Normal=N(e.Normal)});
             }
             if(newest>cursor)cursor=newest;
             for(int i=records.Count-1;i>=0;i--)if(time-records[i].Time>RecordSeconds)records.RemoveAt(i);
@@ -122,8 +122,10 @@ namespace ChipArena.UnityConversion
                 Field(sink,view,time,quality,low);
                 // The ranged mode (NativeCyberLordRangedFx.cs): the switch, the casts, the Lag Field and the proxy mine.
                 Ranged(sink,scene,a,view,time,quality,low,scene.Viewer==a.Id);
+                // Kit v2's ranged abilities (NativeCyberLordKit2RangedFx.cs; only on a Version 2 record).
+                Kit2Ranged(sink,scene,a,view,time,quality,low,scene.Viewer==a.Id);
                 // The hardlight dash sprint's fist streaks (NativeCyberLordRangedFx.cs Sprint).
-                Sprint(sink,scene,a,time,quality,low,scene.Viewer==a.Id);
+                Sprint(sink,scene,a,view,time,quality,low,scene.Viewer==a.Id);
                 if(!a.Alive)continue;
                 Link(sink,scene,a,view,time,quality,low);
                 bool me=scene.Viewer==a.Id;

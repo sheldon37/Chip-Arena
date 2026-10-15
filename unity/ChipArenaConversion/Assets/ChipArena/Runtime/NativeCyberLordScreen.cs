@@ -25,7 +25,13 @@ namespace ChipArena.UnityConversion
                 var c=NativeCyberLordHud.Of(v,slot,t,p.Mana,slot==CyberLordSpec.Four?p.KernelReady:float.NaN);
                 cards.Add(new Card{Key=NativeCyberLordHud.Labels[slot],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});
             }
-            if(ranged)foreach(int slot in NativeCyberLordHud.RangedOrder)
+            // Kit v2's ranged set once its record is live (Core/CyberKit2RangedHud.cs).
+            if(ranged&&CyberKit2RangedHud.Shows(v))foreach(int slot in CyberKit2RangedHud.Order)
+            {
+                var c=CyberKit2RangedHud.Of(v,slot,t,p.Mana,p.KernelReady);
+                cards.Add(new Card{Key=CyberKit2RangedHud.Labels[slot],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});
+            }
+            else if(ranged)foreach(int slot in NativeCyberLordHud.RangedOrder)
             {
                 var c=NativeCyberLordHud.RangedOf(v,slot,t,p.Mana,p.KernelReady);
                 cards.Add(new Card{Key=NativeCyberLordHud.RangedLabels[slot],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});

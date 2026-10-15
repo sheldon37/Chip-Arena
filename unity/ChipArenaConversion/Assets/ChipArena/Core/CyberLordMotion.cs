@@ -294,9 +294,9 @@ namespace ChipArena.UnityConversion
             IdleGlitch=CyberLordIdlePose.Glitch(a.Id,time,under,Reduced);
             if(under>1e-4f){var tw=CyberLordIdlePose.Twitch(a.Id,time,Reduced);IdleGlitch.LClench=tw.LClench*under;IdleGlitch.RClench=tw.RClench*under;}
             CyberLordIdlePose.Layer(r,under,time,a.Id,Reduced,a.Pitch*(float)Math.PI/180,IdleGlitch);
-            // The ranged mode (Core/CyberLordRangedMotion.cs): the emitter hold, the switch and the ranged casts over the posed rig;
-            // a melee take (the guard, Q, E) owns the frame through its weight, a sprint forward lowers the hold.
-            string ranged=stun?null:CyberRangedPose.Layer(r,view,time,a.Pitch*(float)Math.PI/180,m.Clip>=0?Clamp01(m.Weight):0,carry.Sprint*travel,false,Reduced);
+            // The ranged mode (Core/CyberLordRangedMotion.cs): the cyber mage's stance, throws, casts and glide over the posed rig
+            // (the legs stay the gait's); a melee take (the guard, Q, E) owns the frame through its weight.
+            string ranged=stun?null:CyberRangedPose.Layer(r,view,time,a.Pitch*(float)Math.PI/180,m.Clip>=0?Clamp01(m.Weight):0,new CyberRangedPose.Gait{Travel=travel,Stride=r.Stride,Sprint=carry.Sprint*travel},false,Reduced);
             RangedState=ranged;
             State=stun?"hit reaction":m.State??(ranged!=null&&ranged!="cyber-ranged-aim"?ranged:null)??(blocking?"cyber-guard":BoostWeight>.5f?"cyber-air-boost":travel>.5f?(a.Sprinting?"cyber-sprint":ranged!=null?"cyber-ranged-run":"cyber-run"):ranged??(under>.5f?"cyber-idle":"cyber-stance"));return State;
         }
