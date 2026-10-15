@@ -1,3 +1,10 @@
+## 2026-10-15 — Claude: updater survives a module read while the game starts or closes
+
+- Branch `claude/updater-parent-exit-race`, base shared `4f086ae`. Fix to Astra's updater (`Updater/Launcher.cs`) because it turned PR #62 red; for Astra's review.
+- CI `native-updater-windows` failed once on `4f086ae` (job 116733698831); three other runs of the same job on that commit passed. `WaitForParent` read `Process.MainModule` and Windows threw `Win32Exception` ERROR_PARTIAL_COPY (299, "Only part of a ReadProcessMemory…"). That error happens while a process is still loading modules or tearing down, so a real update could fail the same way when the game closes as the updater starts.
+- `ModulePath` now retries that one error for up to two seconds and returns "exited" if the process ends meanwhile. `WaitForParent` and `AnyGameRunning` both use it. Every other failure is unchanged: a different program still refuses, any other Win32 error still refuses or reports that instances cannot be verified.
+- Checks: the launcher compiles as C# 5 with warnings as errors (Roslyn `-langversion:5` against the .NET 4.8 reference assemblies, matching the v4.0.30319 compiler CI uses); Python suite, package and diff-check pass. Not run here: `check_updater_windows.py` (Windows only); CI runs it on the push. Gameplay, networking and saves unchanged.
+
 ## 2026-10-15 — Astra: Expedition multiplayer through existing rooms
 
 - Branch `codex/expedition-coop`, base shared/builder `d6562d98`. Implemented on task branch; merge/builder sync pending at this entry. No Windows package or updater publication claimed.
