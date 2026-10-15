@@ -19,11 +19,13 @@ namespace ChipArena.UnityConversion
     /// bloater's belly and the crawler's pounce stay procedural (no capture fits them).</item>
     /// <item>The Hulk plods on the slow walks at a heavy tempo and roars on the flung-arms start of another reel (<see cref="Roar"/>).</item>
     /// <item>Deaths fall the way the killing blow pushes (back, front, to either side), a take per add.</item>
+    /// <item>The town zombies' wander (Core/NativeHordeRoam) shambles on the pack's slow forward walk whatever the kind's chase
+    /// takes are (<see cref="Wander"/>): the runner's sprints and the shambler's chases never play at a wander's pace.</item>
     /// </list>
     /// </summary>
     public static class NativeZombieMotion
     {
-        private static int[][] walks,runs,idles;private static int[] swipeR,swipeL,lunge,smash,knock,deathBack,deathFront,deathLeft,deathRight,lands;
+        private static int[][] walks,runs,idles,wanders;private static int[] swipeR,swipeL,lunge,smash,knock,deathBack,deathFront,deathLeft,deathRight,lands;
         public static int Wake,CrawlStand,StandCrawl,JumpStart,JumpAir,SpitRear,Roar;
         private static float[] ground;private static bool ready;
         /// <summary>Builds the tables and decodes every clip once (so no frame ever decodes one; the first gait calls it).</summary>
@@ -34,6 +36,9 @@ namespace ChipArena.UnityConversion
             walks=new[]{N("chase-1","chase-2","chase-5"),N("sprint-1","sprint-3"),N("walk-4","walk-6"),N("chase-1","walk-6"),new int[0],N("walk-6","walk-4"),N("walk-4","walk-6")};
             runs=new[]{N("sprint-1","sprint-3"),N("sprint-3","sprint-4"),N("chase-5","chase-2"),N("chase-2","sprint-1"),new int[0],N("chase-1"),N("chase-5")};
             idles=new[]{N("shamble-1","shamble-2","idle-3"),N("shamble-2","idle-3"),N("idle-3","shamble-1"),N("shamble-1","idle-3"),new int[0],N("idle-3"),N("idle-3","shamble-1")};
+            // (The slow forward walk-4 is the take that plants cleanly at the wander's .4-1.1 m/s for every kind: the walk-6 and the
+            // chases drag a planted ankle up to 5-7 cm there.)
+            wanders=new[]{N("walk-4"),N("walk-4"),N("walk-4"),N("walk-4"),new int[0],N("walk-4"),N("walk-4")};
             swipeR=N("swipe-r1","swipe-r2");swipeL=N("swipe-l1","swipe-l2");lunge=N("lunge-1","lunge-2");smash=N("smash-1","smash-2");knock=N("knock-1","knock-2","knock-3","knock-4","knock-5");
             deathBack=N("death-back-1","death-back-2","death-back-3");deathFront=N("death-front-1","death-front-2","death-front-3");deathLeft=N("death-left-1");deathRight=N("death-right-1","death-right-2");
             lands=N("jump-land");Wake=NativeZombieClips.Need("wake");CrawlStand=NativeZombieClips.Need("crawl-stand");StandCrawl=NativeZombieClips.Need("stand-crawl");
@@ -57,6 +62,9 @@ namespace ChipArena.UnityConversion
         public static int Walk(int kind,uint seed){Warm();return Pick(walks[K(kind)],seed,100);}
         public static int Run(int kind,uint seed){Warm();return Pick(runs[K(kind)],seed,101);}
         public static int Idle(int kind,uint seed){Warm();return Pick(idles[K(kind)],seed,102);}
+        /// <summary>The slow walk a town zombie wanders on (-1: none, the crawler).</summary>
+        public static int Wander(int kind,uint seed){Warm();return Pick(wanders[K(kind)],seed,109);}
+        public static int[] Wanders(int kind){Warm();return wanders[K(kind)];}
         /// <summary>The kind's walk and run sets (the checks and the gallery read them).</summary>
         public static int[] Walks(int kind){Warm();return walks[K(kind)];}
         public static int[] Runs(int kind){Warm();return runs[K(kind)];}
