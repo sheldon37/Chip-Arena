@@ -296,7 +296,7 @@ namespace ChipArena.UnityConversion
             Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Impact,Source=source?.Seat.id??0,Time=Time,Position=Vec(hit.point),Normal=Vec(hit.normal),SurfaceId=prop.Definition.id,Color=color,Projectile=projectile});
         }
         private void Emit(EventKind kind,NativePilot source,int target,Vector3 position,float amount,string detail=null,float radius=0,Vector3? from=null,Vector3? normal=null,string surfaceId=null,int color=0,string damageKind=null,bool wallSlam=false,int projectile=0,bool pierced=false)
-        {Events.Add(new ArenaEvent{Id=nextEvent++,Kind=kind,Time=Time,Source=source?.Seat.id??0,Target=target,Position=Vec(position),Amount=amount,Detail=detail,DamageKind=damageKind,WallSlam=wallSlam,Projectile=projectile,Pierced=pierced,Radius=radius,From=Vec(from??position),Normal=Vec(normal??Vector3.zero),SurfaceId=surfaceId,Color=color});}
+        {HubEventNoise(kind,source,position);Events.Add(new ArenaEvent{Id=nextEvent++,Kind=kind,Time=Time,Source=source?.Seat.id??0,Target=target,Position=Vec(position),Amount=amount,Detail=detail,DamageKind=damageKind,WallSlam=wallSlam,Projectile=projectile,Pierced=pierced,Radius=radius,From=Vec(from??position),Normal=Vec(normal??Vector3.zero),SurfaceId=surfaceId,Color=color});}
         public Snapshot Snapshot(bool interpolated=false)
         {
             if(Replica&&replicaFrame!=null)return ReplicaSnapshot();

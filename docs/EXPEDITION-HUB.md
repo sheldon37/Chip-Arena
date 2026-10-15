@@ -190,19 +190,21 @@ Alternatives considered:
   - Zombies never open gates.
   - An open gate closes by itself 2.5 s after its `sensor` holds no living member.
   - A gate never closes onto a member standing in its closure; it re-opens or holds.
-- **Motion as drawn.**
-  - Opening takes 0.9 s. The latch lifts in the first 0.18 s, then the leaves travel.
-  - Wood swings inward to 160 degrees with a little overshoot.
-  - Metal rolls apart into pockets behind the fence sections, with a judder and an end-stop bounce.
-  - Closing takes 1.0 s. The leaves accelerate shut, slam at 0.85 s, bounce, and the latch drops.
-  - A reversal mid-swing eases from where the leaves are.
+- **Motion as drawn** (retimed 2026-10-15 to the authority's collider; see "Hub fixes" below).
+  - Opening settles by 0.9 s. Wood: the latch lifts in the first 0.18 s, then the leaves swing inward to 160 degrees with a
+    little overshoot (past 90 degrees, clear of the opening, at 0.30 s). Metal: the cane bolt lifts in 0.10 s, then the
+    leaves roll apart into pockets behind the fence sections with a judder, in them at 0.48 s, and rock on the end stops.
+  - Closing settles by 1.0 s. The leaves accelerate shut from wherever they are, meet and slam at 0.67 s, bounce, and the
+    latch drops.
+  - A reversal mid-swing eases from where the leaves are (the latch stays up).
 - **Collider (proposed).**
-  - The closure box is solid while the gate is shut. It releases 0.5 s into an opening (about 60% open) and blocks
+  - The closure box is solid while the gate is shut. It releases 0.5 s into an opening (the leaves are clear by then) and blocks
     again 0.65 s into a closing, if the closure is clear.
   - While shut, add a pilot exclusion column over the closure (from 3.1 m), so nobody jumps a shut gate.
   - The horde-only ward blocker in each closure is always on.
-- **Without a state** (today), every gate is drawn resting **open**. The openings carry no collider until the director's
-  gate authority exists, and a shut leaf that pilots and zombies walk through would fake a barrier. This differs from the
+- **Without a state** (no hub authority: an older build or a manifest without the record), every gate is drawn resting
+  **open**. With Astra's authority (merged) every gate starts shut. Without it the openings carry no collider, and a shut
+  leaf that pilots and zombies walk through would fake a barrier. This differs from the
   brief's "draw closed"; one constant flips it (`NativeExpeditionHubGates.RestOpen`).
 - **Sound** (existing keys):
   - wood: latch `reload-end`, creak `wood` (slowed), slam `wood` with a `stone` thud;
@@ -368,10 +370,10 @@ Owner-approved rules are implemented on `codex/expedition-hub-authority`, based 
 Claude's hub `3c13863` (includes shared `f29d7c9`). This section supersedes the
 "waiting on Astra" status above for that branch; native release remains gated.
 
-- Four gates start shut, accept F from either side, reopen/hold when a player capsule
+- Four gates start shut, accept F from either side, safely reverse a non-solid closing when a player capsule
   overlaps, and auto-close after 2.5 seconds with a clear sensor. Collision releases
   .5 seconds into opening and returns .65 seconds into closing. Closed gates also
-  have pilot anti-vault columns. Occupancy includes downed bodies and overhead pilots.
+  have pilot anti-vault columns. Occupancy uses enabled member capsules that actually overlap the doorway in 3D.
 - Horde-only layer 28 barriers remain solid at every gate regardless of its state.
   Horde navigation rejects crossing links and direct shortcuts; vent travel is
   disabled in the town. Intruding horde actors are removed without rewards.
@@ -407,3 +409,210 @@ occupancy, holster timing, aggro grace, spawning, damage and outside DoTs. The l
 requires the desktop builder/Unity and is not established by a semantic compile.
 Full multiplayer Expedition launch remains the existing separate integration task;
 this change supplies the public hub state contract, not a new multiplayer launcher.
+
+## Town zombie roaming and perception (owner, 2026-10-15)
+
+Authority implementation: `Core/NativeHubPerception.cs` and
+`Runtime/NativeHubPerceptionRuntime.cs`, only for the hub population tracked by
+`hubMobs`. Instance/Boss Test hordes and DEV monsters retain their existing AI.
+
+- **Wander / idle:** choose authored navigation points in the zombie's spawn
+  zone, normally 3–14 m away. Shamble at `min(1.1 m/s, stats.walk * .55)`, with
+  existing crawl/limp, slow and stagger modifiers. Idle for a host-random 2–6 s
+  on arrival; a blocked patrol leg times out after 15 s. After chasing outside
+  its zone, return toward its spawn before resuming the zone patrol. Horde gate
+  links stay excluded; movement still checks support and the sanctuary boundary.
+- **Vision:** 18 m, horizontal 110° forward cone; within 3 m, notice in any
+  direction. Both require scene line of sight. Range uses three-dimensional
+  distance. Sanctuary occupancy or a segment across its fence rejects sight.
+- **Hearing:** actual grounded displacement generates steps, at most every .6 s
+  walking / .3 s sprinting; a grounded transition generates landing noise.
+  Accepted attacks/casts/shots/explosions and successful manual gate openings
+  generate their own noises. Merely pressing a blocked action does not count.
+  Noise can pass ordinary scenery, but never the sanctuary fence; source and
+  listener paths are checked, including two exterior points across the sanctuary.
+
+| Noise | Radius |
+| --- | ---: |
+| Walking | 5 m |
+| Sprinting | 10 m |
+| Landing | 12 m |
+| Fighting / melee attack | 14 m |
+| Firing (including bow) | 28 m |
+| Explosion | 36 m |
+| Casting | 22 m |
+| Opening a gate from outside | 16 m |
+
+- **Alert / chase:** a sight or noise sample starts a .4–.8 s stationary turn
+  toward that sample, then chase. Repeated observations do not restart the
+  reaction. Existing attacks cannot run during the reaction. Optional screams
+  and zombie-to-zombie alert propagation are not enabled.
+- **Memory / search:** only sight/noise updates the known position. Without a
+  fresh observation for 3 s, investigate that position (up to 10 s), search in
+  place for up to 4 s on arrival, then wander again. Memory pursuit and search
+  cannot attack using the hidden target's live position. Reacquisition from
+  search starts a new alert. Existing sanctuary aggro grace remains 1.5 s;
+  entering safety does not expose further positions. Existing far (60 m / 15 s),
+  idle (180 s) and lost-aggro (30 s) despawn rules remain active.
+- **Cost:** senses run every .2 s per zombie, staggered initially; vision rejects
+  range/cone/fence before querying the scene. The host keeps at most 64 noises,
+  expires them after .75 s, and each zombie consumes each event once. Each
+  zombie owns its random stream, independent of spawn/economy randomness.
+
+### Shared reaction state / Claude handoff
+
+`NativeMinionFrame` adds three scalar fields, copied into `NativePveAdd.Hub` on
+host and guest. They also survive `NativeFrameCodec` replay/late-join capture:
+
+| Field | Meaning |
+| --- | --- |
+| `hubState` | `HubZombieState`: 0 none/non-hub, 1 wander, 2 idle, 3 alert, 4 chase, 5 search |
+| `hubAlertAt` | Start of latest alert in **arena simulation seconds**, -100 before first alert |
+| `hubLookYaw` | Desired horizontal look direction in degrees, +Z = 0; `V3.Forward` gives the vector |
+
+`NativePveAdd.Hub` exposes `State`, `AlertAt`, `LookYaw`; it is null for non-hub
+adds. A default/older frame's state 0 clears the view. The receiver validates
+state range and finite time/yaw. No client runs perception, randomness or timers.
+Body position/velocity/yaw already replicate, so the real idle, shamble and turn
+are visible without a presentation rewrite. Claude may layer a bespoke reaction
+using this state; there is no new scream audio or animation asset in this change.
+Attack timing/damage, spawn caps/cadence, ring payouts and gate rules are unchanged.
+
+Acceptance: managed checks cover cone/LOS inputs, every noise radius, fence
+segments, seeded reaction/idle/memory/search traces and public-state roundtrips.
+Native hub acceptance adds real scene LOS, heard rear-target reaction,
+JsonUtility and guest/late-join reconstruction. Native execution and Windows
+visual/two-client play must be verified by the builder/playtest; semantic compile
+alone is not that verification.
+
+
+## Hub fixes — 2026-10-15 (Claude)
+
+Branch `claude/expedition-hub-fixes` (base shared `425cb2d`, merged with shared `ee46074`). Owner report (verbatim): "Also
+on the hub~ it seems like there is Z-fighting on the gates? It also allows us to run through it before it is even open.
+Lets also remove the circle outlines like the one on the exit door, the caches, etc."
+
+### Z-fighting on the gates (presentation; fixed)
+
+No collider-only block is drawn in the town: the gate closures, the no-vault columns and the horde ward are Astra's
+runtime colliders without renderers, and the fence's exclusion columns are `pilotBlocks`, never drawn. The fights were
+drawn faces sharing a plane (found with `NativeSurfaceLayers.Solve` at zero lift; now held to none by
+`CoreTests --expedition-hub`):
+
+| What | Shared planes before | Fix |
+| --- | --- | --- |
+| The sanctuary edge's lit curtain (`NativeExpeditionStateScene.Sanctuary`) stood on the volume's edge: the plaza's building faces, the fence's inner face and the shut wooden leaves' inner faces all lie in that plane | 232 of its 332 quads, all four gates' logs among them | the curtain stands `CurtainInset` 8 cm inside the edge (5 cm still met shopfront trim, 5.7 cm the metal leaves' stiles; 8 cm meets nothing) |
+| The metal leaves' rails ran over their stiles with flush front and back faces | 24 per metal gate, at every pose | the rails run between the stiles, 7 mm inside their faces |
+| The wooden latch's pivot plate sat 2 mm behind its bar | 1 per wooden gate while the latch is up | 7 mm |
+| The ward's fence shimmer stood 1 mm off the outer dressing (claw marks, smears, the metal top rail) | 23 quads (back faces) | `WardOffset` 3.5 cm, one helper for the runtime and the checks (`NativeExpeditionHubGates.WardSegments`) |
+
+### The leaves in step with the collider (presentation; retimed)
+
+The authority's collider (`ExpeditionHubAuthority.Blocking`) is released 0.5 s into an opening and solid again 0.65 s
+into a closing. Before, a metal gate was 35% open at the release (its leaves still covered 1.3 m of each side of the
+opening until 0.74 s), and every closing was still 55% open when the collider turned solid (the slam was at 0.85 s).
+
+| Moment (s into the state) | Collider | Wood (drawn) | Metal (drawn) |
+| --- | --- | --- | --- |
+| opening 0 | solid | latch lifts to 0.18 | bolt lifts to 0.10 |
+| | | past 90 degrees (clear) at 0.30, fully open at 0.49 | in the pockets at 0.48 (`ClearAt`), bang, rock on the stops |
+| opening 0.5 | released | | |
+| closing 0 | released | leaves accelerate shut from where they are | same |
+| closing 0.65 | solid | | |
+| closing 0.67 (`MeetAt`) | | meet, slam, bounce; the latch drops by 0.83 | same |
+
+The cues follow (rumble when the bolt lifts, the metal stop at 0.48, the slam at 0.67). The presentation also carries
+the authority clock between the 20 Hz view updates (`ExpeditionHubClock`, at most 0.1 s ahead), so the leaves move
+every frame instead of stepping with the projection. Checked against the real authority every 1/240 s: never drawn shut
+while walkable, clear whenever released, met whenever solid, still visibly closing 0.15 s before it blocks.
+
+### Run-through report (for Astra; authority, not changed here)
+
+What fails: walking into a shut gate, without pressing F, opens it and drops its collider in the same tick. The pilot
+crosses the fence line 0.117 s later at run speed while the gate is (correctly) drawn shut with its latch lifting.
+
+- `NativeArena.HubOccupied` (`Runtime/NativeExpeditionHubAuthority.cs:51-58`, the test at line 56) counts a closure as
+  occupied when a capsule's centre is within its radius + 0.15 m of the closure box in plan, at any height. A pilot pressed
+  against the solid closure stands its radius + PhysX's 0.01 m contact offset from it, so touching a shut gate, or coming
+  within 0.15 m of it, "occupies" it. So does a pilot leaning on the fence within 0.57 m of the opening's edge.
+- `ExpeditionHubAuthority.Step` (`Core/NativeExpeditionHubRules.cs:28`) then re-opens any shut gate whose closure is
+  occupied, however long it has been shut and solid.
+- `StepHubGates` (`Runtime/NativeExpeditionHubAuthority.cs:62`, `solid=Blocking(i,now)&&!HubOccupied(...)`) turns the
+  collider and the no-vault column off at once while occupied, instead of 0.5 s into the opening.
+
+Not ours: the presentation reads the right state on the right clock and ids (the view's `hub` and `elapsed`, bound at
+`Runtime/NativeExpeditionNetwork.cs:14`), the gates start shut, and the closures span their openings exactly (the fence
+flood check passes with every closure solid).
+
+Reproduction: `CoreTests --expedition-hub` prints `PENDING (Astra) Expedition hub: a shut north gate opens itself ...`
+(`ExpeditionHubChecks.PendingAuthority`: Core's authority and the runtime's occupancy rule replayed engine-free; a pilot
+at 6.8 m/s, no interact). It turns into a PASS line once a shut gate stops the pilot. In the game: walk into any shut hub
+gate.
+
+Suggested fix:
+1. For "never close onto a member", test a real overlap of the capsule with the closure (radius less a skin, or an
+   overlap query against the closure box while its collider is off), not radius + 0.15 m.
+2. Re-open on occupancy only while a closing has not blocked yet (`!Open && now-ChangedAt < Block`); a gate that is
+   already solid stays shut. (`Tests/ExpeditionHubAuthorityChecks.cs:21` asserts a re-open 0.7 s into a closing, after
+   it blocks; it would move under 0.65 s.)
+3. In `StepHubGates`, let occupancy hold the collider off only in that same window.
+
+Reversals (same source, `Blocking` at `Core/NativeExpeditionHubRules.cs:35` is a pure function of the newest state's
+age): pressing F again during an opening's first 0.5 s releases the collider at once while the leaves are still nearly
+shut (walkable while drawn shut, up to 0.65 s); pressing it during a closing's first 0.65 s makes the collider solid for
+0.5 s while the leaves are nearly open (an invisible wall). Suggest keeping the collider's state across a reversal: a
+close during an opening that has not released stays solid; a re-open during a closing that has not blocked stays
+released. The presentation reverses from where the leaves are and clears or meets at the same 0.5 and 0.65 s marks, so
+it follows either rule.
+
+
+### Run-through authority fix (Astra, 2026-10-15)
+
+Implemented on `codex/hub-gate-collision`, based on shared `72aa1858`. The
+report above records the pre-fix behavior; the PENDING reproduction was observed
+before this change and is now a hard assertion in `CoreTests --expedition-hub`.
+It checks all four gates, both the open flag and the collider, and the pilot
+remaining outside the closure.
+
+- Occupancy uses actual upright capsule-versus-yaw-box distance in three
+  dimensions, with a 1 cm inward skin. Capsule center and world-scaled height /
+  radius come from the real collider. Tangency, the physics contact offset,
+  expanded rectangular corners and a pilot above the opening are not occupancy.
+- Gate authority retains collider solidity. Occupancy can reverse a closing
+  only while that collider is still released; a shut/solid gate cannot auto-open
+  even if penetration is reported. On the threshold tick, overlap is checked
+  before enabling the closing collider, so it cannot close onto a member.
+- `StepHubGates` applies the authority collider state directly to both the door
+  and no-vault column. There is no independent occupancy override.
+- Reversing opening-to-closing before release preserves solidity. Reversing
+  closing-to-opening before blocking preserves the released state. Only the
+  existing .5 s opening-release / .65 s closing-block markers change solidity.
+  Explicit F interaction from either side and 2.5 s clear auto-close remain.
+
+The gate pose/wire fields, animation, sanctuary ward, movement speed, combat,
+rewards and zombie perception are unchanged. Claude's separate presentation
+changes remain on their own branch. Native acceptance now checks real capsule
+contact/penetration/height and both reversal collider states; these require the
+Windows builder/PhysX run, not just semantic compilation.
+
+### No floor rings round the Expedition's interactables (presentation; removed)
+
+Removed:
+- `Core/NativeExpeditionWorld.cs` `Emit`: the floor ring (radius r-0.05..r) and the actionable spinning outer ring
+  (r+0.04..r+0.12) round every world piece: the Ward Zero door and the instance exit (doors, 1.35 m), the reprint machine
+  (0.95 m), the chip caches (0.75 m) and reward drops (0.42 m). The light column while actionable, the glyph (diamond,
+  tile, pedestal, crate), the label, the HUD door hologram and the interact prompt stay.
+- `Runtime/NativeExpeditionScreen.cs`: the same ring in the pieces' greybox preview.
+- `Runtime/NativeBeaconPresentation.cs`: the revive beacon's floor ring (with its self-revive arc) on Expedition maps
+  (`NativeExpeditionWorld.ExpeditionMap`, ids starting `expedition-`). Wave defense and the Boss Test keep it: there it
+  is the self-revive timer, not a generic interact ring. The column and the F · REVIVE / SELF-REVIVE label with its clock
+  stay everywhere.
+
+Kept (events, not outlines round an interactable): the final gate's opening cue rings, the sanctuary crossing ripple,
+the boss arrival's roar rings, the revive repair's floor ring, combat telegraphs, and the sanctuary edge's square floor
+glow. The gates never had rings.
+
+### Impact
+
+Presentation only: no collider, layout, navigation, timing rule, hit timing, hitbox, damage, cooldown, movement or
+network change. The layout and its generator are unchanged (the closures span their openings).
