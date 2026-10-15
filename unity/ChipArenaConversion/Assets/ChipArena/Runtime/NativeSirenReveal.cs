@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
                     var look=ChipLook.Idle(still?0:clock);look.Alpha=ba*fade*(boot?1:.8f);look.Bright=bright;
                     U.Push(r.center,new Vector2(btx,0),bsx,0,bsy);
                     // .pve-boot: 0 0 0 1px #b7a8ff99, 0 0 60px #7d5cff99, 0 20px 60px #000.
-                    if(boot){U.Glow(new Rect(r.x,r.y+20,r.width,r.height),new Color(0,0,0,look.Alpha),60);U.Glow(r,U.Hex(0x7d5cff,.6f*look.Alpha),60);U.Round(new Rect(r.x-1,r.y-1,r.width+2,r.height+2),Color.clear,10,U.Hex(0xb7a8ff,.6f*look.Alpha),1);}
+                    if(boot){U.Glow(new Rect(r.x,r.y+20,r.width,r.height),new Color(0,0,0,look.Alpha),60);U.Glow(r,U.Hex(0x7d5cff,.6f*look.Alpha),60);NativeChipArt.PackageEdge(r,size.Radius,1,U.Hex(0xb7a8ff,.6f*look.Alpha),1);}
                     NativeChipCard.Draw(r,track[i],0,size,look);U.Pop();continue;
                 }
                 NativeSirenSmileArt.Locked(new Rect(tx0+i*(cw+16),y,cw,rowH),i+1,track.Length,still?-1:clock,fade);
