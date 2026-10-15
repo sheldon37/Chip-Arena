@@ -31,6 +31,12 @@ Shader "ChipArena/SourceLit" {
  }
  // The bank stores a MeshBasic or ShaderMaterial part (unlit in the source) with its emission equal to its colour.
  bool Unlit(float3 color,float3 emission){return dot(abs(emission-color),float3(1,1,1))<1e-4&&dot(emission,float3(1,1,1))>0;}
+ // Actor lighting (Ward Zero only: NativeLighting.WardField sets _ArenaActorLit while its live arena or killcam draws): the
+ // arena's practical slots (NativeBlockLit's, with their beacon beams) and the ceiling light field light a lit part as they
+ // light the walls round it (NativeWardLight.cginc ActorLights), added as emission like the entrance stage's lights. Off (0)
+ // on every other map, on an entrance stage (_StageLit), for unlit parts and the Siren's ink fill.
+ float _ArenaActorLit;float4 _ArenaLightPos[8];float4 _ArenaLightColor[8];
+ #include "NativeWardLight.cginc"
  // StageTone (finalcolor, before fog as three tone-maps before fog): renderer.ts's ACES filmic tone mapping at exposure .92
  // (three r180 ACESFilmicToneMapping) on an entrance's lit parts, as the source tone-maps every lit material; unlit parts
  // (glows, toneMapped false in the source) stay raw. Skipped in additive light passes, which only directional key lights add.
@@ -105,6 +111,7 @@ Shader "ChipArena/SourceLit" {
  void surfArmor(Input i,inout SurfaceOutput o)
  {
   surf(i,o);if(_InkFill>.5)return;
+  if(_ArenaActorLit>.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ActorLights(i.worldPos,normalize(i.worldNormal));
   float3 accent=UNITY_ACCESS_INSTANCED_PROP(Props,_AccentTint).rgb;float4 glow=UNITY_ACCESS_INSTANCED_PROP(Props,_GlowTint);
   ArmorLight(o,i.emission.w,i.worldPos,i.worldNormal,i.viewDir,accent,_ArmorExportEmber.rgb*accent*UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint).rgb*glow.rgb,glow.w,_StageLit);
  }

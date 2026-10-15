@@ -19,7 +19,13 @@ namespace ChipArena.UnityConversion
     ///    reported by its id (<see cref="SetWardBlockBreach"/>): every part on it hides while it is open, and follows its knock's
     ///    shudder before (<see cref="NudgeWardBlock"/>).
     ///  - The mood (Core NativeWardZeroMood) from the replicated match and PvE state and the boss song, eased per frame.
-    ///  - The eight practical lights picked for the camera (Core NativeWardZeroLights) through NativeLighting.PickedLights.
+    ///  - The ceiling light field (Core NativeWardZeroField): every troffer's and high-bay's pool, baked once per map content on
+    ///    a worker thread into a 3D texture, then sent each frame with the mood's circuit levels and colour (NativeLighting.
+    ///    WardField; Resources/NativeWardLight.cginc). Pilots, monsters and machines take it and the slots too (actor lighting,
+    ///    the live arena and the killcam only). Until the bake is in (a moment at load) or if it fails, the troffers ride in the
+    ///    practical slots as before.
+    ///  - The eight practical lights picked for the camera (Core NativeWardZeroLights) through NativeLighting.PickedLights, with
+    ///    their beacon beams.
     ///  - Effects (Core NativeWardZeroFx) through one NativeFxDraw: a solid and an effects batch.
     ///  - The floor vents' shafts (today's NativeWardPit shader) at the floor vents the data marks as pits.
     /// Hazards: the map's `hazards` (ContentMap.hazards); their state is the pure Core function of (round index, FightAt,
@@ -37,6 +43,8 @@ namespace ChipArena.UnityConversion
         // By block index: the blocks a Hulk's breach has open (their parts hidden) and their knock's shudder (world m).
         private bool[] wzBlockOut=Array.Empty<bool>();private Vector3[] wzNudge=Array.Empty<Vector3>();
         private NativeEntryView[] wzWard;private NativeWardMood wzMood;private float wzLast=-1;private bool wzMoodSet;private NativeArena wzArena;private int wzGeneration=-1;
+        // The light field: the bake in flight (for the map content it started on), its volume once in, each circuit's level.
+        private System.Threading.Tasks.Task<NativeWardZeroField> wzBake;private ContentMap wzBakeMap;private NativeWardZeroField wzField;private Texture3D wzFieldTex;private readonly float[] wzLevels=new float[NativeWardZeroField.Circuits];
 
         // SourceWorld: the arena or the killcam replay arena.
         private void WardZeroScenery(NativeArena arena)
@@ -49,8 +57,9 @@ namespace ChipArena.UnityConversion
             WardZeroOpen(arena);WardZeroSong(arena);WardZeroMood(arena,now);
             Array.Clear(wzParents,0,wzParents.Length);foreach(var p in arena.AllBlocks){if(p==null||p.Definition?.id==null)continue;if(wzIndex.TryGetValue(p.Definition.id,out int i))wzParents[i]=p;}
             var eye=WorldEye;DrawWardKit(arena,now,eye);WardZeroPits();
-            if(eye!=null){var c=eye.transform.position;float dt=wzLast<0?0:Mathf.Clamp(now-wzLast,0,.1f);wzLights.Update(c.x,c.y,c.z,wzMood,wzStates,now,dt);NativeLighting.PickedLights(wzLights.Pos,wzLights.Rgb);}
-            DrawWardFx(now,eye);wzLast=now;
+            WardZeroField();
+            if(eye!=null){var c=eye.transform.position;float dt=wzLast<0?0:Mathf.Clamp(now-wzLast,0,.1f);wzLights.Update(c.x,c.y,c.z,wzMood,wzStates,now,dt);NativeLighting.PickedLights(wzLights.Pos,wzLights.Rgb,wzLights.Beam);}
+            WardZeroFieldSend(now,true);DrawWardFx(now,eye);wzLast=now;
         }
         /// <summary>The breach presentation's report that breach entry `entry` (its index in the PvE entries, kind "breach") is
         /// open (the panel gone, its hologram rebuilding) or shut again: the kit's panel dressing hides while it is open. Other
@@ -104,8 +113,9 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<wzUsed;i++)WzDraw(wzBatches[i]);
             // No arena dressing publishes the look's haze behind the menu, so it goes out here (as Cyber City's backdrop does).
             var hz=look?.blocks;if(hz!=null){var h=MetroLinear(hz.hazeColor);Shader.SetGlobalVector(MetroHazeId,new Vector4(h.r,h.g,h.b,hz.haze));Shader.SetGlobalFloat(MetroHazeTopId,hz.hazeTop>0?hz.hazeTop:1);Shader.SetGlobalFloat(MetroDustId,hz.dust);}
-            if(camera!=null){var p=camera.transform.position;wzLights.Settle(p.x*.4f,6,p.z*.4f,wzMood,wzStates,time);NativeLighting.PickedLights(wzLights.Pos,wzLights.Rgb);}
-            return true;
+            WardZeroField();
+            if(camera!=null){var p=camera.transform.position;wzLights.Settle(p.x*.4f,6,p.z*.4f,wzMood,wzStates,time);NativeLighting.PickedLights(wzLights.Pos,wzLights.Rgb,wzLights.Beam);}
+            WardZeroFieldSend(time,false);return true;
         }
         // The menu's cut-away: the roof and the outer walls on the camera's side are left out.
         private static bool Cutaway(ContentBlock b,Vector3 cam)
@@ -130,6 +140,9 @@ namespace ChipArena.UnityConversion
             if(wzEntries==null){var asset=Resources.Load<TextAsset>("PveContent");wzEntries=asset!=null?JsonUtility.FromJson<NativeWardEntrySet>(asset.text)?.entries??Array.Empty<NativeWardEntry>():Array.Empty<NativeWardEntry>();}
             wzMap=map;var blocks=map.blocks??Array.Empty<ContentBlock>();wzHazards=map.hazards??Array.Empty<MapHazard>();wzStates=new NativeHazardState[wzHazards.Length];
             wzKit=NativeWardZeroKit.Build(blocks,wzHazards,wzEntries);wzScene=NativeWardFxScene.Build(blocks,wzHazards,wzKit,wzEntries);wzLights=NativeWardZeroLights.Build(wzKit);
+            // The light field bakes on a worker thread (pure Core over the kit and the blocks, both left unchanged once built).
+            ReleaseWardField();var kit=wzKit;var bd=map.bounds;float x0=bd?.minX??-40,x1=bd?.maxX??40,z0=bd?.minZ??-32,z1=bd?.maxZ??32;wzBakeMap=map;
+            wzBake=System.Threading.Tasks.Task.Run(()=>NativeWardZeroField.Build(kit,blocks,x0,x1,z0,z1));
             wzOpen=new float[wzEntries.Length];wzBreached=new bool[wzEntries.Length];wzParents=new NativePropBody[blocks.Length];wzBlockOut=new bool[blocks.Length];wzNudge=new Vector3[blocks.Length];wzIndex.Clear();for(int i=0;i<blocks.Length;i++)if(blocks[i]?.id!=null)wzIndex[blocks[i].id]=i;
             wzSeeds=new float[wzKit.Parts.Length];for(int i=0;i<wzSeeds.Length;i++)wzSeeds[i]=NativeBlockLooks.Seed(blocks[wzKit.Parts[i].Parent].id+"#"+i);
             // The menu backdrop draws the blocks itself: with the faces the dressing lifts (NativeSurfaceLayers.Blocks), as in play.
@@ -220,8 +233,33 @@ namespace ChipArena.UnityConversion
             }
             wzDraw.Draw(camera,null,time);
         }
+        // Takes the bake once it is in: its volume (RGBAHalf, bilinear, clamped) and the slots without the troffers. A failed bake
+        // or a platform without 3D half textures keeps the troffers in the slots.
+        private void WardZeroField()
+        {
+            if(wzBake==null||!wzBake.IsCompleted)return;var bake=wzBake;wzBake=null;if(!ReferenceEquals(wzBakeMap,wzMap))return;
+            if(bake.IsFaulted||bake.IsCanceled){Debug.LogWarning("Ward Zero light field disabled: "+(bake.Exception?.GetBaseException().Message??"cancelled"));return;}
+            var f=bake.Result;if(f==null||f.Data.Length==0||!SystemInfo.supports3DTextures||!SystemInfo.SupportsTextureFormat(TextureFormat.RGBAHalf))return;
+            try
+            {
+                var tex=new Texture3D(f.Nx,f.Nz,NativeWardZeroField.Slices,TextureFormat.RGBAHalf,false){name="Ward Zero light field",wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear,anisoLevel=0};
+                var half=new ushort[f.Data.Length];for(int i=0;i<half.Length;i++)half[i]=Mathf.FloatToHalf(f.Data[i]);tex.SetPixelData(half,0);tex.Apply(false,true);
+                // The volume holds the light now; the bake keeps only its box (the 2.6 MB of floats go).
+                wzFieldTex=tex;f.Data=Array.Empty<float>();wzField=f;wzLights=NativeWardZeroLights.Build(wzKit,true);
+            }
+            catch(Exception e){Debug.LogWarning("Ward Zero light field disabled: "+e.Message);ReleaseWardField();}
+        }
+        // This frame's field: the circuits' levels and the colour from the mood (actors: the live arena and the killcam).
+        private void WardZeroFieldSend(double now,bool actors)
+        {
+            if(wzFieldTex==null||wzField==null){if(actors)NativeLighting.ActorLights(true);else NativeLighting.WardFieldOff();return;}
+            NativeWardZeroField.Levels(wzMood,now,wzLevels);NativeWardZeroField.Colour(wzMood,out float r,out float g,out float b);var f=wzField;
+            NativeLighting.WardField(wzFieldTex,new Vector4(f.MinX,f.MinZ,f.Nx*NativeWardZeroField.Cell,f.Nz*NativeWardZeroField.Cell),new Vector4(wzLevels[0],wzLevels[1],wzLevels[2],wzLevels[3]),new Color(r,g,b),actors);
+        }
+        private void ReleaseWardField(){if(wzFieldTex!=null)CapturedAnimation.Release(wzFieldTex);wzFieldTex=null;wzField=null;wzBake=null;wzBakeMap=null;}
         private void DisposeWardZero()
         {
+            ReleaseWardField();NativeLighting.WardFieldOff();
             CapturedAnimation.Release(wzMesh);CapturedAnimation.Release(wzMaterial);if(wzPitMaterial!=null)CapturedAnimation.Release(wzPitMaterial);wzMesh=null;wzMaterial=null;wzPitMaterial=null;wzDraw?.Dispose();wzDraw=null;
             wzBatches.Clear();wzMap=null;wzKit=null;wzScene=null;wzLights=null;wzArena=null;wzGeneration=-1;wzMoodSet=false;wzLast=-1;
         }

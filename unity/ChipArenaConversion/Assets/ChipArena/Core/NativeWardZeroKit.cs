@@ -760,12 +760,15 @@ namespace ChipArena.UnityConversion
         // ---------------- drives (pure) ----------------
         private static double Frac(double v)=>v-Math.Floor(v);
         private static double Hash01(int a,int c)=>Mix(Mix((uint)a*0x9E3779B9U)^(uint)c*0x85EBCA6BU)/4294967296.0;
-        /// <summary>A fluorescent fixture's light level: the mood's level, pumped by the beat, and the stutter of a failing tube
-        /// (a fixture fails while its seed is under the mood's flicker share; the rarest ones are dead or buzzing always).</summary>
+        /// <summary>Fixtures whose seed is under this share are dead (a faint buzz, no light: the light field leaves them out).</summary>
+        public const float DeadShare=.035f;
+        /// <summary>A fluorescent fixture's light level: the mood's level, pumped by the beat, its circuit's brownouts (the light
+        /// field's pools drop with it, NativeWardZeroField.Brownout) and the stutter of a failing tube (a fixture fails while its
+        /// seed is under the mood's flicker share; the rarest ones are dead or buzzing always).</summary>
         public static float FluorLevel(float seed,in NativeWardMood m,double time)
         {
-            float level=m.Fluor*(1+.18f*m.Beat);
-            if(seed<.035f)return .05f+.04f*(float)Math.Sin(time*40+seed*100);
+            float level=m.Fluor*(1+.18f*m.Beat)*NativeWardZeroField.Brownout(NativeWardZeroField.Circuit(seed),m,time);
+            if(seed<DeadShare)return .05f+.04f*(float)Math.Sin(time*40+seed*100);
             if(seed<m.Flicker)
             {
                 double rate=6+seed*30,k=Math.Floor(time*rate);double h=Hash01((int)k,(int)(seed*10000));

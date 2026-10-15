@@ -13,7 +13,8 @@ Shader "ChipArena/NativeBlockLit"
     // Unity light other than the key reaches these blocks; NativeLighting keeps the rim per-pixel on dressed maps, so it
     // never lands in the SH either), the rim light (_ArenaRim*, NativeLighting.ArenaRim), MapLooks' 8 practical lights
     // (_ArenaLight*, its own arrays, never the entrance stage's _StageLight*) and the 3 blast flashes (_ArenaFlash*,
-    // NativeArenaDressing.Flashes); then the ground haze and fog.
+    // NativeArenaDressing.Flashes); then the ground haze and fog. On Ward Zero only (NativeWardLight.cginc): the ceiling light
+    // field (one 3D texture, the only texture read here) and the practical slots' beacon beams.
     Properties {}
     SubShader
     {
@@ -94,6 +95,8 @@ Shader "ChipArena/NativeBlockLit"
         // The grime ramp: side faces 22% darker up to 1.2 m above the block's base, fading out by 1.8 m (3.10 readability).
         #define BK_GRIME 0.22
         float4 _ArenaLightPos[8];float4 _ArenaLightColor[8];float4 _ArenaFlashPos[3];float4 _ArenaFlashColor[3];float4 _ArenaRimDir;float4 _ArenaRimColor;float4 _ArenaHaze;float _ArenaHazeTop;float _ArenaDust;float _ArenaDustCoat;
+        // Ward Zero's ceiling light field and the slots' beacon beams (off on every other map: its globals are 0).
+        #include "NativeWardLight.cginc"
         // The vertex lattice (NativeBlockLooks.Corner) and the instance's 180-degree mesh turns, which only pick other chipped corners.
         float3 BlockLattice(float3 a,float3 b,float3 h,float c,float flags,inout float3 n)
         {
@@ -536,15 +539,16 @@ Shader "ChipArena/NativeBlockLit"
             coat*=1.0-0.9*max(max(inBand,plate),lamp);
             BlockSurf s;s.albedo=lerp(alb,BK_COAT,coat);s.emit=emit*(1.0-0.5*coat);return s;
         }
-        // The rim light, MapLooks' practical lights ((1 - (d/r)^2)^2, NativeMapLooks.Attenuation) and the blast flashes
-        // (min(1, 5(1 - q^2)) / (1 + 25 q^2), NativeBlockLooks.FlashFalloff), each times max(0, N.L).
+        // The rim light, MapLooks' practical lights ((1 - (d/r)^2)^2, NativeMapLooks.Attenuation; a beacon slot's beam,
+        // NativeWardLight.cginc WardBeam) and the blast flashes (min(1, 5(1 - q^2)) / (1 + 25 q^2), NativeBlockLooks.FlashFalloff),
+        // each times max(0, N.L); then Ward Zero's ceiling light field (WardField; nothing elsewhere).
         float3 BlockLights(float3 world,float3 n)
         {
-            float3 sum=_ArenaRimColor.rgb*saturate(dot(n,_ArenaRimDir.xyz));
+            float3 sum=_ArenaRimColor.rgb*saturate(dot(n,_ArenaRimDir.xyz))+WardField(world,n);
             for(int k=0;k<8;k++)
             {
                 float3 d=_ArenaLightPos[k].xyz-world;float len=max(length(d),0.0001);float q=len/max(_ArenaLightPos[k].w,0.0001);float a=saturate(1.0-q*q);
-                sum+=_ArenaLightColor[k].rgb*(a*a*saturate(dot(n,d/len)));
+                sum+=_ArenaLightColor[k].rgb*(a*a*saturate(dot(n,d/len)))*WardBeam(d,_ArenaLightColor[k].w);
             }
             for(int m=0;m<3;m++)
             {

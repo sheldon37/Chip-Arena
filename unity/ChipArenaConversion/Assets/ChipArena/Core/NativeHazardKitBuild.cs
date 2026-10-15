@@ -6,8 +6,9 @@ namespace ChipArena.UnityConversion
     /// colour, the shader look and flags (NativeBlockLooks / NativeCyberCityLooks with its bank flag), and the emissive level
     /// of glowing looks (1 for the others). Shadow: casts; Detail: left out on the low graphics tier.</summary>
     public struct NativeKitPart {public float X,Y,Z,Qx,Qy,Qz,Qw,Hx,Hy,Hz,R,G,B,Level;public int Look,Flags;public bool Shadow,Detail;}
-    /// <summary>A practical-light candidate: world place, range, linear colour times intensity.</summary>
-    public struct NativeKitLight {public float X,Y,Z,Range,R,G,B;public int Piece;}
+    /// <summary>A practical-light candidate: world place, range, linear colour times intensity, and its beam (0 a plain point
+    /// light; a rotating beacon's two beams as NativeWardLight.cginc WardBeam reads them: 8 + yaw in radians).</summary>
+    public struct NativeKitLight {public float X,Y,Z,Range,R,G,B,Beam;public int Piece;}
     /// <summary>A turret round for the weapon effects renderer (Runtime NativeWeaponFxShapes: the guns' muzzle star, tracer and
     /// impact): its time, the muzzle and its frame (forward x, up y, side z), and the hit point (NaN x: none in reach).</summary>
     public struct NativeKitShot {public double At;public V3 Muzzle,Forward,Up,Side,Hit;public int Piece,Round;}
@@ -114,10 +115,12 @@ namespace ChipArena.UnityConversion
         private void Lamp(double x,double y,double z,double hx,double hy,double hz,int hex,float level,FactoryQ? turn=null)=>Box(x,y,z,hx,hy,hz,hex,LTube,Bk,Math.Max(.02f,level),false,false,turn);
         private V3 W(double x,double y,double z){q.Rotate(x*k,y*k,z*k,out double wx,out double wy,out double wz);return new V3((float)(o.x+wx),(float)(o.y+wy),(float)(o.z+wz));}
         private V3 D(double x,double y,double z){q.Rotate(x,y,z,out double wx,out double wy,out double wz);return new V3((float)wx,(float)wy,(float)wz);}
-        private void Light(V3 p,float range,int hex,float intensity)
+        private void Light(V3 p,float range,int hex,float intensity,float beam=0)
         {
-            if(LightCount>=Lights.Length||!(intensity>.02f))return;Lights[LightCount++]=new NativeKitLight{X=p.x,Y=p.y,Z=p.z,Range=range,R=(float)Lin(hex,16)*intensity,G=(float)Lin(hex,8)*intensity,B=(float)Lin(hex,0)*intensity,Piece=part};
+            if(LightCount>=Lights.Length||!(intensity>.02f))return;Lights[LightCount++]=new NativeKitLight{X=p.x,Y=p.y,Z=p.z,Range=range,R=(float)Lin(hex,16)*intensity,G=(float)Lin(hex,8)*intensity,B=(float)Lin(hex,0)*intensity,Beam=beam,Piece=part};
         }
+        /// <summary>The slot code of a beacon's two opposite beams along world direction `d` (8 + its yaw from +z toward +x).</summary>
+        public static float TwinBeam(V3 d){double yaw=Math.Atan2(d.x,d.z);if(yaw<0)yaw+=Math.PI*2;return 8+(float)yaw;}
         private void Sprite(V3 p,double size,int hex,double a,bool additive=true)
         {
             double h=size/2,ax=rx*h,ay=ry*h,az=rz*h,bx=ux*h,by=uy*h,bz=uz*h;double r=Lin(hex,16),g=Lin(hex,8),b=Lin(hex,0);
@@ -183,9 +186,9 @@ namespace ChipArena.UnityConversion
 
         // ---------------- alarms ----------------
         // A beacon: plate, collar, dome over a bulb, two reflectors turning about its upright axis, two light beams and the
-        // light that sweeps the walls (a practical light carried along the beam). A wall-mounted one stands on a bracket arm
-        // off the wall, upright; a ceiling one hangs upside down. When the beam points back at the wall it hangs on, the
-        // light sits in the hot spot it makes on that wall.
+        // light that sweeps the room (a practical light at the bulb throwing the two beams round the walls and floor,
+        // NativeWardLight.cginc WardBeam). A wall-mounted one stands on a bracket arm off the wall, upright; a ceiling one
+        // hangs upside down.
         private void BeaconLook(KitRecord r,in NativeKitPhase p,double now,int i)
         {
             var pal=NativeHazardKit.Look(r.look);bool locked=NativeHazardKit.BeatLocked(r);float light=NativeHazardKitClock.BeaconLight(p,Mode);
@@ -212,9 +215,8 @@ namespace ChipArena.UnityConversion
                     double vx=ex-c.x,vy=ey-c.y,vz=ez-c.z,vl=Math.Sqrt(vx*vx+vy*vy+vz*vz);double face=vl>1e-6?(d.x*vx+d.y*vy+d.z*vz)/vl:0;if(face>0)Sprite(c,.35+1.6*Math.Pow(face,8),pal.Lamp,light*(.25+1.2*Math.Pow(face,12)));
                 }
                 Sprite(c,.42,pal.Lamp,.45*light);
-                // The light that spills on the walls: carried out along the brighter beam, or the hot spot on its own wall.
-                V3 beam=D(Math.Sin(angle),0,Math.Cos(angle));float back=wall?beam.x*normal.x+beam.y*normal.y+beam.z*normal.z:1;
-                V3 spot=back>-.2f?c+beam*1.8f:c+beam*.2f+normal*.12f;Light(spot,(r.range>0?r.range:8)*.6f,pal.Lamp,(back>-.2f?1.9f:1.2f)*light);
+                // The light that sweeps the room: at the bulb (off its wall), its two beams turning with the reflectors.
+                V3 beam=D(Math.Sin(angle),0,Math.Cos(angle));V3 at=wall?c+D(0,0,1)*.25f:c;Light(at,(r.range>0?r.range:8)*.85f,pal.Lamp,1.4f*light,TwinBeam(beam));
             }
             q=keep;o=At[i];
         }
@@ -490,7 +492,7 @@ namespace ChipArena.UnityConversion
     public sealed class NativeKitLightPool
     {
         public const int MaxBudget=3;public int Budget=MaxBudget;
-        public readonly float[] Pos=new float[MaxBudget*4],Rgb=new float[MaxBudget*3];public int Count;
+        public readonly float[] Pos=new float[MaxBudget*4],Rgb=new float[MaxBudget*3],Beam=new float[MaxBudget];public int Count;
         private readonly int[] slot={-1,-1,-1};private readonly float[] weight=new float[MaxBudget];private readonly NativeKitLight[] last=new NativeKitLight[MaxBudget];
         private readonly int[] want=new int[MaxBudget];private float[] score=new float[NativeKitScene.LightCapacity];
         /// <summary>A light's worth at the eye.</summary>
@@ -516,16 +518,17 @@ namespace ChipArena.UnityConversion
             for(int s=0;s<MaxBudget;s++)
             {
                 if(slot[s]<0||weight[s]<=0)continue;var l=last[s];float w=weight[s];int o=Count*4,c=Count*3;
-                Pos[o]=l.X;Pos[o+1]=l.Y;Pos[o+2]=l.Z;Pos[o+3]=l.Range;Rgb[c]=l.R*w;Rgb[c+1]=l.G*w;Rgb[c+2]=l.B*w;Count++;
+                Pos[o]=l.X;Pos[o+1]=l.Y;Pos[o+2]=l.Z;Pos[o+3]=l.Range;Rgb[c]=l.R*w;Rgb[c+1]=l.G*w;Rgb[c+2]=l.B*w;Beam[Count]=l.Beam;Count++;
             }
         }
         public void Clear(){for(int s=0;s<MaxBudget;s++){slot[s]=-1;weight[s]=0;}Count=0;}
         /// <summary>
         /// Merges the kit's lights into eight practical slots in place (`pos` x, y, z, range; `rgb` linear): a kit light takes
         /// a free slot (range 0 or far below the floor) first, else the slot whose light is worth least at the eye, never one
-        /// another kit light took this call. Returns how many slots it took.
+        /// another kit light took this call. With `beam` the slots' beams follow (a taken slot gets the kit light's `kitBeam`,
+        /// 0 without one). Returns how many slots it took.
         /// </summary>
-        public static int Merge(float[] pos,float[] rgb,int slots,float[] kitPos,float[] kitRgb,int kitCount,double x,double y,double z)
+        public static int Merge(float[] pos,float[] rgb,int slots,float[] kitPos,float[] kitRgb,int kitCount,double x,double y,double z,float[] beam=null,float[] kitBeam=null)
         {
             Span<bool> taken=stackalloc bool[16];int took=0;
             for(int k=0;k<kitCount;k++)
@@ -538,7 +541,7 @@ namespace ChipArena.UnityConversion
                     if(v<worst){worst=v;best=s;}
                 }
                 if(best<0)break;taken[best]=true;took++;
-                for(int c=0;c<4;c++)pos[best*4+c]=kitPos[k*4+c];for(int c=0;c<3;c++)rgb[best*3+c]=kitRgb[k*3+c];
+                for(int c=0;c<4;c++)pos[best*4+c]=kitPos[k*4+c];for(int c=0;c<3;c++)rgb[best*3+c]=kitRgb[k*3+c];if(beam!=null&&best<beam.Length)beam[best]=kitBeam!=null&&k<kitBeam.Length?kitBeam[k]:0;
             }
             return took;
         }
