@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
         private Vector3 BossRescue=>Vec((Pve?.Content??StageContent).boss.rescue.Position());
         private void StepSirenStage()
         {
-            if(MapId!="siren"||Match.Phase!=NativePhase.Fight||BossSongTime<0)return;
+            if(!NativeMapRules.WardInstance(MapId)||Match.Phase!=NativePhase.Fight||BossSongTime<0)return;
             for(int i=0;i<StageVents.Length;i++)
             {
                 if(!BossTrack.Vent(BossSongTime,SongVent(i).song).active)continue;Vector3 vent=StageVents[i];

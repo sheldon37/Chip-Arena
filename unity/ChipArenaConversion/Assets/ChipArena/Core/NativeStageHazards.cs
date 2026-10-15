@@ -14,13 +14,13 @@ namespace ChipArena.UnityConversion
         {
             var hs=map.hazards??Array.Empty<MapHazard>();
             void Need(bool value,string reason){if(!value)throw new InvalidOperationException("Stage hazards "+map.id+": "+reason);}
-            Need(hs.All(h=>h!=null&&!string.IsNullOrEmpty(h.id)&&h.id.StartsWith(map.id+"-",StringComparison.Ordinal))&&hs.Select(h=>h.id).Distinct().Count()==hs.Length,"IDs");
+            Need(hs.All(h=>h!=null&&!string.IsNullOrEmpty(h.id)&&h.id.StartsWith((map.id=="expedition-ward-zero"?"siren":map.id)+"-",StringComparison.Ordinal))&&hs.Select(h=>h.id).Distinct().Count()==hs.Length,"IDs");
             foreach(var h in hs)
             {
                 Need(NativeMapRules.Box(h.center,h.size)&&NativeMapRules.Finite(h.a)&&NativeMapRules.Finite(h.b)&&NativeMapRules.Finite(h.axis),"geometry "+h.id);
                 Need(new[]{h.first,h.period,h.offset,h.warn,h.danger,h.speed,h.length,h.charge,h.live,h.tick,h.damage,h.radius,h.start,h.rise,h.travel,h.dwell,h.hoist,h.carry,h.push}.All(MathUtil.Finite),"finite clock "+h.id);
                 Need(h.period>0&&h.damage>=0,"period/damage "+h.id);
-                if(map.id=="siren")Need(City(h)&&h.kind=="grid"||Ward(h),"Ward kind "+h.id);
+                if(NativeMapRules.WardInstance(map.id))Need(City(h)&&h.kind=="grid"||Ward(h),"Ward kind "+h.id);
                 if(Ward(h))
                 {
                     Need(h.first>=0&&h.first+h.offset>=0&&!h.lethal&&h.warn>0&&h.dwell>=0,"Ward clock "+h.id);

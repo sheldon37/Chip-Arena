@@ -13,6 +13,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,BoxCollider> expeditionClosures=new Dictionary<string,BoxCollider>();
         private readonly Collider[] expeditionProbe=new Collider[32];
         private readonly Dictionary<string,bool> expeditionNavClear=new Dictionary<string,bool>();
+        private readonly HashSet<string> expeditionDeaths=new HashSet<string>();
         private string expeditionBoss;private int expeditionSpawned;private float expeditionSpawnAt;
         public ExpeditionLayout LoadExpeditionM1Layout(string json,NativePveContent horde)
         {
@@ -26,7 +27,7 @@ namespace ChipArena.UnityConversion
         public void ExpeditionMap(string map)
         {
             if(Replica||NativeMapRules.ArenaSelectable(Content.Map(map)))throw new InvalidOperationException("Expected an isolated Expedition map.");
-            MapId=map;Reset();expeditionNavClear.Clear();expeditionClosures.Clear();expeditionBoss=null;expeditionSpawned=0;expeditionSpawnAt=Time;
+            MapId=map;Reset();BossSongAt=-1;BossSongLead=0;expeditionNavClear.Clear();expeditionDeaths.Clear();expeditionClosures.Clear();expeditionBoss=null;expeditionSpawned=0;expeditionSpawnAt=Time;
         }
         public bool ExpeditionSupported(V3 floor,float radius,float height)
         {
@@ -64,7 +65,8 @@ namespace ChipArena.UnityConversion
             data.entries=NativeExpeditionLayout.ResolveSpawns(area,data).Select(s=>s.entry).ToArray();
             var bossPoint=area.bossPoints[0];data.boss=new PveBoss{spawn=new PvePoint{x=bossPoint.x,y=bossPoint.y,z=bossPoint.z},rescue=new PvePoint{x=bossPoint.x,y=bossPoint.y,z=bossPoint.z},yaw=bossPoint.yaw};
             if(area.role=="world")data.hideSpots=area.bossPoints.Select(p=>new PvePoint{x=p.x,y=p.y,z=p.z}).ToArray();
-            Pve=new NativePveState{Content=data,Started=true,Stage="expedition",Cap=8,Rate=0,Floor=0,Phase=4,
+            if(NativeMapRules.WardInstance(MapId))BuildPveMachines(data);
+            Pve=new NativePveState{Content=data,Started=true,Stage=area.role=="instance"?"wave":"intermission",Wave=1,Cap=8,Rate=0,Floor=0,Phase=1,
                 SpawnRandom=new NativePveRandom(director.Session.Run.Snapshot().seed),EconomyRandom=new NativePveRandom(12345)};
             Pve.Boss=Pilots.Single(p=>p.Seat.AuthorityBoss);SetBossHidden(true);
             foreach(var p in Pilots.Where(p=>!p.Seat.AuthorityBoss))Pve.Rows[p.Seat.id]=new NativePveRow{Pilot=p};
@@ -106,13 +108,14 @@ namespace ChipArena.UnityConversion
                 if(instance.progress>=instance.target&&!instance.cleared&&expeditionBoss==null)SpawnExpeditionBoss("m1-ward-siren");
             }
             if(s.phase==ExpeditionPhase.FinalBoss&&expeditionBoss==null)SpawnExpeditionBoss("m1-final-siren");
+            if(Pve.Holding)return;
             if(expeditionBoss!=null)
             {
-                var boss=Pve.Boss;Expedition.UpdateBossHealth(s.area,expeditionBoss,Math.Max(0,boss.Hp),Pve.MaxHp);
+                var boss=Pve.Boss;Pve.Phase=boss.Hp>Pve.MaxHp*.75f?1:boss.Hp>Pve.MaxHp*.5f?2:boss.Hp>Pve.MaxHp*.25f?3:4;Expedition.UpdateBossHealth(s.area,expeditionBoss,Math.Max(0,boss.Hp),Pve.MaxHp);
                 if(boss.Hp<=0)
                 {
                     bool accepted=s.phase==ExpeditionPhase.FinalBoss?Expedition.FinalDefeated(Vec(boss.Body.position)):Expedition.BossDefeated(expeditionBoss,Vec(boss.Body.position));
-                    if(accepted){KillPveHorde();pveAcid.Clear();Bullets.Clear();SetBossHidden(true);}
+                    if(accepted){KillPveHorde();pveAcid.Clear();Bullets.Clear();SetBossHidden(true);Pve.Stage="intermission";BossSongAt=-1;BossSongLead=0;}
                 }
             }
             StepPveHorde();StepPveAcid();
@@ -122,11 +125,30 @@ namespace ChipArena.UnityConversion
             var s=Expedition.Session.Run.Snapshot();var scale=new ExpeditionScaling().Evaluate(s.elapsed,1,s.loop,s.phase==ExpeditionPhase.Instance);
             var point=expeditionArea.bossPoints[0];var boss=Pve.Boss;Pve.MaxHp=NativePveRules.BossHp(1)*(float)scale.health;
             boss.Stats["hp"]=Pve.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(1)*(float)scale.damage;boss.Hp=Pve.MaxHp;boss.Seat.alive=true;
-            SetBossHidden(false);boss.Body.position=Vec(point.Position)+Vector3.up*NativeLocomotionRules.HalfHeight;boss.Yaw=point.yaw;Pve.Stage="expedition";
-            if(!Expedition.RecordBossArrival(id,"siren",kind=>Content.weapons.Any(w=>w.id==kind),Vec(boss.Body.position),boss.Hp,Pve.MaxHp))throw new InvalidOperationException("Boss arrival rejected.");
-            expeditionBoss=id;
+            SetBossHidden(false);boss.Body.position=Vec(point.Position)+Vector3.up*NativeLocomotionRules.HalfHeight;boss.Yaw=point.yaw;Pve.Stage="boss";Pve.Phase=1;
+            if(!Expedition.RecordBossArrival(id,"siren",kind=>Content.weapons.Any(w=>w.id==kind),point.Position,boss.Hp,Pve.MaxHp))throw new InvalidOperationException("Boss arrival rejected.");
+            expeditionBoss=id;BeginPveHold("intro");
         }
         private void ExpeditionKilled(NativeMinion minion,NativePilot source)
-        {if(minion.DevMonster)return;Expedition.MonsterDefeated("m1-"+Generation+"-"+minion.Id,Vec(minion.Body.position),1,false);Emit(EventKind.Death,source,minion.Id,minion.Body.position,0);}
+        {
+            if(minion.DevMonster)return;string kill="m1-"+Generation+"-"+minion.Id;if(!expeditionDeaths.Add(kill))return;
+            Expedition.MonsterDefeated(kill,Vec(minion.Body.position),1,false);
+            var add=minion.Pve;var recruit=Pve.Recruits.Find(r=>r.Pilot==source);var paid=recruit?.Owner??source;bool head=(add.Lost&1)!=0;float reward=add.Stats.reward;
+            bool Pay(NativePilot pilot,float amount,string reason)
+            {
+                if(pilot==null||pilot.Seat.bot)return false;
+                var member=Expedition.Session.Run.Snapshot().members.FirstOrDefault(m=>Expedition.Session.Sources.Seat?.Invoke(m.account)==pilot.Seat.id);
+                int money=NativePveRules.Money(pilot.Seat.chips,reason,amount);
+                if(member==null||!Expedition.Session.Run.Credit(member.account,"money:"+kill+":"+reason,money))return false;
+                if(Pve.Rows.TryGetValue(pilot.Seat.id,out var row))row.Earned+=money;
+                Emit(EventKind.PveMoney,pilot,pilot.Seat.id,pilot.Body.position,money,reason);return true;
+            }
+            bool credited=recruit!=null?Pay(paid,(reward+(head?10:0))*.5f,"recruit"):Pay(paid,reward,"kill");
+            if(recruit==null&&head)Pay(paid,10,"head");
+            if(credited&&Pve.Rows.TryGetValue(paid.Seat.id,out var owner))owner.Kills++;
+            foreach(var hit in add.Dealt)if(hit.Key!=source?.Seat.id&&hit.Key!=paid?.Seat.id&&hit.Value>=minion.MaxHp*.2f)
+            {var pilot=Pilots.Find(p=>p.Seat.id==hit.Key);if(Pay(pilot,reward*.4f,"assist")&&Pve.Rows.TryGetValue(hit.Key,out var row))row.Assists++;}
+            Emit(EventKind.Death,source,minion.Id,minion.Body.position,0);
+        }
     }
 }

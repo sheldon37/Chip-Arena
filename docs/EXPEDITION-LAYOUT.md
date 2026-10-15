@@ -266,7 +266,7 @@ The map is the current `siren` map, with its blocks, 8 ramps, drop hints and col
 copied unchanged. Siren's blockHash is
 `4e1855d8cd3271ca625ecd4df4577525738dad8f74bd75ae9670a4ea5cbad814`. The overlay adds 3 blocks: the
 exit frame's two jambs and its lintel. It uses the look `quarantine`, keeps Siren's PvP spawn
-tables (the validator requires them) and has no stage hazards (see below).
+tables (the validator requires them). As of 2026-10-15, the runtime map-load boundary inherits the exact boss-test stage hazards, including their original IDs for lighting/alarm bindings; the frozen draft still omits the duplicate table.
 
 | Record | Value |
 | --- | --- |
