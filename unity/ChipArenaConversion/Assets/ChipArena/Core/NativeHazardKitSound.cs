@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             float duck=Duck(combat),power=0;
             for(int i=0;i<scene.Records.Length;i++)
             {
-                var r=scene.Records[i];var p=scene.Phases[i];var at=scene.At[i];float d=Dist(at,ear),trim=Trim(r);
+                var r=scene.Records[i];if(r.silent)continue;var p=scene.Phases[i];var at=scene.At[i];float d=Dist(at,ear),trim=Trim(r);
                 bool tripped=p.State==NativeKitState.Arming&&Crossed(to-p.Since,from,to);
                 switch(r.kind)
                 {

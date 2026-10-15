@@ -4,7 +4,8 @@
  "placements": [
   {
    "look": "quarantine",
-   "note": "Ward Zero and its Expedition instance (both carry the quarantine look and the same siren-* walls).",
+   "note": "Ward Zero and its Expedition instance (both carry the quarantine look and the same siren-* walls). Silent by owner request (2026-10-15): the lights run, no alarm sound plays; the music already carries the alarms.",
+   "silent": true,
    "kit": [
     {
      "id": "ward-lockdown-beacon-n",
