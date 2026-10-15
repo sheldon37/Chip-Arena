@@ -7,7 +7,8 @@ namespace ChipArena.UnityConversion
     /// The sprint effect (owner 2026-10-12: "And a sprint effect to know when we're sprinting", "Make sprint effect visible in
     /// first person too"): pure functions of the sprint weight (NativeSprintRules), a seed and the presentation clock, so host,
     /// guests, killcam and spectators draw the same thing. Third person: accent speed streaks trailing off the body and small
-    /// dust kicks at each footfall (camera-facing particles only, never a disc on the floor). First person: speed lines at the
+    /// dust kicks at each footfall (camera-facing particles only, never a disc on the floor), and a greatsword's dragged point
+    /// throwing faint scrape sparks off the floor (Scrape). First person: speed lines at the
     /// screen edges and a soft edge vignette, tinted by the weapon and the pilot's accent (with the FOV kick, camera bob and
     /// view-weapon carry of NativeSprintRules and NativeViewSway). Reduced effects and Low graphics thin and dim it (Count,
     /// Dim). Presentation only. Runtime/NativeSprintFxPresentation draws it.
@@ -45,6 +46,33 @@ namespace ChipArena.UnityConversion
             at=foot;size=opacity=0;float u=age/DustLife;if(!(u>=0&&u<1))return false;
             Vector3 side=new Vector3(travel.Z,0,-travel.X)*((Hash(seed,k)-.5f)*.25f);float o=1-(1-u)*(1-u);
             at=foot+side-travel*(DustBack*o*(.7f+.3f*Hash(seed,k+7)))+Vector3.UnitY*(.04f+DustRise*u);size=DustSize+DustGrow*o;opacity=DustOpacity*(float)Math.Pow(1-u,1.5)*Math.Min(1,age/.04f);return true;
+        }
+
+        // ---- the greatsword's drag (third person; Core/NativeSprintMotion.DragBlade, owner 2026-10-15) ----
+        /// <summary>Scrape sparks off the dragged greatsword's point: Scrapes of them (ReducedScrapes with Reduced effects; Low
+        /// graphics halves either), each kicked back and up off the floor where the point was at most ScrapeLife ago and falling,
+        /// a short hot streak (the bisect sparks' colour, linear HDR) cooling as it goes. Only while the rig shows the drag, and
+        /// scaled down as the point lifts (ScrapeContact).</summary>
+        public const int Scrapes=5,ReducedScrapes=2;
+        public const float ScrapeLife=.16f,ScrapeKick=1.4f,ScrapeRise=1.6f,ScrapeSpread=.6f,ScrapeGravity=9.8f,ScrapeWidth=.014f,ScrapeReach=.2f;
+        public static readonly Vector3 ScrapeColor=new Vector3(4.2f,1.75f,.45f);
+        /// <summary>How far down the dragged point is, from its height over the feet (m): 1 at the floor guard's height
+        /// (about .11 m), easing to 0 at ScrapeReach.</summary>
+        public static float ScrapeContact(float overFeet)=>1-MeleeMath.SmoothStep(overFeet,ScrapeReach*.65f,ScrapeReach);
+        /// <summary>
+        /// Spark k at `time` off the point at `tip` (world) of a pilot moving at `velocity` (world; the point moves with it), at
+        /// `weight` (the sprint's, times ScrapeContact): its leading end `head` (never under `floor` + 1 cm), its world motion
+        /// `motion` (m/s: the streak trails along it) and its `heat` (fades as (1 - age)^2). Stateless: the same on every client.
+        /// </summary>
+        public static bool Scrape(int k,int seed,float time,float weight,Vector3 tip,Vector3 velocity,float floor,out Vector3 head,out Vector3 motion,out float heat)
+        {
+            head=tip;motion=Vector3.Zero;heat=0;if(weight<=1e-3f||k<0)return false;
+            double cycle=time/ScrapeLife+Hash(seed,k);int round=(int)Math.Floor(cycle);float u=(float)(cycle-round),age=u*ScrapeLife;
+            float a=Hash(seed^round,k+3),b=Hash(seed^round,k+7)-.5f,c=Hash(seed^round,k+11);
+            Vector3 level=new Vector3(velocity.X,0,velocity.Z);float speed=level.Length();Vector3 travel=speed>.1f?level/speed:Vector3.Zero,side=new Vector3(travel.Z,0,-travel.X);
+            Vector3 kick=-travel*(ScrapeKick*(.4f+.6f*a))+side*(ScrapeSpread*b)+Vector3.UnitY*(ScrapeRise*(.5f+.5f*c));
+            head=tip-level*age+kick*age-Vector3.UnitY*(.5f*ScrapeGravity*age*age);if(head.Y<floor+.01f)head.Y=floor+.01f;
+            motion=kick-Vector3.UnitY*(ScrapeGravity*age);heat=MeleeMath.Clamp(weight,0,1)*(1-u)*(1-u);return heat>1e-3f;
         }
 
         // ---- first person (screen space: a line's radius is a fraction of the screen's half extent along its direction from
