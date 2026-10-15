@@ -8294,3 +8294,40 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - The screen being left is drawn during the 0.2 s cover after Go's side effects.
   - Per-death meshes, pilot rigs and runtime keywords cannot be preloaded.
 - **Animation impact:** none on gameplay timing, hitboxes, damage, cooldowns, movement or networking.
+
+## 2026-10-15 — Claude: blade blood, gun rounds from the muzzle, melee trails on the blade
+
+- **Branch:** `claude/weapon-sockets` (`7dfdc38`), based on shared `7009887`, merged onto shared `cfd3def`.
+- **Owner request:**
+  - "Blood currently is rendering "off" of the weapons like theyre floating."
+  - "Sometimes the bullet doesnt come from the tip of barrel, and sometimes weapon trails are too far / too early for melee weapons."
+- **Blade blood (Core `NativeBladeProfile`, `NativeBladeBlood`; Runtime `NativeWeaponPresentation`):**
+  - Root cause: `NativeBloodRules.Sliver` placed the boxes at a fixed y of −.065 in the weapon frame. Both skins' blades sit on y 0, .013–.027 thick, so the blood hung about 4 cm below the Standard blade and stuck out past the tapering point. It also ignored the skin and bloodied a thrown dagger's empty hand.
+  - Fix: the blood follows the drawn edge profile of each skin. Standard uses the shared blade cross-section tables, so the built meshes are byte-identical. The Prototype uses the bank's edge strips.
+  - Each bevel gets a thin coat and a darker core, plus an edge bead and 1–3 drips. The point stays clean.
+  - Works for both daggers (mirrored), with reach, in first and third person.
+  - Pieces sit within 1.4 mm of the steel.
+- **Gun rounds (Core `NativeShotLaunch`, `NativeShotTracker`, `NativeShotScene`; Runtime `NativeShotPresentation`, `NativeWeaponFxPresentation`):**
+  - Root cause: `NativeArena.Fire` starts every round 0.3 m over the body centre, offset .2 right and .48 ahead along the yaw, regardless of pitch or pose. That point is 0.40–1.32 m from the drawn crown, so in harness renders the first drawn round sat up to 36 cm off the barrel's line.
+  - Fix:
+    - Each posed gun's crown is recorded per frame. In first person, the view weapon's crown is mapped into the world camera.
+    - A round matched to its replicated Shot event (same firer and time, start within .35 m, age at most .25 s) is drawn from the crown and blended onto the simulated path within 4.5 m, by distance travelled.
+    - Hits, impacts and sounds stay on the simulated path. Unmatched rounds draw as before.
+  - The first drawn round is now within 6 cm of the crown's line.
+- **Melee trails (Core `NativeSlashTrail`; `MeleeMotion` exposes `CutAt`, `CutAge`, `CutWindup`, `CutWindow`, read only):**
+  - Root cause: the slash crescent was a fixed pitched arc round the pilot on the replicated hit window.
+    - Its head sat 0.5–3.8 m from the blade tip.
+    - Its height was off by up to 1.35 m.
+    - It ran ahead of the blade through hit-stop (sword 41 ms, greatsword 67 ms).
+  - Fix: the crescent is swept from the posed grip-to-tip line while the blade is in its fast arc, on the blade's own clock (hit-stop and the landing freeze included).
+    - Drawn as a band along the outer blade to the tip, both daggers included.
+    - Fixed 72-sample buffers; no allocation.
+  - The head is now the blade tip and never runs ahead.
+- **Checks on the branch (run5):** Unity 6000.3.24f1 runtime and editor compile OK; relay 691 PASS (new `WeaponSocketChecks`, `--weapon-sockets`, 20,351 checks); Python 106 OK; package OK; diff-check OK. `HitFeelChecks`' blade blood test is updated.
+- **Renders:** offline only (the scratchpad's `renders-weapon-sockets`: blood, shots and trails, before and after). No Unity, Windows or live guest, replay or killcam run. The first-person harness rig is approximate.
+- **Risks:**
+  - Blood is still box pieces, so it can look blocky up close in first person.
+  - An unposed rig (culled or hidden) draws no crescent.
+  - A round first seen after .25 s, or with its Shot event dropped by the per-tick cap of 32, falls back to the simulated path.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement, projectile simulation, hit detection or networking.
+- **For Astra (optional):** the gameplay muzzle ignores pitch and pose. A pitch-aware muzzle near the drawn crown, or a replicated muzzle offset per round, would remove the presentation blend. The blend depends on the Shot event fields (Source, Time, Position) and the per-tick effect cap.
