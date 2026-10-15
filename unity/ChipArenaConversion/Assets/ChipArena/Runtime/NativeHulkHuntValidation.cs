@@ -10,6 +10,10 @@ namespace ChipArena.UnityConversion
         {
             void Check(bool ok,string why){if(!ok)throw new Exception("Native Hulk hunt: "+why);}
             void Clock(float t)=>Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=t,fightAt=10,round=Match.Round,set=Match.Set,cooperative=true});
+            // The preceding spitter gate resets the arena and clears Pve. Own this fixture's
+            // setup rather than borrowing state (or pilot references) from another gate.
+            Reset();
+            ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),true);
             var bounds=Map.bounds;var entries=Pve.Content.entries;var stageEntries=StageContent.entries;var p=Members().First();
             try
             {
