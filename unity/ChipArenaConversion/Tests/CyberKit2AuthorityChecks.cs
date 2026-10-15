@@ -7,6 +7,18 @@ internal static class CyberKit2AuthorityChecks
     {
         int checks=0;void Check(bool ok,string why){checks++;if(!ok)throw new Exception("Cyber v2 rules: "+why);}
         NativeCyberKit Kit(bool ranged=false){var s=new NativeCyberKit();NativeCyberKit2Rules.Ensure(s);s.Ranged.Ranged=ranged;return s;}
+        {
+            // Model Unity's inline null expansion; System.Text.Json alone preserves nulls.
+            var legacy=new NativeCyberKit();legacy.CapturePresence();
+            legacy.Kit2=new CyberKit2MeleeRecord();legacy.Kit2R=new CyberKit2RangedRecord();
+            Check(!legacy.Valid(),"expanded absent v2 records reproduce legacy rejection");
+            legacy.RestorePresence();Check(legacy.Valid()&&legacy.Kit2==null&&legacy.Kit2R==null,"absent v2 records restored");
+            var v2=Kit();v2.Kit2R.Ready[0]=27;v2.CapturePresence();v2.RestorePresence();v2.RestorePresence();
+            Check(v2.Valid()&&v2.Kit2R.Ready[0]==27,"present v2 survives repeated restoration");
+            v2.Kit2R.Ready[0]=float.NaN;v2.RestorePresence();Check(!v2.Valid(),"present malformed v2 remains rejected");
+            var missing=Kit();missing.Kit2R=null;missing.CapturePresence();missing.Kit2R=new CyberKit2RangedRecord();missing.RestorePresence();
+            Check(!missing.Valid(),"missing required v2 record remains rejected");
+        }
         for(int slot=0;slot<12;slot++)
         {
             if(slot==6)continue;var s=Kit(slot>=7);float mana=100;

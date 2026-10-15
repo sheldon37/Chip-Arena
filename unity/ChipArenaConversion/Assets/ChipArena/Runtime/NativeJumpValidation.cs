@@ -29,6 +29,17 @@ namespace ChipArena.UnityConversion
             }
             try
             {
+                // Exercise the real Unity codec for live, death and corpse actor records.
+                foreach(bool v2 in new[]{false,true})
+                {
+                    var kit=new NativeCyberKit();if(v2)NativeCyberKit2Rules.Ensure(kit);
+                    var sample=new NativeGameFrame{snapshot=new Snapshot{Actors=new[]{new Actor{Cyber=kit}}},
+                        pilots=new[]{new NativePilotFrame{death=new NativeDeath{actor=new Actor{Cyber=kit.ViewCopy()}}}},
+                        corpses=new[]{new NativeDeath{actor=new Actor{Cyber=kit.ViewCopy()}}}};
+                    var decoded=NativeFrameCodec.Clone(sample);
+                    foreach(var k in new[]{decoded.snapshot.Actors[0].Cyber,decoded.pilots[0].death.actor.Cyber,decoded.corpses[0].actor.Cyber})
+                        Check(k.Valid()&&(k.Kit2!=null)==v2&&(k.Kit2R!=null)==v2,"real JSON optional Cyber records: "+v2);
+                }
                 Match.HoldResolution=()=>true;Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10,fightAt=10});Physics.gravity=Vector3.down*Rules.Gravity;
                 foreach(string spec in new[]{"sword","daggers","shield","greatsword","pistol","fire","bow","cyberlord"})
                 {
@@ -45,7 +56,8 @@ namespace ChipArena.UnityConversion
                     Setup(airSpec,true);p.Stats["jumpPower"]=1.5;Tick(true);
                     Check(p.AirJumps==1&&Math.Abs(p.Body.linearVelocity.y-(11.475f-Rules.Gravity*Rules.Dt))<.02f,"walk-off air jump scales once and replaces vertical velocity");
                     var frame=NativeFrameCodec.Clone(NetworkFrame());var actor=frame.snapshot.Actors.First(a=>a.Id==p.Seat.id);
-                    Check(frame.Valid(Content)&&actor.AirJumps==1&&actor.AirJumpAt==p.AirJumpAt&&!actor.Grounded,"real JSON retains count/time/ground contact for guests, late join and replay");
+                    Check(frame.Valid(Content),"real JSON frame validity for "+airSpec);
+                    Check(actor.AirJumps==1&&actor.AirJumpAt==p.AirJumpAt&&!actor.Grounded,"real JSON retains count/time/ground contact for guests, late join and replay: "+airSpec);
                     var prediction=PredictionState(frame.pilots.First(a=>a.id==p.Seat.id));
                     Check(prediction.AirJumps==1&&prediction.AirJumpAt==actor.AirJumpAt&&NativePrediction.Step(prediction,new InputFrame{Jump=true},null).AirJumpAt==actor.AirJumpAt,"snapshot seeds guest air budget and refuses another jump");
                     Replica=true;predictor.Reset(prediction,0);PresentedJump(p,out bool grounded,out float presentedAt);
