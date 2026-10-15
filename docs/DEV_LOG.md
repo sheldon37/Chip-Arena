@@ -1,5 +1,13 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Astra — Ward Zero horde emergency-navigation hitch
+- Branch `codex/horde-navigation-fix`, base shared/builder `cea5faf`. Owner capture: six minions, six fixed ticks, 150.32 ms frame, 134.69 ms navigation, zero route searches, only 0.066 ms link checks. The emergency escape branches are outside those sub-timers and evaluated visibility for every matching floor node before selecting the nearest.
+- Replace filter-before-sort emergency queries with the existing reusable nearest search: expensive live safety/visibility checks run in distance order and stop at the first valid destination. Preserve pocket preference, height limits, tie order, live geometry checks and movement return rules. General escape checks reuse the existing static hazard candidate index with live phase/clock evaluation. Evaluate the actor's stage danger once per call. Include escape work in NavigationNearestMs.
+- No scene detail, lights, hazards, AI population, damage, movement speed, fixed-step or networking changes. No visual ownership changes.
+- Regression adds clear, obstructed and unreachable pocket/floor destination equivalence and visibility-query counts over authored maps. Existing broad-phase tests compare node safety against direct hazard evaluation across clocks/phases/rounds.
+- Validation: all three pinned Unity 6000.3.24f1 / C# 9 assembly compile targets PASS (player, editor-context Runtime, Editor); focused `--navigation` suite PASS, including 4,253,544 hazard broad-phase comparisons and 288 escape destination cases (652,962 -> 218,002 visibility predicates including fully unreachable cases), existing route/flow/zero-allocation checks; `git diff --check` clean. This addresses an identified unbounded repeated query; actual Windows frame-time improvement and the earlier 3.46 s stall remain unverified. Desktop builder must compile/package/publish the test update after shared/builder synchronization.
+
+
 ## 2026-10-14 — Claude — DEV monsters: the panel's Monsters tab, the DEV MONSTER tag and the summon-in rift (owner: "Allow options to spawn monsters in the dev menu")
 - Branch `claude/dev-monsters` on shared `6f30f82`, fast-forwarded to shared `afade5d` (docs only). Implementation commit `12ef880`. Pushed on the branch; no PR, merge or release.
 - Split: Claude has the panel and the presentation; Astra has the commands, caps, placement, behaviour and the replicated flag. No simulation, network, frame, access or admin file changed.

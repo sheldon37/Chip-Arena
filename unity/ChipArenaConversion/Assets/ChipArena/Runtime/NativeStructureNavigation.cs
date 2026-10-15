@@ -14,6 +14,7 @@ namespace ChipArena.UnityConversion
         private Dictionary<string,List<MapNavLink>> navEdges;
         private string navMap;
         private NativeNavHazards navHazards;private NativeNavSearch navSearch;private Func<MapNavLink,bool> navActive;private Func<MapNavNode,bool> navUsable;private Vector3 navOrigin;
+        private Func<MapNavNode,bool> navPocketUsable,navEscapeUsable;
         public double NavigationNearestMs {get;private set;}public double NavigationLinkMs {get;private set;}public int NavigationLinkChecks {get;private set;}
         public double NavigationMs {get;private set;}public int NavigationSearches {get;private set;}
         private Vector3 TimedStructureNavMove(int actorId,Vector3 pos,Vector3 target,Vector3 fallback,int? crowdGoal=null)
@@ -28,16 +29,17 @@ namespace ChipArena.UnityConversion
         private void PrepareNavigation()
         {
             if(Map.nav==null||navMap==MapId)return;
-            crowdRoutes.Clear();navRoutes.Clear();navMap=MapId;navSearch=new NativeNavSearch(Map.nav);navHazards=new NativeNavHazards(Map.nav,Map.hazards);navActive=NavLinkActive;navUsable=NavNodeUsable;navNodes=Map.nav.nodes.ToDictionary(n=>n.id);navEdges=Map.nav.nodes.ToDictionary(n=>n.id,n=>new List<MapNavLink>());foreach(var l in Map.nav.links){navEdges[l.a].Add(l);if(l.kind!="drop")navEdges[l.b].Add(l);}
+            crowdRoutes.Clear();navRoutes.Clear();navMap=MapId;navSearch=new NativeNavSearch(Map.nav);navHazards=new NativeNavHazards(Map.nav,Map.hazards);navActive=NavLinkActive;navUsable=NavNodeUsable;navPocketUsable=NavPocketUsable;navEscapeUsable=NavEscapeUsable;navNodes=Map.nav.nodes.ToDictionary(n=>n.id);navEdges=Map.nav.nodes.ToDictionary(n=>n.id,n=>new List<MapNavLink>());foreach(var l in Map.nav.links){navEdges[l.a].Add(l);if(l.kind!="drop")navEdges[l.b].Add(l);}
         }
         private Vector3 StructureNavMoveCore(int actorId,Vector3 pos,Vector3 target,Vector3 fallback,int? crowdGoal)
         {
             if(Map.nav==null)return fallback;
             PrepareNavigation();
-            if(Map.hazards!=null&&UnsafeStagePath(pos,pos))
-            {var pocket=Map.nav.nodes.Where(n=>n.safe&&Math.Abs(n.pos.y-pos.y)<1.2&&!SceneLinecast(pos,Vec(n.pos),WorldMask)).OrderBy(n=>(Vec(n.pos)-pos).sqrMagnitude).FirstOrDefault();if(pocket!=null)return (Vec(pocket.pos)-pos).magnitude<.25f?Vector3.zero:new Vector3(pocket.pos.x-pos.x,0,pocket.pos.z-pos.z).normalized;}
-            if(UnsafeStructure(pos)||UnsafeStagePath(pos,pos))
-            {var safe=Map.nav.nodes.Where(n=>Math.Abs(n.pos.y-pos.y)<1.2&&!UnsafeStructure(Vec(n.pos))&&!UnsafeStagePath(Vec(n.pos),Vec(n.pos))&&!SceneLinecast(pos,Vec(n.pos),WorldMask)).OrderBy(n=>(Vec(n.pos)-pos).sqrMagnitude).FirstOrDefault();if(safe!=null)return new Vector3(safe.pos.x-pos.x,0,safe.pos.z-pos.z).normalized;}
+            bool unsafeStage=UnsafeStagePath(pos,pos);
+            if(Map.hazards!=null&&unsafeStage)
+            {var pocket=NearestEscapeNode(pos,true);if(pocket!=null)return (Vec(pocket.pos)-pos).magnitude<.25f?Vector3.zero:new Vector3(pocket.pos.x-pos.x,0,pocket.pos.z-pos.z).normalized;}
+            if(UnsafeStructure(pos)||unsafeStage)
+            {var safe=NearestEscapeNode(pos,false);if(safe!=null)return new Vector3(safe.pos.x-pos.x,0,safe.pos.z-pos.z).normalized;}
             if(Map.hazards==null&&Math.Abs(target.y-pos.y)<1.1&&!SceneLinecast(pos,target,WorldMask)&&!UnsafeStructurePath(pos,target))return fallback;
             if(!navRoutes.TryGetValue(actorId,out var route)||Time-route.at>.7f||route.revision!=NavigationRevision||(route.target-target).sqrMagnitude>9)
             {
@@ -72,6 +74,21 @@ namespace ChipArena.UnityConversion
             try{navOrigin=point;return navSearch.Nearest(Vec(point),navUsable);}
             finally{NavigationNearestMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
         }
+        private MapNavNode NearestEscapeNode(Vector3 point,bool pocket)
+        {
+            long at=System.Diagnostics.Stopwatch.GetTimestamp();
+            // Test candidates in distance order, stopping at the first visible one.
+            // Where(expensive physics).OrderBy(...).First used to raycast the whole
+            // floor for every escaping mob on every catch-up tick.
+            try{navOrigin=point;return navSearch.Nearest(Vec(point),pocket?navPocketUsable:navEscapeUsable);}
+            finally{NavigationNearestMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
+        }
+        private bool NavPocketUsable(MapNavNode node)
+            =>node.safe&&Math.Abs(node.pos.y-navOrigin.y)<1.2&&!SceneLinecast(navOrigin,Vec(node.pos),WorldMask);
+        private bool NavEscapeUsable(MapNavNode node)
+            =>Math.Abs(node.pos.y-navOrigin.y)<1.2&&!UnsafeStructure(Vec(node.pos))
+                &&!navHazards.Unsafe(node,Match.Phase,StageRound,Match.FightAt,Match.Time)
+                &&!SceneLinecast(navOrigin,Vec(node.pos),WorldMask);
         private bool NavNodeUsable(MapNavNode node)
         {
             bool enabled=false;foreach(var edge in navEdges[node.id])if(NavLinkEnabled(edge)){enabled=true;break;}
