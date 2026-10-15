@@ -71,6 +71,8 @@ namespace ChipArena.UnityConversion
                 // The ranged mode's casts and its key-5 switch (Core/CyberLordRanged.cs).
                 for(int s=0;s<CyberRangedSpec.Slots;s++)Window(v.RAt[s],Math.Max(v.RUntil[s],v.RRecover[s])+o);
                 Window(v.ModeAt,v.ModeAt+CyberRangedSpec.SwitchSeconds+o);
+                // Kit v2's string and abilities (the runtime's attack window covers them too; a preview's record alone does not).
+                var k=v.Kit2;if(k!=null&&k.Live){Window(k.ComboAt,k.ComboUntil+o);for(int s=0;s<CyberKit2Spec.Slots;s++)Window(k.At[s],Math.Max(k.Until[s],k.RecoverUntil[s])+o);}
                 if(v.PanicConnect>-90)Window(v.PanicConnect,(v.PanicOutcome==CyberLordSpec.EndedEarly&&v.PanicEndedAt>-90?v.PanicEndedAt:v.PanicStart+KernelPanicPath.End)+o);
             }
             Window(a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration,a.BlockUntil);

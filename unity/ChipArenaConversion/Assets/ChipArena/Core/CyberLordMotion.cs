@@ -20,6 +20,13 @@ namespace ChipArena.UnityConversion
     public sealed class CyberLordMotion
     {
         public static bool Handles(string spec)=>CyberLordFeed.Handles(spec);
+        /// <summary>
+        /// Whether the simulation is stepping the pilot through a string step (docs/CYBER-LORD.md "Melee step contract": the
+        /// actor's step fields; never under today's rules). The fighter route hides that travel from the gait's locomotion, as
+        /// a weapon's committed swing does: the strike's own feet (CyberComboFeet) plant for it, and the gait must not start a
+        /// stride under them.
+        /// </summary>
+        public static bool Stepping(Actor a,float time)=>a!=null&&a.StepDistance>0&&a.StepUntil>a.StepAt&&time>=a.StepAt-.02f&&time<a.StepUntil+.1f;
         // ---- the takes (NativePackCyberLord order) ----
         public const int Stance=0,Guard=1,Run=2,Sprint=3,Jab=4,Cross=5,Palm=6,Dash=7,Firewall=8,Burst=9,Siphon=10,Crash=11,
             Lunge=12,Breaker=13,Kick=14,Hammer=15,Slam=16,Launched=17,Knockdown=18,Stunned=19,Boost=20,Clips=21;
@@ -261,23 +268,32 @@ namespace ChipArena.UnityConversion
         private sealed class StrikeMemory
         {
             private readonly float[] last=new float[CapturedClip.Channels],from=new float[CapturedClip.Channels],pose=new float[CyberCombo.N],scratch=new float[CyberCombo.N];
-            private float lastAt=-100,fromAt=-100;private bool hasFrom;private Vector2 lastShift,fromShift;
+            private float lastAt=-100,fromAt=-100;private bool hasFrom,fromIdle;private Vector2 lastShift,fromShift;
+            /// <summary>The strike's hips' drop under the guard this frame, weighted (the first-person view's dip on a plant).</summary>
+            public float Drop;
             public void Note(float[] row,float time,Vector2 shift){Array.Copy(row,last,last.Length);lastAt=time;lastShift=shift;}
             /// <summary>The strike's row at `time` (its torso turn at `torso`; `view`: the first-person view model) and the body's
-            /// shift; returns its weight over the base. `stutter`: the windup runs on the frame-skip clock (CyberCombo.Stutter).</summary>
-            public float Row(in Move m,float time,float torso,float[] into,out Vector2 shift,out float air,bool view=false,bool stutter=false)
+            /// shift; returns its weight over the base. `stutter`: the windup runs on the frame-skip clock (CyberCombo.Stutter).
+            /// `idle`: the idle stance's weight under it (a strike begun out of the low idle spreads its arms' rise over the windup).</summary>
+            public float Row(in Move m,float time,float torso,float[] into,out Vector2 shift,out float air,bool view=false,bool stutter=false,float idle=0)
             {
                 var sw=m.Swing;
-                if(Math.Abs(sw.At-fromAt)>1e-4f||time<fromAt-1e-3f){fromAt=sw.At;hasFrom=lastAt>-90&&time>=lastAt-1e-4f&&time-lastAt<.1f;if(hasFrom){Array.Copy(last,from,from.Length);fromShift=lastShift;}}
+                if(Math.Abs(sw.At-fromAt)>1e-4f||time<fromAt-1e-3f){fromAt=sw.At;hasFrom=lastAt>-90&&time>=lastAt-1e-4f&&time-lastAt<.1f;if(hasFrom){Array.Copy(last,from,from.Length);fromShift=lastShift;}fromIdle=idle>IdleSmooth;}
                 bool canonical=!hasFrom&&m.StrikeFrom>=0;float clock=stutter?CyberCombo.Stutter(sw,time):time;
                 CyberCombo.Pose(sw,clock,pose,canonical?sw.Before(m.StrikeFrom):sw,canonical,scratch);CyberCombo.Row(pose,torso,into,view);
-                // (a first step's ease in from the stance steps on the same frame-skip clock, so its holds hold)
+                // (a first step's ease in from the stance steps on the same frame-skip clock, so its holds hold; out of the low idle
+                // the arms have half a metre to rise, so the ease spreads evenly over the whole windup: the snaps stay, a third each)
                 float w=hasFrom?m.FadeOut:clock!=time&&m.StrikeFrom<0?StrikeIn(sw,clock)*m.FadeOut:m.Weight;shift=new Vector2(pose[CyberCombo.ShX],pose[CyberCombo.ShZ]);air=Clamp01(pose[CyberCombo.Air]);
-                if(hasFrom){float k=Ease((clock-sw.At)/Math.Max(1e-4f,(sw.Hit-sw.At)*CyberCombo.ChainShare));if(k<1){StrikeBlend(from,into,k,into);shift=Vector2.Lerp(fromShift,shift,k);}}
-                shift*=w;return w;
+                if(hasFrom){float u=(clock-sw.At)/Math.Max(1e-4f,(sw.Hit-sw.At)*(fromIdle?1:CyberCombo.ChainShare)),k=fromIdle?Clamp01(u):Ease(u);if(k<1){StrikeBlend(from,into,k,into);shift=Vector2.Lerp(fromShift,shift,k);}}
+                shift*=w;Drop=pose[CyberCombo.Drop]*w;return w;
             }
         }
         private readonly StrikeMemory third=new StrikeMemory(),first=new StrikeMemory();
+        /// <summary>The idle stance's weight above which a strike begun from it spreads its arms' rise evenly over the windup.</summary>
+        public const float IdleSmooth=.3f;
+        /// <summary>First person: the share of the strike's body drive (along the facing) and of its drop that the view model's
+        /// fists take (chest space; the camera never moves).</summary>
+        public const float ViewDrive=.7f,ViewDip=.35f;
         /// <summary>The strikes' feet on this rig.</summary>
         public readonly CyberComboFeet ComboFeet=new CyberComboFeet();
 
@@ -311,7 +327,7 @@ namespace ChipArena.UnityConversion
         /// <summary>First person: the fists raised and brought in so the guard sits in the lower view (chest space, m).</summary>
         public static readonly Vector3 ViewLift=new Vector3(0,.08f,.22f);
         /// <summary>How much of ViewLift's push toward the view a step of the hardlight string takes off (first person).</summary>
-        public const float StrikePush=.9f;private float viewStrike;
+        public const float StrikePush=.9f;private float viewStrike,viewDrive,viewDip;
         /// <summary>The stance row at `time`: the alert take played forward and back (it is not a loop), its middle held longest.</summary>
         public static void StanceRow(float time,float[] into)
         {
@@ -379,7 +395,7 @@ namespace ChipArena.UnityConversion
             if(m.Strike>0&&m.Weight>1e-4f)
             {
                 // A hardlight strike is authored on the voxel body already (no posture), over the postured base.
-                baseRow[MeleeCapture.Yaw]=0;Posture(baseRow);strike=third.Row(m,time,1,row,out shift,out air,false,!Reduced);
+                baseRow[MeleeCapture.Yaw]=0;Posture(baseRow);strike=third.Row(m,time,1,row,out shift,out air,false,!Reduced,idle);
                 StrikeBlend(baseRow,row,strike,row);if(m.Root>=1)root=MeleeMath.Lerp(root,1,strike);legs=air*strike;
             }
             else
@@ -432,7 +448,8 @@ namespace ChipArena.UnityConversion
             {
                 // A strike keeps a third of its torso turn in view (built in), over the postured base kept the same way.
                 baseRow[MeleeCapture.Yaw]=0;Posture(baseRow);for(int i=MeleeCapture.Pelvis;i<MeleeCapture.Neck;i++)baseRow[i]*=.35f;
-                float w=first.Row(m,time,.35f,row,out _,out _,true);StrikeBlend(baseRow,row,w,row);viewStrike=m.Strike-1<CyberCombo.Kinds?w:0;
+                float w=first.Row(m,time,.35f,row,out var drive,out _,true);StrikeBlend(baseRow,row,w,row);viewStrike=m.Strike-1<CyberCombo.Kinds?w:0;
+                viewDrive=m.Strike-1<CyberCombo.Kinds?drive.Y:0;viewDip=m.Strike-1<CyberCombo.Kinds?first.Drop:0;
             }
             else
             {
@@ -451,7 +468,9 @@ namespace ChipArena.UnityConversion
             // (a strike keeps its own reach: the stance's push of the fists toward the view eases off under it, so a punch or a palm
             // drives out from a bent arm instead of an already straight one)
             float push=1-StrikePush*viewStrike;viewStrike=0;
-            for(int k=0;k<3;k++){row[MeleeCapture.Grip+k]+=k==0?ViewLift.X:k==1?ViewLift.Y:ViewLift.Z*push;row[MeleeCapture.LHand+k]+=k==0?-ViewLift.X:k==1?ViewLift.Y:ViewLift.Z*push;}
+            // (the body's drive into a strike: both fists carried forward with it and dipped as it sinks onto the plant)
+            float dz=ViewDrive*viewDrive,dy=ViewDip*viewDip;viewDrive=viewDip=0;
+            for(int k=0;k<3;k++){row[MeleeCapture.Grip+k]+=k==0?ViewLift.X:k==1?ViewLift.Y+dy:ViewLift.Z*push+dz;row[MeleeCapture.LHand+k]+=k==0?-ViewLift.X:k==1?ViewLift.Y+dy:ViewLift.Z*push+dz;}
             MeleeCapture.Apply(r,Unarmed,row,CaptureOptions.Of(1,Unarmed.Fit,MeleeClear.None,legs:0,root:0));
             // The ranged mode's emitters in the lower view (the camera carries the aim: no pitch here).
             string ranged=stun?null:CyberRangedPose.Layer(r,view,time,0,m.Clip>=0?Clamp01(m.Weight):0,0,true,Reduced);RangedState=ranged;

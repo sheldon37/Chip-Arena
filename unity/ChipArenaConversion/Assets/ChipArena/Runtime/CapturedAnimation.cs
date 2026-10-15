@@ -346,6 +346,8 @@ namespace ChipArena.UnityConversion
                 bool emperor=a.SourceSpec=="emperor",cyber=CyberLordMotion.Handles(a.SourceSpec),juggle=Juggled(a,time),down=!juggle&&NativeSpecialPose.Down(a,time),stun=!juggle&&!down&&a.StunUntil>time;
                 bool dodge=(emperor||cyber)&&a.Rolling(time)&&!juggle&&!down&&!stun;
                 var v=MeleeViewOf(a,time,fighterView);v.Reach=1;v.Juggle=juggle;v.Down=down;v.HitStunUntil=stun?a.StunUntil:0;NativeFighterPose.View(v,a,waveDash,time);
+                // (a Cyber Lord string step the simulation moves the pilot through: its strike plants the feet, not the gait)
+                v.Planted=cyber&&CyberLordMotion.Stepping(a,time);
                 if(cyber&&!(a.AirJumps>0)&&PreviewAirJumpAt>-90)v.AirJumpAt=PreviewAirJumpAt;
                 // Only the Emperor's Shift is a dodge roll (souls-combat.ts usesRoll); the Demon Step is the Ansatsuken's own layer.
                 if(!dodge){v.RollAt=v.RollUntil=-100;}
