@@ -82,7 +82,7 @@ namespace ChipArena.UnityConversion
             var op=v.Phase(CyberLordSpec.Four,time);
             if(op.Live&&!(v.PanicConnect>-90&&time>=v.PanicConnect&&v.PanicConnect>=op.At-.01f))return Opener(v,op,time);
             // Kit v2 (Core/CyberKit2MeleeMotion.cs): its abilities and five-step string replace v1's Q to 3 and combo.
-            if(v.Kit2.Live&&!legacy){var k2=CyberKit2MeleeMotion.Of(v,time);if(k2.Active&&!(blocking&&time>=k2.Swing.Until))return k2;if(blocking)return new Move{Clip=Guard,Time=time,Weight=Ease((time-blockAt)/BlendIn),State="cyber-guard",From=-1,StrikeFrom=-1};return m;}
+            if(v.Kit2.Live&&!legacy){var k2=CyberKit2MeleeMotion.Of(v,time);float k2End=k2.Strike>0&&k2.Strike-1<CyberCombo.Kinds?Math.Min(k2.Swing.Until,v.Kit2.ComboUntil):k2.Swing.Until;if(k2.Active&&!(blocking&&time>=k2End))return k2;if(blocking)return new Move{Clip=Guard,Time=time,Weight=Ease((time-blockAt)/BlendIn),State="cyber-guard",From=-1,StrikeFrom=-1};return m;}
             // The newest live ability (to the end of its recovery and blend out), unless a combo swing started after it.
             int newest=-1;float at=-100;
             for(int s=0;s<CyberLordSpec.Four;s++){float start=v.At[s],end=Math.Max(v.Until[s],v.RecoverUntil[s]);if(start>-90&&time>=start&&time<end+BlendOut&&start>at){newest=s;at=start;}}
@@ -263,15 +263,17 @@ namespace ChipArena.UnityConversion
             private readonly float[] last=new float[CapturedClip.Channels],from=new float[CapturedClip.Channels],pose=new float[CyberCombo.N],scratch=new float[CyberCombo.N];
             private float lastAt=-100,fromAt=-100;private bool hasFrom;private Vector2 lastShift,fromShift;
             public void Note(float[] row,float time,Vector2 shift){Array.Copy(row,last,last.Length);lastAt=time;lastShift=shift;}
-            /// <summary>The strike's row at `time` (its torso turn at `torso`) and the body's shift; returns its weight over the base.</summary>
-            public float Row(in Move m,float time,float torso,float[] into,out Vector2 shift,out float air)
+            /// <summary>The strike's row at `time` (its torso turn at `torso`; `view`: the first-person view model) and the body's
+            /// shift; returns its weight over the base. `stutter`: the windup runs on the frame-skip clock (CyberCombo.Stutter).</summary>
+            public float Row(in Move m,float time,float torso,float[] into,out Vector2 shift,out float air,bool view=false,bool stutter=false)
             {
                 var sw=m.Swing;
                 if(Math.Abs(sw.At-fromAt)>1e-4f||time<fromAt-1e-3f){fromAt=sw.At;hasFrom=lastAt>-90&&time>=lastAt-1e-4f&&time-lastAt<.1f;if(hasFrom){Array.Copy(last,from,from.Length);fromShift=lastShift;}}
-                bool canonical=!hasFrom&&m.StrikeFrom>=0;
-                CyberCombo.Pose(sw,time,pose,canonical?sw.Before(m.StrikeFrom):sw,canonical,scratch);CyberCombo.Row(pose,torso,into);
-                float w=hasFrom?m.FadeOut:m.Weight;shift=new Vector2(pose[CyberCombo.ShX],pose[CyberCombo.ShZ]);air=Clamp01(pose[CyberCombo.Air]);
-                if(hasFrom){float k=Ease((time-sw.At)/Math.Max(1e-4f,(sw.Hit-sw.At)*CyberCombo.ChainShare));if(k<1){StrikeBlend(from,into,k,into);shift=Vector2.Lerp(fromShift,shift,k);}}
+                bool canonical=!hasFrom&&m.StrikeFrom>=0;float clock=stutter?CyberCombo.Stutter(sw,time):time;
+                CyberCombo.Pose(sw,clock,pose,canonical?sw.Before(m.StrikeFrom):sw,canonical,scratch);CyberCombo.Row(pose,torso,into,view);
+                // (a first step's ease in from the stance steps on the same frame-skip clock, so its holds hold)
+                float w=hasFrom?m.FadeOut:clock!=time&&m.StrikeFrom<0?StrikeIn(sw,clock)*m.FadeOut:m.Weight;shift=new Vector2(pose[CyberCombo.ShX],pose[CyberCombo.ShZ]);air=Clamp01(pose[CyberCombo.Air]);
+                if(hasFrom){float k=Ease((clock-sw.At)/Math.Max(1e-4f,(sw.Hit-sw.At)*CyberCombo.ChainShare));if(k<1){StrikeBlend(from,into,k,into);shift=Vector2.Lerp(fromShift,shift,k);}}
                 shift*=w;return w;
             }
         }
@@ -308,6 +310,8 @@ namespace ChipArena.UnityConversion
         public const float FaceWeight=.85f;
         /// <summary>First person: the fists raised and brought in so the guard sits in the lower view (chest space, m).</summary>
         public static readonly Vector3 ViewLift=new Vector3(0,.08f,.22f);
+        /// <summary>How much of ViewLift's push toward the view a step of the hardlight string takes off (first person).</summary>
+        public const float StrikePush=.9f;private float viewStrike;
         /// <summary>The stance row at `time`: the alert take played forward and back (it is not a loop), its middle held longest.</summary>
         public static void StanceRow(float time,float[] into)
         {
@@ -340,6 +344,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The idle stance (Core/CyberLordIdle.cs): its tracker on this rig, this frame's weight and glitch, and whether
         /// effects are reduced (the runtime sets it before posing: the glitch's and the twitches' softer versions).</summary>
         public readonly CyberLordIdle Idle=new CyberLordIdle();public float IdleWeight{get;private set;}public CyberIdleGlitch IdleGlitch;public bool Reduced;
+        private float idleUnder,idleTime,idlePitch;private int idleId;private MeleeRig idleRig;private readonly Action idleLayer;
+        public CyberLordMotion(){idleLayer=()=>CyberLordIdlePose.Layer(idleRig,idleUnder,idleTime,idleId,Reduced,idlePitch,IdleGlitch);}
         /// <summary>The second jump's hardlight boost (Core/CyberLordRun.cs CyberLordAirBoost): this frame's weight, the Dev Sandbox
         /// preview's stand-in air-jump time (-100: none; the runtime sets it for the local pilot only), and the jump track the
         /// boost reads when the route has no jump layer (the first-person view model).</summary>
@@ -373,7 +379,7 @@ namespace ChipArena.UnityConversion
             if(m.Strike>0&&m.Weight>1e-4f)
             {
                 // A hardlight strike is authored on the voxel body already (no posture), over the postured base.
-                baseRow[MeleeCapture.Yaw]=0;Posture(baseRow);strike=third.Row(m,time,1,row,out shift,out air);
+                baseRow[MeleeCapture.Yaw]=0;Posture(baseRow);strike=third.Row(m,time,1,row,out shift,out air,false,!Reduced);
                 StrikeBlend(baseRow,row,strike,row);if(m.Root>=1)root=MeleeMath.Lerp(root,1,strike);legs=air*strike;
             }
             else
@@ -396,12 +402,14 @@ namespace ChipArena.UnityConversion
             // under it at full weight through its settle (a fading foot would slide), and the gait keeps them exactly where they
             // were left, stepping them back to its stance on its own.
             if(strike>1e-4f){var b=r.P[CapturedRig.Body];b.X+=shift.X;b.Z+=shift.Y;r.P[CapturedRig.Body]=b;}
-            ComboFeet.Pose(r,m.Swing,time,strike>1e-4f&&a.Grounded&&CyberCombo.PlantsFeet(m.Swing.Kind)?1-air:0);motion.Gait.SyncTolerance=ComboFeet.Active?0:MeleeGait.SyncNear;
+            ComboFeet.Stutter=!Reduced;ComboFeet.Pose(r,m.Swing,time,strike>1e-4f&&a.Grounded&&CyberCombo.PlantsFeet(m.Swing.Kind)?1-air:0);motion.Gait.SyncTolerance=ComboFeet.Active?0:MeleeGait.SyncNear;
             // The idle's twitching over the sword idle once the pilot has stood still (CyberLordIdle), under any move still blending out.
             float under=idle*(m.Clip>=0?1-Clamp01(m.Weight):1);IdleWeight=under;
             IdleGlitch=CyberLordIdlePose.Glitch(a.Id,time,under,Reduced);
             if(under>1e-4f){var tw=CyberLordIdlePose.Twitch(a.Id,time,Reduced);IdleGlitch.LClench=tw.LClench*under;IdleGlitch.RClench=tw.RClench*under;}
-            CyberLordIdlePose.Layer(r,under,time,a.Id,Reduced,a.Pitch*(float)Math.PI/180,IdleGlitch);
+            // (the idle's body twitches under a strike that has planted its feet keep those feet where they stand)
+            if(ComboFeet.Active&&under>1e-4f){idleUnder=under;idleTime=time;idleId=a.Id;idlePitch=a.Pitch*(float)Math.PI/180;idleRig=r;r.HoldAnkles(idleLayer,1,true);idleRig=null;}
+            else CyberLordIdlePose.Layer(r,under,time,a.Id,Reduced,a.Pitch*(float)Math.PI/180,IdleGlitch);
             // The ranged mode (Core/CyberLordRangedMotion.cs): the cyber mage's stance, throws, casts and glide over the posed rig
             // (the legs stay the gait's); a melee take (the guard, Q, E) owns the frame through its weight.
             string ranged=stun?null:CyberRangedPose.Layer(r,view,time,a.Pitch*(float)Math.PI/180,m.Clip>=0?Clamp01(m.Weight):0,new CyberRangedPose.Gait{Travel=travel,Stride=r.Stride,Sprint=carry.Sprint*travel},false,Reduced);
@@ -424,7 +432,7 @@ namespace ChipArena.UnityConversion
             {
                 // A strike keeps a third of its torso turn in view (built in), over the postured base kept the same way.
                 baseRow[MeleeCapture.Yaw]=0;Posture(baseRow);for(int i=MeleeCapture.Pelvis;i<MeleeCapture.Neck;i++)baseRow[i]*=.35f;
-                float w=first.Row(m,time,.35f,row,out _,out _);StrikeBlend(baseRow,row,w,row);
+                float w=first.Row(m,time,.35f,row,out _,out _,true);StrikeBlend(baseRow,row,w,row);viewStrike=m.Strike-1<CyberCombo.Kinds?w:0;
             }
             else
             {
@@ -440,7 +448,10 @@ namespace ChipArena.UnityConversion
                 for(int i=MeleeCapture.Pelvis;i<MeleeCapture.Neck;i++)row[i]*=.35f;
             }
             first.Note(row,time,Vector2.Zero);
-            for(int k=0;k<3;k++){row[MeleeCapture.Grip+k]+=k==0?ViewLift.X:k==1?ViewLift.Y:ViewLift.Z;row[MeleeCapture.LHand+k]+=k==0?-ViewLift.X:k==1?ViewLift.Y:ViewLift.Z;}
+            // (a strike keeps its own reach: the stance's push of the fists toward the view eases off under it, so a punch or a palm
+            // drives out from a bent arm instead of an already straight one)
+            float push=1-StrikePush*viewStrike;viewStrike=0;
+            for(int k=0;k<3;k++){row[MeleeCapture.Grip+k]+=k==0?ViewLift.X:k==1?ViewLift.Y:ViewLift.Z*push;row[MeleeCapture.LHand+k]+=k==0?-ViewLift.X:k==1?ViewLift.Y:ViewLift.Z*push;}
             MeleeCapture.Apply(r,Unarmed,row,CaptureOptions.Of(1,Unarmed.Fit,MeleeClear.None,legs:0,root:0));
             // The ranged mode's emitters in the lower view (the camera carries the aim: no pitch here).
             string ranged=stun?null:CyberRangedPose.Layer(r,view,time,0,m.Clip>=0?Clamp01(m.Weight):0,0,true,Reduced);RangedState=ranged;
