@@ -39,6 +39,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<6;i++){for(int t=0;t<12;t++)Match.Tick(.25);StepHubPopulation();}
                 Check(hubMobs.Count<=4&&hubMobs.Count>0&&Minions.All(m=>m.Pve?.Stats.id!="hulk"),"bounded hub population without Hulks");
                 var mob=Minions.First(m=>hubMobs.ContainsKey(m.Id));mob.Pve.ExposedAt=0;mob.Pve.Travelling=false;
+                ValidateHubPerception(mob);
                 float hp=mob.Hp;Check(HitMinion(mob,Local,5,Vector3.zero,0)==0&&mob.Hp==hp,"inside damage cannot earn or hit outside");
                 Local.Body.position=mob.Body.position+Vector3.right*2;
                 Check(HitMinion(mob,Local,5,Vector3.zero,0,kind:"field")>0&&mob.Pve.HubCredit,"outside credited damage allowed");
@@ -48,6 +49,53 @@ namespace ChipArena.UnityConversion
                 Debug.Log("PASS Expedition hub native gate colliders/obstruction/holster/aggro/spawn cadence/cap/damage/DoT checks");
             }
             finally{Expedition=null;Reset();}
+        }
+        private void ValidateHubPerception(NativeMinion mob)
+        {
+            void Check(bool ok,string why){if(!ok)throw new Exception("Hub perception native: "+why);}
+            var info=hubMobs[mob.Id];var originalBrain=info.Brain;var originalPosition=mob.Body.position;float originalYaw=mob.Yaw;
+            var pilotPosition=Local.Body.position;bool kinematic=mob.Body.isKinematic,collider=mob.Collider.enabled;
+            var blocker=new GameObject("Hub perception LOS fixture");blocker.layer=PropLayer;blocker.transform.SetParent(root.transform);
+            blocker.transform.position=new Vector3(1000,1.5f,1005);var box=blocker.AddComponent<BoxCollider>();box.size=new Vector3(8,3,1);box.enabled=false;
+            var enemies=new System.Collections.Generic.List<NativePilot>{Local};
+            try
+            {
+                mob.Body.isKinematic=false;mob.Collider.enabled=true;mob.Body.position=new Vector3(1000,.9f,1000);mob.Yaw=0;
+                Local.Body.position=new Vector3(1000,.9f,1010);Physics.SyncTransforms();
+                Check(HubSees(mob,Local),"clear forward vision");
+                box.enabled=true;Physics.SyncTransforms();Check(!HubSees(mob,Local),"scene wall blocks forward vision");
+                box.enabled=false;Local.Body.position=new Vector3(1000,.9f,990);Physics.SyncTransforms();Check(!HubSees(mob,Local),"rear pilot outside close radius not seen");
+                Local.Body.position=new Vector3(1000,.9f,998);Physics.SyncTransforms();Check(HubSees(mob,Local),"close rear pilot noticed");
+                Local.Body.position=new Vector3(1000,.9f,990);info.Brain=new HubZombieBrain(mob.Id,Time,Vec(mob.Body.position),0);info.Sound=hubSoundId;info.SenseAt=Time;
+                HubNoise(Local,Local.Body.position,HubNoiseKind.Fire);
+                Check(StepHubMind(mob,enemies,out _)&&info.Brain.View.State==HubZombieState.Alert&&mob.Pve.Struck,"hearing starts turn reaction without attack");
+                float alerted=info.Brain.View.AlertAt;Check(Math.Abs(info.Brain.View.LookYaw)==180,"reaction looks toward heard position");
+                for(int i=0;i<4;i++)Match.Tick(.25);info.SenseAt=Time;StepHubMind(mob,enemies,out _);
+                Check(info.Brain.View.State==HubZombieState.Chase&&info.Brain.View.AlertAt==alerted,"reaction resolves once into pursuit");
+                // The record must survive Unity's actual serializer and guest reconstruction, including late join mid-reaction.
+                mob.Pve.Hub.State=HubZombieState.Alert;var source=NetworkFrame();var wire=NativeFrameCodec.Clone(source);var record=wire.minions.Single(x=>x.id==mob.Id);
+                Check(record.hubState==HubZombieState.Alert&&record.hubAlertAt==alerted&&record.hubLookYaw==mob.Pve.Hub.LookYaw,"JsonUtility carries shared state time and look");
+                var guest=new NativeArena(Content,new NativeMatch(Content),MapId){Replica=true,ReplicaScene=root.scene};
+                try
+                {
+                    guest.ApplyFrame(wire,LocalId);var copy=guest.Minions.Single(x=>x.Id==mob.Id).Pve.Hub;
+                    Check(copy!=null&&copy.State==HubZombieState.Alert&&copy.AlertAt==alerted&&copy.LookYaw==record.hubLookYaw,"late join restores reaction");
+                    record.hubState=HubZombieState.None;guest.ApplyFrame(wire,LocalId);Check(guest.Minions.Single(x=>x.Id==mob.Id).Pve.Hub==null,"absent hub state clears on guest");
+                }
+                finally{guest.Dispose();}
+                int noiseBefore=hubSounds.Count;Local.Body.position=new Vector3(0,.9f,0);
+                foreach(HubNoiseKind kind in Enum.GetValues(typeof(HubNoiseKind)))HubNoise(Local,Local.Body.position,kind);
+                Check(hubSounds.Count==noiseBefore,"sanctuary cannot emit any player noise");
+                var gate=hubAuthority.Layout.Gates[0];var outside=Vec(gate.Outside.Position)+Vector3.up*.9f;mob.Body.position=outside;Local.Body.position=Vec(gate.Inside.Position)+Vector3.up*.9f;mob.Yaw=90;
+                Check(HubCross(outside,Local.Body.position)&&!HubSees(mob,Local)&&!HubPerception.Hears(Vec(outside),Vec(Local.Body.position),HubNoiseKind.Explosion,HubCross(outside,Local.Body.position)),"gate boundary blocks sight and noise");
+                Check(info.Points.Length>0&&info.Points.All(n=>info.Zone.Volume.Contains(new V3(n.x,info.Zone.Volume.y,n.z))&&!HubInside(n)),"roaming destinations are authored nav points in the zone outside sanctuary");
+                Debug.Log("PASS hub zombie native sight/LOS/hearing/reaction/fence/JsonUtility/guest state checks");
+            }
+            finally
+            {
+                box.enabled=false;CapturedAnimation.Release(blocker);mob.Body.position=originalPosition;mob.Yaw=originalYaw;mob.Body.linearVelocity=Vector3.zero;mob.Body.isKinematic=kinematic;mob.Collider.enabled=collider;
+                Local.Body.position=pilotPosition;info.Brain=originalBrain;mob.Pve.Hub=originalBrain.View;mob.Pve.Target=null;info.SenseAt=Time;hubSounds.Clear();hubFeet.Clear();Physics.SyncTransforms();
+            }
         }
     }
 }
