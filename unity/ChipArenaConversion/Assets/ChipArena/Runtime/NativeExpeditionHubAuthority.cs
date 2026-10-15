@@ -130,6 +130,7 @@ namespace ChipArena.UnityConversion
             foreach(var zone in hubAuthority.Layout.Zones)foreach(int id in zone.Spawns)
             {
                 var entry=Pve.Content.entries.FirstOrDefault(e=>e.e==id);if(entry==null||!WardLandingClear(entry)||EntryQueue(id)>0)continue;
+                if(!Pve.Content.adds.Any(a=>ExpeditionHubRules.Kind(zone.Ring,a.id,state.elapsed)&&NativeWardEntries.Allows(entry,a.id)&&(a.id!="spitter"||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")<NativeSpitterRules.Cap)))continue;
                 var at=Vec(entry.@exit.Position(.85f));
                 if(HubInside(at)||Minions.Any(m=>(m.Body.position-at).sqrMagnitude<9)||hubLiving.Any(p=>(p.Body.position-at).sqrMagnitude<400||((p.Body.position-at).sqrMagnitude<900&&!SceneLinecast(p.Body.position,at,WorldMask))))continue;
                 candidates.Add((zone,entry));
@@ -138,8 +139,10 @@ namespace ChipArena.UnityConversion
             var zones=candidates.Select(x=>x.zone).Distinct().ToArray();double roll=Pve.SpawnRandom.Next()*zones.Sum(z=>ExpeditionHubRules.Weight(z.Ring));var chosen=zones[zones.Length-1];
             foreach(var zone in zones){roll-=ExpeditionHubRules.Weight(zone.Ring);if(roll<0){chosen=zone;break;}}
             var exits=candidates.Where(x=>x.zone==chosen).ToArray();var selected=exits[Math.Min(exits.Length-1,(int)(Pve.SpawnRandom.Next()*exits.Length))];
-            var kinds=Pve.Content.adds.Where(a=>ExpeditionHubRules.Kind(chosen.Ring,a.id,state.elapsed)&&NativeWardEntries.Allows(selected.entry,a.id)&& (a.id!="brute"||Pve.SpawnRandom.Next()<.15)).Select(a=>a.id).ToArray();if(kinds.Length==0)return;
-            var mob=SpawnPveAdd(kinds[Math.Min(kinds.Length-1,(int)(Pve.SpawnRandom.Next()*kinds.Length))],true,selected.entry.e);
+            var kinds=Pve.Content.adds.Where(a=>ExpeditionHubRules.Kind(chosen.Ring,a.id,state.elapsed)&&NativeWardEntries.Allows(selected.entry,a.id)&&(a.id!="spitter"||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")<NativeSpitterRules.Cap)).Select(a=>a.id).ToArray();if(kinds.Length==0)return;
+            double kindRoll=Pve.SpawnRandom.Next()*kinds.Sum(k=>k=="brute"?.15:1);string kind=kinds[kinds.Length-1];
+            foreach(string candidate in kinds){kindRoll-=candidate=="brute"?.15:1;if(kindRoll<0){kind=candidate;break;}}
+            var mob=SpawnPveAdd(kind,true,selected.entry.e);
             if(mob!=null){mob.Pve.HubRing=chosen.Ring;hubMobs[mob.Id]=new HubMob{Ring=chosen.Ring,Home=Vec(selected.entry.@exit.Position(.85f)),IdleAt=Time};}
         }
     }
