@@ -619,7 +619,7 @@ namespace ChipArena.UnityConversion
             var reads=new HashSet<string>{"Snapshot","Migrating","FinalUnlocked","ExtractionUnlocked","CanExtract"};
             foreach(Match m in Regex.Matches(view,@"\brun\.(\w+)"))Check(reads.Contains(m.Groups[1].Value),"the view builder only reads the authority (run."+m.Groups[1].Value+")");
             foreach(var src in new[]{hud,rules,view,screen,layout,live,world3d,world})Check(!src.Contains("Random")&&!src.Contains("NativePveRandom"),"no randomness in presentation");
-            Check(!R("Runtime/NativeHomeMenu.cs").Contains("Expedition")&&ui.Contains("--ca-expedition-preview"),"no player-facing Expedition menu entry; preview behind its dev flag");
+            Check(R("Runtime/NativeHomeMenu.cs").Contains("int a=account.Developer?ScreenActions")&&R("Runtime/NativeExpeditionM1.cs").Contains("account?.Developer!=true||Online||server!=null||dedicated")&&ui.Contains("--ca-expedition-preview"),"Expedition M1 entry is DEV-only/local and preview retains its separate flag");
         }
     }
 }

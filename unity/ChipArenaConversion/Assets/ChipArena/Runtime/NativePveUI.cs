@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
         private int pvePending;private float pvePendingAt=-10;private readonly NativeHudTrail bossTrail=new NativeHudTrail();
         private void PveHud(float width,float height)
         {
-            var v=arena.Pve;if(v==null)return;var p=arena.Local;PveBanner();
+            var v=arena.Pve;if(v==null||ExpeditionM1)return;var p=arena.Local;PveBanner();
             float W=NativeUi.W,H=NativeUi.H;
             // pve/hud.ts waveHeading and bossBar: a top-centre pill, then the Siren's bar with her phase thresholds.
             string status=v.Stage=="boss"?"THE SIREN  ·  PHASE "+v.Phase+" / 4":v.Stage=="wave"?"WAVE "+v.Wave+" / "+(v.Content?.waves?.Length??3):v.Stage=="intermission"?"INTERMISSION  ·  WAVE "+v.Wave+" CLEARED":v.Stage=="opening"?"WARD ZERO  ·  GET READY":v.Stage.ToUpperInvariant();

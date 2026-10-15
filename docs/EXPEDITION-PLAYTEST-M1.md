@@ -55,3 +55,35 @@ arrival and health, dark-street wayfinding and Continue cleanup. Fix observed
 presentation defects only. Offline acceptance already passed; no view field is
 missing. Report exact build, observations and captures, separating local from
 host/guest results. Astra owns runtime and combat integration.
+
+## M1 runtime branch — 2026-10-15
+
+Implementation branch: `codex/unity-expedition-m1`. No successful native build or
+observed playable run is claimed yet. The native builder must pass the new
+Expedition geometry/combat acceptance checks before this is a playtest candidate.
+
+Intended launch steps for the resulting Windows test build:
+1. Sign in with a DEV account. Stay offline (no hosted/joined room).
+2. Open **Test Boss**, select your weapon, then **DEV Expedition M1**.
+3. Walk from the city sanctuary to the Ward Zero doorway; press **F** in its
+   interaction volume. Failed layout/loading/placement leaves the run frozen and
+   reports an error; use Escape to leave or restart.
+4. Kill the 12-enemy quota, then the **TEST Expedition Siren**. This provisional
+   quota comes from the original Ward Zero preview; these are real catalog enemies.
+   Boss HP and damage use the existing Expedition scaling at spawn.
+5. Press **J** and vote to leave the cleared instance. Walk through the unlocked
+   city gate into the final trigger and defeat the second TEST Siren.
+6. Choose Continue in J to start the harder loop, or return to the sanctuary and
+   choose extraction. Extraction uses the existing durable local save journal.
+7. Escape → Restart Expedition M1 creates a new test run. Return to Main Menu
+   clears the runtime binding. Local death requires restart in this milestone.
+
+Scope: single signed-in local pilot; ordinary Expedition access remains closed.
+Claim/purchase/reprint deliberately refuse until their evidence and live inventory
+adapters exist; no loot or account progression is awarded by this test. The
+existing preview remains separate. No host/guest/migration or saved-combat resume
+claim. Claude's live visual pass starts only after an exact native build is posted.
+
+Spitter authority range is 18 m (previously 11 m maximum aim, with the content's
+shorter attack-start distance). Both attack initiation and the aim clamp use the
+same authority range; visual assets and the legacy content export are unchanged.
