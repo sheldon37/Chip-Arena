@@ -22,6 +22,13 @@
 - **Collision, movement, networking:** none changed. No collider, layout, navigation, rule, timing constant, hit timing, hitbox, damage, cooldown, movement or wire change; animation is the gate leaves only (no gameplay reads them).
 - **Astra next step:** the run-through fix (EXPEDITION-HUB.md "Run-through report"): real-overlap occupancy instead of radius + 0.15 m; re-open on occupancy only before a closing blocks; occupancy holds the collider off only in that window; optionally keep the collider's state across a reversal. `Tests/ExpeditionHubAuthorityChecks.cs:21` would move with it.
 
+## 2026-10-15 — Astra — Expedition choosing also holds camera
+- Owner follow-up supersedes the earlier camera-survives behavior. Branch `codex/expedition-camera-hold`, base shared `ee46074c`.
+- Authority retains held yaw/pitch instead of copying new chooser aim. Client blocks mouse look and clears lock-on tracking using the public choosing flag, including the final Install + 1.95 s wrist plant after the tray closes. Digits/Alt-click remain usable. Existing close/lifecycle release, vulnerability and world clocks are unchanged; no animation, combat timing or network schema changes.
+- Updated native M1 acceptance for rejected yaw/pitch during choosing and final plant, then released camera input; updated source guards, presentation contract, project state and manual M1 playtest instructions.
+- Verification: all 730 managed/real-relay PASS groups (including 258 Expedition tray checks), all three Unity 6000.3.24f1/C# 9 assembly compile targets, and diff check pass. Native M1 acceptance was compiled, not executed here; Windows/PhysX and visual/two-client play remain pending.
+- Implemented/tested on branch; PR records merge and builder promotion. A successful player build or test-channel publication is not claimed by these checks.
+
 ## 2026-10-15 — Astra — Cyber melee step inactive-state build fix
 - Branch `codex/cyber-step-state-guard`, base shared/builder `18ee638b` (PR #239). Latest-Build.txt modified 2026-10-15 20:02:25Z confirms that source failed native acceptance, before publication: IndexOutOfRangeException in NativeCyberStep.Begin -> Restore -> PredictionState -> ValidateAirJumps.
 - Root cause: the existing jump-lock fixture uses CyberBegin("cyber-jab") without selecting a combo, then promotes the kit to v2. Combo=-1 is a valid inactive sentinel. Step restoration mistook the cast name for a selected string step and indexed StepDistance[-1]. This was introduced in PR #239.
