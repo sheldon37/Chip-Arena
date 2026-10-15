@@ -150,7 +150,8 @@ All clocks are pure functions of (record, clock, fire time, beat, flash mode) an
 
 ## 6. Alarms, light and photosensitivity
 
-- **Light on the walls.** Each lit piece offers a practical light. A beacon's light swings with its beam. A strobe's
+- **Light on the walls.** Each lit piece offers a practical light. A beacon's light sits at its bulb and throws its two
+  turning beams round the room (the slot's beam code, `NativeWardLight.cginc` `WardBeam`). A strobe's
   light flashes with it. A klaxon's light glows red on each blast. Kit lights are merged into the arena's 8
   practical-light slots after the map's own pick (`NativeLighting.KitLights`). At most 3 are merged on high quality,
   2 on medium and 1 on low. They fill free slots or replace the least useful ones, de-duplicated per piece and eased

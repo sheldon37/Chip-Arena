@@ -29,6 +29,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--hulk-charge"){HulkMotionChecks.Run(ProjectRoot());HulkChargeChecks.Run(ProjectRoot());HulkHuntChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-tools"){DevToolsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hazard-kit"){HazardKitChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--ward-lighting"){WardLightingChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--machines"){MachineModelChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--transitions"){TransitionLoadingChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--weapon-sockets"){var socketRoot=ProjectRoot();var socketData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(socketRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});WeaponSocketChecks.Run(socketRoot,socketData);HitFeelChecks.Run(socketRoot,socketData);return 0;}
@@ -93,7 +94,7 @@ internal static class Program
             SummonCeilingPickupChecks.Run(root,data);
             CameraRigChecks.Run(root);
             StructureFxChecks.Run(root);
-            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);TransitionLoadingChecks.Run(root);ChipCartridgeChecks.Run(root);
+            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);TransitionLoadingChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
             DevToolsChecks.Run(root);
             SpawnInChecks.Run(root,data);
             VfxChecks.Run(root);VfxRuntimeChecks.Run(root);

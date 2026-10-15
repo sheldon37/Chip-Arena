@@ -166,7 +166,8 @@ namespace ChipArena.UnityConversion
                     default:continue;
                 }
                 if(level<.05f)continue;double r=g.R,gg=g.G,b=g.B;float red=m.Red*.4f;r=r*(1-red)+red;gg*=1-red*.8f;b*=1-red*.8f;
-                Flat(g.X,g.Floor+.03,g.Z,1,0,rad,rad,r,gg,b,Math.Min(.32,.09*level),1,true);n++;Pools++;
+                // A faint glow over the floor's pool (the light itself is the ceiling light field's, NativeWardZeroField).
+                Flat(g.X,g.Floor+.03,g.Z,1,0,rad,rad,r,gg,b,Math.Min(.14,.04*level),1,true);n++;Pools++;
             }
         }
         private void ShaftFx(NativeWardFxScene s,in NativeWardMood m,double time,double q,bool low)
@@ -187,8 +188,9 @@ namespace ChipArena.UnityConversion
         }
         private void HazeFx(in NativeWardMood m,double time,double q,bool low)
         {
-            // Low haze round the eye on its own floor, drifting, in the mood's colour (cold grey-teal, red, violet).
-            int n=Count(HazeFull,q,low);double floor=ey>6.6?6:0;double rr=.42*(1-m.Red)+.55*m.Red+.15*m.Ink,gg=.5*(1-m.Red)+.08*m.Red,bb=.55*(1-m.Red)+.1*m.Red+.3*m.Ink;
+            // Low haze round the eye on its own floor, drifting, in the mood's colour (a dark grey-teal that never lifts the dark,
+            // red, violet).
+            int n=Count(HazeFull,q,low);double floor=ey>6.6?6:0;double rr=.17*(1-m.Red)+.5*m.Red+.12*m.Ink,gg=.21*(1-m.Red)+.07*m.Red,bb=.23*(1-m.Red)+.09*m.Red+.25*m.Ink;
             for(int i=0;i<n;i++)
             {
                 double a=H(i,1)*Math.PI*2,rad=4+H(i,2)*24,drift=time*(.15+.1*H(i,3));double x=ex+Math.Sin(a+drift*.05)*rad+Math.Sin(drift+i)*1.5,z=ez+Math.Cos(a+drift*.05)*rad+Math.Cos(drift*.8+i)*1.5;

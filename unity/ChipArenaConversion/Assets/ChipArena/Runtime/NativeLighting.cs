@@ -39,6 +39,7 @@ namespace ChipArena.UnityConversion
         }
         public static void EndIntro(ContentMap map,Camera camera){if(!introActive)return;introActive=false;foreach(var light in stageLights)if(light!=null)light.enabled=false;if(moon!=null){moon.enabled=true;moon.intensity=.9f;}if(rim!=null){rim.enabled=true;rim.intensity=.24f;}Ambient();WriteFog(stageFog);Apply(map,camera);}
         // An entrance or the draft takes the screen: it keeps the fog it found for EndIntro (all of it, the density included).
+        // Each stage frame first turns the Ward light field and actor lighting off (the draft stage stands at the map's origin).
         private static void EnterStage(){if(introActive)return;introActive=true;stageFog=ReadFog();}
         private static MapFogState ReadFog(){var c=RenderSettings.fogColor;return new MapFogState{On=RenderSettings.fog,Mode=(MapFogMode)(int)RenderSettings.fogMode,WritesDensity=true,Density=RenderSettings.fogDensity,Color=new MapLookColor{r=c.r,g=c.g,b=c.b,a=c.a},Start=RenderSettings.fogStartDistance,End=RenderSettings.fogEndDistance};}
         private static void WriteFog(in MapFogState f){RenderSettings.fog=f.On;RenderSettings.fogMode=(FogMode)(int)f.Mode;if(f.WritesDensity)RenderSettings.fogDensity=f.Density;RenderSettings.fogColor=C(f.Color);RenderSettings.fogStartDistance=f.Start;RenderSettings.fogEndDistance=f.End;}
@@ -51,7 +52,7 @@ namespace ChipArena.UnityConversion
         // (Brickfall's linear fog, 4 cascades, .85 key) never reaches it; on every old map those are the values it had, but for
         // the fog colour, which was the map's and now is the draft's backdrop (nothing the draft draws lies beyond the 30 m start).
         public static void Draft(Camera camera,Color tint,float flash=0)
-        {EnterStage();foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=C(NativeMapLooks.DraftBackground);RenderSettings.skybox=null;WriteFog(NativeMapLooks.DraftFog);StageShadows();Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);moon.shadows=LightShadowsOf(NativeMapLooks.StageKeyShadows);moon.shadowStrength=NativeMapLooks.StageShadowStrength;}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(15,35,0);}}
+        {WardFieldOff();EnterStage();foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=C(NativeMapLooks.DraftBackground);RenderSettings.skybox=null;WriteFog(NativeMapLooks.DraftFog);StageShadows();Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);moon.shadows=LightShadowsOf(NativeMapLooks.StageKeyShadows);moon.shadowStrength=NativeMapLooks.StageShadowStrength;}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(15,35,0);}}
         private static void Ambient(){RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=NativeArena.ColorOf(0x92b4f0)*.48f;RenderSettings.ambientEquatorColor=NativeArena.ColorOf(0x9aaccd)*.27f;RenderSettings.ambientGroundColor=NativeArena.ColorOf(0x171320)*.48f;}
         // An entrance stage from the scene bank (NativeSceneMotion): three's linear backdrop, fog and lights. Colours go to sRGB
         // (Unity linearises them in Linear space); directional lights become Unity lights through NativeEntranceLight, so the
@@ -63,7 +64,7 @@ namespace ChipArena.UnityConversion
         // from NativeSirenIntroLight at the song time `age` in place of the bank's 30 Hz samples of its bulb, fill and ambient.
         public static void Intro(NativeSceneClip clip,float age,Camera camera,double[] siren=null)
         {
-            EnterStage();if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;int f=Math.Min(clip.frames-1,(int)(Mathf.Clamp01(age/clip.duration)*(clip.frames-1))),e=f*8;var env=clip.environment;camera.backgroundColor=new Color(env[e],env[e+1],env[e+2]).gamma;var fog=new Color(env[e+3],env[e+4],env[e+5]).gamma;WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),env[e+6],env[e+7]));StageShadows();RenderSettings.skybox=null;
+            WardFieldOff();EnterStage();if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;int f=Math.Min(clip.frames-1,(int)(Mathf.Clamp01(age/clip.duration)*(clip.frames-1))),e=f*8;var env=clip.environment;camera.backgroundColor=new Color(env[e],env[e+1],env[e+2]).gamma;var fog=new Color(env[e+3],env[e+4],env[e+5]).gamma;WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),env[e+6],env[e+7]));StageShadows();RenderSettings.skybox=null;
             bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear,linearIntensity=GraphicsSettings.lightsUseLinearIntensity;float skyR=0,skyG=0,skyB=0,groundR=0,groundG=0,groundB=0;int count=0,stage=0;
             foreach(var track in clip.lights)
             {
@@ -96,7 +97,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Entrance(NativeEntranceLights l,Camera camera)
         {
-            EnterStage();if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;
+            WardFieldOff();EnterStage();if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;
             camera.backgroundColor=new Color(l.Background.X,l.Background.Y,l.Background.Z).gamma;var fog=new Color(l.Fog.X,l.Fog.Y,l.Fog.Z).gamma;
             WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),l.FogNear,l.FogFar));StageShadows();RenderSettings.skybox=null;
             bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear,linearIntensity=GraphicsSettings.lightsUseLinearIntensity;int count=0;
@@ -121,25 +122,50 @@ namespace ChipArena.UnityConversion
         /// NativeWardZeroLights): positions with ranges in `pos` (x, y, z, range per light) and linear colours times intensity in
         /// `rgb`. They replace the look's lights until the next Apply (a map change gives the look's own back); Clock leaves them.
         /// </summary>
-        public static void PickedLights(float[] pos,float[] rgb)
+        public static void PickedLights(float[] pos,float[] rgb)=>PickedLights(pos,rgb,null);
+        /// <summary>The same with each slot's beam (`beam`, NativeWardLight.cginc WardBeam: 0 a point light, 1 + yaw one beam, 8 +
+        /// yaw two; null all point lights), carried in the colour's w.</summary>
+        public static void PickedLights(float[] pos,float[] rgb,float[] beam)
         {
             bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;arenaPicked=true;arenaCount=NativeMapLooks.MaxLights;
             for(int i=0;i<NativeMapLooks.MaxLights;i++)
             {
-                arenaPos[i]=new Vector4(pos[i*4],pos[i*4+1],pos[i*4+2],Math.Max(.0001f,pos[i*4+3]));var c=new Color(rgb[i*3],rgb[i*3+1],rgb[i*3+2]);if(!linear)c=c.gamma;arenaColor[i]=new Vector4(c.r,c.g,c.b,0);
+                arenaPos[i]=new Vector4(pos[i*4],pos[i*4+1],pos[i*4+2],Math.Max(.0001f,pos[i*4+3]));var c=new Color(rgb[i*3],rgb[i*3+1],rgb[i*3+2]);if(!linear)c=c.gamma;arenaColor[i]=new Vector4(c.r,c.g,c.b,beam!=null&&i<beam.Length?beam[i]:0);
             }
             UploadArenaLights();
         }
+        // Ward Zero's ceiling light field (Core NativeWardZeroField, Resources/NativeWardLight.cginc) and actor lighting (pilots,
+        // monsters and machines take the practical slots and the field: ChipArena/SourceLit's ActorLights).
+        private static readonly int WardFieldId=Shader.PropertyToID("_WardField"),WardFieldBoxId=Shader.PropertyToID("_WardFieldBox"),WardFieldLevelId=Shader.PropertyToID("_WardFieldLevel"),
+            WardFieldColorId=Shader.PropertyToID("_WardFieldColor"),ActorLitId=Shader.PropertyToID("_ArenaActorLit");
+        /// <summary>
+        /// The Ward light field for this frame: its volume, box (min x, min z, size x, size z), each circuit's level and its
+        /// linear colour, and whether source models take the arena's lights too (`actors`: the live arena and the killcam, not
+        /// the menu's cut-away). Off while an entrance or the draft owns the screen; a new map look (Apply) turns both off until
+        /// the Ward presentation sends them again.
+        /// </summary>
+        public static void WardField(Texture volume,Vector4 box,Vector4 levels,Color color,bool actors)
+        {
+            if(introActive||volume==null){WardFieldOff();return;}
+            if(QualitySettings.activeColorSpace!=ColorSpace.Linear)color=color.gamma;
+            Shader.SetGlobalTexture(WardFieldId,volume);Shader.SetGlobalVector(WardFieldBoxId,box);Shader.SetGlobalVector(WardFieldLevelId,levels);
+            Shader.SetGlobalVector(WardFieldColorId,new Vector4(color.r,color.g,color.b,1));Shader.SetGlobalFloat(ActorLitId,actors?1:0);
+        }
+        /// <summary>Actor lighting alone (the Ward with no light field: the slots still light its pilots and monsters).</summary>
+        public static void ActorLights(bool on){Shader.SetGlobalVector(WardFieldColorId,Vector4.zero);Shader.SetGlobalFloat(ActorLitId,on&&!introActive?1:0);}
+        /// <summary>Turns the Ward light field and actor lighting off (every other map, a stage, the rooftop).</summary>
+        public static void WardFieldOff(){Shader.SetGlobalVector(WardFieldColorId,Vector4.zero);Shader.SetGlobalFloat(ActorLitId,0);}
         // The hazard kit's share of the slots (Runtime NativeHazardKitPresentation, Core NativeKitLightPool): at most three lights
         // sent each frame, merged into the free or least useful slots at the camera on every upload of that frame and the next
         // (the kit sends again each frame; a map without a kit sends none, and the slots are exactly the look's or the pick's).
-        private static readonly float[] kitPos=new float[NativeKitLightPool.MaxBudget*4],kitRgb=new float[NativeKitLightPool.MaxBudget*3],mergePos=new float[NativeMapLooks.MaxLights*4],mergeRgb=new float[NativeMapLooks.MaxLights*3];
+        private static readonly float[] kitPos=new float[NativeKitLightPool.MaxBudget*4],kitRgb=new float[NativeKitLightPool.MaxBudget*3],kitBeam=new float[NativeKitLightPool.MaxBudget],mergePos=new float[NativeMapLooks.MaxLights*4],mergeRgb=new float[NativeMapLooks.MaxLights*3],mergeBeam=new float[NativeMapLooks.MaxLights];
         private static readonly Vector4[] uploadPos=new Vector4[NativeMapLooks.MaxLights],uploadColor=new Vector4[NativeMapLooks.MaxLights];private static int kitCount,kitFrame=-10;private static Vector3 kitEye;
-        /// <summary>The hazard kit's lights this frame (positions with ranges, linear colours times intensity; count 0 clears).</summary>
-        public static void KitLights(float[] pos,float[] rgb,int count,Vector3 eye)
+        /// <summary>The hazard kit's lights this frame (positions with ranges, linear colours times intensity, their beams or null;
+        /// count 0 clears).</summary>
+        public static void KitLights(float[] pos,float[] rgb,int count,Vector3 eye,float[] beam=null)
         {
             int n=pos==null||rgb==null?0:Math.Min(Math.Min(count,NativeKitLightPool.MaxBudget),Math.Min(pos.Length/4,rgb.Length/3));bool had=kitCount>0;kitCount=n;kitFrame=Time.frameCount;kitEye=eye;
-            if(n>0){Array.Copy(pos,kitPos,n*4);Array.Copy(rgb,kitRgb,n*3);}if(n>0||had)UploadArenaLights();
+            if(n>0){Array.Copy(pos,kitPos,n*4);Array.Copy(rgb,kitRgb,n*3);for(int k=0;k<n;k++)kitBeam[k]=beam!=null&&k<beam.Length?beam[k]:0;}if(n>0||had)UploadArenaLights();
         }
         private static void UploadArenaLights()
         {
@@ -148,12 +174,12 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<slots;i++)
             {
                 bool used=i<arenaCount;var p=used?arenaPos[i]:new Vector4(0,-10000,0,1);var c=used?arenaColor[i]:Vector4.zero;
-                mergePos[i*4]=p.x;mergePos[i*4+1]=p.y;mergePos[i*4+2]=p.z;mergePos[i*4+3]=p.w;mergeRgb[i*3]=c.x;mergeRgb[i*3+1]=c.y;mergeRgb[i*3+2]=c.z;
+                mergePos[i*4]=p.x;mergePos[i*4+1]=p.y;mergePos[i*4+2]=p.z;mergePos[i*4+3]=p.w;mergeRgb[i*3]=c.x;mergeRgb[i*3+1]=c.y;mergeRgb[i*3+2]=c.z;mergeBeam[i]=c.w;
             }
             // Kit colours are linear; a gamma project's slots hold gamma values (as PickedLights writes them).
             var rgb=kitRgb;if(!linear){for(int k=0;k<kitCount;k++){var g=new Color(kitRgb[k*3],kitRgb[k*3+1],kitRgb[k*3+2]).gamma;kitScratch[k*3]=g.r;kitScratch[k*3+1]=g.g;kitScratch[k*3+2]=g.b;}rgb=kitScratch;}
-            NativeKitLightPool.Merge(mergePos,mergeRgb,slots,kitPos,rgb,kitCount,kitEye.x,kitEye.y,kitEye.z);int count=arenaCount;
-            for(int i=0;i<slots;i++){uploadPos[i]=new Vector4(mergePos[i*4],mergePos[i*4+1],mergePos[i*4+2],Math.Max(.0001f,mergePos[i*4+3]));uploadColor[i]=new Vector4(mergeRgb[i*3],mergeRgb[i*3+1],mergeRgb[i*3+2],0);if(mergePos[i*4+1]>-5000&&i>=count)count=i+1;}
+            NativeKitLightPool.Merge(mergePos,mergeRgb,slots,kitPos,rgb,kitCount,kitEye.x,kitEye.y,kitEye.z,mergeBeam,kitBeam);int count=arenaCount;
+            for(int i=0;i<slots;i++){uploadPos[i]=new Vector4(mergePos[i*4],mergePos[i*4+1],mergePos[i*4+2],Math.Max(.0001f,mergePos[i*4+3]));uploadColor[i]=new Vector4(mergeRgb[i*3],mergeRgb[i*3+1],mergeRgb[i*3+2],mergeBeam[i]);if(mergePos[i*4+1]>-5000&&i>=count)count=i+1;}
             Shader.SetGlobalVectorArray(ArenaPosId,uploadPos);Shader.SetGlobalVectorArray(ArenaColorId,uploadColor);Shader.SetGlobalInt(ArenaCountId,count);
         }
         private static readonly float[] kitScratch=new float[NativeKitLightPool.MaxBudget*3];
@@ -166,7 +192,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Rooftop(Camera camera,Material skybox)
         {
-            camera.clearFlags=CameraClearFlags.Skybox;RenderSettings.skybox=skybox;camera.farClipPlane=3000;
+            WardFieldOff();camera.clearFlags=CameraClearFlags.Skybox;RenderSettings.skybox=skybox;camera.farClipPlane=3000;
             RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=new Color(.03f,.02f,.07f);RenderSettings.fogStartDistance=45;RenderSettings.fogEndDistance=700;
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=new Color(.10f,.11f,.24f);RenderSettings.ambientEquatorColor=new Color(.09f,.05f,.13f);RenderSettings.ambientGroundColor=new Color(.10f,.03f,.09f);
             // No shadow maps: the city's shaders take none, and the pilots' own would only fall on each other.
@@ -203,7 +229,7 @@ namespace ChipArena.UnityConversion
         // looks moved into data, except Cinder Crossing's sky (forge theme).
         public static void Apply(ContentMap map,Camera camera)
         {
-            var look=Look(map);current=look;currentMap=map;arenaPicked=false;var s=applied;NativeMapLooks.Applied(look,map.sky,NativeArenaDressing.Preview,s);
+            var look=Look(map);current=look;currentMap=map;arenaPicked=false;WardFieldOff();var s=applied;NativeMapLooks.Applied(look,map.sky,NativeArenaDressing.Preview,s);
             camera.farClipPlane=s.FarClip;camera.backgroundColor=C(s.Background);camera.clearFlags=s.Skybox?CameraClearFlags.Skybox:CameraClearFlags.SolidColor;
             WriteFog(s.Fog);if(introActive)stageFog=ReadFog();
             Sky(s);RenderSettings.skybox=s.Skybox?sky:null;Shadows();

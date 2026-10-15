@@ -13,7 +13,8 @@ namespace ChipArena.UnityConversion
     ///  - their effects (beams, flashes, halos, laser sights, steam, sparks, smoke, blur, blood) through one NativeFxDraw;
     ///  - the turret rounds through the guns' own renderer (NativeWeaponFxShapes: muzzle star, tracer, impact);
     ///  - their light on the walls: the strongest kit lights at the camera (Core NativeKitLightPool, 3 on full effects, 2
-    ///    reduced, 1 on the low tier) merged into the eight practical slots (NativeLighting.KitLights).
+    ///    reduced, 1 on the low tier) merged into the eight practical slots (NativeLighting.KitLights); a beacon's light throws
+    ///    its two turning beams round the room (the slot's beam, NativeWardLight.cginc WardBeam).
     /// Settings · Alarm lights (Full, Reduced, Calm; Reduced effects forces at least Reduced) sets how hard lamps flash.
     /// Nothing here writes sim data, collides, damages or enters the network frame. Allocation free after the first frame.
     /// </summary>
@@ -37,7 +38,7 @@ namespace ChipArena.UnityConversion
             scene.Build(e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);
             DrawKitParts(scene);DrawKitFx(scene,now,eye);DrawKitRounds(scene,now,eye);
             float dt=kitLast<0?0:Mathf.Clamp(now-kitLast,0,.1f);kitLast=now;kitLights.Budget=LowGraphics?1:EffectsQuality<.5f?2:NativeKitLightPool.MaxBudget;
-            kitLights.Update(scene,e.x,e.y,e.z,dt);NativeLighting.KitLights(kitLights.Pos,kitLights.Rgb,kitLights.Count,e);kitLightsSent=true;
+            kitLights.Update(scene,e.x,e.y,e.z,dt);NativeLighting.KitLights(kitLights.Pos,kitLights.Rgb,kitLights.Count,e,kitLights.Beam);kitLightsSent=true;
         }
         // The DEV gallery opens where you stand, facing where you face, and stays put until it is turned off.
         private void HazardKitGalleryState(NativeArena arena)
