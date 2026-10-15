@@ -59,6 +59,7 @@ namespace ChipArena.UnityConversion
             if(!NativeCyberKit2Rules.Begin(s,slot,Time,ref p.Mana,(float)p.Stats["attackRate"],(float)(p.Stats["resourceCost"]*p.Stats["abilityCost"]),(float)p.Stats["abilityCooldown"],(float)p.Stats["resourceCost"]))return;
             s.Facing=V3.Forward(i.Yaw);p.CyberAttack=nextAttack++;p.Yaw=i.Yaw;p.AttackAt=p.LastAttack=Time;p.AttackEnd=p.Ready=s.Until;
             if(NativeCyberKit2Rules.Move(s,Time)==0)p.MoveVelocity=Vector3.zero;
+            p.CyberStep=slot==2?NativeCyberStep.Begin(s,p.Grounded&&!NativeHazards.InLava(MapId,Vec(p.Body.position)),i.LockTarget,Vec(p.Body.position),(pos,dir,d,n,target)=>CyberStepLimit(p,pos,dir,d,n,target)):default;
             var m=s.Kit2;var r=s.Kit2R;var from=p.Body.position;
             if(slot==0){m.UplinkFrom=Vec(from);m.UplinkAnchor=Vec(from+Vector3.up*CyberKit2Melee.EmitterHeight+Vec(GunRules.Direction(i.Yaw,i.Pitch))*CyberKit2Spec.UplinkRange);m.UplinkOutcome=m.UplinkTarget=0;m.UplinkLatchAt=m.UplinkArriveAt=-100;}
             if(slot==4){m.CutFrom=Vec(from);m.CutTo=Vec(KernelTravel(from,from+Vec(s.Facing)*CyberKit2Spec.CutDistance));m.MarkedCount=0;m.DetonateAt=s.Until+CyberKit2Spec.MarkDelay;p.CyberCutAdds.Clear();p.CyberCutDone=false;}

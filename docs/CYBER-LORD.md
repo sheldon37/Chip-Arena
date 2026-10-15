@@ -408,10 +408,11 @@ changes).**
 - The body paths the effects assume (`CyberKit2Melee.ZipBody`, `YankBody`, `CutBody`, `MeteorBody`): the poses always read
   the replicated body; if the host moves bodies differently, report it and the helpers follow.
 
-### Melee step contract (proposed, for Astra)
+### Melee step contract (owner-approved, implemented by Astra)
 
-Presentation is ready for it and dormant until it lands (today every string step stays rooted and is stepped inside the
-capsule). Numbers are `CyberCombo.StepDistance` / `StepFrom*` / `StepTo*`; W is the step's windup, F its follow-through
+Owner approval (2026-10-15): "Yes give the melee step to Astra."
+
+Authority and owner prediction now drive the real capsule step; presentation consumes the existing actor fields. Numbers are `CyberCombo.StepDistance` / `StepFrom*` / `StepTo*`; W is the step's windup, F its follow-through
 (both compressed by the Overclock), the profile is a smoothstep `u*u*(3-2u)` over the window, along the facing at Begin:
 
 | Step | Distance | Window | Travelled by the Release |
@@ -427,15 +428,27 @@ capsule). Numbers are `CyberCombo.StepDistance` / `StepFrom*` / `StepTo*`; W is 
   as the Flash Step's forward step does), and at a ledge (no step off a drop higher than `StepHeight`). The pilot still cannot
   steer during the step (`MoveScale[2]` stays 0) and the yaw stays locked.
 - Replicate the distance the capsule will actually travel in the actor's existing step fields (`StepAt`, `StepUntil`,
-  `StepDistance`: on the wire and validated for the weapons' swings; zero for the Cyber Lord today). If a correction shortens
+  `StepDistance`: on the wire and validated for the weapons' swings). If a correction shortens
   a step after Begin, update `StepDistance` too; a body that ends up more than 15 cm from the replicated path hands its feet
   back to the gait (that is the presentation's drift guard, not a pop). If the record should carry it instead, only
   `CyberKit2MeleeFeed.Step` changes.
-- Owner prediction (`NativePrediction`) applies the same step so the owner never sees a correction, and guests read the
-  replicated fields and positions like any other pilot.
-- Unchanged unless Astra decides otherwise: the hit times (Release), range, arcs, damage, cooldowns, the combo reset and the
-  Overclock rates. Note that the cone is resolved from where the capsule is at the Release, so the reach grows by the share
-  already travelled (last column), as the weapons' steps do; resolving from the swing's start position keeps today's reach.
+- Owner prediction (`NativePrediction`) uses the same step/profile and target/scene limiter, restores travelled progress
+  from the acknowledged step window, and replays pending inputs without applying that progress twice. Guests read the
+  existing replicated fields and positions. Normal network corrections remain possible for moving targets/geometry.
+- Claude preferred impact-position hits, with a later reach trim if needed rather than a cone from the start.
+- **Reach decision (Astra, 2026-10-15): resolve the cone from the capsule at the hit.** Keep `ComboRange=2.4 m` and all
+  arcs unchanged. Unobstructed effective reach grows by the travelled share above (jab about .23 m, palm .45 m), matching
+  the drawn strike. No speculative reach trim; assess the native playtest before making a separate balance change.
+- Hit times, damage, cooldowns, combo reset and Overclock rates are unchanged. The host advances position before resolving
+  the hit, using the captured facing and smoothstep window from `CyberCombo.Swing`.
+- `NativeCyberStep` is per-cast value state shared by authority/prediction. Begin caps the distance; every advance rechecks
+  targets, a capsule sweep and floor support (samples at most 2.5 cm apart, drop at most `StepHeight`). Lock-on is checked
+  first, then other hittable pilots/adds can shorten clearance further. There is no sideways slide or steering.
+- An airborne start stays stationary even if it lands during the cast. Losing grounding, a cut, stun, block/roll or freeze
+  ends further travel. A later obstruction shortens both the distance and the step end time to the actual stop, so a
+  reconciled owner never predicts the stopped remainder. These step fields do not alter the attack's Release/Until.
+- Implementation branch: `codex/cyber-melee-step`, base shared `425cb2d8`. Managed regressions and pinned-assembly compilation
+  are recorded in DEV_LOG; native PhysicsScene/Windows and live host/guest acceptance are separate builder/play gates.
 
 ## The contract and the one field mapping
 
@@ -1058,7 +1071,7 @@ warp is presentation only, and the bodies stand where the snapshot puts them.
 - The momentum pass (2026-10-15) raises that shift to at most 20 cm (25 cm entering at a run), still inside the .42 m capsule
   and back over it by each step's end; the lead foot steps up to 30 cm out and back. The capsule stays rooted: hit timing,
   hit cones, damage, cooldowns, movement and the network frame are unchanged. The proposed simulation step (the contract
-  above) would move the capsule; nothing does yet.
+  above) now moves the capsule through authority and owner prediction.
 - The capsule, movement speed, jump height, hit timing, cooldowns and the network frame are untouched.
 
 ## What the rules side still needs to provide (Astra)
@@ -1078,7 +1091,7 @@ Still pending or limited:
   is the rule, and the older drawn trails are cosmetic.
 - The Sheldon Idle save: the prompt is under "Sheldon Idle" above.
 - The ranged mode (key 5 and its LMB and 1-4): the prompt is under "Ranged mode" above.
-- The melee string's step (optional, owner's momentum request): "Melee step contract (proposed, for Astra)" above.
+- The melee string's capsule step is implemented: see "Melee step contract" above. Native play acceptance remains pending.
 
 ## Checks and renders
 

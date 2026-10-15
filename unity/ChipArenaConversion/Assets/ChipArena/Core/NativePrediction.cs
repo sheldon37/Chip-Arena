@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
         public bool Bow;public float BowDrawAt;public float Time,Ready,Stamina,BufferUntil,ComboUntil,RollUntil;public int Combo;
         public float AirborneAt;public bool AirAttackUsed;public string JumpSpec;public int AirJumps;public float AirJumpAt;public bool Swimming;
         public ContentWeapon MeleeWeapon;public ChipStats MeleeStats;public NativeMeleeSwing Swing;
-        public NativeCyberKit Cyber;public float CyberMana,CyberRate,CyberCost,CyberCooldown,CyberUltimateCost;public NativeMeleeKit MeleeKit;public float OverdriveAt,OverdriveUntil;
+        public NativeCyberStep CyberStep;public NativeCyberKit Cyber;public float CyberMana,CyberRate,CyberCost,CyberCooldown,CyberUltimateCost;public NativeMeleeKit MeleeKit;public float OverdriveAt,OverdriveUntil;
     }
     // Locomotion and local swing commitment are predicted; hits, damage and real resources stay authority-owned.
     public sealed class NativePrediction
@@ -20,22 +20,22 @@ namespace ChipArena.UnityConversion
         public int Pending=>pending.Count;
         public void Reset(NativePredictionState state,int sequence=-1)
         {State=state;pending.Clear();acknowledged=lastSequence=sequence;}
-        public void Push(InputFrame input,Func<V3,V3,V3> constrain,Func<V3,bool> grounded=null,Func<int,V3?> lockTarget=null)
+        public void Push(InputFrame input,Func<V3,V3,V3> constrain,Func<V3,bool> grounded=null,Func<int,V3?> lockTarget=null,Func<V3,V3,float,int,int,float> cyberStepLimit=null)
         {
             if(!input.Valid||input.Sequence<=lastSequence)return;
             lastSequence=input.Sequence;
             if(pending.Count==120)pending.RemoveAt(0);
-            pending.Add(input);State=Step(State,input,constrain,grounded,lockTarget);
+            pending.Add(input);State=Step(State,input,constrain,grounded,lockTarget,cyberStepLimit);
         }
-        public void Reconcile(NativePredictionState authority,int sequence,Func<V3,V3,V3> constrain,Func<V3,bool> grounded=null,Func<int,V3?> lockTarget=null)
+        public void Reconcile(NativePredictionState authority,int sequence,Func<V3,V3,V3> constrain,Func<V3,bool> grounded=null,Func<int,V3?> lockTarget=null,Func<V3,V3,float,int,int,float> cyberStepLimit=null)
         {
             if(sequence<acknowledged)return;
             acknowledged=sequence;lastSequence=Math.Max(lastSequence,sequence);
             pending.RemoveAll(i=>i.Sequence<=sequence);State=authority;
-            foreach(var input in pending)State=Step(State,input,constrain,grounded,lockTarget);
+            foreach(var input in pending)State=Step(State,input,constrain,grounded,lockTarget,cyberStepLimit);
         }
         private static float Towards(float from,float to,float amount)=>from<to?Math.Min(from+amount,to):Math.Max(from-amount,to);
-        public static NativePredictionState Step(NativePredictionState state,InputFrame raw,Func<V3,V3,V3> constrain,Func<V3,bool> grounded=null,Func<int,V3?> lockTarget=null)
+        public static NativePredictionState Step(NativePredictionState state,InputFrame raw,Func<V3,V3,V3> constrain,Func<V3,bool> grounded=null,Func<int,V3?> lockTarget=null,Func<V3,V3,float,int,int,float> cyberStepLimit=null)
         {
             var input=raw.Sanitized();float dt=Rules.Dt;
             state.Time+=dt;if(state.Grounded){state.AirJumps=0;state.AirborneAt=-1;state.AirAttackUsed=false;}else if(state.AirborneAt<0)state.AirborneAt=state.Time;
@@ -44,6 +44,9 @@ namespace ChipArena.UnityConversion
             if(state.Bow){if(input.Block||input.Aim||input.Sprint||input.CancelAbilities||input.AbilityQ||input.AbilityE||state.Time<state.RollUntil)state.BowDrawAt=-1;else if(state.BowDrawAt>=0&&!input.Shoot){state.BowDrawAt=-1;state.Ready=state.Time+NativeBowRules.Nock;}else if(state.BowDrawAt<0&&input.Shoot&&state.Time>=state.Ready)state.BowDrawAt=state.Time;}
             state.Cyber=state.Cyber?.ViewCopy();NativeCyberKit2Rules.Recover(state.Cyber,state.Time,dt);
             if(state.Cyber!=null&&state.Time>=state.Ready&&state.Time>=state.RollUntil)NativeCyberRules.Predict(state.Cyber,input,state.Time,state.Position,ref state.CyberMana,Math.Max(.01f,state.CyberRate),state.CyberCost,state.CyberCooldown,constrain,state.CyberUltimateCost);
+            if(state.Cyber?.Version==2&&NativeCyberKit2Rules.Current(state.Cyber)==2&&!NativeCyberStep.Matches(state.Cyber,state.CyberStep))
+                state.CyberStep=NativeCyberStep.Begin(state.Cyber,state.Grounded&&!state.Swimming,input.LockTarget,state.Position,cyberStepLimit);
+            state.Position+=NativeCyberStep.Advance(ref state.CyberStep,state.Cyber,state.Time,state.Grounded&&!state.Swimming&&!input.Roll&&!input.Block&&!input.CancelAbilities,state.Position,cyberStepLimit);
             bool cyberBusy=state.Cyber!=null&&state.Time<state.Cyber.Until;
             if(cyberBusy&&state.Cyber.Kind=="data-dash"){state.Position=constrain(state.Position,NativeCyberRules.DashPosition(state.Cyber,state.Time));state.Velocity=new V3();return state;}
             bool kitBusy=NativeWhirlwindRules.Busy(state.MeleeKit,state.Time),whirling=NativeWhirlwindRules.Active(state.MeleeKit,state.Time);
