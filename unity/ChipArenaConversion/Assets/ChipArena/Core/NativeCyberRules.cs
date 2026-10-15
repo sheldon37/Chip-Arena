@@ -3,6 +3,8 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeCyberKit
     {
+        // Unity expands null inline records; retain their actual presence across network/replay JSON.
+        public bool HasKit2,HasKit2R;
         public int Version;public CyberKit2MeleeRecord Kit2;public CyberKit2RangedRecord Kit2R;
         public NativeCyberRangedState Ranged;
         public string Kind="";public float At,Release,Until,CutAt=-1,LastComboEnd=-100;public int Combo=-1;public bool Resolved;
@@ -10,6 +12,8 @@ namespace ChipArena.UnityConversion
         public float QReady,EReady,PacketReady,LinkReady,CrashReady;
         public float DashAt,DashUntil,TrailUntil,WallAt,WallUntil,WallYaw,LinkAt,LinkUntil,CrashAt,CrashUntil;
         public int LinkTarget;public V3 Facing,DashFrom,DashTo,WallPoint,CrashPoint;
+        public void CapturePresence(){HasKit2=Kit2!=null;HasKit2R=Kit2R!=null;}
+        public void RestorePresence(){if(!HasKit2)Kit2=null;if(!HasKit2R)Kit2R=null;}
         public NativeCyberKit ViewCopy(){var c=(NativeCyberKit)MemberwiseClone();c.Ranged=Ranged?.ViewCopy();c.Kit2=Kit2?.ViewCopy();c.Kit2R=Kit2R?.ViewCopy();return c;}
         public bool Valid()=>NativeCyberKit2Rules.Valid(this)&&(Ranged==null||Ranged.Valid())&&Finite(CutAt)&&Finite(PacketAt)&&Finite(PacketRelease)&&Finite(PacketUntil)&&Finite(PacketCutAt)&&Finite(At)&&Finite(Release)&&Finite(Until)&&Finite(LastComboEnd)&&Combo>=-1&&Combo<=(Version==2?4:2)&&Finite(QReady)&&Finite(EReady)&&Finite(PacketReady)&&Finite(LinkReady)&&Finite(CrashReady)&&Finite(DashAt)&&Finite(DashUntil)&&Finite(TrailUntil)&&Finite(WallAt)&&Finite(WallUntil)&&Finite(WallYaw)&&Finite(LinkAt)&&Finite(LinkUntil)&&Finite(CrashAt)&&Finite(CrashUntil)&&Vec(Facing)&&Vec(DashFrom)&&Vec(DashTo)&&Vec(WallPoint)&&Vec(CrashPoint)&&LinkTarget>=0&&(Kind==""||Kind=="cyber-jab"||Kind=="cyber-cross"||Kind=="cyber-palm"||Kind=="data-dash"||Kind=="firewall"||Kind=="packet-burst"||Kind=="siphon-link"||Kind=="system-crash"||Kind=="mode-switch"||Version==2&&(CyberKit2Spec.Slot(Kind)>=0||Kind=="cyber-spin"||Kind=="cyber-rise")||CyberRangedSpec.Slot(Kind)>=0);
         static bool Finite(float n)=>!float.IsNaN(n)&&!float.IsInfinity(n)&&Math.Abs(n)<1e8;

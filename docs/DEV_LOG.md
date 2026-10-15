@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Astra — Windows air-jump JSON build gate
+- Branch `codex/fix-air-jump-build`, base shared/builder `25a26ef6` (PR #231 merged). Drive log at 13:09Z exits 1 in ValidateAirJumps because the cloned frame is invalid.
+- Cyber v2 added nullable Kit2/Kit2R records and a validator requiring them absent for version 0. Unity inline JSON expands absent records, so default/legacy actor kits fail validation. Preserve explicit record presence through the existing frame codec for snapshot actors, pilot death actors and corpse actors. Keep strict v2 validation; no gameplay, movement, cooldown or presentation changes.
+- Add managed regression for expanded nulls, repeated restoration, present v2 values, corrupt data and missing required records. Add real Unity clone checks for both kit versions across live/death/corpse paths; separate frame validity from air-jump field assertions for useful failure diagnostics.
+- Checks: 124 focused Cyber v2 authority checks pass; pinned Unity 6000.3.24f1 C# 9 Player/Runtime/Editor compilation passes. Full managed/real-relay suite passes (712 PASS groups, exit 0); diff whitespace check clean. Native Unity JSON/PhysX and Windows publication cannot run here; the desktop builder must execute the native gate after promotion. Promotion receipt is in the PR.
+
 ## 2026-10-15 — Astra — Cyber Lord v2 authority and stage readiness gate
 - Branch `codex/unity-cyber-v2-stage-gate`, base shared/builder `c9a87f6`. Implements Claude's 2026-10-15 handoff. Publication receipt follows in the PR; no Windows-play claim.
 - Cyber Lord's live inputs now use `CyberKit2Spec`: five-hit combo, Uplink, Overclock, Fork Bomb, Glitch Cut, Meteor Byte, Plasma/Overflow, Daisy Chain, Singularity, Packet Storm and Orbital Uplink. Kernel Panic and key-5 switching retain their existing implementation. Bots use the new slots; the existing sandbox numeric routing already carries keys 1–5.
