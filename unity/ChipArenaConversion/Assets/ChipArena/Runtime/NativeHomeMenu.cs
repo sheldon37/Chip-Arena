@@ -501,6 +501,7 @@ namespace ChipArena.UnityConversion
             var l=BeginScreen("PVE · BOSS TEST","Test Boss",650,age,true,head:122);if(l.Closed){Go(MenuScreen.Home);return;}
             BossCard(new Rect(l.Panel.x+32,l.Panel.y+104,l.Panel.width-64,108),l.Enter);
             ScreenBody(l,()=>BossBody());if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Up to four pilots: party bots fill the empty seats.");
+            if(!string.IsNullOrEmpty(expeditionError))ScreenStatus(l,"Expedition could not start: "+expeditionError,true);
             int a=account.Developer?ScreenActions(l,("play","Start Boss Fight",true,server==null),("network","Host Co-op Room",false,true),("play","DEV Expedition M1",false,!Online)):ScreenActions(l,("play","Start Boss Fight",true,server==null),("network","Host Co-op Room",false,true));
             if(a==2){StartExpeditionM1();return;}
             if(a==0){prefs.pve=true;sandboxWanted=false;StartMatch();}else if(a==1){prefs.pve=true;Go(MenuScreen.Create);}
