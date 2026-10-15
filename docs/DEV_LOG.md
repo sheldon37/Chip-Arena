@@ -7948,3 +7948,10 @@ Checks on `75cbd30`, run one after the other:
 
 Not run: Unity Editor play, Windows, or real host/guest. PR #62 `verify` still fails only on the known Electron baseline;
 nothing outside `unity/` and `docs/` changed. No release or test-channel publication from this entry.
+
+## 2026-10-15 — Codex: initialize Hulk native acceptance fixture after spitter reset
+- Branch `codex/fix-hulk-validation`, base shared/builder `f156a217`.
+- Owner's Latest-Build.txt (2026-10-15 00:35 UTC) fails in `ValidateHulkHunt` line 13: the preceding `ValidatePveSpitters` finally calls `Reset`, which clears `Pve`. Hulk validation dereferenced it before creating its fixture.
+- Hulk validation now resets and configures a fresh PvE state from the packaged resource before capturing content entries and pilot references. Existing Hulk assertions remain enabled; no gameplay, animation, timing, damage, or networking changes.
+- Checks: managed Core/relay compilation (Roslyn, warnings as errors); focused `--hulk-charge` passes all seven suites including 184 Hulk authority assertions (plus startup DEV/Expedition checks); source package structure passes (2025 files); `git diff --check` clean. Unity compilation receipt below. Native Editor/PhysX execution and Windows build/publication require the existing builder; not claimed here.
+- Unity runtime + editor source compilation against the available Unity 6000.3 reference assemblies passed (0 compiler errors). This is compilation only, not execution of `ValidateHulkHunt`.
