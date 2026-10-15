@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-15 Claude Expedition chip tray (`claude/expedition-chip-screen`, on shared `d6968b6`): chip picks moved off J onto the Boss Test's chip tray, drawn over the live view (choosers stay mobile). C opens it; it never opens on collection. It sends Claim / OpenChoice / CloseChoice / Select. Digits pick and Alt frees the cursor (client routing, no lock). The wrist look and tag come from `members[].choosing`. The Boss Test path is unchanged. Pushed, not merged. Managed checks and offline renders only; Unity/Windows/two-client unrun. Optional for Astra: offer parity, tiered machine pickups. See DEV_LOG.
+
 2026-10-15 Astra Expedition chip selection: owner correction supersedes the D18 freeze in PR #233. Choosing is public presence only; no movement/action lock or damage protection. OpenChoice/CloseChoice privacy, Install event and C notices retained. Correction branch `codex/unity-expedition-chip-vulnerable` from `74c4117`; Claude screen binding and native Windows acceptance remain pending. See DEV_LOG.
 
 2026-10-15 Astra: Cyber Lord v2 authority and stage readiness gate implemented on `codex/unity-cyber-v2-stage-gate` from `c9a87f6`; see latest DEV_LOG for wire field mapping, validation and publication status. Also fixes the existing Windows Expedition acceptance crash from indexing an empty authored slot array. Windows native execution and host/guest visual acceptance remain pending.
