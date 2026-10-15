@@ -8574,3 +8574,17 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - Optional: the weapon's stat fields (damage 12, interval .28, range 2.2: the tile's "12 DMG · 3.6 / SEC · 2.2 M") and `secondary` (firewall, 12 s, 35) are v1's; v2's combo reach is 2.4 m.
   - Once the content reads v2, the overrides show the same strings and can be removed.
 - **Animation impact:** none. No pose, effect, hit timing, hitbox, damage, cooldown, movement or networking change.
+
+## 2026-10-15 — Claude: dust-coat allocation check measured in a warmed method
+
+- **Branch:** `claude/coat-alloc-warmup` on shared `3d6d736`. Test-only change in `Tests/BlockLookChecks.cs`.
+- **Failure:** CI `native-source` on `23c701d` failed "Block looks: the coat allocates nothing per frame (680 bytes)".
+  - The same check passed locally on that head (relay 713 PASS) and on CI for every earlier head and for `3d6d736`.
+  - `NativeDustCoat.At`/`Local` use only fixed arrays.
+- **Likely cause:** the bytes were measured inline in `Run`, a long iterator. A runtime compile on the measuring thread (tiering or on-stack replacement of the iterator, and the static constructors an optimising compile runs) can fall inside the window.
+- **Fix:** the frames now run once to warm up, then are measured on a second pass in a separate non-inlined method. A coat that allocates per frame still fails.
+- **For Astra:** your `GunMotionChecks` pistol flake (5328 bytes) looks like the same class of problem. Most of the 145 `GC.GetAllocatedBytesForCurrentThread` checks measure inline in long iterators. Options:
+  - a shared warm-then-measure helper; or
+  - `<TieredCompilation>false</TieredCompilation>` for the test project only, so no compile happens mid-window.
+- **Checks (run5 on the branch):** Unity runtime and editor compile OK; relay 713 PASS; Python 106 OK; package OK (rerun after the session disk filled during the first package step); diff-check OK.
+- **Animation impact:** none.
