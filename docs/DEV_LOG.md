@@ -8104,3 +8104,29 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - Follow-up `codex/unity-expedition-drop-fix` on shared/builder `8a2fdee` (PR #225). The expanded native gate reproduced the startup refusal: `Expedition route blocked: expedition-ward-zero (35.8, 6, 2) to (-35, 0, -26.2), radius 0.954` in the 03:35 UTC Windows log.
 - Startup navigation required continuous floor support and straight LOS on authored one-way drop links. Falling links intentionally leave the floor; live authority NavLinkActiveCore already handles them separately. Use that authored drop policy (NavLinkEnabled) after real support/capsule checks on both endpoints; ordinary links keep their support/LOS checks and NativeNavSearch keeps drops directional. No map geometry or visual changes.
 - The full startup gate added in PR #225 stays required; its next native receipt must confirm every spawn can reach the area. Semantic compile and native result are recorded in the follow-up PR. Do not claim the click-to-play route is verified until the user/native run confirms it.
+
+
+## 2026-10-15 — Claude: Expedition M1 acceptance — receipt, startup diagnosis, boss-crack height (no live run)
+
+- Task branch `claude/expedition-m1-acceptance`, base shared `6b7e127` (PR #226). Docs only; no code changes.
+- **Receipt for `8c5e83d`: not independently verified.** The test channel's `native/windows-x64/latest.json` (version `37c286c4824a…`, revision `639276314883455179` = 03:24:48 UTC, channel commit `ba8ada9`) names no source commit. `cloud-publication.json` is stale (`97783cb`, 2026-10-11). There is no builder status on `8c5e83d`. The only link is Astra's PR #225 entry citing Drive `Latest-Build.txt` (03:25 UTC), which I cannot read from here.
+- **Live route acceptance: not run.** That build refused the M1 start: the owner saw a stall, then a return to Test Boss. This environment has no Unity or Windows player, so there are no gameplay observations, captures or host/guest results. Local and host/guest acceptance both remain open; host/guest is unsupported in M1.
+- **Startup diagnosis (offline emulation, not evidence):**
+  - The scratchpad script, not committed, mirrors `ExpeditionSupported`/`ExpeditionReachable` in `ValidateGeometry` order. It covers the support raycast, the capsule overlap against yaw boxes and the `BuildCutExitCollision` wedges, the link linecast, and `NativeNavSearch` over `UnityMaps.json`.
+  - On `8a2fdee` its first failure was exactly the 03:35 UTC native message: `(35.8, 6, 2) to (-35, 0, -26.2), radius 0.954`.
+  - On `8a2fdee` there were 22 failures, all routes from upper-floor instance spawns to the entry. The city was clean.
+  - With PR #226's drop policy: 0 failures in both areas, at both radii.
+  - Only the next native gate counts as evidence.
+- **Latent risk (Astra, runtime probe):**
+  - Every stair and ramp foot in `expedition-ward-zero` is still unusable by the runtime clearance. Foot-row nav nodes take floor y 0 (`pos.y - HalfHeight`) inside the wedge footprint (t = .25 m on stairs, .73 m on ramps). The capsule bottom therefore sits 8.8 cm (stairs) or 27.6 cm (ramps) below the wedge surface.
+  - Downward startup routes now use drops, so this is not a startup blocker. Any future runtime-probe route from ground to upper floor would fail.
+  - The managed authored probe passes because of its .36 m step allowance. Suggest the same allowance, or floor-snapped samples, in the runtime probe.
+- **Presentation defect found in code, routed to Astra (binding, not changed here):**
+  - `SpawnExpeditionBoss` records `RecordBossArrival(..., Vec(boss.Body.position), ...)` after setting the body to spawn + `HalfHeight`. The recorded arrival is therefore .85 m above the floor.
+  - The contract says `bossArrivals[].x/y/z` is the immutable world spawn position, and the crack, roar and dust draw at the boss's feet. They would float .85 m.
+  - Fix: pass `Vec(point.Position)`. Presentation does not guess an offset.
+- **Static review of the other M1 presentation paths** (`ExpeditionWorldShown`, `MapReady` vs `ExpeditionMap(area.map)`, PvE UI suppressed under M1, plates from `UpdateBossHealth`): no further defect found. Not observed live.
+- **Next:**
+  1. Builder publishes `6b7e127` or later, with a receipt naming the source commit and the startup gate PASS.
+  2. The owner runs DEV → Test Boss → DEV Expedition M1 and reports what they see against EXPEDITION-PLAYTEST-M1 "Claude: what is needed".
+  3. Claude fixes the observed presentation defects.
