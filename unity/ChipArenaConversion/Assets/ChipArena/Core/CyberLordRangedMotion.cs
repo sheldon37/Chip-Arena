@@ -16,9 +16,16 @@ namespace ChipArena.UnityConversion
     ///   fireball each (the effects draw them); the chest open and a little forward, with a slow breath.
     /// - The throws (v2's Plasma Byte; v1's Bit Bolt window on a v1 record): the throwing hand sweeps forward from behind the
     ///   hip, accelerating through the release point on the replicated release (following the aim's pitch), decelerating out to
-    ///   full extension, then swings back to the stance as the chest comes round; the other hand holds its energy, drawn back a
-    ///   little. Every window starts and ends on the stance, so throws chain at any interval and rate with no pop. The
-    ///   Overflow (every third v2 throw) sweeps both hands from behind into a joined push.
+    ///   full extension, then swings back to the stance; the other hand holds its energy and pulls back against the throw. The
+    ///   hands start and end each window on the stance. The Overflow (every third v2 throw) sweeps both hands from behind into a
+    ///   joined push.
+    /// - The body drives each throw (owner 2026-10-15: "With ranged, simulate more body movement in our "casts""): a coil with
+    ///   the weight on the back foot, then the hips and the shoulders turning through the release (the hips first), the chest
+    ///   driving forward and the weight onto the front foot (the drawn body pushed toward it and dropped; standing only, the
+    ///   gait keeps the feet planted), a follow-through carrying past, and a recovery that outlasts the window. The Overflow
+    ///   pushes from the chest with a stronger lean. A throw takes the body over from where the last one left it (the view
+    ///   remembers it: CyberKit2RangedView.Prev*), so at a rapid rate each follow-through flows into the next throw's coil.
+    ///   On the move the upper body and the hips turn over the gait's legs; first person sways the hands, never the camera.
     /// - The glide (the ranged sprint): a leaning glide with both arms swept back and out, the palms trailing (the effects stream
     ///   energy off them), on the carry's eased sprint ramp. A throw from the glide swings forward from behind and back.
     /// - v1's other casts (Ping Lance, Lag Field, Proxy Swap, Root Access) and v2's (Daisy Chain, Singularity, Packet Storm,
@@ -50,12 +57,25 @@ namespace ChipArena.UnityConversion
         public static readonly Vector3[] ViewOffsets={new Vector3(-.25f,-.12f,-.12f),new Vector3(.04f,.04f,.1f),new Vector3(.1f,.06f,.26f),new Vector3(.035f,.02f,.11f),new Vector3(.04f,.05f,.25f),new Vector3(0,-.04f,-.02f)};
         /// <summary>The stance: the palms' share of the pitch and the held energy's lift with it (m), how much of the bladed melee
         /// stance's twist the chest turns out (standing; the gait keeps its own swing on the move), its lean into the aim (rad) and
-        /// its breath (rad/s, rad, m). The throw: its wind and uncoil about the spine (the throwing shoulder back, then forward),
-        /// the other hand's draw back (m), the sweep's pace through the release (m per unit of the path) and the power of its
-        /// clock, the Overflow's lean back and in. The glide's lift and stride swing, the run's bob, and a cut throw's or cast's
-        /// settle back to the stance (s).</summary>
-        public const float HoldPitch=.3f,HoldLift=.1f,SquareShare=.85f,StanceLean=.07f,BreathRate=1.85f,BreathPitch=.018f,BreathLift=.012f,Wind=.06f,Uncoil=.26f,OffPull=.05f,SweepPace=.42f,SweepPower=1.3f,
-            OverflowBack=-.1f,OverflowIn=.14f,GlideLift=.3f,GlideSwing=.035f,RunBob=.016f,CutSettle=.15f;
+        /// its breath (rad/s, rad, m). The throw: the other hand's pull back and out against it (m), the sweep's pace through the
+        /// release (m per unit of the path) and the power of its clock. The glide's lift and stride swing, the run's bob, and a cut
+        /// throw's or cast's settle back to the stance (s).</summary>
+        public const float HoldPitch=.3f,HoldLift=.1f,SquareShare=.85f,StanceLean=.07f,BreathRate=1.85f,BreathPitch=.018f,BreathLift=.012f,OffPull=.11f,OffOut=.03f,SweepPace=.42f,SweepPower=1.3f,
+            GlideLift=.3f,GlideSwing=.035f,RunBob=.016f,CutSettle=.15f;
+        /// <summary>The body's drive through a throw (rad, m): the shoulders' coil (the throwing shoulder back) and follow-through
+        /// (forward) about the spine, the hips' (leading them), the chest's lean back and forward, the weight's shift back and
+        /// onto the front foot and across, the hips' drop; the Overflow's lean, push and drop. The drive peaks FollowHold into the
+        /// window after the extension, then the body comes back to the stance over the rest of the window and Tail more (v2: the
+        /// next throw takes over from wherever it is; v1's window ends on the stance). TakeShare: the windups over which a throw
+        /// takes the shoulders' turn from the last one. SpineShare: the share of the shoulders' turn above the hips the spine takes
+        /// (the chest the rest). LeanCarry: the share of the lean the hands' targets go with. On the move the hips turn MoveHips
+        /// as far and the weight stays the gait's. A shorter window (a higher attack rate) scales the drive by the root of its
+        /// share of the spec's, down to RateFloor.</summary>
+        public const float Coil=.3f,Follow=.5f,HipCoil=.14f,HipFollow=.28f,LeanBack=.035f,LeanIn=.15f,PushBack=.012f,PushIn=.1f,AcrossIn=.035f,DropIn=.045f,
+            OverflowBack=.14f,OverflowIn=.34f,OverflowPush=.15f,OverflowDrop=.07f,FollowHold=.3f,Tail=.22f,TakeShare=1.5f,SpineShare=.4f,LeanCarry=.5f,MoveHips=.5f,RateFloor=.6f;
+        /// <summary>First person (the view's frame, m per rad or per m of the drive): the hands' sway across with the shoulders' turn,
+        /// forward with the push and the lean, and down with the drop. The camera is never moved.</summary>
+        public const float ViewSway=.09f,ViewPush=.45f,ViewLean=.12f,ViewDrop=.6f,FrontGain=10;
         /// <summary>v1's other casts' motion (m, rad): the lance's cock and thrust, the lob's reach back and up, the swap's tuck and
         /// dip, the beam's converge, tremor and recoil (thrown back and up, the chest back). They play from V1Hold (both hands
         /// out ahead of the chest, their look before the cyber mage), eased in from the stance.</summary>
@@ -82,6 +102,10 @@ namespace ChipArena.UnityConversion
         public struct Frame
         {
             public float Weight,ChestPitch,ChestYaw,Dip;public Vector3 Right,Left;
+            /// <summary>The body's drive (Drive): the hips' turn (rad about the spine; ChestYaw is the shoulders' whole turn, the hips'
+            /// included), the chest's lean (rad, already in ChestPitch) and the drawn body's shift (group space, m: the weight onto the
+            /// front foot and the drop; the gait re-solves the legs to its planted feet).</summary>
+            public float HipYaw,Lean;public Vector3 Shift;
             /// <summary>The chest's turn back toward square (rad about the spine; the hands are already placed from the squared
             /// shoulders, so it is not carried onto them as ChestYaw is).</summary>
             public float Square;public Quaternion RightTurn,LeftTurn;public string State;
@@ -92,8 +116,18 @@ namespace ChipArena.UnityConversion
         /// <summary>Where the v2 casts point (group space, the rig's frame): the chain's first strike, the storm's centre, the
         /// orbital column's floor point now. Zero when unknown (the arm then points along the aim).</summary>
         public struct Aims{public Vector3 Chain,Storm,Orbital;public bool HasChain,HasStorm,HasOrbital;}
-        /// <summary>The locomotion under the layer: the carry's travel weight, the gait's stride phase (rad) and the eased sprint.</summary>
-        public struct Gait{public float Travel,Stride,Sprint;}
+        /// <summary>The locomotion under the layer: the carry's travel weight, the gait's stride phase (rad) and the eased sprint, and
+        /// Front: how the feet stand (group space, flat): the back to front foot axis scaled by how far apart along the facing they
+        /// are (FrontGain per m; zero side by side). The weight shifts half way between it and straight ahead.</summary>
+        public struct Gait{public float Travel,Stride,Sprint;public Vector3 Front;}
+        /// <summary>The body's drive through a throw, from the stance (Coil ... OverflowDrop): the shoulders' turn about the spine
+        /// (rad, + the right shoulder forward), the hips' turn, the chest's lean (+ forward), the weight's shift along the back to
+        /// front foot axis and across (m, + toward the left), the hips' drop (m).</summary>
+        public struct Drive
+        {
+            public float Turn,Hips,Lean,Push,Across,Drop;
+            public Drive Scaled(float k)=>new Drive{Turn=Turn*k,Hips=Hips*k,Lean=Lean*k,Push=Push*k,Across=Across*k,Drop=Drop*k};
+        }
         private static float H(int n,int salt){unchecked{uint h=(uint)n*0x9e3779b1u^(uint)salt*0x85ebca6bu;h^=h>>15;h*=0x2c1b3c6du;h^=h>>12;return (h&0xffffff)/16777216f;}}
 
         /// <summary>
@@ -169,7 +203,7 @@ namespace ChipArena.UnityConversion
                 // The throw at its age (a cut throw: frozen at its cut, easing back to the stance over CutSettle).
                 float a=Math.Max(.02f,th.Release-th.At),w=Math.Max(2*a+.04f,th.Span),age=th.Live?time-th.At:Math.Max(0,th.Until-th.At),k=th.Live?0:Ease(th.Settle);
                 bool both=th.Hand==2;f.State=th.Kit2?(both?"cyber-plasma-overflow":"cyber-plasma-byte"):"cyber-bit-bolt";
-                float back=Smooth((age-2*a)/Math.Max(.02f,w-2*a)),bell=Ease(age/a)*(1-Ease((age-2*a)/Math.Max(.02f,w-2*a)));
+                float back=Smooth((age-2*a)/Math.Max(.02f,w-2*a));
                 for(int h=0;h<2;h++)
                 {
                     bool lh=h==1;var home=lh?left:right;var homeTurn=lh?lTurn:rTurn;Vector3 at;Quaternion q;float cock;
@@ -194,18 +228,27 @@ namespace ChipArena.UnityConversion
                     }
                     else
                     {
-                        // The other hand keeps its energy, drawn back a little against the throw.
-                        at=home-dh*(OffPull*bell)+uh*(.01f*bell);q=homeTurn;cock=1;
+                        // The other hand keeps its energy and pulls back, out and down against the throw through the uncoil (the
+                        // counterbalance; less in first person, where it would leave the view), and comes back with the return.
+                        float pull=Smooth(age/(2*a))*(1-Smooth((age-2*a)/Math.Max(.02f,w-2*a)))*(firstPerson?.35f:1);at=home-dh*(OffPull*pull)+Side*((lh?1:-1)*OffOut*pull)-uh*(.015f*pull);q=homeTurn;cock=1;
                     }
                     if(lh){left=Vector3.Lerp(at,left,k);lTurn=Quaternion.Slerp(q,lTurn,k);cockL=MeleeMath.Lerp(cock,1,k);}else{right=Vector3.Lerp(at,right,k);rTurn=Quaternion.Slerp(q,rTurn,k);cockR=MeleeMath.Lerp(cock,1,k);}
                 }
-                // The chest: winds the throwing shoulder back into the sweep, uncoils it forward through the release, comes back
-                // square; the Overflow leans back and drives in.
-                float sign=th.Hand==0?-1:th.Hand==1?1:0,g=1-glide;
-                float yaw=age<a*.5f?sign*Wind*g*Ease(age/(a*.5f)):age<2*a?MeleeMath.Lerp(sign*Wind*g,-sign*Uncoil*g,Ease((age-a*.5f)/(1.5f*a))):MeleeMath.Lerp(-sign*Uncoil*g,0,Ease((age-2*a)/Math.Max(.02f,w-2*a)));
-                float lean=both?(age<a?OverflowBack*Ease(age/a):age<2*a?MeleeMath.Lerp(OverflowBack,OverflowIn,Ease((age-a)/a)):OverflowIn*(1-Ease((age-2*a)/Math.Max(.02f,w-2*a))))*g
-                    :.05f*Kick(age-a,.04f,.08f)*(1-Ease((age-2*a)/Math.Max(.02f,w-2*a)))*g;
-                f.ChestYaw=yaw*(1-k);f.ChestPitch+=lean*(1-k);
+            }
+            // ---- the body's drive (the newest throw taking it over from the one before) ----
+            var body=BodyOf(th,time);
+            if(firstPerson)
+            {
+                // The view sways the hands with the body (across with the turn, forward with the push and the lean, down with the
+                // drop); the chest and the camera keep still.
+                var sway=Side*(body.Turn*ViewSway)+d*(body.Push*ViewPush+body.Lean*ViewLean)-up*(body.Drop*ViewDrop);right+=sway;left+=sway;
+            }
+            else
+            {
+                // The shoulders and the hips turn on the move too (over the gait's legs); the weight shifts only standing, toward the
+                // front foot (half way between the feet's axis and ahead).
+                float g=1-glide,stand=(1-Clamp01(travel))*g;f.ChestYaw=body.Turn*g;f.HipYaw=body.Hips*g*(1-(1-MoveHips)*Clamp01(travel));f.Lean=body.Lean*g;
+                var fr=Vector3.Normalize(MeleeMath.Z+gait.Front);f.Shift=(fr*body.Push+Side*body.Across-Up*body.Drop)*stand;
             }
             // ---- the run's bob and the glide's swing ----
             if(!firstPerson&&travel>1e-3f)
@@ -216,7 +259,7 @@ namespace ChipArena.UnityConversion
             }
             if(glide>.5f&&!th.Live&&f.State=="cyber-ranged-aim")f.State="cyber-ranged-sprint";
             // ---- the reconfiguration: both forearms fold in across the chest, a glitch jolt at the middle, and out ----
-            float fold=0;
+            float fold=0,castW=0;
             if(sw>=0)
             {
                 // (In first person the fold stays in view: the fists meet in front of the camera.)
@@ -231,7 +274,7 @@ namespace ChipArena.UnityConversion
             int slot=Newest(v,time);
             if(slot>CyberRangedSpec.Bolt)
             {
-                var ph=v.RPhase(slot,time);float rel=v.RRelease[slot],age=time-rel,in1=Ease(ph.Part<2?ph.Age/.12f:1-ph.U);f.ChestYaw*=1-Ease(ph.Part<2?ph.Age/.08f:1-ph.U);
+                var ph=v.RPhase(slot,time);float rel=v.RRelease[slot],age=time-rel,in1=Ease(ph.Part<2?ph.Age/.12f:1-ph.U);castW=Ease(ph.Part<2?ph.Age/.08f:1-ph.U);f.ChestYaw*=1-castW;
                 // (They play from both hands out ahead of the chest, as before the cyber mage, swung in from the stance.)
                 if(firstPerson){right=Vector3.Lerp(right,ViewPlace(false,MarkAt,d,up,o,spread),in1);left=Vector3.Lerp(left,ViewPlace(true,MarkAt,d,up,o,spread),in1);}
                 else{right=Swing(shoulderR,right,shoulderR-Side*V1Hold.X+up*V1Hold.Y+d*V1Hold.Z,in1);left=Swing(shoulderL,left,shoulderL+Side*V1Hold.X+up*V1Hold.Y+d*V1Hold.Z,in1);}
@@ -285,16 +328,73 @@ namespace ChipArena.UnityConversion
                 rTurn=Quaternion.Slerp(rTurn,turn,Ease(ph.Part<2?ph.Age/.08f:1-ph.U));lTurn=Quaternion.Slerp(lTurn,turn,Ease(ph.Part<2?ph.Age/.08f:1-ph.U));
             }
             // ---- v2's casts (Daisy Chain, Singularity, Packet Storm, Orbital Uplink) ----
-            if(v.Kit2R.Live){Kit2(v.Kit2R,time,d,up,firstPerson,reduced,shoulderL,shoulderR,o,spread,aims,th,true,ref f,ref right,ref left,ref rTurn,ref lTurn,out float cwR,out float cwL);cockR*=1-cwR;cockL*=1-cwL;}
+            if(v.Kit2R.Live){Kit2(v.Kit2R,time,d,up,firstPerson,reduced,shoulderL,shoulderR,o,spread,aims,th,true,ref f,ref right,ref left,ref rTurn,ref lTurn,out float cwR,out float cwL);cockR*=1-cwR;cockL*=1-cwL;castW=Math.Max(castW,Math.Min(cwR,cwL));}
             if(!firstPerson){float keep=(1-glide)*(1-fold);f.RightCock=cockR*keep;f.LeftCock=cockL*keep;}
+            // (A cast or the reconfiguration takes the body over as it takes the shoulders' turn.)
+            float drive=(1-castW)*(1-fold);f.HipYaw*=drive;f.Shift*=drive;f.Lean*=drive;f.ChestPitch+=f.Lean;
             f.Right=right;f.Left=left;f.RightTurn=rTurn;f.LeftTurn=lTurn;return f;
         }
 
         // ---- the throws ----
-        private struct Throw{public bool Live,Kit2,Fired;public float At,Release,Until,Span,Settle,Reset;public int Hand,Next,Steady,Before;}
+        private struct Throw{public bool Live,Kit2,Fired;public float At,Release,Until,Span,Settle,Reset;public int Hand,Next,Steady,Before;public Window Cur,Prev;}
         // (Reset: the v2 chain's reset blend, 0..1 over its quarter second; -1 outside it. Settle: a cut throw's ease back to the
         // stance, 0..1 over CutSettle from its cut; 0 otherwise. Span: the window's length as it began, so a cut throw's pose
-        // freezes where it was.)
+        // freezes where it was. Cur, Prev: the newest throw's and the one before it's windows for the body's drive.)
+        // A throw's window for the body's drive: its start, release (a throw cut before it: where it would have been), end (a cut's),
+        // length as it began, the recovery past its end, the hands, and whether it was cut.
+        private struct Window{public bool Live,Cut;public float At,Release,Until,Span,Tail;public int Hand;}
+        private static Window PlasmaWindow(float at,float release,float until,float ready,float cutAt,int shot)
+        {
+            var w=new Window{Live=at>-90,At=at,Release=release,Until=until,Span=until-at,Tail=Tail,Hand=CyberKit2Spec.PlasmaHand(Math.Max(0,shot)),Cut=cutAt>-90};
+            // A cut rewrites the window's end (and, before the release, its release); the throw's Ready keeps its length at the
+            // attack rate it began with, and the windup is the spec's share of it.
+            float span=ready-at;if(w.Cut&&span>.02f){w.Span=span;if(!(cutAt>release+1e-4f))w.Release=at+span*(CyberKit2Spec.PlasmaWindup/CyberKit2Spec.PlasmaInterval);}
+            return w;
+        }
+        /// <summary>
+        /// The body's drive through throw window `w` at `time` (zero before it and once it has come back): the coil (the throwing
+        /// shoulder and the hips turned back), the uncoil through the release (fastest there, the hips a little ahead of the
+        /// shoulders) into the follow-through (the throwing shoulder carried past forward) by the extension; the weight and the
+        /// chest dip back a little through the windup, then drive forward onto the front foot and drop, arriving with the
+        /// follow-through's peak (FollowHold into the rest of the window); then the return to the stance by the window's end and
+        /// its Tail. The weight and the lean start from the stance (zero at the window's start, so they add onto the last throw's
+        /// as it fades); the turn starts coiled (BodyOf takes it over from the last throw's). A cut throw freezes where it was cut
+        /// and eases back over CutSettle.
+        /// </summary>
+        private static Drive DriveOf(in Window w,float time)
+        {
+            if(!w.Live||time<w.At)return default;
+            float age=time-w.At,k=1;
+            if(w.Cut&&time>w.Until){k=1-Ease((time-w.Until)/CutSettle);if(k<=0)return default;age=w.Until-w.At;}
+            float a=Math.Max(.02f,w.Release-w.At),span=Math.Max(2*a+.04f,w.Span),peak=2*a+FollowHold*(span-2*a),end=span+w.Tail;if(age>=end)return default;
+            // The turn uncoils from the coil into the follow-through over the drive (fastest around the release, the hips' ahead of
+            // the shoulders'); the weight and the lean dip back through the windup (a smooth bump, zero at the start) and drive
+            // forward with it.
+            float u=Smooth(age/peak),uh=Smooth(age/(.8f*peak)),back=1-Smooth((age-peak)/Math.Max(.02f,end-peak)),drive=u*back;var b=new Drive();
+            float dx=Smooth(age/(1.5f*a)),dip=4*dx*(1-dx),weight=drive;
+            // (A quicker throw, at a higher attack rate, swings the body less: Overclock's about four fifths.)
+            k*=MeleeMath.Clamp((float)Math.Sqrt(span/CyberKit2Spec.PlasmaInterval),RateFloor,1);
+            if(w.Hand==2){b.Lean=-OverflowBack*dip+OverflowIn*weight;b.Push=-PushBack*dip+OverflowPush*weight;b.Drop=OverflowDrop*weight;}
+            else
+            {
+                float s=w.Hand==0?-1:1;b.Turn=s*(Coil*(1-u)-Follow*drive);b.Hips=s*(HipCoil*(1-uh)-HipFollow*uh*back);
+                b.Lean=-LeanBack*dip+LeanIn*weight;b.Push=-PushBack*dip+PushIn*weight;b.Across=-s*AcrossIn*weight;b.Drop=DropIn*weight;
+            }
+            return k<1?b.Scaled(k):b;
+        }
+        // The body now: the newest throw's drive, taking over from the last throw's (wherever its follow-through or return had
+        // carried the body); before it starts, the last throw's. The turn changes hands over TakeShare windups (a follow-
+        // through already turns the next hand's way, so it flows into the next throw's uncoil; the Overflow squares the chest over
+        // its uncoil). The weight and the lean start from the stance, so the new throw's add onto the last's as it fades out
+        // (by the new one's peak, as the new one rises): one drive flows into the next instead of rocking back between them.
+        private static Drive BodyOf(in Throw th,float time)
+        {
+            var prev=DriveOf(th.Prev,time);if(!th.Cur.Live||time<th.Cur.At)return prev;
+            var cur=DriveOf(th.Cur,time);float a=Math.Max(.02f,th.Cur.Release-th.Cur.At),span=Math.Max(2*a+.04f,th.Cur.Span),age=time-th.Cur.At;
+            float fade=1-Smooth(age/(2*a+FollowHold*(span-2*a))),take=th.Cur.Hand==2?Smooth(age/(2*a)):Smooth(age/(TakeShare*a));
+            return new Drive{Turn=MeleeMath.Lerp(prev.Turn,cur.Turn,take),Hips=MeleeMath.Lerp(prev.Hips,cur.Hips,take),
+                Lean=prev.Lean*fade+cur.Lean,Push=prev.Push*fade+cur.Push,Across=prev.Across*fade+cur.Across,Drop=prev.Drop*fade+cur.Drop};
+        }
         /// <summary>The newest throw window at `time` and the hands: the thrower set (0 right, 1 left, 2 both), the next throw's set,
         /// and the next throw's set as of `time` (Steady: the glide's leading hand).</summary>
         private static Throw ThrowOf(CyberLordView v,float time)
@@ -308,16 +408,17 @@ namespace ChipArena.UnityConversion
                 float reset=t.Until+CyberKit2Spec.ComboReset;t.Steady=!seen||t.Live?t.Hand:time>=reset?0:t.Next;t.Before=t.Steady;
                 if(seen&&!t.Live&&t.Next!=0&&time>=reset&&time<reset+.25f){t.Reset=(time-reset)/.25f;t.Before=t.Next;}
                 if(seen&&!t.Live&&k.CutAt[P]>-90&&time<t.Until+CutSettle)t.Settle=Math.Max(1e-4f,(time-t.Until)/CutSettle);
-                // A cut rewrites the window's end (and, before the release, its release); the throw's Ready keeps its length at
-                // the attack rate it began with, and the windup is the spec's share of it.
-                t.Span=t.Until-t.At;float span=k.Ready[P]-t.At;
-                if(k.CutAt[P]>-90&&span>.02f){t.Span=span;if(!t.Fired)t.Release=t.At+span*(CyberKit2Spec.PlasmaWindup/CyberKit2Spec.PlasmaInterval);}
+                t.Cur=PlasmaWindow(t.At,t.Release,t.Until,k.Ready[P],k.CutAt[P],k.Shot);t.Span=t.Cur.Span;t.Release=t.Cur.Release;
+                // The throw before it, as the view remembered it (its follow-through still carrying the body).
+                if(k.PrevAt>-90&&k.PrevAt<t.At)t.Prev=PlasmaWindow(k.PrevAt,k.PrevRelease,k.PrevUntil,k.PrevReady,k.PrevCutAt,k.PrevShot);
                 return t;
             }
             const int B=CyberRangedSpec.Bolt;t.Fired=v.RReleased(B);t.At=v.RAt[B];t.Release=v.RRelease[B];t.Until=v.RUntil[B];
             bool on=t.At>-90&&time>=t.At;t.Hand=v.BoltHand;t.Next=1-v.BoltHand;t.Live=on&&time<t.Until;
             // Before the record's throw (a rewound clock) the stance leads with that throw's hand; else the next one.
             t.Steady=on?(t.Live?t.Hand:t.Next):t.At>-90?t.Hand:t.Next;t.Before=t.Steady;t.Span=t.Until-t.At;
+            // (v1 keeps no history: its body is back on the stance by the window's end.)
+            t.Cur=new Window{Live=t.At>-90,At=t.At,Release=t.Release,Until=t.Until,Span=t.Span,Hand=t.Hand};
             return t;
         }
         private static bool LoadedHand(int set,bool left)=>set==2||set==(left?1:0);
@@ -468,25 +569,33 @@ namespace ChipArena.UnityConversion
             return newest;
         }
         /// <summary>
-        /// The frame onto the posed rig: the chest's coil and pitch (the head kept on the aim's heading), the swap's dip, then both
-        /// arms to their targets carried round with the coil (chest-space IK, the wrists turned) at the hold's weight. Returns the
-        /// frame's state (null when it does not show).
+        /// The frame onto the posed rig: the drawn body's shift (the weight; the gait re-solves the legs to its planted feet) and the
+        /// swap's dip, the hips', the spine's and the chest's turn and the chest's pitch (the head kept on the aim's heading), then
+        /// both arms to their targets carried round with the turn and along with the shift (chest-space IK, the wrists turned) at
+        /// the hold's weight. Returns the frame's state (null when it does not show).
         /// </summary>
         public static string Apply(MeleeRig r,in Frame f)
         {
             if(!f.Live)return null;
-            float yaw=f.ChestYaw*f.Weight,square=f.Square*f.Weight,pitch=f.ChestPitch*f.Weight;var cq0=r.ChainQuat(CapturedRig.Chest,-1);var carry=Quaternion.Identity;
-            if(Math.Abs(yaw+square)>1e-5f||Math.Abs(pitch)>1e-5f)
+            float w=f.Weight,yaw=f.ChestYaw*w,hips=f.HipYaw*w,square=f.Square*w,pitch=f.ChestPitch*w;var cq0=r.ChainQuat(CapturedRig.Chest,-1);var cp0=r.ChainPoint(CapturedRig.Chest,-1);var carry=Quaternion.Identity;
+            var shift=f.Shift*w;if(f.Dip>1e-5f)shift.Y-=f.Dip*w;if(shift.LengthSquared()>1e-12f)r.P[CapturedRig.Body]+=shift;
+            if(Math.Abs(yaw+square)>1e-5f||Math.Abs(pitch)>1e-5f||Math.Abs(hips)>1e-5f)
             {
-                var ry=MeleeMath.AxisAngle(MeleeMath.Y,yaw+square);var rx=MeleeMath.AxisAngle(MeleeMath.X,pitch);var t=ry*rx;r.Multiply(CapturedRig.Chest,t);
-                // The neck takes the turn back out (the head stays on the aim; it still follows the chest's pitch).
-                r.Premultiply(CapturedRig.Neck,MeleeMath.Inverse(t)*rx);
-                // The targets ride round with the throw's coil (the square turn is already in them).
-                carry=Quaternion.Normalize(cq0*MeleeMath.AxisAngle(MeleeMath.Y,yaw)*MeleeMath.Inverse(cq0));
+                // The hips turn first; the spine and the chest share the rest of the shoulders' turn (the square turn the chest's).
+                var neck=r.Q[CapturedRig.Neck];float above=yaw-hips;
+                if(Math.Abs(hips)>1e-5f)r.Premultiply(CapturedRig.Pelvis,MeleeMath.AxisAngle(MeleeMath.Y,hips));
+                if(Math.Abs(above)>1e-5f)r.Multiply(CapturedRig.Spine,MeleeMath.AxisAngle(MeleeMath.Y,above*SpineShare));
+                var rx=MeleeMath.AxisAngle(MeleeMath.X,pitch);r.Multiply(CapturedRig.Chest,MeleeMath.AxisAngle(MeleeMath.Y,above*(1-SpineShare)+square)*rx);
+                // The neck takes every turn below it back out, and the drive's lean (the head stays on the aim, the eyes level on
+                // the target; it still follows the rest of the chest's pitch, the aim's share and the stance's).
+                r.SetQ(CapturedRig.Neck,MeleeMath.Inverse(r.ChainQuat(CapturedRig.Chest,-1))*cq0*MeleeMath.AxisAngle(MeleeMath.X,pitch-f.Lean*w)*neck);
+                // The targets ride round with the shoulders' turn (the square turn is already in them) and LeanCarry of the drive's
+                // lean (the arms go with the chest into the throw; the hands out front sink a little with it).
+                carry=Quaternion.Normalize(cq0*MeleeMath.AxisAngle(MeleeMath.Y,yaw)*MeleeMath.AxisAngle(MeleeMath.X,f.Lean*w*LeanCarry)*MeleeMath.Inverse(cq0));
             }
-            if(f.Dip>1e-5f){var b=r.P[CapturedRig.Body];r.P[CapturedRig.Body]=new Vector3(b.X,b.Y-f.Dip*f.Weight,b.Z);}
             var cq=r.ChainQuat(CapturedRig.Chest,-1);var cp=r.ChainPoint(CapturedRig.Chest,-1);var inv=MeleeMath.Inverse(cq);
-            var rt=cp+Vector3.Transform(f.Right-cp,carry);var lt=cp+Vector3.Transform(f.Left-cp,carry);
+            // (They move with the drive's shift, not with the swap's dip: the tuck's hands stay where they were placed.)
+            var keep=f.Dip>1e-5f?new Vector3(0,f.Dip*w,0):Vector3.Zero;var rt=cp+Vector3.Transform(f.Right-cp0,carry)+keep;var lt=cp+Vector3.Transform(f.Left-cp0,carry)+keep;
             r.Hand(false,Vector3.Transform(rt-cp,inv),inv*carry*f.RightTurn,f.Weight,Pole(false,f.RightCock));r.Hand(true,Vector3.Transform(lt-cp,inv),inv*carry*f.LeftTurn,f.Weight,Pole(true,f.LeftCock));
             return f.State;
         }
@@ -508,7 +617,9 @@ namespace ChipArena.UnityConversion
                 if(k.At[CyberKit2Ranged.Storm]>-90){aims.Storm=ToGroup(r,k.StormCentre);aims.HasStorm=true;}
                 if(k.At[CyberKit2Ranged.Orbital]>-90){aims.Orbital=ToGroup(r,time<k.Release[CyberKit2Ranged.Orbital]?k.OrbitalCentre:k.OrbitalAt(time));aims.HasOrbital=true;}
             }
-            var f=Of(v,time,pitch,yieldTo,gait,firstPerson,reduced,r.ChainPoint(CapturedRig.LArm,-1),r.ChainPoint(CapturedRig.RArm,-1),
+            // The feet as the gait stands them (continuous through feet side by side: the axis scaled by their stagger).
+            var g=gait;if(!firstPerson){var la=r.AnkleInGroup(true);var ra=r.AnkleInGroup(false);var ax=(la-ra)*((la.Z-ra.Z)*FrontGain);g.Front=new Vector3(ax.X,0,ax.Z);}
+            var f=Of(v,time,pitch,yieldTo,g,firstPerson,reduced,r.ChainPoint(CapturedRig.LArm,-1),r.ChainPoint(CapturedRig.RArm,-1),
                 firstPerson?r.ChainPoint(CapturedRig.LHand,-1):default,firstPerson?r.ChainPoint(CapturedRig.RHand,-1):default,aims,r.ChainPoint(CapturedRig.Chest,-1),r.ChainQuat(CapturedRig.Chest,-1));
             return Apply(r,f);
         }
