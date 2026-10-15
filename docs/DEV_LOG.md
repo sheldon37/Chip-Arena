@@ -9,6 +9,13 @@
 - Sound requests (owner: Astra builds the Windows ElevenLabs batch generator; Claude owns the manifest and importer): `docs/audio/sound-requests.json` (schema `chip-arena.sound-requests/1`, 17 keys, 88 files) and `docs/audio/SOUND-REQUESTS.md` (output folder, receipt, importer CLI `tools/import_sound_requests.py`, landing with `claude/footstep-zombie-audio`).
 - Next: Astra implements the join rule and parser, and the co-op room start. Claude then updates the hub layout (exp-layout-4), draws the circle and countdown, and adds Expedition to the room Mode select.
 
+## 2026-10-15 — Claude: hub safe-zone border hidden (owner request)
+
+- Branch `claude/hub-safezone-invisible`, base shared `8355b44`. Owner: "We can also make safe zone border invisible in the hub - Just in case its needed for something down the line".
+- `Core/NativeExpeditionStateScene.HideSanctuaryEdge`: no floor glow, curtain, motes or crossing ripple. The runtime (`NativeExpeditionStatesPresentation.cs`) sets it each frame when the loaded area is the fenced hub (`NativeExpeditionHubLive.Layout.Area`). The sanctuary volumes, membership, SAFE tag and chip, crossing cues, fence, gates and ward are unchanged; other areas and layouts still draw the edge.
+- Checks: `ExpeditionHubChecks` asserts the hidden scene draws no sanctuary quads while the crossing still records, and that the runtime sets the flag before building. run5 on `8355b44` + this change: Unity runtime and editor compile OK (rc 0), relay 754 PASS (rc 0), Python 107 OK / 1 skipped (rc 0), package (rc 0), diff-check (rc 0). Unity play and Windows build not run.
+- Impact: presentation only; no hit timing, hitbox, damage, cooldown, movement or network change.
+
 ## 2026-10-15 — Claude: HTTPS room round trip leaves PR CI (Electron game test)
 
 - Branch `claude/ci-drop-https-relay`, base shared `cfd2a76`. Follows the owner's CI direction ("remove those electron game tests if they are just going to cause failures each time").
