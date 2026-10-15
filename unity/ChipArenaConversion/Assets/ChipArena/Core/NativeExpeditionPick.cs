@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     // instead of selecting on the J menu." Presentation only. It reads the viewer's own ExpeditionView rewards (offers exist only while a
     // pick is pending, so nothing here can show another pilot's choice), the public members[].choosing flag and the intent tracker's state,
     // and returns the intents for the caller to send through ExpeditionCommands: Claim (open an unopened reward), OpenChoice / CloseChoice
-    // (the host's public choosing presence: no hold, no immunity; the owner keeps choosers mobile and vulnerable, PR #234) and Select.
+    // (the host's public choosing presence: host hold, no immunity; owner direction supersedes PR #234) and Select.
     // Runtime/NativeExpeditionChipScreen.cs draws it as the Boss Test's tray over the live view.
     public static class NativeExpeditionPick
     {
@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
         public string Choice{get;private set;}
         private bool choiceSeen,closeSent;private string run;
 
-        /// <summary>The view shows the viewer choosing (the host's public flag; presence only, the pilot is never held).</summary>
+        /// <summary>The view shows the viewer choosing (the host's public flag; held by the host, without damage immunity).</summary>
         public static bool ChoosingNow(ExpeditionView v)=>v?.viewer!=null&&v.Member(v.viewer)?.choosing==true;
         public ExpeditionPickPhase Phase(ExpeditionView v)
         {
@@ -140,7 +140,7 @@ namespace ChipArena.UnityConversion
                 else if(canShow&&!v.loading){Reward=Claiming=r.id;Refusal=null;act.Send=new ExpeditionCommand(ExpeditionIntent.Claim,r.id);return act;}
             }
             // The host's choosing presence follows the screen: OpenChoice when it shows a ready reward the view does not show choosing for (again after
-            // the host cleared it: a load, the final claimed pick), CloseChoice once when it closes while the view still shows choosing.
+            // the host cleared it: a load, the final plant completion), CloseChoice once when it closes while the view still shows choosing.
             if(Open&&Sent==null&&Claiming==null&&NativeExpeditionPick.Ready(v.Reward(Reward)))
             {
                 if(!choosing&&canShow&&!v.loading)

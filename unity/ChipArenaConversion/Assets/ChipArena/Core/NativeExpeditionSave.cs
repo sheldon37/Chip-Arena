@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
             if(!Valid()||!checkpoint.members.Any(p=>p.account==host&&!p.extracted)||extracted.Contains(host))throw new ArgumentException("Resume host must belong to this checkpoint and must not have extracted.");
             var s=checkpoint.Copy();s.host=host;s.loading=false;s.exitAt=s.extractAt=-1;s.exitVotes=s.extractVotes=s.continueVotes=Array.Empty<string>();
             if(s.epoch==int.MaxValue)throw new InvalidOperationException("Authority epoch exhausted.");s.epoch++;
-            foreach(var p in s.members){p.choosing=false;p.carriedBy=null;p.connected=p.account==host;p.safe=p.alive;p.extracted|=extracted.Contains(p.account);if(p.extracted)p.connected=p.alive=p.safe=false;}
+            foreach(var p in s.members){p.choosing=false;p.choosingUntil=0;p.carriedBy=null;p.connected=p.account==host;p.safe=p.alive;p.extracted|=extracted.Contains(p.account);if(p.extracted)p.connected=p.alive=p.safe=false;}
             // A newcomer who extracted after this checkpoint still cannot rejoin its rollback.
             foreach(string account in extracted.Where(a=>!s.members.Any(p=>p.account==a)))
                 s.members=s.members.Concat(new[]{new ExpeditionMember{account=account,weapon="extracted",extracted=true,alive=false,safe=false}}).ToArray();

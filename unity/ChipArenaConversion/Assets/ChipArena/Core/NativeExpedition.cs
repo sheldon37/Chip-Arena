@@ -50,14 +50,14 @@ namespace ChipArena.UnityConversion
         public bool Disconnect(string account)
         {
             if(!Running)return false;var p=Member(account);if(p==null||!p.connected)return false;
-            p.connected=false;p.safe=false;p.choosing=false;ReleaseCarried(account);RefreshVotes();Changed();return true;
+            p.connected=false;p.safe=false;p.choosing=false;p.choosingUntil=0;ReleaseCarried(account);RefreshVotes();Changed();return true;
         }
         public bool SetSafe(string account,bool safe)
         {
             if(!Mutable)return false;var p=Member(account);if(!Live(p)||safe&&s.phase!=ExpeditionPhase.Town&&s.phase!=ExpeditionPhase.Victory)return false;
             p.safe=safe;RefreshVotes();Changed();return true;
         }
-        public bool SetLoading(bool value){if(!Running)return false;s.loading=value;if(value){foreach(var p in s.members){p.safe=false;p.choosing=false;}RefreshVotes();}Changed();return true;}
+        public bool SetLoading(bool value){if(!Running)return false;s.loading=value;if(value){foreach(var p in s.members){p.safe=false;p.choosing=false;p.choosingUntil=0;}RefreshVotes();}Changed();return true;}
         public bool SetPerks(string account,string[] perks,Func<string,bool> unlocked)
         {
             if(!Mutable||s.elapsed!=0||s.phase!=ExpeditionPhase.Town||unlocked==null||perks==null||perks.Length>3||perks.Distinct().Count()!=perks.Length||perks.Any(id=>!Key(id)||!unlocked(id)))return false;
@@ -132,6 +132,7 @@ namespace ChipArena.UnityConversion
             if(!ExpeditionValidation.Number(dt)||dt<0||dt>.25)throw new ArgumentOutOfRangeException(nameof(dt));
             if(!Mutable||!s.members.Any(p=>p.connected&&!p.extracted)||dt==0)return;
             s.elapsed+=dt;
+            foreach(var p in s.members)if(p.choosingUntil>0&&s.elapsed>=p.choosingUntil){p.choosing=false;p.choosingUntil=0;}
             if(s.exitAt>=0&&s.elapsed>=s.exitAt){s.phase=ExpeditionPhase.Town;s.area=s.world;ResetVotes();foreach(var p in s.members)if(Live(p))p.safe=false;}
             // Extraction is collected via ExtractionDue and committed by the adapter after a durable save/handoff.
             Changed();
@@ -145,12 +146,12 @@ namespace ChipArena.UnityConversion
         }
         private void ExtractMember(string account)
         {
-            var p=Member(account);p.extracted=true;p.connected=p.alive=p.safe=p.choosing=false;p.carriedBy=null;ReleaseCarried(account);
+            var p=Member(account);p.extracted=true;p.connected=p.alive=p.safe=p.choosing=false;p.choosingUntil=0;p.carriedBy=null;ReleaseCarried(account);
         }
         private void ReleaseCarried(string account){foreach(var p in s.members)if(p.carriedBy==account)p.carriedBy=null;}
         public bool Defeat(string account)
         {
-            if(!Mutable||!Live(Member(account)))return false;var p=Member(account);p.alive=false;p.safe=false;p.choosing=false;
+            if(!Mutable||!Live(Member(account)))return false;var p=Member(account);p.alive=false;p.safe=false;p.choosing=false;p.choosingUntil=0;
             ReleaseCarried(account);RefreshVotes();Changed();return true;
         }
         public bool Absorb(string carrier,string victim)

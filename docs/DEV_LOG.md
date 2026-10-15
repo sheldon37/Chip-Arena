@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Astra — Expedition chooser hold supersedes PR #234
+- Branch `codex/expedition-choice-hold`, base shared/builder `6558b024b74acde24fbb94b2ec3562bffaab0b34`. Current owner direction restores the host hold while keeping damage and world/difficulty time live.
+- OpenChoice feeds the existing authoritative Frozen/input-cancellation/position hold. Camera yaw/pitch survive; movement, attacks, abilities, roll, reload and block cancel; machine/cache purchases refuse. Possession cannot route chooser input to another pilot.
+- Final Select emits Install once and holds until its run timestamp + `NativeDraftPlant.ReturnEnd` (1.95 s). Automatic CloseChoice cannot shorten it. Queued/unopened owned rewards retain the tray hold; explicit CloseChoice before the final plant releases it. Death, disconnect, extraction, area load and save resume clear both flag and deadline. No damage immunity or global pause is added.
+- Updated native M1 hold/camera/momentum/interaction/damage/install checks; integration checks cover plant deadline, continued clock, lifecycle cleanup, privacy and replay. Tray checks now assert retained hold after consumption. Presentation contract supersedes the old mobility instruction; wrist animation rendering remains Claude-owned.
+- Focused integration: 88 assertions pass; tray: 225 checks pass. Pinned Unity 6000.3.24f1 / C# 9 Player, Runtime and Editor compile passed. Full regression/relay and final source compile receipts are recorded in the PR. Native Unity/PhysX M1 execution, Windows player and live host/guest are unrun here. Branch implementation, not a playable release receipt.
+
 ## 2026-10-15 — Astra — Expedition chooser vulnerability correction
 - Branch `codex/unity-expedition-chip-vulnerable`, based on PR #233 head `74c4117`. Owner explicitly reversed the original freeze request. This entry supersedes the choosing freeze described below; preserve the public flag and open/close intents for Claude’s chip-screen/hologram binding.
 - Remove choosing from Frozen/input cancellation and the machine interaction guard. No choosing-based movement/action lock, damage immunity or world/clock pause. Existing status-effect freezes remain unchanged. Apply inventory before emitting the successful Select Install event; keep exactly-once behavior and C notices. No offer, balance, hit timing or wire-field changes.

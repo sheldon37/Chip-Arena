@@ -103,7 +103,7 @@ Expedition, Alt freeing the cursor (`look` and mouse look) and `ExpeditionPickRo
 ## Chip picks (the Boss Test's tray over the live view)
 
 Owner 2026-10-15: "We should also utilize the same chip selection screen (That we utilize in the Boss Test)
-instead of selecting on the J menu." Owner correction (PR #234): choosers stay mobile and vulnerable. So the
+instead of selecting on the J menu." Owner direction 2026-10-15 supersedes PR #234: choosers are held in place and remain vulnerable. So the
 pick is the Boss Test's chip tray (`PveChipScreen`'s cards via `DrawTray`: entrances, holo highlight, number
 badges, hover cue; `DraftKeys`) drawn **over the live view**, docked at the bottom centre between the health box
 and the cooldowns. There is no 3D draft stage and the arena is never hidden. The Boss Test path itself is
@@ -114,7 +114,7 @@ unchanged.
   `Claim` for that one and shows it when its offers arrive. Collecting a reward never opens it (the contract):
   the Boss Test's **CHIPS N** tag with its C key counts it in the scene, in place of the minimal HUD's tag.
 - **Choosing presence.** Showing a claimed reward sends `OpenChoice(reward)` unless the view already shows the
-  viewer choosing; the host keeps it across queued picks and clears it on the final pick, a death, a load or an
+  viewer choosing; the host keeps it across queued picks and clears it after the final Install plus `NativeDraftPlant.ReturnEnd` (1.95 s), a death, disconnect, save resume, a load or an
   extraction. A load ends with `OpenChoice` again. Closing it (C, Escape, Choose later, or the tray closing
   itself) sends `CloseChoice` once while the view still shows choosing. A refused or unconfirmed `Claim` or
   `OpenChoice` closes the tray with a notice.
@@ -129,9 +129,9 @@ unchanged.
   WHILE CHOOSING, N MORE WAITING (the viewer's other unpicked rewards), the key line and Choose later. Under
   attack, the Boss Test's blinking border and alarm show over the header. Its full-screen red wash is kept faint
   (12% blinking, 6% steady with Reduced effects), so the fight stays readable.
-- **Input (client routing, never a lock).** While the tray is drawn, digits 1–9 pick a chip, so the abilities
+- **Input (client routing; host enforces the hold).** While the tray is drawn, digits 1–9 pick a chip, so the abilities
   they would start are dropped. Holding Alt frees the cursor to click a card; mouse look, attack and block
-  pause only while it is held. WASD, jump, sprint, roll, Q, E, F, reload and the mouse otherwise work as usual.
+  pause only while it is held. The host cancels and blocks movement/actions and refuses machine interaction while choosing, preserving camera rotation. Damage and the world/difficulty clock continue. An explicit close releases an unfinished tray; an automatic close after the final pick cannot shorten its plant.
   Without Alt the locked cursor never hovers or clicks a card.
 - **Wrist look and SELECTING CHIP tag.** These come from `members[].choosing` for every pilot, as the Boss Test
   reads each row's replicated open pick (`ArenaPresentation.ExpeditionChoosing`). Another pilot's hologram shows
@@ -149,7 +149,7 @@ unchanged.
 | `NextLoop` | `AdvanceWhenReady()` | `loop` increased |
 | `Claim` | `hooks.Offers` then `Claim` | the reward `claimed` |
 | `Select` | `hooks.Eligible` then `Select` | the reward `consumed` (or settled out of the view) |
-| `OpenChoice` / `CloseChoice` | `SetChoosing(account, open, reward)` (presence only) | the viewer's `members[].choosing` set / clear |
+| `OpenChoice` / `CloseChoice` | `SetChoosing(account, open, reward)` (host hold; no immunity) | the viewer's `members[].choosing` set / clear |
 | `Reprint` | `hooks.Reprint` (evidence) then `Reprint` | the target alive |
 
 Guests send the same intents over `expedition-command`; the host runs them through the same path.
@@ -305,7 +305,7 @@ host's request refused.
     `UpdateBossHealth` for the bar to move.
 14. ~~Layout fingerprint before the first load~~: done. `areaBarrier.layout` from the layout binding; the state pieces bind
     from the run's start.
-15. ~~Chip choosing presence and Install on Select~~: done (PR #233, corrected by #234: presence only, no hold). The chip
+15. ~~Chip choosing presence and Install on Select~~: done (PR #233, superseding #234: host hold through the final plant). The chip
     tray binds them on `claude/expedition-chip-screen`.
 16. Optional, still open: Boss Test offer parity for Expedition picks (implemented / Siren filter, tier weights, money
     chips, stale-offer reroll; offers carry no tier today, so the tray's header names the source instead), and tiered
