@@ -53,6 +53,10 @@ The legs, pelvis and body root are untouched, so the feet stay planted and the g
 - **Weapons.** The weapon stays in its own hand:
   - Guns, swords and shields are lowered. The greatsword trails low behind with its tip off the floor, and the floor guard
     keeps every lowered tip above the floor.
+  - The daggers trail low and back as well (2026-10-15). Carried forward, the right dagger's raise swung its long blade through
+    plumb, and the floor guard's lift axis is undefined there, so the hand spun about 22° in one frame at 240 Hz. The guard
+    (`KeepOffFloor`) now lifts a near-plumb blade about the hand's level across-axis, always the same way round; away from
+    plumb it matches `CapturedRig.BladeFloor` exactly.
   - The staff and the bow keep their idle hold exactly.
   - Carry axes are upright (in the rig root's frame), so a crouched melee stance does not tip them.
 - **The other hand:**
@@ -63,6 +67,12 @@ The legs, pelvis and body root are untouched, so the feet stay planted and the g
   another card.
 - **Blending.** The look eases in over 0.42 s and out over 0.3 s. A death drops it, and a clock jump or a gap longer than
   0.5 s (for example a revival) restarts it.
+- **Turn blends.** The hands' turn blends (`ChipTurnBlend`) keep going round the same way from frame to frame. Before
+  2026-10-15 a plain shortest-way slerp flipped the left dagger hand through 165° in one frame mid-raise. The checks now
+  bound every hand's turn off the route (no flips) as well as its position.
+- **Hits (2026-10-15).** A damaging hit flinches the look (`NativeChipSelect.Flinch`): it rises over 0.06 s, settles over
+  0.4 s and yields up to 45% of the weight to the route's pose. The hit reaction underneath shows through the raised wrist
+  and the gaze. The torso's own reaction already carries the arm.
 
 ### Hologram (`NativeChipSelectHolo` and `Resources/NativeChipSelect.shader`)
 
@@ -85,11 +95,47 @@ The legs, pelvis and body root are untouched, so the feet stay planted and the g
 ### First person
 
 The local pick screen is full-screen and hides the arena, so the view-model wrist only shows when the arena is visible with
-the pick still open: the close after Choose later, a menu over the world, or a hold.
+the pick still open: the close after Choose later, a menu over the world, or a hold. In an Expedition the tray is an overlay
+and the authority holds the chooser, so my wrist shows under the tray and through the wrist plant.
 
 - The raised wrist sits low left (low right for a right display), with a small panel above it, at most 20 degrees wide. The
   panel shrinks with its distance, so the bow's closer arm shows it at the same size.
 - The weapon goes down out of view, and an armed hand never reaches into it.
+
+### Expedition wrist plant (`Core/NativeChipPlant.cs`)
+
+After each Expedition pick the chosen card becomes a chip and goes into the display wrist's cuff. Owner: "Still make them put
+their chip in their wrist after selected, then they are free to move." This runs on the Boss Test plant's timeline
+(`NativeDraftPlant`), laid over the pose above:
+
+| Time | What happens |
+|---|---|
+| 0–0.3 s | The other cards fade, and the chosen card lifts toward the wearer. |
+| 0.3–0.75 s | The panel folds away. |
+| 0.62 s (`Contact`) | The hand takes the card, which is a lit cartridge in its rarity colour from then on. |
+| 1.14 s (`CarryEnd`, `SoundAt`) | The chip seats on the cuff, and the install cue plays. |
+| 1.32 s (`PlantEnd`) | The chip has sunk into the cuff. |
+| 1.14–1.84 s | The cuff pulses in the chip's colour. |
+| 1.36–1.95 s | The arms return. |
+
+The authority's final hold has the same span: `NativeChipPlant.Span` = `NativeDraftPlant.ReturnEnd` =
+`NativeExpedition.ChoicePlantSeconds`.
+
+- **Hand plant.** In third person, empty hands, the gauntlets, a pistol or a dagger take the card at the contact. They
+  carry it over a small arc and press it in, palm down or with the weapon kept pointing down.
+- **Wrist plant.** A long weapon stays lowered. The chip drops down the projection cone, and the display wrist rises 2 cm to
+  take it, then gives as it seats. First person always uses this, for every class, because a hand crossing the view hid
+  the chip.
+- **First person beside the tray.** While my tray or its follow-through is on screen, the view-model wrist eases over
+  0.3 s from under the cards to beside them (`NativeChipSelectPose.TrayWrist`). It sits left of the band, or right for a
+  right display, sized to the view's angles. The greatsword's and the bow's view arms cannot reach out there, so they stay
+  under the tray.
+- **Mine.** The look runs from my pick (the tray's follow-through clock), whatever the tray does. The tray's picked card
+  flies into the hologram as the hand takes it.
+- **Others.** Everyone else's look runs from the authority's `Install` event for them.
+- **Return.** A pick with another of my rewards following on the tray returns the arms to the hologram pose, and the panel
+  unfolds again. Otherwise the look lowers. Another pilot's look lowers after each plant, then rises again after 0.5 s
+  for a queued pick (their flag reads choosing through the final plant as well).
 
 ### Tiers
 
@@ -110,6 +156,7 @@ stand-in offers (rare, epic and legendary). Use "Dummy weapon" to try each class
 | File | Contents |
 |---|---|
 | `Core/NativeChipSelect.cs` | Mapping, track, gestures, pose, hologram geometry and tag timing (engine-free) |
+| `Core/NativeChipPlant.cs` | The Expedition wrist plant: timeline, cue and pose layer (engine-free) |
 | `Runtime/NativeChipSelectPresentation.cs` | Pose hook, view-model wrist and world/view meshes |
 | `Runtime/NativeChipSelectHud.cs` | The tag |
 | `Resources/NativeChipSelect.shader` | The hologram shader |

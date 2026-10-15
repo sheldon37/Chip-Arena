@@ -18,6 +18,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition-states"){ExpeditionStatesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-acceptance"){ExpeditionAcceptanceChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-pick"){ExpeditionPickChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--chip-select"){var chipData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});foreach(var result in ChipSelectChecks.Run(chipData))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
             DevAbuseChecks.Run();ExpeditionChecks.Run();
             if(args.Length==1&&args[0]=="--navigation"){NavSearchChecks.Run(ProjectRoot());return 0;}
