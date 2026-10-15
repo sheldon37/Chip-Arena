@@ -8161,3 +8161,35 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - Owner reports missing lights, doors, detail and hazards after PR #227. Base `003bf32`, branch `codex/expedition-ward-render`. Found the outer SourceWorld dispatch still required literal `siren`, bypassing WardZeroScenery for `expedition-ward-zero` even though its inner Active gate accepts both. Prior data/native checks did not establish visual parity; the earlier completion claim was too strong.
 - Remove the redundant literal-ID restriction in live and backdrop dispatch, retaining the canonical Active gate and backdrop map-identity check. This invokes the existing boss-test scenery, practical lights, door rigs and hazard dressing without redesigning Claude assets. Update the existing hook checks to prevent reintroducing the excluded alias.
 - All three Unity-reference compile targets and the focused --wardzero-simulation suite pass. Exact Windows build receipt will be in PR. Manual visual confirmation remains required.
+
+
+## 2026-10-15 — Claude: PvE machines, dispensed chip and chip cards redesign
+
+- **Branches:** `claude/machines-redesign` (`1f98230`) and `claude/chip-cards-v2` (`d977ceb`), both based on shared `003bf32`, merged on `claude/machines-cards-merge` onto shared `1f844ef`.
+- **Owner request:** much higher-quality, sleeker chip machine, dispensed chips, recruit machine and healing machine, plus higher-quality chip designs with every animation kept. Presentation only.
+- **Machines (Core `NativeMachineModels`, Runtime `NativeMachineModels`):**
+  - The chip dispenser, recruit pod and med station are now sculpted with the Standard weapons' kit, replacing the source's merged boxes.
+  - Graphite chassis with chamfered panels, brushed steel trim, black glass and light strips in each machine's colour.
+  - Chip dispenser: a stocked display behind glass with soft glints, six rarity lamps, a bezelled slot with a catch tray, a credit reader and a grille.
+  - Recruit pod: a lit chamber with a scan panel, floor ring and glass door with a frosted kick plate.
+  - Med station: an enamel cabinet with the lit cross in a steel ring, a vitals screen, dispenser and tray. Its heal pulse is a thin soft ring.
+  - The models keep the bank part convention: bone 1 is tinted by activity and the deny flash. Every machine keeps lights with a red share so the deny flash reads red.
+  - The flap, door and pulse pivots and their timelines are unchanged.
+  - Models stay inside the `machineBlocks` colliders, apart from the shallow front trim and the recruit crown.
+- **Dispensed chip:**
+  - A chamfered package, a gunmetal spreader and gold gull-wing leads.
+  - The lit die is on both faces, with a rarity band round the edge so the tier reads from any side while it spins.
+  - It also replaces the chip in the draft tray.
+- **Fallback:** the exported models stay in the bank, and the draws prefer the sculpted ids.
+- **Chip cards (`NativeChipCard`, `NativeChipArt`; one-line shape updates in `NativeDraftScreen` and `NativeSirenReveal`):**
+  - Chamfered cyber modules: a crisp bevelled frame with tier accent lines, an anodised header plate with a light strip, and a socketed die.
+  - A tier badge with an LED and rank segments replaces the pips. Stat rows carry tone ticks, and the footer is a strip.
+  - Legs are finer, round-wire style.
+  - Holo scan, comet, sweep, kit art (Emperor, Fighting, L44T rain, Siren), Mythic foil, Siren badge, pick lock, reveal and Calm are all kept and follow the new outline.
+  - Sizes, `Height` and the `Rarity` values are unchanged.
+  - Draw calls per card are 11–19% lower.
+  - Stat lines wider than the card now shrink to fit instead of running past the edge.
+- **Checks on each task branch (run5):** Unity 6000.3.24f1 runtime and editor compile OK; relay 689 PASS (machines, +108 checks) and 688 PASS (cards); Python 106 OK; package OK; diff-check OK. Merged-tree results are in the merge commit and handoff.
+- **Renders:** offline only — machines in the scratchpad's `renders-machines`, cards in `renders-chip-cards-v2`. No Unity or Windows play was run here.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; colliders unchanged.
+- **Next:** the owner checks the machines and the draft in a native build.
