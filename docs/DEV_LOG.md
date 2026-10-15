@@ -7948,3 +7948,37 @@ Checks on `75cbd30`, run one after the other:
 
 Not run: Unity Editor play, Windows, or real host/guest. PR #62 `verify` still fails only on the known Electron baseline;
 nothing outside `unity/` and `docs/` changed. No release or test-channel publication from this entry.
+
+## 2026-10-14 — Astra: SAFE evidence and Unity semantic CI (draft)
+
+Branch `codex/unity-expedition-safe-ci`, base shared `f156a217`, preserving
+Claude's acceptance work and Editor compile repair `139f58f`.
+
+Confirmed the two reported premature SAFE grants. Join now explicitly starts
+unsafe (the member DTO defaults safe=true, so omitting the initializer is not
+enough). NextLoop clears SAFE for all members. Starting any area load also clears
+prior sanctuary evidence and refreshes extraction votes, so a failed/frozen
+placement cannot retain an old SAFE flag. Only subsequent authority position
+evaluation restores it. Added focused join/loading/failed-placement/next-Step
+regressions to ExpeditionDirectorChecks.
+
+Added a semantic compilation step to native-source for player, editor-context
+Runtime, and Editor assemblies, using Unity's pinned Linux Editor reference
+assemblies and .NET SDK Roslyn. It downloads from the version/revision in
+ProjectVersion.txt; missing/ambiguous references or compiler errors fail the job.
+PRs touching Unity now run this workflow too. No license activation, player
+package, secret or self-hosted runner is required. The initial download is large;
+native-source timeout is 30 minutes and compiler logs are retained. Existing
+managed, source package and Windows updater checks remain.
+
+IMPORTANT: the execution environment disconnected and no executor tools are
+available this turn. Changes are inspected remotely only, NOT locally compiled
+or tested. The archive URL, exact reference set and workflow execution need CI
+verification. Keep this PR draft and unmerged pending those results; no check
+or release is claimed. In particular the previous syntax/managed checks missed
+CS0136; they must not be described as a Unity compile substitute.
+
+The live Expedition scene/director/map-load/closure-collider/combat adapter is
+still absent and has NOT been implemented in this draft. The four PR #216 fields
+are complete. No new presentation handoff is needed; resume authority integration
+in a functioning execution environment and retain Claude's blocker list.

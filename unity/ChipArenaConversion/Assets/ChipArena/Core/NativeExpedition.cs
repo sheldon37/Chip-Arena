@@ -44,7 +44,7 @@ namespace ChipArena.UnityConversion
             var amounts=s.members.Where(m=>!m.extracted).Select(m=>m.chips.Sum(c=>(long)c.count)).OrderBy(n=>n).ToArray();
             int count=amounts.Length==0?0:(int)Math.Min(256,amounts[(amounts.Length-1)/2]);
             // Lower median is provisional catch-up balance; the one-time entitlement is persisted.
-            p=new ExpeditionMember{account=account,weapon=weapon,connected=true,catchup=count,initialCatchup=count,safe=s.phase==ExpeditionPhase.Town||s.phase==ExpeditionPhase.Victory};
+            p=new ExpeditionMember{account=account,weapon=weapon,connected=true,catchup=count,initialCatchup=count,safe=false};
             s.members=Add(s.members,p);RefreshVotes();Changed();return true;
         }
         public bool Disconnect(string account)
@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
             if(!Mutable)return false;var p=Member(account);if(!Live(p)||safe&&s.phase!=ExpeditionPhase.Town&&s.phase!=ExpeditionPhase.Victory)return false;
             p.safe=safe;RefreshVotes();Changed();return true;
         }
-        public bool SetLoading(bool value){if(!Running)return false;s.loading=value;Changed();return true;}
+        public bool SetLoading(bool value){if(!Running)return false;s.loading=value;if(value){foreach(var p in s.members)p.safe=false;RefreshVotes();}Changed();return true;}
         public bool SetPerks(string account,string[] perks,Func<string,bool> unlocked)
         {
             if(!Mutable||s.elapsed!=0||s.phase!=ExpeditionPhase.Town||unlocked==null||perks==null||perks.Length>3||perks.Distinct().Count()!=perks.Length||perks.Any(id=>!Key(id)||!unlocked(id)))return false;
@@ -93,7 +93,7 @@ namespace ChipArena.UnityConversion
         {
             if(!Mutable||s.phase!=ExpeditionPhase.Victory||s.loop>=100000||Living().Length==0)return false;
             s.loop++;foreach(var i in s.instances){i.entered=i.cleared=false;i.progress=0;i.bosses=i.defeated=Array.Empty<string>();}
-            s.area=s.world;s.phase=ExpeditionPhase.Town;ResetVotes();foreach(var p in s.members)if(Live(p))p.safe=true;Changed();return true;
+            s.area=s.world;s.phase=ExpeditionPhase.Town;ResetVotes();foreach(var p in s.members)p.safe=false;Changed();return true;
         }
         public bool VoteContinue(string account,bool yes)
         {

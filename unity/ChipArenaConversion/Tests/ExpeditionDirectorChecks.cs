@@ -29,6 +29,11 @@ internal static class ExpeditionDirectorChecks
         var run=NativeExpedition.Create("director-test","city","host","pistol",17,new[]{new ExpeditionInstance{id="ward",target=1}});int writes=0;bool fail=false;
         var session=new ExpeditionSession(run,content,_=>{if(fail)throw new IOException("test disk failure");writes++;});V3 at=new V3(2,0,0);bool los=true;
         var director=new ExpeditionDirector(session,layout,_=>at,(_,__)=>los,10,20,30);
+        Check(run.Join("outside","pistol")&&!run.Snapshot().members.Single(m=>m.account=="outside").safe,"town join does not grant sanctuary before position evidence");
+        Check(run.Disconnect("outside"),"remove outside test pilot");
+        Check(run.SetSafe("host",true)&&run.SetLoading(true)&&!run.Snapshot().members.Single(m=>m.account=="host").safe,"loading invalidates old sanctuary evidence");
+        director.Step();Check(!run.Snapshot().members.Single(m=>m.account=="host").safe,"frozen load cannot restore sanctuary");
+        Check(run.SetLoading(false),"resume fixture after load");
         Check(director.CanPurchase("host","cache"),"host range evidence");los=false;Check(!director.CanPurchase("host","cache"),"world occlusion refuses");los=true;
         director.Step();Check(writes==1,"initial checkpoint");session.Tick(.25);director.Step();Check(writes==1,"clock-only revision does not rewrite save");
         session.Run.Credit("host","cash",100);Check(session.Purchase("host","cache").state==ExpeditionCommandState.Pending,"purchase through session");director.Step();var offer=run.Snapshot().chests[0];Check(!offer.sold&&offer.cooldown>run.Elapsed&&offer.generation!="0:cache:0","restock with fresh generation and persisted deadline");
@@ -119,9 +124,16 @@ internal static class ExpeditionDirectorChecks
         Check(r2.Snapshot().loop==1&&r2.Snapshot().loading&&d2.Barrier.active&&d2.Barrier.generation==3&&d2.Barrier.target=="city"&&d2.Barrier.ready==0,"same-area next loop starts fresh barrier before projection");
         Check(d2.BossArrivals.Length==0&&d2.Closures.Single(c=>c.id=="final-gate").Blocking,"new loop clears boss arrivals and closes gate immediately");
         Check(!ExpeditionAreaReady.Accept(s2,"host",ticket)&&!d2.CompleteAreaLoad((_,__)=>true),"old-loop ACK cannot release new loop");
+        Check(!r2.Snapshot().members.Any(m=>m.safe),"new loop is not safe before placement");
+        d2.Step();Check(!r2.Snapshot().members.Any(m=>m.safe),"loading Step cannot grant SAFE");
         var loopTicket=ExpeditionAreaReady.Capture(NativeExpeditionView.Build(r2,"host",s2.Sources));
         Check(!ExpeditionAreaReady.Accept(s2,"guest",loopTicket),"disconnected peer cannot acknowledge");
+        Check(ExpeditionAreaReady.Accept(s2,"host",loopTicket)&&!d2.CompleteAreaLoad((_,__)=>false)&&!r2.Snapshot().members.Any(m=>m.safe),"failed placement stays frozen without SAFE");
         Check(ExpeditionAreaReady.Accept(s2,"host",loopTicket)&&d2.CompleteAreaLoad((area,assigned)=>area=="city"&&assigned.Count==1&&assigned["host"].x==layout.Area("city").slots[0].x&&assigned["host"].z==layout.Area("city").slots[0].z),"new loop places living party at sanctuary slots");
+        Check(!r2.Snapshot().members.Any(m=>m.safe),"successful placement does not invent position evidence");
+        d2.Step();Check(r2.Snapshot().members.Single(m=>m.account=="host").safe,"next Step derives SAFE from actual sanctuary position");
+        Check(r2.Join("late-town","pistol")&&!r2.Snapshot().members.Single(m=>m.account=="late-town").safe,"late town join starts unverified");
+        r2.SetLoading(true);d2.Step();Check(!r2.Snapshot().members.Any(m=>m.safe),"join followed by frozen loading never exposes SAFE");
         Console.WriteLine("PASS Expedition director ("+count+" checks)");
     }
 }
