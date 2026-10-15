@@ -7923,3 +7923,28 @@ Unity Editor play, Windows, wall-occlusion raycasts, lighting in URP, ambience a
   from the sanctuary test.
 - Similarly, `NativeExpedition.Join` grants `safe` to a new member in Town/Victory before any position check (`Step`
   corrects it next tick, except while loading).
+
+## 2026-10-15 — Claude: integration of PR #217 and the Expedition acceptance pass into shared
+
+Shared `claude/sleepy-ritchie-g8ruhv` and builder `codex/unity-cloud-current`, from `5aa2e0a`:
+- `8c32b4d`: signed merge of Astra's PR #217 (`3183514`, area-ready transport, same-area loop reset).
+- `139f58f`: Unity Editor compile fix. `3183514` declared `var ready` in
+  `NativeNetworkBuildChecks.CheckNetworkSerialization`, which clashes with the nested `string ready` in the same method
+  (CS0136). The new local is renamed to `areaReady`; the check itself is unchanged. Repo CI `native-source`, the managed
+  suite and the Roslyn syntax check do not build the Editor assembly against the Unity DLLs, so none caught it.
+- `75cbd30`: signed merge of `claude/expedition-acceptance` (`fa8402f`, entry above). The merged result carries
+  `139f58f`, so the Editor compile failure noted on that branch does not apply to shared.
+
+Checks on `75cbd30`, run one after the other:
+
+| Check | Result |
+|---|---|
+| Unity Runtime and Editor compile (6000.3.24f1 assemblies) | OK |
+| `check_relay.py` (managed and real relay) | rc 0, 688 PASS; acceptance 66,840, states 9,658, director 86 checks |
+| Python tests | OK |
+| `package_source.py` | OK |
+| `git diff --check` | clean |
+| CI-layout export | rc 0, 688 PASS |
+
+Not run: Unity Editor play, Windows, or real host/guest. PR #62 `verify` still fails only on the known Electron baseline;
+nothing outside `unity/` and `docs/` changed. No release or test-channel publication from this entry.
