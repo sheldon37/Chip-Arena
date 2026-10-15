@@ -182,8 +182,8 @@ namespace ChipArena.UnityConversion
             var kp=a.Kernel;bool own=kp!=null&&kp.Id>0&&kp.Caster==a.Id;if(own)Kernel(kp,v);float k=own?kp.At:-100;
             var s=a.Cyber;RangedMode(a,v,s?.Ranged);
             // Kit v2's ranged set (the proposed record; Astra's replaces the source here): mapped only when its Version is 2.
-            CyberKit2RangedFeed.Map(Kit2RangedSource?.Of(a.Id),v.Kit2R);
-            if(s==null){CyberKit2MeleeFeed.Read(a,v);return true;}
+            CyberKit2RangedFeed.Map(s?.Version==2?s.Kit2R:Kit2RangedSource?.Of(a.Id),v.Kit2R);
+            if(s==null){CyberKit2MeleeFeed.Read(a,v,s?.Version==2?s.Kit2:null);return true;}
             v.Ready[CyberLordSpec.Q]=s.QReady;v.Ready[CyberLordSpec.E]=s.EReady;v.Ready[CyberLordSpec.One]=s.PacketReady;v.Ready[CyberLordSpec.Two]=s.LinkReady;v.Ready[CyberLordSpec.Three]=s.CrashReady;
             // The kit keeps one window, the current or last cast's (Kind, At, Release, Until); the host's reset kit is all zeros.
             string kind=s.Kind??"";bool cast=kind.Length>0&&s.At>0&&s.Until>=s.At;float end=cast?CastEnd(a,s,k):-100;bool cut=cast&&Cut(a,s);
@@ -224,7 +224,7 @@ namespace ChipArena.UnityConversion
                 Window(v,CyberLordSpec.Three,s.CrashAt,slam,until,now&&cut);
                 if(until>=slam-Eps){v.CrashAt=Feet3(s.CrashPoint);v.CrashBorn=slam;v.CrashUntil=slam+CyberLordSpec.CrashStun;}
             }
-            CyberKit2MeleeFeed.Read(a,v);
+            CyberKit2MeleeFeed.Read(a,v,s?.Version==2?s.Kit2:null);
             return true;
         }
         private const float Eps=.002f;

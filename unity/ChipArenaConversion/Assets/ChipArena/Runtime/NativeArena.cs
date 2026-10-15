@@ -150,7 +150,7 @@ namespace ChipArena.UnityConversion
             if(KernelBusy(p))return;if(p.Input.SirenAbility==4&&StartKernelPanic(p))return;
             if(PinSirenVictim(p))return;StepRecovery(p);
             if(Time>=p.SlowEnd&&p.SlowFactor<1){if(p.SlowFactor<=.6f)p.SlowImmune=Time+1;p.SlowFactor=1;}
-            var i=p.Input;float dt=1f/60;bool rolling=Time<p.RollEnd,locked=Time<p.AttackEnd||Incapacitated(p),swimming=NativeHazards.InLava(MapId,Vec(p.Body.position));
+            var i=p.Input;float dt=1f/60;bool rolling=Time<p.RollEnd,locked=Time<p.AttackEnd&&!(p.Seat.spec=="cyberlord"&&p.Cyber.Until>Time&&NativeCyberKit2Rules.Move(p.Cyber,Time)>0)||Incapacitated(p),swimming=NativeHazards.InLava(MapId,Vec(p.Body.position));
             if(!rolling&&!locked)p.Yaw=i.Yaw;p.Pitch=i.Pitch;
             StepAbilities(p);StepFighter(p);StepLeetPilot(p);StepSirenPilot(p);
             if(p.ReloadEnd>0&&Time>=p.ReloadEnd){p.Ammo=Magazine(p);p.ReloadEnd=0;Heal(p,(float)p.Stats["reloadHeal"]);Emit(EventKind.ReloadEnd,p,0,p.Body.position,0);}
@@ -160,7 +160,7 @@ namespace ChipArena.UnityConversion
             if(p.CastAt>0&&Time>=p.CastAt){p.CastAt=0;Fire(p);}
             StepFan(p);StepSpecial(p);StepMelee(p);StepBow(p);
             StepMeleeInput(p);
-            locked=Time<p.AttackEnd||Incapacitated(p);rolling=Time<p.RollEnd;
+            locked=Time<p.AttackEnd&&!(p.Seat.spec=="cyberlord"&&p.Cyber.Until>Time&&NativeCyberKit2Rules.Move(p.Cyber,Time)>0)||Incapacitated(p);rolling=Time<p.RollEnd;
             bool whirling=!Incapacitated(p)&&NativeWhirlwindRules.Active(p.Special,Time);
             if(p.Seat.spec!="bow"&&p.Weapon.@class!="melee"&&p.Fan==null&&!Venting(p)&&!Incapacitated(p)&&p.AbilityCast==null&&p.CastAt<=0&&!rolling&&!locked&&Time>=p.Ready&&p.ReloadEnd==0&&Time>=p.BlockEnd&&i.Shoot)
             {
@@ -178,6 +178,7 @@ namespace ChipArena.UnityConversion
             p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+(float)(12*p.Stats["manaRegen"]*dt));
             if(Time-p.LastDamage>=3)Heal(p,(float)(p.Stats["regeneration"]*dt));
             float speed=(float)(6.8*p.Stats["speed"])*(sprint?1.35f:1)*(aim?(float)Content.Ads(p.Seat.spec).move:1)*Math.Max(.4f,Math.Min(Time<p.SlowEnd?p.SlowFactor:1,ChipFieldSpeed(p)))*(swimming?.6f:1);
+            if(p.Seat.spec=="cyberlord")speed*=NativeCyberKit2Rules.Move(p.Cyber,Time)*(NativeCyberKit2Rules.Overclock(p.Cyber,Time)?1+CyberKit2Spec.OverclockMove:1);
             if(p.BowDrawAt>=0)speed*=NativeBowRules.Move;
             if(whirling)speed*=NativeWhirlwindRules.MoveScale;
             if(Overdriving(p))speed*=NativeRangedRules.OverdriveMove;
@@ -193,7 +194,7 @@ namespace ChipArena.UnityConversion
                 step+=MeleeAbilityMotion(p)+FighterMotion(p)+SirenMotion(p);velocity.x=p.MoveVelocity.x+step.x;velocity.z=p.MoveVelocity.z+step.z;
             }
             if(swimming&&velocity.y<=2)velocity.y+=Mathf.Clamp((-.95f-p.Body.position.y)*12-velocity.y*4,-35,35)*dt;
-            var jump=NativeJumpSimulation.Try(p.Seat.spec,i.Jump,p.Grounded,swimming,rolling||locked||Time<p.AttackEnd,velocity.y,
+            var jump=NativeJumpSimulation.Try(p.Seat.spec,i.Jump,p.Grounded,swimming,rolling||locked,velocity.y,
                 (float)(Rules.JumpSpeed*p.Stats["jumpPower"]),ref p.AirJumps,out float launch);
             bool jumped=jump!=NativeJumpKind.None;
             if(jumped){velocity.y=launch;if(p.Grounded)ChipJump(p);p.Grounded=false;if(jump==NativeJumpKind.Air)p.AirJumpAt=Time;}

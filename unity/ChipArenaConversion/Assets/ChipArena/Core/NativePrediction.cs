@@ -42,24 +42,25 @@ namespace ChipArena.UnityConversion
             if(state.MeleeWeapon!=null&&input.Attack&&state.Time<state.RollUntil&&state.Time>=state.RollUntil-.2f)state.BufferUntil=state.Time+NativeMeleeFeel.BufferSeconds;
             if(!state.CanMove){state.BowDrawAt=-1;return state;}
             if(state.Bow){if(input.Block||input.Aim||input.Sprint||input.CancelAbilities||input.AbilityQ||input.AbilityE||state.Time<state.RollUntil)state.BowDrawAt=-1;else if(state.BowDrawAt>=0&&!input.Shoot){state.BowDrawAt=-1;state.Ready=state.Time+NativeBowRules.Nock;}else if(state.BowDrawAt<0&&input.Shoot&&state.Time>=state.Ready)state.BowDrawAt=state.Time;}
-            state.Cyber=state.Cyber?.ViewCopy();
+            state.Cyber=state.Cyber?.ViewCopy();NativeCyberKit2Rules.Recover(state.Cyber,state.Time,dt);
             if(state.Cyber!=null&&state.Time>=state.Ready&&state.Time>=state.RollUntil)NativeCyberRules.Predict(state.Cyber,input,state.Time,state.Position,ref state.CyberMana,Math.Max(.01f,state.CyberRate),state.CyberCost,state.CyberCooldown,constrain,state.CyberUltimateCost);
             bool cyberBusy=state.Cyber!=null&&state.Time<state.Cyber.Until;
             if(cyberBusy&&state.Cyber.Kind=="data-dash"){state.Position=constrain(state.Position,NativeCyberRules.DashPosition(state.Cyber,state.Time));state.Velocity=new V3();return state;}
             bool kitBusy=NativeWhirlwindRules.Busy(state.MeleeKit,state.Time),whirling=NativeWhirlwindRules.Active(state.MeleeKit,state.Time);
-            bool swinging=!kitBusy&&NativeMeleePrediction.Advance(ref state,input,lockTarget),rooted=swinging||kitBusy&&!whirling||cyberBusy&&state.Cyber.Kind!="mode-switch";
+            bool swinging=!kitBusy&&NativeMeleePrediction.Advance(ref state,input,lockTarget),rooted=swinging||kitBusy&&!whirling||cyberBusy&&NativeCyberKit2Rules.Move(state.Cyber,state.Time)<=0;
             float radians=input.Yaw*(float)Math.PI/180;
             float dot=input.X*(float)Math.Sin(radians)+input.Z*(float)Math.Cos(radians);
             bool sprint=!kitBusy&&input.Sprint&&state.CanSprint&&!input.Shoot&&!input.Aim&&dot>=.6f;
             state.Sprinting=sprint&&!swinging;
             float speed=state.Speed*(state.Bow&&state.BowDrawAt>=0?NativeBowRules.Move:1)*(sprint?Rules.SprintMultiplier:1)*(whirling?NativeWhirlwindRules.MoveScale:1)*(NativeRangedRules.Overdrive(state.Time,state.OverdriveAt,state.OverdriveUntil)?NativeRangedRules.OverdriveMove:1);
+            speed*=NativeCyberKit2Rules.Move(state.Cyber,state.Time)*(NativeCyberKit2Rules.Overclock(state.Cyber,state.Time)?1+CyberKit2Spec.OverclockMove:1);
             // A landing attack carries its committed horizontal velocity (x .6) through the hang and plunge.
             bool carried=swinging&&NativeAirAttackSimulation.Falling(state.Swing);
             state.Velocity.x=carried?state.Swing.Carry.x:rooted?0:Towards(state.Velocity.x,input.X*speed,Rules.Acceleration*dt);
             state.Velocity.z=carried?state.Swing.Carry.z:rooted?0:Towards(state.Velocity.z,input.Z*speed,Rules.Acceleration*dt);
             // Targeted Link and Kernel Panic await authority; do not predict an air jump over that cast request.
-            bool pendingCyberCast=state.Cyber!=null&&(input.SirenAbility==2||input.SirenAbility==4);
-            var jump=NativeJumpSimulation.Try(state.JumpSpec,input.Jump,state.Grounded,state.Swimming,kitBusy||swinging||cyberBusy||pendingCyberCast||state.Time<state.RollUntil,
+            bool pendingCyberCast=state.Cyber!=null&&state.Cyber.Version!=2&&(input.SirenAbility==2||input.SirenAbility==4);
+            var jump=NativeJumpSimulation.Try(state.JumpSpec,input.Jump,state.Grounded,state.Swimming,kitBusy||swinging||rooted||pendingCyberCast||state.Time<state.RollUntil,
                 state.Velocity.y,state.JumpSpeed,ref state.AirJumps,out float launch);
             if(jump!=NativeJumpKind.None){state.Velocity.y=launch;state.Grounded=false;if(jump==NativeJumpKind.Air)state.AirJumpAt=state.Time;}
             if(!state.Grounded)state.Velocity.y-=state.Gravity*dt;else state.Velocity.y=0;

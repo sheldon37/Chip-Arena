@@ -209,7 +209,7 @@ internal static class CyberKit2MeleeChecks
                 if(name!="NativeCyberKit2MeleePresentation.cs")Check(!Regex.IsMatch(text,@"Kit2MeleeSource\s*=[^=]"),name+" never sets the v2 record source");
             }
             var feed=File.ReadAllText(Path.Combine(core,"NativeCyberLord.cs"));
-            Check(Regex.Matches(feed,@"CyberKit2MeleeFeed\.Read\(a,v\)").Count==2&&feed.Contains("public static ICyberKit2MeleeSource Kit2MeleeSource;"),"CyberLordFeed.Read maps the v2 record on both of its returns");
+            Check(Regex.Matches(feed,@"CyberKit2MeleeFeed\.Read\(a,v,").Count==2&&feed.Contains("public static ICyberKit2MeleeSource Kit2MeleeSource;"),"CyberLordFeed.Read maps the v2 record on both of its returns");
             Check(CyberKit2MeleeFeed.Details.Select(CyberKit2MeleeFeed.Hit).SequenceEqual(Enumerable.Range(1,CyberKit2MeleeFeed.Details.Length).Select(i=>(Kit2Hit)i))&&CyberKit2MeleeFeed.Hit("cyber-palm")==Kit2Hit.None&&CyberLordFeed.Hit("cyber-palm")!=CyberHit.None&&CyberKit2MeleeFeed.Hit(null)==Kit2Hit.None,
                 "the v2 event Details map in order; the string's jab, cross and palm keep v1's");
             foreach(var d in CyberKit2MeleeFeed.Details)Check(CyberLordFeed.Hit(d)==CyberHit.None,"v2 Detail "+d+" is not a v1 one");
