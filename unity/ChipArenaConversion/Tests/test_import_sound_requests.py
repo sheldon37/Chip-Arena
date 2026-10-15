@@ -126,6 +126,14 @@ class SoundRequestImport(unittest.TestCase):
         self.assertIn('schema must be chip-arena.sound-receipt/1', out)
         self.assertIn('must not hold a `apikey` field', out)
 
+    def test_check_reads_a_byte_order_mark(self):
+        folder = self.batch('bom', {'pve.zombie.groan_01.wav': [(.8, .5)]})
+        self.manifest.write_bytes(b'\xef\xbb\xbf' + self.manifest.read_bytes())
+        self.receipt(folder, sha=hashlib.sha256(self.manifest.read_bytes()).hexdigest(), files=['pve.zombie.groan_01.wav'])
+        (folder / 'receipt.json').write_bytes(b'\xef\xbb\xbf' + (folder / 'receipt.json').read_bytes())
+        code, out = run(['--manifest', str(self.manifest), '--in', str(folder), '--check'])
+        self.assertEqual(code, 0, out)
+
     def test_check_reads_a_zip_and_takes_the_newest_file_per_name(self):
         old = self.batch('old', {'pve.zombie.groan_01.wav': [(.8, .5)]})
         new = self.batch('new', {'pve.zombie.groan_01.wav': [(.9, .5)], 'pve.zombie.groan_02.wav': [(.9, .5)]})

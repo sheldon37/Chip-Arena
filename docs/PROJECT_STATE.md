@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-15 Claude footsteps and zombie audio (`claude/footstep-zombie-audio`, on branch): every pilot steps on its drawn foot plants (walk/run/sprint, landings, mine quieter in first person, the surface underfoot, a crowd mix); every zombie kind steps from its gait and calls (hunting groans, moans, alert shriek, wind-ups, spit, hurt, death; per-add cooldown and caps). Built-in synthesized takes when the bank lacks a clip. New bank `scratchpad/LocalAssets-footsteps-zombies.zip` (226 keys, 585 clips, 13.09 MB) for the builder; `tools/import_sound_requests.py` takes the owner's ElevenLabs batch. Managed checks pass; not heard in a build. See DEV_LOG.
+
 2026-10-15 Owner requests for Astra (EXPEDITION-HUB.md): (1) join circle at instance doors (stand in a bigger circle away from the door to deploy; proposed all-members-inside + 3 s countdown, pending owner confirmation; split hub/instance parties not supported today); (2) co-op Expedition hosting from a room (HOST ROOM plays Wave Defense only; guest Expedition path missing). Claude does layout, ring/HUD and the room Mode select after Astra's parts.
 
 2026-10-15 Claude hub safe-zone border hidden (`claude/hub-safezone-invisible`, merged into shared): the fenced hub draws no sanctuary edge; zone, membership and SAFE tag unchanged. Presentation only.

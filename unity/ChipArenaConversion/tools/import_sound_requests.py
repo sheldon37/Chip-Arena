@@ -65,7 +65,7 @@ class Hard(Exception):
 def load_manifest(path):
     raw = Path(path).read_bytes()
     try:
-        data = json.loads(raw.decode('utf-8'))
+        data = json.loads(raw.decode('utf-8-sig'))  # (a Windows editor's byte order mark is allowed; the hash is of the raw bytes)
     except ValueError as error:
         raise Hard(f'manifest {path}: {error}')
     if data.get('schema') != REQUEST_SCHEMA:
@@ -177,7 +177,7 @@ def check_receipts(receipts, manifest_raw, warnings, problems):
     seen = []
     for origin, read in receipts:
         try:
-            r = json.loads(read().decode('utf-8'))
+            r = json.loads(read().decode('utf-8-sig'))
         except ValueError as error:
             problems.append(f'{origin}: not JSON ({error})')
             continue
