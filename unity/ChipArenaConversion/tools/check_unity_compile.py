@@ -53,7 +53,7 @@ def download_references(destination):
 
 
 def reference_set(root):
-    engines = list(root.rglob("UnityEngine.CoreModule.dll"))
+    engines = list(root.glob("**/Data/Managed/UnityEngine/UnityEngine.CoreModule.dll"))
     if len(engines) != 1:
         raise RuntimeError(f"Expected one UnityEngine.CoreModule.dll, found {len(engines)}")
     # Unity installations place UnityEngine modules under Data/Managed/UnityEngine.
@@ -65,8 +65,11 @@ def reference_set(root):
     standards = list((managed.parent / "NetStandard" / "ref").rglob("netstandard.dll"))
     if len(standards) != 1:
         raise RuntimeError("Expected the Unity NetStandard reference profile")
-    refs = {p.name: p for p in standards[0].parent.glob("*.dll")}
-    for p in sorted(managed.rglob("Unity*.dll")):
+    refs = {p.name: p for p in standards[0].parent.glob("*.dll") if not p.name.startswith("Unity")}
+    unity_refs = list(managed.glob("Unity*.dll"))
+    unity_refs += list((managed / "UnityEngine").glob("Unity*.dll"))
+    unity_refs += list((managed / "UnityEditor").glob("Unity*.dll"))
+    for p in sorted(unity_refs):
         if p.name in refs and refs[p.name] != p:
             raise RuntimeError(f"Ambiguous Unity assembly: {p.name}")
         refs[p.name] = p
