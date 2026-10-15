@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-15 Claude Expedition wrist screen rebuilt (`claude/expedition-holo-v2`, on branch, base shared `d6562d9`): owner "a better holographic display with no artifacting". One alpha-blended quad with its own shader (glass, grid, scanlines, thin frame line, card slots inside), light budgeted under the bloom (body .72 of the threshold), thin rays instead of beam sheets, no constant flicker, a brief red edge only for a real hit. The recording's white/red blowout was not reproduced by a bloom-accurate harness (cause unidentified; see DEV_LOG). Managed checks and offline renders only; Unity/Windows unrun.
+
 2026-10-15 Owner requests for Astra (EXPEDITION-HUB.md): (1) join circle at instance doors (stand in a bigger circle away from the door to deploy; proposed all-members-inside + 3 s countdown, pending owner confirmation; split hub/instance parties not supported today); (2) co-op Expedition hosting from a room (HOST ROOM plays Wave Defense only; guest Expedition path missing). Claude does layout, ring/HUD and the room Mode select after Astra's parts.
 
 2026-10-15 Claude hub safe-zone border hidden (`claude/hub-safezone-invisible`, merged into shared): the fenced hub draws no sanctuary edge; zone, membership and SAFE tag unchanged. Presentation only.

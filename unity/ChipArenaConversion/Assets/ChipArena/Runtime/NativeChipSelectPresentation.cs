@@ -163,13 +163,15 @@ namespace ChipArena.UnityConversion
         // model carries it).
         private void RenderChipSelect(Snapshot s)
         {
-            if(Viewer||chipSelect.Count==0)return;chipWorldSink.Clear();int built=0;
+            if(Viewer||chipSelect.Count==0)return;chipWorldSink.Clear();chipScreenSink.Clear();int built=0;
             foreach(var pair in chipSelect)
             {
                 var slot=pair.Value;if(slot.Frame!=Time.frameCount||FirstPerson&&pair.Key==LocalId||!ReviveVisible(pair.Key,slot.Time))continue;
                 built+=BuildChipHolo(chipWorldSink,slot,false,s,pair.Key);
             }
             if(built>0)DrawChipHolo(chipWorldSink,ref chipWorldMesh,null,0);
+            // An Expedition's wrist screens: their own mesh and shader (NativeChipScreenPresentation.cs).
+            DrawChipScreens();
         }
         private int BuildChipHolo(ChipHoloSink sink,ChipSelectSlot slot,bool first,Snapshot s,int id)
         {

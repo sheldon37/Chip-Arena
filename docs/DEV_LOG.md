@@ -1,3 +1,45 @@
+## 2026-10-15 — Claude: Expedition wrist screen rebuilt as a clean hologram (owner: "no artifacting")
+
+- Branch `claude/expedition-holo-v2`, base shared `d6562d9`. Owner (verbatim): "Holographic display kind of buggy, and display is odd. Can we make it like a better holographic display with no artifacting?" with a recording of the Expedition chip pick (white wedge over the screen, red/magenta glow, red edge and bars all clip long).
+- **What the game renders with** (read from the code, not URP): Built-in pipeline (no URP package or Volume), Linear colour space, the match camera in HDR (ARGBHalf), `NativeBloom` as its image effect (threshold 1 on the brightest channel, knee .5, 6 levels each at weight 1, intensity .4, then the display shoulder that whitens from 2). No other tonemapping.
+- **Old screen**: `NativeChipSelect.shader`, additive (`Blend One One`, ZWrite Off, Transparent+2), gains up to 2.4. Per screen: the frame quad, two beam sheets that the chooser shot sees lying over the panel (the emitter is behind the screen), three card quads 8 and 33 mm in front, a header line, beam edges, a ring and 7 motes. Constant flicker (.86 ± .14 at 37 rad/s plus a glitch dip every 2.7 s), a 6 Hz red blink for 1.2 s after a hit, hard-edged 26-line scanlines and a dot grid.
+- **Root cause, with evidence** (new bloom-accurate harness: the shader file translated to GLSL, a half-float target, NativeBloom's own SHARED code and passes, the real pose and chooser camera, Ward Zero and hub plates from the scene harnesses):
+  - Reproduced: the odd shape. The beam sheets put a sheared, lighter wedge across the panel that does not follow the cards. The constant flicker, the 6 Hz blink and the aliasing step scanlines account for the "buggy" shimmer.
+  - Not reproduced: the white blowout and the red/magenta halo. At nominal values the old screen peaks at 2.48 linear (78 px over 2 at 2126 x 1026): a cyan panel with a bloomed edge. The recording needs at least about 30-40 times that light. A uniform x40 whitens the whole panel with a halo in the tone's hue, not a wedge. The recording's hologram light also has no green (halo blue/red about .15, green 0; panel fill 127,9,133), which neither tone gives from the code's inputs. The cyan HUD and the pilot's cyan trims in the same frames are correct. The runtime difference that produced it is not identified offline.
+  - Red stays on: the code reddens the screen only for damaging hits in the last 1.2 s. The HUD's under-attack alarm reads the same events and window and is absent in every recorded frame. So the recording's red is not the coded hit state (not a stuck flag in the code), and its hue is not the danger red.
+- **Changes** (presentation only):
+  - `Resources/NativeChipScreen.shader` (new, with meta).
+    - One quad per screen: dark glass, a grid and scanlines that fade out before they alias, a soft rim, a fresnel sheen, a thin bright chamfered frame line with brackets, header and footer rules, and the card slots drawn inside it.
+    - Premultiplied alpha (`Blend One OneMinusSrcAlpha`), ZWrite Off, one pass, Transparent+2. Repeated draws converge instead of adding up.
+    - No vertex colour: tints are packed in UV channels.
+    - Light budgeted under the bloom: the body sums to .72 (.93 over a lit wall at .5). Only the about 2 px frame line, the brackets, the ring and a lit card's rim exceed 1, as a soft glow.
+  - `Core/NativeChipScreen.cs`.
+    - Build writes the new stream (`INativeChipScreenSink`, five UV channels) back to front: rays, ring and motes behind, then the screen, then a flying card.
+    - Rays: four thin ribbons to the corners (two while it is a sliver), starting at the ring's edge.
+    - A short boot flicker and a scan-in while it opens; steady once open.
+    - `NativeChipScreenLight` holds the budget.
+    - `Alert(age)` is the red edge: full at a hit, gone .45 s later, no blink. `ChipScreenLook.Attacked` became `Alert`.
+  - `Runtime/NativeChipScreenPresentation.cs` and `NativeChipSelectPresentation.cs`.
+    - The screens get their own sink, mesh and material, drawn once after every look.
+    - `Alert` is `NativeChipScreen.Alert(ChipHitAge(id, time))`: the live events, as the flinch reads them.
+    - The 2D tray shows if the shader is missing.
+    - The plant chip and pulse stay on the old wrist hologram, which is unchanged (Boss Test and first person too).
+  - `Editor/NativeBuildChecks.cs` compiles the new shader on the builder.
+- **Impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking (no wire fields). Unchanged: input and the no-Alt cursor through the same maps, the .62 / 1.14 / 1.95 s timing, the camera swing and framing, others seeing three blank backs, the Boss Test path, zero allocation per frame.
+- **Checks.** `ChipScreenChecks` now has 12 groups. Updated: cards inside the one quad on the Core's slots, others blank, the bound and steady once open. New:
+  - light: the shader's `CS_*` numbers read from the file equal the Core's; the body sum is under the threshold; only the lines glow; premultiplied, one pass;
+  - layers: 288 screens, one screen quad, back-to-front order, no coplanar overlapping quads (separating axes);
+  - alert: only for a real hit, edge only, bound to the live events.
+  - `--chooser-camera`, `--expedition-pick` and `--chip-select` pass.
+  - Five-check run before the final glass values (`CS_BODY` .03 to .05, `CS_GRID` .02 to .025, `CS_RIM` .12 to .16): all exit 0. Unity runtime and editor build; relay suite 757 PASS lines, including the 12 chip-screen groups; Python 107 tests (1 skipped); source package 2172 files; diff check.
+  - Final five-check run on the final tree (this entry's text before this line): all exit 0. Unity runtime and editor build; relay 757 PASS lines, including 12 chip-screen groups (body 0.719, 0.929 over a bright wall); Python 107 (1 skipped); package 2172 files; diff check.
+- **Renders** (offline, not Unity) in scratch `renders-holo-v2/`: before and after for Ward Zero (the Expedition instance's north hall) and the hub (sanctuary, toward the east gate). Open, hover, pick, under attack, others' view, unfold, the left-wrist pistol. Plus the reproduction attempt next to the owner's frame.
+- **Not run.** Unity Editor or play, Windows build, the HLSL compile of the new shader (the builder's `NativeBuildChecks` runs it), two-client play.
+- **Risks.**
+  - The recording's extreme light and green-free hue are unexplained. If a runtime path multiplied the old mesh, the new glass body stays bounded (alpha blending converges), but its lines could still glow more than offline.
+  - The HUD's under-attack alarm (full-screen border, wash, banner) is unchanged.
+  - The faces sit within 1% of the width of their slots, as before.
+
 ## 2026-10-15 — Claude: owner requests handed to Astra (join circle, co-op Expedition hosting)
 
 - Branch `claude/expedition-join-circle-contract`, base shared `8355b44`. Docs only.

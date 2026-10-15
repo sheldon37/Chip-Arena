@@ -17,35 +17,81 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>0 folded into the wrist .. 1 open (the look's unfold, folded again by a plant: NativeChipPlant.Fold).</summary>
         public float Unfold;
-        /// <summary>The presentation clock (flicker, scan, motes).</summary>
+        /// <summary>The presentation clock (the motes' travel).</summary>
         public float Time;
         /// <summary>The cards (1-3), the lit one (hover or keyboard focus; -1 none), the card height (m; the faces' height, else the
         /// standard), the seed.</summary>
         public int Count,Lit,Seed;public float CardHeight;
         /// <summary>Mine: my offers' rarity colours, under the card faces the HUD draws over them. Anyone else's: blank cyan backs (their
-        /// offers are private), the standard three.</summary>
-        public bool Mine,Attacked,Reduced,Low;public int C0,C1,C2;
+        /// offers are private), the standard three. Alert: a damaging hit on this pilot just now (NativeChipScreen.Alert of its age), 0..1,
+        /// shown on the screen's edge only.</summary>
+        public bool Mine,Reduced,Low;public float Alert;public int C0,C1,C2;
         /// <summary>A pick (the wrist plant): its age, the card chosen, the others' fade (NativeChipPlant.Fade), and where and how big
         /// the plant's chip is (the hand takes the card there at NativeDraftPlant.Contact). Mine flies on the HUD (FlyCard false).</summary>
         public bool Plant,FlyCard;public int Chosen;public float PlantAge,Fade,CatchSize;public Vector3 Catch;
-        /// <summary>Mine with the HUD's faces over it: the cards a dim backing glow (an affine face cannot follow the row's perspective
-        /// exactly, so the residual reads as glow).</summary>
+        /// <summary>Mine with the HUD's faces over it: the card slots a dim frame just outside each face (an affine face cannot follow
+        /// the row's perspective exactly, so the residual reads as the slot's glow).</summary>
         public bool Faced;
+    }
+
+    /// <summary>The wrist screen's vertex stream (Runtime/NativeChipScreenPresentation.cs fills a mesh with five UV channels;
+    /// Resources/NativeChipScreen.shader reads them; NativeChipScreen.Build documents each channel).</summary>
+    public interface INativeChipScreenSink
+    {
+        int Vertex(Vector3 at,Vector4 a,Vector4 b,Vector4 c,Vector4 d,Vector4 e);
+        void Triangle(int a,int b,int c);
+    }
+
+    /// <summary>
+    /// The screen's light budget (owner 2026-10-15: "Holographic display kind of buggy, and display is odd. Can we make it like a better
+    /// holographic display with no artifacting?"), in linear HDR as the match camera renders it (Linear colour space, an ARGBHalf target,
+    /// then NativeBloom: threshold 1 on the brightest channel). Every value is the light a part adds at its brightest, as a share of its
+    /// tint's brightest channel (tints are sRGB colours, at most 1 in linear). Resources/NativeChipScreen.shader's SHARED block defines the
+    /// same numbers (CS_*); Tests/ChipScreenChecks reads them from the shader and sums them.
+    ///  * The screen is one alpha-blended quad (premultiplied: Blend One OneMinusSrcAlpha, ZWrite Off): dark glass that hides BodyAlpha of
+    ///    what is behind it and adds a little light of its own. Drawing it again converges on its own colour instead of adding up.
+    ///  * Its body (glass, grid, scanlines, the soft inner rim, the fresnel sheen, the card slots and a blank back's emblem, the rays and
+    ///    motes seen through it) sums to BodyBudget, under the bloom's threshold even over a background at the threshold.
+    ///  * Only the thin frame line, its corner brackets, the emitter ring and a lit card's rim go over it: a soft glow of a few pixels.
+    /// </summary>
+    public static class NativeChipScreenLight
+    {
+        /// <summary>NativeBloomRules.Threshold: linear light at or under it never blooms.</summary>
+        public const float Threshold=NativeBloomRules.Threshold;
+        /// <summary>The glass (its alpha and light), the grid, the scanlines, the soft inner rim (and how far in it fades, m), the fresnel
+        /// sheen at a glancing view.</summary>
+        public const float BodyAlpha=.58f,BodyLight=.05f,GridLight=.025f,ScanLight=.02f,RimLight=.16f,RimWidth=.022f,FresnelLight=.06f;
+        /// <summary>A card slot (it darkens the glass further), a blank back's emblem, and under the HUD's faces the slot's glow.</summary>
+        public const float SlotAlpha=.35f,SlotLight=.02f,GlyphLight=.14f,FacedGlow=.05f;
+        /// <summary>The lines: the header and footer rules, the frame line (its width, m) and its corner brackets, a card's rim (lit), the
+        /// frame just outside a face (lit), the scan line that reveals the cards as it opens.</summary>
+        public const float RuleLight=.35f,LineLight=1.45f,LineWidth=.0022f,BracketLight=1.2f,CardRimLight=.55f,CardLitLight=1.05f,FacedRimLight=.32f,FacedLitLight=.6f,ScanInLight=1f;
+        /// <summary>Behind the screen: the rays from the wrist (their light at the wrist end, and their alpha), the emitter ring, the motes.</summary>
+        public const float RayLight=.28f,RayAlpha=.12f,RingLight=1.2f,MoteLight=.3f;
+        /// <summary>Everything that can light one pixel of the screen's body, each at its brightest (a blank back's emblem or a face's glow,
+        /// never both), with what the glass lets through of the rays and motes behind it.</summary>
+        public const float BodyBudget=BodyLight+GridLight+ScanLight+RimLight+FresnelLight+SlotLight+(GlyphLight>FacedGlow?GlyphLight:FacedGlow)+(RayLight+MoteLight)*(1-BodyAlpha);
+        /// <summary>A bright lit wall behind the screen (linear; the hub's brightest walls are under it), seen through the glass.</summary>
+        public const float BrightScene=.5f;
     }
 
     /// <summary>
     /// The Expedition chip screen (owner 2026-10-15: "we should also make it a holographic screen projected from the wrist. That way its
-    /// easier to notice were selecting a chip"): the chooser's display wrist projects a hardlight screen that floats in front of the pilot,
-    /// on the display wrist's side at about chest height, turned toward the other front quarter (where the chooser camera stands:
-    /// NativeChooserCamera). It is the wrist hologram's look grown into a screen: a beam fans from the wrist emitter into it, a chamfered
-    /// frame with a header line, scanlines and flicker (Resources/NativeChipSelect.shader, the same kinds), the cards in a row.
-    ///  - Opening, it unfolds out of the wrist (its centre travels out of the emitter, its width first, then its height) and deals the
-    ///    cards; closing, it folds back into the wrist the same way.
-    ///  - Mine carries my offers' rarities under the real card faces the HUD draws over it (Runtime/NativeExpeditionChipScreen.cs maps
-    ///    its canvas onto the projected screen: Map); anyone else's shows the standard three as blank cyan backs, never an offer.
-    ///  - A pick: the chosen card leaves its place and flies into the hand at the plant's contact (.62 s), shrinking to the chip; the
+    /// easier to notice were selecting a chip"; rebuilt the same day for "Holographic display kind of buggy, and display is odd. Can we make
+    /// it like a better holographic display with no artifacting?"): the chooser's display wrist projects a hardlight screen that floats in
+    /// front of the pilot, on the display wrist's side at about chest height, turned toward the other front quarter (where the chooser camera
+    /// stands: NativeChooserCamera).
+    ///  * One quad (Resources/NativeChipScreen.shader): dark glass with a faint grid and scanlines, a soft inner rim and fresnel sheen, a
+    ///    thin bright chamfered frame line with corner brackets, header and footer rules, and the card slots inside it (no stacked or
+    ///    coplanar layers). Thin rays from the wrist emitter to its corners, an emitter ring and a few motes, all behind it.
+    ///  * Opening, it unfolds out of the wrist (its centre travels out of the emitter, its width first, then its height) with a short
+    ///    flicker, and a scan line reveals the cards; closing, it folds back the same way. No flicker once open.
+    ///  * Mine carries my offers' rarities in the slots under the real card faces the HUD draws over it (Runtime/NativeExpeditionChipScreen.cs
+    ///    maps its canvas onto the projected screen: Map); anyone else's shows the standard three as blank cyan backs, never an offer.
+    ///  * A damaging hit turns its frame line and rim red for a moment (Alert), never its body.
+    ///  * A pick: the chosen card leaves its place and flies into the hand at the plant's contact (.62 s), shrinking to the chip; the
     ///    others fade (NativeChipPlant.Fade) and the screen folds into the wrist (NativeChipPlant.Fold), opening again for a queued pick.
-    /// Presentation only, engine-free and allocation-free.
+    /// Light: NativeChipScreenLight. Presentation only, engine-free and allocation-free.
     /// </summary>
     public static class NativeChipScreen
     {
@@ -145,90 +191,106 @@ namespace ChipArena.UnityConversion
             width=CardWidth*(open.Width/Width)+(Math.Max(.005f,catchSize)-CardWidth*(open.Width/Width))*t;return true;
         }
 
-        private static Vector4 Col(int hex,float a)=>new Vector4(((hex>>16)&255)/255f,((hex>>8)&255)/255f,(hex&255)/255f,a);
-        private static void Quad(INativeChipHoloSink s,Vector3 c,Vector3 r,Vector3 u,Vector4 col,float kind,float param,float gain,float seed)
+        /// <summary>The vertex stream's kinds (TEXCOORD0.z).</summary>
+        public const float KindScreen=0,KindRay=1,KindRing=2,KindMote=3,KindCard=4;
+        /// <summary>The panel's card modes (TEXCOORD2.x = count + 4 x mode).</summary>
+        public const int ModeBacks=0,ModeFaced=1,ModeMine=2;
+        /// <summary>Behind the screen: the motes (none with Reduced effects) and how far along a ray they travel (they never reach the
+        /// screen's plane); the rays' width at the wrist and at the corner, and the screen's height from which a ray goes to each corner (m, by
+        /// rig scale).</summary>
+        public const int Motes=6;public const float MoteReach=.78f,RayNear=.0018f,RayFar=.0034f,RaysApart=.12f;
+        /// <summary>The red edge after a damaging hit: full at the hit, gone AlertSpan s later (within the hit search's window,
+        /// NativeChipSelect.FlinchRise + FlinchFall).</summary>
+        public const float AlertSpan=.45f;
+        /// <summary>The alert for a hit `age` s ago (+inf, NaN or negative: none).</summary>
+        public static float Alert(float age)=>!(age>=0)||age>=AlertSpan?0:1-MathUtil.Smooth(age/AlertSpan);
+        /// <summary>A colour for the vertex stream: its sRGB hex, exact in a float.</summary>
+        public static float Pack(int hex)=>hex&0xffffff;
+        /// <summary>The opening's flicker: a few quick dips while it unfolds (none with Reduced effects), steady once open.</summary>
+        public static float Boot(float unfold,int seed,bool reduced)=>reduced||unfold>=.999f?1:.72f+.28f*(float)Math.Abs(Math.Sin(unfold*19+(seed&1023)*.007));
+        /// <summary>The scan that reveals the cards as the height opens (1 once open; no scan with Reduced effects).</summary>
+        public static float Scan(float unfold,bool reduced)=>reduced?1:MathUtil.Smooth((MathUtil.Clamp(unfold,0,1)-.6f)/.4f);
+
+        private static void Quad(INativeChipScreenSink s,Vector3 bl,Vector3 br,Vector3 tr,Vector3 tl,float kind,float opacity,Vector4 b,Vector4 c,Vector4 d,Vector4 e)
         {
-            int a=s.Vertex(c-r-u,col,new Vector4(0,0,kind,param),new Vector4(gain,seed,0,0)),b=s.Vertex(c+r-u,col,new Vector4(1,0,kind,param),new Vector4(gain,seed,0,0));
-            int d=s.Vertex(c+r+u,col,new Vector4(1,1,kind,param),new Vector4(gain,seed,0,0)),e=s.Vertex(c-r+u,col,new Vector4(0,1,kind,param),new Vector4(gain,seed,0,0));
-            s.Triangle(a,b,d);s.Triangle(a,d,e);
+            int i0=s.Vertex(bl,new Vector4(0,0,kind,opacity),b,c,d,e),i1=s.Vertex(br,new Vector4(1,0,kind,opacity),b,c,d,e);
+            int i2=s.Vertex(tr,new Vector4(1,1,kind,opacity),b,c,d,e),i3=s.Vertex(tl,new Vector4(0,1,kind,opacity),b,c,d,e);
+            s.Triangle(i0,i1,i2);s.Triangle(i0,i2,i3);
         }
-        private static void Sheet(INativeChipHoloSink s,Vector3 a0,Vector3 a1,Vector3 b1,Vector3 b0,Vector4 col,float kind,float param,float gain,float seed)
-        {
-            int a=s.Vertex(a0,col,new Vector4(0,0,kind,param),new Vector4(gain,seed,0,0)),b=s.Vertex(a1,col,new Vector4(1,0,kind,param),new Vector4(gain,seed,0,0));
-            int d=s.Vertex(b1,col,new Vector4(1,1,kind,param),new Vector4(gain,seed,0,0)),e=s.Vertex(b0,col,new Vector4(0,1,kind,param),new Vector4(gain,seed,0,0));
-            s.Triangle(a,b,d);s.Triangle(a,d,e);
-        }
-        public const int Motes=7;
-        /// <summary>The quads a look builds (the tests' bound; Build returns the count it wrote).</summary>
+        /// <summary>The quads a look builds at most (the tests' bound; Build returns the count it wrote).</summary>
         public static int Quads(in ChipScreenLook look)
         {
             float unfold=MathUtil.Clamp(look.Unfold,0,1);int n=0;
-            if(unfold>.002f)
-            {
-                int count=Math.Max(1,Math.Min(3,look.Count));n+=2+count;// frame, header line, cards (each at most)
-                if(!look.Low)n+=2+2+1+(look.Reduced?0:Motes);// beam sheets, beam edges, emitter ring, motes
-            }
+            if(unfold>.002f){n++;if(!look.Low)n+=4+1+(look.Reduced?0:Motes);}// the screen; the rays, the ring, the motes
             if(look.Plant&&look.FlyCard&&look.PlantAge>=0&&look.PlantAge<NativeDraftPlant.Contact)n++;
             return n;
         }
 
-        /// <summary>Builds one wrist screen into `s` (world space): the beam from `emitter`, the frame, the header line, the cards and a
-        /// pick's flying card. Returns the quads written (0 when folded away).</summary>
-        public static int Build(INativeChipHoloSink s,in ChipScreenPlace open,Vector3 emitter,in ChipScreenLook look)
+        /// <summary>
+        /// Builds one wrist screen into `s` (world space), back to front: the rays from `emitter` to its corners, the emitter ring and the
+        /// motes (behind it), the screen, and a pick's flying card (in front of it). Returns the quads written (0 when folded away). The
+        /// stream (Resources/NativeChipScreen.shader):
+        ///  TEXCOORD0 xy the quad's uv (0..1, y up; a ray's y from the wrist), z the kind, w its opacity;
+        ///  TEXCOORD1 the screen: its width and height (m) as drawn, the alert, the cards' scan; a ray: its width (m) at the corner end;
+        ///  TEXCOORD2 the screen: count + 4 x mode, the card height (a share of the screen's), the lit card (-1 none), the seed;
+        ///            the rest: x the tint (Pack);
+        ///  TEXCOORD3 the screen: each card's visibility (dealt x faded; 0 for the chosen card of a pick), w unused;
+        ///  TEXCOORD4 the screen: the cards' tints and the screen's tone (Pack).
+        /// </summary>
+        public static int Build(INativeChipScreenSink s,in ChipScreenPlace open,Vector3 emitter,in ChipScreenLook look)
         {
             float unfold=MathUtil.Clamp(MathUtil.Finite(look.Unfold)?look.Unfold:0,0,1);int quads=0,count=Math.Max(1,Math.Min(3,look.Count));
-            bool red=NativeChipSelectHolo.Red(look.Attacked,look.Time,look.Reduced);float seed=(look.Seed&1023)/1024f;
-            int tone=red?NativeChipSelectHolo.Danger:NativeChipSelectHolo.Cyan,soft=red?0xff9aa8:NativeChipSelectHolo.CyanSoft;
-            // Flicker on open (a few hard blinks as it boots), then the hologram's steady flicker and glitch.
-            float boot=look.Reduced?1:unfold>=.999f?1:.55f+.45f*(float)Math.Abs(Math.Sin(unfold*23+seed*7));
-            float alpha=MathUtil.Clamp(unfold*1.6f,0,1)*NativeChipSelectHolo.Flicker(look.Time,look.Seed,look.Reduced)*boot;
+            float seed=(look.Seed&1023)/1024f,alert=MathUtil.Clamp(MathUtil.Finite(look.Alert)?look.Alert:0,0,1);
+            float tone=Pack(NativeChipSelectHolo.Cyan),soft=Pack(NativeChipSelectHolo.CyanSoft);
             if(unfold>.002f)
             {
                 var p=Shown(open,emitter,unfold);var r=p.Right*(p.Width*.5f);var u=p.Up*(p.Height*.5f);
-                NativeChipScreenFrame(s,p,r,u,tone,soft,alpha,unfold,seed,ref quads);
+                float opacity=MathUtil.Clamp(unfold*1.6f,0,1)*Boot(unfold,look.Seed,look.Reduced),scale=open.Width/Width;
+                var bl=p.Centre-r-u;var br=p.Centre+r-u;var tr=p.Centre+r+u;var tl=p.Centre-r+u;
                 if(!look.Low)
                 {
-                    // The beam: a sheet from the emitter fanning to the screen's bottom edge, a fainter one to its upper part, its two edges.
-                    var bl=p.Centre-r-u;var br=p.Centre+r-u;var tl=p.Centre-r+u*.4f;var tr=p.Centre+r+u*.4f;var e0=emitter-p.Right*.014f;var e1=emitter+p.Right*.014f;
-                    Sheet(s,e0,e1,br,bl,Col(tone,.42f*alpha),NativeChipSelectHolo.KindBeam,0,1.15f,seed);quads++;
-                    Sheet(s,e0,e1,tr,tl,Col(tone,.18f*alpha),NativeChipSelectHolo.KindBeam,1,1,seed);quads++;
-                    var side=Vector3.Cross(p.Normal,p.Up)*.003f;
-                    Sheet(s,emitter-side,emitter+side,bl+side,bl-side,Col(soft,.6f*alpha),NativeChipSelectHolo.KindLine,1,1.6f,seed);quads++;
-                    Sheet(s,emitter-side,emitter+side,br+side,br-side,Col(soft,.6f*alpha),NativeChipSelectHolo.KindLine,1,1.6f,seed);quads++;
-                    Quad(s,emitter+p.Normal*.002f,p.Right*.026f,p.Up*.026f,Col(soft,.9f*alpha),NativeChipSelectHolo.KindRing,.3f,2.4f,seed);quads++;
+                    // The rays: thin ribbons from the wrist to the four corners, turned to face along the screen's normal (toward its viewer);
+                    // while the screen is still a sliver, two, to the middles of its ends (four would lie on one another).
+                    var none=Vector4.Zero;var tint=new Vector4(soft,0,0,0);
+                    if(p.Height>=RaysApart*scale)quads+=Ray(s,emitter,bl,p.Normal,opacity,tint,scale)+Ray(s,emitter,br,p.Normal,opacity,tint,scale)+Ray(s,emitter,tr,p.Normal,opacity,tint,scale)+Ray(s,emitter,tl,p.Normal,opacity,tint,scale);
+                    else quads+=Ray(s,emitter,p.Centre-r,p.Normal,opacity,tint,scale)+Ray(s,emitter,p.Centre+r,p.Normal,opacity,tint,scale);
+                    var rr=p.Right*(.026f*scale);var ru=p.Up*(.026f*scale);var e0=emitter-p.Normal*.002f;
+                    Quad(s,e0-rr-ru,e0+rr-ru,e0+rr+ru,e0-rr+ru,KindRing,opacity,none,tint,none,none);quads++;
                     if(!look.Reduced)for(int i=0;i<Motes;i++)
                     {
-                        float k=(look.Time/.8f+i/(float)Motes+seed)%1,x=(NativeChipSelect.Hash(look.Seed,i,13)*2-1)*.9f;var at=Vector3.Lerp(emitter,p.Centre-u+r*x,k);
-                        Quad(s,at,p.Right*.008f,p.Up*.008f,Col(soft,alpha*(float)Math.Sin(Math.PI*k)),NativeChipSelectHolo.KindMote,0,2,seed);quads++;
+                        // Each travels out along a ray (two to the bottom corners, one to each other corner and so on), short of the screen.
+                        float k=((look.Time/1.1f+i/(float)Motes+seed)%1+1)%1;var corner=(i%4)==0?bl:(i%4)==1?br:(i%4)==2?tr:tl;
+                        var at=Vector3.Lerp(emitter,corner,k*MoteReach);float a=(float)Math.Sin(Math.PI*k),m=.007f*scale;
+                        Quad(s,at-p.Right*m-p.Up*m,at+p.Right*m-p.Up*m,at+p.Right*m+p.Up*m,at-p.Right*m+p.Up*m,KindMote,opacity*a,none,tint,none,none);quads++;
                     }
                 }
-                // The cards, dealt as it opens: mine in my offers' rarities (the faces drawn over them), anyone else's blank cyan backs.
-                // The lit card stands out toward the viewer, brighter. A pick: the chosen card has left (below); the others fade.
-                float fade=look.Plant?MathUtil.Clamp(look.Fade,0,1):1,ch=(look.CardHeight>0?look.CardHeight:CardHeight)*(p.Height/Height)*.5f;
-                for(int i=0;i<count;i++)
-                {
-                    if(look.Plant&&(i==Chosen(look,count)||fade<=.01f))continue;
-                    float deal=NativeChipSelectHolo.Deal(unfold,float.PositiveInfinity,i);if(deal<=.01f)continue;bool lit=i==look.Lit;
-                    var c=Slot(i,count,p.Width);var at=p.At(c.X,c.Y)+p.Normal*(.008f+(lit?.025f:0));
-                    int rgb=red?NativeChipSelectHolo.Danger:look.Mine?(i==0?look.C0:i==1?look.C1:look.C2):NativeChipSelectHolo.Cyan;
-                    float grow=(lit?1.05f:1)*(.7f+.3f*deal);
-                    Quad(s,at,p.Right*(CardWidth*(p.Width/Width)*.5f*grow),p.Up*(ch*grow*deal),Col(rgb,alpha*(look.Faced?(lit?.5f:.38f):lit?1:look.Mine?.8f:.6f)*deal*fade),NativeChipSelectHolo.KindCard,lit?1:0,lit?1.6f:1.1f,seed+i*.13f);quads++;
-                }
+                // The screen: one quad; its cards are drawn inside it (the shader), dealt as it opens. A pick: the chosen card has left (below)
+                // and the others fade.
+                float fade=look.Plant?MathUtil.Clamp(look.Fade,0,1):1;int chosen=look.Plant?Chosen(look,count):-1;
+                float V(int i)=>i>=count?0:(i==chosen?0:fade)*NativeChipSelectHolo.Deal(unfold,float.PositiveInfinity,i);
+                int mode=!look.Mine?ModeBacks:look.Faced?ModeFaced:ModeMine;
+                int c0=look.Mine?look.C0:NativeChipSelectHolo.Cyan,c1=look.Mine?look.C1:NativeChipSelectHolo.Cyan,c2=look.Mine?look.C2:NativeChipSelectHolo.Cyan;
+                float card=(look.CardHeight>0?look.CardHeight:CardHeight)/Height;
+                Quad(s,bl,br,tr,tl,KindScreen,opacity,new Vector4(p.Width,p.Height,alert,Scan(unfold,look.Reduced)),new Vector4(count+4*mode,card,look.Mine?look.Lit:-1,seed),
+                    new Vector4(V(0),V(1),V(2),0),new Vector4(Pack(c0),Pack(c1),Pack(c2),tone));quads++;
             }
-            // A pick's chosen card on its way to the hand (anyone else's: mine flies on the HUD over the screen).
+            // A pick's chosen card on its way to the hand (anyone else's, or mine without the HUD's faces), in front of the screen.
             if(look.Plant&&look.FlyCard&&Fly(open,Chosen(look,count),count,look.PlantAge,look.Catch,look.CatchSize,out var flyAt,out float flyWidth))
             {
-                int rgb=look.Mine?(Chosen(look,count)==0?look.C0:Chosen(look,count)==1?look.C1:look.C2):NativeChipSelectHolo.Cyan;float half=flyWidth*.5f;
-                Quad(s,flyAt,open.Right*half,open.Up*(half*((look.CardHeight>0?look.CardHeight:CardHeight)/CardWidth)),Col(rgb,1),NativeChipSelectHolo.KindCard,1,1.8f,seed+.5f);quads++;
+                int rgb=look.Mine?(Chosen(look,count)==0?look.C0:Chosen(look,count)==1?look.C1:look.C2):NativeChipSelectHolo.Cyan;float hw=flyWidth*.5f,hh=hw*((look.CardHeight>0?look.CardHeight:CardHeight)/CardWidth);
+                var r=open.Right*hw;var u=open.Up*hh;var z=Vector4.Zero;
+                Quad(s,flyAt-r-u,flyAt+r-u,flyAt+r+u,flyAt-r+u,KindCard,1,new Vector4(flyWidth,hh*2,0,0),new Vector4(Pack(rgb),0,0,0),z,z);quads++;
             }
             return quads;
         }
-        private static int Chosen(in ChipScreenLook l,int count)=>l.Chosen>=0?l.Chosen%count:count/2;
-        // The frame (the shader's chamfered hardlight panel with its brackets and scanlines) and the header line along its top edge.
-        private static void NativeChipScreenFrame(INativeChipHoloSink s,in ChipScreenPlace p,Vector3 r,Vector3 u,int tone,int soft,float alpha,float unfold,float seed,ref int quads)
+        // A ray: a ribbon from the emitter ring's edge (y 0) to a corner (y 1), across the plane of the ray and the screen's normal (so the
+        // rays leave the ring apart and never overlap one another).
+        private static int Ray(INativeChipScreenSink s,Vector3 emitter,Vector3 to,Vector3 normal,float opacity,Vector4 tint,float scale)
         {
-            Quad(s,p.Centre,r,u,Col(tone,alpha*.85f),NativeChipSelectHolo.KindFrame,unfold,1.5f,seed);quads++;
-            Quad(s,p.Centre+p.Up*(p.Height*.5f+.012f),r*.92f,p.Up*.004f,Col(soft,alpha*(.6f+.4f*(1-unfold))),NativeChipSelectHolo.KindLine,0,2.2f,seed);quads++;
+            var d0=to-emitter;float len=d0.Length();if(!(len>=1e-4f))return 0;var from=emitter+d0*(Math.Min(.026f*scale,len*.5f)/len);var d=to-from;var side=Vector3.Cross(d,normal);if(side.LengthSquared()<1e-10f)side=Vector3.Cross(d,Vector3.UnitY);if(side.LengthSquared()<1e-10f)side=Vector3.UnitX;side=Vector3.Normalize(side);
+            var a=side*(RayNear*.5f*scale);var b=side*(RayFar*.5f*scale);var z=Vector4.Zero;
+            Quad(s,from-a,from+a,to+b,to-b,KindRay,opacity,new Vector4(RayFar*scale,0,0,0),tint,z,z);return 1;
         }
+        private static int Chosen(in ChipScreenLook l,int count)=>l.Chosen>=0?l.Chosen%count:count/2;
     }
 }
