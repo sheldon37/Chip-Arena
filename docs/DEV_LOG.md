@@ -8097,3 +8097,10 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - Startup catch previously hid its error on the Boss screen. Display it there and log the exception/stack; do not overwrite an initial area-load failure notice with the success controls notice.
 - Extract the exact startup layout loader into NativeArena and invoke it from native build acceptance too, covering anchors, interactions and every inherited spawn in addition to the earlier slot/boss subset. Preserve safety checks; failures now identify map, coordinates and capsule dimensions. This is diagnostic/gate parity, not a claim that the owner's underlying refusal is fixed.
 - Verification: player Unity-assembly compilation passed; remaining compile receipt and promotion are recorded in the PR. Native execution of this change and the specific player exception remain pending. Full DEV_LOG history preserved. Next: obtain the full-gate builder result or player's startup exception and repair the concrete cause.
+
+
+## 2026-10-15 — Astra: Expedition startup rejects authored Hulk drop
+
+- Follow-up `codex/unity-expedition-drop-fix` on shared/builder `8a2fdee` (PR #225). The expanded native gate reproduced the startup refusal: `Expedition route blocked: expedition-ward-zero (35.8, 6, 2) to (-35, 0, -26.2), radius 0.954` in the 03:35 UTC Windows log.
+- Startup navigation required continuous floor support and straight LOS on authored one-way drop links. Falling links intentionally leave the floor; live authority NavLinkActiveCore already handles them separately. Use that authored drop policy (NavLinkEnabled) after real support/capsule checks on both endpoints; ordinary links keep their support/LOS checks and NativeNavSearch keeps drops directional. No map geometry or visual changes.
+- The full startup gate added in PR #225 stays required; its next native receipt must confirm every spawn can reach the area. Semantic compile and native result are recorded in the follow-up PR. Do not claim the click-to-play route is verified until the user/native run confirms it.

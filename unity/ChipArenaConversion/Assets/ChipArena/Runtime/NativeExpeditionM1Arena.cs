@@ -45,6 +45,10 @@ namespace ChipArena.UnityConversion
             {
                 string key="link:"+radius+":"+height+":"+l.id;if(expeditionNavClear.TryGetValue(key,out var clear))return clear;
                 expeditionNavClear[key]=false;if(!Clear(nodes[l.a])||!Clear(nodes[l.b]))return false;
+                // Authored one-way drops intentionally leave the floor. Match the live authority's
+                // drop policy after validating both capsule endpoints; a straight floor/LOS probe
+                // through the ledge would reject the falling trajectory.
+                if(l.kind=="drop")return expeditionNavClear[key]=NavLinkEnabled(l);
                 var start=nodes[l.a].pos-offset;var end=nodes[l.b].pos-offset;int steps=Math.Max(1,(int)Math.Ceiling((end-start).Length/.4));
                 for(int i=1;i<steps;i++)if(!ExpeditionSupported(start+(end-start)*((float)i/steps),radius,height))return false;
                 return expeditionNavClear[key]=!SceneLinecast(Vec(start)+Vector3.up*(radius+.4f),Vec(end)+Vector3.up*(radius+.4f),WorldMask);
