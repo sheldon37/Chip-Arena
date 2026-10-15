@@ -1,5 +1,15 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Astra — Cyber Lord real melee capsule steps
+- Branch `codex/cyber-melee-step`, gameplay base shared `425cb2d8`; incorporated Claude's docs-only owner handoff `617fee59` before committing.
+- Shared value-state `NativeCyberStep` uses the authored .40/.25/.30/.20/.45 m distances and smoothstep windows from `CyberCombo.Swing`. Authority applies position before hit resolution; owner prediction uses the same profile and live target/scene limiter. Captured facing stays locked; input cannot steer the step.
+- Begin and each advance enforce one-metre centre clearance for hittable pilots/adds (lock first, then other constraints), a capsule sweep without lateral slide, and floor support sampled at most 2.5 cm apart with drops bounded by StepHeight. Airborne starts never acquire a step by landing. Loss of grounding, cuts, stun, block/roll and freeze stop remaining travel; death/disconnect clear the transient step.
+- Existing actor StepAt/StepUntil/StepDistance carry the capped actual path. A later obstruction/cut shortens the distance and step end, preventing owner replay from adding the stopped remainder. No new network fields/schema. Local predicted poses get those same fields; Claude's dormant animation requires no edits.
+- Reach decision: resolve from the position at impact, retaining ComboRange 2.4 m and existing arcs. Unobstructed jab gains about .23 m and palm .45 m effective reach. Hit timestamps, damage, cooldowns, combo reset and Overclock rates are unchanged. Documented in CYBER-LORD.md.
+- Validation: focused Cyber v2 rules 124 checks and new step suite 4,667 checks pass (five steps/rates at 60/144/240 Hz, target geometry, interruption, dynamic shortening, acknowledgement/replay, wire fields). Full managed/real-relay regression exits 0, 730 PASS groups. Pinned Unity 6000.3.24f1/C# 9 player, editor-context Runtime and Editor assembly compiles pass. Source package validates 2,146 files; git diff --check clean.
+- Added real Unity acceptance to the existing Cyber v2 builder gate: host/owner path, yaw, target clearance, capsule wall, newly introduced wall, ledge, air start, stun, impact-position jab/palm damage, JsonUtility and guest step fields. These native checks are compiled but NOT executed here; no Unity/PhysX, Windows build or live host/guest playtest is claimed.
+- At this implementation commit: tested on branch; PR/merge and builder sync pending. Existing desktop builder must run native acceptance and publish the test channel after sync. No live release, account deployment or presentation ownership changes.
+
 ## 2026-10-15 — Claude — Cyber Lord melee step handed to Astra (owner approved)
 - Owner, 2026-10-15: "Yes give the melee step to Astra." Branch `claude/cyberlord-melee-step-handoff`, base shared `425cb2d`. Docs only.
 - **Astra next:** implement the real per-step simulation step for the Cyber Lord melee string, as specified in `docs/CYBER-LORD.md`, "Melee step contract" (now owner-approved). In short:

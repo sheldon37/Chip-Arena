@@ -57,8 +57,8 @@ namespace ChipArena.UnityConversion
         {
             foreach(var p in Pilots)
             {
-                var s=p.Cyber;if(!CyberAllowed(p)||p.Hp<=0||!p.Seat.connected){p.Cyber=new NativeCyberKit();continue;}
-                if(s.Version==2){Cyber2World(p);continue;}
+                var s=p.Cyber;if(!CyberAllowed(p)||p.Hp<=0||!p.Seat.connected){p.Cyber=new NativeCyberKit();p.CyberStep=default;continue;}
+                if(s.Version==2){Cyber2World(p);if(s.CutAt>=s.At||Frozen(p))NativeCyberStep.Advance(ref p.CyberStep,s,Time,false,Vec(p.Body.position),null);continue;}
                 if(Incapacitated(p)||Time<p.BlockEnd||Time<p.RollEnd||KernelBusy(p)){NativeCyberRules.Interrupt(s,Time);p.CyberLinkTick=0;}
                 if(!s.Resolved&&Time>=s.Release)
                 {

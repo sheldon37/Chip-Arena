@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
                 swing.Followup=a.Followup;swing.SprintAttack=a.SprintAttack;swing.OpenerLunge=a.OpenerLunge;swing.Remaining=a.SwingRemaining;
             }
             bool melee=p!=null&&NativeMeleeRules.Standard(p.Seat.spec)&&frame.reloadEnd<=Time&&frame.blockEnd<=Time;
-            return new NativePredictionState{Bow=p?.Seat.spec=="bow",BowDrawAt=a?.BowDrawAt??-1,Cyber=p!=null&&CyberAllowed(p)?a.Cyber?.ViewCopy():null,CyberMana=frame.mana,CyberUltimateCost=p==null?1:(float)p.Stats["resourceCost"],CyberRate=p==null?1:(float)p.Stats["attackRate"],CyberCost=p==null?1:(float)(p.Stats["abilityCost"]*p.Stats["resourceCost"]),CyberCooldown=p==null?1:(float)p.Stats["abilityCooldown"],AirborneAt=a?.AirborneAt??-1,AirAttackUsed=a?.AirAttackUsed??false,JumpSpec=p?.Seat.spec,AirJumps=a?.AirJumps??0,AirJumpAt=a?.AirJumpAt??-100,Swimming=NativeHazards.InLava(MapId,Vec(frame.position)),Time=Time,RollUntil=frame.rollEnd,Ready=p?.Seat.spec=="cyberlord"?Math.Max(frame.ready,frame.blockEnd):frame.ready,Stamina=frame.stamina,Combo=a?.Combo??-1,ComboUntil=a?.ComboUntil??0,BufferUntil=a?.MeleeBufferUntil??-1,
+            return new NativePredictionState{Bow=p?.Seat.spec=="bow",BowDrawAt=a?.BowDrawAt??-1,Cyber=p!=null&&CyberAllowed(p)?a.Cyber?.ViewCopy():null,CyberStep=NativeCyberStep.Restore(a?.Cyber,a?.StepAt??0,a?.StepUntil??0,a?.StepDistance??0,Time),CyberMana=frame.mana,CyberUltimateCost=p==null?1:(float)p.Stats["resourceCost"],CyberRate=p==null?1:(float)p.Stats["attackRate"],CyberCost=p==null?1:(float)(p.Stats["abilityCost"]*p.Stats["resourceCost"]),CyberCooldown=p==null?1:(float)p.Stats["abilityCooldown"],AirborneAt=a?.AirborneAt??-1,AirAttackUsed=a?.AirAttackUsed??false,JumpSpec=p?.Seat.spec,AirJumps=a?.AirJumps??0,AirJumpAt=a?.AirJumpAt??-100,Swimming=NativeHazards.InLava(MapId,Vec(frame.position)),Time=Time,RollUntil=frame.rollEnd,Ready=p?.Seat.spec=="cyberlord"?Math.Max(frame.ready,frame.blockEnd):frame.ready,Stamina=frame.stamina,Combo=a?.Combo??-1,ComboUntil=a?.ComboUntil??0,BufferUntil=a?.MeleeBufferUntil??-1,
                 OverdriveAt=frame.overdriveAt,OverdriveUntil=frame.overdriveUntil,MeleeKit=a?.MeleeKit?.ViewCopy(),MeleeWeapon=melee?p.Weapon:null,MeleeStats=melee?p.Stats:null,Swing=swing,Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),
                 Speed=p==null?6.8f:(float)(6.8*p.Stats["speed"])*(p.Input.Aim&&NativeRangedRules.Scope(p.Seat.spec)?(float)Content.Ads(p.Seat.spec).move:1),
                 Gravity=p==null?23:(float)(23*p.Stats["playerGravity"]),JumpSpeed=p==null?8.5f:(float)(8.5*p.Stats["jumpPower"]),
@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
             // Corpse anchors and revives are authority placements, not locomotion corrections.
             // Even a sub-three-metre placement must discard the old offset and pre-death inputs.
             bool placed=reset||local.hp<=0||previousLocal!=null&&(previousLocal.hp<=0||previousLocal.revivedAt!=local.revivedAt);
-            if(placed)predictor.Reset(state,local.inputAck);else predictor.Reconcile(state,local.inputAck,ConstrainPrediction,PredictionGrounded,id=>MeleeLockPoint(Local,id));
+            if(placed)predictor.Reset(state,local.inputAck);else predictor.Reconcile(state,local.inputAck,ConstrainPrediction,PredictionGrounded,id=>MeleeLockPoint(Local,id),PredictCyberStepLimit);
             var error=before-Vec(predictor.State.Position);predictionCorrection=placed||error.magnitude>3?Vector3.zero:error;
             SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);
         }
@@ -64,7 +64,9 @@ namespace ChipArena.UnityConversion
         {
             if(!Replica||replicaFrame==null||Local==null)return;
             Local.Input=input;Local.Yaw=Local.Pose.CommitUntil>Time?Local.Pose.CommitYaw:Local.MeleeKit.RecoverUntil>Time&&!NativeWhirlwindRules.Active(Local.MeleeKit,predictor.State.Time)?Local.MeleeKit.Yaw*Mathf.Rad2Deg:input.Yaw;Local.Pitch=input.Pitch;
-            predictor.Push(input,ConstrainPrediction,PredictionGrounded,id=>MeleeLockPoint(Local,id));
+            predictor.Push(input,ConstrainPrediction,PredictionGrounded,id=>MeleeLockPoint(Local,id),PredictCyberStepLimit);
+            if(NativeCyberStep.Matches(predictor.State.Cyber,predictor.State.CyberStep)&&predictor.State.Time<predictor.State.Cyber.Until)
+                Local.Yaw=Mathf.Atan2(predictor.State.CyberStep.Facing.x,predictor.State.CyberStep.Facing.z)*Mathf.Rad2Deg;
             if(predictor.State.Swing!=null)Local.Yaw=predictor.State.Swing.Yaw*Mathf.Rad2Deg;SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);
         }
         public void PresentedJump(NativePilot p,out bool grounded,out float airJumpAt)
