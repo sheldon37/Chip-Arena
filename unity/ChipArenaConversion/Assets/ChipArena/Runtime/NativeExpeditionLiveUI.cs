@@ -13,7 +13,8 @@ namespace ChipArena.UnityConversion
     // once and whose acceptances stay pending until the replicated view shows them). No menu entry leads here and nothing binds a
     // session yet: Expedition stays unplayable until a scene and director exist. In the scene: the world pieces, the minimal HUD, a
     // compact transfer line and the dice reveal. J opens the Expedition screen (board, phase panel, chips, caches, loot); victory
-    // opens it once per loop for the choice. The DEV preview (--ca-expedition-preview) is separate and binds nothing.
+    // opens it once per loop for the choice. Chip picks happen on the Boss Test's chip screen (C, NativeExpeditionChipScreen.cs), not
+    // on J. The DEV preview (--ca-expedition-preview) is separate and binds nothing.
     public sealed partial class ConversionGame
     {
         private readonly ExpeditionIntentTracker expeditionIntents=new ExpeditionIntentTracker();
@@ -50,6 +51,7 @@ namespace ChipArena.UnityConversion
                     Blocked=cmd=>{var commands=LiveExpeditionCommands();return commands==null?"Expedition is not bound.":commands.Blocked(cmd);},
                     State=cmd=>expeditionIntents.State(cmd,expeditionLiveView,expeditionLiveNow),
                     Last=cmd=>expeditionLiveView?.viewer==null?ExpeditionIntent.None:expeditionIntents.Last(expeditionLiveView.viewer,cmd),
+                    Choose=()=>{expeditionScreenOpen=false;ExpeditionPickKey(true);},
                 };
             }
             expeditionLiveControls.View=expeditionLiveView;return expeditionLiveControls;
@@ -68,12 +70,16 @@ namespace ChipArena.UnityConversion
             var commands=LiveExpeditionCommands();if(commands==null||expeditionLiveView==null||command.intent==ExpeditionIntent.None)return;
             expeditionIntents.Submit(commands,command,expeditionLiveView,Time.unscaledTime);
         }
-        /// <summary>Update: J toggles the Expedition screen; Escape closes it. True only for that Escape (consumed: no pause menu).</summary>
+        /// <summary>Update: J toggles the Expedition screen; Escape closes it. C opens or closes the chip screen (from J it closes J and
+        /// opens it), and Escape there is Choose later, as on the Boss Test's. True only for those Escapes (consumed: no pause menu).</summary>
         private bool ExpeditionLiveKeys()
         {
+            ExpeditionPickStep();
             if(LiveExpedition==null){expeditionScreenOpen=false;return false;}if(GUIUtility.keyboardControl!=0)return false;
             if(Input.GetKeyDown(KeyCode.J))expeditionScreenOpen=!expeditionScreenOpen;
             if(expeditionScreenOpen&&Input.GetKeyDown(KeyCode.Escape)){expeditionScreenOpen=false;return true;}
+            if(Input.GetKeyDown(KeyCode.C)){bool fromJ=expeditionScreenOpen;expeditionScreenOpen=false;ExpeditionPickKey(fromJ);}
+            if(ExpeditionPickOpen&&Input.GetKeyDown(KeyCode.Escape)&&!StageInputHeld){expeditionPick.Later();return true;}
             return false;
         }
 
@@ -98,12 +104,14 @@ namespace ChipArena.UnityConversion
         {
             ExpeditionLiveSync();var v=expeditionLiveView;if(v==null||expeditionScreenOpen)return;
             ExpeditionWorldLabels();
-            E.Minimal(v,width);
+            // Chips waiting: the Boss Test's CHIPS tag with its C key (ExpeditionChipsTag) in place of the minimal HUD's.
+            E.Minimal(v,width,1,false);
             bool countdown=NativeExpeditionPresentation.Active(v).active;
             if(v.transfer.stage!=ExpeditionTransferStage.None)E.TransferBanner(new Rect(width/2-220,countdown?116:58,440,46),v);
             // The SAFE chip, the boss plates and intro, the final gate's notice (NativeExpeditionStatesPresentation.cs).
             ExpeditionStatesHud(v,width,height,58+(countdown?58:0)+(v.transfer.stage!=ExpeditionTransferStage.None?54:0));
-            int waiting=0;foreach(var r in v.mine.rewards)if(!r.consumed)waiting++;var hint=new Rect(width-24-150,waiting>0&&!v.mine.extracted?62:24,150,28);NativeHudChrome.Tag(hint,C.Cyan(),.9f);U.Text(new Rect(hint.x+12,hint.y,hint.width-12,hint.height),"J · EXPEDITION",11,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
+            var hint=new Rect(width-24-150,24,150,28);NativeHudChrome.Tag(hint,C.Cyan(),.9f);U.Text(new Rect(hint.x+12,hint.y,hint.width-12,hint.height),"J · EXPEDITION",11,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
+            ExpeditionChipsTag(v);
             // The reveal of a new stored dice record: not modal in the scene (the pointer stays with play); it closes by itself.
             if(expeditionLiveDice.Open)NativeExpeditionScreen.DiceOverlay(expeditionLiveDice,v,LiveExpeditionControls(),width,height,Time.unscaledTime,prefs.reducedEffects,false);
         }
