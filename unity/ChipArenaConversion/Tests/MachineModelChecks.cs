@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
             var pres=R("Assets/ChipArena/Runtime/NativeMachinePresentation.cs");
             Check(pres.Contains("new Vector3(0,1.12f,.27f)")&&pres.Contains("new Vector3(.49f,0,.22f)")&&pres.Contains("new Vector3(0,1.55f,.2f)")&&
                 NativeMachineModels.FlapPivot==new Vector3(0,1.12f,.27f)&&NativeMachineModels.DoorPivot==new Vector3(.49f,0,.22f)&&NativeMachineModels.PulsePivot==new Vector3(0,1.55f,.2f),"pivots match the presentation");
-            Check(pres.Contains("*.27f,1.02f,")&&NativeMachineModels.Slot==new Vector3(0,1.02f,.27f),"the chip leaves the slot the model draws");
+            var slotAt=NativeMachineRules.Slot(new PveMachine{x=0,y=0,z=0,yaw=0});Check(pres.Contains("var from=NativeMachineRules.Slot(machine);")&&NativeMachineModels.Slot==new Vector3(0,1.02f,.27f)&&slotAt.x==0&&slotAt.y==1.02f&&slotAt.z==.27f,"the chip leaves the slot the model draws");
             // The chip slot sits under the flap and in front of the display; the display stocks every rarity.
             var chip=NativeMachineModels.Build(NativeMachineModels.Chip);var lights=chip.Sections.Where(s=>s.Bone==NativeMachineModels.Lights).SelectMany(s=>s.Emission).ToList();
             foreach(int hex in NativeMachineModels.RarityColors){var c=NativePortraitRules.Linear(hex);Check(lights.Any(v=>Vector3.Distance(Norm(new Vector3(v.X,v.Y,v.Z)),Norm(c))<.02f),"a rarity lamp or stock die in #"+hex.ToString("x6"));}
