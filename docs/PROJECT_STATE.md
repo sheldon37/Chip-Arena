@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-15 Claude Ward Zero darker + machines (`claude/ward-darker-machines` on `3ced89c`, not merged): Ward Zero and its Expedition instance much darker (look, field, Spine, FX). Upper-floor PvE machines were drawn 6 m below their spots and the working ones were hidden under their dressed colliders; the town no longer shows Ward machines. Presentation only. Next: owner checks both in a native build. See DEV_LOG.
+
 2026-10-15 Astra: Cyber Lord v2 authority and stage readiness gate implemented on `codex/unity-cyber-v2-stage-gate` from `c9a87f6`; see latest DEV_LOG for wire field mapping, validation and publication status. Also fixes the existing Windows Expedition acceptance crash from indexing an empty authored slot array. Windows native execution and host/guest visual acceptance remain pending.
 
 2026-10-15 Claude batch (shared `claude/sleepy-ritchie-g8ruhv`): Start Expedition menu entry, greatsword drag sprint, menu transitions + stage loading screen, blade blood/muzzle/slash fixes, chip cartridge redesign, Ward Zero relight (ceiling light field, alarm beams), Cyber Lord ranged cyber mage + hardlight combo, Cyber Lord Kit v2 presentation (sandbox previews). Offline renders and managed checks only. Waiting on Astra: Cyber Lord Kit v2 rules and wire record (`docs/CYBER-LORD.md` "Kit v2"), no move lock for ranged casts, and the stage-load gate (DEV_LOG "menu screen transitions and stage loading screen"). Unverified in Unity: the Ward Zero field shader read and the chip hologram shader.
