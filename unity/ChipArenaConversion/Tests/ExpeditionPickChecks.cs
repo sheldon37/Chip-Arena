@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
             g.Flow.Toggle(g.View());Check(!g.Flow.Open&&g.Pump().Send.intent==ExpeditionIntent.CloseChoice,"C again closes it (CloseChoice)");
             // Consumed elsewhere: the tray never shows it, and the host's clear needs no close.
             g.Flow.Toggle(g.View());g.Pump();Check(g.Run.Select("p0",chest,"ricochet",c=>true),"picked directly");var after=g.Pump();
-            Check(!g.Flow.Open&&g.Flow.Choosing(g.View())==null&&!g.Choosing&&after.Send.intent==ExpeditionIntent.None,"a consumed reward never shows; the host's own clear needs no CloseChoice");
+            Check(!g.Flow.Open&&g.Flow.Choosing(g.View())==null&&g.Choosing&&after.Send.intent==ExpeditionIntent.CloseChoice,"a consumed reward hides; automatic close retains the final plant hold");
             Check(!g.Flow.Show(g.View()),"nothing waiting: C does nothing");
             // Another pilot's claim never opens mine (their rewards and offers are not in my view).
             var o=new Rig();string theirs=o.Chest("p1","cache-c");o.Pump();o.Claim("p1",theirs);o.Pump();
@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
             var chained=g.Pump();v=g.View();Check(g.Flow.Installed==a&&g.Flow.Sent==null&&g.Tracker.State(cmd,v,g.Now).state==ExpeditionCommandState.Confirmed,"confirmed once the view shows the reward consumed");
             Check(g.Flow.Open&&g.Flow.Choosing(v)?.id==b&&g.Choosing&&chained.Send.intent==ExpeditionIntent.None,"the next waiting reward follows (the host keeps choosing across queued picks: no new OpenChoice)");
             var second=g.Flow.Choose(v,"vital");Check(second.target==b&&second.chip=="vital","the second pick names its own reward");g.Send(second);var last=g.Pump();
-            Check(g.Flow.Installed==b&&!g.Flow.Open&&!g.Choosing&&last.Send.intent==ExpeditionIntent.None,"nothing left: it closes; the host cleared choosing with the final pick");
+            Check(g.Flow.Installed==b&&!g.Flow.Open&&g.Choosing&&last.Send.intent==ExpeditionIntent.CloseChoice,"nothing left: tray closes while host retains final plant hold");
             // Choose later during the follow-through: the pick still settles, CloseChoice is sent, nothing chains.
             var h=new Rig();string c1=h.Chest("p0","cache-c"),c2=h.Chest("p0","cache-d");h.Claim("p0",c1);h.Claim("p0",c2);h.Flow.Show(h.View());h.Pump();
             var p=h.Flow.Choose(h.View(),"piercing");h.Flow.Later();h.Send(p);var closed=h.Pump();
@@ -177,7 +177,7 @@ namespace ChipArena.UnityConversion
             var q=new Rig();string u=q.Chest("p0","cache-c"),k=q.Chest("p0","cache-d");q.Claim("p0",k);q.Flow.Show(q.View());q.Pump();
             Check(q.Flow.Choosing(q.View())?.id==k,"the ready reward shows first");q.Send(q.Flow.Choose(q.View(),"vital"));var next=q.Pump();
             Check(next.Send.intent==ExpeditionIntent.Claim&&next.Send.target==u,"after the pick the next unopened reward is opened");
-            var reopen=q.Pump();Check(reopen.Send.intent==ExpeditionIntent.OpenChoice&&reopen.Send.target==u&&q.Choosing,"and choosing reopens on it (the host cleared it with the last claimed pick)");
+            var reopen=q.Pump();Check(reopen.Send.intent==ExpeditionIntent.None&&q.Choosing,"choosing remains held across the unopened queued reward");
         }
 
         // 6. "N more waiting" and the CHIPS tag count the viewer's own unpicked rewards.
@@ -228,7 +228,7 @@ namespace ChipArena.UnityConversion
             Check(Regex.Matches(exp,@"ExpeditionLiveSubmit\(").Count==2&&!exp.Contains("ChoosePveChip")&&!exp.Contains("PveOpen(")&&!exp.Contains("OpenPvePick")&&!exp.Contains("ChoosePve("),"intents only through ExpeditionLiveSubmit (the flow's and the Select), never the PvE messages");
             Check(core.Contains("new ExpeditionCommand(ExpeditionIntent.OpenChoice,Reward)")&&core.Contains("new ExpeditionCommand(ExpeditionIntent.CloseChoice)"),"the flow sends OpenChoice and CloseChoice");
             // Input: no movement lock; digits (and the mouse while Alt is held) are routed to the tray, client-side only.
-            Check(game.Contains("&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true&&!DevHoldsPilot;")&&game.Contains("bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;")&&!Regex.IsMatch(game,@"play=[^;]*Expedition(Pick|Choos)"),"no choosing-based play gate: the pilot keeps moving");
+            Check(game.Contains("&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true&&!DevHoldsPilot;")&&game.Contains("bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;")&&!Regex.IsMatch(game,@"play=[^;]*Expedition(Pick|Choos)"),"client preserves camera input; authority enforces the chooser hold");
             int route=exp.IndexOf("private void ExpeditionPickRoute()",StringComparison.Ordinal),routeEnd=exp.IndexOf("private void ExpeditionPickKey(",StringComparison.Ordinal);Check(route>0&&routeEnd>route,"routing found");string body=exp.Substring(route,routeEnd-route);
             Check(body.Contains("pending.Hadoken=pending.HadokenHeld=pending.Uppercut=false;pending.SirenAbility=0;")&&body.Contains("if(ExpeditionPickPointer){pending.Shoot=pending.Attack=pending.Block=false;}"),"the digits' abilities and, with Alt, the mouse buttons go to the tray");
             foreach(var kept in new[]{"pending.X","pending.Z","pending.Jump","pending.Sprint","pending.Roll","pending.AbilityQ","pending.AbilityE","pending.Interact","pending.Reload","new InputFrame"})Check(!body.Contains(kept),"routing leaves "+kept+" alone");

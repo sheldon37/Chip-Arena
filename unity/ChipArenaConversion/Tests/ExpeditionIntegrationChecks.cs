@@ -75,7 +75,16 @@ internal static class ExpeditionIntegrationChecks
         string chip=claimed.offers[0];Check(session.Execute("guest",new ExpeditionCommand(ExpeditionIntent.Select,reward,chip)).state==ExpeditionCommandState.Pending,"select catalog chip");
         Check(run.Snapshot().rewards.First(r=>r.id==reward).selected==chip,"chosen id persists");
         Check(installs==1&&installedAccount=="guest"&&installedChip==chip&&installedCount==1,"successful selection emits one install with account chip and stack");
-        Check(!run.IsChoosing("guest"),"last choice automatically closes");
+        Check(run.IsChoosing("guest"),"last choice holds through install plant");
+        run.SetChoosing("guest",false);Check(run.IsChoosing("guest"),"automatic close cannot release plant");
+        var plantDeath=new NativeExpedition(run.Snapshot());plantDeath.Defeat("guest");Check(!plantDeath.IsChoosing("guest")&&plantDeath.Snapshot().members.Single(m=>m.account=="guest").choosingUntil==0,"death clears plant deadline");
+        var plantDisconnect=new NativeExpedition(run.Snapshot());plantDisconnect.Disconnect("guest");Check(!plantDisconnect.IsChoosing("guest"),"disconnect clears plant");
+        var plantLoad=new NativeExpedition(run.Snapshot());plantLoad.SetLoading(true);plantLoad.SetLoading(false);Check(!plantLoad.IsChoosing("guest"),"load clears plant");
+        var plantExtract=new NativeExpedition(run.Snapshot());plantExtract.SetSafe("guest",true);plantExtract.Extract("guest");Check(!plantExtract.IsChoosing("guest"),"extraction clears plant");
+        var plantSave=new NativeExpedition(run.Snapshot());plantSave.SetSafe("host",true);plantSave.SetSafe("guest",true);Check(!ExpeditionSavepoint.Capture(plantSave).Restore("guest").IsChoosing("guest"),"save resume clears plant");
+        double plantAt=run.Elapsed;for(int i=0;i<7;i++)run.Tick(.25);
+        Check(run.IsChoosing("guest")&&run.Elapsed>plantAt,"plant holds while difficulty advances");
+        run.Tick(.25);Check(!run.IsChoosing("guest"),"plant completion releases chooser");
         Check(session.Execute("guest",new ExpeditionCommand(ExpeditionIntent.Select,reward,chip)).state==ExpeditionCommandState.Refused&&installs==1,"duplicate selection does not emit another install");
         Check(!run.SetChoosing("guest",true,reward),"consumed reward cannot reopen");
         Check(NativeExpeditionView.Build(run,"guest").Reward(reward).selected==chip,"private history carries selected chip");
