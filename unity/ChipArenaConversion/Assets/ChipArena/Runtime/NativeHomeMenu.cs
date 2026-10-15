@@ -23,23 +23,26 @@ namespace ChipArena.UnityConversion
         private void Click()=>nativeAudio?.UiCue("ui.click","ui",.4f);
         // CSS panel-in (.26 s cubic-bezier(.2,.8,.2,1)) progress for an element entering `delay` seconds into the screen.
         private static float In(float age,float delay,float duration)=>M.Bezier(.2f,.8f,.2f,1,M.Clamp01((age-delay)/duration));
-        private void Go(MenuScreen screen)
+        private void Go(MenuScreen screen)=>Go(screen,false);
+        // `sandbox`: the Play screen opens as the Developer Sandbox. The side effects run now, from the screen the menu is on
+        // or going to (MenuTarget); the screen shown changes through the transition (NativeMenuTransitionUI.cs ShowScreen).
+        private void Go(MenuScreen screen,bool sandbox)
         {
+            var from=MenuTarget;
             // Leaving Settings keeps what was changed (applied and saved); leaving Create / Join abandons a pending connection.
-            if(menuScreen==MenuScreen.Settings&&screen!=MenuScreen.Settings){ApplySettings();Save();}
-            if((menuScreen==MenuScreen.Create||menuScreen==MenuScreen.Join)&&screen!=MenuScreen.Lobby&&!InRoom&&(connecting!=null||relayConnecting!=null||server!=null||listingRooms)){CloseNetwork();networkStatus="Connection cancelled.";}
-            if(screen!=MenuScreen.Home)updateOpen=false;playSandbox=false;
+            if(from==MenuScreen.Settings&&screen!=MenuScreen.Settings){ApplySettings();Save();}
+            if((from==MenuScreen.Create||from==MenuScreen.Join)&&screen!=MenuScreen.Lobby&&!InRoom&&(connecting!=null||relayConnecting!=null||server!=null||listingRooms)){CloseNetwork();networkStatus="Connection cancelled.";}
             if(screen==MenuScreen.Play){prefs.pve=false;prefs.bots=Mathf.Clamp(prefs.bots,1,7);sandboxWanted=false;}
             if(screen==MenuScreen.Boss){prefs.pve=true;prefs.bots=Mathf.Clamp(prefs.bots,0,3);sandboxWanted=false;}
             // A room opens at the top of both lobby columns; Customize and Settings return to where the lobby was.
-            if(screen==MenuScreen.Lobby&&menuScreen!=MenuScreen.Customize&&menuScreen!=MenuScreen.Settings){lobbyRosterScroll=lobbyRoomScroll=Vector2.zero;lobbyRosterContent=lobbyRoomContent=400;}
+            if(screen==MenuScreen.Lobby&&from!=MenuScreen.Customize&&from!=MenuScreen.Settings){lobbyRosterScroll=lobbyRoomScroll=Vector2.zero;lobbyRosterContent=lobbyRoomContent=400;}
             // Entering the Locker takes the look it can revert to (Preview Intro's way back stays in the same session).
-            if(screen==MenuScreen.Customize&&menuScreen!=MenuScreen.Customize)LockerEnter();
-            menuScreen=screen;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;GUIUtility.keyboardControl=0;
+            if(screen==MenuScreen.Customize&&from!=MenuScreen.Customize)LockerEnter();
+            ShowScreen(screen,sandbox);
         }
         // Escape on the main menu: close the update card, else return to the home screen (the source close X); the room
         // lobby stays until Leave Room. The Locker asks before dropping unsaved changes (LockerBack).
-        private void MenuBack(){if(updateOpen&&menuScreen==MenuScreen.Home){updateOpen=false;return;}if(menuScreen==MenuScreen.Customize){LockerBack();return;}if(menuScreen!=MenuScreen.Home&&menuScreen!=MenuScreen.Lobby)Go(MenuScreen.Home);}
+        private void MenuBack(){var at=MenuTarget;if(updateOpen&&at==MenuScreen.Home){updateOpen=false;return;}if(at==MenuScreen.Customize){LockerBack();return;}if(at!=MenuScreen.Home&&at!=MenuScreen.Lobby)Go(MenuScreen.Home);}
         private void MenuStyles()
         {
             if(fieldLabel!=null)return;fieldLabel=new GUIStyle(small){fontSize=12,fontStyle=FontStyle.Bold,wordWrap=true};fieldLabel.normal.textColor=U.Hex(0xc0c1ca);fieldLabel.margin=new RectOffset(4,4,18,6);
@@ -56,11 +59,14 @@ namespace ChipArena.UnityConversion
         private void HomeMenu()
         {
             MenuStyles();float now=Time.unscaledTime;if(now-menuSeen>.25f)menuScreenAt=now;menuSeen=now;
+            // The transition's swap and its input hold (NativeMenuTransitionUI.cs); `seen`: this menu was drawn a moment ago.
+            bool seen=now-homeSeen<=.25f;MenuTransitionFrame(now,seen);
             if(menuFromMatch){menuFromMatch=false;Go(afterMatch);afterMatch=MenuScreen.Home;}
             // In a room the lobby is home (Customize and Settings stay open over it); a room lost without Leave Room returns
-            // to Join (guest) or Create (host), where the reason is shown.
-            if(InRoom&&menuScreen!=MenuScreen.Lobby&&menuScreen!=MenuScreen.Customize&&menuScreen!=MenuScreen.Settings)Go(MenuScreen.Lobby);
-            else if(!InRoom&&menuScreen==MenuScreen.Lobby)Go(roomGuest?MenuScreen.Join:MenuScreen.Create);
+            // to Join (guest) or Create (host), where the reason is shown. Both read where the menu is going (MenuTarget).
+            var target=MenuTarget;
+            if(InRoom&&target!=MenuScreen.Lobby&&target!=MenuScreen.Customize&&target!=MenuScreen.Settings)Go(MenuScreen.Lobby);
+            else if(!InRoom&&target==MenuScreen.Lobby)Go(roomGuest?MenuScreen.Join:MenuScreen.Create);
             // The open Connection report (NativeConnectionReport.cs) blocks everything under its backdrop, as its ::backdrop takes the pointer.
             menuBlockedNow=reportOpen||menuScreen==MenuScreen.Home&&updateOpen&&updateCard.width>0&&U.Hover(updateCard);
             float age=now-menuScreenAt;bool home=menuScreen==MenuScreen.Home;
@@ -80,6 +86,7 @@ namespace ChipArena.UnityConversion
                 case MenuScreen.Catalogue:CatalogueScreen(age);break;
             }
             if(home)UpdateDropdown();
+            MenuTransitionGui(now);homeSeen=now;
         }
 
         // ---- Backdrop ------------------------------------------------------------------------------------------------
@@ -281,7 +288,7 @@ namespace ChipArena.UnityConversion
             // .subtle-link's quiet rows: Developer Sandbox (developers, offline), the conversion catalogue (developers only: the
             // source has no such screen and its import notes are not for players) and Quit.
             float qy=lastMain+rh*.9f+6,qe=ce*In(age,.3f,.3f);
-            if(dev&&!Online&&QuietRow(ref qy,"sandbox","SANDBOX","DEV",qe)){Go(MenuScreen.Play);playSandbox=true;}
+            if(dev&&!Online&&QuietRow(ref qy,"sandbox","SANDBOX","DEV",qe))Go(MenuScreen.Play,true);
             if(dev&&QuietRow(ref qy,"catalogue","CATALOGUE","DEV",qe))Go(MenuScreen.Catalogue);
             if(QuietRow(ref qy,"quit","QUIT",null,qe)){Save();Application.Quit();}
             if(Updater!=null)UpdateCircle(new Vector2(x0+500,top+rh*1.5f),36,ce*In(age,.2f,.4f));
@@ -497,7 +504,7 @@ namespace ChipArena.UnityConversion
             ScreenBody(l,()=>MatchRulesBody(false));if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,playSandbox?"Local only. Sandbox tools are in the pause menu (Esc).":"Change your lobby look and preferred weapon in Customize.");
             // main.ts:147: in teams mode Start waits for two different teams; the reason is the team setup's note, shown once.
             bool blocked=PracticeTeamsBlocked();
-            if(ScreenActions(l,("play",playSandbox?"Start Sandbox":"Start Match",true,server==null&&(!playSandbox||account.Developer)&&!blocked))==0){prefs.pve=false;sandboxWanted=playSandbox&&account.Developer;StartMatch();}
+            if(ScreenActions(l,("play",playSandbox?"Start Sandbox":"Start Match",true,server==null&&(!playSandbox||account.Developer)&&!blocked))==0){prefs.pve=false;sandboxWanted=playSandbox&&account.Developer;RequestStage(sandboxWanted?StageLoadKind.Sandbox:StageLoadKind.Match,StartMatch);}
         }
         private void BossScreen(float age)
         {
@@ -506,8 +513,8 @@ namespace ChipArena.UnityConversion
             ScreenBody(l,()=>BossBody());if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Up to four pilots: party bots fill the empty seats.");
             if(!string.IsNullOrEmpty(expeditionError))ScreenStatus(l,"Expedition could not start: "+expeditionError,true);
             int a=account.Developer?ScreenActions(l,("play","Start Boss Fight",true,server==null),("network","Host Co-op Room",false,true),("play","DEV Expedition M1",false,!Online)):ScreenActions(l,("play","Start Boss Fight",true,server==null),("network","Host Co-op Room",false,true));
-            if(a==2){StartExpeditionM1();return;}
-            if(a==0){prefs.pve=true;sandboxWanted=false;StartMatch();}else if(a==1){prefs.pve=true;Go(MenuScreen.Create);}
+            if(a==2){RequestStage(StageLoadKind.Expedition,StartExpeditionM1);return;}
+            if(a==0){prefs.pve=true;sandboxWanted=false;RequestStage(StageLoadKind.Boss,StartMatch);}else if(a==1){prefs.pve=true;Go(MenuScreen.Create);}
         }
         // .pve-boss-card.active: the Siren on a violet radial with the skull, beside the greyed "More bosses" card.
         private static void BossCard(Rect r,float e)
@@ -632,9 +639,9 @@ namespace ChipArena.UnityConversion
             items.Add(("settings","Settings",false,true,()=>{pauseScreen=PauseScreen.Settings;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;}));
             // DEV Tools (NativeDevPanel.cs): the offline Developer Sandbox's tools, and with Settings · Developer · DEV Abuse any match's.
             if(DevPanelAvailable)items.Add(("flask-conical","DEV Tools",false,true,()=>DevOpen(true)));
-            if(!Online&&!lost)items.Add(("rotate-cw",ExpeditionM1?"Restart Expedition M1":"Restart Match",false,true,()=>{if(ExpeditionM1)StartExpeditionM1();else StartMatch();}));
+            if(!Online&&!lost)items.Add(("rotate-cw",ExpeditionM1?"Restart Expedition M1":"Restart Match",false,true,()=>{if(ExpeditionM1)RequestStage(StageLoadKind.Expedition,StartExpeditionM1);else RequestStage(StageKindOf(arena),StartMatch);}));
             if(!lost)items.Add(("undo-2","Return to Lobby",false,(Hosting||!Online)&&!returning,()=>{if(!Online)afterMatch=OfflineLobby();RequestLobbyReturn();menu=false;}));
-            items.Add(("log-out","Return to Main Menu",lost,true,()=>{afterMatch=lost?MenuScreen.Join:MenuScreen.Home;if(Online)LeaveRoom();else ReturnToLobby();}));
+            items.Add(("log-out","Return to Main Menu",lost,true,()=>{afterMatch=lost?MenuScreen.Join:MenuScreen.Home;RequestStage(StageLoadKind.Return,()=>{if(Online)LeaveRoom();else ReturnToLobby();});}));
             string hints="WASD move · double-tap W sprint · LMB fire / attack · RMB block · Q / E abilities · R reload · Shift roll · Space jump · V camera · X shoulder · Tab lock-on / board · G scores · Esc menu";
             string diag=content.Map(arena.MapId).name+"  ·  SET "+match.Set+" · ROUND "+match.Round+"  ·  "+match.Phase+"  ·  "+arena.Bullets.Count+" projectiles  ·  step "+stepMs.ToString("0.00")+" ms  ·  "+presentation.RenderingMode;
             float pw=Mathf.Min(520,W-56),iw=pw-64;var statusLines=U.Wrap(status,16,iw);var hintLines=U.Wrap(hints,13,iw);var diagLines=MonoLines(diag,11,iw);bool guest=Online&&!Hosting;
