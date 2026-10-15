@@ -24,8 +24,8 @@ namespace ChipArena.UnityConversion
         private MenuScreen MenuTarget=>menuNext??menuScreen;
         // The transition's title and eyebrow per MenuScreen (Home, Play, Create, Join, Lobby, Boss, Customize, Settings,
         // Account, Dev, Catalogue), constants.
-        private static readonly string[] MenuTitles={"MAIN MENU","PLAY VS BOTS","CREATE ROOM","JOIN ROOM","ROOM LOBBY","START EXPEDITION","CUSTOMIZE","SETTINGS","ACCOUNT","DEV MENU","CATALOGUE"};
-        private static readonly string[] MenuEyebrows={"CHIP ARENA","LOCAL MATCH","PRIVATE ROOM","PRIVATE ROOM","PRIVATE ROOM","PVE · EXPEDITION","LOCKER","SYSTEM","PILOT","DEVELOPER","SOURCE REFERENCE"};
+        private static readonly string[] MenuTitles={"MAIN MENU","PLAY VS BOTS","CREATE ROOM","JOIN ROOM","ROOM LOBBY","EXPEDITIONS","CUSTOMIZE","SETTINGS","ACCOUNT","DEV MENU","CATALOGUE"};
+        private static readonly string[] MenuEyebrows={"CHIP ARENA","LOCAL MATCH","PRIVATE ROOM","PRIVATE ROOM","PRIVATE ROOM","PVE","LOCKER","SYSTEM","PILOT","DEVELOPER","SOURCE REFERENCE"};
         private const string SandboxTitle="DEV SANDBOX",SandboxEyebrow="DEVELOPER";
 
         // Go's display half: through the transition, or at once.
@@ -58,7 +58,8 @@ namespace ChipArena.UnityConversion
             if(Event.current.type!=EventType.Repaint||!menuTransition.Active(now))return;
             var dest=MenuTarget;bool sandbox=dest==MenuScreen.Play&&(menuNext.HasValue?menuNextSandbox:playSandbox);int i=(int)dest;
             string title=sandbox?SandboxTitle:i>=0&&i<MenuTitles.Length?MenuTitles[i]:null,eyebrow=sandbox?SandboxEyebrow:i>=0&&i<MenuEyebrows.Length?MenuEyebrows[i]:null;
-            if(dest==MenuScreen.Boss||dest==MenuScreen.Lobby&&prefs.pve)eyebrow=MenuEyebrows[(int)MenuScreen.Boss];
+            // A PvE room is the Expeditions screen as well (NativeExpeditionsMenu.cs): EXPEDITIONS / PVE either way.
+            if(dest==MenuScreen.Boss||dest==MenuScreen.Lobby&&prefs.pve){eyebrow=MenuEyebrows[(int)MenuScreen.Boss];title=MenuTitles[(int)MenuScreen.Boss];}
             NativeScreenTransitionHud.Draw(menuTransition,now,U.W,U.H,eyebrow,title);
         }
     }

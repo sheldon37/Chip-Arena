@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
         }
         // Escape and the close button: close the question, ask when something is unsaved, else leave (to the room in a room).
         private void LockerBack(){if(lockerConfirm){lockerConfirm=false;return;}if(LockerDirty())lockerConfirm=true;else LockerLeave();}
-        private void LockerLeave(){lockerConfirm=false;Go(InRoom?MenuScreen.Lobby:MenuScreen.Home);}
+        private void LockerLeave(){lockerConfirm=false;Go(PanelBack);}
 
         // ---- Lists ---------------------------------------------------------------------------------------------------
         // What this player may pick: rebuilt on the layout pass when the account's access changes and every two seconds (grants

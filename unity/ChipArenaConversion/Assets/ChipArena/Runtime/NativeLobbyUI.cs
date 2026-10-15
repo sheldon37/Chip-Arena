@@ -47,6 +47,8 @@ namespace ChipArena.UnityConversion
         private void LobbyScreen(float age)
         {
             bool pve=prefs.pve;roomGuest=!Hosting;screenContent=Mathf.Max(lobbyRosterContent+90,lobbyRoomContent);
+            // A PvE room meets on the Expeditions screen (NativeExpeditionsMenu.cs): party strip, pick, mode, code and Start / Ready.
+            if(pve){ExpeditionsScreen(age);return;}
             // The team list belongs to this screen: it closes when the lobby was not drawn a moment ago (left and re-entered).
             if(Time.unscaledTime-lobbySeenAt>.25f)teamPopupSeat=0;lobbySeenAt=Time.unscaledTime;TeamPopupInput();
             var l=BeginScreen(pve?"BOSS TEST LOBBY":"PRIVATE ROOM",pve?"Boss test · The Siren":"Match lobby",1370,age,false,actions:false,close:false,lobby:true);

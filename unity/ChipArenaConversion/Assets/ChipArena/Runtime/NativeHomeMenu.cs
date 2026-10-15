@@ -38,11 +38,15 @@ namespace ChipArena.UnityConversion
             if(screen==MenuScreen.Lobby&&from!=MenuScreen.Customize&&from!=MenuScreen.Settings){lobbyRosterScroll=lobbyRoomScroll=Vector2.zero;lobbyRosterContent=lobbyRoomContent=400;}
             // Entering the Locker takes the look it can revert to (Preview Intro's way back stays in the same session).
             if(screen==MenuScreen.Customize&&from!=MenuScreen.Customize)LockerEnter();
+            // Customize and Settings opened from the Expeditions screen return to it (PanelBack).
+            if((screen==MenuScreen.Customize||screen==MenuScreen.Settings)&&from!=MenuScreen.Customize&&from!=MenuScreen.Settings)expReturn=from==MenuScreen.Boss;
             ShowScreen(screen,sandbox);
         }
         // Escape on the main menu: close the update card, else return to the home screen (the source close X); the room
         // lobby stays until Leave Room. The Locker asks before dropping unsaved changes (LockerBack).
-        private void MenuBack(){var at=MenuTarget;if(updateOpen&&at==MenuScreen.Home){updateOpen=false;return;}if(at==MenuScreen.Customize){LockerBack();return;}if(at!=MenuScreen.Home&&at!=MenuScreen.Lobby)Go(MenuScreen.Home);}
+        private void MenuBack(){var at=MenuTarget;if(updateOpen&&at==MenuScreen.Home){updateOpen=false;return;}if(expDrawer&&(at==MenuScreen.Boss||at==MenuScreen.Lobby)){ExpToggleDrawer();return;}if(at==MenuScreen.Customize){LockerBack();return;}if(at!=MenuScreen.Home&&at!=MenuScreen.Lobby)Go(at==MenuScreen.Settings?PanelBack:MenuScreen.Home);}
+        // Where Customize and Settings go back to: the room, else the Expeditions screen they were opened from, else home.
+        private bool expReturn;private MenuScreen PanelBack=>InRoom?MenuScreen.Lobby:expReturn?MenuScreen.Boss:MenuScreen.Home;
         private void MenuStyles()
         {
             if(fieldLabel!=null)return;fieldLabel=new GUIStyle(small){fontSize=12,fontStyle=FontStyle.Bold,wordWrap=true};fieldLabel.normal.textColor=U.Hex(0xc0c1ca);fieldLabel.margin=new RectOffset(4,4,18,6);
@@ -70,7 +74,7 @@ namespace ChipArena.UnityConversion
             // The open Connection report (NativeConnectionReport.cs) blocks everything under its backdrop, as its ::backdrop takes the pointer.
             menuBlockedNow=reportOpen||menuScreen==MenuScreen.Home&&updateOpen&&updateCard.width>0&&U.Hover(updateCard);
             float age=now-menuScreenAt;bool home=menuScreen==MenuScreen.Home;
-            MenuShade(1,home);if(!home)MenuMotes(.5f);TopBar(home);Footer();
+            MenuShade(1,home);if(!home)MenuMotes(.5f);if(ExpScreenShown)ExpBackdrop(In(age,0,.26f),now);TopBar(home);Footer();
             switch(menuScreen)
             {
                 case MenuScreen.Home:HomeScreen(age);break;
@@ -80,7 +84,7 @@ namespace ChipArena.UnityConversion
                 case MenuScreen.Lobby:LobbyScreen(age);break;
                 case MenuScreen.Boss:BossScreen(age);break;
                 case MenuScreen.Customize:CustomizeScreen(age);break;
-                case MenuScreen.Settings:SettingsScreen(age,()=>Go(MenuScreen.Home));break;
+                case MenuScreen.Settings:SettingsScreen(age,()=>Go(PanelBack));break;
                 case MenuScreen.Account:AccountScreen(age);break;
                 case MenuScreen.Dev:DevScreen(age);break;
                 case MenuScreen.Catalogue:CatalogueScreen(age);break;
@@ -337,6 +341,9 @@ namespace ChipArena.UnityConversion
                 ["sandbox"]=("M10 3V9L5 19H19L14 9V3M7 15H17",new float[]{10,3,14,3,5,19,19,19,10,9,14,9}),
                 ["catalogue"]=("M12 6V20M12 6L4 4V18L12 20L20 18V4Z",new float[]{4,4,20,4,4,18,20,18,12,6,12,20}),
                 ["quit"]=("M10 4H4V20H10M9 12H20M16 8L20 12L16 16",new float[]{4,4,4,20,20,12,16,8,16,16}),
+                // The Expeditions screen's modes (NativeExpeditionsMenu.cs): the full run's route and Wave Defense's waves.
+                ["route"]=("M4 19L9 12L14 15L20 5M14 15V20",new float[]{4,19,9,12,14,15,20,5,14,20}),
+                ["waves"]=("M3 9Q7.5 5 12 9T21 9M3 15Q7.5 11 12 15T21 15M12 3V21",new float[]{3,9,21,9,3,15,21,15,12,3,12,21}),
             };
             var map=new Dictionary<string,(string,string)>();
             foreach(var kv in src)
@@ -506,26 +513,10 @@ namespace ChipArena.UnityConversion
             bool blocked=PracticeTeamsBlocked();
             if(ScreenActions(l,("play",playSandbox?"Start Sandbox":"Start Match",true,server==null&&(!playSandbox||account.Developer)&&!blocked))==0){prefs.pve=false;sandboxWanted=playSandbox&&account.Developer;RequestStage(sandboxWanted?StageLoadKind.Sandbox:StageLoadKind.Match,StartMatch);}
         }
-        private void BossScreen(float age)
-        {
-            var l=BeginScreen("PVE · EXPEDITION","Start Expedition",650,age,true,head:122);if(l.Closed){Go(MenuScreen.Home);return;}
-            BossCard(new Rect(l.Panel.x+32,l.Panel.y+104,l.Panel.width-64,108),l.Enter);
-            ScreenBody(l,()=>BossBody());if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Up to four pilots: party bots fill the empty seats.");
-            if(!string.IsNullOrEmpty(expeditionError))ScreenStatus(l,"Expedition could not start: "+expeditionError,true);
-            int a=account.Developer?ScreenActions(l,("play","Start Boss Fight",true,server==null),("network","Host Co-op Room",false,true),("play","DEV Expedition M1",false,!Online)):ScreenActions(l,("play","Start Boss Fight",true,server==null),("network","Host Co-op Room",false,true));
-            if(a==2){RequestStage(StageLoadKind.Expedition,StartExpeditionM1);return;}
-            if(a==0){prefs.pve=true;sandboxWanted=false;RequestStage(StageLoadKind.Boss,StartMatch);}else if(a==1){prefs.pve=true;Go(MenuScreen.Create);}
-        }
-        // .pve-boss-card.active: the Siren on a violet radial with the skull, beside the greyed "More bosses" card.
-        private static void BossCard(Rect r,float e)
-        {
-            float w=(r.width-12)*2/3;var c=new Rect(r.x,r.y,w,r.height);U.Round(c,U.Hex(0x0b0910,e),10,U.Hex(0xb7a8ff,.6f*e));U.RadialStops(new Rect(c.x+2,c.y+2,c.width-4,c.height-4),U.Hex(0x3a2166,.95f*e),new[]{0f,.55f,1f},new[]{1f,.45f,0f});
-            float pulse=.5f+.5f*Mathf.Sin(Time.unscaledTime*2.1f);U.Radial(new Rect(c.x+14,c.center.y-40,80,80),U.Hex(0xb7a8ff,(.12f+.1f*pulse)*e));Skull(new Rect(c.x+26,c.center.y-28,56,56),e,pulse*.6f);
-            U.Text(new Rect(c.x+100,c.y+22,c.width-110,26),"The Siren",19,U.Hex(0xf6f3ff,e),TextAnchor.MiddleLeft,bold:true);
-            U.Text(new Rect(c.x+100,c.y+52,c.width-114,40),"Ward Zero · survive 3 waves of minions, then the Siren",12,U.Hex(0xc9bfff,e),TextAnchor.UpperLeft,wrap:true);
-            var s=new Rect(c.xMax+12,r.y,r.width-w-12,r.height);U.Round(s,U.Hex(0x15161b,.45f*e),10,U.Hex(0x5a5b66,.45f*e));
-            NativeIcons.Draw(new Rect(s.center.x-14,s.y+18,28,28),"circle-help",U.Hex(0xa6a7ad,.45f*e));U.Text(new Rect(s.x,s.y+54,s.width,20),"More bosses",14,U.Hex(0xe6e7ec,.45f*e),TextAnchor.MiddleCenter,bold:true);U.Text(new Rect(s.x,s.y+74,s.width,16),"Coming later",11,U.Hex(0xa6a7ad,.45f*e),TextAnchor.MiddleCenter);
-        }
+        // Start Expedition opens the Expeditions screen (NativeExpeditionsMenu.cs), which replaced the boss card screen (owner
+        // 2026-10-15): Start Boss Fight is Wave Defense there, Host Co-op Room is Host Room, DEV Expedition M1 is Start Expedition,
+        // and the party bots, mirror weapons, Start at the Siren and the loadout are on it as well.
+        private void BossScreen(float age)=>ExpeditionsScreen(age);
         private void CreateScreen(float age)
         {
             var l=BeginScreen("CHIP ARENA","Host a private room",650,age,true);if(l.Closed){CloseNetwork();Go(MenuScreen.Home);return;}
