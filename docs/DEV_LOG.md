@@ -16,6 +16,48 @@
 - **Renders.** Scratch `renders-expedition-chooser-cam/` (offline, not Unity): before and after with the tray, plant, under attack, a strip, every mode, turning, tight spots, first person, side per class.
 - **Risks.** In a 1.6 m corridor the swing passes about 0.45 m behind the head for about 0.2 s; it never enters the wall. The first-person swing turns the pilot into view late (the body only appears out of view). My SAFE tag in the sanctuary still shows over my head; that hub file was left untouched (the hub-fix work is concurrent).
 
+## 2026-10-15 — Astra — Expedition choosing also holds camera
+- Owner follow-up supersedes the earlier camera-survives behavior. Branch `codex/expedition-camera-hold`, base shared `ee46074c`.
+- Authority retains held yaw/pitch instead of copying new chooser aim. Client blocks mouse look and clears lock-on tracking using the public choosing flag, including the final Install + 1.95 s wrist plant after the tray closes. Digits/Alt-click remain usable. Existing close/lifecycle release, vulnerability and world clocks are unchanged; no animation, combat timing or network schema changes.
+- Updated native M1 acceptance for rejected yaw/pitch during choosing and final plant, then released camera input; updated source guards, presentation contract, project state and manual M1 playtest instructions.
+- Verification: all 730 managed/real-relay PASS groups (including 258 Expedition tray checks), all three Unity 6000.3.24f1/C# 9 assembly compile targets, and diff check pass. Native M1 acceptance was compiled, not executed here; Windows/PhysX and visual/two-client play remain pending.
+- Implemented/tested on branch; PR records merge and builder promotion. A successful player build or test-channel publication is not claimed by these checks.
+
+## 2026-10-15 — Astra — Cyber melee step inactive-state build fix
+- Branch `codex/cyber-step-state-guard`, base shared/builder `18ee638b` (PR #239). Latest-Build.txt modified 2026-10-15 20:02:25Z confirms that source failed native acceptance, before publication: IndexOutOfRangeException in NativeCyberStep.Begin -> Restore -> PredictionState -> ValidateAirJumps.
+- Root cause: the existing jump-lock fixture uses CyberBegin("cyber-jab") without selecting a combo, then promotes the kit to v2. Combo=-1 is a valid inactive sentinel. Step restoration mistook the cast name for a selected string step and indexed StepDistance[-1]. This was introduced in PR #239.
+- Fix: creation/restoration and matching require a 0–4 combo and the matching v2 move name. Inactive/unknown/mismatched casts carry no step; their existing action and air-jump locks are unchanged. No movement distances, hit timings, damage, cooldowns, animation or wire schema changes.
+- Regression reproduced the same IndexOutOfRangeException before the fix. After: 4,679 step checks plus 124 Cyber v2 checks pass, including -1/-2/5/int.MaxValue through Begin, Restore and owner prediction with the jump lock preserved. All three pinned Unity 6000.3.24f1/C# 9 assembly compile targets pass; diff check clean. The existing native air-jump gate is preserved.
+- Implemented and tested on branch; promotion receipt belongs in the PR. Windows/PhysX rebuild and publication must be verified from the next builder log; this source validation is not a successful-player claim.
+
+## 2026-10-15 — Astra — Cyber Lord real melee capsule steps
+- Branch `codex/cyber-melee-step`, gameplay base shared `425cb2d8`; incorporated Claude's docs-only owner handoff `617fee59` before committing.
+- Shared value-state `NativeCyberStep` uses the authored .40/.25/.30/.20/.45 m distances and smoothstep windows from `CyberCombo.Swing`. Authority applies position before hit resolution; owner prediction uses the same profile and live target/scene limiter. Captured facing stays locked; input cannot steer the step.
+- Begin and each advance enforce one-metre centre clearance for hittable pilots/adds (lock first, then other constraints), a capsule sweep without lateral slide, and floor support sampled at most 2.5 cm apart with drops bounded by StepHeight. Airborne starts never acquire a step by landing. Loss of grounding, cuts, stun, block/roll and freeze stop remaining travel; death/disconnect clear the transient step.
+- Existing actor StepAt/StepUntil/StepDistance carry the capped actual path. A later obstruction/cut shortens the distance and step end, preventing owner replay from adding the stopped remainder. No new network fields/schema. Local predicted poses get those same fields; Claude's dormant animation requires no edits.
+- Reach decision: resolve from the position at impact, retaining ComboRange 2.4 m and existing arcs. Unobstructed jab gains about .23 m and palm .45 m effective reach. Hit timestamps, damage, cooldowns, combo reset and Overclock rates are unchanged. Documented in CYBER-LORD.md.
+- Validation: focused Cyber v2 rules 124 checks and new step suite 4,667 checks pass (five steps/rates at 60/144/240 Hz, target geometry, interruption, dynamic shortening, acknowledgement/replay, wire fields). Full managed/real-relay regression exits 0, 730 PASS groups. Pinned Unity 6000.3.24f1/C# 9 player, editor-context Runtime and Editor assembly compiles pass. Source package validates 2,146 files; git diff --check clean.
+- Added real Unity acceptance to the existing Cyber v2 builder gate: host/owner path, yaw, target clearance, capsule wall, newly introduced wall, ledge, air start, stun, impact-position jab/palm damage, JsonUtility and guest step fields. These native checks are compiled but NOT executed here; no Unity/PhysX, Windows build or live host/guest playtest is claimed.
+- At this implementation commit: tested on branch; PR/merge and builder sync pending. Existing desktop builder must run native acceptance and publish the test channel after sync. No live release, account deployment or presentation ownership changes.
+
+## 2026-10-15 — Claude — CI: retire the Electron game suites from PR checks (owner request)
+- Owner, 2026-10-15: "Can we remove those electron game tests if they are just going to cause failures each time?" then "Go ahead and make the CI changes yourself." Branch `claude/ci-retire-electron-game-checks`, base shared `617fee5`.
+- **What failed every time** (`Checks` / `verify` on PR #62, run 38795890247, reproduced locally on the same tree):
+  - unit: Electron game tests (music assets, chip catalogue counts, Demon Step, reference poses, among others) and `auth-updater.test.ts` "portable update …" (the old Electron launcher updater, `launcher/update.mjs`; `applyUpdates` returns false);
+  - build: `server:build` (Electron authoritative game server) TS errors in `src/shared/chaos.ts`, `leet.ts`, `standard-melee.ts`;
+  - websocket: the Electron game server's determinism check ("state diverged at tick 3").
+  - Passing: whole-project typecheck, vite build, relay build, the HTTPS relay round trip.
+- **What the Unity client still uses here:** the relay Worker (`src/relay/worker.ts`): `/api/accounts/` (`NativeAccount`, `NativeAdmin`) and `/api/directory/` (`NativeRoomDirectory`), plus rooms. The Unity updater has its own tests in `unity-conversion.yml`.
+- **Change:**
+  - `scripts/verify.mjs`: new `relay` / `relay-full` modes: types, the relay tests (`accounts`, `directory`, `local-host-invite`, `party`, `relay`), the relay build; `relay-full` adds `test:https`. `fast`/`standard`/`full` are unchanged for local use. `package.json`: `verify:relay`, `verify:relay-full`.
+  - `scripts/ci-scope.mjs`: modes `docs` (skip), `native` (Unity-only: skip; covered by the Unity workflows), `relay`, `relay-full` (relay-affecting paths).
+  - `.github/workflows/checks.yml`: runs the relay modes; the gate accepts a skipped verify for `docs` and `native`; workflow_dispatch runs `relay-full`.
+  - `docs/DEVELOPMENT.md` updated.
+- **Retired from CI, still runnable locally:** all other `tests/*.test.ts` (Electron game, client UI, desktop shell, Electron launcher updater), the Electron client/server build (`build:check`), the WebSocket match (`tests/run-network.mjs`). Nothing was deleted.
+- **Risk to note:** the Electron launcher updater test is genuinely failing, so if anyone still installs the old Electron build, its portable updater may be broken. AGENTS.md still says to keep the Electron runtime/updater working; that is now unguarded by CI.
+- **Checks:** the scope classifier on real ranges (PR #62 → relay-full; Unity-only merges → native; docs → docs); `npm run verify:relay-full` locally: types pass, relay tests 34/34, relay build, HTTPS round trip pass (rc 0); the full Electron unit run on the same tree: 1297 pass, 13 fail, none in the kept relay tests; `node --check` and YAML parse. GitHub CI on the new head is the real proof.
+- Astra: this changes CI tooling in your area at the owner's direct request; adjust the relay test list if a relay test belongs elsewhere.
+
 ## 2026-10-15 — Claude — Cyber Lord melee step handed to Astra (owner approved)
 - Owner, 2026-10-15: "Yes give the melee step to Astra." Branch `claude/cyberlord-melee-step-handoff`, base shared `425cb2d`. Docs only.
 - **Astra next:** implement the real per-step simulation step for the Cyber Lord melee string, as specified in `docs/CYBER-LORD.md`, "Melee step contract" (now owner-approved). In short:

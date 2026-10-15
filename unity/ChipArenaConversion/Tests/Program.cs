@@ -7,7 +7,7 @@ internal static class Program
     {
         try
         {
-            if(args.Length==1&&args[0]=="--cyber-v2-authority"){CyberKit2AuthorityChecks.Run();return 0;}
+            if(args.Length==1&&args[0]=="--cyber-v2-authority"){CyberKit2AuthorityChecks.Run();CyberStepChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-director"){ExpeditionDirectorChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-integration"){ExpeditionIntegrationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition"){ExpeditionChecks.Run();return 0;}
@@ -139,7 +139,7 @@ internal static class Program
             foreach(var result in SheldonIntroChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in PackIntroChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in IntroHoldChecks.Run(root))Console.WriteLine("PASS "+result);
-            CyberKit2AuthorityChecks.Run();
+            CyberKit2AuthorityChecks.Run();CyberStepChecks.Run();
             foreach(var result in CyberLordChecks.Run(root,data))Console.WriteLine("PASS "+result);
             foreach(var result in CyberLordRunChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CyberLordRangedChecks.Run(root))Console.WriteLine("PASS "+result);

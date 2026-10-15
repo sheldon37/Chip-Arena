@@ -34,7 +34,9 @@
     "release:prepare": "npm run build",
     "runtime:fetch": "node scripts/fetch-runtimes.mjs",
     "package:desktop": "node scripts/package-desktop.mjs",
-    "verify:standard": "node scripts/verify.mjs standard"
+    "verify:standard": "node scripts/verify.mjs standard",
+    "verify:relay": "node scripts/verify.mjs relay",
+    "verify:relay-full": "node scripts/verify.mjs relay-full"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",

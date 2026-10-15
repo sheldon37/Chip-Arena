@@ -40,6 +40,21 @@ namespace ChipArena.UnityConversion
             return physics.CapsuleCast(from+Vector3.up*Pole,from-Vector3.up*Pole,Radius-Skin,delta/distance,out hit,distance+Skin,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);
         }
         private static bool Clear(PhysicsScene physics,Vector3 at)=>physics.OverlapCapsule(at+Vector3.up*Pole,at-Vector3.up*Pole,Radius-Skin,overlaps,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)==0;
+        // A committed step never slides sideways and never crosses unsupported floor.
+        public static float ForwardStepDistance(PhysicsScene physics,Vector3 from,Vector3 facing,float distance)
+        {
+            if(distance<=0)return 0;
+            if(Cast(physics,from,facing*distance,out var wall))distance=Math.Max(0,wall.distance-Skin);
+            float safe=0;int samples=Math.Max(1,(int)Math.Ceiling(distance/.025f));
+            for(int i=1;i<=samples;i++)
+            {
+                float d=distance*i/samples;var at=from+facing*d;
+                if(!physics.Raycast(at,Vector3.down,out var floor,Half+Step+.001f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)||!Walkable(floor.normal))break;
+                if(from.y-Half-floor.point.y>Step+.001f)break;
+                safe=d;
+            }
+            return safe;
+        }
         public static bool StepUp(PhysicsScene physics,Vector3 from,Vector3 horizontal,out float rise,out Vector3 allowed)
         {
             rise=0;horizontal.y=0;allowed=horizontal;if(horizontal.sqrMagnitude<.000001f||!Cast(physics,from,horizontal,out var obstruction))return false;
