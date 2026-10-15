@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeMarkView {public int id,owner,target;public float lockAt,throwAt;}
     [Serializable] public sealed class NativeSeatFrame
     {public bool devRevealed,devCommandsRan,devDummy;public float devScale=1;public int id,team,roundWins,score;public string name,spec,difficulty,bodyColor,accentColor,hat,killEffect,intro,introText,lobbyPose,lobbyBack;public string weaponSkins;public string hatColor,backColor;public bool bot,connected,alive,ready,boss,overrideIntro;public ChipCount[] chips;public string[] offers;}
-    [Serializable] public sealed class NativeDotFrame {public string key;public int source;public double dps,next,until;}
+    [Serializable] public sealed class NativeDotFrame {public bool hubNoReward;public string key;public int source;public double dps,next,until;}
     [Serializable] public sealed class NativePilotFrame
     {public bool devGod,devInfiniteAmmo,devNoCooldowns;public float kernelReady;public float overdriveAt,overdriveUntil,ventUntil;public NativeDotFrame[] dots;public float slowEnd,slowFactor;public bool hasFighter,hasDeath,hasDown;public float attackAt;public NativeFighter fighter;public int id,ammo,charges,controlling,inputAck;public Vector3 moveVelocity;public NumberValue[] stats;public NativeDeath death;public NativeWound[] wounds;public float revivedAt;public float hp,mana,stamina,yaw,pitch,reloadAt,reloadEnd,blockEnd,blockReady,rollAt,rollEnd,ready,qReady,eReady,stunEnd,holdAt,scareAt,scareUntil,frozenUntil;public NativeRecovery down;public Vector3 position,velocity;}
     [Serializable] public sealed class NativePropFrame {public bool hasDefinition;public string id;public ContentBlock definition;public Vector3 position;public Quaternion rotation;public float health;}
@@ -84,9 +84,9 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class NativeArena
     {
-        private static NativeDotFrame[] DotFrames(Dictionary<string,NativeDot> dots)=>dots.Select(d=>new NativeDotFrame{key=d.Key,source=d.Value.Source,dps=d.Value.Dps,next=d.Value.Next,until=d.Value.Until}).ToArray();
+        private static NativeDotFrame[] DotFrames(Dictionary<string,NativeDot> dots)=>dots.Select(d=>new NativeDotFrame{hubNoReward=d.Value.HubNoReward,key=d.Key,source=d.Value.Source,dps=d.Value.Dps,next=d.Value.Next,until=d.Value.Until}).ToArray();
         private static void ApplyDots(Dictionary<string,NativeDot> target,NativeDotFrame[] dots)
-        {target.Clear();if(dots!=null)foreach(var d in dots)target[d.key]=new NativeDot{Source=d.source,Dps=d.dps,Next=d.next,Until=d.until};}
+        {target.Clear();if(dots!=null)foreach(var d in dots)target[d.key]=new NativeDot{HubNoReward=d.hubNoReward,Source=d.source,Dps=d.dps,Next=d.next,Until=d.until};}
         public int LocalId=1;public bool Replica;private NativeGameFrame replicaFrame;
         private readonly Dictionary<int,(InputFrame input,float at)> remoteInputs=new Dictionary<int,(InputFrame,float)>();
         public void ClearRemoteInput(int id)=>remoteInputs.Remove(id);

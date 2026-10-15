@@ -7,6 +7,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed class NativePveAdd : NativeHulkHunt
     {
+        public string HubRing;public bool HubCredit;
         public Vector3 BreachShortcut;public float BreachThinkAt;public bool HasBreachShortcut;public float SpitCancelAt=-100;public NativeHulkBreach.Progress WallProgress;public NativeBreachRecord WallBreach;public PveAddStats Stats;public PveEntry Entry;public int Lost,Side=1;public float ActiveAt,ExposedAt,SpawnAt,ThinkAt,RecoverAt,StaggerAt,DamageScale,HpScale,PossessedAt,SlowUntil,SlowFactor=1,LastDamage=-100,VentReady,WalkAt,DiveAt,VentUntil;public bool Landed,DropLanded,Struck=true,Possessed,Crawl,Limp,First=true,Travelling;public float HideThinkAt;public Vector3 HideDestination;public Vector3 External;public NativePilot Target;public NativeMinion KillerSummon;public NativePilot LastHit;
         public readonly Dictionary<int,float> Dealt=new Dictionary<int,float>();public readonly Dictionary<int,float> Parts=new Dictionary<int,float>();
     }
@@ -129,18 +130,19 @@ namespace ChipArena.UnityConversion
                 {WardEntryPose(m);continue;}
                 if(m.Body.isKinematic){m.Body.isKinematic=false;m.Collider.enabled=true;m.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;}
                 if(m.Body.position.y<-6){if(a.Possessed)FoundPveBoss(BossRescue);RemoveMinion(m,false);continue;}
-                foreach(var pair in m.Dots.ToArray()){var dot=pair.Value;while(m.Hp>0&&dot.Next<=Time+1e-8&&dot.Next<=dot.Until+1e-8){HitMinion(m,Pilots.Find(p=>p.Seat.id==dot.Source),(float)(dot.Dps*.25),Vector3.zero,0,kind:"field");dot.Next+=.25;}if(Time>dot.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0)continue;
+                foreach(var pair in m.Dots.ToArray()){var dot=pair.Value;while(m.Hp>0&&dot.Next<=Time+1e-8&&dot.Next<=dot.Until+1e-8){if(!dot.HubNoReward)HitMinion(m,Pilots.Find(p=>p.Seat.id==dot.Source),(float)(dot.Dps*.25),Vector3.zero,0,kind:"field",from:m.Body.position);dot.Next+=.25;}if(Time>dot.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0)continue;
                 // Landed drops can take hits/DoTs and be shoved during recovery, but cannot move voluntarily or attack.
                 if(Time<a.ActiveAt){a.External*=Mathf.Exp(-6*dt);m.Body.linearVelocity=new Vector3(a.External.x,m.Body.linearVelocity.y,a.External.z);continue;}
                 Vector3 at=m.Body.position,navAt=Vec(NativeNavSearch.BodyAnchor(Vec(at),m.Collider.height/2));var target=a.Target;
-                if(Time>=a.ThinkAt||target==null||target.Hp<=0||!target.Seat.connected)
+                if(Time>=a.ThinkAt||target==null||target.Hp<=0||!target.Seat.connected||!HubCanTarget(target,target))
                 {
-                    a.ThinkAt=Time+.75f;target=enemies.Where(p=>p.Hp>0&&p.Seat.connected&&(!a.Possessed||!p.Seat.bot)).OrderBy(p=>pveNavigation.Distance(at,p.Body.position,p.Seat.id)+3*Math.Max(0,HordeTargetCount(p.Seat.id)-6)-(a.Target==p?2:0)-(v.Recruits.Any(r=>r.Pilot==p&&r.Role=="tank")&&Vector3.Distance(p.Body.position,at)<8?6:0)).FirstOrDefault();a.Target=target;if(target!=null&&TryVentTravel(m,target))continue;
+                    if(target!=null&&!HubCanTarget(target,target)){a.Struck=true;if(hubMobs.TryGetValue(m.Id,out var hubMob)&&hubMob.LostAt<0)hubMob.LostAt=Time;}
+                    a.ThinkAt=Time+.75f;target=enemies.Where(p=>p.Hp>0&&p.Seat.connected&&HubCanTarget(p,a.Target)&&(!a.Possessed||!p.Seat.bot)).OrderBy(p=>pveNavigation.Distance(at,p.Body.position,p.Seat.id)+3*Math.Max(0,HordeTargetCount(p.Seat.id)-6)-(a.Target==p?2:0)-(v.Recruits.Any(r=>r.Pilot==p&&r.Role=="tank")&&Vector3.Distance(p.Body.position,at)<8?6:0)).FirstOrDefault();a.Target=target;if(target!=null&&TryVentTravel(m,target))continue;
                 }
                 if(StepHulkHunt(m,target))continue;
                 if(target!=null&&StepHulkBreach(m,target.Body.position)){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}
                 if(!a.Struck&&Time>=m.StrikeAt){a.Struck=true;PveAddStrike(m);if(m.Hp<=0)continue;}
-                if(target==null){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);continue;}Vector3 d=target.Body.position-at;float distance=new Vector2(d.x,d.z).magnitude;
+                if(target==null){m.Body.linearVelocity=new Vector3(0,m.Body.linearVelocity.y,0);HubIdle(m);continue;}Vector3 d=target.Body.position-at;float distance=new Vector2(d.x,d.z).magnitude;
                 bool left=(a.Lost&(2|8))!=0,right=(a.Lost&(4|16))!=0,armless=left&&right;float reach=a.Crawl?1.3f:armless?1.2f:a.Stats.reach,start=a.Stats.id=="spitter"?NativeSpitterRules.Range:a.Crawl?1:armless?.95f:a.Stats.startRange,hit=a.Stats.id=="spitter"?a.Stats.hit:a.Crawl||armless?.34f:a.Stats.hit;
                 if(a.Stats.id=="hulk"&&!a.Crawl&&!armless)start=Math.Max(start,NativeHulkMoves.PunchReach);
                 if(a.Struck&&!a.Possessed&&Time>=a.RecoverAt&&Time>=a.StaggerAt&&distance<=start&&(a.Stats.id!="spitter"||distance>=4)&&Math.Abs(d.y)<1.6f&&(a.Stats.id!="hulk"&&a.Stats.id!="spitter"||MeleeVisible(at,target.Body.position,m.Owner,target.Collider,true)))
@@ -167,7 +169,7 @@ namespace ChipArena.UnityConversion
                     // Resolve hiding before requesting a route: the old chase-then-hide
                     // calls invalidated each other's cached target twice every fixed tick.
                     Vector3 dir=hideSpot&&(destination-navAt).magnitude<1?Vector3.zero:
-                        Map.unity?StructureNavMove(m.Id,navAt,destination,(destination-navAt).normalized,hideSpot||adds.Count<12?(int?)null:target.Seat.id):
+                        Map.unity?HubNavMove(m,navAt,destination,(destination-navAt).normalized,hideSpot||adds.Count<12?(int?)null:target.Seat.id):
                         pveNavigation.Direction(at,destination,target.Seat.id);
                     if(a.HasBreachShortcut)dir=a.BreachShortcut;
                     if(a.WallBreach!=null&&Time>=a.WallBreach.breakAt&&Time<a.WallBreach.breakAt+3f)dir=Vec(a.WallBreach.normal);
@@ -180,12 +182,12 @@ namespace ChipArena.UnityConversion
                     move=distance>1.1f||a.Possessed||a.Stats.id=="spitter"?dir*speed:Vector3.zero;if(!SupportedStageMove(navAt,move))move=Vector3.zero;
                 }
                 if(move.sqrMagnitude>.001f){float factor=Time<a.SlowUntil?a.SlowFactor:1;foreach(var f in ChipFields)if(CanHit(f.Owner,m)&&Vector3.Distance(f.Position,at)<f.Radius)factor=Math.Min(factor,f.Kind=="frost"?.45f:f.Kind=="time"?.6f:1);move*=factor;move+=HordeSeparation(m,at);m.Yaw=Mathf.Atan2(move.x,move.z)*Mathf.Rad2Deg;}
-                if(!SupportedStageMove(navAt,move))move=Vector3.zero;a.External*=Mathf.Exp(-6*dt);move+=Vector3.ClampMagnitude(a.External,6);m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);
+                if(!SupportedStageMove(navAt,move))move=Vector3.zero;a.External*=Mathf.Exp(-6*dt);move+=Vector3.ClampMagnitude(a.External,6);if(HubCross(at,at+move*dt,m.Collider.radius))move=Vector3.zero;m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);
             }
         }
         private bool TryVentTravel(NativeMinion m,NativePilot target)
         {
-            var a=m.Pve;if(a.Stats.id=="hulk"||a.Crawl||!a.Struck||Time<a.VentReady||Time-a.LastDamage<2||a.Possessed&&Time-a.PossessedAt<10)return false;
+            var a=m.Pve;if(HubOn)return false;if(a.Stats.id=="hulk"||a.Crawl||!a.Struck||Time<a.VentReady||Time-a.LastDamage<2||a.Possessed&&Time-a.PossessedAt<10)return false;
             int e=Array.FindIndex(StageVents,v=>Math.Abs(v.y-m.Body.position.y)<2&&new Vector2(v.x-m.Body.position.x,v.z-m.Body.position.z).magnitude<=2);if(e<0||pveNavigation.Distance(m.Body.position,target.Body.position,target.Seat.id)<=28||Minions.Count(n=>n.Pve?.Travelling==true)>=2||VentHazard(e,.9f)||Pve.SpawnRandom.Next()>=.25)return false;
             a.Entry=Pve.Content.entries.First(x=>x.e==e);a.Travelling=true;a.DiveAt=Time;a.VentUntil=Time+2.4f;a.VentReady=Time+20;a.External=Vector3.zero;m.Body.linearVelocity=Vector3.zero;m.Body.isKinematic=true;m.Collider.enabled=false;m.Body.position=StageVents[e]+Vector3.up*.9f;m.Yaw=Mathf.Atan2(-m.Body.position.x,-m.Body.position.z)*Mathf.Rad2Deg;DiveEntry(a.Entry);return true;
         }
@@ -215,7 +217,7 @@ namespace ChipArena.UnityConversion
         }
         private float HitPveAdd(NativeMinion m,NativePilot source,float amount,Vector3 dir,float impulse,Vector3? point,string kind,float radius,bool head,int projectile=0,bool pierced=false,Vector3? from=null)
         {
-            var a=m.Pve;if(source==null||a.Travelling||Time<a.ExposedAt||Pve?.Holding==true)return 0;
+            var a=m.Pve;if(HubDamageBlocked(source,m.Body.position,from,projectile))return 0;if(source==null||a.Travelling||Time<a.ExposedAt||Pve?.Holding==true)return 0;
             if(Pve==null){float hit=Math.Min(m.Hp,amount);m.Hp-=hit;m.LastHitAt=Time;CancelHulkWind(m,hit);if(!a.Charging&&NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),hit,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;}Emit(EventKind.Hit,source,m.Id,m.Body.position,hit,kind,from:from,projectile:projectile,pierced:pierced);if(m.Hp<=0)RemoveMinion(m);return hit;}float actual=0;
             foreach(var share in NativeHordeDamage.Shares(amount,new V3(-m.Body.position.x,m.Body.position.y,m.Body.position.z),-m.Yaw,a.Crawl,point.HasValue?(V3?)new V3(-point.Value.x,point.Value.y,point.Value.z):null,kind,radius>0?radius:3,head,Pve.SpawnRandom.Next))
             {
@@ -227,7 +229,7 @@ namespace ChipArena.UnityConversion
             }
             if(NativeSpitterRules.Interrupt(actual,Time,m.LastAttack,a.Struck)&&a.Stats.id=="spitter")
             {a.SpitCancelAt=Time;a.Struck=true;a.RecoverAt=NativeSpitterRules.Retry(Time);Emit(EventKind.Impact,source,m.Id,m.Body.position,0,"minion-spit-cancel");}
-            a.LastHit=source;a.LastDamage=Time;a.Dealt.TryGetValue(source.Seat.id,out float dealt);a.Dealt[source.Seat.id]=dealt+actual;
+            a.HubCredit=!HubDamageBlocked(source,m.Body.position,from,projectile);a.LastHit=source;a.LastDamage=Time;a.Dealt.TryGetValue(source.Seat.id,out float dealt);a.Dealt[source.Seat.id]=dealt+actual;
             CancelHulkWind(m,actual>0?amount:0);
             if(!a.Charging)if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;if(a.Stats.id!="spitter"||actual<=0)a.RecoverAt=Time;}if(Time>=a.ExposedAt)a.External=Vector3.ClampMagnitude(a.External+new Vector3(dir.x,0,dir.z)*NativePveParity.AddImpulse(impulse),6);
             m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,normal:dir.x*dir.x+dir.z*dir.z>1e-12f?dir:Vector3.zero,from:from,projectile:projectile,pierced:pierced);

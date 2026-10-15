@@ -74,9 +74,10 @@ with them and every client draws with them. It is a DEV power fantasy, not balan
 | 4 (ranged) | Orbital Uplink | Call down a steerable orbital laser that chases the aim's floor point; the caster moves slowly while steering. Shares Kernel Panic's ultimate clock. | call-down .6 s, 4 s, radius 2.2, chase 9 m/s within 35 m, 30 per s in .25 s ticks, 40% slow, caster at 60% speed |
 | 5 | Reconfigure | Unchanged (the mode switch). | CyberRangedSpec |
 
-Movement: every ranged cast and Q/E keep the pilot moving (`MoveScale`; Orbital Uplink at .6). Today the host zeroes the
-move velocity and holds AttackEnd for each cast (`NativeArena.CyberBegin`); for v2's ranged casts it must not. Glitch Cut,
-Meteor Byte and Kernel Panic move the body themselves.
+Movement: every ranged cast and Q/E keep the pilot moving (`MoveScale`; Orbital Uplink at .6). Astra's v2 authority honours
+it: `NativeArena` locks a Cyber Lord only while the current slot's `MoveScale` is 0 (and the prediction the same), so a Plasma
+Byte throw keeps the pilot moving (`NativeCyberRangedValidation`: "throw retains movement"). Glitch Cut, Meteor Byte and
+Kernel Panic move the body themselves.
 
 ### Astra prompt: kit v2 rules
 
@@ -133,17 +134,48 @@ on v1's Bit Bolt window for a v1 record):
   point (`ReleaseAt`, in front of the chest, in the aim's frame so it follows the pitch) exactly on the replicated release,
   on to full extension at shoulder height on the aim (`Extend`) one windup later: two cubic Hermite segments sharing the
   release's tangent on mirrored 1.3-power clocks, so the hand is fastest through the release with no kink and no one-frame
-  spike. The palm turns from cupping to pushing at the aim and the elbow comes forward under it; the chest winds the
-  throwing shoulder back .06 rad, uncoils it .26 rad forward through the release and comes back square. The hand then swings
-  back to the stance about its shoulder (a pendulum past the hip) by the window's end, while the other hand holds its
-  energy, drawn back 5 cm. A window starts and ends exactly on the stance it inherits, so throws chain at any interval and
-  at Overclock's rate (windup .0375 s, window .1875 s) with no pop. The Overflow (every third) sweeps both hands from behind,
-  closing at the release, into a joined two-handed push (`Gather`, `Push`), the chest leaning back then driving in. A cut
-  throw freezes where it was (on its window as it began, from `Ready`) and settles back over .15 s. A throw that starts
-  while a v2 cast still settles sweeps on from where the cast left that hand; the other hand finishes the cast's settle.
+  spike. The palm turns from cupping to pushing at the aim and the elbow comes forward under it. The hand then swings back
+  to the stance about its shoulder (a pendulum past the hip) by the window's end, while the other hand holds its energy and
+  pulls back (11 cm), out (3 cm) and down against the throw through the uncoil, coming back with the return. The hands
+  start and end every window on the stance they inherit (the body's drive below carries them). The Overflow (every third)
+  sweeps both hands from behind, closing at the release, into a joined two-handed push (`Gather`, `Push`). A cut throw
+  freezes where it was (on its window as it began, from `Ready`) and settles back over .15 s. A throw that starts while a
+  v2 cast still settles sweeps on from where the cast left that hand; the other hand finishes the cast's settle.
+- **The body drives every throw** (2026-10-15; owner: "Add more momentum to the basic melee/ranged attacked ... With ranged,
+  simulate more body movement in our "casts""; `CyberRangedPose.Drive`, `DriveOf`, `BodyOf`): each throw window drives
+  the drawn body, from the stance:
+  - the coil: the throwing shoulder (.3 rad) and hip (.14 rad) turned back, the chest dipping back and the weight onto the
+    back foot a little through the windup;
+  - the release: the hips, then the shoulders, turn through square (the hips first: they uncoil over .8 of the drive), the
+    shoulders fastest round the release;
+  - the follow-through: the throwing shoulder carried .5 rad past forward on .28 rad of hips (the spine takes 40% of the turn
+    above the hips, the chest the rest), the chest leaning .15 rad into the throw, and, standing, the drawn body pushed 10 cm
+    onto the front foot (half way between the back-to-front foot axis and straight ahead, 3.5 cm across to the front foot's
+    side) and dropped 4.5 cm. It peaks 30% into the window after the extension (.174 s at the spec's rate);
+  - the recovery back to the stance over the rest of the window and .22 s more (`Tail`).
+  The Overflow pushes square from the chest instead: no turn, a .14 rad lean back, then .34 rad forward with a 15 cm push
+  and a 7 cm drop. A shorter window (a higher attack rate) swings the body less (by the square root of its share of the
+  spec's .3 s, at least 60%: Overclock about 79%).
+  - Momentum: the record keeps only the newest throw, so the view remembers the throw before it (`CyberKit2RangedView.Prev*`,
+    noted by `CyberKit2RangedFeed.Map` for the same pilot, forgotten on another pilot or a record that runs back). A new
+    throw takes the turn over from wherever the last one's follow-through or recovery left it (over 1.5 windups); the
+    weight and the lean start from the stance and add onto the last's as it fades. So at a rapid rate the right hand's
+    follow-through (the right shoulder forward) is already the left hand's coil, and the body flows from one throw into the
+    next without coming back to the stance between them; after a pause it has recovered and the next throw coils from the
+    stance. v1's Bit Bolt keeps no history: its body is back on the stance by the window's end.
+  - Standing, the gait keeps both feet planted and re-solves the legs to them (the knees bend and turn under the hips); on
+    the move the shoulders keep their whole turn and the hips half, over the run's or strafe's own legs, and the weight
+    stays the gait's. The glide (the sprint) and a cast or the key-5 switch take the drive over as they take the arms.
+  - The hands' targets ride round with the shoulders' turn and along with the shift, and with half of the lean. The neck
+    takes the hips', spine's and chest's turn and the drive's lean back out: the head stays on the aim, level.
+  - The fireball still leaves the drawn hand: the held balls and the cast flash sit on the drawn fists, and the flying ball
+    eases from the drawn hand onto the host's path over its first .12 s (the host spawns it .3 m over the body's centre and
+    .18 m to the throwing side; on the release the drawn hand is within 42-56 cm of it, mostly below).
 - **First person** (the view model; the camera is never moved): the hands low at the screen's lower edges holding their
   fireballs; a throw sweeps the hand up and in toward the crosshair and back out; the Overflow brings both together at the
-  centre.
+  centre. The body's drive sways both hands with it (across with the shoulders' turn, about 4.5 cm at the follow-through;
+  forward with the push and the lean; down with the drop); the other hand's counterbalance is a third as large. The view
+  rig's chest is not turned (the first-person torso settle would scale it), and nothing moves the camera.
 - **The glide** (the ranged sprint, on the carry's eased sprint ramp): both arms swept back and out square to the run
   (`Glide`, from the shoulders' line whatever the torso's twist), the palms trailing and lifting at the stride, the dash
   sprint's lean lifted .3 rad (unchanged by the 2026-10-15 stance: at full sprint the arms are posed exactly as before; the
@@ -951,6 +983,10 @@ warp is presentation only, and the bodies stand where the snapshot puts them.
 - The Sheldon Idle poses the portrait rigs only (never a match rig).
 - The trail ring draws more trails at once; the authority's trail is unchanged.
 - The ranged mode's hold, switch and casts move only the drawn arms and chest, and the blink a 6 cm dip of the drawn hips.
+- The ranged throws' body drive (2026-10-15) moves only the drawn rig on the replicated throw windows: standing, the drawn
+  body shifts up to 10 cm (the Overflow 15 cm) toward the front foot and drops up to 7 cm, the hips turn up to .28 rad and
+  the shoulders .5 rad, back by .22 s after each window (or into the next throw); the feet stay the gait's, planted. The
+  release and the projectile's spawn, speed, damage, count and timing are the host's, unchanged.
 - The martial string (2026-10-15) moves only the drawn rig on the replicated windows: the drawn body shifts up to 8 cm off
   the capsule (step-ins, the heel kick's pivot, the palm's stance) and returns, rises up to 10 cm in the launcher's hop and
   sinks up to 10 cm to keep a planted foot in reach; the kicks' legs, the hop and the stomp land by each window's end.

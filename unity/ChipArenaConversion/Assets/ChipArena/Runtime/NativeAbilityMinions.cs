@@ -23,14 +23,14 @@ namespace ChipArena.UnityConversion
             var all=new List<(NativePilot p,NativeMinion m,Vector3 at,Collider collider)>();
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&Enemy(owner,p)&&Vector3.Distance(p.Body.position,at)<=radius)all.Add((p,null,p.Body.position,p.Collider));
             foreach(var m in Minions)if(m.Hp>0&&Enemy(owner,m)&&Vector3.Distance(m.Body.position,at)<=radius)all.Add((null,m,m.Body.position,m.Collider));
-            int hits=0;foreach(var n in all.OrderBy(n=>(n.at-at).sqrMagnitude).Take(4))if(MeleeVisible(at,n.at,owner,n.collider)){yield return(n.p,n.m,n.at);if(++hits>=limit)yield break;}
+            int hits=0;foreach(var n in all.OrderBy(n=>(n.at-at).sqrMagnitude).Take(4))if(!HubCross(at,n.at)&&MeleeVisible(at,n.at,owner,n.collider)){yield return(n.p,n.m,n.at);if(++hits>=limit)yield break;}
         }
         private void SlowMinion(NativeMinion m,float factor,float duration)
         {if(m.Hp<=0||duration<=0)return;if(Time>=m.SlowUntil)m.SlowFactor=1;m.SlowFactor=Math.Min(m.SlowFactor,Mathf.Clamp(factor,.4f,1));m.SlowUntil=Math.Max(m.SlowUntil,Time+duration);if(m.Pve!=null){m.Pve.SlowUntil=m.SlowUntil;m.Pve.SlowFactor=m.SlowFactor;}}
         private void BurnMinion(NativeMinion m,NativePilot owner,float dps)
-        {if(m.Hp<=0||dps<=0)return;string key=owner.Seat.id+":fire";m.Dots.TryGetValue(key,out var old);bool live=old!=null&&old.Until>=Time;m.Dots[key]=new NativeDot{Source=owner.Seat.id,Dps=Math.Max(dps,live?old.Dps:0),Next=live?old.Next:Time+.25,Until=Time+2};}
+        {if(m.Hp<=0||dps<=0||HubDamageBlocked(owner,m.Body.position))return;string key=owner.Seat.id+":fire";m.Dots.TryGetValue(key,out var old);bool live=old!=null&&old.Until>=Time;m.Dots[key]=new NativeDot{HubNoReward=HubInside(owner.Body.position),Source=owner.Seat.id,Dps=Math.Max(dps,live?old.Dps:0),Next=live?old.Next:Time+.25,Until=Time+2};}
         private float AbilityMinionHit(NativeAbilityShot shot,NativeMinion target,float damage,Vector3 at,Vector3 dir,float impulse,bool life=false)
-        {float actual=HitMinion(target,shot.Owner,damage,dir,impulse,at,"energy");AbilityOnDamage(shot.Owner,actual);if(life)Heal(shot.Owner,actual*(float)shot.Owner.Stats["lifeSteal"]);return actual;}
+        {float actual=HitMinion(target,shot.Owner,damage,dir,impulse,at,"energy",from:shot.Position);AbilityOnDamage(shot.Owner,actual);if(life)Heal(shot.Owner,actual*(float)shot.Owner.Stats["lifeSteal"]);return actual;}
         private bool AbilityMinionContact(NativeAbilityShot shot,NativeMinion target,AbilityContactHit hit)
         {
             var d=shot.Definition;var owner=shot.Owner;Vector3 at=hit.point+hit.normal*.03f;int element=owner.Pose.MagicVisual;

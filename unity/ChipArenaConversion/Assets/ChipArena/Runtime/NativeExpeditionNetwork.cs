@@ -10,7 +10,8 @@ namespace ChipArena.UnityConversion
         private ExpeditionViewReceiver expeditionReceiver;private ExpeditionGuestCommands expeditionGuest;
         private string expeditionStamp;private float expeditionNextSend;private IExpeditionCommands expeditionLocal;
         private ExpeditionAreaReadyRequest expeditionLoadedTicket;private float expeditionNextReady;
-        public ExpeditionView ExpeditionView{get;private set;}
+        private ExpeditionView expeditionView;
+        public ExpeditionView ExpeditionView{get=>expeditionView;private set{expeditionView=value;NativeExpeditionHubLive.Authority=value?.hub;NativeExpeditionHubLive.AuthorityClock=value?.elapsed??0;}}
         public IExpeditionCommands ExpeditionCommands=>server!=null?(IExpeditionCommands)expeditionGuest:
             expeditionLocal;
 

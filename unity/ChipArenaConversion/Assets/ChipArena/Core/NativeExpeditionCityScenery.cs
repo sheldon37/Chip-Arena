@@ -11,21 +11,23 @@ namespace ChipArena.UnityConversion
     public struct NativeCityBackdropFire {public float X,Y,Z,Size;}
 
     /// <summary>
-    /// The Expedition town's skyline (docs/EXPEDITION-LAYOUT.md "Town dressing"): a dead city at dusk round the 120 x 120 m
-    /// town, built once from integer hashes so every client and the killcam draw the same horizon. Nothing here is sim data and
+    /// The Expedition town's skyline (docs/EXPEDITION-LAYOUT.md "Town dressing"): a dead city at dusk round the town (its blocks
+    /// run over x -98..98, z -98..62 since the hub's wilds, exp-layout-3), built once from integer hashes so every client and the
+    /// killcam draw the same horizon. Nothing here is sim data and
     /// nothing collides: Runtime/NativeExpeditionCityPresentation.cs draws it as instanced NativeBlockLit boxes on
     /// NativeSceneryBuilder.BackdropLayer (no shadows cast) for map id "expedition-city" only.
-    ///  - The ground: street plates from the town's edge (±62 m) out to 320 m, flush with the slab.
+    ///  - The ground: street plates from the town's edge out to 320 m, flush with the slab.
     ///  - Blocks on a 24 m street grid from 70 m out to 230 m: mid-rise ruins near the town, towers further out (tallest
     ///    furthest), many with broken crowns; a few windows lit warm, the rest dark.
     ///  - Burning towers: whole floors glowing orange (their smoke columns and flare are the atmosphere's,
     ///    from the fires <see cref="Build(out NativeCityBackdropFire[],bool)"/> returns), aviation beacons on the tallest masts, two cranes stopped mid-job.
-    /// Everything stands beyond ±<see cref="Inner"/> m, outside the town's bounds and its perimeter blocks. Unity frame (x east, z
+    /// Everything stands <see cref="Margin"/> m or more beyond the town's edge (its perimeter blocks), outside its bounds. Unity frame (x east, z
     /// north), metres. Pure and deterministic; allocates only in Build.
     /// </summary>
     public static class NativeExpeditionCityScenery
     {
-        public const double Inner=66,Edge=62,Ground=320,Reach=230;public const int MaxFires=7;
+        /// <summary>The town's edge (its perimeter blocks' outer faces) and how far beyond it the skyline starts.</summary>
+        public const double EdgeMinX=-98,EdgeMaxX=98,EdgeMinZ=-98,EdgeMaxZ=62,Margin=4,Ground=320,Reach=250;public const int MaxFires=7;
         private const int Concrete=NativeBlockLooks.ConcreteBoard,Brick=NativeBlockLooks.BrickRed,Plain=NativeBlockLooks.Plain,Tube=NativeCyberCityLooks.Tube,Bank=NativeCyberCityLooks.Bank,Asphalt=NativeBlockLooks.Asphalt;
         private static readonly int[] Tones={0x34303A,0x3C3438,0x2E2E36,0x403634,0x36303C,0x463A36};
         private static readonly int[] Bricks={0x44282A,0x3A2624,0x4E3030};
@@ -46,12 +48,14 @@ namespace ChipArena.UnityConversion
         {
             var s=new Sink();GroundPlates(s);Blocks(s);Cranes(s);var o=s.Boxes.ToArray();fires=s.Fires.ToArray();if(layers)Layers(o);return o;
         }
-        /// <summary>Whether a box's footprint (turned) reaches inside ±Inner (the checks hold every standing box beyond it).</summary>
-        public static bool Inside(in NativeCityBackdropBox b,double limit=Inner)
+        /// <summary>Whether a box's footprint (turned) reaches inside the town's edge grown by `margin` (the checks hold every
+        /// standing box beyond <see cref="Margin"/>, the ground plates beyond the edge itself).</summary>
+        public static bool Inside(in NativeCityBackdropBox b,double margin=Margin)
         {
             double t=b.Yaw*Math.PI/180,c=Math.Abs(Math.Cos(t)),n=Math.Abs(Math.Sin(t)),ex=c*b.Hx+n*b.Hz,ez=n*b.Hx+c*b.Hz;
-            return Math.Abs(b.X)-ex<limit&&Math.Abs(b.Z)-ez<limit;
+            return b.X+ex>EdgeMinX-margin&&b.X-ex<EdgeMaxX+margin&&b.Z+ez>EdgeMinZ-margin&&b.Z-ez<EdgeMaxZ+margin;
         }
+        private static bool Clear(double x,double z,double hx,double hz,double margin)=>x+hx<=EdgeMinX-margin||x-hx>=EdgeMaxX+margin||z+hz<=EdgeMinZ-margin||z-hz>=EdgeMaxZ+margin;
         private static void Layers(NativeCityBackdropBox[] o)
         {
             var boxes=new NativeSurfaceLayers.Box[o.Length];
@@ -65,26 +69,27 @@ namespace ChipArena.UnityConversion
         }
         private static void GroundPlates(Sink s)
         {
-            // Four plates round the town's slab (its blocks run to ±62), flush with the street.
-            const double G=Ground,E=Edge;
-            s.Add(0,-.25,(E+G)/2,2*G,.5,G-E,Asphalt,0,0x2E2C30);s.Add(0,-.25,-(E+G)/2,2*G,.5,G-E,Asphalt,0,0x2E2C30);
-            s.Add((E+G)/2,-.25,0,G-E,.5,2*E,Asphalt,0,0x2E2C30);s.Add(-(E+G)/2,-.25,0,G-E,.5,2*E,Asphalt,0,0x2E2C30);
+            // Four plates round the town's slab (its blocks run to the edge), flush with the street.
+            const double G=Ground;
+            s.Add(0,-.25,(EdgeMaxZ+G)/2,2*G,.5,G-EdgeMaxZ,Asphalt,0,0x2E2C30);s.Add(0,-.25,(EdgeMinZ-G)/2,2*G,.5,G+EdgeMinZ,Asphalt,0,0x2E2C30);
+            s.Add((EdgeMaxX+G)/2,-.25,(EdgeMinZ+EdgeMaxZ)/2,G-EdgeMaxX,.5,EdgeMaxZ-EdgeMinZ,Asphalt,0,0x2E2C30);s.Add((EdgeMinX-G)/2,-.25,(EdgeMinZ+EdgeMaxZ)/2,G+EdgeMinX,.5,EdgeMaxZ-EdgeMinZ,Asphalt,0,0x2E2C30);
         }
         private static void Blocks(Sink s)
         {
-            // A 24 m grid (12 m streets between 12-20 m lots); lots inside ±Inner (and their streets) are the town.
+            // A 24 m grid (12 m streets between 12-20 m lots); lots near the town's edge (and their streets) are the town.
             int id=0;
-            for(int gx=-10;gx<10;gx++)for(int gz=-10;gz<10;gz++,id++)
+            for(int gx=-11;gx<11;gx++)for(int gz=-11;gz<11;gz++,id++)
             {
-                double cx=gx*24+12,cz=gz*24+12,d=Math.Max(Math.Abs(cx),Math.Abs(cz));if(d<Inner+10||Math.Sqrt(cx*cx+cz*cz)>Reach)continue;
-                double far=Math.Min(1,(d-Inner)/(Reach-Inner));int lots=H(id,1)<.35?1:2;
+                double cx=gx*24+12,cz=gz*24+12;double outX=Math.Max(0,Math.Max(EdgeMinX-cx,cx-EdgeMaxX)),outZ=Math.Max(0,Math.Max(EdgeMinZ-cz,cz-EdgeMaxZ)),d=Math.Max(outX,outZ);
+                if(d<Margin+10||Math.Sqrt(cx*cx+cz*cz)>Reach+40)continue;
+                double far=Math.Min(1,d/(Reach-60));int lots=H(id,1)<.35?1:2;
                 // Near the town the lots thin out and stay low, so the town's own edge reads against the skyline.
-                if(d<100&&H(id,11)<.45)continue;
+                if(d<34&&H(id,11)<.45)continue;
                 for(int l=0;l<lots;l++)
                 {
                     double w=lots==1?R(12,18,id,2):R(7,9.5,id,2,l),dep=R(10,18,id,3,l);double ox=lots==1?0:(l==0?-5:5);double bx=cx+ox+R(-1,1,id,4,l),bz=cz+R(-2,2,id,5,l);
-                    // Keep the town clear: the nearest face stands beyond Inner.
-                    if(Math.Abs(bx)-w/2<Inner&&Math.Abs(bz)-dep/2<Inner)continue;
+                    // Keep the town clear: the nearest face stands Margin beyond its edge.
+                    if(!Clear(bx,bz,w/2,dep/2,Margin))continue;
                     double h=R(8,20,id,6,l)+far*far*R(10,95,id,7,l);if(H(id,8,l)<.12)h*=.45;bool brick=h<30&&H(id,9,l)<.55;
                     int tone=brick?Bricks[(int)(H(id,10,l)*Bricks.Length)%Bricks.Length]:Tones[(int)(H(id,10,l)*Tones.Length)%Tones.Length];tone=Shade(tone,1-.4*far);
                     Tower(s,id*4+l,bx,bz,w,dep,h,brick?Brick:Concrete,tone,far);
@@ -119,7 +124,7 @@ namespace ChipArena.UnityConversion
         private static void Cranes(Sink s)
         {
             // Two tower cranes over unfinished blocks, jibs frozen; red lights at their tips.
-            double[][] at={new[]{-150.0,96,30},new[]{120.0,-140,215}};
+            double[][] at={new[]{-150.0,110,30},new[]{140.0,-150,215}};
             foreach(var c in at)
             {
                 double x=c[0],z=c[1],yaw=c[2],h=62;var steel=0x8A6A2A;s.Add(x,h/2,z,1.6,h,1.6,NativeBlockLooks.SteelGreen,0,steel);

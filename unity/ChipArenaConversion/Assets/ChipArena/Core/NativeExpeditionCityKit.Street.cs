@@ -272,7 +272,7 @@ namespace ChipArena.UnityConversion
                     if(double.IsNaN(u))continue;double s=Hash(id,f.Index*7+k,202);Use(f,u-.45,u+.45,4.4,5.6);
                     Begin();var steel=With(P(NativeBlockLooks.SteelGreen,0x2A2E2C,RoleLamp),fade:true);
                     FBox(f,u,5.12,.58,.08,.12,1.16,steel);FBox(f,u,5.06,1.15,.32,.14,.5,steel);
-                    int state=s<.6?0:s<.8?1:2;FBox(f,u,4.97,1.15,.22,.03,.36,state==2?P(NativeBlockLooks.Plain,0x3A3630,RoleLamp):Glow(SodiumHex,1.9f,RoleLamp,state==1?DriveFlicker:DriveSteady,(float)s*11));
+                    int state=s<.6?0:s<.8?1:2;if(WildFace(f,u))state=s<.12?1:2;FBox(f,u,4.97,1.15,.22,.03,.36,state==2?P(NativeBlockLooks.Plain,0x3A3630,RoleLamp):Glow(SodiumHex,1.9f,RoleLamp,state==1?DriveFlicker:DriveSteady,(float)s*11));
                     if(state<2){At(f,u,0,1.15,out double lx,out double lz);Light(lx,f.Base+4.6,lz,SodiumHex,1.0,11,1.0,state==0?GlowLamp:GlowLampFlicker,s*11);}
                     End();
                 }

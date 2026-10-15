@@ -6,18 +6,24 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// What the town's atmosphere needs, built once (<see cref="Build"/>): the kit's fires, lamps, floods, beacons and neon, the
     /// sanctuary's bulbs, the skyline's burning towers, a 2 m open-street map over the town (where ground fog may lie and how far
-    /// it is to the nearest wall), and the fog tint. No allocation after Build.
+    /// it is to the nearest wall, and which cells are the hub's wilds, where it lies thicker and darker), and the fog tint. No
+    /// allocation after Build.
     /// </summary>
     public sealed class NativeCityFxScene
     {
-        public const int Cells=62;public const float Origin=-62,Cell=2;
+        /// <summary>The grid over the town's blocks (x -98..98, z -98..62 since the hub's wilds), 2 m cells.</summary>
+        public const int CellsX=98,CellsZ=80;public const float OriginX=-98,OriginZ=-98,Cell=2;
         /// <summary>Per 2 m cell: 0 inside a block, else the distance in cells to the nearest blocked cell (1..4).</summary>
-        public readonly byte[] Open=new byte[Cells*Cells];
+        public readonly byte[] Open=new byte[CellsX*CellsZ];
+        /// <summary>Per 2 m cell: 1 in a wilds district of the hub record (thicker, darker fog), else 0.</summary>
+        public readonly byte[] Wild=new byte[CellsX*CellsZ];
         public NativeCityGlow[] Fires=Array.Empty<NativeCityGlow>(),Halos=Array.Empty<NativeCityGlow>();public NativeCityBackdropFire[] Far=Array.Empty<NativeCityBackdropFire>();
         public float[] BulbX=Array.Empty<float>(),BulbY=Array.Empty<float>(),BulbZ=Array.Empty<float>(),BulbP=Array.Empty<float>();
         public float FogR=.1f,FogG=.08f,FogB=.1f;
-        public byte OpenAt(double x,double z){int i=(int)Math.Floor((x-Origin)/Cell),j=(int)Math.Floor((z-Origin)/Cell);return i<0||j<0||i>=Cells||j>=Cells?(byte)0:Open[j*Cells+i];}
-        public static NativeCityFxScene Build(ContentBlock[] blocks,NativeExpeditionCityKit kit,NativeCityBackdropFire[] far,MapLook look)
+        public byte OpenAt(double x,double z){int i=(int)Math.Floor((x-OriginX)/Cell),j=(int)Math.Floor((z-OriginZ)/Cell);return i<0||j<0||i>=CellsX||j>=CellsZ?(byte)0:Open[j*CellsX+i];}
+        public bool WildAt(double x,double z){int i=(int)Math.Floor((x-OriginX)/Cell),j=(int)Math.Floor((z-OriginZ)/Cell);return i>=0&&j>=0&&i<CellsX&&j<CellsZ&&Wild[j*CellsX+i]!=0;}
+        public static NativeCityFxScene Build(ContentBlock[] blocks,NativeExpeditionCityKit kit,NativeCityBackdropFire[] far,MapLook look)=>Build(blocks,kit,far,look,null);
+        public static NativeCityFxScene Build(ContentBlock[] blocks,NativeExpeditionCityKit kit,NativeCityBackdropFire[] far,MapLook look,ExpeditionHubLayout hub)
         {
             var s=new NativeCityFxScene{Far=far??Array.Empty<NativeCityBackdropFire>()};
             for(int k=0;k<s.Open.Length;k++)s.Open[k]=4;
@@ -26,14 +32,16 @@ namespace ChipArena.UnityConversion
                 var stem=NativeExpeditionCityKit.Stem(b?.id);if(stem==null||stem.StartsWith("slab-",StringComparison.Ordinal)||stem.EndsWith("-paving",StringComparison.Ordinal)||b.pos.y-b.size.y/2>2)continue;
                 double r=Math.Max(b.size.x,b.size.z)*.5*(b.rotation!=null&&Math.Abs(b.rotation.y)>.01f?1.0:0);
                 double x0=b.pos.x-(r>0?r:b.size.x/2),x1=b.pos.x+(r>0?r:b.size.x/2),z0=b.pos.z-(r>0?r:b.size.z/2),z1=b.pos.z+(r>0?r:b.size.z/2);
-                for(int j=0;j<Cells;j++)for(int i=0;i<Cells;i++){double cx=Origin+(i+.5)*Cell,cz=Origin+(j+.5)*Cell;if(cx>=x0&&cx<=x1&&cz>=z0&&cz<=z1)s.Open[j*Cells+i]=0;}
+                int ia=Math.Max(0,(int)Math.Floor((x0-OriginX)/Cell)),ib=Math.Min(CellsX-1,(int)Math.Ceiling((x1-OriginX)/Cell)),ja=Math.Max(0,(int)Math.Floor((z0-OriginZ)/Cell)),jb=Math.Min(CellsZ-1,(int)Math.Ceiling((z1-OriginZ)/Cell));
+                for(int j=ja;j<=jb;j++)for(int i=ia;i<=ib;i++){double cx=OriginX+(i+.5)*Cell,cz=OriginZ+(j+.5)*Cell;if(cx>=x0&&cx<=x1&&cz>=z0&&cz<=z1)s.Open[j*CellsX+i]=0;}
             }
             // Distance to the nearest blocked cell, up to 4 (three passes of a 4-neighbour relaxation).
-            for(int pass=0;pass<4;pass++)for(int j=0;j<Cells;j++)for(int i=0;i<Cells;i++)
+            for(int pass=0;pass<4;pass++)for(int j=0;j<CellsZ;j++)for(int i=0;i<CellsX;i++)
             {
-                int k=j*Cells+i;if(s.Open[k]==0)continue;int m=4;
-                if(i>0)m=Math.Min(m,s.Open[k-1]+1);if(i<Cells-1)m=Math.Min(m,s.Open[k+1]+1);if(j>0)m=Math.Min(m,s.Open[k-Cells]+1);if(j<Cells-1)m=Math.Min(m,s.Open[k+Cells]+1);s.Open[k]=(byte)Math.Max(1,m);
+                int k=j*CellsX+i;if(s.Open[k]==0)continue;int m=4;
+                if(i>0)m=Math.Min(m,s.Open[k-1]+1);if(i<CellsX-1)m=Math.Min(m,s.Open[k+1]+1);if(j>0)m=Math.Min(m,s.Open[k-CellsX]+1);if(j<CellsZ-1)m=Math.Min(m,s.Open[k+CellsX]+1);s.Open[k]=(byte)Math.Max(1,m);
             }
+            if(hub!=null)for(int j=0;j<CellsZ;j++)for(int i=0;i<CellsX;i++)if(hub.InWilds(OriginX+(i+.5)*Cell,OriginZ+(j+.5)*Cell))s.Wild[j*CellsX+i]=1;
             var fires=new List<NativeCityGlow>();var halos=new List<NativeCityGlow>();
             foreach(var g in kit?.Glows??Array.Empty<NativeCityGlow>()){if(g.Kind==NativeExpeditionCityKit.GlowFire||g.Kind==NativeExpeditionCityKit.GlowBrazier||g.Kind==NativeExpeditionCityKit.GlowWindowFire)fires.Add(g);else halos.Add(g);}
             // The look's own lights the kit does not already mark (the gate's warning lamp).
@@ -148,7 +156,7 @@ namespace ChipArena.UnityConversion
             Sprite(x,y,z,3.2,.02,.02,.025,1,false,0);Sprite(x+hx*2.2,y+.2,z+hz*2.2,1.6,.02,.02,.025,1,false,0);
             if(Frac(time*1.1)<.12)Sprite(x,y-1,z,Math.Max(.8,Dist(x,y,z)*.006),1,.1,.08,1,true);if(Frac(time*1.1+.5)<.06)Sprite(x,y+1.2,z,Math.Max(.7,Dist(x,y,z)*.005),1,1,1,1,true);
             double sweep=time*.35,tx=x*.62+Math.Sin(sweep)*28,tz=z*.62+Math.Cos(sweep*1.3)*28,ty=0;
-            if(Math.Abs(tx)<70&&Math.Abs(tz)<70){double k=70/Math.Max(Math.Abs(tx),Math.Abs(tz));tx*=k;tz*=k;}
+            if(Math.Abs(tx)<104&&Math.Abs(tz)<104){double k=104/Math.Max(Math.Abs(tx),Math.Abs(tz));tx*=k;tz*=k;}
             Beam(x,y-1.5,z,tx,ty,tz,1.2,16,.85,.92,1,.06);Flat(tx,.12,tz,11,.1,.11,.12,1,true);Heli++;
         }
         // An additive beam from a to b, its width growing from w0 to w1, turned about its axis to face the camera.
@@ -162,14 +170,17 @@ namespace ChipArena.UnityConversion
         // ---------------- ground fog and ash ----------------
         private void FogFx(NativeCityFxScene s,double time,double quality,bool low)
         {
-            int max=Count(110,quality,low);const double C=6;int i0=(int)Math.Floor((ex-FogRadius)/C),i1=(int)Math.Floor((ex+FogRadius)/C),j0=(int)Math.Floor((ez-FogRadius)/C),j1=(int)Math.Floor((ez+FogRadius)/C);
+            int max=Count(130,quality,low);const double C=6;int i0=(int)Math.Floor((ex-FogRadius)/C),i1=(int)Math.Floor((ex+FogRadius)/C),j0=(int)Math.Floor((ez-FogRadius)/C),j1=(int)Math.Floor((ez+FogRadius)/C);
             for(int j=j0;j<=j1;j++)for(int i=i0;i<=i1;i++)
             {
-                if(Fog>=max)return;double h=H(i+500,j+500,7);if(h<.25)continue;
+                if(Fog>=max)return;double h=H(i+500,j+500,7);
                 double x=(i+.15+.7*H(i,j,8))*C+Math.Sin(time*.05+h*20)*1.6,z=(j+.15+.7*H(i,j,9))*C+Math.Cos(time*.04+h*13)*1.6;byte open=s.OpenAt(x,z);if(open==0)continue;
+                // The wilds: every cell carries a sheet (the city's leave a quarter bare), thicker, darker, a second layer higher up.
+                bool wild=s.WildAt(x,z);if(!wild&&h<.25)continue;
                 double d=Math.Sqrt((x-ex)*(x-ex)+(z-ez)*(z-ez));if(d>FogRadius)continue;double fade=Math.Min(1,Math.Max(0,(d-2.5)/6))*Math.Min(1,(FogRadius-d)/10);
-                double radius=Math.Min(3.2+3*H(i,j,10),open*NativeCityFxScene.Cell*.9+.6),y=.3+.5*H(i,j,11);
-                Queue(x,y,z,radius,s.FogR*1.3,s.FogG*1.25,s.FogB*1.3,.2*fade*(.6+.4*h),1);Fog++;
+                double radius=Math.Min((wild?4.4:3.2)+3*H(i,j,10),open*NativeCityFxScene.Cell*.9+.6),y=.3+.5*H(i,j,11);
+                if(wild){Queue(x,y,z,radius*1.15,s.FogR*.85,s.FogG*.8,s.FogB*.95,.34*fade*(.6+.4*h),1);Fog++;if(Fog<max&&h>.5){Queue(x+1.3,y+1.1,z-.9,radius*.9,s.FogR*.75,s.FogG*.72,s.FogB*.88,.2*fade,1);Fog++;}}
+                else{Queue(x,y,z,radius,s.FogR*1.3,s.FogG*1.25,s.FogB*1.3,.2*fade*(.6+.4*h),1);Fog++;}
             }
         }
         private void AshFx(double time,double quality,bool low)
@@ -264,7 +275,7 @@ namespace ChipArena.UnityConversion
         public const int Shot=0,Burst=1,Boom=2,Crackle=3;
         private static readonly int[] Kind={Shot,Shot,Burst,Boom,Crackle,Crackle};
         private static readonly double[] Period={9.5,13.7,23,41,1.35,1.7},Jitter={5,6,9,14,.5,.6};
-        private static readonly double[] FixedX={0,0,0,0,0,21.5},FixedY={0,0,0,0,1.2,1.6},FixedZ={0,0,0,0,0,-2.7};
+        private static readonly double[] FixedX={0,0,0,0,0,22.6},FixedY={0,0,0,0,1.2,1.6},FixedZ={0,0,0,0,0,-3.9};
         public static int Emitters=>Kind.Length;
         private static uint Mix(uint x){unchecked{x^=x>>16;x*=0x7feb352dU;x^=x>>15;x*=0x846ca68bU;x^=x>>16;return x;}}
         private static double H(int a,int b,int c){unchecked{return Mix(Mix(Mix((uint)a+0x9E3779B9U)^(uint)b*0x85EBCA6BU)+(uint)c*0xC2B2AE35U)/4294967296.0;}}

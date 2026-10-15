@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         public NativeAbilityCast AbilityCast;public string BufferedSlot;public float BufferedAt,HoldAt=-1,SlowFactor=1,SlowImmune;public int ECharges=1;
         public readonly Dictionary<string,NativeDot> Dots=new Dictionary<string,NativeDot>();
     }
-    public sealed class NativeDot { public int Source;public double Dps,Next,Until; }
+    public sealed class NativeDot { public bool HubNoReward;public int Source;public double Dps,Next,Until; }
     public sealed class NativeBullet
     {
         public float Draw;public string Detail;public int Id,Owner,Reflections;public Vector3 Position,Velocity;public float Damage,Gravity,Radius,Life=3,Travel=160,Impulse;
@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
         private void DestroyScene()
         {
             if(root!=null){foreach(var c in root.GetComponentsInChildren<Collider>())c.enabled=false;CapturedAnimation.Release(root);}
-            hulkChargeIgnored.Clear();pveAcid.Clear();acidProps.Clear();hordeAdds.Clear();hordeEnemies.Clear();hordeTargets.Clear();hordeGrid.Clear();wardBreaches.Clear();wardBreachRevision=0;wardSandboxState=null;ClearCutExitCollision();stageLoads.Clear();frameProps.Clear();Pilots.Clear();Props.Clear();StaticBlocks.Clear();ResetStructureRuntime();Bullets.Clear();shotEnds.Clear();Events.Clear();hazardHits.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();abilityEchoes.Clear();MeleeShots.Clear();MeleeImpacts.Clear();meleeFissures.Clear();meleeCarries.Clear();procLedger.Clear();chipCooldowns.Clear();ChipFields.Clear();Minions.Clear();FighterEchoes.Clear();StormTrails.Clear();LeetFields.Clear();originalInputs.Clear();SirenFields.Clear();sirenFieldAt=0;
+            ResetHub();expeditionClosures.Clear();expeditionNavClear.Clear();expeditionDeaths.Clear();expeditionBoss=null;hulkChargeIgnored.Clear();pveAcid.Clear();acidProps.Clear();hordeAdds.Clear();hordeEnemies.Clear();hordeTargets.Clear();hordeGrid.Clear();wardBreaches.Clear();wardBreachRevision=0;wardSandboxState=null;ClearCutExitCollision();stageLoads.Clear();frameProps.Clear();Pilots.Clear();Props.Clear();StaticBlocks.Clear();ResetStructureRuntime();Bullets.Clear();shotEnds.Clear();Events.Clear();hazardHits.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();abilityEchoes.Clear();MeleeShots.Clear();MeleeImpacts.Clear();meleeFissures.Clear();meleeCarries.Clear();procLedger.Clear();chipCooldowns.Clear();ChipFields.Clear();Minions.Clear();FighterEchoes.Clear();StormTrails.Clear();LeetFields.Clear();originalInputs.Clear();SirenFields.Clear();sirenFieldAt=0;
         }
         public void Reset()
         {
@@ -111,7 +111,7 @@ namespace ChipArena.UnityConversion
             // Establish every defense before resolving attacks.
             foreach(var p in Pilots)
             {
-                if(p.Hp<=0||!p.Seat.connected)continue;p.Input=p.Seat.bot?AvoidVents(p,DevDummyInput(p,SandboxInput(p,DevBot(p)))):p.Seat.id==LocalId?input:RemoteInput(p.Seat.id);p.Input=p.Input.Sanitized();PveInput(p);
+                if(p.Hp<=0||!p.Seat.connected)continue;p.Input=p.Seat.bot?AvoidVents(p,DevDummyInput(p,SandboxInput(p,DevBot(p)))):p.Seat.id==LocalId?input:RemoteInput(p.Seat.id);p.Input=p.Input.Sanitized();PveInput(p);HubInput(p);
                 ProbePilotGround(p);
             }
             RouteLeetInputs();
@@ -226,6 +226,7 @@ namespace ChipArena.UnityConversion
         private float Damage(NativePilot target,NativePilot source,float amount,Vector3 direction,float impulse,bool head,bool forced=false,bool direct=true,bool primary=true,bool melee=false,bool stage=false,NativeBodyImpact impact=null,Vector3? hitPoint=null,bool rollAvoidable=true,bool weaponHit=false,EventKind eventKind=EventKind.Hit,string damageKind=null,bool sirenCrush=false,string collapseSegment=null,float finalCap=float.PositiveInfinity,int kernelStep=0,string stageHazard=null,bool stageLethal=false,int projectile=0,bool pierced=false)
         {
             if(target.DevGod||BossVictoryWalk||Pve?.Stage=="ended")return 0;
+            if(!forced&&HubDamageBlocked(source,target.Body.position,projectile:projectile))return 0;
             if(!NativeKernelPanicRules.AllowsDamage(target.Kernel,target.Seat.id,source?.Kernel,source?.Seat.id??0,kernelStep))return 0;
             if(target.Hp<=0||!target.Seat.connected||source!=null&&!forced&&!(collapseSegment!=null&&source==target)&&!(kernelStep>0?NativeCombatRules.CanHit(source.Seat,target.Seat,Match.Teams,FriendlyFire):CanHit(source,target))||float.IsNaN(amount)||float.IsInfinity(amount)||amount<=0||!forced&&(target.ScareBy!=null||kernelStep==0&&(Time<target.ShieldUntil||!stage&&NativeSpecialRules.Protected(target.Down,Time)||rollAvoidable&&Invulnerable(target))))return 0;
             if(source!=null&&!forced&&direct&&(primary||melee)&&Time<target.BlockEnd){BlockProc(target,source,hitPoint??target.Collider.ClosestPoint(target.Body.position-direction.normalized*2),"clash");if(melee)SuccessfulMeleeBlock(target,source,amount,direction,impulse);return 0;}

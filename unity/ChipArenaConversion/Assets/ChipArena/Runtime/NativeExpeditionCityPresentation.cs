@@ -21,7 +21,9 @@ namespace ChipArena.UnityConversion
     ///  - Practical lights: the eight that matter to the camera (Core NativeExpeditionCityLights) through
     ///    NativeLighting.PickedLights, eased per frame.
     ///  - Atmosphere (Core NativeExpeditionCityFx) through one NativeFxDraw: a solid and an effects batch, scaled by the effects
-    ///    quality and the low tier.
+    ///    quality and the low tier; thicker, darker fog over the hub's wilds.
+    ///  - The hub (exp-layout-3; NativeExpeditionHubPresentation.cs): the sanctuary gates at their state's pose, their dust and
+    ///    the ward's shimmer.
     /// Nothing here writes sim data, collides or enters the network frame. Allocation free after the one-time builds.
     /// </summary>
     public sealed partial class ArenaPresentation
@@ -54,7 +56,7 @@ namespace ChipArena.UnityConversion
             if(NativeArenaDressing.Nudged.Count>0)foreach(var pair in NativeArenaDressing.Nudged)if(pair.Key!=null&&townIndex.TryGetValue(pair.Key,out int k)){townNudge[k]=pair.Value;townMoved[k]=true;}
             var eye=WorldEye;TownInstances=TownDraws=0;DrawTownKit(arena,now,eye);DrawTownBackdrop();
             if(eye!=null){var c=eye.transform.position;float dt=townLast<0?0:Mathf.Clamp(now-townLast,0,.1f);townLights.Update(c.x,c.y,c.z,now,dt);NativeLighting.PickedLights(townLights.Pos,townLights.Rgb);}
-            DrawTownFx(now,eye);townLast=now;
+            DrawTownFx(now,eye);ExpeditionHubFrame(eye,now);townLast=now;
         }
         private bool EnsureExpeditionCity()
         {
@@ -79,11 +81,14 @@ namespace ChipArena.UnityConversion
             if(!townAreaRead)
             {
                 townAreaRead=true;
-                try{var asset=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName);if(asset!=null){var layout=NativeExpeditionLayout.Parse(asset.text);foreach(var a in layout.areas)if(a.map==map.id){townArea=a;break;}}}
+                try{var asset=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName);if(asset!=null){var layout=NativeExpeditionLayout.Parse(asset.text);foreach(var a in layout.areas)if(a.map==map.id){townArea=a;break;}
+                    // The hub record (exp-layout-3): the gates, the wilds and the routes; absent from older manifests.
+                    if(townArea!=null)townHub=ExpeditionHubLayout.Parse(asset.text,townArea.id);}}
                 catch(Exception e){Debug.LogWarning("Expedition town dressing: no layout records ("+e.Message+"); spawns undressed");}
+                NativeExpeditionHubLive.Sanctuary=townArea?.sanctuary??Array.Empty<ExpeditionVolume>();
             }
-            townMap=map;var blocks=map.blocks??Array.Empty<ContentBlock>();townKit=NativeExpeditionCityKit.Build(blocks,townArea);var look=NativeLighting.Look(map);
-            townScene=NativeCityFxScene.Build(blocks,townKit,townFires,look);townLights=NativeExpeditionCityLights.Build(townKit,look);
+            townMap=map;var blocks=map.blocks??Array.Empty<ContentBlock>();townKit=NativeExpeditionCityKit.Build(blocks,townArea,townHub,map.bounds);var look=NativeLighting.Look(map);
+            townScene=NativeCityFxScene.Build(blocks,townKit,townFires,look,townHub);townLights=NativeExpeditionCityLights.Build(townKit,look);HubWardSegments(map);
             townParents=new NativePropBody[blocks.Length];townOut=new bool[blocks.Length];townNudge=new Vector3[blocks.Length];townIndex.Clear();for(int i=0;i<blocks.Length;i++)if(blocks[i]?.id!=null)townIndex[blocks[i].id]=i;
             townSeeds=new float[townKit.Parts.Length];for(int i=0;i<townSeeds.Length;i++)townSeeds[i]=NativeBlockLooks.Seed(blocks[townKit.Parts[i].Parent].id+"#"+i);
             townMoved=new bool[blocks.Length];var parts=townKit.Parts;townRestMatrix=new Matrix4x4[parts.Length];townRestSpot=new Vector4[parts.Length];townRestColor=new Vector4[parts.Length];
@@ -148,7 +153,7 @@ namespace ChipArena.UnityConversion
         private void DisposeExpeditionCity()
         {
             CapturedAnimation.Release(townMesh);CapturedAnimation.Release(townMaterial);townMesh=null;townMaterial=null;townDraw?.Dispose();townDraw=null;
-            townBack.Clear();townCast.Clear();townTrim.Clear();townMap=null;townKit=null;townScene=null;townLights=null;townArena=null;townGeneration=-1;townLast=-1;
+            townBack.Clear();townCast.Clear();townTrim.Clear();townMap=null;townKit=null;townScene=null;townLights=null;townArena=null;townGeneration=-1;townLast=-1;DisposeExpeditionHub();
         }
     }
 }

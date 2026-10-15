@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Astra — Expedition chooser hold supersedes PR #234
+- Branch `codex/expedition-choice-hold`, base shared/builder `6558b024b74acde24fbb94b2ec3562bffaab0b34`. Current owner direction restores the host hold while keeping damage and world/difficulty time live.
+- OpenChoice feeds the existing authoritative Frozen/input-cancellation/position hold. Camera yaw/pitch survive; movement, attacks, abilities, roll, reload and block cancel; machine/cache purchases refuse. Possession cannot route chooser input to another pilot.
+- Final Select emits Install once and holds until its run timestamp + `NativeDraftPlant.ReturnEnd` (1.95 s). Automatic CloseChoice cannot shorten it. Queued/unopened owned rewards retain the tray hold; explicit CloseChoice before the final plant releases it. Death, disconnect, extraction, area load and save resume clear both flag and deadline. No damage immunity or global pause is added.
+- Updated native M1 hold/camera/momentum/interaction/damage/install checks; integration checks cover plant deadline, continued clock, lifecycle cleanup, privacy and replay. Tray checks now assert retained hold after consumption. Presentation contract supersedes the old mobility instruction; wrist animation rendering remains Claude-owned.
+- Focused integration: 88 assertions pass; tray: 225 checks pass. Pinned Unity 6000.3.24f1 / C# 9 Player, Runtime and Editor compile passed. Full regression/relay and final source compile receipts are recorded in the PR. Native Unity/PhysX M1 execution, Windows player and live host/guest are unrun here. Branch implementation, not a playable release receipt.
+
 ## 2026-10-15 — Astra — Expedition chooser vulnerability correction
 - Branch `codex/unity-expedition-chip-vulnerable`, based on PR #233 head `74c4117`. Owner explicitly reversed the original freeze request. This entry supersedes the choosing freeze described below; preserve the public flag and open/close intents for Claude’s chip-screen/hologram binding.
 - Remove choosing from Frozen/input cancellation and the machine interaction guard. No choosing-based movement/action lock, damage immunity or world/clock pause. Existing status-effect freezes remain unchanged. Apply inventory before emitting the successful Select Install event; keep exactly-once behavior and C notices. No offer, balance, hit timing or wire-field changes.
@@ -8844,3 +8851,151 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - The runtime's split ghosts add their glitch-block crawl; opacity unverified in Unity.
   - A stun or a raised guard mid-kick hands the leg to the gait from where it is (existing behaviour).
 - **Animation impact:** presentation only; it reads the replicated windows (the apex on the replicated Release, Overclock compression included). No change to hit timing, hitboxes, damage, cooldowns, movement or networking. Drawn-body offsets from the capsule measured at most 8 cm (pinned under 11 cm) and return by the end of the settle.
+
+## 2026-10-15 — Claude: Expedition hub (fenced sanctuary, gates, wilds), exp-layout-3
+
+- **Branch:** `claude/expedition-hub` (`ea63327`), based on shared `claude/sleepy-ritchie-g8ruhv` `ec7a7eb`, then merged with shared `f29d7c9` (the Cyber Lord martial-arts string; conflicts in DEV_LOG and PROJECT_STATE only, both sides kept). Pushed, not merged into shared, not released. Design and contract: `docs/EXPEDITION-HUB.md`.
+- **Owner request (2026-10-15):**
+  - extend the hub;
+  - zombies around it, fewer than in an instance, for money and danger;
+  - a longer run to the instances;
+  - fence the safe hub, with animated wooden and metal gates players open;
+  - no zombies inside;
+  - no camping in the safe zone.
+- **Layout (generator `expedition_city.py`, revision exp-layout-3, re-imported):**
+  - The town grows from 120 x 120 m to 192 x 156 m (x ±96, z −96..60).
+  - Three wilds districts lead to the instance plots: the Meridian Approach, the Ironworks Yard and Station Road.
+  - The Ward Zero door moves from x 44 to x 84. The reserved doorways move to (−84, 0) and (0, −84).
+  - The run from the gate to Ward Zero is 72.9 m walked (target 70 m or more): 10.7 s running, 7.9 s sprinting. It was about 31 m.
+  - The 24 m sanctuary is unchanged, but its four mouths are closed by a 3.2 m fence (8 sections, wood north and west, metal east and south) with four 4 m gates.
+  - 84 spawns (34 new in the wilds), grouped into 11 zones in rings: near 10–29 m, mid 18–45 m, far 47–82 m from a gate. Spawns stay 10 m or more from a gate, zones 8 m.
+  - An additive `hub` record goes in the manifest: gates, fence, zones, wilds, routes, aprons. No balance is in the manifest. The final gate stays the only `gates[]` record.
+- **Collider changes (expedition-city only):**
+  - removed: the 8 barricades (1.1 m);
+  - added: 8 fence sections with exclusion columns (from 3.1 m), 18 building and roof blocks, 58 wilds cover blocks, 3 breach panels;
+  - five slabs resized;
+  - moved: the Meridian, foundry and transit landmarks (40 m out), and 7 vehicles to clear the gate aprons;
+  - navigation regenerated (9,505 nodes).
+  - The gate openings have no collider (see below).
+  - Ward Zero, Siren and the other maps are unchanged.
+- **Visuals (live on the branch):**
+  - The fence: palisade logs, or scrap sheets with razor wire, sandbags, and gate posts with lamps.
+  - SANCTUARY headers outside, and the destination with its walked metres inside.
+  - The wood gate swings and the metal gate slides (`NativeExpeditionHubGates`), with eased motion, overshoot or judder, reversal from the current pose, and latch, creak and slam cues on existing keys. There is dust and track sparks.
+  - The ward shimmer and the SANCTUARY · WEAPONS HOLSTERED tag draw only when the view says so.
+  - The wilds are dark: thicker fog, dead lamps, no lit windows. Floodlights, fires and pylons mark the way, with chevrons and metres along the route.
+  - The DEV panel has Camera → "Hub gates preview" (it changes nothing in the simulation).
+- **Honest gap:**
+  - Without a gate state, gates are drawn resting open: the openings are passable and carry no collider, so drawing them shut would fake a barrier. This deliberately differs from the brief's "draw closed"; flip `NativeExpeditionHubGates.RestOpen` if the owner prefers.
+  - M1 spawns no town enemies, so the wilds are empty until the hub director exists.
+- **Astra contract (proposal; details in `EXPEDITION-HUB.md`):**
+  - Replicated `{id, open, changedAt}` per hub gate, plus `holster`/`ward` flags in the view.
+  - Gate authority: interact, auto-close 2.5 s after the sensor empties, never closing onto a member; the closure collider releases 0.5 s into an opening and blocks 0.65 s into a closing; an exclusion column while shut.
+  - A horde-only ward blocker in every closure, with nav links through closures disabled; zombies never open gates.
+  - Sanctuary rules (anti-camping): holster inside (0.25 s in, instant out); the ward blocks projectiles both ways; aggro drops 1.5 s after a target enters; no kill money for damage dealt from inside.
+  - Hub spawn director:
+    - cap 2 + 2 per member (at most 16), one every 3 s;
+    - ring weights 0.35/0.7/1.0 and money x0.4/0.6/0.8;
+    - no Hulks;
+    - despawn out of range or idle.
+- **Checks run (merged tree, at `ec7a7eb` plus this change):**
+  - Generator and city checks pass. `test_expedition_layout_draft` passes (6 tests). `generate_expedition.py --check` passes.
+  - CoreTests:
+    - `--expedition-hub` PASS (169 checks, new);
+    - `--expedition-dressing` PASS (2,235,476 assertions; kit budget raised to 13,000 parts in 26 draws for the doubled town);
+    - `--expedition-layout` 261, `--expedition-acceptance` 81,598, `--expedition-states` 9,666, `--expedition-view` 8,354, `--expedition-integration` 80, `--expedition` 481 and `--dev-tools` 4,527, all PASS.
+  - An offline M1 startup-gate probe (scratch, approximates PhysX, with the runtime's drop-link policy) found 0 failures on both areas.
+  - run5:
+    - Unity 6000.3.24f1 runtime and editor compile OK;
+    - relay 720 PASS, 0 FAIL;
+    - Python 107 tests OK (1 skipped);
+    - package OK;
+    - diff-check OK.
+  - After merging `f29d7c9`, run5 was run again, with all steps passing (relay 721 PASS, 0 FAIL).
+  - Not run: Unity Editor or player, Windows, live M1 entry, two clients.
+  - Renders are offline only (the scratchpad's `renders-expedition-hub`).
+- **Risks:**
+  - The bigger town costs more: kit 12.7k parts, FX grid 98 x 80 cells.
+  - Durable saves pinned to the exp-layout-2 fingerprint will not resume on the new town (the director refuses them).
+  - The gate leaf hinge overlaps its post by a few centimetres at 160 degrees.
+- **Movement, collision and networking impact:** the town's colliders and navigation change as listed above. There is no change to hit timing, hitboxes, damage, cooldowns, movement rules, networking or saves code.
+
+
+## 2026-10-15 — Astra — Expedition hub authority
+
+- Branch `codex/expedition-hub-authority`, base Claude hub `3c13863` (contains shared
+  `f29d7c9`; shared subsequently merged that hub at `6558b024`). Owner approved gate,
+  permanent horde ward, anti-camping, and living-player hub spawn rules in chat.
+- Implements four host-operated gates, 2.5 s clear auto-close, capsule occupancy
+  protection, collider motion thresholds, anti-vault columns and permanent horde-only
+  collision layer 28. Scoped horde routing rejects gate links; no town vent bypass.
+- Adds .25 s holster/instant exit, 1.5 s old-target aggro grace/no new safe targets,
+  projectile/acid/melee-shot ward and central damage guards, origin-preserving DoT
+  credit, ring rewards and safe summon/recruit damage checks.
+- Town refill: living connected/unextracted member cap `min(16,2+2*n)`, one attempt
+  per 3 s, authored weighted near/mid/far exits and rosters, no Hulks, silent
+  far/idle/lost-target despawn and population shrink; final boss restores its cap.
+  No optional income soft cap. Far-distance test uses conservative Euclidean >60 m
+  rather than an expensive per-mob walked-distance search. See EXPEDITION-HUB.md.
+- Public `ExpeditionView.hub` is detached, serializable, privacy-safe, carried by
+  the existing 20 Hz transport and bound to Claude's Authority/AuthorityClock hooks.
+  Source-only updates at unchanged run revision are covered by receiver checks.
+- Checks: Unity 6000.3.24f1 / C# 9 player, editor-context runtime, Editor semantic
+  compilation PASS; managed/real relay suite 722 PASS lines, exit 0; focused hub
+  authority 80 checks and existing hub 169 checks PASS; Python 107 tests OK (1 skip).
+  Native acceptance extended for colliders, obstruction, holster/aggro timing,
+  cadence/cap, damage and outside DoTs; Windows/PhysX execution pending builder.
+- Presentation ownership preserved: only binds Claude's existing gate/ward/holster
+  hooks. Gameplay changes affect input, collision, damage eligibility, AI and economy;
+  weapon hit windows, damage values and animations otherwise unchanged.
+- Full multiplayer Expedition launch remains a separate pre-existing integration
+  gap; replicated hub DTO is tested, live two-client play is not claimed.
+- Publication: source branch/shared/builder promotion and Windows package status
+  recorded in PR/final handoff. No native release is inferred from these checks.
+
+
+### Native builder follow-up (2026-10-15, Astra)
+
+The 7abe9a8 Windows attempt logged PASS for the hub native collider, obstruction,
+holster/aggro, spawn, damage and DoT checks. A subsequent validation pass reused an
+arena after the M1 checks changed its map and failed while adding an already-known
+closure key. General NativeArena.Reset now clears Expedition closure/nav/death caches
+and the boss handle, matching ExpeditionMap's teardown. This fixes repeat binding,
+not a skipped test. All three Unity semantic compile targets pass; the builder must
+rerun the unchanged native acceptance gates before publication.
+
+## 2026-10-15 — Claude: Cyber Lord ranged casts driven by the whole body
+
+- **Branch:** `claude/cyberlord-cast-body`, based on the shared Unity head `claude/sleepy-ritchie-g8ruhv` `f29d7c9` (the ranged energy stance and the martial string merged). Implementation: the branch head (pushed, not merged; no PR opened). The melee half of the same owner request is a separate branch (not touched here).
+- **Owner request:** "Add more momentum to the basic melee/ranged attacked, like for melee: Step in, make a more natural movement when attacking. With ranged, simulate more body movement in our "casts". Let me know if anything with Astra is needed." This branch is the ranged half: the Plasma Byte throws (v2, live) and v1's Bit Bolt window.
+- **Research (how the throws meet the sim):**
+  - Timing: `NativeCyberKit2Rules.Begin` (slot 7): `PlasmaShot` counts on while the last throw ended within `ComboReset` (.7 s); windup .06 s and window .3 s divided by the attack rate (x1.6 under Overclock); `Release` = start + windup; the next throw can start at the window's end (`Ready` = `Until`). The hand is `CyberKit2Spec.PlasmaHand(shot)` (right, left, both every third).
+  - Spawn: `NativeCyberKit2Runtime.Cyber2Plasma`, fired on `Release`: .3 m over the body's centre, .18 m to the throwing side (centre for the Overflow), along the aim. The presentation's fireball eases from the drawn fist onto that path over .12 s (`NativeCyberLordFx.HandOffset`); the held balls sit on the drawn fists.
+  - Movement: no move lock on a throw (`CyberKit2Spec.MoveScale[7]` = 1; `NativeArena` and `NativePrediction` lock a Cyber Lord only at `MoveScale` 0; `NativeCyberRangedValidation` "throw retains movement").
+  - Layering: `CyberLordMotion.Style` poses the ranged layer over the gait's rig (upper body); `MeleeGait.GroundPass` then re-solves the legs to the gait's planted feet, so the layer can move the drawn hips without taking the legs.
+  - The record keeps only the newest throw window, so carrying one throw's momentum into the next needed the view to remember the last one (below).
+- **What changed (presentation only; `Core/CyberLordRangedMotion.cs`, `Core/CyberKit2Ranged.cs`, one line in `Core/NativeCyberLord.cs`; `docs/CYBER-LORD.md` "Ranged presentation"):**
+  - A body drive under every throw (`CyberRangedPose.Drive`/`DriveOf`): coil (throwing shoulder .3 rad and hip .14 rad back, the weight and the chest dipping back a little), the hips then the shoulders turning through the release, the follow-through (the throwing shoulder .5 rad past on .28 rad of hips, the chest .15 rad into the throw; standing, the drawn body pushed 10 cm onto the front foot and dropped 4.5 cm), peaking 30% into the window after the extension, then back to the stance by the window's end plus .22 s. The Overflow pushes square from the chest (lean .14 back, .34 in, 15 cm push, 7 cm drop). A higher attack rate swings the body less (Overclock about 79%).
+  - Momentum between throws: `CyberKit2RangedView.Prev*` remembers the throw before the newest (noted by `CyberKit2RangedFeed.Map` per pilot; forgotten on another pilot, a non-live record or a record that runs back). A new throw takes the turn over from wherever the last throw left it; the weight and the lean add onto the last's as it fades. Back to back the right hand's follow-through is already the left hand's coil: the shoulders stay turned (0.28 rad or more at each hand-over) and turn one way only from one follow-through into the next release.
+  - Applying it: the hips (pelvis), the spine (40% of the turn above the hips) and the chest share the turn; the drawn body shifts (standing only); the hand targets ride round with the turn, along with the shift and with half the lean; the neck takes the turn and the drive's lean back out (the head on the aim, level).
+  - The other hand counterbalances: pulled back 11 cm, out 3 cm and down through the uncoil (was 5 cm back).
+  - On the move the shoulders keep the whole turn and the hips half, over the run's or strafe's legs; the weight stays the gait's. The glide, the casts and the key-5 switch take the drive over as they take the arms.
+  - First person: both hands sway with the drive (about 4.5 cm across at the follow-through, forward with the push, down with the drop); the view rig's chest no longer turns with a throw; the camera is untouched.
+  - The hands still start and end every throw window on the stance; the stance, the glide, the casts, the projectiles and the fireball effects are unchanged.
+- **Tests:** `Tests/CyberKit2RangedChecks.cs`:
+  - throw chains: "every window starts and ends on the stance" now pins the layer's hand targets against a throw-free twin (0.00 mm; the body's drive now outlasts the window, so the posed hands are carried); new pins: the body never jumps (no chest step over its neighbours by more than 2 cm, no turn step over .06 rad, the shoulders under 16 rad/s; measured 0.8 cm, 11.8 rad/s) and, back to back at the spec's rate and under Overclock (60/144 Hz), each follow-through flows into the next throw (still turned 0.28 rad at the hand-over, never turning back);
+  - new group "body drive": right, left and Overflow throws against a twin at 240 Hz: the shoulders' turn (.49 rad) on the hips (.28), the hips passing square first, the Overflow square, the chest's lean, standing the weight onto the front foot (8.6 cm) and down (4.5 cm), the feet planted (0.00 mm), the head on the aim and level (0.000 rad), the other hand back (26 cm), back on the stance after the recovery (0.00 mm), the release hand within 56 cm of the host's spawn (the effects' ease covers it), running the shoulders still turning (.45 rad) with the run's body and legs exact, first person sway (5.5 cm), and the view's memory (two views identical, one starting mid-chain identical from the next throw, forgotten on a rewind or another pilot).
+  - `CyberLordRangedChecks` (v1) and `CyberLordChecks` needed no change; `--cyber-lord` 39 PASS.
+- **Checks (run5 on the branch):** Unity 6000.3.24f1 runtime and editor compile OK; relay 721 PASS (rc 0; `CyberKit2RangedChecks` 24,995 checks, 0 bytes allocated over 400 frames with the history); Python 106 OK (1 skipped); package OK; diff-check OK.
+- **Not run:** Unity play mode, a Windows build, two clients (a guest's view of a remote pilot's throws, interpolation delay), audio.
+- **Renders:** offline only (scratchpad `renders-cyberlord-cast-body`): before/after side and 3/4 strips of a right, a left and an Overflow throw standing, held fire at the spec's rate, rapid alternating fire under Overclock (top and 3/4), throwing while strafing, first person.
+- **Risks:**
+  - The view's memory is observed per view, frame to frame: a view that first sees a pilot mid-chain (a guest joining, a rig re-created) has no last throw until the next one starts, so that one throw takes the body over from the stance (the body may turn back from a follow-through it never drew; it is the first frame it draws that pilot's throws).
+  - Two throws inside one snapshot gap would skip a remembered throw (windows are at least .1875 s, so only at very low snapshot rates).
+  - The windup is .06 s (.0375 under Overclock), so the coil is small: the body's read is the drive, the follow-through and the recovery.
+  - The release hand sits 42-56 cm from the host's spawn (mostly below it: the stance throws from low); the fireball's .12 s ease from the hand covers it, as before.
+  - Under Overclock the shoulders turn up to about 12 rad/s; the drive is scaled to 79% there.
+  - No heel lift or step: the feet stay the gait's (a heel lift would need the gait's foot state); the weight shift is the drawn hips and the knees.
+- **Animation impact:** presentation only. The drawn rig moves on the replicated throw windows: standing, the drawn body shifts up to 10 cm (the Overflow 15 cm) toward the front foot and drops up to 7 cm, and returns .22 s after the window (or flows into the next throw); the hips turn up to .28 rad and the shoulders .5 rad; the feet stay planted (the gait's). No change to the release time, the projectile's spawn, speed, damage or count, hit timing, hitboxes, cooldowns, movement (no move lock, unchanged), or networking (the wire record is unchanged; the memory of the last throw is the view's).
+- **Astra:** nothing needed. An optional nicety only: if the record ever carried the previous throw's window, the view would not need to remember it (not requested).
+- **Next:** the owner checks the casts in a native build (standing, strafing, held fire, Overclock); then merge with the melee half of the same request.

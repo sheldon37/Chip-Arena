@@ -200,6 +200,11 @@ map hash changes, bump `REVISION` in that script and update `PINNED` in the Pyth
 
 ### Town (`exp-city`, map `expedition-city`)
 
+> exp-layout-3 (branch `claude/expedition-hub`, 2026-10-15) supersedes this town's numbers. The bounds are now
+> x ±96, z −96..60. A fence with four gates replaces the barricades. The Ward Zero door is at x 84, and the reserved
+> doorways are at (−84, 0) and (0, −84). Wilds districts and spawn zones are added, and an additive `hub` record goes
+> in the manifest. See [EXPEDITION-HUB.md](EXPEDITION-HUB.md). The instance is unchanged.
+
 The town is a 120 × 120 m ring-and-cross plan at one street level (y 0): bounds ±60, ceiling 40,
 killY −8. The sanctuary plaza sits at the centre (x, z −12..12). Four streets leave it:
 - north up the avenue to the final gate;
