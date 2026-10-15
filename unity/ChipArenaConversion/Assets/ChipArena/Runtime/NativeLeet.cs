@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
         public readonly List<NativeLeetField> LeetFields=new List<NativeLeetField>();private readonly Dictionary<NativePilot,InputFrame> originalInputs=new Dictionary<NativePilot,InputFrame>();
         public NativePilot ViewPilot=>Local?.Controlling??Local;
         private bool Leet(NativePilot p,string chip=null)=>Dev(p,"leet")&&(chip==null||Has(p,"l44t-"+chip));
-        private bool Frozen(NativePilot p)=>p!=null&&(Time<p.FrozenUntil||Time<p.ScareUntil||ExpeditionChoosing(p));
+        private bool Frozen(NativePilot p)=>p!=null&&(Time<p.FrozenUntil||Time<p.ScareUntil);
         private void ReleaseControl(NativePilot p)
         {var controller=p.Controlling!=null?p:p.ControlledBy;var target=controller?.Controlling;if(controller!=null){controller.Controlling=null;controller.ControlUntil=0;}if(target!=null){target.ControlledBy=null;target.ControlUntil=0;}}
         private void RouteLeetInputs()
@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
             originalInputs.Clear();foreach(var p in Pilots)
             {if(p.Controlling!=null&&(p.Hp<=0||!p.Seat.connected||p.Controlling.Hp<=0||!p.Controlling.Seat.connected||Time>=p.ControlUntil||!Leet(p,"brain")))ReleaseControl(p);}
             foreach(var p in Pilots)if(p.Controlling!=null){var q=p.Controlling;originalInputs[p]=p.Input;originalInputs[q]=q.Input;q.Input=p.Input;p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};}
-            foreach(var p in Pilots)if(Frozen(p)){if(ExpeditionChoosing(p)){p.Yaw=p.Input.Yaw;p.Pitch=p.Input.Pitch;p.RollEnd=0;}if(!p.FrozenPosition.HasValue)p.FrozenPosition=p.Body.position;if(!originalInputs.ContainsKey(p))originalInputs[p]=p.Input;p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};CancelFighter(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.BlockEnd=0;p.MoveVelocity=p.Knockback=Vector3.zero;p.Body.linearVelocity=Vector3.zero;}
+            foreach(var p in Pilots)if(Frozen(p)){if(!p.FrozenPosition.HasValue)p.FrozenPosition=p.Body.position;if(!originalInputs.ContainsKey(p))originalInputs[p]=p.Input;p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};CancelFighter(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.BlockEnd=0;p.MoveVelocity=p.Knockback=Vector3.zero;p.Body.linearVelocity=Vector3.zero;}
         }
         private void RestoreLeetInputs()
         {

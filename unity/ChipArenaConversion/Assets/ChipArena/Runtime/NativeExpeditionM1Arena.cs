@@ -63,6 +63,7 @@ namespace ChipArena.UnityConversion
             Expedition=director;expeditionArea=area;
             director.Session.Installed=(account,chip,count)=>
             {
+                SyncExpeditionInventory();
                 var pilot=Pilots.FirstOrDefault(p=>p.Seat.id==director.Session.Sources.Seat?.Invoke(account));
                 if(pilot!=null)Emit(EventKind.Install,pilot,pilot.Seat.id,pilot.Body.position,count,chip);
             };
@@ -93,8 +94,6 @@ namespace ChipArena.UnityConversion
             p.Body.position=Vec(slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);p.Yaw=slot.yaw;
             p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;Physics.SyncTransforms();return true;
         }
-        private bool ExpeditionChoosing(NativePilot pilot)=>pilot!=null&&Expedition!=null&&
-            Expedition.Session.Run.IsChoosingSeat(pilot.Seat.id,Expedition.Session.Sources.Seat);
         private ExpeditionMember ExpeditionMemberFor(NativePilot pilot)
             =>Expedition?.Session.Run.Snapshot().members.FirstOrDefault(m=>Expedition.Session.Sources.Seat?.Invoke(m.account)==pilot.Seat.id);
         public void SyncExpeditionInventory()
@@ -113,7 +112,7 @@ namespace ChipArena.UnityConversion
         {
             notice=null;if(Expedition==null||Replica||Pve==null||Pve.Holding||pilot==null||pilot.Hp<=0||!pilot.Seat.connected)return false;
             var session=Expedition.Session;var run=session.Run;var state=run.Snapshot();var member=ExpeditionMemberFor(pilot);
-            if(state.loading||member==null||!member.alive||member.extracted||run.IsChoosing(member.account))return false;
+            if(state.loading||member==null||!member.alive||member.extracted)return false;
             var feet=Vec(pilot.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight);
             foreach(var reward in state.rewards.Where(r=>!r.claimed&&(r.owner==null||r.owner==member.account)))
                 if(Expedition.CanClaim(member.account,reward.id))
