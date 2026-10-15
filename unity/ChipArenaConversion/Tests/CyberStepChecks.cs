@@ -14,6 +14,17 @@ internal static class CyberStepChecks
             if(overclock){s.Kit2.OverclockAt=9;s.Kit2.OverclockUntil=20;}
             float mana=100;Check(NativeCyberKit2Rules.Begin(s,2,10,ref mana,1,1,1,1),"begin");s.Facing=V3.Forward(37);return s;
         }
+        // NativeJumpValidation uses CyberBegin without selecting a combo, then promotes the kit to v2.
+        // Combo=-1 is a valid inactive sentinel, even when the legacy cast is named cyber-jab.
+        foreach(int combo in new[]{-1,-2,5,int.MaxValue})
+        {
+            var kit=new NativeCyberKit{Kind="cyber-jab",Combo=combo,At=10,Release=10,Until=11,CutAt=-1,Facing=new V3(0,0,1)};NativeCyberKit2Rules.Ensure(kit);
+            Check(!NativeCyberStep.Begin(kit,true,0,default,null).Present,"non-step combo cannot index distance table");
+            Check(!NativeCyberStep.Restore(kit,0,0,0,10).Present,"non-step snapshot restores no step");
+            var state=new NativePredictionState{Time=10,CanMove=true,Grounded=false,Cyber=kit,CyberRate=1,Ready=11,JumpSpec="cyberlord",JumpSpeed=8.5f};
+            state=NativePrediction.Step(state,new InputFrame{Jump=true},(a,b)=>b);
+            Check(state.AirJumps==0&&!state.CyberStep.Present,"legacy cast retains air-jump lock without a step");
+        }
         var expected=new[]{.4f,.25f,.3f,.2f,.45f};
         for(int combo=0;combo<5;combo++)foreach(bool fast in new[]{false,true})
         {
