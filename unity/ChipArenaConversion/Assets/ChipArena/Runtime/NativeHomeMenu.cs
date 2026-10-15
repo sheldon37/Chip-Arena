@@ -276,8 +276,8 @@ namespace ChipArena.UnityConversion
             for(float px=x0+48;px<x0+rule;px+=9)U.Fill(new Rect(px,ry+1,1,3),C.CyanSoft(.30f*ce));if(rule>=ww-.5f)U.Fill(new Rect(x0+ww-14,ry-.5f,14,2),C.Magenta(.85f*ce));
             // the entries on their divider
             float dx=x0+50;U.Fill(new Rect(dx,top-18,1,(lastMain-top+36)*In(age,.08f,.4f)),C.CyanSoft(.22f*ce));
-            var items=new[]{("play","PLAY VS BOTS","01",MenuScreen.Play),("create","CREATE ROOM","02",MenuScreen.Create),("join","JOIN ROOM","03",MenuScreen.Join),("boss","BOSS TEST","04",MenuScreen.Boss)};
-            for(int i=0;i<items.Length;i++){float e=In(age,.1f+i*.05f,.3f);U.Push(new Vector2(x0,top+i*rh),new Vector2(12*(1-e),0));if(HomeEntry(i,top+i*rh,items[i].Item1,items[i].Item2,items[i].Item3,i==3?"PVE · THE SIREN":null,ce*e))Go(items[i].Item4);U.Pop();}
+            var items=HomeItems;
+            for(int i=0;i<items.Length;i++){float e=In(age,.1f+i*.05f,.3f);U.Push(new Vector2(x0,top+i*rh),new Vector2(12*(1-e),0));if(HomeEntry(i,top+i*rh,items[i].Item1,items[i].Item2,items[i].Item3,items[i].Item4==MenuScreen.Boss?"PVE · CO-OP":null,ce*e))Go(items[i].Item4);U.Pop();}
             // .subtle-link's quiet rows: Developer Sandbox (developers, offline), the conversion catalogue (developers only: the
             // source has no such screen and its import notes are not for players) and Quit.
             float qy=lastMain+rh*.9f+6,qe=ce*In(age,.3f,.3f);
@@ -290,8 +290,8 @@ namespace ChipArena.UnityConversion
             HexRow(age,ce,out float hexLeft);ReportPill(hexLeft,ce);Nameplate(ce*In(age,.35f,.4f));
         }
         // One numbered entry: its constellation glyph, a 21 px tracked label and its mono key; hover lights a cyan band from
-        // the divider with a glowing bar, brightens the glyph and lifts the label to white. Boss Test carries its PVE line in
-        // violet.
+        // the divider with a glowing bar, brightens the glyph and lifts the label to white. Start Expedition carries its PVE
+        // line in violet.
         private bool HomeEntry(int index,float y,string glyph,string label,string key,string sub,float alpha)
         {
             float x0=HomeX,ix=x0+2,dx=x0+50,lx=x0+72;var hit=new Rect(ix-6,y-rh2,dx+398-ix+6,rh2*2);bool blocked=MenuBlocked();
@@ -396,11 +396,14 @@ namespace ChipArena.UnityConversion
         private static void Line(Vector2 a,Vector2 b,Color c,float width=1)
         {var d=b-a;float len=d.magnitude;if(len<.5f||c.a<=0)return;U.Push(a,Vector2.zero,1,Mathf.Atan2(d.y,d.x)*Mathf.Rad2Deg);U.Fill(new Rect(a.x,a.y-width/2,len,width),c);U.Pop();}
         // Keys 1-4 open the four numbered entries.
+        // The home entries in order (owner 2026-10-15: "Rename Boss Test on main menu to "Start Expedition" - Place this as
+        // top item on menu."): the PvE entry first, then the versus rooms; the 1-4 keys follow the order.
+        private static readonly (string,string,string,MenuScreen)[] HomeItems={("boss","START EXPEDITION","01",MenuScreen.Boss),("play","PLAY VS BOTS","02",MenuScreen.Play),("create","CREATE ROOM","03",MenuScreen.Create),("join","JOIN ROOM","04",MenuScreen.Join)};
         private void HomeKeys()
         {
             var e=Event.current;if(e.type!=EventType.KeyDown||GUIUtility.keyboardControl!=0||updateOpen)return;
             int k=e.keyCode>=KeyCode.Alpha1&&e.keyCode<=KeyCode.Alpha4?e.keyCode-KeyCode.Alpha1:e.keyCode>=KeyCode.Keypad1&&e.keyCode<=KeyCode.Keypad4?e.keyCode-KeyCode.Keypad1:-1;if(k<0)return;
-            e.Use();Click();Go(k==0?MenuScreen.Play:k==1?MenuScreen.Create:k==2?MenuScreen.Join:MenuScreen.Boss);
+            e.Use();Click();Go(HomeItems[k].Item4);
         }
         // .btn / .btn.primary in the cyber palette: icon, label and an optional mono key at the right; hover lifts 1 px and
         // lights the edge cyan, press scales to .985; the primary is cyan with void ink, a cyan underglow and a sheen.
@@ -498,7 +501,7 @@ namespace ChipArena.UnityConversion
         }
         private void BossScreen(float age)
         {
-            var l=BeginScreen("PVE · BOSS TEST","Test Boss",650,age,true,head:122);if(l.Closed){Go(MenuScreen.Home);return;}
+            var l=BeginScreen("PVE · EXPEDITION","Start Expedition",650,age,true,head:122);if(l.Closed){Go(MenuScreen.Home);return;}
             BossCard(new Rect(l.Panel.x+32,l.Panel.y+104,l.Panel.width-64,108),l.Enter);
             ScreenBody(l,()=>BossBody());if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Up to four pilots: party bots fill the empty seats.");
             if(!string.IsNullOrEmpty(expeditionError))ScreenStatus(l,"Expedition could not start: "+expeditionError,true);

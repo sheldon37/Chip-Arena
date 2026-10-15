@@ -8193,3 +8193,16 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - **Renders:** offline only — machines in the scratchpad's `renders-machines`, cards in `renders-chip-cards-v2`. No Unity or Windows play was run here.
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; colliders unchanged.
 - **Next:** the owner checks the machines and the draft in a native build.
+
+## 2026-10-15 — Claude: home menu "Start Expedition"
+
+- **Branch:** `claude/menu-expedition`, based on shared `7009887`.
+- **Owner request:** "Rename Boss Test on main menu to "Start Expedition" - Place this as top item on menu."
+- **Change (`Runtime/NativeHomeMenu.cs`):**
+  - The home entries are one ordered table (`HomeItems`): START EXPEDITION (01, its violet line now `PVE · CO-OP`), then PLAY VS BOTS, CREATE ROOM, JOIN ROOM.
+  - Keys 1-4 follow that order, so key 1 opens Start Expedition.
+  - The screen it opens is titled "PVE · EXPEDITION / Start Expedition".
+  - That screen's contents and actions are unchanged: Start Boss Fight, Host Co-op Room, and, for DEV accounts offline, DEV Expedition M1. Nothing routes players into the M1 expedition, which is still DEV/local only.
+- **Check:** `Tests/RooftopChecks` pins the order, the keys and that the old label is gone.
+- **Checks (run5):** Unity 6000.3.24f1 runtime and editor compile OK; relay 690 PASS; Python OK; package OK; diff-check OK. No offline menu render (the menu render harness is stale against this tree) and no Windows run.
+- **Impact:** menu presentation only; no change to the flow, networking or saves.
