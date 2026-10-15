@@ -15,7 +15,9 @@ using ChipArena.UnityConversion;
 //  2. the body: the energy-holding stance, each throw releasing on the replicated release (chained at every rate and clock,
 //     starting and ending on the stance, its fireball leaving the throwing hand), the Overflow from both hands, every v2
 //     cast's state and their hand-overs, finite and continuous on even, uneven and rewound clocks, the legs the locomotion's while casting on the move, the
-//     glide sprint, a delayed guest copy posing the same frames, first person;
+//     glide sprint, a delayed guest copy posing the same frames, first person; the whole body driving each throw (the turn on
+//     the hips, the lean, the weight onto the front foot, the feet planted, the head on the aim, each follow-through flowing
+//     into the next throw back to back) and the view's memory of the last throw;
 //  3. the effects: the fireball (hand to path, its kinds, readable at range), its splash, each v2 effect on its window and its
 //     helpers (the chain's hops on their times, the storm's drops at their points, the column on the chase), nothing flat on
 //     the floor, the tiers, determinism (a copied record and a second instance draw the same), the first-person pilot;
@@ -102,6 +104,8 @@ internal static class CyberKit2RangedChecks
         p.Steer(id,t,OrbitalAim(t),feet);p.Advance(t);
     }
     private static float MaxStep(Vector3[] a,Vector3[] b){float m=0;for(int i=0;i<a.Length;i++)m=Math.Max(m,Vector3.Distance(a[i],b[i]));return m;}
+    // The heading of the line from joint `right` to joint `left` (rad about the vertical; - when the right one is ahead).
+    private static float Turn(Pilot p,int left,int right){var d=p.Pose.WorldPosition[left]-p.Pose.WorldPosition[right];return (float)Math.Atan2(d.Z,d.X);}
 
     public static IEnumerable<string> Run(string root)
     {
@@ -257,6 +261,7 @@ internal static class CyberKit2RangedChecks
         }
         yield return $"Cyber Lord Kit v2 ranged body: {count-c0} checks ({seen.Count(x=>x!=null&&x.StartsWith("cyber-"))} states; throws on their releases (right, left, both, and v1's bolt); hand steps at most {(handStep*100):0.0} cm with no spike over {(spike*100):0.0} cm; the legs the run's while casting; uneven and rewound clocks; the glide; a delayed guest exact; first person {(fpStep*100):0.0} cm)";
         foreach(var r in StanceAndChains())yield return r;
+        foreach(var r in BodyDrive())yield return r;
 
         // ------------------------------------------------------------------------------------------------------------------
         // 3. The effects
@@ -416,8 +421,13 @@ internal static class CyberKit2RangedChecks
 
         // Chained throws: at the spec's rate back to back, at a slower and an uneven interval, across the chain's reset, under
         // Overclock (the windup and the window / 1.6) at 60 and 144 Hz and on a random clock. Each is posed beside a twin with
-        // no throws on the same clock, sampled exactly on every window's start, release and end.
-        c0=count;float worstSpeed=0,worstSpike=0,worstEdge=0,slowest=99;string worstWhere="",spikeWhere="";
+        // no throws on the same clock, sampled exactly on every window's start, release and end. The hands start and end every
+        // window on the stance (the layer's hand targets, before the body's drive carries them, against the twin's); the body
+        // (the chest's point and the shoulders' turn) never jumps; back to back (the spec's rate and Overclock), each
+        // follow-through flows into the next throw: the shoulders still turned at the hand-over, turning one way only from the
+        // last throw's follow-through to the next one's release (no swing back to the stance and out again).
+        c0=count;float worstSpeed=0,worstSpike=0,worstEdge=0,slowest=99,bodySpike=0,turnSpike=0,turnSpeed=0,leastCarry=99,worstReverse=0;string worstWhere="",spikeWhere="",bodyWhere="",reverseWhere="",turnWhere="";
+        var sL=new Vector3(CyberRangedPose.ShoulderHalf,.3f,0);var sR=new Vector3(-CyberRangedPose.ShoulderHalf,.3f,0);var chestAt=new Vector3(0,.12f,0);
         var cases=new[]{("spec .3 s",1f,.3f,60f,false),("slower .41 s",1f,.41f,60f,false),("across the reset",1f,.3f+CyberKit2Spec.ComboReset+.07f,60f,false),
             ("Overclock",1+CyberKit2Spec.OverclockRate,CyberKit2Spec.PlasmaInterval/(1+CyberKit2Spec.OverclockRate),60f,false),("Overclock at 144 Hz",1+CyberKit2Spec.OverclockRate,CyberKit2Spec.PlasmaInterval/(1+CyberKit2Spec.OverclockRate),144f,false),
             ("Overclock on a random clock",1+CyberKit2Spec.OverclockRate,CyberKit2Spec.PlasmaInterval/(1+CyberKit2Spec.OverclockRate),60f,true)};
@@ -428,12 +438,21 @@ internal static class CyberKit2RangedChecks
             var times=new List<float>();var grid=new HashSet<float>();var rng=new Random(17);for(float t=.5f;t<at[N-1]+len+.5f;t+=random?(float)(1/240.0+rng.NextDouble()*(1/30.0-1/240.0)):1/hz){times.Add(t);grid.Add(t);}
             foreach(float a in at){times.Add(a);times.Add(a+wu);times.Add(a+wu-.002f);times.Add(a+wu+.002f);times.Add(a+len);}times.Sort();
             int next=0;var last=new Vector3[2];Vector3[] lastGrid=null;float s1=-1,s2=-1,lt=-1;var probe=new Dictionary<float,Vector3>();
+            var vh=new CyberLordView();var vt=new CyberLordView();float b1=-1,b2=-1,y1=-1,y2=-1,lastAt=0;Vector3? lastChest=null;float lastTurn=0;
+            bool backToBack=Math.Abs(gap-len)<1e-4f;var turns=new List<(float t,float turn)>();
             foreach(float t in times)
             {
                 if(t<=lt)continue;float dt=lt<0?Dt:t-lt;
                 while(next<N&&t>=at[next]-1e-6f){Throw(p,id,at[next],rate);next++;}
-                CyberLordFeed.Kit2RangedSource=p;h.Step(t,dt);CyberLordFeed.Kit2RangedSource=none;twin.Step(t,dt);
+                CyberLordFeed.Kit2RangedSource=p;h.Step(t,dt);CyberLordFeed.Read(h.A,vh);CyberLordFeed.Kit2RangedSource=none;twin.Step(t,dt);CyberLordFeed.Read(twin.A,vt);
                 var hands=new[]{h.InChest(CapturedRig.RHand),h.InChest(CapturedRig.LHand)};
+                // The body: the chest's point and the shoulders' turn against the twin's.
+                var chest=h.World(CapturedRig.Chest);float turn=Turn(h,CapturedRig.LArm,CapturedRig.RArm)-Turn(twin,CapturedRig.LArm,CapturedRig.RArm);
+                if(!random&&grid.Contains(t))turns.Add((t,turn));
+                bool sampled=random||grid.Contains(t);
+                if(lastChest.HasValue&&sampled){turnSpeed=Math.Max(turnSpeed,Math.Abs(turn-lastTurn)/(t-lastAt));if(!random){float bs=Vector3.Distance(chest,lastChest.Value),ys=Math.Abs(turn-lastTurn);
+                    if(b1>=0&&b2>=0&&b1-Math.Max(b2,bs)>bodySpike){bodySpike=b1-Math.Max(b2,bs);bodyWhere=name+" before "+t.ToString("0.000");}if(y1>=0&&y2>=0&&y1-Math.Max(y2,ys)>turnSpike){turnSpike=y1-Math.Max(y2,ys);turnWhere=name+" before "+t.ToString("0.000");}b2=b1;b1=bs;y2=y1;y1=ys;}}
+                if(sampled){lastChest=chest;lastTurn=turn;lastAt=t;}
                 // The hands' speed on every step; on a fixed clock no frame's step stands out over both its neighbours' (frame
                 // to frame, the exact samples between them left out).
                 if(lt>=0){float v=MaxStep(hands,last)/dt;if(v>worstSpeed){worstSpeed=v;worstWhere=name+" at "+t.ToString("0.000");}}
@@ -441,8 +460,13 @@ internal static class CyberKit2RangedChecks
                 last=hands;
                 for(int i=0;i<N;i++)
                 {
-                    // Every window starts and ends on the stance (the twin's pose on the same clock).
-                    if(Math.Abs(t-at[i])<1e-6f||Math.Abs(t-(at[i]+len))<1e-6f){var tw=new[]{twin.InChest(CapturedRig.RHand),twin.InChest(CapturedRig.LHand)};worstEdge=Math.Max(worstEdge,MaxStep(hands,tw));}
+                    // Every window starts and ends with the hands on the stance (the layer's targets against the twin's).
+                    if(Math.Abs(t-at[i])<1e-6f||Math.Abs(t-(at[i]+len))<1e-6f)
+                    {
+                        var fh=CyberRangedPose.Of(vh,t,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,chestAt,Quaternion.Identity);
+                        var ft=CyberRangedPose.Of(vt,t,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,chestAt,Quaternion.Identity);
+                        worstEdge=Math.Max(worstEdge,Math.Max(Vector3.Distance(fh.Right,ft.Right),Vector3.Distance(fh.Left,ft.Left)));
+                    }
                     int hand=CyberKit2Spec.PlasmaHand(p.Of(id).PlasmaShot);
                     if(Math.Abs(t-(at[i]+wu-.002f))<1e-6f||Math.Abs(t-(at[i]+wu+.002f))<1e-6f)probe[t]=hand==2?(h.World(CapturedRig.RHand)+h.World(CapturedRig.LHand))*.5f:h.World(hand==1?CapturedRig.LHand:CapturedRig.RHand);
                     if(Math.Abs(t-(at[i]+wu))<1e-6f)
@@ -455,10 +479,23 @@ internal static class CyberKit2RangedChecks
             }
             // Through the release the throwing hand drives forward fast.
             for(int i=0;i<N;i++){float a=at[i]+wu;if(probe.TryGetValue(a-.002f,out var b)&&probe.TryGetValue(a+.002f,out var f)){float v=(f.Z-b.Z)/.004f;slowest=Math.Min(slowest,v);Check(v>2,name+": throw "+i+" drives forward through its release ("+v.ToString("0.0")+" m/s)");}}
+            // Back to back, between two single-hand throws (the right then the left, or the left then the right): from the last
+            // throw's follow-through (its peak) to the next one's release the shoulders turn one way only, and they are still
+            // turned at the hand-over (the right hand's follow-through, the right shoulder forward, is the left's coil).
+            if(backToBack)for(int i=1;i<N;i++)
+            {
+                int ha=CyberKit2Spec.PlasmaHand(i-1),hb=CyberKit2Spec.PlasmaHand(i);if(ha==2||hb==2||ha==hb)continue;float sign=ha==0?-1:1;
+                float from=at[i-1]+2*wu+CyberRangedPose.FollowHold*(len-2*wu),to=at[i]+wu,prev=float.NaN,carry=float.NaN;
+                foreach(var (tt,tv) in turns){if(tt<from-1e-6f||tt>to+1e-6f)continue;if(float.IsNaN(carry)&&tt>=at[i]-1e-6f)carry=tv*sign;
+                    if(!float.IsNaN(prev)){float back=(tv-prev)*sign;if(back>worstReverse){worstReverse=back;reverseWhere=name+" throw "+i+" at "+tt.ToString("0.000");}}prev=tv;}
+                if(!float.IsNaN(carry))leastCarry=Math.Min(leastCarry,carry);
+            }
         }
-        Check(worstEdge<1e-3f,"every throw window starts and ends on the stance ("+(worstEdge*1000).ToString("0.00")+" mm from the twin)");
+        Check(worstEdge<1e-3f,"every throw window starts and ends with the hands on the stance ("+(worstEdge*1000).ToString("0.00")+" mm from the twin's)");
         Check(worstSpeed<24&&worstSpike<.05f,"chained throws never jump (the hands' top speed "+worstSpeed.ToString("0.0")+" m/s, "+worstWhere+"; no frame's step over its neighbours' by "+(worstSpike*100).ToString("0.0")+" cm, "+spikeWhere+")");
-        yield return $"Cyber Lord Kit v2 ranged throw chains: {count-c0} checks ({cases.Length} chains of 8: spec, slower, across the reset, Overclock at 60 and 144 Hz and on a random clock; every window starts and ends on the stance within {(worstEdge*1000):0.00} mm; each releases ahead of its shoulder driving forward at {slowest:0.0} m/s or more; the hands at most {worstSpeed:0.0} m/s with no step over its neighbours' by {(worstSpike*100):0.0} cm)";
+        Check(bodySpike<.02f&&turnSpike<.06f&&turnSpeed<16,"the body never jumps (no chest step over its neighbours' by "+(bodySpike*100).ToString("0.0")+" cm, "+bodyWhere+"; no turn step by "+turnSpike.ToString("0.000")+" rad, "+turnWhere+"; the shoulders at most "+turnSpeed.ToString("0.0")+" rad/s)");
+        Check(leastCarry>.15f&&worstReverse<.005f,"back to back, each follow-through flows into the next throw (the shoulders still turned "+leastCarry.ToString("0.00")+" rad at the hand-over; turning back at most "+worstReverse.ToString("0.000")+" rad, "+reverseWhere+")");
+        yield return $"Cyber Lord Kit v2 ranged throw chains: {count-c0} checks ({cases.Length} chains of 8: spec, slower, across the reset, Overclock at 60 and 144 Hz and on a random clock; every window starts and ends with the hands on the stance within {(worstEdge*1000):0.00} mm; each releases ahead of its shoulder driving forward at {slowest:0.0} m/s or more; the hands at most {worstSpeed:0.0} m/s with no step over its neighbours' by {(worstSpike*100):0.0} cm; the body no step over its neighbours' by {(bodySpike*100):0.0} cm, the shoulders at most {turnSpeed:0.0} rad/s; back to back the shoulders still turned {leastCarry:0.00} rad at each hand-over, never turning back)";
 
         c0=count;float fireMiss=0,cutStep=0,handStep=0,spike=0;string stepWhere="";
         {
@@ -506,6 +543,115 @@ internal static class CyberKit2RangedChecks
             Check(handStep<.3f&&spike<.07f,"throws chained into and out of every cast never jump (the largest step "+(handStep*100).ToString("0.0")+" cm at "+stepWhere+", spike "+(spike*100).ToString("0.0")+" cm)");
         }
         yield return $"Cyber Lord Kit v2 ranged hands and hand-overs: {count-c0} checks (each fireball leaves the throwing hand within {(fireMiss*100):0.0} cm; a cut throw settles back, at most {(cutStep*100):0.0} cm a frame; throws chained into and out of all four casts, steps at most {(handStep*100):0.0} cm, spikes {(spike*100):0.0} cm)";
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------
+    // 2c. The body drives each throw (owner 2026-10-15: "With ranged, simulate more body movement in our "casts""): three throws
+    //     .6 s apart (still one chain: the right hand, the left, the Overflow), each posed beside a twin with no throws on the
+    //     same 240 Hz clock, standing, then running; first person; the view's memory of the last throw.
+    // ------------------------------------------------------------------------------------------------------------------
+    private static float Pitch(Pilot p,int bone){var up=Vector3.Transform(Vector3.UnitY,p.Pose.WorldRotation[bone]);return (float)Math.Asin(Math.Clamp(up.Z,-1,1));}
+    private static float Heading(Pilot p,int bone){var f=Vector3.Transform(Vector3.UnitZ,p.Pose.WorldRotation[bone]);return (float)Math.Atan2(f.X,f.Z);}
+    private static IEnumerable<string> BodyDrive()
+    {
+        int c0=count;const float Hz=1/240f;float wu=CyberKit2Spec.PlasmaWindup,len=CyberKit2Spec.PlasmaInterval,peak=2*wu+CyberRangedPose.FollowHold*(len-2*wu),end=len+CyberRangedPose.Tail;
+        var at=new[]{1.5f,2.1f,2.7f};string[] names={"right","left","Overflow"};
+        float leastTurn=99,leastHips=99,leastLean=99,leastPush=99,leastDrop=99,worstFoot=0,worstHead=0,worstBack=0,farthest=0,leastOff=99,runTurn=99,runBody=0,runFeet=0,fpSway=99,turnOverflow=0;
+        foreach(bool running in new[]{false,true})
+        {
+            int id=running?71:70;var h=new Pilot(id);var twin=new Pilot(id);var mode=Ranged(id);CyberLordFeed.RangedSource=mode;var p=new CyberKit2RangedPreview();var none=new CyberKit2RangedPreview();p.For(id);none.For(id);
+            int next=0;float speed=running?Rules.Speed:0;var hipsCross=new float[3];var turnCross=new float[3];for(int i=0;i<3;i++)hipsCross[i]=turnCross[i]=-1;float lastTurn=0,lastHips=0;
+            for(float t=.5f;t<3.6f;t+=Hz)
+            {
+                foreach(var x in new[]{h,twin}){x.A.Velocity=new V3(0,0,speed);x.A.Position=new V3(0,0,speed*(t-.5f));}
+                while(next<3&&t>=at[next]-1e-6f){p.Plasma(id,at[next],From+new Vector3(0,0,speed*(at[next]-.5f)),Ahead);next++;}
+                CyberLordFeed.Kit2RangedSource=p;h.Step(t,Hz);CyberLordFeed.Kit2RangedSource=none;twin.Step(t,Hz);if(t<1.3f)continue;
+                float turn=Turn(h,CapturedRig.LArm,CapturedRig.RArm)-Turn(twin,CapturedRig.LArm,CapturedRig.RArm),hips=Turn(h,CapturedRig.LHip,CapturedRig.RHip)-Turn(twin,CapturedRig.LHip,CapturedRig.RHip);
+                // The feet where the twin's stand (planted, the legs reaching them), the head on the twin's heading (the aim).
+                float feet=Math.Max(Vector3.Distance(h.World(CapturedRig.LFoot),twin.World(CapturedRig.LFoot)),Vector3.Distance(h.World(CapturedRig.RFoot),twin.World(CapturedRig.RFoot)));
+                if(running)runFeet=Math.Max(runFeet,feet);else worstFoot=Math.Max(worstFoot,feet);
+                worstHead=Math.Max(worstHead,Math.Max(Math.Abs(Heading(h,CapturedRig.Head)-Heading(twin,CapturedRig.Head)),Math.Abs(Pitch(h,CapturedRig.Head)-Pitch(twin,CapturedRig.Head))));
+                for(int i=0;i<3;i++)
+                {
+                    float age=t-at[i];int hand=CyberKit2Spec.PlasmaHand(i);float sign=hand==0?1:hand==1?-1:0; // + the right shoulder forward
+                    if(age<-1e-6f||age>end+.05f)continue;
+                    // From the coil (the throwing shoulder and hip turned back) into the follow-through, the hips pass square before
+                    // the shoulders do.
+                    if(hand!=2&&!running){if(hipsCross[i]<0&&age>0&&-hips*sign>=0&&-lastHips*sign<0)hipsCross[i]=age;if(turnCross[i]<0&&age>0&&-turn*sign>=0&&-lastTurn*sign<0)turnCross[i]=age;}
+                    if(Math.Abs(age-peak)<Hz*.5f)
+                    {
+                        var bh=h.Pose.WorldPosition[CapturedRig.Body];var bt=twin.Pose.WorldPosition[CapturedRig.Body];
+                        if(running){runTurn=Math.Min(runTurn,hand==2?99:-turn*sign);runBody=Math.Max(runBody,Vector3.Distance(bh,bt));continue;}
+                        if(hand==2)turnOverflow=Math.Max(turnOverflow,Math.Abs(turn));else{leastTurn=Math.Min(leastTurn,-turn*sign);leastHips=Math.Min(leastHips,-hips*sign);}
+                        leastLean=Math.Min(leastLean,(Pitch(h,CapturedRig.Chest)-Pitch(twin,CapturedRig.Chest))*(hand==2?.6f:1));
+                        // The weight onto the front foot (half way between the feet's axis and ahead) and down.
+                        var la=twin.World(CapturedRig.LFoot);var ra=twin.World(CapturedRig.RFoot);var ax=la.Z>=ra.Z?la-ra:ra-la;ax.Y=0;var dir=Vector3.Normalize(Vector3.Normalize(ax)+Vector3.UnitZ);
+                        leastPush=Math.Min(leastPush,Vector3.Dot(bh-bt,dir));leastDrop=Math.Min(leastDrop,bt.Y-bh.Y);
+                        // The other hand pulled back against the throw.
+                        if(hand!=2){int off=hand==0?CapturedRig.LHand:CapturedRig.RHand;leastOff=Math.Min(leastOff,twin.World(off).Z-h.World(off).Z);}
+                    }
+                    if(!running&&Math.Abs(age-wu)<Hz*.5f)
+                    {
+                        // On the release the throwing hand is near where the host spawns the fireball (NativeCyberKit2Runtime:
+                        // .3 m over the body's centre, .18 m to the throwing side). The stance throws from low, under it; the effects
+                        // ease the ball from the drawn hand onto the host's path over NativeCyberLordFx.Converge (pinned above).
+                        var spawn=new Vector3(hand==0?-.18f:hand==1?.18f:0,.865f+.3f,0);var fist=hand==2?(h.World(CapturedRig.RHand)+h.World(CapturedRig.LHand))*.5f:h.World(hand==1?CapturedRig.LHand:CapturedRig.RHand);
+                        farthest=Math.Max(farthest,Vector3.Distance(fist,spawn));
+                    }
+                    // Back on the stance once the window and its recovery are over.
+                    if(!running&&Math.Abs(age-(end+.02f))<Hz*.5f){float d=0;for(int b=0;b<MeleeRig.N;b++)d=Math.Max(d,Vector3.Distance(h.Pose.WorldPosition[b],twin.Pose.WorldPosition[b]));worstBack=Math.Max(worstBack,d);}
+                }
+                lastTurn=turn;lastHips=hips;
+            }
+            if(!running)for(int i=0;i<2;i++)Check(hipsCross[i]>0&&turnCross[i]>hipsCross[i],"the "+names[i]+" throw: the hips pass square before the shoulders ("+hipsCross[i].ToString("0.000")+" s, "+turnCross[i].ToString("0.000")+" s)");
+        }
+        Check(leastTurn>.35f&&leastHips>.18f,"each single-hand throw turns the throwing shoulder through ("+leastTurn.ToString("0.00")+" rad at the follow-through) on the hips ("+leastHips.ToString("0.00")+" rad)");
+        // (The chest's lean as its up axis tips forward; the turn under it, on the stance's bowed spine, takes some of it.)
+        Check(turnOverflow<.08f&&leastLean>.06f,"the Overflow pushes square from the chest ("+turnOverflow.ToString("0.00")+" rad of turn); every throw leans the chest in (at least "+leastLean.ToString("0.00")+" rad, the Overflow's x .6)");
+        Check(leastPush>.06f&&leastDrop>.03f,"standing, the weight drives onto the front foot ("+(leastPush*100).ToString("0.0")+" cm) and drops ("+(leastDrop*100).ToString("0.0")+" cm)");
+        Check(worstFoot<.001f,"the feet stay planted where the twin's stand, the legs reaching them ("+(worstFoot*1000).ToString("0.00")+" mm)");
+        Check(worstHead<.03f,"the head stays on the aim, level ("+worstHead.ToString("0.000")+" rad off the twin's heading and pitch)");
+        Check(leastOff>.05f,"the other hand pulls back against the throw ("+(leastOff*100).ToString("0.0")+" cm behind the twin's)");
+        Check(worstBack<.001f,"back on the stance once the window and its recovery ("+CyberRangedPose.Tail+" s) are over ("+(worstBack*1000).ToString("0.00")+" mm from the twin)");
+        Check(farthest<.6f,"on the release the throwing hand is within "+(farthest*100).ToString("0")+" cm of the host's spawn point (the effects' ease covers it)");
+        Check(runTurn>.3f&&runBody<.001f&&runFeet<.002f,"running, the shoulders still turn through ("+runTurn.ToString("0.00")+" rad) while the weight and the legs stay the run's (the body "+(runBody*1000).ToString("0.00")+" mm, the feet "+(runFeet*1000).ToString("0.00")+" mm from the running twin's)");
+        {
+            // First person: the hands sway with the body (the other hand across with the turn); the camera is never touched.
+            int id=72;var mode=Ranged(id);CyberLordFeed.RangedSource=mode;var p=new CyberKit2RangedPreview();var none=new CyberKit2RangedPreview();p.For(id);none.For(id);
+            var a=CyberLordFixture.Pilot(id,Vector3.Zero,0);var mh=new CyberLordMotion();var mt=new CyberLordMotion();var ph=new CapturedRig.Pose();var pt=new CapturedRig.Pose();bool thrown=false;
+            for(float t=.5f;t<1.5f+peak+Hz;t+=Hz)
+            {
+                if(!thrown&&t>=1.5f){p.Plasma(id,1.5f,From,Ahead);thrown=true;}
+                CyberLordFeed.Kit2RangedSource=p;mh.FirstPerson(ph,a,t);CyberLordFeed.Kit2RangedSource=none;mt.FirstPerson(pt,a,t);
+            }
+            ph.World();pt.World();fpSway=ph.WorldPosition[CapturedRig.LHand].X-pt.WorldPosition[CapturedRig.LHand].X;
+            Check(fpSway>.02f,"first person: the right hand's throw sways the other hand across with the body ("+(fpSway*100).ToString("0.0")+" cm)");
+        }
+        {
+            // The view's memory of the last throw: two hosts pose the same frames; a view that starts watching mid-chain poses the
+            // host's frames exactly from the next throw on; a record that runs back (a replay) forgets it.
+            int id=73;var mode=Ranged(id);CyberLordFeed.RangedSource=mode;var p=new CyberKit2RangedPreview();p.For(id);CyberLordFeed.Kit2RangedSource=p;var a=CyberLordFixture.Pilot(id,Vector3.Zero,0);
+            var va=new CyberLordView();var vb=new CyberLordView();CyberLordView vc=null;var sL=new Vector3(CyberRangedPose.ShoulderHalf,.3f,0);var sR=new Vector3(-CyberRangedPose.ShoulderHalf,.3f,0);
+            float worst=0,worstLate=0;int next=0;var beats=new[]{1.5f,1.8f,2.1f,2.4f};
+            for(float t=1;t<3.2f;t+=Dt)
+            {
+                while(next<beats.Length&&t>=beats[next]-1e-6f){p.Plasma(id,beats[next],From,Ahead);next++;}
+                CyberLordFeed.Read(a,va);CyberLordFeed.Read(a,vb);if(vc==null&&t>=1.95f)vc=new CyberLordView();if(vc!=null)CyberLordFeed.Read(a,vc);
+                var fa=CyberRangedPose.Of(va,t,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,new Vector3(0,.12f,0),Quaternion.Identity);
+                var fb=CyberRangedPose.Of(vb,t,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,new Vector3(0,.12f,0),Quaternion.Identity);
+                float Diff(in CyberRangedPose.Frame x,in CyberRangedPose.Frame y)=>Math.Max(Math.Max(Math.Abs(x.ChestYaw-y.ChestYaw),Math.Abs(x.HipYaw-y.HipYaw)),Math.Max(Math.Abs(x.ChestPitch-y.ChestPitch),Math.Max(Vector3.Distance(x.Shift,y.Shift),Math.Max(Vector3.Distance(x.Right,y.Right),Vector3.Distance(x.Left,y.Left)))));
+                worst=Math.Max(worst,Diff(fa,fb));
+                if(vc!=null&&t>=beats[2]){var fc=CyberRangedPose.Of(vc,t,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,new Vector3(0,.12f,0),Quaternion.Identity);worstLate=Math.Max(worstLate,Diff(fa,fc));}
+            }
+            Check(worst==0&&worstLate==0,"two views pose the same frames; one watching from mid-chain matches from the next throw on ("+worst+", "+worstLate+")");
+            Check(va.Kit2R.PrevAt>-90&&Math.Abs(va.Kit2R.PrevAt-beats[2])<1e-5f,"the view remembers the throw before the newest");
+            var replay=new CyberKit2RangedPreview();replay.Plasma(id,1.5f,From,Ahead);CyberLordFeed.Kit2RangedSource=replay;CyberLordFeed.Read(a,va);
+            Check(!(va.Kit2R.PrevAt>-90),"a record that runs back forgets it");
+            var fr=CyberRangedPose.Of(va,1.55f,0,0,default(CyberRangedPose.Gait),false,false,sL,sR,default,default,default,new Vector3(0,.12f,0),Quaternion.Identity);Check(float.IsFinite(fr.ChestYaw)&&float.IsFinite(fr.Right.X),"and poses finite frames");
+            var other=CyberLordFixture.Pilot(id+1,Vector3.Zero,0);var pp=new CyberKit2RangedPreview();pp.Plasma(id+1,1.2f,From,Ahead);pp.Plasma(id+1,1.5f,From,Ahead);CyberLordFeed.Kit2RangedSource=pp;CyberLordFeed.Read(other,va);
+            Check(!(va.Kit2R.PrevAt>-90),"a view handed another pilot forgets the last one's throws");
+        }
+        yield return $"Cyber Lord Kit v2 ranged body drive: {count-c0} checks (right, left and Overflow throws against a twin: the shoulders through {leastTurn:0.00} rad on the hips {leastHips:0.00} rad (the hips square first), the Overflow square, the chest in {leastLean:0.00} rad; standing the weight {(leastPush*100):0.0} cm onto the front foot and {(leastDrop*100):0.0} cm down, the feet planted within {(worstFoot*1000):0.00} mm, the head on the aim within {worstHead:0.000} rad, the other hand {(leastOff*100):0.0} cm back, back on the stance within {(worstBack*1000):0.00} mm; the hand {(farthest*100):0} cm from the host's spawn on the release; running the shoulders {runTurn:0.00} rad with the run's body and legs; first person the hands sway {(fpSway*100):0.0} cm; the view's memory deterministic, caught up mid-chain, forgotten on a rewind or another pilot)";
     }
 
     // Records the largest sprite or glow near the first shot's position and its distance from the eye.
