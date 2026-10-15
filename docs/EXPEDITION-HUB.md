@@ -665,3 +665,67 @@ glow. The gates never had rings.
 
 Presentation only: no collider, layout, navigation, timing rule, hit timing, hitbox, damage, cooldown, movement or
 network change. The layout and its generator are unchanged (the closures span their openings).
+
+
+## Join circle at the instance doors (owner request 2026-10-15) — contract for Astra
+
+Owner (verbatim): "lets move the 'Join instance' circle a little bit away from the door. We can make the circle bigger too, players
+can join by standing inside the circle." Also asked: "can this work if everyone goes into their own instance? Say one player wants to
+run around the hub, the other wants to go inside ward zero. Could this still run smooth for both of them?"
+
+**Today** (research at `8355b44`): there is no join circle. The door's floor ring was removed with the other interactable rings
+(`03eb9f4`); a cyan light column at the door anchor remains. Entry is the host's F inside `doors[].interact` (3 × 3 × 2 m box,
+1 m out from the doorway) with line of sight to `approach` (`Core/NativeExpeditionDirector.cs:39-43`,
+`Core/NativeExpeditionDirectorState.cs:110-115`, `Runtime/NativeExpeditionM1.cs:77-82`). Then every living member is placed on the
+instance `entries`. The run has one `area`, and the host simulates one arena, so a split party (hub and Ward Zero at once) is not
+supported. It contradicts `EXPEDITION.md` ("No split indoor/outdoor simulation") and would need per-member areas, concurrent arenas,
+per-peer frames and per-area barriers: a large redesign. The owner is asked to decide; the proposal below keeps one area.
+
+**Proposed rule (Astra; pending the owner's confirmation):**
+1. Each instance door gets a **join circle**: a vertical cylinder `join {x, y, z, r, h}`. For Ward Zero: centre 5 m out from the
+   doorway on the approach line (x 79, z 0), r 2.5 m, h 3 m, between the portico pylons (z ±3.8).
+2. When every living, connected, unextracted member stands inside it (capsule centre in the cylinder), a 3 s **deploy countdown**
+   starts. It cancels if anyone steps out, dies or disconnects. At zero the run enters (`EnterDoor` path, barrier, ready, placement
+   unchanged). The F door entry is retired; F stays for caches, machines, rewards and gates. Guests count through their pilot on
+   the host.
+3. Public view per door: `joinInside` (count), `joinNeeded` (count), `joinStartedAt` (authority seconds, −1 none), and per member
+   `atJoin` (bool) for "who is missing".
+4. The phase is Town only; quota, closures and the exit vote are unchanged.
+
+**Claude's part:**
+- Layout: `docs/arenas/scripts/expedition_city.py` emits `join` and moves `returns` out of the circle. The approach goes to the
+  circle centre. The revision bumps to exp-layout-4 (saves pinned to exp-layout-3 will not resume). This needs Astra's parser to
+  accept `join` first.
+- Presentation: a ground ring at the circle (an owner-requested exception to the no-rings rule; `ExpeditionPresentationChecks` is
+  updated), split into `joinNeeded` segments that fill as members step in. A countdown sweep and a label: STAND IN THE CIRCLE TO
+  DEPLOY · 2/3, or DEPLOYING 3…2…1. Missing members are named on the HUD.
+
+## Expedition co-op hosting (owner request 2026-10-15) — for Astra
+
+Owner: "lets make hosting a lobby for this one better (So I can test with other people) Add Expedition as a option for hosting
+rooms."
+
+**Today:** the Expeditions menu's HOST ROOM makes a real internet (tunnel/directory) or LAN room, but it plays Wave Defense
+only. START EXPEDITION is solo, local and DEV-only (`Runtime/NativeExpeditionM1.cs:14,38`). Guests cannot play an Expedition:
+- M1 seats only the host;
+- placement assumes one pilot (`:65`);
+- guests never report their area loaded;
+- door and interact intents are host-local;
+- only the host's death is recorded;
+- new peers are refused once an arena exists (`Runtime/NativeNetwork.cs:92`).
+
+The full gap list is in DEV_LOG (Expedition integration contract) and `EXPEDITIONS-MENU.md`.
+
+**Astra (blocking):**
+1. Room fields `expedition` / `mode`.
+2. A room-start path that seats every lobby peer and `Run.Join`s them, without the Online/DEV gate, with N-party placement on
+   the 8 slots.
+3. Guest area load and ready on the existing ticket and stage barrier.
+4. Guest intents for doors (or the join circle), caches and rewards; guest death and reprint.
+5. Party cap and late-join / host-leave policy.
+
+**Claude, after item 2:**
+- "Expedition" in the Create Room and lobby Mode select;
+- START EXPEDITION enabled for the host, with guests ready-gated;
+- guests shown the host's pick;
+- the party cap and status lines.
