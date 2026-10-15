@@ -13,6 +13,19 @@ probes and collision/placement, encounter spawning/death callbacks and interacti
 input must be connected. Host migration is also unfinished. Presentation being
 implemented does not establish Windows/two-client acceptance.
 
+**Acceptance pass** (`claude/expedition-acceptance` on PR #217's `3183514`, 2026-10-15). The checklist was played through
+Astra's real session and director, with host and guest views decoded from the wire (`CoreTests --expedition-acceptance`).
+It covers seals, binding and transfer, SAFE tags, boss arrivals, Continue into loop 2, and the town's clearance and budget.
+Four presentation defects were found and fixed:
+- The final gate's beacon and FINAL GATE OPEN were timed from the gate's opening. The party is inside the last building
+  then, so they were never seen. The cue is now held until the client is back in town.
+- Continue's transfer screen said ENTERING THE CITY. It now says STARTING LOOP n.
+- Placements (the new loop's sanctuary slots, respawns) rippled the sanctuary edge as if pilots had crossed it.
+- The airlock's pockets and header reached 0.12 m and 0.06 m into the doorway that collision frees.
+
+World pieces also wait for the arena to hold the bound area's map. These are managed checks and offline renders only.
+Unity play, Windows and real host/guest runs are blocked until the scene adapter exists (DEV_LOG).
+
 
 Integration bridge: [EXPEDITION-INTEGRATION.md](EXPEDITION-INTEGRATION.md) (Astra) records the runtime
 entry points, replication, hooks and remaining scene/migration dependencies. Rules and transactions:
@@ -163,8 +176,10 @@ Nothing here writes the view, calls the director or touches collision.
 manifest bytes plus the content revision. The rig of the view's area is used only when `areaBarrier.layout` equals that
 fingerprint (`NativeExpeditionStates.Bound`). The director publishes it as soon as it binds the layout, on the initial
 inactive barrier (generation 0), so the doors, gate and sanctuary draw from the run's start. The 3D pieces draw only while
-the arena holds that area's map. Anything missing draws nothing:
-- no fingerprint, or a different one;
+the arena holds that area's map (`NativeExpeditionStates.MapReady`). With a bound layout, so do the world pieces and their
+holograms. The view names the next area before the scene loads it, and nothing of that area may stand in the previous map.
+Anything missing draws nothing:
+- no fingerprint, or a different one (the world pieces keep their anchor fallback);
 - another map loaded;
 - a door without a closure record. Its HUD `Door` hologram stays as the fallback.
 
@@ -174,14 +189,14 @@ view's `elapsed`, run forward by local time between views (at most 0.25 s, becau
 
 | Piece | Reads | Look |
 | --- | --- | --- |
-| Door leaves | each closure whose id is a door anchor of the area; the closure volume (size, yaw) for the doorway plane; the approach for the party's side | An airlock unit at the closure volume: pockets either side, a header, a hazard-striped sill and jamb bands, status lamps and signs in the state colour (green open, amber moving, red sealed), and a dark airlock behind with a teal light. Two leaves meet in the doorway plane and slide into the pockets. Ward Zero's portico and exit are biocontainment doors: clinical white leaves, hazard edges, a teal band and dark portholes. `Shut` is 0 when open, 1 when sealed, and eases over exactly 1 s from `began` while sealing or opening. Three lock bolts engage over the last 15% of sealing and draw back over the first 15% of opening. |
+| Door leaves | each closure whose id is a door anchor of the area; the closure volume (size, yaw) for the doorway plane; the approach for the party's side | An airlock unit at the closure volume: pockets either side, a header, a hazard-striped sill and jamb bands, status lamps and signs in the state colour (green open, amber moving, red sealed), and a dark airlock behind with a teal light. The pockets and header frame the closure face from outside it, and nothing solid stands in the open doorway the collider frees. Ward Zero's exit jambs and lintel bound exactly that face. Two leaves meet in the doorway plane and slide into the pockets. Ward Zero's portico and exit are biocontainment doors: clinical white leaves, hazard edges, a teal band and dark portholes. `Shut` is 0 when open, 1 when sealed, and eases over exactly 1 s from `began` while sealing or opening. Three lock bolts engage over the last 15% of sealing and draw back over the first 15% of opening. |
 | Door seal | `Blocking` (state is not `open`: the collider's own predicate) | A hardlight seal over exactly the closure face: fill, bright border, slanted hazard hems, scanlines and a sweep. Amber while sealing or opening (it flashes on at the start of sealing), red while sealed. It stays up through the whole opening second and is gone the moment the view says `open`, so nothing looks open while it blocks. After that, sparks drift off for 0.5 s. |
 | Final gate | the gate's closure (`exp-city:gate:final`) and its volume, facing the sanctuary | A steel portcullis that fills the gatehouse opening. Opening: lock clamps draw back into the towers over the first quarter, then the gate rises over the rest of the second into the lintel (sealing reverses this). A magenta hardlight lattice stays up while it blocks. During opening, cells dissolve with white flashes but at least a fifth remain, plus the frame and fill, until `open`. |
-| Gate beacon | this client saw the gate go from sealed or sealing to opening or open, or first saw it opening; timed from `began` | A magenta pillar rising 70 m off the gatehouse, three ground rings and a face flash for 7 s, and the HUD notice FINAL GATE OPEN · THE FINAL AREA IS UNLOCKED for 4 s. A gate first seen open (a resume or late join) cues nothing. |
-| Sanctuary boundary | the area's sanctuary volumes; the phase | A warm floor edge (a bright core fading inward), a low curtain with a slow wave, warm rising motes and corner glows. A shimmer ripple and ring appear where a pilot crosses (presentation's own position test; it never grants SAFE). Lit only in the Town and Victory phases, the ones in which the authority grants `safe`; otherwise a dim cool outline. The low tier keeps the floor edge; reduced effects stop the wave and motes. |
+| Gate beacon | this client saw the gate go from sealed or sealing to opening or open, or first saw it opening. Timed from `began` if the client is in town then. The gate opens when the last building is cleared, with the party inside it, so that opening is held. It plays 0.5 s after the client is next in town with no barrier up, in step on the arrival's authority time. | A magenta pillar rising 70 m off the gatehouse, three ground rings and a face flash for 7 s, and the HUD notice FINAL GATE OPEN · THE FINAL AREA IS UNLOCKED for 4 s. A gate first seen open (a resume or late join) cues nothing. Sealing again (a new loop) drops a held cue. |
+| Sanctuary boundary | the area's sanctuary volumes; the phase | A warm floor edge (a bright core fading inward), a low curtain with a slow wave, warm rising motes and corner glows. A shimmer ripple and ring appear where a pilot crosses (presentation's own position test; it never grants SAFE). A placement is not a crossing: sides are forgotten while a barrier is up, and a move of more than 3 m between two samples (a placement or respawn seen late) only records the side. Lit only in the Town and Victory phases, the ones in which the authority grants `safe`; otherwise a dim cool outline. The low tier keeps the floor edge; reduced effects stop the wave and motes. |
 | SAFE chip | `mine.safe` (member, connected, not extracted); `members[].safe` for the party line | SAFE · SANCTUARY under the wallet, and PARTY n / m SAFE with up to three names. It is the authority's sanctuary membership (checkpoint, extraction, remote reprint). It never claims damage protection and is never derived from a position. |
-| SAFE tags | `members[].seat` of each member with `safe`, connected, alive, not extracted (`ExpeditionSafeTags`); seat 0 is unbound | SAFE (green tick and diamond, no shield) over that pilot, in the slot above the overhead name: within 55 m, hidden behind walls (the health bars' ray), faded past 35 m, never over my own pilot in first person. Public: every viewer sees the same tags. |
-| Transfer screen | `areaBarrier` (active, target, ready, required); `loading`; `instances[].entered` | Full screen over every screen, with the notice toast and build label kept on top: AREA TRANSFER · LOADING; ENTERING WARD ZERO for an instance target; RETURNING TO THE CITY for the world once a building was entered this loop, else ENTERING THE CITY. One pip per member the barrier waits for (up to 8), PARTY READY n / m, a bar, the paused-clock note and a loader. It fades in over 0.25 s and holds after the barrier drops until the arena holds the area's map (at most 3 s), then fades out over 0.45 s. |
+| SAFE tags | `members[].seat` of each member with `safe`, connected, alive, not extracted (`ExpeditionSafeTags`); seat 0 is unbound | SAFE (green tick and diamond, no shield) over that pilot, in the slot above the overhead name: within 55 m, hidden behind walls (the health bars' ray), faded past 35 m, never over my own pilot in first person (`ExpeditionSafeTags.Alpha`). Public: every viewer sees the same tags. |
+| Transfer screen | `areaBarrier` (active, target, ready, required); `loading`; `instances[].entered`; `loop` | Full screen over every screen, with the notice toast and build label kept on top: AREA TRANSFER · LOADING; ENTERING WARD ZERO for an instance target; RETURNING TO THE CITY for the world once a building was entered this loop. For a later loop's fresh barrier (Continue reloads the city into itself) it says STARTING LOOP n; otherwise ENTERING THE CITY. One pip per member the barrier waits for (up to 8), PARTY READY n / m, a bar, the paused-clock note and a loader. It fades in over 0.25 s and holds after the barrier drops until the arena holds the area's map (at most 3 s), then fades out over 0.45 s. |
 | Boss intro | `bossArrivals[]` of the view's area, once per arrival, timed from `spawned` | BOSS ARRIVAL · area tag, the archetype's name (test archetypes keep TEST), a rule and a 0.6 s glitch split, and a short sting: a magenta pulse at the screen edges. It never moves the camera or covers the crosshair. 3.4 s. An arrival first seen more than 3 s after its spawn gets no intro. |
 | Boss plates | the same arrivals; `hp/maxHp` from the view's current record; the building's `defeated`/`cleared`, the final-boss phase, or `hp` 0 | One plate per boss: BOSS, the name, a health bar and percentage (a living boss never reads 0%), DOWN once defeated. A legacy record (`maxHp` 0) has no bar and reads ACTIVE. A plate waits for its own intro; late joiners see only the plate. |
 | Boss crack | the arrival's `x/y/z` (only on a record with `maxHp` above 0, the current contract); its intro flag; `spawned` | Cracks, roar rings, dust and a flash at the recorded spawn point for 2.6 s from `spawned`, once per arrival and only for arrivals seen within 3 s of their spawn. The pattern's seed is a stable hash of area and id (FNV-1a), so every client draws the same cracks. |
@@ -194,7 +209,8 @@ glow and dust are one NativeSirenFx effects batch. Doors and the gate are culled
 clock, cues, scene and HUD models allocate nothing per frame (checked); HUD strings are cached.
 
 Space the door unit takes, so other kit stays clear of it: in the closure frame, |u| up to W + 0.3 (7 m wide for a 3.2 m
-doorway), 0 to H + 0.55 high, and from the wall face (−D/2 + 0.01) to 0.3 m in front of the closure, sill 0.6 m. The town
+doorway), 0 to H + 0.55 high, and from the wall face (−D/2 + 0.01) to 0.3 m in front of the closure, sill 0.6 m. Inside the
+closure face (|u| < W/2, above the 3 cm sill, below H, from 10 cm off the wall face) it draws nothing solid once open. The town
 portico is x 43.4–44.0, z −3.5..3.5, y 0–4. The Ward Zero exit is x −37.95..−37.5, z −26.9..−19.9, and encloses the overlay's
 jambs and lintel.
 

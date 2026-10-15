@@ -72,7 +72,8 @@ namespace ChipArena.UnityConversion
         {
             // The doors, final gate and sanctuary, and the transfer screen's fade (NativeExpeditionStatesPresentation.cs).
             ExpeditionStatesFrame();
-            if(!ExpeditionWorldShown){expeditionWorld?.Clear();expeditionLabelWorld.Pieces.Clear();return;}
+            // Nothing at the area's anchors until the arena holds its map (the view names the next area before the load).
+            if(!ExpeditionWorldShown||!expeditionMapReady){expeditionWorld?.Clear();expeditionLabelWorld.Pieces.Clear();return;}
             if(expeditionWorld==null&&!expeditionWorldFailed){expeditionWorld=NativeExpeditionWorldPresentation.Create();expeditionWorldFailed=expeditionWorld==null;}
             if(expeditionWorld!=null)expeditionWorld.Frame(LiveExpedition,cameraView.transform.position,Time.unscaledTime,prefs.reducedEffects);
             else expeditionLabelWorld.Build(LiveExpedition);
@@ -87,7 +88,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         private void ExpeditionWorldLabels()
         {
-            if(!ExpeditionWorldShown||Event.current.type!=EventType.Repaint)return;var pieces=ExpeditionPieces.Pieces;if(pieces.Count==0)return;
+            if(!ExpeditionWorldShown||!expeditionMapReady||Event.current.type!=EventType.Repaint)return;var pieces=ExpeditionPieces.Pieces;if(pieces.Count==0)return;
             float tan=Mathf.Tan(cameraView.fieldOfView*.5f*Mathf.Deg2Rad),half=cameraView.pixelHeight*.5f,t=Time.unscaledTime;Vector3 eye=cameraView.transform.position;
             var physics=arena!=null?arena.Root.scene.GetPhysicsScene():Physics.defaultPhysicsScene;bool reduced=prefs.reducedEffects;int n=0;
             for(int i=0;i<pieces.Count&&n<MaxLabelled;i++)

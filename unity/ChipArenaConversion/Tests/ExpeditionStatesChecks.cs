@@ -173,7 +173,7 @@ namespace ChipArena.UnityConversion
             var l=leaves.OrderBy(U).ToArray();float l0=U(l[0])-l[0].Hx,l1=U(l[0])+l[0].Hx,r0=U(l[1])-l[1].Hx,r1=U(l[1])+l[1].Hx;
             float gap=r0-l1;Check(Math.Abs(gap-2*(1-shut)*(half+.12f))<2e-3f,"the leaves part by the shut amount ("+when+")");
             if(shut>=.9999f)Check(l0<=-half+1e-3f&&r1>=half-1e-3f&&gap<=1e-3f&&l.All(b=>b.Y-b.Hy<=f.Cy+.01f&&b.Y+b.Hy>=f.Cy+f.H-.03f),"shut, the leaves cover the whole doorway ("+when+")");
-            if(shut<=1e-4f)Check(l1<=-(half-.12f)+1e-3f&&r0>=half-.12f-1e-3f,"open, both leaves sit in the pockets ("+when+")");
+            if(shut<=1e-4f)Check(l1<=-half+1e-3f&&r0>=half-1e-3f,"open, both leaves sit in the pockets, clear of the doorway ("+when+")");
             Check(l.All(b=>Math.Abs((b.X-f.Cx)*f.Fx+(b.Z-f.Cz)*f.Fz)<=f.D/2+1e-4f),"the leaves stay inside the closure volume's depth ("+when+")");
         }
 
@@ -188,7 +188,13 @@ namespace ChipArena.UnityConversion
             cues.Observe(p.View(),p.View().elapsed);
             Check(p.Run.Progress("kill",1)&&p.Run.StartBosses(new[]{"TEST-boss"})&&p.Director.BossDefeated("TEST-boss",new V3(0,0,0)),"cleared");p.Director.Step();
             v=p.View();g=v.closures.Single(c=>c.id==Gate);Check(g.state=="opening"&&p.Run.FinalUnlocked,"FinalUnlocked opens the gate");
-            var town=Area(v,City);cues.Observe(v,v.elapsed);Check(cues.Cue(Gate,g.began+.5,out double age)&&Math.Abs(age-.5)<1e-9,"the beacon cue is timed from the authority's `began`");
+            // The party is inside the building it just cleared: the opening is held, then cued when the client is back in town.
+            var away=new ExpeditionStateCues();var before=Area(v,Ward);before.closures.Single(c=>c.id==Gate).state="sealed";away.Observe(before,v.elapsed-.1);away.Observe(Area(v,Ward),v.elapsed);
+            Check(!away.Cue(Gate,g.began+.5,out _),"an opening seen from inside the building cues nothing there");
+            var back=Area(v,City);back.elapsed=g.began+12;back.loading=true;back.areaBarrier.active=true;away.Observe(back,back.elapsed);Check(!away.Cue(Gate,back.elapsed+.6,out _),"nothing behind the return's transfer screen");
+            back.loading=false;back.areaBarrier.active=false;away.Observe(back,back.elapsed);
+            Check(!away.Cue(Gate,back.elapsed+.4,out _)&&away.Cue(Gate,back.elapsed+NativeExpeditionStates.ArriveDelay+.1,out double held)&&Math.Abs(held-.1)<1e-9,"back in town: the held cue plays ArriveDelay after the arrival");
+            var town=Area(v,City);cues.Observe(town,v.elapsed);Check(cues.Cue(Gate,g.began+.5,out double age)&&Math.Abs(age-.5)<1e-9,"a client in town: the beacon cue is timed from the authority's `began`");
             float last=-1;
             for(double dt=0;dt<1;dt+=.125)
             {
@@ -202,7 +208,7 @@ namespace ChipArena.UnityConversion
             Check(cues.Cue(Gate,g.began-1+NativeExpeditionStates.CueSeconds-.1,out _)&&!cues.Cue(Gate,g.began-1+NativeExpeditionStates.CueSeconds+.1,out _),"the cue lasts CueSeconds from the opening");
             // A client that first sees the gate open (resume, late join) gets no cue; one that first sees it opening does.
             var late=new ExpeditionStateCues();late.Observe(v,v.elapsed);Check(!late.Cue(Gate,v.elapsed,out _),"first seen open: no cue");
-            var mid=new ExpeditionStateCues();var opening=p.View();opening.closures.Single(c=>c.id==Gate).state="opening";mid.Observe(opening,opening.elapsed);Check(mid.Cue(Gate,opening.elapsed,out _),"first seen opening: the cue plays");
+            var mid=new ExpeditionStateCues();var opening=Area(p.View(),City);opening.closures.Single(c=>c.id==Gate).state="opening";mid.Observe(opening,opening.elapsed);Check(mid.Cue(Gate,opening.elapsed,out _),"first seen opening in town: the cue plays");
         }
         private static ExpeditionView Area(ExpeditionView v,string area){var c=JsonSerializer.Deserialize<ExpeditionView>(JsonSerializer.Serialize(v,new JsonSerializerOptions{IncludeFields=true}),new JsonSerializerOptions{IncludeFields=true});c.area=area;return c;}
         private static bool Lattice(NativeExpeditionStateScene s,ExpeditionFrame f)
@@ -223,7 +229,7 @@ namespace ChipArena.UnityConversion
             Check(!ExpeditionSafeModel.Chip.Contains("PROTECT")&&!ExpeditionSafeModel.Chip.Contains("INVULN")&&!ExpeditionSafeModel.Chip.Contains("SHIELD"),"the chip never claims damage protection");
             p.At=new V3(30,0,30);p.Director.Step();v=p.View();m.From(v,labels);Check(!v.mine.safe&&!m.Shown&&m.Line==null,"outside: no chip");
             // Position never grants it: a view saying not safe shows nothing, wherever the pilot stands and whatever crossed.
-            var cues=new ExpeditionStateCues();var rig=ExpeditionStateRig.For(layout,City);cues.Pilot(7,30,0,30,rig,1);cues.Pilot(7,1,0,1,rig,2);
+            var cues=new ExpeditionStateCues();var rig=ExpeditionStateRig.For(layout,City);cues.Pilot(7,13,0,1,rig,1);cues.Pilot(7,11,0,1,rig,2);
             m.From(v,labels);Check(!m.Shown&&cues.Ripples.Count(r=>r.At==2)==1,"a crossing makes a ripple, never a SAFE chip");
             var forged=p.View();forged.mine.safe=true;forged.mine.account=null;m.From(forged,labels);Check(!m.Shown,"a non-member view shows no chip");
             var stranger=p.View("stranger");m.From(stranger,labels);Check(!m.Shown,"a stranger has no chip");
