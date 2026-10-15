@@ -94,7 +94,7 @@ def compile_assembly(dotnet, csc, output, name, sources, refs, defines):
     if not sources:
         raise RuntimeError(f"No sources found for {name}")
     dll = output / (name + ".dll")
-    args = ["-nologo", "-target:library", "-nostdlib+", "-optimize+", "-langversion:latest",
+    args = ["-nologo", "-target:library", "-nostdlib+", "-optimize+", "-langversion:9.0",
             "-define:" + ";".join(defines), "-out:" + str(dll)]
     args += ["-r:" + str(p) for p in refs] + [str(p) for p in sources]
     # Response files keep large source/reference lists below OS argument limits.
