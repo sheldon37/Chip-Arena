@@ -33,18 +33,56 @@ namespace ChipArena.UnityConversion
                 Check(run.Snapshot().instances.Single(x=>x.id==area.id).progress==1,"confirmed combat death advances quota once");
                 Check(run.Snapshot().members[0].wallet==25,"real shambler kill pays the Expedition wallet");
                 ExpeditionKilled(add,Local);Check(run.Snapshot().members[0].wallet==25,"duplicate kill callback cannot pay twice");
+                void Stand(V3 at){Local.Body.position=Vec(at)+Vector3.up*NativeLocomotionRules.HalfHeight;Physics.SyncTransforms();}
+                int Wallet()=>run.Snapshot().members[0].wallet;
+                var cache=area.interactions.First(i=>area.anchors.Any(a=>a.id==i.anchor&&a.kind=="chest"));Stand(new V3(cache.x,cache.y,cache.z));
+                Check(TryExpeditionInteract(Local,out _)&&Wallet()==25&&run.Snapshot().rewards.Length==0,"cache refuses insufficient funds without granting reward");
+                Check(run.Credit("native-host","interaction-fixture",1000),"fund machine checks");
+                Check(TryExpeditionInteract(Local,out _)&&Wallet()==925,"nearby cache purchase charges exactly once");
+                Check(TryExpeditionInteract(Local,out _)&&Wallet()==925,"sold cache refuses duplicate input");
+                director.Step();Check(TryExpeditionInteract(Local,out _)&&Wallet()==925,"restocking cache refuses purchase");
+                var pick=run.Snapshot().rewards.Single();Check(pick.claimed&&pick.owner=="native-host"&&pick.offers.Length>0,"purchased cache offers belong to buyer");
+                Check(session.Execute("native-host",new ExpeditionCommand(ExpeditionIntent.Select,pick.id,pick.offers[0])).state==ExpeditionCommandState.Pending,"choose purchased chip");
+                SyncExpeditionInventory();Check(Local.Seat.chips.TryGetValue(pick.offers[0],out int held)&&held==1,"choice applied to live combat inventory");
+                var chipMachine=data.machines.First(m=>m.kind=="chip");Stand(chipMachine.front.Position());
+                Check(TryExpeditionInteract(Local,out _)&&Wallet()==750&&run.Snapshot().rewards.Length==2,"Ward dispenser uses run wallet and personal reward queue");
+                var med=data.machines.First(m=>m.kind=="med");Stand(med.front.Position());Local.Hp=(float)Local.Stats["hp"]*.4f;
+                Check(TryExpeditionInteract(Local,out _)&&Wallet()==675,"med station debits run wallet");
+                Check(TryExpeditionInteract(Local,out _)&&Wallet()==675,"med cooldown prevents repeat debit");
+                for(int tick=0;tick<9;tick++){Match.Tick(.25);StepPveServices();}
+                Check(Local.Hp>(float)Local.Stats["hp"]*.85f,"purchased heal actually ticks in Expedition");
+                var hire=data.machines.First(m=>m.kind=="recruit");Stand(hire.front.Position());
+                Check(TryExpeditionInteract(Local,out _)&&Wallet()==375&&Pve.Hires.Count==1,"recruit purchase queues paid hire");
+                for(int tick=0;tick<4;tick++)Match.Tick(.25);StepPveServices();Check(Pve.Recruits.Count==1&&Pve.Hires.Count==0,"paid recruit actually spawns");
+                Stand(new V3(0,1000,0));Check(!TryExpeditionInteract(Local,out _)&&Wallet()==375,"out of range interaction cannot spend");
+                Stand(area.slots[0].Position);
                 void FinishIntro()
                 {
                     Check(Pve.Holding&&Pve.Cinematic=="intro","boss arrival starts the existing intro scene");
                     float before=Pve.Boss.Hp;Damage(Pve.Boss,Local,50,Vector3.zero,0,false);Check(Pve.Boss.Hp==before,"intro blocks combat damage");
                     for(int i=0;i<600&&Pve.Holding;i++)PveHoldTick(1f/60);
-                    Check(!Pve.Holding&&Pve.Stage=="boss"&&Pve.Phase==1&&Pve.Floor==0,"intro releases Expedition combat without ordinary boss thresholds");
+                    Check(!Pve.Holding&&Pve.Stage=="boss"&&Pve.Phase==1&&Math.Abs(Pve.Floor-Pve.MaxHp*.75f)<.01,"intro releases combat at the shared 75 percent gate");
+                }
+                void FinishReveal(){for(int i=0;i<600&&Pve.Holding;i++)PveHoldTick(1f/60);Check(!Pve.Holding,"phase reveal completes");}
+                void DefeatAllPhases()
+                {
+                    Damage(Pve.Boss,Local,1000000,Vector3.zero,0,false,true);StepExpeditionCombat();
+                    Check(Pve.Holding&&Pve.Reveal==2&&Pve.Boss.Hp>0,"75 percent gate prevents skipping Find Me");FinishReveal();
+                    Check(Pve.Phase==2&&Pve.Hidden&&Pve.Possessed!=0&&Pve.Cap==72,"shared possession and hidden horde cap");
+                    var possessed=Minions.Single(m=>m.Id==Pve.Possessed);possessed.Pve.SpawnAt=possessed.Pve.ActiveAt=possessed.Pve.ExposedAt=Time-1;possessed.Pve.Struck=true;possessed.Collider.enabled=true;possessed.Body.isKinematic=false;possessed.Body.position=Vec(Pve.Content.boss.spawn.Position(.85f));Physics.SyncTransforms();
+                    HitPveAdd(possessed,Local,1000000,Vector3.zero,0,null,"projectile",0,false);
+                    Check(Pve.Holding&&Pve.Reveal==3&&!Pve.Hidden,"killing possessed add finds Siren");FinishReveal();
+                    Check(Pve.Phase==3&&Math.Abs(Siren(Pve.Boss).Scale-1.5f)<.001&&Math.Abs(Pve.Boss.Collider.height-2.55f)<.001,"shared growth phase");
+                    Damage(Pve.Boss,Local,1000000,Vector3.zero,0,false,true);StepExpeditionCombat();Check(Pve.Holding&&Pve.Reveal==4,"25 percent gate reveals enrage");FinishReveal();
+                    Check(Pve.Phase==4&&Pve.Floor==0&&Siren(Pve.Boss).MaxRains==2&&Siren(Pve.Boss).MaxEruptions==4,"shared enrage rules");
+                    Damage(Pve.Boss,Local,1000000,Vector3.zero,0,false,true);StepExpeditionCombat();
+                    Check(Pve.Stage=="intermission"&&Pve.Rate==0&&Minions.All(m=>m.Pve==null),"final phase clears adds and stops spawning");
                 }
                 StepExpeditionCombat();FinishIntro();Check(director.BossArrivals.Length==1&&Pve.Boss.Hp>0,"real boss registered");
                 Check(Math.Abs(director.BossArrivals[0].y-area.bossPoints[0].y)<.001,"boss arrival FX anchored at authored feet");
                 Damage(Pve.Boss,Local,50,Vector3.zero,0,false);float hp=Pve.Boss.Hp;StepExpeditionCombat();
                 Check(hp<Pve.MaxHp&&Math.Abs(director.BossArrivals[0].hp-hp)<.001,"boss plate follows real damage");
-                Damage(Pve.Boss,Local,1000000,Vector3.zero,0,false,true);StepExpeditionCombat();
+                DefeatAllPhases();
                 Check(run.Snapshot().instances.Single(x=>x.id==area.id).cleared&&director.BossArrivals[0].hp==0,"real boss death clears instance and plate");
                 void LoadCurrent()
                 {
@@ -58,7 +96,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<5;i++)session.Tick(.25);ExpeditionSyncClosures();
                 var trigger=layout.Area(layout.world).bossTrigger;Local.Body.position=new Vector3(trigger.x,trigger.y+NativeLocomotionRules.HalfHeight,trigger.z);
                 Check(director.TryBeginFinal(),"unlocked final trigger begins combat");StepExpeditionCombat();FinishIntro();
-                Damage(Pve.Boss,Local,1000000,Vector3.zero,0,false,true);StepExpeditionCombat();Check(run.Snapshot().phase==ExpeditionPhase.Victory,"real final death reaches victory");
+                DefeatAllPhases();Check(run.Snapshot().phase==ExpeditionPhase.Victory,"real final death reaches victory");
                 Check(run.VoteContinue("native-host",true),"continue vote");session.Tick(.1);Check(run.Snapshot().loop==1&&director.Barrier.active&&!run.Snapshot().members[0].safe,"Continue starts a new unsafe load barrier");LoadCurrent();
                 Check(run.VoteExtraction("native-host",true),"sanctuary extraction vote");for(int i=0;i<41;i++)session.Tick(.25);
                 Check(session.Run.Snapshot().phase==ExpeditionPhase.Ended&&session.Run.Snapshot().members[0].extracted,"durable extraction ends local run");
