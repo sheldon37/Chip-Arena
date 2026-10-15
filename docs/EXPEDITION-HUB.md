@@ -665,3 +665,11 @@ glow. The gates never had rings.
 
 Presentation only: no collider, layout, navigation, timing rule, hit timing, hitbox, damage, cooldown, movement or
 network change. The layout and its generator are unchanged (the closures span their openings).
+
+
+### Safe-zone border hidden in the hub (Claude, 2026-10-15)
+
+Owner: make the safe zone border invisible in the hub, and keep the zone in case it is needed later. The sanctuary volumes and every
+rule on them stay. Only the drawn edge (floor glow, curtain, motes, crossing ripple) is off in the fenced hub
+(`NativeExpeditionStateScene.HideSanctuaryEdge`, set from `NativeExpeditionHubLive.Layout`). The fence, the gates, the ward and the
+SAFE tag and chip still show where safety is.

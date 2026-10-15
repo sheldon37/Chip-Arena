@@ -28,12 +28,17 @@ namespace ChipArena.UnityConversion
     ///    A beacon pillar and ground rings play once when this client sees FinalUnlocked open the gate (ExpeditionStateCues).
     ///  - The sanctuary: a soft warm edge on the floor along every volume's footprint, a low shimmering curtain just inside it
     ///    (<see cref="CurtainInset"/>, clear of the walls, fence and gates that stand on the edge), rising motes and
-    ///    a ripple where a pilot crosses; outside the town and victory phases only a dim cool outline.
+    ///    a ripple where a pilot crosses; outside the town and victory phases only a dim cool outline. None of it in the fenced
+    ///    hub (<see cref="HideSanctuaryEdge"/>): there the fence and gates show the safe zone.
     ///  - A boss's ground crack and roar rings (<see cref="BossCrack"/>), only where the caller has the boss's position.
     /// </summary>
     public sealed class NativeExpeditionStateScene
     {
         public const int QuadCapacity=4096,PartCapacity=640,MaxDoors=16;
+        /// <summary>Draws no sanctuary edge (floor glow, curtain, motes, crossing ripple): the fenced hub's safe zone stays, unseen
+        /// (owner, 2026-10-15: "make safe zone border invisible in the hub ... just in case its needed for something down the
+        /// line"). Membership, the SAFE tag and chip and the crossing cues are unchanged; set per frame by the caller.</summary>
+        public bool HideSanctuaryEdge;
         public const float CullDistance=140,SanctuaryCull=90;public const double CrackSeconds=2.6;
         /// <summary>How far inside the sanctuary's edge its curtain stands (m). The edge is where walls stand: the plaza's
         /// building faces and, in the fenced hub (exp-layout-3), the fence's inner face and the shut wooden gates' leaves. A
@@ -70,7 +75,7 @@ namespace ChipArena.UnityConversion
                 if(Near(f,eye,CullDistance*1.5f))Gate(f,g,c,t,reduced,low);
                 if(cues!=null&&cues.Cue(c.id,t,out double age))Beacon(f,age,eye,reduced);
             }
-            for(int s=0;s<rig.Sanctuary.Length;s++)Sanctuary(rig.Sanctuary[s],s,NativeExpeditionStates.SanctuaryLit(v),cues,t,eye,reduced,low);
+            if(!HideSanctuaryEdge)for(int s=0;s<rig.Sanctuary.Length;s++)Sanctuary(rig.Sanctuary[s],s,NativeExpeditionStates.SanctuaryLit(v),cues,t,eye,reduced,low);
             // Boss arrivals of this area with an intro (seen within LateJoin of their spawn) and a recorded spawn point: the crack
             // and roar at that point, timed from `spawned`, so it plays once and in step for everyone.
             if(cues!=null)for(int i=0;i<cues.ArrivalCount;i++)
