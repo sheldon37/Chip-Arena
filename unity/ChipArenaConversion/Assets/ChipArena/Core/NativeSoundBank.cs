@@ -25,8 +25,9 @@ namespace ChipArena.UnityConversion
         public const string Folder="EffectsAudio/",Manifest="EffectsAudio/manifest",LocalRoot="Assets/LocalAssets/Resources/EffectsAudio";
         public const int Schema=1,MaxClips=16;
         /// <summary>Repository/build budget for the whole EffectsAudio folder (clips, metas and manifest), in bytes: 12 MB until
-        /// the hazard kit's 46 clips (0.72 MB, docs/HAZARD-KIT.md), 13 MB since.</summary>
-        public const long BudgetBytes=13000000;
+        /// the hazard kit's 46 clips (0.72 MB, docs/HAZARD-KIT.md), 13 MB until the zombies' voices and footfalls (12 keys and
+        /// their requested variants, docs/audio/SOUND-REQUESTS.md), 16 MB since.</summary>
+        public const long BudgetBytes=16000000;
         private const NativeSoundSpace P=NativeSoundSpace.Positional,F=NativeSoundSpace.Flat,O=NativeSoundSpace.Loop;
         private const NativeSoundPriority H=NativeSoundPriority.High,N=NativeSoundPriority.Normal,L=NativeSoundPriority.Low;
         private static Def K(string key,NativeSoundSpace space,float cap,NativeSoundPriority priority)=>new Def{Key=key,Space=space,Cap=cap,Priority=priority};
@@ -51,7 +52,13 @@ namespace ChipArena.UnityConversion
             K("melee.shield.bash",P,.7f,N),K("melee.shield.block",P,.9f,N),K("melee.shield.throw",P,1f,N),K("melee.sword.hit",P,.7f,N),K("melee.sword.swing",P,.6f,N),
             K("move.jump",P,.4f,N),K("move.land",P,.4f,N),K("move.roll",P,.6f,N),K("move.step.concrete",P,.35f,L),K("move.step.gravel",P,.35f,L),K("move.step.metal",P,.35f,L),K("move.step.snow",P,.4f,L),K("move.step.stone",P,.35f,L),
             K("move.step.wood",P,.35f,L),
-            K("pve.add.death",P,1.2f,N),K("pve.zombie.moan",P,2.5f,L),K("pve.zombie.shriek",P,1.6f,N),K("pve.buy",F,1.5f,N),K("pve.clear",F,2.5f,N),K("pve.gib",P,.7f,N),K("pve.money",F,.6f,L),K("pve.pickup",F,1f,N),K("pve.revive",F,2f,N),K("pve.wave",F,3f,N),
+            K("pve.add.death",P,1.2f,N),K("pve.zombie.moan",P,2.5f,L),K("pve.zombie.shriek",P,1.6f,N),
+            // The zombies' voices and footfalls (docs/audio/SOUND-REQUESTS.md; Core NativeZombieVoice, NativeFootfalls): each cap is at
+            // least the request's targetSeconds.max. Each has a built-in synthesized fallback (NativeCreatureSynth).
+            K("pve.zombie.groan",P,1.2f,L),K("pve.zombie.attack",P,.8f,N),K("pve.zombie.hurt",P,.7f,L),K("pve.zombie.death",P,1.7f,N),K("pve.zombie.runner.snarl",P,1.1f,L),
+            K("pve.zombie.spitter.gurgle",P,1.1f,N),K("pve.zombie.spitter.spit",P,.7f,N),K("pve.zombie.brute.grunt",P,1.1f,N),
+            K("pve.zombie.step.shuffle",P,.5f,L),K("pve.zombie.step.run",P,.35f,L),K("pve.zombie.step.heavy",P,.7f,L),K("pve.zombie.step.crawl",P,.7f,L),
+            K("pve.buy",F,1.5f,N),K("pve.clear",F,2.5f,N),K("pve.gib",P,.7f,N),K("pve.money",F,.6f,L),K("pve.pickup",F,1f,N),K("pve.revive",F,2f,N),K("pve.wave",F,3f,N),
             K("siren.claw",P,.8f,N),K("siren.damnation",P,1.5f,N),K("siren.dissipate",P,4f,N),K("siren.eruption",P,2.5f,N),K("siren.hellfire",P,.9f,N),K("siren.laugh",P,3f,N),K("siren.mark",P,2.5f,N),K("siren.reveal",F,4f,N),
             K("siren.rush",P,1.2f,N),K("siren.slam",P,2.5f,N),K("siren.vents",P,2f,N),
             K("status.burn-tick",P,.35f,L),K("status.freeze",P,1.5f,N),K("status.frost-shatter",P,1.5f,N),K("status.poison-tick",P,.35f,L),K("status.shock-zap",P,.4f,N),

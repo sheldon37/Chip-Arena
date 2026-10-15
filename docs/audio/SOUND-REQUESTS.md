@@ -56,8 +56,26 @@ generator. Claude owns this manifest and the importer.
 
     The report lists every accepted, trimmed and rejected file with its reason. Clips go only into the private LocalAssets zip:
     never into the repo.
-  - Status: the importer lands with branch `claude/footstep-zombie-audio` (in progress). Until it merges, the owner can upload the
-    batch folder (zipped) in the Claude conversation, and Claude runs it and returns the new LocalAssets zip.
+  - Status: implemented on branch `claude/footstep-zombie-audio` (pushed, not merged yet), with `Tests/test_import_sound_requests.py`.
+    Until it merges, the owner can upload the batch folder (zipped) in the Claude conversation, and Claude runs it and returns
+    the new LocalAssets zip.
+  - Rules the importer applies (beyond the list above):
+    - Hard errors (exit 1, nothing written): a name not `<key>_<NN>.mp3|wav`, a key not requested, NN outside 01..`count`, the
+      same variant as both .mp3 and .wav, a receipt with another schema or manifest hash, missing `generatedAt` / `generator` /
+      `files[]`, or any API key, token or account field; a requested key missing from the bank contract or with a cap under its
+      `targetSeconds.max`; an output zip inside the repository that git does not ignore.
+    - Warnings: no receipt, a partial set, files that are not sound files (ignored), a name found in several `--in` (the newest by
+      modification time wins; a tie goes to the later `--in`).
+    - The first sound event ends at 0.12 s (step) or 0.3 s (voice) under the trim threshold; a clip whose peak is under −40 dBFS
+      is near-silent.
+    - Loudness: each category's target is the median momentary maximum of the base zip's clips of that category's keys (the steps
+      also the `move.step.*` keys, the voices also `pve.add.death`); −24 / −18 LUFS when the base has none. The current bank
+      (`LocalAssets-footsteps-zombies.zip`) measures −24.1 (steps) and −18.0 (voices).
+    - A partial set appends after the key's existing clips, up to the bank's 16 clips; the files over the limit are rejected.
+      A full set replaces the key's clips (their `.meta` GUIDs are kept where the clip name is reused). A new step key gets jitter
+      0.06; every other entry field is kept.
+    - The report (`chip-arena.sound-import-report/1`) lists each file's status, reason, notes, length, gain, loudness and true peak,
+      each key's requested, arrived, accepted and rejected counts with its mode (replace, append, none), and the install check.
 
 ## Requested sounds
 

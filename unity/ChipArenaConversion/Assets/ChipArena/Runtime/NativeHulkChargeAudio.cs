@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     // the Hulk but close to the listener so the pan gives its direction and the urgency its level:
     //  - the wind-up's bellow (the lock's tell, heard before it runs);
     //  - the run's start: a rumble; a second, deeper one once it is close (urgency .75);
-    //  - its footfalls by the distance it covers on its heavy stride, louder as it closes.
+    //  - its footfalls by the distance it covers on its heavy stride, louder as it closes (the heavy footfall key).
     // The Hulk's own footfalls, roar and breaks still play at it from HordeCues for everyone near.
     public sealed partial class NativeAudio
     {
@@ -32,7 +32,8 @@ namespace ChipArena.UnityConversion
                 {
                     hulkWarnStep+=moved;float sc=NativeHordeKinds.Scale[NativeHordeKinds.Hulk],v=Mathf.Max(.5f,moved/Mathf.Max(1e-3f,Time.unscaledDeltaTime));
                     float stride=NativeHordeGait.Stride(NativeHordeKinds.Hulk,v/sc)*.5f*sc;string step=NativeHordeKinds.StepCue(NativeHordeKinds.Hulk);
-                    if(hulkWarnStep>=stride){hulkWarnStep-=stride;if(step!=null)BankPlay(step,near,.3f+.6f*gain,0,null,false,null,.5f);}
+                    // (the heavy footfall, else today's stone thud, else its synthesized take: NativeFootstepAudio.cs)
+                    if(hulkWarnStep>=stride){hulkWarnStep-=stride;CreatureCue(step,NativeZombieSteps.StandIn(step,null),.5f,near,.3f+.6f*gain,.7f,NativeSoundPriority.Low);}
                 }
             }
             hulkWarnLast=hulk;

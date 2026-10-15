@@ -140,7 +140,7 @@ namespace ChipArena.UnityConversion
             foreach(var list in batches) list.Clear(); DrawnParts=0;
             removedRigs.Clear();
             foreach(int id in rigs.Keys) { bool exists=false; foreach(var a in s.Actors) if(a.Id==id) { exists=true; break; } if(!exists) removedRigs.Add(id); }
-            foreach(int id in removedRigs) { rigs[id].Dispose(); rigs.Remove(id); visualPositions.Remove(id); }
+            foreach(int id in removedRigs) { rigs[id].Dispose(); rigs.Remove(id); visualPositions.Remove(id); stepTrackers.Remove(id); }
             animationTimer.Restart();
             foreach(Actor a in s.Actors)
             {
@@ -151,7 +151,10 @@ namespace ChipArena.UnityConversion
                 // while it does and in the air for its drop, with the replicated flag restored after posing.
                 p=SpawnPlace(a,p,renderTime);p=CyberKit2Place(a,p);
                 visualPositions[a.Id]=p;
-                if(a.Alive&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon))){bool ground=a.Grounded;a.Grounded=SpawnContact(a.Id,ground);try{PrepareCapturedPose(a,p,renderTime);}finally{a.Grounded=ground;}SpawnBones(a);}
+                bool posed=a.Alive&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon));
+                if(posed){bool ground=a.Grounded;a.Grounded=SpawnContact(a.Id,ground);try{PrepareCapturedPose(a,p,renderTime);}finally{a.Grounded=ground;}SpawnBones(a);}
+                // Its footfalls from the gait just posed (NativeFootfallPresentation.cs).
+                PilotFootfall(a,p,renderTime,posed);
             }
             // Pose everyone before drawing: a held victim must use this frame's claw, regardless of seat order.
             PrepareInteractions(s,renderTime);

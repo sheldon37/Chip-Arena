@@ -262,7 +262,7 @@ namespace ChipArena.UnityConversion
             var rp=R(root,"Assets/ChipArena/Runtime/NativeHordeRoamPresentation.cs");
             Check(rp.Contains("public static HordeRoamWire Read(NativeMinion m)=>NativeHordeRoam.FromHub(m?.Pve?.Hub);"),"the host's record (NativePveAdd.Hub) is read in one place, through the one mapping");
             Check(rp.Contains("m.Pve.Stats.id!=\"hulk\"")&&rp.Contains("public static bool Roams(NativeMinion m)=>false;"),"the Hulk keeps its own; adds without the record infer standing and hunting only");
-            Check(rp.Contains("if(wire.State==HordeRoamState.None)return;"),"the voices are the roaming population's only (instance hordes sound as today)");
+            Check(rp.Contains("if(wire.State==HordeRoamState.None)return false;"),"the moans and the shriek are the roaming population's (every other add calls as it hunts, NativeZombieAudio)");
             var all=Directory.EnumerateFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories).ToDictionary(f=>Path.GetRelativePath(Path.Combine(root,"Assets/ChipArena"),f).Replace('\\','/'),File.ReadAllText);
             Check(all.Where(x=>x.Key!="Core/NativeHordeRoam.cs").All(x=>!x.Value.Contains("new HordeRoamWire"))&&Regex.Matches(all["Core/NativeHordeRoam.cs"],"new HordeRoamWire").Count==1,"nothing but the mapping builds the record's read");
             Check(Regex.Matches(rp,"NativeHordeRoamRecord\\.Read\\(").Count==2,"the presentation and the voices read it through the one function");
@@ -270,7 +270,7 @@ namespace ChipArena.UnityConversion
             // (The authority's own files read it too: the hub authority, its validation and the frame.)
             Check(hubReaders.Where(x=>Regex.IsMatch(x,"Presentation|Audio|Fx|Hud|Draw|Motion|Core/")).All(x=>x=="Runtime/NativeHordeRoamPresentation.cs")&&hubReaders.Contains("Runtime/NativeHordeRoamPresentation.cs"),"only the mapping reads NativePveAdd.Hub in the presentation ("+string.Join(", ",hubReaders)+")");
             foreach(var bad in new[]{".Hp=","Damage(","Emit(","StaggerAt=","RecoverAt=","StrikeAt=","LastAttack=","Body.position=","linearVelocity=","Hub=","AddComponent<"})Check(!rp.Contains(bad),"the roaming presentation never writes `"+bad+"`");
-            Check(rp.Split("BankPlay(").Length-1==rp.Split("Play(").Length-1,"the voices are bank-only (silent without LocalAssets)");
+            Check(!rp.Contains("Play(")&&rp.Contains("ZombieCall(m.Id,NativeZombieCall.Shriek,")&&rp.Contains("ZombieCall(m.Id,NativeZombieCall.Moan,"),"the voices go through the zombie voice (bank, stand-in, built-in take), never a direct play");
             var kp=R(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs");
             Check(kp.Contains("var roam=HordeRoam(arena,m,s,now,entering,ref target);")&&kp.Contains("RoarAge=roar,Move=move};f.Roam=roam;")&&kp.Contains("HordeRoamCue(arena,m,kind,pos,t);"),"hooked where the adds are posed and cued");
             var keys=new HashSet<string>(NativeSoundKeys.All.Select(d=>d.Key));Check(keys.Contains("pve.zombie.moan")&&keys.Contains("pve.zombie.shriek")&&keys.Contains("pve.add.death")&&keys.Contains("siren.rush"),"the voice keys and their stand-ins are bank keys");

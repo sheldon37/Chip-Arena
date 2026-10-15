@@ -233,7 +233,7 @@ namespace ChipArena.UnityConversion
                 HordeHulkInput(ref f,m,now,entering,breach);
                 s.Gait.Pose(f,minionPose,s.React);yaw=s.Gait.Yaw;pos.y=ground+NativeHordeKinds.DrawRoot(kind,a.Crawl);HordeHulkPosed(s,now);
                 HordeKindJob(s,m.Id,kind,attack,knocking?float.NaN:age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time,f.Side);
-                if(s.Gait.Landed!=0)HordeDust(s,kind,ground,now);
+                if(s.Gait.Landed!=0){HordeDust(s,kind,ground,now);HordeFootfalls(s,m,kind,ground,now);}
                 attack0=attack;strike0=strike;
             }
             // The hinged jaw (the spitter's unhinging spit, the Hulk's roar) and the mouth the spit leaves from.
@@ -660,18 +660,19 @@ namespace ChipArena.UnityConversion
 
     public sealed partial class NativeAudio
     {
-        // ---------- the Siren minions' wind-ups, strikes and heavy footfalls (Core/NativeHordeKinds cue keys) ----------
-        // Existing bank keys only, played when the owner's LocalAssets bank has them (BankPlay; silent otherwise, as today). Timed
-        // from each add's replicated LastAttack and the content's strike time, once per attack; the brute's and the bloater's steps
-        // by the distance they cover. The DEV preview's substituted kinds sound as drawn.
-        private readonly Dictionary<int,float> hordeStrides=new Dictionary<int,float>();private readonly Dictionary<int,Vector3> hordeLast=new Dictionary<int,Vector3>();private int hordeCueGeneration=-1;
+        // ---------- the Siren minions' wind-ups, strikes and voices (Core/NativeHordeKinds cue keys, Core/NativeZombieVoice) ----------
+        // The wind-up and strike layers are existing bank keys, played when the owner's LocalAssets bank has them (BankPlay; silent
+        // otherwise, as before). Timed from each add's replicated LastAttack and the content's strike time, once per attack. The
+        // zombies' voices (NativeZombieAudio.cs) and footfalls (from their gaits' plants: NativeFootfallPresentation.cs and
+        // NativeFootstepAudio.cs) have built-in fallbacks. The DEV preview's substituted kinds sound as drawn.
+        private int hordeCueGeneration=-1;
         private struct HordeBreachCue{public float BreakAt;public Vector3 At;}
         private readonly Dictionary<PveEntry,HordeBreachCue> hordeBreachCues=new Dictionary<PveEntry,HordeBreachCue>();private readonly List<PveEntry> hordeBreachDone=new List<PveEntry>();
         // The Hulks seen alive this round (by add id), whose deaths crash down with a thud.
         private readonly HashSet<int> hordeHulks=new HashSet<int>();
         private void HordeCues(NativeArena arena)
         {
-            if(arena==null)return;HordeWallCues(arena);if(arena.Pve==null)return;if(arena.Generation!=hordeCueGeneration){hordeCueGeneration=arena.Generation;hordeStrides.Clear();hordeLast.Clear();hordeBreachCues.Clear();hordeHulks.Clear();HordeRoamClear();}float t=arena.Time;HordeRoamSweep(t);
+            if(arena==null)return;HordeWallCues(arena);if(arena.Pve==null)return;if(arena.Generation!=hordeCueGeneration){hordeCueGeneration=arena.Generation;hordeBreachCues.Clear();hordeHulks.Clear();HordeRoamClear();zombieVoices.Clear();}float t=arena.Time;HordeRoamSweep(t);
             foreach(var m in arena.Minions)
             {
                 var a=m.Pve;if(a==null||m.Hp<=0||a.Stats==null||a.Travelling)continue;
@@ -701,17 +702,17 @@ namespace ChipArena.UnityConversion
                     continue;
                 }
                 var attack=NativeHordeKinds.AttackOf(kind,a.Stats.attack,a.Crawl);float strike=NativeHordeKinds.Strike(a.Stats,a.Crawl,a.Lost);Vector3 pos=m.Body.position;
-                // A town zombie's moans and its shriek on its alert (Runtime/NativeHordeRoamPresentation.cs).
-                HordeRoamCue(arena,m,kind,pos,t);
+                // The add's voice (NativeZombieAudio.cs): a town zombie's moans while calm and its shriek on its alert
+                // (NativeHordeRoamPresentation.cs), else its hunting calls; every add's wind-up call and the spitter's spit.
+                bool calm=HordeRoamCue(arena,m,kind,pos,t);ZombieCues(m,kind,attack,strike,pos,t,calm);
                 // The cue keys are only built inside a cue's window (no string per add per frame).
                 string wind=NativeHordeKinds.WindupCue(attack);if(wind!=null&&t>=m.LastAttack&&t-m.LastAttack<.15f&&Once("add"+m.Id+"w",m.LastAttack))BankPlay(wind,pos,NativeHordeKinds.WindupGain);
                 float at2=m.LastAttack+strike;if(t>=at2&&t-at2<.12f&&Once("add"+m.Id+"s",m.LastAttack)){BankPlay(NativeHordeKinds.StrikeCue(attack),pos,NativeHordeKinds.StrikeGain);string under=NativeHordeKinds.StrikeUnder(attack);if(under!=null)BankPlay(under,pos,NativeHordeKinds.UnderGain,0,null,false,null,kind==NativeHordeKinds.Hulk?.6f:.8f);if(kind==NativeHordeKinds.Hulk)BankPlay("blast.quake",pos,.6f,0,null,false,null,.9f);}
                 // The Hulk's roar (the same seeded moments the presentation roars at): a deep groan.
                 if(kind==NativeHordeKinds.Hulk){float roar=NativeHordeRoar.Age(kind,NativeHordeKinds.Seed(m.Id),t,a.ActiveAt,t-m.LastAttack,NativeHordeKinds.Recover(a.Stats,a.Crawl,a.Lost));if(!float.IsNaN(roar)&&roar<.12f&&Once("add"+m.Id+"o",Mathf.Round((t-roar)*10)/10))BankPlay("structure.groan",pos,.95f,0,null,false,null,.55f);}
-                string step=NativeHordeKinds.StepCue(kind);if(step==null)continue;
-                if(hordeLast.TryGetValue(m.Id,out var last)){var d=pos-last;d.y=0;float moved=d.magnitude;if(moved<1){hordeStrides.TryGetValue(m.Id,out float acc);acc+=moved;float sc=NativeHordeKinds.Scale[kind];float stride=NativeHordeGait.Stride(kind,Mathf.Max(.5f/sc,moved/Mathf.Max(1e-3f,Time.unscaledDeltaTime)/sc))*.5f*sc;if(acc>=stride){acc-=stride;BankPlay(step,pos,NativeHordeKinds.StepGainOf(kind),0,null,false,null,kind==NativeHordeKinds.Hulk?.55f:kind==NativeHordeKinds.Brute?.72f:.82f);}hordeStrides[m.Id]=acc;}}
-                hordeLast[m.Id]=pos;
             }
+            // Hurts on the replicated hits, the deaths of the adds seen alive.
+            ZombieEvents(arena,t);
             // A Hulk's death hits the floor (NativeHordeGait.DownAt into the fall) with a heavy thud.
             if(hordeHulks.Count>0)for(int i=0;i<arena.MinionDeaths.Count;i++)
             {

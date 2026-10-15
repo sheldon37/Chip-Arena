@@ -16,8 +16,9 @@ namespace ChipArena.UnityConversion
         public static NativeSoundPlay Source(in NativeEventSounds.Sound s)=>new NativeSoundPlay{Clip=s.Clip,Gate=s.Gate,Gain=s.Gain,Rate=s.Rate,Positional=s.Positional,Tone=s.Tone,Priority=NativeSoundPriority.Normal};
     }
 
-    /// <summary>A bank-only layer for an event that is silent today or gains a layer (headshot dink, kill confirm, impacts).</summary>
-    public struct NativeSoundExtra{public string Key;public float Gain,Delay;public bool AtSource;}
+    /// <summary>A bank-only layer for an event that is silent today or gains a layer (headshot dink, kill confirm, impacts); with
+    /// <see cref="Unless"/>, only while that key has no clips (a newer cue that replaces it plays elsewhere).</summary>
+    public struct NativeSoundExtra{public string Key,Unless;public float Gain,Delay;public bool AtSource;}
 
     /// <summary>
     /// The bank lookup beside the parity router: NativeEventSounds.Route stays the source's logical cue layer (EventFeedbackChecks)
@@ -126,7 +127,7 @@ namespace ChipArena.UnityConversion
             }
             return n;
         }
-        private static int X(NativeSoundExtra[] o,int n,string key,float gain,float delay=0,bool atSource=false){if(n<o.Length)o[n]=new NativeSoundExtra{Key=key,Gain=gain,Delay=delay,AtSource=atSource};return Math.Min(o.Length,n+1);}
+        private static int X(NativeSoundExtra[] o,int n,string key,float gain,float delay=0,bool atSource=false,string unless=null){if(n<o.Length)o[n]=new NativeSoundExtra{Key=key,Unless=unless,Gain=gain,Delay=delay,AtSource=atSource};return Math.Min(o.Length,n+1);}
         /// <summary>Bank-only layers for one event: the hooks for sounds that are silent today. Without clips they stay silent.</summary>
         public static int Extras(in NativeEventSounds.Context c,in NativeSoundDetail d,NativeSoundExtra[] o)
         {
@@ -143,7 +144,8 @@ namespace ChipArena.UnityConversion
                     break;
                 case EventKind.Death:
                     if(c.TargetPilot){if(c.SourceMe&&!c.TargetMe)n=X(o,n,"hit.kill-confirm",.8f);string k=KillStyle(d.KillStyle);if(k!=null)n=X(o,n,k,.8f);}
-                    else if(c.Pve)n=X(o,n,"pve.add.death",.6f);
+                    // An add's death: the old grunt only until the zombies' own death call has clips (NativeZombieVoice plays it).
+                    else if(c.Pve)n=X(o,n,"pve.add.death",.6f,unless:"pve.zombie.death");
                     break;
                 case EventKind.Impact:{string k=SurfaceImpact(c.SourceSpec);if(k!=null)n=X(o,n,k,.5f);break;}
                 case EventKind.HazardHit:if(c.Detail=="lava")n=X(o,n,"hazard.lava",.8f);break;
@@ -283,7 +285,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<r&&n<o.Length;i++)if(bank.Has(recipe[i].Key)&&!Uses(o,n,recipe[i].Key))o[n++]=Banked(bank,c,recipe[i].Key,bodyGain*recipe[i].Gain,recipe[i].Delay,null,false);
             }
             int x=NativeSoundCues.Extras(c,d,extras);
-            for(int i=0;i<x&&n<o.Length;i++)if(bank.Has(extras[i].Key)&&!Uses(o,n,extras[i].Key))o[n++]=Banked(bank,c,extras[i].Key,extras[i].Gain,extras[i].Delay,null,extras[i].AtSource);
+            for(int i=0;i<x&&n<o.Length;i++)if(bank.Has(extras[i].Key)&&!bank.Has(extras[i].Unless)&&!Uses(o,n,extras[i].Key))o[n++]=Banked(bank,c,extras[i].Key,extras[i].Gain,extras[i].Delay,null,extras[i].AtSource);
             return n;
         }
         private static bool Uses(NativeSoundPlay[] o,int n,string key){for(int i=0;i<n;i++)if(o[i].Key==key)return true;return false;}
@@ -339,7 +341,11 @@ namespace ChipArena.UnityConversion
         }
     }
 
-    /// <summary>Footsteps, jumps and landings from replicated locomotion state (presentation only).</summary>
+    /// <summary>
+    /// Footsteps and landings (presentation only). Steps play on the drawn gait's foot plants (Core NativeFootfalls; the distance
+    /// stride below only for a route with no gait), loud by gait, quieter for my own pilot in first person, by the surface under
+    /// the foot: the block's material where the pilot stands on one, else the map's floor.
+    /// </summary>
     public static class NativeFootsteps
     {
         public const float Stride=1.9f,MinSpeed=1.5f,MaxStep=3,MinAir=.25f;
@@ -347,11 +353,14 @@ namespace ChipArena.UnityConversion
         /// second against the run's 3.6), a little brighter and louder.</summary>
         public const float SprintStride=1.55f,SprintRate=1.08f,SprintGain=1.15f;
         public static float StrideFor(bool sprinting)=>sprinting?SprintStride:Stride;
+        /// <summary>The map's floor (where no block is underfoot, and under the hard blocks that make its ground): Ward Zero and
+        /// its Expedition instance are clinical tile (concrete; its metal decks and bridges step as metal), the Expedition town
+        /// asphalt (concrete).</summary>
         public static string Surface(string map)
         {
             switch(map)
             {
-                case "foundry":case "freight":case "reactor":case "siren":return "move.step.metal";
+                case "foundry":case "freight":case "reactor":return "move.step.metal";
                 case "moonlit":case "frozen":return "move.step.snow";
                 case "outpost":return "move.step.gravel";
                 case "citadel":case "forge":case "spikevault":case "lavaworks":return "move.step.stone";
@@ -359,6 +368,32 @@ namespace ChipArena.UnityConversion
                 default:return "move.step.concrete";
             }
         }
+        /// <summary>The step of a foot on a block of `material` (null: no block) on `map`: metal, wood, snow and loose ground keep their
+        /// own; stone, brick, foundation, concrete and glass are the map's floor (Ward Zero's stone slab is its tile, the town's
+        /// foundation its asphalt).</summary>
+        public static string Surface(string map,string material)
+        {
+            switch(material)
+            {
+                case "metal":case "steel":case "iron":return "move.step.metal";
+                case "wood":case "timber":case "plank":return "move.step.wood";
+                case "snow":case "ice":return "move.step.snow";
+                case "gravel":case "dirt":case "sand":case "rubble":return "move.step.gravel";
+                default:return Surface(map);
+            }
+        }
+        /// <summary>A step's gait by the pilot's horizontal speed (m/s) and sprint.</summary>
+        public const float RunAbove=3.2f,ScuffBelow=.9f;
+        public static NativeStepGait Gait(float speed,bool sprint)=>sprint&&speed>=RunAbove?NativeStepGait.Sprint:speed>=RunAbove?NativeStepGait.Run:speed>=ScuffBelow?NativeStepGait.Walk:NativeStepGait.Scuff;
+        /// <summary>Route gains by gait (the bank's trim and the distance falloff apply on top): a walk .6, a run .85, a sprint 1.15,
+        /// a scuff .3; my own pilot in first person x <see cref="ViewGain"/>, in third person x <see cref="MineGain"/>.</summary>
+        public static float StepGain(NativeStepGait g)=>g==NativeStepGait.Sprint?SprintGain:g==NativeStepGait.Run?.85f:g==NativeStepGait.Walk?.6f:.3f;
+        public static float StepRate(NativeStepGait g)=>g==NativeStepGait.Sprint?SprintRate:g==NativeStepGait.Run?1:g==NativeStepGait.Walk?.96f:.92f;
+        public const float ViewGain=.65f,MineGain=.85f;
+        /// <summary>A landing's gain by its seconds airborne: a hop .5, a long fall up to .95.</summary>
+        public static float LandGain(float air)=>.5f+.45f*Math.Max(0,Math.Min(1,(air-MinAir)/.9f));
+        /// <summary>The landing's pitch: a long fall lands lower.</summary>
+        public static float LandRate(float air)=>1-.08f*Math.Max(0,Math.Min(1,(air-MinAir)/.9f));
     }
 
     /// <summary>The shared UI helpers' sound for a button by its label: back/close/cancel, a primary confirm, else a click.</summary>
