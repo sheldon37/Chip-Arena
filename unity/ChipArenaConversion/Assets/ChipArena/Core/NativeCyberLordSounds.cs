@@ -77,7 +77,9 @@ namespace ChipArena.UnityConversion
             int n=0;bool strike=kind==EventKind.Hit||kind==EventKind.AbilityHit;
             switch(hit)
             {
-                case CyberHit.Jab:case CyberHit.Cross:if(strike&&!targetMe)n=S(o,n,"dev.fist.hit","arcade-punch",.55f);break;
+                case CyberHit.Jab:if(strike&&!targetMe)n=S(o,n,"dev.fist.hit","arcade-punch",.55f);break;
+                // (the string's second step lands as the rear roundhouse kick)
+                case CyberHit.Cross:if(strike&&!targetMe)n=S(o,n,"dev.fist.hit","arcade-kick",.6f);break;
                 case CyberHit.Palm:if(strike&&!targetMe)n=S(o,n,"dev.fist.hit","arcade-heavy",.6f);break;
                 case CyberHit.Dash:if(strike&&!targetMe)n=S(o,n,"impact.energy","arcade-punch",.4f);break;
                 case CyberHit.Firewall:if(kind==EventKind.Absorb)n=S(o,n,"melee.shield.block","parry",.45f);else if(strike)n=S(o,n,"status.burn-tick","burn-tick",.3f);break;

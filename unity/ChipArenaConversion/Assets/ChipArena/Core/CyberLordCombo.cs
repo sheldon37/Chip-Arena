@@ -4,24 +4,44 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// The Cyber Lord's hardlight boxing string (owner 2026-10-15: "better basic attacks, (much better combo animation on
-    /// melee)"), authored pose to pose on the replicated swing: each strike is a few key poses of the hips, spine, chest, head
-    /// and both fists in the body's own frame (metres and radians; +x the pilot's left, +z ahead, as the rig's group), placed
-    /// on the swing's windup (its start to the replicated hit, the kit's Release) and follow-through (the hit to its end), and
-    /// sampled with C1 Hermite curves. The striking fist accelerates into full extension exactly on the replicated hit, holds
-    /// for a beat, snaps back, and the follow-through settles into a ready pose the next step starts from. Orthodox, left foot
-    /// and fist leading: the jab (left) steps in, the cross (right) drives the hips round on a pivoting rear foot, the spinning
-    /// backfist (left) carries the cross's turn on round in a hopped spin, the rising uppercut (right) drops and drives up
-    /// onto the toes, the Pulse Palm (both) chambers and stomps forward. The fists are drawn through the rig's own arm IK
-    /// (MeleeCapture rows), the feet by CyberComboFeet. The same keys give the effects their fist paths (the hardlight trails).
+    /// The Cyber Lord's hardlight martial-arts string (owner 2026-10-15: "better basic attacks, (much better combo animation on
+    /// melee)", then "Improve basic attacks for melee~ ... more expressive martial art attacks rather than just simple arm
+    /// movement. Throw a little "Cyber movement" into it as well."), authored pose to pose on the replicated swing: each strike
+    /// is a few key poses of the hips, spine, chest, head, both fists and the striking leg in the body's own frame (metres and
+    /// radians; +x the pilot's left, +z ahead, as the rig's group), placed on the swing's windup (its start to the replicated
+    /// hit, the kit's Release) and follow-through (the hit to its end), and sampled with C1 Hermite curves. The striking limb
+    /// accelerates into full extension exactly on the replicated hit, holds for a beat, snaps back, and the follow-through
+    /// settles into the guard the next step starts from. Orthodox, left foot and fist leading:
+    ///  1. glitch-step jab (left): a frame-skip step-in (the windup's clock snaps in Stutter steps), the lead fist driving out,
+    ///     the rear fist chambered at the hip;
+    ///  2. rear roundhouse kick (right leg, mid): the support foot pivots on its ball, the hips turn over, the body leans away,
+    ///     the rear arm counter-swings down and back, the lead hand guards the face;
+    ///  3. spinning heel kick (right leg): a full turn to the right on the pivoting lead foot, the head spotting over the
+    ///     shoulder, the rear heel driven out behind as the back comes round to the target (the rules' SpinArc swept on), landing
+    ///     back bladed;
+    ///  4. launcher: a jumping knee (the rear knee driven up as the body hops) into a rising uppercut (right) through the hit;
+    ///  5. Pulse Palm: the lead knee raised and stomped wide into a low horse stance, both palms thrust out on the hit and held
+    ///     for a glitch freeze-frame.
+    /// The fists are drawn through the rig's own arm IK (MeleeCapture rows), the feet and the striking leg by CyberComboFeet
+    /// (a kicking leg follows the keys' KX..KA channels: an ankle path in the hips' turned frame, a knee direction and the
+    /// foot's point). The same keys give the effects their fist and foot paths (the hardlight trails).
     /// Pure: no allocation, no state; nothing reaches the authority, hit timing, hitboxes, damage or movement.
     /// </summary>
     public static class CyberCombo
     {
+        /// <summary>The steps by kind. The names are the wire's step kinds (CyberKit2Spec.ComboKinds): "cyber-cross" is the
+        /// string's second step, drawn as the rear roundhouse kick; "cyber-spin" the spinning heel kick; "cyber-rise" the launcher.</summary>
         public const int Jab=0,Cross=1,Spin=2,Rise=3,Palm=4,Kinds=5;
         public static readonly string[] States={"cyber-jab","cyber-cross","cyber-spin","cyber-rise","cyber-palm"};
-        /// <summary>The striking hand per kind: 0 the left (lead), 1 the right (rear), 2 both.</summary>
-        public static readonly int[] Hand={0,1,0,1,2};
+        /// <summary>What each step draws (the docs' and renders' names).</summary>
+        public static readonly string[] Techniques={"glitch-step jab","rear roundhouse kick","spinning heel kick","jumping knee into a rising uppercut","horse-stance Pulse Palm"};
+        /// <summary>The striking hand per kind: 0 the left (lead), 1 the right (rear), 2 both, -1 none (a kick).</summary>
+        public static readonly int[] Hand={0,-1,-1,1,2};
+        /// <summary>The leg the KX..KA channels drive per kind (0 the left / lead, 1 the right / rear, -1 none): the kicks, the
+        /// launcher's knee and the palm's stomp.</summary>
+        public static readonly int[] Leg={-1,1,1,1,0};
+        /// <summary>Whether the kind strikes with that leg's foot (the foot's hardlight trail): the two kicks.</summary>
+        public static bool Kicks(int kind)=>kind==Cross||kind==Spin;
         /// <summary>v1's three steps (Jab, Cross, Pulse Palm) and v2's five (CyberKit2Spec.ComboKinds order).</summary>
         public static int V1Kind(int step)=>step==1?Cross:step==2?Palm:Jab;
         public static int V2Kind(int step)=>step<0?Jab:step>4?Palm:step;
@@ -33,7 +53,8 @@ namespace ChipArena.UnityConversion
 
         // ---- the pose channels (body space) ----
         public const int HY=0,HP=1,HR=2,SY=3,SP=4,SR=5,CY=6,CP=7,CR=8,NY=9,NP=10,NR=11,Drop=12,ShX=13,ShZ=14,
-            L=15,R=18,LK=21,RK=24,LP=27,RP=30,LO=33,RO=36,LC=39,RC=40,Follow=41,LT=42,RT=43,LKn=44,RKn=45,Air=46,N=47;
+            L=15,R=18,LK=21,RK=24,LP=27,RP=30,LO=33,RO=36,LC=39,RC=40,Follow=41,LT=42,RT=43,LKn=44,RKn=45,Air=46,
+            KX=47,KY=48,KZ=49,KPX=50,KPY=51,KPZ=52,KW=53,KA=54,N=55;
         /// <summary>A key pose: its place on the swing (Phase 0 the windup, 1 the follow-through; U along it), how the curve
         /// meets it (Flow: smooth through; Stop: eases to rest; Impact: arrives at speed and stops dead), and its channels.</summary>
         public struct Key{public byte Phase,How;public float U;public float[] V;}
@@ -54,12 +75,27 @@ namespace ChipArena.UnityConversion
             public B RFist(float kx,float ky,float kz,float px,float py,float pz){V[RK]=kx;V[RK+1]=ky;V[RK+2]=kz;V[RP]=px;V[RP+1]=py;V[RP+2]=pz;return this;}
             public B Poles(float lx,float ly,float lz,float rx,float ry,float rz){V[LO]=lx;V[LO+1]=ly;V[LO+2]=lz;V[RO]=rx;V[RO+1]=ry;V[RO+2]=rz;return this;}
             public B Reach(float left,float right){V[LC]=left;V[RC]=right;return this;}
+            /// <summary>The fists ride this share of the torso's turn away from the guard's (the spin: 1).</summary>
             public B Turn(float follow){V[Follow]=follow;return this;}
             /// <summary>The legs for an airborne pose (Move.Legs): each thigh's swing (+ forward) and knee bend, the lead (left) first.</summary>
             public B Legs(float leadThigh,float rearThigh,float leadKnee,float rearKnee){V[LT]=leadThigh;V[RT]=rearThigh;V[LKn]=leadKnee;V[RKn]=rearKnee;V[Air]=1;return this;}
             /// <summary>Back on planted feet (the legs the gait's and CyberComboFeet's again).</summary>
             public B Ground(){V[LT]=V[RT]=V[LKn]=V[RKn]=0;V[Air]=0;return this;}
             public B Lean(float hips,float spine,float chest){V[HP]=hips;V[SP]=spine;V[CP]=chest;return this;}
+            /// <summary>The striking leg's ankle (Leg[kind]) fully on the keys: x and z in the hips' turned frame about the body's
+            /// shift (the hips' yaw HY carries it round), y the group height (the floor's ankle is FLOOR).</summary>
+            public B Kick(float x,float y,float z){V[KX]=x;V[KY]=y;V[KZ]=z;V[KW]=1;return this;}
+            /// <summary>The striking leg's knee direction in the hips' turned frame (the shin's front faces it).</summary>
+            public B Knee(float x,float y,float z){V[KPX]=x;V[KPY]=y;V[KPZ]=z;return this;}
+            /// <summary>The striking foot's point about the ankle (rad; + toes pointed down the shin, - the heel pushed out).</summary>
+            public B Point(float a){V[KA]=a;return this;}
+            /// <summary>The striking leg back on its footwork (KW 0) with its keys at the stance spot of `leg` (so the curve from
+            /// a lifted key comes down toward the floor, not through the hips).</summary>
+            public B Rest(int leg)
+            {
+                CyberLordStance.Stance.Foot(leg==0,out float x,out float z,out _);x-=V[ShX];z-=V[ShZ];float c=(float)Math.Cos(-V[HY]),s=(float)Math.Sin(-V[HY]);
+                V[KX]=x*c+z*s;V[KZ]=-x*s+z*c;V[KY]=MeleeRig.FLOOR;V[KPX]=0;V[KPY]=.3f;V[KPZ]=1;V[KA]=0;V[KW]=0;return this;
+            }
             public Key At(byte phase,float u,byte how=Flow)=>new Key{Phase=phase,U=u,How=how,V=(float[])V.Clone()};
         }
         /// <summary>The guard every string starts from and settles into: bladed (the hips and chest turned .48 rad off the
@@ -67,74 +103,106 @@ namespace ChipArena.UnityConversion
         /// the facing.</summary>
         public static B Guard()=>new B().Hips(-.30f,.06f,0).Spine(-.08f,.16f,0).Chest(-.10f,.14f,0).Head(.42f,-.30f).Body(0,0,0)
             .Left(.14f,.30f,.40f).LFist(-.05f,.45f,.9f,-1,0,.15f).Right(-.12f,.29f,.27f).RFist(.1f,.6f,.8f,1,0,.15f).Poles(.35f,-1,-.1f,-.35f,-1,-.1f);
+        /// <summary>The guard's whole torso turn (hips, spine and chest yaw): the fists' Follow turns from it.</summary>
+        public const float GuardTurn=-.48f;
         private static readonly Key[][] keys=Build();
         /// <summary>A kind's keys: the five strikes here, the v2 abilities' poses (CyberKit2MeleePoses) after them.</summary>
         public static Key[] Keys(int kind)=>kind>=Kinds?CyberKit2MeleePoses.Keys(kind):keys[Math.Max(0,kind)];
         /// <summary>Whether a kind stands on planted feet (CyberComboFeet); the rest leave the legs to the gait or author them in the air.</summary>
         public static bool PlantsFeet(int kind)=>kind<Kinds||CyberKit2MeleePoses.Plants(kind);
+        /// <summary>The frame-skip steps of a kind's windup (Stutter; 0 smooth): the glitch-step jab snaps into its blow.</summary>
+        public static readonly int[] StutterSteps={3,0,0,0,0};
+        /// <summary>The palm's glitch freeze-frame: the share of its follow-through it holds dead still on the hit pose.</summary>
+        public const float PalmFreeze=.24f;
         private static Key[][] Build()
         {
             var k=new Key[Kinds][];var g=Guard();
-            // Jab (left): the lead foot steps in as the fist shoots straight out at head height, the lead hip and shoulder
-            // driving it (the torso turning right), the rear fist kept at the chin; it snaps back on the same line.
+            // 1 Glitch-step jab (left): the lead fist shoots straight out at head height with the lead hip and shoulder behind it
+            // as the lead foot steps in (the step and the blow snap in frame-skip steps: Stutter), the rear fist pulled back to
+            // the hip, palm up (a karate chamber); it snaps back on the same line, the lead foot steps back out and the rear fist
+            // returns to the chin.
             {
-                var load=new B(g).Hips(-.36f,.07f,0).Spine(-.08f,.18f,0).Chest(-.15f,.15f,0).Body(-.03f,0,.01f).Left(.15f,.28f,.36f).LFist(0,.3f,1,-.7f,-.7f,0);
-                var hit=new B(g).Hips(-.50f,.08f,0).Spine(-.12f,.24f,0).Chest(-.26f,.24f,0).Head(.74f,-.40f).Body(-.045f,.02f,.04f)
-                    .Left(.06f,.34f,.88f).LFist(-.08f,.06f,1,0,-1,0).Poles(.7f,-.7f,0,-.35f,-1,-.1f).Reach(.3f,0).Right(-.12f,.30f,.27f);
-                var held=new B(hit).Left(.065f,.335f,.85f);
-                var back=new B(g).Hips(-.36f,.07f,0).Spine(-.08f,.2f,0).Chest(-.14f,.18f,0).Head(.55f,-.34f).Body(-.03f,.01f,.03f).Left(.13f,.31f,.48f).LFist(0,.4f,1,-.8f,-.5f,0).Reach(.05f,0);
-                var ready=new B(g).Body(-.02f,0,.025f);
-                k[Jab]=new[]{g.At(0,0,Stop),load.At(0,.45f),hit.At(0,1,Impact),held.At(1,.15f,Stop),back.At(1,.5f),ready.At(1,1,Stop)};
+                var start=new B(g);
+                var load=new B(g).Hips(-.38f,.08f,0).Spine(-.08f,.2f,0).Chest(-.15f,.16f,0).Head(.5f,-.34f).Body(-.035f,0,.01f).Left(.15f,.28f,.34f).LFist(0,.3f,1,-.7f,-.7f,0)
+                    .Right(-.16f,.14f,.16f).RFist(0,.5f,1,.4f,.6f,0).Poles(.35f,-1,-.1f,-.4f,-.7f,-.6f);
+                var hit=new B(g).Hips(-.64f,.09f,0).Spine(-.12f,.25f,0).Chest(-.28f,.24f,0).Head(.88f,-.40f).Body(-.055f,.02f,.075f)
+                    .Left(.05f,.34f,.92f).LFist(-.08f,.06f,1,0,-1,0).Poles(.7f,-.7f,0,-.45f,-.4f,-1).Reach(.32f,0)
+                    .Right(-.2f,-.05f,-.01f).RFist(0,.15f,1,0,1,0);
+                var held=new B(hit).Left(.055f,.335f,.89f);
+                var back=new B(g).Hips(-.4f,.07f,0).Spine(-.08f,.2f,0).Chest(-.15f,.18f,0).Head(.56f,-.34f).Body(-.03f,.01f,.045f).Left(.13f,.31f,.5f).LFist(0,.4f,1,-.8f,-.5f,0)
+                    .Right(-.16f,.16f,.16f).RFist(.05f,.6f,.8f,.8f,.3f,.3f).Poles(.35f,-1,-.1f,-.4f,-.8f,-.4f).Reach(.05f,0);
+                var ready=new B(g).Body(-.02f,0,.01f);
+                k[Jab]=new[]{start.At(0,0,Stop),load.At(0,.45f),hit.At(0,1,Impact),held.At(1,.18f,Stop),back.At(1,.5f),ready.At(1,1,Stop)};
             }
-            // Cross (right): the rear fist drives through the centre line as the hips and shoulders turn hard left over a
-            // pivoting rear foot, the weight onto the lead leg; the lead fist returns to the chin.
+            // 2 Rear roundhouse kick (right leg, mid): the rear knee chambers up as the hips start round, then the hips turn over
+            // (.95 of a quarter turn past the guard) on the lead foot pivoting on its ball, the body leaning back and away, and
+            // the shin snaps out across the front at belt height, the foot pointed; the rear arm swings down and back against it,
+            // the lead fist guards the face. It re-chambers and the foot comes home to the rear spot.
             {
-                var load=new B(g).Hips(-.38f,.07f,0).Spine(-.08f,.18f,0).Chest(-.14f,.15f,0).Body(-.04f,-.01f,.01f).Right(-.14f,.28f,.22f).RFist(0,.4f,1,.8f,-.5f,0).Left(.11f,.31f,.36f);
-                var hit=new B(g).Hips(.32f,.08f,0).Spine(.12f,.24f,0).Chest(.22f,.26f,0).Head(-.50f,-.40f).Body(-.06f,.04f,.05f)
-                    .Right(-.02f,.34f,.88f).RFist(.05f,.05f,1,0,-1,0).Left(.12f,.30f,.26f).LFist(-.1f,.6f,.8f,-1,0,.2f).Poles(.35f,-1,-.1f,-.7f,-.7f,0).Reach(0,.32f);
-                var held=new B(hit).Right(-.025f,.335f,.85f);
-                var back=new B(g).Hips(.05f,.07f,0).Spine(.02f,.18f,0).Chest(.05f,.18f,0).Head(-.08f,-.32f).Body(-.04f,.02f,.03f).Right(-.12f,.31f,.36f).RFist(0,.5f,1,.8f,-.4f,0).Reach(0,.05f);
-                var ready=new B(g).Hips(.05f,.06f,0).Spine(.02f,.16f,0).Chest(0,.14f,0).Head(-.06f,-.30f).Body(-.025f,.01f,.02f);
-                k[Cross]=new[]{g.At(0,0,Stop),load.At(0,.45f),hit.At(0,1,Impact),held.At(1,.15f,Stop),back.At(1,.5f),ready.At(1,1,Stop)};
+                var start=new B(g).Rest(1);
+                var chamber=new B(g).Hips(.35f,.02f,0).Spine(-.2f,.1f,0).Chest(-.18f,.1f,0).Head(.4f,-.3f).Body(-.045f,.03f,0)
+                    .Left(.1f,.33f,.32f).LFist(-.05f,.5f,.86f,-1,0,.15f).Right(-.22f,.06f,.04f).RFist(0,.2f,1,.7f,0,.6f).Poles(.35f,-1,-.1f,-.4f,-.6f,-.5f)
+                    .Kick(-.37f,-.42f,-.12f).Knee(-.75f,.6f,.6f).Point(1.1f);
+                var hit=new B(g).Hips(1.4f,-.24f,0).Spine(-.36f,-.06f,0).Chest(-.38f,.0f,0).Head(-.6f,-.16f).Body(-.06f,.06f,.03f)
+                    .Left(.06f,.36f,.25f).LFist(0,.6f,.8f,-1,0,.2f).Right(-.28f,-.25f,-.28f).RFist(0,-.9f,-.4f,.9f,0,.2f).Poles(.4f,-1,-.1f,-.4f,-.2f,-1)
+                    .Kick(-.53f,-.22f,-.03f).Knee(.2f,.5f,1).Point(1.3f);
+                var held=new B(hit).Hips(1.55f,-.24f,0).Head(-.72f,-.16f).Kick(-.47f,-.25f,.06f);
+                var rechamber=new B(g).Hips(.75f,.0f,0).Spine(-.25f,.08f,0).Chest(-.25f,.08f,0).Head(-.1f,-.25f).Body(-.045f,.03f,0)
+                    .Left(.08f,.34f,.3f).Right(-.2f,.05f,.06f).RFist(0,.3f,1,.8f,0,.4f).Poles(.35f,-1,-.1f,-.4f,-.6f,-.5f)
+                    .Kick(-.27f,-.44f,-.25f).Knee(-.6f,.5f,.7f).Point(.9f);
+                var land=new B(g).Hips(-.1f,.05f,0).Body(-.035f,.01f,0).Head(.25f,-.3f).Rest(1);
+                var ready=new B(g).Body(-.02f,0,.01f).Rest(1);
+                k[Cross]=new[]{start.At(0,0,Stop),chamber.At(0,.45f),hit.At(0,1,Impact),held.At(1,.28f,Stop),rechamber.At(1,.58f),land.At(1,.82f),ready.At(1,1,Stop)};
             }
-            // Spinning backfist (left): the cross's turn carried on round to the left in a short hop, the head whipping ahead to
-            // spot, the lead fist cocked across the chest and flung out at the end of the arm, its back striking as it sweeps
-            // across the front; the spin runs on past the target and settles bladed. The fists ride the torso's turn (Follow).
+            // 3 Spinning heel kick (right leg): the whole body winds round to the right on the lead foot (pivoting on its ball with
+            // the hips), the head whipping round to spot over the right shoulder, the rear knee chambered tight and the fists in the
+            // guard riding the turn; with the back to the target the rear heel drives out behind at belt height, the body leaning
+            // away from it; the turn carries on, the heel hooking across, the leg folds and lands back on its spot, bladed again a
+            // full turn later.
             {
-                var start=new B(g).Hips(.05f,.04f,0).Spine(.02f,.10f,0).Chest(0,.12f,0).Head(-.06f,-.14f).Turn(1);
-                var coil=new B(start).Hips(1.45f,.04f,0).Spine(.25f,.08f,0).Chest(.22f,.05f,0).Head(.55f,-.1f).Body(.0f,0,0)
-                    .Left(-.08f,.30f,.24f).LFist(-.5f,.25f,.8f,0,0,1).Right(-.12f,.30f,.24f).Poles(.2f,-.6f,.8f,-.35f,-1,-.1f);
-                var hit=new B(start).Hips(3.4f,.03f,0).Spine(.5f,.06f,0).Chest(.5f,.04f,0).Head(1.3f,-.05f).Body(.02f,0,0)
-                    .Left(.62f,.33f,.16f).LFist(1,.05f,.2f,0,0,1).Right(-.12f,.28f,.20f).Poles(.5f,-.35f,.6f,-.35f,-1,-.1f).Reach(.25f,0);
-                var sweep=new B(hit).Hips(4.3f,.03f,0).Spine(.45f,.06f,0).Chest(.35f,.06f,0).Head(.9f,-.08f).Left(.6f,.31f,-.02f).LFist(1,0,-.1f,0,0,1);
-                var land=new B(g).Hips(5.9f,.05f,0).Spine(.2f,.1f,0).Chest(.15f,.1f,0).Head(.1f,-.12f).Body(-.05f,0,0).Left(.22f,.30f,.30f).LFist(0,.4f,1,-.8f,-.5f,0).Right(-.12f,.30f,.24f).Turn(1);
-                var ready=new B(g).Hips(MeleeMath.TAU-.30f,.04f,0).Turn(1).Body(-.035f,0,0);
-                k[Spin]=new[]{start.At(0,0,Stop),coil.At(0,.45f),hit.At(0,1,Impact),sweep.At(1,.2f),land.At(1,.55f),ready.At(1,1,Stop)};
+                var start=new B(g).Rest(1);
+                var coil=new B(g).Hips(-1.5f,.04f,0).Spine(-.35f,.06f,0).Chest(-.3f,.04f,0).Head(-.2f,-.12f).Body(-.06f,.04f,0).Turn(1)
+                    .Kick(-.13f,-.62f,-.06f).Knee(0,.2f,1).Point(.4f);
+                var hit=new B(g).Hips(-3.55f,-.28f,0).Spine(-.3f,-.08f,0).Chest(-.3f,-.04f,0).Head(-1.1f,-.12f).Body(-.05f,.05f,.03f).Turn(1)
+                    .Left(.2f,.3f,.3f).LFist(-.05f,.45f,.9f,-1,0,.15f).Right(-.24f,.26f,.18f).Poles(.35f,-1,-.1f,-.5f,-.8f,0)
+                    .Kick(-.1f,-.24f,-.42f).Knee(0,-1,.3f).Point(-.3f);
+                var sweep=new B(hit).Hips(-4.15f,-.24f,0).Head(-.9f,-.14f).Kick(-.2f,-.27f,-.38f);
+                var recoil=new B(g).Hips(-5.5f,.02f,0).Spine(-.2f,.1f,0).Chest(-.15f,.1f,0).Head(-.3f,-.2f).Body(-.05f,.03f,0).Turn(1)
+                    .Kick(-.14f,-.62f,-.08f).Knee(0,.2f,1).Point(.3f);
+                var land=new B(g).Hips(-6.2f,.05f,0).Spine(-.1f,.12f,0).Chest(-.1f,.12f,0).Head(.3f,-.24f).Body(-.045f,0,0).Turn(1);land.Rest(1);
+                var ready=new B(g).Hips(-MeleeMath.TAU-.30f,.06f,0).Body(-.03f,0,0).Turn(1);ready.Rest(1);
+                k[Spin]=new[]{start.At(0,0,Stop),coil.At(0,.5f),hit.At(0,1),sweep.At(1,.28f),recoil.At(1,.58f),land.At(1,.82f),ready.At(1,1,Stop)};
             }
-            // Rising uppercut (right): a deep drop with the rear shoulder dipped and the fist low by the hip, then the legs drive
-            // the body up onto the toes and the fist rises through the chin line (knuckles up, palm to the face) and on overhead
-            // in a short hop; it lands back in the guard.
+            // 4 Launcher (right): a deep drop with the rear fist low by the hip, then the legs drive the body up into a hop, the
+            // rear knee driven up high in front (a jumping knee) as the fist rises through the chin line on the hit (knuckles
+            // up, palm to the face) and on overhead, the lead fist pulled down; it lands soft back on both feet in the guard.
             {
-                var load=new B(g).Hips(-.45f,.12f,0).Spine(-.12f,.25f,-.06f).Chest(-.15f,.20f,-.12f).Head(.55f,-.32f).Body(-.13f,0,.01f)
-                    .Right(-.20f,.02f,.30f).RFist(0,1,.3f,0,.1f,-1).Left(.13f,.30f,.30f).Poles(.35f,-1,-.1f,-.4f,-1,.3f);
-                var hit=new B(g).Hips(.30f,.0f,0).Spine(.12f,-.05f,.04f).Chest(.16f,-.08f,.06f).Head(-.35f,-.2f).Body(.04f,0,.05f)
-                    .Right(-.04f,.45f,.50f).RFist(.05f,1,.35f,0,.1f,-1).Left(.12f,.31f,.26f).Poles(.35f,-1,-.1f,-.5f,-.8f,.4f).Reach(0,.2f);
-                var high=new B(hit).Hips(.40f,-.02f,0).Chest(.16f,-.12f,.06f).Head(-.40f,-.26f).Body(.08f,0,.05f).Right(-.03f,.62f,.42f);
-                var down=new B(g).Hips(.10f,.04f,0).Spine(0,.08f,0).Chest(.02f,.08f,0).Head(-.05f,-.16f).Body(-.04f,0,.03f).Right(-.12f,.38f,.30f).RFist(0,.7f,.6f,.8f,0,-.2f);
-                var ready=new B(g).Hips(-.2f,.04f,0).Body(-.035f,0,.02f);
-                k[Rise]=new[]{g.At(0,0,Stop),load.At(0,.55f),hit.At(0,1,Impact),high.At(1,.25f),down.At(1,.6f),ready.At(1,1,Stop)};
+                var start=new B(g).Rest(1);
+                var load=new B(g).Hips(-.5f,.14f,0).Spine(-.12f,.25f,-.06f).Chest(-.15f,.2f,-.12f).Head(.6f,-.32f).Body(-.14f,0,.01f)
+                    .Right(-.2f,.0f,.28f).RFist(.1f,.8f,.6f,1,0,.1f).Left(.1f,.24f,.66f).LFist(-.05f,.4f,.9f,-1,0,.15f).Poles(.35f,-1,-.1f,-.4f,-1,.3f).Rest(1);
+                var hit=new B(g).Hips(.3f,-.06f,0).Spine(.1f,-.08f,.04f).Chest(.14f,-.1f,.06f).Head(-.5f,-.16f).Body(.09f,0,.06f)
+                    .Right(-.04f,.47f,.48f).RFist(.05f,1,.35f,0,.1f,-1).Left(.2f,.06f,.22f).LFist(0,-.2f,1,-1,0,0).Poles(.6f,-.8f,-.3f,-.5f,-.8f,.4f).Reach(0,.2f)
+                    .Kick(-.17f,-.44f,.14f).Knee(0,.6f,.8f).Point(.75f);
+                var high=new B(hit).Hips(.38f,-.08f,0).Chest(.16f,-.13f,.06f).Head(-.45f,-.24f).Body(.1f,0,.06f).Right(-.03f,.64f,.40f).Kick(-.18f,-.45f,.12f);
+                var down=new B(g).Hips(.1f,.04f,0).Spine(0,.08f,0).Chest(.02f,.08f,0).Head(-.05f,-.16f).Body(-.07f,0,.04f).Right(-.12f,.38f,.30f).RFist(0,.7f,.6f,.8f,0,-.2f).Rest(1);
+                var ready=new B(g).Hips(-.22f,.05f,0).Body(-.035f,0,.02f).Rest(1);
+                k[Rise]=new[]{start.At(0,0,Stop),load.At(0,.5f),hit.At(0,1,Impact),high.At(1,.25f),down.At(1,.6f),ready.At(1,1,Stop)};
             }
-            // Pulse Palm (both): both hands chambered by the rear hip as the body coils, then a stomping step in and both palms
-            // thrust out side by side at chest height, the hips squared, the body low and forward; held as the pulse fires.
+            // 5 Pulse Palm (both): both palms chambered by the rear hip as the body coils and the lead knee rises, then a stomp
+            // wide into a low horse stance, the hips squared, and both palms thrust out side by side at chest height on the hit,
+            // held dead still for a glitch freeze-frame as the pulse fires, then back to the guard.
             {
-                var load=new B(g).Hips(-.55f,.10f,0).Spine(-.15f,.18f,0).Chest(-.22f,.12f,0).Head(.8f,-.30f).Body(-.07f,-.02f,-.01f)
-                    .Left(.0f,.02f,.18f).LFist(0,1,.1f,0,.1f,1).Right(-.17f,-.02f,.08f).RFist(0,1,.1f,0,.1f,1).Poles(.5f,-1,-.3f,-.5f,-1,-.3f);
-                var hit=new B(g).Hips(.05f,.14f,0).Spine(.05f,.28f,0).Chest(.04f,.16f,0).Head(-.08f,-.40f).Body(-.10f,0,.06f)
-                    .Left(.15f,.13f,.86f).LFist(.1f,1,.25f,0,-.25f,1).Right(-.13f,.11f,.86f).RFist(-.1f,1,.25f,0,-.25f,1).Poles(.8f,-.6f,0,-.8f,-.6f,0).Reach(.3f,.3f);
-                var held=new B(hit).Left(.15f,.14f,.82f).Right(-.13f,.12f,.82f);
-                var back=new B(g).Hips(-.2f,.08f,0).Spine(-.05f,.18f,0).Chest(-.05f,.14f,0).Head(.25f,-.32f).Body(-.05f,0,.04f).Left(.14f,.26f,.48f).Right(-.13f,.26f,.36f);
-                var ready=new B(g).Body(-.03f,0,.03f);
-                k[Palm]=new[]{g.At(0,0,Stop),load.At(0,.5f),hit.At(0,1,Impact),held.At(1,.25f,Stop),back.At(1,.6f),ready.At(1,1,Stop)};
+                var start=new B(g).Rest(0);
+                var load=new B(g).Hips(-.6f,.12f,0).Spine(-.15f,.2f,0).Chest(-.22f,.14f,0).Head(.85f,-.30f).Body(-.06f,-.02f,-.02f)
+                    .Left(.0f,.02f,.18f).LFist(0,.7f,.7f,-.7f,0,.7f).Right(-.17f,-.02f,.08f).RFist(0,.7f,.7f,.7f,0,.7f).Poles(.5f,-1,-.3f,-.5f,-1,-.3f)
+                    .Kick(.2f,-.58f,.18f).Knee(.2f,.6f,1).Point(.3f);
+                var stomp=new B(g).Hips(-.3f,.12f,0).Spine(-.08f,.18f,0).Chest(-.12f,.12f,0).Head(.5f,-.32f).Body(-.13f,-.01f,.04f)
+                    .Left(.1f,.0f,.4f).LFist(0,1,.15f,0,-.1f,1).Right(-.15f,-.02f,.34f).RFist(0,1,.15f,0,-.1f,1).Poles(.6f,-.9f,-.3f,-.6f,-.9f,-.3f).Rest(0);
+                var hit=new B(g).Hips(-.04f,.12f,0).Spine(.04f,.2f,0).Chest(.04f,.1f,0).Head(-.06f,-.34f).Body(-.16f,.02f,.08f)
+                    .Left(.15f,.05f,.84f).LFist(.1f,1,.25f,0,-.25f,1).Right(-.13f,.03f,.84f).RFist(-.1f,1,.25f,0,-.25f,1).Poles(.8f,-.6f,0,-.8f,-.6f,0).Reach(.32f,.32f).Rest(0);
+                var back=new B(g).Hips(-.2f,.08f,0).Spine(-.05f,.18f,0).Chest(-.05f,.14f,0).Head(.25f,-.32f).Body(-.07f,0,.05f).Left(.14f,.26f,.48f).Right(-.13f,.26f,.36f).Rest(0);
+                var ready=new B(g).Body(-.035f,0,.035f).Rest(0);
+                k[Palm]=new[]{start.At(0,0,Stop),load.At(0,.45f),stomp.At(0,.74f),hit.At(0,1,Impact),new B(hit).At(1,PalmFreeze,Stop),back.At(1,.6f),ready.At(1,1,Stop)};
             }
             return k;
         }
@@ -203,10 +271,14 @@ namespace ChipArena.UnityConversion
         /// with an elbow pole, measured through the row's own torso (the drawn body's lean and sway move it a little). `torso`
         /// scales the torso's turn (the first-person view keeps a third). Fists with Follow ride the torso's whole turn.
         /// </summary>
-        public static void Row(float[] p,float torso,float[] row)
+        public static void Row(float[] p,float torso,float[] row)=>Row(p,torso,row,false);
+        /// <summary>`view`: the first-person view model: the fists keep their guard-frame places (no Follow) and the spin's
+        /// followed turn is left out of the torso, so a spinning step keeps the hands in view instead of whirling them round
+        /// the camera.</summary>
+        public static void Row(float[] p,float torso,float[] row,bool view)
         {
             Array.Clear(row,0,row.Length);
-            float hy=p[HY]*torso,sy=p[SY]*torso,cy=p[CY]*torso;
+            float unturn=view?p[Follow]:0,hy=(p[HY]-(p[HY]-Guard0[HY])*unturn)*torso,sy=(p[SY]-(p[SY]-Guard0[SY])*unturn)*torso,cy=(p[CY]-(p[CY]-Guard0[CY])*unturn)*torso;
             // Each segment's lean and side bend are toward the facing (the body's frame), its twist about its own axis: the hips,
             // then the spine and chest adding theirs, the neck and head turning and pitching on from the chest (the head's
             // pitch relative to upright, so -lean looks level).
@@ -222,7 +294,7 @@ namespace ChipArena.UnityConversion
             var body=new Vector3(p[ShX],row[MeleeCapture.By]-.025f,p[ShZ]);var pelvis=body+CapturedRig.Bones[CapturedRig.Pelvis].Position;
             var spine=pelvis+Vector3.Transform(CapturedRig.Bones[CapturedRig.Spine].Position,qp);var qps=qp*qs;
             var chest=spine+Vector3.Transform(CapturedRig.Bones[CapturedRig.Chest].Position,qps);var qch=qps*qc;var inv=MeleeMath.Inverse(qch);
-            var follow=MeleeMath.AxisAngle(MeleeMath.Y,(hy+sy+cy)*p[Follow]);
+            var follow=MeleeMath.AxisAngle(MeleeMath.Y,view?0:(hy+sy+cy-GuardTurn*torso)*p[Follow]);
             Fist(p,L,LK,LP,LO,follow,chest,inv,out var lt,out var lf,out var lu,out var lpole);
             Fist(p,R,RK,RP,RO,follow,chest,inv,out var rt,out var rf,out var ru,out var rpole);
             Put(row,MeleeCapture.Grip,rt);Put(row,MeleeCapture.Blade,rf);Put(row,MeleeCapture.Edge,Vector3.Cross(ru,rf));Put(row,MeleeCapture.RPole,rpole);
@@ -242,7 +314,50 @@ namespace ChipArena.UnityConversion
         /// <summary>A fist's body-space point on the swing at `time` (the keys alone: the effects' trails).</summary>
         public static Vector3 FistAt(in Swing s,float time,bool left,float[] scratch)
         {
-            Sample(s,time,scratch);var f=MeleeMath.AxisAngle(MeleeMath.Y,(scratch[HY]+scratch[SY]+scratch[CY])*scratch[Follow]);return Vector3.Transform(V3(scratch,left?L:R),f);
+            Sample(s,time,scratch);var f=MeleeMath.AxisAngle(MeleeMath.Y,(scratch[HY]+scratch[SY]+scratch[CY]-GuardTurn)*scratch[Follow]);return Vector3.Transform(V3(scratch,left?L:R),f);
+        }
+        private static readonly float[] Guard0=Guard().V;
+        /// <summary>A point in the hips' turned frame (x, z about the body's shift; yaw `hips`) in the body's (group) frame.</summary>
+        public static Vector3 FromHips(float hips,float shx,float shz,float x,float y,float z){float c=(float)Math.Cos(hips),s=(float)Math.Sin(hips);return new Vector3(shx+x*c+z*s,y,shz-x*s+z*c);}
+        /// <summary>The striking leg's keyed ankle in the body's (group) frame, from sampled channels (Leg[kind]; weight KW).</summary>
+        public static Vector3 KickAnkle(float[] p)=>FromHips(p[HY],p[ShX],p[ShZ],p[KX],p[KY],p[KZ]);
+        /// <summary>The striking leg's knee direction in the body's (group) frame (unit).</summary>
+        public static Vector3 KickKnee(float[] p){var d=FromHips(p[HY],0,0,p[KPX],p[KPY],p[KPZ]);return d.LengthSquared()<1e-8f?MeleeMath.Z:Vector3.Normalize(d);}
+        /// <summary>The striking leg's ankle at `time` from the keys alone (body space; the effects' foot trail) and its weight on
+        /// the keys (0: the leg is on its footwork, the point then sits on the stance spot).</summary>
+        public static Vector3 FootAt(in Swing s,float time,float[] scratch,out float weight)
+        {
+            Sample(s,time,scratch);weight=MeleeMath.Clamp(scratch[KW],0,1);var a=KickAnkle(scratch);
+            int leg=s.Kind>=0&&s.Kind<Kinds?Leg[s.Kind]:-1;if(leg>=0&&weight<1){CyberLordStance.Stance.Foot(leg==0,out float x,out float z,out _);a=Vector3.Lerp(new Vector3(x,MeleeRig.FLOOR,z),a,weight);}
+            return a;
+        }
+        /// <summary>The striking leg's knee at `time` from the keys alone (body space; the launcher's knee flare): the two-bone
+        /// knee between the keyed hip and ankle, bent toward the keys' knee direction.</summary>
+        public static Vector3 KneeAt(in Swing s,float time,float[] scratch)
+        {
+            Sample(s,time,scratch);int leg=s.Kind>=0&&s.Kind<Kinds?Leg[s.Kind]:1;var hip=FromHips(scratch[HY],scratch[ShX],scratch[ShZ],leg==0?.13f:-.13f,BaseBy-.32f+scratch[Drop],0);
+            var ankle=KickAnkle(scratch);var d=ankle-hip;float l=d.Length();if(l<1e-4f)return hip;var u=d/l;var pole=KickKnee(scratch);pole-=u*Vector3.Dot(pole,u);
+            pole=pole.LengthSquared()<1e-6f?MeleeMath.Z:Vector3.Normalize(pole);float half=Math.Min(.25f,l*.5f);return hip+u*half+pole*(float)Math.Sqrt(Math.Max(0,.0625f-half*half));
+        }
+        /// <summary>Where a kind's footwork lands `foot` (0 the lead, 1 the rear; body space on the floor): its stance spot plus
+        /// the step's offset (the palm's stomp).</summary>
+        public static Vector3 LandSpot(int kind,int foot)
+        {
+            CyberLordStance.Stance.Foot(foot==0,out float x,out float z,out _);var moves=Feet(kind);
+            for(int i=0;i<moves.Length;i++)if(moves[i].Foot==foot&&(moves[i].Type==StepMove||moves[i].Type==KickMove)){x+=moves[i].X;z+=moves[i].Z;}
+            return new Vector3(x,MeleeRig.FLOOR,z);
+        }
+        /// <summary>The hips' own turn (HY) at `time`: the spin's support foot pivots with it.</summary>
+        public static float HipsTurn(in Swing s,float time,float[] scratch){Sample(s,time,scratch,HY,1);return scratch[HY];}
+        /// <summary>
+        /// The frame-skip clock ("cyber movement"): over a kind's windup the pose holds and snaps forward in StutterSteps equal
+        /// steps, the last snap landing the blow exactly on the replicated hit; the rest of the swing runs smooth. Reduced
+        /// effects and the first-person view keep the smooth clock.
+        /// </summary>
+        public static float Stutter(in Swing s,float time)
+        {
+            int n=s.Kind>=0&&s.Kind<Kinds?StutterSteps[s.Kind]:0;if(n<=0||time<=s.At||time>=s.Hit)return time;
+            float span=s.Hit-s.At;return s.At+span*(float)Math.Floor((time-s.At)/span*n)/n;
         }
         /// <summary>The whole torso's turn (hips, spine and chest yaw) at `time`: the spin's progress.</summary>
         public static float Turn(in Swing s,float time,float[] scratch){Sample(s,time,scratch,HY,1);float h=scratch[HY];Sample(s,time,scratch,SY,1);float sp=scratch[SY];Sample(s,time,scratch,CY,1);return h+sp+scratch[CY];}
@@ -255,26 +370,34 @@ namespace ChipArena.UnityConversion
 
         // ---- the footwork plan (CyberComboFeet) ----
         /// <summary>One foot move in a swing: a Step (lifted, carried on an arc, landed flat on its stance spot plus X/Z, turned
-        /// by Yaw), a Pivot (the heel raised by Lift on the pinned ball and the foot turned by Yaw), or a Hop (both feet off
-        /// the floor by Lift, carried round with the hips' turn and landed on their stance spots).</summary>
-        public struct FootMove{public int Foot;public byte Type;public byte P0,P1;public float U0,U1,X,Z,Yaw,Lift;}
-        public const byte StepMove=0,PivotMove=1,HopMove=2;
+        /// by Yaw), a Pivot (the heel raised by Lift on the pinned ball and the foot turned by Yaw, or with the hips' own turn
+        /// when Follow), a Hop (both feet off the floor by Lift, carried round with the hips' turn and landed on their stance
+        /// spots), a Kick (a Step whose foot also follows the keys' striking leg by their KW weight: Leg[kind]) or a Lift (the
+        /// foot raised in place by Lift on its toes and set back down).</summary>
+        public struct FootMove{public int Foot;public byte Type;public byte P0,P1;public float U0,U1,X,Z,Yaw,Lift;public bool Follow;}
+        public const byte StepMove=0,PivotMove=1,HopMove=2,KickMove=3,LiftMove=4;
         public const int LeadFoot=0,RearFoot=1,BothFeet=2;
         private static FootMove Step(int foot,byte p0,float u0,byte p1,float u1,float x,float z,float yaw,float lift)=>new FootMove{Foot=foot,Type=StepMove,P0=p0,U0=u0,P1=p1,U1=u1,X=x,Z=z,Yaw=yaw,Lift=lift};
         private static FootMove Pivot(int foot,byte p0,float u0,byte p1,float u1,float yaw,float heel)=>new FootMove{Foot=foot,Type=PivotMove,P0=p0,U0=u0,P1=p1,U1=u1,Yaw=yaw,Lift=heel};
+        private static FootMove Spot(int foot,byte p0,float u0,byte p1,float u1,float heel)=>new FootMove{Foot=foot,Type=PivotMove,P0=p0,U0=u0,P1=p1,U1=u1,Lift=heel,Follow=true};
         private static FootMove Hop(byte p0,float u0,byte p1,float u1,float lift)=>new FootMove{Foot=BothFeet,Type=HopMove,P0=p0,U0=u0,P1=p1,U1=u1,Lift=lift};
+        private static FootMove Kick(int foot,byte p0,float u0,byte p1,float u1,float x,float z,float lift)=>new FootMove{Foot=foot,Type=KickMove,P0=p0,U0=u0,P1=p1,U1=u1,X=x,Z=z,Lift=lift};
+        private static FootMove Raise(int foot,byte p0,float u0,byte p1,float u1,float lift)=>new FootMove{Foot=foot,Type=LiftMove,P0=p0,U0=u0,P1=p1,U1=u1,Lift=lift};
         private static readonly FootMove[][] feet=
         {
-            // Jab: the lead foot steps in 12 cm, landing as the fist does; the rear foot follows in the recovery.
-            new[]{Step(LeadFoot,0,.05f,0,.92f,0,.12f,0,.035f),Step(RearFoot,1,.25f,1,.75f,0,.06f,0,.02f)},
-            // Cross: the rear foot pivots on its ball, the heel turning out as the hips drive round.
-            new[]{Pivot(RearFoot,0,.1f,1,.75f,.45f,.5f)},
-            // Spinning backfist: a short hop round with the hips, landing back on the stance.
-            new[]{Hop(0,.12f,1,.38f,.07f)},
-            // Rising uppercut: both heels up as the legs drive, then a little hop off the toes.
-            new[]{Pivot(LeadFoot,0,.45f,1,.12f,0,.4f),Pivot(RearFoot,0,.45f,1,.12f,0,.45f),Hop(1,.1f,1,.5f,.045f)},
-            // Pulse Palm: a stomping step in 18 cm landing on the hit; the rear foot drags up after.
-            new[]{Step(LeadFoot,0,.25f,0,.97f,0,.18f,0,.06f),Step(RearFoot,1,.35f,1,.82f,0,.08f,0,.02f)},
+            // Jab: the lead foot steps in 16 cm, landing as the fist does (on the frame-skip clock), and steps back out to its
+            // spot in the recovery (in and out), so the next step starts from the stance.
+            new[]{Step(LeadFoot,0,.05f,0,.92f,0,.16f,0,.04f),Step(LeadFoot,1,.3f,1,.85f,0,0,0,.03f)},
+            // Roundhouse: the lead foot pivots on its ball as the hips turn over (and back), the rear leg kicks and comes home.
+            new[]{Pivot(LeadFoot,0,0,1,.3f,1.2f,.35f),Kick(RearFoot,0,0,1,.9f,0,0,.05f),Pivot(LeadFoot,1,.4f,1,.85f,-1.2f,.25f)},
+            // Spinning heel kick: the lead foot turns a full turn on its ball with the hips; the rear leg kicks and lands home.
+            new[]{Spot(LeadFoot,0,0,1,1,.4f),Kick(RearFoot,0,.08f,1,.9f,0,0,.05f)},
+            // Launcher: the lead heel up as the legs drive, the lead foot off the floor through the hop and down again; the rear
+            // knee drives up (the keys) and the foot lands home.
+            new[]{Pivot(LeadFoot,0,.3f,1,.2f,0,.45f),Raise(LeadFoot,0,.8f,1,.45f,.06f),Kick(RearFoot,0,.2f,1,.75f,0,0,.04f)},
+            // Pulse Palm: the lead knee rises and stomps 16 cm in and 8 cm out, landing just before the hit; the rear foot
+            // turns its toes forward on its ball for the squared horse stance.
+            new[]{Kick(LeadFoot,0,.08f,0,.9f,.08f,.16f,.05f),Pivot(RearFoot,0,.4f,1,.2f,.45f,.2f)},
         };
         public static FootMove[] Feet(int kind)=>kind>=Kinds?CyberKit2MeleePoses.Feet(kind):feet[Math.Max(0,kind)];
         public static FootMove MakeStep(int foot,byte p0,float u0,byte p1,float u1,float x,float z,float yaw,float lift)=>Step(foot,p0,u0,p1,u1,x,z,yaw,lift);
@@ -285,10 +408,12 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// The combo's feet on one rig (Core/CyberLordCombo.cs): a foot on the floor never moves along it (pinned flat, or on its
     /// ball with the heel raised while it pivots); otherwise it is lifted on a real step (off its ball, on an arc that clears
-    /// the floor, landing flat) or in a hop. Each swing's moves start from where the feet actually stand as it begins (the gait's
-    /// feet, or the last swing's), held in the world (the swing's own frame), so a turn of the aim mid-swing never slides them;
-    /// the targets are the stance spots (CyberLordStance) plus each move's offset. After the string the gait takes them back
-    /// to the stance with its own settle steps. Rig-local presentation state only; a rewound clock starts the swing over.
+    /// the floor, landing flat), in a hop, or as the striking leg (a kick, the launcher's knee, the palm's stomp: the leg follows
+    /// the keys' ankle path, knee and foot point by their weight, then comes down onto its step home). Each swing's moves
+    /// start from where the feet actually stand as it begins (the gait's feet, or the last swing's), held in the world (the
+    /// swing's own frame), so a turn of the aim mid-swing never slides them; the targets are the stance spots
+    /// (CyberLordStance) plus each move's offset. After the string the gait takes them back to the stance with its own settle
+    /// steps. Rig-local presentation state only; a rewound clock starts the swing over.
     /// </summary>
     public sealed class CyberComboFeet
     {
@@ -298,12 +423,16 @@ namespace ChipArena.UnityConversion
         /// <summary>The hop's lift of the body this frame (m) and whether the feet are posed.</summary>
         public float Hop{get;private set;}
         public bool Active{get;private set;}
-        public void Reset(){has=false;swingAt=-100;last=-100;Active=false;Hop=0;seenAt=float.NaN;}
+        /// <summary>The striking leg's weight on its keys this frame (0: on the footwork) and which leg (0 left, 1 right, -1 none).</summary>
+        public float KickWeight{get;private set;}public int KickLeg{get;private set;}=-1;
+        /// <summary>Whether the moves run on the frame-skip clock (CyberCombo.Stutter; off with reduced effects).</summary>
+        public bool Stutter=true;
+        public void Reset(){has=false;swingAt=-100;last=-100;Active=false;Hop=0;KickWeight=0;KickLeg=-1;seenAt=float.NaN;}
         private readonly Vector3[] seen=new Vector3[2];private readonly Quaternion[] seenQ=new Quaternion[2];private float seenAt=float.NaN;
         /// <summary>Notes where the gait stands the feet this frame, before the strike's torso moves the pelvis over them: a new
         /// swing's feet start there (read after the torso, they would jump with it).</summary>
         public void Before(MeleeRig r,float time){for(int i=0;i<2;i++)seen[i]=r.ReadAnkle(i==0,out seenQ[i],out _);seenAt=time;}
-        private static readonly float[] turnScratch=new float[CyberCombo.N];
+        private static readonly float[] turnScratch=new float[CyberCombo.N],kickScratch=new float[CyberCombo.N];
         private static void Stance(int foot,out float x,out float z,out float yaw)=>CyberLordStance.Stance.Foot(foot==0,out x,out z,out yaw);
         // The ball (toe joint) of a foot whose ankle is `ankle` with heading `yaw` and heel pitch `pitch` (group space).
         private static Vector2 Ball(Vector3 ankle,float yaw,float pitch){float d=MeleeFootwork.BallAnkleZ(pitch);return new Vector2(ankle.X-(float)Math.Sin(yaw)*d,ankle.Z-(float)Math.Cos(yaw)*d);}
@@ -319,7 +448,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public void Pose(MeleeRig r,in CyberCombo.Swing swing,float time,float weight)
         {
-            Active=false;Hop=0;if(weight<=1e-4f){last=time;idle=true;return;}
+            Active=false;Hop=0;KickWeight=0;KickLeg=-1;if(weight<=1e-4f){last=time;idle=true;return;}
             bool rewound=time<last-.05f||time-last>.25f;
             if(!has||Math.Abs(swing.At-swingAt)>1e-4f||rewound||idle)
             {
@@ -346,19 +475,21 @@ namespace ChipArena.UnityConversion
             // A body that leaves the swing's spot (a knockback, a host move) takes its feet with it: the gait's again.
             float drift=new Vector2(r.GroupPosition.X-origin.X,r.GroupPosition.Z-origin.Z).Length();weight*=1-MeleeMath.Smooth((drift-.15f)/.2f);if(weight<=1e-4f){idle=true;return;}
             for(int i=0;i<2;i++)now[i]=start[i];
-            // The moves in order, each from where the earlier ones left its foot: a pure function of the swing's start and the time.
-            var moves=CyberCombo.Feet(swing.Kind);
+            // The moves in order, each from where the earlier ones left its foot: a pure function of the swing's start and the time
+            // (on the frame-skip clock while the blow's windup snaps).
+            var moves=CyberCombo.Feet(swing.Kind);float clock=Stutter?CyberCombo.Stutter(swing,time):time;int kick=-1;
             for(int m=0;m<moves.Length;m++)
             {
                 var mv=moves[m];float t0=CyberCombo.MoveTime(swing,mv.P0,mv.U0),t1=Math.Max(t0+1e-3f,CyberCombo.MoveTime(swing,mv.P1,mv.U1));
-                if(time<t0)continue;float u=MeleeMath.Clamp((time-t0)/(t1-t0),0,1);
+                if(mv.Type==CyberCombo.KickMove&&swing.Kind<CyberCombo.Kinds)kick=mv.Foot;
+                if(clock<t0)continue;float u=MeleeMath.Clamp((clock-t0)/(t1-t0),0,1);
                 for(int i=0;i<2;i++)
                 {
                     if(mv.Foot!=CyberCombo.BothFeet&&mv.Foot!=i)continue;
                     Stance(i,out float sx,out float sz,out float syaw);var spot=Ball(new Vector3(sx,MeleeRig.FLOOR,sz),syaw,0);var f=now[i];float yaw0=f.Yaw,pitch0=f.Pitch;
                     switch(mv.Type)
                     {
-                        case CyberCombo.StepMove:
+                        case CyberCombo.StepMove:case CyberCombo.KickMove:
                         {
                             float tx=spot.X+mv.X,tz=spot.Y+mv.Z,tyaw=syaw+mv.Yaw;
                             if(Math.Abs(tx-f.X)+Math.Abs(tz-f.Z)<.02f&&Math.Abs(MeleeMath.Wrap(tyaw-f.Yaw))<.05f){f.Pitch=pitch0*(1-MeleeMath.Smooth(u));break;}
@@ -368,8 +499,14 @@ namespace ChipArena.UnityConversion
                         }
                         case CyberCombo.PivotMove:
                         {
-                            // the heel up quickly, held, down by the end; the foot turns on its pinned ball
-                            float heel=mv.Lift*MeleeMath.Smooth(u/.3f)*(1-MeleeMath.Smooth((u-.7f)/.3f));f.Pitch=Math.Max(pitch0*(1-MeleeMath.Smooth(u/.3f)),heel);f.Yaw=yaw0+mv.Yaw*MeleeMath.Ease(u/.6f);break;
+                            // the heel up quickly, held, down by the end; the foot turns on its pinned ball (by Yaw, or with the hips)
+                            float heel=mv.Lift*MeleeMath.Smooth(u/.3f)*(1-MeleeMath.Smooth((u-.7f)/.3f));f.Pitch=Math.Max(pitch0*(1-MeleeMath.Smooth(u/.3f)),heel);
+                            f.Yaw=mv.Follow?yaw0+CyberCombo.HipsTurn(swing,Math.Min(clock,t1),turnScratch)-CyberCombo.HipsTurn(swing,t0,turnScratch):yaw0+mv.Yaw*MeleeMath.Ease(u/.6f);break;
+                        }
+                        case CyberCombo.LiftMove:
+                        {
+                            // raised in place off its toes and set back down where it stood
+                            float a=(float)Math.Sin(Math.PI*u);f.Y=mv.Lift*a;f.Pitch=Math.Max(f.Pitch,.35f*a);break;
                         }
                         default:
                         {
@@ -377,7 +514,7 @@ namespace ChipArena.UnityConversion
                             // drags along the floor), and land on the stance spots: R(turn so far) of the way from where they
                             // stood to the spots taken back by the whole turn, so it starts where they stand and ends on the spots
                             float e=MeleeMath.Ease(u),t0Turn=CyberCombo.Turn(swing,t0,turnScratch),whole=CyberCombo.Turn(swing,t1,turnScratch)-t0Turn;
-                            float sofar=u>=1?whole:(CyberCombo.Turn(swing,time,turnScratch)-t0Turn)*MeleeMath.Smooth(u/.3f);
+                            float sofar=u>=1?whole:(CyberCombo.Turn(swing,clock,turnScratch)-t0Turn)*MeleeMath.Smooth(u/.3f);
                             float bc=(float)Math.Cos(-whole),bs=(float)Math.Sin(-whole),sx2=spot.X*bc+spot.Y*bs,sz2=-spot.X*bs+spot.Y*bc;
                             float x=f.X+(sx2-f.X)*e,z=f.Z+(sz2-f.Z)*e,c=(float)Math.Cos(sofar),s=(float)Math.Sin(sofar);
                             f.X=x*c+z*s;f.Z=-x*s+z*c;f.Yaw=yaw0+MeleeMath.Wrap(syaw-whole-yaw0)*e+sofar;f.Y=mv.Lift*(float)Math.Sin(Math.PI*u);f.Pitch=Math.Max(pitch0*(1-e),.35f*(float)Math.Sin(Math.PI*u));
@@ -389,12 +526,54 @@ namespace ChipArena.UnityConversion
                 }
             }
             Active=true;
+            // A planted foot the hips have left out of the leg's reach (a kick's lean and turn after a step-in) would lift off its
+            // spot: the body sinks just enough (at most MaxSink) for the leg to reach it with the knee still soft.
+            float sink=0;
             for(int i=0;i<2;i++)
             {
-                var f=now[i];var ball=ToGroup(new Vector2(f.X,f.Z),0,r);float yaw=MeleeMath.Wrap(f.Yaw+frameYaw-r.GroupYaw),pitch=f.Pitch;
-                float d=MeleeFootwork.BallAnkleZ(pitch);var ankle=new Vector3(ball.X+(float)Math.Sin(yaw)*d,Math.Max(MeleeRig.FLOOR,MeleeFootwork.BallAnkleY(pitch))+f.Y,ball.Z+(float)Math.Cos(yaw)*d);
-                r.StepFoot(i==0,ankle,yaw,pitch,-Math.Max(0,pitch)*.85f*(f.Y>.005f?.4f:1),weight);
+                if(now[i].Y>.005f||i==kick)continue;Ankle(r,now[i],out var a,out _,out _);var hip=r.HipInGroup(i==0);float h=new Vector2(a.X-hip.X,a.Z-hip.Z).Length();
+                if(h<Reach)sink=Math.Max(sink,hip.Y-a.Y-(float)Math.Sqrt(Reach*Reach-h*h));
             }
+            if(sink>0){var b=r.P[CapturedRig.Body];b.Y-=Math.Min(MaxSink,sink)*weight;r.P[CapturedRig.Body]=b;}
+            for(int i=0;i<2;i++)
+            {
+                Ankle(r,now[i],out var ankle,out float yaw,out float pitch);var f=now[i];
+                r.StepFoot(i==0,ankle,yaw,pitch,-Math.Max(0,pitch)*.85f*(f.Y>.005f?.4f:1),weight);
+                if(i==kick)Strike(r,swing,clock,i==0,weight);
+            }
+        }
+        /// <summary>A planted leg's reach (m, hip to ankle: the knee kept soft) and the most the body sinks to keep it.</summary>
+        public const float Reach=.47f,MaxSink=.1f;
+        /// <summary>How high (m) a striking foot is lifted before the keys carry it across the floor.</summary>
+        public const float Lift=.04f;
+        private static readonly Vector3 BallLocal=new Vector3(0,MeleeFootwork.BallY,MeleeFootwork.BallZ);
+        // A foot's ankle, heading and heel pitch in the rig's group now.
+        private void Ankle(MeleeRig r,in Foot f,out Vector3 ankle,out float yaw,out float pitch)
+        {
+            var ball=ToGroup(new Vector2(f.X,f.Z),0,r);yaw=MeleeMath.Wrap(f.Yaw+frameYaw-r.GroupYaw);pitch=f.Pitch;
+            float d=MeleeFootwork.BallAnkleZ(pitch);ankle=new Vector3(ball.X+(float)Math.Sin(yaw)*d,Math.Max(MeleeRig.FLOOR,MeleeFootwork.BallAnkleY(pitch))+f.Y,ball.Z+(float)Math.Cos(yaw)*d);
+        }
+        /// <summary>
+        /// The striking leg over its footwork: the ankle drawn to the keys' path (CyberCombo.KickAnkle, in the body's frame) by
+        /// their weight KW, the knee turned toward the keys' knee direction and the foot pointed about the ankle (KA, eased off
+        /// near the floor so the toes never dip into it). At weight 0 it is exactly the footwork's leg.
+        /// </summary>
+        private void Strike(MeleeRig r,in CyberCombo.Swing swing,float time,bool left,float weight)
+        {
+            CyberCombo.Sample(swing,time,kickScratch);float w=MeleeMath.Clamp(kickScratch[CyberCombo.KW],0,1)*weight;if(w<=1e-4f)return;
+            KickWeight=w;KickLeg=left?0:1;
+            var now=r.ReadAnkle(left,out var foot,out var knee);var hip=r.HipInGroup(left);var keyed=CyberCombo.KickAnkle(kickScratch);
+            // (across the floor only once lifted: a foot still on it is raised first, so it never drags along it)
+            float y=Math.Max(MeleeRig.FLOOR,MeleeMath.Lerp(now.Y,keyed.Y,w)),ball=Math.Max(now.Y,y)+Vector3.Transform(BallLocal,foot).Y-(MeleeRig.FLOOR+MeleeFootwork.BallY),across=w*MeleeMath.Smooth(ball/Lift);
+            var target=new Vector3(MeleeMath.Lerp(now.X,keyed.X,across),y,MeleeMath.Lerp(now.Z,keyed.Z,across));
+            // the knee's pole swung from where the footwork bends it to the keys' direction (round the hip, never through it)
+            var a=knee-hip;float la=a.Length();var b=CyberCombo.KickKnee(kickScratch);var pole=la>1e-4f?Vector3.Transform(a/la,MeleeMath.Slerp(Quaternion.Identity,MeleeMath.FromTo(a/la,b),w)):b;
+            r.SolveLeg(left,target,0,0,0,foot,hip+pole*.25f);
+            // the foot kept as the footwork set it (flat, rising straight off the floor) until the ankle is clear of the floor, then
+            // pointed along the shin
+            int hipBone=left?CapturedRig.LHip:CapturedRig.RHip;float clear=MeleeMath.Smooth((target.Y-MeleeRig.FLOOR-Lift)/.25f);
+            r.SetQ(hipBone+2,MeleeMath.Slerp(r.Q[hipBone+2],MeleeMath.AxisAngle(MeleeMath.X,kickScratch[CyberCombo.KA]),w*clear));
+            r.SetE(hipBone+3,r.E[hipBone+3].X*(1-w),r.E[hipBone+3].Y,r.E[hipBone+3].Z);
         }
     }
 }
