@@ -161,7 +161,10 @@ All clocks are pure functions of (record, clock, fire time, beat, flash mode) an
   - **Reduced**: soft cosine pulses at most **2 per second**, between 25% and 80%.
   - **Calm**: no flashes; a slow 0.3 Hz glow, and beacons turn slowly at 60% light.
   - Beat-locked lamps flash on every k-th beat, with the smallest k that stays under the cap.
-- **Ward Zero and its Expedition instance** get 30 placements by the `quarantine` look:
+- **Ward Zero and its Expedition instance** get 30 placements by the `quarantine` look. **Silent since 2026-10-15** (owner:
+  the alarms were too loud and the music already carries alarms): the placement has `"silent": true`, so these pieces play
+  no loop, blast or trip sweep and never dip or swell the music. Their lights, timelines and triggers are unchanged.
+  Removing the flag brings the sound back. The DEV gallery keeps its sound.
   - 4 amber **lockdown beacons**, one over each shutter door on the corridor side. Each follows its shutter
     (`siren-shutter-n/s/e/w`) and also fires on lockdown, door-seal and dev-trigger. They stay active 9 s and are
     beat-locked. The north one makes the music react.

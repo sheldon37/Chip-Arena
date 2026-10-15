@@ -28,15 +28,17 @@ namespace ChipArena.UnityConversion
     /// Params: `range` (a turret's reach, an alarm's light), `arc` (degrees: a turret's sweep, a pendulum's swing), `rate`
     /// (a klaxon's blast period, a turret's rounds per second), `radius` (a saw's blade), `speed` (a saw's travel m/s),
     /// `length` (a pendulum's arm). `music`: "free" (default) or "beat" (lock pulses, flashes and turns to the current
-    /// track's beat map when it has one); `react`: the music dips and swells when it trips.
+    /// track's beat map when it has one); `react`: the music dips and swells when it trips. `silent`: the piece makes no sound
+    /// (no loop, blast, trip sweep or music reaction); its lights, timeline and triggers are unchanged.
     /// </summary>
     [Serializable] public sealed class KitRecord
     {
         public string id,kind,variant,look,mount,anchor,music,text;public V3 pos,rot,size,a,b;
-        public float range,arc,rate,radius,speed,length,gain;public bool react;public KitTrigger trigger;public KitSounds sounds;
+        public float range,arc,rate,radius,speed,length,gain;public bool react,silent;public KitTrigger trigger;public KitSounds sounds;
     }
-    /// <summary>Presentation-only kit placements (Resources/HazardKit.json): by map id or by map look (every map with that look).</summary>
-    [Serializable] public sealed class KitPlacement {public string map,look,note;public KitRecord[] kit;}
+    /// <summary>Presentation-only kit placements (Resources/HazardKit.json): by map id or by map look (every map with that look).
+    /// `silent` mutes every piece of the placement (each record reads silent); the lights still run.</summary>
+    [Serializable] public sealed class KitPlacement {public string map,look,note;public bool silent;public KitRecord[] kit;}
     [Serializable] public sealed class KitSet {public int schema;public string note;public KitPlacement[] placements;}
 
     /// <summary>A piece's behaviour state (docs/HAZARD-KIT.md "States"): idle, arming (the warning), active, cooldown, disabled
@@ -126,7 +128,8 @@ namespace ChipArena.UnityConversion
         public static KitRecord[] For(KitSet set,string mapId,string look)
         {
             if(set?.placements==null)return Array.Empty<KitRecord>();var list=new List<KitRecord>();
-            foreach(var p in set.placements)if(p?.kit!=null&&(p.map!=null&&p.map==mapId||p.look!=null&&p.look==look))list.AddRange(p.kit);
+            foreach(var p in set.placements)if(p?.kit!=null&&(p.map!=null&&p.map==mapId||p.look!=null&&p.look==look))
+            {if(p.silent)foreach(var r in p.kit)if(r!=null)r.silent=true;list.AddRange(p.kit);}
             return list.ToArray();
         }
         /// <summary>Validates every placement of a set (schema, unique ids per map, each record).</summary>

@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
             Check(NativeHazardKit.For(set,"factory","factory-first-shift").Length==0&&NativeHazardKit.For(set,"cybercity","neon-rain").Length==0,"other maps place nothing");
             Check(ward.All(r=>NativeHazardKit.Alarm(r.kind)),"the Ward set is alarms only (no turret or saw authority exists yet)");
             Placement(ward,siren,R);
-            Schema();Timelines();Flashes(R);Music(R);Audio(root,R);Lights();Turret();Saws();Gallery();Allocation(ward);Untouched(root,R,maps);Hooks(R);
+            Schema();Timelines();Flashes(R);Music(R);Audio(root,R);Silent(ward,inst);Lights();Turret();Saws();Gallery();Allocation(ward);Untouched(root,R,maps);Hooks(R);
             Console.WriteLine("PASS hazard kit ("+count+" checks: placements schema and validation, Ward Zero and its instance 30 alarms tied to shutters, breaches, waves, the reveal and lockdowns; deterministic timelines; flashes <=3 Hz, <=2 Hz reduced, none calm, free and beat-locked; beat-locked blasts and turns, klaxon fit, trip reaction; 19 keys with fallbacks; light budget; turret and saw timelines; gallery; no per-frame allocation; stage hazards untouched)");
         }
         private static void Placement(KitRecord[] ward,ContentMap siren,Func<string,string> R)
@@ -214,6 +214,35 @@ namespace ChipArena.UnityConversion
             var g=NativeHazardKit.Gallery(new V3(4,0,-2),Math.PI/2);NativeHazardKit.Validate(g);
             Check(NativeHazardKit.Kinds.All(k=>g.Any(r=>r.kind==k))&&NativeHazardKit.SawVariants.All(v=>g.Any(r=>r.variant==v))&&NativeHazardKit.AlarmLooks.All(l=>g.Any(r=>r.look==l))&&NativeHazardKit.Mounts.All(m=>g.Any(r=>r.kind=="turret"&&r.mount==m)),"the gallery shows every kind, look, saw variant and turret mount");
             Check(g.All(r=>r.pos.x>4+3),"the gallery stands ahead of the viewer (facing +x)");Check(g.Any(r=>r.music=="beat"&&r.react),"its music lock has a reacting alarm");
+        }
+        // Owner request (2026-10-15): Ward Zero's alarms make no sound (the music already carries alarms); the placement is
+        // silent. Every piece still fires and lights; the same pieces unsilenced would sound (the control), and the DEV gallery
+        // keeps its sound for auditioning.
+        private static void Silent(KitRecord[] ward,KitRecord[] inst)
+        {
+            Check(ward.All(r=>r.silent)&&inst.All(r=>r.silent),"every Ward Zero and Expedition-instance alarm reads silent (the placement's flag)");
+            (int sound,int trips,int active,float music) Run()
+            {
+                var scene=new NativeKitScene(ward);var plan=new NativeKitSoundPlan();int sound=0,trips=0,active=0;var tripAt=new double[8];int n=0;float music=1;
+                for(int i=0;i<tripAt.Length;i++)tripAt[i]=double.NaN;
+                for(int i=0;i<scene.Records.Length;i++)scene.FireAt(i,1);
+                foreach(var e in new[]{"round-start","wave-start","boss-reveal","lockdown","door-seal","breach"})scene.Fire(e,1.5);
+                for(double t=.5;t<12;t+=1/60.0)
+                {
+                    scene.Step(t,NativeKitFlash.Full,NativeKitBeat.Off,false);
+                    plan.Build(scene,scene.At[0],t-1/60.0,t,0);sound+=plan.CueCount+plan.LoopCount;trips+=plan.TripCount;
+                    for(int j=0;j<plan.TripCount;j++){tripAt[n]=plan.Trips[j];n=(n+1)%tripAt.Length;}
+                    music=Math.Max(music,NativeHazardKitClock.MusicReact(tripAt,tripAt.Length,t,NativeKitFlash.Full));
+                    active=Math.Max(active,scene.Phases.Count(p=>p.State==NativeKitState.Active));
+                }
+                return (sound,trips,active,music);
+            }
+            var muted=Run();
+            Check(muted.sound==0&&muted.trips==0&&muted.music==1,"Ward Zero's alarms play no loop, blast or trip sweep and never move the music ("+muted.sound+" sounds, "+muted.trips+" trips, music x"+muted.music+")");
+            Check(muted.active>=20,"their lights still run: "+muted.active+" of "+ward.Length+" pieces go active");
+            foreach(var r in ward)r.silent=false;var control=Run();foreach(var r in ward)r.silent=true;
+            Check(control.sound>0&&control.trips>0&&control.music>1,"the control: the same pieces unsilenced would sound ("+control.sound+" sounds, "+control.trips+" trips, music x"+control.music.ToString("0.00")+")");
+            Check(NativeHazardKit.Gallery(new V3(0,0,0),0).All(r=>!r.silent),"the DEV gallery keeps its sound");
         }
         private static void Allocation(KitRecord[] ward)
         {

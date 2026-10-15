@@ -8040,3 +8040,22 @@ retry passed (688 PASS groups); Python passed 106 tests with one skipped.
 Local player/Runtime/Editor Unity assembly compilation and packaging passed.
 No runtime integration or playable build is claimed. PR remains unmerged;
 Electron baseline failures remain and native CI status must be checked.
+
+## 2026-10-15 — Claude: Ward Zero alarm sound muted (owner request)
+
+Owner: some Ward Zero sounds were excessively loud, probably the hazards; "not a fan of their sounds right now ... mute the
+alarms/hazards on Ward Zero (we have alarms on the music)". Branch `claude/ward-alarm-mute` from shared `920b9c5`.
+
+- `KitPlacement.silent` and `KitRecord.silent` (Core `NativeHazardKit`): a silent placement marks its records silent;
+  `NativeKitSoundPlan.Build` skips silent pieces, so they make no loop, klaxon blast, trip sweep or saw-hit cue, and
+  never feed the music dip/swell (no trips, so `KitMusicGain` stays 1).
+- `HazardKit.json`: the Ward Zero / Expedition-instance (`quarantine`) placement is `"silent": true`. Lights, flashes,
+  beat-locked turns, timelines and triggers are unchanged. The DEV gallery (built in code) still sounds for auditioning.
+  To bring the sound back, remove the flag.
+- `HazardKitChecks.Silent`: every Ward and instance piece reads silent; firing all 30 and the round's events over 12 s
+  gives 0 sounds, 0 trips and music x1, while 20 or more pieces still go active (lights). The control run unsilences the
+  same pieces and does sound, trip and swell the music. Gallery records stay audible.
+
+Not changed: Ward Zero's own stage sounds (shutters, burners, gas, grids, vents, Hulk breaches) and the music track's
+own level. If something on Ward Zero is still too loud after this, it is one of those; name it and I will look.
+Presentation/audio only: no hit timing, hitbox, damage, cooldown, movement, collision or networking change.
