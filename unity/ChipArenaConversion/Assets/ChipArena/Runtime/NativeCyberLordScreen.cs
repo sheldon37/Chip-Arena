@@ -13,30 +13,16 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         // ---- the cards (Cooldowns: after RMB and SHIFT, in place of the content Q / E cards) ----
+        private readonly NativeCyberLordHud.Card[] cyberCards=new NativeCyberLordHud.Card[NativeCyberLordHud.DrawerCards];private readonly string[] cyberLabels=new string[NativeCyberLordHud.DrawerCards];
+        private CyberLordView cyberFresh;
         private void CyberLordCards(NativePilot p)
         {
-            var v=presentation?.CyberLordViewOf(p.Pose?.Id??0);if(v==null)return;float t=arena.Time;
-            // The ranged mode (Core/CyberLordRanged.cs): Q and E stay, 1-4 swap to the ranged set mid-switch, and the key-5 card
-            // names the live set.
-            bool ranged=NativeCyberLordHud.ShowsRanged(v,t);
-            foreach(int slot in NativeCyberLordHud.Order)
-            {
-                if(ranged&&slot>=CyberLordSpec.One)continue;
-                bool v2=CyberKit2MeleeHud.Replaces(v,slot);var c=v2?CyberKit2MeleeHud.Of(v,slot,t,p.Mana):NativeCyberLordHud.Of(v,slot,t,p.Mana,slot==CyberLordSpec.Four?p.KernelReady:float.NaN);
-                cards.Add(new Card{Key=v2?CyberKit2MeleeHud.Labels[slot]:NativeCyberLordHud.Labels[slot],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});
-            }
-            // Kit v2's ranged set once its record is live (Core/CyberKit2RangedHud.cs).
-            if(ranged&&CyberKit2RangedHud.Shows(v))foreach(int slot in CyberKit2RangedHud.Order)
-            {
-                var c=CyberKit2RangedHud.Of(v,slot,t,p.Mana,p.KernelReady);
-                cards.Add(new Card{Key=CyberKit2RangedHud.Labels[slot],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});
-            }
-            else if(ranged)foreach(int slot in NativeCyberLordHud.RangedOrder)
-            {
-                var c=NativeCyberLordHud.RangedOf(v,slot,t,p.Mana,p.KernelReady);
-                cards.Add(new Card{Key=NativeCyberLordHud.RangedLabels[slot],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});
-            }
-            {var c=NativeCyberLordHud.ModeOf(v,t);cards.Add(new Card{Key=ranged?NativeCyberLordHud.RangedMode:NativeCyberLordHud.MeleeMode,State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=false,Dial=c.Dial});}
+            // Kit v2's cards, the shipped kit, at every point of the match (Core/NativeCyberLordHud.Drawer): the record's windows
+            // and ready times once it is live, READY or LOW MANA before the authority first writes it. Q and E stay; in the
+            // ranged mode (Core/CyberLordRanged.cs) 1-4 swap to the ranged set mid-switch, and the key-5 card names the live set.
+            var v=presentation?.CyberLordViewOf(p.Pose?.Id??0)??(cyberFresh??=NativeCyberLordHud.Fresh());
+            int n=NativeCyberLordHud.Drawer(v,arena.Time,p.Mana,p.KernelReady,cyberCards,cyberLabels);
+            for(int i=0;i<n;i++){var c=cyberCards[i];cards.Add(new Card{Key=cyberLabels[i],State=c.State,Icon=c.Icon,Ready=c.Ready,Active=c.Active,Low=c.Low,Dial=c.Dial});}
         }
 
         // ---- Kernel Panic's skill cut-in (participants, full screen) and banner (everyone else) ----

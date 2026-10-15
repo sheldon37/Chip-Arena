@@ -144,8 +144,12 @@ internal static class LockerChecks
         {
             var w=data.Weapon(a.spec);int n=NativeLocker.SlotOptions(data,w,a.slot,options);var expected=data.abilities.Where(x=>x.spec==a.spec&&x.slot==a.slot).ToArray();
             Check(n==expected.Length&&options.Select(o=>o.Id).SequenceEqual(expected.Select(x=>x.id)),a.spec+" "+a.slot+" options from content");
-            var o0=options.First(o=>o.Id==a.id);Check(o0.Name==a.name&&o0.Text==a.text&&o0.Cooldown==a.cooldown&&o0.Cost==a.cost&&!o0.FromWeapon,a.spec+" "+a.slot+" option fields");
-            Check(o0.Meta==(a.kind=="ads"?"Hold":a.cooldown>0?a.cooldown.ToString("0.#",inv)+" s cooldown":"No cooldown")+" · "+(a.cost>0?a.cost.ToString("0.#",inv)+(w.@class=="melee"&&w.id!="cyberlord"?" stamina":" mana"):"no cost"),a.spec+" "+a.slot+" meta "+o0.Meta);
+            var o0=options.First(o=>o.Id==a.id);
+            // The DEV Cyber Lord's Q, E and 1-3 show Kit v2 (the shipped kit) over its content's v1 strings; the id stays.
+            int k2=NativeCyberLordText.Slot(w,a);double cooldown=k2>=0?CyberKit2Spec.Cooldowns[k2]:a.cooldown,cost=k2>=0?CyberKit2Spec.Costs[k2]:a.cost;
+            if(k2>=0)Check(o0.Name==CyberKit2Spec.Names[k2]&&o0.Text==NativeCyberLordText.Texts[k2]&&o0.Icon==CyberKit2Spec.Icons[k2]&&o0.Cooldown==cooldown&&o0.Cost==cost&&!o0.FromWeapon,a.spec+" "+a.slot+" option fields (Kit v2)");
+            else Check(o0.Name==a.name&&o0.Text==a.text&&o0.Cooldown==a.cooldown&&o0.Cost==a.cost&&!o0.FromWeapon,a.spec+" "+a.slot+" option fields");
+            Check(o0.Meta==(a.kind=="ads"&&k2<0?"Hold":cooldown>0?cooldown.ToString("0.#",inv)+" s cooldown":"No cooldown")+" · "+(cost>0?cost.ToString("0.#",inv)+(w.@class=="melee"&&w.id!="cyberlord"?" stamina":" mana"):"no cost"),a.spec+" "+a.slot+" meta "+o0.Meta);
             Check((icons.Contains(o0.Icon)||art.Contains(o0.Icon))&&o0.Icon!="sparkles",a.spec+" "+a.slot+" icon "+o0.Icon);
         }
         {

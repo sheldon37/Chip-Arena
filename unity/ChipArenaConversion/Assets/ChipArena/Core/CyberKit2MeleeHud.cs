@@ -3,8 +3,9 @@ using System;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// Kit v2's Q, E and 1-3 cards on the cyber card drawer (in place of v1's while the v2 record is live; Kernel Panic's 4 card
-    /// and the ranged set's are unchanged): Uplink, Overclock, Fork Bomb, Glitch Cut and Meteor Byte with their art icons
+    /// Kit v2's Q, E and 1-3 cards on the cyber card drawer (always: v2 is the shipped kit, NativeCyberLordHud.Drawer; with no
+    /// record yet they read the view's empty one, READY or LOW MANA; Kernel Panic's 4 card is unchanged): Uplink, Overclock,
+    /// Fork Bomb, Glitch Cut and Meteor Byte with their art icons
     /// (ClassIcons.json, tools/export_class_icons.mjs), ACTIVE through what the ability keeps doing after its cast (the cable
     /// and the zip, the 6 s power state, the clones' 5 s, the dash to the marks' detonation, the leap to the landing), the
     /// cooldown from the record's ready time (Overclock's own recovery is the rules' business: the record carries it), LOW
@@ -19,7 +20,7 @@ namespace ChipArena.UnityConversion
         private static string[] Build(){var l=new string[CyberLordSpec.Four];for(int i=0;i<l.Length;i++){int s=Kit2Slot(i);l[i]=CyberKit2Spec.Keys[s]+" · "+CyberKit2Spec.Names[s].ToUpperInvariant();}return l;}
         /// <summary>The icon of a v2 ability id (CyberKit2Spec.Ids), null for any other.</summary>
         public static string Icon(string id){int s=CyberKit2Spec.Slot(id);return s<0?null:CyberKit2Spec.Icons[s];}
-        /// <summary>Whether the v2 card replaces v1's card in `v1Slot` for this view.</summary>
+        /// <summary>Whether the v2 record drives the card in `v1Slot` for this view (the drawer shows the v2 card either way).</summary>
         public static bool Replaces(CyberLordView v,int v1Slot)=>v.Kit2.Live&&v1Slot>=CyberLordSpec.Q&&v1Slot<CyberLordSpec.Four;
         /// <summary>Whether the ability keeps going at `time` past its cast (the card shows ACTIVE).</summary>
         public static bool Busy(CyberKit2MeleeView k,int s,float time)

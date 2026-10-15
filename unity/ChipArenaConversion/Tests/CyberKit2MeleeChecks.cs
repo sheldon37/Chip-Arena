@@ -349,7 +349,7 @@ internal static class CyberKit2MeleeChecks
             Check(pres.Contains("g.Kind==CyberGhost.Fork&&pose<cyberGhostPoses.Length&&CyberForkGhost(g,s,pilot,cyberGhostPoses[pose],time)")&&mine.Contains("NativeCyberLordFx.ForkActor(clone,caster,g)"),"the fork clones pose on rigs of their own");
             Check(pres.Contains("cyberFx.FlareOf(a.Id,time,v)")&&!pres.Contains("cyberFx.FlareOf(a.Id,time)"),"the look and the aura read the Overclock's white heat");
             Check(pres.Contains("CyberKit2Cues(id,pos,mine,t);")&&pres.Contains("if(hit==CyberHit.None){CyberKit2Event(e,pos,targetMe,mine);return;}"),"the v2 state and event cues");
-            Check(screen.Contains("CyberKit2MeleeHud.Replaces(v,slot)")&&screen.Contains("CyberKit2Screen();"),"the v2 cards and the screen overlays");
+            Check(screen.Contains("NativeCyberLordHud.Drawer(v,arena.Time,p.Mana,p.KernelReady,cyberCards,cyberLabels)")&&screen.Contains("CyberKit2Screen();"),"the v2 cards and the screen overlays");
             Check(arena.Contains("CyberKit2Unshift(a.Id,ref old)")&&arena.Contains("p=SpawnPlace(a,p,renderTime);p=CyberKit2Place(a,p);"),"the preview's drawn-body shift goes on after the smoothing and off before it");
             Check(sandbox.Contains("\"gallery-cyber-kit2-melee\"")&&sandbox.Contains("presentation.CyberKit2MeleePreviewOn=!presentation.CyberKit2MeleePreviewOn")&&NativeDevActions.Find("gallery-cyber-kit2-melee")!=null,"the Dev Sandbox gallery toggles the preview");
             Check(mine.Contains("if(!CyberKit2MeleePreviewOn||me==null)")&&mine.Contains("CyberLordFeed.Kit2MeleeSource=null"),"the preview is off unless toggled and hands the source back");

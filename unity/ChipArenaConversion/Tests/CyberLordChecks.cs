@@ -545,7 +545,7 @@ internal static class CyberLordChecks
         {
             string fight=File.ReadAllText(Path.Combine(runtime,"NativeFightHud.cs")),combat=File.ReadAllText(Path.Combine(runtime,"NativeCombatHud.cs")),screen=File.ReadAllText(Path.Combine(runtime,"NativeCyberLordScreen.cs")),pres=File.ReadAllText(Path.Combine(runtime,"NativeCyberLordPresentation.cs"));
             Check(fight.Contains("if(CyberLordFeed.Handles(p.Seat.spec))CyberLordCards(p);")&&combat.Contains("CyberLordFeed.Handles(p.Seat.spec)"),"the HUD cards and mana rows only for a Cyber Lord pilot");
-            Check(screen.Contains("var v=presentation?.CyberLordViewOf(p.Pose?.Id??0);if(v==null)return;")&&pres.Contains("if(!CyberLordFeed.Handles(a))continue;"),"the views (cards, cut-in, banner) exist only for Cyber Lord pilots");
+            Check(screen.Contains("var v=presentation?.CyberLordViewOf(p.Pose?.Id??0)??(cyberFresh??=NativeCyberLordHud.Fresh());")&&pres.Contains("if(!CyberLordFeed.Handles(a))continue;"),"the views (cut-in, banner) exist only for Cyber Lord pilots; the cards only for a Cyber Lord seat (a fresh view until the presentation has its own)");
             Check(Regex.Matches(screen,@"KernelPanicCutInView\(").Count>=2&&screen.Contains("if(v==null||KernelPanicCutIn.Splashes(v,arena.LocalId))return;"),"the cut-in and banner only for a live Kernel Panic");
             Check(File.ReadAllText(Path.Combine(runtime,"NativeProfileUI.cs")).Contains("{\"dev-cyberlord\",\"DEV · Hardlight Boot\"}"),"the Locker lists it with the DEV label (gated by NativeCosmeticGate)");
         }
