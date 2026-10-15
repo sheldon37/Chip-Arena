@@ -22,8 +22,13 @@ internal static class ChipSelectChecks
         yield return Gestures();
         foreach(var line in Poses(specs))yield return line;
         yield return FirstPerson(specs);
+        yield return TrayView(specs);
         yield return Hologram();
         yield return Tag();
+        foreach(var line in Plants(specs))yield return line;
+        yield return PlantView();
+        yield return PlantHologram();
+        yield return Flinch();
     }
 
     // ---- the replicated state's mapping ----
@@ -139,7 +144,7 @@ internal static class ChipSelectChecks
     private static float Angle(Quaternion a,Quaternion b){float d=Math.Abs(Quaternion.Dot(Quaternion.Normalize(a),Quaternion.Normalize(b)));return 2*(float)Math.Acos(Math.Min(1,d));}
     private static IEnumerable<string> Poses(string[] specs)
     {
-        float fastest=0,worstWrist=0,worstFloor=99,worstTap=0,worstSlide=0,minPitch=99,maxPitch=0;long allocated=0;string fastestAt="";int frames=0,presses=0,slides=0;
+        float fastest=0,worstWrist=0,worstFloor=99,worstTap=0,worstSlide=0,minPitch=99,maxPitch=0,spin=0;long allocated=0;string fastestAt="",spinAt="";int frames=0,presses=0,slides=0;
         var layer=new NativeChipSelectPose();var shown=new CapturedRig.Pose();
         foreach(var spec in specs)foreach(int hz in new[]{30,60,144,240})
         {
@@ -147,7 +152,7 @@ internal static class ChipSelectChecks
             int hand=left?CapturedRig.LHand:CapturedRig.RHand,other=left?CapturedRig.RHand:CapturedRig.LHand;var design=NativeWeaponModels.Get(spec);
             // Grip kept: the display never takes the weapon's own hand (a pair rides both: the dagger and gauntlet stay in it).
             if(design!=null&&!design.Dual)Check(design.Bone!=hand,spec+": the display wrist is the weapon's hand");
-            var prev=new Vector3[CapturedRig.Bones.Length];bool first=true;
+            var prev=new Vector3[CapturedRig.Bones.Length];var turned=new Quaternion[2];bool first=true;
             for(int f=0;f<=(int)(8.6f*hz);f++)
             {
                 float t=f*dt;bool sel=t>=1&&t<8;float w=track.Step(sel,sel?7:0,t);pilot.Base(t);Copy(pilot.Pose,shown);
@@ -165,7 +170,10 @@ internal static class ChipSelectChecks
                 // Pops: the layer's own offset from the route's pose never jumps between frames (the route may: the Cyber Lord's glitch).
                 if(!first)foreach(int k in new[]{CapturedRig.LHand,CapturedRig.RHand,CapturedRig.Head})
                 {float v=((shown.WorldPosition[k]-b.WorldPosition[k])-prev[k]).Length()/dt;if(v>fastest){fastest=v;fastestAt=spec+" "+hz+" Hz t "+t.ToString("0.000")+" "+CapturedRig.Bones[k].Name;}}
-                for(int k=0;k<CapturedRig.Bones.Length;k++)prev[k]=shown.WorldPosition[k]-b.WorldPosition[k];first=false;
+                for(int k=0;k<CapturedRig.Bones.Length;k++)prev[k]=shown.WorldPosition[k]-b.WorldPosition[k];
+                // Spins: the layer's turn of each hand off the route's never flips round between frames (the Cyber Lord's route glitches).
+                for(int h=0;h<2;h++){int k=h==0?CapturedRig.LHand:CapturedRig.RHand;var rel=Quaternion.Inverse(b.WorldRotation[k])*shown.WorldRotation[k];if(!first&&spec!=CyberLordSpec.Id){float v=Angle(rel,turned[h])/D2R/dt;if(v>spin){spin=v;spinAt=spec+" "+hz+" Hz t "+t.ToString("0.000")+" "+CapturedRig.Bones[k].Name;}}turned[h]=rel;}
+                first=false;
                 // Hands and lowered weapons above the floor (the rig root is .865 m up).
                 foreach(int k in new[]{CapturedRig.LHand,CapturedRig.RHand})worstFloor=Math.Min(worstFloor,shown.WorldPosition[k].Y+.865f);
                 if(w>=.999f)
@@ -192,10 +200,11 @@ internal static class ChipSelectChecks
             }
         }
         Check(fastest<7f,"the layer moves a hand or the head "+fastest.ToString("0.00")+" m/s off the route between frames (a pop) at "+fastestAt);
+        Check(spin<2000,"the layer turns a hand "+spin.ToString("0")+" deg/s off the route between frames (a flip) at "+spinAt);
         Check(worstWrist<.03f,"the display wrist misses its place by "+worstWrist+" m");Check(worstFloor>.06f,"a hand or a lowered weapon reaches "+worstFloor+" m (the floor)");
         Check(presses>0&&worstTap<1.6f,"a press misses the panel or its card ("+worstTap+" cm / tenths, "+presses+" presses)");Check(slides>0&&worstSlide<2.2f,"a swipe leaves the panel ("+worstSlide+" cm)");
         Check(minPitch>.25f&&maxPitch<.95f,"the head looks down "+minPitch+".."+maxPitch+" rad");Check(allocated==0,"the layer allocated "+allocated+" bytes");
-        yield return "Pose over the Core route of all "+specs.Length+" classes at 30/60/144/240 Hz ("+frames+" frames): legs, pelvis and body untouched (feet planted), the route's pose exactly when closed, the layer moves a hand or the head at most "+fastest.ToString("0.00")+" m/s off the route (no pops), the display wrist within "+(worstWrist*100).ToString("0.0")+" cm of its place, the head down "+(minPitch/D2R).ToString("0")+"-"+(maxPitch/D2R).ToString("0")+" deg, 0 bytes per frame";
+        yield return "Pose over the Core route of all "+specs.Length+" classes at 30/60/144/240 Hz ("+frames+" frames): legs, pelvis and body untouched (feet planted), the route's pose exactly when closed, the layer moves a hand or the head at most "+fastest.ToString("0.00")+" m/s off the route (no pops), a hand turns at most "+spin.ToString("0")+" deg/s off it (no flips), the display wrist within "+(worstWrist*100).ToString("0.0")+" cm of its place, the head down "+(minPitch/D2R).ToString("0")+"-"+(maxPitch/D2R).ToString("0")+" deg, 0 bytes per frame";
         yield return "Grip kept: the display never takes the weapon's hand, the staff and bow hands keep their idle hold exactly, a swiping pistol or dagger points down, hands and lowered tips stay "+(worstFloor*100).ToString("0")+" cm or more off the floor; "+presses+" presses land within "+worstTap.ToString("0.0")+" (cm / tenths of a card) and "+slides+" swipe frames within "+worstSlide.ToString("0.0")+" cm of the panel";
     }
 
@@ -231,6 +240,35 @@ internal static class ChipSelectChecks
         }
         Check(worst<.06f,"the view's display wrist misses its place by "+worst+" m ("+worstAt+")");
         return "First person on every view base ("+n+" classes): the display wrist within "+(worst*100).ToString("0.0")+" cm of its place low in view (left, right for a right display; as far as the arm reaches), the panel low in view facing the camera, at most "+(2*Math.Atan(widest/2)/D2R).ToString("0")+" deg wide, a weapon hand down out of view, an armed hand never reaching into it";
+    }
+
+    // ---- first person beside an Expedition chip tray: the wrist out from under the cards ----
+    private static string TrayView(string[] specs)
+    {
+        float worst=0,minInner=99,tanV=(float)Math.Tan(NativeViewRules.FirstFov*.5f*D2R),tanH=tanV*16f/9f;string worstAt="";int n=0;var layer=new NativeChipSelectPose();
+        // The tray's band: at most 52% of the width (its left edge 24% in from the left at 16:9), from 63% of the height down.
+        float bandEdge=.48f*tanH,bandTop=-.26f*tanV;
+        foreach(var spec in specs)
+        {
+            if(!NativeChipSelectPose.Beside(spec)){Check(NativeChipSelectPose.TrayWrist(spec,tanH,tanV)==NativeChipSelectPose.ViewWrist(spec),spec+": keeps its place under the tray");continue;}
+            var pilot=new Pilot(spec);var p=pilot.Pose;var a=pilot.A;int set=Math.Clamp(a.VisualSet,0,3);var idle=CapturedClips.Sets[set].First(c=>c.StateName=="idle");var row=new float[CapturedClip.Channels];
+            idle.Sample(CapturedClip.Wrap(2,idle.Duration),row);CapturedRig.Sample(row,set,p);bool bow=spec=="bow",gun=GunRules.Ranged(a.Weapon)&&!bow,magic=MagicPose.School(a)>0;
+            if(spec==CyberLordSpec.Id)new CyberLordMotion().FirstPerson(p,a,2);
+            else{if(gun)RangedPose.Apply(p,a,2,1);if(bow)NativeBowPose.View(p,a,2);if(magic)MagicPose.Apply(p,a,2,true,new float[13],0);NativeFirstPersonPose.SettleTorso(p);}
+            p.World();
+            var offset=bow?NativeBowPose.ViewOffset:gun?NativeViewBase.Gun:magic?NativeFirstPersonPose.MagicViewOffset(0):NativeViewBase.IsFighter(spec)?NativeViewBase.Fighter:NativeViewBase.Melee;float scale=bow?NativeBowPose.ViewScale:NativeFirstPersonPose.Scale;
+            Vector3 Local(Vector3 cam){var l=(cam-offset)/scale;return new Vector3(-l.X,l.Y,l.Z);}Vector3 Cam(Vector3 rig)=>new Vector3(-rig.X,rig.Y,rig.Z)*scale+offset;
+            var goal=NativeChipSelectPose.TrayWrist(spec,tanH,tanV);
+            layer.Apply(p,new ChipSelectInput{Weight=1,Clock=1.5f,Time=2,Reach=1,Spec=spec,Seed=3,Cards=3,FirstPerson=true,ViewWrist=Local(goal),ViewEye=Local(Vector3.Zero)});p.World();
+            int hand=NativeChipSelect.DisplayLeft(spec)?CapturedRig.LHand:CapturedRig.RHand;var wrist=Cam(p.WorldPosition[hand]);var shoulder=Cam(p.WorldPosition[hand-2]);float reach=.515f*scale;
+            float miss=(goal-shoulder).Length()<=reach?(wrist-goal).Length():Math.Abs((wrist-shoulder).Length()-reach)+Vector3.Distance(Vector3.Normalize(wrist-shoulder),Vector3.Normalize(goal-shoulder))*.1f;if(miss>worst){worst=miss;worstAt=spec;}
+            var panel=Cam(layer.PanelCentre);float side=NativeChipSelect.DisplayLeft(spec)?1:-1,half=NativeChipSelectPose.ViewWidth*layer.PanelScale*scale*.5f;
+            float inner=-side*(panel.X+side*half)/panel.Z;minInner=Math.Min(minInner,inner/bandEdge);
+            Check(panel.Z>.12f&&inner>bandEdge*.8f&&Math.Abs(panel.X)/panel.Z<tanH,spec+": beside the tray, the view's panel is (mostly) clear of the cards' band and its centre on screen ("+panel+")");
+            Check(panel.Y/panel.Z<tanV*.5f&&panel.Y/panel.Z>-tanV,spec+": the panel sits in the lower half beside the tray ("+panel+")");n++;
+        }
+        Check(worst<.06f,"beside the tray the view's display wrist misses its place by "+worst+" m ("+worstAt+")");
+        return "First person beside an Expedition chip tray ("+n+" classes, 75 deg at 16:9; the greatsword and the bow keep their place under it): the display wrist within "+(worst*100).ToString("0.0")+" cm of its place left of the cards' band (right for a right display), its panel's inner edge at least "+(minInner*100).ToString("0")+"% of the way out to the band's edge, its centre on screen";
     }
 
     // ---- the hologram ----
@@ -269,6 +307,131 @@ internal static class ChipSelectChecks
         long bytes=GC.GetAllocatedBytesForCurrentThread()-before;Check(bytes==0,"the hologram build allocated "+bytes+" bytes");
         Check(crowd<=4*most*4,"four pilots' quads ("+crowd+" vertices, at most "+4*most*4+")");
         return "Hologram: Full "+full+" quads (panel, header, three rarity cards, cone, edges, ring, "+NativeChipSelectHolo.Motes+" motes), Reduced "+reduced+" (still: no motes, flicker or scan travel), Low "+lowQ+" (panel and cards); red at 6 Hz under attack (steady with Reduced effects), folded until the wrist is up, re-dealt for a queued pick; four pilots at most "+crowd+" vertices in one mesh, 0 bytes";
+    }
+
+    // ---- the Expedition wrist plant (Core/NativeChipPlant.cs) over every class's route ----
+    private static IEnumerable<string> Plants(string[] specs)
+    {
+        float fastest=0,worstPress=0,worstSeat=0,worstHandoff=0,worstFloor=99,spin=0;string fastestAt="",spinAt="";int presses=0,seats=0,handoffs=0,frames=0,hands=0,wrists=0;long allocated=0;
+        var sel=new NativeChipSelectPose();var plant=new NativeChipPlantPose();var shown=new CapturedRig.Pose();
+        foreach(var spec in specs)foreach(int hz in new[]{30,60,144,240})foreach(bool stay in new[]{false,true})
+        {
+            if(stay&&hz!=60&&hz!=240)continue;
+            var pilot=new Pilot(spec);var track=new NativeChipSelectTrack();float dt=1f/hz,pickAt=2.4f,end=pickAt+NativeChipPlant.Span+.4f;int seed=NativeChipSelect.Seed(4,9);var carry=NativeChipSelect.Carry(spec);
+            bool hand=NativeChipPlant.Hand(carry,false),armed=NativeChipSelect.Hands(carry)==ChipSelectHands.Swipes;int other=NativeChipSelect.DisplayLeft(spec)?CapturedRig.RHand:CapturedRig.LHand;if(hz==60&&!stay){if(hand)hands++;else wrists++;}
+            var prev=new Vector3[CapturedRig.Bones.Length];var turned=new Quaternion[2];bool first=true,dropped=false,began=false;Vector3 lastChip=default;bool hadChip=false;
+            for(int f=0;f<=(int)(end*hz);f++)
+            {
+                float t=f*dt,age=t-pickAt;bool planting=NativeChipPlant.Active(age),selecting=t>=1&&(age<0||stay);
+                // As the presentation runs it: the look held up through the plant, dropped where a plant that did not stay ends.
+                if(!planting&&age>=NativeChipPlant.Span&&!stay&&!dropped){track.Reset();dropped=true;}
+                float w=track.Step(selecting||planting,7,t),look=planting?NativeChipPlant.Weight(w,age,stay):w;
+                pilot.Base(t);Copy(pilot.Pose,shown);var b=pilot.Pose;
+                long before=GC.GetAllocatedBytesForCurrentThread();
+                var input=new ChipSelectInput{Weight=look,Clock=t-.3f,Time=t,Reach=1,Spec=spec,Seed=seed,Cards=3,Hush=planting?NativeChipPlant.Hush(age):0};sel.Apply(shown,input);
+                if(planting&&!began){plant.Reset();began=true;}
+                if(planting)plant.Apply(shown,new ChipPlantInput{Age=age,Weight=look,Chosen=1,Cards=3,Stay=stay},sel,input);
+                if(frames>200)allocated+=GC.GetAllocatedBytesForCurrentThread()-before;frames++;
+                shown.World();
+                for(int k=0;k<CapturedRig.Bones.Length;k++)
+                {
+                    Check(MathUtil.Finite(shown.WorldPosition[k].X)&&MathUtil.Finite(shown.WorldPosition[k].Y)&&MathUtil.Finite(shown.WorldPosition[k].Z)&&MathUtil.Finite(shown.Rotation[k].W),spec+" "+hz+" Hz: a finite plant pose");
+                    if(!NativeChipSelectPose.Writes(k))Check(shown.Rotation[k]==b.Rotation[k]&&shown.Position[k]==b.Position[k],spec+": the plant writes "+CapturedRig.Bones[k].Name);
+                    if(dropped)Check(shown.Rotation[k]==b.Rotation[k],spec+": after the plant, the route's pose exactly ("+CapturedRig.Bones[k].Name+")");
+                }
+                if(!first)foreach(int k in new[]{CapturedRig.LHand,CapturedRig.RHand,CapturedRig.Head})
+                {float v=((shown.WorldPosition[k]-b.WorldPosition[k])-prev[k]).Length()/dt;if(v>fastest){fastest=v;fastestAt=spec+" "+hz+" Hz "+(stay?"stay":"down")+" age "+age.ToString("0.000")+" "+CapturedRig.Bones[k].Name;}}
+                for(int k=0;k<CapturedRig.Bones.Length;k++)prev[k]=shown.WorldPosition[k]-b.WorldPosition[k];
+                for(int h=0;h<2;h++){int k=h==0?CapturedRig.LHand:CapturedRig.RHand;var rel=Quaternion.Inverse(b.WorldRotation[k])*shown.WorldRotation[k];if(!first&&spec!=CyberLordSpec.Id){float v=Angle(rel,turned[h])/D2R/dt;if(v>spin){spin=v;spinAt=spec+" "+hz+" Hz "+(stay?"stay":"down")+" age "+age.ToString("0.000")+" "+CapturedRig.Bones[k].Name;}}turned[h]=rel;}
+                first=false;
+                foreach(int k in new[]{CapturedRig.LHand,CapturedRig.RHand})worstFloor=Math.Min(worstFloor,shown.WorldPosition[k].Y+.865f);
+                if(!planting){hadChip=false;continue;}
+                // The chip: shown from the pick until it is pressed in, never jumping (the card's hand-off to the fingers or the cone; the
+                // Cyber Lord's route itself glitches, frame-skipping the arms the chip rides, so its own speed is not checked there).
+                if(age<NativeDraftPlant.CarryEnd)Check(plant.ChipShown,spec+": the chip shows until it seats");if(age>=NativeDraftPlant.PlantEnd)Check(!plant.ChipShown,spec+": the chip is gone into the cuff");
+                if(plant.ChipShown){if(hadChip){float jump=(plant.Chip-lastChip).Length();if(age>=NativeDraftPlant.Contact&&age-dt<NativeDraftPlant.Contact){handoffs++;worstHandoff=Math.Max(worstHandoff,jump);}else if(spec!=CyberLordSpec.Id)Check(jump/dt<4f,spec+" "+hz+" Hz: the chip moves "+(jump/dt).ToString("0.0")+" m/s at age "+age.ToString("0.00"));}lastChip=plant.Chip;hadChip=true;}
+                // Seated: the chip on the cuff.
+                if(age>=NativeDraftPlant.CarryEnd&&plant.ChipShown){seats++;worstSeat=Math.Max(worstSeat,(plant.Chip-plant.Cuff).Length());}
+                // Pressed: the fingertip on the back of the wrist (a pistol or dagger kept pointing down).
+                if(hand&&age>=NativeDraftPlant.PlantEnd&&age<NativeDraftPlant.ReturnStart)
+                {
+                    var q=shown.WorldRotation[other];var tip=shown.WorldPosition[other]+Vector3.Transform(NativeChipSelectPose.TipLocal,q);var press=plant.Cuff+plant.CuffNormal*(.004f-NativeChipPlant.Press);
+                    presses++;worstPress=Math.Max(worstPress,(tip-press).Length());if(armed)Check(Vector3.Transform(Vector3.UnitZ,q).Y<-.1f,spec+": the pressing hand keeps its "+carry+" pointing down");
+                }
+                Check(plant.Fold>=0&&plant.Fold<=1&&plant.Fade>=0&&plant.Fade<=1&&(plant.Pulse<0||plant.Pulse<1),spec+": the plant's hologram ranges");
+                if(age>=NativeChipPlant.FoldTo&&age<NativeDraftPlant.ReturnStart)Check(plant.Fold<=1e-4f,spec+": the panel folds as the card leaves it");
+            }
+        }
+        Check(fastest<7f,"the plant moves a hand or the head "+fastest.ToString("0.00")+" m/s off the route between frames (a pop) at "+fastestAt);
+        Check(spin<2000,"the plant turns a hand "+spin.ToString("0")+" deg/s off the route between frames (a flip) at "+spinAt);
+        Check(presses>0&&worstPress<.03f,"a press misses the cuff by "+(worstPress*100).ToString("0.0")+" cm ("+presses+" frames)");Check(seats>0&&worstSeat<.015f,"a seated chip sits "+(worstSeat*100).ToString("0.0")+" cm off the cuff");
+        Check(handoffs>0&&worstHandoff<.04f,"the card's hand-off jumps "+(worstHandoff*100).ToString("0.0")+" cm");Check(worstFloor>.06f,"a hand reaches "+worstFloor+" m (the floor)");Check(allocated==0,"the plant allocated "+allocated+" bytes");
+        yield return "Wrist plant over the Core route of all "+specs.Length+" classes ("+hands+" carry the chip by hand, "+wrists+" seat it on the display wrist) at 30/60/144/240 Hz and with a queued pick ("+frames+" frames): arms only (legs, pelvis, body, spine and head untouched by it), at most "+fastest.ToString("0.00")+" m/s off the route between frames (no pops) and turning a hand at most "+spin.ToString("0")+" deg/s (no flips), the card handed off within "+(worstHandoff*100).ToString("0.0")+" cm, the press within "+(worstPress*100).ToString("0.0")+" cm of the cuff (an armed hand pointing its weapon down), the chip seated within "+(worstSeat*100).ToString("0.0")+" cm and gone by NativeDraftPlant.PlantEnd, the route's pose exactly after a final plant, 0 bytes per frame";
+    }
+    // First person: the view model's plant (an empty hand presses; an armed or long weapon's display wrist seats it) stays in view.
+    private static string PlantView()
+    {
+        int n=0;float worst=0;var sel=new NativeChipSelectPose();var plant=new NativeChipPlantPose();
+        foreach(var spec in new[]{"emperor","pistol","rifle","sword","fire"})
+        {
+            var pilot=new Pilot(spec);var p=pilot.Pose;var a=pilot.A;int set=Math.Clamp(a.VisualSet,0,3);var idle=CapturedClips.Sets[set].First(c=>c.StateName=="idle");var row=new float[CapturedClip.Channels];
+            bool bow=spec=="bow",gun=GunRules.Ranged(a.Weapon)&&!bow,magic=MagicPose.School(a)>0;var offset=gun?NativeViewBase.Gun:magic?NativeFirstPersonPose.MagicViewOffset(0):NativeViewBase.IsFighter(spec)?NativeViewBase.Fighter:NativeViewBase.Melee;float scale=NativeFirstPersonPose.Scale;
+            Vector3 Local(Vector3 cam){var l=(cam-offset)/scale;return new Vector3(-l.X,l.Y,l.Z);}Vector3 Cam(Vector3 rig)=>new Vector3(-rig.X,rig.Y,rig.Z)*scale+offset;
+            for(float age=0;age<NativeChipPlant.Span;age+=1/60f)
+            {
+                idle.Sample(CapturedClip.Wrap(2+age,idle.Duration),row);CapturedRig.Sample(row,set,p);if(gun)RangedPose.Apply(p,a,2+age,1);if(magic)MagicPose.Apply(p,a,2+age,true,new float[13],0);NativeFirstPersonPose.SettleTorso(p);p.World();
+                var input=new ChipSelectInput{Weight=NativeChipPlant.Weight(1,age,false),Clock=1.5f+age,Time=2+age,Reach=1,Spec=spec,Seed=3,Cards=3,FirstPerson=true,ViewWrist=Local(NativeChipSelectPose.ViewWrist(spec)),ViewEye=Local(Vector3.Zero),Hush=NativeChipPlant.Hush(age)};
+                sel.Apply(p,input);plant.Apply(p,new ChipPlantInput{Age=age,Weight=input.Weight,Chosen=0,Cards=3,FirstPerson=true},sel,input);p.World();
+                for(int k=0;k<CapturedRig.Bones.Length;k++)Check(MathUtil.Finite(p.WorldPosition[k].X)&&MathUtil.Finite(p.Rotation[k].W),spec+": a finite view plant");
+                if(plant.ChipShown){var c=Cam(plant.Chip);Check(c.Z>.1f&&Math.Abs(c.X/c.Z)<.9f&&c.Y/c.Z>-.85f&&c.Y/c.Z<.2f,spec+": the chip stays in view ("+c+" at "+age.ToString("0.00")+")");}
+                if(age>=NativeDraftPlant.CarryEnd&&plant.ChipShown)worst=Math.Max(worst,(plant.Chip-plant.Cuff).Length()*scale);
+                n++;
+            }
+            Check(!plant.Hand,spec+": first person the display wrist seats the chip (no hand crosses the view)");
+        }
+        Check(worst<.015f,"the view's chip seats "+(worst*100).ToString("0.0")+" cm off the cuff");
+        return "First-person plant ("+n+" frames over five view bases: gauntlets, pistol, rifle, sword, staff): the display wrist seats it (no hand crosses the view), the chip in view throughout and seated within "+(worst*100).ToString("0.0")+" cm";
+    }
+    private static string PlantHologram()
+    {
+        var s=new Sink();var frame=new ChipHoloFrame{Emitter=new Vector3(0,1,0),Centre=new Vector3(0,1.1f,0),Right=Vector3.UnitX,Up=Vector3.UnitY,Normal=-Vector3.UnitZ,Width=NativeChipSelectPose.PanelWidth,Height=NativeChipSelectPose.PanelHeight,
+            Chip=new Vector3(0,1.05f,0),ChipRight=Vector3.UnitX,ChipUp=Vector3.UnitY,CuffNormal=Vector3.UnitY};
+        bool Is(Vector4 c,int hex)=>Math.Abs(c.X-((hex>>16)&255)/255f)<1e-4f&&Math.Abs(c.Y-((hex>>8)&255)/255f)<1e-4f&&Math.Abs(c.Z-(hex&255)/255f)<1e-4f;
+        int Built(float age,bool stay,bool reduced,bool low,out int cards,out bool chip,out bool ring,out bool panel)
+        {
+            var look=new ChipHoloLook{Weight=NativeChipPlant.Weight(1,age,stay),Age=2,Redeal=float.PositiveInfinity,Time=3.3f,Count=3,Seed=12,C0=0x70b5ff,C1=0xce8aff,C2=0xffae55,Reduced=reduced,Low=low,
+                Plant=true,Fold=NativeChipPlant.Fold(age,stay),Fade=NativeChipPlant.Fade(age),Chosen=1,ChipShown=age<NativeDraftPlant.PlantEnd,ChipSize=.05f,ChipRgb=0xffae55,Pulse=NativeDraftPlant.Pulse(age),Gesture=new ChipSelectGesture{Card=1,SinceContact=-1}};
+            s.Clear();int q=NativeChipSelectHolo.Build(s,frame,look);Check(s.N==q*4&&s.T==q*2,"plant quads written as reported");Check(q==NativeChipSelectHolo.Quads(look),"Quads() counts what a plant builds (age "+age+")");
+            cards=0;chip=ring=panel=false;for(int i=0;i<s.N;i+=4){float kind=s.U[i].Z;if(kind==NativeChipSelectHolo.KindCard){if(s.E[i].X>1.8f){chip=true;Check(Is(s.C[i],0xffae55)&&s.C[i].W>.99f,"the chip in its rarity colour, steady");}else{cards++;Check(!Is(s.C[i],0xce8aff),"the chosen card has left the panel");}}
+                if(kind==NativeChipSelectHolo.KindRing&&Is(s.C[i],0xffae55))ring=true;if(kind==NativeChipSelectHolo.KindFrame)panel=true;}
+            for(int i=0;i<s.N;i++)Check(MathUtil.Finite(s.P[i].X)&&s.C[i].W>=0&&s.C[i].W<=1,"plant vertex "+i+" in range");
+            return q;
+        }
+        Built(.1f,false,false,false,out int early,out bool chipEarly,out bool ringEarly,out bool panelEarly);
+        Check(panelEarly&&chipEarly&&early==2&&!ringEarly,"as the card lifts: the panel, the two others fading, the chip; no pulse yet");
+        Built(.9f,false,false,false,out int mid,out bool chipMid,out _,out bool panelMid);Check(!panelMid&&chipMid&&mid==0,"carried: the panel folded away, only the chip");
+        int pulse=Built(1.4f,false,false,false,out _,out bool chipLate,out bool ringLate,out _);Check(!chipLate&&ringLate&&pulse==2,"seated: the chip gone into the cuff, its pulse (ring and flash)");
+        Check(Built(1.4f,false,false,true,out _,out _,out bool ringLow,out _)==1&&ringLow,"the low tier keeps the pulse's ring alone");
+        Check(Built(NativeChipPlant.Span-.01f,false,false,false,out _,out _,out _,out bool panelEnd)==0&&!panelEnd,"a final plant ends with nothing drawn");
+        Built(NativeChipPlant.Span-.01f,true,false,false,out _,out _,out _,out bool panelStay);Check(panelStay,"a queued pick's plant unfolds the panel again over the return");
+        return "Plant hologram: the chosen card leaves the panel as the chip (its rarity colour, steady), the others fade and the panel folds behind it, the cuff pulses (ring and flash; the ring alone on the low tier), nothing left after a final plant, the panel back for a queued pick; Quads() counts every stage";
+    }
+    private static string Flinch()
+    {
+        Check(NativeChipSelect.Flinch(-1)==0&&NativeChipSelect.Flinch(float.NaN)==0&&NativeChipSelect.Flinch(0)==0&&Math.Abs(NativeChipSelect.Flinch(NativeChipSelect.FlinchRise)-1)<1e-5f&&NativeChipSelect.Flinch(NativeChipSelect.FlinchRise+NativeChipSelect.FlinchFall)==0,"the flinch's shape");
+        float last=0;for(float t=0;t<NativeChipSelect.FlinchRise;t+=.001f){float f=NativeChipSelect.Flinch(t);Check(f>=last-1e-5f,"rises");last=f;}
+        for(float t=NativeChipSelect.FlinchRise;t<NativeChipSelect.FlinchRise+NativeChipSelect.FlinchFall;t+=.001f){float f=NativeChipSelect.Flinch(t);Check(f<=last+1e-5f,"settles");last=f;}
+        // A hit yields part of the raised wrist to the route's pose (where the hit reaction plays), for every class.
+        int n=0;var sel=new NativeChipSelectPose();var full=new CapturedRig.Pose();var hit=new CapturedRig.Pose();
+        foreach(var spec in new[]{"pistol","rifle","sword","greatsword","daggers","fire","bow","emperor"})
+        {
+            var pilot=new Pilot(spec);pilot.Base(2);int hand=NativeChipSelect.DisplayLeft(spec)?CapturedRig.LHand:CapturedRig.RHand;
+            Copy(pilot.Pose,full);sel.Apply(full,new ChipSelectInput{Weight=1,Clock=.2f,Time=2,Reach=1,Spec=spec,Seed=3,Cards=3});full.World();
+            Copy(pilot.Pose,hit);sel.Apply(hit,new ChipSelectInput{Weight=1,Clock=.2f,Time=2,Reach=1,Spec=spec,Seed=3,Cards=3,Flinch=1});hit.World();
+            float up=(full.WorldPosition[hand]-pilot.Pose.WorldPosition[hand]).Length(),jolt=(hit.WorldPosition[hand]-pilot.Pose.WorldPosition[hand]).Length();
+            Check(jolt<up-.03f&&jolt>.02f,spec+": a hit drops the raised wrist toward the route ("+jolt.ToString("0.000")+" of "+up.ToString("0.000")+" m)");n++;
+        }
+        return "Hit flinch: rises over "+NativeChipSelect.FlinchRise+" s and settles over "+NativeChipSelect.FlinchFall+" s; at its peak the look yields "+(NativeChipSelect.HitYield*100).ToString("0")+"% to the route's pose (the hit reaction under it) for "+n+" classes, so the raised wrist jolts with the blow";
     }
 
     // ---- the tag ----

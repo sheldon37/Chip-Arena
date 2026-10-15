@@ -92,6 +92,16 @@ namespace ChipArena.UnityConversion
         public const float TapSlot=2.4f,FlickSlot=2.1f,TapLength=.72f,SwipeLength=1.05f,FlickLength=.55f;
         /// <summary>Where in a gesture the contact lands (fraction of its length): the press, the swipe's slide, the flick's peak.</summary>
         public const float TapPress=.38f,TapLift=.5f,SwipeTouch=.3f,SwipeEnd=.68f,FlickPeak=.45f;
+        /// <summary>A hit while the look is up (the Expedition hold keeps the chooser standing under fire): the layer yields up to HitYield
+        /// of its weight to the route's pose, where the hit reaction plays, rising over FlinchRise and settling over FlinchFall, so the
+        /// raised wrist and the gaze jolt with the blow instead of masking it (the torso's reaction already carries the raised arm).</summary>
+        public const float HitYield=.45f,FlinchRise=.06f,FlinchFall=.4f;
+        /// <summary>The flinch 0..1 `sinceHit` seconds after the newest damaging hit (negative or not finite: none).</summary>
+        public static float Flinch(float sinceHit)
+        {
+            if(!MathUtil.Finite(sinceHit)||sinceHit<0||sinceHit>=FlinchRise+FlinchFall)return 0;
+            return sinceHit<FlinchRise?sinceHit/FlinchRise:1-MathUtil.Smooth((sinceHit-FlinchRise)/FlinchFall);
+        }
 
         // A small deterministic hash (the same beat on every client): 0..1 from a seed and an index.
         public static float Hash(int seed,int index,int salt)
@@ -144,6 +154,31 @@ namespace ChipArena.UnityConversion
         }
     }
 
+    /// <summary>
+    /// A blend between two hand turns that keeps going round the same way from frame to frame. Slerp takes the shorter way, so where the
+    /// two turns are about half a turn apart (the dagger the display hand holds, turned from its rest to the watch) the way round flips
+    /// as either end drifts across the half turn, and the hand spins through 160 degrees in one frame. Each end keeps the quaternion sign
+    /// nearest its last frame's, and the blend runs between them as they are (the first frame after a Reset takes the shorter way).
+    /// Allocation-free; one per blend and pilot.
+    /// </summary>
+    public struct ChipTurnBlend
+    {
+        private Quaternion a,b;private bool live;
+        public void Reset(){live=false;}
+        public Quaternion Blend(Quaternion from,Quaternion to,float t)
+        {
+            t=MathUtil.Clamp(MathUtil.Finite(t)?t:0,0,1);
+            if(!live){if(Quaternion.Dot(from,to)<0)to=Quaternion.Negate(to);}
+            else{if(Quaternion.Dot(from,a)<0)from=Quaternion.Negate(from);if(Quaternion.Dot(to,b)<0)to=Quaternion.Negate(to);}
+            a=from;b=to;live=true;
+            float d=MathUtil.Clamp(Quaternion.Dot(from,to),-1,1);
+            if(d>.9995f)return Quaternion.Normalize(new Quaternion(from.X+(to.X-from.X)*t,from.Y+(to.Y-from.Y)*t,from.Z+(to.Z-from.Z)*t,from.W+(to.W-from.W)*t));
+            float angle=(float)Math.Acos(d),sin=(float)Math.Sin(angle);if(sin<1e-5f)return t<.5f?from:to;
+            float wa=(float)Math.Sin((1-t)*angle)/sin,wb=(float)Math.Sin(t*angle)/sin;
+            return Quaternion.Normalize(new Quaternion(from.X*wa+to.X*wb,from.Y*wa+to.Y*wb,from.Z*wa+to.Z*wb,from.W*wa+to.W*wb));
+        }
+    }
+
     /// <summary>One pilot's selecting look on the presentation clock: the eased weight, the open edge (seen here, as no open time
     /// is replicated) and the re-deal when a queued pick opens straight after a choice. Allocation-free.</summary>
     public sealed class NativeChipSelectTrack
@@ -184,6 +219,9 @@ namespace ChipArena.UnityConversion
     public struct ChipSelectInput
     {
         public float Weight,Clock,Time,Reach;public string Spec;public int Seed,Cards;public bool Reduced,FirstPerson;
+        /// <summary>The hit flinch 0..1 (NativeChipSelect.Flinch: the layer yields to the hit reaction) and the gestures' hush 0..1 (the
+        /// wrist plant's: the other hand stops tapping while it takes the chip, NativeChipPlant). Both 0 by default.</summary>
+        public float Flinch,Hush;
         /// <summary>First person: where the display wrist goes and the eye (the camera), in the view rig's root frame.</summary>
         public Vector3 ViewWrist,ViewEye;
     }
@@ -210,6 +248,21 @@ namespace ChipArena.UnityConversion
         public static readonly Vector3 ViewWristCamera=new Vector3(-.1f,-.235f,.42f);
         /// <summary>The first-person display wrist for `spec` (camera frame): low left, or low right for a right display.</summary>
         public static Vector3 ViewWrist(string spec)=>NativeChipSelect.DisplayLeft(spec)?ViewWristCamera:new Vector3(-ViewWristCamera.X,ViewWristCamera.Y,ViewWristCamera.Z);
+        /// <summary>
+        /// First person under an Expedition chip tray (the cards docked at the bottom centre, at most 52% of the width): the display
+        /// wrist beside the tray instead of behind its cards, TrayAcross of the way from the centre to the left edge (TrayAcrossRight to
+        /// the right for a right display, whose panel rides further out) and TrayDown of the way down, at TrayDepth (camera frame;
+        /// `tanHalfWidth` / `tanHalfHeight` the view's half angles). The greatsword's and the bow's view arms cannot reach out there
+        /// (their view rigs stand the display shoulder too far in), so they keep their place under the tray.
+        /// </summary>
+        public static Vector3 TrayWrist(string spec,float tanHalfWidth,float tanHalfHeight)
+        {
+            if(!Beside(spec))return ViewWrist(spec);bool left=NativeChipSelect.DisplayLeft(spec);
+            float x=-(left?TrayAcross:TrayAcrossRight)*tanHalfWidth*TrayDepth,y=-TrayDown*tanHalfHeight*TrayDepth;
+            return new Vector3(left?x:-x,y,TrayDepth);
+        }
+        public static bool Beside(string spec)=>spec!="bow"&&spec!="greatsword";
+        public const float TrayAcross=.74f,TrayAcrossRight=.44f,TrayDown=.32f,TrayDepth=.4f;
         // Outputs (rig root frame, source axes).
         public Vector3 Emitter,Normal=Vector3.UnitY,Forearm=Vector3.UnitX,Eye,PanelCentre,PanelNormal=Vector3.UnitZ,PanelRight=Vector3.UnitX,PanelUp=Vector3.UnitY,Tip;
         public bool Left;public ChipSelectCarry Carry;public ChipSelectGesture Gesture;
@@ -221,6 +274,8 @@ namespace ChipArena.UnityConversion
         /// coordinates (-1..1 across, -1..1 up).</summary>
         public float TipDepth,TipU,TipV;
         private readonly Quaternion[] rest=new Quaternion[CapturedRig.Bones.Length],solved=new Quaternion[3];
+        // The hands' turn blends (the display wrist's raise, the other hand's carry and its tap), kept round the same way frame to frame.
+        private ChipTurnBlend raise,carry,tap;
         private static readonly int[] Touched={CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LClav,CapturedRig.LArm,CapturedRig.LElbow,CapturedRig.LHand,CapturedRig.RClav,CapturedRig.RArm,CapturedRig.RElbow,CapturedRig.RHand};
         /// <summary>The joints the layer may write (everything else keeps the route's pose).</summary>
         public static bool Writes(int bone)=>Array.IndexOf(Touched,bone)>=0;
@@ -230,13 +285,15 @@ namespace ChipArena.UnityConversion
         public void Apply(CapturedRig.Pose p,in ChipSelectInput input)
         {
             float w=MathUtil.Clamp(MathUtil.Finite(input.Weight)?input.Weight:0,0,1);Carry=NativeChipSelect.Carry(input.Spec);Left=NativeChipSelect.DisplayLeft(input.Spec);
+            // A hit yields part of the look to the route's pose (the hit reaction under it), briefly.
+            w*=1-NativeChipSelect.HitYield*MathUtil.Clamp(MathUtil.Finite(input.Flinch)?input.Flinch:0,0,1);
             bool taps=NativeChipSelect.Taps(Carry),first=input.FirstPerson;int cards=Math.Max(1,Math.Min(3,input.Cards));
             // First person a hand that carries a weapon stays down (it would fill the view): the display wrist flicks instead.
             var hands=NativeChipSelect.Hands(Carry);if(first&&hands==ChipSelectHands.Swipes)hands=ChipSelectHands.Flicks;taps=hands!=ChipSelectHands.Flicks;
             Gesture=NativeChipSelect.GestureAt(input.Clock,input.Seed,hands,cards);
             // Gestures wait for the wrist: one that started during the raise blends in with it.
-            float ready=MathUtil.Smooth((w-.8f)/.2f);
-            p.World();if(w<=1e-4f){Outputs(p,first,input);return;}
+            float ready=MathUtil.Smooth((w-.8f)/.2f)*(1-MathUtil.Clamp(MathUtil.Finite(input.Hush)?input.Hush:0,0,1));
+            p.World();if(w<=1e-4f){raise.Reset();carry.Reset();tap.Reset();Outputs(p,first,input);return;}
             for(int i=0;i<Touched.Length;i++)rest[Touched[i]]=p.Rotation[Touched[i]];
             // A little bow and turn of the torso toward the display (not in first person: the camera is the head).
             if(!first)
@@ -266,7 +323,7 @@ namespace ChipArena.UnityConversion
             var watch=CapturedRig.Basis(Vector3.Cross(y,z),y,z);
             // The flick: the display wrist rolls about the forearm and back.
             if(Gesture.Kind==ChipSelectGestureKind.Flick)watch=Quaternion.CreateFromAxisAngle(fore,(Left?-1:1)*FlickRoll*Gesture.Reach*ready)*watch;
-            CapturedRig.Arm(p,Left,travel,Quaternion.Slerp(restTurn,watch,w),pole);
+            CapturedRig.Arm(p,Left,travel,raise.Blend(restTurn,watch,w),pole);
             Ease(p,arm,w);p.World();
             Outputs(p,first,input);
             // ---- the head (third person): the gaze down to the panel, following a tapping hand a little ----
@@ -300,7 +357,7 @@ namespace ChipArena.UnityConversion
             var carryTurn=CapturedRig.FromTo(Vector3.Transform(Vector3.UnitZ,restTurn),axis)*restTurn;
             if(Carry==ChipSelectCarry.Free||Carry==ChipSelectCarry.Fist)carryTurn=Quaternion.Slerp(restTurn,carryTurn,.3f);
             var pole=Mirror(new Vector3(-1,-.7f,-.2f),left);
-            var at=Vector3.Lerp(restAt,low,w)+Vector3.UnitY*(Arch*.6f*(float)Math.Sin(Math.PI*w));var turn=Quaternion.Slerp(restTurn,carryTurn,w);
+            var at=Vector3.Lerp(restAt,low,w)+Vector3.UnitY*(Arch*.6f*(float)Math.Sin(Math.PI*w));var turn=carry.Blend(restTurn,carryTurn,w);
             float reach=taps?Gesture.Reach*ready:0;
             if(reach>1e-4f)
             {
@@ -316,14 +373,46 @@ namespace ChipArena.UnityConversion
                 // down and out along its lowered axis (away from the panel and the face).
                 var shoulder=Vector3.Transform(p.WorldPosition[arm]-chest,chestInv);var f=CapturedRig.Unit(touch-shoulder,-n);var ty=-f;
                 var down=Carry==ChipSelectCarry.Free||Carry==ChipSelectCarry.Fist?-Vector3.UnitY:axis;var tz=CapturedRig.Unit(down-ty*Vector3.Dot(down,ty),n);var tapTurn=CapturedRig.Basis(Vector3.Cross(ty,tz),ty,tz);
-                at=Vector3.Lerp(at,touch-Vector3.Transform(TipLocal,tapTurn),reach);turn=Quaternion.Slerp(turn,tapTurn,reach);
+                at=Vector3.Lerp(at,touch-Vector3.Transform(TipLocal,tapTurn),reach);turn=tap.Blend(turn,tapTurn,reach);
                 pole=Vector3.Lerp(pole,Mirror(new Vector3(-1,-.9f,.15f),left),reach);
             }
             CapturedRig.Arm(p,left,at,turn,pole);
             Ease(p,arm,w);
             // The floor guard for a lowered blade or barrel (its stretched length), and for a dagger left in the display hand.
-            if(!first&&Carry!=ChipSelectCarry.Free&&Carry!=ChipSelectCarry.Fist)CapturedRig.BladeFloor(p,left,CarryLength(Carry,input.Spec,input.Reach));
-            if(!first&&Carry==ChipSelectCarry.Daggers)CapturedRig.BladeFloor(p,Left,CarryLength(Carry,input.Spec,input.Reach));
+            if(!first&&Carry!=ChipSelectCarry.Free&&Carry!=ChipSelectCarry.Fist)KeepOffFloor(p,left,CarryLength(Carry,input.Spec,input.Reach));
+            if(!first&&Carry==ChipSelectCarry.Daggers)KeepOffFloor(p,Left,CarryLength(Carry,input.Spec,input.Reach));
+        }
+        /// <summary>
+        /// CapturedRig.BladeFloor's guard (a lowered blade's or barrel's tip kept over the floor) with a steady turn as the blade hangs
+        /// plumb. The guard lifts the tip about the level axis across the blade, which is undefined for a plumb blade, so a long dagger
+        /// hanging straight down (the dagger carry as the wrist rises) spun round from one frame to the next. Within Plumb of hanging
+        /// straight down it turns instead about the hand's own across axis laid level, always the same way round; away from it the two
+        /// agree on the original exactly.
+        /// </summary>
+        public static void KeepOffFloor(CapturedRig.Pose p,bool left,float length)
+        {
+            p.World();int h=left?CapturedRig.LHand:CapturedRig.RHand;const float floor=-.78f;
+            var wrist=p.WorldPosition[h];var rot=p.WorldRotation[h];var dir=Vector3.Transform(Vector3.UnitZ,rot);
+            if(!(length>1e-4f)||wrist.Y+dir.Y*length>=floor||wrist.Y<=floor)return;
+            float want=MathUtil.Clamp((floor-wrist.Y)/length,-1,1);var swing=Vector3.Cross(dir,Vector3.UnitY);float level=swing.Length(),plumb=1-MathUtil.Smooth(level/Plumb);
+            var world=rot;if(level>1e-6f)world=CapturedRig.Rot(swing/level,(float)(Math.Asin(want)-Math.Asin(MathUtil.Clamp(dir.Y,-1,1))))*rot;
+            if(plumb>0)
+            {
+                // About the level across axis a the tip's height is dir.Y cos t + (a x dir).Y sin t: the turn that reaches the floor,
+                // taken positive (one way round) and as small as it can be.
+                var a=Vector3.Transform(Vector3.UnitX,rot);a.Y=0;a=CapturedRig.Unit(a,Vector3.UnitX);float A=dir.Y,B=Vector3.Cross(a,dir).Y,R=(float)Math.Sqrt(A*A+B*B);
+                if(R>1e-5f)
+                {
+                    float phi=(float)Math.Atan2(B,A),c=(float)Math.Acos(MathUtil.Clamp(want/R,-1,1)),t1=Wrap(phi-c),t2=Wrap(phi+c);
+                    float turn=t1>=0&&(t2<0||t1<=t2)?t1:t2>=0?t2:Math.Abs(t1)<Math.Abs(t2)?t1:t2;
+                    world=Quaternion.Slerp(world,CapturedRig.Rot(a,turn)*rot,plumb);
+                }
+            }
+            p.Rotation[h]=Quaternion.Inverse(p.WorldRotation[CapturedRig.Bones[h].Parent])*world;
+        }
+        /// <summary>The blade's level part (the sine of its tilt from plumb) under which the steady turn takes over.</summary>
+        public const float Plumb=.35f;
+        private static float Wrap(float a){while(a>Math.PI)a-=2*(float)Math.PI;while(a<-Math.PI)a+=2*(float)Math.PI;return a;
         }
         /// <summary>The length the floor guard keeps above the floor: the weapon's blade tip or muzzle (z in the hand frame).</summary>
         public static float CarryLength(ChipSelectCarry c,string spec,float reach)
@@ -341,7 +430,7 @@ namespace ChipArena.UnityConversion
                 case ChipSelectCarry.Pistol:at=new Vector3(-.27f,-.3f,.1f);axis=new Vector3(-.12f,-.8f,.58f);break;
                 case ChipSelectCarry.LongGun:at=new Vector3(-.25f,-.2f,.13f);axis=new Vector3(.2f,-.4f,.89f);break;
                 case ChipSelectCarry.Blade:at=new Vector3(-.3f,-.26f,.1f);axis=new Vector3(-.42f,-.45f,.79f);break;
-                case ChipSelectCarry.Daggers:at=new Vector3(-.28f,-.3f,.08f);axis=new Vector3(-.15f,-.85f,.5f);break;
+                case ChipSelectCarry.Daggers:at=new Vector3(-.28f,-.3f,.08f);axis=new Vector3(-.15f,-.85f,-.5f);break;
                 case ChipSelectCarry.Greatsword:at=new Vector3(-.3f,-.22f,.02f);axis=new Vector3(-.28f,-.42f,-.86f);break;
                 case ChipSelectCarry.Shield:at=new Vector3(-.33f,-.26f,.04f);axis=new Vector3(-.15f,-.9f,.4f);break;
                 case ChipSelectCarry.Staff:at=new Vector3(-.25f,-.16f,.14f);axis=new Vector3(-.04f,.97f,.24f);break;
@@ -382,6 +471,8 @@ namespace ChipArena.UnityConversion
             PanelRight=CapturedRig.Unit(across-PanelNormal*Vector3.Dot(across,PanelNormal),-Vector3.UnitX);
             PanelUp=CapturedRig.Unit(up-PanelNormal*Vector3.Dot(up,PanelNormal)-PanelRight*Vector3.Dot(up,PanelRight),Vector3.UnitY);
         }
+        /// <summary>The outputs again from the pose as it stands (after a later layer moved the display wrist: the wrist plant's catch).</summary>
+        public void Rebase(CapturedRig.Pose p,in ChipSelectInput input){p.World();Outputs(p,input.FirstPerson,input);}
         /// <summary>The other hand's tip (rig root frame) and its place against the panel, from the posed pose (World current).</summary>
         public void Measure(CapturedRig.Pose p,bool first)
         {
@@ -405,10 +496,16 @@ namespace ChipArena.UnityConversion
         /// for up to 12; the rainbow pick cycles hues), red (under attack, blinking unless Reduced), Reduced and Low tiers.</summary>
         public float Weight,Age,Redeal,Time;public ChipSelectGesture Gesture;public int Count,Seed;public bool Rainbow,Attacked,Reduced,Low,FirstPerson;
         public int C0,C1,C2;
+        /// <summary>The wrist plant (Expedition, NativeChipPlantPose): the panel's Fold 0..1 (folded as the card leaves it), the other
+        /// cards' Fade 0..1, the Chosen card (drawn as the chip instead), the chip (shown, its width in metres and its colour, sRGB hex)
+        /// and the cuff's Pulse (0..1 while it runs, else negative).</summary>
+        public bool Plant,ChipShown;public float Fold,Fade,ChipSize,Pulse;public int Chosen,ChipRgb;
     }
     public struct ChipHoloFrame
     {
         public Vector3 Emitter,Centre,Right,Up,Normal;public float Width,Height;
+        /// <summary>The wrist plant's chip (its centre and its quad's axes) and the cuff's outward normal (the back of the wrist).</summary>
+        public Vector3 Chip,ChipRight,ChipUp,CuffNormal;
     }
 
     /// <summary>
@@ -447,12 +544,26 @@ namespace ChipArena.UnityConversion
         }
         public static int Quads(in ChipHoloLook look)
         {
-            int cards=Math.Max(1,Math.Min(3,look.Count));int n=1+cards+1;// panel, cards, header line
-            if(!look.Low)n+=2+2+1;// cone sheet (2), cone edges (2), emitter ring
-            if(!look.Low&&!look.Reduced)n+=Motes;
-            if(look.Gesture.Kind==ChipSelectGestureKind.Tap&&look.Gesture.SinceContact>=0&&look.Gesture.SinceContact<RingTime)n++;
+            int n=0;
+            // A plant's panel counts only while it is still unfolded (it folds as the card leaves it); a plain look's always (its upper bound).
+            if(!look.Plant||Unfold(look.Weight)*MathUtil.Clamp(look.Fold,0,1)>.002f)
+            {
+                int cards=Math.Max(1,Math.Min(3,look.Count)),shown=cards;
+                if(look.Plant){shown=0;for(int i=0;i<cards;i++)if(i!=Chosen(look,cards)&&look.Fade>.01f)shown++;}
+                n+=1+shown+1;// panel, cards, header line
+                if(!look.Low)n+=2+2+1;// cone sheet (2), cone edges (2), emitter ring
+                if(!look.Low&&!look.Reduced)n+=Motes;
+                if(!look.Plant&&look.Gesture.Kind==ChipSelectGestureKind.Tap&&look.Gesture.SinceContact>=0&&look.Gesture.SinceContact<RingTime)n++;
+            }
+            if(PlantChip(look))n++;if(PlantPulse(look))n+=look.Low?1:2;
             return n;
         }
+        // The wrist plant's parts: the chip while it shows, the cuff's pulse (a ring, and a flash but on the low tier) while it runs.
+        private static bool PlantChip(in ChipHoloLook l)=>l.Plant&&l.ChipShown&&l.ChipSize>1e-4f&&MathUtil.Finite(l.ChipSize);
+        private static bool PlantPulse(in ChipHoloLook l)=>l.Plant&&l.Pulse>=0&&l.Pulse<1;
+        private static int Chosen(in ChipHoloLook l,int count)=>l.Chosen>=0?l.Chosen%count:-1;
+        /// <summary>The cuff's pulse ring at its widest (m) and the chip cartridge's aspect (width over height, the shader's card).</summary>
+        public const float PulseRadius=.075f,ChipAspect=.76f;
         public const int Motes=5;public const float RingTime=.32f;
         public static int Rgb(int index,in ChipHoloLook look,float time)
         {
@@ -482,50 +593,70 @@ namespace ChipArena.UnityConversion
         /// <summary>Builds one hologram into `s`. Returns the quads written (0 when it is folded away).</summary>
         public static int Build(INativeChipHoloSink s,in ChipHoloFrame f,in ChipHoloLook look)
         {
-            float unfold=Unfold(look.Weight);if(unfold<=.002f)return 0;int quads=0;
+            float unfold=Unfold(look.Weight)*(look.Plant?MathUtil.Clamp(look.Fold,0,1):1);bool chip=PlantChip(look),pulse=PlantPulse(look);
+            if(unfold<=.002f&&!chip&&!pulse)return 0;int quads=0;
             bool red=Red(look.Attacked,look.Time,look.Reduced);float flicker=Flicker(look.Time,look.Seed,look.Reduced),alpha=MathUtil.Clamp(unfold*1.4f,0,1)*flicker;
             int tone=red?Danger:Cyan,soft=red?0xff9aa8:CyanSoft;float seed=(look.Seed&1023)/1024f;
-            // The panel opens from a bright line across (its height first), Electron's grow ease.
-            float w=f.Width*.5f*(.35f+.65f*unfold),h=f.Height*.5f*unfold;var r=f.Right*w;var u=f.Up*h;
-            Quad(s,f.Centre,r,u,Col(tone,alpha),KindFrame,unfold,1.7f,seed);quads++;
-            // The header line along the panel's top edge (the boot's bright line before the panel opens).
-            Quad(s,f.Centre+f.Up*(h+f.Height*.04f),f.Right*w*.9f,f.Up*f.Height*.012f,Col(soft,alpha*(.6f+.4f*(1-unfold))),KindLine,0,2.2f,seed);quads++;
-            if(!look.Low)
+            if(unfold>.002f)
             {
-                // The projection cone: a sheet from the emitter to the panel's bottom edge, brightest at the wrist, and its two edges.
-                var bl=f.Centre-r-u;var br=f.Centre+r-u;var e0=f.Emitter-f.Right*.012f;var e1=f.Emitter+f.Right*.012f;
-                Sheet(s,e0,e1,br,bl,Col(tone,.55f*alpha),KindBeam,0,1.2f,seed);quads++;
-                var tl=f.Centre-r+u*.2f;var tr=f.Centre+r+u*.2f;Sheet(s,e0,e1,tr,tl,Col(tone,.22f*alpha),KindBeam,1,1,seed);quads++;
-                var side=Vector3.Cross(f.Normal,f.Up)*.0025f;
-                Sheet(s,f.Emitter-side,f.Emitter+side,bl+side,bl-side,Col(soft,.65f*alpha),KindLine,1,1.6f,seed);quads++;
-                Sheet(s,f.Emitter-side,f.Emitter+side,br+side,br-side,Col(soft,.65f*alpha),KindLine,1,1.6f,seed);quads++;
-                // The emitter ring on the cuff (in the panel's plane turned to the wrist).
-                Quad(s,f.Emitter+f.Normal*.002f,f.Right*.022f,Vector3.Normalize(Vector3.Cross(f.Right,f.Normal))*.022f,Col(soft,.9f*alpha),KindRing,.3f,2.4f,seed);quads++;
-                if(!look.Reduced)for(int i=0;i<Motes;i++)
+                // The panel opens from a bright line across (its height first), Electron's grow ease.
+                float w=f.Width*.5f*(.35f+.65f*unfold),h=f.Height*.5f*unfold;var r=f.Right*w;var u=f.Up*h;
+                Quad(s,f.Centre,r,u,Col(tone,alpha),KindFrame,unfold,1.7f,seed);quads++;
+                // The header line along the panel's top edge (the boot's bright line before the panel opens).
+                Quad(s,f.Centre+f.Up*(h+f.Height*.04f),f.Right*w*.9f,f.Up*f.Height*.012f,Col(soft,alpha*(.6f+.4f*(1-unfold))),KindLine,0,2.2f,seed);quads++;
+                if(!look.Low)
                 {
-                    // Motes rising up the cone, looping .9 s each, spread across it.
-                    float k=(look.Time/.9f+i/(float)Motes+seed)%1,x=(NativeChipSelect.Hash(look.Seed,i,11)*2-1)*.8f;var at=Vector3.Lerp(f.Emitter,f.Centre-u+r*x,k);
-                    Quad(s,at,f.Right*.006f,f.Up*.006f,Col(soft,alpha*(float)Math.Sin(Math.PI*k)),KindMote,0,2,seed);quads++;
+                    // The projection cone: a sheet from the emitter to the panel's bottom edge, brightest at the wrist, and its two edges.
+                    var bl=f.Centre-r-u;var br=f.Centre+r-u;var e0=f.Emitter-f.Right*.012f;var e1=f.Emitter+f.Right*.012f;
+                    Sheet(s,e0,e1,br,bl,Col(tone,.55f*alpha),KindBeam,0,1.2f,seed);quads++;
+                    var tl=f.Centre-r+u*.2f;var tr=f.Centre+r+u*.2f;Sheet(s,e0,e1,tr,tl,Col(tone,.22f*alpha),KindBeam,1,1,seed);quads++;
+                    var side=Vector3.Cross(f.Normal,f.Up)*.0025f;
+                    Sheet(s,f.Emitter-side,f.Emitter+side,bl+side,bl-side,Col(soft,.65f*alpha),KindLine,1,1.6f,seed);quads++;
+                    Sheet(s,f.Emitter-side,f.Emitter+side,br+side,br-side,Col(soft,.65f*alpha),KindLine,1,1.6f,seed);quads++;
+                    // The emitter ring on the cuff (in the panel's plane turned to the wrist).
+                    Quad(s,f.Emitter+f.Normal*.002f,f.Right*.022f,Vector3.Normalize(Vector3.Cross(f.Right,f.Normal))*.022f,Col(soft,.9f*alpha),KindRing,.3f,2.4f,seed);quads++;
+                    if(!look.Reduced)for(int i=0;i<Motes;i++)
+                    {
+                        // Motes rising up the cone, looping .9 s each, spread across it.
+                        float k=(look.Time/.9f+i/(float)Motes+seed)%1,x=(NativeChipSelect.Hash(look.Seed,i,11)*2-1)*.8f;var at=Vector3.Lerp(f.Emitter,f.Centre-u+r*x,k);
+                        Quad(s,at,f.Right*.006f,f.Up*.006f,Col(soft,alpha*(float)Math.Sin(Math.PI*k)),KindMote,0,2,seed);quads++;
+                    }
+                }
+                // The cards: up to three in the panel, the lit one lifted toward the wearer, larger and brighter; a swipe slides them.
+                int count=Math.Max(1,Math.Min(3,look.Count));int lit=look.Gesture.Card%count;float slide=look.Gesture.Kind==ChipSelectGestureKind.Swipe?look.Gesture.Contact:0;
+                // A plant: the chosen card has left as the chip (drawn below); the others fade out.
+                int chosen=look.Plant?Chosen(look,count):-1;float others=look.Plant?MathUtil.Clamp(look.Fade,0,1):1;
+                int shownLit=look.Gesture.Kind==ChipSelectGestureKind.None||look.Gesture.SinceContact>=0?lit:look.Gesture.Was%count;
+                float cw=f.Width*.21f,ch=f.Height*.48f;
+                for(int i=0;i<count;i++)
+                {
+                    if(look.Plant&&(i==chosen||others<=.01f))continue;
+                    float deal=Deal(unfold,look.Redeal,i);if(deal<=.01f)continue;float x=NativeChipSelectPose.CardOffset(i,count);
+                    if(slide>0&&slide<1)x+=.12f*(float)Math.Sin(Math.PI*slide)*(i==shownLit?0:1);
+                    bool on=i==shownLit;float lift=on?1:0,size=(on?1.14f:.9f)*(.6f+.4f*deal),bob=look.Reduced?0:.004f*(float)Math.Sin(look.Time*2.4f+i*1.9f);
+                    var at=f.Centre+f.Right*(x*f.Width*.5f*(.35f+.65f*unfold))+f.Up*(f.Height*(.02f+.05f*lift)+bob)+f.Normal*(.006f+.014f*lift);
+                    int rgb=red?Danger:Rgb(i,look,look.Time);float flash=look.Gesture.Kind==ChipSelectGestureKind.Tap&&on&&look.Gesture.SinceContact>=0&&look.Gesture.SinceContact<.25f?1-look.Gesture.SinceContact/.25f:0;
+                    Quad(s,at,f.Right*(cw*.5f*size),f.Up*(ch*.5f*size*deal),Col(rgb,alpha*(on?1:.7f)*deal*others),KindCard,on?1:0,(on?1.5f:1.15f)+1.2f*flash,seed+i*.13f);quads++;
+                }
+                // A ring where a tap lands, opening and fading.
+                if(!look.Plant&&look.Gesture.Kind==ChipSelectGestureKind.Tap&&look.Gesture.SinceContact>=0&&look.Gesture.SinceContact<RingTime)
+                {
+                    float k=look.Gesture.SinceContact/RingTime,rr=.012f+.05f*k;var at=f.Centre+f.Right*(NativeChipSelectPose.CardOffset(lit,count)*f.Width*.5f)+f.Up*(-.1f*f.Height*.5f)+f.Normal*.008f;
+                    Quad(s,at,f.Right*rr,f.Up*rr,Col(soft,alpha*(1-k)*(1-k)),KindRing,.12f,2.2f,seed);quads++;
                 }
             }
-            // The cards: up to three in the panel, the lit one lifted toward the wearer, larger and brighter; a swipe slides them.
-            int count=Math.Max(1,Math.Min(3,look.Count));int lit=look.Gesture.Card%count;float slide=look.Gesture.Kind==ChipSelectGestureKind.Swipe?look.Gesture.Contact:0;
-            int shownLit=look.Gesture.Kind==ChipSelectGestureKind.None||look.Gesture.SinceContact>=0?lit:look.Gesture.Was%count;
-            float cw=f.Width*.21f,ch=f.Height*.48f;
-            for(int i=0;i<count;i++)
+            // The wrist plant: the chosen chip in its rarity colour (a lit cartridge, steady: it is the chip, not the display), carried to
+            // the cuff and pressed in; then the cuff's pulse, a ring opening over the back of the wrist and a flash fading from it.
+            if(chip)
             {
-                float deal=Deal(unfold,look.Redeal,i);if(deal<=.01f)continue;float x=NativeChipSelectPose.CardOffset(i,count);
-                if(slide>0&&slide<1)x+=.12f*(float)Math.Sin(Math.PI*slide)*(i==shownLit?0:1);
-                bool on=i==shownLit;float lift=on?1:0,size=(on?1.14f:.9f)*(.6f+.4f*deal),bob=look.Reduced?0:.004f*(float)Math.Sin(look.Time*2.4f+i*1.9f);
-                var at=f.Centre+f.Right*(x*f.Width*.5f*(.35f+.65f*unfold))+f.Up*(f.Height*(.02f+.05f*lift)+bob)+f.Normal*(.006f+.014f*lift);
-                int rgb=red?Danger:Rgb(i,look,look.Time);float flash=look.Gesture.Kind==ChipSelectGestureKind.Tap&&on&&look.Gesture.SinceContact>=0&&look.Gesture.SinceContact<.25f?1-look.Gesture.SinceContact/.25f:0;
-                Quad(s,at,f.Right*(cw*.5f*size),f.Up*(ch*.5f*size*deal),Col(rgb,alpha*(on?1:.7f)*deal),KindCard,on?1:0,(on?1.5f:1.15f)+1.2f*flash,seed+i*.13f);quads++;
+                float half=look.ChipSize*.5f;Quad(s,f.Chip,f.ChipRight*half,f.ChipUp*(half/ChipAspect),Col(look.ChipRgb,1),KindCard,1,1.9f,seed+.5f);quads++;
             }
-            // A ring where a tap lands, opening and fading.
-            if(look.Gesture.Kind==ChipSelectGestureKind.Tap&&look.Gesture.SinceContact>=0&&look.Gesture.SinceContact<RingTime)
+            if(pulse)
             {
-                float k=look.Gesture.SinceContact/RingTime,rr=.012f+.05f*k;var at=f.Centre+f.Right*(NativeChipSelectPose.CardOffset(lit,count)*f.Width*.5f)+f.Up*(-.1f*f.Height*.5f)+f.Normal*.008f;
-                Quad(s,at,f.Right*rr,f.Up*rr,Col(soft,alpha*(1-k)*(1-k)),KindRing,.12f,2.2f,seed);quads++;
+                float k=look.Pulse,fall=(1-k)*(1-k);var n=f.CuffNormal.LengthSquared()>1e-8f?Vector3.Normalize(f.CuffNormal):f.Normal;
+                var r=f.Right-n*Vector3.Dot(f.Right,n);r=r.LengthSquared()>1e-8f?Vector3.Normalize(r):Vector3.Normalize(Vector3.Cross(n,Vector3.UnitY+new Vector3(.01f,0,0)));var u=Vector3.Cross(n,r);
+                float rr=.016f+(PulseRadius-.016f)*MathUtil.Smooth(k);Quad(s,f.Emitter+n*.003f,r*rr,u*rr,Col(look.ChipRgb,fall),KindRing,.18f,2.6f,seed);quads++;
+                if(!look.Low){float fr=.03f*(1-.5f*k);Quad(s,f.Emitter+n*.004f,r*fr,u*fr,Col(look.ChipRgb,fall),KindMote,0,3f,seed);quads++;}
             }
             return quads;
         }

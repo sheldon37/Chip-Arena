@@ -47,8 +47,8 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             count=0;
-            Model();Opens();Picks();Refusals();Opening();Waiting();Choosers();Sources(root);
-            Console.WriteLine("PASS Expedition pick tray ("+count+" checks: never opened by collecting, C opens a claimed reward with offers and never a consumed one, OpenChoice once and CloseChoice on close, Select with the shown reward and chip, view-confirmed and chained like the Boss Test's queue, refusals back on the tray, Claim-to-open only when shown, the viewer's own waiting counts, choosers from the public flag only, the Boss Test path untouched, an overlay off the 3D stage and digit routing without a movement lock)");
+            Model();Opens();Picks();Refusals();Opening();Waiting();Choosers();Plants();Sources(root);
+            Console.WriteLine("PASS Expedition pick tray ("+count+" checks: never opened by collecting, C opens a claimed reward with offers and never a consumed one, OpenChoice once and CloseChoice on close, Select with the shown reward and chip, view-confirmed and chained like the Boss Test's queue, refusals back on the tray, Claim-to-open only when shown, the viewer's own waiting counts, choosers from the public flag only, the Boss Test path untouched, an overlay off the 3D stage and digit routing without a movement lock; the wrist plant spans the authority's final hold, stays on the hologram only for a queued reward, holds my Install cue for the seat, flies the picked card into the hologram and is driven by each Install for other pilots)");
         }
 
         // 1. The reward rules and the header.
@@ -208,7 +208,31 @@ namespace ChipArena.UnityConversion
             ch.Step(null,7);Check(ch.Count==0,"unbound: nobody");
         }
 
-        // 8. Source scans.
+        // 8. The wrist plant against the real authority's hold (PR #237): the plant's span is the final hold; a queued reward keeps the hold
+        //    and the tray (the plant stays on the hologram), the final pick's hold ends exactly when the plant does.
+        private static void Plants()
+        {
+            Check(NativeChipPlant.Span==NativeDraftPlant.ReturnEnd&&Math.Abs(NativeExpedition.ChoicePlantSeconds-NativeChipPlant.Span)<1e-6,"the plant's span is the authority's final hold (Install + NativeDraftPlant.ReturnEnd)");
+            Check(NativeDraftPlant.SoundAt==NativeDraftPlant.CarryEnd&&NativeDraftPlant.SoundAt<NativeDraftPlant.PlantEnd&&NativeDraftPlant.PlantEnd<NativeChipPlant.Span,"the install cue lands at the seat, inside the plant");
+            Check(NativeChipPlant.Active(0)&&NativeChipPlant.Active(NativeChipPlant.Span-.001f)&&!NativeChipPlant.Active(NativeChipPlant.Span)&&!NativeChipPlant.Active(-.01f)&&!NativeChipPlant.Active(float.NaN)&&!ChipPlantCue.None.Active,"active over its span only");
+            // Two rewards: the first pick stays (another follows on the tray, the hold continues), the final pick's hold ends with the plant.
+            var g=new Rig();string a=g.Chest("p0","cache-a"),b=g.Chest("p0","cache-b");g.Claim("p0",a);g.Claim("p0",b);g.Flow.Show(g.View());g.Pump();
+            g.Send(g.Flow.Choose(g.View(),"vital"));g.Pump();var v=g.View();
+            Check(g.Flow.Open&&NativeExpeditionPick.MoreWaiting(v,a)>0&&g.Choosing,"after a queued pick the tray stays wanted and another reward waits: the plant stays on the hologram");
+            g.Send(g.Flow.Choose(v,"ricochet"));g.Pump();v=g.View();
+            Check(!g.Flow.Open&&NativeExpeditionPick.MoreWaiting(v,b)==0,"after the final pick nothing waits: the plant returns the arms");
+            double at=g.Run.Elapsed;float step=1/60f,released=-1;
+            for(int f=0;f<200&&released<0;f++){g.Run.Tick(step);g.Pump();if(!ExpeditionPickFlow.ChoosingNow(g.View()))released=(float)(g.Run.Elapsed-at);}
+            Check(released>0&&Math.Abs(released-NativeChipPlant.Span)<=step+1e-4f,"the authority releases the final pick when the plant ends ("+released+" s; others see the flag up through it)");
+            Check(!g.Flow.Open&&g.Flow.Phase(g.View())==ExpeditionPickPhase.Closed,"nothing reopens after the plant");
+            // C before picking releases at once (choose later); C during a queued pick's plant leaves no tray to follow it.
+            var c=new Rig();string x=c.Chest("p0","cache-c"),y=c.Chest("p0","cache-d");c.Claim("p0",x);c.Claim("p0",y);c.Flow.Show(c.View());c.Pump();
+            c.Flow.Later();c.Pump();Check(!c.Choosing,"C before picking: CloseChoice releases at once");
+            c.Flow.Show(c.View());c.Pump();c.Send(c.Flow.Choose(c.View(),"vital"));c.Flow.Later();c.Pump();
+            Check(!c.Flow.Open,"C during a plant: the plant finishes but no tray follows it (Stay is false)");
+        }
+
+        // 9. Source scans.
         private static void Sources(string root)
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
@@ -244,7 +268,20 @@ namespace ChipArena.UnityConversion
             // The wrist look and tag: every choosing pilot from the public flag; the PvE rows' line unchanged.
             int hook=wrist.IndexOf("if(ExpeditionChoosing!=null){pick=ExpeditionChoosing(id);",StringComparison.Ordinal),rows=wrist.IndexOf("NativeChipSelect.Selecting(true,row.Open?.Id??0,p.Hp>0,p.Seat.connected,v.Holding,!string.IsNullOrEmpty(v.Cinematic),v.Stage==\"ended\")",StringComparison.Ordinal);
             Check(hook>0&&rows>hook&&wrist.Contains("i<count&&pick.Offers!=null?arena?.PveChip(pick.Offers[i])?.rarity:null"),"the wrist look reads the Expedition hook first; an offer-less pick draws cyan cards");
-            Check(exp.Contains("if(!expeditionChoosers.At(id,out var e))return null;")&&exp.Contains("expeditionChoosers.Step(v,arena?.Time??0);")&&exp.Contains("if(FirstPersonView&&(ExpeditionPickOverlay||ExpeditionFollowing))return null;"),"choosers from the view's flag; my first-person wrist steps aside under the tray");
+            Check(exp.Contains("if(!expeditionChoosers.At(id,out var e))return null;")&&exp.Contains("expeditionChoosers.Step(v,arena?.Time??0);"),"choosers from the view's flag");
+            int mine=exp.IndexOf("private NativePvePick ExpeditionWrist(int id)",StringComparison.Ordinal),mineEnd=exp.IndexOf("private static int ExpeditionHeld(",StringComparison.Ordinal);Check(mine>0&&mineEnd>mine,"the wrist hook found");
+            Check(!exp.Substring(mine,mineEnd-mine).Contains("FirstPersonView"),"held in place, my first-person wrist shows under the tray and through the plant (it no longer steps aside)");
+            // The wrist plant (Core/NativeChipPlant.cs): mine from my pick, the others' from the authority's Install event, on the plant's span.
+            Check(exp.Contains("presentation.ExpeditionPlant=v!=null&&arena!=null?expeditionPlant??=ExpeditionPlantCue:null;")&&wrist.Contains("public Func<int,float,ChipPlantCue> ExpeditionPlant;"),"the plant hook is set with the choosers' hook");
+            Check(wrist.Contains("var cue=ExpeditionChoosing!=null&&ExpeditionPlant!=null?ExpeditionPlant(a.Id,time):ChipPlantCue.None;"),"only an Expedition's plants pose (the Boss Test's look is unchanged)");
+            Check(exp.Contains("if(e.Kind==EventKind.Install&&e.Target==id&&age>=0)return new ChipPlantCue{Age=age,Chosen=-1,Chip=e.Detail,Key=e.Id};")&&exp.Contains("if(age>=NativeChipPlant.Span)break;"),"another pilot's plant runs from its Install event, within the span");
+            Check(exp.Contains("if(expeditionPick.Sent!=expeditionPlantReward&&expeditionPick.Installed!=expeditionPlantReward){expeditionPlantReward=null;return false;}"),"my plant stops when its pick is refused or fails");
+            Check(exp.Contains("bool stay=expeditionPick.Open&&v!=null&&NativeExpeditionPick.MoreWaiting(v,expeditionPlantReward)>0;"),"my plant stays on the hologram only when another of my rewards follows on the tray");
+            Check(exp.Contains("private const float ExpeditionFollowSpan=NativeChipPlant.Span,"),"the tray's follow-through spans the plant");
+            Check(game.Contains("PveFollowAudio();ExpeditionPlantAudio();")&&exp.Contains("nativeAudio.FollowChip=expeditionPlantChip;nativeAudio.FollowStarted=expeditionPlantAt;nativeAudio.FollowAge=age;"),"my Install cue is held for the plant's seat (NativeInstallCue), after the Boss Test's own follow-through audio");
+            Check(exp.Contains("draftCatch=draftPalm=ExpeditionFollowTarget((left+right)/2,W,H);")&&exp.Contains("presentation.ChipSelectFocus(arena.Local.Seat.id,out var world,out bool view)")&&exp.Contains("var cam=view?presentation.ViewCamera:cameraView;"),"the picked card flies into my wrist hologram (the view model's in first person)");
+            Check(exp.Contains("\"C closes the chips to move and fight\"")&&!exp.Contains("you can still move and fight"),"the alarm no longer says the chooser can move");
+            Check(exp.Contains("presentation.ChipTrayShown=v!=null&&arena!=null&&(ExpeditionPickShown||ExpeditionFollowing);")&&wrist.Contains("NativeChipSelectPose.TrayWrist(a.SourceSpec,tanV*ViewCamera.aspect,tanV)"),"first person, my wrist eases beside the tray while it or its follow-through is up");
             foreach(var (name,src) in new[]{("chip overlay",exp),("pick model",core)})
             {
                 Check(!Regex.IsMatch(src,@"\bNativeExpedition\b"),name+" holds no authority reference");

@@ -73,13 +73,15 @@ Core files are engine-free; Runtime files draw with the cyber HUD kit (`NativeHu
 | `Runtime/NativeExpeditionStatesHud.cs` | Transfer screen, SAFE chip and SAFE tags, boss intro and plates (with health), final gate notice |
 | `Tests/ExpeditionStatesChecks.cs` | Managed checks (`CoreTests.dll --expedition-states`, also in the full suite) |
 | `Core/NativeExpeditionPick.cs` | Chip picks: reward rules, header, waiting counts, the tray's flow (Claim / OpenChoice / CloseChoice / Select), choosers from `members[].choosing` |
-| `Runtime/NativeExpeditionChipScreen.cs` | The Boss Test's chip tray over the live view, its follow-through, input routing, the CHIPS tag and the wrist-look hook |
+| `Runtime/NativeExpeditionChipScreen.cs` | The Boss Test's chip tray over the live view, its follow-through, input routing, the CHIPS tag, the wrist-look and wrist-plant hooks and the plant's install cue |
+| `Core/NativeChipPlant.cs` | The wrist plant after each pick: its timeline (the Boss Test plant's), cue and pose layer over the wrist-hologram pose |
 | `Tests/ExpeditionPickChecks.cs` | Managed checks (`CoreTests.dll --expedition-pick`, also in the full suite) |
 
 `Runtime/ConversionGame.cs` has these hook lines: the J/Escape/C keys (`ExpeditionLiveKeys`), local play
 paused while the J screen is open, the J screen in `GuiFrame`, the in-scene HUD (which draws the chip tray), and
 the world draw at the start of `LateFrame`. For chip picks there are also the Boss Test's C kept out of an
-Expedition, Alt freeing the cursor (`look` and mouse look) and `ExpeditionPickRoute()` after the play input.
+Expedition, Alt freeing the cursor (`look` and mouse look), `ExpeditionPickRoute()` after the play input, and
+`ExpeditionPlantAudio()` after `PveFollowAudio()` in `LateFrame` (my plant holds my Install cue for its seat).
 
 ## Live binding
 
@@ -103,7 +105,10 @@ Expedition, Alt freeing the cursor (`look` and mouse look) and `ExpeditionPickRo
 ## Chip picks (the Boss Test's tray over the live view)
 
 Owner 2026-10-15: "We should also utilize the same chip selection screen (That we utilize in the Boss Test)
-instead of selecting on the J menu." Owner direction 2026-10-15 supersedes PR #234: choosers are held in place and remain vulnerable. So the
+instead of selecting on the J menu." Owner direction 2026-10-15 supersedes PR #234: choosers are held in place and remain vulnerable
+("Can we change the chip selection to just pressing C and it'll be us in a "Chip Selection" animation? I purposely wanted to make
+people vulnerable when doing this." / "(Like we had for ward zero, but can keep the open view. I just want players to stay in place
+while doing this.)" / "Still make them put their chip in their wrist after selected, then they are free to move."). So the
 pick is the Boss Test's chip tray (`PveChipScreen`'s cards via `DrawTray`: entrances, holo highlight, number
 badges, hover cue; `DraftKeys`) drawn **over the live view**, docked at the bottom centre between the health box
 and the cooldowns. There is no 3D draft stage and the arena is never hidden. The Boss Test path itself is
@@ -119,24 +124,45 @@ unchanged.
   itself) sends `CloseChoice` once while the view still shows choosing. A refused or unconfirmed `Claim` or
   `OpenChoice` closes the tray with a notice.
 - **Picking.** 1–9, arrows and Enter, or a click while Alt is held, sends `Select(reward, chip)` through
-  `ExpeditionLiveSubmit`. A follow-through runs on the same pieces (the others shatter, the chosen card drops
-  out of view). It reads "Installing" until the view shows the reward consumed, then "Upgrade secured", with the
-  tracked caption while a guest waits. A refusal returns to that reward's tray with its caption. The next
-  waiting reward follows, as the Boss Test opens its next queued pick. The install cue is the authority's
-  `Install` event.
+  `ExpeditionLiveSubmit`.
+  - **Follow-through.** It runs on the same pieces for the plant's span (`NativeChipPlant.Span`, 1.95 s). The others
+    shatter. The chosen card flies into my wrist hologram and shrinks into it as the hand takes it there: the plant's
+    contact, at the projected `ArenaPresentation.ChipSelectFocus` (the view model's in first person). Without the
+    hologram in view, it flies toward the hands below the bottom edge.
+  - **Status.** It reads "Installing" until the view shows the reward consumed, then "Upgrade secured", with the tracked
+    caption while a guest waits. A refusal returns to that reward's tray with its caption.
+  - **Queue.** The next waiting reward follows, as the Boss Test opens its next queued pick.
+  - **Install cue.** My `Install` event is held for the plant's seat (`NativeInstallCue` at `NativeDraftPlant.SoundAt`, as
+    the Boss Test's stage plant does). Another pilot's plays as it arrives.
 - **Header.** Built from the reward's source and kind; Expedition offers have no tier, so a boss reward reads
   "BOSS REWARD · <boss> · EPIC OR BETTER" in the epic tone and others use the neutral tone. YOU ARE VULNERABLE
   WHILE CHOOSING, N MORE WAITING (the viewer's other unpicked rewards), the key line and Choose later. Under
-  attack, the Boss Test's blinking border and alarm show over the header. Its full-screen red wash is kept faint
-  (12% blinking, 6% steady with Reduced effects), so the fight stays readable.
+  attack, the Boss Test's blinking border and alarm show over the header ("C closes the chips to move and fight"). Its
+  full-screen red wash is kept faint (12% blinking, 6% steady with Reduced effects), so the fight stays readable.
 - **Input (client routing; host enforces the hold).** While the tray is drawn, digits 1–9 pick a chip, so the abilities
   they would start are dropped. Holding Alt frees the cursor to click a card; mouse look, attack and block
   pause only while it is held. The host cancels and blocks movement/actions and refuses machine interaction while choosing, preserving camera rotation. Damage and the world/difficulty clock continue. An explicit close releases an unfinished tray; an automatic close after the final pick cannot shorten its plant.
   Without Alt the locked cursor never hovers or clicks a card.
 - **Wrist look and SELECTING CHIP tag.** These come from `members[].choosing` for every pilot, as the Boss Test
   reads each row's replicated open pick (`ArenaPresentation.ExpeditionChoosing`). Another pilot's hologram shows
-  three cyan cards; the offers stay private. Mine carries my offers' rarities, and in first person it steps aside
-  while my tray is on screen.
+  three cyan cards; the offers stay private. Mine carries my offers' rarities. The authority holds me, so mine also
+  shows in first person under the tray and through the plant. A damaging hit flinches the look
+  (`NativeChipSelect.Flinch`): it yields up to 45% to the route's pose, so the hit reaction shows through. The hologram
+  blinks red as before.
+- **Wrist plant** (`Core/NativeChipPlant.cs`; docs/PVE-CHIP-SELECT.md "Expedition wrist plant"). Each pick plays it on
+  the Boss Test plant's timeline:
+  - The chosen card leaves the folding panel as the chip.
+  - A hand presses it into the cuff in third person. With a long weapon, and in first person for every class, the display
+    wrist takes it as it drops.
+  - In first person, while my tray or its follow-through is up, my wrist eases beside the tray instead of under its cards
+    (`NativeChipSelectPose.TrayWrist`). The greatsword and bow stay under it, as their view arms cannot reach.
+  - The cuff pulses, and the arms return.
+  - The authority's final hold ends with it (Install + `NativeDraftPlant.ReturnEnd`).
+  - **Mine** runs from my pick, so the tray closing never drops it. It stops only if that pick is refused or fails. It
+    returns to the hologram when another of my rewards follows on the tray (`ArenaPresentation.ExpeditionPlant`).
+  - **Another pilot's** runs from the authority's `Install` event for them. Their flag reads choosing through the final
+    plant as well, so a queued pick cannot be told from a final one. Their look lowers after each plant, then rises
+    again after 0.5 s if they are still choosing.
 
 ## Intents and confirmation
 
@@ -432,8 +458,12 @@ For `claude/expedition-chip-screen`, use the existing authenticated `ExpeditionC
 - On opening a pending personal pick, send `new ExpeditionCommand(ExpeditionIntent.OpenChoice, rewardId)`. The target is optional (any claimed, unconsumed personal reward then suffices). Opening another account's reward, an empty queue, or opening during loading is refused.
 - On closing the chip screen (C, Escape, cancellation, or UI teardown), send `new ExpeditionCommand(ExpeditionIntent.CloseChoice)`. This is idempotent and may close during loading. Do not open choosing merely because a reward was collected or the J board is visible.
 - Read `view.Member(account).choosing` / `view.members[].choosing` for the wrist hologram. This is a public boolean only: offers, wallet, held chips and machine/catch-up rewards remain private. Existing guest request run/epoch/authentication and transaction replay protections apply.
-- Owner correction: choosing is informational only. Do not freeze pilots or cancel movement, attacks, abilities, block, roll or machine interaction because the chip screen is open. Pilots remain vulnerable to ordinary damage; enemies, teammates, difficulty and run clock continue. The chip screen must not add a choosing-based gameplay input lock. Current selection remains open across queued picks; consuming the final claimed reward clears the flag automatically. Close, death, disconnect, extraction, area loading and save resume clear it.
+- Owner direction 2026-10-15 (superseding the PR #234 correction that made choosing informational only): the host holds the chooser (PR #237, `codex/expedition-choice-hold`). OpenChoice feeds the existing Frozen / input-cancellation / position hold: movement, attacks, abilities, roll, reload and block cancel, machine and cache purchases refuse, and camera yaw/pitch survive. Pilots remain vulnerable to ordinary damage; enemies, teammates, difficulty and run clock continue. Current selection remains open across queued picks. The final Select holds until its run time plus `NativeDraftPlant.ReturnEnd` (`ChoicePlantSeconds`, `choosingUntil`), and an automatic CloseChoice cannot shorten that. An explicit CloseChoice before the final pick releases at once. Death, disconnect, extraction, area loading and save resume clear the flag and the deadline. The client adds no choosing-based play gate (the tray routes only its own keys); the wrist plant (`Core/NativeChipPlant.cs`) is the presentation of that final hold.
 - Successful `Select` emits exactly one ordinary arena `EventKind.Install`, with the selecting pilot as owner/target, current position, chip id, and resulting stack count. Refused/repeated selections emit none. Inventory synchronization and snapshot restoration do not replay installs.
 - Notices now say C for chip choices; J still opens the Expedition board. The C key and screen/hologram bindings belong to Claude's presentation branch and were not present on shared when this authority patch was authored.
 
 Optional Boss Test offer parity (implemented/Siren filtering, tier weights, money chips, stale-offer reroll) and tiered physical machine pickups remain deferred. Existing Expedition offer/economy rules are unchanged.
+
+Presentation notes for Astra (Claude, 2026-10-15; nothing further is needed for the hold):
+1. *Optional data.* Other clients cannot tell a final pick's plant from a queued one: `members[].choosing` stays true through both. Their wrist look lowers after every plant and rises again after 0.5 s if they are still choosing. A public "final plant" signal would let it stay up for a queued pick. For example, the remaining `choosingUntil` (or a boolean) on `ExpeditionViewMember`. The plant's start already comes from the public Install event.
+2. *Observation, not a request.* On a non-final pick, an explicit CloseChoice during that pick's plant releases at once. The flow sends CloseChoice when C or Escape is pressed mid-plant. The pilot is then free before the chip is in. The plant still plays its full span on every client. The owner's "put their chip in their wrist after selected, then they are free" would also be met by holding every successful Select to its Install time plus `ChoicePlantSeconds`.

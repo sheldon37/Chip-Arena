@@ -1,5 +1,68 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Claude — Expedition chip hold: the wrist-hologram look and the wrist plant after each pick (owner: "Can we change the chip selection to just pressing C and it'll be us in a "Chip Selection" animation? I purposely wanted to make people vulnerable when doing this." / "(Like we had for ward zero, but can keep the open view. I just want players to stay in place while doing this.)" / "Still make them put their chip in their wrist after selected, then they are free to move. (Can be closed out with C if they decide to choose later of course.)")
+- Branch `claude/expedition-chip-animation`, base shared `6558b02`.
+  - Merged shared `46ecc2e` (hub authority PRs #235/#236 and Astra's chooser hold PR #237), `48a5d78` (Cyber Lord plasma casts, PR #238) and `fdbb6a5` (Cyber Lord melee step-in). No file overlaps; this branch's pose code does not touch `MeleeView.Planted` or the Cyber Lord idle check.
+  - Implementation commit `ea3f1af`. Pushed on the branch; no PR, merge or release.
+- **Split.** The hold is Astra's (PR #237):
+  - OpenChoice feeds the existing Frozen / input-cancellation / position hold (`NativeLeet.cs:20-29`), and camera yaw/pitch survive.
+  - The final Select holds until Install + `NativeDraftPlant.ReturnEnd` (`ChoicePlantSeconds`, `NativeExpeditionRewards.cs:70,84,97`).
+  - This branch is presentation only. It adds no client input gating (the tray's digit/Alt routing is unchanged) and edits no host file.
+  - The sanctuary holster (`NativeExpeditionHubAuthority.cs:69 HubInput`) is separate and composes with it. The client touches neither.
+- **Research: Ward Zero / Boss Test.** Two layers hold the picker in place.
+  - The host zeroes a PvE chooser's input while `row.Open` (`NativePve.cs:68`, Yaw/Pitch kept).
+  - The client's `play` excludes `PvePickOpen` (`ConversionGame.cs:133`), so pending is `{Yaw,Pitch}` only (`:156`), mouse look stops (`:142`) and the cursor is free (`:135`).
+  - The full-screen stage replaces the live view (`NativeDraftPresentation.cs:19,39 HideLive`).
+  - Its wrist plant runs `NativeDraftPlant` (`:14`) on the stage rig for `ReturnEnd`. Play resumes during it, and any key ends it (`NativeDraftFollow.cs:25,35`).
+  - The wrist look: `NativeChipSelectPresentation.cs:71 ChipSelecting` / `:94 ChipSelectPose` (the rig Overlay from `ArenaPresentation.cs:228`). First person: `:141 ChipSelectView` (from `NativeViewPresentation.cs:84`).
+- **Look while held** (`Runtime/NativeChipSelectPresentation.cs`, `NativeExpeditionChipScreen.cs`):
+  - My pilot shows the wrist-hologram look from `members[].choosing`, as others see it.
+  - In first person it no longer steps aside under the tray (the hold means no weapon to keep clear). While the tray or its follow-through is up, the view wrist eases over 0.3 s to beside the tray instead of under its cards (`NativeChipSelectPose.TrayWrist`, aspect-aware). The greatsword's and bow's view arms cannot reach, so they stay put.
+  - A damaging hit flinches the look (`NativeChipSelect.Flinch`): it yields up to 45% to the route's pose for 0.46 s, so the hit reaction shows through. The hologram blinks red as before.
+- **Wrist plant** (new `Core/NativeChipPlant.cs`). It runs after every Select on the Boss Test plant's timeline:
+  - The chosen card lifts while the others fade, and the panel folds.
+  - At `Contact` (0.62 s) a hand takes the card in third person: empty hands, gauntlets, pistol or dagger, carried over an arc and pressed onto the cuff. Otherwise the display wrist takes it as it drops down the cone: long weapons, and every class in first person.
+  - Seat and install cue at `SoundAt` (1.14 s), sunk by `PlantEnd`, cuff pulse, arms back by `ReturnEnd` (1.95 s).
+  - `NativeChipPlant.Span` = `ReturnEnd` = `ChoicePlantSeconds`, so the plant ends when the authority releases.
+  - **Mine** runs from my click (unscaled) whatever the tray does: the auto-close never drops the look. It stops only on a refused or failed pick. It returns to the hologram when the tray will show another of my rewards; otherwise the look lowers.
+  - **Others'** run from the authority's `Install` event, newest within the span. They lower after each plant and rise again after 0.5 s if still choosing (a queued pick cannot be told from a final one).
+  - The hologram draws the chip (rarity colour, `KindCard`) and the cuff pulse (`KindRing` and `KindMote`; ring only on Low) in the same mesh.
+- **Tray and plant together:**
+  - The follow-through spans the plant (1.6 → 1.95 s).
+  - The picked 2D card flies into my projected hologram and fades exactly as the 3D hand takes it at the contact (`ArenaPresentation.ChipSelectFocus`, the view model's in first person).
+  - My Install cue is held for the seat (`ExpeditionPlantAudio` → `NativeInstallCue`, as the stage plant does).
+  - The under-attack line now reads "C closes the chips to move and fight".
+- **Fixes in the shared selecting pose.** These also change the Boss Test look for other viewers; found by a new rotation check.
+  - A plain slerp flipped the left dagger hand 165° in one frame mid-raise. `ChipTurnBlend` now keeps each hand blend going the same way round.
+  - The floor guard's lift axis is undefined for a plumb blade, which spun the right dagger about 22° per frame. `KeepOffFloor` now lifts near-plumb blades about the hand's level across-axis and equals `CapturedRig.BladeFloor` elsewhere.
+  - The dagger carry now trails back and down, so its raise no longer swings the blade through plumb.
+  - Before → after: worst hand turn off the route 39,500 → 1,205 deg/s in the selecting look; the plant peaks at 990 deg/s and 3.7 m/s.
+- **Docs.** `EXPEDITION-PRESENTATION.md`: Chip picks bullets, files, and the hook lines. The contract's stale "choosing is informational only / no lock" line now states PR #237's hold (the client still adds no play gate). Presentation notes for Astra added. `PVE-CHIP-SELECT.md`: carry, blends, hits, plant and first person.
+- **Impact.** No change to hit timing, hitboxes, damage, cooldowns, movement, prediction or networking. The plant adds no hold or input; its span only mirrors the authority's final hold.
+- **Checks.**
+  - `ChipSelectChecks` (`--chip-select`, new flag):
+    - plant over all 16 classes at 30/60/144/240 Hz, plus a queued pick: arms only, no pops or flips, hand-off ≤2.1 cm, press ≤2 cm, seat ≤1 cm, exact route after a final plant, 0 bytes;
+    - the first-person plant, and first person beside the tray (14 classes);
+    - plant hologram tiers with `Quads()` exact, and the flinch;
+    - a hand-turn (flip) bound added to the selecting-pose test.
+  - `ExpeditionPickChecks` (256): the plant span against the real authority's release, queue Stay, C before and during a plant, and source scans (plant hook, Install-driven cue, refusal stop, follow span, audio, card target, alarm text, the first-person tray hook).
+  - Merged head `6cce864` (shared `fdbb6a5`): `unity-check.sh` runtime+editor build OK (rc 0); `check_relay.py` rc 0, 729 PASS lines, 0 FAIL, 35 managed-core checks; Python `unittest` 107 OK (1 skipped), rc 0; `package_source.py` passed (2141 source files), rc 0; `git diff --check` clean, rc 0. The same five also passed on the earlier merged head `74fe5a8` (728 PASS lines).
+- **Renders** (offline, not Unity): scratch `renders-expedition-chip-anim/`. Real Core routes, pose, plant, hologram and gait, and the real tray methods; WebGL and canvas stand-ins for the shaders and IMGUI.
+  - Live third person: tray open; under attack; plant start and mid; just released.
+  - Others' 3/4 view: under attack; mid-plant; and a strip of hand plant, wrist plant and queued pick.
+  - First person: tray (pistol, sword); the card handed into the hologram; the chip seated.
+  - The offline canvas draws the under-attack glow as a solid wash. In game it is a 12% blink.
+- **Not run.** Unity Editor or player, Windows, two clients, the plant in engine (shader output, IMGUI handoff), real input latency between a guest's click and its Install.
+- **Risks.**
+  - The default right-shoulder camera hides the raised wrist and the hand plant behind the torso, and the tray covers the pilot's lower body. Only the bowed head reads locally in third person (front and first-person views read well). A chooser camera framing is an owner taste call, not done here (it would change the open view).
+  - The dagger carry change and the turn fixes also alter how Boss Test choosers look to others.
+  - The first-person greatsword and bow wrists stay under the tray.
+  - A refused pick stops the plant mid-way (a small pop back to the tray look).
+- **For Astra** (optional; nothing further needed for the hold):
+  1. A public final-plant signal (for example the remaining `choosingUntil`) would keep a queued pick's look up for other clients.
+  2. Observation: on a non-final pick, an explicit CloseChoice during its plant releases at once (C or Escape mid-plant).
+- **Next.** Owner looks in a native build; decides on a third-person chooser camera.
+
 ## 2026-10-15 — Astra — Expedition chooser hold supersedes PR #234
 - Branch `codex/expedition-choice-hold`, base shared/builder `6558b024b74acde24fbb94b2ec3562bffaab0b34`. Current owner direction restores the host hold while keeping damage and world/difficulty time live.
 - OpenChoice feeds the existing authoritative Frozen/input-cancellation/position hold. Camera yaw/pitch survive; movement, attacks, abilities, roll, reload and block cancel; machine/cache purchases refuse. Possession cannot route chooser input to another pilot.
