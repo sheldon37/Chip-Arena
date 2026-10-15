@@ -264,7 +264,9 @@ namespace ChipArena.UnityConversion
             var apply=Body(mt,"private void ApplyScreen(MenuScreen screen,bool sandbox)");Check(apply.Contains("menuScreen=screen;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;GUIUtility.keyboardControl=0;")&&apply.Contains("playSandbox=sandbox"),"the swap is Go's old screen change");
             Check(Regex.Matches(mt,"MenuTitles=\\{([^}]*)\\}").Count==1&&Regex.Match(mt,"MenuTitles=\\{([^}]*)\\}").Groups[1].Value.Split(',').Length==Regex.Match(home,"enum MenuScreen\\{([^}]*)\\}").Groups[1].Value.Split(',').Length,"a title for every menu screen");
             // Stage starts and returns go through the loading screen.
-            Check(home.Contains("RequestStage(sandboxWanted?StageLoadKind.Sandbox:StageLoadKind.Match,StartMatch)")&&home.Contains("RequestStage(StageLoadKind.Boss,StartMatch)")&&home.Contains("RequestStage(StageLoadKind.Expedition,StartExpeditionM1)"),"Play, Boss and DEV Expedition M1 start under the loading screen");
+            // The boss fight and DEV Expedition M1 start from the Expeditions screen (NativeExpeditionsMenu.cs, owner 2026-10-15).
+            var expeditions=R("Assets/ChipArena/Runtime/NativeExpeditionsMenu.cs");
+            Check(home.Contains("RequestStage(sandboxWanted?StageLoadKind.Sandbox:StageLoadKind.Match,StartMatch)")&&expeditions.Contains("RequestStage(StageLoadKind.Boss,StartMatch)")&&expeditions.Contains("RequestStage(StageLoadKind.Expedition,StartExpeditionM1)")&&home.Contains("private void BossScreen(float age)=>ExpeditionsScreen(age);"),"Play, Wave Defense (the boss fight) and DEV Expedition M1 start under the loading screen");
             Check(home.Contains("RequestStage(StageKindOf(arena),StartMatch)")&&home.Contains("RequestStage(StageLoadKind.Return,"),"restart and return to the main menu under the loading screen");
             Check(R("Assets/ChipArena/Runtime/NativeLobbyUI.cs").Contains("RequestStage(prefs.pve?StageLoadKind.Boss:StageLoadKind.Online,StartMatch)"),"the room's Start under the loading screen");
             var cg=R("Assets/ChipArena/Runtime/ConversionGame.cs");

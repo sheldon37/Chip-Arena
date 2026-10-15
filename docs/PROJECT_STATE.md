@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-15 Claude Expeditions screen (`claude/expeditions-screen`, pushed, not merged): Start Expedition and a PvE room's lobby are one screen. It has a party strip, a SELECT EXPEDITION carousel (BLACK SIREN and three placeholders), START EXPEDITION (DEV M1, solo) and PLAY WAVE DEFENSE (Wave 1 or Siren; Waves 2-3 locked), a loadout drawer, and Solo/Host/Join or the room bar. Presentation only; managed checks and offline renders. Waiting on Astra: room fields (expedition, mode, startWave), a schedule that can start at any wave, and multiplayer Expedition (DEV_LOG "Expeditions screen", docs/EXPEDITIONS-MENU.md).
+
 2026-10-15 Astra Expedition chip selection: owner correction supersedes the D18 freeze in PR #233. Choosing is public presence only; no movement/action lock or damage protection. OpenChoice/CloseChoice privacy, Install event and C notices retained. Correction branch `codex/unity-expedition-chip-vulnerable` from `74c4117`; Claude screen binding and native Windows acceptance remain pending. See DEV_LOG.
 
 2026-10-15 Astra: Cyber Lord v2 authority and stage readiness gate implemented on `codex/unity-cyber-v2-stage-gate` from `c9a87f6`; see latest DEV_LOG for wire field mapping, validation and publication status. Also fixes the existing Windows Expedition acceptance crash from indexing an empty authored slot array. Windows native execution and host/guest visual acceptance remain pending.

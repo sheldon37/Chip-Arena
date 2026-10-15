@@ -8602,3 +8602,55 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - **Checks (run5 on the branch):** Unity runtime and editor compile OK; relay 713 PASS; Python 106 OK; package OK; diff-check OK. 487 s in all, no slower than before.
 - **For Astra:** this covers the pistol flake you reran in PR #234. Revert the single property if you prefer a per-check warm-up.
 - **Animation impact:** none.
+
+## 2026-10-15 — Claude: Expeditions screen (the redesigned Start Expedition, also the co-op room's lobby)
+
+- **Branch:** `claude/expeditions-screen`, based on `3ced89c` (the Unity integration head), merged with the head's newer `d6968b6`. Pushed, no PR, not merged.
+- **Owner request:** "Redesign the "Start Expedition" Screen ... much more modernized ... Multiplayer capable ... a "Play Wave Defense" button for individual waves ... players / bots in the lobby all in the lobby, in the top ... a "Select Expedition" screen ... placeholders and our current one expedition."
+- **Change:**
+  - Start Expedition (home key 1) and a PvE room's lobby open one screen: `Runtime/NativeExpeditionsMenu.cs`. The rules and the layout are in `Core/NativeExpeditionsMenu.cs`; every name and placeholder is in `Core/NativeExpeditionCatalogue.cs`.
+  - **Party strip** across the top: live portraits, host crown, ready pills, and bots added or removed by the host. Open seats invite.
+  - **SELECT EXPEDITION** carousel. BLACK SIREN is the working title: hub Expedition City; Ward Zero LIVE; Central Station and City Ironworks IN DEVELOPMENT; the Siren at City Hall IN DEVELOPMENT. Three locked placeholders: HOLLOW CHOIR, ASHEN PARISH, NIGHT MARROW. Key art comes from the stage scans; the card turns on change.
+  - **MODE:** START EXPEDITION, and PLAY WAVE DEFENSE with WAVE 1 / 2 / 3 / SIREN.
+  - **Loadout drawer:** party bots, mirror weapons, class and weapon.
+  - **Action bar:** Solo / Host Room / Join Room, or the room's code, invite and LAN line; then launch, or Ready and Send Loadout.
+  - The boss card screen is retired. Customize and Settings opened here come back here (`PanelBack`; `NativeLockerUI.LockerLeave` uses it).
+  - Transitions read EXPEDITIONS / PVE.
+  - Doc: `docs/EXPEDITIONS-MENU.md`.
+- **Every old action through its old call:**
+  - Start Boss Fight is Wave Defense at Wave 1 or the Siren: `RequestStage(Boss, StartMatch)`.
+  - Start at the Siren is the SIREN tile (skipWaves).
+  - DEV Expedition M1 is START EXPEDITION when solo; still developer-only and offline.
+  - Host Co-op Room is Host Room (Create).
+  - Party bots, mirror, class and weapon, and the lobby's Start, Ready, Send Loadout, Copy Code and Invite, LAN line, Leave Room, Customize, Settings and Connection report are all still there.
+- **Not in this change:** no `NativeRoomOptions` field or network message (a check pins the fields), no StartMatch, NativePve, NativeWaveSchedule or Expedition M1 gate change, and no files of the parallel tasks.
+- **Checks:**
+  - Unity 6000.3.24f1 runtime and editor compile OK.
+  - New `ExpeditionsMenuChecks` (`--expeditions-menu`, and in the full run): 605 checks. They cover catalogue integrity against ExpeditionLayout.json and UnityMaps.json; the mode and wave mapping (Wave 1 normal, Siren skipWaves, Waves 2-3 locked); launch gates; every old action reachable; layout fit at 1920×1080, 3440×1440, 1280×720 at 1.5 and seven more; guest read-only; no room fields; Reduced-effects branches; keys.
+  - `TransitionLoadingChecks`, `LockerChecks` and `ExpeditionPresentationChecks` (the M1 entry gate) were updated for the moved launch calls and the return path. `RooftopChecks`' HomeItems order check is unchanged.
+  - run5 on the merged tree, before this entry's commit, all return codes 0: Unity runtime and editor compile OK; relay 714 PASS; Python 106 OK (1 skipped); package OK; diff-check OK.
+- **Renders:** offline only, in the scratchpad's `renders-expeditions-screen`. The 3D portraits are rig-box silhouettes and the backdrop is a Ward Zero stand-in. The harness is the scratchpad's `menurender2`, repaired from `menurender`; it compiles the real menu files and also renders the current home menu. No Unity, Windows or two-client run.
+- **Risks:**
+  - Customize and Settings from a solo screen now return to Expeditions, not home.
+  - The scan redraws about 600 blocks a frame, as the loading screen does.
+  - Controller: LB/RB, Y, X, A and B are read through the old input's joystick buttons; the d-pad is not mapped.
+  - Guests see the default pick and Wave Defense ("THE ROOM'S RUN"), which is all a room can play today.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Astra contract (the screen is wired to read these when they exist):**
+  1. **Room fields.** Add these to `NativeRoomOptions` and the lobby message, normalized and host-owned, so guests see the host's pick and mode; the screen then drops its guest default:
+     - `expedition`: a catalogue or layout world id; default `exp-city`.
+     - `mode`: `expedition` | `waves`.
+     - `startWave`: an int, 1-3, or 4 for the boss. It replaces `skipWaves`, or sits alongside it with `skipWaves` meaning startWave 4.
+  2. **Waves.** `NativeWaveSchedule` (and `ConfigurePve`) starting at any wave: the opening runs into wave N, and money and the scaling stay correct for a late start. Waves 2 and 3 then unlock (`NativeExpeditionsMenu.WaveSupported`).
+  3. **Multiplayer Expedition from a room.** Research list:
+     - starting a run from a room, with roster join and N-party placement on the sanctuary slots;
+     - a decision on bots in a run;
+     - a guest area loader and readiness, and replica frames on expedition maps;
+     - guest interact and door intents;
+     - lobby ready during or after a run;
+     - a party cap of 8;
+     - host leave or transfer;
+     - removing the DEV and offline gates of `StartExpeditionM1`.
+     Then `Resolve` lets the host launch (`X.LaunchKind.ExpeditionM1` becomes a room start).
+  4. **Guests seeing the host's selection:** item 1, plus a lobby broadcast when the pick changes.
+- **Next:** owner review in Unity or Windows (look, 720p at 1.5, controller); Astra's items 1-3.

@@ -619,7 +619,8 @@ namespace ChipArena.UnityConversion
             var reads=new HashSet<string>{"Snapshot","Migrating","FinalUnlocked","ExtractionUnlocked","CanExtract","IsChoosing"};
             foreach(Match m in Regex.Matches(view,@"\brun\.(\w+)"))Check(reads.Contains(m.Groups[1].Value),"the view builder only reads the authority (run."+m.Groups[1].Value+")");
             foreach(var src in new[]{hud,rules,view,screen,layout,live,world3d,world})Check(!src.Contains("Random")&&!src.Contains("NativePveRandom"),"no randomness in presentation");
-            Check(R("Runtime/NativeHomeMenu.cs").Contains("int a=account.Developer?ScreenActions")&&R("Runtime/NativeExpeditionM1.cs").Contains("account?.Developer!=true||Online||server!=null||dedicated")&&ui.Contains("--ca-expedition-preview"),"Expedition M1 entry is DEV-only/local and preview retains its separate flag");
+            // The entry is the Expeditions screen's START EXPEDITION (owner 2026-10-15): developer-only, never from a room.
+            Check(R("Core/NativeExpeditionsMenu.cs").Contains("if(!developer){l.Reason=DevOnly;return l;}")&&R("Core/NativeExpeditionsMenu.cs").Contains("if(seat==Seat.Host){l.Reason=CoopPending")&&R("Runtime/NativeExpeditionsMenu.cs").Contains("case X.LaunchKind.ExpeditionM1:RequestStage(StageLoadKind.Expedition,StartExpeditionM1);")&&R("Runtime/NativeExpeditionM1.cs").Contains("account?.Developer!=true||Online||server!=null||dedicated")&&ui.Contains("--ca-expedition-preview"),"Expedition M1 entry is DEV-only/local and preview retains its separate flag");
         }
     }
 }
