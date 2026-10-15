@@ -22,7 +22,8 @@ namespace ChipArena.UnityConversion
         private NativeCeilingFieldPresentation(Shader shader){material=new Material(shader){name="Native ceiling field holograms",renderQueue=(int)RenderQueue.Transparent};mesh.MarkDynamic();}
         /// <summary>Null when the shader is missing or unsupported (the holograms then simply do not draw).</summary>
         public static NativeCeilingFieldPresentation Create(){var shader=Resources.Load<Shader>("NativeCeilingField");return shader!=null&&shader.isSupported?new NativeCeilingFieldPresentation(shader):null;}
-        public int Count=>field.Count;
+        // `this.`: in C# 14 a bare `field` inside a property accessor is the property's backing-field keyword (CI's .NET 10 compiler).
+        public int Count=>this.field.Count;
         public void Clear(){field.Clear();lastEvent=0;mesh.Clear();}
         /// <summary>now: the presentation clock (the source's state.time: FieldClock, continuous on a guest).</summary>
         public void Render(NativeArena arena,Camera camera,float now)
