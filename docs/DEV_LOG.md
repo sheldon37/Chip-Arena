@@ -1,5 +1,21 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Claude — Expedition chooser camera: swing round to face my pilot while choosing (owner: "Lets swing the camera to us when choosing,")
+- Branch `claude/expedition-chooser-camera`, base shared `425cb2d`, fast-forwarded to shared `617fee5` (docs only). Stage 1 of the branch; the owner's later hologram-screen and look-lock direction follows in the next entry.
+- **Why.** In the default shoulder camera only my back showed while choosing, and the tray covered the rest (the chip-hold look's open risk).
+- **What** (`Core/NativeChooserCamera.cs`, `Runtime/NativeChooserCameraPresentation.cs`):
+  - While I am held choosing (tray wanted open, follow-through, my plant, or the view's flag), the camera swings .42 s (smoothstep) from any Settings · Camera mode round to a front three-quarter shot, and back at the release, C or Escape.
+  - The side is where the class holds its wrist hologram (`SideOf`, verified on all 16 routes): left for pistol, shield, gauntlets; right for long guns, blades, staffs, bow, Cyber Lord.
+  - Framing from the drawn head and hologram panel: crown 7% from the top, the hologram above the tray, bowed looks included.
+  - Collision uses the shoulder rigs' cast, a fallback order of angles, a .4 s dwell, and a per-frame pull-in eased out at 12/s.
+  - First person leaves through the face; my body is drawn once 0.45 m clear and out of view.
+  - Death or extraction eases out; a cutscene, spectating, new area or skipped frame drops it at once.
+- **Hooks.** `ChooserCamera()` in LateFrame after `ConvergeAim` and before the shakes (AimTarget and the sent look stay the gameplay camera's). `ChooserCameraRestore()` first in `UpdateCamera`. The crosshair and my own overhead bar and SELECTING CHIP tag are hidden under the shot.
+- **Impact.** No change to hit timing, hitboxes, damage, cooldowns, movement or networking. No input, look or play gate in this stage. One camera shake, on the camera shown.
+- **Checks.** New `ChooserCameraChecks` (`--chooser-camera`): side per class over the real routes, ease timing at 30-240 Hz, the exact gameplay camera before and after, turning and jitter, every mode, framing over three aspects, six collision spots x 5 modes, first person, hand-offs, zero allocation, and the runtime hooks. All 12 pass. `unity-check.sh` runtime+editor build OK. The full five-check run is recorded at the branch's final head.
+- **Renders.** Scratch `renders-expedition-chooser-cam/` (offline, not Unity): before and after with the tray, plant, under attack, a strip, every mode, turning, tight spots, first person, side per class.
+- **Risks.** In a 1.6 m corridor the swing passes about 0.45 m behind the head for about 0.2 s; it never enters the wall. The first-person swing turns the pilot into view late (the body only appears out of view). My SAFE tag in the sanctuary still shows over my head; that hub file was left untouched (the hub-fix work is concurrent).
+
 ## 2026-10-15 — Claude — Cyber Lord melee step handed to Astra (owner approved)
 - Owner, 2026-10-15: "Yes give the melee step to Astra." Branch `claude/cyberlord-melee-step-handoff`, base shared `425cb2d`. Docs only.
 - **Astra next:** implement the real per-step simulation step for the Cyber Lord melee string, as specified in `docs/CYBER-LORD.md`, "Melee step contract" (now owner-approved). In short:

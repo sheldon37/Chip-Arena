@@ -173,6 +173,9 @@ namespace ChipArena.UnityConversion
                 // The shoulder cameras send the look that points the pilot at the crosshair point (NativeShoulderCamera.cs).
                 ConvergeAim(p);
             }
+            // Held choosing a chip in an Expedition, the camera swings round to face my pilot (NativeChooserCameraPresentation.cs): after
+            // the aim above, so the look sent and AimTarget are the gameplay camera's, and before the shakes, which shake the camera shown.
+            ChooserCamera();
             // renderer.ts:136/:149 camera shake with event-vfx.ts:29 (NativeShakeRules): a fresh (.4 s) hit, impact, break, block or
             // collapse aimed at the view pilot, never a burn/poison tick, sets .12 while Settings · camera shake is on. The amount
             // falls by the frame time (at most .05 s) in every frame, so a shake held back never plays late; only a live local
@@ -277,6 +280,8 @@ namespace ChipArena.UnityConversion
         }
         private void UpdateCamera()
         {
+            // The gameplay field of view under last frame's chooser shot comes back first (NativeChooserCameraPresentation.cs).
+            ChooserCameraRestore();
             // C16: the Last Laugh cutscene directs this camera for the pilots in it (the demon victim screen has its own).
             if(cinematic.Direct(arena,presentation,cameraView,match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result)){viewModelCamera.enabled=false;sprintKick=0;shoulderView=convergeAim=false;aimSkip=0;return;}
             var p=Spectator??arena.ViewPilot;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
@@ -369,7 +374,7 @@ namespace ChipArena.UnityConversion
                 var p=arena.Local;bool fighting=match.Phase==NativePhase.Fight||match.Phase==NativePhase.Countdown;
                 if(!menu&&(fighting||match.Phase==NativePhase.Result))FightHud(p);
                 if(!menu&&fighting)KernelPanicBanner();
-                if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive)Crosshair();
+                if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive&&!ChooserFramed)Crosshair();
                 if(!menu&&match.Phase==NativePhase.Fight)
                 {
                     if(arena.Downed(p))Prompt(U.H/2+80,"RECOVERING  ·  WASD chooses roll direction",14,NativeCyberTheme.Ink());

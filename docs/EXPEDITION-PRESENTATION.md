@@ -76,12 +76,18 @@ Core files are engine-free; Runtime files draw with the cyber HUD kit (`NativeHu
 | `Runtime/NativeExpeditionChipScreen.cs` | The Boss Test's chip tray over the live view, its follow-through, input routing, the CHIPS tag, the wrist-look and wrist-plant hooks and the plant's install cue |
 | `Core/NativeChipPlant.cs` | The wrist plant after each pick: its timeline (the Boss Test plant's), cue and pose layer over the wrist-hologram pose |
 | `Tests/ExpeditionPickChecks.cs` | Managed checks (`CoreTests.dll --expedition-pick`, also in the full suite) |
+| `Core/NativeChooserCamera.cs` | The chooser camera: the swing round to a front three-quarter shot while I am held choosing, its framing, collision fallback and hand-offs |
+| `Runtime/NativeChooserCameraPresentation.cs` | Applies it after the aim and before the shakes; when I am held; restores the field of view; the hologram panel accessor |
+| `Tests/ChooserCameraChecks.cs` | Managed checks (`CoreTests.dll --chooser-camera`, also in the full suite) |
 
 `Runtime/ConversionGame.cs` has these hook lines: the J/Escape/C keys (`ExpeditionLiveKeys`), local play
 paused while the J screen is open, the J screen in `GuiFrame`, the in-scene HUD (which draws the chip tray), and
 the world draw at the start of `LateFrame`. For chip picks there are also the Boss Test's C kept out of an
 Expedition, Alt freeing the cursor (`look` and mouse look), `ExpeditionPickRoute()` after the play input, and
-`ExpeditionPlantAudio()` after `PveFollowAudio()` in `LateFrame` (my plant holds my Install cue for its seat).
+`ExpeditionPlantAudio()` after `PveFollowAudio()` in `LateFrame` (my plant holds my Install cue for its seat). The
+chooser camera adds `ChooserCamera()` in `LateFrame` after the aim (`ConvergeAim`) and before the shakes,
+`ChooserCameraRestore()` first in `UpdateCamera`, and `ChooserFramed` on the crosshair and on my own overhead health
+bar (`NativeCombatHud.cs`) and SELECTING CHIP tag (`NativeChipSelectHud.cs`).
 
 ## Live binding
 
@@ -145,8 +151,8 @@ unchanged.
   Without Alt the locked cursor never hovers or clicks a card.
 - **Wrist look and SELECTING CHIP tag.** These come from `members[].choosing` for every pilot, as the Boss Test
   reads each row's replicated open pick (`ArenaPresentation.ExpeditionChoosing`). Another pilot's hologram shows
-  three cyan cards; the offers stay private. Mine carries my offers' rarities. The authority holds me, so mine also
-  shows in first person under the tray and through the plant. A damaging hit flinches the look
+  three cyan cards; the offers stay private. Mine carries my offers' rarities. In first person the chooser camera
+  swings out to show it on my body (below); the first-person look shows only while the camera is still at the eye. A damaging hit flinches the look
   (`NativeChipSelect.Flinch`): it yields up to 45% to the route's pose, so the hit reaction shows through. The hologram
   blinks red as before.
 - **Wrist plant** (`Core/NativeChipPlant.cs`; docs/PVE-CHIP-SELECT.md "Expedition wrist plant"). Each pick plays it on
@@ -163,6 +169,38 @@ unchanged.
   - **Another pilot's** runs from the authority's `Install` event for them. Their flag reads choosing through the final
     plant as well, so a queued pick cannot be told from a final one. Their look lowers after each plant, then rises
     again after 0.5 s if they are still choosing.
+- **Chooser camera** (owner 2026-10-15: "Lets swing the camera to us when choosing,"; `Core/NativeChooserCamera.cs`,
+  `Runtime/NativeChooserCameraPresentation.cs`). The shoulder camera showed only my back and the tray covered the rest,
+  so while I am held choosing the camera swings round to face me. Presentation only: no input, look or hold changes.
+  - **When.** From my tray wanted open (C), its follow-through or my plant, or the view's flag still showing me choosing
+    (the authority's final hold ends a round trip after my own plant clock). It stays through every queued pick and the
+    final plant, and eases back on C or Escape, at the release, on death or extraction, or when the tray could not show.
+  - **Swing.** .42 s each way (smoothstep). The path orbits my axis from the gameplay camera (every Settings · Camera mode)
+    to the front shot, one way round for the whole swing. Each way is reversible mid-swing. At weight 0 nothing is
+    applied, and `UpdateCamera` rebuilds the camera from the unchanged look and restores the field of view first, so
+    gameplay resumes exactly where it would be.
+  - **Shot.** A three-quarter view from the side my wrist hologram floats on (`NativeChooserCamera.SideOf`: the left for
+    the pistol, the shield and the gauntlets; the right for the long guns, blades, staffs, the bow and the Cyber Lord).
+    50 degree field of view. It frames from my crown to just under the hologram (the drawn head and panel, eased), so a
+    bowed blade or shield look keeps its waist-level wrist above the tray. The crown sits 7% from the top, the span fills
+    a third of the screen, and I sit 10% off centre away from the way I face.
+  - **Turning.** Mouse look still turns me (the authority keeps camera yaw while holding). The shot follows my facing
+    (eased at 9/s), so it stays in front and mouse jitter does not shake it. The look pitch does not move it.
+  - **Collision.** The shoulder rigs' sphere cast (radius .12, padding .2). The front shot takes the first clear angle of
+    35, 60, 90 (side view), the same on the other side, straight on, then behind either shoulder. It keeps a working
+    choice for .4 s, eases between choices, and shortens the distance when nothing is clear. Every frame the camera is
+    cast from the point it orbits and pulled in at once (eased back out at 12/s), so it never enters a wall, fence, gate or door.
+  - **First person.** The camera leaves through the front of my face and turns round. The view model is off while swung,
+    and my body is drawn once the camera is .45 m from the eye, while it is still out of view. First person returns
+    when the swing ends.
+  - **Hits.** Damage, the hologram's red blink, the flinch and the damage screen are unchanged. The one camera shake applies
+    to the camera shown, after the swing, and the first-person hit kick is off while my body is shown. The damage screen's
+    directions follow the camera shown.
+  - **HUD.** The crosshair and my own overhead health bar and SELECTING CHIP tag are hidden under the shot (other pilots'
+    are unchanged). The picked card flies into my world hologram, as it is in view.
+  - **Hand-off.** Death or extraction eases back onto the death camera (the same rig). A cutscene, a spectated pilot, a
+    new area, or any screen that skipped the live camera (the killcam, loading) drops the swing at once.
+  - Other pilots' view is unchanged.
 
 ## Intents and confirmation
 

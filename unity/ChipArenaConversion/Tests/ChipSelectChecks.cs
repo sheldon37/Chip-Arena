@@ -105,7 +105,7 @@ internal static class ChipSelectChecks
     }
 
     // ---- the pose over every class's Core route ----
-    private sealed class Pilot
+    internal sealed class Pilot
     {
         public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();public readonly Actor A;public readonly string Route;
         private MeleeMotion melee;private readonly MeleeView view=new MeleeView();private GunMotion gun;private MagicMotion magic;private NativeBowMotion bow;private CyberLordMotion cyber;
