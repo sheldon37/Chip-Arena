@@ -97,26 +97,7 @@ namespace ChipArena.UnityConversion
         public static float Spread(float age)=>MeleeMath.Ease(Finite(age,1)/.07f)*.85f+.15f*MeleeMath.Clamp(Finite(age,1)/.07f,0,1);
         /// <summary>A blade's blood from one hit `age` seconds ago: .4 for 4 s, then easing to nothing by 10 s.</summary>
         public static float BladeShare(float age)=>!(age>=0)||age>=10?0:age<4?.4f:.4f*(1-MeleeMath.Smooth((age-4)/6));
-        /// <summary>
-        /// Blood along a melee blade's edge (`amount` 0..1 from the ledger): sliver `i` of <see cref="Slivers"/>, in the weapon
-        /// hand's source frame (the kill-box blade: its edge at +x, from the tip back toward the hilt as the amount grows):
-        /// centre and size. False when this sliver shows nothing.
-        /// </summary>
-        public const int Slivers=6;
-        public static bool Sliver(string spec,int i,float amount,out Vector3 centre,out Vector3 size)
-        {
-            centre=size=Vector3.Zero;amount=MeleeMath.Clamp(Finite(amount,0),0,1);if(amount<.02f||i<0||i>=Slivers)return false;
-            float z0,z1,edge,thick;switch(spec)
-            {
-                case "sword":z0=.33f;z1=1.17f;edge=.05f;thick=.036f;break;case "daggers":z0=.33f;z1=.73f;edge=.045f;thick=.036f;break;
-                case "greatsword":z0=.34f;z1=1.58f;edge=.09f;thick=.036f;break;default:return false;
-            }
-            // Sliver i covers a stretch from the tip back; more blood reaches further down the blade and thickens.
-            float reachBack=(z1-z0)*(.3f+.6f*amount),from=z1-reachBack*(i+1)/Slivers,to=z1-reachBack*i/Slivers;if(i>0)to+=.01f;
-            float lift=.4f+.6f*MeleeMath.Smooth(amount*1.4f-i*.12f);if(lift<.05f)return false;
-            float depth=(.012f+.016f*amount)*(1-.35f*i/Slivers)*lift;
-            centre=new Vector3(edge-depth*.5f+.001f,-.065f,(from+to)*.5f);size=new Vector3(depth,thick,Math.Max(.01f,to-from));return true;
-        }
+        // The blood a bloodied blade carries is drawn on the drawn blade's own surface (Core/NativeBladeProfile.cs, NativeBladeBlood).
         private static Vector3 Unit(Vector3 v,Vector3 fallback){float l=v.Length();return l>1e-5f&&l<1e6f?v/l:fallback;}
     }
 

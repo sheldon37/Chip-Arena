@@ -248,14 +248,16 @@ internal static class HitFeelChecks
         for(int k=0;k<3;k++)l.Observe(new Snapshot{Actors=new[]{victim,sword},Events=new[]{new ArenaEvent{Id=10+k,Kind=EventKind.Hit,Source=2,Target=1,Time=5+k*.5f,Amount=30,Detail="direct"}}});
         float fresh=l.BladeBlood(2,6.1f),later=l.BladeBlood(2,13),gone=l.BladeBlood(2,16.1f);
         Check(fresh>.9f&&later>0&&later<fresh&&gone==0&&l.BladeBlood(1,6)==0,"blade blood builds with hits ("+fresh+"), fades ("+later+") and is gone 10 s on ("+gone+")");
-        int shown=0;for(int i=0;i<NativeBloodRules.Slivers;i++)if(NativeBloodRules.Sliver("sword",i,fresh,out var c,out var s)){shown++;Check(c.Z>.3f&&c.Z<1.2f&&s.X>0&&s.X<.04f,"blade blood sits on the edge");}
-        Check(shown>=4&&!NativeBloodRules.Sliver("sword",0,0,out _,out _)&&!NativeBloodRules.Sliver("rifle",0,1,out _,out _),"slivers along a bloody blade, none on a clean one or a gun");
+        // The pieces lie on the blade's edge band (WeaponSocketChecks measures them against the drawn blade surface).
+        var pieces=new WeaponPiece[NativeBladeBlood.MaxPieces];int shown=NativeBladeBlood.Pieces("sword",true,fresh,false,pieces);
+        for(int i=0;i<shown;i++){var c=pieces[i].Position;Check(c.Z>.3f&&c.Z<1.28f&&c.X>0&&c.X<.05f&&Math.Abs(c.Y)<.02f,"blade blood sits on the edge band");}
+        Check(shown>=12&&NativeBladeBlood.Pieces("sword",true,0,false,pieces)==0&&NativeBladeBlood.Pieces("rifle",true,1,false,pieces)==0,"blood along a bloody blade, none on a clean one or a gun");
         l.Clear();Check(l.BladeBlood(2,6.1f)==0,"the round's reset cleans the blade");
         // A Q/E kit hit (the Whirlwind's pulse: detail "ability") is a melee blow too: the ledger keeps its kind for the slice.
         var gs=new Actor{Id=3,SourceSpec="greatsword",Position=new V3(1,0,0),Grounded=true,MeleeKit=new NativeMeleeKit{Kind="whirlwind"}};
         l.Observe(new Snapshot{Actors=new[]{victim,gs},Events=new[]{new ArenaEvent{Id=40,Kind=EventKind.Hit,Source=3,Target=1,Time=8,Amount=8.5f,Detail="ability"}}});
         Check(l.Blow(1,8,out var kitBlow)&&kitBlow.Kit=="whirlwind"&&kitBlow.Spec=="greatsword"&&l.BladeBlood(3,8.1f)>0,"a Whirlwind pulse is recorded as the greatsword's blow (kit "+kitBlow.Kit+") and bloodies its blade");
-        log.Add("blade blood: 3 hits "+fresh.ToString("0.00")+", "+later.ToString("0.00")+" 8 s after the last, 0 by 10 s; "+shown+" edge slivers; cleared with the ledger");
+        log.Add("blade blood: 3 hits "+fresh.ToString("0.00")+", "+later.ToString("0.00")+" 8 s after the last, 0 by 10 s; "+shown+" pieces on the edge; cleared with the ledger");
     }
     private static void Plane(List<string> log)
     {

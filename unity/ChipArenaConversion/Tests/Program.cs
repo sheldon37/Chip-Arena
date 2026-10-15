@@ -29,6 +29,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--dev-tools"){DevToolsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hazard-kit"){HazardKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--machines"){MachineModelChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--weapon-sockets"){var socketRoot=ProjectRoot();var socketData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(socketRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});WeaponSocketChecks.Run(socketRoot,socketData);HitFeelChecks.Run(socketRoot,socketData);return 0;}
             if(args.Length==1&&args[0]=="--scenery"){SurfaceChecks.Scenery();return 0;}
             if(args.Length==1&&args[0]=="--surfaces"){SurfaceChecks.Run(ProjectRoot());return 0;}
             if(args.Length>=1&&args[0]=="--surface-audit"){if(args.Length>1&&args[1]=="differ")SurfaceChecks.Differ(ProjectRoot());else if(args.Length>1&&args[1]=="dupes")SurfaceChecks.Dupes(ProjectRoot());else SurfaceChecks.Audit(ProjectRoot());return 0;}
@@ -101,6 +102,7 @@ internal static class Program
             BloomChecks.Run(root);
             WeaponFxChecks.Run(root,data);
             WeaponSkinChecks.Run(root,data);
+            WeaponSocketChecks.Run(root,data);
             ChipModuleChecks.Run(root,data);
             BowChecks.Run(root);
             BodySkinChecks.Run(root,data);

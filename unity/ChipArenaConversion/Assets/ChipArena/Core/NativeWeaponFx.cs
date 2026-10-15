@@ -249,6 +249,11 @@ namespace ChipArena.UnityConversion
     /// The crescent is thickest at the head, then fades fast while drifting on. Daggers: small, fast twin arcs; sword: one
     /// clean arc; greatsword: a wide, heavy arc with a darker underlay; shield: a short, fat bash arc. They replace the swept
     /// blade ribbon for these strikes (the fists, the Siren and released specials keep the ribbon).
+    /// Since 2026-10-15 (owner: "weapon trails are too far / too early") the drawn crescent is swept from the posed blade
+    /// itself (Core/NativeSlashTrail: its band, from the look's Thickness share of the blade out to the tip, through the
+    /// blade's pass across the front); this class keeps its timing and opacity (Frame, read on the blade's own clock, so a
+    /// hit-stop holds it with the blade), its look (Under, Edge, Fade, Twin) and the rules' arc (Radius, Tilt, the head's
+    /// yaw), which the fixed arc was drawn from.
     /// </summary>
     public static class NativeSlashFx
     {

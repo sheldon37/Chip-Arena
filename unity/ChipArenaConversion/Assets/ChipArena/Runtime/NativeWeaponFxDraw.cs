@@ -166,35 +166,22 @@ namespace ChipArena.UnityConversion
             return NativeMuzzleFx.LightIntensity*NativeMuzzleFx.Light(age)*dim;
         }
         /// <summary>
-        /// One slash crescent of a swing (trailing: a twin's second arc) for a pilot standing at `feet`: the dark underlay first,
-        /// then the additive crescent with its bright outer edge. False when nothing of it shows at `time`.
+        /// A slash crescent swept from a blade's samples (Core/NativeSlashTrail): the dark underlay, then the additive band from
+        /// the look's inner share of the blade out to its tip, tail to head along the tip's path (the crescent shader's x), with
+        /// the bright outer edge on the tip's path. `alpha`: the strike's opacity (NativeSlashFx.Frame). Scratch arrays are the
+        /// caller's (Capacity long). False when the blade has not swept through the front.
         /// </summary>
-        public static bool Crescent(NativeWeaponFxDraw draw,Vector3 feet,NativeMeleeSwing swing,float range,int color,in SlashLook look,float time,float quality,bool trailing)
+        public static bool Swept(NativeWeaponFxDraw draw,NativeSlashTrail trail,NVector3 centre,float yaw,int color,in SlashLook look,float alpha,float quality,NVector3[] inner,NVector3[] outer,float[] share)
         {
-            if(!NativeSlashFx.Frame(swing,look,time,trailing,out float tail,out float head,out float alpha,out float grow))return false;
-            float radius=NativeSlashFx.Radius(look,range)*grow*(trailing?.8f:1),tilt=NativeSlashFx.Tilt(look,swing),yaw=swing.Yaw;
-            // The plane: the swing's middle direction pitched up (its far side raised) and rolled about it; d(a) = fp cos + rt sin.
-            Vector3 f0=new Vector3(Mathf.Sin(yaw),0,Mathf.Cos(yaw)),r=new Vector3(Mathf.Cos(yaw),0,-Mathf.Sin(yaw));
-            Vector3 fp=f0*Mathf.Cos(look.Pitch)+Vector3.up*Mathf.Sin(look.Pitch),up=Vector3.up*Mathf.Cos(look.Pitch)-f0*Mathf.Sin(look.Pitch),rt=r*Mathf.Cos(tilt)+up*Mathf.Sin(tilt);
-            Vector3 centre=feet+Vector3.up*(look.Height+(trailing?.1f:0))+f0*look.Forward;
-            int n=Mathf.Clamp(Mathf.CeilToInt(Mathf.Abs(head-tail)/.1f),3,NativeSlashFx.Segments*2);
-            float thick=look.Thickness*(trailing?.8f:1),inner=radius*(1-thick),gain=(quality<.5f?.8f:1)*alpha;
+            if(!(alpha>.002f))return false;float k=NativeSlashTrail.Inner(look),gain=(quality<.5f?.8f:1)*alpha;
             if(look.Under>0)
             {
-                float cover=look.Under*alpha;var dark=new Color(.012f*cover,.016f*cover,.03f*cover,cover);
-                Band(draw,centre,fp,rt,yaw,tail,head,n,inner*.96f,radius*1.02f,dark,1,0);
+                int m=trail.Band(centre,yaw,k*.96f,1.02f,inner,outer,share);if(m<2)return false;float cover=look.Under*alpha;var dark=new Color(.012f*cover,.016f*cover,.03f*cover,cover);
+                for(int j=0;j+1<m;j++)draw.Quad(false,V(inner[j]),V(inner[j+1]),V(outer[j+1]),V(outer[j]),new Vector2(share[j],0),new Vector2(share[j+1],0),new Vector2(share[j+1],1),new Vector2(share[j],1),dark,NativeWeaponFxDraw.Crescent,1,0);
             }
-            Band(draw,centre,fp,rt,yaw,tail,head,n,inner,radius,Add(Lin(color,2.6f*gain)),0,look.Edge);
+            int n=trail.Band(centre,yaw,k,1,inner,outer,share);if(n<2)return false;var c=Add(Lin(color,2.6f*gain));
+            for(int j=0;j+1<n;j++)draw.Quad(false,V(inner[j]),V(inner[j+1]),V(outer[j+1]),V(outer[j]),new Vector2(share[j],0),new Vector2(share[j+1],0),new Vector2(share[j+1],1),new Vector2(share[j],1),c,NativeWeaponFxDraw.Crescent,0,look.Edge);
             return true;
-        }
-        private static void Band(NativeWeaponFxDraw draw,Vector3 centre,Vector3 f0,Vector3 rt,float yaw,float tail,float head,int n,float inner,float outer,Color c,float under,float edge)
-        {
-            for(int j=0;j<n;j++)
-            {
-                float a0=tail+(head-tail)*j/n,a1=tail+(head-tail)*(j+1)/n,x0=(float)j/n,x1=(float)(j+1)/n,t0=a0-yaw,t1=a1-yaw;
-                Vector3 d0=f0*Mathf.Cos(t0)+rt*Mathf.Sin(t0),d1=f0*Mathf.Cos(t1)+rt*Mathf.Sin(t1);
-                draw.Quad(false,centre+d0*inner,centre+d1*inner,centre+d1*outer,centre+d0*outer,new Vector2(x0,0),new Vector2(x1,0),new Vector2(x1,1),new Vector2(x0,1),c,NativeWeaponFxDraw.Crescent,under,edge);
-            }
         }
         /// <summary>The charge streaks, rings and core round an orb at `centre` (`scale`: the orb frame's world scale).</summary>
         public static void Charge(NativeWeaponFxDraw draw,bool first,Vector3 centre,float scale,Color tint,long seed,double time,float quality,bool low)

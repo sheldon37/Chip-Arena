@@ -281,6 +281,8 @@ namespace ChipArena.UnityConversion
             // their impacts, staggers and hit reactions, the ground pass, pose transitions and the final floor guard.
             // The native roll, E special and knockdown recovery layers ride on it where the source runs its own.
             private MeleeMotion melee;private readonly MeleeView meleeView=new MeleeView();private float meleeTime=-100;
+            /// <summary>The captured-melee motion posing this rig (null before its first melee pose): its blade clock for the slash crescent.</summary>
+            public MeleeMotion Melee=>melee;
             public MeleeImpacts Impacts;
             // The arena's melee hit ledger (null for intro, portrait, corpse and viewer rigs) and this rig's hit layer (Core/NativeHitReact).
             public NativeHitLedger Hits;private readonly NativeHitLayer hitLayer=new NativeHitLayer();
