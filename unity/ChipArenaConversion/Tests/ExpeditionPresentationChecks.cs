@@ -513,7 +513,21 @@ namespace ChipArena.UnityConversion
             var v=NativeExpeditionView.Build(run,"p1");Check(NativeExpeditionView.Leaks(v,run.Snapshot()).Count==0&&!v.anchors.Any(a=>a.id==chest),"legacy private anchors are filtered before publication");
             w.Build(v);Check(!w.Pieces.Any(x=>x.target==chest||x.anchor==chest),"and the world never draws it");
             // Geometry: every piece emits valid triangles; actionable pieces carry the motes column; reduced effects are static.
-            var sink=new Collect();foreach(var x in w.Pieces){int before=sink.Vertices;NativeExpeditionWorld.Emit(sink,x,1.3,false);Check(sink.Vertices>before&&sink.Valid,"geometry for "+x.anchor);}
+            // (A door at rest draws no 3D geometry: its column shows while it is actionable, its leaves are the HUD hologram.)
+            var sink=new Collect();foreach(var x in w.Pieces){int before=sink.Vertices;NativeExpeditionWorld.Emit(sink,x,1.3,false);Check(sink.Valid&&(sink.Vertices>before||x.kind==ExpeditionPieceKind.Door&&!x.actionable),"geometry for "+x.anchor);}
+            // No floor ring round any piece (owner, 2026-10-15: no circle outlines round the doors, caches, machines and drops):
+            // whatever lies on the floor (within 10 cm of it) stays inside the light column's foot, short of the old ring (its
+            // inner edge was at 88% of RingRadius and more).
+            foreach(var (kind,look) in new[]{(ExpeditionPieceKind.Pickup,ExpeditionPieceLook.Ordinary),(ExpeditionPieceKind.Pickup,ExpeditionPieceLook.Reserved),(ExpeditionPieceKind.Pickup,ExpeditionPieceLook.NotEligible),
+                (ExpeditionPieceKind.Door,ExpeditionPieceLook.DoorSealed),(ExpeditionPieceKind.Door,ExpeditionPieceLook.DoorOpen),(ExpeditionPieceKind.Machine,ExpeditionPieceLook.Machine),(ExpeditionPieceKind.Chest,ExpeditionPieceLook.Chest)})
+                    foreach(bool actionable in new[]{true,false})
+                    {
+                        var ring=new Collect{Keep=true};var piece=new ExpeditionWorldPiece{kind=kind,look=look,x=3,y=1,z=-2,ax=3,ay=1,az=-2,tone=ExpeditionTone.Cyan,actionable=actionable,settled=!actionable};
+                        NativeExpeditionWorld.Emit(ring,piece,2.2,false);int onFloor=0;float r=NativeExpeditionWorld.RingRadius(kind);
+                        for(int i=0;i<ring.Points.Count;i+=3){float dx=ring.Points[i]-3,dy=ring.Points[i+1]-1,dz=ring.Points[i+2]+2,d=(float)Math.Sqrt(dx*dx+dz*dz);if(dy<.1f&&d>r*.84f)onFloor++;}
+                        Check(onFloor==0,"no floor ring round a "+kind+" ("+look+(actionable?", actionable":"")+"): "+onFloor+" floor vertices beyond the column's foot");
+                    }
+            Check(NativeExpeditionWorld.ExpeditionMap("expedition-city")&&NativeExpeditionWorld.ExpeditionMap("expedition-ward-zero")&&!NativeExpeditionWorld.ExpeditionMap("siren")&&!NativeExpeditionWorld.ExpeditionMap(null),"Expedition maps by id");
             var act=new Collect();var settle=new Collect();var a1=w.Pieces.First();a1.actionable=true;a1.settled=false;NativeExpeditionWorld.Emit(act,a1,0,false);a1.actionable=false;a1.settled=true;NativeExpeditionWorld.Emit(settle,a1,0,false);
             Check(act.Motes>0&&settle.Motes==0,"only an actionable piece stands in a light column");
             var r0=new Collect{Keep=true};var r1=new Collect{Keep=true};NativeExpeditionWorld.Emit(r0,w.Pieces[0],0,true);NativeExpeditionWorld.Emit(r1,w.Pieces[0],5,true);Check(r0.Same(r1),"reduced effects: no spin or bob");
@@ -607,6 +621,9 @@ namespace ChipArena.UnityConversion
                 Check(!Regex.IsMatch(src,@"0x[0-9a-fA-F]{6}")&&src.Contains("NativeCyberTheme"),name+" restates no colour (palette only)");
                 foreach(var statement in src.Split(';'))if(statement.Contains("Text("))foreach(var tone in new[]{"Violet","Dim","Edge","CyanDeep"})Check(!statement.Contains("C."+tone+"(")&&!statement.Contains("NativeCyberTheme."+tone+"("),"no "+tone+" text in the Expedition "+name);
             }
+            // No floor ring round the Expedition's interactables (owner, 2026-10-15): the revive beacon skips its ring on the
+            // Expedition's maps (wave defense and the Boss Test keep it), and the pieces' greybox preview draws none.
+            Check(R("Runtime/NativeBeaconPresentation.cs").Contains("if(!NativeExpeditionWorld.ExpeditionMap(arena.MapId))NativeBeaconRules.Ring(")&&!layout.Contains("U.Round(ring"),"no revive-beacon floor ring in the Expedition; the pieces' preview draws no ring");
             // The screens hold no authority reference at all; the view builder only reads it.
             foreach(var (name,src) in new[]{("HUD",hud),("rules",rules),("screen layout",layout),("live UI",live),("world pieces",world3d),("world model",world)})Check(!Regex.IsMatch(src,@"\bNativeExpedition\b"),name+" holds no authority reference");
             // Presentation never mutates the run, rolls dice, allocates rewards or binds a session; the live UI only sends intents.

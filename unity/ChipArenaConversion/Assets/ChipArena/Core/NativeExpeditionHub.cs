@@ -118,6 +118,24 @@ namespace ChipArena.UnityConversion
         }
     }
 
+    /// <summary>
+    /// The presentation's reading of the authority clock (run seconds). The view carries it at the 20 Hz projection on the
+    /// host and as packets land on a guest, so read raw the leaves would step at that rate and trail the collider by up to a
+    /// step. Between updates this carries the last reading forward on the local clock, at most <see cref="MaxLead"/> past it
+    /// (a stalled or paused authority never runs the leaves ahead of the collider by more than that).
+    /// </summary>
+    public sealed class ExpeditionHubClock
+    {
+        public const double MaxLead=.1;
+        private double last=double.NaN,seen;
+        public double Read(double authority,double now)
+        {
+            if(!(authority==last)){last=authority;seen=now;}
+            return last+Math.Min(MaxLead,Math.Max(0,now-seen));
+        }
+        public void Reset()=>last=double.NaN;
+    }
+
     /// <summary>The pose of one gate at a moment: `Open` 0 shut .. 1 open (the leaves' swing or slide; it overshoots a little at
     /// the stops), `Latch` 0 latched .. 1 lifted, `Moving` while the leaves travel, and the motion's start/stop times and its
     /// direction (for the dust and the cues).</summary>
@@ -143,7 +161,16 @@ namespace ChipArena.UnityConversion
     public sealed class NativeExpeditionHubGates
     {
         public const bool RestOpen=true;
-        public const float WoodOpenDeg=160,LatchLift=.18f,SlideOffset=2.08f;public const int PartCapacity=640,QuadCapacity=1200;
+        /// <summary>The leaves' motion (s): the wooden gate's flip latch lifts for `LatchLift` before its leaves swing; the
+        /// metal gate's cane bolt for `BoltLift` before its leaves roll. In step with the authority's collider
+        /// (ExpeditionHubAuthority.Blocking: released `Release` s into an opening, solid again `Block` s into a closing): an
+        /// opening has its leaves clear of the opening `StepLead` s before the release, and a closing has them meet
+        /// `StepLead` s after the collider is solid again, so a gate is never drawn shut while it can be walked through and
+        /// never stands drawn open across a solid opening once its swing ends.</summary>
+        public const float WoodOpenDeg=160,LatchLift=.18f,BoltLift=.1f,StepLead=.02f,SlideOffset=2.08f;public const int PartCapacity=640,QuadCapacity=1200;
+        /// <summary>How far out of the fence's outer face the ward's shimmer stands (m): off every face of the fence's outer
+        /// dressing (logs and planks, claw marks, scrap sheets, the top rail), so it never shares a plane with one.</summary>
+        public const float WardOffset=.035f;
         public const int TimberHex=0x6E5236,TimberDarkHex=0x4E3A26,TimberLightHex=0x8A6A44,IronHex=0x2A2826,RustHex=0x6A3A22,GalvHex=0x8A9094,
             PaintBlueHex=0x3A5068,PaintGreenHex=0x4A5A3E,PaintRedHex=0x7A3028,FrameHex=0x3A3C3E,DustHex=0x6E625A,WardHex=0xFFD890,SparkHex=0xFFA040;
         public readonly List<NativeHubPart> Parts=new List<NativeHubPart>(PartCapacity);
@@ -158,27 +185,44 @@ namespace ChipArena.UnityConversion
         // ---------------- motion ----------------
         private static float Clamp01(double v)=>(float)(v<0?0:v>1?1:v);
         private static double Smooth(double u){u=u<0?0:u>1?1:u;return u*u*(3-2*u);}
-        private static double InOut(double u){u=u<0?0:u>1?1:u;return u<.5?4*u*u*u:1-Math.Pow(-2*u+2,3)/2;}
         private static double OutBack(double u){u=u<0?0:u>1?1:u;const double c1=1.3,c3=c1+1;return 1+c3*Math.Pow(u-1,3)+c1*Math.Pow(u-1,2);}
-        /// <summary>The pose of a gate whose state is `s` (seen from `from`, the leaves' opening when the state began) at `t`.</summary>
+        /// <summary>The latch's (wood) or the cane bolt's (metal) lift before the leaves of gate `g` move.</summary>
+        public static float Unlatch(ExpeditionHubGate g)=>g!=null&&g.Wood?LatchLift:BoltLift;
+        /// <summary>When an opening's leaves are clear of the opening (s after its state began): a wooden leaf swung past 90
+        /// degrees stands along its hinge post; a metal leaf is in its pocket. Never later than the collider's release.</summary>
+        public static double ClearAt(ExpeditionHubGate g,ExpeditionHubLayout l)
+        {
+            double release=(l?.Release??.5f)-StepLead;if(g==null||!g.Wood)return release;
+            // The wooden swing (latch, then OutBack over the rest of `Open`) passes 90 degrees well before the release.
+            double travel=Math.Max(.15,(l?.Open??.9f)-LatchLift);return Math.Min(release,LatchLift+.17*travel);
+        }
+        /// <summary>When a closing's leaves meet (s after its state began): just after the collider is solid again.</summary>
+        public static double MeetAt(ExpeditionHubLayout l)=>(l?.Block??.65f)+StepLead;
+        /// <summary>The pose of a gate whose state is `s` (seen from `from`, the leaves' opening when the state began) at `t`.
+        /// Timed against the authority's collider (ExpeditionHubAuthority.Blocking): a wooden opening lifts its latch and swings
+        /// past 90 degrees long before the release and settles by `Open`; a metal opening lifts its bolt and rolls its leaves
+        /// into their pockets by <see cref="ClearAt"/>, then rocks on its end stops; a closing (either) runs its leaves shut,
+        /// accelerating, from wherever they are to meet at <see cref="MeetAt"/>, slams, bounces and drops the latch.</summary>
         public static ExpeditionGatePose PoseOf(ExpeditionHubGate g,bool open,double changedAt,float from,double t,ExpeditionHubLayout l)
         {
-            double a=t-changedAt;float dur=open?(l?.Open??.9f):(l?.Close??1f);var p=new ExpeditionGatePose{Opening=open,Began=changedAt};
+            double a=t-changedAt;float dur=open?(l?.Open??.9f):(l?.Close??1f);var p=new ExpeditionGatePose{Opening=open,Began=changedAt};bool wood=g!=null&&g.Wood;
             if(open)
             {
-                // The latch lifts first, then the leaves travel the rest of the way (a reversal mid-swing: the remaining part).
-                double travel=Math.Max(.15,(dur-LatchLift)*(1-from));p.Stops=changedAt+LatchLift+travel;p.Latch=Clamp01(Smooth(a/LatchLift));
-                double u=(a-LatchLift)/travel;if(u<=0){p.Open=from;return p;}
-                double k=g!=null&&g.Wood?OutBack(u):InOut(u);if(g!=null&&!g.Wood&&u<1)k+=.012*Math.Sin(u*Math.PI*9)*Math.Sin(u*Math.PI);
-                if(g!=null&&!g.Wood&&u>=1){double b=a-LatchLift-travel;k=1+.02*Math.Exp(-b*9)*Math.Sin(b*28);}
+                // The latch lifts first (not on a reversal: the leaves are already off it), then the leaves travel the rest of
+                // the way (a reversal mid-swing: the remaining part).
+                double latch=from>0?0:Unlatch(g);p.Latch=from>0?1:Clamp01(Smooth(a/latch));
+                double travel=wood?Math.Max(.15,(dur-latch)*(1-from)):Math.Max(.12,ClearAt(g,l)-latch);p.Stops=changedAt+latch+travel;
+                double u=(a-latch)/travel;if(u<=0){p.Open=from;return p;}
+                double k=wood?OutBack(u):Smooth(u);if(!wood&&u<1)k+=.012*Math.Sin(u*Math.PI*9)*Math.Sin(u*Math.PI);
+                if(!wood&&u>=1){double b=a-latch-travel;k=1+.02*Math.Exp(-b*9)*Math.Sin(b*28);}
                 p.Open=(float)(from+(1-from)*k);p.Moving=u<1;return p;
             }
             else
             {
                 // The leaves swing or roll shut accelerating, slam and bounce; the latch drops as they meet.
-                double travel=Math.Max(.15,dur*.85*from);p.Stops=changedAt+travel;double u=a/travel;
+                double travel=MeetAt(l);p.Stops=changedAt+travel;double u=a/travel;
                 if(u<1){double k=u*u*u;p.Open=(float)(from*(1-k));p.Moving=a>=0;p.Latch=1;return p;}
-                double b=a-travel;p.Open=(float)(Math.Max(0,(g!=null&&g.Wood?.035:.012)*Math.Exp(-b*7)*Math.Abs(Math.Sin(b*22))));
+                double b=a-travel;p.Open=(float)(Math.Max(0,(wood?.035:.012)*Math.Exp(-b*7)*Math.Abs(Math.Sin(b*22))));
                 p.Latch=1-Clamp01(Smooth((b-.04)/.12));return p;
             }
         }
@@ -262,7 +306,7 @@ namespace ChipArena.UnityConversion
             // Iron straps and hinge knuckles at the hinge side.
             for(int r=0;r<3;r++){double v=.4+1.1*r;Part(sg*.48,v,t+.058,.44,.035,.008,NativeBlockLooks.SteelGreen,IronHex,seed:side*20+(int)(v*10));Part(sg*.045,v,.045,.04,.07,.045,NativeBlockLooks.SteelGreen,IronHex,seed:side*20+(int)(v*10)+3);}
             // The flip latch: a bar pivoting on the left leaf's meeting stile, dropping into the keeper on the right leaf.
-            if(side==0){double lift=70*p.Latch,lx=len-.32;Part(lx+.22*Math.Cos(lift*Math.PI/180),1.3+.22*Math.Sin(lift*Math.PI/180),t+.06,.3,.025,.012,NativeBlockLooks.SteelGreen,IronHex,lift,seed:40);Part(lx,1.3,t+.05,.035,.035,.02,NativeBlockLooks.SteelGreen,RustHex,seed:41);}
+            if(side==0){double lift=70*p.Latch,lx=len-.32;Part(lx+.22*Math.Cos(lift*Math.PI/180),1.3+.22*Math.Sin(lift*Math.PI/180),t+.06,.3,.025,.012,NativeBlockLooks.SteelGreen,IronHex,lift,seed:40);Part(lx,1.3,t+.043,.035,.035,.02,NativeBlockLooks.SteelGreen,RustHex,seed:41);}
             else Part(sg*(len-.12),1.3,t+.055,.06,.06,.015,NativeBlockLooks.SteelGreen,IronHex,seed:42);
         }
         // A scrap-metal leaf: a welded frame (x 0..2.0 toward the middle), three bands of mismatched sheet, a brace, a handle,
@@ -271,7 +315,8 @@ namespace ChipArena.UnityConversion
         {
             const double len=1.98,fr=.045;int steel=NativeBlockLooks.SteelGreen,corr=NativeBlockLooks.Corrugated;
             Part(sg*.05,1.55,0,fr,1.45,fr,steel,FrameHex,seed:side*30);Part(sg*(len-.05),1.55,0,fr,1.45,fr,steel,FrameHex,seed:side*30+1);
-            for(int r=0;r<4;r++){double v=r==0?.12:r==1?1.05:r==2?2.0:2.96;Part(sg*len/2,v,0,len/2,fr,fr,steel,FrameHex,seed:side*30+2+r);}
+            // The rails run between the stiles and stand 7 mm inside their faces: no rail face shares a plane with a stile's.
+            for(int r=0;r<4;r++){double v=r==0?.12:r==1?1.05:r==2?2.0:2.96;Part(sg*len/2,v,0,len/2-.095,fr,fr-.007,steel,FrameHex,seed:side*30+2+r);}
             for(int b=0;b<3;b++){double v0=b==0?.16:b==1?1.09:2.04,v1=b==0?1.01:b==1?1.96:2.92;double inset=.05*NativeExpeditionStates.Hash(seedBase,side*7+b);
                 int band=b==0?(side==0?RustHex:GalvHex):b==1?(side==0?PaintBlueHex:RustHex):(side==0?GalvHex:PaintGreenHex);
                 Part(sg*(len/2+inset*.5),(v0+v1)/2,(b%2==0?.02:-.02),len/2-.06-inset*.5,(v1-v0)/2,.012,b==1&&side==0?NativeBlockLooks.Plain:corr,band,seed:side*30+10+b);}
@@ -314,6 +359,18 @@ namespace ChipArena.UnityConversion
             {
                 double u=p.Opening?(k%2==0?-1:1)*(half+SlideOffset):0;World(g,u+(H(seed,k,8)-.5)*.6*sa*4,.08+3.2*sa*H(seed,k,9),-.3+(H(seed,k,10)-.5)*sa*2,out double x,out double y,out double z);
                 Sprite(e,x,y,z,.035,SparkHex,3,1-sa/.35,true);DustQuads++;
+            }
+        }
+        /// <summary>The ward's segments (into `into`, cleared first): along the outer face of every fence section of the town's
+        /// blocks, <see cref="WardOffset"/> out of it, as {x0, z0, x1, z1, top}. Once per map.</summary>
+        public static void WardSegments(ContentBlock[] blocks,List<float[]> into)
+        {
+            into.Clear();
+            foreach(var b in blocks??Array.Empty<ContentBlock>())
+            {
+                var s=NativeExpeditionCityKit.Stem(b?.id);if(s==null||!s.StartsWith("sanctuary-fence-",StringComparison.Ordinal))continue;bool alongX=b.size.x>b.size.z;float top=b.pos.y+b.size.y/2;
+                if(alongX){float z=b.pos.z+Math.Sign(b.pos.z)*(b.size.z/2+WardOffset);into.Add(new[]{b.pos.x-b.size.x/2,z,b.pos.x+b.size.x/2,z,top});}
+                else{float x=b.pos.x+Math.Sign(b.pos.x)*(b.size.x/2+WardOffset);into.Add(new[]{x,b.pos.z-b.size.z/2,x,b.pos.z+b.size.z/2,top});}
             }
         }
         /// <summary>The ward's shimmer on the outer face of fence segments (world end points a and b along the fence's outer
@@ -361,14 +418,16 @@ namespace ChipArena.UnityConversion
         // ---------------- sound ----------------
         public const int CueLatch=0,CueCreak=1,CueStop=2,CueSlam=3,CueBolt=4;
         /// <summary>The cues of gate `g` in state `s` due in (from, to] of the authority clock, into `into`: opening, the latch
-        /// clank (0.05 s), the creak or rumble as the leaves start (0.2 s) and the stop; closing, the creak or rumble at once,
-        /// the slam where they meet and the latch dropping just after. Returns the count.</summary>
+        /// clank (0.05 s), the creak or rumble as the leaves start and the stop (a wooden gate's swing settling at `Open`, a
+        /// metal gate's leaves banging into their pockets at <see cref="NativeExpeditionHubGates.ClearAt"/>); closing, the creak
+        /// or rumble at once, the slam where the leaves meet (<see cref="MeetAt"/>, just after the collider is solid) and the
+        /// latch dropping just after. Returns the count.</summary>
         public static int Cues(ExpeditionHubGate g,in ExpeditionGateState s,double from,double to,ExpeditionHubLayout l,int[] kinds,double[] times)
         {
-            int n=0;if(g==null||kinds==null||times==null||!(to>from))return 0;double dur=s.Open?(l?.Open??.9):(l?.Close??1);
+            int n=0;if(g==null||kinds==null||times==null||!(to>from))return 0;
             void Add(int kind,double at){if(at>from&&at<=to&&n<kinds.Length&&n<times.Length){kinds[n]=kind;times[n]=at;n++;}}
-            if(s.Open){Add(CueLatch,s.ChangedAt+.05);Add(CueCreak,s.ChangedAt+.2);Add(CueStop,s.ChangedAt+dur);}
-            else{Add(CueCreak,s.ChangedAt+.05);Add(CueSlam,s.ChangedAt+dur*.85);Add(CueBolt,s.ChangedAt+dur*.85+.07);}
+            if(s.Open){Add(CueLatch,s.ChangedAt+.05);Add(CueCreak,s.ChangedAt+Unlatch(g)+.02);Add(CueStop,s.ChangedAt+(g.Wood?(l?.Open??.9):ClearAt(g,l)));}
+            else{double meet=MeetAt(l);Add(CueCreak,s.ChangedAt+.05);Add(CueSlam,s.ChangedAt+meet);Add(CueBolt,s.ChangedAt+meet+.07);}
             return n;
         }
     }

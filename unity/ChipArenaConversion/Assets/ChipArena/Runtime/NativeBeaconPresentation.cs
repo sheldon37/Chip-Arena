@@ -41,7 +41,9 @@ namespace ChipArena.UnityConversion
                 if(!NativeBeaconView.Target(arena,p,out var row))continue;bool self=NativeBeaconView.Self(row);
                 int color=self?NativeBeaconRules.Self:NativeBeaconRules.Down;Vector3 at=NativeBeaconView.Position(p);beaconGeometry.Floor=at.y;
                 NativeBeaconRules.Column(beaconGeometry,at.x,at.z,-1,color,linear,NativeBeaconRules.ColumnOpacity(t,self));
-                NativeBeaconRules.Ring(beaconGeometry,at.x,at.z,-1,t,NativeBeaconView.Progress(arena,p,row),color,linear);
+                // No floor ring in the Expedition (owner, 2026-10-15: no circle outlines round its interactables); the column and
+                // the F · REVIVE / SELF-REVIVE label (with its clock) still mark the body. Wave defense and the Boss Test keep it.
+                if(!NativeExpeditionWorld.ExpeditionMap(arena.MapId))NativeBeaconRules.Ring(beaconGeometry,at.x,at.z,-1,t,NativeBeaconView.Progress(arena,p,row),color,linear);
             }
             if(beaconGeometry.Points.Count==0||!EnsureBeacons())return;
             beaconMesh.Clear();beaconMesh.SetVertices(beaconGeometry.Points);beaconMesh.SetColors(beaconGeometry.Colors);beaconMesh.SetUVs(0,beaconGeometry.Uv);beaconMesh.SetTriangles(beaconGeometry.Indices,0);beaconMesh.RecalculateBounds();
