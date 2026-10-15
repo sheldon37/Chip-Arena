@@ -72,10 +72,14 @@ Core files are engine-free; Runtime files draw with the cyber HUD kit (`NativeHu
 | `Runtime/NativeExpeditionStatesPresentation.cs` | Draws the scene (instanced kit, one effects batch); layout binding; the LateUpdate, in-scene HUD and transfer-screen hooks |
 | `Runtime/NativeExpeditionStatesHud.cs` | Transfer screen, SAFE chip and SAFE tags, boss intro and plates (with health), final gate notice |
 | `Tests/ExpeditionStatesChecks.cs` | Managed checks (`CoreTests.dll --expedition-states`, also in the full suite) |
+| `Core/NativeExpeditionPick.cs` | Chip picks: reward rules, header, waiting counts, the tray's flow (Claim / OpenChoice / CloseChoice / Select), choosers from `members[].choosing` |
+| `Runtime/NativeExpeditionChipScreen.cs` | The Boss Test's chip tray over the live view, its follow-through, input routing, the CHIPS tag and the wrist-look hook |
+| `Tests/ExpeditionPickChecks.cs` | Managed checks (`CoreTests.dll --expedition-pick`, also in the full suite) |
 
-`Runtime/ConversionGame.cs` has five hook lines: the J/Escape keys, local play paused while the screen is
-open (as the PvE chip screen does), the screen in `GuiFrame`, the in-scene HUD, and the world draw at the
-start of `LateFrame`.
+`Runtime/ConversionGame.cs` has these hook lines: the J/Escape/C keys (`ExpeditionLiveKeys`), local play
+paused while the J screen is open, the J screen in `GuiFrame`, the in-scene HUD (which draws the chip tray), and
+the world draw at the start of `LateFrame`. For chip picks there are also the Boss Test's C kept out of an
+Expedition, Alt freeing the cursor (`look` and mouse look) and `ExpeditionPickRoute()` after the play input.
 
 ## Live binding
 
@@ -86,12 +90,53 @@ start of `LateFrame`.
   host-transfer line while a transfer exists, the dice reveal of a new stored record (not modal; it closes
   itself), and a `J · EXPEDITION` hint.
 - **J** opens the Expedition screen (board, phase panel, chips, caches, loot; the dice reveal is modal
-  there). J or Escape closes it. Victory opens it once per loop for the choice.
+  there). J or Escape closes it. Victory opens it once per loop for the choice. Chips are not picked on J:
+  its chip panel lists the waiting rewards and a **C · CHOOSE CHIP (N)** line that closes J and opens the
+  chip tray (below).
+- **C** opens the chip tray (see "Chip picks").
 - **Guests:** Pending ("sent to the host") → Pending ("accepted by the host", from an accepted reply) →
   Confirmed only when the replicated view shows it. A refused reply shows Refused at once with its reason.
   No reply and no reflection within 6 s shows Failed. A Confirmed reply counts as an acceptance only.
 - The tracker resets when the run changes. A confirmed vote the authority has since withdrawn reads
   "Replaced by your Continue choice" / "Replaced by your extraction vote" / "Withdrawn since".
+
+## Chip picks (the Boss Test's tray over the live view)
+
+Owner 2026-10-15: "We should also utilize the same chip selection screen (That we utilize in the Boss Test)
+instead of selecting on the J menu." Owner correction (PR #234): choosers stay mobile and vulnerable. So the
+pick is the Boss Test's chip tray (`PveChipScreen`'s cards via `DrawTray`: entrances, holo highlight, number
+badges, hover cue; `DraftKeys`) drawn **over the live view**, docked at the bottom centre between the health box
+and the cooldowns. There is no 3D draft stage and the arena is never hidden. The Boss Test path itself is
+unchanged.
+
+- **Opening.** C (or the J panel's CHOOSE CHIP line) opens it on the viewer's next waiting reward: a claimed one
+  with offers first, else an unopened one (reserved boss chip, catch-up, unopened purchase). The tray sends
+  `Claim` for that one and shows it when its offers arrive. Collecting a reward never opens it (the contract):
+  the Boss Test's **CHIPS N** tag with its C key counts it in the scene, in place of the minimal HUD's tag.
+- **Choosing presence.** Showing a claimed reward sends `OpenChoice(reward)` unless the view already shows the
+  viewer choosing; the host keeps it across queued picks and clears it on the final pick, a death, a load or an
+  extraction. A load ends with `OpenChoice` again. Closing it (C, Escape, Choose later, or the tray closing
+  itself) sends `CloseChoice` once while the view still shows choosing. A refused or unconfirmed `Claim` or
+  `OpenChoice` closes the tray with a notice.
+- **Picking.** 1–9, arrows and Enter, or a click while Alt is held, sends `Select(reward, chip)` through
+  `ExpeditionLiveSubmit`. A follow-through runs on the same pieces (the others shatter, the chosen card drops
+  out of view). It reads "Installing" until the view shows the reward consumed, then "Upgrade secured", with the
+  tracked caption while a guest waits. A refusal returns to that reward's tray with its caption. The next
+  waiting reward follows, as the Boss Test opens its next queued pick. The install cue is the authority's
+  `Install` event.
+- **Header.** Built from the reward's source and kind; Expedition offers have no tier, so a boss reward reads
+  "BOSS REWARD · <boss> · EPIC OR BETTER" in the epic tone and others use the neutral tone. YOU ARE VULNERABLE
+  WHILE CHOOSING, N MORE WAITING (the viewer's other unpicked rewards), the key line and Choose later. Under
+  attack, the Boss Test's blinking border and alarm show over the header. Its full-screen red wash is kept faint
+  (12% blinking, 6% steady with Reduced effects), so the fight stays readable.
+- **Input (client routing, never a lock).** While the tray is drawn, digits 1–9 pick a chip, so the abilities
+  they would start are dropped. Holding Alt frees the cursor to click a card; mouse look, attack and block
+  pause only while it is held. WASD, jump, sprint, roll, Q, E, F, reload and the mouse otherwise work as usual.
+  Without Alt the locked cursor never hovers or clicks a card.
+- **Wrist look and SELECTING CHIP tag.** These come from `members[].choosing` for every pilot, as the Boss Test
+  reads each row's replicated open pick (`ArenaPresentation.ExpeditionChoosing`). Another pilot's hologram shows
+  three cyan cards; the offers stay private. Mine carries my offers' rarities, and in first person it steps aside
+  while my tray is on screen.
 
 ## Intents and confirmation
 
@@ -104,6 +149,7 @@ start of `LateFrame`.
 | `NextLoop` | `AdvanceWhenReady()` | `loop` increased |
 | `Claim` | `hooks.Offers` then `Claim` | the reward `claimed` |
 | `Select` | `hooks.Eligible` then `Select` | the reward `consumed` (or settled out of the view) |
+| `OpenChoice` / `CloseChoice` | `SetChoosing(account, open, reward)` (presence only) | the viewer's `members[].choosing` set / clear |
 | `Reprint` | `hooks.Reprint` (evidence) then `Reprint` | the target alive |
 
 Guests send the same intents over `expedition-command`; the host runs them through the same path.
@@ -122,7 +168,7 @@ Guests send the same intents over `expedition-command`; the host runs them throu
   only while `cooldown > elapsed`, "BOUGHT · YOURS" only for the viewer's own purchase of the current
   generation (`mine.rewards`, `...:chest:<generation>`), the wallet's shortfall, and whether the cache has an
   anchor here. Range is never claimed (the view carries none). Buying is not a control: no intent exists.
-- **Your chips:** wallet, rewards by source, Open → Pick, **picked this loop** (`mine.rewards[].selected`,
+- **Your chips:** wallet, waiting rewards by source (READY · N OFFERS or UNOPENED), C · CHOOSE CHIP, **picked this loop** (`mine.rewards[].selected`,
   the viewer's only), held chips.
 - **Loot:** ordinary drops (cyan diamond, first pickup) against reserved boss chips (magenta lock), NOT
   ELIGIBLE per boss whose record does not list the viewer.
@@ -259,6 +305,11 @@ host's request refused.
     `UpdateBossHealth` for the bar to move.
 14. ~~Layout fingerprint before the first load~~: done. `areaBarrier.layout` from the layout binding; the state pieces bind
     from the run's start.
+15. ~~Chip choosing presence and Install on Select~~: done (PR #233, corrected by #234: presence only, no hold). The chip
+    tray binds them on `claude/expedition-chip-screen`.
+16. Optional, still open: Boss Test offer parity for Expedition picks (implemented / Siren filter, tier weights, money
+    chips, stale-offer reroll; offers carry no tier today, so the tray's header names the source instead), and tiered
+    physical pickups dispensed by the Ward machines (the Boss Test's walk-over chip) instead of a direct claim.
 
 ## Verification
 

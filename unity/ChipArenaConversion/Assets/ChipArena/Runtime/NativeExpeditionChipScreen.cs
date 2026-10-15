@@ -148,7 +148,7 @@ namespace ChipArena.UnityConversion
                 float fy=t.Bottom+8;string how="1–"+Mathf.Clamp(chips.Count,1,9)+" PICK  ·  HOLD ALT TO CLICK  ·  C OR ESC CLOSES";
                 U.Text(new Rect(left,fy,right-left-180,26),how,11,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f,shadow:new Color(0,0,0,.8f));
                 bool later=U.Btn(new Rect(right-170,fy-1,170,28),"Choose later  C · Esc",false,true,1,12);
-                ExpeditionTrayAlarm(W,H,left,right,t.Top,attacked);
+                ExpeditionTrayAlarm(W,H,left,right,t.Top,attacked,prefs.reducedEffects);
                 return later?-2:-1;
             }
             finally{e.mousePosition=mouse;}
@@ -164,13 +164,15 @@ namespace ChipArena.UnityConversion
             if(more>0){string q=(more+" more waiting").ToUpperInvariant();float qw=U.Measure(q,11,true,true,.08f).x+20;var r=new Rect(right-ww-12-qw,y-4,qw,24);U.Pill(r,C.Magenta(.16f),Color.clear);U.Text(r,q,11,C.Magenta(),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);}
             if(!string.IsNullOrEmpty(status)){float sw=Mathf.Min(U.Measure(status,12,true).x+28,(right-left)*.55f);var r=new Rect(right-sw,y+24,sw,26);U.Round(r,C.Void(.9f),8,U.A(statusTone,.7f));U.Text(new Rect(r.x+14,r.y,r.width-20,r.height),status,12,statusTone,TextAnchor.MiddleLeft,bold:true);}
         }
-        // Under attack: PveChipScreen's blinking red vignette and alarm, the alarm over the tray's header (the cards do not move).
-        private static void ExpeditionTrayAlarm(float W,float H,float left,float right,float top,bool attacked)
+        // Under attack: PveChipScreen's blinking red border and alarm, the alarm over the tray's header (the cards do not move). Its
+        // full-screen red wash is kept faint here (the Boss Test's .6 wash would hide the fight this pilot is still in); steady under
+        // Reduced effects.
+        private static void ExpeditionTrayAlarm(float W,float H,float left,float right,float top,bool attacked,bool reduced)
         {
-            if(!attacked)return;bool on=Mathf.Repeat(Time.unscaledTime,.25f)<.125f;
-            U.Round(new Rect(0,0,W,H),Color.clear,2,C.Danger(on?1:.15f),4);U.Glow(new Rect(-30,-30,W+60,H+60),C.Danger(on?.6f:.09f),-60);
-            string alarm="WARNING — YOU ARE UNDER ATTACK",sub="C closes the chips · you can still move and fight";float aw=U.Measure(alarm,14,true,true,.14f).x+U.Measure(sub,12).x+56;var ar=new Rect((left+right)/2-aw/2,top-66-46,aw,36);
-            U.Round(ar,C.Danger(on?.42f:.2f),8,C.Danger());U.Text(new Rect(ar.x+12,ar.y,aw,ar.height),"☠  "+alarm,14,Color.white,TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);U.Text(new Rect(ar.x,ar.y,aw-12,ar.height),sub,12,C.Ink(),TextAnchor.MiddleRight);
+            if(!attacked)return;bool on=reduced||Mathf.Repeat(Time.unscaledTime,.25f)<.125f;
+            U.Round(new Rect(0,0,W,H),Color.clear,2,C.Danger(on?1:.15f),4);U.Glow(new Rect(-30,-30,W+60,H+60),C.Danger(reduced?.06f:on?.12f:.04f),-60);
+            string alarm="☠  WARNING — YOU ARE UNDER ATTACK",sub="C closes the chips · you can still move and fight";float aw=U.Measure(alarm,14,true,true,.14f).x+U.Measure(sub,12).x+48;var ar=new Rect((left+right)/2-aw/2,top-66-46,aw,36);
+            U.Round(ar,C.Danger(on?.42f:.2f),8,C.Danger());U.Text(new Rect(ar.x+12,ar.y,aw,ar.height),alarm,14,Color.white,TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);U.Text(new Rect(ar.x,ar.y,aw-12,ar.height),sub,12,C.Ink(),TextAnchor.MiddleRight);
         }
 
         // ---- The follow-through over the live view ----
