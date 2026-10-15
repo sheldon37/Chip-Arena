@@ -89,6 +89,31 @@ namespace ChipArena.UnityConversion
         public Vector3 OrbFrom,OrbPoint;public float OrbLand=-100,Implode=-100;
         public Vector3 StormCentre;public int StormSeed;
         public Vector3 OrbitalCentre,OrbitalPoint,OrbitalAim;public float OrbitalPointAt=-100;
+        /// <summary>
+        /// The Plasma Byte throw before the newest (its At, Release, Until, Ready, CutAt and Shot; At -100: none known). The record keeps
+        /// only the newest throw, so the view remembers the one it replaced (CyberKit2RangedFeed.Map notices each new throw for the
+        /// same pilot): the body's follow-through of one throw then carries on into the next however long the gap
+        /// (Core/CyberLordRangedMotion.cs). Presentation history only, kept across Clear; it is forgotten when the record stops
+        /// being live, the pilot changes or the clock runs back.
+        /// </summary>
+        public float PrevAt=-100,PrevRelease=-100,PrevUntil=-100,PrevReady=-100,PrevCutAt=-100;public int PrevShot=-1;
+        private float seenAt=-100,seenRelease=-100,seenUntil=-100,seenReady=-100,seenCutAt=-100;private int seenShot=-1,seenOwner=int.MinValue;
+        /// <summary>Notes this frame's newest throw for pilot `owner` (after the record is mapped): a new one moves the last into
+        /// Prev*. The same throw re-sent (a cut, or a prediction nudging its start under .05 s) only refreshes it.</summary>
+        internal void Observe(int owner)
+        {
+            const int P=CyberKit2Ranged.Plasma;float at=At[P];
+            if(!Live||owner!=seenOwner||!(at>-90)){Forget();seenOwner=owner;if(Live&&at>-90)Seen();return;}
+            bool same=Shot==seenShot&&Math.Abs(at-seenAt)<.05f;
+            if(!same)
+            {
+                if(seenAt>-90&&at>seenAt+1e-4f){PrevAt=seenAt;PrevRelease=seenRelease;PrevUntil=Math.Min(seenUntil,at);PrevReady=seenReady;PrevCutAt=seenCutAt;PrevShot=seenShot;}
+                else Forget();
+            }
+            Seen();
+        }
+        private void Seen(){const int P=CyberKit2Ranged.Plasma;seenAt=At[P];seenRelease=Release[P];seenUntil=Until[P];seenReady=Ready[P];seenCutAt=CutAt[P];seenShot=Shot;}
+        private void Forget(){PrevAt=PrevRelease=PrevUntil=PrevReady=PrevCutAt=-100;PrevShot=-1;seenAt=seenRelease=seenUntil=seenReady=seenCutAt=-100;seenShot=-1;}
         public void Clear()
         {
             Live=false;for(int i=0;i<CyberKit2Ranged.Slots;i++)At[i]=Release[i]=Until[i]=Recover[i]=Ready[i]=CutAt[i]=-100;Shot=-1;ChainCount=0;
@@ -148,8 +173,11 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class CyberKit2RangedFeed
     {
-        /// <summary>Fills `v` from `r` when it is a live v2 record (Version 2), else clears it.</summary>
-        public static void Map(CyberKit2RangedRecord r,CyberKit2RangedView v)
+        /// <summary>Fills `v` from `r` when it is a live v2 record (Version 2), else clears it; `owner` is the pilot the record
+        /// belongs to (the view then remembers the throw before the newest: CyberKit2RangedView.Prev*).</summary>
+        public static void Map(CyberKit2RangedRecord r,CyberKit2RangedView v,int owner){Fill(r,v);v.Observe(owner);}
+        public static void Map(CyberKit2RangedRecord r,CyberKit2RangedView v)=>Map(r,v,0);
+        private static void Fill(CyberKit2RangedRecord r,CyberKit2RangedView v)
         {
             v.Clear();if(r==null||r.Version!=CyberKit2Spec.Version||r.At==null)return;v.Live=true;
             for(int i=0;i<CyberKit2Ranged.Slots;i++)
