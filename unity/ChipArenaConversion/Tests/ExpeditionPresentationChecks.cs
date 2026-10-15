@@ -612,11 +612,11 @@ namespace ChipArena.UnityConversion
             // Presentation never mutates the run, rolls dice, allocates rewards or binds a session; the live UI only sends intents.
             foreach(var (name,src) in new[]{("HUD",hud),("screen layout",layout),("live UI",live),("world pieces",world3d),("world model",world),("rules",rules)})
             {
-                Check(!Regex.IsMatch(src,@"\b(run|Run|session|Session|expeditionSession|authority)\s*\.\s*(Purchase|DefeatBoss|DefeatBossAt|FinishFinal|FinishFinalAt|Drop|DropAt|PlaceReward|SetWorld|Credit|Claim|Select|Reprint|Extract|VoteContinue|VoteExit|VoteExtraction|NextLoop|AdvanceWhenReady|IssueCatchup|PrepareHandoff|CommitHandoff)\("),name+" calls no authority mutator");
+                Check(!Regex.IsMatch(src,@"\b(run|Run|session|Session|expeditionSession|authority)\s*\.\s*(Purchase|DefeatBoss|DefeatBossAt|FinishFinal|FinishFinalAt|Drop|DropAt|PlaceReward|SetWorld|Credit|Claim|Select|SetChoosing|Reprint|Extract|VoteContinue|VoteExit|VoteExtraction|NextLoop|AdvanceWhenReady|IssueCatchup|PrepareHandoff|CommitHandoff)\("),name+" calls no authority mutator");
                 Check(!src.Contains("BindExpedition(")&&!src.Contains("CreateExpeditionSession("),name+" binds no session");
             }
             Check(live.Contains("expeditionIntents.Submit(")&&live.Contains("ExpeditionCommands"),"the live UI sends through the bound command path");
-            var reads=new HashSet<string>{"Snapshot","Migrating","FinalUnlocked","ExtractionUnlocked","CanExtract"};
+            var reads=new HashSet<string>{"Snapshot","Migrating","FinalUnlocked","ExtractionUnlocked","CanExtract","IsChoosing"};
             foreach(Match m in Regex.Matches(view,@"\brun\.(\w+)"))Check(reads.Contains(m.Groups[1].Value),"the view builder only reads the authority (run."+m.Groups[1].Value+")");
             foreach(var src in new[]{hud,rules,view,screen,layout,live,world3d,world})Check(!src.Contains("Random")&&!src.Contains("NativePveRandom"),"no randomness in presentation");
             Check(R("Runtime/NativeHomeMenu.cs").Contains("int a=account.Developer?ScreenActions")&&R("Runtime/NativeExpeditionM1.cs").Contains("account?.Developer!=true||Online||server!=null||dedicated")&&ui.Contains("--ca-expedition-preview"),"Expedition M1 entry is DEV-only/local and preview retains its separate flag");
