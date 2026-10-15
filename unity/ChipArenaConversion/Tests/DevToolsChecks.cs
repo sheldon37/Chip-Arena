@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
         {
             ("me-weapon","arena.SandboxConfigure(weapon:devWeapon)"),("dummy-difficulty","arena.SandboxConfigure(difficulty:devDifficulty)"),("load-map","arena.SandboxConfigure(map:devMap)"),
             ("chip-cast","arena.SandboxCastChip(devChipId)"),("chip-cycle","arena.SandboxCastEveryChip()"),("gallery-hazard-kit","presentation.HazardKitGallery=!presentation.HazardKitGallery"),("gallery-hazard-music","presentation.HazardKitMusic=!presentation.HazardKitMusic"),("splat-delay","arena.SandboxSplatDelay=Mathf.Round(Mathf.Clamp(devSplat,1,30))"),("preview-reveal","DevRevealStart(arena.Local.Seat.id,arena.Local.Seat.name,true)"),
-            ("gallery-cyber-kit2","presentation.CyberKit2PreviewOn=!presentation.CyberKit2PreviewOn"),
+            ("gallery-cyber-kit2-ranged","presentation.CyberKit2RangedPreviewOn=!presentation.CyberKit2RangedPreviewOn"),("gallery-cyber-kit2-melee","presentation.CyberKit2MeleePreviewOn=!presentation.CyberKit2MeleePreviewOn"),
         };
         private static Dictionary<string,string> Cases(string sandbox)
         {

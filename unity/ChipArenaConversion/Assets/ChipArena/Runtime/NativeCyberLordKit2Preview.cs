@@ -4,7 +4,7 @@ using NVector=System.Numerics.Vector3;
 
 namespace ChipArena.UnityConversion
 {
-    // The Dev Sandbox's "Preview Cyber Kit 2 (ranged)" (developer sandbox only; Claude's presentation, docs/CYBER-LORD.md
+    // The Dev Sandbox's "Preview Cyber Kit v2 ranged" (developer sandbox only; Claude's presentation, docs/CYBER-LORD.md
     // "Kit v2"): until Astra's v2 record replicates, the local Cyber Lord, once in ranged mode (key 5), loops Kit v2's ranged
     // set on its own screen: six Plasma Byte throws (two Overflows), Daisy Chain over the nearest pilots on the aim (or an arc of
     // points when none), Singularity where the aim meets the world, Packet Storm on the aimed floor point and Orbital Uplink
@@ -15,32 +15,32 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         /// <summary>The Dev Sandbox's Kit v2 ranged preview (see above). Off everywhere else.</summary>
-        public bool CyberKit2PreviewOn;
-        private readonly CyberKit2RangedPreview cyberKit2=new CyberKit2RangedPreview();
-        private float cyberKit2Start=-100;private int cyberKit2Beat;
+        public bool CyberKit2RangedPreviewOn;
+        private readonly CyberKit2RangedPreview cyberKit2R=new CyberKit2RangedPreview();
+        private float cyberKit2RStart=-100;private int cyberKit2RBeat;
         /// <summary>The loop's beats (s from its start) and what each casts: 0 a throw, 1 Daisy Chain, 2 Singularity, 3 Packet
         /// Storm, 4 Orbital Uplink.</summary>
-        private static readonly float[] CyberKit2At={.4f,.7f,1f,1.3f,1.6f,1.9f,3f,4.4f,8.6f,11.2f};
+        private static readonly float[] CyberKit2RAt={.4f,.7f,1f,1.3f,1.6f,1.9f,3f,4.4f,8.6f,11.2f};
         private static readonly int[] CyberKit2Kind={0,0,0,0,0,0,1,2,3,4};
-        private const float CyberKit2Period=17;
+        private const float CyberKit2RPeriod=17;
         private readonly int[] chainIds=new int[CyberKit2Ranged.MaxChain];private readonly NVector[] chainPoints=new NVector[CyberKit2Ranged.MaxChain];
-        private void CyberKit2Step(Snapshot s,float time)
+        private void CyberKit2RStep(Snapshot s,float time)
         {
             Actor me=null;if(s?.Actors!=null)foreach(var a in s.Actors)if(a!=null&&a.Id==LocalId){me=a;break;}
-            if(!CyberKit2PreviewOn||me==null||!CyberLordFeed.Handles(me))
+            if(!CyberKit2RangedPreviewOn||me==null||!CyberLordFeed.Handles(me))
             {
-                if(cyberKit2.Any)cyberKit2.Clear();if(CyberLordFeed.Kit2RangedSource==cyberKit2)CyberLordFeed.Kit2RangedSource=null;cyberKit2Start=-100;return;
+                if(cyberKit2R.Any)cyberKit2R.Clear();if(CyberLordFeed.Kit2RangedSource==cyberKit2R)CyberLordFeed.Kit2RangedSource=null;cyberKit2RStart=-100;return;
             }
-            CyberLordFeed.Kit2RangedSource=cyberKit2;cyberKit2.For(me.Id);
+            CyberLordFeed.Kit2RangedSource=cyberKit2R;cyberKit2R.For(me.Id);
             // The loop plays in ranged mode only (press 5): it waits, and starts over, in melee.
             bool ranged=me.Alive&&cyberViews.TryGetValue(me.Id,out var v)&&v.ModeWeight(time)>.99f;
-            if(!ranged){cyberKit2Start=-100;cyberKit2.Advance(time);return;}
-            if(cyberKit2Start<-90||time<cyberKit2Start-.25f||time-cyberKit2Start>=CyberKit2Period){cyberKit2Start=time;cyberKit2Beat=0;}
-            float t=time-cyberKit2Start;
-            while(cyberKit2Beat<CyberKit2At.Length&&t>=CyberKit2At[cyberKit2Beat]){CyberKit2Cast(s,me,CyberKit2Kind[cyberKit2Beat],time);cyberKit2Beat++;}
+            if(!ranged){cyberKit2RStart=-100;cyberKit2R.Advance(time);return;}
+            if(cyberKit2RStart<-90||time<cyberKit2RStart-.25f||time-cyberKit2RStart>=CyberKit2RPeriod){cyberKit2RStart=time;cyberKit2RBeat=0;}
+            float t=time-cyberKit2RStart;
+            while(cyberKit2RBeat<CyberKit2RAt.Length&&t>=CyberKit2RAt[cyberKit2RBeat]){CyberKit2Cast(s,me,CyberKit2Kind[cyberKit2RBeat],time);cyberKit2RBeat++;}
             // The column follows the live aim (the host's tick, written each frame here).
-            var feet=visualPositions.TryGetValue(me.Id,out var vp)?vp:Vec(me.Position);cyberKit2.Steer(me.Id,time,N2(CyberKit2Floor(me,feet,CyberKit2Spec.OrbitalRange)),N2(feet));
-            cyberKit2.Advance(time);
+            var feet=visualPositions.TryGetValue(me.Id,out var vp)?vp:Vec(me.Position);cyberKit2R.Steer(me.Id,time,N2(CyberKit2Floor(me,feet,CyberKit2Spec.OrbitalRange)),N2(feet));
+            cyberKit2R.Advance(time);
         }
         private static NVector N2(Vector3 v)=>new NVector(v.x,v.y,v.z);
         private void CyberKit2Cast(Snapshot s,Actor me,int kind,float time)
@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
                 {
                     // The throw leaves the next hand (both for an Overflow), from the body's centre line like the host's.
                     var from=feet+Vector3.up*(CyberLordFeed.BodyCentre+.3f);float end=CyberRangedEnd(s,me,from,aim,CyberKit2Spec.PlasmaRange,out bool pilot,out _);
-                    cyberKit2.Plasma(me.Id,time,N2(from),N2(aim),end,pilot);break;
+                    cyberKit2R.Plasma(me.Id,time,N2(from),N2(aim),end,pilot);break;
                 }
                 case 1:
                 {
@@ -73,17 +73,17 @@ namespace ChipArena.UnityConversion
                     }
                     // None near the aim: an arc of points ahead, so the chain still shows.
                     if(n==0)for(int i=0;i<3;i++){var p=feet+flat*(7+4*i)+right*((i%2==0?1:-1)*2.5f)+Vector3.up*1.1f;chainIds[n]=0;chainPoints[n]=N2(p);n++;}
-                    cyberKit2.Chain(me.Id,time,N2(from),chainIds,chainPoints,n);break;
+                    cyberKit2R.Chain(me.Id,time,N2(from),chainIds,chainPoints,n);break;
                 }
                 case 2:
                 {
                     // The orb stops where the aim meets the world or a pilot (a floor lifts the hole off it).
                     var from=(Hand(true)+Hand(false))*.5f;float end=CyberRangedEnd(s,me,from,aim,CyberKit2Spec.OrbRange,out bool pilot,out var hit);var stop=pilot?hit:from+aim*end;
                     RaycastHit below=default;bool floor=!pilot&&CyberPhysics().Raycast(stop+Vector3.up*.1f,Vector3.down,out below,1.2f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);
-                    cyberKit2.Singularity(me.Id,time,N2(from),N2(floor?below.point:stop),floor);break;
+                    cyberKit2R.Singularity(me.Id,time,N2(from),N2(floor?below.point:stop),floor);break;
                 }
-                case 3:cyberKit2.Storm(me.Id,time,N2(CyberKit2Floor(me,feet,CyberKit2Spec.StormRange)),(int)(time*977)&0x7fff);break;
-                case 4:cyberKit2.Orbital(me.Id,time,N2(CyberKit2Floor(me,feet,CyberKit2Spec.OrbitalRange)));break;
+                case 3:cyberKit2R.Storm(me.Id,time,N2(CyberKit2Floor(me,feet,CyberKit2Spec.StormRange)),(int)(time*977)&0x7fff);break;
+                case 4:cyberKit2R.Orbital(me.Id,time,N2(CyberKit2Floor(me,feet,CyberKit2Spec.OrbitalRange)));break;
             }
         }
         private bool Struck(int id,int n){for(int i=0;i<n;i++)if(chainIds[i]==id)return true;return false;}

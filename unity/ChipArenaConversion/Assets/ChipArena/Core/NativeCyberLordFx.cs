@@ -43,6 +43,9 @@ namespace ChipArena.UnityConversion
         /// <summary>Split: the actor's own posed rig offset by Offset (the glitched RGB split). Clone: a Kernel Panic fork-bomb
         /// clone of the caster at Position / Yaw, posed on the combo take `Step` at its strike age `PoseAge`.</summary>
         public const int Split=0,Clone=1;
+        /// <summary>Fork: a kit v2 Fork Bomb clone at Position / Yaw, posed by its stand-in's record (NativeCyberLordFx.ForkActor:
+        /// the caster's swing with its lag) on the clock.</summary>
+        public const int Fork=2;
         public int Kind,Actor,Step,Index;public Vector3 Offset,Position;public float Yaw,PoseAge,Opacity;public Vector3 Tint;
     }
 
@@ -73,7 +76,7 @@ namespace ChipArena.UnityConversion
         /// <summary>This frame's silhouettes (glitched splits, fork-bomb clones), filled by Draw.</summary>
         public int Ghosts=>ghostCount;public CyberGhost Ghost(int i)=>ghosts[i];
         private readonly CyberLordView view=new CyberLordView(),other=new CyberLordView();
-        public void Clear(){records.Clear();cursor=0;clock=float.NegativeInfinity;ghostCount=0;ClearBoosts();dashTrailCount=0;}
+        public void Clear(){records.Clear();cursor=0;clock=float.NegativeInfinity;ghostCount=0;ClearBoosts();dashTrailCount=0;ClearKit2();}
         /// <summary>Reads the fresh cyber events (idempotent per frame); a new arena or the killcam's replica (ids restart, the clock
         /// rewinds) starts over.</summary>
         public void Observe(IReadOnlyList<ArenaEvent> events,float time)
@@ -92,6 +95,8 @@ namespace ChipArena.UnityConversion
             }
             if(newest>cursor)cursor=newest;
             for(int i=records.Count-1;i>=0;i--)if(time-records[i].Time>RecordSeconds)records.RemoveAt(i);
+            // Kit v2's own events (Core/CyberKit2MeleeFx.cs).
+            ObserveKit2(events,time);
         }
         private static Vector3 N(V3 v)=>new Vector3(v.x,v.y,v.z);
 
@@ -126,11 +131,15 @@ namespace ChipArena.UnityConversion
                 Kit2Ranged(sink,scene,a,view,time,quality,low,scene.Viewer==a.Id);
                 // The hardlight dash sprint's fist streaks (NativeCyberLordRangedFx.cs Sprint).
                 Sprint(sink,scene,a,view,time,quality,low,scene.Viewer==a.Id);
+                // Kit v2's melee and shared abilities (Core/CyberKit2MeleeFx.cs), Live only with its record.
+                Kit2Melee(sink,scene,a,view,time,quality,low,scene.Viewer==a.Id);
                 if(!a.Alive)continue;
                 Link(sink,scene,a,view,time,quality,low);
                 bool me=scene.Viewer==a.Id;
                 if(time<a.BlockUntil)GuardFx(sink,scene,a,view,time,quality,low,me);
                 Palm(sink,scene,a,view,time,quality,low,me);
+                // The hardlight string's trails, crescents and palm pulse (Core/CyberLordComboFx.cs).
+                Strikes(sink,scene,a,view,time,quality,low,me);
                 for(int s=0;s<CyberLordSpec.Four;s++){var p=view.Phase(s,time);if(p.Live)Cast(sink,scene,a,view,s,p,time,quality,low,me);}
                 var op=view.Phase(CyberLordSpec.Four,time);if(op.Live||view.PanicOutcome==CyberLordSpec.Whiff&&time<op.End+.4f)Opener(sink,scene,a,view,op,time,quality,low,me);
                 LungeTrail(sink,scene,a,view,time,quality,low);
@@ -143,6 +152,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<dashTrailCount;i++)Trail(sink,dashTrails[i],time,quality,low||TrailLow(i));
             RangedShots(sink,scene,time,quality,low);
             for(int i=0;i<records.Count;i++)Event(sink,scene,records[i],time,quality,low);
+            Kit2Events(sink,scene,time,quality,low);
             AirBoosts(sink,scene,time,quality,low);
             Glitched(scene,time,quality,low);
         }

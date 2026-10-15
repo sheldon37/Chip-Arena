@@ -53,10 +53,10 @@ namespace ChipArena.UnityConversion
         private static readonly string[] DummyInputs={"ai","primary","e","q","block","dash","jump","1","2","3","4","mode"};
         private static readonly string[] DebrisMaterials={"wood","stone","metal"},DebrisImpacts={"face","edge","corner"};
         // The presentation galleries (presentation only, sandbox only, as before): the gallery action, and its button when off / on.
-        private static readonly string[] DevGalleries={"gallery-minions","gallery-cyber-jump","gallery-saw","gallery-revive","gallery-chip-select","gallery-hazard-kit","gallery-hazard-music","gallery-cyber-kit2"};
-        private static readonly string[] DevGalleryShow={"Preview Siren Minions","Preview Cyber Double Jump","Preview Saw Split","Preview Revive","Preview Chip Selecting","Preview Hazard Kit","Lock Hazard Kit to music","Preview Cyber Kit 2 (ranged)"};
-        private static readonly string[] DevGalleryHide={"Hide Siren Minions","Hide Cyber Double Jump","Hide Saw Split","Hide Revive","Hide Chip Selecting","Hide Hazard Kit","Unlock Hazard Kit music","Hide Cyber Kit 2 (ranged)"};
-        private bool DevGalleryOn(int i)=>presentation!=null&&(i==0?presentation.MinionGallery:i==1?presentation.CyberBoostPreviewOn:i==2?presentation.SawSplitGallery:i==3?presentation.ReviveGallery:i==4?presentation.ChipSelectPreview:i==5?presentation.HazardKitGallery:i==6?presentation.HazardKitMusic:presentation.CyberKit2PreviewOn);
+        private static readonly string[] DevGalleries={"gallery-minions","gallery-cyber-jump","gallery-saw","gallery-revive","gallery-chip-select","gallery-hazard-kit","gallery-hazard-music","gallery-cyber-kit2-ranged","gallery-cyber-kit2-melee"};
+        private static readonly string[] DevGalleryShow={"Preview Siren Minions","Preview Cyber Double Jump","Preview Saw Split","Preview Revive","Preview Chip Selecting","Preview Hazard Kit","Lock Hazard Kit to music","Preview Cyber Kit v2 ranged","Preview Cyber Kit v2 melee"};
+        private static readonly string[] DevGalleryHide={"Hide Siren Minions","Hide Cyber Double Jump","Hide Saw Split","Hide Revive","Hide Chip Selecting","Hide Hazard Kit","Unlock Hazard Kit music","Hide Cyber Kit v2 ranged","Hide Cyber Kit v2 melee"};
+        private bool DevGalleryOn(int i)=>presentation!=null&&(i==0?presentation.MinionGallery:i==1?presentation.CyberBoostPreviewOn:i==2?presentation.SawSplitGallery:i==3?presentation.ReviveGallery:i==4?presentation.ChipSelectPreview:i==5?presentation.HazardKitGallery:i==6?presentation.HazardKitMusic:i==7?presentation.CyberKit2RangedPreviewOn:presentation.CyberKit2MeleePreviewOn);
         private string DevRun(string id)
         {
             var kit=presentation?.Structures;var entries=NativeArena.StageContent.entries;
@@ -113,8 +113,12 @@ namespace ChipArena.UnityConversion
                 // cycling its states, and its music lock (the boss song plays locally; the alarms keep its beat). Presentation only.
                 case "gallery-hazard-kit":presentation.HazardKitGallery=!presentation.HazardKitGallery;return DevRan;
                 case "gallery-hazard-music":presentation.HazardKitMusic=!presentation.HazardKitMusic;return DevRan;
-                // Kit v2's ranged set on the local Cyber Lord (NativeCyberLordKit2Preview.cs). Presentation only.
-                case "gallery-cyber-kit2":presentation.CyberKit2PreviewOn=!presentation.CyberKit2PreviewOn;return DevRan;
+                // Kit v2's ranged set on the local Cyber Lord (NativeCyberLordKit2Preview.cs). Presentation only. The ranged and melee
+                // previews write different records and each turns the other off.
+                case "gallery-cyber-kit2-ranged":presentation.CyberKit2RangedPreviewOn=!presentation.CyberKit2RangedPreviewOn;if(presentation.CyberKit2RangedPreviewOn)presentation.CyberKit2MeleePreviewOn=false;return DevRan;
+                // Cyber Lord kit v2's melee and shared abilities on your own Cyber Lord from preview records
+                // (NativeCyberKit2MeleePresentation.cs, docs/CYBER-LORD.md). Presentation only.
+                case "gallery-cyber-kit2-melee":presentation.CyberKit2MeleePreviewOn=!presentation.CyberKit2MeleePreviewOn;if(presentation.CyberKit2MeleePreviewOn)presentation.CyberKit2RangedPreviewOn=false;return DevRan;
                 // The reveal moment on my own pilot, locally (no seat is revealed: devRevealed is the host's, docs/DEV-TOOLS.md).
                 case "preview-reveal":DevRevealStart(arena.Local.Seat.id,arena.Local.Seat.name,true);return DevRan;
                 // Hazards: the vent fall's splat delay (sandbox only, 1-30 s).

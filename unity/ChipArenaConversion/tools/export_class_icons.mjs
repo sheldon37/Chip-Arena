@@ -319,6 +319,49 @@ icons['ability-orbital-uplink']=()=>{
   const target=ellipseBand(12,19.2,9.4,2.8,1.6,0,360,0,48),ticks=[crect(1.4,18.6,1.6,1.2,.2),crect(21,18.6,1.6,1.2,.2)];
   return [L(panels,{opacity:TONE}),L(target,{opacity:TONE}),L(ticks),L(beam,{knock:.6}),L(core,{cut:true}),L(sat,{knock:.6})];
 };
+// THE CYBER LORD'S SECOND KIT (Core/CyberLordKit2.cs, melee and shared; the ranged set's are the sibling's).
+// UPLINK (Q): a hardlight cable shot from a fist onto a hex anchor, the cable broken into links.
+icons['ability-uplink']=()=>{
+  const anchor=hexP(4.6,17.6,6.4).add(hexP(2.8,17.6,6.4)),core=circ(17.6,6.4,1.3);
+  const cable=taper([7.4,16.6],[14.6,9.4],2.4,1.6),links=[crect(9.2,13.2,1.1,1.1,.2).rot(45,9.8,13.8),crect(11.9,10.5,1.1,1.1,.2).rot(45,12.4,11.1)];
+  const fist=crect(1.8,15.4,6.6,6.8,1.4),knuck=[crect(2.6,14,1.6,2.4,.5),crect(4.6,13.6,1.6,2.8,.5),crect(6.6,14,1.6,2.4,.5)];
+  return [L(anchor,{evenodd:true}),L(core),L(cable,{knock:.7}),L(links,{cut:true}),L(knuck,{opacity:TONE}),L(fist,{knock:.6}),L(star(21.2,13.2,.5,1.6),{opacity:TONE})];
+};
+// OVERCLOCK (E): a bolt through a split hex, speed chevrons trailing it.
+icons['ability-overclock']=()=>{
+  const frame=hexP(9.6,13,12).add(hexP(7.6,13,12));
+  const bolt=poly([[14.6,2.6],[8.6,12.8],[12.6,12.8],[10.6,21.4],[17.6,10],[13.4,10],[15.8,2.6]]);
+  const chev=[poly([[1,8.4],[3.4,8.4],[5.8,12],[3.4,15.6],[1,15.6],[3.4,12]])];
+  return [L(frame,{evenodd:true,opacity:TONE}),L(chev),L(bolt,{knock:1})];
+};
+// HARDLIGHT COMBO (melee LMB): a fist driving through three strike lines, a flare at the knuckles.
+icons['ability-hardlight-combo']=()=>{
+  const knuckles=[7.6,6.9,7.1,7.9].map((y,i)=>crect(9.6+i*2.5,y,2.3,12.6-y,.7));
+  const palm=poly([[9.6,11.6],[19.6,11.6],[19.6,15.6],[18,17.4],[11.2,17.4],[9.6,15.8]]),thumb=poly([[8.4,12.6],[13.8,12.1],[15.6,13.3],[14.2,14.6],[9.8,14.7],[8.4,14]]);
+  const lines=[crect(.8,8.2,6.8,1.6,.6),crect(2.4,12,5.2,1.6,.6),crect(.8,15.8,6.8,1.6,.6)];
+  return [L(lines,{opacity:TONE}),L(palm,{knock:1}),L(knuckles,{knock:.45}),L(thumb,{knock:.6}),L(star(21.4,4.2,.6,2.4),{knock:.6})];
+};
+// FORK BOMB (1): the pilot and two hardlight clones split off behind it, a burst over them.
+icons['ability-fork-bomb']=()=>{
+  const fig=(x,y,s)=>[crect(x-1.9*s,y-6.6*s,3.8*s,3.4*s,.8*s),poly([[x-3.3*s,y-2.3*s],[x+3.3*s,y-2.3*s],[x+2.5*s,y+4.6*s],[x-2.5*s,y+4.6*s]])];
+  const back=[...fig(5.2,15.4,.82),...fig(18.8,15.4,.82)],front=fig(12,17.2,1);
+  return [L(back,{opacity:TONE}),L(front,{knock:1.1}),L(star(12,3.6,.7,2.6,4,-45),{knock:.6})];
+};
+// GLITCH CUT (2): a dash-slash streak cutting through, its RGB-split ghost and glitch blocks, the mark's X.
+icons['ability-glitch-cut']=()=>{
+  const slash=taper([2.2,20.8],[21.6,3.4],1.2,3.4),ghost=taper([2.2,20.8],[21.6,3.4],1.2,3.4).shift(-1.6,-1.4);
+  const blocks=[crect(4.2,6,3.4,1.4,.2),crect(14.6,17.6,4.6,1.4,.2),crect(18.2,14.8,2.2,1.2,.2)];
+  const x=[taper([14.6,14.2],[19.4,19],1.3,1.3),taper([19.4,14.2],[14.6,19],1.3,1.3)];
+  return [L(ghost,{opacity:TONE}),L(blocks,{opacity:TONE}),L(slash,{knock:.8}),L(x,{knock:.5})];
+};
+// METEOR BYTE (3): a giant hardlight fist diving knuckles-first, speed lines behind, a crater bowl under it.
+icons['ability-meteor-byte']=()=>{
+  const knuckles=[11.4,12.4,12.2,11.2].map((y,i)=>crect(6.6+i*2.75,7.4,2.5,y-7.4+3.2,.8).shift(0,0));
+  const palm=poly([[6.6,3.2],[17.6,3.2],[17.6,8.6],[15.8,10.4],[8.4,10.4],[6.6,8.6]]);
+  const crater=ellipseBand(12,21.2,9.6,3.2,1.8,180,360),sparks=[star(3.2,17.6,.4,1.5),star(20.8,17.6,.4,1.5)];
+  const trails=[crect(8.4,.4,1.3,2.2,.4),crect(14.4,.4,1.3,2.2,.4)];
+  return [L(trails,{opacity:TONE}),L(crater),L(sparks,{opacity:TONE}),L(palm,{knock:.8}),L(knuckles,{knock:.45})];
+};
 // Horizontal slab clip of a polygon path made by poly() (Sutherland–Hodgman against y0 <= y <= y1).
 function clipPoly(pathP,y0,y1)
 {

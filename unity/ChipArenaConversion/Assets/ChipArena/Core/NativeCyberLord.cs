@@ -89,9 +89,12 @@ namespace ChipArena.UnityConversion
         public int BoltHand;public Vector3 LanceFrom,LanceTo,FieldFrom,FieldPoint,SwapFrom,SwapTo,RootFrom,RootTo;public float FieldLand=-100,FieldUntil=-100,MineAt=-100;
         /// <summary>Kit v2's ranged set (Core/CyberKit2Ranged.cs): live only when its record's Version is 2.</summary>
         public readonly CyberKit2RangedView Kit2R=new CyberKit2RangedView();
+        /// <summary>Kit v2's melee and shared slots (Core/CyberKit2Melee.cs), Live only with a Version 2 record.</summary>
+        public readonly CyberKit2MeleeView Kit2=new CyberKit2MeleeView();
         public void Clear()
         {
             Kit2R.Clear();
+            Kit2.Clear();
             Id=0;Alive=false;Feet=default;Yaw=0;ComboStep=0;ComboAt=ComboUntil=ComboHit=-100;for(int i=0;i<CyberLordSpec.Slots;i++)At[i]=Release[i]=Until[i]=RecoverUntil[i]=Ready[i]=-100;
             DashFrom=DashTo=default;TrailUntil=-100;WallAt=default;WallYaw=0;WallBorn=WallUntil=-100;LinkTarget=0;LinkAt=LinkUntil=-100;CrashAt=default;CrashBorn=CrashUntil=-100;
             PanicId=PanicOutcome=PanicSeed=PanicVictim=PanicNext=0;PanicConnect=PanicStart=PanicEndedAt=-100;PanicAnchor=default;PanicYaw=0;PanicWall=false;PanicPointCount=0;
@@ -180,7 +183,7 @@ namespace ChipArena.UnityConversion
             var s=a.Cyber;RangedMode(a,v,s?.Ranged);
             // Kit v2's ranged set (the proposed record; Astra's replaces the source here): mapped only when its Version is 2.
             CyberKit2RangedFeed.Map(Kit2RangedSource?.Of(a.Id),v.Kit2R);
-            if(s==null)return true;
+            if(s==null){CyberKit2MeleeFeed.Read(a,v);return true;}
             v.Ready[CyberLordSpec.Q]=s.QReady;v.Ready[CyberLordSpec.E]=s.EReady;v.Ready[CyberLordSpec.One]=s.PacketReady;v.Ready[CyberLordSpec.Two]=s.LinkReady;v.Ready[CyberLordSpec.Three]=s.CrashReady;
             // The kit keeps one window, the current or last cast's (Kind, At, Release, Until); the host's reset kit is all zeros.
             string kind=s.Kind??"";bool cast=kind.Length>0&&s.At>0&&s.Until>=s.At;float end=cast?CastEnd(a,s,k):-100;bool cut=cast&&Cut(a,s);
@@ -221,6 +224,7 @@ namespace ChipArena.UnityConversion
                 Window(v,CyberLordSpec.Three,s.CrashAt,slam,until,now&&cut);
                 if(until>=slam-Eps){v.CrashAt=Feet3(s.CrashPoint);v.CrashBorn=slam;v.CrashUntil=slam+CyberLordSpec.CrashStun;}
             }
+            CyberKit2MeleeFeed.Read(a,v);
             return true;
         }
         private const float Eps=.002f;
@@ -230,6 +234,9 @@ namespace ChipArena.UnityConversion
         /// <summary>Kit v2's ranged record before the rules replicate it (docs/CYBER-LORD.md "Kit v2"): the Dev Sandbox preview, the
         /// checks' and the render harness's fixture; null reads none (v1 draws).</summary>
         public static ICyberKit2RangedSource Kit2RangedSource;
+        /// <summary>Kit v2's melee and shared record before the rules replicate it (the Dev Sandbox preview, the checks and the render
+        /// harness: Core/CyberKit2Melee.cs); CyberKit2MeleeFeed maps it when its Version is 2. Null: v1 alone.</summary>
+        public static ICyberKit2MeleeSource Kit2MeleeSource;
         /// <summary>The ranged mode into the view: the record's, else the actor's mode fields (Actor.SourceRanged / SourceModeAt,
         /// the Siren's mode on the wire today; the contract has the host set them for the Cyber Lord too).</summary>
         private static void RangedMode(Actor a,CyberLordView v,NativeCyberRangedState state)

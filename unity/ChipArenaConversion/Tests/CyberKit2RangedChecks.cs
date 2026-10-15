@@ -130,7 +130,7 @@ internal static class CyberKit2RangedChecks
             {var src=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core",f));foreach(var banned in new[]{".Cyber.",".Cyber;","a.Cyber","NativePilot","NativeArena","UnityEngine","System.Random","DateTime"})Check(!src.Contains(banned),f+" reads no authority state ("+banned+")");}
             var prev=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeCyberLordKit2Preview.cs"));
             foreach(var banned in new[]{"arena.Step","NativeSimulation","Rules.","Bullets.Add","Emit(","Events.Add",".Hp=",".Position=",".Velocity=","Damage("})Check(!prev.Contains(banned),"the Dev Sandbox preview touches no rule, actor or event ("+banned+")");
-            Check(prev.Contains("CyberLordFeed.Kit2RangedSource=cyberKit2")&&File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeSandbox.cs")).Contains("presentation.CyberKit2PreviewOn=!presentation.CyberKit2PreviewOn"),"the sandbox's gallery toggles the preview, which feeds the record through CyberLordFeed");
+            Check(prev.Contains("CyberLordFeed.Kit2RangedSource=cyberKit2")&&File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeSandbox.cs")).Contains("presentation.CyberKit2RangedPreviewOn=!presentation.CyberKit2RangedPreviewOn"),"the sandbox's gallery toggles the preview, which feeds the record through CyberLordFeed");
 
             // Version gate: no record, Version 0 or 1 leave v1 exactly as it was; Version 2 is live.
             var a=CyberLordFixture.Pilot(3,Vector3.Zero,0);var v=new CyberLordView();var src2=new Copied{Id=3};CyberLordFeed.Kit2RangedSource=src2;

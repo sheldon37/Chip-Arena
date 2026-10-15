@@ -171,7 +171,8 @@ namespace ChipArena.UnityConversion
             new NativeDevAction("gallery-chip-select",Pr,P,"Chip Selecting"),
             new NativeDevAction("gallery-hazard-kit",Pr,P,"Hazard Kit"),
             new NativeDevAction("gallery-hazard-music",Pr,P,"Hazard Kit music lock"),
-            new NativeDevAction("gallery-cyber-kit2",Pr,P,"Cyber Kit 2 (ranged)"),
+            new NativeDevAction("gallery-cyber-kit2-ranged",Pr,P,"Cyber Kit v2 ranged"),
+            new NativeDevAction("gallery-cyber-kit2-melee",Pr,P,"Cyber Kit v2 melee"),
             new NativeDevAction("preview-reveal",Pr,P,"Preview DEV Reveal"),
             // Camera and overlays (presentation only: live wherever the panel is).
             new NativeDevAction("fly",Ca,V,"Fly camera",key:"F10"),

@@ -36,7 +36,8 @@ namespace ChipArena.UnityConversion
         private readonly CyberLordMotion cyberVictimMotion=new CyberLordMotion();
         private CyberScene cyberScene;private CyberSink cyberSink;
         private readonly CapturedAnimation.Player[] cyberCloneRigs=new CapturedAnimation.Player[3];private readonly Actor[] cyberCloneActors={new Actor(),new Actor(),new Actor()};
-        private readonly GhostPose[] cyberGhostPoses={new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose()};
+        private readonly GhostPose[] cyberGhostPoses={new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),
+            new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose()};
         // The idle stance's RGB-split shimmer: two ghosts each for up to four glitching pilots at once.
         private readonly GhostPose[] cyberIdleGhosts={new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose()};
         /// <summary>The idle split ghosts' strength at a full glitch step (the stun's glitched ghosts reach about .42).</summary>
@@ -45,7 +46,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Start of Render: this frame's Cyber Lord views (CyberLordFeed), the cyber events, the look's form times.</summary>
         private void BeginCyberLord(Snapshot s,float time)
         {
-            cyberSnapshot=s;cyberClock=time;CyberRangedStep(s,time);CyberKit2Step(s,time);if(s?.Actors==null)return;cyberFx.Observe(s.Events,time);
+            cyberSnapshot=s;cyberClock=time;CyberRangedStep(s,time);CyberKit2Step(s,time);CyberKit2RStep(s,time);if(s?.Actors==null)return;cyberFx.Observe(s.Events,time);
             foreach(var a in s.Actors)
             {
                 if(!CyberLordFeed.Handles(a))continue;if(!cyberViews.TryGetValue(a.Id,out var v)){v=new CyberLordView();cyberViews.Add(a.Id,v);}CyberLordFeed.Read(a,v);
@@ -58,8 +59,9 @@ namespace ChipArena.UnityConversion
         }
         private void ClearCyberLord()
         {
-            cyberFx.Clear();cyberViews.Clear();cyberFormAt.Clear();cyberSnapshot=null;cyberRanged.Clear();cyberRangedStart=-100;cyberKit2.Clear();cyberKit2Start=-100;
+            cyberFx.Clear();cyberViews.Clear();cyberFormAt.Clear();cyberSnapshot=null;cyberRanged.Clear();cyberRangedStart=-100;cyberKit2R.Clear();cyberKit2RStart=-100;
             for(int i=0;i<cyberCloneRigs.Length;i++){cyberCloneRigs[i]?.Dispose();cyberCloneRigs[i]=null;}
+            CyberKit2Clear();
         }
         /// <summary>The Dev Sandbox's "Preview Cyber Double Jump" (developer sandbox only): the local Cyber Lord's own jumps show the
         /// second jump's boost (pose and effect) as if the authority had granted the air jump (Core/CyberLordRun.cs
@@ -102,7 +104,7 @@ namespace ChipArena.UnityConversion
         private void CyberLordBody(CapturedAnimation.Player rig,Actor a,float time,bool first,int layer,Camera camera)
         {
             if(sourceModels==null||!CyberLordFeed.Handles(a)||rig?.Bones==null)return;
-            float solid=cyberViews.TryGetValue(a.Id,out var v)?NativeCyberLordLook.BodySolid(v,time):1,formAt=cyberFormAt.TryGetValue(a.Id,out float f)?f:-100;var flare=cyberFx.FlareOf(a.Id,time);
+            float solid=cyberViews.TryGetValue(a.Id,out var v)?NativeCyberLordLook.BodySolid(v,time):1,formAt=cyberFormAt.TryGetValue(a.Id,out float f)?f:-100;var flare=cyberFx.FlareOf(a.Id,time,v);
             // The Hardlight Boot entrance forms and flares the look on its own clock (Core/NativeCyberLordIntro.cs).
             // The pilot's skin picks what forms there: the gauntlets build, or the aura ignites with its haze (the entrance's effects).
             if(rig==introRig&&entranceScript is NativeCyberLordIntroScript intro){time=entranceTime;formAt=NativeCyberLordIntroScript.FormAt;flare=intro.Flare(time);solid=1;intro.Aura=CyberSkin(rig,a.Id)!=NativeWeaponSkins.PrototypeIndex;}
@@ -126,7 +128,7 @@ namespace ChipArena.UnityConversion
         {
             var s=cyberSnapshot;if(s?.Actors==null||vfx==null||sourceModels==null||cyberViews.Count==0&&cyberFx.Records.Count==0)return;var draw=WeaponFxDraw;if(draw==null)return;
             bool viewOk=FirstPerson&&!ScopeActive&&ViewCamera!=null&&viewRig!=null;float q=Mathf.Clamp01(WeaponEffectsQuality);
-            cyberArena=arena;cyberScene??=new CyberScene(this);cyberSink??=new CyberSink(this);cyberScene.Bind(s,camera,arena,cyberRanged,cyberKit2);cyberSink.Bind(vfx,draw,viewOk);
+            cyberArena=arena;cyberScene??=new CyberScene(this);cyberSink??=new CyberSink(this);cyberScene.Bind(s,camera,arena,cyberRanged,cyberKit2R);cyberSink.Bind(vfx,draw,viewOk);
             cyberFx.Draw(cyberSink,cyberScene,cyberClock,q,LowGraphics);
             CyberAuraHaze(s,cyberClock,q,viewOk);
             CyberGhosts(s,cyberClock,q);
@@ -147,7 +149,7 @@ namespace ChipArena.UnityConversion
                 var at=new NativeCyberLordAura.HandPoints{LFist=AuraN(lh.TransformPoint(AuraFist)),RFist=AuraN(rh.TransformPoint(AuraFist)),LArm=AuraN(le.TransformPoint(AuraArm)),RArm=AuraN(re.TransformPoint(AuraArm)),
                     LEmitter=AuraN(lh.TransformPoint(AuraEmitter)),REmitter=AuraN(rh.TransformPoint(AuraEmitter)),Right=AuraN(me&&ViewCamera!=null?ViewCamera.transform.right:rig.Root.transform.right),Scale=lh.lossyScale.y};
                 var glitch=!me&&rig.CyberMotion!=null?rig.CyberMotion.IdleGlitch:default;float formAt=cyberFormAt.TryGetValue(a.Id,out float f)?f:-100;
-                NativeCyberLordAura.Halo(cyberSink,me,at,a.Id,time,formAt,CyberLordIdlePose.Clench(glitch,cyberFx.FlareOf(a.Id,time)),NativeCyberLordLook.BodySolid(v,time),q,LowGraphics,NativeCyberLordLook.ModeOf(v,time),NativeCyberLordAura.Guard(time,a.BlockAt,a.BlockUntil));
+                NativeCyberLordAura.Halo(cyberSink,me,at,a.Id,time,formAt,CyberLordIdlePose.Clench(glitch,cyberFx.FlareOf(a.Id,time,v)),NativeCyberLordLook.BodySolid(v,time),q,LowGraphics,NativeCyberLordLook.ModeOf(v,time),NativeCyberLordAura.Guard(time,a.BlockAt,a.BlockUntil));
             }
         }
         // The glitched pilots' RGB-split silhouettes (their posed rig, offset) with pixel blocks, and the fork-bomb clones (a
@@ -177,6 +179,7 @@ namespace ChipArena.UnityConversion
                     var flare=new NativeCyberLordLook.Flare{Left=1,Right=1};int n=NativeCyberLordLook.PiecesIn(CyberSkin(null,g.Actor),g.Actor*3+g.Index,at,-100,flare,false,g.Opacity,.3f,true,cyberPieces,default);
                     for(int k=0;k<n;k++)QueueCyberPiece(cyberPieces[k],rig.Bones[cyberPieces[k].Bone].localToWorldMatrix,1,0,null);
                 }
+                else if(g.Kind==CyberGhost.Fork&&pose<cyberGhostPoses.Length&&CyberForkGhost(g,s,pilot,cyberGhostPoses[pose],time))pose++;
             }
         }
 
@@ -287,6 +290,7 @@ namespace ChipArena.UnityConversion
                 int n=NativeCyberLordSounds.State(cyberView,slot,cyberSounds,out float at);if(n==0||!(t>=at&&t-at<.15f)||!Once(keys[slot],at))continue;
                 for(int i=0;i<n;i++)Cue(cyberSounds[i].Key,cyberSounds[i].Clip,pos,cyberSounds[i].Gain,mine:mine);
             }
+            CyberKit2Cues(id,pos,mine,t);
             // Kit v2's ranged set (Core/CyberKit2RangedHud.cs CyberKit2RangedSounds), only on a live v2 record.
             if(!cyberView.Kit2R.Live)return;
             if(!cyberKeys2.TryGetValue(id,out var keys2)){keys2=new string[CyberKit2RangedSounds.Slots];for(int i=0;i<keys2.Length;i++)keys2[i]=id+":cyber2-"+i;cyberKeys2.Add(id,keys2);}
@@ -299,7 +303,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A fresh cyber event's cues (hits, absorbs, heals by their Detail).</summary>
         private void CyberLordEvent(in ArenaEvent e,Vector3 pos,bool targetMe,bool mine)
         {
-            if(!CyberLordFeed.Kind(e.Kind))return;var hit=CyberLordFeed.Hit(e.Detail);if(hit==CyberHit.None)return;
+            if(!CyberLordFeed.Kind(e.Kind))return;var hit=CyberLordFeed.Hit(e.Detail);if(hit==CyberHit.None){CyberKit2Event(e,pos,targetMe,mine);return;}
             int n=NativeCyberLordSounds.Event(e.Kind,hit,targetMe,cyberSounds);for(int i=0;i<n;i++)Cue(cyberSounds[i].Key,cyberSounds[i].Clip,pos,cyberSounds[i].Gain,mine:mine);
         }
     }
