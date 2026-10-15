@@ -7803,3 +7803,123 @@ director resume, endpoint/combat migration and progression. No playable Expediti
 or binary publication is claimed. Source promotion receipts belong in the PR.
 
 Final verification: full optimized managed/real-relay suite exited 0 (687 PASS groups); real loopback relay/LAN checks passed. No assertion waived. Diff check clean. Native Unity/Windows and compiled publication remain unrun.
+
+## 2026-10-15 — Claude: Expedition presentation acceptance pass
+
+Branch `claude/expedition-acceptance`, created at Astra's PR #217 head `3183514`
+(`codex/expedition-director-lifecycle`, which contains shared `5aa2e0a`). Commits: `9a41cfc` (fixes, checks,
+EXPEDITION-PRESENTATION status and states table, PROJECT_STATE line), then this entry. Implemented on the branch.
+Not merged, not released. Presentation only: no change to hit timing, hitboxes, damage, cooldowns, movement, collision,
+networking or saves.
+
+**Method.** New `CoreTests --expedition-acceptance` (`Tests/ExpeditionAcceptanceChecks.cs`, in the full suite). It plays
+one run through Astra's real `ExpeditionSession`/`ExpeditionDirector` on the imported manifest (`exp-layout-2`) with its
+real fingerprint. Two loops: town, Ward Zero, the boss, the return, the final boss, Continue, then the same again in
+loop 2. Clients:
+- the host's own view;
+- guests decoded from the public/private wire (`ExpeditionViewBatch` → JSON → `ExpeditionViewReceiver`), with view and
+  position latencies;
+- three late joiners (mid-fight, mid-opening, after the gate opened).
+
+Each client runs the real clock, cues, scene, transfer, boss and SAFE models on every 60 Hz frame. The test plays the
+scene adapter as Astra's contract describes: tickets captured before a load, reported after it, and the host's placement.
+Presentation code calls none of these.
+
+**Verdicts.**
+1. Seals over the whole blocking interval: **pass**. Every frame, on every client, the door seal or gate lattice is drawn
+   exactly while the view's closure blocks. A client never shows a closure open while the authority is opening or sealed
+   (the only allowed lag: the authority began sealing after that view). Covered: entry (sealing frozen behind the load,
+   then 1 s), the opening second after the boss, a joiner mid-opening (leaves parting behind the seal, in step), the gate
+   in two loops. Renders of the opening at 0.95 s show the seal clearly.
+2. Startup binding and transfer: **pass**, after one fix (item 5).
+   - The generation-0 inactive barrier binds the town on host and guest. A mismatched fingerprint draws nothing (the
+     holograms stand in).
+   - The screen follows active, ready/required and `loading` every frame. It covers any frame whose view names an
+     unloaded map, and clears after the barrier.
+   - Hardening: world pieces and holograms now also wait for `NativeExpeditionStates.MapReady`. The view names the next
+     area before the load, and its anchors must not draw in the old map during the 0.25 s fade-in.
+3. SAFE tags: **pass**. They follow seat reassignment, seat 0, disconnect, a replacement member in the same seat (outside:
+   none; inside: tagged), and reconnect with a new seat, on host and guest. The range, fade and first-person rule is now
+   `ExpeditionSafeTags.Alpha` (checked; same behaviour). No state string claims protection (scan). Wall occlusion is the
+   runtime raycast, not checkable offline.
+4. Boss arrivals: **pass**. One intro and one crack per client at the recorded spawn. A late joiner gets the plate only.
+   The plate follows 62%, 80%, a max-HP change to 50% and 1%, then DOWN. Health changes never restart the intro or crack,
+   and `spawned`/x/y/z stay. Same for the final boss.
+5. Continue / new loop: **fixed** (two defects).
+   - Plates, intros and cracks clear on `loop`; loop 2's arrivals reuse the boss ids and each gets its own intro and crack.
+     The gate's lattice is back during the barrier, and the gate reads sealed after.
+   - Defect: the transfer screen read ENTERING THE CITY. It now reads STARTING LOOP n (replicated `loop`, and `entered`
+     reset by NextLoop).
+   - Defect: placing the party on the sanctuary slots rippled the sanctuary edge as 25 crossings (5 clients × 5 pilots).
+     Sides are now forgotten while `loading` or a barrier is up, and a move over 3 m between samples only records the
+     side. A client whose positions arrive after its views needed the second rule (5 false ripples without it).
+   - No view field is missing: `loop`, `run`, `loading`, `areaBarrier.active/generation` and `instances[].entered`
+     suffice.
+6. Town: **fixed** (two defects).
+   - Defect: the final gate opens when the last building is cleared, with the whole party inside it. Its 7 s beacon and
+     4 s FINAL GATE OPEN were timed from that opening; with the 10 s exit countdown, no client ever saw them. Now an
+     opening seen from another area is held, then cued 0.5 s after the client is back in town with no barrier up. A
+     client in town at the opening still plays it from `began`; a gate first seen open cues nothing; sealing again drops a
+     held cue.
+   - Defect (Ward airlock clearance): the pockets, jamb bands and header stood 0.12 m (each side) and 0.06 m inside the
+     closure face. The collider frees that face, and the Ward exit's jambs and lintel bound exactly it (3.2 × 3.4 m,
+     checked against UnityMaps.json). They now frame the face from outside; the outer extents the dressing keeps clear
+     are unchanged. Nothing solid stands in either open doorway (check).
+   - Budget: the busiest town frame (door sealing, gate opening with its beacon, final-boss crack, all 16 ripple slots)
+     is 1,150 / 4,096 quads and 54 / 640 parts, allocating 0 bytes. The state pieces add no lights.
+   - Dressing unchanged since its pass; its checks pass. Its offline renders (dark alleys readable, CHECKPOINT gatehouse
+     and sanctuary arrows for wayfinding) still apply. Ambience was not heard.
+   - HUD at 3440×1440 (canvas 2150×900 at 1.6): transfer, boss plate, SAFE chip and party line, tags at 8/30/45 m and the
+     gate notice are readable. No change needed.
+
+Each defect was shown by building the new checks against the base Core in a scratch copy and staging the fixes one at a
+time. The base fails in turn: the gate cue (0 seen), the loop title, the placement ripples (25), the doorway intrusion.
+With all staged, it passes.
+
+**Renders** (scratch, `renders-expedition-acceptance/`):
+- Ward exit sealed, opening 0.95, open, and an open close-up;
+- town door opening 0.95 and open;
+- the gate sealing at 0 s (Continue's frozen barrier) and 0.5 s;
+- HUD: STARTING LOOP 2, and plate + SAFE + tags + gate notice, at 3440×1440 and 1920×1080.
+
+**Checks** on `9a41cfc`:
+
+  | Check | Result |
+  | --- | --- |
+  | Unity runtime compile (real 6000.3.24f1 assemblies) | OK |
+  | Unity editor compile | fails on the inherited CS0136 only (see the note below); OK on a scratch export with `139f58f` applied |
+  | Managed and real relay | rc 0, 688 PASS groups (baseline 687 + acceptance) |
+  | `--expedition-acceptance` / `--expedition-states` / `--expedition-director` | 66,840 / 9,658 / 86 checks |
+  | Expedition dressing | 892,162 assertions |
+  | Python | 106 tests, 1 skipped, OK |
+  | Source package | 2,025 files |
+  | `git diff --check` | clean |
+  | CI-layout export | rc 0, 688 PASS |
+
+  `--expedition-states` dropped from 14,971 to 9,658 checks. Its no-allocation frame has a barrier up, so its pilots
+  no longer ripple, and per-quad checks over 16 ripples went with them. The acceptance budget frame now measures all 16
+  ripple slots without allocating.
+
+**Compile note.** Base `3183514` breaks the Unity Editor compile (CS0136, `NativeNetworkBuildChecks.CheckNetworkSerialization`).
+The lead's signed fix `139f58f` renames the local. Cherry-picking it here was refused by this session's permission
+classifier, so it is not on this branch; the lead applies it at merge. The runtime compiles on this branch as is.
+
+**Blocked live acceptance** (nothing binds Expedition into an arena yet):
+- no runtime code constructs an `ExpeditionDirector`;
+- `ConversionGame.BindExpeditionScene`/`BindExpedition` have no caller, and no menu exists;
+- no area-map loader switches `NativeArena.MapId` to `expedition-ward-zero`;
+- `ReportExpeditionAreaLoaded` and `CompleteAreaLoad` have no runtime caller;
+- no closure colliders exist, so "no apparent opening before collision clears" holds against the view's `Blocking`, not
+  PhysX;
+- `RecordBossArrival`/`UpdateBossHealth`/`BossDefeated` have no combat caller.
+
+Unity Editor play, Windows, wall-occlusion raycasts, lighting in URP, ambience and real host/guest runs are unrun.
+
+**For Astra** (authority; not a presentation change; the four PR #216 fields are not reopened):
+- `NativeExpedition.NextLoop` sets `safe=true` on every living member before the new barrier's placement.
+  `ExpeditionDirector.Step` returns early while `loading`, so SAFE (chip and tags) shows over pilots still standing at the
+  final-boss arena for the whole barrier. If placement fails, it stays while the barrier is frozen. The transfer screen
+  hides most of it. Proposed: don't set `safe` in NextLoop; let `CompleteAreaLoad`'s placement or the next `Step` set it
+  from the sanctuary test.
+- Similarly, `NativeExpedition.Join` grants `safe` to a new member in Town/Victory before any position check (`Step`
+  corrects it next tick, except while loading).
