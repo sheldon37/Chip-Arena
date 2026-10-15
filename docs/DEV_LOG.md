@@ -1,3 +1,13 @@
+## 2026-10-15 — Astra: Expedition multiplayer through existing rooms
+
+- Branch `codex/expedition-coop`, base shared/builder `d6562d98`. Implemented on task branch; merge/builder sync pending at this entry. No Windows package or updater publication claimed.
+- Adds replicated Expedition mode to the existing room controls, 1–4 distinct authenticated humans, ready and capability checks, and host-created party runs. Uses existing internet/LAN connections and input/snapshot transport; no new service.
+- Replaces solo placement with validated party placement after every connected member loads the matching map/generation/layout and dynamic collision. Retains every pilot's vitals and downed state. Guest inputs operate gates, doors, drops, caches and machines on the host; existing private rewards/commands remain per-account.
+- Records every member's death; host death no longer stops living guests. Sanctuary reprinting measures an uninterrupted three-second channel and restores the authoritative capsule after payment. Reconnect verifies original account, supports frozen loads, and preserves disconnected pilots during the 90-second transport grace. New joins wait for lobby; host must stay; endpoint migration remains unavailable.
+- Publishes actual gate solidity, including reversals, to guest collision. Input and predicted movement wait for matching area/generation/collision; ordinary PvP and Wave Defense paths retain their existing transport. Animation timings and damage hitboxes unchanged; enemy party scaling now uses connected run members.
+- PASS: 41 new party/lifecycle checks + 98 director checks; 88 integration; hub authority 134, perception 3773, hub 1204; menu 605; acceptance 81598; pick 258. Full `tools/check_relay.py --dotnet /tmp/chip-dotnet/dotnet` passed with real local WebSocket, UDP/TCP and reconnect checks. Semantic Player/Runtime/Editor compile and source structure gate pass. Existing presentation warnings only.
+- Added Editor co-op fixture for native party placement, guest reprint, replicated gate solidity and JsonUtility epoch/generation. Not run: Unity Editor/PhysX, Windows build, two signed-in clients. Next: build the synced builder revision, test slow guest load, guest interactions, host death/reprint, party return and reconnect. Claude may polish mode/status visuals. Join-circle and split-area design remain separate.
+
 ## 2026-10-15 — Claude: owner requests handed to Astra (join circle, co-op Expedition hosting)
 
 - Branch `claude/expedition-join-circle-contract`, base shared `8355b44`. Docs only.

@@ -705,30 +705,18 @@ per-peer frames and per-area barriers: a large redesign. The owner is asked to d
 Owner: "lets make hosting a lobby for this one better (So I can test with other people) Add Expedition as a option for hosting
 rooms."
 
-**Today:** the Expeditions menu's HOST ROOM makes a real internet (tunnel/directory) or LAN room, but it plays Wave Defense
-only. START EXPEDITION is solo, local and DEV-only (`Runtime/NativeExpeditionM1.cs:14,38`). Guests cannot play an Expedition:
-- M1 seats only the host;
-- placement assumes one pilot (`:65`);
-- guests never report their area loaded;
-- door and interact intents are host-local;
-- only the host's death is recorded;
-- new peers are refused once an arena exists (`Runtime/NativeNetwork.cs:92`).
+**Implemented on `codex/expedition-coop` (base `d6562d98`, 2026-10-15):** Expedition uses the existing internet room / LAN transport and host combat authority. Create Room has Expedition as its third mode; the existing Expeditions lobby replicates that choice and requires every guest to ready up.
 
-The full gap list is in DEV_LOG (Expedition integration contract) and `EXPEDITIONS-MENU.md`.
+- One to four signed-in, distinct human accounts. No lobby bots or dedicated-server start. Clients advertise Expedition support in the existing hello; old clients cannot strand the load barrier.
+- Every player joins the same run. All clients load the current map and dynamic gate collision before reporting the exact run/epoch/layout/load ticket. The authority waits for all connected, unextracted members, then places living pilots in distinct validated slots. Health, resources and death state survive transfers.
+- Every pilot's F input goes through host-measured gate, door, drop, cache and machine interaction. J votes and C rewards keep their authenticated commands and private projections. Party members travel together; the proposed join circle remains separate work.
+- All deaths are recorded, and surviving guests can continue when the host's character dies. At the sanctuary reprint station, F starts a three-second stationary channel for a connected fallen teammate; movement, damage, disconnect or lost range interrupts it. Payment and resurrection are host-owned.
+- Gate collision explicitly replicates the authority's retained solidity, including reversals. Guests do not infer solidity from animation time.
+- Join before launch. Existing pilots can reclaim a seat within the transport's 90-second grace using the original account and resume token, including while an area load is frozen. Disconnected pilots do not block the barrier. The hosting application must remain running; endpoint migration is still unavailable, and the existing rules refuse host extraction while guests remain.
 
-**Astra (blocking):**
-1. Room fields `expedition` / `mode`.
-2. A room-start path that seats every lobby peer and `Run.Join`s them, without the Online/DEV gate, with N-party placement on
-   the 8 slots.
-3. Guest area load and ready on the existing ticket and stage barrier.
-4. Guest intents for doors (or the join circle), caches and rewards; guest death and reprint.
-5. Party cap and late-join / host-leave policy.
+Verification: managed party lifecycle, director, integration, hub, menu, pick and acceptance checks; full managed suite through real local relay/LAN transport; Player/Runtime/Editor semantic compilation; source-package integrity. An Editor fixture covers two pilot placements, guest reprinting, gate collision and JsonUtility generation/solidity. **Unity/PhysX, Windows build and two-client gameplay are not exercised here.** Test with two updated signed-in clients: launch, delay one loader, guest F at gates/caches/door, host death, reprint, exit vote, disconnect/reconnect and host return to lobby. A failed load stays frozen instead of silently advancing.
 
-**Claude, after item 2:**
-- "Expedition" in the Create Room and lobby Mode select;
-- START EXPEDITION enabled for the host, with guests ready-gated;
-- guests shown the host's pick;
-- the party cap and status lines.
+Claude can polish the existing mode/status presentation; this change only wires the existing controls and corrects their capability labels. Waves 2/3 starts, new expedition catalogue entries, join circles and split-area parties are unchanged.
 
 ### Safe-zone border hidden in the hub (Claude, 2026-10-15)
 

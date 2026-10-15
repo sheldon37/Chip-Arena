@@ -9,8 +9,7 @@ namespace ChipArena.UnityConversion
     /// mode and wave mapping, the launch gates and the fit at every canvas. Drawn by Runtime/NativeExpeditionsMenu.cs, which is
     /// presentation only: every launch goes through the calls the old boss-test screen and room lobby made.
     /// <list type="bullet">
-    /// <item>START EXPEDITION is the full run. Today that is the developer-only, offline Expedition M1 (StartExpeditionM1's own
-    /// gate). A room cannot start it until multiplayer Expedition exists (Astra; DEV_LOG "Expeditions screen").</item>
+    /// <item>START EXPEDITION is the shared run for 1–4 signed-in human players. Runtime validates identities and client support.</item>
     /// <item>PLAY WAVE DEFENSE is the boss-test match (Ward Zero's three waves, then the Siren), already co-op through the room.
     /// The room carries only <c>skipWaves</c>: Wave 1 is a normal start and the Siren is skipWaves. Waves 2 and 3 are shown and
     /// locked until rooms carry a start wave (Astra).</item>
@@ -47,8 +46,6 @@ namespace ChipArena.UnityConversion
             public string Reason;
         }
         public const string ExpeditionLabel="START EXPEDITION",WavesLabel="PLAY WAVE DEFENSE";
-        public const string CoopPending="Co-op expeditions: waiting on host support.";
-        public const string DevOnly="Expedition M1 is a developer build for now. Play Wave Defense meanwhile.";
         public const string Placeholder="Coming soon: this expedition is a placeholder.";
         public const string WaveLocked="Waves 2 and 3 start once rooms carry a start wave.";
         public const string GuestsWaiting="Waiting for every pilot to ready up.";
@@ -64,9 +61,8 @@ namespace ChipArena.UnityConversion
             if(pick==null||pick.Locked){l.Detail=NativeExpeditionCatalogue.ComingSoon;l.Reason=Placeholder;return l;}
             if(mode==Mode.Expedition)
             {
-                l.Detail="DEV · M1 · SOLO";
-                if(seat==Seat.Host){l.Reason=CoopPending+(guests>0?"":" Leave the room to run it solo.");return l;}
-                if(!developer){l.Reason=DevOnly;return l;}
+                l.Detail="1–4 PLAYERS · SHARED RUN";
+                if(seat==Seat.Host&&!guestsReady){l.Reason=GuestsWaiting;return l;}
                 l.Kind=LaunchKind.ExpeditionM1;l.Enabled=!busy;return l;
             }
             if(!pick.WaveDefense){l.Reason=Placeholder;return l;}

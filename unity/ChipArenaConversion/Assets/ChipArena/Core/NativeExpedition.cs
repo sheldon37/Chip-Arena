@@ -47,6 +47,11 @@ namespace ChipArena.UnityConversion
             p=new ExpeditionMember{account=account,weapon=weapon,connected=true,catchup=count,initialCatchup=count,safe=false};
             s.members=Add(s.members,p);RefreshVotes();Changed();return true;
         }
+        public bool Reconnect(string account)
+        {
+            var p=Member(account);if(!Running||p==null||p.connected||p.extracted)return false;
+            p.connected=true;RefreshVotes();Changed();return true;
+        }
         public bool Disconnect(string account)
         {
             if(!Running)return false;var p=Member(account);if(p==null||!p.connected)return false;

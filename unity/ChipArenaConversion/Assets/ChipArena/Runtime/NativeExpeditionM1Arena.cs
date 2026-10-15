@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace ChipArena.UnityConversion
 {
-    // Local DEV slice. Expedition owns progression; the existing arena owns all combat and physics.
+    // Host-owned Expedition: Expedition owns progression; the existing arena owns all combat and physics.
     public sealed partial class NativeArena
     {
         public ExpeditionDirector Expedition {get;private set;}
@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
         {if(Expedition!=null)foreach(var c in Expedition.Closures)if(expeditionClosures.TryGetValue(c.id,out var box))box.enabled=c.Blocking;}
         public bool ExpeditionPlace(string account,ExpeditionPoint slot)
         {
-            var p=Pilots.SingleOrDefault(p=>p.Seat.access?.AccountId==account);
+            var p=ExpeditionPilotFor(account);
             if(p==null||!ExpeditionSupported(slot.Position,NativeLocomotionRules.Radius,2*NativeLocomotionRules.HalfHeight))return false;
             p.Body.position=Vec(slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);p.Yaw=slot.yaw;
             p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;Physics.SyncTransforms();return true;
@@ -135,8 +135,8 @@ namespace ChipArena.UnityConversion
                     .OrderBy(m=>(m.front.Position()-feet).Length).FirstOrDefault();
                 if(machine!=null){notice=BuyExpeditionMachine(pilot,member,machine);SyncExpeditionInventory();return true;}
             }
-            if(expeditionArea.anchors.Any(a=>a.kind=="machine"&&Expedition.CanPurchase(member.account,a.id)))
-            {notice="Reprint station · restores fallen teammates. This local run has no teammate to reprint.";return true;}
+            var reprint=expeditionArea.anchors.FirstOrDefault(a=>a.kind=="machine"&&Expedition.CanPurchase(member.account,a.id));
+            if(reprint!=null){notice=BeginExpeditionReprint(pilot,member,reprint.id);return true;}
             return false;
         }
         private void OpenExpeditionPurchases(string account)
@@ -175,8 +175,8 @@ namespace ChipArena.UnityConversion
         private void StepExpeditionCombat()
         {
             var run=Expedition.Session.Run;var s=run.Snapshot();if(s.loading||s.phase==ExpeditionPhase.Ended)return;
-            if(Local.Hp<=0){if(s.members.Single(m=>m.account==s.host).alive)run.Defeat(s.host);return;}
-            StepHubPopulation();
+            RecordExpeditionDeaths();s=run.Snapshot();if(!s.members.Any(m=>m.alive&&m.connected&&!m.extracted))return;
+            StepExpeditionReprints();StepHubPopulation();
             if(s.phase==ExpeditionPhase.Instance)
             {
                 var instance=s.instances.Single(i=>i.id==s.area);
@@ -186,7 +186,7 @@ namespace ChipArena.UnityConversion
                     if(instance.progress+Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<instance.target)
                     {
                         string[] kinds={"shambler","runner","spitter","brute"};var add=SpawnPveAdd(kinds[expeditionSpawned%kinds.Length],true);
-                        if(add!=null){var scale=new ExpeditionScaling().Evaluate(s.elapsed,1,s.loop,true);add.MaxHp*= (float)scale.health;add.Hp=add.MaxHp;add.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;}
+                        if(add!=null){var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.members.Count(m=>m.connected&&!m.extracted)),s.loop,true);add.MaxHp*= (float)scale.health;add.Hp=add.MaxHp;add.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;}
                     }
                     expeditionSpawnAt=Time+1;
                 }
@@ -209,9 +209,9 @@ namespace ChipArena.UnityConversion
         private void SpawnExpeditionBoss(string id)
         {
             foreach(var mob in Minions.Where(m=>hubMobs.ContainsKey(m.Id)).ToArray())RemoveMinion(mob,false);hubMobs.Clear();Pve.Cap=8;
-            var s=Expedition.Session.Run.Snapshot();var scale=new ExpeditionScaling().Evaluate(s.elapsed,1,s.loop,s.phase==ExpeditionPhase.Instance);
-            var point=expeditionArea.bossPoints[0];var boss=Pve.Boss;Pve.MaxHp=NativePveRules.BossHp(1)*(float)scale.health;
-            boss.Stats["hp"]=Pve.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(1)*(float)scale.damage;boss.Hp=Pve.MaxHp;boss.Seat.alive=true;
+            var s=Expedition.Session.Run.Snapshot();var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.members.Count(m=>m.connected&&!m.extracted)),s.loop,s.phase==ExpeditionPhase.Instance);
+            var point=expeditionArea.bossPoints[0];var boss=Pve.Boss;Pve.MaxHp=NativePveRules.BossHp(Math.Max(1,s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.health;
+            boss.Stats["hp"]=Pve.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(Math.Max(1,s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.damage;boss.Hp=Pve.MaxHp;boss.Seat.alive=true;
             SetBossHidden(false);boss.Body.position=Vec(point.Position)+Vector3.up*NativeLocomotionRules.HalfHeight;boss.Yaw=point.yaw;Pve.Stage="boss";Pve.Phase=1;Pve.Floor=Pve.MaxHp*.75f;
             if(!Expedition.RecordBossArrival(id,"siren",kind=>Content.weapons.Any(w=>w.id==kind),point.Position,boss.Hp,Pve.MaxHp))throw new InvalidOperationException("Boss arrival rejected.");
             expeditionBoss=id;BeginPveHold("intro");

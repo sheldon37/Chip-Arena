@@ -93,7 +93,7 @@ namespace ChipArena.UnityConversion
     /// open, and the authority-clock time (run seconds, the closures' clock) the state began. The presentation eases the leaves
     /// from that moment, so every client sees the same swing; a state seen late snaps to where the motion would be.
     /// </summary>
-    [Serializable] public struct ExpeditionGateState {public string Id;public bool Open;public double ChangedAt;}
+    [Serializable] public struct ExpeditionGateState {public string Id;public bool Open,Blocking;public double ChangedAt;}
     /// <summary>What the hub presentation reads each frame: the gates' states (none: every gate rests open, see
     /// NativeExpeditionHubGates.RestOpen), whether the proposed sanctuary rules are live (`Holster`: weapons holstered inside;
     /// `Ward`: the fence-line ward) and whether this is the DEV preview's synthetic state (labelled as such on screen).</summary>
