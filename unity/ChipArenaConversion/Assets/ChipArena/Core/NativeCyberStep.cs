@@ -7,10 +7,12 @@ namespace ChipArena.UnityConversion
         public bool Present,Stopped;public int Combo,LockTarget;
         public float CastAt,At,Until,Distance,Travelled;public V3 Facing;
         public static float Arc(int combo)=>combo==2?CyberKit2Spec.SpinArc:combo==4?CyberKit2Spec.PalmCone:CyberKit2Spec.ComboArc;
-        public static bool Matches(NativeCyberKit kit,in NativeCyberStep step)=>step.Present&&kit?.Version==2&&kit.At==step.CastAt&&NativeCyberKit2Rules.Current(kit)==2;
+        // -1 is the valid inactive combo sentinel; a legacy cast name alone is not a string step.
+        private static bool ComboCast(NativeCyberKit kit)=>kit?.Version==2&&kit.Combo>=0&&kit.Combo<CyberCombo.StepDistance.Length&&kit.Kind==CyberKit2Spec.ComboKinds[kit.Combo];
+        public static bool Matches(NativeCyberKit kit,in NativeCyberStep step)=>step.Present&&ComboCast(kit)&&kit.At==step.CastAt&&kit.Combo==step.Combo;
         public static NativeCyberStep Begin(NativeCyberKit kit,bool grounded,int target,V3 position,Func<V3,V3,float,int,int,float> limit)
         {
-            if(kit?.Version!=2||NativeCyberKit2Rules.Current(kit)!=2)return default;
+            if(!ComboCast(kit))return default;
             var window=new CyberCombo.Swing(kit.Combo,kit.At,kit.Release,kit.Until);
             float distance=grounded?CyberCombo.StepDistance[kit.Combo]:0;
             if(limit!=null&&distance>0)distance=MathUtil.Clamp(limit(position,kit.Facing,distance,kit.Combo,target),0,distance);

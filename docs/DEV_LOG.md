@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Astra — Cyber melee step inactive-state build fix
+- Branch `codex/cyber-step-state-guard`, base shared/builder `18ee638b` (PR #239). Latest-Build.txt modified 2026-10-15 20:02:25Z confirms that source failed native acceptance, before publication: IndexOutOfRangeException in NativeCyberStep.Begin -> Restore -> PredictionState -> ValidateAirJumps.
+- Root cause: the existing jump-lock fixture uses CyberBegin("cyber-jab") without selecting a combo, then promotes the kit to v2. Combo=-1 is a valid inactive sentinel. Step restoration mistook the cast name for a selected string step and indexed StepDistance[-1]. This was introduced in PR #239.
+- Fix: creation/restoration and matching require a 0–4 combo and the matching v2 move name. Inactive/unknown/mismatched casts carry no step; their existing action and air-jump locks are unchanged. No movement distances, hit timings, damage, cooldowns, animation or wire schema changes.
+- Regression reproduced the same IndexOutOfRangeException before the fix. After: 4,679 step checks plus 124 Cyber v2 checks pass, including -1/-2/5/int.MaxValue through Begin, Restore and owner prediction with the jump lock preserved. All three pinned Unity 6000.3.24f1/C# 9 assembly compile targets pass; diff check clean. The existing native air-jump gate is preserved.
+- Implemented and tested on branch; promotion receipt belongs in the PR. Windows/PhysX rebuild and publication must be verified from the next builder log; this source validation is not a successful-player claim.
+
 ## 2026-10-15 — Astra — Cyber Lord real melee capsule steps
 - Branch `codex/cyber-melee-step`, gameplay base shared `425cb2d8`; incorporated Claude's docs-only owner handoff `617fee59` before committing.
 - Shared value-state `NativeCyberStep` uses the authored .40/.25/.30/.20/.45 m distances and smoothstep windows from `CyberCombo.Swing`. Authority applies position before hit resolution; owner prediction uses the same profile and live target/scene limiter. Captured facing stays locked; input cannot steer the step.
