@@ -21,6 +21,17 @@ namespace ChipArena.UnityConversion
             {
                 BindExpeditionCombat(director,area,data);Local.Body.position=new Vector3(0,.9f,0);Physics.SyncTransforms();StepHubGates();
                 Check(HubOn&&hubDoors.Count==4&&hubTops.Count==4&&hubDoors.All(c=>c.enabled),"all four gates bind solid");
+                foreach(var shut in hubAuthority.Layout.Gates)
+                {
+                    int index=Array.IndexOf(hubAuthority.Layout.Gates,shut);var outward=Quaternion.Euler(0,shut.Yaw,0)*Vector3.forward;
+                    Local.Body.position=new Vector3(shut.Closure.x,.9f,shut.Closure.z)+outward*(shut.Closure.sz/2+Local.Collider.radius+.01f);Physics.SyncTransforms();
+                    Check(!HubOccupied(shut.Closure),"pressing a capsule against shut gate is not actual overlap");StepHubGates();
+                    Check(!hubAuthority.View().Gates[index].Open&&hubDoors[index].enabled&&hubTops[index].enabled,"contact cannot open gate or disable its colliders");
+                    Local.Body.position=new Vector3(shut.Closure.x,.9f,shut.Closure.z);Physics.SyncTransforms();Check(HubOccupied(shut.Closure),"capsule inside opening is an actual overlap");StepHubGates();
+                    Check(!hubAuthority.View().Gates[index].Open&&hubDoors[index].enabled,"even penetration cannot auto-open an already solid gate");
+                    Local.Body.position=new Vector3(shut.Closure.x,shut.Closure.y+shut.Closure.sy/2+2,shut.Closure.z);Physics.SyncTransforms();Check(!HubOccupied(shut.Closure),"capsule above closure does not occupy it");
+                }
+                Local.Body.position=new Vector3(0,.9f,0);Physics.SyncTransforms();
                 Check(!Physics.GetIgnoreLayerCollision(28,11)&&Physics.GetIgnoreLayerCollision(28,ActorLayer),"permanent ward collides only with horde layer");
                 Local.Input=new InputFrame{Attack=true,AbilityQ=true,Interact=false};HubInput(Local);Check(Local.Input.Attack,"entry grace before holster");
                 Match.Tick(.24);HubInput(Local);Check(Local.Input.Attack,"not holstered at .24 seconds");
@@ -30,7 +41,11 @@ namespace ChipArena.UnityConversion
                 var gate=hubAuthority.Layout.Gates[0];Local.Body.position=Vec(gate.Outside.Position)+Vector3.up*.9f;Local.Input=new InputFrame{Attack=true};HubInput(Local);
                 Check(Local.Input.Attack&&!hubEntered.ContainsKey(Local.Seat.id),"weapon restored immediately outside");
                 Check(HubInteract(Local)&&hubAuthority.View().Gates[0].Open,"outside interaction opens");
-                session.Tick(.6);StepHubGates();Check(!hubDoors[0].enabled,"gate collider releases");
+                session.Tick(.2);StepHubGates();Check(hubDoors[0].enabled,"opening remains solid before release");
+                HubInteract(Local);Check(!hubAuthority.View().Gates[0].Open&&hubDoors[0].enabled,"early opening reversal stays solid");
+                HubInteract(Local);session.Tick(.6);StepHubGates();Check(!hubDoors[0].enabled,"gate collider releases");
+                HubInteract(Local);session.Tick(.2);StepHubGates();Check(!hubDoors[0].enabled,"closing remains released before block");
+                HubInteract(Local);Check(hubAuthority.View().Gates[0].Open&&!hubDoors[0].enabled,"early closing reversal stays released");
                 Local.Body.position=new Vector3(gate.Closure.x,.9f,gate.Closure.z);Physics.SyncTransforms();HubInteract(Local);Check(hubAuthority.View().Gates[0].Open&&!hubDoors[0].enabled,"cannot close on capsule");
                 Check(hubBlockedLinks.Count>0,"horde links through gates indexed");
                 Local.Body.position=new Vector3(0,.9f,0);hubSpawnAt=Time;StepHubPopulation();

@@ -52,14 +52,16 @@ namespace ChipArena.UnityConversion
         {
             foreach(var p in Pilots)if(p.Seat.connected&&!p.Seat.AuthorityBoss&&p.Body!=null)
             {
-                var at=p.Body.position;float half=p.Collider.height/2,r=p.Collider.radius;
-                if((hubAuthority.Layout.Gates.Any(g=>ReferenceEquals(g.Closure,v))||Math.Abs(at.y-v.y)<=half+v.sy/2)&&ExpeditionHubRules.Intersects(v,Vec(at),Vec(at),r+.15f))return true;
+                var capsule=p.Collider;if(capsule==null||!capsule.enabled)continue;
+                var scale=capsule.transform.lossyScale;float height=capsule.height*Math.Abs(scale.y),radius=capsule.radius*Math.Max(Math.Abs(scale.x),Math.Abs(scale.z));
+                var center=capsule.transform.TransformPoint(capsule.center);
+                if(ExpeditionHubRules.CapsuleOverlaps(v,Vec(center),height,radius))return true;
             }return false;
         }
         private void StepHubGates()
         {
             if(!HubOn)return;double now=HubClock;hubAuthority.Step(now,HubOccupied);
-            for(int i=0;i<hubDoors.Count;i++){bool solid=hubAuthority.Blocking(i,now)&&!HubOccupied(hubAuthority.Layout.Gates[i].Closure);hubDoors[i].enabled=hubTops[i].enabled=solid;}
+            for(int i=0;i<hubDoors.Count;i++){bool solid=hubAuthority.Blocking(i,now);hubDoors[i].enabled=hubTops[i].enabled=solid;}
         }
         private bool HubInteract(NativePilot p)
         {

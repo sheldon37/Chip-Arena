@@ -368,10 +368,10 @@ Owner-approved rules are implemented on `codex/expedition-hub-authority`, based 
 Claude's hub `3c13863` (includes shared `f29d7c9`). This section supersedes the
 "waiting on Astra" status above for that branch; native release remains gated.
 
-- Four gates start shut, accept F from either side, reopen/hold when a player capsule
+- Four gates start shut, accept F from either side, safely reverse a non-solid closing when a player capsule
   overlaps, and auto-close after 2.5 seconds with a clear sensor. Collision releases
   .5 seconds into opening and returns .65 seconds into closing. Closed gates also
-  have pilot anti-vault columns. Occupancy includes downed bodies and overhead pilots.
+  have pilot anti-vault columns. Occupancy uses enabled member capsules that actually overlap the doorway in 3D.
 - Horde-only layer 28 barriers remain solid at every gate regardless of its state.
   Horde navigation rejects crossing links and direct shortcuts; vent travel is
   disabled in the town. Intruding horde actors are removed without rewards.
@@ -482,3 +482,73 @@ Native hub acceptance adds real scene LOS, heard rear-target reaction,
 JsonUtility and guest/late-join reconstruction. Native execution and Windows
 visual/two-client play must be verified by the builder/playtest; semantic compile
 alone is not that verification.
+
+
+### Run-through report (for Astra; authority, not changed here)
+
+What fails: walking into a shut gate, without pressing F, opens it and drops its collider in the same tick. The pilot
+crosses the fence line 0.117 s later at run speed while the gate is (correctly) drawn shut with its latch lifting.
+
+- `NativeArena.HubOccupied` (`Runtime/NativeExpeditionHubAuthority.cs:51-58`, the test at line 56) counts a closure as
+  occupied when a capsule's centre is within its radius + 0.15 m of the closure box in plan, at any height. A pilot pressed
+  against the solid closure stands its radius + PhysX's 0.01 m contact offset from it, so touching a shut gate, or coming
+  within 0.15 m of it, "occupies" it. So does a pilot leaning on the fence within 0.57 m of the opening's edge.
+- `ExpeditionHubAuthority.Step` (`Core/NativeExpeditionHubRules.cs:28`) then re-opens any shut gate whose closure is
+  occupied, however long it has been shut and solid.
+- `StepHubGates` (`Runtime/NativeExpeditionHubAuthority.cs:62`, `solid=Blocking(i,now)&&!HubOccupied(...)`) turns the
+  collider and the no-vault column off at once while occupied, instead of 0.5 s into the opening.
+
+Not ours: the presentation reads the right state on the right clock and ids (the view's `hub` and `elapsed`, bound at
+`Runtime/NativeExpeditionNetwork.cs:14`), the gates start shut, and the closures span their openings exactly (the fence
+flood check passes with every closure solid).
+
+Reproduction: `CoreTests --expedition-hub` prints `PENDING (Astra) Expedition hub: a shut north gate opens itself ...`
+(`ExpeditionHubChecks.PendingAuthority`: Core's authority and the runtime's occupancy rule replayed engine-free; a pilot
+at 6.8 m/s, no interact). It turns into a PASS line once a shut gate stops the pilot. In the game: walk into any shut hub
+gate.
+
+Suggested fix:
+1. For "never close onto a member", test a real overlap of the capsule with the closure (radius less a skin, or an
+   overlap query against the closure box while its collider is off), not radius + 0.15 m.
+2. Re-open on occupancy only while a closing has not blocked yet (`!Open && now-ChangedAt < Block`); a gate that is
+   already solid stays shut. (`Tests/ExpeditionHubAuthorityChecks.cs:21` asserts a re-open 0.7 s into a closing, after
+   it blocks; it would move under 0.65 s.)
+3. In `StepHubGates`, let occupancy hold the collider off only in that same window.
+
+Reversals (same source, `Blocking` at `Core/NativeExpeditionHubRules.cs:35` is a pure function of the newest state's
+age): pressing F again during an opening's first 0.5 s releases the collider at once while the leaves are still nearly
+shut (walkable while drawn shut, up to 0.65 s); pressing it during a closing's first 0.65 s makes the collider solid for
+0.5 s while the leaves are nearly open (an invisible wall). Suggest keeping the collider's state across a reversal: a
+close during an opening that has not released stays solid; a re-open during a closing that has not blocked stays
+released. The presentation reverses from where the leaves are and clears or meets at the same 0.5 and 0.65 s marks, so
+it follows either rule.
+
+
+### Run-through authority fix (Astra, 2026-10-15)
+
+Implemented on `codex/hub-gate-collision`, based on shared `72aa1858`. The
+report above records the pre-fix behavior; the PENDING reproduction was observed
+before this change and is now a hard assertion in `CoreTests --expedition-hub`.
+It checks all four gates, both the open flag and the collider, and the pilot
+remaining outside the closure.
+
+- Occupancy uses actual upright capsule-versus-yaw-box distance in three
+  dimensions, with a 1 cm inward skin. Capsule center and world-scaled height /
+  radius come from the real collider. Tangency, the physics contact offset,
+  expanded rectangular corners and a pilot above the opening are not occupancy.
+- Gate authority retains collider solidity. Occupancy can reverse a closing
+  only while that collider is still released; a shut/solid gate cannot auto-open
+  even if penetration is reported. On the threshold tick, overlap is checked
+  before enabling the closing collider, so it cannot close onto a member.
+- `StepHubGates` applies the authority collider state directly to both the door
+  and no-vault column. There is no independent occupancy override.
+- Reversing opening-to-closing before release preserves solidity. Reversing
+  closing-to-opening before blocking preserves the released state. Only the
+  existing .5 s opening-release / .65 s closing-block markers change solidity.
+  Explicit F interaction from either side and 2.5 s clear auto-close remain.
+
+The gate pose/wire fields, animation, sanctuary ward, movement speed, combat,
+rewards and zombie perception are unchanged. Claude's separate presentation
+changes remain on their own branch. Native acceptance now checks real capsule
+contact/penetration/height and both reversal collider states; these require the
+Windows builder/PhysX run, not just semantic compilation.
