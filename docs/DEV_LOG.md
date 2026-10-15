@@ -8515,3 +8515,31 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - A jab from the low idle raises the arm 1.3–1.8 rad in one frame.
   - The preview's drawn-body shift goes through new `ArenaPresentation` hooks (inert with the preview off).
 - **Animation impact:** presentation only; it reads the replicated windows. No change to hit timing, hitboxes, damage, cooldowns, movement or networking.
+
+## 2026-10-15 — Claude: Cyber Lord ranged energy-holding stance and re-authored Plasma Byte throw
+
+- **Branch:** `claude/cyberlord-ranged-stance`, based on the shared Unity head `claude/sleepy-ritchie-g8ruhv` `3ced89c` (Astra's v2 authority is live there). Not merged, not released.
+- **Owner request:** "Can we change their idle poses? Well mainly the hand on their head thing, I like the initial idle pose on melee. For ranged, lets change it to something similar to their sprint animation (arms back, curved forward a bit more like their holding energy in their hands) This will also need to change ranged basic attack animation (Just the player, I like the projectiles)".
+- **What changed** (`Core/CyberLordRangedMotion.cs`; `docs/CYBER-LORD.md` "Ranged presentation"):
+  - The ranged stance replaces the pitcher's set (a hand loaded beside the head). Both arms are swept back and out, each hand low behind its shoulder, the elbows further back so the forearms curve forward to cupped palms, a fireball in each. The chest is opened square to the aim (standing) and leans a little forward with a slow breath. It serves idle, walk, run and strafe (upper body only; the legs stay the gait's) and the starts of casts. The melee stance and idle are untouched.
+  - Plasma Byte (v2, live) and v1's Bit Bolt: the throwing hand (`PlasmaHand(shot)`: right, left, both) sweeps forward from behind the hip through the release point on the replicated release (following the aim's pitch), out to full extension, and swings back to the stance by the window's end. Each window starts and ends exactly on the stance, so throws chain at any interval and at Overclock's rate. The Overflow is a two-handed sweep into a joined push. A cut throw settles back.
+  - v2 casts swing in from the stance and back. A cast still settling hands over to the next cast or throw instead of dropping its settle (a pop in the old code). Daisy Chain's left hand now keeps its energy back instead of bracing.
+  - First person: the hands sit low at the screen's edges holding energy, and a throw sweeps into view. The camera is never moved.
+  - The glide sprint is unchanged: at full sprint the arms are identical to `3ced89c` (probe: 0.000 mm over 999 frames). Only the wrists now ease over the chain's .25 s reset; the old code switched them in one frame.
+  - `Core/NativeCyberLordPlasmaFx.cs`: only the held fireballs' placement, which now sits in the cupped palms. Projectiles and their effects are unchanged, and the fireball still eases from the throwing hand (checked).
+- **Checks** (run5 on the branch): Unity 6000.3.24f1 runtime and editor compile OK; relay 715 PASS (3 new groups), rc 0; Python 106 OK (1 skipped); package OK; diff-check OK.
+  - `CyberLordRangedChecks`: the stance check is rewritten (shared helper `Stance`), as are the pitch check (stance share vs throw) and the run check (energy held back).
+  - New `CyberKit2RangedChecks` groups:
+    - The stance on a v2 record (no hand near the head; hands behind and outside the shoulders; forearms forward; chest squared; breath 2.7 cm).
+    - Six chains of 8 throws (spec, slower, across the reset, Overclock at 60 and 144 Hz, random clock). Every window starts and ends on a throw-free twin's stance (0.00 mm), each release is ahead of the shoulder at 6.3 m/s or more, top hand speed 16.9 m/s, no step spike over 4.6 cm.
+    - Each fireball leaves the throwing hand (0.0 cm).
+    - A cut throw settles back.
+    - Throws chained into and out of all four casts (steps up to 18.0 cm, spikes 4.4 cm).
+  - 0 bytes per frame (400 and 300 frames).
+- **Renders:** offline only, in the scratchpad's `renders-cyberlord-ranged-stance` (`before/`, `after/`, `look/`): idle, run, glide to stop, 6 throws with Overflows, an Overclock chain, throws chained through the casts, each cast entering and leaving, first person. No Unity, Windows or two-client run.
+- **Risks:**
+  - The v2 windup is .06 s (.0375 under Overclock), so the sweep from behind is a fast 3-4 frame whip.
+  - The idle's own sway and glitches still move the body under the arms.
+  - The chest squaring reads the posed shoulders each frame.
+  - The v1 casts now play from an eased-in hold out front.
+- **Animation impact:** presentation only; releases stay on the replicated times. No change to hit timing, hitboxes, damage, cooldowns, movement or networking.

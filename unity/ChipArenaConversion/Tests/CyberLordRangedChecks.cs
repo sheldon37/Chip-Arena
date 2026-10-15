@@ -98,6 +98,22 @@ internal static class CyberLordRangedChecks
         p.Advance(t);
     }
     private static float MaxStep(Vector3[] a,Vector3[] b){float m=0;for(int i=0;i<a.Length;i++)m=Math.Max(m,Vector3.Distance(a[i],b[i]));return m;}
+    /// <summary>The ranged stance's shape on a posed rig (empty when it holds): each hand below the chest, at least 5 cm behind
+    /// its shoulder and out past it, its elbow at least 3 cm further back (the forearm curving forward to the hand), no hand
+    /// within 45 cm of the head; the shoulders' line within .12 rad of square.</summary>
+    internal static string Stance(CapturedRig.Pose pose)
+    {
+        var w=pose.WorldPosition;var head=w[CapturedRig.Head];var chest=w[CapturedRig.Chest];var why="";
+        for(int i=0;i<2;i++)
+        {
+            bool l=i==1;string n=l?"left":"right";var sh=w[l?CapturedRig.LArm:CapturedRig.RArm];var el=w[l?CapturedRig.LElbow:CapturedRig.RElbow];var h=w[l?CapturedRig.LHand:CapturedRig.RHand];
+            if(!(h.Y<chest.Y))why+=n+" hand above the chest; ";if(!(h.Z<sh.Z-.05f))why+=n+" hand not behind its shoulder ("+(h.Z-sh.Z).ToString("0.00")+"); ";
+            if(!(Math.Abs(h.X)>Math.Abs(sh.X)))why+=n+" hand inside its shoulder; ";if(!(h.Z-el.Z>.03f))why+=n+" forearm not curving forward ("+(h.Z-el.Z).ToString("0.00")+"); ";
+            if(!(Vector3.Distance(h,head)>.45f))why+=n+" hand near the head; ";
+        }
+        var line=w[CapturedRig.LArm]-w[CapturedRig.RArm];double twist=Math.Atan2(line.Z,line.X);if(Math.Abs(twist)>.12)why+="the chest bladed ("+twist.ToString("0.00")+")";
+        return why;
+    }
 
     public static IEnumerable<string> Run(string root)
     {
@@ -183,9 +199,10 @@ internal static class CyberLordRangedChecks
                     var (gt,gr)=history.Dequeue();var want=hostFrames.Dequeue();copied.Record=gr;CyberLordFeed.RangedSource=copied;guest.Step(gt);
                     for(int i=0;i<want.Length;i++)worstGuest=Math.Max(worstGuest,1-Math.Abs(Quaternion.Dot(want[i],guest.M.Rig.Q[i])));
                 }
-                // The stance (the cyber mage's set, 2026-10-15): the next throw's hand loaded beside the head, the other forward on
-                // the aim (before: both emitters held out together ahead of the chest).
-                if(Math.Abs(t-3.2f)<Dt*.5f){var hi=hands[0].Y>hands[1].Y?hands[0]:hands[1];var lo=hands[0].Y>hands[1].Y?hands[1]:hands[0];Check(host.State=="cyber-ranged-aim"&&hi.Y>.2f&&hi.Z<.1f&&lo.Z>.25f,"the stance: one hand loaded beside the head, the other forward on the aim ("+hands[0].ToString("0.00")+", "+hands[1].ToString("0.00")+")");}
+                // The stance (owner 2026-10-15: "arms back, curved forward a bit more like their holding energy in their hands";
+                // before: a pitcher's set with a hand loaded beside the head): both hands low behind their shoulders, the elbows
+                // behind the hands, no hand near the head, the chest squared to the aim.
+                if(Math.Abs(t-3.2f)<Dt*.5f){var why=Stance(host.Pose);Check(host.State=="cyber-ranged-aim"&&why.Length==0,"the stance holds the energy back at the sides ("+why+")");}
             }
             Check(JsonSerializer.Serialize(host.A.ViewCopy())==before,"the actor is never written");
             foreach(var want in new[]{"cyber-reconfigure","cyber-ranged-aim","cyber-bit-bolt","cyber-ping-lance","cyber-lag-field","cyber-proxy-swap","cyber-root-charge","cyber-root-fire"})Check(seen.Contains(want),"shows "+want+" ("+string.Join(", ",seen)+")");
@@ -195,18 +212,24 @@ internal static class CyberLordRangedChecks
             Check(worstGuest<1e-6f,"a guest on a 6-frame delayed copy of the record poses the host's frames exactly ("+worstGuest.ToString("0.0e0")+")");
         }
         {
-            // The aim: the hold rises and falls with the pitch.
-            var up=new Pilot(11);var down=new Pilot(11);var p=new CyberRangedPreview();p.Switch(11,0);CyberLordFeed.RangedSource=p;up.A.Pitch=30;down.A.Pitch=-30;
-            for(float t=.5f;t<2;t+=Dt){up.Step(t);down.Step(t);}
-            float dy=up.World(CapturedRig.RHand).Y-down.World(CapturedRig.RHand).Y;Check(dy>.12f,"the emitters follow the aim's pitch ("+(dy*100).ToString("0")+" cm higher at +30 than at -30)");
+            // The aim: the held energy takes a share of the pitch (the arms stay swept back); a throw follows all of it.
+            var up=new Pilot(11);var down=new Pilot(11);var p=new CyberRangedPreview();p.Switch(11,0);CyberLordFeed.RangedSource=p;up.A.Pitch=30;down.A.Pitch=-30;float dyHold=0,dyThrow=0;bool bolted=false;
+            for(float t=.5f;t<2;t+=Dt)
+            {
+                if(!bolted&&t>=1.5f){p.Bolt(11,t,From,Ahead);bolted=true;}up.Step(t);down.Step(t);
+                if(!bolted)dyHold=up.World(CapturedRig.RHand).Y-down.World(CapturedRig.RHand).Y;
+                else{int hb=p.Of(11).BoltHand==1?CapturedRig.LHand:CapturedRig.RHand;dyThrow=Math.Max(dyThrow,up.World(hb).Y-down.World(hb).Y);}
+            }
+            Check(dyHold>.01f&&dyHold<.15f&&dyThrow>.25f,"the held energy takes a share of the pitch ("+(dyHold*100).ToString("0")+" cm higher at +30 than at -30), the throw all of it ("+(dyThrow*100).ToString("0")+" cm)");
             // Running in ranged mode: the legs keep the run's planted feet, the emitters stay up.
-            var run=new Pilot(11);run.A.Velocity=new V3(0,0,Rules.Speed);CyberLordFeed.RangedSource=p;float slip=0;var prev=new Vector3[2];var on=new bool[2];bool ranState=false;
+            var run=new Pilot(11);run.A.Velocity=new V3(0,0,Rules.Speed);CyberLordFeed.RangedSource=p;float slip=0;var prev=new Vector3[2];var on=new bool[2];bool ranState=false;float behind=0;int nb=0;
             for(float t=.5f;t<4;t+=Dt)
             {
                 run.A.Position=new V3(0,0,Rules.Speed*(t-.5f));run.Step(t);if(t<1.5f)continue;ranState|=run.State=="cyber-ranged-run";
+                var wp=run.Pose.WorldPosition;behind+=wp[CapturedRig.RHand].Z-wp[CapturedRig.RArm].Z+wp[CapturedRig.LHand].Z-wp[CapturedRig.LArm].Z;nb+=2;
                 for(int i=0;i<2;i++){bool lf=i==0,planted=run.M.Gait.Planted(lf);var at=run.World(lf?CapturedRig.LFoot:CapturedRig.RFoot);if(planted&&on[i]){var d=at-prev[i];d.Y=0;slip=Math.Max(slip,d.Length()/Dt);}on[i]=planted;prev[i]=at;}
             }
-            Check(ranState&&slip<.03f&&run.InChest(CapturedRig.RHand).Z>.15f,"the ranged run: its own state, the feet planted ("+(slip*100).ToString("0.00")+" cm/s), the emitters held ahead");
+            Check(ranState&&slip<.03f&&behind/nb<-.05f,"the ranged run: its own state, the feet planted ("+(slip*100).ToString("0.00")+" cm/s), the energy held back at the sides ("+(behind/nb*100).ToString("0")+" cm behind the shoulders on average)");
         }
         {
             // Melee untouched: with a source holding no record for the pilot, every frame is bit-identical to no source at all.
@@ -231,7 +254,7 @@ internal static class CyberLordRangedChecks
             Check(fpSeen.Contains("cyber-reconfigure")&&fpSeen.Contains("cyber-ranged-aim")&&fpSeen.Contains("cyber-root-charge")&&fpSeen.Contains("cyber-stance"),"first person shows the switch, the hold, the casts and melee again ("+string.Join(", ",fpSeen)+")");
             Check(fpStep<.25f,"first person: no frame jumps ("+(fpStep*100).ToString("0.0")+" cm)");
         }
-        yield return $"Cyber Lord ranged pose: {count-c0} checks (all {seen.Count(s=>s!=null&&s.StartsWith("cyber-")&&(s.Contains("ranged")||s.Contains("reconfigure")||s.Contains("bolt")||s.Contains("lance")||s.Contains("field")||s.Contains("swap")||s.Contains("root")))} ranged states on their windows; the feet within {(footSlip*100):0.0} cm; hand steps at most {(handStep*100):0.0} cm with no spike over {(spike*100):0.0} cm (first person {(fpStep*100):0.0}); the hold on the aim and over the run; melee bit-identical; a delayed guest copy exact; the actor untouched)";
+        yield return $"Cyber Lord ranged pose: {count-c0} checks (the energy-holding stance; all {seen.Count(s=>s!=null&&s.StartsWith("cyber-")&&(s.Contains("ranged")||s.Contains("reconfigure")||s.Contains("bolt")||s.Contains("lance")||s.Contains("field")||s.Contains("swap")||s.Contains("root")))} ranged states on their windows; the feet within {(footSlip*100):0.0} cm; hand steps at most {(handStep*100):0.0} cm with no spike over {(spike*100):0.0} cm (first person {(fpStep*100):0.0}); the held energy and the throws on the aim, the energy held back over the run; melee bit-identical; a delayed guest copy exact; the actor untouched)";
 
         // ------------------------------------------------------------------------------------------------------------------
         // 4. The effects
