@@ -66,9 +66,10 @@ def reference_set(root):
     if len(standards) != 1:
         raise RuntimeError("Expected the Unity NetStandard reference profile")
     refs = {p.name: p for p in standards[0].parent.glob("*.dll") if not p.name.startswith("Unity")}
-    unity_refs = list(managed.glob("Unity*.dll"))
-    unity_refs += list((managed / "UnityEngine").glob("Unity*.dll"))
-    unity_refs += list((managed / "UnityEditor").glob("Unity*.dll"))
+    # Use the modular profile consistently. Managed's root also contains legacy
+    # monolithic UnityEngine/UnityEditor assemblies with the same identities.
+    modules = managed / "UnityEngine"
+    unity_refs = list(modules.glob("UnityEngine*.dll")) + list(modules.glob("UnityEditor*.dll"))
     for p in sorted(unity_refs):
         if p.name in refs and refs[p.name] != p:
             raise RuntimeError(f"Ambiguous Unity assembly: {p.name}")
