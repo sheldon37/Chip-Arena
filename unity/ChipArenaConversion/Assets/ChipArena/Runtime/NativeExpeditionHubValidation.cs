@@ -21,13 +21,16 @@ namespace ChipArena.UnityConversion
             {
                 BindExpeditionCombat(director,area,data);Local.Body.position=new Vector3(0,.9f,0);Physics.SyncTransforms();StepHubGates();
                 Check(HubOn&&hubDoors.Count==4&&hubTops.Count==4&&hubDoors.All(c=>c.enabled),"all four gates bind solid");
+                Check(Local.Seat.connected&&!Local.Seat.AuthorityBoss&&Local.Collider.enabled&&Local.Collider.attachedRigidbody==Local.Body&&Local.Collider.transform==Local.Body.transform,"occupancy fixture uses a connected pilot and its enabled body capsule");
                 foreach(var shut in hubAuthority.Layout.Gates)
                 {
                     int index=Array.IndexOf(hubAuthority.Layout.Gates,shut);var outward=Quaternion.Euler(0,shut.Yaw,0)*Vector3.forward;
                     Local.Body.position=new Vector3(shut.Closure.x,.9f,shut.Closure.z)+outward*(shut.Closure.sz/2+Local.Collider.radius+.01f);Physics.SyncTransforms();
                     Check(!HubOccupied(shut.Closure),"pressing a capsule against shut gate is not actual overlap");StepHubGates();
                     Check(!hubAuthority.View().Gates[index].Open&&hubDoors[index].enabled&&hubTops[index].enabled,"contact cannot open gate or disable its colliders");
-                    Local.Body.position=new Vector3(shut.Closure.x,.9f,shut.Closure.z);Physics.SyncTransforms();Check(HubOccupied(shut.Closure),"capsule inside opening is an actual overlap");StepHubGates();
+                    Local.Body.position=new Vector3(shut.Closure.x,.9f,shut.Closure.z);
+                    Check(HubOccupied(shut.Closure),"physics capsule inside opening overlaps before transform synchronization");
+                    Physics.SyncTransforms();Check(HubOccupied(shut.Closure),"capsule inside opening is an actual overlap");StepHubGates();
                     Check(!hubAuthority.View().Gates[index].Open&&hubDoors[index].enabled,"even penetration cannot auto-open an already solid gate");
                     Local.Body.position=new Vector3(shut.Closure.x,shut.Closure.y+shut.Closure.sy/2+2,shut.Closure.z);Physics.SyncTransforms();Check(!HubOccupied(shut.Closure),"capsule above closure does not occupy it");
                 }

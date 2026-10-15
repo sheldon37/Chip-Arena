@@ -1,3 +1,10 @@
+## 2026-10-15 — Astra: hub overlap physics-pose build fix
+
+- Branch `codex/hub-native-overlap`, base `1f21a6e`. Owner log started 22:11:58Z successfully fetched this source, then failed native hub validation: capsule inside opening is an actual overlap. The earlier fetch failure has recovered.
+- HubOccupied used TransformPoint on the interpolated capsule Transform while the fixture and simulation move Rigidbody.position. Use the physics body position/rotation plus scaled capsule-center offset. Pilot capsules are on the body object. Retain exact overlap, skin, safety window and reversal rules.
+- Preserve the failing native assertion; add enabled/connected/body-capsule preconditions and check immediate occupancy before Transform synchronization. Managed regression guards physics-pose routing. Unity docs state a Rigidbody.position assignment updates Transform after the next physics step.
+- Verification/promotion in PR. Windows/PhysX execution remains required on the builder; no completed player build claimed.
+
 ## 2026-10-15 — Astra: owner-supplied Expedition hub music
 
 - Branch `codex/hub-music`, base shared/builder `d882454`. Owner directly requested the attached Safe Hub Under Siege MP3 as hub music. Added the unmodified track with streaming importer and selected it on expedition-city before the generic PvE fallback, after boss music priority. Menu, Ward Zero and boss tracks retain their selection.

@@ -54,7 +54,9 @@ namespace ChipArena.UnityConversion
             {
                 var capsule=p.Collider;if(capsule==null||!capsule.enabled)continue;
                 var scale=capsule.transform.lossyScale;float height=capsule.height*Math.Abs(scale.y),radius=capsule.radius*Math.Max(Math.Abs(scale.x),Math.Abs(scale.z));
-                var center=capsule.transform.TransformPoint(capsule.center);
+                // Pilot capsules share the Rigidbody object. Its Transform may still be interpolated
+                // or await the next physics step after a teleport; gate safety uses the physics pose.
+                var center=p.Body.position+p.Body.rotation*Vector3.Scale(capsule.center,scale);
                 if(ExpeditionHubRules.CapsuleOverlaps(v,Vec(center),height,radius))return true;
             }return false;
         }

@@ -58,6 +58,7 @@ internal static class ExpeditionHubAuthorityChecks
         box.yaw=90;Check(!ExpeditionHubRules.CapsuleOverlaps(box,new V3(.63f,.9f,0),1.8f,.42f)&&ExpeditionHubRules.CapsuleOverlaps(box,new V3(.6f,.9f,0),1.8f,.42f),"rotated gate capsule overlap");
         string runtime=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionHubAuthority.cs"));
         Check(runtime.Contains("ExpeditionHubRules.CapsuleOverlaps(v,Vec(center),height,radius)")&&!runtime.Contains("r+.15f")&&runtime.Contains("bool solid=hubAuthority.Blocking(i,now);"),"runtime uses capsule geometry and authority collision state without occupancy override");
+        Check(runtime.Contains("p.Body.position+p.Body.rotation*Vector3.Scale(capsule.center,scale)")&&!runtime.Contains("TransformPoint(capsule.center)"),"gate occupancy reads the physics pose, not the interpolated render transform");
         var input=new InputFrame{Attack=true,Shoot=true,AbilityQ=true,AbilityE=true,AbilityEHeld=true,AbilityEReleased=true,Hadoken=true,HadokenHeld=true,Uppercut=true,SirenAbility=4,Interact=true,Jump=true,Roll=true,Sprint=true,X=1};
         var held=ExpeditionHubRules.Holster(input);Check(!held.Attack&&!held.Shoot&&!held.AbilityQ&&!held.AbilityE&&!held.AbilityEHeld&&!held.Hadoken&&held.SirenAbility==0,"all weapon intents removed");
         Check(held.Interact&&held.Jump&&held.Roll&&held.Sprint&&held.X==1,"movement and interactions retained");
