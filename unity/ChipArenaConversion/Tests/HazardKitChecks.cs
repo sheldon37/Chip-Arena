@@ -159,7 +159,7 @@ namespace ChipArena.UnityConversion
             plan.Build(scene,new V3(0,0,0),3,3+1/60.0,1);float ducked=plan.Loops.Take(plan.LoopCount).Where(l=>l.Key=="alarm.biohazard").Sum(l=>l.Gain);plan.Build(scene,new V3(0,0,0),3,3+1/60.0,0);float clear=plan.Loops.Take(plan.LoopCount).Where(l=>l.Key=="alarm.biohazard").Sum(l=>l.Gain);
             Check(ducked<clear*.75f&&ducked>clear*.3f,"combat ducks the alarms ("+ducked+" < "+clear+")");
             // The licensed clips are outside the repository; the installer knows the new keys (it reads the contract).
-            Check(R("tools/install_local_assets.py").Contains("BudgetBytes=(\\d+)")&&NativeSoundKeys.BudgetBytes==13000000,"the installer reads the 13 MB budget from the contract");
+            Check(R("tools/install_local_assets.py").Contains("BudgetBytes=(\\d+)")&&NativeSoundKeys.BudgetBytes==16000000,"the installer reads the 16 MB budget from the contract");
             var stray=Directory.EnumerateDirectories(Path.Combine(root,"Assets"),"*",SearchOption.AllDirectories).Select(d=>d.Replace('\\','/')).Where(d=>!d.Contains("/LocalAssets/")&&NativeKitSynth.Keys.Any(k=>d.EndsWith("/"+k,StringComparison.Ordinal))).ToList();
             Check(stray.Count==0,"no kit clip folder outside the ignored LocalAssets: "+string.Join(", ",stray));
         }

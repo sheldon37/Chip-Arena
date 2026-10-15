@@ -12,11 +12,11 @@ namespace ChipArena.UnityConversion
         [NonSerialized] public NativeDevCommand devCommand;[NonSerialized] public NativeDevReply devReply;
         [NonSerialized] public ExpeditionView expeditionPublic;[NonSerialized] public ExpeditionPrivateFrame expeditionPrivate;[NonSerialized] public ExpeditionCommandRequest expeditionCommand;[NonSerialized] public ExpeditionCommandReply expeditionReply;[NonSerialized] public ExpeditionAreaReadyRequest expeditionAreaReady;
         public string stageMap;public int stageSerial,stageReady,stageRequired;public bool stageWaiting;public float remainingSeconds;
-        public int devProtocol;public int version=NativeConnection.Protocol,id,epoch,generation,pick,team;public string type,source,contentRevision,room,resume,token,chip,error;public bool ready;
+        public int expeditionProtocol;public int devProtocol;public int version=NativeConnection.Protocol,id,epoch,generation,pick,team;public string type,source,contentRevision,room,resume,token,chip,error;public bool ready;
         [NonSerialized] public NativeRoomOptions options;public NativeProfile profile;public InputFrame input;[NonSerialized] public NativeGameFrame frame;public NativeSeatFrame[] seats;
     }
     internal sealed class NativePeer
-    {public NativeConnection Connection;public NativeSeat Seat;public string Resume;public bool Ready;public readonly NativeMessageBudget Changes=new NativeMessageBudget();public DateTime Arrived=DateTime.UtcNow,Disconnected;}
+    {public int ExpeditionProtocol;public NativeConnection Connection;public NativeSeat Seat;public string Resume;public bool Ready;public readonly NativeMessageBudget Changes=new NativeMessageBudget();public DateTime Arrived=DateTime.UtcNow,Disconnected;}
     public sealed partial class ConversionGame
     {
         private NativeLanDiscovery lanDiscovery;private NativeListener listener;private NativeConnection server;private readonly List<NativePeer> peers=new List<NativePeer>();
@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
             if(connecting?.IsCompleted==true)
             {
                 if(connecting.IsFaulted||connecting.IsCanceled)networkStatus=internetRooms?OnlineError(connecting.Exception,"Could not join. Check the code, keep the host’s room open, and make sure both games are updated."):"Could not find this local room. Check that both players are on the same network.";
-                else{server=connecting.Result;SendServer(new NativeNetMessage{type="hello",source=content.sourceCommit,contentRevision=content.contentRevision,room=joinCode.Trim().ToUpperInvariant(),resume=resumeToken,token=account?.Token,profile=Profile()});networkStatus="Joining room…";}connecting=null;
+                else{server=connecting.Result;SendServer(new NativeNetMessage{type="hello",expeditionProtocol=1,source=content.sourceCommit,contentRevision=content.contentRevision,room=joinCode.Trim().ToUpperInvariant(),resume=resumeToken,token=account?.Token,profile=Profile()});networkStatus="Joining room…";}connecting=null;
             }
             if(Hosting)
             {
@@ -84,9 +84,18 @@ namespace ChipArena.UnityConversion
             if(peer.Seat==null)
             {
                 if(message.type!="hello"||!NativeMapRules.Compatible(message.version,message.source,message.contentRevision,content)||message.room!=roomCode){c.Reject(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="Room code or conversion version does not match."}));return;}
+                peer.ExpeditionProtocol=message.expeditionProtocol;
                 NativePeer previous=!string.IsNullOrEmpty(message.resume)?peers.Find(p=>p!=peer&&p.Resume==message.resume&&(p.Connection!=null||(DateTime.UtcNow-p.Disconnected).TotalSeconds<=90)):null;
                 if(previous!=null&&arena!=null&&match.Seat(previous.Seat.id)==null){c.Send(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="This match started without your seat. Join after the host returns to the lobby."}));return;}
-                if(previous!=null){previous.Connection?.Dispose();peer.Seat=previous.Seat;peer.Resume=previous.Resume;peer.Ready=previous.Ready;peer.Seat.connected=true;if(expeditionSession!=null)expeditionSession.Run.Join(peer.Seat.access?.AccountId,peer.Seat.spec);peers.Remove(previous);arena?.SetPilotConnected(peer.Seat.id,true);}
+                if(previous!=null&&expeditionSession!=null)
+                {
+                    var access=NativeAccess.Verify(message.token,s=>JsonUtility.FromJson<NativePlayerClaim>(s),DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                    if(peer.ExpeditionProtocol!=1||string.IsNullOrEmpty(access.AccountId)||access.AccountId!=previous.Seat.access?.AccountId||
+                        !expeditionSession.Run.Snapshot().members.Any(m=>m.account==access.AccountId&&!m.extracted))
+                    {c.Reject(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="Sign in as the original Expedition pilot to reconnect."}));return;}
+                    previous.Seat.access=access;
+                }
+                if(previous!=null){previous.Connection?.Dispose();peer.Seat=previous.Seat;peer.Resume=previous.Resume;peer.Ready=previous.Ready;peer.Seat.connected=true;if(expeditionSession!=null)expeditionSession.Run.Reconnect(peer.Seat.access?.AccountId);peers.Remove(previous);arena?.SetPilotConnected(peer.Seat.id,true);if(expeditionSession!=null){arena?.RestoreExpeditionMembers();expeditionStamp=null;}}
                 else
                 {
                     if(arena!=null||peers.Count(p=>p.Seat!=null)>=(prefs.pve?dedicated?4:3:dedicated?8:7)){c.Send(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="The room is full or the match has started."}));return;}
@@ -135,12 +144,12 @@ namespace ChipArena.UnityConversion
             if(ExpeditionClientMessage(message))return;
             if(message.type=="error"){networkStatus=message.error?.Substring(0,Math.Min(message.error.Length,160))??"Room rejected the request.";if(networkId<1){joinError=networkStatus;server.Dispose();}return;}
             if(message.type=="welcome"){if(!NativeMapRules.Compatible(message.version,message.source,message.contentRevision,content)||message.id<1||message.id>8||message.resume?.Length!=64)throw new ArgumentException();devHostProtocol=message.devProtocol;networkId=message.id;resumeToken=message.resume;frameOrder.Reset();frameOrder.Control(message.epoch);networkEpoch=message.epoch;networkStatus="Connected · waiting for the host";return;}
-            if(message.type=="lobby"){if(!frameOrder.Control(message.epoch))return;if(message.seats==null||message.seats.Length>8||message.seats.Any(s=>s==null||s.name==null||s.name.Length>40||!content.weapons.Any(w=>w.id==s.spec)))throw new ArgumentException();lobbySeats=message.seats;receivedOptions=message.options;if(receivedOptions!=null){receivedOptions.Normalize(content);prefs.pve=receivedOptions.cooperative;}networkReady=lobbySeats.FirstOrDefault(s=>s.id==networkId)?.ready??false;if(message.epoch!=networkEpoch){arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();menu=true;networkEpoch=message.epoch;}return;}
+            if(message.type=="lobby"){if(!frameOrder.Control(message.epoch))return;if(message.seats==null||message.seats.Length>8||message.seats.Any(s=>s==null||s.name==null||s.name.Length>40||!content.weapons.Any(w=>w.id==s.spec)))throw new ArgumentException();lobbySeats=message.seats;receivedOptions=message.options;if(receivedOptions!=null){receivedOptions.Normalize(content);prefs.pve=receivedOptions.cooperative;prefs.expedition=receivedOptions.expedition;}networkReady=lobbySeats.FirstOrDefault(s=>s.id==networkId)?.ready??false;if(message.epoch!=networkEpoch){ResetExpeditionNetwork();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();menu=true;networkEpoch=message.epoch;}return;}
             if(message.type!="frame"||networkId<1||message.epoch<frameOrder.Epoch)return;var f=message.frame;if(f==null||!f.Valid(content)||!f.seats.Any(s=>s.id==networkId))throw new ArgumentException();
             if(!frameOrder.Frame(message.epoch,f.generation,f.time,f.sequence))return;
             if(arena==null||!arena.Replica||message.epoch!=networkEpoch||arena.MapId!=f.map)
             {arena?.Dispose();match=new NativeMatch(content);arena=new NativeArena(content,match,f.map){Replica=true,LocalId=networkId};networkEpoch=message.epoch;presentation?.ResetPresentation();prefs.map=f.map;NativeLighting.Apply(content.Map(f.map),cameraView);prefs.pve=f.cooperative;menu=false;visualClock.Reset(f.time);}
-            server.Metrics.Snapshot(NativeConnectionMetrics.Now);guestVotes=f.rematchVotes?.Length??0;guestRequired=f.rematchRequired;guestReturnUntil=f.lobbyReturnSeconds>0?Time.unscaledTime+f.lobbyReturnSeconds:-1;arena.ApplyFrame(f,networkId);generation=arena.Generation;if(inputSequence==0){yaw=arena.Local.Yaw;pitch=12;}networkStatus="Connected";
+            server.Metrics.Snapshot(NativeConnectionMetrics.Now);guestVotes=f.rematchVotes?.Length??0;guestRequired=f.rematchRequired;guestReturnUntil=f.lobbyReturnSeconds>0?Time.unscaledTime+f.lobbyReturnSeconds:-1;bool moved=arena.Generation!=f.generation;arena.ApplyFrame(f,networkId);generation=arena.Generation;if(inputSequence==0||moved){yaw=arena.Local.Yaw;pitch=12;}networkStatus="Connected";
         }
         // Create Room (main.ts:154 create screen): Unity's mode (Versus / Boss Test), YOUR CLASS, matchOptions() in its box,
         // the "Online room" check (here the conversion relay) with the port or relay URL it needs, then draftOptions,
@@ -150,7 +159,7 @@ namespace ChipArena.UnityConversion
         {
             Fine("This computer hosts the match. Share your room code so friends can join from any network.");
             BeginRules(false,578);var o=rules;
-            RuleSelect(7478,RoomOpt.Versus,"Mode",VersusLabels,o.cooperative?1:0);ClassRow("Your class",ClassCardStyle.Stacked);
+            RuleSelect(7478,RoomOpt.Versus,"Mode",VersusLabels,o.expedition?2:o.cooperative?1:0);ClassRow("Your class",ClassCardStyle.Stacked);
             if(!o.cooperative)MatchOptions(RulesPart.All,false,false);
             RuleSelect(7482,RoomOpt.Online,"Connection",ConnectionLabels,internetRooms?0:1);RuleFine(7484,internetRooms?"Friends on any network can join with your room code.":"Only players on the same local network can join.",0,4);
             if(!internetRooms){Field("Port");portText=GUILayout.TextField(portText,5,GUILayout.Width(120));Fine("The lobby shows your LAN address and invite link once the room is open. Friends on the same LAN can join with just the code.");}

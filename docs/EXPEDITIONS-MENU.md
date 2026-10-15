@@ -86,7 +86,7 @@ Every action is a call the old screens already made:
 | --- | --- |
 | Start Boss Fight | PLAY WAVE DEFENSE at Wave 1 or the Siren: `prefs.pve=true;sandboxWanted=false;RequestStage(StageLoadKind.Boss,StartMatch)` |
 | Start at the Siren | the SIREN wave tile (`ApplyRule(RoomOpt.SkipWaves,…)`) |
-| DEV Expedition M1 | START EXPEDITION, solo: `RequestStage(StageLoadKind.Expedition,StartExpeditionM1)`. Still developer-only and offline; `StartExpeditionM1` keeps its own gate. |
+| Expedition | START EXPEDITION: `RequestStage(StageLoadKind.Expedition,StartExpeditionM1)`. One to four signed-in humans; the host waits for ready guests. |
 | Host Co-op Room | HOST ROOM (`prefs.pve=true;Go(MenuScreen.Create)`). The room created there opens on this screen. |
 | Join Room | JOIN ROOM (`Go(MenuScreen.Join)`). A PvE room opens on this screen for the guest. |
 | Party bots, mirror weapons, class and weapon | party strip add/remove (`ApplyRule(RoomOpt.Bots,…)`) and the drawer |
@@ -94,14 +94,8 @@ Every action is a call the old screens already made:
 
 Transitions title this screen, and a PvE room, EXPEDITIONS / PVE.
 
-## What waits on Astra
+## Multiplayer integration (Astra, 2026-10-15)
 
-- **The full run in a room.** START EXPEDITION is disabled in any room: "Co-op expeditions: waiting on host
-  support."
-- **Waves 2 and 3** are shown and locked (NEEDS START-WAVE SUPPORT). A room carries only `skipWaves`.
-- **The host's pick and mode** do not reach guests. Guests see the default expedition in Wave Defense,
-  labelled THE ROOM'S RUN. That is what a room can play today. The wave start does replicate, through
-  `skipWaves`.
-- No room field or network message was added. A check pins `NativeRoomOptions`' fields.
+`NativeRoomOptions.expedition` carries the host's mode. Create Room offers Versus, Boss Test and Expedition. The existing lobby's mode tiles select Expedition or Wave Defense; guests display that choice and ready up. Expedition has no lobby bots and requires distinct signed-in accounts plus a compatible client. Runtime validates these again at launch. Only the implemented default expedition can launch; the other catalogue entries stay locked.
 
-The contract for these is in DEV_LOG, under "Expeditions screen".
+Waves 2 and 3 still need start-wave support (`skipWaves` carries Wave 1 or Siren only). Join circles and split-area parties remain separate work. See EXPEDITION-HUB.md, “Expedition co-op hosting,” for the load barrier, reconnect policy and unrun Windows checks.

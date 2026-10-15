@@ -40,6 +40,89 @@
   - The HUD's under-attack alarm (full-screen border, wash, banner) is unchanged.
   - The faces sit within 1% of the width of their slots, as before.
 
+## 2026-10-15 — Claude: owner chose the join circle rule; individual instance entry is the target
+
+- Branch `claude/join-circle-owner-choice`, base `claude/updater-parent-exit-race` (`515d6ee`, on shared `4f086ae`). Docs only.
+- Owner: "Option 2 , but ideally were gonna let players individually enter instances". `docs/EXPEDITION-HUB.md`, "Join circle at the instance doors", now states the chosen rule for Astra: anyone in the circle starts a party countdown (proposed 5 s, tunable), cancelled when nobody is left inside; at zero the whole party enters. View fields: `joinInside`, `joinStartedAt`, `joinBy`, `members[].atJoin`.
+- Added "Next: individual instance entry" for Astra to scope (per-member areas, more than one simulated arena, per-area frames, barriers and saves). The join circle carries over: then only the members inside enter.
+- Next: Astra implements the parser and rule; then Claude moves the circle off the door (layout exp-layout-4) and draws the ring, countdown and HUD banner.
+
+## 2026-10-15 — Claude: updater survives a module read while the game starts or closes
+
+- Branch `claude/updater-parent-exit-race`, base shared `4f086ae`. Fix to Astra's updater (`Updater/Launcher.cs`) because it turned PR #62 red; for Astra's review.
+- CI `native-updater-windows` failed once on `4f086ae` (job 116733698831); three other runs of the same job on that commit passed. `WaitForParent` read `Process.MainModule` and Windows threw `Win32Exception` ERROR_PARTIAL_COPY (299, "Only part of a ReadProcessMemory…"). That error happens while a process is still loading modules or tearing down, so a real update could fail the same way when the game closes as the updater starts.
+- `ModulePath` now retries that one error for up to two seconds and returns "exited" if the process ends meanwhile. `WaitForParent` and `AnyGameRunning` both use it. Every other failure is unchanged: a different program still refuses, any other Win32 error still refuses or reports that instances cannot be verified.
+- Checks: the launcher compiles as C# 5 with warnings as errors (Roslyn `-langversion:5` against the .NET 4.8 reference assemblies, matching the v4.0.30319 compiler CI uses); Python suite, package and diff-check pass. Not run here: `check_updater_windows.py` (Windows only); CI runs it on the push. Gameplay, networking and saves unchanged.
+
+## 2026-10-15 — Astra: Expedition multiplayer through existing rooms
+
+- Branch `codex/expedition-coop`, base shared/builder `d6562d98`. Implemented on task branch; merge/builder sync pending at this entry. No Windows package or updater publication claimed.
+- Adds replicated Expedition mode to the existing room controls, 1–4 distinct authenticated humans, ready and capability checks, and host-created party runs. Uses existing internet/LAN connections and input/snapshot transport; no new service.
+- Replaces solo placement with validated party placement after every connected member loads the matching map/generation/layout and dynamic collision. Retains every pilot's vitals and downed state. Guest inputs operate gates, doors, drops, caches and machines on the host; existing private rewards/commands remain per-account.
+- Records every member's death; host death no longer stops living guests. Sanctuary reprinting measures an uninterrupted three-second channel and restores the authoritative capsule after payment. Reconnect verifies original account, supports frozen loads, and preserves disconnected pilots during the 90-second transport grace. New joins wait for lobby; host must stay; endpoint migration remains unavailable.
+- Publishes actual gate solidity, including reversals, to guest collision. Input and predicted movement wait for matching area/generation/collision; ordinary PvP and Wave Defense paths retain their existing transport. Animation timings and damage hitboxes unchanged; enemy party scaling now uses connected run members.
+- PASS: 41 new party/lifecycle checks + 98 director checks; 88 integration; hub authority 134, perception 3773, hub 1204; menu 605; acceptance 81598; pick 258. Full `tools/check_relay.py --dotnet /tmp/chip-dotnet/dotnet` passed with real local WebSocket, UDP/TCP and reconnect checks. Semantic Player/Runtime/Editor compile and source structure gate pass. Existing presentation warnings only.
+- Added Editor co-op fixture for native party placement, guest reprint, replicated gate solidity and JsonUtility epoch/generation. Not run: Unity Editor/PhysX, Windows build, two signed-in clients. Next: build the synced builder revision, test slow guest load, guest interactions, host death/reprint, party return and reconnect. Claude may polish mode/status visuals. Join-circle and split-area design remain separate.
+
+## 2026-10-15 — Claude: footsteps, zombie voices and footfalls, sound request importer
+
+- Owner: "Also, I dont know if we have sounds for it yet. But can we add sounds for footsteps and zombies?" Coordinator follow-ups: the owner supplies ElevenLabs clips under fixed keys and counts (`docs/audio/sound-requests.json`), and an importer contract (`docs/audio/SOUND-REQUESTS.md`).
+- Branch `claude/footstep-zombie-audio`, base shared `8355b44`. Implementation `079d08f`; shared `3834c23` merged in `eca97f1`, shared `d6562d9` in `d73e49c`. Merged into shared (on `109444d`, after Astra's co-op PR #247) and synced to the builder via `claude/merge-footstep-zombie-audio`; no PR, no live release.
+- **Audit (why the owner hears nothing):**
+  - Without LocalAssets, `EffectsFrame` returned before every movement and horde cue (`bank.Count==0`): no footstep or zombie sound at all.
+  - With the bank, pilot steps were a distance timer (1.9 m, 1.55 m sprinting), not the drawn gait. They played at route gain .3 (mine) / .45 on -24 LUFS clips: about -45 LUFS for my own at the default Effects .3, some 17 dB under the music. A .09 s per-key dedup shared by every pilot could drop my own step, and low priority never takes the last four voices.
+  - Zombie footfalls existed only for the brute, bloater and Hulk (`move.step.stone` by distance). Shamblers, runners, spitters and crawlers were silent.
+  - Zombie voices existed only for the town's roaming adds (moan, alert shriek), with no clips (stand-ins). Ward Zero and every instance horde had no voice; no hurt or hunting call; a death was only the `pve.add.death` extra.
+  - Both Expedition maps fell to the concrete default; the instance did not get Ward Zero's step.
+- **Pilot steps** (`Core/NativeFootfalls.cs`, `Runtime/NativeFootfallPresentation.cs`, `Runtime/NativeFootstepAudio.cs`):
+  - From the drawn gait's plants: `CapturedAnimation.Player.FootContacts` (melee, fighter, magic, gun and bow gaits) into `NativeStepTracker`, for every pilot. My own rig is posed in first person too. The distance stride remains only where a route has no gait (the Siren).
+  - Gait loudness: walk .6, run .85, sprint 1.15, a near-standing scuff .3; my own pilot x.65 in first person, x.85 in third. Landings after .25 s airborne scale with air time; no step plays in the air, in a roll or in the 0.12 s after a landing.
+  - Surface: the block material under the foot (one raycast per played step), else the map floor. Ward Zero and its instance are tile (concrete) with metal decks; the town is asphalt (concrete) with its metal and wood blocks.
+  - Crowd (`NativeStepMix`): mine always; others loudest first, at most four a frame, pilots 14/s and zombies 10/s, 45 / 30 m. Staleness is judged within the queue (a guest renders behind its snapshots).
+- **Zombie audio** (`Core/NativeZombieVoice.cs`, `Runtime/NativeZombieAudio.cs`):
+  - Footfalls: every kind from its gait's `Landed` plants. Shuffle (the shambler's dragged foot louder), run (run blend), heavy (brute, bloater, Hulk), crawl (one hand's pull a cycle).
+  - Voices: the town's moans (calm) and alert shriek, and seeded hunting groans or runner snarls (6 slots in 10 of 5-9 s; the same on every peer; not the Hulk, which roars).
+  - Wind-ups: a swipe, lunge or pounce snarls at LastAttack; a smash grunts; a spit or belly gurgles. The spit plays at the strike.
+  - A replicated hit hurts (at most every .55 s); a MinionDeaths entry rattles. The old `pve.add.death` extra yields once `pve.zombie.death` has clips.
+  - `NativeZombieVoices`: one call per add, three calm and six calls at once (deaths and shrieks preempt), moans .9 s apart, 32 m.
+- **Fallbacks:** each step, the landing and all 14 zombie keys have three built-in synthesized takes (`Core/NativeCreatureSynth.cs`: original deterministic PCM, nothing recorded). They are normalised with the bank's own measure (BS.1770, momentary max): steps -19, landing -20, voices -18 LUFS. ffmpeg `ebur128` agrees within 0.3 LU. They are made behind the stage loading screen (Preload), else one a frame. Older banks lend stand-ins (`pve.add.death`, `siren.rush`, the floor step, the stone thud).
+- **Bank:** 12 new keys (226; caps per the coordinator: groan 1.2, attack .8, hurt .7, death 1.7, snarl 1.1, gurgle 1.1, spit .7, grunt 1.1, shuffle .5, run .35, heavy .7, crawl .7). Budget 13 → 16 MB.
+- **Clips:** private `LocalAssets-footsteps-zombies.zip`, sent to the owner, never committed (base `LocalAssets-hazards.zip`, everything kept): 12,693,070 bytes. Installer `--check`: 226 keys, 585 clips, 13.09 MB (base 212 / 511 / 12.22 MB).
+  - 74 new clips: 65 Universal Sound FX, 9 Fantasy Game Sound Effects. Each key: moan 6, groan 6, shriek 4, attack 6, hurt 6, death 5, snarl 4, gurgle 3, spit 3, grunt 4, shuffle 8, run 6, heavy 5, crawl 4, and 4 more concrete steps.
+  - Built with the bank's own chain (`fxbuild` = the base's `tools/build_effects_audio.py`; the scratch `fz-audio/tools/build_fz.py`, `gen_inputs.py`).
+  - Footfalls are windowed to start just before their heel strike (the sources' scuffs led by up to 150 ms). Envelopes, lengths and loudness were checked per clip.
+  - Step keys: manifest gain 1.8 and no per-key cooldown (the mix limits a crowd).
+  - Credits: ASSET-CREDITS "Footsteps and zombie voices".
+- **Importer** (`tools/import_sound_requests.py`, `Tests/test_import_sound_requests.py`; rules in SOUND-REQUESTS.md).
+  - For the coordinator, when the owner's files arrive, from the repository root:
+    - check: `py -3 unity/ChipArenaConversion/tools/import_sound_requests.py --manifest docs/audio/sound-requests.json --in "<batch folder or .zip>" --check`;
+    - import: `... --in "<batch>" --base "<current LocalAssets zip>" --out "<new zip outside the repo>" --report import-report.json`.
+  - Category targets come from the base. The current bank measures steps -24.1 and voices -18.0 LUFS.
+  - A pack-derived batch was imported over the new zip: 7 files, 3 keys (two partial sets appended, a full spit set replaced), install check passed. That output was a test and was deleted.
+- **Impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (no wire field). Animation unchanged: the audio reads the drawn gaits; `NativeHordeGait` gains two read-only accessors.
+- **Checks:** Run on the merged head `d73e49c` (`run5b.sh`, all rc 0):
+  - `unity-check.sh`: Runtime + Editor compile against Unity 6000.3.24f1, OK.
+  - `check_relay.py`: 755 PASS, no FAIL. New `PASS footfall audio` has 25,433 checks:
+    - keys, caps against the request manifest, surfaces;
+    - steps from the gun and magic gaits at 60 and 144 Hz, one landing, silent rolls and stands;
+    - the tracker, the mix (60 zombies: 10.3 footfalls/s, at most four others a frame, the same on two peers);
+    - every kind's footfalls, the voices' caps, cooldowns and two-peer determinism;
+    - 63 built-in takes within 0.1 LU of their level;
+    - no allocation over 2,400 frames; the hooks.
+  - Python: 114 OK (1 skipped), including the 7 importer tests.
+  - `package_source.py`: 2,185 source files.
+  - `git diff --check`: clean.
+  - A UTF-8 byte-order-mark fix to the importer followed: its test (now 8), Python 115 OK (1 skipped), package and diff-check were rerun and pass.
+  - Before the merge (`079d08f` tree): `--footfalls` (footfall, effects, horde roam and horde kind checks) passed with LocalAssets absent and with the new zip installed (226 keys, 585 clips, 13.09 MB < 16 MB, all 182 named keys covered).
+- **Not run:** listening in a real build (Unity Editor or Windows player), the mix against music and combat, two-client play, Mono's time to make the built-in takes, a crowd's voice use under load.
+- **Risks:**
+  - The drawn gait steps fast (about 6.5 steps a second at a run), so every step sounds.
+  - Gains are starting points for the owner's listening pass.
+  - The built-in takes are plain stand-ins for the recordings.
+  - A footfall reaches the audio one frame after its plant (the audio renders before the presentation).
+  - Older banks keep their .09 s step dedup until the new zip is installed.
+- **Next:** the owner installs the zip on the builder and listens; the importer takes the ElevenLabs batch.
+
 ## 2026-10-15 — Claude: owner requests handed to Astra (join circle, co-op Expedition hosting)
 
 - Branch `claude/expedition-join-circle-contract`, base shared `8355b44`. Docs only.

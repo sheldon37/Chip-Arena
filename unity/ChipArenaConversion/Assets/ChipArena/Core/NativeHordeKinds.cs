@@ -148,18 +148,17 @@ namespace ChipArena.UnityConversion
         /// <summary>The flicker class of each kind's seams (NativeMinionFx.ClassFlicker): strips, the brute's embers steadier.</summary>
         public static readonly int[] SeamClass={2,2,1,2,2,1,1};
 
-        // ---- cues (existing effects bank keys only; played when the owner's LocalAssets bank has them, silent otherwise) ----
+        // ---- cues (the attack layers: existing effects bank keys, played when the owner's LocalAssets bank has them) ----
         /// <summary>The wind-up's cue (the telegraph), heard at the add: null where the attack's own strike carries it.</summary>
         public static string WindupCue(Attack a)=>a==Attack.Smash?"structure.groan":a==Attack.Spit||a==Attack.Belly?"field.acid":null;
         /// <summary>The strike's cue at LastAttack + hit.</summary>
         public static string StrikeCue(Attack a)=>a==Attack.Smash?"siren.slam":a==Attack.Lunge||a==Attack.Pounce?"siren.rush":a==Attack.Spit?"magic.darkness.shot":a==Attack.Belly?"blast.toxic":"siren.claw";
         /// <summary>A second cue under the strike (the brute's floor hit), or null.</summary>
         public static string StrikeUnder(Attack a)=>a==Attack.Smash?"impact.ground":null;
-        /// <summary>A heavy kind's footfall (the brute and the bloater shake the floor; the rest step silently under the music).</summary>
-        public static string StepCue(int kind)=>kind==Brute||kind==Bloater||kind==Hulk?"move.step.stone":null;
-        /// <summary>A kind's footfall gain (the Hulk's shake the floor).</summary>
-        public static float StepGainOf(int kind)=>kind==Hulk?.85f:StepGain;
+        /// <summary>A kind's walking footfall key (Core NativeZombieSteps: the heavy kinds stomp, the crawler pulls, the rest shuffle;
+        /// each footfall picks its own by how the add moves). Every kind steps, from its gait's plants.</summary>
+        public static string StepCue(int kind)=>NativeZombieSteps.Key(kind,kind==Crawler,0);
         /// <summary>Cue gains (the bank's own trims apply on top).</summary>
-        public const float WindupGain=.55f,StrikeGain=.7f,UnderGain=.8f,StepGain=.42f;
+        public const float WindupGain=.55f,StrikeGain=.7f,UnderGain=.8f;
     }
 }

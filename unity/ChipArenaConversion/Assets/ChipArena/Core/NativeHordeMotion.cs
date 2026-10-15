@@ -92,8 +92,13 @@ namespace ChipArena.UnityConversion
         public Vector2 Forward,Right;
         /// <summary>The last frame's foot (and the crawler's hand) targets in Unity world, and whether each was in the air.</summary>
         public readonly Vector3[] FootWorld=new Vector3[4];public readonly bool[] FootAir=new bool[4];
-        /// <summary>Footfalls this frame (a foot that planted), for the dust and the heavy kinds' step cue.</summary>
+        /// <summary>Footfalls this frame (a foot that planted), for the dust and the footfall cues (Core NativeFootfalls).</summary>
         public int Landed;
+        /// <summary>Whether the last frame walked on four limbs (the crawler, a crawl after a lost leg, a kind with no capture): its
+        /// hands' pulls are the footfalls (NativeZombieSteps.Sounds).</summary>
+        public bool Quad=>quad;
+        /// <summary>Whether foot `foot` is the shambler's dragged one (its toe trails through the swing; its plant scrapes).</summary>
+        public bool Dragged(int foot)=>kind==NativeHordeKinds.Shambler&&foot<2&&(foot==0)==(limpSide<0)&&drag>.55f;
         // per-add variety, set from the seed
         private float cadence=1,hunchJitter,tilt,hang,idleRate=1,limpSide=1,drag;private int kind;private bool quad;
         // the add's takes (Core/NativeZombieMotion: -1 for the procedural crawl), this frame's blended stride shape, the rows

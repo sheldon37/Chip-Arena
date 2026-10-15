@@ -37,10 +37,10 @@ namespace ChipArena.UnityConversion
         }
         private AudioClip BankClip(string path){if(!bankClips.TryGetValue(path,out var c)){c=Resources.Load<AudioClip>(path);bankClips[path]=c;}return c;}
         /// <summary>Bank clips still queued to load (a few load each frame after startup); the bank's manifest is read first.</summary>
-        public int PreloadPending{get{if(!bankLoaded)LoadBank();return bankPreload.Count;}}
+        public int PreloadPending{get{if(!bankLoaded)LoadBank();return bankPreload.Count+CreatureSynthPending;}}
         /// <summary>Loads up to <paramref name="count"/> queued bank clips now: the stage loading screen drains the queue behind its
         /// cover, so no clip loads on its first play in a match. Returns how many loaded.</summary>
-        public int Preload(int count){if(!bankLoaded)LoadBank();int n=0;for(;n<count&&bankPreload.Count>0;n++)BankClip(bankPreload.Dequeue());return n;}
+        public int Preload(int count){if(!bankLoaded)LoadBank();int n=0;for(;n<count&&bankPreload.Count>0;n++)BankClip(bankPreload.Dequeue());if(n<count)n+=WarmCreatureSynth(count-n);return n;}
         /// <summary>
         /// The music clip of entrance <paramref name="style"/>: its intro key's first clip (NativeSoundBank.IntroClip) while
         /// LocalAssets has one that loads, with the entry's gain trim; else exactly today's sting <paramref name="sting"/> at gain 1.
@@ -157,8 +157,12 @@ namespace ChipArena.UnityConversion
         {
             if(!bankLoaded)LoadBank();for(int i=0;i<8&&bankPreload.Count>0;i++)BankClip(bankPreload.Dequeue());
             FlushUi();BankCaps();
-            int generation=arena?.Generation??-1;if(generation!=bankGeneration){bankGeneration=generation;StopLoops();strides.Clear();bank.ResetClock();}
-            if(arena==null||menu||bank.Count==0){FadeLoops(false,null);return;}
+            int generation=arena?.Generation??-1;if(generation!=bankGeneration){bankGeneration=generation;StopLoops();strides.Clear();bank.ResetClock();stepMix.Reset();zombieVoices.Clear();}
+            if(arena==null||menu){FadeLoops(false,null);Footfalls?.Clear();return;}
+            // The footsteps, the landings and the zombies' voices and footfalls play with or without the bank: their keys' clips, an
+            // existing stand-in, else their built-in synthesized takes (Runtime/NativeFootstepAudio.cs, NativeZombieAudio.cs).
+            StepCues(arena);
+            if(bank.Count==0){FadeLoops(false,null);HordeCues(arena);return;}
             FieldCues(arena);FadeLoops(true,arena);MoveCues(arena);MoveFeelCues(arena);AirAttackCues(arena);SprintAttackCues(arena);HordeCues(arena);HulkChargeCues(arena);
         }
 
@@ -254,23 +258,19 @@ namespace ChipArena.UnityConversion
             for(int s=0;s<loops.Length;s++){if(!loops[s].Live)continue;var voice=voices[loops[s].Voice];if(voice.clip==loops[s].Clip){voice.Stop();voice.loop=false;}bankVoiceClip[loops[s].Voice]=null;loops[s].Live=false;}
         }
 
-        // ---------- movement hooks: jump, landing, footsteps by map surface, the local scope in/out ----------
-        private struct Stride{public Vector3 Last;public float Distance,AirAt;public bool Grounded,Aiming,Seen;}
+        // ---------- movement hooks: the jump and the local scope in/out (the steps and landings: NativeFootstepAudio.cs) ----------
+        private struct Stride{public bool Grounded,Aiming,Seen;}
         private readonly Dictionary<int,Stride> strides=new Dictionary<int,Stride>();
         private void MoveCues(NativeArena arena)
         {
-            float t=arena.Time;var me=arena.Local;string step=NativeFootsteps.Surface(arena.MapId);bool steps=bank.Has(step);
+            var me=arena.Local;
             foreach(var p in arena.Pilots)
             {
                 if(p?.Body==null||p.Pose==null)continue;int id=p.Seat.id;strides.TryGetValue(id,out var s);var pos=p.Body.position;bool grounded=p.Pose.Grounded,mine=p==me;
-                if(p.Hp<=0||p.Death!=null||!s.Seen){s=new Stride{Last=pos,Grounded=grounded,Aiming=p.Pose.Aiming,Seen=p.Hp>0&&p.Death==null,AirAt=t};strides[id]=s;continue;}
-                if(s.Grounded&&!grounded){s.AirAt=t;if(p.Pose.Velocity.y>2.5f)BankPlay("move.jump",pos,mine?.4f:.5f,0,null,mine);}
-                else if(!s.Grounded&&grounded&&t-s.AirAt>=NativeFootsteps.MinAir)BankPlay("move.land",pos,mine?.45f:.55f,0,null,mine);
-                var delta=pos-s.Last;delta.y=0;float moved=delta.magnitude;
-                if(moved>NativeFootsteps.MaxStep||!grounded||t<p.RollEnd)s.Distance=0;
-                else if(steps&&moved/Math.Max(1e-3f,Time.unscaledDeltaTime)>=NativeFootsteps.MinSpeed){s.Distance+=moved;bool sprint=p.Pose.Sprinting;float stride=NativeFootsteps.StrideFor(sprint);if(s.Distance>=stride){s.Distance-=stride;BankPlay(step,pos,(mine?.3f:.45f)*(sprint?NativeFootsteps.SprintGain:1),0,null,false,null,sprint?NativeFootsteps.SprintRate:1);}}
+                if(p.Hp<=0||p.Death!=null||!s.Seen){s=new Stride{Grounded=grounded,Aiming=p.Pose.Aiming,Seen=p.Hp>0&&p.Death==null};strides[id]=s;continue;}
+                if(s.Grounded&&!grounded&&p.Pose.Velocity.y>2.5f)BankPlay("move.jump",pos,mine?.4f:.5f,0,null,mine);
                 if(mine&&p.Pose.Aiming!=s.Aiming&&p.Weapon?.@class=="ranged")BankPlay("gun.ads",null,.5f,0,null,true);
-                s.Last=pos;s.Grounded=grounded;s.Aiming=p.Pose.Aiming;strides[id]=s;
+                s.Grounded=grounded;s.Aiming=p.Pose.Aiming;strides[id]=s;
             }
         }
     }

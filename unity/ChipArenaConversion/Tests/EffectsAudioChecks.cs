@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     // scenario and a sweep of kinds and flags; the seeded non-repeating variation bag; every key the code names exists; the
     // voice pool's caps (8 gated, 4 reserved, high steals low, 3 loops); text scans that every hook point goes through the
     // bank and that no bank audio sits under a tracked folder. With LocalAssets present: its manifest validates, names only
-    // known keys, covers every key the code names, and every clip exists with a .meta, fits its cap and the 13 MB budget.
+    // known keys, covers every key the code names, and every clip exists with a .meta, fits its cap and the 16 MB budget.
     internal static class EffectsAudioChecks
     {
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Effects audio: "+what);}
@@ -41,13 +41,13 @@ namespace ChipArena.UnityConversion
             }
             passed.Add("hover audio: 10,000 stationary repaints cue once; slot/offer/keyboard edges, disabled/re-entry/reset, fixed 40/70 ms ticks and overlap budget pass");
             // ---------- key contract ----------
-            var keys=NativeSoundKeys.All;Check(keys.Length==214&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20,"194 effect keys (19 of them the hazard kit's, 2 the town zombies' voices) and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
+            var keys=NativeSoundKeys.All;Check(keys.Length==226&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20&&keys.Count(k=>k.Key.StartsWith("pve.zombie.",StringComparison.Ordinal))==14,"206 effect keys (19 of them the hazard kit's, 14 the zombies' voices and footfalls) and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
             foreach(var k in keys)
             {
                 Check(Regex.IsMatch(k.Key,"^[a-z]+(\\.[a-z0-9-]+)+$")&&NativeSoundKeys.Known(k.Key),k.Key+" name");
                 Check(k.Cap>0&&k.Cap<=(k.Space==NativeSoundSpace.Loop?6:5)+1e-6,k.Key+" hard length cap "+k.Cap);
                 if(k.Key.StartsWith("ui.",StringComparison.Ordinal))Check(k.Space==NativeSoundSpace.Flat&&k.Priority==NativeSoundPriority.High,k.Key+" UI is 2D, high priority");
-                if(k.Key.StartsWith("impact.",StringComparison.Ordinal)||k.Key.StartsWith("move.step.",StringComparison.Ordinal)||k.Key.EndsWith("-tick",StringComparison.Ordinal))Check(k.Priority==NativeSoundPriority.Low,k.Key+" frequent detail is low priority");
+                if(k.Key.StartsWith("impact.",StringComparison.Ordinal)||k.Key.StartsWith("move.step.",StringComparison.Ordinal)||k.Key.StartsWith("pve.zombie.step.",StringComparison.Ordinal)||k.Key.EndsWith("-tick",StringComparison.Ordinal))Check(k.Priority==NativeSoundPriority.Low,k.Key+" frequent detail is low priority");
             }
             // The plan's voice-budget caps for the busiest cues.
             float Cap(string key){Check(NativeSoundKeys.Find(key,out var d),key+" known");return d.Cap;}
@@ -214,8 +214,10 @@ namespace ChipArena.UnityConversion
                 Check(R("NativeLoadoutUI.cs").Contains("nativeAudio?.UiCue(\"ui.loadout.select\",\"install\",.4f);")&&R("NativeDraftScreen.cs").Contains("nativeAudio.UiCue(\"ui.draft.pick\",\"ui\",.4f);")&&R("NativeDraftScreen.cs").Contains("nativeAudio?.UiCue(\"ui.draft.hover\",null,.5f);")&&R("NativeHomeMenu.cs").Contains("nativeAudio?.UiCue(\"ui.click\",\"ui\",.4f);")&&R("NativeNotice.cs").Contains("nativeAudio?.Cue(\"ui.notice\",null,null,.5f,mine:true);"),"screen UI cues use the shared audio entrypoints (hover has fixed built-in ticks)");
                 Check(fx.Contains("if(key!=null&&BankPlay(key,position,gain,0,gate,mine))return;")&&fx.Contains("if(cover!=null&&bank.Has(cover))return;")&&fx.Contains("if(clip!=null)Play(clip,position,gain,rate,gate);"),"Cue falls back to exactly today's Play");
                 Check(fx.Contains("if(s.Key==null){if(s.Tone)ArcadeTone();else Play(s.Clip,s.Positional?at:(Vector3?)null,s.Gain,s.Rate,s.Gate);return;}"),"an unbanked plan entry is today's play");
-                Check(fx.Contains("FieldBorn(NativeFieldSounds.Born(f.Kind,fx),")&&fx.Contains("BankPlay(\"chip.mine.arm\",at,.6f);")&&fx.Contains("FuseBeeps(f.Id,at,f.Born,f.Until,t);")&&fx.Contains("WantLoop((long)f.Id*2,loop,at);")&&fx.Contains("WantLoop((long)z.Id*2+1,loop,z.Position);")&&fx.Contains("BankPlay(\"move.jump\",")&&fx.Contains("BankPlay(\"move.land\",")&&fx.Contains("BankPlay(\"gun.ads\",null,.5f,0,null,true);"),"field, fuse, loop and movement hooks play only through the bank");
-                Check(fx.Contains("if(arena==null||menu||bank.Count==0){FadeLoops(false,null);return;}"),"no hook runs in menus or without a bank");
+                Check(fx.Contains("FieldBorn(NativeFieldSounds.Born(f.Kind,fx),")&&fx.Contains("BankPlay(\"chip.mine.arm\",at,.6f);")&&fx.Contains("FuseBeeps(f.Id,at,f.Born,f.Until,t);")&&fx.Contains("WantLoop((long)f.Id*2,loop,at);")&&fx.Contains("WantLoop((long)z.Id*2+1,loop,z.Position);")&&fx.Contains("BankPlay(\"move.jump\",")&&fx.Contains("BankPlay(\"gun.ads\",null,.5f,0,null,true);"),"field, fuse, loop, jump and scope hooks play only through the bank");
+                string steps=R("NativeFootstepAudio.cs");Check(steps.Contains("CreatureCue(\"move.land\",null,1,at,pick.Gain,NativeFootsteps.LandRate(f.Air),priority);")&&steps.Contains("if(BankPlay(key,at,gain,0,null,false,priority,rate))return true;"),"landings and footsteps take the bank first (then a stand-in, then the built-in take)");
+                // Owner 2026-10-15 (footsteps and zombies, never silent): only those, with their built-in takes, run without a bank.
+                Check(fx.Contains("if(arena==null||menu){FadeLoops(false,null);Footfalls?.Clear();return;}")&&fx.Contains("StepCues(arena);\n            if(bank.Count==0){FadeLoops(false,null);HordeCues(arena);return;}"),"no hook runs in menus; without a bank only the footsteps, landings and the horde's cues (their bank-only layers stay silent)");
                 // Only the documented direct plays remain in NativeAudio: the Slender scare and the DEV kill clips (timed to their clips).
                 int direct=Regex.Matches(audio+scene,"[^a-zA-Z.]Play\\(\"").Count;Check(direct==4,"direct source-clip plays left in NativeAudio: "+direct);
                 passed.Add("effects audio: text scans: events, state cues, scene cues, structure layers, UI helpers and screens, fields, fuses, loops and movement all route through the bank, falling back to today's Play");
@@ -241,7 +243,7 @@ namespace ChipArena.UnityConversion
                     string folder=Path.GetDirectoryName(local);var installed=NativeSoundBank.Parse(File.ReadAllText(local));
                     Check(installed.Errors.Count==0,"LocalAssets manifest: "+string.Join("; ",installed.Errors.Take(5)));
                     var missing=named.Where(k=>installed.Entry(k)==null).ToList();Check(missing.Count==0,"LocalAssets manifest lacks keys the code names: "+string.Join(", ",missing));
-                    long bytes=Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories).Sum(f=>new FileInfo(f).Length);Check(bytes<NativeSoundKeys.BudgetBytes,"EffectsAudio "+bytes+" bytes over the 13 MB budget");
+                    long bytes=Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories).Sum(f=>new FileInfo(f).Length);Check(bytes<NativeSoundKeys.BudgetBytes,"EffectsAudio "+bytes+" bytes over the 16 MB budget");
                     int clips=0;double seconds=0;var listed=new HashSet<string>(StringComparer.Ordinal);
                     foreach(var e in installed.Entries)for(int i=0;i<e.Count;i++)
                     {
@@ -253,7 +255,7 @@ namespace ChipArena.UnityConversion
                     }
                     var extra=Directory.EnumerateFiles(folder,"*.ogg",SearchOption.AllDirectories).Select(Path.GetFullPath).Where(f=>!listed.Contains(f)).ToList();Check(extra.Count==0,"unlisted clips: "+string.Join(", ",extra.Take(3)));
                     foreach(var dir in Directory.EnumerateDirectories(folder,"*",SearchOption.AllDirectories))Check(File.Exists(dir+".meta"),"folder meta "+dir);
-                    passed.Add("effects audio: LocalAssets present: "+installed.Count+" keys, "+clips+" clips, "+seconds.ToString("0")+" s, "+(bytes/1e6).ToString("0.00")+" MB < 13 MB; every clip has a .meta, fits its cap, 44.1 kHz, mono when positional; covers all "+named.Count+" named keys");
+                    passed.Add("effects audio: LocalAssets present: "+installed.Count+" keys, "+clips+" clips, "+seconds.ToString("0")+" s, "+(bytes/1e6).ToString("0.00")+" MB < 16 MB; every clip has a .meta, fits its cap, 44.1 kHz, mono when positional; covers all "+named.Count+" named keys");
                 }
             }
             return passed;

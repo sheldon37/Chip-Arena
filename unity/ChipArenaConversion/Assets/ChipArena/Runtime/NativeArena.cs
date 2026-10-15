@@ -106,12 +106,13 @@ namespace ChipArena.UnityConversion
         public NativePilot Local=>Pilots.Find(p=>p.Seat.id==LocalId);
         public void Step(InputFrame input)
         {
-            if(Match.Phase!=NativePhase.Fight)DevClearMonsters();if(BossVictoryTick(input)){DevClearMonsters();return;}CancelInvalidKernel();if(PveHoldTick(1f/60))return;foreach(var p in Pilots)if(!p.Seat.connected&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12){p.Hp=0;p.Seat.alive=false;}DevStep();SandboxStep();Match.Tick(1d/60);if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();StepHazards();StepAuthoredHazards();StepSirenStage();StepStructures();StepKernelWorld();if(Match.ResultMovement){StepResultMovement(input);StepResultProjectiles();return;}if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
+            if(Match.Phase!=NativePhase.Fight)DevClearMonsters();if(BossVictoryTick(input)){DevClearMonsters();return;}CancelInvalidKernel();if(PveHoldTick(1f/60))return;foreach(var p in Pilots)if(Expedition==null&&!p.Seat.connected&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12){p.Hp=0;p.Seat.alive=false;}DevStep();SandboxStep();Match.Tick(1d/60);if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();StepHazards();StepAuthoredHazards();StepSirenStage();StepStructures();StepKernelWorld();if(Match.ResultMovement){StepResultMovement(input);StepResultProjectiles();return;}if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
             Events.RemoveAll(e=>Time-e.Time>1); // Preserve the full burst for its natural glow lifetime.
             // Establish every defense before resolving attacks.
             foreach(var p in Pilots)
             {
-                if(p.Hp<=0||!p.Seat.connected)continue;p.Input=p.Seat.bot?AvoidVents(p,DevDummyInput(p,SandboxInput(p,DevBot(p)))):p.Seat.id==LocalId?input:RemoteInput(p.Seat.id);p.Input=p.Input.Sanitized();PveInput(p);HubInput(p);
+                if(p.Hp<=0||!p.Seat.connected)continue;p.Input=p.Seat.bot?AvoidVents(p,DevDummyInput(p,SandboxInput(p,DevBot(p)))):p.Seat.id==LocalId?input:RemoteInput(p.Seat.id);p.Input=p.Input.Sanitized();PveInput(p);ExpeditionInput(p);HubInput(p);
+                if(Expedition?.Barrier.active==true)return;
                 ProbePilotGround(p);
             }
             RouteLeetInputs();

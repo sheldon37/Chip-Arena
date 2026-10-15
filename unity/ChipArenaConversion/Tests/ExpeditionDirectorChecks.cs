@@ -26,6 +26,7 @@ internal static class ExpeditionDirectorChecks
         Refuse(json.Replace("\"range\":2.5","\"range\":-1"),"negative reach");
         Check(new ExpeditionVolume{x=2,y=1,z=3,sx=2,sy=2,sz=6,yaw=90}.Contains(new V3(4,1,3)),"rotated volume");
         var codec=new JsonSerializerOptions{IncludeFields=true};var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),codec);
+        ExpeditionCoopChecks.Run(layout,content);
         var run=NativeExpedition.Create("director-test","city","host","pistol",17,new[]{new ExpeditionInstance{id="ward",target=1}});int writes=0;bool fail=false;
         var session=new ExpeditionSession(run,content,_=>{if(fail)throw new IOException("test disk failure");writes++;});V3 at=new V3(2,0,0);bool los=true;
         var director=new ExpeditionDirector(session,layout,_=>at,(_,__)=>los,10,20,30);

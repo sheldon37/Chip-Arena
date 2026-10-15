@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
         [Serializable] private sealed class LobbyEnvelope
         {public int version=NativeConnection.Protocol,epoch;public string type="lobby";public NativeSeatFrame[] seats;public NativeRoomOptions options;}
         [Serializable] private sealed class ExpeditionPublicEnvelope
-        {public int version=NativeConnection.Protocol;public string type="expedition-public";public ExpeditionView expeditionPublic;}
+        {public int version=NativeConnection.Protocol;public int epoch,generation;public string type="expedition-public";public ExpeditionView expeditionPublic;}
         [Serializable] private sealed class ExpeditionPrivateEnvelope
         {public int version=NativeConnection.Protocol;public string type="expedition-private";public ExpeditionPrivateFrame expeditionPrivate;}
         [Serializable] private sealed class ExpeditionCommandEnvelope
@@ -68,7 +68,7 @@ namespace ChipArena.UnityConversion
             if(message.type=="dev-command")return JsonUtility.ToJson(new DevCommandEnvelope{epoch=message.epoch,generation=message.generation,devCommand=message.devCommand});
             if(message.type=="dev-reply")return JsonUtility.ToJson(new DevReplyEnvelope{epoch=message.epoch,devReply=message.devReply});
             if(message.type=="expedition-area-ready")return JsonUtility.ToJson(new ExpeditionAreaReadyEnvelope{expeditionAreaReady=message.expeditionAreaReady});
-            if(message.type=="expedition-public")return JsonUtility.ToJson(new ExpeditionPublicEnvelope{expeditionPublic=message.expeditionPublic});
+            if(message.type=="expedition-public")return JsonUtility.ToJson(new ExpeditionPublicEnvelope{epoch=message.epoch,generation=message.generation,expeditionPublic=message.expeditionPublic});
             if(message.type=="expedition-private")return JsonUtility.ToJson(new ExpeditionPrivateEnvelope{expeditionPrivate=message.expeditionPrivate});
             if(message.type=="expedition-command")return JsonUtility.ToJson(new ExpeditionCommandEnvelope{expeditionCommand=message.expeditionCommand});
             if(message.type=="expedition-reply")return JsonUtility.ToJson(new ExpeditionReplyEnvelope{expeditionReply=message.expeditionReply});

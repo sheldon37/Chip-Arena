@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
             Layout=layout;gates=new ExpeditionGateState[layout.Gates.Length];clearSince=new double[gates.Length];solid=new bool[gates.Length];
             for(int i=0;i<gates.Length;i++){gates[i]=new ExpeditionGateState{Id=layout.Gates[i].Id,ChangedAt=now-2};clearSince[i]=-1;solid[i]=true;}
         }
-        public ExpeditionHubView View()=>new ExpeditionHubView{Gates=(ExpeditionGateState[])gates.Clone(),Count=gates.Length,Holster=true,Ward=true};
+        public ExpeditionHubView View(){var copy=(ExpeditionGateState[])gates.Clone();for(int i=0;i<copy.Length;i++)copy[i].Blocking=solid[i];return new ExpeditionHubView{Gates=copy,Count=copy.Length,Holster=true,Ward=true};}
         public bool Interact(V3 feet,double now,Func<ExpeditionVolume,bool> occupied)
         {
             for(int i=0;i<gates.Length;i++)if(Layout.Gates[i].Interact.Contains(feet))
