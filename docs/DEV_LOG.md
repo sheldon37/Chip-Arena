@@ -8515,3 +8515,40 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - A jab from the low idle raises the arm 1.3–1.8 rad in one frame.
   - The preview's drawn-body shift goes through new `ArenaPresentation` hooks (inert with the preview off).
 - **Animation impact:** presentation only; it reads the replicated windows. No change to hit timing, hitboxes, damage, cooldowns, movement or networking.
+
+## 2026-10-15 — Claude: Cyber Lord martial-arts melee string with cyber movement
+
+- **Branch:** `claude/cyberlord-martial-combo`, based on shared `claude/sleepy-ritchie-g8ruhv` `3ced89c`. Implementation: the branch head (pushed, not merged; no PR opened).
+- **Owner request:** "Improve basic attacks for melee~ Its a bit basic right now. I want more expressive martial art attacks rather than just simple arm movement. Throw a little "Cyber movement" into it as well."
+- **What changed (presentation only; Kit v2's five-step Hardlight Combo, live on Astra's authority since PR #231):**
+  - The string is re-authored as full-body martial arts on the replicated windows (`Core/CyberLordCombo.cs`):
+    1. glitch-step jab (frame-skip windup in three holds, lead foot steps 16 cm in and back out, rear fist chambered at the hip);
+    2. rear roundhouse kick at belt height (lead foot pivots on its ball, hips turn over, body leans away, rear arm counter-swings);
+    3. spinning heel kick (a full right turn pivoting on the lead foot, the rear heel driven out with the back to the target);
+    4. launcher: a jumping knee into a rising uppercut (drawn body hops up to 10 cm, lead foot off the floor 6 cm);
+    5. horse-stance Pulse Palm (lead knee raised and stomped wide, both palms, a glitch freeze-frame on the hit).
+  - A striking leg follows new key channels (`KX..KA`: ankle path in the hips' turned frame, knee direction, foot point) through `CyberComboFeet`; new foot moves (Kick, Lift, a pivot that follows the hips). A planted foot out of the leg's reach makes the drawn body sink (at most 10 cm) instead of lifting off.
+  - Cyber movement (`Core/CyberLordComboFx.cs`): hardlight ribbons on the striking foot for kicks (the fist for punches), the heel kick's crescent at the foot, the launcher's knee flare and pixel smear, the stomp blocks at the landed foot, RGB afterimages behind the jab's step-in and an RGB split held on every impact (`CyberGhost.Split`). Reduced effects: smooth clock (no frame-skip), one faint afterimage, small steady splits.
+  - A cut step (`CutAt`) keeps its natural motion and fades over the settle (`CyberKit2MeleeMotion`); a raised guard still takes over at the cut. The idle's twitches under a strike keep its planted feet (`CyberLordMotion`).
+  - First person: the stance's push of the fists toward the view eases off under a string step, so punches and palms drive out; kicks keep the lead hand guarding; the heel kick keeps the hands in front. The camera is untouched.
+  - Sounds (existing keys): the roundhouse hit uses `dev.fist.hit`/`arcade-kick` (shared `NativeCyberLordSounds.cs`, one line), its swing `structure.whoosh`; the jab adds a `dev.leet.glitch` blip, the palm a `move.land` stomp.
+  - v1's three records (not live: Version 2 is always set) draw steps 1, 2 and 5 of the same tables.
+  - Kernel Panic, the melee idle, the run and sprint, the abilities' poses and the ranged files are unchanged.
+- **Tests:** `Tests/CyberKit2MeleeChecks.cs` section 3 replaced (it pinned the boxing string: the cross's fist peak, the backfist sweep, the ankle slide under 6 mm). New pins for v1, v2, v2 Overclocked and v2 reduced:
+  - each apex on the replicated hit (kicks: full extension arrives on the hit);
+  - the striking leg drawn on its keys; only the striking leg lifts; no floor penetration; every foot down by the window's end;
+  - planted balls slide under 2 mm per frame; the drawn body within 11 cm of the capsule;
+  - frame-skip holds (none with reduced effects); chains at 0 to .69 s gaps, a reset past .7 s and a cut kick pop nothing beyond the string's own pace;
+  - effects on the striking limb; reduced splits fainter and never strobing; first-person drive, guard and counter-swing;
+  - fork clones copy the whole string, kicks included.
+  - `CyberLordChecks` needed no change.
+- **Checks (run5 on the branch):** Unity 6000.3.24f1 runtime and editor compile OK; relay 713 PASS (`CyberKit2MeleeChecks` 23,947 checks, of which the martial string 4,224 and its effects/views 3,345; measured planted-foot slide 0.1-0.4 mm per frame, drawn body within 8 cm); Python 106 OK (1 skipped); package OK; diff-check OK. `--cyber-lord` 39 PASS.
+- **Renders:** offline only (scratchpad `renders-cyberlord-martial`): before/after string (side, front, shoulder camera), each step at windup/hit/hold/recovery/end, an Overclock chain, a reset mid-string, fork clones, first person. No Unity, Windows, audio or two-client run.
+- **Risks:**
+  - The jab out of the low melee idle snaps the arms up to about .6 m in a frame (designed holds; reduced effects run smooth).
+  - The heel kick turns 3.25 rad inside its .12 s windup (about 1.1 rad a frame Overclocked): a whip.
+  - The rig's legs reach belt height, not chest height.
+  - Under a string step the first-person hands sit up to about .2 m closer than in the stance.
+  - The runtime's split ghosts add their glitch-block crawl; opacity unverified in Unity.
+  - A stun or a raised guard mid-kick hands the leg to the gait from where it is (existing behaviour).
+- **Animation impact:** presentation only; it reads the replicated windows (the apex on the replicated Release, Overclock compression included). No change to hit timing, hitboxes, damage, cooldowns, movement or networking. Drawn-body offsets from the capsule measured at most 8 cm (pinned under 11 cm) and return by the end of the settle.

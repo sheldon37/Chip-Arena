@@ -62,7 +62,7 @@ with them and every client draws with them. It is a DEV power fantasy, not balan
 |---|---|---|---|
 | Q (both) | Uplink | A hardlight cable along the aim. Terrain: the pilot zips to the anchor, keeping momentum (attack or jump out of it). An enemy: yanked to 2 m in front and stunned. A boss is not moved: the caster zips to it. A miss retracts. | 24 m, cable 90 m/s, zip 30 m/s for at most .8 s, yank .35 s, stun .6 s; 6 s, 10 mana |
 | E (both) | Overclock | A 6 s power state: faster movement and attacks, cooldowns recover twice as fast, melee hits chain an arc to a nearby enemy, the ranged LMB splits into three. | +35% move, +60% attack rate, x2 recovery, arc 8 in 6 m, split 7° at 40%; 16 s, 30 mana |
-| LMB (melee) | Hardlight Combo | Five steps: jab, cross, spinning backfist (an arc round the pilot), rising uppercut (a short launch), Pulse Palm (a cone shockwave). | .24/.26/.32/.34/.42 s, windups .08/.08/.12/.12/.16, damage 9/10/12/12/18, reset .7 s, reach 2.4 m, spin arc 3.5 rad, launch 6 m/s (juggle .8 s), palm shove 9 m/s |
+| LMB (melee) | Hardlight Combo | Five steps (drawn as a martial string): jab, roundhouse kick, spinning heel kick (an arc round the pilot), launcher (a short launch), Pulse Palm (a cone shockwave). | .24/.26/.32/.34/.42 s, windups .08/.08/.12/.12/.16, damage 9/10/12/12/18, reset .7 s, reach 2.4 m, spin arc 3.5 rad, launch 6 m/s (juggle .8 s), palm shove 9 m/s |
 | 1 (melee) | Fork Bomb | Three hardlight clones keep formation for 5 s and copy every combo swing on the nearest enemy near them; at the end (or a recast) each dashes to an enemy and bursts. | 35% of the swing within 3 m; burst dash .3 s within 10 m, 20 in 2.5 m; 14 s, 35 mana |
 | 2 (melee) | Glitch Cut | An instant dash-slash through enemies along the aim; everyone passed is marked and all marks detonate together after a beat (a freeze-frame). | 9 m in .14 s, 1.2 m wide, marks burst .45 s after, 25 each; 8 s, 20 mana |
 | 3 (melee) | Meteor Byte | Crouch, leap 5 m, hover while a reticle follows the aim, then dive with a giant hardlight fist: a shockwave that launches. | leap .45 s, hover .25 s, dive .2 s, 14 m reach, 35 in 4 m, launch 7 m/s (juggle 1 s); 12 s, 35 mana |
@@ -233,19 +233,46 @@ the proposed record below once it carries Version 2, and play now in the Dev San
 
 ### Melee and shared presentation (v2)
 
-**The hardlight string (live on v1 today).** `Core/CyberLordCombo.cs` replaces the captured sword takes for the Cyber
-Lord's combo with authored boxing strikes on the replicated swing (`CyberCombo.Swing`: At, Hit = the kit's Release, Until):
-key tables per strike (guard, load, the blow on the hit, a short hold, the recovery) sampled with C1 Hermite curves; the
-hips, spine and chest turn and lean in the facing frame, the fists are chest-space IK targets with their own wrist frames,
-the rear hand stays at the chin. The blow's apex lands on the replicated hit (checked). A chained step carries on from the
-pose the rig actually showed; the first eases in from the stance over most of its windup; every blend turns each hand's
-frame and elbow pole as one rotation and swings the fists round the shoulders (`CyberLordMotion.StrikeBlend`), so nothing
-flips. The feet do real footwork (`CyberComboFeet`): the jab steps the lead foot in 12 cm, the cross pivots the rear foot on
-its ball, the spin hops round with the hips, the uppercut rises onto the toes and hops, the palm stomps in 18 cm; a foot on
-the floor never slides (checked under 6 mm per frame), feet stay pinned through the settle and the gait steps them back to
-its stance. Effects (`Core/CyberLordComboFx.cs`): white-core hardlight ribbons behind the striking fist with pixel bits and a
-snap flare at full extension, the spin's tilted crescent, the uppercut's climbing sparks, the palm's flash, hex shock rings,
-shards and stomp blocks. v1's rules, windows and hit events are unchanged; Kernel Panic and the entrance keep their takes.
+**The hardlight martial string (2026-10-15, `claude/cyberlord-martial-combo`).** Owner: "Improve basic attacks for melee~
+Its a bit basic right now. I want more expressive martial art attacks rather than just simple arm movement. Throw a little
+"Cyber movement" into it as well." `Core/CyberLordCombo.cs` draws the combo as full-body martial arts on the replicated swing
+(`CyberCombo.Swing`: At, Hit = the kit's Release, Until), key tables per step sampled with C1 Hermite curves, the apex of the
+striking limb on the replicated hit (checked, with and without the Overclock's compression):
+
+| Step (wire kind) | Technique | Striking limb |
+|---|---|---|
+| 1 `cyber-jab` | Glitch-step jab: the windup snaps forward in three frame-skip holds (`CyberCombo.Stutter`) as the lead foot steps in 16 cm and back out; the lead fist drives out, the rear fist chambers palm up at the hip; RGB afterimages trail the step-in. | lead fist |
+| 2 `cyber-cross` | Rear roundhouse kick (mid): the rear knee chambers, the hips turn over (1.7 rad) on the lead foot pivoting on its ball, the body leans away, the shin snaps across the front at belt height; the rear arm counter-swings down and back, the lead fist guards. | rear foot |
+| 3 `cyber-spin` | Spinning heel kick: a full turn to the right on the lead foot's ball (it pivots with the hips), the head spotting, the rear knee chambered behind the hip, the heel driven out at the target with the back turned (3.25 rad into the turn), sweeping on and landing bladed. | rear heel |
+| 4 `cyber-rise` | Launcher: a deep drop, then a hop (the drawn body up 9-10 cm, the lead foot off the floor 6 cm) with the rear knee driven up to hip height in front (a jumping knee) as the rear fist rises through the chin line on the hit and on overhead. | rear fist, knee |
+| 5 `cyber-palm` | Pulse Palm: the lead knee rises and stomps 16 cm in and 8 cm out into a low horse stance (the rear foot turns its toes forward), both palms thrust on the hit and held dead still for a glitch freeze-frame (`CyberCombo.PalmFreeze`, a quarter of the follow-through). | both palms |
+
+v1's three records (jab, cross, palm) draw steps 1, 2 and 5. Chained steps blend from the pose the rig actually showed; the
+first eases in from the stance (or the melee idle, `Core/CyberLordIdle.cs`, unchanged). The striking leg follows the keys'
+`KX..KA` channels (an ankle path in the hips' turned frame, a knee direction, the foot's point) through `CyberComboFeet`: the
+foot rises straight off the floor before the keys carry it across (`Lift`), then comes down onto its step home; only the
+striking leg leaves the floor (the jab's step, the launcher's hop and the palm's stomp are low). A planted foot never slides
+(its ball is pinned flat or pivoting; checked under 2 mm per frame, measured 0.1-0.4 mm), nothing goes through the floor, and a
+planted foot the hips have left out of reach makes the drawn body sink (at most 10 cm, `CyberComboFeet.Reach` / `MaxSink`)
+rather than lift off. Every foot is down by the window's end. The drawn body's offset from the capsule stays under 8 cm and
+returns as the string settles. An interrupted step (`CutAt`) keeps its own motion on its nominal windows and fades over the
+settle (a cut kick lowers its leg instead of snapping it home); a raised guard still takes over at the cut. The idle's
+twitches under a strike keep the planted feet (`MeleeRig.HoldAnkles`). Reduced effects keep the smooth clock (no frame-skip).
+
+Cyber movement and effects (`Core/CyberLordComboFx.cs`, on the limb that strikes): hardlight ribbons (white core, cyan sheath,
+magenta glitch edge, pixel bits) behind the jab's and the uppercut's fist and the kicks' foot, a snap flare at full extension,
+the heel kick's crescent at the foot's height swept the turn's way over `SpinArc`, the launcher's knee flare, climbing
+crescent and upward pixel smear, the palm's pulse with the stomp blocks round the foot where it lands, the jab's RGB
+afterimages behind its step-in and an RGB split held on every impact (through the palm's freeze-frame) as `CyberGhost.Split`
+ghosts; with reduced effects one faint afterimage and a small steady split (never a strobe); the local first-person pilot draws
+no ghosts or kick effects. Sounds use existing keys: the roundhouse lands on `dev.fist.hit` / `arcade-kick`, its swing on
+`structure.whoosh`, the jab's swing adds a `dev.leet.glitch` blip, the palm adds a `move.land` stomp.
+
+First person (`CyberLordMotion.FirstPerson`, the camera never moves): punches and palms drive out from a bent arm (the
+stance's push toward the view, `ViewLift`, eases off under a step: `StrikePush`), the kicks keep the lead hand guarding while
+the rear hand counter-swings out of view, and the spinning heel kick keeps both hands in front (the followed turn is left out
+of the view model). Fork Bomb clones copy the whole string, kicks included, on their own rigs (checked).
+Kernel Panic, its clones and the entrance keep their takes.
 
 **The v2 path (waits for the record).** Files: `Core/CyberKit2Melee.cs` (the proposed record `CyberKit2MeleeRecord`, its
 source, the view `CyberLordView.Kit2`, the one mapping `CyberKit2MeleeFeed`, the shared body paths and the fixture),
@@ -253,8 +280,8 @@ source, the view `CyberLordView.Kit2`, the one mapping `CyberKit2MeleeFeed`, the
 `Core/CyberKit2MeleeSounds.cs`, `Runtime/NativeCyberKit2MeleePresentation.cs`. `CyberLordFeed.Read` calls
 `CyberKit2MeleeFeed.Read` at its end; only a record with Version 2 maps, and then v1's combo and Q to 3 windows are cleared
 (Kernel Panic and the ranged mode stay). Anything else leaves v1 bit-identical (checked: poses and effects).
-- String: jab, cross, spinning backfist (a hop-turn, the lead fist flung out across the front), rising uppercut (drop, drive
-  onto the toes, a short hop), Pulse Palm; the same strike machinery as v1's.
+- String: the martial string above (glitch-step jab, rear roundhouse kick, spinning heel kick, launcher, horse-stance Pulse
+  Palm); the same strike machinery as v1's.
 - Uplink: the cast pose and a cable (white core, cyan sheath, spinning links, a hex anchor) that flies at CableSpeed; a zip
   pose dragged along it with RGB-split streaks and a landing burst; a yank (the caster hauls, the victim is pulled and
   sparks with the stun); a miss reels back.
@@ -897,6 +924,9 @@ warp is presentation only, and the bodies stand where the snapshot puts them.
 - The Sheldon Idle poses the portrait rigs only (never a match rig).
 - The trail ring draws more trails at once; the authority's trail is unchanged.
 - The ranged mode's hold, switch and casts move only the drawn arms and chest, and the blink a 6 cm dip of the drawn hips.
+- The martial string (2026-10-15) moves only the drawn rig on the replicated windows: the drawn body shifts up to 8 cm off
+  the capsule (step-ins, the heel kick's pivot, the palm's stance) and returns, rises up to 10 cm in the launcher's hop and
+  sinks up to 10 cm to keep a planted foot in reach; the kicks' legs, the hop and the stomp land by each window's end.
 - The capsule, movement speed, jump height, hit timing, cooldowns and the network frame are untouched.
 
 ## What the rules side still needs to provide (Astra)

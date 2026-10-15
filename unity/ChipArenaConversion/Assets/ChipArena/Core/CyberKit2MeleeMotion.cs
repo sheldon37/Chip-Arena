@@ -117,6 +117,13 @@ namespace ChipArena.UnityConversion
             if(combo)
             {
                 int kind=CyberCombo.V2Kind(v.ComboStep);var m=Strike(kind,v.ComboAt,Math.Max(v.ComboAt+.02f,Math.Min(v.ComboUntil-.02f,v.ComboHit)),v.ComboUntil,time,CyberCombo.Settle,CyberCombo.States[kind]);
+                // An interrupted step (CutAt) keeps its own motion on its nominal windows (the rate it began at), fading out from
+                // the cut over the settle: a kick's leg comes down on its own path instead of snapping back in a frame.
+                if(v.Cut[CyberKit2Spec.MeleeLmb])
+                {
+                    float rate=v.OverclockAt>-90&&v.ComboAt>=v.OverclockAt&&v.ComboAt<v.OverclockUntil?1+CyberKit2Spec.OverclockRate:1;
+                    m.Swing=new CyberCombo.Swing(kind,v.ComboAt,v.ComboAt+CyberCombo.Windup(kind)/rate,v.ComboAt+CyberCombo.Seconds(kind)/rate);m.Weight=CyberLordMotion.StrikeIn(m.Swing,time)*m.FadeOut;
+                }
                 m.StrikeFrom=v.ComboStep>0?CyberCombo.Previous(kind,true):-1;if(m.StrikeFrom>=0)m.Weight=m.FadeOut;return m;
             }
             return CyberLordMotion.Move.None;

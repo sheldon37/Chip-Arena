@@ -21,8 +21,10 @@ namespace ChipArena.UnityConversion
             int Q=CyberKit2Spec.Q,C=CyberKit2Spec.Cut,M=CyberKit2Spec.Meteor;bool uplinkOn=k.At[Q]>-90&&!k.Cut[Q];
             switch(slot)
             {
-                case Swing:if(k.ComboAt>-90){at=k.ComboAt;int s=k.ComboStep;n=s==2?S(o,n,"melee.greatsword.spin","dash",.42f):S(o,n,"dev.fist.swing","arcade-punch",s==4?.45f:s==3?.42f:.38f);}break;
-                case Palm:if(k.ComboStep==4&&k.ComboHit>-90){at=k.ComboHit;n=S(o,n,"impact.energy","electric-hook",.45f);n=S(o,n,"blast.kinetic","explosion",.25f);}break;
+                // the martial string: the glitch-step's blip under the jab's swing, the kicks' whoosh, the spin's whirl
+                case Swing:if(k.ComboAt>-90){at=k.ComboAt;int s=k.ComboStep;n=s==2?S(o,n,"melee.greatsword.spin","dash",.42f):s==1?S(o,n,"structure.whoosh","dash",.4f):S(o,n,"dev.fist.swing","arcade-punch",s==4?.45f:s==3?.42f:.38f);if(s==0)n=S(o,n,"dev.leet.glitch","darkness",.16f);}break;
+                // the Pulse Palm's pulse and the horse stance's stomp
+                case Palm:if(k.ComboStep==4&&k.ComboHit>-90){at=k.ComboHit;n=S(o,n,"impact.energy","electric-hook",.45f);n=S(o,n,"blast.kinetic","explosion",.25f);n=S(o,n,"move.land","stone",.3f);}break;
                 case UplinkFire:if(k.At[Q]>-90&&k.Until[Q]>k.Release[Q]){at=k.Release[Q];n=S(o,n,"magic.shackles","electric-hook",.5f);n=S(o,n,"dev.leet.glitch","darkness",.25f);}break;
                 case UplinkLatch:if(uplinkOn&&k.UplinkLatchAt>-90){at=k.UplinkLatchAt;n=S(o,n,"chip.bomb.attach","metal",.45f);}break;
                 case UplinkZip:if(uplinkOn&&k.UplinkOutcome==CyberKit2Melee.Zip&&k.UplinkLatchAt>-90){at=k.UplinkLatchAt+.02f;n=S(o,n,"move.roll","dash",.55f);n=S(o,n,"structure.whoosh","dash",.35f);}break;
