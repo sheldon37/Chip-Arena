@@ -134,6 +134,15 @@ namespace ChipArena.UnityConversion
                 QMul(bx.Qx,bx.Qy,bx.Qz,bx.Qw,p.Qx,p.Qy,p.Qz,p.Qw,out bx.Qx,out bx.Qy,out bx.Qz,out bx.Qw);near.Add(bx);
             }
             var statics=near.ToArray();var scene=new NativeExpeditionHubGates();int poses=0;
+            // 0. Nothing collider-only is drawn at a gate: the closures (Astra's renderer-less gate, no-vault and horde-ward
+            //    colliders) are not map blocks, no drawn block stands in a closure, and the fence's exclusion columns are
+            //    pilotBlocks (position clamps), never blocks.
+            foreach(var g in hub.Gates)
+            {
+                int inOpening=blocks.Count(b=>b.pos.y-b.size.y/2<g.Closure.y+g.Closure.sy/2-.01&&b.pos.y+b.size.y/2>.01&&ExpeditionHubRules.Intersects(g.Closure,new V3(b.pos.x,0,b.pos.z),new V3(b.pos.x,0,b.pos.z),Math.Min(b.size.x,b.size.z)/2-.01f));
+                Check(inOpening==0&&!blocks.Any(b=>b.id.Contains("hub-gate")||b.id.Contains("closure")),g.Side+": no drawn map block in its closure, none is a gate or closure collider ("+inOpening+")");
+            }
+            Check(town.pilotBlocks.Where(x=>x.id.Contains("sanctuary-fence")).All(x=>!blocks.Any(b=>b.id==x.id)),"the fence's exclusion columns are never drawn blocks");
             // 1. The gates' own parts, against each other and the fence, posts, header and dressing, through their travel.
             foreach(var g in hub.Gates)foreach(var (open,latch) in new[]{(0f,0f),(0f,1f),(.3f,1f),(.6f,1f),(1f,1f),(1.05f,1f)})
             {
