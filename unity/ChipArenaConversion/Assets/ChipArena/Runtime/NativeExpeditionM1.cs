@@ -24,12 +24,7 @@ namespace ChipArena.UnityConversion
                 match.Seats.Add(new NativeSeat{id=900,name="TEST Expedition Siren",spec="siren",bot=true,team=1,AuthorityBoss=true});
                 arena=new NativeArena(content,match,expeditionM1Layout.Area(expeditionM1Layout.world).map){LocalId=1};
                 if(!match.Start())throw new InvalidOperationException("Expedition arena could not start.");
-                string probeMap=null;
-                void ProbeMap(string id){if(probeMap==id)return;arena.ExpeditionMap(id);probeMap=id;}
-                var looks=JsonUtility.FromJson<MapLookSet>(Resources.Load<TextAsset>("MapLooks").text);
-                expeditionM1Layout=NativeExpeditionLayout.Load(_=>layoutText,content,expeditionHorde,id=>looks.maps.Any(l=>l.look==id),
-                    (id,p,r,h)=>{ProbeMap(id);return arena.ExpeditionSupported(p,r,h);},
-                    (id,a,b,r,h)=>{ProbeMap(id);return arena.ExpeditionReachable(a,b,r,h);});
+                expeditionM1Layout=arena.LoadExpeditionM1Layout(layoutText,expeditionHorde);
                 // Explicit provisional M1 catalog: Ward Zero's 12-kill quota from the original Expedition preview.
                 var run=NativeExpedition.Create("m1-"+Guid.NewGuid().ToString("N"),expeditionM1Layout.world,account.Access.AccountId,seat.spec,NativeMatch.NewSeed(),
                     expeditionM1Layout.instances.Select(id=>new ExpeditionInstance{id=id,target=12}).ToArray());
@@ -40,9 +35,9 @@ namespace ChipArena.UnityConversion
                 session.CanClaim=(_,__)=>false;session.CanPurchase=(_,__)=>false;session.ReprintEvidence=(_,__)=>null;
                 BindExpedition(session);expeditionLoadedGeneration=-1;expeditionDirector.BeginAreaLoad();
                 menu=false;pending=new InputFrame();sprint=false;pitch=12;expeditionScreenOpen=false;
-                ExpeditionM1Load();Notice("DEV Expedition M1 · F at doors · J for exit, Continue or extraction. Local only; loot/reprint unavailable.");
+                if(!ExpeditionM1Load())return;Notice("DEV Expedition M1 · F at doors · J for exit, Continue or extraction. Local only; loot/reprint unavailable.");
             }
-            catch(Exception e){expeditionError=e.Message;networkStatus="Expedition M1 refused: "+e.Message;arena?.Dispose();arena=null;match=null;expeditionDirector=null;ResetExpeditionNetwork();menu=true;}
+            catch(Exception e){Debug.LogException(e);expeditionError=e.Message;networkStatus="Expedition M1 refused: "+e.Message;arena?.Dispose();arena=null;match=null;expeditionDirector=null;ResetExpeditionNetwork();menu=true;}
         }
         private bool ExpeditionM1Load()
         {
@@ -68,7 +63,7 @@ namespace ChipArena.UnityConversion
                 expeditionDirector.Step();ExpeditionView=NativeExpeditionView.Build(expeditionSession.Run,account.Access.AccountId,expeditionSession.Sources);
                 yaw=arena.Local.Yaw;generation=arena.Generation;visualClock.Reset(match.Time);presentation.ResetPresentation();NativeLighting.Apply(content.Map(arena.MapId),cameraView);return true;
             }
-            catch(Exception e){expeditionError=e.Message;networkStatus="Expedition stopped: "+e.Message;Notice(networkStatus+" · Escape to leave and restart.");return false;}
+            catch(Exception e){Debug.LogException(e);expeditionError=e.Message;networkStatus="Expedition stopped: "+e.Message;Notice(networkStatus+" · Escape to leave and restart.");return false;}
         }
         private bool ExpeditionM1BeforeStep()
         {

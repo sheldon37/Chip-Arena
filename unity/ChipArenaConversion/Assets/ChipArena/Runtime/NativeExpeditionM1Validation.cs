@@ -57,6 +57,12 @@ namespace ChipArena.UnityConversion
         }
         public void ValidateExpeditionM1Geometry()
         {
+            if(MapId=="expedition-city")
+            {
+                var original=MapId;var scene=ReplicaScene;ReplicaScene=root.scene;
+                try{LoadExpeditionM1Layout(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text,JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));Debug.Log("PASS Expedition M1 complete startup layout gate");}
+                finally{ExpeditionMap(original);ReplicaScene=scene;}
+            }
             var layout=NativeExpeditionLayout.Parse(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text);
             var area=layout.areas.Single(a=>a.map==MapId);
             var points=area.slots.Concat(area.doors.SelectMany(d=>d.entries.Concat(d.returns))).Concat(area.bossPoints).Concat(area.doors.Select(d=>d.approach)).ToArray();
