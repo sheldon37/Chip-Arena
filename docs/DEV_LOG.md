@@ -42,6 +42,12 @@
   - `--expedition-pick` and `--chip-select` pass. `unity-check.sh` runtime and editor build OK.
   - Full five-check run (`run5b`) on the merge with shared `c65f464`. Unity runtime and editor build, the real relay suite (753 PASS lines), the source package (2161 files) and the diff check all exit 0.
     - The Python suite failed one pin: `test_chip_select` expects `FirstPersonView&&p==arena.ViewPilot` in the SELECTING CHIP tag, and stage 1 had folded it into `(FirstPersonView||ChooserFramed)`. That line is now written as two terms.
+  - Final five-check run on the merge with shared `e0a0d2f` (head `8c8cc04`): all five exit 0.
+    - Unity runtime and editor build.
+    - Relay suite: 754 PASS lines, including 9 chip-screen and 12 chooser-camera groups.
+    - Python: 107 tests, 1 skipped.
+    - Source package: 2168 files.
+    - Diff check.
 - **Not run.** Unity Editor or play, Windows build, two-client play. Also unrun: IMGUI's cursor mapping under a sheared `GUI.matrix` on real Unity (the managed check models it).
 - **Risks.**
   - The faces are affine, so the far card's corners can sit up to about 1% of the width off the world card; the dim glow hides it.
