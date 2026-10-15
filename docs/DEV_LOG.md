@@ -8331,3 +8331,43 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - A round first seen after .25 s, or with its Shot event dropped by the per-tick cap of 32, falls back to the simulated path.
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement, projectile simulation, hit detection or networking.
 - **For Astra (optional):** the gameplay muzzle ignores pitch and pose. A pitch-aware muzzle near the drawn crown, or a replicated muzzle offset per round, would remove the presentation blend. The blend depends on the Shot event fields (Source, Time, Position) and the per-tick effect cap.
+
+## 2026-10-15 — Claude: chip overhaul (neural core cartridge)
+
+- **Branch:** `claude/chip-overhaul` (`54ac2a3`), based on shared `7009887`, merged onto shared `43a9717`.
+- **Owner request:** "a complete overhaul of the design, I think our current chip design is still too simple. Lets utilize a different design completely, with animations, rarity colors and everything. Use our current rarity color scheme."
+- **Design (Core `NativeChipCartridge`, `NativeChipBake`; Runtime `NativeChipArt`, `NativeChipCard` rewritten):**
+  - Every tier shares one base:
+    - The chip is now a chamfered cartridge, not an IC package with legs.
+    - It has a faceted metal bezel with a glowing rarity line and screws, and a dark body with a hex mesh and etched traces.
+    - A hexagonal core (collar, glass dome, faceted crystal, the chip's icon) sits on the top-left corner, breaking the outline.
+    - It also has a name plate, rank pips, and a gold edge connector with a key gap.
+  - Rarity colours come exactly from GameContent's rarity list.
+  - The tier also shows in shape:
+    - Common: plain steel. Uncommon: lit seams. Rare: a second line and holographic glass. Epic: side fins and an orbiting ring.
+    - Legendary: a gold bezel, filigree crown, corner gems and embers. Mythic: black chrome, a fractured crimson crystal, foil and a shard crest.
+    - Mishima, Ansatsuken, L44T and Siren keep their colours and art with their own crests. Rainbow (dispensed only) is a prism.
+  - Animations:
+    - Idle: the core breathes, pulses run along the traces, the glass catches a sheen on highlight, and the high tiers gleam, shed embers or drift shards.
+    - Reveal: the bezel snaps in, the core flares and the connector lights.
+    - Reduced effects holds the loops still.
+  - Every existing hook keeps its timing on the new outline: deal and reveal, hover, holo scan, recede, focus, chosen, pick lock, shatter, fly to palm, spotlight, Siren reveal and follow, wrist plant, machine dispense.
+  - The Siren number badge moved to the top-right corner.
+- **Where it shows:**
+  - Draft and PvE/Siren pick cards.
+  - Post-match chip badges and the DEV chip list.
+  - The SELECTING CHIP glyph.
+  - The wrist hologram shader (`NativeChipSelect.shader`).
+  - In 3D, `NativeMachineModels.Pickup(tier)`: one cartridge model per tier, for the dispensed chip and the chip held in the draft hand.
+  - The Expedition HUD offer cells are unchanged (a rarity strip, no chip art).
+- **Cost:**
+  - Draw calls per tray card are 25–35% lower; the card draw allocates nothing per frame.
+  - One-time texture bakes take 7–19 ms per tier and scale, done on a background thread once a match is on screen.
+  - 3D: 1,884–3,360 triangles per tier, in 3–4 instanced parts.
+- **Checks on the branch (run5):** Unity 6000.3.24f1 runtime and editor compile OK; relay 691 PASS (new `ChipCartridgeChecks`, `--chips`, 131,105 checks; `MachineModelChecks` updated to one model per tier); Python 106 OK; package OK; diff-check OK. The hologram shader compiles with glslang.
+- **Renders:** offline only (the scratchpad's `renders-chip-overhaul`, 61 sheets at 720p, 1080p and 3440×1440). No Unity, GPU or Windows run.
+- **Risks:**
+  - The 3D chip is now built crest-up; its orientation in the draft hand is not verified in-engine.
+  - On an 8-offer row, adjacent Epic+ fins come within about 2 px.
+  - A first card drawn before the background bake finishes bakes on the spot (a small hitch).
+- **Impact:** presentation only; chip rules, stats, drops, rarity and draft logic are unchanged.
