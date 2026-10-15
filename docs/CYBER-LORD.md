@@ -100,6 +100,72 @@ legs keep moving), the Plasma Byte fireball look on today's Bit Bolt events, the
 and every v2 ability's poses, effects, HUD cards and icons, previewed in the sandbox until the v2 record lands. Status per
 branch is in DEV_LOG.
 
+Melee and shared side (`claude/cyberlord-v2-melee`): the hardlight string is live today on v1's three steps (jab, cross,
+Pulse Palm on v1's replicated windows); v2's five steps, Uplink, Overclock, Fork Bomb, Glitch Cut and Meteor Byte draw from
+the proposed record below once it carries Version 2, and play now in the Dev Sandbox preview.
+
+### Melee and shared presentation (v2)
+
+**The hardlight string (live on v1 today).** `Core/CyberLordCombo.cs` replaces the captured sword takes for the Cyber
+Lord's combo with authored boxing strikes on the replicated swing (`CyberCombo.Swing`: At, Hit = the kit's Release, Until):
+key tables per strike (guard, load, the blow on the hit, a short hold, the recovery) sampled with C1 Hermite curves; the
+hips, spine and chest turn and lean in the facing frame, the fists are chest-space IK targets with their own wrist frames,
+the rear hand stays at the chin. The blow's apex lands on the replicated hit (checked). A chained step carries on from the
+pose the rig actually showed; the first eases in from the stance over most of its windup; every blend turns each hand's
+frame and elbow pole as one rotation and swings the fists round the shoulders (`CyberLordMotion.StrikeBlend`), so nothing
+flips. The feet do real footwork (`CyberComboFeet`): the jab steps the lead foot in 12 cm, the cross pivots the rear foot on
+its ball, the spin hops round with the hips, the uppercut rises onto the toes and hops, the palm stomps in 18 cm; a foot on
+the floor never slides (checked under 6 mm per frame), feet stay pinned through the settle and the gait steps them back to
+its stance. Effects (`Core/CyberLordComboFx.cs`): white-core hardlight ribbons behind the striking fist with pixel bits and a
+snap flare at full extension, the spin's tilted crescent, the uppercut's climbing sparks, the palm's flash, hex shock rings,
+shards and stomp blocks. v1's rules, windows and hit events are unchanged; Kernel Panic and the entrance keep their takes.
+
+**The v2 path (waits for the record).** Files: `Core/CyberKit2Melee.cs` (the proposed record `CyberKit2MeleeRecord`, its
+source, the view `CyberLordView.Kit2`, the one mapping `CyberKit2MeleeFeed`, the shared body paths and the fixture),
+`Core/CyberKit2MeleeMotion.cs` (the poses), `Core/CyberKit2MeleeFx.cs`, `Core/CyberKit2MeleeHud.cs`,
+`Core/CyberKit2MeleeSounds.cs`, `Runtime/NativeCyberKit2MeleePresentation.cs`. `CyberLordFeed.Read` calls
+`CyberKit2MeleeFeed.Read` at its end; only a record with Version 2 maps, and then v1's combo and Q to 3 windows are cleared
+(Kernel Panic and the ranged mode stay). Anything else leaves v1 bit-identical (checked: poses and effects).
+- String: jab, cross, spinning backfist (a hop-turn, the lead fist flung out across the front), rising uppercut (drop, drive
+  onto the toes, a short hop), Pulse Palm; the same strike machinery as v1's.
+- Uplink: the cast pose and a cable (white core, cyan sheath, spinning links, a hex anchor) that flies at CableSpeed; a zip
+  pose dragged along it with RGB-split streaks and a landing burst; a yank (the caster hauls, the victim is pulled and
+  sparks with the stun); a miss reels back.
+- Overclock: a flex and a white burst with a ring, then for 6 s RGB-split afterimages, a white-hot aura (`FlareOf`), fist
+  crackle, chained arcs on `overclock` events and the HUD's edge glitch. `NativeCyberLordFx.OverclockSplit` is the hook for
+  the ranged split's look.
+- Fork Bomb: three see-through clones of the pilot model in `ForkSlot` formation, each posed on a rig of its own copying the
+  caster's swing with a .06 s + .035 s x i lag (stand-in records under ids -2000 - caster x 3 - i, presentation only),
+  glitch shimmer, a dash streak and a burst with an upright glitch ring.
+- Glitch Cut: a coiled windup, the dash-slash streak with afterimages along the path, marks on every marked pilot, all
+  detonating at DetonateAt (white X slashes, shards) with a freeze-frame flash on the caster's and the marked pilots'
+  screens.
+- Meteor Byte: crouch, leap (`LeapArc`), hover with a raised fist building a giant (about 0.8 m) hardlight fist and a floor
+  reticle (upright posts, a floating hex ring) following the live aim, a dive (`DiveShare`) led by the fist, an impact
+  shockwave and a crater of upright shards that lingers CraterSeconds. Nothing glows flat on the floor (checked).
+- HUD: the Q, E, 1, 2, 3 cards switch to UPLINK, OVERCLOCK, FORK BOMB, GLITCH CUT, METEOR BYTE with their class-icon art
+  (`ability-uplink`, `ability-overclock`, `ability-hardlight-combo`, `ability-fork-bomb`, `ability-glitch-cut`,
+  `ability-meteor-byte`; `tools/export_class_icons.mjs`); the 4 card stays Kernel Panic's.
+- Audio: existing bank keys only, each with a shipped fallback clip (`CyberKit2MeleeSounds.Keys`).
+
+**Preview.** In the Developer Sandbox as a Cyber Lord: DEV panel, Previews, Galleries, "Preview Cyber Kit v2 melee"
+(`gallery-cyber-kit2`). A 17 s loop on your own pilot from where you stand, along your facing (the nearest pilot ahead,
+such as the dummy, is the target): the five-step string, an Uplink zip (onto the first surface ahead, else 10 m out), an Uplink yank on the dummy, the
+Overclock and a fast string, the Fork Bomb with a string and a burst, a Glitch Cut, a Meteor Byte 10 m ahead. The preview
+writes the record as the proposed host would and moves only the drawn bodies (yours along the zip, dash and arc; the yanked
+dummy); the authority, damage and movement are untouched. Toggle it off to return to v1.
+
+**Contract additions and corrections for Astra (the record's names are hers to choose: only `CyberKit2MeleeFeed.Read`
+changes).**
+- Uplink also needs `LatchAt` (the cable's arrival; the zip and the yank start there), and an outcome 0 while the cable is
+  still flying. Positions: the caster's points (UplinkFrom, CutFrom, CutTo, MeteorFrom) are Rigidbody centres like v1's;
+  the clones' positions, burst points and the meteor's target are floor points; the anchor is the hit point.
+- Per slot a cut time (`CutAt`) when an interrupt ends a cast, and the combo step for the LMB window (-1 none).
+- Event Details for the new string steps: `cyber-spin`, `cyber-rise` (the jab, cross and palm keep `cyber-jab`,
+  `cyber-cross`, `cyber-palm`). The `overclock` arc event's From should be the struck pilot's point it hops from.
+- The body paths the effects assume (`CyberKit2Melee.ZipBody`, `YankBody`, `CutBody`, `MeteorBody`): the poses always read
+  the replicated body; if the host moves bodies differently, report it and the helpers follow.
+
 ## The contract and the one field mapping
 
 Everything reads replicated data through **`CyberLordFeed`** (`Core/NativeCyberLord.cs`). It is the only presentation
