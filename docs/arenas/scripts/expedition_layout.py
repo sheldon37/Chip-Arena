@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import expedition_city as city, expedition_ward_zero as ward
 from expedition_common import block_hash, id_ok
 
-REVISION = 'exp-layout-2'     # bump when any generated record or map hash changes (the test pins this with the hashes)
+REVISION = 'exp-layout-3'     # bump when any generated record or map hash changes (the test pins this with the hashes)
 TESTS = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'unity', 'ChipArenaConversion', 'Tests'))
 FIXTURES = {'city': 'expedition-city-draft.json', 'ward': 'expedition-ward-zero-draft.json', 'json': 'expedition-layout-draft.json'}
 

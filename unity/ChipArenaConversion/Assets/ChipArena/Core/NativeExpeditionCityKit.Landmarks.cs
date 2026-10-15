@@ -24,8 +24,11 @@ namespace ChipArena.UnityConversion
                 if(d.closure==null)continue;double a=d.closure.yaw*Math.PI/180;var f=FaceAt(d.closure.x+Math.Sin(a)*.2,d.closure.z+Math.Cos(a)*.2,-Math.Sin(a),-Math.Cos(a));
                 if(f!=null){double u=U(f,d.closure.x,d.closure.z),w=d.closure.sx/2+UnitWing+.1;f.Keep.Add(new[]{u-w,u+w,-1,UnitTop});}
             }
-            // The reserved doorways (docs/EXPEDITION-LAYOUT.md: exp-foundry at (-44, 0, 0) facing +x, exp-transit at (0, 0, -44) facing +z).
-            var fd=FaceAt(-44,0,1,0);if(fd!=null)fd.Keep.Add(new[]{-3.9,3.9,-1,5.4});var tr=FaceAt(0,-44,0,1);if(tr!=null)tr.Keep.Add(new[]{-4.4,4.4,-1,4.0});
+            // The reserved doorways (the hub record's, exp-layout-3: exp-foundry at (-84, 0, 0) facing +x, exp-transit at (0, 0, -84)
+            // facing +z; the same places without it).
+            double fx=-84,fz=0,tx=0,tz=-84;
+            if(hub!=null)foreach(var r in hub.Routes){if(!r.Reserved)continue;if(r.To=="exp-foundry"){fx=r.X;fz=r.Z;}else if(r.To=="exp-transit"){tx=r.X;tz=r.Z;}}
+            var fd=FaceAt(fx,fz,1,0);if(fd!=null){double u=U(fd,fx,fz);fd.Keep.Add(new[]{u-3.9,u+3.9,-1,5.4});}var tr=FaceAt(tx,tz,0,1);if(tr!=null){double u=U(tr,tx,tz);tr.Keep.Add(new[]{u-4.4,u+4.4,-1,4.0});}
         }
         /// <summary>The building face whose plane passes through (x, z) facing (dx, dz) (its dominant axis), or null.</summary>
         private Face FaceAt(double x,double z,double dx,double dz)

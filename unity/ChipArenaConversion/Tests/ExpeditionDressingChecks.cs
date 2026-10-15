@@ -25,7 +25,8 @@ namespace ChipArena.UnityConversion
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Expedition dressing: "+what);count++;}
         /// <summary>The budgets (instances per draw are NativeBlockLooks.Chunk = 500).</summary>
-        internal const int MaxParts=8000,MaxLowParts=5000,MaxCasters=1000,MaxBackdrop=3000,MaxQuads=NativeExpeditionCityFx.Capacity;
+        // The hub (exp-layout-3) doubled the town's area: its wilds, fence and markers raised the kit's budget from 8000 / 5000 parts (16 to 26 instanced draws).
+        internal const int MaxParts=13000,MaxLowParts=8000,MaxCasters=1200,MaxBackdrop=3000,MaxQuads=NativeExpeditionCityFx.Capacity;
         private struct World{public double X0,X1,Y0,Y1,Z0,Z1;public double[] Cx,Cz;}
         private static World Pose(ContentBlock b,in NativeCityPart p)
         {
@@ -56,15 +57,16 @@ namespace ChipArena.UnityConversion
             count=0;var o=new JsonSerializerOptions{IncludeFields=true};string R(string f)=>File.ReadAllText(Path.Combine(root,f));
             var maps=JsonSerializer.Deserialize<UnityMapContent>(R("Assets/Conversion/Resources/UnityMaps.json"),o).maps;var town=maps.Single(m=>m.id==NativeExpeditionCityKit.MapId);var blocks=town.blocks;
             var layout=NativeExpeditionLayout.Parse(R("Assets/Conversion/Resources/ExpeditionLayout.json"));var area=layout.areas.Single(a=>a.map==town.id);
+            var hub=ExpeditionHubLayout.Parse(R("Assets/Conversion/Resources/ExpeditionLayout.json"),area.id);Check(hub!=null,"the town's hub record (exp-layout-3)");
             var set=JsonSerializer.Deserialize<MapLookSet>(R("Assets/Conversion/Resources/MapLooks.json"),o);NativeMapLooks.Validate(set);var look=NativeMapLooks.ByLook(set,town.look);
             Check(look!=null&&look.id==town.id&&NativeBlockLooks.Dressed(look,false),"the town's look is dressed");
             Check(look.dressing==NativeExpeditionCityKit.MapId&&look.backdrop==NativeExpeditionCityKit.MapId&&look.atmosphere==NativeExpeditionCityKit.MapId&&look.ambience==NativeExpeditionCityAmbience.Id,"the look names the town's dressing, backdrop, atmosphere and ambience");
 
             // ---------------- determinism ----------------
-            var sw=System.Diagnostics.Stopwatch.StartNew();var kit=NativeExpeditionCityKit.Build(blocks,area);long ms=sw.ElapsedMilliseconds;var again=NativeExpeditionCityKit.Build(blocks,area);
+            var sw=System.Diagnostics.Stopwatch.StartNew();var kit=NativeExpeditionCityKit.Build(blocks,area,hub,town.bounds);long ms=sw.ElapsedMilliseconds;var again=NativeExpeditionCityKit.Build(blocks,area,hub,town.bounds);
             Check(kit.Parts.Length>0&&kit.Parts.SequenceEqual(again.Parts)&&kit.Glows.SequenceEqual(again.Glows),"two builds give the same parts and lights ("+kit.Parts.Length+" parts, "+kit.Glows.Length+" lights, built in "+ms+" ms)");
             string Key(in NativeCityPart p,ContentBlock[] bs)=>bs[p.Parent].id+"|"+string.Join(",",new double[]{p.X,p.Y,p.Z,p.Hx,p.Hy,p.Hz,p.Qx,p.Qy,p.Qz,p.Qw,p.Gain,p.Level,p.Param}.Select(v=>Math.Round(v,4)))+"|"+p.Look+"|"+p.Flags+"|"+p.Color+"|"+p.Drive+"|"+p.Role+"|"+p.Shadow+p.Fade+p.Detail;
-            var reversed=blocks.Reverse().ToArray();var flat=NativeExpeditionCityKit.Build(blocks,area,false);var flatRev=NativeExpeditionCityKit.Build(reversed,area,false);
+            var reversed=blocks.Reverse().ToArray();var flat=NativeExpeditionCityKit.Build(blocks,area,hub,town.bounds,false);var flatRev=NativeExpeditionCityKit.Build(reversed,area,hub,town.bounds,false);
             var mine=flat.Parts.Select(p=>Key(p,blocks)).OrderBy(x=>x,StringComparer.Ordinal).ToArray();var theirs=flatRev.Parts.Select(p=>Key(p,reversed)).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
             Check(mine.SequenceEqual(theirs),"each block's dressing depends on its id, not on the blocks' order ("+mine.Length+" parts compared before the layers)");
             Check(kit.Parts.All(p=>p.Parent>=0&&p.Parent<blocks.Length&&NativeExpeditionCityKit.Stem(blocks[p.Parent].id)!=null&&p.Hx>0&&p.Hy>0&&p.Hz>0&&Math.Abs(p.Qx*p.Qx+p.Qy*p.Qy+p.Qz*p.Qz+p.Qw*p.Qw-1)<1e-3),"every part hangs on a town block, has a size and a unit turn");
@@ -108,7 +110,7 @@ namespace ChipArena.UnityConversion
                 {
                     var x=Aabb(v);if(isFlat||w.Y0>=2.6||!BoxHit(w,x[0],x[1],x[2],x[3],x[4],x[5]))continue;var stem=NativeExpeditionCityKit.Stem(b.id);
                     bool onWall=stem.StartsWith("bldg-",StringComparison.Ordinal)&&Enumerable.Range(0,8).All(k=>Outside(b,w.Cx[k],w.Cz[k])<=NativeExpeditionCityKit.WallBand+.012);
-                    Check(stem.StartsWith("sanctuary-barricade-",StringComparison.Ordinal)||stem=="sanctuary-brazier"||onWall,"the sanctuary floor holds only flat paint, the barricades' and brazier's dressing and its walls' own: "+at);
+                    Check(stem.StartsWith("sanctuary-barricade-",StringComparison.Ordinal)||stem.StartsWith("sanctuary-fence-",StringComparison.Ordinal)||stem=="sanctuary-brazier"||onWall,"the sanctuary floor holds only flat paint, the fence's and brazier's dressing and its walls' own: "+at);
                 }
             }
             // Every door spawn has its doorway and every vent its grate; nothing else covers a doorway.
@@ -127,16 +129,18 @@ namespace ChipArena.UnityConversion
             Check(!NativeExpeditionCityKit.Active("brickfall")&&!NativeExpeditionCityKit.Active("cybercity")&&!NativeExpeditionCityKit.Active("siren")&&!NativeExpeditionCityKit.Active("expedition-ward-zero")&&NativeExpeditionCityKit.Active(town.id),"the dressing is gated on the town's map id");
             var back=NativeExpeditionCityScenery.Build(out var fires);var back2=NativeExpeditionCityScenery.Build(out var fires2);
             Check(back.SequenceEqual(back2)&&fires.SequenceEqual(fires2),"the skyline is the same every build");
-            Check(back.All(b=>b.Y+b.Hy<=.001f&&!NativeExpeditionCityScenery.Inside(b,NativeExpeditionCityScenery.Edge-.001)||!NativeExpeditionCityScenery.Inside(b)),"the skyline stands beyond ±"+NativeExpeditionCityScenery.Inner+" m; its ground plates meet the town's edge");
+            Check(back.All(b=>b.Y+b.Hy<=.001f&&!NativeExpeditionCityScenery.Inside(b,-.001)||!NativeExpeditionCityScenery.Inside(b)),"the skyline stands "+NativeExpeditionCityScenery.Margin+" m or more beyond the town's edge; its ground plates meet the edge");
+            Check(blocks.All(b=>b.pos.x-b.size.x/2>=NativeExpeditionCityScenery.EdgeMinX-.001&&b.pos.x+b.size.x/2<=NativeExpeditionCityScenery.EdgeMaxX+.001&&b.pos.z-b.size.z/2>=NativeExpeditionCityScenery.EdgeMinZ-.001&&b.pos.z+b.size.z/2<=NativeExpeditionCityScenery.EdgeMaxZ+.001)
+                &&town.bounds.minX==NativeExpeditionCityKit.TownMinX&&town.bounds.maxX==NativeExpeditionCityKit.TownMaxX&&town.bounds.minZ==NativeExpeditionCityKit.TownMinZ&&town.bounds.maxZ==NativeExpeditionCityKit.TownMaxZ,"the skyline's edge and the kit's default bounds are the imported town's");
 
             // ---------------- budgets ----------------
             int lowTier=kit.Parts.Count(p=>!p.Detail),casters=kit.Parts.Count(p=>p.Shadow);int Draws(int n)=>(n+NativeBlockLooks.Chunk-1)/NativeBlockLooks.Chunk;
             Check(kit.Parts.Length<=MaxParts&&lowTier<=MaxLowParts&&casters<=MaxCasters,"kit budget: "+kit.Parts.Length+" parts (≤"+MaxParts+"), "+lowTier+" on the low tier (≤"+MaxLowParts+"), "+casters+" casting (≤"+MaxCasters+")");
             Check(back.Length<=MaxBackdrop&&fires.Length>=3&&fires.Length<=NativeExpeditionCityScenery.MaxFires,"skyline budget: "+back.Length+" boxes (≤"+MaxBackdrop+"), "+fires.Length+" burning towers");
             Console.WriteLine("   town dressing: kit "+kit.Parts.Length+" parts in "+(Draws(kit.Parts.Length-casters)+Draws(casters))+" draws ("+casters+" casting), low tier "+lowTier+" in "+(Draws(lowTier)+1)+"; skyline "+back.Length+" boxes in "+Draws(back.Length)+" draws; "+kit.Glows.Length+" light sources; "+kit.Rejected+" placements refused by the records");
-            var scene=NativeCityFxScene.Build(blocks,kit,fires,look);var lights=NativeExpeditionCityLights.Build(kit,look);var fx=new NativeExpeditionCityFx();var sun=new NativeFxLight();for(int k=0;k<9;k++)sun.Ambient[k]=.05;
+            var scene=NativeCityFxScene.Build(blocks,kit,fires,look,hub);var lights=NativeExpeditionCityLights.Build(kit,look);var fx=new NativeExpeditionCityFx();var sun=new NativeFxLight();for(int k=0;k<9;k++)sun.Ambient[k]=.05;
             Check(lights.Candidates.Length>=30&&lights.Candidates.Count(c=>c.Kind==255)==look.lights.Length,"the picker pools the look's "+look.lights.Length+" lights and the kit's ("+lights.Candidates.Length+" candidates)");
-            int most=0;double[][] eyes={new[]{0,2.3,6.0},new[]{0,2.3,20.0},new[]{30,2.3,0.0},new[]{0,2.2,45.0},new[]{-20,2.3,-20.0},new[]{0,60,-80.0}};
+            int most=0;double[][] eyes={new[]{0,2.3,6.0},new[]{0,2.3,20.0},new[]{30,2.3,0.0},new[]{0,2.2,45.0},new[]{-20,2.3,-20.0},new[]{0,60,-80.0},new[]{66,2.3,0.0},new[]{-70,2.3,4.0},new[]{0,2.3,-70.0}};
             foreach(var q in new[]{1.0,.3})foreach(bool lo in new[]{false,true})foreach(var e in eyes){fx.Build(scene,31.3,e[0],e[1],e[2],1,0,0,0,1,0,sun,q,lo);most=Math.Max(most,fx.Quads.Count);Check(fx.Quads.Count<MaxQuads,"the atmosphere fits its buffer");}
             fx.Build(scene,31.3,0,2.3,6,1,0,0,0,1,0,sun,1,false);int full=fx.Quads.Count,flames=fx.Flames;fx.Build(scene,31.3,0,2.3,6,1,0,0,0,1,0,sun,.3,true);
             Check(fx.Quads.Count<full&&fx.Flames==flames,"the low tier thins the atmosphere ("+full+" → "+fx.Quads.Count+" quads at the sanctuary) but keeps the flames");

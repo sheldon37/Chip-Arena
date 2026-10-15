@@ -135,7 +135,7 @@ namespace ChipArena.UnityConversion
         {
             if(Event.current.type!=EventType.Repaint)return;double t=expeditionStateTime;bool reduced=prefs.reducedEffects;
             ExpeditionSafeTagsHud(v);
-            expeditionSafe.From(v,expeditionStateLabels);NativeExpeditionStatesHud.Safe(v,expeditionSafe,24,90);
+            expeditionSafe.From(v,expeditionStateLabels);NativeExpeditionStatesHud.Safe(v,expeditionSafe,24,90);ExpeditionHolsterHud(expeditionSafe.Shown);
             expeditionBoss.From(v,expeditionCues,t,expeditionStateLabels);NativeExpeditionStatesHud.BossPlates(expeditionBoss,width,countdownBottom,Time.unscaledTime,reduced);
             if(expeditionBoss.Intro>=0)NativeExpeditionStatesHud.BossIntro(expeditionBoss,width,height,(float)expeditionBoss.Age,reduced);
             var rig=ExpeditionRigFor(v);if(rig==null)return;

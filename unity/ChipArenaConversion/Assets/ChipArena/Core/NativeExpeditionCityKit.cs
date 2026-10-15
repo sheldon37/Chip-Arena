@@ -113,14 +113,15 @@ namespace ChipArena.UnityConversion
         /// <summary>Builds the kit for the town's blocks and its layout area (either may be null: no spawn dressing and no
         /// keep-outs without the area). `layers`: parts flush with a block or an earlier part stand clear of it
         /// (NativeSurfaceLayers.Over; off only for the surface audit's before count).</summary>
-        public static NativeExpeditionCityKit Build(ContentBlock[] blocks,ExpeditionAreaLayout area,bool layers=true)
+        public static NativeExpeditionCityKit Build(ContentBlock[] blocks,ExpeditionAreaLayout area,bool layers=true)=>Build(blocks,area,null,null,layers);
+        private NativeExpeditionCityKit Make(bool layers)
         {
-            var k=new NativeExpeditionCityKit{blocks=blocks??Array.Empty<ContentBlock>(),area=area};
+            var k=this;
             for(int i=0;i<k.blocks.Length;i++){var s=Stem(k.blocks[i]?.id);if(s!=null&&!k.byStem.ContainsKey(s))k.byStem[s]=i;}
             if(k.byStem.Count==0)return k;
-            k.Faces();k.KeepOuts();k.FaceKeeps();
+            k.Faces();k.KeepOuts();k.HubKeepOuts();k.FaceKeeps();
             for(int i=0;i<k.blocks.Length;i++){var s=Stem(k.blocks[i]?.id);if(s==null)continue;k.Dress(i,s);}
-            k.Spawns();k.Street();
+            k.HubHeaders();k.Spawns();k.Street();k.WildsGround();
             k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Keeps=k.keeps.ToArray();k.parts.Clear();k.glows.Clear();if(layers)Layers(k.Parts,k.blocks);return k;
         }
         private static void Layers(NativeCityPart[] parts,ContentBlock[] blocks)
@@ -269,10 +270,10 @@ namespace ChipArena.UnityConversion
             var b=blocks[block];double x0=b.pos.x-b.size.x/2,x1=b.pos.x+b.size.x/2,z0=b.pos.z-b.size.z/2,z1=b.pos.z+b.size.z/2,y0=b.pos.y-b.size.y/2,y1=b.pos.y+b.size.y/2;
             var f=new Face{Block=block,Axis=axis,Sign=sign,Index=(axis==0?0:2)+(sign>0?0:1),Base=y0,Top=y1};f.Plane=f.Axis==0?(f.Sign>0?x1:x0):(f.Sign>0?z1:z0);
             // A face beyond the bounds that looks out of the town is never seen.
-            if(Math.Abs(f.Plane)>=59.9&&Math.Sign(f.Plane)==f.Sign)return null;
+            if(f.Axis==0?(f.Sign>0?f.Plane>=bx1-.1:f.Plane<=bx0+.1):(f.Sign>0?f.Plane>=bz1-.1:f.Plane<=bz0+.1))return null;
             double ua=f.Axis==0?U(f,0,z0):U(f,x0,0),ub=f.Axis==0?U(f,0,z1):U(f,x1,0);f.U0=Math.Min(ua,ub);f.U1=Math.Max(ua,ub);
-            // The town ends at ±60: the faces' useful span stops there.
-            if(f.Axis==0){double a=U(f,0,-60),c=U(f,0,60);f.U0=Math.Max(f.U0,Math.Min(a,c));f.U1=Math.Min(f.U1,Math.Max(a,c));}else{double a=U(f,-60,0),c=U(f,60,0);f.U0=Math.Max(f.U0,Math.Min(a,c));f.U1=Math.Min(f.U1,Math.Max(a,c));}
+            // The town ends at its bounds: the faces' useful span stops there.
+            if(f.Axis==0){double a=U(f,0,bz0),c=U(f,0,bz1);f.U0=Math.Max(f.U0,Math.Min(a,c));f.U1=Math.Min(f.U1,Math.Max(a,c));}else{double a=U(f,bx0,0),c=U(f,bx1,0);f.U0=Math.Max(f.U0,Math.Min(a,c));f.U1=Math.Min(f.U1,Math.Max(a,c));}
             if(f.U1-f.U0<.3)return null;Occluders(f);f.Front=Front(f);return f;
         }
         // Other blocks against the face (within 0.35 m of its plane: neighbours, breach panels, shutters) hide it; low blocks within
@@ -346,6 +347,8 @@ namespace ChipArena.UnityConversion
             else if(s=="foundry-shutter")FoundryShutter(i);
             else if(Starts(s,"transit-"))TransitPiece(i,s);
             else if(Starts(s,"sanctuary-barricade-"))Barricade(i,s);
+            else if(Starts(s,"sanctuary-fence-"))Fence(i,s);
+            else if(Starts(s,"wild-"))WildPiece(i,s);
             else if(s=="sanctuary-brazier")Brazier(i);
             else if(Starts(s,"square-"))Square(i,s);
             else if(Starts(s,"car-")||Starts(s,"taxi-")||Starts(s,"ambulance-")||Starts(s,"bus-")||Starts(s,"truck-"))Vehicle(i,s);
