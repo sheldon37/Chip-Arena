@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Astra — Expedition chooser hold supersedes PR #234
+- Branch `codex/expedition-choice-hold`, base shared/builder `6558b024b74acde24fbb94b2ec3562bffaab0b34`. Current owner direction restores the host hold while keeping damage and world/difficulty time live.
+- OpenChoice feeds the existing authoritative Frozen/input-cancellation/position hold. Camera yaw/pitch survive; movement, attacks, abilities, roll, reload and block cancel; machine/cache purchases refuse. Possession cannot route chooser input to another pilot.
+- Final Select emits Install once and holds until its run timestamp + `NativeDraftPlant.ReturnEnd` (1.95 s). Automatic CloseChoice cannot shorten it. Queued/unopened owned rewards retain the tray hold; explicit CloseChoice before the final plant releases it. Death, disconnect, extraction, area load and save resume clear both flag and deadline. No damage immunity or global pause is added.
+- Updated native M1 hold/camera/momentum/interaction/damage/install checks; integration checks cover plant deadline, continued clock, lifecycle cleanup, privacy and replay. Tray checks now assert retained hold after consumption. Presentation contract supersedes the old mobility instruction; wrist animation rendering remains Claude-owned.
+- Focused integration: 88 assertions pass; tray: 225 checks pass. Pinned Unity 6000.3.24f1 / C# 9 Player, Runtime and Editor compile passed. Full regression/relay and final source compile receipts are recorded in the PR. Native Unity/PhysX M1 execution, Windows player and live host/guest are unrun here. Branch implementation, not a playable release receipt.
+
 ## 2026-10-15 — Astra — Expedition chooser vulnerability correction
 - Branch `codex/unity-expedition-chip-vulnerable`, based on PR #233 head `74c4117`. Owner explicitly reversed the original freeze request. This entry supersedes the choosing freeze described below; preserve the public flag and open/close intents for Claude’s chip-screen/hologram binding.
 - Remove choosing from Frozen/input cancellation and the machine interaction guard. No choosing-based movement/action lock, damage immunity or world/clock pause. Existing status-effect freezes remain unchanged. Apply inventory before emitting the successful Select Install event; keep exactly-once behavior and C notices. No offer, balance, hit timing or wire-field changes.
@@ -8912,3 +8919,36 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - Durable saves pinned to the exp-layout-2 fingerprint will not resume on the new town (the director refuses them).
   - The gate leaf hinge overlaps its post by a few centimetres at 160 degrees.
 - **Movement, collision and networking impact:** the town's colliders and navigation change as listed above. There is no change to hit timing, hitboxes, damage, cooldowns, movement rules, networking or saves code.
+
+
+## 2026-10-15 — Astra — Expedition hub authority
+
+- Branch `codex/expedition-hub-authority`, base Claude hub `3c13863` (contains shared
+  `f29d7c9`; shared subsequently merged that hub at `6558b024`). Owner approved gate,
+  permanent horde ward, anti-camping, and living-player hub spawn rules in chat.
+- Implements four host-operated gates, 2.5 s clear auto-close, capsule occupancy
+  protection, collider motion thresholds, anti-vault columns and permanent horde-only
+  collision layer 28. Scoped horde routing rejects gate links; no town vent bypass.
+- Adds .25 s holster/instant exit, 1.5 s old-target aggro grace/no new safe targets,
+  projectile/acid/melee-shot ward and central damage guards, origin-preserving DoT
+  credit, ring rewards and safe summon/recruit damage checks.
+- Town refill: living connected/unextracted member cap `min(16,2+2*n)`, one attempt
+  per 3 s, authored weighted near/mid/far exits and rosters, no Hulks, silent
+  far/idle/lost-target despawn and population shrink; final boss restores its cap.
+  No optional income soft cap. Far-distance test uses conservative Euclidean >60 m
+  rather than an expensive per-mob walked-distance search. See EXPEDITION-HUB.md.
+- Public `ExpeditionView.hub` is detached, serializable, privacy-safe, carried by
+  the existing 20 Hz transport and bound to Claude's Authority/AuthorityClock hooks.
+  Source-only updates at unchanged run revision are covered by receiver checks.
+- Checks: Unity 6000.3.24f1 / C# 9 player, editor-context runtime, Editor semantic
+  compilation PASS; managed/real relay suite 722 PASS lines, exit 0; focused hub
+  authority 80 checks and existing hub 169 checks PASS; Python 107 tests OK (1 skip).
+  Native acceptance extended for colliders, obstruction, holster/aggro timing,
+  cadence/cap, damage and outside DoTs; Windows/PhysX execution pending builder.
+- Presentation ownership preserved: only binds Claude's existing gate/ward/holster
+  hooks. Gameplay changes affect input, collision, damage eligibility, AI and economy;
+  weapon hit windows, damage values and animations otherwise unchanged.
+- Full multiplayer Expedition launch remains a separate pre-existing integration
+  gap; replicated hub DTO is tested, live two-client play is not claimed.
+- Publication: source branch/shared/builder promotion and Windows package status
+  recorded in PR/final handoff. No native release is inferred from these checks.

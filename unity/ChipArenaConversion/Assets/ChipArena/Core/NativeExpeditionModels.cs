@@ -10,6 +10,7 @@ namespace ChipArena.UnityConversion
     {
         public string account, weapon;
         public bool connected, alive=true, safe=true, extracted, choosing;
+        public double choosingUntil; // Final Install time + wrist plant duration; cleared on lifecycle transitions.
         public int wallet, catchup, initialCatchup;
         public string carriedBy;
         public string[] perks=Array.Empty<string>();

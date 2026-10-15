@@ -26,13 +26,13 @@ namespace ChipArena.UnityConversion
             // crossing a floor/ceiling or wall; no pilot/prop is damaged before its landing clock.
             var previous=from;var nf=new System.Numerics.Vector3(from.x,from.y,from.z);var nt=new System.Numerics.Vector3(to.x,to.y,to.z);
             for(int i=1;i<=24;i++)
-            {NativeHordeFx.Glob(nf,nt,flight,flight*i/24,out var v);var current=new Vector3(v.X,v.Y,v.Z);if(SceneLinecast(previous,current,WorldMask))return;previous=current;}
+            {NativeHordeFx.Glob(nf,nt,flight,flight*i/24,out var v);var current=new Vector3(v.X,v.Y,v.Z);if(HubCross(previous,current)||SceneLinecast(previous,current,WorldMask))return;previous=current;}
             var r=new NativeAcidRecord{devMonster=m.DevMonster,devTarget=m.DevMonster&&m.DevBehaviour!="frenzy"?target.Seat.id:0,id=++nextAcid,actor=m.Id,from=Vec(from),to=Vec(to),at=Time,flight=flight,damageScale=a.DamageScale};
             pveAcid.Add(new PveAcidState{Record=r,PoisonAt=Time+flight,CorrodeAt=Time+flight+NativeSpitterRules.CorrosionInterval});
             Emit(EventKind.Impact,m.Owner,m.Id,to,flight,"minion-spit",radius:NativeSpitterRules.Radius,from:from);
         }
         private bool AcidTouches(NativePilot p,NativeAcidRecord r,float radius)
-        {return (!r.devMonster||r.devTarget==0||r.devTarget==p.Seat.id)&&p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss&&NativeSpitterRules.Touch(r.to,Vec(p.Body.position),p.Collider.height/2,p.Collider.radius,radius)&&!SceneLinecast(Vec(r.to)+Vector3.up*.1f,p.Body.position,WorldMask);}
+        {return !HubCross(Vec(r.to),p.Body.position)&&(!r.devMonster||r.devTarget==0||r.devTarget==p.Seat.id)&&p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss&&NativeSpitterRules.Touch(r.to,Vec(p.Body.position),p.Collider.height/2,p.Collider.radius,radius)&&!SceneLinecast(Vec(r.to)+Vector3.up*.1f,p.Body.position,WorldMask);}
         private void StepPveAcid()
         {
             for(int i=pveAcid.Count-1;i>=0;i--)

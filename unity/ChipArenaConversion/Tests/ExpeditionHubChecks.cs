@@ -94,6 +94,7 @@ namespace ChipArena.UnityConversion
 
         public static void Run(string root)
         {
+            ExpeditionHubAuthorityChecks.Run(root);
             count=0;var o=new JsonSerializerOptions{IncludeFields=true};string R(string f)=>File.ReadAllText(Path.Combine(root,f));
             string manifest=R("Assets/Conversion/Resources/ExpeditionLayout.json");var town=JsonSerializer.Deserialize<UnityMapContent>(R("Assets/Conversion/Resources/UnityMaps.json"),o).maps.Single(m=>m.id=="expedition-city");
             // ---------------- the record ----------------

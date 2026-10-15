@@ -64,6 +64,7 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class ExpeditionView
     {
+        public ExpeditionHubView hub;
         public ExpeditionClosureView[] closures=Array.Empty<ExpeditionClosureView>();
         public ExpeditionBossArrivalView[] bossArrivals=Array.Empty<ExpeditionBossArrivalView>();
         public ExpeditionAreaBarrierView areaBarrier=new ExpeditionAreaBarrierView();
@@ -98,6 +99,7 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The authority's scaling configuration (default: ExpeditionScaling's documented provisional values).</summary>
         public ExpeditionDirector Director;
+        public Func<ExpeditionHubView> Hub;
         public ExpeditionScaling Scaling;
         /// <summary>The last savepoint NativeExpeditionSaveStore.Write durably wrote. Extraction is only "saved" once its tombstone is in it.</summary>
         public ExpeditionSavepoint Saved;
@@ -193,6 +195,7 @@ namespace ChipArena.UnityConversion
                     rewards=s.rewards.Where(r=>r.owner==viewer&&(!r.consumed||r.id.StartsWith(loopKey,StringComparison.Ordinal))).Select(r=>new ExpeditionViewReward{id=r.id,source=r.source,boss=r.source=="boss"?BossKey(r.id):null,
                         selected=r.selected,claimed=r.claimed,consumed=r.consumed,highQuality=r.highQuality,offers=r.claimed&&!r.consumed?(string[])r.offers.Clone():Array.Empty<string>()}).ToArray()};
             }
+            v.hub=sources.Hub?.Invoke();
             v.closures=sources.Director?.Closures??Array.Empty<ExpeditionClosureView>();v.bossArrivals=sources.Director?.BossArrivals??Array.Empty<ExpeditionBossArrivalView>();v.areaBarrier=sources.Director?.Barrier??new ExpeditionAreaBarrierView();
             v.transfer=Transfer(run,s,sources);
             return v;

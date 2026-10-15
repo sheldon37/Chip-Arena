@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         public bool CanPurchase(string account,string cache)
         {
             var s=Session.Run.Snapshot();var i=Layout.Area(s.area)?.interactions.FirstOrDefault(i=>i.anchor==cache);
-            return i!=null&&s.members.Any(m=>m.account==account&&m.connected&&m.alive&&!m.extracted)&&Reach(account,new V3(i.x,i.y,i.z),i.range);
+            return !Session.Run.IsChoosing(account)&&i!=null&&s.members.Any(m=>m.account==account&&m.connected&&m.alive&&!m.extracted)&&Reach(account,new V3(i.x,i.y,i.z),i.range);
         }
         public bool Sanctuary(string account)
         {var s=Session.Run.Snapshot();var p=position(account);return p.HasValue&&(s.phase==ExpeditionPhase.Town||s.phase==ExpeditionPhase.Victory)&&Layout.Area(s.area).sanctuary.Any(v=>v.Contains(p.Value));}
