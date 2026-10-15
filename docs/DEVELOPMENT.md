@@ -18,6 +18,8 @@ Python 3 is needed only for desktop packaging. Put its executable on PATH as
 | Unit regression | `npm test` | Existing suite, known baseline failures; nonzero exit remains a failure. |
 | Standard checks | `npm run verify:standard` | Types, all unit tests, client/relay/server compilation. |
 | Broad checks | `npm run verify` | Standard checks plus real WebSocket match and local HTTPS relay integration; collects failures and exits nonzero. |
+| Relay checks (CI) | `npm run verify:relay` | Types, the relay's own tests (accounts, directory, local host invite, party join, relay) and the Worker relay build. This is what the Unity client still uses. |
+| Relay checks + HTTPS (CI) | `npm run verify:relay-full` | Relay checks plus the real HTTPS + SQLite relay round trip. |
 | Compile without release packages | `npm run build:check` | Generates icons/build identity; compiles client, Worker relay and Node server. |
 | Serve compiled game | `npm start` | After build:check; http://localhost:8788. |
 | WebSocket integration | `npm run test:network:local` | Own isolated server on :8792; override TEST_PORT if occupied. |
@@ -128,9 +130,14 @@ drop and the hooks).
 
 `.github/workflows/checks.yml` runs on PRs or explicit workflow_dispatch, with no
 push trigger, no publication jobs, no secrets, no paid AI and read-only contents.
-Docs-only PRs run whitespace/scope checks without dependencies/builds. Other edits
-run standard checks; cross-cutting edits run broad checks. There is one stable
-`Required checks` gate. npm's download cache is keyed by OS/architecture and the
+Docs-only PRs run whitespace/scope checks without dependencies/builds. Unity-only PRs
+(`unity/`, `docs/`, the Unity workflows) skip this job: `unity-conversion.yml` verifies them.
+Other edits run `verify:relay`; edits that can change the relay (`src/relay`, `src/shared`,
+`drizzle`, `db`, `.openai`, the relay tests, package/tsconfig, these scripts) run
+`verify:relay-full`. Owner direction 2026-10-15: the frozen Electron game's own suites
+(all other unit tests, the Electron client/server build, the WebSocket match) are no
+longer run in CI; they stay available locally through `npm test`, `verify:standard` and
+`verify`. There is one stable `Required checks` gate. npm's download cache is keyed by OS/architecture and the
 lockfile through setup-node. Logs expire after 7 days. There is no automatic
 Windows package workflow; the local procedure above is the phase-1 build path.
 
