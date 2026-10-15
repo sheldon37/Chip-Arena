@@ -8059,3 +8059,22 @@ alarms/hazards on Ward Zero (we have alarms on the music)". Branch `claude/ward-
 Not changed: Ward Zero's own stage sounds (shutters, burners, gas, grids, vents, Hulk breaches) and the music track's
 own level. If something on Ward Zero is still too loud after this, it is one of those; name it and I will look.
 Presentation/audio only: no hit timing, hitbox, damage, cooldown, movement, collision or networking change.
+
+## 2026-10-15 — Claude: shared/builder for test publication (PR #218, Ward Zero mute, CI C# 14 fix)
+
+Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e8fa456` (merge of
+`claude/ward-alarm-mute` `1efee8f`), `150075d` (CI compile fix), then this note.
+
+- CI fix: PR #218's `tools/check_unity_compile.py` compiles with `-langversion:latest`, C# 14 on the runner's
+  .NET 10.0.401 SDK. There a bare `field` inside a property accessor is the backing-field keyword, so
+  `NativeCeilingFieldPresentation.Count=>field.Count` failed (CS1061; `native-source` red on `886a584`). It now
+  reads `this.field`. Unity 6000.3 compiles C# 9 and was never affected. Reproduced with that script and SDK
+  10.0.401 locally (exit 1), passes after the fix (exit 0). For Astra: pin `-langversion:9.0` in the script so the
+  gate matches Unity.
+- Checks on `150075d`, one after the other: Unity Runtime and Editor compile (C# 9, Unity 6000.3.24f1 assemblies)
+  OK; CI's `check_unity_compile.py` (SDK 10.0.401) OK; `check_relay.py` rc 0, 688 PASS (hazard kit 6,417 checks
+  including the Ward Zero silence and its control); Python OK; `package_source.py` OK; `git diff --check` clean;
+  CI-layout rc 0, 688 PASS. PR #62 `verify` still fails only on the known Electron baseline.
+- Publication: owner asked to publish. Pushed to the builder branch for the desktop builder, which compiles in Unity,
+  validates and publishes the native test update. Not run here: Unity Editor/player, Windows, the test-channel
+  publish itself, or host/guest play.
