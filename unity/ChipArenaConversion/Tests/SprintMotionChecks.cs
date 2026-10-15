@@ -64,28 +64,31 @@ internal static class SprintMotionChecks
         }
         public Vector3 InChest(int bone)=>Vector3.Transform(Pose.WorldPosition[bone]-Pose.WorldPosition[CapturedRig.Chest],Quaternion.Inverse(Pose.WorldRotation[CapturedRig.Chest]));
         public Vector3 World(int bone)=>Root+Pose.WorldPosition[bone];
+        // The right blade's stretched tip (group space; the right hand off the melee route).
+        public Vector3 Tip=>Melee!=null&&MeleeSet.For(V.Spec)!=null?Pose.WorldPosition[CapturedRig.RHand]+Vector3.Transform(Melee.Rig.Reached(MeleeSet.For(V.Spec).Tip),Pose.WorldRotation[CapturedRig.RHand]):Pose.WorldPosition[CapturedRig.RHand];
         public float Weight=>Layer?.Weight??0;
     }
     private sealed class Range{public float Min=float.MaxValue,Max=float.MinValue;public void Add(float v){Min=Math.Min(Min,v);Max=Math.Max(Max,v);}public float PP=>Max-Min;}
     private static Vector3 YawPitchRoll(Quaternion q)
     {Vector3 f=Vector3.Transform(Vector3.UnitZ,q),r=Vector3.Transform(Vector3.UnitX,q);return new Vector3((float)Math.Atan2(f.X,f.Z)*Deg,(float)Math.Asin(Math.Clamp(-f.Y,-1,1))*Deg,(float)Math.Asin(Math.Clamp(r.Y,-1,1))*Deg);}
-    private struct Sprinted{public float Yaw,Roll,Nod,Sway,Feet,ZPump;public Vector3 Right,Left;}
+    private struct Sprinted{public float Yaw,Roll,Nod,Sway,Feet,ZPump,TipLow,TipHigh;public Vector3 Right,Left,Tip;}
     private static readonly int[] Feet={CapturedRig.LFoot,CapturedRig.RFoot,CapturedRig.LToe,CapturedRig.RToe};
     // A steady sprint: the torso's MeleeFeelChecks measures, the hands' mean carry in chest space, and the feet against the
     // same pilot without the layer (the gait's own planted feet).
     private static Sprinted Measure(string spec,bool layer)
     {
         var p=new Pilot(spec,layer);var twin=new Pilot(spec,false);var yaw=new Range();var roll=new Range();var nod=new Range();var sway=new Range();var pump=new Range();
-        Vector3 right=Vector3.Zero,left=Vector3.Zero;float feet=0;int n=0;
+        Vector3 right=Vector3.Zero,left=Vector3.Zero,tip=Vector3.Zero;float feet=0,tipLow=float.MaxValue,tipHigh=float.MinValue;int n=0;
         for(int f=0;f<270;f++)
         {
             float t=1+f*Dt;p.Frame(t,SprintSpeed,true);twin.Frame(t,SprintSpeed,true);if(f<90)continue;
             var c=YawPitchRoll(p.Pose.WorldRotation[CapturedRig.Chest]);yaw.Add(c.X);nod.Add(c.Y);roll.Add(c.Z);sway.Add(p.Pose.WorldPosition[CapturedRig.Head].X*100);
             right+=p.InChest(CapturedRig.RHand);left+=p.InChest(CapturedRig.LHand);pump.Add(p.InChest(CapturedRig.RHand).Z);n++;
+            var t0=p.Tip;tip+=Vector3.Transform(t0-p.Pose.WorldPosition[CapturedRig.Chest],Quaternion.Inverse(p.Pose.WorldRotation[CapturedRig.Chest]));tipLow=Math.Min(tipLow,t0.Y-MeleeClearance.FloorClear);tipHigh=Math.Max(tipHigh,t0.Y-MeleeClearance.FloorClear);
             // The planted feet (the gun and magic gaits tell which; a crouched sprint's swing foot may lift a little less).
             foreach(int b in Feet){bool lf=b==CapturedRig.LFoot||b==CapturedRig.LToe;if(!(p.Gun?.Planted(lf)??p.Magic?.Planted(lf)??true))continue;feet=Math.Max(feet,Vector3.Distance(p.World(b),twin.World(b)));}
         }
-        return new Sprinted{Yaw=yaw.PP,Roll=roll.PP,Nod=nod.PP,Sway=sway.PP,Feet=feet,Right=right/n,Left=left/n,ZPump=pump.PP};
+        return new Sprinted{Yaw=yaw.PP,Roll=roll.PP,Nod=nod.PP,Sway=sway.PP,Feet=feet,Right=right/n,Left=left/n,Tip=tip/n,ZPump=pump.PP,TipLow=tipLow,TipHigh=tipHigh};
     }
     private static readonly string[] Melee={"sword","daggers","shield","greatsword"},Ranged={"pistol","rifle","machinegun"},Magic={"fire","water","lightning","darkness","leet"};
     private static void Carries(List<string> log)
@@ -102,7 +105,8 @@ internal static class SprintMotionChecks
             else if(Array.IndexOf(Melee,spec)>=0)Check(s.Yaw<=15&&s.Roll<=6&&s.Nod<=7.5f&&s.Sway<=3,g+" (sprint bounds)");
             else Check(s.Yaw<=15&&s.Roll<=8&&s.Nod<=7.5f&&s.Sway<=6,g+" (gun and magic sprint bounds)");
             Check(s.Feet<.005f,spec+": the feet stay the gait's planted feet ("+(s.Feet*1000).ToString("0.0")+" mm)");
-            Check(Vector3.Distance(s.Right,o.Right)>.08f||Vector3.Distance(s.Left,o.Left)>.08f,spec+": the sprint changes the carry ("+Vector3.Distance(s.Right,o.Right).ToString("0.00")+" m)");
+            // (The greatsword keeps the run's low fist and lays its point on the floor: the blade's tip moves, in chest space.)
+            Check(Vector3.Distance(s.Right,o.Right)>.08f||Vector3.Distance(s.Left,o.Left)>.08f||Vector3.Distance(s.Tip,o.Tip)>.15f,spec+": the sprint changes the carry ("+Vector3.Distance(s.Right,o.Right).ToString("0.00")+" m, the tip "+Vector3.Distance(s.Tip,o.Tip).ToString("0.00")+" m)");
             torso+=(torso.Length>0?"; ":"")+spec+" "+o.Sway.ToString("0.0")+"->"+s.Sway.ToString("0.0")+" cm";
         }
         void Distinct(string[] group){for(int i=0;i<group.Length;i++)for(int j=i+1;j<group.Length;j++){var a=now[group[i]];var b=now[group[j]];Check(Vector3.Distance(a.Right,b.Right)+Vector3.Distance(a.Left,b.Left)>.1f,group[i]+" and "+group[j]+" sprint with distinct carries");}}
@@ -113,7 +117,9 @@ internal static class SprintMotionChecks
         // 60 cm pump; Tests/SprintArmChecks measures the arms).
         Check(now["daggers"].ZPump>=.08f&&now["daggers"].ZPump<=.2f&&now["daggers"].Right.Y<-.05f,"daggers: the fists held low with a light pump ("+now["daggers"].ZPump.ToString("0.00")+" m, "+now["daggers"].Right+")");
         Check(now["shield"].Right.Z>.2f&&now["shield"].Right.Y>-.1f,"shield: up in front of the chest ("+now["shield"].Right+")");
-        Check(now["greatsword"].Right.Y>0&&Vector3.Distance(now["greatsword"].Right,now["greatsword"].Left)<.25f,"greatsword: both hands up at the shoulder ("+now["greatsword"].Right+")");
+        // The greatsword drags (owner 2026-10-15: "Utilize the normal run animation with sword on ground"): the run's low right
+        // fist, the free fist apart from it, the point on the floor (Tests/GreatswordSprintChecks measures the drag).
+        Check(now["greatsword"].Right.Y<-.05f&&Vector3.Distance(now["greatsword"].Right,now["greatsword"].Left)>.25f&&now["greatsword"].TipLow>0&&now["greatsword"].TipHigh<.04f,"greatsword: the run's low fist, the point dragged on the floor ("+now["greatsword"].Right+", the point "+(now["greatsword"].TipLow*100).ToString("0.0")+".."+(now["greatsword"].TipHigh*100).ToString("0.0")+" cm over the floor guard's plane)");
         Check(now["pistol"].ZPump>.3f&&now["pistol"].Right.Y<-.05f,"pistol: both fists pump hard, the gun hand low ("+now["pistol"].ZPump.ToString("0.00")+" m, "+now["pistol"].Right+")");
         Check(now["machinegun"].Right.Y>now["rifle"].Right.Y&&now["machinegun"].Right.X<now["rifle"].Right.X-.05f,"the machine gun heaved onto the shoulder, higher and further out than the rifle's high port ("+now["machinegun"].Right+" vs "+now["rifle"].Right+")");
         Check(now["fire"].Right.Y<-.2f&&now["fire"].ZPump>.2f&&now["fire"].Right.Z<0,"fire: both hands low, clawing hard past the hips ("+now["fire"].Right+", "+now["fire"].ZPump.ToString("0.00")+" m)");
@@ -122,7 +128,7 @@ internal static class SprintMotionChecks
         Check(now["darkness"].Right.Y<-.2f&&now["darkness"].Right.Z<-.2f&&now["darkness"].Right.Y<now["water"].Right.Y,"darkness: the hands back and low ("+now["darkness"].Right+")");
         Check(now["leet"].Right.Z<-.3f&&now["leet"].Right.Y>now["fire"].Right.Y+.1f,"L33t H4x: the arms flung straight back, higher than fire's ("+now["leet"].Right+")");
         Distinct(Magic);
-        log.Add("12 weapons sprinting at "+SprintSpeed+" m/s: distinct carries (blade low behind, daggers held low with a light pump, shield up, greatsword on the shoulder, the pistol tucked with both fists pumping, high port, the machine gun on the shoulder, fire's hands clawing low past the hips, water's out wide, lightning's tight in front, darkness back and low, L33t H4x's flung back), the feet exactly the gait's (worst "+(worstFeet*1000).ToString("0.0")+" mm), the steady torso within bounds (head sway "+torso+")");
+        log.Add("12 weapons sprinting at "+SprintSpeed+" m/s: distinct carries (blade low behind, daggers held low with a light pump, shield up, the greatsword dragged with its point on the floor, the pistol tucked with both fists pumping, high port, the machine gun on the shoulder, fire's hands clawing low past the hips, water's out wide, lightning's tight in front, darkness back and low, L33t H4x's flung back), the feet exactly the gait's (worst "+(worstFeet*1000).ToString("0.0")+" mm), the steady torso within bounds (head sway "+torso+")");
     }
     private static void Blend(List<string> log)
     {
@@ -181,8 +187,8 @@ internal static class SprintMotionChecks
     private static NativeViewSwayInput ViewInput(Actor a,float t){var i=NativeViewSway.Input(a,t,0,0,0);return i;}
     private static void View(List<string> log)
     {
-        // The first-person carry: the arena input carries the sprint; a sword's view drops and tips down, a greatsword's lifts
-        // and tips back over the shoulder; a swing fades it within .15 s.
+        // The first-person carry: the arena input carries the sprint; a sword's view drops and tips down, a greatsword's drops
+        // lower and tips further down (its point to the floor); a swing fades it within .15 s.
         var pitch=new Dictionary<string,float>();float upMost=0;
         foreach(var spec in new[]{"sword","daggers","shield","greatsword","pistol","rifle","machinegun","fire"})
         {
@@ -198,7 +204,7 @@ internal static class SprintMotionChecks
             }
             Check(inAt>.94f&&outAt>0&&outAt<=.16f,spec+": the view carry blends in ("+inAt+") and a swing fades it within .15 s ("+outAt+")");
         }
-        Check(pitch["sword"]<-.15f&&pitch["greatsword"]>.12f&&pitch["pistol"]<-.15f&&pitch["machinegun"]<-.1f&&pitch["rifle"]>.1f,"per weapon: the sword tips down, the greatsword back over the shoulder, the pistol tucked muzzle-down, the machine gun dropped low, the rifle up at high port");
+        Check(pitch["sword"]<-.15f&&pitch["greatsword"]<pitch["sword"]&&pitch["pistol"]<-.15f&&pitch["machinegun"]<-.1f&&pitch["rifle"]>.1f,"per weapon: the sword tips down, the greatsword further down (dragged), the pistol tucked muzzle-down, the machine gun dropped low, the rifle up at high port");
         // Raw source inputs (no Spec) keep the source view layer exactly, even with the flag.
         var raw=new NativeViewSway();var src=new NativeViewSway();
         for(int f=0;f<90;f++){var i=new NativeViewSwayInput{Pilot=1,Time=f*Dt,VelocityZ=SprintSpeed,Grounded=true,Gait=true};var s=i;s.Sprint=true;var x=raw.Sample(s);var y=src.Sample(i);Check(x.X==y.X&&x.Y==y.Y&&x.Z==y.Z&&x.Pitch==y.Pitch&&x.Roll==y.Roll&&raw.Sprint==0,"raw inputs keep the source view layer");}
@@ -206,7 +212,7 @@ internal static class SprintMotionChecks
         Check(NativeSprintRules.Fov(1,true,false)>=4&&NativeSprintRules.Fov(1,true,false)<=6&&NativeSprintRules.Fov(1,true,true)==NativeSprintRules.Fov(1,true,false)*.5f&&NativeSprintRules.Fov(1,false,false)==0&&NativeSprintRules.Fov(0,true,false)==0&&NativeSprintRules.Fov(.5f,true,false)==NativeSprintRules.Fov(1,true,false)*.5f,"the FOV kick: eased by the weight, half Reduced, none without camera shake");
         float bob=0,roll=0;for(float s=0;s<6.3f;s+=.05f){NativeSprintRules.CameraSway(1,s,true,false,out float u,out float r);bob=Math.Min(bob,u);roll=Math.Max(roll,Math.Abs(r));NativeSprintRules.CameraSway(1,s,false,false,out u,out r);Check(u==0&&r==0,"no camera bob without camera shake");NativeSprintRules.CameraSway(1,s,true,true,out float ur,out _);Check(Math.Abs(ur)<=Math.Abs(NativeSprintRules.CameraBob)*.5f+1e-6f,"Reduced effects halve the bob");}
         Check(bob<-.01f&&bob>=-.0121f&&roll>.4f&&roll<=.51f,"the camera bob (cm) and roll (deg) stay light ("+bob+", "+roll+")");
-        log.Add("first person: per-weapon view carries (pitch sword "+pitch["sword"].ToString("0.00")+", greatsword +"+pitch["greatsword"].ToString("0.00")+", pistol "+pitch["pistol"].ToString("0.00")+" rad; up to "+(upMost*100).ToString("0.0")+" cm), in within .15 s and out within .15 s of a swing; raw source inputs exact; a "+NativeSprintRules.FovKick+" deg FOV kick (half Reduced, none without camera shake) and a "+(-bob*100).ToString("0.0")+" cm / "+roll.ToString("0.0")+" deg camera bob");
+        log.Add("first person: per-weapon view carries (pitch sword "+pitch["sword"].ToString("0.00")+", greatsword "+pitch["greatsword"].ToString("0.00")+", pistol "+pitch["pistol"].ToString("0.00")+" rad; up to "+(upMost*100).ToString("0.0")+" cm), in within .15 s and out within .15 s of a swing; raw source inputs exact; a "+NativeSprintRules.FovKick+" deg FOV kick (half Reduced, none without camera shake) and a "+(-bob*100).ToString("0.0")+" cm / "+roll.ToString("0.0")+" deg camera bob");
     }
     private static void Fx(List<string> log)
     {

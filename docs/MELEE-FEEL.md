@@ -486,7 +486,13 @@ and a live playtest. The closing-damage figures assume perfect aim against a non
     the right (rear) blade's lie is tipped back (`NativeLocoRules.RearBladeTip`), so the blade clearance's floor term and
     the final floor guard no longer both lift it each stride, and the shoulders keep the arms' share of the clip's shrug;
   - shield: up in front of the chest, the shield shoulder leading;
-  - greatsword: on the right shoulder in both hands, with a heavier bob;
+  - greatsword (2026-10-15, owner: "Utilize the normal run animation with sword on ground, but lean forward abit to show
+    a natural sprint movement"): the pack run's own carry (legs, stride, cadence, torso, the low right fist and the free
+    left guard fist) with a .2 rad lean. The blade keeps the run's heading and roll. Only the wrist's pitch changes, so the
+    stretched point rides 2 cm over the floor guard's plane (`DragBlade`, `DragTip`) at every stride phase, frame rate,
+    turn and weave; the guard never takes the wrist. The free arm swings the run's guard whole from the shoulder, forward
+    of the guard by up to .3 rad as the right foot leads (`GuardSwing`). The old shoulder carry is gone, with its support
+    hand and extra bob;
   - pistol: port arms;
   - rifle: high port, both hands;
   - machine gun: a low ready, both hands;
@@ -495,18 +501,20 @@ and a live playtest. The closing-damage figures assume perfect aim against a non
     owner's "hand keeps rotating"; `NativeRangedLocomotion.Magic`).
 
   The DEV fighters and the Siren keep their own locomotion. Each route also gets a small extra forward lean (sword .07,
-  daggers .1, greatsword .14, shield .03, pistol .04, rifle .03, machine gun .02, magic .04 rad).
+  daggers .1, greatsword .2, shield .03, pistol .04, rifle .03, machine gun .02, magic .04 rad).
 - **Steady torso at 9.18 m/s** (before → after): head sway sword 2.3 → 2.5 cm, daggers 2.3 → 2.6, shield 2.1 → 2.0,
-  greatsword 4.7 → 2.6, guns and magic 2.2 → 2.5–2.8. Chest roll stays at or under 5.5° and twist under 15°. The lean is
-  what adds sway: a forward-leaned spine turns the chest's counter-twist into a little sideways head travel, so the guns'
-  and magic's leans were halved to stay under 3 cm.
+  greatsword 4.7 → 1.8 (the drag; 2.6 on the old shoulder carry), guns and magic 2.2 → 2.5–2.8. Chest roll stays at or
+  under 5.5° and twist under 15°. The lean is what adds sway: a forward-leaned spine turns the chest's counter-twist into
+  a little sideways head travel, so the guns' and magic's leans were halved to stay under 3 cm.
 - **Third-person effect** (`Core/NativeSprintFx`, `Runtime/NativeSprintFxPresentation`): six accent streaks trail level
   off the shoulders, hips, head and back, and three dust puffs kick up behind each footfall (every 1.24 m). Both are
-  camera-facing, never on the floor. They are skipped for the view pilot in first person.
+  camera-facing, never on the floor. They are skipped for the view pilot in first person. A greatsword dragging its point
+  throws five faint hot scrape sparks back and up off the floor there (`NativeSprintFx.Scrape`, two with Reduced effects,
+  halved on Low graphics). They read the arena rig's drag carry and blade tip, and fade as the point lifts.
 - **First person:**
   - the view weapon takes a per-weapon sprint carry and a stronger stride bob (`NativeSprintRules.ViewCarry` in
-    `NativeViewSway`): the sword drops and tips down, the greatsword lifts toward the shoulder, the pistol muzzle comes up,
-    the rifle cants across, the machine gun dips;
+    `NativeViewSway`): the sword drops and tips down, the greatsword drops 6.5 cm and tips 18° down (its dragged point),
+    the pistol muzzle comes up, the rifle cants across, the machine gun dips;
   - the camera gets an eased +5° FOV kick, kept out of the view-model camera so the hands keep their framing, and a
     1.2 cm / 0.5° bob;
   - tinted speed lines stream out in the outer third of the screen, over a soft edge vignette (an `OnGUI` behind the

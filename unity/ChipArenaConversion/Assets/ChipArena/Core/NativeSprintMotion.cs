@@ -28,13 +28,13 @@ namespace ChipArena.UnityConversion
         /// <summary>The weight shown for a ramp: smoothstep, so the carry starts and settles at rest (a reversal stays continuous).</summary>
         public static float Shape(float ramp){float x=MeleeMath.Clamp(ramp,0,1);return x*x*(3-2*x);}
         /// <summary>The extra forward lean (rad, on the spine; the neck keeps half the gaze) per weapon, over the routes' own
-        /// .12 sprint lean: the daggers lowest and hardest, the shield and the machine gun upright behind their weight; the rifle
-        /// leans into its high port, fire attacks the ground ahead, darkness stalks lowest.</summary>
+        /// .12 sprint lean: the daggers lowest and hardest, the greatsword leaning into its drag, the shield and the machine gun
+        /// upright behind their weight; the rifle leans into its high port, fire attacks the ground ahead, darkness stalks lowest.</summary>
         public static float Lean(string spec)
         {
             switch(spec)
             {
-                case "daggers":return .1f;case "sword":return .07f;case "greatsword":return .14f;case "shield":return .03f;
+                case "daggers":return .1f;case "sword":return .07f;case "greatsword":return .2f;case "shield":return .03f;
                 case "pistol":return .08f;case "rifle":return .1f;case "machinegun":return .02f;
                 case "fire":return .16f;case "water":return .06f;case "lightning":return .12f;case "darkness":return .24f;case "leet":return .14f;
                 default:return MeleeStance.MagicSpec(spec)?.04f:0;
@@ -58,14 +58,14 @@ namespace ChipArena.UnityConversion
         /// <summary>Lightning's crackle and L33t H4x's glitch (Hz): the twitch steps, the glitch's held frames and its bursts (s).</summary>
         public const float TwitchRate=18,GlitchRate=10,GlitchCycle=1.4f,GlitchBurst=.24f;
         /// <summary>The carry each weapon sprints with (the DEV fighters and the Siren keep their own locomotion).</summary>
-        public const string Ninja="blade swept low behind",Pump="daggers held low, a light pump",ShieldUp="shield up, shoulder-led",Shoulder="blade on the shoulder",
+        public const string Ninja="blade swept low behind",Pump="daggers held low, a light pump",ShieldUp="shield up, shoulder-led",Drag="blade dragged behind, point on the floor",
             Tucked="pistol tucked, arms pumping",HighPort="high port, leaning in",Hip="shoulder carry, lumbering",Embers="embers trailing, attacking",
             Glide="flowing glide",Crackle="crackling stride",Stalk="low stalking glide",Glitch="glitch stride",Trail="hands trailing back",None="none";
         public static string CarryOf(string spec)
         {
             switch(spec)
             {
-                case "sword":return Ninja;case "daggers":return Pump;case "shield":return ShieldUp;case "greatsword":return Shoulder;
+                case "sword":return Ninja;case "daggers":return Pump;case "shield":return ShieldUp;case "greatsword":return Drag;
                 case "pistol":return Tucked;case "rifle":return HighPort;case "machinegun":return Hip;
                 case "fire":return Embers;case "water":return Glide;case "lightning":return Crackle;case "darkness":return Stalk;case "leet":return Glitch;
                 default:return MeleeStance.MagicSpec(spec)?Trail:None;
@@ -78,10 +78,11 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// The view weapon's sprint carry in the camera frame (NativeViewSway pose units: m down, rad of pitch with + the muzzle
         /// up, rad of roll) and the stride bob's extra gain, per weapon as the world rig carries it: the sword dropped low and
-        /// tipped down and back, the daggers low with the hardest pump, the shield raised in front, the greatsword lifted onto
-        /// the shoulder (its point tipped back over it), the pistol tucked muzzle-down with a hard pump, the rifle canted across
-        /// the chest (high port), the machine gun heaved onto the shoulder with a heavy bob, and per school: fire low and pumping, water
-        /// level with the least bob (a glide), lightning tight, darkness lowest and still, L33t H4x between them.
+        /// tipped down and back, the daggers low with the hardest pump, the shield raised in front, the greatsword dropped lowest
+        /// of the blades and tipped furthest down with a heavy stride (its point trailing to the floor as the world rig drags it;
+        /// owner 2026-10-15), the pistol tucked muzzle-down with a hard pump, the rifle canted across the chest (high port), the
+        /// machine gun heaved onto the shoulder with a heavy bob, and per school: fire low and pumping, water level with the least
+        /// bob (a glide), lightning tight, darkness lowest and still, L33t H4x between them.
         /// </summary>
         public static void ViewCarry(string spec,out float drop,out float pitch,out float roll,out float bob)
         {
@@ -90,7 +91,7 @@ namespace ChipArena.UnityConversion
                 case "sword":drop=.045f;pitch=-.24f;roll=.1f;bob=.6f;return;
                 case "daggers":drop=.035f;pitch=-.12f;roll=.04f;bob=1;return;
                 case "shield":drop=-.012f;pitch=.04f;roll=-.06f;bob=.35f;return;
-                case "greatsword":drop=-.015f;pitch=.2f;roll=.16f;bob=.5f;return;
+                case "greatsword":drop=.065f;pitch=-.32f;roll=.12f;bob=.5f;return;
                 case "pistol":drop=.03f;pitch=-.22f;roll=.07f;bob=.9f;return;
                 case "rifle":drop=.02f;pitch=.14f;roll=.34f;bob=.45f;return;
                 case "machinegun":drop=.075f;pitch=-.12f;roll=.16f;bob=.75f;return;
@@ -125,7 +126,9 @@ namespace ChipArena.UnityConversion
     ///  - sword: the blade swept low behind the hip, the free arm pumping (a ninja run);
     ///  - daggers: both reverse-grip fists held low and close beside the hips with a light pump, the deepest lean;
     ///  - shield: the shield up in front of the chest, the shield shoulder leading;
-    ///  - greatsword: the blade on the right shoulder in both hands, heavier strides (a deeper bob);
+    ///  - greatsword: the run's own drag carry leaned into a sprint (owner 2026-10-15: "Utilize the normal run animation with
+    ///    sword on ground, but lean forward abit to show a natural sprint movement"): the blade trailing low from the right fist,
+    ///    its point down on the floor, the run's free left guard fist swinging in step;
     ///  - pistol: both arms pumping hard, the pistol tucked muzzle-down in the gun fist;
     ///  - rifle: a tactical high port across the chest leaning into the run, the rifle bouncing with each step;
     ///  - machine gun: heaved up onto the shoulder in both hands (its run carries it at the hip), a lumbering, dipping, rolling
@@ -142,7 +145,6 @@ namespace ChipArena.UnityConversion
     public sealed class NativeSprintMotion
     {
         private float weight,last=-100;
-        private readonly NativePackPose clear=new NativePackPose();
         private readonly Quaternion[] saved=new Quaternion[8];
         public float Weight=>NativeSprintRules.Shape(weight);
         /// <summary>The carry shown this frame (NativeSprintRules carries), or None.</summary>
@@ -182,6 +184,46 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public const float DaggerX=.34f,DaggerY=-.12f,DaggerZ=.1f,DaggerPump=.06f,DaggerLift=.02f;
         public static readonly Vector3 DaggerElbowR=Vector3.Normalize(new Vector3(-.6f,-.8f,-1)),DaggerElbowL=Vector3.Normalize(new Vector3(.6f,-.8f,-1));
+        /// <summary>
+        /// The greatsword's sprint drag (owner 2026-10-15: "Fix sprint animation for greatsword (Utilize the normal run animation
+        /// with sword on ground, but lean forward abit to show a natural sprint movement)"): the run already trails the blade
+        /// from the right fist with its point at the floor, where MeleeCapture.KeepBladesOffFloor holds it on the floor guard's
+        /// plane; the sprint's lean would lift it off the floor. The point rides DragTip (m) over that plane (MeleeClearance.
+        /// FloorClear) at every stride phase, so the floor guard never takes the wrist. The free (left) arm keeps the run's guard
+        /// fist and swings it in step with the legs: forward, out and a little up from the guard by up to twice GreatSwing (rad)
+        /// about GreatSwingAxis through the shoulder (chest space) as the right foot leads, and back to the guard as the left
+        /// foot leads (the gait's feet are furthest apart with the right foot leading at a stride phase of pi - GreatStep, rad).
+        /// The swing stays forward of the guard: swung back past it the fist would cross into the chest.
+        /// </summary>
+        public const float DragTip=.02f,GreatSwing=.15f,GreatStep=1.1f;
+        public static readonly Vector3 GreatSwingAxis=Vector3.Normalize(new Vector3(-.3f,1,0));
+        /// <summary>
+        /// Lays the greatsword's point on the floor (group space, the rig's floor guard plane): the right wrist turns about the
+        /// level axis across the blade, so the blade keeps the run's heading and roll and only its pitch changes, until the
+        /// stretched tip (set.Tip at the weapon's reach) rides DragTip over MeleeClearance.FloorClear; blended by `w`.
+        /// </summary>
+        public static void DragBlade(MeleeRig r,MeleeSet set,float w)
+        {
+            if(set==null||w<=1e-4f||!r.WeaponVisible)return;const int wrist=CapturedRig.RHand;
+            Quaternion held=r.ChainQuat(wrist,-1);Vector3 grip=r.ChainPoint(wrist,-1),blade=Vector3.Transform(r.Reached(set.Tip),held);
+            float length=blade.Length(),level=(float)Math.Sqrt(blade.X*blade.X+blade.Z*blade.Z);if(length<1e-4f||level<1e-4f)return;
+            float down=MeleeMath.Clamp((MeleeClearance.FloorClear+DragTip-grip.Y)/length,-.97f,.97f),across=(float)Math.Sqrt(1-down*down);
+            Vector3 laid=new Vector3(blade.X/level*across,down,blade.Z/level*across);
+            Quaternion q=MeleeMath.Slerp(held,MeleeMath.FromTo(blade/length,laid)*held,w);
+            r.SetQ(wrist,MeleeMath.Inverse(r.ChainQuat(MeleeRig.Parent(wrist),-1))*q);
+        }
+        /// <summary>
+        /// The free (left) arm turned whole about its shoulder joint by `angle` (rad) about GreatSwingAxis (chest space): the
+        /// run's guard fist swings forward, out and a little up, the elbow keeping the run's bend and the fist its lie on the
+        /// forearm. A rigid turn of the run's own arm, so the sprint's blend in and out (and a swing, jump or stop taking the
+        /// arm) moves it no further than the swing itself; an arm solved to a runner's pump beside the hip instead turned the
+        /// forearm 25-90 degrees in a frame on each of those changes.
+        /// </summary>
+        private static void GuardSwing(MeleeRig r,float angle)
+        {
+            if(Math.Abs(angle)<1e-6f)return;Quaternion clavicle=r.Q[CapturedRig.LClav];
+            r.Premultiply(CapturedRig.LArm,MeleeMath.Inverse(clavicle)*MeleeMath.AxisAngle(GreatSwingAxis,angle)*clavicle);
+        }
         // The forward lean on the spine about the pelvis's own side axis (premultiplied, so the steady torso's counter-twist
         // never turns it into a roll), half of it given back at the neck so the gaze stays level.
         private static void LeanSpine(MeleeRig r,string spec,float w)
@@ -217,12 +259,9 @@ namespace ChipArena.UnityConversion
                     r.BraceWeapon(new Vector3(-.07f,.07f+.015f*fR,.33f),qR,w,poleR,false);
                     r.Hand(true,new Vector3(.25f,-.14f+.03f*Math.Max(0,fL),.05f+.22f*fL),qL,w,poleL);break;
                 case "greatsword":
-                    // Heavy strides: a deeper bob at the step rate under the shoulder carry.
-                    LeanSpine(r,p.Spec,w);r.P[CapturedRig.Body]-=new Vector3(0,.022f*w*(.5f+.5f*(float)Math.Cos(2*r.Stride)),0);
-                    // The support hand takes the hilt once, after the blade is cleared, at the carry's weight (a clearance that
-                    // comes and goes never snaps it on).
-                    r.BraceWeapon(new Vector3(-.15f,.15f+.01f*fR,.16f),Weapon(new Vector3(-.2f,.6f,-.78f),new Vector3(0,0,1)),w,poleR,false);
-                    clear.ClearBlade(r,set,false,w);r.SupportHand(w);break;
+                    // The pack run's own carry (its legs, stride, cadence, torso, low right fist and free left guard) leaned into
+                    // the sprint: the blade's point laid on the floor (DragBlade), the free arm swinging in step (GuardSwing).
+                    LeanSpine(r,p.Spec,w);DragBlade(r,set,w);GuardSwing(r,GreatSwing*w*(1-(float)Math.Cos(r.Stride+GreatStep)));break;
                 default:Carry=NativeSprintRules.None;break;
             }
         }

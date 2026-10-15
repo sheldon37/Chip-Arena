@@ -34,6 +34,7 @@ internal static class Program
             if(args.Length>=1&&args[0]=="--surface-audit"){if(args.Length>1&&args[1]=="differ")SurfaceChecks.Differ(ProjectRoot());else if(args.Length>1&&args[1]=="dupes")SurfaceChecks.Dupes(ProjectRoot());else SurfaceChecks.Audit(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--melee-bisect"){BisectChecks.Run(ProjectRoot());MeleeBisectChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--sprint-arms"){SprintArmChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--greatsword-sprint"){var gsRoot=ProjectRoot();GreatswordSprintChecks.Run(gsRoot,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(gsRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--gib"){GibChecks.Run(ProjectRoot());BowChecks.Run(ProjectRoot());return 0;}
             CyberRangedSimulationChecks.Run();
             HitchChecks.Run();KernelPanicChecks.Run();OnlineRoomChecks.Run();
@@ -92,7 +93,7 @@ internal static class Program
             DevToolsChecks.Run(root);
             SpawnInChecks.Run(root,data);
             VfxChecks.Run(root);VfxRuntimeChecks.Run(root);
-            LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);HitFeelChecks.Run(root,data);JumpMotionChecks.Run(root);PackLocomotionChecks.Run(root);SprintMotionChecks.Run(root);SprintArmChecks.Run(root);RangedLocomotionChecks.Run(root);AirAttackChecks.Run(root,data);DownAttackChecks.Run(data);BowRuleChecks.Run();PlungeStabChecks.Run(root,data);CyberChecks.Run();SprintAttackPoseChecks.Run(root,data);
+            LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);HitFeelChecks.Run(root,data);JumpMotionChecks.Run(root);PackLocomotionChecks.Run(root);SprintMotionChecks.Run(root);SprintArmChecks.Run(root);GreatswordSprintChecks.Run(root,data);RangedLocomotionChecks.Run(root);AirAttackChecks.Run(root,data);DownAttackChecks.Run(data);BowRuleChecks.Run();PlungeStabChecks.Run(root,data);CyberChecks.Run();SprintAttackPoseChecks.Run(root,data);
             ArmorLightChecks.Run(root);
             BlockFxChecks.Run(root,data);
             MeleeKitPresentationChecks.Run(root,data);

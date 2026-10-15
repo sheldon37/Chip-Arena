@@ -294,6 +294,8 @@ namespace ChipArena.UnityConversion
             private NativeLocomotionCarry locomotion;private NativeLocomotionCarry Locomotion=>Hits!=null?locomotion??=new NativeLocomotionCarry():null;
             // The per-weapon sprint carry (Core/NativeSprintMotion), on the same arena rigs.
             private NativeSprintMotion sprint;private NativeSprintMotion SprintLayer=>Hits!=null?sprint??=new NativeSprintMotion():null;
+            /// <summary>The sprint carry this rig showed when last posed (NativeSprintRules carries; None off the arena rigs).</summary>
+            public string SprintCarry=>sprint?.Carry??NativeSprintRules.None;
             // The pack's directional gun and magic travel carry (Core/NativeRangedLocomotion), on the same arena rigs.
             private NativeRangedLocomotion rangedLocomotion;private NativeRangedLocomotion RangedLocomotion=>Hits!=null?rangedLocomotion??=new NativeRangedLocomotion():null;
             // The held weapons' reach stretch, set by the presentation before posing (the melee layers measure the stretched blade).

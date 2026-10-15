@@ -7,7 +7,8 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// Draws the sprint's third-person effect (Core/NativeSprintFx) through the shared effects renderer: each sprinting pilot
     /// (the replicated Actor.Sprinting flag, grounded, travelling, not busy: Core/NativeSprintRules.Shows) sheds short accent
-    /// speed streaks off its shoulders, hips, head and back, and kicks a little dust at each footfall. Streaks are camera-facing
+    /// speed streaks off its shoulders, hips, head and back, and kicks a little dust at each footfall; a greatsword dragging its
+    /// point (Core/NativeSprintMotion.DragBlade) throws faint scrape sparks off the floor there. Streaks are camera-facing
     /// ribbons and dust is camera-facing puffs: nothing lies flat on the floor. The view pilot's own effect is skipped in first
     /// person (the screen lines and vignette show it there). Reduced effects and Low graphics thin and dim it. Presentation
     /// only: host, guests, killcam and spectators each draw it from the pilots they present.
@@ -23,8 +24,11 @@ namespace ChipArena.UnityConversion
         public int Live=>kicks.Count;
         public NativeSprintFxPresentation(NativeVfxDraw vfx){this.vfx=vfx;}
         public void Clear(){kicks.Clear();pilots.Clear();lastTime=-1;}
-        /// <summary>now: the snapshot clock (ArenaPresentation.FieldClock); quality: the effects quality (1, .3 Reduced).</summary>
-        public void Render(NativeArena arena,float now,float quality,bool low,int viewId,bool firstPerson)
+        /// <summary>The dragged greatsword's point (world) of a presented pilot whose rig shows the drag this frame, or false.</summary>
+        public delegate bool DragPoint(Actor a,float time,out Vector3 tip);
+        /// <summary>now: the snapshot clock (ArenaPresentation.FieldClock); quality: the effects quality (1, .3 Reduced); drag:
+        /// the greatsword's dragged point (none: no scrape sparks).</summary>
+        public void Render(NativeArena arena,float now,float quality,bool low,int viewId,bool firstPerson,DragPoint drag=null)
         {
             if(arena==null||vfx==null)return;
             if(arena!=last||generation!=arena.Generation||now<lastTime-.25f){Clear();last=arena;generation=arena.Generation;}
@@ -49,6 +53,18 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<streaks;k++)
                     if(NativeSprintFx.Streak(k,s.Seed,now,weight,f,d,d,out var head,out var tail,out float alpha))
                         vfx.Streak(new Vector3(head.X,head.Y,head.Z),-new Vector3(tail.X,tail.Y,tail.Z),accent*alpha,NativeSprintFx.StreakWidth,tail.Length(),1,.9f,alpha,s.Seed*29+k);
+                // The greatsword's scrape: hot sparks thrown off the floor at its dragged point, fewer as the point lifts.
+                if(drag!=null&&drag(a,now,out var point))
+                {
+                    float contact=weight*NativeSprintFx.ScrapeContact(point.y-feet.y);int sparks=NativeSprintFx.Count(NativeSprintFx.Scrapes,NativeSprintFx.ReducedScrapes,quality,low);
+                    var tip=new NVector(point.x,point.y,point.z);var velocity=new NVector(a.Velocity.x,0,a.Velocity.z);
+                    for(int k=0;contact>1e-3f&&k<sparks;k++)
+                        if(NativeSprintFx.Scrape(k,s.Seed,now,contact,tip,velocity,feet.y,out var spark,out var motion,out float heat))
+                        {
+                            var c=NativeSprintFx.ScrapeColor*(heat*shade);
+                            vfx.Streak(new Vector3(spark.X,spark.Y,spark.Z),new Vector3(motion.X,motion.Y,motion.Z),new Color(c.X,c.Y,c.Z,0),NativeSprintFx.ScrapeWidth,NativeSprintFx.ScrapeWidth*2.2f,.03f,.9f,1-heat,s.Seed*37+k);
+                        }
+                }
             }
             for(int i=kicks.Count-1;i>=0;i--)if(now-kicks[i].At>=NativeSprintFx.DustLife||now<kicks[i].At-.25f)kicks.RemoveAt(i);
             int puffs=NativeSprintFx.Count(NativeSprintFx.DustPuffs,NativeSprintFx.ReducedDustPuffs,quality,low);
@@ -69,13 +85,21 @@ namespace ChipArena.UnityConversion
         // jump burst in RenderGlow), the first-person screen lines and vignette (OnGUI below), and the first-person camera's
         // FOV kick and bob (ConversionGame.UpdateCamera and LateFrame through SprintFov and SprintSway). The first-person weight
         // is the view layer's (NativeViewSway.Sprint: the view pilot's replicated sprint, faded out by a swing, block or roll).
-        private NativeSprintFxPresentation sprintFx;
+        private NativeSprintFxPresentation sprintFx;private NativeSprintFxPresentation.DragPoint dragPoint;
+        // The greatsword's dragged point for its scrape sparks: the blade-tip socket on the pilot's rig as posed this frame, only
+        // while that rig shows the drag (its sprint layer's carry) with the main weapon out.
+        private bool DragPoint(Actor a,float time,out Vector3 tip)
+        {
+            tip=default;
+            if(a==null||a.WeaponAway||a.MainWeaponAway||!rigs.TryGetValue(a.Id,out var rig)||rig.SprintCarry!=NativeSprintRules.Drag||!NativeWeaponDressing.BladeTip(a.SourceSpec,out var local))return false;
+            tip=SourceWeaponBone(rig,a,time,false,CapturedRig.RHand,rig.WeaponReach).MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(local)));return true;
+        }
         private float screenSprint,screenClock,screenLast,screenRate=1;private int screenFrame=-1;private Color screenTint;
         private static Texture2D vignetteTexture,lineTexture;
         private void SprintFx(NativeArena arena,float now)
         {
             if(arena==null)return;
-            if(vfx!=null){sprintFx??=new NativeSprintFxPresentation(vfx);sprintFx.Render(arena,now,WeaponEffectsQuality,LowGraphics,arena.ViewPilot?.Seat.id??-1,FirstPerson);}
+            if(vfx!=null){sprintFx??=new NativeSprintFxPresentation(vfx);sprintFx.Render(arena,now,WeaponEffectsQuality,LowGraphics,arena.ViewPilot?.Seat.id??-1,FirstPerson,dragPoint??=DragPoint);}
             var view=arena.ViewPilot?.Pose;bool shown=FirstPerson&&viewRig!=null&&!ScopeActive&&view!=null&&view.Alive;
             // The plunging stab's drop takes the same screen (Core/NativePlungeRules.ScreenWeight), its lines streaming faster.
             float plunge=shown?PlungeScreen(view,kitClock):0;
