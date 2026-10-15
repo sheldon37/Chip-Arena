@@ -43,10 +43,9 @@ namespace ChipArena.UnityConversion
         private static readonly string[] ChipPreviewRarities={"rare","epic","legendary"};
         /// <summary>
         /// An Expedition's open picks, set by ConversionGame while a run is bound (NativeExpeditionChipScreen.cs; null otherwise, and the
-        /// PvE rows drive the look). It returns pilot `id`'s open pick or null. Today only my own pick exists (the authority has no
-        /// choosing state), as a stand-in NativePvePick: a stable id, the offers, the tone and the open time, so only my first-person
-        /// wrist shows. Astra's public per-member "choosing" flag plugs in here for the other pilots: a pick with no Offers (never the
-        /// cards: the view's privacy rule) draws its three cards cyan.
+        /// PvE rows drive the look). It returns pilot `id`'s open pick, or null when it is not choosing: the view's public
+        /// members[].choosing (the host's flag, PR #233) as a stand-in NativePvePick with a stable id and the time it was first seen. My
+        /// own carries my shown reward's offers and tone; anyone else's has no Offers (the view's privacy rule), so its cards draw cyan.
         /// </summary>
         public Func<int,NativePvePick> ExpeditionChoosing;
 
