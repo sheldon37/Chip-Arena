@@ -99,6 +99,7 @@ namespace ChipArena.UnityConversion
             foreach(var b in Bullets.ToArray())
             {
                 if(!Bullets.Contains(b)||StepSirenShot(b))continue;var owner=Pilots.Find(p=>p.Seat.id==b.Owner);var original=Pilots.Find(p=>p.Seat.id==b.Original);
+                if(owner!=null&&Time-b.Born<dt&&HubInside(owner.Body.position)){EndBullet(b);continue;}
                 if(owner==null||b.Life<=0||b.Travel<=0||b.Pong&&(original==null||original.Hp<=0)){EndBullet(b);continue;}
                 if(!LeetShotStep(b,owner,dt))continue;float scale=b.LeetKind!=null?1:ChipShotMotion(b,owner,dt);if(scale<=0)continue;float h=Math.Min(dt*scale,b.Life),age=Time-b.Born;
                 bool turned=b.Boomerang&&age>=Math.Min(.65f,24/Math.Max(1,b.FixedSpeed));
@@ -109,6 +110,7 @@ namespace ChipArena.UnityConversion
                     foreach(var target in Pilots)
                     {Vector3 d=target.Body.position+Vector3.up*.15f-b.Position;if(target.Hp<=0||!Enemy(owner,target)||b.Hit.Contains(target.Collider.GetInstanceID())||d.magnitude>16||Vector3.Dot(b.Velocity.normalized,d.normalized)<Mathf.Cos(50*Mathf.Deg2Rad)||!MeleeVisible(b.Position,target.Body.position,owner,target.Collider))continue;b.Velocity=Vec(NativeProjectileRules.Steer(Vec(b.Velocity),Vec(d),b.Homing*Mathf.Deg2Rad*h));break;}
                 Vector3 before=b.Velocity;var velocity=Vec(before);Vector3 previous=b.Position;Vector3 delta=Vector3.ClampMagnitude(Vec(NativeSpecialRules.Ballistic(ref velocity,b.Gravity,h)),b.Travel);b.Velocity=Vec(velocity);b.Life-=h;b.Travel-=delta.magnitude;b.Travelled+=delta.magnitude;
+                if(HubInside(b.Position)||HubCross(b.Position,b.Position+delta,b.Radius)){EndBullet(b);continue;}
                 if(CyberAbsorb(owner,b.Position,b.Position+delta,b.Radius)){EndBullet(b);continue;}
                 var hit=SweepNative(b.Position,delta,b.Radius,c=>
                 {var p=c.GetComponent<NativePilotBody>()?.Pilot;var m=c.GetComponent<NativeMinionBody>()?.Minion;return (m==null||m.Hp>0&&CanHit(owner,m))&& !b.Hit.Contains(c.GetInstanceID())&&(!b.Pong||!b.Contacts.TryGetValue(c.GetInstanceID(),out float contact)||Time-contact>.18f)&&(p==null||p.Hp>0&&CanHit(owner,p)&&!Invulnerable(p));});
