@@ -1,5 +1,13 @@
 # Chip Arena — development log
 
+## 2026-10-15 — Astra — Expedition chip choosing authority and install events
+- Branch `codex/expedition-chip-authority`, base shared/builder `3ced89cc`. Required portion of Claude's `claude/expedition-chip-screen` handoff. That presentation branch was not on the remote during implementation; no UI/render ownership changes.
+- Append `OpenChoice` / `CloseChoice` intents (preserve existing enum values), validate pending personal rewards through the authenticated host path, and project only the public member `choosing` boolean. Host holds just the choosing pilot using the existing freeze/cancel path with camera rotation; run/combat clocks continue. Close/final selection/death/disconnect/extraction/loading/save resume clear state. Seat lookup is allocation-free. Machine interaction refuses while choosing.
+- A committed successful Select invokes the session install hook once; the arena emits normal Install metadata for sounds/cues. Duplicate/refused selects and inventory synchronization do not emit. Update both M1 notice locations to C. Optional offer-rule parity and tiered physical pickups deferred.
+- Contract and Claude UI wiring steps: `docs/EXPEDITION-PRESENTATION.md`, "Chip screen authority contract". Public offers remain prohibited. No hit timing, damage, cooldown, balance or asset changes; choosing cancels existing combat/movement actions as required by D18.
+- Validation: 80 focused Expedition integration assertions pass; native authority freeze/camera/install/duplicate checks added to the Windows M1 acceptance gate. Pinned Unity 6000.3.24f1 / C# 9 Player, Runtime and Editor compilation passes. Full managed/real-relay regression passes (712 PASS groups, exit 0); the source guard now permits the read-only IsChoosing query and explicitly prohibits presentation calling SetChoosing. One concurrent compiler launch failed in the SDK process lookup; the sequential rerun passed. Promotion receipt follows in the PR. Native Unity/PhysX, Windows, live host/guest, sounds and wrist-hologram acceptance cannot run here; UI binding still belongs to Claude.
+
+
 ## 2026-10-15 — Astra — Windows air-jump JSON build gate
 - Branch `codex/fix-air-jump-build`, base shared/builder `25a26ef6` (PR #231 merged). Drive log at 13:09Z exits 1 in ValidateAirJumps because the cloned frame is invalid.
 - Cyber v2 added nullable Kit2/Kit2R records and a validator requiring them absent for version 0. Unity inline JSON expands absent records, so default/legacy actor kits fail validation. Preserve explicit record presence through the existing frame codec for snapshot actors, pilot death actors and corpse actors. Keep strict v2 validation; no gameplay, movement, cooldown or presentation changes.
@@ -8515,3 +8523,48 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - A jab from the low idle raises the arm 1.3–1.8 rad in one frame.
   - The preview's drawn-body shift goes through new `ArenaPresentation` hooks (inert with the preview off).
 - **Animation impact:** presentation only; it reads the replicated windows. No change to hit timing, hitboxes, damage, cooldowns, movement or networking.
+
+## 2026-10-15 — Claude: Cyber Lord shows the Kit v2 names on load-in (HUD drawer, Locker, catalogue)
+
+- **Branch:** `claude/cyberlord-v2-names`, based on shared `claude/sleepy-ritchie-g8ruhv` `3ced89c` (PR #231 and #232 merged). The implementation commit is `ec8bc80`. Pushed on the branch; no PR, not merged, not released.
+- **Owner report:** "When loading in, we can see the old ability names for some reason? Lets fix that please."
+- **Root cause (verified in code):**
+  - The drawer drew v2 cards only while the view had a live v2 record (`CyberKit2MeleeHud.Replaces` needs `Kit2.Live`; `CyberKit2RangedHud.Shows` needs `Kit2R.Live`). Otherwise it drew v1's `CyberLordSpec` / `CyberRangedSpec` cards (Q · DATA DASH, 1 · PING LANCE ...).
+  - The authority makes the record lazily, at the pilot's first Cyber input (`NativeCyberKit2Rules.Ensure` in `Cyber2Input`, `BotCyber` and Kernel Panic, behind `CyberAllowed`). `StepCyberWorld` swaps in a fresh Version 0 kit on a death or disconnect.
+  - So these all showed v1: the stage load, the intro, the countdown and draft, a reset round, a guest before a snapshot carries the record, and a spectated or killcam pilot without it.
+  - Astra's content still carries v1's names and text. The Locker's Q and E rows (Data Dash, Firewall) and the DEV catalogue's weapon description ("Q Data Dash; E Firewall; ...") showed them.
+- **Fix (presentation only):**
+  - `NativeCyberLordHud.Drawer` (Core) always draws Kit v2: Uplink, Overclock, then Fork Bomb, Glitch Cut, Meteor Byte and Kernel Panic, or the ranged set, then the key-5 card.
+    - With the record, it calls the same `CyberKit2MeleeHud` / `CyberKit2RangedHud` functions as before.
+    - Without it, the cards show v2's names, art icons and costs with READY or LOW MANA. Orbital Uplink still waits for the ultimate clock.
+    - Kernel Panic's 4 card and the key-5 card are unchanged.
+    - `NativeCyberLordScreen` calls it, with a fresh view when the presentation has none yet.
+  - `NativeCyberLordText` (`Core/NativeLoadoutText.cs`) holds Kit v2's menu lines and weapon description, built from `CyberKit2Spec`.
+    - `NativeLoadoutText.Text` / `Description` and the catalogue use them.
+    - `NativeLocker.SlotOptions` shows v2's name, text, icon, cooldown and cost for the content's q, e, 1, 2 and 3. The content ids stay, and Kernel Panic keeps its content entry.
+  - Checked with no change needed: the tile strip ("DEV · hardlight fists and cyber spells"), the entrance name and text, the loading tips, the DEV panel notes (already v2), the death and killcam lines, and the RMB / SHIFT cards.
+- **Checks (run5 on the branch):** all five rc 0.
+  - Unity 6000.3.24f1 runtime and editor compile OK.
+  - Relay 713 PASS, including the new `CyberLordNameChecks` (`--cyber-names`, 2,238 checks):
+    - no-record drawer in melee and ranged mode: v2 labels, icons and READY / LOW MANA (the base screen logic showed v1's);
+    - the authority's live record: 1,456 frames identical to the base drawer;
+    - the menu text;
+    - a scan of 19,432 Core / Runtime string literals finds no v1 name outside the v1 tables kept for v1's checks;
+    - 0 bytes per frame.
+  - Updated source and verbatim checks in `CyberKit2MeleeChecks`, `CyberKit2RangedChecks`, `CyberLordChecks`, `LoadoutChecks` and `LockerChecks`.
+  - Python 106 OK (1 skipped); package OK; diff-check OK.
+- **Renders:** an offline 2D mock only (the scratchpad's `renders-cyberlord-names/drawer-before-after.png`). It is a port of CardAt's layout fed the dumped card states before and after, plus the Locker cards and the description. It is not a Unity capture.
+- **Not run:** Unity play, Windows, host and guest, a real killcam.
+- **Risks:**
+  - Before the record lands, a cast the authority has begun but not yet replicated shows READY, not ACTIVE. Before this fix it showed v1's names.
+  - After a death the cards read READY. The authority's reset kit has no cooldowns, so this matches.
+  - The v1 card functions and tables stay public for v1's checks but are no longer drawn; the scan pins this.
+  - Kernel Panic's card keeps its Lucide `cpu` icon while the other cards use art icons (unchanged from the live-record HUD).
+- **For Astra (content, when convenient):**
+  - Update the Cyber Lord's display strings in `tools/native-content.json` (and so `GameContent.json`) to Kit v2:
+    - the names and text of q, e, 1, 2 and 3 (Uplink, Overclock, Fork Bomb, Glitch Cut, Meteor Byte); `NativeCyberLordText.Texts` is a starting point;
+    - the weapon description (`NativeCyberLordText.Description`).
+  - The ids (`data-dash`, `firewall`, `packet-burst`, `siphon-link`, `system-crash`) can stay, and so can NativeGameplayValidation's id checks.
+  - Optional: the weapon's stat fields (damage 12, interval .28, range 2.2: the tile's "12 DMG · 3.6 / SEC · 2.2 M") and `secondary` (firewall, 12 s, 35) are v1's; v2's combo reach is 2.4 m.
+  - Once the content reads v2, the overrides show the same strings and can be removed.
+- **Animation impact:** none. No pose, effect, hit timing, hitbox, damage, cooldown, movement or networking change.

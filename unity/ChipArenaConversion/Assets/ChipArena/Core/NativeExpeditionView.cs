@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class ExpeditionViewMember
     {
         public string account, name, weapon, carriedBy;public int reprintCost, seat;
-        public bool connected, alive, safe, extracted, host, exitVote, extractVote;
+        public bool connected, alive, safe, extracted, choosing, host, exitVote, extractVote;
     }
     [Serializable] public sealed class ExpeditionViewInstance
     {
@@ -175,7 +175,7 @@ namespace ChipArena.UnityConversion
                 savedRevision=sources.Saved!=null&&sources.Saved.checkpoint!=null&&sources.Saved.checkpoint.run==s.run?sources.Saved.checkpoint.revision:-1,
             };
             v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,seat=Math.Max(0,sources.Seat?.Invoke(p.account)??0),name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
-                safe=p.safe,extracted=p.extracted,host=p.account==s.host,exitVote=s.exitVotes.Contains(p.account),extractVote=s.extractVotes.Contains(p.account)}).ToArray();
+                safe=p.safe,extracted=p.extracted,choosing=run.IsChoosing(p.account),host=p.account==s.host,exitVote=s.exitVotes.Contains(p.account),extractVote=s.extractVotes.Contains(p.account)}).ToArray();
             v.instances=s.instances.Select(i=>new ExpeditionViewInstance{id=i.id,target=i.target,progress=i.progress,entered=i.entered,cleared=i.cleared,
                 current=s.phase==ExpeditionPhase.Instance&&i.id==s.area,bosses=(string[])i.bosses.Clone(),defeated=(string[])i.defeated.Clone()}).ToArray();
             bool Keep(ExpeditionReward r)=>!r.consumed||r.id.StartsWith(here,StringComparison.Ordinal);

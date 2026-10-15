@@ -3,8 +3,9 @@ using System;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// Kit v2's ranged cards on the cyber HUD card drawer (Runtime/NativeCyberLordScreen.cs): once the v2 record is live and the
-    /// pilot is in ranged mode (key 5), the 1-4 cards are Daisy Chain, Singularity, Packet Storm and Orbital Uplink, each with
+    /// Kit v2's ranged cards on the cyber HUD card drawer (Runtime/NativeCyberLordScreen.cs, NativeCyberLordHud.Drawer): while
+    /// the pilot is in ranged mode (key 5), the 1-4 cards are Daisy Chain, Singularity, Packet Storm and Orbital Uplink (with no
+    /// record yet they read the view's empty one: READY or LOW MANA; Orbital Uplink still waits for the ultimate clock), each with
     /// its key, line icon (CyberKit2Spec.Icons, ClassIcons.json), cooldown from its replicated ready time (else the cast plus the
     /// spec cooldown; Orbital Uplink also waits for the shared ultimate clock, Kernel Panic's), mana, and state: CHARGE through a
     /// windup, ACTIVE through the cast and its lasting effect (the hole until it implodes, the storm until its last drop), CALL
@@ -17,7 +18,7 @@ namespace ChipArena.UnityConversion
         /// <summary>"KEY · NAME" per ranged slot (CyberKit2Ranged order), built once.</summary>
         public static readonly string[] Labels=Build();
         private static string[] Build(){var l=new string[CyberKit2Ranged.Slots];for(int i=0;i<l.Length;i++){int s=CyberKit2Ranged.Spec(i);l[i]=CyberKit2Spec.Keys[s]+" · "+CyberKit2Spec.Names[s].ToUpperInvariant();}return l;}
-        /// <summary>Whether the drawer shows the v2 ranged set (the record is live).</summary>
+        /// <summary>Whether the v2 ranged record is live for this view (the drawer shows the v2 ranged set either way).</summary>
         public static bool Shows(CyberLordView v)=>v!=null&&v.Kit2R.Live;
         /// <summary>A slot's ready time (a cast the record holds after `time`, on a rewound clock, has not happened yet).</summary>
         public static float ReadyAt(CyberLordView v,int slot,float kernelReady=float.NaN,float time=float.PositiveInfinity)

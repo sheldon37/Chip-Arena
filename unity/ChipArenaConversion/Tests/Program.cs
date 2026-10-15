@@ -26,6 +26,7 @@ internal static class Program
             {var json=System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json"));using(var doc=System.Text.Json.JsonDocument.Parse(json))RelayChecks.Run(args[1],doc.RootElement.GetProperty("sourceCommit").GetString()).GetAwaiter().GetResult();return 0;}
             if(args.Length==1&&args[0]=="--cyber-lord"){var cyberRoot=ProjectRoot();var cyberData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(cyberRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});KernelPanicChecks.Run();CyberChecks.Run();foreach(var result in CyberLordChecks.Run(cyberRoot,cyberData))Console.WriteLine("PASS "+result);foreach(var result in CyberLordRunChecks.Run(cyberRoot))Console.WriteLine("PASS "+result);foreach(var result in CyberLordRangedChecks.Run(cyberRoot))Console.WriteLine("PASS "+result);foreach(var result in CyberLordAuraChecks.Run(cyberRoot))Console.WriteLine("PASS "+result);foreach(var result in CyberKit2MeleeChecks.Run(cyberRoot))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--cyber-ranged"){CyberRangedSimulationChecks.Run();CyberChecks.Run();foreach(var result in CyberLordRangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
+            if(args.Length==1&&args[0]=="--cyber-names"){var namesRoot=ProjectRoot();CyberLordNameChecks.Run(namesRoot,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(namesRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--cyber-kit2-ranged"){foreach(var result in CyberLordRangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);foreach(var result in CyberKit2RangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--horde-drops"){HordeDropChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());HulkMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-motion"){HulkMotionChecks.Run(ProjectRoot());return 0;}
@@ -140,6 +141,7 @@ internal static class Program
             foreach(var result in CyberLordAuraChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CyberKit2RangedChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CyberKit2MeleeChecks.Run(root))Console.WriteLine("PASS "+result);
+            CyberLordNameChecks.Run(root,data);
             foreach(var result in SheldonIdleChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in BowFlipChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in MapLookChecks.Run(root,data))Console.WriteLine("PASS "+result);

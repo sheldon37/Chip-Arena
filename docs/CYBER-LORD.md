@@ -860,16 +860,22 @@ are `CyberRangedSpec` (`Core/CyberLordRanged.cs`).
 
 ## HUD, icon, tile, Locker, entrance, audio
 
-- **HUD**: Q, E and 1-4 cards in the cyber card drawer after RMB and SHIFT, with Lucide icons, countdowns, ACTIVE,
-  LOW MANA and PANIC (`Core/NativeCyberLordHud.cs`). The health box shows MANA and STAMINA; the self overhead rows show
-  mana.
+- **HUD**: Q, E and 1-4 cards in the cyber card drawer after RMB and SHIFT, with countdowns, ACTIVE, LOW MANA and PANIC
+  (`Core/NativeCyberLordHud.cs`). The health box shows MANA and STAMINA; the self overhead rows show mana.
+  - Since the v2 authority (2026-10-15) the drawer always shows Kit v2 (`NativeCyberLordHud.Drawer`): Uplink, Overclock,
+    then Fork Bomb, Glitch Cut, Meteor Byte and Kernel Panic, or the ranged set, then the key-5 card.
+  - The authority makes the v2 record at the pilot's first Cyber input and resets the kit on a death. Until the view has
+    the record (stage load, intro, countdown, a reset round, a guest's first frames, a spectated or killcam pilot), the
+    same cards show READY or LOW MANA. Once it is live they read its windows and ready times, as before.
 - **Class icon**: `spec-cyberlord` (full and small drawings) in `tools/export_class_icons.mjs`, regenerated into
   `ClassIcons.json`.
 - **Loadout tile**: the content entry is `devOnly`, so the existing tile shows the DEV violet dot under Melee and DEV for
   developers. The role line reads "DEV · hardlight fists and cyber spells". The card line is her entry's jab:
   "12 DMG · 3.6 / SEC · 2.2 M".
-- **Locker**: the Q, E and 1-4 rows show the HUD cards' icons, and their costs read in mana (her kit spends mana). The
+- **Locker**: the Q and E rows show the HUD cards' icons, and their costs read in mana (her kit spends mana). The
   Skins tab offers its Standard (the aura) and Prototype Series (the gauntlets) finishes.
+  - The content still carries v1's names and text under v1's ids. The Locker rows, the weapon description and the catalogue
+    show Kit v2's instead (`Core/NativeLoadoutText.cs` `NativeCyberLordText`, `NativeLocker.SlotOptions`). The ids stay.
 - **Locker entrance**: "DEV · Hardlight Boot" (`dev-cyberlord`), with a DEV badge, a diamond icon and the text "Built from
   light, then a hardlight palm strike." It is gated like every `dev-` cosmetic (a guest or a scoped grant cannot pick it).
 - **Entrance** (`Core/NativeCyberLordIntro.cs`, directed). It plays on the standard 4.8 s with the name card at 3.2 s, on

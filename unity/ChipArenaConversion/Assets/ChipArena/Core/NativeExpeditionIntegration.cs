@@ -32,6 +32,7 @@ namespace ChipArena.UnityConversion
         private readonly ConversionContent content;private readonly Action<ExpeditionSavepoint> write;
         public Func<string,string,ExpeditionReprintEvidence> ReprintEvidence;
         public Func<string,string,bool> CanClaim;
+        public Action<string,string,int> Installed;
         public Func<string,string,bool> CanPurchase;
         public ExpeditionCommandResult Purchase(string account,string chest)
         {
@@ -88,7 +89,7 @@ namespace ChipArena.UnityConversion
         }
         public ExpeditionIntegrationHooks Hooks()=>new ExpeditionIntegrationHooks
         {
-            Offers=Offers,Eligible=Eligible,Extract=Extract,Purchase=Purchase,
+            Offers=Offers,Eligible=Eligible,Extract=Extract,Purchase=Purchase,Installed=(account,chip,count)=>Installed?.Invoke(account,chip,count),
             Reprint=(payer,target)=>{var e=ReprintEvidence?.Invoke(payer,target);return e?.Valid==true?(e.cost,e.remote):(0,false);}
         };
         public ExpeditionCommandResult Execute(string account,ExpeditionCommand command)=>new ExpeditionHostCommands(Run,account,Hooks()).Send(command);

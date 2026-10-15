@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class ExpeditionMember
     {
         public string account, weapon;
-        public bool connected, alive=true, safe=true, extracted;
+        public bool connected, alive=true, safe=true, extracted, choosing;
         public int wallet, catchup, initialCatchup;
         public string carriedBy;
         public string[] perks=Array.Empty<string>();

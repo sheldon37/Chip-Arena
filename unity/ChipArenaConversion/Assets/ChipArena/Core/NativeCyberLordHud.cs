@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     /// Panic's cut-in and sequence as PANIC), the cooldown counting down from the slot's replicated ready time (the proposal's
     /// Ready; else the cast plus the spec cooldown, Kernel Panic's whiff refunding half), low mana once ready, else READY.
     /// Shown only for a Cyber Lord pilot: a DEV-only class (NativeLoadoutText / content devOnly), so DEV access gates it with
-    /// the class. Presentation only.
+    /// the class. The drawer draws Kit v2's cards (Drawer, below); the v1 card functions stay for v1's checks. Presentation only.
     /// </summary>
     public static class NativeCyberLordHud
     {
@@ -86,5 +86,39 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The mana bar's gain flash: a combo hit's +6 lands in the bar (0..1 over .35 s from the flow's arrival).</summary>
         public static float GainFlash(float time,float chargeAt)=>chargeAt>-90&&time>=chargeAt&&time<chargeAt+.35f?1-(time-chargeAt)/.35f:0;
+
+        // ---- the drawer (Runtime/NativeCyberLordScreen.cs): Kit v2, the shipped kit ----
+        /// <summary>The most cards the drawer shows for a Cyber Lord: Q, E, the live set's 1-4 and the key-5 card.</summary>
+        public const int DrawerCards=7;
+        /// <summary>A view with no replicated state (all windows and ready times unset): what the drawer reads for a Cyber Lord
+        /// pilot the presentation has no view of yet.</summary>
+        public static CyberLordView Fresh(){var v=new CyberLordView();v.Clear();return v;}
+        /// <summary>
+        /// The Cyber Lord's drawer cards at `time` for a pilot with `mana` (`kernelReady`: the pilot frame's Kernel Panic
+        /// cooldown), in drawer order into `cards` and their "KEY · NAME" labels into `labels` (both DrawerCards long); returns
+        /// the count. Kit v2 is the shipped kit (Astra's authority, PR #231), so its cards always show: Q Uplink, E Overclock,
+        /// then melee 1 Fork Bomb, 2 Glitch Cut, 3 Meteor Byte, 4 Kernel Panic, or ranged 1 Daisy Chain, 2 Singularity, 3 Packet
+        /// Storm, 4 Orbital Uplink, then the key-5 card. With the replicated v2 record (Kit2, Kit2R live) they read its windows
+        /// and ready times (CyberKit2MeleeHud.Of, CyberKit2RangedHud.Of, unchanged). Before the authority first writes it (the
+        /// record is made at the pilot's first Cyber input: the stage load, the intro, the countdown and draft, a reset round, a
+        /// guest before a snapshot carries it, a spectated or killcam pilot whose frame has none) the same functions read the
+        /// view's empty record: READY, or LOW MANA under the v2 cost, with v2's names and icons. Kernel Panic's 4 card (the
+        /// ultimate clock both 4s share) and the key-5 card are the same in both kits. The v1 card functions above (Of for Q to 3,
+        /// RangedOf, Labels, RangedLabels) are no longer drawn. Allocation-free.
+        /// </summary>
+        public static int Drawer(CyberLordView v,float time,float mana,float kernelReady,Card[] cards,string[] labels)
+        {
+            if(v==null||cards==null||labels==null||cards.Length<DrawerCards||labels.Length<DrawerCards)return 0;
+            bool ranged=ShowsRanged(v,time);int n=0;
+            for(int slot=CyberLordSpec.Q;slot<=CyberLordSpec.E;slot++){cards[n]=CyberKit2MeleeHud.Of(v,slot,time,mana);labels[n++]=CyberKit2MeleeHud.Labels[slot];}
+            if(ranged)foreach(int slot in CyberKit2RangedHud.Order){cards[n]=CyberKit2RangedHud.Of(v,slot,time,mana,kernelReady);labels[n++]=CyberKit2RangedHud.Labels[slot];}
+            else
+            {
+                for(int slot=CyberLordSpec.One;slot<CyberLordSpec.Four;slot++){cards[n]=CyberKit2MeleeHud.Of(v,slot,time,mana);labels[n++]=CyberKit2MeleeHud.Labels[slot];}
+                cards[n]=Of(v,CyberLordSpec.Four,time,mana,kernelReady);labels[n++]=Labels[CyberLordSpec.Four];
+            }
+            cards[n]=ModeOf(v,time);labels[n++]=ranged?RangedMode:MeleeMode;
+            return n;
+        }
     }
 }

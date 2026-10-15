@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     // intent, an IExpeditionCommands sends it, and ExpeditionIntentTracker shows it as confirmed only once the authority's state (the
     // next ExpeditionView) reflects it. A refusal, a missing hook or a missing transport is shown as such, never as success.
 
-    public enum ExpeditionIntent { None, VoteExit, CancelExit, VoteExtraction, CancelExtraction, Extract, NextLoop, Claim, Select, Reprint, VoteContinue, CancelContinue, Purchase }
+    public enum ExpeditionIntent { None, VoteExit, CancelExit, VoteExtraction, CancelExtraction, Extract, NextLoop, Claim, Select, Reprint, VoteContinue, CancelContinue, Purchase, OpenChoice, CloseChoice }
     public enum ExpeditionCommandState { Idle, Pending, Confirmed, Refused, Unavailable, Failed }
 
     [Serializable] public struct ExpeditionCommand
@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         public ExpeditionIntent intent;public string target, chip;
         public ExpeditionCommand(ExpeditionIntent intent,string target=null,string chip=null){this.intent=intent;this.target=target;this.chip=chip;}
         /// <summary>Commands that replace each other share a key (a vote and its cancel; one pick per reward).</summary>
-        public string Key=>(intent==ExpeditionIntent.CancelContinue?ExpeditionIntent.VoteContinue:intent==ExpeditionIntent.CancelExit?ExpeditionIntent.VoteExit:intent==ExpeditionIntent.CancelExtraction?ExpeditionIntent.VoteExtraction:intent==ExpeditionIntent.Select?ExpeditionIntent.Claim:intent)+":"+target;
+        public string Key=>(intent==ExpeditionIntent.CloseChoice?ExpeditionIntent.OpenChoice:intent==ExpeditionIntent.CancelContinue?ExpeditionIntent.VoteContinue:intent==ExpeditionIntent.CancelExit?ExpeditionIntent.VoteExit:intent==ExpeditionIntent.CancelExtraction?ExpeditionIntent.VoteExtraction:intent==ExpeditionIntent.Select?ExpeditionIntent.Claim:intent)+":"+target;
     }
     public struct ExpeditionCommandResult
     {
@@ -46,6 +46,7 @@ namespace ChipArena.UnityConversion
         public Func<string,string,string[]> Offers;
         /// <summary>(account, chip) catalog eligibility at selection time, for Select.</summary>
         public Func<string,string,bool> Eligible;
+        public Action<string,string,int> Installed;
         /// <summary>The durable individual extraction transaction (save the tombstone, then publish). Pending on success.</summary>
         public Func<string,ExpeditionCommandResult> Extract;
         public Func<string,string,ExpeditionCommandResult> Purchase;
@@ -98,7 +99,10 @@ namespace ChipArena.UnityConversion
                 case ExpeditionIntent.Extract:return hooks.Extract(Viewer);
                 case ExpeditionIntent.Purchase:return hooks.Purchase(Viewer,c.target);
                 case ExpeditionIntent.Claim:{var offers=hooks.Offers(Viewer,c.target);ok=offers!=null&&offers.Length>0&&run.Claim(Viewer,c.target,offers);break;}
-                case ExpeditionIntent.Select:{var eligible=hooks.Eligible;ok=run.Select(Viewer,c.target,c.chip,chip=>eligible(Viewer,chip));break;}
+                case ExpeditionIntent.OpenChoice:ok=run.SetChoosing(Viewer,true,c.target);break;
+                case ExpeditionIntent.CloseChoice:ok=run.SetChoosing(Viewer,false);break;
+                case ExpeditionIntent.Select:{var eligible=hooks.Eligible;ok=run.Select(Viewer,c.target,c.chip,chip=>eligible(Viewer,chip));
+                    if(ok)hooks.Installed?.Invoke(Viewer,c.chip,run.Snapshot().members.Single(m=>m.account==Viewer).chips.Single(x=>x.id==c.chip).count);break;}
                 case ExpeditionIntent.Reprint:{var (cost,remote)=hooks.Reprint(Viewer,c.target);ok=cost>=1&&run.Reprint(Viewer,c.target,cost,remote);break;}
                 default:return ExpeditionCommandResult.Of(ExpeditionCommandState.Unavailable,"Unknown intent.");
             }
@@ -202,6 +206,8 @@ namespace ChipArena.UnityConversion
             string me=v.viewer;bool left=before.area!=null&&(v.area!=before.area||v.loop!=before.loop);
             switch(c.intent)
             {
+                case ExpeditionIntent.OpenChoice:return v.Member(me)?.choosing==true;
+                case ExpeditionIntent.CloseChoice:return v.Member(me)?.choosing!=true;
                 case ExpeditionIntent.VoteExit:return v.exitVotes.Contains(me)||left;
                 case ExpeditionIntent.CancelExit:return !v.exitVotes.Contains(me);
                 case ExpeditionIntent.VoteExtraction:return v.extractVotes.Contains(me)||v.mine.extracted;
