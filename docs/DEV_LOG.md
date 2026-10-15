@@ -1,3 +1,9 @@
+## 2026-10-15 — Astra: owner-supplied Expedition hub music
+
+- Branch `codex/hub-music`, base shared/builder `d882454`. Owner directly requested the attached Safe Hub Under Siege MP3 as hub music. Added the unmodified track with streaming importer and selected it on expedition-city before the generic PvE fallback, after boss music priority. Menu, Ward Zero and boss tracks retain their selection.
+- Drive Latest-Build.txt at 21:46:19Z reports FAILED at Fetch shared source, source not fetched, no Unity log. The folder contains only that summary; no causal Git error is available. Gate PR #243 is already in shared/builder. This failure is before Unity compilation and cannot be diagnosed as a game-code failure from that receipt.
+- Verification and promotion recorded in PR. Windows playback/build/publication require the local builder.
+
 # Chip Arena — development log
 
 ## 2026-10-15 — Claude — Expedition wrist chip screen, chip cursor without Alt, chooser camera on the screen
