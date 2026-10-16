@@ -157,7 +157,9 @@ unchanged.
   mouse attack/block go to the tray; Alt changes nothing. Camera yaw/pitch and lock-on tracking freeze for the entire
   choosing hold, through the final wrist plant. When the hold ends the cursor re-locks and mouse look returns after the
   re-lock settles (two frames, so the cursor's travel is not read as a turn). The host cancels and blocks
-  movement/actions, preserves the held orientation and refuses machine interaction while choosing. Damage and the
+  movement/actions, preserves the held orientation and refuses machine interaction while choosing. Opening in the air
+  cancels upward momentum and holds horizontal position while gravity settles the pilot onto real ground; downward
+  speed is retained through the tray and final plant. Actual freeze/scare effects still suspend them. Damage and the
   world/difficulty clock continue. An explicit close releases an unfinished tray; an automatic close after the final
   pick cannot shorten its plant. A locked cursor never hovers or clicks a card.
 - **Wrist look and SELECTING CHIP tag.** These come from `members[].choosing` for every pilot, as the Boss Test
