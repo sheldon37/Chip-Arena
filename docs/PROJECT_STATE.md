@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-16 Astra cohort foundation (`codex/expedition-cohort-transfer`, base `bb4b36a`): partial, inactive state machine and managed failure tests only. Previous native two-scene foundation PASS verified in the Windows build log. Native cohort placement, director/wire/save/join integration and Windows performance remain unfinished. F entry and live exp-layout-3 unchanged; draft PR only. See DEV_LOG.
+
 2026-10-16 Claude footstep surfaces (`claude/footstep-surface-fix`, merged into shared): steps no longer cycle terrains. Each step key holds one recording series of its surface (concrete had loose-stone takes); probe at the planted foot with a 2-plant surface memory; zombies step in the surface pool on metal/wood/gravel/snow. New private bank `LocalAssets-footsteps-surfaces.zip` (not in the repo). Managed checks pass; not heard in a build. See DEV_LOG.
 2026-10-16 Claude join circle layout draft (`claude/join-circle-layout-draft`, merged into shared, not live): exp-layout-4 draft (`Tests/expedition-layout-4-join-draft.json`) gives the Ward Zero door join (79, 0, 0) r 2.5 h 4, the approach at its centre and its returns moved out of it. Astra's parser accepts it, and live exp-layout-3 is byte-identical. Next: Astra's subset transfer and join view fields, then Claude's ring, HUD and the live switch. See EXPEDITION-HUB.md.
 
