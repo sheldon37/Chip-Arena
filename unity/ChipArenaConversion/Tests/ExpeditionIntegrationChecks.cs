@@ -19,6 +19,13 @@ internal static class ExpeditionIntegrationChecks
     public static void Run(string root)
     {
         var data=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),Codec);
+        var clockRun=Ready();var clockSession=new ExpeditionSession(clockRun,data,_=>{});double clockStart=clockRun.Elapsed;
+        clockSession.Tick(3.1);Check(Math.Abs(clockRun.Elapsed-clockStart-1)<.000001,"one oversized tick is capped to one second");
+        clockStart=clockRun.Elapsed;
+        for(int tick=0;tick<29;tick++)clockSession.Tick(.1);
+        Check(clockRun.Elapsed-clockStart<3,"frame-stepped channel remains below three seconds at 2.9");
+        for(int tick=0;tick<2;tick++)clockSession.Tick(.1);
+        Check(clockRun.Elapsed-clockStart>=3,"frame-stepped channel reaches three-second reprint threshold");
         var run=Ready();run.Credit("host","money",100);run.Credit("guest","money",50);
         var session=new ExpeditionSession(run,data,_=>{});session.Checkpoint();
         var batch=ExpeditionViewBatch.Build(run,new[]{"host","guest"},session.Sources);

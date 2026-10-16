@@ -1,3 +1,9 @@
+## 2026-10-15 — Astra: repair Expedition co-op build-gate clock advance
+
+- Branch `codex/coop-reprint-validation`, base `e4e12fb`. Desktop log at 2026-10-16 02:56 UTC fails `guest reprints host into live capsule` in ValidateExpeditionCoop; cleanup/fetch/audio installation and compilation had proceeded into native validation.
+- The fixture called Session.Tick(3.1), but its intentional stalled-frame cap advances only one second. Replace it with 31 ordinary 0.1-second frames, including an assertion that the host remains dead and the channel pending at 2.9 seconds. No gameplay channel duration, clock cap, damage, visuals or network behavior changed.
+- PASS managed Expedition integration: 91 assertions, including oversized-tick cap and frame-stepped threshold regression. PASS Player/Runtime/Editor semantic compilation and git diff check. Native Unity/PhysX execution and Windows publication require the desktop retry; not claimed here. Fix is implemented on this task branch; merge/builder synchronization receipt follows in PR.
+
 ## 2026-10-15 — Astra: Bow Rain damage investigation; lifesteal still needs a repro
 
 - Branch `codex/bow-damage`, base shared `b36c6ce`. Owner reports Rain doing no damage and Bow lifesteal inconsistent. No overlapping open Bow PR found.
