@@ -212,8 +212,8 @@ namespace ChipArena.UnityConversion
                 case ExpeditionIntent.CancelExit:return !v.exitVotes.Contains(me);
                 case ExpeditionIntent.VoteExtraction:return v.extractVotes.Contains(me)||v.mine.extracted;
                 case ExpeditionIntent.CancelExtraction:return !v.extractVotes.Contains(me);
-                // Extraction is complete only after the durable save holds its tombstone (docs/EXPEDITION.md save transaction).
-                case ExpeditionIntent.Extract:return v.mine.extracted&&v.mine.extractionSaved;
+                // Live fresh runs confirm from authority state; legacy save sessions also require their durable tombstone.
+                case ExpeditionIntent.Extract:return v.mine.extracted&&(v.freshRun||v.mine.extractionSaved);
                 case ExpeditionIntent.NextLoop:return v.loop>before.loop;
                 case ExpeditionIntent.VoteContinue:return v.continueVotes.Contains(me)||v.loop>before.loop;
                 case ExpeditionIntent.CancelContinue:return !v.continueVotes.Contains(me);

@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
             if(connecting?.IsCompleted==true)
             {
                 if(connecting.IsFaulted||connecting.IsCanceled)networkStatus=internetRooms?OnlineError(connecting.Exception,"Could not join. Check the code, keep the host’s room open, and make sure both games are updated."):"Could not find this local room. Check that both players are on the same network.";
-                else{server=connecting.Result;SendServer(new NativeNetMessage{type="hello",expeditionProtocol=1,source=content.sourceCommit,contentRevision=content.contentRevision,room=joinCode.Trim().ToUpperInvariant(),resume=resumeToken,token=account?.Token,profile=Profile()});networkStatus="Joining room…";}connecting=null;
+                else{server=connecting.Result;SendServer(new NativeNetMessage{type="hello",expeditionProtocol=NativeExpeditionParty.Protocol,source=content.sourceCommit,contentRevision=content.contentRevision,room=joinCode.Trim().ToUpperInvariant(),resume=resumeToken,token=account?.Token,profile=Profile()});networkStatus="Joining room…";}connecting=null;
             }
             if(Hosting)
             {
@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
                 if(previous!=null&&expeditionSession!=null)
                 {
                     var access=NativeAccess.Verify(message.token,s=>JsonUtility.FromJson<NativePlayerClaim>(s),DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-                    if(peer.ExpeditionProtocol!=1||string.IsNullOrEmpty(access.AccountId)||access.AccountId!=previous.Seat.access?.AccountId||
+                    if(peer.ExpeditionProtocol!=NativeExpeditionParty.Protocol||string.IsNullOrEmpty(access.AccountId)||access.AccountId!=previous.Seat.access?.AccountId||
                         !expeditionSession.Run.Snapshot().members.Any(m=>m.account==access.AccountId&&!m.extracted))
                     {c.Reject(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="Sign in as the original Expedition pilot to reconnect."}));return;}
                     previous.Seat.access=access;
