@@ -138,6 +138,46 @@ namespace ChipArena.UnityConversion
             // Astra's own reader and geometry gate (Core NativeExpeditionLayout on this base), with the capsule probe above.
             string manifestText=R("Tests/expedition-layout-draft.json");var parsed=NativeExpeditionLayout.Parse(manifestText);
             Check(parsed.areas.Length==2&&parsed.Area("exp-city").spawns.Length==spawns.Length&&parsed.Area("exp-ward-zero").spawnSource=="inherit:siren"&&parsed.Area("exp-city").bossTrigger!=null&&parsed.Area("exp-city").slots.Length==8,"NativeExpeditionLayout.Parse reads the draft manifest");
+            // Compare every PveEntry field against a direct deserialize of the live manifest.
+            // This detects future parser omissions too, including optional fields and defaults.
+            var liveText=R("Assets/Conversion/Resources/ExpeditionLayout.json");
+            var live=NativeExpeditionLayout.Parse(liveText);
+            var fieldsOnly=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};
+            using(var document=JsonDocument.Parse(liveText))
+            foreach(var areaJson in document.RootElement.GetProperty("areas").EnumerateArray())
+            {
+                var entries=areaJson.GetProperty("spawns");if(entries.ValueKind!=JsonValueKind.Array)continue;
+                var actual=live.Area(areaJson.GetProperty("id").GetString()).spawns;
+                int index=0;foreach(var raw in entries.EnumerateArray())
+                {
+                    var expected=JsonSerializer.Deserialize<PveEntry>(raw.GetRawText(),o);
+                    Check(JsonSerializer.Serialize(expected,fieldsOnly)==JsonSerializer.Serialize(actual[index].entry,fieldsOnly),"all live manifest spawn fields round-trip: "+expected.id);
+                    Check(raw.GetProperty("allow").EnumerateArray().Select(k=>k.GetString()).SequenceEqual(actual[index].allow),"live allow list round-trip: "+expected.id);index++;
+                }
+            }
+            var detached=JsonSerializer.Deserialize<NativePveContent>(R("Assets/Conversion/Resources/PveContent.json"),o);
+            NativeExpeditionLayout.BindContent(live.Area("exp-city"),detached);
+            Check(detached.entries.Length==live.Area("exp-city").spawns.Length&&detached.entries.Any(e=>e.hulk)&&detached.entries.Where(e=>e.kind=="breach").All(e=>town.blocks.Any(b=>b.id==e.block)),"authority/replica content uses the hub entry index and panels");
+            Check(detached.machines.Length==0&&detached.machineBlocks.Length==0&&detached.pads.Length==8,"authored area never borrows Ward machines or pads");
+            Check(pve.entries.Length!=detached.entries.Length&&pve.machines.Length>0,"binding detached content leaves original Ward content unchanged");
+            string MutateSpawn(string kind,string key,string value)
+            {
+                var node=System.Text.Json.Nodes.JsonNode.Parse(liveText);
+                var entry=node["areas"][0]["spawns"].AsArray().First(n=>n["kind"].GetValue<string>()==kind);
+                if(value==null)entry.AsObject().Remove(key);else entry[key]=System.Text.Json.Nodes.JsonNode.Parse(value);
+                return node.ToJsonString();
+            }
+            foreach(var bad in new[]{("drop","hulk","1"),("vent","hulk","true"),("vent","pit","0"),("vent","song","1.5"),("vent","song","2"),
+                ("breach","block",(string)null),("breach","center",(string)null),("breach","size","{\"x\":0,\"y\":1,\"z\":1}"),
+                ("breach","normal","{\"x\":0,\"y\":0,\"z\":0}"),("breach","normal","{\"x\":1e100,\"y\":0,\"z\":0}")})
+            {bool refused=false;try{NativeExpeditionLayout.Parse(MutateSpawn(bad.Item1,bad.Item2,bad.Item3));}catch(FormatException){refused=true;}Check(refused,"malformed spawn refused: "+bad.Item1+"/"+bad.Item2);}
+            var missingPanel=NativeExpeditionLayout.Parse(MutateSpawn("breach","block","\"missing-panel\""));
+            bool panelRefused=false;try{NativeExpeditionLayout.ValidateGeometry(missingPanel,content,pve,(_,p,r,h)=>true,(_,a,b,r,h)=>true);}catch(FormatException){panelRefused=true;}
+            Check(panelRefused,"breach must name a static block in its own map");
+            var optional=NativeExpeditionLayout.Parse(MutateSpawn("vent","song","1"));
+            Check(optional.areas[0].spawns.First(e=>e.entry.kind=="vent").entry.song==1,"non-default song survives parsing");
+            optional=NativeExpeditionLayout.Parse(MutateSpawn("vent","pit","true"));
+            Check(optional.areas[0].spawns.First(e=>e.entry.kind=="vent").entry.pit,"non-default pit survives parsing");
             Check(parsed.Area("exp-city").slots.All(p=>parsed.Area("exp-city").sanctuary.Any(v=>v.Contains(p.Position))),"every sanctuary slot inside the sanctuary volume (ExpeditionVolume.Contains)");
             bool Probe(string id,V3 p,float r,float h)=>Supported(content.Map(id),p,r,h);
             // Validate the actual imported navigation, with authored capsule clearance on nodes and links.

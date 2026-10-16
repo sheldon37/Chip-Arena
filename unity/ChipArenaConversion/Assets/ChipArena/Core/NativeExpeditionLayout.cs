@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             if(l.areas.Length<2||l.areas.Length>16||l.instances.Length<1||l.instances.Length>15||l.instances.Distinct().Count()!=l.instances.Length||l.areas.Select(a=>a.id).Distinct().Count()!=l.areas.Length||l.Area(l.world)?.role!="world"||l.areas.Count(a=>a.role=="world")!=1||l.instances.Any(i=>l.Area(i)?.role!="instance")||l.areas.Any(a=>a.id!=l.world&&!l.instances.Contains(a.id)))throw new FormatException("Expedition layout: inconsistent area roster.");
             var all=l.areas.SelectMany(a=>a.anchors).ToArray();if(all.Select(a=>a.id).Distinct().Count()!=all.Length)throw new FormatException("Expedition layout: duplicate anchor.");
             var gates=l.areas.SelectMany(a=>a.gates).ToArray();
-            if(gates.Select(g=>g.id).Distinct().Count()!=gates.Length||gates.Any(g=>all.Any(a=>a.id==g.id)||g.opens!="final")||l.areas.Any(a=>a.id!=l.world&&a.gates.Length!=0))throw new FormatException("Expedition layout: invalid or duplicate gate.");
+            if(gates.Select(g=>g.id).Distinct().Count()!=gates.Length||gates.Any(g=>all.Any(a=>a.id==g.id))||l.areas.Any(a=>a.gates.Any(g=>g.opens!=(a.id==l.world?"final":"boss"))))throw new FormatException("Expedition layout: invalid or duplicate gate.");
             if(l.areas.Select(a=>a.map).Distinct().Count()!=l.areas.Length)throw new FormatException("Expedition layout: areas must use separate maps.");
             foreach(var a in l.areas)
             {
@@ -145,7 +145,10 @@ namespace ChipArena.UnityConversion
                 foreach(var d in area.doors)Check(d.approach.Position,.45f,1.8f);
                 var spawns=ResolveSpawns(area,horde);
                 if(spawns==null||spawns.Length==0)throw new FormatException("Expedition layout: missing inherited entrances.");
-                foreach(var spawn in spawns){bool heavy=spawn.allow.Contains("hulk");float radius=heavy?NativeHordeKinds.HulkRadius:.45f,height=heavy?NativeHordeKinds.HulkHeight:1.8f;Check(spawn.entry.@exit.Position(),radius,height);
+                foreach(var spawn in spawns){
+                    var entry=spawn.entry;
+                    if(entry.hulk&&entry.kind!="drop"||entry.kind=="breach"&&(!map.blocks.Any(b=>b.id==entry.block&&b.role=="static")||!NativeMapRules.Box(entry.center,entry.size)||!NativeMapRules.Finite(entry.normal)||Math.Abs(entry.normal.Length-1)>=.01f))throw new FormatException("Expedition layout: invalid spawn panel "+entry.id);
+                    bool heavy=spawn.allow.Contains("hulk");float radius=heavy?NativeHordeKinds.HulkRadius:.45f,height=heavy?NativeHordeKinds.HulkHeight:1.8f;Check(spawn.entry.@exit.Position(),radius,height);
                     if(!reachable(area.map,spawn.entry.@exit.Position(),origin.Position,radius,height))throw new FormatException("Expedition layout: unreachable spawn "+spawn.entry.id);}
             }
         }
@@ -155,8 +158,42 @@ namespace ChipArena.UnityConversion
             if(area.spawnSource!="inherit:siren"||horde?.entries==null||horde.entries.Length==0)throw new FormatException("Expedition layout: unavailable inherited spawns.");
             return horde.entries.Select(e=>new ExpeditionSpawnLayout{entry=e,allow=new[]{"shambler","runner","brute","spitter","hulk"}.Where(k=>NativeWardEntries.Allows(e,k)).ToArray()}).ToArray();
         }
+        // Apply only to a detached content copy. Authority and replica must resolve entry
+        // indices against the same area's table before decoding minions or breach records.
+        public static void BindContent(ExpeditionAreaLayout area,NativePveContent data)
+        {
+            if(area==null||data==null)throw new ArgumentNullException("Expedition area content");
+            data.entries=ResolveSpawns(area,data).Select(s=>s.entry).ToArray();
+            var point=area.bossPoints[0];data.boss=new PveBoss{spawn=new PvePoint{x=point.x,y=point.y,z=point.z},rescue=new PvePoint{x=point.x,y=point.y,z=point.z},yaw=point.yaw};
+            if(area.spawnSource!=null)return;
+            data.hideSpots=area.bossPoints.Select(p=>new PvePoint{x=p.x,y=p.y,z=p.z}).ToArray();
+            data.pads=(area.role=="world"?area.slots:area.doors.SelectMany(d=>d.entries)).Select(p=>new PvePoint{x=p.x,y=p.y,z=p.z}).ToArray();
+            // New instances require their own machine authoring; Ward coordinates are never a fallback.
+            data.machines=Array.Empty<PveMachine>();data.machineBlocks=Array.Empty<ContentBlock>();
+        }
         // Identity covers exact manifest bytes and the validated map/PvE revision, which includes the blocks.
         public static string Compatibility(string json,ConversionContent content)=>NativeMapRules.Revision(json+"\n"+content.contentRevision);
+        private static bool Flag(Dictionary<string,object> o,string key)
+        {if(!o.TryGetValue(key,out var v))return false;return v is bool b?b:throw new FormatException("Expedition layout: boolean required for "+key);}
+        private static V3 Vector(Dictionary<string,object> o,string key,bool required)
+        {return o.ContainsKey(key)||required?Point(Required(o,key),false).Position:new V3();}
+        private static PveEntry Spawn(Dictionary<string,object> q)
+        {
+            var from=Point(Required(q,"from"),false);var to=Point(Required(q,"exit"),false);
+            float e=Number(q,"e"),level=Number(q,"level"),song=q.ContainsKey("song")?Number(q,"song"):-1;
+            string kind=Text(q,"kind");bool breach=kind=="breach";
+            if(e<0||e>255||e!=(int)e||level<0||level>1||level!=(int)level||song< -1||song>1||song!=(int)song||!new[]{"door","vent","drop","breach"}.Contains(kind))throw new FormatException("Expedition layout: invalid spawn.");
+            var entry=new PveEntry{e=(int)e,id=Id(Text(q,"id")),kind=kind,
+                from=new PvePoint{x=from.x,y=from.y,z=from.z},@exit=new PvePoint{x=to.x,y=to.y,z=to.z},
+                yaw=Number(q,"yaw"),level=(int)level,clear=Number(q,"clear"),height=q.ContainsKey("height")?Number(q,"height"):0,
+                surface=q.ContainsKey("surface")?Text(q,"surface"):null,hulk=Flag(q,"hulk"),pit=Flag(q,"pit"),song=(int)song,
+                block=q.ContainsKey("block")||breach?Id(Text(q,"block")):null,
+                center=Vector(q,"center",breach),size=Vector(q,"size",breach),normal=Vector(q,"normal",breach)};
+            if(entry.clear<=0||entry.height<0||entry.hulk&&kind!="drop"||NativeWardEntries.Drop(entry)&&entry.height<=0||
+                kind=="vent"&&entry.surface!=null&&!new[]{"floor","wall","ceiling"}.Contains(entry.surface)||
+                breach&&(!NativeMapRules.Box(entry.center,entry.size)||Math.Abs(entry.normal.Length-1)>=.01f))throw new FormatException("Expedition layout: invalid spawn fields.");
+            return entry;
+        }
         private static ExpeditionAreaLayout Area(object x)
         {
             var o=Obj(x);string id=Id(Text(o,"id"));
@@ -167,7 +204,9 @@ namespace ChipArena.UnityConversion
             var boss=Obj(Required(o,"boss"));a.bossPoints=Items(boss,"points",v=>Point(v),true);if(boss.TryGetValue("trigger",out var trigger))a.bossTrigger=Volume(trigger);
             if(o.TryGetValue("sanctuary",out var safe)){var q=Obj(safe);a.sanctuary=Items(q,"volumes",Volume,true);a.slots=Items(q,"slots",v=>Point(v),true);}
             var spawns=Required(o,"spawns");a.spawnSource=spawns as string;a.spawns=a.spawnSource!=null?Array.Empty<ExpeditionSpawnLayout>():List(spawns).Select(v=>
-            {var q=Obj(v);var from=Point(Required(q,"from"),false);var to=Point(Required(q,"exit"),false);float e=Number(q,"e");var kind=Text(q,"kind");var allow=Items(q,"allow",Id,true);if(e<0||e>255||e!=(int)e||!new[]{"door","vent","drop","breach"}.Contains(kind)||allow.Length==0||allow.Length>5||allow.Distinct().Count()!=allow.Length||allow.Any(k=>!NativeHordeKinds.Known(k))||Number(q,"clear")<=0||Number(q,"level")<0||Number(q,"level")!=(int)Number(q,"level")||q.ContainsKey("height")&&Number(q,"height")<0)throw new FormatException("Expedition layout: invalid spawn.");return new ExpeditionSpawnLayout{entry=new PveEntry{e=(int)e,id=Id(Text(q,"id")),kind=kind,from=new PvePoint{x=from.x,y=from.y,z=from.z},@exit=new PvePoint{x=to.x,y=to.y,z=to.z},yaw=Number(q,"yaw"),level=(int)Number(q,"level"),clear=Number(q,"clear"),height=q.ContainsKey("height")?Number(q,"height"):0,surface=q.ContainsKey("surface")?Text(q,"surface"):null},allow=allow};}).ToArray();
+            {var q=Obj(v);var entry=Spawn(q);var allow=Items(q,"allow",Id,true);
+                if(allow.Length==0||allow.Length>5||allow.Distinct().Count()!=allow.Length||allow.Any(k=>!NativeHordeKinds.Known(k)||!NativeWardEntries.Allows(entry,k)))throw new FormatException("Expedition layout: invalid spawn allow list.");
+                return new ExpeditionSpawnLayout{entry=entry,allow=allow};}).ToArray();
             return a;
         }
     }

@@ -11,10 +11,10 @@ namespace ChipArena.UnityConversion
         // Where a placed machine (PveContent machines) is drawn: its model root is the authority's spot on the machine's own floor
         // (the upper floor's dispensers and med stations stand at y 6), turned by its yaw, so the model's front (+z, the slot and
         // screen side) faces the authority's front point (spot + .7 m along the yaw). The town shares the Ward's content but the
-        // authority builds and serves machines only in PvE rounds and Ward instances (NativeArena.BuildPveMachines,
+        // authority builds and serves machines only in PvE rounds and Expedition instances (NativeArena.BuildPveMachines,
         // TryExpeditionInteract), so nothing is drawn or labelled there.
-        /// <summary>Whether the machines stand in this arena: every PvE round, and an Expedition area only in a Ward instance.</summary>
-        public static bool Present(string mapId,bool expedition)=>!expedition||NativeMapRules.WardInstance(mapId);
+        /// <summary>Whether the machines stand in this arena: every PvE round, and an Expedition area only in a recognized instance.</summary>
+        public static bool Present(string mapId,bool expedition)=>!expedition||NativeMapRules.WardInstance(mapId)||NativeMapRules.ExpeditionInstance(mapId);
         /// <summary>A model-space point (Unity frame: +z the front, +y up) of a placed machine, in the world.</summary>
         public static V3 World(PveMachine m,float x,float y,float z){float s=(float)Math.Sin(m.yaw),c=(float)Math.Cos(m.yaw);return new V3(m.x+x*c+z*s,m.y+y,m.z-x*s+z*c);}
         /// <summary>The model's root: the machine's spot on its own floor.</summary>
