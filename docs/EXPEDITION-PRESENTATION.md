@@ -74,8 +74,9 @@ Core files are engine-free; Runtime files draw with the cyber HUD kit (`NativeHu
 | `Tests/ExpeditionStatesChecks.cs` | Managed checks (`CoreTests.dll --expedition-states`, also in the full suite) |
 | `Core/NativeExpeditionPick.cs` | Chip picks: reward rules, header, waiting counts, the tray's flow (Claim / OpenChoice / CloseChoice / Select), choosers from `members[].choosing` |
 | `Runtime/NativeExpeditionChipScreen.cs` | The chip cards drawn on my wrist screen (the Boss Test's tray pieces through the screen's canvas maps; the 2D tray where the screen cannot be read), the follow-through, input routing and the chip cursor, the CHIPS tag, the wrist-look and wrist-plant hooks and the plant's install cue |
-| `Core/NativeChipScreen.cs` | The wrist chip screen: its place, unfold and fold, cards, a pick's flying card, the canvas maps and the cursor hit test |
-| `Runtime/NativeChipScreenPresentation.cs` | Builds every Expedition chooser's screen in place of the small wrist panel; my screen's state for the HUD and the chooser camera |
+| `Core/NativeChipScreen.cs` | The wrist chip screen: its place, unfold and fold, cards, a pick's flying card, the canvas maps, the cursor hit test, the hit cue and its light budget (`NativeChipScreenLight`) |
+| `Resources/NativeChipScreen.shader` | The screen's one-quad look (glass, grid, scanlines, rim, frame line, rules, card slots) and its rays, ring and motes; alpha-blended, under the bloom |
+| `Runtime/NativeChipScreenPresentation.cs` | Builds every Expedition chooser's screen in place of the small wrist panel into its own mesh; my screen's state for the HUD and the chooser camera |
 | `Tests/ChipScreenChecks.cs` | Managed checks (`CoreTests.dll --chip-screen`, also in the full suite) |
 | `Core/NativeChipPlant.cs` | The wrist plant after each pick: its timeline (the Boss Test plant's), cue and pose layer over the wrist-hologram pose |
 | `Tests/ExpeditionPickChecks.cs` | Managed checks (`CoreTests.dll --expedition-pick`, also in the full suite) |
@@ -164,8 +165,8 @@ unchanged.
   projects the chip screen (below) in place of the small panel. Another pilot's screen shows three blank cyan cards;
   their offers and count stay private. Mine carries my offers' rarities. In first person the chooser camera swings
   out to show it on my body (below); the first-person look shows only while the camera is still at the eye. A damaging hit flinches the look
-  (`NativeChipSelect.Flinch`): it yields up to 45% to the route's pose, so the hit reaction shows through. The hologram
-  blinks red as before.
+  (`NativeChipSelect.Flinch`): it yields up to 45% to the route's pose, so the hit reaction shows through. The screen's edge
+  turns red for .45 s (below); the small wrist hologram (first person, the Boss Test) blinks red as before.
 - **Wrist plant** (`Core/NativeChipPlant.cs`; docs/PVE-CHIP-SELECT.md "Expedition wrist plant"). Each pick plays it on
   the Boss Test plant's timeline:
   - The chosen card leaves the folding panel as the chip.
@@ -188,15 +189,31 @@ unchanged.
     .42 m out to the side and .36 m over the body centre, turned 30 degrees toward the other front quarter, where the
     camera stands. The side is the display wrist's (`NativeChipScreen.OnLeft`). The rifle, the machine gun and the
     greatsword hold that wrist across the body in both hands, so their screen floats on the side the wrist is held.
-  - **Look.** The chip hologram's shader kinds (chamfered frame with brackets, scanlines, grid, beam sheets and edges,
-    emitter ring, motes; additive). It flickers as it boots, then keeps the hologram's flicker and glitch, and blinks
-    red under attack. It is flat: the faces are drawn as affine bands and would not register on a curve.
+  - **Look** (rebuilt 2026-10-15 for "Holographic display kind of buggy, and display is odd. Can we make it like a better holographic
+    display with no artifacting?"; `Resources/NativeChipScreen.shader`). The screen is one quad drawn by its own shader: dark glass with a
+    faint grid and scanlines, a soft inner rim and fresnel sheen, a thin bright chamfered frame line with corner brackets, header and footer
+    rules on the HUD's bands, and the card slots inside it. Nothing is stacked or coplanar on it. Thin rays run from the emitter ring to its
+    corners (two to its ends while it is a sliver), with a few motes, all behind it and drawn first; a pick's flying card is drawn last, in front.
+    - Alpha-blended, premultiplied (`Blend One OneMinusSrcAlpha`), no depth write, one pass and one queue (`Transparent+2`): drawn again it
+      converges on its own colour instead of adding up. The scene fog fades it out.
+    - Light is budgeted in linear HDR under NativeBloom's threshold of 1 (`Core NativeChipScreenLight`; the shader's `CS_*` numbers are the
+      same and the check reads them): the body's summed light is .72 at most (.93 over a lit wall at .5), so it never blooms. Only the thin
+      frame line (about 2 px), its brackets, the emitter ring and a lit card's rim go over 1, as a soft glow.
+    - Lines thinner than a pixel fade instead of breaking up; the grid and the scanlines fade out before they would alias. No flicker once
+      open (the old 37 rad/s flicker and glitch dips are gone).
+    - Under the HUD's faces each slot is a dim frame just outside the face in its rarity; a blank back (anyone else's) has a cyan rim and an
+      emblem.
+    - **Hit cue.** A damaging hit on that pilot (the live events, `NativeEventFeedback.Attacked`, as the flinch reads them) turns the frame
+      line, brackets and rim red: full at the hit, gone .45 s later (`NativeChipScreen.Alert`), no blinking, never the glass or the cards.
+    - The wrist plant's chip and the cuff's pulse still come from the wrist hologram's mesh (`NativeChipSelect.shader`, unchanged; the Boss
+      Test keeps that hologram).
   - **Open and close.** It unfolds out of the wrist: its centre travels out of the emitter, the width opens first, then
-    the height, and the cards are dealt. It folds back the same way when the look lowers, and with each pick's fold.
+    the height, with a short flicker (none with Reduced effects), and a scan line sweeps down revealing the cards as they are dealt. It folds
+    back the same way when the look lowers, and with each pick's fold.
   - **Cards.** The HUD draws the real faces (`DrawTray` / `NativeChipCard`, badges, hover lift, holo scan) over my
     screen, mapped through three canvas bands (header, cards, footer), each fitted to where the camera projects its
-    four corners. This keeps the faces within 1% of the frame width of the world cards, which dim to a backing glow
-    under them. The header (eyebrow, Choose a chip, YOU ARE VULNERABLE WHILE CHOOSING, N MORE WAITING, status), the key
+    four corners. This keeps the faces within 1% of the frame width of the world cards; the slot under each face is a dim frame
+    just outside it. The header (eyebrow, Choose a chip, YOU ARE VULNERABLE WHILE CHOOSING, N MORE WAITING, status), the key
     line (1–N PICK · CLICK A CARD · C OR ESC CLOSES) and Choose later sit on the screen. IMGUI maps the cursor back
     through the same matrix, so the card under the cursor is the one picked.
   - **Fallback.** Until the screen faces the camera with its cards at least 20% of the width wide, no faces are drawn
@@ -233,7 +250,7 @@ unchanged.
   - **First person.** The camera leaves through the front of my face and turns round. The view model is off while swung,
     and my body is drawn once the camera is .45 m from the eye, while it is still out of view. First person returns
     when the swing ends.
-  - **Hits.** Damage, the hologram's red blink, the flinch and the damage screen are unchanged. The one camera shake applies
+  - **Hits.** Damage, the screen's red edge, the flinch and the damage screen are unchanged. The one camera shake applies
     to the camera shown, after the swing, and the first-person hit kick is off while my body is shown. The damage screen's
     directions follow the camera shown.
   - **HUD.** The crosshair and my own overhead health bar and SELECTING CHIP tag are hidden under the shot (other pilots'

@@ -2,6 +2,8 @@
 
 2026-10-15 Astra Bow Rain (`codex/bow-damage`, base `b36c6ce`): center gap and above-roof/ceiling spawn fixed; 5,044 managed Bow checks and semantic compile pass. Native damage/lifesteal collision cases added but unrun. Separate Bow lifesteal report remains unconfirmed; needs chip/mode/target repro. See DEV_LOG.
 
+2026-10-15 Claude Expedition wrist screen rebuilt (`claude/expedition-holo-v2`, merged into shared): owner "a better holographic display with no artifacting". One alpha-blended quad with its own shader (glass, grid, scanlines, thin frame line, card slots inside), light budgeted under the bloom (body .72 of the threshold), thin rays instead of beam sheets, no constant flicker, a brief red edge only for a real hit. The recording's white/red blowout was not reproduced by a bloom-accurate harness (cause unidentified; see DEV_LOG). Managed checks and offline renders only; Unity/Windows unrun.
+
 2026-10-15 Astra Expedition co-op (`codex/expedition-coop`, base `d6562d98`): implemented room mode, 1–4 signed-in humans, all-client load/placement, guest interactions, all-member death/reprint and replicated gate collision through existing room transport. Managed/relay checks and Unity semantic compile pass; Windows/PhysX/two-client gameplay unrun. Join-circle proposal remains pending; parties share one area. See EXPEDITION-HUB.md and DEV_LOG for policy and release status.
 
 2026-10-15 Join circle (owner): whoever stands in the circle at the end of the countdown enters; the rest stay in the hub (EXPEDITION-HUB.md). Needs split-area parties: Astra to scope, then the rule; then Claude's layout and ring/HUD.
