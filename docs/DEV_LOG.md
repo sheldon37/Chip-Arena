@@ -9620,3 +9620,12 @@ rerun the unchanged native acceptance gates before publication.
   - If an authority's step ends more than 15 cm from its replicated distance, the feet hand back to the gait instead of staying planted.
 - **Animation impact:** presentation only. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged. The drawn rig moves up to 20 cm off the capsule (25 at a run) and returns by each step's end. The lead foot steps up to 30 cm. The Overclock compresses the step and the trails with the windows.
 - **Next:** the owner checks the feel in a native build. Astra decides whether to add the step (contract above); the presentation already reads it.
+
+
+## 2026-10-16 — Astra: fresh Expedition runs (owner policy update)
+
+- Branch `codex/expedition-fresh-runs`, base shared `bb4b36a`. Owner removed run saves/resume from scope. Every live launch already makes a new run ID; it now constructs an in-memory session without opening the disk store, and skips automatic checkpoint writes. Existing old files are neither read nor deleted.
+- Extraction commits once in the live run and confirms without a durable-save flag. Updated status text says fresh run/no saving; profile/account persistence and live reconnect remain. Legacy save implementation is retained for historical tests/tools, not connected to live launches. Expedition protocol is now 2 to reject clients with old extraction-save semantics at launch/reconnect.
+- Split-area registry/cohort/wire integration is intentionally absent from this independently shippable change. Live layout stays exp-layout-3 and F entry remains.
+- Validation: managed C#9 warnings-as-errors compilation; fresh-run, integration, rule/view, director and co-op checks; pinned Unity API Player/Runtime/Editor compilation. Native Unity execution and Windows visual play not performed in this environment; publication must be confirmed from the builder.
+- Animation, damage, cooldowns and movement unchanged. Host extraction with connected guests remains refused under the existing no-endpoint-migration rule.

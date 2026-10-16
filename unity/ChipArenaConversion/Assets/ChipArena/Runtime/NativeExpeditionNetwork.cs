@@ -27,9 +27,8 @@ namespace ChipArena.UnityConversion
             session.Sources.Seat=who=>match?.Seats.FirstOrDefault(s=>s.access?.AccountId==who)?.id??0;
             ExpeditionView=NativeExpeditionView.Build(session.Run,id,session.Sources);
         }
-        /// <summary>Uses the existing durable desktop store. Scene supplies anchors and interaction evidence before binding.</summary>
-        public ExpeditionSession CreateExpeditionSession(NativeExpedition run)
-        {var store=NativeExpeditionPersistence.Open(run.Snapshot().run);var saved=store.Read();if(store.Exists&&saved==null)throw new InvalidOperationException("Existing Expedition save is unreadable; refusing to overwrite it.");return new ExpeditionSession(run,content,store.Write,saved);}
+        /// <summary>Every live launch starts a new in-memory run; no checkpoint files are read or written.</summary>
+        public ExpeditionSession CreateExpeditionSession(NativeExpedition run)=>new ExpeditionSession(run,content);
         /// <summary>Authored scene supplies actual positions and measured interactions; this overload completes session binding.</summary>
         public ExpeditionSession BindExpeditionScene(NativeExpedition run,ExpeditionWorldAnchor[] anchors,ExpeditionChestOffer[] chests,
             Func<string,string,bool> canClaim,Func<string,string,bool> canPurchase,

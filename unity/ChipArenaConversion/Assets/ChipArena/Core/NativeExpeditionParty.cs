@@ -6,6 +6,8 @@ namespace ChipArena.UnityConversion
     public static class NativeExpeditionParty
     {
         public const int Capacity=4;
+        // v2 removes disk-save extraction semantics. Split-area support is negotiated separately.
+        public const int Protocol=2;
         public static string Validate(IEnumerable<string> accounts,bool authenticated,bool ready,bool supported=true)
         {
             if(!supported)return "Every player must update to a build with Expedition co-op support.";

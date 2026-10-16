@@ -252,7 +252,7 @@ namespace ChipArena.UnityConversion
         public static ExpeditionCommand Sanctuary(Rect r,ExpeditionView v,Controls c,float a=1)
         {U.BeginBand(r);try{
             var result=default(ExpeditionCommand);H.Panel(r,a,C.Good());float y=Header(r,"SAFE LOCATION · CHECKPOINT AND EXTRACTION","Sanctuary",C.Ink(),a);
-            U.Text(Inner(r,y,16),v.savedRevision>=0?"CHECKPOINT SAVED · REVISION "+v.savedRevision:"NO CHECKPOINT SAVED YET",10,v.savedRevision>=0?C.Good(a):C.Muted(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);y+=24;
+            U.Text(Inner(r,y,16),v.freshRun?"FRESH RUN · NO SAVING OR RESUMING":v.savedRevision>=0?"CHECKPOINT SAVED · REVISION "+v.savedRevision:"NO CHECKPOINT SAVED YET",10,v.savedRevision>=0?C.Good(a):C.Muted(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);y+=24;
             y=ExtractionBlock(r,y,v,c,a,ref result);Rule(r,y,a);y+=10;
             y=ReprintBlock(r,y,v,c,a,ref result);
             return result;

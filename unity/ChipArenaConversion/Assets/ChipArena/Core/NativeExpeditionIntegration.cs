@@ -23,10 +23,11 @@ namespace ChipArena.UnityConversion
             new[]{distance,range,channelSeconds,requiredSeconds}.All(v=>ExpeditionValidation.Number(v)&&v>=0)&&distance<=range&&channelSeconds>=requiredSeconds;
     }
 
-    /// <summary>Single-thread host integration. Replaces authority only after a durable extraction write.</summary>
+    /// <summary>Single-thread host integration. Live sessions are fresh runs; explicit legacy writers are for checkpoint tools/tests.</summary>
     public sealed class ExpeditionSession
     {
         public NativeExpedition Run{get;private set;}
+        public bool FreshRun=>write==null;
         public readonly ExpeditionViewSources Sources=new ExpeditionViewSources();
         private double nextExtractionAttempt;
         private readonly ConversionContent content;private readonly Action<ExpeditionSavepoint> write;
@@ -42,8 +43,9 @@ namespace ChipArena.UnityConversion
                 return ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,"Move within reach of this cache.");
             return Run.Purchase(account,offer.generation,offer.price)?ExpeditionCommandResult.Sent:ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,"Purchase refused: check your wallet and pilot state.");
         }
-        public ExpeditionSession(NativeExpedition run,ConversionContent content,Action<ExpeditionSavepoint> write,ExpeditionSavepoint saved=null)
-        {Run=run??throw new ArgumentNullException(nameof(run));this.content=content??throw new ArgumentNullException(nameof(content));this.write=write??throw new ArgumentNullException(nameof(write));
+        public ExpeditionSession(NativeExpedition run,ConversionContent content,Action<ExpeditionSavepoint> write=null,ExpeditionSavepoint saved=null)
+        {Run=run??throw new ArgumentNullException(nameof(run));this.content=content??throw new ArgumentNullException(nameof(content));this.write=write;Sources.FreshRun=FreshRun;
+            if(FreshRun&&saved!=null)throw new ArgumentException("Fresh runs cannot resume checkpoints.");
             if(saved!=null)
             {
                 var state=run.Snapshot();
@@ -54,6 +56,7 @@ namespace ChipArena.UnityConversion
         }
         public void Checkpoint()
         {
+            if(FreshRun)return;
             var next=ExpeditionSavepoint.Capture(Run);
             if(Sources.Saved!=null)next.extracted=next.extracted.Concat(Sources.Saved.extracted).Distinct().ToArray();
             write(next);Sources.Saved=next.Copy();
@@ -62,6 +65,7 @@ namespace ChipArena.UnityConversion
         {
             if(!Run.CanExtract(account))return ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,"Reach the sanctuary before extracting.");
             var proposed=new NativeExpedition(Run.Snapshot());if(!proposed.Extract(account))return ExpeditionCommandResult.Of(ExpeditionCommandState.Unavailable,ExpeditionIntegrationHooks.HostTransfer);
+            if(FreshRun){Run=proposed;return ExpeditionCommandResult.Sent;}
             try
             {
                 // Capture before extraction: the last player may end the run. Never erase an earlier tombstone.

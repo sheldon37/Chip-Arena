@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
         public string run, world, area, host, viewer;
         public ExpeditionPhase phase;
         public double elapsed, exitAt=-1, extractAt=-1, exitSeconds, extractSeconds;
-        public bool loading, migrating, finalUnlocked, extractionUnlocked;
+        public bool loading, migrating, finalUnlocked, extractionUnlocked, freshRun;
         public string[] exitVotes=Array.Empty<string>(), extractVotes=Array.Empty<string>(), continueVotes=Array.Empty<string>();
         public ExpeditionWorldAnchor[] anchors=Array.Empty<ExpeditionWorldAnchor>();
         public ExpeditionChestOffer[] chests=Array.Empty<ExpeditionChestOffer>();
@@ -103,6 +103,7 @@ namespace ChipArena.UnityConversion
         public ExpeditionScaling Scaling;
         /// <summary>The last savepoint NativeExpeditionSaveStore.Write durably wrote. Extraction is only "saved" once its tombstone is in it.</summary>
         public ExpeditionSavepoint Saved;
+        public bool FreshRun;
         /// <summary>The integration's record of its PrepareHandoff / CommitHandoff / AbortHandoff calls.</summary>
         public ExpeditionTransferLog Transfer;
         /// <summary>Transport-reported host candidates (reachable, capable, loss, latency, jitter).</summary>
@@ -167,7 +168,7 @@ namespace ChipArena.UnityConversion
             int living=s.members.Count(Live),party=Math.Max(1,Math.Min(8,s.members.Count(p=>p.connected&&!p.extracted)));
             var v=new ExpeditionView
             {
-                epoch=s.epoch,revision=s.revision,run=s.run,world=s.world,area=s.area,host=s.host,viewer=viewer,phase=s.phase,loop=s.loop,
+                freshRun=sources.FreshRun,epoch=s.epoch,revision=s.revision,run=s.run,world=s.world,area=s.area,host=s.host,viewer=viewer,phase=s.phase,loop=s.loop,
                 elapsed=s.elapsed,exitAt=s.exitAt,extractAt=s.extractAt,exitSeconds=NativeExpedition.ExitSeconds,extractSeconds=NativeExpedition.ExtractSeconds,loading=s.loading,migrating=run.Migrating,finalUnlocked=run.FinalUnlocked,
                 extractionUnlocked=run.ExtractionUnlocked,living=living,extractNeeded=Majority(living),
                 exitVotes=(string[])s.exitVotes.Clone(),extractVotes=(string[])s.extractVotes.Clone(),continueVotes=(string[])s.continueVotes.Clone(),
