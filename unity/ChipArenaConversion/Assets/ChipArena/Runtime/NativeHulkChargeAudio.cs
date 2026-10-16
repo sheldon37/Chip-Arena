@@ -8,7 +8,8 @@ namespace ChipArena.UnityConversion
     // the Hulk but close to the listener so the pan gives its direction and the urgency its level:
     //  - the wind-up's bellow (the lock's tell, heard before it runs);
     //  - the run's start: a rumble; a second, deeper one once it is close (urgency .75);
-    //  - its footfalls by the distance it covers on its heavy stride, louder as it closes (the heavy footfall key).
+    //  - its footfalls by the distance it covers on its heavy stride, louder as it closes (the heavy footfall key on a hard floor,
+    //    the surface's own step on metal, wood, gravel or snow: the same surface memory as its drawn footfalls).
     // The Hulk's own footfalls, roar and breaks still play at it from HordeCues for everyone near.
     public sealed partial class NativeAudio
     {
@@ -32,8 +33,9 @@ namespace ChipArena.UnityConversion
                 {
                     hulkWarnStep+=moved;float sc=NativeHordeKinds.Scale[NativeHordeKinds.Hulk],v=Mathf.Max(.5f,moved/Mathf.Max(1e-3f,Time.unscaledDeltaTime));
                     float stride=NativeHordeGait.Stride(NativeHordeKinds.Hulk,v/sc)*.5f*sc;string step=NativeHordeKinds.StepCue(NativeHordeKinds.Hulk);
-                    // (the heavy footfall, else today's stone thud, else its synthesized take: NativeFootstepAudio.cs)
-                    if(hulkWarnStep>=stride){hulkWarnStep-=stride;CreatureCue(step,NativeZombieSteps.StandIn(step,null),.5f,near,.3f+.6f*gain,.7f,NativeSoundPriority.Low);}
+                    // (the heavy footfall on a hard floor, else the surface's own step under the Hulk, through its surface memory;
+                    // without clips today's stone thud, else its synthesized take: NativeFootstepAudio.cs ZombieStep)
+                    if(hulkWarnStep>=stride){hulkWarnStep-=stride;ZombieStep(arena,w.Id,step,NativeHordeKinds.Hulk,hulk.x,hulk.y,hulk.z,sc,near,.3f+.6f*gain,.7f);}
                 }
             }
             hulkWarnLast=hulk;

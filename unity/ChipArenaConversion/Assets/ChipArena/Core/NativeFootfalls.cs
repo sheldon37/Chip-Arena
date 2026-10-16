@@ -11,11 +11,80 @@ namespace ChipArena.UnityConversion
     /// local pilot seen in first person, <see cref="Land"/> a landing after <see cref="Air"/> s airborne (no step plays with it).</item>
     /// <item>Zombie: <see cref="Id"/> the add, <see cref="Kind"/> its drawn kind, <see cref="Foot"/> 0-1 the feet, 2-3 the crawler's
     /// hands, <see cref="Crawl"/> on four limbs, <see cref="Drag"/> the shambler's dragged foot, <see cref="Run"/> the walk-run blend.</item>
+    /// <item>Both: (<see cref="X"/>, <see cref="Y"/>, <see cref="Z"/>) where the step sounds, Y the ground under the walker; (<see cref="FootX"/>,
+    /// <see cref="FootZ"/>) the planted foot, where its surface is probed (<see cref="NativeFootSurface"/>); <see cref="Scale"/> the
+    /// walker's drawn scale.</item>
     /// </list>
     /// </summary>
     public struct NativeFootfall
     {
-        public int Id,Kind,Foot;public bool Zombie,Land,View,Sprint,Crawl,Drag;public float X,Y,Z,Speed,Air,Run,Time;
+        public int Id,Kind,Foot;public bool Zombie,Land,View,Sprint,Crawl,Drag;public float X,Y,Z,Speed,Air,Run,Time,FootX,FootZ,Scale;
+    }
+
+    /// <summary>
+    /// The ground a foot contact lands on (owner 2026-10-16: "walking continuously on one surface cycles through sounds that resemble
+    /// different terrains ... Keep concrete, metal, gravel, etc. in separate pools"): one probe down at the planted foot, the step key
+    /// it names, and each walker's surface memory (<see cref="NativeSurfaceMemory"/>). Presentation only; the runtime casts the probe
+    /// (Runtime/NativeFootstepAudio.cs) and the checks cast it against the maps' own colliders.
+    /// <list type="bullet">
+    /// <item>The probe starts <see cref="Above"/> over the foot's ground point (a pilot's replicated feet, the capsule's bottom; a
+    /// zombie's floor) and reaches <see cref="Below"/> under it, both times the walker's scale when it is larger. A block whose top is
+    /// at the feet is hit, a standing pilot's floor is always in reach, and a drawn position lagging a step's rise
+    /// (NativeLocomotionRules.StepHeight) still starts above the new tread.</item>
+    /// <item>A hit names its collider's material: the block's own, or the stair and ramp wedges' (their treads' physics material). An
+    /// unnamed collider and a miss step on the map's floor (<see cref="NativeFootsteps.Surface(string,string)"/>).</item>
+    /// <item>The zombies keep their gait's own takes on the hard floors (concrete, stone), and the crawler drags its body on every
+    /// surface (a drag is the body's friction, which no surface's footfall resembles); on metal, wood, gravel and snow they step in that
+    /// surface's own pool (move.step.*) at their own pitch and loudness.</item>
+    /// </list>
+    /// </summary>
+    public static class NativeFootSurface
+    {
+        public const float Above=.4f,Below=.8f;
+        public static float Scale(float scale)=>scale>1?scale:1;
+        /// <summary>The probe's start height over a foot whose ground point is at <paramref name="groundY"/>.</summary>
+        public static float StartY(float groundY,float scale)=>groundY+Above*Scale(scale);
+        /// <summary>The probe's length (from its start, straight down).</summary>
+        public static float Reach(float scale)=>(Above+Below)*Scale(scale);
+        /// <summary>The step key of a probe on <paramref name="map"/>: a hit names its material (null: an unnamed collider), a miss
+        /// is the map's floor.</summary>
+        public static string Key(string map,bool hit,string material)=>NativeFootsteps.Surface(map,hit?material:null);
+        /// <summary>The hard floors, where the zombies' own gait takes (shoes on asphalt, the heavy stone stomp) play.</summary>
+        public static bool Hard(string step)=>step==null||step==NativeFootsteps.Concrete||step==NativeFootsteps.Stone;
+        /// <summary>A zombie footfall's key: its gait's (<paramref name="gait"/>, NativeZombieSteps.Key) on a hard floor and for a
+        /// crawl, else the surface's own step (<paramref name="step"/>).</summary>
+        public static string Zombie(string gait,string step)=>gait==NativeZombieSteps.Crawling||Hard(step)?gait:step;
+        /// <summary>The planted foot of two foot points: the one farther along the travel (vx, vz), since a planting foot leads its
+        /// step; with less than .5 m/s of travel, or level, <paramref name="fallback"/>. 0 the first point, 1 the second.</summary>
+        public static int Leading(float ax,float az,float bx,float bz,float vx,float vz,int fallback)
+        {
+            if(!(vx*vx+vz*vz>.25f))return fallback;float d=(ax-bx)*vx+(az-bz)*vz;return d>1e-4f?0:d<-1e-4f?1:fallback;
+        }
+        /// <summary>Within this horizontal distance of the walker a posed foot is believed (a rig mid-teleport is not).</summary>
+        public const float FootReach=1.2f;
+    }
+
+    /// <summary>
+    /// One walker's surface from plant to plant (a struct per pilot or add): the first plant, and the first after
+    /// <see cref="Forget"/> s without one, a rewind or a landing (<c>fresh</c>), takes the probed surface at once; afterwards a different
+    /// surface takes over only when <see cref="Confirm"/> plants in a row see it. A seam, a rail, an edge or one stray probe never
+    /// flips a step, and a real boundary switches on its second plant and then stays. No allocation.
+    /// </summary>
+    public struct NativeSurfaceMemory
+    {
+        public const int Confirm=2;public const float Forget=2.5f;
+        private string current,pending;private int seen;private float last;private bool has;
+        public string Current=>current;
+        /// <summary>The surface this plant steps on, given the surface it probed (<paramref name="observed"/>) at <paramref name="time"/>.</summary>
+        public string Plant(string observed,float time,bool fresh=false)
+        {
+            if(!has||fresh||time<last-.1f||time-last>Forget){has=true;current=observed;pending=null;seen=0;last=time;return current;}
+            last=time;
+            if(observed==current){pending=null;seen=0;return current;}
+            if(observed==pending){if(++seen>=Confirm){current=observed;pending=null;seen=0;}}
+            else{pending=observed;seen=1;}
+            return current;
+        }
     }
 
     /// <summary>The frame's footfalls, written by the presentation and drained by NativeAudio (no allocation; a full queue drops).</summary>

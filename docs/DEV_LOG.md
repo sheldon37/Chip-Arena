@@ -1,3 +1,47 @@
+## 2026-10-16 — Claude: footsteps cycled through terrains on one surface (surface lookup, memory, one series per key)
+
+- Owner: "walking continuously on one surface cycles through sounds that resemble different terrains." Trace the surface and key per foot contact; keep surfaces in separate pools; same check for zombies.
+- Branch `claude/footstep-surface-fix`, base `origin/claude/sleepy-ritchie-g8ruhv` `e8de6fc`. Implementation commit: see the branch head. Pushed; not merged, no PR, no release.
+- **Cause, with evidence.** Per-plant trace on the maps' own colliders (managed raycast of NativeArena's colliders, real gaits, the real banks' manifests and `NativeSoundBank.Next`):
+  - The key was stable. On every 60 s route (Ward Zero hall, town, Ward Zero deck, factory catwalk; walk and sprint; gun, magic, bow, melee and no-gait routes) every plant classified one key, before and after.
+  - The pools were mixed. `move.step.concrete` (Ward Zero, its instance, the town) held 4 `_Stones_Footsteps/FOOTSTEP_Stones_Run_01` takes and 4 `FOOTSTEP_Concrete_Walk_01`.
+    - Measured: stones at 0.93-2.1 kHz spectral centroid, flatness .04-.25, 7-12 crunch transients; concrete at 0.22-0.31 kHz, flatness under .002, 2 transients.
+    - Ward Zero hall: 281 walk plants played 141 stones and 140 concrete takes, with 160 series changes between consecutive plants (sprint: 442 plants, 256 changes). After: 0.
+  - Metal mixed `Metal_Run_01/02/03`: 237 series changes in 281 plants on Ward Zero's deck. Snow mixed four series (a 0.36 kHz packed thud with 1.5-2.3 kHz crunches), wood three, gravel two.
+  - The coordinator's capsule-centre premise did not hold. `NativeArena.cs` reports `a.Position=Vec(p.Body.position-Vector3.up*.865f)`, the feet. The old probe (feet +.4 to -.8 m) reached flat floors.
+  - Real lookup gaps, fixed:
+    - Stair and ramp wedges (no `NativePropBody`) fell to the map floor whatever their treads. Today's wedges are all stone, so no audible flip.
+    - No hysteresis: a seam, a rail or a boundary could flip per plant. The probe sat under the body, not the planted foot.
+    - A failed clip load fell through to a stand-in or built-in take, mixing another sound into a key with clips (`BankPlay` false).
+    - Zombies were surface-blind: a shambler on a metal deck shuffled on asphalt.
+- **Code** (presentation only):
+  - `Core/NativeFootfalls.cs`: `NativeFootSurface` (probe start .4 m over the feet, reach to .8 m under, scaled over 1; key from hit material or map floor; zombie key by surface; leading-foot pick). `NativeSurfaceMemory`: first plant at once; a new surface on its second plant in a row; reset after 2.5 s (a Hulk steps every ~1.1 s), a rewind or a landing. `NativeFootfall` gains `FootX/FootZ/Scale`.
+  - `Core/NativeSoundCues.cs`: step key constants.
+  - `Runtime/NativeFootfallPresentation.cs`: a pilot's footfall carries the posed foot bone leading the travel (else its position); a zombie's its landed limb and scale.
+  - `Runtime/NativeFootstepAudio.cs`: the Core probe at the planted foot. A hit names its `NativePropBody` material, else its collider's physics material (the wedges carry their treads'). The memory is per pilot and per add. Zombies: their gait keys on concrete and stone; the surface's `move.step.*` pool at their own pitch on metal, wood, gravel and snow. The crawler drags on every surface: a drag is body friction, unlike any footfall pool. A key with clips plays only its own takes.
+  - `Runtime/NativeHulkChargeAudio.cs`: the charge warning's stomps use the same surface and memory.
+- **Clips** (private bank; no audio committed). One recording series of the key's own surface per key, nearest the series' acoustic medoid:
+  - concrete: 8 `Concrete_Walk_01` (RR02/04/06/07/09/10/11/12), was 4 stones + 4 concrete. Gravel: 6 `Gravel_Run_04`, was `Run_01`+`Run_04`.
+  - metal: 6 `Metal_Run_02`, was `Run_01/02/03`. Snow: 6 `Snow_Run_04`, was `Run_01/02/04/05`. Wood: 6 `Wood_Run_01`, was `Run_01/02/03`. Stone: 6 Fantasy `Stone_Medium` A/B/C/D/G/J, was A/C/E/G.
+  - Zombie shuffle: dropped RR3 and RR7. They are gritty (centroid 1.3-1.6 kHz, flatness .13-.16) and measure nearest snow. Run, heavy and crawl are unchanged.
+  - The stones takes measure as gravel; they are dropped, so gravel stays one series.
+  - Walk and sprint on one surface share one key; only rate and gain differ by gait.
+  - Built with the bank's own chain (`fxbuild` = `tools/build_effects_audio.py`; scratch `fsurf/tools/build_surfaces.py`, `measure.py`, `select.py`). Every other file is byte-identical.
+  - `scratchpad/LocalAssets-footsteps-surfaces.zip`: 12,741,728 bytes, sha256 `5465e1718b37fabe656610ffa9d8dd6801387c2529cfa4e2dff1aa11d5585268`. Installer `--check`: 226 keys, 593 clips, 13.14 MB. `LICENSES.md` and ASSET-CREDITS "Footstep surfaces" list every source.
+- **Checks**:
+  - `Tests/FootSurfaceChecks.cs` (`--foot-surfaces`, in the relay suite), 67,770 checks: 60 s walk and sprint on concrete, metal, wood, snow, gravel and stone for 5 pilot gaits (one key, one series, no repeat); 3 boundaries switch by the second plant and stay; every zombie kind on concrete and metal; boundary for 4 kinds; probe geometry on 1,532 walkable tops of 20 maps; memory rules; no allocation; hooks.
+  - `Tests/test_footstep_credits.py`: every `move.step.*`/`pve.zombie.step.*` key lists 4-8 takes from one surface folder and series. The old bank's sources fail it (five keys).
+  - Footfall and effects-audio checks pass with and without the new bank installed.
+  - Five-check run on the tree with this entry (before this line): all exit 0. Unity runtime and editor build; relay suite 760 PASS lines, including foot surfaces (67,770) and footfall audio (25,433); Python 127 tests (1 skipped); source package 2196 files; diff check.
+- **Not run**: listening in a Unity Editor or Windows build; the real rig's bone positions at a plant (the managed checks pose Core gaits); two-client play; a guest's replica physics.
+- **Impact**: none on hit timing, hitboxes, damage, cooldowns, movement or networking (no wire field). Animation unchanged.
+- **Risks**:
+  - A strip narrower than two plants (a sprint across a 1.5 m plate) keeps the old surface by design.
+  - The Hulk's feet can land on a narrow deck's walkway beside it, and then it stomps on stone.
+  - Concrete takes needed +17 to +23 dB to reach -24 LUFS (quiet source); noise stays about 40 dB under the step.
+  - The town's foundation and Ward Zero's stone both stay concrete.
+- **Next**: the owner installs `LocalAssets-footsteps-surfaces.zip` on the builder and listens on Ward Zero's floor and decks; merge into shared after review.
+
 ## 2026-10-16 — Astra: split-area scope, join parser preparation, sound batch generator
 
 - Branch `codex/expedition-split-area-handoff`, base shared `f92a3e3` (includes Claude's `e4e12fb` and subsequent co-op validation repair). Written scope in EXPEDITION-HUB.md was committed before parser changes: per-area physics/arena/match state, peer-scoped wire and barriers, cross-area economy/death/reprint, schema migration, checkpoint and host-migration limits, additive host cost and native gates. This is a scoped foundation, NOT implemented split-area play. The all-party interim circle is not enabled.

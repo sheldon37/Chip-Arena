@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-16 Claude footstep surfaces (`claude/footstep-surface-fix`, on branch, base `e8de6fc`): steps no longer cycle terrains. Each step key holds one recording series of its surface (concrete had loose-stone takes); probe at the planted foot with a 2-plant surface memory; zombies step in the surface pool on metal/wood/gravel/snow. New private bank `LocalAssets-footsteps-surfaces.zip` (not in the repo). Managed checks pass; not heard in a build. See DEV_LOG.
+
 2026-10-15 Astra Bow Rain (`codex/bow-damage`, base `b36c6ce`): center gap and above-roof/ceiling spawn fixed; 5,044 managed Bow checks and semantic compile pass. Native damage/lifesteal collision cases added but unrun. Separate Bow lifesteal report remains unconfirmed; needs chip/mode/target repro. See DEV_LOG.
 
 2026-10-15 Claude Expedition wrist screen rebuilt (`claude/expedition-holo-v2`, merged into shared): owner "a better holographic display with no artifacting". One alpha-blended quad with its own shader (glass, grid, scanlines, thin frame line, card slots inside), light budgeted under the bloom (body .72 of the threshold), thin rays instead of beam sheets, no constant flicker, a brief red edge only for a real hit. The recording's white/red blowout was not reproduced by a bloom-accurate harness (cause unidentified; see DEV_LOG). Managed checks and offline renders only; Unity/Windows unrun.

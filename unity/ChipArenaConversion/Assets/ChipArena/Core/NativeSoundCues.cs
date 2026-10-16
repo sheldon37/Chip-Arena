@@ -349,6 +349,8 @@ namespace ChipArena.UnityConversion
     public static class NativeFootsteps
     {
         public const float Stride=1.9f,MinSpeed=1.5f,MaxStep=3,MinAir=.25f;
+        /// <summary>The surfaces' step keys, one recording series of that surface each (docs/ASSET-CREDITS.md, Footstep surfaces).</summary>
+        public const string Concrete="move.step.concrete",Gravel="move.step.gravel",Metal="move.step.metal",Snow="move.step.snow",Stone="move.step.stone",Wood="move.step.wood";
         /// <summary>The sprint's cadence (owner 2026-10-12, sprint presentation): a step every 1.55 m at 9.18 m/s (5.9 steps a
         /// second against the run's 3.6), a little brighter and louder.</summary>
         public const float SprintStride=1.55f,SprintRate=1.08f,SprintGain=1.15f;
@@ -360,12 +362,12 @@ namespace ChipArena.UnityConversion
         {
             switch(map)
             {
-                case "foundry":case "freight":case "reactor":return "move.step.metal";
-                case "moonlit":case "frozen":return "move.step.snow";
-                case "outpost":return "move.step.gravel";
-                case "citadel":case "forge":case "spikevault":case "lavaworks":return "move.step.stone";
-                case "canal":case "sawmill":return "move.step.wood";
-                default:return "move.step.concrete";
+                case "foundry":case "freight":case "reactor":return Metal;
+                case "moonlit":case "frozen":return Snow;
+                case "outpost":return Gravel;
+                case "citadel":case "forge":case "spikevault":case "lavaworks":return Stone;
+                case "canal":case "sawmill":return Wood;
+                default:return Concrete;
             }
         }
         /// <summary>The step of a foot on a block of `material` (null: no block) on `map`: metal, wood, snow and loose ground keep their
@@ -375,10 +377,10 @@ namespace ChipArena.UnityConversion
         {
             switch(material)
             {
-                case "metal":case "steel":case "iron":return "move.step.metal";
-                case "wood":case "timber":case "plank":return "move.step.wood";
-                case "snow":case "ice":return "move.step.snow";
-                case "gravel":case "dirt":case "sand":case "rubble":return "move.step.gravel";
+                case "metal":case "steel":case "iron":return Metal;
+                case "wood":case "timber":case "plank":return Wood;
+                case "snow":case "ice":return Snow;
+                case "gravel":case "dirt":case "sand":case "rubble":return Gravel;
                 default:return Surface(map);
             }
         }
