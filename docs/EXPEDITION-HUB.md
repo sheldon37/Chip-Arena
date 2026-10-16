@@ -739,3 +739,133 @@ Owner: make the safe zone border invisible in the hub, and keep the zone in case
 rule on them stay. Only the drawn edge (floor glow, curtain, motes, crossing ripple) is off in the fenced hub
 (`NativeExpeditionStateScene.HideSanctuaryEdge`, set from `NativeExpeditionHubLive.Layout`). The fence, the gates, the ward and the
 SAFE tag and chip still show where safety is.
+
+## Astra split-area implementation scope (2026-10-16)
+
+Status: design recorded before gameplay implementation, inspected at shared `f92a3e3`
+(includes handoff `e4e12fb` and co-op validation repair). This supersedes the old
+"No split indoor/outdoor simulation" restriction as a target, not as a claim that it works.
+Do not ship the all-members interim circle: preserve current entry until the real
+subset-transfer path passes the gates below. No unwilling member may be moved.
+
+### Runtime boundary and sequence
+
+1. Introduce an authority-owned area runtime registry, keyed by stable area ID, with
+   one arena/combat state, physics scene, navigation state, event sequence and load
+   state per occupied area. M1 is one hub plus one shared Ward Zero instance; two
+   groups choosing Ward Zero join the same encounter, not private copies. Separate
+   copies need an additional instance-run ID and are outside this first scope.
+2. Separate the single `ConversionGame.arena` presentation/input binding from the
+   registry of host simulations. Render only the local member's area. Remote areas
+   retain simulation/collision, not cameras, lights, audio or presentation objects.
+   `NativeArena` currently rewrites Match callbacks, uses global Physics queries,
+   and ConversionGame calls global Physics.Simulate: merely constructing a second
+   arena would cross-contaminate collisions and match state. Give each runtime its
+   own match state and PhysicsScene; route EVERY authority query/overlap/cast through
+   that scene and simulate each once per fixed step. Audit static state and global
+   callbacks before enabling a second arena. Client-only camera queries must use
+   the displayed area's scene as well.
+3. Tick the shared ExpeditionSession clock exactly once per host tick. Tick each
+   occupied runtime independently; loading an arriving cohort cannot freeze the hub
+   or an already-running encounter. Retain empty-instance logical encounter state;
+   disable its simulation until occupied, without resetting rewards or bosses.
+4. Transfer an immutable cohort captured by the host at countdown expiry. Validate
+   destination slots/capacity before committing membership; hold only transferring
+   members, clear their buffered actions/choosing state, and commit placement once
+   their per-cohort barrier succeeds. On failure keep the cohort recoverable at the
+   source without charging/rewarding twice. Disconnect removes that member from
+   required acknowledgements; reconnect receives a fresh destination ticket.
+
+### Director, wire and layout changes
+
+- Authority members gain `area` and an explicit pending transfer identity. Replace
+  global area/phase/loading decisions in NativeExpedition, Director, integration,
+  rewards, reprints and encounter scheduling with area-scoped decisions. Global
+  run lifecycle/loop/quota stay separate from each instance phase. Never temporarily
+  swap snapshot.area around calls; that risks saves, callbacks and duplicated loot.
+- Add a negotiated split-area capability/version; refuse incompatible clients at
+  room launch. Frames, events, commands and ready acknowledgements carry area,
+  authority epoch and area generation/transfer identity. Authenticate sender from
+  the peer seat and derive allowed area from host membership, never a claimed area.
+  Reject delayed packets after transfer, reconnect or epoch change. Scope entity
+  IDs/event cursors by area (or allocate globally unique IDs); clear interpolation,
+  prediction, killcam and event queues only for the transferring peer.
+- NativeExpeditionNetwork currently broadcasts one public packet and generation
+  to everyone. Replace this with common minimal party metadata plus area-specific
+  projections/frames per recipient. Other-area combat entities, events, anchors and
+  drops must not leak; private offers remain owner-only. `view.area`, `phase`,
+  `loading` and `areaBarrier` mean the VIEWER's area rather than the host's area.
+- One barrier per transfer cohort/area generation; unrelated occupants are never
+  required acknowledgers. Tickets include run/epoch/area/layout/generation and
+  cohort identity. An existing instance keeps fighting while a newcomer loads;
+  newcomer placement waits for readiness and a validated safe entry slot.
+- Optional door `join {x,y,z,r,h}` is a cylinder with **base y** and top y+h;
+  membership tests the authoritative capsule centre, inclusive radial/height bounds.
+  Missing join preserves legacy layouts. Nonfinite, nonpositive radius/height and
+  out-of-map cylinders fail validation. A join is only meaningful at a hub entry.
+- Planned public `joins[]` entries: door ID, area, `joinInside`, `joinStartedAt`
+  (-1 idle), duration 3 seconds; members add `atJoin` and `area`. Countdown starts
+  with one eligible member, cancels when empty, and transfers exactly those eligible
+  and inside at expiry. Dead/disconnected/extracted/loading/choosing members do not
+  count. Multiple rings must resolve a member to one deterministic door per tick.
+  F entry is removed only with this functional path; F exit/interactions remain.
+- Claude may author exp-layout-4 after parser/geometry checks exist. Until authoritative
+  joins and view fields actually exist, do not activate a deploy ring or countdown.
+
+### Cross-area rule decisions for first implementation
+
+| System | Rule |
+| --- | --- |
+| Damage, revive, carry | Same-area actors only; no cross-area target IDs or carried transfers. Death stays assigned to its area until reprint. |
+| Reprint | Preserve sanctuary remote reprint: a living hub member can pay to reprint a connected dead member from another area into a hub slot. Cancel old corpse/revive ownership atomically; once-only charge and resurrection. Instance-local reprint/revive remains local. |
+| Loot and wallets | Keep personal ownership and wallets. Physical pickup/claim requires the owner's actual area and measured reach. Boss credit/reward eligibility uses that encounter's participants, not everybody in the hub. No repeat grants on reentry. |
+| Quota and boss clear | Shared run quota, each authenticated kill/clear credited once with area + encounter identity. Encounter scaling uses participants in that encounter; freeze the scaling basis at encounter start to prevent join/leave exploits. |
+| Closures | Local encounter closures, never a global hub lock when someone enters Ward Zero. New entrants wait if encounter policy forbids admission; do not teleport them through sealed combat boundaries. |
+| Wipe | An instance wipe does not end the run while a connected living member exists elsewhere. Preserve the dead cohort for reprint; retain encounter state until a separately specified reset. |
+| Extraction | Personal extraction only at the existing valid hub extraction location, with durable tombstone before confirming. Remote members are not extracted by a hub vote. Host extraction remains refused while guests remain because endpoint migration is unavailable. |
+| Exit/continue votes | Scope local votes to eligible occupants. A global loop reset/ending requires all remaining members back in hub and no transfers, so no occupied instance is discarded. |
+| Saves | Keep safe-hub checkpoints only for M1: all connected living unextracted members in hub sanctuary and no transfers. No mid-instance checkpoint or live physics save is implied. Always preserve extraction journal durability. |
+| Disconnect/rejoin | Preserve area membership and encounter state during existing grace; no input from disconnected pilots. Rejoin loads that area and a new ticket before control returns. |
+| Host migration | Existing code advertises candidates incapable/unreachable. Continue fail-closed and do not claim live migration. Future migration needs every area runtime snapshot plus an endpoint handoff and epoch barrier; safe checkpoint resume is not live migration. |
+
+### Save compatibility and cost
+
+Bump the run snapshot/wire contract and save envelope for per-member areas and
+per-area encounter state. Provide an explicit schema-1 reader: assign members to
+its single saved area, map the one instance state, clear transient joins/transfers,
+and preserve extracted tombstones. Write only the new schema after validation.
+Reject unsupported versions or changed layout fingerprints clearly; do not silently
+reset a save. exp-layout-3 -> exp-layout-4 remains a layout compatibility change
+unless separately migrated. Safe-hub resume reconstructs area runtimes, not PhysX
+objects. Extraction-only persistence must remain valid between checkpoints.
+
+No measured two-area benchmark exists yet. Expected CPU cost is approximately
+T_hub + T_instance + routing, not max(T_hub,T_instance); collision/navigation/AI
+memory is additive. Rendering should remain one area's cost. A 60 Hz fixed step
+has 16.67 ms total budget; a 10 ms instance plus a 5 ms hub leaves only 1.67 ms for
+other fixed-step work (illustration, not a benchmark). Guests receive only their
+area frames; host upload is the sum of recipient streams. Instrument per-area
+step, physics, navigation, active counts, packet bytes and resident memory. Do not
+promise smoothness from the owner's GPU alone.
+
+### Gates before enabling subset entry
+
+Managed: ring boundary/height/eligibility, leave/reenter/cancel/dead-at-zero,
+subset placement, overlapping rings, per-area reward/reprint/clock isolation,
+barrier timeout/reconnect/stale ticket, schema-1 restore and extraction tombstones.
+Transport: simultaneous hub/instance frames, no cross-area events/private offers,
+stale input rejection, disconnect and host-death cases.
+Native Unity: isolated scene collision/raycast/projectiles/hazards, host staying in
+hub while guest fights and the reverse, host loading while guest remains active,
+instance wipe + hub reprint, entry to an occupied instance, return/extraction, and
+one-host/three-guest sustained worst-case performance. Windows host/guest play and
+actual two-area timings are release gates, not inferred from managed tests.
+
+### Parser preparation receipt
+
+On `codex/expedition-split-area-handoff`, optional `doors[].join` now parses with
+base-y semantics, positive finite dimensions, hub-only use, bounds, sampled floor
+clearance and centre navigation checks. Legacy layouts without it still parse.
+**No live join view fields or countdown exist in this preparation.** Claude can
+prepare a layout draft against this parser, but should not switch the live layout
+or show a working deploy countdown until subset transfer and its view are delivered.
