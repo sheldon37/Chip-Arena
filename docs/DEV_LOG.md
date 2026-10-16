@@ -9665,3 +9665,10 @@ rerun the unchanged native acceptance gates before publication.
 - Split-area registry/cohort/wire integration is intentionally absent from this independently shippable change. Live layout stays exp-layout-3 and F entry remains.
 - Validation: managed C#9 warnings-as-errors compilation; fresh-run, integration, rule/view, director and co-op checks; pinned Unity API Player/Runtime/Editor compilation. Native Unity execution and Windows visual play not performed in this environment; publication must be confirmed from the builder.
 - Animation, damage, cooldowns and movement unchanged. Host extraction with connected guests remains refused under the existing no-endpoint-migration rule.
+
+
+## 2026-10-16 — Astra: builder validation physics-mode repair
+
+- Build of `8d1ec86` failed at 15:59 UTC in the airborne chooser landing assertion. Latest-Build.txt reports Physics.Simulate refused every step because simulationMode was not Script. This fixture runs before ConversionGame startup configures physics.
+- Scope the fixture's falling loop to SimulationMode.Script, step the owning PhysicsScene, sync transforms and restore the prior mode in finally. Retain the landing/horizontal-hold assertions. This repairs the validation setup, not a gameplay bypass.
+- Pinned Unity Runtime compile checked; next Windows build must execute the retained native gate. No publication claim until the builder succeeds.

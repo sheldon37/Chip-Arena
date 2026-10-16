@@ -59,10 +59,18 @@ namespace ChipArena.UnityConversion
                 Local.Body.linearVelocity=Vector3.up*8;ProbePilotGround(Local);RouteLeetInputs();RestoreLeetInputs();
                 Check(Local.Body.useGravity&&Local.Body.linearVelocity.y<=0,"airborne choice stops rising but permits gravity");
                 float choiceTop=Local.Body.position.y;
-                for(int tick=0;tick<90;tick++)
+                var choiceSimulationMode=Physics.simulationMode;
+                try
                 {
-                    ProbePilotGround(Local);RouteLeetInputs();RestoreLeetInputs();Physics.Simulate(1f/60);
+                    // Batch validation does not run ConversionGame.Start, which
+                    // normally selects scripted physics. Step this arena's scene.
+                    Physics.simulationMode=SimulationMode.Script;Physics.SyncTransforms();
+                    for(int tick=0;tick<90;tick++)
+                    {
+                        ProbePilotGround(Local);RouteLeetInputs();RestoreLeetInputs();PhysicsWorld.Simulate(1f/60);
+                    }
                 }
+                finally{Physics.simulationMode=choiceSimulationMode;}
                 ProbePilotGround(Local);
                 Check(Local.Body.position.y<choiceTop-1&&Local.Grounded,"airborne chooser falls and lands on Ward geometry");
                 Check(Math.Abs(Local.Body.position.x-choiceGround.x)<.05f&&Math.Abs(Local.Body.position.z-choiceGround.z)<.05f,"falling choice holds horizontal position");
