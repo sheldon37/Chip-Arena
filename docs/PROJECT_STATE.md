@@ -1,6 +1,14 @@
 # Chip Arena — current state
 
+2026-10-16 Astra activation attempt (`codex/expedition-live-activation`, base `afac02d`): consolidated inactive split branch and fixed bound breach lookups. Requested activation is NOT complete: current production director/network still single-area; new map integration and native multiplayer gates remain. Draft only; no live join/map change. See EXPEDITION-SPLIT-INTEGRATION.md.
+
 2026-10-16 Astra Claude handoff (`codex/expedition-claude-handoff`, base `c471e24`): spawn-field preservation and validation, authority/guest authored-area content binding, manifest-driven navigation profiles for the two proposed instances, and area-local boss shutters implemented. Partial handoff only: split-area/native gates, machines/vents/hazards/phase rosters and eight enemy implementations remain outstanding. No new live maps or join circle. Merged into shared `0c684d8` by the owner; Claude verified the merged tree (5 checks pass). Details/verification in DEV_LOG and PR.
+
+2026-10-16 Astra continuation: owner removed run saves/resume; independent fresh-run change prepared for builder. Split branch adds 25-check wire/projection identity foundation and exact join/member fields, still not connected to the live director. Combat migration and per-area authority remain incomplete; Windows timing gates remain. See EXPEDITION-SPLIT-INTEGRATION.md.
+
+2026-10-16 Astra subset integration (`codex/expedition-split-integration`, base `e75d251`): managed stand-in rule and native cohort adapter/service added, INACTIVE. Join checks 25, cohort 69, area 292, director 98 plus co-op 41, layout 268 plus draft 38 pass. Live director/wire/save integration remains unfinished; unequal combat clocks intentionally refuse transfer. No builder merge or circle activation. See EXPEDITION-SPLIT-INTEGRATION.md for blockers and gates.
+
+2026-10-16 Astra cohort foundation (`codex/expedition-cohort-transfer`, base `bb4b36a`): partial, inactive state machine and managed failure tests only. Previous native two-scene foundation PASS verified in the Windows build log. Native cohort placement, director/wire/save/join integration and Windows performance remain unfinished. F entry and live exp-layout-3 unchanged; draft PR only. See DEV_LOG.
 
 2026-10-16 Astra fresh-run policy (`codex/expedition-fresh-runs`, base `bb4b36a`): live Expedition no longer reads/writes run checkpoints; extraction confirms from in-memory run state, reconnect to a running host remains, profiles unchanged. Protocol 2 requires updated Expedition clients. Legacy checkpoint classes remain for isolated historical tests only. Split-area entry remains gated and is not included in this change. See EXPEDITION-HUB.md and DEV_LOG.
 

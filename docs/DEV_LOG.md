@@ -1,3 +1,12 @@
+## 2026-10-16 — Astra: consolidate inactive split integration against the published build
+
+- Branch `codex/expedition-live-activation`, base shared `afac02d`; merges the existing `codex/expedition-split-integration` head `59b6dc7`, preserving PR #254 and Claude's fresh-run header.
+- Owner requested live join circles and the two additional instances. **This branch does not complete that request and must not be described as activation.** The latest inspected published build succeeded; missing features are unfinished implementation, not a failed build. Its native two-area isolation gate passed, which is not the live multiplayer acceptance gate.
+- Consolidates existing cohort transactions, join eligibility/countdown, area wire/projection guards and native placement fixture on current shared code. They remain disconnected from the production single-area director. Merge conflicts were documentation-only; both agents' entries are retained.
+- Fixes the three remaining breach entry consumers to read the arena's bound PvE table: Hulk authored-panel lookup, breach presentation, hazard-kit breach triggers. This is data binding only; animation timing, damage and cooldowns are unchanged. Claude retains visual ownership.
+- Outstanding activation work is explicitly enumerated in `EXPEDITION-SPLIT-INTEGRATION.md`: per-area live director and economy, fixed-step scheduling, combat-state/timer migration, negotiated recipient-specific networking, scoped reprints/return/extraction, followed by native host/guest and performance acceptance. Central Station and Ironworks also still need live authored machine/hazard/encounter integration. No F removal, catalogue promotion or live layout switch occurs here.
+- Verification results and remote commit are recorded in the PR. Native Unity/PhysX and Windows multiplayer are not executable in this Linux workspace. Push as draft; do not sync builder or imply this delivers the requested active features.
+
 ## 2026-10-16 — Claude: PR #254 verification, sanctuary header for fresh runs
 
 - Branch `claude/sanctuary-fresh-run-header`, base shared `0c684d8` (the owner's merge of Astra's PR #254).
@@ -23,6 +32,16 @@
   4. Central Station enemy rules/AI/network plumbing are not implemented in this batch. Design branch inspected; no enemy registration or proposal balance activated.
   5. Ironworks enemy rules/AI/network plumbing are not implemented in this batch. Same boundary. No owner approval of the proposed layouts/enemies is inferred.
 - Integration: branch implementation only at entry creation; PR and final response record verified push/merge/builder status. Existing combat timings, damage, cooldowns and animation are unchanged.
+
+## 2026-10-16 — Astra: cohort authority foundation (partial split-area implementation)
+
+- Branch `codex/expedition-cohort-transfer`, base shared `bb4b36abb2ef`. Inactive foundation only; not live split-area parties and not ready for merge/publish as the requested completed feature.
+- Verified the existing Windows builder log for that exact base (Unity 6000.3.24f1, started 2026-10-16 04:47:07 UTC): `PASS two-area runtime foundation: independent scenes, queries, callbacks, clock, occupancy, load and rendering`. Build/publication succeeded. This proves the previous native foundation gate executed; it does not prove two-area gameplay or performance. The same log reports two preview scenes leaked at shutdown; attribution remains unverified.
+- Added `Core/ExpeditionCohorts.cs`: immutable copied cohorts; source membership until commit; only cohort members in the ready barrier; idempotent operation IDs; destination validation at preparation and commit; reversible placement contract; timeout/cancel/source reload tickets; disconnect and fresh reconnect tickets; exact authenticated-account/run/epoch/area/layout/cohort/serial checks. Failed rollback latches a fault rather than replaying uncertain mutations. No currency/reward callbacks exist in transfers.
+- Added managed failure-injection checks under `--expedition-cohorts` and in the regular suite. The placement adapter in these checks is a fake; native actor transfer and economic integration are NOT tested or implemented by this change.
+- Outstanding: implement the native reversible placement adapter (including all actor state/input/choosing/corpse ownership), connect cohort membership to the director, area-specific progression/economy/reprints, negotiated recipient-scoped wire and stale frame rejection, schema-1 migration/new save envelope, instrumentation and authoritative join rule/view. No `joins[]`, `members[].area` or `atJoin` promises to presentation yet. No split-area launch switch, F-entry removal or live layout change.
+- Preserve the draft join cylinder (79,0,0), r 2.5, h 4. Future membership must use feet + 0.85, inclusive bounds and count airborne members. Keep LiveSha256/PINNED unchanged until the live layout switch is authorized by the gates.
+- Verification: Core and test sources compiled with C# 9 / warnings-as-errors using SDK 8.0.408 Roslyn against .NET 8 references. `dotnet run` cannot start in this container (Process.StartTime/GetStat error), so compilation and test execution use csc.dll and the dotnet runtime directly. Results: cohort checks 69 PASS, area registry/query audit 290 PASS, co-op lifecycle 41 PASS, director 98 PASS; source package check 2,210 files PASS; git diff --check PASS. Native adapter, Unity semantic compilation for this change, transport integration and Windows one-host/three-guest play are unrun. No smoothness/timing claim.
 
 ## 2026-10-16 — Astra: airborne Expedition chip selection
 
@@ -9656,6 +9675,23 @@ rerun the unchanged native acceptance gates before publication.
 - **Animation impact:** presentation only. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged. The drawn rig moves up to 20 cm off the capsule (25 at a run) and returns by each step's end. The lead foot steps up to 30 cm. The Overclock compresses the step and the trails with the windows.
 - **Next:** the owner checks the feel in a native build. Astra decides whether to add the step (contract above); the presentation already reads it.
 
+
+## 2026-10-16 — Astra: stand-in rule and native cohort adapter (inactive integration)
+
+- Branch `codex/expedition-split-integration`, based on pushed cohort foundation `e75d251` (shared/builder base `bb4b36a`). This is partial implementation, not the requested finished builder feature.
+- Added the 3 s host join rule: feet + 0.85 capsule centre, inclusive 4 m cylinder, airborne membership, empty cancellation, exact expiry subset and deterministic single-door selection. Exposed detached join records with the agreed names; not yet connected to ExpeditionView.
+- Added native destination-slot reservations and two-scene pilot/seat placement with cohort hold and rollback; input/interaction suppression applies only to explicitly held pilots. Added a native import validation fixture. Adapter refuses unequal combat clocks; active ability/effect migration remains unaudited. No live call site enables this service.
+- Managed C#9 warnings-as-errors compilation and affected checks pass: join 25, cohort 69, registry 292, co-op 41, director 98, draft 38, layout 268. Source package check passes (2219 files). Unity API compile checked separately; see integration handoff for exact final result.
+- Not executed: new native fixture, transport acceptance, Windows host + 3 guests, actual two-area timing. Existing live exp-layout-3 and F entry remain unchanged. No live pin or save compatibility switch, no build/publication claim.
+- Next: resolve combat-clock/effect ownership migration, integrate area director/session, per-recipient wire and schema reader, then native and Windows gates before Claude enables layout/ring/HUD. Full blockers in EXPEDITION-SPLIT-INTEGRATION.md. Animation assets unchanged.
+
+
+## 2026-10-16 — Astra: fresh-run scope and split wire isolation
+
+- Continued `codex/expedition-split-integration` from `0390ad9` tree. Owner removed run saves/resume: no envelope bump or schema-1 reader required. Independent no-save change is on `codex/expedition-fresh-runs` for shared/builder integration. Account persistence and live reconnect remain.
+- Added explicit area channel binding and sequence rejection, authenticated per-member input gate, per-recipient projection privacy guard, receiver reset on transfer/reconnect, command/reply identity guards, exact `joins[]` and member `area/atJoin` fields. Legacy shared-public batching fails closed if a split session is supplied. Not connected to the global live director.
+- Actual checks: fresh 11; area wire 25; integration 91; rules 481; presentation 8370; director 98/co-op 41; C#9 warnings-as-errors and pinned Unity Player/Runtime/Editor compilation; package structure 2225 files.
+- Split work still incomplete: combat timer/effect migration, native source-ledger cleanup, area director/progression/reprints/reward participants, actual actor frame/command routing, metrics and native/Windows play gates. Live join activation and F-entry removal remain blocked. No Windows timing measured. See EXPEDITION-SPLIT-INTEGRATION.md.
 
 ## 2026-10-16 — Astra: fresh Expedition runs (owner policy update)
 
