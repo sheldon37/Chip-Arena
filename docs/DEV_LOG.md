@@ -1,3 +1,12 @@
+## 2026-10-16 — Astra: airborne Expedition chip selection
+
+- Branch `codex/chip-selection-ground`, base shared/builder `bb4b36a`.
+- Cause: the chooser reused the full Leet freeze, resetting vertical velocity, pinning jump height and disabling gravity every tick.
+- Hold horizontal position and orientation, cancel upward momentum, preserve downward velocity and use the existing ground motor/gravity while choosing and through the final wrist plant. Existing freeze/scare still suspend the pilot. Damage, action gating, hold duration and wire format unchanged.
+- Added native M1 acceptance for rising/falling entry, real-geometry landing, horizontal hold and freeze precedence. Updated the selection contract. Host applies the same rule to all seats; guests already suspend prediction during the public choosing flag.
+- Verification: player, runtime and editor semantic compilation passed against pinned Unity references. Managed/relay suite result recorded in PR. Native Unity/PhysX acceptance and Windows host/guest play remain unrun here; the new native checks run on the Windows builder.
+- Implemented on task branch; integration/build publication status recorded in PR/final handoff.
+
 ## 2026-10-16 — Claude: footsteps cycled through terrains on one surface (surface lookup, memory, one series per key)
 
 - Owner: "walking continuously on one surface cycles through sounds that resemble different terrains." Trace the surface and key per foot contact; keep surfaces in separate pools; same check for zombies.

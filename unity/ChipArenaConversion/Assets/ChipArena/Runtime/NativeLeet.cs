@@ -18,6 +18,7 @@ namespace ChipArena.UnityConversion
         public NativePilot ViewPilot=>Local?.Controlling??Local;
         private bool Leet(NativePilot p,string chip=null)=>Dev(p,"leet")&&(chip==null||Has(p,"l44t-"+chip));
         private bool ExpeditionChoosing(NativePilot p)=>p!=null&&p.Hp>0&&p.Seat.connected&&Expedition?.Session.Run.IsChoosingSeat(p.Seat.id,Expedition.Session.Sources.Seat)==true;
+        private bool ChoiceCanFall(NativePilot p)=>ExpeditionChoosing(p)&&Time>=p.FrozenUntil&&Time>=p.ScareUntil;
         private bool Frozen(NativePilot p)=>p!=null&&(Time<p.FrozenUntil||Time<p.ScareUntil||ExpeditionChoosing(p));
         private void ReleaseControl(NativePilot p)
         {var controller=p.Controlling!=null?p:p.ControlledBy;var target=controller?.Controlling;if(controller!=null){controller.Controlling=null;controller.ControlUntil=0;}if(target!=null){target.ControlledBy=null;target.ControlUntil=0;}}
@@ -26,11 +27,28 @@ namespace ChipArena.UnityConversion
             originalInputs.Clear();foreach(var p in Pilots)
             {if(p.Controlling!=null&&(ExpeditionChoosing(p)||ExpeditionChoosing(p.Controlling)||p.Hp<=0||!p.Seat.connected||p.Controlling.Hp<=0||!p.Controlling.Seat.connected||Time>=p.ControlUntil||!Leet(p,"brain")))ReleaseControl(p);}
             foreach(var p in Pilots)if(p.Controlling!=null){var q=p.Controlling;originalInputs[p]=p.Input;originalInputs[q]=q.Input;q.Input=p.Input;p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};}
-            foreach(var p in Pilots)if(Frozen(p)){if(ExpeditionChoosing(p)){p.Roll=null;p.RollEnd=0;p.ReloadEnd=0;p.Pose.Sprinting=false;}if(!p.FrozenPosition.HasValue)p.FrozenPosition=p.Body.position;if(!originalInputs.ContainsKey(p))originalInputs[p]=p.Input;p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};CancelFighter(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.BlockEnd=0;p.MoveVelocity=p.Knockback=Vector3.zero;p.Body.linearVelocity=Vector3.zero;}
+            foreach(var p in Pilots)if(Frozen(p)){if(ExpeditionChoosing(p)){p.Roll=null;p.RollEnd=0;p.ReloadEnd=0;p.Pose.Sprinting=false;}if(!p.FrozenPosition.HasValue)p.FrozenPosition=p.Body.position;if(!originalInputs.ContainsKey(p))originalInputs[p]=p.Input;p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};CancelFighter(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.BlockEnd=0;p.MoveVelocity=p.Knockback=Vector3.zero;p.Body.linearVelocity=ChoiceCanFall(p)?new Vector3(0,Math.Min(0,p.Body.linearVelocity.y),0):Vector3.zero;}
         }
         private void RestoreLeetInputs()
         {
-            foreach(var p in Pilots){if(Frozen(p)&&p.Hp>0&&p.FrozenPosition.HasValue){p.Body.position=p.FrozenPosition.Value;p.Body.linearVelocity=Vector3.zero;p.Body.useGravity=false;}else p.FrozenPosition=null;}
+            foreach(var p in Pilots)
+            {
+                if(Frozen(p)&&p.Hp>0&&p.FrozenPosition.HasValue)
+                {
+                    if(ChoiceCanFall(p))
+                    {
+                        // Hold the chooser's horizontal anchor, not their jump height. Keep
+                        // downward speed across ticks so gravity can land on real geometry.
+                        var anchor=p.FrozenPosition.Value;anchor.y=p.Body.position.y;p.Body.position=anchor;
+                        var velocity=new Vector3(0,Math.Min(0,p.Body.linearVelocity.y),0);
+                        velocity.y-=(float)(23*(p.Stats["playerGravity"]-1)/60);
+                        p.Body.useGravity=!GroundMotion(p,ref velocity,false,false,0);
+                        p.Body.linearVelocity=velocity;p.FrozenPosition=p.Body.position;
+                    }
+                    else {p.Body.position=p.FrozenPosition.Value;p.Body.linearVelocity=Vector3.zero;p.Body.useGravity=false;}
+                }
+                else p.FrozenPosition=null;
+            }
             foreach(var pair in originalInputs)pair.Key.Input=pair.Value;originalInputs.Clear();
         }
         private NativePilot LeetTarget(NativePilot owner,Vector3 point)=>Pilots.Where(p=>p.Hp>0&&p.Seat.connected&&Enemy(owner,p)&&Vector3.Distance(p.Body.position,point)<=28&&MeleeVisible(point,p.Body.position,owner,p.Collider)).OrderBy(p=>(p.Body.position-point).sqrMagnitude).FirstOrDefault();
