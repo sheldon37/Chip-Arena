@@ -1,3 +1,42 @@
+## 2026-10-16 — Claude: City Ironworks owner decisions, the Rigger, the converter shutter (design draft, not live)
+
+- Owner (2026-10-16): "Go with your picks, add the rigger as well." Relayed as decisions 8 to 14: a full steelworks at
+  100 x 68 m; keep the four enemies and add the Rigger; keep the runners and the pour, with a light Wave 1 and no pour in the
+  boss encounter; the converter shutter shut until the boss as a real instance gate; a second chip machine upstairs; the boss
+  later; the brute's seams cream in this zone only.
+- Branch `claude/ironworks-design`. Shared `origin/claude/sleepy-ritchie-g8ruhv` `afac02d` (with PR #254) merged in as
+  `d84098f`; implementation `63f32c8`. Pushed, not merged into shared, builder not touched, no PR, not live, no release.
+- **Doc** (`docs/EXPEDITION-CITY-IRONWORKS.md`): section 12 is now the decisions table. The Rigger (6.5) covers role,
+  silhouette, rig, animation set (hang, slide, land, hook swing, throw and climb back up), telegraph timings (rattle T-2.0 s,
+  hook lowered 2.4 m over the locked spot with its shadow swaying, ring and lamp T-1.6 s, slide T-0.35 s), VFX, counters (the
+  chain as weak point, the swing's 1 m dead zone), contract row, fields, AI states and replicated versus derived network fields,
+  14 `pve.ironworks.rigger.*` cues, and the wave mix (from Wave 2, cap 2). Hazards carry a Wave 1 and boss schedule (5, 7).
+  10.5 and 10.6 now say what PR #254 already did.
+- **Draft:** map id renamed `expedition-foundry` to `expedition-ironworks` to match PR #254's importer profile,
+  `NativeMapRules.ExpeditionInstance` and the machine rule (area `exp-foundry` unchanged; `docs/EXPEDITION-LAYOUT.md`'s reserved
+  row updated). The draft manifest carries `exp-foundry:gate:converter` (`opens: "boss"`, 8 x 5 m in the west opening). 46 spawns
+  (5 new crane-rail ceiling vents; the Rigger is proposed on 8 hang points). The ironworks record adds the hazard schedule, the
+  approved machine spots and the zone seam tint.
+- **Checks added:** the generator proves the shutter fills its opening, and with it shut every boss point (pilot and Hulk) and
+  all 46 spawn exits still route by the loops (101.4 m), with no way through. All 8 Rigger hang points have a girder overhead (or
+  the truss), a clear chain fall and a 1.5 m landing ring on reached floor away from hazards. It also checks the schedule and the
+  machine fronts. The managed check turns the parser note into a PASS: every spawn field survives Parse and BindContent. It also
+  runs the director on the draft: the shutter starts sealed, stays sealed through the waves, opens with the boss encounter and
+  never touches the final gate. Its navigation now matches the importer's 0.5 m grid (29,848 nodes, 56,329 links). The Python
+  test runs the importer's own navigation on the draft (about 29,800 nodes) and confirms the manifest the importer reads names
+  no Ironworks.
+- **Renders** (session scratchpad, not committed): `renders-ironworks/enemy-sheet.png` (lineups with all seven, the Rigger's
+  ambush, each kind's move / telegraph / strike), `rigger-sheet.png`, `rigger-ambush.png`, `rigger-move.png`,
+  `rigger-telegraph.png`, `rigger-strike.png`, `plan-blockout.png` (the shutter drawn).
+- **Checks** (`run5b.sh` on `63f32c8`, before this entry): Unity runtime and editor build OK; relay suite exit 0, 765 PASS
+  lines, all 35 managed-core groups (Ironworks draft 82 checks); Python 136 tests OK (1 skipped); source package 2,214 files
+  OK; diff-check clean. The generator's own checks pass (instance, town door, draft manifest).
+- **Not run:** Unity editor, PhysX, a Windows build, two clients. No audio generated. The five kinds, hazards, schedule,
+  machines and the seam tint exist in no rule or content.
+- **Impact:** none on hit timing, hitboxes, damage, cooldowns, movement, networking or saves (no runtime code changed).
+- **Next:** Astra: contract numbers (10.1), hazard authority and schedule, the Rigger's entry timeline, instance machine
+  authoring. Claude: the chain prop, the Ironworks kit and the molten shader when the import is scheduled. The boss is later.
+
 ## 2026-10-16 — Claude: City Ironworks design (layout, look, four enemies; design phase, not live)
 
 - Owner (2026-10-16): "lets begin the design for the Central Station and City Ironworks~ we can tweak the instances to have
