@@ -1,9 +1,11 @@
 # Expedition: CENTRAL STATION (design draft)
 
-Claude, 2026-10-16. Branch `claude/central-station-design`, based on shared `claude/sleepy-ritchie-g8ruhv` (`bb4b36a`).
-**Status: design phase. Nothing is live.** No runtime file, live resource, catalogue state, rule, AI or network field is
-changed. The blockout is a generated draft that nothing at runtime loads. The new enemies, hazards and machines are
-proposals. Their stats and behaviour belong to Astra (section 8). Bosses come later, per the owner.
+Claude, 2026-10-16. Branch `claude/central-station-design`, based on shared `claude/sleepy-ritchie-g8ruhv` and merged
+with it at `afac02d` (which includes Astra's PR #254).
+**Status: design approved by the owner on 2026-10-16 ("Go with your picks."); the decisions are in section 14. Nothing is
+live.** No runtime file, live resource, catalogue state, rule, AI or network field is changed. The blockout is a generated
+draft that nothing at runtime loads. The new enemies' stats, the hazards and the machines are proposals that Astra owns
+(section 8). Bosses come later, per the owner.
 
 Owner (2026-10-16, verbatim): "lets begin the design for the Central Station and City Ironworks~ we can tweak the instances
 to have specific zombies / enemies. So lets also begin creating unique enemies for those zones. We can work on visual updates
@@ -16,7 +18,7 @@ City Ironworks is a separate parallel task and is not covered here.
 | --- | --- |
 | This design | `docs/EXPEDITION-CENTRAL-STATION.md` |
 | Blockout generator and its checks | `docs/arenas/scripts/expedition_central_station.py` (`--fixture`, `--json`, `--png`) |
-| Draft (map, area record, hub door record, look, proposals) | `unity/ChipArenaConversion/Tests/expedition-central-station-draft.json` (not live) |
+| Draft (map, area record, hub door record, look, proposals, owner decisions, text) | `unity/ChipArenaConversion/Tests/expedition-central-station-draft.json` (not live) |
 | Managed check (Astra's parser and geometry gate on it) | `unity/ChipArenaConversion/Tests/ExpeditionStationDraftChecks.cs`, run from `ExpeditionLayoutChecks` |
 | Python check | `unity/ChipArenaConversion/Tests/test_expedition_station_draft.py` |
 | Renders (not in the repo) | listed in section 13 |
@@ -36,11 +38,11 @@ City Ironworks is a separate parallel task and is not covered here.
 11. Performance budget and low-graphics fallback
 12. Integration steps (when the owner says go)
 13. Renders, checks and what is not done
-14. Open questions for the owner
+14. Owner decisions (2026-10-16)
 
 ## 1. Fantasy and mood
 
-The last train left at 6:47. The station was the city's evacuation point. The army sandbagged the ticket hall, set cots under
+The last train was due out at 6:47 and never left. The station was the city's evacuation point. The army sandbagged the ticket hall, set cots under
 the concourse arcades and boarded the doors from outside. Then the boards went up from the inside too. The town's facade
 already tells this: CENTRAL STATION in teal, STATION CLOSED, EVAC CANCELLED, the clock stopped at 6:47.
 
@@ -67,7 +69,7 @@ on Station Road. Inside, the exit door is in the ticket hall's north wall at (0,
 | Area / map / look | `exp-transit` / `expedition-transit` / `central-station` (the layout contract's ids) |
 | Bounds | x -48..48, z -60..36 (96 x 96 m), ceiling 22, killY -10 |
 | Levels | ground y 0 (hall, concourse, platforms, corridor); upper y 6 (balconies, north gallery, offices, footbridges, signal box); track bed y -1.2 (three pits, two throats, tunnel mouths) |
-| Walkable floor | ground 4,718 m2, upper 1,880 m2, track bed 1,069 m2: 7,667 m2, about 1.5 times Ward Zero's two floors (4,981 m2 by the same 0.5 m count) |
+| Walkable floor | ground 4,718 m2, upper 1,880 m2, track bed 1,069 m2: 7,667 m2, about 1.5 times Ward Zero's two floors (4,981 m2 by the same 0.5 m count). The owner keeps this size. |
 | Blocks | 458: 226 colliding, 232 visual stair steps; 18 stairs and steps (walkable wedges, as Siren's) |
 | Records | 1 exit door with 8 entries; 3 caches; 3 boss points; 47 spawns |
 | Walked from the entry slots | concourse 30 m, P1 at the crossing 39 m, P2 54 m, the stalled train 66 m, the east tunnel mouth 66 m, P4 84 m, station master's office 101 m, the corridor 104 m, the signal box 104 m |
@@ -101,7 +103,8 @@ on Station Road. Inside, the exit door is in the ticket hall's north wall at (0,
 3. **Concourse → P1** through the platform barrier's three gates (each 6 m).
 4. **P1 → P2** by the **barrow crossing** on the central axis: a 3 m ramp into the express pit and up the other side, with
    the third rail gapped there. This is the short way and the dangerous one, because the express uses this pit. Or take the
-   **footbridges** (y 6): up from the balconies, then down stairs onto P2, P3 and P4. That way is safe and longer.
+   **footbridges** (y 6): up from the balconies, then down stairs onto P2, P3 and P4. That way is safe and longer. The owner
+   keeps the crossings risky and wants no third footbridge.
 5. **P2 → P3 through the stalled train.** Car 2 has doors on both sides and is a 17 m walk-through aisle. Pilots and the
    normal horde fit, a Hulk does not. Or walk round the train's ends in the T2 pit.
 6. **P3 → P4** by the second barrow crossing (over the flooded freight line T3), or the west footbridge.
@@ -136,7 +139,8 @@ footbridges (3 m), the corridor doors (3 m), the pump-room door (3 m), and the s
 
 ### Arena rooms
 
-- **The grand concourse** (80 x 24 m, balconies on two sides) is the big wave room and the **boss arena placeholder**.
+- **The grand concourse** (80 x 24 m, balconies on two sides) is the big wave room and the **boss arena** (owner decision;
+  the boss itself is designed later).
   The boss points are (0, 0, 3), (-12, 0, 6.5) and (12, 0, 6.5), on the floor under the board, all Hulk-clear. A boss can
   arrive through the glass vault, like the Siren's Spine hatch (boss design later).
 - **Platforms P2/P3 and the train** form the second arena: two 10-12 m islands, door spawns on both sides of the train,
@@ -308,8 +312,8 @@ Each room below lists its hero shot, palette, lights, atmosphere, surfaces, dres
 - **Lights:** the red interior (the far beacon of the whole map); the track diagram screen.
 - **Dressing:** the lever frame (red, blue, yellow and black levers), the illuminated diagram, a desk, the name board
   CENTRAL SIGNAL BOX.
-- **Identity:** the brain of the station. A proposed objective: throw the levers to cut the third rail and halt the express
-  for a while.
+- **Identity:** the brain of the station. The optional objective (owner decision 2): throw the levers to cut the third
+  rail and halt the express for 60 s.
 
 ### Footbridges, balconies, north gallery and offices
 - **Footbridges:** grating decks, green lattice parapets, a lamp every 14 m (some dead), the best view of the shed. The
@@ -330,6 +334,36 @@ Each room below lists its hero shot, palette, lights, atmosphere, surfaces, dres
 | **Total** | **about 7,850** | Ward Zero's kit is 7,124 parts, the town's 7,631 |
 
 The concept renders use about 2,160 dressing parts plus the text glyphs (49 signs and notices).
+
+### The station's text (final set)
+
+The owner asked Claude to write the board and PA lines (decision 6) and may swap any of them later. The set is also in the
+draft's `text` record. The PA lines are in section 10, with the audio keys.
+
+**The departure board.** It has four faces over the information booth. The north and south faces show DEPARTURES, five rows
+and a ticker. The east and west faces show the clock and the stalled train. Each row is at most 32 characters, the width of
+the board's glyphs.
+
+| Row | Time | Destination | Platform | Status |
+| --- | --- | --- | --- | --- |
+| 0 | 6.47 | EVAC SPECIAL | 2 | DELAYED |
+| 1 | 7.02 | HARBOUR | 3 | CANCELLED |
+| 2 | 7.15 | NORTH CAMP | 4 | CANCELLED |
+| 3 | 7.30 | ALL STATIONS | 1 | CANCELLED |
+| 4 | --.-- | EXPRESS | 1 | DOES NOT STOP |
+
+- Ticker: SERVICE SUSPENDED - FOLLOW STAFF INSTRUCTIONS - DO NOT CROSS THE LINE
+- Side faces: 6:47 / PLATFORM 2 / EVAC SPECIAL / DOORS OPEN
+
+Some rows react to the game. The presentation reads state that is already replicated (section 8), so nothing new goes on the
+wire:
+
+| When | Row | Shows |
+| --- | --- | --- |
+| The express warning (4 s) and the pass | 4 | APPROACHING, blinking. This is part of the express telegraph. |
+| The levers are thrown (60 s) | 4 | SUSPENDED |
+| A Conductor's last call | 0 | LAST CALL, blinking |
+| The boss arrives | all | ALL SERVICES CANCELLED |
 
 ## 4. Asset inventory and gaps
 
@@ -395,16 +429,36 @@ of every entry, the door, the caches and the boss points:
 
 | Hazard | Volume | Proposed behaviour | Telegraph (presentation) |
 | --- | --- | --- | --- |
-| **The express** (`train`) | the T1 pit, end to end | A driverless express on a schedule (first at about 60 s, then every 70-110 s, never during a boss intro). It passes in 2.2 s. Lethal in the pit; it also pushes pilots within 0.6 m of the platform edge (6 m/s). Zombies in the pit die too, a deliberate tactic. | 4 s ahead: the T1 signals go red; the PA chimes "stand back"; the rails sing; the headlight grows in the west mouth; amber beacons. The pass: a strobing window band, a dust wall and sparks. |
-| **Third rail** (`third-rail`) | strips along T1 (gapped at the crossing), T2 beyond the train, T3 | Touching it: 25 damage and a 0.6 s stun. Arcs into the flood when live. The signal box levers can cut it, and stop the express, for 60 s (an optional objective). | Blue insulator glints, a hum near it, sparks when stepped near. |
+| **The express** (`train`) | the T1 pit, end to end | A driverless express on a schedule (first at about 60 s, then every 70-110 s, never during a boss intro). It passes in 2.2 s. Lethal in the pit; it also pushes pilots within 0.6 m of the platform edge (6 m/s). Zombies in the pit die too, a deliberate tactic (owner decision). The levers halt it for 60 s. | 4 s ahead: the T1 signals go red; the PA chimes "stand back"; the rails sing; the headlight grows in the west mouth; amber beacons. The pass: a strobing window band, a dust wall and sparks. |
+| **Third rail** (`third-rail`) | strips along T1 (gapped at the crossing), T2 beyond the train, T3 | Touching it: 25 damage and a 0.6 s stun. Arcs into the flood when live. The signal box levers cut it on every line for 60 s (the optional objective below). | Blue insulator glints, a hum near it, sparks when stepped near. |
 | **Flood** (`flood`) | T3 west and the west throat, 0.35 m deep | Slows pilots by 20%. While the rail arcs or a Linesman is grounded in it: 8 dps to anyone in it. | Ripples; the water lights blue when live. |
 | **Spark cabinets** (`spark`) | two signal cabinets on P2 and P3 | Every 9-14 s: a 1 s fizz, then a 2 m arc (12 damage). Reuse the Ward `grid` kind's timing. | Fizz sound, cabinet door glow. |
 | **Steam main** (`gas`) | the corridor centre | The Ward `gas` kind: 2 s hiss warning, then a 3 s scald. | Hiss, steam plume. |
 | **Falling glass** (`falling-glass`) | the concourse, boss encounter only | Shards fall with a 1.2 s shadow telegraph. | Shadow decal, creak, glass. |
 
+**The lever objective (owner decision 2).** This is optional, and the draft records it in `proposals.objectives`. The lever
+frame stands in the signal box. Its interaction point is (36, 6, -54.4), facing south, 0.8 m in front of the frame. The
+generator checks that the point is on reached floor with pilot clearance.
+
+Throwing the levers does three things:
+- it cuts the third rail on T1-T3 for 60 s;
+- it halts the express for the same 60 s, and the schedule then resumes;
+- the PA says "Power has been isolated on all lines." When the 60 s end, it says "Power restored. Keep clear of the tracks."
+  The next express keeps its full 4 s warning.
+
+What the players see and hear:
+- the levers move;
+- the signals turn from red to dark;
+- the rail's hum and glints stop;
+- the flood loses its blue;
+- the board's express row reads SUSPENDED.
+
+The lever state is a replicated field (section 8). Astra owns how often it can be used and what it costs. One suggestion is
+once per express cycle, because the box is the far end of the map.
+
 ## 7. The station's enemies
 
-There are four new kinds. Each is built on the player-model zombie rig (`CapturedRig`) with the ZOMBIE PRO mocap, like the
+There are four new kinds. The owner keeps all four and their names. Each is built on the player-model zombie rig (`CapturedRig`) with the ZOMBIE PRO mocap, like the
 Siren minions. Each has its own **identity light** so it reads at 30 m in the dark, and none repeats an existing kind's seam
 hue:
 
@@ -512,9 +566,10 @@ The concept sheet (section 13) poses them beside a pilot and a shambler in the s
 - **Attack: Grab.**
   - The telegraph: 0.6 s of bubbles and ripples converging on the target's feet, a gurgle, the eyes lighting.
   - The lunge reaches 2.6 m, from the pit up over a platform edge 1.2 m above.
-  - On a hit the pilot is held and dragged at 2.7 m/s toward the nearest pit or flood, for up to 1.5 s (4 m), at 6 damage
-    a second.
-  - Breaking free: the victim deals 40 damage, a teammate deals 25, or any stagger.
+  - On a hit the pilot is held and dragged at 2.7 m/s toward the nearest pit or flood at 6 damage a second. The hold lasts
+    up to 1.5 s (4 m). When only one pilot is in the instance it lasts up to 1.0 s (2.7 m), because nobody can shoot them
+    free (owner decision 5). The authority picks the limit when the grab lands.
+  - Breaking free: the victim deals 40 damage, a teammate deals 25, or any stagger releases at once.
   - Cooldown 5 s after a release.
 - **Habitat:** pits and the flood only. It never stays out of the track bed or the water for more than 3 s. Submerged, only
   its head is a hitbox.
@@ -570,7 +625,8 @@ Recorded so they are not lost:
 
 ## 8. Astra contract (proposal)
 
-These numbers are starting points in today's `PveAddStats` units. Astra owns every value.
+These numbers are starting points in today's `PveAddStats` units. Astra owns every value. The owner's decisions (section 14)
+fix three things: the four kinds and their names, the Undertow's grab limits, and the express and lever behaviour.
 
 | | Linesman | Conductor | Undertow | Pileup |
 | --- | --- | --- | --- | --- |
@@ -578,7 +634,7 @@ These numbers are starting points in today's `PveAddStats` units. Astra owns eve
 | hp | 260 | 140 | 120 | 700 |
 | walk / run (m/s) | 1.2 / 2.2 | 1.4 / 2.6 | 1.6 / 3.2 (3.6 submerged) | 0.9 / 1.6 (shove carry) |
 | melee (damage, reach, hit, cycle) | 14, 2.0, 0.40, 1.4 | 8, 1.8, 0.34, 1.2 | grab: 2.6 reach, hit 0.6, 6 dps hold | crush 24, 2.2, 0.55, 2.0 |
-| special | arc 18 + 2 chains x 10, 9 m, wind-up 1.1, cd 6 (3 grounded) | whistle 14 m aura, wind-up 0.8, cd 12; last call cd 20 | grab drag 2.7 m/s, up to 1.5 s, cd 5 | shove 2.4 m 70° cone, 20 damage, 6 m/s, wind-up 0.7, cd 4 |
+| special | arc 18 + 2 chains x 10, 9 m, wind-up 1.1, cd 6 (3 grounded) | whistle 14 m aura, wind-up 0.8, cd 12; last call cd 20 | grab drag 2.7 m/s, up to 1.5 s (1.0 s with one pilot in the instance; owner), cd 5 | shove 2.4 m 70° cone, 20 damage, 6 m/s, wind-up 0.7, cd 4 |
 | stagger | 0.3 (a back hit of 30 in the wind-up cancels) | 0.45 | 0.4 (any stagger releases) | 0.15 (only the head or the back) |
 | limb / head fractions | 0.45 / 0.5 | 0.35 / 0.4 | 0.35 / 0.45 | 0.55 / 0.6 |
 | capsule (radius, height) | 0.48, 1.75 | 0.40, 1.9 | 0.42, 1.7 (head only when submerged) | 0.75, 2.1 |
@@ -593,7 +649,7 @@ These numbers are starting points in today's `PveAddStats` units. Astra owns eve
 | --- | --- |
 | Linesman | wander, hunt, (seek rail), ground (recharge 0.8 s), arc wind-up, arc, melee, stagger |
 | Conductor | follow the horde, keep distance (10-14 m), whistle wind-up, whistle, last call (near a train door), flee (lantern broken, or melee within 3 m), melee |
-| Undertow | submerged (moves only in pits and water), stalk (the nearest pilot within 2.6 m of an edge or in water), surface, grab, drag, release, retreat (submerge) |
+| Undertow | submerged (moves only in pits and water), stalk (the nearest pilot within 2.6 m of an edge or in water), surface, grab, drag (until `releaseAt`: grab + 1.5 s, or + 1.0 s with one pilot in the instance), release (at `releaseAt`, on 40 damage from the victim or 25 from a teammate, or at once on any stagger), retreat (submerge) |
 | Pileup | advance (turns slowly at 60°/s, the shield toward the nearest pilot), brace, shove, crush, stagger (only from the back or the head), split (death) |
 
 ### Spawn weights
@@ -632,17 +688,60 @@ Replicated fields are authority state. Derived values are computed from replicat
 | Conductor `aboardUntil` (per buffed add) | replicated, or derived from `whistleAt` + aura membership if Astra replicates the list | the red buff flash and trail |
 | Conductor `lanternBroken`, `lastCallAt` | replicated | the lantern, flee, the bell |
 | Undertow `submerged`, `surfaceAt` | replicated | sink and surface, ripples |
-| Undertow `grabTarget`, `grabAt`, `releaseAt` | replicated | the drag pose on both bodies, and the victim's camera |
+| Undertow `grabTarget`, `grabAt`, `releaseAt` | replicated | the drag pose on both bodies, and the victim's camera. The authority sets `releaseAt` from the pilot count when the grab lands (1.5 s, or 1.0 s solo) and moves it forward on an early release, so the presentation needs nothing new for the solo limit. |
 | Pileup facing | derived (yaw) | the shield side |
 | Pileup `splitAt` + child ids | replicated (the death event) | the split |
 | Express `trainAt` (next pass start), `line` | replicated (schedule) | warning 4 s before, the pass |
 | Third rail `live` per section, `changedAt` | replicated | glints, sparks, the hum |
 | Flood `live` | replicated | blue water |
-| Signal box lever state | replicated | the levers, the signals |
+| Signal box lever state, `leversUntil` | replicated | the levers, the dark signals, the rail's hum stopping, the board's SUSPENDED row, the PA lines |
 
 Animation impacts: the new kinds' strikes follow the authority's hit times, as `NativeHordeKinds.Strike` does today. The grab
 moves the victim's capsule (authority), and the presentation only follows it. The shove's knockback is authority. Nothing
 here changes an existing kind's hit timing, hitboxes, damage, cooldowns, movement or networking.
+
+### What PR #254 already provides
+
+Astra's PR #254 prepares authored instances. It was merged into shared at `0c684d8`, and shared is now `afac02d`. This branch merges it, and
+`ExpeditionStationDraftChecks` exercises the parts that apply to the station:
+
+| #254 provides | The station today |
+| --- | --- |
+| The spawn parser keeps `hulk`, `pit`, `song`, `block`, `center`, `size` and `normal`. It checks allow lists against the entry kind, allows the Hulk flag only on drops, and checks breach panels against the area's own map. | All 47 spawns parse. Each parsed entry equals a direct read of its record. The 3 breach panels name static station blocks, and the 2 Hulk drops keep their flag. |
+| `NativeExpeditionLayout.BindContent` gives a detached content copy the area's own entry table, boss point, pads and hide spots, and no Ward machines. | Bound: 47 entries in index order, the boss at boss point 0, 3 hide spots, 8 pads (the exit's entries), 0 machines. Ward content is unchanged. |
+| `NativeMapRules.ExpeditionInstance` lists `expedition-transit`, so machine use works on the map. | It holds; the map is not a Ward instance. The station's machines still need authoring (below). |
+| The navigation profile in `tools/generate_expedition.py` (`et` prefix, 0.5 m). It imports only maps the selected manifest names. | Ready, and the imported manifest does not name the station. A fix is still needed; see the finding below. |
+| Instance `gates[]` with `opens:"boss"`: a shutter that is sealed until the instance's boss appears (or it is cleared). | Not used. Every room stays open so pilots can always extract. If the boss design wants a sealed entrance (for example the boss coming out of a shuttered siding), this is the mechanism. |
+
+**Finding for Astra: navigation stops at y 0.** `generate_expedition.navigation()` skips every surface below y -0.01. Today
+the station's draft fails in it: "No navigation floor for (-14, -1.2, -12)", the T1 drop hint.
+
+I ran a scratch copy with only that filter lowered to the track bed (y -1.21), on the draft as it is:
+- the generator produces 60,523 nodes and 114,762 links in about 260 s;
+- the component that holds the entries covers every walking cell: ground 18,873, upper 7,522, track bed 4,276;
+- all 62 records are reachable: 8 entries, the approach, 3 boss points, 3 caches and 47 spawn exits.
+
+The same run shows a second issue: 28,266 nodes cannot be reached from the entries. Most sit on roofs (y 10.5, 12.5 and
+20). Pruning to the entries' component would halve the graph.
+
+Suggested fixes, for Astra to choose from:
+- a per-map lowest floor in `MAP_DRAFTS`, or `killY`;
+- pruning nodes that cannot be reached from the area's entries.
+
+The alternative on Claude's side is to raise the whole station by 1.2 m, so the track bed sits at y 0. I have not done that,
+because it shifts every record, the look's haze height and the hub door's y.
+
+**Still to do after #254:**
+- Astra:
+  - the navigation fix above;
+  - authoring and table support for the station's machines;
+  - the new entrance kinds (`train`, `tunnel`, `sump`; generic pit vents are pending);
+  - the hazard schedules, their authority and replication (express, third rail, flood, spark cabinets, steam, falling
+    glass, the levers);
+  - the four kinds' rules, AI and network fields;
+  - the director's phases and caps.
+- Breach lookups that read `StageContent.entries` should read the bound entries before an authored instance with breaches
+  goes live: Claude's `NativeHordeBreachPresentation` and `NativeHazardKitWorld`, and Astra's `NativeHulkHuntRuntime`.
 
 ## 9. Encounter plan
 
@@ -652,24 +751,35 @@ The station runs on the instance's kill quota, like Ward Zero. Phases follow the
 | --- | --- | --- | --- |
 | Arrival (0-15%) | hall to concourse | The concourse doors and grates trickle. Late in the phase, one Conductor appears on the concourse's far side and teaches the whistle. | shambler, runner, spitter; Conductor x1 |
 | Platforms (15-50%) | P1, P2, P3, the train | The train doors open (driven by the Conductor's last call). The express makes its first pass, with full warning. The first Linesman walks out of the west tunnel. Spitters on the islands. | + brute, Linesman, Conductor, a Hulk breach (concourse) |
-| Deep shed (50-85%) | T3, P4, the corridor, the signal box | The flood wakes (Undertow). A Pileup comes off the train. Brutes drop off the shed roof. A Hulk through the pump-room wall. Optional: throw the levers (cut the rail, halt the express for 60 s, open cache 2). | everything |
+| Deep shed (50-85%) | T3, P4, the corridor, the signal box | The flood wakes (Undertow). A Pileup comes off the train. Brutes drop off the shed roof. A Hulk through the pump-room wall. Optional: throw the levers in the signal box (cut the third rail and halt the express for 60 s). | everything |
 | Final push (85-100%) | back to the concourse | The horde converges through the platform gates. Hulk drops through the glass. | everything |
-| Boss (placeholder) | the concourse | The boss arrives through the vault (design later). Falling glass. Adds from the platform gates and the balconies' doors. | boss + Conductor, Linesman |
+| Boss (the concourse; owner decision) | the concourse | "This is the last call for the six forty-seven." The board reads ALL SERVICES CANCELLED. The boss arrives through the vault (designed later). Falling glass. Adds come from the platform gates and the balconies' doors. | boss + Conductor, Linesman |
 
 ## 10. Audio cue list (for the owner to generate)
 
 The keys follow the bank's style. Space: P = positional 3D, F = 2D, O = loop. Each has a one-line brief and an
 ElevenLabs-style prompt. No sound was generated for this design.
 
-### Music states
+### Music: one station theme, four intensity states (owner decision 7)
 
-| Key | Brief / prompt |
-| --- | --- |
-| `music.station.explore` | Sparse, eerie ambient bed for a dead train station at night: low drone, distant metallic resonance, slow piano notes, 70 BPM, loopable. |
-| `music.station.horde` | Driving industrial horror loop, 120 BPM, train-rhythm percussion (wheel clacks as hi-hats), distorted bass, rising tension. |
-| `music.station.express` | 6 s stinger for the express warning: a rising horn chord into a rail-roar crescendo, cutting off. |
-| `music.station.boss` | Big orchestral-industrial boss loop with a station-bell motif and train brakes as percussion, 140 BPM. |
-| `music.station.extract` | Relief cue: warm pad, a single clean station chime, fades out (8 s). |
+There is one theme for the whole station; no room has its own track. It is in D minor at 100 BPM. Its motif is the four
+notes of the PA chime. Each state is a full mix of the same 16-bar theme at a higher intensity, so the game can crossfade
+between states on the bar line.
+
+**When each state plays:**
+- **calm** while no wave is pressing: arrival, between waves, after the levers;
+- **platforms** while the horde is active, through the platforms, deep-shed and final-push phases;
+- **express incoming** from the 4 s warning to the end of the pass, over whatever was playing, then back on the next bar;
+- **boss** from the boss intro to the kill.
+
+Extraction plays calm's 8-bar ending, so there is no separate track.
+
+| Key | State | Brief / prompt |
+| --- | --- | --- |
+| `music.station.calm` | calm | Eerie, sparse 16-bar loop for a dead train station at night, D minor, 100 BPM: a low drone, a distant celesta playing a four-note station-chime motif, soft rail ticks; ends with an 8-bar resolving tail on a single clean chime. |
+| `music.station.platforms` | platforms | The same 16-bar theme, D minor, 100 BPM, at horde intensity: train-rhythm percussion (wheel clacks on the off-beat), a pulsing distorted bass, the chime motif on detuned brass, rising tension. |
+| `music.station.express` | express incoming | The same theme at peak for 6-8 s, D minor, 100 BPM: the chime motif as a rising horn chord over a swelling rail roar, cutting back to the platforms groove on the bar. |
+| `music.station.boss` | boss | The same theme at maximum, D minor, 100 BPM, 16 bars loopable: orchestral-industrial, the motif on a station bell and low brass, train-brake squeals as percussion, a pounding low end. |
 
 ### Room ambiences (O)
 
@@ -699,13 +809,20 @@ ElevenLabs-style prompt. No sound was generated for this design.
 
 ### The PA (F, voice: calm, slightly broken, a female station announcer, echoing)
 
-| Key | Line |
-| --- | --- |
-| `station.pa.chime` | three-note station chime |
-| `station.pa.standback` | "The train now approaching platform one does not stop. Please stand back." |
-| `station.pa.delayed` | "We apologise for the delay to the six forty-seven express." |
-| `station.pa.evac` | "This station is closed. Please proceed to the evacuation point." (distorted, looping fragment) |
-| `station.pa.glitch` | the announcer's voice breaking into feedback and a low wail (the Siren bleeding through) |
+This is the final set (owner decision 6; the owner may swap any line). The draft's `text.pa` holds it too. There are seven
+spoken lines, and the chime comes before each one.
+
+| Key | Line | When |
+| --- | --- | --- |
+| `station.pa.chime` | four-note station chime (the theme's motif) | before every announcement |
+| `station.pa.closed` | "This station is closed. Please proceed to the evacuation point." | ambient, the first minute in the hall |
+| `station.pa.delayed` | "We apologise for the delay to the six forty-seven evacuation special." | ambient, in the calm state |
+| `station.pa.standback` | "The train approaching platform one does not stop. Stand back from the edge." | the express warning, 4 s before the pass |
+| `station.pa.doors` | "Doors are now open on platform two. Please board the train." | a train-door surge (a Conductor's last call) |
+| `station.pa.power` | "Power has been isolated on all lines." | the levers are thrown |
+| `station.pa.restored` | "Power restored. Keep clear of the tracks." | 60 s after the levers |
+| `station.pa.lastcall` | "This is the last call for the six forty-seven." | the boss intro |
+| `station.pa.glitch` | the voice breaking into feedback and a low wail (the Siren bleeding through) | rare, at random |
 
 ### Hazards and props (P)
 
@@ -774,21 +891,37 @@ Rules, as for the town and Ward Zero:
 
 The PvE frame budget stays as the M1 acceptance measures it on Windows; this is not measured here.
 
-## 12. Integration steps (when the owner says go)
+## 12. Integration steps
 
-1. **Owner:** approve the layout and the enemies (or ask for changes).
-2. **Claude:**
-   - turn the draft into the live map;
-   - add the hub door record and move the town's `drop-hulk-station`;
-   - bump the layout revision;
-   - write the station dressing kit, atmosphere, lights, look and the enemy models;
-   - export the clips listed in section 7 with `tools/export_pack_zombie.mjs`.
-3. **Astra:**
-   - extend `tools/generate_expedition.py` (navigation for `expedition-transit`: its prefix and the 0.5 m grid, as Ward Zero's);
-   - the parser's spawn source (the station has its own spawns, already allowed) and `instances`;
-   - the new kinds' rules, the hazards, the director's phases and the networking fields in section 8;
-   - the catalogue moves CENTRAL STATION from InDevelopment when it is playable.
-4. **Both:** Windows build and live acceptance, as M1.
+1. **Owner:** done. The design was approved on 2026-10-16 (section 14).
+2. **Already in shared (Astra's PR #254, section 8):**
+   - the spawn parser keeps every authored field;
+   - authored areas bind their own content;
+   - `expedition-transit` is a known Expedition instance;
+   - the importer has its navigation profile (`et`, 0.5 m);
+   - instance boss shutters exist.
+3. **Astra, before the import:**
+   - the navigation fix in section 8, either the floor filter or pruning. Otherwise `generate_expedition.py` refuses the
+     station at the T1 drop hint.
+4. **Claude, the import:**
+   - add the map to `UnityMaps` and the area to the live manifest (the next layout revision);
+   - add the hub door record and move `exp-transit` from `hub.reserved` to `routes`;
+   - move or remove the town's `drop-hulk-station`;
+   - swap the facade's boarded doorway for the airlock;
+   - regenerate navigation with Astra's importer;
+   - write the station dressing kit, atmosphere, light picker, look, board text and enemy models;
+   - export the clips listed in section 7 with `tools/export_pack_zombie.mjs`;
+   - switch the breach presentation lookups (`NativeHordeBreachPresentation`, `NativeHazardKitWorld`) to the bound entries.
+5. **Astra, the rules:**
+   - the station's machines (authoring and table support);
+   - the entrance kinds;
+   - the hazards and the lever objective (schedules, authority, replication);
+   - the four kinds;
+   - the director's phases and caps;
+   - `NativeHulkHuntRuntime.BreachEntry` on the bound entries;
+   - the networking fields in section 8;
+   - the catalogue moves CENTRAL STATION out of InDevelopment when it is playable.
+6. **Both:** Windows build and live acceptance, as M1.
 
 ## 13. Renders, checks and what is not done
 
@@ -811,25 +944,45 @@ light slots, practical lights picked per camera, and posed rig models lit by the
 | `enemy-sheet.png`, `close-*.png` | a close-up of each kind in its habitat (the sheet is the four close-ups) |
 | `compare/ward-*.png` | Ward Zero's instance through the same harness, for the step up |
 
+The renders predate the owner's decisions. The geometry is unchanged, but the board in them shows the earlier concept rows.
+
 Checks:
-- the generator's own checks (listed at the top of the script);
-- `ExpeditionStationDraftChecks`: Astra's `NativeExpeditionLayout.Parse` and `ValidateGeometry` accept the live manifest
-  plus the station and its hub door;
-- the draft look validates;
-- `test_expedition_station_draft.py`: the fixture is the script's output, and the live resources are byte-identical.
+- **The generator's own checks** (listed at the top of the script). They now include the lever objective's interaction
+  point and the text set's limits.
+- **`ExpeditionStationDraftChecks`:**
+  - Astra's `NativeExpeditionLayout.Parse` and `ValidateGeometry` accept the live manifest plus the station and its hub door;
+  - with #254, every spawn field survives the parser and `BindContent` binds the station's own content;
+  - the draft look validates.
+- **`test_expedition_station_draft.py`:**
+  - the fixture is the script's output, and the live resources are byte-identical;
+  - the owner's decisions, the text set and the lever objective are in the draft.
+- **A scratch run of Astra's navigation generator** (not committed; section 8). It fails as-is at the track bed, and covers
+  every walking cell and all 62 records once the floor filter is lowered.
 
-**Not done:** navigation for the station; the dressing kit, atmosphere, light picker and enemy models in the game (the
-renders use a harness-side concept dressing); any rule, AI or network work; audio; Unity, Windows or live play.
+**Not done:**
+- the station's imported navigation (it waits on the fix above);
+- the dressing kit, atmosphere, light picker and enemy models in the game (the renders use a concept dressing that exists
+  only in the render harness);
+- any rule, AI or network work;
+- audio;
+- Unity, Windows or live play.
 
-## 14. Open questions for the owner
+## 14. Owner decisions (2026-10-16)
 
-1. **Layout:** a through station with four platforms, a stalled train, a flooded freight line and a signal box at the end.
-   Is the size right (about 1.5 times Ward Zero's walkable floor), and is the concourse as the boss arena right?
-2. **The express:** a lethal scheduled train is the signature hazard. Should it also kill zombies (a tactic), and should the
-   signal box's levers be an optional objective that stops it?
-3. **Barrow crossings:** the short route to the islands crosses the live track at rail level. Keep it risky, or add a third
-   footbridge?
-4. **Enemies:** are the Linesman, Conductor, Undertow and Pileup the right four? Any names to change?
-5. **Grabs:** the Undertow drags a pilot. Is a grab (loss of control for up to 1.5 s) acceptable in this game?
-6. **Text:** the board's lines (6.47 DELAYED, CANCELLED) and the PA lines. Any you want in particular?
-7. **Music:** one station theme with states (explore, horde, express, boss), or a track per room?
+The owner approved the design with "Go with your picks.", taking Claude's recommendation on each open question. The draft
+records them in `owner.decisions`.
+
+| # | Topic | Decision | Where it shows |
+| --- | --- | --- | --- |
+| 1 | Size and boss arena | Keep the size (three levels, about 1.5 times Ward Zero's walkable floor) and the concourse as the boss arena. | Sections 2 and 9 |
+| 2 | The express and the levers | The express also kills zombies in the pit. The signal box levers are an optional objective: they cut the third rail and halt the express for 60 s. | Sections 6, 8 and 9; `proposals.objectives` |
+| 3 | Barrow crossings | Keep them risky. No third footbridge. | Section 2 |
+| 4 | Enemies | Keep all four and their names: Linesman, Conductor, Undertow, Pileup. | Sections 7 and 8 |
+| 5 | The Undertow's grab | The hold lasts up to 1.5 s, or 1.0 s when only one pilot is in the instance. Any stagger releases. | Sections 7.3 and 8 |
+| 6 | Text | Claude writes the departure board and PA lines; the owner may swap them later. | Sections 3 and 10; the draft's `text` |
+| 7 | Music | One station theme with intensity states (calm, platforms, express incoming, boss), not a track per room. | Section 10 |
+
+Still open, for later rather than now:
+- the boss itself (owner: "bosses after");
+- whether a boss shutter (`opens:"boss"`) is wanted for its entrance;
+- Astra's balance on every number in section 8.

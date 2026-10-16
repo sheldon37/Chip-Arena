@@ -1,3 +1,34 @@
+## 2026-10-16 — Claude: Central Station owner decisions; shared (PR #254) merged in
+
+- Branch `claude/central-station-design`, with shared `afac02d` merged in (it includes Astra's PR #254). Not live, no PR. Not merged into shared: the coordinator merges.
+- The owner approved the design (verbatim): "Go with your picks." The decisions are recorded in `docs/EXPEDITION-CENTRAL-STATION.md` section 14 and in the draft's `owner.decisions`:
+  1. Keep the size and the concourse as the boss arena.
+  2. The express also kills zombies in the pit. The signal box levers are an optional objective: they cut the third rail and halt the express for 60 s. A new `proposals.objectives` record at (36, 6, -54.4) is checked by the generator.
+  3. Keep the risky barrow crossings; no third footbridge.
+  4. Keep all four enemies and their names.
+  5. The Undertow's grab holds up to 1.5 s, or 1.0 s with one pilot in the instance, and any stagger releases. The contract and AI states are updated; the replicated `releaseAt` already carries the limit.
+  6. The final text set, in the doc and the draft's `text`: 5 board rows plus a ticker, the side faces and 4 rows that change with the game, and 7 PA lines.
+  7. One station theme (D minor, 100 BPM) with calm, platforms, express-incoming and boss states. The audio list is now 59 keys.
+- **What #254 changes for the station:**
+  - `ExpeditionStationDraftChecks` now also checks that every parsed spawn field equals a direct read of its record (breach panels, Hulk drops).
+  - It runs `BindContent` on a detached copy: 47 entries, boss point 0, 3 hide spots, 8 pads, 0 machines, with Ward content unchanged.
+  - It checks `ExpeditionInstance("expedition-transit")`.
+  - Under `Assets/`, only #254's instance id list may name the map. The importer has the `et` profile, but the manifest it imports does not name the station.
+  - In the doc, section 8 lists what #254 provides and what remains, and section 12's integration steps are rewritten.
+- **Finding for Astra (blocks the station's navigation import):** `generate_expedition.navigation()` skips surfaces below y -0.01. The station's track bed (y -1.2) gets no nodes, and the import fails with "No navigation floor for (-14, -1.2, -12)" at the T1 drop hint.
+  - A scratch run with only that filter lowered to -1.21: 60,523 nodes and 114,762 links in about 260 s. The entries' component covers every walking cell (18,873 / 7,522 / 4,276) and all 62 records.
+  - 28,266 nodes cannot be reached, most on roofs. Pruning to the entries' component would halve the graph.
+  - Claude could instead raise the station by 1.2 m. Not done.
+- **Checks run** (the final tree, with `afac02d` merged in; `run5b.sh`, every step exit 0):
+  - the Unity runtime and editor assemblies build;
+  - `tools/check_relay.py`: "35 managed-core checks passed" and 765 PASS lines, including "PASS expedition station draft (118 checks)";
+  - Python `unittest discover`: 134 tests OK (1 skipped), including the 3 station tests and #254's navigation-profile tests;
+  - `package_source.py`: the structure check passed (2,212 source files);
+  - `git diff --check`: clean.
+- **Not run:** Unity Editor or Windows; the navigation import (blocked above); any director, AI or network behaviour; audio. The renders were not redone: the geometry is unchanged, and the board in them shows the earlier concept rows.
+- **Impact:** none on live content, hit timing, hitboxes, damage, cooldowns, movement or networking. Only draft data, docs and test code changed.
+- **Next:** Astra's navigation fix, then Claude's import (doc section 12).
+
 ## 2026-10-16 — Claude: Central Station design (layout, station enemies, look; not live)
 
 - Owner (verbatim): "lets begin the design for the Central Station and City Ironworks~ we can tweak the instances to have specific zombies / enemies. So lets also begin creating unique enemies for those zones. We can work on visual updates / bosses after." Follow-up via the coordinator: the station must look clearly better than Ward Zero, using our real assets and lighting. This entry covers Central Station only; City Ironworks is a parallel task.

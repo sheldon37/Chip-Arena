@@ -9,7 +9,9 @@ namespace ChipArena.UnityConversion
     // The Central Station design draft (docs/EXPEDITION-CENTRAL-STATION.md), written by
     // docs/arenas/scripts/expedition_central_station.py --fixture to Tests/expedition-central-station-draft.json. NOT LIVE: the
     // game loads Resources/ExpeditionLayout.json (exp-layout-3), UnityMaps.json and MapLooks.json, none of which holds the
-    // station, and nothing under Assets/ names the draft (Tests/ is outside Assets/). Run from ExpeditionLayoutChecks. Checks:
+    // station. Since PR #254 the runtime knows the map id (NativeMapRules.ExpeditionInstance) and the importer has its
+    // navigation profile (et, 0.5 m), but the importer only builds maps the live manifest names. Run from ExpeditionLayoutChecks.
+    // Checks:
     //  - the live manifest is still exp-layout-3's bytes (the join draft's pin) and no live resource has the station's map,
     //    area or look;
     //  - the draft map passes the UnityMaps validator and imports beside today's maps (a simulated NativeMapRules.Merge; nothing
@@ -19,7 +21,9 @@ namespace ChipArena.UnityConversion
     //    imported navigation yet, so its route evidence is a capsule flood over its authored collision (this file's grid, the
     //    same probe as the layout checks); the town keeps its imported navigation;
     //  - the spawns use existing kinds within the entry rules (the station enemies are named only in `station`, never in
-    //    `allow`, and are not horde kinds yet);
+    //    `allow`, and are not horde kinds yet); the parser (#254) keeps every authored spawn field, breach panels included;
+    //  - NativeExpeditionLayout.BindContent (#254) gives a detached content copy the station's own entry table, boss point,
+    //    pads and hide spots, and no Ward machines;
     //  - the draft look validates beside today's looks and lists every station block.
     // Static data checks only: no scene, PhysX, director or network claim.
     internal static class ExpeditionStationDraftChecks
@@ -125,13 +129,28 @@ namespace ChipArena.UnityConversion
             // ---------------- spawns: existing kinds within the entry rules; the station enemies only proposed ----------------
             var spawns=area.spawns;var raw=areaNode["spawns"].AsArray();
             Check(spawns.Length==raw.Count&&spawns.Select(s=>s.entry.e).SequenceEqual(Enumerable.Range(0,spawns.Length)),"spawns indexed 0.."+(spawns.Length-1));
-            // The parser keeps the director's fields; a breach's panel (block, centre, size, normal) is read from the record itself.
-            var entries=JsonSerializer.Deserialize<PveEntry[]>(raw.ToJsonString(),o);
-            for(int i=0;i<spawns.Length;i++)Check(entries[i].id==spawns[i].entry.id&&spawns[i].allow.All(k=>NativeHordeKinds.Known(k)&&NativeWardEntries.Allows(entries[i],k))
-                &&(entries[i].kind!="breach"||station.blocks.Any(b=>b.id==entries[i].block&&b.role=="static"&&Math.Abs(b.pos.x-entries[i].center.x)<1e-3&&Math.Abs(b.pos.z-entries[i].center.z)<1e-3)&&Math.Abs(entries[i].normal.Length-1)<.01),"allow list within the entry rules: "+spawns[i].entry.id);
+            // The parser (#254) keeps every authored field: each parsed entry equals a direct deserialize of its record, so the
+            // breach panels (block, centre, size, normal), the Hulk drop flags and the drop heights reach the director.
+            var entries=JsonSerializer.Deserialize<PveEntry[]>(raw.ToJsonString(),o);var fieldsOnly=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};
+            for(int i=0;i<spawns.Length;i++)
+            {
+                var e=spawns[i].entry;
+                Check(JsonSerializer.Serialize(entries[i],fieldsOnly)==JsonSerializer.Serialize(e,fieldsOnly)&&raw[i]["allow"].AsArray().Select(k=>(string)k).SequenceEqual(spawns[i].allow),"every spawn field and allow list survives the parser: "+e.id);
+                Check(spawns[i].allow.All(k=>NativeHordeKinds.Known(k)&&NativeWardEntries.Allows(e,k))&&(!e.hulk||e.kind=="drop")
+                    &&(e.kind!="breach"||station.blocks.Any(b=>b.id==e.block&&b.role=="static"&&Math.Abs(b.pos.x-e.center.x)<1e-3&&Math.Abs(b.pos.z-e.center.z)<1e-3)&&Math.Abs(e.normal.Length-1)<.01),"allow list within the entry rules: "+e.id);
+            }
             var proposed=raw.Where(x=>x["station"]!=null).SelectMany(x=>x["station"].AsArray().Select(y=>(string)y)).Distinct().ToArray();
             Check(proposed.Length>0&&proposed.All(k=>StationEnemies.Contains(k)&&!NativeHordeKinds.Known(k))&&StationEnemies.All(k=>!NativeHordeKinds.Known(k)),"the station enemies ("+string.Join(", ",proposed)+") are proposals: named only beside the allow lists, not horde kinds");
             Check(spawns.Count(s=>s.allow.Contains("hulk"))==5&&spawns.Count(s=>s.entry.level==1)==4,"5 Hulk entrances, 4 on the upper floor");
+            // ---------------- authored content binding (#254), on a detached copy as the arena does ----------------
+            var bound=JsonSerializer.Deserialize<NativePveContent>(R("Assets/Conversion/Resources/PveContent.json"),o);int wardEntries=pve.entries.Length,wardMachines=pve.machines.Length;
+            NativeExpeditionLayout.BindContent(area,bound);var boss0=area.bossPoints[0];
+            Check(bound.entries.Length==spawns.Length&&bound.entries.Select(x=>x.id).SequenceEqual(spawns.Select(x=>x.entry.id))&&bound.entries.Count(x=>x.kind=="breach")==3&&bound.entries.Count(x=>x.hulk)==2,
+                "BindContent: the station's own entry table (index order, 3 breaches, 2 Hulk drops)");
+            Check(Math.Abs(bound.boss.spawn.x-boss0.x)<1e-4&&Math.Abs(bound.boss.spawn.z-boss0.z)<1e-4&&bound.hideSpots.Length==3&&bound.pads.Length==8&&bound.machines.Length==0&&bound.machineBlocks.Length==0,
+                "BindContent: boss at boss point 0, 3 hide spots, 8 pads from the exit's entries, no Ward machines (the station's need authoring)");
+            Check(pve.entries.Length==wardEntries&&pve.machines.Length==wardMachines&&NativeMapRules.ExpeditionInstance(station.id)&&!NativeMapRules.WardInstance(station.id),
+                "binding leaves Ward content unchanged; the map id is a known Expedition instance, not a Ward one");
             // ---------------- the look ----------------
             var look=JsonSerializer.Deserialize<MapLook>(draft["look"].ToJsonString(),o);var all=new MapLookSet{schema=set.schema,maps=set.maps.Concat(new[]{look}).ToArray(),preview=set.preview};
             NativeMapLooks.Validate(all);count++;
@@ -140,12 +159,17 @@ namespace ChipArena.UnityConversion
             Check(listed==station.blocks.Length,"every station block has a look ("+listed+"/"+station.blocks.Length+")");
             // ---------------- not referenced by the runtime or the player build ----------------
             string[] kinds={".cs",".json",".shader",".cginc",".hlsl",".asset",".unity",".prefab",".mat",".asmdef",".txt",".md"};
+            // The one runtime mention is #254's id list (NativeMapRules.ExpeditionInstance); no file loads the draft or its look.
             var hits=Directory.EnumerateFiles(Path.Combine(root,"Assets"),"*",SearchOption.AllDirectories).Where(f=>kinds.Contains(Path.GetExtension(f))&&!f.Replace('\\','/').Contains("/LocalAssets/"))
-                .Where(f=>{var t=File.ReadAllText(f);return t.Contains("expedition-central-station",StringComparison.Ordinal)||t.Contains("expedition-transit",StringComparison.Ordinal)||t.Contains("central-station",StringComparison.Ordinal);}).ToArray();
-            Check(hits.Length==0&&!R("tools/generate_expedition.py").Contains("central-station"),"nothing under Assets/ or in the importer names the draft ("+string.Join(", ",hits.Select(Path.GetFileName))+")");
+                .SelectMany(f=>File.ReadLines(f).Where(t=>t.Contains("expedition-central-station",StringComparison.Ordinal)||t.Contains("expedition-transit",StringComparison.Ordinal)||t.Contains("central-station",StringComparison.Ordinal)).Select(t=>Path.GetFileName(f)+": "+t.Trim())).ToArray();
+            Check(hits.Length==1&&hits[0].StartsWith("NativeUnityMaps.cs: public static bool ExpeditionInstance(string id)",StringComparison.Ordinal),"under Assets/ only the instance id list names the map ("+string.Join(" | ",hits)+")");
+            // The importer has the station's profile but builds only the maps the selected manifest names; the live one names none.
+            string importer=R("tools/generate_expedition.py");
+            Check(importer.Contains("'expedition-transit': ('central-station', 'et', 2)")&&importer.Contains("for area in manifest['areas']:")&&!R("Tests/expedition-layout-draft.json").Contains("expedition-transit"),
+                "the importer's navigation profile (et, 0.5 m) is ready, and the manifest it imports does not name the station");
             Console.WriteLine("PASS expedition station draft ("+count+" checks: Central Station at "+DraftPath+", not live; the map validates and imports beside today's maps ("+station.blocks.Length+" blocks, "+station.ramps.Length+" stairs); "
                 +"Astra's parser and geometry gate accept the live manifest plus exp-transit and its hub door; station routes by capsule flood (floors "+string.Join(", ",floors.Select(f=>f.inside+"/"+f.total))+" pilot cells joined, "+hulk.Nodes+" Hulk cells); "
-                +spawns.Length+" spawns within the entry rules, the 4 station enemies proposals only; the look validates and lists every block)");
+                +spawns.Length+" spawns within the entry rules, every field kept by the parser, bound as the station's own content; the 4 station enemies proposals only; the look validates and lists every block)");
         }
     }
 }

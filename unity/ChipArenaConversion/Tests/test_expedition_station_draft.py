@@ -24,6 +24,11 @@ class StationDraftFixture(unittest.TestCase):
   for e in d['layout']['area']['spawns']:
    self.assertTrue(set(e['allow'])<={'shambler','runner','spitter','brute','hulk'},e['id'])
    self.assertTrue(set(e.get('station',[]))<={'linesman','conductor','undertow','pileup'},e['id'])
+ def test_owner_decisions_and_text(self):
+  d=json.loads(DRAFT.read_text());self.assertEqual(d['owner']['approved'],'2026-10-16')
+  self.assertEqual([x['id'] for x in d['owner']['decisions']],['size','express','crossings','enemies','grab','text','music'])
+  pa=[x for x in d['text']['pa'] if x['line']];self.assertTrue(6<=len(pa)<=8,len(pa))
+  self.assertEqual(len(d['text']['board']['rows']),5);self.assertEqual([x['id'] for x in d['proposals']['objectives']],['signal-levers'])
 
 @unittest.skipUnless(SCRIPT.exists(),'the docs are not in a packaged source tree')
 class StationDraftScript(unittest.TestCase):
@@ -37,7 +42,8 @@ class StationDraftScript(unittest.TestCase):
   for line in ('station checks: pass','town door checks: pass','colliding blocks overlapping (more than 1 cm in every axis): 0',
                'Hulk-sized and pilot routes from entry 0 to every entry, boss point and the approach: 12 of 12',
                'allow lists within the entry rules (Hulk: breach or Hulk drop; drops: brute; doors and vents: shambler, runner, spitter, brute): True',
-               'breach panels: 3, static, solid mass behind each: True','every block listed: True'):
+               'breach panels: 3, static, solid mass behind each: True','every block listed: True',
+               'the lever frame within reach of its interaction point: True'):
    self.assertIn(line,run.stdout)
   self.assertEqual(run.stdout.count('reached from the entry slots (100.0%)'),3,'ground, upper and track bed all reached')
   self.assertRegex(run.stdout,r'spawn exits: (\d+) .* with their clear radius: \1\n')
