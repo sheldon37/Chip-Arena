@@ -73,6 +73,7 @@ Owner tuning (2026-10-12): Bow shares the dagger double jump: one extra airborne
   (22 damage each, 90 m/s). Cooldown 8 s. No mana or stamina cost (like the other ranged Q kits).
 - **E, Rain of Arrows** (kind `strike`, range 40 m): marks a 3.5 m circle at the aim point; after .6 s,
   12 arrows fall over 1.2 s, 9 damage each and a 20% slow for 1.5 s on anyone hit. Cooldown 12 s.
+  Native Rain fixes (2026-10-15): the first physical arrow hits the marker center; the other eleven keep their spread. Spawn height respects overhead cover and the ceiling field, while normal swept collision still blocks arrows.
 - **Replication:** draw start time and draw fraction at release (for the pose and HUD meter), the per-arrow
   draw fraction on shot events (Detail `bow`, `bow-full`, `volley`, `rain`), the Volley and Rain cast times and
   the Rain target point and radius.
