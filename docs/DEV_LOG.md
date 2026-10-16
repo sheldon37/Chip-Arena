@@ -1,7 +1,7 @@
 ## 2026-10-16 — Claude: footsteps cycled through terrains on one surface (surface lookup, memory, one series per key)
 
 - Owner: "walking continuously on one surface cycles through sounds that resemble different terrains." Trace the surface and key per foot contact; keep surfaces in separate pools; same check for zombies.
-- Branch `claude/footstep-surface-fix`, base `origin/claude/sleepy-ritchie-g8ruhv` `e8de6fc`; implementation `3b2c9d4`; shared `930bf5d` (PRs #251, #252 and the join circle layout draft) merged in afterwards (`190ac4b`) (the probe moved to the arena's physics world, docs kept both sides). Pushed; not merged into shared, no PR, no release.
+- Branch `claude/footstep-surface-fix`, base `origin/claude/sleepy-ritchie-g8ruhv` `e8de6fc`; implementation `3b2c9d4`; shared `930bf5d` (PRs #251, #252 and the join circle layout draft) merged in afterwards (`190ac4b`) (the probe moved to the arena's physics world, docs kept both sides). Pushed; not merged into shared, no PR, no release. Fast-forwarded into shared and the builder after review (no PR, no live release); the new private bank `LocalAssets-footsteps-surfaces.zip` was sent to the owner.
 - **Cause, with evidence.** Per-plant trace on the maps' own colliders (managed raycast of NativeArena's colliders, real gaits, the real banks' manifests and `NativeSoundBank.Next`):
   - The key was stable. On every 60 s route (Ward Zero hall, town, Ward Zero deck, factory catwalk; walk and sprint; gun, magic, bow, melee and no-gait routes) every plant classified one key, before and after.
   - The pools were mixed. `move.step.concrete` (Ward Zero, its instance, the town) held 4 `_Stones_Footsteps/FOOTSTEP_Stones_Run_01` takes and 4 `FOOTSTEP_Concrete_Walk_01`.
