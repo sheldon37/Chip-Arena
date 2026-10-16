@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
         private readonly int[] previous,heap,position;
         private readonly bool[] closed;
         private int count;
+        private int flowNode=-1,flowEdge;
+        public bool FlowComplete=>count==0&&flowNode<0;
         private readonly int[] nearestOrder;private readonly float[] nearestDistance;private readonly IComparer<int> nearestComparer;
         private sealed class NearestComparer:IComparer<int>
         {
@@ -68,20 +70,39 @@ namespace ChipArena.UnityConversion
         // edges preserve one-way drops; previous[] points toward the destination.
         public void BuildFlow(string endId,Func<MapNavLink,bool> active)
         {
-            int end=index[endId];count=0;
+            BeginFlow(endId);while(!StepFlow(active,int.MaxValue)){}
+        }
+        public void BeginFlow(string endId)
+        {
+            int end=index[endId];count=0;flowNode=-1;flowEdge=0;
             for(int i=0;i<nodes.Length;i++){distance[i]=float.PositiveInfinity;estimate[i]=0;previous[i]=-1;position[i]=-1;closed[i]=false;}
             distance[end]=0;PushOrDecrease(end);
-            while(count>0)
+        }
+        // Bound edge visits, including rejected edges. Call once per destination/tick,
+        // not once per mob. Settled nodes can already provide shortest paths.
+        public bool StepFlow(Func<MapNavLink,bool> active,int edgeBudget)
+        {
+            if(edgeBudget<1)throw new ArgumentOutOfRangeException(nameof(edgeBudget));
+            while(flowNode>=0||count>0)
             {
-                int at=Pop();closed[at]=true;
-                foreach(var edge in incoming[at])
+                if(flowNode<0){flowNode=Pop();closed[flowNode]=true;flowEdge=0;}
+                var links=incoming[flowNode];
+                while(flowEdge<links.Count)
                 {
-                    int next=edge.Next;if(closed[next])continue;
-                    float cost=distance[at]+edge.Cost;
-                    // World/hazard queries are expensive. A non-improving edge cannot change the route.
-                    if(cost>=distance[next]||!active(edge.Link))continue;distance[next]=cost;previous[next]=at;PushOrDecrease(next);
+                    if(edgeBudget==0)return false;edgeBudget--;
+                    var edge=links[flowEdge++];int next=edge.Next;if(closed[next])continue;
+                    float cost=distance[flowNode]+edge.Cost;
+                    if(cost>=distance[next]||!active(edge.Link))continue;
+                    distance[next]=cost;previous[next]=flowNode;PushOrDecrease(next);
                 }
+                flowNode=-1;
             }
+            return true;
+        }
+        public bool TraceSettledFlow(string startId,List<string> path)
+        {
+            if(!closed[index[startId]]){path.Clear();return false;}
+            TraceFlow(startId,path);return true;
         }
         public void TraceFlow(string startId,List<string> path)
         {

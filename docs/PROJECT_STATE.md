@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-16 Astra horde performance (`codex/horde-performance`, base `2d8ad20`): crowd route-tree rebuilds spread across ticks (512 edge visits/destination/tick), settled partial paths and old complete trees retained during refresh; worst active hitch and separate effects timings added. Managed navigation and semantic compile pass; native Ward budget gate added but Windows FPS/PhysX execution pending. See DEV_LOG.
+
 2026-10-15 Astra Bow Rain (`codex/bow-damage`, base `b36c6ce`): center gap and above-roof/ceiling spawn fixed; 5,044 managed Bow checks and semantic compile pass. Native damage/lifesteal collision cases added but unrun. Separate Bow lifesteal report remains unconfirmed; needs chip/mode/target repro. See DEV_LOG.
 
 2026-10-15 Claude Expedition wrist screen rebuilt (`claude/expedition-holo-v2`, merged into shared): owner "a better holographic display with no artifacting". One alpha-blended quad with its own shader (glass, grid, scanlines, thin frame line, card slots inside), light budgeted under the bloom (body .72 of the threshold), thin rays instead of beam sheets, no constant flicker, a brief red edge only for a real hit. The recording's white/red blowout was not reproduced by a bloom-accurate harness (cause unidentified; see DEV_LOG). Managed checks and offline renders only; Unity/Windows unrun.

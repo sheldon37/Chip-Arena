@@ -105,6 +105,7 @@ namespace ChipArena.UnityConversion
             entries.Add("  \"hitchCount\": "+hitchWindow.Hitches);
             entries.Add("  \"worstFrameMs\": "+hitchWindow.WorstMs.ToString("0.##",inv));
             entries.Add("  \"lastHitch\": "+JsonText(lastHitchReport));
+            entries.Add("  \"worstActiveHitch\": "+JsonText(worstActiveHitchReport));
             if(Hosting)
             {
                 var peers=PeerMetrics??Array.Empty<NativeConnectionReport>();var sb=new StringBuilder("  \"peers\": [");

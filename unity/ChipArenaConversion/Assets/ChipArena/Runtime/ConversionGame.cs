@@ -231,8 +231,10 @@ namespace ChipArena.UnityConversion
                 preview=point;
             }
             presentation.EffectsQuality=prefs.reducedEffects?.3f:1;presentation.KitFlash=prefs.alarmLights=="Calm"?NativeKitFlash.Calm:prefs.alarmLights=="Reduced"||prefs.reducedEffects?NativeKitFlash.Reduced:NativeKitFlash.Full;
-            long effectsAt=System.Diagnostics.Stopwatch.GetTimestamp();presentation.RenderAbilities(arena,preview,previewClamped);presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);
-            presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView,menu&&!Online);presentation.FinishSourceFrame();hitchEffects+=HitchMs(effectsAt);
+            long effectsAt=System.Diagnostics.Stopwatch.GetTimestamp();presentation.RenderAbilities(arena,preview,previewClamped);hitchAbilities+=HitchMs(effectsAt);
+            long statusAt=System.Diagnostics.Stopwatch.GetTimestamp();presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);hitchStatus+=HitchMs(statusAt);
+            long glowAt=System.Diagnostics.Stopwatch.GetTimestamp();
+            presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView,menu&&!Online);presentation.FinishSourceFrame();hitchGlow+=HitchMs(glowAt);hitchEffects+=HitchMs(effectsAt);
         }
         // No match: the home screen's rooftop over the cyber city (NativeRooftopPresentation.cs; owner 2026-10-12: the home
         // screen only), else the selected map behind the menu with the source's slow overview orbit (renderer.ts idle camera),
