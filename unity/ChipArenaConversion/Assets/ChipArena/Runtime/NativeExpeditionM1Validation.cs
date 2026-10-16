@@ -158,7 +158,11 @@ namespace ChipArena.UnityConversion
                 guest.Body.position=new Vector3(interaction.x,interaction.y+NativeLocomotionRules.HalfHeight,interaction.z);Physics.SyncTransforms();director.Step();
                 Check(run.Credit("guest","test-reprint",100),"guest funds");
                 Check(host.TryExpeditionInteract(guest,out _)&&host.expeditionChannels.ContainsKey("guest"),"guest F starts measured reprint");
-                session.Tick(3.1);host.StepExpeditionReprints();
+                // Session.Tick caps a single delta at one second; drive the channel
+                // with ordinary frames instead of asking one call to skip 3.1 seconds.
+                for(int tick=0;tick<29;tick++){session.Tick(.1);host.StepExpeditionReprints();}
+                Check(!run.Snapshot().members.Single(m=>m.account=="host").alive&&host.Local.Hp<=0&&host.expeditionChannels.ContainsKey("guest"),"reprint stays pending before three seconds");
+                for(int tick=0;tick<2;tick++){session.Tick(.1);host.StepExpeditionReprints();}
                 Check(run.Snapshot().members.Single(m=>m.account=="host").alive&&host.Local.Hp>0&&host.Local.Collider.enabled,"guest reprints host into live capsule");
                 using(var replica=new NativeArena(Content,new NativeMatch(Content),MapId){LocalId=2,ReplicaScene=root.scene})
                 {
