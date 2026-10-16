@@ -1,3 +1,12 @@
+## 2026-10-16 — Claude: PR #254 verification, sanctuary header for fresh runs
+
+- Branch `claude/sanctuary-fresh-run-header`, base shared `0c684d8` (the owner's merge of Astra's PR #254).
+- **PR #254 verified:** the merged tree (`4d820af`) is identical to the tested head `70f7266`. Five checks on it pass: Unity compile, relay (35 managed-core checks, 764 PASS lines), Python 131 OK (1 skipped), package structure, diff check. The first upload `498ece5` stopped the relay at `MachinePlacementChecks` (a source pin on Ward-only machine building); Astra's `70f7266` updated that pin and `NativeMachineRules.Present` for authored instances. GitHub CI was green on `70f7266`.
+- **Zone drafts vs the stricter parser:** a script applying #254's spawn rules (allow lists by entry kind, `hulk` only on drops, breach panels, level 0..1, song -1..1, drop height) finds no problem in the Central Station draft (`claude/central-station-design`) or the City Ironworks draft (`claude/ironworks-design`, 3 areas). Their own managed checks were not rerun on top of #254.
+- **Sanctuary panel:** in a fresh run the header reads SAFE LOCATION · EXTRACTION AND REPRINT instead of promising a checkpoint (owner's fresh-run policy). Presentation only; a source check in `ExpeditionPickChecks` pins it.
+- **Follow-ups (not live today; the hub never spawns Hulks):** authored breaches are looked up in `StageContent.entries` by Claude's `NativeHordeBreachPresentation` (around line 114) and `NativeHazardKitWorld` (around line 131), and by Astra's `NativeHulkHuntRuntime.BreachEntry` (line 82). Each should read the arena's bound `Pve.Content.entries` before an authored instance with breaches goes live. Behaviour change from #254: the hub's Hulk drop points now admit only Hulks, so far-ring brutes no longer use them.
+- Checks for this commit: listed in the PR/push note. Not run: Unity Editor, Windows player, play.
+
 ## 2026-10-16 — Astra: Claude handoff, spawn preservation and instance groundwork
 
 - Branch `codex/expedition-claude-handoff`, base shared `c471e24`. This is a partial implementation of `astra-prompts-2026-10-16.md`; it does not complete the five-part handoff.

@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-16 Astra Claude handoff (`codex/expedition-claude-handoff`, base `c471e24`): spawn-field preservation and validation, authority/guest authored-area content binding, manifest-driven navigation profiles for the two proposed instances, and area-local boss shutters implemented. Partial handoff only: split-area/native gates, machines/vents/hazards/phase rosters and eight enemy implementations remain outstanding. No new live maps or join circle. Details/verification in DEV_LOG and PR.
+2026-10-16 Astra Claude handoff (`codex/expedition-claude-handoff`, base `c471e24`): spawn-field preservation and validation, authority/guest authored-area content binding, manifest-driven navigation profiles for the two proposed instances, and area-local boss shutters implemented. Partial handoff only: split-area/native gates, machines/vents/hazards/phase rosters and eight enemy implementations remain outstanding. No new live maps or join circle. Merged into shared `0c684d8` by the owner; Claude verified the merged tree (5 checks pass). Details/verification in DEV_LOG and PR.
 
 2026-10-16 Astra fresh-run policy (`codex/expedition-fresh-runs`, base `bb4b36a`): live Expedition no longer reads/writes run checkpoints; extraction confirms from in-memory run state, reconnect to a running host remains, profiles unchanged. Protocol 2 requires updated Expedition clients. Legacy checkpoint classes remain for isolated historical tests only. Split-area entry remains gated and is not included in this change. See EXPEDITION-HUB.md and DEV_LOG.
 
