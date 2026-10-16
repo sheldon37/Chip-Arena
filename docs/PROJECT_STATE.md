@@ -4,7 +4,7 @@
 
 2026-10-15 Astra Expedition co-op (`codex/expedition-coop`, base `d6562d98`): implemented room mode, 1–4 signed-in humans, all-client load/placement, guest interactions, all-member death/reprint and replicated gate collision through existing room transport. Managed/relay checks and Unity semantic compile pass; Windows/PhysX/two-client gameplay unrun. Join-circle proposal remains pending; parties share one area. See EXPEDITION-HUB.md and DEV_LOG for policy and release status.
 
-2026-10-15 Join circle: owner chose "anyone in the circle starts a party countdown, whole party enters" (EXPEDITION-HUB.md). Next: Astra's rule and view fields, then Claude's layout and ring/HUD. Owner target after that: individual instance entry (Astra to scope).
+2026-10-15 Join circle (owner): whoever stands in the circle at the end of the countdown enters; the rest stay in the hub (EXPEDITION-HUB.md). Needs split-area parties: Astra to scope, then the rule; then Claude's layout and ring/HUD.
 
 2026-10-15 Claude footsteps and zombie audio (`claude/footstep-zombie-audio`, merged into shared): every pilot steps on its drawn foot plants (walk/run/sprint, landings, mine quieter in first person, the surface underfoot, a crowd mix); every zombie kind steps from its gait and calls (hunting groans, moans, alert shriek, wind-ups, spit, hurt, death; per-add cooldown and caps). Built-in synthesized takes when the bank lacks a clip. New private bank zip `LocalAssets-footsteps-zombies.zip` (226 keys, 585 clips, 13.09 MB; not in the repo) for the builder; `tools/import_sound_requests.py` takes the owner's ElevenLabs batch. Managed checks pass; not heard in a build. See DEV_LOG.
 

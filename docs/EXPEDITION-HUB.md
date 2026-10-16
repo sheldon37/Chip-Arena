@@ -681,21 +681,30 @@ instance `entries`. The run has one `area`, and the host simulates one arena, so
 supported. It contradicts `EXPEDITION.md` ("No split indoor/outdoor simulation") and would need per-member areas, concurrent arenas,
 per-peer frames and per-area barriers: a large redesign.
 
-**Owner decision (2026-10-15):** "Option 2 , but ideally were gonna let players individually enter instances". So: anyone in the
-circle starts the countdown and pulls the whole party in (rule below, now). Letting each player enter an instance alone, while
-others stay in the hub, is the owner's target design (see "Next: individual instance entry" below).
+**Owner decision (2026-10-15):** "Option 2 , but ideally were gonna let players individually enter instances", then: "It doesn't
+have to pull the whole party in, just whoever is wanting to run the instance". So the circle is a personal entry: whoever stands in
+it when the countdown ends goes in, and everyone else stays in the hub. That needs split-area parties (below), which Astra scopes
+first.
 
 **Rule (Astra; owner-chosen 2026-10-15):**
 1. Each instance door gets a **join circle**: a vertical cylinder `join {x, y, z, r, h}`. For Ward Zero: centre 5 m out from the
    doorway on the approach line (x 79, z 0), r 2.5 m, h 3 m, between the portico pylons (z ±3.8).
-2. When **any** living, connected, unextracted member stands inside it (capsule centre in the cylinder), a **deploy countdown**
-   starts for the whole party (proposed 5 s, so members away from the door see the warning; tunable). It cancels if nobody is left
-   inside (stepped out, died or disconnected). At zero the whole party enters, wherever each member is (`EnterDoor` path, barrier,
-   ready, placement unchanged). The F door entry is retired; F stays for caches, machines, rewards and gates. Guests count through
-   their pilot on the host.
-3. Public view per door: `joinInside` (count), `joinStartedAt` (authority seconds, −1 none), `joinBy` (seat that started it), and per
-   member `atJoin` (bool).
-4. The phase is Town only; quota, closures and the exit vote are unchanged.
+2. When a living, connected, unextracted member steps inside (capsule centre in the cylinder), a short **deploy countdown** starts
+   (proposed 3 s; tunable). Others may step in and join it before zero; anyone who steps out leaves it. It cancels if nobody is
+   left inside. At zero, **only the members inside** enter the instance (`EnterDoor` path, barrier, ready, placement for those
+   members). The rest stay in the hub. The F door entry is retired; F stays for caches, machines, rewards and gates. Guests count
+   through their pilot on the host.
+3. Public view per door: `joinInside` (count), `joinStartedAt` (authority seconds, −1 none), and per member `atJoin` (bool) and
+   `area` (where each member is).
+4. Town phase rules (quota, closures, exit vote) need restating per area; see below.
+5. **Interim, only if the circle ships before split areas:** proposed to start the countdown only when every living member is
+   inside, so nobody is pulled in who did not step in. Owner can overrule.
+
+**Split-area parties (owner target; Astra to scope first).** Members may be in the hub and in an instance at the same time. Today
+the run has one `area` and the host simulates one arena (`EXPEDITION.md`: "No split indoor/outdoor simulation"). Needed:
+per-member areas; the host simulating the hub plus each occupied instance (physics, AI, hazards); frames and events scoped to each
+peer's area; per-area load barriers; and rules across areas for death, revive, reprint, loot, quota, extraction, saves and host
+migration. Astra to say what changes in the wire, director and save formats, and the host cost of two live areas.
 
 **Claude's part:**
 - Layout: `docs/arenas/scripts/expedition_city.py` emits `join` and moves `returns` out of the circle. The approach goes to the
@@ -703,13 +712,8 @@ others stay in the hub, is the owner's target design (see "Next: individual inst
   accept `join` first.
 - Presentation: a ground ring at the circle (an owner-requested exception to the no-rings rule; `ExpeditionPresentationChecks` is
   updated) that lights when someone stands in it, a countdown sweep, and a label: STAND IN THE CIRCLE TO DEPLOY, or DEPLOYING TO
-  WARD ZERO 5…1. Members outside get a HUD banner naming who started it and the time left.
-
-**Next: individual instance entry (owner target; Astra design first).** Each member may be in the hub or an instance at the same
-time. That needs per-member areas, the host simulating more than one arena (or a hub arena plus instance arenas), frames scoped per
-area, per-area load barriers and saves, and rules for revive, death, reprint, quota and extraction across areas. Astra to scope it
-and say what changes in the wire, director and save formats. The join circle carries over: at zero, the members inside enter and
-the rest stay in the hub.
+  WARD ZERO 3…1 with the names inside. Members in the hub see a small note when a teammate deploys, and the party list shows
+  who is in which area.
 
 ## Expedition co-op hosting (owner request 2026-10-15) — for Astra
 
