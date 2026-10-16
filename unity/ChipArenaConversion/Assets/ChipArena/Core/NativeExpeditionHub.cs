@@ -155,8 +155,9 @@ namespace ChipArena.UnityConversion
     ///    closing: they roll shut and bang, the bolt drops.
     ///  - Without a state a gate rests OPEN (<see cref="RestOpen"/>): the opening carries no collider until the director's gate
     ///    authority exists, and a shut leaf that pilots and zombies walk through would fake a barrier.
-    ///  - The ward (when the view says it is on): a pale gold shimmer on the fence's outer face and a brighter curtain across
-    ///    every gate's opening, whether the gate is open or shut (zombies never cross it); motes rise along it.
+    ///  - The ward (when the view says it is on, unless <see cref="HideWard"/>): a pale gold shimmer on the fence's outer face
+    ///    and a brighter curtain across every gate's opening, whether the gate is open or shut (zombies never cross it); motes
+    ///    rise along it. Gameplay hides it; the DEV preview shows it.
     /// </summary>
     public sealed class NativeExpeditionHubGates
     {
@@ -177,6 +178,11 @@ namespace ChipArena.UnityConversion
         public readonly NativeFxQuads Quads=new NativeFxQuads(QuadCapacity);
         /// <summary>Gates drawn this frame (for the checks and the budget lines).</summary>
         public int GatesDrawn,WardQuads,DustQuads;
+        /// <summary>Draws no ward (fence shimmer, gate curtains, threshold lines, motes) even when the view's ward is on: gameplay
+        /// sets it (owner, 2026-10-16: the hub still showed an orange barrier after the safe-zone edge was hidden). The ward's
+        /// collider, projectile blocking, the safe-zone rules and the gates' models and motion are unchanged; set per frame by
+        /// the caller (the DEV preview leaves it off).</summary>
+        public bool HideWard;
 
         private sealed class Memory {public string Id;public bool Seen,Open;public double ChangedAt;public float From;}
         private readonly Dictionary<string,Memory> memory=new Dictionary<string,Memory>();
@@ -412,7 +418,7 @@ namespace ChipArena.UnityConversion
                 var p=Pose(g,v,t,l);float dx=g.X-e.X,dz=g.Z-e.Z;if(dx*dx+dz*dz>cull*cull)continue;
                 Model(g,p);Dust(g,p,t,e,reduced);GatesDrawn++;
             }
-            if(v!=null&&v.Ward&&wardSegments!=null)Ward(l,wardSegments,t,e,reduced);
+            if(!HideWard&&v!=null&&v.Ward&&wardSegments!=null)Ward(l,wardSegments,t,e,reduced);
         }
 
         // ---------------- sound ----------------

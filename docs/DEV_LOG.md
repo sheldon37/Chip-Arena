@@ -1,7 +1,7 @@
 ## 2026-10-16 — Claude: footsteps cycled through terrains on one surface (surface lookup, memory, one series per key)
 
 - Owner: "walking continuously on one surface cycles through sounds that resemble different terrains." Trace the surface and key per foot contact; keep surfaces in separate pools; same check for zombies.
-- Branch `claude/footstep-surface-fix`, base `origin/claude/sleepy-ritchie-g8ruhv` `e8de6fc`. Implementation commit: see the branch head. Pushed; not merged, no PR, no release.
+- Branch `claude/footstep-surface-fix`, base `origin/claude/sleepy-ritchie-g8ruhv` `e8de6fc`; implementation `3b2c9d4`; shared `b54596f` (PRs #251, #252) merged in afterwards (the probe moved to the arena's physics world, docs kept both sides). Pushed; not merged into shared, no PR, no release.
 - **Cause, with evidence.** Per-plant trace on the maps' own colliders (managed raycast of NativeArena's colliders, real gaits, the real banks' manifests and `NativeSoundBank.Next`):
   - The key was stable. On every 60 s route (Ward Zero hall, town, Ward Zero deck, factory catwalk; walk and sprint; gun, magic, bow, melee and no-gait routes) every plant classified one key, before and after.
   - The pools were mixed. `move.step.concrete` (Ward Zero, its instance, the town) held 4 `_Stones_Footsteps/FOOTSTEP_Stones_Run_01` takes and 4 `FOOTSTEP_Concrete_Walk_01`.
@@ -18,7 +18,7 @@
   - `Core/NativeFootfalls.cs`: `NativeFootSurface` (probe start .4 m over the feet, reach to .8 m under, scaled over 1; key from hit material or map floor; zombie key by surface; leading-foot pick). `NativeSurfaceMemory`: first plant at once; a new surface on its second plant in a row; reset after 2.5 s (a Hulk steps every ~1.1 s), a rewind or a landing. `NativeFootfall` gains `FootX/FootZ/Scale`.
   - `Core/NativeSoundCues.cs`: step key constants.
   - `Runtime/NativeFootfallPresentation.cs`: a pilot's footfall carries the posed foot bone leading the travel (else its position); a zombie's its landed limb and scale.
-  - `Runtime/NativeFootstepAudio.cs`: the Core probe at the planted foot. A hit names its `NativePropBody` material, else its collider's physics material (the wedges carry their treads'). The memory is per pilot and per add. Zombies: their gait keys on concrete and stone; the surface's `move.step.*` pool at their own pitch on metal, wood, gravel and snow. The crawler drags on every surface: a drag is body friction, unlike any footfall pool. A key with clips plays only its own takes.
+  - `Runtime/NativeFootstepAudio.cs`: the Core probe at the planted foot, in the arena's own physics world (`arena.PhysicsWorld`, from Astra's area runtime #252, merged in). A hit names its `NativePropBody` material, else its collider's physics material (the wedges carry their treads'). The memory is per pilot and per add. Zombies: their gait keys on concrete and stone; the surface's `move.step.*` pool at their own pitch on metal, wood, gravel and snow. The crawler drags on every surface: a drag is body friction, unlike any footfall pool. A key with clips plays only its own takes.
   - `Runtime/NativeHulkChargeAudio.cs`: the charge warning's stomps use the same surface and memory.
 - **Clips** (private bank; no audio committed). One recording series of the key's own surface per key, nearest the series' acoustic medoid:
   - concrete: 8 `Concrete_Walk_01` (RR02/04/06/07/09/10/11/12), was 4 stones + 4 concrete. Gravel: 6 `Gravel_Run_04`, was `Run_01`+`Run_04`.
@@ -33,6 +33,7 @@
   - `Tests/test_footstep_credits.py`: every `move.step.*`/`pve.zombie.step.*` key lists 4-8 takes from one surface folder and series. The old bank's sources fail it (five keys).
   - Footfall and effects-audio checks pass with and without the new bank installed.
   - Five-check run on the tree with this entry (before this line): all exit 0. Unity runtime and editor build; relay suite 760 PASS lines, including foot surfaces (67,770) and footfall audio (25,433); Python 127 tests (1 skipped); source package 2196 files; diff check.
+  - Five-check run on the merge with shared `b54596f` (this entry before this line): all exit 0. Unity runtime and editor build; relay 763 PASS lines (foot surfaces 67,770, footfall audio 25,433); Python 129 tests (1 skipped); package 2207 files; diff check.
 - **Not run**: listening in a Unity Editor or Windows build; the real rig's bone positions at a plant (the managed checks pose Core gaits); two-client play; a guest's replica physics.
 - **Impact**: none on hit timing, hitboxes, damage, cooldowns, movement or networking (no wire field). Animation unchanged.
 - **Risks**:
@@ -41,6 +42,74 @@
   - Concrete takes needed +17 to +23 dB to reach -24 LUFS (quiet source); noise stays about 40 dB under the step.
   - The town's foundation and Ward Zero's stone both stay concrete.
 - **Next**: the owner installs `LocalAssets-footsteps-surfaces.zip` on the builder and listens on Ward Zero's floor and decks; merge into shared after review.
+## 2026-10-16 — Claude: join circle layout draft (exp-layout-4, not live)
+
+- Branch `claude/join-circle-layout-draft`, base shared `b54596f` (includes Astra's join parser, PR #250, and the area runtime foundation, PR #252). Implementation `85a1e74`. Fast-forwarded into shared and the builder (inert: nothing loads the draft); no PR, not live, no publication.
+- Owner (verbatim): "lets move the 'Join instance' circle a little bit away from the door. We can make the circle bigger too, players can join by standing inside the circle." Astra: prepare a draft against the parser; do not switch the live layout or show a deploy countdown before the subset transfer and its view exist.
+- **Draft.**
+  - `docs/arenas/scripts/expedition_layout.py --draft <file>` (or `--fixtures`) writes `unity/ChipArenaConversion/Tests/expedition-layout-4-join-draft.json`.
+  - The live `Resources/ExpeditionLayout.json` (exp-layout-3) and the three live fixtures are byte-identical with or without `--draft`. `tools/generate_expedition.py --check` passes.
+  - Nothing under `Assets/` names the draft, and `Tests/` is outside `Assets/`, so neither the runtime nor the player build sees it.
+- **Values.**
+  - join `{x 79, y 0, z 0, r 2.5, h 4}`: the base is the floor, the centre is 5 m out on the approach line, and the radius is 2.5 m (the removed door ring was 1.35 m).
+  - h is 4 m, not the proposed 3 m. A plain jump's capsule centre peaks at 2.42 m and a ground plus air jump's at 3.69 m (jumpPower 1). The canopy's underside is at 4.4 m.
+  - The approach moves to the circle's centre.
+  - The returns move to (79.4, ±4.2), (81.1, ±6.0), (82.7, ±6.0), (81.9, ±7.6), in that order. exp-layout-3 had 4 of 8 inside the circle (z ±1) and the other 4 only 0.56 m beyond its edge.
+  - Unchanged: anchor, F interaction volume, closure, hub record and maps (block hashes). F entry stays live.
+- **Generator report (draft).**
+  - Parser rules mirrored: pass.
+  - Floor: 349/349 samples on the floor, reached and standable.
+  - Blocks: none in the cylinder. Nearest: rubble 1.50 m and pylons 1.62 m beyond the edge; canopy 0.4 m over the top.
+  - Centre: pilot and Hulk routes. Walked from the east gate: 69.7 m to the centre and 67.1 m to the edge (72.9 m to the old approach; the target is 70 m).
+  - Door: the edge is 0.50 m from the F volume, 2.10 m from the closure and 1.55 m from the airlock unit.
+  - Gates 60.3 m or more, fence 64.1 m, sanctuary 64.5 m.
+  - Zone: only far-east, wholly inside it (as the door). Nearest spawn exit 8.5 m (vent-mer-1); nearest drop landing disc 6.5 m.
+  - Caches and machine: 52.7 m or more.
+  - Returns: 1.72 m or more beyond the edge; 1.13 m pilot and Hulk clearance; pairs 1.60 m apart; spawn exits 8.2 m or more. Their walk to the gate avoids the circle at no extra cost.
+  - F line of sight to the new approach: clear.
+- **Checks added.**
+  - `Tests/ExpeditionJoinDraftChecks.cs` (38 checks, run from ExpeditionLayoutChecks with its probe and imported navigation):
+    - Astra's `Parse` and `ValidateGeometry` accept the draft.
+    - The live manifest is unchanged (pinned SHA-256), has no join and is still accepted.
+    - The draft equals live plus only the join, approach, returns and revision.
+    - Capsule-centre membership is inclusive at the rim, base and top, and excluded 1 cm beyond each. Standing and jumping pilots are inside; a pilot on the canopy is not.
+    - No return lands in the circle or the F volume.
+    - The dressing puts 0 parts (flat or standing) in the cylinder and nothing on the moved returns or approach.
+    - Nothing under Assets/ names the draft.
+  - Mutation runs, each refused: the join on the rubble, out of the map, off the floor, on the instance exit, or with h 0; the F volume edited; a return in the circle; one byte appended to the live resource.
+  - Python: `test_join_draft` and `test_join_draft_is_the_scripts_output`.
+- **Impact.** None on hit timing, hitboxes, damage, cooldowns, movement, animation or networking. No runtime code changed.
+- **For Astra.**
+  - The director's `position` callback returns feet (`Body.position - HalfHeight`). Test membership on the capsule centre (feet + 0.85). With feet, a standing pilot sits exactly on the inclusive base, and float noise could exclude them.
+  - A ground plus air jump leaves the top above jumpPower 1.05, and a plain jump above 1.41. The countdown should tolerate airborne members.
+  - Only one ring exists, so the deterministic one-door rule is trivial today.
+  - Changing the live layout deliberately also updates `LiveSha256` with `PINNED`.
+- **Checks run.** The five repo checks on `85a1e74` plus this entry's docs (the text before this line) all exit 0, first run: Unity runtime and editor build; relay suite 762 PASS lines (`expedition join draft`, 38 checks, and `expedition layout`, 268 checks, among them); Python 126 tests (1 skipped); source package 2205 files; diff check. Also: generator `--fixtures` and `--draft` and `tools/generate_expedition.py --check`.
+- **Not run.** Unity Editor or play, Windows build. No native join or transfer exists to exercise.
+- **Next.** Astra's subset transfer and the `joins[]` / `atJoin` / `area` view fields. Then Claude adds the ring, countdown and HUD, gives the dressing a join keep-out and switches the live layout to exp-layout-4. Saves pinned to exp-layout-3 will not resume.
+
+## 2026-10-16 — Astra: split-area runtime foundation (milestone 1, gated)
+
+- Branch `codex/expedition-area-runtime`, base shared `9f18015`. Owner accepted the scope and ordered native/transport/Windows gates; no interim all-party ring. Live F entry and single-area session remain unchanged.
+- Added two-identity area registry, independent native match/scene ownership, per-area load/occupancy, empty-runtime retention, once-only host tick/shared-clock scheduling, failure latch, one-area rendering and owned disposal. Background simulation has no presentation component. Existing default-world camera/aim/bow/footstep queries now use the displayed arena scene; global simulation call is replaced by that arena's PhysicsScene. No audio/visual design change.
+- Static/global audit and integration prerequisites are in EXPEDITION-AREA-RUNTIME.md: match callbacks, scene queries, process-wide physics configuration, singleton presentation services, DEV timeScale, and still-global Expedition director/network/save bindings. Explicit scene constructors no longer write gravity.
+- Managed area checks pass (290 including runtime query audit); Player/Runtime/Editor semantic compilation passes. Full managed/real-relay suite passes (exit 0, 761 PASS lines); source packaging validates 2,203 files; diff clean. First regression run caught old camera source assertions, updated to require the displayed scene while preserving camera math; the full rerun passes. Native builder gate added for two overlapping-coordinate scenes, query/simulation/load/render/reset isolation with 1+3 pilot seats. Unity/PhysX execution and Windows multi-client timing are not available here and are not claimed.
+- Milestones 2–6 are not implemented: no cohort transfers, area-scoped director/economy, split capability/wire, schema bump, or live join view/rule. The native foundation gate is the next prerequisite. No live layout switch, no gameplay enablement, no measured two-area performance claim.
+
+## 2026-10-16 — Astra: budget crowd navigation and retain active hitch evidence
+
+- Branch `codex/horde-performance`, base shared `2d8ad20`. Owner reports 72 Expedition Ward zombies, 19 FPS, a 70.93 ms simulation tick and a 4.98 s session worst; detailed sample was paused, so the exact active bottleneck is not proven.
+- Shared reverse navigation trees previously rebuilt the entire reachable graph synchronously. Added resumable Dijkstra traversal, capped at 512 edge visits per destination per simulation tick, regardless of mob count. Settled partial paths become available immediately; the previous complete tree serves during refresh. Structural revision discards the old tree. Existing next-edge, hazard, support, attack and collision checks remain live; horde counts, damage and wire formats unchanged. Initial distant routes may wait for their slice; moving targets finish the current build before refreshing to avoid starvation.
+- Connection report adds `worstActiveHitch` retained independently of logging throttles and paused samples, scoped to the current arena. Online menu is no longer labeled paused. Split effects instrumentation into abilities/world dressing, status and glow timings without changing presentation.
+- PASS managed navigation: full Ward 6,202-node trees and settled partial paths match synchronous builds with open/closed hazard predicates; 309 slices at budget 128 used at most 49 live link predicates per slice. Existing directed drops, dynamic gate refresh, 192-mob flow allocation (zero warm bytes), shortest paths and hazard checks pass. PASS Player/Runtime/Editor semantic compile (existing warnings only), diff check. Full managed/real-relay suite passes (exit 0, 760 PASS lines); source package validates 2,194 files.
+- Added native builder acceptance: 192 callers in one tick cannot multiply the 512-link budget, and the actual Ward flow completes over subsequent ticks. This native PhysX gate is compiled but unrun here; no measured Windows FPS improvement or Update publication claimed. Need owner retest at 72+ mobs with the new active report. Claude handoff: investigate presentation if abilitiesMs/statusMs/glowMs remain high; this patch does not alter visuals or reduce the horde.
+
+## 2026-10-16 — Claude: hub ward hidden in gameplay
+
+- Branch `claude/hub-ward-hidden`, base shared `e8de6fc`; fast-forwarded into shared and the builder (no PR, no live release). Owner: "The hub still shows an orange barrier. HideSanctuaryEdge only suppresses NativeExpeditionStateScene's sanctuary effect. NativeExpeditionHubGates.Build still calls Ward(...) when v.Ward is true ... Suppress that ward rendering in gameplay."
+- `Core/NativeExpeditionHub.cs`: `NativeExpeditionHubGates.HideWard`. When set, `Build` skips `Ward(...)`: no fence shimmer, gate curtains, threshold lines or motes. `Runtime/NativeExpeditionHubPresentation.cs` sets it every frame to `!NativeExpeditionHubPreview.On`, so gameplay never draws the ward and the DEV "Hub gates preview" still does.
+- Unchanged: the authority's horde ward collider (`Hub horde ward`, layer 28), projectile blocking, the safe-zone rules, the gate models, poses, dust, animation and cues. No wire, rule or timing change.
+- Checks: `ExpeditionHubChecks` gains a hidden-ward check (an authority-style view with the ward on: zero ward quads, identical gate parts, poses and dust) and a hook check (the runtime sets the flag before `Build`; the ward collider stays). Five repo checks on `5349d01`: Unity runtime+editor compile OK; Python 124 OK (1 skipped); package and diff-check OK; relay: the first run stopped at 485 PASS on an unrelated `MagicFxChecks` allocation check ("warm darkness frames allocate nothing", 8096 bytes; no magic code changed since the last green run, a heavy filesystem scan was running alongside), and a full re-run passed with exit 0, 759 PASS. Not run: Unity Editor or a Windows build.
 
 ## 2026-10-16 — Astra: split-area scope, join parser preparation, sound batch generator
 

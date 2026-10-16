@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
             {
                 var f=bowFlights[id];bowFlights.Remove(id);bool hit=false;
                 for(int i=0;i<bowStrikes.Length;i++){var s=bowStrikes[i];if(s.owner==f.Owner&&Mathf.Abs(s.at-t)<.3f&&(s.point-f.At).sqrMagnitude<4){hit=true;break;}}
-                if(!hit&&Physics.CheckSphere(f.At,.9f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))Cue(NativeBowSounds.Thunk.Key,NativeBowSounds.Thunk.Clip,f.At,NativeBowSounds.Thunk.Gain*.85f);
+                if(!hit&&arena.CheckWorldSphere(f.At,.9f))Cue(NativeBowSounds.Thunk.Key,NativeBowSounds.Thunk.Clip,f.At,NativeBowSounds.Thunk.Gain*.85f);
             }
         }
     }

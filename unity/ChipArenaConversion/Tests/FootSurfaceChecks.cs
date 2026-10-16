@@ -489,9 +489,9 @@ namespace ChipArena.UnityConversion
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
             var audio=R("Runtime/NativeFootstepAudio.cs");
-            Check(audio.Contains("Physics.Raycast(new Vector3(x,NativeFootSurface.StartY(groundY,scale),z),Vector3.down,out var hit,NativeFootSurface.Reach(scale),NativeArena.WorldMask,QueryTriggerInteraction.Ignore)")&&!audio.Contains("at+Vector3.up*.4f"),"the runtime probe is the Core probe, at the planted foot");
+            Check(audio.Contains("arena.PhysicsWorld.Raycast(new Vector3(x,NativeFootSurface.StartY(groundY,scale),z),Vector3.down,out var hit,NativeFootSurface.Reach(scale),NativeArena.WorldMask,QueryTriggerInteraction.Ignore)")&&!audio.Contains("at+Vector3.up*.4f")&&!audio.Contains(" Physics.Raycast("),"the runtime probe is the Core probe, at the planted foot, in the arena's own physics world");
             Check(audio.Contains("hit.collider.sharedMaterial")&&audio.Contains("prop.Definition.material"),"a hit names its block's material, else its collider's physics material (the stair and ramp wedges)");
-            Check(audio.Contains("memory.Plant(NativeFootSurface.Key(map,SurfaceUnder(x,groundY,z,scale,out string material),material),Time.unscaledTime)")&&audio.Contains("StepSurface(pilotSurfaces,f.Id,arena.MapId,f.FootX,f.Y,f.FootZ,f.Scale)")&&audio.Contains("pilotSurfaces.Remove(f.Id)"),"pilots step through their surface memory; a landing starts it afresh");
+            Check(audio.Contains("memory.Plant(NativeFootSurface.Key(arena.MapId,SurfaceUnder(arena,x,groundY,z,scale,out string material),material),Time.unscaledTime)")&&audio.Contains("StepSurface(arena,pilotSurfaces,f.Id,f.FootX,f.Y,f.FootZ,f.Scale)")&&audio.Contains("pilotSurfaces.Remove(f.Id)"),"pilots step through their surface memory; a landing starts it afresh");
             Check(audio.Contains("ZombieStep(arena,f.Id,zk,f.Kind,f.FootX,f.Y,f.FootZ,f.Scale,")&&audio.Contains("key=NativeFootSurface.Zombie(gait,step)"),"zombie footfalls are keyed by their surface");
             Check(audio.Contains("if(bank.Has(key)){BankPlay(key,")&&audio.Contains("if(standIn!=null&&bank.Has(standIn)){BankPlay(standIn,"),"a key with clips plays only its own takes (no stand-in or built-in take mixes in)");
             var fp=R("Runtime/NativeFootfallPresentation.cs");

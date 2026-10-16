@@ -50,6 +50,6 @@ namespace ChipArena.UnityConversion
         }
         // The world sphere cast, as the shoulder rigs cast (the same mask and query).
         private float ChooserCast(N.Vector3 from,N.Vector3 direction,float distance,float radius)
-            =>Physics.SphereCast(V(from),radius,V(direction),out var hit,distance,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)?hit.distance:distance;
+            =>arena.PhysicsWorld.SphereCast(V(from),radius,V(direction),out var hit,distance,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)?hit.distance:distance;
     }
 }

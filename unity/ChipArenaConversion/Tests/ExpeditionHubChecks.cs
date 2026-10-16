@@ -336,6 +336,15 @@ namespace ChipArena.UnityConversion
             Check(pv.Preview&&pv.Holster&&pv.Ward&&pv.Count==4&&opens>20&&shuts>20,"the DEV preview cycles every gate and turns the ward and holster on, marked as a preview");
             var ward2=new List<float[]>();NativeExpeditionHubGates.WardSegments(town.blocks,ward2);Check(ward2.Count==8,"a ward segment along every fence section");
             rest.Build(hub,pv,ward2,3,eye,false);Check(rest.WardQuads>40&&rest.Parts.Count>0,"with the ward on, the fence line and every opening shimmer ("+rest.WardQuads+" quads)");
+            // Gameplay hides the ward (owner, 2026-10-16: "The hub still shows an orange barrier"): no shimmer, curtain, threshold
+            // line or mote, while the gates' models, poses and dust are exactly those drawn with it.
+            var live=new ExpeditionHubView{Gates=hub.Gates.Select(x=>new ExpeditionGateState{Id=x.Id,Open=false,ChangedAt=1}).ToArray(),Count=hub.Gates.Length,Ward=true,Holster=true};
+            var shown=new NativeExpeditionHubGates();shown.Build(hub,live,ward2,3,eye,false);
+            var hidden=new NativeExpeditionHubGates{HideWard=true};hidden.Build(hub,live,ward2,3,eye,false);
+            var off=new NativeExpeditionHubGates();live.Ward=false;off.Build(hub,live,ward2,3,eye,false);live.Ward=true;
+            bool sameGates=hidden.GatesDrawn==shown.GatesDrawn&&hidden.Parts.Count==shown.Parts.Count&&hidden.DustQuads==shown.DustQuads&&hidden.Quads.Count==off.Quads.Count;
+            for(int i=0;sameGates&&i<hidden.Parts.Count;i++)sameGates=hidden.Parts[i].Equals(shown.Parts[i]);
+            Check(shown.WardQuads>40&&hidden.WardQuads==0&&sameGates,"gameplay draws no ward (fence shimmer, gate curtains, threshold lines, motes) and the same gates, poses and dust ("+shown.WardQuads+" ward quads hidden)");
             // No allocation per frame.
             var hot=new NativeExpeditionHubGates();var hv=new ExpeditionHubView();var hclock=new ExpeditionHubClock();for(int f=0;f<10;f++){NativeExpeditionHubPreview.Fill(hv,hub,f*.016);hot.Build(hub,hv,ward2,hclock.Read(f*.05,f*.016),eye,false);}
             long before2=GC.GetAllocatedBytesForCurrentThread();for(int f=10;f<130;f++){NativeExpeditionHubPreview.Fill(hv,hub,f*.05);hot.Build(hub,hv,ward2,hclock.Read(Math.Floor(f/3.0)*.05,f*.0167),eye,false);}
@@ -357,6 +366,8 @@ namespace ChipArena.UnityConversion
             Check(Src("NativeExpeditionCityPresentation.cs").Contains("DrawTownFx(now,eye);ExpeditionHubFrame(eye,now);")&&Src("NativeExpeditionCityPresentation.cs").Contains("NativeExpeditionCityKit.Build(blocks,townArea,townHub,map.bounds)"),"the town presentation draws the hub and builds the kit with the hub record");
             Check(Src("NativeExpeditionCityAudio.cs").Contains("townTime=time;ExpeditionHubCues();")&&Src("NativeExpeditionHubPresentation.cs").Contains("NativeExpeditionHubLive.Authority?.Holster==true"),"the gates' cues play with the picture; the holster tag waits for the authority's rule");
             Check(Src("NativeExpeditionStatesPresentation.cs").Contains("var hub=NativeExpeditionHubLive.Layout;expeditionStates.HideSanctuaryEdge=hub!=null&&hub.Area==rig.Area;\n            expeditionStates.Build(v,rig,"),"the fenced hub hides its safe-zone border every frame before the scene is built; instances keep theirs");
+            Check(Src("NativeExpeditionHubPresentation.cs").Contains("hubGates.HideWard=!NativeExpeditionHubPreview.On;\n            hubGates.Build(townHub,v,hubWard,t,view,LowGraphics);")
+                &&Src("NativeExpeditionHubAuthority.cs").Contains("Box(\"Hub horde ward \",wardLayer,20,40);"),"the hub hides the ward every gameplay frame (the DEV preview still shows it); the ward's horde collider stays");
             Check(Src("NativeDevPanel.cs").Contains("case \"preview-hub-gates\":NativeExpeditionHubPreview.On=")&&NativeDevActions.Find("preview-hub-gates")?.Kind==NativeDevKind.Presentation,"the DEV preview is a view tool in the DEV panel");
             Console.WriteLine("PASS expedition hub ("+count+" checks: the additive hub record; fence closed but for its gates; each instance through its gate and "+RouteMin+" m or more away; zones outside the fence and clear of the gates; gate models inside their closures shut and clear through their travel; no shared planes on the gates, the ward or the sanctuary edge; leaves in step with the authority's collider; the presentation clock; continuous motion; resting open without state; DEV preview; cues; dressing; no per-frame allocation; hooks)");
         }

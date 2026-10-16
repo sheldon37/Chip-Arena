@@ -715,6 +715,37 @@ migration. Astra to say what changes in the wire, director and save formats, and
   WARD ZERO 3…1 with the names inside. Members in the hub see a small note when a teammate deploys, and the party list shows
   who is in which area.
 
+**Layout draft exp-layout-4 (Claude, 2026-10-16, branch `claude/join-circle-layout-draft`): NOT LIVE.**
+
+Where it lives:
+- `python3 docs/arenas/scripts/expedition_layout.py --draft <file>` (or `--fixtures`) writes it to
+  `unity/ChipArenaConversion/Tests/expedition-layout-4-join-draft.json`.
+- Nothing under `Assets/` names that file. The game still loads `Resources/ExpeditionLayout.json` (exp-layout-3, byte-identical;
+  its SHA-256 is pinned in `Tests/ExpeditionJoinDraftChecks.cs`).
+- There is no ring, countdown or HUD.
+
+It differs from exp-layout-3 only in four things:
+- `revision`: exp-layout-4.
+- The Ward Zero door's `join`: `{x 79, y 0, z 0, r 2.5, h 4}`.
+  - The base is the floor. The centre is 5 m out from the doorway on the approach line.
+  - The edge is 1.62 m from the portico pylons, 0.5 m short of the F volume and 1.5 m from the rubble heap.
+  - h is 4 m, not the proposed 3 m: a ground plus air jump's capsule centre peaks at 3.69 m. The canopy's underside is at 4.4 m,
+    so nobody standing on the canopy counts.
+- `approach`: the circle's centre (it was 82.4, 0, 0).
+- `returns`, in this order: (79.4, ±4.2), (81.1, ±6.0), (82.7, ±6.0), (81.9, ±7.6).
+  - exp-layout-3 had 4 of its 8 returns inside the circle.
+  - Each return is 1.72 m or more beyond the edge, 8.2 m or more from any spawn exit, and Hulk-clear.
+  - The shortest walk from each return to the east gate never needs the circle.
+
+The anchor, the F volume, the closure and the hub record are unchanged, so F entry stays live. The walk from the east gate is
+69.7 m to the centre and 67.1 m to the edge. The 70 m target was met by the door (72.9 m).
+
+Checks: the generator's join report, `CoreTests --expedition-layout` and `test_expedition_layout_draft.py`.
+
+To switch it live: first Astra's subset transfer and `joins[]` / `atJoin` / `area` must exist. Then make the draft's records the
+default, bump `REVISION` / `PINNED` and the pin, regenerate and import (`tools/generate_expedition.py`). Keep the town dressing
+off the circle, and add the ring.
+
 ## Expedition co-op hosting (owner request 2026-10-15) — for Astra
 
 Owner: "lets make hosting a lobby for this one better (So I can test with other people) Add Expedition as a option for hosting
@@ -869,3 +900,13 @@ clearance and centre navigation checks. Legacy layouts without it still parse.
 **No live join view fields or countdown exist in this preparation.** Claude can
 prepare a layout draft against this parser, but should not switch the live layout
 or show a working deploy countdown until subset transfer and its view are delivered.
+
+### Accepted scope and runtime foundation receipt (2026-10-16)
+
+Owner accepts the scope above: 3-second eligible-subset countdown, one shared Ward
+instance, and no all-members interim. Milestone 1 foundation is implemented on
+`codex/expedition-area-runtime` from shared `9f18015`; detailed ownership audit and
+gates: [EXPEDITION-AREA-RUNTIME.md](EXPEDITION-AREA-RUNTIME.md). The live launch path
+still uses one arena. The native two-scene isolation test must execute before
+cohort integration. **joins[], members[].atJoin and members[].area are not yet
+implemented.** Claude must keep exp-layout-4 and the join presentation disabled.

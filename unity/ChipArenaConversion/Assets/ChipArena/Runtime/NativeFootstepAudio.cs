@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
                 }
                 var priority=pick.Mine?NativeSoundPriority.Normal:NativeSoundPriority.Low;
                 if(f.Land){pilotSurfaces.Remove(f.Id);CreatureCue("move.land",null,1,at,pick.Gain,NativeFootsteps.LandRate(f.Air),priority);continue;}
-                CreatureCue(StepSurface(pilotSurfaces,f.Id,arena.MapId,f.FootX,f.Y,f.FootZ,f.Scale),null,1,at,pick.Gain,NativeFootsteps.StepRate(NativeFootsteps.Gait(f.Speed,f.Sprint)),priority);
+                CreatureCue(StepSurface(arena,pilotSurfaces,f.Id,f.FootX,f.Y,f.FootZ,f.Scale),null,1,at,pick.Gain,NativeFootsteps.StepRate(NativeFootsteps.Gait(f.Speed,f.Sprint)),priority);
             }
             q.Clear();
         }
@@ -51,24 +51,24 @@ namespace ChipArena.UnityConversion
         /// surface's own step pool at the add's pitch (NativeFootSurface.Zombie). Also the Hulk's charge warning stomps.</summary>
         private void ZombieStep(NativeArena arena,int id,string gait,int kind,float x,float groundY,float z,float scale,Vector3 at,float gain,float rate)
         {
-            string step=gait==NativeZombieSteps.Crawling?null:StepSurface(zombieSurfaces,id,arena.MapId,x,groundY,z,scale),key=NativeFootSurface.Zombie(gait,step);
+            string step=gait==NativeZombieSteps.Crawling?null:StepSurface(arena,zombieSurfaces,id,x,groundY,z,scale),key=NativeFootSurface.Zombie(gait,step);
             if(key==gait)CreatureCue(gait,NativeZombieSteps.StandIn(gait,step??NativeFootsteps.Surface(arena.MapId)),NativeZombieSteps.StandInRate(gait,kind),at,gain,rate,NativeSoundPriority.Low);
             else CreatureCue(key,null,1,at,gain,rate,NativeSoundPriority.Low);
         }
         // The step key under a walker's planted foot through its surface memory (a new surface counts from its second plant in a row).
-        private string StepSurface(Dictionary<int,NativeSurfaceMemory> surfaces,int id,string map,float x,float groundY,float z,float scale)
+        private string StepSurface(NativeArena arena,Dictionary<int,NativeSurfaceMemory> surfaces,int id,float x,float groundY,float z,float scale)
         {
             if(surfaces.Count>512)surfaces.Clear();
             surfaces.TryGetValue(id,out var memory);
-            string step=memory.Plant(NativeFootSurface.Key(map,SurfaceUnder(x,groundY,z,scale,out string material),material),Time.unscaledTime);
+            string step=memory.Plant(NativeFootSurface.Key(arena.MapId,SurfaceUnder(arena,x,groundY,z,scale,out string material),material),Time.unscaledTime);
             surfaces[id]=memory;return step;
         }
-        // One probe down at a foot (Core NativeFootSurface's start and reach): whether it hit the world, and the material its collider
+        // One probe down at a foot in the arena's own physics world (Core NativeFootSurface's start and reach): whether it hit the world, and the material its collider
         // names (a block's own; a stair or ramp wedge's physics material, its treads'; null for an unnamed collider).
-        private bool SurfaceUnder(float x,float groundY,float z,float scale,out string material)
+        private bool SurfaceUnder(NativeArena arena,float x,float groundY,float z,float scale,out string material)
         {
             material=null;
-            if(!Physics.Raycast(new Vector3(x,NativeFootSurface.StartY(groundY,scale),z),Vector3.down,out var hit,NativeFootSurface.Reach(scale),NativeArena.WorldMask,QueryTriggerInteraction.Ignore)||hit.collider==null)return false;
+            if(!arena.PhysicsWorld.Raycast(new Vector3(x,NativeFootSurface.StartY(groundY,scale),z),Vector3.down,out var hit,NativeFootSurface.Reach(scale),NativeArena.WorldMask,QueryTriggerInteraction.Ignore)||hit.collider==null)return false;
             if(hit.collider.TryGetComponent<NativePropBody>(out var prop)&&prop.Definition!=null){material=prop.Definition.material;return true;}
             var physics=hit.collider.sharedMaterial;
             if(physics!=null){if(!surfaceNames.TryGetValue(physics,out material)){material=physics.name;surfaceNames[physics]=material;}}

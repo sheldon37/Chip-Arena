@@ -10,6 +10,7 @@
 # reached from the sanctuary only through a gate and at least ROUTE_MIN m of running from it, the spawn zones outside the
 # fence and clear of the gates.
 # Usage: python3 docs/arenas/scripts/expedition_city.py [--json out.json] [--png plan.png] [--look look.json] [--ascii]
+#        [--join-png door.png]   (the exp-layout-4 join circle draft's checks and door plan; the draft is not live)
 # Plan: a ring-and-cross town with three districts of wilds. The fenced sanctuary plaza (24 m) sits at the centre; four streets
 # leave it through four gates: north up the avenue to the final gate, east to the Meridian Approach and the Meridian
 # Biocontainment frontage (Ward Zero) out at x 84, west to the Ironworks Yard and the foundry plot at x -84, south down Station
@@ -18,7 +19,7 @@
 # Deterministic: no clocks, no randomness, sorted outputs; the same run writes the same bytes.
 import argparse, json, math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from expedition_common import (Collider, Canvas, components, block_hash, id_ok, v, q, qyaw, vol, vol_floor, vol_in_bounds, pt, vol_block, in_vol, vol_dist_xz,
+from expedition_common import (Collider, Canvas, text_width, components, block_hash, id_ok, v, q, qyaw, vol, vol_floor, vol_in_bounds, pt, vol_block, in_vol, vol_dist_xz,
                                yaw_of, yaw_rad, forward, dist_xz, yspan, footprint, corners, r4, RADIUS, HEIGHT, PILOT_CLEAR, HULK_CLEAR, HULK_BAND,
                                HULK_RADIUS, HULK_HEIGHT, HULK_SLOT)
 
@@ -336,16 +337,41 @@ for i, e in enumerate(entries): e['e'] = i
 # point 0.6 m in front of the doorway (the loader probes every anchor with a pilot capsule); the closure fills the doorway
 # just in front of the face; the interaction volume and the approach are in front; eight returns outside the portico,
 # facing the town.
-def door_record(anchor, cx, cz, yaw, slots_key, slots):
+def door_record(anchor, cx, cz, yaw, slots_key, slots, join=None):
+    """A door record; with `join` (the exp-layout-4 draft only) its join cylinder follows the anchor and the approach is the
+    cylinder's centre. Without it the record is exp-layout-3's, key for key."""
     fx, fz = forward(yaw)
-    return {'anchor': anchor,
-            'interact': vol(cx + fx * 1.0, 0, cz + fz * 1.0, 3.0, 3.0, 2.0, yaw),
-            'closure': vol(cx + fx * 0.2, 0, cz + fz * 0.2, DOOR_W, DOOR_H, 0.4, yaw),
-            'approach': pt(cx + fx * 1.6, 0, cz + fz * 1.6),
-            slots_key: slots}
+    rec = {'anchor': anchor}
+    if join: rec['join'] = dict(join)
+    rec.update({'interact': vol(cx + fx * 1.0, 0, cz + fz * 1.0, 3.0, 3.0, 2.0, yaw),
+                'closure': vol(cx + fx * 0.2, 0, cz + fz * 0.2, DOOR_W, DOOR_H, 0.4, yaw),
+                'approach': pt(join['x'], join['y'], join['z']) if join else pt(cx + fx * 1.6, 0, cz + fz * 1.6),
+                slots_key: slots})
+    return rec
 WZ_YAW = 270.0
 RETURNS = [pt(WZ_DOOR[0] + dx, 0, z, WZ_YAW) for dx in (-4.4, -6.0) for z in (-3.0, -1.0, 1.0, 3.0)]
 DOOR_ANCHOR = f'{AREA}:door:exp-ward-zero'
+
+# =====================================================================================================================
+# THE JOIN CIRCLE DRAFT (exp-layout-4; docs/EXPEDITION-HUB.md "Join circle at the instance doors"). NOT LIVE: only
+# `expedition_layout.py --draft` (or --fixtures) writes it, to Tests/expedition-layout-4-join-draft.json, which nothing at
+# runtime loads; Resources/ExpeditionLayout.json stays exp-layout-3. Astra's parser (NativeExpeditionLayout) reads an optional
+# door `join` cylinder {x, y, z, r, h}: y is its base (the floor) and its top y + h; a member is inside when the authoritative
+# capsule centre is, bounds inclusive. The draft gives every hub entry door (today Ward Zero's) one, moves that door's
+# returns out of it and points the door's approach at its centre. The F interaction volume and closure stay exp-layout-3's
+# (F entry stays live until the subset transfer exists); the hub record's route keeps measuring the run to the doorway.
+# Ward Zero: centre 5 m out from the doorway on the approach line (z 0), between the portico pylons (inner faces z +-3.8),
+# r 2.5 m (the removed door ring was 1.35 m round the anchor), its near edge 0.5 m short of the F interaction volume and
+# 1.5 m clear of the rubble heap on the axis. h 4 m: a standing pilot's capsule centre (0.85 m), a ground jump's apex
+# (2.42 m) and a ground plus air jump's (3.69 m) stay inside, and the top stays under the portico canopy (4.4 m), so no one
+# on the canopy counts. Returns: 8 beside the portico, all outside the circle (capsule clear by 1.27 m or more), Hulk-clear,
+# 8 m or more from every spawn exit, and their shortest walk to the east gate never needs the circle; the first four (a
+# full party) stand at the pylons' town side and the portico's front corners.
+JOINS = {'exp-ward-zero': dict(x=79.0, y=0.0, z=0.0, r=2.5, h=4.0)}
+DRAFT_RETURNS = [pt(x, 0, z, WZ_YAW) for x, z in ((79.4, -4.2), (79.4, 4.2), (81.1, -6.0), (81.1, 6.0), (82.7, -6.0), (82.7, 6.0), (81.9, -7.6), (81.9, 7.6))]
+CAPSULE_R, CAPSULE_HALF = 0.42, 0.85          # NativeLocomotionRules.Radius, HalfHeight: the native pilot capsule
+JUMP, GRAVITY, AIR_JUMP = 8.5, 23.0, 0.9       # Rules.JumpSpeed, Rules.Gravity, NativeJumpSimulation.AirMultiplier (jumpPower 1)
+JOIN_SPAWN_CLEAR = 8.0                         # spawn exits stay this far from the circle's edge and the returns (the doc's door rule)
 
 # =====================================================================================================================
 # THE HUB RECORD (exp-layout-3; docs/EXPEDITION-HUB.md). Director metadata for the director (Astra) and the presentation, no
@@ -371,26 +397,28 @@ def gate_paths():
     """Walking distances (m) on the pilot's floor with every gate open: from each hub gate's threshold, 8-connected on the
     0.5 m grid (no corner cutting). Cached: {gate id: {node: metres}} and the collider."""
     if _PATHS: return _PATHS['by'], _PATHS['col']
-    import heapq
     col = Collider(list(blocks), bounds=dict(BOUNDS)); col.build(keep=lambda y: abs(y) < 0.05)
-    by = {}
-    for g in HUB_GATES:
-        start = col.node_at(g['x'], 0, g['z']); dist = {start: 0.0}; heap = [(0.0, start)]
-        while heap:
-            d, n = heapq.heappop(heap)
-            if d > dist.get(n, 1e18): continue
-            i, j, y = n
-            for di in (-1, 0, 1):
-                for dj in (-1, 0, 1):
-                    if not di and not dj: continue
-                    ms = [m for m in col.by_cell.get((i + di, j + dj), ()) if abs(m[2] - y) <= 0.36]
-                    if not ms: continue
-                    if di and dj and not (col.by_cell.get((i + di, j)) and col.by_cell.get((i, j + dj))): continue
-                    nd = d + col.cell * (1.41421356 if di and dj else 1.0)
-                    for m in ms:
-                        if nd < dist.get(m, 1e18): dist[m] = nd; heapq.heappush(heap, (nd, m))
-        by[g['id']] = dist
+    by = {g['id']: walk(col, col.node_at(g['x'], 0, g['z'])) for g in HUB_GATES}
     _PATHS['by'] = by; _PATHS['col'] = col; return by, col
+def walk(col, start, forbid=None):
+    """Walking distances (m) from `start` over the collider's floor, 8-connected (no corner cutting); `forbid(node)` keeps
+    nodes out of the walk."""
+    import heapq
+    dist = {start: 0.0}; heap = [(0.0, start)]
+    while heap:
+        d, n = heapq.heappop(heap)
+        if d > dist.get(n, 1e18): continue
+        i, j, y = n
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                if not di and not dj: continue
+                ms = [m for m in col.by_cell.get((i + di, j + dj), ()) if abs(m[2] - y) <= 0.36 and not (forbid and forbid(m))]
+                if not ms: continue
+                if di and dj and not (col.by_cell.get((i + di, j)) and col.by_cell.get((i, j + dj))): continue
+                nd = d + col.cell * (1.41421356 if di and dj else 1.0)
+                for m in ms:
+                    if nd < dist.get(m, 1e18): dist[m] = nd; heapq.heappush(heap, (nd, m))
+    return dist
 def gate_distance(x, z, gate=None):
     """The walking distance from the nearest hub gate's threshold (or `gate`'s) to (x, z), and that gate's id."""
     by, col = gate_paths(); n = col.node_at(x, 0, z, 0.8)
@@ -419,7 +447,8 @@ def hub():
             'gates': [dict(g) for g in HUB_GATES], 'apron': dict(spawn=GATE_APRON, zone=ZONE_APRON),
             'zones': zones, 'wilds': wilds, 'routes': routes, 'reserved': reserved}
 
-def area():
+def area(draft=False):
+    """The town's area record: exp-layout-3's (live), or with `draft` the exp-layout-4 join circle draft (not live)."""
     fx, fz = forward(WZ_YAW)
     anchors = [dict(id=DOOR_ANCHOR, kind='door', building='exp-ward-zero', **pt(WZ_DOOR[0] + fx * 0.6, 0, WZ_DOOR[1] + fz * 0.6, WZ_YAW)),
                dict(id=f'{AREA}:machine:0', kind='machine', building='', **MACHINE)]
@@ -429,7 +458,7 @@ def area():
     inter = [dict(anchor=f'{AREA}:machine:0', **front(MACHINE, 0.9), range=2.5)]
     inter += [dict(anchor=f'{AREA}:cache:{i}', **front(c, 0.8), range=2.0) for i, c in enumerate(CACHES)]
     return {'id': AREA, 'role': 'world', 'map': MAP, 'blockHash': block_hash(game_map()),
-            'anchors': anchors, 'doors': [door_record(DOOR_ANCHOR, WZ_DOOR[0], WZ_DOOR[1], WZ_YAW, 'returns', RETURNS)], 'interactions': inter,
+            'anchors': anchors, 'doors': [door_record(DOOR_ANCHOR, WZ_DOOR[0], WZ_DOOR[1], WZ_YAW, 'returns', DRAFT_RETURNS if draft else RETURNS, JOINS['exp-ward-zero'] if draft else None)], 'interactions': inter,
             'sanctuary': {'volumes': [SANCTUARY], 'slots': SLOTS},
             'gates': [{'id': f'{AREA}:gate:final', 'opens': 'final', 'closure': GATE}],
             'spawns': entries, 'boss': {'trigger': BOSS_TRIGGER, 'points': BOSS_POINTS}, 'hub': hub()}
@@ -760,6 +789,122 @@ def checks():
     return ok, out, (shut, reach, open_, reach_o)
 
 # =====================================================================================================================
+# JOIN CIRCLE DRAFT CHECKS (exp-layout-4, not live): run by `expedition_layout.py --draft` on checks()'s graphs.
+def in_circle(j, x, z): return (x - j['x']) ** 2 + (z - j['z']) ** 2 <= j['r'] ** 2 + 1e-9
+def join_checks(graphs):
+    """The draft's join circles against the town: Astra's parser rules mirrored (finite positive r and h, a hub entry door,
+    inside the bounds, centre and 8 rim points on floor with the pilot probe), the whole circle on reached standable floor
+    (sampled), no block in the cylinder, the centre routed for a pilot and a Hulk, clear of the door's volumes, the gates,
+    the fence, the sanctuary, spawn exits, the machine and caches; the zones holding it; the height against a standing and a
+    jumping capsule; its distance from the doorway and the east gate; the returns out of it; the F entry unchanged."""
+    shut, reach, open_, reach_o = graphs
+    out, ok = [], True
+    live, a = area(), area(True); bounds = game_map()['bounds']; anc = {x['id']: x for x in a['anchors']}
+    hulk = Collider(list(blocks), bounds=shut.bounds); hulk.build(keep=lambda y: abs(y) < 0.05, radius=HULK_RADIUS, height=HULK_HEIGHT)
+    s0 = SLOTS[0]; rp = open_.flood([open_.node_at(s0['x'], 0, s0['z'])]); rh = hulk.flood([hulk.node_at(s0['x'], 0, s0['z'])])
+    by, gcol = gate_paths(); east = f'{AREA}:hub-gate:east'; eg = next(g for g in HUB_GATES if g['id'] == east)
+    floorish = lambda b: '-slab-' in b['id'] or b['id'].endswith('paving')
+    for d, d3 in zip(a['doors'], live['doors']):
+        j = d.get('join'); inst = anc[d['anchor']]['building']
+        if not j: out.append(f"{d['anchor']}: no join circle  BAD"); ok = False; continue
+        cx, cy, cz, r, h = j['x'], j['y'], j['z'], j['r'], j['h']; dx_, dz_ = forward(anc[d['anchor']]['yaw'])
+        door_x, door_z = WZ_DOOR if inst == 'exp-ward-zero' else (anc[d['anchor']]['x'], anc[d['anchor']]['z'])
+        off_axis = abs(-(cx - door_x) * dz_ + (cz - door_z) * dx_); out_m = (cx - door_x) * dx_ + (cz - door_z) * dz_
+        out.append(f"join circle at the {inst} door (draft, not live): centre ({cx:g}, {cy:g}, {cz:g}), r {r:g} m, base y {cy:g}, top {cy + h:g} m; "
+                   f"centre {out_m:.1f} m out from the doorway on the approach line (off it {off_axis:.2f} m), near edge {out_m - r:.1f} m from the doorway")
+        ok &= off_axis < 1e-6 and out_m - r > 0
+        # Astra's parser and geometry gate, mirrored (NativeExpeditionLayout.Join / ValidateGeometry).
+        def probe(x, y, z):
+            return (x - RADIUS >= bounds['minX'] and x + RADIUS <= bounds['maxX'] and z - RADIUS >= bounds['minZ'] and z + RADIUS <= bounds['maxZ']
+                    and y > bounds['killY'] and y + HEIGHT <= bounds['ceiling'] and shut.floor_under(x, z, y) and not open_.blocked(x, z, y))
+        rim = [(cx + math.cos(k * math.pi / 4) * r, cz + math.sin(k * math.pi / 4) * r) for k in range(8)]
+        okp = all(math.isfinite(v_) for v_ in (cx, cy, cz, r, h)) and r > 0 and h > 0 and inst in ('exp-ward-zero',) and a['role'] == 'world'
+        okp &= vol_in_bounds(vol(cx, cy, cz, 2 * r, h, 2 * r), bounds) and probe(cx, cy, cz) and all(probe(x, cy, z) for x, z in rim)
+        out.append(f'parser rules (finite, r and h positive, at a hub entry door, inside the bounds, centre and 8 rim points on floor with the pilot probe): {okp}'); ok &= okp
+        # The whole circle: a 0.25 m grid and 32 rim points on the street floor, reached from the sanctuary, standable.
+        pts = [(cx + i * 0.25, cz + k * 0.25) for i in range(-int(r * 4), int(r * 4) + 1) for k in range(-int(r * 4), int(r * 4) + 1) if in_circle(j, cx + i * 0.25, cz + k * 0.25)]
+        pts += [(cx + math.cos(k * math.pi / 16) * r * 0.999, cz + math.sin(k * math.pi / 16) * r * 0.999) for k in range(32)]
+        fl = [p_ for p_ in pts if shut.floor_under(p_[0], p_[1], cy)]; rc = [p_ for p_ in fl if shut.node_at(p_[0], cy, p_[1], 0.36) in reach]
+        st = [p_ for p_ in rc if not open_.blocked(p_[0], p_[1], cy)]
+        out.append(f'floor in the circle: {len(pts)} samples (0.25 m grid and 32 rim points), on the street floor at y {cy:g}: {len(fl)}, reached from the sanctuary slots: {len(rc)}, standable for the pilot probe: {len(st)}')
+        ok &= len(fl) == len(rc) == len(st) == len(pts)
+        # Blocks: none in the cylinder; the nearest beside it and the nearest over it.
+        band = [b for b in blocks if not floorish(b) and yspan(b)[0] < cy + h and yspan(b)[1] > cy + 0.01]
+        inside = [b['id'] for b in band if dist_xz(b, cx, cz) < r]
+        near = min((dist_xz(b, cx, cz) - r, b['id']) for b in band)
+        over = min(((yspan(b)[0], b['id']) for b in blocks if dist_xz(b, cx, cz) < r and yspan(b)[0] >= cy + h - 1e-6), default=(99.0, '-'))
+        pyl = min(dist_xz(b, cx, cz) - r for b in blocks if '-wz-portico-pylon-' in b['id'])
+        out.append(f"blocks in the cylinder (y {cy:g}..{cy + h:g}): {len(inside)}{' BAD ' + ', '.join(inside) if inside else ''}; nearest beside it {near[0]:.2f} m beyond its edge ({near[1].replace(MAP + '-', '')}), "
+                   f"the portico pylons {pyl:.2f} m; nearest over it: {over[1].replace(MAP + '-', '')} from {over[0]:g} m ({over[0] - cy - h:.1f} m over the top)")
+        ok &= not inside and near[0] >= RADIUS
+        # The centre is routed for a pilot and a Hulk (the approach is the centre); the walk from the east gate.
+        cn_p, cn_h = open_.node_at(cx, cy, cz), hulk.node_at(cx, cy, cz)
+        route = cn_p in rp and cn_h in rh and shut.node_at(cx, cy, cz) in reach
+        dist = by[east]; cnode = gcol.node_at(cx, cy, cz, 0.8)
+        cells = [n for n in dist if in_circle(j, *gcol.cell_xz(n[0], n[1]))]; edge = min(dist[n] for n in cells)
+        out.append(f"centre navigable: pilot and Hulk routes from slot 0: {route}; walked from the east gate's threshold {dist[cnode]:.1f} m to the centre ({math.hypot(cx - eg['x'], cz - eg['z']):.1f} m straight), "
+                   f"{edge:.1f} m to the first step inside the circle; exp-layout-3's approach (the doorway's front) {gate_distance(d3['approach']['x'], d3['approach']['z'], east)[0]:.1f} m (target {ROUTE_MIN:g} m)")
+        ok &= route
+        # The door's own volumes: the F interaction volume, the closure and the airlock unit drawn round it (Tests/ExpeditionDressingChecks).
+        cl = d['closure']; unit = vol(cl['x'], 0, cl['z'], cl['sx'] + 3.8, 4.1, 1.5, cl['yaw'])
+        dv = [(vol_dist_xz(d['interact'], cx, cz) - r, 'interaction volume (F)'), (vol_dist_xz(cl, cx, cz) - r, 'closure'), (vol_dist_xz(unit, cx, cz) - r, 'airlock unit')]
+        out.append('clear of the door: ' + ', '.join(f'{n} {g_:.2f} m' for g_, n in dv) + f' beyond its edge: {all(g_ > 0 for g_, n in dv)}'); ok &= all(g_ > 0 for g_, n in dv)
+        # The gates, the fence and the sanctuary.
+        gv = [(vol_dist_xz(g[k], cx, cz) - r, g['side'] + ' gate ' + k) for g in HUB_GATES for k in ('closure', 'interact', 'sensor')] + [(vol_dist_xz(GATE, cx, cz) - r, 'final gate')]
+        fv = min(dist_xz(b, cx, cz) - r for b in blocks if '-sanctuary-fence-' in b['id']); sv = vol_dist_xz(SANCTUARY, cx, cz) - r
+        out.append(f"clear of the gates, the fence and the sanctuary: nearest gate volume {min(gv)[0]:.1f} m ({min(gv)[1]}), final gate {gv[-1][0]:.1f} m, fence {fv:.1f} m, sanctuary volume {sv:.1f} m beyond its edge: {min(gv)[0] > 0 and fv > 0 and sv > 0}")
+        ok &= min(gv)[0] > 0 and fv > 0 and sv > 0
+        # Hub zones and wilds holding it; spawn exits (with a drop's clear radius) and the machine and caches.
+        H_ = hub(); zs = [z_['id'].split(':')[-1] for z_ in H_['zones'] if vol_dist_xz(z_['volume'], cx, cz) < r]
+        whole = [z_['id'].split(':')[-1] for z_ in H_['zones'] if all(in_vol(z_['volume'], x, 1.0, z) for x, z in rim)]
+        ws = [w_['id'].split(':')[-1] for w_ in H_['wilds'] if vol_dist_xz(w_['volume'], cx, cz) < r]
+        dz3 = [z_['id'].split(':')[-1] for z_ in H_['zones'] if in_vol(z_['volume'], d3['approach']['x'], 1.0, d3['approach']['z'])]
+        sp = min((math.hypot(e['exit']['x'] - cx, e['exit']['z'] - cz) - r, e['id'].split(':')[-1]) for e in entries)
+        dp = min((math.hypot(e['exit']['x'] - cx, e['exit']['z'] - cz) - r - e['clear'], e['id'].split(':')[-1]) for e in entries if e['kind'] == 'drop')
+        out.append(f"hub zones over it: {zs} (wholly inside {whole}; exp-layout-3's door approach is in {dz3}), wilds {ws}; nearest spawn exit {sp[0]:.1f} m beyond its edge ({sp[1]}; {JOIN_SPAWN_CLEAR:g} m or more), "
+                   f"nearest drop landing disc {dp[0]:.1f} m ({dp[1]}): {sp[0] >= JOIN_SPAWN_CLEAR and dp[0] > 0}")
+        ok &= sp[0] >= JOIN_SPAWN_CLEAR and dp[0] > 0 and zs == whole
+        mc = min((math.hypot(x['x'] - cx, x['z'] - cz) - r - 1.0, x['id'].split(':', 1)[-1]) for x in a['anchors'] if x['kind'] != 'door')
+        mi = min((math.hypot(x['x'] - cx, x['z'] - cz) - r - x['range'], x['anchor'].split(':', 1)[-1]) for x in a['interactions'])
+        out.append(f'machine and caches: nearest footprint (1 m) {mc[0]:.1f} m beyond its edge ({mc[1]}), nearest interaction reach {mi[0]:.1f} m ({mi[1]}): {mc[0] > 0 and mi[0] > 0}'); ok &= mc[0] > 0 and mi[0] > 0
+        # Height: the base on the floor; a standing capsule, a ground jump and a ground plus air jump (jumpPower 1) inside.
+        g1 = JUMP ** 2 / (2 * GRAVITY); g2 = (JUMP * AIR_JUMP) ** 2 / (2 * GRAVITY)
+        hs = [('standing capsule centre', CAPSULE_HALF), ('its top', 2 * CAPSULE_HALF), ('ground jump apex centre', CAPSULE_HALF + g1), ('ground + air jump apex centre', CAPSULE_HALF + g1 + g2)]
+        okh = shut.floor_under(cx, cz, cy) and all(cy <= cy + v_ <= cy + h for _, v_ in hs) and over[0] >= cy + h
+        out.append('height: base on the floor (y %g), ' % cy + ', '.join(f'{n} {v_:.2f} m' for n, v_ in hs) + f' inside 0..{h:g} m, top under the nearest block over it: {okh}'); ok &= okh
+        # Returns: out of the circle, off the F volume, on reached floor, Hulk-clear, spaced, away from spawns.
+        R_ = d['returns']; gap = min(math.hypot(p_['x'] - cx, p_['z'] - cz) - r for p_ in R_)
+        old = [p_ for p_ in d3['returns'] if in_circle(j, p_['x'], p_['z'])]; oldgap = min(math.hypot(p_['x'] - cx, p_['z'] - cz) - r for p_ in d3['returns'] if not in_circle(j, p_['x'], p_['z']))
+        onf = all(shut.node_at(p_['x'], 0, p_['z'], 0.6) in reach and shut.floor_under(p_['x'], p_['z'], p_['y']) for p_ in R_)
+        hc = min(open_.clearance(p_['x'], p_['z'], 0.35, HULK_HEIGHT + 0.05) for p_ in R_); pc = min(open_.clearance(p_['x'], p_['z'], 0.35, HEIGHT + 0.05) for p_ in R_)
+        pair = min(math.hypot(p_['x'] - q_['x'], p_['z'] - q_['z']) for i, p_ in enumerate(R_) for q_ in R_[i + 1:])
+        rs = min(math.hypot(e['exit']['x'] - p_['x'], e['exit']['z'] - p_['z']) for e in entries for p_ in R_)
+        routed = all(open_.node_at(p_['x'], 0, p_['z']) in rp and hulk.node_at(p_['x'], 0, p_['z']) in rh for p_ in R_)
+        fvol = any(in_vol(d['interact'], p_['x'], 1.0, p_['z']) for p_ in R_)
+        okr = gap >= RADIUS + 0.5 and onf and hc >= HULK_SLOT and pc >= PILOT_CLEAR and pair >= 1.4 - 1e-6 and rs >= JOIN_SPAWN_CLEAR and routed and not fvol and len(R_) == 8
+        out.append(f'returns (draft): {len(R_)}, none in the circle: the closest stands {gap:.2f} m beyond its edge (its capsule {gap - CAPSULE_R:.2f} m); off the F volume {not fvol}; on reached floor {onf}; '
+                   f'pilot and Hulk routes from slot 0 {routed}; clear {pc:.2f} m (pilot), {hc:.2f} m (Hulk); closest pair {pair:.2f} m; nearest spawn exit {rs:.1f} m: {okr}'); ok &= okr
+        oz = ', '.join(sorted({'%g' % p_['z'] for p_ in old}, key=float))
+        out.append(f'returns (exp-layout-3): {len(old)} of 8 would stand in the circle (z {oz}), the other {8 - len(old)} only {oldgap:.2f} m beyond its edge')
+        # Their walk to the east gate never needs the circle.
+        free = walk(gcol, gcol.node_at(eg['x'], 0, eg['z']), forbid=lambda n: in_circle(j, *gcol.cell_xz(n[0], n[1])))
+        extra = [free.get(gcol.node_at(p_['x'], 0, p_['z']), 1e18) - dist[gcol.node_at(p_['x'], 0, p_['z'])] for p_ in R_]
+        out.append(f"returns' walk to the east gate's threshold avoiding the circle is their shortest walk (extra metres {max(extra):.2f}): {max(extra) < 1e-6}"); ok &= max(extra) < 1e-6
+        # The approach and the F entry (live until the subset transfer): approach at the centre, volumes and line of sight.
+        a_ = d['approach']; same = d['interact'] == d3['interact'] and d['closure'] == d3['closure'] and d['anchor'] == d3['anchor']
+        iv = d['interact']; yaw_ = math.radians(iv['yaw']); c_, s_ = math.cos(yaw_), math.sin(yaw_); los = []
+        for u in (-0.4, 0.0, 0.4):
+            for w in (-0.4, 0.0, 0.4):
+                lx, lz = u * iv['sx'], w * iv['sz']; px, pz = iv['x'] + lx * c_ + lz * s_, iv['z'] - lx * s_ + lz * c_
+                seg = [(px + (a_['x'] - px) * t / 50, 0.6, pz + (a_['z'] - pz) * t / 50) for t in range(51)]
+                los.append(not any(dist_xz(b, x, z) <= 1e-9 and yspan(b)[0] < y < yspan(b)[1] for x, y, z in seg for b in shut.near(x, z)))
+        okf = (a_['x'], a_['y'], a_['z']) == (cx, cy, cz) and same and all(los) and in_vol(iv, iv['x'], 1.0, iv['z'])
+        out.append(f"approach at the circle's centre ({a_['x']:g}, {a_['y']:g}, {a_['z']:g}; exp-layout-3 ({d3['approach']['x']:g}, {d3['approach']['y']:g}, {d3['approach']['z']:g})); "
+                   f"F entry intact: anchor, interaction volume and closure as exp-layout-3 {same}, line of sight from the interaction volume (9 points, 0.6 m up) to the approach {all(los)}: {okf}"); ok &= okf
+    out.append('join draft checks: ' + ('pass' if ok else 'FAIL'))
+    return ok, out
+
+# =====================================================================================================================
 # PLAN (top-down PNG): buildings shaded by height, walkable floor, the sanctuary and its slots, the gate, the boss
 # trigger and points, the door with its volumes and returns, the machine and caches, the spawns by kind.
 def plan(path, graphs, scale=6):
@@ -849,6 +994,70 @@ def plan(path, graphs, scale=6):
         cv.text(X(x), Y(z), label, (240, 236, 220))
     cv.save(path)
 
+def join_plan(path, graphs, x0=66.0, x1=86.0, z0=-11.0, z1=11.0, scale=40):
+    """Top-down PNG of an instance door with the exp-layout-4 draft's join circle (not live): floor, blocks (the portico
+    canopy as an overlay), the door's F volume, closure and anchor, the approach line, exp-layout-3's approach and returns
+    (hollow) against the draft's (filled), spawn exits with the 8 m apron. Offline only (not committed)."""
+    shut, reach, open_, reach_o = graphs
+    M, LW = 30, 380; W, H = int((x1 - x0) * scale) + 2 * M + LW, int((z1 - z0) * scale) + 2 * M + 40
+    cv = Canvas(W, H)
+    def X(x): return int(round((x - x0) * scale)) + M
+    def Y(z): return int(round((z1 - z) * scale)) + M + 30
+    live, dr = area()['doors'][0], area(True)['doors'][0]; j = dr['join']
+    cv.rect(X(x0), Y(z1), X(x1), Y(z0), (24, 22, 28))
+    for n in open_.graph:
+        x, z = open_.cell_xz(n[0], n[1])
+        if x0 - 1 < x < x1 + 1 and z0 - 1 < z < z1 + 1: cv.rect(X(x - 0.25), Y(z + 0.25), X(x + 0.25), Y(z - 0.25), (58, 56, 62) if n in reach else (88, 58, 70))
+    for i in range(int(x0), int(x1) + 1):
+        cv.rect(X(i), Y(z1), X(i) + 1, Y(z0), (44, 42, 50))
+    for k in range(int(z0), int(z1) + 1):
+        cv.rect(X(x0), Y(k), X(x1), Y(k) + 1, (44, 42, 50))
+    for e in entries:
+        ex, ez = e['exit']['x'], e['exit']['z']
+        if x0 - 9 < ex < x1 + 9 and z0 - 9 < ez < z1 + 9:
+            cv.ring(X(ex), Y(ez), int(JOIN_SPAWN_CLEAR * scale), (150, 90, 200), 1); cv.disc(X(ex), Y(ez), 7, (190, 110, 255))
+            cv.text(X(ex) + 10, Y(ez) - 6, e['id'].split(':')[-1].upper(), (200, 150, 255))
+    over = []
+    for b in sorted(blocks, key=lambda b: yspan(b)[1]):
+        if yspan(b)[1] <= 0.01 or b['id'].endswith('paving') or '-slab-' in b['id']: continue
+        if yspan(b)[0] > 3.0: over.append(b); continue
+        c = (150, 170, 190) if b['_ch'] == 'P' else (120, 104, 96) if b['_ch'] == 'w' else (110, 112, 120) if b['_ch'] == '#' else (160, 112, 72)
+        cv.poly([(X(x), Y(z)) for x, z in corners(b)], c)
+    for b in over:
+        cv.poly([(X(x), Y(z)) for x, z in corners(b)], (200, 200, 210), 0.18); x_0, x_1, z_0, z_1 = footprint(b); cv.frame(X(x_0), Y(z_1), X(x_1), Y(z_0), (170, 170, 180), 1)
+    # the circle: fill, rim, centre
+    cx, cz, r = j['x'], j['z'], j['r']
+    for py in range(Y(cz + r) - 1, Y(cz - r) + 2):
+        for px in range(X(cx - r) - 1, X(cx + r) + 2):
+            if ((px - X(cx)) ** 2 + (py - Y(cz)) ** 2) <= (r * scale) ** 2: cv.px(px, py, (40, 230, 190), 0.22)
+    cv.ring(X(cx), Y(cz), int(r * scale), (60, 255, 210), 3)
+    # the door: F volume, closure, anchor, doorway
+    cv.poly([(X(x), Y(z)) for x, z in corners(vol_block('', live['interact']))], (80, 220, 255), 0.35); cv.text(X(live['interact']['x']) - 4, Y(0) + 14, 'F', (80, 220, 255), 3)
+    cv.poly([(X(x), Y(z)) for x, z in corners(vol_block('', live['closure']))], (255, 255, 120))
+    an = next(x for x in area()['anchors'] if x['id'] == live['anchor']); cv.disc(X(an['x']), Y(an['z']), 5, (0, 160, 255))
+    # the approach line (the door's axis), exp-layout-3's approach (hollow) and the draft's (the centre, filled)
+    for k in range(int(x0), int(WZ_DOOR[0]), 1): cv.line(X(k), Y(WZ_DOOR[1]), X(k + 0.5), Y(WZ_DOOR[1]), (255, 255, 255), 2)
+    a3 = live['approach']; cv.ring(X(a3['x']), Y(a3['z']), 9, (255, 150, 60), 3); cv.disc(X(cx), Y(cz), 8, (255, 150, 60))
+    for p in live['returns']:
+        cv.ring(X(p['x']), Y(p['z']), int(CAPSULE_R * scale), (255, 90, 90), 2); cv.line(X(p['x']) - 6, Y(p['z']) - 6, X(p['x']) + 6, Y(p['z']) + 6, (255, 90, 90), 2); cv.line(X(p['x']) - 6, Y(p['z']) + 6, X(p['x']) + 6, Y(p['z']) - 6, (255, 90, 90), 2)
+    for i, p in enumerate(dr['returns']):
+        fx, fz = forward(p['yaw']); cv.disc(X(p['x']), Y(p['z']), int(CAPSULE_R * scale), (120, 255, 120)); cv.line(X(p['x']), Y(p['z']), X(p['x'] + fx * 0.8), Y(p['z'] + fz * 0.8), (20, 60, 20), 3)
+        cv.text(X(p['x']) - 4, Y(p['z']) - 5, str(i), (10, 40, 10), 2)
+    # the margins over anything drawn past the crop, then labels, scale bar, legend
+    bg = (14, 16, 20); cv.rect(0, 0, W, Y(z1), bg); cv.rect(0, Y(z0), W, H, bg); cv.rect(0, 0, X(x0), H, bg); cv.rect(X(x1), 0, W, H, bg)
+    cv.text(M, 8, 'WARD ZERO DOOR: JOIN CIRCLE DRAFT (EXP-LAYOUT-4, NOT LIVE)  NORTH UP  1 M = %d PX' % scale, (232, 251, 255))
+    lab = 'JOIN CIRCLE R %g M, H %g M' % (r, j['h']); tx, ty = X(cx - r - 0.6) - text_width(lab), Y(cz + r + 1.6)
+    cv.text(tx, ty, lab, (60, 255, 210)); cv.line(tx + text_width(lab), ty + 5, X(cx - r * 0.7071), Y(cz + r * 0.7071), (60, 255, 210), 1)
+    cv.text(X(WZ_DOOR[0]) - 80, Y(z1) + 6, 'FACADE X 84', (200, 200, 210)) if x0 < WZ_DOOR[0] < x1 else None; cv.text(X(x0) + 6, Y(0) - 18, 'APPROACH LINE (FROM THE EAST GATE)', (255, 255, 255))
+    cv.rect(X(x0) + 10, Y(z0) - 16, X(x0 + 5) + 10, Y(z0) - 12, (255, 255, 255)); cv.text(X(x0) + 10, Y(z0) - 32, '5 M', (255, 255, 255))
+    lx, ly = X(x1) + 24, M + 40
+    for label, c in [('JOIN CIRCLE (DRAFT)', (60, 255, 210)), ('APPROACH: DRAFT (CENTRE)', (255, 150, 60)), ('APPROACH: EXP-LAYOUT-3 (HOLLOW)', (255, 150, 60)),
+                     ('RETURNS: DRAFT, ORDER, FACING', (120, 255, 120)), ('RETURNS: EXP-LAYOUT-3 (X)', (255, 90, 90)), ('F INTERACTION VOLUME', (80, 220, 255)),
+                     ('DOOR CLOSURE', (255, 255, 120)), ('DOOR ANCHOR', (0, 160, 255)), ('PORTICO PYLONS', (150, 170, 190)), ('CANOPY / ROOF (OVERHEAD)', (200, 200, 210)),
+                     ('WILDS COVER', (120, 104, 96)), ('BUILDING', (110, 112, 120)), ('VEHICLE / COVER', (160, 112, 72)), ('SPAWN EXIT, 8 M APRON', (190, 110, 255)), ('STREET (REACHED)', (58, 56, 62))]:
+        cv.rect(lx, ly, lx + 14, ly + 10, c); cv.text(lx + 20, ly, label, (210, 214, 220)); ly += 22
+    cv.save(path)
+
 def ascii_map():
     out = []
     for r in range(int((BOUNDS['maxZ'] - BOUNDS['minZ']) / 2)):
@@ -863,7 +1072,8 @@ def ascii_map():
     return '\n'.join(out)
 
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser(); ap.add_argument('--json'); ap.add_argument('--png'); ap.add_argument('--look'); ap.add_argument('--maplooks', action='store_true', help='write the look into Resources/MapLooks.json'); ap.add_argument('--ascii', action='store_true'); a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument('--json'); ap.add_argument('--png'); ap.add_argument('--look'); ap.add_argument('--maplooks', action='store_true', help='write the look into Resources/MapLooks.json'); ap.add_argument('--ascii', action='store_true')
+    ap.add_argument('--join-png', help='check the exp-layout-4 join circle draft (not live) and draw its door area'); a = ap.parse_args()
     ok, report, graphs = checks()
     if a.ascii: print(ascii_map())
     print('\n'.join(report))
@@ -875,4 +1085,6 @@ if __name__ == '__main__':
         print('wrote', a.look)
     if a.maplooks: write_maplooks(); print('wrote the', MAP, 'entry of', MAPLOOKS)
     if a.png: plan(a.png, graphs); print('wrote', a.png)
+    if a.join_png:
+        ok_j, rep_j = join_checks(graphs); print('\n'.join(rep_j)); join_plan(a.join_png, graphs); print('wrote', a.join_png); ok &= ok_j
     sys.exit(0 if ok else 1)

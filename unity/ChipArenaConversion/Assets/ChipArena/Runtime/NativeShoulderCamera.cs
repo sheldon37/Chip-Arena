@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         // mask and query as the original camera), so Brickfall blocks and fragments push it in like any wall.
         private Vector3 ShoulderCamera(NativePilot p,Vector3 focus)
         {
-            cameraCast??=(from,direction,distance,radius)=>Physics.SphereCast(V(from),radius,V(direction),out var hit,distance,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)?hit.distance:distance;
+            cameraCast??=(from,direction,distance,radius)=>arena.PhysicsWorld.SphereCast(V(from),radius,V(direction),out var hit,distance,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)?hit.distance:distance;
             float height=cameraRig.Focus(focus.y,p.Seat.id,Time.unscaledDeltaTime);
             var at=cameraRig.Place(new N.Vector3(focus.x,height,focus.z),yaw,pitch,Time.unscaledTime,Time.unscaledDeltaTime,cameraCast);
             lockLift=cameraRig.PivotUp+(height-focus.y);return V(at);
@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
         {
             Ray ray=cameraView.ViewportPointToRay(new Vector3(.5f,.5f));float nearest=range+Vector3.Distance(ray.origin,arena.ViewPilot.Body.position);
             Vector3 target=ray.origin+ray.direction*nearest;body=false;
-            foreach(var hit in Physics.RaycastAll(ray,nearest,NativeArena.ShotMask,QueryTriggerInteraction.Ignore))
+            foreach(var hit in NativeSceneQueries.RaycastAll(arena.PhysicsWorld,ray,nearest,NativeArena.ShotMask,QueryTriggerInteraction.Ignore))
             {
                 if(hit.distance<aimSkip||hit.distance>=nearest)continue;var pilot=hit.collider.GetComponent<NativePilotBody>();if(pilot!=null&&pilot.Pilot==arena.ViewPilot)continue;
                 target=hit.point;nearest=hit.distance;body=pilot!=null||hit.collider.GetComponent<NativeMinionBody>()!=null;

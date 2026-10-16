@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         private void UpdateLock()
         {
             lockPoint=null;if(!LockEligible||menu||ExpeditionCameraHeld){lockTarget=0;lockPressed=-1;return;}Vector3 eye=arena.Local.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;float now=Time.unscaledTime;
-            bool Visible(Vector3 point)=>!Physics.Linecast(eye,point,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);
+            bool Visible(Vector3 point)=>!NativeSceneQueries.Linecast(arena.PhysicsWorld,eye,point,NativeArena.WorldMask);
             var targets=LockTargets().ToArray();var nearby=targets.Where(t=>Vector3.Distance(t.point,eye)<=16&&Visible(t.point)).ToArray();
             if(Input.GetKeyDown(KeyCode.Tab))
             {
