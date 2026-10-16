@@ -329,7 +329,7 @@ Each room below lists its hero shot, palette, lights, atmosphere, surfaces, dres
 | Upper floor | about 500 | |
 | **Total** | **about 7,850** | Ward Zero's kit is 7,124 parts, the town's 7,631 |
 
-The concept renders use about 2,000 dressing parts plus about 530 glyph boxes of text.
+The concept renders use about 2,160 dressing parts plus the text glyphs (49 signs and notices).
 
 ## 4. Asset inventory and gaps
 
@@ -807,7 +807,8 @@ light slots, practical lights picked per camera, and posed rig models lit by the
 | `flooded-t3.png` | the flood and the Undertow |
 | `signal-box.png` | the box from the east footbridge |
 | `overview.png`, `overview-north.png` | cutaway obliques |
-| `enemy-sheet.png` | the four kinds beside a pilot and a shambler, in the station's light, plus a close-up of each in its habitat |
+| `lineup.png` | the four kinds beside a pilot and a shambler on P2, in the station's sodium light |
+| `enemy-sheet.png`, `close-*.png` | a close-up of each kind in its habitat (the sheet is the four close-ups) |
 | `compare/ward-*.png` | Ward Zero's instance through the same harness, for the step up |
 
 Checks:

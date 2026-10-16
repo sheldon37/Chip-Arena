@@ -1,3 +1,38 @@
+## 2026-10-16 — Claude: Central Station design (layout, station enemies, look; not live)
+
+- Owner (verbatim): "lets begin the design for the Central Station and City Ironworks~ we can tweak the instances to have specific zombies / enemies. So lets also begin creating unique enemies for those zones. We can work on visual updates / bosses after." Follow-up via the coordinator: the station must look clearly better than Ward Zero, using our real assets and lighting. This entry covers Central Station only; City Ironworks is a parallel task.
+- Branch `claude/central-station-design`, created from shared `bb4b36a` and rebased onto shared `c471e24` before the checks. Pushed; no PR, no merge, not live, no publication.
+- **Design:** `docs/EXPEDITION-CENTRAL-STATION.md`.
+  - A through station at night with failing power: a low ticket hall, a grand concourse under a broken glass vault (the boss arena placeholder), and four platforms under a train shed. One train stalled on T2 (car 2 is a walk-through); a scheduled express on T1; the freight line T3 flooded at its west end.
+  - Footbridges at y 6, the signal box at the far end, a maintenance corridor behind P4, and an upper loop of balconies, gallery and offices.
+  - Barrow crossings (track-level, the third rail gapped) give the short, dangerous route across the live lines.
+  - Look and set dressing per room (hero shot, palette, lights, haze, wet surfaces, density); the asset inventory with ranked gaps; the draft look entry; hazards (reused kit pieces plus proposals); the encounter plan; 56 audio cue keys with briefs; per-room budget and the low tier.
+- **Four station enemies** (proposals): Linesman (electric controller; chain arc, grounded in rail or flood, battery weak point), Conductor (commander; whistle aura, calls train-door surges, lantern weak point), Undertow (grabber; hunts from the flood and pits, drags pilots toward the express lane), Pileup (shield heavy; a carriage door as frontal armour, shoves pilots into the pits, splits into crawlers). Each has its own identity light, an animation set from the ZOMBIE PRO clips (exported and to export), telegraphs with timings, VFX and audio cues, and an Astra contract: stats, AI states, spawn weights per phase and entrance, and networking fields (replicated vs derived).
+- **Blockout (draft, not live):**
+  - `docs/arenas/scripts/expedition_central_station.py` writes `unity/ChipArenaConversion/Tests/expedition-central-station-draft.json`: the map entry (458 blocks, 18 stairs and steps), the `exp-transit` area record (exit door with 8 entries, 3 caches, 3 boss points, 47 spawns of today's kinds and entrances, plus a `station` list per spawn), the hub door record at the reserved doorway (0, -84), the look, and the proposals (machines, hazard volumes, new entrance kinds).
+  - Nothing under `Assets/` names it.
+  - The generator reads `Resources/UnityMaps.json` and `ExpeditionLayout.json` and writes neither.
+- **Generator checks (pass):**
+  - ground, upper and track bed all reached from the entries (4,718 / 1,880 / 1,069 m2);
+  - records with pilot clearance, entries and boss points Hulk-clear;
+  - Hulk and pilot routes from entry 0 to every entry, boss point and the approach (12/12);
+  - 47 spawn exits on reached floor with their clear radius, all routed back (Hulk exits with the Hulk capsule);
+  - allow lists within the entry rules; breach panels on solid faces; 0 overlapping colliders;
+  - 18 valid stairs; hazard volumes in bounds and 2 m clear of the records;
+  - the hub door record on Station Road, Hulk-clear.
+- **Managed check:** `Tests/ExpeditionStationDraftChecks.cs`, run from `ExpeditionLayoutChecks`. The draft map validates and merges beside today's maps. Astra's `NativeExpeditionLayout.Parse` and `ValidateGeometry` accept the live manifest plus `exp-transit` and its hub door. The town's routes use the imported navigation; the station's use a capsule flood over its own collision (no navigation yet). Every walking-floor cell is joined to the entries. The look validates beside today's looks and lists every block. The station enemy ids are not horde kinds.
+- **Python check:** `Tests/test_expedition_station_draft.py`. The fixture is the script's output, the six live resources are byte-identical after a run, and no live manifest, map or look holds the station.
+- **Finding for import (town, Claude):** the live town spawn `drop-hulk-station` lands at (0, -76), 2.2 m from the station door's returns, so it must move. `exp-transit` moves from `hub.reserved` to `routes`, and the facade kit swaps its boarded doorway for the airlock.
+- **For Astra (when the owner approves):**
+  - navigation for `expedition-transit` in `tools/generate_expedition.py` (prefix and the 0.5 m grid, as Ward Zero's);
+  - the new kinds' rules, hazards (express, third rail, flood, spark cabinets) and the director's phases;
+  - the networking fields in the doc's section 8.
+- **Renders** (offline, not in the repo; the real `NativeBlockLit` and night-sky shaders with the draft look, 8 picked practical lights, a harness-side concept dressing and posed rig models) are in `scratchpad/renders-central-station/`, with a Ward Zero comparison through the same harness.
+- **Checks run** (final tree on `c471e24`, `run5b.sh`, all exit 0): Unity runtime and editor assemblies build; `tools/check_relay.py` 765 PASS lines, "35 managed-core checks passed", including "PASS expedition station draft (67 checks)"; Python `unittest discover` 131 tests OK (1 skipped), including the 2 station tests; `package_source.py` structure passed (2,211 source files); `git diff --check` clean. No MagicFx retry was needed.
+- **Not run:** a Unity Editor or Windows build of the station (nothing is live), navigation generation, any director, AI or network behaviour, audio, two-client play. The concept dressing exists only in the render harness.
+- **Impact:** none on live content, hit timing, hitboxes, damage, cooldowns, movement, networking or saves. Test code only gains a check, and `ExpeditionLayoutChecks.Supported` becomes internal.
+- **Next:** owner decisions (doc section 14). Then Claude imports and dresses; Astra does navigation, rules and the director.
+
 ## 2026-10-16 — Astra: airborne Expedition chip selection
 
 - Branch `codex/chip-selection-ground`, base shared/builder `bb4b36a`.
