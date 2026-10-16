@@ -121,7 +121,20 @@ namespace ChipArena.UnityConversion
                 int before=NavigationSearches;
                 for(int i=0;i<12;i++){Clock(301+i/60d);StepPveHorde();root.scene.GetPhysicsScene().Simulate(1f/60);}
                 Check(NavigationSearches-before==1,"possessed hide route is cached, not chase/hide rebuilt every tick");
-                Debug.Log("PASS Ward full-size Hulk PhysX movement, 192 shared crowd routes and possessed route cache");
+                Map.nav=savedNav;navMap=null;PrepareNavigation();
+                bool completed=false;var goal=Vec(Map.nav.nodes[0].pos);
+                for(int tick=0;tick<120&&!completed;tick++)
+                {
+                    Clock(302+tick/60d);int linksBefore=NavigationLinkChecks;
+                    var flow=AdvanceCrowdRoute(p.Seat.id,goal);
+                    int first=NavigationLinkChecks;
+                    for(int i=0;i<192;i++)AdvanceCrowdRoute(p.Seat.id,goal);
+                    Check(NavigationLinkChecks==first,"192 callers do not multiply the per-tick flow budget");
+                    Check(first-linksBefore<=512,"native flow physics-query slice stays bounded");
+                    completed=flow.ready&&!flow.pending;
+                }
+                Check(completed,"budgeted Ward flow completes");
+                Debug.Log("PASS Ward full-size Hulk PhysX movement, 192 shared crowd routes, bounded live flow slices and possessed route cache");
             }
             finally
             {

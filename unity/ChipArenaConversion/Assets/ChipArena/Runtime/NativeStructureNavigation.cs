@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     {
         private readonly Dictionary<int,(float at,int revision,Vector3 target,List<string> path,int step)> navRoutes=new Dictionary<int,(float,int,Vector3,List<string>,int)>();
         private sealed class CrowdRoute
-        {public NativeNavSearch search;public float at;public int revision;public Vector3 target;public MapNavNode end;}
+        {public NativeNavSearch search,building;public float at,tick=float.NegativeInfinity;public int revision;public Vector3 target;public MapNavNode end;public bool pending,ready;}
         private readonly Dictionary<int,CrowdRoute> crowdRoutes=new Dictionary<int,CrowdRoute>();
         private Dictionary<string,MapNavNode> navNodes;
         private Dictionary<string,List<MapNavLink>> navEdges;
@@ -41,19 +41,19 @@ namespace ChipArena.UnityConversion
             if(UnsafeStructure(pos)||unsafeStage)
             {var safe=NearestEscapeNode(pos,false);if(safe!=null)return new Vector3(safe.pos.x-pos.x,0,safe.pos.z-pos.z).normalized;}
             if(!hubNav&&Map.hazards==null&&Math.Abs(target.y-pos.y)<1.1&&!SceneLinecast(pos,target,WorldMask)&&!UnsafeStructurePath(pos,target))return fallback;
-            if(!navRoutes.TryGetValue(actorId,out var route)||Time-route.at>.7f||route.revision!=NavigationRevision||(route.target-target).sqrMagnitude>9)
+            CrowdRoute crowd=crowdGoal.HasValue?AdvanceCrowdRoute(crowdGoal.Value,target):null;
+            if(!navRoutes.TryGetValue(actorId,out var route)||crowd!=null&&crowd.pending&&route.path.Count==0&&Time-route.at>.1f||Time-route.at>.7f||route.revision!=NavigationRevision||(route.target-target).sqrMagnitude>9)
             {
                 var start=NearestNavNode(pos);var path=route.path??new List<string>();path.Clear();
                 if(crowdGoal.HasValue)
                 {
-                    if(!crowdRoutes.TryGetValue(crowdGoal.Value,out var flow))
-                    {flow=new CrowdRoute{search=new NativeNavSearch(Map.nav),at=float.NegativeInfinity};crowdRoutes.Add(crowdGoal.Value,flow);}
-                    if(Time-flow.at>.7f||flow.revision!=NavigationRevision||(flow.target-target).sqrMagnitude>9)
+                    if(start!=null)
                     {
-                        flow.at=Time;flow.revision=NavigationRevision;flow.target=target;flow.end=NearestNavNode(target);
-                        if(flow.end!=null){NavigationSearches++;flow.search.BuildFlow(flow.end.id,navActive);}
+                        // A settled partial route is usable immediately; otherwise keep
+                        // the previous complete tree while the replacement is built.
+                        bool traced=crowd.pending&&crowd.building.TraceSettledFlow(start.id,path);
+                        if(!traced&&crowd.ready)crowd.search.TraceFlow(start.id,path);
                     }
-                    if(start!=null&&flow.end!=null)flow.search.TraceFlow(start.id,path);
                 }
                 else
                 {var end=NearestNavNode(target);NavigationSearches++;if(start!=null&&end!=null)navSearch.Find(start.id,end.id,navActive,path);}
@@ -67,6 +67,32 @@ namespace ChipArena.UnityConversion
                 if(!open){route.at=-100;navRoutes[actorId]=route;return Vector3.zero;}
             }
             navRoutes[actorId]=route;var waypoint=Vec(navNodes[route.path[route.step]].pos);var delta=waypoint-pos;return new Vector3(delta.x,0,delta.z).normalized;
+        }
+        private CrowdRoute AdvanceCrowdRoute(int goal,Vector3 target)
+        {
+            if(!crowdRoutes.TryGetValue(goal,out var flow))
+            {
+                flow=new CrowdRoute{search=new NativeNavSearch(Map.nav),building=new NativeNavSearch(Map.nav),at=float.NegativeInfinity};
+                crowdRoutes.Add(goal,flow);
+            }
+            bool changed=flow.revision!=NavigationRevision;
+            if(changed||!flow.pending&&(Time-flow.at>.7f||(flow.target-target).sqrMagnitude>9))
+            {
+                if(changed)flow.ready=false;
+                flow.revision=NavigationRevision;flow.target=target;flow.end=NearestNavNode(target);flow.at=Time;
+                flow.pending=flow.end!=null;
+                if(flow.pending){NavigationSearches++;flow.building.BeginFlow(flow.end.id);}
+            }
+            if(flow.pending&&flow.tick!=Time)
+            {
+                flow.tick=Time;
+                if(flow.building.StepFlow(navActive,512))
+                {
+                    var previous=flow.search;flow.search=flow.building;flow.building=previous;
+                    flow.ready=true;flow.pending=false;flow.at=Time;
+                }
+            }
+            return flow;
         }
         private MapNavNode NearestNavNode(Vector3 point)
         {

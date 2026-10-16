@@ -11,10 +11,11 @@ namespace ChipArena.UnityConversion
         private long hitchLast;private double hitchUpdate,hitchFixed;private int hitchTicks;
         private int hitchGc0,hitchGc1,hitchGc2;private bool hitchReady;
         private double hitchReplay,hitchSnapshot,hitchEffects,hitchArenaStep,hitchPhysics,hitchNavigation,hitchDeathRecord,hitchHorde,hitchHordeSpawn;private int hitchNavSearches;private ArenaPresentation hitchDeathView;private double hitchDeathViewLast;
-        private string lastHitchReport="No stall recorded";
+        private string lastHitchReport="No stall recorded",worstActiveHitchReport="No active frame recorded";
+        private double worstActiveFrameMs;private NativeArena hitchActiveArena;
         private double hitchNavNearest,hitchNavLinks;private int hitchNavLinkChecks;
         private double hitchDeathBuildLast,hitchDeathStepLast,hitchDeathWoundLast;private int hitchDeathCreatesLast;
-        private double hitchReplayPlayback,hitchReplayPrepare,hitchReplayApply;
+        private double hitchReplayPlayback,hitchReplayPrepare,hitchReplayApply,hitchAbilities,hitchStatus,hitchGlow;
         private static double HitchMs(long since)=>(Stopwatch.GetTimestamp()-since)*1000d/Stopwatch.Frequency;
         [Serializable] private sealed class HitchReport
         {
@@ -23,6 +24,7 @@ namespace ChipArena.UnityConversion
             public double arenaStepMs,physicsMs,navigationMs,deathRecordMs,deathPresentationMs,hordeMs,hordeSpawnMs;public int navigationSearches;
             public double frameMs,averageMs,worstMs,simulationMs,updateMs,presentationMs,animationMs,unattributedMs,replayMs,snapshotMs,effectsMs;
             public double navigationNearestMs,navigationLinkMs,deathBuildMs,deathStepMs,deathWoundMs;public int navigationLinkChecks,deathCreates;
+            public double abilitiesMs,statusMs,glowMs;
             public double replayPlaybackMs,replayPrepareMs,replayApplyMs;public bool replayActive;
             public int fixedTicks,gc0,gc1,gc2,pilots,minions,projectiles,props,events,particles,drawnParts,replayFrames,width,height,hitches,corpses,slashes;
             public long managedBytes;
@@ -37,17 +39,21 @@ namespace ChipArena.UnityConversion
             if(hitchReady&&!dedicated&&arena!=null)
             {
                 double dt=(now-hitchLast)*1000d/Stopwatch.Frequency;
-                if(hitchWindow.Observe(now/(double)Stopwatch.Frequency,dt))
+                if(!ReferenceEquals(hitchActiveArena,arena))
+                {hitchActiveArena=arena;worstActiveFrameMs=0;worstActiveHitchReport="No active frame recorded";}
+                bool report=hitchWindow.Observe(now/(double)Stopwatch.Frequency,dt);
+                bool activeWorst=hitchArenaStep>0&&!replayRunning&&!(menu&&!Online)&&dt>worstActiveFrameMs;
+                if(report||activeWorst)
                 {
                     var r=new HitchReport{utc=DateTime.UtcNow.ToString("O"),map=arena.MapId,weapon=arena.Local?.Seat.spec,
                         phase=match?.Phase.ToString(),graphics=prefs?.graphics,graphicsApi=SystemInfo.graphicsDeviceType.ToString(),
-                        focused=Application.isFocused,paused=menu,replica=arena.Replica,reducedEffects=prefs?.reducedEffects??false,
+                        focused=Application.isFocused,paused=menu&&!Online,replica=arena.Replica,reducedEffects=prefs?.reducedEffects??false,
                         frameMs=dt,averageMs=hitchWindow.AverageMs,worstMs=hitchWindow.WorstMs,simulationMs=hitchFixed,
                         pveStage=arena.Pve?.Stage,pvePhase=arena.Pve?.Phase??0,hordeCap=arena.Pve?.Cap??0,hordeMs=hitchHorde,hordeSpawnMs=hitchHordeSpawn,
                         arenaStepMs=hitchArenaStep,physicsMs=hitchPhysics,navigationMs=hitchNavigation,navigationSearches=hitchNavSearches,deathRecordMs=hitchDeathRecord,deathPresentationMs=deathViewMs,
                         navigationNearestMs=hitchNavNearest,navigationLinkMs=hitchNavLinks,navigationLinkChecks=hitchNavLinkChecks,
                         deathBuildMs=Math.Max(0,deathBuild-(sameDeathView?hitchDeathBuildLast:0)),deathStepMs=Math.Max(0,deathStep-(sameDeathView?hitchDeathStepLast:0)),deathWoundMs=Math.Max(0,deathWound-(sameDeathView?hitchDeathWoundLast:0)),deathCreates=Math.Max(0,deathCreates-(sameDeathView?hitchDeathCreatesLast:0)),
-                        replayMs=hitchReplay,snapshotMs=hitchSnapshot,effectsMs=hitchEffects,corpses=presentation?.DiagnosticCorpseCount??0,slashes=presentation?.DiagnosticSlashCount??0,
+                        replayMs=hitchReplay,snapshotMs=hitchSnapshot,effectsMs=hitchEffects,abilitiesMs=hitchAbilities,statusMs=hitchStatus,glowMs=hitchGlow,corpses=presentation?.DiagnosticCorpseCount??0,slashes=presentation?.DiagnosticSlashCount??0,
                         replayPlaybackMs=hitchReplayPlayback,replayPrepareMs=hitchReplayPrepare,replayApplyMs=hitchReplayApply,replayActive=replayRunning,
                         fixedTicks=hitchTicks,updateMs=hitchUpdate,presentationMs=viewMs,animationMs=presentation?.AnimationMs??0,
                         // Includes rendering/GPU waits, scheduling, other callbacks and uninstrumented work; NOT a GPU measurement.
@@ -56,13 +62,14 @@ namespace ChipArena.UnityConversion
                         projectiles=arena.Bullets.Count,props=arena.Props.Count,events=arena.Events.Count,
                         particles=presentation?.ParticleCount??0,drawnParts=presentation?.DrawnParts??0,
                         replayFrames=this.replayFrames.Count,width=Screen.width,height=Screen.height,hitches=hitchWindow.Hitches};
-                    lastHitchReport=JsonUtility.ToJson(r);
-                    Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"PERF_HITCH {0}",lastHitchReport);
+                    string json=JsonUtility.ToJson(r);
+                    if(activeWorst){worstActiveFrameMs=dt;worstActiveHitchReport=json;}
+                    if(report){lastHitchReport=json;Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"PERF_HITCH {0}",json);}
                 }
             }
             hitchDeathView=presentation;hitchDeathViewLast=deathView;hitchDeathBuildLast=deathBuild;hitchDeathStepLast=deathStep;hitchDeathWoundLast=deathWound;hitchDeathCreatesLast=deathCreates;
             hitchNavNearest=hitchNavLinks=0;hitchNavLinkChecks=0;
-            hitchReplayPlayback=hitchReplayPrepare=hitchReplayApply=0;
+            hitchReplayPlayback=hitchReplayPrepare=hitchReplayApply=hitchAbilities=hitchStatus=hitchGlow=0;
             hitchLast=now;hitchGc0=g0;hitchGc1=g1;hitchGc2=g2;hitchReady=true;hitchUpdate=hitchFixed=hitchReplay=hitchSnapshot=hitchEffects=hitchArenaStep=hitchPhysics=hitchNavigation=hitchDeathRecord=hitchHorde=hitchHordeSpawn=0;hitchTicks=hitchNavSearches=0;
         }
     }

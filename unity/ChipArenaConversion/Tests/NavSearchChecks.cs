@@ -82,6 +82,34 @@ internal static class NavSearchChecks
                 for(int j=1;j<result.Count;j++)Check(edges[result[j-1]].Any(l=>(l.a==result[j]||l.b==result[j])&&active(l)),"flow directed/live edge");
             }
         }
+        // Budgeted reverse search must produce the same trees as an atomic build.
+        var incremental=new NativeNavSearch(map.nav);var partial=new List<string>(map.nav.nodes.Length);
+        int slices=0,peakQueries=0;
+        foreach(var active in new[]{all,closedHazards})
+        {
+            string end=map.nav.nodes[map.nav.nodes.Length-1].id;
+            flow.BuildFlow(end,active);incremental.BeginFlow(end);
+            int calls=0;Func<MapNavLink,bool> measured=l=>{calls++;return active(l);};
+            do
+            {
+                calls=0;incremental.StepFlow(measured,128);slices++;peakQueries=Math.Max(peakQueries,calls);
+                Check(calls<=128,"incremental flow respects physics-query budget");
+                for(int i=0;i<16;i++)
+                {
+                    string start=map.nav.nodes[i*379%map.nav.nodes.Length].id;
+                    if(incremental.TraceSettledFlow(start,partial))
+                    {flow.TraceFlow(start,result);Check(partial.SequenceEqual(result),"partial settled tree matches complete tree");}
+                }
+                Check(slices<1000,"incremental flow terminates");
+            }while(!incremental.FlowComplete);
+            foreach(var node in map.nav.nodes)
+            {incremental.TraceFlow(node.id,partial);flow.TraceFlow(node.id,result);Check(partial.SequenceEqual(result),"complete budgeted tree equivalence");}
+        }
+        // Restart discards partially processed edges and an old target/gate state.
+        small.BeginFlow("lower");small.StepFlow(all,1);small.BeginFlow("upper");
+        while(!small.StepFlow(all,1)){}small.TraceFlow("lower",result);Check(result.Count==0,"restart retains directed drops");
+        small.BeginFlow("lower");while(!small.StepFlow(l=>false,1)){}small.TraceFlow("upper",result);Check(result.Count==0,"restart observes closed gate");
+        Console.WriteLine($"PASS budgeted crowd navigation: {slices} slices, at most {peakQueries}/128 live queries per slice; all Ward nodes and settled partial paths match atomic searches");
         // Maximum hidden-phase load, with both destinations and dynamic gate variants.
         var crowdWatch=new Stopwatch();long crowdBytes=GC.GetAllocatedBytesForCurrentThread();crowdWatch.Start();
         for(int goal=0;goal<2;goal++)
