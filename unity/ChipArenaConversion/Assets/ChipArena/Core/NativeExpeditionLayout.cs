@@ -11,8 +11,15 @@ namespace ChipArena.UnityConversion
         public bool Contains(V3 p)
         {double a=yaw*Math.PI/180,c=Math.Cos(a),s=Math.Sin(a),dx=p.x-x,dz=p.z-z;return Math.Abs(c*dx-s*dz)<=sx/2&&Math.Abs(p.y-y)<=sy/2&&Math.Abs(s*dx+c*dz)<=sz/2;}
     }
+    // Join y is the cylinder base; membership tests the authoritative capsule centre.
+    [Serializable] public sealed class ExpeditionJoinCylinder
+    {
+        public float x,y,z,r,h;
+        public bool Contains(V3 p)
+        {double dx=p.x-x,dz=p.z-z;return dx*dx+dz*dz<=(double)r*r&&p.y>=y&&p.y<=y+h;}
+    }
     [Serializable] public sealed class ExpeditionDoorLayout
-    {public string anchor;public ExpeditionVolume interact,closure;public ExpeditionPoint approach;public ExpeditionPoint[] entries,returns;}
+    {public string anchor;public ExpeditionJoinCylinder join;public ExpeditionVolume interact,closure;public ExpeditionPoint approach;public ExpeditionPoint[] entries,returns;}
     [Serializable] public sealed class ExpeditionInteractionLayout
     {public string anchor;public float x,y,z,range;}
     [Serializable] public sealed class ExpeditionGateLayout
@@ -47,6 +54,11 @@ namespace ChipArena.UnityConversion
         {var o=Obj(x);return new ExpeditionPoint{x=Number(o,"x"),y=Number(o,"y"),z=Number(o,"z"),yaw=yaw?Number(o,"yaw"):0};}
         private static ExpeditionVolume Volume(object x)
         {var o=Obj(x);var v=new ExpeditionVolume{x=Number(o,"x"),y=Number(o,"y"),z=Number(o,"z"),sx=Number(o,"sx"),sy=Number(o,"sy"),sz=Number(o,"sz"),yaw=Number(o,"yaw")};if(v.sx<=0||v.sy<=0||v.sz<=0)throw new FormatException("Expedition layout: empty volume.");return v;}
+        private static ExpeditionJoinCylinder Join(object x)
+        {
+            var o=Obj(x);var v=new ExpeditionJoinCylinder{x=Number(o,"x"),y=Number(o,"y"),z=Number(o,"z"),r=Number(o,"r"),h=Number(o,"h")};
+            if(v.r<=0||v.h<=0)throw new FormatException("Expedition layout: empty join cylinder.");return v;
+        }
         public const string ResourceName="ExpeditionLayout";
         public static ExpeditionLayout Load(Func<string,string> resource,ConversionContent content,NativePveContent horde,
             Func<string,bool> knownLook,Func<string,V3,float,float,bool> supported,Func<string,V3,V3,float,float,bool> reachable)
@@ -77,6 +89,7 @@ namespace ChipArena.UnityConversion
                 if(a.anchors.Count(v=>v.kind=="door")!=a.doors.Length||a.doors.Select(d=>d.anchor).Distinct().Count()!=a.doors.Length||a.doors.Any(d=>!a.anchors.Any(v=>v.id==d.anchor&&v.kind=="door")))throw new FormatException("Expedition layout: door metadata mismatch.");
                 foreach(var d in a.doors)
                 {
+                    if(d.join!=null&&a.id!=l.world)throw new FormatException("Expedition layout: join cylinder belongs at a hub entry.");
                     var anchor=a.anchors.First(v=>v.id==d.anchor);if(!l.instances.Contains(anchor.building)||a.id!=l.world&&anchor.building!=a.id||(a.id==l.world?d.returns:d.entries).Length!=8)throw new FormatException("Expedition layout: door building or eight slots missing.");
                 }
                 if(a.interactions.Select(i=>i.anchor).Distinct().Count()!=a.interactions.Length||a.interactions.Any(i=>i.range<=0||i.range>10||!a.anchors.Any(v=>v.id==i.anchor&&(v.kind=="machine"||v.kind=="chest")))||a.anchors.Any(v=>(v.kind=="machine"||v.kind=="chest")&&!a.interactions.Any(i=>i.anchor==v.id)))throw new FormatException("Expedition layout: missing or invalid interaction evidence point.");
@@ -110,9 +123,19 @@ namespace ChipArena.UnityConversion
                 }
                 foreach(var v in area.sanctuary.Concat(area.doors.SelectMany(d=>new[]{d.interact,d.closure})).Concat(area.gates.Select(g=>g.closure)))VolumeBounds(v);
                 if(area.bossTrigger!=null)VolumeBounds(area.bossTrigger);
+                foreach(var door in area.doors.Where(d=>d.join!=null))
+                {
+                    var j=door.join;
+                    VolumeBounds(new ExpeditionVolume{x=j.x,y=j.y+j.h/2,z=j.z,sx=2*j.r,sy=j.h,sz=2*j.r});
+                    Check(new V3(j.x,j.y,j.z),.45f,1.8f);
+                    // Sample the usable circle for authored floor/obstruction; physics remains the runtime authority.
+                    for(int k=0;k<8;k++){double a=k*Math.PI/4;Check(new V3(j.x+(float)Math.Cos(a)*j.r,j.y,j.z+(float)Math.Sin(a)*j.r),.45f,1.8f);}
+                }
                 foreach(var p in area.slots)if(!area.sanctuary.Any(v=>v.Contains(p.Position)))throw new FormatException("Expedition layout: sanctuary slot outside sanctuary.");
                 foreach(var anchor in area.anchors)Check(new V3(anchor.x,anchor.y,anchor.z),.45f,1.8f);
                 var origin=slots.FirstOrDefault()??throw new FormatException("Expedition layout: no navigation origin.");
+                foreach(var d in area.doors.Where(d=>d.join!=null))
+                    if(!reachable(area.map,origin.Position,new V3(d.join.x,d.join.y,d.join.z),.45f,1.8f))throw new FormatException("Expedition layout: unreachable join cylinder.");
                 foreach(var p in slots.Concat(area.bossPoints).Concat(area.doors.Select(d=>d.approach)))
                     if(!reachable(area.map,origin.Position,p.Position,.45f,1.8f)||!reachable(area.map,origin.Position,p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight))throw new FormatException("Expedition layout: unreachable point in "+area.id);
                 foreach(var group in area.doors.Select(d=>d.entries).Concat(area.doors.Select(d=>d.returns)).Concat(new[]{area.slots}))
@@ -138,7 +161,7 @@ namespace ChipArena.UnityConversion
         {
             var o=Obj(x);string id=Id(Text(o,"id"));
             var a=new ExpeditionAreaLayout{id=id,role=Text(o,"role"),map=Id(Text(o,"map")),anchors=Items(o,"anchors",v=>{var q=Obj(v);var p=Point(v);return new ExpeditionWorldAnchor{id=Id(Text(q,"id")),area=id,kind=Text(q,"kind"),building=Text(q,"building"),x=p.x,y=p.y,z=p.z,yaw=p.yaw};},true),
-                doors=Items(o,"doors",v=>{var q=Obj(v);return new ExpeditionDoorLayout{anchor=Id(Text(q,"anchor")),interact=Volume(Required(q,"interact")),closure=Volume(Required(q,"closure")),approach=Point(Required(q,"approach"),false),entries=Items(q,"entries",p=>Point(p)),returns=Items(q,"returns",p=>Point(p))};},true),
+                doors=Items(o,"doors",v=>{var q=Obj(v);return new ExpeditionDoorLayout{anchor=Id(Text(q,"anchor")),join=q.ContainsKey("join")?Join(Required(q,"join")):null,interact=Volume(Required(q,"interact")),closure=Volume(Required(q,"closure")),approach=Point(Required(q,"approach"),false),entries=Items(q,"entries",p=>Point(p)),returns=Items(q,"returns",p=>Point(p))};},true),
                 interactions=Items(o,"interactions",v=>{var q=Obj(v);var p=Point(v,false);return new ExpeditionInteractionLayout{anchor=Id(Text(q,"anchor")),x=p.x,y=p.y,z=p.z,range=Number(q,"range")};}),
                 gates=Items(o,"gates",v=>{var q=Obj(v);return new ExpeditionGateLayout{id=Id(Text(q,"id")),opens=Text(q,"opens"),closure=Volume(Required(q,"closure"))};}),sanctuary=Array.Empty<ExpeditionVolume>(),slots=Array.Empty<ExpeditionPoint>()};
             var boss=Obj(Required(o,"boss"));a.bossPoints=Items(boss,"points",v=>Point(v),true);if(boss.TryGetValue("trigger",out var trigger))a.bossTrigger=Volume(trigger);

@@ -71,6 +71,15 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             var o=new JsonSerializerOptions{IncludeFields=true};string R(string p)=>File.ReadAllText(Path.Combine(root,p));
+            var cylinder=new ExpeditionJoinCylinder{x=79,y=2,z=0,r=2.5f,h=3};
+            Check(cylinder.Contains(new V3(81.5f,2,0))&&cylinder.Contains(new V3(79,5,0)),"join inclusive radial/base/top boundaries");
+            Check(!cylinder.Contains(new V3(81.51f,3,0))&&!cylinder.Contains(new V3(79,1.99f,0))&&!cylinder.Contains(new V3(79,5.01f,0)),"join excludes outside radius and vertical floors");
+            string joinSource=R("Tests/expedition-layout-draft.json");
+            string WithJoin(string value){var node=System.Text.Json.Nodes.JsonNode.Parse(joinSource);node["areas"][0]["doors"][0]["join"]=System.Text.Json.Nodes.JsonNode.Parse(value);return node.ToJsonString();}
+            var joined=NativeExpeditionLayout.Parse(WithJoin("{\"x\":79,\"y\":0,\"z\":0,\"r\":2.5,\"h\":3}"));
+            Check(joined.areas[0].doors[0].join.r==2.5f,"optional join parsed without changing legacy layout");
+            foreach(string bad in new[]{"null","{}","{\"x\":79,\"y\":0,\"z\":0,\"r\":0,\"h\":3}","{\"x\":79,\"y\":0,\"z\":0,\"r\":2.5,\"h\":-1}"})
+            {bool refused=false;try{NativeExpeditionLayout.Parse(WithJoin(bad));}catch(FormatException){refused=true;}Check(refused,"malformed join refused");}
             var town=JsonSerializer.Deserialize<UnityMapContent>(R("Tests/expedition-city-draft.json"),o).maps.Single();
             var inst=JsonSerializer.Deserialize<UnityMapContent>(R("Tests/expedition-ward-zero-draft.json"),o).maps.Single();
             var manifest=JsonSerializer.Deserialize<Manifest>(R("Tests/expedition-layout-draft.json"),o);
