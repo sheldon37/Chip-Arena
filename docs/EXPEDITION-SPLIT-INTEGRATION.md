@@ -38,14 +38,15 @@ stand-in fix or activate exp-layout-4 based on managed/compile results.
 4. Negotiate split-area wire capability; route each recipient's frame/projection,
    input, event and ack with area/epoch/transfer identity. Existing network code
    still broadcasts one area; never expose two-area data through it.
-5. Bump save envelope with schema-1 reader; finish packet-byte, active-count and
-   memory instrumentation; run required Windows worst-case timing.
+5. Owner removed run saves/resume on 2026-10-16. No save-envelope or schema-1
+   reader work remains. Finish packet-byte, active-count and memory instrumentation;
+   run required Windows worst-case timing.
 6. Connect `joins[]` records (doorId, area, joinInside, joinStartedAt, duration),
    `members[].atJoin/area`, and viewer-local area/phase/loading/areaBarrier to
    the public projection. Only then replace F entry alongside subset transfer.
    Preserve F exit/interactions. Claude owns the visual ring/countdown/party list.
 7. After all gates, switch live exp-layout-4 and BOTH LiveSha256 and Python PINNED.
-   Saves pinned to exp-layout-3 cannot resume after that layout switch.
+   Fresh runs no longer load saved layouts. Live connections still validate layout identity.
 
 ## Verification
 
@@ -61,3 +62,28 @@ Not run: new native placement fixture, split-area transport acceptance, Windows
 one-host/three-guest play with hub bystander, Windows two-area timing. No smoothness
 or performance claim. Shared and builder were observed at bb4b36a before push;
 this work has not been merged, built, published or enabled.
+
+## Follow-up: fresh runs and wire guards
+
+Live no-save policy was merged and synced to shared/builder at `8d1ec86` on
+2026-10-16, including the separately merged airborne chip-selection fix.
+Publication has not been verified. The gated split additions remain on this branch.
+This integration branch adds `ExpeditionAreaChannel<T>` for explicitly bound
+area/epoch/transfer identities with independent monotonic frame/event streams;
+`ExpeditionAreaCommandGate` rejects stale, duplicate, unready and wrong-account
+input. Capability negotiation contract is defined, but not advertised by live
+connections until the scene/director path is integrated.
+
+`ExpeditionAreaProjection.Build` requires a detached area-specific provider,
+refuses cross-area anchors, chests, arrivals, closures, loot, dice and hub state,
+and separates recipient-private data. Shared-public batching explicitly refuses
+split sessions. View receivers require explicit ticket binding and clear pending
+state on transfer/reconnect; guest replies must match both request and current
+identity. `joins[]`, `members[].area/atJoin` keep the agreed field names.
+The current global director is deliberately prohibited from supplying split views.
+A per-area provider and actor-frame transport call sites still need integration.
+
+Checks: 25 area-wire checks, 11 fresh-run checks, 91 integration, 481 rules,
+8370 presentation, 41 co-op and 98 director pass, plus C#9 warnings-as-errors
+compilation and Player/Runtime/Editor Unity API compilation. Source package: 2225
+files. No native execution, live split transport or Windows timing claim.

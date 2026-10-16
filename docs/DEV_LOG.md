@@ -8,6 +8,15 @@
 - Preserve the draft join cylinder (79,0,0), r 2.5, h 4. Future membership must use feet + 0.85, inclusive bounds and count airborne members. Keep LiveSha256/PINNED unchanged until the live layout switch is authorized by the gates.
 - Verification: Core and test sources compiled with C# 9 / warnings-as-errors using SDK 8.0.408 Roslyn against .NET 8 references. `dotnet run` cannot start in this container (Process.StartTime/GetStat error), so compilation and test execution use csc.dll and the dotnet runtime directly. Results: cohort checks 69 PASS, area registry/query audit 290 PASS, co-op lifecycle 41 PASS, director 98 PASS; source package check 2,210 files PASS; git diff --check PASS. Native adapter, Unity semantic compilation for this change, transport integration and Windows one-host/three-guest play are unrun. No smoothness/timing claim.
 
+## 2026-10-16 — Astra: airborne Expedition chip selection
+
+- Branch `codex/chip-selection-ground`, base shared/builder `bb4b36a`.
+- Cause: the chooser reused the full Leet freeze, resetting vertical velocity, pinning jump height and disabling gravity every tick.
+- Hold horizontal position and orientation, cancel upward momentum, preserve downward velocity and use the existing ground motor/gravity while choosing and through the final wrist plant. Existing freeze/scare still suspend the pilot. Damage, action gating, hold duration and wire format unchanged.
+- Added native M1 acceptance for rising/falling entry, real-geometry landing, horizontal hold and freeze precedence. Updated the selection contract. Host applies the same rule to all seats; guests already suspend prediction during the public choosing flag.
+- Verification: player, runtime and editor semantic compilation passed against pinned Unity references. Managed/relay suite result recorded in PR. Native Unity/PhysX acceptance and Windows host/guest play remain unrun here; the new native checks run on the Windows builder.
+- Implemented on task branch; integration/build publication status recorded in PR/final handoff.
+
 ## 2026-10-16 — Claude: footsteps cycled through terrains on one surface (surface lookup, memory, one series per key)
 
 - Owner: "walking continuously on one surface cycles through sounds that resemble different terrains." Trace the surface and key per foot contact; keep surfaces in separate pools; same check for zombies.
@@ -9640,3 +9649,19 @@ rerun the unchanged native acceptance gates before publication.
 - Managed C#9 warnings-as-errors compilation and affected checks pass: join 25, cohort 69, registry 292, co-op 41, director 98, draft 38, layout 268. Source package check passes (2219 files). Unity API compile checked separately; see integration handoff for exact final result.
 - Not executed: new native fixture, transport acceptance, Windows host + 3 guests, actual two-area timing. Existing live exp-layout-3 and F entry remain unchanged. No live pin or save compatibility switch, no build/publication claim.
 - Next: resolve combat-clock/effect ownership migration, integrate area director/session, per-recipient wire and schema reader, then native and Windows gates before Claude enables layout/ring/HUD. Full blockers in EXPEDITION-SPLIT-INTEGRATION.md. Animation assets unchanged.
+
+
+## 2026-10-16 — Astra: fresh-run scope and split wire isolation
+
+- Continued `codex/expedition-split-integration` from `0390ad9` tree. Owner removed run saves/resume: no envelope bump or schema-1 reader required. Independent no-save change is on `codex/expedition-fresh-runs` for shared/builder integration. Account persistence and live reconnect remain.
+- Added explicit area channel binding and sequence rejection, authenticated per-member input gate, per-recipient projection privacy guard, receiver reset on transfer/reconnect, command/reply identity guards, exact `joins[]` and member `area/atJoin` fields. Legacy shared-public batching fails closed if a split session is supplied. Not connected to the global live director.
+- Actual checks: fresh 11; area wire 25; integration 91; rules 481; presentation 8370; director 98/co-op 41; C#9 warnings-as-errors and pinned Unity Player/Runtime/Editor compilation; package structure 2225 files.
+- Split work still incomplete: combat timer/effect migration, native source-ledger cleanup, area director/progression/reprints/reward participants, actual actor frame/command routing, metrics and native/Windows play gates. Live join activation and F-entry removal remain blocked. No Windows timing measured. See EXPEDITION-SPLIT-INTEGRATION.md.
+
+## 2026-10-16 — Astra: fresh Expedition runs (owner policy update)
+
+- Branch `codex/expedition-fresh-runs`, base shared `bb4b36a`. Owner removed run saves/resume from scope. Every live launch already makes a new run ID; it now constructs an in-memory session without opening the disk store, and skips automatic checkpoint writes. Existing old files are neither read nor deleted.
+- Extraction commits once in the live run and confirms without a durable-save flag. Updated status text says fresh run/no saving; profile/account persistence and live reconnect remain. Legacy save implementation is retained for historical tests/tools, not connected to live launches. Expedition protocol is now 2 to reject clients with old extraction-save semantics at launch/reconnect.
+- Split-area registry/cohort/wire integration is intentionally absent from this independently shippable change. Live layout stays exp-layout-3 and F entry remains.
+- Validation: managed C#9 warnings-as-errors compilation; fresh-run, integration, rule/view, director and co-op checks; pinned Unity API Player/Runtime/Editor compilation. Native Unity execution and Windows visual play not performed in this environment; publication must be confirmed from the builder.
+- Animation, damage, cooldowns and movement unchanged. Host extraction with connected guests remains refused under the existing no-endpoint-migration rule.

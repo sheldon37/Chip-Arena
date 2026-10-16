@@ -16,8 +16,8 @@ namespace ChipArena.UnityConversion
 
     [Serializable] public sealed class ExpeditionViewMember
     {
-        public string account, name, weapon, carriedBy;public int reprintCost, seat;
-        public bool connected, alive, safe, extracted, choosing, host, exitVote, extractVote;
+        public string account, name, weapon, carriedBy, area;public int reprintCost, seat;
+        public bool connected, alive, safe, extracted, choosing, host, exitVote, extractVote, atJoin;
     }
     [Serializable] public sealed class ExpeditionViewInstance
     {
@@ -65,6 +65,8 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class ExpeditionView
     {
         public ExpeditionHubView hub;
+        public ExpeditionJoinView[] joins=Array.Empty<ExpeditionJoinView>();
+        public ExpeditionCohortTicket areaIdentity;
         public ExpeditionClosureView[] closures=Array.Empty<ExpeditionClosureView>();
         public ExpeditionBossArrivalView[] bossArrivals=Array.Empty<ExpeditionBossArrivalView>();
         public ExpeditionAreaBarrierView areaBarrier=new ExpeditionAreaBarrierView();
@@ -73,7 +75,7 @@ namespace ChipArena.UnityConversion
         public string run, world, area, host, viewer;
         public ExpeditionPhase phase;
         public double elapsed, exitAt=-1, extractAt=-1, exitSeconds, extractSeconds;
-        public bool loading, migrating, finalUnlocked, extractionUnlocked;
+        public bool loading, migrating, finalUnlocked, extractionUnlocked, freshRun;
         public string[] exitVotes=Array.Empty<string>(), extractVotes=Array.Empty<string>(), continueVotes=Array.Empty<string>();
         public ExpeditionWorldAnchor[] anchors=Array.Empty<ExpeditionWorldAnchor>();
         public ExpeditionChestOffer[] chests=Array.Empty<ExpeditionChestOffer>();
@@ -103,6 +105,9 @@ namespace ChipArena.UnityConversion
         public ExpeditionScaling Scaling;
         /// <summary>The last savepoint NativeExpeditionSaveStore.Write durably wrote. Extraction is only "saved" once its tombstone is in it.</summary>
         public ExpeditionSavepoint Saved;
+        public bool FreshRun;
+        public ExpeditionCohorts Cohorts;
+        public ExpeditionJoinRules Joins;
         /// <summary>The integration's record of its PrepareHandoff / CommitHandoff / AbortHandoff calls.</summary>
         public ExpeditionTransferLog Transfer;
         /// <summary>Transport-reported host candidates (reachable, capable, loss, latency, jitter).</summary>
@@ -161,13 +166,14 @@ namespace ChipArena.UnityConversion
         public static ExpeditionView Build(NativeExpedition run,string viewer,ExpeditionViewSources sources=null)
         {
             if(run==null)throw new ArgumentNullException(nameof(run));
+            if(sources?.Cohorts!=null)throw new InvalidOperationException("Use the area-specific projection provider for split sessions.");
             var s=run.Snapshot();sources??=new ExpeditionViewSources();var scaling=sources.Scaling??new ExpeditionScaling();
             string here=s.loop+":"+s.area+":",loopKey=s.loop+":";
             bool Live(ExpeditionMember p)=>p.connected&&p.alive&&!p.extracted;
             int living=s.members.Count(Live),party=Math.Max(1,Math.Min(8,s.members.Count(p=>p.connected&&!p.extracted)));
             var v=new ExpeditionView
             {
-                epoch=s.epoch,revision=s.revision,run=s.run,world=s.world,area=s.area,host=s.host,viewer=viewer,phase=s.phase,loop=s.loop,
+                joins=sources.Joins?.Views??Array.Empty<ExpeditionJoinView>(),areaIdentity=sources.Cohorts?.Member(viewer)?.Ticket,freshRun=sources.FreshRun,epoch=s.epoch,revision=s.revision,run=s.run,world=s.world,area=s.area,host=s.host,viewer=viewer,phase=s.phase,loop=s.loop,
                 elapsed=s.elapsed,exitAt=s.exitAt,extractAt=s.extractAt,exitSeconds=NativeExpedition.ExitSeconds,extractSeconds=NativeExpedition.ExtractSeconds,loading=s.loading,migrating=run.Migrating,finalUnlocked=run.FinalUnlocked,
                 extractionUnlocked=run.ExtractionUnlocked,living=living,extractNeeded=Majority(living),
                 exitVotes=(string[])s.exitVotes.Clone(),extractVotes=(string[])s.extractVotes.Clone(),continueVotes=(string[])s.continueVotes.Clone(),
@@ -176,7 +182,7 @@ namespace ChipArena.UnityConversion
                 difficulty=scaling.Evaluate(s.elapsed,party,s.loop,s.phase==ExpeditionPhase.Instance),
                 savedRevision=sources.Saved!=null&&sources.Saved.checkpoint!=null&&sources.Saved.checkpoint.run==s.run?sources.Saved.checkpoint.revision:-1,
             };
-            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,seat=Math.Max(0,sources.Seat?.Invoke(p.account)??0),name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
+            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,area=sources.Cohorts?.Member(p.account)?.Area??s.area,atJoin=sources.Joins?.AtJoin(p.account)==true,seat=Math.Max(0,sources.Seat?.Invoke(p.account)??0),name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
                 safe=p.safe,extracted=p.extracted,choosing=run.IsChoosing(p.account),host=p.account==s.host,exitVote=s.exitVotes.Contains(p.account),extractVote=s.extractVotes.Contains(p.account)}).ToArray();
             v.instances=s.instances.Select(i=>new ExpeditionViewInstance{id=i.id,target=i.target,progress=i.progress,entered=i.entered,cleared=i.cleared,
                 current=s.phase==ExpeditionPhase.Instance&&i.id==s.area,bosses=(string[])i.bosses.Clone(),defeated=(string[])i.defeated.Clone()}).ToArray();
@@ -234,6 +240,7 @@ namespace ChipArena.UnityConversion
         public static ExpeditionView Normalize(ExpeditionView v)
         {
             if(v==null)return null;static string N(string s)=>string.IsNullOrEmpty(s)?null:s;
+            v.joins??=Array.Empty<ExpeditionJoinView>();
             v.closures??=Array.Empty<ExpeditionClosureView>();v.bossArrivals??=Array.Empty<ExpeditionBossArrivalView>();v.areaBarrier??=new ExpeditionAreaBarrierView();v.areaBarrier.target=N(v.areaBarrier.target);v.areaBarrier.layout=N(v.areaBarrier.layout);
             v.continueVotes??=Array.Empty<string>();v.anchors??=Array.Empty<ExpeditionWorldAnchor>();v.chests??=Array.Empty<ExpeditionChestOffer>();
             v.members??=Array.Empty<ExpeditionViewMember>();v.loot??=Array.Empty<ExpeditionViewLoot>();v.instances??=Array.Empty<ExpeditionViewInstance>();v.dice??=Array.Empty<ExpeditionDice>();v.exitVotes??=Array.Empty<string>();v.extractVotes??=Array.Empty<string>();

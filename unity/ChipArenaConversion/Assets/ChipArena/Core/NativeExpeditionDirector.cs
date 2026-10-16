@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
             // Sold caches receive their next availability deadline immediately, then become purchasable on that clock.
             foreach(var offer in s.chests.Where(c=>c.sold))run.RestockChest(offer.id,s.loop+":"+offer.id+":"+run.Snapshot().revision,cachePrice,run.Elapsed+restockSeconds);
             s=run.Snapshot();bool safeParty=s.members.Where(m=>m.connected&&!m.extracted).All(m=>m.alive&&m.safe);
-            if(safeParty&&(s.phase==ExpeditionPhase.Town||s.phase==ExpeditionPhase.Victory)&&s.elapsed>=retryCheckpoint&&
+            if(!Session.FreshRun&&safeParty&&(s.phase==ExpeditionPhase.Town||s.phase==ExpeditionPhase.Victory)&&s.elapsed>=retryCheckpoint&&
                 Stamp(s)!=checkpointStamp)Checkpoint();
         }
         private static string Stamp(ExpeditionSnapshot s)=>s.epoch+"|"+s.loop+"|"+s.area+"|"+s.phase+"|"+s.events.Length+"|"+
