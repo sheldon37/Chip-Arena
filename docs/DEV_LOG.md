@@ -1,3 +1,20 @@
+## 2026-10-16 — Astra: Claude handoff, spawn preservation and instance groundwork
+
+- Branch `codex/expedition-claude-handoff`, base shared `c471e24`. This is a partial implementation of `astra-prompts-2026-10-16.md`; it does not complete the five-part handoff.
+- **Spawn parser fix:** retains `hulk`, `pit`, `song`, `block`, `center`, `size`, `normal`; strict boolean/integer/vector checks, Hulk flag only on drops, entry-kind allow compatibility, breach panel presence in the area's own map and finite positive geometry/unit normal. Live manifest and fingerprint algorithm unchanged.
+- **Authored content binding:** common detached-content binding for authority and guest before minion decoding. Guests previously interpreted hub entry indices through Ward's table. Area-owned spawn/boss/pad/hide records replace Ward defaults; authored areas do not accidentally build Ward machines. Breach collider lookup now uses the bound entry table and works outside the quarantine look. This does not generalize dynamic Hulk wall destruction or Claude's breach presentation.
+- **Navigation groundwork:** importer selects maps from the manifest. Recognizes `expedition-transit` (draft `expedition-central-station-draft.json`, `et` prefix) and `expedition-ironworks` (`ei` prefix), each at 0.5 m spacing. New maps import only after Claude explicitly adds them to the live manifest; unknown maps fail closed. Existing generated resources are unchanged.
+- **Instance shutter groundwork:** optional instance `gates[]` accept only `opens:"boss"`; world gates still accept only `opens:"final"`. Instance shutter follows its own boss roster/clear state, uses the existing one-second collider transition, and cannot unlock the global final gate. No shutter or map is enabled by this change.
+- **Checks:** managed layout, director/co-op and public-state checks; separate navigation-profile tests; Player/Runtime/Editor semantic compile using pinned Unity 6000.3.24f1 references; generator `--check`; source package structure and diff check. Final counts/results in PR. The .NET CLI crashes in `Process.StartTime` in this environment; managed sources were compiled directly with the SDK's Roslyn compiler and net8 reference assemblies, with tiering disabled for execution. No substitute Unity runtime was used.
+- **Not run:** native Unity/PhysX, Windows player, host/guest play, full relay regression, native two-area gate or performance measurements. No live build/publication is claimed by local compile checks.
+- **Claude next / outstanding:**
+  1. Parser fix is available on this branch. The Ironworks draft note can become a parser-field PASS. Presentation's `NativeHordeBreachPresentation` still reads `StageContent.entries`; use the arena's bound entries for authored maps when doing the presentation pass.
+  2. No `joins[]`, `atJoin` or per-member `area` delivered. `EXPEDITION-AREA-RUNTIME.md` explicitly requires executed native isolation PASS before cohort integration. Keep F entry and exp-layout-4 draft disabled; subset transfer, area projection and join countdown remain pending.
+  3. Machine authoring/table support, generic pit vents, instance hazard schedules/authority/replication, quota-phase roster/caps remain pending. New catalogue entries remain InDevelopment. The generic instance identity is groundwork, not playable new instances.
+  4. Central Station enemy rules/AI/network plumbing are not implemented in this batch. Design branch inspected; no enemy registration or proposal balance activated.
+  5. Ironworks enemy rules/AI/network plumbing are not implemented in this batch. Same boundary. No owner approval of the proposed layouts/enemies is inferred.
+- Integration: branch implementation only at entry creation; PR and final response record verified push/merge/builder status. Existing combat timings, damage, cooldowns and animation are unchanged.
+
 ## 2026-10-16 — Astra: airborne Expedition chip selection
 
 - Branch `codex/chip-selection-ground`, base shared/builder `bb4b36a`.

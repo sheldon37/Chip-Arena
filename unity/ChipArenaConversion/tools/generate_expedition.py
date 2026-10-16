@@ -18,13 +18,24 @@ sys.path.insert(0, str(ROOT / 'docs/arenas/scripts'))
 from expedition_common import Collider, block_hash
 
 
+# Drafts are imported only when the selected manifest names their map. Merely
+# adding a design branch/file never enables it in the live resource.
+MAP_DRAFTS = {
+    'expedition-city': ('city', 'ec', 1),
+    'expedition-ward-zero': ('ward-zero', 'ew', 2),
+    'expedition-transit': ('central-station', 'et', 2),
+    'expedition-ironworks': ('ironworks', 'ei', 2),
+}
+
+
 def navigation(m):
+    if m['id'] not in MAP_DRAFTS:
+        raise ValueError('Unknown Expedition navigation map: '+m['id'])
+    _, prefix, scale = MAP_DRAFTS[m['id']]
     off = set(m.get('navHints', {}).get('collisionOff', []))
     col = Collider([b for b in m['blocks'] if b['id'] not in off],
                    m.get('ramps', []), m['bounds'], cell=1)
     nodes, cells, links = [], {}, []
-    prefix = "ec" if m["id"] == "expedition-city" else "ew"
-    scale = 2 if m['id'] == 'expedition-ward-zero' else 1
     for x in range(math.ceil(m['bounds']['minX']*scale), math.floor(m['bounds']['maxX']*scale)):
         for z in range(math.ceil(m['bounds']['minZ']*scale), math.floor(m['bounds']['maxZ']*scale)):
             px, pz = (x+.5)/scale, (z+.5)/scale
@@ -84,9 +95,13 @@ def generate(check=False):
     resource = PROJECT / 'Assets/Conversion/Resources'
     manifest = json.loads((PROJECT/'Tests/expedition-layout-draft.json').read_text())
     maps = []
-    for name in ('city', 'ward-zero'):
+    for area in manifest['areas']:
+        if area['map'] not in MAP_DRAFTS:
+            raise ValueError('Unknown Expedition map: '+area['map'])
+        name, _, _ = MAP_DRAFTS[area['map']]
         m = copy.deepcopy(json.loads((PROJECT/f'Tests/expedition-{name}-draft.json').read_text())['maps'][0])
-        area = next(a for a in manifest['areas'] if a['map'] == m['id'])
+        if m['id'] != area['map']:
+            raise ValueError('Draft map ID mismatch: '+area['map'])
         if block_hash(m) != area['blockHash']:
             raise ValueError('Draft blockHash mismatch: '+m['id'])
         m['nav'] = navigation(m)

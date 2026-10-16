@@ -65,6 +65,7 @@ namespace ChipArena.UnityConversion
         private static void Rules(UnityMapContent maps,NativePveContent pve)
         {
             Check(NativeMachineRules.Present("siren",false)&&NativeMachineRules.Present("siren",true)&&NativeMachineRules.Present("expedition-ward-zero",true)&&!NativeMachineRules.Present("expedition-city",true),"machines stand in every PvE round and in Ward instances, not in the Expedition town");
+            Check(NativeMachineRules.Present("expedition-transit",true)&&NativeMachineRules.Present("expedition-ironworks",true)&&!NativeMachineRules.Present("expedition-unknown",true),"new authored instances permit their own machines; unknown maps fail closed");
             Check(pve.machines.Length==8&&pve.machineBlocks.Length==pve.machines.Length&&pve.machines.Select((m,i)=>m.m==i).All(x=>x),"eight machines, each with its collider at its index");
             Check(pve.machineBlocks.All(b=>NativeMachineModels.IsCollider(b.id)&&b.material=="foundation"),"every machine collider is named as one (the dressing hides them)");
             Check(maps.maps.All(m=>m.blocks.All(b=>!NativeMachineModels.IsCollider(b?.id))),"no map block is mistaken for a machine collider");
@@ -142,7 +143,7 @@ namespace ChipArena.UnityConversion
             Check(dress.Contains("e.Machine=prop.LocalFixture&&!prop.Fragment&&NativeMachineModels.IsCollider(b.id);")&&dress.Contains("!entries.TryGetValue(p,out var e)||e.Machine)continue;")&&dress.IndexOf("e.Machine=",StringComparison.Ordinal)<dress.IndexOf("r.forceRenderingOff=true",dress.IndexOf("private Entry Create(",StringComparison.Ordinal),StringComparison.Ordinal),"the dressing never draws a machine collider (its cube stays off)");
             string pveSrc=R("NativePve.cs"),exp=R("NativeExpeditionM1Arena.cs");
             Check(pveSrc.Contains("float Flat(Vector3 q)=>Math.Abs(q.y-p.Body.position.y)>1.7f?float.PositiveInfinity:new Vector2(q.x-p.Body.position.x,q.z-p.Body.position.z).magnitude;")&&pveSrc.Contains("Pve.Content.machines.Where(x=>Flat(Vec(x.front.Position()))<=2.2f)"),"the PvE use test is the one the prompt mirrors");
-            Check(exp.Contains("Pve.Content.machines.Where(m=>(m.front.Position()-feet).Length<=2.2f&&ExpeditionVisible(feet,m.front.Position()))")&&exp.Contains("if(NativeMapRules.WardInstance(MapId))BuildPveMachines(data);")&&exp.Contains("public bool ExpeditionVisible(V3 from,V3 to)=>!SceneLinecast(Vec(from)+Vector3.up*.6f,Vec(to)+Vector3.up*.6f,WorldMask);"),"the Expedition builds and serves machines only in Ward instances, with the test the prompt mirrors");
+            Check(exp.Contains("Pve.Content.machines.Where(m=>(m.front.Position()-feet).Length<=2.2f&&ExpeditionVisible(feet,m.front.Position()))")&&exp.Contains("if(NativeMapRules.ExpeditionInstance(MapId))BuildPveMachines(data);")&&exp.Contains("public bool ExpeditionVisible(V3 from,V3 to)=>!SceneLinecast(Vec(from)+Vector3.up*.6f,Vec(to)+Vector3.up*.6f,WorldMask);"),"the Expedition builds and serves machines only in recognized instances, with the test the prompt mirrors");
         }
     }
 }

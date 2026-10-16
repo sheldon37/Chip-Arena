@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
         private ContentBlock BreachBlock(NativeBreachRecord b)
         {
             if(b.Dynamic)return WardBlock(b.block)?.Definition;
-            foreach(var e in StageContent.entries)if(e.e==b.entry&&e.kind=="breach")return WardBlock(e.block)?.Definition;
+            foreach(var e in (Pve?.Content??StageContent).entries)if(e.e==b.entry&&e.kind=="breach")return WardBlock(e.block)?.Definition;
             return null;
         }
         private bool BreachOccupied(ContentBlock wall)
@@ -68,7 +68,7 @@ namespace ChipArena.UnityConversion
         }
         private void PoseWardBreaches()
         {
-            if(Map.look!="quarantine")return;
+            if(Map.look!="quarantine"&&(Pve==null||NativeMapRules.ArenaSelectable(Map)))return;
             foreach(var b in wardBreaches)
             {
                 var wall=BreachBlock(b);if(wall==null)continue;var collider=WardBlock(wall.id).GetComponent<Collider>();
@@ -148,7 +148,7 @@ namespace ChipArena.UnityConversion
             {a.WallBreach=b;return Time<b.breakAt;}
             // Bounded record count. Expired records are reusable; active entry breaches are never evicted.
             for(int i=wardBreaches.Count-1;i>=0;i--)if(wardBreaches[i].Dynamic&&Time>=NativeBreach.SolidAt(wardBreaches[i].restoreAt))wardBreaches.RemoveAt(i);
-            int reserved=0;foreach(var e in StageContent.entries)if(e.kind=="breach")reserved++;
+            int reserved=0;foreach(var e in (Pve?.Content??StageContent).entries)if(e.kind=="breach")reserved++;
             if(wardBreaches.Count>=64-reserved)return false;
             a.WallBreach=NativeHulkBreach.Begin(chosen.Definition,m.Id,Vec(point),Vec(delta),Time);
             wardBreaches.Add(a.WallBreach);a.HasBreachShortcut=false;a.WallProgress.tracking=false;

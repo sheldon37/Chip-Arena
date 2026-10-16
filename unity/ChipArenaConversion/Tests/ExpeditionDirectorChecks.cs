@@ -57,6 +57,19 @@ internal static class ExpeditionDirectorChecks
         bool rejected=false;try{NativeExpeditionLayout.ValidateGeometry(layout,geometry,null,(_,p,r,h)=>true,(_,a,b,r,h)=>false);}catch(FormatException){rejected=true;}Check(rejected,"disconnected navigation refuses");
         rejected=false;try{NativeExpeditionLayout.ValidateGeometry(layout,geometry,null,(_,p,r,h)=>h<NativeHordeKinds.HulkHeight,(_,a,b,r,h)=>true);}catch(FormatException){rejected=true;}Check(rejected,"Hulk clearance refuses");
         layout.Area("city").gates[0].closure.x=49;rejected=false;try{NativeExpeditionLayout.ValidateGeometry(layout,geometry,null,(_,p,r,h)=>true,(_,a,b,r,h)=>true);}catch(FormatException){rejected=true;}Check(rejected,"volume extents refuse out-of-bounds");layout=NativeExpeditionLayout.Parse(json);
+        // An instance shutter follows its own boss encounter, never the world's final unlock.
+        var gated=System.Text.Json.Nodes.JsonNode.Parse(json);
+        gated["areas"][1]["gates"]=System.Text.Json.Nodes.JsonNode.Parse("[{\"id\":\"ward-shutter\",\"opens\":\"boss\",\"closure\":{\"x\":0,\"y\":1,\"z\":0,\"sx\":3,\"sy\":3,\"sz\":1,\"yaw\":0}}]");
+        var gateLayout=NativeExpeditionLayout.Parse(gated.ToJsonString());
+        var gateRun=NativeExpedition.Create("shutter-test","city","host","pistol",19,new[]{new ExpeditionInstance{id="ward",target=1}});
+        var gateSession=new ExpeditionSession(gateRun,content,_=>{});
+        var gateDirector=new ExpeditionDirector(gateSession,gateLayout,_=>new V3(),(_,__)=>true,10,20,30);
+        Check(gateDirector.Closures.Single(c=>c.id=="ward-shutter").Blocking,"instance shutter initially sealed");
+        gateRun.Enter("ward");gateDirector.Step();gateRun.Progress("quota",1);gateRun.StartBosses(new[]{"shutter-boss"});gateDirector.Step();
+        Check(gateDirector.Closures.Single(c=>c.id=="ward-shutter").state=="opening"&&gateDirector.Closures.Single(c=>c.id=="final-gate").Blocking,"instance boss opens only its own shutter");
+        gateSession.Tick(1);gateDirector.Step();Check(!gateDirector.Closures.Single(c=>c.id=="ward-shutter").Blocking,"instance shutter clears after the existing closure delay");
+        gated["areas"][1]["gates"][0]["opens"]="final";Refuse(gated.ToJsonString(),"instance cannot use global final condition");
+        gated["areas"][1]["gates"][0]["opens"]="boss";gated["areas"][0]["gates"][0]["opens"]="boss";Refuse(gated.ToJsonString(),"world cannot use instance boss condition");
         var r2=NativeExpedition.Create("barrier-test","city","host","pistol",19,new[]{new ExpeditionInstance{id="ward",target=1}});r2.Join("guest","pistol");
         var s2=new ExpeditionSession(r2,content,_=>{});var d2=new ExpeditionDirector(s2,layout,_=>new V3(0,0,0),(_,__)=>true,10,20,30);string fingerprint=new string('a',64);d2.BindLayoutIdentity(fingerprint);
         s2.Sources.Seat=who=>who=="host"?1:who=="guest"?7:0;
