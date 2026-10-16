@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
         private static void Rules(UnityMapContent maps,NativePveContent pve)
         {
             Check(NativeMachineRules.Present("siren",false)&&NativeMachineRules.Present("siren",true)&&NativeMachineRules.Present("expedition-ward-zero",true)&&!NativeMachineRules.Present("expedition-city",true),"machines stand in every PvE round and in Ward instances, not in the Expedition town");
-            Check(NativeMachineRules.Present("expedition-transit",true)&&NativeMachineRules.Present("expedition-ironworks",true)&&!NativeMachineRules.Present("expedition-unknown",true),"new authored instances permit their own machines; unknown maps fail closed");
+            Check(NativeMachineRules.Present("expedition-transit",true)&&NativeMachineRules.Present("expedition-foundry",true)&&!NativeMachineRules.Present("expedition-unknown",true),"new authored instances permit their own machines; unknown maps fail closed");
             Check(pve.machines.Length==8&&pve.machineBlocks.Length==pve.machines.Length&&pve.machines.Select((m,i)=>m.m==i).All(x=>x),"eight machines, each with its collider at its index");
             Check(pve.machineBlocks.All(b=>NativeMachineModels.IsCollider(b.id)&&b.material=="foundation"),"every machine collider is named as one (the dressing hides them)");
             Check(maps.maps.All(m=>m.blocks.All(b=>!NativeMachineModels.IsCollider(b?.id))),"no map block is mistaken for a machine collider");
