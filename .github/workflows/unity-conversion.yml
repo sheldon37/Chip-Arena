@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'unity/ChipArenaConversion/**'
+      - 'docs/audio/**'
       - '.github/workflows/unity-conversion.yml'
   push:
     branches: ['codex/unity-*', 'claude/**']
@@ -22,7 +23,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-          sparse-checkout: unity/ChipArenaConversion
+          sparse-checkout: |
+            unity/ChipArenaConversion
+            docs/audio
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
           dotnet-version: '8.0.x'
@@ -60,7 +63,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-          sparse-checkout: unity/ChipArenaConversion
+          sparse-checkout: |
+            unity/ChipArenaConversion
+            docs/audio
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
           dotnet-version: '8.0.x'
