@@ -127,7 +127,17 @@ namespace ChipArena.UnityConversion
             Replica=true;LocalId=localId;bool reset=replicaFrame==null||replicaFrame.generation!=f.generation;Match.ApplyNetwork(f);
             foreach(var sf in f.seats){var seat=Match.Seat(sf.id);if(seat==null){seat=new NativeSeat{id=sf.id};Match.Seats.Add(seat);}seat.devRevealed=sf.devRevealed;seat.devCommandsRan=sf.devCommandsRan;seat.devDummy=sf.devDummy;seat.devScale=sf.devScale;seat.name=sf.name;seat.spec=sf.spec;seat.team=sf.team;seat.bot=sf.bot;seat.connected=sf.connected;seat.alive=sf.alive;seat.score=sf.score;seat.roundWins=sf.roundWins;seat.AuthorityBoss=sf.boss;seat.bodyColor=sf.bodyColor;seat.accentColor=sf.accentColor;seat.hat=sf.hat;seat.lobbyPose=NativeLobbyPoses.Normalize(sf.lobbyPose);seat.lobbyBack=NativePortraitBacks.Normalize(sf.lobbyBack);seat.hatColor=NativeHatLooks.Normalize(sf.hatColor);seat.backColor=NativeHatLooks.Normalize(sf.backColor);seat.weaponSkins=NativeWeaponSkins.Normalize(sf.weaponSkins);seat.killEffect=sf.killEffect;seat.intro=sf.intro;seat.overrideIntro=sf.overrideIntro;NativeIntroRules.Migrate(ref seat.intro,ref seat.overrideIntro);seat.introText=sf.introText;seat.offers=sf.offers.ToList();seat.chips.Clear();foreach(var c in sf.chips)seat.chips[c.id]=c.count;}
             Match.Seats.RemoveAll(s=>!f.seats.Any(x=>x.id==s.id));if(reset){Reset();Generation=f.generation;}DevTimeScale=f.devTimeScale;DevHazardPulses.Clear();if(f.devHazards!=null)DevHazardPulses.AddRange(f.devHazards);
-            if(f.pve!=null&&Pve==null)ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),false);
+            if(f.pve!=null&&Pve==null)
+            {
+                var data=JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text);
+                if(!NativeMapRules.ArenaSelectable(Map))
+                {
+                    var layout=NativeExpeditionLayout.Parse(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text);
+                    var area=layout.areas.Single(a=>a.map==MapId);
+                    NativeExpeditionLayout.BindContent(area,data);
+                }
+                ConfigurePve(data,false);
+            }
             foreach(var pf in f.pilots)
             {
                 var p=Pilots.Find(p=>p.Seat.id==pf.id)??SpawnPilot(Match.Seat(pf.id),Pilots.Count);p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);p.Body.isKinematic=true;p.Collider.enabled=pf.hp>0&&p.Seat.connected;

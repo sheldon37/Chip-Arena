@@ -45,9 +45,15 @@ namespace ChipArena.UnityConversion
             foreach(var area in Layout.areas)
             {
                 foreach(var door in area.doors)closures.Add(new ExpeditionClosureView{id=door.anchor,area=area.id,state=Closed(door.anchor,s)?"sealed":"open",began=s.elapsed});
-                foreach(var gate in area.gates)closures.Add(new ExpeditionClosureView{id=gate.id,area=area.id,state=Session.Run.FinalUnlocked?"open":"sealed",began=s.elapsed});
+                foreach(var gate in area.gates)closures.Add(new ExpeditionClosureView{id=gate.id,area=area.id,state=GateClosed(area.id,gate,s)?"sealed":"open",began=s.elapsed});
             }
             Session.Sources.Director=this;
+        }
+        private bool GateClosed(string area,ExpeditionGateLayout gate,ExpeditionSnapshot s)
+        {
+            if(gate.opens=="final")return !Session.Run.FinalUnlocked;
+            var encounter=s.instances.FirstOrDefault(i=>i.id==area);
+            return encounter==null||!encounter.cleared&&encounter.bosses.Length==0;
         }
         private bool Closed(string id,ExpeditionSnapshot s)
         {
@@ -72,8 +78,8 @@ namespace ChipArena.UnityConversion
             }
             foreach(var c in closures)
             {
-                bool gate=Layout.Area(c.area).gates.Any(g=>g.id==c.id);
-                bool closed=gate?!Session.Run.FinalUnlocked:Closed(c.id,s);
+                var gate=Layout.Area(c.area).gates.FirstOrDefault(g=>g.id==c.id);
+                bool closed=gate!=null?GateClosed(c.area,gate,s):Closed(c.id,s);
                 if(closed&&(c.state=="open"||c.state=="opening")){c.state="sealing";c.began=s.elapsed;}
                 else if(!closed&&(c.state=="sealed"||c.state=="sealing")){c.state="opening";c.began=s.elapsed;}
                 else if(s.elapsed-c.began>=1&&(c.state=="opening"||c.state=="sealing")){c.state=c.state=="opening"?"open":"sealed";c.began+=1;}

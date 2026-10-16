@@ -26,6 +26,7 @@ namespace ChipArena.UnityConversion
     {
         public const float PilotRadius=.42f;
         public static bool WardInstance(string id)=>id=="siren"||id=="expedition-ward-zero";
+        public static bool ExpeditionInstance(string id)=>id=="expedition-ward-zero"||id=="expedition-transit"||id=="expedition-ironworks";
         public static bool ArenaSelectable(ContentMap map)=>map!=null&&!map.id.StartsWith("expedition-",StringComparison.Ordinal);
         public static bool Finite(V3 p)=>MathUtil.Finite(p.x)&&MathUtil.Finite(p.y)&&MathUtil.Finite(p.z);
         public static bool Box(V3 p,V3 size)=>Finite(p)&&Finite(size)&&size.x>0&&size.y>0&&size.z>0;
