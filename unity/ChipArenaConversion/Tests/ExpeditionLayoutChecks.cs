@@ -164,6 +164,8 @@ namespace ChipArena.UnityConversion
                 var path=new List<string>();search.Find(a.id,b.id,Active,path);if(path.Count==0)Console.WriteLine($"NO ROUTE {id} {from.x},{from.y},{from.z} -> {to.x},{to.y},{to.z} r={radius} nodes={a.id},{b.id}");return path.Count>0;
             }
             NativeExpeditionLayout.ValidateGeometry(parsed,content,pve,Probe,Reach);count++;
+            // The exp-layout-4 join circle draft (not live) against the same parser, probe and navigation.
+            ExpeditionJoinDraftChecks.Run(root,content,pve,Probe,Reach);
             Check(pve.entries.Where(e=>e.id.StartsWith("breach-gantry-",StringComparison.Ordinal)).All(e=>Supported(inst,e.@exit.Position(),NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight)),"both authored gantry exits are Hulk-clear");
             Check(new[]{town,inst}.All(m=>!NativeMapRules.ArenaSelectable(m)&&m.nav.nodes.Length>0&&m.nav.links.Length>0),"imported navigation and arena isolation");
             Check(NativeWardZeroLooks.Active(inst)&&!NativeWardZeroLooks.Active(town)&&inst.hazards.Length==12&&ReferenceEquals(inst.hazards,siren.hazards),"instance uses the exact boss-test Ward hazard table");

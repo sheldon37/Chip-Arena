@@ -4,12 +4,16 @@ ExpeditionLayoutChecks.cs) agree, the generators are byte-identical across runs 
 from the sanctuary with the final gate shut and open, the plaza only through the gate volume, every record on walkable
 floor with pilot or Hulk clearance, no spawn in or near the sanctuary, Siren's entries unblocked by the instance overlay);
 the MapLooks.json expedition-city entry is the generator's look; the manifest keeps the contract's shape and its block
-hashes match the fixtures' maps. Static analysis only: no Unity/PhysX claims. The script tests skip without docs/."""
+hashes match the fixtures' maps. The exp-layout-4 join circle draft (Tests/expedition-layout-4-join-draft.json, not live) is the
+script's --draft output, its checks pass, the live outputs stay byte-identical beside it, and it differs from the live manifest
+only by the join, the approach, the returns and the revision. Static analysis only: no Unity/PhysX claims. The script tests skip
+without docs/."""
 import hashlib,importlib.util,json,subprocess,sys,tempfile,unittest
 from pathlib import Path
 R=Path(__file__).resolve().parents[1];D=R.parents[1]/'docs/arenas/scripts';SCRIPT=D/'expedition_layout.py'
 F={k:R/'Tests'/n for k,n in (('city','expedition-city-draft.json'),('ward','expedition-ward-zero-draft.json'),('json','expedition-layout-draft.json'))}
 REGEN='regenerate: python3 docs/arenas/scripts/expedition_layout.py --fixtures (and bump REVISION there when a record or hash changes)'
+DRAFT=R/'Tests/expedition-layout-4-join-draft.json'
 PINNED=('exp-layout-3','5576eeee643bff748dfe01d291bf5fc7df687a411de72a1cbc951939a4e8001c','5063452a19a77b30b8bf3a30bc990119b932798fa7daabf023bf7340276efb90')
 def load(k):return json.loads(F[k].read_text())
 def _i(x,k):return str(int(round(float(x)*k)))
@@ -43,6 +47,19 @@ class ExpeditionLayoutScripts(unittest.TestCase):
   self.assertRegex(run.stdout,r'with the 4 gate closures solid the slots reach \d+ cells, 0 of them outside the sanctuary volume')
   self.assertRegex(run.stdout,r'route to exp-ward-zero: .* (7\d|[89]\d)\.\d m walked from the gate')
   self.assertNotIn('BAD ',run.stdout);self.assertNotIn('UNREACHED',run.stdout)
+ def test_join_draft_is_the_scripts_output(self):
+  with tempfile.TemporaryDirectory() as d:
+   p={n:Path(d)/f'{n}.json' for n in (*F,'draft')};run=subprocess.run([sys.executable,str(SCRIPT)]+[a for n in p for a in (f'--{n}',str(p[n]))],capture_output=True,text=True)
+   self.assertEqual(run.returncode,0,run.stdout[-3000:]+run.stderr[-3000:])
+   for n in F:self.assertEqual(p[n].read_bytes(),F[n].read_bytes(),'the live outputs are byte-identical beside the draft: '+REGEN)
+   self.assertEqual(p['draft'].read_bytes(),DRAFT.read_bytes(),REGEN)
+  for line in ('join draft checks: pass','draft manifest checks: pass','revision exp-layout-4','join circles: 1, on hub entry doors only with positive r and h: True',
+               'parser rules (finite, r and h positive, at a hub entry door, inside the bounds, centre and 8 rim points on floor with the pilot probe): True',
+               'blocks in the cylinder (y 0..4): 0;','centre navigable: pilot and Hulk routes from slot 0: True',"returns' walk to the east gate's threshold avoiding the circle is their shortest walk",
+               'returns (exp-layout-3): 4 of 8 would stand in the circle','NOT LIVE: Resources/ExpeditionLayout.json stays exp-layout-3'):
+   self.assertIn(line,run.stdout)
+  self.assertRegex(run.stdout,r'floor in the circle: (\d+) samples .*standable for the pilot probe: \1\n')
+  self.assertNotIn('BAD ',run.stdout)
  def test_look_is_the_generators(self):
   spec=importlib.util.spec_from_file_location('expedition_city',D/'expedition_city.py');city=importlib.util.module_from_spec(spec);sys.path.insert(0,str(D))
   try:spec.loader.exec_module(city)
@@ -95,6 +112,19 @@ class ExpeditionLayoutFixtures(unittest.TestCase):
   self.assertEqual(sorted(e for z in h['zones'] for e in z['spawns']),sorted(s['e'] for s in w['spawns'] if s['e'] not in final))
   r=h['routes'][0];self.assertEqual((r['to'],r['gate']),('exp-ward-zero','exp-city:hub-gate:east'));self.assertGreaterEqual(r['path'],70);self.assertGreaterEqual(r['path'],r['straight'])
   self.assertEqual([x['building'] for x in h['reserved']],['exp-foundry','exp-transit'])
+ def test_join_draft(self):
+  # exp-layout-4 (docs/EXPEDITION-HUB.md "Join circle at the instance doors"): not live; the live manifest has no join.
+  live,dr=load('json'),json.loads(DRAFT.read_text());self.assertEqual(live['revision'],'exp-layout-3');self.assertEqual(dr['revision'],'exp-layout-4')
+  self.assertTrue(all('join' not in d for a in live['areas'] for d in a['doors']));self.assertTrue(all('join' not in d for d in dr['areas'][1]['doors']))
+  d=dr['areas'][0]['doors'][0];j=d['join'];self.assertEqual(list(d),['anchor','join','interact','closure','approach','returns']);self.assertEqual(j,dict(x=79.0,y=0.0,z=0.0,r=2.5,h=4.0))
+  self.assertEqual(d['approach'],dict(x=j['x'],y=j['y'],z=j['z']),'the approach is the circle centre')
+  inside=lambda p:(p['x']-j['x'])**2+(p['z']-j['z'])**2<=j['r']**2
+  self.assertEqual(sum(map(inside,live['areas'][0]['doors'][0]['returns'])),4,'exp-layout-3 had four returns in the circle')
+  for p in d['returns']:self.assertGreaterEqual(((p['x']-j['x'])**2+(p['z']-j['z'])**2)**.5,j['r']+0.42+0.5,p)
+  lv=live['areas'][0]['doors'][0];self.assertEqual((d['anchor'],d['interact'],d['closure']),(lv['anchor'],lv['interact'],lv['closure']),'F entry data unchanged')
+  same=json.loads(DRAFT.read_text());dd=same['areas'][0]['doors'][0];del dd['join'];dd['approach'],dd['returns'],same['revision']=lv['approach'],lv['returns'],live['revision']
+  self.assertEqual(same,live,'the draft differs from the live manifest only by the join, the approach, the returns and the revision')
+  self.assertEqual((R/'Assets/Conversion/Resources/ExpeditionLayout.json').read_bytes(),F['json'].read_bytes(),'the live resource is the live fixture')
  def test_maps_and_hashes(self):
   m=load('json');town=load('city')['maps'][0];inst=load('ward')['maps'][0]
   self.assertEqual(block_hash(town),m['areas'][0]['blockHash']);self.assertEqual(block_hash(inst),m['areas'][1]['blockHash'])

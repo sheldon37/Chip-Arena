@@ -3,9 +3,12 @@
 # manifest's own: ids unique and valid, door anchors paired between the town and each instance, every door, interaction
 # and cache record pointing at an anchor of its own area, eight returns per town door and eight entries per instance exit,
 # the town's sanctuary, final gate, spawns and boss, and each area's blockHash equal to its generated map's.
-# A draft for Astra: it is NOT wired into the game (the import steps are in docs/EXPEDITION-LAYOUT.md).
+# Imported into Resources by tools/generate_expedition.py from the --fixtures copy (the import steps are in docs/EXPEDITION-LAYOUT.md).
+# --draft also writes the exp-layout-4 join circle draft (docs/EXPEDITION-HUB.md "Join circle at the instance doors"): NOT LIVE,
+# its own file, never imported; the live outputs are byte-identical with or without it. It prints the draft's checks
+# (expedition_city.join_checks) and runs this manifest's checks on it.
 # Usage: python3 docs/arenas/scripts/expedition_layout.py [--json manifest.json] [--city city.json] [--ward ward.json]
-#        [--fixtures]   (writes the three drafts under unity/ChipArenaConversion/Tests/)
+#        [--draft join-draft.json] [--fixtures]   (writes the three live fixtures and the draft under unity/ChipArenaConversion/Tests/)
 # Deterministic: the same inputs write the same bytes.
 import argparse, json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -13,11 +16,13 @@ import expedition_city as city, expedition_ward_zero as ward
 from expedition_common import block_hash, id_ok
 
 REVISION = 'exp-layout-3'     # bump when any generated record or map hash changes (the test pins this with the hashes)
+DRAFT_REVISION = 'exp-layout-4'   # the join circle draft (not live; saves pinned to exp-layout-3 would not resume on it)
 TESTS = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'unity', 'ChipArenaConversion', 'Tests'))
-FIXTURES = {'city': 'expedition-city-draft.json', 'ward': 'expedition-ward-zero-draft.json', 'json': 'expedition-layout-draft.json'}
+FIXTURES = {'city': 'expedition-city-draft.json', 'ward': 'expedition-ward-zero-draft.json', 'json': 'expedition-layout-draft.json',
+            'draft': 'expedition-layout-4-join-draft.json'}
 
-def manifest():
-    return {'schema': 1, 'revision': REVISION, 'world': city.AREA, 'instances': [ward.AREA], 'areas': [city.area(), ward.area()]}
+def manifest(draft=False):
+    return {'schema': 1, 'revision': DRAFT_REVISION if draft else REVISION, 'world': city.AREA, 'instances': [ward.AREA], 'areas': [city.area(draft), ward.area()]}
 
 def checks(m):
     out, ok = [], True
@@ -56,6 +61,9 @@ def checks(m):
         e = [x for x in areas[inst]['anchors'] if x['kind'] == 'door' and x['id'] == f'{inst}:door:exit' and x['building'] == inst]
         pairs.append((inst, len(t), len(e)))
     out.append('door pairs (town door, instance exit) per instance: ' + ', '.join(f'{i} {t}/{e}' for i, t, e in pairs)); ok &= all(t == 1 and e == 1 for _, t, e in pairs)
+    joins = [(a['id'], d['anchor']) for a in m['areas'] for d in a['doors'] if 'join' in d]
+    jok = all(i == m['world'] for i, _ in joins) and all(set(d['join']) == {'x', 'y', 'z', 'r', 'h'} and d['join']['r'] > 0 and d['join']['h'] > 0 for a in m['areas'] for d in a['doors'] if 'join' in d)
+    out.append(f'join circles: {len(joins)}, on hub entry doors only with positive r and h: {jok}'); ok &= jok
     stray = [x['id'] for x in w['anchors'] if x['kind'] == 'door' and x['building'] not in m['instances']]
     out.append(f'town doors to buildings outside the instance list: {len(stray)} (exp-foundry and exp-transit stay out until their instances exist)'); ok &= not stray
     sp = w['spawns']
@@ -71,20 +79,26 @@ def checks(m):
     return ok, out
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('--json'); ap.add_argument('--city'); ap.add_argument('--ward'); ap.add_argument('--fixtures', action='store_true'); a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument('--json'); ap.add_argument('--city'); ap.add_argument('--ward'); ap.add_argument('--fixtures', action='store_true')
+    ap.add_argument('--draft', help='also write the exp-layout-4 join circle draft (not live) here'); a = ap.parse_args()
     if a.fixtures:
         for k, name in FIXTURES.items():
             if getattr(a, k) is None: setattr(a, k, os.path.join(TESTS, name))
-    ok_c, rep_c, _ = city.checks(); ok_w, rep_w, _ = ward.checks()
+    ok_c, rep_c, graphs = city.checks(); ok_w, rep_w, _ = ward.checks()
     print('== expedition-city (exp-city)'); print('\n'.join(rep_c)); print('city checks: ' + ('pass' if ok_c else 'FAIL'))
     print('== expedition-ward-zero (exp-ward-zero)'); print('\n'.join(rep_w)); print('instance checks: ' + ('pass' if ok_w else 'FAIL'))
     m = manifest(); ok_m, rep_m = checks(m)
     print('== ExpeditionLayout.json'); print('\n'.join(rep_m)); print('manifest checks: ' + ('pass' if ok_m else 'FAIL'))
-    for path, data in ((a.city, city.draft()), (a.ward, ward.draft()), (a.json, m)):
+    ok_d, md = True, None
+    if a.draft:
+        ok_j, rep_j = city.join_checks(graphs); md = manifest(True); ok_md, rep_md = checks(md)
+        print(f'== {DRAFT_REVISION} join circle draft (NOT LIVE: Resources/ExpeditionLayout.json stays {REVISION})'); print('\n'.join(rep_j))
+        print('\n'.join(rep_md)); print('draft manifest checks: ' + ('pass' if ok_md else 'FAIL')); ok_d = ok_j and ok_md
+    for path, data in ((a.city, city.draft()), (a.ward, ward.draft()), (a.json, m), (a.draft, md)):
         if path:
             with open(path, 'w') as f: json.dump(data, f, indent=None, separators=(',', ':'), sort_keys=False)
             print('wrote', path)
-    sys.exit(0 if ok_c and ok_w and ok_m else 1)
+    sys.exit(0 if ok_c and ok_w and ok_m and ok_d else 1)
 
 if __name__ == '__main__':
     main()
