@@ -396,7 +396,7 @@ internal static class ChooserCameraChecks
         Check(cc.Contains("bool cut=Spectator!=null||cinematic.Directing||arena.Generation!=chooserGeneration;"),"a spectated pilot, a cutscene or a new area drops it");
         Check(cc.Contains("viewModelCamera.enabled=false;presentation.AimHeld=false;if(shot.Body)presentation.FirstPerson=false;"),"first person: the view model off, my body drawn once clear");
         Check(cc.Contains("Vector3 pivot=shoulderView&&!presentation.FirstPerson?cam+t.forward*cameraRig.Boom:body+Vector3.up*NativeViewRules.EyeHeight;"),"the path starts from the shoulder rig's own fitting point");
-        Check(cc.Contains("Physics.SphereCast(V(from),radius,V(direction),out var hit,distance,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)"),"the shoulder rigs' world cast");
+        Check(cc.Contains("arena.PhysicsWorld.SphereCast(V(from),radius,V(direction),out var hit,distance,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)"),"the shoulder rigs' world cast");
         Check(cc.Contains("HasWrist=hand,Wrist=V(wristAt),Facing=p.Yaw,ScreenLeft=hand?screenLeft:NativeChipScreen.OnLeft(p.Seat.spec)")&&cc.Contains("hand=presentation.ChipSelectWrist(p.Seat.id,out var wristAt,out bool screenLeft)"),"the shot frames my display wrist and the screen on its side");
         // The HUD: no crosshair and nothing over my own pilot under the shot (other pilots' tags and bars unchanged).
         Check(cg.Contains("&&!presentation.ScopeActive&&!ChooserFramed)Crosshair();")&&hud.Contains("||ChooserFramed&&p==arena.ViewPilot||")&&tag.Contains("FirstPersonView&&p==arena.ViewPilot||ChooserFramed&&p==arena.ViewPilot||"),"no crosshair, my own health and SELECTING CHIP hidden under the shot");

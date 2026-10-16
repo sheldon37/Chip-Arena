@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-16 Astra split-area milestone 1 (`codex/expedition-area-runtime`, base `9f18015`): registry/local-scene foundation and query routing implemented, with native isolation gate added. Not wired to live Expedition; F entry remains. Cohort/director/wire/save/join milestones pending native foundation execution. No join view fields yet. See EXPEDITION-AREA-RUNTIME.md.
+
 2026-10-16 Astra horde performance (`codex/horde-performance`, base `2d8ad20`): crowd route-tree rebuilds spread across ticks (512 edge visits/destination/tick), settled partial paths and old complete trees retained during refresh; worst active hitch and separate effects timings added. Managed navigation and semantic compile pass; native Ward budget gate added but Windows FPS/PhysX execution pending. See DEV_LOG.
 
 2026-10-15 Astra Bow Rain (`codex/bow-damage`, base `b36c6ce`): center gap and above-roof/ceiling spawn fixed; 5,044 managed Bow checks and semantic compile pass. Native damage/lifesteal collision cases added but unrun. Separate Bow lifesteal report remains unconfirmed; needs chip/mode/target repro. See DEV_LOG.

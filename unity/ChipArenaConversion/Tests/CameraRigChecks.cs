@@ -387,10 +387,10 @@ internal static class CameraRigChecks
     {
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
         string cg=R("Runtime/ConversionGame.cs"),sc=R("Runtime/NativeShoulderCamera.cs"),lk=R("Runtime/NativeLockOn.cs"),st=R("Runtime/NativeSettings.cs"),sp=R("Runtime/NativeSprintFxPresentation.cs");
-        // The original third-person camera, verbatim, is the settled-Classic branch.
+        // The original third-person camera math, with its query scoped to the displayed scene, is the settled-Classic branch.
         string original="            else if(!first)\n            {\n                Vector3 offset=rotation*Vector3.back*NativeViewRules.ThirdDistance+Vector3.up*NativeViewRules.ThirdLift;\n                location=focus+offset;\n"
-            +"                if(Physics.SphereCast(focus,.12f,offset.normalized,out var hit,offset.magnitude,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))location=focus+offset.normalized*Mathf.Max(.15f,hit.distance-NativeViewRules.CollisionPadding);\n            }";
-        Check(cg.Contains("bool classic=CameraClassic(first);")&&cg.Contains("if(!first&&!classic)location=ShoulderCamera(p,focus);\n"+original),"settled Classic runs the original camera code verbatim");
+            +"                if(arena.PhysicsWorld.SphereCast(focus,.12f,offset.normalized,out var hit,offset.magnitude,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))location=focus+offset.normalized*Mathf.Max(.15f,hit.distance-NativeViewRules.CollisionPadding);\n            }";
+        Check(cg.Contains("bool classic=CameraClassic(first);")&&cg.Contains("if(!first&&!classic)location=ShoulderCamera(p,focus);\n"+original),"settled Classic retains original camera math in its own scene");
         Check(cg.Contains("first?NativeViewRules.FirstFov:classic?NativeViewRules.ThirdFov:cameraRig.Fov(Time.unscaledTime)")&&NativeCameraShape.ClassicShape.Fov==NativeViewRules.ThirdFov,"Classic keeps the 60 degree FOV");
         Check(sc.Contains("convergeAim=shoulderView&&Spectator==null&&!menu;")&&sc.Contains("if(!convergeAim||cinematic.Directing)return;")&&sc.Contains("aimSkip=convergeAim?")&&cg.Contains("hit.distance<aimSkip)continue;"),"Classic and first person send the camera look and the old AimTarget (no convergence, no skip)");
         Check(lk.Contains("LockLook(eye,target.point,out float wantYaw,out float wantPitch)")&&sc.Contains("if(!shoulderView||presentation.FirstPerson){wantYaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;wantPitch=Mathf.Clamp(-Mathf.Atan2(d.y,new Vector2(d.x,d.z).magnitude)*Mathf.Rad2Deg+3.438f,-63,63);return;}"),"Classic and first person keep the original lock-on look");
