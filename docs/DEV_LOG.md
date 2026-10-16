@@ -9630,3 +9630,13 @@ rerun the unchanged native acceptance gates before publication.
   - If an authority's step ends more than 15 cm from its replicated distance, the feet hand back to the gait instead of staying planted.
 - **Animation impact:** presentation only. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged. The drawn rig moves up to 20 cm off the capsule (25 at a run) and returns by each step's end. The lead foot steps up to 30 cm. The Overclock compresses the step and the trails with the windows.
 - **Next:** the owner checks the feel in a native build. Astra decides whether to add the step (contract above); the presentation already reads it.
+
+
+## 2026-10-16 — Astra: stand-in rule and native cohort adapter (inactive integration)
+
+- Branch `codex/expedition-split-integration`, based on pushed cohort foundation `e75d251` (shared/builder base `bb4b36a`). This is partial implementation, not the requested finished builder feature.
+- Added the 3 s host join rule: feet + 0.85 capsule centre, inclusive 4 m cylinder, airborne membership, empty cancellation, exact expiry subset and deterministic single-door selection. Exposed detached join records with the agreed names; not yet connected to ExpeditionView.
+- Added native destination-slot reservations and two-scene pilot/seat placement with cohort hold and rollback; input/interaction suppression applies only to explicitly held pilots. Added a native import validation fixture. Adapter refuses unequal combat clocks; active ability/effect migration remains unaudited. No live call site enables this service.
+- Managed C#9 warnings-as-errors compilation and affected checks pass: join 25, cohort 69, registry 292, co-op 41, director 98, draft 38, layout 268. Source package check passes (2219 files). Unity API compile checked separately; see integration handoff for exact final result.
+- Not executed: new native fixture, transport acceptance, Windows host + 3 guests, actual two-area timing. Existing live exp-layout-3 and F entry remain unchanged. No live pin or save compatibility switch, no build/publication claim.
+- Next: resolve combat-clock/effect ownership migration, integrate area director/session, per-recipient wire and schema reader, then native and Windows gates before Claude enables layout/ring/HUD. Full blockers in EXPEDITION-SPLIT-INTEGRATION.md. Animation assets unchanged.

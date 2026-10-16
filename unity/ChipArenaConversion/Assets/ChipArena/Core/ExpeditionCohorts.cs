@@ -58,6 +58,8 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,Cohort> cohorts=new Dictionary<string,Cohort>(StringComparer.Ordinal);
         private long serial;private double now;private bool busy;
         public bool Faulted {get;private set;}
+        public ExpeditionCohortView[] Active=>cohorts.Values.Where(c=>c.Status==ExpeditionCohortStatus.Loading).Select(c=>View(c.Id)).ToArray();
+        public ExpeditionCohortMember[] Members=>members.Values.OrderBy(m=>m.Account,StringComparer.Ordinal).Select(m=>m.Copy()).ToArray();
         public ExpeditionCohorts(string run,int epoch,string layout,string hub,string instance)
         {
             if(!ExpeditionValidation.Id(run)||epoch<1||layout==null||layout.Length!=64||layout.Any(c=>!Uri.IsHexDigit(c))||!ExpeditionValidation.Id(hub)||!ExpeditionValidation.Id(instance)||hub==instance)throw new ArgumentException("Validated run, epoch, layout and two areas required.");

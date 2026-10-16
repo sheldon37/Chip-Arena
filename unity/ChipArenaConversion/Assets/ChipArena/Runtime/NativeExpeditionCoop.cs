@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
         {
             if(Expedition==null||p.Seat.bot)return;
             var member=ExpeditionMemberFor(p);
-            if(member==null||!member.alive||member.extracted||ExpeditionChoosing(p))
+            if(p.ExpeditionTransferHeld||member==null||!member.alive||member.extracted||ExpeditionChoosing(p))
             {p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};return;}
             if(!p.Input.Interact)return;
             bool used=TryExpeditionInteract(p,out string notice);

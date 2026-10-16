@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-16 Astra subset integration (`codex/expedition-split-integration`, base `e75d251`): managed stand-in rule and native cohort adapter/service added, INACTIVE. Join checks 25, cohort 69, area 292, director 98 plus co-op 41, layout 268 plus draft 38 pass. Live director/wire/save integration remains unfinished; unequal combat clocks intentionally refuse transfer. No builder merge or circle activation. See EXPEDITION-SPLIT-INTEGRATION.md for blockers and gates.
+
 2026-10-16 Astra cohort foundation (`codex/expedition-cohort-transfer`, base `bb4b36a`): partial, inactive state machine and managed failure tests only. Previous native two-scene foundation PASS verified in the Windows build log. Native cohort placement, director/wire/save/join integration and Windows performance remain unfinished. F entry and live exp-layout-3 unchanged; draft PR only. See DEV_LOG.
 
 2026-10-16 Claude footstep surfaces (`claude/footstep-surface-fix`, merged into shared): steps no longer cycle terrains. Each step key holds one recording series of its surface (concrete had loose-stone takes); probe at the planted foot with a 2-plant surface memory; zombies step in the surface pool on metal/wood/gravel/snow. New private bank `LocalAssets-footsteps-surfaces.zip` (not in the repo). Managed checks pass; not heard in a build. See DEV_LOG.

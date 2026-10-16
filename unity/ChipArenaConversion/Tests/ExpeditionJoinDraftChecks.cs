@@ -21,8 +21,8 @@ namespace ChipArena.UnityConversion
     //    returns had four inside), none in the F volume;
     //  - the town dressing built on the draft's records puts nothing but flat paint in the cylinder and nothing on the moved
     //    returns or approach.
-    // Static data and pure-code checks only: no scene, PhysX or network claim, and no join rule exists yet (Astra's subset
-    // transfer and view fields come first).
+    // Static data and pure-code checks only: no scene, PhysX or network claim, and the managed join rule is not enabled in the live director (Astra's subset
+    // transfer and view integration come first).
     internal static class ExpeditionJoinDraftChecks
     {
         internal const string DraftPath="Tests/expedition-layout-4-join-draft.json",LivePath="Assets/Conversion/Resources/ExpeditionLayout.json";
