@@ -240,6 +240,7 @@ namespace ChipArena.UnityConversion
                 victory=v.phase==ExpeditionPhase.Victory,title="EXTRACT ALONE",button="Extract",tone=ExpeditionTone.Warn};
             bool peers=v.members.Any(p=>p.account!=v.viewer&&p.connected&&!p.extracted);m.hostNeedsTransfer=v.ViewerIsHost()&&peers;
             if(!Has(me.account)){m.detail="You are not in this run.";m.can=false;m.tone=ExpeditionTone.Muted;}
+            else if(me.extracted&&v.freshRun){m.title="EXTRACTED";m.tone=ExpeditionTone.Good;m.detail="You have left this run. Your next Expedition starts fresh.";}
             else if(me.extracted){m.title=me.extractionSaved?"EXTRACTED · SAVED":"EXTRACTED · SAVE NOT CONFIRMED";m.tone=me.extractionSaved?ExpeditionTone.Good:ExpeditionTone.Warn;
                 m.detail=me.extractionSaved?"Your build and rewards are banked. You cannot rejoin this run.":"Waiting for the save. Rewards are only final once it is confirmed.";}
             else if(v.migrating)m.detail="Frozen during the host transfer.";
@@ -248,7 +249,7 @@ namespace ChipArena.UnityConversion
             else if(!me.alive)m.detail="Get reprinted first.";
             else if(!me.safe)m.detail="Reach the sanctuary first.";
             else if(m.hostNeedsTransfer){m.detail=HostCannotLeave;m.button="Extract · needs host transfer";}
-            else if(me.canExtract)m.detail="Leave now with your build. The others can continue.";
+            else if(me.canExtract)m.detail=v.freshRun?"Leave this run. The others can continue. Your next Expedition starts fresh.":"Leave now with your build. The others can continue.";
             else m.detail="Not available right now.";
             return m;
         }

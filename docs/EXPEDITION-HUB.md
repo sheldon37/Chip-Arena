@@ -853,22 +853,21 @@ subset-transfer path passes the gates below. No unwilling member may be moved.
 | Quota and boss clear | Shared run quota, each authenticated kill/clear credited once with area + encounter identity. Encounter scaling uses participants in that encounter; freeze the scaling basis at encounter start to prevent join/leave exploits. |
 | Closures | Local encounter closures, never a global hub lock when someone enters Ward Zero. New entrants wait if encounter policy forbids admission; do not teleport them through sealed combat boundaries. |
 | Wipe | An instance wipe does not end the run while a connected living member exists elsewhere. Preserve the dead cohort for reprint; retain encounter state until a separately specified reset. |
-| Extraction | Personal extraction only at the existing valid hub extraction location, with durable tombstone before confirming. Remote members are not extracted by a hub vote. Host extraction remains refused while guests remain because endpoint migration is unavailable. |
+| Extraction | Personal extraction only at the existing valid hub extraction location, with an in-memory once-only completion record before confirming. Remote members are not extracted by a hub vote. Host extraction remains refused while guests remain because endpoint migration is unavailable. |
 | Exit/continue votes | Scope local votes to eligible occupants. A global loop reset/ending requires all remaining members back in hub and no transfers, so no occupied instance is discarded. |
-| Saves | Keep safe-hub checkpoints only for M1: all connected living unextracted members in hub sanctuary and no transfers. No mid-instance checkpoint or live physics save is implied. Always preserve extraction journal durability. |
+| Saves | Owner update (2026-10-16): fresh run every launch. No run saves, checkpoint writes, resume flow, save-envelope bump or schema-1 reader. Live disconnect/rejoin tickets remain; account/profile persistence is unchanged. |
 | Disconnect/rejoin | Preserve area membership and encounter state during existing grace; no input from disconnected pilots. Rejoin loads that area and a new ticket before control returns. |
 | Host migration | Existing code advertises candidates incapable/unreachable. Continue fail-closed and do not claim live migration. Future migration needs every area runtime snapshot plus an endpoint handoff and epoch barrier; safe checkpoint resume is not live migration. |
 
-### Save compatibility and cost
+### Fresh runs and cost
 
-Bump the run snapshot/wire contract and save envelope for per-member areas and
-per-area encounter state. Provide an explicit schema-1 reader: assign members to
-its single saved area, map the one instance state, clear transient joins/transfers,
-and preserve extracted tombstones. Write only the new schema after validation.
-Reject unsupported versions or changed layout fingerprints clearly; do not silently
-reset a save. exp-layout-3 -> exp-layout-4 remains a layout compatibility change
-unless separately migrated. Safe-hub resume reconstructs area runtimes, not PhysX
-objects. Extraction-only persistence must remain valid between checkpoints.
+Owner update (2026-10-16) supersedes the save/resume requirements in the original
+scope. Every live launch creates a new run identity in memory. Do not open or
+write old Expedition checkpoints. Extraction completion is recorded in the live
+run; reconnect cannot reclaim an extracted member. Keep account/profile persistence
+and reconnect to a still-running host. No save schema migration is required.
+Layout fingerprints and protocol identities still gate live connections/transfers.
+Old checkpoint files may remain on disk but are not loaded or deleted.
 
 No measured two-area benchmark exists yet. Expected CPU cost is approximately
 T_hub + T_instance + routing, not max(T_hub,T_instance); collision/navigation/AI
@@ -883,7 +882,7 @@ promise smoothness from the owner's GPU alone.
 
 Managed: ring boundary/height/eligibility, leave/reenter/cancel/dead-at-zero,
 subset placement, overlapping rings, per-area reward/reprint/clock isolation,
-barrier timeout/reconnect/stale ticket, schema-1 restore and extraction tombstones.
+barrier timeout/reconnect/stale ticket, fresh launch isolation and once-only live extraction.
 Transport: simultaneous hub/instance frames, no cross-area events/private offers,
 stale input rejection, disconnect and host-death cases.
 Native Unity: isolated scene collision/raycast/projectiles/hazards, host staying in

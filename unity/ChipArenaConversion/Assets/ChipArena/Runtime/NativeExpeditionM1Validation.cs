@@ -54,6 +54,32 @@ namespace ChipArena.UnityConversion
                 Check(!TryExpeditionInteract(Local,out _),"choosing refuses machine interaction");
                 Check(Local.MoveVelocity==Vector3.zero&&Local.Knockback==Vector3.zero&&Local.Body.linearVelocity==Vector3.zero,"choosing cancels momentum");
                 RestoreLeetInputs();Local.Input=new InputFrame();Local.MoveVelocity=Local.Knockback=Local.Body.linearVelocity=Vector3.zero;
+                var choiceGround=Local.Body.position;
+                Local.Body.position=choiceGround+Vector3.up*2;Local.FrozenPosition=null;Local.GroundAttached=false;
+                Local.Body.linearVelocity=Vector3.up*8;ProbePilotGround(Local);RouteLeetInputs();RestoreLeetInputs();
+                Check(Local.Body.useGravity&&Local.Body.linearVelocity.y<=0,"airborne choice stops rising but permits gravity");
+                float choiceTop=Local.Body.position.y;
+                var choiceSimulationMode=Physics.simulationMode;
+                try
+                {
+                    // Batch validation does not run ConversionGame.Start, which
+                    // normally selects scripted physics. Step this arena's scene.
+                    Physics.simulationMode=SimulationMode.Script;Physics.SyncTransforms();
+                    for(int tick=0;tick<90;tick++)
+                    {
+                        ProbePilotGround(Local);RouteLeetInputs();RestoreLeetInputs();PhysicsWorld.Simulate(1f/60);
+                    }
+                }
+                finally{Physics.simulationMode=choiceSimulationMode;}
+                ProbePilotGround(Local);
+                Check(Local.Body.position.y<choiceTop-1&&Local.Grounded,"airborne chooser falls and lands on Ward geometry");
+                Check(Math.Abs(Local.Body.position.x-choiceGround.x)<.05f&&Math.Abs(Local.Body.position.z-choiceGround.z)<.05f,"falling choice holds horizontal position");
+                Local.Body.position=choiceGround+Vector3.up*2;Local.FrozenPosition=null;Local.GroundAttached=false;
+                Local.Body.linearVelocity=Vector3.down*7;ProbePilotGround(Local);RouteLeetInputs();
+                Check(Local.Body.linearVelocity.y<=-7,"choice preserves accumulated falling speed");RestoreLeetInputs();
+                Local.FrozenUntil=Time+1;RouteLeetInputs();RestoreLeetInputs();
+                Check(!Local.Body.useGravity&&Local.Body.linearVelocity==Vector3.zero,"real freeze still suspends an airborne chooser");
+                Local.FrozenUntil=0;Local.Body.position=choiceGround;Local.FrozenPosition=null;Local.Body.linearVelocity=Vector3.zero;ProbePilotGround(Local);
                 float chooserHp=Local.Hp;Damage(Local,null,1,Vector3.zero,0,false,stage:true);
                 Check(Local.Hp<chooserHp&&run.IsChoosing("native-host"),"ordinary damage still reaches a choosing pilot");Local.Hp=chooserHp;
                 int installBefore=Events.Count(e=>e.Kind==EventKind.Install);

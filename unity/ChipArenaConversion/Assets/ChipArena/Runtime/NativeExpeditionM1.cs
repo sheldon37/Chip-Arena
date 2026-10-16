@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
             var party=peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).ToArray();
             var host=SanitizedSeat(1,Profile(),account?.Token);
             var seats=new[]{host}.Concat(party.Select(p=>p.Seat)).ToArray();
-            string refusal=NativeExpeditionParty.Validate(seats.Select(s=>s.access?.AccountId),seats.All(s=>s.access!=null&&s.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),GuestsReady,party.All(p=>p.ExpeditionProtocol==1));
+            string refusal=NativeExpeditionParty.Validate(seats.Select(s=>s.access?.AccountId),seats.All(s=>s.access!=null&&s.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),GuestsReady,party.All(p=>p.ExpeditionProtocol==NativeExpeditionParty.Protocol));
             if(refusal!=null){networkStatus=refusal;Notice(refusal);return;}
             prefs.pve=true;prefs.expedition=true;prefs.bots=0;
             try

@@ -45,6 +45,40 @@
 - **Next:** owner review (the doc's section 12). Astra: the parser's spawn fields, instance gates (the converter shutter), stats
   and AI for the four kinds, hazard authority, the importer's third map. Claude: NativeIronworksKit, the molten flow shader, the
   light picker (6 warm + 2 cool), the four kinds' models and animation once their content exists.
+## 2026-10-16 — Claude: PR #254 verification, sanctuary header for fresh runs
+
+- Branch `claude/sanctuary-fresh-run-header`, base shared `0c684d8` (the owner's merge of Astra's PR #254).
+- **PR #254 verified:** the merged tree (`4d820af`) is identical to the tested head `70f7266`. Five checks on it pass: Unity compile, relay (35 managed-core checks, 764 PASS lines), Python 131 OK (1 skipped), package structure, diff check. The first upload `498ece5` stopped the relay at `MachinePlacementChecks` (a source pin on Ward-only machine building); Astra's `70f7266` updated that pin and `NativeMachineRules.Present` for authored instances. GitHub CI was green on `70f7266`.
+- **Zone drafts vs the stricter parser:** a script applying #254's spawn rules (allow lists by entry kind, `hulk` only on drops, breach panels, level 0..1, song -1..1, drop height) finds no problem in the Central Station draft (`claude/central-station-design`) or the City Ironworks draft (`claude/ironworks-design`, 3 areas). Their own managed checks were not rerun on top of #254.
+- **Sanctuary panel:** in a fresh run the header reads SAFE LOCATION · EXTRACTION AND REPRINT instead of promising a checkpoint (owner's fresh-run policy). Presentation only; a source check in `ExpeditionPickChecks` pins it.
+- **Follow-ups (not live today; the hub never spawns Hulks):** authored breaches are looked up in `StageContent.entries` by Claude's `NativeHordeBreachPresentation` (around line 114) and `NativeHazardKitWorld` (around line 131), and by Astra's `NativeHulkHuntRuntime.BreachEntry` (line 82). Each should read the arena's bound `Pve.Content.entries` before an authored instance with breaches goes live. Behaviour change from #254: the hub's Hulk drop points now admit only Hulks, so far-ring brutes no longer use them.
+- Checks for this commit: listed in the PR/push note. Not run: Unity Editor, Windows player, play.
+
+## 2026-10-16 — Astra: Claude handoff, spawn preservation and instance groundwork
+
+- Branch `codex/expedition-claude-handoff`, base shared `c471e24`. This is a partial implementation of `astra-prompts-2026-10-16.md`; it does not complete the five-part handoff.
+- **Spawn parser fix:** retains `hulk`, `pit`, `song`, `block`, `center`, `size`, `normal`; strict boolean/integer/vector checks, Hulk flag only on drops, entry-kind allow compatibility, breach panel presence in the area's own map and finite positive geometry/unit normal. Live manifest and fingerprint algorithm unchanged.
+- **Authored content binding:** common detached-content binding for authority and guest before minion decoding. Guests previously interpreted hub entry indices through Ward's table. Area-owned spawn/boss/pad/hide records replace Ward defaults; authored areas do not accidentally build Ward machines. Breach collider lookup now uses the bound entry table and works outside the quarantine look. This does not generalize dynamic Hulk wall destruction or Claude's breach presentation.
+- **Navigation groundwork:** importer selects maps from the manifest. Recognizes `expedition-transit` (draft `expedition-central-station-draft.json`, `et` prefix) and `expedition-ironworks` (`ei` prefix), each at 0.5 m spacing. New maps import only after Claude explicitly adds them to the live manifest; unknown maps fail closed. Existing generated resources are unchanged.
+- **Instance shutter groundwork:** optional instance `gates[]` accept only `opens:"boss"`; world gates still accept only `opens:"final"`. Instance shutter follows its own boss roster/clear state, uses the existing one-second collider transition, and cannot unlock the global final gate. No shutter or map is enabled by this change.
+- **Checks:** managed layout, director/co-op and public-state checks; separate navigation-profile tests; Player/Runtime/Editor semantic compile using pinned Unity 6000.3.24f1 references; generator `--check`; source package structure and diff check. Final counts/results in PR. The .NET CLI crashes in `Process.StartTime` in this environment; managed sources were compiled directly with the SDK's Roslyn compiler and net8 reference assemblies, with tiering disabled for execution. No substitute Unity runtime was used.
+- **Not run:** native Unity/PhysX, Windows player, host/guest play, full relay regression, native two-area gate or performance measurements. No live build/publication is claimed by local compile checks.
+- **Claude next / outstanding:**
+  1. Parser fix is available on this branch. The Ironworks draft note can become a parser-field PASS. Presentation's `NativeHordeBreachPresentation` still reads `StageContent.entries`; use the arena's bound entries for authored maps when doing the presentation pass.
+  2. No `joins[]`, `atJoin` or per-member `area` delivered. `EXPEDITION-AREA-RUNTIME.md` explicitly requires executed native isolation PASS before cohort integration. Keep F entry and exp-layout-4 draft disabled; subset transfer, area projection and join countdown remain pending.
+  3. Machine authoring/table support, generic pit vents, instance hazard schedules/authority/replication, quota-phase roster/caps remain pending. New catalogue entries remain InDevelopment. The generic instance identity is groundwork, not playable new instances.
+  4. Central Station enemy rules/AI/network plumbing are not implemented in this batch. Design branch inspected; no enemy registration or proposal balance activated.
+  5. Ironworks enemy rules/AI/network plumbing are not implemented in this batch. Same boundary. No owner approval of the proposed layouts/enemies is inferred.
+- Integration: branch implementation only at entry creation; PR and final response record verified push/merge/builder status. Existing combat timings, damage, cooldowns and animation are unchanged.
+
+## 2026-10-16 — Astra: airborne Expedition chip selection
+
+- Branch `codex/chip-selection-ground`, base shared/builder `bb4b36a`.
+- Cause: the chooser reused the full Leet freeze, resetting vertical velocity, pinning jump height and disabling gravity every tick.
+- Hold horizontal position and orientation, cancel upward momentum, preserve downward velocity and use the existing ground motor/gravity while choosing and through the final wrist plant. Existing freeze/scare still suspend the pilot. Damage, action gating, hold duration and wire format unchanged.
+- Added native M1 acceptance for rising/falling entry, real-geometry landing, horizontal hold and freeze precedence. Updated the selection contract. Host applies the same rule to all seats; guests already suspend prediction during the public choosing flag.
+- Verification: player, runtime and editor semantic compilation passed against pinned Unity references. Managed/relay suite result recorded in PR. Native Unity/PhysX acceptance and Windows host/guest play remain unrun here; the new native checks run on the Windows builder.
+- Implemented on task branch; integration/build publication status recorded in PR/final handoff.
 
 ## 2026-10-16 — Claude: footsteps cycled through terrains on one surface (surface lookup, memory, one series per key)
 
@@ -9668,3 +9702,19 @@ rerun the unchanged native acceptance gates before publication.
   - If an authority's step ends more than 15 cm from its replicated distance, the feet hand back to the gait instead of staying planted.
 - **Animation impact:** presentation only. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged. The drawn rig moves up to 20 cm off the capsule (25 at a run) and returns by each step's end. The lead foot steps up to 30 cm. The Overclock compresses the step and the trails with the windows.
 - **Next:** the owner checks the feel in a native build. Astra decides whether to add the step (contract above); the presentation already reads it.
+
+
+## 2026-10-16 — Astra: fresh Expedition runs (owner policy update)
+
+- Branch `codex/expedition-fresh-runs`, base shared `bb4b36a`. Owner removed run saves/resume from scope. Every live launch already makes a new run ID; it now constructs an in-memory session without opening the disk store, and skips automatic checkpoint writes. Existing old files are neither read nor deleted.
+- Extraction commits once in the live run and confirms without a durable-save flag. Updated status text says fresh run/no saving; profile/account persistence and live reconnect remain. Legacy save implementation is retained for historical tests/tools, not connected to live launches. Expedition protocol is now 2 to reject clients with old extraction-save semantics at launch/reconnect.
+- Split-area registry/cohort/wire integration is intentionally absent from this independently shippable change. Live layout stays exp-layout-3 and F entry remains.
+- Validation: managed C#9 warnings-as-errors compilation; fresh-run, integration, rule/view, director and co-op checks; pinned Unity API Player/Runtime/Editor compilation. Native Unity execution and Windows visual play not performed in this environment; publication must be confirmed from the builder.
+- Animation, damage, cooldowns and movement unchanged. Host extraction with connected guests remains refused under the existing no-endpoint-migration rule.
+
+
+## 2026-10-16 — Astra: builder validation physics-mode repair
+
+- Build of `8d1ec86` failed at 15:59 UTC in the airborne chooser landing assertion. Latest-Build.txt reports Physics.Simulate refused every step because simulationMode was not Script. This fixture runs before ConversionGame startup configures physics.
+- Scope the fixture's falling loop to SimulationMode.Script, step the owning PhysicsScene, sync transforms and restore the prior mode in finally. Retain the landing/horizontal-hold assertions. This repairs the validation setup, not a gameplay bypass.
+- Pinned Unity Runtime compile checked; next Windows build must execute the retained native gate. No publication claim until the builder succeeds.
