@@ -1,3 +1,10 @@
+## 2026-10-16 — Claude: hub ward hidden in gameplay
+
+- Branch `claude/hub-ward-hidden`, base shared `e8de6fc`. Owner: "The hub still shows an orange barrier. HideSanctuaryEdge only suppresses NativeExpeditionStateScene's sanctuary effect. NativeExpeditionHubGates.Build still calls Ward(...) when v.Ward is true ... Suppress that ward rendering in gameplay."
+- `Core/NativeExpeditionHub.cs`: `NativeExpeditionHubGates.HideWard`. When set, `Build` skips `Ward(...)`: no fence shimmer, gate curtains, threshold lines or motes. `Runtime/NativeExpeditionHubPresentation.cs` sets it every frame to `!NativeExpeditionHubPreview.On`, so gameplay never draws the ward and the DEV "Hub gates preview" still does.
+- Unchanged: the authority's horde ward collider (`Hub horde ward`, layer 28), projectile blocking, the safe-zone rules, the gate models, poses, dust, animation and cues. No wire, rule or timing change.
+- Checks: `ExpeditionHubChecks` gains a hidden-ward check (an authority-style view with the ward on: zero ward quads, identical gate parts, poses and dust) and a hook check (the runtime sets the flag before `Build`; the ward collider stays). See the merge entry for the five repo checks. Not run: Unity Editor or a Windows build.
+
 ## 2026-10-16 — Astra: split-area scope, join parser preparation, sound batch generator
 
 - Branch `codex/expedition-split-area-handoff`, base shared `f92a3e3` (includes Claude's `e4e12fb` and subsequent co-op validation repair). Written scope in EXPEDITION-HUB.md was committed before parser changes: per-area physics/arena/match state, peer-scoped wire and barriers, cross-area economy/death/reprint, schema migration, checkpoint and host-migration limits, additive host cost and native gates. This is a scoped foundation, NOT implemented split-area play. The all-party interim circle is not enabled.

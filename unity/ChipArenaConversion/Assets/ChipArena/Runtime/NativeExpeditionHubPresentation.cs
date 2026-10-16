@@ -93,8 +93,8 @@ namespace ChipArena.UnityConversion
         public int HubGatesDrawn=>hubGates.GatesDrawn;
         // The ward's segments: the outer face of every fence section, a line on the street side of the fence (once per map).
         private void HubWardSegments(ContentMap map)=>NativeExpeditionHubGates.WardSegments(map?.blocks,hubWard);
-        /// <summary>From ExpeditionCityScenery: the gates at their state's pose (or resting open), their dust, and the ward when
-        /// its rule is on; the DEV preview's synthetic state when that tool is on.</summary>
+        /// <summary>From ExpeditionCityScenery: the gates at their state's pose (or resting open) and their dust; the DEV preview's
+        /// synthetic state, with the ward drawn, when that tool is on. Gameplay draws no ward.</summary>
         private void ExpeditionHubFrame(Camera eye,float now)
         {
             if(townHub==null||eye==null)return;ExpeditionHubView v;double t;
@@ -104,6 +104,8 @@ namespace ChipArena.UnityConversion
             else{v=NativeExpeditionHubLive.Authority;t=hubClock.Read(NativeExpeditionHubLive.AuthorityClock,Time.unscaledTimeAsDouble);}
             NativeExpeditionHubLive.Shown=v;NativeExpeditionHubLive.ShownClock=t;NativeExpeditionHubLive.Layout=townHub;
             var c=eye.transform;Vector3 e=c.position,r=c.right,u=c.up;var view=new ExpeditionEye{X=e.x,Y=e.y,Z=e.z,Rx=r.x,Ry=r.y,Rz=r.z,Ux=u.x,Uy=u.y,Uz=u.z};
+            // The ward draws nothing in gameplay (owner, 2026-10-16); its collider and rules are the authority's and unchanged.
+            hubGates.HideWard=!NativeExpeditionHubPreview.On;
             hubGates.Build(townHub,v,hubWard,t,view,LowGraphics);
             if(hubDraw==null&&!hubDrawFailed){hubDraw=NativeExpeditionHubDraw.Create();hubDrawFailed=hubDraw==null;}
             hubDraw?.Draw(hubGates,eye,UsesInstancing,now);
