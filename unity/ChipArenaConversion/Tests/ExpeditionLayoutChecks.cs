@@ -208,6 +208,8 @@ namespace ChipArena.UnityConversion
             ExpeditionJoinDraftChecks.Run(root,content,pve,Probe,Reach);
             // The Central Station design draft (not live): the live manifest plus the station through the same parser and gate.
             ExpeditionStationDraftChecks.Run(root,Reach);
+            // The City Ironworks blockout draft (not live) on its own import of today's maps plus the draft map, with the same probe.
+            ExpeditionIronworksDraftChecks.Run(root,Supported);
             Check(pve.entries.Where(e=>e.id.StartsWith("breach-gantry-",StringComparison.Ordinal)).All(e=>Supported(inst,e.@exit.Position(),NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight)),"both authored gantry exits are Hulk-clear");
             Check(new[]{town,inst}.All(m=>!NativeMapRules.ArenaSelectable(m)&&m.nav.nodes.Length>0&&m.nav.links.Length>0),"imported navigation and arena isolation");
             Check(NativeWardZeroLooks.Active(inst)&&!NativeWardZeroLooks.Active(town)&&inst.hazards.Length==12&&ReferenceEquals(inst.hazards,siren.hazards),"instance uses the exact boss-test Ward hazard table");

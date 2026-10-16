@@ -39,7 +39,7 @@ Only the `expedition-city` look is in `Resources/MapLooks.json`, and no map uses
 | --- | --- | --- | --- |
 | Outdoor town (world) | `exp-city` | `expedition-city` | `expedition-city` (new: zombie city at dusk) |
 | Ward Zero instance | `exp-ward-zero` | `expedition-ward-zero` | `quarantine` (shared with Siren) |
-| Second instance | `exp-foundry` | `expedition-foundry` | new, later |
+| Second instance | `exp-foundry` | `expedition-ironworks` (reserved as `expedition-foundry`; renamed 2026-10-16 to the importer's draft profile from PR #254) | `ironworks` (draft: `docs/EXPEDITION-CITY-IRONWORKS.md`) |
 | Third instance | `exp-transit` | `expedition-transit` | new, later |
 
 - First playable slice: `exp-city` + `exp-ward-zero` only. The manifest's instance list is the
