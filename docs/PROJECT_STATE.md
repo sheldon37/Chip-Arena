@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-16 Claude join circle layout draft (`claude/join-circle-layout-draft`, on branch, not live): exp-layout-4 draft (`Tests/expedition-layout-4-join-draft.json`) gives the Ward Zero door join (79, 0, 0) r 2.5 h 4, the approach at its centre and its returns moved out of it. Astra's parser accepts it, and live exp-layout-3 is byte-identical. Next: Astra's subset transfer and join view fields, then Claude's ring, HUD and the live switch. See EXPEDITION-HUB.md.
+2026-10-16 Claude join circle layout draft (`claude/join-circle-layout-draft`, merged into shared, not live): exp-layout-4 draft (`Tests/expedition-layout-4-join-draft.json`) gives the Ward Zero door join (79, 0, 0) r 2.5 h 4, the approach at its centre and its returns moved out of it. Astra's parser accepts it, and live exp-layout-3 is byte-identical. Next: Astra's subset transfer and join view fields, then Claude's ring, HUD and the live switch. See EXPEDITION-HUB.md.
 
 2026-10-16 Astra split-area milestone 1 (`codex/expedition-area-runtime`, base `9f18015`): registry/local-scene foundation and query routing implemented, with native isolation gate added. Not wired to live Expedition; F entry remains. Cohort/director/wire/save/join milestones pending native foundation execution. No join view fields yet. See EXPEDITION-AREA-RUNTIME.md.
 

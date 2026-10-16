@@ -1,6 +1,6 @@
 ## 2026-10-16 — Claude: join circle layout draft (exp-layout-4, not live)
 
-- Branch `claude/join-circle-layout-draft`, base shared `b54596f` (includes Astra's join parser, PR #250, and the area runtime foundation, PR #252). Implementation `85a1e74`. Pushed; not merged, no PR, not live, no publication.
+- Branch `claude/join-circle-layout-draft`, base shared `b54596f` (includes Astra's join parser, PR #250, and the area runtime foundation, PR #252). Implementation `85a1e74`. Fast-forwarded into shared and the builder (inert: nothing loads the draft); no PR, not live, no publication.
 - Owner (verbatim): "lets move the 'Join instance' circle a little bit away from the door. We can make the circle bigger too, players can join by standing inside the circle." Astra: prepare a draft against the parser; do not switch the live layout or show a deploy countdown before the subset transfer and its view exist.
 - **Draft.**
   - `docs/arenas/scripts/expedition_layout.py --draft <file>` (or `--fixtures`) writes `unity/ChipArenaConversion/Tests/expedition-layout-4-join-draft.json`.
