@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
 #pragma warning restore CS0649
         /// <summary>A capsule probe over the map's authored collision (blocks minus collisionOff, plus ramp wedges), as the
         /// layout generators model it: floor under the point, nothing above the step or the capsule's spherical bottom.</summary>
-        private static bool Supported(ContentMap m,V3 p,float r,float h)
+        internal static bool Supported(ContentMap m,V3 p,float r,float h)
         {
             var off=new HashSet<string>(m.navHints?.collisionOff??Array.Empty<string>());bool floor=false;
             double Surface(double d)=>p.y+r-Math.Sqrt(Math.Max(r*r-d*d,0))+.03;double step=p.y+.36,top=p.y+h+.05;
@@ -166,6 +166,8 @@ namespace ChipArena.UnityConversion
             NativeExpeditionLayout.ValidateGeometry(parsed,content,pve,Probe,Reach);count++;
             // The exp-layout-4 join circle draft (not live) against the same parser, probe and navigation.
             ExpeditionJoinDraftChecks.Run(root,content,pve,Probe,Reach);
+            // The Central Station design draft (not live): the live manifest plus the station through the same parser and gate.
+            ExpeditionStationDraftChecks.Run(root,Reach);
             Check(pve.entries.Where(e=>e.id.StartsWith("breach-gantry-",StringComparison.Ordinal)).All(e=>Supported(inst,e.@exit.Position(),NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight)),"both authored gantry exits are Hulk-clear");
             Check(new[]{town,inst}.All(m=>!NativeMapRules.ArenaSelectable(m)&&m.nav.nodes.Length>0&&m.nav.links.Length>0),"imported navigation and arena isolation");
             Check(NativeWardZeroLooks.Active(inst)&&!NativeWardZeroLooks.Active(town)&&inst.hazards.Length==12&&ReferenceEquals(inst.hazards,siren.hazards),"instance uses the exact boss-test Ward hazard table");
