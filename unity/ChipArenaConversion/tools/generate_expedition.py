@@ -23,8 +23,8 @@ from expedition_common import Collider, block_hash
 MAP_DRAFTS = {
     'expedition-city': ('city', 'ec', 1),
     'expedition-ward-zero': ('ward-zero', 'ew', 2),
-    'expedition-transit': ('central-station', 'et', 2),
-    'expedition-ironworks': ('ironworks', 'ei', 2),
+    'expedition-transit': ('central-station', 'et', 1),
+    'expedition-foundry': ('ironworks', 'ei', 1),
 }
 
 
@@ -40,7 +40,7 @@ def navigation(m):
         for z in range(math.ceil(m['bounds']['minZ']*scale), math.floor(m['bounds']['maxZ']*scale)):
             px, pz = (x+.5)/scale, (z+.5)/scale
             for y in col.surfaces(px, pz):
-                if y < -.01 or y > m['bounds']['ceiling'] - 1 or col.blocked(px, pz, y):
+                if y <= m['bounds']['killY']+1 or y > m['bounds']['ceiling'] - 1 or col.blocked(px, pz, y):
                     continue
                 # The city has one street level; building roofs are excluded.
                 if m['id'] == 'expedition-city' and y > .05:
@@ -93,7 +93,7 @@ def navigation(m):
 
 def generate(check=False):
     resource = PROJECT / 'Assets/Conversion/Resources'
-    manifest = json.loads((PROJECT/'Tests/expedition-layout-draft.json').read_text())
+    manifest = json.loads((PROJECT/'Tests/expedition-live-layout.json').read_text())
     maps = []
     for area in manifest['areas']:
         if area['map'] not in MAP_DRAFTS:
@@ -111,11 +111,21 @@ def generate(check=False):
     content['maps'] = [m for m in content['maps'] if m['id'] not in {x['id'] for x in maps}]
     at = next(i for i, m in enumerate(content['maps']) if m['id'] == 'siren')+1
     content['maps'][at:at] = maps
+    # Default navigation metadata is implicit in the schema. Keep the authored
+    # graph, coordinates and non-default gates; avoid megabytes of empty arrays.
+    for m in content['maps']:
+        for n in (m.get('nav') or {}).get('nodes', []):
+            if n.get('safe') is False: n.pop('safe')
+            if n.get('layer') == 0: n.pop('layer')
+        for link in (m.get('nav') or {}).get('links', []):
+            for key in ('requires', 'after', 'hazards'):
+                if link.get(key) == []: link.pop(key)
+            if link.get('kind') == 'walk': link.pop('kind')
     outputs = {resource/'UnityMaps.json': json.dumps(content, separators=(',', ':'))+'\n',
-               resource/'ExpeditionLayout.json': (PROJECT/'Tests/expedition-layout-draft.json').read_text()}
+               resource/'ExpeditionLayout.json': (PROJECT/'Tests/expedition-live-layout.json').read_text()}
     lockpath = PROJECT/'tools/asset-lock.json'
     lock = json.loads(lockpath.read_text())
-    for name in ('UnityMaps.json', 'ExpeditionLayout.json', 'PveContent.json'):
+    for name in ('UnityMaps.json', 'ExpeditionLayout.json', 'PveContent.json', 'MapLooks.json'):
         path = resource/name
         raw = outputs[path].encode() if path in outputs else path.read_bytes()
         rel = 'Assets/Conversion/Resources/'+name

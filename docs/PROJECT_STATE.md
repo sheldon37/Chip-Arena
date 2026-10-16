@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-16 Astra activation attempt (`codex/expedition-live-activation`, base `afac02d`): consolidated inactive split branch and fixed bound breach lookups. Requested activation is NOT complete: current production director/network still single-area; new map integration and native multiplayer gates remain. Draft only; no live join/map change. See EXPEDITION-SPLIT-INTEGRATION.md.
+2026-10-16 Astra activation candidate (PR #255, `codex/expedition-live-activation`, base `afac02d`): production split-area director/scheduler, shared ledger, scoped wire/input/reprints, three stand-in circles and live Central Station/Ironworks imported with existing enemies and placeholder bosses. Local rules/geometry/compile checks underway; native four-area build gate and publication pending. Not yet claimed released. See EXPEDITION-SPLIT-INTEGRATION.md and PR for verification.
 
 2026-10-16 Astra Claude handoff (`codex/expedition-claude-handoff`, base `c471e24`): spawn-field preservation and validation, authority/guest authored-area content binding, manifest-driven navigation profiles for the two proposed instances, and area-local boss shutters implemented. Partial handoff only: split-area/native gates, machines/vents/hazards/phase rosters and eight enemy implementations remain outstanding. No new live maps or join circle. Merged into shared `0c684d8` by the owner; Claude verified the merged tree (5 checks pass). Details/verification in DEV_LOG and PR.
 

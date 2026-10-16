@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     {
         public string run,area,layout,cohort;public int epoch;public long serial;
         public ExpeditionCohortTicket Copy()=>(ExpeditionCohortTicket)MemberwiseClone();
-        public bool Matches(ExpeditionCohortTicket other)=>other!=null&&run==other.run&&area==other.area&&layout==other.layout&&cohort==other.cohort&&epoch==other.epoch&&serial==other.serial;
+        public bool Matches(ExpeditionCohortTicket other)=>other!=null&&run==other.run&&area==other.area&&layout==other.layout&&(cohort??"")== (other.cohort??"")&&epoch==other.epoch&&serial==other.serial;
     }
     public sealed class ExpeditionCohortMember
     {
@@ -53,19 +53,21 @@ namespace ChipArena.UnityConversion
             public double Deadline;public ExpeditionCohortStatus Status;
             public IExpeditionCohortPlacement Placement;
         }
-        private readonly string run,layout,hub,instance;private readonly int epoch;
+        private readonly string run,layout;private readonly string[] areas;private readonly int epoch;
         private readonly Dictionary<string,ExpeditionCohortMember> members=new Dictionary<string,ExpeditionCohortMember>(StringComparer.Ordinal);
         private readonly Dictionary<string,Cohort> cohorts=new Dictionary<string,Cohort>(StringComparer.Ordinal);
         private long serial;private double now;private bool busy;
         public bool Faulted {get;private set;}
         public ExpeditionCohortView[] Active=>cohorts.Values.Where(c=>c.Status==ExpeditionCohortStatus.Loading).Select(c=>View(c.Id)).ToArray();
         public ExpeditionCohortMember[] Members=>members.Values.OrderBy(m=>m.Account,StringComparer.Ordinal).Select(m=>m.Copy()).ToArray();
-        public ExpeditionCohorts(string run,int epoch,string layout,string hub,string instance)
+        public ExpeditionCohorts(string run,int epoch,string layout,string hub,string instance):this(run,epoch,layout,new[]{hub,instance}){}
+        public ExpeditionCohorts(string run,int epoch,string layout,IEnumerable<string> allowed)
         {
-            if(!ExpeditionValidation.Id(run)||epoch<1||layout==null||layout.Length!=64||layout.Any(c=>!Uri.IsHexDigit(c))||!ExpeditionValidation.Id(hub)||!ExpeditionValidation.Id(instance)||hub==instance)throw new ArgumentException("Validated run, epoch, layout and two areas required.");
-            this.run=run;this.epoch=epoch;this.layout=layout;this.hub=hub;this.instance=instance;
+            areas=allowed?.ToArray();
+            if(!ExpeditionValidation.Id(run)||epoch<1||layout==null||layout.Length!=64||layout.Any(c=>!Uri.IsHexDigit(c))||areas==null||areas.Length<2||areas.Length>17||areas.Any(a=>!ExpeditionValidation.Id(a))||areas.Distinct().Count()!=areas.Length)throw new ArgumentException("Validated run, epoch, layout and distinct areas required.");
+            this.run=run;this.epoch=epoch;this.layout=layout;
         }
-        private bool Area(string value)=>value==hub||value==instance;
+        private bool Area(string value)=>areas.Contains(value);
         private void Guard(){if(busy||Faulted)throw new InvalidOperationException("Cohort authority is busy or faulted.");}
         private ExpeditionCohortTicket Ticket(string area,string cohort)=>new ExpeditionCohortTicket{run=run,epoch=epoch,layout=layout,area=area,cohort=cohort,serial=checked(++serial)};
         public ExpeditionCohortMember Member(string account)=>account!=null&&members.TryGetValue(account,out var m)?m.Copy():null;
@@ -156,6 +158,11 @@ namespace ChipArena.UnityConversion
             busy=true;try{Rollback(c);return true;}
             catch{c.Status=ExpeditionCohortStatus.Faulted;Faulted=true;throw;}
             finally{busy=false;}
+        }
+        public bool Recover(string account,string destination)
+        {
+            Guard();if(!Area(destination)||!members.TryGetValue(account,out var m)||!m.Connected||m.Pending!=null)return false;
+            m.Area=destination;m.Ready=false;m.ticket=Ticket(destination,null);return true;
         }
         public bool Disconnect(string account)
         {

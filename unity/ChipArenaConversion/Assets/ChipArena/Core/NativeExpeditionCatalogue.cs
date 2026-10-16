@@ -69,8 +69,8 @@ namespace ChipArena.UnityConversion
                 Areas=new[]
                 {
                     new Area{Name="WARD ZERO",Place="Meridian Biocontainment",Map="expedition-ward-zero",LayoutArea="exp-ward-zero",State=AreaState.Live},
-                    new Area{Name="CENTRAL STATION",Place="The boarded transit hub",State=AreaState.InDevelopment},
-                    new Area{Name="CITY IRONWORKS",Place="The sealed foundry",State=AreaState.InDevelopment},
+                    new Area{Name="CENTRAL STATION",Place="Central Station",Map="expedition-transit",LayoutArea="exp-transit",State=AreaState.Live},
+                    new Area{Name="CITY IRONWORKS",Place="City Ironworks",Map="expedition-foundry",LayoutArea="exp-foundry",State=AreaState.Live},
                     new Area{Name="THE SIREN",Place="City Hall · the clock stopped at 6:47",State=AreaState.InDevelopment,Boss=true,Note="M1 fights her at the hub checkpoint"},
                 },
             },

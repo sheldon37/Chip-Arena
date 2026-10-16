@@ -6,11 +6,11 @@ using UnityEngine.SceneManagement;
 
 namespace ChipArena.UnityConversion
 {
-    public sealed partial class NativePilot { public bool ExpeditionTransferHeld; }
+    public sealed partial class NativePilot { public readonly HashSet<string> TransferProcs=new HashSet<string>();public bool ExpeditionTransferHeld;public readonly Dictionary<string,float> TransferCooldowns=new Dictionary<string,float>(); }
     public sealed partial class NativeArena
     {
         internal bool CanTransferPilot(NativePilot p)=>p!=null&&Pilots.Contains(p)&&!p.Seat.bot&&!p.Seat.AuthorityBoss&&p.Hp>0&&p.Death==null&&
-            p.HeldBy==null&&p.Controlling==null&&p.ControlledBy==null&&p.Kernel?.Active!=true&&p.Juggle==null;
+            p.HeldBy==null&&p.Controlling==null&&p.ControlledBy==null&&p.Kernel?.Active!=true&&p.Juggle==null&&p.ScareBy==null&&Time>=p.FrozenUntil&&Time>=p.LaunchUntil&&Pve?.Hires.Any(h=>h.owner==p)!=true;
         internal void HoldTransferPilot(NativePilot p,bool hold)
         {
             ClearRemoteInput(p.Seat.id);originalInputs.Remove(p);p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};
@@ -27,7 +27,10 @@ namespace ChipArena.UnityConversion
         }
         internal void DetachTransferPilot(NativePilot p)
         {
-            ClearRemoteInput(p.Seat.id);originalInputs.Remove(p);Pilots.Remove(p);Match.Seats.Remove(p.Seat);
+            ClearRemoteInput(p.Seat.id);originalInputs.Remove(p);
+            CancelTransferReferences(p);
+            string prefix=p.Seat.id+":";foreach(var pair in chipCooldowns.Where(c=>c.Key.StartsWith(prefix,StringComparison.Ordinal)).ToArray()){p.TransferCooldowns[pair.Key]=pair.Value;chipCooldowns.Remove(pair.Key);}
+            Pilots.Remove(p);Match.Seats.Remove(p.Seat);
             Pve?.Rows.Remove(p.Seat.id);p.FrozenPosition=null;
         }
         internal void AttachTransferPilot(NativePilot p,NativePveRow row)
@@ -35,7 +38,48 @@ namespace ChipArena.UnityConversion
             if(Pilots.Any(x=>x.Seat.id==p.Seat.id)||Match.Seats.Any(x=>x.id==p.Seat.id))throw new InvalidOperationException("Duplicate destination seat.");
             p.Body.transform.SetParent(null);SceneManager.MoveGameObjectToScene(p.Body.gameObject,Root.scene);p.Body.transform.SetParent(Root.transform);
             p.Collider.sharedMaterial=surfaces["pilot"];Match.Seats.Add(p.Seat);Pilots.Add(p);
+            foreach(var pair in p.TransferCooldowns)chipCooldowns[pair.Key]=Math.Max(chipCooldowns.TryGetValue(pair.Key,out float old)?old:0,pair.Value);
             if(Pve!=null)Pve.Rows[p.Seat.id]=row??new NativePveRow{Pilot=p};
+        }
+        private void CancelTransferReferences(NativePilot p)
+        {
+            // A crossing cancels outgoing area-owned attacks and summons. Cooldowns and
+            // existing DOT damage survive; foreign source IDs cannot alias destination actors.
+            p.Rewind.Clear();p.LastAttacker=null;foreach(var key in lastPilotDamage.Where(k=>k.Key==p.Seat.id||k.Value.pilot==p.Seat.id).Select(k=>k.Key).ToArray())lastPilotDamage.Remove(key);foreach(var dot in p.Dots.Values)dot.Source=0;
+            Bullets.RemoveAll(b=>b.Owner==p.Seat.id||b.SirenTarget==p.Seat.id);
+            AbilityShots.RemoveAll(a=>a.Owner==p);AbilityZones.RemoveAll(a=>a.Owner==p||a.Attached==p);abilityEchoes.RemoveAll(a=>a.owner==p);
+            MeleeShots.RemoveAll(a=>a.Owner==p||a.Original==p);ChipFields.RemoveAll(a=>a.Owner==p||a.Attached==p);
+            FighterEchoes.RemoveAll(a=>a.Owner==p||a.Spare==p);StormTrails.RemoveAll(a=>a.Owner==p);
+            SirenFields.RemoveAll(a=>a.Owner==p);foreach(var f in LeetFields.Where(f=>f.Owner==p||f.Target==p).ToArray())RemoveLeetField(f);
+            meleeCarries.RemoveAll(a=>a.Owner==p||a.Target==p);meleeFissures.RemoveAll(a=>a.Owner==p);
+            contacts.RemoveAll(c=>c.pilot==p||c.prop?.Source==p);
+            foreach(var prop in AllBlocks)if(prop.Source==p)prop.Source=null;
+            foreach(var m in Minions.ToArray())
+            {
+                if(m.Owner==p){RemoveMinion(m,false);continue;}if(m.Foe==p)m.Foe=null;
+                if(m.Pve!=null){if(m.Pve.Target==p)m.Pve.Target=null;if(m.Pve.LastHit==p)m.Pve.LastHit=null;}
+            }
+            foreach(var other in Pilots)if(other!=p){if(other.LastAttacker==p)other.LastAttacker=null;if(other.Siren?.Move?.Target==p)CancelSiren(other);}
+            if(Pve!=null)
+            {
+                Pve.Hires.RemoveAll(h=>h.owner==p);
+                foreach(var recruit in Pve.Recruits.Where(r=>r.Owner==p).ToArray()){recruit.Pilot.Hp=0;recruit.Pilot.Collider.enabled=false;recruit.Pilot.Body.isKinematic=true;}
+            }
+        }
+        internal bool ReprintFrom(NativeArena source,string account,ExpeditionPoint slot)
+        {
+            var p=source.ExpeditionPilotFor(account);if(p==null||p.Hp>0||!TransferSlotClear(slot)||Pilots.Any(x=>x.Seat.id==p.Seat.id))return false;
+            NativePveRow row=null;source.Pve?.Rows.TryGetValue(p.Seat.id,out row);
+            var origin=p.Body.position;
+            try
+            {
+                source.DetachTransferPilot(p);AttachTransferPilot(p,row);p.Body.position=Vec(slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);
+                expeditionDown.Add(account);source.expeditionDown.Remove(account);Physics.SyncTransforms();return true;
+            }
+            catch
+            {
+                if(Pilots.Contains(p))DetachTransferPilot(p);if(!source.Pilots.Contains(p))source.AttachTransferPilot(p,row);p.Body.position=origin;throw;
+            }
         }
         public bool TransferSlotClear(ExpeditionPoint point)
         {

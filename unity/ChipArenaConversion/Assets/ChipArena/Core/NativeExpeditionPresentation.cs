@@ -132,10 +132,11 @@ namespace ChipArena.UnityConversion
         // ---- Roster ------------------------------------------------------------------------------------------------------------
         public struct RosterRow{public string account, status;public ExpeditionTone tone;public bool you, host;}
         /// <summary>Every member's run status (extracted ones included), from members[] only.</summary>
+        private static string AreaLabel(string area)=>area=="exp-city"?"CITY":area=="exp-ward-zero"?"WARD ZERO":area=="exp-transit"?"CENTRAL STATION":area=="exp-foundry"?"IRONWORKS":"IN RUN";
         public static RosterRow[] Roster(ExpeditionView v)
         {
             return v.members.Select(m=>new RosterRow{account=m.account,you=m.account==v.viewer,host=m.host,
-                status=m.extracted?"EXTRACTED":!m.connected?"OFFLINE":v.phase==ExpeditionPhase.Victory&&v.continueVotes.Contains(m.account)?"CONTINUING":!m.alive?(Has(m.carriedBy)?"CARRIED BY "+Who(m.carriedBy):"DOWN"):m.safe?"IN RUN · SANCTUARY":"IN RUN",
+                status=m.extracted?"EXTRACTED":!m.connected?"OFFLINE":v.phase==ExpeditionPhase.Victory&&v.continueVotes.Contains(m.account)?"CONTINUING":!m.alive?(Has(m.carriedBy)?"CARRIED BY "+Who(m.carriedBy):"DOWN"):m.atJoin?"DEPLOYING":m.safe?"IN RUN · SANCTUARY":v.areaIdentity!=null?AreaLabel(m.area):"IN RUN",
                 tone=m.extracted?ExpeditionTone.Warn:!m.connected?ExpeditionTone.Muted:!m.alive?ExpeditionTone.Danger:ExpeditionTone.Good}).ToArray();
         }
 

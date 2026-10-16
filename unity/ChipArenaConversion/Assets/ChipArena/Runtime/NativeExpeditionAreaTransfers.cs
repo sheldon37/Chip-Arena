@@ -73,6 +73,7 @@ namespace ChipArena.UnityConversion
             reserved.AddRange(chosen);
             void Release(){foreach(var slot in chosen)reserved.Remove(slot);}
             try{return new NativeExpeditionCohortPlacement(from,to,assignments,Release);}
+            catch(InvalidOperationException){Release();return null;}
             catch{Release();throw;}
         }
     }

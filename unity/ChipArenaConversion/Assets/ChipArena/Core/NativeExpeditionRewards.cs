@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Authenticated combat authority calls once per authored boss entity. Eligibility freezes here.</summary>
         public bool DefeatBoss(string boss,int drops=-1)
         {
-            if(!Mutable||s.phase!=ExpeditionPhase.Instance||!Current.bosses.Contains(boss)||Current.defeated.Contains(boss)||drops< -1||drops>256)return false;
+            if(!Mutable||Phase!=ExpeditionPhase.Instance||!Current.bosses.Contains(boss)||Current.defeated.Contains(boss)||drops< -1||drops>256)return false;
             if(!IssueBossRewards(EventKey("boss:"+boss),drops))return false;
             Current.defeated=Add(Current.defeated,boss);Current.cleared=Current.defeated.Length==Current.bosses.Length;Changed();return true;
         }

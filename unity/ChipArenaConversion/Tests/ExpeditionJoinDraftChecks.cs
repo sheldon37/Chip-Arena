@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
     // transfer and view integration come first).
     internal static class ExpeditionJoinDraftChecks
     {
-        internal const string DraftPath="Tests/expedition-layout-4-join-draft.json",LivePath="Assets/Conversion/Resources/ExpeditionLayout.json";
+        internal const string DraftPath="Tests/expedition-layout-4-join-draft.json",LivePath="Tests/expedition-layout-draft.json";
         /// <summary>SHA-256 of the live manifest's bytes (exp-layout-3). A deliberate live layout change updates it together with
         /// PINNED in Tests/test_expedition_layout_draft.py; the join draft never changes it.</summary>
         internal const string LiveSha256="3c1a259f400c3ff6cfd6fe5fd920c67f4dcd3777b956927067045786770e144a";
@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
             // ---------------- the live layout: unchanged, no join, still accepted ----------------
             string liveText=R(LivePath),draftText=R(DraftPath);
             string sha;using(var h=SHA256.Create())sha=BitConverter.ToString(h.ComputeHash(File.ReadAllBytes(Path.Combine(root,LivePath)))).Replace("-","").ToLowerInvariant();
-            Check(sha==LiveSha256,"the live manifest is exp-layout-3's bytes (sha256 "+sha+")");
+            Check(sha==LiveSha256,"the historical baseline is exp-layout-3's bytes (sha256 "+sha+")");
             var live=NativeExpeditionLayout.Parse(liveText);
             Check(live.revision=="exp-layout-3"&&live.areas.All(a=>a.doors.All(d=>d.join==null)),"the live layout is exp-layout-3 without a join circle");
             NativeExpeditionLayout.ValidateGeometry(live,content,pve,probe,reach);count++;
@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
                 .Where(f=>{var t=File.ReadAllText(f);return t.Contains("expedition-layout-4",StringComparison.Ordinal)||t.Contains("join-draft",StringComparison.Ordinal);}).ToArray();
             Check(hits.Length==0,"nothing under Assets/ names the draft ("+string.Join(", ",hits.Select(Path.GetFileName))+")");
             Check(!DraftPath.StartsWith("Assets/",StringComparison.Ordinal)&&NativeExpeditionLayout.ResourceName=="ExpeditionLayout"&&!R("tools/generate_expedition.py").Contains("join-draft"),"the draft sits outside Assets/; the runtime loads Resources/ExpeditionLayout and the importer imports the live fixture only");
-            Console.WriteLine("PASS expedition join draft ("+count+" checks: exp-layout-4 at "+DraftPath+", not live and named nowhere under Assets/; the live exp-layout-3 manifest byte-identical, without a join and still accepted; "
+            Console.WriteLine("PASS expedition join draft ("+count+" checks: exp-layout-4 at "+DraftPath+", not live and named nowhere under Assets/; the historical exp-layout-3 baseline byte-identical, without a join and still accepted; "
                 +"Astra's parser and geometry gate accept the draft: join (79, 0, 0) r 2.5 h 4 at the Ward Zero door, approach at its centre, returns out of it (exp-layout-3 had 4 inside), F volume unchanged; "
                 +"base-y capsule-centre membership inclusive at radius, base and top; standing and jumping pilots inside; dressing: "+flat+" flat parts and nothing standing in the cylinder, "+around+" parts within 4 m of it)");
         }

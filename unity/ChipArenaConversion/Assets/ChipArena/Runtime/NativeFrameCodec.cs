@@ -23,6 +23,7 @@ namespace ChipArena.UnityConversion
         {if(d!=null){if(!d.hasActor)d.actor=null;if(d.actor!=null){if(!d.actor.HasKernel)d.actor.Kernel=null;d.actor.Cyber?.RestorePresence();}if(!d.hasWound)d.wound=null;}}
         public void RestorePresence()
         {
+            if(string.IsNullOrEmpty(areaIdentity?.run))areaIdentity=null;
             if(devTimeScale==0)devTimeScale=1;
             if(seats!=null)foreach(var seat in seats)if(seat!=null&&seat.devScale==0)seat.devScale=1;
             if(!hasFinalKillcam){finalVictim=finalSeed=0;resultAt=0;}
@@ -58,19 +59,19 @@ namespace ChipArena.UnityConversion
         [Serializable] private sealed class ExpeditionPrivateEnvelope
         {public int version=NativeConnection.Protocol;public string type="expedition-private";public ExpeditionPrivateFrame expeditionPrivate;}
         [Serializable] private sealed class ExpeditionCommandEnvelope
-        {public int version=NativeConnection.Protocol;public string type="expedition-command";public ExpeditionCommandRequest expeditionCommand;}
+        {public int version=NativeConnection.Protocol;public int epoch;public ExpeditionCohortTicket areaIdentity;public string type="expedition-command";public ExpeditionCommandRequest expeditionCommand;}
         [Serializable] private sealed class ExpeditionReplyEnvelope
         {public int version=NativeConnection.Protocol;public string type="expedition-reply";public ExpeditionCommandReply expeditionReply;}
         [Serializable] private sealed class ExpeditionAreaReadyEnvelope
-        {public int version=NativeConnection.Protocol;public string type="expedition-area-ready";public ExpeditionAreaReadyRequest expeditionAreaReady;}
+        {public int version=NativeConnection.Protocol;public int epoch;public ExpeditionCohortTicket areaIdentity;public string type="expedition-area-ready";public ExpeditionAreaReadyRequest expeditionAreaReady;}
         public static string Encode(NativeNetMessage message)
         {
             if(message.type=="dev-command")return JsonUtility.ToJson(new DevCommandEnvelope{epoch=message.epoch,generation=message.generation,devCommand=message.devCommand});
             if(message.type=="dev-reply")return JsonUtility.ToJson(new DevReplyEnvelope{epoch=message.epoch,devReply=message.devReply});
-            if(message.type=="expedition-area-ready")return JsonUtility.ToJson(new ExpeditionAreaReadyEnvelope{expeditionAreaReady=message.expeditionAreaReady});
+            if(message.type=="expedition-area-ready")return JsonUtility.ToJson(new ExpeditionAreaReadyEnvelope{epoch=message.epoch,areaIdentity=message.areaIdentity,expeditionAreaReady=message.expeditionAreaReady});
             if(message.type=="expedition-public")return JsonUtility.ToJson(new ExpeditionPublicEnvelope{epoch=message.epoch,generation=message.generation,expeditionPublic=message.expeditionPublic});
             if(message.type=="expedition-private")return JsonUtility.ToJson(new ExpeditionPrivateEnvelope{expeditionPrivate=message.expeditionPrivate});
-            if(message.type=="expedition-command")return JsonUtility.ToJson(new ExpeditionCommandEnvelope{expeditionCommand=message.expeditionCommand});
+            if(message.type=="expedition-command")return JsonUtility.ToJson(new ExpeditionCommandEnvelope{epoch=message.epoch,areaIdentity=message.areaIdentity,expeditionCommand=message.expeditionCommand});
             if(message.type=="expedition-reply")return JsonUtility.ToJson(new ExpeditionReplyEnvelope{expeditionReply=message.expeditionReply});
             if(message.type=="lobby")return JsonUtility.ToJson(new LobbyEnvelope{epoch=message.epoch,seats=message.seats,options=message.options});
             if(message.type!="frame")return JsonUtility.ToJson(message);
@@ -91,6 +92,11 @@ namespace ChipArena.UnityConversion
             if(message?.type=="frame")
             {message.frame=JsonUtility.FromJson<FrameEnvelope>(json).frame;message.frame?.RestorePresence();}
             if(message?.type=="lobby")message.options=JsonUtility.FromJson<LobbyEnvelope>(json).options;
+            if(message!=null&&string.IsNullOrEmpty(message.areaIdentity?.run))message.areaIdentity=null;
+            if(message?.expeditionPublic!=null&&string.IsNullOrEmpty(message.expeditionPublic.areaIdentity?.run))message.expeditionPublic.areaIdentity=null;
+            if(message?.expeditionPrivate!=null&&string.IsNullOrEmpty(message.expeditionPrivate.areaIdentity?.run))message.expeditionPrivate.areaIdentity=null;
+            if(message?.expeditionCommand!=null&&string.IsNullOrEmpty(message.expeditionCommand.areaIdentity?.run))message.expeditionCommand.areaIdentity=null;
+            if(message?.expeditionReply!=null&&string.IsNullOrEmpty(message.expeditionReply.areaIdentity?.run))message.expeditionReply.areaIdentity=null;
             return message;
         }
     }

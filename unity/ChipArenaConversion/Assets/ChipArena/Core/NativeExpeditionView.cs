@@ -240,6 +240,7 @@ namespace ChipArena.UnityConversion
         public static ExpeditionView Normalize(ExpeditionView v)
         {
             if(v==null)return null;static string N(string s)=>string.IsNullOrEmpty(s)?null:s;
+            if(string.IsNullOrEmpty(v.areaIdentity?.run))v.areaIdentity=null;
             v.joins??=Array.Empty<ExpeditionJoinView>();
             v.closures??=Array.Empty<ExpeditionClosureView>();v.bossArrivals??=Array.Empty<ExpeditionBossArrivalView>();v.areaBarrier??=new ExpeditionAreaBarrierView();v.areaBarrier.target=N(v.areaBarrier.target);v.areaBarrier.layout=N(v.areaBarrier.layout);
             v.continueVotes??=Array.Empty<string>();v.anchors??=Array.Empty<ExpeditionWorldAnchor>();v.chests??=Array.Empty<ExpeditionChestOffer>();

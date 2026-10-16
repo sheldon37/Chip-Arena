@@ -23,6 +23,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativePickupFrame {public int id,owner,machine;public string tier;public Vector3 position;public float born;}
     [Serializable] public sealed partial class NativeGameFrame:NativeMatchFrame
     {
+        public ExpeditionCohortTicket areaIdentity;
         public float devTimeScale=1;public NativeDevHazardPulse[] devHazards;
         public int version=NativeConnection.Protocol,generation;public string map,source,contentRevision;public StructureFrame[] segments;public float bossSongAt,bossSongLead;
         public NativeShotEnd[] projectileEnds; // Optional exact stopping points for recorded projectile replay.

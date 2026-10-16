@@ -22,6 +22,7 @@ namespace ChipArena.UnityConversion.Editor
                 foreach(var runtime in new[]{hub,ward}){runtime.Ready(a=>{a.Match.HoldResolution=()=>true;a.Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10,fightAt=0});});runtime.SetOccupants(2);}
                 var layout=NativeExpeditionLayout.Parse(Resources.Load<TextAsset>("ExpeditionLayout").text);
                 var pilot=hub.Arena.Pilots.Single(p=>p.Seat.id==1);var stay=hub.Arena.Pilots.Single(p=>p.Seat.id==2);
+                pilot.QReady=31;pilot.EReady=37;pilot.Dots["900:fire"]=new NativeDot{Source=900,Dps=4,Next=11,Until=18};pilot.TransferCooldowns["1:fixture"]=22;pilot.TransferProcs.Add("1:panic");
                 var hp=pilot.Hp;var origin=pilot.Body.position;Physics.SyncTransforms();
                 var slot=layout.Area("exp-ward-zero").doors.Single().entries.FirstOrDefault(p=>ward.Arena.TransferSlotClear(p));
                 Check(slot!=null,"a destination slot is available");int released=0;
@@ -30,6 +31,7 @@ namespace ChipArena.UnityConversion.Editor
                 Check(placement.Validate(),"placement validated before commit");placement.Apply();
                 Check(ReferenceEquals(ward.Arena.Pilots.Single(p=>p.Seat.id==1),pilot)&&!hub.Arena.Pilots.Contains(pilot),"same pilot moves exactly once");
                 Check(pilot.Body.gameObject.scene==ward.Scene&&stay.Body.gameObject.scene==hub.Scene,"subset scene ownership");
+                Check(pilot.QReady==31&&pilot.EReady==37&&pilot.Dots["900:fire"].Until==18&&pilot.Dots["900:fire"].Source==0&&pilot.TransferCooldowns["1:fixture"]==22&&pilot.TransferProcs.Contains("1:panic"),"ability deadlines, DOT damage and chip procs survive without foreign ownership");
                 Check(pilot.Hp==hp&&!pilot.ExpeditionTransferHeld&&hub.Occupants==1&&ward.Occupants==3,"vitals and occupancy preserved");
                 Check(hub.Arena.Match.Seat(1)==null&&ward.Arena.Match.Seat(1)==pilot.Seat&&released==1,"seat and reservation committed");
                 placement.Rollback();placement.Rollback();

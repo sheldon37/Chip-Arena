@@ -1,5 +1,15 @@
 # Split-area integration handoff — 2026-10-16
 
+Current activation candidate (`codex/expedition-live-activation`, PR #255): production now uses four independent native areas, shared run ledger with area facades, scoped inputs/frames, protocol 3, local readiness and atomic captured-cohort transfers. The exp-layout-5 manifest enables Ward Zero, Central Station and City Ironworks. Historical milestone receipts below describe earlier inactive versions, not this candidate.
+
+The host and guests load the destination before acknowledging their exact ticket. Bystanders keep simulating. A shared monotonic combat clock runs through local loading and empty-area suspension, preserving ability deadlines on transfer; empty areas do not step physics/AI. Crossing cancels outgoing area-owned attacks, summons, target references and rewind history; the pilot, vitals, chips, DOT damage, ability deadlines and persistent chip procs move together. Reprint placement must succeed before cross-area revival/payment. Local exit votes return only their living occupants; final/loop changes require everyone home.
+
+Three-second circle occupancy replaces F entry; F remains for machines and cleared-area return votes. The Ward circle is at (79,0,0), away from the door. New entrances have separate clear return slots outside their circles. Existing presentation primitives show the ring/countdown and roster locations; Claude retains visual polish ownership. New maps use authored geometry, spawns, lighting and machines with the current horde and placeholder Siren encounters. Proposed new enemy archetypes and map-specific hazard scripts are not implemented by this activation.
+
+Verification is in DEV_LOG and PR #255. The native builder now runs a four-area/three-recipient fixture including real scene transfers, guest ApplyFrame/collision, actual JsonUtility identities, concurrent encounters, shared time and 30 seconds of timing/packet/memory measurements. Its execution/publication is pending until the builder processes the candidate. A successful automated fixture is not a human multiplayer playtest.
+
+## Historical inactive milestone receipt
+
 Status: incomplete and inactive on `codex/expedition-split-integration`, parent
 `e75d2516cd94273c3ad3366a642e969e09280c72`. This branch does not implement
 working split-party gameplay. Do not merge it into the builder as a finished

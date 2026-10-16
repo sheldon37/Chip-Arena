@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ChipArena.UnityConversion
 {
@@ -16,13 +17,15 @@ namespace ChipArena.UnityConversion
     // do not advance. Membership/transfer authority is deliberately outside this owner.
     public sealed class ExpeditionAreaRegistry<T> : IDisposable where T:class,IExpeditionAreaRuntime
     {
-        private readonly string hub,instance;private readonly Func<string,T> create;
+        private readonly string[] allowed;private readonly Func<string,T> create;
         private readonly Dictionary<string,T> areas=new Dictionary<string,T>(StringComparer.Ordinal);
         private long lastTick=-1;private bool stepping,disposed,faulted;
-        public ExpeditionAreaRegistry(string hub,string instance,Func<string,T> create)
+        public ExpeditionAreaRegistry(string hub,string instance,Func<string,T> create):this(new[]{hub,instance},create){}
+        public ExpeditionAreaRegistry(IEnumerable<string> ids,Func<string,T> create)
         {
-            if(string.IsNullOrWhiteSpace(hub)||string.IsNullOrWhiteSpace(instance)||hub==instance||create==null)throw new ArgumentException("Two distinct areas and a factory are required.");
-            this.hub=hub;this.instance=instance;this.create=create;
+            allowed=ids?.ToArray();
+            if(allowed==null||allowed.Length<2||allowed.Length>17||allowed.Any(string.IsNullOrWhiteSpace)||allowed.Distinct(StringComparer.Ordinal).Count()!=allowed.Length||create==null)throw new ArgumentException("Distinct run areas and a factory are required.");
+            this.create=create;
         }
         public int Count=>areas.Count;
         public string Presented {get;private set;}
@@ -31,7 +34,7 @@ namespace ChipArena.UnityConversion
         public T Acquire(string area)
         {
             Guard();if(stepping)throw new InvalidOperationException("Area creation during a host step is forbidden.");
-            if(area!=hub&&area!=instance)throw new ArgumentException("Area is outside this run.");
+            if(!allowed.Contains(area))throw new ArgumentException("Area is outside this run.");
             if(areas.TryGetValue(area,out var existing))return existing;
             var runtime=create(area);
             if(runtime==null||runtime.Area!=area){runtime?.Dispose();throw new InvalidOperationException("Area factory returned the wrong identity.");}
@@ -54,7 +57,7 @@ namespace ChipArena.UnityConversion
             try
             {
                 sharedClock(1d/60);
-                StepOne(hub,hostTick);StepOne(instance,hostTick);return true;
+                foreach(var id in allowed)StepOne(id,hostTick);return true;
             }
             catch{faulted=true;throw;}
             finally{stepping=false;}

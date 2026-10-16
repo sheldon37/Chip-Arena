@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ExpeditionJoinView
     {
-        public string doorId,area;public int joinInside;public double joinStartedAt=-1,duration=3;
+        public string doorId,area;public float x,y,z,r;public int joinInside;public double joinStartedAt=-1,duration=3;
         public ExpeditionJoinView Copy()=>(ExpeditionJoinView)MemberwiseClone();
     }
     public sealed class ExpeditionJoinMember
@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
             {
                 var a=world.anchors.Single(v=>v.id==d.anchor&&v.kind=="door");var j=d.join;
                 if(!layout.instances.Contains(a.building)||!new[]{j.x,j.y,j.z,j.r,j.h}.All(v=>ExpeditionValidation.Number(v))||j.r<=0||j.h<=0)throw new ArgumentException("Validated join geometry required.");
-                return new Ring{Shape=new ExpeditionJoinCylinder{x=j.x,y=j.y,z=j.z,r=j.r,h=j.h},View=new ExpeditionJoinView{doorId=d.anchor,area=a.building,duration=Duration}};
+                return new Ring{Shape=new ExpeditionJoinCylinder{x=j.x,y=j.y,z=j.z,r=j.r,h=j.h},View=new ExpeditionJoinView{doorId=d.anchor,area=a.building,x=j.x,y=j.y,z=j.z,r=j.r,duration=Duration}};
             }).ToArray();
         }
         public ExpeditionJoinView[] Views=>rings.Select(r=>r.View.Copy()).ToArray();
