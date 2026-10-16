@@ -1,3 +1,11 @@
+## 2026-10-16 — Claude: Central Station and City Ironworks designs merged into shared (not live)
+
+- Branch `claude/merge-zone-designs`, base shared `afac02d`; merges `claude/central-station-design` (`1de4ce8`) and `claude/ironworks-design` (`a213c71`). Both are owner-approved designs: docs, inert drafts under `Tests/`, generators under `docs/arenas/scripts/`, managed and Python draft checks. No live manifest, map, look, catalogue or gameplay file changes.
+- Conflicts: DEV_LOG/PROJECT_STATE kept both sides; `ExpeditionLayoutChecks` calls both draft checks.
+- Next for Astra: the navigation importer skips floors below y -0.01, so the station's track bed (y -1.2) cannot import; a scratch run with that one filter lowered gave 60,523 nodes, of which 28,266 are unreachable from the entries (mostly roofs). Ask: a per-map lowest floor (or killY) and pruning of nodes unreachable from the entries. The Ironworks draft imports at 0.5 m (about 29,800 nodes).
+- Next for Claude: the in-game visual build (dressing kits, looks, lights, enemy models and VFX), viewable in a DEV-only preview until the authority work lands.
+- Checks: listed in the push note. Not run: Unity Editor, Windows player, navigation import of the station, play.
+
 ## 2026-10-16 — Claude: Central Station owner decisions; shared (PR #254) merged in
 
 - Branch `claude/central-station-design`, with shared `afac02d` merged in (it includes Astra's PR #254). Not live, no PR. Not merged into shared: the coordinator merges.
