@@ -1,3 +1,51 @@
+## 2026-10-16 — Claude: City Ironworks design (layout, look, four enemies; design phase, not live)
+
+- Owner (2026-10-16): "lets begin the design for the Central Station and City Ironworks~ we can tweak the instances to have
+  specific zombies / enemies. So lets also begin creating unique enemies for those zones. We can work on visual updates /
+  bosses after." Raised bar (relayed by the coordinator): clearly better than Ward Zero, our real assets and lighting,
+  readability first. Central Station is a parallel design; its files were not touched.
+- Branch `claude/ironworks-design`, base `origin/claude/sleepy-ritchie-g8ruhv` `bb4b36a`; implementation ``7dc7497``. Pushed, not
+  merged, no PR, not live, no release.
+- **Design** (`docs/EXPEDITION-CITY-IRONWORKS.md`): a sealed steelworks still burning. Nine rooms (Time Office entry, Casting
+  Floor arena, Furnace Aisle and Charging Deck, Rolling Mill, Stockhouse, Pattern Shop, Coke Ovens, Slag Yard and Drop Forge,
+  Converter Hall as the boss arena placeholder); an upper ring at 6 m round the arena; north and south loops to the boss hall.
+  Per-room hero shots, palettes, lights, atmosphere and dressing density; readability rules (heat stays local, two cool light
+  slots, dark enemy silhouettes with non-orange tells); asset inventory and ranked gaps (molten flow shader first); 11 hazard
+  proposals reusing the Factory's crane, press, vent and saws; four enemies (Cinderling swarm, Stoker puller, Slagback armoured
+  heavy, Ladleman elite) with clips, telegraph timings, VFX, 47 audio cue keys with briefs, an Astra contract (stats, AI states,
+  spawn weights, network fields), a performance budget, the low tier and owner questions.
+- **Blockout and drafts (inert test fixtures):** `docs/arenas/scripts/expedition_ironworks.py` writes
+  `Tests/expedition-ironworks-draft.json` (map `expedition-foundry`: 100 x 68 m, 308 blocks, 5 stairs, 31 exclusion columns,
+  41 spawns), `Tests/expedition-ironworks-layout-draft.json` (the live exp-layout-3 manifest plus the town's foundry door at the
+  reserved doorway and the `exp-foundry` area; revision `exp-layout-3-ironworks-draft`) and `Tests/expedition-ironworks-look-draft.json`
+  (look `ironworks`). Its checks: both floors 100% reached from the entries; no overlapping blocks; every record with pilot or
+  Hulk clearance; 41 of 41 spawn exits routed to entry 0 with their capsule; Hulk routes to the entries, boss points and the
+  approach; hazards clear of records; the town door's returns Hulk-clear in the live town. Entry to boss hall: 83.4 m direct,
+  101.4 m north, 109.9 m south.
+- **Live data byte-identical:** nothing under `Assets/` changed. `Tests/test_expedition_ironworks_draft.py` hashes every file
+  in `Assets/Conversion/Resources` before and after running the generator; the managed check pins the live manifest's bytes.
+- **Astra's parser accepts the draft:** `Tests/ExpeditionIronworksDraftChecks.cs` (run by ExpeditionLayoutChecks,
+  `CoreTests --expedition-layout`): `NativeExpeditionLayout.Parse` and `ValidateGeometry` pass on the draft manifest (the town
+  with its new door, Ward Zero, the foundry) with the block capsule probe and importer-style navigation built in the check
+  (7,429 nodes, 13,144 links); the map validates and imports beside today's maps; the look validates and covers all 308 blocks.
+  The schema has no standalone instance: the town door is part of the draft. Import steps for a live switch are in the doc (10.6).
+- **Finding for Astra:** `Parse` keeps only e, id, kind, from, exit, yaw, level, clear, height and surface of an authored spawn,
+  and `NativeExpeditionM1Arena` hands the parsed entries to the horde, so manifest-authored Hulk drops and breaches lose `hulk`
+  and their panel (`block`, `center`, `size`, `normal`). The live town's 4 Hulk drops and 7 breaches are affected today. The
+  check prints it as a NOTE.
+- **Renders** (session scratchpad, not committed): `renders-ironworks/` holds `compare-wardzero.png` (same renderer and settings
+  as Ward Zero), `beauty-sheet.png` and the eight room views, `enemy-sheet.png` and its tiles, `plan-overview.png`,
+  `plan-blockout.png`. Through the game's own NativeBlockLit and NativeNightSky (translated, headless WebGL), the draft map and
+  look, 8 practical lights per camera, a scratch dressing pass and FX standing in for the proposed kit, and the real pilot and
+  zombie models posed by NativeHordeGait. Concept renders, not shipped code.
+- **Checks:** five-check run (`run5b.sh`) on the tree before this entry: Unity runtime and editor build OK; relay suite: the first run failed in `ChipSelectChecks` ("the layer allocated 3088 bytes", an allocation-measurement check unrelated to this change; the Ironworks, join and layout checks passed in that run, 66 and 268 checks), re-run once: exit 0, 764 PASS lines, all 35 managed-core groups; Python 133 tests OK (1 skipped); source package 2,212 files OK; diff-check clean. `CoreTests --expedition-layout` alone also passes.
+- **Not run:** Unity editor, PhysX probes, a Windows build, the director, two clients. No audio generated. The four kinds,
+  hazards and machines exist in no rule or content.
+- **Impact:** none on hit timing, hitboxes, damage, cooldowns, movement, networking or saves (no runtime code changed).
+- **Next:** owner review (the doc's section 12). Astra: the parser's spawn fields, instance gates (the converter shutter), stats
+  and AI for the four kinds, hazard authority, the importer's third map. Claude: NativeIronworksKit, the molten flow shader, the
+  light picker (6 warm + 2 cool), the four kinds' models and animation once their content exists.
+
 ## 2026-10-16 — Claude: footsteps cycled through terrains on one surface (surface lookup, memory, one series per key)
 
 - Owner: "walking continuously on one surface cycles through sounds that resemble different terrains." Trace the surface and key per foot contact; keep surfaces in separate pools; same check for zombies.
