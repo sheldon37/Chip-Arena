@@ -125,6 +125,12 @@ internal static class BowChecks
         // A frame is a pure function of the read and the time: any order of evaluation gives the same frames.
         var r=ra;var times=Enumerable.Range(0,240).Select(i=>i/60f+1.5f).ToArray();var forward=times.Select(t=>NativeBow.At(r,t)).ToArray();var rng=new Random(5);
         foreach(int i in Enumerable.Range(0,times.Length).OrderBy(_=>rng.Next())){var v=NativeBow.At(r,times[i]);Check(v.Equals(forward[i]),"frame "+times[i]+" depends on the evaluation order");}
+        Check(NativeBowRules.RainOffset(0).Length==0,"Rain has a real arrow at the exact aim point");
+        for(int i=0;i<12;i++)Check(NativeBowRules.RainOffset(i).Length<=NativeBowRules.RainRadius+.0001f,"rain sample stays within marker");
+        Check(Math.Abs(NativeBowRules.RainSpawnHeight(new V3(0,0,0),.045f,99)-12)<.0001f,"open-air spawn retains height");
+        Check(NativeBowRules.RainSpawnHeight(new V3(0,0,0),.045f,3)<3-.045f,"indoor arrow starts below roof");
+        float elevated=NativeBowRules.RainSpawnHeight(new V3(0,15,0),.045f,99);
+        Check(!NativeSpecialRules.Ceiling(new V3(0,15+elevated,0),new V3(0,-1,0),.045f,out _,out _),"elevated Rain starts below absorbing ceiling field");
         // Shot events carry the arrow's kind and draw fraction.
         foreach(var (detail,kind,amount) in new[]{(NativeBowWire.DetailQuick,NativeBow.Arrow.Quick,.2f),(NativeBowWire.DetailFull,NativeBow.Arrow.Full,1f),(NativeBowWire.DetailVolley,NativeBow.Arrow.Volley,.7f),(NativeBowWire.DetailRain,NativeBow.Arrow.Rain,1f)})
         {var e=new ArenaEvent{Kind=EventKind.Shot,Detail=detail,Draw=amount};Check(NativeBowWire.Shot(e,out var k,out float d)&&k==kind&&Math.Abs(d-amount)<1e-6f,detail+" shot event");}

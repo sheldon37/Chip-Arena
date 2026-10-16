@@ -1,3 +1,11 @@
+## 2026-10-15 — Astra: Bow Rain damage investigation; lifesteal still needs a repro
+
+- Branch `codex/bow-damage`, base shared `b36c6ce`. Owner reports Rain doing no damage and Bow lifesteal inconsistent. No overlapping open Bow PR found.
+- Confirmed Rain misses the exact center: the first of twelve deterministic samples was 0.714 m away, outside a stationary pilot capsule plus arrow radius. Put the first actual arrow at the marked aim point; retain the other eleven samples. Rain also spawned 12 m above the floor regardless of roofs or the y=24 ceiling field. It now probes overhead collision from the target floor and spawns below that obstruction/field; arrows still use normal swept collision against cover. No damage, count, cast delay, cooldown, chip rate, animation timing or packet changes.
+- Lifesteal investigation: ordinary, Volley and Rain projectiles are already direct hits; pilot Damage and minion MinionWeaponHit heal from actual health damage. No separate lifesteal defect established. Do not report this as fixed. Need the player's mode, lifesteal chip(s), target and a reproducible example if it persists after the hit fix.
+- PASS managed `CoreTests --bow`: 5,044 Bow checks (plus 95 DEV and 481 Expedition dependency assertions), including center footprint, roof clearance and elevated ceiling-field regression. Source-package structure and diff checks pass. Player/Runtime/Editor semantic compile passes (existing warnings only).
+- Added native import-gate cases for actual center Rain hits indoors/outdoors, Leech Circuit on normal/full/Volley/Rain hits, low-HP killing blows and PvE adds. They compile but are NOT executed here: Unity/PhysX and Windows unavailable. No Windows build/updater publication claimed. Branch implementation; PR merge/builder sync will be recorded in the PR/final handoff.
+
 ## 2026-10-15 — Claude: join circle enters only the members inside
 
 - Branch `claude/join-circle-owner-choice`, base shared `04c135b`. Docs only.

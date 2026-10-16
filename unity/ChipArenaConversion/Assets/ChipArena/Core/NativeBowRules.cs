@@ -11,7 +11,15 @@ namespace ChipArena.UnityConversion
         public static float Impulse(float draw)=>120+180*draw;
         public static float Spread(float held,float rate)
         {float draw=Fraction(held,rate),fatigue=MathUtil.Clamp((held-.8f/Math.Max(.01f,rate)-2.5f)/1.5f,0,1);return (.012f-.0105f*draw)*(1-fatigue)+.01f*fatigue;}
+        // Keep one real arrow on the aim point; the old nearest sample was .714 m away.
+        public static float RainSpawnHeight(V3 ground,float radius,float overhead)
+        {
+            float height=Math.Max(radius+.04f,Math.Min(12,overhead-radius-.04f));
+            if(Math.Abs(ground.x)<=32+radius&&Math.Abs(ground.z)<=28+radius&&ground.y<24-radius-.04f)
+                height=Math.Min(height,24-radius-.04f-ground.y);
+            return height;
+        }
         public static V3 RainOffset(int index)
-        {float angle=index*2.39996323f,r=RainRadius*(float)Math.Sqrt((index+.5f)/12);return new V3((float)Math.Cos(angle)*r,0,(float)Math.Sin(angle)*r);}
+        {float angle=index*2.39996323f,r=index==0?0:RainRadius*(float)Math.Sqrt((index+.5f)/12);return new V3((float)Math.Cos(angle)*r,0,(float)Math.Sin(angle)*r);}
     }
 }

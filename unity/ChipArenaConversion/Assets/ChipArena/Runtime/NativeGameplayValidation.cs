@@ -96,6 +96,27 @@ namespace ChipArena.UnityConversion
             }
             try
             {
+                // Real contacts, not just spawn counts: primary, Volley and Rain must drain
+                // exactly the health removed, including lethal hits.
+                foreach(var arrow in new[]{(detail:"bow",damage:18f),(detail:"bow-full",damage:62f),(detail:"volley",damage:22f),(detail:"rain",damage:9f)})
+                foreach(float health in new[]{100f,5f})
+                {
+                    Setup("bow");a.Seat.chips["leech"]=1;RefreshLiveStats(a);a.Hp=20;b.Hp=health;
+                    Fire(a,bow:new NativeBowShot{Draw=arrow.detail=="bow-full"?1:.7f,Damage=arrow.damage,Speed=90,Gravity=0,Detail=arrow.detail,Origin=b.Body.position-Vector3.forward,Direction=Vector3.forward});
+                    for(int tick=0;tick<3;tick++){StepBullets();Advance(1f/60);}
+                    float lost=health-b.Hp;Check(lost>0&&Math.Abs(a.Hp-(20+lost*.12f))<.001f,"Bow lifesteal on "+arrow.detail+" target HP "+health);
+                }
+                foreach(bool roof in new[]{false,true})
+                {
+                    Setup("bow");a.Seat.chips["leech"]=1;RefreshLiveStats(a);a.Hp=20;
+                    if(roof){wall.transform.position=b.Body.position+Vector3.up*3;wall.transform.localScale=new Vector3(4,.2f,4);wall.SetActive(true);Physics.SyncTransforms();}
+                    a.BowRainTarget=b.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight;a.BowRainAt=Time-.61f;
+                    StepBow(a);Check(Bullets.Count==1&&Bullets[0].Position.y>b.Body.position.y,"center Rain arrow above target");
+                    if(roof)Check(Bullets[0].Position.y<wall.GetComponent<Collider>().bounds.min.y,"Rain spawns beneath indoor ceiling");
+                    for(int tick=0;tick<16;tick++){StepBullets();Advance(1f/60);}
+                    Check(b.Hp<100&&Math.Abs(a.Hp-(20+(100-b.Hp)*.12f))<.001f,"center Rain damages and drains "+(roof?"indoors":"outdoors"));
+                }
+                wall.SetActive(false);wall.transform.position=new Vector3(1000,10,1001);wall.transform.localScale=new Vector3(3,3,.1f);
                 foreach(string spec in new[]{"pistol","rifle","machinegun","fire","water","lightning","darkness"})
                 {
                     var shot=Shot(spec);Check(a.Weapon.@class=="magic"?a.Mana<100:a.Ammo==Magazine(a)-1,"resource debit "+spec);shot.Position=new Vector3(1000,10,1000.8f);shot.Velocity=Vector3.forward*120;shot.Gravity=0;StepBullets();Check(b.Hp<100,"swept primary missed "+spec);var endpoint=NetworkFrame().projectileEnds;Check(endpoint.Length==1&&endpoint[0].Id==shot.Id&&endpoint[0].At==Time&&(Vec(endpoint[0].Position)-shot.Position).sqrMagnitude<.000001f,"recorded primary impact "+spec);float hp=b.Hp;StepBullets();Check(b.Hp==hp,"duplicate impact "+spec);
@@ -329,6 +350,16 @@ namespace ChipArena.UnityConversion
             add.Pve.ExposedAt=Time+1;Check(HitMinion(add,pilot,5,Vector3.forward,0)==0,"unexposed entry protection lost");add.Pve.ExposedAt=Time-1;
             Events.Clear();HitMinion(add,pilot,1,Vector3.right,0);var hit=Events.Last(e=>e.Kind==EventKind.Hit);Check(hit.Normal.x==1&&hit.Normal.y==0&&hit.Detail=="direct","directed add hit payload");Check(Events.Any(e=>e.Kind==EventKind.Impact&&e.Target==add.Id&&e.Source==pilot.Seat.id),"add contact impact missing");
             Events.Clear();HitMinion(add,pilot,1,Vector3.zero,0,null,"dot");Check(Events.Last(e=>e.Kind==EventKind.Hit).Normal.Length==0,"DoT generated a directed splatter");Check(!Events.Any(e=>e.Kind==EventKind.Impact),"add DoT emitted contact impact");
+            var contactStats=pilot.Stats;float contactHp=pilot.Hp;
+            pilot.Seat.spec="bow";pilot.Weapon=Content.Weapon("bow");pilot.Seat.chips["leech"]=1;RefreshLiveStats(pilot);
+            foreach(var arrow in new[]{(detail:"bow",damage:18f),(detail:"bow-full",damage:62f),(detail:"volley",damage:22f),(detail:"rain",damage:9f)})
+            {
+                pilot.Hp=20;hp=add.Hp;
+                Fire(pilot,bow:new NativeBowShot{Draw=.7f,Damage=arrow.damage,Speed=120,Gravity=0,Detail=arrow.detail,Origin=add.Body.position-Vector3.forward,Direction=Vector3.forward});
+                StepBullets();float lost=hp-add.Hp;
+                Check(lost>0&&Math.Abs(pilot.Hp-(20+lost*.12f))<.001f,"Bow "+arrow.detail+" drains actual PvE add health");
+            }
+            pilot.Seat.spec="pistol";pilot.Weapon=Content.Weapon("pistol");pilot.Seat.chips.Clear();pilot.Stats=contactStats;pilot.Hp=contactHp;
             RemoveMinion(add,false);Bullets.Clear();pilot.Body.position=pilotAt;Physics.SyncTransforms();
             Debug.Log("PASS hidden Siren adds: projectile sweep, melee, ability/chip blast, target acquisition, hold/entry/travel protections and hit direction");
         }
