@@ -233,7 +233,7 @@ namespace ChipArena.UnityConversion
             if(d.id=="geyser-wall")
             {
                 Vector3 side=Vector3.Cross(NativeArena.Vec(GunRules.Direction(p.Yaw,p.Pitch)),Vector3.up).normalized;
-                for(int k=-1;k<=1;k++){Vector3 at=point+side*(float)(NativeFieldRules.GeyserSpacing*k);if(Physics.Raycast(at+Vector3.up*2,Vector3.down,out var hit,6,NativeArena.WorldMask))at=hit.point;used=NativeFieldRules.PreviewMotes(at.x,at.y,at.z,radius,clamped,now,preview,used);}
+                for(int k=-1;k<=1;k++){Vector3 at=point+side*(float)(NativeFieldRules.GeyserSpacing*k);if(arena.PhysicsWorld.Raycast(at+Vector3.up*2,Vector3.down,out var hit,6,NativeArena.WorldMask))at=hit.point;used=NativeFieldRules.PreviewMotes(at.x,at.y,at.z,radius,clamped,now,preview,used);}
             }
             else used=NativeFieldRules.PreviewMotes(point.x,point.y,point.z,radius,clamped,now,preview,used);
             // Soft glows in place of the source's translucent cubes (owner 2026-10-11 effects overhaul), as bright as their opacity.

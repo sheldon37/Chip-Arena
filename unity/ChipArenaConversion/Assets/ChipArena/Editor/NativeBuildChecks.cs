@@ -171,6 +171,7 @@ namespace ChipArena.UnityConversion.Editor
             if(brickfallMusic==null||brickfallMusic.channels!=2||Mathf.Abs(brickfallMusic.length-199.944f)>.5f)
                 throw new Exception("Brickfall Run is missing or did not import as the complete stereo stage track.");
             Debug.Log("PASS Brickfall stage music: Brickfall Run, complete stereo clip at the map's runtime resource path");
+            CheckExpeditionAreaRuntimes(data);
             CheckLocomotion(data);
             var active=SceneManager.GetActiveScene();Vector3 gravity=Physics.gravity;int pads=0;
             try

@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
                 if(prefs.map!="random"&&!content.maps.Any(m=>m.id==prefs.map&&NativeMapRules.ArenaSelectable(m)))prefs.map="moonlit";
                 if(!content.weapons.Any(w=>w.id==prefs.weapon&&!w.devOnly))prefs.weapon="pistol";prefs.bots=Mathf.Clamp(prefs.bots,prefs.pve?0:1,prefs.pve?3:7);
                 InitializeAccount();Application.runInBackground=true;Application.targetFrameRate=144;QualitySettings.vSyncCount=0;Time.fixedDeltaTime=1f/60;Time.maximumDeltaTime=.1f;
-                previousSimulation=Physics.simulationMode;previousGravity=Physics.gravity;ownsPhysics=true;Physics.simulationMode=SimulationMode.Script;
+                previousSimulation=Physics.simulationMode;previousGravity=Physics.gravity;ownsPhysics=true;Physics.simulationMode=SimulationMode.Script;Physics.gravity=new Vector3(0,-23,0);
                 // These compressed banks expand to ~14 MB and ~94 MB of JSON. Never first-load them on a kill.
                 long motionAt=System.Diagnostics.Stopwatch.GetTimestamp();NativeSourceMotion.Prewarm();NativeSceneMotion.Prewarm();
                 UnityEngine.Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"MOTION_BANKS_READY source={0} scene={1} ms={2:F1}",NativeSourceMotion.ClipCount,NativeSceneMotion.Count,HitchMs(motionAt));
@@ -227,7 +227,7 @@ namespace ChipArena.UnityConversion
                 previewClamped=(point-p.Body.position).sqrMagnitude>(float)(held.range*held.range);
                 point=p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,(float)held.range);
                 var clamped=arena.ClampMap(point);previewClamped|=clamped!=point;point=clamped;
-                if(held.kind!="throw"&&Physics.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
+                if(held.kind!="throw"&&arena.PhysicsWorld.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
                 preview=point;
             }
             presentation.EffectsQuality=prefs.reducedEffects?.3f:1;presentation.KitFlash=prefs.alarmLights=="Calm"?NativeKitFlash.Calm:prefs.alarmLights=="Reduced"||prefs.reducedEffects?NativeKitFlash.Reduced:NativeKitFlash.Full;
@@ -271,7 +271,7 @@ namespace ChipArena.UnityConversion
             double navBefore=arena.NavigationMs,deathBefore=arena.DeathRecordMs,hordeBefore=arena.HordeMs,spawnBefore=arena.HordeSpawnMs;int searchesBefore=arena.NavigationSearches;
             long stepAt=System.Diagnostics.Stopwatch.GetTimestamp();
             try{arena.Step(pending);}finally{hitchArenaStep+=HitchMs(stepAt);hitchNavigation+=arena.NavigationMs-navBefore;hitchNavNearest+=arena.NavigationNearestMs-nearestBefore;hitchNavLinks+=arena.NavigationLinkMs-linksBefore;hitchNavLinkChecks+=arena.NavigationLinkChecks-linkChecksBefore;hitchNavSearches+=arena.NavigationSearches-searchesBefore;hitchDeathRecord+=arena.DeathRecordMs-deathBefore;hitchHorde+=arena.HordeMs-hordeBefore;hitchHordeSpawn+=arena.HordeSpawnMs-spawnBefore;}
-            if(!held&&arena.Pve?.Holding!=true){long physicsAt=System.Diagnostics.Stopwatch.GetTimestamp();try{arena.BeforePhysics();Physics.Simulate(1f/60);arena.AfterPhysics();}finally{hitchPhysics+=HitchMs(physicsAt);}}
+            if(!held&&arena.Pve?.Holding!=true){long physicsAt=System.Diagnostics.Stopwatch.GetTimestamp();try{arena.BeforePhysics();arena.PhysicsWorld.Simulate(1f/60);arena.AfterPhysics();}finally{hitchPhysics+=HitchMs(physicsAt);}}
             ExpeditionM1AfterStep();timer.Stop();stepMs=timer.Elapsed.TotalMilliseconds;
             pending=pending.HeldOnly();
         }
@@ -279,7 +279,7 @@ namespace ChipArena.UnityConversion
         {
             Ray ray=cameraView.ViewportPointToRay(new Vector3(.5f,.5f));float nearest=range+(thrownMelee?0:Vector3.Distance(ray.origin,arena.ViewPilot.Body.position));
             Vector3 target=ray.origin+ray.direction*(thrownMelee?48:nearest);
-            foreach(var hit in Physics.RaycastAll(ray,nearest,NativeArena.ShotMask,QueryTriggerInteraction.Ignore))
+            foreach(var hit in NativeSceneQueries.RaycastAll(arena.PhysicsWorld,ray,nearest,NativeArena.ShotMask,QueryTriggerInteraction.Ignore))
             {var pilot=hit.collider.GetComponent<NativePilotBody>();if(pilot!=null&&pilot.Pilot==arena.ViewPilot||hit.distance<aimSkip)continue;if(hit.distance<nearest){target=hit.point;nearest=hit.distance;}}
             return target;
         }
@@ -304,7 +304,7 @@ namespace ChipArena.UnityConversion
             {
                 Vector3 offset=rotation*Vector3.back*NativeViewRules.ThirdDistance+Vector3.up*NativeViewRules.ThirdLift;
                 location=focus+offset;
-                if(Physics.SphereCast(focus,.12f,offset.normalized,out var hit,offset.magnitude,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))location=focus+offset.normalized*Mathf.Max(.15f,hit.distance-NativeViewRules.CollisionPadding);
+                if(arena.PhysicsWorld.SphereCast(focus,.12f,offset.normalized,out var hit,offset.magnitude,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))location=focus+offset.normalized*Mathf.Max(.15f,hit.distance-NativeViewRules.CollisionPadding);
             }
             cameraView.transform.SetPositionAndRotation(location,rotation);CameraAim(p);
             presentation.FirstPerson=first;presentation.AimHeld=aim;viewModelCamera.enabled=first;viewModelCamera.fieldOfView=cameraView.fieldOfView-sprintKick;

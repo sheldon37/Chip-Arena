@@ -205,7 +205,7 @@ namespace ChipArena.UnityConversion
                 if(pair.Value.Frame==bowFrame)continue;bowStale.Add(pair.Key);var w=pair.Value;if(bowHandled.Contains(pair.Key))continue;bool hit=false;
                 for(int i=0;i<bowHits.Length;i++){var h=bowHits[i];if(h.owner==w.Owner&&Mathf.Abs(h.at-time)<.25f&&(h.point-w.At).sqrMagnitude<4){hit=true;break;}}
                 float speed=w.Velocity.magnitude;if(hit||!(speed>1))continue;Vector3 dir=w.Velocity/speed;
-                if(Physics.Raycast(w.At-dir*.3f,dir,out var ray,speed/20+.8f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))bowStuck.AddWall(-pair.Key-1,BowN(ray.point),BowN(dir),time,w.Draw,w.Standard,LowGraphics);
+                if(arena.PhysicsWorld.Raycast(w.At-dir*.3f,dir,out var ray,speed/20+.8f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))bowStuck.AddWall(-pair.Key-1,BowN(ray.point),BowN(dir),time,w.Draw,w.Standard,LowGraphics);
             }
             foreach(int id in bowStale){bowLast.Remove(id);bowHandled.Remove(id);}
         }

@@ -1,3 +1,11 @@
+## 2026-10-16 — Astra: split-area runtime foundation (milestone 1, gated)
+
+- Branch `codex/expedition-area-runtime`, base shared `9f18015`. Owner accepted the scope and ordered native/transport/Windows gates; no interim all-party ring. Live F entry and single-area session remain unchanged.
+- Added two-identity area registry, independent native match/scene ownership, per-area load/occupancy, empty-runtime retention, once-only host tick/shared-clock scheduling, failure latch, one-area rendering and owned disposal. Background simulation has no presentation component. Existing default-world camera/aim/bow/footstep queries now use the displayed arena scene; global simulation call is replaced by that arena's PhysicsScene. No audio/visual design change.
+- Static/global audit and integration prerequisites are in EXPEDITION-AREA-RUNTIME.md: match callbacks, scene queries, process-wide physics configuration, singleton presentation services, DEV timeScale, and still-global Expedition director/network/save bindings. Explicit scene constructors no longer write gravity.
+- Managed area checks pass (290 including runtime query audit); Player/Runtime/Editor semantic compilation passes. Full managed/real-relay suite passes (exit 0, 761 PASS lines); source packaging validates 2,203 files; diff clean. First regression run caught old camera source assertions, updated to require the displayed scene while preserving camera math; the full rerun passes. Native builder gate added for two overlapping-coordinate scenes, query/simulation/load/render/reset isolation with 1+3 pilot seats. Unity/PhysX execution and Windows multi-client timing are not available here and are not claimed.
+- Milestones 2–6 are not implemented: no cohort transfers, area-scoped director/economy, split capability/wire, schema bump, or live join view/rule. The native foundation gate is the next prerequisite. No live layout switch, no gameplay enablement, no measured two-area performance claim.
+
 ## 2026-10-16 — Astra: budget crowd navigation and retain active hitch evidence
 
 - Branch `codex/horde-performance`, base shared `2d8ad20`. Owner reports 72 Expedition Ward zombies, 19 FPS, a 70.93 ms simulation tick and a 4.98 s session worst; detailed sample was paused, so the exact active bottleneck is not proven.

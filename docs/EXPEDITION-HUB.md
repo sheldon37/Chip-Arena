@@ -869,3 +869,13 @@ clearance and centre navigation checks. Legacy layouts without it still parse.
 **No live join view fields or countdown exist in this preparation.** Claude can
 prepare a layout draft against this parser, but should not switch the live layout
 or show a working deploy countdown until subset transfer and its view are delivered.
+
+### Accepted scope and runtime foundation receipt (2026-10-16)
+
+Owner accepts the scope above: 3-second eligible-subset countdown, one shared Ward
+instance, and no all-members interim. Milestone 1 foundation is implemented on
+`codex/expedition-area-runtime` from shared `9f18015`; detailed ownership audit and
+gates: [EXPEDITION-AREA-RUNTIME.md](EXPEDITION-AREA-RUNTIME.md). The live launch path
+still uses one arena. The native two-scene isolation test must execute before
+cohort integration. **joins[], members[].atJoin and members[].area are not yet
+implemented.** Claude must keep exp-layout-4 and the join presentation disabled.

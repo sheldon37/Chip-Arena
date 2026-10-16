@@ -36,14 +36,14 @@ namespace ChipArena.UnityConversion
                 }
                 var priority=pick.Mine?NativeSoundPriority.Normal:NativeSoundPriority.Low;
                 if(f.Land){CreatureCue("move.land",null,1,at,pick.Gain,NativeFootsteps.LandRate(f.Air),priority);continue;}
-                CreatureCue(NativeFootsteps.Surface(arena.MapId,SurfaceUnder(at)),null,1,at,pick.Gain,NativeFootsteps.StepRate(NativeFootsteps.Gait(f.Speed,f.Sprint)),priority);
+                CreatureCue(NativeFootsteps.Surface(arena.MapId,SurfaceUnder(arena,at)),null,1,at,pick.Gain,NativeFootsteps.StepRate(NativeFootsteps.Gait(f.Speed,f.Sprint)),priority);
             }
             q.Clear();
         }
         // The material of the block under a foot (null: none within reach, the map's floor).
-        private static string SurfaceUnder(Vector3 at)
+        private static string SurfaceUnder(NativeArena arena,Vector3 at)
         {
-            if(!Physics.Raycast(at+Vector3.up*.4f,Vector3.down,out var hit,1.2f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)||hit.collider==null)return null;
+            if(!arena.PhysicsWorld.Raycast(at+Vector3.up*.4f,Vector3.down,out var hit,1.2f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)||hit.collider==null)return null;
             return hit.collider.TryGetComponent<NativePropBody>(out var prop)?prop.Definition?.material:null;
         }
         /// <summary>

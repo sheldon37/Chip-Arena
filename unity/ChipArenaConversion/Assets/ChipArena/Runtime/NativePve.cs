@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         }
         private void BuildPveMachines(NativePveContent data)
         {
-            foreach(var def in data.machineBlocks){var obj=GameObject.CreatePrimitive(PrimitiveType.Cube);obj.name=def.id;obj.layer=PropLayer;obj.transform.SetParent(root.transform);obj.transform.position=Vec(def.pos);obj.transform.rotation=new Quaternion(def.rotation.x,def.rotation.y,def.rotation.z,def.rotation.w);obj.transform.localScale=Vec(def.size);var prop=obj.AddComponent<NativePropBody>();prop.Definition=def;prop.LocalFixture=true;prop.Indestructible=true;prop.Health=float.PositiveInfinity;obj.GetComponent<Renderer>().sharedMaterial=materials["foundation"];Props.Add(prop);}
+            foreach(var def in data.machineBlocks){var obj=GameObject.CreatePrimitive(PrimitiveType.Cube);obj.name=def.id;obj.layer=PropLayer;obj.transform.SetParent(root.transform);obj.transform.position=Vec(def.pos);obj.transform.rotation=new Quaternion(def.rotation.x,def.rotation.y,def.rotation.z,def.rotation.w);obj.transform.localScale=Vec(def.size);var prop=obj.AddComponent<NativePropBody>();prop.Definition=def;prop.LocalFixture=true;prop.Indestructible=true;prop.Health=float.PositiveInfinity;obj.GetComponent<Renderer>().sharedMaterial=materials["foundation"];Props.Add(prop);ApplyAreaVisibility(obj);}
         }
         private IEnumerable<NativePilot> Members()=>Pilots.Where(p=>!p.Seat.AuthorityBoss&&!p.Seat.devDummy&&!Pve.Recruits.Any(r=>r.Pilot==p));
         private int PartySize=>Math.Max(1,Members().Count(p=>p.Seat.connected||p.Seat.bot));
