@@ -1,3 +1,49 @@
+## 2026-10-16 — Claude: join circle layout draft (exp-layout-4, not live)
+
+- Branch `claude/join-circle-layout-draft`, base shared `b54596f` (includes Astra's join parser, PR #250, and the area runtime foundation, PR #252). Implementation `85a1e74`. Pushed; not merged, no PR, not live, no publication.
+- Owner (verbatim): "lets move the 'Join instance' circle a little bit away from the door. We can make the circle bigger too, players can join by standing inside the circle." Astra: prepare a draft against the parser; do not switch the live layout or show a deploy countdown before the subset transfer and its view exist.
+- **Draft.**
+  - `docs/arenas/scripts/expedition_layout.py --draft <file>` (or `--fixtures`) writes `unity/ChipArenaConversion/Tests/expedition-layout-4-join-draft.json`.
+  - The live `Resources/ExpeditionLayout.json` (exp-layout-3) and the three live fixtures are byte-identical with or without `--draft`. `tools/generate_expedition.py --check` passes.
+  - Nothing under `Assets/` names the draft, and `Tests/` is outside `Assets/`, so neither the runtime nor the player build sees it.
+- **Values.**
+  - join `{x 79, y 0, z 0, r 2.5, h 4}`: the base is the floor, the centre is 5 m out on the approach line, and the radius is 2.5 m (the removed door ring was 1.35 m).
+  - h is 4 m, not the proposed 3 m. A plain jump's capsule centre peaks at 2.42 m and a ground plus air jump's at 3.69 m (jumpPower 1). The canopy's underside is at 4.4 m.
+  - The approach moves to the circle's centre.
+  - The returns move to (79.4, ±4.2), (81.1, ±6.0), (82.7, ±6.0), (81.9, ±7.6), in that order. exp-layout-3 had 4 of 8 inside the circle (z ±1) and the other 4 only 0.56 m beyond its edge.
+  - Unchanged: anchor, F interaction volume, closure, hub record and maps (block hashes). F entry stays live.
+- **Generator report (draft).**
+  - Parser rules mirrored: pass.
+  - Floor: 349/349 samples on the floor, reached and standable.
+  - Blocks: none in the cylinder. Nearest: rubble 1.50 m and pylons 1.62 m beyond the edge; canopy 0.4 m over the top.
+  - Centre: pilot and Hulk routes. Walked from the east gate: 69.7 m to the centre and 67.1 m to the edge (72.9 m to the old approach; the target is 70 m).
+  - Door: the edge is 0.50 m from the F volume, 2.10 m from the closure and 1.55 m from the airlock unit.
+  - Gates 60.3 m or more, fence 64.1 m, sanctuary 64.5 m.
+  - Zone: only far-east, wholly inside it (as the door). Nearest spawn exit 8.5 m (vent-mer-1); nearest drop landing disc 6.5 m.
+  - Caches and machine: 52.7 m or more.
+  - Returns: 1.72 m or more beyond the edge; 1.13 m pilot and Hulk clearance; pairs 1.60 m apart; spawn exits 8.2 m or more. Their walk to the gate avoids the circle at no extra cost.
+  - F line of sight to the new approach: clear.
+- **Checks added.**
+  - `Tests/ExpeditionJoinDraftChecks.cs` (38 checks, run from ExpeditionLayoutChecks with its probe and imported navigation):
+    - Astra's `Parse` and `ValidateGeometry` accept the draft.
+    - The live manifest is unchanged (pinned SHA-256), has no join and is still accepted.
+    - The draft equals live plus only the join, approach, returns and revision.
+    - Capsule-centre membership is inclusive at the rim, base and top, and excluded 1 cm beyond each. Standing and jumping pilots are inside; a pilot on the canopy is not.
+    - No return lands in the circle or the F volume.
+    - The dressing puts 0 parts (flat or standing) in the cylinder and nothing on the moved returns or approach.
+    - Nothing under Assets/ names the draft.
+  - Mutation runs, each refused: the join on the rubble, out of the map, off the floor, on the instance exit, or with h 0; the F volume edited; a return in the circle; one byte appended to the live resource.
+  - Python: `test_join_draft` and `test_join_draft_is_the_scripts_output`.
+- **Impact.** None on hit timing, hitboxes, damage, cooldowns, movement, animation or networking. No runtime code changed.
+- **For Astra.**
+  - The director's `position` callback returns feet (`Body.position - HalfHeight`). Test membership on the capsule centre (feet + 0.85). With feet, a standing pilot sits exactly on the inclusive base, and float noise could exclude them.
+  - A ground plus air jump leaves the top above jumpPower 1.05, and a plain jump above 1.41. The countdown should tolerate airborne members.
+  - Only one ring exists, so the deterministic one-door rule is trivial today.
+  - Changing the live layout deliberately also updates `LiveSha256` with `PINNED`.
+- **Checks run.** The five repo checks on `85a1e74` plus this entry's docs (the text before this line) all exit 0, first run: Unity runtime and editor build; relay suite 762 PASS lines (`expedition join draft`, 38 checks, and `expedition layout`, 268 checks, among them); Python 126 tests (1 skipped); source package 2205 files; diff check. Also: generator `--fixtures` and `--draft` and `tools/generate_expedition.py --check`.
+- **Not run.** Unity Editor or play, Windows build. No native join or transfer exists to exercise.
+- **Next.** Astra's subset transfer and the `joins[]` / `atJoin` / `area` view fields. Then Claude adds the ring, countdown and HUD, gives the dressing a join keep-out and switches the live layout to exp-layout-4. Saves pinned to exp-layout-3 will not resume.
+
 ## 2026-10-16 — Astra: split-area runtime foundation (milestone 1, gated)
 
 - Branch `codex/expedition-area-runtime`, base shared `9f18015`. Owner accepted the scope and ordered native/transport/Windows gates; no interim all-party ring. Live F entry and single-area session remain unchanged.
