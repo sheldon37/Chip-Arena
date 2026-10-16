@@ -1,6 +1,7 @@
-# Expedition CITY IRONWORKS instance, blockout DRAFT (design phase, NOT LIVE): map `expedition-foundry`, area `exp-foundry`
-# (the stable ids reserved in docs/EXPEDITION-LAYOUT.md and the town's sealed foundry plot at (-84, 0, 0)). Design:
-# docs/EXPEDITION-CITY-IRONWORKS.md. Nothing at runtime reads this script's outputs:
+# Expedition CITY IRONWORKS instance, blockout DRAFT (owner-approved design 2026-10-16, NOT LIVE): map `expedition-ironworks`
+# (the id tools/generate_expedition.py's draft table, NativeMapRules.ExpeditionInstance and NativeMachineRules use since PR #254;
+# docs/EXPEDITION-LAYOUT.md first reserved `expedition-foundry`), area `exp-foundry` (the reserved area id and the town's sealed
+# foundry plot at (-84, 0, 0)). Design: docs/EXPEDITION-CITY-IRONWORKS.md. Nothing at runtime reads this script's outputs:
 #   Tests/expedition-ironworks-draft.json         the map entry (UnityMaps.json shape, nav left to the importer)
 #   Tests/expedition-ironworks-layout-draft.json  a manifest draft: the live exp-layout-3 manifest plus the town's foundry door
 #                                                 and the exp-foundry area (Astra's parser needs the paired town door)
@@ -9,18 +10,23 @@
 # The geometry follows Ward Zero's instance conventions (expedition_ward_zero.py): an exit door in the shell with eight entry
 # slots inside it, caches as `chest` anchors with an interaction 0.8 m in front, boss points, and its own spawn records in the
 # PveEntry shape plus `allow` (doors, vents, drops, Hulk breaches; existing kinds only, so the strict parser accepts them).
-# Everything the schema has no field for (rooms, proposed hazards, proposed machine spots, the proposed new enemy kinds per
-# spawn, the boss arena volume) is the additive `ironworks` record, which the loader ignores, as it ignores the hub record.
+# The direct converter shutter is a real instance gate (`gates[]`, opens "boss": PR #254's instance shutter, sealed until the
+# instance's boss encounter starts). Everything the schema has no field for (rooms, proposed hazards and their wave schedule,
+# the approved machine spots, the proposed new enemy kinds per spawn and the Rigger's hang points, the boss arena volume, the
+# zone's presentation tints) is the additive `ironworks` record, which the loader ignores, as it ignores the hub record.
 # Checks (static analysis; no Unity or PhysX claim): both floors reached from the entry slots, every record on walkable floor
 # with pilot or Hulk clearance, every spawn exit on reached floor with its clear radius and routed back to entry 0 with its own
 # capsule, no two solid blocks overlapping, no pilot exclusion column under a deck, stairs within the ramp rule, spawn spacing
-# and walking distances, hazard proposals clear of records, the town door's returns Hulk-clear and routed in the live town.
+# and walking distances, hazard proposals clear of records and their Wave 1 / boss schedule, the converter shutter filling its
+# opening with every boss point and spawn exit still routed while it is shut, the Rigger's hang points (a girder overhead, the
+# chain's fall clear, the landing ring on reached floor away from hazards), the machine spots, the town door's returns Hulk-clear
+# and routed in the live town.
 # Usage: python3 docs/arenas/scripts/expedition_ironworks.py [--fixtures] [--map m.json] [--layout l.json] [--look k.json]
 #        [--png plan.png] [--ascii]
 # Coordinates: the instance's own frame, x east, z north, y up, metres; floors at y 0 and 6. Deterministic.
 import argparse, json, math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from expedition_common import (Collider, Canvas, text_width, components, block_hash, id_ok, v, q, vol, pt, vol_block, in_vol, vol_in_bounds, yaw_of,
+from expedition_common import (Collider, Canvas, text_width, components, block_hash, id_ok, v, q, vol, vol_floor, pt, vol_block, in_vol, vol_in_bounds, yaw_of,
                                yaw_rad, forward, dist_xz, yspan, footprint, corners, ramp_block, r4, RADIUS, HEIGHT, PILOT_CLEAR, HULK_CLEAR, HULK_BAND,
                                HULK_RADIUS, HULK_HEIGHT, HULK_SLOT)
 
@@ -29,7 +35,7 @@ UNITY = os.path.join(ROOT, 'unity', 'ChipArenaConversion')
 RES = os.path.join(UNITY, 'Assets', 'Conversion', 'Resources')
 TESTS = os.path.join(UNITY, 'Tests')
 FIXTURES = {'map': 'expedition-ironworks-draft.json', 'layout': 'expedition-ironworks-layout-draft.json', 'look': 'expedition-ironworks-look-draft.json'}
-MAP = 'expedition-foundry'; AREA = 'exp-foundry'; LOOK = 'ironworks'
+MAP = 'expedition-ironworks'; AREA = 'exp-foundry'; LOOK = 'ironworks'
 REVISION = 'exp-layout-3-ironworks-draft'      # the draft manifest's revision (never a live revision)
 LIVE_REVISION = 'exp-layout-3'                 # the live manifest the draft extends
 X0, X1, Z0, Z1 = -50.0, 50.0, -34.0, 34.0      # 100 x 68 m inside the shell (Ward Zero: 76 x 60)
@@ -249,6 +255,10 @@ box('ingot-stack', -36.0, -34.0, -22.0, -19.5, 0, 1.2, material='metal', ch='o',
 ENTRIES_IN = [pt(x, 0, z, 270.0) for x in (47.0, 45.6) for z in (-2.6, -1.1, 1.1, 2.6)]
 CACHES = [pt(38.6, 0, -6.4, 45.0), pt(6.5, L1, 24.2, 180.0), pt(-36.0, 0, -16.6, 180.0)]
 BOSS_POINTS = [pt(-35.0, 0, 0.0, 90.0), pt(-34.0, 0, 7.5, 90.0), pt(-34.0, 0, -7.5, 90.0)]
+# The direct converter shutter (owner decision 2026-10-16): a real instance gate filling the casting floor's west opening in
+# wall-w (z -4..4, the ground openings' 5 m), sealed until the instance's boss encounter starts (`opens: "boss"`, PR #254's
+# instance shutter, the existing one-second closure transition); until then the north and south loops are the way in.
+GATE = dict(id=f'{AREA}:gate:converter', opens='boss', closure=vol(-24.0, 0, 0.0, 8.0, GO, WALL_T, 90.0))
 def door_record():
     fx, fz = forward(YAW); s = -1.0                       # an instance exit: the party's side is behind the yaw (inside)
     cx, cz = DOOR
@@ -278,6 +288,21 @@ def vent(name, x, z, dx, dz, style='vent', propose=('cinderling',), surface='flo
     else: entry('vent', name, (x, y, z), (x + dx / n * 1.2, y, z + dz / n * 1.2), (dx, dz), SMALL, style, propose, surface=surface, level=lvl)
 def drop(name, x, z, height, dx, dz, hulk=False, style='gantry-drop', propose=('slagback',)):
     entry('drop', name, (x, 0, z), (x, 0, z), (dx, dz), ['hulk'] if hulk else ['brute'], style, propose, height=height, clear=4.5 if hulk else 2.8, hulk=hulk)
+# The Rigger's hang points (owner decision 2026-10-16: the fifth kind). Each is a ceiling vent (an existing drop kind, so the
+# strict parser and today's small kinds accept it) under a crane girder or the roof truss: the Rigger is lowered on its chain
+# hook from the girder's underside, its feet RIG_HANG below it, then drops the last metres to the exit. `hangs` keeps, per spawn,
+# the girder block it hangs from ('' for the roof truss, which is kit) and the hook's height, for the ironworks record.
+RIG_HANG = 2.4                                  # the girder underside to the hanging Rigger's feet (hook 0.3, chain 0.2, body 1.9)
+RIG_RING = 1.5                                  # the landing strike's radius (the telegraph ring and the hook's shadow)
+TRUSS = 14.4                                    # the roof truss's bottom chord (kit) over the gantry points
+hangs = {}
+def rail(name, x, z, dx, dz, hang):
+    b = next(b for b in blocks if b['id'] == f'{MAP}-{hang}'); bottom = yspan(b)[0]
+    vent(name, x, z, dx, dz, style='crane-rail', propose=('rigger',), surface='ceiling', height=r4(bottom - RIG_HANG))
+    hangs[f'{AREA}:spawn:vent-{name}'] = (b['id'], r4(bottom))
+def gantry(name, x, z, dx, dz):
+    vent(name, x, z, dx, dz, style='gantry', propose=('cinderling', 'stoker', 'rigger'), surface='ceiling', height=12.0)
+    hangs[f'{AREA}:spawn:vent-{name}'] = ('', TRUSS)
 BREACH_W, BREACH_H, BREACH_T = 3.2, 4.0, 0.4
 def breach(name, face, axis, u, sign, room, style='breach', propose=('ladleman',)):
     f0, f1 = sorted((face, face + sign * BREACH_T)); a, b = u - BREACH_W / 2, u + BREACH_W / 2
@@ -299,8 +324,13 @@ door('coke-walk', X0, 25.0, 1, 0, y=L1, style='coke-oven-door', propose=('stoker
 vent('trench-w', -6.0, -11.0, 0, 1, style='slag-trench', propose=('slagback', 'cinderling'))
 vent('trench-e', 17.0, -10.5, 0, 1, style='slag-trench', propose=('slagback', 'cinderling'))
 vent('trench-n', 6.5, 14.0, 0, -1, style='slag-trench', propose=('slagback', 'cinderling'))
-vent('gantry-0', -4.0, 9.0, 0, -1, style='gantry', propose=('cinderling', 'stoker'), surface='ceiling', height=12.0)
-vent('gantry-1', 22.0, 4.0, -1, 0, style='gantry', propose=('cinderling', 'stoker'), surface='ceiling', height=12.0)
+gantry('gantry-0', -4.0, 9.0, 0, -1)
+gantry('gantry-1', 22.0, 4.0, -1, 0)
+# The Rigger's crane rails over the casting floor: under the runway girders' inside faces and the crane bridge.
+rail('rail-n-w', -9.0, 20.0, 0, -1, 'crane-runway-n')
+rail('rail-n-e', 24.0, 20.0, 0, -1, 'crane-runway-n')
+rail('rail-s', 12.0, -10.2, 0, 1, 'crane-runway-s')
+rail('bridge', 5.5, 1.5, 0, 1, 'crane-bridge')
 drop('catwalk-w', -16.8, -8.0, L1, 1, 0, style='catwalk-drop', propose=('slagback',))
 drop('catwalk-e', 24.5, -1.5, L1, -1, 0, style='catwalk-drop', propose=('slagback',))
 drop('crane-bay', 3.0, 6.5, 12.0, 0, -1, hulk=True, style='crane-bay', propose=('ladleman',))
@@ -312,7 +342,7 @@ vent('mill-pit-1', 11.5, -31.0, 0, 1, style='mill-pit', propose=('cinderling', '
 vent('mill-pit-2', -6.0, -18.5, 0, -1, style='mill-pit', propose=('cinderling', 'slagback'))
 door('mill-store-s', -12.5, Z0, 0, 1, allow=BIG, style='door', propose=('stoker', 'slagback'))
 door('mill-store-e', 32.5, Z0, 0, 1, style='door', propose=('cinderling',))
-vent('mill-roof', 3.5, -18.4, 1, 0, style='gantry', propose=('cinderling', 'stoker'), surface='ceiling', height=12.0)
+gantry('mill-roof', 3.5, -18.4, 1, 0)
 breach('mill-s', Z0, 'z', 17.5, 1, 'rolling-mill')
 # Stockhouse: bunker chutes onto the ore bridge (level 1, ceiling vents), a door at ground.
 vent('chute-0', 39.0, 27.0, 0, -1, style='bunker-chute', propose=('cinderling',), surface='ceiling', y=L1, height=6.0)
@@ -323,6 +353,7 @@ door('pattern-store', X1, -30.0, -1, 0, style='door', propose=('stoker',))
 # Converter hall (the boss arena): converter mouths are boss business; the hall's spawns are a Hulk drop off the crane,
 # a breach in the west shell, slag trenches either side of the pit.
 drop('conv-crane', -29.5, 0.0, 11.0, -1, 0, hulk=True, style='crane-bay', propose=('ladleman',))
+rail('conv-rail', -27.8, -6.0, -1, 0, 'conv-crane-runway-e')
 breach('conv-w', X0, 'x', 0.0, 1, 'converter-hall')
 vent('conv-trench-n', -40.0, 10.0, 1, 0, style='slag-trench', propose=('slagback',))
 vent('conv-trench-s', -40.0, -10.0, 1, 0, style='slag-trench', propose=('slagback',))
@@ -365,19 +396,45 @@ HAZARDS = [  # (id stem, kind, reuse, centre x, y, z, size x, y, z, cycle (warn,
     ('pusher', 'pusher', 'new (a travelling press)', -37.0, 0, 26.0, 3.0, 3.6, 3.1, (3.0, 6.0, 30.0), 'coke-ovens', 'the pusher car runs the bench rail; crush in its path'),
     ('converter-tilt', 'converter', 'new (boss phase dressing)', -39.0, 0, 7.0, 4.0, 0.6, 4.0, (2.5, 4.0, 0.0), 'converter-hall', 'boss-driven only: the north converter tips and pours toward the pit (no cycle until a boss design exists)'),
 ]
-MACHINES = [('chip', 46.6, 0, -16.0, 270.0, 'pattern-shop'), ('med', 46.6, 0, -24.0, 270.0, 'pattern-shop'), ('chip', -30.0, L1, 26.6, 180.0, 'coke-ovens'), ('recruit', 39.0, 0, 7.0, 90.0, 'time-office')]
+# Owner decision 2026-10-16: keep the runners and the pour, Wave 1 runs light, the pour stops for the boss encounter. Per hazard:
+# its state in Wave 1 ('on'; 'half': the period doubled; 'off') and during the boss encounter ('on'; 'off'; 'boss': the boss
+# design drives it). Waves 2 to 4 run every proposed cycle as listed above.
+SCHEDULE = {
+    'runner-r1': ('off', 'on', 'Wave 1: the taphole stays plugged (a dull red glow); it taps from Wave 2'),
+    'runner-r2': ('on', 'on', 'the one live runner in Wave 1, in the arena centre, where it teaches the read'),
+    'runner-r3': ('off', 'on', 'as r1'),
+    'ladle-crane': ('half', 'off', 'Wave 1: one pour every 52 s, warn 3.5 s; the boss encounter: the crane parks at the east end, ladle upright, no pour'),
+    'drop-hammer': ('on', 'on', 'a fixed, readable press guarding cache 2'),
+    'slag-spill': ('off', 'on', 'from Wave 3, when the slag yard joins'),
+    'hot-slab': ('off', 'on', 'from Wave 2: the reheat door opens for the first time as the mill joins'),
+    'flying-shear': ('off', 'on', 'runs with the hot slab'),
+    'quench-steam': ('half', 'on', 'Wave 1: one blast every 44 s'),
+    'pusher': ('off', 'on', 'from Wave 3, when the coke battery joins'),
+    'converter-tilt': ('off', 'boss', 'boss-driven only'),
+}
+# Machine spots (owner decision 2026-10-16: the picks, with a second chip machine upstairs on the coke walkway). Spots only: a
+# live machine needs PveContent authoring for the instance (Astra; NativeMachineRules.Present admits the map since PR #254).
+MACHINES = [('chip', 46.6, 0, -16.0, 270.0, 'pattern-shop', 'the chip machine by the entry'), ('med', 46.6, 0, -24.0, 270.0, 'pattern-shop', 'the med machine beside it'),
+            ('chip', -30.0, L1, 26.6, 180.0, 'coke-ovens', 'the second chip machine, upstairs on the coke walkway (the north loop)'), ('recruit', 39.0, 0, 7.0, 90.0, 'time-office', 'the recruit post in the time office')]
+# Presentation tints for this zone only (owner decision 2026-10-16): the brute's orange seams vanish against the furnace glow, so
+# in the Ironworks they draw cream. Existing kinds elsewhere keep NativeHordeKinds.Seam.
+PRESENTATION = {'seams': [dict(kind='brute', table='NativeHordeKinds.Seam', default=0xFF6A2C, tint=0xFFD27A, scope=AREA)]}
 ARENA = vol(-35.5, 0, 0.0, 22.0, 9.0, 22.0, 0)
 def ironworks():
     rooms = [dict(id=f'{AREA}:room:{i}', name=n, volume=vol((a + b) / 2, 0, (c + d) / 2, b - a, 12.0, d - c, 0), levels=lv, role=role) for i, n, a, b, c, d, lv, role in ROOMS]
-    hz = [dict(id=f'{MAP}-{i}', kind=k, reuse=reuse, volume=vol(x, y, z, sx, sy, sz, 0), warn=c[0], live=c[1], period=c[2], room=room, note=note, status='proposal')
+    hz = [dict(id=f'{MAP}-{i}', kind=k, reuse=reuse, volume=vol(x, y, z, sx, sy, sz, 0), warn=c[0], live=c[1], period=c[2], room=room, note=note, status='proposal',
+               schedule=dict(wave1=SCHEDULE[i][0], boss=SCHEDULE[i][1], note=SCHEDULE[i][2]))
           for i, k, reuse, x, y, z, sx, sy, sz, c, room, note in HAZARDS]
     ms = []
-    for k, (kind, x, y, z, yaw, room) in enumerate(MACHINES):
-        fx, fz = forward(yaw); ms.append(dict(id=f'{AREA}:machine-proposal:{k}', kind=kind, x=r4(x), y=r4(y), z=r4(z), yaw=r4(yaw), front=pt(x + fx * 0.7, y, z + fz * 0.7), room=room))
-    sp = [dict(spawn=e['e'], style=styles[e['id']][0], propose=styles[e['id']][1], room=room_of(e['exit'])) for e in entries]
-    return {'status': 'design draft, not live', 'doc': 'docs/EXPEDITION-CITY-IRONWORKS.md', 'rooms': rooms, 'path': PATH, 'hazards': hz, 'machines': ms,
-            'arena': dict(room=f'{AREA}:room:converter-hall', volume=ARENA, boss='none yet (owner: bosses later)'), 'spawns': sp,
-            'kinds': ['cinderling', 'stoker', 'slagback', 'ladleman']}
+    for k, (kind, x, y, z, yaw, room, note) in enumerate(MACHINES):
+        fx, fz = forward(yaw); ms.append(dict(id=f'{AREA}:machine-proposal:{k}', kind=kind, x=r4(x), y=r4(y), z=r4(z), yaw=r4(yaw), front=pt(x + fx * 0.7, y, z + fz * 0.7), room=room,
+                                             level=1 if y > 3 else 0, note=note, status='approved spot (owner 2026-10-16); not a live machine'))
+    def hang(e):
+        h = hangs.get(e['id']); return None if h is None else dict(block=h[0], hook=h[1], feet=r4(e['height']))
+    sp = [dict(spawn=e['e'], style=styles[e['id']][0], propose=styles[e['id']][1], room=room_of(e['exit']), **({'hang': hang(e)} if e['id'] in hangs else {})) for e in entries]
+    return {'status': 'design draft, not live; owner-approved design (2026-10-16)', 'doc': 'docs/EXPEDITION-CITY-IRONWORKS.md', 'rooms': rooms, 'path': PATH, 'hazards': hz, 'machines': ms,
+            'arena': dict(room=f'{AREA}:room:converter-hall', volume=ARENA, boss='none yet (owner: bosses later)', shutter=GATE['id']), 'spawns': sp,
+            'kinds': ['cinderling', 'stoker', 'slagback', 'ladleman', 'rigger'], 'presentation': PRESENTATION}
 def room_of(p):
     for i, n, a, b, c, d, lv, role in ROOMS:
         if a - 1e-6 <= p['x'] <= b + 1e-6 and c - 1e-6 <= p['z'] <= d + 1e-6: return i
@@ -414,7 +471,7 @@ def area():
     return {'id': AREA, 'role': 'instance', 'map': MAP, 'blockHash': block_hash(game_map()),
             'anchors': anchors, 'doors': [door_record()],
             'interactions': [dict(anchor=f'{AREA}:cache:{i}', **front(c, 0.8), range=2.0) for i, c in enumerate(CACHES)],
-            'spawns': entries, 'boss': {'points': BOSS_POINTS}, 'ironworks': ironworks()}
+            'gates': [GATE], 'spawns': entries, 'boss': {'points': BOSS_POINTS}, 'ironworks': ironworks()}
 
 # =====================================================================================================================
 # THE TOWN SIDE (the draft manifest only): the foundry door at the reserved doorway (-84, 0, 0), yaw 90, built exactly as the
@@ -680,6 +737,56 @@ def checks():
             if V['y'] - V['sy'] / 2 < p['y'] + 2 and V['y'] + V['sy'] / 2 > p['y'] - 0.01 and math.hypot(max(abs(p['x'] - V['x']) - V['sx'] / 2, 0), max(abs(p['z'] - V['z']) - V['sz'] / 2, 0)) < (0.5 if 'spawn' in n else 2.0):
                 hz.append((n, h['id']))
     out.append(f'records within 2 m (spawn exits 0.5 m) of a proposed hazard volume: {len(hz)}' + ''.join(f'\n   BAD {n} in {h}' for n, h in hz)); ok &= not hz
+    # The hazard schedule (owner decision): Wave 1 light (at most one runner live, the pour at half rate or slower), no pour in
+    # the boss encounter, every hazard scheduled.
+    sch = {h['id'][len(MAP) + 1:]: h['schedule'] for h in a['ironworks']['hazards']}
+    sok = set(sch) == set(SCHEDULE) and all(x['wave1'] in ('on', 'half', 'off') and x['boss'] in ('on', 'off', 'boss') for x in sch.values())
+    sok &= sum(1 for k, x in sch.items() if k.startswith('runner-') and x['wave1'] == 'on') == 1 and sch['ladle-crane']['wave1'] in ('half', 'off') and sch['ladle-crane']['boss'] == 'off'
+    w1 = {st: sorted(k for k, x in sch.items() if x['wave1'] == st) for st in ('off', 'half')}
+    out.append(f"hazard schedule: Wave 1 off {', '.join(w1['off'])}; at half rate {', '.join(w1['half'])}; one runner live; the ladle pour off in the boss encounter: {sok}"); ok &= sok
+    # The converter shutter: an instance gate (opens "boss") filling the west opening, in the bounds; shut, the converter hall and
+    # every boss point are still reached (pilot and Hulk) by the loops only, and every spawn exit still routes to entry 0.
+    G = GATE['closure']; gb = dict(vol_block(MAP + '-gate-converter', G), role='static', material='metal')
+    fills = all(in_vol(G, -24.0, y, z) for y in (0.2, 2.5, GO - 0.05) for z in (-3.95, -2.0, 0.0, 2.0, 3.95)) and abs(vol_floor(G)) < 1e-6
+    piers = [b for b in blocks if b['id'].startswith(MAP + '-wall-w') and footprint(b)[0] < -23.9 < footprint(b)[1] and yspan(b)[0] < 0.1 and (footprint(b)[3] <= -3.99 or footprint(b)[2] >= 3.99)]
+    seal = fills and min(dist_xz(b, -24.0, -4.0) for b in piers) < 0.01 and min(dist_xz(b, -24.0, 4.0) for b in piers) < 0.01
+    lintel = [b for b in blocks if b['id'].startswith(MAP + '-wall-w') and dist_xz(b, -24.0, 0.0) < 1e-6 and abs(yspan(b)[0] - GO) < 1e-6]
+    seal &= bool(lintel) and vol_in_bounds(G, m['bounds']) and GATE['opens'] == 'boss' and not [b['id'] for b in blocks if solid(b) and b['id'] not in (MAP + '-slab',) and
+                 min(footprint(gb)[1], footprint(b)[1]) - max(footprint(gb)[0], footprint(b)[0]) > 0.01 and min(footprint(gb)[3], footprint(b)[3]) - max(footprint(gb)[2], footprint(b)[2]) > 0.01
+                 and min(yspan(gb)[1], yspan(b)[1]) - max(yspan(gb)[0], yspan(b)[0]) > 0.01]
+    out.append(f"converter shutter {GATE['id']} (opens {GATE['opens']}): {G['sx']:g} x {G['sy']:g} x {G['sz']:g} m in wall-w's west opening, piers either side and the lintel over it, inside the bounds, overlapping no block: {seal}"); ok &= seal
+    gp = Collider(m['blocks'] + [gb], m['ramps'], m['bounds']); gp.build(keep); gh = Collider(m['blocks'] + [gb], m['ramps'], m['bounds']); gh.build(keep, HULK_RADIUS, HULK_HEIGHT)
+    g0 = gp.node_at(o['x'], o['y'], o['z']); gpr = gp.flood([g0]); ghr = gh.flood([gh.node_at(o['x'], o['y'], o['z'])])
+    gmiss = [p for p in BOSS_POINTS if gp.node_at(p['x'], p['y'], p['z']) not in gpr or gh.node_at(p['x'], p['y'], p['z']) not in ghr]
+    gbad = []
+    for e in entries:
+        x = e['exit']; heavy = 'hulk' in e['allow']; g = gh if heavy else gp; n = g.node_at(x['x'], x['y'], x['z'], 0.36 if heavy else 0.6)
+        if n is None or n not in (ghr if heavy else gpr): gbad.append(e['id'])
+    shut = walk(gp, g0).get(gp.node_at(BOSS_POINTS[0]['x'], 0, BOSS_POINTS[0]['z'])); direct = walk(gp, g0, lambda n: abs(gp.cell_xz(n[0], n[1])[1]) > 12.5).get(gp.node_at(BOSS_POINTS[0]['x'], 0, BOSS_POINTS[0]['z']))
+    gok = not gmiss and not gbad and shut is not None and direct is None and shut >= min(LOOPS['north loop'], LOOPS['south loop']) - 0.5
+    out.append(f"shutter shut: boss points reached by a pilot and a Hulk {3 - len(gmiss)} of 3, spawn exits routed with their capsule {len(entries) - len(gbad)} of {len(entries)}, "
+               f"entry 0 to boss point 0 {shut if shut is None else round(shut, 1)} m (the shortest loop), no way through the opening: {gok}" + ''.join('\n   BAD ' + i for i in gbad)); ok &= gok
+    # The Rigger's hang points: a girder (or the roof truss) overhead at the hook's height, the chain's fall clear, the landing ring
+    # (the telegraph's hook shadow and the strike) on reached floor at the exit's level and clear of every proposed hazard.
+    rbad = []; rails = 0
+    for sid, (bid, hy) in sorted(hangs.items()):
+        e = next(e for e in entries if e['id'] == sid); x = e['exit']; ok_r = abs(hy - (e['height'] + RIG_HANG)) < 1e-3 and hy < CEIL
+        if bid:
+            rails += 1; b = next(b for b in blocks if b['id'] == bid); ok_r &= dist_xz(b, x['x'], x['z']) <= 1.5 and abs(yspan(b)[0] - hy) < 1e-6
+        ok_r &= col.clearance(x['x'], x['z'], e['height'] + 0.5, hy - 0.02) >= 0.6
+        ring = [(x['x'] + math.cos(k * math.pi / 4) * RIG_RING, x['z'] + math.sin(k * math.pi / 4) * RIG_RING) for k in range(8)]
+        ok_r &= all(col.node_at(px, x['y'], pz, 0.36) in reach and col.floor_under(px, pz, x['y']) for px, pz in ring)
+        ok_r &= all(math.hypot(max(abs(x['x'] - h['volume']['x']) - h['volume']['sx'] / 2, 0), max(abs(x['z'] - h['volume']['z']) - h['volume']['sz'] / 2, 0)) >= RIG_RING + 0.5 for h in a['ironworks']['hazards'])
+        ok_r &= 'rigger' in styles[sid][1] and e['kind'] == 'vent' and e['surface'] == 'ceiling'
+        if not ok_r: rbad.append(sid)
+    out.append(f'Rigger hang points: {len(hangs)} ({rails} under crane girders, {len(hangs) - rails} under the roof truss): girder overhead within 1.5 m (the chain swings in) at the hook height, chain fall clear 0.6 m, '
+               f'the {RIG_RING:g} m landing ring on reached floor and 2 m clear of hazards: {len(hangs) - len(rbad)} of {len(hangs)}' + ''.join('\n   BAD ' + i for i in rbad)); ok &= not rbad and rails >= 4
+    # Machine spots: fronts pilot-clear on reached floor, 4 m from every spawn exit on their level, the second chip upstairs.
+    mfront = [(x['id'], x['front']) for x in a['ironworks']['machines']]
+    mm = min((math.hypot(e['exit']['x'] - p['x'], e['exit']['z'] - p['z']), e['id'], n) for e in entries for n, p in mfront if abs(e['exit']['y'] - p['y']) < 1)
+    up = [x for x in a['ironworks']['machines'] if x['kind'] == 'chip' and x['level'] == 1]
+    mok = mm[0] >= 4.0 and len(up) == 1 and all(col.node_at(p['x'], p['y'], p['z']) in reach and col.clearance(p['x'], p['z'], p['y'] + 0.35, p['y'] + HEIGHT) >= RADIUS for n, p in mfront)
+    out.append('machine spots: fronts on reached floor with the pilot probe, nearest spawn exit %.1f m (%s, %s), the second chip machine upstairs on the walkway: %s' % (mm[0], mm[1], mm[2], mok)); ok &= mok
     rok = all(room_of(e['exit']) for e in entries) and all(room_of(p) for p in BOSS_POINTS + CACHES + ENTRIES_IN)
     out.append(f'every spawn exit, cache, entry and boss point inside a named room: {rok}'); ok &= rok
     vb = all(vol_in_bounds(V, m['bounds']) for V in (d['interact'], d['closure']))
@@ -749,7 +856,8 @@ def manifest_checks(m):
     ok_f &= all(sum(1 for i in f['interactions'] if i['anchor'] == x['id']) == 1 for x in f['anchors'] if x['kind'] == 'chest') and 1 <= len(f['boss']['points']) <= 8
     ok_f &= all(x['id'].startswith(AREA + ':') for x in f['anchors']) and {x['kind'] for x in f['anchors']} <= {'door', 'chest'}
     ok_f &= all(set(s['allow']) <= {'shambler', 'runner', 'spitter', 'brute', 'hulk'} and 1 <= len(s['allow']) <= 5 and s['kind'] in ('door', 'vent', 'drop', 'breach') for s in f['spawns'])
-    out.append(f'exp-foundry area: one exit with 8 entries, {len(f["anchors"]) - 1} caches each with one interaction, {len(f["boss"]["points"])} boss points, {len(f["spawns"])} own spawns (existing kinds and the four spawn kinds the parser accepts), the ironworks record additive: {ok_f}')
+    ok_f &= [g['id'] for g in f.get('gates', [])] == [GATE['id']] and all(g['opens'] == 'boss' for g in f['gates']) and all(not a_.get('gates') or a_['id'] == m['world'] or a_['id'] == AREA for a_ in m['areas'])
+    out.append(f'exp-foundry area: one exit with 8 entries, {len(f["anchors"]) - 1} caches each with one interaction, {len(f["boss"]["points"])} boss points, one instance gate opening with its boss ({f["gates"][0]["id"]}), {len(f["spawns"])} own spawns (existing kinds and the four spawn kinds the parser accepts), the ironworks record additive: {ok_f}')
     ok &= ok_f
     ids = [x['id'] for a in m['areas'] for x in a['anchors']] + [g['id'] for a in m['areas'] for g in a.get('gates', [])] + [s['id'] for a in m['areas'] if isinstance(a['spawns'], list) for s in a['spawns']]
     out.append(f'manifest ids: {len(ids)}, unique {len(set(ids)) == len(ids)}, pass the Expedition id rule {all(id_ok(i) for i in ids)}'); ok &= len(set(ids)) == len(ids) and all(id_ok(i) for i in ids)
@@ -760,10 +868,10 @@ def manifest_checks(m):
 # PLAN (PNG): both floors, north up, rooms named, the critical path, spawns by entrance style, records, proposed hazards.
 STYLE_C = {'furnace-mouth': (255, 120, 40), 'ash-door': (255, 160, 70), 'coke-oven-door': (230, 90, 50), 'door': (255, 200, 120), 'slag-trench': (200, 120, 255), 'slag-pit': (170, 90, 255),
            'mill-pit': (190, 140, 255), 'vent': (190, 110, 255), 'gantry': (255, 90, 190), 'bunker-chute': (255, 110, 200), 'catwalk-drop': (255, 70, 150), 'slag-bank': (255, 70, 150),
-           'crane-bay': (255, 40, 90), 'breach': (255, 235, 60)}
+           'crane-bay': (255, 40, 90), 'crane-rail': (120, 230, 255), 'breach': (255, 235, 60)}
 def plan(path, graphs, scale=8):
     col, reach, hulk, rh, dist = graphs; m = game_map(); a = area(); d = door_record()
-    SX, SZ = 51, 35; PW, PH = 2 * SX * scale, 2 * SZ * scale; W, H = PW + 20, 2 * PH + 190
+    SX, SZ = 51, 35; PW, PH = 2 * SX * scale, 2 * SZ * scale; W, H = PW + 20, 2 * PH + 212
     cv = Canvas(W, H, bg=(12, 12, 14))
     for panel, yf in ((0, 0.0), (1, L1)):
         ox = 10; oy = 40 + panel * (PH + 30)
@@ -802,6 +910,7 @@ def plan(path, graphs, scale=8):
             cv.line(X(e['from']['x']), Y(e['from']['z']), X(x), Y(z), c, 1); cv.disc(X(x), Y(z), 5 if 'hulk' in e['allow'] else 3, c)
         if panel == 0:
             for key, c in (('interact', (80, 220, 255)), ('closure', (255, 255, 120))): cv.poly([(X(x), Y(z)) for x, z in corners(vol_block('', d[key]))], c, 0.6)
+            cv.poly([(X(x), Y(z)) for x, z in corners(vol_block('', GATE['closure']))], (255, 60, 60), 0.9)
             for p in ENTRIES_IN:
                 cx, cy = X(p['x']), Y(p['z']); fx, fz = forward(p['yaw']); cv.disc(cx, cy, 4, (255, 255, 255)); cv.line(cx, cy, cx + int(fx * 9), cy - int(fz * 9), (255, 255, 255), 2)
             for p in BOSS_POINTS:
@@ -821,9 +930,9 @@ def plan(path, graphs, scale=8):
             tx = min(max(X((x0 + x1) / 2) - text_width(t) // 2, X(x0) + 4), X(x1) - text_width(t) - 4); cv.text(tx, Y(z1) + 6, t, (235, 235, 240))
         cv.text(ox, oy - 16, 'GROUND FLOOR  Y 0' if panel == 0 else 'UPPER RING AND WALKWAYS  Y 6', (200, 220, 235))
     cv.text(10, 8, 'CITY IRONWORKS  EXPEDITION INSTANCE  BLOCKOUT DRAFT (NOT LIVE)  100 X 68 M  NORTH UP  1 PX = %d CM' % (100 // scale), (255, 214, 170))
-    lx, ly = 10, H - 112
+    lx, ly = 10, H - 134
     leg = [('EXIT DOOR', (0, 160, 255)), ('INTERACT', (80, 220, 255)), ('CLOSURE', (255, 255, 120)), ('ENTRY SLOT', (255, 255, 255)), ('BOSS POINT / ARENA', (255, 90, 255)),
-           ('CACHE', (255, 200, 40)), ('MACHINE (PROPOSAL)', (120, 255, 200)), ('HAZARD (PROPOSAL)', (255, 110, 40)), ('CRITICAL PATH', (120, 255, 160)), ('STAIR', (90, 170, 230)),
+           ('CACHE', (255, 200, 40)), ('MACHINE SPOT', (120, 255, 200)), ('SHUTTER (OPENS WITH THE BOSS)', (255, 60, 60)), ('HAZARD (PROPOSAL)', (255, 110, 40)), ('CRITICAL PATH', (120, 255, 160)), ('STAIR', (90, 170, 230)),
            ('FURNACE / HOT MASS', (200, 96, 50)), ('RUNNER CURB', (230, 120, 50)), ('RAIL', (220, 190, 60)), ('BREACH', (255, 235, 60))]
     leg += [(k.upper().replace('-', ' '), c) for k, c in STYLE_C.items() if k != 'breach']
     for label, c in leg:

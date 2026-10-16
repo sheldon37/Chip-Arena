@@ -1,13 +1,16 @@
 # CITY IRONWORKS: the sealed foundry (Expedition instance `exp-foundry`): design draft
 
-Claude, 2026-10-16, branch `claude/ironworks-design` (base shared `claude/sleepy-ritchie-g8ruhv`, `bb4b36a`).
-**Status: design phase. Nothing is live.** The blockout, the manifest draft and the look are inert test fixtures. No game
-code, AI, networking, live data or catalogue state changed. Central Station is a separate parallel design.
+Claude, 2026-10-16, branch `claude/ironworks-design` (base shared `claude/sleepy-ritchie-g8ruhv` at `bb4b36a`; shared `afac02d`
+with Astra's PR #254 merged in since).
+**Status: owner-approved design (2026-10-16; decisions in section 12). Nothing is live.** The blockout, the manifest draft and
+the look are inert test fixtures. No game code, AI, networking, live data or catalogue state changed. Central Station is a
+separate parallel design.
 
 Owner request (2026-10-16): "lets begin the design for the Central Station and City Ironworks~ we can tweak the instances to
 have specific zombies / enemies. So lets also begin creating unique enemies for those zones. We can work on visual updates /
 bosses after." Owner bar (2026-10-16, via the coordinator): the Ironworks must look clearly better than Ward Zero, the kind of
-map players call "a cool map", using our real assets and lighting. Readability comes first.
+map players call "a cool map", using our real assets and lighting. Readability comes first. Owner approval (2026-10-16): "Go
+with your picks, add the rigger as well." (section 12).
 
 Roles: Claude owns layout, look, dressing, animation, VFX, audio cues and presentation. Astra owns stats, AI, the director,
 networking, hazards' authority and tests of those. Everything marked **proposal** below is for Astra or the owner to accept.
@@ -16,13 +19,13 @@ networking, hazards' authority and tests of those. Everything marked **proposal*
 
 | | |
 | --- | --- |
-| Ids (reserved, unchanged) | area `exp-foundry`, map `expedition-foundry`, look `ironworks`; the town door `exp-city:door:exp-foundry` at the reserved doorway (-84, 0, 0), yaw 90 |
+| Ids | area `exp-foundry` (reserved), map `expedition-ironworks` (the id PR #254 gave the importer's draft profile, `NativeMapRules.ExpeditionInstance` and the machine rule; `docs/EXPEDITION-LAYOUT.md` first reserved `expedition-foundry`), look `ironworks`; the town door `exp-city:door:exp-foundry` at the reserved doorway (-84, 0, 0), yaw 90; the shutter `exp-foundry:gate:converter` |
 | Size | 100 x 68 m inside the shell (Ward Zero: 76 x 60 m); ceiling 18 m; floors at y 0 and y 6 |
 | Floor | 4,453 m2 at ground and 987 m2 on the upper ring and walkways, all reached from the entry slots |
-| Blockout | 308 blocks, 5 stairs, 31 pilot exclusion columns, 41 spawn records, 3 caches, 3 boss points, 11 proposed hazards |
+| Blockout | 308 blocks, 5 stairs, 31 pilot exclusion columns, 46 spawn records (8 of them Rigger hang points), 3 caches, 3 boss points, 1 instance gate (the converter shutter), 11 proposed hazards with a Wave 1 and boss schedule, 4 machine spots |
 | Rooms | Time Office (entry), Casting Floor (arena), Furnace Aisle and Charging Deck, Rolling Mill, Stockhouse, Pattern Shop, Coke Oven Battery, Slag Yard and Drop Forge, Converter Hall (boss arena placeholder) |
-| Run from the entry to the boss arena | direct 83.4 m (12.3 s running); north loop 101.4 m (14.9 s); south loop 109.9 m (16.2 s) |
-| New enemies (proposals) | Cinderling (swarm), Stoker (puller), Slagback (armoured heavy), Ladleman (elite area denial) |
+| Run from the entry to the boss arena | north loop 101.4 m (14.9 s running); south loop 109.9 m (16.2 s); direct 83.4 m (12.3 s) only once the shutter opens with the boss |
+| New enemies (approved designs; stats are proposals) | Cinderling (swarm), Stoker (puller), Slagback (armoured heavy), Ladleman (elite area denial), Rigger (ambusher off the crane rails) |
 | Files | `docs/arenas/scripts/expedition_ironworks.py`; `unity/ChipArenaConversion/Tests/expedition-ironworks-draft.json`, `-layout-draft.json`, `-look-draft.json`; `Tests/test_expedition_ironworks_draft.py`; `Tests/ExpeditionIronworksDraftChecks.cs` |
 
 ## 1. Fantasy and mood
@@ -61,7 +64,8 @@ lamps that still buzz on the night circuit and the cold mercury lamps in the hig
      x-50            x-24                                                x36           x50
 ```
 
-`python3 docs/arenas/scripts/expedition_ironworks.py --png plan.png` draws the plan with every record (renders below).
+`python3 docs/arenas/scripts/expedition_ironworks.py --png plan.png` draws the plan with every record (renders below). The
+`=` between the casting floor and the converter hall at z 0 is the converter shutter (red in the PNG): shut until the boss.
 
 ### 2.2 Rooms
 
@@ -91,8 +95,12 @@ lamps that still buzz on the night circuit and the cold mercury lamps in the hig
      battery walkway, down the coke stair, through the battery's south lane to the converter hall's north door (101.4 m).
    - **South:** through the mill wall into the Rolling Mill, along either lane, through the west opening into the Slag Yard,
      north to the converter hall's south door (109.9 m).
-   - **Direct:** the Casting Floor's west opening into the Converter Hall (83.4 m). **Proposal:** a sealed shutter here that
-     opens with the boss phase, so the loops are the way until then (it needs an instance gate in the schema: section 10.6).
+   - **Direct:** the Casting Floor's west opening into the Converter Hall (83.4 m). **Owner decision:** the converter shutter
+     seals it until the boss. It is a real instance gate in the draft manifest: `exp-foundry:gate:converter`, `opens: "boss"`
+     (PR #254's instance shutter: sealed from the start, opening with the instance's boss encounter over the existing one-second
+     closure transition, never with the town's final gate). With it shut, the generator proves every boss point (pilot and
+     Hulk) and every spawn exit still routed to the entry by the loops, and no way through the opening. The shutter opening is
+     the boss encounter's first beat: the party, arriving by a loop, sees the direct way open behind the boss.
 5. **Back loop.** Rolling Mill east door, Pattern Shop, Time Office: the way home without crossing the arena.
 
 ### 2.4 Verticality, sightlines, cover, chokes
@@ -118,14 +126,16 @@ lamps that still buzz on the night circuit and the cold mercury lamps in the hig
 | Entries | 8 at x 47.0 and 45.6, z -2.6, -1.1, 1.1, 2.6, yaw 270; Hulk-clear (tightest 2.55 m), 1.40 m apart |
 | Caches (`chest`) | 0: Time Office (38.6, 0, -6.4); 1: charging deck (6.5, 6, 24.2), upstairs between furnaces 2 and 3; 2: slag yard (-36, 0, -16.6), by the drop hammer. Interactions 0.8 m in front, range 2.0 |
 | Boss points | the pouring pit (-35, 0, 0) and either side (-34, 0, +-7.5), yaw 90 (facing the main entrance). Hulk-clear by 4.3 m |
-| Machines (proposal, not anchors) | chip and med in the Pattern Shop (46.6, 0, -16 / -24); chip on the coke walkway (-30, 6, 26.6); recruit in the Time Office (39, 0, 7). Ward Zero's machines live in PveContent; these would follow (section 10) |
+| Machine spots (owner-approved, not anchors) | chip and med in the Pattern Shop (46.6, 0, -16 / -24); **the second chip machine upstairs on the coke walkway** (-30, 6, 26.6), yaw 180, on the north loop; recruit in the Time Office (39, 0, 7). Fronts pilot-clear on reached floor, 6.2 m or more from any spawn exit. A live machine needs PveContent authoring for the instance (section 10.6) |
+| Converter shutter (instance gate) | `exp-foundry:gate:converter`, opens `boss`: closure (-24, 2.5, 0) 8 x 5 x 0.6 m, yaw 90, filling wall-w's west opening between its piers and under its lintel |
 | Sanctuary | none (instances have none, as Ward Zero) |
 | Town door (draft manifest) | anchor (-83.4, 0, 0) yaw 90; closure against the sealed shutter; approach (-82.4, 0, 0) (the hub's reserved approach); returns x -79.6 and -78.0, z -3, -1, 1, 3, yaw 90 (the Ward Zero door's mirrored); nearest town spawn 16 m |
 
-### 2.6 Spawns (41; the PveEntry shape plus `allow`)
+### 2.6 Spawns (46; the PveEntry shape plus `allow`)
 
-Existing spawn kinds only (door, vent, drop, breach), so the strict parser accepts them. The additive `ironworks.spawns[]` gives
-each record an **entrance style** for its presentation and the **new kinds it would admit** (proposal):
+Existing spawn kinds only (door, vent, drop, breach), so the strict parser accepts them, including PR #254's stricter rules
+(allow lists per entry kind, Hulk only on drops, breach panels in the area's own map, level 0..1, song -1..1). The additive
+`ironworks.spawns[]` gives each record an **entrance style** for its presentation and the **new kinds it would admit**:
 
 | Style | Count | Kind | Where | Proposed kinds |
 | --- | --- | --- | --- | --- |
@@ -134,13 +144,20 @@ each record an **entrance style** for its presentation and the **new kinds it wo
 | coke-oven-door | 5 | door (one on the walkway) | the oven doors on the bench | cinderling, stoker |
 | door | 6 | door | stores, the flue gallery (deck), the stock yard | mixed |
 | slag-trench, slag-pit, mill-pit | 11 | vent (floor) | floor trenches and pits: they climb out of the slag | slagback, cinderling |
-| gantry, bunker-chute | 5 | vent (ceiling: a drop) | off the crane girders and the ore chutes | cinderling, stoker |
+| gantry | 3 | vent (ceiling: a drop) | under the roof truss: casting floor (2), rolling mill | cinderling, stoker, **rigger** |
+| crane-rail | 5 | vent (ceiling: a drop) | under the crane girders: the north runway (2), the south runway, the crane bridge, the converter hall's east runway | **rigger** |
+| bunker-chute | 2 | vent (ceiling, level 1) | the ore chutes over the ore bridge | cinderling |
 | catwalk-drop, slag-bank | 3 | drop (brute) | off the ring and the slag bank | slagback |
 | crane-bay | 2 | drop (Hulk) | lowered from the crane: casting floor, converter hall | ladleman |
 | breach | 3 | breach (Hulk) | bricked-up openings: mill, forge, converter hall | ladleman |
 
 Checks: every exit is on reached floor at its own level with its clear radius and routes back to entry 0 with its own capsule
-(Hulk where allowed); exits are 4.0 m apart at least; none within 4 m of a boss point; none within 0.5 m of a proposed hazard.
+(Hulk where allowed), with the shutter open and shut; exits are 4.0 m apart at least; none within 4 m of a boss point; none
+within 0.5 m of a proposed hazard. **The Rigger's 8 hang points** (`ironworks.spawns[].hang`: the girder block, the hook's
+height, the drop height) each have a girder overhead within 1.5 m at the hook height (or the roof truss, kit, at 14.4 m), the
+chain's fall clear by 0.6 m up to the hook, 1.6 m clear from the floor to 0.5 m over the drop height, and the 1.5 m landing ring
+on reached floor and 2 m clear of every hazard. The bridge point rides the crane bridge's parked position: it is live only while
+the ladle crane is parked (Astra: gate it on the crane's phase).
 
 ## 3. Look and set dressing
 
@@ -158,6 +175,7 @@ A sealed interior, as Ward Zero's quarantine look: no sky, no shadowing key (the
 | Practical lights (the default 8) | furnace-2 doors (0, 7.4, 26.2) 0xFF6A1C x 1.6, r 12, fire 1.1 Hz; ladle pour (7.3, 2.6, -7) 0xFFB45A x 2.4, r 13, fire 3.1; runner r2 (0, 0.8, 16.5) 0xFF7A26 x 1.2, r 8, fire 2.2; reheat door (28.2, 1.8, -25) 0xFF5A18 x 1.9, r 13, fire 0.9; mill sodium (6, 10.4, -25) 0xFFB347 x 0.7, r 15; casting sodium (18, 12, 4) 0xFFB347 x 0.4, r 14, stutter; mercury west (-14, 11.7, 12) 0xBFD8FF x 0.5, r 16; mercury south (0, 11.7, -11) 0xBFD8FF x 0.45, r 15 |
 | Block looks | 62 entries: refractory `brick-buff` furnaces, soot-black `brick-red` partitions, `factory-grating` ring and stairs, `steel-green` iron in black, machine green and worn safety yellow, `asphalt` slag, `timber` patterns; every block is listed |
 | Names | dressing `ironworks`, atmosphere `ironworks`, ambience `ironworks` (none exist yet) |
+| Zone tints (owner decision) | the brute's seams cream `0xFFD27A` instead of `NativeHordeKinds.Seam[Brute]` `0xFF6A2C`, in this instance only; recorded in `ironworks.presentation.seams` (MapLooks has no per-kind field; to implement: the horde presentation swaps the seam colour while this instance is loaded) |
 
 ### 3.2 Readability rules (gameplay first)
 
@@ -166,15 +184,17 @@ A sealed interior, as Ward Zero's quarantine look: no sky, no shadowing key (the
    warm; that is the failure mode.
 2. **Two of the eight practical light slots are cool** (mercury-vapour lamps), whichever furnace is near (picker rule,
    section 9.2). The cool light keeps the floor, the pilots and the enemies' shapes readable.
-3. **Enemies are dark silhouettes with non-orange tells.** The new kinds carry white-hot, cyan or cream tells; nothing an
-   enemy does is signalled in plain orange (the environment's colour). Against furnace glow they read as black shapes (the
-   lineup render shows it).
+3. **Enemies are dark silhouettes with non-orange tells.** The new kinds carry white-hot, cyan, cream or cold-white tells
+   (the Rigger's head lamp); nothing an enemy does is signalled in plain orange (the environment's colour). Against furnace
+   glow they read as black shapes (the lineup render shows it).
 4. **Telegraphs:** cream-white decals with a hard edge for area attacks (slam ring, pour arc), cyan dashes for lines (the
    Stoker's pull), a white flare on the body for fast attacks. The hazard warn colour stays the hazard kit's amber, used only by
    hazards. Molten floor glow never exceeds a telegraph's brightness: molten surfaces sit at HDR 1.4-4, decals at full white
    with alpha.
-5. **Existing kinds in this light:** the brute's orange seams (0xff6a2c) vanish against the furnace glow. **Proposal:** a
-   per-zone seam tint for presentation (brute to 0xffd27a cream in the Ironworks); the others read.
+5. **Existing kinds in this light:** the brute's orange seams (0xff6a2c) vanish against the furnace glow. **Owner decision
+   (2026-10-16):** in the Ironworks only, the brute's seams draw cream 0xffd27a (presentation: the seam colour feeds its
+   landing cracks and impact ink too, so they turn cream with it). Every other zone keeps `NativeHordeKinds.Seam`. The
+   shambler, runner, spitter and Hulk seams read as they are.
 6. **Pickups and caches:** caches keep their existing look; add a cool top light so they never sink into the orange.
 7. **Lead the eye:** every room has one brightest thing and it is where the route goes: the pour (arena centre), the furnace
    doors (north loop), the reheat slab line (south loop), the jammed coke door (west lane), the converter mouths (boss).
@@ -201,7 +221,8 @@ Offline renders through the game's own shaders (NativeBlockLit's shared section 
 in headless Chromium WebGL, as the Ward Zero and Brickfall lighting work did), the draft map and look, the eight practical
 lights picked per camera, a scratch dressing pass standing in for the proposed kit, FX quads and the real pilot body and zombie
 models posed by NativeHordeGait. Paths are listed in the DEV_LOG entry. They are concept renders: dressing, FX and lights are
-the doc's proposals, not shipped code.
+the doc's proposals, not shipped code. The enemy sheet now carries the Rigger (lineup, its ambush at a real hang point, move,
+telegraph, strike).
 
 ## 4. Asset inventory: what we have, per room
 
@@ -223,7 +244,8 @@ the doc's proposals, not shipped code.
 | NativeVfxDraw roles: Fireball, Smoke, Spark, Ember, Flame, HotDebris, Mist, Halo, Lick | pours, splashes, sparks, the Cinderling's pop, steam |
 | NativeStructureFx (debris, dust, window strobe) | the Slagback's crust shedding; breaches |
 | NativeHordeFx (brute slam dust and cracks), the spitter's acid pool presentation | the Slagback's slam; the Ladleman's molten pool (recoloured) |
-| NativeHordeModels and NativeZombieMotion on the ZOMBIE PRO takes (`tools/pack-zombie-provenance.json`) | the four new kinds' bodies and gaits |
+| NativeHordeModels and NativeZombieMotion on the ZOMBIE PRO takes (`tools/pack-zombie-provenance.json`) | the five new kinds' bodies and gaits |
+| NativeHordeDrop (warn, leap, fall, recover; the landing slam's dust and cracks) | the Rigger's landing (a lighter profile); the existing kinds' drops from its hang points |
 | Licensed local packs (by id, never committed): ZOMBIE PRO MoCap Animation Pack (`pack-zombie`), the owner's effects audio bank (`EffectsAudio` via `tools/install_local_assets.py`) | animation; audio until the Ironworks cues exist |
 
 ### Gaps, ranked by visual payoff
@@ -239,30 +261,38 @@ the doc's proposals, not shipped code.
 6. **Smoke layer under the roof** (large lit sprites, sorted; the town's smoke is close).
 7. **Converter, ladle and torpedo meshes** (the box versions read; rounded vessels would read better).
 8. **Spark trails with bounce** (the Spark role streaks exist; a floor bounce would help the pour).
+9. **A chain prop with a verlet solver** for the Rigger (hang, slide, swing, climb), the crane hooks and the converter hall's
+   hook; today a chain would be a rigid stick. Medium payoff, needed before the Rigger can ship.
 
 ## 5. Hazards (all proposals for Astra; presentation is Claude's)
 
-Ids start with the map id. Volumes and cycles are in `ironworks.hazards[]`. Every record keeps 2 m (spawn exits 0.5 m) clear.
+Ids start with the map id (`expedition-ironworks-`). Volumes, cycles and the schedule are in `ironworks.hazards[]`. Every
+record keeps 2 m (spawn exits 0.5 m) clear. **Owner decision (2026-10-16):** keep the runners and the ladle pour; Wave 1 runs
+light; the pour stops for the boss encounter. Waves 2 to 4 run every cycle as listed.
 
-| Id | Kind | Reuse | Cycle (warn / live / period, s) | Telegraph | Effect |
-| --- | --- | --- | --- | --- | --- |
-| `-runner-r1..r3` | molten-runner | new | 2 / 6 / 34 (offsets 0, 11, 22) | the taphole sparks and roars, the trough brightens from the furnace end | burn while live inside the trough |
-| `-ladle-crane` | crane | Factory crane, pour instead of drop | 2.5 / 3 / 26 | amber beacon, klaxon, the ladle tilts, a cream decal on the zone | splash zone burns; the stream blocks sight |
-| `-drop-hammer` | press | Factory press, vertical | 1.2 / 0.35 / 6 | the ram lifts, a hiss, a white glint on the billet | crush on the anvil |
-| `-slag-spill` | slag-spill | new | 3 / 10 / 40 | the pot tips and glows | a tongue spreads east over 3 s, burns, cools over 10 s |
-| `-hot-slab` | hot-slab | Factory conveyor idea | 1.5 / 9 / 18 | the reheat door opens, a white slab emerges | burns and carries anyone on the table |
-| `-flying-shear` | saw-rail | Factory saw-rail / kit saw | 1 / 0.6 / 9 | blade drop squeal | cut across the table |
-| `-quench-steam` | vent | Factory vent | 1.5 / 3 / 22 | hiss, white mist at the grate | push and scald |
-| `-pusher` | pusher | new (a travelling press) | 3 / 6 / 30 | amber beacon, horn | crush in its path along the bench |
-| `-converter-tilt` | converter | new | boss-driven only | (boss design) | (boss design) |
+| Id | Kind | Reuse | Cycle (warn / live / period, s) | Wave 1 | Boss encounter | Telegraph | Effect |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `-runner-r2` | molten-runner | new | 2 / 6 / 34 | **on** (the one live runner, arena centre: it teaches the read) | on | the taphole sparks and roars, the trough brightens from the furnace end | burn while live inside the trough |
+| `-runner-r1`, `-r3` | molten-runner | new | 2 / 6 / 34 (offsets 0, 11, 22 with r2) | **off** (tapholes plugged, a dull red glow; they tap from Wave 2) | on | as r2 | as r2 |
+| `-ladle-crane` | crane | Factory crane, pour instead of drop | 2.5 / 3 / 26 | **half rate** (one pour every 52 s, warn 3.5 s) | **off** (the crane parks at the east end, ladle upright) | amber beacon, klaxon, the ladle tilts, a cream decal on the zone | splash zone burns; the stream blocks sight |
+| `-drop-hammer` | press | Factory press, vertical | 1.2 / 0.35 / 6 | on (a fixed, readable press guarding cache 2) | on | the ram lifts, a hiss, a white glint on the billet | crush on the anvil |
+| `-slag-spill` | slag-spill | new | 3 / 10 / 40 | **off** (from Wave 3, when the slag yard joins) | on | the pot tips and glows | a tongue spreads east over 3 s, burns, cools over 10 s |
+| `-hot-slab` | hot-slab | Factory conveyor idea | 1.5 / 9 / 18 | **off** (from Wave 2: the reheat door opens for the first time as the mill joins) | on | the reheat door opens, a white slab emerges | burns and carries anyone on the table |
+| `-flying-shear` | saw-rail | Factory saw-rail / kit saw | 1 / 0.6 / 9 | **off** (runs with the slab) | on | blade drop squeal | cut across the table |
+| `-quench-steam` | vent | Factory vent | 1.5 / 3 / 22 | **half rate** (every 44 s) | on | hiss, white mist at the grate | push and scald |
+| `-pusher` | pusher | new (a travelling press) | 3 / 6 / 30 | **off** (from Wave 3, when the coke battery joins) | on | amber beacon, horn | crush in its path along the bench |
+| `-converter-tilt` | converter | new | boss-driven only | off | boss design | (boss design) | (boss design) |
 
-Molten pools left by enemies (the Ladleman) share the runner's burn. No hazard is lethal on contact; all are dodgeable.
+Wave 1 therefore runs one runner and a slow pour on the casting floor, the drop hammer by cache 2 and the quench steam slowed on
+the north loop. Molten pools left by enemies (the Ladleman) share the runner's burn. No hazard is lethal on contact; all are
+dodgeable. The generator checks the schedule (one runner live in Wave 1, the pour off for the boss).
 
 ## 6. Unique enemies
 
 Built on the pilot-model zombie rig and the ZOMBIE PRO gaits, as every horde kind is. Each reads at 30 m as its own silhouette
-and keeps a non-orange tell. Tiers: Cinderling (fodder), Stoker (special), Slagback (heavy), Ladleman (elite). Stats are in the
-Astra contract (section 10); timings here are the presentation's proposal.
+and keeps a non-orange tell. Tiers: Cinderling (fodder), Stoker (special), Rigger (special), Slagback (heavy), Ladleman
+(elite). The owner kept all four and added the Rigger as the fifth (2026-10-16). Stats are in the Astra contract (section 10);
+timings here are the presentation's proposal.
 
 ### 6.1 Cinderling: the swarm
 
@@ -330,25 +360,80 @@ Astra contract (section 10); timings here are the presentation's proposal.
 - **Counters:** stay out of the arc, flank, shoot the ladle.
 - **Spawns:** Hulk breaches (he kicks through the bricked openings) and the crane bays (lowered on the hook).
 
-### 6.5 Concept sheet
+### 6.5 Rigger: the ambusher (owner addition, 2026-10-16)
 
-`enemy-sheet.png` (renders): the lineup with a pilot and a shambler, backlit by the furnace line and front-lit, then each kind
-moving, telegraphing and striking. Built from the real models and gaits with the proposed parts as boxes on the bones.
+- **Role:** an ambusher and disruptor that comes from above. It waits on the crane girders and the roof truss, lowers its hook
+  over an isolated or busy pilot, slides down the chain onto them, swings the hook to scatter the group, then climbs back up
+  to do it again. It punishes standing still and turtling under the crane; it gives the casting floor a vertical threat.
+  Tier: special (as the Stoker), at most two alive.
+- **Silhouette against the furnace glow:** a lean figure hanging from a chain under the girders, the crane hook dangling below
+  it, one cold white point of light (its head lamp). On the ground: a thin, long-armed figure trailing a hook on a short chain.
+  Its tells are cold white (the lamp, the ring's flash) and cream (the ring); nothing orange. The ambush render shows it under
+  the north runway with the furnace line behind it.
+- **Rig build:** the shambler body on the pilot-model zombie rig at 1.04 scale, skin dead grey; parts: a dirty cream hard hat
+  with a head lamp (emissive cold white plus a spot cone), a webbing harness (crossed straps, a belt, two shackles), gloves, a
+  chain coil over the chest, and a crane hook (about 0.6 m) on a chain held in the right hand. The chain is a verlet prop
+  (gap 9 in section 4): 30 links between the right hand and the hook, pinned to the girder while it hangs.
+- **Animation set:**
+  - idle `idle-3` with the hook hanging from the hand; move `walk-2`, `chase-1` at the shambler's tempo with the hook dragging
+    (the chain prop on the floor, sparks off the hook's point);
+  - **hang** (new, procedural): both hands over the head on the chain, hips under the hands, legs loose, a pendulum sway driven
+    by the chain (built on the smash wind-up's arms-up frame held, as the renders do);
+  - **slide** (new, procedural): the hang pose run down the chain in 0.35 s, legs tucked, sparks at the gloves;
+  - **land**: NativeHordeDrop's landing crouch and recover at a lighter profile (no Hulk-class shake);
+  - **hook swing**: `swipe-r1` on the right arm, looped twice overhead with the chain prop. **New mocap wanted:** an overhead
+    lasso spin and release (about 1.1 s);
+  - **throw and climb back up** (yes, it climbs): a hook throw (0.5 s, `swipe-r1` aimed up) and a hand-over-hand climb. **New
+    mocap wanted:** a rope-climb loop (about 1.0 s); the stand-in alternates the hang pose's hands while it rises;
+  - **knocked off**: `knock-3` in the air, then the landing; hits `knock-*`; deaths `back-*`, `front-*` (the hook clatters away,
+    the lamp flickers out).
+- **The ambush (hook drop), telegraph timings** (T = the landing):
+  - T-2.0 s: a chain rattle high overhead (positional, from the hang point), dust sifts off the girder;
+  - T-1.6 s: the target spot is locked (the pilot's position then). The hook drops out of the dark and stops 2.4 m over the
+    spot, swaying 0.6 m either side (0.8 s period): **its shadow swings across the spot**. A cream ring (1.5 m) fades in on the
+    floor; the head lamp clicks on and its cold cone lights the ring;
+  - T-0.35 s: the Rigger slides down the chain (a whip of chain, sparks at its gloves); the ring flashes white;
+  - T 0: it lands: 1.5 m disc, 14 damage, 0.5 s knockdown, a dust ring and sparks off the hook.
+  A pilot who moves 1.5 m in the 1.6 s after the lock is safe; the rattle buys another 0.4 s. As a horde entrance from a hang
+  point it runs the same sequence onto the spawn record's exit.
+- **Hook swing** (on the ground): wind-up 0.6 s (the hook spun overhead, a rising whirr, a cream dashed ring at 3.2 m and a
+  cold inner ring at 1 m); a 0.5 s sweep through 300 degrees from its front-left, 9 damage and 3 m knockback outward: it breaks
+  up a group. Cooldown 5 s. The hook passes over anyone inside 1 m (the dead zone).
+- **Climb back up:** after a swing, if no pilot is within 2 m and it has 40% of its health or more, it throws the hook up to the
+  nearest hang point within 8 m and climbs (2.0 s), lurks at least 4 s with its lamp off, then ambushes again. At most two
+  climbs per Rigger; then it fights on the ground.
+- **VFX:** the lamp halo and cone (Halo, a soft shaft), the ring decal (the telegraph family), the hook's swaying shadow decal,
+  girder dust (Mist motes), glove sparks on the slide (Spark), the landing dust ring (NativeHordeFx at 0.6 scale), the swing's
+  pale trail along the arc, a chain-cut burst (Spark plus steel HotDebris).
+- **Audio:** `pve.ironworks.rigger.*` in section 8 (the rattle is the key warning: it must cut through the furnace bed).
+- **Counters and weak points:** keep moving when the rattle sounds; step out of the ring; shoot it while it hangs, slides or
+  climbs (it takes 1.5x damage there); **the chain** (40 hp while it hangs or climbs): cut it and it falls (20% of its maximum
+  health and a 1.5 s stun); 30% of its maximum health while it hangs or climbs knocks it off the same way; the head (lamp) takes
+  the usual head multiplier. The swing: back off past 3.2 m or step inside 1 m; a heavy melee blow in the wind-up staggers it.
+- **Spawns:** only from hang points: the 5 crane-rail points and the 3 roof-truss gantries (section 2.6); 8 in the draft.
+
+### 6.6 Concept sheet
+
+`enemy-sheet.png` (renders): the lineup with a pilot and a shambler, backlit by the furnace line and front-lit, the Rigger's
+ambush at its real hang point, then each kind moving, telegraphing and striking. `rigger-sheet.png` gathers the Rigger's four.
+Built from the real models and gaits with the proposed parts as boxes on the bones.
 
 ## 7. Encounter plan (proposal)
 
-| Phase | Rooms active | Mix |
-| --- | --- | --- |
-| Entry (quota 0) | Time Office quiet; first trickle on the casting floor | shambler, cinderling packs of 3 |
-| Wave 1 | casting floor, furnace aisle | shambler .55, cinderling .35, stoker .10 |
-| Wave 2 | + rolling mill, stockhouse | shambler .35, cinderling .35, stoker .15, slagback .10, spitter .05 |
-| Wave 3 | + coke ovens, slag yard | shambler .25, cinderling .30, stoker .15, slagback .15, brute .05, ladleman .04 (cap 1), hulk .03 (cap 1) |
-| Wave 4 | all but the converter hall | shambler .20, cinderling .30, stoker .15, slagback .15, brute .05, ladleman .06 (cap 2), hulk .04 (cap 1) |
-| Boss (placeholder) | converter hall (+ the direct shutter opens) | adds: cinderling .5, stoker .2, slagback .2, shambler .1 |
+| Phase | Rooms active | Hazards | Mix |
+| --- | --- | --- | --- |
+| Entry (quota 0) | Time Office quiet; first trickle on the casting floor | Wave 1's | shambler, cinderling packs of 3 |
+| Wave 1 | casting floor, furnace aisle | light: runner r2 only, the pour every 52 s, quench steam every 44 s, the drop hammer; mill, pusher and slag spill off | shambler .55, cinderling .35, stoker .10 |
+| Wave 2 | + rolling mill, stockhouse | all three runners, the full pour, the mill wakes (slab, shear) | shambler .33, cinderling .33, stoker .14, slagback .10, rigger .05 (cap 1), spitter .05 |
+| Wave 3 | + coke ovens, slag yard | + pusher, slag spill | shambler .22, cinderling .28, stoker .13, slagback .15, rigger .08 (cap 2), brute .05, ladleman .05 (cap 1), hulk .04 (cap 1) |
+| Wave 4 | all but the converter hall | all | shambler .18, cinderling .27, stoker .13, slagback .15, rigger .10 (cap 2), brute .05, ladleman .07 (cap 2), hulk .05 (cap 1) |
+| Boss (placeholder) | converter hall; **the shutter opens with the encounter** | **the ladle pour stops** (the crane parks); the rest as Wave 4; the converter tilt is the boss's | adds: cinderling .45, stoker .15, slagback .20, rigger .10 (off the converter runway), shambler .10 |
 
 Per room: furnace aisle and coke ovens favour cinderlings and stokers (fire doors); slag yard, trenches and pits favour
-slagbacks; breaches and crane bays are the ladleman's and the Hulk's. The director picks spawns away from pilots' sight, as
-today.
+slagbacks; breaches and crane bays are the ladleman's and the Hulk's; the crane rails and gantries are the Rigger's (the
+casting floor and the mill; the converter rail in the boss). The Rigger arrives in Wave 2 with a scripted first ambush on the
+casting floor (its rattle is new to the players). The director picks spawns away from pilots' sight, as today; two Riggers never
+lock the same pilot, and their hang points are 6 m apart or more.
 
 ## 8. Audio: every cue the zone needs (for the owner to generate; nothing generated here)
 
@@ -401,9 +486,23 @@ Keys follow the bank's style. Category as in `docs/audio/sound-requests.json` (`
 | `pve.ironworks.ladleman.swing` | sfx | 3 | a heavy iron ladle swung, deep whoosh |
 | `pve.ironworks.ladleman.spill` | voice | 2 | molten metal splashing over a huge zombie, agonised roar |
 | `pve.ironworks.ladleman.groan` | voice | 3 | a huge zombie groaning behind a welder's mask, muffled |
+| `pve.ironworks.rigger.rattle` | sfx | 4 | chains rattling high overhead on a steel girder, a creak of links, echoing in a vast hall (the ambush warning) |
+| `pve.ironworks.rigger.hang` | loop | 1 | a chain creaking under a swaying weight, slow pendulum rhythm, faint |
+| `pve.ironworks.rigger.lamp` | sfx | 2 | an old miner's head lamp clicking on, a faint electrical buzz |
+| `pve.ironworks.rigger.lower` | sfx | 3 | a heavy crane hook lowered fast on a chain, links running through a pulley, stopping with a jolt |
+| `pve.ironworks.rigger.slide` | sfx | 3 | gloves sliding fast down a steel chain, a metallic hiss and a whip of chain |
+| `pve.ironworks.rigger.land` | sfx | 4 | a body landing hard on concrete from height, a thud and a chain clattering |
+| `pve.ironworks.rigger.swing.windup` | sfx | 3 | a heavy hook spun overhead on a chain, a rising whirr |
+| `pve.ironworks.rigger.swing` | sfx | 3 | a crane hook swung on a chain, a deep whoosh and a clank |
+| `pve.ironworks.rigger.throw` | sfx | 2 | a hook thrown upward on a chain, catching a steel girder with a clang |
+| `pve.ironworks.rigger.climb` | loop | 1 | climbing a hanging chain hand over hand, rhythmic clinks |
+| `pve.ironworks.rigger.snap` | sfx | 2 | a chain shot through and snapping, links scattering on concrete |
+| `pve.ironworks.rigger.groan` | voice | 3 | a wiry zombie's strained groan from high above, echoing |
+| `pve.ironworks.rigger.shriek` | voice | 3 | a zombie screech as it drops from height |
 
 Steps: the existing surface pools (`move.step.metal` on the ring, `move.step.concrete` on the floor, `move.step.gravel` on
-slag) and zombie steps cover the zone.
+slag) and zombie steps cover the zone. The Rigger's rattle and lower cues are positional and loud enough to cut through
+`ambience.ironworks.casting`; mix them above the furnace bed.
 
 ## 9. Performance
 
@@ -421,7 +520,8 @@ slag) and zombie steps cover the zone.
 | Whole map | about 7,600 | about 16 instanced draws (Ward Zero 7,124 parts, 15 draws) | 8 per camera (the shader's cap) | buffer 3,000 (the town's 2,800) | |
 
 Emissive surfaces cost nothing in lights. The renders used 308 blocks, about 650 dressing parts, 47 light candidates and
-390-520 FX quads per view.
+390-520 FX quads per view. The Rigger adds no practical light: its lamp is an emissive part, a halo and a cone quad, the ring
+and shadow are decals, and its chain is about 30 instanced links (two Riggers: 60 parts, 8 quads).
 
 ### 9.2 Lights
 
@@ -446,6 +546,7 @@ so molten surfaces stay bright). Two of the eight lights stay cool at every tier
 | `stoker` | special | 90 | 8 | sweep (+ pull) | 1.4 / 2.8 | 2.6 | 2.2 | 0.50 | 1.40 | 0.3 | 80 | 40 | .35 / .45 | .35 |
 | `slagback` | heavy | 320 | 16 | smash | 1.2 / 2.2 | 2.1 | 1.7 | 0.55 | 1.90 | 0.3 | 450 | 90 | .45 / .5 | .2 |
 | `ladleman` | elite | 700 | 18 | swing (+ pour) | 0.9 / 1.4 | 2.4 | 2.0 | 0.60 | 2.40 | 0.15 | 600 | 220 | .5 / .55 | .2 |
+| `rigger` | special | 120 | 9 | swing (+ hook drop) | 1.5 / 3.4 | 3.2 | 3.0 | 0.60 | 1.60 | 0.2 | 260 | 45 | .35 / .45 | .35 |
 
 New fields:
 - cinderling: `fireImmune` (paths through live runners), `pop {fuse .45, radius 1.4, damage 6, meleeOnly true}`, core weak point x2.
@@ -455,18 +556,29 @@ New fields:
   `turnRate 90 deg/s`.
 - ladleman: `pour {windup 1.0, duration 1.2, arc 60 deg, range 4.6, pool 3 s, poolDps 8, cooldown 7}`, `ladle {hp 200, spill
   .35 max hp, stun 2}`, capsule radius .62 height 2.1, `maxAlive` per wave.
+- rigger: `hookDrop {rattle .4, lock 1.25, slide .35, hookHeight 2.4, sway .6, swayPeriod .8, radius 1.5, damage 14, knockdown
+  .5}` (T-2.0 rattle, T-1.6 lock, T-0.35 slide, T 0 land); `swing {windup .6, sweep .5, arc 300 deg, radius 3.2, inner 1.0,
+  damage 9, knockback 3, cooldown 5}`; `climb {throw .5, speed 5, reach 8, minHealth .4, lurk 4, maxClimbs 2}`; `exposed 1.5`
+  (damage taken while hanging, sliding or climbing); `chain {hp 40, fall .2 max hp, stun 1.5}`, `knockOff .3 max hp`; `hangs`
+  (the area's entries whose ironworks proposal lists the rigger: the ceiling vents of section 2.6); `maxAlive 2`; capsule as
+  the shambler's.
 
 ### 10.2 AI states
 
 The existing horde states (roam, alert, chase, wind-up, strike, recover, stagger, death) plus: stoker `pull` (chooses the
 isolated pilot nearest within 4.5 m, keeps 3-4.5 m otherwise); slagback `shed` (one-shot) and the slow turn; ladleman `pour`
 (chooses a cluster), `spilled` (stunned); cinderling `pop` (on death in melee range); cinderling packs offset their chase
-angles by +-25 degrees.
+angles by +-25 degrees; rigger `lurk` (on a hang point, lamp off; moves between hang points along the rails out of sight at
+4 m/s), `lock` (chooses a pilot within 6 m horizontally of a free hang point, preferring one standing still or in a cluster;
+never one another Rigger has locked), `slide` and `land` (the hook drop), then chase and the swing as the existing states,
+`throw` and `climb` (back to a hang point within 8 m), `knocked` (the chain cut or the knock-off threshold while hanging or
+climbing: it falls and is stunned).
 
 ### 10.3 Spawn weights
 
 Section 7 (waves, caps, the boss placeholder mix). Spawn records' `allow` gains the new ids once `NativeHordeKinds.Known` and
-PveContent know them (`ironworks.spawns[].propose` lists them per record today).
+PveContent know them (`ironworks.spawns[].propose` lists them per record today). The Rigger spawns only from hang points and
+needs its own entry timeline (`NativeWardEntries.Timeline` gives ceiling vents the drop profile today).
 
 ### 10.4 Network fields the presentation needs
 
@@ -481,58 +593,87 @@ PveContent know them (`ironworks.spawns[].propose` lists them per record today).
 | ladleman ladle intact, `spilledAt` | replicated (new) |
 | molten pool extent and expiry | derived from `pourAt`, `pourYaw` and the stats |
 | cinderling pop time and place | derived from the death event, its position and the fuse |
+| rigger hang point (entry index or -1), `lockAt`, the locked landing point (x, z) | replicated (new) |
+| rigger rattle, hook drop, sway, ring, lamp, slide and landing times | derived from `lockAt` and the stats |
+| rigger hook and body positions on the chain while it hangs, slides or climbs | derived from the hang point, `lockAt` or `climbAt` and the stats |
+| rigger `climbAt` and its target hang index | replicated (new) |
+| rigger `chainCutAt` (or knocked off) | replicated (new); the fall derived from it and the position |
+| rigger swing | the existing lastAttack and attack move; the arc derived |
 | hazards' phase | derived from the instance's hazard clock, as the Factory's |
 
-### 10.5 Parser finding (applies to the live town too)
+### 10.5 Parser finding: fixed by PR #254
 
-`NativeExpeditionLayout.Parse` reads a spawn's e, id, kind, from, exit, yaw, level, clear, height and surface only.
-`NativeExpeditionM1Arena.BindExpeditionCombat` hands those parsed entries to the horde. A manifest-authored Hulk drop or breach
-therefore loses `hulk` and its panel (`block`, `center`, `size`, `normal`), and `song` and `pit` default. The live town's 4 Hulk
-drops and 7 breaches are affected today; the Ironworks draft has 2 and 3. **Ask:** carry those fields through the parser (the
-validator already checks Hulk spawns by `allow`). The managed check reports this as a note, not a failure.
+The first draft found that `NativeExpeditionLayout.Parse` dropped a spawn's `hulk` flag and breach panel (`block`, `center`,
+`size`, `normal`), `song` and `pit`. Astra's PR #254 (merged into shared at `afac02d`) keeps them and validates them strictly:
+allow lists per entry kind (`NativeWardEntries.Allows`), the Hulk flag only on drops, breach panels on static blocks of the
+area's own map with a finite box and a unit normal, level 0..1, song -1..1. `NativeExpeditionLayout.BindContent` hands the bound
+entries to authority and guests alike. The managed check's old note is now a PASS: all 46 parsed spawns keep every authored
+field (the 2 Hulk drops their flag, the 3 breaches their panels; pit, song, level, height, clear, allow), and `BindContent` hands
+the horde exactly those entries, the first boss point and the eight entry pads, with no Ward machines. The live town's 4 Hulk
+drops and 7 breaches are covered by the same fix.
 
-### 10.6 What a live import needs (none done here)
+### 10.6 What a live import needs (PR #254 did part of it; nothing live here)
 
-1. Promote the draft map into `Resources/UnityMaps.json` with navigation: `tools/generate_expedition.py` lists two maps today;
-   it needs the foundry (its own nav prefix, scale 1). The managed check already builds importer-style navigation for it
-   (about 7,400 nodes and 13,100 links).
-2. Add the look to `Resources/MapLooks.json` (it validates beside today's looks) and the area and town door to the manifest
-   (a new revision; saves pinned to exp-layout-3 will not resume, the director's own refusal).
+Done by PR #254: the importer's draft profile for this map (`'expedition-ironworks': ('ironworks', 'ei', 2)`: it reads
+`Tests/expedition-ironworks-draft.json`, the file this draft already writes, at 0.5 m); `NativeMapRules.ExpeditionInstance` and
+`NativeMachineRules.Present` recognise the map; the spawn fields (10.5); instance gates with `opens: "boss"` (the shutter is in
+the draft, and the managed check runs the director on it: sealed from the start, still sealed through the waves, opening with
+the instance's boss encounter, clear after the transition, the town's final gate untouched). This draft renamed its map from
+`expedition-foundry` to `expedition-ironworks` to meet those (the area id `exp-foundry` is unchanged).
+
+Still to do:
+1. **Import:** add the area and the town door to `Tests/expedition-layout-draft.json` (a new manifest revision; saves pinned to
+   exp-layout-3 will not resume, the director's own refusal) and run `tools/generate_expedition.py`. The importer resolves this
+   draft manifest's maps, blockHashes and the Ironworks navigation today (the Python test runs it: about 29,800 nodes and 56,300
+   links; the managed check's C# rebuild of the same 0.5 m grid gives 29,848 and 56,329, its probe being the block capsule).
+2. Add the look to `Resources/MapLooks.json` (it validates beside today's looks).
 3. The hub record's `reserved[]` entry for exp-foundry becomes a route (the IRONWORKS SEALED signs and the shutter's dressing
    change; Claude's side).
-4. PvE machines for the instance (PveContent, as Ward Zero's) at the proposed spots; Ward-only paths (`NativeMapRules.WardInstance`,
-   breaches, vents) need an instance rule or a generalisation.
-5. **Instance gates:** the parser refuses `gates` outside the world. The converter shutter (section 2.3) needs instance gates or
-   a door-like closure record.
-6. Parse's spawn fields (10.5). Hazard authority for section 5. The four kinds (10.1).
-7. The catalogue stays `InDevelopment` until it is playable.
+4. PvE machines for the instance at the approved spots (section 2.5): machine authoring and table support (Astra's open item;
+   `BindContent` gives authored instances no Ward machines).
+5. Hazard authority, schedule (section 5) and replication; generic pit vents; the five kinds (10.1) with the Rigger's entry
+   timeline; the zone seam tint (3.2). Presentation still reads `StageContent.entries` in `NativeHordeBreachPresentation`: use
+   the bound entries for authored maps (Astra's note on PR #254).
+6. The catalogue stays `InDevelopment` until it is playable.
 
 ## 11. Files, checks and renders
 
 | File | What |
 | --- | --- |
-| `docs/arenas/scripts/expedition_ironworks.py` | the generator: blockout, records, spawns, the ironworks record, the town door, the manifest draft, the look, its checks, the plan PNG (`--fixtures`, `--png`, `--ascii`) |
-| `Tests/expedition-ironworks-draft.json` | the map entry (UnityMaps shape, nav empty) |
-| `Tests/expedition-ironworks-layout-draft.json` | the live exp-layout-3 manifest plus exp-foundry (revision `exp-layout-3-ironworks-draft`) |
+| `docs/arenas/scripts/expedition_ironworks.py` | the generator: blockout, records, spawns and Rigger hang points, the shutter gate, the ironworks record (hazard schedule, machine spots, presentation tints), the town door, the manifest draft, the look, its checks, the plan PNG (`--fixtures`, `--png`, `--ascii`) |
+| `Tests/expedition-ironworks-draft.json` | the map entry `expedition-ironworks` (UnityMaps shape, nav empty: the importer builds it) |
+| `Tests/expedition-ironworks-layout-draft.json` | the live exp-layout-3 manifest plus exp-foundry with its shutter gate (revision `exp-layout-3-ironworks-draft`) |
 | `Tests/expedition-ironworks-look-draft.json` | the look (MapLooks shape) |
-| `Tests/test_expedition_ironworks_draft.py` | fixtures are the generator's bytes (twice, deterministic); Resources untouched by a run; the live manifest is exp-layout-3 without the foundry; nothing under Assets names the drafts; the draft is the live manifest plus the foundry only |
-| `Tests/ExpeditionIronworksDraftChecks.cs` | run by `ExpeditionLayoutChecks` (`CoreTests --expedition-layout`, the full suite): the live manifest's bytes are exp-layout-3's; the map validates and imports beside today's maps with importer-style navigation; **Astra's `Parse` and `ValidateGeometry` accept the draft manifest** (town door, Ward Zero, the foundry's 41 spawns, entries, caches, boss points with pilot and Hulk routes); the look validates and covers every block |
+| `Tests/test_expedition_ironworks_draft.py` | fixtures are the generator's bytes (twice, deterministic) and its checks pass (shutter, Rigger hang points, schedule, machines); Resources untouched by a run; the live manifest is exp-layout-3 without the Ironworks; nothing under Assets names the drafts; the draft is the live manifest plus the foundry only; **the importer** resolves the draft manifest's maps and blockHashes and builds the Ironworks navigation (0.5 m, `ei`), while the manifest it imports names no Ironworks |
+| `Tests/ExpeditionIronworksDraftChecks.cs` | run by `ExpeditionLayoutChecks` (`CoreTests --expedition-layout`, the full suite): the live manifest's bytes are exp-layout-3's; the importer's profile and its manifest; the map validates and imports beside today's maps with the importer's 0.5 m navigation; **Astra's `Parse` (PR #254's strict spawn reader) and `ValidateGeometry` accept the draft manifest** (town door, Ward Zero, the foundry's 46 spawns, entries, caches, boss points with pilot and Hulk routes, breach panels in its own map); every spawn field kept and bound by `BindContent`; **the shutter runs in the director** (sealed, opens with the boss, never the final gate); the record (five kinds, schedule, hang points, machine spots, the seam tint); the look validates and covers every block |
 
 The generator's checks: both floors reached 100% from the entries; 0 overlapping blocks; no exclusion column under a deck;
-every record with pilot or Hulk clearance; all 41 spawn exits routed to entry 0 with their capsule; Hulk routes to every entry,
-boss point and the approach; hazard proposals clear of records; the town door's returns Hulk-clear in the live town.
+every record with pilot or Hulk clearance; all 46 spawn exits routed to entry 0 with their capsule, with the shutter open and
+shut; Hulk routes to every entry, boss point and the approach; the shutter fills its opening, overlaps nothing and leaves the
+loops as the only way to the boss points; the Rigger's 8 hang points (girder, chain fall, landing ring); hazard proposals
+clear of records with one runner and a slower pour in Wave 1 and no pour in the boss encounter; machine fronts clear, the
+second chip machine upstairs; the town door's returns Hulk-clear in the live town.
 
 Static analysis only. Not run: Unity, PhysX, a build on the owner's PC, the director, two clients.
 
-## 12. Open questions for the owner
+## 12. Owner decisions (2026-10-16)
 
-1. **Theme and name:** a steelworks (blast/open-hearth furnaces, casting floor, rolling mill, coke ovens, converters) rather
-   than a small foundry. Right?
-2. **Scale:** 100 x 68 m, about 12-16 s from the entry to the boss hall. Bigger, smaller?
-3. **The four enemies:** Cinderling, Stoker, Slagback, Ladleman. Keep, rename, cut? A fifth idea: the Rigger, a crane rigger
-   who drops from the gantries on a chain hook.
-4. **Hazards:** molten runners on a cycle and the ladle pour in the arena: is that too much going on during waves?
-5. **The converter shutter:** shut the direct route until the boss phase (needs instance gates), or keep it open?
-6. **Machines:** a chip machine on the coke walkway (upstairs) as well as in the Pattern Shop?
-7. **Boss:** later, as you said. The converter hall is sized for one; any early idea (a foreman, a living converter)?
-8. **Brute seam colour in this zone:** OK to tint the brute's seams cream here so they read against the glow?
+The owner answered the open questions: "Go with your picks, add the rigger as well." Numbered 8 to 14 as in the decision list
+relayed with the approval; they answer this doc's former questions 1 to 8.
+
+| # | Question (old section 12) | Decision | Where it lands |
+| --- | --- | --- | --- |
+| 8 | Theme and scale (questions 1, 2) | A full steelworks at 100 x 68 m | sections 1 and 2 as drafted; no layout change |
+| 9 | The enemies (question 3) | Keep the Cinderling, Stoker, Slagback and Ladleman; **add the Rigger as the fifth** | 6.5 (design), 2.6 (8 hang points with clearance checks), 7 (from Wave 2), 8 (`pve.ironworks.rigger.*`), 10 (contract row, fields, AI, network); renders `enemy-sheet.png`, `rigger-sheet.png` |
+| 10 | Hazards during waves (question 4) | Keep the molten runners and the ladle pour; **the pour stops in the boss encounter; Wave 1 runs light** (r1 and r3 off, the pour at half rate, the hot slab, shear, pusher and slag spill off, the quench steam at half rate) | 5 (schedule columns), 7; `ironworks.hazards[].schedule`; generator check |
+| 11 | The converter shutter (question 5) | Shut until the boss: **a real instance gate** `exp-foundry:gate:converter`, `opens: "boss"` (PR #254) | 2.3, 2.5; the draft manifest's `gates[]`; generator checks (fills the opening, nothing stranded) and the managed check (parsed, then the director keeps it sealed until the boss encounter) |
+| 12 | Machines (question 6) | A second chip machine upstairs on the coke walkway | 2.5; `ironworks.machines[]` (status approved spot, level 1); generator check |
+| 13 | Boss (question 7) | Later; keep the converter hall placeholder | 7; `ironworks.arena` (boss none yet) |
+| 14 | Brute seams (question 8) | Cream in the Ironworks only (presentation) | 3.1, 3.2; `ironworks.presentation.seams` |
+
+Implementation note (Claude, not an owner decision): the draft's map id is now `expedition-ironworks`, the id PR #254 gave the
+importer's draft profile, `NativeMapRules.ExpeditionInstance` and `NativeMachineRules.Present`; `docs/EXPEDITION-LAYOUT.md`'s
+reserved row is updated to match. The area id `exp-foundry` and the town door's ids are unchanged.
+
+Open for later: the boss (13); Astra's acceptance of the contract numbers (10.1) and the hazard authority; the new mocap takes
+the Rigger and Ladleman want (6.4, 6.5).

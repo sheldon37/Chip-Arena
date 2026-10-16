@@ -9,19 +9,25 @@ using System.Text.Json.Nodes;
 namespace ChipArena.UnityConversion
 {
     // The City Ironworks blockout draft (docs/EXPEDITION-CITY-IRONWORKS.md; written by docs/arenas/scripts/expedition_ironworks.py
-    // --fixtures): Tests/expedition-ironworks-draft.json (the map `expedition-foundry`, UnityMaps.json shape),
+    // --fixtures): Tests/expedition-ironworks-draft.json (the map `expedition-ironworks`, UnityMaps.json shape, the id of the
+    // importer's draft table and NativeMapRules.ExpeditionInstance since PR #254),
     // Tests/expedition-ironworks-layout-draft.json (the live exp-layout-3 manifest plus the town's foundry door and the exp-foundry
     // area) and Tests/expedition-ironworks-look-draft.json (a MapLooks.json-shape look). NOT LIVE: nothing under Assets/ names them,
     // the runtime loads Resources/ExpeditionLayout.json, UnityMaps.json and MapLooks.json, and none of those holds the foundry.
     // Run from ExpeditionLayoutChecks (its block capsule probe). Checks:
     //  - the live manifest is exp-layout-3's bytes (the join draft's pin) and still lists only Ward Zero; no live map or look is the
     //    foundry's;
-    //  - the draft map passes the UnityMaps validator once it carries navigation built the importer's way (a 1 m grid of pilot
-    //    probes on the authored collision, links sampled along each step, the map's drop hints), and imports beside today's maps
-    //    through NativeMapRules.Merge, isolated from the arena lists and the rotation;
-    //  - Astra's parser (NativeExpeditionLayout.Parse) and geometry gate (ValidateGeometry) accept the draft manifest with that
-    //    probe and navigation: the town with its new foundry door, Ward Zero, and the foundry instance (entries, Hulk-clear slots,
-    //    pilot and Hulk routes, every one of its own spawn exits routed back with its capsule);
+    //  - the importer (tools/generate_expedition.py) knows the map's draft profile but imports only what its manifest
+    //    (Tests/expedition-layout-draft.json) names, and that manifest does not name the Ironworks;
+    //  - the draft map passes the UnityMaps validator once it carries navigation built the importer's way (its 0.5 m grid for this
+    //    map, pilot probes on the authored collision, links sampled along each step, the map's drop hints), and imports beside
+    //    today's maps through NativeMapRules.Merge, isolated from the arena lists and the rotation;
+    //  - Astra's parser (NativeExpeditionLayout.Parse, with PR #254's strict spawn reader) and geometry gate (ValidateGeometry)
+    //    accept the draft manifest with that probe and navigation: the town with its new foundry door, Ward Zero, and the foundry
+    //    instance (entries, Hulk-clear slots, pilot and Hulk routes, every one of its own spawn exits routed back with its capsule,
+    //    breach panels in its own map); every authored spawn field survives the parser (hulk, pit, song, the breach panels);
+    //  - the converter shutter is a real instance gate (opens "boss"): the director keeps it sealed, opens it with the instance's
+    //    boss encounter and never with the town's final gate;
     //  - the draft manifest is the live one plus exactly the instance id, the town's door anchor and record, the area and the
     //    revision; the area's blockHash is the map's (this recipe), its spawns keep the entry rules;
     //  - the look validates (alone and beside today's looks), names a block look for every block, and keeps eight lights at most.
@@ -29,7 +35,7 @@ namespace ChipArena.UnityConversion
     internal static class ExpeditionIronworksDraftChecks
     {
         internal const string MapPath="Tests/expedition-ironworks-draft.json",LayoutPath="Tests/expedition-ironworks-layout-draft.json",LookPath="Tests/expedition-ironworks-look-draft.json";
-        internal const string MapId="expedition-foundry",AreaId="exp-foundry";
+        internal const string MapId="expedition-ironworks",AreaId="exp-foundry",GateId="exp-foundry:gate:converter";
         private static readonly string[] TextKinds={".cs",".json",".shader",".cginc",".hlsl",".asset",".unity",".prefab",".mat",".asmdef",".txt",".md"};
         private static int count;
 #pragma warning disable CS0649
@@ -52,12 +58,12 @@ namespace ChipArena.UnityConversion
             }
             return tops;
         }
-        internal static MapNav Navigation(ContentMap m,Func<ContentMap,V3,float,float,bool> supported,string prefix)
+        internal static MapNav Navigation(ContentMap m,Func<ContentMap,V3,float,float,bool> supported,string prefix,int scale)
         {
             var nodes=new List<MapNavNode>();var cells=new Dictionary<(int,int),List<MapNavNode>>();var links=new List<MapNavLink>();
-            for(int x=(int)Math.Ceiling(m.bounds.minX);x<(int)Math.Floor(m.bounds.maxX);x++)for(int z=(int)Math.Ceiling(m.bounds.minZ);z<(int)Math.Floor(m.bounds.maxZ);z++)
+            for(int x=(int)Math.Ceiling(m.bounds.minX*scale);x<(int)Math.Floor(m.bounds.maxX*scale);x++)for(int z=(int)Math.Ceiling(m.bounds.minZ*scale);z<(int)Math.Floor(m.bounds.maxZ*scale);z++)
             {
-                float px=x+.5f,pz=z+.5f;
+                float px=(x+.5f)/scale,pz=(z+.5f)/scale;
                 foreach(var y in Surfaces(m,px,pz))
                 {
                     if(y<-.01f||y>m.bounds.ceiling-1||!supported(m,new V3(px,y,pz),.45f,1.8f))continue;
@@ -97,14 +103,19 @@ namespace ChipArena.UnityConversion
             string unityText=R("Assets/Conversion/Resources/UnityMaps.json");var unity=JsonSerializer.Deserialize<UnityMapContent>(unityText,o);
             var looksLive=JsonSerializer.Deserialize<MapLookSet>(R("Assets/Conversion/Resources/MapLooks.json"),o);
             Check(unity.maps.All(m=>m.id!=MapId&&m.look!="ironworks")&&looksLive.maps.All(l=>l.id!=MapId&&l.look!="ironworks"),"no live map or look is the foundry's");
+            // The importer has this map's draft profile (PR #254) and imports only the maps its manifest names; that manifest is the live one.
+            string importer=R("tools/generate_expedition.py");
+            var imported=NativeExpeditionLayout.Parse(R("Tests/expedition-layout-draft.json"));
+            Check(importer.Contains("'"+MapId+"': ('ironworks', 'ei', 2)")&&importer.Contains("Tests/expedition-layout-draft.json")&&imported.areas.All(a=>a.map!=MapId)&&!imported.instances.Contains(AreaId),
+                "the importer knows the draft's profile (ironworks, ei, 0.5 m) and its manifest names no Ironworks map or instance");
             // ---------------- the map: the validator, then a simulated import beside today's maps ----------------
             var map=JsonSerializer.Deserialize<UnityMapContent>(R(MapPath),o).maps.Single();
             Check(map.id==MapId&&map.look=="ironworks"&&!map.rotation&&!NativeMapRules.ArenaSelectable(map)&&map.nav.nodes.Length==0,"the draft map is "+MapId+" (look ironworks), outside the rotation and the arena lists, with navigation left to the importer");
             Check(map.blocks.All(b=>b.id.StartsWith(MapId+"-",StringComparison.Ordinal)&&b.role=="static"&&new[]{"stone","brick","metal","wood","foundation"}.Contains(b.material))&&map.blocks.Length>=200&&map.blocks.Length<=700,"blocks: own ids, static, existing materials, 200-700 ("+map.blocks.Length+")");
             Check(map.hazards.Length==0&&map.ramps.Length==5&&map.ramps.All(r=>r.kind=="stair")&&map.pilotBlocks.Length>0,"no stage hazards (they are proposals), five stairs, exclusion columns");
             Check(ExpeditionLayoutChecks.BlockHash(map)==JsonNode.Parse(R(LayoutPath))["areas"].AsArray().Single(a=>(string)a["id"]==AreaId)["blockHash"].GetValue<string>(),"the area's blockHash is the map's (the C# recipe)");
-            var t0=DateTime.UtcNow;map.nav=Navigation(map,supported,"ef");int navMs=(int)(DateTime.UtcNow-t0).TotalMilliseconds;
-            Check(map.nav.nodes.Length>3000&&map.nav.links.Length>map.nav.nodes.Length&&map.nav.nodes.Any(n=>n.layer==1)&&map.nav.links.Count(l=>l.kind=="drop")==map.navHints.drops.Length,"importer-style navigation: "+map.nav.nodes.Length+" nodes, "+map.nav.links.Length+" links, both levels, every drop hint linked");
+            var t0=DateTime.UtcNow;map.nav=Navigation(map,supported,"ei",2);int navMs=(int)(DateTime.UtcNow-t0).TotalMilliseconds;
+            Check(map.nav.nodes.Length>20000&&map.nav.links.Length>map.nav.nodes.Length&&map.nav.nodes.Any(n=>n.layer==1)&&map.nav.links.Count(l=>l.kind=="drop")==map.navHints.drops.Length,"importer-style navigation (0.5 m, ei): "+map.nav.nodes.Length+" nodes, "+map.nav.links.Length+" links, both levels, every drop hint linked");
             NativeMapRules.Validate(map);count++;
             var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);int rotation=content.maps.Count(m=>m.rotation);
             NativeMapRules.Merge(content,new UnityMapContent{schema=1,materials=unity.materials,maps=unity.maps.Concat(new[]{map}).ToArray()},unityText);
@@ -156,15 +167,40 @@ namespace ChipArena.UnityConversion
             {
                 var e=raw[i];
                 Check(allow[i].allow.All(k=>adds.Contains(k)&&NativeWardEntries.Allows(e,k))&&(e.kind!="breach"||map.blocks.Any(b=>b.id==e.block&&b.role=="static"&&Math.Abs(b.pos.x-e.center.x)<1e-3&&Math.Abs(b.pos.z-e.center.z)<1e-3)&&Math.Abs(e.normal.Length-1)<.01f)
-                    &&(!NativeWardEntries.Drop(e)||e.height>0&&e.clear>=(e.hulk?4.5f:e.kind=="vent"?1.6f:2.8f))&&(e.kind!="vent"||e.surface=="floor"||e.surface=="ceiling")&&e.song==-1&&!e.pit,"spawn "+e.id+" within the entry rules");
+                    &&(!NativeWardEntries.Drop(e)||e.height>0&&e.clear>=(e.hulk?4.5f:e.kind=="vent"?1.6f:2.8f))&&(e.kind!="vent"||e.surface=="floor"||e.surface=="ceiling")&&e.song==-1&&!e.pit
+                    &&e.level>=0&&e.level<=1&&(!e.hulk||e.kind=="drop"),"spawn "+e.id+" within the entry rules (PR #254's: allow per entry kind, Hulk only on drops, level 0..1, song -1..1)");
             }
-            // Astra's parser keeps e, id, kind, from, exit, yaw, level, clear, height and surface; NativeExpeditionM1Arena hands those
-            // parsed entries to the horde. A manifest-authored Hulk drop or breach therefore loses `hulk` and its panel (block, center,
-            // size, normal) at load: reported, not failed (the live town's 4 Hulk drops and 7 breaches have the same gap).
-            int lost=raw.Count(e=>e.hulk||e.kind=="breach");int kept=f.spawns.Count(s=>s.entry.hulk||s.entry.kind=="breach"&&!string.IsNullOrEmpty(s.entry.block));
-            Console.WriteLine("NOTE expedition ironworks draft: "+lost+" Hulk drops and breaches authored; "+kept+" keep their hulk flag or panel through NativeExpeditionLayout.Parse (the parser's spawn reader drops hulk, block, center, size and normal)");
+            // PR #254's spawn reader keeps every authored field: the Hulk drops' flag, the breaches' panels, pit and song, beside the
+            // geometry; NativeExpeditionLayout.BindContent hands exactly these entries to the horde.
+            bool Same(V3 a,V3 b)=>(a-b).Length<1e-4f;
+            bool Kept(PveEntry a,PveEntry b)=>a.e==b.e&&a.id==b.id&&a.kind==b.kind&&a.surface==b.surface&&a.hulk==b.hulk&&a.pit==b.pit&&a.song==b.song&&a.level==b.level&&a.height==b.height&&a.clear==b.clear&&a.yaw==b.yaw
+                &&Same(a.from.Position(),b.from.Position())&&Same(a.@exit.Position(),b.@exit.Position())&&(a.kind!="breach"||a.block==b.block&&Same(a.center,b.center)&&Same(a.size,b.size)&&Same(a.normal,b.normal));
+            int heavy=raw.Count(e=>e.hulk||e.kind=="breach");
+            Check(heavy==5&&raw.Select((e,i)=>Kept(e,f.spawns[i].entry)).All(x=>x)&&f.spawns.Select((s,i)=>s.allow.SequenceEqual(allow[i].allow)).All(x=>x),"the parser keeps every authored spawn field ("+heavy+" Hulk drops and breaches keep their flag and panel; pit, song, level, height, clear, allow)");
+            var bound=new NativePveContent();NativeExpeditionLayout.BindContent(f,bound);
+            Check(bound.entries.Length==raw.Length&&bound.entries.Select((e,i)=>Kept(raw[i],e)).All(x=>x)&&bound.boss.spawn.x==f.bossPoints[0].x&&bound.pads.Length==8&&bound.machines.Length==0,"BindContent hands the horde the authored entries, the first boss point, the eight entry pads and no Ward machines");
+            // The converter shutter: an instance gate that opens with the instance's boss (PR #254), sealed until then.
+            var gate=f.gates.SingleOrDefault();
+            Check(gate!=null&&gate.id==GateId&&gate.opens=="boss"&&Math.Abs(gate.closure.x+24f)<1e-3f&&Math.Abs(gate.closure.sx-8f)<1e-3f&&Math.Abs(gate.closure.sy-5f)<1e-3f&&gate.closure.y-gate.closure.sy/2==0&&town.gates.Single().opens=="final","the converter shutter is the foundry's one instance gate (opens boss, 8 x 5 m in the west opening); the town keeps its final gate");
+            var gateRun=NativeExpedition.Create("ironworks-shutter",draft.world,"host","pistol",19,draft.instances.Select(id=>new ExpeditionInstance{id=id,target=1}).ToArray());
+            var gateSession=new ExpeditionSession(gateRun,content,_=>{});var gd=new ExpeditionDirector(gateSession,draft,_=>new V3(),(_,__)=>true,10,20,30);
+            ExpeditionClosureView Shutter()=>gd.Closures.Single(c=>c.id==GateId);ExpeditionClosureView Final()=>gd.Closures.Single(c=>c.id==town.gates[0].id);
+            Check(Shutter().Blocking&&Final().Blocking,"the director starts with the shutter sealed");
+            gateRun.Enter(AreaId);gd.Step();gateRun.Progress("quota",1);gd.Step();Check(Shutter().Blocking,"the waves leave the shutter sealed");
+            gateRun.StartBosses(new[]{"ironworks-boss"});gd.Step();Check(Shutter().state=="opening"&&Final().Blocking,"the instance's boss encounter opens its shutter, never the town's final gate");
+            gateSession.Tick(1);gd.Step();Check(!Shutter().Blocking&&Final().Blocking,"the shutter clears after the closure's transition");
             var rec=areaNode["ironworks"];
-            Check(rec!=null&&rec["kinds"].AsArray().Count==4&&rec["rooms"].AsArray().Count==9&&rec["hazards"].AsArray().All(h=>((string)h["id"]).StartsWith(MapId+"-",StringComparison.Ordinal)&&(string)h["status"]=="proposal")&&rec["spawns"].AsArray().Count==f.spawns.Length,"the additive ironworks record: 9 rooms, proposed hazards (map-prefixed ids), 4 proposed kinds, a proposal per spawn");
+            Check(rec!=null&&rec["kinds"].AsArray().Select(k=>(string)k).SequenceEqual(new[]{"cinderling","stoker","slagback","ladleman","rigger"})&&rec["rooms"].AsArray().Count==9&&rec["hazards"].AsArray().All(h=>((string)h["id"]).StartsWith(MapId+"-",StringComparison.Ordinal)&&(string)h["status"]=="proposal"&&h["schedule"]!=null)&&rec["spawns"].AsArray().Count==f.spawns.Length
+                &&(string)rec["arena"]["shutter"]==GateId,"the additive ironworks record: 9 rooms, proposed hazards (map-prefixed ids) with their wave schedule, 5 proposed kinds (the Rigger the fifth), a proposal per spawn, the shutter named");
+            var ladle=rec["hazards"].AsArray().Single(h=>(string)h["id"]==MapId+"-ladle-crane");
+            Check((string)ladle["schedule"]["boss"]=="off"&&(string)ladle["schedule"]["wave1"]!="on"&&rec["hazards"].AsArray().Count(h=>((string)h["id"]).Contains("-runner-")&&(string)h["schedule"]["wave1"]=="on")==1,"the pour stops for the boss encounter; Wave 1 runs one runner and a slower pour");
+            // The Rigger's hang points: ceiling vents (an existing drop kind) under a girder of this map or the roof truss.
+            var hangs=rec["spawns"].AsArray().Where(x=>x["hang"]!=null).ToArray();
+            Check(hangs.Length>=6&&hangs.All(x=>{var e=raw[x["spawn"].GetValue<int>()];string b=(string)x["hang"]["block"];return e.kind=="vent"&&e.surface=="ceiling"&&x["propose"].AsArray().Any(k=>(string)k=="rigger")
+                &&(b==""||map.blocks.Any(q=>q.id==b&&Math.Abs(q.pos.y-q.size.y/2-x["hang"]["hook"].GetValue<float>())<1e-3f))&&Math.Abs(x["hang"]["feet"].GetValue<float>()-e.height)<1e-3f;}),"the Rigger's "+hangs.Length+" hang points: ceiling vents under a girder of the map (or the roof truss), the drop height under the hook");
+            var machines=rec["machines"].AsArray();
+            Check(machines.Count(x=>(string)x["kind"]=="chip")==2&&machines.Count(x=>(string)x["kind"]=="chip"&&x["level"].GetValue<int>()==1)==1,"two chip machine spots, the second upstairs on the walkway");
+            Check(rec["presentation"]["seams"].AsArray().Single()["tint"].GetValue<int>()==0xFFD27A&&(string)rec["presentation"]["seams"][0]["kind"]=="brute"&&rec["presentation"]["seams"][0]["default"].GetValue<int>()==NativeHordeKinds.Seam[NativeHordeKinds.Brute],"the zone's brute seam tint (cream, over NativeHordeKinds.Seam's orange)");
             // ---------------- the look ----------------
             var lookSet=JsonSerializer.Deserialize<MapLookSet>(R(LookPath),o);NativeMapLooks.Validate(lookSet);count++;
             var look=lookSet.maps.Single();NativeMapLooks.Validate(new MapLookSet{schema=looksLive.schema,maps=looksLive.maps.Append(look).ToArray(),preview=looksLive.preview});count++;
@@ -176,10 +212,9 @@ namespace ChipArena.UnityConversion
                 .Where(p=>TextKinds.Contains(Path.GetExtension(p))&&!p.Replace('\\','/').Contains("/LocalAssets/"))
                 .Where(p=>{var t=File.ReadAllText(p);return t.Contains("ironworks-draft",StringComparison.Ordinal)||t.Contains("ironworks-layout-draft",StringComparison.Ordinal)||t.Contains("ironworks-look-draft",StringComparison.Ordinal)||t.Contains("exp-layout-3-ironworks-draft",StringComparison.Ordinal);}).ToArray();
             Check(hits.Length==0,"nothing under Assets/ names the drafts ("+string.Join(", ",hits.Select(Path.GetFileName))+")");
-            Check(!R("tools/generate_expedition.py").Contains("ironworks"),"the importer imports the live fixtures only");
             Console.WriteLine("PASS expedition ironworks draft ("+count+" checks: "+MapPath+", "+LayoutPath+" and "+LookPath+" are not live and named nowhere under Assets/; the live exp-layout-3 manifest byte-identical and still accepted; "
                 +"the map validates and imports beside today's maps with importer-style navigation ("+map.nav.nodes.Length+" nodes, "+map.nav.links.Length+" links, "+navMs+" ms); Astra's parser and geometry gate accept the draft manifest: "
-                +"the town's foundry door, Ward Zero and the foundry's "+f.spawns.Length+" spawns, entries, caches and boss points; the draft is the live manifest plus the foundry only; the look validates and covers all "+map.blocks.Length+" blocks)");
+                +"the town's foundry door, Ward Zero and the foundry's "+f.spawns.Length+" spawns (every field kept), entries, caches and boss points; the converter shutter opens with the instance's boss only; the draft is the live manifest plus the foundry only; the look validates and covers all "+map.blocks.Length+" blocks)");
         }
     }
 }
