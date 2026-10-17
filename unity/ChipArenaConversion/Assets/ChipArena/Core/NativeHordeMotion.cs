@@ -121,18 +121,18 @@ namespace ChipArena.UnityConversion
         private static Vector2 Dir(float yaw){float r=yaw*(float)Math.PI/180;return new Vector2((float)Math.Sin(r),(float)Math.Cos(r));}
 
         /// <summary>The walk-run blend at ground speed `v` for a kind (0 walk, 1 run).</summary>
-        public static float RunBlend(int kind,float v){var d=defs[Math.Max(0,Math.Min(defs.Length-1,kind))];return Clamp01((v-d.WalkSpeed*1.05f)/Math.Max(.1f,d.RunSpeed*.8f-d.WalkSpeed*1.05f));}
+        public static float RunBlend(int kind,float v){var d=defs[NativeHordeKinds.Base(kind)];return Clamp01((v-d.WalkSpeed*1.05f)/Math.Max(.1f,d.RunSpeed*.8f-d.WalkSpeed*1.05f));}
         /// <summary>The stride (m per cycle) at speed `v` for a kind's first takes (the step cue's spacing): the capture's cadence
         /// over the speed; the crawler's procedural stride.</summary>
         public static float Stride(int kind,float v)
         {
-            kind=Math.Max(0,Math.Min(defs.Length-1,kind));
+            kind=NativeHordeKinds.Index(kind);
             if(kind==NativeHordeKinds.Hulk)return HeavyStride(v);
             if(NativeZombieMotion.Captured(kind)){int w=NativeZombieMotion.Walks(kind)[0],r=NativeZombieMotion.Runs(kind)[0];float hz=Lerp(NativeZombieMotion.Cadence(w,v,kind),NativeZombieMotion.Cadence(r,v,kind),RunBlend(kind,v));return Math.Max(.2f,v)/Math.Max(.2f,hz);}
             return ProceduralStride(kind,v);
         }
-        private static float ProceduralStride(int kind,float v){var d=defs[kind];float r=RunBlend(kind,v);return Lerp(d.WalkStride,d.RunStride,r)*(.75f+.25f*Clamp01(v/Math.Max(.1f,d.WalkSpeed)));}
-        public static float Duty(int kind,float v){var d=defs[Math.Max(0,Math.Min(defs.Length-1,kind))];return Lerp(d.Duty,d.RunDuty,RunBlend(kind,v));}
+        private static float ProceduralStride(int kind,float v){var d=defs[NativeHordeKinds.Base(kind)];float r=RunBlend(kind,v);return Lerp(d.WalkStride,d.RunStride,r)*(.75f+.25f*Clamp01(v/Math.Max(.1f,d.WalkSpeed)));}
+        public static float Duty(int kind,float v){var d=defs[NativeHordeKinds.Base(kind)];return Lerp(d.Duty,d.RunDuty,RunBlend(kind,v));}
 
         /// <summary>
         /// Steps the add to `f.Time` and writes its living pose into `p` (source frame, the rig root at the body's position,
@@ -156,7 +156,7 @@ namespace ChipArena.UnityConversion
             }
             RoamPrepare(f,moving,lookYaw,lookPitch);
             if(quad){CrawlerPose(f,p,defs[NativeHordeKinds.Crawler],v,RunBlend(NativeHordeKinds.Crawler,v),moving,alert,lookYaw,cock,swing,follow,settle,attackW,react);return;}
-            float run=RunBlend(kind,v),hurt=1-Clamp01(f.Health*1.6f),t=f.Time,sprint=heavy?Sprint(v):0;var d=defs[kind];
+            float run=RunBlend(kind,v),hurt=1-Clamp01(f.Health*1.6f),t=f.Time,sprint=heavy?Sprint(v):0;var d=defs[NativeHordeKinds.Base(kind)];
             // ---- the capture: the walk and run takes at the stride's phase, the idle (the door's wake while it waits) ----
             NativeZombieClips.SamplePhase(walkClip,Phase,rowW);RoamWalkRow();NativeZombieClips.SamplePhase(runClip,Phase,rowR);NativeZombieClips.Blend(rowW,rowR,run,rowA);
             float wake=f.Entering&&f.EntryAge<f.EntryWalk?f.EntryAge:float.NaN;
@@ -212,6 +212,7 @@ namespace ChipArena.UnityConversion
             if(heavy)HeavyTrunk(p,f,moving,run,sprint);
             MoveTrunk(p,f);
             RoamTrunk(p,f,moving);
+            IronworksTrunk(f,p);
             // ---- head: tracks its pilot, the Siren's crooked tilt and twitches ----
             float twitch=heavy?.35f*Twitch(t*.75f):Twitch(t);float headPitch=lookPitch*.6f*alert+aHead,headYaw=lookYaw*(.55f+.35f*alert)*(1-attackW*.5f)+twitch*.5f,headRoll=tilt+twitch*.8f;
             RoamHead(f,moving,ref headPitch,ref headYaw,ref headRoll);
@@ -260,6 +261,7 @@ namespace ChipArena.UnityConversion
             if(ac<0)AttackArms(f,p,cock,swing,follow,settle,attackW);
             MoveHands(p);
             react?.Arms(p,f.Time);
+            IronworksArms(f,p);
             // (A keyed blow may carry the fist a little past the usual reach: a punch at full extension.)
             KeepHands(p,kind,Replaces?.18f:0);
             p.World();
@@ -268,7 +270,7 @@ namespace ChipArena.UnityConversion
         /// re-reached with the same wrist and elbow direction, so the claws stay where shots at them land.</summary>
         private static void KeepHands(CapturedRig.Pose p,int kind,float extra=0)
         {
-            p.World();float most=NativeHordeKinds.Radius[Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind))]+.26f+extra;var chest=p.WorldRotation[CapturedRig.Chest];var inv=Quaternion.Inverse(chest);var cpos=p.WorldPosition[CapturedRig.Chest];
+            p.World();float most=NativeHordeKinds.Radius[NativeHordeKinds.Index(kind)]+.26f+extra;var chest=p.WorldRotation[CapturedRig.Chest];var inv=Quaternion.Inverse(chest);var cpos=p.WorldPosition[CapturedRig.Chest];
             for(int i=0;i<2;i++)
             {
                 bool left=i==0;int h=left?CapturedRig.LHand:CapturedRig.RHand;var w=p.WorldPosition[h];float hor=(float)Math.Sqrt(w.X*w.X+w.Z*w.Z);if(hor<=most)continue;
@@ -301,7 +303,7 @@ namespace ChipArena.UnityConversion
         private static void Bend(CapturedRig.Pose p,int bone,float x,float y,float z){if(x==0&&y==0&&z==0)return;p.Rotation[bone]=CapturedRig.Euler(x,y,z)*p.Rotation[bone];}
 
         /// <summary>The farthest the face and the chest may reach ahead of the root (m): the hit capsule's radius, less a margin.</summary>
-        public static float Reach(int kind)=>NativeHordeKinds.Radius[Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind))]-.06f;
+        public static float Reach(int kind)=>NativeHordeKinds.Radius[NativeHordeKinds.Index(kind)]-.06f;
         /// <summary>
         /// Keeps the trunk over the hit volume: a hunched or lunging add sits its hips back (its planted feet stay; the legs angle
         /// under it) until its face and chest are no farther ahead of the root than <see cref="Reach"/>, as a crouched creature
@@ -327,8 +329,8 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private void Step(in HordeMotionInput f,NativeHordeReact react)
         {
-            kind=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,f.Kind));quad=kind==NativeHordeKinds.Crawler||f.Crawl||!NativeZombieMotion.Captured(kind);
-            int gk=quad?NativeHordeKinds.Crawler:kind;var d=defs[gk];heavy=kind==NativeHordeKinds.Hulk&&!quad;
+            kind=NativeHordeKinds.Index(f.Kind);quad=kind==NativeHordeKinds.Crawler||f.Crawl||!NativeZombieMotion.Captured(kind);
+            int gk=quad?NativeHordeKinds.Crawler:kind;var d=defs[NativeHordeKinds.Base(gk)];heavy=kind==NativeHordeKinds.Hulk&&!quad;
             float dt=float.IsNaN(time)?0:f.Time-time;bool fresh=float.IsNaN(time)||id!=f.Id||dt<-.001f||dt>ResetGap;
             if(fresh)
             {
