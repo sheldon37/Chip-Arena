@@ -7,12 +7,14 @@ using System.Text.Json.Nodes;
 namespace ChipArena.UnityConversion
 {
     // Central Station's visuals (docs/EXPEDITION-CENTRAL-STATION-VISUALS.md; Core NativeExpeditionStation{,Kit,Lights,Fx},
-    // Runtime NativeExpeditionStationPresentation, NativeExpeditionStationAudio). NOT LIVE: the station's map, area and look
-    // are drafts (Tests/expedition-central-station-draft.json, Tests/expedition-central-station-look-draft.json). Checks:
-    //  - inert: no live map, look or manifest holds the station; the gate is the map id alone; the kit builds nothing for any
-    //    live map; the runtime, audio and DEV hooks are gated on the station (so today's maps draw and sound as before);
-    //  - the look draft validates beside today's looks, gives every station block a listed look and names the station's kit;
-    //  - the kit from the draft (with the area's records, composed as ExpeditionStationDraftChecks does): deterministic and
+    // Runtime NativeExpeditionStationPresentation, NativeExpeditionStationAudio). LIVE since the activation (PR #255): the map
+    // (Resources/UnityMaps.json), its area exp-transit (Resources/ExpeditionLayout.json) and its look (MapLooks.json). Checks:
+    //  - other maps untouched: the gate is the station's map id alone; the kit builds nothing for any other map; the runtime,
+    //    audio and DEV hooks are gated on the station (so every other map draws and sounds as before);
+    //  - normal play shows no hazard until the authority's station fields exist: the calm view draws no express, live rail,
+    //    flood, cabinet, steam burst or glass (no telegraph quad, no beacon or express light, no cue); only the DEV preview does;
+    //  - the live look validates, gives every station block a listed look and names the station's kit;
+    //  - the kit from the live map and area (its records and machines): deterministic and
     //    independent of the blocks' order; every part on a station block with a size, a unit turn and a look the shader draws;
     //    the set pieces are there (the vault, the board with every live variant on both faces, the ticker's pages, CENTRAL,
     //    the signals and beacons, the live rail per section, the levers in both poses, the cabinets, the flood, the train's
@@ -20,7 +22,8 @@ namespace ChipArena.UnityConversion
     //  - placement, recomputed from the records: below 3.1 m over each level nothing stands out more than 0.25 m from a block
     //    but flat paint; free-standing parts on a walkable top below 2.2 m are at most 0.65 m tall unless against a wall or
     //    furniture; nothing meets a spawn's exit or path (track parts, the flood's surface and flat paint excepted; a spawn's
-    //    own dressing excepted), a vent, a drop column, an entry, an interaction or boss point, the exit door's volumes;
+    //    own dressing excepted), a vent, a drop column, an entry, an interaction or boss point, the exit door's volumes, a
+    //    machine or the spots its pilot stands on and its drop lands;
     //  - budgets: parts per room, the low tier, casters, instanced draws, light candidates and slots at cameras in every
     //    room (8, 4 on the low tier), effect quads with every hazard on;
     //  - the state: the express's warning, pass and wake; the signals, the danger lamps; the levers cutting the rails and the
@@ -31,7 +34,6 @@ namespace ChipArena.UnityConversion
     // Static data and pure-code checks only: no Unity scene, GPU, PhysX, director or network claim.
     internal static class ExpeditionStationVisualChecks
     {
-        internal const string LookPath="Tests/expedition-central-station-look-draft.json";
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Expedition station visuals: "+what);count++;}
         private struct World{public double X0,X1,Y0,Y1,Z0,Z1;public double[] Cx,Cz;}
@@ -56,37 +58,34 @@ namespace ChipArena.UnityConversion
         internal static void Run(string root)
         {
             count=0;var o=new JsonSerializerOptions{IncludeFields=true};string R(string p)=>File.ReadAllText(Path.Combine(root,p));
-            string draftText=R(ExpeditionStationDraftChecks.DraftPath),liveText=R(ExpeditionJoinDraftChecks.LivePath),unityText=R("Assets/Conversion/Resources/UnityMaps.json"),looksText=R("Assets/Conversion/Resources/MapLooks.json");
-            var draft=JsonNode.Parse(draftText).AsObject();var station=JsonSerializer.Deserialize<UnityMapContent>(draftText,o).maps.Single();var blocks=station.blocks;
-            var unity=JsonSerializer.Deserialize<UnityMapContent>(unityText,o);var set=JsonSerializer.Deserialize<MapLookSet>(looksText,o);var live=NativeExpeditionLayout.Parse(liveText);
+            string unityText=R("Assets/Conversion/Resources/UnityMaps.json"),looksText=R("Assets/Conversion/Resources/MapLooks.json"),layoutText=R("Assets/Conversion/Resources/ExpeditionLayout.json");
+            var unity=JsonSerializer.Deserialize<UnityMapContent>(unityText,o);var set=JsonSerializer.Deserialize<MapLookSet>(looksText,o);var live=NativeExpeditionLayout.Parse(layoutText);
             var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);
+            var station=unity.maps.SingleOrDefault(m=>m.id==NativeExpeditionStation.MapId);Check(station!=null&&live.instances.Contains("exp-transit"),"the station is live: its map and its area in the live manifest");var blocks=station.blocks;
 
-            // ---------------- inert ----------------
-            Check(unity.maps.All(m=>m.id!=NativeExpeditionStation.MapId)&&set.maps.All(m=>m.id!=NativeExpeditionStation.MapId&&m.look!=NativeExpeditionStation.Look)&&live.Area("exp-transit")==null&&!live.instances.Contains("exp-transit"),
-                "no live map, look or manifest holds the station");
-            var ids=unity.maps.Select(m=>m.id).Concat(content.maps.Select(m=>m.id)).Distinct().ToArray();
-            Check(NativeExpeditionStation.Active(NativeExpeditionStation.MapId)&&ids.All(id=>!NativeExpeditionStation.Active(id)),"the gate is the station's map id alone ("+ids.Length+" live maps are not it)");
-            foreach(var m in unity.maps){var k=NativeExpeditionStationKit.Build(m.blocks,null);Check(k.Parts.Length==0&&k.Express.Length==0&&k.Glows.Length==0&&k.Shafts.Length==0&&k.Waters.Length==0,m.id+": the station kit builds nothing for it");}
+            // ---------------- other maps untouched ----------------
+            var ids=unity.maps.Select(m=>m.id).Concat(content.maps.Select(m=>m.id)).Where(id=>id!=NativeExpeditionStation.MapId).Distinct().ToArray();
+            Check(NativeExpeditionStation.Active(NativeExpeditionStation.MapId)&&ids.All(id=>!NativeExpeditionStation.Active(id)),"the gate is the station's map id alone ("+ids.Length+" other maps are not it)");
+            foreach(var m in unity.maps.Where(m=>m.id!=NativeExpeditionStation.MapId)){var k=NativeExpeditionStationKit.Build(m.blocks,null);Check(k.Parts.Length==0&&k.Express.Length==0&&k.Glows.Length==0&&k.Shafts.Length==0&&k.Waters.Length==0,m.id+": the station kit builds nothing for it");}
             foreach(var m in content.maps)Check(NativeExpeditionStationKit.Build(m.blocks,null).Parts.Length==0,m.id+" (GameContent): the station kit builds nothing for it");
             string Src(string f)=>R("Assets/ChipArena/Runtime/"+f);
             var pres=Src("NativeExpeditionStationPresentation.cs");
             Check(Src("NativeSourcePresentation.cs").Contains("            StationScenery(arena);\n")&&pres.Contains("if(!NativeExpeditionStation.Active(arena.MapId)||map==null||!EnsureStation())return;"),"the runtime is hooked into SourceWorld and gated on the station's map id");
             Check(Src("NativeAudio.cs").Contains("            StationCues(arena,menu);\n")&&Src("NativeExpeditionStationAudio.cs").Contains("!NativeExpeditionStation.Active(arena.MapId)"),"the sounds are hooked and gated the same way");
             Check(Src("NativeDevPanel.cs").Contains("case \"preview-station\":NativeStationPreview.On=")&&NativeDevActions.Find("preview-station")?.Kind==NativeDevKind.Presentation,"the DEV preview is a presentation-only view tool");
-            Check(!pres.Contains("NativeStationLive.View.")&&!pres.Contains("NativeStationLive.View=")&&!Src("NativeExpeditionStationAudio.cs").Contains("NativeStationLive.View"),"the presentation never writes the live view (the authority fills it)");
+            Check(!pres.Contains("NativeStationLive.View.")&&!pres.Contains("NativeStationLive.View=")&&!pres.Contains("NativeStationLive.Authority=")&&!Src("NativeExpeditionStationAudio.cs").Contains("NativeStationLive.View"),"the presentation never writes the live view (the authority fills it)");
+            Check(pres.Contains("var view=NativeStationLive.Current;if(NativeStationPreview.On)")&&!NativeStationLive.Authority&&ReferenceEquals(NativeStationLive.Current,NativeStationLive.Calm),"normal play draws the calm station until the authority's station fields exist; the DEV preview overrides");
 
-            // ---------------- the look draft ----------------
-            var lookSet=JsonSerializer.Deserialize<MapLookSet>(R(LookPath),o);Check(lookSet.schema==NativeMapLooks.Schema&&lookSet.maps.Length==1,"the look draft is one MapLooks entry");var look=lookSet.maps[0];
-            Check(look.id==NativeExpeditionStation.MapId&&look.look==NativeExpeditionStation.Look&&station.look==look.look&&NativeBlockLooks.Dressed(look,false),"the look draft is the station's, dressed");
-            NativeMapLooks.Validate(new MapLookSet{schema=set.schema,maps=set.maps.Append(look).ToArray(),preview=set.preview});count++;
+            // ---------------- the live look ----------------
+            var look=set.maps.SingleOrDefault(m=>m.id==NativeExpeditionStation.MapId);
+            Check(look!=null&&look.look==NativeExpeditionStation.Look&&station.look==look.look&&NativeBlockLooks.Dressed(look,false),"the station's live look, dressed");
+            NativeMapLooks.Validate(set);count++;
             Check(look.dressing==NativeExpeditionStation.Look&&look.atmosphere==NativeExpeditionStation.Look,"the look names the station's dressing and atmosphere");
             foreach(var b in blocks){var c=NativeBlockLooks.Resolve(look.blockLooks,null,b.id,b.material,0);Check(c.Listed,b.id+" has a listed look");}
             Check(!look.blockLooks.Any(b=>b.block.EndsWith("-screen",StringComparison.Ordinal)&&b.look=="cyber-glass"),"the screen is dressed glazing, not the city's curtain wall");
 
-            // ---------------- the area (the live manifest plus the station, as the draft checks compose it) ----------------
-            var composed=JsonNode.Parse(liveText).AsObject();composed["revision"]=(string)draft["revision"];composed["instances"].AsArray().Add("exp-transit");var town=composed["areas"][0].AsObject();
-            town["anchors"].AsArray().Add(draft["layout"]["town"]["anchor"].DeepClone());town["doors"].AsArray().Add(draft["layout"]["town"]["door"].DeepClone());composed["areas"].AsArray().Add(draft["layout"]["area"].DeepClone());
-            var area=NativeExpeditionLayout.Parse(composed.ToJsonString()).Area("exp-transit");Check(area!=null&&area.spawns.Length==47,"the station's area parses (47 spawns)");
+            // ---------------- the live area ----------------
+            var area=live.Area("exp-transit");Check(area!=null&&area.map==NativeExpeditionStation.MapId&&area.spawns.Length>0&&area.machines.Length>0,"the station's live area: "+area?.spawns.Length+" spawns, "+area?.machines.Length+" machines");
 
             // ---------------- the kit: determinism, sanity, set pieces ----------------
             var sw=System.Diagnostics.Stopwatch.StartNew();var kit=NativeExpeditionStationKit.Build(blocks,area);long ms=sw.ElapsedMilliseconds;var again=NativeExpeditionStationKit.Build(blocks,area);
@@ -145,7 +144,13 @@ namespace ChipArena.UnityConversion
                     Check(!BoxHit(w,alongX?x0:x0-pw,alongX?x1:x1+pw,fy-.05,fy+(e.kind=="breach"?4.4:3.0),alongX?z0-pw:z0,alongX?z1+pw:z1),"nothing on a spawn's path ("+e.id+"): "+at);
                 }
                 void Point(ExpeditionPoint q,double r,double h,string what){if(q!=null)Check(!Disc(w,q.x,q.z,r,q.y-.05,q.y+h),"nothing on "+what+": "+at);}
-                foreach(var q in area.bossPoints)Point(q,1.2,3.4,"a boss point");
+                foreach(var q in area.bossPoints??Array.Empty<ExpeditionPoint>())Point(q,1.2,3.4,"a boss point");
+                foreach(var m in area.machines)
+                {
+                    // Floor paint may run under a machine and its spots (as under a spawn's path); nothing else.
+                    if(passable)continue;double bx=m.x-Math.Sin(m.yaw)*.25,bz=m.z-Math.Cos(m.yaw)*.25;Check(!Disc(w,bx,bz,.9,m.y-.05,m.y+2.4),"nothing on a machine ("+m.id+"): "+at);
+                    foreach(var q in new[]{m.front,m.dispense,m.chipDrop})if(q!=null)Check(!Disc(w,q.x,q.z,.6,q.y-.05,q.y+2.2),"nothing where a machine's pilot stands or its drop lands ("+m.id+"): "+at);
+                }
                 foreach(var it in area.interactions)Check(!Disc(w,it.x,it.z,.9,it.y-.05,it.y+2.2),"nothing on an interaction point: "+at);
                 foreach(var d in area.doors)
                 {
@@ -176,6 +181,26 @@ namespace ChipArena.UnityConversion
             }
             fx.Build(scene,state,40,-25.5,1.55,-9.0,0,0,-1,0,1,0,1,false);int tele=fx.Telegraph,full=fx.Quads.Count;fx.Build(scene,state,40,-25.5,1.55,-9.0,0,0,-1,0,1,0,1,true);
             Check(fx.Telegraph==tele&&fx.Quads.Count<full,"the low tier thins the atmosphere ("+full+" → "+fx.Quads.Count+" quads on P1) but never the telegraphs ("+tele+")");
+            // Normal play (the calm view): no hazard drawn, lit or heard anywhere, over a whole minute.
+            {
+                var calm=new NativeStationState();var calmKinds=new byte[24];var calmTimes=new double[24];var calmPlaces=new float[72];int cues=0;
+                for(double t=0;t<60;t+=.5)
+                {
+                    calm.Evaluate(NativeStationLive.Calm,t);cues+=NativeExpeditionStation.Cues(NativeStationLive.Calm,t,t+.5,calmKinds,calmTimes,calmPlaces);
+                    Check(calm.Express==NativeStationState.ExpressIdle&&calm.Rails==0&&!calm.Flood&&calm.Danger==0&&calm.Glass==0&&calm.CabinetPhase.All(ph=>ph==NativeHazardPhase.Idle)&&calm.SteamPhase==NativeHazardPhase.Idle
+                        &&calm.Row4==NativeStationState.Row4NoStop&&calm.Title==NativeStationState.TitleDepartures,"the calm station: no express, the third rail dark, the flood still, the cabinets and steam idle, the board's idle rows");
+                }
+                Check(cues==0,"the calm station makes no hazard sound");
+                Check(kit.Parts.Where(p=>p.Drive==NativeExpeditionStationKit.DriveRail).All(p=>{NativeExpeditionStationKit.Drive(p,calm,30,out float r,out float g,out float b,out _);return r+g+b<1e-3;})&&kit.Express.All(p=>!NativeExpeditionStationKit.Drive(p,calm,30,out _,out _,out _,out _))
+                    &&kit.Parts.Where(p=>p.Drive==NativeExpeditionStationKit.DriveMouth).All(p=>!NativeExpeditionStationKit.Drive(p,calm,30,out _,out _,out _,out _)),"the calm station: the rail's glints dark, no express, no headlight");
+                var calmFx=new NativeExpeditionStationFx{GlassView=NativeStationLive.Calm};
+                foreach(var (x,y,z,name) in cams)
+                {
+                    calmFx.Build(scene,calm,30,x,y,z,1,0,0,0,1,0,1,false);Check(calmFx.Telegraph==0&&calmFx.Sparks==0&&calmFx.Arcs==0&&calmFx.Glass==0&&calmFx.Dust==0,name+": the calm station draws no hazard effect");
+                    lights.Settle(x,y,z,calm,30);for(int sl=0;sl<NativeExpeditionStationKit.Slots;sl++){int c=lights.Slot[sl];if(c<0)continue;byte kd=lights.Candidates[c].Kind;
+                        Check(kd!=NativeExpeditionStationLights.KindHeadlight&&kd!=NativeExpeditionStationLights.KindBand&&kd!=NativeExpeditionStationKit.GlowBeacon,name+": no express or beacon light in the calm station");}
+                }
+            }
 
             // ---------------- the state ----------------
             var v=new NativeStationView();var s0=new NativeStationState();s0.Evaluate(v,100);

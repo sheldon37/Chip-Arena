@@ -196,7 +196,10 @@ namespace ChipArena.UnityConversion
             {
                 if(g.Size<=0)continue;double d=Dist(g.X,g.Y,g.Z);if(d>75||!Ahead(g.X,g.Y,g.Z,1))continue;if(!GlowNow(g,s,t,out float r,out float gg,out float b))continue;
                 bool tele=g.Kind==NativeExpeditionStationKit.GlowBeacon||g.Kind==NativeExpeditionStationKit.GlowSignal||g.Kind==NativeExpeditionStationKit.GlowCabinet;
-                Sprite(g.X,g.Y,g.Z,g.Size*(1+d*.012),r*.55f,gg*.55f,b*.55f,tele?.8f:.45f);if(tele)Telegraph++;else Halos++;
+                // Counted as a telegraph only while it warns (the beacons, a cleared signal, a cabinet out of idle); at rest a halo.
+                bool warns=g.Kind==NativeExpeditionStationKit.GlowBeacon||g.Kind==NativeExpeditionStationKit.GlowSignal&&s!=null&&s.Signal==NativeStationState.SignalGreen
+                    ||g.Kind==NativeExpeditionStationKit.GlowCabinet&&s!=null&&g.Tag>=0&&g.Tag<2&&s.CabinetPhase[g.Tag]!=NativeHazardPhase.Idle;
+                Sprite(g.X,g.Y,g.Z,g.Size*(1+d*.012),r*.55f,gg*.55f,b*.55f,tele?.8f:.45f);if(warns)Telegraph++;else Halos++;
             }
         }
         private void WaterFx(NativeStationFxScene sc,NativeStationState s,double t)

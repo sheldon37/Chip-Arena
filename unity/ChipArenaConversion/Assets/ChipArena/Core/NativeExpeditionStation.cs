@@ -127,7 +127,7 @@ namespace ChipArena.UnityConversion
     public static class NativeExpeditionStation
     {
         public const string MapId="expedition-transit",Look="central-station",Prefix="expedition-transit-";
-        /// <summary>Whether a map id is the station: every station visual is inert on any other map (today no live map is).</summary>
+        /// <summary>Whether a map id is the station: every station visual is inert on any other map.</summary>
         public static bool Active(string mapId)=>mapId==MapId;
 
         // ---------------- hazards (doc section 6; the authority's values are Astra's, these are the presentation's) ----------------
@@ -215,13 +215,21 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// Where the station's view lives between the authority and the picture. Astra's replicated hazard and objective fields
-    /// (doc section 8) fill <see cref="View"/> every frame on every peer (the host from its authority, a guest from the frame);
-    /// nothing fills it today, so it reads as an idle station. The presentation publishes the view it drew (<see cref="Shown"/>:
-    /// the live one, or the DEV preview's) and the clock it drew it at, so the station's sounds follow the picture.
+    /// (doc section 8) fill <see cref="View"/> every frame on every peer (the host from its authority, a guest from the frame)
+    /// and set <see cref="Authority"/>. Until they do, normal play draws <see cref="Calm"/>: the station with no hazard shown
+    /// (no express, the third rail dark, the flood still, the cabinets and the steam main idle, the board's idle rows), so the
+    /// picture never warns of a hazard that cannot hurt; only the DEV preview shows them. The presentation publishes the view
+    /// it drew (<see cref="Shown"/>) and the clock it drew it at, so the station's sounds follow the picture.
     /// </summary>
     public static class NativeStationLive
     {
         public static readonly NativeStationView View=new NativeStationView();
+        /// <summary>Set by the authority's station fields once they fill <see cref="View"/>; false today.</summary>
+        public static bool Authority;
+        /// <summary>The station with no hazard shown: what normal play draws until <see cref="Authority"/>. Never written.</summary>
+        public static readonly NativeStationView Calm=new NativeStationView{RailLive=0};
+        /// <summary>The view normal play draws: the authority's once it exists, else the calm station.</summary>
+        public static NativeStationView Current=>Authority?View:Calm;
         public static NativeStationView Shown;public static double ShownClock;
     }
 

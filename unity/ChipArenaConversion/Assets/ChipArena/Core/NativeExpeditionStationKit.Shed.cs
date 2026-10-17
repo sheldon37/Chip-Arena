@@ -517,7 +517,7 @@ namespace ChipArena.UnityConversion
             foreach(double s in new[]{-.75,.75}){T(.02,1.15,s,.06,.24,.36,Glow(HeadlightHex,8f,RoleTrain));T(.03,1.15,s,.08,.3,.42,dark);}
             T(-1.555,3.33,0,.03,.3,1.7,dark);
             float cell=.045f;double w0=-TextWidth("EXPRESS",cell)/2;
-            for(int i=0;i<7;i++)foreach(var g in NativeExpeditionCityKit.GlyphBoxes("EXPRESS"[i])){double u=w0+(i*4+g[0]+g[2]*.5)*cell,v=(5-g[1]-g[3]*.5)*cell-2.5*cell;T(-1.535,3.33+v,-u,.02,g[3]*cell,g[2]*cell,Glow(AmberHex,2.4f,RoleTrain));}
+            for(int i=0;i<7;i++)foreach(var g in Glyph("EXPRESS"[i])){double u=w0+(i*4+g[0]+g[2]*.5)*cell,v=(5-g[1]-g[3]*.5)*cell-2.5*cell;T(-1.535,3.33+v,-u,.02,g[3]*cell,g[2]*cell,Glow(AmberHex,2.4f,RoleTrain));}
             double tail=-(3*car+2*gap);foreach(double s in new[]{-.8,.8})T(tail-.02,1.2,s,.05,.2,.3,Glow(0xFF2A1A,4f,RoleTrain));
         }
     }

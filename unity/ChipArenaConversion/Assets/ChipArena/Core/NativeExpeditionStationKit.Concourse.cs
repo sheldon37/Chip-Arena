@@ -197,7 +197,8 @@ namespace ChipArena.UnityConversion
         private void BoardSide(int booth,double yaw)
         {
             double half=BoardHx,width=BoardHz*2;
-            FaceAt(yaw,BoardX,BoardZ,half,0,.012,out double px,out double pz);var panel=With(L("cyber-holo",0x2A1606,RoleBoard),drive:DriveBoard);panel.Gain=.5f;Box(booth,px,BoardY,pz,width-.36,BoardHy*2-.36,.02,panel,yaw);
+            // The side panels plain: the holo look tinted them violet on these faces.
+            FaceAt(yaw,BoardX,BoardZ,half,0,.012,out double px,out double pz);var panel=With(L("plain",0x1E1006,RoleBoard),drive:DriveBoard);panel.Gain=.5f;Box(booth,px,BoardY,pz,width-.36,BoardHy*2-.36,.02,panel,yaw);
             FaceAt(yaw,BoardX,BoardZ,half,0,.1,out double cx,out double cz);Clock(booth,cx,BoardY+1.05,cz,.6,false,yaw);
             var amber=Glow(AmberHex,1.9f,RoleBoard,DriveBoard);
             for(int i=0;i<NativeExpeditionStation.Side.Length;i++)BoardText(booth,yaw,half,NativeExpeditionStation.Side[i],0,BoardY+(i==0?.0:-.1)-i*.46,i==0?.075:.052,.04,With(amber,tag:-1),0);

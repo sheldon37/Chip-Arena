@@ -207,7 +207,7 @@ namespace ChipArena.UnityConversion
         {
             double a=yaw*Math.PI/180,nx=Math.Sin(a),nz=Math.Cos(a),rx=-nz,rz=nx,width=TextWidth(text,cell),u0=align<0?0:align>0?-width:-width/2;
             for(int i=0;i<text.Length;i++)
-                foreach(var g in text[i]==':'?Colon:NativeExpeditionCityKit.GlyphBoxes(text[i]))
+                foreach(var g in Glyph(text[i]))
                 {
                     double u=u0+(i*4+g[0]+g[2]*.5)*cell,v=(5-g[1]-g[3]*.5)*cell-2.5*cell;
                     Box(parent,x+rx*u,y+v,z+rz*u,g[2]*cell,g[3]*cell,depth,pen,yaw);
@@ -216,6 +216,10 @@ namespace ChipArena.UnityConversion
         public static double TextWidth(string text,double cell)=>text.Length*4*cell-cell;
         // The city font has no colon: two dots in the middle column.
         private static readonly System.Collections.Generic.List<int[]> Colon=new System.Collections.Generic.List<int[]>{new[]{1,1,1,1},new[]{1,3,1,1}};
+        // The font's P has a rounded bowl that reads as F at board distance (DEFARTURES); the station squares it.
+        private static readonly System.Collections.Generic.List<int[]> SquareP=new System.Collections.Generic.List<int[]>{new[]{0,0,3,1},new[]{0,1,1,4},new[]{2,1,1,1},new[]{1,2,2,1}};
+        /// <summary>The station's glyph boxes: the town's 3 x 5 font with a colon and a squared P.</summary>
+        public static System.Collections.Generic.List<int[]> Glyph(char c)=>c==':'?Colon:c=='P'||c=='p'?SquareP:NativeExpeditionCityKit.GlyphBoxes(c);
 
         // ---------------- keep-outs ----------------
         // What a part may never meet (world AABBs; a spawn's own dressing passes its own): spawn exits and their paths, vents,
@@ -238,6 +242,13 @@ namespace ChipArena.UnityConversion
             foreach(var p in area.bossPoints??Array.Empty<ExpeditionPoint>())Point(p,1.6f,4f);
             foreach(var i in area.interactions??Array.Empty<ExpeditionInteractionLayout>())Keep(i.x-1.1f,i.x+1.1f,i.y-.05f,i.y+2.4f,i.z-1.1f,i.z+1.1f,-1,2);
             foreach(var a in area.anchors??Array.Empty<ExpeditionWorldAnchor>())if(a.kind!="door")Keep(a.x-1.1f,a.x+1.1f,a.y-.05f,a.y+2.4f,a.z-1.1f,a.z+1.1f,-1,2);
+            // The live activation's machines (chip, med, recruit): the cabinet itself and where a pilot stands and the drop lands.
+            // Floor paint may run under them (kind 3), as under a spawn's path.
+            foreach(var m in area.machines??Array.Empty<PveMachine>())
+            {
+                if(m==null)continue;float bx=m.x-(float)Math.Sin(m.yaw)*.25f,bz=m.z-(float)Math.Cos(m.yaw)*.25f;Keep(bx-1.0f,bx+1.0f,m.y-.05f,m.y+2.6f,bz-1.0f,bz+1.0f,-1,3);
+                foreach(var q in new[]{m.front,m.dispense,m.chipDrop})if(q!=null)Keep(q.x-.8f,q.x+.8f,q.y-.05f,q.y+2.4f,q.z-.8f,q.z+.8f,-1,3);
+            }
             foreach(var d in area.doors??Array.Empty<ExpeditionDoorLayout>())
             {
                 Volume(d.interact,.4f);Volume(d.closure,.6f);Point(d.approach,.9f,2.4f);
@@ -254,7 +265,7 @@ namespace ChipArena.UnityConversion
             bool track=role==RoleTrack&&y1<NativeExpeditionStation.TrackBed+.36||role==RoleWater&&y1<NativeExpeditionStation.WaterY+.05||role==RoleFlat&&y1-y0<=Flat+1e-3;
             foreach(var k in keeps)
             {
-                if(k.Spawn>=0&&k.Spawn==owner||track&&k.Kind==0)continue;
+                if(k.Spawn>=0&&k.Spawn==owner||track&&(k.Kind==0||k.Kind==3))continue;
                 if(x1<=k.X0||x0>=k.X1||y1<=k.Y0||y0>=k.Y1||z1<=k.Z0||z0>=k.Z1)continue;
                 return true;
             }

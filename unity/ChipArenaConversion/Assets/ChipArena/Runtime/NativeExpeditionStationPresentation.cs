@@ -8,8 +8,9 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// Central Station's visuals (docs/EXPEDITION-CENTRAL-STATION-VISUALS.md), drawn only while the map is the station
     /// (NativeExpeditionStation.Active on the map id), in the arena and the killcam replay (SourceWorld, on the arena's
-    /// presentation clock). No live map has that id today, so nothing here runs until the station is imported; every other
-    /// map is untouched, and nothing runs while intros, previews or the chip draft own the screen.
+    /// presentation clock). Every other map is untouched, and nothing runs while intros, previews or the chip draft own the
+    /// screen. The set dressing, lights, atmosphere and the board's idle rows are live; the hazards' presentation shows only
+    /// under the DEV preview until the authority's station fields exist (NativeStationLive.Authority).
     ///  - The dressing kit (Core NativeExpeditionStationKit, built once per map content with the station's records from
     ///    Resources/ExpeditionLayout.json): parts posed with their parent props, made once at rest and only re-posed when a block
     ///    moves or shudders; driven parts (the board's rows and blink, the signals, beacons, the live rail's glints, the flood,
@@ -47,8 +48,9 @@ namespace ChipArena.UnityConversion
             if(!ReferenceEquals(map,stationMap))StationBuild(map);
             if(!ReferenceEquals(arena,stationArena)||arena.Generation!=stationGeneration){stationArena=arena;stationGeneration=arena.Generation;stationLast=-1;}
             float now=PresentationClock(arena);
-            // The view: the DEV preview's while it is on, else what the authority's replicated fields put in NativeStationLive.
-            var view=NativeStationLive.View;if(NativeStationPreview.On){NativeStationPreview.Fill(stationPreview,now);view=stationPreview;}
+            // The view: the DEV preview's while it is on, else the authority's fields once they exist, else the calm station
+            // (no hazard is drawn in normal play until then).
+            var view=NativeStationLive.Current;if(NativeStationPreview.On){NativeStationPreview.Fill(stationPreview,now);view=stationPreview;}
             stationState.Evaluate(view,now);NativeStationLive.Shown=view;NativeStationLive.ShownClock=now;
             Array.Clear(stationParents,0,stationParents.Length);foreach(var p in arena.AllBlocks){if(p==null||p.Definition?.id==null)continue;if(stationIndex.TryGetValue(p.Definition.id,out int i))stationParents[i]=p;}
             var blocks=map.blocks;if((QualitySettings.activeColorSpace==ColorSpace.Linear)!=stationColorLinear)StationRestColors();
