@@ -129,7 +129,7 @@ namespace ChipArena.UnityConversion
                 Grounded=v!=null&&v.grounded,Submerged=st.Out.Sink>.2f&&kind==NativeStationKinds.Undertow,Broken=v!=null&&v.lanternBroken,LastCall=v!=null&&now>=v.lastCallAt?now-v.lastCallAt:float.NaN,
                 Surface=v!=null&&now>=v.surfaceAt?now-v.surfaceAt:float.NaN,Hold=v!=null&&v.Holding(now)?now-v.grabAt:float.NaN,Aboard=v!=null&&v.Aboard(now)?now-(v.aboardUntil-NativeStationKinds.AboardSeconds):float.NaN,Since=now-st.HitAt,
                 Hand=W(CapturedRig.RHand,new NVector(0,-.12f,.04f)),Coil=W(CapturedRig.RElbow,new NVector(-.12f,-.05f,0)),Elbow=W(CapturedRig.RElbow,NVector.Zero),Shoulder=W(CapturedRig.RArm,new NVector(0,-.05f,.05f)),
-                Pack=W(CapturedRig.Chest,new NVector(0,.15f,-.34f)),Lamp=W(CapturedRig.Head,new NVector(0,.31f+NativeHordeModels.HeadDrop[NativeStationKinds.Linesman],.2f)),LampDir=Dir(CapturedRig.Head,new NVector(0,-.1f,1)),
+                Pack=W(CapturedRig.Chest,new NVector(0,.15f,-.34f)),Lamp=W(CapturedRig.Head,new NVector(0,.305f+NativeHordeModels.HeadDrop[NativeStationKinds.Linesman],.18f)),LampDir=Dir(CapturedRig.Head,new NVector(0,-.1f,1)),
                 Eyes=W(CapturedRig.Head,new NVector(0,.176f,.18f)),Mouth=W(CapturedRig.Head,new NVector(0,.075f,.2f)),Chest=W(CapturedRig.Chest,new NVector(0,.15f,0))};
             if(st.Out.Prop)
             {
@@ -257,24 +257,31 @@ namespace ChipArena.UnityConversion
         // The identity lights (section 7): the headlamp's halo and beam, the battery; the lantern; the aqua eyes; the window.
         private void StationIdentity(NativeFxDraw draw,in StationFxJob j,float now,Vector3 eye,Vector3 right,Vector3 up,float dist)
         {
-            if(dist>60)return;float far=Mathf.Clamp01((dist-8)/30);
+            if(dist>60)return;float far=NativeStationFx.Far(dist),size,gain,wash,washGain;
             switch(j.Kind)
             {
                 case NativeStationKinds.Linesman:
                 {
-                    int hex=j.Charge>.15f?NativeStationKinds.LinesmanBlue:0xEAF4FF;vfx.Glow(j.Lamp,Lin(hex,2.2f+3*j.Charge),.32f+.5f*j.Charge+.25f*far,NativeVfxDraw.CoreGlow);
-                    // The beam: a cone of camera-facing strips widening ahead of the lamp, fading out by 4.5 m.
-                    for(int k=0;k<6;k++){float u0=k/6f,u1=(k+1)/6f;var a=j.Lamp+j.LampDir*(.12f+u0*4.5f);var b=j.Lamp+j.LampDir*(.12f+u1*4.5f);StationStrip(draw,a,b,.05f+.8f*u0,.05f+.8f*u1,FxC(hex,(.16f+.3f*j.Charge)*(1-u0)*(1-u0)),eye);}
-                    vfx.Glow(j.Pack,Lin(NativeStationKinds.LinesmanBlue,1.6f+(j.Grounded?1.2f:0)+2*j.Charge),.45f+(j.Grounded?.2f:0)+.2f*far,NativeVfxDraw.CoreGlow);
+                    int hex=j.Charge>.15f?NativeStationKinds.LinesmanBlue:0xEAF4FF;NativeStationFx.Lamp(j.Charge,far,out size,out gain);vfx.Glow(j.Lamp,Lin(hex,gain),size,NativeVfxDraw.CoreGlow);
+                    // The beam: a cone of camera-facing strips widening ahead of the lamp, fading out by its length.
+                    // It stops at the floor (a pool of light where it lands) and fades as the camera looks down it.
+                    float L=NativeStationFx.BeamReach(j.Lamp.y-j.Floor.y,-j.LampDir.y,out bool lands),al=NativeStationFx.BeamAlpha(j.Charge,Vector3.Dot(j.LampDir,(eye-j.Lamp).normalized));
+                    if(al>.004f)for(int k=0;k<6;k++){float u0=k/6f,u1=(k+1)/6f;var a=j.Lamp+j.LampDir*(.12f+u0*L);var b=j.Lamp+j.LampDir*(.12f+u1*L);StationStrip(draw,a,b,.05f+NativeStationFx.BeamWidth*u0,.05f+NativeStationFx.BeamWidth*u1,FxC(hex,al*(1-u0)*(1-u0)),eye);}
+                    if(lands){NativeStationFx.BeamPool(j.Charge,L,out size,out gain);vfx.Glow(j.Lamp+j.LampDir*L+Vector3.up*.03f,Lin(hex,gain),size,NativeVfxDraw.CoreGlow);}
+                    NativeStationFx.Pack(j.Grounded,j.Charge,far,out size,out gain);vfx.Glow(j.Pack,Lin(NativeStationKinds.LinesmanBlue,gain),size,NativeVfxDraw.CoreGlow);
                     break;
                 }
                 case NativeStationKinds.Conductor:
-                    if(!j.Broken&&j.Prop!=Vector3.zero){float flare=NativeStationMotion.LanternFlare(j.Special==NativeStationKinds.Special.Whistle?j.SpecialAge:float.NaN,j.LastCall);vfx.Glow(j.Prop,Lin(NativeStationKinds.LanternRed,1.8f*flare),.8f*flare+.5f*far,NativeVfxDraw.CoreGlow);vfx.Glow(j.Prop,Lin(0xFF3A22,.4f*flare),2.4f*flare+far,NativeVfxDraw.Mote);}
+                    if(!j.Broken&&j.Prop!=Vector3.zero){float flare=NativeStationMotion.LanternFlare(j.Special==NativeStationKinds.Special.Whistle?j.SpecialAge:float.NaN,j.LastCall);NativeStationFx.Lantern(flare,far,out size,out gain,out wash,out washGain);
+                        vfx.Glow(j.Prop,Lin(NativeStationKinds.LanternRed,gain),size,NativeVfxDraw.CoreGlow);vfx.Glow(j.Prop,Lin(0xFF3A22,washGain),wash,NativeVfxDraw.Mote);}
                     break;
                 case NativeStationKinds.Undertow:
-                    vfx.Glow(j.Eyes,Lin(NativeStationKinds.UndertowAqua,1.8f+(j.Submerged?.8f:0)),.16f+(j.Submerged?.14f:0)+.2f*far,NativeVfxDraw.CoreGlow);break;
+                {
+                    float tele=j.Special==NativeStationKinds.Special.Grab&&!float.IsNaN(j.SpecialAge)&&j.SpecialAge<NativeStationKinds.GrabTelegraph?j.SpecialAge/NativeStationKinds.GrabTelegraph:0;
+                    NativeStationFx.Eyes(j.Submerged,tele,far,out size,out gain);vfx.Glow(j.Eyes,Lin(NativeStationKinds.UndertowAqua,gain),size,NativeVfxDraw.CoreGlow);break;
+                }
                 case NativeStationKinds.Pileup:
-                    if(j.Prop!=Vector3.zero){float fl=NativeStationFx.WindowFlicker(j.Seed,now,j.Since);vfx.Glow(j.Prop+j.Forward*.06f,Lin(NativeStationKinds.WindowTube,1.1f*fl),1.1f*fl+.5f*far,NativeVfxDraw.CoreGlow);vfx.Glow(j.Prop+j.Forward*.1f,Lin(NativeStationKinds.WindowTube,.22f*fl),2.6f*fl,NativeVfxDraw.Mote);}
+                    if(j.Prop!=Vector3.zero){NativeStationFx.Window(NativeStationFx.WindowFlicker(j.Seed,now,j.Since),far,out size,out gain,out wash,out washGain);vfx.Glow(j.Prop+j.Forward*.06f,Lin(NativeStationKinds.WindowTube,gain),size,NativeVfxDraw.CoreGlow);vfx.Glow(j.Prop+j.Forward*.1f,Lin(NativeStationKinds.WindowTube,washGain),wash,NativeVfxDraw.Mote);}
                     break;
             }
         }
@@ -320,7 +327,7 @@ namespace ChipArena.UnityConversion
                     if(!half)draw.Annulus(draw.Effects,j.Floor+Vector3.up*.9f,Vector3.right*rad*.85f,Vector3.forward*rad*.85f,.97f,1,48,0,FxC(0xFFFFFF,.45f*al),StationGlowing);}
             }
             // The last call: red rings off the lantern as it is rung.
-            if(!float.IsNaN(j.LastCall)&&j.Prop!=Vector3.zero)for(int k=0;k<8;k++)if(NativeStationFx.BellRing(j.LastCall,k,out float rr,out float al))draw.Annulus(draw.Effects,j.Prop,right*rr,up*rr,.9f,1,32,0,FxC(NativeStationKinds.LanternRed,.75f*al),StationGlowing);
+            if(!float.IsNaN(j.LastCall)&&j.Prop!=Vector3.zero)for(int k=0;k<6;k++)if(NativeStationFx.BellRing(j.LastCall,k,out float rr,out float al))draw.Annulus(draw.Effects,j.Prop,right*rr,up*rr,.9f,1,32,0,FxC(NativeStationKinds.LanternRed,al),StationGlowing);
         }
         private void StationUndertowFx(NativeFxDraw draw,in StationFxJob j,float now,Vector3 eye,bool half)
         {
@@ -333,7 +340,7 @@ namespace ChipArena.UnityConversion
             {
                 float u=j.SpecialAge/NativeStationKinds.GrabTelegraph;var to=new Vector3(j.Aim.x,water,j.Aim.z);var from=new Vector3(j.Eyes.x,water,j.Eyes.z);
                 for(int i=0;i<(half?14:30);i++)if(NativeStationFx.Converge(s,i,u,ToN(from),ToN(to),out var at,out float size))vfx.Glow(V(at),Lin(0xBFF8EE,1.1f),size*2.2f,NativeVfxDraw.Ring);
-                for(int k=0;k<3;k++){float rr=(1.4f-k*.4f)*(1-u)+.15f;draw.Ring(draw.Effects,to,1-.04f/rr,rr,FxC(0x7AD8C0,.7f*u),StationGlowing);}vfx.Glow(j.Eyes,Lin(NativeStationKinds.UndertowAqua,3*u),.8f*u,NativeVfxDraw.CoreGlow);
+                for(int k=0;k<3;k++){float rr=(1.4f-k*.4f)*(1-u)+.15f;draw.Ring(draw.Effects,to,1-.04f/rr,rr,FxC(0x7AD8C0,.7f*u),StationGlowing);}
             }
             // The drag: spray and a wake behind the held pilot and the Undertow.
             if(!float.IsNaN(j.Hold))for(int i=0;i<(half?6:12);i++){float u=i/12f;var p=Vector3.Lerp(j.Floor,j.Aim,u)-j.Forward*u*.6f;vfx.Smoke(new Vector3(p.x,water+.05f,p.z),new Color(.55f,.66f,.64f),.35f*(1-u),.35f+.2f*u,(now*1.7f+u)%1,s+(uint)i,j.Floor.y);}

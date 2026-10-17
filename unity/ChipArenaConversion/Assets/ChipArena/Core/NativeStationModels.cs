@@ -97,10 +97,10 @@ namespace ChipArena.UnityConversion
             k.On(CapturedRig.Head);
             {
                 float y=HeadDrop[NativeStationKinds.Linesman];
-                k.Blob(hat,0,.31f+y,-.01f,.155f,.085f,.165f);k.Box(hat,0,.27f+y,.0f,.33f,.025f,.35f,.008f);if(!k.Far)k.Box(hat,0,.275f+y,.165f,.27f,.02f,.07f,.006f,-.25f);
-                if(k.Mid)k.Box(P(look==0?0xC8A000:0xA8A69E,.1f),0,.375f+y,-.01f,.04f,.035f,.3f,.008f);
-                if(!k.Far)k.Box(P(0x2A2A2A,.2f),0,.31f+y,.15f,.09f,.06f,.04f,.008f);k.Box(WeaponPaint.Glow(0xEAF4FF,6f,.9f),0,.31f+y,.172f,.065f,.042f,.012f);
-                if(k.Fine)k.Box(P(0x4A4A4A),.012f,.32f+y,.179f,.05f,.006f,.004f,0,0,0,.6f);
+                k.Blob(hat,0,.305f+y,-.01f,.138f,.08f,.15f);k.Box(hat,0,.27f+y,.0f,.29f,.024f,.31f,.008f);if(!k.Far)k.Box(hat,0,.274f+y,.15f,.24f,.02f,.065f,.006f,-.25f);
+                if(k.Mid)k.Box(P(look==0?0xC8A000:0xA8A69E,.1f),0,.365f+y,-.01f,.04f,.035f,.27f,.008f);
+                if(!k.Far)k.Box(P(0x2A2A2A,.2f),0,.305f+y,.14f,.085f,.056f,.04f,.008f);k.Box(WeaponPaint.Glow(0xEAF4FF,6f,.9f),0,.305f+y,.162f,.062f,.04f,.012f);
+                if(k.Fine)k.Box(P(0x4A4A4A),.012f,.315f+y,.169f,.048f,.006f,.004f,0,0,0,.6f);
                 if(k.Mid){k.Box(P(0x1A1A1A),0,.24f+y,-.13f,.3f,.022f,.03f);}
             }
         }

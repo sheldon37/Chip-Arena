@@ -27,6 +27,26 @@ namespace ChipArena.UnityConversion
         private static float Sm(float x)=>MeleeMath.Smooth(x);
         private static float C01(float x)=>x<0?0:x>1?1:x;
 
+        // ---- the identity lights (section 7: each kind reads at 30 m in the dark): each halo's size (m, full width) and HDR gain by
+        // state, `far` 0 near to 1 at 38 m and beyond (the halo grows a little with distance so it keeps reading). The runtime and
+        // the render harness both draw from these. ----
+        public static void Lamp(float charge,float far,out float size,out float gain){size=.26f+.45f*charge+.22f*far;gain=2.2f+3*charge;}
+        /// <summary>The headlamp's beam: a cone of camera-facing strips up to this long and this wide at its end, its alpha by the
+        /// charge and by how side-on the camera sees it (`facing` = the dot of the beam with the way to the eye: end-on, the lamp's
+        /// glare carries it and the flat strips fade out).</summary>
+        public const float BeamLength=4.5f,BeamWidth=.7f;
+        public static float BeamAlpha(float charge,float facing)=>(.1f+.22f*charge)*C01((1-Math.Abs(facing))*1.8f);
+        /// <summary>How far the beam reaches before the floor (`drop` = lamp height over the floor, `down` = the beam's downward
+        /// slope, its -y), and whether it lands there: then a pool of light this wide is laid on the floor at that point.</summary>
+        public static float BeamReach(float drop,float down,out bool lands){lands=down>1e-3f&&drop/down<BeamLength;return lands?Math.Max(.2f,drop/down):BeamLength;}
+        public static void BeamPool(float charge,float reach,out float size,out float gain){size=.5f+.12f*reach+.3f*charge;gain=.35f+.5f*charge;}
+        public static void Pack(bool grounded,float charge,float far,out float size,out float gain){size=.34f+(grounded?.16f:0)+.15f*charge+.18f*far;gain=1.5f+(grounded?1.1f:0)+1.8f*charge;}
+        public static void Lantern(float flare,float far,out float size,out float gain,out float wash,out float washGain){size=.42f*flare+.35f*far;gain=1.8f*flare;wash=1.3f*flare+.6f*far;washGain=.22f*flare;}
+        public static void Eyes(bool submerged,float telegraph,float far,out float size,out float gain){size=.12f+(submerged?.08f:0)+.25f*telegraph+.15f*far;gain=1.8f+(submerged?.6f:0)+2.2f*telegraph;}
+        public static void Window(float flicker,float far,out float size,out float gain,out float wash,out float washGain){size=.55f*flicker+.4f*far;gain=flicker;wash=1.5f*flicker+.5f*far;washGain=.14f*flicker;}
+        /// <summary>How far an identity light is (0 within 8 m .. 1 at 38 m).</summary>
+        public static float Far(float distance)=>C01((distance-8)/30);
+
         // ---- electricity ----
         public const int BoltPoints=12,BoltForks=3;
         /// <summary>The bolt's jag re-rolls this many times a second (a crackle, not a smooth wobble).</summary>
@@ -87,7 +107,7 @@ namespace ChipArena.UnityConversion
         public static bool BellRing(float age,int k,out float radius,out float alpha)
         {
             radius=alpha=0;float start=.25f+k/4.5f;if(float.IsNaN(age)||start>NativeStationKinds.LastCallTelegraph)return false;float u=age-start;if(u<0||u>.5f)return false;
-            radius=.15f+1.3f*Sm(u/.5f);alpha=1-u/.5f;return true;
+            radius=.12f+.7f*Sm(u/.5f);alpha=.7f*(1-u/.5f);return true;
         }
         /// <summary>A buffed add's flash (its seams red-white once, at the whistle) and its trail's strength over the buff.</summary>
         public static float AboardFlash(float sinceWhistle)=>float.IsNaN(sinceWhistle)||sinceWhistle<0||sinceWhistle>.45f?0:1-Sm(sinceWhistle/.45f);

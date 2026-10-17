@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
             string[] ids={"linesman","conductor","undertow","pileup"},names={"Linesman","Conductor","Undertow","Pileup"};int[] body={NativeHordeKinds.Brute,NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Brute};
             for(int i=0;i<4;i++)
             {
-                int k=Kinds[i];Check(NativeHordeKinds.Ids[k]==ids[i]&&NativeHordeKinds.Names[k]==names[i]&&NativeHordeKinds.Resolve(ids[i])==k&&NativeHordeKinds.Known(ids[i]),ids[i]+" resolves to kind "+k);
+                int k=Kinds[i];Check(NativeHordeKinds.Ids[k]==ids[i]&&NativeHordeKinds.Names[k]==names[i]&&NativeHordeKinds.Resolve(ids[i])==k&&!NativeHordeKinds.Known(ids[i]),ids[i]+" resolves to kind "+k+" (drawn) but is not known to the authority or the wire until shipped");
                 Check(NativeHordeKinds.Zone(k)&&NativeStationKinds.Is(k)&&NativeHordeKinds.Body(k)==body[i],ids[i]+" borrows its body tables from "+NativeHordeKinds.Ids[body[i]]);
                 Check(!NativeHordeKinds.Shipped[k],ids[i]+" is not shipped (no content row yet: Astra's)");
                 Check(NativeHordeKinds.Looks[k]>=1&&NativeHordeKinds.Looks[k]<=NativeHordeKinds.MostLooks,ids[i]+" looks within the bank's");
@@ -50,6 +50,26 @@ namespace ChipArena.UnityConversion
             foreach(var id in ids)Check(!contentIds.Contains(id),"PveContent has no "+id+" row yet (Astra adds it)");
             foreach(var id in contentIds)Check(NativeHordeKinds.Resolve(id)<NativeHordeKinds.BaseCount,"content kind "+id+" still resolves to one of the seven");
             Check(NativeHordeKinds.Resolve("future-kind")==NativeHordeKinds.Shambler&&NativeHordeKinds.MixCount==NativeHordeKinds.Hulk,"unknown ids still draw as the shambler; the DEV mix still hashes over the first six");
+            // The live maps (the live Expedition layout, which runs the Central Station and City Ironworks areas; its activation
+            // snapshots; every Expedition draft fixture; the Unity maps): each kind an allow list names is known and resolves as at the
+            // base, and each proposed station enemy is refused by Known and in no allow list. Known is the authority's and the wire's
+            // test (NativeNetworkFrame's minion validation, NativeDevMonsterAuthority's DEV spawns, NativeExpeditionLayout's allow
+            // lists), so they accept and refuse exactly what they did; the split-area runtime carries no kind of its own.
+            var seven=NativeHordeKinds.Ids.Take(NativeHordeKinds.BaseCount).ToArray();int files=0,allowed=0,proposed=0;
+            foreach(var file in new[]{"Assets/Conversion/Resources/ExpeditionLayout.json","Assets/Conversion/Resources/UnityMaps.json"}.Concat(Directory.GetFiles(Path.Combine(root,"Tests"),"expedition-*.json").OrderBy(f=>f,StringComparer.Ordinal).Select(f=>"Tests/"+Path.GetFileName(f))))
+            {
+                using var doc=JsonDocument.Parse(R(root,file));var allow=new List<string>();var station=new List<string>();Collect(doc.RootElement,null,allow,station);files++;
+                foreach(var id in allow){int b=Array.IndexOf(seven,id);Check(b>=0&&NativeHordeKinds.Known(id)&&NativeHordeKinds.Resolve(id)==b,file+": allowed kind "+id+" is known and resolves as at the base");allowed++;}
+                foreach(var id in station){Check(ids.Contains(id)&&!NativeHordeKinds.Known(id)&&!allow.Contains(id),file+": proposed "+id+" is refused by Known and in no allow list");proposed++;}
+            }
+            Check(files>=10&&allowed>0&&proposed>0,"the live layout and fixtures were read ("+files+" files, "+allowed+" allowed, "+proposed+" proposed)");
+            for(int k=0;k<NativeHordeKinds.BaseCount;k++)Check(NativeHordeKinds.Known(NativeHordeKinds.Ids[k])&&NativeHordeKinds.Resolve(NativeHordeKinds.Ids[k])==k,NativeHordeKinds.Ids[k]+" is known and resolves to itself as at the base");
+            foreach(var id in new[]{null,"","future-kind","Linesman","pileup "})Check(!NativeHordeKinds.Known(id),"Known still refuses "+(id??"null"));
+        }
+        private static void Collect(JsonElement e,string key,List<string> allow,List<string> station)
+        {
+            if(e.ValueKind==JsonValueKind.Object){foreach(var p in e.EnumerateObject())Collect(p.Value,p.Name,allow,station);}
+            else if(e.ValueKind==JsonValueKind.Array){foreach(var v in e.EnumerateArray())if(v.ValueKind==JsonValueKind.String){if(key=="allow")allow.Add(v.GetString());else if(key=="station")station.Add(v.GetString());}else Collect(v,key,allow,station);}
         }
         // ---- today's seven exactly as at the base (every table, model, take and pose) ----
         private static void Unchanged(string root)
@@ -233,6 +253,11 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<28;i++)if(NativeStationFx.SplitChunk(9,i,1.2f,out var p,out _,out _))Check(p.Y>=0,"the split's pieces rest on the floor");
             Check(NativeStationFx.WindowFlicker(4,1,.05f)!=NativeStationFx.WindowFlicker(4,1,float.NaN)||NativeStationFx.WindowFlicker(4,1,.1f)!=NativeStationFx.WindowFlicker(4,1,float.NaN),"a hit stutters the window");
             Check(NativeStationFx.AboardFlash(0)==1&&NativeStationFx.AboardFlash(.5f)==0&&NativeStationFx.AboardTrail(3)>.99f&&NativeStationFx.AboardTrail(NativeStationKinds.AboardSeconds+.1f)==0,"the buff's flash and trail");
+            // The headlamp's beam stops at the floor (and lays its pool there), never runs past its length, and fades end-on.
+            Check(Math.Abs(NativeStationFx.BeamReach(1.8f,.6f,out bool lands)-3)<1e-5f&&lands&&NativeStationFx.BeamReach(1.8f,.1f,out lands)==NativeStationFx.BeamLength&&!lands&&NativeStationFx.BeamReach(1.8f,-.3f,out lands)==NativeStationFx.BeamLength&&!lands,"the beam lands on the floor within its length");
+            Check(NativeStationFx.BeamAlpha(0,0)>0&&NativeStationFx.BeamAlpha(1,0)>NativeStationFx.BeamAlpha(0,0)&&NativeStationFx.BeamAlpha(1,.99f)<.02f&&NativeStationFx.BeamAlpha(1,-1)==0,"the beam brightens with the charge and fades when seen end-on");
+            for(float c=0;c<=1;c+=.25f)for(float f=0;f<=1;f+=.25f){NativeStationFx.Lamp(c,f,out float ls,out float lg);NativeStationFx.Pack(f>.5f,c,f,out float ps,out float pg);NativeStationFx.Eyes(f>.5f,c,f,out float es,out float eg);
+                Check(ls>0&&ls<1.2f&&lg>0&&ps>0&&ps<1.2f&&pg>0&&es>0&&es<1&&eg>0,"the identity halos stay inside a metre or so at every charge and distance");}
         }
         // ---- no allocation per frame: every state of every kind, the effects ----
         private static void Allocation()

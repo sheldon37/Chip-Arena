@@ -39,8 +39,10 @@ namespace ChipArena.UnityConversion
         public static readonly bool[] Shipped={true,true,true,true,false,false,true};
         /// <summary>The kind an add kind id draws as (an unknown or missing id: the shambler).</summary>
         public static int Resolve(string id){if(id!=null)for(int i=0;i<Count;i++)if(string.Equals(Ids[i],id,StringComparison.Ordinal))return i;return Shambler;}
-        /// <summary>Whether an id names one of the kinds (no fallback).</summary>
-        public static bool Known(string id){if(id!=null)for(int i=0;i<Count;i++)if(string.Equals(Ids[i],id,StringComparison.Ordinal))return true;return false;}
+        /// <summary>Whether an id names one of the kinds (no fallback): the authority's and the wire's test (frame validation, DEV
+        /// spawns, layout allow lists). The Siren's seven always; a zone kind (ZoneKind) only once it is marked shipped, i.e. once
+        /// its content row exists, so registering a zone kind's presentation changes no validation. Resolve draws it before that.</summary>
+        public static bool Known(string id){if(id!=null)for(int i=0;i<Count;i++)if(string.Equals(Ids[i],id,StringComparison.Ordinal))return i<BaseCount||Shipped[i];return false;}
         /// <summary>The DEV preview's kind (looks only, presentation side; Settings · Developer and the Dev Sandbox gallery): -1 draws
         /// every add as its own kind, 0..6 every add as that kind, <see cref="Mix"/> every add as a kind hashed from its id.</summary>
         public static int Preview=-1;public const int Mix=-2;

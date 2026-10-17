@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         private static List<JsonElement> Adds(string root){var doc=JsonDocument.Parse(R(root,"Assets/Conversion/Resources/PveContent.json"));return doc.RootElement.GetProperty("adds").EnumerateArray().ToList();}
         private static void Kinds(string root)
         {
-            for(int k=0;k<NativeHordeKinds.Count;k++){Check(NativeHordeKinds.Resolve(NativeHordeKinds.Ids[k])==k,"kind "+NativeHordeKinds.Ids[k]+" resolves to itself");Check(NativeHordeKinds.Known(NativeHordeKinds.Ids[k]),"kind "+k+" is known");}
+            for(int k=0;k<NativeHordeKinds.Count;k++){Check(NativeHordeKinds.Resolve(NativeHordeKinds.Ids[k])==k,"kind "+NativeHordeKinds.Ids[k]+" resolves to itself");Check(NativeHordeKinds.Known(NativeHordeKinds.Ids[k])==(k<NativeHordeKinds.BaseCount||NativeHordeKinds.Shipped[k]),"kind "+k+" is known (a zone kind once shipped)");}
             Check(NativeHordeKinds.Resolve(null)==NativeHordeKinds.Shambler&&NativeHordeKinds.Resolve("")==NativeHordeKinds.Shambler&&NativeHordeKinds.Resolve("future-kind")==NativeHordeKinds.Shambler&&!NativeHordeKinds.Known("future-kind"),"an unknown or missing kind draws as the shambler");
             Check(NativeHordeKinds.Resolve("Brute")==NativeHordeKinds.Shambler,"ids are exact (ordinal)");
             var ids=Adds(root).Select(a=>a.GetProperty("id").GetString()).ToList();
