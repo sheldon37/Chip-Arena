@@ -1,19 +1,145 @@
 ## 2026-10-17 — Claude: Central Station enemies presentation (Linesman, Conductor, Undertow, Pileup)
 
-- Branch `claude/station-enemies`, base shared `8a5de43`, with shared `4164d5c` and `78bb12a` merged in (Astra's live activation, PRs #255-#258). Implemented on branch only: not merged, not live, no PR, no publication.
-- Presentation of `docs/EXPEDITION-CENTRAL-STATION.md` sections 7-8 (decisions in 14), drawn behind a Core view until Astra adds the rows and fields. New files: `Core/NativeStationKinds.cs` (ids, hues, timings, cue keys, `NativeStationView`), `NativeStationModels.cs` (models and props on the zombie rig, three tiers), `NativeStationMotion.cs` (specials over the gait and mocap), `NativeStationFx.cs` (shared VFX maths), `Runtime/NativeStationKindsPresentation.cs` (binding, effects, cues, Dev Sandbox gallery row).
+- Branch `claude/station-enemies`, base shared `8a5de43`, with shared `4164d5c`, `78bb12a` and `6404332` merged in (Astra's live activation, PRs #255-#260, and the City Ironworks enemies). Implemented on branch only: not merged, not live, no PR, no publication.
+- Presentation of `docs/EXPEDITION-CENTRAL-STATION.md` sections 7-8 (decisions in 14), drawn behind a Core view until Astra adds the rows and fields. New files: `Core/NativeStationKinds.cs` (ids, hues, timings, cue keys, `StationView`), `NativeStationModels.cs` (models and props on the zombie rig, three tiers), `NativeStationMotion.cs` (specials over the gait and mocap), `NativeStationFx.cs` (shared VFX maths), `Runtime/NativeStationKindsPresentation.cs` (binding, effects, cues, Dev Sandbox gallery row).
 - Linesman: hi-vis vest, hard hat and headlamp, insulated gloves, coiled jumper cables, battery weak point; arc wind-up, jagged bolt chaining to 3 targets, grounded glow and sparks, shock death. Conductor: long coat, cap, whistle, red lantern; whistle ring and red ALL ABOARD trails on buffed adds, last call with the lantern rung high, lantern drops and shatters on death. Undertow: drowned skin, slicker and hood; submerged eyes and ripples, surfacing splash, grab telegraph, backward drag, release, sinking death. Pileup: fused bodies behind a carriage door with a lit window; brace, shove, crush, front-hit sparks and window stutter, door falls and the body splits on death.
-- Registration: kinds 7-10 after the Siren's seven (`NativeHordeKinds.ZoneKind`, not shipped). `NativeHordeKinds.Known` (frame validation, DEV spawns, layout allow lists) still refuses them until a zone kind is marked shipped; `Resolve` draws them for the DEV preview and gallery. The seven existing kinds are bit-identical to base `8a5de43` (166 measures). Every kind named by the live layout, its activation snapshots and the drafts is known and resolves as before.
-- Shared-file hooks: one-line calls in `NativeHordeKindPresentation.cs` and `NativeHordeKindModels.cs`; per-kind tables extended in `NativeHordeKinds/Models/Motion` and `NativeZombieMotion`; 22 `pve.station.*` bank keys with existing stand-ins; 7 takes from the same licensed zombie pack (exporter, generated clips, provenance; no new LocalAssets zip). Test hooks: Program, HordeKind, HulkSpitter and EffectsAudio counts.
+- Registration mirrors the Ironworks pattern: `NativeStationKinds.Kinds` (`HordeZoneKind` rows) joins `NativeHordeZones.Kinds` after the Ironworks' five, so the four are horde kinds 12-15 (`NativeHordeKinds.All` 16, `Count` stays 7); `First/Kind/Local/Is` as `NativeIronworksKinds`; the view is a `StationView` struct with `None`, bound by `StationViewOf` as `IronworksViewOf`.
+- Safe with the live maps (`expedition-transit` / exp-transit and the rest): `NativeHordeKinds.Known` (minion frame validation, DEV spawns, layout allow lists) now accepts a zone kind only once `HordeZoneKind.Shipped` is set with its content row, so it accepts and refuses exactly what the base did. This also applies to the Ironworks' five (their check now expects them unknown until shipped). The seven Siren kinds are bit-identical to base `8a5de43` (166 measures), and every kind named by the live layout, its activation snapshots and the drafts is known and resolves as before. All sixteen kinds build, walk and are named in the bank side by side.
+- Shared-file hooks: one-line calls in `NativeHordeKindPresentation.cs` and `NativeHordeKindModels.cs`; `NativeHordeZones` registration line plus `HordeZoneKind.Shipped`; `NativeHordeModels.Build` default case; `NativeHordeKinds.Known`; 22 `pve.station.*` bank keys with existing stand-ins; 7 takes from the same licensed zombie pack (exporter, generated clips, provenance; no new LocalAssets zip). Test hooks: Program, IronworksKind (registration count and Known), EffectsAudio and Python key counts (282). Zone kinds grow no black-flame tongues (the shared rule), so the station's own tongue anchors were dropped.
 - Animation impacts: none on existing kinds (hit timing, hitboxes, damage, cooldowns, movement and networking unchanged; checked). Station melee lands at LastAttack + hit; specials strike on section 7's times (arc 1.1 s, whistle 0.8, last call 1.2, grab 0.6, shove 0.7); posed bodies stay inside their section 8 capsules. Nothing spawns through the authority.
-- For Astra: give `ArenaPresentation.StationViewOf(NativeMinion m)` a one-line body that returns the minion's `NativeStationView` (`attack, arcTargets, arcAt, grounded, lanternBroken, lastCallAt, aboardUntil, submerged, surfaceAt, grabTarget, grabAt, releaseAt, splitAt, childIds`). Then add the content rows and set `ZoneKind.Shipped`.
-- Checks (merged tree): `--station-enemies` PASS (station enemies 154,011; horde kinds 633,107; zombie motion 29,750 with 46 tracks; hulk and spitter 49,154); `--footfalls` PASS; `--expedition-layout` PASS (split area 31, area runtime 294, cohorts 69, joins 25, area wire 25, layout 630, station draft 118); Unity runtime+editor compile OK. The five-check run result is in the following entry line. Renders: WebGL harness through the real rig and NativeBlockLit (scratch, not committed).
+- For Astra: give `ArenaPresentation.StationViewOf(NativeMinion m)` a one-line body that returns the minion's `StationView` (`attack, arcTargets, arcAt, grounded, lanternBroken, lastCallAt, aboardUntil, submerged, surfaceAt, grabTarget, grabAt, releaseAt, splitAt, childIds`; times NaN and ids -1 when unset). Then add the content rows and set `HordeZoneKind.Shipped`.
+- Checks (merged tree): `--station-enemies` PASS (station enemies 154,138; ironworks kinds 281,252; horde kinds 433,794; zombie motion 29,765 with 46 tracks; hulk and spitter 49,154); `--footfalls` PASS (effects audio 282 keys); `--expedition-layout` PASS (split area 31, layout 630, station draft 118); Unity runtime+editor compile OK. Five-check run: FIVE_PLACEHOLDER. Renders: WebGL harness through the real rig and NativeBlockLit (scratch, not committed).
 - Not done: real slot lights (halos and bloom only), the dragged pilot's pose, the split crawlers' entrance, the audio recordings (keys use stand-ins), Unity Editor and Windows play. Renders are a WebGL harness through the real rig and shader, not the game.
+
+## 2026-10-17 — Astra: activation published to native test
+
+- Source `45e24acb2d80a8d63f2eb08de879144dbea70c7c` (PR #255 plus native gate repairs #256–259), shared and builder synced. Windows SHELDON Build-and-Publish started 01:04:04 UTC, exited successfully and published at 01:07:11 UTC. Public native/windows-x64/latest.json inspected: version `ae31a979cd2385cd0dd0a03cdd1c60bfb7aa6cca7e5f8274c77fbb8b30a01105`, revision `639277959795718335`, archive `e6f2ea65e8af4e959c693f09199e46ce3e3fbc469894bf09370584088edbcb3b`, 142,823,595 bytes, 231 files.
+- Actual Unity gate passes all live placement/routes, M1 combat/final/Continue/extraction, native co-op, scene isolation and subset transfer. New four-area activation gate passes 1,800 ticks / 30 simulated seconds with one pilot in each area: hub 4 mobs, each instance 8 mobs. Total fixture 3,176.4 ms, worst tick 19.3 ms, p95 5.8 ms; raw encoded packet accounting 92,013,735 bytes, managed memory delta 11,358,208 bytes. These are automated fixture results, not human multiplayer or rendered FPS measurements.
+- Three-second circles replace F entry; Ward's circle is off the door; Central Station and City Ironworks are active. Protocol 3 requires all players to update/restart. Current roster and placeholder Siren bosses are used. Claude's newer optional objectives, custom enemy/hazard designs and visual polish remain separately scoped; no claim those are implemented.
+- Build failures were resolved without bypassing gates: support-normal capsule lift, navigation excluding non-colliding ramp treads, and the native fixture waiting for the final shutter after all three instances clear. Final release evidence is also recorded on PR #255. This documentation-only receipt does not require another player build.
+
+## 2026-10-17 — Astra: advance final-shutter time in the three-instance native fixture
+
+- Native `78bb12a` passes Station/Ironworks placement and reachability after navigation regeneration, then reaches the old M1 combat fixture's final-trigger assertion. The fixture cleared the two additional rule-only instances after its old shutter wait and never advanced the director again; the final shutter correctly remained sealed.
+- Move through the existing one-second shutter lifecycle after the last clear before asserting final combat. Production gate timing and collision are unchanged. Native rebuild still required; activation is not yet published.
 
 ## 2026-10-17 — Astra: align Ironworks navigation with native ramp collision
 
 - Native `640af06` passes Station geometry after the slope fix, then fails Ironworks. Diagnostic `4164d5c` identifies phantom tread-top nodes (e.g. stock stair at x38.5/z13.5 has a y0.50 tread node while native floor is y0.25). Unity replaces ramp-listed blocks with smooth colliders; the importer only excluded navHints.collisionOff, empty in the original Ironworks draft.
 - Exclude every ramp.blocks tread from navigation collision/surface generation as Unity does. Preserve authored blocks/rendering, ramps and layout hashes. Add a small ramp fixture proving node heights match the smooth support, regenerate live navigation, retain all native placement/reachability/activation gates. Publication pending successful native rebuild.
+
+## 2026-10-17 — Claude: City Ironworks enemies' in-game presentation (Cinderling, Stoker, Slagback, Ladleman, Rigger; not live)
+
+- Owner (2026-10-16): "Go with your picks, add the rigger as well." The task came through the coordinator: presentation for the five
+  approved Ironworks enemies (models, animation, VFX, hit and death looks, cue routing) and decision 14 (the brute's seams turn
+  cream in the Ironworks only). Visuals only. No rules, stats, AI, spawning, authority or networking; those are Astra's.
+- Branch `claude/ironworks-enemies`, base shared `origin/claude/sleepy-ritchie-g8ruhv` `8a5de43`. Implementation commit
+  `aa320f6`. At the coordinator's request it was merged with shared `4164d5c` (which includes #255 and #256 at `640af06`, plus
+  #257) as `3d630d6`, with no conflicts. The follow-up commit is the branch head. This is on the branch only: not merged into
+  shared, builder untouched, no PR. The five kinds are not live and nothing was published.
+- **Live map id finding:** the live Ironworks (exp-layout-5, PR #255) is area `exp-foundry` on map **`expedition-foundry`**.
+  `UnityMaps.json` has no `expedition-ironworks`, which was the design and draft id. Decision 14's cream brute seams therefore
+  apply on both Ironworks ids (`NativeIronworksKinds.LiveMap`/`Map`) and on no other map. A check reads the live layout: its
+  only Ironworks map is exp-foundry's. Because brutes spawn in the live Ironworks today, this is the one visible change once
+  merged. In a split-area run it follows the presented arena, which is the area the local pilot is in.
+- **Registration (zone kinds):** `Core/NativeHordeZones.cs` appends zone kinds after the Siren's seven. `NativeHordeKinds.Count`
+  stays 7 and `All` is 12. The new ids resolve and are `Known`, so frames and allow lists can carry them once Astra's rows
+  exist. Each kind has a capsule, looks, scale, weight, glow, default attack, and its 10.1 row (used for the DEV preview's
+  timing). `NativeHordeKinds.Base(kind)` gives a zone kind its body's gait shape, head and fallbacks. Zone kinds grow no
+  Siren flame tongues. Today's content contains none of the five.
+- **Hooks in shared files** (one line or one token each):
+  - NativeHordeKinds: All, Index, Base, SeamOf, the static constructor that grows the tables, Resolve/Known/Look over All,
+    StepCue by body.
+  - NativeHordeModels: Id (the cream brute in the Ironworks), ids over All, JawHinge/MouthSocket/Tongues by Base, Build's seam
+    colour and zone dispatch, K.SeamHex.
+  - NativeZombieModels: the eyes follow the seam colour.
+  - NativeZombieMotion: the zone kinds' takes and tempo.
+  - NativeHordeMotion: Index/Base for the per-kind tables; the trunk and arms layers.
+  - NativeHordeReact: Index.
+  - NativeHordeKindModels: All; the props, crust and cream models.
+  - NativeHordeKindPresentation: zone flag, hit, the Rigger's off-ground add, the view before the gait, props after it, no
+    base attack job for zone kinds, effects, death (a popped cinderling's body hidden), gallery, clears, cues, the DEV
+    preview list, SeamOf for the brute's telegraph and impact ink.
+  - NativeHordeZombiePresentation: SeamOf for the brute's landing cracks.
+  - The sound bank (34 `pve.ironworks.*` keys) and its two count pins.
+  - HordeKindChecks/HulkSpitterChecks: the Siren's seven by Count.
+- **Models** (`Core/NativeIronworksModels.cs`; three tiers, each inside its capsule):
+  - Cinderling: the runner, charred, with white-hot cracks and a coal in the ribs. 2 looks.
+  - Stoker: a silver heat suit, a square hood with one cyan visor slit, a coat whose halves ride the thighs. 2 hoods.
+  - Slagback: a brute burned black with a white-gold fissure down its back. Its crust is a separate model: glassy slag plates
+    with dim cracks, shed at `shedAt`. 2 looks.
+  - Ladleman: a brute at 1.24 in a leather apron, a welder's mask with a cyan lens, gauntlets.
+  - Rigger: lean and dead grey, with a harness and shackles, a chain bandolier, and a cream hard hat carrying the lamp
+    housing. It is drawn at 1.0, not the doc's 1.04, so the hat stays inside the shambler capsule the contract gives it.
+  - Props: the 3 m rake, the ladle full and spilled (the molten bowl is the brightest thing on any enemy), the crane hook,
+    chain links, the lamp's lens.
+  - The brute's cream-seam variant for the Ironworks (seams and eyes only; same geometry).
+- **Animation** (`Core/NativeIronworksMotion.cs`, layered over the zombie gait). Takes: cinderling sprint-1/3, stoker
+  walk-6/chase-2, slagback walk-4/chase-5, ladleman walk-4 at tempo .7, rigger walk-6/chase-1.
+  - Stoker: carries the rake in both fists in a spear stance; the left fist grips the pole wherever it can reach. The sweep
+    is two-handed on the swipe's channels. The pull: rake raised .7 s, thrust, the hook flies the 4.5 m line from the
+    Stoker on its chain, yanks .35 s, holds .4 s.
+  - Ladleman: carries the ladle, lifts and tips it across the arc (the pour), swings it on the smash take, drops it when
+    spilled and is knocked to a crouch for the stun.
+  - Slagback: a reel when the crust sheds.
+  - Cinderling: a crouch for the lunge.
+  - Rigger: the hook hangs from its fist, is dragged while walking, spins twice overhead and sweeps 300 degrees on 3.2 m of
+    chain. Off the ground it hangs, slides, climbs hand over hand, throws, falls and is stunned (static poses). The landing
+    uses NativeHordeDrop's crouch with a light profile.
+  - Hoods, masks and the hat stay level.
+  - No new clips. The licensed ZOMBIE PRO source is not in this environment, and the doc's "new mocap wanted" takes need new
+    captures. Procedural stand-ins play until they exist.
+- **Effects** (`Core/NativeIronworksFx.cs`, a fixed command buffer drawn by the runtime and by the render harness):
+  - Cinderling: the coal's white flare and halo, a smoke plume, embers. On a melee kill it pops: a fuse strobe with a cream
+    1.4 m warning ring, a flash, embers to 1.4 m, hot cinders, a scorch, and the body is gone. Other kills crumble to ash.
+  - Stoker: the visor slit, the sweep's cream arc and pale trail, the pull's cyan dashed line, hook glint, spark trail,
+    drag sparks.
+  - Slagback: the fissure glow and the slam's cream dashed ring. The slam itself is the zombie impact in fissure ink, plus
+    slag chips, sparks and dust. Crust shards when it sheds; deflect sparks off the crusted front.
+  - Ladleman: the bowl's glow and steam, the pour's cream arc, bubbling, the molten stream and splash, the burning pool, the
+    swing's arc, the spill. The pool has a lobed edge, a hotter core, and its summed layers stay below telegraph brightness.
+  - Rigger: the lamp's halo, plus girder dust at the rattle. The drop shows a cream ring with a white flash at the slide,
+    the lamp's cold pool of light and a glint on the hook, and the hook's swaying shadow. Also glove sparks, a landing dust
+    ring (the zombie landing at the drop's 1.5 m), the swing's 3.2 m cream dashes, a 1 m cold ring and trail, the hook's
+    drag sparks, the chain snap.
+  - Telegraphs are never plain orange.
+- **Cues:** the `pve.ironworks.<kind>.<cue>` keys, section 8's 34 of them. They are registered in the bank contract and play
+  from the bank only, so they stay silent until the owner supplies clips. They are routed at the wind-up, the strike and
+  every special. A zone cue that plays takes the attack layer's slot, so the Siren-kind layers remain the fallback. Loops
+  (carry, hang, climb) are registered but not routed yet.
+- **View binding for Astra:** `IronworksView` (Core) uses the doc's names: `pullTarget`, `pullAt`, `shedAt`, `pourAt`,
+  `pourYaw`, `spilledAt`, `hang`, `lockAt`, `lockX`, `lockZ`, `climbAt`, `climbTo`, `chainCutAt` (NaN/-1 when unset). Binding
+  them is one line: `ArenaPresentation.IronworksViewOf` (Runtime/NativeIronworksKindsPresentation.cs). Until then, each kind
+  plays its attack (LastAttack) and the Rigger plays its hang-point entrance. The proposed timeline is `EntryDuration` 2.5 s:
+  the rattle at SpawnAt, the landing .5 s before ActiveAt. The DEV gallery (Dev Sandbox minion gallery, second row) plays
+  every special. Proposed capsule for Astra: stoker .45 x 1.82 (doc 10.1 updated).
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking for any kind. Strikes land on
+  the authority's LastAttack + hit for the five, as for the seven, and nothing is read back.
+- **Checks** (final tree):
+  - `CoreTests --ironworks-kinds`: PASS (281,240 checks), and PASS horde kinds (433,794).
+  - Bitwise proof against the merged base `4164d5c` Core (and earlier `8a5de43`), base and branch both run: the seven's
+    tables `e86a9dbe400ff15d` (4,062 values), models `792f1ad0b785e817` (3,345,295), takes `38e7846ca894448e`, and gait
+    `1bafd256334a5365` (12,402,621) are identical. Out-of-range lookups are identical. Only indices 7-11 differ.
+  - Today's content has none of the five. The live manifest carries them only as `propose` data: no allow list names them.
+  - Unity runtime+editor compile: OK.
+  - `run5b.sh` on the final tree: all five steps exit 0. Unity runtime+editor compile OK. Relay/CoreTests: 771 PASS lines,
+    including ironworks kinds, horde kinds, spawn-in, and effects audio with all 216 named keys in the contract. Python: 139 tests
+    OK (1 skipped). Package source: 2,262 files. Diff check: clean.
+  - Earlier runs, fixed before the final one: the bank-key audit and a footfall source pin flagged a built key prefix and a moved
+    `HordeDust` argument. One direct CoreTests run had a single spawn-in allocation miss (7,408 bytes); it passed on the rerun.
+- **Renders:** offline, through the real rig, Core models and FX, with the NativeBlockLit/NativeNightSky shaders in the
+  Ironworks draft's foundry lighting. Scratch only, not in the repo: the session scratchpad's `renders-ironworks-enemies/`
+  (lineups; per kind move/telegraph/strike/special/death; `brute-cream-close.png`). Not run: Unity Editor, Windows player, two clients, the
+  real NativeSourceLit actor shading.
+- **Not done / risks:**
+  - The Ladleman's pool is a decal stand-in. The molten shader from `claude/ironworks-visuals` hooks in at
+    NativeIronworksFx's Ladleman pool and Spill `Blob` calls.
+  - No new mocap, so the pole, ladle, lasso and rope work is procedural.
+  - The loop cues are not routed.
+  - The Siren's faint ink rim and ink blood still apply to the zone kinds.
+  - The pull's hook only follows the target once `pullTarget` is bound.
+  - `claude/station-enemies` adds kinds on the same registration line (`NativeHordeZones.Kinds`), the sound-key block and
+    count pins, and the preview lists, so expect small merge conflicts there.
 
 ## 2026-10-17 — Astra: native activation slope-clearance repair
 

@@ -23,15 +23,15 @@ namespace ChipArena.UnityConversion
     public static partial class NativeHordeModels
     {
         // ---- the station's palette (sRGB) ----
-        private const int VestHex=NativeStationKinds.HiVis,BandHex=0xE6ECEE,HatHex=0xF2C200,HatWhiteHex=0xD8D6CC,GloveHex=0xB8341C,CableHex=0x16161A,CopperHex=0xC07A3A,ClampRedHex=0xC0281E,
+        private const int VestHex=NativeStationKinds.HiVis,BandHex=0xE6ECEE,LinesmanHatHex=0xF2C200,HatWhiteHex=0xD8D6CC,GloveHex=0xB8341C,CableHex=0x16161A,CopperHex=0xC07A3A,ClampRedHex=0xC0281E,
             PackHex=0x24292E,CoatHex=0x1C2230,CoatDarkHex=0x12161F,BrassHex=0xC8A040,VisorHex=0x0B0D11,LinenHex=0xC9C2B0,DrownedHex=0x5E6E62,DrownedDarkHex=0x3F4C44,SlickerHex=0x29382F,
-            WeedHex=0x1E2B20,SuitGreyHex=0x4A4D55,SuitBeigeHex=0x7B6D58,ShirtHex=0x9C9A92,TieHex=0x6A1C24,SteelHex=0x8A9AA0,SteelDarkHex=0x5A666B,RubberHex=0x101214,LiveryHex=0xC0302A;
+            WeedHex=0x1E2B20,SuitGreyHex=0x4A4D55,SuitBeigeHex=0x7B6D58,ShirtHex=0x9C9A92,TieHex=0x6A1C24,StationSteelHex=0x8A9AA0,SteelDarkHex=0x5A666B,RubberHex=0x101214,LiveryHex=0xC0302A;
         private static WeaponPaint P(int hex,float sheen=0)=>WeaponPaint.Solid(hex,sheen);
 
         /// <summary>Builds a zone kind of the Central Station into `k` (false: not a station kind).</summary>
         private static bool StationBuild(K k)
         {
-            switch(k.Kind)
+            switch(NativeStationKinds.Local(k.Kind))
             {
                 case NativeStationKinds.Linesman:Linesman(k);return true;case NativeStationKinds.Conductor:Conductor(k);return true;
                 case NativeStationKinds.Undertow:Undertow(k);return true;case NativeStationKinds.Pileup:Pileup(k);return true;
@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private static void Linesman(K k)
         {
-            int look=k.Look;k.ReducedBevel=.025f;var vest=P(VestHex,.06f);var band=WeaponPaint.Glow(BandHex,.12f,.95f);var glove=P(GloveHex,.1f);var hat=P(look==0?HatHex:HatWhiteHex,.18f);
+            int look=k.Look;k.ReducedBevel=.025f;var vest=P(VestHex,.06f);var band=WeaponPaint.Glow(BandHex,.12f,.95f);var glove=P(GloveHex,.1f);var hat=P(look==0?LinesmanHatHex:HatWhiteHex,.18f);
             // Work trousers and boots on the brute's thick legs; the belt with a tool pouch.
             k.On(CapturedRig.Pelvis);k.Box(Suit,0,-.01f,0,.46f,.23f,.3f,.025f);k.Box(SuitDark,0,.08f,0,.47f,.06f,.31f,.01f);
             if(k.Mid){k.Box(P(0x2A2118),.17f,-.03f,.06f,.1f,.13f,.16f,.012f);k.Box(P(BrassHex,.2f),0,.08f,.157f,.06f,.04f,.012f);k.Hem(-.07f,.22f,.16f,5,.1f,.1f);}
@@ -93,10 +93,10 @@ namespace ChipArena.UnityConversion
             k.On(CapturedRig.RHand);if(k.Mid){k.Box(P(0x101010,.15f),-.06f,-.17f,.06f,.035f,.07f,.03f,.006f,.3f);k.Box(P(CopperHex,.3f),-.06f,-.215f,.07f,.028f,.035f,.022f);}
             Neck(k,.1f,.06f,Muscle);
             // The head under its hard hat: the cracked headlamp on the front (its beam and halo are the presentation's).
-            Head(k,HeadWidth[NativeStationKinds.Linesman],HeadDrop[NativeStationKinds.Linesman],.3f,3);
+            Head(k,NativeStationKinds.HeadWidth[NativeStationKinds.Linesman],NativeStationKinds.HeadDrop[NativeStationKinds.Linesman],.3f,3);
             k.On(CapturedRig.Head);
             {
-                float y=HeadDrop[NativeStationKinds.Linesman];
+                float y=NativeStationKinds.HeadDrop[NativeStationKinds.Linesman];
                 k.Blob(hat,0,.305f+y,-.01f,.138f,.08f,.15f);k.Box(hat,0,.27f+y,.0f,.29f,.024f,.31f,.008f);if(!k.Far)k.Box(hat,0,.274f+y,.15f,.24f,.02f,.065f,.006f,-.25f);
                 if(k.Mid)k.Box(P(look==0?0xC8A000:0xA8A69E,.1f),0,.365f+y,-.01f,.04f,.035f,.27f,.008f);
                 if(!k.Far)k.Box(P(0x2A2A2A,.2f),0,.305f+y,.14f,.085f,.056f,.04f,.008f);k.Box(WeaponPaint.Glow(0xEAF4FF,6f,.9f),0,.305f+y,.162f,.062f,.04f,.012f);
@@ -141,7 +141,7 @@ namespace ChipArena.UnityConversion
                 if(k.Mid&&m)k.Box(Skin,0,-.01f,.09f,.06f,.03f,.04f);
             }
             Neck(k,.055f,.1f,Skin);
-            Head(k,HeadWidth[NativeStationKinds.Conductor],HeadDrop[NativeStationKinds.Conductor],.24f,3);
+            Head(k,NativeStationKinds.HeadWidth[NativeStationKinds.Conductor],NativeStationKinds.HeadDrop[NativeStationKinds.Conductor],.24f,3);
             // The peaked cap: a dark crown, the brass band and badge, the black visor (tilted down over the eyes); look 1 crushed.
             k.On(CapturedRig.Head);
             {
@@ -186,9 +186,9 @@ namespace ChipArena.UnityConversion
                 if(k.Mid)for(int i=0;i<3;i++)k.Box(BoneWhite,(i-1)*.035f,-.02f,.085f,.02f,.018f,.022f);
             }
             Neck(k,.05f,.12f,skin);
-            Head(k,HeadWidth[NativeStationKinds.Undertow],HeadDrop[NativeStationKinds.Undertow],.46f,look==0?3:1);
+            Head(k,NativeStationKinds.HeadWidth[NativeStationKinds.Undertow],NativeStationKinds.HeadDrop[NativeStationKinds.Undertow],.46f,look==0?3:1);
             k.On(CapturedRig.Head);
-            float y=HeadDrop[NativeStationKinds.Undertow];
+            float y=NativeStationKinds.HeadDrop[NativeStationKinds.Undertow];
             if(look==0)
             {
                 // The raincoat's hood pulled up, sodden: it frames the face and the aqua eyes from the dark.
@@ -241,7 +241,7 @@ namespace ChipArena.UnityConversion
             // The second commuter's arm out of the right shoulder, hanging and clawing.
             k.On(CapturedRig.RClav);k.Box(beige,.05f,.06f,-.1f,.1f,.1f,.12f,.02f);k.Box(Skin,.09f,-.05f,-.12f,.08f,.2f,.08f,.02f,.3f,0,-.25f);if(k.Mid)k.Box(SkinDark,.13f,-.17f,-.1f,.07f,.08f,.07f,.01f,.6f);
             Neck(k,.1f,.05f,Muscle);
-            Head(k,HeadWidth[NativeStationKinds.Pileup],HeadDrop[NativeStationKinds.Pileup],.34f,1);
+            Head(k,NativeStationKinds.HeadWidth[NativeStationKinds.Pileup],NativeStationKinds.HeadDrop[NativeStationKinds.Pileup],.34f,1);
         }
 
         // ================================================================================================================
@@ -289,7 +289,7 @@ namespace ChipArena.UnityConversion
                     // A stainless carriage door: brushed panels, the rubber seal, the red livery stripe, the window lit by a dying tube
                     // (its light: WeaponPaint glow, flickered by the presentation's glow), cracked glass, a dent, the handrail, and the
                     // third commuter's arm reaching out through the broken window.
-                    var steel=P(SteelHex,.35f);var steelDark=P(SteelDarkHex,.25f);var rubber=P(RubberHex,.05f);float hw=DoorWidth*.5f,hh=DoorHeight*.5f,t=DoorThick,wy=DoorWindowY,ww=.22f,wh=.2f;
+                    var steel=P(StationSteelHex,.35f);var steelDark=P(SteelDarkHex,.25f);var rubber=P(RubberHex,.05f);float hw=DoorWidth*.5f,hh=DoorHeight*.5f,t=DoorThick,wy=DoorWindowY,ww=.22f,wh=.2f;
                     // The panel below the window, the strip above it and its two sides, framing a lit opening.
                     float top=hh,winTop=wy+wh,winBot=wy-wh;
                     B(steel,0,(-hh+winBot)*.5f,0,DoorWidth,winBot+hh,t,.01f);
@@ -315,29 +315,6 @@ namespace ChipArena.UnityConversion
                 }
             }
             return mesh;
-        }
-
-        // ================================================================================================================
-        // Black-flame tongues (NativeMinionFx) out of each station kind's own anchors (joint frame, source axes).
-        // ================================================================================================================
-        private static Tongue[][] StationTongues(string id)
-        {
-            const int H=CapturedRig.Head,C=CapturedRig.Chest,S=CapturedRig.Spine,LC=CapturedRig.LClav,RC=CapturedRig.RClav,LE=CapturedRig.LElbow,RA=CapturedRig.RArm;
-            switch(id)
-            {
-                // Linesman: out of the battery's vents and the shoulders (the hat stays clean: its lamp is the read).
-                case NativeStationKinds.LinesmanId:return new[]{new[]{T(C,0,0,.4f,-.27f,-.5f,.9f,.4f),TZ(LC,1,.11f,.1f,0,.8f,.8f,2.3f),TZ(RC,1,-.11f,.1f,0,-.8f,.8f,4.5f)},
-                                                        new[]{T(C,1,.08f,.4f,-.27f,-.5f,.85f,1.2f),T(C,0,-.08f,.4f,-.26f,-.4f,.9f,3.1f),TZ(LC,0,.11f,.1f,0,.8f,.75f,5.1f)}};
-                // Conductor: out of the coat's collar behind the cap and one sleeve (the cap's brass band stays clear).
-                case NativeStationKinds.ConductorId:return new[]{new[]{T(C,0,0,.29f,-.1f,-.6f,.8f,.6f),TZ(C,1,.12f,.27f,-.06f,.6f,.7f,2.6f),T(LE,0,.05f,-.12f,-.05f,-.2f,.55f,4.6f)},
-                                                         new[]{T(C,1,.05f,.29f,-.1f,-.6f,.8f,1.4f),TZ(C,0,-.12f,.27f,-.06f,-.6f,.7f,3.8f)}};
-                // Undertow: low and few (it is wet): out of the hood's back and the spine.
-                case NativeStationKinds.UndertowId:return new[]{new[]{T(H,0,0,.3f,-.12f,-.9f,.7f,1.1f),T(C,1,0,.24f,-.15f,-.7f,.65f,3.2f)},
-                                                        new[]{T(H,1,.04f,.28f,-.08f,-.8f,.7f,1.9f),T(S,0,0,.12f,-.13f,-.5f,.6f,4.4f)}};
-                // Pileup: out of the fused hump and round the second head.
-                case NativeStationKinds.PileupId:return new[]{new[]{T(C,0,0,.38f,-.18f,-.3f,1.2f,.5f),T(C,1,-.15f,.34f,-.18f,-.4f,1.1f,2.2f),TZ(RC,1,-.12f,.18f,-.04f,-.7f,.9f,4.0f),T(RA,0,0,-.08f,-.1f,-.25f,.7f,5.4f)}};
-            }
-            return null;
         }
     }
 }

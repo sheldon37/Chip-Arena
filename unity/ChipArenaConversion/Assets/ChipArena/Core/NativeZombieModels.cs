@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
         private static WeaponPaint ToothPaint=>WeaponPaint.Solid(TeethHex,.08f);private static WeaponPaint Gum=>WeaponPaint.Solid(GumHex);private static WeaponPaint Hair=>WeaponPaint.Solid(HairHex);
         private static WeaponPaint Muscle=>WeaponPaint.Solid(MuscleHex,.07f);private static WeaponPaint Socket=>WeaponPaint.Solid(0x070405);
         /// <summary>The eyes: a steady glow in the kind's colour (no flicker code: they never drop out, as the Siren's white eyes).</summary>
-        private static WeaponPaint EyeGlow(K k)=>WeaponPaint.Glow(NativeHordeKinds.Seam[k.Kind],2.1f,.7f);
+        private static WeaponPaint EyeGlow(K k)=>WeaponPaint.Glow(k.SeamColor,2.1f,.7f);
         /// <summary>Dried blood and ink round the mouth and the wounds.</summary>
         private static WeaponPaint Gore=>WeaponPaint.Solid(0x3d0f1f,.02f);
 

@@ -12,7 +12,8 @@ namespace ChipArena.UnityConversion
 {
     // The Central Station's four enemies' presentation (Core/NativeStationKinds, NativeStationModels, NativeStationMotion,
     // NativeStationFx; Runtime/NativeStationKindsPresentation.cs; docs/EXPEDITION-CENTRAL-STATION.md sections 7, 8 and 10):
-    // the four ids registered after the Siren's seven and resolving to themselves; today's seven kinds exactly as at the shared
+    // the four ids registered after the Siren's seven and the City Ironworks' five (Core/NativeHordeZones), drawn but unknown to
+    // the authority until shipped; today's seven kinds exactly as at the shared
     // base (Tests/station-enemies-baseline.txt, written by Tests/StationBaseline.cs before these kinds existed); the doc's
     // capsules, rows and telegraph timings; the special strikes landing on those times; the view's field names as section 8
     // names them; the models, props and takes; deterministic effects; no allocation per frame; the runtime presentation only.
@@ -21,41 +22,52 @@ namespace ChipArena.UnityConversion
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Station enemies: "+what);count++;}
         private static string R(string root,string path)=>File.ReadAllText(Path.Combine(root,path));
-        private static readonly int[] Kinds={NativeStationKinds.Linesman,NativeStationKinds.Conductor,NativeStationKinds.Undertow,NativeStationKinds.Pileup};
+        private static readonly int[] Kinds={NativeStationKinds.Kind(NativeStationKinds.Linesman),NativeStationKinds.Kind(NativeStationKinds.Conductor),NativeStationKinds.Kind(NativeStationKinds.Undertow),NativeStationKinds.Kind(NativeStationKinds.Pileup)};
         public static void Run(string root)
         {
             Registration(root);Unchanged(root);string doc=Doc(root);if(doc!=null){Contract(doc);Timings(doc);Fields(doc,root);Audio(doc);}else{Timings(null);Fields(null,root);}
             Strikes();Models();Takes(root);Effects();Allocation();Runtime(root);
-            Console.WriteLine("PASS station enemies ("+count+" checks: the four registered after the Siren's seven, the seven exactly as at the base, section 8's capsules and rows, section 7's telegraphs on their times, the view's section 8 field names, models, props and takes, deterministic effects, the cue keys, no allocation, presentation-only runtime)");
+            Console.WriteLine("PASS station enemies ("+count+" checks: the four registered after the Siren's seven and the Ironworks' five, all sixteen side by side, the seven exactly as at the base, the live maps' kinds known as before, section 8's capsules and rows, section 7's telegraphs on their times, the view's section 8 field names, models, props and takes, deterministic effects, the cue keys, no allocation, presentation-only runtime)");
         }
         private static string Doc(string root){string path=Path.Combine(root,"../../docs/EXPEDITION-CENTRAL-STATION.md");if(!File.Exists(path)){Console.WriteLine("SKIP station enemies doc: docs/EXPEDITION-CENTRAL-STATION.md is not in this tree");return null;}return File.ReadAllText(path);}
 
-        // ---- the four registered as zone kinds 7-10 ----
+        // ---- the four registered as zone kinds after the Ironworks' (Core/NativeHordeZones) ----
         private static void Registration(string root)
         {
-            Check(NativeHordeKinds.BaseCount==7&&NativeHordeKinds.Count==NativeHordeKinds.BaseCount+NativeHordeKinds.Zones.Length&&NativeStationKinds.First==NativeHordeKinds.BaseCount&&NativeStationKinds.End<=NativeHordeKinds.Count,"the station's kinds follow the Siren's seven");
+            Check(NativeHordeKinds.Count==7&&NativeHordeKinds.All==NativeHordeKinds.Count+NativeHordeZones.Count&&NativeHordeZones.Count==NativeIronworksKinds.KindCount+NativeStationKinds.KindCount,"the Siren's seven stay Count; the zones' kinds follow them (All "+NativeHordeKinds.All+")");
+            // Both zones registered side by side (Core/NativeHordeZones): the City Ironworks' five first, then the station's four.
+            Check(NativeIronworksKinds.First==NativeHordeKinds.Count&&NativeStationKinds.First==NativeHordeZones.First(NativeStationKinds.Kinds)&&NativeStationKinds.First==NativeIronworksKinds.First+NativeIronworksKinds.KindCount&&NativeStationKinds.First+NativeStationKinds.KindCount==NativeHordeKinds.All,"the station's four follow the Ironworks' five");
+            for(int k=0;k<NativeHordeKinds.All;k++)
+            {
+                bool iron=NativeIronworksKinds.Is(k),station=NativeStationKinds.Is(k);var z=NativeHordeZones.Of(k);
+                Check(k<NativeHordeKinds.Count?z==null&&!iron&&!station:z!=null&&iron!=station&&z.Id==NativeHordeKinds.Ids[k]&&NativeHordeKinds.Resolve(z.Id)==k&&!NativeHordeKinds.Known(z.Id)&&!NativeHordeKinds.Shipped[k],"kind "+k+" ("+NativeHordeKinds.Ids[k]+") belongs to exactly one zone or to the Siren");
+                Check(k>=NativeHordeKinds.Count||NativeHordeKinds.Base(k)==k&&NativeHordeKinds.Index(k)==k,"a Siren kind is its own base");
+            }
+            foreach(var len in new[]{NativeHordeKinds.Ids.Length,NativeHordeKinds.Names.Length,NativeHordeKinds.Shipped.Length,NativeHordeKinds.Looks.Length,NativeHordeKinds.Radius.Length,NativeHordeKinds.Height.Length,NativeHordeKinds.Axis.Length,NativeHordeKinds.Root.Length,NativeHordeKinds.CenterAhead.Length,NativeHordeKinds.Scale.Length,NativeHordeKinds.Mass.Length,NativeHordeKinds.Default.Length,NativeHordeKinds.Seam.Length,NativeHordeKinds.SeamClass.Length})
+                Check(len==NativeHordeKinds.All,"every kind table holds all "+NativeHordeKinds.All+" kinds ("+len+")");
+            for(int k=0;k<NativeHordeKinds.All;k++){NativeZombieMotion.Walks(k);NativeZombieMotion.Runs(k);NativeZombieMotion.Idles(k);var m=NativeHordeModels.Build(k,0,NativeHordeModels.Impostor);Check(m.Mesh.Triangles>0&&NativeHordeModels.Id(k,0,0)=="minion-"+NativeHordeKinds.Ids[k]+"-0-full","kind "+k+" builds, walks and is named in the bank");}
             string[] ids={"linesman","conductor","undertow","pileup"},names={"Linesman","Conductor","Undertow","Pileup"};int[] body={NativeHordeKinds.Brute,NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Brute};
             for(int i=0;i<4;i++)
             {
                 int k=Kinds[i];Check(NativeHordeKinds.Ids[k]==ids[i]&&NativeHordeKinds.Names[k]==names[i]&&NativeHordeKinds.Resolve(ids[i])==k&&!NativeHordeKinds.Known(ids[i]),ids[i]+" resolves to kind "+k+" (drawn) but is not known to the authority or the wire until shipped");
-                Check(NativeHordeKinds.Zone(k)&&NativeStationKinds.Is(k)&&NativeHordeKinds.Body(k)==body[i],ids[i]+" borrows its body tables from "+NativeHordeKinds.Ids[body[i]]);
+                Check(NativeHordeZones.Of(k)!=null&&NativeStationKinds.Is(k)&&NativeHordeKinds.Base(k)==body[i],ids[i]+" borrows its body tables from "+NativeHordeKinds.Ids[body[i]]);
                 Check(!NativeHordeKinds.Shipped[k],ids[i]+" is not shipped (no content row yet: Astra's)");
                 Check(NativeHordeKinds.Looks[k]>=1&&NativeHordeKinds.Looks[k]<=NativeHordeKinds.MostLooks,ids[i]+" looks within the bank's");
-                Check(NativeHordeKinds.Root[k]==NativeHordeKinds.AddHeight*.5f&&NativeHordeKinds.Height[k]==NativeHordeKinds.AddHeight&&NativeHordeKinds.Axis[k]==1&&NativeHordeKinds.CenterAhead[k]==0,ids[i]+" drawn on the rig's own 1.7 m (its scale makes the capsule)");
+                Check(NativeHordeKinds.Root[k]==NativeHordeKinds.AddHeight*.5f&&Math.Abs(NativeHordeKinds.Height[k]-NativeHordeKinds.AddHeight)<1e-5f&&NativeHordeKinds.Axis[k]==1&&NativeHordeKinds.CenterAhead[k]==0,ids[i]+" drawn on the rig's own 1.7 m (its scale makes the capsule)");
                 Check(Math.Abs(NativeHordeKinds.RootHeight(k,false)-NativeHordeKinds.WorldHeight(k)*.5f)<1e-5f,ids[i]+": the floor found from the authority's capsule centre");
             }
-            for(int k=0;k<NativeHordeKinds.Count;k++)for(int j=0;j<k;j++)Check(NativeHordeKinds.Ids[k]!=NativeHordeKinds.Ids[j],"kind ids are unique");
+            for(int k=0;k<NativeHordeKinds.All;k++)for(int j=0;j<k;j++)Check(NativeHordeKinds.Ids[k]!=NativeHordeKinds.Ids[j],"kind ids are unique");
             // Nothing in today's content names them; every content id resolves to the kind it did.
             using var pve=JsonDocument.Parse(R(root,"Assets/Conversion/Resources/PveContent.json"));var contentIds=pve.RootElement.GetProperty("adds").EnumerateArray().Select(a=>a.GetProperty("id").GetString()).ToList();
             foreach(var id in ids)Check(!contentIds.Contains(id),"PveContent has no "+id+" row yet (Astra adds it)");
-            foreach(var id in contentIds)Check(NativeHordeKinds.Resolve(id)<NativeHordeKinds.BaseCount,"content kind "+id+" still resolves to one of the seven");
+            foreach(var id in contentIds)Check(NativeHordeKinds.Resolve(id)<NativeHordeKinds.Count,"content kind "+id+" still resolves to one of the seven");
             Check(NativeHordeKinds.Resolve("future-kind")==NativeHordeKinds.Shambler&&NativeHordeKinds.MixCount==NativeHordeKinds.Hulk,"unknown ids still draw as the shambler; the DEV mix still hashes over the first six");
             // The live maps (the live Expedition layout, which runs the Central Station and City Ironworks areas; its activation
             // snapshots; every Expedition draft fixture; the Unity maps): each kind an allow list names is known and resolves as at the
             // base, and each proposed station enemy is refused by Known and in no allow list. Known is the authority's and the wire's
             // test (NativeNetworkFrame's minion validation, NativeDevMonsterAuthority's DEV spawns, NativeExpeditionLayout's allow
             // lists), so they accept and refuse exactly what they did; the split-area runtime carries no kind of its own.
-            var seven=NativeHordeKinds.Ids.Take(NativeHordeKinds.BaseCount).ToArray();int files=0,allowed=0,proposed=0;
+            var seven=NativeHordeKinds.Ids.Take(NativeHordeKinds.Count).ToArray();int files=0,allowed=0,proposed=0;
             foreach(var file in new[]{"Assets/Conversion/Resources/ExpeditionLayout.json","Assets/Conversion/Resources/UnityMaps.json"}.Concat(Directory.GetFiles(Path.Combine(root,"Tests"),"expedition-*.json").OrderBy(f=>f,StringComparer.Ordinal).Select(f=>"Tests/"+Path.GetFileName(f))))
             {
                 using var doc=JsonDocument.Parse(R(root,file));var allow=new List<string>();var station=new List<string>();Collect(doc.RootElement,null,allow,station);files++;
@@ -63,7 +75,7 @@ namespace ChipArena.UnityConversion
                 foreach(var id in station){Check(ids.Contains(id)&&!NativeHordeKinds.Known(id)&&!allow.Contains(id),file+": proposed "+id+" is refused by Known and in no allow list");proposed++;}
             }
             Check(files>=10&&allowed>0&&proposed>0,"the live layout and fixtures were read ("+files+" files, "+allowed+" allowed, "+proposed+" proposed)");
-            for(int k=0;k<NativeHordeKinds.BaseCount;k++)Check(NativeHordeKinds.Known(NativeHordeKinds.Ids[k])&&NativeHordeKinds.Resolve(NativeHordeKinds.Ids[k])==k,NativeHordeKinds.Ids[k]+" is known and resolves to itself as at the base");
+            for(int k=0;k<NativeHordeKinds.Count;k++)Check(NativeHordeKinds.Known(NativeHordeKinds.Ids[k])&&NativeHordeKinds.Resolve(NativeHordeKinds.Ids[k])==k,NativeHordeKinds.Ids[k]+" is known and resolves to itself as at the base");
             foreach(var id in new[]{null,"","future-kind","Linesman","pileup "})Check(!NativeHordeKinds.Known(id),"Known still refuses "+(id??"null"));
         }
         private static void Collect(JsonElement e,string key,List<string> allow,List<string> station)
@@ -108,8 +120,8 @@ namespace ChipArena.UnityConversion
             }
             // Section 7's identity hues (none repeats a Siren kind's seam).
             string sec7=Between(doc,"## 7. The station's enemies","### 7.1");
-            foreach(var (k,hex) in new[]{(NativeStationKinds.Linesman,"#6FD8FF"),(NativeStationKinds.Conductor,"#E8F0FF"),(NativeStationKinds.Undertow,"#2EF0C0")})
-            {Check(sec7.Contains(hex)&&NativeHordeKinds.Seam[k]==int.Parse(hex.Substring(1),NumberStyles.HexNumber),NativeHordeKinds.Ids[k]+" seam "+hex);for(int j=0;j<NativeHordeKinds.BaseCount;j++)Check(NativeHordeKinds.Seam[j]!=NativeHordeKinds.Seam[k],"no seam repeats a Siren kind's");}
+            foreach(var (k,hex) in new[]{(NativeStationKinds.Kind(NativeStationKinds.Linesman),"#6FD8FF"),(NativeStationKinds.Kind(NativeStationKinds.Conductor),"#E8F0FF"),(NativeStationKinds.Kind(NativeStationKinds.Undertow),"#2EF0C0")})
+            {Check(sec7.Contains(hex)&&NativeHordeKinds.Seam[k]==int.Parse(hex.Substring(1),NumberStyles.HexNumber),NativeHordeKinds.Ids[k]+" seam "+hex);for(int j=0;j<NativeHordeKinds.Count;j++)Check(NativeHordeKinds.Seam[j]!=NativeHordeKinds.Seam[k],"no seam repeats a Siren kind's");}
             Check(sec7.Contains("Pileup | none; its lit carriage window is the read"),"the Pileup has no seam hue: its window is the read");
             Check(doc.Contains("orange `#FF6A10`")&&NativeStationKinds.HiVis==0xFF6A10,"the Linesman's hi-vis orange");
         }
@@ -132,7 +144,7 @@ namespace ChipArena.UnityConversion
                 Check(NativeStationKinds.ArcTargets==3&&doc.Contains("chains to up to 2 more pilots"),"the bolt strikes the primary and up to 2 chained pilots");
             }
             Check(NativeStationKinds.SpecialStrike(NativeStationKinds.Special.Arc)==NativeStationKinds.ArcWindup&&NativeStationKinds.SpecialStrike(NativeStationKinds.Special.Whistle)==NativeStationKinds.WhistleWindup&&NativeStationKinds.SpecialStrike(NativeStationKinds.Special.Grab)==NativeStationKinds.GrabTelegraph&&NativeStationKinds.SpecialStrike(NativeStationKinds.Special.Shove)==NativeStationKinds.ShoveWindup&&float.IsNaN(NativeStationKinds.SpecialStrike(NativeStationKinds.Special.None)),"each special strikes at its wind-up");
-            Check(NativeHordeKinds.ProposedRow(NativeStationKinds.Undertow).hit==NativeStationKinds.GrabTelegraph,"the Undertow's grab (its content attack) lands at the telegraph's end");
+            Check(NativeHordeKinds.ProposedRow(NativeStationKinds.Kind(NativeStationKinds.Undertow)).hit==NativeStationKinds.GrabTelegraph,"the Undertow's grab (its content attack) lands at the telegraph's end");
             foreach(var s in new[]{NativeStationKinds.Special.Arc,NativeStationKinds.Special.Whistle,NativeStationKinds.Special.Grab,NativeStationKinds.Special.Shove})Check(NativeStationKinds.SpecialEnd(s)>NativeStationKinds.SpecialStrike(s),s+" plays out after its strike");
             // The arc: held telegraph to the strike, the whip starting exactly then, back to the gait by its end.
             float W=NativeStationKinds.ArcWindup;
@@ -152,22 +164,22 @@ namespace ChipArena.UnityConversion
             NativeStationMotion.ShoveCurve(.3f,out float brace,out thrust,out _,out _);Check(brace>.9f&&thrust==0,"the brace holds before the push");
             // The Undertow's surfacing on the crawl-to-stand at 1.3 times.
             Check(Math.Abs(NativeStationMotion.SurfaceSeconds-NativeZombieClips.Duration(NativeZombieMotion.CrawlStand)/1.3f)<1e-5f,"surfacing plays the crawl-to-stand at 1.3 times");
-            Check(NativeStationKinds.SpecialOf(NativeStationKinds.Linesman,"arc")==NativeStationKinds.Special.Arc&&NativeStationKinds.SpecialOf(NativeStationKinds.Conductor,"whistle")==NativeStationKinds.Special.Whistle&&NativeStationKinds.SpecialOf(NativeStationKinds.Undertow,"grab")==NativeStationKinds.Special.Grab&&NativeStationKinds.SpecialOf(NativeStationKinds.Pileup,"shove")==NativeStationKinds.Special.Shove,"section 8's attack names start the specials");
-            Check(NativeStationKinds.SpecialOf(NativeStationKinds.Linesman,null)==NativeStationKinds.Special.None&&NativeStationKinds.SpecialOf(NativeStationKinds.Linesman,"whistle")==NativeStationKinds.Special.None&&NativeStationKinds.SpecialOf(NativeHordeKinds.Brute,"arc")==NativeStationKinds.Special.None,"anything else is the content's melee");
+            Check(NativeStationKinds.SpecialOf(NativeStationKinds.Kind(NativeStationKinds.Linesman),"arc")==NativeStationKinds.Special.Arc&&NativeStationKinds.SpecialOf(NativeStationKinds.Kind(NativeStationKinds.Conductor),"whistle")==NativeStationKinds.Special.Whistle&&NativeStationKinds.SpecialOf(NativeStationKinds.Kind(NativeStationKinds.Undertow),"grab")==NativeStationKinds.Special.Grab&&NativeStationKinds.SpecialOf(NativeStationKinds.Kind(NativeStationKinds.Pileup),"shove")==NativeStationKinds.Special.Shove,"section 8's attack names start the specials");
+            Check(NativeStationKinds.SpecialOf(NativeStationKinds.Kind(NativeStationKinds.Linesman),null)==NativeStationKinds.Special.None&&NativeStationKinds.SpecialOf(NativeStationKinds.Kind(NativeStationKinds.Linesman),"whistle")==NativeStationKinds.Special.None&&NativeStationKinds.SpecialOf(NativeHordeKinds.Brute,"arc")==NativeStationKinds.Special.None,"anything else is the content's melee");
         }
         // ---- the view: section 8's names, so Astra's binding is one line ----
         private static void Fields(string doc,string root)
         {
-            var t=typeof(NativeStationView);
+            var t=typeof(StationView);
             var want=new (string name,Type type)[]{("attack",typeof(string)),("arcTargets",typeof(int[])),("arcAt",typeof(float)),("grounded",typeof(bool)),("lanternBroken",typeof(bool)),("lastCallAt",typeof(float)),("aboardUntil",typeof(float)),
                 ("submerged",typeof(bool)),("surfaceAt",typeof(float)),("grabTarget",typeof(int)),("grabAt",typeof(float)),("releaseAt",typeof(float)),("splitAt",typeof(float)),("childIds",typeof(int[]))};
-            foreach(var (name,type) in want){var f=t.GetField(name,BindingFlags.Public|BindingFlags.Instance);Check(f!=null&&f.FieldType==type,"NativeStationView."+name+" ("+type.Name+")");}
+            foreach(var (name,type) in want){var f=t.GetField(name,BindingFlags.Public|BindingFlags.Instance);Check(f!=null&&f.FieldType==type,"StationView."+name+" ("+type.Name+")");}
             Check(t.GetFields(BindingFlags.Public|BindingFlags.Instance).Length==want.Length,"the view holds section 8's fields and nothing else");
             if(doc!=null){string sec8=Between(doc,"### Networking: what the presentation needs","### What PR #254");foreach(var n in new[]{"arcTargets","arcAt","grounded","aboardUntil","lanternBroken","lastCallAt","submerged","surfaceAt","grabTarget","grabAt","releaseAt","splitAt"})Check(sec8.Contains("`"+n),"section 8 names `"+n+"`");
                 Check(sec8.Contains("child ids")&&sec8.Contains("`arc`, `whistle`, `grab`, `shove`"),"section 8 names the split's child ids and the four attack names");}
-            var v=new NativeStationView();Check(v.arcAt<-50&&v.lastCallAt<-50&&v.surfaceAt<-50&&v.grabAt<-50&&v.releaseAt<-50&&v.splitAt<-50&&v.aboardUntil<-50&&!v.Aboard(0)&&!v.Holding(0),"a new view holds no event");
+            var v=StationView.None;Check(float.IsNaN(v.arcAt)&&float.IsNaN(v.lastCallAt)&&float.IsNaN(v.surfaceAt)&&float.IsNaN(v.grabAt)&&float.IsNaN(v.releaseAt)&&float.IsNaN(v.splitAt)&&float.IsNaN(v.aboardUntil)&&v.grabTarget==-1&&v.attack==null&&!v.grounded&&!v.submerged&&!v.lanternBroken&&!v.Aboard(0)&&!v.Holding(0),"StationView.None holds no event");
             v.grabTarget=3;v.grabAt=1;v.releaseAt=2.5f;Check(v.Holding(1.2f)&&!v.Holding(2.5f)&&!v.Holding(.9f),"a hold from grabAt to releaseAt");v.aboardUntil=7;Check(v.Aboard(1.1f)&&!v.Aboard(7)&&!v.Aboard(.9f),"the buff for its 6 s");
-            var p=R(root,"Assets/ChipArena/Runtime/NativeStationKindsPresentation.cs");Check(Regex.Matches(p,@"^\s*internal static NativeStationView StationViewOf\(NativeMinion m\)=>[^;\n]+;",RegexOptions.Multiline).Count==1,"the binding is one line (StationViewOf)");
+            var p=R(root,"Assets/ChipArena/Runtime/NativeStationKindsPresentation.cs");Check(Regex.Matches(p,@"^\s*internal static StationView StationViewOf\(NativeMinion m\)=>StationView\.None;",RegexOptions.Multiline).Count==1&&Regex.Matches(p,@"StationViewOf\(m\)").Count>=4,"the binding is one line (StationViewOf, unbound until the rules replicate the fields), and every live read goes through it");
         }
         // ---- section 10's enemy cues ----
         private static void Audio(string doc)
@@ -198,11 +210,11 @@ namespace ChipArena.UnityConversion
         // ---- models and props ----
         private static void Models()
         {
-            foreach(int k in Kinds)for(int l=0;l<NativeHordeKinds.Looks[k];l++){var m=NativeHordeModels.Build(k,l,0);Check(m.Kind==k&&m.Mesh.Spec=="minion-"+k,NativeHordeKinds.Ids[k]+" builds its own model");var t=NativeHordeModels.Tongues(k,l);Check(t.Length>0,NativeHordeKinds.Ids[k]+" has its own tongue anchors");}
+            foreach(int k in Kinds)for(int l=0;l<NativeHordeKinds.Looks[k];l++){var m=NativeHordeModels.Build(k,l,0);Check(m.Kind==k&&m.Mesh.Spec=="minion-"+k,NativeHordeKinds.Ids[k]+" builds its own model");var t=NativeHordeModels.Tongues(k,l);Check(t.Length==0,NativeHordeKinds.Ids[k]+" grows no black flame (the Siren's minions' own; NativeHordeModels.Tongues for every zone kind)");}
             // The identity lights are in the models: the headlamp and battery, the cold eyes, the aqua eyes, the window (the prop).
             bool Glows(WeaponMesh mesh,int hex,float least){var c=WeaponPaint.Linear(hex);foreach(var s in mesh.Sections)foreach(var e in s.Emission){var v=new Vector3(e.X,e.Y,e.Z);if(v.Length()<least)continue;var n=Vector3.Normalize(v);if(Vector3.Dot(n,Vector3.Normalize(c))>.98f)return true;}return false;}
-            Check(Glows(NativeHordeModels.Build(NativeStationKinds.Linesman,0,0).Mesh,0xEAF4FF,3)&&Glows(NativeHordeModels.Build(NativeStationKinds.Linesman,0,0).Mesh,NativeStationKinds.LinesmanBlue,1),"the Linesman's headlamp and battery glow");
-            Check(Glows(NativeHordeModels.Build(NativeStationKinds.Undertow,0,0).Mesh,NativeStationKinds.UndertowAqua,1),"the Undertow's aqua eyes");
+            Check(Glows(NativeHordeModels.Build(NativeStationKinds.Kind(NativeStationKinds.Linesman),0,0).Mesh,0xEAF4FF,3)&&Glows(NativeHordeModels.Build(NativeStationKinds.Kind(NativeStationKinds.Linesman),0,0).Mesh,NativeStationKinds.LinesmanBlue,1),"the Linesman's headlamp and battery glow");
+            Check(Glows(NativeHordeModels.Build(NativeStationKinds.Kind(NativeStationKinds.Undertow),0,0).Mesh,NativeStationKinds.UndertowAqua,1),"the Undertow's aqua eyes");
             foreach(NativeHordeModels.StationProp prop in Enum.GetValues(typeof(NativeHordeModels.StationProp)))
             {
                 int[] budget={1200,800,240};int last=int.MaxValue;
@@ -212,7 +224,7 @@ namespace ChipArena.UnityConversion
             Check(Glows(NativeHordeModels.BuildStationProp(NativeHordeModels.StationProp.Lantern,0),NativeStationKinds.LanternRed,3)&&!Glows(NativeHordeModels.BuildStationProp(NativeHordeModels.StationProp.BrokenLantern,0),NativeStationKinds.LanternRed,1),"the lantern's red light, out once broken");
             Check(Glows(NativeHordeModels.BuildStationProp(NativeHordeModels.StationProp.Door,0),NativeStationKinds.WindowTube,2),"the door's lit window");
             // The door carried inside the Pileup's capsule (its shove reaches past it, as the shove does).
-            var pose=new CapturedRig.Pose();var g=new NativeHordeGait();var mo=new NativeStationMotion();var o=new StationMotionOutput();int pk=NativeStationKinds.Pileup;
+            var pose=new CapturedRig.Pose();var g=new NativeHordeGait();var mo=new NativeStationMotion();var o=new StationMotionOutput();int pk=NativeStationKinds.Kind(NativeStationKinds.Pileup);
             var f=new HordeMotionInput{Kind=pk,Id=71000,Seed=NativeHordeKinds.Seed(71000),Root=new Vector3(0,.85f,0),Health=1,AttackAge=float.NaN};float worst=0;
             for(int i=0;i<120;i++){f.Time=i/60f;g.Pose(f,pose);var s=new StationMotionInput{Kind=pk,Id=71000,Seed=f.Seed,Time=f.Time,Dt=1/60f,SpecialAge=float.NaN,MeleeAge=float.NaN,LastCallAge=float.NaN,SurfaceAge=float.NaN,HoldAge=float.NaN,ReleaseAge=float.NaN};mo.Pose(s,pose,ref o);
                 var door=NativeHordeModels.BuildStationProp(NativeHordeModels.StationProp.Door,0);foreach(var sec in door.Sections)foreach(var v in sec.Positions){var w=o.PropAt+Vector3.Transform(v,o.PropTurn);worst=Math.Max(worst,new Vector2(w.X,w.Z).Length()-NativeHordeKinds.Radius[pk]);Check(w.Y>=NativeHordeGait.Floor-.01f,"the door never under the floor");}}
@@ -227,10 +239,10 @@ namespace ChipArena.UnityConversion
             var clip=NativeZombieClips.Clip(NativeZombieClips.Need("death-shock"));Check(clip.Marks[1]>1&&clip.Marks[1]<clip.Marks[2],"the electrocuted collapse's head reaches the floor late in its take");
             string[][] sets={new[]{"walk-6","chase-2","idle-3"},new[]{"walk-4","chase-1","idle-1"},new[]{"chase-2","chase-5","shamble-2"},new[]{"walk-4","walk-4","idle-3"}};
             for(int i=0;i<4;i++){int k=Kinds[i];Check(NativeZombieMotion.Captured(k)&&NativeZombieClips.Key(NativeZombieMotion.Walks(k)[0])==sets[i][0]&&NativeZombieClips.Key(NativeZombieMotion.Runs(k)[0])==sets[i][1]&&NativeZombieClips.Key(NativeZombieMotion.Idles(k)[0])==sets[i][2],NativeHordeKinds.Ids[k]+" moves on its own takes");}
-            Check(NativeZombieMotion.Tempo[NativeStationKinds.Pileup]<NativeZombieMotion.Tempo[NativeStationKinds.Linesman]&&NativeZombieMotion.Tempo[NativeStationKinds.Pileup]==.7f,"the Pileup's heavy shuffle (walk-4 at .7)");
+            Check(NativeHordeZones.Tempo(NativeStationKinds.Kind(NativeStationKinds.Pileup),NativeZombieMotion.Tempo)<NativeHordeZones.Tempo(NativeStationKinds.Kind(NativeStationKinds.Linesman),NativeZombieMotion.Tempo)&&NativeHordeZones.Tempo(NativeStationKinds.Kind(NativeStationKinds.Pileup),NativeZombieMotion.Tempo)==.7f,"the Pileup's heavy shuffle (walk-4 at .7)");
             // Deaths: each falls to the floor and stays there; the Undertow sinks its metre.
             var pose=new CapturedRig.Pose();foreach(int k in Kinds){Check(NativeStationMotion.Death(pose,k,5,1.6f,out float sink),NativeHordeKinds.Ids[k]+" has its death");Check(pose.Lowest()>NativeHordeGait.Floor-.01f&&pose.Lowest()<NativeHordeGait.Floor+.01f,NativeHordeKinds.Ids[k]+" lies on the floor");
-                if(k==NativeStationKinds.Undertow)Check(sink>.9f&&sink<=1,"the Undertow sinks 1 m");else Check(sink==0,NativeHordeKinds.Ids[k]+" does not sink");
+                if(NativeStationKinds.Local(k)==NativeStationKinds.Undertow)Check(sink>.9f&&sink<=1,"the Undertow sinks 1 m");else Check(sink==0,NativeHordeKinds.Ids[k]+" does not sink");
                 pose.World();float head=pose.WorldPosition[CapturedRig.Head].Y;NativeStationMotion.Death(pose,k,5,.05f,out _);pose.World();Check(pose.WorldPosition[CapturedRig.Head].Y>head+.3f,NativeHordeKinds.Ids[k]+" falls from standing");}
             Check(!NativeStationMotion.Death(pose,NativeHordeKinds.Brute,5,1,out _),"the Siren's kinds keep their own deaths");
             NativeStationMotion.DoorFall(1,out var at,out var turn);var up=Vector3.Transform(Vector3.UnitY,turn);Check(Math.Abs(up.Y)<.05f&&at.Y<NativeHordeGait.Floor+.06f,"the Pileup's door lies flat on the floor");
@@ -297,7 +309,7 @@ namespace ChipArena.UnityConversion
             var k=R(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs");
             foreach(var hook in new[]{"StationAttack(m,kind,now,ref age);","StationInput(ref f,kind);","StationPosed(arena,m,s,kind,now,ground,f,ref pos);","StationGlow(m,kind,now,ref glow);","StationQueue(rig,m,kind,s.Tier,a.Lost,glow,flash,now);",
                 "float stationSink=StationDeathPose(d.Kind,d.Seed,fx);","floorY+NativeHordeKinds.DrawRoot(d.Kind,false)-stationSink","StationDeathFx(death,d.Kind,d.Seed,fx,rig,floorY);","DrawStationFx(draw,arena,now,eye,right,up,low);","StationGallery(me,now,galleryAt,across,yawToMe,ground);",
-                "if(k==NativeHordeKinds.Hulk||NativeHordeKinds.Zone(k))continue;","ClearStationGallery();","ClearStationKinds();","StationKindsEnd(now);","StationCues(m,kind,pos,t);","StationEvents(arena,t);","StationCuesClear();","&&!StationSpecialNow(m,kind)&&"})Check(k.Contains(hook),"the horde presentation calls `"+hook+"`");
+                "ClearStationGallery();","ClearStationKinds();","StationKindsEnd(now);","StationCues(m,kind,pos,t);","StationEvents(arena,t);","StationCuesClear();","&&!StationSpecialNow(m,kind)&&"})Check(k.Contains(hook),"the horde presentation calls `"+hook+"`");
             Check(R(root,"Assets/ChipArena/Runtime/NativeHordeKindModels.cs").Contains("StationPropModels(shader);"),"the props are built with the bank");
             foreach(var f in new[]{"NativeStationKinds.cs","NativeStationModels.cs","NativeStationMotion.cs","NativeStationFx.cs"}){var t=R(root,"Assets/ChipArena/Core/"+f);Check(!t.Contains("NativeArena")&&!t.Contains("NativePilot")&&!t.Contains("new Random(")&&!t.Contains("UnityEngine"),f+" reads no authority state and no clock-free randomness");}
         }

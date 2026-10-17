@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         private static List<JsonElement> Adds(string root){var doc=JsonDocument.Parse(R(root,"Assets/Conversion/Resources/PveContent.json"));return doc.RootElement.GetProperty("adds").EnumerateArray().ToList();}
         private static void Kinds(string root)
         {
-            for(int k=0;k<NativeHordeKinds.Count;k++){Check(NativeHordeKinds.Resolve(NativeHordeKinds.Ids[k])==k,"kind "+NativeHordeKinds.Ids[k]+" resolves to itself");Check(NativeHordeKinds.Known(NativeHordeKinds.Ids[k])==(k<NativeHordeKinds.BaseCount||NativeHordeKinds.Shipped[k]),"kind "+k+" is known (a zone kind once shipped)");}
+            for(int k=0;k<NativeHordeKinds.Count;k++){Check(NativeHordeKinds.Resolve(NativeHordeKinds.Ids[k])==k,"kind "+NativeHordeKinds.Ids[k]+" resolves to itself");Check(NativeHordeKinds.Known(NativeHordeKinds.Ids[k]),"kind "+k+" is known");}
             Check(NativeHordeKinds.Resolve(null)==NativeHordeKinds.Shambler&&NativeHordeKinds.Resolve("")==NativeHordeKinds.Shambler&&NativeHordeKinds.Resolve("future-kind")==NativeHordeKinds.Shambler&&!NativeHordeKinds.Known("future-kind"),"an unknown or missing kind draws as the shambler");
             Check(NativeHordeKinds.Resolve("Brute")==NativeHordeKinds.Shambler,"ids are exact (ordinal)");
             var ids=Adds(root).Select(a=>a.GetProperty("id").GetString()).ToList();
@@ -262,10 +262,9 @@ namespace ChipArena.UnityConversion
         {
             // The spec sits in the repository's docs (a packaged Unity source without them skips this part).
             string path=Path.Combine(root,"../../docs/SIREN-MINION-VARIANTS.md");if(!File.Exists(path)){Console.WriteLine("SKIP horde kinds spec: docs/SIREN-MINION-VARIANTS.md is not in this tree");return;}var doc=File.ReadAllText(path);
-            // (The Siren's seven; the zones' kinds have their own zone docs: Tests/StationEnemyChecks.)
-            for(int k=0;k<NativeHordeKinds.BaseCount;k++)Check(doc.Contains("`"+NativeHordeKinds.Ids[k]+"`"),"the spec names "+NativeHordeKinds.Ids[k]);
+            foreach(var id in NativeHordeKinds.Ids.Take(NativeHordeKinds.Count))Check(doc.Contains("`"+id+"`"),"the spec names "+id);
             foreach(var s in new[]{"minion-spit","minion-acid","minion-slam","minion-charge","minion-burst","staggerAt","Prompt for Astra"})Check(doc.Contains(s),"the spec covers "+s);
-            for(int k=0;k<NativeHordeKinds.BaseCount;k++){if(NativeHordeKinds.Shipped[k])continue;var p=NativeHordeKinds.ProposedRow(k);Check(doc.Contains("| `"+p.id+"` | "+p.hp+" | "+p.damage+" |"),"the spec's "+p.id+" row matches NativeHordeKinds.Proposed");}
+            for(int k=0;k<NativeHordeKinds.Count;k++){if(NativeHordeKinds.Shipped[k])continue;var p=NativeHordeKinds.ProposedRow(k);Check(doc.Contains("| `"+p.id+"` | "+p.hp+" | "+p.damage+" |"),"the spec's "+p.id+" row matches NativeHordeKinds.Proposed");}
         }
     }
 }

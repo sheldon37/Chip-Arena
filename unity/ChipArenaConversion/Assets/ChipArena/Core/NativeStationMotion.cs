@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
             Warm();o=new StationMotionOutput{Glow=1,PropTurn=Quaternion.Identity};seedNow=f.Seed;
             float dt=float.IsNaN(last)?0:f.Time-last;if(id!=f.Id||dt<0||dt>.5f){id=f.Id;groundedAt=float.NaN;wasGrounded=f.Grounded;swing=swingRate=Vector2.Zero;handKnown=false;swimPhase=H(0);dragPhase=H(1);dt=0;}
             last=f.Time;dt=Math.Min(dt,.1f);
-            switch(f.Kind)
+            switch(NativeStationKinds.Local(f.Kind))
             {
                 case NativeStationKinds.Linesman:Linesman(f,p,ref o,dt);break;
                 case NativeStationKinds.Conductor:Conductor(f,p,ref o,dt);break;
@@ -297,7 +297,7 @@ namespace ChipArena.UnityConversion
         public static bool Death(CapturedRig.Pose p,int kind,uint seed,float age,out float sink)
         {
             sink=0;if(!NativeStationKinds.Is(kind))return false;Warm();float a=Math.Max(0,age);int c;float t;
-            switch(kind)
+            switch(NativeStationKinds.Local(kind))
             {
                 case NativeStationKinds.Linesman:{c=deathShock;var m=NativeZombieClips.Clip(c).Marks;t=a<.62f?.12f+a*2.2f:a<1.05f?1.48f+(a-.62f)/.43f*(m[1]-1.48f):m[1]+(m[2]-m[1])*C01((a-1.05f)/1.25f);break;}
                 case NativeStationKinds.Conductor:{c=deathFront2;var m=NativeZombieClips.Clip(c).Marks;t=a<NativeHordeGait.DownAt?a/NativeHordeGait.DownAt*m[1]:m[1]+(m[2]-m[1])*C01((a-NativeHordeGait.DownAt)/1.3f);break;}

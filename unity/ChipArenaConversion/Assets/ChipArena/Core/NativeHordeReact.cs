@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The trunk's recoil per weight (rad) before the kind's give.</summary>
         public static float RecoilFor(StaggerWeight w)=>w==StaggerWeight.Heavy?.5f:w==StaggerWeight.Step?.32f:w==StaggerWeight.Flinch?.17f:0;
         public int Count=>count;
-        public void Bind(int kind){this.kind=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind));give=NativeHordeKinds.Give(this.kind);}
+        public void Bind(int kind){this.kind=NativeHordeKinds.Index(kind);give=NativeHordeKinds.Give(this.kind);}
         public void Clear(){count=0;head=0;time=float.NaN;}
         /// <summary>
         /// A hit landed at `at`: `dir` the push (Unity world, horizontal unit; zero when unknown), its weight (NativeStaggerRules.

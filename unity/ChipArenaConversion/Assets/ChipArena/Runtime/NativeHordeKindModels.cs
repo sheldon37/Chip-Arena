@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
         private void HordeKindModels()
         {
             var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null)throw new System.InvalidOperationException("Source material shader is missing");
-            for(int kind=0;kind<NativeHordeKinds.Count;kind++)
+            for(int kind=0;kind<NativeHordeKinds.All;kind++)
             {
                 var material=new Material(shader){name="Native Siren minion / "+NativeHordeKinds.Ids[kind],enableInstancing=true};material.SetInt("_Cull",2);
                 material.SetFloat("_Ink",1);material.SetFloat(InkRimId,HordeInkRim);material.SetFloat(InkFlowId,HordeInkFlow);material.SetFloat(MinionGlowId,1);materials.Add(material);
@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
             }
-            StationPropModels(shader);
+            IronworksModels(shader);StationPropModels(shader);
         }
     }
 }

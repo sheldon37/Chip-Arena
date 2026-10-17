@@ -116,7 +116,7 @@ class EffectsAudioTests(unittest.TestCase):
 
     def test_contract_matches_the_core_bank(self):
         keys, schema, clips, budget = installer.contract()
-        self.assertEqual((len(keys), schema, clips, budget), (248, 1, 16, 16000000))  # incl. the 14 zombie voice and footfall keys (docs/audio/SOUND-REQUESTS.md) and the 22 Central Station enemy cues
+        self.assertEqual((len(keys), schema, clips, budget), (282, 1, 16, 16000000))  # incl. the 14 zombie voice and footfall keys (docs/audio/SOUND-REQUESTS.md), the 34 City Ironworks enemy keys and the 22 Central Station enemy cues
         self.assertEqual(sum(1 for k in keys if k.startswith('pve.station.')), 22)  # docs/EXPEDITION-CENTRAL-STATION.md section 10's enemy cues
         self.assertEqual(sum(1 for k in keys if k.startswith('intro.')), 20)  # the 19 entrances and the DEV Sheldon Intro
         self.assertEqual(keys['gun.machinegun.shot'], ('3d', .32))

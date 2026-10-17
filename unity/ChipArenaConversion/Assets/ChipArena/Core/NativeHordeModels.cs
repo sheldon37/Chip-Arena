@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
         public const int Full=0,Reduced=1,Impostor=2,Tiers=3;
         public static readonly string[] TierNames={"full","reduced","impostor"};
         /// <summary>The bank id of a kind's look at a tier.</summary>
-        public static string Id(int kind,int look,int tier)=>Ids(false)[(kind*NativeHordeKinds.MostLooks+look)*Tiers+tier];
+        public static string Id(int kind,int look,int tier)=>kind==NativeHordeKinds.Brute&&NativeIronworksKinds.Zone?CreamId(look,tier):Ids(false)[(kind*NativeHordeKinds.MostLooks+look)*Tiers+tier];
         /// <summary>The bank id of a hinged kind's jaw model (NativeHordeJaw).</summary>
         public static string JawId(int kind,int look,int tier)=>Ids(true)[(kind*NativeHordeKinds.MostLooks+look)*Tiers+tier];
         // The ids, made once (the draw names a model every frame for every add: no string per frame).
@@ -43,18 +43,18 @@ namespace ChipArena.UnityConversion
         {
             if(ids==null)
             {
-                var a=new string[NativeHordeKinds.Count*NativeHordeKinds.MostLooks*Tiers];var b=new string[a.Length];
-                for(int k=0;k<NativeHordeKinds.Count;k++)for(int l=0;l<NativeHordeKinds.MostLooks;l++)for(int t=0;t<Tiers;t++){int i=(k*NativeHordeKinds.MostLooks+l)*Tiers+t;a[i]="minion-"+NativeHordeKinds.Ids[k]+"-"+l+"-"+TierNames[t];b[i]=a[i]+"-jaw";}
+                var a=new string[NativeHordeKinds.All*NativeHordeKinds.MostLooks*Tiers];var b=new string[a.Length];
+                for(int k=0;k<NativeHordeKinds.All;k++)for(int l=0;l<NativeHordeKinds.MostLooks;l++)for(int t=0;t<Tiers;t++){int i=(k*NativeHordeKinds.MostLooks+l)*Tiers+t;a[i]="minion-"+NativeHordeKinds.Ids[k]+"-"+l+"-"+TierNames[t];b[i]=a[i]+"-jaw";}
                 jawIds=b;ids=a;
             }
             return jaw?jawIds:ids;
         }
         /// <summary>Each kind's head: its width scale and how far it sits down on its joint (the builders' Head calls).</summary>
-        public static readonly float[] HeadWidth=NativeHordeKinds.Zoned(new[]{1,.88f,.74f,.95f,.68f,.86f,.6f},z=>z.HeadWidth),HeadDrop=NativeHordeKinds.Zoned(new[]{0,0,-.07f,0,-.03f,-.02f,-.1f},z=>z.HeadDrop);
+        public static readonly float[] HeadWidth={1,.88f,.74f,.95f,.68f,.86f,.6f},HeadDrop={0,0,-.07f,0,-.03f,-.02f,-.1f};
         /// <summary>The jaw's hinge on the head joint (bank frame: the skull's back, at the mouth's height).</summary>
-        public static Vector3 JawHinge(int kind){int k=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind));return new Vector3(0,.07f+HeadDrop[k],.02f);}
+        public static Vector3 JawHinge(int kind){int k=NativeHordeKinds.Base(kind);return new Vector3(0,.07f+HeadDrop[k],.02f);}
         /// <summary>The mouth socket on the head joint (bank frame): just in front of the teeth, where the spit leaves.</summary>
-        public static Vector3 MouthSocket(int kind){int k=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind));return new Vector3(0,.075f+HeadDrop[k],.15f*HeadWidth[k]+.035f);}
+        public static Vector3 MouthSocket(int kind){int k=NativeHordeKinds.Base(kind);return new Vector3(0,.075f+HeadDrop[k],.15f*HeadWidth[k]+.035f);}
         /// <summary>The jaw's turn about its hinge for an opening (rad, the front dropping), as a matrix on the head joint's frame
         /// (System.Numerics row vectors; the runtime turns it into the bone's matrix).</summary>
         public static Matrix4x4 JawMatrix(int kind,float open){var h=JawHinge(kind);return Matrix4x4.CreateTranslation(-h)*Matrix4x4.CreateRotationX(open)*Matrix4x4.CreateTranslation(h);}
@@ -68,16 +68,15 @@ namespace ChipArena.UnityConversion
         /// <summary>The grin's teeth and the eyes: the Siren's white, steady (no glow code: they never flicker or drop out).</summary>
         private static WeaponPaint Teeth=>WeaponPaint.Glow(0xf4efff,2.2f,.9f);private static WeaponPaint Eye=>WeaponPaint.Glow(0xffffff,3f,1);private static WeaponPaint Mouth=>WeaponPaint.Solid(0x050307);
 
-        public static HordeModel Build(int kind,int look,int tier)
+        /// <summary>A kind's look at a tier; `seam` another seam colour (the brute's cream in the Ironworks: CreamId), -1 its own.</summary>
+        public static HordeModel Build(int kind,int look,int tier,int seam=-1)
         {
-            kind=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind));look=Math.Max(0,Math.Min(NativeHordeKinds.Looks[kind]-1,look));tier=Math.Max(Full,Math.Min(Impostor,tier));
-            var k=new K(kind,look,tier);
+            kind=NativeHordeKinds.Index(kind);look=Math.Max(0,Math.Min(NativeHordeKinds.Looks[kind]-1,look));tier=Math.Max(Full,Math.Min(Impostor,tier));
+            var k=new K(kind,look,tier){SeamHex=seam};
             switch(kind)
             {
                 case NativeHordeKinds.Runner:Runner(k);break;case NativeHordeKinds.Brute:Brute(k);break;case NativeHordeKinds.Spitter:Spitter(k);break;
-                case NativeHordeKinds.Crawler:Crawler(k);break;case NativeHordeKinds.Bloater:Bloater(k);break;case NativeHordeKinds.Hulk:Hulk(k);break;
-                // The zones' kinds (Core/NativeStationModels.cs, the Central Station's four).
-                default:if(!StationBuild(k))Shambler(k);break;
+                case NativeHordeKinds.Crawler:Crawler(k);break;case NativeHordeKinds.Bloater:Bloater(k);break;case NativeHordeKinds.Hulk:Hulk(k);break;default:if(!IronworksModel(k)&&!StationBuild(k))Shambler(k);break;
             }
             return new HordeModel{Kind=kind,Look=look,Tier=tier,Mesh=k.Mesh,Jaw=k.SplitJaw?k.JawMesh:null};
         }
@@ -87,7 +86,9 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private sealed class K
         {
-            public readonly WeaponMesh Mesh;public WeaponSculpt S;public readonly int Tier,Kind,Look;private float side=1;private int cell;private readonly uint seed;
+            public readonly WeaponMesh Mesh;public WeaponSculpt S;public readonly int Tier,Kind,Look;
+            /// <summary>The seam colour the model is built with (-1: the kind's, NativeHordeKinds.Seam).</summary>
+            public int SeamHex=-1;public int SeamColor=>SeamHex>=0?SeamHex:NativeHordeKinds.Seam[Kind];private float side=1;private int cell;private readonly uint seed;
             /// <summary>A hinged kind's jaw (NativeHordeJaw): built into its own mesh on the head joint.</summary>
             public readonly bool SplitJaw;public readonly WeaponMesh JawMesh;public readonly WeaponSculpt JawSculpt;
             public K(int kind,int look,int tier)
@@ -104,7 +105,7 @@ namespace ChipArena.UnityConversion
             public static int Right(int bone)=>bone>=CapturedRig.LClav&&bone<=CapturedRig.LHand||bone>=CapturedRig.LHip&&bone<=CapturedRig.LToe?bone+4:bone;
             public float Side=>side;
             /// <summary>The kind's seam glow: a new flicker cell per piece (NativeMinionFx glow code), `k` its strength.</summary>
-            public WeaponPaint Seam(float k=1,int hex=-1){var c=WeaponPaint.Linear(hex<0?NativeHordeKinds.Seam[Kind]:hex);double h=NativeGoreRules.Hash01(seed,cell++,0x5e);return new WeaponPaint(c*.32f,c*(1.9f*k),(float)NativeMinionFx.Code(NativeHordeKinds.SeamClass[Kind],h));}
+            public WeaponPaint Seam(float k=1,int hex=-1){var c=WeaponPaint.Linear(hex<0?SeamColor:hex);double h=NativeGoreRules.Hash01(seed,cell++,0x5e);return new WeaponPaint(c*.32f,c*(1.9f*k),(float)NativeMinionFx.Code(NativeHordeKinds.SeamClass[Kind],h));}
             /// <summary>A glow piece on another flicker class (0 shell embers, 1 accent plates, 2 strips).</summary>
             public WeaponPaint Glow(int cls,float k,int hex){var c=WeaponPaint.Linear(hex);double h=NativeGoreRules.Hash01(seed,cell++,0x5f);return new WeaponPaint(c*.3f,c*k,(float)NativeMinionFx.Code(cls,h));}
             private void Mirror(Action draw){if(side<0){S.Push(WeaponSculpt.S(-1,1,1));draw();S.Pop();}else draw();}
@@ -234,9 +235,11 @@ namespace ChipArena.UnityConversion
         {double h=lean*.5;return new Tongue{Joint=joint,Layout=layout,X=x,Y=y,Z=z,Qx=Math.Sin(h),Qy=0,Qz=0,Qw=Math.Cos(h),Height=height,Phase=phase};}
         private static Tongue TZ(int joint,int layout,double x,double y,double z,double roll,double height,double phase)
         {double h=roll*.5;return new Tongue{Joint=joint,Layout=layout,X=x,Y=y,Z=z,Qx=0,Qy=0,Qz=Math.Sin(h),Qw=Math.Cos(h),Height=height,Phase=phase};}
-        private static readonly Tongue[][][] tongues=NativeHordeKinds.Zoned(MakeTongues(),z=>StationTongues(z.Id));
+        private static readonly Tongue[][][] tongues=MakeTongues();
+        /// <summary>The zone kinds grow none (the Siren's black flame is her minions' own).</summary>
+        private static readonly Tongue[] NoTongues=new Tongue[0];
         /// <summary>The tongues a kind's look grows (the same on every tier).</summary>
-        public static Tongue[] Tongues(int kind,int look){var k=tongues[Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind))];return k[Math.Max(0,Math.Min(k.Length-1,look))];}
+        public static Tongue[] Tongues(int kind,int look){if(NativeHordeZones.Of(kind)!=null)return NoTongues;var k=tongues[Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind))];return k[Math.Max(0,Math.Min(k.Length-1,look))];}
         public static int MostTongues{get{int n=0;foreach(var k in tongues)foreach(var l in k)n=Math.Max(n,l.Length);return n;}}
         private static Tongue[][][] MakeTongues()
         {

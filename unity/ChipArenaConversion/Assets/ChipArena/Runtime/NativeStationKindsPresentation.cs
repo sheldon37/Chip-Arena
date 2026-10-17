@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
     // The Central Station's enemies in the game (docs/EXPEDITION-CENTRAL-STATION.md sections 7, 8 and 10; owner 2026-10-16):
     // the Linesman, the Conductor, the Undertow and the Pileup on the horde's kind presentation (NativeHordeKindPresentation.cs
     // draws every add; its hooks call in here for the four). Presentation only: everything comes from what host, guests and the
-    // killcam all hold (the add's replicated kind, LastAttack, position, health and hits; its NativeStationView once Astra
+    // killcam all hold (the add's replicated kind, LastAttack, position, health and hits; its StationView once Astra
     // replicates it, StationViewOf) and the presentation clock. No hit, collider, timing, damage, movement or network state is
     // read back or changed.
     //  - Models: Core/NativeStationModels.cs (bodies on the zombie kit; the Conductor's lantern and the Pileup's door as props
@@ -29,11 +29,11 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         // ================================================================================================================
-        // The binding (Astra): an add's replicated station fields (Core NativeStationView, named as section 8). One line once
-        // NativePveAdd carries them, e.g.  internal static NativeStationView StationViewOf(NativeMinion m)=>m.Pve?.Station;
+        // The binding (Astra): an add's replicated station fields (Core StationView, named as section 8, as the City Ironworks' IronworksView). One line once
+        // NativePveAdd carries them, e.g.  internal static StationView StationViewOf(NativeMinion m)=>m.Pve?.Station??StationView.None;
         // Until then no add has one (null): every station kind draws its gait, melee, hits and death from today's fields.
         // ================================================================================================================
-        internal static NativeStationView StationViewOf(NativeMinion m)=>null;
+        internal static StationView StationViewOf(NativeMinion m)=>StationView.None;
 
         private sealed class StationAdd
         {
@@ -51,47 +51,47 @@ namespace ChipArena.UnityConversion
         // ---- (a) the special the replicated LastAttack started: the gait shows no melee for it ----
         private static void StationAttack(NativeMinion m,int kind,float now,ref float age)
         {
-            if(!NativeStationKinds.Is(kind))return;var v=StationViewOf(m);var sp=NativeStationKinds.SpecialOf(kind,v?.attack);if(sp==NativeStationKinds.Special.None||sp==NativeStationKinds.Special.Grab)return;
+            if(!NativeStationKinds.Is(kind))return;var v=StationViewOf(m);var sp=NativeStationKinds.SpecialOf(kind,v.attack);if(sp==NativeStationKinds.Special.None||sp==NativeStationKinds.Special.Grab)return;
             float a=now-m.LastAttack;if(a>=0&&a<NativeStationKinds.SpecialEnd(sp)+.3f)age=float.NaN;
         }
         // ---- (b) the gait's input: the Conductor strikes with the lantern hand (swipe-l), its other arm gone or not ----
-        private static void StationInput(ref HordeMotionInput f,int kind){if(kind==NativeStationKinds.Conductor&&!NativeHordeKinds.LeftArmless(f.Lost))f.Side=-1;}
+        private static void StationInput(ref HordeMotionInput f,int kind){if(NativeStationKinds.Local(kind)==NativeStationKinds.Conductor&&!NativeHordeKinds.LeftArmless(f.Lost))f.Side=-1;}
         // ---- (c) the kind's own motion over the gait's pose, the sink, the effects job ----
         private void StationPosed(NativeArena arena,NativeMinion m,HordeKindState s,int kind,float now,float ground,in HordeMotionInput f,ref Vector3 pos)
         {
             if(!NativeStationKinds.Is(kind))return;var a=m.Pve;var v=StationViewOf(m);var st=StationAddOf(m.Id,now);st.Kind=kind;st.Frame=hordeKindFrame;
-            var sp=NativeStationKinds.SpecialOf(kind,v?.attack);float spAge=sp!=NativeStationKinds.Special.None?now-m.LastAttack:float.NaN;if(!(spAge>=0&&spAge<NativeStationKinds.SpecialEnd(sp)+.3f))spAge=float.NaN;
+            var sp=NativeStationKinds.SpecialOf(kind,v.attack);float spAge=sp!=NativeStationKinds.Special.None?now-m.LastAttack:float.NaN;if(!(spAge>=0&&spAge<NativeStationKinds.SpecialEnd(sp)+.3f))spAge=float.NaN;
             if(sp==NativeStationKinds.Special.Grab)spAge=float.NaN;
             // A sump's entrance surfaces out of the water (the authority's entry; the walk-in's gait under it).
-            bool sump=a!=null&&now<a.ActiveAt&&a.Entry!=null&&a.Entry.kind=="sump";float surface=sump?now-a.SpawnAt:v!=null&&now>=v.surfaceAt?now-v.surfaceAt:float.NaN;
-            NativePilot aimAt=null;if(v?.arcTargets!=null&&v.arcTargets.Length>0)aimAt=HordePilot(arena,v.arcTargets[0]);if(aimAt==null)aimAt=HordeTarget(arena,pos);
-            NativePilot held=v!=null&&v.Holding(now)?HordePilot(arena,v.grabTarget):null;
+            bool sump=a!=null&&now<a.ActiveAt&&a.Entry!=null&&a.Entry.kind=="sump";float surface=sump?now-a.SpawnAt:now>=v.surfaceAt?now-v.surfaceAt:float.NaN;
+            NativePilot aimAt=null;if(v.arcTargets!=null&&v.arcTargets.Length>0)aimAt=HordePilot(arena,v.arcTargets[0]);if(aimAt==null)aimAt=HordeTarget(arena,pos);
+            NativePilot held=v.Holding(now)?HordePilot(arena,v.grabTarget):null;
             StationPose(st,s,kind,m.Id,now,f,sp,spAge,v,aimAt!=null?aimAt.Body.position+Vector3.up*.35f:(Vector3?)null,held!=null?held.Body.position+Vector3.down*.75f:(Vector3?)null,surface,sump,ref pos);
             StationCollect(st,s,kind,m.Id,now,ground,pos,sp,spAge,v,arena,a?.Lost??0);
         }
         // The overlay for an add or a gallery rig: the input from the view's fields and the gait, the pose, the sink.
-        private void StationPose(StationAdd st,HordeKindState s,int kind,int id,float now,in HordeMotionInput f,NativeStationKinds.Special sp,float spAge,NativeStationView v,Vector3? aim,Vector3? hold,float surface,bool sump,ref Vector3 pos)
+        private void StationPose(StationAdd st,HordeKindState s,int kind,int id,float now,in HordeMotionInput f,NativeStationKinds.Special sp,float spAge,StationView v,Vector3? aim,Vector3? hold,float surface,bool sump,ref Vector3 pos)
         {
             float inv=1/s.Scale;var g=s.Gait;
             ref var i=ref stationInput[0];
             i=new StationMotionInput{Kind=kind,Id=id,Seed=NativeHordeKinds.Seed(id),Time=now,Dt=float.IsNaN(st.Last)?0:now-st.Last,Special=sp,SpecialAge=spAge,MeleeAge=f.AttackAge,MeleeStrike=f.Strike,Melee=f.Attack,Speed=g.Speed,
-                Velocity=g.ToLocal(f.Root+f.Velocity,f.Root),Grounded=v!=null&&v.grounded,LanternBroken=v!=null&&v.lanternBroken,Submerged=v!=null&&v.submerged||sump&&surface<0,
-                LastCallAge=v!=null&&now>=v.lastCallAt?now-v.lastCallAt:float.NaN,SurfaceAge=surface,HoldAge=v!=null&&v.Holding(now)?now-v.grabAt:float.NaN,ReleaseAge=v!=null&&now>=v.releaseAt&&v.releaseAt>v.grabAt?now-v.releaseAt:float.NaN,
+                Velocity=g.ToLocal(f.Root+f.Velocity,f.Root),Grounded=v.grounded,LanternBroken=v.lanternBroken,Submerged=v.submerged||sump&&surface<0,
+                LastCallAge=now>=v.lastCallAt?now-v.lastCallAt:float.NaN,SurfaceAge=surface,HoldAge=v.Holding(now)?now-v.grabAt:float.NaN,ReleaseAge=now>=v.releaseAt&&v.releaseAt>v.grabAt?now-v.releaseAt:float.NaN,
                 HasAim=aim.HasValue,Aim=aim.HasValue?g.ToLocal(ToN(aim.Value)*inv,f.Root):default,HasHold=hold.HasValue,Hold=hold.HasValue?g.ToLocal(ToN(hold.Value)*inv,f.Root):default};
             st.Last=now;st.Motion.Pose(i,minionPose,ref st.Out);pos.y-=st.Out.Sink*s.Scale;
         }
         // ---- (d) the glow: the Linesman grounded and charging, the Conductor's flare; any buffed add's red-white flash ----
         private void StationGlow(NativeMinion m,int kind,float now,ref Vector4 glow)
         {
-            if(NativeStationKinds.Is(kind)&&stationAdds.TryGetValue(m.Id,out var st)&&st.Kind==kind){float k=kind==NativeStationKinds.Conductor?1:st.Out.Glow;glow.x*=k;glow.y*=k;glow.z*=k;}
-            var v=StationViewOf(m);if(v!=null&&v.Aboard(now)){float fl=NativeStationFx.AboardFlash(now-(v.aboardUntil-NativeStationKinds.AboardSeconds));glow.x*=1+2.2f*fl;glow.y*=1+.25f*fl;glow.z*=1+.25f*fl;}
+            if(NativeStationKinds.Is(kind)&&stationAdds.TryGetValue(m.Id,out var st)&&st.Kind==kind){float k=NativeStationKinds.Local(kind)==NativeStationKinds.Conductor?1:st.Out.Glow;glow.x*=k;glow.y*=k;glow.z*=k;}
+            var v=StationViewOf(m);if(v.Aboard(now)){float fl=NativeStationFx.AboardFlash(now-(v.aboardUntil-NativeStationKinds.AboardSeconds));glow.x*=1+2.2f*fl;glow.y*=1+.25f*fl;glow.z*=1+.25f*fl;}
         }
         // ---- (e) the prop on its hand (dropped when the hand is gone) ----
         private Matrix4x4 stationPropRoot;
         private void StationQueue(CapturedAnimation.Player rig,NativeMinion m,int kind,int tier,int lost,Vector4 glow,float flash,float now)
         {
-            if(!NativeStationKinds.Is(kind)||!stationAdds.TryGetValue(m.Id,out var st)||!st.Out.Prop)return;var v=StationViewOf(m);bool whistle=NativeStationKinds.SpecialOf(kind,v?.attack)==NativeStationKinds.Special.Whistle;
-            StationQueueProp(rig,st,tier,lost,glow,flash,now,StationPropGlow(st,kind,whistle?now-m.LastAttack:float.NaN,v!=null&&now>=v.lastCallAt?now-v.lastCallAt:float.NaN,now));
+            if(!NativeStationKinds.Is(kind)||!stationAdds.TryGetValue(m.Id,out var st)||!st.Out.Prop)return;var v=StationViewOf(m);bool whistle=NativeStationKinds.SpecialOf(kind,v.attack)==NativeStationKinds.Special.Whistle;
+            StationQueueProp(rig,st,tier,lost,glow,flash,now,StationPropGlow(st,kind,whistle?now-m.LastAttack:float.NaN,now>=v.lastCallAt?now-v.lastCallAt:float.NaN,now));
         }
         private void StationQueueProp(CapturedAnimation.Player rig,StationAdd st,int tier,int lost,Vector4 glow,float flash,float now,float k)
         {
@@ -104,7 +104,7 @@ namespace ChipArena.UnityConversion
         }
         // The lantern's flare (the whistle's inhale and blast, the last call's ringing), the window's dying tube (a hit stutters it).
         private static float StationPropGlow(StationAdd st,int kind,float whistleAge,float lastCallAge,float now)
-            =>kind==NativeStationKinds.Conductor?NativeStationMotion.LanternFlare(whistleAge,lastCallAge):NativeStationFx.WindowFlicker(NativeHordeKinds.Seed(st.Id),now,now-st.HitAt);
+            =>NativeStationKinds.Local(kind)==NativeStationKinds.Conductor?NativeStationMotion.LanternFlare(whistleAge,lastCallAge):NativeStationFx.WindowFlicker(NativeHordeKinds.Seed(st.Id),now,now-st.HitAt);
         private static Vector3 V(NVector v)=>new Vector3(v.X,v.Y,v.Z);
         private static Quaternion Q(NQuaternion q)=>new Quaternion(q.X,q.Y,q.Z,q.W);
 
@@ -117,7 +117,7 @@ namespace ChipArena.UnityConversion
             public Vector3 Root,Floor,Forward,Hand,Coil,Elbow,Shoulder,Pack,Lamp,LampDir,Eyes,Mouth,Chest,Prop,PropUp,DoorFoot,Aim;public Vector3 A0,A1,A2;public int Arcs;public float ArcAt;
         }
         private StationFxJob[] stationJobs=new StationFxJob[16];private int stationJobCount;
-        private void StationCollect(StationAdd st,HordeKindState s,int kind,int id,float now,float ground,Vector3 root,NativeStationKinds.Special sp,float spAge,NativeStationView v,NativeArena arena,int lost)
+        private void StationCollect(StationAdd st,HordeKindState s,int kind,int id,float now,float ground,Vector3 root,NativeStationKinds.Special sp,float spAge,StationView v,NativeArena arena,int lost)
         {
             // (Drawn and emptied each frame by DrawStationFx; a frame without effects keeps at most 128.)
             if(stationJobCount==stationJobs.Length){if(stationJobs.Length>=128)return;Array.Resize(ref stationJobs,stationJobCount*2);}
@@ -126,22 +126,22 @@ namespace ChipArena.UnityConversion
             float yr=g.Yaw*Mathf.Deg2Rad;var fwd=new Vector3(Mathf.Sin(yr),0,Mathf.Cos(yr));
             // (Source-frame joint offsets: +x the add's left.)
             var j=new StationFxJob{Id=id,Kind=kind,Lost=lost,Seed=NativeHordeKinds.Seed(id),Distance=s.Distance,Special=sp,SpecialAge=spAge,Charge=st.Out.Charge,Root=root,Floor=new Vector3(root.x,ground,root.z),Forward=fwd,
-                Grounded=v!=null&&v.grounded,Submerged=st.Out.Sink>.2f&&kind==NativeStationKinds.Undertow,Broken=v!=null&&v.lanternBroken,LastCall=v!=null&&now>=v.lastCallAt?now-v.lastCallAt:float.NaN,
-                Surface=v!=null&&now>=v.surfaceAt?now-v.surfaceAt:float.NaN,Hold=v!=null&&v.Holding(now)?now-v.grabAt:float.NaN,Aboard=v!=null&&v.Aboard(now)?now-(v.aboardUntil-NativeStationKinds.AboardSeconds):float.NaN,Since=now-st.HitAt,
+                Grounded=v.grounded,Submerged=st.Out.Sink>.2f&&NativeStationKinds.Local(kind)==NativeStationKinds.Undertow,Broken=v.lanternBroken,LastCall=now>=v.lastCallAt?now-v.lastCallAt:float.NaN,
+                Surface=now>=v.surfaceAt?now-v.surfaceAt:float.NaN,Hold=v.Holding(now)?now-v.grabAt:float.NaN,Aboard=v.Aboard(now)?now-(v.aboardUntil-NativeStationKinds.AboardSeconds):float.NaN,Since=now-st.HitAt,
                 Hand=W(CapturedRig.RHand,new NVector(0,-.12f,.04f)),Coil=W(CapturedRig.RElbow,new NVector(-.12f,-.05f,0)),Elbow=W(CapturedRig.RElbow,NVector.Zero),Shoulder=W(CapturedRig.RArm,new NVector(0,-.05f,.05f)),
-                Pack=W(CapturedRig.Chest,new NVector(0,.15f,-.34f)),Lamp=W(CapturedRig.Head,new NVector(0,.305f+NativeHordeModels.HeadDrop[NativeStationKinds.Linesman],.18f)),LampDir=Dir(CapturedRig.Head,new NVector(0,-.1f,1)),
+                Pack=W(CapturedRig.Chest,new NVector(0,.15f,-.34f)),Lamp=W(CapturedRig.Head,new NVector(0,.305f+NativeStationKinds.HeadDrop[NativeStationKinds.Linesman],.18f)),LampDir=Dir(CapturedRig.Head,new NVector(0,-.1f,1)),
                 Eyes=W(CapturedRig.Head,new NVector(0,.176f,.18f)),Mouth=W(CapturedRig.Head,new NVector(0,.075f,.2f)),Chest=W(CapturedRig.Chest,new NVector(0,.15f,0))};
             if(st.Out.Prop)
             {
                 // The prop's points in the world: the lantern's glass, the window's centre and the door's foot.
                 var pm=Matrix4x4.TRS(V(st.Out.PropAt),Q(st.Out.PropTurn),Vector3.one);NVector Rig(Vector3 l){var u=pm.MultiplyPoint3x4(l);var src=new NVector(-u.x,u.y,u.z);var w=g.ToWorld(src*sc,ToN(root));return w;}
-                var c=kind==NativeStationKinds.Conductor?new Vector3(0,-NativeHordeModels.LanternDrop,0):new Vector3(0,NativeHordeModels.DoorWindowY,.04f);var cw=Rig(c);j.Prop=new Vector3(cw.X,cw.Y,cw.Z);
+                var c=NativeStationKinds.Local(kind)==NativeStationKinds.Conductor?new Vector3(0,-NativeHordeModels.LanternDrop,0):new Vector3(0,NativeHordeModels.DoorWindowY,.04f);var cw=Rig(c);j.Prop=new Vector3(cw.X,cw.Y,cw.Z);
                 var foot=Rig(new Vector3(0,-NativeHordeModels.DoorHeight*.5f,0));j.DoorFoot=new Vector3(foot.X,foot.Y,foot.Z);var up=Rig(c+Vector3.up);j.PropUp=(new Vector3(up.X,up.Y,up.Z)-j.Prop).normalized;
             }
             // The arc's targets (replicated seat ids; the gallery's own), its strike (arcAt, else LastAttack + the wind-up).
-            if(sp==NativeStationKinds.Special.Arc&&v!=null)
+            if(sp==NativeStationKinds.Special.Arc)
             {
-                j.ArcAt=v.arcAt>-50?v.arcAt:now-spAge+NativeStationKinds.ArcWindup;int n=0;
+                j.ArcAt=!float.IsNaN(v.arcAt)?v.arcAt:now-spAge+NativeStationKinds.ArcWindup;int n=0;
                 if(v.arcTargets!=null)for(int k=0;k<v.arcTargets.Length&&n<3;k++){var t=arena!=null?HordePilot(arena,v.arcTargets[k]):null;var at=t!=null?t.Body.position+Vector3.up*.3f:stationGalleryTargets!=null&&k<stationGalleryTargets.Length?stationGalleryTargets[k]:Vector3.zero;if(t==null&&stationGalleryTargets==null)continue;if(n==0)j.A0=at;else if(n==1)j.A1=at;else j.A2=at;n++;}
                 j.Arcs=n;
             }
@@ -161,9 +161,9 @@ namespace ChipArena.UnityConversion
         private void StationDeathFx(NativeDeath death,int kind,uint seed,float fx,CapturedAnimation.Player rig,float floorY)
         {
             if(!NativeStationKinds.Is(kind)||rig==null)return;var root=rig.Root.transform.localToWorldMatrix;stationAdds.TryGetValue(death.id,out var st);
-            if(kind==NativeStationKinds.Pileup&&fx<NativeMinionFx.DeathSeconds+.6f&&(st==null||!st.PropDropped))
+            if(NativeStationKinds.Local(kind)==NativeStationKinds.Pileup&&fx<NativeMinionFx.DeathSeconds+.6f&&(st==null||!st.PropDropped))
             {NativeStationMotion.DoorFall(fx,out var at,out var turn);StationPropAt(NativeHordeModels.StationProp.Door,root*Matrix4x4.TRS(new Vector3(-at.X,at.Y,at.Z),Q(CapturedRig.Mirror(turn)),Vector3.one),1-Mathf.Clamp01((fx-(float)NativeMinionFx.DeathSeconds)/.6f));}
-            if(kind==NativeStationKinds.Conductor&&st!=null&&!st.PropDropped&&fx<NativeMinionFx.DeathSeconds+.6f)
+            if(NativeStationKinds.Local(kind)==NativeStationKinds.Conductor&&st!=null&&!st.PropDropped&&fx<NativeMinionFx.DeathSeconds+.6f)
             {
                 var from=st.Out.Prop?st.Out.PropAt:new NVector(-.36f,-.25f,.2f);NativeStationMotion.LanternFall(fx,from,out var at,out var turn);bool whole=fx<NativeStationMotion.LanternShatterAt&&!st.Out.PropKind.Equals(NativeHordeModels.StationProp.BrokenLantern);
                 StationPropAt(whole?NativeHordeModels.StationProp.Lantern:NativeHordeModels.StationProp.BrokenLantern,root*Matrix4x4.TRS(V(at),Q(turn),Vector3.one),whole?1:0);
@@ -204,13 +204,13 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<events.Count;i++)
             {
                 var e=events[i];if(e.Id<=stationEvent)continue;if(e.Id>newest)newest=e.Id;if((e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot)||e.Target<10000||!(e.Amount>0))continue;
-                if(!stationAdds.TryGetValue(e.Target,out var st)||(st.Kind!=NativeStationKinds.Linesman&&st.Kind!=NativeStationKinds.Pileup))continue;var m=HordeMinion(arena,e.Target);if(m==null)continue;
+                if(!stationAdds.TryGetValue(e.Target,out var st)||(NativeStationKinds.Local(st.Kind)!=NativeStationKinds.Linesman&&NativeStationKinds.Local(st.Kind)!=NativeStationKinds.Pileup))continue;var m=HordeMinion(arena,e.Target);if(m==null)continue;
                 var dir=NativeArena.Vec(e.Normal);dir.y=0;if(dir.sqrMagnitude<1e-4f)continue;dir.Normalize();float yr=m.Yaw*Mathf.Deg2Rad;var fwd=new Vector3(Mathf.Sin(yr),0,Mathf.Cos(yr));
                 // The push runs along the shot: a shot from the front pushes back (its direction against the facing).
                 float facing=Vector3.Dot(-dir,fwd);var at=e.Position.x==0&&e.Position.z==0?m.Body.position:NativeArena.Vec(e.Position);
                 bool front=facing>=Mathf.Cos(NativeStationKinds.FrontCone*.5f*Mathf.Deg2Rad),back=facing<=-Mathf.Cos((360-NativeStationKinds.BackCone)*.5f*Mathf.Deg2Rad);
-                if(st.Kind==NativeStationKinds.Pileup&&front){st.HitAt=e.Time;stationHits[stationHitNext++%stationHits.Length]=new StationHitBurst{At=at,Dir=-dir,Time=e.Time,Kind=st.Kind,Seed=(uint)e.Id*2654435761u};}
-                if(st.Kind==NativeStationKinds.Linesman&&back){stationHits[stationHitNext++%stationHits.Length]=new StationHitBurst{At=m.Body.position+Vector3.up*.45f-fwd*.35f,Dir=-fwd,Time=e.Time,Kind=st.Kind,Seed=(uint)e.Id*2654435761u};}
+                if(NativeStationKinds.Local(st.Kind)==NativeStationKinds.Pileup&&front){st.HitAt=e.Time;stationHits[stationHitNext++%stationHits.Length]=new StationHitBurst{At=at,Dir=-dir,Time=e.Time,Kind=st.Kind,Seed=(uint)e.Id*2654435761u};}
+                if(NativeStationKinds.Local(st.Kind)==NativeStationKinds.Linesman&&back){stationHits[stationHitNext++%stationHits.Length]=new StationHitBurst{At=m.Body.position+Vector3.up*.45f-fwd*.35f,Dir=-fwd,Time=e.Time,Kind=st.Kind,Seed=(uint)e.Id*2654435761u};}
             }
             if(newest<stationEvent){stationEvent=0;for(int i=0;i<stationHits.Length;i++)stationHits[i].Time=-100;}else stationEvent=newest;
         }
@@ -234,7 +234,7 @@ namespace ChipArena.UnityConversion
                 ref var j=ref stationJobs[stationOrder[r]];float dist=stationRank[r];double band=NativeMinionFx.Band(dist,quality);
                 // The identity lights read past the effects' band (they are the kinds' silhouettes at 30 m and more): kept to 60 m.
                 StationIdentity(draw,j,now,eye,right,up,dist);if(band<0||budget<=0)continue;budget--;bool half=band<.5||low;
-                switch(j.Kind)
+                switch(NativeStationKinds.Local(j.Kind))
                 {
                     case NativeStationKinds.Linesman:StationLinesmanFx(draw,j,now,eye,half);break;
                     case NativeStationKinds.Conductor:StationConductorFx(draw,j,now,eye,right,up,half);break;
@@ -244,13 +244,13 @@ namespace ChipArena.UnityConversion
                 if(!float.IsNaN(j.Aboard))StationAboardFx(draw,j,now,eye,half);
             }
             // Buffed adds of other kinds (the Conductor's aura on the horde): their red flash and trail.
-            if(arena!=null)foreach(var m in arena.Minions){if(m.Pve==null||m.Hp<=0)continue;var v=StationViewOf(m);if(v==null||!v.Aboard(now)||NativeStationKinds.Is(NativeHordeKinds.Resolve(m.Pve.Stats?.id)))continue;
+            if(arena!=null)foreach(var m in arena.Minions){if(m.Pve==null||m.Hp<=0)continue;var v=StationViewOf(m);if(!v.Aboard(now)||NativeStationKinds.Is(NativeHordeKinds.Resolve(m.Pve.Stats?.id)))continue;
                 if((m.Body.position-eye).sqrMagnitude>40*40)continue;var st=StationAddOf(m.Id,now);st.Frame=hordeKindFrame;var j=new StationFxJob{Id=m.Id,Seed=NativeHordeKinds.Seed(m.Id),Root=m.Body.position,Chest=m.Body.position+Vector3.up*.45f,Aboard=now-(v.aboardUntil-NativeStationKinds.AboardSeconds)};
                 float yr=m.Yaw*Mathf.Deg2Rad;j.Forward=new Vector3(Mathf.Sin(yr),0,Mathf.Cos(yr));StationAboardFx(draw,j,now,eye,low);}
             for(int i=0;i<stationDeadCount;i++)StationDeadFx(draw,stationDead[i],now,eye,low);
             for(int i=0;i<stationHits.Length;i++){var h=stationHits[i];float age=now-h.Time;if(age<0||age>.5f)continue;
-                int hex=h.Kind==NativeStationKinds.Pileup?0xFFD890:NativeStationKinds.LinesmanBlue;int n=low?8:16;
-                for(int k=0;k<n;k++)if(NativeStationFx.Spark(h.Seed,k,age,h.Kind==NativeStationKinds.Pileup?5:3.5f,ToN(h.Dir+Vector3.up*.3f),.6f,out var off,out var vel,out float life))vfx.Streak(h.At+V(off),V(vel),Lin(hex,5*life),.012f,.04f,.025f,.6f);
+                int hex=NativeStationKinds.Local(h.Kind)==NativeStationKinds.Pileup?0xFFD890:NativeStationKinds.LinesmanBlue;int n=low?8:16;
+                for(int k=0;k<n;k++)if(NativeStationFx.Spark(h.Seed,k,age,NativeStationKinds.Local(h.Kind)==NativeStationKinds.Pileup?5:3.5f,ToN(h.Dir+Vector3.up*.3f),.6f,out var off,out var vel,out float life))vfx.Streak(h.At+V(off),V(vel),Lin(hex,5*life),.012f,.04f,.025f,.6f);
                 if(age<.1f)vfx.Glow(h.At,Lin(hex,4*(1-age/.1f)),.45f,NativeVfxDraw.CoreGlow);}
             stationJobCount=0;stationDeadCount=0;
         }
@@ -258,7 +258,7 @@ namespace ChipArena.UnityConversion
         private void StationIdentity(NativeFxDraw draw,in StationFxJob j,float now,Vector3 eye,Vector3 right,Vector3 up,float dist)
         {
             if(dist>60)return;float far=NativeStationFx.Far(dist),size,gain,wash,washGain;
-            switch(j.Kind)
+            switch(NativeStationKinds.Local(j.Kind))
             {
                 case NativeStationKinds.Linesman:
                 {
@@ -377,7 +377,7 @@ namespace ChipArena.UnityConversion
         private void StationDeadFx(NativeFxDraw draw,in StationDeadJob d,float now,Vector3 eye,bool low)
         {
             float a=d.Age;
-            switch(d.Kind)
+            switch(NativeStationKinds.Local(d.Kind))
             {
                 case NativeStationKinds.Linesman:
                     // The battery bursts: blue sparks and a flash out of the pack, the last arcs crawling off the body.
@@ -415,7 +415,7 @@ namespace ChipArena.UnityConversion
         // (i) The Dev Sandbox's minion gallery: the four station kinds in a second row, looping their whole set from gallery views
         // ================================================================================================================
         private readonly CapturedAnimation.Player[] stationGalleryRigs=new CapturedAnimation.Player[4];private readonly HordeKindState[] stationGalleryStates=new HordeKindState[4];
-        private readonly StationAdd[] stationGalleryAdds=new StationAdd[4];private readonly NativeStationView[] stationGalleryViews=new NativeStationView[4];private readonly Vector3[] stationTargets=new Vector3[3];
+        private readonly StationAdd[] stationGalleryAdds=new StationAdd[4];private readonly Vector3[] stationTargets=new Vector3[3];
         /// <summary>The station gallery's loop (s): idle, a walk, the special, the melee, a hit, the kind's state (grounded, the last
         /// call, submerged and surfacing, the shove), the death.</summary>
         public const float StationGalleryLoop=16;
@@ -424,18 +424,18 @@ namespace ChipArena.UnityConversion
             float yr=yawToMe*Mathf.Deg2Rad;var back=-new Vector3(Mathf.Sin(yr),0,Mathf.Cos(yr));
             for(int i=0;i<4;i++)
             {
-                int kind=NativeStationKinds.First+i,id=991000+i;if(stationGalleryRigs[i]==null){stationGalleryRigs[i]=captured.Create(transform,id);stationGalleryStates[i]=new HordeKindState();stationGalleryStates[i].Reset(id);stationGalleryStates[i].Kind=kind;stationGalleryStates[i].React.Bind(kind);stationGalleryAdds[i]=new StationAdd();stationGalleryAdds[i].Reset(id);stationGalleryViews[i]=new NativeStationView();}
-                var rig=stationGalleryRigs[i];var s=stationGalleryStates[i];var st=stationGalleryAdds[i];var v=stationGalleryViews[i];var row=NativeHordeKinds.ProposedRow(kind);float sc=NativeHordeKinds.Scale[kind];s.Scale=sc;
-                float loopStart=now-Mathf.Repeat(now+i*.53f,StationGalleryLoop),t=now-loopStart;var slot=at+back*3.2f+across*((i-1.5f)*2.6f);var pos=slot;float yaw=yawToMe;var vel=Vector3.zero;
-                v.Clear();float lastAttack=-100;float melee=float.NaN;var attack=NativeHordeKinds.AttackOf(kind,row.attack,false);float strike=NativeHordeKinds.Strike(row,false,0),recover=NativeHordeKinds.Recover(row,false,0);
+                int kind=NativeStationKinds.Kind(i),id=992000+i;if(stationGalleryRigs[i]==null){stationGalleryRigs[i]=captured.Create(transform,id);stationGalleryStates[i]=new HordeKindState();stationGalleryStates[i].Reset(id);stationGalleryStates[i].Kind=kind;stationGalleryStates[i].React.Bind(kind);stationGalleryAdds[i]=new StationAdd();stationGalleryAdds[i].Reset(id);}
+                var rig=stationGalleryRigs[i];var s=stationGalleryStates[i];var st=stationGalleryAdds[i];var v=StationView.None;var row=NativeHordeKinds.ProposedRow(kind);float sc=NativeHordeKinds.Scale[kind];s.Scale=sc;
+                float loopStart=now-Mathf.Repeat(now+i*.53f,StationGalleryLoop),t=now-loopStart;var slot=at+back*7.5f+across*((i-1.5f)*2.6f);var pos=slot;float yaw=yawToMe;var vel=Vector3.zero;
+                float lastAttack=-100;float melee=float.NaN;var attack=NativeHordeKinds.AttackOf(kind,row.attack,false);float strike=NativeHordeKinds.Strike(row,false,0),recover=NativeHordeKinds.Recover(row,false,0);
                 // 2-5 s: a walk round a circle; 6 s: the special; 9.5 s: the melee; 11.2 s: a sword hit; then the kind's state; 13.6 s: the death.
                 if(t>=2&&t<5){float speed=row.walk,rad=.7f,ang=(t-2)*speed/rad;pos=slot+new Vector3(Mathf.Cos(ang)-1,0,Mathf.Sin(ang))*rad;vel=new Vector3(-Mathf.Sin(ang),0,Mathf.Cos(ang))*speed;yaw=Mathf.Atan2(vel.x,vel.z)*Mathf.Rad2Deg;}
-                string special=kind==NativeStationKinds.Linesman?"arc":kind==NativeStationKinds.Conductor?"whistle":kind==NativeStationKinds.Undertow?"grab":"shove";
+                string special=NativeStationKinds.Local(kind)==NativeStationKinds.Linesman?"arc":NativeStationKinds.Local(kind)==NativeStationKinds.Conductor?"whistle":NativeStationKinds.Local(kind)==NativeStationKinds.Undertow?"grab":"shove";
                 if(t>=6&&t<9.5f){lastAttack=loopStart+6;v.attack=special;}else if(t>=9.5f&&t<9.5f+recover){lastAttack=loopStart+9.5f;melee=t-9.5f;}
                 var target=me.Body.position;stationTargets[0]=target+Vector3.up*.3f;stationTargets[1]=target+across*1.6f+Vector3.up*.3f;stationTargets[2]=target-across*1.4f+Vector3.up*.3f;
-                if(kind==NativeStationKinds.Linesman){v.arcTargets=stationArcSeats;v.arcAt=loopStart+6+NativeStationKinds.ArcWindup;v.grounded=t>=11.8f&&t<13.6f;}
-                if(kind==NativeStationKinds.Conductor){v.lastCallAt=loopStart+11.9f;v.lanternBroken=t>=13.2f;}
-                if(kind==NativeStationKinds.Undertow){v.submerged=t<1.6f||t>=12f;v.surfaceAt=t<6?loopStart+1.6f:loopStart+100;if(t>=6.6f&&t<8){v.grabTarget=-1;v.grabAt=loopStart+6.6f;v.releaseAt=loopStart+7.8f;}}
+                if(NativeStationKinds.Local(kind)==NativeStationKinds.Linesman){v.arcTargets=stationArcSeats;v.arcAt=loopStart+6+NativeStationKinds.ArcWindup;v.grounded=t>=11.8f&&t<13.6f;}
+                if(NativeStationKinds.Local(kind)==NativeStationKinds.Conductor){v.lastCallAt=loopStart+11.9f;v.lanternBroken=t>=13.2f;}
+                if(NativeStationKinds.Local(kind)==NativeStationKinds.Undertow){v.submerged=t<1.6f||t>=12f;v.surfaceAt=t<6?loopStart+1.6f:loopStart+100;if(t>=6.6f&&t<8){v.grabTarget=0;v.grabAt=loopStart+6.6f;v.releaseAt=loopStart+7.8f;}}
                 if(t>=13.6f)
                 {
                     float d=t-13.6f;NativeHordeGait.Death(minionPose,kind,NativeHordeKinds.Seed(id),Mathf.Min(d,2.3f),new System.Numerics.Vector2(0,-1));float sink=StationDeathPose(kind,NativeHordeKinds.Seed(id),d);
@@ -447,13 +447,13 @@ namespace ChipArena.UnityConversion
                 if(t>=11.2f&&s.React.Newest<loopStart+11.2f-.01f){float hy=yawToMe*Mathf.Deg2Rad;s.React.Add(loopStart+11.2f,new System.Numerics.Vector2(-Mathf.Sin(hy),-Mathf.Cos(hy)),StaggerWeight.Step,26,true,false,false,row.stagger);st.HitAt=loopStart+11.2f;}
                 ref var f=ref hordeInput[0];float inv=1/sc;
                 f=new HordeMotionInput{Kind=kind,Look=0,Id=id,Seed=NativeHordeKinds.Seed(id),Time=now,Yaw=yaw,Ground=ground*inv,Root=ToN(new Vector3(pos.x,ground+NativeHordeKinds.DrawRoot(kind,false),pos.z))*inv,Velocity=ToN(vel)*inv,Treadmill=false,
-                    AttackAge=melee,Strike=strike,Recover=recover,Attack=attack,Side=kind==NativeStationKinds.Conductor?-1:1,Health=1,HasTarget=true,Target=ToN(me.Body.position)*inv};
-                if(kind==NativeStationKinds.Undertow&&!string.IsNullOrEmpty(v.attack)&&t>=6){f.AttackAge=t-6;f.Attack=NativeHordeKinds.Attack.Lunge;}
+                    AttackAge=melee,Strike=strike,Recover=recover,Attack=attack,Side=NativeStationKinds.Local(kind)==NativeStationKinds.Conductor?-1:1,Health=1,HasTarget=true,Target=ToN(me.Body.position)*inv};
+                if(NativeStationKinds.Local(kind)==NativeStationKinds.Undertow&&!string.IsNullOrEmpty(v.attack)&&t>=6){f.AttackAge=t-6;f.Attack=NativeHordeKinds.Attack.Lunge;}
                 s.Gait.Pose(f,minionPose,s.React);s.Distance=Vector3.Distance(pos,hordeEye);
                 var sp=NativeStationKinds.SpecialOf(kind,v.attack);float spAge=sp!=NativeStationKinds.Special.None?now-lastAttack:float.NaN;
-                pos.y=ground+NativeHordeKinds.DrawRoot(kind,false);bool sumping=kind==NativeStationKinds.Undertow&&!float.IsNaN(t)&&t>=1.6f&&t<1.6f+NativeStationMotion.SurfaceSeconds;
+                pos.y=ground+NativeHordeKinds.DrawRoot(kind,false);bool sumping=NativeStationKinds.Local(kind)==NativeStationKinds.Undertow&&!float.IsNaN(t)&&t>=1.6f&&t<1.6f+NativeStationMotion.SurfaceSeconds;
                 stationGalleryTargets=stationTargets;
-                StationPose(st,s,kind,id,now,f,sp==NativeStationKinds.Special.Grab?NativeStationKinds.Special.Grab:sp,spAge,v,stationTargets[0],v.Holding(now)?target+Vector3.down*.75f:(Vector3?)null,kind==NativeStationKinds.Undertow&&t>=1.6f&&t<6?t-1.6f:float.NaN,false,ref pos);
+                StationPose(st,s,kind,id,now,f,sp==NativeStationKinds.Special.Grab?NativeStationKinds.Special.Grab:sp,spAge,v,stationTargets[0],v.Holding(now)?target+Vector3.down*.75f:(Vector3?)null,NativeStationKinds.Local(kind)==NativeStationKinds.Undertow&&t>=1.6f&&t<6?t-1.6f:float.NaN,false,ref pos);
                 StationCollect(st,s,kind,id,now,ground,pos,sp,spAge,v,null,0);stationGalleryTargets=null;
                 NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,s.Gait.Yaw,0));rig.Root.transform.localScale=Vector3.one*sc;
                 float gk=NativeHordeFx.Brighten(melee,strike,recover);var glow=HordeGlow(id);glow=new Vector4(gk,gk,gk,glow.w);float k0=st.Out.Glow;glow.x*=k0;glow.y*=k0;glow.z*=k0;
@@ -483,23 +483,23 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<int,int> stationKinds=new Dictionary<int,int>();
         private void StationCues(NativeMinion m,int kind,Vector3 pos,float t)
         {
-            if(!NativeStationKinds.Is(kind))return;stationKinds[m.Id]=kind;var v=ArenaPresentation.StationViewOf(m);var sp=NativeStationKinds.SpecialOf(kind,v?.attack);uint seed=NativeHordeKinds.Seed(m.Id);
+            if(!NativeStationKinds.Is(kind))return;stationKinds[m.Id]=kind;var v=ArenaPresentation.StationViewOf(m);var sp=NativeStationKinds.SpecialOf(kind,v.attack);uint seed=NativeHordeKinds.Seed(m.Id);
             float special=sp!=NativeStationKinds.Special.None?m.LastAttack:-100,strike=special+NativeStationKinds.SpecialStrike(sp);
-            switch(kind)
+            switch(NativeStationKinds.Local(kind))
             {
                 case NativeStationKinds.Linesman:
-                    if(sp==NativeStationKinds.Special.Arc){StationCue(m.Id,"c",special,t,NativeStationKinds.LinesmanCharge,pos,.8f);StationCue(m.Id,"a",v!=null&&v.arcAt>-50?v.arcAt:strike,t,NativeStationKinds.LinesmanArc,pos,.9f);}
-                    if(v!=null&&v.grounded)StationCue(m.Id,"g",StationEdge(m.Id,1,t),t,NativeStationKinds.LinesmanGround,pos,.75f);else StationEdgeClear(m.Id,1);
+                    if(sp==NativeStationKinds.Special.Arc){StationCue(m.Id,"c",special,t,NativeStationKinds.LinesmanCharge,pos,.8f);StationCue(m.Id,"a",!float.IsNaN(v.arcAt)?v.arcAt:strike,t,NativeStationKinds.LinesmanArc,pos,.9f);}
+                    if(v.grounded)StationCue(m.Id,"g",StationEdge(m.Id,1,t),t,NativeStationKinds.LinesmanGround,pos,.75f);else StationEdgeClear(m.Id,1);
                     StationCall(m.Id,seed,t,7.5f,NativeStationKinds.LinesmanIdle,pos,.55f);break;
                 case NativeStationKinds.Conductor:
                     if(sp==NativeStationKinds.Special.Whistle){StationCue(m.Id,"i",special,t,NativeStationKinds.ConductorInhale,pos,.6f);StationCue(m.Id,"w",strike,t,NativeStationKinds.ConductorWhistle,pos,1f);}
-                    if(v!=null&&v.lastCallAt>-50)StationCue(m.Id,"b",v.lastCallAt,t,NativeStationKinds.ConductorBell,pos,.9f);
-                    if(v!=null&&v.lanternBroken)StationCue(m.Id,"l",StationEdge(m.Id,2,t),t,NativeStationKinds.ConductorLantern,pos,.85f);else StationEdgeClear(m.Id,2);
+                    if(!float.IsNaN(v.lastCallAt))StationCue(m.Id,"b",v.lastCallAt,t,NativeStationKinds.ConductorBell,pos,.9f);
+                    if(v.lanternBroken)StationCue(m.Id,"l",StationEdge(m.Id,2,t),t,NativeStationKinds.ConductorLantern,pos,.85f);else StationEdgeClear(m.Id,2);
                     StationCall(m.Id,seed,t,8.5f,NativeStationKinds.ConductorMutter,pos,.5f);break;
                 case NativeStationKinds.Undertow:
-                    if(v!=null&&v.submerged)StationCall(m.Id,seed,t,2.1f,NativeStationKinds.UndertowBubble,pos,.45f);
-                    if(v!=null&&v.surfaceAt>-50)StationCue(m.Id,"s",v.surfaceAt,t,NativeStationKinds.UndertowSurface,pos,.85f);
-                    if(v!=null&&v.grabAt>-50){StationCue(m.Id,"g",v.grabAt,t,NativeStationKinds.UndertowGrab,pos,.85f);if(v.Holding(t)){float n=Mathf.Floor((t-v.grabAt)/1.4f);StationCue(m.Id,"d",v.grabAt+n*1.4f,t,NativeStationKinds.UndertowDrag,pos,.6f);}}
+                    if(v.submerged)StationCall(m.Id,seed,t,2.1f,NativeStationKinds.UndertowBubble,pos,.45f);
+                    if(!float.IsNaN(v.surfaceAt))StationCue(m.Id,"s",v.surfaceAt,t,NativeStationKinds.UndertowSurface,pos,.85f);
+                    if(!float.IsNaN(v.grabAt)){StationCue(m.Id,"g",v.grabAt,t,NativeStationKinds.UndertowGrab,pos,.85f);if(v.Holding(t)){float n=Mathf.Floor((t-v.grabAt)/1.4f);StationCue(m.Id,"d",v.grabAt+n*1.4f,t,NativeStationKinds.UndertowDrag,pos,.6f);}}
                     break;
                 case NativeStationKinds.Pileup:
                     if(sp==NativeStationKinds.Special.Shove){StationCue(m.Id,"r",special,t,NativeStationKinds.PileupBrace,pos,.75f);StationCue(m.Id,"v",strike,t,NativeStationKinds.PileupShove,pos,.9f);}
@@ -507,7 +507,7 @@ namespace ChipArena.UnityConversion
             }
         }
         // A cue at `at` (once per add and moment, within .12 s of it).
-        private void StationCue(int id,string tag,float at,float t,string key,Vector3 pos,float gain){if(at<-50||t<at||t-at>=.12f)return;if(!Once("st"+id+tag,at))return;CreatureCue(key,NativeStationKinds.StandIn(key),1,pos,gain,1,NativeSoundPriority.Normal);}
+        private void StationCue(int id,string tag,float at,float t,string key,Vector3 pos,float gain){if(!(t>=at)||t-at>=.12f)return;if(!Once("st"+id+tag,at))return;CreatureCue(key,NativeStationKinds.StandIn(key),1,pos,gain,1,NativeSoundPriority.Normal);}
         // A seeded call every `period` s or so (the idle buzz, the mutter, the bubbles, the moan).
         private void StationCall(int id,uint seed,float t,float period,string key,Vector3 pos,float gain){float k=(t+period*NativeHordeKinds.Hash(seed,90))/period;float at=(Mathf.Floor(k)+.3f*NativeHordeKinds.Hash(seed^(uint)Mathf.Floor(k),91))*period-period*NativeHordeKinds.Hash(seed,90);StationCue(id,"p",at,t,key,pos,gain);}
         // An edge of a view flag (grounded, the lantern broken): the time it turned on, NaN-free (-100 while off).
@@ -523,15 +523,15 @@ namespace ChipArena.UnityConversion
             {
                 var e=events[i];if(t-e.Time>.3f||t<e.Time||(e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot)||e.Target<10000||!(e.Amount>0)||!stationKinds.TryGetValue(e.Target,out int kind))continue;
                 var m=ZombieOf(arena,e.Target);if(m==null||m.Body==null)continue;string hurt=NativeStationKinds.HurtCue(kind);if(hurt!=null)StationCue(m.Id,"h"+(e.Id&7),e.Time,t,hurt,m.Body.position,.55f);
-                if(kind==NativeStationKinds.Pileup){var dir=NativeArena.Vec(e.Normal);dir.y=0;float yr=m.Yaw*Mathf.Deg2Rad;if(dir.sqrMagnitude>1e-4f&&Vector3.Dot(-dir.normalized,new Vector3(Mathf.Sin(yr),0,Mathf.Cos(yr)))>=Mathf.Cos(NativeStationKinds.FrontCone*.5f*Mathf.Deg2Rad))StationCue(m.Id,"x"+(e.Id&7),e.Time,t,NativeStationKinds.PileupRicochet,m.Body.position,.7f);}
+                if(NativeStationKinds.Local(kind)==NativeStationKinds.Pileup){var dir=NativeArena.Vec(e.Normal);dir.y=0;float yr=m.Yaw*Mathf.Deg2Rad;if(dir.sqrMagnitude>1e-4f&&Vector3.Dot(-dir.normalized,new Vector3(Mathf.Sin(yr),0,Mathf.Cos(yr)))>=Mathf.Cos(NativeStationKinds.FrontCone*.5f*Mathf.Deg2Rad))StationCue(m.Id,"x"+(e.Id&7),e.Time,t,NativeStationKinds.PileupRicochet,m.Body.position,.7f);}
             }
             var deaths=arena.MinionDeaths;
-            for(int i=0;i<deaths.Count;i++){var d=deaths[i];if(d==null||!stationKinds.TryGetValue(d.id,out int kind))continue;string key=NativeStationKinds.DeathCue(kind);if(key!=null)StationCue(d.id,"z",d.at+(kind==NativeStationKinds.Linesman?.3f:kind==NativeStationKinds.Pileup?.2f:0),t,key,d.position,.9f);
-                if(kind==NativeStationKinds.Conductor)StationCue(d.id,"y",d.at+NativeStationMotion.LanternShatterAt,t,NativeStationKinds.ConductorLantern,d.position,.8f);}
+            for(int i=0;i<deaths.Count;i++){var d=deaths[i];if(d==null||!stationKinds.TryGetValue(d.id,out int kind))continue;string key=NativeStationKinds.DeathCue(kind);if(key!=null)StationCue(d.id,"z",d.at+(NativeStationKinds.Local(kind)==NativeStationKinds.Linesman?.3f:NativeStationKinds.Local(kind)==NativeStationKinds.Pileup?.2f:0),t,key,d.position,.9f);
+                if(NativeStationKinds.Local(kind)==NativeStationKinds.Conductor)StationCue(d.id,"y",d.at+NativeStationMotion.LanternShatterAt,t,NativeStationKinds.ConductorLantern,d.position,.8f);}
         }
         private void StationCuesClear(){stationKinds.Clear();stationEdges.Clear();}
         /// <summary>Whether the add's LastAttack started a station special (its melee's strike cue then stays silent: the special has its own).</summary>
-        private static bool StationSpecialNow(NativeMinion m,int kind){if(!NativeStationKinds.Is(kind))return false;var sp=NativeStationKinds.SpecialOf(kind,ArenaPresentation.StationViewOf(m)?.attack);return sp!=NativeStationKinds.Special.None&&sp!=NativeStationKinds.Special.Grab;}
+        private static bool StationSpecialNow(NativeMinion m,int kind){if(!NativeStationKinds.Is(kind))return false;var sp=NativeStationKinds.SpecialOf(kind,ArenaPresentation.StationViewOf(m).attack);return sp!=NativeStationKinds.Special.None&&sp!=NativeStationKinds.Special.Grab;}
     }
 
     public sealed partial class NativeSourceModels

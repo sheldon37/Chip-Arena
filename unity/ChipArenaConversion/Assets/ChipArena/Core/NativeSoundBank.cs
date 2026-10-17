@@ -83,6 +83,15 @@ namespace ChipArena.UnityConversion
             K("turret.servo",P,.9f,L),K("turret.scan",O,2.4f,L),K("turret.lock",P,.35f,H),K("turret.spinup",P,1.2f,N),K("turret.fire",P,.35f,N),K("turret.overheat",P,2.5f,N),
             K("turret.break",P,1.8f,N),K("turret.spark",P,.6f,L),
             K("saw.whine",O,2.4f,N),K("saw.spinup",P,1.6f,N),K("saw.spindown",P,1.8f,N),K("saw.scrape",P,1f,L),K("saw.hit",P,.8f,N),
+            // The City Ironworks enemies (docs/EXPEDITION-CITY-IRONWORKS.md section 8; Core NativeIronworksKinds.CueKeys, routed by
+            // Runtime/NativeIronworksKindsPresentation.cs): bank only, silent until the owner's clips arrive. The Rigger's rattle is
+            // the ambush's warning: high priority, so it cuts through the furnace bed.
+            K("pve.ironworks.cinderling.hiss",P,1.5f,L),K("pve.ironworks.cinderling.screech",P,1.2f,N),K("pve.ironworks.cinderling.flare",P,.8f,N),K("pve.ironworks.cinderling.pop",P,1.2f,N),
+            K("pve.ironworks.stoker.breath",P,2f,L),K("pve.ironworks.stoker.rake",P,1f,N),K("pve.ironworks.stoker.hook.windup",P,1f,N),K("pve.ironworks.stoker.hook.throw",P,.8f,N),K("pve.ironworks.stoker.hook.yank",P,1f,N),
+            K("pve.ironworks.slagback.grind",P,2f,L),K("pve.ironworks.slagback.slam.windup",P,1.2f,N),K("pve.ironworks.slagback.slam",P,1.5f,N),K("pve.ironworks.slagback.deflect",P,.4f,L),K("pve.ironworks.slagback.shed",P,1.6f,N),K("pve.ironworks.slagback.emerge",P,2.5f,N),
+            K("pve.ironworks.ladleman.carry",O,4f,L),K("pve.ironworks.ladleman.pour.windup",P,1.5f,N),K("pve.ironworks.ladleman.pour",P,2f,N),K("pve.ironworks.ladleman.swing",P,1f,N),K("pve.ironworks.ladleman.spill",P,2f,N),K("pve.ironworks.ladleman.groan",P,2f,L),
+            K("pve.ironworks.rigger.rattle",P,2.5f,H),K("pve.ironworks.rigger.hang",O,4f,L),K("pve.ironworks.rigger.lamp",P,.6f,N),K("pve.ironworks.rigger.lower",P,1.5f,N),K("pve.ironworks.rigger.slide",P,1f,N),K("pve.ironworks.rigger.land",P,1.2f,N),
+            K("pve.ironworks.rigger.swing.windup",P,1f,N),K("pve.ironworks.rigger.swing",P,1f,N),K("pve.ironworks.rigger.throw",P,1f,N),K("pve.ironworks.rigger.climb",O,3f,L),K("pve.ironworks.rigger.snap",P,1f,N),K("pve.ironworks.rigger.groan",P,2f,L),K("pve.ironworks.rigger.shriek",P,1.2f,N),
         };
         private static Dictionary<string,int> index;
         public static bool Find(string key,out Def def)
