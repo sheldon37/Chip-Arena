@@ -229,7 +229,7 @@ namespace ChipArena.UnityConversion
         // looks moved into data, except Cinder Crossing's sky (forge theme).
         public static void Apply(ContentMap map,Camera camera)
         {
-            var look=Look(map);current=look;currentMap=map;arenaPicked=false;WardFieldOff();var s=applied;NativeMapLooks.Applied(look,map.sky,NativeArenaDressing.Preview,s);
+            var look=Look(map);current=look;currentMap=map;arenaPicked=false;zoneHouse=1;WardFieldOff();var s=applied;NativeMapLooks.Applied(look,map.sky,NativeArenaDressing.Preview,s);
             camera.farClipPlane=s.FarClip;camera.backgroundColor=C(s.Background);camera.clearFlags=s.Skybox?CameraClearFlags.Skybox:CameraClearFlags.SolidColor;
             WriteFog(s.Fog);if(introActive)stageFog=ReadFog();
             Sky(s);RenderSettings.skybox=s.Skybox?sky:null;Shadows();
@@ -245,6 +245,18 @@ namespace ChipArena.UnityConversion
             }
             PracticalLights(look,Time.unscaledTime);
         }
+        /// <summary>
+        /// The zone boss song's house light (Core NativeZoneBossBeat.House; presentation only): scales the look's ambient and key
+        /// (the moon) while a zone boss song plays on Central Station or City Ironworks; 1 gives the look back. An entrance or the
+        /// draft stage owning the lights leaves them alone, and Apply (a new map, an intro's end) starts again from the look.
+        /// </summary>
+        public static void ZoneHouse(float scale)
+        {
+            scale=Mathf.Clamp(scale,.05f,2f);if(introActive||current==null||Mathf.Abs(scale-zoneHouse)<1e-4f)return;zoneHouse=scale;var s=applied;
+            RenderSettings.ambientSkyColor=C(s.AmbientSky)*scale;RenderSettings.ambientEquatorColor=C(s.AmbientEquator)*scale;RenderSettings.ambientGroundColor=C(s.AmbientGround)*scale;
+            if(moon!=null)moon.intensity=s.KeyIntensity*scale;
+        }
+        private static float zoneHouse=1;
         /// <summary>The graphics tier's shadows (NativeSettings): the low tier takes the look's fallback cascades and distance.</summary>
         public static void Graphics(bool low){lowShadows=low;Shadows();}
         private static void Shadows(){if(current==null)return;QualitySettings.shadowCascades=applied.ShadowCascades(lowShadows);QualitySettings.shadowDistance=applied.Shadows(lowShadows);}

@@ -121,6 +121,9 @@ or Reduced effects):
 
 - **Moods:** sections ease their mood over a bar (two in Calm) from what was heard before them. This holds across the
   splice and the loop wrap.
+- **House light:** the house's ambient and key light (`House()`, through `NativeLighting.ZoneHouse`) follow only the section
+  level, the cuts and the drop's flare. They never pulse on the beat.
+- **Beat pulses:** the beat pulses go to the practical lights, glows and effects.
 
 ### Central Station
 
@@ -129,9 +132,11 @@ or Reduced effects):
 - Each PA chime steps on the next group of platform lamps, west to east.
 - The board's first row reads LAST CALL and lights on the chimes.
 - The red signal lamps come on at the first slam.
-- The house cuts where the bass cuts and flares on the slam.
-- The chime returns, the house cuts once more, and the drop flares it as the fight begins. The authority's boss flag turns
-  the board to ALL SERVICES CANCELLED at the same moment.
+- The house cuts where the bass cuts. The cut covers the lamps, the look's ambient and the moon.
+- The slam brings the house only half back, so the boss approaches in the dark.
+- The chime returns and the house cuts once more.
+- The drop flares everything back as the fight begins. The authority's boss flag turns the board to ALL SERVICES CANCELLED
+  at the same moment.
 
 **Fight:**
 - The house lights, lamps, troffers and signs follow the section's level and cast. The signal section is cold and blue; the
@@ -180,6 +185,16 @@ NativeMusicAccent[] accents = song.Accents;    // {T (clip s), Kind: AccentChime
 NativeZoneBossBeat beat = song.Evaluate(boss, mode);  // the stage's pulses, cut, flare, intro steps, mood
 // Loop pass k (k >= 0): clip c in [loop.start, loop.end) sounds at boss time song.Hold + k*song.LoopLength + (c - loop.start).
 ```
+
+For Central Station, the THE 6:47 design asks for a chime hit, a light cut, intro accents and the drop. All of them exist
+here:
+- **Chime hit:** 1.327.
+- **Light cuts:** 4.862, then 7.720.
+- **Accent slams:** 3.011, 6.206 and 8.731.
+- **Drop:** 9.068.
+
+The approach between the cuts is half lit. Row 0 reads LAST CALL during the intro. The design's "ARRIVING" wording would
+be a new board variant, which the boss presentation can add.
 
 A boss intro can key its moves to these boss times on the shared clock:
 - Station: the chimes, the slam, the cuts and the drop.

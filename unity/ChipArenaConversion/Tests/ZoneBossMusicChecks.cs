@@ -78,7 +78,9 @@ internal static class ZoneBossMusicChecks
         string stage=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeZoneBossStage.cs"));
         Check(stage.Contains("double song=arena.BossSongTime;if(!(song>=0))return default;")&&stage.Contains("s.Evaluate(song,KitFlash)"),"the stage reads the same boss clock and the settings' flash mode");
         string st=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionStationPresentation.cs")),iw=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeIronworksPresentation.cs"));
-        Check(st.Contains("stationState.Evaluate(view,now);stationState.Score(ZoneBossBeat(arena));")&&iw.Contains("iwMusic=ZoneBossBeat(arena);")&&iw.Contains("iwFx.Music=iwMusic;"),"both stages take the song each frame");
+        Check(st.Contains("stationState.Evaluate(view,now);stationState.Score(ZoneBossBeat(arena));NativeLighting.ZoneHouse(stationState.Music.House());")&&iw.Contains("iwMusic=ZoneBossBeat(arena);NativeLighting.ZoneHouse(iwMusic.House());")&&iw.Contains("iwFx.Music=iwMusic;"),"both stages take the song each frame (and give the house back when it stops)");
+        string lighting=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeLighting.cs"));
+        Check(lighting.Contains("public static void ZoneHouse(float scale)")&&lighting.Contains("arenaPicked=false;zoneHouse=1;")&&lighting.Contains("if(introActive||current==null||"),"the house scale leaves entrances alone and restarts from the look on Apply");
     }
 
     // ---------------- the clock ----------------
@@ -101,7 +103,7 @@ internal static class ZoneBossMusicChecks
     {
         string id=s.Id;double l=s.LoopLength,until=s.Hold+3*l;
         var off=s.Evaluate(-1,NativeKitFlash.Full);var nan=s.Evaluate(double.NaN,NativeKitFlash.Full);
-        Check(!off.On&&!nan.On&&off.Light()==1&&NativeIronworksKit.MusicHeat(off)==1&&NativeIronworksKit.MusicLamp(off)==1&&NativeIronworksKit.MusicField(off)==1&&NativeIronworksKit.MusicSway(off,true)==0,id+": before the boss arrives nothing changes");
+        Check(!off.On&&!nan.On&&off.Light()==1&&off.House()==1&&NativeIronworksKit.MusicHeat(off)==1&&NativeIronworksKit.MusicLamp(off)==1&&NativeIronworksKit.MusicField(off)==1&&NativeIronworksKit.MusicSway(off,true)==0,id+": before the boss arrives nothing changes");
         // Pure and deterministic: the same clock and mode give the same answer, also from a freshly parsed map.
         var again=NativeZoneBossMusic.Parse(File.ReadAllText(Path.Combine(Root,"Assets/ChipArena/Resources/ZoneBossMusic.json"))).Song(id);bool same=true;
         foreach(var mode in new[]{NativeKitFlash.Full,NativeKitFlash.Reduced,NativeKitFlash.Calm})for(double t=0;t<s.Hold+l+8;t+=.0731){var a=s.Evaluate(t,mode);var b=s.Evaluate(t,mode);var c=again.Evaluate(t,mode);same&=Same(a,b)&&Same(a,c);}
@@ -115,13 +117,14 @@ internal static class ZoneBossMusicChecks
             int cap=mode==NativeKitFlash.Full?3:mode==NativeKitFlash.Reduced?2:0;var f=s.FlashTimes(mode,until);int worst=0;for(int i=0;i<f.Count;i++){int n=0;for(int j=i;j<f.Count&&f[j]<f[i]+1;j++)n++;worst=Math.Max(worst,n);}
             Check(worst<=cap&&(mode==NativeKitFlash.Calm?f.Count==0:f.Count>until/2),id+": "+mode+" keeps at most "+cap+" flash events a second ("+worst+")");
             // A flash onset: the house light 10% (Calm: 12%) above its lowest of the last 100 ms, counted once per rising edge.
-            var rises=new List<double>();var lamp=new List<double>();double prevP=0;var window=new Queue<(double t,double v)>();bool rising=false;double jump=mode==NativeKitFlash.Calm?1.12:1.1;
+            var rises=new List<double>();var lamp=new List<double>();var house=new List<double>();double prevP=0;var window=new Queue<(double t,double v,double h)>();bool rising=false,risingH=false;double jump=mode==NativeKitFlash.Calm?1.12:1.1;
             for(double t=0;t<until;t+=1/240.0)
             {
-                var b=s.Evaluate(t,mode);if(b.Pulse-prevP>.15)rises.Add(t);prevP=b.Pulse;double light=b.Light(.25f);
-                window.Enqueue((t,light));while(window.Peek().t<t-.1)window.Dequeue();double lo=9;foreach(var w in window)lo=Math.Min(lo,w.v);
-                bool up=light>lo*jump;if(up&&!rising)lamp.Add(t);rising=up;
+                var b=s.Evaluate(t,mode);if(b.Pulse-prevP>.15)rises.Add(t);prevP=b.Pulse;double light=b.Light(.25f),h=b.House();
+                window.Enqueue((t,light,h));while(window.Peek().t<t-.1)window.Dequeue();double lo=9,loH=9;foreach(var w in window){lo=Math.Min(lo,w.v);loH=Math.Min(loH,w.h);}
+                bool up=light>lo*jump;if(up&&!rising)lamp.Add(t);rising=up;bool upH=h>loH*jump;if(upH&&!risingH)house.Add(t);risingH=upH;
             }
+            Check(MaxPerSecond(house)<=Math.Max(cap,0)&&(mode!=NativeKitFlash.Calm||house.Count==0)&&MaxPerSecond(house)<=1,id+": "+mode+" the house (ambient and key) never flashes on the beat: at most one jump a second, none in Calm ("+MaxPerSecond(house)+")");
             Check(MaxPerSecond(rises)<=cap,id+": "+mode+" pulse onsets stay under "+cap+" a second ("+MaxPerSecond(rises)+")");
             Check(MaxPerSecond(lamp)<=Math.Max(cap,0)&&(mode!=NativeKitFlash.Calm||lamp.Count==0),id+": "+mode+" house light flashes (a "+(mode==NativeKitFlash.Calm?"12":"10")+"% rise within 100 ms) stay at most "+cap+" a second ("+MaxPerSecond(lamp)+")");
         }

@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
             // The view: the DEV preview's while it is on, else the authority's fields once they exist, else the calm station
             // (no hazard is drawn in normal play until then).
             arena.BindZonePresentation();var view=NativeStationLive.Current;if(NativeStationPreview.On){NativeStationPreview.Fill(stationPreview,now);view=stationPreview;}
-            stationState.Evaluate(view,now);stationState.Score(ZoneBossBeat(arena));NativeStationLive.Shown=view;NativeStationLive.ShownClock=now;
+            stationState.Evaluate(view,now);stationState.Score(ZoneBossBeat(arena));NativeLighting.ZoneHouse(stationState.Music.House());NativeStationLive.Shown=view;NativeStationLive.ShownClock=now;
             Array.Clear(stationParents,0,stationParents.Length);foreach(var p in arena.AllBlocks){if(p==null||p.Definition?.id==null)continue;if(stationIndex.TryGetValue(p.Definition.id,out int i))stationParents[i]=p;}
             var blocks=map.blocks;if((QualitySettings.activeColorSpace==ColorSpace.Linear)!=stationColorLinear)StationRestColors();
             for(int i=0;i<stationParents.Length;i++){var p=stationParents[i];if(p==null){stationMoved[i]=false;continue;}var t=p.transform;var b=blocks[i];var r=b.rotation;

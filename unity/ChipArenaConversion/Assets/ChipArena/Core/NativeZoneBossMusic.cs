@@ -47,6 +47,9 @@ namespace ChipArena.UnityConversion
         public NativeZoneBossMood Mood;public float Pulse,Down,Cut,Flare,Steps;public byte PulseKind;public NativeKitFlash Mode;public double Since,SinceDown,SinceDrop;
         /// <summary>A practical light's multiplier (the house lights, lamps, troffers, globes; never a hazard's lamp): the
         /// section's level, the cut, the drop's flare and the beat (its share `pulse` of the light at most; none while the house is cut).</summary>
+        /// <summary>The house's ambient and key light multiplier (the look's sky fill and moon; 1 when nothing plays): the section's
+        /// level (gently), the cut and the drop's flare. No beat pulse: the whole scene never flashes on the beat.</summary>
+        public float House()=>On?(float)Math.Sqrt(Math.Max(0,Mood.Light))*(1-.65f*Cut)*(1+.35f*Flare):1;
         public float Light(float pulse=.35f)
         {
             if(!On)return 1;float k=Mood.Light*(1-.72f*Cut)*(1+.7f*Flare);
@@ -74,6 +77,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The shortest gap between two flashes per mode: at most 3 a second in Full and 2 in Reduced
         /// (NativeHazardKitClock.MaxFlashHz, ReducedFlashHz; WCAG 2.3.1), with a margin; Calm has none.</summary>
         public static double FlashGap(NativeKitFlash mode)=>mode==NativeKitFlash.Reduced?1/1.96:1/2.9;
+        /// <summary>How far the house stays cut after a drop inside the intro (the boss approaches in the dark); the song's drop at the
+        /// hold's end brings it all back, and its flare is full (an intro drop's is under half).</summary>
+        public const float IntroDim=.55f;
         public string Id,Title,Map;public NativeBossTrack Track;public NativeMusicAccent[] Accents=Array.Empty<NativeMusicAccent>();
         public double Hold,Preroll,Cut,Resume,Drop;public int DropBar;
         /// <summary>Beats between flash events (2: the downbeat and beat 3, for a fast song; 1: every beat).</summary>
@@ -133,22 +139,11 @@ namespace ChipArena.UnityConversion
             // Cut until the next drop (a softer, slower dip in Reduced and Calm, and there the lights come back over a release instead
             // of at once); the drop's flare (rising gently in Calm).
             double ramp=mode==NativeKitFlash.Calm?.5:mode==NativeKitFlash.Reduced?.15:.06,release=mode==NativeKitFlash.Calm?2:mode==NativeKitFlash.Reduced?.15:0;float depth=mode==NativeKitFlash.Calm?.55f:1;
-            if(Last(boss,introT,introK,introS,cycT,cycK,cycS,out double cutAt,out byte cutKind,out _,CutOrDrop))
-            {
-                if(cutKind==AccentCut)
-                {
-                    b.Cut=depth*(float)Smooth((boss-cutAt)/ramp);
-                    // A release still running from the cut before it carries on (no jump when cuts come close).
-                    if(release>0&&Last(cutAt-1e-6,introT,introK,introS,cycT,cycK,cycS,out double d0,out byte k0,out _,CutOrDrop)&&k0==AccentDrop&&boss-d0<release&&Last(d0-1e-6,introT,introK,introS,cycT,cycK,cycS,out double c0,out byte kc,out _,CutOrDrop)&&kc==AccentCut)
-                        b.Cut=Math.Max(b.Cut,depth*(float)(Smooth((d0-c0)/ramp)*(1-Smooth((boss-d0)/release))));
-                }
-                else if(boss-cutAt<release&&Last(cutAt-1e-6,introT,introK,introS,cycT,cycK,cycS,out double before,out byte beforeKind,out _,CutOrDrop)&&beforeKind==AccentCut)
-                    b.Cut=depth*(float)(Smooth((cutAt-before)/ramp)*(1-Smooth((boss-cutAt)/release)));
-            }
+            b.Cut=CutLevel(boss,ramp,release,depth,3);
             if(Last(boss,introT,introK,introS,cycT,cycK,cycS,out double dropAt,out _,out float ds,IsDrop))
             {
                 double u=boss-dropAt;b.SinceDrop=u;float gain=mode==NativeKitFlash.Calm?.3f:mode==NativeKitFlash.Reduced?.6f:1;double rise=mode==NativeKitFlash.Calm?1.2:mode==NativeKitFlash.Reduced?.12:0;
-                if(u<4)b.Flare=(float)(Math.Min(1,ds+.2)*gain*(rise>0?Smooth(u/rise):1)*Math.Exp(-u/(mode==NativeKitFlash.Calm?2.5:1.1)));
+                if(u<4)b.Flare=(float)(Math.Min(1,ds+.2)*gain*(rise>0?Smooth(u/rise):1)*Math.Exp(-u/(mode==NativeKitFlash.Calm?2.5:1.1)))*(dropAt<Hold-1e-6?.45f:1);
             }
             // The preroll: the power sags before the first note (and comes back with it, over the release).
             double sag=.4*depth*Smooth(Math.Min(boss,Preroll)/Math.Max(.25,ramp));
@@ -157,6 +152,16 @@ namespace ChipArena.UnityConversion
             if(b.Intro){int n=0;for(int i=0;i<stepT.Length;i++)if(stepT[i]<=boss)n++;b.Steps=stepT.Length==0?1:n/(float)stepT.Length;}else b.Steps=1;
             b.Signals=!b.Intro||boss>=firstSlam;
             return b;
+        }
+        // The house cut at boss time t: a cut ramps it down from wherever it was; a drop brings it back (at once in Full, over the
+        // release otherwise), only half way inside the intro (IntroDim) and fully at the hold's end. Continuous across close cuts
+        // (it starts from the level the previous events left, `n` events deep).
+        private float CutLevel(double t,double ramp,double release,float depth,int n)
+        {
+            if(!Last(t,introT,introK,introS,cycT,cycK,cycS,out double at,out byte kind,out _,CutOrDrop))return 0;
+            float from=n>0?CutLevel(at-1e-6,ramp,release,depth,n-1):kind==AccentCut?0:depth;
+            if(kind==AccentCut)return from+(depth-from)*(float)Smooth((t-at)/ramp);
+            float target=at<Hold-1e-6?IntroDim*depth:0;return release>0?from+(target-from)*(float)Smooth((t-at)/release):target;
         }
         private static readonly Func<byte,bool> CutOrDrop=k=>k==AccentCut||k==AccentDrop,IsDrop=k=>k==AccentDrop,NotBeat=k=>k!=EventBeat;
         // The last of a played list at or before boss time `boss`: the intro's (boss time) before the hold, then the loop's (u time,
