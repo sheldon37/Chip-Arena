@@ -21,7 +21,7 @@ director or network file changed.
 | The dressing kit (parts, light sources, shafts, water, the express rig, the drives) | `Core/NativeExpeditionStationKit.cs`, `.Concourse.cs`, `.Shed.cs` |
 | The practical-light picker | `Core/NativeExpeditionStationLights.cs` |
 | The atmosphere and the hazards' telegraphs | `Core/NativeExpeditionStationFx.cs` |
-| The runtime drawing (one hook line in `SourceWorld`) | `Runtime/NativeExpeditionStationPresentation.cs`, `Runtime/NativeStationLifetime.cs` |
+| The runtime drawing (one hook line in `SourceWorld`; one prewarm line in `NativeStagePrewarm`, so the kit builds under the loading screen) | `Runtime/NativeExpeditionStationPresentation.cs`, `Runtime/NativeStationLifetime.cs` |
 | The sounds on the doc's bank keys (one hook line in `NativeAudio`) | `Runtime/NativeExpeditionStationAudio.cs` |
 | The DEV preview (Camera tab) | one action in `Core/NativeDevTools.cs`, one case and one toggle in `Runtime/NativeDevPanel.cs` |
 | The look | the `expedition-transit` entry of `Resources/MapLooks.json` (this branch replaces the imported design look; section 4) |
@@ -248,8 +248,9 @@ parts off); the light candidates are those whose reach can take a slot:
   train stalled on platform 2 with its doors open) says "The 6:47 never left." Left as is (it is Astra's map data); worth
   aligning.
 
-**The look entry** (`Resources/MapLooks.json`, `expedition-transit`; nothing else in the file changed). Against the imported
-design look:
+**The look entry** (`Resources/MapLooks.json`, `expedition-transit`; nothing else in the file changed; its receipt in
+`tools/asset-lock.json` updated as `tools/generate_expedition.py` writes it, and `generate_expedition.py --check` passes).
+Against the imported design look:
 - the moon key 0.42 to 0.5, the ambient sky and equator scales 0.075/0.06 to 0.085/0.065 (readability);
 - the departures practical down under the larger board (y 8 to 6, range 18 to 16), the signal box's into the box (36, 8.6,
   -54.6), the cafe fire onto the hearth (-17, 0.9, 11.4);
