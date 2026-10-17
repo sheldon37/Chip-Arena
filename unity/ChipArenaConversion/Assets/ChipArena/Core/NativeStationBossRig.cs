@@ -114,8 +114,10 @@ namespace ChipArena.UnityConversion
             if(!seenSpawned.Equals(v.spawned)){seenSpawned=v.spawned;seenAt=t;}
             float age=StationBossView.At(v.spawned)?t-v.spawned:float.PositiveInfinity;
             Arriving=StationBossView.At(v.spawned)&&seenAt-v.spawned<=LateJoin&&age<beats.Hold&&age>=-1;ArrivalAge=Arriving?age:float.NaN;
+            // A short tail (the song's drop on the hold's end): the root runs on to the live root for Tail after the hold.
+            bool tail=!Arriving&&beats.Hold-beats.Drop<StationBossArrival.ShortTail&&StationBossView.At(v.spawned)&&seenAt-v.spawned<=LateJoin&&age>=beats.Hold&&age<beats.Hold+StationBossArrival.Tail;
             float vyaw=v.yaw*Deg;var vroot=new Vector3(v.x,v.y,v.z);
-            if(Arriving)
+            if(Arriving||tail)
             {
                 StationBossArrival.Root(age,beats,vroot,vyaw,out var ap,out var av,out float ay);
                 Follow.MaxTurnRate=2.4f;Follow.MaxTurnAccel=9;Follow.Follow(ap,av,ay,dt,!started);
@@ -241,7 +243,9 @@ namespace ChipArena.UnityConversion
         /// rear through the gate on the drop, down onto its hands, the Stationmaster rising and raising the watch.</summary>
         private void ArrivalLayer(float a,in StationBossBeats b)
         {
-            float span=b.Drop-b.Accent2,roll=1-BossMath.Smoother((a-b.Accent2)/(span*.7f));
+            // With the song's drop on the hold's end (a short tail) the legs unfold quicker, before the run gathers speed.
+            bool brief=b.Hold-b.Drop<StationBossArrival.ShortTail;
+            float span=b.Drop-b.Accent2,roll=1-BossMath.Smoother((a-b.Accent2)/(span*(brief?.5f:.7f)));
             var rv=StationBossMoves.Rolling.V;
             // Folded on the rails until the fourth accent; the legs let go of the folded pose on their own beats (rear pair first)
             // while the body rises out of the pit.
@@ -249,17 +253,19 @@ namespace ChipArena.UnityConversion
             for(int c=StationBossCh.SRise;c<StationBossCh.Count;c++)ch[c]+=(rv[c]-ch[c])*roll;
             for(int leg=0;leg<6;leg++)
             {
-                int row=NativeStationBossModel.Row(leg),b0=StationBossCh.Leg(leg,0);float w=1-BossMath.Smoother((a-b.Accent2-(2-row)*.09f)/(span*.5f));
+                int row=NativeStationBossModel.Row(leg),b0=StationBossCh.Leg(leg,0);float w=brief?1-BossMath.Smoother((a-b.Accent2-(2-row)*.05f)/(span*.3f)):1-BossMath.Smoother((a-b.Accent2-(2-row)*.09f)/(span*.5f));
                 for(int f=0;f<StationBossCh.LegStride;f++)ch[b0+f]+=(rv[b0+f]-ch[b0+f])*w;
             }
             // Climbing out it pitches up; the drop rears it through the gate (up over .35 s), holds while the gate flies, and
             // brings it down onto its hands.
             ch[StationBossCh.BP]+=-8*BossMath.Smooth(1-roll)*(1-BossMath.Smooth((a-b.Drop+.3f)/.3f));
-            float up=BossMath.Smoother((a-(b.Drop-.35f))/.35f),down=BossMath.Smoother((a-(b.Drop+.6f))/.7f);
+            // With the short tail it comes down while it runs on, and the Stationmaster rises as it lands; the watch is raised
+            // only when there is time to hold it up.
+            float up=BossMath.Smoother((a-(b.Drop-.35f))/.35f),down=brief?BossMath.Smoother((a-Math.Min(b.Drop+.6f,b.Hold-.45f))/.45f):BossMath.Smoother((a-(b.Drop+.6f))/.7f);
             Blend(StationBossMoves.Arrival,up*(1-down));
             // The Stationmaster stays down in the hatch until it has landed, then rises and raises the watch to the party.
-            float stand=BossMath.Smoother((a-(b.Drop+.8f))/Math.Max(.4f,(b.Hold-b.Drop-.8f)*.6f));
-            ch[StationBossCh.SRise]=-.32f*(1-stand);Blend(StationBossMoves.Risen,stand*(1-BossMath.Smooth((a-(b.Hold-.6f))/.6f)));
+            float stand=brief?BossMath.Smoother((a-b.Drop)/Math.Max(.3f,b.Hold-b.Drop)):BossMath.Smoother((a-(b.Drop+.8f))/Math.Max(.4f,(b.Hold-b.Drop-.8f)*.6f));
+            ch[StationBossCh.SRise]=-.32f*(1-stand);if(!brief)Blend(StationBossMoves.Risen,stand*(1-BossMath.Smooth((a-(b.Hold-.6f))/.6f)));
             ch[StationBossCh.Lamp]=Math.Max(ch[StationBossCh.Lamp],1.4f+.6f*up*(1-down));
         }
         /// <summary>The death (inside the 4 s victory hold): the legs give rear to front, the body drops onto its wheels with a heave
@@ -492,6 +498,9 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>Where the headlight first shows down the tunnel (x on T1), where the rolling body stops (the crossing), P1.</summary>
         public const float StartX=-76,StopX=0,ClimbZ=-6.6f,GateZ=-3.0f;
+        /// <summary>A drop this close to the hold's end leaves no walk: the burst runs on to the live root, which the root reaches
+        /// <see cref="Tail"/> after the hold's end.</summary>
+        public const float ShortTail=1.8f,Tail=.7f;
         public static void Root(float a,in StationBossBeats b,Vector3 end,float endYaw,out Vector3 pos,out Vector3 vel,out float yaw)
         {
             float line=NativeStationBossArena.LineZ,east=90*BossMath.Deg;
@@ -511,9 +520,13 @@ namespace ChipArena.UnityConversion
         private static void Path(float a,in StationBossBeats b,Vector3 end,out Vector3 p)
         {
             float line=NativeStationBossArena.LineZ;
-            float climb=BossMath.Smoother((a-b.Accent2-.35f)/(b.Drop-.15f-b.Accent2-.35f)),burst=BossMath.Smoother((a-b.Drop+.15f)/.6f),walk=BossMath.Smoother((a-(b.Drop+.9f))/Math.Max(.5f,b.Hold-b.Drop-1.3f));
             var p0=new Vector3(StopX,0,line);var p1=new Vector3(StopX,0,ClimbZ);var p2=new Vector3(StopX,0,GateZ);
-            p=Vector3.Lerp(Vector3.Lerp(Vector3.Lerp(p0,p1,climb),p2,burst),end,walk);
+            float climb=BossMath.Smoother((a-b.Accent2-.35f)/(b.Drop-.15f-b.Accent2-.35f));var up=Vector3.Lerp(p0,p1,climb);
+            // A drop close to the hold's end (the boss song's) leaves no time to stop and walk: the burst carries on through the
+            // gate to the live root, landing on it Tail after the hold's end (the root alone; the fight's moves start on time).
+            if(b.Hold-b.Drop<ShortTail){p=Vector3.Lerp(up,end,BossMath.Smoother((a-(b.Drop-.15f))/(b.Hold+Tail-(b.Drop-.15f))));return;}
+            float burst=BossMath.Smoother((a-b.Drop+.15f)/.6f),walk=BossMath.Smoother((a-(b.Drop+.9f))/Math.Max(.5f,b.Hold-b.Drop-1.3f));
+            p=Vector3.Lerp(Vector3.Lerp(up,p2,burst),end,walk);
         }
         /// <summary>The top hat's fall in the death: knocked off forward, a bounce, rolling on its brim to rest on its side.</summary>
         public static void Hat(float k,Vector3 from,Quaternion fromRot,Vector3 vel,float bodyYaw,Vector3 root,out Vector3 pos,out Quaternion rot)

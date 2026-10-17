@@ -37,11 +37,11 @@ namespace ChipArena.UnityConversion
         {
             into=buffer;n=0;from=fromTime;to=toTime;if(!v.live||rig==null||!(to>from))return 0;
             var body=rig.Shown.Position[NativeStationBossModel.Body];var lamp=rig.LampPos;var hat=rig.Shown.Position[NativeStationBossModel.SmHead];
-            // ---- the arrival (only when this peer saw it) ----
+            // ---- the arrival (only when this peer saw it; the song carries its own chimes when it plays) ----
             if(rig.Arriving)
             {
                 var b=NativeStationBossBeats.Current;float s=v.spawned;
-                Add(Chime,s+b.ChimeHit,body);Add(Horn,s+b.LightCut,lamp,1.2f);Add(Brakes,s+b.Accent0,body);Add(Brakes,s+b.Accent1,body,1.1f);Add(Unfold,s+b.Accent2,body);Add(Step,s+b.Accent3,body,1.2f);
+                if(!b.Song)Add(Chime,s+b.ChimeHit,body);Add(Horn,s+b.LightCut,lamp,1.2f);Add(Brakes,s+b.Accent0,body);Add(Brakes,s+b.Accent1,body,1.1f);Add(Unfold,s+b.Accent2,body);Add(Step,s+b.Accent3,body,1.2f);
                 Add(Barrier,s+b.Drop,new Vector3(rig.Root.X,1,NativeStationBossArena.BarrierZ),1.2f);Add(Bell,s+b.Drop+1.2f,hat,.8f);
             }
             // ---- the move playing (its record) ----

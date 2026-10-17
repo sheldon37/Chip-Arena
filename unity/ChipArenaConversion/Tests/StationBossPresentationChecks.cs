@@ -18,8 +18,8 @@ namespace ChipArena.UnityConversion
         private static readonly Vector3 Target=new Vector3(3.5f,1.6f,10.5f);
         public static void Run(string root)
         {
-            NonePin(root);Determinism(out string det);Contact(out string contact);Feet(out string feet);Pops(out string pops);Allocation(out string alloc);Tiers(out string tiers);Names();Cues(root);Source(root);
-            Console.WriteLine("PASS station boss presentation ("+count+" checks: normal play draws, lights, sounds and changes nothing (the view's binding is None; the Siren keeps its name); "+det+"; "+contact+"; "+feet+"; "+pops+"; "+alloc+"; "+tiers+"; the plate and banner read THE 6:47 for station-647, the banner waits for the drop)");
+            NonePin(root);Determinism(out string det);Contact(out string contact);Feet(out string feet);Pops(out string pops);Allocation(out string alloc);Tiers(out string tiers);Names();Cues(root);Source(root);Song(root,out string song);
+            Console.WriteLine("PASS station boss presentation ("+count+" checks: normal play draws, lights, sounds and changes nothing (the view's binding is None; the Siren keeps its name); "+det+"; "+contact+"; "+feet+"; "+pops+"; "+alloc+"; "+tiers+"; the plate and banner read THE 6:47 for station-647, the banner waits for the drop; "+song+")");
         }
 
         // ---- normal play: the view is None, and None draws, lights, sounds and changes nothing ----
@@ -192,12 +192,12 @@ namespace ChipArena.UnityConversion
         private static void Names()
         {
             Check(NativeExpeditionStates.BossName(NativeStationBoss.Archetype)==NativeStationBoss.Name&&NativeStationBoss.Name=="THE 6:47","the boss plate names station-647 THE 6:47");
-            Check(Math.Abs(NativeZoneBossNames.BannerDelay(NativeStationBoss.Archetype)-NativeStationBossBeats.Current.Drop)<1e-6,"THE 6:47's banner waits for the drop");
+            Check(Math.Abs(NativeZoneBossNames.BannerDelay(NativeStationBoss.Archetype)-NativeStationBossBeats.Current.Banner)<1e-6,"THE 6:47's banner waits for the drop");
             var cues=new ExpeditionStateCues();var v=new ExpeditionView{area=NativeStationBoss.Area,phase=ExpeditionPhase.Instance,
                 bossArrivals=new[]{new ExpeditionBossArrivalView{id="b",area=NativeStationBoss.Area,archetype=NativeStationBoss.Archetype,spawned=10,x=0,y=0,z=1.5f,hp=6000,maxHp=6000}},instances=new[]{new ExpeditionViewInstance{id=NativeStationBoss.Area}}};
             cues.Observe(v,10.1);var model=new ExpeditionBossModel();
             model.From(v,cues,10.5,null);Check(model.Intro<0,"no banner before the drop");
-            model.From(v,cues,10+NativeStationBossBeats.Current.Drop+.2,null);Check(model.Intro>=0&&model.Name=="THE 6:47"&&model.Area=="BOSS ARRIVAL · CENTRAL STATION","the banner shows THE 6:47 on the drop under BOSS ARRIVAL · CENTRAL STATION");
+            model.From(v,cues,10+NativeStationBossBeats.Current.Banner+.2,null);Check(model.Intro>=0&&model.Name=="THE 6:47"&&model.Area=="BOSS ARRIVAL · CENTRAL STATION","the banner shows THE 6:47 on the drop under BOSS ARRIVAL · CENTRAL STATION");
             Check(model.PlateCount==1&&model.PlateNames[0]=="THE 6:47","the plate reads THE 6:47");
             var sv=new ExpeditionView{area=NativeStationBoss.Area,phase=ExpeditionPhase.Instance,bossArrivals=new[]{new ExpeditionBossArrivalView{id="s",area=NativeStationBoss.Area,archetype="siren",spawned=10,hp=10,maxHp=10}},instances=new[]{new ExpeditionViewInstance{id=NativeStationBoss.Area}}};
             var sc=new ExpeditionStateCues();sc.Observe(sv,10.1);var sm=new ExpeditionBossModel();sm.From(sv,sc,10.5,null);Check(sm.Intro>=0&&sm.Name=="SIREN","the placeholder Siren's banner still shows at once as SIREN");
@@ -220,6 +220,50 @@ namespace ChipArena.UnityConversion
             string rt=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeStationBossPresentation.cs"));Check(rt.Contains("Cue(key,null,place,c.Gain)"),"the cues play through the bank path with no stand-in (silent without clips)");
         }
         private static readonly float[] blowAt=new float[8],blowSize=new float[8];private static readonly Vector3[] blowPush=new Vector3[8];
+
+        // ---- the boss song binds the arrival: its accents are the beats, its stage keeps the lights, the run meets the live root ----
+        private static void Song(string root,out string summary)
+        {
+            var music=NativeZoneBossMusic.Parse(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/ZoneBossMusic.json")));
+            var song=music.ForMap(NativeExpeditionStation.MapId,_=>true);Check(song!=null,"the station has a boss song in the map");
+            Check(StationBossBeats.FromSong(song,out var b)&&b.Song&&b.Valid,"the song's accents place the arrival's beats in order");
+            double Boss(NativeMusicAccent a)=>song.FirstBoss(a.T);bool Played(double t)=>t>=0&&t<=song.Hold+.05;
+            bool On(float t,byte kind)=>song.Accents.Any(a=>(kind==255||a.Kind==kind)&&Played(Boss(a))&&Math.Abs(Boss(a)-t)<1e-3);
+            double firstCut=song.Accents.Where(a=>a.Kind==NativeZoneBossSong.AccentCut&&Played(Boss(a))).Min(a=>Boss(a));
+            double firstChime=song.Accents.Where(a=>a.Kind==NativeZoneBossSong.AccentChime&&Played(Boss(a))).Min(a=>Boss(a));
+            Check(Math.Abs(b.ChimeHit-firstChime)<1e-3&&Math.Abs(b.LightCut-firstCut)<1e-3,"the board flips on the song's first chime and the headlight blooms on its first cut");
+            Check(Math.Abs(b.Banner-song.Hold)<.01&&Math.Abs(b.Hold-song.Hold)<1e-4,"the banner lands on the song's drop at the hold's end");
+            Check(On(b.Drop,NativeZoneBossSong.AccentSlam)&&b.Drop<b.Banner,"the burst through the gate is on a slam before the drop");
+            Check(song.Track.beats.Any(c=>Math.Abs(song.FirstBoss(c)-b.Accent0)<1e-3),"the brake sparks fall on a beat of the song's grid");
+            Check(On(b.Accent1,NativeZoneBossSong.AccentSlam)||On(b.Accent1,NativeZoneBossSong.AccentDrop),"it stops at the crossing on the slam where the song flares the lights");
+            for(int i=2;i<4;i++)Check(On(b.Accent(i),255),"intro accent "+i+" (the unfold, the step up) is on a song hit");
+            Check(NativeStationBossBeats.UseSong(song)&&NativeStationBossBeats.Current.Song&&NativeStationBossBeats.UseSong(song),"the presenter binds the song (again a no-op)");
+            Check(Math.Abs(NativeZoneBossNames.BannerDelay(NativeStationBoss.Archetype)-b.Banner)<1e-6,"the banner waits for the song's drop");
+            // The arrival on the song's beats: the song keeps the lights, the board still flips, no PA chime over the song's own,
+            // the run reaches the live root by the hold's end, and nothing pops at the hand-off.
+            var rig=new StationBossRig();var v=StationBossView.None;var buf=new StationBossCue[NativeStationBossCues.QueueSize];float minLight=1,maxSurge=0,maxStep=0,settled=float.NaN;int flipped=0,frames=0;bool chime=false;Vector3 lastRoot=Vector3.Zero;
+            for(int f=0;f<(int)((NativeStationBossPreview.ArrivalEnd+2.5f)*120);f++)
+            {
+                float t=f/120f;NativeStationBossPreview.View(t,0,ref v,out var vel,out var tg);rig.Update(t,1/120f,v,StationBossGround.Station,vel,false,true,new Vector3(tg.X,1.6f,tg.Y));
+                if(t>NativeStationBossPreview.ArrivalEnd-.5f){if(f>0)maxStep=Math.Max(maxStep,Vector3.Distance(rig.Root,lastRoot));if(float.IsNaN(settled)&&t>NativeStationBossPreview.ArrivalEnd&&Vector3.Distance(rig.Root,new Vector3(v.x,rig.Root.Y,v.z))<.3f)settled=t-NativeStationBossPreview.ArrivalEnd;}
+                lastRoot=rig.Root;
+                var st=NativeStationBossStage.Evaluate(v,t,NativeStationBossBeats.Current);minLight=Math.Min(minLight,st.Lights);maxSurge=Math.Max(maxSurge,st.LightSurge);
+                if(rig.Arriving&&rig.ArrivalAge>b.ChimeHit+.01f){frames++;if(st.Board==NativeStationBossStage.BoardArriving)flipped++;}
+                int n=NativeStationBossCues.Collect(v,rig,t-1/120f,t,buf);for(int i=0;i<n;i++)if(rig.Arriving&&buf[i].Key==NativeStationBossCues.Chime)chime=true;
+            }
+            Check(minLight==1&&maxSurge==0,"with the song bound the boss's hook leaves the house lights to the song's stage");
+            Check(frames>0&&flipped==frames,"row 0 reads ARRIVING from the chime to the hold's end");
+            Check(!chime,"no PA chime cue over the song's own chimes");
+            StationBossArrival.Root(b.Hold-1e-3f,b,new Vector3(0,0,1.5f),0,out var ap,out _,out _);
+            Check(ap.Z>NativeStationBossArena.BarrierZ,"the burst has carried it through the gate by the hold's end");
+            Check(maxStep<16f/120f&&!float.IsNaN(settled)&&settled<2f,"the live follow strides it on to its root with no jump (largest step "+(maxStep*120).ToString("0.0")+" m/s, settled "+settled.ToString("0.00")+" s after the hold)");
+            float d60=MaxDelta(NativeStationBossPreview.ArrivalEnd,60),d120=MaxDelta(NativeStationBossPreview.ArrivalEnd,120),ratio=d120/Math.Max(1e-5f,d60);
+            float d60b=MaxDelta(NativeStationBossPreview.SpawnAt+b.Drop,60),d120b=MaxDelta(NativeStationBossPreview.SpawnAt+b.Drop,120),ratiob=d120b/Math.Max(1e-5f,d60b);
+            Check(d60<1.6f&&ratio<.7f&&d60b<1.6f&&ratiob<.7f,"no pop at the song's burst or the hand-off ("+ratio.ToString("0.00")+", "+ratiob.ToString("0.00")+")");
+            NativeStationBossBeats.Clear();Check(!NativeStationBossBeats.Current.Song,"cleared, the doc's beats return");
+            summary="bound to the boss song: chime "+b.ChimeHit.ToString("0.00")+" s, cut "+b.LightCut.ToString("0.00")+", accents "+b.Accent0.ToString("0.00")+"/"+b.Accent1.ToString("0.00")+"/"+b.Accent2.ToString("0.00")+"/"+b.Accent3.ToString("0.00")+
+                ", burst "+b.Drop.ToString("0.00")+", banner on the drop "+b.Banner.ToString("0.00")+"; the song keeps the lights, row 0 still flips, the live follow carries it on from the burst, no pop (ratio "+Math.Max(ratio,ratiob).ToString("0.00")+")";
+        }
 
         // ---- the source: presentation only ----
         private static void Source(string root)

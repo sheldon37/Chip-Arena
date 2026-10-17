@@ -3,34 +3,73 @@ using System;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// THE 6:47's arrival beats on the shared boss clock (seconds from the arrival's `spawned`, which is BossSongTime 0; doc
-    /// section 6): the chime hit (the PA's last call, the board flips), the light cut (only the headlight in the west mouth),
-    /// four intro accents (brake sparks, the stop, the legs unfolding), the drop (the burst through the barrier gate, the lights
-    /// slam back, the banner) and the authority's intro hold. The fallback numbers are the doc's table; the boss theme's beat
-    /// map (docs/ZONE-BOSS-MUSIC.md, `claude/zone-boss-music-sync`, not merged when this was built) replaces them in one call
-    /// (<see cref="NativeStationBossBeats.Use"/>). Presentation only: no hit, hold or rule reads these.
+    /// THE 6:47's arrival beats on the shared boss clock (seconds from the arrival, BossSongTime 0; doc section 6): the chime
+    /// hit (the board flips to ARRIVING), the light cut (the headlight blooms in the west mouth), four intro accents (brake
+    /// sparks, the stop, the legs unfolding, the step up), the drop (the burst through the barrier gate), the banner (the fight's
+    /// drop) and the intro hold. The boss song binds them from its accents (<see cref="NativeStationBossBeats.UseSong"/>, Station
+    /// Chime of Doom through docs/ZONE-BOSS-MUSIC.md's intro edit); the doc's table is the fallback when the song is missing.
+    /// `Song` marks beats from the song: its stage (NativeExpeditionStationMusic) then owns the house lights' cut and flare and
+    /// the board's LAST CALL, and the boss's stage hook adds only its own parts. Presentation only: no hit, hold or rule reads these.
     /// </summary>
     public struct StationBossBeats
     {
-        public float ChimeHit,LightCut,Accent0,Accent1,Accent2,Accent3,Drop,Hold;
+        public float ChimeHit,LightCut,Accent0,Accent1,Accent2,Accent3,Drop,Banner,Hold;public bool Song;
         public float Accent(int i)=>i<=0?Accent0:i==1?Accent1:i==2?Accent2:Accent3;
-        /// <summary>The doc's fallback seconds (no beat map installed). Hold is today's intro hold (Pve.HoldDuration, the Siren
-        /// song's lead); the doc asks Astra to end this archetype's hold on the drop instead.</summary>
-        public static readonly StationBossBeats Fallback=new StationBossBeats{ChimeHit=0,LightCut=1.6f,Accent0=3.0f,Accent1=3.95f,Accent2=4.9f,Accent3=5.85f,Drop=6.8f,Hold=9.0678f};
-        /// <summary>Ordered and inside the hold (a beat map that breaks the order falls back).</summary>
-        public bool Valid=>ChimeHit>=0&&LightCut>ChimeHit&&Accent0>LightCut&&Accent1>Accent0&&Accent2>Accent1&&Accent3>Accent2&&Drop>Accent3&&Hold>=Drop&&Hold<30;
+        /// <summary>The doc's fallback seconds (no song installed): the banner on the drop, the hold the intro hold
+        /// (NativePve's 9.0678 s, which the boss song's drop lands on).</summary>
+        public static readonly StationBossBeats Fallback=new StationBossBeats{ChimeHit=0,LightCut=1.6f,Accent0=3.0f,Accent1=3.95f,Accent2=4.9f,Accent3=5.85f,Drop=6.8f,Banner=6.8f,Hold=9.0678f};
+        /// <summary>Ordered and inside the hold (a set that breaks the order is refused).</summary>
+        public bool Valid=>ChimeHit>=0&&LightCut>ChimeHit&&Accent0>LightCut&&Accent1>Accent0&&Accent2>Accent1&&Accent3>Accent2&&Drop>Accent3&&Banner>=Drop&&Hold>=Drop&&Banner<=Hold+.05f&&Hold<30;
+        /// <summary>
+        /// The beats from a boss song on the boss clock (<see cref="NativeZoneBossSong.FirstBoss"/>: the intro edit's opening and
+        /// its resumed run to the drop; accents the edit cuts are skipped):
+        /// <list type="bullet">
+        /// <item>the chime hit is the first chime and the light cut the first cut after it (the headlight blooms as the song's
+        /// stage cuts the lights);</item>
+        /// <item>the stop at the crossing is the first slam or drop at least 1.2 s after the cut (where the song's stage flares the
+        /// lights back), and the brake sparks fall on the first beat of the song's grid .5 s after the cut;</item>
+        /// <item>the unfold and the step up are the next hits .5 s and .4 s on;</item>
+        /// <item>the burst is the last slam at least .25 s before the banner, and the banner the drop on the hold's end (the hold if
+        /// the map has none).</item>
+        /// </list>
+        /// Returns false (and the fallback) when the song cannot place them in order. Allocates nothing; run once per song.
+        /// </summary>
+        public static bool FromSong(NativeZoneBossSong song,out StationBossBeats b)
+        {
+            b=Fallback;if(song?.Accents==null||!(song.Hold>0)||song.Hold>=30)return false;float hold=(float)song.Hold,end=hold+.05f;
+            const byte Any=255,Hit=254;
+            float chime=First(song,NativeZoneBossSong.AccentChime,0,end);if(float.IsNaN(chime))return false;
+            float cut=First(song,NativeZoneBossSong.AccentCut,chime+1e-3f,end);if(float.IsNaN(cut))return false;
+            float banner=Last(song,NativeZoneBossSong.AccentDrop,cut,end);if(float.IsNaN(banner))banner=hold;banner=Math.Min(banner,hold);
+            float stop=First(song,Hit,cut+1.2f,banner-1.5f),sparks=Beat(song,cut+.5f,stop-.3f);if(float.IsNaN(sparks))sparks=(cut+stop)*.5f;
+            float unfold=First(song,Any,stop+.5f,banner-1.2f),step=First(song,Any,unfold+.4f,banner-.8f),drop=Last(song,NativeZoneBossSong.AccentSlam,step+.5f,banner-.25f);
+            var r=new StationBossBeats{ChimeHit=chime,LightCut=cut,Accent0=sparks,Accent1=stop,Accent2=unfold,Accent3=step,Drop=drop,Banner=banner,Hold=hold,Song=true};
+            if(!r.Valid)return false;b=r;return true;
+        }
+        // The first beat of the song's grid on the boss clock in [from, to]; NaN if none.
+        private static float Beat(NativeZoneBossSong s,float from,float to){var g=s.Track?.beats;if(g==null)return float.NaN;foreach(double c in g){double t=s.FirstBoss(c);if(t>=from&&t<=to)return (float)t;}return float.NaN;}
+        // The earliest (latest) accent of `kind` (255: any; 254: a slam or a drop) on the boss clock in [from, to]; NaN if none.
+        private static bool Kind(byte want,byte kind)=>want==255||want==kind||want==254&&(kind==NativeZoneBossSong.AccentSlam||kind==NativeZoneBossSong.AccentDrop);
+        private static float First(NativeZoneBossSong s,byte kind,float from,float to){float best=float.NaN;foreach(var a in s.Accents){if(!Kind(kind,a.Kind))continue;double t=s.FirstBoss(a.T);if(t>=from&&t<=to&&!(t>=best))best=(float)t;}return best;}
+        private static float Last(NativeZoneBossSong s,byte kind,float from,float to){float best=float.NaN;foreach(var a in s.Accents){if(!Kind(kind,a.Kind))continue;double t=s.FirstBoss(a.T);if(t>=from&&t<=to&&!(t<=best))best=(float)t;}return best;}
     }
 
-    /// <summary>The one place the arrival's beats come from: the doc's fallback until the beat map binds them.</summary>
+    /// <summary>The one place the arrival's beats come from: the boss song's once it is bound, else the doc's fallback.</summary>
     public static class NativeStationBossBeats
     {
-        private static StationBossBeats bound;private static bool has;
+        private static StationBossBeats bound;private static bool has;private static NativeZoneBossSong song;
         /// <summary>The beats the arrival plays on now.</summary>
         public static StationBossBeats Current=>has?bound:StationBossBeats.Fallback;
-        /// <summary>Binds the boss theme's beat map (e.g. from NativeZoneBossSong's accents for `music/central-station-boss`); an
-        /// out-of-order set is refused and the fallback stays. Returns whether it was taken.</summary>
-        public static bool Use(in StationBossBeats beats){if(!beats.Valid)return false;bound=beats;has=true;return true;}
-        public static void Clear(){has=false;}
+        /// <summary>Binds a set of beats; an out-of-order set is refused and the previous one stays. Returns whether it was taken.</summary>
+        public static bool Use(in StationBossBeats beats){if(!beats.Valid)return false;bound=beats;has=true;song=null;return true;}
+        /// <summary>Binds the boss song's accents (<see cref="StationBossBeats.FromSong"/>); the same song again is a no-op, so the
+        /// presenter may call this every frame. A song that cannot place the beats leaves the fallback. Returns whether bound.</summary>
+        public static bool UseSong(NativeZoneBossSong s)
+        {
+            if(s==null){if(song!=null)Clear();return false;}if(ReferenceEquals(s,song))return has;
+            song=s;if(StationBossBeats.FromSong(s,out var b)){bound=b;has=true;return true;}has=false;return false;
+        }
+        public static void Clear(){has=false;song=null;}
     }
 
     /// <summary>
@@ -46,7 +85,8 @@ namespace ChipArena.UnityConversion
     /// <item><c>ClockHour</c>:<c>ClockMinute</c> what every clock reads (6:47; 6:48 once the boss has departed), <c>ClockTick</c>
     /// a 0..1 pulse on each strike (Terminus's notes, the phase change, the last tick).</item>
     /// <item><c>Lights</c> the house and practical lights' level (1 as authored, about .06 through the arrival's cut),
-    /// <c>LightSurge</c> the slam back on the drop (0..1, decaying), <c>WestSignalGreen</c> T1's west signal for the arrival.</item>
+    /// <c>LightSurge</c> the slam back on the drop (0..1, decaying): only on the fallback beats. With the boss song bound the
+    /// song's stage owns the lights and these stay 1 and 0. <c>WestSignalGreen</c> T1's west signal for the arrival.</item>
     /// <item><c>Shake</c> 0..1 the station's shudder on impacts, <c>Dust</c> 0..1 dust falling from the vault.</item>
     /// </list>
     /// </summary>
@@ -88,12 +128,14 @@ namespace ChipArena.UnityConversion
             float a=StationBossView.At(v.spawned)?time-v.spawned:float.PositiveInfinity;
             // ---- the arrival ----
             if(a>=b.ChimeHit&&a<b.Hold){s.Board=BoardArriving;s.BoardBlink=a<b.Drop;s.BoardFlicker=Pulse(a-b.ChimeHit,.35f);}
-            if(a>=b.LightCut&&a<b.Hold+2)
+            // The house lights' cut and flare are the song's when it plays (NativeExpeditionStationMusic); the doc's otherwise.
+            if(a>=b.LightCut&&a<b.Hold+2&&!b.Song)
             {
                 float cut=Ramp((a-b.LightCut)/CutFade),back=Ramp((a-b.Drop)/(CutFade*.5f));
-                s.Lights=1-(1-CutLevel)*cut*(1-back);s.WestSignalGreen=a<b.Drop+1.5f;
+                s.Lights=1-(1-CutLevel)*cut*(1-back);
                 if(a>=b.Drop)s.LightSurge=(float)Math.Exp(-(a-b.Drop)*SurgeDecay);
             }
+            if(a>=b.LightCut&&a<b.Drop+1.5f)s.WestSignalGreen=true;
             if(a>=b.Drop)s.Shake=Math.Max(s.Shake,Impact(a-b.Drop,.9f));
             for(int i=0;i<4;i++){float k=a-b.Accent(i);if(k>=0&&k<.6f)s.Shake=Math.Max(s.Shake,.35f*Impact(k,.5f));}
             // ---- the arena changes ----
