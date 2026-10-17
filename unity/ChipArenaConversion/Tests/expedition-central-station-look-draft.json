@@ -1,0 +1,617 @@
+{
+ "schema": 1,
+ "note": "Central Station visuals look draft (claude/station-visuals): NOT LIVE. At import, this entry goes into Resources/MapLooks.json `maps` (it supersedes the design draft's embedded `look`). See docs/EXPEDITION-CENTRAL-STATION-VISUALS.md section 4.",
+ "maps": [
+  {
+   "id": "expedition-transit",
+   "look": "central-station",
+   "farClip": 260,
+   "background": 461581,
+   "key": {
+    "color": 9416412,
+    "intensity": 0.5,
+    "elevation": 62,
+    "bearing": 205,
+    "from": {
+     "x": 0,
+     "y": 0,
+     "z": 0
+    },
+    "shadows": "soft",
+    "shadowStrength": 0.9
+   },
+   "rim": {
+    "color": 4090490,
+    "intensity": 0.14,
+    "elevation": 18,
+    "bearing": 25,
+    "from": {
+     "x": 0,
+     "y": 0,
+     "z": 0
+    },
+    "shadows": "none",
+    "shadowStrength": 1
+   },
+   "ambient": {
+    "sky": 2768472,
+    "skyScale": 0.085,
+    "equator": 2371630,
+    "equatorScale": 0.065,
+    "ground": 1446414,
+    "groundScale": 0.055
+   },
+   "fog": {
+    "mode": "linear",
+    "color": 726295,
+    "skyLerp": 0,
+    "start": 14,
+    "end": 120,
+    "density": 0
+   },
+   "shadows": {
+    "cascades": 2,
+    "distance": 60,
+    "fallbackCascades": 2,
+    "fallbackDistance": 45
+   },
+   "sky": {
+    "variant": "night",
+    "horizon": 1450540,
+    "zenith": 329740,
+    "glow": 7310000,
+    "disc": 14542576,
+    "cloud": 2765888,
+    "discSize": 0.035,
+    "halo": 0.12,
+    "stars": 0.35,
+    "crater": 0.3,
+    "cloudSpeed": 0.3,
+    "elevation": 62,
+    "bearing": 205,
+    "dir": {
+     "x": 0,
+     "y": 0,
+     "z": 0
+    }
+   },
+   "lights": [
+    {
+     "id": "departures",
+     "flicker": "stutter",
+     "pos": {
+      "x": 0.0,
+      "y": 6.0,
+      "z": 11.0
+     },
+     "color": 16757850,
+     "intensity": 1.5,
+     "range": 16,
+     "rate": 0,
+     "period": 7,
+     "length": 0.18,
+     "depth": 0.5,
+     "phase": 0
+    },
+    {
+     "id": "hall-tube",
+     "flicker": "stutter",
+     "pos": {
+      "x": 0,
+      "y": 4.9,
+      "z": 28.0
+     },
+     "color": 14221296,
+     "intensity": 0.9,
+     "range": 14,
+     "rate": 0,
+     "period": 11,
+     "length": 0.3,
+     "depth": 0.7,
+     "phase": 3
+    },
+    {
+     "id": "sodium-p2",
+     "flicker": "",
+     "pos": {
+      "x": -12.0,
+      "y": 5.2,
+      "z": -21.0
+     },
+     "color": 16752186,
+     "intensity": 1.2,
+     "range": 16,
+     "rate": 0,
+     "period": 0,
+     "length": 0,
+     "depth": 0,
+     "phase": 0
+    },
+    {
+     "id": "sodium-p3",
+     "flicker": "stutter",
+     "pos": {
+      "x": 14.0,
+      "y": 5.2,
+      "z": -37.0
+     },
+     "color": 16752186,
+     "intensity": 1.1,
+     "range": 15,
+     "rate": 0,
+     "period": 13,
+     "length": 0.4,
+     "depth": 0.8,
+     "phase": 0
+    },
+    {
+     "id": "signal-box",
+     "flicker": "",
+     "pos": {
+      "x": 36.0,
+      "y": 8.6,
+      "z": -54.6
+     },
+     "color": 16722466,
+     "intensity": 1.0,
+     "range": 12,
+     "rate": 0,
+     "period": 0,
+     "length": 0,
+     "depth": 0,
+     "phase": 0
+    },
+    {
+     "id": "tunnel-w-green",
+     "flicker": "",
+     "pos": {
+      "x": -44.5,
+      "y": 2.6,
+      "z": -12.5
+     },
+     "color": 3866474,
+     "intensity": 0.7,
+     "range": 9,
+     "rate": 0,
+     "period": 0,
+     "length": 0,
+     "depth": 0,
+     "phase": 0
+    },
+    {
+     "id": "emergency-corridor",
+     "flicker": "stutter",
+     "pos": {
+      "x": -10.0,
+      "y": 4.0,
+      "z": -57.0
+     },
+     "color": 16726570,
+     "intensity": 0.8,
+     "range": 12,
+     "rate": 0,
+     "period": 5,
+     "length": 0.15,
+     "depth": 0.4,
+     "phase": 0
+    },
+    {
+     "id": "cafe-fire",
+     "flicker": "fire",
+     "pos": {
+      "x": -17.0,
+      "y": 0.9,
+      "z": 11.4
+     },
+     "color": 16742958,
+     "intensity": 1.1,
+     "range": 9,
+     "rate": 5,
+     "period": 0,
+     "length": 0,
+     "depth": 0.35,
+     "phase": 0
+    }
+   ],
+   "kitLooks": [],
+   "dressing": "central-station",
+   "backdrop": "",
+   "atmosphere": "central-station",
+   "ambience": "",
+   "blocks": {
+    "dressed": true,
+    "dust": 0.08,
+    "haze": 0.42,
+    "hazeTop": 2.6,
+    "hazeColor": 1976874
+   },
+   "blockLooks": [
+    {
+     "block": "expedition-transit-floor-*",
+     "look": "ward-tile",
+     "color": 8025192,
+     "band": false,
+     "note": "concourse and hall terrazzo (large worn tiles)"
+    },
+    {
+     "block": "expedition-transit-track-bed",
+     "look": "tar",
+     "color": 1973274,
+     "band": false,
+     "note": "ballast"
+    },
+    {
+     "block": "expedition-transit-plat-*",
+     "look": "concrete-board",
+     "color": 5920850,
+     "band": false,
+     "note": "platforms (edge stripe is kit)"
+    },
+    {
+     "block": "expedition-transit-mass-c*",
+     "look": "brick-buff",
+     "color": 9071186,
+     "band": false,
+     "note": "concourse side walls"
+    },
+    {
+     "block": "expedition-transit-mass-n*",
+     "look": "ward-tile",
+     "color": 13155488,
+     "band": false,
+     "note": "hall walls: the facade cream tile"
+    },
+    {
+     "block": "expedition-transit-end-*",
+     "look": "brick-red",
+     "color": 4861992,
+     "band": false,
+     "note": "shed end walls and tunnel mouths"
+    },
+    {
+     "block": "expedition-transit-wall-s*",
+     "look": "ward-tile",
+     "color": 12103840,
+     "band": false,
+     "note": "the far platform wall"
+    },
+    {
+     "block": "expedition-transit-shell-*",
+     "look": "brick-red",
+     "color": 3811876,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-hall-ceiling",
+     "look": "concrete-board",
+     "color": 4868164,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-upper-roof",
+     "look": "concrete-board",
+     "color": 3815478,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-deck-*",
+     "look": "cyber-metal",
+     "color": 3425342,
+     "band": false,
+     "note": "balconies (painted iron decks; the green ironwork is kit)"
+    },
+    {
+     "block": "expedition-transit-landing-*",
+     "look": "cyber-metal",
+     "color": 3425342,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-bridge-*-parapet-*",
+     "look": "cyber-metal",
+     "color": 2767412,
+     "band": false,
+     "note": "footbridge parapets"
+    },
+    {
+     "block": "expedition-transit-bridge-*-end",
+     "look": "cyber-metal",
+     "color": 2767412,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-bridge-*",
+     "look": "cyber-grate",
+     "color": 3818560,
+     "band": false,
+     "note": "footbridge grating decks"
+    },
+    {
+     "block": "expedition-transit-post-*",
+     "look": "steel-green",
+     "color": 3032636,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-pier-*",
+     "look": "steel-green",
+     "color": 3032636,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-rail-*",
+     "look": "cyber-metal",
+     "color": 3029558,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-gallery-rail",
+     "look": "cyber-metal",
+     "color": 3029558,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-barrier-*",
+     "look": "cyber-metal",
+     "color": 3819074,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-roof-beam-*",
+     "look": "steel-green",
+     "color": 2372654,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-shed-roof-*",
+     "look": "concrete-board",
+     "color": 2369066,
+     "band": false,
+     "note": "the sooty shed roof (skylights between)"
+    },
+    {
+     "block": "expedition-transit-screen",
+     "look": "steel-green",
+     "color": 1713184,
+     "band": false,
+     "note": "the shed screen (its glazing, mullions and broken panes are kit)"
+    },
+    {
+     "block": "expedition-transit-stair-*",
+     "look": "concrete-board",
+     "color": 8025708,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-bstair-*",
+     "look": "concrete-board",
+     "color": 7236194,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-steps-*",
+     "look": "concrete-board",
+     "color": 6183508,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-crossing-*",
+     "look": "timber",
+     "color": 4864554,
+     "band": false,
+     "note": "barrow crossings (boards over the ballast)"
+    },
+    {
+     "block": "expedition-transit-train-*",
+     "look": "cyber-panel",
+     "color": 9083552,
+     "band": false,
+     "note": "stainless carriages (the red line and windows are kit)"
+    },
+    {
+     "block": "expedition-transit-wagon",
+     "look": "corrugated",
+     "color": 5913130,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-booth",
+     "look": "timber",
+     "color": 5914154,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-kiosk-*",
+     "look": "timber",
+     "color": 5914154,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-benches-*",
+     "look": "timber",
+     "color": 6965808,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-bench-*",
+     "look": "timber",
+     "color": 6965808,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-hall-gates-*",
+     "look": "cyber-metal",
+     "color": 4871248,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-hall-office",
+     "look": "timber",
+     "color": 4863012,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-hall-counter",
+     "look": "timber",
+     "color": 6965808,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-hall-machines",
+     "look": "cyber-panel",
+     "color": 2767428,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-hall-column-*",
+     "look": "ward-tile",
+     "color": 13155488,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-hall-sandbags-*",
+     "look": "plain",
+     "color": 6971976,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-girder",
+     "look": "steel-green",
+     "color": 2372654,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-trolley-*",
+     "look": "cyber-metal",
+     "color": 5923936,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-cabinet-*",
+     "look": "steel-green",
+     "color": 2767408,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-exit-*",
+     "look": "cyber-metal",
+     "color": 3819074,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-corridor-ceiling-*",
+     "look": "concrete-board",
+     "color": 3815478,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-corridor-rail-*",
+     "look": "cyber-metal",
+     "color": 3029558,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-pump-wall*",
+     "look": "concrete-board",
+     "color": 4868164,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-pumps",
+     "look": "steel-green",
+     "color": 2771514,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-generator",
+     "look": "demolition",
+     "color": 0,
+     "band": false,
+     "note": "the generator housing in hazard paint"
+    },
+    {
+     "block": "expedition-transit-signal-wall-*",
+     "look": "ward-panel",
+     "color": 4872784,
+     "band": false,
+     "note": "the signal box walls (glazing is kit)"
+    },
+    {
+     "block": "expedition-transit-signal-floor",
+     "look": "cyber-metal",
+     "color": 3425342,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-signal-landing",
+     "look": "cyber-metal",
+     "color": 3425342,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-signal-roof",
+     "look": "corrugated",
+     "color": 3816506,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-signal-*",
+     "look": "steel-green",
+     "color": 4086350,
+     "band": false,
+     "note": "the signal box rails and levers"
+    },
+    {
+     "block": "expedition-transit-office-*",
+     "look": "ward-panel",
+     "color": 10130564,
+     "band": false,
+     "note": ""
+    },
+    {
+     "block": "expedition-transit-breach-*",
+     "look": "brick-red",
+     "color": 6961710,
+     "band": false,
+     "note": "bricked arches"
+    }
+   ]
+  }
+ ]
+}

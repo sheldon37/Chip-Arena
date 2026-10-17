@@ -57,6 +57,7 @@ namespace ChipArena.UnityConversion
             if(!revamp)sourceModels.Queue("map-"+arena.MapId,Matrix4x4.identity);HazardPresentation(arena);SceneryMotion(arena);if(arena.MapId=="siren"&&!revamp)WardPresentation(arena);
             FactoryScenery(arena);
             BrickfallScenery(arena);
+            StationScenery(arena);
             CyberCityScenery(arena);
             ExpeditionCityScenery(arena);
             if(revamp)WardZeroScenery(arena);

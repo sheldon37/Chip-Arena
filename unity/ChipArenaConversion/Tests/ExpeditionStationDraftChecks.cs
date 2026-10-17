@@ -162,6 +162,8 @@ namespace ChipArena.UnityConversion
             // The one runtime mention is #254's id list (NativeMapRules.ExpeditionInstance); no file loads the draft or its look.
             var hits=Directory.EnumerateFiles(Path.Combine(root,"Assets"),"*",SearchOption.AllDirectories).Where(f=>kinds.Contains(Path.GetExtension(f))&&!f.Replace('\\','/').Contains("/LocalAssets/"))
                 .SelectMany(f=>File.ReadLines(f).Where(t=>t.Contains("expedition-central-station",StringComparison.Ordinal)||t.Contains("expedition-transit",StringComparison.Ordinal)||t.Contains("central-station",StringComparison.Ordinal)).Select(t=>Path.GetFileName(f)+": "+t.Trim())).ToArray();
+            // The station visuals' gate (claude/station-visuals: NativeExpeditionStation.MapId, every hook inert on other maps) is the other.
+            hits=hits.Where(h=>!h.StartsWith("NativeExpeditionStation.cs: public const string MapId=\"expedition-transit\",Look=\"central-station\"",StringComparison.Ordinal)).ToArray();
             Check(hits.Length==1&&hits[0].StartsWith("NativeUnityMaps.cs: public static bool ExpeditionInstance(string id)",StringComparison.Ordinal),"under Assets/ only the instance id list names the map ("+string.Join(" | ",hits)+")");
             // The importer has the station's profile but builds only the maps the selected manifest names; the live one names none.
             string importer=R("tools/generate_expedition.py");
