@@ -70,6 +70,11 @@ namespace ChipArena.UnityConversion
         { FinalVictim=FinalSeed=0;ResultAt=0;HasFinalKillcam=false;Winner=SetWinner=DraftSeat=0;Chosen=null;foreach(var p in Seats)p.alive=p.connected;ResetRound?.Invoke();Phase=NativePhase.Countdown;PhaseEnd=Time+3; }
         private void NextSet()
         { Set++;Round=1;foreach(var p in Seats){p.roundWins=0;p.offers.Clear();}BeginRound(); }
+        public void SynchronizeExpeditionClock(double elapsed)
+        {
+            if(!Cooperative||double.IsNaN(elapsed)||double.IsInfinity(elapsed)||elapsed<Time-1e-7)throw new ArgumentException("Monotonic cooperative clock required.");
+            Time=elapsed;
+        }
         public void Tick(double dt)
         {
             if(double.IsNaN(dt)||double.IsInfinity(dt)||dt<0||dt>.25)throw new ArgumentOutOfRangeException(nameof(dt));Time+=dt;

@@ -126,7 +126,7 @@ namespace ChipArena.UnityConversion
         public ExpeditionCommandResult Send(ExpeditionCommand c)
         {
             var blocked=Blocked(c);if(blocked!=null)return ExpeditionCommandResult.Of(ExpeditionCommandState.Unavailable,blocked);
-            var v=view();var request=new ExpeditionCommandRequest{run=v.run,epoch=v.epoch,transaction=Guid.NewGuid().ToString("N"),intent=c.intent,target=c.target,chip=c.chip};
+            var v=view();var request=new ExpeditionCommandRequest{areaIdentity=v.areaIdentity?.Copy(),run=v.run,epoch=v.epoch,transaction=Guid.NewGuid().ToString("N"),intent=c.intent,target=c.target,chip=c.chip};
             if(latest.TryGetValue(c.Key,out var old))replies.Remove(old.transaction);
             latest[c.Key]=request;
             try{send(request);return ExpeditionCommandResult.Of(ExpeditionCommandState.Pending,SentToHost);}
@@ -134,7 +134,12 @@ namespace ChipArena.UnityConversion
         }
         public void Reply(ExpeditionCommandReply reply)
         {
-            if(reply==null||!latest.Values.Any(c=>c.transaction==reply.transaction))return;
+            if(reply==null)return;
+            var request=latest.Values.FirstOrDefault(c=>c.transaction==reply.transaction);
+            if(request==null)return;
+            var current=view?.Invoke()?.areaIdentity;
+            if(request.areaIdentity!=null&&(!request.areaIdentity.Matches(reply.areaIdentity)||!request.areaIdentity.Matches(current)))return;
+            if(request.areaIdentity==null&&reply.areaIdentity!=null)return;
             // Never trust an ACK to confirm a UI action without state reflection.
             if(reply.state==ExpeditionCommandState.Refused||reply.state==ExpeditionCommandState.Unavailable||reply.state==ExpeditionCommandState.Failed)
                 replies[reply.transaction]=ExpeditionCommandResult.Of(reply.state,reply.reason);
@@ -142,7 +147,7 @@ namespace ChipArena.UnityConversion
             else if(reply.state==ExpeditionCommandState.Pending||reply.state==ExpeditionCommandState.Confirmed)
                 replies[reply.transaction]=ExpeditionCommandResult.Of(ExpeditionCommandState.Pending,AcceptedByHost);
         }
-        public ExpeditionCommandResult Result(ExpeditionCommand command)=>latest.TryGetValue(command.Key,out var request)&&replies.TryGetValue(request.transaction,out var result)?result:default;
+        public ExpeditionCommandResult Result(ExpeditionCommand command)=>latest.TryGetValue(command.Key,out var request)&&replies.TryGetValue(request.transaction,out var result)&&(request.areaIdentity==null?view?.Invoke()?.areaIdentity==null:request.areaIdentity.Matches(view?.Invoke()?.areaIdentity))?result:default;
     }
 
     /// <summary>

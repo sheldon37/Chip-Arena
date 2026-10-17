@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 namespace ChipArena.UnityConversion
 {
     // Expedition presentation acceptance (Claude, 2026-10-15; docs/EXPEDITION-PRESENTATION.md "Acceptance pass"). One run
-    // played through Astra's real session and director on the imported manifest (exp-layout-3) and its real fingerprint: the
+    // played through Astra's real session and director on the historical one-instance manifest (exp-layout-3); live split coverage is in ExpeditionSplitChecks and the native activation gate and its real fingerprint: the
     // host's own view and guests' views decoded from the real public/private wire (ExpeditionViewBatch, JSON, the paired
     // ExpeditionViewReceiver) with latency, each through the real presentation models (clock, cues, scene, transfer, boss, SAFE),
     // checked on every 60 Hz frame. The test plays the scene adapter (loads, ready tickets, placement) and combat callbacks the
@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             count=0;var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),Codec);
-            string json=File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ExpeditionLayout.json"));var layout=NativeExpeditionLayout.Parse(json);
+            string json=File.ReadAllText(Path.Combine(root,"Tests/expedition-layout-draft.json"));var layout=NativeExpeditionLayout.Parse(json);
             string fingerprint=NativeExpeditionLayout.Compatibility(json,content);
             Journey(content,layout,fingerprint);Binding(content,layout,fingerprint);Seats(content,layout,fingerprint);Crossings(layout);
             Clearance(root,layout);Budget(content,layout,fingerprint);Sources(root);

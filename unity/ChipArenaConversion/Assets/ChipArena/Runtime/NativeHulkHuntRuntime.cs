@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
         private void ClearHulkCollisions(NativeMinion m)
         {if(hulkChargeIgnored.TryGetValue(m.Id,out var list)){foreach(var c in list)if(c!=null&&m.Collider!=null)Physics.IgnoreCollision(m.Collider,c,false);hulkChargeIgnored.Remove(m.Id);}}
         private PveEntry HulkPanel(NativePropBody prop)
-        {if(prop==null)return null;foreach(var e in StageContent.entries)if(e.kind=="breach"&&e.block==prop.Definition.id)return e;return null;}
+        {if(prop==null)return null;foreach(var e in (Pve?.Content??StageContent).entries)if(e.kind=="breach"&&e.block==prop.Definition.id)return e;return null;}
         // 0 solid, 1 interior block, 2 in-bounds entrance panel, 3 destructible prop/structure.
         private int HulkBreakKind(NativePropBody prop)
         {

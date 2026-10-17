@@ -66,3 +66,34 @@ and measured two-area timings remain mandatory before enabling subset entry.
 Unity references used for scene ownership and manual stepping:
 - https://docs.unity3d.com/6000.0/Documentation/ScriptReference/PhysicsScene.Simulate.html
 - https://docs.unity3d.com/6000.0/Documentation/ScriptReference/SceneManagement.LocalPhysicsMode.Physics3D.html
+
+## Native foundation evidence and cohort work (2026-10-16)
+
+The Windows builder's `Latest-Build.txt` for shared `bb4b36abb2ef`, started at
+04:47:07 UTC with Unity 6000.3.24f1, contains the exact two-area foundation PASS
+above. This replaces "unrun" for that foundation fixture only. Build and
+publication succeeded; a shutdown warning reports two leaked preview scenes
+whose origin has not been established. No two-area gameplay timing was measured.
+
+`codex/expedition-cohort-transfer` adds an **inactive managed cohort coordinator**,
+not the completed cohort integration. `ExpeditionCohorts` owns a four-member
+logical roster and copied transfer cohorts. Members stay assigned to their source
+until all connected cohort members acknowledge fresh destination tickets and a
+reversible placement operation succeeds. Existing destination occupants are not
+part of that barrier. A disconnected cohort member keeps the destination after
+commit and must acknowledge a fresh ticket on reconnect. If everybody disconnects,
+commit cancels back to the source instead. Rollback requires a fresh source ack,
+since a peer may already have loaded the destination. Reservations must be
+revalidated immediately before placement. Failed rollback faults the coordinator;
+retries cannot replay uncertain placement side effects.
+
+The native adapter must implement `IExpeditionCohortPlacement`: reserve safe,
+distinct slots without changing membership, validate them again, apply the entire
+actor batch reversibly, and release/restore on failure. No economic side effects
+are allowed inside this placement interface. The managed fixture uses an injected
+fake; this is not evidence of native transfer, preserved combat state or once-only
+reprint payments. The coordinator is not yet bound to `NativeExpedition`, and its
+tickets are not yet the negotiated game wire. Do not expose it to clients yet.
+
+The original milestones 2–6 and their integration/release gates remain outstanding.
+Keep F entry, the live layout pins and Claude's presentation unchanged.
