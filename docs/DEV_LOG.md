@@ -1,3 +1,59 @@
+## 2026-10-17 — Claude: City Ironworks in-game visuals on the live foundry (on branch, not merged)
+
+- Branch `claude/ironworks-visuals`. It started from `8a5de43` and merges shared up to `9577fa3` (#255 to #260: the live activation, navigation from ramps, the activation receipt).
+  - Commits: `6b5a418` (the kit); merge `7726d42`; `80413e5` (retargeted to the live map); `9fb69ac` (stage prewarm and instanced shader warm-up); `26edc7d` (both map ids); merge `bda8096`.
+  - Not merged into shared, no PR, builder untouched.
+- **Live target:** the live map in `Resources/UnityMaps.json` and the live manifest's `exp-foundry` area is `expedition-foundry`. The design draft later renamed it `expedition-ironworks`, but Astra's activation snapshot kept `expedition-foundry`. It has the design's 308 blocks under prefix `expedition-foundry-`, area `exp-foundry`, and the look `ironworks`. The live map wins, so `NativeIronworksKit` keys on `LiveMap` (`expedition-foundry`) and also accepts the design draft's `DesignMap` (`expedition-ironworks`), so a later rename keeps working. Block stems and hazard ids resolve under either prefix. Every hook does nothing on other maps; `IronworksVisualChecks` builds the kit for every other live map and gets zero parts. It also confirms that the keyed map is the one the live manifest's `exp-foundry` area uses.
+- **Live versus design differences that matter for the look:**
+  - The live manifest has **no converter gate**, so the roller shutter draws nothing live. Its frame (guides, drum, stripes) still reads as an open shutter.
+  - **No Rigger records:** 5 of the 8 hang-point vents are missing, and 3 are ordinary ceiling vents. The hang-point girders and chains are dressing only.
+  - Machines are live at the 4 approved spots, and the kit keeps them clear from the manifest's records.
+  - The live look lacked the design's 8 later block-look fixes.
+- **Live look (that entry only):** in `MapLooks.json`, the `expedition-foundry` entry takes the design's 8 block looks. Rails become grating; the torpedo cars, ladle stands, converters, slag pots, cranes and pusher become clean plate instead of rust camouflage. The `tools/asset-lock.json` receipt for `MapLooks.json` is updated. `Tests/expedition-ironworks-look-activation.json` (Astra's pinned snapshot) is left as it was, so it now differs from the live entry by those 8 lines.
+- **Hazards off in normal play:** no authority is bound, so `NativeIronworksLive.Input()` gives no input and every hazard view is idle and off. Runners stay plugged and crusted, there is no pour, the slab stays in the furnace and nothing shows a telegraph. Only the DEV panel's preview (`preview-ironworks`, Camera section, behind the DEV gate) runs the cycles. The static dressing, lighting, light field, effects (smoke, steam, embers, halos) and molten props (furnace mouths, coke door, converters, molds, slag bank) are live.
+- **What was built (presentation only, new files):**
+  - Core:
+    - `NativeIronworksKit` (+ `.Structure/.Furnaces/.Casting/.Mill/.West/.East`) dresses all nine rooms.
+    - `NativeIronworksHazards` holds the hazard views and the DEV preview input.
+    - `NativeIronworksLights`: 8 slots, 2 of them always cool.
+    - `NativeIronworksField`: a baked molten light field in the Ward field layout.
+    - `NativeIronworksFx` (effects) and `NativeIronworksShutter`.
+  - Shaders: `NativeMolten` and `NativeHeatHaze` (off on the low tier).
+  - Runtime: `NativeIronworksPresentation`.
+- **Hooks in shared files (one line each):**
+  - Runtime and Core: `NativeSourcePresentation`, `ArenaPresentation`, `NativeExpeditionStateScene` (shutter), `NativeStagePrewarm` (the kit builds under the loading screen), `NativeStageLoading.InstancedShaders` (+`NativeMolten`), `NativeDevTools`, `NativeDevPanel` (3).
+  - Editor: `NativeBuildChecks`.
+  - Tests: `Tests/Program.cs` (`IronworksVisualChecks.Run` plus `--ironworks-visuals`) and `TransitionLoadingChecks` (the prewarm entry). The design generator and look draft carry the same 8 look fixes; the map and layout drafts are unchanged.
+- **Numbers (live map, against the doc's section 9.1):**
+  - Kit parts: 5,242 of about 7,600. Casting 1,721/1,800; furnace aisle 602/1,400; mill 1,051/1,300; coke 445/900; converter 414/700; slag 246/600; east wing 763/900.
+  - The low tier leaves out 45% (2,889 parts drawn).
+  - Draws: 12 instanced (kit and molten) of about 16.
+  - Lights: 8 practical per camera (6 warm, 2 always cool) from 88 candidates; every molten light reaches 13 m at most. The light field is 200 x 136 cells x 8 slices x 4 channels from 46 glows, baked once per map on a worker thread under the loading screen.
+  - Effect quads (map-wide build): about 290 in normal play; 576 at most in the DEV preview (check limit 1,100).
+  - Molten: 105 pieces.
+  - Placement: 86 parts left out by the 0.25 m wall-band rule, and 6 by keep-outs.
+  - Allocation: 0 bytes per frame over 240 frames.
+- **Gameplay impact:** none. Nothing collides, damages, moves a block or enters the network frame. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged.
+- **Checks** (merged tree `bda8096`, `run5b.sh`, every step exit 0):
+  - unity-check: runtime and editor build.
+  - Relay: 771 PASS lines, including `ironworks visuals` (151 checks) and transitions (3,515). MagicFx and ChipSelect passed on the first run.
+  - Python: 140 tests OK, 1 skip.
+  - Package: structure passed.
+  - `git diff --check`: clean.
+  - Renders: the offline WebGL harness (the shaders' SHARED sections, CPU bloom), in the scratchpad `renders-ironworks-vis/`.
+  - Not run: Unity Editor or player, real GPU lighting, Windows, multiplayer, performance on the owner's PC.
+- **Risks and not done:**
+  - Normal play is darker than the preview. Without the pour and live runners, the casting floor and taphole aisle rely on the furnace mouths, molds and lamps.
+  - The rolling mill is the weakest room: the stand housings read as dark boxes, and the slab is off in normal play.
+  - The converters and torpedo cars stay boxy.
+  - The coke wall's glow reads a little like a mosaic.
+  - The slag yard's floor haze is greyish.
+  - The shutter is not live (no gate).
+  - The look snapshot now differs from the live entry.
+- **Next:**
+  - Astra: bind `NativeIronworksLive.Authority`/`Bound` from the instance hazard clock (`Running`, `Wave`, `Boss`, `Clock`). Hazard authority, volumes and damage are Astra's. Add the converter gate to the live manifest if the shutter should show.
+  - The enemies agent: the Rigger and the new enemies.
+
 ## 2026-10-17 — Astra: activation published to native test
 
 - Source `45e24acb2d80a8d63f2eb08de879144dbea70c7c` (PR #255 plus native gate repairs #256–259), shared and builder synced. Windows SHELDON Build-and-Publish started 01:04:04 UTC, exited successfully and published at 01:07:11 UTC. Public native/windows-x64/latest.json inspected: version `ae31a979cd2385cd0dd0a03cdd1c60bfb7aa6cca7e5f8274c77fbb8b30a01105`, revision `639277959795718335`, archive `e6f2ea65e8af4e959c693f09199e46ce3e3fbc469894bf09370584088edbcb3b`, 142,823,595 bytes, 231 files.
