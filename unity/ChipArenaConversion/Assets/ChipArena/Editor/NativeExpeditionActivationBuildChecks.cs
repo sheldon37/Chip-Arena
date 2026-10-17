@@ -42,6 +42,9 @@ namespace ChipArena.UnityConversion.Editor
                 foreach(var area in layout.areas.Where(a=>a.role=="instance"))
                 {
                     string who="p"+seat++,door=layout.Area(layout.world).anchors.Single(a=>a.building==area.id).id;
+                    // Start at the actual outlying hub circle, not the safe centre of town.
+                    var join=layout.Area(layout.world).doors.Single(d=>d.anchor==door).join;
+                    Check(hub.Arena.ExpeditionPlace(who,new ExpeditionPoint{x=join.x,y=join.y,z=join.z}),"stand at actual hub circle "+area.id);
                     var old=cohorts.Member(who).Ticket;
                     Check(transfers.Begin("fixture-"+who,layout.world,area.id,door,new[]{who}),"reserve "+area.id);
                     var ticket=cohorts.Member(who).Ticket;
@@ -52,6 +55,9 @@ namespace ChipArena.UnityConversion.Editor
                     var command=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-command",epoch=7,areaIdentity=ticket,expeditionCommand=new ExpeditionCommandRequest{areaIdentity=ticket}}));
                     Check(command.epoch==7&&ticket.Matches(command.areaIdentity)&&ticket.Matches(command.expeditionCommand.areaIdentity),"command wire identity");
                     var sim=registry.Find(area.id).Arena;var frame=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=sim.NetworkFrame()})).frame;
+                    var arriving=sim.Pilots.Single(p=>p.Seat.id==Seat(who));
+                    var arrival=NativeArena.Vec(area.doors.Single().entries[0].Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);
+                    Check((arriving.Body.position-arrival).sqrMagnitude<.0001f&&(arriving.Body.transform.position-arrival).sqrMagnitude<.0001f,"physics and transform arrive inside "+area.id);
                     Check(frame.pilots.Any(p=>p.id==Seat(who))&&!frame.pilots.Any(p=>p.id==1),"destination frame owns only local pilot");
                     Check(sim.Pve.Content.machines.Length>0&&sim.Pve.Content.entries.Length>0,"playable encounter services "+area.id);
                     var scene=EditorSceneManager.NewPreviewScene();NativeArena replica=null;
@@ -77,6 +83,12 @@ namespace ChipArena.UnityConversion.Editor
                         registry.Step(tick,dt=>sessions[layout.world].Tick(dt));
                         foreach(var area in layout.areas){registry.Find(area.id).Arena.Match.SynchronizeExpeditionClock(tick/60d);if(area.id!=layout.world)sessions[area.id].Tick(1d/60);}
 
+                        // Catch a body left at hub coordinates falling outside any destination.
+                        if(tick<=120)foreach(var area in layout.areas.Where(a=>a.role=="instance"))
+                        {
+                            var sim=registry.Find(area.id).Arena;var p=sim.Pilots.Single(x=>!x.Seat.bot);
+                            Check(p.Hp>0&&p.Body.position.y>=-.1f,"arrival stays alive above the entry floor: "+area.id+", tick="+tick+", position="+p.Body.position);
+                        }
                         if(tick%3==0)foreach(var area in layout.areas){var frame=registry.Find(area.id).Arena.NetworkFrame();string packet=NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=frame});packetBytes+=System.Text.Encoding.UTF8.GetByteCount(packet);Check(packet.Length<1048576,"per-area wire budget");}
                         double ms=(timer.ElapsedTicks-start)*1000d/System.Diagnostics.Stopwatch.Frequency;worst=Math.Max(worst,ms);if(tick>120)samples.Add(ms);
                     }
