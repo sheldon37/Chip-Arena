@@ -4,8 +4,9 @@ using System.IO;
 using ChipArena.UnityConversion;
 // Expedition zone boss music (Core/NativeZoneMusic.cs, owner 2026-10-17): Central Station and City Ironworks name their own boss
 // tracks, each played only when its file is installed, else the Siren's song on its own loop map as before; Ward Zero, the hub
-// and every other map keep the Siren's song; a zone track loops on the shared boss clock; Runtime/NativeAudio.cs routes the boss
-// branch through it and keeps Astra's per-map normal-play tracks (PR #263).
+// and every other map keep the Siren's song; a zone track plays its intro edit and loop map on the shared boss clock
+// (ZoneBossMusicChecks), a plain loop only without a map; Runtime/NativeAudio.cs routes the boss branch through it and keeps
+// Astra's per-map normal-play tracks (PR #263).
 internal static class ZoneMusicChecks
 {
     static int count;
@@ -26,7 +27,7 @@ internal static class ZoneMusicChecks
         string audio=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeAudio.cs"));
         Check(audio.Contains("string boss=NativeZoneMusic.BossTrack(arena.MapId,id=>Clip(id)!=null);"),"the boss branch routes through NativeZoneMusic");
         Check(audio.Contains("if(boss==NativeZoneMusic.SirenSong)Track(boss,Music*.55f,hold,arena.BossTrack.Looped(arena.BossSongTime),arena,arena.BossSongAt);"),"the Siren's song keeps its intro/loop map and clock");
-        Check(audio.Contains("else Track(boss,Music*.55f,hold,NativeZoneMusic.LoopClock(arena.BossSongTime,Clip(boss).length),arena,arena.BossSongAt);"),"a zone track plays on the shared boss clock");
+        Check(audio.Contains("double clip=song!=null?song.Clip(arena.BossSongTime):NativeZoneMusic.LoopClock(arena.BossSongTime,Clip(boss).length);")&&audio.Contains("Track(boss,Music*.55f,hold||clip<0,Math.Max(0,clip),arena,arena.BossSongAt);"),"a zone track plays its intro edit and loop map (a plain loop without one) on the shared boss clock");
         int boss=audio.IndexOf("else if(arena.BossSongTime>=0)",StringComparison.Ordinal),foundry=audio.IndexOf("Track(\"music/foundry-of-the-dead\"",StringComparison.Ordinal),transit=audio.IndexOf("Track(\"music/subway-arrival-chime\"",StringComparison.Ordinal);
         Check(boss>0&&foundry>boss&&transit>boss,"the boss branch still comes before the zones' normal-play tracks (PR #263)");
         Console.WriteLine("PASS zone music ("+count+" checks: Central Station and City Ironworks boss tracks when installed, Siren's song otherwise, shared-clock loop, NativeAudio routing)");

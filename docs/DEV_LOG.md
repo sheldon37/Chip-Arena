@@ -47,6 +47,38 @@
   - Unity Editor, Windows and play are not run.
 - **Next:** Astra binds `StationBossViewOf` to the record. After the music branch merges, the station reads the hook (board, clocks, poses) and the beats bind from the song map. Then check in the Editor and on Windows.
 
+## 2026-10-17 — Claude: zone boss songs synced to the boss intro and the stages (on branch, not merged)
+
+- Branch `claude/zone-boss-music-sync`, base shared `claude/sleepy-ritchie-g8ruhv` (last merged at `5dc860d`). Commits `86a9f63` (maps, intro edit, stage reactions, checks, doc), `60fe312` (house light, half-lit intro approach), `65d7f2e` (ward lighting reset kept intact, bolder drop sparks). Not merged, no PR, builder untouched, nothing published.
+- Owner (verbatim): "I have the two boss stage themes here, Please sync their intro with the stage. And sync the stages to be affected by the music :)" and "Station chime for station, and hydraulic hell for foundry".
+- **Audio:** the owner's files as `Resources/Audio/music/central-station-boss.mp3` (Station Chime of Doom, `expedition-transit`) and `city-ironworks-boss.mp3` (Hydraulic Hell, `expedition-foundry`/`expedition-ironworks`). Audio streams are bit-exact (cover art removed by stream copy). Asset-lock receipts are added; credits are in `tools/zone-boss-music-credits.txt`.
+- **Beat maps:** `Resources/ZoneBossMusic.json`, made by `tools/zone_boss_beatmap.py` (offline, not in CI; `--check` compares the JSON with the MP3s).
+  - Station: about 179 BPM, drifting 178-182.5, so the map lists every beat. 65 bars, drop at 16.10 s (bar 12), loop bars 12-61 (16.10-82.94 s).
+  - Ironworks: about 140 BPM (138-144), 84 bars, drop at 14.01 s (bar 9), loop bars 9-82 (14.01-140.28 s).
+  - Sections and accents (chimes, slams, cuts, drops) are in the map. The loops leave out the intro and the outro.
+- **Intro:** the sim's 9.0678 s boss intro hold is unchanged. NativeAudio plays an intro edit whose drop lands when the hold ends and the fight begins.
+  - Station: 1.06 s of quiet, then song 0-5.32 s (the PA chime and the arrival), a downbeat splice to 13.40 s, the chime's return, and the drop at the end of the hold.
+  - Ironworks: 0.27 s of quiet, then song 0-7.06 s (the whole ignition), a splice to 12.27 s, and the drop at the end of the hold.
+  - After the drop, the bar-aligned loop runs on the shared boss clock (`NativeArena.BossSongTime`), so every peer hears and sees the same beat. If the map or file is missing, the old plain loop or the Siren fallback plays.
+- **Stage:** Core `NativeZoneBossMusic` turns the clock into this frame's beat, section mood, pulse, cut and flare. It is pure, allocation free and flash capped by the settings' mode: Full at most 2.9 flashes/s, Reduced 1.96/s, Calm has no pulses and uses slow ramps.
+  - Station intro: the power sags; the lamps step on west to east, one group per chime; the board's first row reads LAST CALL and lights on each chime; the red signals come on at the first slam; the lights cut with the bass cuts and flare on the slams; the drop flares them as the hold ends.
+  - Station fight: the house light, lamps, troffers and signs follow the section's level and cast and pulse; the board pulses and pages every two bars; the red signal lamps kick on downbeats; the edge strips chase a quarter per beat; the train's windows breathe.
+  - Ironworks intro: the furnaces stoke bar by bar and flare on the slams; the standpipes puff steam. On the drop, a spark shower falls from the roof and the furnaces and house light surge.
+  - Ironworks fight: the furnaces, work lights and light field breathe and pulse; sparks and steam follow the section; the parked ladle rocks.
+  - The house ambient is scaled through `NativeLighting.ZoneHouse` and reset on every map look.
+- **Untouched:** hazard parts, lamps, telegraphs, warning timing, colliders and hazard clocks. Nothing changes before the boss arrives (`BossSongTime` < 0 means Off). There is no timing, hitbox, damage, cooldown, movement or networking impact. Locking hazards to the beat is the optional Astra prompt 18 in `docs/ZONE-BOSS-MUSIC.md`.
+- **Hand-off:** `docs/ZONE-BOSS-MUSIC.md` gives tempo, bars, sections, intro accents, drops, the loop and the API for the boss branches (`claude/boss-central-station`, `claude/boss-city-ironworks`).
+- **Checks:** `Tests/ZoneBossMusicChecks.cs` has 292 checks (`CoreTests --zone-boss-music`, inside `--zone-music` and in the full run). They cover map validity and sha256, the hold pin, routing and fallback, the intro edit and looped clock, purity and determinism, flash caps in all three modes, no allocation, the choreography, and that hazards are untouched.
+  - On `65d7f2e`: `--zone-music` passed (19 + 292) and `--ward-lighting` passed.
+  - run5b on `7f5809e` (only this line changed after it) passed all five steps: the Unity runtime and editor compile check, the managed relay (781 PASS lines, including ward lighting, zone music and zone boss music), the Python tests (140, 1 skipped), the source package and the diff check.
+- **Renders:** scratch only, not in the repo. Beat-map plots, click-track mixes, loop seams, intro and fight frames for each stage, and short intro videos with the song, all from the offline harness.
+- **Not run / risks:** no Unity Editor play, Windows build, two-client sync or in-game listening. Risks:
+  - The MP3 decoder's start delay (about 25-35 ms) and NativeAudio's 0.12 s resync tolerance.
+  - The seeks at the splice and the loop wrap may click.
+  - `ZoneHouse` scales the global RenderSettings ambient.
+  - The renders are not Unity frames.
+- **Next:** owner review and merge. The boss branches bind their arrival beats to the doc's API. Astra decides prompt 18.
+
 ## 2026-10-17 — Claude: owner approved THE 6:47; design merged into shared (not live)
 
 - Owner (verbatim): "Go with your suggestions". Every recommended option in `docs/EXPEDITION-BOSS-CENTRAL-STATION.md` section 11 is chosen: THE 6:47 concept and plate name, 13 m as modelled, barrier down in phase 2 and the board falling in phase 3 with real colliders, the boss-called express with Mind the Gap, levers allowed, All Aboard on the Undertow's hold, boss-driven falling glass, clocks to 6:48 and DEPARTED, boss points moved.
