@@ -49,6 +49,10 @@ namespace ChipArena.UnityConversion
         public readonly NativeFxQuads Quads=new NativeFxQuads(Capacity);
         public readonly NativeHeatSource[] Heat=new NativeHeatSource[HeatMax];public int HeatCount;
         public int Sparks,Smoke,Halos,Telegraphs,Embers,Shafts,Steam;
+        /// <summary>The zone boss song (set before <see cref="Build"/>; Off by default, docs/ZONE-BOSS-MUSIC.md): the furnace mouths spit
+        /// more sparks on the pulse, the coke standpipes and the hoods puff steam on the downbeats and slams, and the drop rains a
+        /// shower of sparks from the roof over the casting floor. The telegraphs, the pour, the hazards' sparks and steam never change.</summary>
+        public NativeZoneBossBeat Music;
         /// <summary>The telegraph decals' colour (linear, times its gain): cream white, the readability rules' area decal.</summary>
         public const float DecalR=1f,DecalG=.88f,DecalB=.66f,DecalGain=2.6f,DecalWidth=.14f,DecalY=.025f;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz;
@@ -66,10 +70,10 @@ namespace ChipArena.UnityConversion
             Quads.Clear();HeatCount=0;ex=camX;ey=camY;ez=camZ;rx=rightX;ry=rightY;rz=rightZ;ux=upX;uy=upY;uz=upZ;Sparks=Smoke=Halos=Telegraphs=Embers=Shafts=Steam=0;if(scene==null)return;
             IronworksHazardView V(int h)=>views!=null&&h<views.Length?views[h]:default;
             // Premultiplied pieces first, far to near (the roof's smoke layer, the plumes, the steam); then the additive pieces.
-            Begin();if(!low)RoofSmoke(time,quality);Plumes(scene,views,time,quality,low);SteamFx(views,time,quality,low);Flush();
+            Begin();if(!low)RoofSmoke(time,quality);Plumes(scene,views,time,quality,low);SteamFx(views,time,quality,low);MusicSteam(scene,quality,low);Flush();
             HaloFx(scene,views,time);if(!low)ShaftFx(time,quality);
             PourFx(V(NativeIronworksHazards.Ladle),time,quality,low);FurnaceFx(views,time,quality,low);MillFx(views,time,quality,low);ForgeFx(V(NativeIronworksHazards.Hammer),V(NativeIronworksHazards.Slag),time,quality,low);
-            EmberFx(time,quality,low);TelegraphFx(views,time);if(!low)HeatFx(views);
+            EmberFx(time,quality,low);MusicShower(quality,low);TelegraphFx(views,time);if(!low)HeatFx(views);
         }
 
         // ---------------- primitives ----------------
@@ -164,7 +168,7 @@ namespace ChipArena.UnityConversion
             foreach(var g in s.Halos)
             {
                 var c=new NativeIronLight{X=g.X,Y=g.Y,Z=g.Z,R=g.R,G=g.G,B=g.B,Range=g.Range,Param=g.Param,Kind=g.Kind,Frame=g.Frame,Hazard=g.Hazard,Cool=g.Kind==NativeIronworksKit.GlowMercury};
-                float k=NativeIronworksLights.Level(c,views,time);if(k<=.01f)continue;NativeIronworksKit.GlowAt(g,views,time,out float x,out float y,out float z);
+                float k=NativeIronworksLights.Level(c,views,time,Music);if(k<=.01f)continue;NativeIronworksKit.GlowAt(g,views,time,out float x,out float y,out float z);
                 double size,a;float r=g.R,gg=g.G,b=g.B,m=Math.Max(r,Math.Max(gg,b));if(m>0){r/=m;gg/=m;b/=m;}
                 switch(g.Kind)
                 {
@@ -213,7 +217,7 @@ namespace ChipArena.UnityConversion
                 // Sparks spat out of the open mouth (the west door; No 2's both), falling onto the deck.
                 for(int d=0;d<(k==1?2:1);d++)
                 {
-                    double dx=d==0?c-2.5:c+2.5;int n=Count(8,quality,low);
+                    double dx=d==0?c-2.5:c+2.5;int n=Count(MusicSparks(8),quality,low);
                     for(int i=0;i<n;i++)
                     {
                         double life=.9+H(40,k*3+d,i)*.8,t=Frac(time/life+H(41,k*3+d,i))*life;double vx=(H(42,k*3+d,i)-.5)*1.6,vz=-1.4-H(43,k*3+d,i)*1.8,vy=.6+H(44,k*3+d,i)*1.4;
@@ -276,6 +280,33 @@ namespace ChipArena.UnityConversion
             {
                 double life=6+H(70,i)*6,u=Frac(time/life+H(71,i));double x=-22+H(72,i)*56+Math.Sin(time*.6+i)*.6,z=-12+H(73,i)*40+Math.Cos(time*.5+i*1.3)*.6,y=.4+u*10;
                 double f=Math.Sin(u*Math.PI)*(.6+.4*Math.Sin(time*5+i*2.1));Sprite(x,y,z,.07,2.4*f,1.1*f,.35*f,1,true);Embers++;
+            }
+        }
+
+        // ---------------- the zone boss song (presentation only) ----------------
+        // The furnace mouths' spark count: the section's sparks and the pulse (at most three times the authored count).
+        private int MusicSparks(int full)=>!Music.On?full:(int)Math.Round(full*Math.Min(3,Music.Mood.Spark*(1+1.5*Music.Pulse)));
+        // A steam puff out of each coke standpipe and over each furnace hood on the song's downbeats and slams, rising and spreading
+        // over .9 s (Calm: none).
+        private void MusicSteam(NativeIronFxScene s,double quality,bool low)
+        {
+            var m=Music;if(!m.On||m.Mode==NativeKitFlash.Calm||!(m.SinceDown<.9))return;double u=m.SinceDown/.9,a=.34*(1-u)*(1-u)*Math.Min(1.6,m.Mood.Steam)*(m.Mode==NativeKitFlash.Reduced?.6:1);if(a<.01)return;
+            int per=Math.Max(1,Count(3,quality,low));
+            for(int p=0;p<s.Pipes.Length/3;p++)for(int i=0;i<per;i++){double h=H(90,p,i);Queue(s.Pipes[p*3]+(h-.5)*.5,s.Pipes[p*3+1]+.2+u*(2.2+h),s.Pipes[p*3+2]-.25*u,.5+u*(1.6+h),.66,.67,.68,a);Steam++;}
+            for(int f=0;f<s.Hoods.Length/3;f++)for(int i=0;i<per;i++){double h=H(91,f,i);Queue(s.Hoods[f*3]+(h-.5)*3,10.4+u*(2.6+h),26.6-u*.6,.9+u*(2.4+h),.6,.6,.62,a*.8);Steam++;}
+        }
+        // The drop's shower: sparks raining from the roof trusses over the casting floor for about two seconds after the song's
+        // drop (none in Calm; thinner in Reduced and with the effects quality).
+        private void MusicShower(double quality,bool low)
+        {
+            var m=Music;if(!m.On||m.Mode==NativeKitFlash.Calm||!(m.SinceDrop<2.4))return;double t=m.SinceDrop;
+            int n=Count(m.Mode==NativeKitFlash.Reduced?70:150,quality,low);
+            for(int i=0;i<n;i++)
+            {
+                double delay=H(92,i)*.55,age=t-delay,life=1.1+H(93,i)*.7;if(age<0||age>life)continue;
+                double x0=-18+H(94,i)*44,z0=-11+H(95,i)*28,top=13.4+H(96,i)*1.4,vx=(H(97,i)-.5)*1.2,vz=(H(98,i)-.5)*1.2;
+                double y=top-4.9*age*age-.6*age,x=x0+vx*age,z=z0+vz*age;if(y<.05)continue;double vy=-9.8*age-.6,dt=.035;
+                double fade=(1-age/life)*(1-.6*age/life);Streak(x,y,z,x+vx*dt,y+vy*dt,z+vz*dt,.024,2.8*fade,1.35*fade,.42*fade,1);Sparks++;
             }
         }
 

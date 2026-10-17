@@ -38,8 +38,10 @@ namespace ChipArena.UnityConversion
             l.Candidates=list.ToArray();l.score=new float[l.Candidates.Length];return l;
         }
         /// <summary>A candidate's level this frame (0 dark .. about 1.3) from its kind, drive and hazard view (pure).</summary>
-        public static float Level(in NativeIronLight c,IronworksHazardView[] views,double time)
+        public static float Level(in NativeIronLight c,IronworksHazardView[] views,double time,in NativeZoneBossBeat music=default)
         {
+            // The zone boss song (NativeIronworksMusic.MusicLight): furnaces and work lights only; hazard lights never.
+            if(music.On&&c.Hazard<0)return Level(c,views,time)*NativeIronworksKit.MusicLight(c.Kind,music);
             var v=c.Hazard>=0&&views!=null&&c.Hazard<views.Length?views[c.Hazard]:default;
             switch(c.Kind)
             {
@@ -62,12 +64,12 @@ namespace ChipArena.UnityConversion
         /// Picks and eases the slots for a camera at (x, y, z): the Warm strongest warm candidates and the Cool best mercury lamps
         /// (a light on the other floor counts for less), ease rate `rate` per second (dt 0 snaps, for stills). Allocation free.
         /// </summary>
-        public void Update(double x,double y,double z,IronworksHazardView[] views,double time,float dt,float rate=4)
+        public void Update(double x,double y,double z,IronworksHazardView[] views,double time,float dt,float rate=4,in NativeZoneBossBeat music=default)
         {
             int n=Candidates.Length;
             for(int i=0;i<n;i++)
             {
-                var c=Candidates[i];float k=Level(c,views,time);if(k<=0){score[i]=0;continue;}Where(c,views,time,out float px,out float py,out float pz);
+                var c=Candidates[i];float k=Level(c,views,time,music);if(k<=0){score[i]=0;continue;}Where(c,views,time,out float px,out float py,out float pz);
                 float lum=(c.R*.3f+c.G*.55f+c.B*.15f)*k;double dx=px-x,dy=(py-y)*1.6,dz=pz-z,d=Math.Sqrt(dx*dx+dy*dy+dz*dz);
                 float floor=Math.Abs((py>7.5f?1:0)-(y>7.5?1:0))>0?.5f:1;double u=d/Math.Max(.1,c.Range),near=u<1?(1-u*u)*(1-u*u):0;
                 score[i]=lum*floor*(float)(near+.35/(1+d*d/(c.Range*c.Range*.6)));if(c.Cool)score[i]+=1e-3f;
@@ -92,7 +94,7 @@ namespace ChipArena.UnityConversion
             for(int s=0;s<Slots;s++)
             {
                 int c=Slot[s];Beam[s]=0;if(c<0){Pos[s*4]=0;Pos[s*4+1]=-10000;Pos[s*4+2]=0;Pos[s*4+3]=1;Rgb[s*3]=Rgb[s*3+1]=Rgb[s*3+2]=0;continue;}
-                var l=Candidates[c];float k=Level(l,views,time)*Weight[s];Where(l,views,time,out float px,out float py,out float pz);
+                var l=Candidates[c];float k=Level(l,views,time,music)*Weight[s];Where(l,views,time,out float px,out float py,out float pz);
                 Pos[s*4]=px;Pos[s*4+1]=py;Pos[s*4+2]=pz;Pos[s*4+3]=l.Range;Rgb[s*3]=l.R*k;Rgb[s*3+1]=l.G*k;Rgb[s*3+2]=l.B*k;
             }
         }
