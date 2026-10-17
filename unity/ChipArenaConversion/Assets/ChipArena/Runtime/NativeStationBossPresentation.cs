@@ -1,0 +1,232 @@
+using System;
+using UnityEngine;
+using UnityEngine.Rendering;
+using C=ChipArena.UnityConversion.NativeCyberTheme;
+using H=ChipArena.UnityConversion.NativeHudChrome;
+using U=ChipArena.UnityConversion.NativeUi;
+using NVector=System.Numerics.Vector3;
+
+namespace ChipArena.UnityConversion
+{
+    // THE 6:47, the Central Station's boss, in the game (docs/EXPEDITION-BOSS-CENTRAL-STATION.md "Presentation build"; owner
+    // 2026-10-17: "Go with your suggestions"). Presentation only: it reads the boss's record (StationBossViewOf, the one binding
+    // point) and the presentation clock, and draws; no hit, collider, timing, damage, cooldown, movement or network state is read
+    // back or changed.
+    //  - Model: Core NativeStationBossLook (the concept's skeleton and geometry, three tiers, with the presentation's joints) as one
+    //    mesh per joint and tier, drawn with NativeSourceLit (the game's lit source material: emission, the hit flash, the station's
+    //    practical lights through the actor-light path), each joint's light from the effects (the windows, the lamp, the Heart).
+    //  - Motion: Core StationBossRig on the shared boss motion library (root follow, gait, actions on the record's hit, chains,
+    //    second order, look-at, flinch, stagger, inertializer).
+    //  - Effects: Core NativeStationBossFx through one NativeFxDraw (a solid and an effects batch), up to three practical lights
+    //    merged into the station's slots (NativeLighting.KitLights).
+    //  - The station's reactions (the board, the clocks, the lights, the barrier, the board's fall): Core NativeStationBossStage.Shown,
+    //    the hook the station presentation reads (it does not yet: nothing in the station changes until it does).
+    //  - Audio: the boss.station.* keys (Core NativeStationBossCues) queued here, played by NativeAudio's bank path (silent until the
+    //    owner's clips exist).
+    //  - DEV preview (DEV panel · Camera · "Station boss preview", on the station map): a scripted record (Core
+    //    NativeStationBossPreview) plays the arrival, every move, both phase changes, the staggers, the breaks and the death, with
+    //    the banner and plate, without the authority.
+    // Normal play: StationBossViewOf returns None, so nothing is drawn and the placeholder Siren fights on. Allocation free per frame.
+    public sealed partial class ArenaPresentation
+    {
+        // ================================================================================================================
+        // The binding (Astra): the boss's replicated record (`pve.zoneBoss`, doc section 10 item 2) with the actor's root, yaw and
+        // health and its arrival's `spawned`, in the Core StationBossView (times on the arena clock, NaN for the wire's -100). One
+        // place, e.g.  internal static StationBossView StationBossViewOf(NativeArena a)=>a.Pve?.ZoneBoss?.View??StationBossView.None;
+        // Until then every arena has none: nothing draws and the placeholder Siren fights as today.
+        // ================================================================================================================
+        internal static StationBossView StationBossViewOf(NativeArena arena)=>StationBossView.None;
+
+        private readonly StationBossRig stationBoss=new StationBossRig();private readonly NativeStationBossFx stationBossFx=new NativeStationBossFx();
+        private Mesh[][] stationBossMeshes;private int[][] stationBossJoints;private Material stationBossMaterial;private bool stationBossFailed;private NativeFxDraw stationBossDraw;
+        private MaterialPropertyBlock stationBossBlock;private StationBossView stationBossView=StationBossView.None;private float stationBossLast=-1,stationBossHp=float.NaN;
+        private NativeArena stationBossArena;private int stationBossGeneration=-1;private bool stationBossLights;private float stationBossFlash;
+        private static readonly int GlowTintId=Shader.PropertyToID("_GlowTint"),AccentTintId=Shader.PropertyToID("_AccentTint"),ActorLitId=Shader.PropertyToID("_ArenaActorLit");
+        /// <summary>The boss's draws last frame (budget lines), and its tier.</summary>
+        public int StationBossDraws{get;private set;}public int StationBossTier{get;private set;}
+
+        // SourceWorld (the arena or the killcam's replay arena), right after the station's own scenery.
+        private void StationBossScenery(NativeArena arena)
+        {
+            var eye=WorldEye;
+            if(!NativeExpeditionStation.Active(arena.MapId)){StationBossHide();return;}
+            float now=PresentationClock(arena);
+            if(!ReferenceEquals(arena,stationBossArena)||arena.Generation!=stationBossGeneration){stationBossArena=arena;stationBossGeneration=arena.Generation;stationBossLast=-1;stationBossHp=float.NaN;}
+            // The record: the DEV preview's script while it runs, else the authority's (None until bound).
+            NVector velocity=NVector.Zero;bool hasTarget=false;NVector target=NVector.Zero;
+            if(NativeStationBossPreview.On)
+            {
+                if(double.IsNaN(NativeStationBossPreview.Start))NativeStationBossPreview.Start=now;
+                NativeStationBossPreview.Fill(now,ref stationBossView,out velocity,out var pt);hasTarget=true;target=new NVector(pt.X,1.6f,pt.Y);
+                NativeStationBossPreview.Shown=stationBossView;NativeStationBossPreview.ShownClock=now;
+            }
+            else
+            {
+                stationBossView=StationBossViewOf(arena);
+                if(stationBossView.live)
+                {
+                    // The root's velocity from the record (the follow smooths it; on a guest the arena clock already interpolates).
+                    var pilot=TargetPilot(arena,stationBossView.actionTarget);if(pilot!=null){hasTarget=true;var p=pilot.Body.position;target=new NVector(p.x,p.y+1.2f,p.z);}
+                }
+            }
+            if(!stationBossView.live||!EnsureStationBoss()){StationBossHide();return;}
+            float dt=stationBossLast<0?0:Mathf.Clamp(now-stationBossLast,0,.1f);
+            if(!NativeStationBossPreview.On&&stationBossLast>=0&&dt>0)velocity=(new NVector(stationBossView.x,stationBossView.y,stationBossView.z)-stationBossPrev)/dt;
+            stationBossPrev=new NVector(stationBossView.x,stationBossView.y,stationBossView.z);
+            // Blows: the preview's scripted ones, or a drop in the record's health (from the nearest pilot), flinch the body and
+            // flash it as the game flashes a struck pilot.
+            if(NativeStationBossPreview.On){double since=now-NativeStationBossPreview.Start;float p=(float)(since-Math.Floor(since/NativeStationBossPreview.Loop)*NativeStationBossPreview.Loop),baseAt=(float)(now-p);
+                int n=NativeStationBossPreview.Blows(p,baseAt,blowAt,blowPush,blowSize);for(int i=0;i<n;i++)if(!(blowAt[i]<=stationBossLastBlow))StationBossBlow(blowAt[i],blowPush[i],blowSize[i]);}
+            else if(!float.IsNaN(stationBossHp)&&stationBossView.hp<stationBossHp-.5f&&stationBossView.maxHp>0)
+            {
+                var from=arena.Local?.Body!=null?arena.Local.Body.position:new Vector3(stationBossView.x,0,stationBossView.z-1);var push=new NVector(stationBossView.x-from.x,0,stationBossView.z-from.z);
+                StationBossBlow(now,push,Mathf.Clamp((stationBossHp-stationBossView.hp)/stationBossView.maxHp*60,.25f,1.4f));
+            }
+            stationBossHp=stationBossView.hp;
+            stationBoss.Update(now,dt,stationBossView,StationBossGround.Station,velocity,false,hasTarget,target);
+            // The stage hook: what the station's board, clocks and lights should show (the station presentation reads it).
+            NativeStationBossStage.Shown=NativeStationBossStage.Evaluate(stationBossView,now,NativeStationBossBeats.Current);NativeStationBossStage.ShownClock=now;
+            // Effects, the joints' light, the practical lights.
+            var fx=stationBossFx;fx.DrawGlass=NativeStationBossPreview.On;fx.GlassCount=NativeStationBossPreview.On?NativeStationBossPreview.Glass(stationBossView,fx.GlassXZ):LiveGlass(fx.GlassXZ);
+            if(eye!=null){var t=eye.transform;Vector3 e=t.position,r=t.right,u=t.up;fx.Build(stationBoss,stationBossView,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);}
+            if(eye!=null&&fx.LightCount>0){NativeLighting.KitLights(fx.LightPos,fx.LightRgb,fx.LightCount,eye.transform.position,fx.LightBeam);stationBossLights=true;}
+            else if(stationBossLights){NativeLighting.KitLights(null,null,0,Vector3.zero);stationBossLights=false;}
+            DrawStationBoss(eye);DrawStationBossFx(eye,now);
+            // The cues falling in this frame (played by NativeAudio's bank path).
+            if(stationBossLast>=0)NativeStationBossCues.Queue(stationBossView,stationBoss,stationBossLast,now);
+            stationBossLast=now;
+        }
+        private NVector stationBossPrev;private float stationBossLastBlow=float.NegativeInfinity;
+        private readonly float[] blowAt=new float[8],blowSize=new float[8];private readonly NVector[] blowPush=new NVector[8];
+        private void StationBossBlow(float at,NVector push,float size){stationBoss.Hit(at,push,size);stationBossLastBlow=Math.Max(stationBossLastBlow,at);stationBossFlash=size;}
+        private void StationBossHide()
+        {
+            if(stationBossLights){NativeLighting.KitLights(null,null,0,Vector3.zero);stationBossLights=false;}
+            if(NativeStationBossStage.Shown.On)NativeStationBossStage.Shown=StationBossStage.Idle;stationBossLast=-1;
+        }
+        private static NativePilot TargetPilot(NativeArena arena,int seat)
+        {
+            NativePilot best=null;
+            foreach(var p in arena.Pilots){if(p?.Body==null||p.Hp<=0)continue;if(p.Seat!=null&&p.Seat.id==seat)return p;if(best==null)best=p;}
+            return best;
+        }
+        // Alteration's glass in play: the station's zone frame's falling glass (drawn by the station), ringed by the boss's telegraph.
+        private static int LiveGlass(float[] xz)
+        {
+            var v=NativeStationLive.Shown;if(v==null)return 0;int n=0;
+            for(int i=0;i<v.GlassCount&&i<v.Glass.Length&&n*2<xz.Length;i++){xz[n*2]=v.Glass[i].X;xz[n*2+1]=v.Glass[i].Z;n++;}
+            return n;
+        }
+        private bool EnsureStationBoss()
+        {
+            if(stationBossMaterial!=null)return true;if(stationBossFailed)return false;
+            try
+            {
+                var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null)throw new InvalidOperationException("NativeSourceLit shader is missing");
+                stationBossMaterial=new Material(shader){name="THE 6:47",enableInstancing=true};stationBossMaterial.SetInt("_Cull",2);stationBossMaterial.SetFloat("_Ink",0);
+                // The station's practical lights reach the boss as they reach the walls round it (NativeSourceLit's actor lights).
+                stationBossMaterial.SetFloat(ActorLitId,1);
+                stationBossMeshes=new Mesh[3][];stationBossJoints=new int[3][];
+                for(int tier=0;tier<3;tier++)
+                {
+                    var built=NativeStationBossLook.Build(tier);var meshes=new Mesh[built.Sections.Count];var joints=new int[built.Sections.Count];
+                    for(int i=0;i<built.Sections.Count;i++){var s=built.Sections[i];joints[i]=s.Bone;meshes[i]=StationBossMesh(s,"THE 6:47 / tier "+tier+" / "+NativeStationBossLook.Names[s.Bone]);}
+                    stationBossMeshes[tier]=meshes;stationBossJoints[tier]=joints;
+                }
+                stationBossDraw=new NativeFxDraw();stationBossBlock=new MaterialPropertyBlock();
+                var life=gameObject.GetComponent<NativeStationLifetime>();if(life==null)life=gameObject.AddComponent<NativeStationLifetime>();life.Gone+=DisposeStationBoss;return true;
+            }
+            catch(Exception e){Debug.LogWarning("THE 6:47 disabled: "+e.Message);DisposeStationBoss();stationBossFailed=true;return false;}
+        }
+        // A joint's geometry as a mesh (Core already in Unity's frame: no mirror, no winding turn), emission in uv1 as the bank's.
+        private static Mesh StationBossMesh(WeaponSection s,string name)
+        {
+            int count=s.Positions.Count;if(count==0)return null;
+            var vertices=new Vector3[count];var normals=new Vector3[count];var colors=new Color[count];var uv=new Vector2[count];var emission=new System.Collections.Generic.List<Vector4>(count);
+            for(int i=0;i<count;i++){var p=s.Positions[i];var n=s.Normals[i];var c=s.Colors[i];var e=s.Emission[i];vertices[i]=new Vector3(p.X,p.Y,p.Z);normals[i]=new Vector3(n.X,n.Y,n.Z);colors[i]=new Color(c.X,c.Y,c.Z,c.W);emission.Add(new Vector4(e.X,e.Y,e.Z,e.W));}
+            var mesh=new Mesh{name=name,indexFormat=count>65535?IndexFormat.UInt32:IndexFormat.UInt16};
+            mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=uv;mesh.SetUVs(1,emission);mesh.SetTriangles(s.Indices,0);mesh.RecalculateBounds();mesh.UploadMeshData(true);return mesh;
+        }
+        private void DrawStationBoss(Camera eye)
+        {
+            StationBossDraws=0;var pose=stationBoss.Shown;var fx=stationBossFx;
+            // The tier by distance (full within 30 m, reduced to 60, low beyond; the low graphics tier never draws full).
+            float d=eye!=null?Vector3.Distance(eye.transform.position,NativeBossPoseApply.ToUnity(stationBoss.Root)):0;int tier=d<30?0:d<60?1:2;if(LowGraphics)tier=Math.Max(1,tier);StationBossTier=tier;
+            var meshes=stationBossMeshes[tier];var joints=stationBossJoints[tier];var block=stationBossBlock;
+            float flash=stationBossFlash;stationBossFlash=Mathf.Max(0,stationBossFlash-Time.unscaledDeltaTime/.14f);float code=flash>0?1+Mathf.Clamp01(flash):1;
+            for(int i=0;i<meshes.Length;i++)
+            {
+                var mesh=meshes[i];int j=joints[i];if(mesh==null||fx.Hidden[j])continue;
+                var m=Matrix4x4.TRS(NativeBossPoseApply.ToUnity(pose.Position[j]),NativeBossPoseApply.ToUnity(pose.Rotation[j]),Vector3.one);
+                float g=fx.Glow[j];block.Clear();block.SetVector(GlowTintId,new Vector4(g,g,g,0));block.SetVector(AccentTintId,new Vector4(1,1,1,code));
+                bool small=j>=NativeStationBossModel.ChainFirst&&j!=NativeStationBossLook.BreachL&&j!=NativeStationBossLook.BreachR||NativeStationBossLook.GlowJoint(j);
+                Graphics.DrawMesh(mesh,m,stationBossMaterial,0,null,0,block,small||tier==2?ShadowCastingMode.Off:ShadowCastingMode.On,true);StationBossDraws++;
+            }
+        }
+        private void DrawStationBossFx(Camera camera,float time)
+        {
+            if(camera==null||stationBossDraw==null)return;var q=stationBossFx.Quads;stationBossDraw.Clear();
+            for(int i=0;i<q.Count;i++)
+            {
+                var layer=q.Layers[i]==0?stationBossDraw.Solid:stationBossDraw.Effects;int o=i*12,k=i*4;float flags=NativeFxDraw.Authored+(q.Additive[i]!=0?NativeFxDraw.Additive:0),mode=q.Modes[i];
+                var color=new Color(q.Colors[k],q.Colors[k+1],q.Colors[k+2],q.Colors[k+3]).gamma;int a=layer.Count;
+                for(int v=0;v<4;v++)layer.Vertex(new Vector3(q.Corners[o+v*3],q.Corners[o+v*3+1],q.Corners[o+v*3+2]),Vector3.up,color,new Vector4(v==1||v==2?1:-1,v>=2?1:-1,mode,flags),Vector4.zero,Vector4.zero);
+                layer.Triangle(a,a+1,a+2);layer.Triangle(a,a+2,a+3);
+            }
+            stationBossDraw.Draw(camera,null,time);
+        }
+        private void DisposeStationBoss()
+        {
+            if(stationBossMeshes!=null)foreach(var tier in stationBossMeshes)if(tier!=null)foreach(var m in tier)if(m!=null)CapturedAnimation.Release(m);
+            if(stationBossMaterial!=null)CapturedAnimation.Release(stationBossMaterial);stationBossMeshes=null;stationBossJoints=null;stationBossMaterial=null;stationBossDraw?.Dispose();stationBossDraw=null;
+            stationBossArena=null;stationBossLast=-1;
+        }
+    }
+
+    public sealed partial class ConversionGame
+    {
+        /// <summary>DEV panel · Camera: THE 6:47's preview on the station map (presentation only; nothing spawns, hurts or collides).</summary>
+        private void StationBossPreviewToggle()
+        {
+            NativeStationBossPreview.On=!NativeStationBossPreview.On;NativeStationBossPreview.Start=double.NaN;
+            DevSay(NativeStationBossPreview.On?"Station boss preview · on (THE 6:47's arrival, eight moves, phase changes, staggers, breaks and death on a 96 s loop; presentation only)":"Station boss preview · off",false);
+        }
+        private float StationBossPreviewPanel(float x,float y,float w)
+        {
+            DevToggleAct(new Rect(x,y,w,32),"preview-station-boss",NativeStationBossPreview.On);y+=38;
+            return DevNote(x,y,w,"On the station map: THE 6:47 arrives out of the west tunnel and plays every move, both phase changes, its staggers, breaks and death on a 96 s loop. Presentation only: the placeholder Siren still fights, nothing hurts, collides or reaches the network until Astra's boss record exists.",C.Muted());
+        }
+        private static readonly ExpeditionBossModel stationBossBanner=new ExpeditionBossModel();
+        private const string StationBossPreviewLabel="DEV PREVIEW · THE 6:47 · NOT GAMEPLAY";
+        /// <summary>The preview's label, and the boss's banner and plate as the expedition HUD draws them for the zone boss.</summary>
+        private void StationBossPreviewHud(float width,float height)
+        {
+            if(!NativeStationBossPreview.On||Event.current.type!=EventType.Repaint||arena==null||!NativeExpeditionStation.Active(arena.MapId))return;
+            var size=U.Measure(StationBossPreviewLabel,11,true,true,.12f);var r=new Rect(width/2-size.x/2-14,92,size.x+28,24);U.Fill(r,C.Void(.75f));H.Outline(r,C.Magenta(.9f),0,H.Corners.None);U.Text(r,StationBossPreviewLabel,11,C.Magenta(),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.12f);
+            var v=NativeStationBossPreview.Shown;if(!v.live)return;double age=NativeStationBossPreview.ShownClock-v.spawned;var m=stationBossBanner;
+            m.Name=NativeExpeditionStates.BossName(NativeStationBoss.Archetype);m.Area=NativeStationBossPreview.BannerArea;
+            m.PlateCount=1;m.PlateNames[0]=m.Name;m.PlateDown[0]=v.Dead((float)NativeStationBossPreview.ShownClock);m.PlateHealth[0]=v.maxHp>0?Mathf.Clamp01(v.hp/v.maxHp):-1;m.PlatePercent[0]=null;
+            double banner=age-NativeZoneBossNames.BannerDelay(NativeStationBoss.Archetype);m.PlateAge[0]=banner;
+            NativeExpeditionStatesHud.BossPlates(m,width,128,Time.unscaledTime,false);
+            if(banner>=0&&banner<NativeExpeditionStates.IntroSeconds)NativeExpeditionStatesHud.BossIntro(m,width,height,(float)banner,false);
+        }
+    }
+
+    public sealed partial class NativeAudio
+    {
+        // ---------- THE 6:47's cues (Core NativeStationBossCues: the doc's boss.station.* keys) ----------
+        // Bank only: a key plays its clips when the owner's bank has them, else nothing (no stand-in). 2D keys play flat.
+        private readonly StationBossCue[] stationBossCues=new StationBossCue[NativeStationBossCues.QueueSize];
+        private float stationBossHurt=float.NegativeInfinity;
+        private void StationBossCues(NativeArena arena,bool menu)
+        {
+            int n=NativeStationBossCues.Drain(stationBossCues);if(menu||arena==null)return;
+            for(int i=0;i<n;i++)
+            {
+                var c=stationBossCues[i];if(c.Key==NativeStationBossCues.Hurt){if(c.At-stationBossHurt<1.2f)continue;stationBossHurt=c.At;}
+                string key=NativeStationBossCues.Keys[c.Key];Vector3? place=NativeStationBossCues.Flat(c.Key)?(Vector3?)null:new Vector3(c.At3.X,c.At3.Y,c.At3.Z);
+                Cue(key,null,place,c.Gain);
+            }
+        }
+    }
+}
