@@ -792,7 +792,8 @@ The managed check `StationBossPresentationChecks` pins the `None` line; update i
 
 **The hook API for the station's presentation** (`Core/NativeStationBossStage.cs`). The boss's presenter writes
 `NativeStationBossStage.Shown` (a `StationBossStage`) and `ShownClock` every frame it draws, and the station's board, clocks
-and lights read it. Until they do, nothing in the station changes (the renders apply it the way the station would).
+and lights read it. Until they do, nothing in the station changes (the renders apply it the way the station would). With the
+boss song bound, the song's stage keeps the lights, and the hook adds only the boss's own parts (see the beats below).
 - `Board`: `BoardOwn`; `BoardArriving` (row 0 reads `6.47 EVAC SPECIAL 1 ARRIVING`, blinking while `BoardBlink`); or
   `BoardDeparted` (row 0 reads `6.47 EVAC SPECIAL DEPARTED`). `Row0` gives the text and `BoardFlicker` the flip's stutter.
 - `ClockHour`:`ClockMinute` for every station clock (6:47; 6:48 from 3.5 s after the death); `ClockTick` pulses on each strike.
@@ -801,27 +802,41 @@ and lights read it. Until they do, nothing in the station changes (the renders a
 - `BarrierFall` and `BoardFall` (0..1, the board's with its bounce) pose the barrier's centre segments and the board (their
   colliders are the authority's); `Shake` and `Dust` are for impacts.
 
-**The arrival's beats.** `NativeStationBossBeats.Current` holds the doc's fallback (chime hit 0, light cut 1.6, accents 3.0,
-3.95, 4.9 and 5.85, drop 6.8, hold 9.07) until the boss theme's beat map binds it through `NativeStationBossBeats.Use`. The
-music work on `claude/zone-boss-music-sync` had not merged when this was built. The choreography keys on the beats:
-- the headlight blooms in the west mouth on the light cut;
-- brake sparks fly on the first two accents, and it stops at the crossing on the second;
-- the legs unfold on the third (rear first), then it climbs and turns onto P1 until the drop;
-- it bursts through the gate on the drop;
-- it walks to the spawn pose and the Stationmaster rises with the watch by the hold's end, where the live follow takes over
-  through the inertializer.
+**The arrival's beats: bound to the boss song.** The zone boss music (`docs/ZONE-BOSS-MUSIC.md`, merged into shared `29b8498`)
+plays Station Chime of Doom through an intro edit whose drop lands on the intro hold's end (9.07 s). Its stage
+(`NativeExpeditionStationMusic`) owns the station's house lights and the board's LAST CALL. The boss binds to it rather than
+duplicating it:
+- **Beats from the song's accents.** The presenter calls `NativeStationBossBeats.UseSong(NativeZoneBossSongs.ForMap(map))`
+  (once per song). `StationBossBeats.FromSong` reads the accents on the boss clock (`FirstBoss`; accents the edit cuts are
+  skipped):
 
-**Meeting the music work.** `claude/zone-boss-music-sync` (pushed, not merged when this was written) already makes the
-station's lights and board perform to the boss song in game (`NativeExpeditionStationMusic`): the lights cut at the song's
-bass cut and flare on its drop, and the board reads LAST CALL, then ALL SERVICES CANCELLED. Once both merge:
-- the station should take the light level from the music stage and use this hook only for what the song does not cover:
-  row 0's ARRIVING and DEPARTED, the clocks, the barrier and board poses, the shake and the dust. Applying `Lights` as well
-  would cut the lights twice;
-- the beats should come from the song. On the boss clock (the hold's start), its map has chimes at 1.33 to 3.69 s (a slam
-  with the one at 3.01 s), the bass cut at 4.86 s, a slam at 6.21 s, chimes from 6.88 s (slams at 7.38 and 8.73 s) and the
-  drop at 9.07 s, on the hold's end. The design's drop is 2.3 s before the hold's end. With the song's drop, the burst
-  through the gate would straddle the handover to the live follow, so choosing which hits drive the four accents and the
-  drop needs a look at the arrival again. `Use` refuses beats out of order.
+  | Moment | Song cue | Boss time |
+  | --- | --- | --- |
+  | board flips to ARRIVING | first chime | 1.33 s |
+  | headlight blooms in the west mouth | the bass cut (the song cuts the lights) | 4.86 s |
+  | brake sparks | the next beat of the grid | 5.37 s |
+  | stops at the crossing | the slam where the song flares the lights | 6.21 s |
+  | legs unfold | next hit | 6.88 s |
+  | step up | next hit | 7.38 s |
+  | burst through the gate | last slam before the drop | 8.73 s |
+  | banner | the song's drop at the hold's end | 9.07 s |
+
+  The doc's table (chime 0, cut 1.6, accents 3.0 / 3.95 / 4.9 / 5.85, drop 6.8) is the fallback when the song's file is
+  missing. `Use` refuses beats out of order.
+- **The song's clock.** The arena clock waits through the intro hold while `NativeArena.BossSongTime` runs. So the boss's own
+  clock trails the arena's by what is left of the hold and meets it at the hold's end. The arrival starts at song time 0 on
+  it, latched once per arrival. Every later time (moves, contacts) stays on the arena clock.
+- **No duplicated choreography.** With the song bound, the stage hook leaves `Lights` at 1 and `LightSurge` at 0 (the song
+  cuts and flares the lights). It keeps the boss's own parts: row 0's ARRIVING and DEPARTED, T1's green signal, the clocks,
+  the barrier's and board's falls, the shake and the dust. The PA chime cue is dropped (the song has its chimes). The headlight,
+  the brake sparks and the burst are the boss's own effects.
+- **The short tail.** The song's drop is on the hold's end, so there is no time to stop and walk after the burst. The legs
+  unfold quicker, the rear comes down in time, and the burst runs on through the gate to boss point 0 (0, 0, 1.5). The root
+  alone lands there 0.7 s after the hold's end; the fight's moves start on time. With the doc's beats, the boss still walks to
+  point 0 and the Stationmaster raises the watch before the hold ends.
+
+The choreography keys on the beats: the headlight on the cut; sparks on the first accent and the stop on the second; the
+legs unfold on the third (rear first), then it climbs and turns onto P1; it bursts through the gate on the drop.
 
 **Shared-file lines** (each one call or entry):
 - `Runtime/NativeSourcePresentation.cs`: `StationBossScenery(arena)` after the station's scenery;
@@ -843,13 +858,16 @@ bass cut and flare on its drop, and the board reads LAST CALL, then ALL SERVICES
 - 0 bytes per frame;
 - the tier budgets and volumes;
 - the HUD's name routing and banner delay;
-- the cue keys against section 8's table.
+- the cue keys against section 8's table;
+- the song binding: the beats on the song's accents and grid, the lights left to the song, row 0 still flipping, the follow
+  carrying on from the burst without a jump, no pop at the burst or the hand-off.
 
 **Not done:**
 - the binding (Astra's record);
-- the station presentation reading the hook (the board's new rows, the clocks' hands, the lights' cut, the barrier and board
-  poses);
-- the boss theme's beat map binding the beats;
+- the station presentation reading the hook (row 0's ARRIVING and DEPARTED over the song's LAST CALL, the clocks' hands,
+  T1's signal, the barrier and board poses); the lights are the song's;
+- the DEV preview has no boss song clock, so it times the arrival on its own script (on the song's beats when the file is
+  installed);
 - TERMINUS's double charge as its own turn and second chime (it plays as one stretched Departure);
 - the owner's audio clips;
 - the pocket watch's hands stay at 6:47 (the station's clocks get 6:48 through the hook);

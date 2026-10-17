@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-17 Claude THE 6:47 in-game presentation (`claude/boss-station-presentation`, on branch, not merged, not live; presentation only): runtime model, motion, effects, arrival and death, HUD name and cues behind `StationBossViewOf` (None until Astra binds the record), with a DEV preview. Next: Astra binds; the station reads the stage hook; the beats bind to the song map.
+2026-10-17 Claude THE 6:47 in-game presentation (`claude/boss-station-presentation`, on branch, not merged, not live; presentation only): runtime model, motion, effects, arrival and death, HUD name and cues behind `StationBossViewOf` (None until Astra binds the record), with a DEV preview; the arrival is bound to the boss song's accents and clock. Next: Astra binds; the station reads the stage hook for the boss's own board, clock and pose parts.
 
 2026-10-17 Claude zone boss songs synced (`claude/zone-boss-music-sync`, merged into shared; presentation only): Station Chime of Doom (Central Station) and Hydraulic Hell (City Ironworks) play an intro edit whose drop lands at the end of the 9.0678 s boss intro hold, then a bar-aligned loop on the shared boss clock; both stages play to the intro and the beat (lights, board, signals, furnaces, steam, sparks), hazards untouched, flashes capped. Maps and API in `docs/ZONE-BOSS-MUSIC.md`; beat-locked hazards are optional Astra prompt 18. Managed checks and offline renders only; Unity/Windows unrun.
 
