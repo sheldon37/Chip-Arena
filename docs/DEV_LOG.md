@@ -1,3 +1,11 @@
+## 2026-10-17 — Claude: owner approved THE CONVERTER; design merged into shared (not live); intro hold settled
+
+- Owner (verbatim): "Go with your suggestions with the convertor too." Every recommended option in `docs/EXPEDITION-BOSS-CITY-IRONWORKS.md` section 11 is chosen: THE CONVERTER with VESSEL C stencilled, size as drawn (about 8 m), grab-and-throw with allies able to free, the hall's converters join in phase 2 (ladle crane parked), the phase 3 pit overflow, it stays in the hall, no new mocap, the beat map consumed from `docs/ZONE-BOSS-MUSIC.md`.
+- Merged `claude/boss-city-ironworks` (b8a763c) into shared on top of the zone boss music merge. Inert design only: the doc, `Core/NativeIronworksBossModel.cs` (referenced by nothing) and `IronworksBossModelChecks`. No rule, timing, hitbox, damage, movement or network change; the foundry still fights the placeholder Siren.
+- Intro hold settled for both zone bosses: keep 9.0678 s. The merged music plays an intro edit whose drop lands at the hold's end, so the docs' "end the hold on the drop" items need no hold change (a note in both docs says so).
+- Astra handoff (sent to the owner to relay): build both bosses' rules from the approved docs with one unified `pve.zoneBoss` record; investigate the native publish runs 410-412 (Unity Cloud Build HTTP 500); optional #17-#20.
+- Next: Claude builds THE CONVERTER's presentation on the boss motion library with a DEV preview, as THE 6:47's is being built.
+
 ## 2026-10-17 — Claude: zone boss songs synced to the boss intro and the stages (on branch, not merged)
 
 - Branch `claude/zone-boss-music-sync`, base shared `claude/sleepy-ritchie-g8ruhv` (last merged at `5dc860d`). Commits `86a9f63` (maps, intro edit, stage reactions, checks, doc), `60fe312` (house light, half-lit intro approach), `65d7f2e` (ward lighting reset kept intact, bolder drop sparks). Not merged, no PR, builder untouched, nothing published.
@@ -138,6 +146,45 @@
 - Express collisions now use the train's visible nose/tail sweep clipped to the station shell for pilots and minions. Previously the entire track was lethal throughout the pass. Edge shove follows the same sweep. Signal controls refuse an already-moving train, preserving its collision/visual continuity. Warning and pass timings are unchanged; no art or audio changes.
 - Checks: focused zone combat 512 checks pass, including 267 new sweep boundary/continuity checks; source packaging passes (2355 files); Unity reference-assembly compilation and diff checks recorded in PR. Existing merged gameplay CI is separate from this follow-up. Native Windows/PhysX and human multiplayer remain pending; this does not claim a published update.
 
+## 2026-10-17 — Claude: City Ironworks boss design, THE CONVERTER (on branch, not merged, not live)
+
+- Branch `claude/boss-city-ironworks`, based on `origin/claude/sleepy-ritchie-g8ruhv` `dfb8aac`, fast-forwarded to `02234ec` (PR #263 music, #264, #265 zone gameplay, #267). Implementation commit `b2d3b13`. Not merged, no PR, builder untouched, nothing published.
+- **Why:** the owner asked (2026-10-17) to begin the bosses for Central Station and City Ironworks: "a lot more fluid" animation and "a high quality design matching the areas". This is the Ironworks boss. The Central Station boss and the shared motion library (`claude/boss-motion`) are other agents' tasks.
+- **Design** (`docs/EXPEDITION-BOSS-CITY-IRONWORKS.md`):
+  - THE CONVERTER: Vessel C, the hall's missing third Bessemer converter, walking on a four-legged trunnion yoke, with its dead foreman working the tilt levers on the pulpit.
+  - Body, palette and weak points: the tuyère grate, the foreman, the mouth, four crust groups, the knee rams.
+  - The Converter Hall as a set piece: the pit, the crane hook, the hall's vessels driven by `-converter-tilt`, the shutter.
+  - Three phases (Blow, Tilt, Last Pour), eight attacks and seven scripted moments, with telegraphs, counterplay and recovery.
+  - Adds tied to all five Ironworks kinds; arrival on the existing `bossArrivals[]` and banner flow; the end-of-shift death.
+  - HUD plate `THE CONVERTER`, a VFX list and 50 `boss.ironworks.*` cue keys.
+  - The arrival is choreographed to "Hydraulic Hell" (`music/city-ironworks-boss`): the crack and grip on the intro's first hydraulic hit, the eyes on the furnace flare, the first blow and the fight on the drop. Times come by reference to `docs/ZONE-BOSS-MUSIC.md` (the music agent's); this branch does not touch NativeAudio, NativeZoneMusic or the furnace and press presentation.
+  - Animation direction in the motion library's terms (root springs, a 4-leg planted gait with IK, trunnion pendulum and metal slosh springs, verlet chains, action timelines, additive layers).
+  - An Astra contract on the live zone systems with a ready prompt. It reuses `NativeZoneHazardFrame`, `StepIronworksHazards`, the boss mix and caps, entries 22, 28, 29 and 30, and the live shutter. It names exactly what to add: the archetype, `NativeZoneBossFrame` (`zoneBoss`), the hazard frame's `converterAt`, `converterMask` and `overflowAt`, the `-converter-tilt-s` and `-pit-overflow` definitions, `SpawnPveAddAt`, and a scripted Ladleman cap.
+  - 10 owner decisions with picks.
+- **Concept model** (`Core/NativeIronworksBossModel.cs`): inert, and referenced by nothing live.
+  - 34 joints, three tiers: 39,744 / 24,648 / 7,924 triangles with the chain props, against budgets of 40k / 26k / 9k.
+  - 20 key poses with two-bone leg IK, chain props, glow groups.
+  - The action table, mirrored by the doc's.
+- **Checks:** `Tests/IronworksBossModelChecks.cs`, registered in `Tests/Program.cs` (the full suite and `--ironworks-boss`). They cover:
+  - budgets, determinism, every joint drawn, and the joint table;
+  - every key pose inside the reach box; the standing keys above the floor with planted feet;
+  - body and capsule bounds, and deslag clearance;
+  - non-orange tells, glow groups, and zero allocation;
+  - the doc's action and cue tables, and no live references.
+- **Affected:** docs and one inert Core file plus its test. No runtime, rule, timing, collider, spawn, wire, resource or live data change. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged; the doc proposes them to Astra.
+- **Checks run** (run5b on the final code, all five steps exit 0):
+  - Unity runtime and editor compile against the 6000.3.24f1 assemblies: OK.
+  - Relay and managed: 778 PASS lines and 35 managed-core checks, no failures, including `ironworks boss model` (697 checks).
+  - Python: 140 tests OK (1 skip).
+  - Package structure: 2,358 source files.
+  - `git diff --check`: clean.
+  - The doc's music section was edited after that run; the boss check, rerun on the final doc, passes.
+- **Renders** (offline WebGL harness through the game's shaders on the live foundry, not Unity): in the scratchpad `renders-boss-ironworks/`: a turnaround with a pilot, the arrival through the shutter, each attack's key frame, the stagger, phase changes and the death.
+- **Risks / next:**
+  - Unity Editor, Windows and play are unrun; the concept is not drawn in game.
+  - The boss's effects are a harness sketch.
+  - The live manifest still lacks the converter shutter gate.
+  - Next: owner decisions; Astra's contract (archetype, record, scheduler, hazards); then Claude's runtime draw on the motion library, the VFX, the HUD name and cue routing; then the owner's clips and track.
 
 ## 2026-10-17 — Claude: zone boss music for Central Station and City Ironworks
 

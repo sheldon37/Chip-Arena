@@ -585,6 +585,8 @@ The planted hands use a small two-bone IK solver in the file (authoring only). T
 
 ## 10. Astra contract (proposal)
 
+**Intro hold, settled 2026-10-17:** keep the intro hold at 9.0678 s. The owner's boss theme is merged with an intro edit whose drop lands exactly at the hold's end (`docs/ZONE-BOSS-MUSIC.md`), so the arrival already ends on the drop with no hold change. This supersedes the hold items below. If the hold length ever changes, Claude regenerates the beat map (`tools/zone_boss_beatmap.py`).
+
 Base: the systems live on shared `ce85919`. Everything below is named against them. Astra owns every value.
 
 **What exists and is reused as is:**
