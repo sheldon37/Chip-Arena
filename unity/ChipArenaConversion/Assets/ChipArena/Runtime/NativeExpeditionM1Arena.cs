@@ -34,7 +34,10 @@ namespace ChipArena.UnityConversion
         {
             var at=Vec(floor);var physics=root.scene.GetPhysicsScene();
             if(!physics.Raycast(at+Vector3.up*.35f,Vector3.down,out var hit,.45f,WorldMask,QueryTriggerInteraction.Ignore)||hit.normal.y<.65f)return false;
-            return physics.OverlapCapsule(at+Vector3.up*(radius+.04f),at+Vector3.up*(height-radius+.04f),radius,expeditionProbe,WorldMask,QueryTriggerInteraction.Ignore)==0;
+            // A sphere resting on a slope needs radius / normal.y vertical clearance.
+            // Flat-floor epsilon alone intersects steeper authored stairs, falsely disconnecting their navigation.
+            float lift=.04f+radius*(1f/hit.normal.y-1f);
+            return physics.OverlapCapsule(at+Vector3.up*(radius+lift),at+Vector3.up*(height-radius+lift),radius,expeditionProbe,WorldMask,QueryTriggerInteraction.Ignore)==0;
         }
         public bool ExpeditionReachable(V3 from,V3 to,float radius,float height)
         {
