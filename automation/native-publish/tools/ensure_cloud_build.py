@@ -6,6 +6,8 @@ cancels builds, retries failed builds, or publishes unverified artifacts.
 import argparse
 import base64
 import json
+import hashlib
+import re
 import os
 import sys
 import time
@@ -18,7 +20,34 @@ import auto_publish as auto
 TERMINAL = {'success', 'failure', 'failed', 'canceled', 'cancelled'}
 
 
-def start_build(sha, authorization):
+def request_failure(error, sha, work):
+    """Bounded, allowlisted diagnostics: never persist provider text, URLs or credentials."""
+    data = error.read(65537)
+    text = data[:65536].decode('utf-8', errors='replace').lower()
+    categories = {
+        'quota_or_billing': r'quota|billing|payment|credit|spending|budget',
+        'authentication': r'unauthori[sz]ed|authentication|invalid credential',
+        'permission': r'permission|forbidden|access denied',
+        'source_checkout': r'repository|checkout|revision|commit not found|scm',
+        'capacity': r'capacity|no available|unavailable|maintenance|overload',
+        'configuration': r'configuration|build target|buildtarget|invalid parameter',
+    }
+    report = dict(sourceCommit=sha, httpStatus=error.code, responseBytes=len(data),
+                  truncated=len(data)>65536, responseSha256=hashlib.sha256(data).hexdigest(),
+                  categories=[name for name, pattern in categories.items() if re.search(pattern, text)])
+    for name in ('x-request-id', 'x-correlation-id', 'request-id'):
+        value = (error.headers or {}).get(name, '')
+        if re.fullmatch(r'[0-9a-fA-F-]{8,64}', value):
+            report[name] = value
+    if work is not None:
+        path = Path(work); path.mkdir(parents=True, exist_ok=True)
+        (path / 'build-request-failure.json').write_text(json.dumps(report, indent=2)+'\n', encoding='utf-8')
+    print('Unity request diagnostics: HTTP ' + str(error.code) + '; categories: '
+          + (', '.join(report['categories']) or 'unclassified')
+          + '; response SHA256 ' + report['responseSha256'], flush=True)
+
+
+def start_build(sha, authorization, work=None):
     # Official startBuilds contract: commit pins the source; omit branch/machine
     # overrides so the existing chip-arena target remains authoritative.
     # https://docs.unity.com/en-us/oas-build-automation-client/2.0.0
@@ -45,7 +74,8 @@ def start_build(sha, authorization):
         if error.code == 409:
             print('Unity already has a pending build; waiting for its result.', flush=True)
             return
-        raise ValueError('Unity build request returned HTTP ' + str(error.code)) from None
+        request_failure(error, sha, work)
+        raise ValueError('Unity build request returned HTTP ' + str(error.code) + '; no automatic retry (request outcome may be ambiguous)') from None
     except (URLError, TimeoutError):
         # An ambiguous POST outcome must not be retried automatically.
         raise ValueError('Build request outcome is unknown; inspect Unity before retrying') from None
@@ -109,7 +139,7 @@ def ensure_build(token, authorization, wait_seconds=900, work=None):
             if auto.current_head(token) != sha:
                 auto.output(False, 'Cloud branch advanced before the build request; no build requested.', 'superseded')
                 return False
-            start_build(sha, authorization)
+            start_build(sha, authorization, work=work)
             requested = True
         elif active:
             print('Waiting on Unity: ' + ', '.join('#' + str(r.get('build')) + ' ' + str(r.get('buildStatus')) for r in active), flush=True)

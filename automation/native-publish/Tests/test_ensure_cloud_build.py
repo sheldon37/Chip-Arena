@@ -57,7 +57,7 @@ class TriggerTests(unittest.TestCase):
 
     def test_missed_hook_starts_only_pinned_current_commit(self):
         result, start, _ = self.run_case()
-        self.assertFalse(result);start.assert_called_once_with(self.sha, 'unity')
+        self.assertFalse(result);start.assert_called_once_with(self.sha, 'unity', work=None)
 
     def test_existing_active_build_prevents_duplicate_even_before_revision_is_known(self):
         for status in ('queued', 'sentToBuilder', 'started'):
@@ -137,6 +137,23 @@ class TriggerTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError,'HTTP '+str(code)) as error:trigger.start_build(self.sha,'private-auth')
                     self.assertNotIn('private',str(error.exception))
                 self.assertEqual(opener.return_value.open.call_count,1)
+
+
+    def test_http_500_diagnostics_are_bounded_allowlisted_and_never_retry(self):
+        secret = 'private-service-secret'
+        for payload, category in [(b'{"message":"billing credits exhausted private-service-secret"}', 'quota_or_billing'),
+                                  (b'private-service-secret' * 5000, None)]:
+            with tempfile.TemporaryDirectory() as temp, patch.object(trigger, 'build_opener') as opener, patch('builtins.print') as output:
+                opener.return_value.open.side_effect = HTTPError(auto.BASE, 500, secret, {}, io.BytesIO(payload))
+                with self.assertRaisesRegex(ValueError, 'HTTP 500'):
+                    trigger.start_build(self.sha, secret, work=temp)
+                report = json.loads((Path(temp) / 'build-request-failure.json').read_text())
+                self.assertEqual(report['httpStatus'], 500)
+                self.assertLessEqual(report['responseBytes'], 65537)
+                self.assertEqual(report['truncated'], len(payload)>65536)
+                if category: self.assertIn(category, report['categories'])
+                self.assertNotIn(secret, json.dumps(report)+str(output.call_args_list))
+                self.assertEqual(opener.return_value.open.call_count, 1)
 
 
 if __name__ == '__main__':
