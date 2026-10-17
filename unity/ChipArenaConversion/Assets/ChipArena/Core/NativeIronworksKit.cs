@@ -38,9 +38,10 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The City Ironworks' dressing kit (Claude, 2026-10-16; docs/EXPEDITION-CITY-IRONWORKS.md sections 3, 4 and 9): a sealed
-    /// steelworks still burning, laid on the blockout of map `expedition-ironworks` (docs/arenas/scripts/expedition_ironworks.py)
-    /// by block id stem, with the instance's records (the exp-foundry area of the layout manifest) kept clear. Built once per map
-    /// content; nothing here collides, moves a block or enters the network frame. Inert on every other map (<see cref="Active"/>).
+    /// steelworks still burning, laid on the live map `expedition-foundry` (the activation of the design blockout,
+    /// docs/arenas/scripts/expedition_ironworks.py: the same blocks under the live prefix) by block id stem, with the instance's
+    /// records (the exp-foundry area of Resources/ExpeditionLayout.json: rooms, spawns, doors, machines) kept clear. Built once per
+    /// map content; nothing here collides, moves a block or enters the network frame. Inert on every other map (<see cref="Active"/>).
     /// <list type="bullet">
     /// <item>Structure: Pratt roof trusses every 6.5 m with the roof monitors' cold glass, the crane runways' hangers and rails, the
     /// ladle crane's bridge, trolley, hook and cables, the converter hall's runways, the upper ring's toe boards and posts, wall
@@ -64,7 +65,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed partial class NativeIronworksKit
     {
-        public const string MapId="expedition-ironworks",Prefix="expedition-ironworks-",AreaId="exp-foundry";
+        public const string MapId="expedition-foundry",Prefix="expedition-foundry-",AreaId="exp-foundry";
         /// <summary>Whether a map id is the Ironworks: every Ironworks hook is inert on any other map.</summary>
         public static bool Active(string mapId)=>mapId==MapId;
         public const byte DriveSteady=0,DriveFlicker=1,DriveFire=2,DriveBeacon=3,DriveHazardGlow=4,DriveSodium=5,DriveMercury=6,DriveLed=7,DriveSeam=8,DriveTap=9,DriveWarnLamp=10;
@@ -483,6 +484,13 @@ namespace ChipArena.UnityConversion
             foreach(var g in area.gates??Array.Empty<ExpeditionGateLayout>())Volume(g.closure,.05f,0);
             // The approved machine spots (owner, 2026-10-16; docs/EXPEDITION-CITY-IRONWORKS.md section 2.5): the machine and its front.
             for(int m=0;m<MachineSpots.Length/3;m++){float x=MachineSpots[m*3],y=MachineSpots[m*3+1],z=MachineSpots[m*3+2];Keep(x-1.1f,x+1.1f,y-.05f,y+2.6f,z-1.1f,z+1.1f,-1,2);}
+            // The live machines (the manifest's records): the machine, the spot its user stands on, where it dispenses and drops chips.
+            foreach(var m in area.machines??Array.Empty<PveMachine>())
+            {
+                if(m==null)continue;float x0=m.x,x1=m.x,z0=m.z,z1=m.z;
+                foreach(var p in new[]{m.front,m.dispense,m.chipDrop})if(p!=null){x0=Math.Min(x0,p.x);x1=Math.Max(x1,p.x);z0=Math.Min(z0,p.z);z1=Math.Max(z1,p.z);}
+                Keep(x0-1.1f,x1+1.1f,m.y-.05f,m.y+2.6f,z0-1.1f,z1+1.1f,-1,2);
+            }
         }
         /// <summary>The approved machine spots (x, y, z): chip and med in the pattern shop, the second chip machine on the coke
         /// walkway, the recruit post in the time office (the draft record's `machines`).</summary>

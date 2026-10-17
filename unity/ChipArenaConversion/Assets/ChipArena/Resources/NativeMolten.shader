@@ -5,7 +5,7 @@ Shader "ChipArena/NativeMolten"
     // glassy slag with glowing cracks and the coke in the open oven. Core NativeIronworksKit lays the pieces (NativeMoltenPiece)
     // and drives them each frame from the hazard views (NativeIronworksKit.MoltenState); Runtime NativeIronworksPresentation
     // draws them instanced on a unit cube (positions +-1, face normals) on layer 0, no shadows cast, only while map
-    // `expedition-ironworks` is loaded.
+    // `expedition-foundry` is loaded.
     // Per instance: _MoltenSize (half extents), _MoltenFlow (flow speed m/s, seed), _MoltenHeat (heat where the flow starts and
     // where it ends, 0 crust .. 1 white heat; crust share; front: how far along the flow the hot metal reaches, 0..1),
     // _MoltenStyle (style: 0 flow, 1 stream, 2 fire, 3 slab, 4 slag, 5 coke; flow axis 0 x, 1 y, 2 z, negative when the flow runs

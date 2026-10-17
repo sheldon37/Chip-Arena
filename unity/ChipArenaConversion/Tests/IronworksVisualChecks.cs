@@ -8,12 +8,16 @@ namespace ChipArena.UnityConversion
 {
     // The City Ironworks' in-game visuals (Claude, 2026-10-16; docs/EXPEDITION-CITY-IRONWORKS.md sections 3, 4, 5 and 9; Core
     // NativeIronworks{Kit,Hazards,Lights,Field,Fx,Shutter}, Runtime NativeIronworksPresentation, Resources NativeMolten and
-    // NativeHeatHaze). NOT LIVE: the map is a draft (Tests/, docs/arenas/scripts/expedition_ironworks.py). Checks:
-    //  - inert: no live map, look or manifest names the map; the kit builds nothing for any live map; the shutter owns no live
-    //    gate; the runtime and every hook are gated on the map id or the converter gate's id;
-    //  - the kit builds from the draft map and its records: every room dressed, deterministic, the molten pieces, the light
-    //    sources, the Rigger's eight hang points as hoists on their girders, the doors on every door spawn and grates on every
-    //    floor vent;
+    // NativeHeatHaze). LIVE on map `expedition-foundry` (Astra's activation, PR #255: the design blockout under the live prefix,
+    //  the exp-foundry area of Resources/ExpeditionLayout.json, the Ironworks look in MapLooks.json). Checks:
+    //  - only the foundry: the kit builds nothing for any other live map; the runtime and every hook are gated on the map id or
+    //    the converter gate's id; the live manifest has no converter gate, so the shutter draws nothing live yet;
+    //  - hazards off in normal play: with no authority bound and the DEV preview off, every hazard view is idle and off (runners
+    //    crusted, no pour, no slab, no telegraphs, the frames at rest); only the DEV panel's preview runs them;
+    //  - the look: the live Ironworks entry carries the design's block looks under the live prefix, and validates with the rest;
+    //  - the kit builds from the live map and its records: every room dressed, deterministic, the molten pieces, the light
+    //    sources, the Rigger's eight hang points as hoists on their girders (dressing until the Rigger exists), the doors on every
+    //    door spawn and grates on every floor vent;
     //  - placement, recomputed here from the records: within 3.1 m over the ground or the ring nothing stands out more than
     //    0.25 m from a block except flat paint, thin chains and a hazard's own machinery inside its volume; nothing meets a spawn's
     //    exit, path or drop column (other than its own dressing), a slot, a cache, a boss point, a machine spot, the doors' or the
@@ -21,9 +25,10 @@ namespace ChipArena.UnityConversion
     //  - budgets (section 9.1): parts per room, kit and molten draws, the low tier's share, effect quads in view, the eight
     //    practical lights with two always cool, warm molten pools within 13 m;
     //  - hazard views (section 5): the cycles, Wave 1's light set, the waves' joins, the boss encounter's parked ladle, the
-    //    converter stub; the definitions equal the draft record's; the frames (ladle, ram, slab, shear, pusher, pot) and the molten
+    //    converter stub; the definitions equal the live record's; the frames (ladle, ram, slab, shear, pusher, pot) and the molten
     //    states follow the views;
-    //  - the converter shutter follows the closure states (sealed, opening, open, sealing) inside the state scene;
+    //  - the converter shutter follows the closure states (sealed, opening, open, sealing) inside the state scene (on the design
+    //    manifest, which has the gate);
     //  - readability: telegraphs cream, beacons the hazard kit's amber, the molten ramp's top within HDR 4;
     //  - no allocation per frame in the hazard views, frames, drives, molten states, picker, effects or the shutter.
     // Static data and pure-code checks only: no Unity scene, GPU, PhysX or network claim.
@@ -54,13 +59,13 @@ namespace ChipArena.UnityConversion
         internal static void Run(string root)
         {
             count=0;var o=new JsonSerializerOptions{IncludeFields=true};string R(string f)=>File.ReadAllText(Path.Combine(root,f));
-            // ---------------- inert on today's maps ----------------
+            // ---------------- only the foundry ----------------
             var live=JsonSerializer.Deserialize<UnityMapContent>(R("Assets/Conversion/Resources/UnityMaps.json"),o).maps;var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);
-            Check(live.All(m=>!NativeIronworksKit.Active(m.id))&&content.maps.All(m=>!NativeIronworksKit.Active(m.id)),"no live map is the Ironworks (its presentation never runs today)");
-            foreach(var m in live){var k=NativeIronworksKit.Build(m.blocks,null);Check(k.Parts.Length==0&&k.Molten.Length==0&&k.Glows.Length==0,"the kit builds nothing for "+m.id);}
-            var liveLayout=NativeExpeditionLayout.Parse(R("Assets/Conversion/Resources/ExpeditionLayout.json"));
-            Check(liveLayout.areas.All(a=>a.map!=NativeIronworksKit.MapId&&(a.gates??Array.Empty<ExpeditionGateLayout>()).All(g=>!NativeIronworksShutter.Owns(g.id))),"no live area is the Ironworks, and the shutter owns none of the live gates (they keep the state scene's gate)");
-            Check(!R("Assets/Conversion/Resources/MapLooks.json").Contains("\"ironworks\"",StringComparison.Ordinal),"MapLooks.json holds no Ironworks look (the look stays in the draft until the import)");
+            Check(live.Count(m=>NativeIronworksKit.Active(m.id))==1&&content.maps.All(m=>!NativeIronworksKit.Active(m.id)||m.id==NativeIronworksKit.MapId),"exactly one live map is the Ironworks ("+NativeIronworksKit.MapId+")");
+            foreach(var m in live)if(!NativeIronworksKit.Active(m.id)){var k=NativeIronworksKit.Build(m.blocks,null);Check(k.Parts.Length==0&&k.Molten.Length==0&&k.Glows.Length==0,"the kit builds nothing for "+m.id);}
+            string liveLayoutText=R("Assets/Conversion/Resources/ExpeditionLayout.json");var liveLayout=NativeExpeditionLayout.Parse(liveLayoutText);
+            Check(liveLayout.areas.Count(a=>a.map==NativeIronworksKit.MapId)==1&&liveLayout.Area(NativeIronworksKit.AreaId)?.map==NativeIronworksKit.MapId,"the live manifest's "+NativeIronworksKit.AreaId+" area is the foundry");
+            Check(liveLayout.areas.All(a=>(a.gates??Array.Empty<ExpeditionGateLayout>()).All(g=>!NativeIronworksShutter.Owns(g.id))),"the live manifest has no converter gate: every live gate keeps the state scene's gate and the shutter draws nothing live yet");
             string Src(string f)=>R("Assets/ChipArena/"+f);
             var pres=Src("Runtime/NativeIronworksPresentation.cs");
             Check(pres.Contains("var map=arena.Map;if(map==null||!NativeIronworksKit.Active(map.id)||!EnsureIronworks())return;",StringComparison.Ordinal),"the runtime draws only on the Ironworks map");
@@ -68,19 +73,39 @@ namespace ChipArena.UnityConversion
             Check(Src("Core/NativeExpeditionStateScene.cs").Contains("if(NativeIronworksShutter.Owns(c.id))NativeIronworksShutter.Build(Parts,PartCapacity,Quads,f,c,t,eye,reduced,low);else Gate(f,g,c,t,reduced,low);",StringComparison.Ordinal),"the state scene hands only the converter gate to the shutter");
             Check(NativeDevActions.Find("preview-ironworks")?.Kind==NativeDevKind.Presentation&&Src("Runtime/NativeDevPanel.cs").Contains("case \"preview-ironworks\":IronworksPreviewStep();break;",StringComparison.Ordinal),"the DEV preview is a presentation-only view tool");
             Check(Src("Editor/NativeBuildChecks.cs").Contains("\"NativeMolten\",\"NativeHeatHaze\"",StringComparison.Ordinal),"the editor build check compiles the two shaders");
-            // ---------------- the draft ----------------
-            var map=JsonSerializer.Deserialize<UnityMapContent>(R("Tests/expedition-ironworks-draft.json"),o).maps.Single();var blocks=map.blocks;
-            string layoutText=R("Tests/expedition-ironworks-layout-draft.json");var area=NativeExpeditionLayout.Parse(layoutText).Area(NativeIronworksKit.AreaId);Check(area!=null&&area.map==map.id,"the draft manifest's foundry area");
+            // ---------------- hazards off in normal play ----------------
+            // The runtime's input: the DEV preview's, else the bound authority's, else nothing; nothing in the project binds it yet, and
+            // only the DEV panel's step sets the preview.
+            Check(pres.Contains("public static IronworksHazardInput Input()=>Preview?NativeIronworksHazards.Preview(PreviewStage,Time.unscaledTimeAsDouble-PreviewStart):Bound?Authority:default;",StringComparison.Ordinal)
+                &&pres.Contains("NativeIronworksHazards.Evaluate(NativeIronworksLive.Input(),iwViews);",StringComparison.Ordinal),"the runtime's hazard input is the DEV preview's, else the bound authority's, else none");
+            var sources=Directory.GetFiles(Path.Combine(root,"Assets"),"*.cs",SearchOption.AllDirectories).Select(File.ReadAllText).ToArray();
+            Check(sources.All(t=>!t.Contains("NativeIronworksLive.Bound=",StringComparison.Ordinal)&&!t.Contains("NativeIronworksLive.Authority=",StringComparison.Ordinal))&&sources.Count(t=>t.Contains("NativeIronworksLive.PreviewStage=",StringComparison.Ordinal))==1,"no hazard authority is bound yet, and only the DEV preview step starts the preview");
+            {
+                var off=new IronworksHazardView[NativeIronworksHazards.Count];NativeIronworksHazards.Evaluate(default,off);
+                Check(off.All(v=>v.Phase==NativeHazardPhase.Idle&&v.Rate==NativeIronworksHazards.RateOff&&!v.Parked),"with no input every hazard is idle and off");
+                var offFx=new NativeIronworksFx();var offScene=NativeIronFxScene.Build(NativeIronworksKit.Build(live.Single(m=>NativeIronworksKit.Active(m.id)).blocks,liveLayout.Area(NativeIronworksKit.AreaId)));int telegraphs=0;
+                for(double t=0;t<120;t+=1.7){offFx.Build(offScene,off,t,19,9.4,-13.4,0,0,-1,0,1,0,1,false);telegraphs+=offFx.Telegraphs;}
+                Check(telegraphs==0,"hazards off: no telegraph decal ever shows in normal play");
+                Check(!NativeIronworksKit.SlabShown(off[NativeIronworksHazards.Slab])&&NativeIronworksKit.RamLiftOf(off[NativeIronworksHazards.Hammer])>=0&&NativeIronworksKit.SlabRunOf(off[NativeIronworksHazards.Slab])<0,"hazards off: the hot slab stays in the furnace and the hammer rests");
+            }
+            // ---------------- the live look ----------------
+            var looks=JsonSerializer.Deserialize<MapLookSet>(R("Assets/Conversion/Resources/MapLooks.json"),o);NativeMapLooks.Validate(looks);
+            var ironLook=looks.maps.Single(l=>l.id==NativeIronworksKit.MapId);var designLook=JsonSerializer.Deserialize<MapLookSet>(R("Tests/expedition-ironworks-look-draft.json"),o).maps.Single();
+            Check(ironLook.look=="ironworks"&&ironLook.blockLooks.Length==designLook.blockLooks.Length&&ironLook.blockLooks.Zip(designLook.blockLooks,(a,b)=>a.block==b.block.Replace("expedition-ironworks-",NativeIronworksKit.Prefix)&&a.look==b.look&&a.color==b.color).All(x=>x),
+                "the live Ironworks look carries the design's block looks under the live prefix (clean plate for the cranes, cars, converters and pusher)");
+            // ---------------- the live map and its records ----------------
+            var map=live.Single(m=>NativeIronworksKit.Active(m.id));var blocks=map.blocks;
+            string layoutText=liveLayoutText;var area=liveLayout.Area(NativeIronworksKit.AreaId);Check(area!=null&&area.map==map.id&&blocks.All(b=>NativeIronworksKit.Stem(b.id)!=null),"the live foundry area and map (every block under the live prefix)");
             var rec=JsonNode.Parse(layoutText)["areas"].AsArray().Single(a=>(string)a["id"]==NativeIronworksKit.AreaId)["ironworks"];
             var sw=System.Diagnostics.Stopwatch.StartNew();var kit=NativeIronworksKit.Build(blocks,area);double buildMs=sw.Elapsed.TotalMilliseconds;var again=NativeIronworksKit.Build(blocks,area);
-            Check(NativeIronworksKit.Active(map.id)&&kit.Parts.Length>4000&&kit.Molten.Length>60&&kit.Glows.Length>50,"the kit builds from the draft ("+kit.Parts.Length+" parts, "+kit.Molten.Length+" molten pieces, "+kit.Glows.Length+" light sources)");
+            Check(NativeIronworksKit.Active(map.id)&&kit.Parts.Length>4000&&kit.Molten.Length>60&&kit.Glows.Length>50,"the kit builds from the live map ("+kit.Parts.Length+" parts, "+kit.Molten.Length+" molten pieces, "+kit.Glows.Length+" light sources)");
             Check(kit.Parts.SequenceEqual(again.Parts)&&kit.Molten.SequenceEqual(again.Molten)&&kit.Glows.SequenceEqual(again.Glows),"deterministic: two builds give the same parts, molten pieces and lights");
             var parts=new int[NativeIronworksKit.Rooms];var molten=new int[NativeIronworksKit.Rooms];var lights=new int[NativeIronworksKit.Rooms];kit.Counts(parts,molten,lights);var lowParts=new int[NativeIronworksKit.Rooms];kit.Counts(lowParts,new int[NativeIronworksKit.Rooms],new int[NativeIronworksKit.Rooms],true);
             for(int r=0;r<NativeIronworksKit.Rooms;r++)Check(parts[r]>=120,"every room is dressed: "+NativeIronworksKit.RoomNames[r]+" has "+parts[r]+" parts");
             Check(molten[NativeIronworksKit.RoomCasting]>=20&&molten[NativeIronworksKit.RoomFurnace]>=6&&molten[NativeIronworksKit.RoomMill]>=6&&molten[NativeIronworksKit.RoomCoke]>=1&&molten[NativeIronworksKit.RoomConverter]>=3&&molten[NativeIronworksKit.RoomSlag]>=5,"molten metal in every hot room");
             Check(kit.Rejected<=40,"the kit fits its keep-outs (only "+kit.Rejected+" parts or groups rejected: "+string.Join("; ",kit.RejectedAt.Take(80).Select(r=>"("+((r.X0+r.X1)/2).ToString("F1")+","+r.Y0.ToString("F1")+".."+r.Y1.ToString("F1")+","+((r.Z0+r.Z1)/2).ToString("F1")+") k"+r.Kind+" s"+r.Spawn))+")");
             // ---------------- placement ----------------
-            Check(kit.Unbacked<=kit.Parts.Length/25,"few parts left out by the placement rule ("+kit.Unbacked+": "+string.Join("; ",kit.UnbackedAt.Take(60).Select(r=>"("+((r.X0+r.X1)/2).ToString("F1")+","+r.Y0.ToString("F1")+".."+r.Y1.ToString("F1")+","+((r.Z0+r.Z1)/2).ToString("F1")+")"))+")");
+            Check(kit.Unbacked<=kit.Parts.Length/40,"few parts left out by the placement rule ("+kit.Unbacked+": "+string.Join("; ",kit.UnbackedAt.Take(60).Select(r=>"("+((r.X0+r.X1)/2).ToString("F1")+","+r.Y0.ToString("F1")+".."+r.Y1.ToString("F1")+","+((r.Z0+r.Z1)/2).ToString("F1")+")"))+")");
             var violations=new List<string>();var floors=blocks.Where(b=>b.id.Contains("-deck-")&&!b.id.Contains("-rail-")&&!b.id.Contains("-col-")).ToArray();
             bool OverRing(Box w)=>floors.Any(d=>w.X1>d.pos.x-d.size.x/2&&w.X0<d.pos.x+d.size.x/2&&w.Z1>d.pos.z-d.size.z/2&&w.Z0<d.pos.z+d.size.z/2);
             bool InBand(Box w)=>blocks.Any(b=>{double bx0=b.pos.x-b.size.x/2-NativeIronworksKit.WallBand,bx1=b.pos.x+b.size.x/2+NativeIronworksKit.WallBand,by0=b.pos.y-b.size.y/2-NativeIronworksKit.WallBand,by1=b.pos.y+b.size.y/2+NativeIronworksKit.WallBand,bz0=b.pos.z-b.size.z/2-NativeIronworksKit.WallBand,bz1=b.pos.z+b.size.z/2+NativeIronworksKit.WallBand;
@@ -112,7 +137,8 @@ namespace ChipArena.UnityConversion
             foreach(var i in area.interactions)keep.Add((new double[]{i.x-1.1,i.x+1.1,i.y-.05,i.y+2.4,i.z-1.1,i.z+1.1},-1,"cache "+i.anchor));
             foreach(var d in area.doors){var a=Aabb(d.closure);keep.Add((new[]{a[0]-.5,a[1]+.5,a[2]-.2,a[3]+.5,a[4]-.5,a[5]+.5},-1,"exit door"));foreach(var p in d.entries)keep.Add((new double[]{p.x-.9,p.x+.9,p.y-.05,p.y+2.4,p.z-.9,p.z+.9},-1,"entry slot"));}
             foreach(var g in area.gates){var a=Aabb(g.closure);keep.Add((new[]{a[0]-.05,a[1]+.05,a[2]-.2,a[3]+.05,a[4]-.05,a[5]+.05},-1,"shutter"));}
-            foreach(var mc in rec["machines"].AsArray()){double x=(double)mc["x"],y=(double)mc["y"],z=(double)mc["z"];keep.Add((new[]{x-1.1,x+1.1,y-.05,y+2.6,z-1.1,z+1.1},-1,"machine "+(string)mc["kind"]));}
+            foreach(var mc in area.machines){double x0=Math.Min(mc.x,Math.Min(mc.front.x,mc.chipDrop.x)),x1=Math.Max(mc.x,Math.Max(mc.front.x,mc.chipDrop.x)),z0=Math.Min(mc.z,Math.Min(mc.front.z,mc.chipDrop.z)),z1=Math.Max(mc.z,Math.Max(mc.front.z,mc.chipDrop.z));keep.Add((new[]{x0-1.1,x1+1.1,mc.y-.05,mc.y+2.6,z0-1.1,z1+1.1},-1,"machine "+mc.kind));}
+            Check(area.machines.Length==NativeIronworksKit.MachineSpots.Length/3&&area.machines.All(mc=>Enumerable.Range(0,area.machines.Length).Any(j=>Math.Abs(NativeIronworksKit.MachineSpots[j*3]-mc.x)<.01&&Math.Abs(NativeIronworksKit.MachineSpots[j*3+2]-mc.z)<.01)),"the live machines stand on the kit's machine spots");
             var hits=new List<string>();
             void Keepout(string what,Box w,short owner)
             {
@@ -123,11 +149,14 @@ namespace ChipArena.UnityConversion
             Check(hits.Count==0,"nothing meets a spawn's exit, path or drop column (other than its own dressing), a slot, a cache, a boss point, a machine spot, the doors or the shutter ("+hits.Count+": "+string.Join("; ",hits.Take(6))+")");
             // Every door spawn has its doorway and every floor vent its grate (the spawn's own dressing).
             for(short s=0;s<spawns.Length;s++){var e=spawns[s].entry;if(e.kind!="door"&&!(e.kind=="vent"&&e.surface!="ceiling"))continue;Check(kit.Parts.Any(p=>p.Owner==s),"spawn "+s+" ("+e.kind+") has its own dressing");}
-            // The Rigger's eight hang points: each a hoist on its girder with a chain, matching the draft record.
-            var hangs=rec["spawns"].AsArray().Where(x=>x["hang"]!=null).ToArray();Check(hangs.Length==NativeIronworksKit.HangPoints.Length/4,"the kit's hang points are the draft record's eight");
-            foreach(var h in hangs){var e=spawns[(int)h["spawn"]].entry;int k=Enumerable.Range(0,hangs.Length).First(j=>Math.Abs(NativeIronworksKit.HangPoints[j*4]-e.exit.x)<.01&&Math.Abs(NativeIronworksKit.HangPoints[j*4+2]-e.exit.z)<.01);
-                Check(Math.Abs(NativeIronworksKit.HangPoints[k*4+1]-(float)h["hang"]["hook"])<1e-3&&Math.Abs(NativeIronworksKit.HangPoints[k*4+3]-(float)h["hang"]["feet"])<1e-3,"hang point "+(int)h["spawn"]+" matches the record's hook and drop heights");
-                Check(kit.Parts.Count(p=>p.Owner==(int)h["spawn"]&&p.Role==NativeIronworksKit.RoleChain)>=8,"hang point "+(int)h["spawn"]+" shows its hoist and chain");}
+            // The Rigger's eight hang points (the design record's; the live manifest has no Rigger yet, and three of the points are live
+            // ceiling vents): each a hoist on its girder with a chain, as dressing.
+            var designRec=JsonNode.Parse(R("Tests/expedition-ironworks-layout-draft.json"))["areas"].AsArray().Single(a=>(string)a["id"]==NativeIronworksKit.AreaId);
+            var hangs=designRec["ironworks"]["spawns"].AsArray().Where(x=>x["hang"]!=null).ToArray();Check(hangs.Length==NativeIronworksKit.HangPoints.Length/4,"the kit's hang points are the design record's eight");
+            foreach(var h in hangs){var e=designRec["spawns"].AsArray()[(int)h["spawn"]]["exit"];double ex=(double)e["x"],ez=(double)e["z"];int k=Enumerable.Range(0,hangs.Length).First(j=>Math.Abs(NativeIronworksKit.HangPoints[j*4]-ex)<.01&&Math.Abs(NativeIronworksKit.HangPoints[j*4+2]-ez)<.01);
+                Check(Math.Abs(NativeIronworksKit.HangPoints[k*4+1]-(float)h["hang"]["hook"])<1e-3&&Math.Abs(NativeIronworksKit.HangPoints[k*4+3]-(float)h["hang"]["feet"])<1e-3,"hang point "+(int)h["spawn"]+" matches the design record's hook and drop heights");
+                double hx=NativeIronworksKit.HangPoints[k*4],hz2=NativeIronworksKit.HangPoints[k*4+2];
+                Check(kit.Parts.Count(p=>p.Role==NativeIronworksKit.RoleChain&&Math.Abs(p.X+NativeIronworksKit.FrameOrigin[p.Frame*3]-hx)<1.2&&Math.Abs(p.Z+NativeIronworksKit.FrameOrigin[p.Frame*3+2]-hz2)<1.2)>=8,"hang point at ("+hx+", "+hz2+") shows its hoist and chain");}
             Check(NativeIronworksKit.TrussX.Any(x=>Math.Abs(x+4)<.01)&&NativeIronworksKit.TrussX.Any(x=>Math.Abs(x-22)<.01)&&NativeIronworksKit.TrussX.Any(x=>Math.Abs(x-3.5)<1.5)&&NativeIronworksKit.TrussBottom==14.4f,"the roof trusses' bottom chords pass over the gantry hang points at 14.4 m (within 1.5 m)");
             // ---------------- hazards: definitions, cycles, schedule ----------------
             var defs=NativeIronworksHazards.Defs;var hz=rec["hazards"].AsArray();Check(defs.Length==hz.Count&&defs.Length==NativeIronworksHazards.Count,"the eleven hazards of section 5");
@@ -135,9 +164,10 @@ namespace ChipArena.UnityConversion
             {
                 var h=hz[i];var v=h["volume"];var d=defs[i];
                 Check(d.Id==(string)h["id"]&&Math.Abs(d.X-(float)v["x"])<1e-3&&Math.Abs(d.Y-(float)v["y"])<1e-3&&Math.Abs(d.Z-(float)v["z"])<1e-3&&Math.Abs(d.Sx-(float)v["sx"])<1e-3&&Math.Abs(d.Sy-(float)v["sy"])<1e-3&&Math.Abs(d.Sz-(float)v["sz"])<1e-3
-                    &&Math.Abs(d.Warn-(float)h["warn"])<1e-3&&Math.Abs(d.Live-(float)h["live"])<1e-3&&Math.Abs(d.Period-(float)h["period"])<1e-3,d.Id+": volume and cycle equal the draft record's");
-                string w1=(string)h["schedule"]["wave1"],boss=(string)h["schedule"]["boss"];
-                Check((w1=="on")==(d.Wave1==NativeIronworksHazards.Wave1On)&&(w1=="half")==(d.Wave1==NativeIronworksHazards.Wave1Half)&&(boss=="off")==(d.Boss==NativeIronworksHazards.BossOff)&&(boss=="boss")==(d.Boss==NativeIronworksHazards.BossDriven),d.Id+": Wave 1 and boss schedule equal the draft record's");
+                    &&Math.Abs(d.Warn-(float)h["warn"])<1e-3&&Math.Abs(d.Live-(float)h["live"])<1e-3&&Math.Abs(d.Period-(float)h["period"])<1e-3,d.Id+": volume and cycle equal the live record's");
+                // The schedule is the design record's (the live activation snapshot carries the volumes and cycles only).
+                var sched=h["schedule"]??designRec["ironworks"]["hazards"].AsArray()[i]["schedule"];string w1=(string)sched["wave1"],boss=(string)sched["boss"];
+                Check((w1=="on")==(d.Wave1==NativeIronworksHazards.Wave1On)&&(w1=="half")==(d.Wave1==NativeIronworksHazards.Wave1Half)&&(boss=="off")==(d.Boss==NativeIronworksHazards.BossOff)&&(boss=="boss")==(d.Boss==NativeIronworksHazards.BossDriven),d.Id+": Wave 1 and boss schedule equal the design record's");
             }
             IronworksHazardInput In(int wave,bool boss,double clock)=>new IronworksHazardInput{Running=true,Wave=wave,Boss=boss,Clock=clock};
             byte Rate(int h,int wave,bool boss)=>NativeIronworksHazards.RateOf(h,In(wave,boss,0));
@@ -177,7 +207,8 @@ namespace ChipArena.UnityConversion
             var c0=new ExpeditionClosureView{id=NativeIronworksShutter.GateId,area=NativeIronworksKit.AreaId,state="sealed",began=0};
             var pSealed=NativeIronworksShutter.PoseOf(c0,10);c0.state="opening";c0.began=10;var pHalf=NativeIronworksShutter.PoseOf(c0,10.5);var pDone=NativeIronworksShutter.PoseOf(c0,10.99);c0.state="open";var pOpen=NativeIronworksShutter.PoseOf(c0,20);c0.state="sealing";c0.began=20;var pSeal=NativeIronworksShutter.PoseOf(c0,20.5);
             Check(pSealed.Rise==0&&pSealed.Lock==1&&pSealed.Lamp==1&&pHalf.Rise>0&&pHalf.Rise<1&&pHalf.Lock<.01&&pDone.Rise>pHalf.Rise&&pOpen.Rise==1&&pOpen.Lamp==0&&pSeal.Rise<1&&pSeal.Rise>0,"the shutter: sealed down and bolted, opening rolls it up unbolted, open it is gone, sealing runs it down");
-            var draftLayout=NativeExpeditionLayout.Parse(layoutText);var rig=ExpeditionStateRig.For(draftLayout,NativeIronworksKit.AreaId);var scene=new NativeExpeditionStateScene();var eye=new ExpeditionEye{X=-12,Y=2,Z=0,Rx=0,Ry=0,Rz=-1,Ux=0,Uy=1,Uz=0};
+            // On the design manifest (the live one has no converter gate yet), the foundry area under the live map id.
+            var draftLayout=NativeExpeditionLayout.Parse(R("Tests/expedition-ironworks-layout-draft.json"));var rig=ExpeditionStateRig.For(draftLayout,NativeIronworksKit.AreaId);var scene=new NativeExpeditionStateScene();var eye=new ExpeditionEye{X=-12,Y=2,Z=0,Rx=0,Ry=0,Rz=-1,Ux=0,Uy=1,Uz=0};
             int Built(string state,double prog){var c=new ExpeditionClosureView{id=NativeIronworksShutter.GateId,area=NativeIronworksKit.AreaId,state=state,began=100-prog};scene.Build(new ExpeditionView{area=NativeIronworksKit.AreaId,closures=new[]{c}},rig,null,100,eye,false,false);return scene.Parts.Count;}
             int sealedParts=Built("sealed",0);int sealedQuads=scene.Quads.Count;int openParts=Built("open",5);int openingParts=Built("opening",.5);int openingQuads=scene.Quads.Count;
             Check(scene.GatesDrawn==1&&sealedParts>30&&openParts<8&&openingParts>openParts&&openingParts<sealedParts&&sealedQuads==0&&openingQuads>0,"the state scene draws the converter shutter from the director's closure view ("+sealedParts+" parts sealed, "+openingParts+" opening, "+openParts+" open; dust and sparks only while it moves; no hardlight lattice)");
@@ -216,7 +247,7 @@ namespace ChipArena.UnityConversion
             }
             for(int f=0;f<5;f++)Frame(f*.016);long before=GC.GetAllocatedBytesForCurrentThread();for(int f=0;f<240;f++)Frame(3+f*.11);long spent=GC.GetAllocatedBytesForCurrentThread()-before;
             Check(spent==0,"the hazard views, frames, drives, molten states, picker, effects, field levels and the shutter allocate nothing per frame ("+spent+" bytes over 240 frames)");
-            Console.WriteLine("PASS ironworks visuals ("+count+" checks: inert on every live map and gate; the kit from the draft: "+total+" parts ("+lowTotal+" on the low tier), "+kit.Molten.Length+" molten pieces, "+kit.Glows.Length+" light sources, "+(draws+meltDraws)+" instanced draws, built in "+buildMs.ToString("F0")+" ms; rooms "
+            Console.WriteLine("PASS ironworks visuals ("+count+" checks: only on "+NativeIronworksKit.MapId+"; hazards off in normal play (DEV preview only); the live look; the kit from the live map: "+total+" parts ("+lowTotal+" on the low tier), "+kit.Molten.Length+" molten pieces, "+kit.Glows.Length+" light sources, "+(draws+meltDraws)+" instanced draws, built in "+buildMs.ToString("F0")+" ms; rooms "
                 +string.Join(", ",Enumerable.Range(0,NativeIronworksKit.Rooms).Select(r=>NativeIronworksKit.RoomNames[r]+" "+parts[r]))+"; placement and keep-outs from the records; hazard cycles, Wave 1, the waves' joins and the boss's parked ladle; the shutter from the closure states; two cool lights always; "+maxQuads+" effect quads at most; the field in "+field.BakeMs.ToString("F0")+" ms; no allocation per frame)");
         }
     }

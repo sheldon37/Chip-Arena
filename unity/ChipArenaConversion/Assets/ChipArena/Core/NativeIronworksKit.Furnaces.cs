@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
                 }
                 // Tie bands across the face, under the deck and over the doors.
                 foreach(double y in new[]{3.0,4.7,11.4,13.2})Span(c-5,c+5,y,y+.2,27.72,27.76,y<6?Detail(band):band);
-                for(double x=c-4.6;x<=c+4.6;x+=.92)foreach(double y in new[]{3.1,11.5,13.3})Span(x-.03,x+.03,y-.03,y+.03,27.7,27.72,Detail(Iron(SteelHex)));
+                for(double x=c-4.6;x<=c+4.6;x+=.92)foreach(double y in new[]{3.2,11.5,13.3})Span(x-.03,x+.03,y-.03,y+.03,27.7,27.72,Detail(Iron(SteelHex)));
                 // The furnace's name on its face (white paint letters).
                 Text("NO "+(k+1),c+3.0,12.2,FurnaceFace,3,.13,.005,.02,P(NativeBlockLooks.Plain,WhitePaintHex,RoleSign));
                 Taphole(c,hz);
@@ -99,25 +99,26 @@ namespace ChipArena.UnityConversion
         {
             short s=open&&!half?SpawnAt(d,6,25.6):(short)-1;Own(s);Under("furnace-"+(k+1));Begin();
             var jacket=Iron(0x34302C);var pipe=Detail(Iron(GreenDarkHex));double y0=6.0,top=8.3;
-            // The water-cooled frame: jambs, lintel and sill, the cooling water stubs.
-            Span(d-1.15,d-.85,y0,9.2,27.72,27.98,jacket);Span(d+.85,d+1.15,y0,9.2,27.72,27.98,jacket);Span(d-.85,d+.85,top,9.2,27.72,27.98,jacket);Span(d-.85,d+.85,y0,y0+.05,27.72,27.98,jacket);
-            foreach(double sx in new[]{-1.0,1.0})foreach(double y in new[]{6.6,7.8,8.9})Span(d+sx-.06,d+sx+.06,y,y+.1,27.62,27.72,pipe);
+            // The water-cooled frame: jambs, lintel and sill, the cooling water stubs. Everything on the deck sits within the wall
+            // band of the furnace face (0.25 m), so nothing stands out into the walkway.
+            Span(d-1.15,d-.85,y0,9.2,27.86,28,jacket);Span(d+.85,d+1.15,y0,9.2,27.86,28,jacket);Span(d-.85,d+.85,top,9.2,27.86,28,jacket);Span(d-.85,d+.85,y0,y0+.05,27.86,28,jacket);
+            foreach(double sx in new[]{-1.0,1.0})foreach(double y in new[]{6.6,7.8,8.9})Span(d+sx-.06,d+sx+.06,y,y+.1,27.8,27.86,pipe);
             if(open)
             {
                 // Fire in the mouth: the charge burning (NativeMolten fire: rising tongues, the hottest low in the bed).
                 Melt(d,(y0+top)/2,27.95,1.7,top-y0,.04,MoltenFire,1,1,.9f,.86f,.5f,0f,MDriveFurnace,-1,FrameStatic,(float)(d*.21+k));
-                double leaf=half?7.35:8.95;Span(d-.95,d+.95,leaf,leaf+2.16,27.58,27.72,Iron(0x3A3632));Span(d-.9,d+.9,leaf+.95,leaf+1.05,27.55,27.58,Detail(Iron(SootHex)));
-                if(half)Span(d-.86,d+.86,leaf-.04,leaf,27.6,27.72,Glow(SeamHex,1.8f,RoleMolten,DriveSeam,(float)d));
-                // The lifting chains to the counterweight beam on the hood.
-                foreach(double sx in new[]{-.7,.7})Span(d+sx-.02,d+sx+.02,leaf+2.16,10.1,27.63,27.67,Detail(Iron(ChainHex,RoleChain)));
+                double leaf=half?7.35:9.12;Span(d-.95,d+.95,leaf,leaf+2.16,27.76,27.86,Iron(0x3A3632));Span(d-.9,d+.9,leaf+.95,leaf+1.05,27.75,27.76,Detail(Iron(SootHex)));
+                if(half)Span(d-.86,d+.86,leaf-.04,leaf,27.78,27.86,Glow(SeamHex,1.8f,RoleMolten,DriveSeam,(float)d));
+                // The lifting chains to the counterweight beam on the hood (a fully raised leaf hangs from it directly).
+                if(leaf+2.16<10.1)foreach(double sx in new[]{-.7,.7})Span(d+sx-.02,d+sx+.02,leaf+2.16,10.1,27.79,27.83,Detail(Iron(ChainHex,RoleChain)));
             }
             else
             {
                 // Shut: the leaf over the mouth, its glowing seams, a sight hole and the lifting lugs.
-                Span(d-.95,d+.95,6.12,8.28,27.58,27.72,Iron(0x3A3632));var seam=Glow(SeamHex,1.7f,RoleMolten,DriveSeam,(float)d);
-                Span(d-.86,d+.86,6.06,6.12,27.6,27.72,seam);Span(d-.86,d+.86,8.28,8.31,27.6,27.72,seam);Span(d-.89,d-.86,6.1,8.3,27.6,27.72,seam);Span(d+.86,d+.89,6.1,8.3,27.6,27.72,seam);
-                RodZ(27.54,27.58,d,7.6,.07,Glow(FurnaceHex,2.4f,RoleMolten,DriveFire,(float)d));
-                foreach(double sx in new[]{-.6,.6}){Span(d+sx-.06,d+sx+.06,8.0,8.25,27.5,27.58,Detail(Iron(SootHex)));Span(d+sx-.02,d+sx+.02,8.25,10.1,27.52,27.56,Detail(Iron(ChainHex,RoleChain)));}
+                Span(d-.95,d+.95,6.12,8.28,27.76,27.86,Iron(0x3A3632));var seam=Glow(SeamHex,1.7f,RoleMolten,DriveSeam,(float)d);
+                Span(d-.86,d+.86,6.06,6.12,27.78,27.86,seam);Span(d-.86,d+.86,8.28,8.31,27.78,27.86,seam);Span(d-.89,d-.86,6.1,8.3,27.78,27.86,seam);Span(d+.86,d+.89,6.1,8.3,27.78,27.86,seam);
+                RodZ(27.75,27.76,d,7.6,.07,Glow(FurnaceHex,2.4f,RoleMolten,DriveFire,(float)d));
+                foreach(double sx in new[]{-.6,.6}){Span(d+sx-.06,d+sx+.06,8.0,8.25,27.75,27.76,Detail(Iron(SootHex)));Span(d+sx-.02,d+sx+.02,8.25,10.1,27.77,27.81,Detail(Iron(ChainHex,RoleChain)));}
             }
             End();Own(-1);
         }

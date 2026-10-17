@@ -36,8 +36,8 @@ namespace ChipArena.UnityConversion
                 // machine, not a block).
                 foreach(double y in new[]{.95,1.75})
                 {
-                    Span(x-.42,x+.42,y-.24,y+.24,Z1(n),Z1(n)+.22,Iron(0x2A302C));Span(x-.13,x+.13,y-.13,y+.13,Z1(n),Z1(n)+.46,Iron(SteelLightHex));
-                    Span(x-.42,x+.42,y-.24,y+.24,Z0(so)-.22,Z0(so),Iron(0x2A302C));Span(x-.13,x+.13,y-.13,y+.13,Z0(so)-.46,Z0(so),Iron(SteelLightHex));
+                    Span(x-.42,x+.42,y-.24,y+.24,Z1(n),Z1(n)+.12,Iron(0x2A302C));Span(x-.13,x+.13,y-.13,y+.13,Z1(n),Z1(n)+.24,Iron(SteelLightHex));
+                    Span(x-.42,x+.42,y-.24,y+.24,Z0(so)-.12,Z0(so),Iron(0x2A302C));Span(x-.13,x+.13,y-.13,y+.13,Z0(so)-.24,Z0(so),Iron(SteelLightHex));
                 }
                 Under(st+"-s");foreach(double fx in new[]{X0(so)-.04,X1(so)})Span(fx,fx+.04,0,Y1(so),Z0(so)+.2,Z1(so)-.2,Iron(0x3E4E44));
                 // The water sprays' headers either side of the pass line (they hiss when the slab goes through: effects).

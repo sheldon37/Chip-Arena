@@ -30,8 +30,8 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The City Ironworks' presentation (docs/EXPEDITION-CITY-IRONWORKS.md sections 3, 4, 5 and 9), drawn only while map
-    /// `expedition-ironworks` is loaded (NativeIronworksKit.Active), in the arena and the killcam replay (SourceWorld, on the
-    /// arena's presentation clock). Every other map is untouched; until the map is imported nothing here runs.
+    /// `expedition-foundry` is loaded (NativeIronworksKit.Active), in the arena and the killcam replay (SourceWorld, on the
+    /// arena's presentation clock). Every other map is untouched.
     ///  - Dressing kit (Core NativeIronworksKit, built once per map content with the instance's records from
     ///    Resources/ExpeditionLayout.json): instanced NativeBlockLit draws of 500 on layer 0, no shadows cast (the look's key casts
     ///    none indoors). Static parts' matrices and steady colours are made once; moving frames (the ladle, the drop hammer's ram,
@@ -48,8 +48,10 @@ namespace ChipArena.UnityConversion
     ///    and the low tier; the telegraph decals always draw.
     ///  - Heat haze (Resources/NativeHeatHaze.shader): one dynamic mesh of camera-facing quads over the hot sources, one GrabPass;
     ///    none on the low tier.
-    /// Hazard views: NativeIronworksLive (the authority's input once bound, or the DEV preview). Nothing here writes sim data,
-    /// collides, damages or enters the network frame. Allocation free after the one-time builds.
+    /// Hazard views: NativeIronworksLive (the authority's input once bound, or the DEV preview). Until Astra's hazard clock binds,
+    /// normal play has every hazard off: the views stay idle (runners crusted, no pour, no telegraphs, the moving frames at rest),
+    /// so only the static dressing, lighting, atmosphere and molten props show. Nothing here writes sim data, collides, damages
+    /// or enters the network frame. Allocation free after the one-time builds.
     /// </summary>
     public sealed partial class ArenaPresentation
     {
