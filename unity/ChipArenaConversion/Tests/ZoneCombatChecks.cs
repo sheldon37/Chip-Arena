@@ -36,6 +36,11 @@ namespace ChipArena.UnityConversion
             var h=new NativeZoneHazardFrame{running=true,start=0,clock=56,trainAt=60};var view=new NativeStationView();h.Fill(view,56);var state=new NativeStationState();state.Evaluate(view,56);Check(state.Express==NativeStationState.ExpressWarn,"full four-second express warning");state.Evaluate(view,60);Check(state.Express==NativeStationState.ExpressPass,"express starts on clock");
             h.leverAt=58;h.leverUntil=118;h.trainAt=122;h.Fill(view,100);state.Evaluate(view,100);Check(state.Express==NativeStationState.ExpressHalted&&state.Rails==0&&!state.Flood,"lever cuts hazards");h.Fill(view,118);state.Evaluate(view,118);Check(state.Express==NativeStationState.ExpressWarn&&state.Rails==31,"lever resumes full warning");
             h.clock=4;h.wave=1;Check(NativeIronworksHazards.At(NativeIronworksHazards.Ladle,h.Ironworks).Live,"wave one pour after 3.5 warning");h.boss=true;Check(NativeIronworksHazards.At(NativeIronworksHazards.Ladle,h.Ironworks).Parked&&!NativeIronworksHazards.At(NativeIronworksHazards.Ladle,h.Ironworks).Live,"boss parks pour");
+            Check(!NativeZoneHazardFrame.TrainSweep(60,59,59.99,out _,out _),"train warning cannot hit");
+            Check(NativeZoneHazardFrame.TrainSweep(60,60,60.1,out var left,out var right)&&right<0,"arriving train does not hit the far platform");
+            for(int tick=1;tick<=132;tick++)
+            {double now=60+tick/60d;Check(NativeZoneHazardFrame.TrainSweep(60,now-1d/60,now,out left,out right),"continuous express sweep");Check(left>=-48&&right<=48&&right<=NativeExpeditionStation.NoseStart+(now-60)*NativeExpeditionStation.Speed+.0001,"sweep follows visible nose and shell");}
+            Check(!NativeZoneHazardFrame.TrainSweep(60,63,64,out _,out _),"departed train cannot hit");
             var other=new NativeZoneHazardFrame();Check(!other.running&&other.clock==0&&other.trainAt<0,"instance clocks independent");h.glassAt=new[]{3f};Check(!h.Valid(),"mismatched glass arrays rejected");
             Console.WriteLine("PASS zone combat: "+count+" checks (content, authored spawns, quota mixes/caps, finite state, copy isolation, warning and lever clocks)");
         }
