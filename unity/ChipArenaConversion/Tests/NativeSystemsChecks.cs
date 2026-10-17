@@ -15,15 +15,28 @@ internal static class NativeSystemsChecks
     private static T Decode<T>(JsonElement e)=>JsonSerializer.Deserialize<T>(e.GetRawText(),Options);
     public static void Run(string root,ConversionContent content)
     {
+        foreach(float speed in new[]{10f,80f,200f})foreach(int part in new[]{CapturedRig.Head,CapturedRig.Spine,CapturedRig.LArm})foreach(bool lethal in new[]{false,true})
+        {
+            var wound=NativeBodyDamage.Resolve(NativeBodyDamage.Projectile("bow",speed,.045f),part,39,lethal);
+            Check(wound.trauma=="pierce"&&(wound.kind=="puncture"||wound.kind=="cavity")&&!wound.destroyed&&NativeBodyDamage.Valid(wound),"arrows puncture/cavitate without burning or bullet severing");
+        }
+        Check(NativeBodyDamage.Projectile("pistol",120,.045f).kind=="bullet"&&NativeBodyDamage.Projectile("fire",40,.1f).kind=="energy","gun and magic wound kinds preserved");
+        var metadataHit=new ArenaEvent{Kind=EventKind.Headshot,Projectile=42,Pierced=true,From=new V3(1,2,3)};
+        var hitCopy=JsonSerializer.Deserialize<ArenaEvent>(JsonSerializer.Serialize(metadataHit,new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true}),Options);
+        Check(hitCopy.Projectile==42&&hitCopy.Pierced&&hitCopy.From.x==1,"hit metadata JSON round trip");
+        var oldHit=JsonSerializer.Deserialize<ArenaEvent>("{\"Kind\":0,\"Projectile\":7}",Options);
+        Check(!oldHit.Pierced&&oldHit.Projectile==7,"old frames default to no pass-through claim");
+        var push=new V3(0,5,9);var carried=NativeMeleeRules.External(ref push,1f/60,out _,true);Near(carried.z,9,"wave push is not dragged during dash");Near(carried.y,5,"wave preserves one-shot lift");Near(push.y,0,"lift consumed once");
+        var dragged=NativeMeleeRules.External(ref push,1f/60,out _);Near(dragged.z,9*Math.Exp(-3.1/60),"post-wave drag");Near(dragged.y,0,"no repeated lift");
+        Check(NativeIntroRules.Style(new NativeSeat{spec="siren"})==NativeIntroRules.Default,"ungranted Siren standard intro");Check(NativeIntroRules.Style(new NativeSeat{spec="siren",AuthorityBoss=true})=="dev-siren","boss intro preserved");Check(NativeIntroRules.Style(new NativeSeat{spec="rifle"})=="weapon-rifle","weapon intro preserved");Check(NativeIntroRules.Style(new NativeSeat{spec="siren",overrideIntro=true,intro="missing-style"})==NativeIntroRules.Default,"unknown override normalized");Check(NativeIntroRules.Style(new NativeSeat{spec="pistol",overrideIntro=true,intro="neon-drop"})=="weapon-pistol","retired override plays the signature");
         var pve=JsonSerializer.Deserialize<NativePveContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/PveContent.json")),Options);
         using(var file=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/pve-parity.json"))))
         {
             foreach(var e in file.RootElement.GetProperty("cases").EnumerateArray())
             {int h=e.GetProperty("h").GetInt32(),wave=e.GetProperty("wave").GetInt32();var data=pve.waves[wave-1];var flow=e.GetProperty("flow");Near(NativePveRules.BossHp(h),e.GetProperty("hp").GetDouble(),"party HP");Near(NativePveRules.BossDamage(h),e.GetProperty("damage").GetDouble(),"party damage");Near(NativePveRules.Budget(data,h),e.GetProperty("budget").GetDouble(),"wave budget");Near(NativePveRules.Rate(data,h),flow.GetProperty("rate").GetDouble(),"spawn flow");Near(NativePveRules.Cap(data,h,e.GetProperty("relay").GetBoolean()),flow.GetProperty("maxAlive").GetDouble(),"alive cap");}
-            foreach(var e in file.RootElement.GetProperty("schedules").EnumerateArray())
-            {var schedule=new NativeWaveSchedule(0,e.GetProperty("skip").GetBoolean());double resolved=e.GetProperty("resolvedAt").GetDouble();var events=new List<PveWaveEvent>();for(double t=0;t<550;t+=.25){var change=schedule.Step(t,t%33<30?0:5,resolved<0?(double?)null:resolved);if(change!=null)events.Add(change);}var expected=e.GetProperty("events").EnumerateArray().ToArray();Check(events.Count==expected.Length,"schedule count");for(int i=0;i<events.Count;i++){Check(events[i].kind==expected[i].GetProperty("kind").GetString(),"wave event");Near(events[i].at,expected[i].GetProperty("at").GetDouble(),"wave time");}}
+
         }
-        Console.WriteLine("PASS native PvE: 24 source scaling cases and six complete wave schedules");
+        Console.WriteLine("PASS native PvE: 24 source scaling cases; native fixed-count schedules checked separately");
         using(var file=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/native-systems-parity.json"))))
         {
             var d=file.RootElement;
@@ -47,10 +60,48 @@ internal static class NativeSystemsChecks
         var ledger=new NativeImpactLedger();Near(NativeDebrisRules.Damage(10,10),15.925,"debris energy");Near(NativeDebrisRules.Damage(100,3),0,"debris low-speed guard");Near(NativeDebrisRules.Damage(100,100),65,"debris cap");ledger.Begin();Near(ledger.Claim("a","box",0,65),65,"first impact");Near(ledger.Claim("b","box",0,65),10,"shared fragment cap");ledger.End(0);ledger.Begin();Near(ledger.Claim("a","box",.5,65),0,"resting contact cannot retrigger");ledger.End(.5);ledger.Begin();ledger.End(.6);ledger.Begin();Near(ledger.Claim("a","box",1,65),65,"separated contact returns");ledger.End(1);
         var stats=NativeContentRules.Stats(content,"pistol",new Dictionary<string,int>());stats["critical"]=.5;stats["execute"]=.4;Near(NativeProjectileRules.Damage(10,stats,1,100,10,false,0,.5f,.1f),28,"execute and critical");Near(NativeProjectileRules.Falloff(20,3),0,"outside blast");Check(NativeAccess.Verify("invalid",_=>null,1)==NativeAccess.Guest,"invalid grant denied");
         string relay=Environment.GetEnvironmentVariable("CHIP_TEST_RELAY");if(!string.IsNullOrEmpty(relay))RelayChecks.Run(relay,content.sourceCommit).GetAwaiter().GetResult();
-        Transport().GetAwaiter().GetResult();Console.WriteLine("PASS transport: strict UTF-8, decompression limit, ordered loopback messages, isolated clients, disconnect and reconnect");
+        MainThreadIndependentTransport();LanCodeDiscovery();Transport().GetAwaiter().GetResult();Console.WriteLine("PASS transport: strict UTF-8, decompression limit, ordered loopback messages, isolated clients, disconnect and reconnect");
     }
     private static async Task Until(Func<bool> ready)
     {var start=DateTime.UtcNow;while(!ready()){if((DateTime.UtcNow-start).TotalSeconds>4)throw new TimeoutException("Loopback transport did not settle");await Task.Delay(5);}}
+    private static void LanCodeDiscovery()
+    {
+        using(var listener=new NativeListener(0))using(var discovery=new NativeLanDiscovery("ABCDEFGH",new string('a',40),listener.Port))using(var cancel=new CancellationTokenSource(5000))
+        using(var guest=NativeLanDiscovery.Connect("ABCDEFGH",new string('a',40),cancel.Token).GetAwaiter().GetResult())
+        {Check(SpinWait.SpinUntil(()=>listener.Accepted.Count>0,2000),"code-only LAN join reaches host");listener.Accepted.TryDequeue(out var host);using(host){guest.Send("{\"test\":1}");Check(SpinWait.SpinUntil(()=>host.Received.Count>0,2000),"discovered connection carries framed messages");}}
+        Console.WriteLine("PASS real UDP code discovery plus TCP framed transport on loopback");
+    }
+    private sealed class PausedUnityContext:SynchronizationContext
+    {public int Posts;public override void Post(SendOrPostCallback callback,object state){Interlocked.Increment(ref Posts);}}
+    private static void MainThreadIndependentTransport()
+    {
+        var previous=SynchronizationContext.Current;var context=new PausedUnityContext();
+        SynchronizationContext.SetSynchronizationContext(context);
+        try
+        {
+            using(var listener=new NativeListener(0))
+            {
+                var task=NativeConnection.Connect("127.0.0.1",listener.Port,CancellationToken.None);
+                Check(task.Wait(4000),"connect must not wait for Unity Update");
+                using(var client=task.Result)
+                {
+                    var deadline=DateTime.UtcNow.AddSeconds(4);
+                    while(listener.Accepted.IsEmpty&&DateTime.UtcNow<deadline)Thread.Sleep(5);
+                    Check(listener.Accepted.TryDequeue(out var host),"accept while Unity context is paused");
+                    using(host)
+                    {
+                        for(int i=0;i<100;i++){client.Send("input-"+i);Thread.Sleep(12);}
+                        while(host.Received.Count<100&&DateTime.UtcNow<deadline)Thread.Sleep(5);
+                        Check(!client.Closed&&!host.Closed&&host.Received.Count==100,"100 reliable inputs progress without rendering");
+                        for(int i=0;i<100;i++)Check(host.TryReceive(out var text)&&text=="input-"+i,"input order under stalled renderer");
+                        Check(context.Posts==0,"transport does not capture main-thread context");
+                    }
+                }
+            }
+        }
+        finally{SynchronizationContext.SetSynchronizationContext(previous);}
+        Console.WriteLine("PASS transport with a paused Unity synchronization context (100 inputs, no render callbacks)");
+    }
     private static async Task Transport()
     {
         string payload="{\"name\":\"Pilot 🌠\",\"data\":\""+new string('z',64000)+"\"}";Check(NativeConnection.Decode(NativeConnection.Encode(payload),100000)==payload,"compression round trip");

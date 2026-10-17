@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion.Editor
             {string candidate=Path.Combine(windows,"Microsoft.NET",framework,"v4.0.30319","csc.exe");if(File.Exists(candidate)){compiler=candidate;break;}}
             if(compiler==null)throw new IOException("The native launcher requires the Windows .NET Framework 4.8 compiler.");
             Directory.CreateDirectory(destination);Directory.CreateDirectory(Path.Combine(project,"Builds"));
-            string exe=Path.Combine(destination,NativeUpdateRules.Executable),response=Path.Combine(project,"Builds","native-launcher.rsp");
+            string exe=Path.Combine(destination,NativeUpdateRules.LauncherExecutable),response=Path.Combine(project,"Builds","native-launcher.rsp");
             var lines=new List<string>{"/nologo","/warnaserror+","/target:winexe","/optimize+",
                 "/r:System.Runtime.Serialization.dll","/r:System.IO.Compression.dll","/r:System.IO.Compression.FileSystem.dll","/r:System.Windows.Forms.dll",
                 "/out:"+NativeUpdateRules.QuoteArgument(exe),"/win32icon:"+NativeUpdateRules.QuoteArgument(icon)};

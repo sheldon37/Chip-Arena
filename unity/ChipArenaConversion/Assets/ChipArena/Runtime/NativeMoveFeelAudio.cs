@@ -1,0 +1,34 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace ChipArena.UnityConversion
+{
+    public sealed partial class NativeAudio
+    {
+        // ---------- movement feel: the dagger air flip's whoosh (owner 2026-10-12, "Daggers can double-jump") and the Cyber Lord's boost ----------
+        // move.jump and move.land use the replicated contact flag. AirJumpAt drives the same tracker used by the
+        // jump animation, on the predicted local or replicated remote timeline. A dagger pilot's air
+        // jump plays the dagger swing a little faster as the flip's whoosh (no new bank key). Presentation only.
+        private readonly Dictionary<int,NativeJumpTrack> jumpTracks=new Dictionary<int,NativeJumpTrack>();
+        private int jumpGeneration=-1;
+        /// <summary>The flip whoosh: the dagger swing at this rate and gain (own pilot quieter, as MoveCues plays it).</summary>
+        public const float FlipWhooshRate=1.2f,FlipWhooshGain=.5f,FlipWhooshOwnGain=.4f;
+        private void MoveFeelCues(NativeArena arena)
+        {
+            if(arena==null)return;if(arena.Generation!=jumpGeneration){jumpGeneration=arena.Generation;jumpTracks.Clear();}
+            float t=arena.Replica?arena.ReplicaRenderTime:arena.Time;var me=arena.Local;
+            foreach(var p in arena.Pilots)
+            {
+                if(p?.Body==null||p.Pose==null)continue;var a=p.Pose;
+                if(!jumpTracks.TryGetValue(p.Seat.id,out var track))jumpTracks[p.Seat.id]=track=new NativeJumpTrack();
+                int jumps=track.AirJumps;
+                bool blocked=a.Hp<=0||a.Rolling(t)||a.StunUntil>t||a.JuggleUntil>t||NativeSpecialPose.Active(a,t)||NativeSpecialPose.Down(a,t);
+                arena.PresentedJump(p,out bool grounded,out float airJumpAt);track.Explicit=true;
+                track.Observe(t,grounded,p.Body.transform.position.y,blocked);track.AirJumpSignal(airJumpAt);
+                if(track.AirJumps>jumps&&a.Hp>0&&NativeJumpRules.Flips(p.Seat.spec)&&!CyberLordAirBoost.Handles(p.Seat.spec)){bool mine=p==me;BankPlay("melee.daggers.swing",p.Body.position,mine?FlipWhooshOwnGain:FlipWhooshGain,0,null,mine,null,FlipWhooshRate);}
+                // The Cyber Lord's hardlight boost (Core/CyberLordRun.cs): its existing dash whoosh and glitch tick (NativeCyberLordSounds.AirBoost).
+                else if(track.AirJumps>jumps&&a.Hp>0&&CyberLordAirBoost.Handles(p.Seat.spec)){bool mine=p==me;int n=NativeCyberLordSounds.AirBoost(cyberSounds);for(int i=0;i<n;i++)Cue(cyberSounds[i].Key,cyberSounds[i].Clip,p.Body.position,cyberSounds[i].Gain*(mine?FlipWhooshOwnGain/FlipWhooshGain:1),mine:mine);}
+            }
+        }
+    }
+}
