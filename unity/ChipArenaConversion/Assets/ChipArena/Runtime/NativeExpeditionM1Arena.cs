@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
             var offset=new V3(0,NativeLocomotionRules.HalfHeight,0);var a=search.Nearest(from+offset,Clear);var b=search.Nearest(to+offset,Clear);
             if(a==null||b==null||(a.pos-from-offset).Length>4||(b.pos-to-offset).Length>4)return false;
             var nodes=Map.nav.nodes.ToDictionary(n=>n.id);var path=new List<string>();
-            search.Find(a.id,b.id,l=>
+            bool Active(MapNavLink l)
             {
                 string key="link:"+radius+":"+height+":"+l.id;if(expeditionNavClear.TryGetValue(key,out var clear))return clear;
                 expeditionNavClear[key]=false;if(!Clear(nodes[l.a])||!Clear(nodes[l.b]))return false;
@@ -62,7 +62,25 @@ namespace ChipArena.UnityConversion
                     if(!PhysicsWorld.Raycast(Vec(sample)+Vector3.up*.2f,Vector3.down,out var ground,.4f,WorldMask,QueryTriggerInteraction.Ignore)||ground.normal.y<.65f||!ExpeditionSupported(Vec(ground.point),radius,height))return false;
                 }
                 return expeditionNavClear[key]=!SceneLinecast(Vec(start)+Vector3.up*(radius+.4f),Vec(end)+Vector3.up*(radius+.4f),WorldMask);
-            },path);
+            }
+            search.Find(a.id,b.id,Active,path);
+            if(path.Count==0)
+            {
+                var raw=new List<string>();search.Find(a.id,b.id,NavLinkEnabled,raw);int printed=0;
+                for(int j=1;j<raw.Count&&printed<16;j++)
+                {
+                    var l=Map.nav.links.FirstOrDefault(e=>(e.a==raw[j-1]&&e.b==raw[j])||(e.b==raw[j-1]&&e.a==raw[j]));
+                    if(l==null||Active(l))continue;printed++;
+                    var start=nodes[l.a].pos-offset;var end=nodes[l.b].pos-offset;
+                    string Detail(V3 p)
+                    {
+                        var at=Vec(p);if(!PhysicsWorld.Raycast(at+Vector3.up*.35f,Vector3.down,out var ground,.7f,WorldMask,QueryTriggerInteraction.Ignore))return "no floor";
+                        float lift=.04f+radius*(1f/ground.normal.y-1f);int count=PhysicsWorld.OverlapCapsule(ground.point+Vector3.up*(radius+lift),ground.point+Vector3.up*(height-radius+lift),radius,expeditionProbe,WorldMask,QueryTriggerInteraction.Ignore);
+                        return "floor="+ground.collider.name+" y="+ground.point.y+" normal="+ground.normal.y+" blockers="+string.Join(",",expeditionProbe.Take(count).Select(c=>c.name));
+                    }
+                    Debug.Log("Expedition blocked link "+MapId+" "+l.id+" "+Vec(start)+" -> "+Vec(end)+" endpoints="+Clear(nodes[l.a])+"/"+Clear(nodes[l.b])+" mid "+Detail((start+end)*.5f));
+                }
+            }
             return path.Count>0;
         }
         public bool ExpeditionVisible(V3 from,V3 to)=>!SceneLinecast(Vec(from)+Vector3.up*.6f,Vec(to)+Vector3.up*.6f,WorldMask);
