@@ -25,6 +25,7 @@ MAP_DRAFTS = {
     'expedition-ward-zero': ('ward-zero', 'ew', 2),
     'expedition-transit': ('central-station', 'et', 1),
     'expedition-foundry': ('ironworks', 'ei', 1),
+    'expedition-ironworks': ('ironworks', 'ei', 2),
 }
 
 
@@ -99,7 +100,8 @@ def generate(check=False):
         if area['map'] not in MAP_DRAFTS:
             raise ValueError('Unknown Expedition map: '+area['map'])
         name, _, _ = MAP_DRAFTS[area['map']]
-        m = copy.deepcopy(json.loads((PROJECT/f'Tests/expedition-{name}-draft.json').read_text())['maps'][0])
+        suffix = 'activation' if area['map'] in ('expedition-transit','expedition-foundry') else 'draft'
+        m = copy.deepcopy(json.loads((PROJECT/f'Tests/expedition-{name}-{suffix}.json').read_text())['maps'][0])
         if m['id'] != area['map']:
             raise ValueError('Draft map ID mismatch: '+area['map'])
         if block_hash(m) != area['blockHash']:

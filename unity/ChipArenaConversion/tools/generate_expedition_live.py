@@ -6,8 +6,8 @@ ROOT=Path(__file__).resolve().parents[1]
 def load(name):return json.loads((ROOT/'Tests'/name).read_text())
 def manifest():
     live=load('expedition-layout-4-join-draft.json')
-    station=load('expedition-central-station-draft.json')
-    foundry=load('expedition-ironworks-layout-draft.json')
+    station=load('expedition-central-station-activation.json')
+    foundry=load('expedition-ironworks-layout-activation.json')
     hub=live['areas'][0];iron=foundry['areas'][-1]
     records=[(station['layout']['area'],station['layout']['town']['anchor'],station['layout']['town']['door'],station['proposals']['machines'],1),
              (iron,next(a for a in foundry['areas'][0]['anchors'] if a.get('building')==iron['id']),next(d for d in foundry['areas'][0]['doors'] if d['anchor'].endswith(iron['id'])),iron['ironworks']['machines'],2)]

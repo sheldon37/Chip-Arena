@@ -2,11 +2,12 @@
 # the end of the hub's Station Road (docs/EXPEDITION-CENTRAL-STATION.md). NOT LIVE: it writes one draft file that nothing at
 # runtime loads (unity/ChipArenaConversion/Tests/expedition-central-station-draft.json): the map entry (UnityMaps.json shape,
 # no navigation yet), the instance's area record (ExpeditionLayout.json schema 1), the hub door record it needs in the town,
-# the look (a MapLooks.json-shaped entry) and the proposals for Astra (machines, hazards, the new enemies' entrance kinds).
+# the look (a MapLooks.json-shaped entry), the proposals for Astra (machines, hazards, the lever objective, the new enemies'
+# entrance kinds), the owner's decisions (2026-10-16) and the station's final text (the departure board rows and the PA lines).
 # Resources/UnityMaps.json, ExpeditionLayout.json and MapLooks.json are read, never written.
 # Plan (instance frame): a through station at night. The exit door is in the ticket hall's north wall (z 36). The hall (low
 # ceiling) opens through a gate line onto the grand concourse (80 x 24 m under a broken glass roof, balconies east and west,
-# the boss arena placeholder). South of the concourse, four platforms run east-west under the train shed: P1 (the side
+# the boss arena). South of the concourse, four platforms run east-west under the train shed: P1 (the side
 # platform at the concourse), P2 and P3 (islands) and P4 (the far side), with three track pits between them (T1 the live
 # express line, T2 the stalled train, T3 the flooded freight line) that meet in the throats at both ends and run into the
 # tunnel mouths. Two footbridges (y 6) cross the shed; the east one ends in the signal box (the far objective), over the
@@ -218,7 +219,7 @@ box('pumps', -38, -34, -55.6, -54, 0, 1.6, 'metal'); box('generator', 34, 40, -5
 stair('stair-corridor', (14.0, 0, -57.0), (26.0, L1, -57.0), 3.0, 0)
 box('corridor-rail-s', 16, 26, -58.7, -58.5, CEIL_C[1], CEIL_C[1] + 1.1, 'metal'); box('corridor-rail-n', 16, 26, -55.5, -55.3, CEIL_C[1], CEIL_C[1] + 1.1, 'metal')   # keep pilots off the ceiling
 # THE SIGNAL BOX (y 6, x 30..42, z -59..-50): the east footbridge enters its north door; the corridor stair's landing
-# reaches its west door. The lever frame inside (cover, the proposed objective).
+# reaches its west door. The lever frame inside (cover, and the optional lever objective the owner approved).
 box('signal-landing', 26, 30, Z0, -55, 5.5, L1, 'stone'); box('signal-landing-rail', 26, 30, -55.2, -55, L1, L1 + 1.1, 'metal')
 box('signal-landing-rail-ws', 26, 26.2, Z0, -58.5, L1, L1 + 1.1, 'metal'); box('signal-landing-rail-wn', 26, 26.2, -55.5, -55.2, L1, L1 + 1.1, 'metal')
 box('signal-floor', 30, 42, Z0, -50, 5.5, L1, 'stone'); box('signal-roof', 30, 42, Z0, -50, 9.5, 9.8, 'metal')
@@ -326,8 +327,8 @@ def proposals():
         'machines': [dict(id='chip-0', kind='chip', **pt(-35.0, 0, 13.5, 90.0)), dict(id='med-0', kind='med', **pt(-6.0, 0, -16.2, 180.0)),
                      dict(id='recruit-0', kind='recruit', **pt(35.0, 0, 7.0, 270.0)), dict(id='chip-1', kind='chip', **pt(-30.0, L1, 33.0, 180.0))],
         'hazards': [
-            H('express', 'train', vol(0, TB, -12.5, 95.8, 5.2, 5.0, 0), line='t1', proposal=True, note='the scheduled express: warn 4 s (signal red, rails sing, headlight in the tunnel), pass 2.2 s end to end, lethal in the pit'),
-            H('rail-t1-w', 'third-rail', vol(-23.0, TB, -12.5, 42, 0.6, 1.2, 0), proposal=True, note='live rail strip along the pit centre, gapped at the barrow crossing; cut by the signal box levers'),
+            H('express', 'train', vol(0, TB, -12.5, 95.8, 5.2, 5.0, 0), line='t1', proposal=True, note='the scheduled express: warn 4 s (signal red, rails sing, headlight in the tunnel), pass 2.2 s end to end, lethal in the pit to pilots and zombies alike (owner decision); halted for 60 s by the signal box levers'),
+            H('rail-t1-w', 'third-rail', vol(-23.0, TB, -12.5, 42, 0.6, 1.2, 0), proposal=True, note='live rail strip along the pit centre, gapped at the barrow crossing; cut for 60 s by the signal box levers'),
             H('rail-t1-e', 'third-rail', vol(23.0, TB, -12.5, 42, 0.6, 1.2, 0), proposal=True),
             H('rail-t2', 'third-rail', vol(-37.0, TB, -29.5, 14, 0.6, 1.2, 0), proposal=True, note='live only beyond the stalled train (the train shorted the middle)'),
             H('rail-t3-w', 'third-rail', vol(-11.0, TB, -44.5, 18, 0.6, 1.2, 0), proposal=True, note='arcs into the flood when live'),
@@ -338,9 +339,51 @@ def proposals():
             H('cabinet-p3', 'spark', vol(30.6, 0, -32.8, 3.2, 2.0, 2.8, 0), proposal=True),
             H('steam-corridor', 'gas', vol(-6.0, 0, -57.0, 10, 3.0, 4.0, 0), proposal=True, note='a burst steam main (the Ward gas kind): 2 s hiss, 3 s scald'),
             H('glass-concourse', 'falling-glass', vol(0, 0, 8.0, 60, 18.0, 18, 0), proposal=True, note='boss encounter only: shard falls with a 1.2 s shadow telegraph')],
+        # The optional objective (owner decision): the lever frame in the signal box. Throwing it cuts the third rail on every
+        # line and halts the express for 60 s (the director's schedule resumes after). The point is 0.8 m in front of the frame.
+        'objectives': [dict(id='signal-levers', kind='levers', optional=True, range=2.0, block=f'{MAP}-signal-levers', **pt(36.0, L1, -54.4, 180.0),
+                            effect='cut the third rail on T1-T3 and halt the express for 60 s; then power returns with a PA line and a 4 s warning')],
         'entranceKinds': {'train': 'a stalled carriage door sliding open (today: door)', 'tunnel': 'out of a tunnel mouth along the rails (today: door)',
                           'sump': 'surfacing from flood water (today: vent, floor)'},
     }
+
+# =====================================================================================================================
+# OWNER DECISIONS (2026-10-16, "Go with your picks.") and THE STATION'S TEXT (Claude's final set; the owner may swap any line).
+DECISIONS = [
+    dict(id='size', decision='keep the size (three levels, about 1.5 times Ward Zero) and the concourse as the boss arena'),
+    dict(id='express', decision='the express also kills zombies in the pit; the signal box levers are an optional objective: they cut the third rail and halt the express for 60 s'),
+    dict(id='crossings', decision='keep the risky barrow crossings; no third footbridge'),
+    dict(id='enemies', decision='keep all four enemies and their names: Linesman, Conductor, Undertow, Pileup'),
+    dict(id='grab', decision='the Undertow grab holds up to 1.5 s, 1.0 s when only one pilot is in the instance; any stagger releases'),
+    dict(id='text', decision='Claude writes the departure board and the PA lines (below); the owner may swap them later'),
+    dict(id='music', decision='one station theme with intensity states (calm, platforms, express incoming, boss), not per-room tracks')]
+# The departure board: four faces. North and south: DEPARTURES with five service rows and a ticker. East and west: the clock
+# face (6:47) over PLATFORM 2 / EVAC SPECIAL / DOORS OPEN. Rows are at most 32 characters (the board's glyph width).
+# `states`: rows that change with the game (presentation reads replicated state; nothing new on the wire).
+TEXT = {
+    'board': {
+        'title': 'DEPARTURES',
+        'rows': [dict(time='6.47', to='EVAC SPECIAL', platform='2', status='DELAYED'),
+                 dict(time='7.02', to='HARBOUR', platform='3', status='CANCELLED'),
+                 dict(time='7.15', to='NORTH CAMP', platform='4', status='CANCELLED'),
+                 dict(time='7.30', to='ALL STATIONS', platform='1', status='CANCELLED'),
+                 dict(time='--.--', to='EXPRESS', platform='1', status='DOES NOT STOP')],
+        'ticker': 'SERVICE SUSPENDED - FOLLOW STAFF INSTRUCTIONS - DO NOT CROSS THE LINE',
+        'side': ['6:47', 'PLATFORM 2', 'EVAC SPECIAL', 'DOORS OPEN'],
+        'states': [dict(when='express warning (4 s) and pass', row=4, status='APPROACHING', blink=True),
+                   dict(when='levers thrown (60 s)', row=4, status='SUSPENDED'),
+                   dict(when='a Conductor\'s last call', row=0, status='LAST CALL', blink=True),
+                   dict(when='the boss arrives', row=-1, status='ALL SERVICES CANCELLED')]},
+    # The PA: a calm, slightly broken announcer, echoing (2D). Every spoken line follows the chime. 7 spoken lines.
+    'pa': [dict(key='station.pa.chime', line=None, when='before every announcement'),
+           dict(key='station.pa.closed', line='This station is closed. Please proceed to the evacuation point.', when='ambient, the first minute in the hall'),
+           dict(key='station.pa.delayed', line='We apologise for the delay to the six forty-seven evacuation special.', when='ambient, calm state'),
+           dict(key='station.pa.standback', line='The train approaching platform one does not stop. Stand back from the edge.', when='the express warning, 4 s before the pass'),
+           dict(key='station.pa.doors', line='Doors are now open on platform two. Please board the train.', when='a train-door surge (the Conductor\'s last call)'),
+           dict(key='station.pa.power', line='Power has been isolated on all lines.', when='the levers are thrown'),
+           dict(key='station.pa.restored', line='Power restored. Keep clear of the tracks.', when='60 s after the levers'),
+           dict(key='station.pa.lastcall', line='This is the last call for the six forty-seven.', when='the boss intro'),
+           dict(key='station.pa.glitch', line=None, when='random, rare: the voice breaks into feedback and a low wail (the Siren bleeding through)')]}
 
 # =====================================================================================================================
 # THE LOOK (a MapLooks.json-shaped entry; not loaded): night, failing power. Moonlight through the broken glass roof (the
@@ -390,7 +433,7 @@ def look():
 # =====================================================================================================================
 def game_map():
     sp = [dict(pos=v(p['x'], 1.1, p['z']), yaw=180.0) for p in ENTRIES_IN]
-    return dict(id=MAP, name='Central Station (Expedition)', tag='Central Station. The last train left at 6:47.', theme='expedition', music=None,
+    return dict(id=MAP, name='Central Station (Expedition)', tag='Central Station. The 6:47 never left.', theme='expedition', music=None,
                 ambience='', look=LOOK, sky=0x16222C, floor=0x5C5850, accent=0x7AE8D0, rotation=False, bounds=dict(BOUNDS),
                 spawns=dict(ffa=sp, teams=[dict(side=0, points=sp[:4]), dict(side=1, points=sp[4:])]),
                 blocks=list(blocks), segments=[], hazards=[], pilotBlocks=[], nav=dict(nodes=[], links=[]),
@@ -411,7 +454,7 @@ def draft():
                 note='Central Station design draft from docs/arenas/scripts/expedition_central_station.py: NOT LIVE (nothing at runtime loads this file; '
                      'Resources/UnityMaps.json, ExpeditionLayout.json and MapLooks.json are unchanged). See docs/EXPEDITION-CENTRAL-STATION.md.',
                 materials=[], maps=[game_map()], layout=dict(instance=AREA, area=area(), town=dict(area=TOWN, anchor=td['anchor'], door=td['door'])),
-                look=look(), proposals=proposals())
+                look=look(), proposals=proposals(), owner=dict(approved='2026-10-16', said='Go with your picks.', decisions=DECISIONS), text=TEXT)
 
 # =====================================================================================================================
 # CHECKS
@@ -515,6 +558,13 @@ def checks():
     ok &= check_points('boss points (Hulk-sized)', [(f'boss{i}', p) for i, p in enumerate(BOSS_POINTS)], HULK_CLEAR, yhi=HULK_BAND)
     pm = proposals()['machines']
     ok &= check_points('proposed machine spots (piece footprint)', [(x['id'], x) for x in pm], 1.0)
+    ob = proposals()['objectives']
+    ok &= check_points('the lever objective (interaction point)', [(x['id'], x) for x in ob], PILOT_CLEAR)
+    lv = all(any(b['id'] == x['block'] and dist_xz(b, x['x'], x['z']) <= x['range'] for b in m['blocks']) for x in ob)
+    out.append(f'the lever frame within reach of its interaction point: {lv}'); ok &= lv
+    pa = [x for x in TEXT['pa'] if x['line']]; rows = [f"{r['time']} {r['to']} P{r['platform']} {r['status']}" for r in TEXT['board']['rows']]
+    tx = 6 <= len(pa) <= 8 and all(len(r) <= 32 for r in rows + TEXT['board']['side']) and len({x['key'] for x in TEXT['pa']}) == len(TEXT['pa'])
+    out.append(f'the station text: {len(rows)} board rows (32 characters at most), {len(pa)} spoken PA lines (6 to 8), unique keys: {tx}'); ok &= tx
     ok_d = in_vol(d['interact'], d['approach']['x'], 0.0, d['approach']['z']) and not any(in_vol(d['interact'], p['x'], 0.0, p['z']) for p in ENTRIES_IN)
     ok_d &= col.floor_under(d['interact']['x'], d['interact']['z'], 0.0) and col.floor_under(d['closure']['x'], d['closure']['z'], 0.0)
     jam = [b for b in m['blocks'] if 'exit-jamb' in b['id']]; cl = vol_block('', d['closure'])

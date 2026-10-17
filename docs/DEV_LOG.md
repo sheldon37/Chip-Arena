@@ -1,3 +1,9 @@
+## 2026-10-17 — Astra: activation verification and concurrent design integration
+
+- Activation head `c5e534a` passes GitHub native-source and native-updater-windows (run 38976536843), including full managed regressions, real relay, all three Unity assembly compiles, source package, Python and Windows updater processes. Local full run reached a Bow allocation assertion (15,424 bytes); hosted exact-head full suite passes. No change to Bow was made.
+- Integrated shared `8a5de43`, preserving Claude's newer design records, optional objective, Rigger and converter shutter proposals. Activation uses explicitly pinned `*-activation.json` inputs matching the already validated maps; the newer `*-draft.json` design fixtures remain separately validated and are not silently substituted into live geometry. Runtime activation still uses existing enemies and placeholder bosses; later design additions require their own implementation and native validation.
+- Updated historical draft checks to test against their exp-layout-3 baseline alongside the live activation, retaining geometry, spawn, content binding, shutter and generator checks. Merge/native publication receipts follow in PR #255. No Windows gameplay or release claim without the builder receipt.
+
 ## 2026-10-16 — Astra: complete the production activation path (candidate verification)
 
 - PR #255 / `codex/expedition-live-activation`, shared base `afac02d`. Supersedes the earlier inactive handoff below: the launch path now owns hub + three independent native scenes, directors, encounter states and authenticated per-recipient frames, backed by one run/economy ledger. Protocol 3 requires updated peers.
@@ -16,6 +22,166 @@
 - Outstanding activation work is explicitly enumerated in `EXPEDITION-SPLIT-INTEGRATION.md`: per-area live director and economy, fixed-step scheduling, combat-state/timer migration, negotiated recipient-specific networking, scoped reprints/return/extraction, followed by native host/guest and performance acceptance. Central Station and Ironworks also still need live authored machine/hazard/encounter integration. No F removal, catalogue promotion or live layout switch occurs here.
 - Verification results and remote commit are recorded in the PR. Native Unity/PhysX and Windows multiplayer are not executable in this Linux workspace. Push as draft; do not sync builder or imply this delivers the requested active features.
 
+## 2026-10-16 — Claude: Central Station and City Ironworks designs merged into shared (not live)
+
+- Branch `claude/merge-zone-designs`, base shared `afac02d`; merges `claude/central-station-design` (`1de4ce8`) and `claude/ironworks-design` (`a213c71`). Both are owner-approved designs: docs, inert drafts under `Tests/`, generators under `docs/arenas/scripts/`, managed and Python draft checks. No live manifest, map, look, catalogue or gameplay file changes.
+- Conflicts: DEV_LOG/PROJECT_STATE kept both sides; `ExpeditionLayoutChecks` calls both draft checks.
+- Next for Astra: the navigation importer skips floors below y -0.01, so the station's track bed (y -1.2) cannot import; a scratch run with that one filter lowered gave 60,523 nodes, of which 28,266 are unreachable from the entries (mostly roofs). Ask: a per-map lowest floor (or killY) and pruning of nodes unreachable from the entries. The Ironworks draft imports at 0.5 m (about 29,800 nodes).
+- Next for Claude: the in-game visual build (dressing kits, looks, lights, enemy models and VFX), viewable in a DEV-only preview until the authority work lands.
+- Checks: listed in the push note. Not run: Unity Editor, Windows player, navigation import of the station, play.
+
+## 2026-10-16 — Claude: Central Station owner decisions; shared (PR #254) merged in
+
+- Branch `claude/central-station-design`, with shared `afac02d` merged in (it includes Astra's PR #254). Not live, no PR. Not merged into shared: the coordinator merges.
+- The owner approved the design (verbatim): "Go with your picks." The decisions are recorded in `docs/EXPEDITION-CENTRAL-STATION.md` section 14 and in the draft's `owner.decisions`:
+  1. Keep the size and the concourse as the boss arena.
+  2. The express also kills zombies in the pit. The signal box levers are an optional objective: they cut the third rail and halt the express for 60 s. A new `proposals.objectives` record at (36, 6, -54.4) is checked by the generator.
+  3. Keep the risky barrow crossings; no third footbridge.
+  4. Keep all four enemies and their names.
+  5. The Undertow's grab holds up to 1.5 s, or 1.0 s with one pilot in the instance, and any stagger releases. The contract and AI states are updated; the replicated `releaseAt` already carries the limit.
+  6. The final text set, in the doc and the draft's `text`: 5 board rows plus a ticker, the side faces and 4 rows that change with the game, and 7 PA lines.
+  7. One station theme (D minor, 100 BPM) with calm, platforms, express-incoming and boss states. The audio list is now 59 keys.
+- **What #254 changes for the station:**
+  - `ExpeditionStationDraftChecks` now also checks that every parsed spawn field equals a direct read of its record (breach panels, Hulk drops).
+  - It runs `BindContent` on a detached copy: 47 entries, boss point 0, 3 hide spots, 8 pads, 0 machines, with Ward content unchanged.
+  - It checks `ExpeditionInstance("expedition-transit")`.
+  - Under `Assets/`, only #254's instance id list may name the map. The importer has the `et` profile, but the manifest it imports does not name the station.
+  - In the doc, section 8 lists what #254 provides and what remains, and section 12's integration steps are rewritten.
+- **Finding for Astra (blocks the station's navigation import):** `generate_expedition.navigation()` skips surfaces below y -0.01. The station's track bed (y -1.2) gets no nodes, and the import fails with "No navigation floor for (-14, -1.2, -12)" at the T1 drop hint.
+  - A scratch run with only that filter lowered to -1.21: 60,523 nodes and 114,762 links in about 260 s. The entries' component covers every walking cell (18,873 / 7,522 / 4,276) and all 62 records.
+  - 28,266 nodes cannot be reached, most on roofs. Pruning to the entries' component would halve the graph.
+  - Claude could instead raise the station by 1.2 m. Not done.
+- **Checks run** (the final tree, with `afac02d` merged in; `run5b.sh`, every step exit 0):
+  - the Unity runtime and editor assemblies build;
+  - `tools/check_relay.py`: "35 managed-core checks passed" and 765 PASS lines, including "PASS expedition station draft (118 checks)";
+  - Python `unittest discover`: 134 tests OK (1 skipped), including the 3 station tests and #254's navigation-profile tests;
+  - `package_source.py`: the structure check passed (2,212 source files);
+  - `git diff --check`: clean.
+- **Not run:** Unity Editor or Windows; the navigation import (blocked above); any director, AI or network behaviour; audio. The renders were not redone: the geometry is unchanged, and the board in them shows the earlier concept rows.
+- **Impact:** none on live content, hit timing, hitboxes, damage, cooldowns, movement or networking. Only draft data, docs and test code changed.
+- **Next:** Astra's navigation fix, then Claude's import (doc section 12).
+
+## 2026-10-16 — Claude: Central Station design (layout, station enemies, look; not live)
+
+- Owner (verbatim): "lets begin the design for the Central Station and City Ironworks~ we can tweak the instances to have specific zombies / enemies. So lets also begin creating unique enemies for those zones. We can work on visual updates / bosses after." Follow-up via the coordinator: the station must look clearly better than Ward Zero, using our real assets and lighting. This entry covers Central Station only; City Ironworks is a parallel task.
+- Branch `claude/central-station-design`, created from shared `bb4b36a` and rebased onto shared `c471e24` before the checks. Pushed; no PR, no merge, not live, no publication.
+- **Design:** `docs/EXPEDITION-CENTRAL-STATION.md`.
+  - A through station at night with failing power: a low ticket hall, a grand concourse under a broken glass vault (the boss arena placeholder), and four platforms under a train shed. One train stalled on T2 (car 2 is a walk-through); a scheduled express on T1; the freight line T3 flooded at its west end.
+  - Footbridges at y 6, the signal box at the far end, a maintenance corridor behind P4, and an upper loop of balconies, gallery and offices.
+  - Barrow crossings (track-level, the third rail gapped) give the short, dangerous route across the live lines.
+  - Look and set dressing per room (hero shot, palette, lights, haze, wet surfaces, density); the asset inventory with ranked gaps; the draft look entry; hazards (reused kit pieces plus proposals); the encounter plan; 56 audio cue keys with briefs; per-room budget and the low tier.
+- **Four station enemies** (proposals): Linesman (electric controller; chain arc, grounded in rail or flood, battery weak point), Conductor (commander; whistle aura, calls train-door surges, lantern weak point), Undertow (grabber; hunts from the flood and pits, drags pilots toward the express lane), Pileup (shield heavy; a carriage door as frontal armour, shoves pilots into the pits, splits into crawlers). Each has its own identity light, an animation set from the ZOMBIE PRO clips (exported and to export), telegraphs with timings, VFX and audio cues, and an Astra contract: stats, AI states, spawn weights per phase and entrance, and networking fields (replicated vs derived).
+- **Blockout (draft, not live):**
+  - `docs/arenas/scripts/expedition_central_station.py` writes `unity/ChipArenaConversion/Tests/expedition-central-station-draft.json`: the map entry (458 blocks, 18 stairs and steps), the `exp-transit` area record (exit door with 8 entries, 3 caches, 3 boss points, 47 spawns of today's kinds and entrances, plus a `station` list per spawn), the hub door record at the reserved doorway (0, -84), the look, and the proposals (machines, hazard volumes, new entrance kinds).
+  - Nothing under `Assets/` names it.
+  - The generator reads `Resources/UnityMaps.json` and `ExpeditionLayout.json` and writes neither.
+- **Generator checks (pass):**
+  - ground, upper and track bed all reached from the entries (4,718 / 1,880 / 1,069 m2);
+  - records with pilot clearance, entries and boss points Hulk-clear;
+  - Hulk and pilot routes from entry 0 to every entry, boss point and the approach (12/12);
+  - 47 spawn exits on reached floor with their clear radius, all routed back (Hulk exits with the Hulk capsule);
+  - allow lists within the entry rules; breach panels on solid faces; 0 overlapping colliders;
+  - 18 valid stairs; hazard volumes in bounds and 2 m clear of the records;
+  - the hub door record on Station Road, Hulk-clear.
+- **Managed check:** `Tests/ExpeditionStationDraftChecks.cs`, run from `ExpeditionLayoutChecks`. The draft map validates and merges beside today's maps. Astra's `NativeExpeditionLayout.Parse` and `ValidateGeometry` accept the live manifest plus `exp-transit` and its hub door. The town's routes use the imported navigation; the station's use a capsule flood over its own collision (no navigation yet). Every walking-floor cell is joined to the entries. The look validates beside today's looks and lists every block. The station enemy ids are not horde kinds.
+- **Python check:** `Tests/test_expedition_station_draft.py`. The fixture is the script's output, the six live resources are byte-identical after a run, and no live manifest, map or look holds the station.
+- **Finding for import (town, Claude):** the live town spawn `drop-hulk-station` lands at (0, -76), 2.2 m from the station door's returns, so it must move. `exp-transit` moves from `hub.reserved` to `routes`, and the facade kit swaps its boarded doorway for the airlock.
+- **For Astra (when the owner approves):**
+  - navigation for `expedition-transit` in `tools/generate_expedition.py` (prefix and the 0.5 m grid, as Ward Zero's);
+  - the new kinds' rules, hazards (express, third rail, flood, spark cabinets) and the director's phases;
+  - the networking fields in the doc's section 8.
+- **Renders** (offline, not in the repo; the real `NativeBlockLit` and night-sky shaders with the draft look, 8 picked practical lights, a harness-side concept dressing and posed rig models) are in `scratchpad/renders-central-station/`, with a Ward Zero comparison through the same harness.
+- **Checks run** (final tree on `c471e24`, `run5b.sh`, all exit 0): Unity runtime and editor assemblies build; `tools/check_relay.py` 765 PASS lines, "35 managed-core checks passed", including "PASS expedition station draft (67 checks)"; Python `unittest discover` 131 tests OK (1 skipped), including the 2 station tests; `package_source.py` structure passed (2,211 source files); `git diff --check` clean. No MagicFx retry was needed.
+- **Not run:** a Unity Editor or Windows build of the station (nothing is live), navigation generation, any director, AI or network behaviour, audio, two-client play. The concept dressing exists only in the render harness.
+- **Impact:** none on live content, hit timing, hitboxes, damage, cooldowns, movement, networking or saves. Test code only gains a check, and `ExpeditionLayoutChecks.Supported` becomes internal.
+- **Next:** owner decisions (doc section 14). Then Claude imports and dresses; Astra does navigation, rules and the director.
+
+## 2026-10-16 — Claude: City Ironworks owner decisions, the Rigger, the converter shutter (design draft, not live)
+
+- Owner (2026-10-16): "Go with your picks, add the rigger as well." Relayed as decisions 8 to 14: a full steelworks at
+  100 x 68 m; keep the four enemies and add the Rigger; keep the runners and the pour, with a light Wave 1 and no pour in the
+  boss encounter; the converter shutter shut until the boss as a real instance gate; a second chip machine upstairs; the boss
+  later; the brute's seams cream in this zone only.
+- Branch `claude/ironworks-design`. Shared `origin/claude/sleepy-ritchie-g8ruhv` `afac02d` (with PR #254) merged in as
+  `d84098f`; implementation `63f32c8`. Pushed, not merged into shared, builder not touched, no PR, not live, no release.
+- **Doc** (`docs/EXPEDITION-CITY-IRONWORKS.md`): section 12 is now the decisions table. The Rigger (6.5) covers role,
+  silhouette, rig, animation set (hang, slide, land, hook swing, throw and climb back up), telegraph timings (rattle T-2.0 s,
+  hook lowered 2.4 m over the locked spot with its shadow swaying, ring and lamp T-1.6 s, slide T-0.35 s), VFX, counters (the
+  chain as weak point, the swing's 1 m dead zone), contract row, fields, AI states and replicated versus derived network fields,
+  14 `pve.ironworks.rigger.*` cues, and the wave mix (from Wave 2, cap 2). Hazards carry a Wave 1 and boss schedule (5, 7).
+  10.5 and 10.6 now say what PR #254 already did.
+- **Draft:** map id renamed `expedition-foundry` to `expedition-ironworks` to match PR #254's importer profile,
+  `NativeMapRules.ExpeditionInstance` and the machine rule (area `exp-foundry` unchanged; `docs/EXPEDITION-LAYOUT.md`'s reserved
+  row updated). The draft manifest carries `exp-foundry:gate:converter` (`opens: "boss"`, 8 x 5 m in the west opening). 46 spawns
+  (5 new crane-rail ceiling vents; the Rigger is proposed on 8 hang points). The ironworks record adds the hazard schedule, the
+  approved machine spots and the zone seam tint.
+- **Checks added:** the generator proves the shutter fills its opening, and with it shut every boss point (pilot and Hulk) and
+  all 46 spawn exits still route by the loops (101.4 m), with no way through. All 8 Rigger hang points have a girder overhead (or
+  the truss), a clear chain fall and a 1.5 m landing ring on reached floor away from hazards. It also checks the schedule and the
+  machine fronts. The managed check turns the parser note into a PASS: every spawn field survives Parse and BindContent. It also
+  runs the director on the draft: the shutter starts sealed, stays sealed through the waves, opens with the boss encounter and
+  never touches the final gate. Its navigation now matches the importer's 0.5 m grid (29,848 nodes, 56,329 links). The Python
+  test runs the importer's own navigation on the draft (about 29,800 nodes) and confirms the manifest the importer reads names
+  no Ironworks.
+- **Renders** (session scratchpad, not committed): `renders-ironworks/enemy-sheet.png` (lineups with all seven, the Rigger's
+  ambush, each kind's move / telegraph / strike), `rigger-sheet.png`, `rigger-ambush.png`, `rigger-move.png`,
+  `rigger-telegraph.png`, `rigger-strike.png`, `plan-blockout.png` (the shutter drawn).
+- **Checks** (`run5b.sh` on `63f32c8`, before this entry): Unity runtime and editor build OK; relay suite exit 0, 765 PASS
+  lines, all 35 managed-core groups (Ironworks draft 82 checks); Python 136 tests OK (1 skipped); source package 2,214 files
+  OK; diff-check clean. The generator's own checks pass (instance, town door, draft manifest).
+- **Not run:** Unity editor, PhysX, a Windows build, two clients. No audio generated. The five kinds, hazards, schedule,
+  machines and the seam tint exist in no rule or content.
+- **Impact:** none on hit timing, hitboxes, damage, cooldowns, movement, networking or saves (no runtime code changed).
+- **Next:** Astra: contract numbers (10.1), hazard authority and schedule, the Rigger's entry timeline, instance machine
+  authoring. Claude: the chain prop, the Ironworks kit and the molten shader when the import is scheduled. The boss is later.
+
+## 2026-10-16 — Claude: City Ironworks design (layout, look, four enemies; design phase, not live)
+
+- Owner (2026-10-16): "lets begin the design for the Central Station and City Ironworks~ we can tweak the instances to have
+  specific zombies / enemies. So lets also begin creating unique enemies for those zones. We can work on visual updates /
+  bosses after." Raised bar (relayed by the coordinator): clearly better than Ward Zero, our real assets and lighting,
+  readability first. Central Station is a parallel design; its files were not touched.
+- Branch `claude/ironworks-design`, base `origin/claude/sleepy-ritchie-g8ruhv` `bb4b36a`; implementation ``7dc7497``. Pushed, not
+  merged, no PR, not live, no release.
+- **Design** (`docs/EXPEDITION-CITY-IRONWORKS.md`): a sealed steelworks still burning. Nine rooms (Time Office entry, Casting
+  Floor arena, Furnace Aisle and Charging Deck, Rolling Mill, Stockhouse, Pattern Shop, Coke Ovens, Slag Yard and Drop Forge,
+  Converter Hall as the boss arena placeholder); an upper ring at 6 m round the arena; north and south loops to the boss hall.
+  Per-room hero shots, palettes, lights, atmosphere and dressing density; readability rules (heat stays local, two cool light
+  slots, dark enemy silhouettes with non-orange tells); asset inventory and ranked gaps (molten flow shader first); 11 hazard
+  proposals reusing the Factory's crane, press, vent and saws; four enemies (Cinderling swarm, Stoker puller, Slagback armoured
+  heavy, Ladleman elite) with clips, telegraph timings, VFX, 47 audio cue keys with briefs, an Astra contract (stats, AI states,
+  spawn weights, network fields), a performance budget, the low tier and owner questions.
+- **Blockout and drafts (inert test fixtures):** `docs/arenas/scripts/expedition_ironworks.py` writes
+  `Tests/expedition-ironworks-draft.json` (map `expedition-foundry`: 100 x 68 m, 308 blocks, 5 stairs, 31 exclusion columns,
+  41 spawns), `Tests/expedition-ironworks-layout-draft.json` (the live exp-layout-3 manifest plus the town's foundry door at the
+  reserved doorway and the `exp-foundry` area; revision `exp-layout-3-ironworks-draft`) and `Tests/expedition-ironworks-look-draft.json`
+  (look `ironworks`). Its checks: both floors 100% reached from the entries; no overlapping blocks; every record with pilot or
+  Hulk clearance; 41 of 41 spawn exits routed to entry 0 with their capsule; Hulk routes to the entries, boss points and the
+  approach; hazards clear of records; the town door's returns Hulk-clear in the live town. Entry to boss hall: 83.4 m direct,
+  101.4 m north, 109.9 m south.
+- **Live data byte-identical:** nothing under `Assets/` changed. `Tests/test_expedition_ironworks_draft.py` hashes every file
+  in `Assets/Conversion/Resources` before and after running the generator; the managed check pins the live manifest's bytes.
+- **Astra's parser accepts the draft:** `Tests/ExpeditionIronworksDraftChecks.cs` (run by ExpeditionLayoutChecks,
+  `CoreTests --expedition-layout`): `NativeExpeditionLayout.Parse` and `ValidateGeometry` pass on the draft manifest (the town
+  with its new door, Ward Zero, the foundry) with the block capsule probe and importer-style navigation built in the check
+  (7,429 nodes, 13,144 links); the map validates and imports beside today's maps; the look validates and covers all 308 blocks.
+  The schema has no standalone instance: the town door is part of the draft. Import steps for a live switch are in the doc (10.6).
+- **Finding for Astra:** `Parse` keeps only e, id, kind, from, exit, yaw, level, clear, height and surface of an authored spawn,
+  and `NativeExpeditionM1Arena` hands the parsed entries to the horde, so manifest-authored Hulk drops and breaches lose `hulk`
+  and their panel (`block`, `center`, `size`, `normal`). The live town's 4 Hulk drops and 7 breaches are affected today. The
+  check prints it as a NOTE.
+- **Renders** (session scratchpad, not committed): `renders-ironworks/` holds `compare-wardzero.png` (same renderer and settings
+  as Ward Zero), `beauty-sheet.png` and the eight room views, `enemy-sheet.png` and its tiles, `plan-overview.png`,
+  `plan-blockout.png`. Through the game's own NativeBlockLit and NativeNightSky (translated, headless WebGL), the draft map and
+  look, 8 practical lights per camera, a scratch dressing pass and FX standing in for the proposed kit, and the real pilot and
+  zombie models posed by NativeHordeGait. Concept renders, not shipped code.
+- **Checks:** five-check run (`run5b.sh`) on the tree before this entry: Unity runtime and editor build OK; relay suite: the first run failed in `ChipSelectChecks` ("the layer allocated 3088 bytes", an allocation-measurement check unrelated to this change; the Ironworks, join and layout checks passed in that run, 66 and 268 checks), re-run once: exit 0, 764 PASS lines, all 35 managed-core groups; Python 133 tests OK (1 skipped); source package 2,212 files OK; diff-check clean. `CoreTests --expedition-layout` alone also passes.
+- **Not run:** Unity editor, PhysX probes, a Windows build, the director, two clients. No audio generated. The four kinds,
+  hazards and machines exist in no rule or content.
+- **Impact:** none on hit timing, hitboxes, damage, cooldowns, movement, networking or saves (no runtime code changed).
+- **Next:** owner review (the doc's section 12). Astra: the parser's spawn fields, instance gates (the converter shutter), stats
+  and AI for the four kinds, hazard authority, the importer's third map. Claude: NativeIronworksKit, the molten flow shader, the
+  light picker (6 warm + 2 cool), the four kinds' models and animation once their content exists.
 ## 2026-10-16 — Claude: PR #254 verification, sanctuary header for fresh runs
 
 - Branch `claude/sanctuary-fresh-run-header`, base shared `0c684d8` (the owner's merge of Astra's PR #254).
