@@ -1,3 +1,10 @@
+## 2026-10-17 — Astra: Station/Ironworks gameplay published
+
+- Released source `5ccaad6fa7a2f2ffdb2ff370d14a8d227be35076` from shared and `codex/unity-cloud-current`; PR #264 gameplay, #265 Unity empty-array spawn repair, #267 precise native clock diagnostics, and #266/#268 express collision integration are merged. Preserved Claude's boss-music changes and all other shared work.
+- Windows Build-and-Publish succeeded at 14:59:45 UTC. Read back native test feed version `1c60f643c226c8fecc1083b58e07a19192f54e046e554279ba1c5a82399923a1`, revision `639278459286691800`. Both earlier native failures stopped before publication.
+- Actual Unity 6000.3.24f1 native checks pass for Station and Ironworks authored spawns/capsules, special windups/hits/interrupts, armour/weak points, finite enemy/hazard frames, codec and separate guest application. Four simultaneous areas pass 1,800 ticks: p95 8.0 ms, worst 24.1 ms; automated fixture, not a human multiplayer playtest.
+- Verification also includes 512 focused zone checks, combined Player/Runtime/Editor semantic compilation, hosted full managed/real-relay suite on gameplay head `37fca579` (one documented allocation-flake retry), Python/package and Windows updater/launcher checks. Final integrated-tree hosted regression is tracked in PR #268. New enemies/hazards require all peers to update/restart and a fresh Expedition. Converter boss remains the approved deferred placeholder; no invented boss design was added.
+
 ## 2026-10-17 — Astra: zone gameplay verification and express collision
 
 - Branch `codex/zone-gameplay-verification`, base shared/builder `ce85919`. Reconciled with the already-merged PR #264 gameplay and #265 Unity entry fix; preserved that implementation and Claude's boss-music routing. Independent local implementation retained only as checkpoint `2def07c`, not integrated.
