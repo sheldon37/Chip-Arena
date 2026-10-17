@@ -36,7 +36,7 @@
 - **Gameplay impact:** none. Nothing collides, damages, moves a block or enters the network frame. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged.
 - **Checks** (`run5b.sh` on the merged tree, every step exit 0):
   - unity-check: runtime and editor build.
-  - Relay: 771 PASS lines, including `ironworks visuals` (151 checks) and transitions (3,515). MagicFx and ChipSelect passed on the first run.
+  - Relay on the final merged head `30e7477`: 772 PASS lines, including `ironworks visuals` (151 checks), `ironworks kinds` and transitions (3,522). MagicFx and ChipSelect passed on the first run.
   - Python: 140 tests OK, 1 skip.
   - Package: structure passed.
   - `git diff --check`: clean.
