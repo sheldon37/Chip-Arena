@@ -1,3 +1,43 @@
+## 2026-10-17 — Claude: City Ironworks boss design, THE CONVERTER (on branch, not merged, not live)
+
+- Branch `claude/boss-city-ironworks`, based on `origin/claude/sleepy-ritchie-g8ruhv` `dfb8aac`, fast-forwarded to `02234ec` (PR #263 music, #264, #265 zone gameplay, #267). Implementation commit `b2d3b13`. Not merged, no PR, builder untouched, nothing published.
+- **Why:** the owner asked (2026-10-17) to begin the bosses for Central Station and City Ironworks: "a lot more fluid" animation and "a high quality design matching the areas". This is the Ironworks boss. The Central Station boss and the shared motion library (`claude/boss-motion`) are other agents' tasks.
+- **Design** (`docs/EXPEDITION-BOSS-CITY-IRONWORKS.md`):
+  - THE CONVERTER: Vessel C, the hall's missing third Bessemer converter, walking on a four-legged trunnion yoke, with its dead foreman working the tilt levers on the pulpit.
+  - Body, palette and weak points: the tuyère grate, the foreman, the mouth, four crust groups, the knee rams.
+  - The Converter Hall as a set piece: the pit, the crane hook, the hall's vessels driven by `-converter-tilt`, the shutter.
+  - Three phases (Blow, Tilt, Last Pour), eight attacks and seven scripted moments, with telegraphs, counterplay and recovery.
+  - Adds tied to all five Ironworks kinds; arrival on the existing `bossArrivals[]` and banner flow; the end-of-shift death.
+  - HUD plate `THE CONVERTER`, a VFX list and 50 `boss.ironworks.*` cue keys.
+  - The arrival is choreographed to "Hydraulic Hell" (`music/city-ironworks-boss`): the crack and grip on the intro's first hydraulic hit, the eyes on the furnace flare, the first blow and the fight on the drop. Times come by reference to `docs/ZONE-BOSS-MUSIC.md` (the music agent's); this branch does not touch NativeAudio, NativeZoneMusic or the furnace and press presentation.
+  - Animation direction in the motion library's terms (root springs, a 4-leg planted gait with IK, trunnion pendulum and metal slosh springs, verlet chains, action timelines, additive layers).
+  - An Astra contract on the live zone systems with a ready prompt. It reuses `NativeZoneHazardFrame`, `StepIronworksHazards`, the boss mix and caps, entries 22, 28, 29 and 30, and the live shutter. It names exactly what to add: the archetype, `NativeZoneBossFrame` (`zoneBoss`), the hazard frame's `converterAt`, `converterMask` and `overflowAt`, the `-converter-tilt-s` and `-pit-overflow` definitions, `SpawnPveAddAt`, and a scripted Ladleman cap.
+  - 10 owner decisions with picks.
+- **Concept model** (`Core/NativeIronworksBossModel.cs`): inert, and referenced by nothing live.
+  - 34 joints, three tiers: 39,744 / 24,648 / 7,924 triangles with the chain props, against budgets of 40k / 26k / 9k.
+  - 20 key poses with two-bone leg IK, chain props, glow groups.
+  - The action table, mirrored by the doc's.
+- **Checks:** `Tests/IronworksBossModelChecks.cs`, registered in `Tests/Program.cs` (the full suite and `--ironworks-boss`). They cover:
+  - budgets, determinism, every joint drawn, and the joint table;
+  - every key pose inside the reach box; the standing keys above the floor with planted feet;
+  - body and capsule bounds, and deslag clearance;
+  - non-orange tells, glow groups, and zero allocation;
+  - the doc's action and cue tables, and no live references.
+- **Affected:** docs and one inert Core file plus its test. No runtime, rule, timing, collider, spawn, wire, resource or live data change. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged; the doc proposes them to Astra.
+- **Checks run** (run5b on the final code, all five steps exit 0):
+  - Unity runtime and editor compile against the 6000.3.24f1 assemblies: OK.
+  - Relay and managed: 778 PASS lines and 35 managed-core checks, no failures, including `ironworks boss model` (697 checks).
+  - Python: 140 tests OK (1 skip).
+  - Package structure: 2,358 source files.
+  - `git diff --check`: clean.
+  - The doc's music section was edited after that run; the boss check, rerun on the final doc, passes.
+- **Renders** (offline WebGL harness through the game's shaders on the live foundry, not Unity): in the scratchpad `renders-boss-ironworks/`: a turnaround with a pilot, the arrival through the shutter, each attack's key frame, the stagger, phase changes and the death.
+- **Risks / next:**
+  - Unity Editor, Windows and play are unrun; the concept is not drawn in game.
+  - The boss's effects are a harness sketch.
+  - The live manifest still lacks the converter shutter gate.
+  - Next: owner decisions; Astra's contract (archetype, record, scheduler, hazards); then Claude's runtime draw on the motion library, the VFX, the HUD name and cue routing; then the owner's clips and track.
+
 ## 2026-10-17 — Claude: zone boss music for Central Station and City Ironworks
 
 - Branch `claude/zone-music`, base shared/builder `6dc3899` (Astra's PR #263 already routes each zone's normal-play music: Foundry of the Dead, Subway Arrival Chime). Owner: "Wire the zone music now, the names work."
