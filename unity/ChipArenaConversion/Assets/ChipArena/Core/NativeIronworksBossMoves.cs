@@ -96,10 +96,11 @@ namespace ChipArena.UnityConversion
         static IronworksBossMoves()
         {
             // ---- Pour: the lever hauled back, the vessel rocks back 14 degrees (anticipation) and rises, the tongs step wide; it
-            // swings to 86 in .45 s, accelerating into the pour (In), the body dipping forward; settles to 80 while the stream sweeps;
+            // swings to 86 in .42 s, accelerating into the pour (In) and over its lip on the hit, the body dipping forward; settles to 80
+            // while the stream sweeps (the strike);
             // thins; rocks upright (the trunnion swing carries the overshoot to -6 and the two sways) ----
             var po=NativeIronworksBoss.Find("pour");
-            Def("pour",0,new BossActionDef("pour",.2f,.45f,P(A,.35f,1,BossEase.InOut),P(A,po.Windup-.35f,2,BossEase.InOut),P(C,.45f,3,BossEase.In,2.2f),P(S,po.Strike-.45f,4,BossEase.Settle,1.8f),P(F,po.Follow,5,BossEase.InOut),P(R,po.Recover,6,BossEase.Settle,1.5f)),
+            Def("pour",0,new BossActionDef("pour",.2f,.45f,P(A,.3f,1,BossEase.InOut),P(A,po.Windup-.72f,2,BossEase.InOut),P(S,.42f,3,BossEase.In,2.2f),P(C,po.Strike,4,BossEase.Settle,1.8f),P(F,po.Follow,5,BossEase.InOut),P(R,po.Recover,6,BossEase.Settle,1.5f)),
                 N(),
                 N().Body(0,.03f,-.05f,1).Tilt(-6).Foreman(28,-6).Glow(1.05f,.15f).Set(IronworksBossCh.StanceX,1.05f),
                 N().Body(0,.07f,-.1f,4).Tilt(-14).Foreman(30,-8,.3f).Glow(1.25f,.18f).Set(IronworksBossCh.StanceX,1.08f),
@@ -121,10 +122,10 @@ namespace ChipArena.UnityConversion
                 N().Body(0,-.15f,0,-1).Tilt(4).Foreman(2,4).Glow(1.1f,.6f).Set(IronworksBossCh.Steam,.8f),
                 N());
             // ---- Stomp (authored on FR, mirrored for FL; a rear stomp uses the same arc on its bogie): the weight rolls off the
-            // leg, the leg arcs up to 2.5 m over its landing and the tongs aim; it accelerates down (In) and plants with a lurch; the
-            // body rolls past centre; the leg holds where it landed ----
+            // leg, the leg arcs up to 2.5 m over its landing and the tongs aim; it accelerates down (In) and plants on the hit with a
+            // lurch; the body rolls past centre; the leg holds where it landed ----
             var st=NativeIronworksBoss.Find("stomp");var land=new Vector3(FR.X+.05f,0,FR.Z+.6f);
-            Def("stomp",1,new BossActionDef("stomp",.14f,.35f,P(A,.25f,1,BossEase.InOut),P(A,st.Windup-.25f,2,BossEase.Out,2),P(C,st.Strike,3,BossEase.In,3),P(F,st.Follow,4,BossEase.Out),P(R,st.Recover,5,BossEase.Settle,1.4f)),
+            Def("stomp",1,new BossActionDef("stomp",.14f,.35f,P(A,.22f,1,BossEase.InOut),P(A,st.Windup-.38f,2,BossEase.Out,2),P(S,.16f,3,BossEase.In,3),P(C,st.Strike,3,BossEase.Linear),P(F,st.Follow,4,BossEase.Out),P(R,st.Recover,5,BossEase.Settle,1.4f)),
                 N(),
                 N().Body(-.18f,.02f,0,1,0,-3).Foot(M.FR,FR.X+.15f,.6f,FR.Z+.1f,-10).Tongs(2,6),
                 N().Body(-.3f,.05f,.05f,2,0,-6).Foot(M.FR,land.X+.2f,2.5f,land.Z-.15f,-30).Tongs(2,10).Tilt(4),
@@ -135,7 +136,7 @@ namespace ChipArena.UnityConversion
             // tongs open to 44; the snap (the jaws shut, the body jolts back); the lift to 2.8 m, two shakes, the fling to the side;
             // the leg comes back down where it started (the target's point is the rig's: it aims the reach and the hold) ----
             var gr=NativeIronworksBoss.Find("grab");
-            Def("grab",1,new BossActionDef("grab",.18f,.4f,P(A,.35f,1,BossEase.InOut),P(A,gr.Windup-.35f,2,BossEase.Out,2),P(C,gr.Strike,3,BossEase.In,3),P(F,.5f,4,BossEase.InOut),P(F,.5f,5,BossEase.Linear),P(F,gr.Follow-1.0f,6,BossEase.OutBack,1.6f),P(R,gr.Recover,7,BossEase.Settle,1.4f)),
+            Def("grab",1,new BossActionDef("grab",.18f,.4f,P(A,.32f,1,BossEase.InOut),P(A,gr.Windup-.54f,2,BossEase.Out,2),P(S,.22f,3,BossEase.In,3),P(C,gr.Strike,3,BossEase.Linear),P(F,.5f,4,BossEase.InOut),P(F,.5f,5,BossEase.Linear),P(F,gr.Follow-1.0f,6,BossEase.OutBack,1.6f),P(R,gr.Recover,7,BossEase.Settle,1.4f)),
                 N(),
                 N().Body(.1f,.05f,-.15f,2,6,2).Foot(M.FR,FR.X-.3f,1.7f,FR.Z-.9f,20).Tongs(2,14).Foreman(10,-4),
                 N().Body(.2f,-.15f,.5f,-5,10,4).Foot(M.FR,1.0f,1.1f,6.3f,-62).Tongs(2,44).Foreman(-6,8,.4f),
@@ -148,7 +149,7 @@ namespace ChipArena.UnityConversion
             // hang; the tongs slam down (In), the body dropping .4 below its stance, pitch -9, the vessel lurching 34; the follow
             // through and a long recover ----
             var sl=NativeIronworksBoss.Find("slam");
-            Def("slam",0,new BossActionDef("slam",.2f,.5f,P(A,.5f,1,BossEase.InOut),P(A,.6f,2,BossEase.InOut),P(A,sl.Windup-1.1f,3,BossEase.Hold),P(C,.14f,4,BossEase.In,3.2f),P(S,sl.Strike-.14f,5,BossEase.Out),P(F,sl.Follow,6,BossEase.InOut),P(R,sl.Recover,7,BossEase.Settle,1.5f)),
+            Def("slam",0,new BossActionDef("slam",.2f,.5f,P(A,.5f,1,BossEase.InOut),P(A,.52f,2,BossEase.InOut),P(A,sl.Windup-1.16f,3,BossEase.Hold),P(S,.14f,4,BossEase.In,3.2f),P(C,sl.Strike,5,BossEase.Out),P(F,sl.Follow,6,BossEase.InOut),P(R,sl.Recover,7,BossEase.Settle,1.5f)),
                 N(),
                 N().Body(0,.15f,-.25f,10).Foot(M.FL,FL.X+.1f,2.0f,FL.Z+.2f,30).Tongs(18,4).Tilt(2).Foreman(-4,-8,.4f),
                 N().Body(0,.45f,-.55f,24).Foot(M.FL,FL.X+.4f,2.5f,FL.Z+.3f,34).Foot(M.FR,FR.X-.4f,2.8f,FR.Z+.45f,34).Tongs(26,28).Tilt(-12).Glow(1.4f,.2f).Foreman(-6,-16,1).Set(IronworksBossCh.Look,.4f),
@@ -232,9 +233,9 @@ namespace ChipArena.UnityConversion
             var di=NativeIronworksBoss.Find("die");Def("die",0,new BossActionDef("die",.01f,.01f,P(A,di.Windup,1,BossEase.Linear)),N(),N());
             // ---- the arrival's poses (root on the pit's centre facing the shutter) ----
             Buried=N().Body(0,-8.4f,-.3f,16).Tilt(16).Glow(0,0).Set(IronworksBossCh.Lamp,0).Set(IronworksBossCh.Look,0)
-                .Foot(M.FL,-2.4f,-2.2f,1.6f,20).Foot(M.FR,2.4f,-2.2f,1.7f,20).Foot(M.RL,-2.2f,-3.2f,-2.2f).Foot(M.RR,2.2f,-3.2f,-2.2f).Tongs(22,22);
+                .Foot(M.FL,-2.4f,-4.6f,1.6f,20).Foot(M.FR,2.4f,-4.6f,1.7f,20).Foot(M.RL,-2.4f,-6.4f,-2.3f).Foot(M.RR,2.4f,-6.4f,-2.3f).Tongs(22,22);
             Gripped=N().Body(0,-5.2f,-.4f,18).Tilt(14).Glow(.45f,.1f).Set(IronworksBossCh.Lamp,0).Set(IronworksBossCh.Look,0).Foreman(0,-14)
-                .Foot(M.FL,-2.6f,0,3.05f,8,1,true).Foot(M.FR,2.6f,0,3.05f,8,1,true).Foot(M.RL,-2.4f,-2.0f,-2.4f).Foot(M.RR,2.4f,-2.0f,-2.4f).Tongs(6,6);
+                .Foot(M.FL,-2.6f,0,3.05f,8,1,true).Foot(M.FR,2.6f,0,3.05f,8,1,true).Foot(M.RL,-2.5f,-4.4f,-2.5f).Foot(M.RR,2.5f,-4.4f,-2.5f).Tongs(6,6);
             Heaved=N().Body(0,-2.2f,-.2f,13).Tilt(16).Glow(1.1f,.15f).Set(IronworksBossCh.Lamp,0).Set(IronworksBossCh.Look,0).Foreman(6,-8)
                 .Foot(M.RL,-2.6f,-.6f,-2.6f).Foot(M.RR,2.6f,-.6f,-2.6f).Tongs(4,4);
             Risen=N().Body(0,.08f,0,2).Tilt(4).Glow(1.2f,.2f).Set(IronworksBossCh.Look,.6f);

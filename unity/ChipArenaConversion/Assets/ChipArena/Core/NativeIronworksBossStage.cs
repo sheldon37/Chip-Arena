@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
     public static class NativeIronworksBossStage
     {
         /// <summary>The death's stage times (s from the death's start, inside the 4 s victory hold): the whistle blows, the foundry stops.</summary>
-        public const float WhistleAt=2.55f,StopAt=2.3f,StopSeconds=1.9f,ExhaleAt=2.9f;
+        public const float WhistleAt=2.55f,StopAt=2.3f,StopSeconds=1.5f,ExhaleAt=2.9f;
         /// <summary>The last stage the presentation evaluated (the Ironworks presentation reads it; Idle when no boss shows).</summary>
         public static IronworksBossStage Shown=IronworksBossStage.Idle;
         /// <summary>The stage for the record at `t`, the death's age `death` (NaN alive) and the rig as drawn.</summary>

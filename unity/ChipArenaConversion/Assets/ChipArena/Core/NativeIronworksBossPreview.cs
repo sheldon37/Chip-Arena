@@ -23,7 +23,9 @@ namespace ChipArena.UnityConversion
         public static IronworksBossView Shown=IronworksBossView.None;public static double ShownClock;
         /// <summary>The banner's eyebrow as the expedition HUD names the area (BOSS ARRIVAL · CITY IRONWORKS).</summary>
         public static readonly string BannerArea=ExpeditionBossModel.Eyebrow+" · CITY IRONWORKS";
-        public const float Loop=118,SpawnAt=.5f;
+        public const float SpawnAt=.5f;
+        /// <summary>The script's length (the death and a breath after it), s.</summary>
+        public static readonly float Loop;
         /// <summary>The preview's pilots (x, z): the look-at targets and the actions' aim points.</summary>
         public static readonly Vector2[] Pilots={new Vector2(-28.0f,2.6f),new Vector2(-31.0f,-6.2f),new Vector2(-41.5f,4.6f),new Vector2(-27.0f,-2.4f)};
         private struct Act{public string Id;public float At;public int Target,Variant;public float Tx,Tz,Yaw,FreedAt;}
@@ -80,7 +82,7 @@ namespace ChipArena.UnityConversion
             K(t+.6f,X+7.4f,5.5f,90);K(t+4.6f,X+.4f,Z+.6f,110);
             LastBlowAt=t+4.8f;t=A("blow",LastBlowAt);
             K(t+.4f,X+.4f,Z+.6f,110);K(t+1.6f,X+.4f,Z+.6f,100);
-            DeathAt=t+1.8f;K(DeathAt,X+.4f,Z+.6f,100);K(Loop,X+.4f,Z+.6f,100);
+            DeathAt=t+1.8f;Loop=DeathAt+NativeIronworksBoss.Find("die").Total+1.5f;K(DeathAt,X+.4f,Z+.6f,100);K(Loop,X+.4f,Z+.6f,100);
             acts=a.ToArray();keys=k.ToArray();
         }
 

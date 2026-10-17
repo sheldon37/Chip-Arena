@@ -830,9 +830,64 @@ VFX list. In `/tmp/claude-0/-home-user/4cd8d659-77bb-56f7-9323-e1639fb4be49/scra
 | `unity/ChipArenaConversion/Tests/IronworksBossModelChecks.cs` | its managed checks (registered in `Tests/Program.cs`: the full suite and `--ironworks-boss`) |
 
 Not done here:
-- The runtime draw, motion, VFX, HUD name and cue routing: Claude, after Astra's contract.
+- The runtime draw, motion, VFX, HUD name and cue routing: Claude, on its own branch (section 14), not merged.
 - Rules, AI, collision, replication and hazards: Astra.
 - The audio clips: the owner.
 - The beat map.
 
 Nothing has run in Unity, on Windows or with two clients.
+
+## 14. Presentation build
+
+Claude, 2026-10-17, branch `claude/boss-ironworks-presentation` (from shared `bc39790`, merged with shared `03dddab`).
+**On branch, not merged, not live.** Presentation only: no rule, hitbox, collider, timing, damage, cooldown, movement or
+network field changes. In normal play nothing changes: the boss's view is `None` until Astra binds it, so the placeholder
+Siren fights on and the hall draws, lights and sounds as before. A DEV preview plays the whole fight without the authority.
+
+**What is built** (under `unity/ChipArenaConversion/Assets/ChipArena/`):
+
+| Part | File | What it does |
+| --- | --- | --- |
+| The view | `Core/NativeIronworksBossView.cs` | `IronworksBossView` mirrors section 10.2's record: `action`, `actionAt`, `actionYaw`, `targetX`/`targetZ`, `targetSeat`, `variant`, `phase`/`phaseAt`, `parts` with the five `partAt` times, `stagger`, `deathAt`, plus the actor's root, yaw and health and the arrival's `spawned`. It has a `None`, and `Time` turns the wire's -100 into NaN. The file also holds the hall's fixed places (the pit, the vessels' mouths, the hook, the shutter) and the clock smoother for the arrival and death clocks. |
+| The model | `Core/NativeIronworksBossLook.cs` | The concept at three tiers, re-sculpted: a crust of irregular glassy slag slabs (chamfered glass edges, chips and glints, red seams, drips) split into 12 chunks that break away; the molten mouth spill as a molten strip on the hot shader; the tuyère glow; the lamps as their own joints (bezel, lens, grille, hood); the foreman in a silver heat suit with a cyan visor, chest, head and two-bone arms; the blast valve; the metal's surface; a grime pass in the vertex colours. 46,862 / 28,974 / 9,882 triangles with the chains drawn, against 47,000 / 29,000 / 10,000. |
+| The moves | `Core/NativeIronworksBossMoves.cs` | One `BossActionDef` per action and moment, with key poses on 46 channels (body, trunnion tilt, four feet with plant flags, tongs, the foreman's lever, lean, valve and brace, heat, blow, crack, steam, lamps, chain lift, stance). Each phrase's phases sum to section 6's table, and the strike motion ends at the hit (windup end), so the contact phase starts on it. Stomp and grab mirror to their side. The arrival's and the death's poses. |
+| The rig | `Core/NativeIronworksBossRig.cs` | Root: `BossRootFollow` (35 degrees/s turns, 65 in phase 3). Gait: `BossGait` with four legs (tongs in front, bogies behind) in a trot that morphs to a gallop on the charge, planted feet locked, a thunk into each plant, continuous leg IK. The trunnion tilt is a sub-stepped pendulum driven by the body's acceleration (smoothed at any frame rate) and the tilt's own; the metal sloshes on a second-order spring and spills. Chains: the yoke's four hook chains, the levers' pull chains, the foreman's belt. Three `BossActionPlayer`s (actions, phase changes, moments), `BossFlinch`, `BossStagger`, `BossInertializer`. The foreman breathes, looks at the target, and works the levers in step with the tilts; he is torn off with the pulpit in phase 3 and hangs from his belt. The arrival on the song's beats and the death are their own layers. |
+| The effects | `Core/NativeIronworksBossFx.cs` | Quads, molten pieces (`NativeMolten.shader`), heat haze and up to three lights for section 9: the mouth's halo, steam and spill; the pour's cream wedge and stream; the blow's tuyère flare, column to the roof and droplets onto cream circles; the stomp's ring; the grab's cyan line, lift, shake and throw; the slam's jumpable white ring; the deslag lumps; the call's shock; the charge's cyan path and the wall crash; the phase changes (crust shedding, the pulpit torn, the shell cracking white, the pit welling up); the moments; the death's last pour and steam. Telegraphs use the hall's cream decal and cyan; amber stays the hazards'. |
+| The stage hook | `Core/NativeIronworksBossStage.cs` | The arrival's beats (`NativeIronworksBossBeats`, read from Hydraulic Hell's map: the first intro slam grips, the downbeat after it heaves, the second slam climbs, the last downbeat before the drop is the furnace flare, the drop is the first blow) and `IronworksBossStage`: in the death the shift whistle blows at 2.55 s and the foundry's heat and lamps run down by 3.8 s (inside the 4 s victory hold), the music ducks before the whistle; the call wakes the vessels it names; the shed jolts both. |
+| The cues | `Core/NativeIronworksBossCues.cs` | The 50 `boss.ironworks.*` keys of section 9 at their moments, and the five loops' levels. |
+| The DEV preview | `Core/NativeIronworksBossPreview.cs` | A scripted record on a 135 s loop: the arrival, a walk and turn, every action (stomp front and rear, a grab held and thrown, a grab freed by allies, call naming vessel A then both), a crust break, a choked blow, a kneel, both phase changes, the charge into the east wall (the crash), the last blow and the death. |
+| HUD | `Core/NativeZoneBossNames.cs` | The plate and banner name `ironworks-converter` THE CONVERTER (THE 6:47's routing, extended); its banner shows from `spawned`. Every other archetype is unchanged. |
+| The presenter | `Runtime/NativeIronworksBossPresentation.cs`, `NativeIronworksBossAudio.cs`, `NativeIronworksBossLifetime.cs` | The binding point; the draw (one mesh per joint and tier with NativeSourceLit, the hit flash, the hall's lights; tier by distance; the chain links instanced); the effects; the boss's lights merged into the hall's farthest warm slots; the stage hook; the cues through NativeAudio's bank path (silent until the owner's clips exist) and the loops on bank voices; the DEV panel toggle (Camera · "Ironworks boss preview") with the banner and plate. |
+
+**The binding point for Astra.** One line in `Runtime/NativeIronworksBossPresentation.cs`:
+`internal static IronworksBossView IronworksBossViewOf(NativeArena arena)=>IronworksBossView.None;`. Binding replaces it with a
+read of the replicated `pve.zoneBoss` record and the boss actor's frame (times on the arena clock; -100 becomes NaN through
+`IronworksBossView.Time`). `IronworksBossClocks` derives the arrival's clock from `NativeArena.BossSongTime` (it runs through
+the intro hold) and the death's clock from `deathAt` and the victory hold, so the arrival and death play while
+`arena.Time` is frozen. The record's actions are expected at section 6's timings (the hit is `actionAt` + windup); a stomp's
+`variant` names the leg (0 FL, 1 FR, 2 RL, 3 RR), a call's names the vessels (bit 0 A, bit 1 B). The managed check
+`IronworksBossPresentationChecks` pins the `None` line; update it when binding. Hazard warnings stay on Astra's schedule.
+
+**Hooks outside the new files** (each one line or one entry):
+- `Runtime/NativeSourcePresentation.cs`: `IronworksBossScenery(arena)` after the Ironworks' scenery.
+- `Runtime/NativeIronworksPresentation.cs`: the song's beat passes through `IronworksBossMusic` (the boss's stage on top;
+  unchanged without a boss).
+- `Runtime/NativeAudio.cs`: `IronworksBossLoopFrame(arena,menu)` beside the door hum (not in the music branch; the duck scales
+  the hazard kit's music level for that frame).
+- `Runtime/NativeStagePrewarm.cs`: the boss's meshes prewarm with the Ironworks.
+- `Core/NativeDevTools.cs`, `Runtime/NativeDevPanel.cs`: the DEV preview's toggle, panel and HUD.
+- `Core/NativeZoneBossNames.cs`, `Core/NativeExpeditionStates.cs`: the HUD name routing, as THE 6:47's.
+- `Core/NativeBossMotionGait.cs`: `Plant` (a foot set down by an action stays where it landed).
+- `Tests/TransitionLoadingChecks.cs`, `Tests/IronworksBossModelChecks.cs`, `Tests/Program.cs`: the prewarm entry, the
+  presentation's files allowed to name the concept, the new checks.
+
+**Animation impacts: none on rules.** Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged: the
+contact lands on the record's hit (within one frame at 60 and 144 fps), and the root follows the record.
+
+**Checks** (`CoreTests --ironworks-boss-presentation` and the full suite): the `None` pin and normal play unchanged; the
+preview a pure function of the clock; contact on the hit for every action; planted feet slip under 1 cm; no pops across 19
+transitions (the per-frame change halves when the frame rate doubles); no allocation per frame; the tier budgets; the HUD
+name; the arrival's beats from the map; the cue keys as section 9's table; presentation-only sources.
+
+**Not done:** nothing has run in the Unity Editor, on Windows or with two clients; the audio clips are the owner's; Astra's
+record and the binding.

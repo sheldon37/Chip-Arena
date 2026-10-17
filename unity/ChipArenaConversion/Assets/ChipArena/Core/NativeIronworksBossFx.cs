@@ -172,7 +172,7 @@ namespace ChipArena.UnityConversion
             }
             // The lamps: halos and soft beams (cold white), only while lit.
             float lamp=rig.LampLevel;
-            if(lamp>.02f)foreach(int s in new[]{0,1})
+            if(lamp>.02f)for(int s=0;s<2;s++)
             {
                 var p=s==0?rig.LampAtL:rig.LampAtR;var dir=s==0?rig.BeamL:rig.BeamR;Sprite(p+dir*.15f,.9f,ColdWhite*(1.4f*lamp),.95f);Sprite(p+dir*.2f,2.2f,ColdWhite*(.25f*lamp),.6f);
                 // A soft beam: a few widening quads along it (camera facing streaks), fading out over 9 m.
@@ -195,14 +195,15 @@ namespace ChipArena.UnityConversion
         {
             var b=NativeIronworksBossBeats.Current;var pit=new Vector3(A.PitX,0,A.PitZ);
             // The pit glows from below as the song starts, brightening to the hit.
-            float glow=BossMath.Smooth(a/b.Hit);AddLight(pit+new Vector3(0,.8f,0),12,new Vector3(3.2f,1.6f,.6f)*(.5f+1.3f*glow*(a<b.Climb?1:Math.Max(0,1-(a-b.Climb)/2))),0);
-            // The cross of cracks: white metal opening from the centre along the pit's axes on the hit, widening as it heaves.
-            float open=BossMath.Smoother((a-(b.Hit-.04f))/.32f),wide=BossMath.Smoother((a-b.Hit)/Math.Max(.3f,b.Climb-b.Hit));
+            float glow=BossMath.Smooth(a/b.Hit);AddLight(pit+new Vector3(0,.8f,0),12,new Vector3(3.2f,1.6f,.6f)*(.45f+.95f*glow*(a<b.Climb?1:Math.Max(0,1-(a-b.Climb)/2))),0);
+            // The cross of cracks: molten slag opening from the centre along the pit's axes on the hit, widening as it heaves, crusting
+            // over once it has climbed out.
+            float open=BossMath.Smoother((a-(b.Hit-.04f))/.32f),wide=BossMath.Smoother((a-b.Hit)/Math.Max(.3f,b.Climb-b.Hit)),crust=BossMath.Smooth((a-b.Climb)/2.5f);
             if(open>0)for(int arm=0;arm<4;arm++)
             {
-                var dir=arm==0?Vector3.UnitX:arm==1?-Vector3.UnitX:arm==2?Vector3.UnitZ:-Vector3.UnitZ;float len=2.95f*open,w=.12f+.8f*wide;
+                var dir=arm==0?Vector3.UnitX:arm==1?-Vector3.UnitX:arm==2?Vector3.UnitZ:-Vector3.UnitZ;float len=2.95f*open,w=.1f+.38f*wide;
                 var q=BossMath.FromBasis(Vector3.Cross(Vector3.UnitY,dir),Vector3.UnitY,dir);
-                AddMolten(pit+dir*(len*.5f)+new Vector3(0,A.PitY+.01f,0),new Vector3(w,.02f,len*.5f),q,NativeIronworksKit.MoltenFlow,2,1,.6f,1f,.85f,.1f,1,1.25f,1,arm*.27f);
+                AddMolten(pit+dir*(len*.5f)+new Vector3(0,A.PitY+.01f,0),new Vector3(w,.02f,len*.5f),q,NativeIronworksKit.MoltenFlow,2,1,.6f,.86f-.3f*crust,.6f-.25f*crust,.3f+.45f*crust,1,1f,1,arm*.27f);
             }
             if(open>0&&a<b.Hit+.6f){Sprite(pit+new Vector3(0,.4f,0),9*open,White*(1.2f*(1-BossMath.Smooth((a-b.Hit)/.6f))),1);}
             // Steam rings at the rim on the hit, a gush of heat.

@@ -55,6 +55,7 @@ namespace ChipArena.UnityConversion
         public readonly BossChain Belt=new BossChain(new BossChainDef{Count=4,Length=.32f,Rest=new Vector3(0,-1,0),Stiffness=0,TipStiffness=0,Damping=.5f,Gravity=9.8f,Radius=.05f,Friction=3,Iterations=4});
         private static BossChainDef LeverDef()=>new BossChainDef{Count=4,Length=.085f,Rest=new Vector3(0,-1,0),Stiffness=0,TipStiffness=0,Damping=.9f,Gravity=9.8f,Radius=.02f,Iterations=3};
         public static readonly int[] ChainLinks=new int[M.Chains];
+        private static readonly int[] VesselJoints={M.Vessel,M.VesselHeat,M.WindBox,M.Seams};
         static IronworksBossRig(){for(int c=0;c<M.Chains;c++)ChainLinks[c]=(int)(M.ChainLength[c]/M.LinkPitch);}
         /// <summary>The links drawn for the torn pulpit's chains (each), by tier.</summary>
         public static int TearLinks(int tier)=>tier==2?5:9;
@@ -67,9 +68,9 @@ namespace ChipArena.UnityConversion
         }
         // ---- dynamics ----
         private float swing,swingVel,lastTiltTarget=float.NaN,lastTiltVel;private Vector3 lastBodyVel;private float lastYaw;
-        private BossSecondOrder heave,lean,leverLag,pulpitSwing,beam;private BossSecondOrder3 slosh,headLag;private bool configured;
+        private BossSecondOrder heave,lean,leverLag,pulpitSwing,beam;private BossSecondOrder3 slosh,headLag,hangSwing;private bool configured;
         // ---- state ----
-        private bool started;private float seenSpawned=float.NaN;private int plantedKey=-1;private readonly int[] plantedBy=new int[4];
+        private bool started;private float seenSpawned=float.NaN;private readonly int[] plantedBy=new int[4];
         private readonly float[] ch=new float[Ch.Count],sample=new float[Ch.Count],sample2=new float[Ch.Count];
         private readonly Vector3[] legTarget=new Vector3[4];private readonly float[] legWeight=new float[4];
         private float valve;private float arrivedBefore=float.NaN;
@@ -180,7 +181,7 @@ namespace ChipArena.UnityConversion
             Array.Copy(Ch.Neutral,ch,ch.Length);
             Layer(Actions,true);Layer(Moments,false);Layer(Phases,false);
             if(Arriving)ArrivalLayer(age,beats,v);
-            if(v.Dead(t))DeathLayer(DeathAge);
+            if(v.Dead(t))DeathLayer(DeathAge,v.deathAt);
             Additive(v,t,beats);
             // ---- staggers: the break throws it sideways, the crash back, the choke a little ----
             if(PhaseAct.Active&&PhaseKind==3)Stagger.Start(v.phaseAt,BossMath.Right(yaw),1.1f,2.4f,yaw);
@@ -199,12 +200,12 @@ namespace ChipArena.UnityConversion
             Legs.Step(Root,yaw,Follow.YawRate,Arriving?Vector3.Zero:Follow.Velocity,Follow.Body,dt,ground);Landed=Legs.Landed;for(int i=0;i<4;i++)LandSpeed[i]=Legs.LandSpeed[i];
             var bodyPos=Legs.BodyPosition;var bodyRot=Legs.BodyRotation;
             // ---- the vessel on its trunnions and the metal in it ----
-            if(first){lastBodyPos=bodyPos;lastBodyVel=Vector3.Zero;lastForeman=bodyPos;foremanVel=Vector3.Zero;lastYaw=yaw;lastTiltTarget=float.NaN;}
+            if(first){lastBodyPos=bodyPos;lastBodyVel=bodyVelSmooth=bodyAcc=Vector3.Zero;lastYaw=yaw;lastTiltTarget=float.NaN;}
             Vessel(dt,bodyRot,v,t);
             // ---- every joint ----
             Pose.RootPosition=Root;Pose.RootRotation=facing;Pose.Set(M.Root,Root,facing);Pose.Set(M.Yoke,bodyPos,bodyRot);
             var vesselRot=Quaternion.Normalize(bodyRot*BossMath.AxisAngle(Vector3.UnitX,Tilt*Deg));
-            foreach(int j in new[]{M.Vessel,M.VesselHeat,M.WindBox,M.Seams})Pose.Set(j,bodyPos,vesselRot);
+            foreach(int j in VesselJoints)Pose.Set(j,bodyPos,vesselRot);
             Pose.Set(L.Metal,bodyPos+BossMath.Rotate(vesselRot,L.MetalAt),Quaternion.Normalize(vesselRot*BossMath.Euler(SloshX*Deg,0,SloshZ*Deg)));
             Lamps(bodyPos,bodyRot,dt,hasTarget,target);
             Pulpit(t,dt,bodyPos,bodyRot,v,ground);
@@ -228,7 +229,7 @@ namespace ChipArena.UnityConversion
         private void Configure()
         {
             heave.Configure(1.1f,.55f,1.4f);lean.Configure(1.4f,.38f,0);leverLag.Configure(2.6f,.5f,1.2f);pulpitSwing.Configure(.55f,.18f,0);beam.Configure(2.2f,.35f,0);
-            slosh.Configure(4/BossMath.Tau,.15f,0);headLag.Configure(1.8f,.45f,0);configured=true;
+            slosh.Configure(4/BossMath.Tau,.15f,0);headLag.Configure(1.8f,.45f,0);hangSwing.Configure(.9f,.35f,0);configured=true;
         }
         private void ResetParts(){for(int k=0;k<12;k++){ChunkState[k]=0;ChunkAt[k]=float.NaN;}PulpitTear=0;PulpitAt=float.NaN;Stagger.Clear();Flinch.Clear();Actions.Clear();Phases.Clear();Moments.Clear();for(int i=0;i<4;i++)plantedBy[i]=-1;}
 
@@ -329,9 +330,16 @@ namespace ChipArena.UnityConversion
         }
         // ---- the death (inside the 4 s victory hold): the front legs buckle (left, then right), the body drops onto the rim with a
         // bounce and the rear legs splay; it tips forward and pours its last; the foreman slumps late ----
-        private void DeathLayer(float d)
+        private readonly Vector3[] deathFrom=new Vector3[4];private float deathKey=float.NaN;
+        private void DeathLayer(float d,float key)
         {
             var dv=IronworksBossMoves.Dead.V;
+            // Where the feet stood when it died (the facing frame, above the ankle height): the skid starts there, no jump.
+            if(!deathKey.Equals(key))
+            {
+                deathKey=key;var inv=Quaternion.Inverse(BossMath.Yaw(Follow.Yaw));
+                for(int leg=0;leg<4;leg++){var w=legTarget[leg];if(w==Vector3.Zero){deathFrom[leg]=Ch.Stance(leg);continue;}var l=BossMath.Rotate(inv,w-Follow.Position);deathFrom[leg]=new Vector3(l.X,Math.Max(0,w.Y-M.Ankle(leg)),l.Z);}
+            }
             float buckleL=BossMath.Smoother(d/.5f),buckleR=BossMath.Smoother((d-.35f)/.5f),drop=BossEasing.Eval(BossEase.Settle,BossMath.Clamp01((d-.15f)/1.1f),2.1f);
             for(int c=0;c<Ch.LegBase;c++)ch[c]+=(dv[c]-ch[c])*drop;
             ch[Ch.Tilt]=ch[Ch.Tilt]+(dv[Ch.Tilt]-ch[Ch.Tilt])*BossMath.Smoother((d-.7f)/.9f);
@@ -342,7 +350,7 @@ namespace ChipArena.UnityConversion
             {
                 var home=Ch.Stance(leg);float k=leg==M.FL?buckleL:leg==M.FR?buckleR:BossMath.Smoother((d-.6f)/.7f);int b=Ch.Leg(leg,0);
                 var splay=new Vector3(home.X*(leg<2?1.07f:1.1f),0,home.Z*(leg<2?.9f:1.04f));
-                ch[b]=1;ch[b+Ch.X]=BossMath.Lerp(home.X,splay.X,k);ch[b+Ch.Y]=0;ch[b+Ch.Z]=BossMath.Lerp(home.Z,splay.Z,k);ch[b+Ch.PL]=0;
+                var from=deathFrom[leg];float fall=BossMath.Smoother(d/.35f);ch[b]=1;ch[b+Ch.X]=BossMath.Lerp(from.X,splay.X,k);ch[b+Ch.Y]=from.Y*(1-fall);ch[b+Ch.Z]=BossMath.Lerp(from.Z,splay.Z,k);ch[b+Ch.PL]=0;
             }
             // The heat drains from the bottom up over the hold (the effects and glows read CoolLevel); the lamps flicker twice and die.
             float lamp=d<1.9f?1:d<1.98f?.1f:d<2.1f?.8f:d<2.16f?0:d<2.26f?.5f:BossMath.Clamp01(1-(d-2.26f)/.25f)*.3f;ch[Ch.Lamp]=lamp;ch[Ch.Look]=Math.Max(0,1-d/1.2f);
@@ -383,7 +391,11 @@ namespace ChipArena.UnityConversion
         {
             float target=ch[Ch.Tilt];if(float.IsNaN(lastTiltTarget)){lastTiltTarget=target;lastTiltVel=0;swing=swingVel=0;}
             float tv=dt>0?(target-lastTiltTarget)/dt:0,ta=dt>0?(tv-lastTiltVel)/dt:0;lastTiltTarget=target;lastTiltVel=tv;ta=BossMath.Clamp(ta,-4000,4000);
-            var bodyVel=Legs.BodyPosition;var vel=dt>0?(bodyVel-lastBodyPos)/dt:Vector3.Zero;lastBodyPos=bodyVel;var acc=dt>0?(vel-lastBodyVel)/dt:Vector3.Zero;lastBodyVel=vel;acc=new Vector3(BossMath.Clamp(acc.X,-40,40),BossMath.Clamp(acc.Y,-40,40),BossMath.Clamp(acc.Z,-40,40));
+            // The body's acceleration from its velocity smoothed on a .08 s half-life (exact at any frame rate, so a sudden stop kicks the
+            // vessel, the metal and the foreman by the same amount at 60 or 144 fps), bounded.
+            var bodyNow=Legs.BodyPosition;var vel=dt>0?(bodyNow-lastBodyPos)/dt:lastBodyVel;lastBodyPos=bodyNow;lastBodyVel=vel;
+            var prevSmooth=bodyVelSmooth;bodyVelSmooth+=(vel-bodyVelSmooth)*(1-(float)Math.Exp(-dt*.6931f/.08f));var acc=dt>0?(bodyVelSmooth-prevSmooth)/dt:Vector3.Zero;
+            acc=new Vector3(BossMath.Clamp(acc.X,-70,70),BossMath.Clamp(acc.Y,-70,70),BossMath.Clamp(acc.Z,-70,70));bodyAcc=acc;
             var fwd=BossMath.Rotate(bodyRot,Vector3.UnitZ);float along=Vector3.Dot(acc,fwd),up=acc.Y;
             // A pendulum hung on the trunnions: braking (along < 0) swings the mouth forward, a drop (up < 0) and the target's own
             // acceleration (its inertia) kick it; it rings at 3.2 rad/s and settles (damping .25). Sub-stepped: the same at any rate.
@@ -396,7 +408,7 @@ namespace ChipArena.UnityConversion
             var s=slosh.Step(new Vector3(sx,0,sz),dt);SloshX=BossMath.Clamp(s.X,-25,25);SloshZ=BossMath.Clamp(s.Z,-25,25);
             float mag=(float)Math.Sqrt(SloshX*SloshX+SloshZ*SloshZ);Spill=BossMath.Clamp01((mag-12)/10)+BossMath.Clamp01((Tilt-55)/25);
         }
-        private Vector3 lastBodyPos;
+        private Vector3 lastBodyPos,bodyVelSmooth,bodyAcc;
         // ---- the lamps: rigid in the yoke (their glow per joint), the beams aiming with a lag at the target ----
         private void Lamps(Vector3 bodyPos,Quaternion bodyRot,float dt,bool hasTarget,Vector3 target)
         {
@@ -431,19 +443,23 @@ namespace ChipArena.UnityConversion
             var leverPos=pos+BossMath.Rotate(rot,piv)-BossMath.Rotate(lq,piv);Pose.Set(M.Lever,leverPos,lq);
             for(int s=0;s<2;s++)knob[s]=pos+BossMath.Rotate(rot,piv)+BossMath.Rotate(lq,new Vector3(s==0?-.2f:.2f,.9f,-.08f));
             // The foreman: thrown about by the body's acceleration (second order), leaning with the action, bracing.
-            var accel=Legs.BodyPosition-lastForeman;lastForeman=Legs.BodyPosition;float jerk=dt>0?Vector3.Dot(accel/dt-foremanVel,BossMath.Rotate(bodyRot,Vector3.UnitZ)):0;foremanVel=dt>0?accel/dt:Vector3.Zero;
+            float jerk=Vector3.Dot(bodyAcc,BossMath.Rotate(bodyRot,Vector3.UnitZ));
             float thrown=lean.Step(ch[Ch.Lean]-BossMath.Clamp(jerk*1.2f,-25,25),dt);
             Quaternion frot;Vector3 fpos;
-            if(PulpitTear>.25f&&!v.Dead(t))
+            if(PulpitTear>.25f)
             {
                 // Dangling from his belt chain off the torn pulpit's rail: hung below its end, swinging.
                 var anchor=pos+BossMath.Rotate(rot,new Vector3(.3f,.9f,-.62f));Belt.Step(anchor,rot,dt,ground);var tip=Belt.Point[Belt.Point.Length-1];var dir=tip-anchor;
-                var down=dir.LengthSquared()>1e-6f?Vector3.Normalize(dir):-Vector3.UnitY;frot=Quaternion.Normalize(BossMath.FromTo(Vector3.UnitY,-down)*BossMath.Yaw(Follow.Yaw+.4f));
+                // He hangs below the rail on his own slow swing (his weight: the light chain's whip filtered at .9 Hz; it never carries him
+                // over the rail), turned by the least rotation from last frame's
+                // hang (continuous through any swing).
+                var down=dir.LengthSquared()>1e-6f?Vector3.Normalize(dir):-Vector3.UnitY;down=hangSwing.Step(down,dt);down=down.LengthSquared()>1e-6f?Vector3.Normalize(down):-Vector3.UnitY;if(down.Y>-.35f){down.Y=-.35f;down=Vector3.Normalize(down);}
+                var hungUp=BossMath.Rotate(dangle,Vector3.UnitY);dangle=Quaternion.Normalize(BossMath.FromTo(hungUp,-down)*dangle);frot=dangle;
                 fpos=tip-BossMath.Rotate(frot,new Vector3(0,1.25f,0));
                 float hang=BossMath.Smoother((PulpitTear-.25f)/.5f);var standPos=pos+BossMath.Rotate(rot,M.ForemanFeet);var standRot=Quaternion.Normalize(rot*BossMath.AxisAngle(Vector3.UnitX,thrown*Deg));
                 fpos=Vector3.Lerp(standPos,fpos,hang);frot=BossMath.Slerp(standRot,frot,hang);
             }
-            else{Belt.Reset(pos+BossMath.Rotate(rot,new Vector3(.3f,.9f,-.62f)),rot);fpos=pos+BossMath.Rotate(rot,M.ForemanFeet);frot=Quaternion.Normalize(rot*BossMath.AxisAngle(Vector3.UnitX,thrown*Deg));}
+            else{Belt.Reset(pos+BossMath.Rotate(rot,new Vector3(.3f,.9f,-.62f)),rot);fpos=pos+BossMath.Rotate(rot,M.ForemanFeet);frot=Quaternion.Normalize(rot*BossMath.AxisAngle(Vector3.UnitX,thrown*Deg));dangle=Quaternion.Normalize(frot*BossMath.AxisAngle(Vector3.UnitY,.4f));hangSwing.Reset(-Vector3.UnitY);}
             Pose.Set(M.Foreman,fpos,frot);
             // Chest: his breath (a slow rise), bracing (a crouch); head: the look-at with a lag; the visor rides the head.
             float breath=BossBreath.Sample(t,.3f,Seed^5u);var chestRot=Quaternion.Normalize(frot*BossMath.AxisAngle(Vector3.UnitX,(3*breath+8*ch[Ch.Brace])*Deg));
@@ -453,13 +469,15 @@ namespace ChipArena.UnityConversion
             var headRot=Quaternion.Normalize(chestRot*BossMath.AxisAngle(Vector3.UnitY,lag.Y*.8f)*BossMath.AxisAngle(Vector3.UnitX,lag.X*.7f-1.5f*breath*Deg));
             if(v.Dead(t)){float slump=BossMath.Smoother((DeathAge-2.1f)/.8f);headRot=BossMath.Slerp(headRot,Quaternion.Normalize(chestRot*BossMath.AxisAngle(Vector3.UnitX,38*Deg)),slump);}
             Pose.Set(L.Head,headPos,headRot);Pose.Set(L.Visor,headPos+BossMath.Rotate(headRot,L.VisorAt),headRot);HeadAt=headPos;
-            // The arms: shoulder to the lever's knob (down the rod when out of reach), the elbows out and back.
+            // The arms: shoulder to the lever's knob (reaching for it when out of reach), the elbows out and back; limp (hung a little bent
+            // in his own frame, so the elbow never lines up with its pole) when he dangles or dies.
             for(int s=0;s<2;s++)
             {
                 int side=s==0?-1:1;var sh=chestPos+BossMath.Rotate(chestRot,new Vector3(side*Math.Abs(L.Shoulder.X),L.Shoulder.Y,L.Shoulder.Z));
-                var grip=knob[s];float reach=(L.UpperArm+L.Forearm)*.97f;var rod=pos+BossMath.Rotate(rot,piv);
-                if(Vector3.Distance(sh,grip)>reach){for(int g=0;g<6;g++){grip=Vector3.Lerp(grip,rod,.12f);if(Vector3.Distance(sh,grip)<=reach)break;}}
-                if(v.Dead(t)||PulpitTear>.25f){float limp=v.Dead(t)?BossMath.Smoother((DeathAge-2.0f)/.7f):BossMath.Smoother((PulpitTear-.25f)/.4f);grip=Vector3.Lerp(grip,sh+new Vector3(0,-.68f,0)+BossMath.Rotate(frot,new Vector3(side*.1f,0,.1f)),limp);}
+                var grip=knob[s];float reach=(L.UpperArm+L.Forearm)*.97f;
+                // Out of reach: the arm reaches straight for the knob (the grip on the sphere it can reach: continuous).
+                if(Vector3.Distance(sh,grip)>reach)grip=sh+Vector3.Normalize(grip-sh)*reach;
+                if(v.Dead(t)||PulpitTear>.25f){float limp=Math.Max(v.Dead(t)?BossMath.Smoother((DeathAge-2.0f)/.7f):0,BossMath.Smoother((PulpitTear-.25f)/.4f));grip=Vector3.Lerp(grip,sh+BossMath.Rotate(chestRot,new Vector3(side*.1f,-.58f,.14f)),limp);}
                 var pole=BossMath.Rotate(chestRot,Vector3.Normalize(new Vector3(side*.8f,-.4f,-.6f)));
                 var elbow=BossIk.TwoBone(sh,grip,L.UpperArm,L.Forearm,pole,out var hand,.04f);
                 Pose.Set(s==0?L.ArmUL:L.ArmUR,sh,BossMath.LookRotation(elbow-sh,BossMath.Rotate(chestRot,Vector3.UnitY)));
@@ -474,7 +492,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The torn pulpit's two chains: from the arch's top to its rear railing (world), drawn while torn.</summary>
         public readonly Vector3[] TearTop=new Vector3[2],TearEnd=new Vector3[2];
-        private readonly Vector3[] knob=new Vector3[2];private Vector3 lastForeman,foremanVel;private bool lookTarget;private Vector3 lookAt;
+        private readonly Vector3[] knob=new Vector3[2];private Quaternion dangle=Quaternion.Identity;private bool lookTarget;private Vector3 lookAt;
         // ---- the legs: the gait's planted feet or the channels' targets, the concept's coxa and two-bone IK ----
         private void SolveLegs(float dt,IBossGround ground,Quaternion facing,float yaw)
         {
@@ -532,18 +550,25 @@ namespace ChipArena.UnityConversion
         }
         private float aimX=float.NaN,aimZ=float.NaN;
         // The concept's leg (NativeIronworksBossModel.Solve's Leg): the coxa turned toward the ankle about the yoke's up, the femur and
-        // tibia by the law of cosines with the knee bent up and out; the reach softened near full extension (no straightening pop).
+        // tibia by the law of cosines with the knee bent up and out; the reach softened near full extension (no straightening pop);
+        // both the heading and the bend made continuous for feet tucked under the body.
         private void LegIk(Vector3 hip,Vector3 target,Vector3 up,Vector3 outward,out Quaternion coxa,out Quaternion femur,out Quaternion tibia,out Vector3 ankle,out Vector3 knee)
         {
-            var d=target-hip;var o=d-up*Vector3.Dot(d,up);if(o.LengthSquared()<1e-6f)o=outward-up*Vector3.Dot(outward,up);o=Vector3.Normalize(o);
+            // The coxa's heading: toward the ankle about the yoke's up, its outward part kept positive (a smooth max), so a foot drawn in
+            // under the body (the arrival's fold, a deep crouch) swings the leg's plane continuously instead of flipping it.
+            var d=target-hip;var ow=outward-up*Vector3.Dot(outward,up);ow=ow.LengthSquared()>1e-8f?Vector3.Normalize(ow):Vector3.UnitX;var fw=Vector3.Cross(ow,up);
+            float da=Vector3.Dot(d,ow),db=Vector3.Dot(d,fw);da=.5f*(da+(float)Math.Sqrt(da*da+.25f));var o=Vector3.Normalize(ow*da+fw*db);
             coxa=BossMath.FromBasis(Vector3.Cross(up,o),up,o);
             var pivot=hip+o*M.CoxaReach;femurPivot=pivot;var c=target-pivot;float dist=c.Length();var cd=dist>1e-6f?c/dist:-up;
-            float lo=Math.Abs(M.FemurLength-M.TibiaLength)+.01f,hi=M.FemurLength+M.TibiaLength-.01f,band=.06f*hi,start=hi-band;
-            float dc=dist>start?start+band*(1-(float)Math.Exp(-(dist-start)/band)):dist;dc=Math.Max(lo,Math.Min(hi,dc));
+            // The reach softened at both ends: near full extension (no straightening pop) and near the fold (a foot dragged under the
+            // body by a sudden launch, a lifted foot tucked in: the knee eases toward the fold instead of snapping through it).
+            float lo=Math.Abs(M.FemurLength-M.TibiaLength)+.15f,hi=M.FemurLength+M.TibiaLength-.01f,band=.06f*hi,start=hi-band,fold=.25f;
+            float dc=dist>start?start+band*(1-(float)Math.Exp(-(dist-start)/band)):dist<lo+fold?lo+fold*(float)Math.Exp((dist-lo-fold)/fold):dist;dc=Math.Max(lo,Math.Min(hi,dc));
             float cosA=(M.FemurLength*M.FemurLength+dc*dc-M.TibiaLength*M.TibiaLength)/(2*M.FemurLength*dc);cosA=Math.Max(-1,Math.Min(1,cosA));float sinA=(float)Math.Sqrt(1-cosA*cosA);
-            var bend=up-cd*Vector3.Dot(up,cd);bend=bend.LengthSquared()>1e-8f?Vector3.Normalize(bend):o;
+            // The knee up and out: the in-plane normal of the reach on the plane's fixed side (continuous through a foot straight
+            // above or below the pivot, where up's projection would flip).
+            var nrm=Vector3.Normalize(Vector3.Cross(o,up));var bend=Vector3.Cross(nrm,cd);bend=bend.LengthSquared()>1e-8f?Vector3.Normalize(bend):up;
             knee=pivot+(cd*cosA+bend*sinA)*M.FemurLength;ankle=pivot+cd*dc;
-            var nrm=Vector3.Normalize(Vector3.Cross(o,up));
             var fz=Vector3.Normalize(knee-pivot);var fy=Vector3.Normalize(Vector3.Cross(nrm,fz));femur=BossMath.FromBasis(Vector3.Cross(fy,fz),fy,fz);
             var tz=Vector3.Normalize(ankle-knee);var ty=Vector3.Normalize(Vector3.Cross(nrm,tz));tibia=BossMath.FromBasis(Vector3.Cross(ty,tz),ty,tz);
         }
