@@ -100,6 +100,7 @@ namespace ChipArena.UnityConversion
             // The deployer's own view: the flash falls away after the deploy (the loading screen cuts in).
             var me=new NativeExpeditionJoinModel();me.Build(View(102.95,"nova",two,new[]{"nova","astra"}),102.95,pilots,labels);me.Build(View(103.0,"nova"),103.0,pilots,labels);
             Check(me.Flash>.9f&&me.ToastCount==1&&me.Toasts[0].Text=="ASTRA DEPLOYED TO CENTRAL STATION","my deploy: full flash; the note names only the others");
+            Check(me.Viewer==ExpeditionJoinViewer.Away&&me.Party[nova].EnRoute,"held in the hub after my deploy: no not-counted panel or prompt under the flash");
 
             // ---- cancel: empty before expiry ----
             var c=new NativeExpeditionJoinModel();c.Build(View(101.8,"kestrel",two,new[]{"nova","astra"}),101.8,pilots,labels);c.Build(View(101.85,"kestrel"),101.85,pilots,labels);r=c.Rings[Ring(c,St)];

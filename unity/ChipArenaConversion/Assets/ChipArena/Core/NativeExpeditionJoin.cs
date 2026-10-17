@@ -313,6 +313,8 @@ namespace ChipArena.UnityConversion
             if(ViewerRing<0&&mine!=null&&mine.atJoin){int only=-1,n=0;for(int i=0;i<RingCount;i++)if(Rings[i].Phase==ExpeditionJoinPhase.Charging){only=i;n++;}if(n==1){ViewerRing=only;Rings[only].Mine=true;}}
             if(ViewerRing<0)return;ref var ring=ref Rings[ViewerRing];bool inside=row.Placed&&Within(ring,row.X,row.Y,row.Z,0);
             if(ring.Mine&&ring.Phase==ExpeditionJoinPhase.Charging){Viewer=ExpeditionJoinViewer.Deploying;Flash=FlashLead>0?Smooth(1-ring.Left/FlashLead):0;}
+            // Taken by a deploy and still held in the hub until the area loads: no prompt, the loading screen takes over.
+            else if(row.EnRoute){}
             else if(ring.Phase==ExpeditionJoinPhase.Cleared&&(inside||ring.Distance<=ring.R+NearMetres))Viewer=ExpeditionJoinViewer.Cleared;
             else if(inside){Viewer=ExpeditionJoinViewer.NotCounted;ViewerReason=Reason(v);}
             else if(ring.Distance<=ring.R+NearMetres)Viewer=ExpeditionJoinViewer.Near;
