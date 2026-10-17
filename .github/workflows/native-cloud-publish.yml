@@ -119,6 +119,7 @@ jobs:
           path: |
             ${{ runner.temp }}/native-delivery/provider.log
             ${{ runner.temp }}/native-delivery/build-failure.json
+            ${{ runner.temp }}/native-delivery/build-request-failure.json
             ${{ runner.temp }}/native-delivery/delivery/build.log
             ${{ runner.temp }}/native-delivery/publication.json
             ${{ runner.temp }}/native-player-download/player-download.json
