@@ -159,7 +159,8 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<n;k++){double u=run[0]+w*(k+.5),s=Hash(id,f.Index,k);FBox(f,u,h-2.4,.02,w-.14,1.8,.04,P(NativeBlockLooks.Plain,s<.35?BlackHex:0x4A4A3A,RoleLandmark));}}
             if(f.Axis==0&&f.Sign>0)
             {
-                Text(f,"CITY IRONWORKS",0,7.3,.07,.17,.03,P(NativeBlockLooks.Plain,0xC8BCA0,RoleSign),0,5,P(NativeBlockLooks.Plain,0x6A6050,RoleSign));
+                var live=LiveDoor(f.Block);
+                Text(f,"CITY IRONWORKS",0,7.3,.07,.17,.03,live!=null?Glow(ZoneInk(live),1.25f,RoleSign,DriveSteady):P(NativeBlockLooks.Plain,0xC8BCA0,RoleSign),0,live!=null?-1:5,P(NativeBlockLooks.Plain,0x6A6050,RoleSign));
                 FBox(f,0,7.3+2.5*.17,.035,TextWidth("CITY IRONWORKS",.17)+.8,1.3,.04,P(NativeBlockLooks.Plain,0x2A2A26,RoleSign));
                 // Side doors either side of the shutter, welded shut.
                 foreach(double u in new[]{-12.0,12.0}){if(!Open(f,u-.8,u+.8,0,2.6))continue;Begin();FBox(f,u,1.15,.04,1.2,2.3,.06,P(NativeBlockLooks.SteelGreen,0x4A5048,RoleLandmark));FBox(f,u,1.15,.08,1.3,.08,.04,With(P(NativeBlockLooks.SteelGreen,0x3A3A36,RoleLandmark),detail:true),35);Text(f,"KEEP OUT",u,1.9,.08,.04,.01,P(NativeBlockLooks.Plain,0xB82A20,RoleSign));End();}
@@ -174,7 +175,9 @@ namespace ChipArena.UnityConversion
         }
         private void FoundryShutter(int i)
         {
-            // The foundry's doorway sealed: the roller shutter, welded plates and a cross brace, a chain, SEALED in red.
+            // The foundry's doorway sealed: the roller shutter, welded plates and a cross brace, a chain, SEALED in red. A live
+            // route has the open entrance instead (NativeExpeditionCityKit.Entrances.cs).
+            var live=LiveDoor(i);if(live!=null){FoundryLive(i,live);return;}
             var b=blocks[i];var f=MakeFace(i,0,1);if(f==null)return;double u=(f.U0+f.U1)/2,w=f.U1-f.U0,h=f.Top-f.Base;
             FBox(f,u,h/2,.03,w,h,.06,P(NativeBlockLooks.Corrugated,0x5A5E5C,RoleLandmark));
             for(int k=0;k<3;k++)FBox(f,u,.9+k*1.4,.08,w-.4,1.1,.04,P(NativeBlockLooks.SteelGreen,0x4A4E46,RoleLandmark));
@@ -209,7 +212,8 @@ namespace ChipArena.UnityConversion
         private void TransitPiece(int i,string s)
         {
             var b=blocks[i];
-            if(s=="transit-boards")
+            if(s=="transit-boards"&&LiveDoor(i)!=null)TransitLive(i,LiveDoor(i));
+            else if(s=="transit-boards")
             {
                 // The doorway boarded: planks over it, cross braces, STATION CLOSED and a notice.
                 var f=MakeFace(i,2,1);if(f==null)return;double w=f.U1-f.U0,h=f.Top-f.Base;
@@ -220,8 +224,10 @@ namespace ChipArena.UnityConversion
             }
             else if(s=="transit-canopy")
             {
-                var f=MakeFace(i,2,1);if(f!=null){FBox(f,0,.2,.015,f.U1-f.U0-.2,.3,.02,P(NativeBlockLooks.Plain,0x2A3A34,RoleSign));Text(f,"TRANSIT",0,.08,.03,.05,.015,P(NativeBlockLooks.Plain,0xE8E0C8,RoleSign));}
-                for(int k=-2;k<=2;k++)Box(i,k*2.2,b.pos.y-b.size.y/2-.03,b.pos.z,.8,.06,.3,k==0?Glow(WarmHex,.9f,RoleLandmark,DriveFlicker,.2f):P(NativeBlockLooks.Plain,0x3A3630,RoleLandmark));
+                // A live route lights the fascia's lettering and every downlight in the station's teal.
+                var to=LiveDoor(i);bool live=to!=null;int accent=live?NativeExpeditionJoinZones.Of(to).Accent:0;
+                var f=MakeFace(i,2,1);if(f!=null){FBox(f,0,.2,.015,f.U1-f.U0-.2,.3,.02,P(NativeBlockLooks.Plain,0x2A3A34,RoleSign));Text(f,"TRANSIT",0,.08,.03,.05,.015,live?Glow(accent,1.1f,RoleSign,DriveSteady):P(NativeBlockLooks.Plain,0xE8E0C8,RoleSign));}
+                for(int k=-2;k<=2;k++)Box(i,k*2.2,b.pos.y-b.size.y/2-.03,b.pos.z,.8,.06,.3,live?Glow(k==0?WarmHex:accent,k==0?1.0f:.75f,RoleLandmark,DriveSteady):k==0?Glow(WarmHex,.9f,RoleLandmark,DriveFlicker,.2f):P(NativeBlockLooks.Plain,0x3A3630,RoleLandmark));
                 Light(0,b.pos.y-.6,b.pos.z+.6,WarmHex,.5,7,1,GlowLampFlicker,.2);
             }
             else foreach(var (ax,sg) in new[]{(0,1),(0,-1),(2,1),(2,-1)}){var f=MakeFace(i,ax,sg);if(f!=null)FBox(f,(f.U0+f.U1)/2,1.2,.015,f.U1-f.U0+.03,.1,.02,With(P(NativeBlockLooks.Demolition,0,RoleLandmark),detail:true));}

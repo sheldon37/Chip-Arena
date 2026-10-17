@@ -27,6 +27,8 @@ namespace ChipArena.UnityConversion
         public static string Name(string id)
         {
             if(string.IsNullOrEmpty(id))return "";if(id=="final:boss"||id.EndsWith(":final:boss",StringComparison.Ordinal))return WorldBoss;
+            // The live zones by their own names (exp-transit is CENTRAL STATION, exp-foundry CITY IRONWORKS: NativeExpeditionJoinZones).
+            var zone=NativeExpeditionJoinZones.KnownName(id);if(zone!=null)return zone;
             int b=id.LastIndexOf(":boss:",StringComparison.Ordinal);if(b>=0)id=id.Substring(b+6);
             if(id.Length>4&&id.StartsWith("exp-",StringComparison.Ordinal))id=id.Substring(4);
             return id.Replace('-',' ').Replace('_',' ').ToUpperInvariant();
@@ -132,7 +134,7 @@ namespace ChipArena.UnityConversion
         // ---- Roster ------------------------------------------------------------------------------------------------------------
         public struct RosterRow{public string account, status;public ExpeditionTone tone;public bool you, host;}
         /// <summary>Every member's run status (extracted ones included), from members[] only.</summary>
-        private static string AreaLabel(string area)=>area=="exp-city"?"CITY":area=="exp-ward-zero"?"WARD ZERO":area=="exp-transit"?"CENTRAL STATION":area=="exp-foundry"?"IRONWORKS":"IN RUN";
+        private static string AreaLabel(string area)=>area=="exp-city"?NativeExpeditionJoinZones.Hub:NativeExpeditionJoinZones.KnownName(area)??"IN RUN";
         public static RosterRow[] Roster(ExpeditionView v)
         {
             return v.members.Select(m=>new RosterRow{account=m.account,you=m.account==v.viewer,host=m.host,

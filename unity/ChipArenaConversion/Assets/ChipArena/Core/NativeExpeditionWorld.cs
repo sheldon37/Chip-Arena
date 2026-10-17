@@ -31,6 +31,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Reserved chips sharing one death point (count): one lead carries the cluster's label at the anchor itself
         /// (labelAtAnchor); the others are quiet (glyph only), so a boss's chips never stack unreadable labels.</summary>
         public int group;public bool labelAtAnchor, quiet;public float joinRadius,joinProgress;
+        /// <summary>A join circle's door piece while the join pads draw it (NativeExpeditionJoinScene): no geometry, no label here.</summary>
+        public bool joinPad;
     }
 
     /// <summary>The geometry sink of the world pieces (the runtime fills reused mesh lists; checks count or rasterise).</summary>
@@ -72,6 +74,10 @@ namespace ChipArena.UnityConversion
         public const string Reward="reward", Door="door", Machine="machine", Chest="chest";
         public readonly List<ExpeditionWorldPiece> Pieces=new List<ExpeditionWorldPiece>(64);
         public readonly ExpeditionLabels Labels=new ExpeditionLabels();
+        /// <summary>The join pads are drawn this frame (NativeExpeditionJoinScene, set by the caller before Build): a join circle's
+        /// door piece then draws nothing and shows no label (the pad, its hologram and the HUD say it); without them it keeps
+        /// the stand-in ring, countdown band and label.</summary>
+        public bool JoinPadsDrawn;
         private readonly Dictionary<string,int> loot=new Dictionary<string,int>(StringComparer.Ordinal),buildings=new Dictionary<string,int>(StringComparer.Ordinal),
             caches=new Dictionary<string,int>(StringComparer.Ordinal),dice=new Dictionary<string,int>(StringComparer.Ordinal);
         private readonly Dictionary<(float,float,float),int> shared=new Dictionary<(float,float,float),int>(),placed=new Dictionary<(float,float,float),int>();
@@ -212,6 +218,7 @@ namespace ChipArena.UnityConversion
                 p.joinProgress=join.joinStartedAt<0?0:(float)Math.Max(0,Math.Min(1,(v.elapsed-join.joinStartedAt)/join.duration));
                 p.label=b.cleared?"CLEARED":join.joinStartedAt<0?"STAND IN THE CIRCLE TO DEPLOY":Labels.Int("DEPLOYING · ",Math.Max(1,(int)Math.Ceiling(join.duration-v.elapsed+join.joinStartedAt)),"s");
                 p.detail=Labels.Int("PILOTS IN CIRCLE · ",join.joinInside);p.extra=Labels.Name(b.id);p.actionable=!b.cleared;p.tone=join.joinInside>0?ExpeditionTone.Good:ExpeditionTone.Cyan;
+                if(JoinPadsDrawn){p.joinPad=true;p.quiet=true;}
                 break;
             }
             Pieces.Add(p);
@@ -291,6 +298,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Emit(IExpeditionWorldSink sink,in ExpeditionWorldPiece p,double t,bool reduced)
         {
+            if(p.joinPad)return;
             if(p.joinRadius>0)
             {
                 Band(sink,p.x,p.y+.025f,p.z,p.joinRadius-.06f,p.joinRadius,64,64,0,p.tone,.8f,p.actionable?.7f:.25f);

@@ -143,7 +143,7 @@ namespace ChipArena.UnityConversion
                 var fo=new Face{Block=parent,Axis=ew?0:2,Sign=outSign,Plane=plane,U0=-50,U1=50,Base=0,Top=10};var fi=new Face{Block=parent,Axis=ew?0:2,Sign=-outSign,Plane=plane,U0=-50,U1=50,Base=0,Top=10};
                 FBox(fo,0,4.18,.16,3.6,.3,.03,P(NativeBlockLooks.Plain,wood?0x2A3A24:0x1E2A2A,RoleSign));Text(fo,"SANCTUARY",0,4.18-2.5*.05,.18,.05,.012,Glow(WardSignHex,1.1f,RoleSign,DriveSteady));
                 string to=g.Side=="north"?"FINAL GATE":"";double dist=0;
-                foreach(var r in hub.Routes)if(r.Gate==g.Id){to=r.Reserved?(r.To=="exp-foundry"?"IRONWORKS":"STATION")+" SEALED":r.To=="exp-ward-zero"?"WARD ZERO":r.To.ToUpperInvariant();dist=r.Reserved?0:r.Path;}
+                foreach(var r in hub.Routes)if(r.Gate==g.Id){to=RouteSign(r,false);dist=r.Reserved?0:r.Path;}
                 string label=dist>0?to+" "+Metres(dist)+" M":to;
                 if(label.Length>0){double cell=Math.Min(.05,3.4/(4*label.Length-1));FBox(fi,0,4.18,.16,TextWidth(label,cell)+.4,.3,.03,P(NativeBlockLooks.Plain,0x1A1A1A,RoleSign));Text(fi,label,0,4.18-2.5*cell,.18,cell,.012,P(NativeBlockLooks.Plain,dist>0?0xE8F0F4:0xB8B0A0,RoleSign));}
                 sanctuaryOk=false;
@@ -318,7 +318,7 @@ namespace ChipArena.UnityConversion
             foreach(var r in hub.Routes)
             {
                 if(r.Reserved)continue;var g=hub.Gate(r.Gate);if(g==null)continue;double dx=r.Approach.x-g.X,dz=r.Approach.z-g.Z,len=Math.Sqrt(dx*dx+dz*dz);if(len<1)continue;dx/=len;dz/=len;
-                string name=r.To=="exp-ward-zero"?"WARD ZERO":r.To.ToUpperInvariant();
+                string name=RouteSign(r,true);
                 for(double at0=15;at0<len-6;at0+=15)
                 {
                     // A marker that would land on cover (the rubble heap on the axis) slides along the route to clear ground.
@@ -341,7 +341,7 @@ namespace ChipArena.UnityConversion
                     // A face along the route (its normal across it), beside the route's last stretch through the city's edge or the wilds.
                     double along=(cx-g.X)*dx+(cz-g.Z)*dz,across=Math.Abs(-(cx-g.X)*dz+(cz-g.Z)*dx);if(Math.Abs(Nx(f)*dx+Nz(f)*dz)>.2||along<24||along>len-10||across>21)continue;
                     double u=U(f,g.X+dx*Math.Min(len-12,Math.Max(26,along)),g.Z+dz*Math.Min(len-12,Math.Max(26,along)));if(u<f.U0+2.5||u>f.U1-2.5)continue;
-                    double ahead=Tx(f)*dx+Tz(f)*dz;string to=r.Reserved?(r.To=="exp-foundry"?"IRONWORKS":"STATION")+" SEALED":(r.To=="exp-ward-zero"?"WARD ZERO":r.To.ToUpperInvariant())+" "+Metres(r.Path*(1-along/len))+" M";
+                    double ahead=Tx(f)*dx+Tz(f)*dz;string to=r.Reserved?RouteSign(r,true):RouteSign(r,true)+" "+Metres(r.Path*(1-along/len))+" M";
                     string word=ahead>0?to+" >":"< "+to;double cell=.075;if(!Open(f,u-TextWidth(word,cell)/2-.3,u+TextWidth(word,cell)/2+.3,2.0,2.9,.05))continue;
                     Begin();FBox(f,u,2.45,.04,TextWidth(word,cell)+.4,.6,.04,P(NativeBlockLooks.Plain,r.Reserved?0x2A2622:0x14303A,RoleSign));Text(f,word,u,2.45-2.5*cell,.07,cell,.01,P(NativeBlockLooks.Plain,r.Reserved?0xB8B0A0:0xD8F4FF,RoleSign));if(End())signs[r.To]=made+1;
                     double back=-ahead;string home=back>0?"SANCTUARY >":"< SANCTUARY";if(Wild(cx,cz)&&Open(f,u-TextWidth(home,.08)/2-.1+(back>0?3:-3),u+TextWidth(home,.08)/2+.1+(back>0?3:-3),1.5,2.1,.05)){Begin();Text(f,home,u+(back>0?3:-3),1.55,.075,.08,.01,P(NativeBlockLooks.Plain,0x5AD87A,RoleSign),(Hash(id,f.Index,5)-.5)*4);End();}
@@ -360,7 +360,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Block letters painted flat on the street at (x, z), read by someone walking along (dx, dz).</summary>
         private void GroundText(string text,double x,double z,double dx,double dz,double cell,int hex)
         {
-            double l=Math.Sqrt(dx*dx+dz*dz);if(l<1e-6)return;dx/=l;dz/=l;double rx=dz,rz=-dx;double width=TextWidth(text,cell),u0=-width/2;double yaw=Math.Atan2(dx,dz)*180/Math.PI;
+            double l=Math.Sqrt(dx*dx+dz*dz);if(l<1e-6)return;dx/=l;dz/=l;double rx=dz,rz=-dx;double width=TextWidth(text,cell),u0=-width/2;double yaw=Math.Atan2(dx,dz)*180/Math.PI;lettering.Add(text);
             for(int i=0;i<text.Length;i++)foreach(var gl in GlyphBoxes(text[i]))
             {
                 double cu=u0+i*4*cell+(gl[0]+gl[2]*.5)*cell,cv=(5-gl[1]-gl[3]*.5)*cell-2.5*cell;double px=x+rx*cu+dx*cv,pz=z+rz*cu+dz*cv;int g=GroundAt(px,pz);if(g<0)continue;
