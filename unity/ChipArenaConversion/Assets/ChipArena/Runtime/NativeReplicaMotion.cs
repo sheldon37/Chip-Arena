@@ -114,7 +114,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in Minions)
             {
                 var x=a.minions.FirstOrDefault(f=>f.id==m.Id);var y=b.minions.FirstOrDefault(f=>f.id==m.Id);
-                if(x!=null&&y!=null){SetReplicaPosition(m.Body,Vector3.Distance(x.position,y.position)<5?Vector3.Lerp(x.position,y.position,blend):y.position);m.Yaw=Mathf.LerpAngle(x.yaw,y.yaw,blend);}
+                if(x!=null&&y!=null){SetReplicaPosition(m.Body,Vector3.Distance(x.position,y.position)<5?Vector3.Lerp(x.position,y.position,blend):y.position);m.Yaw=Mathf.LerpAngle(x.yaw,y.yaw,blend);if(IsZoneBoss(m))m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);}
             }
             Physics.SyncTransforms();
         }

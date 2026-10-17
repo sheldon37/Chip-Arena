@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     /// <summary>What drives the hazards' presentation this frame: the instance's hazard clock (s since its schedule began; Astra's
     /// authority will publish it with the phase), whether it runs, the wave (1..4) and whether the boss encounter is on. The DEV
     /// preview fills one from the presentation clock; with nothing bound every hazard rests (Idle).</summary>
-    public struct IronworksHazardInput {public bool Running,Boss;public double Clock;public int Wave;}
+    public struct IronworksHazardInput {public bool Running,Boss;public double Clock;public int Wave;public double ConverterAt,OverflowAt;public int ConverterMask;public bool Overflow;}
     /// <summary>A hazard's state for the presentation: phase (Idle, Warn, Active = the live window, Clear = the harmless cool-down),
     /// its cycle (-1 before the first), how long the phase has run and has left, a 0..1 level (the warning's build, 1 while live,
     /// the cool-down's fade), the rate it runs at (<see cref="NativeIronworksHazards.RateOff"/>, Half or Full) and `Parked` (the
@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         public const byte RateOff=0,RateHalf=1,RateFull=2;
         /// <summary>Wave 1 schedule values and the boss rule.</summary>
         public const byte Wave1Off=0,Wave1Half=1,Wave1On=2,BossOff=0,BossOn=1,BossDriven=2;
-        public const int R1=0,R2=1,R3=2,Ladle=3,Hammer=4,Slag=5,Slab=6,Shear=7,Steam=8,Pusher=9,Converter=10,Count=11;
+        public const int R1=0,R2=1,R3=2,Ladle=3,Hammer=4,Slag=5,Slab=6,Shear=7,Steam=8,Pusher=9,Converter=10,ConverterSouth=11,PitOverflow=12,Count=13;
         /// <summary>The section 5 list in the draft's order (docs/arenas/scripts/expedition_ironworks.py `hazards`); the managed
         /// check holds each id, volume and cycle to the draft record.</summary>
         public static readonly IronworksHazardDef[] Defs=
@@ -62,7 +62,9 @@ namespace ChipArena.UnityConversion
             Def("flying-shear",KindShear,-15.5f,2.3f,-25,.4f,2,2.6f,1,.6f,9,0,.6f,0,0,Wave1Off,2,BossOn),
             Def("quench-steam",KindVent,-44,3,18,4,6,4,1.5f,3,22,0,2.5f,44,1.5f,Wave1Half,1,BossOn),
             Def("pusher",KindPusher,-37,1.8f,26,3,3.6f,3.1f,3,6,30,0,2,0,0,Wave1Off,3,BossOn),
-            Def("converter-tilt",KindConverter,-39,.3f,7,4,.6f,4,2.5f,4,0,0,0,0,0,Wave1Off,99,BossDriven),
+            Def("converter-tilt",KindConverter,-39.3f,.3f,7,5.4f,.6f,2.4f,2.5f,4,0,0,2,0,0,Wave1Off,99,BossDriven),
+            Def("converter-tilt-s",KindConverter,-39.3f,.3f,-7,5.4f,.6f,2.4f,2.5f,4,0,0,2,0,0,Wave1Off,99,BossDriven),
+            Def("pit-overflow",KindSlag,-35,.3f,0,7.2f,.6f,7.2f,0,8,14,0,6,0,0,Wave1Off,99,BossDriven),
         };
         public const string IdPrefix=NativeIronworksKit.Prefix;
         private static IronworksHazardDef Def(string id,byte kind,float x,float y,float z,float sx,float sy,float sz,float warn,float live,float period,float offset,float cool,float halfPeriod,float halfWarn,byte wave1,byte from,byte boss)
@@ -73,7 +75,7 @@ namespace ChipArena.UnityConversion
         public static byte RateOf(int i,in IronworksHazardInput input)
         {
             if(!input.Running||i<0||i>=Count)return RateOff;var d=Defs[i];
-            if(input.Boss)return d.Boss==BossOn?RateFull:RateOff;
+            if(input.Boss){if(i==PitOverflow)return input.Overflow?RateFull:RateOff;if(i==Converter||i==ConverterSouth)return input.ConverterAt>=0&&(input.ConverterMask&(i==Converter?1:2))!=0?RateFull:RateOff;return d.Boss==BossOn?RateFull:RateOff;}
             int wave=Math.Max(1,input.Wave);if(wave==1)return d.Wave1==Wave1On?RateFull:d.Wave1==Wave1Half?RateHalf:RateOff;
             return wave>=d.From?RateFull:RateOff;
         }
@@ -82,8 +84,9 @@ namespace ChipArena.UnityConversion
         {
             var v=new IronworksHazardView{Phase=NativeHazardPhase.Idle,Cycle=-1};if(i<0||i>=Count)return v;var d=Defs[i];
             v.Rate=RateOf(i,input);v.Parked=i==Ladle&&input.Running&&input.Boss;if(v.Rate==RateOff)return v;
+            if(i==Converter||i==ConverterSouth){double t=input.Clock-input.ConverterAt;if(t<0)return v;v.Cycle=0;v.Since=t;if(t<d.Warn){v.Phase=NativeHazardPhase.Warn;v.Until=d.Warn-t;v.Level=(float)(t/d.Warn);}else if(t<d.Warn+d.Live){v.Phase=NativeHazardPhase.Active;v.Since=t-d.Warn;v.Until=d.Warn+d.Live-t;v.Level=1;}else if(t<d.Warn+d.Live+d.Cool){v.Phase=NativeHazardPhase.Clear;v.Since=t-d.Warn-d.Live;v.Until=d.Warn+d.Live+d.Cool-t;v.Level=(float)(v.Until/d.Cool);}return v;}
             double period=v.Rate==RateHalf&&d.HalfPeriod>0?d.HalfPeriod:d.Period,warn=v.Rate==RateHalf&&d.HalfWarn>0?d.HalfWarn:d.Warn;if(!(period>0))return v;
-            double u=input.Clock-d.Offset;if(double.IsNaN(u))return v;if(u<0){v.Until=-u;return v;}
+            double u=input.Clock-(i==PitOverflow?input.OverflowAt:d.Offset);if(double.IsNaN(u))return v;if(u<0){v.Until=-u;return v;}
             double c=Math.Floor(u/period);v.Cycle=c>int.MaxValue?int.MaxValue:(int)c;u-=c*period;double a=d.Live,cool=d.Cool;
             if(u<warn){v.Phase=NativeHazardPhase.Warn;v.Since=u;v.Until=warn-u;v.Level=(float)Clamp01(u/Math.Max(.001,warn));}
             else if(u<warn+a){v.Phase=NativeHazardPhase.Active;v.Since=u-warn;v.Until=warn+a-u;v.Level=1;}

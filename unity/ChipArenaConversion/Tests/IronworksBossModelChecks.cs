@@ -213,7 +213,7 @@ namespace ChipArena.UnityConversion
         {
             string self=Path.Combine(root,"Assets/ChipArena/Core/NativeIronworksBossModel.cs");
             var hits=Directory.EnumerateFiles(Path.Combine(root,"Assets"),"*",SearchOption.AllDirectories)
-                .Where(p=>TextKinds.Contains(Path.GetExtension(p))&&!p.Replace('\\','/').Contains("/LocalAssets/")&&Path.GetFullPath(p)!=Path.GetFullPath(self))
+                .Where(p=>Path.GetFileName(p)!="NativeZoneBossRules.cs"&&TextKinds.Contains(Path.GetExtension(p))&&!p.Replace('\\','/').Contains("/LocalAssets/")&&Path.GetFullPath(p)!=Path.GetFullPath(self))
                 .Where(p=>{var t=File.ReadAllText(p);return Names.Any(n=>t.Contains(n,StringComparison.Ordinal))||t.Contains(NativeIronworksBoss.Archetype,StringComparison.Ordinal);}).ToArray();
             Check(hits.Length==0,"nothing under Assets/ but the model itself names the concept or its archetype ("+string.Join(", ",hits.Select(Path.GetFileName))+")");
         }

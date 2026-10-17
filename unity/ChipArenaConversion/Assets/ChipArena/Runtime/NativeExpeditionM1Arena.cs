@@ -225,7 +225,7 @@ namespace ChipArena.UnityConversion
             if(Pve.Holding){if(ZoneHazards!=null)ZoneHazards.trainAt=Math.Max(ZoneHazards.trainAt,Time+4);return;}
             if(expeditionBoss!=null)
             {
-                var boss=Pve.Boss;bool defeated=StepPveBossPhases();if(Pve.Holding)return;Expedition.UpdateBossHealth(s.area,expeditionBoss,Math.Max(0,boss.Hp),Pve.MaxHp);
+                var boss=Pve.Boss;if(ZoneBoss!=null)StepZoneBoss();bool defeated=ZoneBoss!=null?ZoneBoss.deathAt>=0&&Time>=ZoneBoss.deathAt+(ZoneBoss.archetype==NativeZoneBossRules.Station?4:7):StepPveBossPhases();if(Pve.Holding)return;Expedition.UpdateBossHealth(s.area,expeditionBoss,Math.Max(0,boss.Hp),Pve.MaxHp);
                 if(defeated)
                 {
                     bool accepted=s.phase==ExpeditionPhase.FinalBoss?Expedition.FinalDefeated(Vec(boss.Body.position)):Expedition.BossDefeated(expeditionBoss,Vec(boss.Body.position));
@@ -241,7 +241,8 @@ namespace ChipArena.UnityConversion
             var point=expeditionArea.bossPoints[0];var boss=Pve.Boss;Pve.MaxHp=NativePveRules.BossHp(Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.health;
             boss.Stats["hp"]=Pve.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.damage;boss.Hp=Pve.MaxHp;boss.Seat.alive=true;
             SetBossHidden(false);boss.Body.position=Vec(point.Position)+Vector3.up*NativeLocomotionRules.HalfHeight;boss.Yaw=point.yaw;Pve.Stage="boss";Pve.Phase=1;Pve.Floor=Pve.MaxHp*.75f;
-            if(!Expedition.RecordBossArrival(id,"siren",kind=>Content.weapons.Any(w=>w.id==kind),point.Position,boss.Hp,Pve.MaxHp))throw new InvalidOperationException("Boss arrival rejected.");
+            string archetype=NativeZoneBossRules.RuntimeEnabled?NativeZoneBossRules.Archetype(MapId)??"siren":"siren";if(archetype!="siren"){var position=archetype==NativeZoneBossRules.Station?new Vector3(0,0,1.5f):Vec(point.Position);SpawnZoneBoss(archetype,position,archetype==NativeZoneBossRules.Station?0:90);}
+            if(!Expedition.RecordBossArrival(id,archetype,kind=>NativeZoneBossRules.Known(kind)||Content.weapons.Any(w=>w.id==kind),ZoneBoss==null?point.Position:Vec(zoneBossActor.Body.position),boss.Hp,Pve.MaxHp))throw new InvalidOperationException("Boss arrival rejected.");
             expeditionBoss=id;BeginPveHold("intro");
         }
         private void ExpeditionKilled(NativeMinion minion,NativePilot source)

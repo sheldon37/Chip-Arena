@@ -113,6 +113,12 @@ namespace ChipArena.UnityConversion.Editor
                             foreach(var m in packet.minions){var decoded=guest.Minions.Single(n=>n.Id==m.id);Check(decoded.Pve!=null&&decoded.Pve.Zone.arcAt==m.zone.arcAt&&decoded.Pve.Zone.pullAt==m.zone.pullAt&&decoded.Pve.Zone.chainCutAt==m.zone.chainCutAt&&decoded.Pve.Zone.grabTarget==m.zone.grabTarget,"guest applies zone enemy state");}
                             Check(guest.ZoneHazards?.clock==packet.pve.zone?.clock,"guest applies owning instance hazard clock");
                         });
+                        registry.Find(area.id).Arena.ValidateZoneBossAuthority(frame=>
+                        {
+                            var packet=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=frame})).frame;
+                            Check(packet.Valid(content),"zone boss packet accepted");guest.ApplyFrame(packet,packet.pilots.First(p=>p.id!=900).id);
+                            Check(guest.ZoneBoss!=null&&guest.ZoneBoss.actor==packet.pve.zoneBoss.actor&&guest.ZoneBoss.hitAt==packet.pve.zoneBoss.hitAt,"guest applies boss identity and contact clock");
+                        });
                     }
                     finally{guest?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}
                 }
