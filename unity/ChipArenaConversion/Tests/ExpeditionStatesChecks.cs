@@ -126,29 +126,37 @@ namespace ChipArena.UnityConversion
             scene.Build(town,wardRig,cues,0,eye,false,false);Check(scene.Parts.Count==0&&!scene.HasLeaf(WardDoor),"a rig of another area draws nothing");
             var stripped=p.View();stripped.closures=Array.Empty<ExpeditionClosureView>();scene.Build(stripped,cityRig,cues,0,eye,false,false);
             Check(!scene.HasLeaf(CityDoor)&&scene.DoorsDrawn==0&&scene.Parts.Count==0,"a door without its closure record has no leaf (the HUD hologram stands in)");
-            // Enter: the barrier, then the instance; both doors of Ward Zero seal from the authority's `began`.
+            // Enter: the barrier, then the instance; both doors of Ward Zero seal from the authority's `began`. The instance's exit is
+            // the laser door (ExpeditionLaserDoorChecks has its arrival lock, unlock, tiers and the live split director).
+            Check(wardRig.Doors[0].Look==ExpeditionDoorLook.Laser,"the instance's exit is the laser door");
             p.At=new V3(43,0,0);Check(p.Director.EnterDoor("host",CityDoor),"enter");Check(p.Director.Ready("host",Ward,1,p.Fingerprint)&&p.Director.Ready("guest",Ward,1,p.Fingerprint),"ready");
             Check(p.Director.CompleteAreaLoad((_,__)=>true),"placed");var v=p.View();var exit=v.closures.Single(c=>c.id==WardDoor);
             Check(exit.state=="sealing"&&v.closures.Single(c=>c.id==CityDoor).state=="sealing","the authority seals both doors");double began=exit.began;
             for(double dt=0;dt<=1.0001;dt+=.125)
             {
-                scene.Build(v,wardRig,cues,began+dt,eye,false,false);float shut=NativeExpeditionStates.Shut(exit,began+dt);
-                Check(SealUp(scene,wf),"sealing blocks from its first instant: the seal covers the closure face (t+"+dt+")");Leaves(scene,wf,shut,"sealing t+"+dt);
+                scene.Build(v,wardRig,cues,began+dt,eye,false,false);
+                Check(SealUp(scene,wf),"sealing blocks from its first instant: the seal covers the closure face (t+"+dt+")");Laser(scene,true,ExpeditionLaserStage.Lock,"sealing t+"+dt);
             }
             for(int i=0;i<4;i++)p.Session.Tick(.25);v=p.View();exit=v.closures.Single(c=>c.id==WardDoor);
             Check(exit.state=="sealed"&&Math.Abs(exit.began-(began+1))<1e-9,"sealed at exactly one second");scene.Build(v,wardRig,cues,v.elapsed,eye,false,false);
-            Check(SealUp(scene,wf),"sealed: the seal is up");Leaves(scene,wf,1,"sealed");Check(scene.Parts.Count(b=>b.Look==NativeCyberCityLooks.Metal&&b.Hy<.07f&&b.Hx<=.17f)==3,"sealed: three lock bolts");
+            Check(SealUp(scene,wf),"sealed: the seal is up");Laser(scene,true,ExpeditionLaserStage.Sealed,"sealed");Check(scene.LaserBeamsLit==NativeExpeditionLaserDoor.Beams,"sealed: every beam lit");
             // Clear the building: the doors open over one second, and the seal holds until the state is open.
             Check(p.Run.Progress("kill",1)&&p.Run.StartBosses(new[]{"TEST-boss"})&&p.Director.BossDefeated("TEST-boss",new V3(0,0,0)),"cleared");p.Director.Step();
             v=p.View();exit=v.closures.Single(c=>c.id==WardDoor);Check(exit.state=="opening","the authority opens the exit");began=exit.began;
             for(double dt=0;dt<1;dt+=.125)
             {
-                scene.Build(v,wardRig,cues,began+dt,eye,false,false);Check(SealUp(scene,wf),"opening still blocks: the seal stays over the doorway (t+"+dt+")");Leaves(scene,wf,NativeExpeditionStates.Shut(exit,began+dt),"opening t+"+dt);
+                scene.Build(v,wardRig,cues,began+dt,eye,false,false);Check(SealUp(scene,wf),"opening still blocks: the seal stays over the doorway (t+"+dt+")");Laser(scene,true,ExpeditionLaserStage.Unlock,"opening t+"+dt);
             }
-            scene.Build(v,wardRig,cues,began+1.2,eye,false,false);Check(SealUp(scene,wf),"the seal follows the state, not the clock: still up until the view says open");
+            scene.Build(v,wardRig,cues,began+1.2,eye,false,false);Check(SealUp(scene,wf),"the seal follows the state, not the clock: still up until the view says open");Laser(scene,true,ExpeditionLaserStage.Unlock,"opening past its second");
             for(int i=0;i<4;i++)p.Session.Tick(.25);v=p.View();exit=v.closures.Single(c=>c.id==WardDoor);Check(exit.state=="open"&&!exit.Blocking,"open after one second");
-            scene.Build(v,wardRig,cues,v.elapsed,eye,false,false);Check(!SealUp(scene,wf),"open: the seal is gone the moment the collider releases");Leaves(scene,wf,0,"open again");
+            scene.Build(v,wardRig,cues,v.elapsed,eye,false,false);Check(!SealUp(scene,wf),"open: the seal is gone the moment the collider releases");Laser(scene,false,ExpeditionLaserStage.Open,"open again");
             scene.Build(v,wardRig,cues,v.elapsed,eye,true,true);Check(scene.Parts.Count>0&&!SealUp(scene,wf),"reduced and low tiers still draw the door");
+        }
+        /// <summary>The exit's laser door: drawn without airlock leaves, its beams and field sheet standing exactly while it blocks.</summary>
+        private static void Laser(NativeExpeditionStateScene s,bool blocking,ExpeditionLaserStage stage,string when)
+        {
+            Check(s.LaserDrawn&&s.LaserStage==stage,"the laser door draws in its "+stage+" stage ("+when+")");Check((s.LaserBeamsLit>0)==blocking&&s.LaserSheet==blocking,"its beams and sheet stand exactly while it blocks ("+when+")");
+            Check(!s.Parts.Any(b=>b.Look==NativeWardZeroLooks.Panel&&b.Flags==NativeCyberCityLooks.Bank),"no airlock leaves on the exit ("+when+")");
         }
         /// <summary>The seal's fill: one premultiplied quad whose corners are exactly the closure face at the seal depth.</summary>
         private static bool SealUp(NativeExpeditionStateScene s,ExpeditionFrame f)
