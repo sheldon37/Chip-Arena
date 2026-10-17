@@ -80,7 +80,7 @@ internal static class ZoneBossMusicChecks
         string st=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionStationPresentation.cs")),iw=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeIronworksPresentation.cs"));
         Check(st.Contains("stationState.Evaluate(view,now);stationState.Score(ZoneBossBeat(arena));NativeLighting.ZoneHouse(stationState.Music.House());")&&iw.Contains("iwMusic=ZoneBossBeat(arena);NativeLighting.ZoneHouse(iwMusic.House());")&&iw.Contains("iwFx.Music=iwMusic;"),"both stages take the song each frame (and give the house back when it stops)");
         string lighting=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeLighting.cs"));
-        Check(lighting.Contains("public static void ZoneHouse(float scale)")&&lighting.Contains("arenaPicked=false;zoneHouse=1;")&&lighting.Contains("if(introActive||current==null||"),"the house scale leaves entrances alone and restarts from the look on Apply");
+        Check(lighting.Contains("public static void ZoneHouse(float scale)")&&lighting.Contains("arenaPicked=false;WardFieldOff();zoneHouse=1;")&&lighting.Contains("if(introActive||current==null||"),"the house scale leaves entrances alone and restarts from the look on Apply");
     }
 
     // ---------------- the clock ----------------

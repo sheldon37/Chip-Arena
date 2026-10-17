@@ -229,7 +229,7 @@ namespace ChipArena.UnityConversion
         // looks moved into data, except Cinder Crossing's sky (forge theme).
         public static void Apply(ContentMap map,Camera camera)
         {
-            var look=Look(map);current=look;currentMap=map;arenaPicked=false;zoneHouse=1;WardFieldOff();var s=applied;NativeMapLooks.Applied(look,map.sky,NativeArenaDressing.Preview,s);
+            var look=Look(map);current=look;currentMap=map;arenaPicked=false;WardFieldOff();zoneHouse=1;var s=applied;NativeMapLooks.Applied(look,map.sky,NativeArenaDressing.Preview,s);
             camera.farClipPlane=s.FarClip;camera.backgroundColor=C(s.Background);camera.clearFlags=s.Skybox?CameraClearFlags.Skybox:CameraClearFlags.SolidColor;
             WriteFog(s.Fog);if(introActive)stageFog=ReadFog();
             Sky(s);RenderSettings.skybox=s.Skybox?sky:null;Shadows();

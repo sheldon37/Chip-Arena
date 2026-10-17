@@ -305,8 +305,8 @@ namespace ChipArena.UnityConversion
             {
                 double delay=H(92,i)*.55,age=t-delay,life=1.1+H(93,i)*.7;if(age<0||age>life)continue;
                 double x0=-18+H(94,i)*44,z0=-11+H(95,i)*28,top=13.4+H(96,i)*1.4,vx=(H(97,i)-.5)*1.2,vz=(H(98,i)-.5)*1.2;
-                double y=top-4.9*age*age-.6*age,x=x0+vx*age,z=z0+vz*age;if(y<.05)continue;double vy=-9.8*age-.6,dt=.035;
-                double fade=(1-age/life)*(1-.6*age/life);Streak(x,y,z,x+vx*dt,y+vy*dt,z+vz*dt,.024,2.8*fade,1.35*fade,.42*fade,1);Sparks++;
+                double y=top-4.9*age*age-.6*age,x=x0+vx*age,z=z0+vz*age;if(y<.05)continue;double vy=-9.8*age-.6,dt=.06;
+                double fade=(1-age/life)*(1-.6*age/life);Streak(x,y,z,x+vx*dt,y+vy*dt,z+vz*dt,.045,3.4*fade,1.6*fade,.5*fade,1);Sparks++;
             }
         }
 
