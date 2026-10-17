@@ -21,7 +21,7 @@
 - **Hand-off:** `docs/ZONE-BOSS-MUSIC.md` gives tempo, bars, sections, intro accents, drops, the loop and the API for the boss branches (`claude/boss-central-station`, `claude/boss-city-ironworks`).
 - **Checks:** `Tests/ZoneBossMusicChecks.cs` has 292 checks (`CoreTests --zone-boss-music`, inside `--zone-music` and in the full run). They cover map validity and sha256, the hold pin, routing and fallback, the intro edit and looped clock, purity and determinism, flash caps in all three modes, no allocation, the choreography, and that hazards are untouched.
   - On `65d7f2e`: `--zone-music` passed (19 + 292) and `--ward-lighting` passed.
-  - run5b on the final head: see the follow-up line.
+  - run5b on `7f5809e` (only this line changed after it) passed all five steps: the Unity runtime and editor compile check, the managed relay (781 PASS lines, including ward lighting, zone music and zone boss music), the Python tests (140, 1 skipped), the source package and the diff check.
 - **Renders:** scratch only, not in the repo. Beat-map plots, click-track mixes, loop seams, intro and fight frames for each stage, and short intro videos with the song, all from the offline harness.
 - **Not run / risks:** no Unity Editor play, Windows build, two-client sync or in-game listening. Risks:
   - The MP3 decoder's start delay (about 25-35 ms) and NativeAudio's 0.12 s resync tolerance.
