@@ -96,7 +96,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The record `p` seconds into the script, its times offset to `baseAt` on the clock.</summary>
         public static void View(float p,float baseAt,ref IronworksBossView v,out Vector3 velocity,out Vector2 target,out double arrival,out double death)
         {
-            v=IronworksBossView.None;v.live=true;v.spawned=baseAt+SpawnAt;v.maxHp=6000;
+            // No boss before its spawn (the record appears with the arrival, as the authority's does).
+            v=IronworksBossView.None;v.live=p>=SpawnAt;v.spawned=baseAt+SpawnAt;v.maxHp=6000;
             Root(p,out float x,out float z,out float yaw);Root(p+1/240f,out float x2,out float z2,out _);Root(p-1/240f,out float x1,out float z1,out _);
             v.x=x;v.z=z;v.y=0;v.yaw=yaw;velocity=new Vector3((x2-x1)*120,0,(z2-z1)*120);
             arrival=p>=SpawnAt?p-SpawnAt:double.NaN;death=p>=DeathAt?p-DeathAt:double.NaN;

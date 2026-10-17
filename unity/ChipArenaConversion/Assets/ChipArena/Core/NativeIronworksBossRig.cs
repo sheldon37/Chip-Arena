@@ -367,7 +367,7 @@ namespace ChipArena.UnityConversion
                 switch(a.Id)
                 {
                     case "blow":if(age>hit&&age<hit+2.0f){float k=BossMath.Smooth((age-hit)/.2f)*(1-BossMath.Smooth((age-hit-1.7f)/.3f));ch[Ch.Tilt]+=1.2f*k*(float)Math.Sin(BossMath.Tau*6*age);ch[Ch.BY]+=.02f*k*(float)Math.Sin(BossMath.Tau*6*age+1);}break;
-                    case "deslag":for(int i=0;i<3;i++){float k=age-hit-i*.4f;if(k>=0&&k<.5f){float e=(float)Math.Exp(-k*9)*BossMath.Smooth(k/.03f);ch[Ch.Tilt]-=6*e;ch[Ch.BP]+=1.5f*e;ch[Ch.BZ]-=.06f*e;}}break;
+                    case "deslag":for(int i=0;i<3;i++){float k=age-hit-i*.4f;if(k>=0&&k<.6f){float e=1.25f*(float)Math.Exp(-k*8)*BossMath.Smooth(k/.07f)*(1-BossMath.Smooth((k-.4f)/.2f));ch[Ch.Tilt]-=6*e;ch[Ch.BP]+=1.5f*e;ch[Ch.BZ]-=.06f*e;}}break;
                     case "call":if(age>hit&&age<hit+.9f){float k=(float)Math.Exp(-(age-hit)*2.5f);ch[Ch.BR]+=.8f*k*(float)Math.Sin(BossMath.Tau*7*age);}break;
                     case "charge":if(Act.Struck&&age<hit+a.Strike){ch[Ch.BP]+=4*(float)Math.Sin(BossMath.Tau*Legs.Frequency*1*(age-hit)+.5f);}break;
                 }
