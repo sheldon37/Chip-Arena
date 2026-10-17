@@ -4,10 +4,16 @@ using System.Linq;
 
 namespace ChipArena.UnityConversion
 {
+    public enum ExpeditionJoinClosedReason { Open, Cleared, Locked, Reserved }
     [Serializable] public sealed class ExpeditionJoinView
     {
-        public string doorId,area;public float x,y,z,r;public int joinInside;public double joinStartedAt=-1,duration=3;
-        public ExpeditionJoinView Copy()=>(ExpeditionJoinView)MemberwiseClone();
+        public string doorId,area;public float x,y,z,r,h;public int joinInside;public double joinStartedAt=-1,duration=3;
+        // Last accepted transfer, retained until the next accepted transfer or reset.
+        // An empty ring is not evidence of a deploy. Accounts are the captured cohort.
+        public double deployedAt=-1;
+        public string[] deployedAccounts=Array.Empty<string>();
+        public ExpeditionJoinClosedReason closedReason;
+        public ExpeditionJoinView Copy(){var copy=(ExpeditionJoinView)MemberwiseClone();copy.deployedAccounts=(string[])deployedAccounts.Clone();return copy;}
     }
     public sealed class ExpeditionJoinMember
     {
@@ -35,18 +41,24 @@ namespace ChipArena.UnityConversion
             {
                 var a=world.anchors.Single(v=>v.id==d.anchor&&v.kind=="door");var j=d.join;
                 if(!layout.instances.Contains(a.building)||!new[]{j.x,j.y,j.z,j.r,j.h}.All(v=>ExpeditionValidation.Number(v))||j.r<=0||j.h<=0)throw new ArgumentException("Validated join geometry required.");
-                return new Ring{Shape=new ExpeditionJoinCylinder{x=j.x,y=j.y,z=j.z,r=j.r,h=j.h},View=new ExpeditionJoinView{doorId=d.anchor,area=a.building,x=j.x,y=j.y,z=j.z,r=j.r,duration=Duration}};
+                return new Ring{Shape=new ExpeditionJoinCylinder{x=j.x,y=j.y,z=j.z,r=j.r,h=j.h},View=new ExpeditionJoinView{doorId=d.anchor,area=a.building,x=j.x,y=j.y,z=j.z,r=j.r,h=j.h,duration=Duration}};
             }).ToArray();
         }
         public ExpeditionJoinView[] Views=>rings.Select(r=>r.View.Copy()).ToArray();
         public bool AtJoin(string account)=>account!=null&&selected.ContainsKey(account);
         public string DoorFor(string account)=>account!=null&&selected.TryGetValue(account,out var door)?door:null;
-        public void Reset(){if(stepping)throw new InvalidOperationException("Join step is active.");selected.Clear();last=-1;foreach(var r in rings){r.View.joinInside=0;r.View.joinStartedAt=-1;}}
+        public void Reset(){if(stepping)throw new InvalidOperationException("Join step is active.");selected.Clear();last=-1;foreach(var r in rings){r.View.joinInside=0;r.View.joinStartedAt=-1;r.View.deployedAt=-1;r.View.deployedAccounts=Array.Empty<string>();r.View.closedReason=ExpeditionJoinClosedReason.Open;}}
         public void Step(double elapsed,IEnumerable<ExpeditionJoinMember> members,Func<string,bool> admitted,
             Func<string,string,string[],bool> transfer)
         {
+            if(admitted==null)throw new ArgumentNullException(nameof(admitted));
+            Step(elapsed,members,area=>admitted(area)?ExpeditionJoinClosedReason.Open:ExpeditionJoinClosedReason.Locked,transfer);
+        }
+        public void Step(double elapsed,IEnumerable<ExpeditionJoinMember> members,Func<string,ExpeditionJoinClosedReason> closedReason,
+            Func<string,string,string[],bool> transfer)
+        {
             if(stepping)throw new InvalidOperationException("Reentrant join step.");
-            if(!ExpeditionValidation.Number(elapsed)||elapsed<0||elapsed<last||members==null||admitted==null||transfer==null)throw new ArgumentException("Monotonic host clock, membership and transfer adapters required.");
+            if(!ExpeditionValidation.Number(elapsed)||elapsed<0||elapsed<last||members==null||closedReason==null||transfer==null)throw new ArgumentException("Monotonic host clock, membership and transfer adapters required.");
             if(elapsed==last)return;
             // Snapshot once: an expiry callback cannot alter another ring's captured
             // membership. One account resolves to the first ordinal door, every tick.
@@ -55,7 +67,11 @@ namespace ChipArena.UnityConversion
             stepping=true;
             try
             {
-                last=elapsed;selected.Clear();var allowed=rings.Where(r=>admitted(r.View.area)).ToArray();
+                var reasons=rings.Select(r=>closedReason(r.View.area)).ToArray();
+                if(reasons.Any(r=>!Enum.IsDefined(typeof(ExpeditionJoinClosedReason),r)))throw new ArgumentException("Unknown join closed reason.");
+                last=elapsed;selected.Clear();
+                for(int i=0;i<rings.Length;i++)rings[i].View.closedReason=reasons[i];
+                var allowed=rings.Where(r=>r.View.closedReason==ExpeditionJoinClosedReason.Open).ToArray();
                 foreach(var m in roster.Where(m=>m.Area==hub&&m.Alive&&m.Connected&&!m.Extracted&&!m.Loading&&!m.Choosing&&!m.Carrying))
                 {
                     if(!ExpeditionValidation.Number(m.Feet.x)||!ExpeditionValidation.Number(m.Feet.y)||!ExpeditionValidation.Number(m.Feet.z))continue;
@@ -77,7 +93,7 @@ namespace ChipArena.UnityConversion
                     // countdown, rather than hammering the adapter every fixed tick.
                     e.ring.View.joinStartedAt=-1;
                     if(transfer(e.ring.View.doorId,e.ring.View.area,(string[])e.cohort.Clone()))
-                    {foreach(var a in e.cohort)selected.Remove(a);e.ring.View.joinInside=0;}
+                    {foreach(var a in e.cohort)selected.Remove(a);e.ring.View.joinInside=0;e.ring.View.deployedAt=elapsed;e.ring.View.deployedAccounts=(string[])e.cohort.Clone();}
                 }
             }
             finally{stepping=false;}

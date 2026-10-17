@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
 
     [Serializable] public sealed class ExpeditionViewMember
     {
-        public string account, name, weapon, carriedBy, area;public int reprintCost, seat;
+        public string account, name, weapon, carriedBy, area, pendingArea;public int reprintCost, seat;
         public bool connected, alive, safe, extracted, choosing, host, exitVote, extractVote, atJoin;
     }
     [Serializable] public sealed class ExpeditionViewInstance
@@ -182,7 +182,7 @@ namespace ChipArena.UnityConversion
                 difficulty=scaling.Evaluate(s.elapsed,party,s.loop,s.phase==ExpeditionPhase.Instance),
                 savedRevision=sources.Saved!=null&&sources.Saved.checkpoint!=null&&sources.Saved.checkpoint.run==s.run?sources.Saved.checkpoint.revision:-1,
             };
-            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,area=sources.Cohorts?.Member(p.account)?.Area??s.area,atJoin=sources.Joins?.AtJoin(p.account)==true,seat=Math.Max(0,sources.Seat?.Invoke(p.account)??0),name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
+            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,area=sources.Cohorts?.Member(p.account)?.Area??s.area,pendingArea=sources.Cohorts?.Member(p.account)?.Pending==null?null:sources.Cohorts.Member(p.account).Ticket.area,atJoin=sources.Joins?.AtJoin(p.account)==true,seat=Math.Max(0,sources.Seat?.Invoke(p.account)??0),name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
                 safe=p.safe,extracted=p.extracted,choosing=run.IsChoosing(p.account),host=p.account==s.host,exitVote=s.exitVotes.Contains(p.account),extractVote=s.extractVotes.Contains(p.account)}).ToArray();
             v.instances=s.instances.Select(i=>new ExpeditionViewInstance{id=i.id,target=i.target,progress=i.progress,entered=i.entered,cleared=i.cleared,
                 current=s.phase==ExpeditionPhase.Instance&&i.id==s.area,bosses=(string[])i.bosses.Clone(),defeated=(string[])i.defeated.Clone()}).ToArray();

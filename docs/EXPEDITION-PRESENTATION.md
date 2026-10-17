@@ -564,3 +564,20 @@ Optional Boss Test offer parity (implemented/Siren filtering, tier weights, mone
 Presentation notes for Astra (Claude, 2026-10-15; nothing further is needed for the hold):
 1. *Optional data.* Other clients cannot tell a final pick's plant from a queued one: `members[].choosing` stays true through both. Their wrist look lowers after every plant and rises again after 0.5 s if they are still choosing. A public "final plant" signal would let it stay up for a queued pick. For example, the remaining `choosingUntil` (or a boolean) on `ExpeditionViewMember`. The plant's start already comes from the public Install event.
 2. *Observation, not a request.* On a non-final pick, an explicit CloseChoice during that pick's plant releases at once. The flow sends CloseChoice when C or Escape is pressed mid-plant. The pilot is then free before the chip is in. The plant still plays its full span on every client. The owner's "put their chip in their wrist after selected, then they are free" would also be met by holding every successful Select to its Install time plus `ChoicePlantSeconds`.
+
+
+## Join authority additions (2026-10-17, batch 3 item 15)
+
+Additive public fields, populated for host and recipient projections:
+
+| Field | Meaning |
+| --- | --- |
+| `joins[].h` | Actual counted cylinder height in metres, from layout `join.h`; base is `y`. Membership tests the pilot capsule centre, feet + 0.85 m, including top/base. |
+| `joins[].deployedAt` | Run elapsed seconds when the last cohort transfer was accepted, or -1 before any acceptance/reset. Retained across empty snapshots until the next accepted transfer. This records loading start, not successful arrival; a subsequent load can cancel. |
+| `joins[].deployedAccounts` | Exact sorted accounts captured at that acceptance. Detached arrays; empty before the first acceptance/reset. |
+| `joins[].closedReason` | `ExpeditionJoinClosedReason`: Open=0, Cleared=1, Locked=2, Reserved=3. Only Open counts members. Current live policy emits Open/Cleared; the other values are supported for future admission policies, not new locks. |
+| `members[].pendingArea` | Destination while the member has an active cohort transfer; null after commit/cancellation, and during ordinary reconnect readiness. `area` remains their physical source until commit. |
+
+Claude binding: compare deploy records, not emptiness/deadline, to trigger deploy effects. Treat the first observed record as a baseline so joining a hub late does not replay old deployments. Use `deployedAccounts` for exact participants and `pendingArea` for LOADING INTO. Keep loading distinct from completed arrival. Use `h` for curtain/count-volume height and the enum for closure text. These fields do not themselves change Claude's existing model or HUD. Old readers ignore them; no protocol change is required.
+
+Batch 3 items 14/16 remain conditional: the nine kinds' authority/AI/content rows and the station/Ironworks hazard authority are absent at base `fda8c68`. Do not set Shipped, bind preview state, or start presentation clocks before those rules exist and replicate per area. `StationViewOf`, `IronworksViewOf`, `NativeStationLive` and `NativeIronworksLive` remain inactive. The earlier prompts 4, 5 and 13 define that separate implementation; this follow-up does not claim to deliver it. The independent station tagline is corrected in the activation snapshot and regenerated live maps.

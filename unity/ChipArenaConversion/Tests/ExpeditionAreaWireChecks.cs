@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.Json;
 namespace ChipArena.UnityConversion
 {
     internal static class ExpeditionAreaWireChecks
@@ -28,6 +29,18 @@ namespace ChipArena.UnityConversion
             Check(h.Public.area=="hub"&&g.Public.area=="ward"&&h.Public.phase==ExpeditionPhase.Town&&g.Public.phase==ExpeditionPhase.Instance,"viewer-local phase and area");
             Check(h.Public.mine==null&&g.Public.mine==null&&h.Private.mine.wallet==10&&g.Private.mine.wallet==20,"private state separated per recipient");
             Check(g.Public.members.Single(m=>m.account=="host").area=="hub"&&g.Public.members.Single(m=>m.account=="guest").area=="ward","party area list");
+            Check(g.Public.members.All(m=>m.pendingArea==null),"committed members have no pending destination");
+            Check(cohorts.Begin("return","ward","hub",new[]{"guest"},30,(a,b,c)=>new Placement()),"return begins");
+            var loading=ExpeditionAreaProjection.Build("host",cohorts,Project,null);
+            var loadingMember=loading.Public.members.Single(m=>m.account=="guest");
+            Check(loadingMember.area=="ward"&&loadingMember.pendingArea=="hub","other members see source and exact pending destination");
+            var codec=new JsonSerializerOptions{IncludeFields=true};
+            var roundTrip=JsonSerializer.Deserialize<ExpeditionView>(JsonSerializer.Serialize(loading.Public,codec),codec);
+            Check(roundTrip.members.Single(m=>m.account=="guest").pendingArea=="hub","pending destination survives wire codec");
+            cohorts.Cancel("return");current=cohorts.Member("guest").Ticket;
+            cohorts.Acknowledge("guest",current);
+            h=ExpeditionAreaProjection.Build("host",cohorts,Project,null);g=ExpeditionAreaProjection.Build("guest",cohorts,Project,null);
+            Check(g.Public.members.All(m=>m.pendingArea==null),"cancelled transfer clears pending destination");
             var receiver=new ExpeditionViewReceiver("guest");Check(!receiver.Public(g.Public),"split data refused before control binding");Check(receiver.BindArea(current),"control binds receiver");
             Check(!receiver.Public(g.Public)&&receiver.Private(g.Private)&&receiver.View.area=="ward","paired area projection");
             Check(!receiver.Private(h.Private),"another recipient private frame refused");

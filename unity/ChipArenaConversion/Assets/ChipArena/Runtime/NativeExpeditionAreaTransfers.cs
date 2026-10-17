@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
             this.runtimes=runtimes??throw new ArgumentNullException(nameof(runtimes));this.layout=layout??throw new ArgumentNullException(nameof(layout));
             Cohorts=cohorts??throw new ArgumentNullException(nameof(cohorts));this.seat=seat??throw new ArgumentNullException(nameof(seat));Joins=new ExpeditionJoinRules(layout);
         }
-        public void Step(double elapsed,Func<string,ExpeditionMember> member,Func<string,bool> admission)
+        public void Step(double elapsed,Func<string,ExpeditionMember> member,Func<string,ExpeditionJoinClosedReason> admission)
         {
             if(member==null||admission==null)throw new ArgumentNullException();
             Cohorts.Advance(elapsed);

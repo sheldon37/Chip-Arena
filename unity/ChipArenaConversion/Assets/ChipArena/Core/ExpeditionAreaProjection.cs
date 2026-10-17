@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
                 active=member.Pending!=null||!member.Ready,required=barrier?.Required??(member.Ready?0:1),ready=barrier?.Ready??(member.Ready?1:0)};
             view.loading=view.areaBarrier.active;view.areaIdentity=ticket.Copy();
             view.joins=ticket.area==view.world?joins?.Views??Array.Empty<ExpeditionJoinView>():Array.Empty<ExpeditionJoinView>();
-            foreach(var p in view.members){p.area=cohorts.Member(p.account)?.Area;p.atJoin=joins?.AtJoin(p.account)==true;}
+            foreach(var p in view.members){var peer=cohorts.Member(p.account);p.area=peer?.Area;p.pendingArea=peer?.Pending==null?null:peer.Ticket.area;p.atJoin=joins?.AtJoin(p.account)==true;}
             var personal=new ExpeditionPrivateFrame{run=view.run,epoch=view.epoch,revision=view.revision,viewer=account,mine=view.mine,areaIdentity=ticket.Copy()};
             view.mine=null;view.viewer=null;
             return new ExpeditionAreaRecipient{Account=account,Public=view,Private=personal};

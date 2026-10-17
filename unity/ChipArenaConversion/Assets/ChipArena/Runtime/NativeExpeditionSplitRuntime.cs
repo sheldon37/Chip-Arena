@@ -103,7 +103,7 @@ namespace ChipArena.UnityConversion
                 BindSplitLocal(own.Ticket.area);
                 if(!own.Ready&&splitAreas.Find(own.Ticket.area)?.Load==ExpeditionRuntimeLoad.Ready&&ReferenceEquals(stageSeen,arena)&&StagePresentationReady&&StagePresentation.Generation==arena.Generation)splitCohorts.Acknowledge(own.Account,own.Ticket);
                 var before=splitCohorts.Members;
-                splitTransfers.Step(splitRun.Elapsed,id=>splitRun.PartySnapshot().members.FirstOrDefault(m=>m.account==id),id=>!splitRun.PartySnapshot().instances.Single(i=>i.id==id).cleared);
+                splitTransfers.Step(splitRun.Elapsed,id=>splitRun.PartySnapshot().members.FirstOrDefault(m=>m.account==id),id=>splitRun.PartySnapshot().instances.Single(i=>i.id==id).cleared?ExpeditionJoinClosedReason.Cleared:ExpeditionJoinClosedReason.Open);
                 foreach(var group in splitCohorts.Members.Where(m=>before.Single(p=>p.Account==m.Account).Area!=m.Area).GroupBy(m=>(source:before.Single(p=>p.Account==m.Account).Area,destination:m.Area)))
                     if(!splitRun.MoveMembers(group.Key.source,group.Key.destination,group.Select(m=>m.Account).ToArray()))throw new InvalidOperationException("Transfer membership commit failed.");
                 foreach(var m in splitCohorts.Members)
