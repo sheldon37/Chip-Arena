@@ -1,3 +1,52 @@
+## 2026-10-17 — Claude: boss motion foundation for the Central Station and City Ironworks bosses (on branch, not merged)
+
+- Branch `claude/boss-motion`, base shared `claude/sleepy-ritchie-g8ruhv` `598c41b` (includes zone music 77c3696 and Astra's PR #264). Implementation commit `7eb82c7`. Not merged, no PR, builder untouched, nothing published.
+- **Why:** owner (2026-10-17): begin the Station and Ironworks bosses, "a lot more fluid than what we have now"; zombies later. This is the shared motion layer the parallel boss design builds on. Presentation only. No existing enemy (zombies, station and Ironworks kinds, Siren) uses or is changed by it.
+- **Audit** (`docs/BOSS-MOTION.md`, file:line notes for the zombie fix). Top causes:
+  - Horde poses run on `arena.Time`: 20 Hz steps on a guest, 60 Hz on a 144 fps host.
+  - Host bodies move at 60 Hz (no interpolation under Script physics).
+  - The replica follow is a two-snapshot lerp that freezes at the newest, on a clock whose cushion only shrinks.
+  - The snapshot timer drifts.
+  - Speed is differentiated from the drawn root.
+  - Yaw snaps, then turns at a constant rate.
+  - Hard clip switches on the Siren.
+  - Smoothstep strikes decelerate into contact.
+  - Almost no secondary motion.
+- **Changes:** `Core/NativeBossMotion*.cs`, eight pure Core files with no allocation per frame:
+  - critically damped springs on a half-life (exact at any rate), a limited turn and second-order dynamics;
+  - the replicated root: Hermite snapshots, a rate-held clock whose cushion grows after late frames, held-then-eased extrapolation, cascaded goal-velocity springs and lean;
+  - an N-leg gait whose planted feet never move, with two-bone and soft IK;
+  - verlet chains;
+  - an action timeline that is a pure function of the authority's start and lands contact on its hit;
+  - layers for breath, look-at, flinch and stagger;
+  - `BossPose`, an inertializer, and two reference rigs: a 4.6 m biped with an overhead slam and a six-legged crawler with a cable tail.
+  - Also `Runtime/NativeBossPoseApply.cs`, `Tests/BossMotionChecks.cs` (`--boss-motion`, also in the default run) and `docs/BOSS-MOTION.md` (API, wiring, tuning, Astra's fields).
+- **Animation impacts:** none on existing kinds. No hit timing, hitbox, damage, cooldown, movement or network change. A boss's contact frame is designed to land on the authority's `start + hitAt`.
+- **For Astra (when the bosses' authority lands):** per action, replicate the id, sequence, start time, hit time and length (when they vary), target, start facing and cancel time. Per stagger, the start, push and length. Blows as events with time, attacker position and size. Send start times, not per-frame poses.
+- **Checks:**
+  - Boss motion checks (scratch runner, same file): PASS, 50,898 checks.
+    - Jittery 20 Hz snapshots: peak acceleration 13.6 m/s^2 with no stall, against the shipped follow's 358 m/s^2 and 12 frozen moving frames.
+    - Planted feet: largest move 0 m over 10,206 planted frames and 91 steps.
+    - Timeline: bit-identical across peers.
+    - Continuity: per-frame change halves when the frame rate doubles (0.50).
+    - Allocation: 0 bytes per frame.
+  - run5b on `7eb82c7`: all five steps exit 0.
+    - Unity runtime and editor compile against the 6000.3.24f1 assemblies: OK.
+    - Relay and managed suite: 778 PASS lines, no FAIL; boss motion ran inside it (50,898).
+    - Python: 140 tests OK, 1 skipped.
+    - Source package: 2374 files.
+    - `git diff --check`: clean.
+  - Shared `5ccaad6` (Astra's PRs #265, #267 and #268) merged in as `6f1725d`, keeping both sides' DEV_LOG and PROJECT_STATE entries. run5b on `6f1725d`: all five steps exit 0 with the same counts (Python 140 OK in 225 s).
+- **Renders** (offline WebGL harness through the same Core code, not Unity), in the scratch `renders-boss-motion/`:
+  - MP4, GIF and strips for: walk, run and stop; a sharp turn; the overhead slam; flinches and a stagger; the crawler's walk, run and reversal;
+  - OLD beside NEW on jittery 20 Hz snapshots, with a speed and acceleration chart.
+- **Risks / next:**
+  - Not run: the Unity Editor, Windows, real boss models and two-client play.
+  - The reference rigs are demonstrations; each boss authors its own keys.
+  - The gait is tested on flat ground.
+  - A sharp authority corner is rounded with a brief speed overshoot.
+  - On a guest, prefer `StepAt(arena.ReplicaRenderTime)` so the boss stays in step with other effects.
+
 ## 2026-10-17 — Astra: Station/Ironworks gameplay published
 
 - Released source `5ccaad6fa7a2f2ffdb2ff370d14a8d227be35076` from shared and `codex/unity-cloud-current`; PR #264 gameplay, #265 Unity empty-array spawn repair, #267 precise native clock diagnostics, and #266/#268 express collision integration are merged. Preserved Claude's boss-music changes and all other shared work.
