@@ -19,8 +19,8 @@ namespace ChipArena.UnityConversion
         private static string R(string root,string path)=>File.ReadAllText(Path.Combine(root,path));
         public static void Run(string root)
         {
-            Kinds(root);Timing(root);Volumes(root);Models();Inside();Feet();Reactions();Effects();Allocation();Runtime(root);Spec(root);
-            Console.WriteLine("PASS horde kinds ("+count+" checks: kind ids resolve, attack timing equals the authority's, hit volumes unchanged and every posed body inside its own, three tiers under budget on every joint, glow codes, planted feet, weighted reactions, telegraph timing, no allocation, presentation-only runtime, the spec)");
+            Kinds(root);Timing(root);Volumes(root);Models();Geometry();Variety();Inside();Feet();Reactions();Effects();Allocation();Runtime(root);Shader(root);Spec(root);
+            Console.WriteLine("PASS horde kinds ("+count+" checks: kind ids resolve, attack timing equals the authority's, hit volumes unchanged and every posed body inside its own at the widest per-add variation and sway, three tiers under budget on every joint, valid meshes and shading data, glow codes, per-add variation, planted feet, weighted reactions, telegraph timing, no allocation, presentation-only runtime, the zombie shader, the spec)");
         }
         // ---- the kind ids the network carries (NativeMinionFrame.addKind = PveAddStats.id) ----
         private static List<JsonElement> Adds(string root){var doc=JsonDocument.Parse(R(root,"Assets/Conversion/Resources/PveContent.json"));return doc.RootElement.GetProperty("adds").EnumerateArray().ToList();}
@@ -125,10 +125,13 @@ namespace ChipArena.UnityConversion
                         foreach(var s in model.Mesh.Sections)
                         {
                             int region=s.Bone<=CapturedRig.Head?0:s.Bone==CapturedRig.LClav||s.Bone==CapturedRig.RClav?1:s.Bone<=CapturedRig.RHand?2:3;var q=pose.WorldRotation[s.Bone];var o=pose.WorldPosition[s.Bone];
-                            foreach(var v in s.Positions)
+                            for(int vi=0;vi<s.Positions.Count;vi++)
                             {
                                 // Bank vertices are in Unity axes: into the source frame (x mirrored), then posed; the root stands Root above the floor.
-                                var w=o+Vector3.Transform(new Vector3(-v.X,v.Y,v.Z),q);w.Y+=NativeHordeKinds.Root[k];float d=Outside(k,w);low=Math.Min(low,w.Y);
+                                // Each at its widest per-add proportion (ZombieLit's vert: the head, torso width, limb girth at their limits) and a
+                                // dangling part at its full sway (SwayReach, added to how far out it is).
+                                var v=Widest(s,vi,out float sway);
+                                var w=o+Vector3.Transform(new Vector3(-v.X,v.Y,v.Z),q);w.Y+=NativeHordeKinds.Root[k];float d=Math.Max(0,Signed(k,w)+sway);low=Math.Min(low,w.Y);
                                 if(region==0)worstTrunk=Math.Max(worstTrunk,d);else if(region==1)worstShoulder=Math.Max(worstShoulder,d);else if(region==2)worstArm=Math.Max(worstArm,d);else worstLeg=Math.Max(worstLeg,d);
                             }
                         }
@@ -143,16 +146,28 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
+        /// <summary>A bank vertex at its widest per-add proportion (by its region, NativeHordeModels.Region*) and its sway reach.</summary>
+        private static Vector3 Widest(WeaponSection s,int i,out float sway)
+        {
+            var v=s.Positions[i];float region=i<s.Colors.Count?s.Colors[i].W:1;sway=0;
+            if(Math.Abs(region-NativeHordeModels.RegionHead)<.01f)v*=1+NativeHordeModels.VaryHead;
+            else if(Math.Abs(region-NativeHordeModels.RegionTorso)<.01f)v.X*=1+NativeHordeModels.VaryWidth;
+            else if(Math.Abs(region-NativeHordeModels.RegionLimb)<.01f){v.X*=1+NativeHordeModels.VaryGirth;v.Z*=1+NativeHordeModels.VaryGirth;}
+            if(i<s.Data.Count){float y=s.Data[i].Y;float w=Math.Max(0,Math.Min(1,(y-(float)Math.Floor(y)-.02f)/.96f));sway=w*NativeHordeModels.SwayReach;}
+            return v;
+        }
         // How far a source-frame point (root at the origin plus its height) lies outside kind k's capsule (0 inside).
-        private static float Outside(int k,Vector3 w)
+        private static float Outside(int k,Vector3 w)=>Math.Max(0,Signed(k,w));
+        // The signed distance from kind k's capsule's surface (negative inside).
+        private static float Signed(int k,Vector3 w)
         {
             float r=NativeHordeKinds.Radius[k],h=NativeHordeKinds.Height[k];
             if(NativeHordeKinds.Axis[k]==2)
             {
                 float cz=NativeHordeKinds.CenterAhead[k],cy=NativeHordeKinds.Root[k],half=h*.5f-r;float z=Math.Max(cz-half,Math.Min(cz+half,w.Z));
-                return Math.Max(0,new Vector3(w.X,w.Y-cy,w.Z-z).Length()-r);
+                return new Vector3(w.X,w.Y-cy,w.Z-z).Length()-r;
             }
-            float y=Math.Max(r,Math.Min(h-r,w.Y));return Math.Max(0,new Vector3(w.X,w.Y-y,w.Z).Length()-r);
+            float y=Math.Max(r,Math.Min(h-r,w.Y));return new Vector3(w.X,w.Y-y,w.Z).Length()-r;
         }
         // ---- planted feet: a foot in stance never moves in the world; standing, it stays put ----
         private static void Feet()
@@ -256,6 +271,76 @@ namespace ChipArena.UnityConversion
             var keys=new HashSet<string>(NativeSoundKeys.All.Select(d=>d.Key));
             foreach(NativeHordeKinds.Attack a in Enum.GetValues(typeof(NativeHordeKinds.Attack))){foreach(var key in new[]{NativeHordeKinds.WindupCue(a),NativeHordeKinds.StrikeCue(a),NativeHordeKinds.StrikeUnder(a)})if(key!=null)Check(keys.Contains(key),"cue "+key+" is an existing bank key");}
             for(int k=0;k<NativeHordeKinds.Count;k++){var key=NativeHordeKinds.StepCue(k);if(key!=null)Check(keys.Contains(key),"step cue "+key+" is an existing bank key");}
+        }
+        // ---- the organic zombie meshes: valid geometry, normals, the shading data packed as ZombieLit unpacks it ----
+        private static void Geometry()
+        {
+            int tris=0;float worstFlip=0;
+            for(int k=0;k<NativeHordeKinds.Count;k++)for(int l=0;l<NativeHordeKinds.Looks[k];l++)for(int t=0;t<NativeHordeModels.Tiers;t++)
+            {
+                var m=NativeHordeModels.Build(k,l,t);string id=NativeHordeModels.Id(k,l,t);int bad=0,degenerate=0,flipped=0,n=0;
+                foreach(var mesh in m.Jaw!=null?new[]{m.Mesh,m.Jaw}:new[]{m.Mesh})foreach(var s in mesh.Sections)
+                {
+                    Check(s.Data.Count==s.Positions.Count,id+" joint "+s.Bone+" carries its shading data on every vertex");
+                    for(int i=0;i<s.Positions.Count;i++)
+                    {
+                        var p=s.Positions[i];var nn=s.Normals[i];var c=s.Colors[i];var e=s.Emission[i];var d=s.Data[i];
+                        if(!Finite(p)||!Finite(nn)||!float.IsFinite(c.X+c.Y+c.Z+c.W)||!float.IsFinite(e.X+e.Y+e.Z+e.W)||!float.IsFinite(d.X+d.Y)||Math.Abs(nn.Length()-1)>1e-3f)bad++;
+                        float cls=(float)Math.Floor(d.X),fx=d.X-cls,vy=(float)Math.Floor(d.Y),fy=d.Y-vy;
+                        if(cls<0||cls>7||fx<.0199f||fx>.9801f||vy<0||vy>4||fy<.0199f||fy>.9801f)bad++;
+                        if(!(Math.Abs(c.W-1)<1e-4f||Math.Abs(c.W-.75f)<1e-4f||Math.Abs(c.W-.5f)<1e-4f||Math.Abs(c.W-.25f)<1e-4f))bad++;
+                    }
+                    for(int i=0;i<s.Indices.Count;i+=3)
+                    {
+                        var a=s.Positions[s.Indices[i]];var b=s.Positions[s.Indices[i+1]];var c=s.Positions[s.Indices[i+2]];var f=Vector3.Cross(b-a,c-a);n++;
+                        if(f.LengthSquared()<1e-18f){degenerate++;continue;}f=Vector3.Normalize(f);
+                        var avg=s.Normals[s.Indices[i]]+s.Normals[s.Indices[i+1]]+s.Normals[s.Indices[i+2]];if(Vector3.Dot(f,avg)<0)flipped++;
+                    }
+                }
+                tris+=n;worstFlip=Math.Max(worstFlip,flipped/(float)Math.Max(1,n));
+                Check(bad==0,id+": every vertex finite, unit normals, packed data within its class and variant, a known region ("+bad+" bad)");
+                Check(degenerate==0,id+": no degenerate triangles ("+degenerate+")");
+                Check(flipped<=n/200,id+": triangles face their normals (winding and normals agree; "+flipped+" of "+n+" disagree)");
+                Check(m.Triangles<=NativeHordeModels.Budget[t],id+" within the "+NativeHordeModels.TierNames[t]+" budget ("+m.Triangles+" <= "+NativeHordeModels.Budget[t]+")");
+            }
+            Check(tris>0,"the zombie meshes measured");
+        }
+        private static bool Finite(Vector3 v)=>float.IsFinite(v.X)&&float.IsFinite(v.Y)&&float.IsFinite(v.Z);
+        // ---- the per-add variation: in range, white is the model as built, the shader's proportions ----
+        private static void Variety()
+        {
+            var tones=new HashSet<int>();var masks=new HashSet<int>();
+            for(int id=0;id<4000;id++)
+            {
+                var v=NativeHordeModels.Variation(id);float tone=v.X-1,seed=v.Y-1;int mask=(int)Math.Round((v.Z-1)*16);
+                Check(tone>=-.4501f&&tone<=.4501f&&seed>0&&seed<1&&mask>=0&&mask<15&&Math.Abs((v.Z-1)*16-mask)<1e-4f&&v.W==1,"variation of "+id+" in range");
+                var pr=NativeHordeModels.Proportions(seed);Check(Math.Abs(pr.X-1)<=NativeHordeModels.VaryHead+1e-5f&&Math.Abs(pr.Y-1)<=NativeHordeModels.VaryWidth+1e-5f&&Math.Abs(pr.Z-1)<=NativeHordeModels.VaryGirth+1e-5f,"proportions of "+id+" within their reach");
+                tones.Add((int)(tone*10));masks.Add(mask);
+            }
+            Check(tones.Count>=8&&masks.Count>=14,"the crowd spreads over tones and missing pieces ("+tones.Count+" tones, "+masks.Count+" masks)");
+            Check(NativeHordeModels.Proportions(0)==Vector3.One,"white (seed 0) draws the model as built");
+            Check(NativeHordeModels.Varies(NativeHordeModels.Id(0,0,0))&&NativeHordeModels.Varies(NativeHordeModels.JawId(NativeHordeKinds.Hulk,0,1))&&!NativeHordeModels.Varies("horde-0")&&!NativeHordeModels.Varies(NativeHordeModels.Id(NativeHordeKinds.Count,0,0)),"only the seven kinds' models take the variation");
+            // Every look draws with its pieces at both ends: some adds keep all of them, some lose them.
+            int pieces=0;for(int k=0;k<NativeHordeKinds.Count;k++)for(int l=0;l<NativeHordeKinds.Looks[k];l++)foreach(var s in NativeHordeModels.Build(k,l,0).Mesh.Sections)foreach(var d in s.Data)if(Math.Floor(d.Y)>=1)pieces++;
+            Check(pieces>0,"the looks carry missing-piece variants");
+        }
+        // ---- the zombie shader: SourceLit's hooks kept, the shared block the offline renders run, the build gate ----
+        private static void Shader(string root)
+        {
+            string z=R(root,"Assets/ChipArena/Resources/NativeZombieLit.shader"),lit=R(root,"Assets/ChipArena/Resources/NativeSourceLit.shader");
+            string Between(string t,string a,string b){int i=t.IndexOf(a,StringComparison.Ordinal),j=t.IndexOf(b,i<0?0:i,StringComparison.Ordinal);return i<0||j<0?null:t.Substring(i,j-i);}
+            Check(z.Contains("Shader \"ChipArena/ZombieLit\"")&&z.Contains("#pragma surface surfZombie Zombie fullforwardshadows addshadow vertex:vert finalcolor:ZombieTone")&&z.Contains("#pragma multi_compile_instancing"),"ZombieLit: an instanced surface shader with shadows and its own lighting");
+            var flick=Between(lit,"float MinionFlicker(","\n }");Check(flick!=null&&Between(z,"float MinionFlicker(","\n }")==flick,"ZombieLit's minion flicker is SourceLit's, character for character");
+            var flash=Between(lit,"// ---- HIT FLASH SHARED BEGIN","// ---- HIT FLASH SHARED END");Check(flash!=null&&Between(z,"// ---- HIT FLASH SHARED BEGIN","// ---- HIT FLASH SHARED END")==flash,"ZombieLit's hit flash is SourceLit's");
+            foreach(var hook in new[]{"#include \"NativeWardLight.cginc\"","ActorLights(i.worldPos","StageLight(o.Albedo","StageAces(color.rgb)","clip(shell.a-frac(","_InkFill","1-sceneTint.a"})Check(z.Contains(hook),"ZombieLit keeps SourceLit's "+hook);
+            var shared=Between(z,"// ---- ZOMBIE SHARED BEGIN","// ---- ZOMBIE SHARED END");Check(shared!=null&&!shared.Contains("saturate(")&&!shared.Contains("half"),"the shared block runs as GLSL too");
+            Check(shared.Contains("1.0+on*0.05*(2.0*frac(seed*5.31+0.17)-1.0)")&&shared.Contains("1.0+on*0.05*(2.0*frac(seed*9.73+0.61)-1.0)")&&shared.Contains("1.0+on*0.07*(2.0*frac(seed*13.37+0.29)-1.0)")&&NativeHordeModels.VaryHead==.05f&&NativeHordeModels.VaryWidth==.05f&&NativeHordeModels.VaryGirth==.07f,"the shader's proportions are NativeHordeModels.Proportions");
+            Check(shared.Contains("sway*0.018*sin(")&&shared.Contains("sway*0.024*sin(")&&Math.Abs(Math.Sqrt(.018*.018+.024*.024)-NativeHordeModels.SwayReach)<1e-4,"the shader's sway stays within SwayReach");
+            Check(shared.Contains("(x-floor(x)-0.02)/0.96")&&NativeHordeModels.Pack(3,0)==3.02f,"the shader unpacks the data as the kit packs it");
+            Check(R(root,"Assets/ChipArena/Runtime/NativeHordeKindModels.cs").Contains("Resources.Load<Shader>(\"NativeZombieLit\");if(zombie==null||!zombie.isSupported)zombie=shader;"),"the kinds' materials use ZombieLit, SourceLit as the fallback");
+            Check(R(root,"Assets/ChipArena/Editor/NativeBuildChecks.cs").Contains("\"NativeZombieLit\""),"the build gate compiles ZombieLit");
+            Check(R(root,"Assets/ChipArena/Runtime/NativeBodySkinModels.cs").Contains("if(s.Data.Count==count)for(int i=0;i<count;i++)uv[i]=new Vector2(s.Data[i].X,s.Data[i].Y);"),"the meshes upload the shading data as uv0");
+            Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeZombieLit.shader.meta")),"ZombieLit has its meta");
         }
         // ---- the spec for Astra ----
         private static void Spec(string root)

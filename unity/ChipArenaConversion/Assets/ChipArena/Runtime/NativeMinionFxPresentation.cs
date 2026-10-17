@@ -135,6 +135,8 @@ namespace ChipArena.UnityConversion
         /// The horde death draw (motion.ts dyingLook): queues the posed body with each joint charred at its hashed time and shrunk
         /// about its parts' centre as the burn-away reaches its rest height; the body is gone at DEATH_SECONDS.
         /// </summary>
+        /// <summary>The dying add's variation (the zombie kinds' models; white for the bank's), kept for its jaw.</summary>
+        private Color hordeDeathBody=Color.white;
         private void HordeDeathBody(CapturedAnimation.Player rig,string model,int id,int lost,float age,Func<int,bool> visible)
         {
             hordeDeathRig=rig;hordeDeathSeed=NativeMinionFx.Seed(id);hordeDeathAge=age;
@@ -146,7 +148,8 @@ namespace ChipArena.UnityConversion
             };
             // The char darkens the joint (rgb) and, as 1 - alpha, moves its glow cells to the charred glow and flicker (NativeSourceLit).
             hordeDeathTint??=b=>{float c=(float)NativeMinionFx.Charred(hordeDeathSeed,b,hordeDeathAge),k=1-(1-(float)NativeMinionFx.CharScale)*c;return new Color(k,k,k,1-c);};
-            sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,hordeDeathBone,visible,partTint:hordeDeathTint,glow:HordeGlow(id));
+            hordeDeathBody=HordeVariation(model,id);
+            sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,hordeDeathBone,visible,body:hordeDeathBody,partTint:hordeDeathTint,glow:HordeGlow(id));
         }
         /// <summary>DevEffects: the frame's horde effects into the shared effect layers, after every rig is posed.</summary>
         private void DrawHordeFx(Camera camera)

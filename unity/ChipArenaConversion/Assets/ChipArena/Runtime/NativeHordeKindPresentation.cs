@@ -263,7 +263,7 @@ namespace ChipArena.UnityConversion
             hordeQueueRig=rig;hordeJawOpen=open;hordeJawKind=kind;
             hordeJawBone??=b=>{var mtx=hordeQueueRig.Bones[b].localToWorldMatrix;if(b!=CapturedRig.Head)return mtx;var h=NativeHordeModels.JawHinge(hordeJawKind);var hinge=new Vector3(h.X,h.Y,h.Z);
                 return mtx*Matrix4x4.Translate(hinge)*Matrix4x4.Rotate(Quaternion.Euler(hordeJawOpen*Mathf.Rad2Deg,0,0))*Matrix4x4.Translate(-hinge);};
-            sourceModels.Queue(id,rig.Root.transform.localToWorldMatrix,hordeJawBone,null,glow:glow,hitFlash:flash);
+            sourceModels.Queue(id,rig.Root.transform.localToWorldMatrix,hordeJawBone,null,body:hordeQueueBody,glow:glow,hitFlash:flash);
         }
         private static NVector ToN(Vector3 v)=>new NVector(v.x,v.y,v.z);
         // The striking arm: the authority alternates it (not replicated); a hash of the attack's start alternates it here, the
@@ -300,8 +300,14 @@ namespace ChipArena.UnityConversion
                 return mtx;
             };
             hordeQueueVisible??=b=>HordeJointShown(hordeQueueLost,b)&&(hordeQueueHidden==0||!HordeHiddenJoint(hordeQueueHidden,b));
-            sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,hordeQueueBone,hordeQueueVisible,glow:glow,hitFlash:flash);
+            hordeQueueBody=HordeVariation(model,id);
+            sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,hordeQueueBone,hordeQueueVisible,body:hordeQueueBody,glow:glow,hitFlash:flash);
         }
+        /// <summary>The add's own look within its kind's look (ChipArena/ZombieLit: tone, mottling, proportions, missing pieces;
+        /// NativeHordeModels.Variation) as the body tint, for the seven kinds' models; white for every other model. The jaw and the
+        /// gibs draw with the same, so a severed part matches the body it came from.</summary>
+        private static Color HordeVariation(string model,int id){if(!NativeHordeModels.Varies(model))return Color.white;var v=NativeHordeModels.Variation(id);return new Color(v.X,v.Y,v.Z,v.W);}
+        private Color hordeQueueBody=Color.white;
         // `hidden`: a mask of joint roots (bit per CapturedRig joint) whose subtrees are drawn elsewhere (a sliced part in flight).
         private static bool HordeHiddenJoint(int mask,int b){for(int j=b;j>=0;j=CapturedRig.Bones[j].Parent)if((mask&(1<<j))!=0)return true;return false;}
 
@@ -492,7 +498,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<hordeParts.Length;i++)
             {
                 var p=hordeParts[i];if(!p.Live)continue;float age=now-p.At;if(age<0||age>HordePartSeconds){p.Live=false;continue;}
-                hordeDrawPart=p;hordeDrawAge=age;sourceModels.Queue(p.Model,p.Root,hordePartBone,hordePartVisible,partTint:hordePartTint,glow:HordeGlow(p.Id));
+                hordeDrawPart=p;hordeDrawAge=age;sourceModels.Queue(p.Model,p.Root,hordePartBone,hordePartVisible,body:HordeVariation(p.Model,p.Id),partTint:hordePartTint,glow:HordeGlow(p.Id));
             }
         }
 

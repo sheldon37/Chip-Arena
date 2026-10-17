@@ -44,6 +44,9 @@ namespace ChipArena.UnityConversion
             int count=s.Positions.Count;if(count==0)return null;
             var vertices=new Vector3[count];var normals=new Vector3[count];var colors=new Color[count];var uv=new Vector2[count];var emission=new List<Vector4>(count);
             for(int i=0;i<count;i++){var p=s.Positions[i];var n=s.Normals[i];var c=s.Colors[i];var e=s.Emission[i];vertices[i]=new Vector3(p.X,p.Y,p.Z);normals[i]=new Vector3(n.X,n.Y,n.Z);colors[i]=new Color(c.X,c.Y,c.Z,c.W);emission.Add(new Vector4(e.X,e.Y,e.Z,e.W));}
+            // The sculpt's per-vertex shading data (the zombies' surface class, occlusion, variant and sway: ChipArena/ZombieLit) in
+            // uv0, which the source shaders' plain parts never sample; hand-built sections without it keep zero uvs.
+            if(s.Data.Count==count)for(int i=0;i<count;i++)uv[i]=new Vector2(s.Data[i].X,s.Data[i].Y);
             var mesh=new Mesh{name="Pilot body "+name,indexFormat=count>65535?IndexFormat.UInt32:IndexFormat.UInt16};
             mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=uv;mesh.SetUVs(1,emission);mesh.SetTriangles(s.Indices,0);mesh.RecalculateBounds();mesh.UploadMeshData(true);return mesh;
         }

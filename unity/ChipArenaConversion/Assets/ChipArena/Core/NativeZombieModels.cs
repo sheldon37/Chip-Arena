@@ -3,21 +3,12 @@ using System.Numerics;
 
 namespace ChipArena.UnityConversion
 {
-    // The Siren's minions as zombies built from the pilots (owner 2026-10-12: "Sirens minions need to look more zombie like
-    // (Based on player models) ... Brutes can be big muscle versions"). Each kind is a pilot the Siren took: the Standard
-    // pilot's own blocks and proportions (CapturedRig's voxel body, the cube head, the plated chest, pauldrons, cuffs, knee pads
-    // and soles), rotted and torn. Pale grey-green skin with darker rot and bruised patches shows through a ripped undersuit,
-    // the armour is cracked and half gone (each look keeps different pieces, so the limbs never match), the jaw hangs open over
-    // a black mouth, the eyes glow in the kind's colour, and the Siren's ink runs through the wounds as veins that flicker cell
-    // by cell (NativeMinionFx glow codes: the possession, the char and the failing power all still read). Every part rides
-    // the joint the pilot's part rides and stays inside the authority's capsule (Tests/HordeKindChecks poses and checks them).
-    //  - Shambler: the rank and file, three looks: a cracked helmet hanging off its skull, a bare rotted head under a torn
-    //    shawl, a split crown spilling the Siren's light (the cracked look); an armoured arm against a bare one.
-    //  - Runner: stripped to the torn undersuit, thin and long-clawed, a spine of bone down its back, the jaw thrown wide.
-    //  - Brute: a big muscle version: a swollen chest bursting its plate, a hump of trapezius over a small sunken head, huge
-    //    shoulders, forearms and fists, thick legs.
-    //  - Spitter (a glowing throat sac), crawler (emaciated, long-armed), bloater (a swollen glowing belly), content-gated.
-    // Three tiers as before: Full (bevels and fine details), Reduced (secondary forms, no fine bevels), Impostor (the blocks).
+    // The classic zombie kit (2026-10-12): the Standard pilot's blocks rotted and torn (CapturedRig's voxel body, the cube head,
+    // the plated chest, pauldrons, cuffs, knee pads and soles; pale grey-green skin, the cracked armour, the hanging jaw, the eyes in
+    // the kind's colour and the Siren's ink as veins that flicker cell by cell). The Siren's seven kinds were rebuilt on the organic
+    // kit on 2026-10-17 (Core/NativeZombieKit.cs, NativeZombieAnatomy.cs, NativeZombieKinds.cs; docs/ZOMBIE-DESIGN.md); the zone
+    // kinds (Core/NativeStationModels.cs, NativeIronworksModels.cs) still build their bodies from these helpers, unchanged. Every
+    // part rides the joint the pilot's part rides and stays inside the authority's capsule (Tests/HordeKindChecks).
     public static partial class NativeHordeModels
     {
         // ---- the zombie palette (sRGB) ----
@@ -174,23 +165,9 @@ namespace ChipArena.UnityConversion
         }
 
         // ================================================================================================================
-        // Shambler: the rank and file. A pilot in its torn suit and cracked armour, an armoured arm against a bare one.
+        // The classic runner (the zone kinds' Cinderling is built on it): stripped to the torn undersuit, thin, long-clawed, a spine of bone; the jaw thrown wide.
         // ================================================================================================================
-        private static void Shambler(K k)
-        {
-            int look=k.Look;
-            Hips(k,1,look!=1,look!=0,look==1?10:7);Chest(k,1,look==0?-1:look==1?1:0,look==0);
-            bool armL=look==0,armR=look==1;
-            Shoulder(k,false,armL);Shoulder(k,true,armR||look==2);Arm(k,false,armL,1,.03f);Arm(k,true,armR,look==2?.9f:1,.04f);
-            Leg(k,false,1,look!=2,look==0,true,false);Leg(k,true,1,look==1,look==2,look!=1,false);
-            if(look==1&&k.Mid){k.On(CapturedRig.Chest);k.Span(Rag,-.27f,.27f,.17f,.3f,-.19f,.05f,.02f);k.Hem(.17f,.25f,.17f,9,.32f,.12f,true,-.02f);}
-            Neck(k,.06f,.1f,Skin);Head(k,HeadWidth[NativeHordeKinds.Shambler],HeadDrop[NativeHordeKinds.Shambler],.32f+.08f*look,look==0?0:look==1?1:2);
-        }
-
-        // ================================================================================================================
-        // Runner: stripped to the torn undersuit, thin, long-clawed, a spine of bone; the jaw thrown wide.
-        // ================================================================================================================
-        private static void Runner(K k)
+        private static void ClassicRunner(K k)
         {
             int look=k.Look;const float w=.82f;
             Hips(k,w,false,true,look==0?6:0);
@@ -209,10 +186,10 @@ namespace ChipArena.UnityConversion
         }
 
         // ================================================================================================================
-        // Brute: the big muscle version. A swollen chest bursting its plate, a hump of trapezius over a small sunken head, huge
+        // The classic brute (the zone kinds' Slagback and Ladleman are built on it): the big muscle version. A swollen chest bursting its plate, a hump of trapezius over a small sunken head, huge
         // shoulders, forearms and fists, thick legs (all inside the add capsule: the bulk is in the width).
         // ================================================================================================================
-        private static void Brute(K k)
+        private static void ClassicBrute(K k)
         {
             int look=k.Look;
             k.On(CapturedRig.Pelvis);k.Box(Suit,0,-.01f,0,.46f,.23f,.3f,.025f);k.Box(SuitDark,0,.08f,0,.47f,.06f,.31f,.01f);if(look==0)k.Box(ShellDark,.15f,-.02f,0,.13f,.17f,.32f,.012f);
@@ -250,114 +227,6 @@ namespace ChipArena.UnityConversion
             // A small head sunk low between the shoulders, the jaw heavy and open.
             Head(k,HeadWidth[NativeHordeKinds.Brute],HeadDrop[NativeHordeKinds.Brute],.28f,look==0?3:1);
             if(look==0){k.On(CapturedRig.Head);k.Box(ShellDark,0,.19f,-.08f,.25f,.2f,.06f,.015f);if(k.Mid)k.Box(Hair,0,.205f,-.005f,.22f,.03f,.2f);}
-        }
-
-        // ================================================================================================================
-        // Spitter: a hunched pilot, its throat swollen into a glowing acid sac (NativeHordeModels' swell grows it at the neck).
-        // ================================================================================================================
-        private static void Spitter(K k)
-        {
-            int look=k.Look;Hips(k,.92f,false,true,5);Chest(k,.92f,look==0?1:0,false);
-            Shoulder(k,false,false,.92f);Shoulder(k,true,look==0,.92f);Arm(k,false,false,.88f,.05f);Arm(k,true,look==0,.92f,.04f);
-            Leg(k,false,.92f,true,false,true,false);Leg(k,true,.92f,false,true,false,false);
-            k.On(CapturedRig.Neck);k.Limb(Skin,-.03f,.1f,.065f,.06f);
-            var acid=k.Glow(1,1.6f,NativeHordeKinds.Seam[NativeHordeKinds.Spitter]);k.Blob(acid,0,.03f,.045f,.085f,.07f,.065f);
-            if(k.Mid){k.Blob(SkinDark,0,.05f,.02f,.095f,.06f,.06f);Vein(k,.04f,.02f,.11f,.05f,.4f,1.2f);Vein(k,-.04f,.04f,.11f,.04f,-.3f);}
-            Head(k,HeadWidth[NativeHordeKinds.Spitter],HeadDrop[NativeHordeKinds.Spitter],.3f,look==0?1:3);
-            if(k.Mid){k.On(CapturedRig.Head);var drool=k.Glow(1,1.2f,NativeHordeKinds.Seam[NativeHordeKinds.Spitter]);k.Box(drool,.02f,-.01f,.12f,.025f,.08f,.02f);}
-        }
-
-        // ================================================================================================================
-        // Crawler: an emaciated pilot on all fours, long arms, bare feet, the spine's bone up its back.
-        // ================================================================================================================
-        private static void Crawler(K k)
-        {
-            int look=k.Look;const float w=.76f;Hips(k,w,false,true,0);
-            k.On(CapturedRig.Chest);k.Box(Skin,0,.11f,0,.42f*w,.25f,.22f,.03f);k.Box(Suit,.04f,.08f,0,.3f*w,.17f,.23f,.018f);
-            int ridge=k.Far?2:5;for(int i=0;i<ridge;i++)k.Box(BoneWhite,0,.24f-i*.05f,-.115f,.04f,.025f,.035f,.006f);
-            Vein(k,-.08f,.12f,.113f,.12f,.3f,1);Vein(k,0,.2f,-.115f,.1f,.2f,.9f);
-            Shoulder(k,false,false,w);Shoulder(k,true,false,w);Arm(k,false,false,.8f,.07f);Arm(k,true,look==1,.8f,.07f);
-            // Its legs wasted to the bone (folded haunches: thin limbs, no knee blocks to drag on the floor).
-            foreach(bool m in new[]{false,true})
-            {
-                k.On(CapturedRig.LHip,m);k.Limb(Skin,.02f,-.24f,.055f,.042f);if(k.Mid)k.Box(Rag,0,-.04f,0,.14f,.06f,.15f,.008f,0,0,.15f);
-                k.On(CapturedRig.LKnee,m);k.Limb(SkinDark,.02f,-.23f,.045f,.032f);if(k.Mid)k.Box(BoneWhite,0,-.02f,.035f,.04f,.04f,.03f,.005f);
-                k.On(CapturedRig.LFoot,m);k.Box(Skin,0,-.03f,-.02f,.1f,.06f,.14f,.012f);k.On(CapturedRig.LToe,m);k.Box(SkinDark,0,-.012f,.02f,.1f,.04f,.11f,.008f);
-            }
-            Neck(k,.05f,.08f,Skin);Head(k,HeadWidth[NativeHordeKinds.Crawler],HeadDrop[NativeHordeKinds.Crawler],.45f,look==0?1:2);
-        }
-
-        // ================================================================================================================
-        // Bloater: a pilot swollen round a glowing gut (the swell grows it at the spine), the suit split open over it.
-        // ================================================================================================================
-        private static void Bloater(K k)
-        {
-            int look=k.Look;
-            k.On(CapturedRig.Pelvis);k.Box(Suit,0,0,0,.44f,.22f,.3f,.025f);k.Box(SuitDark,0,.08f,0,.45f,.05f,.31f,.01f);
-            k.On(CapturedRig.Spine);var gut=k.Glow(1,1.0f,NativeHordeKinds.Seam[NativeHordeKinds.Bloater]);
-            k.Blob(Skin,0,.11f,.09f,.25f,.2f,.24f);k.Blob(Bruise,.0f,.1f,.15f,.18f,.13f,.18f);
-            if(!k.Far){k.Blob(gut,.08f,.12f,.27f,.06f,.05f,.04f);k.Blob(gut,-.1f,.05f,.26f,.05f,.04f,.04f);}
-            Vein(k,.02f,.14f,.32f,.12f,.3f,1.2f);Vein(k,-.14f,.12f,.27f,.1f,-.5f,1);
-            if(k.Mid){k.Box(Suit,-.2f,.1f,-.02f,.08f,.2f,.24f,.015f);k.Box(Suit,.2f,.12f,-.02f,.07f,.18f,.24f,.015f);}
-            Chest(k,1,look==0?-1:0,false);
-            Shoulder(k,false,look==0);Shoulder(k,true,false);Arm(k,false,look==0,.95f,.03f);Arm(k,true,false,.9f,.03f);
-            Leg(k,false,1.05f,true,false,false,false);Leg(k,true,1.05f,false,false,true,false);
-            Neck(k,.07f,.08f,Skin);Head(k,HeadWidth[NativeHordeKinds.Bloater],HeadDrop[NativeHordeKinds.Bloater],.3f,look==0?0:1);
-        }
-
-        // ================================================================================================================
-        // Hulk (owner 2026-10-13: "similar to brute but much bigger model size"): drawn 1.8 times the rig (NativeHordeKinds.Scale),
-        // so here inside the rig's .53 x 1.7 capsule: a mountain of muscle bursting out of what is left of a pilot. Enormous
-        // shoulders and a hump of trapezius that swallows the neck, a tiny sunken head with a hinged jaw (it roars), forearms and
-        // fists like boulders, tree-trunk legs; the hide cracked all over, the Siren's ink glowing in the cracks.
-        // ================================================================================================================
-        private static void Hulk(K k)
-        {
-            int look=k.Look;
-            // A crack in the hide: the split skin and the ink glowing in it (flickering by cell, as every vein).
-            k.ReducedBevel=.055f;
-            void Crack(float x,float y,float z,float len,float rz,float rx=0,float kk=1.25f)
-            {
-                if(k.Far)return;k.Box(Wound,x,y,z,.03f,len,.012f,0,rx,0,rz);if(!k.Far)k.Box(k.Seam(kk),x,y,z+(rx==0?.004f:0),.011f,len*.86f,.012f,0,rx,0,rz);
-                if(k.Fine)k.Box(k.Seam(kk*.7f),x+(float)Math.Sin(rz)*len*.3f+.02f,y+len*.2f,z,.008f,len*.45f,.01f,0,rx,0,rz+.8f);
-            }
-            k.On(CapturedRig.Pelvis);k.Box(Muscle,0,-.01f,0,.5f,.25f,.34f,.04f);k.Box(Suit,0,-.05f,.0f,.52f,.17f,.35f,.02f);k.Box(SuitDark,0,.06f,0,.53f,.06f,.36f,.012f);
-            if(k.Mid){k.Hem(-.1f,.25f,.18f,7,.16f,.13f);Crack(.16f,.04f,.172f,.12f,.5f);}
-            k.On(CapturedRig.Spine);k.Box(Muscle,0,.08f,.01f,.5f,.22f,.34f,.05f);
-            if(k.Mid){for(int i=0;i<3;i++)foreach(float sx in new[]{-1f,1f})k.Box(Skin,sx*.065f,.035f+i*.055f,.17f,.09f,.045f,.02f,.01f);}
-            Crack(-.14f,.1f,.17f,.15f,-.4f);
-            // The chest: a slab of muscle twice the pilot's, the chest plate's last shards sunk in it (look 0), pecs, the hump.
-            k.On(CapturedRig.Chest);k.Box(Muscle,0,.13f,0,.8f,.36f,.42f,.07f);
-            foreach(float sx in new[]{-1f,1f}){k.Box(Skin,sx*.17f,.17f,.18f,.3f,.2f,.1f,.04f);k.Box(Muscle,sx*.23f,.33f,-.04f,.28f,.16f,.3f,.05f,0,0,sx*-.32f);}
-            // The hump of trapezius rising behind and over the head, swallowing the neck.
-            k.Box(Muscle,0,.33f,-.13f,.5f,.26f,.24f,.06f);k.Box(SkinDark,0,.26f,-.2f,.56f,.2f,.1f,.04f);
-            if(look==0){k.Box(Shell,-.2f,.22f,.225f,.2f,.14f,.04f,.015f,0,0,-.25f);k.Box(ShellDark,.24f,.07f,.215f,.13f,.11f,.04f,.012f,0,0,.4f);}
-            else if(!k.Far){for(int i=0;i<(k.Fine?5:3);i++)k.Spike(BoneWhite,(i-2)*.08f,.42f+.02f*(i%2),-.18f,.05f,.05f,new Vector3(0,.09f+.03f*(i%2),-.06f));}
-            Crack(-.08f,.16f,.235f,.2f,.35f);Crack(.22f,.24f,.2f,.13f,-.6f);Crack(.05f,.04f,.215f,.12f,.1f);Crack(0,.3f,-.25f,.16f,.15f,-.3f,1.1f);Crack(-.25f,.12f,-.215f,.12f,-.4f,0,1);
-            if(k.Mid)k.Box(Rag,0,.05f,-.215f,.36f,.1f,.02f,.008f,0,0,.12f);
-            foreach(bool m in new[]{false,true})
-            {
-                // Shoulders like boulders on the clavicles (one wears the pilot's split pauldron), arms thicker than its head.
-                k.On(CapturedRig.LClav,m);k.Box(Muscle,-.085f,.0f,0,.25f,.22f,.3f,.06f);
-                if(m==(look==1)){k.Box(Shell,-.09f,.09f,0,.22f,.07f,.28f,.018f,0,0,-.12f);if(k.Mid)k.Box(k.Seam(.8f),-.1f,.13f,0,.2f,.01f,.04f);}
-                else Crack(-.12f,.03f,.15f,.12f,.6f);
-                k.On(CapturedRig.LArm,m);k.Box(Muscle,0,-.14f,0,.26f,.3f,.27f,.06f);if(k.Mid){k.Box(Skin,-.05f,-.12f,.09f,.14f,.17f,.09f,.03f);}Crack(-.13f,-.13f,.02f,.16f,.15f,0,1.1f);
-                k.On(CapturedRig.LElbow,m);k.Box(SkinDark,0,0,0,.22f,.13f,.22f,.04f);k.Box(Muscle,0,-.13f,.01f,.34f,.27f,.33f,.07f);
-                if(m==(look==0))k.Box(ShellDark,0,-.2f,0,.35f,.09f,.34f,.02f);else Crack(-.16f,-.12f,.07f,.15f,.25f,0,1.2f);
-                // A fist like a block of rubble, its knuckles bone.
-                k.On(CapturedRig.LHand,m);k.Box(Skin,0,-.07f,.025f,.28f,.22f,.27f,.06f);
-                if(!k.Far){for(int i=0;i<4;i++)k.Box(SkinDark,(i-1.5f)*.062f,-.17f,.11f,.056f,.06f,.07f,.012f);if(k.Mid)for(int i=0;i<4;i++)k.Box(BoneWhite,(i-1.5f)*.062f,-.19f,.15f,.036f,.026f,.024f);Crack(.1f,-.05f,.15f,.09f,-.4f,0,.9f);}
-                // Legs like tree trunks in the burst suit, bare feet.
-                k.On(CapturedRig.LHip,m);k.Box(Muscle,0,-.12f,0,.27f,.28f,.29f,.05f);k.Box(Suit,0,-.04f,0,.29f,.12f,.3f,.02f);if(k.Mid)Crack(-.13f,-.15f,.06f,.12f,.2f);
-                k.On(CapturedRig.LKnee,m);k.Box(SkinDark,0,0,0,.22f,.11f,.2f,.03f);k.Box(Muscle,0,-.095f,-.01f,.23f,.15f,.19f,.04f);k.Box(SkinDark,0,-.18f,0,.15f,.04f,.15f,.012f);
-                if(m==(look==0))k.Box(ShellDark,0,.005f,.1f,.19f,.1f,.05f,.015f);
-                k.On(CapturedRig.LFoot,m);k.Box(Skin,0,-.028f,-.03f,.18f,.1f,.2f,.02f);k.On(CapturedRig.LToe,m);k.Box(SkinDark,0,-.012f,.02f,.18f,.07f,.16f,.016f);
-                if(k.Mid)for(int i=0;i<3;i++)k.Box(BoneWhite,(i-1)*.05f,-.02f,.1f,.028f,.024f,.03f);
-            }
-            k.On(CapturedRig.Neck);k.Limb(Muscle,-.03f,.06f,.12f,.12f);
-            // A tiny head sunk deep in the hump, the jaw hinged to roar.
-            Head(k,HeadWidth[NativeHordeKinds.Hulk],HeadDrop[NativeHordeKinds.Hulk],.22f,look==0?3:1);
-            if(look==1){k.On(CapturedRig.Head);k.Box(ShellDark,0,.13f,-.07f,.21f,.15f,.06f,.015f);}
         }
     }
 }

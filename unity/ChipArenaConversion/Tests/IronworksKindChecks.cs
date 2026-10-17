@@ -58,8 +58,10 @@ namespace ChipArena.UnityConversion
             Check(liveAllows.Count>0&&Five.All(f=>liveAllows.Any(a=>a.Contains("\""+f+"\""))),"the live manifest allows all five ("+liveAllows.Count+" lists)");
         }
         private static bool Near(float a,float b,float e=1e-4f)=>Math.Abs(a-b)<=e;
-        // ---- today's seven exactly as before (with the full bitwise comparison in the DEV_LOG; HordeKindChecks still run) ----
-        private static readonly int[] BaseCounts={4362,9386,0,2778,5894,0,576,1152,0,3950,8498,0,2814,5990,0,576,1152,0,3778,8114,0,2578,5462,0,564,1128,0,4060,8724,0,2560,5400,0,552,1104,0,3936,8448,0,2404,5052,0,552,1104,0,3328,7164,0,2560,5472,0,516,1032,0,3292,7068,0,2492,5304,0,468,936,0,3886,8358,160,2690,5726,104,600,1200,0,3606,7758,160,2462,5246,104,564,1128,0,3248,6984,0,2028,4284,0,432,864,0,3232,6960,0,2024,4284,0,444,888,0,4232,9112,0,2764,5900,0,564,1128,0,3984,8560,0,2604,5540,0,528,1056,0,3626,7754,160,1838,3782,72,540,1080,0,3740,8012,160,1940,4004,72,528,1056,0};
+        // ---- today's seven exactly as before (with the full bitwise comparison in the DEV_LOG; HordeKindChecks still run). The
+        // models' counts were re-pinned on 2026-10-17 by the zombie design pass (claude/zombie-design: the seven rebuilt on the
+        // organic kit, docs/ZOMBIE-DESIGN.md); the zone kinds still leave them exactly as built. ----
+        private static readonly int[] BaseCounts={6792,14730,0,2697,6063,0,502,1048,0,6502,14084,0,2515,5603,0,490,1024,0,5999,12991,0,2355,5227,0,442,928,0,6211,13663,0,2545,5753,0,434,928,0,5828,12916,0,2291,5249,0,338,772,0,6571,14443,0,2987,6839,0,570,1312,0,6807,15017,0,2971,6815,0,570,1312,0,6086,13210,346,2266,5082,182,476,1006,12,5504,11910,352,2040,4530,194,404,862,12,5982,13246,0,2348,5368,0,338,772,0,6150,13610,0,2425,5559,0,386,868,0,6726,14662,0,2777,6297,0,520,1114,0,6112,13318,0,2466,5518,0,436,946,0,6315,13953,340,2723,6317,188,502,1228,12,6399,14191,314,2633,6113,198,466,1156,12};
         private static void Unchanged(string root)
         {
             Check(NativeHordeKinds.Ids.Take(7).SequenceEqual(new[]{"shambler","runner","brute","spitter","crawler","bloater","hulk"}),"the seven ids in their order");
@@ -74,7 +76,7 @@ namespace ChipArena.UnityConversion
             int i=0;for(int k=0;k<7;k++)for(int l=0;l<NativeHordeKinds.Looks[k];l++)for(int t=0;t<3;t++)
             {
                 var m=NativeHordeModels.Build(k,l,t);int v=m.Mesh.Sections.Sum(s=>s.Positions.Count);
-                Check(m.Mesh.Triangles==BaseCounts[i]&&v==BaseCounts[i+1]&&(m.Jaw?.Triangles??0)==BaseCounts[i+2],NativeHordeModels.Id(k,l,t)+" is the base commit's ("+m.Mesh.Triangles+" triangles, "+v+" vertices)");i+=3;
+                Check(m.Mesh.Triangles==BaseCounts[i]&&v==BaseCounts[i+1]&&(m.Jaw?.Triangles??0)==BaseCounts[i+2],NativeHordeModels.Id(k,l,t)+" is as pinned ("+m.Mesh.Triangles+" triangles, "+v+" vertices)");i+=3;
                 Check(NativeHordeModels.Id(k,l,t)=="minion-"+NativeHordeKinds.Ids[k]+"-"+l+"-"+NativeHordeModels.TierNames[t],"model id unchanged");
             }
             Check(i==BaseCounts.Length,"every model of the seven compared");
