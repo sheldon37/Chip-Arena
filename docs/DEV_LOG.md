@@ -1,3 +1,11 @@
+## 2026-10-17 — Astra: Expedition arrival pose synchronization
+
+- Branch `codex/unity-expedition-transfer-position`, base shared/builder `612f0da`.
+- Owner reports falling and downing on entry to all three instances, consistent with retaining an outlying hub-circle position in the destination. Authored entry slots are inside their maps. Runtime root cause is not yet reproduced in Unity here.
+- The cross-scene transfer now publishes the arrival to both Transform and Rigidbody with interpolation temporarily disabled, clears old ground/freeze/motion caches, synchronizes, and verifies the actual arrival and destination support before releasing the hold. Rollback and reprint use the same placement helper.
+- The native activation fixture now begins each transfer at its real hub circle, asserts both arrival representations, and checks the first 120 ticks for alive/above-floor arrivals in every instance. Previously it started at the hub centre and did not assert post-transfer survival. Windows execution is required; managed tests cannot reproduce PhysX/interpolation.
+- Checks: Unity player/runtime/editor semantic compile; managed cohort 69 and area 295 checks; whitespace review. No gameplay/hazard changes or immunity added. Native Windows regression and owner solo/host/guest playtest pending; publication must pass the strengthened native gate. Not yet claimed released.
+
 ## 2026-10-17 — Claude: City Ironworks in-game visuals on the live foundry (on branch, not merged)
 
 - Branch `claude/ironworks-visuals`. It started from `8a5de43` and merges shared up to `6404332` (#255 to #260: the live activation, navigation from ramps, the activation receipt; and the City Ironworks enemies merge).
