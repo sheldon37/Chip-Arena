@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-17 Claude City Ironworks normal-play readability pass (`claude/ironworks-visuals`, on branch, not merged): it makes normal play (no hazard clock) readable. Work lights are baked into the light field, crusted runners keep a residual warmth, the Ironworks look entry is brighter, the mill stands have shape, and the slag yard floor and the torpedo and converter shells are dressed. Hazards stay off; budgets are intact.
+2026-10-17 Claude City Ironworks normal-play readability pass (`claude/ironworks-visuals`, merged into shared): it makes normal play (no hazard clock) readable. Work lights are baked into the light field, crusted runners keep a residual warmth, the Ironworks look entry is brighter, the mill stands have shape, and the slag yard floor and the torpedo and converter shells are dressed. Hazards stay off; budgets are intact.
 
 2026-10-17 Claude join circles (`claude/join-circles`, merged into shared, not live; presentation only): real deploy pads replace Astra's stand-in rings on the three live circles (posts, energy pool, a curtain on the counted radius, zone hologram and sky beacon; charging, deploy beams, cancel, held, cleared), the party/area HUD (HUB / WARD ZERO / CENTRAL STATION / CITY IRONWORKS), DEPLOYING TO panel, notes and deploy flash; live hub entrances (signs name the zones, station airlock framing, foundry gate). Managed checks and offline renders; Unity/Windows/two-client unrun. Optional for Astra: a deploy record and `h` in the join view. See DEV_LOG.
 
