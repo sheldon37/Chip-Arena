@@ -103,12 +103,7 @@ namespace ChipArena.UnityConversion
         private ExpeditionStateRig ExpeditionRigFor(ExpeditionView v)
         {
             if(v==null)return null;
-            if(!expeditionLayoutRead&&content!=null)
-            {
-                expeditionLayoutRead=true;
-                try{var asset=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName);if(asset!=null){expeditionLayout=NativeExpeditionLayout.Parse(asset.text);expeditionLayoutFingerprint=NativeExpeditionLayout.Compatibility(asset.text,content);}}
-                catch(Exception e)when(e is FormatException||e is ArgumentException||e is InvalidOperationException){Debug.LogWarning("Expedition layout presentation disabled: "+e.Message);expeditionLayout=null;}
-            }
+            EnsureExpeditionLayout();
             if(expeditionLayout==null||!NativeExpeditionStates.Bound(v,expeditionLayoutFingerprint))return null;
             if(expeditionRig==null||expeditionRig.Area!=v.area)expeditionRig=ExpeditionStateRig.For(expeditionLayout,v.area);
             return expeditionRig;
@@ -117,17 +112,20 @@ namespace ChipArena.UnityConversion
         /// the doors, gate and sanctuary of the loaded area when the arena holds that area's map.</summary>
         private void ExpeditionStatesFrame()
         {
-            var v=LiveExpedition;double t=expeditionStateTime=expeditionClock.Observe(v,Time.unscaledTime);expeditionCues.Observe(v,t);
+            var v=LiveExpedition;double t=expeditionStateTime=expeditionClock.Observe(v,Time.unscaledTime);
             var rig=ExpeditionRigFor(v);bool mapReady=expeditionMapReady=NativeExpeditionStates.MapReady(rig,arena?.MapId);
+            // The laser door's arrival lock waits until this client is presented in the area: its loading screen down, the map held.
+            expeditionCues.ArrivalHeld=StageLoadingShown||!mapReady;expeditionCues.Observe(v,t);
             expeditionTransfer.From(v,expeditionStateLabels);expeditionTransferFade.Step(expeditionTransfer.Active,mapReady,Time.unscaledDeltaTime);
-            if(!ExpeditionWorldShown||rig==null||!mapReady){expeditionStates.Clear();if(!ExpeditionWorldShown)expeditionCues.ForgetPilots();return;}
+            if(!ExpeditionWorldShown||rig==null||!mapReady){expeditionStates.Clear();if(!ExpeditionWorldShown)expeditionCues.ForgetPilots();LaserDoorPreviewFrame();if(!expeditionStates.LaserDrawn)ExpeditionLaserSounds(t);return;}
             // Sanctuary crossings: every connected pilot standing (feet just over the floor).
             foreach(var p in arena.Pilots){if(p?.Body==null||!p.Seat.connected||p.Hp<=0)continue;var at=p.Body.position;expeditionCues.Pilot(p.Seat.id,at.x,at.y-.765f,at.z,rig,t);}
             var c=cameraView.transform;Vector3 e=c.position,r=c.right,u=c.up;
             var eye=new ExpeditionEye{X=e.x,Y=e.y,Z=e.z,Rx=r.x,Ry=r.y,Rz=r.z,Ux=u.x,Uy=u.y,Uz=u.z};
             // The fenced hub keeps its safe zone unseen (Core HideSanctuaryEdge): its record is the town's hub, published by the hub frame.
+            expeditionStates.DoorPreview=LaserDoorPreviewFor(rig,t);
             var hub=NativeExpeditionHubLive.Layout;expeditionStates.HideSanctuaryEdge=hub!=null&&hub.Area==rig.Area;
-            expeditionStates.Build(v,rig,expeditionCues,t,eye,prefs.reducedEffects,presentation.LowGraphics);
+            expeditionStates.Build(v,rig,expeditionCues,t,eye,prefs.reducedEffects,presentation.LowGraphics);ExpeditionLaserSounds(t);
             if(expeditionStatesDraw==null&&!expeditionStatesFailed){expeditionStatesDraw=NativeExpeditionStatesDraw.Create();expeditionStatesFailed=expeditionStatesDraw==null;}
             if(expeditionStatesDraw==null)expeditionStates.Clear();else expeditionStatesDraw.Draw(expeditionStates,cameraView,presentation.UsesInstancing,Time.unscaledTime);
         }
@@ -142,6 +140,7 @@ namespace ChipArena.UnityConversion
             if(expeditionBoss.Intro>=0)NativeExpeditionStatesHud.BossIntro(expeditionBoss,width,height,(float)expeditionBoss.Age,reduced);
             var rig=ExpeditionRigFor(v);if(rig==null)return;
             foreach(var g in rig.Gates)if(expeditionCues.Cue(g.Id,t,out double age)&&age<NativeExpeditionStates.GateNoticeSeconds){NativeExpeditionStatesHud.GateNotice(width,height,(float)age,reduced);break;}
+            if(ExpeditionWorldShown&&expeditionMapReady)ExpeditionLaserNotice(v,width,height,t);
         }
         /// <summary>
         /// SAFE over every pilot whose seat (members[].seat) the authority has in the sanctuary (ExpeditionSafeTags), in the slot

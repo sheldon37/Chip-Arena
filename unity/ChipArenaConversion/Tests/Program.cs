@@ -24,6 +24,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition-join-view"){ExpeditionJoinPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-visuals"){ExpeditionStationVisualChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-states"){ExpeditionStatesChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--laser-door"){ExpeditionLaserDoorChecks.Run(ProjectRoot());ExpeditionStatesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-acceptance"){ExpeditionAcceptanceChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-pick"){ExpeditionPickChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--chooser-camera"){var root1=ProjectRoot();ChooserCameraChecks.Run(root1,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root1,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
@@ -70,7 +71,7 @@ internal static class Program
             CloudflareChecks.Run().GetAwaiter().GetResult();
             AnimationChecks.Run();
             string root=ProjectRoot();
-            ExpeditionPresentationChecks.Run(root);ExpeditionIntegrationChecks.Run(root);ExpeditionDirectorChecks.Run(root);ExpeditionStatesChecks.Run(root);ExpeditionAcceptanceChecks.Run(root);ExpeditionPickChecks.Run(root);
+            ExpeditionPresentationChecks.Run(root);ExpeditionIntegrationChecks.Run(root);ExpeditionDirectorChecks.Run(root);ExpeditionStatesChecks.Run(root);ExpeditionLaserDoorChecks.Run(root);ExpeditionAcceptanceChecks.Run(root);ExpeditionPickChecks.Run(root);
             PveSpitterChecks.Run(root);NavSearchChecks.Run(root);WardSimulationChecks.Run(root);HulkBreachChecks.Run(root);InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
             ExpeditionStationVisualChecks.Run(root);
