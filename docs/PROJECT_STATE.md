@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-17 Claude Central Station boss design THE 6:47 (`claude/boss-central-station`; design on branch, not merged, not live): `docs/EXPEDITION-BOSS-CENTRAL-STATION.md` (concept, phases, attacks, animation direction, Astra contract and prompt, owner decisions) and the inert concept model `Core/NativeStationBossModel.cs` with managed checks. Waits on owner decisions, then Astra's rules and fields. See DEV_LOG.
+
 2026-10-17 Astra zone gameplay candidate (`codex/unity-zone-gameplay`): all nine Station/Ironworks enemies, zone spawning/caps, hazards/levers, replicated state and live bindings implemented; exp-layout-6 adds Rigger hangs and the converter shutter. PR #264 gameplay head 37fca579 passes hosted native-source and Windows updater gates (full regressions and real relay); integrated Claude's boss music head 77c3696. Native Windows gameplay execution and publication pending. See EXPEDITION-ZONE-GAMEPLAY.md and DEV_LOG.
 
 2026-10-17 Claude zone boss music (`claude/zone-music`, merged into shared): Central Station and City Ironworks play their own boss tracks (`music/central-station-boss`, `music/city-ironworks-boss`) when the files are installed, else the Siren's song; normal-play zone music is Astra's PR #263. Next: owner drops the two MP3s in `Assets/ChipArena/Resources/Audio/music/`.
