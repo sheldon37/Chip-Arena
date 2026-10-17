@@ -58,6 +58,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--hazard-kit"){HazardKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-visuals"){IronworksVisualChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-boss"){IronworksBossModelChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--ironworks-boss-presentation"){IronworksBossPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--foot-surfaces"){FootSurfaceChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--footfalls"){FootfallAudioChecks.Run(ProjectRoot());FootSurfaceChecks.Run(ProjectRoot());foreach(var result in EffectsAudioChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);HordeRoamChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ward-lighting"){WardLightingChecks.Run(ProjectRoot());return 0;}
@@ -129,7 +130,7 @@ internal static class Program
             CameraRigChecks.Run(root);
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
             StructureFxChecks.Run(root);
-            IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);
+            IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);IronworksBossPresentationChecks.Run(root);
             CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
             DevToolsChecks.Run(root);
             SpawnInChecks.Run(root,data);

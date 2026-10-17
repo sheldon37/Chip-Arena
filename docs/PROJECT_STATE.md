@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-17 Claude THE CONVERTER in-game presentation (`claude/boss-ironworks-presentation`, merged into shared, not live until Astra binds it; presentation only): runtime model, motion, effects, arrival and death on Hydraulic Hell's beats, HUD name and cues behind `IronworksBossViewOf` (None until Astra binds the record), with a DEV preview. Next: review and merge; Astra binds.
+
 2026-10-17 Claude zombie design, voxel rework (`claude/zombie-design`, owner approved, merged into shared; presentation only): the owner rejected the sculpted pass ("Keep voxel style, just improve it"). The Siren's seven kinds are rebuilt as high-end voxel pilots: layered voxel grids (stepped torn suits, block wounds and ribs), cube skulls with recessed sockets and block teeth, cracked tile armour and block muscle. `ZombieLit` is tuned for crisp faces (fallback: the old horde shader); per-add variation comes from the instanced tint, with no new draws. Budgets hold (Full max 7,132 of 7,200) and the capsules hold on the merged motion. run5b passes; Unity Editor and Windows are unrun. See docs/ZOMBIE-DESIGN.md and DEV_LOG.
 
 2026-10-17 Claude THE 6:47 stage wiring (`claude/boss-station-stage-wiring`, merged into shared, not live until Astra binds the boss; presentation only): the station draws the boss hook over the song (row 0 LAST CALL then ARRIVING, DEPARTED, clocks to 6:48, T1 green, barrier and board falls, shudder); TERMINUS double charge; watch to 6:48; preview benches cleared and express drawn. Next: Astra binds the record and colliders.
