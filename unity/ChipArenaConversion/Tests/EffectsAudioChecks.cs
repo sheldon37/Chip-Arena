@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
             }
             passed.Add("hover audio: 10,000 stationary repaints cue once; slot/offer/keyboard edges, disabled/re-entry/reset, fixed 40/70 ms ticks and overlap budget pass");
             // ---------- key contract ----------
-            var keys=NativeSoundKeys.All;Check(keys.Length==226&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20&&keys.Count(k=>k.Key.StartsWith("pve.zombie.",StringComparison.Ordinal))==14,"206 effect keys (19 of them the hazard kit's, 14 the zombies' voices and footfalls) and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
+            var keys=NativeSoundKeys.All;Check(keys.Length==260&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20&&keys.Count(k=>k.Key.StartsWith("pve.zombie.",StringComparison.Ordinal))==14&&keys.Count(k=>k.Key.StartsWith("pve.ironworks.",StringComparison.Ordinal))==34,"240 effect keys (19 of them the hazard kit's, 14 the zombies' voices and footfalls, 34 the City Ironworks enemies') and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
             foreach(var k in keys)
             {
                 Check(Regex.IsMatch(k.Key,"^[a-z]+(\\.[a-z0-9-]+)+$")&&NativeSoundKeys.Known(k.Key),k.Key+" name");

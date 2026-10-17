@@ -41,6 +41,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--cyber-kit2-ranged"){foreach(var result in CyberLordRangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);foreach(var result in CyberKit2RangedChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--horde-drops"){HordeDropChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());HulkMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-motion"){HulkMotionChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--ironworks-kinds"){IronworksKindChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--horde-roam"){HordeRoamChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-charge"){HulkMotionChecks.Run(ProjectRoot());HulkChargeChecks.Run(ProjectRoot());HulkHuntChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-tools"){DevToolsChecks.Run(ProjectRoot());return 0;}
@@ -111,7 +112,7 @@ internal static class Program
             HudPlaceholderChecks.Run(root);HudCyberChecks.Run(root,data);
             DeathFxChecks.Run(root);CorpseChecks.Run(data);
             StageVentChecks.Run(root);MinionFxChecks.Run(root);MinionHintChecks.Run(root);
-            HordeDropChecks.Run(root);HordeKindChecks.Run(root);ZombieMotionChecks.Run(root);HordeRoamChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
+            HordeDropChecks.Run(root);HordeKindChecks.Run(root);IronworksKindChecks.Run(root);ZombieMotionChecks.Run(root);HordeRoamChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             CameraRigChecks.Run(root);
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
