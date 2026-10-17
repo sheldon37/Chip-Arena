@@ -39,6 +39,8 @@ namespace ChipArena.UnityConversion
             // (The slow forward walk-4 is the take that plants cleanly at the wander's .4-1.1 m/s for every kind: the walk-6 and the
             // chases drag a planted ankle up to 5-7 cm there.)
             wanders=new[]{N("walk-4"),N("walk-4"),N("walk-4"),N("walk-4"),new int[0],N("walk-4"),N("walk-4")};
+            // The zone kinds' own takes after the Siren's (Core/NativeHordeZones; the Siren's sets unchanged).
+            walks=NativeHordeZones.Takes(walks,z=>z.Walks);runs=NativeHordeZones.Takes(runs,z=>z.Runs);idles=NativeHordeZones.Takes(idles,z=>z.Idles);wanders=NativeHordeZones.Takes(wanders,z=>z.Wanders);
             swipeR=N("swipe-r1","swipe-r2");swipeL=N("swipe-l1","swipe-l2");lunge=N("lunge-1","lunge-2");smash=N("smash-1","smash-2");knock=N("knock-1","knock-2","knock-3","knock-4","knock-5");
             deathBack=N("death-back-1","death-back-2","death-back-3");deathFront=N("death-front-1","death-front-2","death-front-3");deathLeft=N("death-left-1");deathRight=N("death-right-1","death-right-2");
             lands=N("jump-land");Wake=NativeZombieClips.Need("wake");CrawlStand=NativeZombieClips.Need("crawl-stand");StandCrawl=NativeZombieClips.Need("stand-crawl");
@@ -56,7 +58,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Whether a kind walks on the capture (all but the crawler, whose four-limbed trot stays procedural).</summary>
         public static bool Captured(int kind){Warm();return kind>=0&&kind<walks.Length&&walks[kind].Length>0;}
-        private static int K(int kind)=>Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind));
+        private static int K(int kind)=>NativeHordeKinds.Index(kind);
         /// <summary>One of a set by a seed's hash (stable for the add's life).</summary>
         public static int Pick(int[] set,uint seed,int salt)=>set.Length==0?-1:set[Math.Min(set.Length-1,(int)(NativeHordeKinds.Hash(seed,salt)*set.Length))];
         public static int Walk(int kind,uint seed){Warm();return Pick(walks[K(kind)],seed,100);}
@@ -102,7 +104,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The playback rate of cycle `clip` at ground speed `v` (m/s) for `kind`.</summary>
         public static float Rate(int clip,float v,int kind)
         {
-            float v0=Math.Max(.08f,NativeZombieClips.Speed(clip)),r=Tempo[K(kind)]*(float)Math.Pow(Math.Max(.25f,v)/v0,Exponent);
+            float v0=Math.Max(.08f,NativeZombieClips.Speed(clip)),r=NativeHordeZones.Tempo(kind,Tempo)*(float)Math.Pow(Math.Max(.25f,v)/v0,Exponent);
             return r<MinRate?MinRate:r>MaxRate?MaxRate:r;
         }
         /// <summary>A cycle's cadence at ground speed `v` (cycles per second).</summary>

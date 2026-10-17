@@ -15,6 +15,119 @@
 - Native `640af06` passes Station geometry after the slope fix, then fails Ironworks. Diagnostic `4164d5c` identifies phantom tread-top nodes (e.g. stock stair at x38.5/z13.5 has a y0.50 tread node while native floor is y0.25). Unity replaces ramp-listed blocks with smooth colliders; the importer only excluded navHints.collisionOff, empty in the original Ironworks draft.
 - Exclude every ramp.blocks tread from navigation collision/surface generation as Unity does. Preserve authored blocks/rendering, ramps and layout hashes. Add a small ramp fixture proving node heights match the smooth support, regenerate live navigation, retain all native placement/reachability/activation gates. Publication pending successful native rebuild.
 
+## 2026-10-17 — Claude: City Ironworks enemies' in-game presentation (Cinderling, Stoker, Slagback, Ladleman, Rigger; not live)
+
+- Owner (2026-10-16): "Go with your picks, add the rigger as well." The task came through the coordinator: presentation for the five
+  approved Ironworks enemies (models, animation, VFX, hit and death looks, cue routing) and decision 14 (the brute's seams turn
+  cream in the Ironworks only). Visuals only. No rules, stats, AI, spawning, authority or networking; those are Astra's.
+- Branch `claude/ironworks-enemies`, base shared `origin/claude/sleepy-ritchie-g8ruhv` `8a5de43`. Implementation commit
+  `aa320f6`. At the coordinator's request it was merged with shared `4164d5c` (which includes #255 and #256 at `640af06`, plus
+  #257) as `3d630d6`, with no conflicts. The follow-up commit is the branch head. This is on the branch only: not merged into
+  shared, builder untouched, no PR. The five kinds are not live and nothing was published.
+- **Live map id finding:** the live Ironworks (exp-layout-5, PR #255) is area `exp-foundry` on map **`expedition-foundry`**.
+  `UnityMaps.json` has no `expedition-ironworks`, which was the design and draft id. Decision 14's cream brute seams therefore
+  apply on both Ironworks ids (`NativeIronworksKinds.LiveMap`/`Map`) and on no other map. A check reads the live layout: its
+  only Ironworks map is exp-foundry's. Because brutes spawn in the live Ironworks today, this is the one visible change once
+  merged. In a split-area run it follows the presented arena, which is the area the local pilot is in.
+- **Registration (zone kinds):** `Core/NativeHordeZones.cs` appends zone kinds after the Siren's seven. `NativeHordeKinds.Count`
+  stays 7 and `All` is 12. The new ids resolve and are `Known`, so frames and allow lists can carry them once Astra's rows
+  exist. Each kind has a capsule, looks, scale, weight, glow, default attack, and its 10.1 row (used for the DEV preview's
+  timing). `NativeHordeKinds.Base(kind)` gives a zone kind its body's gait shape, head and fallbacks. Zone kinds grow no
+  Siren flame tongues. Today's content contains none of the five.
+- **Hooks in shared files** (one line or one token each):
+  - NativeHordeKinds: All, Index, Base, SeamOf, the static constructor that grows the tables, Resolve/Known/Look over All,
+    StepCue by body.
+  - NativeHordeModels: Id (the cream brute in the Ironworks), ids over All, JawHinge/MouthSocket/Tongues by Base, Build's seam
+    colour and zone dispatch, K.SeamHex.
+  - NativeZombieModels: the eyes follow the seam colour.
+  - NativeZombieMotion: the zone kinds' takes and tempo.
+  - NativeHordeMotion: Index/Base for the per-kind tables; the trunk and arms layers.
+  - NativeHordeReact: Index.
+  - NativeHordeKindModels: All; the props, crust and cream models.
+  - NativeHordeKindPresentation: zone flag, hit, the Rigger's off-ground add, the view before the gait, props after it, no
+    base attack job for zone kinds, effects, death (a popped cinderling's body hidden), gallery, clears, cues, the DEV
+    preview list, SeamOf for the brute's telegraph and impact ink.
+  - NativeHordeZombiePresentation: SeamOf for the brute's landing cracks.
+  - The sound bank (34 `pve.ironworks.*` keys) and its two count pins.
+  - HordeKindChecks/HulkSpitterChecks: the Siren's seven by Count.
+- **Models** (`Core/NativeIronworksModels.cs`; three tiers, each inside its capsule):
+  - Cinderling: the runner, charred, with white-hot cracks and a coal in the ribs. 2 looks.
+  - Stoker: a silver heat suit, a square hood with one cyan visor slit, a coat whose halves ride the thighs. 2 hoods.
+  - Slagback: a brute burned black with a white-gold fissure down its back. Its crust is a separate model: glassy slag plates
+    with dim cracks, shed at `shedAt`. 2 looks.
+  - Ladleman: a brute at 1.24 in a leather apron, a welder's mask with a cyan lens, gauntlets.
+  - Rigger: lean and dead grey, with a harness and shackles, a chain bandolier, and a cream hard hat carrying the lamp
+    housing. It is drawn at 1.0, not the doc's 1.04, so the hat stays inside the shambler capsule the contract gives it.
+  - Props: the 3 m rake, the ladle full and spilled (the molten bowl is the brightest thing on any enemy), the crane hook,
+    chain links, the lamp's lens.
+  - The brute's cream-seam variant for the Ironworks (seams and eyes only; same geometry).
+- **Animation** (`Core/NativeIronworksMotion.cs`, layered over the zombie gait). Takes: cinderling sprint-1/3, stoker
+  walk-6/chase-2, slagback walk-4/chase-5, ladleman walk-4 at tempo .7, rigger walk-6/chase-1.
+  - Stoker: carries the rake in both fists in a spear stance; the left fist grips the pole wherever it can reach. The sweep
+    is two-handed on the swipe's channels. The pull: rake raised .7 s, thrust, the hook flies the 4.5 m line from the
+    Stoker on its chain, yanks .35 s, holds .4 s.
+  - Ladleman: carries the ladle, lifts and tips it across the arc (the pour), swings it on the smash take, drops it when
+    spilled and is knocked to a crouch for the stun.
+  - Slagback: a reel when the crust sheds.
+  - Cinderling: a crouch for the lunge.
+  - Rigger: the hook hangs from its fist, is dragged while walking, spins twice overhead and sweeps 300 degrees on 3.2 m of
+    chain. Off the ground it hangs, slides, climbs hand over hand, throws, falls and is stunned (static poses). The landing
+    uses NativeHordeDrop's crouch with a light profile.
+  - Hoods, masks and the hat stay level.
+  - No new clips. The licensed ZOMBIE PRO source is not in this environment, and the doc's "new mocap wanted" takes need new
+    captures. Procedural stand-ins play until they exist.
+- **Effects** (`Core/NativeIronworksFx.cs`, a fixed command buffer drawn by the runtime and by the render harness):
+  - Cinderling: the coal's white flare and halo, a smoke plume, embers. On a melee kill it pops: a fuse strobe with a cream
+    1.4 m warning ring, a flash, embers to 1.4 m, hot cinders, a scorch, and the body is gone. Other kills crumble to ash.
+  - Stoker: the visor slit, the sweep's cream arc and pale trail, the pull's cyan dashed line, hook glint, spark trail,
+    drag sparks.
+  - Slagback: the fissure glow and the slam's cream dashed ring. The slam itself is the zombie impact in fissure ink, plus
+    slag chips, sparks and dust. Crust shards when it sheds; deflect sparks off the crusted front.
+  - Ladleman: the bowl's glow and steam, the pour's cream arc, bubbling, the molten stream and splash, the burning pool, the
+    swing's arc, the spill. The pool has a lobed edge, a hotter core, and its summed layers stay below telegraph brightness.
+  - Rigger: the lamp's halo, plus girder dust at the rattle. The drop shows a cream ring with a white flash at the slide,
+    the lamp's cold pool of light and a glint on the hook, and the hook's swaying shadow. Also glove sparks, a landing dust
+    ring (the zombie landing at the drop's 1.5 m), the swing's 3.2 m cream dashes, a 1 m cold ring and trail, the hook's
+    drag sparks, the chain snap.
+  - Telegraphs are never plain orange.
+- **Cues:** the `pve.ironworks.<kind>.<cue>` keys, section 8's 34 of them. They are registered in the bank contract and play
+  from the bank only, so they stay silent until the owner supplies clips. They are routed at the wind-up, the strike and
+  every special. A zone cue that plays takes the attack layer's slot, so the Siren-kind layers remain the fallback. Loops
+  (carry, hang, climb) are registered but not routed yet.
+- **View binding for Astra:** `IronworksView` (Core) uses the doc's names: `pullTarget`, `pullAt`, `shedAt`, `pourAt`,
+  `pourYaw`, `spilledAt`, `hang`, `lockAt`, `lockX`, `lockZ`, `climbAt`, `climbTo`, `chainCutAt` (NaN/-1 when unset). Binding
+  them is one line: `ArenaPresentation.IronworksViewOf` (Runtime/NativeIronworksKindsPresentation.cs). Until then, each kind
+  plays its attack (LastAttack) and the Rigger plays its hang-point entrance. The proposed timeline is `EntryDuration` 2.5 s:
+  the rattle at SpawnAt, the landing .5 s before ActiveAt. The DEV gallery (Dev Sandbox minion gallery, second row) plays
+  every special. Proposed capsule for Astra: stoker .45 x 1.82 (doc 10.1 updated).
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking for any kind. Strikes land on
+  the authority's LastAttack + hit for the five, as for the seven, and nothing is read back.
+- **Checks** (final tree):
+  - `CoreTests --ironworks-kinds`: PASS (281,240 checks), and PASS horde kinds (433,794).
+  - Bitwise proof against the merged base `4164d5c` Core (and earlier `8a5de43`), base and branch both run: the seven's
+    tables `e86a9dbe400ff15d` (4,062 values), models `792f1ad0b785e817` (3,345,295), takes `38e7846ca894448e`, and gait
+    `1bafd256334a5365` (12,402,621) are identical. Out-of-range lookups are identical. Only indices 7-11 differ.
+  - Today's content has none of the five. The live manifest carries them only as `propose` data: no allow list names them.
+  - Unity runtime+editor compile: OK.
+  - `run5b.sh` on the final tree: all five steps exit 0. Unity runtime+editor compile OK. Relay/CoreTests: 771 PASS lines,
+    including ironworks kinds, horde kinds, spawn-in, and effects audio with all 216 named keys in the contract. Python: 139 tests
+    OK (1 skipped). Package source: 2,262 files. Diff check: clean.
+  - Earlier runs, fixed before the final one: the bank-key audit and a footfall source pin flagged a built key prefix and a moved
+    `HordeDust` argument. One direct CoreTests run had a single spawn-in allocation miss (7,408 bytes); it passed on the rerun.
+- **Renders:** offline, through the real rig, Core models and FX, with the NativeBlockLit/NativeNightSky shaders in the
+  Ironworks draft's foundry lighting. Scratch only, not in the repo: the session scratchpad's `renders-ironworks-enemies/`
+  (lineups; per kind move/telegraph/strike/special/death; `brute-cream-close.png`). Not run: Unity Editor, Windows player, two clients, the
+  real NativeSourceLit actor shading.
+- **Not done / risks:**
+  - The Ladleman's pool is a decal stand-in. The molten shader from `claude/ironworks-visuals` hooks in at
+    NativeIronworksFx's Ladleman pool and Spill `Blob` calls.
+  - No new mocap, so the pole, ladle, lasso and rope work is procedural.
+  - The loop cues are not routed.
+  - The Siren's faint ink rim and ink blood still apply to the zone kinds.
+  - The pull's hook only follows the target once `pullTarget` is bound.
+  - `claude/station-enemies` adds kinds on the same registration line (`NativeHordeZones.Kinds`), the sound-key block and
+    count pins, and the preview lists, so expect small merge conflicts there.
+
 ## 2026-10-17 — Astra: native activation slope-clearance repair
 
 - PR #255 merged as `27a35d4`, builder synced. Exact-head native CI passed; real Windows Build-and-Publish then stopped at Station entry-to-upper-floor machine routing. No activation player was published.

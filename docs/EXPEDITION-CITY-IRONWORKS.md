@@ -370,7 +370,8 @@ timings here are the presentation's proposal.
   it, one cold white point of light (its head lamp). On the ground: a thin, long-armed figure trailing a hook on a short chain.
   Its tells are cold white (the lamp, the ring's flash) and cream (the ring); nothing orange. The ambush render shows it under
   the north runway with the furnace line behind it.
-- **Rig build:** the shambler body on the pilot-model zombie rig at 1.04 scale, skin dead grey; parts: a dirty cream hard hat
+- **Rig build:** the shambler body on the pilot-model zombie rig (drawn at 1.0 in the build, not the 1.04 first proposed: its
+  hard hat then stays inside the shambler's capsule the contract gives it), skin dead grey; parts: a dirty cream hard hat
   with a head lamp (emissive cold white plus a spot cone), a webbing harness (crossed straps, a belt, two shackles), gloves, a
   chain coil over the chest, and a crane hook (about 0.6 m) on a chain held in the right hand. The chain is a verlet prop
   (gap 9 in section 4): 30 links between the right hand and the hook, pinned to the girder while it hangs.
@@ -550,7 +551,8 @@ so molten surfaces stay bright). Two of the eight lights stay cool at every tier
 
 New fields:
 - cinderling: `fireImmune` (paths through live runners), `pop {fuse .45, radius 1.4, damage 6, meleeOnly true}`, core weak point x2.
-- stoker: `pull {windup .7, range 4.5, width .6, drag 2.5, dragTime .35, root .4, cooldown 6}`; an interrupt rule (15% of max
+- stoker: capsule .45 x 1.82 (the add capsule at its drawn 1.07; the presentation draws it inside this one);
+  `pull {windup .7, range 4.5, width .6, drag 2.5, dragTime .35, root .4, cooldown 6}`; an interrupt rule (15% of max
   hp or a heavy melee blow in the wind-up).
 - slagback: `armour {front 120 deg, reduction .6, breakAfter 120}`, `shed {stagger .8, speedAfter 1.25}`, back weak point x2,
   `turnRate 90 deg/s`.
@@ -586,20 +588,28 @@ needs its own entry timeline (`NativeWardEntries.Timeline` gives ceiling vents t
 | --- | --- |
 | kind id (`addKind`), lastAttack, attack move | replicated (existing) |
 | telegraph start and strike time | derived (the strike formula, as today) |
-| stoker pull: target id, `pullAt` | replicated (new) |
+| stoker pull: target id (`pullTarget`, the hooked pilot's seat, -1 a miss), `pullAt` (the pull's start) | replicated (new) |
 | stoker pull path and drag pose | derived from `pullAt` and the positions |
 | slagback crust intact, `shedAt` | replicated (new) |
 | ladleman pour: `pourAt`, `pourYaw` | replicated (new; the yaw because he turns) |
 | ladleman ladle intact, `spilledAt` | replicated (new) |
 | molten pool extent and expiry | derived from `pourAt`, `pourYaw` and the stats |
 | cinderling pop time and place | derived from the death event, its position and the fuse |
-| rigger hang point (entry index or -1), `lockAt`, the locked landing point (x, z) | replicated (new) |
+| rigger hang point (`hang`, entry index or -1), `lockAt`, the locked landing point (`lockX`, `lockZ`) | replicated (new) |
 | rigger rattle, hook drop, sway, ring, lamp, slide and landing times | derived from `lockAt` and the stats |
 | rigger hook and body positions on the chain while it hangs, slides or climbs | derived from the hang point, `lockAt` or `climbAt` and the stats |
-| rigger `climbAt` and its target hang index | replicated (new) |
+| rigger `climbAt` and its target hang index (`climbTo`) | replicated (new) |
 | rigger `chainCutAt` (or knocked off) | replicated (new); the fall derived from it and the position |
 | rigger swing | the existing lastAttack and attack move; the arc derived |
 | hazards' phase | derived from the instance's hazard clock, as the Factory's |
+
+Presentation binding (branch `claude/ironworks-enemies`): `Core/NativeIronworksKinds.cs` `IronworksView` holds these replicated
+fields under exactly these names (times NaN and indices -1 when unset); `Runtime/NativeIronworksKindsPresentation.cs`
+`IronworksViewOf` is the one line that fills it from the network frame. The five ids are registered as horde kinds after the
+Siren's seven (`NativeHordeKinds.Known`, their capsules and looks); the Rigger's hang-point entrance proposes the entry
+timeline `NativeIronworksKinds.EntryDuration` (2.5 s: the rattle at SpawnAt, the landing .5 s before ActiveAt).
+The cream brute seams (decision 14) follow the presented arena's map: the live area `exp-foundry` on map `expedition-foundry`
+(exp-layout-5, PR #255) and this design's id `expedition-ironworks`; no other map.
 
 ### 10.5 Parser finding: fixed by PR #254
 
