@@ -1,6 +1,6 @@
 ## 2026-10-17 — Claude: THE 6:47 in-game presentation (on branch, not merged, not live)
 
-- Branch `claude/boss-station-presentation`, base shared `535b42c`, merged with shared `5dc860d` (instance exit laser door; DEV panel conflict resolved keeping both previews) and `29b8498` (zone boss music sync; DEV_LOG and PROJECT_STATE union-resolved). Implementation commits `84cfbcf` (gait opt-ins), `a7d18ab` (presentation), `a5c27f7` (checks), `3bb083d` (doc), `9839732` (prewarm), `8d20052` (song binding). Pushed for review; not merged; nothing published.
+- Branch `claude/boss-station-presentation`, base shared `535b42c`, merged with shared `5dc860d` (instance exit laser door; DEV panel conflict resolved keeping both previews) `29b8498` (zone boss music sync) and `bc39790` (THE CONVERTER design; the intro hold settled at 9.0678 s); DEV_LOG and PROJECT_STATE union-resolved. Implementation commits `84cfbcf` (gait opt-ins), `a7d18ab` (presentation), `a5c27f7` (checks), `3bb083d` (doc), `9839732` (prewarm), `8d20052` (song binding). Pushed for review; not merged; nothing published.
 - **What:** Central Station's boss drawn in game, presentation only, behind one binding point: `ArenaPresentation.StationBossViewOf` returns `StationBossView.None` until Astra's `pve.zoneBoss` record exists, so normal play is unchanged (the placeholder Siren still fights; nothing draws, lights or sounds). Design doc section 13 lists every file.
   - `Core/NativeStationBossView.cs`: the view struct (doc section 10's fields plus root, yaw, health, `spawned`) with `None`.
   - Runtime meshes in three tiers from the concept model, with added detail inside the hit volumes: 22,164 / 10,496 / 4,850 triangles.
@@ -42,9 +42,9 @@
     - Python: 140 tests OK, 1 skipped;
     - package_source OK;
     - `git diff --check` clean.
-  - `run5b` on `8d20052` (merged with `29b8498`, song binding), every step exit 0:
+  - `run5b` on `b2b935c` (the final tree, merged with shared `bc39790`), every step exit 0:
     - Unity runtime and editor build OK;
-    - relay: 782 PASS lines;
+    - relay: 783 PASS lines (the same on `8d20052` with 782);
     - Python: 140 tests OK, 1 skipped;
     - package_source OK;
     - diff-check clean.
