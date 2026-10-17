@@ -4,6 +4,7 @@
 - Added last accepted deploy time/exact cohort, counted ring height, closure enum and each member's pending destination. Cancellation/refusal cannot create a deployment; records are detached, survive sparse observations and reset with the rules. Current admission remains open unless cleared. No movement, combat, timing or collider changes.
 - Claude handoff: exact fields and lifecycle in EXPEDITION-PRESENTATION.md. Existing presentation still infers deployments and assumes height until Claude adopts the new data; no visual-fix claim.
 - Activation snapshot tagline now “Central Station. The 6:47 never left.” Regenerated live maps/asset receipt; semantic comparison confirms only that map's tag changed.
+- CI caught JsonUtility-style empty `pendingArea` needing normalization; added it to the existing normalizer and retained the full preview round-trip assertion.
 - Managed warnings-as-errors compile and focused checks: join rules 40, area wire 30, cohorts 69, join presentation 3612. Added a real-Unity serialization assertion to the existing activation gate. Remaining compile/build verification and release receipt will be recorded in the PR; no Windows human playtest claimed.
 
 ## 2026-10-17 — Claude: City Ironworks normal-play readability and lighting pass (on branch, not merged)

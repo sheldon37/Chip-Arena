@@ -241,14 +241,14 @@ namespace ChipArena.UnityConversion
         {
             if(v==null)return null;static string N(string s)=>string.IsNullOrEmpty(s)?null:s;
             if(string.IsNullOrEmpty(v.areaIdentity?.run))v.areaIdentity=null;
-            v.joins??=Array.Empty<ExpeditionJoinView>();
+            v.joins??=Array.Empty<ExpeditionJoinView>();foreach(var j in v.joins)if(j!=null)j.deployedAccounts??=Array.Empty<string>();
             v.closures??=Array.Empty<ExpeditionClosureView>();v.bossArrivals??=Array.Empty<ExpeditionBossArrivalView>();v.areaBarrier??=new ExpeditionAreaBarrierView();v.areaBarrier.target=N(v.areaBarrier.target);v.areaBarrier.layout=N(v.areaBarrier.layout);
             v.continueVotes??=Array.Empty<string>();v.anchors??=Array.Empty<ExpeditionWorldAnchor>();v.chests??=Array.Empty<ExpeditionChestOffer>();
             v.members??=Array.Empty<ExpeditionViewMember>();v.loot??=Array.Empty<ExpeditionViewLoot>();v.instances??=Array.Empty<ExpeditionViewInstance>();v.dice??=Array.Empty<ExpeditionDice>();v.exitVotes??=Array.Empty<string>();v.extractVotes??=Array.Empty<string>();
             v.viewer=N(v.viewer);v.mine??=new ExpeditionViewPersonal();v.transfer??=new ExpeditionViewTransfer();v.difficulty??=new ExpeditionDifficulty();
             v.mine.rewards??=Array.Empty<ExpeditionViewReward>();v.mine.chips??=Array.Empty<ChipCount>();v.mine.perks??=Array.Empty<string>();v.mine.carrying??=Array.Empty<string>();
             v.mine.account=N(v.mine.account);v.mine.carriedBy=N(v.mine.carriedBy);
-            foreach(var m in v.members){m.carriedBy=N(m.carriedBy);m.name=N(m.name)??m.account;}
+            foreach(var m in v.members){m.carriedBy=N(m.carriedBy);m.pendingArea=N(m.pendingArea);m.name=N(m.name)??m.account;}
             foreach(var a in v.anchors)a.building=N(a.building);
             foreach(var l in v.loot){l.owner=N(l.owner);l.boss=N(l.boss);}
             foreach(var r in v.mine.rewards){r.boss=N(r.boss);r.selected=N(r.selected);r.offers??=Array.Empty<string>();}
