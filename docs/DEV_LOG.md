@@ -1,3 +1,10 @@
+## 2026-10-17 — Astra: zone gameplay verification and express collision
+
+- Branch `codex/zone-gameplay-verification`, base shared/builder `ce85919`. Reconciled with the already-merged PR #264 gameplay and #265 Unity entry fix; preserved that implementation and Claude's boss-music routing. Independent local implementation retained only as checkpoint `2def07c`, not integrated.
+- Observed owner's Windows log for `ce85919`, 2026-10-17 14:47 UTC: four independent areas spawned correctly; Station attack/codec checks progressed to the final hazard-clock assertion, then publication stopped. Split the combined assertion into frame validity, presence and clock checks; compare serialized float clocks within 1 ms rather than exact equality. Native rerun still required to confirm the failing component; no passing Windows claim.
+- Express collisions now use the train's visible nose/tail sweep clipped to the station shell for pilots and minions. Previously the entire track was lethal throughout the pass. Edge shove follows the same sweep. Signal controls refuse an already-moving train, preserving its collision/visual continuity. Warning and pass timings are unchanged; no art or audio changes.
+- Checks: focused zone combat 512 checks pass, including 267 new sweep boundary/continuity checks; source packaging passes (2355 files); Unity reference-assembly compilation and diff checks recorded in PR. Existing merged gameplay CI is separate from this follow-up. Native Windows/PhysX and human multiplayer remain pending; this does not claim a published update.
+
 ## 2026-10-17 — Claude: zone boss music for Central Station and City Ironworks
 
 - Branch `claude/zone-music`, base shared/builder `6dc3899` (Astra's PR #263 already routes each zone's normal-play music: Foundry of the Dead, Subway Arrival Chime). Owner: "Wire the zone music now, the names work."
