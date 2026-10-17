@@ -33,8 +33,8 @@ namespace ChipArena.UnityConversion
             for(int z=0;z<5;z++)
             {
                 int k=NativeIronworksKinds.Kind(z);string id=Five[z];
-                Check(NativeHordeKinds.Ids[k]==id&&NativeHordeKinds.Resolve(id)==k&&!NativeHordeKinds.Known(id)&&NativeIronworksKinds.Local(k)==z&&NativeIronworksKinds.Is(k),id+" resolves to kind "+k+" (drawn), not known to the authority or the wire until shipped");
-                Check(!NativeHordeKinds.Shipped[k],id+" is no shipped content kind");
+                Check(NativeHordeKinds.Ids[k]==id&&NativeHordeKinds.Resolve(id)==k&&NativeHordeKinds.Known(id)&&NativeIronworksKinds.Local(k)==z&&NativeIronworksKinds.Is(k),id+" resolves to kind "+k+" is known to the authority and wire");
+                Check(NativeHordeKinds.Shipped[k],id+" is a shipped zone content kind");
                 Check(NativeHordeZones.Of(k)!=null&&NativeHordeZones.Of(k).Zone==NativeIronworksKinds.Map&&NativeHordeKinds.Base(k)==NativeHordeZones.Of(k).Body&&NativeHordeKinds.Index(k)==k,id+" borrows its body's tables");
                 Check(NativeHordeKinds.Looks[k]>=1&&NativeHordeKinds.Looks[k]<=NativeHordeKinds.MostLooks,id+" looks");
                 for(int i=10000;i<10300;i++){int l=NativeHordeKinds.Look(k,i);Check(l>=0&&l<NativeHordeKinds.Looks[k],"look in range");}
@@ -53,9 +53,9 @@ namespace ChipArena.UnityConversion
             Check(adds.All(a=>NativeHordeKinds.Resolve(a)<NativeHordeKinds.Count)&&!Five.Any(adds.Contains),"today's content has none of the five (its adds resolve to the Siren's kinds)");
             var draft=R(root,"Tests/expedition-ironworks-layout-draft.json");var allows=Regex.Matches(draft,"\"allow\": ?\\[([^\\]]*)\\]").Select(m=>m.Groups[1].Value).ToList();
             Check(allows.Count>0&&allows.All(a=>!Five.Any(f=>a.Contains("\""+f+"\""))),"the draft's allow lists still name only the Siren's kinds (the proposals sit beside them)");
-            // The live manifest (exp-layout-5) carries the design's proposals as data ("propose"); no spawn allows any of the five.
+            // The live exp-layout-6 manifest binds the approved five kinds to authored entries.
             var liveAllows=Regex.Matches(R(root,"Assets/Conversion/Resources/ExpeditionLayout.json"),"\"allow\": ?\\[([^\\]]*)\\]").Select(m=>m.Groups[1].Value).ToList();
-            Check(liveAllows.Count>0&&liveAllows.All(a=>!Five.Any(f=>a.Contains("\""+f+"\""))),"the live manifest's allow lists name none of the five ("+liveAllows.Count+" lists)");
+            Check(liveAllows.Count>0&&Five.All(f=>liveAllows.Any(a=>a.Contains("\""+f+"\""))),"the live manifest allows all five ("+liveAllows.Count+" lists)");
         }
         private static bool Near(float a,float b,float e=1e-4f)=>Math.Abs(a-b)<=e;
         // ---- today's seven exactly as before (with the full bitwise comparison in the DEV_LOG; HordeKindChecks still run) ----
@@ -192,7 +192,7 @@ namespace ChipArena.UnityConversion
             var doc=Doc(root);if(doc!=null)foreach(var n in new[]{"pullAt","shedAt","pourAt","pourYaw","spilledAt","lockAt","climbAt","chainCutAt"})Check(doc.Contains("`"+n+"`"),"the doc's 10.4 names `"+n+"`");
             var v=IronworksView.None;Check(v.pullTarget==-1&&float.IsNaN(v.pullAt)&&float.IsNaN(v.shedAt)&&float.IsNaN(v.pourAt)&&float.IsNaN(v.spilledAt)&&v.hang==-1&&float.IsNaN(v.lockAt)&&float.IsNaN(v.climbAt)&&v.climbTo==-1&&float.IsNaN(v.chainCutAt),"unset: NaN times, -1 indices");
             var rt=R(root,"Assets/ChipArena/Runtime/NativeIronworksKindsPresentation.cs");
-            Check(Regex.Matches(rt,"internal static IronworksView IronworksViewOf\\(NativeMinion m\\)=>IronworksView\\.None;").Count==1,"the binding is one line (IronworksViewOf), unbound until the rules replicate the fields");
+            Check(Regex.Matches(rt,"internal static IronworksView IronworksViewOf\\(NativeMinion m\\)=>m\\.Pve\\?\\.Zone\\.Ironworks\\?\\?IronworksView\\.None;").Count==1,"the binding is one line (IronworksViewOf), bound to replicated zone fields");
             Check(Regex.Matches(rt,"IronworksViewOf\\(m\\)").Count>=3&&rt.Split('\n').Where(l=>!l.TrimStart().StartsWith("///",StringComparison.Ordinal)).All(l=>!l.Contains("new IronworksView{")),"every live read goes through it (no view made anywhere else)");
             // A view drives the pose: the ladleman's raised ladle, the stoker's raised rake (the hands go up), the slagback's reel.
             float Hands(int z,IronworksView view,float t)

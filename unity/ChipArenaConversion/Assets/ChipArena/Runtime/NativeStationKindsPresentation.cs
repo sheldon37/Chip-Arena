@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
         // NativePveAdd carries them, e.g.  internal static StationView StationViewOf(NativeMinion m)=>m.Pve?.Station??StationView.None;
         // Until then no add has one (null): every station kind draws its gait, melee, hits and death from today's fields.
         // ================================================================================================================
-        internal static StationView StationViewOf(NativeMinion m)=>StationView.None;
+        internal static StationView StationViewOf(NativeMinion m)=>m.Pve?.Zone.Station??StationView.None;
 
         private sealed class StationAdd
         {

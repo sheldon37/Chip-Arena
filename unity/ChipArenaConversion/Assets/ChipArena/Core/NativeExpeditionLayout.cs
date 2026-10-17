@@ -150,7 +150,7 @@ namespace ChipArena.UnityConversion
                 foreach(var spawn in spawns){
                     var entry=spawn.entry;
                     if(entry.hulk&&entry.kind!="drop"||entry.kind=="breach"&&(!map.blocks.Any(b=>b.id==entry.block&&b.role=="static")||!NativeMapRules.Box(entry.center,entry.size)||!NativeMapRules.Finite(entry.normal)||Math.Abs(entry.normal.Length-1)>=.01f))throw new FormatException("Expedition layout: invalid spawn panel "+entry.id);
-                    bool heavy=spawn.allow.Contains("hulk");float radius=heavy?NativeHordeKinds.HulkRadius:.45f,height=heavy?NativeHordeKinds.HulkHeight:1.8f;Check(spawn.entry.@exit.Position(),radius,height);
+                    bool heavy=spawn.allow.Contains("hulk");float radius=heavy?NativeHordeKinds.HulkRadius:.45f,height=heavy?NativeHordeKinds.HulkHeight:1.8f;foreach(var kind in spawn.allow){var z=NativeHordeZones.Of(NativeHordeKinds.Resolve(kind));if(z!=null){radius=Math.Max(radius,z.Radius);height=Math.Max(height,z.Height);}}Check(spawn.entry.@exit.Position(),radius,height);
                     if(!reachable(area.map,spawn.entry.@exit.Position(),origin.Position,radius,height))throw new FormatException("Expedition layout: unreachable spawn "+spawn.entry.id);}
             }
         }
@@ -165,6 +165,7 @@ namespace ChipArena.UnityConversion
         public static void BindContent(ExpeditionAreaLayout area,NativePveContent data)
         {
             if(area==null||data==null)throw new ArgumentNullException("Expedition area content");
+            NativeZoneCombat.Bind(area,data);
             data.entries=ResolveSpawns(area,data).Select(s=>s.entry).ToArray();
             var point=area.bossPoints[0];data.boss=new PveBoss{spawn=new PvePoint{x=point.x,y=point.y,z=point.z},rescue=new PvePoint{x=point.x,y=point.y,z=point.z},yaw=point.yaw};
             if(area.spawnSource!=null)return;
@@ -215,7 +216,7 @@ namespace ChipArena.UnityConversion
             if(o.TryGetValue("sanctuary",out var safe)){var q=Obj(safe);a.sanctuary=Items(q,"volumes",Volume,true);a.slots=Items(q,"slots",v=>Point(v),true);}
             var spawns=Required(o,"spawns");a.spawnSource=spawns as string;a.spawns=a.spawnSource!=null?Array.Empty<ExpeditionSpawnLayout>():List(spawns).Select(v=>
             {var q=Obj(v);var entry=Spawn(q);var allow=Items(q,"allow",Id,true);
-                if(allow.Length==0||allow.Length>5||allow.Distinct().Count()!=allow.Length||allow.Any(k=>!NativeHordeKinds.Known(k)||!NativeWardEntries.Allows(entry,k)))throw new FormatException("Expedition layout: invalid spawn allow list.");
+                if(allow.Length==0||allow.Length>16||allow.Distinct().Count()!=allow.Length||allow.Any(k=>!NativeHordeKinds.Known(k)||NativeHordeKinds.Resolve(k)<NativeHordeKinds.Count&&!NativeWardEntries.Allows(entry,k)))throw new FormatException("Expedition layout: invalid spawn allow list.");
                 return new ExpeditionSpawnLayout{entry=entry,allow=allow};}).ToArray();
             return a;
         }

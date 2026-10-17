@@ -7,6 +7,7 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--zone-combat"){ZoneCombatChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-split"){ExpeditionSplitChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-fresh"){ExpeditionFreshRunChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-area-wire"){ExpeditionAreaWireChecks.Run();return 0;}
@@ -27,11 +28,12 @@ internal static class Program
             if(args.Length==1&&args[0]=="--laser-door"){ExpeditionLaserDoorChecks.Run(ProjectRoot());ExpeditionStatesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-acceptance"){ExpeditionAcceptanceChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-pick"){ExpeditionPickChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--zone-music"){ZoneMusicChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--chooser-camera"){var root1=ProjectRoot();ChooserCameraChecks.Run(root1,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root1,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--chip-select"){var chipData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});foreach(var result in ChipSelectChecks.Run(chipData))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--chip-screen"){ChipScreenChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
-            DevAbuseChecks.Run();ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
+            ZoneCombatChecks.Run(ProjectRoot());DevAbuseChecks.Run();ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
             if(args.Length==1&&args[0]=="--navigation"){NavSearchChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--wardzero-simulation"){var wardRoot=ProjectRoot();WardSimulationChecks.Run(wardRoot);HulkBreachChecks.Run(wardRoot);WardZeroChecks.Run(wardRoot);StageVentChecks.Run(wardRoot);HordeKindChecks.Run(wardRoot);ZombieMotionChecks.Run(wardRoot);HulkSpitterChecks.Run(wardRoot);HulkBreachFxChecks.Run(wardRoot);HulkMotionChecks.Run(wardRoot);return 0;}
             if(args.Length==1&&args[0]=="--cloudflare-smoke"){CloudflareChecks.Live(ProjectRoot()).GetAwaiter().GetResult();return 0;}
@@ -143,6 +145,7 @@ internal static class Program
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             HealNumberChecks.Run(root);
             foreach(var result in EffectsAudioChecks.Run(root))Console.WriteLine("PASS "+result);
+            ZoneMusicChecks.Run(root);
             FootfallAudioChecks.Run(root);
             FootSurfaceChecks.Run(root);
             foreach(var result in IntroMusicChecks.Run(root))Console.WriteLine("PASS "+result);

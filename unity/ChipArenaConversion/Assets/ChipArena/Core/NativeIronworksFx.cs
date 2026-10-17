@@ -272,16 +272,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<(full?10:5);i++){float u=((t*3.1f+i*.137f)%1);double az=Tau*H(f.Seed,(int)(t*3.1f)+i,96);var dir=new Vector3((float)Math.Cos(az),1.2f,(float)Math.Sin(az));var p=land+dir*u*.8f+new Vector3(0,-u*u*.9f,0);b.Streak(p,p-dir*.08f,.016f,Spark,1-u);}
             }
             // The pool: the arc's band laid as the stream sweeps, burning 3 s, then a dark crust that fades.
-            if(NativeIronworksKinds.Pool(v.pourAt,t,out float laid,out float heat,out float alpha))
-            {
-                int segs=full?16:8;float to=ang-arc*.5f+arc*laid;var c=f.Floor+new Vector3(0,.004f,0);
-                // a dark skin, the glowing band (redder at its edges), a hotter core inside it: the two add up to PoolMost at most
-                var hot=Vector3.Lerp(new Vector3(.25f,.06f,.02f),new Vector3(PoolMost*.6f,PoolMost*.6f*.38f,PoolMost*.6f*.08f),heat);var core=new Vector3(PoolMost*.4f,PoolMost*.4f*.62f,PoolMost*.4f*.2f)*heat;
-                Blob(b,c,R0+.15f,R-.12f,segs,new Vector3(.05f,.03f,.02f),.85f*alpha,false,ang-arc*.5f,to,f.Seed);
-                Blob(b,c+new Vector3(0,.002f,0),R0+.3f,R-.25f,segs,hot,alpha,true,ang-arc*.5f,to,f.Seed+7);
-                Blob(b,c+new Vector3(0,.003f,0),R0+.65f,R-.7f,segs,core,alpha,true,ang-arc*.5f,to,f.Seed+11);
-                if(full&&heat>.5f)for(int i=0;i<4;i++){float u=((t*.8f+i*.25f)%1);float aa=ang-arc*.5f+arc*laid*H(f.Seed,i+(int)(t*.8f)*4,97);float rr=R0+.3f+(R-R0-.6f)*H(f.Seed,i,98);var p=f.Floor+new Vector3((float)Math.Sin(aa)*rr,.05f+u*.8f,(float)Math.Cos(aa)*rr);b.Smoke(p,.4f+.6f*u,new Vector3(.12f,.1f,.09f),.3f*(1-u),f.Seed+(uint)i);}
-            }
+            LingeringPool(b,f.Floor,v.pourAt,yaw,t,f.Seed,full);
             // The swing (LastAttack + .6): a cream crescent on the floor where the ladle will land in the wind-up, a trail through it.
             if(!float.IsNaN(f.AttackAge)&&f.AttackAge>=0&&f.AttackAge<f.Strike+.2f)
             {
@@ -292,6 +283,21 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The ladle spilled over him `since` s ago: a splash over the body, metal running off it, a short-lived pool round
         /// his knees, steam.</summary>
+        // Same laid metal after its owner dies; the authority keeps its original expiry.
+        public static void LingeringPool(IronFxBuffer b,Vector3 floor,float pourAt,float yaw,float t,uint seed,bool full)
+        {
+            float ang=Ang(Fwd(yaw)),arc=NativeIronworksKinds.PourArc*(float)Math.PI/180,R=NativeIronworksKinds.PourRange,R0=NativeIronworksKinds.PourInner;
+            if(NativeIronworksKinds.Pool(pourAt,t,out float laid,out float heat,out float alpha))
+            {
+                int segs=full?16:8;float to=ang-arc*.5f+arc*laid;var c=floor+new Vector3(0,.004f,0);
+                // a dark skin, the glowing band (redder at its edges), a hotter core inside it: the two add up to PoolMost at most
+                var hot=Vector3.Lerp(new Vector3(.25f,.06f,.02f),new Vector3(PoolMost*.6f,PoolMost*.6f*.38f,PoolMost*.6f*.08f),heat);var core=new Vector3(PoolMost*.4f,PoolMost*.4f*.62f,PoolMost*.4f*.2f)*heat;
+                Blob(b,c,R0+.15f,R-.12f,segs,new Vector3(.05f,.03f,.02f),.85f*alpha,false,ang-arc*.5f,to,seed);
+                Blob(b,c+new Vector3(0,.002f,0),R0+.3f,R-.25f,segs,hot,alpha,true,ang-arc*.5f,to,seed+7);
+                Blob(b,c+new Vector3(0,.003f,0),R0+.65f,R-.7f,segs,core,alpha,true,ang-arc*.5f,to,seed+11);
+                if(full&&heat>.5f)for(int i=0;i<4;i++){float u=((t*.8f+i*.25f)%1);float aa=ang-arc*.5f+arc*laid*H(seed,i+(int)(t*.8f)*4,97);float rr=R0+.3f+(R-R0-.6f)*H(seed,i,98);var p=floor+new Vector3((float)Math.Sin(aa)*rr,.05f+u*.8f,(float)Math.Cos(aa)*rr);b.Smoke(p,.4f+.6f*u,new Vector3(.12f,.1f,.09f),.3f*(1-u),seed+(uint)i);}
+            }
+        }
         public static void Spill(IronFxBuffer b,Vector3 chest,Vector3 floor,Vector3 fwd,float since,uint seed,bool full)
         {
             if(since<.25f){float u=since/.25f;b.Glow(chest+fwd*.3f,1.4f+1.2f*u,new Vector3(3,1.6f,.5f),1-u);}
