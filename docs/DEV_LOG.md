@@ -1,7 +1,7 @@
 ## 2026-10-17 — Claude: Central Station in-game visuals on the live station (on branch, not live until merged)
 
 - Task (coordinator, from the owner's approved design): build the station's in-game environment to a higher standard than Ward Zero ("a map players call 'This is a cool map!'"), with our real assets and lighting. Mid-task the coordinator reported the station live (Astra's PRs #255-#257) and changed the brief: build on the live map, ship-ready (budget, low tier, readable, no effect on other maps), presentation only, hazards' presentation off in normal play until Astra's fields exist. City Ironworks, the station's enemies and the Ironworks enemies are parallel branches; none of their areas were touched.
-- Branch `claude/station-visuals`, base shared `8a5de43`, merged with shared `4164d5c` (the activation, #255-#257; the coordinator named `640af06`, shared had moved on) then `6404332` (#258-#260 and the Ironworks enemies; the station's map is unchanged there, only Ironworks' navigation moved), `612f0da` (the City Ironworks visuals: the two kits' hooks sit side by side, both look entries kept, the MapLooks receipt recomputed), and `0b54ebe` (the station's enemies: both check registrations kept; this branch's station audio fields renamed `stationCue*`, since the enemies' `NativeAudio` part also declares `stationKinds`). Implementation commits `be9f763`, `744ce49`, `3675e13` and the merges `1891c5d`, `a2a2beb`, `f15d11e` and `e445d86` (the last carries the audio rename). Pushed; no PR, no merge, builder untouched, nothing published.
+- Branch `claude/station-visuals`, base shared `8a5de43`, merged with shared `4164d5c` (the activation, #255-#257; the coordinator named `640af06`, shared had moved on) then `6404332` (#258-#260 and the Ironworks enemies; the station's map is unchanged there, only Ironworks' navigation moved), `612f0da` (the City Ironworks visuals: the two kits' hooks sit side by side, both look entries kept, the MapLooks receipt recomputed), `0b54ebe` (the station's enemies: both check registrations kept; this branch's station audio fields renamed `stationCue*`, since the enemies' `NativeAudio` part also declares `stationKinds`), and `1c2669d` (#261, arrival poses; no shared file but the DEV_LOG). Implementation commits `be9f763`, `744ce49`, `3675e13` and the merges `1891c5d`, `a2a2beb`, `f15d11e` and `e445d86` (the last carries the audio rename). Pushed; no PR, no merge, builder untouched, nothing published.
 - **What it is** (full write-up: `docs/EXPEDITION-CENTRAL-STATION-VISUALS.md`):
   - `Core/NativeExpeditionStationKit` (+ `.Concourse`, `.Shed`), the design's ranked gap 1:
     - the broken glass vault with moon shafts; the screen, clerestory and great clock; CENTRAL;
@@ -42,6 +42,14 @@
   - Coordinator: merge into shared (it goes live then).
   - Astra: fill `NativeStationLive.View` from the replicated hazard and objective fields and set `Authority`; align the map's tag.
   - Claude: water/shaft shader modes if wanted; the PA and loops once recorded.
+
+## 2026-10-17 — Astra: Expedition arrival pose synchronization
+
+- Branch `codex/unity-expedition-transfer-position`, base shared/builder `612f0da`.
+- Owner reports falling and downing on entry to all three instances, consistent with retaining an outlying hub-circle position in the destination. Authored entry slots are inside their maps. Runtime root cause is not yet reproduced in Unity here.
+- The cross-scene transfer now publishes the arrival to both Transform and Rigidbody with interpolation temporarily disabled, clears old ground/freeze/motion caches, synchronizes, and verifies the actual arrival and destination support before releasing the hold. Rollback and reprint use the same placement helper.
+- The native activation fixture now begins each transfer at its real hub circle, asserts both arrival representations, and checks the first 120 ticks for alive/above-floor arrivals in every instance. Previously it started at the hub centre and did not assert post-transfer survival. Windows execution is required; managed tests cannot reproduce PhysX/interpolation.
+- Checks: Unity player/runtime/editor semantic compile; managed cohort 69 and area 295 checks; whitespace review. No gameplay/hazard changes or immunity added. Native Windows regression and owner solo/host/guest playtest pending; publication must pass the strengthened native gate. Not yet claimed released.
 
 ## 2026-10-17 — Claude: City Ironworks in-game visuals on the live foundry (on branch, not merged)
 

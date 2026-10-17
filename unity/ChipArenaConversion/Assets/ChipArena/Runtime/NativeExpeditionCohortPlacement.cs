@@ -41,6 +41,21 @@ namespace ChipArena.UnityConversion
             foreach(var pair in p.TransferCooldowns)chipCooldowns[pair.Key]=Math.Max(chipCooldowns.TryGetValue(pair.Key,out float old)?old:0,pair.Value);
             if(Pve!=null)Pve.Rows[p.Seat.id]=row??new NativePveRow{Pilot=p};
         }
+        internal void PlaceTransferredPilot(NativePilot p,Vector3 position,float yaw)
+        {
+            // Reparenting across scenes dirties the Transform. Publish the teleport to
+            // both representations before SyncTransforms can import the old hub pose.
+            // Clear interpolation history as this is a discontinuous scene crossing.
+            var interpolation=p.Body.interpolation;p.Body.interpolation=RigidbodyInterpolation.None;
+            p.Body.transform.position=position;p.Body.position=position;
+            p.Yaw=yaw;p.FrozenPosition=null;p.Ground=default;p.GroundPosition=position;
+            p.GroundAttached=p.Grounded=false;p.Knockback=p.MoveVelocity=Vector3.zero;
+            if(!p.Body.isKinematic){p.Body.linearVelocity=Vector3.zero;p.Body.angularVelocity=Vector3.zero;}
+            Physics.SyncTransforms();p.Body.interpolation=interpolation;
+            if((p.Body.position-position).sqrMagnitude>.0001f||
+                (p.Body.transform.position-position).sqrMagnitude>.0001f)
+                throw new InvalidOperationException("Expedition arrival position did not synchronize.");
+        }
         private void CancelTransferReferences(NativePilot p)
         {
             // A crossing cancels outgoing area-owned attacks and summons. Cooldowns and
@@ -70,15 +85,15 @@ namespace ChipArena.UnityConversion
         {
             var p=source.ExpeditionPilotFor(account);if(p==null||p.Hp>0||!TransferSlotClear(slot)||Pilots.Any(x=>x.Seat.id==p.Seat.id))return false;
             NativePveRow row=null;source.Pve?.Rows.TryGetValue(p.Seat.id,out row);
-            var origin=p.Body.position;
+            var origin=p.Body.position;var originYaw=p.Yaw;
             try
             {
-                source.DetachTransferPilot(p);AttachTransferPilot(p,row);p.Body.position=Vec(slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);
+                source.DetachTransferPilot(p);AttachTransferPilot(p,row);PlaceTransferredPilot(p,Vec(slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f),slot.yaw);
                 expeditionDown.Add(account);source.expeditionDown.Remove(account);Physics.SyncTransforms();return true;
             }
             catch
             {
-                if(Pilots.Contains(p))DetachTransferPilot(p);if(!source.Pilots.Contains(p))source.AttachTransferPilot(p,row);p.Body.position=origin;throw;
+                if(Pilots.Contains(p))DetachTransferPilot(p);if(!source.Pilots.Contains(p))source.AttachTransferPilot(p,row);source.PlaceTransferredPilot(p,origin,originYaw);throw;
             }
         }
         public bool TransferSlotClear(ExpeditionPoint point)
@@ -140,7 +155,9 @@ namespace ChipArena.UnityConversion
             {
                 source.Arena.DetachTransferPilot(e.Pilot);e.Moved=true;
                 destination.Arena.AttachTransferPilot(e.Pilot,e.Row);
-                e.Pilot.Body.position=NativeArena.Vec(e.Slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);e.Pilot.Yaw=e.Slot.yaw;
+                destination.Arena.PlaceTransferredPilot(e.Pilot,NativeArena.Vec(e.Slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f),e.Slot.yaw);
+                if(!destination.Arena.ExpeditionSupported(NativeArena.Vec(e.Pilot.Body.position-Vector3.up*(NativeLocomotionRules.HalfHeight+.04f)),NativeLocomotionRules.Radius,2*NativeLocomotionRules.HalfHeight))
+                    throw new InvalidOperationException("Expedition arrival lost destination floor support.");
                 destination.Arena.HoldTransferPilot(e.Pilot,false);
             }
             Physics.SyncTransforms();RefreshOccupancy();applied=true;Release();
@@ -156,7 +173,7 @@ namespace ChipArena.UnityConversion
                 if(e.Moved)
                 {
                     destination.Arena.DetachTransferPilot(e.Pilot);source.Arena.AttachTransferPilot(e.Pilot,e.Row);
-                    e.Pilot.Body.position=e.Origin;e.Pilot.Yaw=e.Yaw;e.Moved=false;
+                    source.Arena.PlaceTransferredPilot(e.Pilot,e.Origin,e.Yaw);e.Moved=false;
                 }
                 source.Arena.HoldTransferPilot(e.Pilot,false);
             }
