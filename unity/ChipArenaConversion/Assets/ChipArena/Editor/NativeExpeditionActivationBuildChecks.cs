@@ -12,6 +12,9 @@ namespace ChipArena.UnityConversion.Editor
             void Check(bool ok,string why){if(!ok)throw new Exception("Expedition activation: "+why);}
             string json=Resources.Load<TextAsset>("ExpeditionLayout").text;
             var layout=NativeExpeditionLayout.Parse(json);layout.compatibility=NativeExpeditionLayout.Compatibility(json,content);
+            var joinWire=new ExpeditionView{joins=new[]{new ExpeditionJoinView{h=4,deployedAt=3,deployedAccounts=new[]{"p2"},closedReason=ExpeditionJoinClosedReason.Reserved}},members=new[]{new ExpeditionViewMember{account="p2",area=layout.world,pendingArea=layout.instances[0]}}};
+            var decodedJoin=JsonUtility.FromJson<ExpeditionView>(JsonUtility.ToJson(joinWire));
+            Check(decodedJoin.joins[0].h==4&&decodedJoin.joins[0].deployedAt==3&&decodedJoin.joins[0].deployedAccounts.SequenceEqual(new[]{"p2"})&&decodedJoin.joins[0].closedReason==ExpeditionJoinClosedReason.Reserved&&decodedJoin.members[0].pendingArea==layout.instances[0],"join presentation fields survive Unity wire serialization");
             var horde=JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text);
             var run=NativeExpedition.Create("native-split",layout.world,"p1","pistol",17,layout.instances.Select(id=>new ExpeditionInstance{id=id,target=12}).ToArray());
             foreach(int id in new[]{2,3,4})Check(run.Join("p"+id,"pistol"),"join fixture pilot");

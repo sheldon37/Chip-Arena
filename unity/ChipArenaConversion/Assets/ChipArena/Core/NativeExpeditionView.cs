@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
 
     [Serializable] public sealed class ExpeditionViewMember
     {
-        public string account, name, weapon, carriedBy, area;public int reprintCost, seat;
+        public string account, name, weapon, carriedBy, area, pendingArea;public int reprintCost, seat;
         public bool connected, alive, safe, extracted, choosing, host, exitVote, extractVote, atJoin;
     }
     [Serializable] public sealed class ExpeditionViewInstance
@@ -182,7 +182,7 @@ namespace ChipArena.UnityConversion
                 difficulty=scaling.Evaluate(s.elapsed,party,s.loop,s.phase==ExpeditionPhase.Instance),
                 savedRevision=sources.Saved!=null&&sources.Saved.checkpoint!=null&&sources.Saved.checkpoint.run==s.run?sources.Saved.checkpoint.revision:-1,
             };
-            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,area=sources.Cohorts?.Member(p.account)?.Area??s.area,atJoin=sources.Joins?.AtJoin(p.account)==true,seat=Math.Max(0,sources.Seat?.Invoke(p.account)??0),name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
+            v.members=s.members.Select(p=>new ExpeditionViewMember{account=p.account,area=sources.Cohorts?.Member(p.account)?.Area??s.area,pendingArea=sources.Cohorts?.Member(p.account)?.Pending==null?null:sources.Cohorts.Member(p.account).Ticket.area,atJoin=sources.Joins?.AtJoin(p.account)==true,seat=Math.Max(0,sources.Seat?.Invoke(p.account)??0),name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
                 safe=p.safe,extracted=p.extracted,choosing=run.IsChoosing(p.account),host=p.account==s.host,exitVote=s.exitVotes.Contains(p.account),extractVote=s.extractVotes.Contains(p.account)}).ToArray();
             v.instances=s.instances.Select(i=>new ExpeditionViewInstance{id=i.id,target=i.target,progress=i.progress,entered=i.entered,cleared=i.cleared,
                 current=s.phase==ExpeditionPhase.Instance&&i.id==s.area,bosses=(string[])i.bosses.Clone(),defeated=(string[])i.defeated.Clone()}).ToArray();
@@ -241,14 +241,14 @@ namespace ChipArena.UnityConversion
         {
             if(v==null)return null;static string N(string s)=>string.IsNullOrEmpty(s)?null:s;
             if(string.IsNullOrEmpty(v.areaIdentity?.run))v.areaIdentity=null;
-            v.joins??=Array.Empty<ExpeditionJoinView>();
+            v.joins??=Array.Empty<ExpeditionJoinView>();foreach(var j in v.joins)if(j!=null)j.deployedAccounts??=Array.Empty<string>();
             v.closures??=Array.Empty<ExpeditionClosureView>();v.bossArrivals??=Array.Empty<ExpeditionBossArrivalView>();v.areaBarrier??=new ExpeditionAreaBarrierView();v.areaBarrier.target=N(v.areaBarrier.target);v.areaBarrier.layout=N(v.areaBarrier.layout);
             v.continueVotes??=Array.Empty<string>();v.anchors??=Array.Empty<ExpeditionWorldAnchor>();v.chests??=Array.Empty<ExpeditionChestOffer>();
             v.members??=Array.Empty<ExpeditionViewMember>();v.loot??=Array.Empty<ExpeditionViewLoot>();v.instances??=Array.Empty<ExpeditionViewInstance>();v.dice??=Array.Empty<ExpeditionDice>();v.exitVotes??=Array.Empty<string>();v.extractVotes??=Array.Empty<string>();
             v.viewer=N(v.viewer);v.mine??=new ExpeditionViewPersonal();v.transfer??=new ExpeditionViewTransfer();v.difficulty??=new ExpeditionDifficulty();
             v.mine.rewards??=Array.Empty<ExpeditionViewReward>();v.mine.chips??=Array.Empty<ChipCount>();v.mine.perks??=Array.Empty<string>();v.mine.carrying??=Array.Empty<string>();
             v.mine.account=N(v.mine.account);v.mine.carriedBy=N(v.mine.carriedBy);
-            foreach(var m in v.members){m.carriedBy=N(m.carriedBy);m.name=N(m.name)??m.account;}
+            foreach(var m in v.members){m.carriedBy=N(m.carriedBy);m.pendingArea=N(m.pendingArea);m.name=N(m.name)??m.account;}
             foreach(var a in v.anchors)a.building=N(a.building);
             foreach(var l in v.loot){l.owner=N(l.owner);l.boss=N(l.boss);}
             foreach(var r in v.mine.rewards){r.boss=N(r.boss);r.selected=N(r.selected);r.offers??=Array.Empty<string>();}

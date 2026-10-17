@@ -1,3 +1,12 @@
+## 2026-10-17 — Astra: batch 3 join data and station tagline
+
+- Branch `codex/unity-expedition-presentation-data`, base shared `fda8c68`. Implements the independent item 15 authority data and item 16 text correction; enemy/hazard bindings remain blocked on their missing authority implementations (items 14/16, earlier prompts 4/5/13). No ship flags or preview clocks enabled.
+- Added last accepted deploy time/exact cohort, counted ring height, closure enum and each member's pending destination. Cancellation/refusal cannot create a deployment; records are detached, survive sparse observations and reset with the rules. Current admission remains open unless cleared. No movement, combat, timing or collider changes.
+- Claude handoff: exact fields and lifecycle in EXPEDITION-PRESENTATION.md. Existing presentation still infers deployments and assumes height until Claude adopts the new data; no visual-fix claim.
+- Activation snapshot tagline now “Central Station. The 6:47 never left.” Regenerated live maps/asset receipt; semantic comparison confirms only that map's tag changed.
+- CI caught JsonUtility-style empty `pendingArea` needing normalization; added it to the existing normalizer and retained the full preview round-trip assertion.
+- Managed warnings-as-errors compile and focused checks: join rules 40, area wire 30, cohorts 69, join presentation 3612. Added a real-Unity serialization assertion to the existing activation gate. Remaining compile/build verification and release receipt will be recorded in the PR; no Windows human playtest claimed.
+
 ## 2026-10-17 — Claude: City Ironworks normal-play readability and lighting pass (on branch, not merged)
 
 - Branch `claude/ironworks-visuals`, fast-forwarded to shared `612f0da`. Implementation commit `6e7ef7c`. Merges of shared `1c2669d` (`c44ec6f`) and `a0428c3` (`3ef4afe`). Not merged, no PR, builder untouched.
