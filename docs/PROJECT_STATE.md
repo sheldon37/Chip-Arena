@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-17 Claude join circles bound to Astra's exact join fields (`claude/join-circles-bind`, on branch, not merged; presentation only): deploys play from `deployedAt`/`deployedAccounts` (first record a baseline; no deadline inference), `h` sets the curtain and counted column (4.5 m only without it), `closedReason` gives CLEARED / LOCKED / ROUTE RESERVED pads, `pendingArea` gives LOADING · zone party rows for every member. Managed checks and offline renders; Unity/Windows/two-client unrun. See DEV_LOG.
+2026-10-17 Claude join circles bound to Astra's exact join fields (`claude/join-circles-bind`, merged into shared; presentation only): deploys play from `deployedAt`/`deployedAccounts` (first record a baseline; no deadline inference), `h` sets the curtain and counted column (4.5 m only without it), `closedReason` gives CLEARED / LOCKED / ROUTE RESERVED pads, `pendingArea` gives LOADING · zone party rows for every member. Managed checks and offline renders; Unity/Windows/two-client unrun. See DEV_LOG.
 
 2026-10-17 Claude City Ironworks normal-play readability pass (`claude/ironworks-visuals`, merged into shared): it makes normal play (no hazard clock) readable. Work lights are baked into the light field, crusted runners keep a residual warmth, the Ironworks look entry is brighter, the mill stands have shape, and the slag yard floor and the torpedo and converter shells are dressed. Hazards stay off; budgets are intact.
 
