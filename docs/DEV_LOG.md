@@ -60,11 +60,11 @@
   - The world piece stands aside. No SEALED or raw id on a live sign, and a reserved route keeps SEALED.
   - Zero bytes per frame once warm.
 - **Checks:**
-  - `run5b.sh` on the final code head `a645633`, then on the merge `ff05275`: every step exit 0 both times. The Unity
-    runtime and editor assemblies build. The merge with `1c2669d` is checked again (see the next line).
-  - The relay suite: 772 PASS lines, "35 managed-core checks passed", including "PASS expedition join presentation (3612
-    checks …)", "PASS expedition hub (1207 checks …)", dressing and states.
-  - Python 140 tests OK (1 skipped). The source package structure passed (2,273 files). `git diff --check` is clean.
+  - `run5b.sh` on the final code head `a645633`, the merge `ff05275` and the final merge `cb415ba` (shared `1c2669d`):
+    every step exit 0 each time. The Unity runtime and editor assemblies build.
+  - The relay suite on `cb415ba`: 774 PASS lines, "35 managed-core checks passed", including "PASS expedition join
+    presentation (3612 checks …)", "PASS expedition hub (1207 checks …)", station enemies and ironworks visuals.
+  - Python 140 tests OK (1 skipped). The source package structure passed (2,317 files). `git diff --check` is clean.
   - An earlier run on `2d84595` stopped once at `SpawnInChecks`' allocation measurement (8,032 bytes, untouched code, load
     average about 40 from parallel agents). Its relay rerun passed (772 PASS).
 - **Renders** (offline, the real NativeBlockLit/NativeNightSky through the hub kit, posed pilot bodies; not committed):
