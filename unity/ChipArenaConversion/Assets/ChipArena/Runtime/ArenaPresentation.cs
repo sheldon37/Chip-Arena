@@ -353,6 +353,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
             if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);
             DisposeWeaponPresentation();
+            DisposeIronworks();
         }
     }
 }
