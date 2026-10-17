@@ -1,3 +1,72 @@
+## 2026-10-17 — Claude: zombie design, rotted pilots on an organic kit (on branch, not merged)
+
+- Branch `claude/zombie-design`, base shared `f3d8eb4`. Newest shared `5dc860d` merged in as `6011f69`. Commits:
+  - `d5ec09b`: kit, anatomy, kinds and the ZombieLit shader.
+  - `a74ac0c`: review pass.
+  - `9d36afa`: design brief.
+  - `5b45868`: shader warm-up list.
+  - `f171fa3`: test-scan fix.
+  - Not merged, no PR, builder untouched, nothing published.
+- **Why:** owner (2026-10-17): "Yes fix the zombies animations (Design as well, it seems they are still on the lower quality end)
+  Improve these vastly." This is the design half: models, materials and shading. Motion is the separate `claude/zombie-motion` task.
+- **Changes** (`docs/ZOMBIE-DESIGN.md` has the brief, before/after images, decisions, the shading-data spec and budgets):
+  - The Siren's seven kinds are rebuilt as rotted pilots on a new organic kit (`Core/NativeZombieKit.cs`,
+    `NativeZombieAnatomy.cs`, `NativeZombieKinds.cs`). The kit has lofted limbs and muscle masses, a sculpted skull with
+    sockets, torn lips, teeth and a U-shaped hinged jaw, and the pilot's armour as curved shells that hug the body (helmet with
+    its face smashed out, pectoral shells, collar band, deltoid dome, sleeves, forearm guards) plus broken slabs. It also adds
+    wounds, ribs, veins, glowing cracks, claws, tatters and cables.
+  - The occlusion is baked per vertex. Skin is mottled (per kind and look, plus per add in the shader), with grime toward the
+    hands and feet and ink-blood round the mouth.
+  - `Resources/NativeZombieLit.shader` (Built-in RP surface shader) keeps the horde shader's inputs and adds per-class wrap,
+    specular and rim, the baked occlusion, per-add proportions, missing pieces and shader sway. It falls back to the old
+    shader if missing or unsupported.
+  - Per-add variation goes through the instanced body tint (`NativeHordeModels.Variation`): skin tone, ±5-7 % proportions and
+    four optional armour groups. It is set in `HordeQueue`/`HordeQueueJaw`/`HordePartsDraw` and on the death body. Nothing is
+    allocated per frame.
+  - Zone kinds keep their classic bodies (`ClassicRunner`/`ClassicBrute` stay for the Ironworks kinds, same triangle counts);
+    only the occlusion bake reaches them.
+- **Affected systems:** horde kind models and their draw path (`NativeHordeKindModels`, `NativeHordeKindPresentation`; small
+  edits in the material and draw regions only), the death body (`NativeMinionFxPresentation`, `NativeHordeHulkGallery`),
+  `WeaponSculpt` (surface data, smooth quads), the stage shader warm-up list, the Editor build's shader check list, and the
+  tests (HordeKindChecks geometry/shading/variation/shader checks and the widest-variation capsule test; Ironworks BaseCounts
+  and the station baseline's model lines re-pinned, with 0 non-model measures changed).
+- **Animation impacts:** none. No hit timing, hitbox, damage, cooldown, movement or network change. Joints are not renamed or
+  reordered. Every kind, look and tier stays inside its capsule at the widest per-add variation plus sway (HordeKindChecks,
+  HulkSpitterChecks). Dangling parts sway in the vertex shader only (listed in the doc for the motion agent).
+- **Budgets** (triangles; budgets 7,200 / 3,000 / 600):
+  - Full: 5,912-6,883 (before 3,232-4,362).
+  - Reduced: 2,262-2,907 (before 1,910-2,814).
+  - Impostor: 342-516 (before 432-600).
+  - The 40-add crowd (24 full, 16 reduced, 5 jaws): 402 draws and 212 shadow draws before and after; 136,128 to 196,259
+    triangles (+44 %).
+- **Checks** (actual):
+- run5b on `f171fa3`: all five steps exit 0.
+    - Unity runtime and editor compile against the 6000.3.24f1 assemblies: OK.
+    - Relay and managed suite: 780 PASS lines, no FAIL. That includes horde kinds (629,364 checks: capsules at the
+      widest variation and sway, three tiers under budget, valid meshes and shading data, variation, the zombie shader),
+      Ironworks kinds (281,252), station enemies (154,365), zombie motion (29,884), and Hulk and spitter (49,154).
+    - Python: 140 tests OK, 1 skipped.
+    - Source package: 2394 files.
+    - `git diff --check`: clean.
+  - Two earlier run5b passes each failed one source-scanning check, now fixed:
+    - `5b45868` adds ZombieLit to the stage warm-up's instanced-shader list.
+    - `f171fa3` drops a body-model type name from a kit comment.
+  - The surface shader body passes glslang's HLSL front end with Unity's macros stubbed.
+- **Renders** (offline WebGL harness through the same Core code and a port of the shader's shared block; not Unity), in the
+  scratch `renders-zombie-design/`: before/after kind sheets (neutral, Ward Zero corridor, hub at dusk), faces, the 40-add
+  crowds, tiers, variety, gore, and before/after turntables for the shambler, runner, brute and Hulk.
+- **Not run:** Unity Editor, Windows build, real GPU shader compile (the surface shader's custom lighting is checked through
+  glslang's HLSL front end only), two-client play.
+- **Risks:**
+  - If `ZombieLit` fails to compile in Unity, the Editor build check (`NativeBuildChecks`) fails the build loudly; at runtime
+    the code falls back to the old shader.
+  - Crowd triangles grow 44 %.
+  - Eyes are smaller than the old square glows, so they read less at range.
+  - Bowed idle heads hide faces from the front.
+  - `NativeHordeKindPresentation.cs` is also edited by the motion task, so expect a small merge there.
+- **Next:** review in Unity/Windows; merge after the motion task or alongside it. Test-channel publication follows the
+  standing instruction once merged and verified (not done here).
+
 ## 2026-10-17 — Claude: owner approved THE 6:47; design merged into shared (not live)
 
 - Owner (verbatim): "Go with your suggestions". Every recommended option in `docs/EXPEDITION-BOSS-CENTRAL-STATION.md` section 11 is chosen: THE 6:47 concept and plate name, 13 m as modelled, barrier down in phase 2 and the board falling in phase 3 with real colliders, the boss-called express with Mind the Gap, levers allowed, All Aboard on the Undertow's hold, boss-driven falling glass, clocks to 6:48 and DEPARTED, boss points moved.
