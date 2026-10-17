@@ -21,6 +21,68 @@
 - **Renders** (scratch, not in the repo, `renders-boss-station/`): a four-view turnaround with a pilot, the arrival hero shot, five attack frames (Departure, All Aboard, Platform Alteration, Live Rail, Terminus) and the TERMINUS phase change.
 - **Not done / risks:** runtime rules, AI and fields (Astra); the presentation binding (Claude, after Astra's fields and the motion library); audio clips; Unity Editor, Windows and play are unrun. The renders are concept frames with quad effects.
 - **Next:** the owner's decisions (doc section 11), then Astra's rules and record, then Claude's runtime model, gait and sequences.
+## 2026-10-17 — Claude: boss motion foundation for the Central Station and City Ironworks bosses (on branch, not merged)
+
+- Branch `claude/boss-motion`, base shared `claude/sleepy-ritchie-g8ruhv` `598c41b` (includes zone music 77c3696 and Astra's PR #264). Implementation commit `7eb82c7`. Not merged, no PR, builder untouched, nothing published.
+- **Why:** owner (2026-10-17): begin the Station and Ironworks bosses, "a lot more fluid than what we have now"; zombies later. This is the shared motion layer the parallel boss design builds on. Presentation only. No existing enemy (zombies, station and Ironworks kinds, Siren) uses or is changed by it.
+- **Audit** (`docs/BOSS-MOTION.md`, file:line notes for the zombie fix). Top causes:
+  - Horde poses run on `arena.Time`: 20 Hz steps on a guest, 60 Hz on a 144 fps host.
+  - Host bodies move at 60 Hz (no interpolation under Script physics).
+  - The replica follow is a two-snapshot lerp that freezes at the newest, on a clock whose cushion only shrinks.
+  - The snapshot timer drifts.
+  - Speed is differentiated from the drawn root.
+  - Yaw snaps, then turns at a constant rate.
+  - Hard clip switches on the Siren.
+  - Smoothstep strikes decelerate into contact.
+  - Almost no secondary motion.
+- **Changes:** `Core/NativeBossMotion*.cs`, eight pure Core files with no allocation per frame:
+  - critically damped springs on a half-life (exact at any rate), a limited turn and second-order dynamics;
+  - the replicated root: Hermite snapshots, a rate-held clock whose cushion grows after late frames, held-then-eased extrapolation, cascaded goal-velocity springs and lean;
+  - an N-leg gait whose planted feet never move, with two-bone and soft IK;
+  - verlet chains;
+  - an action timeline that is a pure function of the authority's start and lands contact on its hit;
+  - layers for breath, look-at, flinch and stagger;
+  - `BossPose`, an inertializer, and two reference rigs: a 4.6 m biped with an overhead slam and a six-legged crawler with a cable tail.
+  - Also `Runtime/NativeBossPoseApply.cs`, `Tests/BossMotionChecks.cs` (`--boss-motion`, also in the default run) and `docs/BOSS-MOTION.md` (API, wiring, tuning, Astra's fields).
+- **Animation impacts:** none on existing kinds. No hit timing, hitbox, damage, cooldown, movement or network change. A boss's contact frame is designed to land on the authority's `start + hitAt`.
+- **For Astra (when the bosses' authority lands):** per action, replicate the id, sequence, start time, hit time and length (when they vary), target, start facing and cancel time. Per stagger, the start, push and length. Blows as events with time, attacker position and size. Send start times, not per-frame poses.
+- **Checks:**
+  - Boss motion checks (scratch runner, same file): PASS, 50,898 checks.
+    - Jittery 20 Hz snapshots: peak acceleration 13.6 m/s^2 with no stall, against the shipped follow's 358 m/s^2 and 12 frozen moving frames.
+    - Planted feet: largest move 0 m over 10,206 planted frames and 91 steps.
+    - Timeline: bit-identical across peers.
+    - Continuity: per-frame change halves when the frame rate doubles (0.50).
+    - Allocation: 0 bytes per frame.
+  - run5b on `7eb82c7`: all five steps exit 0.
+    - Unity runtime and editor compile against the 6000.3.24f1 assemblies: OK.
+    - Relay and managed suite: 778 PASS lines, no FAIL; boss motion ran inside it (50,898).
+    - Python: 140 tests OK, 1 skipped.
+    - Source package: 2374 files.
+    - `git diff --check`: clean.
+  - Shared `5ccaad6` (Astra's PRs #265, #267 and #268) merged in as `6f1725d`, keeping both sides' DEV_LOG and PROJECT_STATE entries. run5b on `6f1725d`: all five steps exit 0 with the same counts (Python 140 OK in 225 s).
+- **Renders** (offline WebGL harness through the same Core code, not Unity), in the scratch `renders-boss-motion/`:
+  - MP4, GIF and strips for: walk, run and stop; a sharp turn; the overhead slam; flinches and a stagger; the crawler's walk, run and reversal;
+  - OLD beside NEW on jittery 20 Hz snapshots, with a speed and acceleration chart.
+- **Risks / next:**
+  - Not run: the Unity Editor, Windows, real boss models and two-client play.
+  - The reference rigs are demonstrations; each boss authors its own keys.
+  - The gait is tested on flat ground.
+  - A sharp authority corner is rounded with a brief speed overshoot.
+  - On a guest, prefer `StepAt(arena.ReplicaRenderTime)` so the boss stays in step with other effects.
+
+## 2026-10-17 — Astra: Station/Ironworks gameplay published
+
+- Released source `5ccaad6fa7a2f2ffdb2ff370d14a8d227be35076` from shared and `codex/unity-cloud-current`; PR #264 gameplay, #265 Unity empty-array spawn repair, #267 precise native clock diagnostics, and #266/#268 express collision integration are merged. Preserved Claude's boss-music changes and all other shared work.
+- Windows Build-and-Publish succeeded at 14:59:45 UTC. Read back native test feed version `1c60f643c226c8fecc1083b58e07a19192f54e046e554279ba1c5a82399923a1`, revision `639278459286691800`. Both earlier native failures stopped before publication.
+- Actual Unity 6000.3.24f1 native checks pass for Station and Ironworks authored spawns/capsules, special windups/hits/interrupts, armour/weak points, finite enemy/hazard frames, codec and separate guest application. Four simultaneous areas pass 1,800 ticks: p95 8.0 ms, worst 24.1 ms; automated fixture, not a human multiplayer playtest.
+- Verification also includes 512 focused zone checks, combined Player/Runtime/Editor semantic compilation, hosted full managed/real-relay suite on gameplay head `37fca579` (one documented allocation-flake retry), Python/package and Windows updater/launcher checks. Final integrated-tree hosted regression is tracked in PR #268. New enemies/hazards require all peers to update/restart and a fresh Expedition. Converter boss remains the approved deferred placeholder; no invented boss design was added.
+
+## 2026-10-17 — Astra: zone gameplay verification and express collision
+
+- Branch `codex/zone-gameplay-verification`, base shared/builder `ce85919`. Reconciled with the already-merged PR #264 gameplay and #265 Unity entry fix; preserved that implementation and Claude's boss-music routing. Independent local implementation retained only as checkpoint `2def07c`, not integrated.
+- Observed owner's Windows log for `ce85919`, 2026-10-17 14:47 UTC: four independent areas spawned correctly; Station attack/codec checks progressed to the final hazard-clock assertion, then publication stopped. Split the combined assertion into frame validity, presence and clock checks; compare serialized float clocks within 1 ms rather than exact equality. Native rerun still required to confirm the failing component; no passing Windows claim.
+- Express collisions now use the train's visible nose/tail sweep clipped to the station shell for pilots and minions. Previously the entire track was lethal throughout the pass. Edge shove follows the same sweep. Signal controls refuse an already-moving train, preserving its collision/visual continuity. Warning and pass timings are unchanged; no art or audio changes.
+- Checks: focused zone combat 512 checks pass, including 267 new sweep boundary/continuity checks; source packaging passes (2355 files); Unity reference-assembly compilation and diff checks recorded in PR. Existing merged gameplay CI is separate from this follow-up. Native Windows/PhysX and human multiplayer remain pending; this does not claim a published update.
 
 ## 2026-10-17 — Claude: zone boss music for Central Station and City Ironworks
 
@@ -10368,3 +10430,6 @@ Local validation so far: 243 new managed zone checks; Station/Ironworks presenta
 
 
 2026-10-17 Astra native gate repair: build of merged PR #264 (`598c41b`) failed before publication because Ward Zero had no spawned horde. Unity JsonUtility materializes the new absent `PveEntry.allowed` array as empty when cloning legacy content. Empty now uses the original Ward entry rules; nonempty authored lists still restrict zone spawns. Added both cases to ZoneCombatChecks (245 checks). Native gate is retained and must pass before release.
+
+
+2026-10-17 Astra native follow-up: `ce85919` restores native spawning (Ward 8, Station 12, Ironworks 12 after 1,800 ticks). Station enemy ability/weak-point and guest event checks reached the final hazard-clock assertion. Split that compound assertion into authority validity, decoded validity, presence and time checks, with raw/decoded values on failure; use 0.1 ms tolerance for the JSON float round trip instead of binary equality. Malformed/NaN state rejection remains exact. No publication yet.
