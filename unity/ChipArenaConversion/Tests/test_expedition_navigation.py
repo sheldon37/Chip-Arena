@@ -21,6 +21,17 @@ class InstanceNavigation(unittest.TestCase):
             self.assertTrue(all(n['id'].startswith(prefix+'-') for n in nav['nodes']))
             self.assertTrue(all(n['id'].startswith(prefix+'-') for n in nav['links']))
             self.assertEqual(nav,module.navigation(m))
+    def test_ramp_treads_do_not_create_phantom_navigation_floors(self):
+        def block(name,z,y,height):
+            return dict(id=name,pos=dict(x=0,y=y,z=z),size=dict(x=4,y=height,z=1),rotation=dict(x=0,y=0,z=0,w=1))
+        m=dict(id='expedition-foundry',bounds=dict(minX=-1,maxX=1,minZ=0,maxZ=2,ceiling=8,killY=-5),
+               blocks=[block('tread-0',.5,.25,.5),block('tread-1',1.5,.5,1)],
+               ramps=[dict(id='ramp',low=dict(x=0,y=0,z=0),high=dict(x=0,y=1,z=2),width=4,blocks=['tread-0','tread-1'])])
+        nav=module.navigation(m)
+        self.assertEqual(len(nav['nodes']),4)
+        for n in nav['nodes']:
+            self.assertAlmostEqual(n['pos']['y']-.9,n['pos']['z']/2)
+        self.assertEqual(len(nav['links']),4)
     def test_unknown_map_refused(self):
         with self.assertRaises(ValueError):
             module.navigation(dict(id='unknown',blocks=[],bounds={}))
