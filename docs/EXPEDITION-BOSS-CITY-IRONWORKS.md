@@ -839,7 +839,8 @@ Nothing has run in Unity, on Windows or with two clients.
 
 ## 14. Presentation build
 
-Claude, 2026-10-17, branch `claude/boss-ironworks-presentation` (from shared `bc39790`, merged with shared `03dddab`).
+Claude, 2026-10-17, branch `claude/boss-ironworks-presentation` (from shared `bc39790`, merged with shared `03dddab`, `97046f7`
+and `a4d61ae`).
 **On branch, not merged, not live.** Presentation only: no rule, hitbox, collider, timing, damage, cooldown, movement or
 network field changes. In normal play nothing changes: the boss's view is `None` until Astra binds it, so the placeholder
 Siren fights on and the hall draws, lights and sounds as before. A DEV preview plays the whole fight without the authority.
