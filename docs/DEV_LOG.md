@@ -1,3 +1,32 @@
+## 2026-10-17 — Claude: owner approved THE 6:47; design merged into shared (not live)
+
+- Owner (verbatim): "Go with your suggestions". Every recommended option in `docs/EXPEDITION-BOSS-CENTRAL-STATION.md` section 11 is chosen: THE 6:47 concept and plate name, 13 m as modelled, barrier down in phase 2 and the board falling in phase 3 with real colliders, the boss-called express with Mind the Gap, levers allowed, All Aboard on the Undertow's hold, boss-driven falling glass, clocks to 6:48 and DEPARTED, boss points moved.
+- Merged `claude/boss-central-station` (02de115) into shared. Inert design only: the doc, `Core/NativeStationBossModel.cs` (referenced by nothing) and `StationBossModelChecks`. No rule, timing, hitbox, damage, movement or network change; the station still fights the placeholder Siren.
+- Next: Astra implements the rules from doc section 10 (now approved); Claude builds the runtime presentation on the boss motion library with a DEV preview, bound to Astra's record once its field names land.
+
+## 2026-10-17 — Claude: Central Station boss design, THE 6:47 (on branch, not merged, not live)
+
+- Branch `claude/boss-central-station`, base shared `dfb8aac`, fast-forwarded to `ce85919` (Astra's #263-#265: zone music, the station kinds shipped, the station hazards live), then merged with shared `f3d8eb4` (the boss motion library; section 7 of the design maps onto its types). Owner: "let us begin on the bosses for these two areas~ I want these animations to be a lot more fluid than what we have now" and "A high quality design matching the areas too". The City Ironworks boss and the shared motion library (`claude/boss-motion`, merged into shared at `f3d8eb4`) are separate tasks.
+- **Design:** `docs/EXPEDITION-BOSS-CENTRAL-STATION.md`. THE 6:47 is the evacuation special the board has said was DELAYED all run. It rolls out of the west tunnel on T1, unfolds six legs made of its passengers' arms, and smashes through the platform barrier into the concourse. The Stationmaster has grown into its cab roof (pocket watch stopped at 6:47, the last-call bell), and grafted PA horns announce its moves with the station's chime. The design covers:
+  - three phases: LAST CALL; PLATFORM ALTERATION (barrier smashed, the boss calls the express, Mind the Gap); TERMINUS (the departure board torn down across the booth, the roof peeled);
+  - eight moves as action timelines with telegraphs, counters and punish windows;
+  - the four station enemies as adds per phase, staggers and breaks (headlamp, pantograph, the express hit);
+  - an arrival choreographed to the owner's boss theme "Station Chime of Doom": the chime hit (PA last call, board flip), the light cut (the headlight alone in the west mouth), the intro accents (brakes, unfold, climb) and the drop (burst through the barrier gate, lights back, banner). The exact times are referenced to `docs/ZONE-BOSS-MUSIC.md`, not analysed here; the hold should end on the drop;
+  - a death that fits the 4 s victory hold (the clocks start again at 6:48, the board reads DEPARTED);
+  - animation direction in the motion library's terms (root smoothing, tripod gait with IK, springs, verlet chains, timelines, additive layers);
+  - 34 `boss.station.*` cue keys and the music key `music/central-station-boss` (no gameplay sync; a beat-map proposal for presentation only);
+  - ten owner decisions with recommendations.
+- **Concept model:** `Core/NativeStationBossModel.cs` (inert, with a `.meta`). It has 68 bones, 3 tiers (19,824 / 9,984 / 4,602 triangles), 17 key poses with a small authoring IK, the proposed hit volumes (carriage box on the body bone, rider capsule), the move table and the motion numbers. Nothing outside the file references it.
+- **Astra contract (doc section 10, prompt included):** built on the live `NativeZoneHazardFrame`, `NativeZoneEnemyFrame` and `NativeZoneCombat.StationBoss`. It asks for:
+  - a non-pilot boss actor `station-647` on a lane graph;
+  - one replicated `pve.zoneBoss` record (phase; action/actionId/actionAt/hitAt/duration/cancelAt in the shape `BossActionPlayer` takes; target and lane; hold; stagger; breaks; Live Rail; arena changes; spill; diedAt);
+  - the arena hooks: Alteration fills `glass*`, the boss sets `trainAt`, the levers cut Live Rail, the barrier colliders turn off and a board collider turns on;
+  - adds per phase and moved boss points.
+- **Animation impacts:** none on existing kinds, hazards, hitboxes, damage, cooldowns, movement or networking. The proposed strikes land at `hitAt` (`actionAt` + anticipation).
+- **Checks:** `Tests/StationBossModelChecks.cs` (`CoreTests --station-boss`, and in the full run): 274 checks covering tiers and budgets, the skeleton and tripods, the poses on the floor, the hit volumes, footprint and reach, the move table against the doc, and that the model is inert. `run5b` on `c68d829` (the merged tree), every step exit 0: Unity runtime + editor build; relay 779 PASS lines including station boss 274 and boss motion 50,898, 0 FAIL; Python 140 OK (1 skipped); package (2,377 source files); diff-check.
+- **Renders** (scratch, not in the repo, `renders-boss-station/`): a four-view turnaround with a pilot, the arrival hero shot, five attack frames (Departure, All Aboard, Platform Alteration, Live Rail, Terminus) and the TERMINUS phase change.
+- **Not done / risks:** runtime rules, AI and fields (Astra); the presentation binding (Claude, after Astra's fields and the motion library); audio clips; Unity Editor, Windows and play are unrun. The renders are concept frames with quad effects.
+- **Next:** the owner's decisions (doc section 11), then Astra's rules and record, then Claude's runtime model, gait and sequences.
 ## 2026-10-17 — Claude: boss motion foundation for the Central Station and City Ironworks bosses (on branch, not merged)
 
 - Branch `claude/boss-motion`, base shared `claude/sleepy-ritchie-g8ruhv` `598c41b` (includes zone music 77c3696 and Astra's PR #264). Implementation commit `7eb82c7`. Not merged, no PR, builder untouched, nothing published.
