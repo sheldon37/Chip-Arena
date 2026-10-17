@@ -314,7 +314,7 @@ namespace ChipArena.UnityConversion
                 };
             }
             /// <summary>
-            /// A plate of the pilot's armour as the pilot wears it (Core/NativeBodyModels: chunky chamfered slabs with panel seams and
+            /// A plate of the pilot's armour as the pilot wears it (the pilot body model's chunky chamfered slabs with panel seams and
             /// accent strips), broken: a w x h slab `thick` deep in its frame `at` (front +z), its corners chamfered by `bevel`; corner
             /// `broken` (0 top-right, 1 top-left, 2 bottom-left, 3 bottom-right; -1 whole) bitten away along a jagged line `bite` of the
             /// way along both edges, the break's walls bared metal. `accent` 0 none, 1 a strip across the top, 2 one down the middle,
