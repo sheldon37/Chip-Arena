@@ -85,7 +85,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A boss archetype as the intro names it. Test encounters keep TEST in the name until a boss design exists.</summary>
         public static string BossName(string archetype)
         {
-            if(string.IsNullOrEmpty(archetype))return "UNKNOWN BOSS";string n=NativeExpeditionPresentation.Name(archetype);
+            if(string.IsNullOrEmpty(archetype))return "UNKNOWN BOSS";string z=NativeZoneBossNames.Name(archetype);if(z!=null)return z;string n=NativeExpeditionPresentation.Name(archetype);
             return archetype.IndexOf("test",StringComparison.OrdinalIgnoreCase)>=0&&n.IndexOf("TEST",StringComparison.Ordinal)<0?"TEST · "+n:n;
         }
         /// <summary>Whether the sanctuary is lit: the phases in which the authority grants `safe` (town and victory). In any other
@@ -256,7 +256,7 @@ namespace ChipArena.UnityConversion
             age=0;int best=-1;
             for(int i=0;i<arrivals.Count;i++)
             {
-                var a=arrivals[i];if(!a.Intro||a.Area!=area)continue;double g=t-a.Spawned;
+                var a=arrivals[i];if(!a.Intro||a.Area!=area)continue;double g=t-a.Spawned-NativeZoneBossNames.BannerDelay(a.Archetype);
                 if(g>=0&&g<NativeExpeditionStates.IntroSeconds&&(best<0||a.Spawned>=arrivals[best].Spawned)){best=i;age=g;}
             }
             return best;
@@ -470,7 +470,7 @@ namespace ChipArena.UnityConversion
             {
                 var a=cues.ArrivalAt(k);if(a.Area!=v.area)continue;var live=Live(v,a.Area,a.Id);
                 float health=live!=null&&live.maxHp>0&&live.hp>=0?(float)Math.Min(1,live.hp/live.maxHp):-1;bool down=Down(v,a.Area,a.Id)||health==0;
-                PlateNames[PlateCount]=NameOf(a.Archetype);PlateDown[PlateCount]=down;PlateAge[PlateCount]=a.Intro?t-a.Spawned:double.PositiveInfinity;
+                PlateNames[PlateCount]=NameOf(a.Archetype);PlateDown[PlateCount]=down;PlateAge[PlateCount]=a.Intro?t-a.Spawned-NativeZoneBossNames.BannerDelay(a.Archetype):double.PositiveInfinity;
                 PlateHealth[PlateCount]=health;PlatePercent[PlateCount]=health<0||labels==null?null:labels.Int("",(int)Math.Ceiling(health*100-1e-6),"%");PlateCount++;
             }
         }

@@ -85,7 +85,7 @@ namespace ChipArena.UnityConversion
             ex=eyeX;ey=eyeY;ez=eyeZ;rx=rightX;ry=rightY;rz=rightZ;ux=upX;uy=upY;uz=upZ;fx=ry*uz-rz*uy;fy=rz*ux-rx*uz;fz=rx*uy-ry*ux;quality=effects<0?0:effects>1?1:effects;low=lowTier;
             // Telegraphs first (they are never thinned), then the atmosphere into what is left.
             Express(scene,s,time);Rails(scene,s,time);Flood(scene,s,time);CabinetsFx(scene,s,time);SteamFx(scene,s,time);GlassFx(s,time);
-            MoonShafts(scene,time);LampCones(scene,time);HalosFx(scene,s,time);WaterFx(scene,s,time);DripsFx(scene,time);FireFx(scene,time);
+            MoonShafts(scene,time);LampCones(scene,s,time);HalosFx(scene,s,time);WaterFx(scene,s,time);DripsFx(scene,time);FireFx(scene,time);
             Flush();
         }
         private int Budget(int full)=>Math.Max(0,(int)Math.Round(full*(low?.5f:1f)*(.35f+.65f*quality)));
@@ -158,12 +158,14 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        private void LampCones(NativeStationFxScene sc,double t)
+        private void LampCones(NativeStationFxScene sc,NativeStationState st,double t)
         {
-            float lr=Lin(NativeExpeditionStationKit.SodiumHex,16),lg=Lin(NativeExpeditionStationKit.SodiumHex,8),lb=Lin(NativeExpeditionStationKit.SodiumHex,0);
+            float lr0=Lin(NativeExpeditionStationKit.SodiumHex,16),lg0=Lin(NativeExpeditionStationKit.SodiumHex,8),lb0=Lin(NativeExpeditionStationKit.SodiumHex,0);
             for(int i=0;i<sc.Shafts.Length;i++)
             {
                 var s=sc.Shafts[i];if(s.Kind!=NativeExpeditionStationKit.ShaftLamp)continue;double d=Dist(s.X0,2.5,s.Z0);if(d>60||!Ahead(s.X0,2.5,s.Z0,6))continue;
+                // The zone boss song: the sodium cones and pools follow their lamps (the intro's west-to-east steps, the cuts, the pulse).
+                float lr=lr0,lg=lg0,lb=lb0;if(st!=null&&st.Music.On)NativeExpeditionStationKit.MusicLight(NativeExpeditionStationKit.GlowLamp,null,s.X0,st.Music,st.Signal,ref lr,ref lg,ref lb);
                 if(!low)Shafts+=Beam(s.X0,s.Y0,s.Z0,s.X1,s.Y1+.6,s.Z1,s.W0,s.W1,lr,lg,lb,s.Alpha*.13f,4);
                 Flat(s.X1,s.Y1+.01,s.Z1,2.6,2.6,0,lr,lg,lb,.16f);Pools++;
             }
@@ -188,7 +190,10 @@ namespace ChipArena.UnityConversion
                 case NativeExpeditionStationKit.GlowCabinet:{var ph=s!=null&&g.Tag>=0&&g.Tag<2?s.CabinetPhase[g.Tag]:NativeHazardPhase.Idle;if(ph==NativeHazardPhase.Idle)return false;k=ph==NativeHazardPhase.Active?3:(Frac(t*13+g.Param)<.5?1:.3f);break;}
                 case NativeExpeditionStationKit.GlowWater:{if(g.Tag>=0){k=.6f;break;}float f=s?.FloodGlow??0;if(f<=0)return false;r=.05f*f;gg=.35f*f;b=.95f*f;break;}
             }
-            r*=k;gg*=k;b*=k;return r+gg+b>1e-4;
+            r*=k;gg*=k;b*=k;
+            // The zone boss song's hand on the halos (the same rule as the lights: never a hazard's).
+            if(s!=null&&s.Music.On)NativeExpeditionStationKit.MusicLight(g.Kind,null,g.X,s.Music,s.Signal,ref r,ref gg,ref b);
+            return r+gg+b>1e-4;
         }
         private void HalosFx(NativeStationFxScene sc,NativeStationState s,double t)
         {

@@ -684,6 +684,18 @@
       "bytes": 3945301,
       "gitBlob": "872025c38df6fef8808814d28338853247cfa45e",
       "source": "Owner-supplied Subway Arrival Chime.mp3 (2026-10-17)"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/central-station-boss.mp3",
+      "bytes": 1963892,
+      "gitBlob": "16e31d4c55651be7c7aadd2913950c1d1cb2dd3e",
+      "source": "Owner-supplied Station Chime of Doom.mp3 (2026-10-17, zone boss theme)"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/city-ironworks-boss.mp3",
+      "bytes": 3307827,
+      "gitBlob": "e0efb151fdbcf1620855d00db4522205ad20bf4c",
+      "source": "Owner-supplied Hydraulic Hell.mp3 (2026-10-17, zone boss theme)"
     }
   ]
 }

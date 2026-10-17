@@ -28,7 +28,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--laser-door"){ExpeditionLaserDoorChecks.Run(ProjectRoot());ExpeditionStatesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-acceptance"){ExpeditionAcceptanceChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-pick"){ExpeditionPickChecks.Run(ProjectRoot());return 0;}
-            if(args.Length==1&&args[0]=="--zone-music"){ZoneMusicChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--zone-music"){ZoneMusicChecks.Run(ProjectRoot());ZoneBossMusicChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--zone-boss-music"){ZoneBossMusicChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--chooser-camera"){var root1=ProjectRoot();ChooserCameraChecks.Run(root1,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root1,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--chip-select"){var chipData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});foreach(var result in ChipSelectChecks.Run(chipData))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--chip-screen"){ChipScreenChecks.Run(ProjectRoot());return 0;}
@@ -47,6 +48,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--hulk-motion"){HulkMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-kinds"){IronworksKindChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-boss"){StationBossModelChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--station-boss-presentation"){StationBossPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--boss-motion"){BossMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-flow"){ZombieFlowChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-enemies"){StationEnemyChecks.Run(ProjectRoot());IronworksKindChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());return 0;}
@@ -55,6 +57,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--dev-tools"){DevToolsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hazard-kit"){HazardKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-visuals"){IronworksVisualChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--ironworks-boss"){IronworksBossModelChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--foot-surfaces"){FootSurfaceChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--footfalls"){FootfallAudioChecks.Run(ProjectRoot());FootSurfaceChecks.Run(ProjectRoot());foreach(var result in EffectsAudioChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);HordeRoamChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ward-lighting"){WardLightingChecks.Run(ProjectRoot());return 0;}
@@ -121,12 +124,12 @@ internal static class Program
             HudPlaceholderChecks.Run(root);HudCyberChecks.Run(root,data);
             DeathFxChecks.Run(root);CorpseChecks.Run(data);
             StageVentChecks.Run(root);MinionFxChecks.Run(root);MinionHintChecks.Run(root);
-            HordeDropChecks.Run(root);HordeKindChecks.Run(root);IronworksKindChecks.Run(root);StationEnemyChecks.Run(root);StationBossModelChecks.Run(root);ZombieMotionChecks.Run(root);ZombieFlowChecks.Run(root);HordeRoamChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
+            HordeDropChecks.Run(root);HordeKindChecks.Run(root);IronworksKindChecks.Run(root);StationEnemyChecks.Run(root);StationBossModelChecks.Run(root);StationBossPresentationChecks.Run(root);ZombieMotionChecks.Run(root);ZombieFlowChecks.Run(root);HordeRoamChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             CameraRigChecks.Run(root);
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
             StructureFxChecks.Run(root);
-            IronworksVisualChecks.Run(root);
+            IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);
             CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
             DevToolsChecks.Run(root);
             SpawnInChecks.Run(root,data);
@@ -149,6 +152,7 @@ internal static class Program
             HealNumberChecks.Run(root);
             foreach(var result in EffectsAudioChecks.Run(root))Console.WriteLine("PASS "+result);
             ZoneMusicChecks.Run(root);
+            ZoneBossMusicChecks.Run(root);
             BossMotionChecks.Run(root);
             FootfallAudioChecks.Run(root);
             FootSurfaceChecks.Run(root);

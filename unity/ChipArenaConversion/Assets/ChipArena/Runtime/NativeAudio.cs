@@ -112,7 +112,15 @@ namespace ChipArena.UnityConversion
                 // The zone's own boss track when its file is installed (Core/NativeZoneMusic), else the Siren's song on its intro/loop map.
                 string boss=NativeZoneMusic.BossTrack(arena.MapId,id=>Clip(id)!=null);bool hold=arena.Pve?.Holding==true&&arena.Pve.Cinematic!="intro";
                 if(boss==NativeZoneMusic.SirenSong)Track(boss,Music*.55f,hold,arena.BossTrack.Looped(arena.BossSongTime),arena,arena.BossSongAt);
-                else Track(boss,Music*.55f,hold,NativeZoneMusic.LoopClock(arena.BossSongTime,Clip(boss).length),arena,arena.BossSongAt);
+                else
+                {
+                    // A zone track plays its intro edit (its drop lands on the end of the boss intro hold) then its bar-aligned loop
+                    // (Core/NativeZoneBossMusic, Resources/ZoneBossMusic.json); its preroll is silent with the clip loading. Without a map
+                    // (an older resource) the clip loops plainly.
+                    var song=NativeZoneBossSongs.Music?.Song(boss);double clip=song!=null?song.Clip(arena.BossSongTime):NativeZoneMusic.LoopClock(arena.BossSongTime,Clip(boss).length);
+                    if(clip<0){var c=Clip(boss);if(c!=null&&c.loadState==AudioDataLoadState.Unloaded)c.LoadAudioData();}
+                    Track(boss,Music*.55f,hold||clip<0,Math.Max(0,clip),arena,arena.BossSongAt);
+                }
             }
             // The DEV hazard kit gallery's music lock (Sandbox only): the boss song from the gallery's own clock, for its beat.
             else if(!double.IsNaN(NativeHazardKitWorld.GallerySongAt(arena)))Track("music/black-siren-protocol",Music*.55f,false,arena.BossTrack.Looped(arena.Time-NativeHazardKitWorld.GallerySongAt(arena)),arena,NativeHazardKitWorld.GallerySongAt(arena));
