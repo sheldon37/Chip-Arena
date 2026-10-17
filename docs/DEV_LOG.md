@@ -1,3 +1,20 @@
+## 2026-10-17 — Astra: activation published to native test
+
+- Source `45e24acb2d80a8d63f2eb08de879144dbea70c7c` (PR #255 plus native gate repairs #256–259), shared and builder synced. Windows SHELDON Build-and-Publish started 01:04:04 UTC, exited successfully and published at 01:07:11 UTC. Public native/windows-x64/latest.json inspected: version `ae31a979cd2385cd0dd0a03cdd1c60bfb7aa6cca7e5f8274c77fbb8b30a01105`, revision `639277959795718335`, archive `e6f2ea65e8af4e959c693f09199e46ce3e3fbc469894bf09370584088edbcb3b`, 142,823,595 bytes, 231 files.
+- Actual Unity gate passes all live placement/routes, M1 combat/final/Continue/extraction, native co-op, scene isolation and subset transfer. New four-area activation gate passes 1,800 ticks / 30 simulated seconds with one pilot in each area: hub 4 mobs, each instance 8 mobs. Total fixture 3,176.4 ms, worst tick 19.3 ms, p95 5.8 ms; raw encoded packet accounting 92,013,735 bytes, managed memory delta 11,358,208 bytes. These are automated fixture results, not human multiplayer or rendered FPS measurements.
+- Three-second circles replace F entry; Ward's circle is off the door; Central Station and City Ironworks are active. Protocol 3 requires all players to update/restart. Current roster and placeholder Siren bosses are used. Claude's newer optional objectives, custom enemy/hazard designs and visual polish remain separately scoped; no claim those are implemented.
+- Build failures were resolved without bypassing gates: support-normal capsule lift, navigation excluding non-colliding ramp treads, and the native fixture waiting for the final shutter after all three instances clear. Final release evidence is also recorded on PR #255. This documentation-only receipt does not require another player build.
+
+## 2026-10-17 — Astra: advance final-shutter time in the three-instance native fixture
+
+- Native `78bb12a` passes Station/Ironworks placement and reachability after navigation regeneration, then reaches the old M1 combat fixture's final-trigger assertion. The fixture cleared the two additional rule-only instances after its old shutter wait and never advanced the director again; the final shutter correctly remained sealed.
+- Move through the existing one-second shutter lifecycle after the last clear before asserting final combat. Production gate timing and collision are unchanged. Native rebuild still required; activation is not yet published.
+
+## 2026-10-17 — Astra: align Ironworks navigation with native ramp collision
+
+- Native `640af06` passes Station geometry after the slope fix, then fails Ironworks. Diagnostic `4164d5c` identifies phantom tread-top nodes (e.g. stock stair at x38.5/z13.5 has a y0.50 tread node while native floor is y0.25). Unity replaces ramp-listed blocks with smooth colliders; the importer only excluded navHints.collisionOff, empty in the original Ironworks draft.
+- Exclude every ramp.blocks tread from navigation collision/surface generation as Unity does. Preserve authored blocks/rendering, ramps and layout hashes. Add a small ramp fixture proving node heights match the smooth support, regenerate live navigation, retain all native placement/reachability/activation gates. Publication pending successful native rebuild.
+
 ## 2026-10-17 — Astra: native activation slope-clearance repair
 
 - PR #255 merged as `27a35d4`, builder synced. Exact-head native CI passed; real Windows Build-and-Publish then stopped at Station entry-to-upper-floor machine routing. No activation player was published.
