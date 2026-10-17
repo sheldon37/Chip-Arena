@@ -43,7 +43,7 @@ World-point spawned adds additionally carry `minions[].bossSpawn`; guests recons
 
 ## Verification and activation gate
 
-Managed rules tests cover phases, action clocks and wire copies, finite-value rejection, event bounds, hazard boundaries and deterministic rain. Runtime and Editor compile against the pinned Unity references. `ValidateZoneBossAuthority` is wired into the native Expedition activation fixture: it exercises a real weapon path, windup/contact/single-hit, phase transition, codec/guest application, hold release and death collision.
+Managed rules tests cover phases, action clocks and wire copies, finite-value rejection, event bounds, hazard boundaries and deterministic rain. Player, Runtime and Editor compile against the pinned Unity references on the integrated 03dddab1 tree. Focused results: 274 boss-rule checks, 274 Station model checks, 697 Converter model checks, 158 Ironworks visual checks, 15,885 Station presentation checks, 23,269 laser-door checks, 9,683 state-scene checks, 108 director checks and 41 co-op checks. `ValidateZoneBossAuthority` is wired into the native Expedition activation fixture: it exercises a real weapon path, windup/contact/single-hit, phase transition, codec/guest application, hold release and death collision.
 
 Local full managed regression stopped at BowChecks' 15,424-byte allocation assertion; compiling and running the unchanged bc39790 baseline reproduces the identical failure. Focused affected checks pass. This is not a green full-suite claim.
 

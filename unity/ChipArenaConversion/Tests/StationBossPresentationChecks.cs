@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
             string rt=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeStationBossPresentation.cs"));
             Check(rt.Contains("internal static StationBossView StationBossViewOf(NativeArena arena)=>StationBossView.None;"),"the one binding point returns None until Astra's record exists (update this pin when it is bound)");
             string arena=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionM1Arena.cs"));
-            Check(arena.Contains("RecordBossArrival(id,\"siren\""),"the station still records the placeholder Siren's arrival (no rule changed)");
+            Check(!NativeZoneBossRules.RuntimeEnabled&&arena.Contains("string archetype=NativeZoneBossRules.RuntimeEnabled?NativeZoneBossRules.Archetype(MapId)??\"siren\":\"siren\""),"the disabled candidate still selects the placeholder Siren");
             Check(NativeExpeditionStates.BossName("siren")=="SIREN"&&NativeZoneBossNames.BannerDelay("siren")==0&&NativeZoneBossNames.Name("siren")==null,"the Siren's plate name and banner timing are unchanged");
         }
 
