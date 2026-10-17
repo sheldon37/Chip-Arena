@@ -102,7 +102,7 @@ namespace ChipArena.UnityConversion
         {
             // audio.ts update: falloff and pan are heard from the local pilot (`listener=self.pos`), turned by the view yaw.
             if(camera!=null){listener=camera.transform.position;yaw=camera.transform.eulerAngles.y*Mathf.Deg2Rad;}if(arena?.Local?.Body!=null)listener=arena.Local.Body.position;
-            Slender(arena,menu);StructureQueue(arena);EffectsFrame(arena,menu);KitAudio(arena,menu);if(arena==null){CyberCityCues(null,true);Track("music/menu-afterglow",Menu*MenuTrackGain);return;}
+            Slender(arena,menu);StructureQueue(arena);EffectsFrame(arena,menu);KitAudio(arena,menu);DoorHumFrame(arena,menu);if(arena==null){CyberCityCues(null,true);Track("music/menu-afterglow",Menu*MenuTrackGain);return;}
             if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();installCue.Clear();phase="";countdown=-1;foreach(var v in voices){v.Stop();v.loop=false;}}
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             CyberCityCues(arena,menu);

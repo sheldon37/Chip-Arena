@@ -176,6 +176,7 @@ namespace ChipArena.UnityConversion
                 case "preview-hub-gates":NativeExpeditionHubPreview.On=!NativeExpeditionHubPreview.On;DevSay(NativeExpeditionHubPreview.On?"Hub gates preview · on (presentation only; the gates cycle, nothing collides)":"Hub gates preview · off",false);break;
                 case "preview-station":NativeStationPreview.On=!NativeStationPreview.On;DevSay(NativeStationPreview.On?"Station hazards preview · on (presentation only; the express, rails, flood, levers, board and glass cycle, nothing hurts)":"Station hazards preview · off",false);break;
                 case "preview-ironworks":IronworksPreviewStep();break;
+                case "preview-door-lock":NativeLaserDoorPreview.On=!NativeLaserDoorPreview.On;DevSay(NativeLaserDoorPreview.On?"Instance exit door preview · on (presentation only; the laser door cycles lock, sealed, unlock and open; the exit's collider is unchanged)":"Instance exit door preview · off",false);break;
                 case "overlay-shots":devOverlayShots=!devOverlayShots;break;
                 case "log":devLogOn=!devLogOn;break;
                 case "graph":devGraphOn=!devGraphOn;break;
@@ -665,6 +666,8 @@ namespace ChipArena.UnityConversion
             y=DevNote(x,y,w,"On the town map: every sanctuary gate opens and closes on its own cycle, the ward shimmers and the holster tag shows inside. Presentation only: the gates have no collider or input until the director's gate state exists.",C.Muted());
             y=DevHead(x,y,w,"CENTRAL STATION (DEV PREVIEW)");DevToggleAct(new Rect(x,y,w,32),"preview-station",NativeStationPreview.On);y+=38;y=DevNote(x,y,w,"On the station map: the express warns and passes, the levers cut the rails, the flood conducts, the board changes, the cabinets spark, the steam main bursts and glass falls on a 96 s cycle. Presentation only: no damage, collider or network until Astra's station fields exist.",C.Muted());
             y=IronworksPreviewPanel(x,y,w);
+            y=DevHead(x,y,w,"INSTANCE EXIT DOOR (DEV PREVIEW)");DevToggleAct(new Rect(x,y,w,32),"preview-door-lock",NativeLaserDoorPreview.On);y+=38;
+            y=DevNote(x,y,w,"In an instance (or an instance map in the sandbox): the exit's laser door locks, holds sealed, unlocks and stands open on a 7 s cycle. Presentation only: the closure and its collider stay the director's.",C.Muted());
             y=DevHead(x,y,w,"EVENT LOG");DevToggleAct(new Rect(x,y,w,32),"log",devLogOn);y+=40;
             for(int i=0;i<NativeDevLog.Filters.Length;i++)
             {

@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
     /// boss arrival"), built from the view, the area's layout rig, the cue memory and the presentation clock into reused buffers:
     /// <see cref="Parts"/> (solid kit boxes: NativeBlockLit) and <see cref="Quads"/> (hardlight, glow and dust: NativeSirenFx's
     /// effects batch through NativeFxDraw). Engine-free and allocation-free once warm.
+    ///  - An instance's exit (ExpeditionDoorLook.Laser): the laser door (NativeExpeditionStateScene.Laser.cs), locking behind the
+    ///    party as it arrives and unlocking when its closure opens.
     ///  - Doors (a closure of this area whose id is a door anchor of the rig): the airlock unit at the closure volume, two
     ///    leaves that meet in the doorway plane and slide into the unit's pockets, lock bolts, status lamps and signs in the
     ///    state's colour. Biocontainment (Ward Zero's portico and exit): clinical white leaves with hazard edges and a teal band.
@@ -32,7 +34,7 @@ namespace ChipArena.UnityConversion
     ///    hub (<see cref="HideSanctuaryEdge"/>): there the fence and gates show the safe zone.
     ///  - A boss's ground crack and roar rings (<see cref="BossCrack"/>), only where the caller has the boss's position.
     /// </summary>
-    public sealed class NativeExpeditionStateScene
+    public sealed partial class NativeExpeditionStateScene
     {
         public const int QuadCapacity=4096,PartCapacity=640,MaxDoors=16;
         /// <summary>Draws no sanctuary edge (floor glow, curtain, motes, crossing ripple): the fenced hub's safe zone stays, unseen
@@ -58,7 +60,7 @@ namespace ChipArena.UnityConversion
             MagentaHex=NativeCyberCityLooks.MagentaHex,WarmHex=0xFFC27A,EmberHex=NativeCyberCityLooks.WarmHex,CoolHex=0x8AA6C4,DustHex=0x2A2630,CrackHex=0x050206;
         private const int Metal=NativeCyberCityLooks.Metal,Tube=NativeCyberCityLooks.Tube,Holo=NativeCyberCityLooks.Holo,Bank=NativeCyberCityLooks.Bank;
 
-        public void Clear(){Quads.Clear();Parts.Clear();Array.Clear(leaf,0,leaf.Length);DoorsDrawn=GatesDrawn=CracksDrawn=0;}
+        public void Clear(){Quads.Clear();Parts.Clear();Array.Clear(leaf,0,leaf.Length);DoorsDrawn=GatesDrawn=CracksDrawn=0;LaserClear();}
         /// <summary>Whether door anchor `anchor` has 3D leaves this frame (else its HUD hologram stands in).</summary>
         public bool HasLeaf(string anchor){if(built==null)return false;int i=built.Door(anchor);return i>=0&&i<MaxDoors&&leaf[i];}
 
@@ -70,7 +72,13 @@ namespace ChipArena.UnityConversion
             if(list!=null)for(int i=0;i<list.Length;i++)
             {
                 var c=list[i];if(c?.id==null||c.area!=rig.Area)continue;
-                int d=rig.Door(c.id);if(d>=0&&d<MaxDoors){if(Near(rig.Doors[d].Frame,eye,CullDistance))Door(rig.Doors[d],d,c,t,eye,reduced,low);leaf[d]=true;DoorsDrawn++;continue;}
+                int d=rig.Door(c.id);
+                if(d>=0&&d<MaxDoors)
+                {
+                    // The DEV preview's stand-in closure replaces the record it names (presentation only; the collider keeps the record).
+                    var dc=DoorPreview!=null&&DoorPreview.id==c.id?DoorPreview:c;if(rig.Doors[d].Look==ExpeditionDoorLook.Laser)LaserState(rig.Doors[d],dc,t,cues);
+                    if(Near(rig.Doors[d].Frame,eye,CullDistance))Door(rig.Doors[d],d,dc,t,eye,cues,reduced,low);leaf[d]=true;DoorsDrawn++;continue;
+                }
                 int g=rig.Gate(c.id);if(g<0)continue;var f=rig.Gates[g].Frame;GatesDrawn++;
                 if(Near(f,eye,CullDistance*1.5f)){if(NativeIronworksShutter.Owns(c.id))NativeIronworksShutter.Build(Parts,PartCapacity,Quads,f,c,t,eye,reduced,low);else Gate(f,g,c,t,reduced,low);}
                 if(cues!=null&&cues.Cue(c.id,t,out double age))Beacon(f,age,eye,reduced);
@@ -139,8 +147,9 @@ namespace ChipArena.UnityConversion
         // ---- Doors ---------------------------------------------------------------------------------------------------------
         /// <summary>The leaves' depth band, the seal's depth and the unit's front (closure-relative metres toward the party).</summary>
         public static float SealDepth(in ExpeditionFrame f)=>f.D/2+.1f;
-        private void Door(ExpeditionDoorRig door,int index,ExpeditionClosureView c,double t,in ExpeditionEye eye,bool reduced,bool low)
+        private void Door(ExpeditionDoorRig door,int index,ExpeditionClosureView c,double t,in ExpeditionEye eye,ExpeditionStateCues cues,bool reduced,bool low)
         {
+            if(door.Look==ExpeditionDoorLook.Laser){Laser(door,index,c,t,eye,cues,reduced,low);return;}
             var f=door.Frame;float W=f.W,H=f.H,D=f.D,half=W/2,P=half+.1f,X=W+.3f,dB=-D/2+.01f,dF=D/2+.07f;int s=index*64;
             var phase=NativeExpeditionStates.Phase(c);float shut=NativeExpeditionStates.Shut(c,t),open=1-shut,bolts=NativeExpeditionStates.Bolts(c,t);
             bool moving=phase==ExpeditionClosurePhase.Sealing||phase==ExpeditionClosurePhase.Opening;
