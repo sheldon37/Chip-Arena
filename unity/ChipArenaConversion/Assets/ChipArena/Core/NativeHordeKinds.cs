@@ -23,7 +23,13 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeHordeKinds
     {
-        public const int Shambler=0,Runner=1,Brute=2,Spitter=3,Crawler=4,Bloater=5,Hulk=6,Count=7;
+        public const int Shambler=0,Runner=1,Brute=2,Spitter=3,Crawler=4,Bloater=5,Hulk=6,BaseCount=7;
+        /// <summary>The Expedition zones' own kinds (owner 2026-10-16), each zone's rows in its own file, drawn after the Siren's
+        /// seven in this order (Core/NativeStationKinds.cs: the Central Station's four, kinds 7-10). Every per-kind table grows by
+        /// their values (the static constructor below, NativeZombieMotion, NativeHordeModels); the seven keep theirs exactly.</summary>
+        public static readonly ZoneKind[] Zones=Join(NativeStationKinds.Rows);
+        /// <summary>Every kind: the Siren's seven, then the zones'.</summary>
+        public static readonly int Count=BaseCount+Zones.Length;
         /// <summary>The kinds the DEV preview's mix hashes over (not the Hulk: one or two are alive at most).</summary>
         public const int MixCount=Hulk;
         /// <summary>The content ids (PveAddStats.id), by kind.</summary>
@@ -83,6 +89,33 @@ namespace ChipArena.UnityConversion
         /// <summary>A hit's shove and recoil on this kind (1/sqrt(mass), so a greatsword still moves a brute).</summary>
         public static float Give(int kind)=>1f/(float)Math.Sqrt(Mass[Clamp(kind)]);
         private static int Clamp(int kind)=>kind<0||kind>=Count?0:kind;
+
+        // ---- zone kinds (presentation rows; the rules stay Astra's PveContent and NativePveHorde) ----
+        /// <summary>One zone kind's presentation row: its content id and name; the Siren kind whose gait tables and procedural
+        /// fallbacks it borrows (<see cref="Body"/>); its looks; its proposed world capsule (radius, height), drawn as the rig at
+        /// height / 1.7 (its <see cref="Scale"/>, as the Hulk); its weight, seam hue and flicker class, default attack and
+        /// proposed content row; its takes (NativeZombieMotion keys) and stride tempo; its head (NativeHordeModels). Shipped: true once
+        /// the content has its row (Astra; HordeKindChecks holds it to PveContent.json).</summary>
+        public sealed class ZoneKind
+        {
+            public string Id,Name;public int Body,Looks=1,Seam,SeamClass=2;public bool Shipped;public float Radius=AddRadius,Height=AddHeight,Mass=1,Tempo=1,HeadWidth=1,HeadDrop;
+            public Attack Attack;public PveAddStats Proposed;public string[] Walks,Runs,Idles,Wanders;
+            /// <summary>How many times the rig's size it is drawn: its capsule's height over the add capsule's.</summary>
+            public float Scale=>Height/AddHeight;
+        }
+        private static ZoneKind[] Join(params ZoneKind[][] zones){int n=0;foreach(var z in zones)n+=z.Length;var all=new ZoneKind[n];n=0;foreach(var z in zones){Array.Copy(z,0,all,n,z.Length);n+=z.Length;}return all;}
+        /// <summary>A per-kind table grown by each zone kind's value (the seven's values untouched).</summary>
+        public static T[] Zoned<T>(T[] table,Func<ZoneKind,T> value){var all=new T[table.Length+Zones.Length];Array.Copy(table,all,table.Length);for(int i=0;i<Zones.Length;i++)all[table.Length+i]=value(Zones[i]);return all;}
+        /// <summary>Whether a kind is a zone's (not one of the Siren's seven).</summary>
+        public static bool Zone(int kind)=>kind>=BaseCount&&kind<Count;
+        /// <summary>The Siren kind a kind's body tables follow: itself for the seven, a zone kind's Body (an unknown kind: the shambler).</summary>
+        public static int Body(int kind)=>Zone(kind)?Zones[kind-BaseCount].Body:Clamp(kind);
+        static NativeHordeKinds()
+        {
+            Ids=Zoned(Ids,z=>z.Id);Names=Zoned(Names,z=>z.Name);Shipped=Zoned(Shipped,z=>z.Shipped);Looks=Zoned(Looks,z=>z.Looks);
+            Radius=Zoned(Radius,z=>z.Radius/z.Scale);Height=Zoned(Height,z=>AddHeight);Axis=Zoned(Axis,z=>1);Root=Zoned(Root,z=>AddHeight*.5f);CenterAhead=Zoned(CenterAhead,z=>0f);
+            Scale=Zoned(Scale,z=>z.Scale);Mass=Zoned(Mass,z=>z.Mass);Seam=Zoned(Seam,z=>z.Seam);SeamClass=Zoned(SeamClass,z=>z.SeamClass);Default=Zoned(Default,z=>z.Attack);Proposed=Zoned(Proposed,z=>z.Proposed);
+        }
 
         // ---- the authority's attack timing (NativePveHorde.StepPveHorde) ----
         /// <summary>Both arms gone (LIMB bits 2|8 and 4|16 on each side).</summary>

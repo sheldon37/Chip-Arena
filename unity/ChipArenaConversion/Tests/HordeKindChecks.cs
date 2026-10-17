@@ -262,9 +262,10 @@ namespace ChipArena.UnityConversion
         {
             // The spec sits in the repository's docs (a packaged Unity source without them skips this part).
             string path=Path.Combine(root,"../../docs/SIREN-MINION-VARIANTS.md");if(!File.Exists(path)){Console.WriteLine("SKIP horde kinds spec: docs/SIREN-MINION-VARIANTS.md is not in this tree");return;}var doc=File.ReadAllText(path);
-            foreach(var id in NativeHordeKinds.Ids)Check(doc.Contains("`"+id+"`"),"the spec names "+id);
+            // (The Siren's seven; the zones' kinds have their own zone docs: Tests/StationEnemyChecks.)
+            for(int k=0;k<NativeHordeKinds.BaseCount;k++)Check(doc.Contains("`"+NativeHordeKinds.Ids[k]+"`"),"the spec names "+NativeHordeKinds.Ids[k]);
             foreach(var s in new[]{"minion-spit","minion-acid","minion-slam","minion-charge","minion-burst","staggerAt","Prompt for Astra"})Check(doc.Contains(s),"the spec covers "+s);
-            for(int k=0;k<NativeHordeKinds.Count;k++){if(NativeHordeKinds.Shipped[k])continue;var p=NativeHordeKinds.ProposedRow(k);Check(doc.Contains("| `"+p.id+"` | "+p.hp+" | "+p.damage+" |"),"the spec's "+p.id+" row matches NativeHordeKinds.Proposed");}
+            for(int k=0;k<NativeHordeKinds.BaseCount;k++){if(NativeHordeKinds.Shipped[k])continue;var p=NativeHordeKinds.ProposedRow(k);Check(doc.Contains("| `"+p.id+"` | "+p.hp+" | "+p.damage+" |"),"the spec's "+p.id+" row matches NativeHordeKinds.Proposed");}
         }
     }
 }

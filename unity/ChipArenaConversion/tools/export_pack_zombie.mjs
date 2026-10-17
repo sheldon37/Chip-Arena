@@ -68,6 +68,18 @@ const CLIPS=[
  {key:'jump-start',file:'Split_Jumps/Zombie_HyperChase_5_Jump_Start',kind:'once'},
  {key:'jump-air',file:'Split_Jumps/Zombie_HyperChase_5_Jump_Air',kind:'once',range:[0,30]},
  {key:'jump-land',file:'Split_Jumps/Zombie_HyperChase_5_Jump_End_HA1',kind:'once',land:true},
+ // ---- the Central Station's kinds (docs/EXPEDITION-CENTRAL-STATION.md section 7; Core/NativeStationMotion.cs) ----
+ // the Linesman's electric twitch (the flail's first second, laid over its idle) and its electrocuted collapse
+ {key:'writhe-1',file:'Zombie_OnFire_1_SHORT',kind:'once',fps:15,range:[0,33]},
+ {key:'death-shock',file:'Zombie_OnFire_2A_SHORT',kind:'once',fps:15,death:true},
+ // the Conductor's upright idle; the reach under the arc's raised arm and the last call's raised lantern
+ {key:'idle-1',file:'Zombie_Idle_1_v2',kind:'idle',fps:15},
+ {key:'reach-1',file:'Zombie_Reach_1_Loop',kind:'once',fps:15,range:[0,66]},
+ // the Undertow: one belly pull (its drag, played backward) and one lunging crawl stroke (its swim), looped by the motion
+ {key:'crawl-1',file:'Zombie_Crawl_1_Loop',kind:'once',fps:15,range:[123,197]},
+ {key:'crawl-2',file:'Zombie_Crawl_2_Loop',kind:'once',fps:15,range:[16,67]},
+ // the Pileup's two-handed shove: the crouched brace, the push to full extension, the return; marks [start, braced, impact, settled]
+ {key:'shove-1',file:'Zombie_Atk_Arms_4_SHORT_Loop',kind:'once',range:[18,50],marks:[0,.1,.7,1.0667]},
 ];
 
 const file=f=>{const p=path.join(dir,f);if(!fs.existsSync(p))throw new Error('missing pack file '+f);return p;};

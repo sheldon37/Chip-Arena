@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         private static void Kind()
         {
             int k=NativeHordeKinds.Hulk,n=NativeHordeKinds.Count;
-            Check(n==7&&NativeHordeKinds.Ids[k]=="hulk"&&NativeHordeKinds.Resolve("hulk")==k&&NativeHordeKinds.Shipped[k],"the Hulk is the seventh shipped kind");
+            Check(NativeHordeKinds.BaseCount==7&&n>=NativeHordeKinds.BaseCount&&NativeHordeKinds.Ids[k]=="hulk"&&NativeHordeKinds.Resolve("hulk")==k&&NativeHordeKinds.Shipped[k],"the Hulk is the seventh shipped kind (the zones' kinds follow)");
             foreach(var len in new[]{NativeHordeKinds.Ids.Length,NativeHordeKinds.Names.Length,NativeHordeKinds.Shipped.Length,NativeHordeKinds.Looks.Length,NativeHordeKinds.Radius.Length,NativeHordeKinds.Height.Length,NativeHordeKinds.Axis.Length,NativeHordeKinds.Root.Length,NativeHordeKinds.CenterAhead.Length,NativeHordeKinds.Scale.Length,NativeHordeKinds.Mass.Length,NativeHordeKinds.Default.Length,NativeHordeKinds.Seam.Length,NativeHordeKinds.SeamClass.Length,NativeHordeKinds.Proposed.Length,NativeZombieMotion.Tempo.Length,NativeHordeModels.HeadWidth.Length,NativeHordeModels.HeadDrop.Length})
                 Check(len==n,"every kind table has the Hulk ("+len+")");
             float scale=NativeHordeKinds.Scale[k];Check(scale>=1.6f&&scale<=2&&NativeHordeKinds.Scale.Take(k).All(x=>x==1),"the Hulk is drawn 1.6-2 times the brute's size ("+scale+"), every other kind at its own");

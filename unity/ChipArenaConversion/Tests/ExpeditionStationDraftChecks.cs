@@ -140,7 +140,8 @@ namespace ChipArena.UnityConversion
                     &&(e.kind!="breach"||station.blocks.Any(b=>b.id==e.block&&b.role=="static"&&Math.Abs(b.pos.x-e.center.x)<1e-3&&Math.Abs(b.pos.z-e.center.z)<1e-3)&&Math.Abs(e.normal.Length-1)<.01),"allow list within the entry rules: "+e.id);
             }
             var proposed=raw.Where(x=>x["station"]!=null).SelectMany(x=>x["station"].AsArray().Select(y=>(string)y)).Distinct().ToArray();
-            Check(proposed.Length>0&&proposed.All(k=>StationEnemies.Contains(k)&&!NativeHordeKinds.Known(k))&&StationEnemies.All(k=>!NativeHordeKinds.Known(k)),"the station enemies ("+string.Join(", ",proposed)+") are proposals: named only beside the allow lists, not horde kinds");
+            // (Their presentation is registered, Core/NativeStationKinds; their content rows are Astra's, so no allow list names them yet.)
+            Check(proposed.Length>0&&proposed.All(k=>StationEnemies.Contains(k)&&NativeStationKinds.Is(NativeHordeKinds.Resolve(k))&&!NativeHordeKinds.Shipped[NativeHordeKinds.Resolve(k)])&&spawns.All(s=>s.allow.All(k=>!StationEnemies.Contains(k))),"the station enemies ("+string.Join(", ",proposed)+") are proposals: named only beside the allow lists, drawn by the presentation's station kinds, not in the content yet");
             Check(spawns.Count(s=>s.allow.Contains("hulk"))==5&&spawns.Count(s=>s.entry.level==1)==4,"5 Hulk entrances, 4 on the upper floor");
             // ---------------- authored content binding (#254), on a detached copy as the arena does ----------------
             var bound=JsonSerializer.Deserialize<NativePveContent>(R("Assets/Conversion/Resources/PveContent.json"),o);int wardEntries=pve.entries.Length,wardMachines=pve.machines.Length;

@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
             return jaw?jawIds:ids;
         }
         /// <summary>Each kind's head: its width scale and how far it sits down on its joint (the builders' Head calls).</summary>
-        public static readonly float[] HeadWidth={1,.88f,.74f,.95f,.68f,.86f,.6f},HeadDrop={0,0,-.07f,0,-.03f,-.02f,-.1f};
+        public static readonly float[] HeadWidth=NativeHordeKinds.Zoned(new[]{1,.88f,.74f,.95f,.68f,.86f,.6f},z=>z.HeadWidth),HeadDrop=NativeHordeKinds.Zoned(new[]{0,0,-.07f,0,-.03f,-.02f,-.1f},z=>z.HeadDrop);
         /// <summary>The jaw's hinge on the head joint (bank frame: the skull's back, at the mouth's height).</summary>
         public static Vector3 JawHinge(int kind){int k=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind));return new Vector3(0,.07f+HeadDrop[k],.02f);}
         /// <summary>The mouth socket on the head joint (bank frame): just in front of the teeth, where the spit leaves.</summary>
@@ -75,7 +75,9 @@ namespace ChipArena.UnityConversion
             switch(kind)
             {
                 case NativeHordeKinds.Runner:Runner(k);break;case NativeHordeKinds.Brute:Brute(k);break;case NativeHordeKinds.Spitter:Spitter(k);break;
-                case NativeHordeKinds.Crawler:Crawler(k);break;case NativeHordeKinds.Bloater:Bloater(k);break;case NativeHordeKinds.Hulk:Hulk(k);break;default:Shambler(k);break;
+                case NativeHordeKinds.Crawler:Crawler(k);break;case NativeHordeKinds.Bloater:Bloater(k);break;case NativeHordeKinds.Hulk:Hulk(k);break;
+                // The zones' kinds (Core/NativeStationModels.cs, the Central Station's four).
+                default:if(!StationBuild(k))Shambler(k);break;
             }
             return new HordeModel{Kind=kind,Look=look,Tier=tier,Mesh=k.Mesh,Jaw=k.SplitJaw?k.JawMesh:null};
         }
@@ -232,7 +234,7 @@ namespace ChipArena.UnityConversion
         {double h=lean*.5;return new Tongue{Joint=joint,Layout=layout,X=x,Y=y,Z=z,Qx=Math.Sin(h),Qy=0,Qz=0,Qw=Math.Cos(h),Height=height,Phase=phase};}
         private static Tongue TZ(int joint,int layout,double x,double y,double z,double roll,double height,double phase)
         {double h=roll*.5;return new Tongue{Joint=joint,Layout=layout,X=x,Y=y,Z=z,Qx=0,Qy=0,Qz=Math.Sin(h),Qw=Math.Cos(h),Height=height,Phase=phase};}
-        private static readonly Tongue[][][] tongues=MakeTongues();
+        private static readonly Tongue[][][] tongues=NativeHordeKinds.Zoned(MakeTongues(),z=>StationTongues(z.Id));
         /// <summary>The tongues a kind's look grows (the same on every tier).</summary>
         public static Tongue[] Tongues(int kind,int look){var k=tongues[Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind))];return k[Math.Max(0,Math.Min(k.Length-1,look))];}
         public static int MostTongues{get{int n=0;foreach(var k in tongues)foreach(var l in k)n=Math.Max(n,l.Length);return n;}}

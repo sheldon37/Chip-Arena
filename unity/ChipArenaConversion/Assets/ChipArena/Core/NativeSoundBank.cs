@@ -58,6 +58,12 @@ namespace ChipArena.UnityConversion
             K("pve.zombie.groan",P,1.2f,L),K("pve.zombie.attack",P,.8f,N),K("pve.zombie.hurt",P,.7f,L),K("pve.zombie.death",P,1.7f,N),K("pve.zombie.runner.snarl",P,1.1f,L),
             K("pve.zombie.spitter.gurgle",P,1.1f,N),K("pve.zombie.spitter.spit",P,.7f,N),K("pve.zombie.brute.grunt",P,1.1f,N),
             K("pve.zombie.step.shuffle",P,.5f,L),K("pve.zombie.step.run",P,.35f,L),K("pve.zombie.step.heavy",P,.7f,L),K("pve.zombie.step.crawl",P,.7f,L),
+            // The Central Station's enemies (docs/EXPEDITION-CENTRAL-STATION.md section 10; Core NativeStationKinds.CueKeys, routed by
+            // Runtime/NativeStationKindsPresentation.cs): positional, each cap the brief's length with a little margin.
+            K("pve.station.linesman.idle",P,2f,L),K("pve.station.linesman.charge",P,1.2f,N),K("pve.station.linesman.arc",P,.7f,N),K("pve.station.linesman.ground",P,1f,N),K("pve.station.linesman.hurt",P,.5f,L),K("pve.station.linesman.death",P,1.7f,N),
+            K("pve.station.conductor.inhale",P,.9f,N),K("pve.station.conductor.whistle",P,1.1f,N),K("pve.station.conductor.bell",P,1.3f,N),K("pve.station.conductor.mutter",P,2.1f,L),K("pve.station.conductor.lantern",P,.7f,N),K("pve.station.conductor.death",P,1.5f,N),
+            K("pve.station.undertow.bubble",P,2.1f,L),K("pve.station.undertow.surface",P,.9f,N),K("pve.station.undertow.grab",P,.7f,N),K("pve.station.undertow.drag",P,1.6f,N),K("pve.station.undertow.death",P,1.5f,N),
+            K("pve.station.pileup.moan",P,2.6f,L),K("pve.station.pileup.brace",P,.8f,N),K("pve.station.pileup.shove",P,.7f,N),K("pve.station.pileup.ricochet",P,.35f,L),K("pve.station.pileup.split",P,1.6f,N),
             K("pve.buy",F,1.5f,N),K("pve.clear",F,2.5f,N),K("pve.gib",P,.7f,N),K("pve.money",F,.6f,L),K("pve.pickup",F,1f,N),K("pve.revive",F,2f,N),K("pve.wave",F,3f,N),
             K("siren.claw",P,.8f,N),K("siren.damnation",P,1.5f,N),K("siren.dissipate",P,4f,N),K("siren.eruption",P,2.5f,N),K("siren.hellfire",P,.9f,N),K("siren.laugh",P,3f,N),K("siren.mark",P,2.5f,N),K("siren.reveal",F,4f,N),
             K("siren.rush",P,1.2f,N),K("siren.slam",P,2.5f,N),K("siren.vents",P,2f,N),

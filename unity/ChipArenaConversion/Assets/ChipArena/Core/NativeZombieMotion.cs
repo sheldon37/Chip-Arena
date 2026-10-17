@@ -39,6 +39,8 @@ namespace ChipArena.UnityConversion
             // (The slow forward walk-4 is the take that plants cleanly at the wander's .4-1.1 m/s for every kind: the walk-6 and the
             // chases drag a planted ankle up to 5-7 cm there.)
             wanders=new[]{N("walk-4"),N("walk-4"),N("walk-4"),N("walk-4"),new int[0],N("walk-4"),N("walk-4")};
+            // The zones' kinds (NativeHordeKinds.Zones) walk, run, stand and wander on their own takes, after the Siren's seven.
+            walks=NativeHordeKinds.Zoned(walks,z=>N(z.Walks));runs=NativeHordeKinds.Zoned(runs,z=>N(z.Runs));idles=NativeHordeKinds.Zoned(idles,z=>N(z.Idles));wanders=NativeHordeKinds.Zoned(wanders,z=>N(z.Wanders));
             swipeR=N("swipe-r1","swipe-r2");swipeL=N("swipe-l1","swipe-l2");lunge=N("lunge-1","lunge-2");smash=N("smash-1","smash-2");knock=N("knock-1","knock-2","knock-3","knock-4","knock-5");
             deathBack=N("death-back-1","death-back-2","death-back-3");deathFront=N("death-front-1","death-front-2","death-front-3");deathLeft=N("death-left-1");deathRight=N("death-right-1","death-right-2");
             lands=N("jump-land");Wake=NativeZombieClips.Need("wake");CrawlStand=NativeZombieClips.Need("crawl-stand");StandCrawl=NativeZombieClips.Need("stand-crawl");
@@ -97,7 +99,7 @@ namespace ChipArena.UnityConversion
 
         // ---- following the add's ground speed ----
         /// <summary>A kind's tempo: the brute and the bloater take longer, heavier strides at a slower cadence, the Hulk slowest.</summary>
-        public static readonly float[] Tempo={1,1,.9f,.95f,1,.85f,.62f};
+        public static readonly float[] Tempo=NativeHordeKinds.Zoned(new[]{1,1,.9f,.95f,1,.85f,.62f},z=>z.Tempo);
         public const float MinRate=.55f,MaxRate=2.8f,Exponent=.7f;
         /// <summary>The playback rate of cycle `clip` at ground speed `v` (m/s) for `kind`.</summary>
         public static float Rate(int clip,float v,int kind)

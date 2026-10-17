@@ -38,6 +38,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
             }
+            StationPropModels(shader);
         }
     }
 }

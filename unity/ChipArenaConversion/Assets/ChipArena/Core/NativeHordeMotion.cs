@@ -121,18 +121,18 @@ namespace ChipArena.UnityConversion
         private static Vector2 Dir(float yaw){float r=yaw*(float)Math.PI/180;return new Vector2((float)Math.Sin(r),(float)Math.Cos(r));}
 
         /// <summary>The walk-run blend at ground speed `v` for a kind (0 walk, 1 run).</summary>
-        public static float RunBlend(int kind,float v){var d=defs[Math.Max(0,Math.Min(defs.Length-1,kind))];return Clamp01((v-d.WalkSpeed*1.05f)/Math.Max(.1f,d.RunSpeed*.8f-d.WalkSpeed*1.05f));}
+        public static float RunBlend(int kind,float v){var d=defs[NativeHordeKinds.Body(kind)];return Clamp01((v-d.WalkSpeed*1.05f)/Math.Max(.1f,d.RunSpeed*.8f-d.WalkSpeed*1.05f));}
         /// <summary>The stride (m per cycle) at speed `v` for a kind's first takes (the step cue's spacing): the capture's cadence
         /// over the speed; the crawler's procedural stride.</summary>
         public static float Stride(int kind,float v)
         {
-            kind=Math.Max(0,Math.Min(defs.Length-1,kind));
+            kind=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind));
             if(kind==NativeHordeKinds.Hulk)return HeavyStride(v);
             if(NativeZombieMotion.Captured(kind)){int w=NativeZombieMotion.Walks(kind)[0],r=NativeZombieMotion.Runs(kind)[0];float hz=Lerp(NativeZombieMotion.Cadence(w,v,kind),NativeZombieMotion.Cadence(r,v,kind),RunBlend(kind,v));return Math.Max(.2f,v)/Math.Max(.2f,hz);}
             return ProceduralStride(kind,v);
         }
-        private static float ProceduralStride(int kind,float v){var d=defs[kind];float r=RunBlend(kind,v);return Lerp(d.WalkStride,d.RunStride,r)*(.75f+.25f*Clamp01(v/Math.Max(.1f,d.WalkSpeed)));}
-        public static float Duty(int kind,float v){var d=defs[Math.Max(0,Math.Min(defs.Length-1,kind))];return Lerp(d.Duty,d.RunDuty,RunBlend(kind,v));}
+        private static float ProceduralStride(int kind,float v){var d=defs[NativeHordeKinds.Body(kind)];float r=RunBlend(kind,v);return Lerp(d.WalkStride,d.RunStride,r)*(.75f+.25f*Clamp01(v/Math.Max(.1f,d.WalkSpeed)));}
+        public static float Duty(int kind,float v){var d=defs[NativeHordeKinds.Body(kind)];return Lerp(d.Duty,d.RunDuty,RunBlend(kind,v));}
 
         /// <summary>
         /// Steps the add to `f.Time` and writes its living pose into `p` (source frame, the rig root at the body's position,
@@ -156,7 +156,7 @@ namespace ChipArena.UnityConversion
             }
             RoamPrepare(f,moving,lookYaw,lookPitch);
             if(quad){CrawlerPose(f,p,defs[NativeHordeKinds.Crawler],v,RunBlend(NativeHordeKinds.Crawler,v),moving,alert,lookYaw,cock,swing,follow,settle,attackW,react);return;}
-            float run=RunBlend(kind,v),hurt=1-Clamp01(f.Health*1.6f),t=f.Time,sprint=heavy?Sprint(v):0;var d=defs[kind];
+            float run=RunBlend(kind,v),hurt=1-Clamp01(f.Health*1.6f),t=f.Time,sprint=heavy?Sprint(v):0;var d=defs[NativeHordeKinds.Body(kind)];
             // ---- the capture: the walk and run takes at the stride's phase, the idle (the door's wake while it waits) ----
             NativeZombieClips.SamplePhase(walkClip,Phase,rowW);RoamWalkRow();NativeZombieClips.SamplePhase(runClip,Phase,rowR);NativeZombieClips.Blend(rowW,rowR,run,rowA);
             float wake=f.Entering&&f.EntryAge<f.EntryWalk?f.EntryAge:float.NaN;
@@ -328,7 +328,7 @@ namespace ChipArena.UnityConversion
         private void Step(in HordeMotionInput f,NativeHordeReact react)
         {
             kind=Math.Max(0,Math.Min(NativeHordeKinds.Count-1,f.Kind));quad=kind==NativeHordeKinds.Crawler||f.Crawl||!NativeZombieMotion.Captured(kind);
-            int gk=quad?NativeHordeKinds.Crawler:kind;var d=defs[gk];heavy=kind==NativeHordeKinds.Hulk&&!quad;
+            int gk=quad?NativeHordeKinds.Crawler:kind;var d=defs[NativeHordeKinds.Body(gk)];heavy=kind==NativeHordeKinds.Hulk&&!quad;
             float dt=float.IsNaN(time)?0:f.Time-time;bool fresh=float.IsNaN(time)||id!=f.Id||dt<-.001f||dt>ResetGap;
             if(fresh)
             {
