@@ -70,6 +70,16 @@ internal static class ExpeditionDirectorChecks
         gateSession.Tick(1);gateDirector.Step();Check(!gateDirector.Closures.Single(c=>c.id=="ward-shutter").Blocking,"instance shutter clears after the existing closure delay");
         gated["areas"][1]["gates"][0]["opens"]="final";Refuse(gated.ToJsonString(),"instance cannot use global final condition");
         gated["areas"][1]["gates"][0]["opens"]="boss";gated["areas"][0]["gates"][0]["opens"]="boss";Refuse(gated.ToJsonString(),"world cannot use instance boss condition");
+        // A split instance has no arrival until its first ready cohort has committed membership.
+        var split=NativeExpedition.Create("door-arrival","city","host","pistol",21,new[]{new ExpeditionInstance{id="ward",target=1}});
+        split.EnableAreas();var splitWard=split.ForArea("ward");var splitSession=new ExpeditionSession(splitWard,content,_=>{});
+        var splitDirector=new ExpeditionDirector(splitSession,layout,_=>new V3(),(_,__)=>true,10,20,30);
+        Check(splitDirector.Closures.Single(c=>c.id=="ward-door").state=="open","unoccupied split instance exit starts open");
+        split.HoldMembers(new[]{"host"},true);splitDirector.Step();Check(splitDirector.Closures.Single(c=>c.id=="ward-door").state=="open","pending cohort does not seal exit");
+        for(int tick=0;tick<120;tick++)split.Tick(1d/60);split.MoveMembers("city","ward",new[]{"host"});splitDirector.Step();var sealing=splitDirector.Closures.Single(c=>c.id=="ward-door");
+        Check(sealing.state=="sealing"&&sealing.began==split.Elapsed&&sealing.Blocking,"committed first cohort starts authority-timed sealing");
+        for(int tick=0;tick<61;tick++)split.Tick(1d/60);splitDirector.Step();Check(splitDirector.Closures.Single(c=>c.id=="ward-door").state=="sealed","exit seals after usual second");
+        split.MoveMembers("ward","city",new[]{"host"});splitDirector.Step();Check(splitDirector.Closures.Single(c=>c.id=="ward-door").state=="sealed","emptying encounter cannot reopen sealed exit");
         var r2=NativeExpedition.Create("barrier-test","city","host","pistol",19,new[]{new ExpeditionInstance{id="ward",target=1}});r2.Join("guest","pistol");
         var s2=new ExpeditionSession(r2,content,_=>{});var d2=new ExpeditionDirector(s2,layout,_=>new V3(0,0,0),(_,__)=>true,10,20,30);string fingerprint=new string('a',64);d2.BindLayoutIdentity(fingerprint);
         s2.Sources.Seat=who=>who=="host"?1:who=="guest"?7:0;

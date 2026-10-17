@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
         private bool Closed(string id,ExpeditionSnapshot s)
         {
             var a=Layout.areas.SelectMany(v=>v.anchors).FirstOrDefault(v=>v.id==id);
-            return a!=null&&s.phase==ExpeditionPhase.Instance&&a.building==s.area&&!s.instances.First(i=>i.id==s.area).cleared;
+            return a!=null&&s.phase==ExpeditionPhase.Instance&&a.building==s.area&&!s.instances.First(i=>i.id==s.area).cleared&&(!Session.Run.SplitAreas||s.instances.First(i=>i.id==s.area).entered);
         }
         private void UpdateState()
         {
