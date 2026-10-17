@@ -134,7 +134,7 @@ namespace ChipArena.UnityConversion
         }
 
         // ---------------- palette ----------------
-        private const int SlagHex=0x110e0f,SlagGlassHex=0x2b272e,SlagSideHex=0x1d191b,GlintHex=0x3d3a44,SilverHex=0xbab7ae,SilverDarkHex=0x6e6c66,QuiltHex=0x8e8b83,
+        private const int SlagHex=0x110e0f,SlagGlassHex=0x2b272e,SlagSideHex=0x1d191b,GlintHex=0x3d3a44,SilverHex=0x8c8f93,SilverDarkHex=0x505256,QuiltHex=0x6a6d71,
             LeatherHex=0x3a2414,RubberHex=0x141414,HatHex=0xdcd6c4,GlassHex=0x0b0e12,IronHex=0x24211e,IronDarkHex=0x141210,EdgeHex=0x55504a,SteelHex=0x5e5b55,GreenHex=0x2f4038;
         private static WeaponPaint P(int hex,float sheen=0)=>WeaponPaint.Solid(hex,sheen);
         private static WeaponPaint G(int hex,float strength,float albedo=.3f)=>WeaponPaint.Glow(hex,strength,albedo);
@@ -233,7 +233,7 @@ namespace ChipArena.UnityConversion
         // ---------------- the foreman in his heat suit ----------------
         private static void ForemanSuit(WeaponSculpt s,int tier)
         {
-            var silver=P(SilverHex,.24f);var dark=P(SilverDarkHex,.1f);var quilt=P(QuiltHex,.12f);var glove=P(LeatherHex,.04f);var boot=P(RubberHex,.02f);var belt=P(0x2a2622,.05f);var buckle=P(0x8a7a4a,.3f);
+            var silver=P(SilverHex,.16f);var dark=P(SilverDarkHex,.06f);var quilt=P(QuiltHex,.08f);var glove=P(LeatherHex,.04f);var boot=P(RubberHex,.02f);var belt=P(0x2a2622,.05f);var buckle=P(0x8a7a4a,.3f);
             int sd=s.Sides(10);float bv=tier==0?.04f:.03f;
             // Hips and legs (the foreman joint, feet at its origin): boots, quilted trousers, the coat's skirt.
             s.Into(M.Foreman);
