@@ -36,6 +36,7 @@
     - Python: 140 tests OK, 1 skipped.
     - Source package: 2374 files.
     - `git diff --check`: clean.
+  - Shared `5ccaad6` (Astra's PRs #265, #267 and #268) merged in as `6f1725d`, keeping both sides' DEV_LOG and PROJECT_STATE entries. run5b on `6f1725d`: all five steps exit 0 with the same counts (Python 140 OK in 225 s).
 - **Renders** (offline WebGL harness through the same Core code, not Unity), in the scratch `renders-boss-motion/`:
   - MP4, GIF and strips for: walk, run and stop; a sharp turn; the overhead slam; flinches and a stagger; the crawler's walk, run and reversal;
   - OLD beside NEW on jittery 20 Hz snapshots, with a speed and acceleration chart.
