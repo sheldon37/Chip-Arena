@@ -829,6 +829,8 @@ bass cut and flare on its drop, and the board reads LAST CALL, then ALL SERVICES
 - `Core/NativeDevTools.cs`: the `preview-station-boss` action;
 - `Runtime/NativeDevPanel.cs`: its case, panel and HUD calls;
 - `Core/NativeExpeditionStates.cs`: the zone boss name and the banner delay;
+- `Runtime/NativeStagePrewarm.cs`: the boss's meshes built behind the loading screen on the station map (so the arrival
+  builds nothing mid-fight), and its entry in `Tests/TransitionLoadingChecks.cs`;
 - `Core/NativeBossMotionGait.cs`: two opt-in fields, both off by default (`BossGait.Free` for legs a rig owns, and
   `BossGaitDef.TurnRadius` so turning on the spot keeps stepping). The reference rigs are unchanged.
 
