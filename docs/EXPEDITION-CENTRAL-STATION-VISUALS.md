@@ -1,7 +1,8 @@
 # Central Station: the in-game visuals
 
 Claude, 2026-10-16/17. Branch `claude/station-visuals`, based on shared `claude/sleepy-ritchie-g8ruhv` at `8a5de43` (both zone
-designs and Astra's PR #254), then merged with shared `4164d5c` (Astra's live activation, PRs #255-#257). The design is
+designs and Astra's PR #254), then merged with shared `4164d5c` (Astra's live activation, PRs #255-#257) and `6404332`
+(#258-#260 and the Ironworks enemies; the station's map is unchanged there). The design is
 `docs/EXPEDITION-CENTRAL-STATION.md` (sections 3-6 and 11 drive this work).
 
 **Status: on the branch; it goes live when merged into shared.** The station is live since Astra's activation (map
@@ -313,4 +314,7 @@ normal play draws; the hazard shots are the DEV preview's (or the authority's, l
   wet floors are darkening.
 - **No station light field.** The many lamps share eight slots, plus pools and halos.
 - **Not wired.** The loop sounds (the rail's hum, the ambiences) and the PA's voice (the owner records it).
-- **Not run.** The Unity Editor, a Windows player, and play: nothing is live.
+- **Seen in the renders.** The live flood reads as a flat bright blue sheet (readable, not beautiful); falling glass reads
+  only up close; the board half hides CENTRAL from the ticket hall; the island platforms are plain, and the train's exterior
+  reads tan under sodium. Against the design concept, the vault's arches read weaker.
+- **Not run.** The Unity Editor, a Windows player, and play: never seen in the engine.
