@@ -18,8 +18,8 @@ namespace ChipArena.UnityConversion
         private static readonly Vector3 Target=new Vector3(3.5f,1.6f,10.5f);
         public static void Run(string root)
         {
-            NonePin(root);Determinism(out string det);Contact(out string contact);Feet(out string feet);Pops(out string pops);Allocation(out string alloc);Tiers(out string tiers);Names();Cues(root);Source(root);Song(root,out string song);
-            Console.WriteLine("PASS station boss presentation ("+count+" checks: normal play draws, lights, sounds and changes nothing (the view's binding is None; the Siren keeps its name); "+det+"; "+contact+"; "+feet+"; "+pops+"; "+alloc+"; "+tiers+"; the plate and banner read THE 6:47 for station-647, the banner waits for the drop; "+song+")");
+            NonePin(root);Determinism(out string det);Contact(out string contact);Feet(out string feet);Pops(out string pops);Allocation(out string alloc);Tiers(out string tiers);Names();Cues(root);Source(root);Song(root,out string song);Stage(root,out string stage);Double(out string twice);Watch(out string watch);
+            Console.WriteLine("PASS station boss presentation ("+count+" checks: normal play draws, lights, sounds and changes nothing (the view's binding is None; the Siren keeps its name); "+det+"; "+contact+"; "+feet+"; "+pops+"; "+alloc+"; "+tiers+"; the plate and banner read THE 6:47 for station-647, the banner waits for the drop; "+song+"; "+stage+"; "+twice+"; "+watch+")");
         }
 
         // ---- normal play: the view is None, and None draws, lights, sounds and changes nothing ----
@@ -231,7 +231,8 @@ namespace ChipArena.UnityConversion
             bool On(float t,byte kind)=>song.Accents.Any(a=>(kind==255||a.Kind==kind)&&Played(Boss(a))&&Math.Abs(Boss(a)-t)<1e-3);
             double firstCut=song.Accents.Where(a=>a.Kind==NativeZoneBossSong.AccentCut&&Played(Boss(a))).Min(a=>Boss(a));
             double firstChime=song.Accents.Where(a=>a.Kind==NativeZoneBossSong.AccentChime&&Played(Boss(a))).Min(a=>Boss(a));
-            Check(Math.Abs(b.ChimeHit-firstChime)<1e-3&&Math.Abs(b.LightCut-firstCut)<1e-3,"the board flips on the song's first chime and the headlight blooms on its first cut");
+            double lastChime=song.Accents.Where(a=>a.Kind==NativeZoneBossSong.AccentChime&&Played(Boss(a))&&Boss(a)<=firstCut-.5).Max(a=>Boss(a));
+            Check(Math.Abs(b.ChimeHit-lastChime)<1e-3&&b.ChimeHit>firstChime&&Math.Abs(b.LightCut-firstCut)<1e-3,"the board flips to ARRIVING on the song's last intro chime (LAST CALL before it) and the headlight blooms on its first cut");
             Check(Math.Abs(b.Banner-song.Hold)<.01&&Math.Abs(b.Hold-song.Hold)<1e-4,"the banner lands on the song's drop at the hold's end");
             Check(On(b.Drop,NativeZoneBossSong.AccentSlam)&&b.Drop<b.Banner,"the burst through the gate is on a slam before the drop");
             Check(song.Track.beats.Any(c=>Math.Abs(song.FirstBoss(c)-b.Accent0)<1e-3),"the brake sparks fall on a beat of the song's grid");
@@ -263,6 +264,107 @@ namespace ChipArena.UnityConversion
             NativeStationBossBeats.Clear();Check(!NativeStationBossBeats.Current.Song,"cleared, the doc's beats return");
             summary="bound to the boss song: chime "+b.ChimeHit.ToString("0.00")+" s, cut "+b.LightCut.ToString("0.00")+", accents "+b.Accent0.ToString("0.00")+"/"+b.Accent1.ToString("0.00")+"/"+b.Accent2.ToString("0.00")+"/"+b.Accent3.ToString("0.00")+
                 ", burst "+b.Drop.ToString("0.00")+", banner on the drop "+b.Banner.ToString("0.00")+"; the song keeps the lights, row 0 still flips, the live follow carries it on from the burst, no pop (ratio "+Math.Max(ratio,ratiob).ToString("0.00")+")";
+        }
+
+        // ---- the station reacting: row 0's order, the clocks, T1's signal, the falls, the shudder; the board and barrier poses; the
+        // DEV preview's express and benches ----
+        private static void Stage(string root,out string summary)
+        {
+            var music=NativeZoneBossMusic.Parse(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/ZoneBossMusic.json")));var song=music.ForMap(NativeExpeditionStation.MapId,_=>true);
+            Check(NativeStationBossBeats.UseSong(song),"the song binds the beats for the stage checks");var b=NativeStationBossBeats.Current;
+            // Row 0 through the arrival and the fight on the preview's record, as the station draws it: the authority's (the boss flag
+            // from the hold's end), the song's LAST CALL, the boss's stage.
+            var st=new NativeStationState();var sv=new NativeStationView();var v=StationBossView.None;string order="";byte last=255;bool green=false,greenAfter=false;
+            for(float p=0;p<NativeStationBossPreview.Loop-.01f;p+=1/30f)
+            {
+                NativeStationBossPreview.View(p,0,ref v,out _,out _);sv.Reset();sv.Boss=p>=NativeStationBossPreview.ArrivalEnd;
+                st.Evaluate(sv,p);st.Score(song.Evaluate(p-v.spawned,NativeKitFlash.Full));var stage=NativeStationBossStage.Evaluate(v,p,b);NativeStationBossStage.Apply(st,stage);
+                if(st.Row0!=last){last=st.Row0;order+=(order.Length>0?",":"")+NativeExpeditionStation.Row0Status[last];}
+                float age=p-v.spawned;if(age>b.LightCut&&age<b.Drop)green|=st.Signal==NativeStationState.SignalGreen;if(age>b.Hold+2&&!v.Dead(p))greenAfter|=st.Signal==NativeStationState.SignalGreen;
+                if(v.Dead(p)&&p-v.diedAt>NativeStationBossStage.DeathClocks+.05f)Check(st.ClockMinute==48,"every clock reads 6:48 after the death's last tick");
+                if(!v.Dead(p)||p-v.diedAt<NativeStationBossStage.DeathClocks-.05f)Check(st.ClockMinute==47,"the clocks read 6:47 until the death's last tick");
+                if(StationBossView.At(v.barrierDownAt)&&p>v.barrierDownAt+NativeStationBossStage.BarrierFallSeconds)Check(st.BarrierFall>.99f,"the barrier lies down once thrown");
+                if(StationBossView.At(v.boardDownAt)&&p>v.boardDownAt+NativeStationBossStage.BoardFallSeconds)Check(st.BoardFall>.99f,"the board lies down once torn off");
+            }
+            Check(order=="DELAYED,LAST CALL,ARRIVING,CANCELLED,DEPARTED","row 0 reads DELAYED before the boss, LAST CALL through the song's intro chimes, ARRIVING from the boss's flip, CANCELLED in the fight, DEPARTED at the death ("+order+")");
+            Check(green&&!greenAfter,"T1's signal shows green for the arrival only");
+            var lit=new NativeStationState();lit.Evaluate(new NativeStationView{Levers=true,LeversAt=0,LeversUntil=100},1);var arriving=new StationBossStage{On=true,Board=NativeStationBossStage.BoardArriving,WestSignalGreen=true,ClockMinute=47};
+            NativeStationBossStage.Apply(lit,arriving);Check(lit.Signal==NativeStationState.SignalDark,"the levers' dark signals stay dark");
+            float shake=0;for(float p=NativeStationBossPreview.Phase2At;p<NativeStationBossPreview.Phase2At+4;p+=1/30f){NativeStationBossPreview.View(p,0,ref v,out _,out _);shake=Math.Max(shake,NativeStationBossStage.Evaluate(v,p,b).Shake);}
+            Check(shake>.5f,"the barrier's smash shudders the station ("+shake.ToString("0.00")+")");
+            // The kit draws them: row 0's ARRIVING and DEPARTED and platform 1, every clock's hands at 6:47 or 6:48.
+            var o=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};var unity=System.Text.Json.JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),o);
+            var area=NativeExpeditionLayout.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ExpeditionLayout.json"))).Area("exp-transit");var kit=NativeExpeditionStationKit.Build(unity.maps.Single(m=>m.id==NativeExpeditionStation.MapId).blocks,area);
+            int Shown(NativeStationState state,Func<NativeStationPart,bool> which){int n=0;foreach(var part in kit.Parts)if(which(part)&&NativeExpeditionStationKit.Drive(part,state,0,out _,out _,out _,out _))n++;return n;}
+            bool Hand(NativeStationPart p,int at)=>p.Drive==NativeExpeditionStationKit.DriveClock&&p.Tag==at;
+            var s47=new NativeStationState();s47.Evaluate(new NativeStationView(),0);var s48=new NativeStationState();s48.Evaluate(new NativeStationView(),0);NativeStationBossStage.Apply(s48,new StationBossStage{On=true,ClockMinute=48});
+            int hands=kit.Parts.Count(p=>Hand(p,0));Check(hands>=10&&kit.Parts.Count(p=>Hand(p,1))==hands,"every station clock has its hands at 6:47 and at 6:48 ("+hands+" each)");
+            Check(Shown(s47,p=>Hand(p,0))==hands&&Shown(s47,p=>Hand(p,1))==0&&Shown(s48,p=>Hand(p,1))==hands&&Shown(s48,p=>Hand(p,0))==0,"the clocks show 6:47, then only 6:48");
+            Check(Shown(null,p=>Hand(p,0))==hands,"the steady colours (no state) are 6:47");
+            bool Row0(NativeStationPart p,int variant)=>p.Drive==NativeExpeditionStationKit.DriveBoard&&p.Tag==variant;bool Plat(NativeStationPart p,int variant)=>p.Drive==NativeExpeditionStationKit.DriveBoard&&p.Tag==7*16+variant;
+            var sa=new NativeStationState();sa.Evaluate(new NativeStationView(),0);NativeStationBossStage.Apply(sa,arriving);var sd=new NativeStationState();sd.Evaluate(new NativeStationView{Boss=true},0);NativeStationBossStage.Apply(sd,new StationBossStage{On=true,Board=NativeStationBossStage.BoardDeparted,ClockMinute=48});
+            Check(sa.Row0==NativeStationState.Row0Arriving&&Shown(sa,p=>Row0(p,NativeStationState.Row0Arriving))>0&&Shown(sa,p=>Plat(p,1))>0&&Shown(sa,p=>Plat(p,0))==0,"ARRIVING draws on row 0 with platform 1");
+            Check(sd.Row0==NativeStationState.Row0Departed&&Shown(sd,p=>Row0(p,NativeStationState.Row0Departed))>0&&Shown(sd,p=>Row0(p,NativeStationState.Row0Cancelled))==0&&Shown(sd,p=>Plat(p,0))>0,"DEPARTED replaces CANCELLED on row 0 at the death");
+            // The poses: the fallen board tips away (nothing south of z 8.9) and rests on the booth; the barrier lies on P1.
+            NativeStationBossStage.BoardPose(1,out var bq,out var bm);var piv=NativeStationBossStage.BoardPivot;float south=float.MaxValue,low=float.MaxValue;
+            Vector3 Board(Vector3 q)=>piv+Vector3.Transform(q-piv,bq)+bm;var c0=new Vector3(NativeStationBossArena.BoardX,NativeStationBossArena.BoardY,NativeStationBossArena.BoardZ);var h=new Vector3(NativeStationBossArena.BoardHalfX,NativeStationBossArena.BoardHalfY,NativeStationBossArena.BoardHalfZ);
+            for(int k=0;k<8;k++){var q=Board(c0+new Vector3((k&1)==0?-h.X:h.X,(k&2)==0?-h.Y:h.Y,(k&4)==0?-h.Z:h.Z));south=Math.Min(south,q.Z);low=Math.Min(low,q.Y);}
+            Check(south>8.9f&&low>2.6f&&low<3.3f,"the fallen board tips away from the boss and rests on the booth (south edge z "+south.ToString("0.00")+", lowest "+low.ToString("0.00")+" m)");
+            for(int side=-1;side<=1;side+=2){NativeStationBossStage.BarrierPose(side,1,out var bp,out var br,out var bmv);var top=bp+Vector3.Transform(new Vector3(side*10.5f,NativeStationBossArena.BarrierHeight,NativeStationBossArena.BarrierZ)-bp,br)+bmv;Check(top.Z<NativeStationBossArena.BarrierZ-.6f&&top.Y>-.1f&&top.Y<.6f,"the "+(side<0?"west":"east")+" segment lies on P1");}
+            // The boss stays clear of the fallen board from its landing to the loop's end (TERMINUS, the double charge, Next Stop, the death).
+            var rig=new StationBossRig();float worstIn=float.MaxValue;var inv=Quaternion.Inverse(bq);
+            for(int f=0;f<(int)(NativeStationBossPreview.Loop*30);f++)
+            {
+                float t=f/30f;NativeStationBossPreview.View(t,0,ref v,out var vel,out var tg);rig.Update(t,1/30f,v,StationBossGround.Station,vel,false,true,new Vector3(tg.X,1.6f,tg.Y));
+                if(!StationBossView.At(v.boardDownAt)||t<v.boardDownAt+NativeStationBossStage.BoardFallSeconds)continue;
+                for(int j=0;j<StationBossRig.Count;j++){var q=Vector3.Transform(rig.Shown.Position[j]-bm-piv,inv)+piv-c0;float d=Math.Max(Math.Abs(q.X)-h.X,Math.Max(Math.Abs(q.Y)-h.Y,Math.Abs(q.Z)-h.Z));worstIn=Math.Min(worstIn,d);}
+            }
+            Check(worstIn>.05f,"no part of the boss enters the fallen board (closest "+worstIn.ToString("0.00")+" m)");
+            // The DEV preview: the express passes on T1 and meets the boss in Mind the Gap; the benches it walks through are cleared.
+            NativeStationBossPreview.Start=0;var pv=new NativeStationView();var ps=new NativeStationState();Check(NativeStationBossPreview.Station(pv,NativeStationBossPreview.ExpressAt),"the preview fills the station's view");
+            ps.Evaluate(pv,NativeStationBossPreview.ExpressAt);Check(ps.Express==NativeStationState.ExpressPass&&Math.Abs(ps.Nose-NativeStationBossPreview.ExpressMeetX)<.5f&&ps.Line==1,"the express's nose meets the boss on T1 in Mind the Gap ("+ps.Nose.ToString("0.0")+")");
+            pv.Reset();NativeStationBossPreview.Station(pv,NativeStationBossPreview.ExpressAt-NativeExpeditionStation.WarnSeconds+.5);ps.Evaluate(pv,NativeStationBossPreview.ExpressAt-NativeExpeditionStation.WarnSeconds+.5);Check(ps.Express==NativeStationState.ExpressWarn&&ps.Danger>0,"its warning plays first");
+            NativeStationBossPreview.Start=double.NaN;Check(!NativeStationBossPreview.Station(pv,1),"no view before the preview starts");
+            string rt=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeStationBossPresentation.cs")),stp=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionStationPresentation.cs"));
+            Check(rt.Contains("NativeArenaDressing.Hidden.Add(stationBossBenches[i])")&&rt.Contains("-benches-e"),"the preview clears the concourse benches it walks through");
+            Check(stp.Contains("stationState.Score(ZoneBossBeat(arena));NativeLighting.ZoneHouse(stationState.Music.House());StationBossStageApply();")&&stp.Contains("StationBossFallPose(i,ref m)"),"the station draws the hook after the song (the house light stays the song's)");
+            NativeStationBossBeats.Clear();
+            summary="the station draws the hook: row 0 "+order+", clocks to 6:48, T1 green for the arrival, the barrier thrown onto P1, the board tipped back across the booth (the boss "+worstIn.ToString("0.00")+" m clear at closest), the shudder; the preview's express meets the boss on T1";
+        }
+        // ---- TERMINUS's double charge: two contacts, each within a frame; the second lane and chime ----
+        private static void Double(out string summary)
+        {
+            var m=NativeStationBoss.Move("departure");float worst=0;
+            foreach(float fps in new[]{60f,144f})
+            {
+                var v=Standing();v.phase=3;v.action="departure";v.actionId=900;v.actionAt=2;v.hitAt=2+m.Anticipation;v.duration=StationBossMoves.DepartureDouble.Seconds;v.laneX0=0;v.laneZ0=6;v.laneX1=0;v.laneZ1=28;
+                var rig=new StationBossRig();float first=float.NaN,second=float.NaN;bool twice=false;var cues=new StationBossCue[48];int chimes=0,charges=0;
+                for(int f=0;f<=(int)(fps*(2+v.duration+.5f));f++)
+                {
+                    float t=f/fps;rig.Update(t,f==0?0:1/fps,v,StationBossGround.Station,Vector3.Zero,false,true,Target);twice|=rig.DoubleCharge;
+                    if(float.IsNaN(first)&&rig.Act.Active&&rig.Act.Struck)first=t;if(float.IsNaN(second)&&rig.Act.Active&&rig.Act.PhaseIndex==4)second=t;
+                    int n=NativeStationBossCues.Collect(v,rig,t-1/fps,t,cues);for(int i=0;i<n;i++){if(cues[i].Key==NativeStationBossCues.Chime)chimes++;if(cues[i].Key==NativeStationBossCues.Charge)charges++;}
+                }
+                float e1=first-v.hitAt,e2=second-(v.hitAt+StationBossMoves.SecondCharge);worst=Math.Max(worst,Math.Max(Math.Abs(e1),Math.Abs(e2)));
+                Check(twice&&e1>=-1e-4f&&e1<=1/fps+1e-4f&&e2>=-1e-4f&&e2<=1/fps+1e-4f,"TERMINUS's Departure charges twice, each contact within a frame ("+e1.ToString("0.0000")+", "+e2.ToString("0.0000")+" s at "+fps+" fps)");
+                Check(chimes==NativeStationBoss.ChimeNotes+2&&charges==2,"the second charge has its two-note chime and its charge cue ("+chimes+" chimes, "+charges+" charges)");
+            }
+            var one=Standing();one.action="departure";one.actionId=901;one.actionAt=2;one.hitAt=2+m.Anticipation;one.duration=m.Duration;var r1=new StationBossRig();bool single=true;
+            for(int f=0;f<300;f++){float t=f/60f;r1.Update(t,f==0?0:1/60f,one,StationBossGround.Station,Vector3.Zero,false,true,Target);single&=!r1.DoubleCharge;}
+            Check(single,"before TERMINUS Departure is one charge");
+            summary="TERMINUS's Departure is two charges (second contact "+StationBossMoves.SecondCharge.ToString("0.0")+" s after the first, both within a frame, worst "+(worst*1000).ToString("0.0")+" ms) with a second two-note chime";
+        }
+        // ---- the pocket watch: its minute hand moves on one minute, clockwise, at the death's last tick ----
+        private static void Watch(out string summary)
+        {
+            var mesh=NativeStationBossLook.Build(0);int a=0,b=0;foreach(var sec in mesh.Sections){if(sec.Bone==NativeStationBossLook.WatchAt47)a+=sec.Triangles;if(sec.Bone==NativeStationBossLook.WatchAt48)b+=sec.Triangles;}
+            Check(a>=8&&a==b,"the watch has its minute hand at 6:47 and at 6:48 ("+a+" triangles each)");
+            NativeStationBossLook.WatchPivot(out var n,out float turn);Check(Math.Abs(Math.Abs(turn)-6*Math.PI/180)<1e-4,"the hand turns one minute (6 degrees)");
+            var fx=new NativeStationBossFx();var rig=new StationBossRig();var v=Standing();v.diedAt=10;v.hp=0;
+            rig.Update(10,0,v,StationBossGround.Station,Vector3.Zero,false,true,Target);fx.Build(rig,v,12,0,2,10,1,0,0,0,1,0,1,false);bool before=!fx.Hidden[NativeStationBossLook.WatchAt47]&&fx.Hidden[NativeStationBossLook.WatchAt48];
+            rig.Update(14,4,v,StationBossGround.Station,Vector3.Zero,false,true,Target);fx.Build(rig,v,10+NativeStationBossStage.DeathClocks+.1f,0,2,10,1,0,0,0,1,0,1,false);bool after=fx.Hidden[NativeStationBossLook.WatchAt47]&&!fx.Hidden[NativeStationBossLook.WatchAt48];
+            Check(before&&after,"the watch reads 6:47 until the death's last tick, then 6:48");
+            summary="the pocket watch's minute hand moves on to 6:48 with the station's clocks";
         }
 
         // ---- the source: presentation only ----

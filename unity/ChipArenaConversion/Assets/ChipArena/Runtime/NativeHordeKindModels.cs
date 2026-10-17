@@ -6,10 +6,12 @@ namespace ChipArena.UnityConversion
     // The Siren minion kinds' models in the source-model bank (Core/NativeHordeModels.cs, the zombies of NativeZombieModels.cs; the
     // spitter's and the Hulk's jaws as their own "-jaw" models, hinged by the presentation):
     // every kind, look and crowd tier ("minion-<kind>-<look>-<full|reduced|impostor>") is sculpted once when the bank loads, beside
-    // the untouched bank horde-0..5 (the old death records and the classic look still name those). Each kind has one NativeSourceLit
-    // material: the minion glow (its ink veins flicker cell by cell and drop with the add's power, NativeMinionFx) and a faint
-    // touch of the Siren's ink rim and flow on the rotted skin, so the crowd keeps her lavender edge against the night without
-    // washing the zombies out. The reduced and impostor tiers cast no shadows (the horde's far crowd).
+    // the untouched bank horde-0..5 (the old death records and the classic look still name those). Each kind has one material on
+    // ChipArena/ZombieLit (Resources/NativeZombieLit.shader: SourceLit's minion material with the zombie shading, docs/ZOMBIE-DESIGN.md;
+    // SourceLit if the shader cannot run): the minion glow (its ink veins flicker cell by cell and drop with the add's power,
+    // NativeMinionFx) and a faint touch of the Siren's ink rim and flow on the rotted skin, so the crowd keeps her lavender edge
+    // against the night without washing the zombies out. The models carry their shading data in uv0 (BodyMesh) and each add's
+    // variation rides the instanced body tint, so the batches are as before. The reduced and impostor tiers cast no shadows.
     public sealed partial class NativeSourceModels
     {
         /// <summary>The minion models built at load, and each one's triangles (the build checks hold them to the tier budgets).</summary>
@@ -20,9 +22,10 @@ namespace ChipArena.UnityConversion
         private void HordeKindModels()
         {
             var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null)throw new System.InvalidOperationException("Source material shader is missing");
+            var zombie=Resources.Load<Shader>("NativeZombieLit");if(zombie==null||!zombie.isSupported)zombie=shader;
             for(int kind=0;kind<NativeHordeKinds.All;kind++)
             {
-                var material=new Material(shader){name="Native Siren minion / "+NativeHordeKinds.Ids[kind],enableInstancing=true};material.SetInt("_Cull",2);
+                var material=new Material(zombie){name="Native Siren minion / "+NativeHordeKinds.Ids[kind],enableInstancing=true};material.SetInt("_Cull",2);
                 material.SetFloat("_Ink",1);material.SetFloat(InkRimId,HordeInkRim);material.SetFloat(InkFlowId,HordeInkFlow);material.SetFloat(MinionGlowId,1);materials.Add(material);
                 for(int look=0;look<NativeHordeKinds.Looks[kind];look++)for(int tier=0;tier<NativeHordeModels.Tiers;tier++)
                 {

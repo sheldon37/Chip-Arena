@@ -19,7 +19,13 @@ namespace ChipArena.UnityConversion
     public readonly struct WeaponPaint
     {
         public readonly Vector3 Color,Emit;public readonly float Tag;
-        public WeaponPaint(Vector3 color,Vector3 emit,float tag){Color=color;Emit=emit;Tag=tag;}
+        /// <summary>The surface class the zombie shading reads per vertex (WeaponSection.Data x; NativeHordeModels.Surf*: 0 plain
+        /// Lambert, as every other model draws; ChipArena/ZombieLit only).</summary>
+        public readonly float Surface;
+        public WeaponPaint(Vector3 color,Vector3 emit,float tag){Color=color;Emit=emit;Tag=tag;Surface=0;}
+        public WeaponPaint(Vector3 color,Vector3 emit,float tag,float surface){Color=color;Emit=emit;Tag=tag;Surface=surface;}
+        /// <summary>This paint on surface class `surface`.</summary>
+        public WeaponPaint As(float surface)=>new WeaponPaint(Color,Emit,Tag,surface);
         public static Vector3 Linear(int hex)=>NativePortraitRules.Linear(hex);
         /// <summary>A lit surface; `sheen` adds that share of its colour as self light (weapon-visuals.ts material's sheen).</summary>
         public static WeaponPaint Solid(int hex,float sheen=0){var c=Linear(hex);return new WeaponPaint(c,c*sheen,0);}
@@ -27,7 +33,7 @@ namespace ChipArena.UnityConversion
         public static WeaponPaint Glow(int hex,float strength,float albedo=.3f){var c=Linear(hex);return new WeaponPaint(c*albedo,c*strength,0);}
         /// <summary>An accent strip: the export ember, tinted to the pilot's accent by the draw (tag 2).</summary>
         public static WeaponPaint Accent(float strength=1.6f,float albedo=.35f){var c=NativePortraitRules.ExportEmber;return new WeaponPaint(c*albedo,c*strength,2);}
-        public WeaponPaint Scaled(float k)=>new WeaponPaint(Color*k,Emit*k,Tag);
+        public WeaponPaint Scaled(float k)=>new WeaponPaint(Color*k,Emit*k,Tag,Surface);
         public bool Lit=>Emit.X+Emit.Y+Emit.Z<=1e-6f;
     }
     /// <summary>How a section follows the melee reach stretch (Runtime applies it per draw; see NativeWeaponModels.Stretch).</summary>
@@ -38,6 +44,10 @@ namespace ChipArena.UnityConversion
         public int Bone;public WeaponStretch Stretch;
         public readonly List<Vector3> Positions=new List<Vector3>(),Normals=new List<Vector3>();
         public readonly List<Vector4> Colors=new List<Vector4>(),Emission=new List<Vector4>();public readonly List<int> Indices=new List<int>();
+        /// <summary>Per-vertex shading data the sculpt writes beside each vertex (x the paint's surface class; the zombie models add
+        /// their occlusion, missing-piece variant and sway, NativeHordeModels). Sections built by hand may leave it empty: a mesh
+        /// uploads it only when it matches the positions.</summary>
+        public readonly List<Vector2> Data=new List<Vector2>();
         public int Triangles=>Indices.Count/3;public int Vertices=>Positions.Count;
     }
     /// <summary>One detail tier of one weapon (0 full, 1 reduced, 2 low).</summary>
@@ -85,7 +95,7 @@ namespace ChipArena.UnityConversion
         // ---- raw faces (world points of the current section) ----
         private int Vertex(Vector3 p,Vector3 n,in WeaponPaint c)
         {
-            var s=target;s.Positions.Add(p);s.Normals.Add(n);s.Colors.Add(new Vector4(c.Color,1));s.Emission.Add(new Vector4(c.Emit,c.Tag));return s.Positions.Count-1;
+            var s=target;s.Positions.Add(p);s.Normals.Add(n);s.Colors.Add(new Vector4(c.Color,1));s.Emission.Add(new Vector4(c.Emit,c.Tag));s.Data.Add(new Vector2(c.Surface,0));return s.Positions.Count-1;
         }
         private static Vector3 Unit(Vector3 v){float l=v.Length();return l>1e-12f?v/l:Vector3.UnitY;}
         /// <summary>A flat triangle (counter-clockwise front, the source convention); `world` points skip the transform.</summary>
@@ -120,6 +130,16 @@ namespace ChipArena.UnityConversion
             }
             int k=Vertex(a,na,c);Vertex(b,nb,c);Vertex(d,nd,c);Vertex(e,ne,c);
             s.Indices.Add(k);s.Indices.Add(k+1);s.Indices.Add(k+2);s.Indices.Add(k);s.Indices.Add(k+2);s.Indices.Add(k+3);
+        }
+        /// <summary>A flat quad a-b-c-d (counter-clockwise front) whose corners carry their own 0..1 value (at most .9) in the shading
+        /// data's x fraction beside the paint's surface class: the zombie voxels' corner occlusion, which the bake folds in.</summary>
+        public void QuadData(in WeaponPaint c,Vector3 a,Vector3 b,Vector3 d,Vector3 e,float fa,float fb,float fd,float fe)
+        {
+            var s=target;int from=s.Positions.Count;Quad(c,a,b,d,e);if(s.Positions.Count-from!=4)return;
+            // Face turns a mirrored quad a-e-d-b: the corners' values follow their corners.
+            if(flip){var t=fb;fb=fe;fe=t;}
+            float cls=c.Surface;float F(float v)=>cls+Math.Max(0,Math.Min(.9f,v));
+            s.Data[from]=new Vector2(F(fa),0);s.Data[from+1]=new Vector2(F(fb),0);s.Data[from+2]=new Vector2(F(fd),0);s.Data[from+3]=new Vector2(F(fe),0);
         }
         /// <summary>A quad turned to face away from `inside` (convex primitives).</summary>
         private void QuadOut(in WeaponPaint c,Vector3 a,Vector3 b,Vector3 d,Vector3 e,Vector3 inside)

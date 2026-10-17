@@ -1,3 +1,155 @@
+## 2026-10-17 — Claude: gun motion allocation check warms its exact sequence (test only)
+
+- PR #62's pull_request run of `97046f7` (run 39072079973, westus3, both attempts) failed `GunMotionChecks`: "Pistol posing
+  allocates 4944 bytes over a bout". The push runs of the same tree (westus2, eastus) and every local run pass. The cost is
+  one-time: only the first gun pays it, never the Rifle or Machine Gun. It does not reproduce locally under tiering off,
+  JitMinOpts, delayed call counting, ReadyToRun off, OSR or a 1-4 processor count, or at 233 other bout starts
+  probed frame by frame. The runtime cost itself is not identified.
+- `Tests/GunMotionChecks.cs`: the measured sequence (a fresh bout, then a new pilot after a 7.5 s gap on the same driver) first
+  runs once on a throwaway driver, as the ability loop already skips its first gesture. The failure message now names the
+  first allocating frame. A per-frame cost still fails: an injected 144-byte allocation was caught at frame 201 (3.35 s).
+- Related risk, not changed here: a full local run pinned to one core failed a different zero-allocation check first (spawn-in,
+  "allocate nothing (8088 bytes)"); its warm-up covers only part of the measured loop. These checks can count a one-time
+  runtime cost when the CPU is starved. CI has not failed it.
+- No Core, gameplay, timing, hitbox, damage, movement or network change.
+
+## 2026-10-17 — Claude: zombie design, voxel rework of the rotted pilots (owner approved, merged into shared)
+
+- **Owner (2026-10-17), on the voxel renders:** "That rework looks good". Merged into shared on top of the gun check fix.
+- **Branch and commits.** Branch `claude/zombie-design`, base shared `f3d8eb4`.
+  - Shared merged in twice, every log entry kept: `03dddab` as `d79cdc9`, then `97046f7` (the zombie motion pass) as
+    `2630ded`.
+  - In the motion merge, `NativeHordeKindPresentation.cs` merged cleanly with both sides (motion: pose and clock; design:
+    tint, material, draw), and `station-enemies-baseline.txt` was regenerated on the combined code
+    (`StationBaseline.Measure`; the motion lines as the motion pass measured them, the voxel model lines re-pinned).
+  - Not merged, no PR, builder untouched, nothing published.
+  - `d5ec09b`, `a74ac0c`: the first pass, sculpted organic bodies (rejected; see below).
+  - `5b45868`, `f171fa3`: two check fixes that still apply to the shader and the kit.
+  - `136062d`: the voxel rework.
+- **Why.** Owner (2026-10-17): "Yes fix the zombies animations (Design as well, it seems they are still on the lower
+  quality end) Improve these vastly." The first pass rebuilt the kinds as smooth sculpted bodies. Owner on seeing it: "Keep
+  voxel style, just improve it. The sculpted looks odd". The rework keeps the game's voxel style: the same blocky, armoured
+  pilots, rotted, now built from many small cubes at a few sizes. This is the design half; motion is `claude/zombie-motion`.
+- **Changes.** `docs/ZOMBIE-DESIGN.md` has the brief, the old-vs-new images, the shading spec, budgets and dangling parts.
+  - **Kit** (`Core/NativeZombieKit.cs`):
+    - voxel grids laid in layers (suit over skin over flesh and bone), with a depth per cell, so tears, sockets and
+      wounds are cells taken away;
+    - a mesher that draws only faces open to air, merges matching coplanar faces, and bakes each corner's voxel occlusion
+      (`WeaponSculpt.QuadData`);
+    - plates cracked into offset tiles, block rags and cables that sway, stepped glowing cracks and veins;
+    - a stepped shade per block, stepped grime and blood.
+  - **Anatomy** (`NativeZombieAnatomy.cs`):
+    - a ten-cell cube skull: sockets with glowing block pupils, a stepped brow, a broken nose, a torn cheek, uneven block
+      teeth, a hanging block jaw;
+    - the helmet cracked into shards;
+    - layered torso, limbs and shoulders with stepped torn suit edges, block wounds and rib rows;
+    - block fingers, claws, knuckles and toes.
+  - **Kinds** (`NativeZombieKinds.cs`): the brute's and Hulk's stacked, offset block muscle and the Hulk's stepped glowing
+    splits; the spitter's sac of glowing voxels; the bloater's voxel gut.
+  - **Tiers:** Reduced has larger body voxels, one skin paint, a block head and a block gut; the impostor is a block per
+    part.
+  - **`ZombieLit`:** low wrap so the faces stay crisp, and the skin mottled in stepped cells. The fallback and the per-add
+    tint (tone, proportions, missing pieces) are unchanged.
+- **Affected systems:**
+  - The seven kinds' models.
+  - `WeaponSculpt` (`QuadData`; the organic smooth quads removed).
+  - `ZombieLit`.
+  - The tests' re-pinned model measures: Ironworks BaseCounts and the station baseline's model lines, 0 non-model measures
+    changed.
+  - No runtime file changed in this rework. The draw-path edits from the first pass stay: the per-add tint and the shader
+    load.
+  - Zone kinds unchanged (classic bodies, occlusion only).
+- **Animation impacts:** none. No hit timing, hitbox, damage, cooldown, movement or network change. Joints are not renamed
+  or reordered.
+  - Every kind, look and tier stays inside its capsule at the widest per-add variation plus sway (HordeKindChecks,
+    HulkSpitterChecks).
+  - The Hulk's legs are at 0.425 of 0.45 striding, after slimming the feet, shins and cuffs.
+  - Dangling parts sway in the vertex shader only (listed in the doc).
+- **Budgets** (triangles; budgets 7,200 / 3,000 / 600):
+  - Full: 4,662-7,132 (old blocky 3,232-4,362).
+  - Reduced: 2,072-2,930 (old 1,910-2,814).
+  - Impostor: 348-576 (old 432-600).
+  - The 40-add crowd (24 full, 16 reduced, 5 jaws): 402 draws and 212 shadow draws, old and new; 136,128 to 189,878
+    triangles (+39 %).
+- **Checks** (actual):
+- run5b on `2630ded` (the voxel rework merged with the motion pass): all five steps exit 0.
+    - Unity runtime and editor compile against the 6000.3.24f1 assemblies: OK.
+    - Relay and managed suite: 784 PASS lines, no FAIL. That includes horde kinds (565,218 checks: capsules at the
+      widest variation and sway on the combined poses, three tiers under budget, valid meshes, normals and shading
+      data, variation, the zombie shader), Ironworks kinds (281,252), station enemies (154,365), zombie motion
+      (29,934), and Hulk and spitter (49,154).
+    - Python: 140 tests OK, 1 skipped.
+    - Source package: 2,444 files.
+    - `git diff --check`: clean.
+  - run5b on `d79cdc9` (the rework before the motion merge): all five steps exit 0 (783 PASS lines).
+  - The surface shader body passes glslang's HLSL front end with Unity's macros stubbed.
+- **Renders.** Offline WebGL harness through the same Core code (posed by the merged motion) and a port of the shader's
+  shared block; not Unity. In the scratch `renders-zombie-design/`:
+  - old-vs-new kind sheets (neutral, Ward Zero corridor, hub at dusk);
+  - faces, the 40-add crowds and tiers;
+  - variety and gore;
+  - old-vs-new turntables for the shambler, runner, brute and Hulk.
+- **Not run:** Unity Editor, Windows build, a real GPU shader compile (glslang's HLSL front end only), two-client play.
+- **Risks:**
+  - If `ZombieLit` fails to compile in Unity, the Editor build check fails loudly; at runtime the code falls back to the old
+    shader.
+  - Crowd triangles grow 39 %.
+  - Only the spitter and the Hulk have hinged jaw parts, so the motion pass's jaw flap reaches no other kind.
+  - Full budgets are close on the bloater and Hulk (7,132 of 7,200).
+- **Next:** owner review in Unity/Windows; merge into shared (the motion pass is already in). Test-channel publication follows the standing
+  instruction once merged and verified (not done here).
+
+## 2026-10-17 — Claude: THE 6:47 stage wiring, TERMINUS double charge, preview staging (merged into shared, not live)
+
+- Branch `claude/boss-station-stage-wiring`, base shared `03dddab` (THE 6:47 presentation merged), merged with shared `97046f7` (zombie motion; DEV_LOG and PROJECT_STATE union-resolved). Commits `d919608` (code), `abc575e` (checks), `56942a7` (doc), `c4077d2` (the boss shake on its own line, so the zombie and Hulk checks' pinned horde-shake line stays intact). Pushed for review; not merged; nothing published.
+- **The station draws the boss's stage** (coordinator follow-up; the music sync is merged, so the station files are free). It is applied after the authority's state and the boss song's, keeping all of the music's choreography; the song keeps the house lights.
+  - **Row 0, lowest priority first:** the authority's (CANCELLED with the boss, a Conductor's LAST CALL, DELAYED); the song's LAST CALL through the intro chimes; the boss's `6.47 EVAC SPECIAL 1 ARRIVING` from its board flip (now the last intro chime, 3.68 s) to the hold's end; DEPARTED at the death. The kit builds these as row 0 variants, with platform 1.
+  - **Clocks:** every station clock goes to 6:48 at the death (a second pair of hands and `DriveClock`). The pocket watch's minute hand moves on with them (split into 6:47 and 6:48 joints).
+  - **T1's signals:** green through the arrival, never over the levers' dark.
+  - **Barrier:** the centre segments are thrown onto P1 in PLATFORM ALTERATION. The blocks are drawn posed through a new `NativeArenaDressing.Posed`, and their kit parts follow.
+  - **Board:** it falls in TERMINUS, now tipped back across the booth away from the boss. Nothing of it is south of z 9, and the boss stays at least 1.35 m clear of it.
+  - **Shudder:** the shake moves the live view beside the horde's shake.
+  - **Colliders untouched.** Astra's board collider should follow `NativeStationBossStage.BoardPose(1)`; doc section 10 is updated.
+- **TERMINUS's double charge:** the skid becomes a 0.6 s turn on a second two-note chime, with a second lane and a second charge. The second contact is 2.0 s after the first.
+- **DEV preview staging:**
+  - The concourse benches are cleared while the preview runs (drawn hidden; colliders stay).
+  - The express is called on T1, so it meets the boss in Mind the Gap through the existing express presentation, after its warning.
+  - Terminus stands 2 m back from the board.
+  - The loop is 108 s, with the double charge added.
+- **Shared-file lines:**
+  - `NativeExpeditionStation.cs`: board variants; `ClockMinute`, the falls and `Shake` on the state.
+  - `NativeExpeditionStationKit.cs`: `DriveClock` and the platform variant.
+  - `NativeExpeditionStationKit.Concourse.cs`: row 0 variants and clock hands.
+  - `NativeExpeditionStationPresentation.cs`: the preview's view, `StationBossStageApply()` after the song's house light, `StationBossFallPose` in the kit draw. The music sync's pinned line is kept intact.
+  - `NativeArenaDressing.cs`: `Posed`.
+  - `ConversionGame.cs`: `StationBossShake` beside `HordeShake`.
+- **Animation impacts:** none on gameplay. No hitbox, collider, damage, cooldown, movement or network change.
+  - The double charge's first contact is on the record's `hitAt`. The second is drawn `SecondCharge` (2.0 s) later, stretched with the record's duration.
+  - The authority should send Departure in TERMINUS with the double charge's length (6.1 s).
+- **Checks (actual):**
+  - `StationBossPresentationChecks`: 22,219 PASS, including:
+    - row 0's order DELAYED, LAST CALL, ARRIVING, CANCELLED, DEPARTED, drawn by the kit;
+    - every clock's hands to 6:48; T1 green for the arrival only and dark under the levers;
+    - the barrier on P1; the board tipped back with the boss clear;
+    - the shudder; the preview's express meeting the boss on T1 after its warning; the benches cleared;
+    - the double charge's two contacts within a frame (worst 1.4 ms) with the second chime;
+    - the watch turning one minute.
+  - Station visuals: 854,261 PASS. Zone boss music: 292 PASS. Station boss concept: 274 PASS. Transitions: 3,586 PASS. Unity runtime and editor build OK.
+  - `run5b` on `635f6d1` (the final tree, merged with shared `97046f7`, the zombie motion), every step exit 0:
+    - Unity runtime and editor build OK;
+    - relay: 784 PASS lines (783 on `c4077d2` before the merge);
+    - Python: 140 tests OK, 1 skipped;
+    - package OK;
+    - diff-check clean.
+  - The first run on `56942a7` failed `ZombieMotionChecks`, which pins ConversionGame's horde-shake line. Fixed in `c4077d2`.
+  - Not run: Unity Editor play, Windows build, multiplayer.
+- **Renders** (scratch only, `renders-boss-station-wiring/`): the arrival (LAST CALL, then ARRIVING on the board), PLATFORM ALTERATION (the barrier thrown), TERMINUS (the board tipped back), Mind the Gap (the express passing), the double charge and the death (DEPARTED, clocks to 6:48). They use the WebGL harness, which draws the kit from the same state functions.
+- **Risks:**
+  - If Astra removes the barrier blocks instead of disabling their colliders, the thrown segments are not drawn (there is nothing to pose).
+  - The station reads the hook one frame late (the boss presenter runs after the station's scenery).
+  - The fallen board's pose must match Astra's collider.
+- **Next:** Astra's binding and colliders; check in the Editor and on Windows.
+
 ## 2026-10-17 — Claude: zombie motion pass (on branch, not merged)
 
 - **Branch and status:** `claude/zombie-motion`, from shared `f3d8eb4`. Shared was merged in twice: `5dc860d` as `1cd0006`, then the newest, `03dddab`, as `fbc298c`. The implementation commits are `a784379` and `9fabe0f` (the checks). Pushed only; no PR, not merged into shared or the builder, nothing published.

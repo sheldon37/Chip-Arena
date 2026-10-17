@@ -647,8 +647,9 @@ Base: the systems live on shared `ce85919`. Everything below is named against th
      before the existing 4 s warning. The lethal band, the push and the lever halt are unchanged.
    - **Mind the Gap:** the express pass tests the boss's carriage box against the lethal band.
    - **The levers:** `leverAt`/`leverUntil` (live) make Live Rail fail while they hold.
-   - **Colliders:** the `barrier-1` and `barrier-2` colliders turn off at `barrierDownAt`. A new board collider (10.4 x
-     4.4 x 2.2, tilted 30° over the booth) turns on at `boardDownAt`.
+   - **Colliders:** the `barrier-1` and `barrier-2` colliders turn off at `barrierDownAt`. A new board collider turns on at `boardDownAt`:
+     the board's box (10.4 x 4.4 x 4.4) as it lies across the booth's roof, tipped back 18° away from the concourse (centre
+     about (0, 5.7, 12.3); `NativeStationBossStage.BoardPose(1)` is the drawn pose to match).
 
 4. **The adds per phase** (section 6), through `NativeZoneCombat.Encounter` with the boss phase instead of one boss mix.
    Next Stop spawns at the boss's door positions (body-local x ±1.47, z -0.35, turned to world).
@@ -792,17 +793,30 @@ The presentation assumes three things of the rules:
 
 The managed check `StationBossPresentationChecks` pins the `None` line; update it when binding.
 
-**The hook API for the station's presentation** (`Core/NativeStationBossStage.cs`). The boss's presenter writes
-`NativeStationBossStage.Shown` (a `StationBossStage`) and `ShownClock` every frame it draws, and the station's board, clocks
-and lights read it. Until they do, nothing in the station changes (the renders apply it the way the station would). With the
-boss song bound, the song's stage keeps the lights, and the hook adds only the boss's own parts (see the beats below).
-- `Board`: `BoardOwn`; `BoardArriving` (row 0 reads `6.47 EVAC SPECIAL 1 ARRIVING`, blinking while `BoardBlink`); or
-  `BoardDeparted` (row 0 reads `6.47 EVAC SPECIAL DEPARTED`). `Row0` gives the text and `BoardFlicker` the flip's stutter.
-- `ClockHour`:`ClockMinute` for every station clock (6:47; 6:48 from 3.5 s after the death); `ClockTick` pulses on each strike.
-- `Lights` is the house and practical lights' level (about .06 through the arrival's cut), `LightSurge` the slam back on the
-  drop, and `WestSignalGreen` turns T1's west signal green.
-- `BarrierFall` and `BoardFall` (0..1, the board's with its bounce) pose the barrier's centre segments and the board (their
-  colliders are the authority's); `Shake` and `Dust` are for impacts.
+**The station draws the hook** (`Core/NativeStationBossStage.cs`; wired on `claude/boss-station-stage-wiring`). The boss's
+presenter writes `NativeStationBossStage.Shown` (a `StationBossStage`) every frame it draws. The station's presentation draws
+it after the authority's state and the song's (`NativeStationBossStage.Apply` on `NativeStationState`, through the presenter's
+`StationBossStageApply`). The song keeps the house lights.
+- **Row 0, lowest priority first:**
+  1. the authority's: CANCELLED with the boss, a Conductor's LAST CALL, else DELAYED;
+  2. the song's LAST CALL through the intro chimes;
+  3. the boss's `6.47 EVAC SPECIAL 1 ARRIVING`, from its board flip (the last intro chime, 3.68 s on the boss clock) to the
+     hold's end. It flashes on the song's pulses, as LAST CALL does, and row 0's platform reads 1 (the special comes in on
+     P1);
+  4. the boss's `6.47 EVAC SPECIAL DEPARTED`, from 3.62 s after the death.
+  The kit builds ARRIVING, DEPARTED and the platform 1 as row 0's variants.
+- **Every station clock** shows 6:47 until 3.5 s after the death, then 6:48. The kit builds each clock's hands twice;
+  `DriveClock` shows the pair `NativeStationState.ClockMinute` reads. The Stationmaster's pocket watch moves on with them.
+- **T1's signals** turn green from the arrival's light cut to 1.5 s after the burst, never over the levers' dark.
+- **The barrier's centre segments** are thrown onto P1 in PLATFORM ALTERATION (`BarrierPose`). The blocks are drawn posed
+  through `NativeArenaDressing.Posed` and their kit parts follow; the colliders never move.
+- **The departure board** swings off its chains in TERMINUS and comes to rest tipped back 18° across the booth's roof,
+  face up to the concourse (`BoardPose`; the board's kit parts follow). Nothing of it is south of z 9, so it stays clear of the
+  boss in front of the booth. The board collider Astra adds should match it.
+- **The shudder** (`Shake`) moves the live view, alongside the horde's shake (`ArenaPresentation.StationBossShake`, called
+  from `ConversionGame` with the camera-shake setting; half under reduced effects).
+- The fields kept for reference only: `Lights` and `LightSurge`, the doc's light cut, used only on the fallback beats (with the
+  song bound, the song's stage owns the lights); `ClockTick`; `Dust`.
 
 **The arrival's beats: bound to the boss song.** The zone boss music (`docs/ZONE-BOSS-MUSIC.md`, merged into shared `29b8498`)
 plays Station Chime of Doom through an intro edit whose drop lands on the intro hold's end (9.07 s). Its stage
@@ -849,7 +863,16 @@ legs unfold on the third (rear first), then it climbs and turns onto P1; it burs
 - `Runtime/NativeStagePrewarm.cs`: the boss's meshes built behind the loading screen on the station map (so the arrival
   builds nothing mid-fight), and its entry in `Tests/TransitionLoadingChecks.cs`;
 - `Core/NativeBossMotionGait.cs`: two opt-in fields, both off by default (`BossGait.Free` for legs a rig owns, and
-  `BossGaitDef.TurnRadius` so turning on the spot keeps stepping). The reference rigs are unchanged.
+  `BossGaitDef.TurnRadius` so turning on the spot keeps stepping). The reference rigs are unchanged;
+- the station drawing the hook:
+  - `Core/NativeExpeditionStation.cs`: row 0's ARRIVING and DEPARTED, platform 1, and the state's `ClockMinute`,
+    `BarrierFall`, `BoardFall` and `Shake`, reset each frame;
+  - `Core/NativeExpeditionStationKit.cs`: `DriveClock`, and row 0's platform variant in `DriveBoard`;
+  - `Core/NativeExpeditionStationKit.Concourse.cs`: the board's new row 0 variants and the clocks' second pair of hands;
+  - `Runtime/NativeExpeditionStationPresentation.cs`: the preview's station view, `StationBossStageApply()` after the
+    song, and `StationBossFallPose` in the kit's draw;
+  - `Runtime/NativeArenaDressing.cs`: `Posed` (a presentation-only pose per block id, cleared with `Hidden`);
+  - `Runtime/ConversionGame.cs`: `StationBossShake` beside the horde's shake.
 
 **Checks** (`CoreTests --station-boss-presentation`, also in the full run):
 - normal play's `None` pin: no draw, light, cue or station change, and the Siren's name and banner unchanged;
@@ -862,17 +885,31 @@ legs unfold on the third (rear first), then it climbs and turns onto P1; it burs
 - the HUD's name routing and banner delay;
 - the cue keys against section 8's table;
 - the song binding: the beats on the song's accents and grid, the lights left to the song, row 0 still flipping, the follow
-  carrying on from the burst without a jump, no pop at the burst or the hand-off.
+  carrying on from the burst without a jump, no pop at the burst or the hand-off;
+- the station drawing the hook:
+  - row 0's order (DELAYED, LAST CALL, ARRIVING, CANCELLED, DEPARTED), drawn by the kit with platform 1;
+  - every clock's hands to 6:48;
+  - T1 green for the arrival only, and dark under the levers;
+  - the barrier on P1, and the board tipped back on the booth, with the boss clear of it from its landing to the end of the
+    loop;
+  - the shudder;
+  - the preview's express meeting the boss on T1, after its warning;
+  - the benches cleared in the preview;
+- TERMINUS's two charges, each contact within a frame, with the second chime;
+- the watch's minute hand turning one minute at the death's last tick.
+
+**DEV preview staging** (`claude/boss-station-stage-wiring`):
+- **Benches:** the preview clears the concourse benches it walks through. They are drawn hidden through
+  `NativeArenaDressing.Hidden`; their colliders stay.
+- **Terminus:** it stands 2 m back from the fallen board.
+- **Mind the Gap:** the express is called on T1 for the preview (`NativeStationBossPreview.Station`). Its warning, pass and
+  wake come from the existing express presentation, and its nose meets the boss's rear at the knock.
+- **TERMINUS:** the loop (108 s) adds a double charge: west along z 0, a turn on the spot, back east.
 
 **Not done:**
 - the binding (Astra's record);
-- the station presentation reading the hook (row 0's ARRIVING and DEPARTED over the song's LAST CALL, the clocks' hands,
-  T1's signal, the barrier and board poses); the lights are the song's;
+- the board collider and the barrier's colliders (Astra's), which should match `BoardPose(1)` and the thrown segments;
 - the DEV preview has no boss song clock, so it times the arrival on its own script (on the song's beats when the file is
   installed);
-- TERMINUS's double charge as its own turn and second chime (it plays as one stretched Departure);
 - the owner's audio clips;
-- the pocket watch's hands stay at 6:47 (the station's clocks get 6:48 through the hook);
-- the DEV preview's path crosses the concourse benches (the feet pass through them; only the DEV preview walks there), and
-  the express that knocks it in Mind the Gap is the station's hazard, so the preview shows the hit without the train;
 - the Unity Editor, Windows and play: not run.

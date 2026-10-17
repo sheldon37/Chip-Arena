@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private static void Cinderling(K k)
         {
-            int look=k.Look;Runner(k);
+            int look=k.Look;ClassicRunner(k);
             // Charred: the skin black, the suit and rags deeper, the bone to ash (the white-hot veins and eyes kept).
             Vector3 ch=Lin(CharHex),deep=Lin(CharDeepHex),ash=Lin(AshHex);
             Recolor(k,c=>{float l=.2126f*c.X+.7152f*c.Y+.0722f*c.Z;return l<.08f?Mix(deep,ch,l/.08f):Mix(ch,ash,Step(.3f,.65f,l));});
@@ -140,7 +140,7 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private static void Slagback(K k)
         {
-            Brute(k);
+            ClassicBrute(k);
             Vector3 soot=Lin(0x241d19),deep=Lin(0x0e0b0a),scar=Lin(0x3b2f29);
             Recolor(k,c=>{float l=.2126f*c.X+.7152f*c.Y+.0722f*c.Z;return l<.06f?Mix(deep,soot,l/.06f):Mix(soot,scar,Step(.3f,.6f,l));});
             // The fissure: a white-gold split down the back of the chest and the spine (double damage; it glows through the crust).
@@ -183,7 +183,7 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private static void Ladleman(K k)
         {
-            Brute(k);
+            ClassicBrute(k);
             Vector3 soot=Lin(SootHex),deep=Lin(0x15120f),pale=Lin(0x6a5e55);
             Recolor(k,c=>{float l=.2126f*c.X+.7152f*c.Y+.0722f*c.Z;return l<.06f?Mix(deep,Lin(0x231d19),l/.06f):Mix(soot,pale,Step(.3f,.6f,l));});
             var leather=Paint(LeatherHex,.05f);var dark=Paint(LeatherDarkHex,.03f);var iron=Paint(IronHex,.06f);var edge=Paint(IronEdgeHex,.1f);k.ReducedBevel=.06f;

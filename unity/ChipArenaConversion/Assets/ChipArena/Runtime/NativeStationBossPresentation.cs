@@ -106,6 +106,7 @@ namespace ChipArena.UnityConversion
             stationBoss.Update(now,dt,stationBossView,StationBossGround.Station,velocity,false,hasTarget,target);
             // The stage hook: what the station's board, clocks and lights should show (the station presentation reads it).
             NativeStationBossStage.Shown=NativeStationBossStage.Evaluate(stationBossView,now,NativeStationBossBeats.Current);NativeStationBossStage.ShownClock=now;
+            StationBossDressing(NativeStationBossStage.Shown.BarrierFall,NativeStationBossPreview.On);
             // Effects, the joints' light, the practical lights.
             var fx=stationBossFx;fx.DrawGlass=NativeStationBossPreview.On;fx.GlassCount=NativeStationBossPreview.On?NativeStationBossPreview.Glass(stationBossView,fx.GlassXZ):LiveGlass(fx.GlassXZ);
             if(eye!=null){var t=eye.transform;Vector3 e=t.position,r=t.right,u=t.up;fx.Build(stationBoss,stationBossView,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);}
@@ -123,7 +124,87 @@ namespace ChipArena.UnityConversion
         private void StationBossHide()
         {
             if(stationBossLights){NativeLighting.KitLights(null,null,0,Vector3.zero);stationBossLights=false;}
-            if(NativeStationBossStage.Shown.On)NativeStationBossStage.Shown=StationBossStage.Idle;stationBossLast=-1;
+            if(NativeStationBossStage.Shown.On)NativeStationBossStage.Shown=StationBossStage.Idle;stationBossLast=-1;StationBossDressing(0,false);
+        }
+
+        // ================================================================================================================
+        // The station reacting to the boss (the hook as the station presentation draws it; presentation only, the colliders are
+        // the authority's): the centre barrier thrown down in PLATFORM ALTERATION (its blocks through NativeArenaDressing.Posed,
+        // their kit parts through StationBossPose), the departure board's fall in TERMINUS (its kit parts), the shudder on the
+        // view. The DEV preview clears the concourse benches it walks through (drawn hidden; their colliders stay).
+        // ================================================================================================================
+        private NativeExpeditionStationKit stationBossPoseKit;private byte[] stationBossPoseOf=Array.Empty<byte>();
+        private string stationBossBarrierW,stationBossBarrierE;private readonly string[] stationBossBenches=new string[8];private int stationBossBenchCount;private bool stationBossBenchesHidden;
+        private float stationBossBoardAt=-1,stationBossBarrierAt=-1;private Matrix4x4 stationBossBoardM=Matrix4x4.identity,stationBossBarrierWM=Matrix4x4.identity,stationBossBarrierEM=Matrix4x4.identity;
+        private const byte PoseNone=0,PoseBoard=1,PoseBarrierW=2,PoseBarrierE=3;
+        // Which kit parts follow which fall: the board's (on the booth, inside the board's box) and the barrier segments' (their parent).
+        private void StationBossPoseIndex()
+        {
+            if(stationKit==null||ReferenceEquals(stationKit,stationBossPoseKit))return;stationBossPoseKit=stationKit;var parts=stationKit.Parts;var blocks=stationMap?.blocks??Array.Empty<ContentBlock>();
+            int w=-1,e=-1,booth=-1;stationBossBenchCount=0;
+            for(int b=0;b<blocks.Length;b++)
+            {
+                var id=blocks[b]?.id;if(id==null)continue;
+                if(id.EndsWith("barrier-1")||id.EndsWith("barrier-2")){if(blocks[b].pos.x<0)w=b;else e=b;}
+                else if(id.EndsWith("-booth"))booth=b;
+                else if((id.Contains("-benches-e")||id.Contains("-benches-w"))&&stationBossBenchCount<stationBossBenches.Length)stationBossBenches[stationBossBenchCount++]=id;
+            }
+            stationBossBarrierW=w>=0?blocks[w].id:null;stationBossBarrierE=e>=0?blocks[e].id:null;stationBossPoseOf=new byte[parts.Length];
+            for(int i=0;i<parts.Length;i++)
+            {
+                var p=parts[i];if(p.Parent==w){stationBossPoseOf[i]=PoseBarrierW;continue;}if(p.Parent==e){stationBossPoseOf[i]=PoseBarrierE;continue;}if(p.Parent!=booth)continue;
+                var r=stationRestSpot[i];
+                if(Math.Abs(r.x-NativeStationBossArena.BoardX)<NativeStationBossArena.BoardHalfX+.5f&&r.y>NativeStationBossArena.BoardY-NativeStationBossArena.BoardHalfY-.45f&&r.y<NativeStationBossArena.BoardY+NativeStationBossArena.BoardHalfY+.3f&&Math.Abs(r.z-NativeStationBossArena.BoardZ)<NativeStationBossArena.BoardHalfZ+.5f)stationBossPoseOf[i]=PoseBoard;
+            }
+        }
+        private static Matrix4x4 PivotPose(NVector pivot,System.Numerics.Quaternion q,NVector move)
+        {
+            var pv=new Vector3(pivot.X,pivot.Y,pivot.Z);return Matrix4x4.TRS(pv+new Vector3(move.X,move.Y,move.Z),new Quaternion(q.X,q.Y,q.Z,q.W),Vector3.one)*Matrix4x4.Translate(-pv);
+        }
+        private Matrix4x4 BarrierMatrix(int side)
+        {
+            float fall=stationState.BarrierFall;
+            if(!(fall==stationBossBarrierAt)){stationBossBarrierAt=fall;NativeStationBossStage.BarrierPose(-1,fall,out var pw,out var qw,out var mw);stationBossBarrierWM=PivotPose(pw,qw,mw);NativeStationBossStage.BarrierPose(1,fall,out var pe,out var qe,out var me);stationBossBarrierEM=PivotPose(pe,qe,me);}
+            return side<0?stationBossBarrierWM:stationBossBarrierEM;
+        }
+        /// <summary>The station's view (StationScenery): the DEV preview's (the express for Mind the Gap, the boss's arrival) while it
+        /// runs and the station's own preview does not.</summary>
+        private static bool StationBossStageView(NativeStationView v,float now)=>NativeStationBossPreview.On&&NativeStationBossPreview.Station(v,now);
+        /// <summary>The station's state (StationScenery, after the authority's and the song's): the boss's stage hook on top.</summary>
+        private void StationBossStageApply()=>NativeStationBossStage.Apply(stationState,NativeStationBossStage.Shown);
+        /// <summary>The station kit's draw (DrawStationKit): a part on the falling board or a thrown barrier segment drawn posed.</summary>
+        private void StationBossFallPose(int i,ref Matrix4x4 m)
+        {
+            StationBossPoseIndex();if(i>=stationBossPoseOf.Length)return;byte k=stationBossPoseOf[i];if(k==PoseNone)return;
+            if(k==PoseBoard){float fall=stationState.BoardFall;if(!(fall>0))return;if(!(fall==stationBossBoardAt)){stationBossBoardAt=fall;NativeStationBossStage.BoardPose(fall,out var q,out var mv);stationBossBoardM=PivotPose(NativeStationBossStage.BoardPivot,q,mv);}m=stationBossBoardM*m;return;}
+            if(stationState.BarrierFall>0)m=BarrierMatrix(k==PoseBarrierW?-1:1)*m;
+        }
+        // The barrier's own blocks posed with it (NativeArenaDressing draws the blocks), and the preview's benches cleared.
+        private void StationBossDressing(float barrierFall,bool preview)
+        {
+            StationBossPoseIndex();
+            if(stationBossBarrierW!=null)
+            {
+                if(barrierFall>0){NativeStationBossStage.BarrierPose(-1,barrierFall,out var pw,out var qw,out var mw);NativeArenaDressing.Posed[stationBossBarrierW]=PivotPose(pw,qw,mw);}
+                else if(NativeArenaDressing.Posed.Count>0)NativeArenaDressing.Posed.Remove(stationBossBarrierW);
+            }
+            if(stationBossBarrierE!=null)
+            {
+                if(barrierFall>0){NativeStationBossStage.BarrierPose(1,barrierFall,out var pe,out var qe,out var me);NativeArenaDressing.Posed[stationBossBarrierE]=PivotPose(pe,qe,me);}
+                else if(NativeArenaDressing.Posed.Count>0)NativeArenaDressing.Posed.Remove(stationBossBarrierE);
+            }
+            // Re-asserted every preview frame (a new arena clears Hidden); taken back once when the preview ends.
+            if(preview){for(int i=0;i<stationBossBenchCount;i++)NativeArenaDressing.Hidden.Add(stationBossBenches[i]);stationBossBenchesHidden=true;}
+            else if(stationBossBenchesHidden){stationBossBenchesHidden=false;for(int i=0;i<stationBossBenchCount;i++)NativeArenaDressing.Hidden.Remove(stationBossBenches[i]);}
+        }
+        /// <summary>ConversionGame, with the horde's shake: the station's shudder on THE 6:47's impacts (the stage hook's Shake) on
+        /// the live local view; `scale` the setting's (camera shake off: never called; reduced effects: half).</summary>
+        public void StationBossShake(Transform view,float scale)
+        {
+            var st=NativeStationBossStage.Shown;if(view==null||!(scale>0)||!st.On||!(st.Shake>.002f))return;
+            float t=(float)NativeStationBossStage.ShownClock,k=st.Shake*scale;
+            var off=new Vector3(Mathf.Sin(t*37.1f)+.5f*Mathf.Sin(t*71.3f+1.3f),Mathf.Sin(t*43.7f+.7f)+.5f*Mathf.Sin(t*83.9f+2.9f),0)*(.03f*k);
+            view.position+=view.rotation*off;view.rotation*=Quaternion.Euler(0,0,Mathf.Sin(t*29.3f+2.1f)*.45f*k);
         }
         private static NativePilot TargetPilot(NativeArena arena,int seat)
         {
