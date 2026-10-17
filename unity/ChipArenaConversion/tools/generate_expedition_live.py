@@ -26,11 +26,23 @@ def manifest():
             yaw=math.radians(p['yaw']);dx,dz=math.sin(yaw),math.cos(yaw)
             point=lambda distance:dict(x=round(p['x']+dx*distance,5),y=p['y'],z=round(p['z']+dz*distance,5))
             area['machines'].append(dict(m=i,id=p['id'],kind=p['kind'],x=p['x'],y=p['y'],z=p['z'],yaw=yaw,front=p.get('front',point(.7)),dispense=point(1.3),chipDrop=point(2.2)))
+        if area['id']=='exp-foundry':
+            proposals={s['spawn']:s for s in area['ironworks']['spawns']}
+            for spawn in area['spawns']:
+                spawn['allow']=list(dict.fromkeys(spawn['allow']+proposals[spawn['e']]['propose']))
+        elif area['id']=='exp-transit':
+            for spawn in area['spawns']:
+                name=spawn['id'];allow=spawn['allow']
+                if 'train-car' in name:allow[:]=['shambler','runner','brute','conductor','pileup']
+                elif 'tunnel' in name:allow[:]=['runner','brute','linesman']+(['undertow'] if 't3-' in name else [])
+                elif 'sump' in name:allow[:]=['shambler','undertow']
+                elif 'concourse' in name and spawn['kind']=='door':allow+=['linesman','conductor','pileup']
+                elif spawn['kind']=='door' and spawn['exit']['y']<3:allow+=['conductor','linesman']
         live['areas'].append(area);live['instances'].append(area['id'])
     for route in hub['hub']['reserved']:
         route=copy.deepcopy(route);route['to']=route.pop('building');hub['hub']['routes'].append(route)
     hub['hub']['reserved']=[]
-    live['revision']='exp-layout-5'
+    live['revision']='exp-layout-6'
     return live
 if __name__=='__main__':
     out=ROOT/'Tests/expedition-live-layout.json';out.write_text(json.dumps(manifest(),separators=(',',':'))+'\n');print(out)

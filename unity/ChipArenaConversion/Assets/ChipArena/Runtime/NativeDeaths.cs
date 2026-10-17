@@ -5,7 +5,7 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeDeath
-    {public NativeDeath ViewCopy(){var d=(NativeDeath)MemberwiseClone();d.actor=actor?.ViewCopy();return d;}public bool hasActor,hasWound;public int id,owner,seed,lost,projectile;public float at,yaw,force,landAt;public string style,model,damageKind,hazardId;public Vector3 position,velocity,direction;public bool melee,kept,kneel;public Actor actor;public NativeWound wound;}
+    {public NativeDeath ViewCopy(){var d=(NativeDeath)MemberwiseClone();d.actor=actor?.ViewCopy();d.zone=zone?.Copy();return d;}public bool hasZone;public NativeZoneEnemyFrame zone;public bool hasActor,hasWound;public int id,owner,seed,lost,projectile;public float at,yaw,force,landAt;public string style,model,damageKind,hazardId;public Vector3 position,velocity,direction;public bool melee,kept,kneel;public Actor actor;public NativeWound wound;}
     public sealed partial class NativePilot
     {public readonly List<NativeWound> Wounds=new List<NativeWound>();public NativeDeath Death;public NativePilot LastAttacker;public float LastAttackerAt;public float RevivedAt=-100;}
     public sealed partial class NativeArena
@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
         private void RecordMinionDeath(NativeMinion m)
         {
             if(m.Hp>0||m.Kind=="slender")return;MinionDeaths.RemoveAll(d=>Time-d.at>5);while(MinionDeaths.Count>=256)MinionDeaths.RemoveAt(0);
-            MinionDeaths.Add(new NativeDeath{id=m.Id,seed=nextEvent++,at=Time,position=m.Body.position,yaw=m.Yaw,velocity=m.Body.isKinematic?Vector3.zero:m.Body.linearVelocity,style="impact-ragdoll",lost=m.Pve?.Lost??0,model=m.Pve==null?"summon-"+m.Kind:"horde-"+(m.Id%6),actor=new Actor{Id=m.Id,SourceSpec="pistol",BodyColor="#e5e7eb",AccentColor="#70e1d0",Yaw=m.Yaw,RigScale=m.Kind=="toy"?.65f:1}});
+            MinionDeaths.Add(new NativeDeath{zone=m.Pve?.Zone.Copy(),id=m.Id,seed=nextEvent++,at=Time,position=m.Body.position,yaw=m.Yaw,velocity=m.Body.isKinematic?Vector3.zero:m.Body.linearVelocity,style="impact-ragdoll",lost=m.Pve?.Lost??0,model=m.Pve==null?"summon-"+m.Kind:"horde-"+(m.Id%6),actor=new Actor{Id=m.Id,SourceSpec="pistol",BodyColor="#e5e7eb",AccentColor="#70e1d0",Yaw=m.Yaw,RigScale=m.Kind=="toy"?.65f:1}});
         }
     }
 }

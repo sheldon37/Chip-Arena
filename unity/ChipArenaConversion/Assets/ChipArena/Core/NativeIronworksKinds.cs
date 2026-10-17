@@ -56,23 +56,23 @@ namespace ChipArena.UnityConversion
         /// <summary>The five as zone kinds (the zone contract's 10.1 rows and capsules; their scale, weight, glow and takes).</summary>
         public static readonly HordeZoneKind[] Kinds={
             // the runner model at .93 in the add capsule; packs sprint on the runner's takes
-            new HordeZoneKind{Id="cinderling",Name="Cinderling",Zone=Map,Body=NativeHordeKinds.Runner,Looks=2,Scale=.93f,Mass=.8f,Seam=WhiteHot,SeamClass=0,Attack=NativeHordeKinds.Attack.Lunge,Tempo=1.04f,
+            new HordeZoneKind{Shipped=true,Id="cinderling",Name="Cinderling",Zone=Map,Body=NativeHordeKinds.Runner,Looks=2,Scale=.93f,Mass=.8f,Seam=WhiteHot,SeamClass=0,Attack=NativeHordeKinds.Attack.Lunge,Tempo=1.04f,
                 Proposed=Row("cinderling","lunge",30,4,2.8f,5.0f,1.8f,2.4f,.38f,.9f,1.1f,50,15,.35f,.4f,.45f,0),
                 Walks=new[]{"sprint-1","sprint-3"},Runs=new[]{"sprint-3","sprint-4"},Idles=new[]{"idle-3","shamble-2"},Wanders=new[]{"walk-4"}},
             // a shambler body at 1.07 in the heat suit; the proposed capsule is the add capsule at its size (.45 x 1.82)
-            new HordeZoneKind{Id="stoker",Name="Stoker",Zone=Map,Body=NativeHordeKinds.Shambler,Looks=2,Scale=1.07f,Radius=.45f,Height=1.82f,Mass=1.15f,Seam=Cyan,SeamClass=1,Attack=NativeHordeKinds.Attack.Swipe,Tempo=.94f,
+            new HordeZoneKind{Shipped=true,Id="stoker",Name="Stoker",Zone=Map,Body=NativeHordeKinds.Shambler,Looks=2,Scale=1.07f,Radius=.45f,Height=1.82f,Mass=1.15f,Seam=Cyan,SeamClass=1,Attack=NativeHordeKinds.Attack.Swipe,Tempo=.94f,
                 Proposed=Row("stoker","sweep",90,8,1.4f,2.8f,2.6f,2.2f,.5f,1.4f,.3f,80,40,.35f,.45f,.35f,0),
                 Walks=new[]{"walk-6"},Runs=new[]{"chase-2"},Idles=new[]{"idle-3"},Wanders=new[]{"walk-4"}},
             // the brute crusted in slag, in the add capsule
-            new HordeZoneKind{Id="slagback",Name="Slagback",Zone=Map,Body=NativeHordeKinds.Brute,Looks=2,Scale=1,Mass=3.2f,Seam=SlagCrack,SeamClass=0,Attack=NativeHordeKinds.Attack.Smash,Tempo=.84f,
+            new HordeZoneKind{Shipped=true,Id="slagback",Name="Slagback",Zone=Map,Body=NativeHordeKinds.Brute,Looks=2,Scale=1,Mass=3.2f,Seam=SlagCrack,SeamClass=0,Attack=NativeHordeKinds.Attack.Smash,Tempo=.84f,
                 Proposed=Row("slagback","smash",320,16,1.2f,2.2f,2.1f,1.7f,.55f,1.9f,.3f,450,90,.45f,.5f,.2f,NativeHordeKinds.SmashRadius),
                 Walks=new[]{"walk-4"},Runs=new[]{"chase-5"},Idles=new[]{"idle-3"},Wanders=new[]{"walk-4"}},
             // a big brute at 1.24 in the contract's .62 x 2.1 capsule
-            new HordeZoneKind{Id="ladleman",Name="Ladleman",Zone=Map,Body=NativeHordeKinds.Brute,Looks=1,Scale=1.24f,Radius=.62f,Height=2.1f,Mass=4.2f,Seam=LadleVein,SeamClass=1,Attack=NativeHordeKinds.Attack.Smash,Tempo=.7f,
+            new HordeZoneKind{Shipped=true,Id="ladleman",Name="Ladleman",Zone=Map,Body=NativeHordeKinds.Brute,Looks=1,Scale=1.24f,Radius=.62f,Height=2.1f,Mass=4.2f,Seam=LadleVein,SeamClass=1,Attack=NativeHordeKinds.Attack.Smash,Tempo=.7f,
                 Proposed=Row("ladleman","swing",700,18,.9f,1.4f,2.4f,2.0f,.6f,2.4f,.15f,600,220,.5f,.55f,.2f,0),
                 Walks=new[]{"walk-4"},Runs=new[]{"walk-4"},Idles=new[]{"idle-3"},Wanders=new[]{"walk-4"}},
             // the shambler body in the shambler's capsule (the contract's; drawn at 1, not the doc's 1.04, so its hat stays inside)
-            new HordeZoneKind{Id="rigger",Name="Rigger",Zone=Map,Body=NativeHordeKinds.Shambler,Looks=2,Scale=1,Mass=.9f,Seam=ColdWhite,SeamClass=2,Attack=NativeHordeKinds.Attack.Swipe,Tempo=1,
+            new HordeZoneKind{Shipped=true,Id="rigger",Name="Rigger",Zone=Map,Body=NativeHordeKinds.Shambler,Looks=2,Scale=1,Mass=.9f,Seam=ColdWhite,SeamClass=2,Attack=NativeHordeKinds.Attack.Swipe,Tempo=1,
                 Proposed=Row("rigger","swing",120,9,1.5f,3.4f,3.2f,3.0f,.6f,1.6f,.2f,260,45,.35f,.45f,.35f,0),
                 Walks=new[]{"walk-6","chase-1"},Runs=new[]{"chase-1"},Idles=new[]{"idle-3"},Wanders=new[]{"walk-4"}}};
         private static PveAddStats Row(string id,string attack,float hp,float damage,float walk,float run,float reach,float start,float hit,float cycle,float lunge,float impulse,float reward,float limb,float head,float stagger,float radius)

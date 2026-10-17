@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<NativeHordeKinds.All;k++)
             {
                 bool iron=NativeIronworksKinds.Is(k),station=NativeStationKinds.Is(k);var z=NativeHordeZones.Of(k);
-                Check(k<NativeHordeKinds.Count?z==null&&!iron&&!station:z!=null&&iron!=station&&z.Id==NativeHordeKinds.Ids[k]&&NativeHordeKinds.Resolve(z.Id)==k&&!NativeHordeKinds.Known(z.Id)&&!NativeHordeKinds.Shipped[k],"kind "+k+" ("+NativeHordeKinds.Ids[k]+") belongs to exactly one zone or to the Siren");
+                Check(k<NativeHordeKinds.Count?z==null&&!iron&&!station:z!=null&&iron!=station&&z.Id==NativeHordeKinds.Ids[k]&&NativeHordeKinds.Resolve(z.Id)==k&&NativeHordeKinds.Known(z.Id)&&NativeHordeKinds.Shipped[k],"kind "+k+" ("+NativeHordeKinds.Ids[k]+") belongs to exactly one zone or to the Siren");
                 Check(k>=NativeHordeKinds.Count||NativeHordeKinds.Base(k)==k&&NativeHordeKinds.Index(k)==k,"a Siren kind is its own base");
             }
             foreach(var len in new[]{NativeHordeKinds.Ids.Length,NativeHordeKinds.Names.Length,NativeHordeKinds.Shipped.Length,NativeHordeKinds.Looks.Length,NativeHordeKinds.Radius.Length,NativeHordeKinds.Height.Length,NativeHordeKinds.Axis.Length,NativeHordeKinds.Root.Length,NativeHordeKinds.CenterAhead.Length,NativeHordeKinds.Scale.Length,NativeHordeKinds.Mass.Length,NativeHordeKinds.Default.Length,NativeHordeKinds.Seam.Length,NativeHordeKinds.SeamClass.Length})
@@ -49,9 +49,9 @@ namespace ChipArena.UnityConversion
             string[] ids={"linesman","conductor","undertow","pileup"},names={"Linesman","Conductor","Undertow","Pileup"};int[] body={NativeHordeKinds.Brute,NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Brute};
             for(int i=0;i<4;i++)
             {
-                int k=Kinds[i];Check(NativeHordeKinds.Ids[k]==ids[i]&&NativeHordeKinds.Names[k]==names[i]&&NativeHordeKinds.Resolve(ids[i])==k&&!NativeHordeKinds.Known(ids[i]),ids[i]+" resolves to kind "+k+" (drawn) but is not known to the authority or the wire until shipped");
+                int k=Kinds[i];Check(NativeHordeKinds.Ids[k]==ids[i]&&NativeHordeKinds.Names[k]==names[i]&&NativeHordeKinds.Resolve(ids[i])==k&&NativeHordeKinds.Known(ids[i]),ids[i]+" resolves to kind "+k+" is known to the authority and wire");
                 Check(NativeHordeZones.Of(k)!=null&&NativeStationKinds.Is(k)&&NativeHordeKinds.Base(k)==body[i],ids[i]+" borrows its body tables from "+NativeHordeKinds.Ids[body[i]]);
-                Check(!NativeHordeKinds.Shipped[k],ids[i]+" is not shipped (no content row yet: Astra's)");
+                Check(NativeHordeKinds.Shipped[k],ids[i]+" ships with its bound zone content row");
                 Check(NativeHordeKinds.Looks[k]>=1&&NativeHordeKinds.Looks[k]<=NativeHordeKinds.MostLooks,ids[i]+" looks within the bank's");
                 Check(NativeHordeKinds.Root[k]==NativeHordeKinds.AddHeight*.5f&&Math.Abs(NativeHordeKinds.Height[k]-NativeHordeKinds.AddHeight)<1e-5f&&NativeHordeKinds.Axis[k]==1&&NativeHordeKinds.CenterAhead[k]==0,ids[i]+" drawn on the rig's own 1.7 m (its scale makes the capsule)");
                 Check(Math.Abs(NativeHordeKinds.RootHeight(k,false)-NativeHordeKinds.WorldHeight(k)*.5f)<1e-5f,ids[i]+": the floor found from the authority's capsule centre");
@@ -59,20 +59,20 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<NativeHordeKinds.All;k++)for(int j=0;j<k;j++)Check(NativeHordeKinds.Ids[k]!=NativeHordeKinds.Ids[j],"kind ids are unique");
             // Nothing in today's content names them; every content id resolves to the kind it did.
             using var pve=JsonDocument.Parse(R(root,"Assets/Conversion/Resources/PveContent.json"));var contentIds=pve.RootElement.GetProperty("adds").EnumerateArray().Select(a=>a.GetProperty("id").GetString()).ToList();
-            foreach(var id in ids)Check(!contentIds.Contains(id),"PveContent has no "+id+" row yet (Astra adds it)");
+            foreach(var id in ids)Check(!contentIds.Contains(id),"base Siren content has no "+id+" row; the zone binding supplies it");
             foreach(var id in contentIds)Check(NativeHordeKinds.Resolve(id)<NativeHordeKinds.Count,"content kind "+id+" still resolves to one of the seven");
             Check(NativeHordeKinds.Resolve("future-kind")==NativeHordeKinds.Shambler&&NativeHordeKinds.MixCount==NativeHordeKinds.Hulk,"unknown ids still draw as the shambler; the DEV mix still hashes over the first six");
             // The live maps (the live Expedition layout, which runs the Central Station and City Ironworks areas; its activation
             // snapshots; every Expedition draft fixture; the Unity maps): each kind an allow list names is known and resolves as at the
-            // base, and each proposed station enemy is refused by Known and in no allow list. Known is the authority's and the wire's
+            // base, and each proposed station enemy is registered for zone content. Known is the authority's and the wire's
             // test (NativeNetworkFrame's minion validation, NativeDevMonsterAuthority's DEV spawns, NativeExpeditionLayout's allow
             // lists), so they accept and refuse exactly what they did; the split-area runtime carries no kind of its own.
             var seven=NativeHordeKinds.Ids.Take(NativeHordeKinds.Count).ToArray();int files=0,allowed=0,proposed=0;
             foreach(var file in new[]{"Assets/Conversion/Resources/ExpeditionLayout.json","Assets/Conversion/Resources/UnityMaps.json"}.Concat(Directory.GetFiles(Path.Combine(root,"Tests"),"expedition-*.json").OrderBy(f=>f,StringComparer.Ordinal).Select(f=>"Tests/"+Path.GetFileName(f))))
             {
                 using var doc=JsonDocument.Parse(R(root,file));var allow=new List<string>();var station=new List<string>();Collect(doc.RootElement,null,allow,station);files++;
-                foreach(var id in allow){int b=Array.IndexOf(seven,id);Check(b>=0&&NativeHordeKinds.Known(id)&&NativeHordeKinds.Resolve(id)==b,file+": allowed kind "+id+" is known and resolves as at the base");allowed++;}
-                foreach(var id in station){Check(ids.Contains(id)&&!NativeHordeKinds.Known(id)&&!allow.Contains(id),file+": proposed "+id+" is refused by Known and in no allow list");proposed++;}
+                foreach(var id in allow){int b=Array.IndexOf(seven,id);Check(NativeHordeKinds.Known(id)&&(b<0||NativeHordeKinds.Resolve(id)==b),file+": allowed kind "+id+" is known and resolves as at the base");allowed++;}
+                foreach(var id in station){Check(ids.Contains(id)&&NativeHordeKinds.Known(id),file+": proposed "+id+" is registered for zone content");proposed++;}
             }
             Check(files>=10&&allowed>0&&proposed>0,"the live layout and fixtures were read ("+files+" files, "+allowed+" allowed, "+proposed+" proposed)");
             for(int k=0;k<NativeHordeKinds.Count;k++)Check(NativeHordeKinds.Known(NativeHordeKinds.Ids[k])&&NativeHordeKinds.Resolve(NativeHordeKinds.Ids[k])==k,NativeHordeKinds.Ids[k]+" is known and resolves to itself as at the base");
@@ -179,7 +179,7 @@ namespace ChipArena.UnityConversion
                 Check(sec8.Contains("child ids")&&sec8.Contains("`arc`, `whistle`, `grab`, `shove`"),"section 8 names the split's child ids and the four attack names");}
             var v=StationView.None;Check(float.IsNaN(v.arcAt)&&float.IsNaN(v.lastCallAt)&&float.IsNaN(v.surfaceAt)&&float.IsNaN(v.grabAt)&&float.IsNaN(v.releaseAt)&&float.IsNaN(v.splitAt)&&float.IsNaN(v.aboardUntil)&&v.grabTarget==-1&&v.attack==null&&!v.grounded&&!v.submerged&&!v.lanternBroken&&!v.Aboard(0)&&!v.Holding(0),"StationView.None holds no event");
             v.grabTarget=3;v.grabAt=1;v.releaseAt=2.5f;Check(v.Holding(1.2f)&&!v.Holding(2.5f)&&!v.Holding(.9f),"a hold from grabAt to releaseAt");v.aboardUntil=7;Check(v.Aboard(1.1f)&&!v.Aboard(7)&&!v.Aboard(.9f),"the buff for its 6 s");
-            var p=R(root,"Assets/ChipArena/Runtime/NativeStationKindsPresentation.cs");Check(Regex.Matches(p,@"^\s*internal static StationView StationViewOf\(NativeMinion m\)=>StationView\.None;",RegexOptions.Multiline).Count==1&&Regex.Matches(p,@"StationViewOf\(m\)").Count>=4,"the binding is one line (StationViewOf, unbound until the rules replicate the fields), and every live read goes through it");
+            var p=R(root,"Assets/ChipArena/Runtime/NativeStationKindsPresentation.cs");Check(Regex.Matches(p,@"^\s*internal static StationView StationViewOf\(NativeMinion m\)=>m\.Pve\?\.Zone\.Station\?\?StationView\.None;",RegexOptions.Multiline).Count==1&&Regex.Matches(p,@"StationViewOf\(m\)").Count>=4,"the binding is one line (StationViewOf, bound to replicated zone fields), and every live read goes through it");
         }
         // ---- section 10's enemy cues ----
         private static void Audio(string doc)

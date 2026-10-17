@@ -36,16 +36,16 @@ namespace ChipArena.UnityConversion
         /// and the Pileup, the shambler's for the Conductor, the runner's for the Undertow; each drawn at its capsule's height over
         /// the add's 1.7 m (its scale), so the rig stands at the capsule's half height.</summary>
         public static readonly HordeZoneKind[] Kinds={
-            new HordeZoneKind{Id=LinesmanId,Name="Linesman",Zone=Map,Body=NativeHordeKinds.Brute,Looks=2,Radius=.48f,Height=1.75f,Scale=1.75f/NativeHordeKinds.AddHeight,Mass=1.6f,Seam=LinesmanBlue,SeamClass=2,Attack=NativeHordeKinds.Attack.Swipe,
+            new HordeZoneKind{Shipped=true,Id=LinesmanId,Name="Linesman",Zone=Map,Body=NativeHordeKinds.Brute,Looks=2,Radius=.48f,Height=1.75f,Scale=1.75f/NativeHordeKinds.AddHeight,Mass=1.6f,Seam=LinesmanBlue,SeamClass=2,Attack=NativeHordeKinds.Attack.Swipe,
                 Tempo=.86f,Walks=new[]{"walk-6"},Runs=new[]{"chase-2"},Idles=new[]{"idle-3"},Wanders=new[]{"walk-4"},
                 Proposed=Row(LinesmanId,"swipe",260,14,1.2f,2.2f,2.0f,1.6f,.4f,1.4f,.3f,240,70,.45f,.5f,.3f,0)},
-            new HordeZoneKind{Id=ConductorId,Name="Conductor",Zone=Map,Body=NativeHordeKinds.Shambler,Looks=2,Radius=.40f,Height=1.9f,Scale=1.9f/NativeHordeKinds.AddHeight,Mass=.9f,Seam=ConductorWhite,SeamClass=2,Attack=NativeHordeKinds.Attack.Swipe,
+            new HordeZoneKind{Shipped=true,Id=ConductorId,Name="Conductor",Zone=Map,Body=NativeHordeKinds.Shambler,Looks=2,Radius=.40f,Height=1.9f,Scale=1.9f/NativeHordeKinds.AddHeight,Mass=.9f,Seam=ConductorWhite,SeamClass=2,Attack=NativeHordeKinds.Attack.Swipe,
                 Tempo=.94f,Walks=new[]{"walk-4"},Runs=new[]{"chase-1"},Idles=new[]{"idle-1"},Wanders=new[]{"walk-4"},
                 Proposed=Row(ConductorId,"swipe",140,8,1.4f,2.6f,1.8f,1.45f,.34f,1.2f,.35f,90,90,.35f,.4f,.45f,0)},
-            new HordeZoneKind{Id=UndertowId,Name="Undertow",Zone=Map,Body=NativeHordeKinds.Runner,Looks=2,Radius=.42f,Height=1.7f,Scale=1,Mass=.85f,Seam=UndertowAqua,SeamClass=2,Attack=NativeHordeKinds.Attack.Lunge,
+            new HordeZoneKind{Shipped=true,Id=UndertowId,Name="Undertow",Zone=Map,Body=NativeHordeKinds.Runner,Looks=2,Radius=.42f,Height=1.7f,Scale=1,Mass=.85f,Seam=UndertowAqua,SeamClass=2,Attack=NativeHordeKinds.Attack.Lunge,
                 Tempo=1,Walks=new[]{"chase-2"},Runs=new[]{"chase-5","sprint-1"},Idles=new[]{"shamble-2"},Wanders=new[]{"walk-4"},
                 Proposed=Row(UndertowId,"grab",120,6,1.6f,3.2f,2.6f,2.2f,GrabTelegraph,1.2f,1.1f,0,60,.35f,.45f,.4f,0)},
-            new HordeZoneKind{Id=PileupId,Name="Pileup",Zone=Map,Body=NativeHordeKinds.Brute,Looks=1,Radius=.75f,Height=2.1f,Scale=2.1f/NativeHordeKinds.AddHeight,Mass=4,Seam=WindowTube,SeamClass=1,Attack=NativeHordeKinds.Attack.Smash,
+            new HordeZoneKind{Shipped=true,Id=PileupId,Name="Pileup",Zone=Map,Body=NativeHordeKinds.Brute,Looks=1,Radius=.75f,Height=2.1f,Scale=2.1f/NativeHordeKinds.AddHeight,Mass=4,Seam=WindowTube,SeamClass=1,Attack=NativeHordeKinds.Attack.Smash,
                 Tempo=.7f,Walks=new[]{"walk-4"},Runs=new[]{"walk-4"},Idles=new[]{"idle-3"},Wanders=new[]{"walk-4"},
                 Proposed=Row(PileupId,"crush",700,24,.9f,1.6f,2.2f,1.8f,.55f,2.0f,.15f,600,160,.55f,.6f,.15f,NativeHordeKinds.SmashRadius)}};
         /// <summary>Their heads (width scale and drop on the head joint, by local index; the shared tables keep the Siren's seven).</summary>

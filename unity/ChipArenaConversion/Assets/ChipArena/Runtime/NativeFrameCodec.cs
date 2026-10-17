@@ -9,7 +9,8 @@ namespace ChipArena.UnityConversion
     {
         public void CapturePresence()
         {
-            hasPve=pve!=null;
+            hasPve=pve!=null;if(pve!=null)pve.hasZone=pve.zone!=null;
+            if(minions!=null)foreach(var m in minions)if(m!=null)m.hasZone=m.zone!=null;
             if(snapshot?.Actors!=null)foreach(var a in snapshot.Actors)if(a!=null){a.HasKernel=a.Kernel!=null;a.Cyber?.CapturePresence();}
             if(props!=null)foreach(var p in props)if(p!=null)p.hasDefinition=p.definition!=null;
             if(pilots!=null)foreach(var p in pilots)if(p!=null)
@@ -18,9 +19,9 @@ namespace ChipArena.UnityConversion
             if(pve?.rows!=null)foreach(var row in pve.rows)if(row?.picks!=null)foreach(var pick in row.picks)if(pick!=null)pick.hasOffers=pick.offers!=null;
         }
         private static void CaptureDeath(NativeDeath d)
-        {if(d!=null){d.hasActor=d.actor!=null;d.hasWound=d.wound!=null;if(d.actor!=null){d.actor.HasKernel=d.actor.Kernel!=null;d.actor.Cyber?.CapturePresence();}}}
+        {if(d!=null){d.hasZone=d.zone!=null;d.hasActor=d.actor!=null;d.hasWound=d.wound!=null;if(d.actor!=null){d.actor.HasKernel=d.actor.Kernel!=null;d.actor.Cyber?.CapturePresence();}}}
         private static void RestoreDeath(NativeDeath d)
-        {if(d!=null){if(!d.hasActor)d.actor=null;if(d.actor!=null){if(!d.actor.HasKernel)d.actor.Kernel=null;d.actor.Cyber?.RestorePresence();}if(!d.hasWound)d.wound=null;}}
+        {if(d!=null){if(!d.hasZone)d.zone=null;else if(d.zone!=null)d.zone.attack=string.IsNullOrEmpty(d.zone.attack)?null:d.zone.attack;if(!d.hasActor)d.actor=null;if(d.actor!=null){if(!d.actor.HasKernel)d.actor.Kernel=null;d.actor.Cyber?.RestorePresence();}if(!d.hasWound)d.wound=null;}}
         public void RestorePresence()
         {
             if(string.IsNullOrEmpty(areaIdentity?.run))areaIdentity=null;
@@ -30,6 +31,8 @@ namespace ChipArena.UnityConversion
             // JsonUtility turns null strings into empty strings. Runtime draft/end-state gates use null as "not chosen/ended".
             chosen=string.IsNullOrEmpty(chosen)?null:chosen;introStyle=string.IsNullOrEmpty(introStyle)?null:introStyle;
             if(!hasPve)pve=null;
+            if(pve!=null&&!pve.hasZone)pve.zone=null;
+            if(minions!=null)foreach(var m in minions)if(m!=null){if(!m.hasZone)m.zone=null;else if(m.zone!=null)m.zone.attack=string.IsNullOrEmpty(m.zone.attack)?null:m.zone.attack;}
             if(snapshot?.Actors!=null)foreach(var a in snapshot.Actors)if(a!=null){if(!a.HasKernel)a.Kernel=null;a.Cyber?.RestorePresence();}
             if(pve!=null){pve.cinematic=string.IsNullOrEmpty(pve.cinematic)?null:pve.cinematic;pve.outcome=string.IsNullOrEmpty(pve.outcome)?null:pve.outcome;pve.notice=string.IsNullOrEmpty(pve.notice)?null:pve.notice;}
             if(props!=null)foreach(var p in props)if(p!=null&&!p.hasDefinition)p.definition=null;

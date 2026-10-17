@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         /// The binding is this one line: when the network frame carries them, return them here, e.g.
         /// <c>new IronworksView{pullTarget=a.PullTarget,pullAt=a.PullAt,shedAt=a.ShedAt,pourAt=a.PourAt,pourYaw=a.PourYaw,spilledAt=a.SpilledAt,hang=a.Hang,lockAt=a.LockAt,lockX=a.LockX,lockZ=a.LockZ,climbAt=a.ClimbAt,climbTo=a.ClimbTo,chainCutAt=a.ChainCutAt}</c>.
         /// </summary>
-        internal static IronworksView IronworksViewOf(NativeMinion m)=>IronworksView.None;
+        internal static IronworksView IronworksViewOf(NativeMinion m)=>m.Pve?.Zone.Ironworks??IronworksView.None;
 
         // ---- the zone tint: the brute's cream seams while the City Ironworks is the map (NativeHordeKinds.SeamOf, the cream models) ----
         private void IronworksZone(NativeArena arena){NativeIronworksKinds.Zone=arena!=null&&NativeIronworksKinds.ZoneOf(arena.MapId);}
@@ -190,12 +190,13 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<ironJobCount;i++){var j=ironJobs[i];double band=NativeMinionFx.Band(j.Distance,quality);if(band<0)continue;NativeIronworksFx.Emit(ironFx,j.In,band>=.5&&!LowGraphics);}
             for(int i=0;i<ironLate.Length;i++)
             {
-                var l=ironLate[i];if(l.Born==0&&l.Id==0)continue;float since=now-l.Born;if(since<0||since>4){continue;}bool full=!LowGraphics&&quality>=.5f;
+                var l=ironLate[i];if(l.Born==0&&l.Id==0)continue;float since=now-l.Born;if(since<0||since>(l.Kind==4?6:4)){continue;}bool full=!LowGraphics&&quality>=.5f;
                 switch(l.Kind)
                 {
                     case 0:NativeIronworksFx.CinderlingDeath(ironFx,ToN(l.At),ToN(l.Floor),since,l.Pops,l.Seed,full);break;
                     case 1:NativeIronworksFx.DeflectSparks(ironFx,ToN(l.At),ToN(l.Normal),since,l.Seed,full);break;
                     case 2:NativeIronworksFx.ChainSnap(ironFx,ToN(l.At),since,l.Seed,full);break;
+                    case 4:NativeIronworksFx.LingeringPool(ironFx,ToN(l.Floor),l.Born,l.Normal.x,now,l.Seed,full);break;
                     case 3:NativeIronworksFx.Spill(ironFx,ToN(l.At)+new NVector(0,.3f,0),ToN(l.Floor),ToN(l.Normal),since,l.Seed,full);break;
                 }
             }
@@ -233,6 +234,7 @@ namespace ChipArena.UnityConversion
         private void IronworksDeath(NativeDeath death,int kind,bool melee,CapturedAnimation.Player rig,float fx,float floorY)
         {
             int z=NativeIronworksKinds.Local(kind);if(z<0)return;uint seed=NativeHordeKinds.Seed(death.id)^(uint)death.seed;var floor=new Vector3(death.position.x,floorY,death.position.z);
+            if(z==NativeIronworksKinds.Ladleman&&death.zone!=null&&death.zone.pourAt>=0&&death.at>=death.zone.pourAt+1)IronworksLate(4,death.id,death.position,floor,new Vector3(death.zone.pourYaw,0,0),death.zone.pourAt,seed,false);
             if(z==NativeIronworksKinds.Cinderling)IronworksLate(0,death.id,rig.Bones[CapturedRig.Chest].position,floor,Vector3.up,death.at,seed,melee);
             if(!ironDropped.TryGetValue(death.id,out var drop))
             {

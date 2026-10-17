@@ -100,6 +100,22 @@ namespace ChipArena.UnityConversion.Editor
                 Check(Math.Abs(run.Elapsed-30)<1e-7&&layout.areas.All(a=>Math.Abs(registry.Find(a.id).Arena.Time-30)<1e-5),"one clock across four occupied areas");
                 foreach(var area in layout.areas.Where(a=>a.role=="instance"))Check(registry.Find(area.id).Arena.Minions.Count>0,"native horde spawned in "+area.id);
                 foreach(var area in layout.areas){var r=registry.Find(area.id);Debug.Log("Split area "+area.id+": pilots="+r.Occupants+", mobs="+r.Arena.Minions.Count+", step ms="+r.StepMs.ToString("F2")+", physics ms="+r.PhysicsMs.ToString("F2")+", navigation ms="+r.NavigationMs.ToString("F2"));}
+                foreach(var area in layout.areas.Where(a=>NativeZoneCombat.Active(a.map)))
+                {
+                    var scene=EditorSceneManager.NewPreviewScene();NativeArena guest=null;
+                    try
+                    {
+                        guest=new NativeArena(content,new NativeMatch(content),area.map){Replica=true,ReplicaScene=scene};
+                        registry.Find(area.id).Arena.ValidateZoneCombat(frame=>
+                        {
+                            var packet=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=frame})).frame;
+                            Check(packet.Valid(content),"zone event wire accepted");guest.ApplyFrame(packet,packet.pilots.First(p=>p.id!=900).id);
+                            foreach(var m in packet.minions){var decoded=guest.Minions.Single(n=>n.Id==m.id);Check(decoded.Pve!=null&&decoded.Pve.Zone.arcAt==m.zone.arcAt&&decoded.Pve.Zone.pullAt==m.zone.pullAt&&decoded.Pve.Zone.chainCutAt==m.zone.chainCutAt&&decoded.Pve.Zone.grabTarget==m.zone.grabTarget,"guest applies zone enemy state");}
+                            Check(guest.ZoneHazards?.clock==packet.pve.zone?.clock,"guest applies owning instance hazard clock");
+                        });
+                    }
+                    finally{guest?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}
+                }
                 Debug.Log("PASS native Expedition activation: four simultaneous areas, subset ownership, independent encounters, shared clock, stale input and ready/command codec. 1800 ticks ms="+timer.Elapsed.TotalMilliseconds.ToString("F1")+", worst="+worst.ToString("F1")+", p95="+samples.OrderBy(ms=>ms).ElementAt((int)(samples.Count*.95)).ToString("F1")+", raw packet bytes="+packetBytes+", managed memory delta="+(GC.GetTotalMemory(false)-memoryBefore)+". Automated fixture; not a human multiplayer playtest.");
             }
         }
