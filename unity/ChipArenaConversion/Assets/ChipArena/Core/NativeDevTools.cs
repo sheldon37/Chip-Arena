@@ -183,6 +183,7 @@ namespace ChipArena.UnityConversion
             new NativeDevAction("overlay-nav",Ca,V,"Nav graph"),
             new NativeDevAction("overlay-anchors",Ca,V,"Expedition anchors"),
             new NativeDevAction("preview-hub-gates",Ca,V,"Hub gates preview"),
+            new NativeDevAction("preview-station",Ca,V,"Station hazards preview"),
             new NativeDevAction("preview-ironworks",Ca,V,"Ironworks hazards preview"),
             new NativeDevAction("overlay-shots",Ca,V,"Shot paths"),
             new NativeDevAction("log",Ca,V,"Event log",key:"F1"),

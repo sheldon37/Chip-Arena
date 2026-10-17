@@ -1,3 +1,141 @@
+## 2026-10-17 — Claude: join circles, party/area HUD and live hub entrances (presentation)
+
+- Task (coordinator, from the owner's live split areas): the real join-circle presentation, the party/area HUD and the hub side
+  of the two new zones, replacing Astra's stand-in ring and labels (PR #255). Visuals only: no rule, timing, collider, spawn,
+  ring position or route changed.
+- Branch `claude/join-circles`, base shared `4164d5c` (includes #255 and #256 `640af06`). Implementation `c1e97d5`, `2d84595`, `a645633`. Shared
+  `6404332` (Astra's #257-#260 and the Ironworks enemies) merged in as `1ca30a2`, no conflicts. Then shared `612f0da` (the
+  City Ironworks visuals) was merged in as `ff05275`. Then shared `1c2669d` (`0b54ebe`, the Central Station enemies, and
+  Astra's #261 arrival placement) was merged in. Every conflict was in the docs or the Tests/Program.cs registration lines,
+  and both sides were kept each time.
+  Pushed, not merged into shared, builder untouched, no PR, nothing published.
+- **The pads** (`Core/NativeExpeditionJoinScene.cs`, drawn through the state pieces' NativeBlockLit/NativeSirenFx path):
+  - Six hardlight emitter posts stand just outside each circle, clear of the door and approach lines.
+  - An emitter plate and a soft energy pool sit at the centre, with no flat outline.
+  - A light curtain stands exactly on the counted radius. At rest it is only faint glass. Once someone stands in it, it rises
+    and whitens over `duration`.
+  - A camera-facing hologram shows the zone's name and threat, then the seconds, 12 segments and a pip per pilot counted.
+  - A sky beacon rises over the roofs.
+  - Each counted pilot gets a lock column and a chevron. Nobody outside gets either.
+  - Deploy: the curtain flashes, a beam takes each pilot, a shock ring runs out (an event), and a hold column stays while the
+    area loads.
+  - Cancel: it powers down. Held: an amber flicker. Cleared: green and CLEARED. A return: a beam-in.
+  - Accents: Ward Zero red, Station teal, Ironworks amber.
+- **The model** (`Core/NativeExpeditionJoin.cs`): reads `joins[]`, `members[].area/atJoin/seat` and `instances[].cleared`.
+  - A deploy is the next view showing the circle empty at or after `joinStartedAt + duration`.
+  - A cancel is emptying before that. Held is still occupied after expiry.
+  - It also gives the viewer's relation (deploying, in it but not counted with the reason, near, cleared), the party rows,
+    the notes and the cue events. It is allocation-free once warm.
+- **HUD** (`Runtime/NativeExpeditionJoinHud.cs`, cyber kit):
+  - A party list on the left: HUB / WARD ZERO / CENTRAL STATION / CITY IRONWORKS, and each member's state.
+  - A DEPLOYING TO panel with seconds and segments, the not-counted reason, a near prompt, the deploy and return notes, and
+    my deploy flash over the last 0.35 s, which hands off to the stage loading screen's cut.
+  - `NativeExpeditionPresentation.Name` now names exp-transit CENTRAL STATION and exp-foundry CITY IRONWORKS. The loading,
+    transfer and board screens read "TRANSIT"/"FOUNDRY" before. The roster's city reads HUB.
+- **Sound keys:** `expedition.join.charge|tick|cancel|deploy|deploy.whoosh|held|arrive`. Each has an existing clip as its
+  fallback (shield, countdown, reload-start, lightning, dash, ui). The table is in EXPEDITION-HUB.md.
+- **Hub entrances** (`Core/NativeExpeditionCityKit.Entrances.cs`): keyed on the live layout's doors and the hub record's
+  routes (coordinator: exp-foundry is on map expedition-foundry; nothing keys on a map id).
+  - The gate headers and wall signs named the live routes "EXP-TRANSIT"/"EXP-FOUNDRY". They now say CENTRAL STATION / CITY
+    IRONWORKS, and SEALED only while a route is reserved.
+  - The station's boards give way to the airlock framed in cream tile and teal light, and the canopy is lit teal.
+  - The foundry shutter is shown rolled into its drum over the airlock, with NO 1 GATE, hazard rails and amber beacons.
+    CITY IRONWORKS is lit.
+  - A neon light sits at each circle. In live, most of the boards' and shutter's dressing was already rejected by the
+    airlock's keep-out.
+- **Shared files touched (small):**
+  - NativeExpeditionWorld: a `JoinPadsDrawn` flag. The join door piece draws and labels nothing while the pads draw, and the
+    stand-in stays as the fallback.
+  - The two hook lines in ExpeditionWorldFrame and ExpeditionLiveHud.
+  - NativeExpeditionCityKit: the `Lettering` record and the EntranceLights call.
+  - Hub.cs: the sign names. Landmarks.cs: the live gates.
+  - NativeExpeditionPresentation: Name/AreaLabel. Tests/Program.cs: the check.
+- **Checks:** `Tests/ExpeditionJoinPresentationChecks.cs` (`CoreTests --expedition-join-view`, in the full suite).
+  - Ring states from the view fields: idle, charging with fill and seconds, ticks, flash, deploy at expiry, cancel, held,
+    cleared, late joiner. Also not counted, near and away.
+  - Party-list places and states, and the deploy and return notes.
+  - The pads: no flat floor outline, the curtain on the counted radius, the counted pilots marked, my column hidden in first
+    person, low graphics and reduced effects.
+  - Posts clear of every town block, return and door volume.
+  - The world piece stands aside. No SEALED or raw id on a live sign, and a reserved route keeps SEALED.
+  - Zero bytes per frame once warm.
+- **Checks:**
+  - `run5b.sh` on the final code head `a645633`, the merge `ff05275` and the final merge `cb415ba` (shared `1c2669d`):
+    every step exit 0 each time. The Unity runtime and editor assemblies build.
+  - The relay suite on `cb415ba`: 774 PASS lines, "35 managed-core checks passed", including "PASS expedition join
+    presentation (3612 checks …)", "PASS expedition hub (1207 checks …)", station enemies and ironworks visuals.
+  - Python 140 tests OK (1 skipped). The source package structure passed (2,317 files). `git diff --check` is clean.
+  - An earlier run on `2d84595` stopped once at `SpawnInChecks`' allocation measurement (8,032 bytes, untouched code, load
+    average about 40 from parallel agents). Its relay rerun passed (772 PASS).
+- **Renders** (offline, the real NativeBlockLit/NativeNightSky through the hub kit, posed pilot bodies; not committed):
+  `scratchpad/renders-join-circles/`:
+  - `f-idle-{station,ironworks,wardzero}-close`, `f-charge-st-station-close` and
+    `f-charge-{iw-ironworks,wz-wardzero}-shoulder` (two pilots counted, a bystander outside).
+  - `f-deploy-st-station-close`, `f-deploy-{wz,iw}-*`, `f-cancel-st-station-close`, `f-cleared-wz-wardzero-close`,
+    `f-low-station-close`, `idle-station-road` (the beacon down the road).
+  - `before-*` and `after-*-entrance` (sheet `entrances-before-after.png`).
+  - HUD over the pads: `hud-deploying.png`, `hud-near.png`, `hud-party-split.png`,
+    `hud-panels-near-notcounted-cleared-flash.png`.
+  - The renderer is a headless WebGL harness running the shaders' own code, not Unity.
+- **Field gaps for Astra (none block this):**
+  - There is no deploy record, so a step-out within the last view interval reads as a deploy (a flash and a note only).
+    `joins[].deployedAt` and deployed accounts, or `members[].pendingArea`, would make it exact and show others' loading.
+  - `h` is not in `ExpeditionJoinView`. Presentation assumes 4.5 m.
+  - A ring closed for any reason other than cleared is not visible.
+- **Geometry:** no conflict with live colliders, spawns, rings or routes.
+  - The rubble heaps on the Ward Zero and Ironworks approach axes (4 m from the centres) ruled out painted approach chevrons,
+    so the lead-in is the beacons, the hologram and the circle lights.
+  - The boards and shutter blocks stay (geometry). A 10 cm wood sliver shows between the airlock's pocket and the new tile.
+- **Impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Not run:** Unity Editor, a Windows build, two clients, audio. The Runtime draw and HUD glue are compiled (Unity
+  assemblies) but not executed. The HUD renders use the IMGUI recorder.
+- **Next:** owner review in a build. Astra: the optional deploy record and `h`. The owner generates the seven sound keys.
+
+## 2026-10-17 — Claude: Central Station in-game visuals on the live station (on branch, not live until merged)
+
+- Task (coordinator, from the owner's approved design): build the station's in-game environment to a higher standard than Ward Zero ("a map players call 'This is a cool map!'"), with our real assets and lighting. Mid-task the coordinator reported the station live (Astra's PRs #255-#257) and changed the brief: build on the live map, ship-ready (budget, low tier, readable, no effect on other maps), presentation only, hazards' presentation off in normal play until Astra's fields exist. City Ironworks, the station's enemies and the Ironworks enemies are parallel branches; none of their areas were touched.
+- Branch `claude/station-visuals`, base shared `8a5de43`, merged with shared `4164d5c` (the activation, #255-#257; the coordinator named `640af06`, shared had moved on) then `6404332` (#258-#260 and the Ironworks enemies; the station's map is unchanged there, only Ironworks' navigation moved), `612f0da` (the City Ironworks visuals: the two kits' hooks sit side by side, both look entries kept, the MapLooks receipt recomputed), `0b54ebe` (the station's enemies: both check registrations kept; this branch's station audio fields renamed `stationCue*`, since the enemies' `NativeAudio` part also declares `stationKinds`), and `1c2669d` (#261, arrival poses; no shared file but the DEV_LOG). Implementation commits `be9f763`, `744ce49`, `3675e13` and the merges `1891c5d`, `a2a2beb`, `f15d11e`, `e445d86` (it carries the audio rename) and `1208f2d`. Pushed; no PR, no merge, builder untouched, nothing published.
+- **What it is** (full write-up: `docs/EXPEDITION-CENTRAL-STATION-VISUALS.md`):
+  - `Core/NativeExpeditionStationKit` (+ `.Concourse`, `.Shed`), the design's ranked gap 1:
+    - the broken glass vault with moon shafts; the screen, clerestory and great clock; CENTRAL;
+    - the four-faced departure board, its rows driven by the view (DOES NOT STOP at rest; APPROACHING / SUSPENDED / LAST CALL / ALL SERVICES CANCELLED with the hazards and the boss), the paged ticker and the side faces, in the doc's final text;
+    - the booth, cafe, newsagent, balconies, field hospital, the hall's checkpoint, turnstiles, troffers and ticket office;
+    - sodium pendants, platform coping and lines, the pits' red strips, line-colour signs, island clutter;
+    - rails and sleepers, the third rail on insulators per section, the crossings;
+    - the tunnel mouths with signals, beacons, STAND BACK and NO ENTRY;
+    - the stalled train (lit windows, spawn doors, NOT IN SERVICE, car 2's interior), the wagon, the flood;
+    - the footbridges, the corridor (pipes, red strips, the steam main, the generator);
+    - the signal box (red windows, name board, 16 levers in both poses, the track diagram);
+    - every entrance from the area's spawns; the express rig (ranked gap 4).
+  - `Core/NativeExpeditionStation`: the gate (map id only), timings, text, `NativeStationView` (the doc's section 8 fields), `NativeStationState`, `NativeStationLive` (`View` for Astra, `Authority`, the `Calm` view normal play draws until then), the DEV preview's cycle, the cue timeline.
+  - `Core/NativeExpeditionStationLights` (8 slots, 4 on the low tier; the express's headlight and band, rotating beacon beams) and `Core/NativeExpeditionStationFx` (atmosphere: shafts, motes, lamp cones and pools, halos, reflections, ripples, mist, drips, the fire; and the hazards' telegraphs).
+  - Runtime: `NativeExpeditionStationPresentation` (+ `NativeStationLifetime`) and `NativeExpeditionStationAudio` (the doc's `station.*` keys on stand-in clips).
+- **Live-map adaptation:**
+  - Activation snapshot vs design draft: geometry identical (458 blocks, 18 stairs). New: 4 machines in the live area; the kit keeps every part off a machine, its pilot spot, dispenser and chip drop (floor paint may run under). The live map's tag ("The last train left at 6:47.") contradicts the design and the board ("The 6:47 never left": the train stalled on platform 2); left for Astra.
+  - The only live data change is the station's own `MapLooks.json` entry: the visuals look (key 0.42 to 0.5, ambient up a little, practicals moved under the board, into the box and onto the hearth, the screen as dark iron, the lever frame as dark iron, `dressing`/`atmosphere` naming the kit). The look draft file is retired.
+  - Hazards (express, third rail, flood, cabinets, steam, glass) draw only under the DEV preview until Astra sets `NativeStationLive.Authority` and fills `View`; normal play draws the calm station (board DOES NOT STOP, rails dark, flood still).
+- **Shared files** (one hook line each): `NativeSourcePresentation` `StationScenery(arena);`, `NativeStagePrewarm` (the station kit builds under the loading screen) with its entry in `TransitionLoadingChecks`, `NativeAudio` `StationCues(arena,menu);`, `NativeDevTools` (`preview-station`), `NativeDevPanel` (the case and the Camera-tab toggle), `Tests/Program.cs` (the run line and `--station-visuals`); `tools/asset-lock.json`'s MapLooks receipt, written as `generate_expedition.py` writes it (`--check` passes). The earlier `ExpeditionStationDraftChecks` edit was dropped in the merge (shared's version no longer scans names).
+- **Numbers:** kit 6,743 parts (hall 428, concourse 3,575 of which the board's text ~2,230, shed 2,063, corridor 75, signal box 180, upper 422), low tier 4,625, 237 casters, express 197; 18 instanced draws with the express and the atmosphere (budget 22); 76 light candidates, 8 slots at cameras in every room (4 low); 231-711 effect quads at rest, up to 979 with every hazard on (capacity 2,600); no per-frame allocation.
+- **Checks** (`run5b.sh` on `1208f2d`, the final merge, every step exit 0, with the same results on `e445d86`, `f15d11e` and `a2a2beb` before it; no allocation check flaked):
+  - the Unity runtime and editor assemblies build;
+  - `tools/check_relay.py`: "35 managed-core checks passed", 774 PASS lines, including "PASS expedition station visuals (832553 checks; 6743 kit parts ...; 18 draws; 76 light candidates; up to 913 quads)", "PASS station enemies (154138 checks ...)" and "PASS transitions/loading: 3539 checks";
+  - Python `unittest discover`: 140 tests OK (1 skipped);
+  - `package_source.py`: structure passed (2,325 source files);
+  - `git diff --check`: clean.
+  - Also `tools/generate_expedition.py --check` passes (on `f15d11e`; the enemies merge does not touch the resources or the lock).
+- **Renders** (offline through the real NativeBlockLit + NativeNightSky, the live map, area and look, the real Core kit, picker, atmosphere and machine models; not in the repo): `scratchpad/renders-station-vis/`: normal play's calm station `hero-concourse`, `ticket-hall`, `board-close`, `express-headlight`, `platform-p2`, `train-car2`, `flooded-t3`, `signal-box`, `corridor`, `box-levers`; DEV preview states `warn-*` (express warning), `pass-*`, `flood-flooded-t3`, `levers-*` (lever cut), `boss-*` (with falling glass), `hazards-*` (cabinet arc, steam burst); `low-*` (low tier). Against Ward Zero's hero (`renders-central-station/compare/ward-hero.png`) it is a clear step up (the board and CENTRAL, moon shafts, sodium platforms, the train, the red corridor and signal box); against the design concept the vault's arches read weaker.
+- **Not run / short of:**
+  - Unity Editor, Windows player and play: never seen in the engine.
+  - The water look and the shaft quad are not shader modes (sprite chains and streaks stand in); no wet coat; no light field for the many lamps.
+  - The loop sounds and the PA voice are not wired (the owner records them).
+  - The design disagrees on the express signals (red vs green when due); this follows green (one line in `Evaluate`).
+  - Visual shortfalls seen in the renders: the live flood reads as a flat bright blue sheet (readable, not beautiful); falling glass reads only up close; the board half hides CENTRAL from the ticket hall; the island platforms are plain and the train's exterior reads tan under sodium.
+- **Impact:** other maps unchanged (gated by map id; the kit builds nothing elsewhere). No change to geometry, collision, spawns, machines, navigation, the manifest, catalogue, rules, AI, authority, director or networking; no effect on hit timing, hitboxes, damage, cooldowns or movement. The express's presentation follows the doc's timings (4 s warning, 2.2 s pass) for Astra's authority to match.
+- **Next:**
+  - Coordinator: merge into shared (it goes live then).
+  - Astra: fill `NativeStationLive.View` from the replicated hazard and objective fields and set `Authority`; align the map's tag.
+  - Claude: water/shaft shader modes if wanted; the PA and loops once recorded.
+
 ## 2026-10-17 — Astra: Expedition arrival pose synchronization
 
 - Branch `codex/unity-expedition-transfer-position`, base shared/builder `612f0da`.

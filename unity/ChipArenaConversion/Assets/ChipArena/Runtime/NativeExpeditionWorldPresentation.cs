@@ -72,6 +72,8 @@ namespace ChipArena.UnityConversion
         {
             // The doors, final gate and sanctuary, and the transfer screen's fade (NativeExpeditionStatesPresentation.cs).
             ExpeditionStatesFrame();
+            // The join circles' pads, sounds and model (NativeExpeditionJoinPresentation.cs), before the world pieces are built.
+            ExpeditionJoinFrame();
             // Nothing at the area's anchors until the arena holds its map (the view names the next area before the load).
             if(!ExpeditionWorldShown||!expeditionMapReady){expeditionWorld?.Clear();expeditionLabelWorld.Pieces.Clear();return;}
             if(expeditionWorld==null&&!expeditionWorldFailed){expeditionWorld=NativeExpeditionWorldPresentation.Create();expeditionWorldFailed=expeditionWorld==null;}

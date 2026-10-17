@@ -110,6 +110,8 @@ namespace ChipArena.UnityConversion
             if(v.transfer.stage!=ExpeditionTransferStage.None)E.TransferBanner(new Rect(width/2-220,countdown?116:58,440,46),v);
             // The SAFE chip, the boss plates and intro, the final gate's notice (NativeExpeditionStatesPresentation.cs).
             ExpeditionStatesHud(v,width,height,58+(countdown?58:0)+(v.transfer.stage!=ExpeditionTransferStage.None?54:0));
+            // The party list, the join circle panel, the deploy notes and my deploy flash (NativeExpeditionJoinPresentation.cs).
+            ExpeditionJoinHud(width,height);
             var hint=new Rect(width-24-150,24,150,28);NativeHudChrome.Tag(hint,C.Cyan(),.9f);U.Text(new Rect(hint.x+12,hint.y,hint.width-12,hint.height),"J · EXPEDITION",11,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
             ExpeditionChipsTag(v);
             // The reveal of a new stored dice record: not modal in the scene (the pointer stays with play); it closes by itself.

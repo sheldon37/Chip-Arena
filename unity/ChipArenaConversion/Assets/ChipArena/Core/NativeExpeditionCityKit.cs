@@ -121,8 +121,8 @@ namespace ChipArena.UnityConversion
             if(k.byStem.Count==0)return k;
             k.Faces();k.KeepOuts();k.HubKeepOuts();k.FaceKeeps();
             for(int i=0;i<k.blocks.Length;i++){var s=Stem(k.blocks[i]?.id);if(s==null)continue;k.Dress(i,s);}
-            k.HubHeaders();k.Spawns();k.Street();k.WildsGround();
-            k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Keeps=k.keeps.ToArray();k.parts.Clear();k.glows.Clear();if(layers)Layers(k.Parts,k.blocks);return k;
+            k.HubHeaders();k.Spawns();k.Street();k.WildsGround();k.EntranceLights();
+            k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Keeps=k.keeps.ToArray();k.Lettering=k.lettering.ToArray();k.parts.Clear();k.glows.Clear();if(layers)Layers(k.Parts,k.blocks);return k;
         }
         private static void Layers(NativeCityPart[] parts,ContentBlock[] blocks)
         {
@@ -325,7 +325,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Block letters on face f: text centred at u, glyph cells `cell` m, the baseline at y, `d` out of the plane, cell depth `depth`.</summary>
         private void Text(Face f,string text,double u,double y,double d,double cell,double depth,Pen pen,double roll=0,int dead=-1,Pen deadPen=default)
         {
-            double width=text.Length*4*cell-cell,u0=u-width/2;
+            double width=text.Length*4*cell-cell,u0=u-width/2;int before=parts.Count;
             for(int i=0;i<text.Length;i++)
             {
                 var p=i==dead?deadPen:pen;double lu=u0+i*4*cell;
@@ -333,6 +333,7 @@ namespace ChipArena.UnityConversion
                     if(roll!=0){double a=roll*Math.PI/180,du=cu-u,dy=cy-(y+2.5*cell);cu=u+du*Math.Cos(a)+dy*Math.Sin(a);cy=y+2.5*cell-du*Math.Sin(a)+dy*Math.Cos(a);}
                     FBox(f,cu,cy,d,g[2]*cell,g[3]*cell,depth,p,roll);}
             }
+            if(parts.Count>before)lettering.Add(text);
         }
         public static double TextWidth(string text,double cell)=>text.Length*4*cell-cell;
 

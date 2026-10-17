@@ -21,6 +21,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition-layout"){ExpeditionLayoutChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-dressing"){ExpeditionDressingChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-hub"){ExpeditionHubChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--expedition-join-view"){ExpeditionJoinPresentationChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--station-visuals"){ExpeditionStationVisualChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-states"){ExpeditionStatesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-acceptance"){ExpeditionAcceptanceChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-pick"){ExpeditionPickChecks.Run(ProjectRoot());return 0;}
@@ -71,6 +73,7 @@ internal static class Program
             ExpeditionPresentationChecks.Run(root);ExpeditionIntegrationChecks.Run(root);ExpeditionDirectorChecks.Run(root);ExpeditionStatesChecks.Run(root);ExpeditionAcceptanceChecks.Run(root);ExpeditionPickChecks.Run(root);
             PveSpitterChecks.Run(root);NavSearchChecks.Run(root);WardSimulationChecks.Run(root);HulkBreachChecks.Run(root);InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
+            ExpeditionStationVisualChecks.Run(root);
             FactoryChecks.Run(root);StageHazardChecks.Run(root);SurfaceChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};
             var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
@@ -118,7 +121,7 @@ internal static class Program
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
             StructureFxChecks.Run(root);
             IronworksVisualChecks.Run(root);
-            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);ExpeditionHubChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
+            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
             DevToolsChecks.Run(root);
             SpawnInChecks.Run(root,data);
             VfxChecks.Run(root);VfxRuntimeChecks.Run(root);
