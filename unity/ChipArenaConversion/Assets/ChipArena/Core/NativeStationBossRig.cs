@@ -65,6 +65,8 @@ namespace ChipArena.UnityConversion
         // ---- outputs the effects read ----
         /// <summary>Whether the boss is shown (a view or the preview) and whether its arrival is playing (and how far in, s).</summary>
         public bool Visible,Arriving;public float ArrivalAge=float.NaN;
+        /// <summary>Whether the move playing is TERMINUS's double charge.</summary>
+        public bool DoubleCharge;
         /// <summary>The root as presented, its yaw (rad), ground speed; the hands' planted flags and this frame's landings.</summary>
         public Vector3 Root;public float Yaw,Speed;public int Landed;
         /// <summary>The headlamp's world position and beam direction; the lamp's lock (Departure's lane locked).</summary>
@@ -136,7 +138,7 @@ namespace ChipArena.UnityConversion
             {
                 if(actionSideId!=v.actionId){actionSideId=v.actionId;actionSide=SideOf(move,v,hasTarget,target);}
                 float hit=StationBossView.At(v.hitAt)?v.hitAt-v.actionAt:float.NaN,dur=StationBossView.At(v.duration)?v.duration:float.NaN;
-                Actions.Play(StationBossMoves.Defs[move],v.actionId,v.actionAt,hit,dur);if(StationBossView.At(v.cancelAt))Actions.Cancel(v.cancelAt);
+                Actions.Play(StationBossMoves.DefOf(move,v.phase),v.actionId,v.actionAt,hit,dur);if(StationBossView.At(v.cancelAt))Actions.Cancel(v.cancelAt);
             }
             if(StationBossView.At(v.phaseAt)&&v.phase>=2)
             {
@@ -151,7 +153,8 @@ namespace ChipArena.UnityConversion
                 if(!part&&v.staggerCause!="phase"){var push=new Vector3(v.staggerPushX,0,v.staggerPushZ);if(push.LengthSquared()<1e-6f)push=-fwd;Stagger.Start(v.staggerAt,push,v.staggerCause=="express"?1.25f:.8f,v.staggerSeconds,yaw);}
             }
             Actions.Sample(t);Phases.Sample(t);Staggers.Sample(t);
-            Act=Actions.Current;ActMove=Act.Active&&ReferenceEquals(Actions.CurrentDef,move>=0?StationBossMoves.Defs[move]:null)?move:-1;ActSide=actionSide;
+            Act=Actions.Current;ActMove=Act.Active&&ReferenceEquals(Actions.CurrentDef,StationBossMoves.DefOf(move,v.phase))?move:-1;ActSide=actionSide;
+            DoubleCharge=ActMove>=0&&ReferenceEquals(Actions.CurrentDef,StationBossMoves.DepartureDouble);
             // ---- the channels: neutral, then each layer in priority (moves, phase changes, staggers, arrival, death) ----
             Array.Copy(StationBossCh.Neutral,ch,ch.Length);
             Layer(Actions,MoveKeysFn,true);Layer(Phases,PhaseKeysFn,false);Layer(Staggers,StaggerKeysFn,false);
@@ -209,7 +212,7 @@ namespace ChipArena.UnityConversion
         }
         // ---- layers ----
         private static readonly Func<BossActionDef,StationBossSnap[]> MoveKeysFn=MoveKeys,PhaseKeysFn=PhaseKeys,StaggerKeysFn=StaggerKeysOf;
-        private static StationBossSnap[] MoveKeys(BossActionDef d){for(int i=0;i<StationBossMoves.Defs.Length;i++)if(ReferenceEquals(StationBossMoves.Defs[i],d))return StationBossMoves.Keys[i];return null;}
+        private static StationBossSnap[] MoveKeys(BossActionDef d)=>StationBossMoves.KeysOf(d);
         private static StationBossSnap[] PhaseKeys(BossActionDef d)=>ReferenceEquals(d,StationBossMoves.Smash)?StationBossMoves.SmashKeys:ReferenceEquals(d,StationBossMoves.Tear)?StationBossMoves.TearKeys:null;
         private static StationBossSnap[] StaggerKeysOf(BossActionDef d)=>ReferenceEquals(d,StationBossMoves.Flinch)?StationBossMoves.FlinchKeys:StationBossMoves.StaggerKeys;
         private void Layer(BossActionPlayer p,Func<BossActionDef,StationBossSnap[]> keysOf,bool sided)

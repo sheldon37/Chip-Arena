@@ -81,9 +81,9 @@ namespace ChipArena.UnityConversion
         public const int PuddleCount=6;
         /// <summary>The platform barrier (z and height) and its centre segments' span (x): the two that fall in PLATFORM ALTERATION.</summary>
         public const float BarrierZ=-4.2f,BarrierHeight=1.1f,BarrierX0=-18f,BarrierX1=18f,GateHalf=3f;
-        /// <summary>The departure board over the booth (NativeExpeditionStationKit's box: centre, half sizes) and how it lies across the
-        /// booth once torn down (pitch, centre height and z: the proposed 30 degree board collider).</summary>
-        public const float BoardX=0,BoardY=8.6f,BoardZ=11f,BoardHalfX=5.2f,BoardHalfY=2.2f,BoardHalfZ=2.2f,BoardFallPitch=-30,BoardFallY=4.9f,BoardFallZ=11.4f;
+        /// <summary>The departure board over the booth (NativeExpeditionStationKit's box: centre, half sizes). How it lies across the
+        /// booth once torn down is NativeStationBossStage.BoardPose (the board collider Astra adds should follow it).</summary>
+        public const float BoardX=0,BoardY=8.6f,BoardZ=11f,BoardHalfX=5.2f,BoardHalfY=2.2f,BoardHalfZ=2.2f;
         /// <summary>T1 (the express line the boss arrives on), the track bed, P1's edge, the crossing at x 0, the west mouth.</summary>
         public const float LineZ=-12.5f,TrackBed=-1.2f,PitNear=-10f,PitFar=-15f,PlatformZ=-7f,CrossingX=0,WestMouth=-48f;
         /// <summary>The doors (body local x, z): where Next Stop's adds step out and All Aboard's arms shoot from.</summary>

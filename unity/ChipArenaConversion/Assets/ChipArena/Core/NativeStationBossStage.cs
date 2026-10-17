@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 
 namespace ChipArena.UnityConversion
 {
@@ -24,8 +25,8 @@ namespace ChipArena.UnityConversion
         /// The beats from a boss song on the boss clock (<see cref="NativeZoneBossSong.FirstBoss"/>: the intro edit's opening and
         /// its resumed run to the drop; accents the edit cuts are skipped):
         /// <list type="bullet">
-        /// <item>the chime hit is the first chime and the light cut the first cut after it (the headlight blooms as the song's
-        /// stage cuts the lights);</item>
+        /// <item>the board flip is the last intro chime at least .5 s before the first cut (the song's stage shows LAST CALL on the
+        /// chimes before it), and the light cut is that cut (the headlight blooms as the song's stage cuts the lights);</item>
         /// <item>the stop at the crossing is the first slam or drop at least 1.2 s after the cut (where the song's stage flares the
         /// lights back), and the brake sparks fall on the first beat of the song's grid .5 s after the cut;</item>
         /// <item>the unfold and the step up are the next hits .5 s and .4 s on;</item>
@@ -38,8 +39,10 @@ namespace ChipArena.UnityConversion
         {
             b=Fallback;if(song?.Accents==null||!(song.Hold>0)||song.Hold>=30)return false;float hold=(float)song.Hold,end=hold+.05f;
             const byte Any=255,Hit=254;
-            float chime=First(song,NativeZoneBossSong.AccentChime,0,end);if(float.IsNaN(chime))return false;
-            float cut=First(song,NativeZoneBossSong.AccentCut,chime+1e-3f,end);if(float.IsNaN(cut))return false;
+            float first=First(song,NativeZoneBossSong.AccentChime,0,end);if(float.IsNaN(first))return false;
+            float cut=First(song,NativeZoneBossSong.AccentCut,first+1e-3f,end);if(float.IsNaN(cut))return false;
+            // The board reads the song's LAST CALL through the intro chimes and flips to ARRIVING on the last of them.
+            float chime=Last(song,NativeZoneBossSong.AccentChime,first,cut-.5f);if(float.IsNaN(chime))chime=first;
             float banner=Last(song,NativeZoneBossSong.AccentDrop,cut,end);if(float.IsNaN(banner))banner=hold;banner=Math.Min(banner,hold);
             float stop=First(song,Hit,cut+1.2f,banner-1.5f),sparks=Beat(song,cut+.5f,stop-.3f);if(float.IsNaN(sparks))sparks=(cut+stop)*.5f;
             float unfold=First(song,Any,stop+.5f,banner-1.2f),step=First(song,Any,unfold+.4f,banner-.8f),drop=Last(song,NativeZoneBossSong.AccentSlam,step+.5f,banner-.25f);
@@ -167,6 +170,42 @@ namespace ChipArena.UnityConversion
         /// <summary>An impact's shudder: sharp at the hit, decaying (0 before and after `len`).</summary>
         private static float Impact(float t,float len)=>t<0||t>=len?0:(float)Math.Exp(-t*5/len)*(1-t/len);
         /// <summary>The board's fall: swinging down off its chains, landing at .62 of the time, a small bounce, lying still.</summary>
+        /// <summary>
+        /// Draws the stage on the station's state, after the authority's (NativeStationState.Evaluate) and the song's
+        /// (NativeStationState.Score). Row 0's priority, lowest first:
+        /// <list type="number">
+        /// <item>the authority's: CANCELLED with the boss, a Conductor's LAST CALL, else DELAYED;</item>
+        /// <item>the song's LAST CALL through the intro chimes;</item>
+        /// <item>the boss's ARRIVING from its board flip (the last intro chime) to the hold's end;</item>
+        /// <item>the boss's DEPARTED from the death's flip.</item>
+        /// </list>
+        /// Also every clock's minute (6:48 after the death), T1's signal green through the arrival (never over the levers' dark),
+        /// the barrier's and the board's falls and the shudder. The house lights stay the song's. Allocation free.
+        /// </summary>
+        public static void Apply(NativeStationState s,in StationBossStage b)
+        {
+            if(s==null||!b.On)return;
+            if(b.Board==BoardArriving)s.Row0=NativeStationState.Row0Arriving;else if(b.Board==BoardDeparted)s.Row0=NativeStationState.Row0Departed;
+            s.ClockMinute=b.ClockMinute;if(b.WestSignalGreen&&!s.Levers)s.Signal=NativeStationState.SignalGreen;
+            s.BarrierFall=b.BarrierFall;s.BoardFall=b.BoardFall;s.Shake=b.Shake;
+        }
+        /// <summary>The departure board's bottom centre: the pivot it swings off its chains about.</summary>
+        public static readonly Vector3 BoardPivot=new Vector3(NativeStationBossArena.BoardX,NativeStationBossArena.BoardY-NativeStationBossArena.BoardHalfY,NativeStationBossArena.BoardZ);
+        /// <summary>The board's pose at fall `fall` (0 hanging .. 1 down): a point p goes to BoardPivot + rot (p - BoardPivot) + move.
+        /// It tips back away from the boss (the top to the north) and comes to rest across the booth's roof on its north edge, its
+        /// face turned up to the concourse; nothing of it is south of z 9 (the boss stands in front of the booth).</summary>
+        public static void BoardPose(float fall,out Quaternion rot,out Vector3 move)
+        {
+            float k=BossMath.Clamp01(fall);rot=Quaternion.Slerp(Quaternion.Identity,Quaternion.CreateFromYawPitchRoll(6*Deg,18*Deg,4*Deg),k);move=new Vector3(0,-2.75f,.6f)*fall;
+        }
+        /// <summary>A centre barrier segment's pose at fall `fall` (side -1 west, +1 east): thrown forward onto P1, pivoting on the
+        /// platform side of its base (a point p goes to pivot + rot (p - pivot) + move).</summary>
+        public static void BarrierPose(int side,float fall,out Vector3 pivot,out Quaternion rot,out Vector3 move)
+        {
+            float f=BossMath.Clamp01(fall);pivot=new Vector3(side*10.5f,0,NativeStationBossArena.BarrierZ-.2f);
+            rot=Quaternion.CreateFromYawPitchRoll(side*8*Deg*f,-84*Deg*f,-side*6*Deg*f);move=new Vector3(side*.8f*f,0,-1.3f*f);
+        }
+        private const float Deg=(float)(Math.PI/180);
         public static float BoardDrop(float t)
         {
             if(t<=0)return 0;float u=t/BoardFallSeconds;if(u>=1)return 1;

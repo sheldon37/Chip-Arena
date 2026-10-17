@@ -86,6 +86,18 @@ namespace ChipArena.UnityConversion
         /// <summary>The side each move was authored to (+1 right, -1 left, 0 symmetric): it is mirrored toward its target's side.</summary>
         public static readonly int[] Side=new int[NativeStationBoss.Moves.Length];
         public static BossActionDef Smash,Tear,Stagger,Flinch;public static StationBossSnap[] SmashKeys,TearKeys,StaggerKeys,FlinchKeys;
+        /// <summary>TERMINUS's Departure (doc section 5): a double charge. The first charge's skid becomes a 0.6 s turn on a second,
+        /// two-note chime, then the second charge, the brake and the turn back. Contact at the first charge (the record's hitAt);
+        /// the second lands <see cref="SecondCharge"/> later.</summary>
+        public static BossActionDef DepartureDouble;public static StationBossSnap[] DepartureDoubleKeys;
+        public const float DoubleTurn=.6f;
+        /// <summary>Seconds from the first charge's contact to the second's (authored: the strike and the turn).</summary>
+        public static float SecondCharge=>NativeStationBoss.Move("departure").Strike+DoubleTurn;
+        /// <summary>The phrase a move plays in a phase: Departure becomes the double charge in TERMINUS.</summary>
+        public static BossActionDef DefOf(int move,int phase)=>move>=0&&phase>=3&&move==DepartureIndex?DepartureDouble:move>=0?Defs[move]:null;
+        private static readonly int DepartureIndex=Index("departure");
+        /// <summary>A phrase's key poses (a move's, or the double charge's).</summary>
+        public static StationBossSnap[] KeysOf(BossActionDef d){if(ReferenceEquals(d,DepartureDouble))return DepartureDoubleKeys;for(int i=0;i<Defs.Length;i++)if(ReferenceEquals(Defs[i],d))return Keys[i];return null;}
         /// <summary>The arrival's poses: rolling on the rails with the legs folded, rearing through the gate, the plant.</summary>
         public static readonly StationBossSnap Stand=new StationBossSnap(),Rolling=MakeRolling(),Arrival=MakeArrival(),Risen=new StationBossSnap().Watch(-150,0,20,-15).Head(-14).Chest(-4);
         /// <summary>The death's pose (the concept's Death): the legs splayed, the body on its wheels, the Stationmaster slumped.</summary>
@@ -131,6 +143,16 @@ namespace ChipArena.UnityConversion
                 N().Lean(0,-.25f,0,9).Chest(28).Head(-25).Watch(-80,0,8,-10).Bell(-150,0,-12,-75).Set(StationBossCh.Lamp,2.0f),
                 N().Lean(0,-.35f,.1f,4,14,-9).Plant(0,-2.4f,6.5f).Plant(1,3.6f,5.7f).Chest(18,0,14).Head(-6,0,-8).Set(StationBossCh.SHatP,15).Set(StationBossCh.SHatR,-25).Set(StationBossCh.Lamp,1.4f),
                 N());
+            // ---- TERMINUS's double charge: the same crouch and launch; the first charge's brake is a turn on the spot (front hands
+            // pivoting, the body yawing into it, the watch raised for the second chime); the second charge, the brake, the turn back ----
+            {
+                var k=Keys[Index("departure")];
+                DepartureDouble=new BossActionDef("departure-double",.2f,.45f,P(A,p.Anticipation-.15f,1,BossEase.InOut),P(S,.15f,2,BossEase.In,2.2f),P(C,p.Strike,3,BossEase.InOut),
+                    P(F,DoubleTurn,4,BossEase.InOut),P(C,p.Strike,5,BossEase.InOut),P(F,p.Follow,6,BossEase.Out,2),P(R,p.Recover,7,BossEase.Settle,1.4f));
+                DepartureDoubleKeys=new[]{k[0],k[1],k[2],k[3],
+                    N().Lean(0,-.45f,.1f,5,-18,6).Plant(0,-2.9f,6.2f).Plant(1,2.2f,6.8f).Chest(14,0,-10).Head(-14,0,6).Watch(-88,0,6,-8).Bell(-150,0,-12,-75).Set(StationBossCh.Lamp,2.0f),
+                    k[3],k[4],k[5]};
+            }
             // ---- Platform Alteration: the Stationmaster's watch arm rises to the vault (ease-in over 0.45 s), the body rears 8 and the
             // front arms lift; at the hit the horn blasts and the arm stands up for the 1.2 s strike; down ----
             var a=NativeStationBoss.Move("alteration");
