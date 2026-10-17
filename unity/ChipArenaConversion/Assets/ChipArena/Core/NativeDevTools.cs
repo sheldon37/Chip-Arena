@@ -185,6 +185,7 @@ namespace ChipArena.UnityConversion
             new NativeDevAction("preview-hub-gates",Ca,V,"Hub gates preview"),
             new NativeDevAction("preview-station",Ca,V,"Station hazards preview"),
             new NativeDevAction("preview-ironworks",Ca,V,"Ironworks hazards preview"),
+            new NativeDevAction("preview-ironworks-boss",Ca,V,"Ironworks boss preview"),
             new NativeDevAction("preview-door-lock",Ca,V,"Instance exit door preview"),
             new NativeDevAction("overlay-shots",Ca,V,"Shot paths"),
             new NativeDevAction("log",Ca,V,"Event log",key:"F1"),

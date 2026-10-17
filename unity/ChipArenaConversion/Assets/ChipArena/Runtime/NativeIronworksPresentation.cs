@@ -84,7 +84,7 @@ namespace ChipArena.UnityConversion
             if(!ReferenceEquals(arena,iwArena)||arena.Generation!=iwGeneration){iwArena=arena;iwGeneration=arena.Generation;iwLast=-1;}
             float now=PresentationClock(arena);arena.BindZonePresentation();NativeIronworksHazards.Evaluate(NativeIronworksLive.Input(),iwViews);
             // The zone boss song (NativeIronworksMusic; presentation only): furnaces, work lights, steam, sparks and the parked ladle.
-            iwMusic=ZoneBossBeat(arena);NativeLighting.ZoneHouse(iwMusic.House());
+            iwMusic=IronworksBossMusic(ZoneBossBeat(arena));NativeLighting.ZoneHouse(iwMusic.House());
             Shader.SetGlobalFloat(MoltenClockId,(float)(now%1000.0));Shader.SetGlobalFloat(HeatClockId,(float)(now%1000.0));
             var blocks=map.blocks;Array.Clear(iwParents,0,iwParents.Length);foreach(var p in arena.AllBlocks){if(p==null||p.Definition?.id==null)continue;if(iwIndex.TryGetValue(p.Definition.id,out int i))iwParents[i]=p;}
             for(int i=0;i<iwParents.Length;i++){var p=iwParents[i];if(p==null){iwMoved[i]=false;continue;}var t=p.transform;var b=blocks[i];iwMoved[i]=t.position!=new Vector3(b.pos.x,b.pos.y,b.pos.z);}
