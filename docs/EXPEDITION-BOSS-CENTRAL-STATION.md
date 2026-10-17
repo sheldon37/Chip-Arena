@@ -2,7 +2,8 @@
 
 Claude, 2026-10-17. Branch `claude/boss-central-station`, based on shared `claude/sleepy-ritchie-g8ruhv` at `dfb8aac` and
 fast-forwarded to `ce85919` (Astra's PRs #263-#265: zone music, the station's four enemies shipped, the station hazards
-live through `Core/NativeZoneHazards.cs`, `Core/NativeZoneCombat.cs` and `Runtime/NativeExpeditionZoneHazards.cs`).
+live through `Core/NativeZoneHazards.cs`, `Core/NativeZoneCombat.cs` and `Runtime/NativeExpeditionZoneHazards.cs`). It was then merged
+with shared `f3d8eb4`, which adds the boss motion library and Astra's verified zone gameplay release.
 
 **Status: design on the branch. Not merged, not live.** It adds one inert Core file (the concept model and its key
 poses), its managed checks and this doc. No runtime file, live resource, rule, AI, director, wire or network field
@@ -11,9 +12,9 @@ here is a proposal for Astra, who owns rules, AI, numbers, networking and author
 
 Owner (2026-10-17, verbatim): "let us begin on the bosses for these two areas~ I want these animations to be a lot more
 fluid than what we have now" and "A high quality design matching the areas too". The City Ironworks boss is a separate
-task. The shared fluid-motion library (`claude/boss-motion`: springs, replicated-root smoothing, foot-planting gait with
-IK for N legs, spring/verlet chains, an action timeline, additive layers) is a third task. This design speaks its terms
-(section 7) and does not depend on its code, which was not on origin when this was written.
+task. The shared fluid-motion library (`docs/BOSS-MOTION.md`, `Core/NativeBossMotion*.cs`) was a third task. It merged
+into shared at `f3d8eb4`, and this branch merges that. Section 7 maps every motion onto its types. The concept model does
+not call it: the model stays inert, and the binding comes later.
 
 | What | Where |
 | --- | --- |
@@ -364,16 +365,36 @@ the PLATFORM ALTERATION phase change.
 
 ## 7. Animation direction
 
-The owner's main ask is *much more fluid*. Every motion here is built from the shared library's parts: replicated-root
-smoothing, springs, the foot-planting gait with IK, verlet chains, the action timeline and additive layers. Nothing is a
-hard cut between canned poses. The numbers are `NativeStationBossMotion`.
+The owner's main ask is *much more fluid*. Every motion here is built from the shared library (`docs/BOSS-MOTION.md`).
+Nothing is a hard cut between canned poses. The numbers are `NativeStationBossMotion`. The rig follows the library's
+"build a boss's own rig" pattern (`BossCrawlerRig` is the nearest reference: six legs on a tripod gait, a dragging
+cable). Its parts:
+- a `BossGaitDef` for the six legs;
+- one `BossActionDef` per move with key tables;
+- `BossChain`s for the chain and cables;
+- `BossSecondOrder` parts for everything that lags;
+- the layers on top;
+- the pose written by joint index into a `BossPose` for `NativeBossPoseApply`.
 
-**Replicated root.** The authority sends the root (position and yaw) and the move's start time, never per-frame poses.
-- **Smoothing:** the root runs through a critically damped spring (position 2.2 Hz, ζ 1.0). Yaw has a little less damping
-  (1.8 Hz, ζ 0.9), so a correction never snaps.
-- **Turns:** the body leads with the shoulders: the front hips turn first and the rear follow 0.12 s later.
+The model's joints already use the library's convention: local -Y down a limb.
 
-**Gait: six legs in two alternating tripods** (A = left front, right mid, left rear; B = the other three).
+**Replicated root: `BossRootFollow`.** The authority sends the root (position and yaw) and each move's record, never
+per-frame poses.
+- **The follow:** `Observe` per snapshot, then `StepAt(arena.ReplicaRenderTime)` on a guest. The host feeds each fixed
+  step and presents a step behind on the visual clock.
+- **Proposed settings:** `PositionHalfLife` about 0.12 s; `MaxTurnRate` 70°/s (95°/s in TERMINUS) and `MaxTurnAccel`
+  about 180°/s², through its `BossTurn`; a heavy lean (`MaxBank` 4°, `MaxPitch` 3°, `LeanFrequency` 1.2 Hz,
+  `LeanDamping` 0.5). The `root-*` channels in `NativeStationBossMotion` are these targets in Hz and ζ.
+- **Turns:** the body leads with the shoulders: the front hips turn first and the rear follow 0.12 s later, through the
+  gait's `Twist`.
+- **The arrival and late joins:** a `BossInertializer` hands the arrival's presentation pose to the live follow when the
+  hold ends. A late joiner or a teleport never pops.
+
+**Gait: `BossGait` with six `BossLegDef`s in two alternating tripods** (A = left front, right mid, left rear, phase 0;
+B = the other three, phase 0.5).
+- **Leg definitions:** `Hip` and `Home` come from the model's `Rest` and `Stance`. `Upper` and `Lower` come from `Thigh`
+  and `Shin`. `Pole` is up and out (out and back for the front arms). `BodyHeight` is 1.55.
+- **Ground:** the map floor through `IBossGround`; the track bed in the pit.
 - **Walk:** 2.6 m/s, stride 1.9 m, duty 0.62, step height 0.45 m.
 - **The swing arc:** each foot is planted by IK on the floor ahead. The swing lifts the hand, rolls the wrist and slaps it
   down with a 0.08 s squash (fingers splay).
@@ -383,25 +404,38 @@ hard cut between canned poses. The numbers are `NativeStationBossMotion`.
 - **Body response:** the body heaves on a spring (1.6 Hz, ζ 0.55) from the plant impacts. It leans into acceleration and
   turns (1.2 Hz, ζ 0.5), and it rolls 2-3° toward the swinging tripod.
 - **The charge** switches to a bound: front pair, mid pair, rear pair, duty 0.45, step height 0.75 m. The switch blends
-  over two steps. The wheels at the hips spin with ground speed.
+  over two steps. The wheels at the hips turn by distance (the follow's `Speed` over the 0.52 m radius).
+- **The crouch, rear-up and slam** are body moves through the gait's `ExtraOffset`/`ExtraRotation`, so the planted hands
+  stay planted. `BossIk.TwoBone` with a little `soft` keeps the arms from popping straight.
 
 **Secondary motion:**
 
-| Part | Rig | Behaviour |
+| Part | Library part | Behaviour |
 | --- | --- | --- |
-| The Stationmaster | spring on the chest (2.2 Hz, ζ 0.35) | lags the body and overshoots: thrown forward on the brake, back on the launch |
-| His hat | spring (3 Hz, ζ 0.3) | tilts with his head; held on with the left hand during the charge |
-| Window arms (4) | springs (1.4 Hz, ζ 0.25) | dangle and swing loosely |
-| The coupling chain (4 links) | verlet | gravity 9.8, damping 0.02, 3 iterations; trails behind the charge, swings on the brake |
-| The torn cables (2 x 3) | verlet | as the chain, and they spark at their ends |
-| The pantograph | spring (5 Hz, ζ 0.3) | rises with a snap and a settle |
-| The grab arms | spring (4 Hz, ζ 0.45) | shoot out and wobble |
-| The headlamp's aim | spring (3.5 Hz, ζ 0.8) | tracks the target smoothly; locks hard at the fourth note |
+| The Stationmaster | `BossSecondOrder3` on the chest (2.2 Hz, ζ 0.35) and `BossLookAt` on the head | lags the body and overshoots: thrown forward on the brake, back on the launch |
+| His hat | `BossSecondOrder3` (3 Hz, ζ 0.3) | tilts with his head; held on with the left hand during the charge |
+| Window arms (4) | `BossSecondOrder3` each (1.4 Hz, ζ 0.25) | dangle and swing loosely |
+| The coupling chain (4 links) | `BossChain` (Count 4, Length 0.34, MinStretch 0.95) | gravity 9.8, damping 0.02, 3 iterations; trails behind the charge, swings on the brake |
+| The torn cables (2 x 3) | `BossChain` (Count 3, Length 0.62) | as the chain, and they spark at their ends |
+| The pantograph | `BossSecondOrder` on the raise (5 Hz, ζ 0.3) | rises with a snap and a settle |
+| The grab arms | `BossSecondOrder3` (4 Hz, ζ 0.45) | shoot out and wobble |
+| The headlamp's aim | `BossLookAt` (half-life about 0.1 s) | tracks the target smoothly; locks hard at the fourth note |
 | Steam | particles | at the underframe on every crouch and brake |
 
-**Additive layers:** breathing on the Stationmaster's chest (0.25 Hz); the Heart's pulse (0.75 Hz in LAST CALL, 1.0 Hz in
-PLATFORM ALTERATION, 1.4 Hz in TERMINUS); a flinch layer on hits (the body and the struck limb; never pauses the gait);
-the passengers' windows flicker on hits.
+**Additive layers:**
+- `BossBreath` on the Stationmaster's chest (0.25 Hz);
+- the Heart's pulse (`BossBreath` at 0.75 Hz in LAST CALL, 1.0 Hz in PLATFORM ALTERATION, 1.4 Hz in TERMINUS);
+- `BossFlinch` on hits (the body and the struck limb; never pauses the gait);
+- `BossStagger` for the crash and the express hit (the body thrown along the push, the gait stepping after it);
+- the passengers' windows flicker on hits.
+
+**Actions: one `BossActionDef` per move**, driven by `BossActionPlayer.Play(def, actionId, actionAt, hitAt, duration)`
+from the replicated record (section 10).
+- **The phases** are the move table's: `Anticipation` (`InOut`), `Strike` into `Contact` (`In`, so the hand accelerates
+  into the hit), `FollowThrough` (`OutBack`) and `Recover` (`Settle`).
+- **Timing:** `BossTimeline` stretches the phases before contact to the authority's `hitAt`, so what is telegraphed is
+  what hits.
+- **The chime notes** are presentation events at fixed times inside the anticipation.
 
 **Per action** (weight, anticipation, overshoot, follow-through):
 
@@ -418,7 +452,7 @@ the passengers' windows flicker on hits.
 | Phase changes | each is authored on the timeline from `phaseAt`: the barrier smash (a Shunt into the barrier) and the board tear (a rear-up, the front hands hooking the board's chains) | the roof peel springs open and overshoots | |
 | Death | legs give rear to front | heave bounce on the wheels | the hat rolls (spring) |
 
-**Hit timing and networking impact.** Strikes land at `moveAt + anticipation` from the authority's start time. The
+**Hit timing and networking impact.** Strikes land at the record's `hitAt` (`actionAt` plus the move's anticipation). The
 presentation only stretches the follow-through, never the anticipation, so what you see telegraphed is what hits. The
 gait and every spring and chain are presentation only. Hitboxes follow the authority's root and move state, not the
 drawn limbs, except the breakable parts, whose positions come from the same model the authority would use (section 10).
@@ -590,11 +624,11 @@ Base: the systems live on shared `ce85919`. Everything below is named against th
    | Field | Meaning |
    | --- | --- |
    | `phase` (1..3), `phaseAt` | the phase and the start of its 3.5 s change |
-   | `move` (one of the 8 ids, or null), `moveAt` | the move and its authority start time; the presentation plays the timeline from it |
-   | `moveTarget` (seat id) | the locked target (Departure, All Aboard, Alteration) |
+   | `action` (one of the 8 ids, or null), `actionId` (one per move), `actionAt`, `hitAt`, `duration`, `cancelAt` | the move as `BossActionPlayer.Play` takes it (`docs/BOSS-MOTION.md`): its start, the authority's hit (start plus the anticipation), its length, and a cut (a stagger or a phase change cancels a move) |
+   | `actionTarget` (seat id) | the locked target (Departure, All Aboard, Alteration) |
    | `laneX0`, `laneZ0`, `laneX1`, `laneZ1` | Departure's lane (locked at the fourth note); X0/Z0 is also the centre of Shunt and Terminus |
    | `holdTarget`, `holdSide` (-1/+1), `holdUntil` | All Aboard's hold; `holdUntil` moves forward on an early release, set from the pilot count when it lands (1.5 s, or 1.0 s solo) |
-   | `staggerAt`, `staggerUntil`, `staggerCause` (`crash`, `express`, `part`, `phase`) | staggers |
+   | `staggerAt`, `staggerSeconds`, `staggerPushX`, `staggerPushZ`, `staggerCause` (`crash`, `express`, `part`, `phase`) | staggers, as `BossStagger.Start` takes them |
    | `lampBrokenAt`, `pantoBrokenAt`, `expressHitAt`, `sideBroken` (bit 0 left, bit 1 right) | the breaks |
    | `liveAt`, `liveUntil` | Live Rail; the six puddles are fixed points in this doc and the presentation's table |
    | `barrierDownAt`, `boardDownAt`, `roofOpenAt` | the arena changes |
@@ -633,7 +667,7 @@ Base: the systems live on shared `ce85919`. Everything below is named against th
 | Staggers | crash 2.2 s, express 3 s (8% damage), part break 0.8 s, phase change 3.5 s |
 | Moves | the section 5 table |
 
-**Animation impacts** (for the log): the strikes land on `moveAt + anticipation`. Nothing changes the existing kinds' or
+**Animation impacts** (for the log): the strikes land on the record's `hitAt` (`actionAt` plus the anticipation). Nothing changes the existing kinds' or
 hazards' timing, hitboxes, damage, cooldowns, movement or networking. The boss's own hit volumes follow its root and move
 state.
 
@@ -650,9 +684,9 @@ state.
 >    - it moves on the lane graph in section 10;
 >    - `RecordBossArrival` uses archetype `station-647` at boss point 0.
 > 2. A replicated `pve.zoneBoss` record with the fields in section 10 item 2 (finite wire floats, the -100 sentinel):
->    phase/phaseAt, move/moveAt/moveTarget, the lane, hold, stagger, the breaks, Live Rail, the arena changes, the spill
+>    phase/phaseAt, action/actionId/actionAt/hitAt/duration/cancelAt/actionTarget (the shape BossActionPlayer takes), the lane, hold, stagger, the breaks, Live Rail, the arena changes, the spill
 >    and diedAt.
-> 3. The eight moves in the section 5 table: start times, target choice, the hit windows at moveAt + anticipation, the
+> 3. The eight moves in the section 5 table: start times, target choice, the hit windows at hitAt (actionAt + anticipation), the
 >    All Aboard hold (1.5 s, 1.0 s solo, released by 120 team damage, 40 self, or any stagger), and the AI rules at the
 >    end of section 5.
 > 4. The arena hooks through NativeZoneHazardFrame:
