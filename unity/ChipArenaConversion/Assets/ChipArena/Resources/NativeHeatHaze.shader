@@ -2,7 +2,7 @@ Shader "ChipArena/NativeHeatHaze"
 {
     // Heat you can see (Claude, 2026-10-16; docs/EXPEDITION-CITY-IRONWORKS.md section 4, gap 2): a rising shimmer over the City
     // Ironworks' hot sources (the furnace mouths, a live runner, the pour, the reheat door, the converters, the slag tongue).
-    // Runtime NativeIronworksPresentation draws one dynamic mesh of camera-facing quads (Core NativeIronworksFx.Heat: centre,
+    // Runtime NativeIronworksPresentation draws one dynamic mesh of camera-facing quads (Core NativeIronworksSceneFx.Heat: centre,
     // size, strength) after the opaque world and before the effects; one named GrabPass copies the screen once a frame, and each
     // quad samples it at a small rising offset that fades to its edges (at most 1.2% of the screen at full strength). Depth-tested
     // (whatever stands in front of a source hides its shimmer), no depth write, no blending. The low graphics tier draws none

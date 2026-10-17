@@ -44,7 +44,7 @@ namespace ChipArena.UnityConversion
     ///    3D texture layout and sent each frame through NativeLighting.WardField with each channel's level (the steady glows, the
     ///    three runners). Blocks, kit, molten crust and the source models (pilots, monsters) take it.
     ///  - The eight practical lights (Core NativeIronworksLights: six warm, two always cool) through NativeLighting.PickedLights.
-    ///  - Effects (Core NativeIronworksFx) through one NativeFxDraw (a solid and an effects batch), scaled by the effects quality
+    ///  - Effects (Core NativeIronworksSceneFx) through one NativeFxDraw (a solid and an effects batch), scaled by the effects quality
     ///    and the low tier; the telegraph decals always draw.
     ///  - Heat haze (Resources/NativeHeatHaze.shader): one dynamic mesh of camera-facing quads over the hot sources, one GrabPass;
     ///    none on the low tier.
@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
         }
         private static readonly int MoltenSizeId=Shader.PropertyToID("_MoltenSize"),MoltenFlowId=Shader.PropertyToID("_MoltenFlow"),MoltenHeatId=Shader.PropertyToID("_MoltenHeat"),MoltenStyleId=Shader.PropertyToID("_MoltenStyle"),
             MoltenClockId=Shader.PropertyToID("_MoltenClock"),HeatClockId=Shader.PropertyToID("_HeatClock");
-        private Material iwMaterial,iwMolten,iwHaze;private Mesh iwMesh,iwCube,iwHazeMesh;private bool iwFailed;private NativeFxDraw iwDraw;private readonly NativeIronworksFx iwFx=new NativeIronworksFx();
+        private Material iwMaterial,iwMolten,iwHaze;private Mesh iwMesh,iwCube,iwHazeMesh;private bool iwFailed;private NativeFxDraw iwDraw;private readonly NativeIronworksSceneFx iwFx=new NativeIronworksSceneFx();
         private ContentMap iwMap;private NativeIronworksKit iwKit;private NativeIronFxScene iwScene;private NativeIronworksLights iwLights;private ExpeditionAreaLayout iwArea;private bool iwAreaRead;
         private readonly IronworksHazardView[] iwViews=new IronworksHazardView[NativeIronworksHazards.Count];
         private readonly List<MetroBatch> iwBatches=new List<MetroBatch>();private int iwUsed;private readonly List<IronMoltenBatch> iwMelt=new List<IronMoltenBatch>();private int iwMeltUsed;
@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
         private readonly Matrix4x4[] iwFrames=new Matrix4x4[NativeIronworksKit.Frames];private readonly Quaternion[] iwFrameQ=new Quaternion[NativeIronworksKit.Frames];
         private MaterialPropertyBlock iwOne;private float iwLast=-1;private NativeArena iwArena;private int iwGeneration=-1;
         private System.Threading.Tasks.Task<NativeIronworksField> iwBake;private ContentMap iwBakeMap;private NativeIronworksField iwField;private Texture3D iwFieldTex;private readonly float[] iwLevels=new float[NativeIronworksField.Channels];
-        private readonly List<Vector3> iwHazeV=new List<Vector3>(NativeIronworksFx.HeatMax*4);private readonly List<Color> iwHazeC=new List<Color>(NativeIronworksFx.HeatMax*4);private readonly List<Vector2> iwHazeUv=new List<Vector2>(NativeIronworksFx.HeatMax*4);
+        private readonly List<Vector3> iwHazeV=new List<Vector3>(NativeIronworksSceneFx.HeatMax*4);private readonly List<Color> iwHazeC=new List<Color>(NativeIronworksSceneFx.HeatMax*4);private readonly List<Vector2> iwHazeUv=new List<Vector2>(NativeIronworksSceneFx.HeatMax*4);
         /// <summary>The last frame's kit and molten instances and their draws (main pass), for the budget lines.</summary>
         public int IronworksInstances{get;private set;}public int IronworksDraws{get;private set;}
 
@@ -215,13 +215,13 @@ namespace ChipArena.UnityConversion
             if(camera==null||iwHaze==null||LowGraphics||!UsesInstancing)return;
             if(iwHazeMesh==null)
             {
-                iwHazeMesh=new Mesh{name="Ironworks heat haze"};iwHazeMesh.MarkDynamic();var idx=new int[NativeIronworksFx.HeatMax*6];
-                for(int i=0;i<NativeIronworksFx.HeatMax;i++){idx[i*6]=i*4;idx[i*6+1]=i*4+2;idx[i*6+2]=i*4+1;idx[i*6+3]=i*4;idx[i*6+4]=i*4+3;idx[i*6+5]=i*4+2;}
-                for(int i=0;i<NativeIronworksFx.HeatMax*4;i++){iwHazeV.Add(Vector3.zero);iwHazeC.Add(Color.clear);iwHazeUv.Add(Vector2.zero);}
+                iwHazeMesh=new Mesh{name="Ironworks heat haze"};iwHazeMesh.MarkDynamic();var idx=new int[NativeIronworksSceneFx.HeatMax*6];
+                for(int i=0;i<NativeIronworksSceneFx.HeatMax;i++){idx[i*6]=i*4;idx[i*6+1]=i*4+2;idx[i*6+2]=i*4+1;idx[i*6+3]=i*4;idx[i*6+4]=i*4+3;idx[i*6+5]=i*4+2;}
+                for(int i=0;i<NativeIronworksSceneFx.HeatMax*4;i++){iwHazeV.Add(Vector3.zero);iwHazeC.Add(Color.clear);iwHazeUv.Add(Vector2.zero);}
                 iwHazeMesh.SetVertices(iwHazeV);iwHazeMesh.SetColors(iwHazeC);iwHazeMesh.SetUVs(0,iwHazeUv);iwHazeMesh.SetIndices(idx,MeshTopology.Triangles,0);iwHazeMesh.bounds=new Bounds(Vector3.zero,Vector3.one*2000);
             }
             var t=camera.transform;Vector3 r=t.right,u=t.up;
-            for(int i=0;i<NativeIronworksFx.HeatMax;i++)
+            for(int i=0;i<NativeIronworksSceneFx.HeatMax;i++)
             {
                 int o=i*4;if(i>=iwFx.HeatCount){for(int k=0;k<4;k++){iwHazeV[o+k]=Vector3.zero;iwHazeC[o+k]=Color.clear;}continue;}
                 var h=iwFx.Heat[i];var c=new Vector3(h.X,h.Y,h.Z);var a=r*(h.W/2);var b=u*(h.H/2);var col=new Color(1,1,1,h.Strength);

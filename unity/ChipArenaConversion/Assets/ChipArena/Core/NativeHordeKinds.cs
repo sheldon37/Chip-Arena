@@ -24,6 +24,10 @@ namespace ChipArena.UnityConversion
     public static class NativeHordeKinds
     {
         public const int Shambler=0,Runner=1,Brute=2,Spitter=3,Crawler=4,Bloater=5,Hulk=6,Count=7;
+        /// <summary>Every kind the presentation draws: the Siren's seven (<see cref="Count"/>), then the zone kinds
+        /// (Core/NativeHordeZones; the City Ironworks' five: Core/NativeIronworksKinds), whose tables follow the Siren's in every
+        /// array below (grown once by the static constructor; the Siren's entries are untouched).</summary>
+        public static readonly int All=Count+NativeHordeZones.Count;
         /// <summary>The kinds the DEV preview's mix hashes over (not the Hulk: one or two are alive at most).</summary>
         public const int MixCount=Hulk;
         /// <summary>The content ids (PveAddStats.id), by kind.</summary>
@@ -32,11 +36,11 @@ namespace ChipArena.UnityConversion
         /// <summary>Kinds the shipped content spawns (the others are proposals until Astra adds them).</summary>
         public static readonly bool[] Shipped={true,true,true,true,false,false,true};
         /// <summary>The kind an add kind id draws as (an unknown or missing id: the shambler).</summary>
-        public static int Resolve(string id){if(id!=null)for(int i=0;i<Count;i++)if(string.Equals(Ids[i],id,StringComparison.Ordinal))return i;return Shambler;}
+        public static int Resolve(string id){if(id!=null)for(int i=0;i<All;i++)if(string.Equals(Ids[i],id,StringComparison.Ordinal))return i;return Shambler;}
         /// <summary>Whether an id names one of the kinds (no fallback).</summary>
-        public static bool Known(string id){if(id!=null)for(int i=0;i<Count;i++)if(string.Equals(Ids[i],id,StringComparison.Ordinal))return true;return false;}
+        public static bool Known(string id){if(id!=null)for(int i=0;i<All;i++)if(string.Equals(Ids[i],id,StringComparison.Ordinal))return true;return false;}
         /// <summary>The DEV preview's kind (looks only, presentation side; Settings · Developer and the Dev Sandbox gallery): -1 draws
-        /// every add as its own kind, 0..6 every add as that kind, <see cref="Mix"/> every add as a kind hashed from its id.</summary>
+        /// every add as its own kind, 0..All-1 every add as that kind, <see cref="Mix"/> every add as a kind hashed from its id.</summary>
         public static int Preview=-1;public const int Mix=-2;
         /// <summary>Looks per kind (whole sculpted variants; the seed varies each further).</summary>
         public static readonly int[] Looks={3,2,2,2,2,2,2};
@@ -45,7 +49,7 @@ namespace ChipArena.UnityConversion
         public static uint Seed(int id)=>NativeGoreRules.FnvDigits(id);
         public static float Hash(uint seed,int k)=>(float)NativeGoreRules.Hash01(seed,k,0x4d1);
         /// <summary>The look an add of `kind` wears, by its id (stable for its life, the same on every peer).</summary>
-        public static int Look(int kind,int id){int n=kind>=0&&kind<Count?Looks[kind]:1;return Math.Min(n-1,(int)(Hash(Seed(id),1)*n));}
+        public static int Look(int kind,int id){int n=kind>=0&&kind<All?Looks[kind]:1;return Math.Min(n-1,(int)(Hash(Seed(id),1)*n));}
 
         // ---- hit volumes (NativePveHorde.SpawnPveAdd and the crawl change in HitPveAdd) ----
         /// <summary>The capsule every add spawns with today (radius, height), and the one an add that lost a leg crawls in.</summary>
@@ -72,7 +76,7 @@ namespace ChipArena.UnityConversion
         public static float WorldHeight(int kind)=>Height[Clamp(kind)]*Scale[Clamp(kind)];
         /// <summary>The floor under an add's root in the world: the authority's crawl capsule's half height once a leg is gone,
         /// else the kind's (the Hulk's root stands 1.53 m up its proposed capsule).</summary>
-        public static float RootHeight(int kind,bool crawl)=>crawl?CrawlHeight*.5f:Root[Clamp(kind)]*Scale[Clamp(kind)];
+        public static float RootHeight(int kind,bool crawl)=>crawl?CrawlHeight*.5f:kind>=Count&&kind<All?WorldHeight(kind)*.5f:Root[Clamp(kind)]*Scale[Clamp(kind)];
         /// <summary>Where the drawn rig root stands over the floor (m, world): the rig's root height times the kind's scale (a crawling
         /// Hulk is drawn at its size over the authority's crawl capsule).</summary>
         public static float DrawRoot(int kind,bool crawl)=>(crawl?CrawlHeight*.5f:Root[Clamp(kind)])*Scale[Clamp(kind)];
@@ -82,7 +86,13 @@ namespace ChipArena.UnityConversion
         public static readonly float[] Mass={1,.78f,2.6f,.95f,.85f,1.9f,9};
         /// <summary>A hit's shove and recoil on this kind (1/sqrt(mass), so a greatsword still moves a brute).</summary>
         public static float Give(int kind)=>1f/(float)Math.Sqrt(Mass[Clamp(kind)]);
-        private static int Clamp(int kind)=>kind<0||kind>=Count?0:kind;
+        private static int Clamp(int kind)=>kind<0||kind>=All?0:kind;
+        /// <summary>A kind index for the grown tables: the old clamp for the Siren's kinds and any index out of range (0 below,
+        /// the Hulk above), a zone kind as itself.</summary>
+        public static int Index(int kind)=>kind>=Count&&kind<All?kind:Math.Max(0,Math.Min(Count-1,kind));
+        /// <summary>The Siren kind whose tables a kind uses where it has none of its own (its gait's shape, tongues, head and the
+        /// procedural fallbacks): a Siren kind itself (the old clamp out of range), a zone kind its body.</summary>
+        public static int Base(int kind)=>kind>=Count&&kind<All?NativeHordeZones.Of(kind).Body:Math.Max(0,Math.Min(Count-1,kind));
 
         // ---- the authority's attack timing (NativePveHorde.StepPveHorde) ----
         /// <summary>Both arms gone (LIMB bits 2|8 and 4|16 on each side).</summary>
@@ -147,6 +157,9 @@ namespace ChipArena.UnityConversion
         public static readonly int[] Seam={0x9d84ff,0xff4fb4,0xff6a2c,0x8dff4f,0xe8dcff,0xffc23a,0xff2e4d};
         /// <summary>The flicker class of each kind's seams (NativeMinionFx.ClassFlicker): strips, the brute's embers steadier.</summary>
         public static readonly int[] SeamClass={2,2,1,2,2,1,1};
+        /// <summary>The seam glow a kind's effects draw now: <see cref="Seam"/>, but the brute's cream inside the City Ironworks
+        /// (owner decision 14, docs/EXPEDITION-CITY-IRONWORKS.md 3.2; <see cref="NativeIronworksKinds.Zone"/>).</summary>
+        public static int SeamOf(int kind)=>kind==Brute&&NativeIronworksKinds.Zone?NativeIronworksKinds.BruteSeam:Seam[Index(kind)];
 
         // ---- cues (the attack layers: existing effects bank keys, played when the owner's LocalAssets bank has them) ----
         /// <summary>The wind-up's cue (the telegraph), heard at the add: null where the attack's own strike carries it.</summary>
@@ -157,8 +170,20 @@ namespace ChipArena.UnityConversion
         public static string StrikeUnder(Attack a)=>a==Attack.Smash?"impact.ground":null;
         /// <summary>A kind's walking footfall key (Core NativeZombieSteps: the heavy kinds stomp, the crawler pulls, the rest shuffle;
         /// each footfall picks its own by how the add moves). Every kind steps, from its gait's plants.</summary>
-        public static string StepCue(int kind)=>NativeZombieSteps.Key(kind,kind==Crawler,0);
+        public static string StepCue(int kind)=>NativeZombieSteps.Key(Base(kind),Base(kind)==Crawler,0);
         /// <summary>Cue gains (the bank's own trims apply on top).</summary>
         public const float WindupGain=.55f,StrikeGain=.7f,UnderGain=.8f;
+
+        // ---- the zone kinds' rows after the Siren's (Core/NativeHordeZones; every Siren entry above stays as written) ----
+        static NativeHordeKinds()
+        {
+            Ids=NativeHordeZones.Extend(Ids,z=>z.Id);Names=NativeHordeZones.Extend(Names,z=>z.Name);Shipped=NativeHordeZones.Extend(Shipped,z=>false);
+            Looks=NativeHordeZones.Extend(Looks,z=>z.Looks);
+            // Sculpted inside the world capsule over the drawn scale; the rig root stands at the add capsule's half height.
+            Radius=NativeHordeZones.Extend(Radius,z=>z.Radius/z.Scale);Height=NativeHordeZones.Extend(Height,z=>z.Height/z.Scale);Axis=NativeHordeZones.Extend(Axis,z=>1);
+            Root=NativeHordeZones.Extend(Root,z=>AddHeight*.5f);CenterAhead=NativeHordeZones.Extend(CenterAhead,z=>0f);Scale=NativeHordeZones.Extend(Scale,z=>z.Scale);
+            Mass=NativeHordeZones.Extend(Mass,z=>z.Mass);Default=NativeHordeZones.Extend(Default,z=>z.Attack);Proposed=NativeHordeZones.Extend(Proposed,z=>z.Proposed);
+            Seam=NativeHordeZones.Extend(Seam,z=>z.Seam);SeamClass=NativeHordeZones.Extend(SeamClass,z=>z.SeamClass);
+        }
     }
 }

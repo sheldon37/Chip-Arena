@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
             {
                 var off=new IronworksHazardView[NativeIronworksHazards.Count];NativeIronworksHazards.Evaluate(default,off);
                 Check(off.All(v=>v.Phase==NativeHazardPhase.Idle&&v.Rate==NativeIronworksHazards.RateOff&&!v.Parked),"with no input every hazard is idle and off");
-                var offFx=new NativeIronworksFx();var offScene=NativeIronFxScene.Build(NativeIronworksKit.Build(live.Single(m=>NativeIronworksKit.Active(m.id)).blocks,liveLayout.Area(NativeIronworksKit.AreaId)));int telegraphs=0;
+                var offFx=new NativeIronworksSceneFx();var offScene=NativeIronFxScene.Build(NativeIronworksKit.Build(live.Single(m=>NativeIronworksKit.Active(m.id)).blocks,liveLayout.Area(NativeIronworksKit.AreaId)));int telegraphs=0;
                 for(double t=0;t<120;t+=1.7){offFx.Build(offScene,off,t,19,9.4,-13.4,0,0,-1,0,1,0,1,false);telegraphs+=offFx.Telegraphs;}
                 Check(telegraphs==0,"hazards off: no telegraph decal ever shows in normal play");
                 Check(!NativeIronworksKit.SlabShown(off[NativeIronworksHazards.Slab])&&NativeIronworksKit.RamLiftOf(off[NativeIronworksHazards.Hammer])>=0&&NativeIronworksKit.SlabRunOf(off[NativeIronworksHazards.Slab])<0,"hazards off: the hot slab stays in the furnace and the hammer rests");
@@ -225,15 +225,15 @@ namespace ChipArena.UnityConversion
             Check(parts[0]+parts[1]+parts[2]<=EastWing&&total<=MaxParts&&draws+meltDraws<=MaxDraws,"the east wing within "+EastWing+", the map within "+MaxParts+" parts ("+total+"), "+(draws+meltDraws)+" instanced draws for the kit and the molten metal");
             double share=1-lowTotal/(double)total;Check(share>.2&&share<.5,"the low tier leaves out the detail parts ("+(share*100).ToString("F0")+"%)");
             var picker=NativeIronworksLights.Build(kit);Check(picker.Candidates.Count(c=>c.Cool)>=8&&picker.Candidates.All(c=>c.Cool||c.Kind==NativeIronworksKit.GlowSodium||c.Kind==NativeIronworksKit.GlowOffice||c.Kind==NativeIronworksKit.GlowLamp||c.Kind==NativeIronworksKit.GlowBeacon||c.Kind==NativeIronworksKit.GlowWindow||c.Range<=13),"heat stays local: every molten and furnace light reaches 13 m at most");
-            var fx=new NativeIronworksFx();var fxs=NativeIronFxScene.Build(kit);var input=In(3,false,0);var cams=new[]{new[]{19,9.4,-13.4},new[]{40.5,1.75,-.6},new[]{5.2,7.7,22.5},new[]{6,1.6,13.2},new[]{33.2,3.6,-28.4},new[]{-25.8,1.7,23.4},new[]{-25.2,1.7,-2.4},new[]{-25.6,3,-15.8},new[]{44,1.7,20},new[]{44,1.7,-22}};int maxQuads=0,minCool=8;
+            var fx=new NativeIronworksSceneFx();var fxs=NativeIronFxScene.Build(kit);var input=In(3,false,0);var cams=new[]{new[]{19,9.4,-13.4},new[]{40.5,1.75,-.6},new[]{5.2,7.7,22.5},new[]{6,1.6,13.2},new[]{33.2,3.6,-28.4},new[]{-25.8,1.7,23.4},new[]{-25.2,1.7,-2.4},new[]{-25.6,3,-15.8},new[]{44,1.7,20},new[]{44,1.7,-22}};int maxQuads=0,minCool=8;
             for(double t=0;t<80;t+=.73)
             {
                 input.Clock=t;NativeIronworksHazards.Evaluate(input,views);
                 foreach(var c in cams){picker.Settle(c[0],c[1],c[2],views,t);minCool=Math.Min(minCool,picker.CoolSlots());fx.Build(fxs,views,t,c[0],c[1],c[2],0,0,-1,0,1,0,1,false);maxQuads=Math.Max(maxQuads,fx.Quads.Count);}
             }
             Check(minCool==NativeIronworksLights.Cool,"two of the eight practical lights are always cool lamps, at every camera through every hazard state");
-            Check(maxQuads<=MaxQuadsInView&&maxQuads<NativeIronworksFx.Capacity,"effect quads in view within "+MaxQuadsInView+" (most "+maxQuads+")");
-            var decal=(NativeIronworksFx.DecalG/NativeIronworksFx.DecalR);int amber=NativeIronworksKit.AmberHex;double amberGR=((amber>>8)&255)/(double)((amber>>16)&255);
+            Check(maxQuads<=MaxQuadsInView&&maxQuads<NativeIronworksSceneFx.Capacity,"effect quads in view within "+MaxQuadsInView+" (most "+maxQuads+")");
+            var decal=(NativeIronworksSceneFx.DecalG/NativeIronworksSceneFx.DecalR);int amber=NativeIronworksKit.AmberHex;double amberGR=((amber>>8)&255)/(double)((amber>>16)&255);
             Check(decal>.8&&amberGR>.6&&amber==0xFFB000,"warnings are never plain orange: the telegraphs cream white, the beacons the hazard kit's amber");
             var shader=Src("Resources/NativeMolten.shader");var top=shader.Substring(shader.IndexOf("c=lerp(c,float3(3.20,2.25,1.05)",StringComparison.Ordinal),40);
             Check(shader.Contains("// SHARED BEGIN",StringComparison.Ordinal)&&shader.Contains("#include \"NativeWardLight.cginc\"",StringComparison.Ordinal)&&top.Contains("3.20",StringComparison.Ordinal)&&new[]{"_MoltenSize","_MoltenFlow","_MoltenHeat","_MoltenStyle","_MoltenClock"}.All(n=>shader.Contains(n,StringComparison.Ordinal)&&pres.Contains("\""+n+"\"",StringComparison.Ordinal)),"the molten shader: its per-instance properties are the runtime's, the hottest metal tops out at HDR 3.2 (within 4), the light field and the slots light its crust");

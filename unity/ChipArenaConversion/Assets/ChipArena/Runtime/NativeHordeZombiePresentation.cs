@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
             // Touchdown (once per drop): the slam's effects, the shake and the cue run on from here.
             float landAge=span-p.Recover;if(age<landAge||age>landAge+.6f)return;float born=hordeClock-(age-landAge);
             for(int i=0;i<hordeLandings.Length;i++)if(hordeLandings[i].Live&&hordeLandings[i].Id==id&&Mathf.Abs(hordeLandings[i].Born-born)<.1f)return;
-            HordeImpactAt(id,land,born,seed,NativeZombieFx.Landing(p),NativeHordeKinds.Seam[p.Heavy?NativeHordeKinds.Hulk:NativeHordeKinds.Brute]);
+            HordeImpactAt(id,land,born,seed,NativeZombieFx.Landing(p),NativeHordeKinds.SeamOf(p.Heavy?NativeHordeKinds.Hulk:NativeHordeKinds.Brute));
             NativeHordeFx.AddShake(hordeShakes,ToN(land),born,p.ShakePeak,p.ShakeRange,p.Heavy&&hordeLocalKnown&&Vector3.Distance(hordeLocalAt,land)<p.SlamRadius?p.ShakeKick:0,seed,p.Heavy?1.3f:NativeHordeFx.ShakeSeconds,p.Heavy?3:0);
             if(p.Heavy)HordeJoltProps(land,p.SlamRadius*1.6f,born,seed);
         }
@@ -129,7 +129,7 @@ namespace ChipArena.UnityConversion
             var violet=NativeArena.ColorOf(NativeMinionFx.Violet);
             for(int i=0;i<hordeDropCount;i++)
             {
-                var d=hordeDrops[i];var p=NativeHordeDrop.Profile(d.Kind);var ink=NativeArena.ColorOf(NativeHordeKinds.Seam[d.Kind]);float landAge=d.Span-p.Recover,k=p.SlamRadius/NativeHordeDrop.SlamRadius;
+                var d=hordeDrops[i];var p=NativeHordeDrop.Profile(d.Kind);var ink=NativeArena.ColorOf(NativeHordeKinds.SeamOf(d.Kind));float landAge=d.Span-p.Recover,k=p.SlamRadius/NativeHordeDrop.SlamRadius;
                 if(NativeHordeFx.DropMark(d.Age,landAge,out float r,out float a,out float tear))
                 {
                     var c=d.Land+Vector3.up*.015f;r*=k;draw.Ring(draw.Effects,c,r-.14f*k,r,Alpha(ink,a),NativeFxDraw.Authored+NativeFxDraw.Additive);
