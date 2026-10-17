@@ -1,6 +1,6 @@
 ## 2026-10-17 — Claude: zombie motion pass (on branch, not merged)
 
-- **Branch and status:** `claude/zombie-motion`, from shared `f3d8eb4`, with newest shared `5dc860d` merged in as `1cd0006`. The implementation commit is `a784379`. Pushed only; no PR, not merged into shared or the builder, nothing published.
+- **Branch and status:** `claude/zombie-motion`, from shared `f3d8eb4`. Shared was merged in twice: `5dc860d` as `1cd0006`, then the newest, `03dddab`, as `fbc298c`. The implementation commits are `a784379` and `9fabe0f` (the checks). Pushed only; no PR, not merged into shared or the builder, nothing published.
 - **Why:** the owner (2026-10-17): "Yes fix the zombies animations (Design as well, it seems they are still on the lower quality end) Improve these vastly." This is the motion half. Design (models and materials) is a separate branch, `claude/zombie-design`.
 - **What changed** (presentation only; full write-up in `docs/ZOMBIE-MOTION.md`):
   - **Clock and root:** every horde add is posed on a continuous horde clock (`Core/NativeHordeFlow.cs`: `HordeClock`), never `arena.Time`. It is the replica render time on a guest and the visual clock on the host, it rides through stalls, and it slows near the newest frame. The drawn root (`HordeFlow`, on the boss library's `BossRootFollow`) follows a guest's own snapshots (new read-only accessor `Runtime/NativeReplicaFrames.cs`) or the host's 60 Hz body carried to the visual clock. Speed comes from that root; turning is rate- and acceleration-limited, with lean.
@@ -21,13 +21,14 @@
     - Frame-rate halving ratio 0.53; zero allocation.
   - Also PASS before the merge: `--wardzero-simulation`, `--hulk-charge`, `--hulk-motion`, `--horde-roam`, `--ironworks-kinds`, `--horde-drops`, `--footfalls`, `--station-enemies`, `--boss-motion`.
   - Unity runtime and editor compile against the 6000.3.24f1 assemblies: OK.
-  - run5b on `9fabe0f` (the working tree also held this docs commit): all five steps exit 0.
+  - run5b on `fbc298c`, the final merge: all five steps exit 0.
     - Unity runtime and editor compile: OK.
-    - Relay and managed suite: 781 PASS lines, no FAIL; zombie flow ran inside it.
+    - Relay and managed suite: 784 PASS lines, no FAIL; zombie flow ran inside it.
     - Python: 140 OK, 1 skipped.
-    - Source package: 2395 files.
+    - Source package: 2436 files.
     - `git diff --check`: clean.
-  - Two earlier run5b attempts ran under heavy machine load. Each failed one unrelated per-frame allocation check in the relay step (spawn-in, 3016 bytes; expedition states, 1664 bytes): the known allocation flake. A direct full CoreTests run between them passed, with 780 PASS lines.
+  - The horde groups above passed again on `fbc298c`.
+  - On `9fabe0f`, before the second merge, run5b also passed all five steps (781 PASS lines). Two earlier attempts on that head ran under heavy machine load and each failed one unrelated per-frame allocation check in the relay step (spawn-in, 3016 bytes; expedition states, 1664 bytes): the known allocation flake. A direct full CoreTests run between them passed, with 780 PASS lines.
 - **Harness** (offline WebGL, same Core code, not Unity), guest reels at 20 Hz, shipped against this branch:
   - Root peak acceleration (m/s^2): shambler 249 -> 43, runner 431 -> 55, brute 215 -> 63, spitter 265 -> 21, crawler 586 -> 176, bloater 242 -> 23, Hulk 124 -> 46.
   - Host at 144 fps: 1613 -> 61 (shambler) and 2182 -> 104 (runner).
