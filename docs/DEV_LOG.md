@@ -4,7 +4,7 @@
 - **Change:** when a zone's boss arrives (`BossSongTime >= 0`), `Runtime/NativeAudio.cs` plays the zone's own boss track if its file is installed: `music/central-station-boss` on `expedition-transit`, `music/city-ironworks-boss` on `expedition-foundry` (and the draft alias `expedition-ironworks`). Otherwise the Siren's `black-siren-protocol` plays as before, on its own intro/loop map. A zone track loops on the shared boss clock (`Core/NativeZoneMusic.LoopClock`), so every peer hears the same bar. Ward Zero, the hub and every other map are unchanged. PR #263's normal-play routing is untouched.
 - **For the owner:** drop `central-station-boss.mp3` and `city-ironworks-boss.mp3` into `Assets/ChipArena/Resources/Audio/music/` (beside Astra's two tracks). Nothing else is needed; until then the Siren's song plays.
 - **Limits:** the Siren song's beat map still drives Ward Zero's vents and the DEV hazard-kit gallery. A zone boss track has no beat map yet; the boss designs will propose beat timings if the new bosses sync effects to the music.
-- **Checks:** `Tests/ZoneMusicChecks.cs` (19: mapping, installed vs fallback, no cross-zone borrowing, loop clock, NativeAudio routing order); five repo checks recorded in the merge's DEV_LOG line. Unity audio playback and Windows unrun.
+- **Checks:** `Tests/ZoneMusicChecks.cs` (19: mapping, installed vs fallback, no cross-zone borrowing, loop clock, NativeAudio routing order). `run5b` on `ece0809`, every step exit 0: Unity runtime + editor build; relay 776 PASS lines incl. zone music 19; Python 140 OK (1 skipped); package; diff-check clean. Unity audio playback and Windows unrun.
 
 ## 2026-10-17 — Astra: owner-selected Ironworks and Central Station music
 
