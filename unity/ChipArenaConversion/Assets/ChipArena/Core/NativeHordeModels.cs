@@ -78,13 +78,15 @@ namespace ChipArena.UnityConversion
                 case NativeHordeKinds.Runner:Runner(k);break;case NativeHordeKinds.Brute:Brute(k);break;case NativeHordeKinds.Spitter:Spitter(k);break;
                 case NativeHordeKinds.Crawler:Crawler(k);break;case NativeHordeKinds.Bloater:Bloater(k);break;case NativeHordeKinds.Hulk:Hulk(k);break;default:if(!IronworksModel(k)&&!StationBuild(k))Shambler(k);break;
             }
+            // The occlusion bake for every kind; the Siren's seven also get their grime and blood (the zone kinds keep their paint).
+            k.Finish(.95f,kind<NativeHordeKinds.Count,kind<NativeHordeKinds.Count);
             return new HordeModel{Kind=kind,Look=look,Tier=tier,Mesh=k.Mesh,Jaw=k.SplitJaw?k.JawMesh:null};
         }
 
         // ================================================================================================================
         // The kit: one WeaponSculpt over a mesh with a section per joint; limbs authored on the left (bank -x) and mirrored.
         // ================================================================================================================
-        private sealed class K
+        private sealed partial class K
         {
             public readonly WeaponMesh Mesh;public WeaponSculpt S;public readonly int Tier,Kind,Look;
             /// <summary>The seam colour the model is built with (-1: the kind's, NativeHordeKinds.Seam).</summary>
@@ -100,7 +102,7 @@ namespace ChipArena.UnityConversion
             /// <summary>The smallest bevel the reduced tier keeps (a big kind keeps only its big masses rounded).</summary>
             public float ReducedBevel=.012f;
             /// <summary>Starts drawing on `bone`; `mirror` draws a left-authored (bank -x) part on the right.</summary>
-            public void On(int bone,bool mirror=false){if(mirror)bone=Right(bone);S.Into(bone);side=mirror?-1:1;}
+            public void On(int bone,bool mirror=false){if(mirror)bone=Right(bone);S.Into(bone);side=mirror?-1:1;Bone=bone;}
             /// <summary>The right side's joint for a left one (clavicle to wrist, hip to toe).</summary>
             public static int Right(int bone)=>bone>=CapturedRig.LClav&&bone<=CapturedRig.LHand||bone>=CapturedRig.LHip&&bone<=CapturedRig.LToe?bone+4:bone;
             public float Side=>side;
@@ -112,9 +114,10 @@ namespace ChipArena.UnityConversion
             /// <summary>A box by centre and full size (left-authored x), turned by Euler XYZ (radians) about its centre.</summary>
             public void Box(in WeaponPaint p,float x,float y,float z,float sx,float sy,float sz,float bevel=0,float rx=0,float ry=0,float rz=0)
             {
-                if(Tier==Reduced&&bevel<ReducedBevel)bevel=0;var c=new Vector3(x,y,z);var s=new Vector3(sx,sy,sz);var paint=p;
-                if(side<0){S.Push(WeaponSculpt.S(-1,1,1));S.Box(paint,c,s,bevel,rx,ry,rz);S.Pop();}else S.Box(paint,c,s,bevel,rx,ry,rz);
+                if(Tier==Reduced&&bevel<ReducedBevel)bevel=0;var c=new Vector3(x,y,z);var s=new Vector3(sx,sy,sz);var paint=p;float o=Median(sx,sy,sz)*.45f;
+                Prim(()=>{if(side<0){S.Push(WeaponSculpt.S(-1,1,1));S.Box(paint,c,s,bevel,rx,ry,rz);S.Pop();}else S.Box(paint,c,s,bevel,rx,ry,rz);if(paint.Lit)Occ(c,o);});
             }
+            private static float Median(float a,float b,float c)=>Math.Max(Math.Min(a,b),Math.Min(Math.Max(a,b),c));
             /// <summary>A box spanning bounds (left-authored x).</summary>
             public void Span(in WeaponPaint p,float x0,float x1,float y0,float y1,float z0,float z1,float bevel=0)=>Box(p,(x0+x1)*.5f,(y0+y1)*.5f,(z0+z1)*.5f,Math.Abs(x1-x0),Math.Abs(y1-y0),Math.Abs(z1-z0),bevel);
             /// <summary>A tapered limb segment hanging down the joint's -y from `top` to `bottom`: a lofted octagon (box on the far tier).</summary>
@@ -124,13 +127,13 @@ namespace ChipArena.UnityConversion
                 int sides=S.Sides(8);var rings=new List<Vector3[]>(4);float[] at={0,.18f,.62f,1},rad={.88f,1,.92f,.8f};
                 for(int i=0;i<4;i++){float u=at[i],r=(r0+(r1-r0)*u)*rad[i];float y=top+(bottom-top)*u;var ring=WeaponSculpt.Circle(sides,r,r*squash,0,(float)Math.PI/sides);for(int q=0;q<sides;q++)ring[q]=new Vector3(ring[q].X+x,y,ring[q].Y+z+lean*u);rings.Add(ring);}
                 // Circle rings lie in xy about +z; laid flat in xz they run counter-clockwise looking down -y.
-                var paint=p;Mirror(()=>S.Loft(rings,(i,q)=>paint,Mid?1:0));
+                var paint=p;Prim(()=>{Mirror(()=>S.Loft(rings,(i,q)=>paint,Mid?1:0));for(int i=0;i<4;i++){float u=at[i];Occ(new Vector3(x,top+(bottom-top)*u,z+lean*u),(r0+(r1-r0)*u)*rad[i]*.9f);}});
             }
             /// <summary>An ellipsoid (faceted below Full).</summary>
             public void Blob(in WeaponPaint p,float x,float y,float z,float rx,float ry,float rz)
             {
                 if(Far){Box(p,x,y,z,rx*1.7f,ry*1.7f,rz*1.7f);return;}var paint=p;int rings=Fine?6:4,sides=S.Sides(10);
-                Mirror(()=>{S.Push(WeaponSculpt.Rx(-(float)Math.PI/2));S.Sphere(paint,new Vector3(x,-z,y),new Vector3(rx,rz,ry),rings,sides,!Fine);S.Pop();});
+                Prim(()=>{Mirror(()=>{S.Push(WeaponSculpt.Rx(-(float)Math.PI/2));S.Sphere(paint,new Vector3(x,-z,y),new Vector3(rx,rz,ry),rings,sides,!Fine);S.Pop();});if(paint.Lit)Occ(new Vector3(x,y,z),(rx+ry+rz)/3*.9f);});
             }
             /// <summary>A point (spike, claw, fin): a thin pyramid from a base box (x, y, z, w, d) along a direction.</summary>
             public void Spike(in WeaponPaint p,float x,float y,float z,float w,float d,Vector3 tip)

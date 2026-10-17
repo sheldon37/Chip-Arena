@@ -13,6 +13,92 @@
   runtime cost when the CPU is starved. CI has not failed it.
 - No Core, gameplay, timing, hitbox, damage, movement or network change.
 
+## 2026-10-17 — Claude: zombie design, voxel rework of the rotted pilots (owner approved, merged into shared)
+
+- **Owner (2026-10-17), on the voxel renders:** "That rework looks good". Merged into shared on top of the gun check fix.
+- **Branch and commits.** Branch `claude/zombie-design`, base shared `f3d8eb4`.
+  - Shared merged in twice, every log entry kept: `03dddab` as `d79cdc9`, then `97046f7` (the zombie motion pass) as
+    `2630ded`.
+  - In the motion merge, `NativeHordeKindPresentation.cs` merged cleanly with both sides (motion: pose and clock; design:
+    tint, material, draw), and `station-enemies-baseline.txt` was regenerated on the combined code
+    (`StationBaseline.Measure`; the motion lines as the motion pass measured them, the voxel model lines re-pinned).
+  - Not merged, no PR, builder untouched, nothing published.
+  - `d5ec09b`, `a74ac0c`: the first pass, sculpted organic bodies (rejected; see below).
+  - `5b45868`, `f171fa3`: two check fixes that still apply to the shader and the kit.
+  - `136062d`: the voxel rework.
+- **Why.** Owner (2026-10-17): "Yes fix the zombies animations (Design as well, it seems they are still on the lower
+  quality end) Improve these vastly." The first pass rebuilt the kinds as smooth sculpted bodies. Owner on seeing it: "Keep
+  voxel style, just improve it. The sculpted looks odd". The rework keeps the game's voxel style: the same blocky, armoured
+  pilots, rotted, now built from many small cubes at a few sizes. This is the design half; motion is `claude/zombie-motion`.
+- **Changes.** `docs/ZOMBIE-DESIGN.md` has the brief, the old-vs-new images, the shading spec, budgets and dangling parts.
+  - **Kit** (`Core/NativeZombieKit.cs`):
+    - voxel grids laid in layers (suit over skin over flesh and bone), with a depth per cell, so tears, sockets and
+      wounds are cells taken away;
+    - a mesher that draws only faces open to air, merges matching coplanar faces, and bakes each corner's voxel occlusion
+      (`WeaponSculpt.QuadData`);
+    - plates cracked into offset tiles, block rags and cables that sway, stepped glowing cracks and veins;
+    - a stepped shade per block, stepped grime and blood.
+  - **Anatomy** (`NativeZombieAnatomy.cs`):
+    - a ten-cell cube skull: sockets with glowing block pupils, a stepped brow, a broken nose, a torn cheek, uneven block
+      teeth, a hanging block jaw;
+    - the helmet cracked into shards;
+    - layered torso, limbs and shoulders with stepped torn suit edges, block wounds and rib rows;
+    - block fingers, claws, knuckles and toes.
+  - **Kinds** (`NativeZombieKinds.cs`): the brute's and Hulk's stacked, offset block muscle and the Hulk's stepped glowing
+    splits; the spitter's sac of glowing voxels; the bloater's voxel gut.
+  - **Tiers:** Reduced has larger body voxels, one skin paint, a block head and a block gut; the impostor is a block per
+    part.
+  - **`ZombieLit`:** low wrap so the faces stay crisp, and the skin mottled in stepped cells. The fallback and the per-add
+    tint (tone, proportions, missing pieces) are unchanged.
+- **Affected systems:**
+  - The seven kinds' models.
+  - `WeaponSculpt` (`QuadData`; the organic smooth quads removed).
+  - `ZombieLit`.
+  - The tests' re-pinned model measures: Ironworks BaseCounts and the station baseline's model lines, 0 non-model measures
+    changed.
+  - No runtime file changed in this rework. The draw-path edits from the first pass stay: the per-add tint and the shader
+    load.
+  - Zone kinds unchanged (classic bodies, occlusion only).
+- **Animation impacts:** none. No hit timing, hitbox, damage, cooldown, movement or network change. Joints are not renamed
+  or reordered.
+  - Every kind, look and tier stays inside its capsule at the widest per-add variation plus sway (HordeKindChecks,
+    HulkSpitterChecks).
+  - The Hulk's legs are at 0.425 of 0.45 striding, after slimming the feet, shins and cuffs.
+  - Dangling parts sway in the vertex shader only (listed in the doc).
+- **Budgets** (triangles; budgets 7,200 / 3,000 / 600):
+  - Full: 4,662-7,132 (old blocky 3,232-4,362).
+  - Reduced: 2,072-2,930 (old 1,910-2,814).
+  - Impostor: 348-576 (old 432-600).
+  - The 40-add crowd (24 full, 16 reduced, 5 jaws): 402 draws and 212 shadow draws, old and new; 136,128 to 189,878
+    triangles (+39 %).
+- **Checks** (actual):
+- run5b on `2630ded` (the voxel rework merged with the motion pass): all five steps exit 0.
+    - Unity runtime and editor compile against the 6000.3.24f1 assemblies: OK.
+    - Relay and managed suite: 784 PASS lines, no FAIL. That includes horde kinds (565,218 checks: capsules at the
+      widest variation and sway on the combined poses, three tiers under budget, valid meshes, normals and shading
+      data, variation, the zombie shader), Ironworks kinds (281,252), station enemies (154,365), zombie motion
+      (29,934), and Hulk and spitter (49,154).
+    - Python: 140 tests OK, 1 skipped.
+    - Source package: 2,444 files.
+    - `git diff --check`: clean.
+  - run5b on `d79cdc9` (the rework before the motion merge): all five steps exit 0 (783 PASS lines).
+  - The surface shader body passes glslang's HLSL front end with Unity's macros stubbed.
+- **Renders.** Offline WebGL harness through the same Core code (posed by the merged motion) and a port of the shader's
+  shared block; not Unity. In the scratch `renders-zombie-design/`:
+  - old-vs-new kind sheets (neutral, Ward Zero corridor, hub at dusk);
+  - faces, the 40-add crowds and tiers;
+  - variety and gore;
+  - old-vs-new turntables for the shambler, runner, brute and Hulk.
+- **Not run:** Unity Editor, Windows build, a real GPU shader compile (glslang's HLSL front end only), two-client play.
+- **Risks:**
+  - If `ZombieLit` fails to compile in Unity, the Editor build check fails loudly; at runtime the code falls back to the old
+    shader.
+  - Crowd triangles grow 39 %.
+  - Only the spitter and the Hulk have hinged jaw parts, so the motion pass's jaw flap reaches no other kind.
+  - Full budgets are close on the bloater and Hulk (7,132 of 7,200).
+- **Next:** owner review in Unity/Windows; merge into shared (the motion pass is already in). Test-channel publication follows the standing
+  instruction once merged and verified (not done here).
+
 ## 2026-10-17 — Claude: zombie motion pass (on branch, not merged)
 
 - **Branch and status:** `claude/zombie-motion`, from shared `f3d8eb4`. Shared was merged in twice: `5dc860d` as `1cd0006`, then the newest, `03dddab`, as `fbc298c`. The implementation commits are `a784379` and `9fabe0f` (the checks). Pushed only; no PR, not merged into shared or the builder, nothing published.

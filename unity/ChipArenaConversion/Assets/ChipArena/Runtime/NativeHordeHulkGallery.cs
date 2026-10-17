@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
             hordeJawKind=kind;hordeJawOpen=.4f;
             hordeDeathJawBone??=b=>{var m=hordeDeathBone(b);if(b!=CapturedRig.Head)return m;var h=NativeHordeModels.JawHinge(hordeJawKind);var hinge=new Vector3(h.X,h.Y,h.Z);
                 return m*Matrix4x4.Translate(hinge)*Matrix4x4.Rotate(Quaternion.Euler(hordeJawOpen*Mathf.Rad2Deg,0,0))*Matrix4x4.Translate(-hinge);};
-            sourceModels.Queue(jaw,rig.Root.transform.localToWorldMatrix,hordeDeathJawBone,visible,partTint:hordeDeathTint,glow:HordeGlow(id));
+            sourceModels.Queue(jaw,rig.Root.transform.localToWorldMatrix,hordeDeathJawBone,visible,body:hordeDeathBody,partTint:hordeDeathTint,glow:HordeGlow(id));
         }
         private static Vector3 GalleryDir(float yaw){float r=yaw*Mathf.Deg2Rad;return new Vector3(Mathf.Sin(r),0,Mathf.Cos(r));}
 
