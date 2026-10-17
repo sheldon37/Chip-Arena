@@ -10344,3 +10344,6 @@ Local validation so far: 243 new managed zone checks; Station/Ironworks presenta
 
 
 2026-10-17 Astra native gate repair: build of merged PR #264 (`598c41b`) failed before publication because Ward Zero had no spawned horde. Unity JsonUtility materializes the new absent `PveEntry.allowed` array as empty when cloning legacy content. Empty now uses the original Ward entry rules; nonempty authored lists still restrict zone spawns. Added both cases to ZoneCombatChecks (245 checks). Native gate is retained and must pass before release.
+
+
+2026-10-17 Astra native follow-up: `ce85919` restores native spawning (Ward 8, Station 12, Ironworks 12 after 1,800 ticks). Station enemy ability/weak-point and guest event checks reached the final hazard-clock assertion. Split that compound assertion into authority validity, decoded validity, presence and time checks, with raw/decoded values on failure; use 0.1 ms tolerance for the JSON float round trip instead of binary equality. Malformed/NaN state rejection remains exact. No publication yet.
