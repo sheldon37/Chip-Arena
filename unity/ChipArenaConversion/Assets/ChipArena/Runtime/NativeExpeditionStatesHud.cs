@@ -139,5 +139,17 @@ namespace ChipArena.UnityConversion
             U.Text(r,GateSub,12,C.CyanSoft(a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.16f);
             if(!reduced&&age<.8f){float w=W*.5f*(age/.8f);U.Fill(new Rect(W/2-w/2,top-8,w,H.Snap(2)),C.Magenta((1-age/.8f)*a));}
         }
+        public const string DoorSealed="ENTRY SEALED",DoorOpen="EXIT UNSEALED";
+        /// <summary>The instance exit's notice (the laser door locks behind the party, so it is usually out of sight): ENTRY
+        /// SEALED in the zone's colour as it locks, EXIT UNSEALED in green as it opens, for NoticeSeconds from the door's lock or
+        /// unlock, with a cached subtitle. Smaller than the gate's and above it.</summary>
+        public static void DoorNotice(float W,float Hh,float age,bool open,string sub,int accent,bool reduced)
+        {
+            float end=(float)NativeExpeditionLaserDoor.NoticeSeconds,a=age<.18f?age/.18f:age>end-.6f?Mathf.Clamp01((end-age)/.6f):1;if(a<=0)return;
+            var tone=NativeArena.ColorOf(open?NativeExpeditionLaserDoor.OpenHex:accent);float F=Mathf.Clamp(W*.026f,20,38),top=Hh*.2f;
+            U.Text(new Rect(0,top,W,F),open?DoorOpen:DoorSealed,F,C.Ink(a),TextAnchor.MiddleCenter,bold:true,tracking:.1f,glow:new Color(tone.r,tone.g,tone.b,.6f*a),shadow:new Color(0,0,0,a));
+            if(sub!=null){float sw=U.Measure(sub,11,true,true,.16f).x+28;var r=new Rect(W/2-sw/2,top+F+8,sw,22);H.Tag(r,tone,a,false);U.Text(r,sub,11,C.CyanSoft(a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.16f);}
+            if(!reduced&&age<.6f){float w=W*.36f*(age/.6f);U.Fill(new Rect(W/2-w/2,top-7,w,H.Snap(2)),new Color(tone.r,tone.g,tone.b,(1-age/.6f)*a));}
+        }
     }
 }

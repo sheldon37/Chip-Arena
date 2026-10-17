@@ -144,6 +144,10 @@ namespace ChipArena.UnityConversion
     ///    A placement is not a crossing: while the view is loading (an area barrier is up) the sides are forgotten, and a pilot
     ///    that moved more than TeleportMetres between two samples (a placement or respawn seen late on a guest) only records
     ///    its new side.
+    ///  - this client's visit to the view's area (the laser door's arrival lock, NativeExpeditionLaserDoor): it arrived at the
+    ///    first view it is presented there (no area barrier, its own transfer done: members[].pendingArea, and the runtime's
+    ///    <see cref="ArrivalHeld"/> off), and the latest teammate who arrived there after it (the door re-seals behind them). A
+    ///    new area is a new visit.
     /// A new run forgets everything; a new loop forgets the arrivals (the director clears them per loop).
     /// </summary>
     public sealed class ExpeditionStateCues
@@ -162,9 +166,14 @@ namespace ChipArena.UnityConversion
         public readonly Ripple[] Ripples=new Ripple[RippleSlots];private int nextRipple;
         private readonly Dictionary<int,Side> inside=new Dictionary<int,Side>(32);
         private string run;private int loop=int.MinValue;private bool placing;private ExpeditionStateRig crossingRig;
+        private string visit;private double arrivedAt=double.NaN,pulseAt=double.NegativeInfinity;
+        private readonly Dictionary<string,string> placed=new Dictionary<string,string>(16,StringComparer.Ordinal);
+        /// <summary>Set by the runtime before each Observe: this client is not presented in the view's area yet (its loading screen
+        /// is up, or the arena does not hold the area's map). The arrival waits for it. Checks and offline tools leave it off.</summary>
+        public bool ArrivalHeld;
         public int ArrivalCount=>arrivals.Count;
         public Arrival ArrivalAt(int i)=>arrivals[i];
-        public void Reset(){closures.Clear();arrivals.Clear();inside.Clear();for(int i=0;i<Ripples.Length;i++)Ripples[i].At=double.NegativeInfinity;nextRipple=0;run=null;loop=int.MinValue;placing=false;crossingRig=null;}
+        public void Reset(){closures.Clear();arrivals.Clear();inside.Clear();for(int i=0;i<Ripples.Length;i++)Ripples[i].At=double.NegativeInfinity;nextRipple=0;run=null;loop=int.MinValue;placing=false;crossingRig=null;visit=null;arrivedAt=double.NaN;pulseAt=double.NegativeInfinity;placed.Clear();}
         public ExpeditionStateCues(){Reset();}
 
         public void Observe(ExpeditionView v,double t)
@@ -174,6 +183,7 @@ namespace ChipArena.UnityConversion
             if(v.loop!=loop){arrivals.Clear();loop=v.loop;}
             // An area barrier (the run loading) ends in a placement: forget the pilots' sides until it is over.
             placing=v.loading||v.areaBarrier!=null&&v.areaBarrier.active;if(placing)inside.Clear();
+            Visit(v,t);
             var list=v.closures;
             if(list!=null)for(int i=0;i<list.Length;i++)
             {
@@ -203,6 +213,35 @@ namespace ChipArena.UnityConversion
             }
         }
         private static bool Finite(float f)=>!float.IsNaN(f)&&!float.IsInfinity(f);
+        // This client's visit and its teammates' arrivals (allocation-free once each member has been seen).
+        private void Visit(ExpeditionView v,double t)
+        {
+            if(v.area!=visit){visit=v.area;arrivedAt=double.NaN;pulseAt=double.NegativeInfinity;}
+            var members=v.members;bool pending=false;
+            if(members!=null)for(int i=0;i<members.Length;i++){var m=members[i];if(m!=null&&m.account!=null&&m.account==v.viewer){pending=m.pendingArea!=null;break;}}
+            bool present=v.area!=null&&!placing&&!ArrivalHeld&&!pending;if(present&&double.IsNaN(arrivedAt))arrivedAt=t;
+            if(members==null)return;
+            // A teammate is somewhere once its own transfer is done; one that comes to this area well after this client (not the
+            // party arriving together) re-seals the door behind it. The first sight of a teammate only records where it is.
+            double settled=arrivedAt+NativeExpeditionStates.ArriveDelay+NativeExpeditionLaserDoor.LockSeconds+.5;
+            for(int i=0;i<members.Length;i++)
+            {
+                var m=members[i];if(m?.account==null||m.account==v.viewer)continue;string at=m.pendingArea!=null||!m.connected?null:m.area;
+                if(placed.TryGetValue(m.account,out var was)){if(at!=was){if(at!=null&&at==v.area&&present&&t>=settled)pulseAt=t;placed[m.account]=at;}}
+                else if(placed.Count<64)placed[m.account]=at;
+            }
+        }
+        /// <summary>When the laser door of `area` starts its arrival lock (presentation clock): ArriveDelay after this client arrived
+        /// there (the transfer screen fading); +inf while this client is in the area but not presented yet (the lock waits, the
+        /// door stands by); NaN for any other area.</summary>
+        public double LockAt(string area)=>area==null||area!=visit?double.NaN:double.IsNaN(arrivedAt)?double.PositiveInfinity:arrivedAt+NativeExpeditionStates.ArriveDelay;
+        /// <summary>When this client arrived in `area` (+inf while it waits to be presented there, NaN for another area).</summary>
+        public double ArrivedAt(string area)=>area==null||area!=visit?double.NaN:double.IsNaN(arrivedAt)?double.PositiveInfinity:arrivedAt;
+        /// <summary>The age of the latest teammate's arrival in `area` while this client is there (0..PulseSeconds); false otherwise.</summary>
+        public bool DoorPulse(string area,double t,out double age)
+        {
+            age=t-pulseAt;return area!=null&&area==visit&&age>=0&&age<NativeExpeditionLaserDoor.PulseSeconds;
+        }
         private int Find(string id){for(int i=0;i<closures.Count;i++)if(closures[i].Id==id)return i;return -1;}
         private int FindArrival(string area,string id){for(int i=0;i<arrivals.Count;i++)if(arrivals[i].Id==id&&arrivals[i].Area==area)return i;return -1;}
         /// <summary>The age of closure `id`'s opening cue at t, when one is due (0..CueSeconds); false otherwise.</summary>
@@ -258,7 +297,8 @@ namespace ChipArena.UnityConversion
             return new ExpeditionFrame{Cx=v.x,Cy=v.y-v.sy/2,Cz=v.z,Ux=ux,Uz=uz,Fx=zx*s,Fz=zz*s,W=v.sx,H=v.sy,D=v.sz,Yaw=v.yaw};
         }
     }
-    public enum ExpeditionDoorLook { Biocontainment, Heavy }
+    /// <summary>A door's look: the town's airlocks (Ward Zero's biocontainment, the heavy door) and an instance exit's laser door.</summary>
+    public enum ExpeditionDoorLook { Biocontainment, Heavy, Laser }
     public sealed class ExpeditionDoorRig
     {
         public string Anchor,Building;public bool Exit;public ExpeditionDoorLook Look;public ExpeditionFrame Frame;
@@ -286,7 +326,7 @@ namespace ChipArena.UnityConversion
                 double yaw=anchor.yaw*Math.PI/180;float ox=(float)Math.Sin(yaw),oz=(float)Math.Cos(yaw);bool exit=!r.World;
                 // The party's side: the approach; on the plane, out of the doorway for a town door and in for an instance exit.
                 float tx=d.approach!=null?d.approach.x:anchor.x,tz=d.approach!=null?d.approach.z:anchor.z;
-                doors.Add(new ExpeditionDoorRig{Anchor=d.anchor,Building=anchor.building,Exit=exit,Look=anchor.building=="exp-ward-zero"?ExpeditionDoorLook.Biocontainment:ExpeditionDoorLook.Heavy,
+                doors.Add(new ExpeditionDoorRig{Anchor=d.anchor,Building=anchor.building,Exit=exit,Look=exit?ExpeditionDoorLook.Laser:anchor.building=="exp-ward-zero"?ExpeditionDoorLook.Biocontainment:ExpeditionDoorLook.Heavy,
                     Frame=ExpeditionFrame.Of(d.closure,tx,tz,exit?-ox:ox,exit?-oz:oz)});
             }
             r.Doors=doors.ToArray();
