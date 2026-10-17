@@ -11,11 +11,12 @@ namespace ChipArena.UnityConversion
     /// The join circles' HUD in the cyber kit (Claude, 2026-10-17; docs/EXPEDITION-HUB.md "Join circle presentation"), drawn from
     /// Core NativeExpeditionJoinModel only:
     ///  - the party list (left, under the wallet and SAFE chip): every member, where they are (HUB, WARD ZERO, CENTRAL STATION,
-    ///    CITY IRONWORKS from members[].area, in the zone's accent), what they are doing (deploying with the seconds, on the way,
-    ///    back in the hub, down, offline, extracted), mine marked YOU, a return flashing its line;
+    ///    CITY IRONWORKS from members[].area, in the zone's accent), what they are doing (deploying with the seconds, LOADING and
+    ///    the zone in its accent while their transfer loads (members[].pendingArea), on the way, back in the hub, down, offline,
+    ///    extracted), mine marked YOU, a return flashing its line;
     ///  - in a circle and counted: DEPLOYING TO and the zone, the seconds, twelve segments, who goes and how to stay;
     ///    in it but not counted: why (down, picking a chip, carrying, loading, waiting for the host); at a cleared circle: CLEARED;
-    ///    near one: a prompt, with whoever is deploying there and the seconds;
+    ///    at a locked or reserved one: LOCKED or ROUTE RESERVED; near one: a prompt, with whoever is deploying there and the seconds;
     ///  - the notes: who deployed where and who came back;
     ///  - my deploy flash over the last moment of my countdown, handing off to the stage loading screen's cut.
     /// Pure draws: nothing here sends a command or reads a rule.
@@ -60,7 +61,10 @@ namespace ChipArena.UnityConversion
             float cw=Math.Max(46,U.Measure(p.Place,9,true,true,.1f).x+20);var chip=new Rect(r.xMax-cw,r.y+3,cw,16);
             H.Cut(chip,C.Navy(.92f),R.TagCut);H.Outline(chip,U.A(accent,.6f*dim),R.TagCut);U.Fill(new Rect(chip.x+3,chip.y+4,H.Snap(2),8),U.A(accent,dim));
             U.Text(new Rect(chip.x+8,chip.y,cw-10,chip.height),p.Place,9,U.A(accent,dim),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
-            U.Text(new Rect(nx,r.y+19,r.width-20,14),p.Status,10,U.A(tone,dim),TextAnchor.MiddleLeft,mono:true,tracking:.08f);
+            // A loading member's status in their destination's accent, with a slow sweep under the line (the load has no
+            // progress in the view, so it only shows it is under way).
+            var st=p.Loading?Hex(p.PendingAccent):tone;U.Text(new Rect(nx,r.y+19,r.width-20,14),p.Status,10,U.A(st,dim),TextAnchor.MiddleLeft,mono:true,tracking:.08f);
+            if(p.Loading){float lw=r.width-14,k=reduced?.5f:(float)(time*.6%1.0),sw=lw*.22f;U.Fill(new Rect(nx,r.yMax-2,lw,2),C.Edge(.35f));U.Fill(new Rect(nx+(lw-sw)*k,r.yMax-2,sw,2),U.A(st,.8f*dim));}
             // Deploying: the count fills under the line in the circle's accent.
             if(p.Deploying&&p.Ring>=0&&p.Ring<m.RingCount){var ring=m.Rings[p.Ring];H.Line(new Rect(nx,r.yMax-2,r.width-14,2),ring.Charge,Hex(ring.Zone.Accent),C.Edge(.5f));}
         }
@@ -83,6 +87,10 @@ namespace ChipArena.UnityConversion
                     break;
                 }
                 case ExpeditionJoinViewer.Cleared:Prompt(W,y+20,ring.Title,"CLEARED · NO DEPLOY",C.Good(),null);break;
+                case ExpeditionJoinViewer.Closed:
+                    if(ring.Phase==ExpeditionJoinPhase.Reserved)Prompt(W,y+20,ring.Title,"ROUTE RESERVED · NO DEPLOY",C.Warn(),null);
+                    else Prompt(W,y+20,ring.Title,"LOCKED · NO DEPLOY",Hex(NativeExpeditionJoinScene.LockedHex),null);
+                    break;
                 case ExpeditionJoinViewer.Near:
                     if(ring.Phase==ExpeditionJoinPhase.Charging&&ring.Names!=null)Prompt(W,y+20,ring.Names,"DEPLOYING · "+Tenths(ring.Left)+"s · STEP IN TO GO WITH THEM",C.Good(),accent);
                     else if(ring.Phase==ExpeditionJoinPhase.Cancelled)Prompt(W,y+20,ring.Title,"CANCELLED · THE CIRCLE EMPTIED",C.Warn(),accent);

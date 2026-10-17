@@ -749,9 +749,10 @@ off the circle, and add the ring.
 ### Join circle presentation (Claude, 2026-10-17, branch `claude/join-circles`)
 
 Replaces Astra's stand-in ring and label (PR #255) on the live exp-layout-5 circles. Presentation only: it reads the public
-view (`joins[]`: doorId, area, x/y/z/r, joinInside, joinStartedAt, duration; `members[].area/atJoin/seat`;
-`instances[].cleared`) and where each member's pilot stands. Who deploys is the authority's `atJoin` and `joinInside`; no
-collider, spawn, ring, route or timing moves.
+view (`joins[]`: doorId, area, x/y/z/r/h, joinInside, joinStartedAt, duration, deployedAt/deployedAccounts, closedReason;
+`members[].area/pendingArea/atJoin/seat`) and where each member's pilot stands. Who deploys is the authority's `atJoin`,
+`joinInside` and deploy record; no collider, spawn, ring, route or timing moves. Bound to Astra's exact join fields (PR #262)
+on `claude/join-circles-bind`; see the table below.
 
 - **The pad** (`Core/NativeExpeditionJoinScene.cs`, drawn through the state pieces' NativeBlockLit and NativeSirenFx path):
   - Six waist-high hardlight emitter posts stand 0.3 m outside the radius, off the door and approach lines.
@@ -761,21 +762,24 @@ collider, spawn, ring, route or timing moves.
   - The accent is per zone: Ward Zero red, Central Station teal, City Ironworks amber (`NativeExpeditionJoinZones`, keyed on
     the layout's area ids).
 - **The states:**
-  - Charging: the curtain rises and whitens over `duration`, and the posts' bars fill. The hologram shows the seconds,
-    12 segments and a pip per pilot counted.
+  - Charging: the curtain rises to the counted height `h` and whitens over `duration`, and the posts' bars fill. The
+    hologram shows the seconds, 12 segments and a pip per pilot counted.
   - Each counted pilot stands in a lock column under a chevron. A pilot outside has neither.
-  - Deploy (the next view shows the circle empty at or after expiry): the curtain flashes, a beam takes each pilot it counted,
-    and a shock ring runs out. Pilots still held in the hub while their area loads keep a hold column.
-  - Cancelled (it emptied before expiry): the curtain drops and flickers out.
-  - Held (still occupied after expiry: the authority refused): an amber flicker over the restarted count.
-  - Cleared: green posts and CLEARED, with no curtain or beacon.
+  - Deploy (a new deploy record): the curtain flashes over the counted column, a beam takes each pilot in
+    `deployedAccounts`, and a shock ring runs out. Pilots still held in the hub while their transfer loads keep a hold column.
+  - Cancelled (the count stopped with no new record and the circle empty, including a step-out at the deadline): the
+    curtain drops and flickers out.
+  - Held (still occupied after expiry with no new record: the authority refused): an amber flicker over the restarted count.
+  - Closed (`closedReason`; only Open counts, so no curtain, countdown, beacon or lock columns): Cleared, green posts and
+    CLEARED; Locked, red-amber posts and a padlock over LOCKED; Reserved, amber posts and ROUTE RESERVED in a stamp frame.
   - A return to the hub: a beam-in where the pilot appears.
 - **The HUD** (`Runtime/NativeExpeditionJoinHud.cs`):
-  - A party list on the left. Each member's place is HUB / WARD ZERO / CENTRAL STATION / CITY IRONWORKS, with their state
-    (deploying with seconds, deploying after the deploy until their area changes, back in the hub, down, offline, extracted).
-    Mine is marked YOU.
+  - A party list on the left. Each member's place is HUB / WARD ZERO / CENTRAL STATION / CITY IRONWORKS (where they
+    physically are), with their state (deploying with seconds, LOADING · the zone while their transfer loads, back in the
+    hub, down, offline, extracted). Mine is marked YOU.
   - In a circle and counted: DEPLOYING TO, the zone, the seconds, the segments, who goes, and "step out to stay".
-  - In it but not counted: the reason (down, picking a chip, carrying, loading, waiting for the host). Near one: a prompt.
+  - In it but not counted: the reason (down, picking a chip, carrying, loading, waiting for the host). At a closed one:
+    CLEARED, LOCKED or ROUTE RESERVED with NO DEPLOY. Near one: a prompt.
   - Notes (who deployed where, who came back), and my flash over the last 0.35 s, so the loading screen's cut lands on light.
 - **Sound keys** (the owner generates them; until then the fallback clip plays):
 
@@ -798,12 +802,15 @@ collider, spawn, ring, route or timing moves.
 - **Reduced effects:** no shimmer, flicker or bob. The countdown still fills.
 - **Fallback:** without the pads (shader missing), the stand-in ring and label stay.
 
-**Not in the view (for Astra):**
-- There is no deploy record. A step-out in the last view interval before expiry reads as a deploy (a flash and a note only).
-  `joins[].deployedAt` with the deployed accounts, or `members[].pendingArea`, would make it exact. The pending field would
-  also show other members' loading.
-- `h` is not in `ExpeditionJoinView`. Presentation assumes a 4.5 m column when it places pilots.
-- A ring closed for any reason other than `cleared` is not visible.
+**What each join field drives** (`claude/join-circles-bind`, 2026-10-17):
+
+| Field | Presentation |
+| --- | --- |
+| `joins[].deployedAt` | The deploy trigger: a changed record (per doorId) plays the deploy (beam, flash, shock ring, cue, note). The first record seen is a baseline: a late joiner, a pilot back from a zone or a cancelled load, and a record already 1.6 s old on the view's clock (a menu) replay nothing. A reset (-1) plays nothing. An empty circle at the deadline is a cancel, never a deploy. |
+| `joins[].deployedAccounts` | Who beamed out: the beams, the note's names (mine left out), my flash only if I am in it, and the deployed party rows. |
+| `joins[].h` | The curtain rises to `h` and flashes over it; the counted column for "in the circle" (capsule centre, feet + 0.85 m, in `y..y+h`). 4.5 m only when `h <= 0` (an old snapshot). |
+| `joins[].closedReason` | Open counts. Cleared: the green CLEARED pad. Locked: red-amber LOCKED with a padlock. Reserved: amber ROUTE RESERVED. Closed: no countdown, curtain, beacon or lock columns. An unknown value reads as locked. `instances[].cleared` closes a circle only in a snapshot without `h`. |
+| `members[].pendingArea` | The party row reads LOADING · the zone (its accent, with a slow sweep) for every member, while the place chip stays where they physically are; the pilot keeps a hold column in the hub. A load that ends without a move clears the deployed row. |
 
 ## Expedition co-op hosting (owner request 2026-10-15) — for Astra
 

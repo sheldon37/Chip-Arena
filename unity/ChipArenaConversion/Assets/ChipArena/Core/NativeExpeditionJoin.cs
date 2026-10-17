@@ -5,17 +5,19 @@ namespace ChipArena.UnityConversion
 {
     // Join circle presentation (Claude, 2026-10-17; docs/EXPEDITION-HUB.md "Join circle presentation"). Engine-free: what each hub
     // join circle shows, where the party list places each member, the deploy and return notes and the sound cue events, read from
-    // the public ExpeditionView only: Astra's joins[] (doorId, area, x/y/z/r, joinInside, joinStartedAt, duration),
-    // members[].area/atJoin/seat and instances[].cleared. Where each member's pilot stands this frame (the caller's arena) only
-    // says where to draw a member's marker: who deploys is the authority's atJoin and joinInside, never a position read here.
+    // the public ExpeditionView only: Astra's joins[] (doorId, area, x/y/z/r/h, joinInside, joinStartedAt, duration, the deploy
+    // record deployedAt/deployedAccounts, closedReason), members[].area/pendingArea/atJoin/seat, and instances[].cleared only for
+    // a snapshot without h or closedReason. Where each member's pilot stands this frame (the caller's arena) only says where to
+    // draw a member's marker: who deploys is the authority's atJoin, joinInside and deploy record, never a position read here.
     // Nothing decides a rule, writes the view or touches collision. Allocation-free once warm (labels cached, fixed arrays).
 
     /// <summary>A circle's state as drawn: at rest, charging toward deploy, the deploy itself, powering down after it emptied,
-    /// held at expiry (the authority refused the transfer and restarts the count), or cleared (its area is done: no deploy).</summary>
-    public enum ExpeditionJoinPhase { Idle, Charging, Deploying, Cancelled, Held, Cleared }
+    /// held at expiry (the authority refused the transfer and restarts the count), or closed (closedReason: cleared, its area is
+    /// done; locked; or its route reserved). Only an open circle counts, so a closed one never charges.</summary>
+    public enum ExpeditionJoinPhase { Idle, Charging, Deploying, Cancelled, Held, Cleared, Locked, Reserved }
     /// <summary>The local pilot against its nearest circle: away, near (a prompt), counted (deploying with the circle), standing in
-    /// it but not counted (the reason says why), or at a cleared circle.</summary>
-    public enum ExpeditionJoinViewer { Away, Near, Deploying, NotCounted, Cleared }
+    /// it but not counted (the reason says why), at a cleared circle, or at a locked or reserved one.</summary>
+    public enum ExpeditionJoinViewer { Away, Near, Deploying, NotCounted, Cleared, Closed }
     public enum ExpeditionJoinCueKind { Charge, Tick, Cancel, Deploy, Held, Arrive }
 
     /// <summary>A deploy zone as the hub names and colours it: the area id, its name, a short name for tight signs, what it
@@ -63,30 +65,36 @@ namespace ChipArena.UnityConversion
     public struct ExpeditionJoinRing
     {
         public string Door,Area;public ExpeditionJoinZone Zone;
-        /// <summary>The circle (its floor centre and radius), the unit direction from it toward its door, and toward where the
-        /// party comes from (the hub's centre).</summary>
-        public float X,Y,Z,R,Dx,Dz,Ax,Az;
+        /// <summary>The circle (its floor centre, radius and counted height: joins[].h, NativeExpeditionJoinModel.FallbackHeight
+        /// for a snapshot without it), the unit direction from it toward its door, and toward where the party comes from (the
+        /// hub's centre).</summary>
+        public float X,Y,Z,R,H,Dx,Dz,Ax,Az;
         public ExpeditionJoinPhase Phase;
+        /// <summary>Why it does not count (joins[].closedReason; Open counts).</summary>
+        public ExpeditionJoinClosedReason Closure;
         /// <summary>The countdown: its fill (0..1 over the authority's duration), seconds left and the whole seconds shown.</summary>
         public float Charge,Left;public int Seconds;
         /// <summary>The authority's count of pilots in it (joinInside), and the members (bits over the party rows) the view says
-        /// are counted in it; at a deploy, the members it took (the last view's counted members).</summary>
+        /// are counted in it; at a deploy, the members it took (its deployedAccounts).</summary>
         public int Inside,Pilots,Taken;
         /// <summary>Seconds in a timed phase (deploy, cancel, hold); the charge it held when it emptied or deployed; a refused
         /// deploy's amber flicker (1 at the refusal, 0 after HeldSeconds), shown over a restarted count too.</summary>
         public float Age,Was,Hold;
         /// <summary>How lit the pad is (0..1): idle .4, rising with the charge, full at a deploy, dim when cleared.</summary>
         public float Power;
+        /// <summary>Cleared: closed because its area is done. Entered: the party has been in its area.</summary>
         public bool Cleared,Entered,Mine;
         /// <summary>The local pilot's horizontal distance from the centre (metres; +inf without a pilot here).</summary>
         public float Distance;
         public string Title,Status,Detail,Names;public ExpeditionTone Tone;
     }
-    /// <summary>One party member's line: who, where (HUB or the zone), what they are doing, and their pilot here this frame.</summary>
+    /// <summary>One party member's line: who, where (HUB or the zone: where they physically are), what they are doing, and their
+    /// pilot here this frame. Loading: the member's transfer is loading (members[].pendingArea, Pending its area and PendingAccent
+    /// its accent); Place stays their source until the authority commits it.</summary>
     public struct ExpeditionPartyRow
     {
-        public string Account,Name,Place,Status;public int Accent,Seat,Ring;public ExpeditionTone Tone;
-        public bool You,Host,Hub,Deploying,EnRoute,Down,Offline,Extracted,Placed;
+        public string Account,Name,Place,Status,Pending;public int Accent,PendingAccent,Seat,Ring;public ExpeditionTone Tone;
+        public bool You,Host,Hub,Deploying,EnRoute,Loading,Down,Offline,Extracted,Placed;
         /// <summary>Seconds since this member came back to the hub (-1 none recent), and since they deployed (-1).</summary>
         public float Returned,Deployed;public float X,Y,Z;
     }
@@ -95,19 +103,27 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The join circles, the party list and their notes from one view (one instance per screen, single thread). The view is the
-    /// truth: a circle charges while joins[].joinStartedAt is set with pilots in it; it deployed when the next view shows it empty
-    /// at or after its expiry (joinStartedAt + duration on the authority clock), it was cancelled when it emptied before; it was
-    /// held when it is still occupied after expiry (the authority restarts the count). At 20 Hz views, a step-out in the last
-    /// view interval before expiry reads as a deploy (the view carries no deploy record; a presentation flash only).
+    /// truth: a circle charges while joins[].joinStartedAt is set with pilots in it. It deployed when its deploy record changes
+    /// (joins[].deployedAt, the authority's acceptance of the transfer) and took exactly its deployedAccounts; an empty circle at
+    /// the deadline is never read as a deploy. The first record seen is a baseline: a pilot who reaches the hub late (a join, a
+    /// return from a zone, a cancelled load) sees no old deployment, and a record already DeploySeconds old on the view's clock is
+    /// adopted the same way. A count that stops without a new record was cancelled when it emptied, or held when it is still
+    /// occupied after expiry (the authority refused and restarts the count). A closed circle (closedReason) shows its reason and
+    /// never counts. A member's members[].pendingArea is their transfer loading (LOADING · the zone) until the authority commits
+    /// it and their area changes.
     /// </summary>
     public sealed class NativeExpeditionJoinModel
     {
         public const int MaxRings=8,MaxMembers=8,MaxToasts=4,MaxCues=16;
         /// <summary>Within this far of a circle's edge (m) the HUD prompts; the arrival and pad effects' timings (s).</summary>
         public const float NearMetres=7,CancelSeconds=.9f,DeploySeconds=1.6f,HeldSeconds=.8f,ToastSeconds=4.5f,EnRouteSeconds=15,ReturnSeconds=4,ArriveSeconds=1.4f;
+        /// <summary>A circle's counted height (m) for a snapshot without joins[].h (the column presentation assumed before it).</summary>
+        public const float FallbackHeight=4.5f;
         /// <summary>My screen whitens over the last FlashLead seconds of my countdown, so the loading screen's cut lands on light.</summary>
         public const float FlashLead=.35f,FlashOut=.25f;
         public const string Down="YOU ARE DOWN",Picking="FINISH YOUR CHIP PICK",Carrying="PUT DOWN WHO YOU CARRY",Loading="LOADING",Extracted="YOU HAVE EXTRACTED",Waiting="WAITING FOR THE HOST";
+        /// <summary>The closed circles' words, and a loading member's status prefix (then the zone's name).</summary>
+        public const string LockedWord="LOCKED",ReservedWord="ROUTE RESERVED",NoDeploy="NO DEPLOY",LoadingInto="LOADING · ";
         public readonly ExpeditionJoinRing[] Rings=new ExpeditionJoinRing[MaxRings];public int RingCount;
         public readonly ExpeditionPartyRow[] Party=new ExpeditionPartyRow[MaxMembers];public int PartyCount;
         public readonly ExpeditionJoinToast[] Toasts=new ExpeditionJoinToast[MaxToasts];public int ToastCount;
@@ -119,8 +135,8 @@ namespace ChipArena.UnityConversion
         public float Flash;
         public string World;
 
-        private struct RingMemory{public string Door;public double Started,EventAt;public int Inside,Mask,Seconds,EventMask;public ExpeditionJoinPhase Event;public float Was,Charge;}
-        private struct MemberMemory{public string Account,Area,To,From;public double DeployedAt,ReturnedAt;public bool Used;}
+        private struct RingMemory{public string Door;public double Started,EventAt,DeployedAt;public int Inside,Seconds,EventMask;public ExpeditionJoinPhase Event;public float Was,Charge;}
+        private struct MemberMemory{public string Account,Area,To,From,Pending;public double DeployedAt,ReturnedAt;public bool Used;}
         private readonly RingMemory[] rings=new RingMemory[MaxRings];private int ringMemory;
         private readonly MemberMemory[] members=new MemberMemory[MaxMembers];
         private readonly ExpeditionJoinToast[] toastAt=new ExpeditionJoinToast[MaxToasts];private readonly double[] toastTime=new double[MaxToasts];private int toastCount;
@@ -150,7 +166,10 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<RingCount;i++)Ring(v,source[i],i,t,labels,changed);
             }
             InHub=hub&&RingCount>0;
-            ViewerState(v,t);
+            // Out of the hub (or its circles out of the view) the circles are forgotten: back in it, each deploy record is a fresh
+            // baseline, so a deploy that happened while this pilot was away or loading is never replayed.
+            if(!InHub)ringMemory=0;
+            ViewerState(v,t,labels);
             Age(t);
         }
 
@@ -160,17 +179,24 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<v.members.Length&&PartyCount<MaxMembers;i++)
             {
                 var m=v.members[i];if(m?.account==null)continue;int slot=MemberSlot(m.account);ref var mm=ref members[slot];
-                string name=labels.Who(string.IsNullOrEmpty(m.name)?m.account:m.name);bool you=m.account==v.viewer;
-                if(changed&&mm.Area!=null&&m.area!=null&&mm.Area!=m.area)
+                string name=labels.Who(string.IsNullOrEmpty(m.name)?m.account:m.name);bool you=m.account==v.viewer;string pending=string.IsNullOrEmpty(m.pendingArea)?null:m.pendingArea;
+                if(changed)
                 {
-                    // Came back to the hub, or arrived in a zone (the deploy note already said so for a deploy this client saw).
-                    if(m.area==v.world){mm.ReturnedAt=t;mm.From=mm.Area;mm.To=null;mm.DeployedAt=double.NaN;if(!you)Toast(labels.Join(labels.Join(name," RETURNED FROM "),NativeExpeditionJoinZones.Of(mm.Area).Name),NativeExpeditionJoinZones.HubHex,t);}
-                    else{if(!you&&mm.To!=m.area)Toast(labels.Join(labels.Join(name," ENTERED "),NativeExpeditionJoinZones.Of(m.area).Name),NativeExpeditionJoinZones.Of(m.area).Accent,t);mm.To=null;mm.DeployedAt=double.NaN;}
+                    if(mm.Area!=null&&m.area!=null&&mm.Area!=m.area)
+                    {
+                        // Came back to the hub, or arrived in a zone (the deploy note already said so for a deploy this client saw).
+                        if(m.area==v.world){mm.ReturnedAt=t;mm.From=mm.Area;mm.To=null;mm.DeployedAt=double.NaN;if(!you)Toast(labels.Join(labels.Join(name," RETURNED FROM "),NativeExpeditionJoinZones.Of(mm.Area).Name),NativeExpeditionJoinZones.HubHex,t);}
+                        else{if(!you&&mm.To!=m.area)Toast(labels.Join(labels.Join(name," ENTERED "),NativeExpeditionJoinZones.Of(m.area).Name),NativeExpeditionJoinZones.Of(m.area).Accent,t);mm.To=null;mm.DeployedAt=double.NaN;}
+                    }
+                    // Their load ended without a move (the transfer was cancelled): no longer on the way.
+                    else if(mm.To!=null&&mm.Pending!=null&&pending==null){mm.To=null;mm.DeployedAt=double.NaN;}
+                    mm.Pending=pending;
                 }
                 if(m.area!=null)mm.Area=m.area;
                 if(mm.To!=null&&!(t-mm.DeployedAt<EnRouteSeconds)){mm.To=null;mm.DeployedAt=double.NaN;}
                 var row=new ExpeditionPartyRow{Account=m.account,Name=name,Seat=m.seat,You=you,Host=m.host,Hub=m.area==v.world,Down=!m.alive,Offline=!m.connected,Extracted=m.extracted,Ring=-1,Returned=-1,Deployed=-1,
                     Place=NativeExpeditionJoinZones.Place(m.area,v.world),Accent=NativeExpeditionJoinZones.PlaceAccent(m.area,v.world)};
+                if(pending!=null){var zone=NativeExpeditionJoinZones.Of(pending);row.Loading=true;row.Pending=pending;row.PendingAccent=zone.Accent;}
                 if(m.area!=null&&m.area==v.area&&pilots!=null&&pilots.Feet(m.account,m.seat,out float x,out float y,out float z)&&Finite(x)&&Finite(y)&&Finite(z)){row.Placed=true;row.X=x;row.Y=y;row.Z=z;}
                 if(mm.To!=null){row.EnRoute=true;row.Deployed=(float)(t-mm.DeployedAt);}
                 if(t-mm.ReturnedAt<ReturnSeconds&&t>=mm.ReturnedAt)row.Returned=(float)(t-mm.ReturnedAt);
@@ -189,15 +215,22 @@ namespace ChipArena.UnityConversion
 
         // ---- the circles -------------------------------------------------------------------------------------------------------
         private readonly ExpeditionJoinView[] source=new ExpeditionJoinView[MaxRings];
-        /// <summary>A circle's geometry, zone and area state, and the members the view counts (atJoin) whose pilot stands in it.</summary>
+        /// <summary>A circle's geometry, zone and closure, and the members the view counts (atJoin) whose pilot stands in it (an
+        /// open circle only: a closed one counts nobody).</summary>
         private ExpeditionJoinRing Place(ExpeditionView v,ExpeditionJoinView j,int index)
         {
-            var zone=NativeExpeditionJoinZones.Of(j.area);
-            var r=new ExpeditionJoinRing{Door=j.doorId,Area=j.area,Zone=zone,X=j.x,Y=j.y,Z=j.z,R=j.r>0?j.r:2.5f,Inside=Math.Max(0,j.joinInside),Distance=float.PositiveInfinity,Tone=ExpeditionTone.Cyan};
+            var zone=NativeExpeditionJoinZones.Of(j.area);bool exact=j.h>0&&!float.IsInfinity(j.h);
+            var r=new ExpeditionJoinRing{Door=j.doorId,Area=j.area,Zone=zone,X=j.x,Y=j.y,Z=j.z,R=j.r>0?j.r:2.5f,H=exact?j.h:FallbackHeight,Inside=Math.Max(0,j.joinInside),Distance=float.PositiveInfinity,Tone=ExpeditionTone.Cyan};
             // Toward the door (its anchor), and toward the hub's centre (every route leaves the sanctuary toward its circle).
             float dx=-r.X,dz=-r.Z;foreach(var a in v.anchors)if(a!=null&&a.id==j.doorId){dx=a.x-r.X;dz=a.z-r.Z;break;}
             Unit(ref dx,ref dz,r.X,r.Z);r.Dx=dx;r.Dz=dz;float ax=-r.X,az=-r.Z;Unit(ref ax,ref az,-dx,-dz);r.Ax=ax;r.Az=az;
-            foreach(var b in v.instances)if(b!=null&&b.id==j.area){r.Cleared=b.cleared;r.Entered=b.entered;break;}
+            bool cleared=false;foreach(var b in v.instances)if(b!=null&&b.id==j.area){cleared=b.cleared;r.Entered=b.entered;break;}
+            // The closure is the authority's closedReason; a snapshot without the join fields (no h) still closes a cleared area's
+            // circle from instances[].cleared, as before them. An unknown reason does not count either: it reads as locked.
+            var closure=j.closedReason;if(closure==ExpeditionJoinClosedReason.Open&&!exact&&cleared)closure=ExpeditionJoinClosedReason.Cleared;
+            r.Closure=closure;r.Cleared=closure==ExpeditionJoinClosedReason.Cleared;
+            r.Phase=closure==ExpeditionJoinClosedReason.Open?ExpeditionJoinPhase.Idle:closure==ExpeditionJoinClosedReason.Cleared?ExpeditionJoinPhase.Cleared:closure==ExpeditionJoinClosedReason.Reserved?ExpeditionJoinPhase.Reserved:ExpeditionJoinPhase.Locked;
+            if(Closed(r.Phase)){r.Inside=0;return r;}
             for(int i=0;i<PartyCount;i++)
             {
                 ref var row=ref Party[i];if(row.Ring>=0||!row.Placed)continue;var m=v.Member(row.Account);if(m==null||!m.atJoin)continue;
@@ -209,28 +242,33 @@ namespace ChipArena.UnityConversion
         /// occupied circle counts them.</summary>
         private void Unplaced(ExpeditionView v)
         {
-            int only=-1,n=0;for(int i=0;i<RingCount;i++)if(source[i].joinInside>0&&source[i].joinStartedAt>=0){only=i;n++;}if(n!=1)return;
+            int only=-1,n=0;for(int i=0;i<RingCount;i++)if(!Closed(Rings[i].Phase)&&source[i].joinInside>0&&source[i].joinStartedAt>=0){only=i;n++;}if(n!=1)return;
             for(int i=0;i<PartyCount;i++){ref var row=ref Party[i];if(row.Ring>=0)continue;var m=v.Member(row.Account);if(m==null||!m.atJoin)continue;Rings[only].Pilots|=1<<i;row.Ring=only;}
         }
         private void Ring(ExpeditionView v,ExpeditionJoinView j,int index,double t,ExpeditionLabels labels,bool changed)
         {
-            var r=Rings[index];double duration=j.duration>0?j.duration:ExpeditionJoinRules.Duration;int mask=r.Pilots;
-            ref var mem=ref Memory(j.doorId,j.joinStartedAt,r.Inside,mask);
-            double started=j.joinStartedAt;bool charging=started>=0&&r.Inside>0;
+            var r=Rings[index];double duration=j.duration>0?j.duration:ExpeditionJoinRules.Duration;
+            bool closed=Closed(r.Phase);double started=closed?-1:j.joinStartedAt;bool charging=started>=0&&r.Inside>0;
+            ref var mem=ref Memory(j.doorId,started,r.Inside,j.deployedAt);
             if(changed)
             {
-                if(mem.Started>=0&&(started<0||started!=mem.Started))
+                // A deploy is a new record: the authority accepted the transfer at deployedAt and took deployedAccounts. A reset
+                // (deployedAt back to -1) and a record already old on the view's clock (a pilot back from a menu) are adopted.
+                bool record=!j.deployedAt.Equals(mem.DeployedAt);
+                if(record){if(j.deployedAt>=0&&v.elapsed-j.deployedAt<=DeploySeconds)Event(ref mem,ExpeditionJoinPhase.Deploying,t,ref r,index,v,labels,j.deployedAccounts);}
+                else if(mem.Started>=0&&(started<0||started!=mem.Started))
                 {
+                    // The count stopped without a deploy: still occupied after its expiry, the authority refused and restarts it;
+                    // otherwise it emptied (a step-out at the deadline too).
                     bool expired=v.elapsed>=mem.Started+duration-1e-6;
-                    if(r.Inside==0&&expired)Event(ref mem,ExpeditionJoinPhase.Deploying,t,ref r,index,v,labels);
-                    else if(r.Inside>0&&expired)Event(ref mem,ExpeditionJoinPhase.Held,t,ref r,index,v,labels);
-                    else if(mem.Inside>0)Event(ref mem,ExpeditionJoinPhase.Cancelled,t,ref r,index,v,labels);
+                    if(r.Inside>0&&expired)Event(ref mem,ExpeditionJoinPhase.Held,t,ref r,index,v,labels,null);
+                    else if(mem.Inside>0)Event(ref mem,ExpeditionJoinPhase.Cancelled,t,ref r,index,v,labels,null);
                 }
                 if(charging&&(mem.Started<0||started!=mem.Started)){Cue(ExpeditionJoinCueKind.Charge,index,r.X,r.Y,r.Z);mem.Seconds=int.MaxValue;}
-                mem.Started=started;mem.Inside=r.Inside;if(charging||r.Inside==0)mem.Mask=mask;
+                mem.Started=started;mem.Inside=r.Inside;mem.DeployedAt=j.deployedAt;
             }
-            double since=t-mem.EventAt;if(mem.Event==ExpeditionJoinPhase.Held&&since>=0&&since<HeldSeconds)r.Hold=1-(float)(since/HeldSeconds);
-            if(r.Cleared){r.Phase=ExpeditionJoinPhase.Cleared;r.Power=.3f;}
+            double since=t-mem.EventAt;if(!closed&&mem.Event==ExpeditionJoinPhase.Held&&since>=0&&since<HeldSeconds)r.Hold=1-(float)(since/HeldSeconds);
+            if(closed){r.Power=.3f;mem.Seconds=int.MaxValue;}
             else if(charging)
             {
                 r.Phase=ExpeditionJoinPhase.Charging;r.Charge=Clamp01((float)((t-started)/duration));r.Left=(float)Math.Max(0,started+duration-t);r.Seconds=Math.Max(1,(int)Math.Ceiling(r.Left-1e-6));
@@ -249,16 +287,24 @@ namespace ChipArena.UnityConversion
             Words(ref r,v,labels);
             Rings[index]=r;
         }
-        private ref RingMemory Memory(string door,double started,int inside,int mask)
+        private ref RingMemory Memory(string door,double started,int inside,double deployedAt)
         {
             for(int i=0;i<ringMemory;i++)if(rings[i].Door==door)return ref rings[i];
             int k=ringMemory<rings.Length?ringMemory++:rings.Length-1;
-            // First sight: no transition from nothing (a late joiner sees a running count, never a deploy or a cancel).
-            rings[k]=new RingMemory{Door=door,Started=started,Inside=inside,Mask=mask,Seconds=int.MaxValue,EventAt=double.NegativeInfinity,Event=ExpeditionJoinPhase.Idle};return ref rings[k];
+            // First sight: no transition from nothing (a late joiner sees a running count, never a deploy or a cancel); its deploy
+            // record is the baseline the next records are compared with.
+            rings[k]=new RingMemory{Door=door,Started=started,Inside=inside,DeployedAt=deployedAt,Seconds=int.MaxValue,EventAt=double.NegativeInfinity,Event=ExpeditionJoinPhase.Idle};return ref rings[k];
         }
-        private void Event(ref RingMemory mem,ExpeditionJoinPhase kind,double t,ref ExpeditionJoinRing r,int index,ExpeditionView v,ExpeditionLabels labels)
+        /// <summary>The party rows (bits) of a deploy record's accounts.</summary>
+        private int Mask(string[] accounts)
         {
-            mem.Event=kind;mem.EventAt=t;mem.Was=mem.Charge;mem.EventMask=kind==ExpeditionJoinPhase.Deploying?mem.Mask:0;
+            int mask=0;if(accounts==null)return 0;
+            for(int k=0;k<accounts.Length;k++)for(int i=0;i<PartyCount;i++)if(Party[i].Account==accounts[k]){mask|=1<<i;break;}
+            return mask;
+        }
+        private void Event(ref RingMemory mem,ExpeditionJoinPhase kind,double t,ref ExpeditionJoinRing r,int index,ExpeditionView v,ExpeditionLabels labels,string[] took)
+        {
+            mem.Event=kind;mem.EventAt=t;mem.Was=mem.Charge;mem.EventMask=kind==ExpeditionJoinPhase.Deploying?Mask(took):0;
             if(kind==ExpeditionJoinPhase.Deploying)
             {
                 Cue(ExpeditionJoinCueKind.Deploy,index,r.X,r.Y,r.Z);mem.Was=1;
@@ -291,31 +337,34 @@ namespace ChipArena.UnityConversion
                 case ExpeditionJoinPhase.Cancelled:r.Status="CANCELLED";r.Detail="THE CIRCLE EMPTIED";r.Tone=ExpeditionTone.Warn;break;
                 case ExpeditionJoinPhase.Held:r.Status="HOLDING · RETRYING";r.Detail="AREA NOT READY YET";r.Tone=ExpeditionTone.Warn;break;
                 case ExpeditionJoinPhase.Cleared:r.Status="CLEARED";r.Detail="BOSS DOWN · NO DEPLOY";r.Tone=ExpeditionTone.Good;break;
+                case ExpeditionJoinPhase.Locked:r.Status=LockedWord;r.Detail=NoDeploy;r.Tone=ExpeditionTone.Danger;break;
+                case ExpeditionJoinPhase.Reserved:r.Status=ReservedWord;r.Detail=NoDeploy;r.Tone=ExpeditionTone.Warn;break;
                 default:r.Status="STEP IN TO DEPLOY";r.Detail=r.Zone.Threat;r.Tone=ExpeditionTone.Cyan;break;
             }
         }
 
         // ---- the viewer --------------------------------------------------------------------------------------------------------
-        private void ViewerState(ExpeditionView v,double t)
+        private void ViewerState(ExpeditionView v,double t,ExpeditionLabels labels)
         {
             int me=-1;for(int i=0;i<PartyCount;i++)if(Party[i].You){me=i;break;}ViewerRow=me;
-            for(int i=0;i<PartyCount;i++)Status(ref Party[i],v);
+            for(int i=0;i<PartyCount;i++)Status(ref Party[i],v,labels);
             if(me<0||!InHub)return;var row=Party[me];
             float best=float.PositiveInfinity;
             for(int i=0;i<RingCount;i++)
             {
                 ref var r=ref Rings[i];if(row.Placed){float dx=row.X-r.X,dz=row.Z-r.Z;r.Distance=(float)Math.Sqrt(dx*dx+dz*dz);}
                 r.Mine=(r.Pilots&1<<me)!=0;
-                if(r.Mine){ViewerRing=i;best=-1;}else if(best>=0&&r.Distance<best){best=r.Distance;if(r.Distance<=r.R+NearMetres)ViewerRing=i;}
+                // My circle: the one counting me, or the one whose deploy took me.
+                if(r.Mine||r.Phase==ExpeditionJoinPhase.Deploying&&(r.Taken&1<<me)!=0){ViewerRing=i;best=-1;}else if(best>=0&&r.Distance<best){best=r.Distance;if(r.Distance<=r.R+NearMetres)ViewerRing=i;}
             }
             // Counted without a placed pilot (a guest's own pilot lagging the authority): the only charging circle is mine.
             var mine=v.Member(v.viewer);
             if(ViewerRing<0&&mine!=null&&mine.atJoin){int only=-1,n=0;for(int i=0;i<RingCount;i++)if(Rings[i].Phase==ExpeditionJoinPhase.Charging){only=i;n++;}if(n==1){ViewerRing=only;Rings[only].Mine=true;}}
             if(ViewerRing<0)return;ref var ring=ref Rings[ViewerRing];bool inside=row.Placed&&Within(ring,row.X,row.Y,row.Z,0);
             if(ring.Mine&&ring.Phase==ExpeditionJoinPhase.Charging){Viewer=ExpeditionJoinViewer.Deploying;Flash=FlashLead>0?Smooth(1-ring.Left/FlashLead):0;}
-            // Taken by a deploy and still held in the hub until the area loads: no prompt, the loading screen takes over.
-            else if(row.EnRoute){}
-            else if(ring.Phase==ExpeditionJoinPhase.Cleared&&(inside||ring.Distance<=ring.R+NearMetres))Viewer=ExpeditionJoinViewer.Cleared;
+            // Taken by a deploy, or my transfer loading, and still held in the hub: no prompt, the loading screen takes over.
+            else if(row.EnRoute||row.Loading){}
+            else if(Closed(ring.Phase)&&(inside||ring.Distance<=ring.R+NearMetres))Viewer=ring.Phase==ExpeditionJoinPhase.Cleared?ExpeditionJoinViewer.Cleared:ExpeditionJoinViewer.Closed;
             else if(inside){Viewer=ExpeditionJoinViewer.NotCounted;ViewerReason=Reason(v);}
             else if(ring.Distance<=ring.R+NearMetres)Viewer=ExpeditionJoinViewer.Near;
             // The deploy that took me: the light falls away under the loading screen's cut.
@@ -331,12 +380,14 @@ namespace ChipArena.UnityConversion
             if(v.loading||v.areaBarrier!=null&&v.areaBarrier.active)return Loading;
             return Waiting;
         }
-        private void Status(ref ExpeditionPartyRow row,ExpeditionView v)
+        private void Status(ref ExpeditionPartyRow row,ExpeditionView v,ExpeditionLabels labels)
         {
             var m=v.Member(row.Account);row.Deploying=row.Ring>=0&&row.Ring<RingCount&&Rings[row.Ring].Phase==ExpeditionJoinPhase.Charging;
             if(row.Extracted){row.Status="EXTRACTED";row.Tone=ExpeditionTone.Warn;}
             else if(row.Offline){row.Status="OFFLINE";row.Tone=ExpeditionTone.Muted;}
             else if(row.Down){row.Status=m!=null&&NativeExpeditionPresentation.Has(m.carriedBy)?"CARRIED":"DOWN";row.Tone=ExpeditionTone.Danger;}
+            // Their transfer is loading (pendingArea): where to, while Place still says where they are.
+            else if(row.Loading){row.Status=labels.Join(LoadingInto,NativeExpeditionJoinZones.Of(row.Pending).Name);row.Tone=ExpeditionTone.Cyan;}
             else if(row.Deploying){row.Status=SecondsWord(Rings[row.Ring].Seconds);row.Tone=ExpeditionTone.Good;}
             else if(row.EnRoute){row.Status="DEPLOYING";row.Tone=ExpeditionTone.Cyan;}
             else if(row.Returned>=0){row.Status="BACK IN THE HUB";row.Tone=ExpeditionTone.Good;}
@@ -363,8 +414,13 @@ namespace ChipArena.UnityConversion
         private void Cue(ExpeditionJoinCueKind kind,int ring,float x,float y,float z){if(CueCount<MaxCues)Cues[CueCount++]=new ExpeditionJoinCue{Kind=kind,Ring=ring,X=x,Y=y,Z=z};}
 
         // ---- helpers -----------------------------------------------------------------------------------------------------------
-        /// <summary>A point (feet) inside a circle's column: within its radius (+pad) horizontally, between its floor and 4.5 m up.</summary>
-        public static bool Within(in ExpeditionJoinRing r,float x,float y,float z,float pad){float dx=x-r.X,dz=z-r.Z,rr=r.R+pad;return dx*dx+dz*dz<=rr*rr&&y>=r.Y-1&&y<=r.Y+4.5f;}
+        /// <summary>A pilot (its feet) inside a circle's counted column as the authority tests it: the capsule centre (feet +
+        /// ExpeditionJoinRules.CapsuleCentreHeight) within the radius and between the floor and the counted height H, each
+        /// widened by `pad`.</summary>
+        public static bool Within(in ExpeditionJoinRing r,float x,float y,float z,float pad)
+        {float dx=x-r.X,dz=z-r.Z,rr=r.R+pad,c=y+ExpeditionJoinRules.CapsuleCentreHeight;return dx*dx+dz*dz<=rr*rr&&c>=r.Y-pad&&c<=r.Y+r.H+pad;}
+        /// <summary>A circle that does not count (closedReason other than Open): cleared, locked or reserved.</summary>
+        public static bool Closed(ExpeditionJoinPhase p)=>p==ExpeditionJoinPhase.Cleared||p==ExpeditionJoinPhase.Locked||p==ExpeditionJoinPhase.Reserved;
         private static void Unit(ref float x,ref float z,float fx,float fz){float l=(float)Math.Sqrt(x*x+z*z);if(l<1e-4f){x=fx;z=fz;l=(float)Math.Sqrt(x*x+z*z);if(l<1e-4f){x=1;z=0;return;}}x/=l;z/=l;}
         private static bool Finite(float f)=>!float.IsNaN(f)&&!float.IsInfinity(f);
         public static float Clamp01(float x)=>x<0?0:x>1?1:x;

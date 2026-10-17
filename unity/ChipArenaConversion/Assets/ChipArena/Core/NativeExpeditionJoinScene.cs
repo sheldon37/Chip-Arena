@@ -13,13 +13,16 @@ namespace ChipArena.UnityConversion
     ///    glow that fades out toward the edge, never a painted outline: owner 2026-10-15), a low light curtain standing exactly on the
     ///    counted radius, a floating hologram with the zone's name and threat facing the camera, and a thin sky beacon over the
     ///    rooftops (the approaches carry rubble heaps, so nothing is painted on them; the town kit's light at each pad leads there);
-    ///  - charging: the curtain rises with the countdown and whitens, every post's charge bar fills, the hologram shows the seconds,
-    ///    twelve segments filling and a pip per pilot counted; each counted pilot stands in a soft lock column under a chevron, so
-    ///    a pilot outside it can see at a glance who will be taken;
-    ///  - a deploy: the curtain flashes to full height, a beam takes each pilot the circle took, a shock ring runs out (an event,
-    ///    not an outline), the posts flash; pilots still held in the hub while their area loads keep a soft hold column;
+    ///  - charging: the curtain rises with the countdown to the counted height (joins[].h) and whitens, every post's charge bar
+    ///    fills, the hologram shows the seconds, twelve segments filling and a pip per pilot counted; each counted pilot stands in a
+    ///    soft lock column under a chevron, so a pilot outside it can see at a glance who will be taken;
+    ///  - a deploy (a new deploy record): the curtain flashes over the whole counted column, a beam takes each pilot the record
+    ///    names, a shock ring runs out (an event, not an outline), the posts flash; pilots still held in the hub while their
+    ///    transfer loads keep a soft hold column in their destination's accent;
     ///  - cancelled: the curtain drops and flickers out, the bars drain; held (the authority refused the transfer): an amber
-    ///    flicker over the restarted count; cleared: the posts turn green, no curtain, beacon or chevrons, the hologram says CLEARED;
+    ///    flicker over the restarted count;
+    ///  - closed (closedReason; nothing counts, so no curtain, countdown, beacon or chevrons): cleared, green posts and CLEARED;
+    ///    locked, red-amber posts and a padlock over LOCKED; reserved, amber posts and ROUTE RESERVED in a stamp frame;
     ///  - a member returning to the hub: a beam-in where their pilot appears.
     /// Low graphics: half the curtain, no motes or beacon glow, plainer posts. Reduced effects: no shimmer, flicker or
     /// bob; the countdown still fills (it is information). Engine-free and allocation-free once warm.
@@ -30,9 +33,9 @@ namespace ChipArena.UnityConversion
         /// <summary>Pads are drawn within CullDistance of the eye (horizontal), their hologram within TitleDistance, the sky
         /// beacon within BeaconDistance.</summary>
         public const float CullDistance=140,TitleDistance=85,BeaconDistance=230;
-        /// <summary>The posts stand PostOut beyond the radius; the curtain's idle and full heights; the beacon's top; the
-        /// hologram's base over the floor and its title cell (block glyphs are 3 x 5 cells).</summary>
-        public const float PostOut=.3f,PostTop=1.24f,CurtainIdle=.32f,CurtainFull=2.6f,CurtainFlash=3.6f,BeaconBase=4.2f,BeaconTop=44,TitleBase=3.05f,TitleCell=.075f,LineCell=.03f;
+        /// <summary>The posts stand PostOut beyond the radius; the curtain's idle height (it rises to the ring's counted height H);
+        /// the beacon's top; the hologram's base over the floor and its title cell (block glyphs are 3 x 5 cells).</summary>
+        public const float PostOut=.3f,PostTop=1.24f,CurtainIdle=.32f,BeaconBase=4.2f,BeaconTop=44,TitleBase=3.05f,TitleCell=.075f,LineCell=.03f;
         public List<ExpeditionKitBox> Parts{get;private set;}
         public NativeFxQuads Quads{get;private set;}
         /// <summary>This frame: pads drawn, pilots marked counted, deploy and arrival beams, glyph quads (for checks and budgets).</summary>
@@ -44,6 +47,8 @@ namespace ChipArena.UnityConversion
 
         // ---- colours (sRGB) ------------------------------------------------------------------------------------------------------
         public const int SteelHex=0x2C3140,SteelLightHex=0x6B7385,DarkHex=0x0B0E14,WhiteHex=0xF2FBFF,AmberHex=0xFFB000,GreenHex=0x5CFF9A,PlateHex=0x1A1F2A,HazardHex=0xF4B321;
+        /// <summary>A locked circle's red-amber and a reserved one's amber (the held flicker's amber).</summary>
+        public const int LockedHex=0xFF5C2E,ReservedHex=AmberHex;
         private const int Metal=NativeCyberCityLooks.Metal,Tube=NativeCyberCityLooks.Tube,Bank=NativeCyberCityLooks.Bank;
 
         private float ex,ey,ez,rx,rz,cx,cy,cz;private bool reduced,low;private double t;
@@ -57,7 +62,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<m.RingCount;i++)
             {
                 var r=m.Rings[i];float dx=r.X-ex,dz=r.Z-ez,d=(float)Math.Sqrt(dx*dx+dz*dz);
-                if(d<=BeaconDistance&&r.Phase!=ExpeditionJoinPhase.Cleared)Beacon(r,d);
+                if(d<=BeaconDistance&&!NativeExpeditionJoinModel.Closed(r.Phase))Beacon(r,d);
                 if(d>CullDistance)continue;PadsDrawn++;
                 Pad(r,i);Curtain(r);if(d<=TitleDistance)Title(r,m);
             }
@@ -121,12 +126,14 @@ namespace ChipArena.UnityConversion
             angle=Math.Atan2(r.Dz,r.Dx)+(k+.5)*Math.PI*2/Posts;float rr=r.R+PostOut;x=r.X+rr*(float)Math.Cos(angle);z=r.Z+rr*(float)Math.Sin(angle);
         }
         /// <summary>The pad's light colour this frame: the zone's accent, toward white with the charge and the deploy flash, amber
-        /// while cancelled or held, green when cleared.</summary>
+        /// while cancelled or held, green when cleared, red-amber when locked, amber when its route is reserved.</summary>
         public static int Light(in ExpeditionJoinRing r)
         {
             switch(r.Phase)
             {
                 case ExpeditionJoinPhase.Cleared:return GreenHex;
+                case ExpeditionJoinPhase.Locked:return LockedHex;
+                case ExpeditionJoinPhase.Reserved:return ReservedHex;
                 case ExpeditionJoinPhase.Charging:return Mix(r.Zone.Accent,WhiteHex,.55f*r.Charge*r.Charge);
                 case ExpeditionJoinPhase.Deploying:return Mix(r.Zone.Accent,WhiteHex,.85f*(1-NativeExpeditionJoinModel.Smooth(r.Age/.6f)));
                 case ExpeditionJoinPhase.Cancelled:return Mix(r.Zone.Accent,AmberHex,.6f*(1-NativeExpeditionJoinModel.Smooth(r.Age/NativeExpeditionJoinModel.CancelSeconds)));
@@ -136,7 +143,7 @@ namespace ChipArena.UnityConversion
         }
         private void Pad(in ExpeditionJoinRing r,int index)
         {
-            int s=index*97+11,light=Light(r);float power=r.Power,flash=r.Phase==ExpeditionJoinPhase.Deploying&&r.Age<.3f?1-r.Age/.3f:0;
+            int s=index*97+11,light=Light(r);bool closed=NativeExpeditionJoinModel.Closed(r.Phase);float power=r.Power,flash=r.Phase==ExpeditionJoinPhase.Deploying&&r.Age<.3f?1-r.Age/.3f:0;
             float flick=r.Phase==ExpeditionJoinPhase.Cancelled&&!reduced?(Math.Floor(r.Age*16)%2==0?1:.35f):1;if(r.Hold>0&&!reduced)flick*=Math.Floor(t*14)%2==0?1:.5f;
             float yaw=(float)(Math.Atan2(r.Dx,r.Dz)*180/Math.PI);
             // The emitter plate: two square plates turned 45 degrees (an octagonal star), the lit core, four feed lines.
@@ -160,29 +167,32 @@ namespace ChipArena.UnityConversion
                 if(fill>.01f){float h=.84f*fill;Box(x+ix*.068f,r.Y+.2f+h/2,z+iz*.068f,.016f,h/2,.004f,py,Tube,Bank,bar,2.4f,flick,ps+7);}
             }
             // The energy pool: a filled glow fading out toward the edge (radial), and the core's brighter heart.
-            if(r.Phase==ExpeditionJoinPhase.Cleared)Pool(r.X,r.Y+.012f,r.Z,r.R*1.2f,GreenHex,1,.07f);
+            if(closed)Pool(r.X,r.Y+.012f,r.Z,r.R*1.2f,light,1,.07f);
             else{Pool(r.X,r.Y+.012f,r.Z,r.R*1.25f,light,1.2f,(.2f+.26f*power+.4f*flash)*flick);Pool(r.X,r.Y+.016f,r.Z,.95f,Mix(light,WhiteHex,.4f),1.2f,(.18f+.3f*power+.5f*flash)*flick);}
             // Light over each post's head (a soft halo, so the ring of posts reads at a distance).
-            if(!low)for(int k=0;k<Posts;k++){Post(r,k,out float x,out float z,out _);Sprite(x,r.Y+PostTop+.02f,z,.16f+.12f*power,.16f+.12f*power,light,1.5f,(.35f+.4f*power+.5f*flash)*flick*(r.Phase==ExpeditionJoinPhase.Cleared?.4f:1));}
+            if(!low)for(int k=0;k<Posts;k++){Post(r,k,out float x,out float z,out _);Sprite(x,r.Y+PostTop+.02f,z,.16f+.12f*power,.16f+.12f*power,light,1.5f,(.35f+.4f*power+.5f*flash)*flick*(closed?.4f:1));}
             // The deploy's shock ring (an event: it runs out and is gone in .55 s).
             if(r.Phase==ExpeditionJoinPhase.Deploying&&r.Age<.55f){float u=r.Age/.55f,rr=r.R+.2f+2.8f*(1-(1-u)*(1-u));Annulus(r.X,r.Y+.02f,r.Z,rr-.07f,rr+.07f,low?24:40,WhiteHex,1.6f,.75f*(1-u)*(1-u));}
         }
 
         // ---- the curtain: a low light wall exactly on the counted radius ---------------------------------------------------------
-        /// <summary>The curtain's height and opacity this frame (0 opacity: none).</summary>
+        /// <summary>The curtain's height and opacity this frame (0 opacity: none). It rises with the count to the counted height
+        /// (the ring's H: joins[].h, or the fallback for a snapshot without it) and flashes over that whole column at the deploy;
+        /// a closed circle counts nobody, so it has none.</summary>
         public static void CurtainOf(in ExpeditionJoinRing r,out float height,out float alpha)
         {
+            float full=Math.Max(CurtainIdle,r.H);
             switch(r.Phase)
             {
-                case ExpeditionJoinPhase.Cleared:height=0;alpha=0;return;
-                case ExpeditionJoinPhase.Charging:height=CurtainIdle+(CurtainFull-CurtainIdle)*NativeExpeditionJoinModel.Smooth(r.Charge);alpha=.12f+.24f*r.Charge;return;
+                case ExpeditionJoinPhase.Cleared:case ExpeditionJoinPhase.Locked:case ExpeditionJoinPhase.Reserved:height=0;alpha=0;return;
+                case ExpeditionJoinPhase.Charging:height=CurtainIdle+(full-CurtainIdle)*NativeExpeditionJoinModel.Smooth(r.Charge);alpha=.12f+.24f*r.Charge;return;
                 case ExpeditionJoinPhase.Deploying:
-                    if(r.Age<.7f){height=CurtainFlash;alpha=.9f*(1-NativeExpeditionJoinModel.Smooth(r.Age/.7f));}
+                    if(r.Age<.7f){height=full;alpha=.9f*(1-NativeExpeditionJoinModel.Smooth(r.Age/.7f));}
                     else{float k=NativeExpeditionJoinModel.Smooth((r.Age-.7f)/(NativeExpeditionJoinModel.DeploySeconds-.7f));height=CurtainIdle;alpha=.1f*k;}
                     return;
                 case ExpeditionJoinPhase.Cancelled:
                 {
-                    float k=NativeExpeditionJoinModel.Smooth(r.Age/.6f),was=CurtainIdle+(CurtainFull-CurtainIdle)*NativeExpeditionJoinModel.Smooth(r.Was);
+                    float k=NativeExpeditionJoinModel.Smooth(r.Age/.6f),was=CurtainIdle+(full-CurtainIdle)*NativeExpeditionJoinModel.Smooth(r.Was);
                     height=was+(CurtainIdle-was)*k;alpha=(.12f+.24f*r.Was)*(1-k)+.1f*k;return;
                 }
                 case ExpeditionJoinPhase.Held:height=CurtainIdle+.3f;alpha=.22f;return;
@@ -244,7 +254,7 @@ namespace ChipArena.UnityConversion
         private void Title(in ExpeditionJoinRing r,NativeExpeditionJoinModel m)
         {
             cx=r.X;cz=r.Z;cy=r.Y+TitleBase+(reduced?0:.04f*(float)Math.Sin(t*1.3+r.X*.1));
-            int light=Light(r),title=r.Phase==ExpeditionJoinPhase.Cleared?GreenHex:r.Zone.Accent,ink=Mix(light,WhiteHex,.6f);
+            int light=Light(r),title=NativeExpeditionJoinModel.Closed(r.Phase)?light:r.Zone.Accent,ink=Mix(light,WhiteHex,.6f);
             float flash=r.Phase==ExpeditionJoinPhase.Deploying&&r.Age<.5f?1-r.Age/.5f:0,fade=r.Phase==ExpeditionJoinPhase.Deploying?1-.5f*NativeExpeditionJoinModel.Smooth((r.Age-.5f)/.8f):1;
             float tw=TextWidth(r.Title,TitleCell),w=Math.Max(tw,1.9f)+.36f;
             // The backing: a dark glass plate behind the letters (premultiplied, not additive) so they read over a bright sky, and
@@ -269,11 +279,34 @@ namespace ChipArena.UnityConversion
                 case ExpeditionJoinPhase.Cancelled:Text("CANCELLED",.12f,.045f,AmberHex,1.8f,reduced?.9f:(Math.Floor(r.Age*10)%2==0?.95f:.5f));break;
                 case ExpeditionJoinPhase.Held:Text("HOLD - RETRYING",.12f,.04f,AmberHex,1.8f,.9f);break;
                 case ExpeditionJoinPhase.Cleared:Text("CLEARED",.24f,.045f,GreenHex,1.8f,.9f);Text("BOSS DOWN",.0f,LineCell,Mix(GreenHex,WhiteHex,.4f),1.1f,.7f);break;
+                case ExpeditionJoinPhase.Locked:
+                {
+                    // A padlock beside LOCKED, both held still (a closure is a state, not an alarm).
+                    float lw=TextWidth(NativeExpeditionJoinModel.LockedWord,.045f),gap=.16f,pw=.2f,u=-(lw+gap+pw)/2;
+                    Padlock(u,u+pw,.22f,LockedHex);Text(NativeExpeditionJoinModel.LockedWord,.24f,.045f,LockedHex,1.8f,.92f,(pw+gap)/2);
+                    Text(NativeExpeditionJoinModel.NoDeploy,.0f,LineCell,Mix(LockedHex,WhiteHex,.4f),1.1f,.7f);break;
+                }
+                case ExpeditionJoinPhase.Reserved:
+                {
+                    // ROUTE RESERVED in a thin stamp frame.
+                    float rw=TextWidth(NativeExpeditionJoinModel.ReservedWord,.04f),fx=rw/2+.09f,b=.012f;
+                    Text(NativeExpeditionJoinModel.ReservedWord,.25f,.04f,ReservedHex,1.8f,.92f);
+                    Plane(-fx,fx,.18f,.18f+b,ReservedHex,1.4f,.75f);Plane(-fx,fx,.51f-b,.51f,ReservedHex,1.4f,.75f);Plane(-fx,-fx+b,.18f,.51f,ReservedHex,1.4f,.75f);Plane(fx-b,fx,.18f,.51f,ReservedHex,1.4f,.75f);
+                    Text(NativeExpeditionJoinModel.NoDeploy,.0f,LineCell,Mix(ReservedHex,WhiteHex,.4f),1.1f,.7f);break;
+                }
                 default:
                     Text(r.Zone.Threat,.27f,LineCell,Mix(r.Zone.Accent,WhiteHex,.25f),1.1f,.75f);
                     Text("STEP IN TO DEPLOY",.0f,LineCell,ink,1.4f,reduced?.9f:.65f+.3f*(float)(.5+.5*Math.Sin(t*2.4)));
                     break;
             }
+        }
+        /// <summary>A padlock in the hologram's plane between u0 and u1, its body's base at v0: a solid body, a keyhole, and a
+        /// shackle of three bars over it.</summary>
+        private void Padlock(float u0,float u1,float v0,int hex)
+        {
+            float w=u1-u0,bh=w*.78f,b=w*.16f,sh=w*.62f,inset=w*.18f;
+            Plane(u0,u1,v0,v0+bh,hex,1.5f,.85f);Plane(u0+w*.44f,u1-w*.44f,v0+bh*.28f,v0+bh*.62f,DarkHex,1,.9f,false);
+            Plane(u0+inset,u0+inset+b,v0+bh,v0+bh+sh,hex,1.7f,.9f);Plane(u1-inset-b,u1-inset,v0+bh,v0+bh+sh,hex,1.7f,.9f);Plane(u0+inset,u1-inset,v0+bh+sh-b,v0+bh+sh,hex,1.7f,.9f);
         }
         private static readonly string[] digits={"0","1","2","3","4","5","6","7","8","9"};
         private static string Digit(int s)=>digits[Math.Max(0,Math.Min(9,s))];
@@ -285,9 +318,10 @@ namespace ChipArena.UnityConversion
             {
                 var p=m.Party[i];if(!p.Placed)continue;float dx=p.X-ex,dz=p.Z-ez;if(dx*dx+dz*dz>CullDistance*CullDistance)continue;bool hidden=i==hideRow;
                 if(p.Ring>=0&&p.Ring<m.RingCount&&m.Rings[p.Ring].Phase==ExpeditionJoinPhase.Charging){var r=m.Rings[p.Ring];Lock(p,r,hidden);PilotsMarked++;continue;}
-                // Taken by a deploy this client saw: the beam, then a hold column while the pilot waits in the hub for its area.
-                if(p.EnRoute&&p.Hub){int ring=-1;for(int k=0;k<m.RingCount;k++)if((m.Rings[k].Taken&1<<i)!=0&&m.Rings[k].Phase==ExpeditionJoinPhase.Deploying)ring=k;
-                    int light=ring>=0?Light(m.Rings[ring]):WhiteHex;if(p.Deployed<1.2f)Beam(p.X,p.Y,p.Z,p.Deployed,light,false,hidden);else Hold(p,hidden,ring>=0?m.Rings[ring].Zone.Accent:WhiteHex);continue;}
+                // Taken by a deploy this client saw: the beam, then a hold column while the pilot waits in the hub for its area; a
+                // member whose transfer is loading (pendingArea) holds in the column too, seen deploy or not.
+                if((p.EnRoute||p.Loading)&&p.Hub){int ring=-1;for(int k=0;k<m.RingCount;k++)if((m.Rings[k].Taken&1<<i)!=0&&m.Rings[k].Phase==ExpeditionJoinPhase.Deploying)ring=k;
+                    int light=ring>=0?Light(m.Rings[ring]):WhiteHex;if(p.EnRoute&&p.Deployed<1.2f)Beam(p.X,p.Y,p.Z,p.Deployed,light,false,hidden);else Hold(p,hidden,p.Loading?p.PendingAccent:ring>=0?m.Rings[ring].Zone.Accent:WhiteHex);continue;}
                 if(p.Returned>=0&&p.Returned<NativeExpeditionJoinModel.ArriveSeconds&&p.Hub)Beam(p.X,p.Y,p.Z,p.Returned,NativeExpeditionJoinZones.HubHex,true,hidden);
             }
         }
