@@ -1,3 +1,62 @@
+## 2026-10-17 — Claude: City Ironworks normal-play readability and lighting pass (on branch, not merged)
+
+- Branch `claude/ironworks-visuals`, fast-forwarded to shared `612f0da`. Implementation commit `6e7ef7c`. Merges of shared `1c2669d` (`c44ec6f`) and `a0428c3` (`3ef4afe`). Not merged, no PR, builder untouched.
+- **Why:** the live game runs without the hazard clock, so normal play is what players see. In normal play the casting floor and taphole aisle were murky. The pass lights the space, not the enemies.
+- **Changes (presentation only):**
+  - **Light field:** 23 work-light high-bays are baked into the light field only; the 8 picker slots stay for the molten light and the cool pair. They light the casting floor, the taphole aisle under the charging deck, the rolling mill, the slag yard and the converter hall. Field-only glows also cover:
+    - the converter hall's spill through the shutter opening;
+    - the reheat door with no slab;
+    - the lit pulpit.
+  - **Runners:** a plugged runner with no clock keeps a residual warmth (`NativeIronworksField.Residual` 0.3 of a live run). Its whole trough reads crusted, with dull red cracks, never a live run's white-orange. Hazards stay off.
+  - **Ironworks look entry only** (`MapLooks.json` `expedition-foundry`, plus the design generator and look draft):
+    - brighter ambient;
+    - key 0.22;
+    - a lighter warm fog ending at 120 m;
+    - a lighter slab;
+    - the mill stands, shear housing and drive become machine-green plate.
+  - **Asset lock:** the `MapLooks.json` receipt is regenerated the way `tools/generate_expedition.py` writes it, and `--check` passes.
+  - **Mill stands:** machined edges, framed housing windows, a cap plate and a pinion gear.
+  - **Slag yard:** worn iron plates and old cinders on the floor, so it no longer reads as grey haze.
+  - **Torpedo cars:** a stepped crown, belly belts and ends.
+  - **Converters:** lit corner edges and ribs.
+- **Budgets:**
+  - Parts: 5,501 of about 7,600; the low tier leaves out 44%.
+
+    | Room | Parts / budget |
+    |---|---|
+    | Casting floor | 1,758 / 1,800 |
+    | Furnace aisle | 610 / 1,400 |
+    | Rolling mill | 1,210 / 1,300 |
+    | Coke ovens | 445 / 900 |
+    | Converter hall | 439 / 700 |
+    | Slag yard | 276 / 600 |
+    | East wing | 763 / 900 |
+
+  - Draws: 13 of about 16. Practical lights: 8 (2 always cool). Effect quads: 600 at most.
+  - Allocation: 0 bytes per frame.
+  - The field bake takes longer (about 0.2 to 0.4 s off the main thread, behind the loading screen).
+- **Gameplay impact:** none. No geometry, collision, spawns, machines, navigation, layout or authority code changed.
+- **Checks:**
+  - `IronworksVisualChecks`: 159 checks, now including the floor of every room lit in normal play, the fill being field-only, and the runner residual at most 1/3.
+  - `run5b.sh` on the merged head `3ef4afe`, every step exit 0:
+    - unity-check;
+    - relay: 775 PASS;
+    - Python: 140 OK, 1 skip;
+    - package;
+    - `git diff --check`.
+  - Not run: Unity Editor or player, real GPU lighting, Windows, performance on the owner's PC.
+- **Renders** (offline harness, normal play, hazards off), in `/tmp/claude-0/-home-user/4cd8d659-77bb-56f7-9323-e1639fb4be49/scratchpad/renders-ironworks-vis/`:
+  - `before/` (shared `612f0da`), `after/`, and `compare/` side by side;
+  - every room, plus a new `mill-line` view;
+  - the zombie lineup at 10 m and 25 m;
+  - the low tier.
+- **Still short:**
+  - At 25 m the zombies are small but separate from the lit floor.
+  - The rolling mill's close view is still dominated by the near stand housing; the new plate and windows read, but it is a big flat face.
+  - The slag yard is darker overall (dark plates rather than grey).
+  - The converters remain boxes with ribs.
+  - Next: Astra's hazard clock, which turns the runners and the pour on.
+
 ## 2026-10-17 — Claude: join circles, party/area HUD and live hub entrances (presentation)
 
 - Task (coordinator, from the owner's live split areas): the real join-circle presentation, the party/area HUD and the hub side
