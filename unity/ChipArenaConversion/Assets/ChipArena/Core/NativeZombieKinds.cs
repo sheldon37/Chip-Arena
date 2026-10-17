@@ -57,8 +57,11 @@ namespace ChipArena.UnityConversion
             k.On(CapturedRig.Chest);
             var ch=k.Mass((i,q)=>null,new Vector3(0,.15f,0),new Vector3(.26f*w,.19f,.15f*dp),2,null,8,8,null,false);
             // Tears in the hide over the muscle: wet red slashes with the ink running out of them.
-            foreach(var (u,v,du,dv) in new[]{(.42f,.2f,.06f,.02f),(.55f,.32f,.05f,-.03f),(.3f,.75f,.06f,.02f)})k.Crack(ch,u,v,du,dv,4,.014f,cracks,1.2f);
-            if(shards)k.Piece(2,null,()=>{foreach(var (x,y,a,r) in new[]{(-.13f,.21f,.3f,.35f),(.16f,.07f,-.45f,-.5f),(.02f,.27f,.1f,1.2f)})k.Armor(ZShellDirty,ZMetal,K.PlateAt(new Vector3(x*w,y,.15f*dp+.01f),Vector3.Normalize(new Vector3(a,.15f,1)),Vector3.UnitY,r),.14f*w,.1f,.026f,(int)(k.H((int)(y*100),0xfc)*4),.55f,1,null,0,true);});
+            foreach(var (u,v,du,dv) in new[]{(.42f,.2f,.06f,.02f),(.55f,.32f,.05f,-.03f),(.3f,.75f,.06f,.02f)})k.Crack(ch,u,v,du,dv,4,.014f*scale,cracks,1.2f);
+            // The Hulk's hide split over the chest and back with the ink glowing out of the splits.
+            if(cracks)foreach(var (u,v,du,dv) in new[]{(.62f,.15f,-.05f,.04f),(.2f,.4f,.05f,.05f),(.75f,.6f,-.04f,.06f),(.45f,.85f,.06f,-.02f)})k.Crack(ch,u,v,du,dv,5,.016f*scale,true,1.3f);
+            // Shards of the pilot's chest plate driven into the muscle: small, jagged, sunk half their depth, set at angles.
+            if(shards)k.Piece(2,null,()=>{foreach(var (x,y,a,r) in new[]{(-.13f,.21f,.3f,.35f),(.16f,.07f,-.45f,-.5f),(.02f,.27f,.1f,1.2f)})k.Armor(ZShellDirty,ZMetal,K.PlateAt(new Vector3(x*w,y,.15f*dp-.004f),Vector3.Normalize(new Vector3(a,.45f,1)),Vector3.UnitY,r),.1f*w,.075f,.024f,(int)(k.H((int)(y*100),0xfc)*4),.72f,0,null,0,true,.005f);});
             if(spurs)
             {
                 for(int i=0;i<(k.Fine?6:k.Mid?3:2);i++){float t=i/5f;var root=new Vector3((t-.5f)*.22f*w,.33f+.04f*(float)Math.Sin(t*3.1f),-.13f*dp-.03f*b.Hump);
@@ -89,11 +92,11 @@ namespace ChipArena.UnityConversion
             Whole(k,b);
             // The acid sac bulging out of the throat (NativeHordeModels' swell grows it about the neck), its skin torn into a web the
             // glow shines through, veins over it.
-            k.On(CapturedRig.Neck);var acid=k.Glow(1,1.6f,NativeHordeKinds.Seam[NativeHordeKinds.Spitter]);
+            k.On(CapturedRig.Neck);var acid=k.Glow(1,1.2f,NativeHordeKinds.Seam[NativeHordeKinds.Spitter]);
             k.Mass(acid,new Vector3(0,.035f,.05f),new Vector3(.08f,.068f,.062f),2,null,7,10);
             if(!k.Far)
             {
-                var web=k.Mass((i,q)=>i==0||k.H(i*13+q,0xfb)<.45f?(WeaponPaint?)ZSkinDark:null,new Vector3(0,.037f,.052f),new Vector3(.086f,.074f,.068f),2,null,7,12,null,false);
+                var web=k.Mass((i,q)=>i==0||k.H(i*13+q,0xfb)<.66f?(WeaponPaint?)(k.H(i*7+q,0xfc)<.4f?ZRotten:ZSkinDark):null,new Vector3(0,.037f,.052f),new Vector3(.086f,.074f,.068f),2,null,8,14,null,false);
                 k.Vein(web,.35f,.25f,.08f,.04f,3,.005f,1.3f,1,61);k.Vein(web,.4f,.3f,.06f,-.05f,3,.005f,1.2f,0,63);
             }
             // Acid drool strung from the upper teeth (a dangling part on the head), glowing in the gape.
@@ -119,14 +122,13 @@ namespace ChipArena.UnityConversion
             Whole(k,b);
             // The gut: stretched, bruised skin over glowing boils, the suit split open round it (the swell grows it at the spine).
             k.On(CapturedRig.Spine);var gutGlow=k.Glow(1,1.0f,NativeHordeKinds.Seam[NativeHordeKinds.Bloater]);
-            var gut=k.Mass((i,q)=>i>=8?ZRotten:i>=6?ZSkinDark:i<=1?ZSkin:ZSkinPale,new Vector3(0,.105f,.085f),new Vector3(.25f,.205f,.235f),2,null,10,14);
+            // Its top still in the suit, torn open in a ragged line onto a bruised rim, pale stretched skin, rot underneath.
+            var gut=k.Mass((i,q)=>i>=8?ZRotten:i>=6?ZSkinDark:i<=1?ZSuit:i==2?(k.H(q,0xd4)<.55f?ZSuitFray:ZSkinDark):i==3?ZSkin:ZSkinPale,new Vector3(0,.105f,.085f),new Vector3(.25f,.205f,.235f),2,null,10,14);
             if(!k.Far)
             {
                 foreach(var (u,v,s) in new[]{(.45f,.2f,1f),(.62f,.3f,.8f),(.38f,.34f,.7f),(.55f,.14f,.6f),(.7f,.22f,.65f)}){gut(u,v,out var p,out var n);k.Mass(gutGlow,p+n*.006f,new Vector3(.03f,.026f,.022f)*s,2,null,4,7,false);
                     if(k.Mid)k.Mass(ZSkinDark,p-n*.004f,new Vector3(.038f,.034f,.026f)*s,2,null,4,7,false);}
                 k.Vein(gut,.4f,.3f,.08f,.05f,4,.007f,1.1f,2,71);k.Vein(gut,.55f,.2f,.06f,-.05f,4,.006f,1,1,73);
-                // The suit split open: rags of it round the gut.
-                if(k.Mid)for(int i=0;i<(k.Fine?6:3);i++){float a=(float)Math.PI*(.0f+1f*(i+.5f)/(k.Fine?6:3));var t=new Vector3((float)Math.Cos(a)*.24f,.25f,(float)Math.Sin(a)*.2f+.06f);k.Tatter(ZSuit,t,new Vector3((float)Math.Cos(a)*.3f,-1,(float)Math.Sin(a)*.5f),new Vector3((float)Math.Cos(a),0,(float)Math.Sin(a)),.08f,.05f,.3f);}
             }
             else k.Box(gutGlow,0,.12f,.25f,.2f,.14f,.06f);
         }

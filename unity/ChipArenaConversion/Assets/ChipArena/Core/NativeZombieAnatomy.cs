@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
             ZBone=Z(0xd0c6a6,SurfBone),ZTooth=Z(0xc7b98f,SurfBone),ZToothDark=Z(0x8f7f5c,SurfBone),ZNail=Z(0x2e2620,SurfBone),
             ZSuit=Z(0x343d48,SurfCloth),ZSuitLight=Z(0x56616d,SurfCloth),ZSuitDark=Z(0x1d232a,SurfCloth),ZSuitFray=Z(0x5a5c58,SurfCloth),ZRag=Z(0x3a3832,SurfCloth),ZHood=Z(0x2a2433,SurfCloth),
             ZShell=Z(0xd0d3cf,SurfShell),ZShellDirty=Z(0xb9bdb8,SurfShell),ZShellDark=Z(0x5d6368,SurfShell),ZMetal=Z(0x8f969c,SurfWire),
-            ZBoot=Z(0x2a3036,SurfCloth),ZSole=Z(0x15181b,SurfMatte),ZHair=Z(0x1e1a15,SurfMatte),ZSocket=Z(0x0b0607,SurfMatte),ZWire=Z(0x24282c,SurfWire),ZVisor=Z(0x0f171b,SurfShell),
+            ZBoot=Z(0x2a3036,SurfCloth),ZSole=Z(0x15181b,SurfMatte),ZHair=Z(0x2a241c,SurfMatte),ZSocket=Z(0x0b0607,SurfMatte),ZWire=Z(0x24282c,SurfWire),ZVisor=Z(0x0f171b,SurfShell),
             ZDeadAccent=Z(0x173230,SurfShell);
         private static WeaponPaint SeamDark=>Z(0x101215,SurfMatte);
         private static WeaponPaint Copper=>Z(0xb36b3c,SurfWire);
@@ -111,8 +111,9 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether a scalp point keeps its hair (patches torn out round two hashed bald spots).</summary>
         private static bool HairAt(K k,Vector3 q)
         {
-            if(q.Y<.42f||q.Y<.6f&&q.Z>.55f)return false;
-            for(int i=0;i<3;i++){var spot=Vector3.Normalize(new Vector3(k.H(i,0xe7)*2-1,1.2f,k.H(i,0xe8)*2-1));if(Vector3.Dot(Vector3.Normalize(q),spot)>.93f+.02f*i)return false;}
+            // A receding hairline and bald patches: what hair is left is clumps over the back and sides, not a cap.
+            if(q.Y<.42f||q.Z>.3f&&q.Y<.8f||q.Z>.55f)return false;
+            for(int i=0;i<5;i++){var spot=Vector3.Normalize(new Vector3(k.H(i,0xe7)*2-1,1.1f,k.H(i,0xe8)*2-1));if(Vector3.Dot(Vector3.Normalize(q),spot)>.9f+.015f*i)return false;}
             return true;
         }
         private static void ZHead(K k,Zb b)
@@ -120,9 +121,11 @@ namespace ChipArena.UnityConversion
             k.On(CapturedRig.Head);SkullOf(b,out var c,out var r);int tear=b.Tear;
             if(k.Far)
             {
-                // The impostor: the skull, the eyes, the dark mouth, the jaw hanging.
-                k.Mass(ZSkin,c,r,SkullPower,null,6,8);foreach(int s in new[]{-1,1}){var e=Face(b,s*.4f,.05f,out _);k.Box(EyeGlow(k),e.X,e.Y,e.Z-.002f,.04f*b.Eye,.026f*b.Eye,.016f);}
-                var m=Face(b,0,-.62f,out _);k.Box(ZMouth,m.X,m.Y,m.Z-.004f,.1f*b.HeadW,.03f,.012f);ZJaw(k,b);return;
+                // The impostor: the skull as a block (the pilot's cube head; a three-row lump would be a diamond), the eyes, the dark
+                // mouth on its face, the jaw hanging.
+                float fz=c.Z+r.Z*.9f;k.Box(ZSkin,c.X,c.Y,c.Z,r.X*1.86f,r.Y*1.8f,r.Z*1.8f);
+                foreach(int s in new[]{-1,1}){var e=Face(b,s*.4f,.05f,out _);k.Box(EyeGlow(k),e.X,e.Y,fz,.04f*b.Eye,.026f*b.Eye,.01f);}
+                var m=Face(b,0,-.62f,out _);k.Box(ZMouth,m.X,m.Y,fz-.002f,.1f*b.HeadW,.03f,.01f);ZJaw(k,b);return;
             }
             int R=k.Fine?18:11,C=k.Fine?24:14;var pts=new Vector3[R][];var qs=new Vector3[R][];
             for(int i=0;i<R;i++){pts[i]=new Vector3[C];qs[i]=new Vector3[C];for(int j=0;j<C;j++)
@@ -133,7 +136,7 @@ namespace ChipArena.UnityConversion
             WeaponPaint? Paint(int i,int j)
             {
                 var q=(qs[i][j]+qs[i+1][j]+qs[i][(j+1)%C]+qs[i+1][(j+1)%C])*.25f;float front=q.Z;
-                if(b.Top==0&&q.Y>.8f&&q.Z<.3f)return null;// under the helmet's top plate
+                if(b.Top==0&&q.Y>.82f&&q.Z<0)return null;// under the helmet's top plate
                 if(front>.3f)
                 {
                     float so=SocketOf(q);if(so>.6f)return ZSocket;if(so>.38f)return ZFleshDeep;if(so>.22f)return ZRotten;
@@ -148,7 +151,8 @@ namespace ChipArena.UnityConversion
             }
             k.Prim(()=>{k.Grid(pts,true,Paint);k.Occ(c,(r.X+r.Y+r.Z)/3*.93f);});
             // The eyes: the kind's glow small and deep in each socket.
-            foreach(int s in new[]{-1,1}){var e=Face(b,s*.4f,.05f,out var en);k.Mass(EyeGlow(k),e+en*.004f,new Vector3(.0145f,.011f,.008f)*b.Eye,2,null,5,8,false);}
+            // The eyes: a hot point deep in each socket, big enough to read at range.
+            foreach(int s in new[]{-1,1}){var e=Face(b,s*.4f,.05f,out var en);k.Mass(EyeGlow(k),e+en*.004f,new Vector3(.017f,.0128f,.0085f)*b.Eye,2,null,5,8,false);}
             // The upper teeth under the gum, blocky and uneven, some broken or gone; the molars through a torn cheek.
             int teeth=k.Fine?10:5;var gp=new Vector3[teeth+1];var gn=new Vector3[teeth+1];
             for(int i=0;i<=teeth;i++){float fx=-.44f+.88f*i/teeth;gp[i]=Face(b,fx,-.55f-.08f*fx*fx,out gn[i]);}
@@ -176,19 +180,18 @@ namespace ChipArena.UnityConversion
                 {
                     // The pilot's cube helmet, its face plate and visor smashed in, cracked and twisted back off the skull; a visor shard
                     // hanging at the temple.
-                    // The helmet as the pilot's: a box of plates round the skull (top, back, sides, the brow of the smashed face plate),
-                    // turned a little back and askew about the skull's centre.
-                    var hc=new Vector3(0,.204f+b.HeadDrop,-.016f);float hx=.158f*b.HeadW,hy=.126f,hz=.156f*b.HeadW,t=.028f;
-                    var tw=Matrix4x4.CreateTranslation(-hc)*Matrix4x4.CreateRotationX(-.08f)*Matrix4x4.CreateRotationZ(.05f)*Matrix4x4.CreateTranslation(hc+new Vector3(0,.004f,-.004f));
-                    Matrix4x4 P(Vector3 at,Vector3 face,Vector3 up)=>K.PlateAt(hc+at,face,up)*tw;
+                    // The helmet's shell hugging the skull (a superellipse box like the pilot's cube head, not plates standing off it),
+                    // its face plate smashed out: open from temple to temple, the break jagged down both sides and along the bottom,
+                    // shoved back and askew; the brow of the face plate still across the forehead; a crack with the ink in it.
                     k.Piece(0,null,()=>
                     {
-                        k.Armor(ZShellDirty,ZMetal,P(new Vector3(0,hy+t*.5f,0),Vector3.UnitY,-Vector3.UnitZ),hx*2+t,hz*2+t,t,3,.4f,0,null,1,true,.012f);
-                        k.Armor(ZShellDirty,ZMetal,P(new Vector3(0,-.01f,-hz-t*.5f),-Vector3.UnitZ,Vector3.UnitY),hx*2+t,hy*2-.02f,t,-1,.4f,1,null,0,false,.012f);
-                        k.Armor(ZShellDirty,ZMetal,P(new Vector3(-hx-t*.5f,-.005f,-.01f),-Vector3.UnitX,Vector3.UnitY),hz*2-.01f,hy*2-.01f,t,2,.52f,0,null,0,false,.012f);
-                        k.Armor(ZShellDirty,ZMetal,P(new Vector3(hx+t*.5f,.02f,-.035f),Vector3.UnitX,Vector3.UnitY),hz*2-.06f,hy*2-.06f,t,3,.6f,0,null,1,true,.012f);
-                        k.Armor(ZShellDark,ZMetal,P(new Vector3(.02f,hy-.012f,hz-.004f),Vector3.Normalize(new Vector3(0,.25f,1)),Vector3.UnitY),.2f,.05f,.026f,1,.6f,1,k.Seam(.9f),0,false,.01f);
-
+                        float hp=(float)Math.PI*.5f;var hr=r+new Vector3(.011f,.01f,.011f);var hcen=c+new Vector3(0,.008f,-.006f);
+                        var turn=Matrix4x4.CreateRotationX(-.12f)*Matrix4x4.CreateRotationZ(.06f);
+                        var helm=k.Shell(ZShellDirty,ZMetal,hcen,hr,hp+.92f,hp-.92f+(float)Math.PI*2,-.18f,.985f,.02f,2|4|8,.24f,turn,3.6f,11,5);
+                        if(k.Mid)k.Crack(helm,.3f,.15f,.06f,.12f,4,.009f,true,1.2f);
+                        k.Seamline(helm,.04f,.62f,.96f,.62f,8,.0035f);k.Seamline(helm,.5f,.05f,.5f,.55f,4,.0035f);
+                        var brow=Vector3.Transform(new Vector3(0,hr.Y*.83f,hr.Z*.8f),turn)+hcen;
+                        k.Armor(ZShellDark,ZMetal,K.PlateAt(brow,Vector3.Normalize(new Vector3(0,.55f,1)),Vector3.UnitY),.2f*b.HeadW,.036f,.02f,1,.6f,1,k.Seam(.9f),0,false,.006f);
                     });
                     if(k.Mid)k.Piece(1,q=>Math.Max(0,(.17f-q.Y)/.06f),()=>
                     {
@@ -285,7 +288,8 @@ namespace ChipArena.UnityConversion
             float topR=Math.Min(.064f*n,.11f*b.HeadW);len=Math.Min(len,.165f+b.HeadDrop*.8f);
             k.Limb(new Vector3(0,-.045f,0),new Vector3(0,len,0),new[]{0,.086f*n,.08f*n,0,-.006f, .3f,.078f*n,.072f*n,0,0, .62f,Math.Max(topR,.069f*n*.8f),Math.Max(topR*.97f,.066f*n*.8f),0,.006f, 1,topR,topR*.97f,0,.01f},
                 (r,c)=>collar&&(r==0||r==1&&k.H(c,0xe9)<.55f)?(r==0?ZSuitDark:ZSuitFray):skin,null,k.Fine?ZFlesh:(WeaponPaint?)null,10,-Vector3.UnitX);
-            if(k.Mid){foreach(int s in new[]{-1,1})k.Tube(skin,new[]{new Vector3(s*.052f*n,len-.012f,.0f),new Vector3(s*.04f*n,.04f,.05f*n),new Vector3(s*.016f,-.01f,.068f*n)},new[]{.009f,.011f,.008f},5,false);
+            // The neck's tendons and the notch between them (buried in the big kinds' trapezius, where thin cords read as straps).
+            if(k.Mid&&n<1.5f){foreach(int s in new[]{-1,1})k.Tube(skin,new[]{new Vector3(s*.052f*n,len-.012f,.0f),new Vector3(s*.04f*n,.04f,.05f*n),new Vector3(s*.016f,-.01f,.068f*n)},new[]{.009f,.011f,.008f},5,false);
                 k.Mass(skin,new Vector3(0,.05f,.07f*n),new Vector3(.013f,.016f,.01f),2,null,4,6,false);}
             if(k.Fine)k.Mass(ZBone,new Vector3(0,len-.004f,-.006f),new Vector3(.014f,.008f,.014f),2,null,3,6,false);
         }
@@ -318,7 +322,7 @@ namespace ChipArena.UnityConversion
             var waist=k.Limb(new Vector3(0,-.04f,0),new Vector3(0,.215f,0),new[]{0,.19f*w,.132f*dp,0,.012f, .25f,.172f*w,(.123f+.05f*belly)*dp,0,.014f+.03f*belly, .4f,.18f*w,(.13f+.055f*belly)*dp,0,.016f+.032f*belly, .55f,.172f*w,(.125f+.06f*belly)*dp,0,.016f+.035f*belly, .75f,.183f*w,(.13f+.05f*belly)*dp,0,.015f+.03f*belly, 1,.198f*w,.133f*dp,0,.01f},
                 (r,c)=>b.Bare?ZSkin:(torn!=0&&Torn(k,r,c,torn,0,3,22,82,0xf3))?ZSkin:(torn!=0&&Torn(k,r,c,torn,0,3,14,92,0xf3))?ZSuitFray:ZSuit,null,null,16,-Vector3.UnitX);
             if(b.Bare||torn!=0){k.Vein(waist,.3f,torn>0?.36f:.14f,.12f,.0f,3,.006f,.9f,1,11);}
-            if(b.Bare&&k.Mid)for(int i=0;i<3;i++)foreach(int s in new[]{-1,1})k.Mass(ZSkin,new Vector3(s*.045f*w,.035f+.055f*i,.128f*dp+.012f),new Vector3(.038f*w,.024f,.012f),2,null,4,6,false);
+            if(b.Bare&&k.Mid)for(int i=0;i<3;i++)foreach(int s in new[]{-1,1})k.Mass(ZSkin,new Vector3(s*.045f*w,.035f+.055f*i,.128f*dp+.01f),new Vector3(.04f*w,.025f,.012f),2,null,5,7,false);
             // ---- the chest: the ribcage loft, the suit, the wound and its ribs, the plates ----
             k.On(CapturedRig.Chest);
             float[] chest={0,.195f*w,.13f*dp,0,.005f, .2f,.214f*w,.142f*dp,0,.01f, .42f,.236f*w,.149f*dp,0,.014f, .62f,.252f*w,.146f*dp,0,.011f, .8f,.25f*w,.132f*dp,0,-.004f, .92f,.19f*w,.114f*dp,0,-.01f, 1,.1f*w,.082f*dp,0,0};
@@ -340,8 +344,9 @@ namespace ChipArena.UnityConversion
                 int sides=torn!=0?1:2;
                 for(int sd=0;sd<sides;sd++){float s=torn!=0?torn:sd==0?-1:1;int ribs=k.Fine?4:2;
                 for(int i=0;i<ribs;i++){float y=.035f+.05f*i;var pts=new Vector3[4];var rr=new float[4];
-                    for(int j=0;j<4;j++){float deg=(torn!=0?80-17*j:88-24*j)-3*i;float v=(s<0?deg:180-deg)/360f;ch((y+.035f-.012f*j)/.37f,v,out var p,out var n);pts[j]=p+n*(.003f-.004f*b.Ribs);rr[j]=.0075f*(1-.15f*j/3f);}
-                    k.Tube(ZBone,pts,rr,5,true,true);}}
+                    // In the wound bare bone; down a starved chest the skin drawn tight over them, each rib dipping toward the sternum.
+                    for(int j=0;j<4;j++){float deg=(torn!=0?80-17*j:88-24*j)-3*i;float v=(s<0?deg:180-deg)/360f;float yy=torn!=0?y+.035f-.012f*j:y+.012f+.012f*j;ch(yy/.37f,v,out var p,out var n);pts[j]=p+n*(torn!=0?.003f:.001f-.003f*b.Ribs);rr[j]=(torn!=0?.0075f:.0068f)*(1-.15f*j/3f);}
+                    k.Tube(torn!=0?ZBone:ZSkinPale,pts,rr,5,true,true);}}
                 k.Vein(ch,.45f,torn>0?.33f:.17f,.13f,torn>0?.04f:-.04f,4,.0065f,1.1f,2,13);k.Vein(ch,.3f,torn>0?.36f:.14f,-.1f,0,3,.0055f,1,1,15);
             }
             if(b.Bare&&k.Mid&&b.Pec>0)foreach(int s in new[]{-1,1})k.Mass(ZSkin,new Vector3(s*.1f*w,.19f,.12f*dp),new Vector3(.1f*w,.07f*(float)Math.Sqrt(b.Pec),.045f*b.Pec),2,Matrix4x4.CreateRotationZ(-s*.15f),6,10);
@@ -358,9 +363,22 @@ namespace ChipArena.UnityConversion
             // collar plate over it; the back unit with its grille, cracked, wiring hanging out.
             if(b.Plate!=0)k.Piece(2,null,()=>
             {
-                int brk=b.Plate<0?(torn>0?3:0):(torn<0?2:1);
-                k.Armor(ZShellDirty,ZMetal,K.PlateAt(new Vector3(0,.135f,.16f*dp),new Vector3(0,.06f,1),Vector3.UnitY),.44f*w,.25f,.042f,brk,.58f,2,k.Seam(.9f),1,true,.012f);
-                k.Armor(ZShellDirty,ZMetal,K.PlateAt(new Vector3(0,.262f,.124f*dp),new Vector3(0,.75f,.66f),Vector3.UnitY),.36f*w,.075f,.032f,b.Plate<0?0:1,.4f,0,null,0,false,.01f);
+                // Two pectoral shells curved round the ribcage (not a flat board in front of it) either side of a sternum ridge carrying
+                // the pilot's centre strip; the wound's half broken off (Plate<0) or cracked, the other chipped.
+                var shellC=new Vector3(0,.13f,.012f);var shellR=new Vector3(.258f*w,.205f,.168f*dp);float hp=(float)Math.PI*.5f;
+                foreach(int s in new[]{-1,1})
+                {
+                    if(b.Plate<0&&torn!=0&&s==torn)continue;
+                    bool hurt=torn!=0&&s==torn;float t0=s<0?hp+.07f:hp-1.02f,t1=s<0?hp+1.02f:hp-.07f;
+                    int brk=(s<0?8:4)|(hurt||k.H(s+3,0xe6)<.5f?2:0)|(k.H(s+5,0xe6)<.35f?1:0);
+                    var pec=k.Shell(ZShellDirty,ZMetal,shellC,shellR,t0,t1,-.6f,.72f,.03f,brk,hurt?.42f:.2f,null,2.4f,6,4);
+                    if(k.Mid)k.Crack(pec,.35f+.3f*k.H(s,0xe7),.1f,.04f*s,.18f,3,.009f,true,1.1f);
+                    k.Seamline(pec,.08f,.45f,.92f,.4f,4,.0035f);
+                }
+                k.Armor(ZShellDark,ZMetal,K.PlateAt(new Vector3(0,.15f,.175f*dp),new Vector3(0,.05f,1),Vector3.UnitY),.034f,.21f,.026f,-1,.4f,2,k.Seam(.9f),0,false,.006f);
+                // The collar plate: a band wrapped over the top of the ribcage under the neck, chipped where the wound broke it.
+                var band=k.Shell(ZShellDirty,ZMetal,shellC+new Vector3(0,.008f,-.004f),shellR+new Vector3(.004f,.004f,.006f),hp-1.15f,hp+1.15f,.7f,.93f,.024f,b.Plate<0?(torn>0?4:8)|2:2,.18f,null,2.4f,8,3);
+                k.Seamline(band,.1f,.5f,.9f,.5f,6,.003f);
                 if(k.Mid)k.Cable(ZWire,new Vector3(b.Plate<0?-.02f:.02f,.04f,.17f*dp),new Vector3(b.Plate<0?.06f:-.06f,-.07f,.16f*dp),.02f);
             });
             if(b.Back)k.Piece(3,null,()=>
@@ -404,8 +422,11 @@ namespace ChipArena.UnityConversion
                 // The pilot's pauldron: its top plate and its outer plate, cracked, the outer one broken at the front.
                 // (On the big kinds' swollen deltoids the pilot's plates ride high and tight: they never grow past the capsule.)
                 float dd=Math.Min(d,1.25f),ds=(float)Math.Sqrt(dd);
-                k.Armor(ZShellDirty,ZMetal,K.PlateAt(new Vector3(-.072f*dd,.056f*d,0),Vector3.Normalize(new Vector3(-.3f,1,0)),Vector3.UnitZ),.18f*ds,.2f*ds,.036f,0,.4f,0,null,1,true,.012f);
-                k.Armor(ZShellDirty,ZMetal,K.PlateAt(new Vector3(-.07f*dd-.066f*ds,-.002f,0),Vector3.Normalize(new Vector3(-1,-.15f,0)),Vector3.UnitY),.16f*ds,.11f*ds,.03f,mirror?2:3,.38f,1,null,0,false,.012f);
+                // A blocky dome over the deltoid (a superellipse shell, not slabs standing off it), its rim broken at the bottom and back.
+                float hp=(float)Math.PI*.5f;
+                var cap=k.Shell(ZShellDirty,ZMetal,new Vector3(-.066f*dd,.004f*d,0),new Vector3(.076f*dd,.08f*ds,.09f*ds),hp-1.25f,(float)Math.PI+1.25f,-.4f,.97f,.026f,2|8,.22f,null,3.2f,7,5);
+                k.Seamline(cap,.08f,.42f,.92f,.42f,5,.0035f);if(k.Mid)k.Crack(cap,.45f+.1f*k.H(bit,0xe8),.15f,.05f,.12f,3,.008f,true,1.1f);
+                k.Armor(ZShellDark,ZMetal,K.PlateAt(new Vector3(-.07f*dd-.07f*ds,-.035f,.0f),Vector3.Normalize(new Vector3(-1,-.25f,0)),Vector3.UnitY),.12f*ds,.05f,.02f,mirror?2:3,.38f,1,null,0,false,.006f);
                 if(k.Mid)k.Cable(ZWire,new Vector3(-.07f*dd-.07f*ds,-.06f,.07f),new Vector3(-.07f*dd-.07f*ds,-.14f,.08f),.012f);
             });
             else if(!b.Bare&&k.Mid)for(int i=0;i<2;i++)k.Tatter(ZSuitDark,new Vector3(-.09f*d,-.05f,-.03f+.06f*i),new Vector3(-.2f,-1,0),new Vector3(-1,0,(i-.5f)),.06f+.02f*i,.035f,.2f);
@@ -416,8 +437,11 @@ namespace ChipArena.UnityConversion
             if(k.Fine)k.Mass(ZBone,new Vector3(0,-.282f,0),new Vector3(.024f,.01f,.024f)*a,2,null,3,6,false);
             if(bare)k.Vein(ua,.35f,.35f,.12f,.03f,3,.005f,.9f,1,17+bit);
             if(bare&&!b.Bare&&k.Mid)for(int i=0;i<2;i++)k.Tatter(ZSuit,new Vector3(-.06f*a,-.035f,(i-.5f)*.07f*a),new Vector3(-.1f,-1,0),new Vector3(-1,0,(i-.5f)*.6f),.055f+.025f*i,.03f,.15f);
-            if(brace)k.Piece(mirror?4:1,null,()=>{k.Armor(ZShellDirty,ZMetal,K.PlateAt(new Vector3(-.08f*a,-.13f,0),-Vector3.UnitX,Vector3.UnitY),.16f*a,.2f,.036f,2,.42f,0,null,1,false,.011f);
-                k.Armor(ZShellDirty,ZMetal,K.PlateAt(new Vector3(-.012f,-.13f,.078f*a),Vector3.UnitZ,Vector3.UnitY),.13f*a,.18f,.032f,-1,.4f,0,null,2,true,.011f);});
+            // The armoured sleeve: a blocky shell wrapped round the outside and front of the arm (slabs wider than the limb read as
+            // boxes), its back edge and hem broken.
+            if(brace)k.Piece(mirror?4:1,null,()=>{float hp=(float)Math.PI*.5f;
+                var sl=k.Shell(ZShellDirty,ZMetal,new Vector3(-.003f,-.135f,.002f),new Vector3(.08f*a,.12f,.083f*a),hp-.45f,(float)Math.PI+.85f,-.82f,.86f,.022f,2|8,.16f,null,3.4f,7,4);
+                k.Seamline(sl,.05f,.3f,.95f,.3f,5,.0035f);if(k.Mid)k.Crack(sl,.55f,.2f,-.04f,.15f,3,.008f,true);});
             // ---- the forearm ----
             k.On(CapturedRig.LElbow,mirror);
             k.Mass(bare?ZSkinDark:ZSuit,new Vector3(0,.0f,-.022f),new Vector3(.043f,.042f,.038f)*f,2,null,5,8);
@@ -425,8 +449,12 @@ namespace ChipArena.UnityConversion
             float[] fore={0,.05f*f,.047f*f,0,0, .15f,.057f*f,.05f*f,.003f,.003f, .4f,.049f*f,.042f*f,0,0, .75f,.039f*f,.032f*f,0,0, 1,.035f*f,.029f*f,0,0};
             var fa=k.Limb(new Vector3(0,.012f,0),new Vector3(0,-.25f,0),fore,(r,c)=>bare?(r>=2&&r<=3&&(c==4||c==5)&&!b.Fist?ZFlesh:ZSkin):ZSuit,ZFlesh,null,10);
             if(bare&&!b.Fist&&k.Mid){k.Tube(ZBone,new[]{new Vector3(-.018f*f,-.11f,.035f*f),new Vector3(-.02f*f,-.16f,.037f*f),new Vector3(-.018f*f,-.2f,.03f*f)},new[]{.008f,.0085f,.0075f},5,true,true);k.Vein(fa,.25f,.3f,.15f,.04f,4,.005f,1,1,21+bit);}
-            if(brace)k.Piece(mirror?4:1,null,()=>{k.Armor(ZShellDirty,ZMetal,K.PlateAt(new Vector3(-.068f*f,-.125f,0),-Vector3.UnitX,Vector3.UnitY),.14f*f,.19f,.034f,-1,.4f,2,mirror?k.Seam(.8f):(WeaponPaint?)null,1,true,.011f);
-                k.Armor(ZShellDirty,ZMetal,K.PlateAt(new Vector3(0,-.13f,.066f*f),Vector3.UnitZ,Vector3.UnitY),.12f*f,.17f,.03f,3,.45f,0,null,0,false,.011f);});
+            // The forearm guard: a shell round the outside and back of the forearm, the pilot's accent strip down it (the ink on the
+            // right arm), a seam across, the wrist end chipped.
+            if(brace)k.Piece(mirror?4:1,null,()=>{float hp=(float)Math.PI*.5f;
+                var gd=k.Shell(ZShellDirty,ZMetal,new Vector3(-.002f,-.13f,.001f),new Vector3(.066f*f,.115f,.062f*f),hp-.35f,(float)Math.PI+1.05f,-.85f,.8f,.02f,2|4,.15f,null,3.4f,7,4);
+                if(k.Mid)k.StripOn(mirror?k.Seam(.8f):ZDeadAccent,gd,new[]{(.52f,.12f),(.52f,.5f),(.52f,.86f)},.009f,1,.0016f);
+                k.Seamline(gd,.05f,.62f,.95f,.62f,5,.0035f);});
             ZHand(k,b,mirror,glove);
         }
         /// <summary>A hand: the palm, four three-jointed fingers curled into hooks with nails or claws, the thumb; gloved on an armoured

@@ -459,12 +459,32 @@ namespace ChipArena.UnityConversion
                         {
                             int cls=(int)Math.Floor(s.Data[i].X+1e-4f);var p=s.Positions[i];float g=Grime(s.Bone,p),bl=Blood(s.Bone,p);
                             if(cls==SurfShell||cls==SurfWire){g*=.6f;bl*=.4f;}else if(cls==SurfMatte){g*=.3f;bl*=.3f;}
+                            if(cls==SurfSkin)
+                            {
+                                // Mottled dead skin: bruised violet-grey blotches and paler, jaundiced patches in a noise over the rest pose,
+                                // so the pattern runs across joint sections, different for each kind and look.
+                                float m=Mottle(p+rest[s.Bone],Kind*7+Look);float bruise=Smooth(.56f,.8f,m),pale=Smooth(.42f,.2f,m);
+                                col=Vector3.Lerp(col,col*new Vector3(.8f,.66f,.8f),bruise*.8f);col=Vector3.Lerp(col,col*new Vector3(1.1f,1.08f,.86f),pale*.6f);
+                                // The big kinds' hide is darker and greener: their mass reads heavy, not chalky, under a key light.
+                                if(Kind==NativeHordeKinds.Hulk)col*=new Vector3(.74f,.8f,.72f);else if(Kind==NativeHordeKinds.Brute)col*=new Vector3(.86f,.9f,.84f);
+                            }
                             col=Vector3.Lerp(col,col*new Vector3(.42f,.36f,.3f),g);col=Vector3.Lerp(col,new Vector3(.16f,.024f,.03f),bl);
                         }
                         s.Colors[i]=new Vector4(col,region);
                     }
                 }
             }
+            /// <summary>Two octaves of value noise (0..1) at a rest-pose point, `salt` choosing the pattern.</summary>
+            private static float Mottle(Vector3 p,int salt)=>.65f*ValueNoise(p*9f,salt)+.35f*ValueNoise(p*23f+new Vector3(5.3f,1.7f,9.1f),salt+101);
+            private static float ValueNoise(Vector3 p,int salt)
+            {
+                int x=(int)Math.Floor(p.X),y=(int)Math.Floor(p.Y),z=(int)Math.Floor(p.Z);float fx=p.X-x,fy=p.Y-y,fz=p.Z-z;
+                fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);fz=fz*fz*(3-2*fz);
+                float L(float a,float b,float t)=>a+(b-a)*t;
+                float X(int j,int k)=>L(Lattice(x,y+j,z+k,salt),Lattice(x+1,y+j,z+k,salt),fx);
+                return L(L(X(0,0),X(1,0),fy),L(X(0,1),X(1,1),fy),fz);
+            }
+            private static float Lattice(int x,int y,int z,int salt){unchecked{uint h=(uint)(x*73856093)^(uint)(y*19349663)^(uint)(z*83492791)^(uint)(salt*668265263);h^=h>>13;h*=0x5bd1e995;h^=h>>15;return (h&0xffffff)/16777215f;}}
             /// <summary>Grime toward the hands and feet (0..1, by joint and the point's depth down the limb).</summary>
             private float Grime(int bone,Vector3 p)
             {
