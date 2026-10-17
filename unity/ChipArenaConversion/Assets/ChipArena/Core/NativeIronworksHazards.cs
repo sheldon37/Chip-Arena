@@ -95,8 +95,8 @@ namespace ChipArena.UnityConversion
         public static void Evaluate(in IronworksHazardInput input,IronworksHazardView[] into){if(into==null)return;int n=Math.Min(Count,into.Length);for(int i=0;i<n;i++)into[i]=At(i,input);}
         /// <summary>The period hazard `i` runs at for this rate (0 when off).</summary>
         public static double PeriodOf(int i,byte rate){if(i<0||i>=Count||rate==RateOff)return 0;var d=Defs[i];return rate==RateHalf&&d.HalfPeriod>0?d.HalfPeriod:d.Period;}
-        /// <summary>The hazard's index by id (with or without the map prefix), or -1.</summary>
-        public static int Index(string id){if(id==null)return -1;for(int i=0;i<Count;i++)if(Defs[i].Id==id||Defs[i].Id==IdPrefix+id)return i;return -1;}
+        /// <summary>The hazard's index by id (with either Ironworks map's prefix, or none), or -1.</summary>
+        public static int Index(string id){if(id==null)return -1;string stem=NativeIronworksKit.Stem(id)??id;for(int i=0;i<Count;i++)if(Defs[i].Id==IdPrefix+stem)return i;return -1;}
         /// <summary>The DEV preview's input: the presentation clock as the hazard clock, the chosen stage (0 off, 1..4 a wave, 5
         /// the boss encounter).</summary>
         public static IronworksHazardInput Preview(int stage,double clock)=>new IronworksHazardInput{Running=stage>0,Boss=stage>=5,Wave=Math.Min(4,Math.Max(1,stage)),Clock=clock};

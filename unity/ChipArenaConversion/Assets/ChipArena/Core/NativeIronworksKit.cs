@@ -65,9 +65,12 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed partial class NativeIronworksKit
     {
-        public const string MapId="expedition-foundry",Prefix="expedition-foundry-",AreaId="exp-foundry";
-        /// <summary>Whether a map id is the Ironworks: every Ironworks hook is inert on any other map.</summary>
-        public static bool Active(string mapId)=>mapId==MapId;
+        /// <summary>The live map (Astra's activation keeps `expedition-foundry`, the exp-foundry area's map in the live manifest) and
+        /// the design draft's later name (`expedition-ironworks`): both are the Ironworks, with their blocks under their own prefix,
+        /// so a later rename keeps working. <see cref="MapId"/> is the live one.</summary>
+        public const string LiveMap="expedition-foundry",DesignMap="expedition-ironworks",MapId=LiveMap,Prefix=LiveMap+"-",DesignPrefix=DesignMap+"-",AreaId="exp-foundry";
+        /// <summary>Whether a map id is the Ironworks (either name): every Ironworks hook is inert on any other map.</summary>
+        public static bool Active(string mapId)=>mapId==LiveMap||mapId==DesignMap;
         public const byte DriveSteady=0,DriveFlicker=1,DriveFire=2,DriveBeacon=3,DriveHazardGlow=4,DriveSodium=5,DriveMercury=6,DriveLed=7,DriveSeam=8,DriveTap=9,DriveWarnLamp=10;
         public const byte RoleStructure=0,RoleWall=1,RoleFloor=2,RoleProp=3,RoleHazard=4,RoleSpawn=5,RoleLamp=6,RoleSign=7,RoleChain=8,RoleMolten=9,RoleHigh=10,RoleBreach=11;
         public const byte FrameStatic=0,FrameLadle=1,FrameRam=2,FrameSlab=3,FrameShear=4,FramePusher=5,FrameSlagPot=6,FrameHook=7,Frames=8;
@@ -110,7 +113,7 @@ namespace ChipArena.UnityConversion
         public static double Hash(int a,int b=0,int c=0){unchecked{return Mix(Mix(Mix((uint)a+0x9E3779B9U)^(uint)b*0x85EBCA6BU)+(uint)c*0xC2B2AE35U)/4294967296.0;}}
         private static bool Starts(string s,string p)=>s.StartsWith(p,StringComparison.Ordinal);
         /// <summary>The id with the map prefix removed, or null for other maps' ids.</summary>
-        public static string Stem(string id)=>id!=null&&id.StartsWith(Prefix,StringComparison.Ordinal)?id.Substring(Prefix.Length):null;
+        public static string Stem(string id)=>id==null?null:id.StartsWith(Prefix,StringComparison.Ordinal)?id.Substring(Prefix.Length):id.StartsWith(DesignPrefix,StringComparison.Ordinal)?id.Substring(DesignPrefix.Length):null;
 
         // ---------------- rooms (the draft record's room volumes, x and z extents) ----------------
         public const byte RoomTimeOffice=0,RoomStockhouse=1,RoomPatternShop=2,RoomCasting=3,RoomFurnace=4,RoomMill=5,RoomCoke=6,RoomConverter=7,RoomSlag=8,Rooms=9;

@@ -64,7 +64,14 @@ namespace ChipArena.UnityConversion
             Check(live.Count(m=>NativeIronworksKit.Active(m.id))==1&&content.maps.All(m=>!NativeIronworksKit.Active(m.id)||m.id==NativeIronworksKit.MapId),"exactly one live map is the Ironworks ("+NativeIronworksKit.MapId+")");
             foreach(var m in live)if(!NativeIronworksKit.Active(m.id)){var k=NativeIronworksKit.Build(m.blocks,null);Check(k.Parts.Length==0&&k.Molten.Length==0&&k.Glows.Length==0,"the kit builds nothing for "+m.id);}
             string liveLayoutText=R("Assets/Conversion/Resources/ExpeditionLayout.json");var liveLayout=NativeExpeditionLayout.Parse(liveLayoutText);
-            Check(liveLayout.areas.Count(a=>a.map==NativeIronworksKit.MapId)==1&&liveLayout.Area(NativeIronworksKit.AreaId)?.map==NativeIronworksKit.MapId,"the live manifest's "+NativeIronworksKit.AreaId+" area is the foundry");
+            Check(liveLayout.areas.Count(a=>NativeIronworksKit.Active(a.map))==1&&liveLayout.Area(NativeIronworksKit.AreaId)?.map==NativeIronworksKit.LiveMap&&live.Any(m=>m.id==NativeIronworksKit.LiveMap),"the map the kit keys on ("+NativeIronworksKit.LiveMap+") is the one the live manifest's "+NativeIronworksKit.AreaId+" area uses, and it is in UnityMaps.json");
+            {
+                // The design draft's later name works too (a rename keeps the dressing): its blocks under its own prefix build the kit.
+                var design=JsonSerializer.Deserialize<UnityMapContent>(R("Tests/expedition-ironworks-draft.json"),o).maps.Single();var designArea=NativeExpeditionLayout.Parse(R("Tests/expedition-ironworks-layout-draft.json")).Area(NativeIronworksKit.AreaId);
+                var dk=NativeIronworksKit.Build(design.blocks,designArea);
+                Check(design.id==NativeIronworksKit.DesignMap&&NativeIronworksKit.Active(design.id)&&dk.Parts.Length>4000&&dk.Molten.Length>60&&NativeIronworksHazards.Index(NativeIronworksKit.DesignPrefix+"ladle-crane")==NativeIronworksHazards.Ladle&&NativeIronworksHazards.Index(NativeIronworksKit.Prefix+"ladle-crane")==NativeIronworksHazards.Ladle,
+                    "the design draft's name ("+NativeIronworksKit.DesignMap+") is the Ironworks too: its blocks build the kit ("+dk.Parts.Length+" parts) and its hazard ids resolve");
+            }
             Check(liveLayout.areas.All(a=>(a.gates??Array.Empty<ExpeditionGateLayout>()).All(g=>!NativeIronworksShutter.Owns(g.id))),"the live manifest has no converter gate: every live gate keeps the state scene's gate and the shutter draws nothing live yet");
             string Src(string f)=>R("Assets/ChipArena/"+f);
             var pres=Src("Runtime/NativeIronworksPresentation.cs");
