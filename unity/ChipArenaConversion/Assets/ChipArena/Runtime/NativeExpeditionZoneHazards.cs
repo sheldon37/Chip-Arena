@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
         }
         private bool ZoneLever(NativePilot p)
         {
-            if(!NativeZoneCombat.Station(MapId)||ZoneHazards==null||!ZoneHazards.running||Time<ZoneHazards.leverUntil||Time<zoneLeverReady)return false;
+            if(!NativeZoneCombat.Station(MapId)||ZoneHazards==null||!ZoneHazards.running||Time<ZoneHazards.leverUntil||Time<zoneLeverReady||Time>=ZoneHazards.trainAt&&Time<ZoneHazards.trainAt+NativeExpeditionStation.PassSeconds)return false;
             if((p.Body.position-new Vector3(36,6.9f,-54.4f)).magnitude>2.2f||!MeleeVisible(p.Body.position,new Vector3(36,6.9f,-54.4f),p,null,true))return false;
             ZoneHazards.leverAt=Time;ZoneHazards.leverUntil=Time+60;
             ZoneHazards.trainAt=Math.Max(ZoneHazards.trainAt,Time+64);zoneLeverReady=ZoneHazards.trainAt+2.2f;return true;
@@ -62,8 +62,10 @@ namespace ChipArena.UnityConversion
                 h.glassX=targets.Select(p=>p.Body.position.x).ToArray();h.glassZ=targets.Select(p=>p.Body.position.z).ToArray();h.glassAt=targets.Select(p=>Time+1.2f).ToArray();
             }
             h.floodGrounded=Minions.Any(m=>m.Pve?.Stats.id=="linesman"&&m.Hp>0&&StationFlood(m.Body.position));h.Fill(zoneStation,Time);
+            bool swept=NativeZoneHazardFrame.TrainSweep(h.trainAt,Time-1d/60,Time,out var trainLeft,out var trainRight);
+            bool train=Time>=h.leverUntil&&swept;
             foreach(var p in Pilots){if(!ZonePilot(p))continue;var at=p.Body.position;
-                if(Time>=h.trainAt&&Time<h.trainAt+2.2f&&Time>=h.leverUntil&&at.y<3.9f&&at.y> -2&&Math.Abs(at.x)<48)
+                if(train&&at.y<3.9f&&at.y> -2&&at.x+p.Collider.radius>=trainLeft&&at.x-p.Collider.radius<=trainRight)
                 {float edge=Math.Abs(at.z+12.5f);if(edge<2.5f)ZoneHazardPilot(p,100,p.Hp,1,"hazard",lethal:true);else if(edge<3.1f)ZoneHazardPilot(p,101,1,1,"hazard",new Vector3(0,0,Math.Sign(at.z+12.5f)*6));}
                 if(Time>=h.leverUntil&&StationRail(at,p.Collider.height*.5f))ZoneHazardPilot(p,102,25,1,"grid",stun:.6f);
                 if(StationFlood(at)){p.SlowEnd=Math.Max(p.SlowEnd,Time+.1f);p.SlowFactor=Math.Min(p.SlowFactor,.8f);if(zoneStation.FloodLive)ZoneHazardPilot(p,103,2,.25f,"grid");}
@@ -72,7 +74,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<h.glassAt.Length;i++)if(Time>=h.glassAt[i]&&Time<h.glassAt[i]+.1f&&at.y<2&&Vector2.Distance(new Vector2(at.x,at.z),new Vector2(h.glassX[i],h.glassZ[i]))<1.4f)ZoneHazardPilot(p,110+i,18,2,"hazard");
             }
             foreach(var m in Minions.ToArray())if(m.Pve!=null&&m.Hp>0)
-            {var at=m.Body.position;if(Time>=h.trainAt&&Time<h.trainAt+2.2f&&Time>=h.leverUntil&&at.y<3.9f&&Math.Abs(at.x)<48&&Math.Abs(at.z+12.5f)<2.5f)ZoneHazardMinion(m,100,m.Hp,1);else if(Time>=h.leverUntil&&StationRail(at,m.Collider.height/2)&&m.Pve.Stats.id!="linesman")ZoneHazardMinion(m,102,25,1);}
+            {var at=m.Body.position;if(train&&at.y<3.9f&&at.y> -2&&at.x+m.Collider.radius>=trainLeft&&at.x-m.Collider.radius<=trainRight&&Math.Abs(at.z+12.5f)<2.5f)ZoneHazardMinion(m,100,m.Hp,1);else if(Time>=h.leverUntil&&StationRail(at,m.Collider.height/2)&&m.Pve.Stats.id!="linesman")ZoneHazardMinion(m,102,25,1);}
         }
         private void StepIronworksHazards(NativeZoneHazardFrame h)
         {

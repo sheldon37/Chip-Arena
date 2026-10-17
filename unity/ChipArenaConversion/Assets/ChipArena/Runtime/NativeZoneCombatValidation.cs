@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
                 replicaCheck?.Invoke(wire);RemoveMinion(m,false);Clock(Time+2);
             }
             ZoneHazards=new NativeZoneHazardFrame{running=true,start=Time,clock=0,trainAt=Time+60};
-            var frame=NativeFrameCodec.Clone(NetworkFrame());Check(frame.Valid(Content)&&frame.pve.zone!=null&&frame.pve.zone.trainAt==Time+60,"hazard clock survives codec");
+            var raw=NetworkFrame();Check(raw.Valid(Content),"valid authority hazard frame");var frame=NativeFrameCodec.Clone(raw);Check(frame.Valid(Content),"valid decoded hazard frame");Check(frame.pve?.zone!=null,"hazard state survives codec");float expected=ZoneHazards.trainAt;Check(Math.Abs(frame.pve.zone.trainAt-expected)<.0001f,"hazard clock survives codec: expected "+expected.ToString("R")+", decoded "+frame.pve.zone.trainAt.ToString("R"));
             replicaCheck?.Invoke(frame);frame.pve.zone.clock=float.NaN;Check(!frame.Valid(Content),"invalid hazard clock rejected");
             Debug.Log("PASS native zone combat "+MapId+": authored spawns, capsules, special windups/hits/interrupts, armour and weak points, finite event and hazard frames. Automated fixture.");
         }

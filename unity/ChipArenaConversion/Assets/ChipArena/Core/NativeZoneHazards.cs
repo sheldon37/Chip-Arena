@@ -10,6 +10,15 @@ namespace ChipArena.UnityConversion
         public NativeZoneHazardFrame Copy(){var f=(NativeZoneHazardFrame)MemberwiseClone();f.glassX=(float[])glassX.Clone();f.glassZ=(float[])glassZ.Clone();f.glassAt=(float[])glassAt.Clone();return f;}
         public bool Valid()=>wave>=1&&wave<=4&&new[]{clock,start,trainAt,leverAt,leverUntil,lastCallAt,bossAt}.All(NativeZoneCombat.Finite)&&clock>=0&&glassX!=null&&glassZ!=null&&glassAt!=null&&glassAt.Length<=8&&glassX.Length==glassAt.Length&&glassZ.Length==glassAt.Length&&glassX.All(NativeZoneCombat.Finite)&&glassZ.All(NativeZoneCombat.Finite)&&glassAt.All(NativeZoneCombat.Finite);
         public IronworksHazardInput Ironworks=>new IronworksHazardInput{Running=running,Boss=boss,Wave=wave,Clock=clock};
+        // The union swept in one authority tick; clips to the station shell, like the drawn train.
+        public static bool TrainSweep(double trainAt,double from,double now,out double left,out double right)
+        {
+            left=right=0;if(trainAt<0||now<trainAt||from>trainAt+NativeExpeditionStation.PassSeconds)return false;
+            double first=Math.Max(0,from-trainAt),last=Math.Min(NativeExpeditionStation.PassSeconds,now-trainAt);
+            left=Math.Max(-NativeExpeditionStation.ShellX,NativeExpeditionStation.NoseStart+first*NativeExpeditionStation.Speed-NativeExpeditionStation.TrainLength);
+            right=Math.Min(NativeExpeditionStation.ShellX,NativeExpeditionStation.NoseStart+last*NativeExpeditionStation.Speed);
+            return right>left;
+        }
         public static NativeHazardState Cycle(double t,double period,double warn,double live)
         {
             if(t<0)return default;double c=t-Math.Floor(t/period)*period;
