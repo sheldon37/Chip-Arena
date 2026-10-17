@@ -1,6 +1,6 @@
 ## 2026-10-17 — Claude: THE 6:47 stage wiring, TERMINUS double charge, preview staging (on branch, not merged, not live)
 
-- Branch `claude/boss-station-stage-wiring`, base shared `03dddab` (THE 6:47 presentation merged). Commits `d919608` (code), `abc575e` (checks), `56942a7` (doc), `c4077d2` (the boss shake on its own line, so the zombie and Hulk checks' pinned horde-shake line stays intact). Pushed for review; not merged; nothing published.
+- Branch `claude/boss-station-stage-wiring`, base shared `03dddab` (THE 6:47 presentation merged), merged with shared `97046f7` (zombie motion; DEV_LOG and PROJECT_STATE union-resolved). Commits `d919608` (code), `abc575e` (checks), `56942a7` (doc), `c4077d2` (the boss shake on its own line, so the zombie and Hulk checks' pinned horde-shake line stays intact). Pushed for review; not merged; nothing published.
 - **The station draws the boss's stage** (coordinator follow-up; the music sync is merged, so the station files are free). It is applied after the authority's state and the boss song's, keeping all of the music's choreography; the song keeps the house lights.
   - **Row 0, lowest priority first:** the authority's (CANCELLED with the boss, a Conductor's LAST CALL, DELAYED); the song's LAST CALL through the intro chimes; the boss's `6.47 EVAC SPECIAL 1 ARRIVING` from its board flip (now the last intro chime, 3.68 s) to the hold's end; DEPARTED at the death. The kit builds these as row 0 variants, with platform 1.
   - **Clocks:** every station clock goes to 6:48 at the death (a second pair of hands and `DriveClock`). The pocket watch's minute hand moves on with them (split into 6:47 and 6:48 joints).
@@ -34,9 +34,9 @@
     - the double charge's two contacts within a frame (worst 1.4 ms) with the second chime;
     - the watch turning one minute.
   - Station visuals: 854,261 PASS. Zone boss music: 292 PASS. Station boss concept: 274 PASS. Transitions: 3,586 PASS. Unity runtime and editor build OK.
-  - `run5b` on `c4077d2`, every step exit 0:
+  - `run5b` on `635f6d1` (the final tree, merged with shared `97046f7`, the zombie motion), every step exit 0:
     - Unity runtime and editor build OK;
-    - relay: 783 PASS lines;
+    - relay: 784 PASS lines (783 on `c4077d2` before the merge);
     - Python: 140 tests OK, 1 skipped;
     - package OK;
     - diff-check clean.
