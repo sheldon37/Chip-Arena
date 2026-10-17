@@ -169,7 +169,7 @@ namespace ChipArena.UnityConversion
                 for(int k=-1;k<=1;k+=2){f.Point(k*(half+.01f),v,DB,out float x,out float y,out float z);Sprite(eye,x,y,z,.07f+.06f*em,pal.Ember,2,.75f*em);if(!low&&!reduced)Sprite(eye,x,y+.15f*(1-em),z,.12f,0x3A3640,1,.18f*em,false);}
             }
             // ---- the flash as SEALED slams on, and a teammate's re-seal ----
-            if(stage==ExpeditionLaserStage.Lock&&!reduced){double a=age-NativeExpeditionLaserDoor.SealAt*NativeExpeditionLaserDoor.LockSeconds;if(a>=0&&a<.22){float k=1-(float)a/.22f;Rect(f,-half,half,0,H,SealDepth(f)+.02f,pal.Core,1.4f,.3f*k,true);}}
+            if(stage==ExpeditionLaserStage.Lock&&!reduced){double a=age-NativeExpeditionLaserDoor.SealAt*NativeExpeditionLaserDoor.LockSeconds;if(a>=0&&a<.22){float k=1-(float)a/.22f;Rect(f,-half,half,0,H,SealDepth(f)+.02f,pal.Glow,1.2f,.12f*k*k,true,1);}}
             if(!double.IsNaN(pulseAge)&&!reduced&&pulseAge<.25)Rect(f,-half,half,0,H,SealDepth(f)+.02f,pal.Glow,1.2f,.18f*(1-(float)pulseAge/.25f),true);
             LaserHeader(f,s,stage,age,t,pal,lamp,blink,reduced,low);
         }

@@ -358,7 +358,7 @@ view's `elapsed`, run forward by local time between views (at most 0.25 s, becau
 
 | Piece | Reads | Look |
 | --- | --- | --- |
-| Door leaves | each closure whose id is a door anchor of the area; the closure volume (size, yaw) for the doorway plane; the approach for the party's side | An airlock unit at the closure volume: pockets either side, a header, a hazard-striped sill and jamb bands, status lamps and signs in the state colour (green open, amber moving, red sealed), and a dark airlock behind with a teal light. The pockets and header frame the closure face from outside it, and nothing solid stands in the open doorway the collider frees. Ward Zero's exit jambs and lintel bound exactly that face. Two leaves meet in the doorway plane and slide into the pockets. Ward Zero's portico and exit are biocontainment doors: clinical white leaves, hazard edges, a teal band and dark portholes. `Shut` is 0 when open, 1 when sealed, and eases over exactly 1 s from `began` while sealing or opening. Three lock bolts engage over the last 15% of sealing and draw back over the first 15% of opening. |
+| Door leaves | each closure whose id is a door anchor of the area; the closure volume (size, yaw) for the doorway plane; the approach for the party's side | The town's doors (an instance's exit is the laser door, below). An airlock unit at the closure volume: pockets either side, a header, a hazard-striped sill and jamb bands, status lamps and signs in the state colour (green open, amber moving, red sealed), and a dark airlock behind with a teal light. The pockets and header frame the closure face from outside it, and nothing solid stands in the open doorway the collider frees. Ward Zero's exit jambs and lintel bound exactly that face. Two leaves meet in the doorway plane and slide into the pockets. Ward Zero's portico and exit are biocontainment doors: clinical white leaves, hazard edges, a teal band and dark portholes. `Shut` is 0 when open, 1 when sealed, and eases over exactly 1 s from `began` while sealing or opening. Three lock bolts engage over the last 15% of sealing and draw back over the first 15% of opening. |
 | Door seal | `Blocking` (state is not `open`: the collider's own predicate) | A hardlight seal over exactly the closure face: fill, bright border, slanted hazard hems, scanlines and a sweep. Amber while sealing or opening (it flashes on at the start of sealing), red while sealed. It stays up through the whole opening second and is gone the moment the view says `open`, so nothing looks open while it blocks. After that, sparks drift off for 0.5 s. |
 | Final gate | the gate's closure (`exp-city:gate:final`) and its volume, facing the sanctuary | A steel portcullis that fills the gatehouse opening. Opening: lock clamps draw back into the towers over the first quarter, then the gate rises over the rest of the second into the lintel (sealing reverses this). A magenta hardlight lattice stays up while it blocks. During opening, cells dissolve with white flashes but at least a fifth remain, plus the frame and fill, until `open`. |
 | Gate beacon | this client saw the gate go from sealed or sealing to opening or open, or first saw it opening. Timed from `began` if the client is in town then. The gate opens when the last building is cleared, with the party inside it, so that opening is held. It plays 0.5 s after the client is next in town with no barrier up, in step on the arrival's authority time. | A magenta pillar rising 70 m off the gatehouse, three ground rings and a face flash for 7 s, and the HUD notice FINAL GATE OPEN · THE FINAL AREA IS UNLOCKED for 4 s. A gate first seen open (a resume or late join) cues nothing. Sealing again (a new loop) drops a held cue. |
@@ -382,6 +382,56 @@ doorway), 0 to H + 0.55 high, and from the wall face (−D/2 + 0.01) to 0.3 m in
 closure face (|u| < W/2, above the 3 cm sill, below H, from 10 cm off the wall face) it draws nothing solid once open. The town
 portico is x 43.4–44.0, z −3.5..3.5, y 0–4. The Ward Zero exit is x −37.95..−37.5, z −26.9..−19.9, and encloses the overlay's
 jambs and lintel.
+
+### The laser door (instance exits)
+
+Claude, `claude/instance-door-lock` (base shared `dfb8aac`, merged with `598c41b`), 2026-10-17. Owner: "When entering an
+instance, lets animate the door behind us getting locked (In this case, the laser door powering on) when its unlocked, we can
+animate that too." Presentation only (`Core/NativeExpeditionLaserDoor.cs`, `Core/NativeExpeditionStateScene.Laser.cs`,
+`Runtime/NativeLaserDoorPresentation.cs`, `Runtime/NativeLaserDoorAudio.cs`); the closure, its collider and every rule stay
+the director's.
+
+**What drives it in the live run.** Every live instance (Ward Zero `exp-ward-zero`, Central Station `exp-transit`, City
+Ironworks `exp-foundry`) has one exit, `<area>:door:exit`, in its map's own portal (metal jambs at ±1.8 m and a lintel at
+3.4–3.8 m; the closure volume is the 3.2 × 3.4 × 0.4 m opening). The party is placed at that door's entries, 1.4–4 m in front
+of it and facing away: the door is behind them. The split-area director keeps an instance area in its Instance phase from the
+run's start, so its exit is `sealed` (`began` 0) until `instances[].cleared`, then `opening` for one second, then `open`. There
+is no closure transition when the party arrives. So:
+- **Lock:** from this client's arrival in the area (`ExpeditionStateCues.LockAt`): the first view in which it is presented
+  there (no barrier, its own `members[].pendingArea` clear, and the runtime's `ArrivalHeld` off while the stage loading screen
+  is up or the arena lacks the map). The lock starts `ArriveDelay` (0.5 s) later and takes the director's one second. Until
+  then the door stands by: the field sheet and the floor beam. A door this client saw `sealing` is not locked again.
+- **Exact paths:** `sealing` plays the same lock from its `began` (the single-area director; any future arrival-driven
+  closure); `opening` plays the unlock from its `began`, and the floor beam goes out only when the view says `open`, the
+  moment the collider releases.
+- **Teammates:** one arriving in my area well after me (not the party arriving together) re-seals the door: a floor-up pulse.
+
+| Stage | Look |
+| --- | --- |
+| Always | Emitter columns on the portal's front (a lens per beam on the inner face, a charge rail, a status lamp and vent fins), the header over the lintel with its display, the sill (3 cm, its emitter groove flush) and the dark recess. Nothing solid inside the closure face. |
+| Lock (1 s) | The charge climbs the rails; each beam fires as the charge reaches it, floor first and the top at 0.78 s, with a snap-on flash, a spark burst and a 45 ms travel across. LOCKING (amber, blinking) becomes SEALED at 0.84 s: the word slams on, the chevrons converge and the face flashes. Status lamps amber, then red. |
+| Sealed | Nine beams (five on low graphics): a white-hot core in glow layers and a soft halo, humming (a fine shimmer, a rare dropout, a slow scan pulse climbing them). They light the floor in front and in the recess, the jambs, the emitters' faces, the lintel's underside and the recess wall. Haze glows drift along them and motes glint as they cross. SEALED with a shut padlock and chasing chevrons. |
+| Unlock (1 s) | Every beam stutters for 0.16 s, then they go out top-down, each after its own stutter; the rails drain; each emitter cools from an ember. UNLOCKING, the padlock's shackle lifts, the chevrons slide apart. |
+| Open | No beam, no sheet. The emitters finish cooling over 1.6 s, the lamps and OPEN go green, a soft green light on the floor. |
+
+The field sheet is one faint premultiplied quad over exactly the closure face at the seal depth, drawn for as long as the
+closure blocks (sealing, sealed, opening, any unknown state), so the door never looks passable while it blocks. Palettes:
+Ward Zero red containment, Central Station teal, City Ironworks amber (the join circles' accents are the glow); any other
+instance a cool cyan. Low graphics: five beams, no halo, haze, motes, sparks, fins or wash. Reduced effects: no flicker,
+stutter, flash, travel or sparks (beams fade). The HUD shows ENTRY SEALED · *zone* · SEALED UNTIL CLEARED as it locks and
+EXIT UNSEALED · *zone* CLEARED as it opens, for 3.2 s.
+
+Sound keys (the owner generates them; until then the fallback plays): `expedition.door.lock` (shield), `expedition.door.lock.snap`
+(electric-hook-hit, at SEALED), `expedition.door.unlock` (electric-hook), and the loop `expedition.door.hum` (the hazard kit's
+built-in synthesized beacon hum) on one low-priority voice while beams stand. Like the join keys, they need registering in
+`NativeSoundKeys` before the bank can carry their clips.
+
+DEV panel, Camera tab (under the station and Ironworks previews): **Instance exit door preview** (`preview-door-lock`) cycles lock, sealed (3 s),
+unlock and open (2 s) on the current instance's exit, or on an instance map loaded in the sandbox. It draws a stand-in
+closure in place of the record; the record and its collider are untouched.
+
+For an exact, shared lock (optional, Astra): seal the exit at the arrival on the authority clock. Today each client times the
+lock from its own presentation; two clients arriving together see it within their view latency of each other.
 
 ## Dev preview
 

@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-17 Claude instance exit laser door (`claude/instance-door-lock`, on branch, not merged; presentation only): each live instance's exit is a laser door in the zone's palette that locks behind the party as it arrives (timed from this client's arrival: the live director holds the exit sealed from the run's start) and unlocks exactly on the clear's `opening`; beams and field sheet stand exactly while the closure blocks. Sounds with fallbacks, HUD notice, DEV preview. Managed checks and offline renders; Unity play, Windows and two-client unrun. Optional for Astra: an authority arrival time. See DEV_LOG.
+
 2026-10-17 Astra zone gameplay candidate (`codex/unity-zone-gameplay`): all nine Station/Ironworks enemies, zone spawning/caps, hazards/levers, replicated state and live bindings implemented; exp-layout-6 adds Rigger hangs and the converter shutter. PR #264 gameplay head 37fca579 passes hosted native-source and Windows updater gates (full regressions and real relay); integrated Claude's boss music head 77c3696. Native Windows gameplay execution and publication pending. See EXPEDITION-ZONE-GAMEPLAY.md and DEV_LOG.
 
 2026-10-17 Claude zone boss music (`claude/zone-music`, merged into shared): Central Station and City Ironworks play their own boss tracks (`music/central-station-boss`, `music/city-ironworks-boss`) when the files are installed, else the Siren's song; normal-play zone music is Astra's PR #263. Next: owner drops the two MP3s in `Assets/ChipArena/Resources/Audio/music/`.
