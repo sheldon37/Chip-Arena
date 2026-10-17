@@ -713,6 +713,130 @@
    ],
    "sha256": "950c9f5cfd41c8114267d909b5ead1414c4601ed53f8a1b86eeebdb3155cc601",
    "input": "d945f2044811d0380fd09eb0496816fc3a29a27b0b19f6478d8be9c8a97949b9"
+  },
+  {
+   "clip": "zombie/writhe-1",
+   "source": "Zombie_OnFire_1_SHORT_IPC",
+   "range": [
+    0,
+    33
+   ],
+   "fps": 15,
+   "frames": 18,
+   "loop": false,
+   "marks": [
+    0,
+    1.1333
+   ],
+   "sha256": "36d6f52b8aac49e3d4a7f33cacd2baf43f4b1ff8c49e9b4d813447d0e3b1a08e",
+   "input": "fee911d87d4bdf0397c8e3f245d52a7839991272fa6ae0dddb2a4a10d2d48154"
+  },
+  {
+   "clip": "zombie/death-shock",
+   "source": "Zombie_OnFire_2A_SHORT_IPC",
+   "range": [
+    0,
+    124
+   ],
+   "fps": 15,
+   "frames": 63,
+   "loop": false,
+   "marks": [
+    0,
+    2.6,
+    4.1333
+   ],
+   "sha256": "0b1d004cc2cec6d94688028843f6c2a7b6b2d6d050f7f4f4b00825027141cdf8",
+   "input": "2e5439e9694e7170411b3c7ed46bce14131b37d9411de744d2705a9e8fe17f45"
+  },
+  {
+   "clip": "zombie/idle-1",
+   "source": "Zombie_Idle_1_v2_IPC",
+   "range": [
+    0,
+    375
+   ],
+   "fps": 15,
+   "frames": 189,
+   "loop": true,
+   "marks": [
+    0,
+    1,
+    0.5,
+    1
+   ],
+   "sha256": "0afdf600fc099357a52f0ed0f6b9c82fa90b038c12a4aac16c2278a1ee11cd37",
+   "input": "87c1ee29a5783e0f28aa034b8afb726c2a359147a1a8ae223de98485fad9b072"
+  },
+  {
+   "clip": "zombie/reach-1",
+   "source": "Zombie_Reach_1_Loop_IPC",
+   "range": [
+    0,
+    66
+   ],
+   "fps": 15,
+   "frames": 34,
+   "loop": false,
+   "marks": [
+    0,
+    2.2
+   ],
+   "sha256": "b2f4b2d5de7d3b39547f160696362b1b15d0b752e18762ebe5f709e792ea9004",
+   "input": "da04f1253f492913caea03bb7689d669bcc56d55ef92ae0c1dcc7acdc966132d"
+  },
+  {
+   "clip": "zombie/crawl-1",
+   "source": "Zombie_Crawl_1_Loop_IPC",
+   "range": [
+    123,
+    197
+   ],
+   "fps": 15,
+   "frames": 38,
+   "loop": false,
+   "marks": [
+    0,
+    2.4667
+   ],
+   "sha256": "4b7511a34642072cfde7a796c923a98e08c1804d1172737b719291e14e5f1619",
+   "input": "9f2f4bc10149331c45c3e85c67db744c88afea2d413d2fced68b9204b1d6f6e1"
+  },
+  {
+   "clip": "zombie/crawl-2",
+   "source": "Zombie_Crawl_2_Loop_IPC",
+   "range": [
+    16,
+    67
+   ],
+   "fps": 15,
+   "frames": 27,
+   "loop": false,
+   "marks": [
+    0,
+    1.7333
+   ],
+   "sha256": "738f8d23134774a800fba6849387f4212f1751e186677e928acf413af764002b",
+   "input": "a5ac4a714a7282ea36da2692150cc38af0be212b0040bd81e433feb6b59220f2"
+  },
+  {
+   "clip": "zombie/shove-1",
+   "source": "Zombie_Atk_Arms_4_SHORT_Loop_IPC",
+   "range": [
+    18,
+    50
+   ],
+   "fps": 30,
+   "frames": 33,
+   "loop": false,
+   "marks": [
+    0,
+    0.1,
+    0.7,
+    1.0667
+   ],
+   "sha256": "8dd2f4870a0d950e2f6a694b4136c47d861ae5d70b71740197892cf8aeb79d88",
+   "input": "bc319e198438b06ec8bf763906e28a9a9c6efb559cf5ea7b6aaca0d442ccd9f9"
   }
  ]
 }
