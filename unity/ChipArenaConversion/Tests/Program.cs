@@ -46,6 +46,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--horde-drops"){HordeDropChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());HulkMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-motion"){HulkMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-kinds"){IronworksKindChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--station-boss"){StationBossModelChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--boss-motion"){BossMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-enemies"){StationEnemyChecks.Run(ProjectRoot());IronworksKindChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--horde-roam"){HordeRoamChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-charge"){HulkMotionChecks.Run(ProjectRoot());HulkChargeChecks.Run(ProjectRoot());HulkHuntChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());return 0;}
@@ -118,7 +120,7 @@ internal static class Program
             HudPlaceholderChecks.Run(root);HudCyberChecks.Run(root,data);
             DeathFxChecks.Run(root);CorpseChecks.Run(data);
             StageVentChecks.Run(root);MinionFxChecks.Run(root);MinionHintChecks.Run(root);
-            HordeDropChecks.Run(root);HordeKindChecks.Run(root);IronworksKindChecks.Run(root);StationEnemyChecks.Run(root);ZombieMotionChecks.Run(root);HordeRoamChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
+            HordeDropChecks.Run(root);HordeKindChecks.Run(root);IronworksKindChecks.Run(root);StationEnemyChecks.Run(root);StationBossModelChecks.Run(root);ZombieMotionChecks.Run(root);HordeRoamChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             CameraRigChecks.Run(root);
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
@@ -147,6 +149,7 @@ internal static class Program
             foreach(var result in EffectsAudioChecks.Run(root))Console.WriteLine("PASS "+result);
             ZoneMusicChecks.Run(root);
             ZoneBossMusicChecks.Run(root);
+            BossMotionChecks.Run(root);
             FootfallAudioChecks.Run(root);
             FootSurfaceChecks.Run(root);
             foreach(var result in IntroMusicChecks.Run(root))Console.WriteLine("PASS "+result);
