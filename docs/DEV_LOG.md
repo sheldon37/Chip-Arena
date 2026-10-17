@@ -10341,3 +10341,6 @@ Local validation so far: 243 new managed zone checks; Station/Ironworks presenta
 
 
 2026-10-17 Astra validation checkpoint, PR #264: gameplay head `37fca579` passes both hosted native jobs (run 39040123192, retry 2), including all three Unity assembly compiles, full managed suite, real relay, Python/package and Windows updater/launcher checks. First hosted run hit the documented intermittent GunMotion allocation check (7,960 bytes); isolated and full local gun checks pass, retry passes without weakening assertions. Local full suite reached the historical Bow allocation assertion (15,424 bytes). Merged current shared `77c3696` into the candidate, preserving Claude's zone boss music and both project-state entries; conflict was documentation only. Native Unity execution/publication still pending.
+
+
+2026-10-17 Astra native gate repair: build of merged PR #264 (`598c41b`) failed before publication because Ward Zero had no spawned horde. Unity JsonUtility materializes the new absent `PveEntry.allowed` array as empty when cloning legacy content. Empty now uses the original Ward entry rules; nonempty authored lists still restrict zone spawns. Added both cases to ZoneCombatChecks (245 checks). Native gate is retained and must pass before release.

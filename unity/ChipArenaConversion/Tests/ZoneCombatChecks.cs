@@ -9,6 +9,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             int count=0;void Check(bool ok,string why){count++;if(!ok)throw new Exception("Zone combat: "+why);}
+            var legacy=new PveEntry{kind="vent",surface="wall",allowed=Array.Empty<string>()};Check(NativeWardEntries.Allows(legacy,"shambler")&&!NativeWardEntries.Allows(legacy,"hulk"),"Unity empty array preserves legacy entry rules");legacy.allowed=new[]{"stoker"};Check(NativeWardEntries.Allows(legacy,"stoker")&&!NativeWardEntries.Allows(legacy,"shambler"),"authored nonempty allow list remains restrictive");
             var layout=NativeExpeditionLayout.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ExpeditionLayout.json")));
             var options=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};
             foreach(var map in new[]{"expedition-transit","expedition-foundry"})
