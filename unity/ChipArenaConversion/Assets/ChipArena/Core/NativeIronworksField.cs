@@ -90,9 +90,10 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Each channel's level this frame into `into` (4): the steady glows' fire flicker, and each runner's state (dull while
         /// plugged, building in the warning, full while it runs, fading as it crusts over).</summary>
-        public static void Levels(IronworksHazardView[] views,double time,float[] into)
+        public static void Levels(IronworksHazardView[] views,double time,float[] into,in NativeZoneBossBeat music=default)
         {
-            into[0]=Gain*(.94f+.06f*NativeIronworksKit.Level(NativeIronworksKit.DriveFire,.3,time*.6));
+            // Channel 0 (the furnaces' glow and the baked work lights) follows the zone boss song; the runners' channels never.
+            into[0]=Gain*(.94f+.06f*NativeIronworksKit.Level(NativeIronworksKit.DriveFire,.3,time*.6))*NativeIronworksKit.MusicField(music);
             for(int r=0;r<3;r++)
             {
                 var v=views!=null&&r<views.Length?views[NativeIronworksHazards.R1+r]:default;

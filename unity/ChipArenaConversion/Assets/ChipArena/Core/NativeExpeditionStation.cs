@@ -80,11 +80,18 @@ namespace ChipArena.UnityConversion
         public readonly NativeHazardPhase[] CabinetPhase=new NativeHazardPhase[2];public readonly float[] CabinetLevel=new float[2];public NativeHazardPhase SteamPhase;public float SteamLevel;
         /// <summary>The line the express runs on (1..3) and its pit's centre z (filled by the kit's geometry: <see cref="NativeExpeditionStation.LineZ"/>).</summary>
         public int Line=1;
+        /// <summary>The zone boss song (Core NativeZoneBossMusic; presentation only): set by the presentation after <see cref="Evaluate"/>
+        /// (which clears it), Off before the boss arrives. During the boss intro hold the board's first row reads LAST CALL and
+        /// lights on the song's pulses (the PA chimes); the stage's lights follow it (NativeExpeditionStationKit.MusicGain).</summary>
+        public NativeZoneBossBeat Music;
+        /// <summary>Sets the song for this frame and its board text: LAST CALL on row 0 through the intro (the authority's boss flag
+        /// turns the board to ALL SERVICES CANCELLED at the drop).</summary>
+        public void Score(in NativeZoneBossBeat m){Music=m;if(m.On&&m.Intro&&Title!=TitleCancelled)Row0=Row0LastCall;}
 
         /// <summary>Fills this state from `v` at arena time `t`.</summary>
         public void Evaluate(NativeStationView v,double t)
         {
-            v=v??Idle;Line=v.TrainLine<1||v.TrainLine>3?1:v.TrainLine;
+            v=v??Idle;Music=default;Line=v.TrainLine<1||v.TrainLine>3?1:v.TrainLine;
             Levers=v.Levers&&!(t>=v.LeversUntil);double sinceLevers=t-v.LeversAt;LeverPose=Levers?(float)Clamp01(double.IsNaN(sinceLevers)?1:sinceLevers/NativeExpeditionStation.LeverThrowSeconds):0;
             // The express: halted while the levers hold (the schedule resumes after), else by the pass start.
             Express=ExpressIdle;ExpressAge=0;Warn=0;Headlight=0;Passing=0;Wake=0;Nose=NativeExpeditionStation.NoseStart;Danger=0;
@@ -112,7 +119,7 @@ namespace ChipArena.UnityConversion
             int g=0;for(int i=0;i<v.GlassCount&&i<v.Glass.Length;i++){double s=t-v.Glass[i].At;if(s>-NativeExpeditionStation.GlassTelegraph&&s<NativeExpeditionStation.GlassSettle)g++;}Glass=g;
         }
         /// <summary>Whether a board variant is lit this frame: blinking rows go dark on the blink's off beat.</summary>
-        public bool BoardRowLit(int row){if(row==0&&Row0==Row0LastCall)return Blink;if(row==4&&Row4==Row4Approaching)return Blink;return true;}
+        public bool BoardRowLit(int row){if(row==0&&Row0==Row0LastCall)return Music.On&&Music.Intro&&Music.Mode!=NativeKitFlash.Calm?Music.Pulse>.18f:Blink;if(row==4&&Row4==Row4Approaching)return Blink;return true;}
         private static readonly NativeStationView Idle=new NativeStationView();
         private static double Clamp01(double x)=>x<0?0:x>1?1:x;
         internal static double Frac(double x)=>x-Math.Floor(x);
@@ -165,6 +172,8 @@ namespace ChipArena.UnityConversion
         public static string Row(int i,string status=null)=>RowTime[i]+" "+RowTo[i]+" "+RowPlatform[i]+" "+(status??RowStatus[i]);
         /// <summary>The ticker page shown at `t`.</summary>
         public static int TickerAt(double t){int n=TickerPages.Length;int k=(int)Math.Floor(t/TickerPage)%n;return k<0?k+n:k;}
+        /// <summary>The ticker's page while the zone boss song plays: a page every two bars (about the authored page time).</summary>
+        public static int TickerAtBar(int bar){int n=TickerPages.Length;int k=((bar-1)/2)%n;return k<0?k+n:k;}
 
         // ---------------- audio cues (doc section 10; the keys the owner's bank will hold) ----------------
         public const byte CueWarn=0,CueChime=1,CueStandBack=2,CueApproach=3,CuePass=4,CueRecede=5,CueLever=6,CueCut=7,CuePower=8,CueRestored=9,CueDoors=10,CueLastCall=11,
