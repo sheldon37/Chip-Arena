@@ -1,3 +1,18 @@
+## 2026-10-17 — Claude: gun motion allocation check warms its exact sequence (test only)
+
+- PR #62's pull_request run of `97046f7` (run 39072079973, westus3, both attempts) failed `GunMotionChecks`: "Pistol posing
+  allocates 4944 bytes over a bout". The push runs of the same tree (westus2, eastus) and every local run pass. The cost is
+  one-time: only the first gun pays it, never the Rifle or Machine Gun. It does not reproduce locally under tiering off,
+  JitMinOpts, delayed call counting, ReadyToRun off, OSR or a 1-4 processor count, or at 233 other bout starts
+  probed frame by frame. The runtime cost itself is not identified.
+- `Tests/GunMotionChecks.cs`: the measured sequence (a fresh bout, then a new pilot after a 7.5 s gap on the same driver) first
+  runs once on a throwaway driver, as the ability loop already skips its first gesture. The failure message now names the
+  first allocating frame. A per-frame cost still fails: an injected 144-byte allocation was caught at frame 201 (3.35 s).
+- Related risk, not changed here: a full local run pinned to one core failed a different zero-allocation check first (spawn-in,
+  "allocate nothing (8088 bytes)"); its warm-up covers only part of the measured loop. These checks can count a one-time
+  runtime cost when the CPU is starved. CI has not failed it.
+- No Core, gameplay, timing, hitbox, damage, movement or network change.
+
 ## 2026-10-17 — Claude: zombie motion pass (on branch, not merged)
 
 - **Branch and status:** `claude/zombie-motion`, from shared `f3d8eb4`. Shared was merged in twice: `5dc860d` as `1cd0006`, then the newest, `03dddab`, as `fbc298c`. The implementation commits are `a784379` and `9fabe0f` (the checks). Pushed only; no PR, not merged into shared or the builder, nothing published.
