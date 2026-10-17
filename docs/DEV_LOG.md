@@ -1,3 +1,8 @@
+## 2026-10-17 — Astra: native activation slope-clearance repair
+
+- PR #255 merged as `27a35d4`, builder synced. Exact-head native CI passed; real Windows Build-and-Publish then stopped at Station entry-to-upper-floor machine routing. No activation player was published.
+- Native capsule clearance used a flat-floor epsilon on an inclined support. A sphere tangent to the slope needs radius/normal.y vertical clearance; route samples projected exactly onto the floor lost the spare node elevation and intersected the ramp. Apply the support-normal lift while retaining all capsule, headroom, normal and route probes. Native rebuild must confirm this diagnosis; no bypass or reduced gate.
+
 ## 2026-10-17 — Astra: activation verification and concurrent design integration
 
 - Activation head `c5e534a` passes GitHub native-source and native-updater-windows (run 38976536843), including full managed regressions, real relay, all three Unity assembly compiles, source package, Python and Windows updater processes. Local full run reached a Bow allocation assertion (15,424 bytes); hosted exact-head full suite passes. No change to Bow was made.
