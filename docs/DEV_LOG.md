@@ -1,3 +1,92 @@
+## 2026-10-17 — Claude: join circles, party/area HUD and live hub entrances (presentation)
+
+- Task (coordinator, from the owner's live split areas): the real join-circle presentation, the party/area HUD and the hub side
+  of the two new zones, replacing Astra's stand-in ring and labels (PR #255). Visuals only: no rule, timing, collider, spawn,
+  ring position or route changed.
+- Branch `claude/join-circles`, base shared `4164d5c` (includes #255 and #256 `640af06`). Implementation `c1e97d5`, `2d84595`, `a645633`. Shared
+  `6404332` (Astra's #257-#260 and the Ironworks enemies) merged in as `1ca30a2`, no conflicts.
+  Pushed, not merged into shared, builder untouched, no PR, nothing published.
+- **The pads** (`Core/NativeExpeditionJoinScene.cs`, drawn through the state pieces' NativeBlockLit/NativeSirenFx path):
+  - Six hardlight emitter posts stand just outside each circle, clear of the door and approach lines.
+  - An emitter plate and a soft energy pool sit at the centre, with no flat outline.
+  - A light curtain stands exactly on the counted radius. At rest it is only faint glass. Once someone stands in it, it rises
+    and whitens over `duration`.
+  - A camera-facing hologram shows the zone's name and threat, then the seconds, 12 segments and a pip per pilot counted.
+  - A sky beacon rises over the roofs.
+  - Each counted pilot gets a lock column and a chevron. Nobody outside gets either.
+  - Deploy: the curtain flashes, a beam takes each pilot, a shock ring runs out (an event), and a hold column stays while the
+    area loads.
+  - Cancel: it powers down. Held: an amber flicker. Cleared: green and CLEARED. A return: a beam-in.
+  - Accents: Ward Zero red, Station teal, Ironworks amber.
+- **The model** (`Core/NativeExpeditionJoin.cs`): reads `joins[]`, `members[].area/atJoin/seat` and `instances[].cleared`.
+  - A deploy is the next view showing the circle empty at or after `joinStartedAt + duration`.
+  - A cancel is emptying before that. Held is still occupied after expiry.
+  - It also gives the viewer's relation (deploying, in it but not counted with the reason, near, cleared), the party rows,
+    the notes and the cue events. It is allocation-free once warm.
+- **HUD** (`Runtime/NativeExpeditionJoinHud.cs`, cyber kit):
+  - A party list on the left: HUB / WARD ZERO / CENTRAL STATION / CITY IRONWORKS, and each member's state.
+  - A DEPLOYING TO panel with seconds and segments, the not-counted reason, a near prompt, the deploy and return notes, and
+    my deploy flash over the last 0.35 s, which hands off to the stage loading screen's cut.
+  - `NativeExpeditionPresentation.Name` now names exp-transit CENTRAL STATION and exp-foundry CITY IRONWORKS. The loading,
+    transfer and board screens read "TRANSIT"/"FOUNDRY" before. The roster's city reads HUB.
+- **Sound keys:** `expedition.join.charge|tick|cancel|deploy|deploy.whoosh|held|arrive`. Each has an existing clip as its
+  fallback (shield, countdown, reload-start, lightning, dash, ui). The table is in EXPEDITION-HUB.md.
+- **Hub entrances** (`Core/NativeExpeditionCityKit.Entrances.cs`): keyed on the live layout's doors and the hub record's
+  routes (coordinator: exp-foundry is on map expedition-foundry; nothing keys on a map id).
+  - The gate headers and wall signs named the live routes "EXP-TRANSIT"/"EXP-FOUNDRY". They now say CENTRAL STATION / CITY
+    IRONWORKS, and SEALED only while a route is reserved.
+  - The station's boards give way to the airlock framed in cream tile and teal light, and the canopy is lit teal.
+  - The foundry shutter is shown rolled into its drum over the airlock, with NO 1 GATE, hazard rails and amber beacons.
+    CITY IRONWORKS is lit.
+  - A neon light sits at each circle. In live, most of the boards' and shutter's dressing was already rejected by the
+    airlock's keep-out.
+- **Shared files touched (small):**
+  - NativeExpeditionWorld: a `JoinPadsDrawn` flag. The join door piece draws and labels nothing while the pads draw, and the
+    stand-in stays as the fallback.
+  - The two hook lines in ExpeditionWorldFrame and ExpeditionLiveHud.
+  - NativeExpeditionCityKit: the `Lettering` record and the EntranceLights call.
+  - Hub.cs: the sign names. Landmarks.cs: the live gates.
+  - NativeExpeditionPresentation: Name/AreaLabel. Tests/Program.cs: the check.
+- **Checks:** `Tests/ExpeditionJoinPresentationChecks.cs` (`CoreTests --expedition-join-view`, in the full suite).
+  - Ring states from the view fields: idle, charging with fill and seconds, ticks, flash, deploy at expiry, cancel, held,
+    cleared, late joiner. Also not counted, near and away.
+  - Party-list places and states, and the deploy and return notes.
+  - The pads: no flat floor outline, the curtain on the counted radius, the counted pilots marked, my column hidden in first
+    person, low graphics and reduced effects.
+  - Posts clear of every town block, return and door volume.
+  - The world piece stands aside. No SEALED or raw id on a live sign, and a reserved route keeps SEALED.
+  - Zero bytes per frame once warm.
+- **Checks:**
+  - `run5b.sh` on the final code head `a645633`: every step exit 0. The Unity runtime and editor assemblies build.
+  - The relay suite: 772 PASS lines, "35 managed-core checks passed", including "PASS expedition join presentation (3612
+    checks …)", "PASS expedition hub (1207 checks …)", dressing and states.
+  - Python 140 tests OK (1 skipped). The source package structure passed (2,273 files). `git diff --check` is clean.
+  - An earlier run on `2d84595` stopped once at `SpawnInChecks`' allocation measurement (8,032 bytes, untouched code, load
+    average about 40 from parallel agents). Its relay rerun passed (772 PASS).
+- **Renders** (offline, the real NativeBlockLit/NativeNightSky through the hub kit, posed pilot bodies; not committed):
+  `scratchpad/renders-join-circles/`:
+  - `f-idle-{station,ironworks,wardzero}-close`, `f-charge-st-station-close` and
+    `f-charge-{iw-ironworks,wz-wardzero}-shoulder` (two pilots counted, a bystander outside).
+  - `f-deploy-st-station-close`, `f-deploy-{wz,iw}-*`, `f-cancel-st-station-close`, `f-cleared-wz-wardzero-close`,
+    `f-low-station-close`, `idle-station-road` (the beacon down the road).
+  - `before-*` and `after-*-entrance` (sheet `entrances-before-after.png`).
+  - HUD over the pads: `hud-deploying.png`, `hud-near.png`, `hud-party-split.png`,
+    `hud-panels-near-notcounted-cleared-flash.png`.
+  - The renderer is a headless WebGL harness running the shaders' own code, not Unity.
+- **Field gaps for Astra (none block this):**
+  - There is no deploy record, so a step-out within the last view interval reads as a deploy (a flash and a note only).
+    `joins[].deployedAt` and deployed accounts, or `members[].pendingArea`, would make it exact and show others' loading.
+  - `h` is not in `ExpeditionJoinView`. Presentation assumes 4.5 m.
+  - A ring closed for any reason other than cleared is not visible.
+- **Geometry:** no conflict with live colliders, spawns, rings or routes.
+  - The rubble heaps on the Ward Zero and Ironworks approach axes (4 m from the centres) ruled out painted approach chevrons,
+    so the lead-in is the beacons, the hologram and the circle lights.
+  - The boards and shutter blocks stay (geometry). A 10 cm wood sliver shows between the airlock's pocket and the new tile.
+- **Impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Not run:** Unity Editor, a Windows build, two clients, audio. The Runtime draw and HUD glue are compiled (Unity
+  assemblies) but not executed. The HUD renders use the IMGUI recorder.
+- **Next:** owner review in a build. Astra: the optional deploy record and `h`. The owner generates the seven sound keys.
+
 ## 2026-10-17 — Astra: activation published to native test
 
 - Source `45e24acb2d80a8d63f2eb08de879144dbea70c7c` (PR #255 plus native gate repairs #256–259), shared and builder synced. Windows SHELDON Build-and-Publish started 01:04:04 UTC, exited successfully and published at 01:07:11 UTC. Public native/windows-x64/latest.json inspected: version `ae31a979cd2385cd0dd0a03cdd1c60bfb7aa6cca7e5f8274c77fbb8b30a01105`, revision `639277959795718335`, archive `e6f2ea65e8af4e959c693f09199e46ce3e3fbc469894bf09370584088edbcb3b`, 142,823,595 bytes, 231 files.
