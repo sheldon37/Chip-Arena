@@ -174,6 +174,7 @@ namespace ChipArena.UnityConversion
                 case "overlay-nav":devOverlayNav=!devOverlayNav;break;
                 case "overlay-anchors":devOverlayAnchors=!devOverlayAnchors;break;
                 case "preview-hub-gates":NativeExpeditionHubPreview.On=!NativeExpeditionHubPreview.On;DevSay(NativeExpeditionHubPreview.On?"Hub gates preview · on (presentation only; the gates cycle, nothing collides)":"Hub gates preview · off",false);break;
+                case "preview-ironworks":IronworksPreviewStep();break;
                 case "overlay-shots":devOverlayShots=!devOverlayShots;break;
                 case "log":devLogOn=!devLogOn;break;
                 case "graph":devGraphOn=!devGraphOn;break;
@@ -211,6 +212,7 @@ namespace ChipArena.UnityConversion
             if(devLink.Status!=devLinkSeen){devLinkSeen=devLink.Status;if(devLinkSeen.Length>0)DevSay(devLinkSeen,devLink.StatusBad);}
             if(NativeDevGate.Indicator(devCtx))DevIndicator();
             if(devGraphOn)DevGraphPanel(W);if(devLogOn)DevLogPanel(W,Hh);if(devFly.On)DevFlyTag(W);ExpeditionHubPreviewHud(W);
+            IronworksPreviewHud(W);
             if(devOpen)DevPanel(W,Hh);
         }
         private static Vector2 DevPointer(){var m=GUI.matrix;GUI.matrix=Matrix4x4.identity;var p=Event.current.mousePosition;GUI.matrix=m;return p/Mathf.Max(.01f,U.S);}
@@ -660,6 +662,7 @@ namespace ChipArena.UnityConversion
             DevToggleAct(new Rect(x,y,w,32),"overlay-anchors",devOverlayAnchors);y+=38;DevToggleAct(new Rect(x,y,w,32),"overlay-shots",devOverlayShots);y+=38;
             y=DevHead(x,y,w,"EXPEDITION HUB (DEV PREVIEW)");DevToggleAct(new Rect(x,y,w,32),"preview-hub-gates",NativeExpeditionHubPreview.On);y+=38;
             y=DevNote(x,y,w,"On the town map: every sanctuary gate opens and closes on its own cycle, the ward shimmers and the holster tag shows inside. Presentation only: the gates have no collider or input until the director's gate state exists.",C.Muted());
+            y=IronworksPreviewPanel(x,y,w);
             y=DevHead(x,y,w,"EVENT LOG");DevToggleAct(new Rect(x,y,w,32),"log",devLogOn);y+=40;
             for(int i=0;i<NativeDevLog.Filters.Length;i++)
             {

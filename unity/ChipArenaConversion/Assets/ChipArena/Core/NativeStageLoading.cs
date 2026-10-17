@@ -157,7 +157,7 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Labels={"LOCKING STAGE","BUILDING STAGE KIT","RENDERING STAGE","WARMING SHADERS","LOADING AUDIO","STAGE READY"};
         /// <summary>The Resources shaders compiled with GPU instancing (multi_compile_instancing; the managed checks hold this to the
         /// sources): the shader warm-up draws these instanced too, every shader plain.</summary>
-        public static readonly string[] InstancedShaders={"ChipArena/NativeBlockLit","ChipArena/NativeDevGhost","ChipArena/NativeEntranceGhost","ChipArena/NativeHologram","ChipArena/KillBody","ChipArena/KillGhost","ChipArena/NativeLit","ChipArena/NativeRepair","ChipArena/NativeReviveHolo","ChipArena/NativeSmoke","ChipArena/SourceLit","ChipArena/SourceTransparent","ChipArena/NativeStatusUnlit","ChipArena/NativeWeaponGhost","ChipArena/PrototypeLit"};
+        public static readonly string[] InstancedShaders={"ChipArena/NativeBlockLit","ChipArena/NativeMolten","ChipArena/NativeDevGhost","ChipArena/NativeEntranceGhost","ChipArena/NativeHologram","ChipArena/KillBody","ChipArena/KillGhost","ChipArena/NativeLit","ChipArena/NativeRepair","ChipArena/NativeReviveHolo","ChipArena/NativeSmoke","ChipArena/SourceLit","ChipArena/SourceTransparent","ChipArena/NativeStatusUnlit","ChipArena/NativeWeaponGhost","ChipArena/PrototypeLit"};
         public static bool Instanced(string shader){foreach(var s in InstancedShaders)if(s==shader)return true;return false;}
         public static readonly float[] Weights={.10f,.30f,.15f,.35f,.07f,.03f};
         /// <summary>Frames rendered behind the cover before the stage counts as drawn.</summary>

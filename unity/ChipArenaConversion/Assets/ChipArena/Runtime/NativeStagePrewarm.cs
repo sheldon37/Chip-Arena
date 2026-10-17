@@ -22,6 +22,7 @@ namespace ChipArena.UnityConversion
             if(NativeCyberCityLooks.Active(id)&&EnsureCyberCity()){if(!ReferenceEquals(arena,metroArena)||arena.Generation!=metroGeneration)MetroRebind(arena);built++;}
             if(map!=null&&NativeExpeditionCityKit.Active(id)&&EnsureExpeditionCity()){if(!ReferenceEquals(map,townMap))ExpeditionCityBuild(map);built++;}
             if(map!=null&&NativeWardZeroLooks.Active(map)&&EnsureWardZero()){if(!ReferenceEquals(map,wzMap))WardZeroBuild(map);built++;}
+            if(map!=null&&NativeIronworksKit.Active(id)&&EnsureIronworks()){if(!ReferenceEquals(map,iwMap))IronworksBuild(map);built++;}
             EnsureHazardKit();
             return built;
         }

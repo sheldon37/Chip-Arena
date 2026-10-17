@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
                 var c=list[i];if(c?.id==null||c.area!=rig.Area)continue;
                 int d=rig.Door(c.id);if(d>=0&&d<MaxDoors){if(Near(rig.Doors[d].Frame,eye,CullDistance))Door(rig.Doors[d],d,c,t,eye,reduced,low);leaf[d]=true;DoorsDrawn++;continue;}
                 int g=rig.Gate(c.id);if(g<0)continue;var f=rig.Gates[g].Frame;GatesDrawn++;
-                if(Near(f,eye,CullDistance*1.5f))Gate(f,g,c,t,reduced,low);
+                if(Near(f,eye,CullDistance*1.5f)){if(NativeIronworksShutter.Owns(c.id))NativeIronworksShutter.Build(Parts,PartCapacity,Quads,f,c,t,eye,reduced,low);else Gate(f,g,c,t,reduced,low);}
                 if(cues!=null&&cues.Cue(c.id,t,out double age))Beacon(f,age,eye,reduced);
             }
             if(!HideSanctuaryEdge)for(int s=0;s<rig.Sanctuary.Length;s++)Sanctuary(rig.Sanctuary[s],s,NativeExpeditionStates.SanctuaryLit(v),cues,t,eye,reduced,low);
