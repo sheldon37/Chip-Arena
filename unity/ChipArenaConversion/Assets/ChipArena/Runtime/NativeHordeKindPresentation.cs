@@ -234,7 +234,7 @@ namespace ChipArena.UnityConversion
                 HordeHulkInput(ref f,m,now,entering,breach);IronworksInput(arena,s,m);
                 s.Gait.Pose(f,minionPose,s.React);yaw=s.Gait.Yaw;pos.y=ground+NativeHordeKinds.DrawRoot(kind,a.Crawl);HordeHulkPosed(s,now);
                 HordeKindJob(s,m.Id,kind,attack,knocking?float.NaN:age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time,f.Side);
-                if(s.Gait.Landed!=0){HordeDust(s,NativeHordeKinds.Base(kind),ground,now);HordeFootfalls(s,m,kind,ground,now);}
+                if(s.Gait.Landed!=0){HordeDust(s,kind,ground,now);HordeFootfalls(s,m,kind,ground,now);}
                 attack0=attack;strike0=strike;
             }
             // The hinged jaw (the spitter's unhinging spit, the Hulk's roar) and the mouth the spit leaves from.
@@ -325,6 +325,7 @@ namespace ChipArena.UnityConversion
         private readonly HordeDustPuff[] hordeDust=new HordeDustPuff[48];private int hordeDustNext;
         private void HordeDust(HordeKindState s,int kind,float ground,float now)
         {
+            kind=NativeHordeKinds.Base(kind);// a zone kind's dust is its body's (the seven are their own)
             float power=kind==NativeHordeKinds.Hulk?1.9f:kind==NativeHordeKinds.Brute?1:kind==NativeHordeKinds.Bloater?.8f:kind==NativeHordeKinds.Runner&&s.Gait.Speed>3.5f?.45f:0;if(power<=0||s.Distance>(kind==NativeHordeKinds.Hulk?40:24))return;
             for(int f=0;f<4;f++)if((s.Gait.Landed&(1<<f))!=0)
             {

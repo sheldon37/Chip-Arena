@@ -608,6 +608,8 @@ fields under exactly these names (times NaN and indices -1 when unset); `Runtime
 `IronworksViewOf` is the one line that fills it from the network frame. The five ids are registered as horde kinds after the
 Siren's seven (`NativeHordeKinds.Known`, their capsules and looks); the Rigger's hang-point entrance proposes the entry
 timeline `NativeIronworksKinds.EntryDuration` (2.5 s: the rattle at SpawnAt, the landing .5 s before ActiveAt).
+The cream brute seams (decision 14) follow the presented arena's map: the live area `exp-foundry` on map `expedition-foundry`
+(exp-layout-5, PR #255) and this design's id `expedition-ironworks`; no other map.
 
 ### 10.5 Parser finding: fixed by PR #254
 

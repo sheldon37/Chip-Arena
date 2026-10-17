@@ -38,7 +38,9 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeIronworksKinds
     {
-        public const string Map="expedition-ironworks";
+        /// <summary>The design's map id (the doc and PR #254's draft profile) and the live one: exp-layout-5 runs the Ironworks
+        /// as area `exp-foundry` on map `expedition-foundry` (PR #255). Both are the Ironworks; no other map is.</summary>
+        public const string Map="expedition-ironworks",LiveMap="expedition-foundry";
         // ---- the five, in the zone's order (local index) ----
         public const int Cinderling=0,Stoker=1,Slagback=2,Ladleman=3,Rigger=4,KindCount=5;
         public static readonly string[] Ids={"cinderling","stoker","slagback","ladleman","rigger"};
@@ -46,10 +48,10 @@ namespace ChipArena.UnityConversion
         public const int WhiteHot=0xfff1d8,Cyan=0x5ce8ff,Cream=0xffe9c2,ColdWhite=0xe4eeff,Molten=0xffb04a,SlagCrack=0x8a3014,Fissure=0xffd9a0,LadleVein=0x2f8a9a;
         /// <summary>The brute's seams in this zone (owner decision 14) and their default elsewhere (NativeHordeKinds.Seam).</summary>
         public const int BruteSeam=0xffd27a,BruteSeamDefault=0xff6a2c;
-        /// <summary>Whether the City Ironworks instance is the loaded map (set by the presentation each frame from the arena's map id:
-        /// <see cref="ZoneOf"/>); only the brute's seams read it.</summary>
+        /// <summary>Whether the City Ironworks is the presented map (set by the presentation each frame from the presented arena's
+        /// map id, which in a split-area run is the area the local pilot is in: <see cref="ZoneOf"/>); only the brute's seams read it.</summary>
         public static bool Zone;
-        public static bool ZoneOf(string mapId)=>string.Equals(mapId,Map,StringComparison.Ordinal);
+        public static bool ZoneOf(string mapId)=>string.Equals(mapId,LiveMap,StringComparison.Ordinal)||string.Equals(mapId,Map,StringComparison.Ordinal);
 
         /// <summary>The five as zone kinds (the zone contract's 10.1 rows and capsules; their scale, weight, glow and takes).</summary>
         public static readonly HordeZoneKind[] Kinds={
@@ -249,16 +251,19 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         public static string Cue(int local,string cue)=>local>=0&&local<KindCount?CueKeys[local*CueSlots+Array.IndexOf(CueNames[local],cue)]:null;
         public const int CueSlots=14;
-        /// <summary>The cues of each kind (section 8's keys after "pve.ironworks.&lt;kind&gt;.").</summary>
-        public static readonly string[][] CueNames={
-            new[]{"hiss","screech","flare","pop"},
-            new[]{"breath","rake","hook.windup","hook.throw","hook.yank"},
-            new[]{"grind","slam.windup","slam","deflect","shed","emerge"},
-            new[]{"carry","pour.windup","pour","swing","spill","groan"},
-            new[]{"rattle","hang","lamp","lower","slide","land","swing.windup","swing","throw","climb","snap","groan","shriek"}};
-        /// <summary>Every key, made once (no string per cue): slot local*14 + the cue's index.</summary>
+        /// <summary>Section 8's keys per kind, spelled out so the bank contract's audit sees each one named in code.</summary>
+        public static readonly string[][] Keys={
+            new[]{"pve.ironworks.cinderling.hiss","pve.ironworks.cinderling.screech","pve.ironworks.cinderling.flare","pve.ironworks.cinderling.pop"},
+            new[]{"pve.ironworks.stoker.breath","pve.ironworks.stoker.rake","pve.ironworks.stoker.hook.windup","pve.ironworks.stoker.hook.throw","pve.ironworks.stoker.hook.yank"},
+            new[]{"pve.ironworks.slagback.grind","pve.ironworks.slagback.slam.windup","pve.ironworks.slagback.slam","pve.ironworks.slagback.deflect","pve.ironworks.slagback.shed","pve.ironworks.slagback.emerge"},
+            new[]{"pve.ironworks.ladleman.carry","pve.ironworks.ladleman.pour.windup","pve.ironworks.ladleman.pour","pve.ironworks.ladleman.swing","pve.ironworks.ladleman.spill","pve.ironworks.ladleman.groan"},
+            new[]{"pve.ironworks.rigger.rattle","pve.ironworks.rigger.hang","pve.ironworks.rigger.lamp","pve.ironworks.rigger.lower","pve.ironworks.rigger.slide","pve.ironworks.rigger.land","pve.ironworks.rigger.swing.windup","pve.ironworks.rigger.swing","pve.ironworks.rigger.throw","pve.ironworks.rigger.climb","pve.ironworks.rigger.snap","pve.ironworks.rigger.groan","pve.ironworks.rigger.shriek"}};
+        /// <summary>The cues of each kind (each key's part after its kind's id).</summary>
+        public static readonly string[][] CueNames=Short();
+        private static string[][] Short(){var n=new string[KindCount][];for(int i=0;i<KindCount;i++){n[i]=new string[Keys[i].Length];for(int c=0;c<n[i].Length;c++)n[i][c]=Keys[i][c].Substring(Keys[i][c].IndexOf('.',14)+1);}return n;}
+        /// <summary>Every key in one table (no string per cue): slot local*14 + the cue's index.</summary>
         public static readonly string[] CueKeys=MakeKeys();
-        private static string[] MakeKeys(){var k=new string[KindCount*CueSlots];for(int i=0;i<KindCount;i++)for(int c=0;c<CueNames[i].Length;c++)k[i*CueSlots+c]="pve.ironworks."+Ids[i]+"."+CueNames[i][c];return k;}
+        private static string[] MakeKeys(){var k=new string[KindCount*CueSlots];for(int i=0;i<KindCount;i++)for(int c=0;c<Keys[i].Length;c++)k[i*CueSlots+c]=Keys[i][c];return k;}
         public static int CueCount{get{int n=0;foreach(var c in CueNames)n+=c.Length;return n;}}
 
         private static float Sm(float x)=>MeleeMath.Smooth(x);

@@ -53,7 +53,9 @@ namespace ChipArena.UnityConversion
             Check(adds.All(a=>NativeHordeKinds.Resolve(a)<NativeHordeKinds.Count)&&!Five.Any(adds.Contains),"today's content has none of the five (its adds resolve to the Siren's kinds)");
             var draft=R(root,"Tests/expedition-ironworks-layout-draft.json");var allows=Regex.Matches(draft,"\"allow\": ?\\[([^\\]]*)\\]").Select(m=>m.Groups[1].Value).ToList();
             Check(allows.Count>0&&allows.All(a=>!Five.Any(f=>a.Contains("\""+f+"\""))),"the draft's allow lists still name only the Siren's kinds (the proposals sit beside them)");
-            Check(!R(root,"Assets/Conversion/Resources/ExpeditionLayout.json").Contains("cinderling"),"the live manifest names none");
+            // The live manifest (exp-layout-5) carries the design's proposals as data ("propose"); no spawn allows any of the five.
+            var liveAllows=Regex.Matches(R(root,"Assets/Conversion/Resources/ExpeditionLayout.json"),"\"allow\": ?\\[([^\\]]*)\\]").Select(m=>m.Groups[1].Value).ToList();
+            Check(liveAllows.Count>0&&liveAllows.All(a=>!Five.Any(f=>a.Contains("\""+f+"\""))),"the live manifest's allow lists name none of the five ("+liveAllows.Count+" lists)");
         }
         private static bool Near(float a,float b,float e=1e-4f)=>Math.Abs(a-b)<=e;
         // ---- today's seven exactly as before (with the full bitwise comparison in the DEV_LOG; HordeKindChecks still run) ----
@@ -88,8 +90,12 @@ namespace ChipArena.UnityConversion
                 NativeIronworksKinds.Zone=false;
                 for(int k=0;k<NativeHordeKinds.All;k++)Check(NativeHordeKinds.SeamOf(k)==NativeHordeKinds.Seam[k],"outside the Ironworks every kind's seam is its own ("+k+")");
                 Check(NativeHordeKinds.SeamOf(NativeHordeKinds.Brute)==0xff6a2c&&NativeHordeModels.Id(NativeHordeKinds.Brute,1,0)=="minion-brute-1-full","the brute orange and its own model elsewhere");
-                foreach(var map in new[]{"expedition-ward-zero","expedition-town","boss-test","expedition-transit",null,"","Expedition-Ironworks"})Check(!NativeIronworksKinds.ZoneOf(map),"map "+(map??"null")+" is not the Ironworks");
-                Check(NativeIronworksKinds.ZoneOf("expedition-ironworks")&&NativeIronworksKinds.Map=="expedition-ironworks","the Ironworks map id (PR #254's)");
+                foreach(var map in new[]{"expedition-ward-zero","expedition-town","expedition-city","boss-test","expedition-transit",null,"","Expedition-Ironworks","Expedition-Foundry","foundry"})Check(!NativeIronworksKinds.ZoneOf(map),"map "+(map??"null")+" is not the Ironworks");
+                Check(NativeIronworksKinds.ZoneOf("expedition-ironworks")&&NativeIronworksKinds.Map=="expedition-ironworks","the Ironworks design map id (PR #254's)");
+                Check(NativeIronworksKinds.ZoneOf("expedition-foundry")&&NativeIronworksKinds.LiveMap=="expedition-foundry","the live Ironworks map id (PR #255's)");
+                // The live layout: the Ironworks area runs on the live id, and no other area's map reads as the Ironworks.
+                var layout=R(root,"Assets/Conversion/Resources/ExpeditionLayout.json");var areas=Regex.Matches(layout,@"\{""id"": ?""(exp-[a-z0-9-]+)"", ?""role"": ?""[a-z]+"", ?""map"": ?""([a-z0-9-]+)""").Select(m=>(m.Groups[1].Value,m.Groups[2].Value)).ToList();
+                Check(areas.Count>=4&&areas.Count(a=>NativeIronworksKinds.ZoneOf(a.Item2))==1&&areas.Any(a=>a.Item1=="exp-foundry"&&a.Item2==NativeIronworksKinds.LiveMap),"the live layout's only Ironworks map is exp-foundry's ("+string.Join(",",areas.Select(a=>a.Item1+"="+a.Item2))+")");
                 NativeIronworksKinds.Zone=true;
                 Check(NativeHordeKinds.SeamOf(NativeHordeKinds.Brute)==0xffd27a&&NativeIronworksKinds.BruteSeam==0xffd27a,"in the Ironworks the brute's seams are cream");
                 for(int k=0;k<NativeHordeKinds.All;k++)if(k!=NativeHordeKinds.Brute){Check(NativeHordeKinds.SeamOf(k)==NativeHordeKinds.Seam[k],"only the brute's change ("+k+")");Check(NativeHordeModels.Id(k,0,0)=="minion-"+NativeHordeKinds.Ids[k]+"-0-full","only the brute's model changes ("+k+")");}
@@ -415,6 +421,7 @@ namespace ChipArena.UnityConversion
         {
             var keys=new HashSet<string>(NativeIronworksKinds.CueKeys.Where(k=>k!=null));Check(keys.Count==34&&NativeIronworksKinds.CueCount==34,"34 enemy cue keys ("+keys.Count+")");
             foreach(var k in keys)Check(NativeSoundKeys.Known(k)&&k.StartsWith("pve.ironworks.",StringComparison.Ordinal),k+" is a bank key");
+            for(int z=0;z<5;z++)for(int c=0;c<NativeIronworksKinds.Keys[z].Length;c++)Check(NativeIronworksKinds.Keys[z][c]=="pve.ironworks."+NativeIronworksKinds.Ids[z]+"."+NativeIronworksKinds.CueNames[z][c]&&NativeIronworksKinds.Cue(z,NativeIronworksKinds.CueNames[z][c])==NativeIronworksKinds.Keys[z][c],"the key table spells "+NativeIronworksKinds.Keys[z][c]);
             var doc=Doc(root);if(doc!=null){var inDoc=Regex.Matches(doc,"`(pve\\.ironworks\\.[a-z.]+)`").Select(m=>m.Groups[1].Value).Where(k=>!k.EndsWith(".",StringComparison.Ordinal)&&!k.EndsWith("*",StringComparison.Ordinal)).ToHashSet();inDoc.Remove("pve.ironworks.rigger");Check(inDoc.SetEquals(keys),"the keys are exactly section 8's ("+string.Join(", ",inDoc.Except(keys))+" / "+string.Join(", ",keys.Except(inDoc))+")");}
             Check(NativeSoundKeys.Find("pve.ironworks.rigger.rattle",out var rattle)&&rattle.Priority==NativeSoundPriority.High&&rattle.Space==NativeSoundSpace.Positional,"the rattle is positional and high priority (it must cut through the furnace bed)");
             var rt=R(root,"Assets/ChipArena/Runtime/NativeIronworksKindsPresentation.cs");
