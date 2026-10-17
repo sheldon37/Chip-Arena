@@ -10331,3 +10331,13 @@ rerun the unchanged native acceptance gates before publication.
 - Build of `8d1ec86` failed at 15:59 UTC in the airborne chooser landing assertion. Latest-Build.txt reports Physics.Simulate refused every step because simulationMode was not Script. This fixture runs before ConversionGame startup configures physics.
 - Scope the fixture's falling loop to SimulationMode.Script, step the owning PhysicsScene, sync transforms and restore the prior mode in finally. Retain the landing/horizontal-hold assertions. This repairs the validation setup, not a gameplay bypass.
 - Pinned Unity Runtime compile checked; next Windows build must execute the retained native gate. No publication claim until the builder succeeds.
+
+
+## 2026-10-17 — Astra: Station and Ironworks gameplay candidate
+
+Branch `codex/unity-zone-gameplay`, base `dfb8aac`; owner requested completion and test update. Adds all nine zone enemy rules, quota-phase mixes/caps, authored entry filters, instance-local hazard schedules/damage and signal levers, finite replicated enemy/hazard/death state, and presentation bindings. `exp-layout-6` imports eight Rigger hangs and the converter boss shutter; original map geometry, machines and join fields are retained. Existing Siren is the approved placeholder; converter tilt awaits its future boss design. Contract/tuning: `docs/EXPEDITION-ZONE-GAMEPLAY.md`.
+
+Local validation so far: 243 new managed zone checks; Station/Ironworks presentation and layout checks; genuine Unity 6000.3.24f1 Player/runtime/editor API compile; 140 Python tests, one existing skip. Final regression and hosted gates pending. Native authority/guest attack and event fixtures added to the four-area build gate, not yet executed in Windows. Candidate only: not merged or published at this checkpoint. No human multiplayer playtest claimed.
+
+
+2026-10-17 Astra validation checkpoint, PR #264: gameplay head `37fca579` passes both hosted native jobs (run 39040123192, retry 2), including all three Unity assembly compiles, full managed suite, real relay, Python/package and Windows updater/launcher checks. First hosted run hit the documented intermittent GunMotion allocation check (7,960 bytes); isolated and full local gun checks pass, retry passes without weakening assertions. Local full suite reached the historical Bow allocation assertion (15,424 bytes). Merged current shared `77c3696` into the candidate, preserving Claude's zone boss music and both project-state entries; conflict was documentation only. Native Unity execution/publication still pending.

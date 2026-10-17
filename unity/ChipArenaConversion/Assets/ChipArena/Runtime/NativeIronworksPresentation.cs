@@ -82,7 +82,7 @@ namespace ChipArena.UnityConversion
             var map=arena.Map;if(map==null||!NativeIronworksKit.Active(map.id)||!EnsureIronworks())return;
             if(!ReferenceEquals(map,iwMap))IronworksBuild(map);
             if(!ReferenceEquals(arena,iwArena)||arena.Generation!=iwGeneration){iwArena=arena;iwGeneration=arena.Generation;iwLast=-1;}
-            float now=PresentationClock(arena);NativeIronworksHazards.Evaluate(NativeIronworksLive.Input(),iwViews);
+            float now=PresentationClock(arena);arena.BindZonePresentation();NativeIronworksHazards.Evaluate(NativeIronworksLive.Input(),iwViews);
             Shader.SetGlobalFloat(MoltenClockId,(float)(now%1000.0));Shader.SetGlobalFloat(HeatClockId,(float)(now%1000.0));
             var blocks=map.blocks;Array.Clear(iwParents,0,iwParents.Length);foreach(var p in arena.AllBlocks){if(p==null||p.Definition?.id==null)continue;if(iwIndex.TryGetValue(p.Definition.id,out int i))iwParents[i]=p;}
             for(int i=0;i<iwParents.Length;i++){var p=iwParents[i];if(p==null){iwMoved[i]=false;continue;}var t=p.transform;var b=blocks[i];iwMoved[i]=t.position!=new Vector3(b.pos.x,b.pos.y,b.pos.z);}

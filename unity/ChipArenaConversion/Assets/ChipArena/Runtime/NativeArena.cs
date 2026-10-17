@@ -197,7 +197,7 @@ namespace ChipArena.UnityConversion
                 step+=MeleeAbilityMotion(p)+FighterMotion(p)+SirenMotion(p);velocity.x=p.MoveVelocity.x+step.x;velocity.z=p.MoveVelocity.z+step.z;
             }
             if(swimming&&velocity.y<=2)velocity.y+=Mathf.Clamp((-.95f-p.Body.position.y)*12-velocity.y*4,-35,35)*dt;
-            var jump=NativeJumpSimulation.Try(p.Seat.spec,i.Jump,p.Grounded,swimming,rolling||locked,velocity.y,
+            var jump=NativeJumpSimulation.Try(p.Seat.spec,i.Jump,p.Grounded,swimming,rolling||locked||ZoneMovementHeld(p),velocity.y,
                 (float)(Rules.JumpSpeed*p.Stats["jumpPower"]),ref p.AirJumps,out float launch);
             bool jumped=jump!=NativeJumpKind.None;
             if(jumped){velocity.y=launch;if(p.Grounded)ChipJump(p);p.Grounded=false;if(jump==NativeJumpKind.Air)p.AirJumpAt=Time;}
@@ -214,6 +214,7 @@ namespace ChipArena.UnityConversion
             velocity+=external;
             if(NativeAirAttackSimulation.Falling(p.Swing)&&(!NativeAirAttackSimulation.Down(p.Swing)||Time>=p.Swing.PlungeAt)){velocity.y=NativeAirAttackSimulation.Vertical(p.Swing,Time);p.Body.useGravity=false;}
             if(GroundMotion(p,ref velocity,jumped,swimming,external.y))p.Body.useGravity=false;
+            if(ZoneMovementHeld(p)){velocity.x=velocity.z=0;p.MoveVelocity=Vector3.zero;}
             p.Body.linearVelocity=velocity;
 
             p.Pose.Sprinting=sprint;

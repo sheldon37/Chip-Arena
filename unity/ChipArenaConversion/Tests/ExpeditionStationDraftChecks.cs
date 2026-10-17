@@ -141,7 +141,7 @@ namespace ChipArena.UnityConversion
                     &&(e.kind!="breach"||station.blocks.Any(b=>b.id==e.block&&b.role=="static"&&Math.Abs(b.pos.x-e.center.x)<1e-3&&Math.Abs(b.pos.z-e.center.z)<1e-3)&&Math.Abs(e.normal.Length-1)<.01),"allow list within the entry rules: "+e.id);
             }
             var proposed=raw.Where(x=>x["station"]!=null).SelectMany(x=>x["station"].AsArray().Select(y=>(string)y)).Distinct().ToArray();
-            Check(proposed.Length>0&&proposed.All(k=>StationEnemies.Contains(k)&&!NativeHordeKinds.Known(k))&&StationEnemies.All(k=>!NativeHordeKinds.Known(k)),"the station enemies ("+string.Join(", ",proposed)+") are proposals: named only beside the allow lists, not horde kinds");
+            Check(proposed.Length>0&&proposed.All(k=>StationEnemies.Contains(k)&&NativeHordeKinds.Known(k))&&StationEnemies.All(k=>NativeHordeKinds.Known(k)),"the station enemies ("+string.Join(", ",proposed)+") are registered horde kinds; the historical draft retains its base allow lists");
             Check(spawns.Count(s=>s.allow.Contains("hulk"))==5&&spawns.Count(s=>s.entry.level==1)==4,"5 Hulk entrances, 4 on the upper floor");
             // ---------------- authored content binding (#254), on a detached copy as the arena does ----------------
             var bound=JsonSerializer.Deserialize<NativePveContent>(R("Assets/Conversion/Resources/PveContent.json"),o);int wardEntries=pve.entries.Length,wardMachines=pve.machines.Length;
@@ -170,7 +170,7 @@ namespace ChipArena.UnityConversion
                 "the importer's navigation profile (et, 1 m) is ready, and the manifest it imports does not name the station");
             Console.WriteLine("PASS expedition station draft ("+count+" checks: Central Station at "+DraftPath+", design fixture; the map validates and imports beside today's maps ("+station.blocks.Length+" blocks, "+station.ramps.Length+" stairs); "
                 +"Astra's parser and geometry gate accept the historical baseline manifest plus exp-transit and its hub door; station routes by capsule flood (floors "+string.Join(", ",floors.Select(f=>f.inside+"/"+f.total))+" pilot cells joined, "+hulk.Nodes+" Hulk cells); "
-                +spawns.Length+" spawns within the entry rules, every field kept by the parser, bound as the station's own content; the 4 station enemies proposals only; the look validates and lists every block)");
+                +spawns.Length+" spawns within the entry rules, every field kept by the parser, bound as the station's own content; four registered station enemies with historical draft allow lists; the look validates and lists every block)");
         }
     }
 }

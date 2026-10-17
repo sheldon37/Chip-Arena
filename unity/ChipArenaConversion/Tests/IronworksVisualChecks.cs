@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
                 Check(design.id==NativeIronworksKit.DesignMap&&NativeIronworksKit.Active(design.id)&&dk.Parts.Length>4000&&dk.Molten.Length>60&&NativeIronworksHazards.Index(NativeIronworksKit.DesignPrefix+"ladle-crane")==NativeIronworksHazards.Ladle&&NativeIronworksHazards.Index(NativeIronworksKit.Prefix+"ladle-crane")==NativeIronworksHazards.Ladle,
                     "the design draft's name ("+NativeIronworksKit.DesignMap+") is the Ironworks too: its blocks build the kit ("+dk.Parts.Length+" parts) and its hazard ids resolve");
             }
-            Check(liveLayout.areas.All(a=>(a.gates??Array.Empty<ExpeditionGateLayout>()).All(g=>!NativeIronworksShutter.Owns(g.id))),"the live manifest has no converter gate: every live gate keeps the state scene's gate and the shutter draws nothing live yet");
+            Check(liveLayout.areas.Single(a=>a.id==NativeIronworksKit.AreaId).gates.Any(g=>NativeIronworksShutter.Owns(g.id)&&g.opens=="boss"),"live converter shutter opens only for the boss");
             string Src(string f)=>R("Assets/ChipArena/"+f);
             var pres=Src("Runtime/NativeIronworksPresentation.cs");
             Check(pres.Contains("var map=arena.Map;if(map==null||!NativeIronworksKit.Active(map.id)||!EnsureIronworks())return;",StringComparison.Ordinal),"the runtime draws only on the Ironworks map");
@@ -86,7 +86,7 @@ namespace ChipArena.UnityConversion
             Check(pres.Contains("public static IronworksHazardInput Input()=>Preview?NativeIronworksHazards.Preview(PreviewStage,Time.unscaledTimeAsDouble-PreviewStart):Bound?Authority:default;",StringComparison.Ordinal)
                 &&pres.Contains("NativeIronworksHazards.Evaluate(NativeIronworksLive.Input(),iwViews);",StringComparison.Ordinal),"the runtime's hazard input is the DEV preview's, else the bound authority's, else none");
             var sources=Directory.GetFiles(Path.Combine(root,"Assets"),"*.cs",SearchOption.AllDirectories).Select(File.ReadAllText).ToArray();
-            Check(sources.All(t=>!t.Contains("NativeIronworksLive.Bound=",StringComparison.Ordinal)&&!t.Contains("NativeIronworksLive.Authority=",StringComparison.Ordinal))&&sources.Count(t=>t.Contains("NativeIronworksLive.PreviewStage=",StringComparison.Ordinal))==1,"no hazard authority is bound yet, and only the DEV preview step starts the preview");
+            Check(sources.Count(t=>t.Contains("NativeIronworksLive.Bound=",StringComparison.Ordinal)&&t.Contains("NativeIronworksLive.Authority=",StringComparison.Ordinal))==1&&sources.Count(t=>t.Contains("NativeIronworksLive.PreviewStage=",StringComparison.Ordinal))==1,"exactly one authority binding and one DEV preview entry point");
             {
                 var off=new IronworksHazardView[NativeIronworksHazards.Count];NativeIronworksHazards.Evaluate(default,off);
                 Check(off.All(v=>v.Phase==NativeHazardPhase.Idle&&v.Rate==NativeIronworksHazards.RateOff&&!v.Parked),"with no input every hazard is idle and off");
@@ -262,7 +262,7 @@ namespace ChipArena.UnityConversion
             }
             for(int f=0;f<5;f++)Frame(f*.016);long before=GC.GetAllocatedBytesForCurrentThread();for(int f=0;f<240;f++)Frame(3+f*.11);long spent=GC.GetAllocatedBytesForCurrentThread()-before;
             Check(spent==0,"the hazard views, frames, drives, molten states, picker, effects, field levels and the shutter allocate nothing per frame ("+spent+" bytes over 240 frames)");
-            Console.WriteLine("PASS ironworks visuals ("+count+" checks: only on "+NativeIronworksKit.MapId+"; hazards off in normal play (DEV preview only); the live look; the kit from the live map: "+total+" parts ("+lowTotal+" on the low tier), "+kit.Molten.Length+" molten pieces, "+kit.Glows.Length+" light sources, "+(draws+meltDraws)+" instanced draws, built in "+buildMs.ToString("F0")+" ms; rooms "
+            Console.WriteLine("PASS ironworks visuals ("+count+" checks: only on "+NativeIronworksKit.MapId+"; authority hazard bindings and independent DEV preview; the live look; the kit from the live map: "+total+" parts ("+lowTotal+" on the low tier), "+kit.Molten.Length+" molten pieces, "+kit.Glows.Length+" light sources, "+(draws+meltDraws)+" instanced draws, built in "+buildMs.ToString("F0")+" ms; rooms "
                 +string.Join(", ",Enumerable.Range(0,NativeIronworksKit.Rooms).Select(r=>NativeIronworksKit.RoomNames[r]+" "+parts[r]))+"; placement and keep-outs from the records; hazard cycles, Wave 1, the waves' joins and the boss's parked ladle; the shutter from the closure states; two cool lights always; "+maxQuads+" effect quads at most; the field in "+field.BakeMs.ToString("F0")+" ms; no allocation per frame)");
         }
     }

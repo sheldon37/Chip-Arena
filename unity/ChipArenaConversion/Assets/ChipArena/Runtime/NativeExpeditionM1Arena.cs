@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
         private readonly Collider[] expeditionProbe=new Collider[32];
         private readonly Dictionary<string,bool> expeditionNavClear=new Dictionary<string,bool>();
         private readonly HashSet<string> expeditionDeaths=new HashSet<string>();
-        private string expeditionBoss;private int expeditionEconomySerial;private int expeditionSpawned;private float expeditionSpawnAt;
+        private int expeditionZoneWave;private string expeditionBoss;private int expeditionEconomySerial;private int expeditionSpawned;private float expeditionSpawnAt;
         public ExpeditionLayout LoadExpeditionM1Layout(string json,NativePveContent horde)
         {
             string probeMap=null;
@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         {
             if(Replica||NativeMapRules.ArenaSelectable(Content.Map(map)))throw new InvalidOperationException("Expected an isolated Expedition map.");
             if(Pve!=null)foreach(var recruit in Pve.Recruits)Match.Seats.Remove(recruit.Pilot.Seat);
-            ResetHub();MapId=map;Reset();BossSongAt=-1;BossSongLead=0;expeditionNavClear.Clear();expeditionDeaths.Clear();expeditionClosures.Clear();expeditionBoss=null;expeditionSpawned=0;expeditionSpawnAt=Time;
+            ResetZoneCombat();ResetHub();MapId=map;Reset();BossSongAt=-1;BossSongLead=0;expeditionNavClear.Clear();expeditionDeaths.Clear();expeditionClosures.Clear();expeditionBoss=null;expeditionSpawned=0;expeditionZoneWave=0;expeditionSpawnAt=Time;
         }
         public bool ExpeditionSupported(V3 floor,float radius,float height)
         {
@@ -138,6 +138,7 @@ namespace ChipArena.UnityConversion
             notice=null;if(Expedition==null||Replica||Pve==null||Pve.Holding||pilot==null||pilot.Hp<=0||!pilot.Seat.connected)return false;
             var session=Expedition.Session;var run=session.Run;var state=run.Snapshot();var member=ExpeditionMemberFor(pilot);
             if(pilot.ExpeditionTransferHeld||ExpeditionChoosing(pilot)||state.loading||member==null||!member.alive||member.extracted)return false;
+            if(ZoneLever(pilot)){notice="Signal levers · power cut for 60 s";return true;}
             if(HubInteract(pilot)){notice="Sanctuary gate";return true;}
             var feet=Vec(pilot.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight);
             foreach(var reward in state.rewards.Where(r=>!r.claimed&&(r.owner==null||r.owner==member.account)))
@@ -204,13 +205,16 @@ namespace ChipArena.UnityConversion
             if(s.phase==ExpeditionPhase.Instance)
             {
                 var instance=s.instances.Single(i=>i.id==s.area);
+                if(NativeZoneCombat.Active(MapId)){Pve.Wave=NativeZoneCombat.Wave(instance.progress,instance.target);Pve.Cap=16;}
                 if(instance.progress<instance.target&&Time>=expeditionSpawnAt&&Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<Pve.Cap)
                 {
                     // Lost/out-of-world adds do not count as kills: replenish only enough live enemies to finish the quota.
                     if(instance.progress+Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<instance.target)
                     {
-                        string[] kinds={"shambler","runner","spitter","brute"};var add=SpawnPveAdd(kinds[expeditionSpawned%kinds.Length],true);
-                        if(add!=null){var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)),s.loop,true);add.MaxHp*= (float)scale.health;add.Hp=add.MaxHp;add.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;}
+                        string[] kinds={"shambler","runner","spitter","brute"};bool zone=NativeZoneCombat.Active(MapId),intro=zone&&expeditionZoneWave<Pve.Wave;
+                        string kind=intro?(NativeZoneCombat.Station(MapId)?new[]{"conductor","linesman","undertow","pileup"}:new[]{"cinderling","rigger","slagback","ladleman"})[Pve.Wave-1]:zone?PickHordeKind(NativeZoneCombat.Encounter(MapId,Pve.Wave,false),Pve):kinds[expeditionSpawned%kinds.Length];
+                        var add=SpawnPveAdd(kind,true);if(add!=null&&intro)expeditionZoneWave=Pve.Wave;
+                        if(add!=null){var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)),s.loop,true);add.MaxHp*= (float)scale.health;add.Hp=add.MaxHp;add.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;if(kind=="cinderling")for(int n=0;n<2&&instance.progress+Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<instance.target;n++){var pack=SpawnPveAdd(kind,true,add.Pve.Entry.e);if(pack==null)break;pack.MaxHp*=(float)scale.health;pack.Hp=pack.MaxHp;pack.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;}}
                     }
                     expeditionSpawnAt=Time+1;
                 }
@@ -218,7 +222,7 @@ namespace ChipArena.UnityConversion
                 if(instance.progress>=instance.target&&!instance.cleared&&expeditionBoss==null)SpawnExpeditionBoss("m1-ward-siren");
             }
             if(s.phase==ExpeditionPhase.FinalBoss&&expeditionBoss==null)SpawnExpeditionBoss("m1-final-siren");
-            if(Pve.Holding)return;
+            if(Pve.Holding){if(ZoneHazards!=null)ZoneHazards.trainAt=Math.Max(ZoneHazards.trainAt,Time+4);return;}
             if(expeditionBoss!=null)
             {
                 var boss=Pve.Boss;bool defeated=StepPveBossPhases();if(Pve.Holding)return;Expedition.UpdateBossHealth(s.area,expeditionBoss,Math.Max(0,boss.Hp),Pve.MaxHp);
@@ -228,7 +232,7 @@ namespace ChipArena.UnityConversion
                     if(accepted){KillPveHorde();pveAcid.Clear();Bullets.Clear();SetBossHidden(true);Pve.Stage="intermission";Pve.Rate=0;BossSongAt=-1;BossSongLead=0;}
                 }
             }
-            StepPveServices();StepPveHorde();StepPveAcid();
+            StepZoneHazards();StepZoneEvents();StepPveServices();StepPveHorde();StepPveAcid();
         }
         private void SpawnExpeditionBoss(string id)
         {
