@@ -28,6 +28,12 @@ namespace ChipArena.UnityConversion
                 Span(cx-1.0,cx+1.0,top,top+.26,b.pos.z-.8,b.pos.z+.8,Brick(RefractoryDarkHex,RoleProp));Span(cx-1.05,cx+1.05,top+.24,top+.3,b.pos.z-.85,b.pos.z+.85,dark);
                 MeltSpan(cx-.78,cx+.78,top+.22,top+.27,b.pos.z-.58,b.pos.z+.58,MoltenFlow,0,1,.12f,.6f,.52f,.62f,MDriveSteady,-1,FrameStatic,0,.9f);
                 Text((t+1).ToString(),cx,1.4,z0,3,.12,.0,.012,P(NativeBlockLooks.Plain,0x8A8478,RoleSign));
+                // Rounder than its box: a stepped crown along the top either side of the mouth, a belly belt down each side and
+                // stepped ends, so the car reads as a barrel on its bogies.
+                var shell=Iron(0x3A3632);
+                foreach(double s0 in new[]{x0+.35,cx+1.2}){double s1=s0==x0+.35?cx-1.2:x1-.35;Span(s0,s1,top,top+.22,z0+.3,z1-.3,shell);Span(s0+.3,s1-.3,top+.22,top+.36,z0+.7,z1-.7,Detail(shell));}
+                Span(x0+.3,x1-.3,1.55,2.45,z0-.2,z0,Iron(0x342F2B));Span(x0+.3,x1-.3,1.55,2.45,z1,z1+.2,Iron(0x342F2B));
+                Span(x0-.22,x0,1.0,top-.35,z0+.35,z1-.35,shell);Span(x1,x1+.22,1.0,top-.35,z0+.35,z1-.35,shell);
                 Light(cx,top+1.0,b.pos.z,0xFF5A18,.7,8,GlowTorpedo,0,-1,1.2,t*.7);
             }
             // ---- spare ladles on their stands: banded shells, rims, a skull of crusted metal in each ----

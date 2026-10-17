@@ -104,6 +104,14 @@ namespace ChipArena.UnityConversion
                 // Hoop bands round the vessel, corner angles, rivet rows (inside the band), the trunnion ring and its bearings.
                 foreach(double y in new[]{.6,2.2,6.4}){Span(x0-.04,x1+.04,y,y+.3,z0-.04,z0,bandP);Span(x0-.04,x1+.04,y,y+.3,z1,z1+.04,bandP);Span(x0-.04,x0,y,y+.3,z0,z1,bandP);Span(x1,x1+.04,y,y+.3,z0,z1,bandP);}
                 foreach(double sx in new[]{x0,x1})foreach(double sz in new[]{z0,z1})Span(sx-.1,sx+.1,0,top,sz-.1,sz+.1,dark);
+                // Less of a box: lit plate edges down the vessel's corners and vertical stiffener ribs on its faces (the shell's
+                // curve suggested by the light catching the ribs).
+                var lit=Iron(0x5E5850);var rib=Iron(0x332F2B);
+                // Lit plate edges either side of each corner on the faces the hall sees (east and the two long sides).
+                foreach(double sz in new[]{z0,z1}){double i=sz==z0?1:-1;Span(x1,x1+.04,.3,top-.1,Math.Min(sz+i*.12,sz+i*.26),Math.Max(sz+i*.12,sz+i*.26),lit);Span(x1-.26,x1-.12,.3,top-.1,sz==z0?z0-.04:z1,sz==z0?z0:z1+.04,lit);}
+                // Vertical ribs: on the east face, and on the long faces clear of the trunnion.
+                foreach(double rz in new[]{z0+1.5,z0+3.0,z0+4.5})Span(x1,x1+.12,.9,top-.1,rz-.06,rz+.06,rib);
+                foreach(double rx in new[]{x0+1.5,x0+4.5})foreach(double fz in new[]{z0-.12,z1})Span(rx-.06,rx+.06,.9,top-.1,fz,fz+.12,rib);
                 Span(x0-.18,x1+.18,3.6,5.2,z0-.18,z0,Iron(0x3A3632));Span(x0-.18,x1+.18,3.6,5.2,z1,z1+.18,Iron(0x3A3632));Span(x0-.18,x0,3.6,5.2,z0,z1,Iron(0x3A3632));Span(x1,x1+.18,3.6,5.2,z0,z1,Iron(0x3A3632));
                 double tz=north?z1:z0,o=north?1:-1;Span(cx-.9,cx+.9,3.9,4.9,Math.Min(tz,tz+o*.24),Math.Max(tz,tz+o*.24),Iron(YellowDarkHex));RodZ(Math.Min(tz,tz+o*.24),Math.Max(tz,tz+o*.24),cx,4.4,.32,Iron(0xB8902C));
                 for(double x=x0+.35;x<x1-.2;x+=.55)foreach(double y in new[]{.75,2.35,6.55})Span(x-.03,x+.03,y-.03,y+.03,x>0?z1:z1,z1+.05,Detail(Iron(SteelHex)));
@@ -121,6 +129,9 @@ namespace ChipArena.UnityConversion
             MeltSpan(-38.0,-32.0,.0,.035,-3.0,3.0,MoltenSlag,0,1,.03f,.42f,.32f,.72f,MDriveConverter,-1,FrameStatic,.4f);
             for(double x=-37.6;x<-32.2;x+=.6)Span(x-.04,x+.04,0,.055,-2.9,2.9,Detail(Iron(0x24201C,RoleFloor)));
             Light(-35,1.2,0,0xFF6A20,.9,12,GlowPit,0,-1,2);
+            // The hall's glow spilling out through the shutter opening onto the casting floor's west end (field only): what the
+            // party sees beyond the zombies coming down the floor.
+            Light(-26.2,2.6,0,0xFF7A30,1.6,11,GlowFill,0,-1,2);
             // The converter crane: a bridge across the hall's runways and its hook over the pit.
             Under("conv-crane-runway-e");var yel=Iron(YellowHex);Span(-49.3,-26.7,13.32,14.15,-1.1,1.1,yel);Span(-49.4,-26.6,13.32,13.9,-1.5,-1.1,Iron(YellowDarkHex));Span(-49.4,-26.6,13.32,13.9,1.1,1.5,Iron(YellowDarkHex));
             Span(-36.0,-34.0,12.4,13.32,-.9,.9,Iron(GreenDarkHex));foreach(double dz in new[]{-.2,.2})Span(-35.02,-34.98,10.4,12.4,dz-.02,dz+.02,Iron(CableHex,RoleChain));
@@ -143,6 +154,19 @@ namespace ChipArena.UnityConversion
         private void Slag()
         {
             var steel=Iron(IronHex);var dark=Iron(IronDarkHex);short hz=NativeIronworksHazards.Slag;
+            // The yard's floor: worn iron plates and slag-blackened ground (flat), not bare concrete, so the yard reads dark and
+            // stained under its lamps; a few dull cinders where slag was spilled long ago (cold, nothing like the live tongue).
+            {
+                Under("slab");Span(-44.0,-24.4,0,.005,-33.9,-12.4,Paint(0x1E1A17));
+                var plates=new[]{Iron(0x2A2622,RoleFloor),Iron(0x24201D,RoleFloor),Iron(0x302A24,RoleFloor),Paint(0x191614),Paint(0x26201A)};
+                for(double x=-43.6;x<-24.8;x+=2.4)for(double z=-33.4;z<-14.8;z+=2.4)
+                {
+                    double cx=x+1.2,cz=z+1.2;if(OverBlock(cx,cz,1.3))continue;int k=(int)(Hash((int)(x*10),(int)(z*10),41)*plates.Length);
+                    if(Hash((int)(x*10),(int)(z*10),44)<.3)continue;double jx=(Hash((int)(x*10),(int)(z*10),42)-.5)*.5,jz=(Hash((int)(x*10),(int)(z*10),45)-.5)*.5;
+                    Span(x+.1+jx,x+2.2+jx,.006,.012+.004*(k%3),z+.1+jz,z+2.1+jz,Detail(plates[k]));
+                }
+                for(int i=0;i<5;i++){double cx=-42+Hash(i,43,1)*16,cz=-32.5+Hash(i,43,2)*16;if(OverBlock(cx,cz,1.2)||cx>-39.5&&cx<-32.5&&cz>-28&&cz<-21)continue;MeltSpan(cx-.5,cx+.5,.012,.03,cz-.35,cz+.35,MoltenSlag,0,1,.0f,.18f,.12f,.92f,MDriveSteady,-1,FrameStatic,0,.6f,true);}
+            }
             // The slag bank: a glassy crust over its top with glowing cracks, the cracks down its face, lumps.
             {
                 var b=B("slag-bank");if(b!=null)

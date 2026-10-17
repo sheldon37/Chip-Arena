@@ -144,6 +144,16 @@ namespace ChipArena.UnityConversion
                 Span(x-.3,x+.3,y,y+.07,z-.3,z+.3,Glow(SodiumHex,2.4f,RoleLamp,l[3]>0?DriveSodium:DriveSteady,(float)Hash((int)(x*10),(int)(z*10),3)));
                 Light(x,y-.3,z,SodiumHex,l[4],l[5],GlowSodium,-1,-1,1,l[3]>0?1:0);
             }
+            // The work-light high-bays: their pools baked into the light field only (normal play's readable floor: every bay lit, not
+            // just the ones near the camera), so the picker keeps its eight slots for the molten light and the cool pair.
+            foreach(var l in FillLamps)
+            {
+                float x=l[0],y=l[1],z=l[2];bool under=y<6;
+                if(!under){Span(x-.035,x+.035,y+.42,Math.Max(y+.5,TrussBottom),z-.035,z+.035,rod);Span(x-.36,x+.36,y+.12,y+.42,z-.36,z+.36,house);}
+                else Span(x-.4,x+.4,y+.08,5.7,z-.25,z+.25,house);
+                Span(x-.3,x+.3,y,y+.08,z-.3,z+.3,Glow(SodiumHex,2.2f,RoleLamp));
+                Light(x,y-.3,z,SodiumHex,l[3],l[4],GlowFill,0);
+            }
             foreach(var l in MercuryLamps)
             {
                 float x=l[0],y=l[1],z=l[2];Span(x-.035,x+.035,y+.3,y<6?5.7:Math.Max(y+.4,TrussBottom),z-.035,z+.035,rod);Span(x-.5,x+.5,y+.1,y+.3,z-.28,z+.28,house);
@@ -155,6 +165,14 @@ namespace ChipArena.UnityConversion
         /// practical lights and the picker's cool pair (docs section 3.1 and 9.2).</summary>
         public static readonly float[][] SodiumLamps={new[]{18f,12f,4f,1,.4f,14},new[]{-12f,12f,-2f,0,.4f,14},new[]{8f,11.2f,18.6f,0,.35f,13},new[]{-16f,10.4f,-25f,0,.5f,15},new[]{-5f,10.4f,-25f,0,.5f,15},new[]{6f,10.4f,-25f,0,.5f,15},
             new[]{17f,10.4f,-25f,1,.5f,15},new[]{28f,10.4f,-24f,0,.5f,15},new[]{-37f,10.6f,18f,0,.55f,14},new[]{-35f,12f,0f,0,.55f,18},new[]{-36f,10f,-24f,0,.5f,16},new[]{44f,11f,18f,0,.6f,18}};
+        /// <summary>The work-light high-bays baked into the light field (x, y, z, intensity, range): a grid over the casting floor, the
+        /// taphole aisle under the charging deck, the rolling mill's line, the slag yard and the converter hall.</summary>
+        public static readonly float[][] FillLamps={new[]{-17f,11.6f,-6f,1.2f,19},new[]{-4f,11.6f,-6f,1.2f,19},new[]{9f,11.6f,-6f,1.2f,19},new[]{22f,11.6f,-6f,1.2f,19},
+            new[]{-17f,11.6f,8f,1.2f,19},new[]{-4f,11.6f,8f,1.2f,19},new[]{9f,11.6f,8f,1.2f,19},new[]{22f,11.6f,8f,1.2f,19},
+            new[]{-15f,5.2f,22.6f,2.0f,10},new[]{-2.5f,5.2f,22.6f,2.0f,10},new[]{12.5f,5.2f,22.6f,2.0f,10},new[]{27f,5.2f,22.6f,2.0f,10},
+            new[]{-10.5f,10.4f,-19.6f,2.2f,15},new[]{4.5f,10.4f,-19.6f,2.2f,15},new[]{19f,10.4f,-19.6f,2.2f,15},
+            new[]{-10.5f,10.4f,-30.6f,2.2f,15},new[]{4.5f,10.4f,-30.6f,2.2f,15},new[]{19f,10.4f,-30.6f,2.2f,15},
+            new[]{-37f,10.4f,-18.5f,2.4f,14},new[]{-31f,10.4f,-31f,2.4f,14},new[]{-35f,12.4f,0f,2.0f,17}};
         public static readonly float[][] MercuryLamps={new[]{-31f,9.2f,19.5f,1.3f,16},new[]{-29f,10.5f,9.5f,1.0f,17},new[]{-29f,10.5f,-9.5f,1.0f,17},new[]{-33f,9.4f,-17f,.75f,15},new[]{-14f,12f,12f,.9f,16},
             new[]{-14f,10.4f,-18.5f,.85f,14},new[]{45f,9f,24f,.8f,14},new[]{0f,12f,-11f,.8f,15},new[]{26f,12f,14f,.8f,15},new[]{20f,10.4f,-30.5f,.75f,14},
             new[]{-10.5f,12.6f,24.8f,.85f,14},new[]{22f,12.6f,24.8f,.85f,14},new[]{-43.5f,5.35f,24.6f,.7f,10},new[]{-33.6f,5.35f,24.6f,.7f,10},new[]{-7.5f,5.35f,24.6f,.6f,10},new[]{22.5f,5.35f,24.6f,.6f,10}};

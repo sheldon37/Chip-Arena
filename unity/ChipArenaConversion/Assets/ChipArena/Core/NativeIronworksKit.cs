@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
         public const byte MoltenFlow=0,MoltenStream=1,MoltenFire=2,MoltenSlab=3,MoltenSlag=4,MoltenCoke=5;
         public const byte MDriveSteady=0,MDriveRunner=1,MDriveStream=2,MDriveLadle=3,MDriveMold=4,MDriveSlagTongue=5,MDriveSlab=6,MDriveFurnace=7,MDriveBillet=8,MDriveSlagPot=9,MDriveConverter=10;
         public const byte GlowFurnace=0,GlowTaphole=1,GlowRunner=2,GlowPour=3,GlowMold=4,GlowTorpedo=5,GlowPig=6,GlowReheat=7,GlowSlab=8,GlowConverter=9,GlowPit=10,GlowSlag=11,GlowHearth=12,GlowBillet=13,GlowCokeDoor=14,GlowCokeSeam=15,
-            GlowSodium=16,GlowMercury=17,GlowOffice=18,GlowLamp=19,GlowLed=20,GlowBeacon=21,GlowWindow=22;
+            GlowSodium=16,GlowMercury=17,GlowOffice=18,GlowLamp=19,GlowLed=20,GlowBeacon=21,GlowWindow=22,GlowFill=23;
         /// <summary>How far within 3.1 m of a floor a part may stand out from a block (m), the most flat paint may rise (m), the
         /// band's height over a floor, the widest a hanging chain may be (half extent, m).</summary>
         public const float WallBand=.25f,Flat=.06f,Low=3.1f,ChainHalf=.06f;
@@ -303,6 +303,9 @@ namespace ChipArena.UnityConversion
                     if(v.Phase==NativeHazardPhase.Warn){front=(float)Smooth(v.Level)*.35f;heatA=rest+(m.HeatA-rest)*v.Level;heatB=rest;crust=.55f;flow=.4f+.6f*v.Level;}
                     else if(v.Phase==NativeHazardPhase.Active){front=(float)Math.Min(1,.35+.65*Smooth(v.Since/1.2));crust=m.Crust;}
                     else if(v.Phase==NativeHazardPhase.Clear){float c=v.Level;heatA=rest+(m.HeatA-rest)*c;heatB=rest*.6f+(m.HeatB-rest*.6f)*c*c;crust=m.Crust+(.92f-m.Crust)*(1-c);flow=.15f+.85f*c;}
+                    // With no hazard clock (normal play today): the whole trough under its crust, a dull red in the cracks (residual
+                    // warmth, never a live run's white-orange). Between taps in a running cycle: plugged, cold beyond the first metres.
+                    else if(v.Rate==NativeIronworksHazards.RateOff){heatA=.28f;heatB=.17f;crust=.9f;flow=.04f;front=1;}
                     else{heatA=rest;heatB=.05f;crust=.92f;flow=.12f;front=.22f;}
                     break;
                 }
@@ -509,6 +512,12 @@ namespace ChipArena.UnityConversion
             Unbacked++;unbackedAt.Add(new NativeIronKeep{X0=(float)x0,X1=(float)x1,Y0=(float)y0,Y1=(float)y1,Z0=(float)z0,Z1=(float)z1,Spawn=-1});return false;
         }
         /// <summary>Whether a world AABB lies within 3.1 m over the ground, or over the ring with a deck under it.</summary>
+        /// <summary>Whether a block other than the slab or roof stands on the ground within `pad` of (x, z) (flat floor dressing skips it).</summary>
+        private bool OverBlock(double x,double z,double pad)
+        {
+            foreach(var b in blocks){if(b?.id==null||b.pos.y-b.size.y/2>.2||Stem(b.id)=="slab"||Stem(b.id)=="roof")continue;if(Math.Abs(x-b.pos.x)<b.size.x/2+pad&&Math.Abs(z-b.pos.z)<b.size.z/2+pad)return true;}
+            return false;
+        }
         public static bool LowAt(double x0,double x1,double y0,double y1,double z0,double z1,ContentBlock[] blocks)
         {
             if(y0<Low-.001)return !OnTop(x0,x1,y0,z0,z1,blocks);if(!(y0<RingFloor+Low-.001&&y1>RingFloor+.001))return false;

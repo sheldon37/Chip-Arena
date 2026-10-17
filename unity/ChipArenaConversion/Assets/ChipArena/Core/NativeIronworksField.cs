@@ -23,7 +23,10 @@ namespace ChipArena.UnityConversion
     {
         public const int Channels=4;
         /// <summary>The field's linear colour (molten orange) and its gain (the owner can turn it down as Ward Zero's was).</summary>
-        public const float Gain=.26f,ColourR=1f,ColourG=.4f,ColourB=.12f;
+        public const float Gain=.26f,ColourR=1f,ColourG=.5f,ColourB=.22f;
+        /// <summary>A plugged runner's level with no hazard clock (normal play today): the crusted trough's residual warmth on the floor
+        /// round it, well under a live run's 1 so it never reads as one.</summary>
+        public const float Residual=.3f;
         /// <summary>The vertical voxel size of the blocking grid (m) and its height (the walls' tops are at 14 m).</summary>
         public const float Voxel=.5f,Height=15f;
         public int Nx,Nz,Sources;public float MinX,MinZ;public float[] Data=Array.Empty<float>();public double BakeMs;
@@ -65,8 +68,9 @@ namespace ChipArena.UnityConversion
                         foreach(var g in sources)
                         {
                             double dx=g.X-x,dz=g.Z-z;if(Math.Abs(dx)>g.Range||Math.Abs(dz)>g.Range)continue;double dy=g.Y-y,d2=dx*dx+dy*dy+dz*dz,r2=g.Range*(double)g.Range;if(d2>=r2)continue;
-                            // A source under the ring lights the ring's floor only through its open grating (half), and the reverse.
-                            double q=1-d2/r2,a=q*q;if(g.Y<5.8!=y<5.8)a*=.35;if(a<.002||!Clear(g.X,g.Y,g.Z,x,y,z))continue;
+                            // A source under the ring lights the ring's floor only through its open grating (half), and the reverse; the
+                            // bays' work lights hang over open floor and light it fully.
+                            double q=1-d2/r2,a=q*q;if(g.Y<5.8!=y<5.8&&g.Kind!=NativeIronworksKit.GlowFill)a*=.35;if(a<.002||!Clear(g.X,g.Y,g.Z,x,y,z))continue;
                             data[o+g.Channel]+=(float)(a*(g.R*.55+g.G*.35+g.B*.1));
                         }
                     }
@@ -92,7 +96,7 @@ namespace ChipArena.UnityConversion
             for(int r=0;r<3;r++)
             {
                 var v=views!=null&&r<views.Length?views[NativeIronworksHazards.R1+r]:default;
-                float k=v.Phase==NativeHazardPhase.Active?1:v.Phase==NativeHazardPhase.Warn?.22f+.78f*v.Level*v.Level:v.Phase==NativeHazardPhase.Clear?.22f+.78f*v.Level:v.Rate==NativeIronworksHazards.RateOff?.1f:.18f;
+                float k=v.Phase==NativeHazardPhase.Active?1:v.Phase==NativeHazardPhase.Warn?.22f+.78f*v.Level*v.Level:v.Phase==NativeHazardPhase.Clear?.22f+.78f*v.Level:v.Rate==NativeIronworksHazards.RateOff?Residual:.18f;
                 into[1+r]=Gain*k;
             }
         }

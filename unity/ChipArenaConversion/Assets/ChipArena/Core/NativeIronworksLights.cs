@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
             var l=new NativeIronworksLights();var list=new List<NativeIronLight>();
             foreach(var g in kit?.Glows??Array.Empty<NativeIronGlow>())
             {
-                if(g.Kind==NativeIronworksKit.GlowLed||g.Kind==NativeIronworksKit.GlowCokeSeam||(g.Kind==NativeIronworksKit.GlowRunner||g.Kind==NativeIronworksKit.GlowReheat)&&g.Channel>=0)continue;
+                if(g.Kind==NativeIronworksKit.GlowLed||g.Kind==NativeIronworksKit.GlowCokeSeam||g.Kind==NativeIronworksKit.GlowFill||(g.Kind==NativeIronworksKit.GlowRunner||g.Kind==NativeIronworksKit.GlowReheat)&&g.Channel>=0)continue;
                 list.Add(new NativeIronLight{X=g.X,Y=g.Y,Z=g.Z,Range=g.Range,R=g.R,G=g.G,B=g.B,Param=g.Param,Kind=g.Kind,Frame=g.Frame,Hazard=g.Hazard,Cool=g.Kind==NativeIronworksKit.GlowMercury});
             }
             l.Candidates=list.ToArray();l.score=new float[l.Candidates.Length];return l;

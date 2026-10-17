@@ -40,6 +40,25 @@ namespace ChipArena.UnityConversion
                     Span(x-.42,x+.42,y-.24,y+.24,Z0(so)-.12,Z0(so),Iron(0x2A302C));Span(x-.13,x+.13,y-.13,y+.13,Z0(so)-.24,Z0(so),Iron(SteelLightHex));
                 }
                 Under(st+"-s");foreach(double fx in new[]{X0(so)-.04,X1(so)})Span(fx,fx+.04,0,Y1(so),Z0(so)+.2,Z1(so)-.2,Iron(0x3E4E44));
+                // Each housing's shape on its outer face (normal play reads it under the bay lights): bright machined edges down its
+                // corners, the housing window framed round the chocks with its dark recess, a cap plate; the drive side's gear.
+                for(int side=0;side<2;side++)
+                {
+                    var h=side==0?n:so;Under(side==0?st+"-n":st+"-s");double zf=side==0?Z1(h):Z0(h);int o=side==0?1:-1;
+                    double Zo(double d)=>zf+o*d;var edge=Iron(0x6A7E72);var frame=Iron(0x8A8E88);
+                    foreach(double ex in new[]{X0(h),X1(h)-.09}){Span(ex,ex+.09,0,Y1(h),Math.Min(zf,Zo(.03)),Math.Max(zf,Zo(.03)),edge);}
+                    foreach(double ex in new[]{X0(h)-.03,X1(h)})Span(ex,ex+.03,0,Y1(h),Math.Min(zf,Zo(-.09)),Math.Max(zf,Zo(-.09)),edge);
+                    Span(x-.54,x+.54,.53,2.22,Math.Min(zf,Zo(.02)),Math.Max(zf,Zo(.02)),Iron(0x1A1E1C));
+                    Span(x-.64,x-.54,.45,2.3,Math.Min(zf,Zo(.05)),Math.Max(zf,Zo(.05)),frame);Span(x+.54,x+.64,.45,2.3,Math.Min(zf,Zo(.05)),Math.Max(zf,Zo(.05)),frame);
+                    Span(x-.64,x+.64,2.22,2.3,Math.Min(zf,Zo(.05)),Math.Max(zf,Zo(.05)),frame);Span(x-.64,x+.64,.45,.53,Math.Min(zf,Zo(.05)),Math.Max(zf,Zo(.05)),frame);
+                    Span(X0(h)+.12,X1(h)-.12,Y1(h),Y1(h)+.14,Z0(h)+.12,Z1(h)-.12,greenD);
+                    if(side==0)
+                    {
+                        // The pinion gear on the drive side: a disc and its teeth, inside the face's band.
+                        RodZ(zf,zf+.16,x,3.3,.5,Iron(0x4A524C));RodZ(zf+.16,zf+.22,x,3.3,.16,Iron(SteelLightHex));
+                        for(int k=0;k<12;k++){double a=k*30*Math.PI/180;Box(x+Math.Cos(a)*.56,3.3+Math.Sin(a)*.56,zf+.08,.12,.1,.16,Detail(Iron(0x4A524C)),AxisRot(0,0,1,k*30));}
+                    }
+                }
                 // The water sprays' headers either side of the pass line (they hiss when the slab goes through: effects).
                 Under(st+"-lintel");foreach(double dx in new[]{-1.45,1.45})RodZ(-26.1,-23.9,x+dx,2.35,.05,Detail(Iron(GreenDarkHex)));
             }
@@ -58,6 +77,8 @@ namespace ChipArena.UnityConversion
                     Span(X0(b)-.02,X1(b),Y1(b),Y1(b)+.3,Z0(b)-.02,Z1(b)+.02,dark);RodY(Y1(b),17.6,33,-27,.62,Iron(0x2E2A26));for(double y=10;y<17.5;y+=1.6)RodY(y,y+.12,33,-27,.68,Detail(dark));
                     Text("REHEAT",-25,4.9,fx,1,.13,.005,.02,P(NativeBlockLooks.Plain,0xC8C0AC,RoleSign));
                     Light(fx-.8,1.8,-25,0xFF5A18,1.9,13,GlowReheat,-1,hz,1.5,.9);Light(fx-.6,1.6,-25,0xFF5A18,.7,7,GlowReheat,0,-1,1);
+                    // The door's glow even with no slab coming (normal play): a warm wash down the line's east end (field only).
+                    Light(fx-1.2,2.0,-25,0xFF6A20,1.6,12,GlowFill,0,-1,1.5);
                 }
             }
             // ---- the hot slab (its own frame: it runs west along the table from the reheat door while live) ----
@@ -94,6 +115,8 @@ namespace ChipArena.UnityConversion
                     Span(X0(b)+.6,X0(b)+1.5,1.6,2.1,z+.03,z+.05,Glow(0x7AE0B0,.8f,RoleProp,DriveFlicker,.2f));Span(X1(b)-1.5,X1(b)-.6,1.6,2.1,z+.03,z+.05,Glow(AmberHex,.35f,RoleProp));
                     Span(X0(b)-.15,X1(b)+.15,Y1(b),Y1(b)+.12,Z0(b)-.15,Z1(b)+.25,dark);Span(X0(b)+.2,X1(b)-.2,1.45,1.5,z,z+.05,Detail(Iron(SteelHex)));
                     Light((X0(b)+X1(b))/2,2.2,z+.8,0xFFC266,.35,6,GlowWindow,-1,-1,1);
+                    // The lit control room's spill on the floor before its window (field only).
+                    Light((X0(b)+X1(b))/2,2.0,z+.9,0xFFC266,1.1,7,GlowFill,0,-1,1);
                 }
             }
             // ---- coils (end eyes and straps on the stacks' faces) and billets on their rack ----
