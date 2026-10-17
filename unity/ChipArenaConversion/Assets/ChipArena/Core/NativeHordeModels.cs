@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
             switch(kind)
             {
                 case NativeHordeKinds.Runner:Runner(k);break;case NativeHordeKinds.Brute:Brute(k);break;case NativeHordeKinds.Spitter:Spitter(k);break;
-                case NativeHordeKinds.Crawler:Crawler(k);break;case NativeHordeKinds.Bloater:Bloater(k);break;case NativeHordeKinds.Hulk:Hulk(k);break;default:if(!IronworksModel(k))Shambler(k);break;
+                case NativeHordeKinds.Crawler:Crawler(k);break;case NativeHordeKinds.Bloater:Bloater(k);break;case NativeHordeKinds.Hulk:Hulk(k);break;default:if(!IronworksModel(k)&&!StationBuild(k))Shambler(k);break;
             }
             return new HordeModel{Kind=kind,Look=look,Tier=tier,Mesh=k.Mesh,Jaw=k.SplitJaw?k.JawMesh:null};
         }

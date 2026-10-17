@@ -5,7 +5,9 @@
   ring position or route changed.
 - Branch `claude/join-circles`, base shared `4164d5c` (includes #255 and #256 `640af06`). Implementation `c1e97d5`, `2d84595`, `a645633`. Shared
   `6404332` (Astra's #257-#260 and the Ironworks enemies) merged in as `1ca30a2`, no conflicts. Then shared `612f0da` (the
-  City Ironworks visuals) was merged in; the conflicts were docs only plus Tests/Program.cs, and both sides were kept.
+  City Ironworks visuals) was merged in as `ff05275`. Then shared `1c2669d` (`0b54ebe`, the Central Station enemies, and
+  Astra's #261 arrival placement) was merged in. Every conflict was in the docs or the Tests/Program.cs registration lines,
+  and both sides were kept each time.
   Pushed, not merged into shared, builder untouched, no PR, nothing published.
 - **The pads** (`Core/NativeExpeditionJoinScene.cs`, drawn through the state pieces' NativeBlockLit/NativeSirenFx path):
   - Six hardlight emitter posts stand just outside each circle, clear of the door and approach lines.
@@ -58,7 +60,8 @@
   - The world piece stands aside. No SEALED or raw id on a live sign, and a reserved route keeps SEALED.
   - Zero bytes per frame once warm.
 - **Checks:**
-  - `run5b.sh` on the final code head `a645633`: every step exit 0. The Unity runtime and editor assemblies build.
+  - `run5b.sh` on the final code head `a645633`, then on the merge `ff05275`: every step exit 0 both times. The Unity
+    runtime and editor assemblies build. The merge with `1c2669d` is checked again (see the next line).
   - The relay suite: 772 PASS lines, "35 managed-core checks passed", including "PASS expedition join presentation (3612
     checks …)", "PASS expedition hub (1207 checks …)", dressing and states.
   - Python 140 tests OK (1 skipped). The source package structure passed (2,273 files). `git diff --check` is clean.
@@ -87,6 +90,14 @@
 - **Not run:** Unity Editor, a Windows build, two clients, audio. The Runtime draw and HUD glue are compiled (Unity
   assemblies) but not executed. The HUD renders use the IMGUI recorder.
 - **Next:** owner review in a build. Astra: the optional deploy record and `h`. The owner generates the seven sound keys.
+
+## 2026-10-17 — Astra: Expedition arrival pose synchronization
+
+- Branch `codex/unity-expedition-transfer-position`, base shared/builder `612f0da`.
+- Owner reports falling and downing on entry to all three instances, consistent with retaining an outlying hub-circle position in the destination. Authored entry slots are inside their maps. Runtime root cause is not yet reproduced in Unity here.
+- The cross-scene transfer now publishes the arrival to both Transform and Rigidbody with interpolation temporarily disabled, clears old ground/freeze/motion caches, synchronizes, and verifies the actual arrival and destination support before releasing the hold. Rollback and reprint use the same placement helper.
+- The native activation fixture now begins each transfer at its real hub circle, asserts both arrival representations, and checks the first 120 ticks for alive/above-floor arrivals in every instance. Previously it started at the hub centre and did not assert post-transfer survival. Windows execution is required; managed tests cannot reproduce PhysX/interpolation.
+- Checks: Unity player/runtime/editor semantic compile; managed cohort 69 and area 295 checks; whitespace review. No gameplay/hazard changes or immunity added. Native Windows regression and owner solo/host/guest playtest pending; publication must pass the strengthened native gate. Not yet claimed released.
 
 ## 2026-10-17 — Claude: City Ironworks in-game visuals on the live foundry (on branch, not merged)
 
@@ -143,6 +154,19 @@
 - **Next:**
   - Astra: bind `NativeIronworksLive.Authority`/`Bound` from the instance hazard clock (`Running`, `Wave`, `Boss`, `Clock`). Hazard authority, volumes and damage are Astra's. Add the converter gate to the live manifest if the shutter should show.
   - The enemies agent: the Rigger and the new enemies.
+
+## 2026-10-17 — Claude: Central Station enemies presentation (Linesman, Conductor, Undertow, Pileup)
+
+- Branch `claude/station-enemies`, base shared `8a5de43`, with shared `4164d5c`, `78bb12a` and `6404332` merged in (Astra's live activation, PRs #255-#260, and the City Ironworks enemies). Implemented on branch only: not merged, not live, no PR, no publication.
+- Presentation of `docs/EXPEDITION-CENTRAL-STATION.md` sections 7-8 (decisions in 14), drawn behind a Core view until Astra adds the rows and fields. New files: `Core/NativeStationKinds.cs` (ids, hues, timings, cue keys, `StationView`), `NativeStationModels.cs` (models and props on the zombie rig, three tiers), `NativeStationMotion.cs` (specials over the gait and mocap), `NativeStationFx.cs` (shared VFX maths), `Runtime/NativeStationKindsPresentation.cs` (binding, effects, cues, Dev Sandbox gallery row).
+- Linesman: hi-vis vest, hard hat and headlamp, insulated gloves, coiled jumper cables, battery weak point; arc wind-up, jagged bolt chaining to 3 targets, grounded glow and sparks, shock death. Conductor: long coat, cap, whistle, red lantern; whistle ring and red ALL ABOARD trails on buffed adds, last call with the lantern rung high, lantern drops and shatters on death. Undertow: drowned skin, slicker and hood; submerged eyes and ripples, surfacing splash, grab telegraph, backward drag, release, sinking death. Pileup: fused bodies behind a carriage door with a lit window; brace, shove, crush, front-hit sparks and window stutter, door falls and the body splits on death.
+- Registration mirrors the Ironworks pattern: `NativeStationKinds.Kinds` (`HordeZoneKind` rows) joins `NativeHordeZones.Kinds` after the Ironworks' five, so the four are horde kinds 12-15 (`NativeHordeKinds.All` 16, `Count` stays 7); `First/Kind/Local/Is` as `NativeIronworksKinds`; the view is a `StationView` struct with `None`, bound by `StationViewOf` as `IronworksViewOf`.
+- Safe with the live maps (`expedition-transit` / exp-transit and the rest): `NativeHordeKinds.Known` (minion frame validation, DEV spawns, layout allow lists) now accepts a zone kind only once `HordeZoneKind.Shipped` is set with its content row, so it accepts and refuses exactly what the base did. This also applies to the Ironworks' five (their check now expects them unknown until shipped). The seven Siren kinds are bit-identical to base `8a5de43` (166 measures), and every kind named by the live layout, its activation snapshots and the drafts is known and resolves as before. All sixteen kinds build, walk and are named in the bank side by side.
+- Shared-file hooks: one-line calls in `NativeHordeKindPresentation.cs` and `NativeHordeKindModels.cs`; `NativeHordeZones` registration line plus `HordeZoneKind.Shipped`; `NativeHordeModels.Build` default case; `NativeHordeKinds.Known`; 22 `pve.station.*` bank keys with existing stand-ins; 7 takes from the same licensed zombie pack (exporter, generated clips, provenance; no new LocalAssets zip). Test hooks: Program, IronworksKind (registration count and Known), EffectsAudio and Python key counts (282). Zone kinds grow no black-flame tongues (the shared rule), so the station's own tongue anchors were dropped.
+- Animation impacts: none on existing kinds (hit timing, hitboxes, damage, cooldowns, movement and networking unchanged; checked). Station melee lands at LastAttack + hit; specials strike on section 7's times (arc 1.1 s, whistle 0.8, last call 1.2, grab 0.6, shove 0.7); posed bodies stay inside their section 8 capsules. Nothing spawns through the authority.
+- For Astra: give `ArenaPresentation.StationViewOf(NativeMinion m)` a one-line body that returns the minion's `StationView` (`attack, arcTargets, arcAt, grounded, lanternBroken, lastCallAt, aboardUntil, submerged, surfaceAt, grabTarget, grabAt, releaseAt, splitAt, childIds`; times NaN and ids -1 when unset). Then add the content rows and set `HordeZoneKind.Shipped`.
+- Checks (merged tree): `--station-enemies` PASS (station enemies 154,138; ironworks kinds 281,252; horde kinds 433,794; zombie motion 29,765 with 46 tracks; hulk and spitter 49,154); `--footfalls` PASS (effects audio 282 keys); `--expedition-layout` PASS (split area 31, layout 630, station draft 118); Unity runtime+editor compile OK. Five-check run on merge `a8f674f`: Unity runtime+editor compile OK; relay and full managed suite 772 PASS lines (35 managed-core relay checks); Python 140 tests OK (1 platform skip); source package structure OK (2,275 files); `git diff --check` clean. Renders: WebGL harness through the real rig and NativeBlockLit (scratch, not committed).
+- Not done: real slot lights (halos and bloom only), the dragged pilot's pose, the split crawlers' entrance, the audio recordings (keys use stand-ins), Unity Editor and Windows play. Renders are a WebGL harness through the real rig and shader, not the game.
 
 ## 2026-10-17 — Astra: activation published to native test
 
