@@ -1,3 +1,8 @@
+## 2026-10-17 — Astra: advance final-shutter time in the three-instance native fixture
+
+- Native `78bb12a` passes Station/Ironworks placement and reachability after navigation regeneration, then reaches the old M1 combat fixture's final-trigger assertion. The fixture cleared the two additional rule-only instances after its old shutter wait and never advanced the director again; the final shutter correctly remained sealed.
+- Move through the existing one-second shutter lifecycle after the last clear before asserting final combat. Production gate timing and collision are unchanged. Native rebuild still required; activation is not yet published.
+
 ## 2026-10-17 — Astra: align Ironworks navigation with native ramp collision
 
 - Native `640af06` passes Station geometry after the slope fix, then fails Ironworks. Diagnostic `4164d5c` identifies phantom tread-top nodes (e.g. stock stair at x38.5/z13.5 has a y0.50 tread node while native floor is y0.25). Unity replaces ramp-listed blocks with smooth colliders; the importer only excluded navHints.collisionOff, empty in the original Ironworks draft.
