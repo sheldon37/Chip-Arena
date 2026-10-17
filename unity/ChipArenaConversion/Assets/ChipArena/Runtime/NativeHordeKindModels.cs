@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
             }
-            IronworksModels(shader);
+            IronworksModels(shader);StationPropModels(shader);
         }
     }
 }

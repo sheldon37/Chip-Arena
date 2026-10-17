@@ -28,12 +28,12 @@ namespace ChipArena.UnityConversion
         // ---- the five as kinds: after the seven, resolved and known, no content row, their capsules and bodies ----
         private static void Registration(string root)
         {
-            Check(NativeHordeKinds.Count==7&&NativeHordeKinds.All==NativeHordeKinds.Count+5&&NativeHordeZones.Count==5,"the Siren's seven stay Count; the five follow them (All "+NativeHordeKinds.All+")");
+            Check(NativeHordeKinds.Count==7&&NativeHordeKinds.All==NativeHordeKinds.Count+NativeHordeZones.Count&&NativeHordeZones.Count==5+NativeStationKinds.KindCount,"the Siren's seven stay Count; the five follow them (All "+NativeHordeKinds.All+")");
             Check(NativeIronworksKinds.First==NativeHordeKinds.Count,"the cinderling is the first kind after the Siren's");
             for(int z=0;z<5;z++)
             {
                 int k=NativeIronworksKinds.Kind(z);string id=Five[z];
-                Check(NativeHordeKinds.Ids[k]==id&&NativeHordeKinds.Resolve(id)==k&&NativeHordeKinds.Known(id)&&NativeIronworksKinds.Local(k)==z&&NativeIronworksKinds.Is(k),id+" resolves to kind "+k+" and is known");
+                Check(NativeHordeKinds.Ids[k]==id&&NativeHordeKinds.Resolve(id)==k&&!NativeHordeKinds.Known(id)&&NativeIronworksKinds.Local(k)==z&&NativeIronworksKinds.Is(k),id+" resolves to kind "+k+" (drawn), not known to the authority or the wire until shipped");
                 Check(!NativeHordeKinds.Shipped[k],id+" is no shipped content kind");
                 Check(NativeHordeZones.Of(k)!=null&&NativeHordeZones.Of(k).Zone==NativeIronworksKinds.Map&&NativeHordeKinds.Base(k)==NativeHordeZones.Of(k).Body&&NativeHordeKinds.Index(k)==k,id+" borrows its body's tables");
                 Check(NativeHordeKinds.Looks[k]>=1&&NativeHordeKinds.Looks[k]<=NativeHordeKinds.MostLooks,id+" looks");

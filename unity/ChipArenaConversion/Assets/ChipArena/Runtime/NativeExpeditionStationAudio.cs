@@ -11,19 +11,19 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed partial class NativeAudio
     {
-        private readonly byte[] stationKinds=new byte[24];private readonly double[] stationTimes=new double[24];private readonly float[] stationPlaces=new float[72];
-        private double stationTime=double.NaN;private readonly NativeHazardPhase[] stationPhases=new NativeHazardPhase[3];
+        private readonly byte[] stationCueKinds=new byte[24];private readonly double[] stationCueTimes=new double[24];private readonly float[] stationCuePlaces=new float[72];
+        private double stationTime=double.NaN;private readonly NativeHazardPhase[] stationCuePhases=new NativeHazardPhase[3];
         private void StationCues(NativeArena arena,bool menu)
         {
             var v=NativeStationLive.Shown;if(menu||arena==null||!NativeExpeditionStation.Active(arena.MapId)||v==null){stationTime=double.NaN;return;}
             double t=NativeStationLive.ShownClock;
             if(!double.IsNaN(stationTime)&&t>stationTime)
             {
-                int n=NativeExpeditionStation.Cues(v,stationTime,t,stationKinds,stationTimes,stationPlaces);
-                for(int i=0;i<n;i++)StationCue(stationKinds[i],new Vector3(stationPlaces[i*3],stationPlaces[i*3+1],stationPlaces[i*3+2]));
+                int n=NativeExpeditionStation.Cues(v,stationTime,t,stationCueKinds,stationCueTimes,stationCuePlaces);
+                for(int i=0;i<n;i++)StationCue(stationCueKinds[i],new Vector3(stationCuePlaces[i*3],stationCuePlaces[i*3+1],stationCuePlaces[i*3+2]));
                 // The cabinets' and the steam main's phases as they change.
-                for(int c=0;c<2;c++){var ph=v.Cabinets[c].Phase;if(ph!=stationPhases[c]){if(ph==NativeHazardPhase.Warn)StationCue(NativeExpeditionStation.CueSparkFizz,CabinetAt(c));else if(ph==NativeHazardPhase.Active)StationCue(NativeExpeditionStation.CueSparkArc,CabinetAt(c));stationPhases[c]=ph;}}
-                var sp=v.Steam.Phase;if(sp!=stationPhases[2]){if(sp==NativeHazardPhase.Active)StationCue(NativeExpeditionStation.CueSteam,new Vector3(-6,3.4f,-59.5f));stationPhases[2]=sp;}
+                for(int c=0;c<2;c++){var ph=v.Cabinets[c].Phase;if(ph!=stationCuePhases[c]){if(ph==NativeHazardPhase.Warn)StationCue(NativeExpeditionStation.CueSparkFizz,CabinetAt(c));else if(ph==NativeHazardPhase.Active)StationCue(NativeExpeditionStation.CueSparkArc,CabinetAt(c));stationCuePhases[c]=ph;}}
+                var sp=v.Steam.Phase;if(sp!=stationCuePhases[2]){if(sp==NativeHazardPhase.Active)StationCue(NativeExpeditionStation.CueSteam,new Vector3(-6,3.4f,-59.5f));stationCuePhases[2]=sp;}
             }
             stationTime=t;
         }

@@ -1,8 +1,9 @@
 # Central Station: the in-game visuals
 
 Claude, 2026-10-16/17. Branch `claude/station-visuals`, based on shared `claude/sleepy-ritchie-g8ruhv` at `8a5de43` (both zone
-designs and Astra's PR #254), then merged with shared `4164d5c` (Astra's live activation, PRs #255-#257) and `6404332`
-(#258-#260 and the Ironworks enemies; the station's map is unchanged there) and `612f0da` (the City Ironworks visuals).
+designs and Astra's PR #254), then merged with shared `4164d5c` (Astra's live activation, PRs #255-#257), `6404332`
+(#258-#260 and the Ironworks enemies; the station's map is unchanged there), `612f0da` (the City Ironworks visuals) and
+`0b54ebe` (the station's enemies).
 The design is `docs/EXPEDITION-CENTRAL-STATION.md` (sections 3-6 and 11 drive this work).
 
 **Status: on the branch; it goes live when merged into shared.** The station is live since Astra's activation (map
