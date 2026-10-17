@@ -266,7 +266,7 @@ namespace ChipArena.UnityConversion
                     // The beam: a cone of camera-facing strips widening ahead of the lamp, fading out by its length.
                     // It stops at the floor (a pool of light where it lands) and fades as the camera looks down it.
                     float L=NativeStationFx.BeamReach(j.Lamp.y-j.Floor.y,-j.LampDir.y,out bool lands),al=NativeStationFx.BeamAlpha(j.Charge,Vector3.Dot(j.LampDir,(eye-j.Lamp).normalized));
-                    if(al>.004f)for(int k=0;k<6;k++){float u0=k/6f,u1=(k+1)/6f;var a=j.Lamp+j.LampDir*(.12f+u0*L);var b=j.Lamp+j.LampDir*(.12f+u1*L);StationStrip(draw,a,b,.05f+NativeStationFx.BeamWidth*u0,.05f+NativeStationFx.BeamWidth*u1,FxC(hex,al*(1-u0)*(1-u0)),eye);}
+                    if(al>.004f)for(int k=0;k<6;k++){float u0=k/6f,u1=(k+1)/6f;var a=j.Lamp+j.LampDir*(.12f+u0*L);var b=j.Lamp+j.LampDir*(.12f+u1*L);StationSoftStrip(draw,a,b,.05f+NativeStationFx.BeamWidth*u0,.05f+NativeStationFx.BeamWidth*u1,FxC(hex,al*(1-u0)*(1-u0)),FxC(hex,al*(1-u1)*(1-u1)),eye);}
                     if(lands){NativeStationFx.BeamPool(j.Charge,L,out size,out gain);vfx.Glow(j.Lamp+j.LampDir*L+Vector3.up*.03f,Lin(hex,gain),size,NativeVfxDraw.CoreGlow);}
                     NativeStationFx.Pack(j.Grounded,j.Charge,far,out size,out gain);vfx.Glow(j.Pack,Lin(NativeStationKinds.LinesmanBlue,gain),size,NativeVfxDraw.CoreGlow);
                     break;
@@ -289,6 +289,14 @@ namespace ChipArena.UnityConversion
         private static void StationStrip(NativeFxDraw draw,Vector3 a,Vector3 b,float w0,float w1,Color color,Vector3 eye)
         {
             Vector3 d=b-a,s=Vector3.Cross(d,eye-a);if(s.sqrMagnitude<1e-10f)return;s.Normalize();draw.Quad(draw.Effects,a-s*w0*.5f,b-s*w1*.5f,b+s*w1*.5f,a+s*w0*.5f,color,StationGlowing);
+        }
+        // The same strip lit along its middle and clear at both edges (the headlamp's beam: no hard sides), c0 at a and c1 at b.
+        private static void StationSoftStrip(NativeFxDraw draw,Vector3 a,Vector3 b,float w0,float w1,Color c0,Color c1,Vector3 eye)
+        {
+            Vector3 d=b-a,s=Vector3.Cross(d,eye-a);if(s.sqrMagnitude<1e-10f)return;s.Normalize();var layer=draw.Effects;var uv=new Vector4(0,0,NativeFxDraw.Flat,StationGlowing);var clear=new Color(0,0,0,0);
+            int i=layer.Vertex(a-s*w0*.5f,Vector3.up,clear,uv,Vector4.zero,Vector4.zero);layer.Vertex(a,Vector3.up,c0,uv,Vector4.zero,Vector4.zero);layer.Vertex(a+s*w0*.5f,Vector3.up,clear,uv,Vector4.zero,Vector4.zero);
+            layer.Vertex(b-s*w1*.5f,Vector3.up,clear,uv,Vector4.zero,Vector4.zero);layer.Vertex(b,Vector3.up,c1,uv,Vector4.zero,Vector4.zero);layer.Vertex(b+s*w1*.5f,Vector3.up,clear,uv,Vector4.zero,Vector4.zero);
+            layer.Triangle(i,i+3,i+4);layer.Triangle(i,i+4,i+1);layer.Triangle(i+1,i+4,i+5);layer.Triangle(i+1,i+5,i+2);
         }
         // A jagged electric bolt from a to b (Core NativeStationFx.Bolt) as hot streaks with a coloured sheath, and its forks.
         private void StationBoltFx(uint seed,int strand,float now,Vector3 a,Vector3 b,float amp,float width,int hex,float k,int forks,int points=NativeStationFx.BoltPoints)
