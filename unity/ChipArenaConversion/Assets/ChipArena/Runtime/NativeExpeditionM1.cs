@@ -41,9 +41,9 @@ namespace ChipArena.UnityConversion
                     (a,b)=>arena.ExpeditionVisible(a,b),100,100,60);
                 // Reprint evidence is measured by the same combat authority for every seat.
                 session.ReprintEvidence=(payer,target)=>arena.ExpeditionReprintEvidence(payer,target);
-                BindExpedition(session);if(Hosting)FlushLobby();expeditionLoadedGeneration=-1;expeditionDirector.BeginAreaLoad();
+                BindExpedition(session);StartSplitAreas(session,seats);if(Hosting)FlushLobby();expeditionLoadedGeneration=-1;
                 menu=false;pending=new InputFrame();sprint=false;pitch=12;expeditionScreenOpen=false;
-                ExpeditionM1Load();Notice("Expedition · F to interact · J for party votes or extraction · C for your chip choices.");
+                Notice("Expedition · F to interact · J for party votes or extraction · C for your chip choices.");
             }
             catch(Exception e){Debug.LogException(e);expeditionError=e.Message;networkStatus="Expedition M1 refused: "+e.Message;arena?.Dispose();arena=null;match=null;expeditionDirector=null;ResetExpeditionNetwork();menu=true;}
         }

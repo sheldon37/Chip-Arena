@@ -10,13 +10,13 @@ namespace ChipArena.UnityConversion
     // docs/arenas/scripts/expedition_central_station.py --fixture to Tests/expedition-central-station-draft.json. NOT LIVE: the
     // game loads Resources/ExpeditionLayout.json (exp-layout-3), UnityMaps.json and MapLooks.json, none of which holds the
     // station. Since PR #254 the runtime knows the map id (NativeMapRules.ExpeditionInstance) and the importer has its
-    // navigation profile (et, 0.5 m), but the importer only builds maps the live manifest names. Run from ExpeditionLayoutChecks.
+    // navigation profile (et, 1 m), but the importer only builds maps the historical baseline manifest names. Run from ExpeditionLayoutChecks.
     // Checks:
-    //  - the live manifest is still exp-layout-3's bytes (the join draft's pin) and no live resource has the station's map,
+    //  - the historical baseline manifest is still exp-layout-3's bytes (the join draft's pin) and no live resource has the station's map,
     //    area or look;
     //  - the draft map passes the UnityMaps validator and imports beside today's maps (a simulated NativeMapRules.Merge; nothing
     //    is written), outside the random rotation and the arena lists; its blockHash is reproduced from the float fields;
-    //  - Astra's parser and geometry gate (NativeExpeditionLayout.Parse, ValidateGeometry) accept the live manifest plus the
+    //  - Astra's parser and geometry gate (NativeExpeditionLayout.Parse, ValidateGeometry) accept the historical baseline manifest plus the
     //    station: the instance in `instances`, its area, and the hub door record at the reserved doorway. The station has no
     //    imported navigation yet, so its route evidence is a capsule flood over its authored collision (this file's grid, the
     //    same probe as the layout checks); the town keeps its imported navigation;
@@ -94,9 +94,10 @@ namespace ChipArena.UnityConversion
             var draft=JsonNode.Parse(draftText).AsObject();
             // ---------------- not live ----------------
             var live=NativeExpeditionLayout.Parse(liveText);
-            Check(live.revision=="exp-layout-3"&&live.Area("exp-transit")==null&&!live.instances.Contains("exp-transit")&&live.Area("exp-city").doors.All(d=>d.anchor!="exp-city:door:exp-transit"),"the live manifest is exp-layout-3 without the station (its bytes are pinned by the join draft check)");
+            Check(live.revision=="exp-layout-3"&&live.Area("exp-transit")==null&&!live.instances.Contains("exp-transit")&&live.Area("exp-city").doors.All(d=>d.anchor!="exp-city:door:exp-transit"),"the historical baseline manifest is exp-layout-3 without the station (its bytes are pinned by the join draft check)");
             var unity=JsonSerializer.Deserialize<UnityMapContent>(unityText,o);var set=JsonSerializer.Deserialize<MapLookSet>(looksText,o);
-            Check(unity.maps.All(m=>m.id!="expedition-transit")&&set.maps.All(m=>m.id!="expedition-transit"&&m.look!="central-station"),"no live map or look is the station's");
+            Check(unity.maps.Any(m=>m.id=="expedition-transit")&&set.maps.Any(m=>m.look=="central-station"),"activation snapshot exists beside the separately tested design draft");
+            set.maps=set.maps.Where(m=>m.id!="expedition-transit").ToArray();
             Check(draft["draft"]?.GetValue<bool>()==true&&(string)draft["revision"]=="exp-transit-draft-1","the file is marked a draft");
             // ---------------- the map: validated, imported beside today's maps in memory ----------------
             var station=JsonSerializer.Deserialize<UnityMapContent>(draftText,o).maps.Single();
@@ -104,11 +105,11 @@ namespace ChipArena.UnityConversion
             NativeMapRules.Validate(station);count++;
             Check(station.blocks.All(b=>b.id.StartsWith("expedition-transit-",StringComparison.Ordinal)&&b.role=="static")&&station.nav.nodes.Length==0&&station.ramps.All(r=>r.blocks.All(id=>station.navHints.collisionOff.Contains(id))),"own block ids, static, no navigation yet, every stair's steps visual only");
             var maps=JsonSerializer.Deserialize<UnityMapContent>(unityText,o);var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);int rotation=content.maps.Count(m=>m.rotation);
-            NativeMapRules.Merge(content,new UnityMapContent{schema=1,materials=maps.materials,maps=maps.maps.Concat(new[]{station}).ToArray()},unityText);
+            NativeMapRules.Merge(content,new UnityMapContent{schema=1,materials=maps.materials,maps=maps.maps.Where(m=>m.id!="expedition-transit").Concat(new[]{station}).ToArray()},unityText);
             Check(content.Map("expedition-transit")!=null&&content.maps.Count(m=>m.rotation)==rotation,"the draft imports beside today's maps; the rotation unchanged");
             var areaNode=draft["layout"]["area"].AsObject();
             Check((string)areaNode["blockHash"]==ExpeditionLayoutChecks.BlockHash(station),"the area's blockHash reproduced from the map's float fields");
-            // ---------------- Astra's parser and geometry gate on the live manifest plus the station ----------------
+            // ---------------- Astra's parser and geometry gate on the historical baseline manifest plus the station ----------------
             var composed=JsonNode.Parse(liveText).AsObject();composed["revision"]=(string)draft["revision"];composed["instances"].AsArray().Add("exp-transit");
             var town=composed["areas"][0].AsObject();Check((string)town["id"]=="exp-city","the town is the manifest's first area");
             town["anchors"].AsArray().Add(draft["layout"]["town"]["anchor"].DeepClone());town["doors"].AsArray().Add(draft["layout"]["town"]["door"].DeepClone());
@@ -161,16 +162,14 @@ namespace ChipArena.UnityConversion
             string[] kinds={".cs",".json",".shader",".cginc",".hlsl",".asset",".unity",".prefab",".mat",".asmdef",".txt",".md"};
             // The one runtime mention is #254's id list (NativeMapRules.ExpeditionInstance); no file loads the draft or its look.
             var hits=Directory.EnumerateFiles(Path.Combine(root,"Assets"),"*",SearchOption.AllDirectories).Where(f=>kinds.Contains(Path.GetExtension(f))&&!f.Replace('\\','/').Contains("/LocalAssets/"))
-                .SelectMany(f=>File.ReadLines(f).Where(t=>t.Contains("expedition-central-station",StringComparison.Ordinal)||t.Contains("expedition-transit",StringComparison.Ordinal)||t.Contains("central-station",StringComparison.Ordinal)).Select(t=>Path.GetFileName(f)+": "+t.Trim())).ToArray();
-            // The station visuals' gate (claude/station-visuals: NativeExpeditionStation.MapId, every hook inert on other maps) is the other.
-            hits=hits.Where(h=>!h.StartsWith("NativeExpeditionStation.cs: public const string MapId=\"expedition-transit\",Look=\"central-station\"",StringComparison.Ordinal)).ToArray();
-            Check(hits.Length==1&&hits[0].StartsWith("NativeUnityMaps.cs: public static bool ExpeditionInstance(string id)",StringComparison.Ordinal),"under Assets/ only the instance id list names the map ("+string.Join(" | ",hits)+")");
+                .Where(f=>File.ReadAllText(f).Contains("expedition-central-station-draft",StringComparison.Ordinal)).ToArray();
+            Check(hits.Length==0,"runtime never loads the design draft directly");
             // The importer has the station's profile but builds only the maps the selected manifest names; the live one names none.
             string importer=R("tools/generate_expedition.py");
-            Check(importer.Contains("'expedition-transit': ('central-station', 'et', 2)")&&importer.Contains("for area in manifest['areas']:")&&!R("Tests/expedition-layout-draft.json").Contains("expedition-transit"),
-                "the importer's navigation profile (et, 0.5 m) is ready, and the manifest it imports does not name the station");
-            Console.WriteLine("PASS expedition station draft ("+count+" checks: Central Station at "+DraftPath+", not live; the map validates and imports beside today's maps ("+station.blocks.Length+" blocks, "+station.ramps.Length+" stairs); "
-                +"Astra's parser and geometry gate accept the live manifest plus exp-transit and its hub door; station routes by capsule flood (floors "+string.Join(", ",floors.Select(f=>f.inside+"/"+f.total))+" pilot cells joined, "+hulk.Nodes+" Hulk cells); "
+            Check(importer.Contains("'expedition-transit': ('central-station', 'et', 1)")&&importer.Contains("for area in manifest['areas']:")&&!R("Tests/expedition-layout-draft.json").Contains("expedition-transit"),
+                "the importer's navigation profile (et, 1 m) is ready, and the manifest it imports does not name the station");
+            Console.WriteLine("PASS expedition station draft ("+count+" checks: Central Station at "+DraftPath+", design fixture; the map validates and imports beside today's maps ("+station.blocks.Length+" blocks, "+station.ramps.Length+" stairs); "
+                +"Astra's parser and geometry gate accept the historical baseline manifest plus exp-transit and its hub door; station routes by capsule flood (floors "+string.Join(", ",floors.Select(f=>f.inside+"/"+f.total))+" pilot cells joined, "+hulk.Nodes+" Hulk cells); "
                 +spawns.Length+" spawns within the entry rules, every field kept by the parser, bound as the station's own content; the 4 station enemies proposals only; the look validates and lists every block)");
         }
     }

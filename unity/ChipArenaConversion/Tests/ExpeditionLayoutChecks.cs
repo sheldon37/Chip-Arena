@@ -56,6 +56,24 @@ namespace ChipArena.UnityConversion
             }
             return floor;
         }
+        private static bool PathSupported(ContentMap map,V3 p,float radius,float height)
+        {
+            if(Supported(map,p,radius,height))return true;
+            var floors=new List<float>();var off=new HashSet<string>(map.navHints?.collisionOff??Array.Empty<string>());
+            foreach(var block in map.blocks)
+            {
+                if(off.Contains(block.id))continue;
+                double yaw=2*Math.Atan2(block.rotation.y,block.rotation.w),c=Math.Cos(yaw),s=Math.Sin(yaw),dx=p.x-block.pos.x,dz=p.z-block.pos.z;
+                if(Math.Abs(dx*c-dz*s)<=block.size.x/2&&Math.Abs(dx*s+dz*c)<=block.size.z/2)floors.Add(block.pos.y+block.size.y/2);
+            }
+            foreach(var ramp in map.ramps??Array.Empty<MapRamp>())
+            {
+                double ax=ramp.high.x-ramp.low.x,az=ramp.high.z-ramp.low.z,length=Math.Sqrt(ax*ax+az*az);
+                double t=((p.x-ramp.low.x)*ax+(p.z-ramp.low.z)*az)/length,u=(-(p.x-ramp.low.x)*az+(p.z-ramp.low.z)*ax)/length;
+                if(t>=0&&t<=length&&Math.Abs(u)<=ramp.width/2)floors.Add((float)(ramp.low.y+(ramp.high.y-ramp.low.y)*t/length));
+            }
+            return floors.Where(y=>Math.Abs(y-p.y)<=.2f).OrderByDescending(y=>y).Take(1).Any(y=>Supported(map,new V3(p.x,y,p.z),radius,height));
+        }
         private static string I(float v,double k)=>((long)Math.Round(v*k)).ToString(CultureInfo.InvariantCulture);
         /// <summary>The manifest's blockHash recipe (docs/EXPEDITION-LAYOUT.md "Block hash"), from the map's float fields.</summary>
         public static string BlockHash(ContentMap m)
@@ -90,7 +108,7 @@ namespace ChipArena.UnityConversion
             Check(!town.rotation&&!inst.rotation,"neither draft joins the random rotation");
             NativeMapRules.Validate(town);NativeMapRules.Validate(inst);count+=2;
             var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);int rotation=content.maps.Count(m=>m.rotation);
-            NativeMapRules.Merge(content,new UnityMapContent{schema=1,materials=unity.materials,maps=unity.maps.Where(m=>NativeMapRules.ArenaSelectable(m)).Concat(new[]{town,inst}).ToArray()},unityText);
+            NativeMapRules.Merge(content,new UnityMapContent{schema=1,materials=unity.materials,maps=unity.maps.Where(m=>m.id!="expedition-city"&&m.id!="expedition-ward-zero").Concat(new[]{town,inst}).ToArray()},unityText);
             Check(content.Map("expedition-city")!=null&&content.Map("expedition-ward-zero")!=null&&content.Map("siren").blocks.Length==siren.blocks.Length&&content.maps.Count(m=>m.rotation)==rotation,"the drafts import beside today's maps; Ward Zero and the rotation unchanged");
             Check(town.blocks.All(b=>b.id.StartsWith("expedition-city-",StringComparison.Ordinal)&&b.role=="static"&&new[]{"stone","brick","metal","wood","foundation"}.Contains(b.material)),"town blocks: own ids, static, existing materials");
             Check(town.blocks.Length>=100&&town.blocks.Length<=400&&town.pilotBlocks.Length>0,"town block budget and its exclusion columns");
@@ -198,7 +216,7 @@ namespace ChipArena.UnityConversion
                 {
                     string key=prefix+e.id;if(edgeClear.TryGetValue(key,out bool ok))return ok;
                     var p=index[e.a];var q=index[e.b];ok=Clear(p)&&Clear(q);
-                    if(e.kind!="drop")for(int k=1;ok&&k<8;k++)ok=Supported(map,Floor(p)+(Floor(q)-Floor(p))*(k/8f),radius,height);
+                    if(e.kind!="drop")for(int k=1;ok&&k<8;k++)ok=PathSupported(map,Floor(p)+(Floor(q)-Floor(p))*(k/8f),radius,height);
                     edgeClear[key]=ok;return ok;
                 }
                 var path=new List<string>();search.Find(a.id,b.id,Active,path);if(path.Count==0)Console.WriteLine($"NO ROUTE {id} {from.x},{from.y},{from.z} -> {to.x},{to.y},{to.z} r={radius} nodes={a.id},{b.id}");return path.Count>0;
@@ -215,7 +233,10 @@ namespace ChipArena.UnityConversion
             Check(NativeWardZeroLooks.Active(inst)&&!NativeWardZeroLooks.Active(town)&&inst.hazards.Length==12&&ReferenceEquals(inst.hazards,siren.hazards),"instance uses the exact boss-test Ward hazard table");
             var normalized=new NativeRoomOptions{map=inst.id};normalized.Normalize(content);Check(NativeMapRules.ArenaSelectable(content.Map(normalized.map)),"room normalization refuses instance");
             Check(R("Assets/ChipArena/Runtime/NativeDevPanel.cs").Contains("if(!NativeMapRules.ArenaSelectable(m))continue;"),"DEV map selector isolates Expedition");
-            Check(manifestText==R("Assets/Conversion/Resources/ExpeditionLayout.json"),"resource equals frozen manifest");
+            Check(R("Tests/expedition-live-layout.json")==R("Assets/Conversion/Resources/ExpeditionLayout.json"),"resource equals live manifest");
+            var activated=NativeExpeditionLayout.Parse(R("Assets/Conversion/Resources/ExpeditionLayout.json"));
+            Check(activated.instances.Length==3&&activated.Area(activated.world).doors.All(d=>d.join!=null),"three stand-in destinations");
+            NativeExpeditionLayout.ValidateGeometry(activated,content,pve,Probe,Reach);count++;
             Check(parsed.Area("exp-city").spawns.Count(e=>parsed.Area("exp-city").bossTrigger.Contains(e.entry.@exit.Position()))==9,"nine final-area spawns classified by exit geometry");
             Check(parsed.Area("exp-city").spawns.Select(e=>e.entry.yaw).SequenceEqual(spawns.Select(e=>e.yaw)),"spawn yaw preserved in radians");
             // The look.

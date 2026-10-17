@@ -18,8 +18,8 @@ namespace ChipArena.UnityConversion
         public NativePilot ViewPilot=>Local?.Controlling??Local;
         private bool Leet(NativePilot p,string chip=null)=>Dev(p,"leet")&&(chip==null||Has(p,"l44t-"+chip));
         private bool ExpeditionChoosing(NativePilot p)=>p!=null&&p.Hp>0&&p.Seat.connected&&Expedition?.Session.Run.IsChoosingSeat(p.Seat.id,Expedition.Session.Sources.Seat)==true;
-        private bool ChoiceCanFall(NativePilot p)=>ExpeditionChoosing(p)&&Time>=p.FrozenUntil&&Time>=p.ScareUntil;
-        private bool Frozen(NativePilot p)=>p!=null&&(Time<p.FrozenUntil||Time<p.ScareUntil||ExpeditionChoosing(p));
+        private bool ChoiceCanFall(NativePilot p)=>ExpeditionChoosing(p)&&!p.ExpeditionTransferHeld&&Time>=p.FrozenUntil&&Time>=p.ScareUntil;
+        private bool Frozen(NativePilot p)=>p!=null&&(p.ExpeditionTransferHeld||Time<p.FrozenUntil||Time<p.ScareUntil||ExpeditionChoosing(p));
         private void ReleaseControl(NativePilot p)
         {var controller=p.Controlling!=null?p:p.ControlledBy;var target=controller?.Controlling;if(controller!=null){controller.Controlling=null;controller.ControlUntil=0;}if(target!=null){target.ControlledBy=null;target.ControlUntil=0;}}
         private void RouteLeetInputs()
