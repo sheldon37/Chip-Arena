@@ -147,7 +147,7 @@ namespace ChipArena.UnityConversion
                 m.Body.isKinematic=true;var e=Pve.Content.entries.FirstOrDefault(e=>e.e==(z.climbTo>=0?z.climbTo:z.hang))??a.Entry;
                 var floor=Vec(e.@exit.Position(m.Collider.height/2+.025f));float height=NativeIronworksKinds.HangHeight(e);
                 if(z.chainCutAt>=0)
-                {float y=NativeIronworksKinds.Fallen(z.chainCutAt,Time,a.ZoneFallHeight,out bool landed,out _);m.Body.position=new Vector3(m.Body.position.x,floor.y+y,m.Body.position.z);if(landed){z.hang=z.climbTo=-1;m.Body.isKinematic=false;a.StaggerAt=Time+1.5f;a.ZoneReady=Time+5;}return true;}
+                {float y=NativeIronworksKinds.Fallen(z.chainCutAt,Time,a.ZoneDropHeight,out bool landed,out _);m.Body.position=new Vector3(m.Body.position.x,floor.y+y,m.Body.position.z);if(landed){z.hang=z.climbTo=-1;m.Body.isKinematic=false;a.StaggerAt=Time+1.5f;a.ZoneReady=Time+5;}return true;}
                 if(z.climbTo>=0)
                 {float u=NativeIronworksKinds.Climbed(z.climbAt,Time,height,out _);m.Body.position=Vector3.Lerp(a.ZoneClimbFrom,floor+Vector3.up*height,u);if(u>=1){z.hang=z.climbTo;z.climbTo=-1;z.climbAt=-100;z.lockAt=-100;a.ZoneReady=Time+4;}return true;}
                 if(z.lockAt<0)
@@ -182,7 +182,7 @@ namespace ChipArena.UnityConversion
                 case "slagback":if(z.shedAt<0&&facing>=.5f){a.ZoneArmor+=amount;amount*=.4f;if(a.ZoneArmor>=120){z.shedAt=Time;a.StaggerAt=Time+.8f;}}else if(facing<=-.5f)amount*=2;break;
                 case "ladleman":if(z.spilledAt<0&&upper&&!head){a.ZoneArmor+=amount;if(a.ZoneArmor>=200){z.spilledAt=Time;a.StaggerAt=Time+2;a.ZoneStrike=-100;a.ZoneSelfDamage+=m.MaxHp*.35f;}}break;
                 case "stoker":if(z.pullAt>=0&&Time<z.pullAt+.7f&&NativeIronworksKinds.PullInterrupted(amount,m.MaxHp,impulse>=400)){a.ZoneStrike=-100;z.pullTarget=-1;z.pullAt=-100;a.ZoneBusy=Time;a.StaggerAt=Time+.4f;}break;
-                case "rigger":if(z.hang>=0||z.climbTo>=0){bool chain=point.HasValue&&point.Value.y>m.Body.position.y+.85f;if(chain){a.ZoneArmor+=amount;amount=0;}else{amount*=1.5f;a.ZoneExposureDamage+=amount;}if(z.chainCutAt<0&&(a.ZoneExposureDamage>=m.MaxHp*.3f||a.ZoneArmor>=40)){z.chainCutAt=Time;a.ZoneFallHeight=Math.Max(0,m.Body.position.y-a.Entry.@exit.y-m.Collider.height/2);a.ZoneSelfDamage+=m.MaxHp*.2f;}}break;
+                case "rigger":if(z.hang>=0||z.climbTo>=0){bool chain=point.HasValue&&point.Value.y>m.Body.position.y+.85f;if(chain){a.ZoneArmor+=amount;amount=0;}else{amount*=1.5f;a.ZoneExposureDamage+=amount;}if(z.chainCutAt<0&&(a.ZoneExposureDamage>=m.MaxHp*.3f||a.ZoneArmor>=40)){z.chainCutAt=Time;a.ZoneDropHeight=Math.Max(0,m.Body.position.y-a.Entry.@exit.y-m.Collider.height/2);a.ZoneSelfDamage+=m.MaxHp*.2f;}}break;
             }
             if(z.grabTarget>=0){if(source?.Seat.id==z.grabTarget)a.HoldDamage+=amount;else a.ZoneOtherDamage+=amount;if(a.HoldDamage>=40||a.ZoneOtherDamage>=25||impulse>=400)ZoneRelease(m);}
             return amount;
