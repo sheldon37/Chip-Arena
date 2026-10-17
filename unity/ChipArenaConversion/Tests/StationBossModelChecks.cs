@@ -13,8 +13,8 @@ namespace ChipArena.UnityConversion
     // before children, six legs in two alternating tripods); every key pose is finite, its planted hands land on the floor
     // where the stance puts them, nothing sinks under the floor; the carriage stays in its proposed hit capsule and the
     // Stationmaster in his, a standing boss in its footprint and every key pose in its reach box; the proposed move table is
-    // well formed and matches the doc's; and nothing outside the model file (Runtime, Editor, the rest of Core, Resources)
-    // references it: the concept is inert until the owner and Astra take it up.
+    // well formed and matches the doc's; and nothing outside the model file references it but THE 6:47's presentation (no rule,
+    // authority, network or content file: the boss is not live until Astra's record exists).
     internal static class StationBossModelChecks
     {
         private static int count;
@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         {
             Builds();Skeleton();Poses();Volumes();Moves();Doc(root);Inert(root);
             Console.WriteLine("PASS station boss concept ("+count+" checks: THE 6:47 builds at three tiers within budget, its skeleton and tripods, "+
-                "17 key poses finite and on the floor, the carriage box and the rider's capsule, footprint and reach, the move table and the doc's, inert outside its file)");
+                "17 key poses finite and on the floor, the carriage box and the rider's capsule, footprint and reach, the move table and the doc's, referenced only by its presentation)");
         }
         private static void Builds()
         {
@@ -151,14 +151,18 @@ namespace ChipArena.UnityConversion
             }
             Check(doc.Contains(NativeStationBoss.Name)&&doc.Contains(NativeStationBoss.Archetype)&&doc.Contains(NativeZoneMusic.StationBoss),"the doc names the boss, its archetype and its music key");
         }
-        // Inert: the concept is referenced by nothing but its own file and these checks.
+        // Presentation only: the concept is referenced by nothing but its own file, these checks and THE 6:47's presentation (the
+        // runtime model, rig, effects, cues, preview, stage hook, the HUD's zone boss names and the runtime presenter): no rule,
+        // authority, network or content file names it.
+        private static readonly string[] Presentation={"NativeStationBossLook.cs","NativeStationBossMoves.cs","NativeStationBossRig.cs","NativeStationBossFx.cs","NativeStationBossCues.cs",
+            "NativeStationBossPreview.cs","NativeStationBossStage.cs","NativeStationBossView.cs","NativeZoneBossNames.cs","NativeStationBossPresentation.cs"};
         private static void Inert(string root)
         {
             string self=Path.GetFullPath(Path.Combine(root,"Assets/ChipArena/Core/NativeStationBossModel.cs"));Check(File.Exists(self),"the model file");
             var names=new[]{"NativeStationBoss","StationBossPose","StationBossKey","StationBossMove"};int files=0;
             foreach(var dir in new[]{"Assets/ChipArena","Assets/Conversion"})foreach(var f in Directory.EnumerateFiles(Path.Combine(root,dir),"*",SearchOption.AllDirectories))
             {
-                if(f.EndsWith(".meta",StringComparison.Ordinal)||Path.GetFullPath(f)==self)continue;string ext=Path.GetExtension(f);if(ext!=".cs"&&ext!=".json"&&ext!=".asset"&&ext!=".prefab")continue;
+                if(f.EndsWith(".meta",StringComparison.Ordinal)||Path.GetFullPath(f)==self||Presentation.Contains(Path.GetFileName(f)))continue;string ext=Path.GetExtension(f);if(ext!=".cs"&&ext!=".json"&&ext!=".asset"&&ext!=".prefab")continue;
                 string text=File.ReadAllText(f);var hit=names.FirstOrDefault(n=>text.Contains(n));files++;
                 if(hit!=null||text.Contains("\""+NativeStationBoss.Archetype+"\""))Check(false,Path.GetFileName(f)+" references the concept ("+(hit??NativeStationBoss.Archetype)+")");
             }

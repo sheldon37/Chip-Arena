@@ -184,6 +184,7 @@ namespace ChipArena.UnityConversion
             new NativeDevAction("overlay-anchors",Ca,V,"Expedition anchors"),
             new NativeDevAction("preview-hub-gates",Ca,V,"Hub gates preview"),
             new NativeDevAction("preview-station",Ca,V,"Station hazards preview"),
+            new NativeDevAction("preview-station-boss",Ca,V,"Station boss preview"),
             new NativeDevAction("preview-ironworks",Ca,V,"Ironworks hazards preview"),
             new NativeDevAction("preview-ironworks-boss",Ca,V,"Ironworks boss preview"),
             new NativeDevAction("preview-door-lock",Ca,V,"Instance exit door preview"),

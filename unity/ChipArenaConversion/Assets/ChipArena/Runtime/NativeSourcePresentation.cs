@@ -58,6 +58,7 @@ namespace ChipArena.UnityConversion
             FactoryScenery(arena);
             BrickfallScenery(arena);
             StationScenery(arena);
+            StationBossScenery(arena);
             CyberCityScenery(arena);
             ExpeditionCityScenery(arena);
             IronworksScenery(arena);
