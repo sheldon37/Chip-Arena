@@ -53,7 +53,15 @@ namespace ChipArena.UnityConversion
                 {
                     case "buffer":Add(SwipeWindup,a,body);Add(Swipe,hit,rig.Hand(rig.ActSide>0?1:0));break;
                     case "doors":Add(DoorsWarn,a,body);Add(Doors,hit,body);Add(Grab,hit+.05f,body);break;
-                    case "departure":Add(Announce,a,body);Add(Wheels,a,body);for(int i=0;i<NativeStationBoss.ChimeNotes;i++)Add(Chime,a+mv.Note(i)*s,body);Add(Charge,hit,body,1.2f);Add(Brakes,hit+mv.Strike,body);break;
+                    case "departure":Add(Announce,a,body);Add(Wheels,a,body);for(int i=0;i<NativeStationBoss.ChimeNotes;i++)Add(Chime,a+mv.Note(i)*s,body);Add(Charge,hit,body,1.2f);
+                        if(v.phase>=3)
+                        {
+                            // TERMINUS's double charge: the turn's two-note chime, the second charge, its brake.
+                            var dd=StationBossMoves.DepartureDouble;float after=dd.Seconds-dd.HitAt,k=StationBossView.At(v.duration)&&after>0?Math.Max(.3f,(v.duration-(hit-a))/after):1;
+                            Add(Chime,hit+(mv.Strike+.1f)*k,body);Add(Chime,hit+(mv.Strike+.35f)*k,body);Add(Charge,hit+StationBossMoves.SecondCharge*k,body,1.2f);Add(Brakes,hit+(StationBossMoves.SecondCharge+mv.Strike)*k,body);
+                        }
+                        else Add(Brakes,hit+mv.Strike,body);
+                        break;
                     case "alteration":Add(Horn,a,lamp,1.1f);break;
                     case "shunt":Add(Brace,a,body);Add(Impact,hit,lamp,.7f);break;
                     case "live-rail":Add(Panto,a,rig.Shown.Position[NativeStationBossModel.PantoHead]);for(float k=hit;k<hit+mv.Strike;k+=.8f)Add(Arc,k,rig.Shown.Position[NativeStationBossModel.PantoHead],.9f);break;

@@ -51,7 +51,10 @@ namespace ChipArena.UnityConversion
             // The view: the DEV preview's while it is on, else the authority's fields once they exist, else the calm station
             // (no hazard is drawn in normal play until then).
             arena.BindZonePresentation();var view=NativeStationLive.Current;if(NativeStationPreview.On){NativeStationPreview.Fill(stationPreview,now);view=stationPreview;}
-            stationState.Evaluate(view,now);stationState.Score(ZoneBossBeat(arena));NativeLighting.ZoneHouse(stationState.Music.House());NativeStationLive.Shown=view;NativeStationLive.ShownClock=now;
+            else if(StationBossStageView(stationPreview,now))view=stationPreview;
+            // The authority's state, the boss song's (LAST CALL through the intro, the house light), then THE 6:47's own stage on top
+            // (row 0's ARRIVING and DEPARTED, the clocks, T1's signal, the falls, the shudder: the boss presenter's StationBossStageApply).
+            stationState.Evaluate(view,now);stationState.Score(ZoneBossBeat(arena));NativeLighting.ZoneHouse(stationState.Music.House());StationBossStageApply();NativeStationLive.Shown=view;NativeStationLive.ShownClock=now;
             Array.Clear(stationParents,0,stationParents.Length);foreach(var p in arena.AllBlocks){if(p==null||p.Definition?.id==null)continue;if(stationIndex.TryGetValue(p.Definition.id,out int i))stationParents[i]=p;}
             var blocks=map.blocks;if((QualitySettings.activeColorSpace==ColorSpace.Linear)!=stationColorLinear)StationRestColors();
             for(int i=0;i<stationParents.Length;i++){var p=stationParents[i];if(p==null){stationMoved[i]=false;continue;}var t=p.transform;var b=blocks[i];var r=b.rotation;
@@ -110,6 +113,7 @@ namespace ChipArena.UnityConversion
             {
                 var part=parts[i];if(part.Tier==skip)continue;var prop=stationParents[part.Parent];if(prop==null||stationOut[part.Parent])continue;
                 Matrix4x4 m;if(stationMoved[part.Parent]){var t=prop.transform;Quaternion q=t.rotation;m=Matrix4x4.TRS(t.position+stationNudge[part.Parent]+q*new Vector3(part.X,part.Y,part.Z),q*new Quaternion(part.Qx,part.Qy,part.Qz,part.Qw),Vector3.one);}else m=stationRest[i];
+                if(stationState.BarrierFall>0||stationState.BoardFall>0)StationBossFallPose(i,ref m);
                 if(fade&&part.Fade&&MetroBetween(from,to,new Vector3(m.m03,m.m13,m.m23),new Vector3(part.Hx+.2f,part.Hy+.2f,part.Hz+.2f)))continue;
                 // The zone boss song lifts, dims and pulses the lights that follow it (NativeExpeditionStationMusic; never a hazard's).
                 Vector4 color=stationRestColor[i];bool music=sung&&NativeExpeditionStationKit.MusicReactive(part);

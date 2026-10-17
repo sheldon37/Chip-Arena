@@ -43,6 +43,8 @@ namespace ChipArena.UnityConversion
             ex=eyeX;ey=eyeY;ez=eyeZ;rx=rightX;ry=rightY;rz=rightZ;ux=upX;uy=upY;uz=upZ;fx=ry*uz-rz*uy;fy=rz*ux-rx*uz;fz=rx*uy-ry*ux;quality=effects<0?0:effects>1?1:effects;low=lowTier;
             var P=rig.Shown;
             Hidden[NativeStationBossLook.BreachL]=(v.sideBroken&1)==0;Hidden[NativeStationBossLook.BreachR]=(v.sideBroken&2)==0;
+            // The pocket watch's minute hand moves on to 6:48 with every clock in the station.
+            bool at48=v.Dead(t)&&t-v.diedAt>=NativeStationBossStage.DeathClocks;Hidden[NativeStationBossLook.WatchAt47]=at48;Hidden[NativeStationBossLook.WatchAt48]=!at48;
             // Deep in the west tunnel only the headlight shows (the body comes out of the dark at the mouth).
             bool tunnel=rig.Arriving&&rig.Root.X<NativeStationBossArena.WestMouth-5;if(tunnel)for(int i=0;i<Hidden.Length;i++)Hidden[i]=true;
             Glows(rig,v,t);
@@ -131,15 +133,28 @@ namespace ChipArena.UnityConversion
             Vector3 p0,p1;
             if(StationBossView.At(v.laneX0)&&StationBossView.At(v.laneX1)){p0=new Vector3(v.laneX0,0,v.laneZ0);p1=new Vector3(v.laneX1,0,v.laneZ1);}
             else{var f=BossMath.Forward(rig.Yaw);p0=rig.Root+f*4.5f;p1=rig.Root+f*(4.5f+m.Reach);}
-            float life=a.Age<a.HitAt?BossMath.Smoother(a.Age/.25f):1-BossMath.Smoother((a.Age-a.HitAt)/(m.Strike*.9f));if(life<=.01f)return;
-            bool locked=a.Age>=lockAt,strike=a.Age>=a.HitAt;
+            float life=a.Age<a.HitAt?BossMath.Smoother(a.Age/.25f):1-BossMath.Smoother((a.Age-a.HitAt)/(m.Strike*.9f));
             float note=0;for(int n=0;n<NativeStationBoss.ChimeNotes;n++){float k=a.Age-m.Note(n)*s;if(k>=0&&k<.3f)note=Math.Max(note,1-k/.3f);}
-            int hex=strike?DangerHex:WarnHex;float glow=(locked?1.35f:.7f+.6f*note)*life*(strike?1.6f*(1-BossMath.Smooth((a.Age-a.HitAt)/.4f))+.4f:1);
-            var along=p1-p0;along.Y=0;float L=along.Length();if(L<.5f)return;var u=along/L;var side=new Vector3(-u.Z,0,u.X);float hw=m.Radius;float y=.035f;
+            if(life>.01f)DrawLane(p0,p1,m.Radius,a.Age>=lockAt,a.Age>=a.HitAt,a.Age-a.HitAt,note,life,a.Age);
+            if(!rig.DoubleCharge)return;
+            // TERMINUS's second charge: the lane swings round with the turn (from the boss along its facing), two chime notes, locks
+            // as the turn ends and burns red through the second charge.
+            var dd=StationBossMoves.DepartureDouble;float after=dd.Seconds-dd.HitAt,k2=after>0?Math.Max(.3f,(a.Duration-a.HitAt)/after):1;
+            float turnAt=a.HitAt+m.Strike*k2,second=a.HitAt+StationBossMoves.SecondCharge*k2,age=a.Age;
+            float life2=age<turnAt?0:age<second?BossMath.Smoother((age-turnAt)/.2f):1-BossMath.Smoother((age-second)/(m.Strike*.9f*k2));if(life2<=.01f)return;
+            var fw=BossMath.Forward(rig.Yaw);var q0=rig.Root+fw*4.5f;var q1=q0+fw*m.Reach;
+            float note2=0;for(int n=0;n<2;n++){float k=age-(turnAt+(.1f+.25f*n)*k2);if(k>=0&&k<.3f)note2=Math.Max(note2,1-k/.3f);}
+            DrawLane(q0,q1,m.Radius,age>=second-.15f*k2,age>=second,age-second,note2,life2,age);
+        }
+        // A charge lane on the floor: the edges, the fill, the chevrons racing toward the far end (standing still once locked);
+        // amber through the telegraph, red from the strike.
+        private void DrawLane(Vector3 p0,Vector3 p1,float hw,bool locked,bool strike,float sinceStrike,float note,float life,float age)
+        {
+            int hex=strike?DangerHex:WarnHex;float glow=(locked?1.35f:.7f+.6f*note)*life*(strike?1.6f*(1-BossMath.Smooth(sinceStrike/.4f))+.4f:1);
+            var along=p1-p0;along.Y=0;float L=along.Length();if(L<.5f)return;var u=along/L;var side=new Vector3(-u.Z,0,u.X);float y=.035f;
             for(int sg=-1;sg<=1;sg+=2){var c=p0+u*(L/2)+side*(sg*hw);FlatRect(c,y,u,L/2,side,.07f,R(hex)*glow*1.6f,G(hex)*glow*1.6f,B(hex)*glow*1.6f,.95f);Telegraph++;}
             FlatRect(p0+u*(L/2),y-.004f,u,L/2,side,hw,R(hex)*glow*.16f,G(hex)*glow*.16f,B(hex)*glow*.16f,.5f);Telegraph++;
-            // Chevrons racing toward the target: each note sends a wave; locked they stand and burn.
-            int count=(int)(L/2.2f);float wave=locked?0:(float)Frac(a.Age/.3f);
+            int count=(int)(L/2.2f);float wave=locked?0:(float)Frac(age/.3f);
             for(int i=0;i<count;i++)
             {
                 float d=1.1f+(i+wave)*2.2f;if(d>L-.4f)continue;var c=p0+u*d;float fade=(1-(float)i/count*.55f)*glow;

@@ -196,6 +196,7 @@ namespace ChipArena.UnityConversion
                 if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)cameraView.transform.position+=presentation.StructureShake(cameraView.transform.position,prefs.reducedEffects?.5f:1);
                 // The Siren brutes' slams and jump-down landings shake a nearby view, and kick one in the smash's disc (NativeHordeZombiePresentation.cs).
                 if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)presentation.HordeShake(cameraView.transform,prefs.reducedEffects?.5f:1);
+                if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)presentation.StationBossShake(cameraView.transform,prefs.reducedEffects?.5f:1);
                 SprintSway();
             }
             // The DEV fly camera (NativeDevPanel.cs) replaces the view after the pilot camera and its shakes; presentation only.

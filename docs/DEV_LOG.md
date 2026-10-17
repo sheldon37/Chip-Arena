@@ -99,6 +99,57 @@
 - **Next:** owner review in Unity/Windows; merge into shared (the motion pass is already in). Test-channel publication follows the standing
   instruction once merged and verified (not done here).
 
+## 2026-10-17 — Claude: THE 6:47 stage wiring, TERMINUS double charge, preview staging (merged into shared, not live)
+
+- Branch `claude/boss-station-stage-wiring`, base shared `03dddab` (THE 6:47 presentation merged), merged with shared `97046f7` (zombie motion; DEV_LOG and PROJECT_STATE union-resolved). Commits `d919608` (code), `abc575e` (checks), `56942a7` (doc), `c4077d2` (the boss shake on its own line, so the zombie and Hulk checks' pinned horde-shake line stays intact). Pushed for review; not merged; nothing published.
+- **The station draws the boss's stage** (coordinator follow-up; the music sync is merged, so the station files are free). It is applied after the authority's state and the boss song's, keeping all of the music's choreography; the song keeps the house lights.
+  - **Row 0, lowest priority first:** the authority's (CANCELLED with the boss, a Conductor's LAST CALL, DELAYED); the song's LAST CALL through the intro chimes; the boss's `6.47 EVAC SPECIAL 1 ARRIVING` from its board flip (now the last intro chime, 3.68 s) to the hold's end; DEPARTED at the death. The kit builds these as row 0 variants, with platform 1.
+  - **Clocks:** every station clock goes to 6:48 at the death (a second pair of hands and `DriveClock`). The pocket watch's minute hand moves on with them (split into 6:47 and 6:48 joints).
+  - **T1's signals:** green through the arrival, never over the levers' dark.
+  - **Barrier:** the centre segments are thrown onto P1 in PLATFORM ALTERATION. The blocks are drawn posed through a new `NativeArenaDressing.Posed`, and their kit parts follow.
+  - **Board:** it falls in TERMINUS, now tipped back across the booth away from the boss. Nothing of it is south of z 9, and the boss stays at least 1.35 m clear of it.
+  - **Shudder:** the shake moves the live view beside the horde's shake.
+  - **Colliders untouched.** Astra's board collider should follow `NativeStationBossStage.BoardPose(1)`; doc section 10 is updated.
+- **TERMINUS's double charge:** the skid becomes a 0.6 s turn on a second two-note chime, with a second lane and a second charge. The second contact is 2.0 s after the first.
+- **DEV preview staging:**
+  - The concourse benches are cleared while the preview runs (drawn hidden; colliders stay).
+  - The express is called on T1, so it meets the boss in Mind the Gap through the existing express presentation, after its warning.
+  - Terminus stands 2 m back from the board.
+  - The loop is 108 s, with the double charge added.
+- **Shared-file lines:**
+  - `NativeExpeditionStation.cs`: board variants; `ClockMinute`, the falls and `Shake` on the state.
+  - `NativeExpeditionStationKit.cs`: `DriveClock` and the platform variant.
+  - `NativeExpeditionStationKit.Concourse.cs`: row 0 variants and clock hands.
+  - `NativeExpeditionStationPresentation.cs`: the preview's view, `StationBossStageApply()` after the song's house light, `StationBossFallPose` in the kit draw. The music sync's pinned line is kept intact.
+  - `NativeArenaDressing.cs`: `Posed`.
+  - `ConversionGame.cs`: `StationBossShake` beside `HordeShake`.
+- **Animation impacts:** none on gameplay. No hitbox, collider, damage, cooldown, movement or network change.
+  - The double charge's first contact is on the record's `hitAt`. The second is drawn `SecondCharge` (2.0 s) later, stretched with the record's duration.
+  - The authority should send Departure in TERMINUS with the double charge's length (6.1 s).
+- **Checks (actual):**
+  - `StationBossPresentationChecks`: 22,219 PASS, including:
+    - row 0's order DELAYED, LAST CALL, ARRIVING, CANCELLED, DEPARTED, drawn by the kit;
+    - every clock's hands to 6:48; T1 green for the arrival only and dark under the levers;
+    - the barrier on P1; the board tipped back with the boss clear;
+    - the shudder; the preview's express meeting the boss on T1 after its warning; the benches cleared;
+    - the double charge's two contacts within a frame (worst 1.4 ms) with the second chime;
+    - the watch turning one minute.
+  - Station visuals: 854,261 PASS. Zone boss music: 292 PASS. Station boss concept: 274 PASS. Transitions: 3,586 PASS. Unity runtime and editor build OK.
+  - `run5b` on `635f6d1` (the final tree, merged with shared `97046f7`, the zombie motion), every step exit 0:
+    - Unity runtime and editor build OK;
+    - relay: 784 PASS lines (783 on `c4077d2` before the merge);
+    - Python: 140 tests OK, 1 skipped;
+    - package OK;
+    - diff-check clean.
+  - The first run on `56942a7` failed `ZombieMotionChecks`, which pins ConversionGame's horde-shake line. Fixed in `c4077d2`.
+  - Not run: Unity Editor play, Windows build, multiplayer.
+- **Renders** (scratch only, `renders-boss-station-wiring/`): the arrival (LAST CALL, then ARRIVING on the board), PLATFORM ALTERATION (the barrier thrown), TERMINUS (the board tipped back), Mind the Gap (the express passing), the double charge and the death (DEPARTED, clocks to 6:48). They use the WebGL harness, which draws the kit from the same state functions.
+- **Risks:**
+  - If Astra removes the barrier blocks instead of disabling their colliders, the thrown segments are not drawn (there is nothing to pose).
+  - The station reads the hook one frame late (the boss presenter runs after the station's scenery).
+  - The fallen board's pose must match Astra's collider.
+- **Next:** Astra's binding and colliders; check in the Editor and on Windows.
+
 ## 2026-10-17 — Claude: zombie motion pass (on branch, not merged)
 
 - **Branch and status:** `claude/zombie-motion`, from shared `f3d8eb4`. Shared was merged in twice: `5dc860d` as `1cd0006`, then the newest, `03dddab`, as `fbc298c`. The implementation commits are `a784379` and `9fabe0f` (the checks). Pushed only; no PR, not merged into shared or the builder, nothing published.

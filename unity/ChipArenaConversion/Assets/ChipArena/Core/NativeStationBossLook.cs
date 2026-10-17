@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeStationBossLook
     {
-        public const int HornL=68,HornR=69,TailL=70,TailR=73,TailLinks=3,WindowFirst=76,CabGlow=84,Markers=85,BreachL=86,BreachR=87,Count=88;
+        public const int HornL=68,HornR=69,TailL=70,TailR=73,TailLinks=3,WindowFirst=76,CabGlow=84,Markers=85,BreachL=86,BreachR=87,WatchAt47=88,WatchAt48=89,Count=90;
         /// <summary>Window k (0..3 in NativeStationBossModel.WindowZ order) on a side (0 left, 1 right).</summary>
         public static int Window(int side,int k)=>WindowFirst+side*4+k;
         /// <summary>Triangle budgets per tier (full, reduced, low): the concept's plus what the presentation adds (the tails, the
@@ -41,6 +41,8 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<TailLinks;k++){B(TailL+k,"tail-l-"+k,k==0?hips:TailL+k-1,k==0?-.17f*r:0,k==0?.12f:-TailLength,k==0?-.42f*r:0);B(TailR+k,"tail-r-"+k,k==0?hips:TailR+k-1,k==0?.17f*r:0,k==0?.12f:-TailLength,k==0?-.42f*r:0);}
             for(int side=0;side<2;side++)for(int k=0;k<4;k++)B(Window(side,k),"window-"+(side==0?"l-":"r-")+k,body,(side==0?-1:1)*NativeStationBossModel.HalfWidth,1.55f,NativeStationBossModel.WindowZ[k]);
             B(CabGlow,"cab-glow",body,0,1.45f,4.0f);B(Markers,"markers",body,0,1.3f,5.25f);B(BreachL,"breach-l",body,-1.45f,1.2f,-.7f);B(BreachR,"breach-r",body,1.45f,1.2f,-.7f);
+            // The pocket watch's minute hand at 6:47 and at 6:48 (full detail only; its rest is the watch's centre on the hand).
+            var watch=WatchPivot(out _,out _);B(WatchAt47,"watch-647",NativeStationBossModel.SmRHand,watch.X,watch.Y,watch.Z);B(WatchAt48,"watch-648",NativeStationBossModel.SmRHand,watch.X,watch.Y,watch.Z);
         }
         /// <summary>A coat tail link's length (m).</summary>
         public const float TailLength=.3f;
@@ -52,8 +54,72 @@ namespace ChipArena.UnityConversion
         public static WeaponMesh Build(int tier)
         {
             tier=Math.Max(0,Math.Min(2,tier));var mesh=NativeStationBossModel.Build(tier);
-            Split(mesh);var s=new WeaponSculpt(mesh,tier);Tails(s,tier);Breach(s,tier);Detail(s,tier);Grime(mesh);
+            Split(mesh);var s=new WeaponSculpt(mesh,tier);Tails(s,tier);Breach(s,tier);Detail(s,tier);if(tier==0)Watch(mesh);Grime(mesh);
             return mesh;
+        }
+
+        // ---------------- the pocket watch: its minute hand moves to 6:48 at the death ----------------
+        /// <summary>The watch's centre on the Stationmaster's right hand (the hands' meeting end), its face normal (out of the face) and
+        /// the turn (radians about the normal) that moves the minute hand one minute on; from the concept's full-detail geometry.</summary>
+        public static Vector3 WatchPivot(out Vector3 normal,out float minute)
+        {
+            if(!watchRead){watchRead=true;var mesh=NativeStationBossModel.Build(0);WatchHands(mesh.Section(NativeStationBossModel.SmRHand,WeaponStretch.None),out watchMinute,out watchPivot,out watchNormal,out watchTurn,out _);}
+            normal=watchNormal;minute=watchTurn;return watchPivot;
+        }
+        private static bool watchRead;private static Vector3 watchPivot,watchNormal;private static float watchTurn;private static List<int> watchMinute;
+        // Moves the minute hand's triangles off the hand into the two watch joints (as drawn, and turned on one minute).
+        private static void Watch(WeaponMesh mesh)
+        {
+            var hand=mesh.Section(NativeStationBossModel.SmRHand,WeaponStretch.None);if(!WatchHands(hand,out var tris,out var pivot,out var n,out float turn,out _))return;
+            var rot=Quaternion.CreateFromAxisAngle(n,turn);var a=mesh.Section(WatchAt47,WeaponStretch.None);var b=mesh.Section(WatchAt48,WeaponStretch.None);var gone=new HashSet<int>(tris);
+            foreach(int t in tris)for(int k=0;k<3;k++)
+            {
+                int v=hand.Indices[t*3+k];var p=hand.Positions[v]-pivot;
+                a.Indices.Add(a.Positions.Count);a.Positions.Add(p);a.Normals.Add(hand.Normals[v]);a.Colors.Add(hand.Colors[v]);a.Emission.Add(hand.Emission[v]);
+                b.Indices.Add(b.Positions.Count);b.Positions.Add(Vector3.Transform(p,rot));b.Normals.Add(Vector3.Transform(hand.Normals[v],rot));b.Colors.Add(hand.Colors[v]);b.Emission.Add(hand.Emission[v]);
+            }
+            var keep=new List<int>();for(int t=0;t*3+2<hand.Indices.Count;t++)if(!gone.Contains(t))for(int k=0;k<3;k++)keep.Add(hand.Indices[t*3+k]);
+            hand.Indices.Clear();hand.Indices.AddRange(keep);
+        }
+        // The watch's two black hands on the hand's section: the triangles fall into two boxes (shared corners); the longer is the
+        // minute hand. The pivot is the minute hand's end nearer the hour hand, the normal the hands' broad faces' (out from the
+        // amber face), and the turn's sign the one that carries the hour hand's direction onto the minute hand's the short way
+        // (clockwise on the face). False if the hands are not there (reduced tiers).
+        private static bool WatchHands(WeaponSection hand,out List<int> minute,out Vector3 pivot,out Vector3 normal,out float turn,out float between)
+        {
+            minute=new List<int>();pivot=Vector3.Zero;normal=Vector3.UnitZ;turn=0;between=0;
+            var black=WeaponPaint.Linear(0x050607);var tris=new List<int>();
+            for(int t=0;t*3+2<hand.Indices.Count;t++){var c=hand.Colors[hand.Indices[t*3]];if(Math.Abs(c.X-black.X)<1e-4f&&Math.Abs(c.Y-black.Y)<1e-4f&&Math.Abs(c.Z-black.Z)<1e-4f)tris.Add(t);}
+            if(tris.Count<8)return false;
+            // Union the triangles that share a corner.
+            var root=new int[tris.Count];for(int i=0;i<root.Length;i++)root[i]=i;int Find(int i){while(root[i]!=i)i=root[i]=root[root[i]];return i;}
+            for(int i=0;i<tris.Count;i++)for(int j=i+1;j<tris.Count;j++)
+            {
+                bool shared=false;for(int a=0;a<3&&!shared;a++)for(int b=0;b<3&&!shared;b++)shared=Vector3.DistanceSquared(hand.Positions[hand.Indices[tris[i]*3+a]],hand.Positions[hand.Indices[tris[j]*3+b]])<1e-10f;
+                if(shared)root[Find(i)]=Find(j);
+            }
+            var groups=new Dictionary<int,List<int>>();for(int i=0;i<tris.Count;i++){int r=Find(i);if(!groups.TryGetValue(r,out var g))groups[r]=g=new List<int>();g.Add(tris[i]);}
+            if(groups.Count!=2)return false;List<int> g0=null,g1=null;foreach(var g in groups.Values){if(g0==null)g0=g;else g1=g;}
+            float Span(List<int> g){Vector3 lo=new Vector3(float.MaxValue),hi=new Vector3(float.MinValue);foreach(int t in g)for(int k=0;k<3;k++){var p=hand.Positions[hand.Indices[t*3+k]];lo=Vector3.Min(lo,p);hi=Vector3.Max(hi,p);}return Vector3.Distance(lo,hi);}
+            Vector3 Mid(List<int> g){var c=Vector3.Zero;int n=0;foreach(int t in g)for(int k=0;k<3;k++){c+=hand.Positions[hand.Indices[t*3+k]];n++;}return c/n;}
+            var hourTris=Span(g0)>=Span(g1)?g1:g0;minute=ReferenceEquals(hourTris,g0)?g1:g0;
+            // The broad faces' normal, and the minute hand's long axis and its two ends.
+            float best=0;Vector3 axis=Vector3.UnitX;var mc=Mid(minute);float far=0;
+            foreach(int t in minute)
+            {
+                var p0=hand.Positions[hand.Indices[t*3]];var p1=hand.Positions[hand.Indices[t*3+1]];var p2=hand.Positions[hand.Indices[t*3+2]];var cr=Vector3.Cross(p1-p0,p2-p0);float area=cr.Length();
+                if(area>best+1e-9f){best=area;normal=Vector3.Normalize(cr);}
+                foreach(var p in new[]{p0,p1,p2}){var d=p-mc;if(d.Length()>far){far=d.Length();axis=d;}}
+            }
+            axis-=normal*Vector3.Dot(axis,normal);axis=Vector3.Normalize(axis);float half=0;foreach(int t in minute)for(int k=0;k<3;k++)half=Math.Max(half,Math.Abs(Vector3.Dot(hand.Positions[hand.Indices[t*3+k]]-mc,axis)));
+            var hc=Mid(hourTris);var e0=mc+axis*half;var e1=mc-axis*half;pivot=Vector3.Distance(e0,hc)<Vector3.Distance(e1,hc)?e0:e1;
+            // Out of the face: away from the amber dial.
+            var dial=Vector3.Zero;int dn=0;for(int t=0;t*3+2<hand.Indices.Count;t++){var e=hand.Emission[hand.Indices[t*3]];if(e.X+e.Y+e.Z>1e-4f){for(int k=0;k<3;k++)dial+=hand.Positions[hand.Indices[t*3+k]];dn+=3;}}
+            if(dn>0&&Vector3.Dot(mc-dial/dn,normal)<0)normal=-normal;
+            // Clockwise on the face: the way that carries the hour hand onto the minute hand the short way.
+            Vector3 H=hc-pivot,M=mc-pivot;H-=normal*Vector3.Dot(H,normal);M-=normal*Vector3.Dot(M,normal);
+            between=(float)Math.Atan2(Vector3.Dot(normal,Vector3.Cross(H,M)),Vector3.Dot(H,M));turn=Math.Sign(between)*6*Deg;
+            return true;
         }
         /// <summary>Total triangles of a tier.</summary>
         public static int Triangles(int tier)=>Build(tier).Triangles;

@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeExpeditionStationKit
     {
         public const byte DriveSteady=0,DriveFlicker=1,DriveFluor=2,DriveFire=3,DriveBoard=4,DriveTicker=5,DriveSignal=6,DriveDanger=7,DriveRail=8,DriveFlood=9,DriveCabinet=10,
-            DriveWindow=11,DriveLever=12,DriveBox=13,DriveStrip=14,DriveExpress=15,DriveBeacon=16,DriveMouth=17,DriveDiagram=18,DriveDead=19;
+            DriveWindow=11,DriveLever=12,DriveBox=13,DriveStrip=14,DriveExpress=15,DriveBeacon=16,DriveMouth=17,DriveDiagram=18,DriveDead=19,DriveClock=20;
         public const byte RoleWall=0,RoleFlat=1,RoleClutter=2,RoleHigh=3,RoleTrack=4,RoleSpawn=5,RoleBoard=6,RoleSign=7,RoleLamp=8,RoleTrain=9,RoleWater=10,RoleFurniture=11;
         public const byte RoomHall=0,RoomConcourse=1,RoomShed=2,RoomCorridor=3,RoomBox=4,RoomUpper=5,Rooms=6;
         public static readonly string[] RoomNames={"ticket hall","concourse","shed","corridor","signal box","upper floor"};
@@ -308,8 +308,10 @@ namespace ChipArena.UnityConversion
                     if(row==0){show=s==null?variant==NativeStationState.Row0Delayed:variant==s.Row0;if(show&&s!=null&&!s.BoardRowLit(0))k*=.08f;}
                     else if(row==4){show=s==null?variant==NativeStationState.Row4NoStop:variant==s.Row4;if(show&&s!=null&&!s.BoardRowLit(4))k*=.08f;}
                     else if(row==5)show=s==null?variant==NativeStationState.TitleDepartures:variant==s.Title;
+                    else if(row==7)show=variant==(s!=null&&s.Row0==NativeStationState.Row0Arriving?1:0);
                     break;
                 }
+                case DriveClock:show=p.Tag==((s?.ClockMinute??47)>=48?1:0);break;
                 case DriveTicker:k=Stutter(t,7,.18,.5);show=p.Tag==(s!=null&&s.Music.On&&s.Music.Mode!=NativeKitFlash.Calm&&s.Music.Bar>0?NativeExpeditionStation.TickerAtBar(s.Music.Bar):NativeExpeditionStation.TickerAt(t));break;
                 case DriveSignal:
                 {

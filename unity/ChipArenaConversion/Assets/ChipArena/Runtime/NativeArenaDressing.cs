@@ -47,12 +47,16 @@ namespace ChipArena.UnityConversion
         /// <summary>The last frame's instanced draws and blocks (main pass).</summary>
         public int Draws{get;private set;}public int Instances{get;private set;}
         /// <summary>Block ids left undrawn (a breach panel while a breach presentation shows it broken, through
-        /// ArenaPresentation.SetWardBreach, or a wall block a Hulk broke out, SetWardBlockBreach); empty on every map until a breach
-        /// happens, cleared when a new live arena binds.</summary>
+        /// ArenaPresentation.SetWardBreach, a wall block a Hulk broke out, SetWardBlockBreach, or Central Station's concourse benches
+        /// while THE 6:47's DEV preview walks through them); empty on every map until then, cleared when a new live arena binds.</summary>
         public static readonly HashSet<string> Hidden=new HashSet<string>();
         /// <summary>Block ids drawn displaced (world m: a wall block's knock shudder while a Hulk pounds it, through
         /// ArenaPresentation.NudgeWardBlock; the block itself never moves); empty until a breach knocks, cleared with Hidden.</summary>
         public static readonly Dictionary<string,Vector3> Nudged=new Dictionary<string,Vector3>();
+        /// <summary>Block ids drawn posed (a world transform applied to the block's drawn place: Central Station's barrier thrown
+        /// down in its boss's PLATFORM ALTERATION, through ArenaPresentation's station boss presentation; the block and its
+        /// collider never move); empty until then, cleared with Hidden.</summary>
+        public static readonly Dictionary<string,Matrix4x4> Posed=new Dictionary<string,Matrix4x4>();
         private const float BoundsSize=200;
         private sealed class Entry {public int Look,Color,Flags,Seen;public string Segment;public uint Hash;public float Seed,Max,S1,S2,Reach;public bool Pending,Machine;public Vector3 Last,Offset;public Vector4 Size,Rest,Linear;}
         private sealed class Batch {public readonly Matrix4x4[] Matrices=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];}
@@ -111,6 +115,7 @@ namespace ChipArena.UnityConversion
             {
                 if(p==null||p.Definition==null||!entries.TryGetValue(p,out var e)||e.Machine)continue;if(Hidden.Count>0&&p.Definition.id!=null&&Hidden.Contains(p.Definition.id))continue;var t=p.transform;Vector3 pos=t.position;Quaternion rot=t.rotation;
                 if(e.Pending){e.Pending=false;Inherit(e,p.Definition.id,pos,frame);}e.Last=pos;if(Nudged.Count>0&&p.Definition.id!=null&&Nudged.TryGetValue(p.Definition.id,out var nudge))pos+=nudge;
+                if(Posed.Count>0&&p.Definition.id!=null&&Posed.TryGetValue(p.Definition.id,out var pose)){pos=pose.MultiplyPoint3x4(pos);rot=pose.rotation*rot;}
                 float f=NativeBlockLooks.Fraction(p.Health,e.Max,p.Indestructible);int stage=NativeBlockLooks.Stage(f,e.S1,e.S2);Vector4 size=e.Size,rest=e.Rest;
                 // S3 is a stub of the block's lower 24% (same base, same rest-space pattern).
                 if(stage==3){float drop=size.y*(1-NativeBlockLooks.StubShare);pos-=rot*new Vector3(0,drop,0);size.y*=NativeBlockLooks.StubShare;rest.y-=drop;}
@@ -139,7 +144,7 @@ namespace ChipArena.UnityConversion
             materials.Clear();foreach(var m in arena.Content.materials)if(m!=null&&m.id!=null)materials[m.id]=m;
             // The killcam's replay arena (in its own scene) shares the live round's dust coat and fragment looks; a new round or arena
             // starts clean ones.
-            if(!arena.ReplicaScene.IsValid()&&(!ReferenceEquals(arena,liveArena)||arena.Generation!=liveGeneration)){liveArena=arena;liveGeneration=arena.Generation;lastEvent=0;coat.Clear();kept.Clear();Hidden.Clear();Nudged.Clear();for(int i=0;i<gone.Length;i++)gone[i].Frame=-1;}
+            if(!arena.ReplicaScene.IsValid()&&(!ReferenceEquals(arena,liveArena)||arena.Generation!=liveGeneration)){liveArena=arena;liveGeneration=arena.Generation;lastEvent=0;coat.Clear();kept.Clear();Hidden.Clear();Nudged.Clear();Posed.Clear();for(int i=0;i<gone.Length;i++)gone[i].Frame=-1;}
         }
         private Entry Create(NativePropBody prop)
         {
