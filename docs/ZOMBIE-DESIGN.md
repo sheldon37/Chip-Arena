@@ -8,7 +8,7 @@ The task is the design half: models, materials, shading and detail. Motion (pose
 curves) is the separate `claude/zombie-motion` task. Presentation only: no hitbox, collider, timing, damage, movement or
 network change, and every vertex stays inside the kind's capsule (HordeKindChecks, HulkSpitterChecks).
 
-![The 40-add horde in the Ward Zero corridor, old blocky (top) and new voxel (bottom)](zombie-design-crowd.jpg)
+![The 40-add horde in the Ward Zero corridor, old blocky (top) and new voxel with the new motion (bottom)](zombie-design-crowd.jpg)
 
 ![Faces at close range, old blocky (top) and new voxel (bottom)](zombie-design-faces.jpg)
 
@@ -143,8 +143,11 @@ later; the weights are already in the mesh.
 
 ## Notes for motion
 
-- Joints are not renamed or reordered; the jaw is the existing hinged jaw model on the Head joint.
-- Bowed heads hide the faces in a front view. A slight head lift on the idle and walk would show the new faces more often.
+- Joints are not renamed or reordered. Only the spitter and the Hulk have a hinged jaw part (the existing jaw model on the
+  Head joint), so the motion pass's jaw flap applies to them alone; the other kinds' jaws hang at a fixed slack in the head.
+- The motion pass (`claude/zombie-motion`, merged into shared as `97046f7`) is merged into this branch. Its loose-head layer
+  lifts the idle head, and the faces read in the new idle (the renders are posed by the combined code). The capsule checks
+  pass on the combined poses.
 - The variation scales are about joint origins, so poses and planted feet are unaffected.
 
 ## Not verified here
