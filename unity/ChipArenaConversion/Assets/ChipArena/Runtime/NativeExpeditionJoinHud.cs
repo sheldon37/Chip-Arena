@@ -33,11 +33,11 @@ namespace ChipArena.UnityConversion
 
         // ---- the party list ------------------------------------------------------------------------------------------------
         public const float PartyWidth=256,RowHeight=38;
-        /// <summary>The party list at (x, y): returns the y under it. Drawn when the party spans more than one member or the run
-        /// splits areas (the circles are in the view); a solo pilot in one area needs no list.</summary>
+        /// <summary>The party list at (x, y): returns the y under it. Drawn for a party of two or more (a solo pilot knows where
+        /// they are).</summary>
         public static float Party(NativeExpeditionJoinModel m,float x,float y,float time,bool reduced)
         {
-            if(m==null||m.PartyCount==0||m.PartyCount<2&&!m.InHub)return y;
+            if(m==null||m.PartyCount<2)return y;
             float h=30+m.PartyCount*RowHeight+6;var r=new Rect(x,y,PartyWidth,h);H.Panel(r,1,C.Cyan(),R.Cut,H.Corners.Diagonal,true,.82f);
             U.Text(new Rect(r.x+14,r.y+8,r.width-28,14),partyHead[Math.Min(partyHead.Length-1,m.PartyCount)],10,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.18f);
             U.Text(new Rect(r.x+14,r.y+8,r.width-28,14),"WHERE",9,C.Muted(.8f),TextAnchor.MiddleRight,mono:true,tracking:.16f);

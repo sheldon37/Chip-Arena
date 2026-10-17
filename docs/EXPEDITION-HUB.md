@@ -746,6 +746,65 @@ To switch it live: first Astra's subset transfer and `joins[]` / `atJoin` / `are
 default, bump `REVISION` / `PINNED` and the pin, regenerate and import (`tools/generate_expedition.py`). Keep the town dressing
 off the circle, and add the ring.
 
+### Join circle presentation (Claude, 2026-10-17, branch `claude/join-circles`)
+
+Replaces Astra's stand-in ring and label (PR #255) on the live exp-layout-5 circles. Presentation only: it reads the public
+view (`joins[]`: doorId, area, x/y/z/r, joinInside, joinStartedAt, duration; `members[].area/atJoin/seat`;
+`instances[].cleared`) and where each member's pilot stands. Who deploys is the authority's `atJoin` and `joinInside`; no
+collider, spawn, ring, route or timing moves.
+
+- **The pad** (`Core/NativeExpeditionJoinScene.cs`, drawn through the state pieces' NativeBlockLit and NativeSirenFx path):
+  - Six waist-high hardlight emitter posts stand 0.3 m outside the radius, off the door and approach lines.
+  - A low emitter plate sits at the centre, with a soft energy pool round it (a filled glow, not an outline).
+  - A low light curtain stands exactly on the counted radius.
+  - A hologram faces the camera with the zone's name and threat. A thin sky beacon rises over the rooftops.
+  - The accent is per zone: Ward Zero red, Central Station teal, City Ironworks amber (`NativeExpeditionJoinZones`, keyed on
+    the layout's area ids).
+- **The states:**
+  - Charging: the curtain rises and whitens over `duration`, and the posts' bars fill. The hologram shows the seconds,
+    12 segments and a pip per pilot counted.
+  - Each counted pilot stands in a lock column under a chevron. A pilot outside has neither.
+  - Deploy (the next view shows the circle empty at or after expiry): the curtain flashes, a beam takes each pilot it counted,
+    and a shock ring runs out. Pilots still held in the hub while their area loads keep a hold column.
+  - Cancelled (it emptied before expiry): the curtain drops and flickers out.
+  - Held (still occupied after expiry: the authority refused): an amber flicker over the restarted count.
+  - Cleared: green posts and CLEARED, with no curtain or beacon.
+  - A return to the hub: a beam-in where the pilot appears.
+- **The HUD** (`Runtime/NativeExpeditionJoinHud.cs`):
+  - A party list on the left. Each member's place is HUB / WARD ZERO / CENTRAL STATION / CITY IRONWORKS, with their state
+    (deploying with seconds, deploying after the deploy until their area changes, back in the hub, down, offline, extracted).
+    Mine is marked YOU.
+  - In a circle and counted: DEPLOYING TO, the zone, the seconds, the segments, who goes, and "step out to stay".
+  - In it but not counted: the reason (down, picking a chip, carrying, loading, waiting for the host). Near one: a prompt.
+  - Notes (who deployed where, who came back), and my flash over the last 0.35 s, so the loading screen's cut lands on light.
+- **Sound keys** (the owner generates them; until then the fallback clip plays):
+
+  | Key | Fallback clip |
+  | --- | --- |
+  | `expedition.join.charge` | shield |
+  | `expedition.join.tick` | countdown |
+  | `expedition.join.cancel` | reload-start |
+  | `expedition.join.deploy` | lightning |
+  | `expedition.join.deploy.whoosh` | dash |
+  | `expedition.join.held` | ui |
+  | `expedition.join.arrive` | dash |
+
+- **Hub entrances** (`Core/NativeExpeditionCityKit.Entrances.cs`), keyed on the live layout's doors and the hub record's routes:
+  - The signs name the zones. They read SEALED only while a route is reserved.
+  - The station's boarded doorway gives way to the airlock (state pieces) framed in cream tile and teal light.
+  - The foundry's welded shutter is shown rolled into its drum over the airlock, with NO 1 GATE and amber beacons.
+  - CITY IRONWORKS and the canopy's TRANSIT are lit. A light in the zone's accent sits at each circle.
+- **Low graphics:** half the curtain, no motes or beacon glow, plainer posts.
+- **Reduced effects:** no shimmer, flicker or bob. The countdown still fills.
+- **Fallback:** without the pads (shader missing), the stand-in ring and label stay.
+
+**Not in the view (for Astra):**
+- There is no deploy record. A step-out in the last view interval before expiry reads as a deploy (a flash and a note only).
+  `joins[].deployedAt` with the deployed accounts, or `members[].pendingArea`, would make it exact. The pending field would
+  also show other members' loading.
+- `h` is not in `ExpeditionJoinView`. Presentation assumes a 4.5 m column when it places pilots.
+- A ring closed for any reason other than `cleared` is not visible.
+
 ## Expedition co-op hosting (owner request 2026-10-15) — for Astra
 
 Owner: "lets make hosting a lobby for this one better (So I can test with other people) Add Expedition as a option for hosting

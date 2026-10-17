@@ -161,7 +161,7 @@ namespace ChipArena.UnityConversion
             }
             // The energy pool: a filled glow fading out toward the edge (radial), and the core's brighter heart.
             if(r.Phase==ExpeditionJoinPhase.Cleared)Pool(r.X,r.Y+.012f,r.Z,r.R*1.2f,GreenHex,1,.07f);
-            else{Pool(r.X,r.Y+.012f,r.Z,r.R*1.25f,light,1,(.16f+.2f*power+.4f*flash)*flick);Pool(r.X,r.Y+.016f,r.Z,.95f,Mix(light,WhiteHex,.4f),1.2f,(.18f+.3f*power+.5f*flash)*flick);}
+            else{Pool(r.X,r.Y+.012f,r.Z,r.R*1.25f,light,1.2f,(.2f+.26f*power+.4f*flash)*flick);Pool(r.X,r.Y+.016f,r.Z,.95f,Mix(light,WhiteHex,.4f),1.2f,(.18f+.3f*power+.5f*flash)*flick);}
             // Light over each post's head (a soft halo, so the ring of posts reads at a distance).
             if(!low)for(int k=0;k<Posts;k++){Post(r,k,out float x,out float z,out _);Sprite(x,r.Y+PostTop+.02f,z,.16f+.12f*power,.16f+.12f*power,light,1.5f,(.35f+.4f*power+.5f*flash)*flick*(r.Phase==ExpeditionJoinPhase.Cleared?.4f:1));}
             // The deploy's shock ring (an event: it runs out and is gone in .55 s).
@@ -186,7 +186,7 @@ namespace ChipArena.UnityConversion
                     height=was+(CurtainIdle-was)*k;alpha=(.12f+.24f*r.Was)*(1-k)+.1f*k;return;
                 }
                 case ExpeditionJoinPhase.Held:height=CurtainIdle+.3f;alpha=.22f;return;
-                default:height=CurtainIdle;alpha=.1f;return;
+                default:height=CurtainIdle;alpha=.07f;return;
             }
         }
         private void Curtain(in ExpeditionJoinRing r)
@@ -196,9 +196,13 @@ namespace ChipArena.UnityConversion
             float y=r.Y+.02f;
             if(low)Band(r.X,r.Z,r.R,y,y+h,n,start,light,1,a*.8f,true);
             else{Band(r.X,r.Z,r.R,y,y+h*.45f,n,start,light,1,a,true);Band(r.X,r.Z,r.R,y+h*.45f,y+h,n,start,light,1,a*.42f,true);}
-            // The bright rising edge at its top, and a faint hem at the floor so the radius reads from any side.
-            Band(r.X,r.Z,r.R,y+h-.035f,y+h,n,start,Mix(light,WhiteHex,.4f),1.6f,Math.Min(1,a*2.6f),false);
-            Band(r.X,r.Z,r.R,y,y+.05f,n,start,light,1.3f,Math.Min(1,a*1.8f),false);
+            // Once someone stands in it: the bright rising edge at its top, and a hem at the floor so the counted radius reads
+            // from any side. At rest only the faint glass between the posts shows (no lit ring on the street).
+            if(r.Phase!=ExpeditionJoinPhase.Idle)
+            {
+                Band(r.X,r.Z,r.R,y+h-.035f,y+h,n,start,Mix(light,WhiteHex,.4f),1.6f,Math.Min(1,a*2.6f),false);
+                Band(r.X,r.Z,r.R,y,y+.05f,n,start,light,1.3f,Math.Min(1,a*1.8f),false);
+            }
             // Motes rising inside the curtain while it charges.
             if(!low&&r.Phase==ExpeditionJoinPhase.Charging)for(int k=0;k<14;k++)
             {
@@ -245,7 +249,7 @@ namespace ChipArena.UnityConversion
             float tw=TextWidth(r.Title,TitleCell),w=Math.Max(tw,1.9f)+.36f;
             // The backing: a dark glass plate behind the letters (premultiplied, not additive) so they read over a bright sky, and
             // corner brackets in the pad's light.
-            Plane(-w/2,w/2,-.1f,.98f,DarkHex,1,.42f*fade,false);
+            Plane(-w/2,w/2,-.1f,.98f,DarkHex,1,.58f*fade,false);
             if(!low){float bl=.18f,bt=.018f;for(int sx=-1;sx<=1;sx+=2){float x0=sx*w/2,x1=sx*(w/2-bl);Plane(Math.Min(x0,x1),Math.Max(x0,x1),.98f-bt,.98f,light,1.6f,.8f*fade);Plane(Math.Min(x0,x1),Math.Max(x0,x1),-.1f,-.1f+bt,light,1.6f,.8f*fade);
                 float c0=sx*w/2,c1=c0-sx*bt;Plane(Math.Min(c0,c1),Math.Max(c0,c1),.98f-bl,.98f,light,1.6f,.8f*fade);Plane(Math.Min(c0,c1),Math.Max(c0,c1),-.1f,-.1f+bl,light,1.6f,.8f*fade);}}
             Text(r.Title,.52f,TitleCell,flash>0?Mix(title,WhiteHex,flash):title,1.7f+1.5f*flash,.95f*fade);
