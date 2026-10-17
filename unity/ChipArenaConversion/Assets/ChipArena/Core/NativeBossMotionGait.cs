@@ -47,6 +47,10 @@ namespace ChipArena.UnityConversion
         public float LiftPeak=.4f,ToeOff=.35f,HeelStrike=.2f;
         /// <summary>How much the body follows the feet's floor (0 the root's height only, 1 the feet's mean).</summary>
         public float FloorFollow=.6f;
+        /// <summary>Turning in place drives the cadence like walking at the turn rate times this radius (m), and a stepping foot
+        /// lands half a stance ahead of the turn (so a big body turning on the spot keeps both groups stepping instead of falling
+        /// behind its settle steps). 0, the default, leaves turning to the settle steps as before.</summary>
+        public float TurnRadius=0;
     }
 
     /// <summary>
@@ -72,6 +76,10 @@ namespace ChipArena.UnityConversion
         // ---- per leg output ----
         public readonly Vector3[] Foot,Knee,Hip;public readonly Quaternion[] FootRotation,Upper,Lower;
         public readonly bool[] Planted;
+        /// <summary>Legs the rig owns this step (an arm raised for an attack, a limb folded): set before <see cref="Step"/>. A free
+        /// leg's foot rides its home under the body (not planted, never swinging), is left out of the hips' sink, and is planted
+        /// there again the step it is given back. All false by default.</summary>
+        public readonly bool[] Free;
         /// <summary>The swing's progress (0..1; -1 planted), and the leg's forwardness (-1 behind .. 1 ahead of its hip, along the
         /// facing: an arm swings against it).</summary>
         public readonly float[] Swing,Forward;
@@ -93,7 +101,7 @@ namespace ChipArena.UnityConversion
         public BossGait(BossGaitDef def)
         {
             Def=def;Legs=def.Legs.Length;legs=new Leg[Legs];Foot=new Vector3[Legs];Knee=new Vector3[Legs];Hip=new Vector3[Legs];
-            FootRotation=new Quaternion[Legs];Upper=new Quaternion[Legs];Lower=new Quaternion[Legs];Planted=new bool[Legs];Swing=new float[Legs];Forward=new float[Legs];LandSpeed=new float[Legs];
+            FootRotation=new Quaternion[Legs];Upper=new Quaternion[Legs];Lower=new Quaternion[Legs];Planted=new bool[Legs];Free=new bool[Legs];Swing=new float[Legs];Forward=new float[Legs];LandSpeed=new float[Legs];
             // Legs that share a phase offset step together (a group): a tripod, a trot's diagonal, one biped foot.
             var seen=new float[Legs];
             for(int i=0;i<Legs;i++)
@@ -134,11 +142,11 @@ namespace ChipArena.UnityConversion
         public void Step(Vector3 root,float yaw,float yawRate,Vector3 velocity,Quaternion body,float dt,IBossGround ground)
         {
             if(!ready)Reset(root,yaw,ground);dt=BossMath.Clamp(dt,0,.1f);time+=dt;Landed=0;
-            var d=Def;var flat=BossMath.Flat(velocity);Speed=flat.Length();
-            bool was=Moving;if(Moving){if(Speed<d.StopSpeed)Moving=false;}else if(Speed>d.StartSpeed)Moving=true;
+            var d=Def;var flat=BossMath.Flat(velocity);Speed=flat.Length();float cadence=d.TurnRadius>0?Math.Max(Speed,Math.Abs(yawRate)*d.TurnRadius):Speed;
+            bool was=Moving;if(Moving){if(cadence<d.StopSpeed)Moving=false;}else if(cadence>d.StartSpeed)Moving=true;
             Run=BossMath.Smooth((Speed-d.WalkSpeed)/Math.Max(.01f,d.RunSpeed-d.WalkSpeed));
             float stride0=BossMath.Lerp(d.WalkStride,d.RunStride,Run);Duty=BossMath.Lerp(d.WalkDuty,d.RunDuty,Run);
-            Frequency=Moving?Math.Max(d.MinFrequency,Speed/stride0):0;Stride=Moving?Speed/Frequency:0;
+            Frequency=Moving?Math.Max(d.MinFrequency,cadence/stride0):0;Stride=Moving?Speed/Frequency:0;
             // Setting off, the cycle starts on the beat: the group whose feet trail furthest behind the way it moves lifts now
             // (the rest a part-cycle later), instead of wherever the phase stood, which could leave a foot planted far behind.
             if(Moving&&!was)
@@ -154,6 +162,11 @@ namespace ChipArena.UnityConversion
             {
                 ref var l=ref legs[i];var ld=Def.Legs[i];float cyc=Phase+ld.Phase,u=BossMath.Frac(cyc);int cycle=(int)Math.Floor(cyc);
                 var home=root+BossMath.Rotate(facing,new Vector3(ld.Home.X,0,ld.Home.Z));home.Y=ground.Height(home.X,home.Z)+ld.Ankle;
+                if(Free[i])
+                {
+                    l.Swing=false;l.Foot=l.From=l.To=home;l.Yaw=l.FromYaw=l.ToYaw=yaw;l.Pitch=0;l.Cycle=cycle;
+                    Foot[i]=home;Planted[i]=false;Swing[i]=-1;FootRotation[i]=facing;Forward[i]=0;continue;
+                }
                 if(!l.Swing)
                 {
                     bool lift=false;float swingTime=0,off=Vector3.Distance(BossMath.Flat(l.Foot),BossMath.Flat(home));
@@ -170,7 +183,7 @@ namespace ChipArena.UnityConversion
                 {
                     // Where the body will be when this foot lands: carried on by the velocity, turned on by the turn rate, and half a
                     // stance ahead (so the foot passes under the hip mid-stance and leaves as far behind as it landed ahead).
-                    float left=(float)Math.Max(0,l.T1-time),landYaw=yaw+yawRate*left;
+                    float left=(float)Math.Max(0,l.T1-time),landYaw=yaw+yawRate*(left+(Moving&&d.TurnRadius>0?stance*.5f:0));
                     var ahead=root+flat*left+BossMath.Rotate(BossMath.Yaw(landYaw),new Vector3(ld.Home.X,0,ld.Home.Z))+(Moving?flat*(stance*.5f):Vector3.Zero);
                     ahead.Y=ground.Height(ahead.X,ahead.Z)+ld.Ankle;l.To=ahead;l.ToYaw=landYaw;
                     float s=BossMath.Clamp01((float)((time-l.T0)/Math.Max(1e-4,l.T1-l.T0))),e=BossMath.Smoother(s);
@@ -209,7 +222,7 @@ namespace ChipArena.UnityConversion
             float need=0;
             for(int i=0;i<Legs;i++)
             {
-                if(legs[i].Swing)continue;var ld=Def.Legs[i];var hip=origin+BossMath.Rotate(rot,ld.Hip);float reach=(ld.Upper+ld.Lower)*.97f;
+                if(legs[i].Swing||Free[i])continue;var ld=Def.Legs[i];var hip=origin+BossMath.Rotate(rot,ld.Hip);float reach=(ld.Upper+ld.Lower)*.97f;
                 var dlt=hip-legs[i].Foot;float h2=dlt.X*dlt.X+dlt.Z*dlt.Z;if(h2>=reach*reach){need=Math.Max(need,dlt.Y);continue;}
                 float v=(float)Math.Sqrt(reach*reach-h2);if(dlt.Y>v)need=Math.Max(need,dlt.Y-v);
             }
