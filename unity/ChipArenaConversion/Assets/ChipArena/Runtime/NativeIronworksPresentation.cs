@@ -70,7 +70,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,int> iwIndex=new Dictionary<string,int>();private float[] iwSeeds=Array.Empty<float>();private Matrix4x4[] iwRest=Array.Empty<Matrix4x4>(),iwMeltRest=Array.Empty<Matrix4x4>();
         private Vector4[] iwRestColor=Array.Empty<Vector4>(),iwRestSpot=Array.Empty<Vector4>();private bool iwColorLinear;
         private readonly Matrix4x4[] iwFrames=new Matrix4x4[NativeIronworksKit.Frames];private readonly Quaternion[] iwFrameQ=new Quaternion[NativeIronworksKit.Frames];
-        private MaterialPropertyBlock iwOne;private float iwLast=-1;private NativeArena iwArena;private int iwGeneration=-1;
+        private MaterialPropertyBlock iwOne;private float iwLast=-1;private NativeArena iwArena;private int iwGeneration=-1;private NativeZoneBossBeat iwMusic;
         private System.Threading.Tasks.Task<NativeIronworksField> iwBake;private ContentMap iwBakeMap;private NativeIronworksField iwField;private Texture3D iwFieldTex;private readonly float[] iwLevels=new float[NativeIronworksField.Channels];
         private readonly List<Vector3> iwHazeV=new List<Vector3>(NativeIronworksSceneFx.HeatMax*4);private readonly List<Color> iwHazeC=new List<Color>(NativeIronworksSceneFx.HeatMax*4);private readonly List<Vector2> iwHazeUv=new List<Vector2>(NativeIronworksSceneFx.HeatMax*4);
         /// <summary>The last frame's kit and molten instances and their draws (main pass), for the budget lines.</summary>
@@ -83,16 +83,18 @@ namespace ChipArena.UnityConversion
             if(!ReferenceEquals(map,iwMap))IronworksBuild(map);
             if(!ReferenceEquals(arena,iwArena)||arena.Generation!=iwGeneration){iwArena=arena;iwGeneration=arena.Generation;iwLast=-1;}
             float now=PresentationClock(arena);arena.BindZonePresentation();NativeIronworksHazards.Evaluate(NativeIronworksLive.Input(),iwViews);
+            // The zone boss song (NativeIronworksMusic; presentation only): furnaces, work lights, steam, sparks and the parked ladle.
+            iwMusic=ZoneBossBeat(arena);NativeLighting.ZoneHouse(iwMusic.House());
             Shader.SetGlobalFloat(MoltenClockId,(float)(now%1000.0));Shader.SetGlobalFloat(HeatClockId,(float)(now%1000.0));
             var blocks=map.blocks;Array.Clear(iwParents,0,iwParents.Length);foreach(var p in arena.AllBlocks){if(p==null||p.Definition?.id==null)continue;if(iwIndex.TryGetValue(p.Definition.id,out int i))iwParents[i]=p;}
             for(int i=0;i<iwParents.Length;i++){var p=iwParents[i];if(p==null){iwMoved[i]=false;continue;}var t=p.transform;var b=blocks[i];iwMoved[i]=t.position!=new Vector3(b.pos.x,b.pos.y,b.pos.z);}
             Array.Clear(iwOut,0,iwOut.Length);Array.Clear(iwNudge,0,iwNudge.Length);
             if(NativeArenaDressing.Hidden.Count>0)foreach(var id in NativeArenaDressing.Hidden)if(id!=null&&iwIndex.TryGetValue(id,out int k))iwOut[k]=true;
             if(NativeArenaDressing.Nudged.Count>0)foreach(var pair in NativeArenaDressing.Nudged)if(pair.Key!=null&&iwIndex.TryGetValue(pair.Key,out int k)){iwNudge[k]=pair.Value;iwMoved[k]=true;}
-            for(int f=0;f<NativeIronworksKit.Frames;f++){NativeIronworksKit.FramePose(f,iwViews,now,out float px,out float py,out float pz,out float qx,out float qy,out float qz,out float qw);iwFrameQ[f]=new Quaternion(qx,qy,qz,qw);iwFrames[f]=Matrix4x4.TRS(new Vector3(px,py,pz),iwFrameQ[f],Vector3.one);}
+            for(int f=0;f<NativeIronworksKit.Frames;f++){NativeIronworksKit.FramePose(f,iwViews,now,out float px,out float py,out float pz,out float qx,out float qy,out float qz,out float qw,iwMusic);iwFrameQ[f]=new Quaternion(qx,qy,qz,qw);iwFrames[f]=Matrix4x4.TRS(new Vector3(px,py,pz),iwFrameQ[f],Vector3.one);}
             var eye=WorldEye;IronworksInstances=IronworksDraws=0;DrawIronKit(arena,now,eye);DrawIronMolten(now);
             IronworksField();
-            if(eye!=null){var c=eye.transform.position;float dt=iwLast<0?0:Mathf.Clamp(now-iwLast,0,.1f);iwLights.Update(c.x,c.y,c.z,iwViews,now,dt);NativeLighting.PickedLights(iwLights.Pos,iwLights.Rgb,iwLights.Beam);}
+            if(eye!=null){var c=eye.transform.position;float dt=iwLast<0?0:Mathf.Clamp(now-iwLast,0,.1f);iwLights.Update(c.x,c.y,c.z,iwViews,now,dt,4,iwMusic);NativeLighting.PickedLights(iwLights.Pos,iwLights.Rgb,iwLights.Beam);}
             IronworksFieldSend(now);DrawIronFx(now,eye);DrawIronHaze(now,eye);iwLast=now;
         }
         private bool EnsureIronworks()
@@ -162,7 +164,7 @@ namespace ChipArena.UnityConversion
                 else if(iwMoved[part.Parent]&&iwParents[part.Parent]!=null){var b=arena.Map.blocks[part.Parent];var off=iwParents[part.Parent].transform.position+iwNudge[part.Parent]-new Vector3(b.pos.x,b.pos.y,b.pos.z);m=Matrix4x4.Translate(off)*iwRest[i];}
                 else m=iwRest[i];
                 if(fade&&part.Fade&&MetroBetween(from,to,new Vector3(m.m03,m.m13,m.m23),new Vector3(part.Hx+.2f,part.Hy+.2f,part.Hz+.2f)))continue;
-                Vector4 color=iwRestColor[i];if(part.Drive!=NativeIronworksKit.DriveSteady){NativeIronworksKit.Drive(part,iwViews,now,out float r,out float g,out float bl,out float level);color=MetroColor(r,g,bl,level);}
+                Vector4 color=iwRestColor[i];if(part.Drive!=NativeIronworksKit.DriveSteady||iwMusic.On&&NativeIronworksKit.MusicReactive(part)){NativeIronworksKit.Drive(part,iwViews,now,out float r,out float g,out float bl,out float level,iwMusic);color=MetroColor(r,g,bl,level);}
                 if(iwUsed==0||iwBatches[iwUsed-1].Count==NativeBlockLooks.Chunk){if(iwUsed==iwBatches.Count)iwBatches.Add(new MetroBatch());iwBatches[iwUsed].Count=0;iwUsed++;}
                 Put(iwBatches[iwUsed-1],m,new Vector4(part.Hx,part.Hy,part.Hz,NativeBlockLooks.Chamfer),iwRestSpot[i],color,new Vector4(part.Look,1,iwSeeds[i],part.Flags));
             }
@@ -180,7 +182,7 @@ namespace ChipArena.UnityConversion
             iwMeltUsed=0;var melt=iwKit.Molten;bool lean=LowGraphics||!UsesInstancing;
             for(int i=0;i<melt.Length;i++)
             {
-                var m=melt[i];if(m.Detail&&lean||iwOut[m.Parent])continue;NativeIronworksKit.MoltenState(m,iwViews,now,out float ha,out float hb,out float crust,out float front,out float flow,out bool shown);if(!shown)continue;
+                var m=melt[i];if(m.Detail&&lean||iwOut[m.Parent])continue;NativeIronworksKit.MoltenState(m,iwViews,now,out float ha,out float hb,out float crust,out float front,out float flow,out bool shown,iwMusic);if(!shown)continue;
                 var mat=m.Frame!=NativeIronworksKit.FrameStatic?iwFrames[m.Frame]*iwMeltRest[i]:iwMeltRest[i];
                 if(iwMeltUsed==0||iwMelt[iwMeltUsed-1].Count==NativeBlockLooks.Chunk){if(iwMeltUsed==iwMelt.Count)iwMelt.Add(new IronMoltenBatch());iwMelt[iwMeltUsed].Count=0;iwMeltUsed++;}
                 var bt=iwMelt[iwMeltUsed-1];int k=bt.Count++;bt.M[k]=mat;bt.Size[k]=new Vector4(m.Hx,m.Hy,m.Hz,0);bt.Flow[k]=new Vector4(m.Speed,m.Seed,0,0);bt.Heat[k]=new Vector4(ha,hb,crust,front);bt.Style[k]=new Vector4(m.Kind,(m.Axis+1f)*m.Sign,flow,m.Gain);
@@ -196,7 +198,7 @@ namespace ChipArena.UnityConversion
         private void DrawIronFx(float time,Camera camera)
         {
             if(camera==null)return;var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
-            iwFx.Build(iwScene,iwViews,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);
+            iwFx.Music=iwMusic;iwFx.Build(iwScene,iwViews,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);
             var q=iwFx.Quads;iwDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {
@@ -249,7 +251,7 @@ namespace ChipArena.UnityConversion
         private void IronworksFieldSend(double now)
         {
             if(iwFieldTex==null||iwField==null){NativeLighting.ActorLights(true);return;}
-            NativeIronworksField.Levels(iwViews,now,iwLevels);NativeIronworksField.Colour(out float r,out float g,out float b);var f=iwField;
+            NativeIronworksField.Levels(iwViews,now,iwLevels,iwMusic);NativeIronworksField.Colour(out float r,out float g,out float b);var f=iwField;
             NativeLighting.WardField(iwFieldTex,new Vector4(f.MinX,f.MinZ,f.Nx*NativeWardZeroField.Cell,f.Nz*NativeWardZeroField.Cell),new Vector4(iwLevels[0],iwLevels[1],iwLevels[2],iwLevels[3]),new Color(r,g,b),true);
         }
         private void ReleaseIronField(){if(iwFieldTex!=null)CapturedAnimation.Release(iwFieldTex);iwFieldTex=null;iwField=null;iwBake=null;iwBakeMap=null;}

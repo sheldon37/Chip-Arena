@@ -67,6 +67,108 @@
 - **Next:** review in Unity/Windows; merge after the motion task or alongside it. Test-channel publication follows the
   standing instruction once merged and verified (not done here).
 
+## 2026-10-17 — Claude: THE 6:47 in-game presentation (on branch, not merged, not live)
+
+- Branch `claude/boss-station-presentation`, base shared `535b42c`, merged with shared `5dc860d` (instance exit laser door; DEV panel conflict resolved keeping both previews) `29b8498` (zone boss music sync) and `bc39790` (THE CONVERTER design; the intro hold settled at 9.0678 s); DEV_LOG and PROJECT_STATE union-resolved. Implementation commits `84cfbcf` (gait opt-ins), `a7d18ab` (presentation), `a5c27f7` (checks), `3bb083d` (doc), `9839732` (prewarm), `8d20052` (song binding). Pushed for review; not merged; nothing published.
+- **What:** Central Station's boss drawn in game, presentation only, behind one binding point: `ArenaPresentation.StationBossViewOf` returns `StationBossView.None` until Astra's `pve.zoneBoss` record exists, so normal play is unchanged (the placeholder Siren still fights; nothing draws, lights or sounds). Design doc section 13 lists every file.
+  - `Core/NativeStationBossView.cs`: the view struct (doc section 10's fields plus root, yaw, health, `spawned`) with `None`.
+  - Runtime meshes in three tiers from the concept model, with added detail inside the hit volumes: 22,164 / 10,496 / 4,850 triangles.
+  - Motion on the shared library: root follow, six-leg gait (planted hands locked, hinge-stable IK), chains, action players keyed to `hitAt`, flinch, stagger, inertializer, breath and look-at. Every move, both phase changes, the staggers and breaks, the arrival and the death are authored.
+  - Effects for every section 8 move in the danger colours (amber warns, red strikes, blue for electricity), plus the boss's lights.
+  - Arrival and death: choreography on beat constants kept in one place (`StationBossBeats`, the doc's fallback), and the stage hook `NativeStationBossStage.Shown` (board rows, clocks, light level, barrier and board poses, shake) for the station to read.
+  - Cues: the 34 `boss.station.*` keys, played through NativeAudio's bank path (silent until clips exist).
+  - HUD: the plate and banner read THE 6:47 (`NativeZoneBossNames`), and the banner waits for the drop.
+  - DEV preview: DEV panel · Camera · "Station boss preview" plays a deterministic 96 s script of the whole fight.
+  - Bound to the boss song (coordinator, after `29b8498`):
+    - The arrival's beats come from Station Chime of Doom's accents on the boss clock: board flip on the first chime (1.33 s), headlight on the bass cut (4.86), sparks on the next grid beat (5.37), stop on the slam where the song flares the lights (6.21), unfold 6.88, step 7.38, burst on the last slam (8.73), banner on the drop at the hold's end (9.07).
+    - The arrival is timed on `NativeArena.BossSongTime`, because the arena clock waits through the hold.
+    - The song's stage keeps the lights, so the hook leaves them alone. The boss layers only its own parts: headlight, sparks, burst, row 0's ARRIVING and DEPARTED, T1's signal, falls and shake.
+    - No PA chime over the song.
+    - With the drop on the hold's end, the burst runs on to boss point 0 within 0.7 s of the hold's end (root only).
+- **Shared-file lines:**
+  - one call each in `NativeSourcePresentation`, `NativeExpeditionStationAudio` and `NativeDevTools`;
+  - `NativeDevPanel`: the toggle case, the panel and the HUD call;
+  - `NativeExpeditionStates`: the boss name routing and the banner delay;
+  - `NativeStagePrewarm`: the boss's meshes built behind the loading screen, with its `TransitionLoadingChecks` entry;
+  - `NativeBossMotionGait`: two opt-in fields, off by default.
+  - Not edited: `NativeAudio.cs`, `NativeZoneMusic.cs`, the station's light and board files (the music sync's), and horde, zombie and zone-kind files.
+- **Animation impacts:** none on gameplay. No hitbox, collider, damage, cooldown, movement, timing or network change. Contact is drawn on the record's `hitAt` (checked within one frame), and phases before contact stretch to it.
+- **Checks (actual):**
+  - `StationBossPresentationChecks` (`--station-boss-presentation`, in the full run): 15,885 PASS on `8d20052`, including the song binding.
+    - None pin: nothing changes in normal play.
+    - Preview: deterministic.
+    - Contact: worst 13.3 ms against `hitAt` at 60 and 144 fps.
+    - Planted-hand slip: 0.00 mm.
+    - Pops: ratio at most 0.64.
+    - Allocation: 0 bytes per frame.
+    - Tiers within budget; HUD name routing and banner delay; cue keys match the doc's table.
+    - Song binding: beats on the song's accents and grid; lights left to the song; row 0 still flips; the follow carries on from the burst without a jump; no pop at the burst or hand-off (ratio 0.50).
+  - Station boss concept: 274 PASS. Boss motion: 50,898 PASS.
+  - Relay on the prewarm fix: 781 PASS lines, rc 0. The first run5b failed one rule: the prewarm entry for the new scenery call. Fixed in `9839732`.
+  - `run5b` on `9839732` (merged with `5dc860d`), every step exit 0:
+    - Unity 6000.3.24f1 runtime and editor build OK;
+    - relay: 781 PASS lines;
+    - Python: 140 tests OK, 1 skipped;
+    - package_source OK;
+    - `git diff --check` clean.
+  - `run5b` on `b2b935c` (the final tree, merged with shared `bc39790`), every step exit 0:
+    - Unity runtime and editor build OK;
+    - relay: 783 PASS lines (the same on `8d20052` with 782);
+    - Python: 140 tests OK, 1 skipped;
+    - package_source OK;
+    - diff-check clean.
+  - Not run: Unity Editor play, Windows build, real multiplayer.
+- **Renders** (scratch only, `renders-boss-station-pres/`): MP4s of the arrival (with a strip), each move, both phase changes, both staggers, the breaks, the death, a gait turntable and a Stationmaster close-up. They use a WebGL harness, not Unity. They apply the stage hook the way the station would and cut the concourse benches for clear views.
+- **Not done / risks:**
+  - Binding is Astra's.
+  - The station presentation does not read the hook yet: in game there is no ARRIVING or DEPARTED row (the song's LAST CALL shows instead), no 6:48 clocks, and no barrier or board poses.
+  - The song's drop lands on the hold's end, so the arrival is compressed: the burst lands on point 0 0.7 s into the fight (root only). The DEV preview has no song clock.
+  - Boss lights go through `NativeLighting.KitLights` (unverified against hazard-kit placements).
+  - TERMINUS's double charge plays as one stretched charge.
+  - The DEV preview path crosses the benches.
+  - Unity Editor, Windows and play are not run.
+- **Next:** Astra binds `StationBossViewOf` to the record. The station presentation reads the hook for the boss's own parts: row 0 over the song's LAST CALL, the clocks, the poses. Then check in the Editor and on Windows.
+
+## 2026-10-17 — Claude: owner approved THE CONVERTER; design merged into shared (not live); intro hold settled
+
+- Owner (verbatim): "Go with your suggestions with the convertor too." Every recommended option in `docs/EXPEDITION-BOSS-CITY-IRONWORKS.md` section 11 is chosen: THE CONVERTER with VESSEL C stencilled, size as drawn (about 8 m), grab-and-throw with allies able to free, the hall's converters join in phase 2 (ladle crane parked), the phase 3 pit overflow, it stays in the hall, no new mocap, the beat map consumed from `docs/ZONE-BOSS-MUSIC.md`.
+- Merged `claude/boss-city-ironworks` (b8a763c) into shared on top of the zone boss music merge. Inert design only: the doc, `Core/NativeIronworksBossModel.cs` (referenced by nothing) and `IronworksBossModelChecks`. No rule, timing, hitbox, damage, movement or network change; the foundry still fights the placeholder Siren.
+- Intro hold settled for both zone bosses: keep 9.0678 s. The merged music plays an intro edit whose drop lands at the hold's end, so the docs' "end the hold on the drop" items need no hold change (a note in both docs says so).
+- Astra handoff (sent to the owner to relay): build both bosses' rules from the approved docs with one unified `pve.zoneBoss` record; investigate the native publish runs 410-412 (Unity Cloud Build HTTP 500); optional #17-#20.
+- Next: Claude builds THE CONVERTER's presentation on the boss motion library with a DEV preview, as THE 6:47's is being built.
+
+## 2026-10-17 — Claude: zone boss songs synced to the boss intro and the stages (on branch, not merged)
+
+- Branch `claude/zone-boss-music-sync`, base shared `claude/sleepy-ritchie-g8ruhv` (last merged at `5dc860d`). Commits `86a9f63` (maps, intro edit, stage reactions, checks, doc), `60fe312` (house light, half-lit intro approach), `65d7f2e` (ward lighting reset kept intact, bolder drop sparks). Not merged, no PR, builder untouched, nothing published.
+- Owner (verbatim): "I have the two boss stage themes here, Please sync their intro with the stage. And sync the stages to be affected by the music :)" and "Station chime for station, and hydraulic hell for foundry".
+- **Audio:** the owner's files as `Resources/Audio/music/central-station-boss.mp3` (Station Chime of Doom, `expedition-transit`) and `city-ironworks-boss.mp3` (Hydraulic Hell, `expedition-foundry`/`expedition-ironworks`). Audio streams are bit-exact (cover art removed by stream copy). Asset-lock receipts are added; credits are in `tools/zone-boss-music-credits.txt`.
+- **Beat maps:** `Resources/ZoneBossMusic.json`, made by `tools/zone_boss_beatmap.py` (offline, not in CI; `--check` compares the JSON with the MP3s).
+  - Station: about 179 BPM, drifting 178-182.5, so the map lists every beat. 65 bars, drop at 16.10 s (bar 12), loop bars 12-61 (16.10-82.94 s).
+  - Ironworks: about 140 BPM (138-144), 84 bars, drop at 14.01 s (bar 9), loop bars 9-82 (14.01-140.28 s).
+  - Sections and accents (chimes, slams, cuts, drops) are in the map. The loops leave out the intro and the outro.
+- **Intro:** the sim's 9.0678 s boss intro hold is unchanged. NativeAudio plays an intro edit whose drop lands when the hold ends and the fight begins.
+  - Station: 1.06 s of quiet, then song 0-5.32 s (the PA chime and the arrival), a downbeat splice to 13.40 s, the chime's return, and the drop at the end of the hold.
+  - Ironworks: 0.27 s of quiet, then song 0-7.06 s (the whole ignition), a splice to 12.27 s, and the drop at the end of the hold.
+  - After the drop, the bar-aligned loop runs on the shared boss clock (`NativeArena.BossSongTime`), so every peer hears and sees the same beat. If the map or file is missing, the old plain loop or the Siren fallback plays.
+- **Stage:** Core `NativeZoneBossMusic` turns the clock into this frame's beat, section mood, pulse, cut and flare. It is pure, allocation free and flash capped by the settings' mode: Full at most 2.9 flashes/s, Reduced 1.96/s, Calm has no pulses and uses slow ramps.
+  - Station intro: the power sags; the lamps step on west to east, one group per chime; the board's first row reads LAST CALL and lights on each chime; the red signals come on at the first slam; the lights cut with the bass cuts and flare on the slams; the drop flares them as the hold ends.
+  - Station fight: the house light, lamps, troffers and signs follow the section's level and cast and pulse; the board pulses and pages every two bars; the red signal lamps kick on downbeats; the edge strips chase a quarter per beat; the train's windows breathe.
+  - Ironworks intro: the furnaces stoke bar by bar and flare on the slams; the standpipes puff steam. On the drop, a spark shower falls from the roof and the furnaces and house light surge.
+  - Ironworks fight: the furnaces, work lights and light field breathe and pulse; sparks and steam follow the section; the parked ladle rocks.
+  - The house ambient is scaled through `NativeLighting.ZoneHouse` and reset on every map look.
+- **Untouched:** hazard parts, lamps, telegraphs, warning timing, colliders and hazard clocks. Nothing changes before the boss arrives (`BossSongTime` < 0 means Off). There is no timing, hitbox, damage, cooldown, movement or networking impact. Locking hazards to the beat is the optional Astra prompt 18 in `docs/ZONE-BOSS-MUSIC.md`.
+- **Hand-off:** `docs/ZONE-BOSS-MUSIC.md` gives tempo, bars, sections, intro accents, drops, the loop and the API for the boss branches (`claude/boss-central-station`, `claude/boss-city-ironworks`).
+- **Checks:** `Tests/ZoneBossMusicChecks.cs` has 292 checks (`CoreTests --zone-boss-music`, inside `--zone-music` and in the full run). They cover map validity and sha256, the hold pin, routing and fallback, the intro edit and looped clock, purity and determinism, flash caps in all three modes, no allocation, the choreography, and that hazards are untouched.
+  - On `65d7f2e`: `--zone-music` passed (19 + 292) and `--ward-lighting` passed.
+  - run5b on `7f5809e` (only this line changed after it) passed all five steps: the Unity runtime and editor compile check, the managed relay (781 PASS lines, including ward lighting, zone music and zone boss music), the Python tests (140, 1 skipped), the source package and the diff check.
+- **Renders:** scratch only, not in the repo. Beat-map plots, click-track mixes, loop seams, intro and fight frames for each stage, and short intro videos with the song, all from the offline harness.
+- **Not run / risks:** no Unity Editor play, Windows build, two-client sync or in-game listening. Risks:
+  - The MP3 decoder's start delay (about 25-35 ms) and NativeAudio's 0.12 s resync tolerance.
+  - The seeks at the splice and the loop wrap may click.
+  - `ZoneHouse` scales the global RenderSettings ambient.
+  - The renders are not Unity frames.
+- **Next:** owner review and merge. The boss branches bind their arrival beats to the doc's API. Astra decides prompt 18.
+
 ## 2026-10-17 — Claude: owner approved THE 6:47; design merged into shared (not live)
 
 - Owner (verbatim): "Go with your suggestions". Every recommended option in `docs/EXPEDITION-BOSS-CENTRAL-STATION.md` section 11 is chosen: THE 6:47 concept and plate name, 13 m as modelled, barrier down in phase 2 and the board falling in phase 3 with real colliders, the boss-called express with Mind the Gap, levers allowed, All Aboard on the Undertow's hold, boss-driven falling glass, clocks to 6:48 and DEPARTED, boss points moved.
@@ -175,6 +277,45 @@
 - Express collisions now use the train's visible nose/tail sweep clipped to the station shell for pilots and minions. Previously the entire track was lethal throughout the pass. Edge shove follows the same sweep. Signal controls refuse an already-moving train, preserving its collision/visual continuity. Warning and pass timings are unchanged; no art or audio changes.
 - Checks: focused zone combat 512 checks pass, including 267 new sweep boundary/continuity checks; source packaging passes (2355 files); Unity reference-assembly compilation and diff checks recorded in PR. Existing merged gameplay CI is separate from this follow-up. Native Windows/PhysX and human multiplayer remain pending; this does not claim a published update.
 
+## 2026-10-17 — Claude: City Ironworks boss design, THE CONVERTER (on branch, not merged, not live)
+
+- Branch `claude/boss-city-ironworks`, based on `origin/claude/sleepy-ritchie-g8ruhv` `dfb8aac`, fast-forwarded to `02234ec` (PR #263 music, #264, #265 zone gameplay, #267). Implementation commit `b2d3b13`. Not merged, no PR, builder untouched, nothing published.
+- **Why:** the owner asked (2026-10-17) to begin the bosses for Central Station and City Ironworks: "a lot more fluid" animation and "a high quality design matching the areas". This is the Ironworks boss. The Central Station boss and the shared motion library (`claude/boss-motion`) are other agents' tasks.
+- **Design** (`docs/EXPEDITION-BOSS-CITY-IRONWORKS.md`):
+  - THE CONVERTER: Vessel C, the hall's missing third Bessemer converter, walking on a four-legged trunnion yoke, with its dead foreman working the tilt levers on the pulpit.
+  - Body, palette and weak points: the tuyère grate, the foreman, the mouth, four crust groups, the knee rams.
+  - The Converter Hall as a set piece: the pit, the crane hook, the hall's vessels driven by `-converter-tilt`, the shutter.
+  - Three phases (Blow, Tilt, Last Pour), eight attacks and seven scripted moments, with telegraphs, counterplay and recovery.
+  - Adds tied to all five Ironworks kinds; arrival on the existing `bossArrivals[]` and banner flow; the end-of-shift death.
+  - HUD plate `THE CONVERTER`, a VFX list and 50 `boss.ironworks.*` cue keys.
+  - The arrival is choreographed to "Hydraulic Hell" (`music/city-ironworks-boss`): the crack and grip on the intro's first hydraulic hit, the eyes on the furnace flare, the first blow and the fight on the drop. Times come by reference to `docs/ZONE-BOSS-MUSIC.md` (the music agent's); this branch does not touch NativeAudio, NativeZoneMusic or the furnace and press presentation.
+  - Animation direction in the motion library's terms (root springs, a 4-leg planted gait with IK, trunnion pendulum and metal slosh springs, verlet chains, action timelines, additive layers).
+  - An Astra contract on the live zone systems with a ready prompt. It reuses `NativeZoneHazardFrame`, `StepIronworksHazards`, the boss mix and caps, entries 22, 28, 29 and 30, and the live shutter. It names exactly what to add: the archetype, `NativeZoneBossFrame` (`zoneBoss`), the hazard frame's `converterAt`, `converterMask` and `overflowAt`, the `-converter-tilt-s` and `-pit-overflow` definitions, `SpawnPveAddAt`, and a scripted Ladleman cap.
+  - 10 owner decisions with picks.
+- **Concept model** (`Core/NativeIronworksBossModel.cs`): inert, and referenced by nothing live.
+  - 34 joints, three tiers: 39,744 / 24,648 / 7,924 triangles with the chain props, against budgets of 40k / 26k / 9k.
+  - 20 key poses with two-bone leg IK, chain props, glow groups.
+  - The action table, mirrored by the doc's.
+- **Checks:** `Tests/IronworksBossModelChecks.cs`, registered in `Tests/Program.cs` (the full suite and `--ironworks-boss`). They cover:
+  - budgets, determinism, every joint drawn, and the joint table;
+  - every key pose inside the reach box; the standing keys above the floor with planted feet;
+  - body and capsule bounds, and deslag clearance;
+  - non-orange tells, glow groups, and zero allocation;
+  - the doc's action and cue tables, and no live references.
+- **Affected:** docs and one inert Core file plus its test. No runtime, rule, timing, collider, spawn, wire, resource or live data change. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged; the doc proposes them to Astra.
+- **Checks run** (run5b on the final code, all five steps exit 0):
+  - Unity runtime and editor compile against the 6000.3.24f1 assemblies: OK.
+  - Relay and managed: 778 PASS lines and 35 managed-core checks, no failures, including `ironworks boss model` (697 checks).
+  - Python: 140 tests OK (1 skip).
+  - Package structure: 2,358 source files.
+  - `git diff --check`: clean.
+  - The doc's music section was edited after that run; the boss check, rerun on the final doc, passes.
+- **Renders** (offline WebGL harness through the game's shaders on the live foundry, not Unity): in the scratchpad `renders-boss-ironworks/`: a turnaround with a pilot, the arrival through the shutter, each attack's key frame, the stagger, phase changes and the death.
+- **Risks / next:**
+  - Unity Editor, Windows and play are unrun; the concept is not drawn in game.
+  - The boss's effects are a harness sketch.
+  - The live manifest still lacks the converter shutter gate.
+  - Next: owner decisions; Astra's contract (archetype, record, scheduler, hazards); then Claude's runtime draw on the motion library, the VFX, the HUD name and cue routing; then the owner's clips and track.
 
 ## 2026-10-17 — Claude: zone boss music for Central Station and City Ironworks
 

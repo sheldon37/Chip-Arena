@@ -310,7 +310,7 @@ namespace ChipArena.UnityConversion
                     else if(row==5)show=s==null?variant==NativeStationState.TitleDepartures:variant==s.Title;
                     break;
                 }
-                case DriveTicker:k=Stutter(t,7,.18,.5);show=p.Tag==NativeExpeditionStation.TickerAt(t);break;
+                case DriveTicker:k=Stutter(t,7,.18,.5);show=p.Tag==(s!=null&&s.Music.On&&s.Music.Mode!=NativeKitFlash.Calm&&s.Music.Bar>0?NativeExpeditionStation.TickerAtBar(s.Music.Bar):NativeExpeditionStation.TickerAt(t));break;
                 case DriveSignal:
                 {
                     byte a=s?.Signal??NativeStationState.SignalRed;show=true;

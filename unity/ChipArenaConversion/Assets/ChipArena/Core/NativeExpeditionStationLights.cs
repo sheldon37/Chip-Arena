@@ -106,6 +106,8 @@ namespace ChipArena.UnityConversion
                 }
             }
             r*=k;g*=k;b*=k;
+            // The zone boss song's hand on the house lights, lamps, board and red signals (never a hazard's light).
+            if(s!=null&&s.Music.On)NativeExpeditionStationKit.MusicLight(c.Kind,c.Kind==KindLook&&c.Look>=0&&c.Look<looks.Length?looks[c.Look].id:null,c.X,s.Music,s.Signal,ref r,ref g,ref b);
         }
         private static float StationFrac(double x)=>(float)(x-Math.Floor(x));
         /// <summary>Picks and eases the slots for a camera at (x, y, z); dt 0 snaps (stills). `slots`: how many may light (8,

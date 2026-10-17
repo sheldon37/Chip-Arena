@@ -182,7 +182,8 @@ namespace ChipArena.UnityConversion
         /// reach (m north), the slag pot's tip (deg).</summary>
         public const float LadleTilt=58,LadleHoist=1.8f,RamLift=5.0f,SlabRun=44.6f,ShearStroke=1.3f,PusherReach=.2f,PotTip=62f;
         /// <summary>A frame's world pose this frame: world = (Px, Py, Pz) + Q * local. Frame 0 is the identity.</summary>
-        public static void FramePose(int frame,IronworksHazardView[] views,double time,out float px,out float py,out float pz,out float qx,out float qy,out float qz,out float qw)
+        /// `music`: the zone boss song (NativeIronworksMusic): the parked ladle and its hook rock with the bar; nothing else moves to it.
+        public static void FramePose(int frame,IronworksHazardView[] views,double time,out float px,out float py,out float pz,out float qx,out float qy,out float qz,out float qw,in NativeZoneBossBeat music=default)
         {
             px=py=pz=0;qx=qy=qz=0;qw=1;if(frame<=0||frame>=Frames)return;px=FrameOrigin[frame*3];py=FrameOrigin[frame*3+1];pz=FrameOrigin[frame*3+2];
             IronworksHazardView V(int h)=>views!=null&&h<views.Length?views[h]:default;
@@ -190,7 +191,7 @@ namespace ChipArena.UnityConversion
             {
                 case FrameLadle:
                 {
-                    var v=V(NativeIronworksHazards.Ladle);double tilt=LadleTiltOf(v);double sway=.6*Math.Sin(time*.9)+(v.Phase==NativeHazardPhase.Warn?1.2*Math.Sin(time*7)*v.Level:0);
+                    var v=V(NativeIronworksHazards.Ladle);double tilt=LadleTiltOf(v);double sway=.6*Math.Sin(time*.9)+(v.Phase==NativeHazardPhase.Warn?1.2*Math.Sin(time*7)*v.Level:0)+MusicSway(music,v.Parked);
                     if(v.Parked)py+=LadleHoist;var q=Then(AxisRot(0,0,1,-tilt),AxisRot(1,0,0,sway*.5));qx=(float)q.X;qy=(float)q.Y;qz=(float)q.Z;qw=(float)q.W;break;
                 }
                 case FrameRam:py+=(float)(RamLiftOf(V(NativeIronworksHazards.Hammer))-RamLift);break;
@@ -198,7 +199,7 @@ namespace ChipArena.UnityConversion
                 case FrameShear:py-=(float)(ShearOf(V(NativeIronworksHazards.Shear))*ShearStroke);break;
                 case FramePusher:pz+=(float)(PusherOf(V(NativeIronworksHazards.Pusher))*PusherReach);break;
                 case FrameSlagPot:{double tip=PotTipOf(V(NativeIronworksHazards.Slag));var q=AxisRot(0,0,1,-tip);qx=(float)q.X;qy=(float)q.Y;qz=(float)q.Z;qw=(float)q.W;break;}
-                case FrameHook:if(V(NativeIronworksHazards.Ladle).Parked)py+=LadleHoist;break;
+                case FrameHook:{var v=V(NativeIronworksHazards.Ladle);if(v.Parked)py+=LadleHoist;double rock=MusicSway(music,v.Parked);if(rock!=0){var q=AxisRot(1,0,0,rock*.25);qx=(float)q.X;qy=(float)q.Y;qz=(float)q.Z;qw=(float)q.W;}break;}
             }
         }
         /// <summary>The ladle's tilt (deg): tipping in the warning, full while pouring, back over the cool-down; 0 at rest or parked.</summary>
@@ -241,7 +242,8 @@ namespace ChipArena.UnityConversion
 
         // ---------------- drives ----------------
         /// <summary>A part's linear colour (times its gain) and light level this frame (pure).</summary>
-        public static void Drive(in NativeIronPart p,IronworksHazardView[] views,double time,out float r,out float g,out float b,out float level)
+        /// `music`: the zone boss song (NativeIronworksMusic.MusicGain): the lamps and furnaces follow it, hazard drives never.
+        public static void Drive(in NativeIronPart p,IronworksHazardView[] views,double time,out float r,out float g,out float b,out float level,in NativeZoneBossBeat music=default)
         {
             r=(float)NativeSceneryBuilder.Channel(p.Color,16);g=(float)NativeSceneryBuilder.Channel(p.Color,8);b=(float)NativeSceneryBuilder.Channel(p.Color,0);float k=p.Gain;level=p.Level;
             var v=p.Hazard>=0&&views!=null&&p.Hazard<views.Length?views[p.Hazard]:default;
@@ -262,6 +264,7 @@ namespace ChipArena.UnityConversion
                 case DriveHazardGlow:k*=HazardGlow(v,p.Param);break;
                 case DriveTap:k*=TapGlow(v,time,p.Param);break;
             }
+            if(music.On)k*=MusicGain(p,music);
             r*=k;g*=k;b*=k;
         }
         /// <summary>A hazard-lit part's level: dim at rest, building through the warning, full while live, fading in the cool-down.</summary>
@@ -292,7 +295,8 @@ namespace ChipArena.UnityConversion
         /// the taphole); the pour's stream falls only while the ladle pours; the slag tongue spreads in its first seconds live and
         /// cools over the cool-down to a dark crust that stays.
         /// </summary>
-        public static void MoltenState(in NativeMoltenPiece m,IronworksHazardView[] views,double time,out float heatA,out float heatB,out float crust,out float front,out float flow,out bool shown)
+        /// `music`: the zone boss song: the furnace and converter pools take its heat (NativeIronworksMusic.MusicHeat); hazard metal never.
+        public static void MoltenState(in NativeMoltenPiece m,IronworksHazardView[] views,double time,out float heatA,out float heatB,out float crust,out float front,out float flow,out bool shown,in NativeZoneBossBeat music=default)
         {
             heatA=m.HeatA;heatB=m.HeatB;crust=m.Crust;front=1;flow=1;shown=true;var v=m.Hazard>=0&&views!=null&&m.Hazard<views.Length?views[m.Hazard]:default;
             switch(m.Drive)
@@ -335,8 +339,8 @@ namespace ChipArena.UnityConversion
                 case MDriveSlab:shown=SlabShown(v);if(v.Phase==NativeHazardPhase.Active){float u=(float)Math.Min(1,v.Since/NativeIronworksHazards.Defs[NativeIronworksHazards.Slab].Live);heatA=heatB=m.HeatA-(m.HeatA-m.HeatB)*u;}else if(v.Phase==NativeHazardPhase.Clear)heatA=heatB=m.HeatB*v.Level;flow=0;break;
                 case MDriveBillet:{float f=HazardGlow(v,.75f);heatA*=f;heatB*=f;if(v.Phase==NativeHazardPhase.Active||v.Phase==NativeHazardPhase.Clear&&v.Since<.2){heatA=heatB=Math.Min(1,m.HeatA*1.08f);}flow=0;break;}
                 case MDriveSlagPot:{if(v.Phase==NativeHazardPhase.Warn||v.Phase==NativeHazardPhase.Active){heatA=Math.Min(1,m.HeatA+.25f*v.Level);crust=.4f;flow=1.5f;}break;}
-                case MDriveFurnace:{float f=Level(DriveFire,m.Param,time);heatA*=.92f+.08f*f;heatB*=.9f+.1f*f;break;}
-                case MDriveConverter:{float f=Level(DriveFire,m.Param,time*.7);heatA*=.9f+.1f*f;break;}
+                case MDriveFurnace:{float f=Level(DriveFire,m.Param,time);heatA*=.92f+.08f*f;heatB*=.9f+.1f*f;if(music.On){float h=MusicHeat(music);heatA=Math.Min(1,heatA*h);heatB=Math.Min(1,heatB*h);}break;}
+                case MDriveConverter:{float f=Level(DriveFire,m.Param,time*.7);heatA*=.9f+.1f*f;if(music.On)heatA=Math.Min(1,heatA*MusicHeat(music));break;}
             }
         }
 

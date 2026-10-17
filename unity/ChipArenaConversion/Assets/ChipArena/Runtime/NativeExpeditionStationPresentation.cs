@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
             // The view: the DEV preview's while it is on, else the authority's fields once they exist, else the calm station
             // (no hazard is drawn in normal play until then).
             arena.BindZonePresentation();var view=NativeStationLive.Current;if(NativeStationPreview.On){NativeStationPreview.Fill(stationPreview,now);view=stationPreview;}
-            stationState.Evaluate(view,now);NativeStationLive.Shown=view;NativeStationLive.ShownClock=now;
+            stationState.Evaluate(view,now);stationState.Score(ZoneBossBeat(arena));NativeLighting.ZoneHouse(stationState.Music.House());NativeStationLive.Shown=view;NativeStationLive.ShownClock=now;
             Array.Clear(stationParents,0,stationParents.Length);foreach(var p in arena.AllBlocks){if(p==null||p.Definition?.id==null)continue;if(stationIndex.TryGetValue(p.Definition.id,out int i))stationParents[i]=p;}
             var blocks=map.blocks;if((QualitySettings.activeColorSpace==ColorSpace.Linear)!=stationColorLinear)StationRestColors();
             for(int i=0;i<stationParents.Length;i++){var p=stationParents[i];if(p==null){stationMoved[i]=false;continue;}var t=p.transform;var b=blocks[i];var r=b.rotation;
@@ -105,13 +105,20 @@ namespace ChipArena.UnityConversion
         private void DrawStationKit(NativeArena arena,float now,Camera eye)
         {
             stationCastUsed=stationTrimUsed=0;Vector3 from=eye!=null?eye.transform.position:Vector3.zero,to=from;bool fade=eye!=null&&!FirstPerson&&arena.ViewPilot?.Body!=null;if(fade)to=arena.ViewPilot.Body.position+Vector3.up*.9f;
-            bool lean=LowGraphics||!UsesInstancing;byte skip=lean?NativeExpeditionStationKit.TierFull:NativeExpeditionStationKit.TierLow;var parts=stationKit.Parts;
+            bool lean=LowGraphics||!UsesInstancing;byte skip=lean?NativeExpeditionStationKit.TierFull:NativeExpeditionStationKit.TierLow;var parts=stationKit.Parts;bool sung=stationState.Music.On;
             for(int i=0;i<parts.Length;i++)
             {
                 var part=parts[i];if(part.Tier==skip)continue;var prop=stationParents[part.Parent];if(prop==null||stationOut[part.Parent])continue;
                 Matrix4x4 m;if(stationMoved[part.Parent]){var t=prop.transform;Quaternion q=t.rotation;m=Matrix4x4.TRS(t.position+stationNudge[part.Parent]+q*new Vector3(part.X,part.Y,part.Z),q*new Quaternion(part.Qx,part.Qy,part.Qz,part.Qw),Vector3.one);}else m=stationRest[i];
                 if(fade&&part.Fade&&MetroBetween(from,to,new Vector3(m.m03,m.m13,m.m23),new Vector3(part.Hx+.2f,part.Hy+.2f,part.Hz+.2f)))continue;
-                Vector4 color=stationRestColor[i];if(part.Drive!=NativeExpeditionStationKit.DriveSteady){if(!NativeExpeditionStationKit.Drive(part,stationState,now,out float r,out float g,out float bl,out float level))continue;color=MetroColor(r,g,bl,level);}
+                // The zone boss song lifts, dims and pulses the lights that follow it (NativeExpeditionStationMusic; never a hazard's).
+                Vector4 color=stationRestColor[i];bool music=sung&&NativeExpeditionStationKit.MusicReactive(part);
+                if(part.Drive!=NativeExpeditionStationKit.DriveSteady||music)
+                {
+                    if(!NativeExpeditionStationKit.Drive(part,stationState,now,out float r,out float g,out float bl,out float level))continue;
+                    if(music){float k=NativeExpeditionStationKit.MusicGain(part,stationState.Music,stationRestSpot[i].x,stationState.Signal);r*=k;g*=k;bl*=k;if(NativeExpeditionStationKit.MusicScalesLevel(part))level*=k;}
+                    color=MetroColor(r,g,bl,level);
+                }
                 StationPut(part.Shadow,m,new Vector4(part.Hx,part.Hy,part.Hz,NativeBlockLooks.Chamfer),stationRestSpot[i],color,new Vector4(part.Look,1,stationSeeds[i],part.Flags));
             }
             // The express: posed at the nose while it is in the station (its parts cull beyond the shell).
