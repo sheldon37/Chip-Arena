@@ -12,6 +12,9 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class HordeZoneKind
     {
+        /// <summary>Whether the content ships it (Astra sets it with the kind's PveContent row): until then the authority and the
+        /// wire do not know its id (NativeHordeKinds.Known) and only the presentation draws it.</summary>
+        public bool Shipped;
         public string Id,Name,Zone;public int Body,Looks=1,Seam,SeamClass=1;public float Radius=NativeHordeKinds.AddRadius,Height=NativeHordeKinds.AddHeight,Scale=1,Mass=1,Tempo=1;
         public NativeHordeKinds.Attack Attack;public PveAddStats Proposed;
         /// <summary>The ZOMBIE PRO takes (Core/NativeZombieClips keys) it walks, runs, stands and wanders on.</summary>
@@ -20,7 +23,7 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The zone kinds, appended after the Siren's seven (NativeHordeKinds.Count): kind index NativeHordeKinds.Count + i for zone
-    /// kind i. Each zone keeps its kinds in its own files and adds its list to <see cref="Kinds"/> (the one registration line);
+    /// kind i (the City Ironworks' five, then the Central Station's four). Each zone keeps its kinds in its own files and adds its list to <see cref="Kinds"/> (the one registration line);
     /// NativeHordeKinds' tables grow by them once (its static constructor), and the shared horde systems ask
     /// <see cref="NativeHordeKinds.Base"/> for the Siren kind whose tables a zone kind borrows. Nothing here is read by the
     /// authority: a content id the rules do not know still draws as the shambler, and the Siren's kinds keep their indices and
@@ -29,7 +32,7 @@ namespace ChipArena.UnityConversion
     public static class NativeHordeZones
     {
         /// <summary>Every zone kind in index order (the registration line: one entry per zone).</summary>
-        public static readonly HordeZoneKind[] Kinds=Join(NativeIronworksKinds.Kinds);
+        public static readonly HordeZoneKind[] Kinds=Join(NativeIronworksKinds.Kinds,NativeStationKinds.Kinds);
         public static int Count=>Kinds.Length;
         /// <summary>The zone kind at a horde kind index (null for the Siren's kinds or an index out of range).</summary>
         public static HordeZoneKind Of(int kind){int i=kind-NativeHordeKinds.Count;return i>=0&&i<Kinds.Length?Kinds[i]:null;}
