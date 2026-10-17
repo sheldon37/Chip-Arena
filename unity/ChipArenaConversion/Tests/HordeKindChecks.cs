@@ -272,7 +272,7 @@ namespace ChipArena.UnityConversion
             foreach(NativeHordeKinds.Attack a in Enum.GetValues(typeof(NativeHordeKinds.Attack))){foreach(var key in new[]{NativeHordeKinds.WindupCue(a),NativeHordeKinds.StrikeCue(a),NativeHordeKinds.StrikeUnder(a)})if(key!=null)Check(keys.Contains(key),"cue "+key+" is an existing bank key");}
             for(int k=0;k<NativeHordeKinds.Count;k++){var key=NativeHordeKinds.StepCue(k);if(key!=null)Check(keys.Contains(key),"step cue "+key+" is an existing bank key");}
         }
-        // ---- the organic zombie meshes: valid geometry, normals, the shading data packed as ZombieLit unpacks it ----
+        // ---- the voxel zombie meshes: valid geometry, normals, the shading data packed as ZombieLit unpacks it ----
         private static void Geometry()
         {
             int tris=0;float worstFlip=0;

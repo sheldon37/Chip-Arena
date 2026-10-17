@@ -83,16 +83,8 @@ namespace ChipArena.UnityConversion
         public int Sides(int full)=>Tier==0?full:Tier==1?Math.Max(4,(full*2+2)/3):Math.Max(4,(full+1)/2);
         public float Bevel(float b)=>Tier>=2?0:Tier==1?(b>=.006f?b*.8f:0):b;
         public void Into(int bone,WeaponStretch stretch=WeaponStretch.None)=>target=mesh.Section(bone,stretch);
-        public void Push(Matrix4x4 local){stack.Push(m);m=local*m;flip=m.GetDeterminant()<0;normalReady=false;}
-        public void Pop(){m=stack.Pop();flip=m.GetDeterminant()<0;normalReady=false;}
-        // The normal matrix (inverse transpose of the transform), made when a smooth face first needs it after a push or pop.
-        private Matrix4x4 normalM;private bool normalReady;
-        /// <summary>A normal through the current transform (the inverse transpose, so scaled and mirrored frames keep it true).</summary>
-        public Vector3 N(Vector3 n)
-        {
-            if(!normalReady){normalM=Matrix4x4.Invert(m,out var inv)?Matrix4x4.Transpose(inv):Matrix4x4.Identity;normalReady=true;}
-            return Unit(Vector3.TransformNormal(n,normalM));
-        }
+        public void Push(Matrix4x4 local){stack.Push(m);m=local*m;flip=m.GetDeterminant()<0;}
+        public void Pop(){m=stack.Pop();flip=m.GetDeterminant()<0;}
         public Vector3 P(Vector3 v)=>Vector3.Transform(v,m);
         public static Matrix4x4 T(float x,float y,float z)=>Matrix4x4.CreateTranslation(x,y,z);
         public static Matrix4x4 Rx(float a)=>Matrix4x4.CreateRotationX(a);
@@ -139,30 +131,15 @@ namespace ChipArena.UnityConversion
             int k=Vertex(a,na,c);Vertex(b,nb,c);Vertex(d,nd,c);Vertex(e,ne,c);
             s.Indices.Add(k);s.Indices.Add(k+1);s.Indices.Add(k+2);s.Indices.Add(k);s.Indices.Add(k+2);s.Indices.Add(k+3);
         }
-        /// <summary>A smooth quad a-b-c-d (counter-clockwise front) with a normal at each corner (organic surfaces), through the
-        /// current transform; a collapsed corner becomes one triangle.</summary>
-        public void SmoothQuad(in WeaponPaint c,Vector3 a,Vector3 b,Vector3 d,Vector3 e,Vector3 na,Vector3 nb,Vector3 nd,Vector3 ne)
+        /// <summary>A flat quad a-b-c-d (counter-clockwise front) whose corners carry their own 0..1 value (at most .9) in the shading
+        /// data's x fraction beside the paint's surface class: the zombie voxels' corner occlusion, which the bake folds in.</summary>
+        public void QuadData(in WeaponPaint c,Vector3 a,Vector3 b,Vector3 d,Vector3 e,float fa,float fb,float fd,float fe)
         {
-            a=P(a);b=P(b);d=P(d);e=P(e);na=N(na);nb=N(nb);nd=N(nd);ne=N(ne);Face(c,a,b,d,e,na,nb,nd,ne,true);
-        }
-        /// <summary>A smooth quad whose corners take their own albedo (`ca`..`ce`, linear) over the paint's emission, tag and surface:
-        /// colour fields blended across a surface (the zombies' skin, sockets and tears).</summary>
-        public void SmoothQuad(in WeaponPaint c,Vector3 a,Vector3 b,Vector3 d,Vector3 e,Vector3 na,Vector3 nb,Vector3 nd,Vector3 ne,Vector3 ca,Vector3 cb,Vector3 cd,Vector3 ce)
-        {
-            a=P(a);b=P(b);d=P(d);e=P(e);na=N(na);nb=N(nb);nd=N(nd);ne=N(ne);
-            if(flip){var t=b;b=e;e=t;var u=nb;nb=ne;ne=u;var w=cb;cb=ce;ce=w;}
-            if(Vector3.Cross(d-a,e-b).LengthSquared()<1e-16f)return;
-            WeaponPaint At(in WeaponPaint p,Vector3 col)=>new WeaponPaint(col,p.Emit,p.Tag,p.Surface);
-            bool ab=Vector3.DistanceSquared(a,b)<1e-12f,bd=Vector3.DistanceSquared(b,d)<1e-12f,de=Vector3.DistanceSquared(d,e)<1e-12f,ea=Vector3.DistanceSquared(e,a)<1e-12f;
-            int collapsed=(ab?1:0)+(bd?1:0)+(de?1:0)+(ea?1:0);if(collapsed>=2)return;var s=target;
-            if(collapsed==1)
-            {
-                // Drop the repeated corner: one triangle.
-                if(ab){b=d;nb=nd;cb=cd;d=e;nd=ne;cd=ce;}else if(bd){d=e;nd=ne;cd=ce;}
-                int i=Vertex(a,na,At(c,ca));Vertex(b,nb,At(c,cb));Vertex(d,nd,At(c,cd));s.Indices.Add(i);s.Indices.Add(i+1);s.Indices.Add(i+2);return;
-            }
-            int k=Vertex(a,na,At(c,ca));Vertex(b,nb,At(c,cb));Vertex(d,nd,At(c,cd));Vertex(e,ne,At(c,ce));
-            s.Indices.Add(k);s.Indices.Add(k+1);s.Indices.Add(k+2);s.Indices.Add(k);s.Indices.Add(k+2);s.Indices.Add(k+3);
+            var s=target;int from=s.Positions.Count;Quad(c,a,b,d,e);if(s.Positions.Count-from!=4)return;
+            // Face turns a mirrored quad a-e-d-b: the corners' values follow their corners.
+            if(flip){var t=fb;fb=fe;fe=t;}
+            float cls=c.Surface;float F(float v)=>cls+Math.Max(0,Math.Min(.9f,v));
+            s.Data[from]=new Vector2(F(fa),0);s.Data[from+1]=new Vector2(F(fb),0);s.Data[from+2]=new Vector2(F(fd),0);s.Data[from+3]=new Vector2(F(fe),0);
         }
         /// <summary>A quad turned to face away from `inside` (convex primitives).</summary>
         private void QuadOut(in WeaponPaint c,Vector3 a,Vector3 b,Vector3 d,Vector3 e,Vector3 inside)

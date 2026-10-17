@@ -4,24 +4,26 @@ using System.Numerics;
 
 namespace ChipArena.UnityConversion
 {
-    // The organic kit the Siren's zombies are sculpted with (owner 2026-10-17: "fix the zombies animations (Design as well, it
-    // seems they are still on the lower quality end) Improve these vastly"; docs/ZOMBIE-DESIGN.md). Presentation only, engine-free
-    // and deterministic, built once when the bank loads. On top of NativeHordeModels' box kit it adds:
-    //  - smooth surfaces over grids (Grid): muscled limbs with a profile of rings (Limb), sculpted (super)ellipsoid masses with a
-    //    displacement (Mass: the skull's brow, sockets, cheekbones and nose), curved armour shells with chipped, broken edges,
-    //    dents and panel seams (Shell), tubes for fingers, ribs, cables and tendons (Tube), strips laid on a surface for the ink
-    //    veins, seams and cracks (Strip) and torn hanging tatters (Tatter);
+    // The voxel kit the Siren's zombies are built with (owner 2026-10-17: "Improve these vastly", then "Keep voxel style, just
+    // improve it. The sculpted looks odd"; docs/ZOMBIE-DESIGN.md). Presentation only, engine-free and deterministic, built once
+    // when the bank loads. On top of NativeHordeModels' box kit it adds:
+    //  - voxel grids (Vox, Voxels): a part filled cell by cell in its joint's frame, each cell knowing its depth under the
+    //    surface, so a part is painted in layers (suit over skin over flesh and bone) and a tear, a socket or a wound is cells
+    //    taken away, the layer under them showing as inset voxels. Only the faces open to air are drawn, merged into larger
+    //    quads where they match, each corner carrying its voxel occlusion (the cells round it);
+    //  - the pilot's plates cracked into tiles, offset and tilted, some gone (Tiles); block rags and block cables that sway
+    //    (Strand, Chain); stepped glowing cracks (Zig);
     //  - per-vertex shading data in WeaponSection.Data (uv0 on the mesh) for ChipArena/ZombieLit: x the surface class
     //    (Surf*: skin, wet flesh, armour shell, cloth, bone, matte, wire) plus .02 + .96 x the baked occlusion, y the missing-piece
     //    variant (1..4, hidden per add) plus .02 + .96 x the sway weight of a dangling part (K.Pack); the vertex colour's alpha names the
     //    proportion region (head, torso width, limb girth) the shader scales per add;
     //  - Finish: the occlusion bake (each part's occluder spheres darken the vertices of the others on its joint and, at .7, on
-    //    the neighbouring joints at rest: armour over skin, the mouth, the sockets, between the fingers, the crotch), grime and
-    //    blood toward the hands, the feet and the mouth, the regions;
+    //    the neighbouring joints at rest; a grid's own corner occlusion folded in), a stepped shade per block, grime and blood
+    //    toward the hands, the feet and the mouth, the regions;
     //  - Variation: the add's own tone, mottling seed and missing pieces by id, as the per-instance body tint (white = the plain
     //    model, so every other draw of these models is unchanged).
     // Every vertex stays inside the authority's capsule with the per-add variation and sway at their largest
-    // (Tests/HordeKindChecks); the tiers thin the rings, the sides and the details.
+    // (Tests/HordeKindChecks); the tiers drop the shade steps, the smallest blocks and the bevels.
     public static partial class NativeHordeModels
     {
         /// <summary>Surface classes (WeaponPaint.Surface, uv0.x's whole part): ChipArena/ZombieLit's wrap, sheen and mottling per class.</summary>
@@ -66,8 +68,78 @@ namespace ChipArena.UnityConversion
         /// value, never on a whole number, so the interpolated value never rounds into the next class.</summary>
         public static float Pack(float whole,float value)=>whole+PackLow+PackSpan*Math.Max(0,Math.Min(1,value));
         public const float PackLow=.02f,PackSpan=.96f;
-        /// <summary>A point and normal on a surface at (u, v) (veins and seams are laid on it).</summary>
-        private delegate void SurfEval(float u,float v,out Vector3 p,out Vector3 n);
+
+        // ================================================================================================================
+        // Voxel grids
+        // ================================================================================================================
+        /// <summary>
+        /// A voxel grid in a joint's frame (left-authored like the rest): NX x NY x NZ cubes of side C from the corner O. A cell
+        /// holds a paint (1-based into Paints; 0 empty) and a shade step (0..3, the blocky mottling); Shape fills it and measures
+        /// each cell's depth under the surface (0 on the surface), which Paint reads to lay the layers and cut the tears.
+        /// </summary>
+        private sealed class Vox
+        {
+            public readonly int NX,NY,NZ;public readonly float C;public readonly Vector3 O;
+            private readonly short[] cell,depth;private readonly byte[] shade;
+            public readonly List<WeaponPaint> Paints=new List<WeaponPaint>();
+            public Vox(int nx,int ny,int nz,float c,Vector3 o){NX=Math.Max(1,nx);NY=Math.Max(1,ny);NZ=Math.Max(1,nz);C=c;O=o;cell=new short[NX*NY*NZ];depth=new short[cell.Length];shade=new byte[cell.Length];}
+            /// <summary>A grid of whole cells over bounds (left-authored, metres), its cell as near `c` as fits.</summary>
+            public static Vox Over(float x0,float x1,float y0,float y1,float z0,float z1,float c)
+            {
+                int nx=Math.Max(1,(int)Math.Round((x1-x0)/c)),ny=Math.Max(1,(int)Math.Round((y1-y0)/c)),nz=Math.Max(1,(int)Math.Round((z1-z0)/c));
+                float cc=Math.Min((x1-x0)/nx,Math.Min((y1-y0)/ny,(z1-z0)/nz));
+                var o=new Vector3((x0+x1)*.5f-nx*cc*.5f,(y0+y1)*.5f-ny*cc*.5f,(z0+z1)*.5f-nz*cc*.5f);return new Vox(nx,ny,nz,cc,o);
+            }
+            public int Add(in WeaponPaint p){Paints.Add(p);return Paints.Count;}
+            public bool In(int x,int y,int z)=>x>=0&&y>=0&&z>=0&&x<NX&&y<NY&&z<NZ;
+            private int I(int x,int y,int z)=>(z*NY+y)*NX+x;
+            public int Get(int x,int y,int z)=>In(x,y,z)?cell[I(x,y,z)]:0;
+            public void Set(int x,int y,int z,int p){if(In(x,y,z))cell[I(x,y,z)]=(short)p;}
+            public int Depth(int x,int y,int z)=>In(x,y,z)?depth[I(x,y,z)]:-1;
+            public int Shade(int x,int y,int z)=>In(x,y,z)?shade[I(x,y,z)]:0;
+            public void SetShade(int x,int y,int z,int s){if(In(x,y,z))shade[I(x,y,z)]=(byte)Math.Max(0,Math.Min(3,s));}
+            /// <summary>Fills an inclusive box of cells with paint p (0 clears).</summary>
+            public void Fill(int x0,int x1,int y0,int y1,int z0,int z1,int p){for(int z=Math.Max(0,z0);z<=Math.Min(NZ-1,z1);z++)for(int y=Math.Max(0,y0);y<=Math.Min(NY-1,y1);y++)for(int x=Math.Max(0,x0);x<=Math.Min(NX-1,x1);x++)cell[I(x,y,z)]=(short)p;}
+            /// <summary>Fills the cells `inside` holds with p, then measures every filled cell's depth (6-connected cells to air; the
+            /// grid's outside is air).</summary>
+            public void Shape(Func<int,int,int,bool> inside,int p)
+            {
+                for(int z=0;z<NZ;z++)for(int y=0;y<NY;y++)for(int x=0;x<NX;x++)if(inside(x,y,z))cell[I(x,y,z)]=(short)p;
+                Measure();
+            }
+            /// <summary>Depth of every filled cell by a breadth-first walk in from the air.</summary>
+            public void Measure()
+            {
+                var q=new Queue<int>();
+                for(int z=0;z<NZ;z++)for(int y=0;y<NY;y++)for(int x=0;x<NX;x++)
+                {
+                    int i=I(x,y,z);depth[i]=-1;if(cell[i]==0)continue;
+                    if(Get(x-1,y,z)==0||Get(x+1,y,z)==0||Get(x,y-1,z)==0||Get(x,y+1,z)==0||Get(x,y,z-1)==0||Get(x,y,z+1)==0){depth[i]=0;q.Enqueue(i);}
+                }
+                while(q.Count>0)
+                {
+                    int i=q.Dequeue();int x=i%NX,y=(i/NX)%NY,z=i/(NX*NY);int d=depth[i]+1;
+                    void Visit(int a,int b,int c){if(!In(a,b,c))return;int j=I(a,b,c);if(cell[j]!=0&&depth[j]<0){depth[j]=(short)d;q.Enqueue(j);}}
+                    Visit(x-1,y,z);Visit(x+1,y,z);Visit(x,y-1,z);Visit(x,y+1,z);Visit(x,y,z-1);Visit(x,y,z+1);
+                }
+            }
+            /// <summary>Repaints every filled cell: paint(x, y, z, depth) returns its paint (0 takes it away). The depths are the
+            /// shape's, so a cut shows the layer under it.</summary>
+            public void Paint(Func<int,int,int,int,int> paint)
+            {
+                for(int z=0;z<NZ;z++)for(int y=0;y<NY;y++)for(int x=0;x<NX;x++){int i=I(x,y,z);if(cell[i]!=0)cell[i]=(short)paint(x,y,z,depth[i]);}
+            }
+            /// <summary>A cell corner (grid units) in metres.</summary>
+            public Vector3 At(float x,float y,float z)=>O+new Vector3(x*C,y*C,z*C);
+            public Vector3 Centre(int x,int y,int z)=>At(x+.5f,y+.5f,z+.5f);
+            /// <summary>The filled cells' bounds in metres (false when empty).</summary>
+            public bool Bounds(out Vector3 min,out Vector3 max)
+            {
+                int x0=NX,y0=NY,z0=NZ,x1=-1,y1=-1,z1=-1;
+                for(int z=0;z<NZ;z++)for(int y=0;y<NY;y++)for(int x=0;x<NX;x++)if(cell[I(x,y,z)]!=0){x0=Math.Min(x0,x);x1=Math.Max(x1,x);y0=Math.Min(y0,y);y1=Math.Max(y1,y);z0=Math.Min(z0,z);z1=Math.Max(z1,z);}
+                min=At(x0,y0,z0);max=At(x1+1,y1+1,z1+1);return x1>=0;
+            }
+        }
 
         private sealed partial class K
         {
@@ -78,6 +150,8 @@ namespace ChipArena.UnityConversion
             private struct Occluder{public WeaponMesh Mesh;public int Bone,Prim;public Vector3 C;public float R;}
             private struct PrimSpan{public WeaponSection Sec;public int From,To,Prim;}
             private readonly List<Occluder> occluders=new List<Occluder>();private readonly List<PrimSpan> spans=new List<PrimSpan>();private int prim,curPrim;
+            /// <summary>The voxel grids' primitives (their shade steps are per cell, not per block).</summary>
+            private readonly HashSet<int> voxelPrims=new HashSet<int>();
             /// <summary>Hashes 0..1 for the build's own jags and choices (deterministic per kind and look).</summary>
             public float H(int i,int salt)=>(float)NativeGoreRules.Hash01(seed,i,salt);
             /// <summary>Draws one primitive: its vertices carry its id, so its own occluders never darken it.</summary>
@@ -102,337 +176,174 @@ namespace ChipArena.UnityConversion
                     }
                 }
             }
-            // ---- tier thinning ----
-            public int Around(int full)=>Fine?full:Mid?Math.Max(6,(full*2+1)/3):Math.Max(4,(full+1)/2);
-            private static float[] Rows(float[] prof,int stride,int tier)
-            {
-                int n=prof.Length/stride;if(tier==Full||n<=3)return prof;var keep=new List<int>{0};
-                if(tier==Reduced){for(int i=2;i<n-1;i+=2)keep.Add(i);if(n%2==0&&n>4)keep.Add(n-2);}else if(n>=6)keep.Add(n/2);
-                keep.Add(n-1);keep.Sort();var o=new float[keep.Count*stride];for(int i=0;i<keep.Count;i++)Array.Copy(prof,keep[i]*stride,o,i*stride,stride);return o;
-            }
-
-            // ================================================================================================================
-            // Smooth grids, caps, oriented quads, strips
-            // ================================================================================================================
-            /// <summary>A smooth surface through a grid of points (rows along v, columns along u, u x v facing out; `ring` joins the
-            /// last column to the first). paint(r, c) paints quad (r, c); null leaves it out (a tear).</summary>
-            public void Grid(Vector3[][] p,bool ring,Func<int,int,WeaponPaint?> paint,bool blend=true)
-            {
-                int R=p.Length,C=p[0].Length,qc=ring?C:C-1;var n=new Vector3[R,C];
-                for(int r=0;r<R-1;r++)for(int c=0;c<qc;c++){int c1=(c+1)%C;var f=Vector3.Cross(p[r+1][c1]-p[r][c],p[r+1][c]-p[r][c1]);n[r,c]+=f;n[r,c1]+=f;n[r+1,c1]+=f;n[r+1,c]+=f;}
-                for(int r=0;r<R;r++)
-                {
-                    bool pole=true;for(int c=1;c<C&&pole;c++)if(Vector3.DistanceSquared(p[r][c],p[r][0])>1e-10f)pole=false;
-                    if(pole){var s=Vector3.Zero;for(int c=0;c<C;c++)s+=n[r,c];for(int c=0;c<C;c++)n[r,c]=s;}
-                }
-                // Each quad keeps its paint's class, emission and tag; its corners take the albedo of the quads round them (glows
-                // aside), so painted regions blend over one quad instead of stepping at the grid.
-                var q=new WeaponPaint?[R-1,qc];var col=new Vector3[R,C];var cnt=new float[R,C];
-                for(int r=0;r<R-1;r++)for(int c=0;c<qc;c++){var pp=paint(r,c);q[r,c]=pp;if(pp==null||!pp.Value.Lit)continue;int c1=(c+1)%C;foreach(var (rr,cc) in new[]{(r,c),(r,c1),(r+1,c1),(r+1,c)}){col[rr,cc]+=pp.Value.Color;cnt[rr,cc]++;}}
-                Mirror(()=>
-                {
-                    for(int r=0;r<R-1;r++)for(int c=0;c<qc;c++)
-                    {
-                        var pp=q[r,c];if(pp==null)continue;int c1=(c+1)%C;var v=pp.Value;
-                        if(!v.Lit||!blend){S.SmoothQuad(v,p[r][c],p[r][c1],p[r+1][c1],p[r+1][c],n[r,c],n[r,c1],n[r+1,c1],n[r+1,c]);continue;}
-                        Vector3 A(int rr,int cc)=>cnt[rr,cc]>0?col[rr,cc]/cnt[rr,cc]:v.Color;
-                        S.SmoothQuad(v,p[r][c],p[r][c1],p[r+1][c1],p[r+1][c],n[r,c],n[r,c1],n[r+1,c1],n[r+1,c],A(r,c),A(r,c1),A(r+1,c1),A(r+1,c));
-                    }
-                });
-            }
-            /// <summary>A flat fan closing a ring about its centre, facing `outward`.</summary>
-            public void Cap(in WeaponPaint paint,Vector3[] ring,Vector3 outward)
-            {
-                var c=Vector3.Zero;foreach(var q in ring)c+=q;c/=ring.Length;var pp=paint;int n=ring.Length;
-                Mirror(()=>{for(int i=0;i<n;i++){var a=ring[i];var b=ring[(i+1)%n];if(Vector3.Dot(Vector3.Cross(a-c,b-c),outward)>=0)S.Tri(pp,c,a,b);else S.Tri(pp,c,b,a);}});
-            }
-            /// <summary>A flat quad facing along `front` (left-authored).</summary>
-            public void Facing(in WeaponPaint paint,Vector3 a,Vector3 b,Vector3 d,Vector3 e,Vector3 front)
-            {
-                if(Vector3.Dot(Vector3.Cross(d-a,e-b),front)<0){var t=b;b=e;e=t;}var pp=paint;Mirror(()=>S.Quad(pp,a,b,d,e));
-            }
-            /// <summary>A ribbon along points with their surface normals, `width` across (tapering by `taper` to the end), lifted
-            /// `lift` off the surface (veins, seams, cracks, accent strips).</summary>
-            public void Strip(in WeaponPaint paint,Vector3[] pts,Vector3[] nrm,float width,float taper=1,float lift=.0015f)
-            {
-                int n=pts.Length;if(n<2)return;var l=new Vector3[n];var r=new Vector3[n];
-                for(int i=0;i<n;i++)
-                {
-                    var t=i==0?pts[1]-pts[0]:i==n-1?pts[n-1]-pts[n-2]:pts[i+1]-pts[i-1];var nn=Vector3.Normalize(nrm[i]);var side=Vector3.Cross(nn,t);float sl=side.Length();if(sl<1e-7f)side=Vector3.UnitX;else side/=sl;
-                    float w=width*.5f*(1-(1-taper)*i/(n-1f));var o=pts[i]+nn*lift;l[i]=o-side*w;r[i]=o+side*w;
-                }
-                for(int i=0;i<n-1;i++)Facing(paint,l[i],r[i],r[i+1],l[i+1],nrm[i]+nrm[i+1]);
-            }
-            /// <summary>A strip laid on a surface along a path of (u, v) points.</summary>
-            public void StripOn(in WeaponPaint paint,SurfEval s,(float u,float v)[] path,float width,float taper=1,float lift=.0015f)
-            {
-                var p=new Vector3[path.Length];var n=new Vector3[path.Length];for(int i=0;i<path.Length;i++)s(path[i].u,path[i].v,out p[i],out n[i]);Strip(paint,p,n,width,taper,lift);
-            }
-            /// <summary>An ink vein on a surface: a wandering, branching glowing strip from (u, v) heading `dir` (in u, v units),
-            /// each branch its own flicker cell (NativeMinionFx glow code).</summary>
-            public void Vein(SurfEval s,float u,float v,float du,float dv,int steps,float width,float k=1,int branches=1,int salt=0)
-            {
-                if(Far)return;if(!Fine){steps=Math.Max(2,steps*2/3);branches=0;}
-                var path=new (float,float)[steps+1];float a=u,b=v;
-                for(int i=0;i<=steps;i++){path[i]=(a,b);float w=(H(i,0x91+salt)-.5f)*1.1f;float cu=du*(float)Math.Cos(w)-dv*(float)Math.Sin(w)*.5f,cv=dv*(float)Math.Cos(w)+du*(float)Math.Sin(w)*.5f;a+=cu;b+=cv;}
-                StripOn(Seam(k),s,path,width,.35f,.0018f);
-                for(int j=0;j<branches;j++){int at=1+(int)(H(j,0x92+salt)*(steps-1));var (bu,bv)=path[at];float sgn=j%2==0?1:-1;Vein(s,bu,bv,du*.6f-dv*sgn*.8f,dv*.6f+du*sgn*.8f,Math.Max(2,steps/2),width*.7f,k*.85f,0,salt+17+j);}
-            }
-
-            // ================================================================================================================
-            // Limbs and tubes
-            // ================================================================================================================
-            /// <summary>
-            /// A muscled limb from a to b (joint frame, left-authored): rings across the axis (`across` its x, by default the joint's
-            /// x) from a profile of rows (u along, rx, rz, offset across, offset forward), smooth; paint(row, col) per quad (null a
-            /// tear); `capA` / `capB` close the ends (a stump's wound where a severed joint shows it). Returns the surface (u along,
-            /// v around 0..1 from +across toward +forward) for veins. Occluder spheres along the axis.
-            /// </summary>
-            public SurfEval Limb(Vector3 a,Vector3 b,float[] prof,Func<int,int,WeaponPaint?> paint,WeaponPaint? capA=null,WeaponPaint? capB=null,int sides=10,Vector3? across=null,bool occlude=true)
-            {
-                var along=Vector3.Normalize(b-a);var x=across??Vector3.UnitX;x-=along*Vector3.Dot(x,along);x=Vector3.Normalize(x);var z=Vector3.Cross(along,x);
-                var rows=Rows(prof,5,Tier);int R=rows.Length/5,C=Far?5:Fine?sides:Math.Max(6,sides*3/5);
-                Vector3 Centre(float u,float ox,float oz)=>a+(b-a)*u+x*ox+z*oz;
-                var pts=new Vector3[R][];
-                for(int r=0;r<R;r++){float u=rows[r*5],rx=rows[r*5+1],rz=rows[r*5+2];var c=Centre(u,rows[r*5+3],rows[r*5+4]);pts[r]=new Vector3[C];for(int q=0;q<C;q++){double t=Math.PI*2*q/C;pts[r][q]=c+x*(float)Math.Cos(t)*rx+z*(float)Math.Sin(t)*rz;}}
-                Prim(()=>
-                {
-                    var orig=new int[R];for(int r=0;r<R;r++){int o=0;for(int i=0;i<prof.Length/5;i++)if(Math.Abs(prof[i*5]-rows[r*5])<1e-6f){o=i;break;}orig[r]=Math.Min(prof.Length/5-2,o);}
-                    Grid(pts,true,(r,q)=>paint(orig[r],q*sides/C));
-                    if(capA!=null&&!Far)Cap(capA.Value,pts[0],-along);if(capB!=null&&!Far)Cap(capB.Value,pts[R-1],along);
-                    if(occlude)for(int r=0;r<R;r++){float rr=(rows[r*5+1]+rows[r*5+2])*.45f;Occ(Centre(rows[r*5],rows[r*5+3],rows[r*5+4]),rr);}
-                });
-                // The full profile for the surface (veins follow the true shape on every tier).
-                return (float u,float v,out Vector3 p,out Vector3 n)=>
-                {
-                    int m=prof.Length/5;float uu=Math.Max(0,Math.Min(1,u));int i=0;while(i<m-2&&prof[(i+1)*5]<uu)i++;float f=(uu-prof[i*5])/Math.Max(1e-5f,prof[(i+1)*5]-prof[i*5]);f=Math.Max(0,Math.Min(1,f));
-                    float L(int k)=>prof[i*5+k]+(prof[(i+1)*5+k]-prof[i*5+k])*f;double t=Math.PI*2*v;float cs=(float)Math.Cos(t),sn=(float)Math.Sin(t);
-                    var c=Centre(uu,L(3),L(4));p=c+x*cs*L(1)+z*sn*L(2);n=Vector3.Normalize(x*cs/Math.Max(1e-4f,L(1))+z*sn/Math.Max(1e-4f,L(2)));
-                };
-            }
-            /// <summary>A limb painted one paint (with optional stump caps).</summary>
-            public SurfEval Limb(Vector3 a,Vector3 b,float[] prof,WeaponPaint paint,WeaponPaint? capA=null,WeaponPaint? capB=null,int sides=10,Vector3? across=null)
-            {var p=paint;return Limb(a,b,prof,(r,c)=>p,capA,capB,sides,across);}
-            /// <summary>A smooth tube along a polyline (radius per point), `sides` around (fingers, ribs, cables, tendons); the end
-            /// capped (a fingertip) unless `open`.</summary>
-            public void Tube(in WeaponPaint paint,Vector3[] path,float[] radius,int sides,bool capEnd=true,bool capStart=false,float squash=1,bool occlude=false)
-            {
-                if(Far)return;int n=path.Length,C=Fine?sides:Math.Max(3,sides-2);var pts=new Vector3[n][];Vector3 normal=Vector3.Zero;
-                for(int i=0;i<n;i++)
-                {
-                    var t=i==0?path[1]-path[0]:i==n-1?path[n-1]-path[n-2]:path[i+1]-path[i-1];t=Vector3.Normalize(t);
-                    if(i==0){var up=Math.Abs(t.Y)>.9f?Vector3.UnitZ:Vector3.UnitY;normal=Vector3.Normalize(up-t*Vector3.Dot(up,t));}else{normal-=t*Vector3.Dot(normal,t);normal=Vector3.Normalize(normal);}
-                    var bi=Vector3.Cross(t,normal);pts[i]=new Vector3[C];
-                    // Around from the normal toward the binormal, so u x v faces out (rows run along the path).
-                    for(int q=0;q<C;q++){double a=Math.PI*2*q/C;pts[i][q]=path[i]+(normal*(float)Math.Cos(a)*squash+bi*(float)Math.Sin(a))*radius[i];}
-                }
-                var pp=paint;
-                Prim(()=>
-                {
-                    Grid(pts,true,(r,q)=>pp);
-                    if(capEnd)Cap(pp,pts[n-1],path[n-1]-path[n-2]);if(capStart)Cap(pp,pts[0],path[0]-path[1]);
-                    if(occlude)for(int i=0;i<n;i++)Occ(path[i],radius[i]*.9f);
-                });
-            }
-
-            // ================================================================================================================
-            // Masses: (super)ellipsoids with a displacement
-            // ================================================================================================================
-            /// <summary>
-            /// A smooth (super)ellipsoid at c with radii r (exponent `pw`: 2 round, ~2.6 the pilots' rounded-cube skull), turned by
-            /// `turn` about its centre, its points pushed out along the radial direction by `disp`(unit point, joint-frame point);
-            /// paint(row, col) per quad (rows from the top pole down, columns round from +x toward +z). `rows`/`cols` its Full grid.
-            /// Returns the surface (u from the top 0 to the bottom 1, v around 0..1) for veins.
-            /// </summary>
-            public SurfEval Mass(Func<int,int,WeaponPaint?> paint,Vector3 c,Vector3 r,float pw=2,Matrix4x4? turn=null,int rows=8,int cols=12,Func<Vector3,Vector3,float> disp=null,bool occlude=true)
-            {
-                int R=Far?3:Fine?rows:Math.Max(4,rows*2/3),C=Far?Math.Max(4,cols/2):Fine?cols:Math.Max(6,cols*2/3);var m=turn??Matrix4x4.Identity;float big=Math.Max(r.X,Math.Max(r.Y,r.Z));
-                bool skip=Far&&big<.045f||!Fine&&big<.013f;
-                Vector3 At(float u,float v)
-                {
-                    double ph=Math.PI*u,th=Math.PI*2*v;var d=new Vector3((float)(Math.Sin(ph)*Math.Cos(th)),(float)Math.Cos(ph),(float)(Math.Sin(ph)*Math.Sin(th)));
-                    float s=pw==2?1:(float)Math.Pow(Math.Pow(Math.Abs(d.X),pw)+Math.Pow(Math.Abs(d.Y),pw)+Math.Pow(Math.Abs(d.Z),pw),1/pw);var q=d/Math.Max(1e-6f,s);
-                    var local=q*r;var p=c+Vector3.TransformNormal(local,m);if(disp!=null){float k=disp(q,p);if(k!=0)p+=Vector3.TransformNormal(Vector3.Normalize(local),m)*k;}return p;
-                }
-                var pts=new Vector3[R][];for(int i=0;i<R;i++){pts[i]=new Vector3[C];for(int q=0;q<C;q++)pts[i][q]=At(i/(R-1f),q/(float)C);}
-                if(!skip)Prim(()=>
-                {
-                    Grid(pts,true,(i,q)=>paint(i*(rows-1)/Math.Max(1,R-1),q*cols/C));
-                    if(occlude){float mn=Math.Min(r.X,Math.Min(r.Y,r.Z)),mx=Math.Max(r.X,Math.Max(r.Y,r.Z));
-                        if(mx<mn*1.6f)Occ(c,(r.X+r.Y+r.Z)/3*.95f);
-                        else{var axis=r.X==mx?Vector3.UnitX:r.Y==mx?Vector3.UnitY:Vector3.UnitZ;axis=Vector3.TransformNormal(axis,m);for(int i=-1;i<=1;i++)Occ(c+axis*(mx-mn)*i*.7f,mn*1.05f);}}
-                });
-                return (float u,float v,out Vector3 p,out Vector3 n)=>{p=At(u,v);var a=At(u+.01f,v);var b=At(u,v+.01f);n=Vector3.Cross(b-p,a-p);n=n.LengthSquared()<1e-14f?Vector3.Normalize(p-c):Vector3.Normalize(n);};
-            }
-            public SurfEval Mass(WeaponPaint paint,Vector3 c,Vector3 r,float pw=2,Matrix4x4? turn=null,int rows=8,int cols=12,bool occlude=true){var p=paint;return Mass((i,q)=>p,c,r,pw,turn,rows,cols,null,occlude);}
-
-            // ================================================================================================================
-            // Armour: curved shells with broken, chipped edges
-            // ================================================================================================================
-            /// <summary>
-            /// A plate of the pilot's armour: the part of a (super)ellipsoid shell (centre c, radii r, turned by `turn`) between
-            /// angles th0..th1 round +y (from +x toward +z) and heights y1 (top) .. y0 (bottom) as the unit sphere's y, `thick`
-            /// deep. `broken` edges (1 top, 2 bottom, 4 the th0 side, 8 the th1 side) are jagged by `jag` (in the angle or height
-            /// units) and their walls show chipped metal (`edge`); the face is dented a little. Returns the outer surface (u across
-            /// th0..th1, v from the top 0 to the bottom 1) for seams and cracks. The impostor keeps only a `big` plate, one-sided.
-            /// </summary>
-            public SurfEval Shell(in WeaponPaint face,in WeaponPaint edge,Vector3 c,Vector3 r,float th0,float th1,float y0,float y1,float thick,int broken=0,float jag=.12f,Matrix4x4? turn=null,float pw=2.3f,int cols=7,int rows=5,bool big=false,float dent=.0025f)
-            {
-                var m=turn??Matrix4x4.Identity;int C=Far?2:Fine?cols:Math.Max(3,cols*2/3),Rr=Far?2:Fine?rows:Math.Max(3,rows*2/3);
-                float Th0(int i)=>th0+((broken&4)!=0?jag*(H(i,0xa1)-.15f):0);float Th1(int i)=>th1-((broken&8)!=0?jag*(H(i,0xa2)-.15f):0);
-                float Y1(int i)=>y1-((broken&1)!=0?jag*(H(i,0xa3)-.15f):0);float Y0(int i)=>y0+((broken&2)!=0?jag*(H(i,0xa4)-.15f):0);
-                Vector3 Unit(float th,float y){y=Math.Max(-.999f,Math.Min(.999f,y));float s=(float)Math.Sqrt(1-y*y);var d=new Vector3(s*(float)Math.Cos(th),y,s*(float)Math.Sin(th));
-                    float k=(float)Math.Pow(Math.Pow(Math.Abs(d.X),pw)+Math.Pow(Math.Abs(d.Y),pw)+Math.Pow(Math.Abs(d.Z),pw),1/pw);return d/Math.Max(1e-6f,k);}
-                Vector3 Point(float th,float y,float inset,float dn)
-                {
-                    var q=Unit(th,y);var local=q*r;var dir=Vector3.Normalize(new Vector3(q.X/r.X,q.Y/r.Y,q.Z/r.Z));local+=dir*(dn-inset);return c+Vector3.TransformNormal(local,m);
-                }
-                float Dent(int i,int j)=>Fine?dent*(H(i*31+j,0xa5)-.5f)*2:0;
-                (float th,float y) Param(int i,int j){float u=j/(C-1f),v=i/(Rr-1f);float t0=Th0(i),t1=Th1(i);float yy1=Y1(j),yy0=Y0(j);return (t0+(t1-t0)*u,yy1+(yy0-yy1)*v);}
-                var outer=new Vector3[Rr][];var inner=new Vector3[Rr][];
-                for(int i=0;i<Rr;i++){outer[i]=new Vector3[C];inner[i]=new Vector3[C];for(int j=0;j<C;j++){var (th,y)=Param(i,j);outer[i][j]=Point(th,y,0,Dent(i,j));inner[i][C-1-j]=Point(th,y,thick,0);}}
-                var f=face;var e=edge;
-                Prim(()=>
-                {
-                    Grid(outer,false,(i,j)=>f);
-                    if(Far&&!big)return;
-                    if(!Far)
-                    {
-                        Grid(inner,false,(i,j)=>e.Scaled(.55f));
-                        // The walls round the boundary: chipped metal where the plate broke, its face colour elsewhere.
-                        var mid=(outer[Rr/2][C/2]+inner[Rr/2][C/2])*.5f;
-                        void Wall(Vector3 a,Vector3 b,Vector3 ai,Vector3 bi,bool chip){var mm=(a+b+ai+bi)*.25f;Facing(chip?e:f.Scaled(.8f),a,b,bi,ai,mm-mid);}
-                        for(int j=0;j<C-1;j++){Wall(outer[0][j],outer[0][j+1],inner[0][C-1-j],inner[0][C-2-j],(broken&1)!=0);Wall(outer[Rr-1][j],outer[Rr-1][j+1],inner[Rr-1][C-1-j],inner[Rr-1][C-2-j],(broken&2)!=0);}
-                        for(int i=0;i<Rr-1;i++){Wall(outer[i][0],outer[i+1][0],inner[i][C-1],inner[i+1][C-1],(broken&4)!=0);Wall(outer[i][C-1],outer[i+1][C-1],inner[i][0],inner[i+1][0],(broken&8)!=0);}
-                    }
-                    float mr=(r.X+r.Y+r.Z)/3;Occ(c,mr*.92f);
-                });
-                return (float u,float v,out Vector3 p,out Vector3 n)=>
-                {
-                    float th=th0+(th1-th0)*u,y=y1+(y0-y1)*v;p=Point(th,y,0,0);var a=Point(th+.01f,y,0,0);var b=Point(th,y-.01f,0,0);n=Vector3.Normalize(Vector3.Cross(a-p,b-p));
-                    var q=Unit(th,y);var radial=Vector3.TransformNormal(new Vector3(q.X/r.X,q.Y/r.Y,q.Z/r.Z),m);if(Vector3.Dot(n,radial)<0)n=-n;
-                };
-            }
-            /// <summary>
-            /// A plate of the pilot's armour as the pilot wears it (the pilot body model's chunky chamfered slabs with panel seams and
-            /// accent strips), broken: a w x h slab `thick` deep in its frame `at` (front +z), its corners chamfered by `bevel`; corner
-            /// `broken` (0 top-right, 1 top-left, 2 bottom-left, 3 bottom-right; -1 whole) bitten away along a jagged line `bite` of the
-            /// way along both edges, the break's walls bared metal. `accent` 0 none, 1 a strip across the top, 2 one down the middle,
-            /// its paint `accentPaint` (a dead strip or the Siren's flickering ink); `seams` 1 a seam across, 2 one down; `crack` a dark
-            /// crack with the ink in it. The impostor keeps only the slab. Registers an occluder over what it covers.
-            /// </summary>
-            public void Armor(in WeaponPaint face,in WeaponPaint edge,Matrix4x4 at,float w,float h,float thick,int broken=-1,float bite=.45f,int accent=0,WeaponPaint? accentPaint=null,int seams=0,bool crack=false,float bevel=.007f)
-            {
-                if(Far){if(w<.09f||h<.09f)return;var fp=face;var at0=at;Prim(()=>{Mirror(()=>{S.Push(at0);S.Box(fp,Vector3.Zero,new Vector3(w,h,thick));S.Pop();});Occ(Vector3.Transform(Vector3.Zero,at0),Math.Min(w,h)*.47f);});return;}
-                float hw=w*.5f,hh=h*.5f,cc=0;int salt=prim*13+7;
-                // The chamfered rectangle, counter-clockwise from the bottom of the right side, with corner k replaced by a jagged break.
-                var corners=new[]{new Vector2(hw,hh),new Vector2(-hw,hh),new Vector2(-hw,-hh),new Vector2(hw,-hh)};var pts=new System.Collections.Generic.List<Vector2>();var chip=new System.Collections.Generic.List<bool>();
-                for(int q=0;q<4;q++)
-                {
-                    var cn=corners[q];var prev=corners[(q+3)%4];var next=corners[(q+1)%4];var toPrev=Vector2.Normalize(prev-cn);var toNext=Vector2.Normalize(next-cn);
-                    if(q==broken&&!Far)
-                    {
-                        float la=Vector2.Distance(prev,cn)*bite,lb=Vector2.Distance(next,cn)*bite;var a=cn+toPrev*la;var b=cn+toNext*lb;int n=Fine?5:3;
-                        pts.Add(a);chip.Add(true);
-                        for(int i=1;i<n;i++){float t=i/(float)n;var m=Vector2.Lerp(a,b,t);var inward=-Vector2.Normalize((toPrev+toNext));float j=(H(i,salt)-.35f)*Math.Min(la,lb)*.5f;pts.Add(m+inward*j);chip.Add(true);}
-                        pts.Add(b);chip.Add(false);
-                    }
-                    else if(cc>0){pts.Add(cn+toPrev*cc);chip.Add(false);pts.Add(cn+toNext*cc);chip.Add(false);}else{pts.Add(cn);chip.Add(false);}
-                }
-                var outline=new Vector3[pts.Count];for(int i=0;i<outline.Length;i++)outline[i]=new Vector3(pts[i].X,pts[i].Y,0);
-                if(Area(outline)<0){Array.Reverse(outline);chip.Reverse();var c2=new bool[chip.Count];for(int i=0;i<c2.Length;i++)c2[i]=chip[(i+1)%c2.Length];chip.Clear();chip.AddRange(c2);}
-                var f=face;var e=edge;var back=face.Scaled(.45f);var chips=chip.ToArray();float bv=Fine?bevel:0;var acc=accentPaint??ZDeadAccent;
-                Prim(()=>
-                {
-                    Mirror(()=>
-                    {
-                        S.Push(at);
-                        S.Slab(i=>chips[i%chips.Length]?e:f,f,back,outline,-thick*.5f,thick*.5f,bv);
-                        if(Mid)
-                        {
-                            float z=thick*.5f+.0012f;
-                            if(accent==1&&h>.05f)S.Box(acc,new Vector3(0,hh*.62f,z),new Vector3(w*.62f,Math.Min(.012f,h*.12f),.004f));
-                            if(accent==2)S.Box(acc,new Vector3(0,0,z),new Vector3(Math.Min(.012f,w*.12f),h*.66f,.004f));
-                            if(Fine&&(seams&1)!=0)S.Box(SeamDark,new Vector3(0,-hh*.25f,z-.0006f),new Vector3(w*.84f,.0035f,.003f));
-                            if(Fine&&(seams&2)!=0)S.Box(SeamDark,new Vector3(w*.22f,0,z-.0006f),new Vector3(.0035f,h*.8f,.003f));
-                        }
-                        S.Pop();
-                    });
-                    if(crack&&Mid)
-                    {
-                        // A crack from a hashed point on the plate's edge toward its middle, the ink glowing in it.
-                        var path=new Vector3[5];float x0=(H(1,salt+1)-.5f)*w*.6f,y0=hh*.95f;for(int i=0;i<5;i++){float t=i/4f;path[i]=new Vector3(x0+(H(i,salt+2)-.5f)*w*.18f-t*x0*.4f,y0-t*h*.6f,thick*.5f);}
-                        var nrm=new Vector3[5];for(int i=0;i<5;i++){path[i]=Vector3.Transform(path[i],at);nrm[i]=Vector3.TransformNormal(Vector3.UnitZ,at);}
-                        Strip(Socket,path,nrm,.007f,.4f,.0014f);if(Fine)Strip(Seam(1.1f),path,nrm,.0026f,.3f,.002f);
-                    }
-                    var cen=Vector3.Transform(Vector3.Zero,at);Occ(cen,Math.Min(hw,hh)*.95f);
-                });
-            }
-            private static float Area(Vector3[] o){float a=0;for(int i=0;i<o.Length;i++){var p=o[i];var q=o[(i+1)%o.Length];a+=p.X*q.Y-q.X*p.Y;}return a;}
-            /// <summary>An armour plate's frame: its centre and the direction its face looks (`up` the plate's +y), rolled by `roll`.</summary>
+            /// <summary>A frame at `centre` facing `face` (+z) with `up` (+y), turned by `roll` about its face.</summary>
             public static Matrix4x4 PlateAt(Vector3 centre,Vector3 face,Vector3 up,float roll=0)
             {
                 var z=Vector3.Normalize(face);var x=Vector3.Normalize(Vector3.Cross(up,z));var y=Vector3.Cross(z,x);
                 var m=new Matrix4x4(x.X,x.Y,x.Z,0,y.X,y.Y,y.Z,0,z.X,z.Y,z.Z,0,0,0,0,1);if(roll!=0)m=Matrix4x4.CreateRotationZ(roll)*m;m.M41=centre.X;m.M42=centre.Y;m.M43=centre.Z;return m;
             }
-            /// <summary>A crack across a plate or hide: a dark jagged strip, the Siren's ink glowing in its middle where `glow`.</summary>
-            public void Crack(SurfEval s,float u,float v,float du,float dv,int steps,float width,bool glow,float k=1)
+
+            // ================================================================================================================
+            // The voxel mesher
+            // ================================================================================================================
+            /// <summary>The corner occlusion of 0..3 neighbouring cells (MagicaVoxel-style: two sides and the diagonal).</summary>
+            private static readonly float[] VoxAo={0,.2f,.36f,.5f};
+            /// <summary>
+            /// Draws a grid: every cell face open to air, coplanar faces of one paint, shade step and flat occlusion merged into
+            /// larger quads, each corner carrying the occlusion of the cells round it. `jitter` is the shade steps' reach (the
+            /// blocky mottling; lit paints only; Full only). One primitive, one occluder over its filled bounds.
+            /// </summary>
+            public void Voxels(Vox v,float jitter=0,bool occlude=true)
             {
-                if(!Mid)return;var path=new (float,float)[steps+1];float a=u,b=v;
-                for(int i=0;i<=steps;i++){path[i]=(a,b);float w=(H(i,0xb1+(int)(u*97))-.5f)*1.4f;a+=du*(float)Math.Cos(w)-dv*(float)Math.Sin(w);b+=dv*(float)Math.Cos(w)+du*(float)Math.Sin(w);}
-                StripOn(Socket,s,path,width,.4f,.0012f);if(glow&&Fine)StripOn(Seam(k),s,path,width*.38f,.3f,.0019f);
+                float jit=Fine?jitter:0;
+                Prim(()=>
+                {
+                    voxelPrims.Add(curPrim);Mirror(()=>MeshVox(v,jit));
+                    if(occlude&&v.Bounds(out var mn,out var mx)){var e=mx-mn;Occ((mn+mx)*.5f,Math.Min(e.X,Math.Min(e.Y,e.Z))*.45f);}
+                });
             }
-            /// <summary>A panel seam along a plate (a fine dark groove line).</summary>
-            public void Seamline(SurfEval s,float u0,float v0,float u1,float v1,int steps=4,float width=.0035f,WeaponPaint? paint=null)
+            private void MeshVox(Vox v,float jitter)
             {
-                if(!Fine)return;var path=new (float,float)[steps+1];for(int i=0;i<=steps;i++){float t=i/(float)steps;path[i]=(u0+(u1-u0)*t,v0+(v1-v0)*t);}StripOn(paint??SeamDark,s,path,width,1,.0011f);
+                int[] n={v.NX,v.NY,v.NZ};int most=Math.Max(n[0]*n[1],Math.Max(n[1]*n[2],n[0]*n[2]));var mask=new long[most];var c=new int[3];var f=new int[3];
+                for(int a=0;a<3;a++)
+                {
+                    int u=(a+1)%3,w=(a+2)%3;int nu=n[u],nw=n[w];
+                    for(int sg=-1;sg<=1;sg+=2)for(int i=0;i<n[a];i++)
+                    {
+                        // The open faces of slice i toward sg: paint, shade step and the four corners' occlusion steps as one key.
+                        for(int k=0;k<nw;k++)for(int j=0;j<nu;j++)
+                        {
+                            c[a]=i;c[u]=j;c[w]=k;int p=v.Get(c[0],c[1],c[2]);long key=0;
+                            if(p!=0)
+                            {
+                                f[a]=i+sg;f[u]=j;f[w]=k;
+                                if(v.Get(f[0],f[1],f[2])==0)
+                                {
+                                    int Solid(int du,int dw){int x=f[0],y=f[1],z=f[2];if(u==0)x+=du;else if(u==1)y+=du;else z+=du;if(w==0)x+=dw;else if(w==1)y+=dw;else z+=dw;return v.Get(x,y,z)!=0?1:0;}
+                                    int Corner(int du,int dw){int s1=Solid(du,0),s2=Solid(0,dw);return s1==1&&s2==1?3:s1+s2+Solid(du,dw);}
+                                    int ao=Corner(-1,-1)|Corner(1,-1)<<2|Corner(1,1)<<4|Corner(-1,1)<<6;
+                                    var pp=v.Paints[p-1];int sh=jitter>0&&pp.Lit&&(pp.Surface==SurfSkin||pp.Surface==SurfFlesh||pp.Surface==SurfBone)?v.Shade(c[0],c[1],c[2])+1:0;
+                                    key=(long)(uint)p|(long)(uint)sh<<16|(long)(uint)ao<<20|1L<<40;
+                                }
+                            }
+                            mask[k*nu+j]=key;
+                        }
+                        // Greedy rectangles over equal keys; a face whose corners differ stays one cell (its occlusion is its own).
+                        for(int k=0;k<nw;k++)for(int j=0;j<nu;)
+                        {
+                            long key=mask[k*nu+j];if(key==0){j++;continue;}
+                            int ao=(int)(key>>20)&0xff;bool flat=(ao&3)==((ao>>2)&3)&&(ao&3)==((ao>>4)&3)&&(ao&3)==((ao>>6)&3);
+                            int wd=1,ht=1;
+                            if(flat)
+                            {
+                                while(j+wd<nu&&mask[k*nu+j+wd]==key)wd++;
+                                for(bool grow=true;grow&&k+ht<nw;){for(int t=0;t<wd;t++)if(mask[(k+ht)*nu+j+t]!=key){grow=false;break;}if(grow)ht++;}
+                            }
+                            for(int kk=0;kk<ht;kk++)for(int t=0;t<wd;t++)mask[(k+kk)*nu+j+t]=0;
+                            int p=(int)(key&0xffff),sh=(int)(key>>16)&0xf;var paint=v.Paints[p-1];
+                            if(sh>0){float m=1+jitter*((sh-1)-1.5f)/1.5f;paint=new WeaponPaint(paint.Color*m,paint.Emit,paint.Tag,paint.Surface);}
+                            float pa=i+(sg>0?1:0);
+                            Vector3 Pt(float jj,float kq){var g=new float[3];g[a]=pa;g[u]=jj;g[w]=kq;return v.At(g[0],g[1],g[2]);}
+                            Vector3 A=Pt(j,k),B=Pt(j+wd,k),D=Pt(j+wd,k+ht),E=Pt(j,k+ht);
+                            float oa=VoxAo[ao&3],ob=VoxAo[(ao>>2)&3],od=VoxAo[(ao>>4)&3],oe=VoxAo[(ao>>6)&3];
+                            // u x w is +a: a-b-d-e faces +a; the -a faces turn the other way round.
+                            if(sg>0)S.QuadData(paint,A,B,D,E,oa,ob,od,oe);else S.QuadData(paint,A,E,D,B,oa,oe,od,ob);
+                            j+=wd;
+                        }
+                    }
+                }
             }
 
             // ================================================================================================================
-            // Small parts: teeth, claws, tatters, cables
+            // Plates, rags, cables and cracks
             // ================================================================================================================
-            /// <summary>A tooth: a tapered, slightly bent wedge from its root (centre of its base) along `down`, `w` wide, `d` deep.</summary>
-            public void ToothAt(in WeaponPaint paint,Vector3 root,Vector3 down,Vector3 outward,float w,float len,float d,float tip=.36f)
+            /// <summary>
+            /// One of the pilot's plates cracked into tiles: a w x h x t slab in frame `at` (face +z, up +y) split into cols x rows
+            /// tiles with `gap` between them (the cracks), a tile gone where its hash falls under `drop` (never the last one), the
+            /// rest shifted out by up to `shift` and tilted by up to `tilt` (rad); `accent` a strip down the middle column, `seam`
+            /// a dark panel line across the top row. The impostor keeps a single slab (a big plate only); the reduced tier merges
+            /// the tiles in pairs.
+            /// </summary>
+            public void Tiles(in WeaponPaint face,Matrix4x4 at,float w,float h,float t,int cols,int rows,float drop=0,float gap=.006f,float shift=.004f,float tilt=.06f,float bevel=.006f,WeaponPaint? accent=null,bool seam=false)
             {
-                down=Vector3.Normalize(down);var side=Vector3.Normalize(Vector3.Cross(outward,down));var o=Vector3.Normalize(Vector3.Cross(down,side));
-                var b0=root-side*w*.5f-o*d*.5f;var b1=root+side*w*.5f-o*d*.5f;var b2=root+side*w*.5f+o*d*.5f;var b3=root-side*w*.5f+o*d*.5f;
-                var tipC=root+down*len+o*d*.15f;var t0=tipC-side*w*tip*.5f;var t1=tipC+side*w*tip*.5f;var mid=root+down*len*.45f;var pp=paint;
-                Prim(()=>{Facing(pp,b3,b2,t1,t0,o);Facing(pp,b1,b0,t0,t1,-o);Out3(pp,b0,b3,t0,mid);Out3(pp,b2,b1,t1,mid);});
+                var fp=face;
+                if(Far){if(w<.09f&&h<.09f)return;Prim(()=>{Mirror(()=>{S.Push(at);S.Box(fp,Vector3.Zero,new Vector3(w,h,t));S.Pop();});Occ(Vector3.Transform(Vector3.Zero,at),Math.Min(w,h)*.45f);});return;}
+                if(!Fine){cols=Math.Max(1,(cols+1)/2);rows=Math.Max(1,(rows+1)/2);tilt*=.6f;}
+                float tw=(w-gap*(cols-1))/cols,th=(h-gap*(rows-1))/rows;int salt=prim*11+3,kept=0,total=cols*rows;float bv=Fine&&tw>.07f&&th>.07f?bevel:0;var acc=accent;
+                for(int r=0;r<rows;r++)for(int q=0;q<cols;q++)
+                {
+                    int id=r*cols+q;bool last=kept==0&&id==total-1;if(!last&&H(id,salt)<drop)continue;kept++;
+                    var cen=new Vector3(-w*.5f+tw*.5f+q*(tw+gap),-h*.5f+th*.5f+r*(th+gap),shift*(H(id,salt+1)-.25f));
+                    float rx=tilt*(H(id,salt+2)-.5f),ry=tilt*(H(id,salt+3)-.5f),rz=tilt*.5f*(H(id,salt+4)-.5f);
+                    var tm=Matrix4x4.CreateRotationX(rx)*Matrix4x4.CreateRotationY(ry)*Matrix4x4.CreateRotationZ(rz)*Matrix4x4.CreateTranslation(cen)*at;
+                    Prim(()=>
+                    {
+                        Mirror(()=>
+                        {
+                            S.Push(tm);S.Box(fp,Vector3.Zero,new Vector3(tw,th,t),bv);
+                            if(acc!=null&&q==cols/2)S.Box(acc.Value,new Vector3(0,0,t*.5f+.0015f),new Vector3(Math.Min(.012f,tw*.18f),th*.8f,.004f));
+                            if(seam&&Fine&&r==rows-1&&th>.04f)S.Box(SeamDark,new Vector3(0,th*.22f,t*.5f+.0008f),new Vector3(tw*.82f,.0035f,.003f));
+                            S.Pop();
+                        });
+                        Occ(Vector3.Transform(Vector3.Zero,tm),Math.Min(tw,th)*.45f);
+                    });
+                }
             }
-            private void Out3(in WeaponPaint p,Vector3 a,Vector3 b,Vector3 c,Vector3 inside){var n=Vector3.Cross(b-a,c-a);var pp=p;if(Vector3.Dot(n,(a+b+c)/3-inside)<0){var t=b;b=c;c=t;}Mirror(()=>S.Tri(pp,a,b,c));}
-            /// <summary>A claw or nail: a curved point from `root` along `dir`, bending toward `curl`, `w` wide at the root.</summary>
-            public void Claw(in WeaponPaint paint,Vector3 root,Vector3 dir,Vector3 curl,float len,float w)
+            /// <summary>A rag of block strips hanging from `top` along `down` (bent out by `bend`), narrowing in steps, swaying from
+            /// its root (a dangling part: Full and Reduced).</summary>
+            public void Strand(in WeaponPaint paint,Vector3 top,Vector3 down,Vector3 outward,float len,float w,float bend=.15f,int steps=3)
             {
-                dir=Vector3.Normalize(dir);var mid=root+dir*len*.55f+curl*len*.12f;var tip=root+dir*len+curl*len*.38f;
-                Tube(paint,new[]{root,mid,tip},new[]{w*.5f,w*.32f,w*.04f},3,true,true,.75f);
+                if(Far)return;if(!Fine)steps=Math.Max(2,steps-1);down=Vector3.Normalize(down);outward=Vector3.Normalize(outward);var pp=paint;var t0=top;float L=len;
+                Piece(0,q=>Vector3.Distance(q,t0)/L,()=>
+                {
+                    for(int i=0;i<steps;i++)
+                    {
+                        float a=i/(float)steps,b=(i+1)/(float)steps,seg=len/steps;var c=top+down*len*(a+b)*.5f+outward*len*bend*a*a;
+                        float ww=w*(1-.55f*a)*(1+.2f*(H(i,0xc1)-.5f));var at=PlateAt(c,outward,-down);var off=new Vector3((H(i,0xc2)-.5f)*w*.3f,0,0);
+                        Prim(()=>{Mirror(()=>{S.Push(Matrix4x4.CreateTranslation(off)*at);S.Box(pp,Vector3.Zero,new Vector3(ww,seg*1.08f,.008f));S.Pop();});});
+                    }
+                });
+            }
+            /// <summary>Exposed wiring out of broken armour: a sagging chain of small blocks from a to b, its far end dangling.</summary>
+            public void Chain(in WeaponPaint paint,Vector3 a,Vector3 b,float sag,float size=.009f)
+            {
+                if(!Mid)return;int n=Fine?6:3;var pp=paint;var a0=a;float L=Vector3.Distance(a,b)+sag;
+                Piece(0,q=>Vector3.Distance(q,a0)/L,()=>
+                {
+                    for(int i=0;i<=n;i++){float t=i/(float)n;var c=Vector3.Lerp(a,b,t)-Vector3.UnitY*sag*4*t*(1-t);var s=new Vector3(size,size,size)*(i==n?1.3f:1);var cc=c;
+                        Prim(()=>Mirror(()=>S.Box(i==n?Copper:pp,cc,s,0)));}
+                });
             }
             /// <summary>
-            /// A torn tatter hanging from `top` along `down` (cloth strips of a torn suit, a shawl's rags): `len` long, `w` wide,
-            /// narrowing to a ragged point, bent out by `out`; two-sided; its vertices sway with their depth (a dangling part).
+            /// A stepped glowing crack across a face: `steps` axis-aligned blocks from `start` along `along`, each step shifted
+            /// sideways by a cell (`across`), a dark split under a glow core (the Siren's ink; `split` false for a vein: the core
+            /// only); `n` the face's outward normal.
             /// </summary>
-            public void Tatter(in WeaponPaint paint,Vector3 top,Vector3 down,Vector3 outward,float len,float w,float bend=.15f)
+            public void Zig(Vector3 start,Vector3 along,Vector3 n,int steps,float len,float width,bool glow,float k=1,bool split=true)
             {
-                if(Far)return;down=Vector3.Normalize(down);outward=Vector3.Normalize(outward);var side=Vector3.Normalize(Vector3.Cross(outward,down));
-                int n=Fine?3:2;var l=new Vector3[n+1];var rr=new Vector3[n+1];
-                for(int i=0;i<=n;i++){float t=i/(float)n;var c=top+down*len*t+outward*len*bend*t*t;float ww=w*.5f*(1-.8f*t)*(1+.25f*(H(i,0xc1)-.5f));l[i]=c-side*ww;rr[i]=c+side*ww*(i==n?.2f:1);}
-                var pp=paint;var t0=top;float L=len;
-                Piece(0,q=>Vector3.Distance(q,t0)/L,()=>Prim(()=>{for(int i=0;i<n;i++){Facing(pp,l[i],rr[i],rr[i+1],l[i+1],outward);Facing(pp.Scaled(.7f),l[i],rr[i],rr[i+1],l[i+1],-outward);}}));
+                if(!Mid)return;if(!Fine)steps=Math.Max(2,steps*2/3);along=Vector3.Normalize(along);n=Vector3.Normalize(n);var across=Vector3.Normalize(Vector3.Cross(n,along));
+                var p=start;var g=glow?Seam(k):SeamDark;
+                for(int i=0;i<steps;i++)
+                {
+                    var c=p+along*len*.5f;var at=PlateAt(c,n,along);var core=g;
+                    bool fine=Fine&&split;Prim(()=>Mirror(()=>{S.Push(at);if(fine)S.Box(Socket,new Vector3(0,0,-.002f),new Vector3(width*1.8f,len+width,.008f));S.Box(core,new Vector3(0,0,.0015f),new Vector3(width*.8f,len+width*.6f,.006f));S.Pop();}));
+                    p+=along*len+across*width*1.2f*(H(i,0xd7+(int)(len*1000))<.5f?-1:1);
+                }
             }
-            /// <summary>Exposed wiring out of broken armour: a sagging cable from a to b (hanging by `sag`), its far end dangling.</summary>
-            public void Cable(in WeaponPaint paint,Vector3 a,Vector3 b,float sag,float radius=.0045f)
-            {
-                if(!Mid)return;int n=Fine?6:3;var path=new Vector3[n+1];var rad=new float[n+1];for(int i=0;i<=n;i++){float t=i/(float)n;path[i]=Vector3.Lerp(a,b,t)-Vector3.UnitY*sag*4*t*(1-t);rad[i]=radius;}
-                var pp=paint;var a0=a;float L=Vector3.Distance(a,b)+sag;Piece(0,q=>Vector3.Distance(q,a0)/L,()=>{Tube(pp,path,rad,4,true,false);Tube(Copper,new[]{b,b+(b-path[n-1])*.4f},new[]{radius*.7f,radius*.5f},3,true,false);});
-            }
+            private static WeaponPaint SeamDark=>new WeaponPaint(WeaponPaint.Linear(0x101215),Vector3.Zero,0,SurfMatte);
+            private static WeaponPaint Socket=>new WeaponPaint(WeaponPaint.Linear(0x0b0607),Vector3.Zero,0,SurfMatte);
+            private static WeaponPaint Copper=>new WeaponPaint(WeaponPaint.Linear(0xb36b3c),Vector3.Zero,0,SurfWire);
 
             // ================================================================================================================
-            // Finish: occlusion, grime and blood, regions
+            // Finish: occlusion, the block shade, grime and blood, regions
             // ================================================================================================================
             // Piece leaves the sway as half its weight over the variant (Finish packs it).
             private static float Sway(float y)=>Math.Max(0,Math.Min(1,(y-(float)Math.Floor(y+1e-4f))*2));
             private static Vector3 RestAt(int bone){var p=Vector3.Zero;for(int j=bone;j>=0;j=CapturedRig.Bones[j].Parent)p+=CapturedRig.Mirror(CapturedRig.Bones[j].Position);return p;}
             private static bool Near(int a,int b)=>a==b||CapturedRig.Bones[a].Parent==b||CapturedRig.Bones[b].Parent==a;
-            /// <summary>Bakes the occlusion into Data.x, grime and blood into the colours and the regions into the alpha.</summary>
+            /// <summary>Each block's shade step reach by surface class (a step per block, so a part of many blocks mottles in blocks).</summary>
+            private static float Step(int cls)=>cls==SurfSkin?.09f:cls==SurfFlesh?.07f:cls==SurfBone?.06f:cls==SurfCloth?.05f:cls==SurfShell?.035f:cls==SurfMatte||cls==SurfWire?.03f:0;
+            /// <summary>Bakes the occlusion into Data.x, the block shade, grime and blood into the colours and the regions into the alpha.</summary>
             public void Finish(float strength=.95f,bool grime=true,bool regions=true)
             {
                 var meshes=SplitJaw?new[]{Mesh,JawMesh}:new[]{Mesh};var rest=new Vector3[CapturedRig.Bones.Length];for(int b=0;b<rest.Length;b++)rest[b]=RestAt(b);
@@ -448,7 +359,9 @@ namespace ChipArena.UnityConversion
                     {
                         var p=s.Positions[i];var n=s.Normals[i];int mine=pr!=null&&i<pr.Length?pr[i]:0;float ao=1;
                         foreach(var (c,r,w,id) in list){if(id==mine&&mine!=0)continue;var d=c-p;float l=d.Length();if(l<1e-4f)continue;float ndl=Vector3.Dot(n,d)/l;if(ndl<=0)continue;ao*=1-Math.Min(1,ndl*Math.Min(1,r*r/(l*l))*w*strength);}
-                        float occl=Math.Max(0,Math.Min(.85f,1-ao));var dd=s.Data[i];s.Data[i]=new Vector2(Pack((float)Math.Floor(dd.X+1e-4f),occl),Pack((float)Math.Floor(dd.Y+1e-4f),Sway(dd.Y)));
+                        // A grid's own corner occlusion rides in Data.x's fraction (WeaponSculpt.QuadData).
+                        var dd=s.Data[i];float cls=(float)Math.Floor(dd.X+1e-4f),own=Math.Max(0,dd.X-cls);ao*=1-own;
+                        float occl=Math.Max(0,Math.Min(.85f,1-ao));s.Data[i]=new Vector2(Pack(cls,occl),Pack((float)Math.Floor(dd.Y+1e-4f),Sway(dd.Y)));
                     }
                     float region=!regions?RegionNone:s.Bone==CapturedRig.Head?RegionHead:s.Bone==CapturedRig.Pelvis||s.Bone==CapturedRig.Spine||s.Bone==CapturedRig.Chest?RegionTorso:
                         s.Bone==CapturedRig.LArm||s.Bone==CapturedRig.RArm||s.Bone==CapturedRig.LElbow||s.Bone==CapturedRig.RElbow||s.Bone==CapturedRig.LHip||s.Bone==CapturedRig.RHip||s.Bone==CapturedRig.LKnee||s.Bone==CapturedRig.RKnee?RegionLimb:RegionNone;
@@ -457,34 +370,20 @@ namespace ChipArena.UnityConversion
                         var c=s.Colors[i];var e=s.Emission[i];var col=new Vector3(c.X,c.Y,c.Z);
                         if(grime&&e.W<2.5f&&e.X+e.Y+e.Z<=c.X+c.Y+c.Z)
                         {
-                            int cls=(int)Math.Floor(s.Data[i].X+1e-4f);var p=s.Positions[i];float g=Grime(s.Bone,p),bl=Blood(s.Bone,p);
+                            int cls=(int)Math.Floor(s.Data[i].X+1e-4f);var p=s.Positions[i];float g=Grime(s.Bone,p),bl=Blood(s.Bone,p);int pid=pr!=null&&i<pr.Length?pr[i]:0;
                             if(cls==SurfShell||cls==SurfWire){g*=.6f;bl*=.4f;}else if(cls==SurfMatte){g*=.3f;bl*=.3f;}
-                            if(cls==SurfSkin)
-                            {
-                                // Mottled dead skin: bruised violet-grey blotches and paler, jaundiced patches in a noise over the rest pose,
-                                // so the pattern runs across joint sections, different for each kind and look.
-                                float m=Mottle(p+rest[s.Bone],Kind*7+Look);float bruise=Smooth(.56f,.8f,m),pale=Smooth(.42f,.2f,m);
-                                col=Vector3.Lerp(col,col*new Vector3(.8f,.66f,.8f),bruise*.8f);col=Vector3.Lerp(col,col*new Vector3(1.1f,1.08f,.86f),pale*.6f);
-                                // The big kinds' hide is darker and greener: their mass reads heavy, not chalky, under a key light.
-                                if(Kind==NativeHordeKinds.Hulk)col*=new Vector3(.74f,.8f,.72f);else if(Kind==NativeHordeKinds.Brute)col*=new Vector3(.86f,.9f,.84f);
-                            }
+                            // A shade step per block (a grid's cells carry their own): the blocky mottling of voxel art.
+                            if(pid!=0&&!voxelPrims.Contains(pid)){int lv=(int)Math.Min(3,H(pid,0x9a)*4);col*=1+Step(cls)*(lv-1.5f)/1.5f;}
+                            // The big kinds' hide is darker and greener: their mass reads heavy, not chalky, under a key light.
+                            if(cls==SurfSkin){if(Kind==NativeHordeKinds.Hulk)col*=new Vector3(.74f,.8f,.72f);else if(Kind==NativeHordeKinds.Brute)col*=new Vector3(.86f,.9f,.84f);}
+                            // Grime and blood in steps, so a block darkens by a step rather than a smooth wash.
+                            g=(float)Math.Round(g*4)/4;bl=(float)Math.Round(bl*4)/4;
                             col=Vector3.Lerp(col,col*new Vector3(.42f,.36f,.3f),g);col=Vector3.Lerp(col,new Vector3(.16f,.024f,.03f),bl);
                         }
                         s.Colors[i]=new Vector4(col,region);
                     }
                 }
             }
-            /// <summary>Two octaves of value noise (0..1) at a rest-pose point, `salt` choosing the pattern.</summary>
-            private static float Mottle(Vector3 p,int salt)=>.65f*ValueNoise(p*9f,salt)+.35f*ValueNoise(p*23f+new Vector3(5.3f,1.7f,9.1f),salt+101);
-            private static float ValueNoise(Vector3 p,int salt)
-            {
-                int x=(int)Math.Floor(p.X),y=(int)Math.Floor(p.Y),z=(int)Math.Floor(p.Z);float fx=p.X-x,fy=p.Y-y,fz=p.Z-z;
-                fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);fz=fz*fz*(3-2*fz);
-                float L(float a,float b,float t)=>a+(b-a)*t;
-                float X(int j,int k)=>L(Lattice(x,y+j,z+k,salt),Lattice(x+1,y+j,z+k,salt),fx);
-                return L(L(X(0,0),X(1,0),fy),L(X(0,1),X(1,1),fy),fz);
-            }
-            private static float Lattice(int x,int y,int z,int salt){unchecked{uint h=(uint)(x*73856093)^(uint)(y*19349663)^(uint)(z*83492791)^(uint)(salt*668265263);h^=h>>13;h*=0x5bd1e995;h^=h>>15;return (h&0xffffff)/16777215f;}}
             /// <summary>Grime toward the hands and feet (0..1, by joint and the point's depth down the limb).</summary>
             private float Grime(int bone,Vector3 p)
             {

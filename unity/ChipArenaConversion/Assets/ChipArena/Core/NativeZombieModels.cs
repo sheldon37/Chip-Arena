@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
 {
     // The classic zombie kit (2026-10-12): the Standard pilot's blocks rotted and torn (CapturedRig's voxel body, the cube head,
     // the plated chest, pauldrons, cuffs, knee pads and soles; pale grey-green skin, the cracked armour, the hanging jaw, the eyes in
-    // the kind's colour and the Siren's ink as veins that flicker cell by cell). The Siren's seven kinds were rebuilt on the organic
+    // the kind's colour and the Siren's ink as veins that flicker cell by cell). The Siren's seven kinds were rebuilt on the voxel
     // kit on 2026-10-17 (Core/NativeZombieKit.cs, NativeZombieAnatomy.cs, NativeZombieKinds.cs; docs/ZOMBIE-DESIGN.md); the zone
     // kinds (Core/NativeStationModels.cs, NativeIronworksModels.cs) still build their bodies from these helpers, unchanged. Every
     // part rides the joint the pilot's part rides and stays inside the authority's capsule (Tests/HordeKindChecks).

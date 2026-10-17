@@ -1,6 +1,6 @@
 Shader "ChipArena/ZombieLit" {
  Properties { _SceneTint("Scene tint",Color)=(1,1,1,1) _BodyTint("Body tint",Color)=(1,1,1,1) _AccentTint("Accent tint",Color)=(1,1,1,1) _GlowTint("Emission tint (linear)",Vector)=(1,1,1,1) _Ink("Siren ink",Float)=0 _InkRim("Ink rim",Float)=.3 _InkFlow("Ink flow",Float)=.025 _InkFill("Ink fill",Float)=0 _InkColor("Ink colour",Color)=(.039,.031,.055,1) _Cull("Cull",Float)=2 _MinionGlow("Siren minion glow",Float)=0 }
- // The Siren's zombies (docs/ZOMBIE-DESIGN.md; Core/NativeZombieKit.cs builds the data this reads). ChipArena/SourceLit's minion
+ // The Siren's zombies in voxels (docs/ZOMBIE-DESIGN.md; Core/NativeZombieKit.cs builds the data this reads). ChipArena/SourceLit's minion
  // material, its every hook kept (the glow cells' flicker and drop, the char, the burn-away's dissolve, the ink rim and flow,
  // the entrance stage's lights and tone, Ward Zero's actor lights, the struck flash), with the zombie shading on top:
  //  - per vertex (uv0, the colour's alpha; NativeHordeModels.K.Pack): the surface class (skin, wet flesh, armour shell, cloth,
@@ -8,10 +8,12 @@ Shader "ChipArena/ZombieLit" {
  //    region. Class 0 with no occlusion draws exactly as SourceLit (Lambert), as the zone kinds' bodies do.
  //  - per instance, the body tint's colour (NativeHordeModels.Variation; white = the model as built): the add's skin tone, its
  //    pattern seed (the mottling's offset and the head, torso and limb proportions) and its missing pieces.
- //  - lighting (LightingZombie, every pixel light): wrapped diffuse per class with a warm flush in the wrap on the skin, a
- //    Blinn sheen per class (wet flesh tight and bright, armour satin, skin faint, cloth none); the occlusion darkens the
- //    ambient, the lights and the sheen; the ink rim keeps the silhouette in the dark, less in the creases.
- //  - the skin mottles per pixel in the joint's frame (rot and bruise patches, a fine grain), so a crowd never repeats.
+ //  - lighting (LightingZombie, every pixel light): a little wrap per class (kept low so the voxels' faces stay crisp), a
+ //    Blinn sheen per class (wet flesh tight and bright, armour satin, skin faint, cloth none); the occlusion (the voxels' own
+ //    corners and the parts over them) darkens the ambient, the lights and the sheen; the ink rim keeps the silhouette in the
+ //    dark, less in the creases.
+ //  - the skin mottles in stepped cells in the joint's frame (rot and bruise patches, a grain of two shades), offset by the
+ //    add's seed, so a crowd never repeats.
  // Nothing allocates; one material per kind as before, so the instanced batches are unchanged.
  SubShader { Tags { "RenderType"="Opaque" } Cull [_Cull]
  CGPROGRAM
@@ -108,22 +110,16 @@ Shader "ChipArena/ZombieLit" {
   return p;
  }
  float ZombieHash(float3 p){p=frac(p*0.3183099+float3(0.71,0.113,0.419));p=p*17.0;return frac(p.x*p.y*p.z*(p.x+p.y+p.z));}
- float ZombieNoise(float3 x)
- {
-  float3 i=floor(x);float3 f=frac(x);f=f*f*(3.0-2.0*f);
-  float a=lerp(lerp(ZombieHash(i),ZombieHash(i+float3(1.0,0.0,0.0)),f.x),lerp(ZombieHash(i+float3(0.0,1.0,0.0)),ZombieHash(i+float3(1.0,1.0,0.0)),f.x),f.y);
-  float b=lerp(lerp(ZombieHash(i+float3(0.0,0.0,1.0)),ZombieHash(i+float3(1.0,0.0,1.0)),f.x),lerp(ZombieHash(i+float3(0.0,1.0,1.0)),ZombieHash(i+float3(1.0,1.0,1.0)),f.x),f.y);
-  return lerp(a,b,f.z);
- }
- // The skin's mottling in the joint's frame: rot (greener, darker) and bruise (violet) patches, a fine grain, the add's tone.
+ // The skin's mottling in the joint's frame, stepped like voxel art: 8 cm cells of rot (greener, darker) or bruise (violet),
+ // a 3.5 cm grain of two shades, both offset by the add's seed; then the add's tone.
  float3 ZombieSkin(float3 albedo,float3 local,float3 body)
  {
   float seed=body.g-1.0;float tone=body.r-1.0;
-  float3 q=local*5.0+float3(seed*31.0,seed*7.0,seed*17.0);
-  float big=ZombieNoise(q)*0.65+ZombieNoise(q*2.3)*0.35;float fine=ZombieNoise(local*26.0+q.zxy);
-  float3 c=lerp(albedo,albedo*float3(0.6,0.68,0.48),smoothstep(0.5,0.78,big)*0.85);
-  c=lerp(c,albedo*float3(0.8,0.56,0.84),smoothstep(0.6,0.85,1.0-big)*0.6);
-  c=c*(0.965+0.07*fine);
+  float3 q=floor(local*12.5+float3(seed*31.0,seed*7.0,seed*17.0));
+  float big=ZombieHash(q);float fine=ZombieHash(floor(local*28.0)+q.zxy);
+  float3 c=lerp(albedo,albedo*float3(0.72,0.78,0.6),step(0.8,big)*0.8);
+  c=lerp(c,albedo*float3(0.84,0.66,0.86),step(0.88,1.0-big)*0.6);
+  c=c*(0.96+0.08*step(0.5,fine));
   float3 hue=tone>0.0?float3(1.06,1.0,1.12):float3(0.94,1.04,0.84);
   return c*lerp(float3(1.0,1.0,1.0),hue,min(1.0,abs(tone)*1.6));
  }
@@ -131,12 +127,12 @@ Shader "ChipArena/ZombieLit" {
  float3 ZombieClass(float cls)
  {
   if(cls<0.5)return float3(0.0,0.0,1.0);
-  if(cls<1.5)return float3(0.42,0.08,1.0);
-  if(cls<2.5)return float3(0.3,0.6,0.9);
-  if(cls<3.5)return float3(0.08,0.34,0.85);
-  if(cls<4.5)return float3(0.28,0.0,0.6);
-  if(cls<5.5)return float3(0.3,0.2,0.9);
-  if(cls<6.5)return float3(0.2,0.04,0.7);
+  if(cls<1.5)return float3(0.18,0.08,1.0);
+  if(cls<2.5)return float3(0.15,0.6,0.9);
+  if(cls<3.5)return float3(0.06,0.34,0.85);
+  if(cls<4.5)return float3(0.12,0.0,0.6);
+  if(cls<5.5)return float3(0.12,0.2,0.9);
+  if(cls<6.5)return float3(0.08,0.04,0.7);
   return float3(0.1,0.4,0.8);
  }
  // One light on a zombie surface: wrapped diffuse with the skin's warm flush in the wrap, and the class's sheen.
