@@ -142,7 +142,7 @@ namespace ChipArena.UnityConversion
             int checks=0;void Check(bool ok,string what){if(!ok)throw new Exception("Surfaces: "+what);checks++;}
             var options=new JsonSerializerOptions{IncludeFields=true};string Read(string f)=>File.ReadAllText(Path.Combine(root,f));
             var maps=JsonSerializer.Deserialize<UnityMapContent>(Read("Assets/Conversion/Resources/UnityMaps.json"),options).maps;
-            Check(maps.Select(m=>m.id).OrderBy(x=>x).SequenceEqual(new[]{"brickfall","cybercity","expedition-city","expedition-ward-zero","factory","siren"}),"all six Unity maps are audited");
+            Check(maps.Select(m=>m.id).OrderBy(x=>x).SequenceEqual(new[]{"brickfall","cybercity","expedition-city","expedition-foundry","expedition-transit","expedition-ward-zero","factory","siren"}),"all eight Unity maps are audited");
             foreach(var map in maps)
             {
                 string Snap()=>string.Join("|",map.blocks.Select(b=>b.id+":"+b.pos.x+","+b.pos.y+","+b.pos.z+":"+b.size.x+","+b.size.y+","+b.size.z+":"+(b.rotation==null?"-":b.rotation.x+","+b.rotation.y+","+b.rotation.z+","+b.rotation.w)+":"+b.material+":"+b.role+":"+b.hp+":"+b.parent+":"+b.segment));

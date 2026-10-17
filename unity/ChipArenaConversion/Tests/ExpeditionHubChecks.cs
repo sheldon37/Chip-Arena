@@ -256,7 +256,7 @@ namespace ChipArena.UnityConversion
             string manifest=R("Assets/Conversion/Resources/ExpeditionLayout.json");var town=JsonSerializer.Deserialize<UnityMapContent>(R("Assets/Conversion/Resources/UnityMaps.json"),o).maps.Single(m=>m.id=="expedition-city");
             // ---------------- the record ----------------
             var layout=NativeExpeditionLayout.Parse(manifest);var area=layout.Area("exp-city");var hub=ExpeditionHubLayout.Parse(manifest);
-            Check(layout.revision=="exp-layout-3"&&hub!=null&&hub.Area=="exp-city","exp-layout-3 carries the town's hub record");
+            Check(layout.revision=="exp-layout-5"&&hub!=null&&hub.Area=="exp-city","exp-layout-5 carries the town's hub record");
             Check(area.gates.Length==1&&area.gates[0].id=="exp-city:gate:final"&&area.spawns.Length>0&&area.slots.Length==8,"the loader's strict reader still reads the manifest: the final gate only, the spawns and slots");
             Check(ExpeditionHubLayout.Parse(R("Tests/expedition-layout-draft.json"))!=null&&ExpeditionHubLayout.Parse(manifest.Replace("\"hub\":","\"hubOld\":"))==null,"a manifest without the record has no hub (exp-layout-2 and earlier read as before)");
             Check(hub.Gates.Select(g=>g.Side).SequenceEqual(new[]{"north","east","south","west"})&&hub.Gates.Count(g=>g.Wood)==2&&hub.Gates.All(g=>g.Wood==(g.Motion=="swing"))&&hub.Gates.All(g=>Math.Abs(g.Width-4)<1e-4),"four 4 m gates: wooden swing (north, west), metal slide (east, south)");
@@ -273,8 +273,9 @@ namespace ChipArena.UnityConversion
             foreach(int k in all){if(!all.Contains(k+open.Nx))continue;open.Centre(k,out double x0,out double z0);open.Centre(k+open.Nx,out double x1,out double z1);if(In(sanctuary,x0,sanctuary.y,z0,0)==In(sanctuary,x1,sanctuary.y,z1,0))continue;crossings++;if(!hub.Gates.Any(g=>In(g.Closure,(x0+x1)/2,g.Closure.y,(z0+z1)/2,.4)))stray++;}
             Check(crossings>0&&stray==0,"open, all "+crossings+" crossings of the sanctuary's edge lie in a gate's opening");
             // ---------------- routes ----------------
-            var door=area.doors.Single();var ward=hub.Routes.Single(r=>!r.Reserved);
-            Check(ward.To=="exp-ward-zero"&&Math.Abs(ward.Approach.x-door.approach.x)<1e-3&&Math.Abs(ward.Approach.z-door.approach.z)<1e-3,"the Ward Zero route ends at the door's approach");
+            var door=area.anchors.Single(a=>a.building=="exp-ward-zero");var ward=hub.Routes.Single(r=>r.To=="exp-ward-zero");
+            Check(hub.Routes.Length==3&&hub.Routes.All(r=>!r.Reserved),"all three doorway routes are active");
+            Check(ward.To=="exp-ward-zero"&&Math.Abs(ward.Approach.x-(door.x-1))<1e-3&&Math.Abs(ward.Approach.z-door.z)<1e-3,"the Ward Zero route ends one metre in front of its doorway; the deployment circle is farther out");
             foreach(var r in hub.Routes)
             {
                 var only=new Grid(town,hub.Gates.Where(g=>g.Id!=r.Gate).Select(g=>g.Closure).Concat(area.gates.Select(g=>g.closure)));var reach=only.Flood(slot.x,slot.z);

@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
             }
             if(arena.WardBreaches is List<NativeBreachRecord> breaches)
             {
-                var entries=NativeArena.StageContent?.entries;
+                var entries=(arena.Pve?.Content??NativeArena.StageContent)?.entries;
                 for(int i=0;i<breaches.Count;i++)
                 {
                     var b=breaches[i];if(b==null||b.breakAt>now)continue;V3 at;

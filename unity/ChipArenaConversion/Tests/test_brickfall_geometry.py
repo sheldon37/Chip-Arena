@@ -50,7 +50,7 @@ class BrickfallGeometry(unittest.TestCase):
  def test_authored_navigation_clearance(self):
   nodes={n['id']:n for n in M['nav']['nodes']};bad=[]
   for l in M['nav']['links']:
-   if l['kind']=='stair' or l.get('after'):continue
+   if l.get('kind','walk')=='stair' or l.get('after'):continue
    a=nodes[l['a']]['pos'];b=nodes[l['b']]['pos']
    for c in B:
     # <=0.3 m lips are small steps; full-height capsule clearance otherwise.
