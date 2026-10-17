@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
         public bool mine, actionable, settled;
         /// <summary>Reserved chips sharing one death point (count): one lead carries the cluster's label at the anchor itself
         /// (labelAtAnchor); the others are quiet (glyph only), so a boss's chips never stack unreadable labels.</summary>
-        public int group;public bool labelAtAnchor, quiet;
+        public int group;public bool labelAtAnchor, quiet;public float joinRadius,joinProgress;
     }
 
     /// <summary>The geometry sink of the world pieces (the runtime fills reused mesh lists; checks count or rasterise).</summary>
@@ -206,6 +206,14 @@ namespace ChipArena.UnityConversion
                 p.label=b.entered?"UNFINISHED":"ENTER TOGETHER";p.detail=b.entered?Labels.Pair("QUOTA ",b.progress,b.target):Labels.Int("QUOTA ",b.target);
                 p.tone=b.entered?ExpeditionTone.Warn:ExpeditionTone.Cyan;p.actionable=v.phase==ExpeditionPhase.Town;
             }
+            foreach(var join in v.joins)if(join.doorId==a.id)
+            {
+                p.x=p.ax=join.x;p.y=p.ay=join.y;p.z=p.az=join.z;p.joinRadius=join.r;
+                p.joinProgress=join.joinStartedAt<0?0:(float)Math.Max(0,Math.Min(1,(v.elapsed-join.joinStartedAt)/join.duration));
+                p.label=b.cleared?"CLEARED":join.joinStartedAt<0?"STAND IN THE CIRCLE TO DEPLOY":Labels.Int("DEPLOYING · ",Math.Max(1,(int)Math.Ceiling(join.duration-v.elapsed+join.joinStartedAt)),"s");
+                p.detail=Labels.Int("PILOTS IN CIRCLE · ",join.joinInside);p.extra=Labels.Name(b.id);p.actionable=!b.cleared;p.tone=join.joinInside>0?ExpeditionTone.Good:ExpeditionTone.Cyan;
+                break;
+            }
             Pieces.Add(p);
         }
 
@@ -283,6 +291,11 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Emit(IExpeditionWorldSink sink,in ExpeditionWorldPiece p,double t,bool reduced)
         {
+            if(p.joinRadius>0)
+            {
+                Band(sink,p.x,p.y+.025f,p.z,p.joinRadius-.06f,p.joinRadius,64,64,0,p.tone,.8f,p.actionable?.7f:.25f);
+                if(p.joinProgress>0)Band(sink,p.x,p.y+.03f,p.z,p.joinRadius-.16f,p.joinRadius-.08f,64,(int)Math.Ceiling(64*p.joinProgress),0,ExpeditionTone.Good,1,.95f);
+            }
             float fade=p.settled?.42f:1,spin=reduced?0:(float)(t*.9%(Math.PI*2)),r=RingRadius(p.kind);
             if(p.actionable)Column(sink,p.x,p.y,p.z,r*.62f,r*.8f,p.kind==ExpeditionPieceKind.Door?2.9f:p.kind==ExpeditionPieceKind.Machine?2.6f:1.9f,p.tone,.55f);
             float gy=p.y+GlyphHeight(p.kind)+Bob(p,t,reduced),yaw=reduced?0:(float)(t*1.1%(Math.PI*2));

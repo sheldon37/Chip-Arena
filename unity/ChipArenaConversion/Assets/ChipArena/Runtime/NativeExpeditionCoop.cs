@@ -64,16 +64,17 @@ namespace ChipArena.UnityConversion
         {
             if(Expedition==null||p.Seat.bot)return;
             var member=ExpeditionMemberFor(p);
-            if(member==null||!member.alive||member.extracted||ExpeditionChoosing(p))
+            if(p.ExpeditionTransferHeld||member==null||!member.alive||member.extracted||ExpeditionChoosing(p))
             {p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};return;}
             if(!p.Input.Interact)return;
             bool used=TryExpeditionInteract(p,out string notice);
-            if(!used)foreach(var door in expeditionArea.doors)if(Expedition.EnterDoor(member.account,door.anchor)){used=true;break;}
+            if(!used&&!Expedition.Session.Run.SplitAreas)foreach(var door in expeditionArea.doors)if(Expedition.EnterDoor(member.account,door.anchor)){used=true;break;}
+            if(!used&&Expedition.Session.Run.SplitAreas)foreach(var door in expeditionArea.doors)if(Expedition.AtDoor(member.account,door.anchor)&&Expedition.Session.Run.VoteExit(member.account,true)){used=true;notice="Return vote recorded";break;}
             if(used){p.Input.Interact=false;if(Pve.Rows.TryGetValue(p.Seat.id,out var row)){row.Notice=notice??"Travelling with party";row.NoticeUntil=Time+3;}}
         }
         private string BeginExpeditionReprint(NativePilot p,ExpeditionMember member,string machine)
         {
-            var dead=Expedition.Session.Run.Snapshot().members.FirstOrDefault(m=>!m.alive&&m.connected&&!m.extracted);
+            var dead=Expedition.Session.Run.PartySnapshot().members.FirstOrDefault(m=>!m.alive&&m.connected&&!m.extracted);
             if(dead==null)return "No fallen teammates to reprint.";
             expeditionChannels[member.account]=(dead.account,machine,Expedition.Session.Run.Elapsed,p.Body.position,p.Hp);
             return "Reprinting teammate · stay still for 3 seconds";
@@ -103,7 +104,7 @@ namespace ChipArena.UnityConversion
                 if(m.extracted){p.Hp=0;p.Seat.alive=false;p.Collider.enabled=false;p.Body.isKinematic=true;continue;}
                 if(m.alive&&m.connected&&expeditionDown.Contains(m.account))
                 {
-                    var slot=expeditionArea.slots.FirstOrDefault(s=>ExpeditionSupported(s.Position,NativeLocomotionRules.Radius,2*NativeLocomotionRules.HalfHeight));
+                    var slot=expeditionArea.slots.FirstOrDefault(s=>ExpeditionSupported(s.Position,NativeLocomotionRules.Radius,2*NativeLocomotionRules.HalfHeight)&&Pilots.All(other=>other==p||other.Hp<=0||(other.Body.position-(Vec(s.Position)+Vector3.up*NativeLocomotionRules.HalfHeight)).magnitude>2*NativeLocomotionRules.Radius+.1f));
                     if(slot==null)continue;
                     RevivePve(p,Vec(slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f));expeditionDown.Remove(m.account);
                 }

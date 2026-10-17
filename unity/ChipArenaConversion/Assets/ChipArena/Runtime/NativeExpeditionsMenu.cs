@@ -543,7 +543,7 @@ namespace ChipArena.UnityConversion
             if(pick.Locked){ExpNote(ref y,d,"circle-help",X.Placeholder,C.Muted(),a,lh);return;}
             ExpNote(ref y,d,"route-dot","Expedition City hub, then Ward Zero, then the final gate.",C.Ink(.9f),a,lh);
             if(!compact)ExpNote(ref y,d,"route-dot","The Siren waits at the hub checkpoint in M1.",C.Ink(.9f),a,lh);
-            ExpNote(ref y,d,"route-dot","F at doors and machines · J for the run board.",C.Muted(),a,lh);
+            ExpNote(ref y,d,"route-dot","Stand in a circle to deploy · F at machines · J for the run board.",C.Muted(),a,lh);
             if(!go.Enabled&&go.Kind!=X.LaunchKind.Ready&&!string.IsNullOrEmpty(go.Reason)&&y+lh<=d.yMax+1){y+=compact?2:6;ExpNote(ref y,d,"circle-alert",go.Reason,C.Warn(),a,lh);}
         }
         private void ExpNote(ref float y,Rect d,string icon,string text,Color tone,float a,float lh)

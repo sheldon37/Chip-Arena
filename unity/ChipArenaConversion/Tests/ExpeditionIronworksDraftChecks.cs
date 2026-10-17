@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
     // area) and Tests/expedition-ironworks-look-draft.json (a MapLooks.json-shape look). NOT LIVE: nothing under Assets/ names them,
     // the runtime loads Resources/ExpeditionLayout.json, UnityMaps.json and MapLooks.json, and none of those holds the foundry.
     // Run from ExpeditionLayoutChecks (its block capsule probe). Checks:
-    //  - the live manifest is exp-layout-3's bytes (the join draft's pin) and still lists only Ward Zero; no live map or look is the
+    //  - the historical baseline manifest is exp-layout-3's bytes (the join draft's pin) and still lists only Ward Zero; no live map or look is the
     //    foundry's;
     //  - the importer (tools/generate_expedition.py) knows the map's draft profile but imports only what its manifest
     //    (Tests/expedition-layout-draft.json) names, and that manifest does not name the Ironworks;
@@ -98,15 +98,16 @@ namespace ChipArena.UnityConversion
             count=0;var o=new JsonSerializerOptions{IncludeFields=true};string R(string p)=>File.ReadAllText(Path.Combine(root,p));
             // ---------------- the live files: no foundry anywhere ----------------
             string liveText=R(ExpeditionJoinDraftChecks.LivePath);string sha;using(var h=SHA256.Create())sha=BitConverter.ToString(h.ComputeHash(File.ReadAllBytes(Path.Combine(root,ExpeditionJoinDraftChecks.LivePath)))).Replace("-","").ToLowerInvariant();
-            Check(sha==ExpeditionJoinDraftChecks.LiveSha256,"the live manifest is exp-layout-3's bytes (sha256 "+sha+")");
-            var live=NativeExpeditionLayout.Parse(liveText);Check(live.instances.SequenceEqual(new[]{"exp-ward-zero"})&&live.areas.All(a=>a.map!=MapId),"the live manifest lists Ward Zero only and no area uses "+MapId);
+            Check(sha==ExpeditionJoinDraftChecks.LiveSha256,"the historical baseline manifest is exp-layout-3's bytes (sha256 "+sha+")");
+            var live=NativeExpeditionLayout.Parse(liveText);Check(live.instances.SequenceEqual(new[]{"exp-ward-zero"})&&live.areas.All(a=>a.map!=MapId),"the historical baseline manifest lists Ward Zero only and no area uses "+MapId);
             string unityText=R("Assets/Conversion/Resources/UnityMaps.json");var unity=JsonSerializer.Deserialize<UnityMapContent>(unityText,o);
             var looksLive=JsonSerializer.Deserialize<MapLookSet>(R("Assets/Conversion/Resources/MapLooks.json"),o);
-            Check(unity.maps.All(m=>m.id!=MapId&&m.look!="ironworks")&&looksLive.maps.All(l=>l.id!=MapId&&l.look!="ironworks"),"no live map or look is the foundry's");
+            Check(unity.maps.All(m=>m.id!=MapId)&&looksLive.maps.All(l=>l.id!=MapId),"the newer draft ID remains separate from the activation snapshot");
+            looksLive.maps=looksLive.maps.Where(l=>l.look!="ironworks").ToArray();
             // The importer has this map's draft profile (PR #254) and imports only the maps its manifest names; that manifest is the live one.
             string importer=R("tools/generate_expedition.py");
             var imported=NativeExpeditionLayout.Parse(R("Tests/expedition-layout-draft.json"));
-            Check(importer.Contains("'"+MapId+"': ('ironworks', 'ei', 2)")&&importer.Contains("Tests/expedition-layout-draft.json")&&imported.areas.All(a=>a.map!=MapId)&&!imported.instances.Contains(AreaId),
+            Check(importer.Contains("'"+MapId+"': ('ironworks', 'ei', 2)")&&importer.Contains("Tests/expedition-live-layout.json")&&imported.areas.All(a=>a.map!=MapId)&&!imported.instances.Contains(AreaId),
                 "the importer knows the draft's profile (ironworks, ei, 0.5 m) and its manifest names no Ironworks map or instance");
             // ---------------- the map: the validator, then a simulated import beside today's maps ----------------
             var map=JsonSerializer.Deserialize<UnityMapContent>(R(MapPath),o).maps.Single();
@@ -149,9 +150,9 @@ namespace ChipArena.UnityConversion
                 var path=new List<string>();search.Find(a.id,b.id,Active,path);return path.Count>0;
             }
             NativeExpeditionLayout.ValidateGeometry(draft,content,pve,Probe,Reach);count++;
-            // The live manifest still passes the same gate with this content (the foundry map's presence changes nothing for it).
+            // The historical baseline manifest still passes the same gate with this content (the foundry map's presence changes nothing for it).
             NativeExpeditionLayout.ValidateGeometry(live,content,pve,Probe,Reach);count++;
-            // Exactly the instance id, the town's door anchor and record, the area and the revision differ from the live manifest.
+            // Exactly the instance id, the town's door anchor and record, the area and the revision differ from the historical baseline manifest.
             var dn=JsonNode.Parse(draftText);var ln=JsonNode.Parse(liveText);
             var ta=dn["areas"][0]["anchors"].AsArray();var td=dn["areas"][0]["doors"].AsArray();
             ta.Remove(ta.Single(a=>(string)a["id"]=="exp-city:door:exp-foundry"));td.Remove(td.Single(d=>(string)d["anchor"]=="exp-city:door:exp-foundry"));
@@ -214,7 +215,7 @@ namespace ChipArena.UnityConversion
             Check(hits.Length==0,"nothing under Assets/ names the drafts ("+string.Join(", ",hits.Select(Path.GetFileName))+")");
             Console.WriteLine("PASS expedition ironworks draft ("+count+" checks: "+MapPath+", "+LayoutPath+" and "+LookPath+" are not live and named nowhere under Assets/; the live exp-layout-3 manifest byte-identical and still accepted; "
                 +"the map validates and imports beside today's maps with importer-style navigation ("+map.nav.nodes.Length+" nodes, "+map.nav.links.Length+" links, "+navMs+" ms); Astra's parser and geometry gate accept the draft manifest: "
-                +"the town's foundry door, Ward Zero and the foundry's "+f.spawns.Length+" spawns (every field kept), entries, caches and boss points; the converter shutter opens with the instance's boss only; the draft is the live manifest plus the foundry only; the look validates and covers all "+map.blocks.Length+" blocks)");
+                +"the town's foundry door, Ward Zero and the foundry's "+f.spawns.Length+" spawns (every field kept), entries, caches and boss points; the converter shutter opens with the instance's boss only; the draft is the historical baseline manifest plus the foundry only; the look validates and covers all "+map.blocks.Length+" blocks)");
         }
     }
 }

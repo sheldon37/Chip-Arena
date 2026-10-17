@@ -8,7 +8,8 @@ namespace ChipArena.UnityConversion
     // Field-only DTOs: both Unity JsonUtility and the managed test codec can round-trip these.
     [Serializable] public sealed class ExpeditionMember
     {
-        public string account, weapon;
+        public string account, weapon, area;
+        public bool transferring;
         public bool connected, alive=true, safe=true, extracted, choosing;
         public double choosingUntil; // Final Install time + wrist plant duration; cleared on lifecycle transitions.
         public int wallet, catchup, initialCatchup;
@@ -23,7 +24,7 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class ExpeditionInstance
     {
-        public string id;public int target, progress;public bool entered, cleared;
+        public string id;public int target, progress,scalingParty;public bool entered, cleared;
         public string[] bosses=Array.Empty<string>(), defeated=Array.Empty<string>();
         public ExpeditionInstance Copy(){var x=(ExpeditionInstance)MemberwiseClone();x.bosses=(string[])bosses.Clone();x.defeated=(string[])defeated.Clone();return x;}
     }

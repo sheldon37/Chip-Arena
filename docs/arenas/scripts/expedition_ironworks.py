@@ -479,7 +479,7 @@ def area():
 TOWN_DOOR = (-84.0, 0.0); TOWN_YAW = 90.0
 TOWN_RETURNS = [pt(TOWN_DOOR[0] + dx, 0, z, TOWN_YAW) for dx in (4.4, 6.0) for z in (-3.0, -1.0, 1.0, 3.0)]
 def live_manifest():
-    return json.load(open(os.path.join(RES, 'ExpeditionLayout.json')))
+    return json.load(open(os.path.join(TESTS, 'expedition-layout-draft.json')))
 def town_door():
     fx, fz = forward(TOWN_YAW); cx, cz = TOWN_DOOR
     anchor = dict(id=f'exp-city:door:{AREA}', kind='door', building=AREA, **pt(cx + fx * 0.6, 0, cz + fz * 0.6, TOWN_YAW))

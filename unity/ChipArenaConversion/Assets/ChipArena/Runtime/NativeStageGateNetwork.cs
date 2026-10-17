@@ -29,6 +29,7 @@ namespace ChipArena.UnityConversion
         }
         private void StageNetworkTick()
         {
+            if(ExpeditionSplit||ExpeditionView?.areaIdentity!=null){StageGate.Clear();return;}
             if(arena==null){StageGate.Clear();gateArena=null;return;}
             if(!arena.Replica)
             {

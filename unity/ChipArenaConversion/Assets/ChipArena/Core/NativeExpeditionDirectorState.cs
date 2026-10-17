@@ -66,7 +66,7 @@ namespace ChipArena.UnityConversion
             bool newLoop=s.loop!=observedLoop;
             if(newLoop){arrivals.Clear();observedLoop=s.loop;}
             // A new loop needs a fresh load/placement even though victory and town share a map.
-            if(newLoop||s.area!=observedArea)
+            if((newLoop||s.area!=observedArea)&&!Session.Run.SplitAreas)
             {
                 returnFrom=newLoop?null:observedArea;observedArea=s.area;
                 BeginAreaLoad();s=Session.Run.Snapshot();
@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
         public bool BeginAreaLoad()
         {
             var run=Session.Run;var s=run.Snapshot();
-            if(run.Migrating||barrier.active||s.phase==ExpeditionPhase.Ended||LayoutIdentity==null)return false;
+            if(run.SplitAreas||run.Migrating||barrier.active||s.phase==ExpeditionPhase.Ended||LayoutIdentity==null)return false;
             if(!run.SetLoading(true))return false;
             barrier=new ExpeditionAreaBarrierView{active=true,target=s.area,layout=LayoutIdentity,generation=checked(barrier.generation+1),required=s.members.Count(m=>m.connected&&!m.extracted)};
             readyMembers.Clear();return true;

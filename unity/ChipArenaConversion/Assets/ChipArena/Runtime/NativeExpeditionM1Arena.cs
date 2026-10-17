@@ -34,7 +34,10 @@ namespace ChipArena.UnityConversion
         {
             var at=Vec(floor);var physics=root.scene.GetPhysicsScene();
             if(!physics.Raycast(at+Vector3.up*.35f,Vector3.down,out var hit,.45f,WorldMask,QueryTriggerInteraction.Ignore)||hit.normal.y<.65f)return false;
-            return physics.OverlapCapsule(at+Vector3.up*(radius+.04f),at+Vector3.up*(height-radius+.04f),radius,expeditionProbe,WorldMask,QueryTriggerInteraction.Ignore)==0;
+            // A sphere resting on a slope needs radius / normal.y vertical clearance.
+            // Flat-floor epsilon alone intersects steeper authored stairs, falsely disconnecting their navigation.
+            float lift=.04f+radius*(1f/hit.normal.y-1f);
+            return physics.OverlapCapsule(at+Vector3.up*(radius+lift),at+Vector3.up*(height-radius+lift),radius,expeditionProbe,WorldMask,QueryTriggerInteraction.Ignore)==0;
         }
         public bool ExpeditionReachable(V3 from,V3 to,float radius,float height)
         {
@@ -43,7 +46,7 @@ namespace ChipArena.UnityConversion
             var offset=new V3(0,NativeLocomotionRules.HalfHeight,0);var a=search.Nearest(from+offset,Clear);var b=search.Nearest(to+offset,Clear);
             if(a==null||b==null||(a.pos-from-offset).Length>4||(b.pos-to-offset).Length>4)return false;
             var nodes=Map.nav.nodes.ToDictionary(n=>n.id);var path=new List<string>();
-            search.Find(a.id,b.id,l=>
+            bool Active(MapNavLink l)
             {
                 string key="link:"+radius+":"+height+":"+l.id;if(expeditionNavClear.TryGetValue(key,out var clear))return clear;
                 expeditionNavClear[key]=false;if(!Clear(nodes[l.a])||!Clear(nodes[l.b]))return false;
@@ -52,9 +55,32 @@ namespace ChipArena.UnityConversion
                 // through the ledge would reject the falling trajectory.
                 if(l.kind=="drop")return expeditionNavClear[key]=NavLinkEnabled(l);
                 var start=nodes[l.a].pos-offset;var end=nodes[l.b].pos-offset;int steps=Math.Max(1,(int)Math.Ceiling((end-start).Length/.4));
-                for(int i=1;i<steps;i++)if(!ExpeditionSupported(start+(end-start)*((float)i/steps),radius,height))return false;
+                for(int i=1;i<steps;i++)
+                {
+                    var sample=start+(end-start)*((float)i/steps);
+                    // A link crosses a ramp/landing kink; its straight chord is not the floor.
+                    if(!PhysicsWorld.Raycast(Vec(sample)+Vector3.up*.2f,Vector3.down,out var ground,.4f,WorldMask,QueryTriggerInteraction.Ignore)||ground.normal.y<.65f||!ExpeditionSupported(Vec(ground.point),radius,height))return false;
+                }
                 return expeditionNavClear[key]=!SceneLinecast(Vec(start)+Vector3.up*(radius+.4f),Vec(end)+Vector3.up*(radius+.4f),WorldMask);
-            },path);
+            }
+            search.Find(a.id,b.id,Active,path);
+            if(path.Count==0)
+            {
+                var raw=new List<string>();search.Find(a.id,b.id,NavLinkEnabled,raw);int printed=0;
+                for(int j=1;j<raw.Count&&printed<16;j++)
+                {
+                    var l=Map.nav.links.FirstOrDefault(e=>(e.a==raw[j-1]&&e.b==raw[j])||(e.b==raw[j-1]&&e.a==raw[j]));
+                    if(l==null||Active(l))continue;printed++;
+                    var start=nodes[l.a].pos-offset;var end=nodes[l.b].pos-offset;
+                    string Detail(V3 p)
+                    {
+                        var at=Vec(p);if(!PhysicsWorld.Raycast(at+Vector3.up*.35f,Vector3.down,out var ground,.7f,WorldMask,QueryTriggerInteraction.Ignore))return "no floor";
+                        float lift=.04f+radius*(1f/ground.normal.y-1f);int count=PhysicsWorld.OverlapCapsule(ground.point+Vector3.up*(radius+lift),ground.point+Vector3.up*(height-radius+lift),radius,expeditionProbe,WorldMask,QueryTriggerInteraction.Ignore);
+                        return "floor="+ground.collider.name+" y="+ground.point.y+" normal="+ground.normal.y+" blockers="+string.Join(",",expeditionProbe.Take(count).Select(c=>c.name));
+                    }
+                    Debug.Log("Expedition blocked link "+MapId+" "+l.id+" "+Vec(start)+" -> "+Vec(end)+" endpoints="+Clear(nodes[l.a])+"/"+Clear(nodes[l.b])+" mid "+Detail((start+end)*.5f));
+                }
+            }
             return path.Count>0;
         }
         public bool ExpeditionVisible(V3 from,V3 to)=>!SceneLinecast(Vec(from)+Vector3.up*.6f,Vec(to)+Vector3.up*.6f,WorldMask);
@@ -111,7 +137,7 @@ namespace ChipArena.UnityConversion
         {
             notice=null;if(Expedition==null||Replica||Pve==null||Pve.Holding||pilot==null||pilot.Hp<=0||!pilot.Seat.connected)return false;
             var session=Expedition.Session;var run=session.Run;var state=run.Snapshot();var member=ExpeditionMemberFor(pilot);
-            if(ExpeditionChoosing(pilot)||state.loading||member==null||!member.alive||member.extracted)return false;
+            if(pilot.ExpeditionTransferHeld||ExpeditionChoosing(pilot)||state.loading||member==null||!member.alive||member.extracted)return false;
             if(HubInteract(pilot)){notice="Sanctuary gate";return true;}
             var feet=Vec(pilot.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight);
             foreach(var reward in state.rewards.Where(r=>!r.claimed&&(r.owner==null||r.owner==member.account)))
@@ -184,7 +210,7 @@ namespace ChipArena.UnityConversion
                     if(instance.progress+Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<instance.target)
                     {
                         string[] kinds={"shambler","runner","spitter","brute"};var add=SpawnPveAdd(kinds[expeditionSpawned%kinds.Length],true);
-                        if(add!=null){var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.members.Count(m=>m.connected&&!m.extracted)),s.loop,true);add.MaxHp*= (float)scale.health;add.Hp=add.MaxHp;add.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;}
+                        if(add!=null){var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)),s.loop,true);add.MaxHp*= (float)scale.health;add.Hp=add.MaxHp;add.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;}
                     }
                     expeditionSpawnAt=Time+1;
                 }
@@ -207,9 +233,9 @@ namespace ChipArena.UnityConversion
         private void SpawnExpeditionBoss(string id)
         {
             foreach(var mob in Minions.Where(m=>hubMobs.ContainsKey(m.Id)).ToArray())RemoveMinion(mob,false);hubMobs.Clear();Pve.Cap=8;
-            var s=Expedition.Session.Run.Snapshot();var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.members.Count(m=>m.connected&&!m.extracted)),s.loop,s.phase==ExpeditionPhase.Instance);
-            var point=expeditionArea.bossPoints[0];var boss=Pve.Boss;Pve.MaxHp=NativePveRules.BossHp(Math.Max(1,s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.health;
-            boss.Stats["hp"]=Pve.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(Math.Max(1,s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.damage;boss.Hp=Pve.MaxHp;boss.Seat.alive=true;
+            var s=Expedition.Session.Run.Snapshot();var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)),s.loop,s.phase==ExpeditionPhase.Instance);
+            var point=expeditionArea.bossPoints[0];var boss=Pve.Boss;Pve.MaxHp=NativePveRules.BossHp(Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.health;
+            boss.Stats["hp"]=Pve.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.damage;boss.Hp=Pve.MaxHp;boss.Seat.alive=true;
             SetBossHidden(false);boss.Body.position=Vec(point.Position)+Vector3.up*NativeLocomotionRules.HalfHeight;boss.Yaw=point.yaw;Pve.Stage="boss";Pve.Phase=1;Pve.Floor=Pve.MaxHp*.75f;
             if(!Expedition.RecordBossArrival(id,"siren",kind=>Content.weapons.Any(w=>w.id==kind),point.Position,boss.Hp,Pve.MaxHp))throw new InvalidOperationException("Boss arrival rejected.");
             expeditionBoss=id;BeginPveHold("intro");

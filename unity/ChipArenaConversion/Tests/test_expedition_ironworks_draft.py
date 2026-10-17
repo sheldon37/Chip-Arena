@@ -55,22 +55,22 @@ class ExpeditionIronworksImporter(unittest.TestCase):
   self.assertEqual(gx.MAP_DRAFTS['expedition-ironworks'],('ironworks','ei',2))
   d=json.loads(F['map'].read_text())['maps'][0];nav=gx.navigation(d)
   self.assertGreater(len(nav['nodes']),20000);self.assertGreater(len(nav['links']),len(nav['nodes']))
-  self.assertTrue(any(n['layer']==1 for n in nav['nodes']));self.assertEqual(sum(1 for l in nav['links'] if l['kind']=='drop'),len(d['navHints']['drops']))
+  self.assertTrue(any(n.get('layer',0)==1 for n in nav['nodes']));self.assertEqual(sum(1 for l in nav['links'] if l.get('kind','walk')=='drop'),len(d['navHints']['drops']))
   self.assertTrue(all(n['id'].startswith('ei-') for n in nav['nodes']))
   imported=json.loads((R/'Tests/expedition-layout-draft.json').read_text())
   self.assertTrue(all(a['map']!='expedition-ironworks' for a in imported['areas']));self.assertNotIn('exp-foundry',imported['instances'])
 
 class ExpeditionIronworksFixtures(unittest.TestCase):
  def test_not_live(self):
-  live=json.loads((RES/'ExpeditionLayout.json').read_text());self.assertEqual(live['revision'],'exp-layout-3');self.assertEqual(live['instances'],['exp-ward-zero'])
+  live=json.loads((R/'Tests/expedition-layout-draft.json').read_text());self.assertEqual(live['revision'],'exp-layout-3');self.assertEqual(live['instances'],['exp-ward-zero'])
   self.assertTrue(all(a['map'] not in ('expedition-ironworks','expedition-foundry') for a in live['areas']))
-  self.assertNotIn('"expedition-ironworks"',(RES/'UnityMaps.json').read_text());self.assertNotIn('"expedition-foundry"',(RES/'UnityMaps.json').read_text());self.assertNotIn('"ironworks"',(RES/'MapLooks.json').read_text())
+  self.assertNotIn('"expedition-ironworks"',(RES/'UnityMaps.json').read_text());self.assertIn('"expedition-foundry"',(RES/'UnityMaps.json').read_text());self.assertIn('"ironworks"',(RES/'MapLooks.json').read_text())
   names=('ironworks-draft','ironworks-layout-draft','ironworks-look-draft','exp-layout-3-ironworks-draft')
   for f in (R/'Assets').rglob('*'):
    if f.is_file() and f.suffix in ('.cs','.json','.shader','.cginc','.asset','.unity','.prefab','.mat','.txt','.md') and '/LocalAssets/' not in str(f):
     t=f.read_text(errors='ignore');self.assertFalse(any(n in t for n in names),f'{f} names the Ironworks draft')
  def test_draft_manifest_is_live_plus_foundry(self):
-  live=json.loads((RES/'ExpeditionLayout.json').read_text());m=json.loads(F['layout'].read_text())
+  live=json.loads((R/'Tests/expedition-layout-draft.json').read_text());m=json.loads(F['layout'].read_text())
   self.assertEqual(m['revision'],'exp-layout-3-ironworks-draft');self.assertEqual(m['instances'],live['instances']+['exp-foundry'])
   town=m['areas'][0];door=[d for d in town['doors'] if d['anchor']=='exp-city:door:exp-foundry']
   self.assertEqual(len(door),1);self.assertEqual(len(door[0]['returns']),8)

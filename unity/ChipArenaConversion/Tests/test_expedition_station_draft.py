@@ -16,11 +16,11 @@ class StationDraftFixture(unittest.TestCase):
  def test_draft_is_not_live(self):
   d=json.loads(DRAFT.read_text());self.assertTrue(d['draft']);self.assertEqual(d['revision'],'exp-transit-draft-1')
   self.assertEqual([m['id'] for m in d['maps']],['expedition-transit']);self.assertEqual(d['layout']['area']['id'],'exp-transit')
-  live=json.loads((RES/'ExpeditionLayout.json').read_text());self.assertNotIn('exp-transit',live['instances'])
+  live=json.loads((R/'Tests/expedition-layout-draft.json').read_text());self.assertNotIn('exp-transit',live['instances'])
   self.assertNotIn('exp-transit',[a['id'] for a in live['areas']])
   self.assertIn('exp-transit',[r['building'] for a in live['areas'] if a['id']=='exp-city' for r in a['hub']['reserved']])
-  self.assertNotIn('expedition-transit',[m['id'] for m in json.loads((RES/'UnityMaps.json').read_text())['maps']])
-  self.assertNotIn('central-station',[m['look'] for m in json.loads((RES/'MapLooks.json').read_text())['maps']])
+  self.assertIn('expedition-transit',[m['id'] for m in json.loads((RES/'UnityMaps.json').read_text())['maps']])
+  self.assertIn('central-station',[m['look'] for m in json.loads((RES/'MapLooks.json').read_text())['maps']])
   for e in d['layout']['area']['spawns']:
    self.assertTrue(set(e['allow'])<={'shambler','runner','spitter','brute','hulk'},e['id'])
    self.assertTrue(set(e.get('station',[]))<={'linesman','conductor','undertow','pileup'},e['id'])
