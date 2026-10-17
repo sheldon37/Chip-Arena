@@ -14,6 +14,21 @@
 - **Astra (optional):** an authority arrival time for an exact, shared lock: either seal the exit (`sealing`, `began`) when the first arriving cohort is placed and ready, or publish `members[].arrivedAt`. The presentation already follows a `sealing` closure exactly.
 - **Next:** coordinator review and merge; the owner checks the lock in a native build.
 
+## 2026-10-17 — Astra: Station/Ironworks gameplay published
+
+- Released source `5ccaad6fa7a2f2ffdb2ff370d14a8d227be35076` from shared and `codex/unity-cloud-current`; PR #264 gameplay, #265 Unity empty-array spawn repair, #267 precise native clock diagnostics, and #266/#268 express collision integration are merged. Preserved Claude's boss-music changes and all other shared work.
+- Windows Build-and-Publish succeeded at 14:59:45 UTC. Read back native test feed version `1c60f643c226c8fecc1083b58e07a19192f54e046e554279ba1c5a82399923a1`, revision `639278459286691800`. Both earlier native failures stopped before publication.
+- Actual Unity 6000.3.24f1 native checks pass for Station and Ironworks authored spawns/capsules, special windups/hits/interrupts, armour/weak points, finite enemy/hazard frames, codec and separate guest application. Four simultaneous areas pass 1,800 ticks: p95 8.0 ms, worst 24.1 ms; automated fixture, not a human multiplayer playtest.
+- Verification also includes 512 focused zone checks, combined Player/Runtime/Editor semantic compilation, hosted full managed/real-relay suite on gameplay head `37fca579` (one documented allocation-flake retry), Python/package and Windows updater/launcher checks. Final integrated-tree hosted regression is tracked in PR #268. New enemies/hazards require all peers to update/restart and a fresh Expedition. Converter boss remains the approved deferred placeholder; no invented boss design was added.
+
+## 2026-10-17 — Astra: zone gameplay verification and express collision
+
+- Branch `codex/zone-gameplay-verification`, base shared/builder `ce85919`. Reconciled with the already-merged PR #264 gameplay and #265 Unity entry fix; preserved that implementation and Claude's boss-music routing. Independent local implementation retained only as checkpoint `2def07c`, not integrated.
+- Observed owner's Windows log for `ce85919`, 2026-10-17 14:47 UTC: four independent areas spawned correctly; Station attack/codec checks progressed to the final hazard-clock assertion, then publication stopped. Split the combined assertion into frame validity, presence and clock checks; compare serialized float clocks within 1 ms rather than exact equality. Native rerun still required to confirm the failing component; no passing Windows claim.
+- Express collisions now use the train's visible nose/tail sweep clipped to the station shell for pilots and minions. Previously the entire track was lethal throughout the pass. Edge shove follows the same sweep. Signal controls refuse an already-moving train, preserving its collision/visual continuity. Warning and pass timings are unchanged; no art or audio changes.
+- Checks: focused zone combat 512 checks pass, including 267 new sweep boundary/continuity checks; source packaging passes (2355 files); Unity reference-assembly compilation and diff checks recorded in PR. Existing merged gameplay CI is separate from this follow-up. Native Windows/PhysX and human multiplayer remain pending; this does not claim a published update.
+
+
 ## 2026-10-17 — Claude: zone boss music for Central Station and City Ironworks
 
 - Branch `claude/zone-music`, base shared/builder `6dc3899` (Astra's PR #263 already routes each zone's normal-play music: Foundry of the Dead, Subway Arrival Chime). Owner: "Wire the zone music now, the names work."
@@ -10357,3 +10372,9 @@ Local validation so far: 243 new managed zone checks; Station/Ironworks presenta
 
 
 2026-10-17 Astra validation checkpoint, PR #264: gameplay head `37fca579` passes both hosted native jobs (run 39040123192, retry 2), including all three Unity assembly compiles, full managed suite, real relay, Python/package and Windows updater/launcher checks. First hosted run hit the documented intermittent GunMotion allocation check (7,960 bytes); isolated and full local gun checks pass, retry passes without weakening assertions. Local full suite reached the historical Bow allocation assertion (15,424 bytes). Merged current shared `77c3696` into the candidate, preserving Claude's zone boss music and both project-state entries; conflict was documentation only. Native Unity execution/publication still pending.
+
+
+2026-10-17 Astra native gate repair: build of merged PR #264 (`598c41b`) failed before publication because Ward Zero had no spawned horde. Unity JsonUtility materializes the new absent `PveEntry.allowed` array as empty when cloning legacy content. Empty now uses the original Ward entry rules; nonempty authored lists still restrict zone spawns. Added both cases to ZoneCombatChecks (245 checks). Native gate is retained and must pass before release.
+
+
+2026-10-17 Astra native follow-up: `ce85919` restores native spawning (Ward 8, Station 12, Ironworks 12 after 1,800 ticks). Station enemy ability/weak-point and guest event checks reached the final hazard-clock assertion. Split that compound assertion into authority validity, decoded validity, presence and time checks, with raw/decoded values on failure; use 0.1 ms tolerance for the JSON float round trip instead of binary equality. Malformed/NaN state rejection remains exact. No publication yet.

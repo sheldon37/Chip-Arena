@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     public static class NativeWardEntries
     {
         public static bool Drop(PveEntry e)=>e.kind=="drop"||e.kind=="vent"&&e.surface=="ceiling";
-        public static bool Allows(PveEntry e,string kind)=>e.allowed!=null?Array.IndexOf(e.allowed,kind)>=0:kind=="hulk"?(e.kind=="breach"||e.kind=="drop"&&e.hulk):e.kind!="breach"&&(e.kind!="drop"||kind=="brute"&&!e.hulk);
+        public static bool Allows(PveEntry e,string kind)=>e.allowed!=null&&e.allowed.Length>0?Array.IndexOf(e.allowed,kind)>=0:kind=="hulk"?(e.kind=="breach"||e.kind=="drop"&&e.hulk):e.kind!="breach"&&(e.kind!="drop"||kind=="brute"&&!e.hulk);
         public static (float walk,float duration) Timeline(PveEntry e,bool first,string kind)
         {
             if(e.kind=="breach")return(NativeBreach.Knock,NativeBreach.Knock+NativeBreach.Through);
