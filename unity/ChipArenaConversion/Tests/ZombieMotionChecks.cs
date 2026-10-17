@@ -69,14 +69,14 @@ namespace ChipArena.UnityConversion
         // ---- planted feet on the drawn rig: a planted ankle stays where it is in the world (each take, walk and run, turning) ----
         private static void Planted()
         {
-            var pose=new CapturedRig.Pose();
+            var pose=new CapturedRig.Pose();int rolls=0;
             foreach(int k in new[]{NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Brute})
             {
                 var st=NativeHordeKinds.ProposedRow(k);
                 foreach(var (set,speed) in new[]{(NativeZombieMotion.Walks(k),st.walk),(NativeZombieMotion.Runs(k),st.run)})foreach(int clip in set)foreach(float turn in new[]{0f,35f})
                 {
                     int id=60000+k*1000;while(NativeZombieMotion.Walk(k,NativeHordeKinds.Seed(id))!=(set==NativeZombieMotion.Walks(k)?clip:NativeZombieMotion.Walk(k,NativeHordeKinds.Seed(id)))||NativeZombieMotion.Run(k,NativeHordeKinds.Seed(id))!=(set==NativeZombieMotion.Runs(k)?clip:NativeZombieMotion.Run(k,NativeHordeKinds.Seed(id))))id++;
-                    var g=new NativeHordeGait();var f=new HordeMotionInput{Kind=k,Id=id,Seed=NativeHordeKinds.Seed(id),Health=1,AttackAge=float.NaN};var last=new Vector3[2];var air=new bool[2];float worst=0,worstDrawn=0;int steps=0,planted=0;Vector3 at=new Vector3(0,.85f,0);float yaw=0;
+                    var g=new NativeHordeGait();var f=new HordeMotionInput{Kind=k,Id=id,Seed=NativeHordeKinds.Seed(id),Health=1,AttackAge=float.NaN};var last=new Vector3[2];var air=new bool[2];var rolled=new bool[2];var ballAt=new Vector3[2];float worst=0,worstDrawn=0;int steps=0,planted=0;Vector3 at=new Vector3(0,.85f,0);float yaw=0;
                     for(int i=0;i<420;i++)
                     {
                         float t=i/60f;yaw+=turn/60;float r=yaw*(float)Math.PI/180;var v=new Vector3((float)Math.Sin(r),0,(float)Math.Cos(r))*speed;at+=v/60;
@@ -85,7 +85,16 @@ namespace ChipArena.UnityConversion
                         {
                             // The ankle as drawn: the posed joint turned by the presented yaw into the world.
                             var drawn=g.ToWorld(pose.WorldPosition[j==0?CapturedRig.LFoot:CapturedRig.RFoot],at);
-                            if(i>90&&!air[j]&&!g.FootAir[j]){worst=Math.Max(worst,Vector3.Distance(last[j],g.FootWorld[j]));float d=new Vector2(drawn.X-g.FootWorld[j].X,drawn.Z-g.FootWorld[j].Z).Length();worstDrawn=Math.Max(worstDrawn,d);planted++;Check(Math.Abs(drawn.Y-NativeHordeGait.AnkleHeight)<.01f,"a planted ankle stands on the floor");}
+                            if(i>90&&!air[j]&&!g.FootAir[j])
+                            {
+                                worst=Math.Max(worst,Vector3.Distance(last[j],g.FootWorld[j]));planted++;
+                                // (A trailing foot the hips have carried past its reach rolls onto its ball: then the ball stands still
+                                // on the floor where it was when the heel began to peel, and the ankle rises over it.)
+                                var ball=g.ToWorld(pose.WorldPosition[j==0?CapturedRig.LToe:CapturedRig.RToe],at);
+                                if(g.Heel[j]>0){if(!rolled[j]){rolled[j]=true;ballAt[j]=ball;}rolls++;worstDrawn=Math.Max(worstDrawn,new Vector2(ball.X-ballAt[j].X,ball.Z-ballAt[j].Z).Length());Check(Math.Abs(ball.Y-(NativeHordeGait.AnkleHeight-NativeHordeGait.BallDrop))<.01f,"a rolled foot's ball stands on the floor");}
+                                else{rolled[j]=false;float d=new Vector2(drawn.X-g.FootWorld[j].X,drawn.Z-g.FootWorld[j].Z).Length();worstDrawn=Math.Max(worstDrawn,d);Check(Math.Abs(drawn.Y-NativeHordeGait.AnkleHeight)<.01f,"a planted ankle stands on the floor");}
+                            }
+                            else rolled[j]=false;
                             if((g.Landed&(1<<j))!=0)steps++;last[j]=g.FootWorld[j];air[j]=g.FootAir[j];
                         }
                     }

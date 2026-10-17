@@ -65,6 +65,11 @@ namespace ChipArena.UnityConversion
         public float Reel(float t){for(int i=count-1;i>=0;i--){ref var h=ref At(i);if(!h.Stagger)continue;float a=t-h.At;if(a<0)continue;float d=Math.Max(.2f,h.StaggerFor);return a<d+.25f?a/d:float.NaN;}return float.NaN;}
         /// <summary>The newest hit's time, or -inf.</summary>
         public float Newest=>count>0?At(count-1).At:float.NegativeInfinity;
+        /// <summary>The newest hit's push (Unity world, horizontal unit or zero), its size (the stagger scale) and whether a headshot.</summary>
+        public bool NewestHit(out Vector2 push,out float size,out bool head)
+        {
+            push=Vector2.Zero;size=0;head=false;if(count==0)return false;ref var h=ref At(count-1);push=h.Dir;size=h.Scale*give*(h.Melee?1.2f:.85f)*(h.Weight==StaggerWeight.Heavy?1.6f:h.Weight==StaggerWeight.Step?1.15f:.7f);head=h.Head;return true;
+        }
 
         /// <summary>The hips' shove now (Unity world, horizontal m): the stagger spring per hit, refractory and soft-limited, by the kind's give.</summary>
         public Vector2 Shove(float t)

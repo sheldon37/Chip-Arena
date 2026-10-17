@@ -196,9 +196,15 @@ namespace ChipArena.UnityConversion
         }
         private static Vector3 HeadAt(int k,Vector3 target)
         {
-            var g=new NativeHordeGait();var p=new CapturedRig.Pose();
-            for(int i=0;i<240;i++){var f=new HordeMotionInput{Kind=k,Id=70001,Seed=NativeHordeKinds.Seed(70001),Time=i/60f,Root=new Vector3(0,.85f,0),Health=1,AttackAge=float.NaN,HasTarget=true,Target=target};g.Pose(f,p);}
-            p.World();var fw=Vector3.Transform(Vector3.UnitZ,p.WorldRotation[CapturedRig.Head]);return g.ToWorld(p.WorldPosition[CapturedRig.Head]+fw,Vector3.Zero)-g.ToWorld(p.WorldPosition[CapturedRig.Head],Vector3.Zero);
+            // (The face's direction averaged over the last second: the standing takes nod the head through tens of degrees, and the
+            // secondary motion's loll and tics ride on that, so one frame is a sample of the take, not of the look.)
+            var g=new NativeHordeGait();var p=new CapturedRig.Pose();var sum=Vector3.Zero;
+            for(int i=0;i<240;i++)
+            {
+                var f=new HordeMotionInput{Kind=k,Id=70001,Seed=NativeHordeKinds.Seed(70001),Time=i/60f,Root=new Vector3(0,.85f,0),Health=1,AttackAge=float.NaN,HasTarget=true,Target=target};g.Pose(f,p);
+                if(i<180)continue;p.World();var fw=Vector3.Transform(Vector3.UnitZ,p.WorldRotation[CapturedRig.Head]);sum+=g.ToWorld(p.WorldPosition[CapturedRig.Head]+fw,Vector3.Zero)-g.ToWorld(p.WorldPosition[CapturedRig.Head],Vector3.Zero);
+            }
+            return sum/60;
         }
         // ---- the wander: the slow take at the host's pace (and limping), planted feet; the hub's roster ----
         private static void Wander()
