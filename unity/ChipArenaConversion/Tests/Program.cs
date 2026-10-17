@@ -45,6 +45,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--horde-drops"){HordeDropChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());HulkMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-motion"){HulkMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-kinds"){IronworksKindChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--boss-motion"){BossMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-enemies"){StationEnemyChecks.Run(ProjectRoot());IronworksKindChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--horde-roam"){HordeRoamChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-charge"){HulkMotionChecks.Run(ProjectRoot());HulkChargeChecks.Run(ProjectRoot());HulkHuntChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());return 0;}
@@ -145,6 +146,7 @@ internal static class Program
             HealNumberChecks.Run(root);
             foreach(var result in EffectsAudioChecks.Run(root))Console.WriteLine("PASS "+result);
             ZoneMusicChecks.Run(root);
+            BossMotionChecks.Run(root);
             FootfallAudioChecks.Run(root);
             FootSurfaceChecks.Run(root);
             foreach(var result in IntroMusicChecks.Run(root))Console.WriteLine("PASS "+result);
