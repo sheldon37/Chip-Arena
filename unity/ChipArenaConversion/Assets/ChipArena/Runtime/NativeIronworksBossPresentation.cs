@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
         private IronworksBossClock iwbArrivalClock,iwbDeathClock;private double iwbArrivalLast=double.NaN,iwbDeathLast=double.NaN;private NVector iwbPrev;private float iwbLastBlow=float.NegativeInfinity;
         private readonly float[] iwbBlowAt=new float[8],iwbBlowSize=new float[8];private readonly NVector[] iwbBlowPush=new NVector[8];
         private readonly Matrix4x4[] iwbLinks=new Matrix4x4[160];private readonly Matrix4x4[] iwbEnds=new Matrix4x4[8];private int iwbLinkCount;
-        private readonly IronMoltenBatch iwbMelt=new IronMoltenBatch();private bool iwbLights;
+        private IronMoltenBatch iwbMelt;private bool iwbLights;
         private readonly float[] iwbMergePos=new float[NativeMapLooks.MaxLights*4],iwbMergeRgb=new float[NativeMapLooks.MaxLights*3],iwbMergeBeam=new float[NativeMapLooks.MaxLights];
         private Mesh iwbHazeMesh;private readonly System.Collections.Generic.List<Vector3> iwbHazeV=new System.Collections.Generic.List<Vector3>(NativeIronworksBossFx.HeatMax*4);
         private readonly System.Collections.Generic.List<Color> iwbHazeC=new System.Collections.Generic.List<Color>(NativeIronworksBossFx.HeatMax*4);private readonly System.Collections.Generic.List<Vector2> iwbHazeUv=new System.Collections.Generic.List<Vector2>(NativeIronworksBossFx.HeatMax*4);
@@ -136,9 +136,13 @@ namespace ChipArena.UnityConversion
         /// clock (the hall performs its intro and fight to the preview, silently: the music plays only for a real boss).</summary>
         private NativeZoneBossBeat IronworksBossMusic(NativeZoneBossBeat music)
         {
+            bool changed=false;
             if(!music.On&&NativeIronworksBossPreview.On&&!double.IsNaN(iwbPreviewSong)&&iwbPreviewSong>=0)
-            {var song=NativeZoneBossSongs.Music?.Song(NativeZoneMusic.IronworksBoss);if(song!=null)music=song.Evaluate(iwbPreviewSong+Mathf.Clamp(Time.unscaledDeltaTime,0,.1f),KitFlash);}
-            return NativeIronworksBossStage.Apply(music,NativeIronworksBossStage.Shown);
+            {var song=NativeZoneBossSongs.Music?.Song(NativeZoneMusic.IronworksBoss);if(song!=null){music=song.Evaluate(iwbPreviewSong+Mathf.Clamp(Time.unscaledDeltaTime,0,.1f),KitFlash);changed=true;}}
+            var stage=NativeIronworksBossStage.Shown;if(stage.On&&music.On){music=NativeIronworksBossStage.Apply(music,stage);changed=true;}
+            // The house lights follow the boss's stage (the death's foundry running down) only while it shows: untouched otherwise.
+            if(changed)NativeLighting.ZoneHouse(music.House());
+            return music;
         }
         // The boss's lights in the farthest warm slots of the Ironworks' eight (the two cool mercury slots stay), re-sent this frame.
         private void IronworksBossLightsMerge(Camera eye)
@@ -249,7 +253,7 @@ namespace ChipArena.UnityConversion
         }
         private void DrawIronworksBossMolten()
         {
-            var fx=ironworksBossFx;if(fx.MoltenCount==0||iwMolten==null||iwCube==null)return;var b=iwbMelt;b.Count=0;
+            var fx=ironworksBossFx;if(fx.MoltenCount==0||iwMolten==null||iwCube==null)return;var b=iwbMelt??=new IronMoltenBatch();b.Count=0;
             for(int i=0;i<fx.MoltenCount&&b.Count<NativeBlockLooks.Chunk;i++)
             {
                 var m=fx.Molten[i];int k=b.Count++;b.M[k]=Matrix4x4.TRS(new Vector3(m.At.X,m.At.Y,m.At.Z),new Quaternion(m.Rot.X,m.Rot.Y,m.Rot.Z,m.Rot.W),Vector3.one);
