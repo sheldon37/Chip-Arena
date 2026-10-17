@@ -1,3 +1,11 @@
+## 2026-10-17 — Astra: owner-selected Ironworks and Central Station music
+
+- Branch `codex/ironworks-station-music`, base shared/builder `dfb8aac`. Owner explicitly requested this audio wiring.
+- City Ironworks (`expedition-foundry`, plus design alias `expedition-ironworks`) loops **Foundry of the Dead**; Central Station (`expedition-transit`) loops **Subway Arrival Chime**. Map music routes ahead of the generic PvE fallback, below existing boss/gallery priority, at the existing 55% music gain. Hub/Ward music and gameplay are unchanged.
+- Original owner MP3 bytes retained; streaming/background-load import metadata, asset receipts and provenance added.
+- Checks: both MP3s fully decoded with FFmpeg without errors; source package validation passed (2341 files, all asset receipts/metas); `git diff --check` passed. Unity/Windows audio playback unrun here.
+- Prepared for merge to shared and builder sync; published Windows update not yet verified. No timing, hitbox, damage, cooldown, movement or network changes.
+
 ## 2026-10-17 — Claude: join circles bound to the exact join fields (on branch, not merged)
 
 - Branch `claude/join-circles-bind`, base `origin/claude/sleepy-ritchie-g8ruhv` `c6164a6` (Astra's PR #262 merge). Implementation commit `2d1093f`. Not merged, no PR, builder untouched, nothing published.
