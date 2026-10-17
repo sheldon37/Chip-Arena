@@ -1,3 +1,49 @@
+## 2026-10-17 — Claude: zombie motion pass (on branch, not merged)
+
+- **Branch and status:** `claude/zombie-motion`, from shared `f3d8eb4`, with newest shared `5dc860d` merged in as `1cd0006`. The implementation commit is `a784379`. Pushed only; no PR, not merged into shared or the builder, nothing published.
+- **Why:** the owner (2026-10-17): "Yes fix the zombies animations (Design as well, it seems they are still on the lower quality end) Improve these vastly." This is the motion half. Design (models and materials) is a separate branch, `claude/zombie-design`.
+- **What changed** (presentation only; full write-up in `docs/ZOMBIE-MOTION.md`):
+  - **Clock and root:** every horde add is posed on a continuous horde clock (`Core/NativeHordeFlow.cs`: `HordeClock`), never `arena.Time`. It is the replica render time on a guest and the visual clock on the host, it rides through stalls, and it slows near the newest frame. The drawn root (`HordeFlow`, on the boss library's `BossRootFollow`) follows a guest's own snapshots (new read-only accessor `Runtime/NativeReplicaFrames.cs`) or the host's 60 Hz body carried to the visual clock. Speed comes from that root; turning is rate- and acceleration-limited, with lean.
+  - **Feet:** a landing beyond reach is planted where the leg reached, a trailing foot rolls onto its ball, an over-reached walking foot steps instead of sliding, each foot sets off on its own phase, steps are planned under the balanced hips, and the hips ease into a stride while planted feet stay in reach. Crawler legs no longer spin when folded shut.
+  - **Secondary motion** (`Core/NativeHordeLife.cs`): loose head, dangling arms, trunk lag and sway, footfall dips, and per-seed loll, hunch, dead arm, limp and tics. Hurt adds sag, and the hinged jaws flap.
+  - **Strikes:** they cock, accelerate into contact exactly at `LastAttack + strike`, follow through and settle. Consecutive blows cross-fade, a guest plays a blow out before the next, and a cancelled wind-up fades without ever reaching contact. Arm layers are solved per take, which removes wrist and elbow flips.
+  - **Pop killer** (`Core/NativeHordeBlend.cs`, inertialization): it covers entrances, the drop's touchdown, kind swaps and the death hand-over, and catches arm and trunk pops. Legs and root are never held back.
+  - **Drop fixes:** the leap no longer plays an unbuilt take, the slam is continuous, and the finished landing holds its take's last frame.
+- **Affected systems:** `Core/NativeHordeMotion.cs`, `Core/NativeHordeReact.cs` (`NewestHit`), the new Core files above, and `Runtime/NativeHordeKindPresentation.cs` (pose and clock regions only: clock, flow, blend, attack hand-over, jaw flap, death blend). Tests: `ZombieFlowChecks.cs` (new), updates to `ZombieMotionChecks`, `HordeRoamChecks`, `HulkSpitterChecks` and `StationEnemyChecks`, and the seven `kindN.motion` lines of `station-enemies-baseline.txt`.
+- **Animation impacts:** none on hit timing, hit volumes, colliders, damage, cooldowns, movement or networking. Contact lands at the authority's `LastAttack + strike` on the presentation clock, and every posed body stays inside its hit volume.
+  - On a guest the blow is now drawn on the replica render timeline, the same timeline as the body, which is about 0.1 s behind the newest frame. The shipped pose ran on the newest frame, ahead of the body. So a guest may see an add's claw land up to the render delay after the damage event.
+- **Checks (actual):**
+  - `--zombie-flow` PASS, 4460 checks, run before and after the merge.
+    - 20 Hz guest with jitter and late frames: root peak acceleration 98.6 m/s^2 against the shipped lerp's 483. The pose clock never held; `arena.Time` held 87% of frames.
+    - Planted feet: worst 0.5 mm per frame across six kinds.
+    - Contact: within one frame for 16 blows.
+    - Peers: bit-identical. 60 Hz against 144 Hz: root within 2.9 cm, head within 5.7 cm.
+    - Frame-rate halving ratio 0.53; zero allocation.
+  - Also PASS before the merge: `--wardzero-simulation`, `--hulk-charge`, `--hulk-motion`, `--horde-roam`, `--ironworks-kinds`, `--horde-drops`, `--footfalls`, `--station-enemies`, `--boss-motion`.
+  - Unity runtime and editor compile against the 6000.3.24f1 assemblies: OK.
+  - run5b on `9fabe0f` (the working tree also held this docs commit): all five steps exit 0.
+    - Unity runtime and editor compile: OK.
+    - Relay and managed suite: 781 PASS lines, no FAIL; zombie flow ran inside it.
+    - Python: 140 OK, 1 skipped.
+    - Source package: 2395 files.
+    - `git diff --check`: clean.
+  - Two earlier run5b attempts ran under heavy machine load. Each failed one unrelated per-frame allocation check in the relay step (spawn-in, 3016 bytes; expedition states, 1664 bytes): the known allocation flake. A direct full CoreTests run between them passed, with 780 PASS lines.
+- **Harness** (offline WebGL, same Core code, not Unity), guest reels at 20 Hz, shipped against this branch:
+  - Root peak acceleration (m/s^2): shambler 249 -> 43, runner 431 -> 55, brute 215 -> 63, spitter 265 -> 21, crawler 586 -> 176, bloater 242 -> 23, Hulk 124 -> 46.
+  - Host at 144 fps: 1613 -> 61 (shambler) and 2182 -> 104 (runner).
+  - Pose clock held on 88% of frames -> 0.
+  - Planted slip in the gait, worst per frame: 7 to 35 cm -> 0.01 to 1 cm (crawler 7.5 cm).
+  - Joint acceleration p99: 5100-13200 -> 900-3200 m/s^2.
+  - Renders are in the scratch `renders-zombie-motion/` (not in the repo).
+- **Not run:** no Unity Editor play, no Windows build, no real multiplayer session. Fluidity is judged from the harness and the managed checks only.
+- **Risks:**
+  - The crawler is still the roughest kind: low hips fold its hind legs, so its run still spikes (7.5 cm slip). The real fix is a posture change together with its hit volume.
+  - Entrances and deaths slide feet briefly while they blend.
+  - Gait cost per add rose from about 7-10 µs to about 13-17 µs on Full (managed, noisy machine).
+  - Guest blows draw on the render timeline (see Animation impacts).
+  - `claude/zombie-design` also edits `Runtime/NativeHordeKindPresentation.cs` and `Tests/station-enemies-baseline.txt`, so merging both needs care: regenerate the `kindN.motion` lines on the combined code (`Tests/StationBaseline.cs`).
+- **Next step:** owner review of the renders, then merge into shared. Astra prompt #19 (optional network smoothing; see `docs/ZOMBIE-MOTION.md`) is in the scratch prompts file for the caller to pass on.
+
 ## 2026-10-17 — Claude: owner approved THE 6:47; design merged into shared (not live)
 
 - Owner (verbatim): "Go with your suggestions". Every recommended option in `docs/EXPEDITION-BOSS-CENTRAL-STATION.md` section 11 is chosen: THE 6:47 concept and plate name, 13 m as modelled, barrier down in phase 2 and the board falling in phase 3 with real colliders, the boss-called express with Mind the Gap, levers allowed, All Aboard on the Undertow's hold, boss-driven falling glass, clocks to 6:48 and DEPARTED, boss points moved.

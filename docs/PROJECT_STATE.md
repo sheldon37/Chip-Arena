@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-17 Claude zombie motion pass (`claude/zombie-motion`, on branch, not merged; presentation only): horde adds are posed on a continuous clock and smooth drawn root on every peer, with planted feet, secondary motion and weighted strikes that land at the authority's hit. See `docs/ZOMBIE-MOTION.md`; optional network follow-ups are in Astra prompt #19.
+
 2026-10-17 Claude Central Station boss design THE 6:47 (`claude/boss-central-station`; owner approved every recommendation 2026-10-17, merged into shared, not live): `docs/EXPEDITION-BOSS-CENTRAL-STATION.md` (concept, phases, attacks, animation direction, Astra contract and prompt, owner decisions) and the inert concept model `Core/NativeStationBossModel.cs` with managed checks. Waits on owner decisions, then Astra's rules and fields. See DEV_LOG.
 
 2026-10-17 Claude boss motion foundation (`claude/boss-motion`, merged into shared; presentation only): `Core/NativeBossMotion*.cs` springs, a replicated root that stays smooth through jittery 20 Hz snapshots, an N-leg gait whose planted feet never move, chains, an authority-timed action timeline, layers, two reference rigs; `docs/BOSS-MOTION.md` has the stiffness audit (notes for the zombie fix) and the fields Astra must replicate for bosses. Managed checks and offline renders; Unity/Windows/two-client unrun. See DEV_LOG.
