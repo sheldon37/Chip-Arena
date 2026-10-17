@@ -66,7 +66,7 @@ class ExpeditionLayoutScripts(unittest.TestCase):
   finally:sys.path.remove(str(D))
   text=(R/'Assets/Conversion/Resources/MapLooks.json').read_text();looks=json.loads(text)['maps']
   self.assertIn(city.look_text(),text,'write it: python3 docs/arenas/scripts/expedition_city.py --maplooks')
-  self.assertEqual(looks[-1],city.look())
+  self.assertEqual(next(l for l in looks if l['id']=='expedition-city'),city.look())
 
 class ExpeditionLayoutFixtures(unittest.TestCase):
  def test_manifest_shape(self):
@@ -124,7 +124,7 @@ class ExpeditionLayoutFixtures(unittest.TestCase):
   lv=live['areas'][0]['doors'][0];self.assertEqual((d['anchor'],d['interact'],d['closure']),(lv['anchor'],lv['interact'],lv['closure']),'F entry data unchanged')
   same=json.loads(DRAFT.read_text());dd=same['areas'][0]['doors'][0];del dd['join'];dd['approach'],dd['returns'],same['revision']=lv['approach'],lv['returns'],live['revision']
   self.assertEqual(same,live,'the draft differs from the live manifest only by the join, the approach, the returns and the revision')
-  self.assertEqual((R/'Assets/Conversion/Resources/ExpeditionLayout.json').read_bytes(),F['json'].read_bytes(),'the live resource is the live fixture')
+  self.assertEqual((R/'Assets/Conversion/Resources/ExpeditionLayout.json').read_bytes(),(R/'Tests/expedition-live-layout.json').read_bytes(),'the resource equals the activated fixture')
  def test_maps_and_hashes(self):
   m=load('json');town=load('city')['maps'][0];inst=load('ward')['maps'][0]
   self.assertEqual(block_hash(town),m['areas'][0]['blockHash']);self.assertEqual(block_hash(inst),m['areas'][1]['blockHash'])
@@ -142,6 +142,6 @@ class ExpeditionLayoutFixtures(unittest.TestCase):
    self.assertLessEqual(abs(b['pos']['x'])+b['size']['x']/2,98.001,b['id']);self.assertLessEqual(b['pos']['z']+b['size']['z']/2,62.001,b['id']);self.assertGreaterEqual(b['pos']['z']-b['size']['z']/2,-98.001,b['id'])
  def test_look_entry(self):
   looks=json.loads((R/'Assets/Conversion/Resources/MapLooks.json').read_text())['maps'];mine=[l for l in looks if l['id']=='expedition-city']
-  self.assertEqual(len(mine),1);self.assertEqual(looks[-1]['id'],'expedition-city');self.assertEqual(sum(1 for l in looks if l['look']=='expedition-city'),1)
+  self.assertEqual(len(mine),1);self.assertEqual([l['id'] for l in looks[-3:]],['expedition-city','expedition-transit','expedition-foundry']);self.assertEqual(sum(1 for l in looks if l['look']=='expedition-city'),1)
   l=mine[0];self.assertEqual((l['sky']['variant'],l['fog']['mode']),('dusk','linear'));self.assertLessEqual(len(l['lights']),8)
 if __name__=='__main__':unittest.main()

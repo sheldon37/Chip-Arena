@@ -64,6 +64,7 @@ namespace ChipArena.UnityConversion
         public ExpeditionCommandResult Extract(string account)
         {
             if(!Run.CanExtract(account))return ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,"Reach the sanctuary before extracting.");
+            if(FreshRun&&Run.SplitAreas)return Run.Extract(account)?ExpeditionCommandResult.Sent:ExpeditionCommandResult.Of(ExpeditionCommandState.Unavailable,ExpeditionIntegrationHooks.HostTransfer);
             var proposed=new NativeExpedition(Run.Snapshot());if(!proposed.Extract(account))return ExpeditionCommandResult.Of(ExpeditionCommandState.Unavailable,ExpeditionIntegrationHooks.HostTransfer);
             if(FreshRun){Run=proposed;return ExpeditionCommandResult.Sent;}
             try
@@ -154,7 +155,7 @@ namespace ChipArena.UnityConversion
         public bool PlaceReward(string reward,float x,float y,float z)
         {
             if(!Mutable||!s.rewards.Any(r=>r.id==reward&&(r.source=="monster"||r.source=="boss"))||!ExpeditionValidation.Number(x)||!ExpeditionValidation.Number(y)||!ExpeditionValidation.Number(z))return false;
-            var anchor=new ExpeditionWorldAnchor{id=reward,area=s.area,kind="reward",x=x,y=y,z=z};
+            var anchor=new ExpeditionWorldAnchor{id=reward,area=Area,kind="reward",x=x,y=y,z=z};
             var anchors=s.anchors.Where(a=>a.id!=reward).Concat(new[]{anchor}).ToArray();return SetWorld(anchors,s.chests);
         }
     }

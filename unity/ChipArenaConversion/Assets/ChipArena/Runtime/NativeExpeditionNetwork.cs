@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
             SendServer(new NativeNetMessage{type="expedition-area-ready",expeditionAreaReady=expeditionLoadedTicket});
         }
         private void ResetExpeditionNetwork()
-        {expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
+        {DisposeSplitAreas();expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
         private void ExpeditionNetworkTick()
         {
             try{ExpeditionNetworkStep();}
@@ -81,6 +81,7 @@ namespace ChipArena.UnityConversion
         }
         private void ExpeditionNetworkStep()
         {
+            if(ExpeditionSplit){SplitNetworkStep();return;}
             if(server!=null){ExpeditionReplicaTick();ExpeditionReadyTick();return;}
             if(expeditionSession==null)return;
             if(ExpeditionM1&&expeditionDirector.Barrier.active&&expeditionLoadedGeneration!=expeditionDirector.Barrier.generation)return;
@@ -132,7 +133,7 @@ namespace ChipArena.UnityConversion
                 expeditionReceiver=new ExpeditionViewReceiver(id);
                 expeditionGuest=new ExpeditionGuestCommands(id,()=>ExpeditionView,request=>SendServer(new NativeNetMessage{type="expedition-command",expeditionCommand=request}));
             }
-            if(message.type=="expedition-public"){expeditionReplicaGeneration=message.generation;expeditionReceiver.Public(message.expeditionPublic);}
+            if(message.type=="expedition-public"){if(message.expeditionPublic?.areaIdentity!=null){var ticket=message.expeditionPublic.areaIdentity;bool changed=ExpeditionView?.areaIdentity?.Matches(ticket)!=true;if(!expeditionReceiver.BindArea(ticket))return true;if(changed){frameOrder.Reset();frameOrder.Control(networkEpoch);expeditionLoadedTicket=null;pending=new InputFrame();}}expeditionReplicaGeneration=message.generation;expeditionReceiver.Public(message.expeditionPublic);}
             else if(message.type=="expedition-private")expeditionReceiver.Private(message.expeditionPrivate);
             else expeditionGuest.Reply(message.expeditionReply);
             ExpeditionView=expeditionReceiver.View;return true;

@@ -28,6 +28,7 @@ namespace ChipArena.UnityConversion
     {public PveEntry entry;public string[] allow;}
     [Serializable] public sealed class ExpeditionAreaLayout
     {
+        public PveMachine[] machines=Array.Empty<PveMachine>();
         public string id,role,map,spawnSource;public ExpeditionWorldAnchor[] anchors;public ExpeditionDoorLayout[] doors;
         public ExpeditionInteractionLayout[] interactions;public ExpeditionGateLayout[] gates;public ExpeditionSpawnLayout[] spawns;
         public ExpeditionVolume[] sanctuary;public ExpeditionPoint[] slots,bossPoints;public ExpeditionVolume bossTrigger;
@@ -112,7 +113,7 @@ namespace ChipArena.UnityConversion
                 var map=content.maps.FirstOrDefault(m=>m.id==area.map);var bounds=map?.bounds;
                 if(bounds==null)throw new FormatException("Expedition layout: missing map "+area.map);
                 void Check(V3 p,float radius,float height)
-                {if(p.x-radius<bounds.minX||p.x+radius>bounds.maxX||p.z-radius<bounds.minZ||p.z+radius>bounds.maxZ||p.y<=bounds.killY||p.y+height>bounds.ceiling||!supported(area.map,p,radius,height))throw new FormatException("Expedition layout: unsupported or obstructed point in "+area.id);}
+                {if(p.x-radius<bounds.minX||p.x+radius>bounds.maxX||p.z-radius<bounds.minZ||p.z+radius>bounds.maxZ||p.y<=bounds.killY||p.y+height>bounds.ceiling||!supported(area.map,p,radius,height))throw new FormatException("Expedition layout: unsupported or obstructed point in "+area.id+" ("+p.x+", "+p.y+", "+p.z+"), radius "+radius);}
                 var slots=area.slots.Concat(area.doors.SelectMany(d=>d.entries.Concat(d.returns))).ToArray();
                 foreach(var p in slots){Check(p.Position,.45f,1.8f);Check(p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight);}
                 void VolumeBounds(ExpeditionVolume v)
@@ -141,6 +142,7 @@ namespace ChipArena.UnityConversion
                 foreach(var group in area.doors.Select(d=>d.entries).Concat(area.doors.Select(d=>d.returns)).Concat(new[]{area.slots}))
                     for(int i=0;i<group.Length;i++)for(int j=0;j<i;j++)if((group[i].Position-group[j].Position).Length<1)throw new FormatException("Expedition layout: overlapping party slots.");
                 foreach(var p in area.bossPoints)Check(p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight);
+                foreach(var machine in area.machines){Check(machine.front.Position(),.45f,1.8f);Check(machine.dispense.Position(),.45f,1.8f);if(!reachable(area.map,origin.Position,machine.front.Position(),.45f,1.8f))throw new FormatException("Expedition layout: unreachable machine "+machine.id);}
                 foreach(var p in area.interactions)Check(new V3(p.x,p.y,p.z),.45f,1.8f);
                 foreach(var d in area.doors)Check(d.approach.Position,.45f,1.8f);
                 var spawns=ResolveSpawns(area,horde);
@@ -169,7 +171,8 @@ namespace ChipArena.UnityConversion
             data.hideSpots=area.bossPoints.Select(p=>new PvePoint{x=p.x,y=p.y,z=p.z}).ToArray();
             data.pads=(area.role=="world"?area.slots:area.doors.SelectMany(d=>d.entries)).Select(p=>new PvePoint{x=p.x,y=p.y,z=p.z}).ToArray();
             // New instances require their own machine authoring; Ward coordinates are never a fallback.
-            data.machines=Array.Empty<PveMachine>();data.machineBlocks=Array.Empty<ContentBlock>();
+            data.machines=area.machines;
+            data.machineBlocks=area.machines.Select(m=>new ContentBlock{id="pve-machine-"+m.m,role="static",material="foundation",pos=new V3(m.x-(float)Math.Sin(m.yaw)*.25f,m.y+1.1f,m.z-(float)Math.Cos(m.yaw)*.25f),size=new V3(1.3f,2.2f,.9f),rotation=new ContentRotation{y=(float)Math.Sin(m.yaw/2),w=(float)Math.Cos(m.yaw/2)}}).ToArray();
         }
         // Identity covers exact manifest bytes and the validated map/PvE revision, which includes the blocks.
         public static string Compatibility(string json,ConversionContent content)=>NativeMapRules.Revision(json+"\n"+content.contentRevision);
@@ -201,6 +204,13 @@ namespace ChipArena.UnityConversion
                 doors=Items(o,"doors",v=>{var q=Obj(v);return new ExpeditionDoorLayout{anchor=Id(Text(q,"anchor")),join=q.ContainsKey("join")?Join(Required(q,"join")):null,interact=Volume(Required(q,"interact")),closure=Volume(Required(q,"closure")),approach=Point(Required(q,"approach"),false),entries=Items(q,"entries",p=>Point(p)),returns=Items(q,"returns",p=>Point(p))};},true),
                 interactions=Items(o,"interactions",v=>{var q=Obj(v);var p=Point(v,false);return new ExpeditionInteractionLayout{anchor=Id(Text(q,"anchor")),x=p.x,y=p.y,z=p.z,range=Number(q,"range")};}),
                 gates=Items(o,"gates",v=>{var q=Obj(v);return new ExpeditionGateLayout{id=Id(Text(q,"id")),opens=Text(q,"opens"),closure=Volume(Required(q,"closure"))};}),sanctuary=Array.Empty<ExpeditionVolume>(),slots=Array.Empty<ExpeditionPoint>()};
+            a.machines=Items(o,"machines",v=>
+            {
+                var q=Obj(v);float index=Number(q,"m");var p=Point(v);PvePoint P(string key){var at=Point(Required(q,key),false);return new PvePoint{x=at.x,y=at.y,z=at.z};}
+                if(index<0||index>15||index!=(int)index||!new[]{"chip","med","recruit"}.Contains(Text(q,"kind"))||Math.Abs(p.yaw)>Math.PI*2)throw new FormatException("Expedition layout: invalid machine.");
+                return new PveMachine{m=(int)index,id=Id(Text(q,"id")),kind=Text(q,"kind"),x=p.x,y=p.y,z=p.z,yaw=p.yaw,front=P("front"),dispense=P("dispense"),chipDrop=P("chipDrop")};
+            });
+            if(!a.machines.Select(m=>m.m).SequenceEqual(Enumerable.Range(0,a.machines.Length))||a.machines.Select(m=>m.id).Distinct().Count()!=a.machines.Length)throw new FormatException("Expedition layout: invalid machine indices.");
             var boss=Obj(Required(o,"boss"));a.bossPoints=Items(boss,"points",v=>Point(v),true);if(boss.TryGetValue("trigger",out var trigger))a.bossTrigger=Volume(trigger);
             if(o.TryGetValue("sanctuary",out var safe)){var q=Obj(safe);a.sanctuary=Items(q,"volumes",Volume,true);a.slots=Items(q,"slots",v=>Point(v),true);}
             var spawns=Required(o,"spawns");a.spawnSource=spawns as string;a.spawns=a.spawnSource!=null?Array.Empty<ExpeditionSpawnLayout>():List(spawns).Select(v=>

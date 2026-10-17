@@ -145,6 +145,9 @@ namespace ChipArena.UnityConversion
                 Check(run.VoteExit("native-host",true),"leave cleared instance");session.Tick(.1);Check(director.Barrier.active,"return has a real barrier");LoadCurrent();
                 for(int i=0;i<5;i++)session.Tick(.25);ExpeditionSyncClosures();
                 var trigger=layout.Area(layout.world).bossTrigger;Local.Body.position=new Vector3(trigger.x,trigger.y+NativeLocomotionRules.HalfHeight,trigger.z);
+                Check(!director.TryBeginFinal(),"remaining instances lock final");
+                foreach(var other in layout.instances.Where(id=>id!=area.id))
+                {Check(run.Enter(other),"enter remaining fixture area");Check(run.Progress("fixture-clear",1)&&run.StartBosses(new[]{"fixture-boss"})&&run.DefeatBoss("fixture-boss"),"clear remaining fixture objective");Check(run.VoteExit("native-host",true),"remaining area return vote");run.Tick(.1);}
                 Check(director.TryBeginFinal(),"unlocked final trigger begins combat");StepExpeditionCombat();FinishIntro();
                 DefeatAllPhases();Check(run.Snapshot().phase==ExpeditionPhase.Victory,"real final death reaches victory");
                 Check(run.VoteContinue("native-host",true),"continue vote");session.Tick(.1);Check(run.Snapshot().loop==1&&director.Barrier.active&&!run.Snapshot().members[0].safe,"Continue starts a new unsafe load barrier");LoadCurrent();

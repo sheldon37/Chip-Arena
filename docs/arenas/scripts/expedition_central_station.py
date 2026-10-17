@@ -650,7 +650,7 @@ def town_checks():
     reserved doorway: floor and clearance for the pilot and the Hulk, and the live town spawns it would crowd (8 m rule)."""
     out, ok = [], True
     maps = json.load(open(os.path.join(RES, 'UnityMaps.json')))['maps']; town = next(m for m in maps if m['id'] == 'expedition-city')
-    lay = json.load(open(os.path.join(RES, 'ExpeditionLayout.json'))); tarea = next(a for a in lay['areas'] if a['id'] == TOWN)
+    lay = json.load(open(os.path.join(ROOT, 'unity', 'ChipArenaConversion', 'Tests', 'expedition-layout-draft.json'))); tarea = next(a for a in lay['areas'] if a['id'] == TOWN)
     res = next(r for r in tarea['hub']['reserved'] if r['building'] == AREA)
     out.append(f'live hub record: {AREA} reserved at ({res["x"]:g}, {res["y"]:g}, {res["z"]:g}) yaw {res["yaw"]:g}, {res["path"]:g} m walked from the {res["gate"].split(":")[-1]} gate ({res["run"]:.1f} s running)')
     ok &= (res['x'], res['z'], res['yaw']) == (TOWN_DOOR[0], TOWN_DOOR[1], TOWN_YAW)

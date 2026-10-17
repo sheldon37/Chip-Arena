@@ -111,7 +111,7 @@ namespace ChipArena.UnityConversion
             if(frame==null||arena.Time>NativeBreach.SolidAt(frame.restoreAt)+.4f)return;
             if(frame.Dynamic){HordeWallJob(arena,frame);return;}
             // A plain search: the frame's capture would allocate a closure on every drawn frame.
-            PveEntry entry=null;foreach(var e in NativeArena.StageContent.entries)if(e!=null&&e.e==frame.entry){entry=e;break;}
+            PveEntry entry=null;foreach(var e in (arena.Pve?.Content??NativeArena.StageContent).entries)if(e!=null&&e.e==frame.entry){entry=e;break;}
             if(entry==null)return;
             float spawn=frame.breakAt-NativeBreach.Knock;
             // A panel a charging Hulk crashed through (the record names it as the actor, broken in its run) has no knock.

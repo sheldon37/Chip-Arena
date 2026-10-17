@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class MapVolume { public V3 center,size; }
     [Serializable] public sealed class MapPilotBlock { public string id; public V3 center,size; public float bottom; }
     [Serializable] public sealed class MapNavNode { public string id; public V3 pos; public int layer;public bool safe; }
-    [Serializable] public sealed class MapNavLink { public string id,a,b,kind; public string[] requires,after,hazards; }
+    [Serializable] public sealed class MapNavLink { public string id,a,b; public string kind="walk"; public string[] requires=Array.Empty<string>(),after=Array.Empty<string>(),hazards=Array.Empty<string>(); }
     [Serializable] public sealed class MapNav { public MapNavNode[] nodes; public MapNavLink[] links; }
     [Serializable] public sealed class MapRamp {public string id,kind;public V3 low,high;public float width,bottom;public string[] blocks;}
     [Serializable] public sealed class MapDrop {public string id;public V3 a,b;}
@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
     {
         public const float PilotRadius=.42f;
         public static bool WardInstance(string id)=>id=="siren"||id=="expedition-ward-zero";
-        public static bool ExpeditionInstance(string id)=>id=="expedition-ward-zero"||id=="expedition-transit"||id=="expedition-ironworks";
+        public static bool ExpeditionInstance(string id)=>id=="expedition-ward-zero"||id=="expedition-transit"||id=="expedition-foundry"||id=="expedition-ironworks";
         public static bool ArenaSelectable(ContentMap map)=>map!=null&&!map.id.StartsWith("expedition-",StringComparison.Ordinal);
         public static bool Finite(V3 p)=>MathUtil.Finite(p.x)&&MathUtil.Finite(p.y)&&MathUtil.Finite(p.z);
         public static bool Box(V3 p,V3 size)=>Finite(p)&&Finite(size)&&size.x>0&&size.y>0&&size.z>0;
@@ -93,6 +93,7 @@ namespace ChipArena.UnityConversion
             Need(m.nav.links.Select(l=>l.id).Distinct().Count()==m.nav.links.Length,"nav link IDs");
             var segments=new HashSet<string>((m.segments??Array.Empty<StructureDefinition>()).Select(s=>s.id));var links=new HashSet<string>(m.nav.links.Select(l=>l.id));
             foreach(var n in m.nav.nodes)Need(!string.IsNullOrEmpty(n.id)&&Finite(n.pos),"nav node");
+            foreach(var l in m.nav.links){if(string.IsNullOrEmpty(l.kind))l.kind="walk";l.requires??=Array.Empty<string>();l.after??=Array.Empty<string>();l.hazards??=Array.Empty<string>();}
             foreach(var l in m.nav.links)Need(!string.IsNullOrEmpty(l.id)&&nodes.Contains(l.a)&&nodes.Contains(l.b)&&l.a!=l.b&&(l.requires??Array.Empty<string>()).Concat(l.after??Array.Empty<string>()).All(segments.Contains),"nav endpoints/segment references");
             foreach(var s in m.segments??Array.Empty<StructureDefinition>())Need((s.nav?.remove??Array.Empty<string>()).Concat(s.nav?.add??Array.Empty<string>()).All(links.Contains),"segment nav references");
         }

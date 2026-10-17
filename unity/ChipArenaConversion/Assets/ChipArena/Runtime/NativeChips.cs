@@ -14,9 +14,17 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,float> chipCooldowns=new Dictionary<string,float>();
         private static readonly (string id,string kind,float radius,float duration,float damage)[] fieldRules={
             ("black-hole","black-hole",5,3.5f,10),("acid-rain","acid",3,4,12),("wildfire","fire",2.5f,3,15),("blizzard","frost",3.5f,3,4),("time-warp","time",4,4,0),("repulsion-pad","repulsion",3.5f,3,0),("med-garden","heal",2.5f,4,6),("lightning-rod","storm",4,3,18),("bubble-mine","bomb",3,1,25),("sticky-bomb","bomb",3,1.2f,28),("proximity-mail","mine",2.5f,6,32),("delayed-gratification","bomb",4,2.2f,48),("implosion-bomb","implosion",4,.9f,30),("demolition-charge","bomb",3,1,18),("aftershock","bomb",3.5f,.45f,20)};
-        private bool ProcOnce(string key)=>procLedger.Add(key);
+        private bool ProcOnce(string key)
+        {
+            if(Expedition?.Session.Run.SplitAreas==true&&(key.StartsWith("undo:")||key.EndsWith(":exit")||key.EndsWith(":panic")||key.EndsWith(":round-two")))
+            {
+                string number=key.StartsWith("undo:")?key.Substring(5):key.Substring(0,key.IndexOf(':'));
+                if(int.TryParse(number,out int id)&&Pilots.Find(p=>p.Seat.id==id) is NativePilot pilot)return pilot.TransferProcs.Add(key);
+            }
+            return procLedger.Add(key);
+        }
         private bool ChipReady(NativePilot p,string key,float seconds){key=p.Seat.id+":"+key;if(chipCooldowns.TryGetValue(key,out float until)&&Time<until)return false;chipCooldowns[key]=Time+seconds;return true;}
-        private float Heal(NativePilot p,float amount,string detail=null){if(p==null||p.Hp<=0||amount<=0)return 0;float actual=Math.Min(amount,Math.Max(0,(float)p.Stats["hp"]-p.Hp));p.Hp+=actual;if(actual>0)Emit(EventKind.Heal,p,p.Seat.id,p.Body.position,actual,detail);return actual;}
+        private float Heal(NativePilot p,float amount,string detail=null){if(p==null||Expedition?.Session.Run.SplitAreas==true&&!Pilots.Contains(p)||p.Hp<=0||amount<=0)return 0;float actual=Math.Min(amount,Math.Max(0,(float)p.Stats["hp"]-p.Hp));p.Hp+=actual;if(actual>0)Emit(EventKind.Heal,p,p.Seat.id,p.Body.position,actual,detail);return actual;}
         private void BlockProc(NativePilot p,NativePilot attacker,Vector3 point,string detail="clash")
         {
             Emit(EventKind.Block,p,attacker?.Seat.id??0,point,0,detail,normal:attacker!=null?(attacker.Body.position-point).normalized:Vector3.up);if(Dev(p,"ansatsuken")){CancelFighter(p);p.BlockReady=p.BlockEnd=p.Ready=p.StunEnd=0;p.ShieldUntil=Time+.1f;}if(p.BlockProcUsed)return;p.BlockProcUsed=true;

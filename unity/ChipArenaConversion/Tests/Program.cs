@@ -7,7 +7,11 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--expedition-split"){ExpeditionSplitChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-fresh"){ExpeditionFreshRunChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--expedition-area-wire"){ExpeditionAreaWireChecks.Run();return 0;}
+            if(args.Length==1&&args[0]=="--expedition-joins"){ExpeditionJoinChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--expedition-cohorts"){ExpeditionCohortChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--cyber-v2-authority"){CyberKit2AuthorityChecks.Run();CyberStepChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-areas"){ExpeditionAreaRegistryChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-director"){ExpeditionDirectorChecks.Run(ProjectRoot());return 0;}
@@ -24,7 +28,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--chip-select"){var chipData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});foreach(var result in ChipSelectChecks.Run(chipData))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--chip-screen"){ChipScreenChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
-            DevAbuseChecks.Run();ExpeditionChecks.Run();ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaRegistryChecks.Run(ProjectRoot());
+            DevAbuseChecks.Run();ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
             if(args.Length==1&&args[0]=="--navigation"){NavSearchChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--wardzero-simulation"){var wardRoot=ProjectRoot();WardSimulationChecks.Run(wardRoot);HulkBreachChecks.Run(wardRoot);WardZeroChecks.Run(wardRoot);StageVentChecks.Run(wardRoot);HordeKindChecks.Run(wardRoot);ZombieMotionChecks.Run(wardRoot);HulkSpitterChecks.Run(wardRoot);HulkBreachFxChecks.Run(wardRoot);HulkMotionChecks.Run(wardRoot);return 0;}
             if(args.Length==1&&args[0]=="--cloudflare-smoke"){CloudflareChecks.Live(ProjectRoot()).GetAwaiter().GetResult();return 0;}
