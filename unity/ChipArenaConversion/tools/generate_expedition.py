@@ -34,6 +34,8 @@ def navigation(m):
         raise ValueError('Unknown Expedition navigation map: '+m['id'])
     _, prefix, scale = MAP_DRAFTS[m['id']]
     off = set(m.get('navHints', {}).get('collisionOff', []))
+    # Unity replaces every authored ramp's tread blocks with its smooth collider.
+    off.update(b for ramp in m.get('ramps', []) for b in ramp.get('blocks', []))
     col = Collider([b for b in m['blocks'] if b['id'] not in off],
                    m.get('ramps', []), m['bounds'], cell=1)
     nodes, cells, links = [], {}, []
