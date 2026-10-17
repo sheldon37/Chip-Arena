@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-17 Claude boss motion foundation (`claude/boss-motion`, on branch, not merged; presentation only): `Core/NativeBossMotion*.cs` springs, a replicated root that stays smooth through jittery 20 Hz snapshots, an N-leg gait whose planted feet never move, chains, an authority-timed action timeline, layers, two reference rigs; `docs/BOSS-MOTION.md` has the stiffness audit (notes for the zombie fix) and the fields Astra must replicate for bosses. Managed checks and offline renders; Unity/Windows/two-client unrun. See DEV_LOG.
+
 2026-10-17 Astra zone gameplay candidate (`codex/unity-zone-gameplay`): all nine Station/Ironworks enemies, zone spawning/caps, hazards/levers, replicated state and live bindings implemented; exp-layout-6 adds Rigger hangs and the converter shutter. PR #264 gameplay head 37fca579 passes hosted native-source and Windows updater gates (full regressions and real relay); integrated Claude's boss music head 77c3696. Native Windows gameplay execution and publication pending. See EXPEDITION-ZONE-GAMEPLAY.md and DEV_LOG.
 
 2026-10-17 Claude zone boss music (`claude/zone-music`, merged into shared): Central Station and City Ironworks play their own boss tracks (`music/central-station-boss`, `music/city-ironworks-boss`) when the files are installed, else the Siren's song; normal-play zone music is Astra's PR #263. Next: owner drops the two MP3s in `Assets/ChipArena/Resources/Audio/music/`.
