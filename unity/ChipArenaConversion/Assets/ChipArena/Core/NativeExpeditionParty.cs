@@ -6,8 +6,8 @@ namespace ChipArena.UnityConversion
     public static class NativeExpeditionParty
     {
         public const int Capacity=4;
-        // v3 requires area-scoped frames, inputs and transfer readiness; fresh runs remain in memory.
-        public const int Protocol=3;
+        // v4 adds bounded startup/loading protection before synchronous area construction.
+        public const int Protocol=4;
         public static string Validate(IEnumerable<string> accounts,bool authenticated,bool ready,bool supported=true)
         {
             if(!supported)return "Every player must update to a build with Expedition co-op support.";
@@ -18,4 +18,16 @@ namespace ChipArena.UnityConversion
             return ready?null:"Wait for every pilot to ready up.";
         }
     }
+    // One fixed deadline per load identity. Repeated packets cannot keep a dead peer alive forever.
+    public sealed class NativeExpeditionLoadWindow
+    {
+        public const double Seconds=60,RetrySeconds=5;
+        private string identity;private double until,next;
+        public void Begin(string key,double now){if(key==null||key==identity)return;identity=key;until=now+Seconds;next=0;}
+        public bool Active(double now)=>identity!=null&&now<until;
+        public bool Send(double now){if(now<next)return false;next=now+RetrySeconds;return true;}
+        public void Complete(){until=0;next=0;}
+        public void Reset(){identity=null;Complete();}
+    }
+
 }

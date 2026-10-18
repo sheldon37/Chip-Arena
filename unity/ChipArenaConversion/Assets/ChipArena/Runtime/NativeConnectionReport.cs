@@ -204,7 +204,7 @@ namespace ChipArena.UnityConversion
             if(HostLost)return "DISCONNECTED";
             if(!Online)return arena==null?"LOCAL ENGINE":arena.Sandbox?"LOCAL SANDBOX":arena.Pve!=null?"LOCAL BOSS TEST":"LOCAL PRACTICE";
             bool lost=!Hosting&&(server==null||server.Closed),stalled=!Hosting&&!lost&&(DateTime.UtcNow-server.LastReceived).TotalSeconds>3;
-            return lost?"DISCONNECTED":stalled?"CONNECTION STALLED":listener!=null?"LAN · HOST":Hosting?"ONLINE · HOST":internetRooms?"ONLINE":"LOCAL NETWORK";
+            return lost?"DISCONNECTED":!Hosting&&expeditionLoading.Active(NetworkNow)?"LOADING EXPEDITION":stalled?"CONNECTION STALLED":listener!=null?"LAN · HOST":Hosting?"ONLINE · HOST":internetRooms?"ONLINE":"LOCAL NETWORK";
         }
         // The lobby pill's text with the source's " · N MS" (main.ts drawHud, mode online): the round trip from
         // ConnectionMetrics, read twice a second; rebuilt only when a part changes.

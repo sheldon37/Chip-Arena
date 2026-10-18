@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
             string refusal=NativeExpeditionParty.Validate(seats.Select(s=>s.access?.AccountId),seats.All(s=>s.access!=null&&s.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),GuestsReady,party.All(p=>p.ExpeditionProtocol==NativeExpeditionParty.Protocol));
             if(refusal!=null){networkStatus=refusal;Notice(refusal);return;}
             prefs.pve=true;prefs.expedition=true;prefs.bots=0;
+            // Reliable notice precedes synchronous construction of all area PhysicsScenes.
+            foreach(var guest in party){guest.Loading.Begin("start:"+(networkEpoch+1),NetworkNow);guest.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-starting",epoch=networkEpoch+1}));}
             try
             {
                 EndPreview();ClearReplay();ResetExpeditionNetwork();arena?.Dispose();arena=null;match=null;expeditionDirector=null;expeditionError=null;
