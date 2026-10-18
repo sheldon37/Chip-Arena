@@ -561,6 +561,13 @@ and a live playtest. The closing-damage figures assume perfect aim against a non
   Since Astra's air jump (`f566b9a`, merged into the shared head), the replicated `Actor.AirJumpAt` drives the flip, burst
   and whoosh explicitly (`NativeJumpTrack.AirJumpSignal`), so a vent launch no longer shows a flip; the vertical-speed
   inference remains only for rigs without the signal (the source-parity checks).
+- **Every weapon's air jumps** (2026-10-18, Astra's movement chips and Airborne modifier, PR #282: up to 6 charges for
+  any weapon). Per spent charge, from the same presented signal (`Core/NativeAirJumpFx`):
+  - the daggers and the Bow keep the flip, burst and whoosh exactly; the Cyber Lord keeps its own boost;
+  - every other weapon plays the air step (`NativeJumpMotion`, 0.34 s): a lead knee driven up to the set's tuck, the
+    trailing leg kicked down and back, a small forward crunch, the lead leg alternating with the charge; joint rotations
+    only, the arms and weapon as the route holds them;
+  - the same burst, about 6% smaller, brighter and whiter per chained charge, and `move.jump` a semitone higher per charge.
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
 
 ### Simulation handoff (Astra)

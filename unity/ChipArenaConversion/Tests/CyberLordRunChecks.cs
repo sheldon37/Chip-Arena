@@ -191,7 +191,11 @@ internal static class CyberLordRunChecks
             Check(CyberLordAirBoost.Handles(CyberLordSpec.Id)&&!CyberLordAirBoost.Handles("daggers")&&NativeJumpRules.SetFor(CyberLordSpec.Id)==NativeJumpRules.Unarmed,"the Cyber Lord boosts over the Unarmed jump and fall");
             // The flip's three paths skip the Cyber Lord even once Flips follows the air jump grant (NativeJumpSimulation.CanAirJump).
             string Src(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/"+f));
-            Check(Src("Core/NativeJumpMotion.cs").Contains("NativeJumpRules.Flips(spec)&&!CyberLordAirBoost.Handles(spec)")&&Src("Runtime/NativeJumpFxPresentation.cs").Contains("NativeJumpRules.Flips(p.Seat.spec)&&!CyberLordAirBoost.Handles(p.Seat.spec)")
+            // (Since the movement chips every weapon's air jump bursts through Core/NativeAirJumpFx, whose kinds keep the Cyber Lord's
+            // boost its own: MoveVisualChecks drives it.)
+            Check(Src("Core/NativeJumpMotion.cs").Contains("NativeJumpRules.Flips(spec)&&!CyberLordAirBoost.Handles(spec)")&&Src("Runtime/NativeJumpFxPresentation.cs").Contains("bursts.Observe(p.Seat.id,p.Seat.spec,")
+                &&Src("Core/NativeAirJumpFx.cs").Contains("KindOf(string spec)=>CyberLordAirBoost.Handles(spec)?Own:")&&Src("Core/NativeAirJumpFx.cs").Contains("kind!=NativeAirJumpLook.Own")
+                &&!NativeAirJumpLook.Bursts(CyberLordSpec.Id)&&!NativeAirJumpLook.Kicks(CyberLordSpec.Id)
                 &&Src("Runtime/NativeMoveFeelAudio.cs").Contains("NativeJumpRules.Flips(p.Seat.spec)&&!CyberLordAirBoost.Handles(p.Seat.spec)"),"the flip pose, its air burst and its whoosh never take the Cyber Lord (it boosts instead)");
         }
         foreach(bool guest in new[]{false,true})
