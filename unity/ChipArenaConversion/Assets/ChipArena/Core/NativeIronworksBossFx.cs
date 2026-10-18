@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
             Always(rig,v,t,ch,dead);
             if(rig.Arriving)Arrival(rig,v,rig.ArrivalAge,t);
             if(rig.ActIndex>=0)Action(rig,v,t);
-            PhaseFx(rig,v,t);MomentFx(rig,v,t);Leftovers(rig,v,t);
+            PhaseFx(rig,v,t);MomentFx(rig,v,t);if(v.hazards==null)Leftovers(rig,v,t);else AuthorityHazards(rig,v,t);
             if(dead)Death(rig,v,rig.DeathAge,t);
             HallVessels(v,t,rig);
             Lights(rig,v,t,ch,dead);
@@ -277,6 +277,7 @@ namespace ChipArena.UnityConversion
         // The pool left in the wedge's far half: spreading through the strike, burning 4 s while it crusts (the leftovers' builder).
         private void Blow(IronworksBossRig rig,in IronworksBossView v,float age,float hit,in NativeIronworksBoss.Action act,float tk,float t)
         {
+            if(v.hazards!=null){Column(rig,age-hit,age,t,false,v);return;}
             RainLayout(rig,v);
             // The circles fade in over the windup, stay until each droplet lands; the clots' circles are bigger.
             float rainStart=hit+2.0f,rainEnd=hit+act.Strike;
@@ -376,6 +377,7 @@ namespace ChipArena.UnityConversion
         }
         private void Deslag(IronworksBossRig rig,in IronworksBossView v,float age,float hit,in NativeIronworksBoss.Action act,float yaw,float tk,float t)
         {
+            if(v.hazards!=null)return;
             var c=rig.Root;var back=-BossMath.Forward(yaw);var right=BossMath.Right(yaw);
             for(int i=0;i<3;i++)
             {
@@ -410,6 +412,31 @@ namespace ChipArena.UnityConversion
         // the leftovers: the pour's pool, the slam's wave pool, the deslag's slag patches, the charge's trail (presentation's
         // timing: from the action's start; Astra's ledger owns the burns)
         // ================================================================================================================
+        private void AuthorityHazards(IronworksBossRig rig,in IronworksBossView v,float t)
+        {
+            if(!float.IsNaN(rig.DeathAge))return;
+            foreach(var h in v.hazards)
+            {
+                if(t>h.until)continue;
+                var ground=new Vector3(h.x,h.y,h.z);float age=t-h.hitAt;
+                if(age<0)
+                {
+                    Ring(h.x,h.z,h.radius,.85f,t);
+                    if(age>=-.9f&&(h.kind=="blow"||h.kind=="deslag"))
+                    {
+                        float u=BossMath.Clamp01(1+age/.9f);
+                        var from=h.kind=="blow"?ground+Vector3.UnitY*13.5f:rig.Mouth;
+                        var at=Vector3.Lerp(from,ground,u*u);
+                        if(h.kind=="deslag")at+=Vector3.UnitY*(4.2f*4*u*(1-u));
+                        Streak(at,at+Vector3.UnitY*1.2f,.12f,new Vector3(3.4f,2,.7f),1);Sprite(at,.35f,White*.8f,.9f);
+                    }
+                    continue;
+                }
+                float cool=BossMath.Clamp01(age/Math.Max(.01f,h.until-h.hitAt));
+                AddMolten(ground+Vector3.UnitY*.025f,new Vector3(h.radius,.025f,h.radius),Quaternion.Identity,NativeIronworksKit.MoltenFlow,0,1,.25f,.95f-.6f*cool,.75f-.5f*cool,.15f+.75f*cool,1,1,1,h.id*.17f);
+                Ring(h.x,h.z,h.radius,.5f*(1-cool),t);
+            }
+        }
         private void Leftovers(IronworksBossRig rig,in IronworksBossView v,float t)
         {
             if(!BossAt(v.actionAt)||v.action==null)return;var a=NativeIronworksBoss.Find(v.action);float age=t-v.actionAt,hit=a.Windup;

@@ -138,6 +138,25 @@ namespace ChipArena.UnityConversion
             notice=null;if(Expedition==null||Replica||Pve==null||Pve.Holding||pilot==null||pilot.Hp<=0||!pilot.Seat.connected)return false;
             var session=Expedition.Session;var run=session.Run;var state=run.Snapshot();var member=ExpeditionMemberFor(pilot);
             if(pilot.ExpeditionTransferHeld||ExpeditionChoosing(pilot)||state.loading||member==null||!member.alive||member.extracted)return false;
+            // Match the existing F-revive beacon, using the run wallet and durable alive state.
+            var fallen=Pilots.Where(q=>q!=pilot&&q.Hp<=0&&q.Seat.connected&&!InShaft(q)&&!q.ExpeditionTransferHeld)
+                .Where(q=>Math.Abs(q.Body.position.y-pilot.Body.position.y)<=1.7f&&new Vector2(q.Body.position.x-pilot.Body.position.x,q.Body.position.z-pilot.Body.position.z).magnitude<=2.2f)
+                .OrderBy(q=>(q.Body.position-pilot.Body.position).sqrMagnitude).FirstOrDefault(q=>ExpeditionVisible(Vec(pilot.Body.position),Vec(q.Body.position)));
+            if(fallen!=null)
+            {
+                RecordExpeditionDeaths();var target=ExpeditionMemberFor(fallen);
+                if(target!=null&&Pve.Rows.TryGetValue(fallen.Seat.id,out var deadRow))
+                {
+                    int price=NativePveRules.RevivePrice(deadRow.Revived);
+                    if(run.Revive(member.account,target.account,price))
+                    {
+                        deadRow.Revived++;if(Pve.Rows.TryGetValue(pilot.Seat.id,out var payer)){payer.Spent+=price;payer.Revives++;}
+                        RevivePve(fallen);expeditionDown.Remove(target.account);SyncExpeditionInventory();notice="Teammate revived";
+                    }
+                    else notice=member.wallet<price?"Not enough money to revive · $"+price+" required":"This teammate cannot be revived here";
+                    return true;
+                }
+            }
             if(ZoneLever(pilot)){notice="Signal levers · power cut for 60 s";return true;}
             if(HubInteract(pilot)){notice="Sanctuary gate";return true;}
             var feet=Vec(pilot.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight);

@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
     {
         public const string Station="station-647",Ironworks="ironworks-converter";
         public const float IntroSeconds=9.0678f;
-        public static bool RuntimeEnabled=>false; // Candidate: requires presentation binding and native combat acceptance.
+        public static bool RuntimeEnabled=>true; // Native acceptance is a required build/publish gate.
         public static int StompLeg(float x,float z)=>(x<0?0:1)+(z<0?2:0);
         public static int DepartureLeg(int phase,float sinceHit,float strike)=>sinceHit<0?-1:sinceHit<=strike?0:phase>=3&&sinceHit>=2&&sinceHit<=2+strike?1:-1;
         public static bool Known(string id)=>id==Station||id==Ironworks;
@@ -84,7 +84,7 @@ namespace ChipArena.UnityConversion
             if(f==null||f.archetype!=NativeZoneBossRules.Ironworks)return IronworksBossView.None;
             string action=f.cancelAt>=0?null:f.action;float at=f.actionAt;
             if(f.cancelAt>=0&&(f.staggerCause=="choke"||f.staggerCause=="kneel"||f.staggerCause=="crash")){action=f.staggerCause;at=f.staggerAt;}
-            return new IronworksBossView{live=true,x=x,y=y,z=z,yaw=yaw,hp=hp,maxHp=maxHp,spawned=spawned,action=action,actionAt=IronworksBossView.Time(at),actionYaw=f.actionYaw,targetX=f.targetX,targetZ=f.targetZ,targetSeat=f.action=="grab"?f.holdTarget:f.targetSeat,variant=f.variant,phase=f.phase,phaseAt=IronworksBossView.Time(f.phaseAt),parts=f.parts,partAt0=IronworksBossView.Time(f.partAt[0]),partAt1=IronworksBossView.Time(f.partAt[1]),partAt2=IronworksBossView.Time(f.partAt[2]),partAt3=IronworksBossView.Time(f.partAt[3]),partAt4=IronworksBossView.Time(f.partAt[4]),stagger=f.stagger,deathAt=IronworksBossView.Time(f.deathAt)};
+            return new IronworksBossView{live=true,hazards=f.hazards,x=x,y=y,z=z,yaw=yaw,hp=hp,maxHp=maxHp,spawned=spawned,action=action,actionAt=IronworksBossView.Time(at),actionYaw=f.actionYaw,targetX=f.targetX,targetZ=f.targetZ,targetSeat=f.action=="grab"?f.holdTarget:f.targetSeat,variant=f.variant,phase=f.phase,phaseAt=IronworksBossView.Time(f.phaseAt),parts=f.parts,partAt0=IronworksBossView.Time(f.partAt[0]),partAt1=IronworksBossView.Time(f.partAt[1]),partAt2=IronworksBossView.Time(f.partAt[2]),partAt3=IronworksBossView.Time(f.partAt[3]),partAt4=IronworksBossView.Time(f.partAt[4]),stagger=f.stagger,deathAt=IronworksBossView.Time(f.deathAt)};
         }
     }
 

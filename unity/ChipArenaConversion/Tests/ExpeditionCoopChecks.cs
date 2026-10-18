@@ -6,6 +6,13 @@ internal static class ExpeditionCoopChecks
     public static void Run(ExpeditionLayout layout,ConversionContent content)
     {
         int n=0;void Check(bool ok,string why){n++;if(!ok)throw new Exception("Expedition co-op: "+why);}
+        var load=new NativeExpeditionLoadWindow();load.Begin("startup",100);
+        Check(load.Active(113)&&load.Active(159.9)&&!load.Active(160),"slow startup survives normal timeout but has fixed deadline");
+        load.Begin("startup",150);Check(!load.Active(160),"duplicate notices cannot extend load deadline");
+        load.Begin("hub:1",161);int packets=0;for(double t=161;t<221;t+=.05)if(load.Send(t))packets+=3;
+        Check(packets<=36&&packets+60<128,"bootstrap retries plus one-second pings fit receive queue during sixty-second load");
+        load.Complete();Check(!load.Active(162),"ready restores normal timeout");load.Begin("hub:1",170);Check(!load.Active(170),"old ticket cannot reopen completed grace");
+        load.Begin("ward:2",180);Check(load.Active(193),"new area gets its own loading deadline");load.Reset();Check(!load.Active(193),"leave clears loading state");
         var ids=new[]{"host","guest-a","guest-b","guest-c"};
         Check(NativeExpeditionParty.Validate(ids,true,true)==null,"four authenticated ready players");
         Check(NativeExpeditionParty.Validate(ids.Concat(new[]{"fifth"}),true,true)!=null,"capacity");
@@ -17,6 +24,11 @@ internal static class ExpeditionCoopChecks
         options.expedition=false;options.bots=3;options.Normalize(content);Check(options.bots==3,"wave bots preserved");
         var run=NativeExpedition.Create("coop-check","city",ids[0],"pistol",17,new[]{new ExpeditionInstance{id="ward",target=1}});
         foreach(string id in ids.Skip(1))Check(run.Join(id,"pistol"),"join "+id);
+        Check(run.Defeat(ids[1]),"revive fixture death");
+        Check(!run.Revive(ids[0],ids[1],150),"unfunded revive refused");
+        Check(run.Credit(ids[0],"revive-funds",300)&&run.Revive(ids[0],ids[1],150),"paid body revive restores run member");
+        Check(!run.Revive(ids[0],ids[1],150)&&run.Snapshot().members.Single(m=>m.account==ids[0]).wallet==150,"repeated revive does not charge twice");
+        Check(!run.Revive(ids[0],ids[1],0)&&!run.Revive("stranger",ids[1],150),"invalid payer and cost refused");
         var session=new ExpeditionSession(run,content,_=>{});
         var director=new ExpeditionDirector(session,layout,_=>new V3(0,0,0),(_,__)=>true,10,20,30);
         director.BindLayoutIdentity(new string('a',64));Check(director.BeginAreaLoad(),"initial load");

@@ -2,7 +2,7 @@
 
 Branch: `codex/zone-boss-authority`, based on shared `bc397907a6a3` and the first-arrival door change in #271, then merged with shared `03dddab1` (Station presentation). Now integrated with shared `ffeee79c2c97`; both presentation binding points are connected on this candidate.
 
-Status: **rules candidate, not activated or released**. `NativeZoneBossRules.RuntimeEnabled` is false. The existing Siren remains in the live zones until authoritative hazard presentation and native acceptance are complete. This switch must not be flipped on the strength of managed or semantic compilation alone.
+Status: **activation candidate, not yet released**. Runtime selection is enabled for Central Station and City Ironworks; Ward Zero keeps the Siren. Converter hazards now draw from the authoritative event ledger. Publication must pass the native Unity fixture; human two-client combat acceptance remains unrun.
 
 ## Binding contract (final field names for this candidate)
 
@@ -73,3 +73,11 @@ Activation is still gated off. The native fixture now also checks host/guest vie
 Publication verified independently: desktop Build-and-Publish already published shared `ffeee79c2c97` successfully at **2026-10-17 23:46 UTC / 7:46 PM Eastern**; status updated 23:46:31 reports publication succeeded and the Unity log names the exact source. This does not include PR #272. Cloud run **424** still returns HTTP 500 with diagnostic category `quota_or_billing`; the exact service/account condition remains unverified.
 
 Addendum verification: 281 boss-rule checks, 274 Station model checks, 697 Converter model checks, 22,219 Station presentation checks, 16,156 Converter presentation checks, 23,269 laser-door checks and 9,683 state-scene checks passed. Player, Runtime and Editor semantic compilation passed against pinned Unity references. Native/PhysX and two-client acceptance remain unrun. The generic summon renderer skips both boss archetypes so their bound dedicated presentations own their rendering.
+
+## Activation and Expedition revive follow-up — 2026-10-18 UTC
+
+Integrated shared 8f2e3a3 (guest startup/ticket fixes). Converter live views carry hazards; rings, falling droplets and surviving pools now consume the authority target, radius, hitAt and until, independently of the current action. Null hazard arrays retain the DEV preview. Intro remains 9.0678 s. Enabled both zone archetypes in this candidate.
+
+Expedition F-revive now validates nearby same-area bodies on the authority, debits the durable wallet once, restores the run member and native capsule at the body, and clears the down ledger. Death goes straight to live teammate spectating, excluding boss and transfer-held actors; revival returns to the local view. Sanctuary reprint remains available.
+
+Local: 281 boss rules, 16,159 Converter presentation, 22,219 Station presentation, 53 co-op, 108 director and 91 integration checks pass; Player semantic compile passes. Native build/publication pending; no human playtest claimed.

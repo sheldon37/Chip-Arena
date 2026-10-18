@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
             SendServer(new NativeNetMessage{type="expedition-area-ready",expeditionAreaReady=expeditionLoadedTicket});
         }
         private void ResetExpeditionNetwork()
-        {DisposeSplitAreas();expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
+        {expeditionLoading.Reset();DisposeSplitAreas();expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
         private void ExpeditionNetworkTick()
         {
             try{ExpeditionNetworkStep();}
@@ -133,10 +133,10 @@ namespace ChipArena.UnityConversion
                 expeditionReceiver=new ExpeditionViewReceiver(id);
                 expeditionGuest=new ExpeditionGuestCommands(id,()=>ExpeditionView,request=>SendServer(new NativeNetMessage{type="expedition-command",expeditionCommand=request}));
             }
-            if(message.type=="expedition-public"){if(message.expeditionPublic?.areaIdentity!=null){var ticket=message.expeditionPublic.areaIdentity;bool changed=ExpeditionView?.areaIdentity?.Matches(ticket)!=true;if(!expeditionReceiver.BindArea(ticket))return true;if(changed){frameOrder.Reset();frameOrder.Control(networkEpoch);expeditionLoadedTicket=null;pending=new InputFrame();}}expeditionReplicaGeneration=message.generation;expeditionReceiver.Public(message.expeditionPublic);}
+            if(message.type=="expedition-public"){if(message.expeditionPublic?.areaIdentity!=null){var ticket=message.expeditionPublic.areaIdentity;bool changed=ExpeditionView?.areaIdentity?.Matches(ticket)!=true;if(!expeditionReceiver.BindArea(ticket))return true;if(changed){expeditionLoading.Begin(ticket.run+":"+ticket.epoch+":"+ticket.area+":"+ticket.serial,NetworkNow);frameOrder.Reset();frameOrder.Control(networkEpoch);expeditionLoadedTicket=null;pending=new InputFrame();}}expeditionReplicaGeneration=message.generation;expeditionReceiver.Public(message.expeditionPublic);}
             else if(message.type=="expedition-private")expeditionReceiver.Private(message.expeditionPrivate);
             else expeditionGuest.Reply(message.expeditionReply);
-            ExpeditionView=expeditionReceiver.View;return true;
+            ExpeditionView=expeditionReceiver.View;if(ExpeditionView!=null&&!ExpeditionView.loading)expeditionLoading.Complete();return true;
         }
         private sealed class ExpeditionLocalCommands:IExpeditionCommands
         {

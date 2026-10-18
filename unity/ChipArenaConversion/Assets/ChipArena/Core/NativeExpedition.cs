@@ -166,6 +166,13 @@ namespace ChipArena.UnityConversion
             if(p==null||!InArea(p)||p.alive||p.extracted||p.carriedBy!=null||carrier==victim)return false;
             p.carriedBy=carrier;Changed();return true;
         }
+        /// <summary>Authority validates body proximity and line of sight before an in-place revive.</summary>
+        public bool Revive(string payer,string victim,int cost)
+        {
+            var buyer=Member(payer);var target=Member(victim);
+            if(!Mutable||cost<1||!Live(buyer)||target==null||!InArea(target)||target.transferring||target.alive||target.extracted||!target.connected||target.carriedBy!=null||buyer.wallet<cost)return false;
+            buyer.wallet-=cost;target.alive=true;target.safe=buyer.safe;Changed();return true;
+        }
         /// <summary>Adapter validates proximity, uninterrupted channel and machine/medic permission before calling.</summary>
         public bool Reprint(string payer,string victim,int cost,bool remoteSafeRecovery=false)
         {

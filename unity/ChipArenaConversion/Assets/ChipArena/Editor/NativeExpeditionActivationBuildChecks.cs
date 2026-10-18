@@ -39,7 +39,19 @@ namespace ChipArena.UnityConversion.Editor
                 }
                 var hub=registry.Find(layout.world);Check(hub.Arena.PlaceExpeditionParty(Enumerable.Range(1,4).ToDictionary(id=>"p"+id,id=>layout.Area(layout.world).slots[id-1])),"hub placement");
                 var cohorts=new ExpeditionCohorts("native-split",1,layout.compatibility,layout.areas.Select(a=>a.id));
-                foreach(int id in new[]{1,2,3,4}){cohorts.Add("p"+id,layout.world);Check(cohorts.Acknowledge("p"+id,cohorts.Member("p"+id).Ticket),"initial ready");}
+                foreach(int id in new[]{1,2,3,4})
+                {
+                    string who="p"+id;cohorts.Add(who,layout.world);var ticket=cohorts.Member(who).Ticket;
+                    var initialView=new ExpeditionView{run=ticket.run,epoch=ticket.epoch,area=ticket.area,areaIdentity=ticket,loading=true,areaBarrier=new ExpeditionAreaBarrierView{active=true,target=ticket.area,layout=ticket.layout,generation=ticket.serial}};
+                    var wire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-public",expeditionPublic=initialView})).expeditionPublic;
+                    var receiver=new ExpeditionViewReceiver(who);
+                    Check(ExpeditionAreaChannel<string>.Valid(wire.areaIdentity)&&receiver.BindArea(wire.areaIdentity),"initial hub ticket survives real Unity codec");receiver.Public(wire);
+                    var personal=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-private",expeditionPrivate=new ExpeditionPrivateFrame{run=ticket.run,epoch=ticket.epoch,viewer=who,areaIdentity=ticket,mine=new ExpeditionViewPersonal{account=who}}})).expeditionPrivate;
+                    Check(receiver.Private(personal)&&ExpeditionAreaReady.Capture(receiver.View)!=null,"initial public/private wire pair produces guest readiness ticket");
+                    var first=hub.Arena.NetworkFrame();first.areaIdentity=ticket;var decoded=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=first})).frame;
+                    Check(decoded.Valid(content)&&receiver.View.areaIdentity.Matches(decoded.areaIdentity),"initial guest accepts matching world frame");
+                    Check(cohorts.Acknowledge(who,receiver.View.areaIdentity),"initial ready");
+                }
                 var transfers=new NativeExpeditionAreaTransfers(registry,layout,cohorts,Seat);
                 int seat=2;
                 foreach(var area in layout.areas.Where(a=>a.role=="instance"))

@@ -184,6 +184,11 @@ namespace ChipArena.UnityConversion
                 var guest=host.Pilots.Single(p=>p.Seat.id==2);
                 Check((guest.Body.position-host.Local.Body.position).sqrMagnitude>1,"distinct placements");
                 host.Local.Hp=0;host.RecordExpeditionDeaths();Check(!run.Snapshot().members.Single(m=>m.account=="host").alive&&run.Snapshot().members.Single(m=>m.account=="guest").alive,"host death leaves guest active");
+                var corpse=host.Local.Body.position;guest.Body.position=corpse+Vector3.right;Physics.SyncTransforms();
+                Check(run.Credit("guest","body-revive",150),"body revive funds");
+                Check(host.TryExpeditionInteract(guest,out _)&&host.Local.Hp>0&&host.Local.Collider.enabled&&run.Snapshot().members.Single(m=>m.account=="host").alive,"F revives body and durable member");
+                Check(host.Local.Body.position==corpse&&run.Snapshot().members.Single(m=>m.account=="guest").wallet==0,"body revive preserves position and charges run wallet once");
+                host.Local.Hp=0;host.RecordExpeditionDeaths();
                 var machine=area.anchors.First(a=>a.kind=="machine");var interaction=area.interactions.Single(i=>i.anchor==machine.id);
                 guest.Body.position=new Vector3(interaction.x,interaction.y+NativeLocomotionRules.HalfHeight,interaction.z);Physics.SyncTransforms();director.Step();
                 Check(run.Credit("guest","test-reprint",100),"guest funds");

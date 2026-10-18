@@ -1,3 +1,22 @@
+## 2026-10-18 — Astra: enable zone bosses; Expedition body revive and immediate spectate
+
+- Branch `codex/zone-boss-authority`, PR #272, integrated shared `8f2e3a3` including both guest-loading fixes. Both dedicated zone bosses enabled in candidate; Ward Zero retains Siren, intro stays 9.0678 s. Converter persistent hazard targets/times now feed live warning, droplet and pool drawing, including late guests and action changes; DEV preview remains independent.
+- Fixed Expedition's advertised F-revive: authoritative range/height/visibility checks, run-wallet debit and durable alive state, body-position revival and down-ledger cleanup. Repeated requests cannot charge a living target. Immediate live teammate spectate on Expedition death bypasses killcam and excludes boss/transfer-held actors.
+- Local checks: 281 boss rules; 16,159 Converter and 22,219 Station presentation; 53 co-op, 108 director, 91 integration. Player semantic compile passes. Added real Unity body-revive assertion to the existing native co-op fixture. Native boss fixture/build and publication pending; no human multiplayer acceptance claimed. Final receipt will be in PR #272.
+
+## 2026-10-18 — Astra: initial Expedition ticket rejected after Unity serialization
+
+- Branch `codex/expedition-initial-ticket`, base shared/builder `447b8ccb39ec` (#273, published as ca9403f0 at 01:31 UTC). Owner retest shows guest still in lobby, responsive 76 ms connection, LOADING EXPEDITION status; host is in city. Prior timeout protection did not fix the initial ticket rejection.
+- Root defect: initial cohorts have null cohort ids, which Unity JsonUtility decodes as empty strings. ExpeditionAreaChannel.Valid rejected the empty string, so ExpeditionViewReceiver.BindArea silently rejected the initial public view; subsequent world frames could never match a bound ticket. Accept empty optional cohort consistently with ExpeditionCohortTicket.Matches; malformed nonempty ids remain rejected.
+- Added managed regressions for null/empty initial tickets and whitespace rejection. Extended the real Unity activation fixture: round-trip initial public/private messages and a hub frame for each of four members, bind the receiver, capture readiness and acknowledge the decoded identity. Previous native fixture acknowledged initial tickets directly and only tested codec transfer tickets with nonempty cohort ids.
+- Verification/publication results recorded in the task PR after gates complete. Requires the native fixture to pass before publication; no claim of human host/guest acceptance yet.
+## 2026-10-18 — Astra: protect multiplayer Expedition startup from loading stalls
+
+- Branch `codex/expedition-guest-start`, base shared `ffeee79c2c97`. Owner reports host enters city while guest stays in lobby with CONNECTION STALLED. Code inspection finds synchronous four-area construction without a loading notice, the normal 12 s disconnect deadline, and 20 Hz public/private/frame batches capable of overflowing a guest's 128-packet queue while loading.
+- Send a reliable Expedition startup notice before construction; protect each startup/area ticket with a fixed 60 s load deadline on both peers. Duplicate tickets cannot extend it; readiness restores normal timeouts. Loading guests receive a bootstrap batch at most every 5 s, preserving queue budget. UI reports LOADING EXPEDITION during the bounded window. Expedition protocol 4 requires both peers to update.
+- Verification: 48 co-op checks (including deadline/retry/queue-budget regressions), 103 director checks, 30 area-wire checks, 31 split-authority checks pass; Unity Player semantic compile passes. This container cannot reproduce the owner's two Windows clients; diagnosis is code-supported, not a confirmed trace of their session. Build/publication receipt pending.
+- No boss activation or unrelated pending candidate changes included. Next: normal hosted checks, shared/builder sync and desktop test publication, then confirm host/guest start on Windows.
+
 ## 2026-10-18 — Astra: boss presentation bindings and addendum integration
 
 - Branch `codex/zone-boss-authority`, PR #272; merged shared `ffeee79c2c97`, preserving both Ironworks model exclusions. Both presentation views now bind the unified record; generic summon drawing skips these archetypes.
