@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "example-mobility",
+  "name": "Example Mobility",
+  "version": "1.0.0",
+  "requires": [],
+  "chips": [{
+    "id": "hop-drive",
+    "name": "Hop Drive",
+    "description": "+1 extra mid-air jump and +8% movement speed.",
+    "rarity": "rare",
+    "max": 2,
+    "tags": ["all"],
+    "effects": [
+      {"stat": "extraAirJumps", "op": "add", "value": 1},
+      {"stat": "speed", "op": "mul", "value": 1.08}
+    ]
+  }]
+}

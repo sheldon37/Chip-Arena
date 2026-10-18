@@ -41,6 +41,7 @@ namespace ChipArena.UnityConversion
                 // mix by id. Looks only (the add's rules, timing and hit volume stay its own); this session only, never saved.
                 GUILayout.Label("Siren minion preview (looks only)",small);NativeHordeKinds.Preview=HordePreviewChoice(ChoiceGrid(HordePreviewIds,HordePreviewId(NativeHordeKinds.Preview),HordePreviewNames));
             }
+            ModsBody();
             Field("Credits");Fine("Icons: Lucide (ISC licence), from the source client.");
         }
         // .sound-test: Test Sound (13 px .btn with the volume icon) and the status in 12 px mono #aac5ce beside it.

@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     {
         public V3 Position,Velocity;public float Speed,Gravity,JumpSpeed;public bool Grounded,CanMove,CanSprint,Sprinting;
         public bool Bow;public float BowDrawAt;public float Time,Ready,Stamina,BufferUntil,ComboUntil,RollUntil;public int Combo;
-        public float AirborneAt;public bool AirAttackUsed;public string JumpSpec;public int AirJumps;public float AirJumpAt;public bool Swimming;
+        public float AirborneAt;public bool AirAttackUsed;public string JumpSpec;public int AirJumps;public double ExtraAirJumps;public float AirJumpAt;public bool Swimming;
         public ContentWeapon MeleeWeapon;public ChipStats MeleeStats;public NativeMeleeSwing Swing;
         public NativeCyberStep CyberStep;public NativeCyberKit Cyber;public float CyberMana,CyberRate,CyberCost,CyberCooldown,CyberUltimateCost;public NativeMeleeKit MeleeKit;public float OverdriveAt,OverdriveUntil;
     }
@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
             // Targeted Link and Kernel Panic await authority; do not predict an air jump over that cast request.
             bool pendingCyberCast=state.Cyber!=null&&state.Cyber.Version!=2&&(input.SirenAbility==2||input.SirenAbility==4);
             var jump=NativeJumpSimulation.Try(state.JumpSpec,input.Jump,state.Grounded,state.Swimming,kitBusy||swinging||rooted||pendingCyberCast||state.Time<state.RollUntil,
-                state.Velocity.y,state.JumpSpeed,ref state.AirJumps,out float launch);
+                state.Velocity.y,state.JumpSpeed,ref state.AirJumps,out float launch,state.ExtraAirJumps);
             if(jump!=NativeJumpKind.None){state.Velocity.y=launch;state.Grounded=false;if(jump==NativeJumpKind.Air)state.AirJumpAt=state.Time;}
             if(!state.Grounded)state.Velocity.y-=state.Gravity*dt;else state.Velocity.y=0;
             if(NativeAirAttackSimulation.Falling(state.Swing)&&(!NativeAirAttackSimulation.Down(state.Swing)||state.Time>=state.Swing.PlungeAt))state.Velocity.y=NativeAirAttackSimulation.Vertical(state.Swing,state.Time);

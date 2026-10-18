@@ -7,7 +7,7 @@ using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
-    { public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>(),pendingIntros=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro=NativeIntroRules.Default,introText="Ready to make an impact",accountOrigin=NativeAccount.DefaultOrigin;public int accountServiceVersion;public bool overrideIntro;public string name="Pilot",map="moonlit",weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full",damageScreen="Full",alarmLights="Full";public bool pve,expedition,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson;
+    { public int modRules;public string[] chipPacks=Array.Empty<string>();public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>(),pendingIntros=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro=NativeIntroRules.Default,introText="Ready to make an impact",accountOrigin=NativeAccount.DefaultOrigin;public int accountServiceVersion;public bool overrideIntro;public string name="Pilot",map="moonlit",weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full",damageScreen="Full",alarmLights="Full";public bool pve,expedition,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson;
         // Older Unity installs shipped an unconfigured account URL. Upgrade it once;
         // thereafter an empty URL is the player's explicit offline choice.
         public bool MigrateAccountService()
@@ -58,6 +58,7 @@ namespace ChipArena.UnityConversion
                 singleInstance=new NativeSingleInstance("Local\\ChipArena.Native.Player");if(!singleInstance.Acquired){Application.Quit(0);return;}
 #endif
                 prefs=NativeFileStore.Read(PreferencePath,s=>JsonUtility.FromJson<ConversionPreferences>(s),()=>new ConversionPreferences(),out var preferenceWarning);if(preferenceWarning!=null)networkStatus=preferenceWarning;
+                LoadMods();
                 if(prefs.MigrateAccountService())Save();prefs.cameraMode=NativeCameraModes.Sanitize(prefs.cameraMode);
                 // A retired entrance pick (neon-drop, vector-slide, signal-spin, arc-salute, pulse-wave) becomes the weapon signature.
                 {string intro=prefs.intro;bool pick=prefs.overrideIntro;NativeIntroRules.Migrate(ref intro,ref pick);if(intro!=prefs.intro||pick!=prefs.overrideIntro){prefs.intro=intro;prefs.overrideIntro=pick;Save();}}
@@ -87,7 +88,7 @@ namespace ChipArena.UnityConversion
         }
         private void StartMatch()
         {
-            if(PromotionBusy)return;
+            if(PromotionBusy||!ModsReady)return;
             if(prefs.pve&&prefs.expedition){StartExpeditionM1();return;}
             expeditionDirector=null;ResetExpeditionNetwork();Time.timeScale=1;sandboxSpeed=1;endFlow.Reset();
             if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);
