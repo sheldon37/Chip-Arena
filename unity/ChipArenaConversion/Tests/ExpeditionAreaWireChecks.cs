@@ -10,6 +10,10 @@ namespace ChipArena.UnityConversion
         {
             int count=0;void Check(bool ok,string why){if(!ok)throw new Exception("Area wire: "+why);count++;}
             var cohorts=new ExpeditionCohorts("run",1,new string('a',64),"hub","ward");cohorts.Add("host","hub");cohorts.Add("guest","hub");
+            var initial=cohorts.Member("guest").Ticket;var unityInitial=initial.Copy();unityInitial.cohort="";
+            Check(ExpeditionAreaChannel<string>.Valid(initial)&&ExpeditionAreaChannel<string>.Valid(unityInitial)&&initial.Matches(unityInitial),"Unity empty optional cohort is equivalent to initial null cohort");
+            var initialReceiver=new ExpeditionViewReceiver("guest");Check(initialReceiver.BindArea(unityInitial),"guest binds initial hub ticket decoded by Unity");
+            var invalid=initial.Copy();invalid.cohort=" ";Check(!ExpeditionAreaChannel<string>.Valid(invalid),"malformed nonempty cohort remains rejected");
             var host=cohorts.Member("host").Ticket;var old=cohorts.Member("guest").Ticket;cohorts.Acknowledge("host",host);cohorts.Acknowledge("guest",old);
             Check(!ExpeditionSplitCapability.Supported(1,new[]{1,0})&&ExpeditionSplitCapability.Supported(1,new[]{1,1,1}),"old clients rejected");
             var gate=new ExpeditionAreaCommandGate(cohorts);Check(gate.Accept("guest",old,1)&&!gate.Accept("guest",old,1),"input sequences deduplicated");
