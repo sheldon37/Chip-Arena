@@ -41,6 +41,7 @@ internal static class ExpeditionCohortChecks
         Check(c.Member("guest2").Area=="ward"&&!c.Member("guest2").Connected,"disconnected member retains committed destination");
         var fresh=c.Reconnect("guest2");Check(fresh!=null&&!fresh.Matches(stale),"reconnect gets fresh destination ticket");
         Check(!c.Acknowledge("guest2",stale)&&!c.Accepts("guest2",fresh)&&c.Acknowledge("guest2",fresh)&&c.Accepts("guest2",fresh),"reconnect control waits for correct ack");
+        for(int attempt=0;attempt<3;attempt++){var prior=fresh;Check(c.Disconnect("guest2"),"disconnect repeated join");fresh=c.Reconnect("guest2");Check(fresh!=null&&!fresh.Matches(prior)&&!c.Acknowledge("guest2",prior)&&c.Acknowledge("guest2",fresh),"repeat rejoin requires fresh readiness ticket");}
         var bad=fresh.Copy();bad.epoch++;Check(!c.Acknowledge("guest2",bad),"stale epoch refused");
         bad=fresh.Copy();bad.area="hub";Check(!c.Accepts("guest2",bad),"claimed area cannot override membership");
         bad=fresh.Copy();bad.cohort="forged";Check(!c.Accepts("guest2",bad),"cohort identity checked");

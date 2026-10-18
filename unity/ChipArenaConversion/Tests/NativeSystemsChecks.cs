@@ -114,6 +114,12 @@ internal static class NativeSystemsChecks
                 for(int i=0;i<20;i++)first.Send("message-"+i);second.Send("second-client");await Until(()=>a.Received.Count==20&&b.Received.Count==1);
                 for(int i=0;i<20;i++){Check(a.TryReceive(out var text)&&text=="message-"+i,"ordered reliable delivery");}Check(b.TryReceive(out var other)&&other=="second-client","isolated client");
                 a.Send(payload);await Until(()=>first.Received.Count==1);Check(first.TryReceive(out var received)&&received==payload,"large compressed snapshot");
+                // A guest does not pump Unity Update while loading: snapshots must replace, not overflow.
+                for(int i=0;i<160;i++){a.Send("{\"version\":7,\"epoch\":1,\"type\":\"expedition-state\",\"sequence\":"+i+"}",true);await Task.Delay(10);}
+                a.Send("ordered-reply");await Until(()=>first.Received.Count==1);await Task.Delay(50);
+                Check(!first.Closed&&first.Received.Count==1,"stalled guest retains only reliable replies plus latest state");
+                Check(first.TryReceive(out var reply)&&reply=="ordered-reply","reliable command reply survives state churn");
+                Check(first.TryReceive(out var newest)&&newest.Contains("\"sequence\":159"),"stalled guest resumes at latest complete state");
                 first.Dispose();await Until(()=>a.Closed);Check(!b.Closed,"disconnect isolation");
                 using(var resumed=await NativeConnection.Connect("127.0.0.1",listener.Port,CancellationToken.None)){await Until(()=>listener.Accepted.Count==1);Check(listener.Accepted.TryDequeue(out var remote),"reconnect accepted");using(remote){resumed.Send("resume-seat");await Until(()=>remote.Received.Count==1);Check(remote.TryReceive(out var msg)&&msg=="resume-seat","reconnect delivery");}}
                 using(var invalid=new TcpClient()){await invalid.ConnectAsync("127.0.0.1",listener.Port);await Until(()=>listener.Accepted.Count==1);Check(listener.Accepted.TryDequeue(out var rejectedPeer),"invalid peer accepted");using(rejectedPeer){byte[] bad={0,0,0,0,0,0,0,2};await invalid.GetStream().WriteAsync(bad,0,bad.Length);await Until(()=>rejectedPeer.Closed);Check(rejectedPeer.Error!=null,"bad magic rejected");}}
