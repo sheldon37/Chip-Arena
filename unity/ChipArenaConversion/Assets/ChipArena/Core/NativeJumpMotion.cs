@@ -163,7 +163,11 @@ namespace ChipArena.UnityConversion
     ///    the gait's own small dip, shorter while running on; the legs return from the air pose to the gait's planted feet
     ///    over LegReturn as layered legs, so the ground pass keeps the ankles on the floor;
     ///  - the dagger air jump: the Jump-Flip's tuck with a procedural front flip about the hips (FlipTurn over
-    ///    FlipSeconds); a landing mid-flip finishes or unwinds the turn within .1 s.
+    ///    FlipSeconds); a landing mid-flip finishes or unwinds the turn within .1 s;
+    ///  - every other weapon's air jump (the movement chips' charges, NativeAirJumpLook.Kick): the air step, a lead knee driven
+    ///    up to the set's tuck and the trailing leg kicked down and back from its push-off, with a small forward crunch, over
+    ///    KickSeconds; the lead leg alternates with the charge. Joint rotations only (no root motion), the arms and the weapon
+    ///    as the route holds them.
     /// Torso and arms are laid as offsets from the set's guard frame (NativePackPose.LayerRows: the weapon stays in its
     /// socket, a two-handed hilt keeps its support hand, blades are kept clear of the head and torso). The route's own
     /// upper-body actions keep priority: a swing, block or special drops the arms and most of the torso; the gun hold, the
@@ -176,7 +180,8 @@ namespace ChipArena.UnityConversion
         private readonly NativePackPose pack=new NativePackPose();
         private readonly float[] row=new float[CapturedClip.Channels],rowB=new float[CapturedClip.Channels],row0=new float[CapturedClip.Channels];
         private readonly Quaternion[] held=new Quaternion[6];private bool hasHeld;
-        private float own,phase,fall,last=-100,flipAt=-100,flipLand=-100,flipFrom,boostAt=-100;
+        private float own,phase,fall,last=-100,flipAt=-100,flipLand=-100,flipFrom,boostAt=-100,kickAt=-100;private int kickCharge;
+        private readonly float[] rowK=new float[CapturedClip.Channels],rowP=new float[CapturedClip.Channels];
         private static readonly int[] Legs={CapturedRig.LHip,CapturedRig.LKnee,CapturedRig.LFoot,CapturedRig.RHip,CapturedRig.RKnee,CapturedRig.RFoot};
         /// <summary>The layer's state (rise, apex, fall, land, flip or ground) and its weights, as the last frame left them.</summary>
         public string State{get;private set;}="ground";
@@ -187,7 +192,10 @@ namespace ChipArena.UnityConversion
         public float Drop{get;private set;}
         /// <summary>The Cyber Lord's air boost weight this frame (Core/CyberLordRun.cs CyberLordAirBoost: its legs and hips), 0 outside one.</summary>
         public float BoostWeight{get;private set;}
-        public const string Rise="jump rise",Apex="jump apex",Fall="fall",Landing="land",AirFlip="air flip",AirBoost="air boost",Ground="ground";
+        /// <summary>The air step's weight this frame (NativeAirJumpLook.KickWeight), 0 outside one; its charge and lead leg.</summary>
+        public float KickWeight{get;private set;}
+        public int KickCharge=>kickCharge;public bool KickLeadRight=>NativeAirJumpLook.LeadRight(kickCharge);
+        public const string Rise="jump rise",Apex="jump apex",Fall="fall",Landing="land",AirFlip="air flip",AirBoost="air boost",AirStep="air step",Ground="ground";
 
         /// <summary>The captured melee route (Core/MeleeMotion.Sample, after the action layers, before the hit layer and the
         /// ground pass). Swings, blocks and specials keep the upper body; juggles, knockdowns, rolls and stuns own the pilot.</summary>
@@ -198,6 +206,8 @@ namespace ChipArena.UnityConversion
         /// attack, MeleeMotion.SprintCut over the authority's hop): no air or landing pose from the layer while it is set (the
         /// track is still observed). Set by MeleeMotion before each Melee call; it clears after the call.</summary>
         public bool Leap;
+        /// <summary>The air step of the Kick weapons (on; the checks turn it off to compare the root, the arms and the return).</summary>
+        public bool AirSteps=true;
         public void Melee(MeleeRig r,MeleeView p,float time,float dt)
         {
             bool leap=Leap;Leap=false;
@@ -240,14 +250,16 @@ namespace ChipArena.UnityConversion
             bool restart=last<-90||time<last-MeleeGait.REWIND||time-last>.35f;last=time;dt=restart?1/60f:MeleeMath.Clamp(dt,0,.05f);
             var t=Track;if(airJumpAt.HasValue)t.Explicit=true;t.Observe(time,grounded,r.GroupPosition.Y,blocked);
             if(airJumpAt.HasValue)t.AirJumpSignal(airJumpAt.Value);
-            if(restart){own=blocked?0:1;phase=fall=-1;flipAt=flipLand=boostAt=-100;hasHeld=false;}
+            if(restart){own=blocked?0:1;phase=fall=-1;flipAt=flipLand=boostAt=kickAt=-100;hasHeld=false;}
             own=blocked||set<0?0:Smooth(own,1,20,dt);
-            AirWeight=LandWeight=FlipAngle=Drop=BoostWeight=0;State=Ground;
+            AirWeight=LandWeight=FlipAngle=Drop=BoostWeight=KickWeight=0;State=Ground;
             var guard=NativeJumpRules.Clip(set,NativeJumpRules.Guard);if(guard==null||own<=1e-4f){hasHeld=false;return;}
             guard.Sample(0,row0);float yaw0=row0[MeleeCapture.Yaw];
             // The Cyber Lord's air jump is the hardlight boost (CyberLordAirBoost) instead of the flip, whatever Flips says for it.
             if(t.AirJumps>0&&t.AirJumpAt>flipAt&&t.Airborne&&NativeJumpRules.Flips(spec)&&!CyberLordAirBoost.Handles(spec)){flipAt=t.AirJumpAt;flipLand=-100;}
             if(t.AirJumps>0&&t.AirJumpAt>boostAt&&t.Airborne&&CyberLordAirBoost.Handles(spec))boostAt=t.AirJumpAt;
+            // Every other weapon steps off the air, once per charge (the lead leg alternating with it).
+            if(t.AirJumps>0&&t.AirJumpAt>kickAt&&t.Airborne&&NativeAirJumpLook.Kicks(spec)){kickAt=t.AirJumpAt;kickCharge=t.AirJumps;}
             if(leap){hasHeld=false;phase=fall=-1;return;}
             if(t.Airborne)Air(r,set,time,dt,torso,arms,main,fit,twoHand,legs);
             else Land(r,set,time,dt,torso,arms,main,fit,twoHand,still,dropScale);
@@ -268,7 +280,10 @@ namespace ChipArena.UnityConversion
             // The Cyber Lord's boost: its stamp and tuck over the jump and fall (legs and hips; the style layer takes its torso and fists).
             float boostAge=time-boostAt;
             if(boostAt>-90&&boostAge>=0&&boostAge<CyberLordAirBoost.Seconds){float bw=CyberLordAirBoost.Weight(boostAge);CyberLordAirBoost.Clip.Sample(CyberLordAirBoost.TakeTime(boostAge),rowB);MeleeCapture.BlendRowsTurning(row,rowB,bw,row);BoostWeight=bw;}
-            float w=own*presence;AirWeight=w;State=BoostWeight>.5f?AirBoost:vy>2?Rise:vy>-2?Apex:Fall;
+            // The air step over the jump and fall (legs and a little spine; the route keeps the arms and the weapon).
+            float kickAge=time-kickAt;
+            if(AirSteps&&kickAt>-90&&kickAge>=0&&kickAge<NativeAirJumpLook.KickSeconds){float kw=NativeAirJumpLook.KickWeight(kickAge);if(kw>0)Step(set,row,kw,NativeAirJumpLook.LeadRight(kickCharge));KickWeight=kw;}
+            float w=own*presence;AirWeight=w;State=BoostWeight>.5f?AirBoost:KickWeight>.5f?AirStep:vy>2?Rise:vy>-2?Apex:Fall;
             // The hips turn of the blended take (the flip's own pelvis channel turns through a full circle: the flip is procedural).
             Quaternion pelvis=MeleeMath.Slerp(Quaternion.Identity,Delta(row0,row,MeleeCapture.Pelvis),.6f*w);
             float flipU=(time-flipAt)/NativeJumpRules.FlipSeconds;
@@ -295,6 +310,23 @@ namespace ChipArena.UnityConversion
             Spin(r,FlipAngle);
             KeepAboveFloor(r);
             for(int k=0;k<6;k++)held[k]=r.Q[Legs[k]];hasHeld=legs;
+        }
+        // The air step on the take's row (pelvis-relative channels): the lead thigh to the set's authored tuck (the Jump take's tuck
+        // mark) lifted LeadLift more (MinLift to MaxLift), its knee bent at least LeadKnee; the trailing thigh from the push-off's extension kicked back
+        // KickBack, its knee near straight and its foot pointed as at the push-off; the spine crunched forward by Crunch.
+        private void Step(int set,float[] f,float k,bool leadRight)
+        {
+            var jump=NativeJumpRules.Clip(set,NativeJumpRules.Jump);if(jump==null||jump.Marks.Length<3)return;
+            jump.Sample(jump.Marks[2],rowK);jump.Sample(jump.Marks[1],rowP);
+            int lh=leadRight?MeleeCapture.RHip:MeleeCapture.LHip,lk=leadRight?MeleeCapture.RKnee:MeleeCapture.LKnee;
+            int th=leadRight?MeleeCapture.LHip:MeleeCapture.RHip,tk=leadRight?MeleeCapture.LKnee:MeleeCapture.RKnee,ta=leadRight?MeleeCapture.LAnkle:MeleeCapture.RAnkle;
+            float lift=Math.Max(-NativeAirJumpLook.MaxLift,Math.Min(-NativeAirJumpLook.MinLift,rowK[lh]-NativeAirJumpLook.LeadLift));
+            f[lh]+=(lift-f[lh])*k;f[lh+1]+=(rowK[lh+1]-f[lh+1])*k;f[lh+2]+=(rowK[lh+2]-f[lh+2])*k;
+            f[lk]+=(Math.Max(NativeAirJumpLook.LeadKnee,rowK[lk])-f[lk])*k;
+            f[th]+=(rowP[th]+NativeAirJumpLook.KickBack-f[th])*k;f[th+1]+=(rowP[th+1]-f[th+1])*k;f[th+2]+=(rowP[th+2]-f[th+2])*k;
+            f[tk]+=(Math.Max(0,Math.Min(NativeAirJumpLook.TrailKnee,rowP[tk]+.2f))-f[tk])*k;
+            for(int c=0;c<3;c++)f[ta+c]+=(rowP[ta+c]-f[ta+c])*k;
+            f[MeleeCapture.Spine]+=NativeAirJumpLook.Crunch*k;
         }
         // The flip about the hips' lateral axis, pivoting a little above them (the tucked body's centre).
         private static readonly Vector3 Pivot=new Vector3(0,.1f,0);

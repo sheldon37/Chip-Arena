@@ -1,3 +1,29 @@
+## 2026-10-18 — Claude: movement-chip visuals, every weapon's air jumps and the five chip icons (on branch, not merged)
+
+- **Branch:** `claude/movement-chip-visuals`, based on shared `2fd5f6a` (#282). Presentation only; implemented on the branch, not merged, not published. Picks up Astra's handoff in "movement chips and initial Mods support" (new-chip visuals and multi-jump effects).
+- **Gap:** the air-jump burst, pose and sound played only for the flipping weapons (daggers, Bow). With Air Step, Acrobat, Skybound or Airborne, every other weapon air-jumped with no burst and only the jump layer's soft re-rise. All five new chips drew the cpu fallback icon: the card reads `Icons.json` "chips", which does not list them, not the content's `icon:"wind"`.
+- **Changes:**
+  - `Core/NativeAirJumpFx.cs` (new): a kind per weapon. Flip is the daggers and Bow (unchanged). Own is the Cyber Lord (its boost is untouched; it gets no burst here). Kick is every other weapon.
+    - A per-charge look: each chained Kick charge is 6% smaller, 8% brighter and 6% whiter; the first charge is the dagger burst.
+    - `NativeAirJumpBursts`: one burst per spent charge from `arena.PresentedJump`, at most 16 live, no allocation per frame.
+  - `Runtime/NativeJumpFxPresentation.cs` now drives that store through a sink over `NativeVfxDraw`. For the daggers and Bow it makes the same draw calls (checked bit for bit against the old loop).
+  - `Core/NativeJumpFx.cs`: an optional `scale` on Ring, Streak and Puff (1 is exact).
+  - `Core/NativeJumpMotion.cs`: the air step for Kick weapons, 0.34 s from each charge. The lead knee drives up to the set's tuck, the trailing leg kicks down and back from the push-off, with a 0.1 rad crunch. The lead alternates (odd charges lead right). Joint rotations only, over the layer's own air pose. `AirSteps` (default on) lets the checks compare.
+  - `Runtime/NativeMoveFeelAudio.cs`: Kick weapons play `move.jump` (gain .38, own .30, rate 1.1, up a semitone per charge). No new bank key; the whoosh and boost are unchanged.
+  - `Core/NativeChipIcons.cs` (new) and one line in `Runtime/NativeIcons.Chip` (source map, then these, then cpu): stride footprints, momentum-cell gauge, air-step move-up, acrobat rotate-cw, skybound feather, all from the pinned `Icons.json`. The content data, hash and revision are untouched.
+  - `Tests/MoveVisualChecks.cs` (new; `--move-visuals` and the full run). The `Tests/CyberLordRunChecks.cs` hook scan now follows the Core store. One bullet in `docs/MELEE-FEEL.md`.
+- **Mods panel (checked, unchanged):** 1920x1080 and 1280x720 @1.5 both resolve to the 640-wide Settings panel (576-unit body; it scrolls at 720p). Every Mods toggle and button fits; the widest, Pinball, needs about 412 of 568 at 14 px. An offline IMGUI render of the real `SettingsBody` and `ModsBody` shows no clipping at either size. One edge case: a pack filename over about 80 characters would widen the non-wrapping toggle column. `NativeModsUI.cs` is Astra's and was not edited; an optional fix is to ellipsize long names.
+- **Checks:** run5b, all five steps exit 0:
+  - Unity 6000.3.24f1 Runtime and Editor compile OK.
+  - Relay: 800 PASS.
+  - Python: 140 OK (1 skipped).
+  - Package OK; diff-check OK.
+  - `--move-visuals`: 123,282 checks. Covers 16 weapons, host and guest, 30-240 Hz: one burst per charge 1-6, none for the Cyber Lord, refilled on landing. The daggers' and Bow's 15,072 draw calls match the old presentation bit for bit. Also covered: Reduced and Low thinning, first person skipping only the own afterimage, streaks at least 15 cm off the floor, and no allocation. For the step, 13 Kick weapons on all routes: one step per charge, the root unmoved, hands in the chest frame and the greatsword grip unchanged, the pose back exactly after each step. Also the five icons and the authority/content scans. `JumpMotionChecks` and `--cyber-lord` pass.
+  - Offline renders and contact sheets (greatsword, pistol, fire staff, Bow, daggers; per-charge pops; tiers; the five cards before and after; Settings > Mods at both sizes) are in the scratchpad `renders-move-visuals`, not in git.
+- **Not run:** Unity Editor play, Windows, a two-client test, or real audio (the `move.jump` clip comes from the owner's local sound pack). The Settings render is an offline IMGUI emulation, not the Unity player.
+- **Risks:** the step's look was judged from offline renders only. An air attack started during a step shows the step's legs under it, as it already shows the jump pose's. A Siren pilot gets the burst but no step (it has no jump set).
+- **Animation impact:** joint rotations only, after the jump layer's own air pose. None on hit timing, hitboxes, damage, cooldowns, movement or networking. The root, hands and greatsword grip were measured unchanged.
+
 ## 2026-10-18 — Astra: movement chips and initial Mods support
 
 - Branch `codex/movement-chips-mods`, shared base `5b93c11` (retains PR #281 networking/host promotion). Owner requested movement chips and confirmed both built-in modifiers and external mods.

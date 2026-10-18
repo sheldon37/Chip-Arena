@@ -5,7 +5,8 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeAudio
     {
-        // ---------- movement feel: the dagger air flip's whoosh (owner 2026-10-12, "Daggers can double-jump") and the Cyber Lord's boost ----------
+        // ---------- movement feel: the dagger air flip's whoosh (owner 2026-10-12, "Daggers can double-jump"), the Cyber Lord's boost
+        // and every other weapon's air jump ----------
         // move.jump and move.land use the replicated contact flag. AirJumpAt drives the same tracker used by the
         // jump animation, on the predicted local or replicated remote timeline. A dagger pilot's air
         // jump plays the dagger swing a little faster as the flip's whoosh (no new bank key). Presentation only.
@@ -28,6 +29,9 @@ namespace ChipArena.UnityConversion
                 if(track.AirJumps>jumps&&a.Hp>0&&NativeJumpRules.Flips(p.Seat.spec)&&!CyberLordAirBoost.Handles(p.Seat.spec)){bool mine=p==me;BankPlay("melee.daggers.swing",p.Body.position,mine?FlipWhooshOwnGain:FlipWhooshGain,0,null,mine,null,FlipWhooshRate);}
                 // The Cyber Lord's hardlight boost (Core/CyberLordRun.cs): its existing dash whoosh and glitch tick (NativeCyberLordSounds.AirBoost).
                 else if(track.AirJumps>jumps&&a.Hp>0&&CyberLordAirBoost.Handles(p.Seat.spec)){bool mine=p==me;int n=NativeCyberLordSounds.AirBoost(cyberSounds);for(int i=0;i<n;i++)Cue(cyberSounds[i].Key,cyberSounds[i].Clip,p.Body.position,cyberSounds[i].Gain*(mine?FlipWhooshOwnGain/FlipWhooshGain:1),mine:mine);}
+                // Every other weapon's air jump (the movement chips, Core/NativeAirJumpFx): the jump's own key, softer and a semitone
+                // higher per chained charge, so a chain reads as separate pops (no new bank key).
+                else if(track.AirJumps>jumps&&a.Hp>0&&NativeAirJumpLook.Kicks(p.Seat.spec)){bool mine=p==me;BankPlay(NativeAirJumpLook.KickSound,p.Body.position,mine?NativeAirJumpLook.KickOwnGain:NativeAirJumpLook.KickGain,0,null,mine,null,NativeAirJumpLook.KickPitch(track.AirJumps));}
             }
         }
     }

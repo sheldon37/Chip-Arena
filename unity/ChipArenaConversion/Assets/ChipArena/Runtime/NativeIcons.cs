@@ -31,9 +31,10 @@ namespace ChipArena.UnityConversion
             artClasses=Map(a?.classes,false);artSpecs=Map(a?.specs,false);
         }
         public static bool Has(string id){Ensure();return markup.ContainsKey(id??"")||art.ContainsKey(id??"");}
-        // icon-map.ts lookups; unmapped ids fall back to cpu as icons.ts does (actions have no fallback). Classes and specs
-        // resolve to the game's own art first, and an unmapped one to its fallback (the DEV chip, as cpu was).
-        public static string Chip(string id){Ensure();return chips.TryGetValue(id??"",out var i)?i:"cpu";}
+        // icon-map.ts lookups; unmapped ids fall back to cpu as icons.ts does (actions have no fallback). Native-only chips the
+        // source map lacks take their Core/NativeChipIcons icon first. Classes and specs resolve to the game's own art first, and
+        // an unmapped one to its fallback (the DEV chip, as cpu was).
+        public static string Chip(string id){Ensure();return chips.TryGetValue(id??"",out var i)?i:NativeChipIcons.Native(id)??"cpu";}
         public static string Class(string id){Ensure();return NativeIconRaster.Resolve(artClasses,classes,artFallback,id);}
         public static string Spec(string id){Ensure();return NativeIconRaster.Resolve(artSpecs,specs,artFallback,id);}
         public static string Action(string id){Ensure();return actions.TryGetValue(id??"",out var i)?i:null;}
