@@ -19,6 +19,11 @@ namespace ChipArena.UnityConversion
             Check(m!=null&&m.Pve==null&&!Pve.Boss.Seat.connected&&!Pve.Boss.Collider.enabled,"separate minion actor, reserved pilot has no collision or AI");
             Check(m.Body.GetComponentsInChildren<Collider>().Length>=6,"compound body and parts");
             Check(z.archetype==NativeZoneBossRules.Station?StationZoneBossView().live&&!IronworksZoneBossView().live:IronworksZoneBossView().live&&!StationZoneBossView().live,"only matching actor presentation binds");
+            var arrivalWire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=NetworkFrame()})).frame;
+            Check(arrivalWire.Valid(Content),"Unity codec accepts arrival with absent stagger");
+            var idle=NetworkFrame();idle.pve.zoneBoss.action=null;idle.pve.zoneBoss.actionAt=idle.pve.zoneBoss.hitAt=-100;idle.pve.zoneBoss.duration=0;
+            var idleWire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=idle})).frame;
+            Check(idleWire.Valid(Content),"Unity codec accepts idle with absent action and stagger");replicaCheck?.Invoke(idleWire);
             Pve.Holding=true;Check(HitMinion(m,p,100,Vector3.forward,0)==0,"intro cannot damage boss");Pve.Holding=false;
             p.Body.position=m.Body.position+new Vector3(0,.9f,2);p.Body.transform.position=p.Body.position;Physics.SyncTransforms();
             string attack=z.archetype==NativeZoneBossRules.Station?"buffer":"stomp";BossStart(attack,p);float hit=z.hitAt;

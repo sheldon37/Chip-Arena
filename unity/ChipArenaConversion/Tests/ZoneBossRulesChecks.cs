@@ -15,6 +15,9 @@ namespace ChipArena.UnityConversion
                 float first=boss==NativeZoneBossRules.Station?.65f:.7f,last=boss==NativeZoneBossRules.Station?.3f:.35f;
                 Check(NativeZoneBossRules.Phase(boss,6000,6000)==1,"initial phase");Check(NativeZoneBossRules.Phase(boss,6000*first,6000)==2,"first threshold inclusive");Check(NativeZoneBossRules.Phase(boss,6000*last,6000)==3,"last threshold inclusive");
                 var f=new NativeZoneBossFrame{archetype=boss,actor=10001,phase=3,phaseAt=1};
+                f.action=f.staggerCause="";Check(f.Valid(),"Unity empty optional strings accept idle record");
+                f.action="unknown";Check(!f.Valid(),"unknown nonempty action refused");f.action=null;
+                f.staggerCause="unknown";Check(!f.Valid(),"unknown nonempty stagger refused");f.staggerCause=null;
                 string[] actions=boss==NativeZoneBossRules.Station?NativeStationBoss.Moves.Select(m=>m.Id).ToArray():NativeIronworksBoss.Actions.Select(a=>a.Id).ToArray();
                 foreach(var id in actions)
                 {

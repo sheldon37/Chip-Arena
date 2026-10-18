@@ -23,12 +23,12 @@ namespace ChipArena.UnityConversion
         public bool Valid()
         {
             if(!NativeZoneBossRules.Known(archetype)||actor<10000||phase<1||phase>3||actionId<0||targetSeat< -1||targetSeat>10000||holdTarget< -1||holdTarget>10000||Math.Abs(holdSide)!=1||variant<0||variant>3||parts<0||parts>31||sideBroken<0||sideBroken>3||stagger<0||stagger>1)return false;
-            if(action!=null&&!NativeZoneBossRules.Action(archetype,action,out _))return false;
-            if(staggerCause!=null&&!new[]{"crash","express","part","phase","choke","kneel"}.Contains(staggerCause))return false;
+            if(!string.IsNullOrEmpty(action)&&!NativeZoneBossRules.Action(archetype,action,out _))return false;
+            if(!string.IsNullOrEmpty(staggerCause)&&!new[]{"crash","express","part","phase","choke","kneel"}.Contains(staggerCause))return false;
             if(hazards==null||hazards.Length>64||hazards.Any(h=>h==null||!h.Valid())||hazards.Select(h=>h.id).Distinct().Count()!=hazards.Length)return false;
             if(partAt==null||partAt.Length!=5||spillIds==null||spillIds.Length>6||spillIds.Any(i=>i<10000)||spillIds.Distinct().Count()!=spillIds.Length)return false;
             if(!new[]{phaseAt,actionAt,hitAt,duration,cancelAt,actionYaw,targetX,targetZ,laneX0,laneZ0,laneX1,laneZ1,holdUntil,staggerAt,staggerSeconds,staggerPushX,staggerPushZ,stagger,lampBrokenAt,pantoBrokenAt,expressHitAt,liveAt,liveUntil,barrierDownAt,boardDownAt,roofOpenAt,spillAt,deathAt}.All(NativeZoneCombat.Finite)||!partAt.All(NativeZoneCombat.Finite))return false;
-            return phaseAt>=0&&duration>=0&&duration<=30&&staggerSeconds>=0&&staggerSeconds<=10&&(action==null||actionAt>=0&&hitAt>=actionAt&&hitAt<=actionAt+duration+.001f)&&(cancelAt<0||cancelAt>=actionAt)&&partAt.All(t=>t==-100||t>=0);
+            return phaseAt>=0&&duration>=0&&duration<=30&&staggerSeconds>=0&&staggerSeconds<=10&&(string.IsNullOrEmpty(action)||actionAt>=0&&hitAt>=actionAt&&hitAt<=actionAt+duration+.001f)&&(cancelAt<0||cancelAt>=actionAt)&&partAt.All(t=>t==-100||t>=0);
         }
     }
     public readonly struct ZoneBossAction
@@ -77,12 +77,12 @@ namespace ChipArena.UnityConversion
         public static StationBossView Station(NativeZoneBossFrame f,float x,float y,float z,float yaw,float hp,float maxHp,float spawned)
         {
             if(f==null||f.archetype!=NativeZoneBossRules.Station)return StationBossView.None;
-            return new StationBossView{live=true,x=x,y=y,z=z,yaw=yaw,hp=hp,maxHp=maxHp,spawned=spawned,phase=f.phase,phaseAt=StationBossView.Time(f.phaseAt),action=f.action,actionId=f.actionId,actionAt=StationBossView.Time(f.actionAt),hitAt=StationBossView.Time(f.hitAt),duration=f.duration,cancelAt=StationBossView.Time(f.cancelAt),laneX0=f.laneX0,laneZ0=f.laneZ0,laneX1=f.laneX1,laneZ1=f.laneZ1,holdTarget=f.holdTarget,holdSide=f.holdSide,holdUntil=StationBossView.Time(f.holdUntil),staggerAt=StationBossView.Time(f.staggerAt),staggerSeconds=f.staggerSeconds,staggerPushX=f.staggerPushX,staggerPushZ=f.staggerPushZ,staggerCause=f.staggerCause,lampBrokenAt=StationBossView.Time(f.lampBrokenAt),pantoBrokenAt=StationBossView.Time(f.pantoBrokenAt),expressHitAt=StationBossView.Time(f.expressHitAt),sideBroken=f.sideBroken,liveAt=StationBossView.Time(f.liveAt),liveUntil=StationBossView.Time(f.liveUntil),barrierDownAt=StationBossView.Time(f.barrierDownAt),boardDownAt=StationBossView.Time(f.boardDownAt),roofOpenAt=StationBossView.Time(f.roofOpenAt),spillAt=StationBossView.Time(f.spillAt),spillIds=f.spillIds,actionTarget=f.targetSeat,diedAt=StationBossView.Time(f.deathAt)};
+            return new StationBossView{live=true,x=x,y=y,z=z,yaw=yaw,hp=hp,maxHp=maxHp,spawned=spawned,phase=f.phase,phaseAt=StationBossView.Time(f.phaseAt),action=string.IsNullOrEmpty(f.action)?null:f.action,actionId=f.actionId,actionAt=StationBossView.Time(f.actionAt),hitAt=StationBossView.Time(f.hitAt),duration=f.duration,cancelAt=StationBossView.Time(f.cancelAt),laneX0=f.laneX0,laneZ0=f.laneZ0,laneX1=f.laneX1,laneZ1=f.laneZ1,holdTarget=f.holdTarget,holdSide=f.holdSide,holdUntil=StationBossView.Time(f.holdUntil),staggerAt=StationBossView.Time(f.staggerAt),staggerSeconds=f.staggerSeconds,staggerPushX=f.staggerPushX,staggerPushZ=f.staggerPushZ,staggerCause=f.staggerCause,lampBrokenAt=StationBossView.Time(f.lampBrokenAt),pantoBrokenAt=StationBossView.Time(f.pantoBrokenAt),expressHitAt=StationBossView.Time(f.expressHitAt),sideBroken=f.sideBroken,liveAt=StationBossView.Time(f.liveAt),liveUntil=StationBossView.Time(f.liveUntil),barrierDownAt=StationBossView.Time(f.barrierDownAt),boardDownAt=StationBossView.Time(f.boardDownAt),roofOpenAt=StationBossView.Time(f.roofOpenAt),spillAt=StationBossView.Time(f.spillAt),spillIds=f.spillIds,actionTarget=f.targetSeat,diedAt=StationBossView.Time(f.deathAt)};
         }
         public static IronworksBossView Ironworks(NativeZoneBossFrame f,float x,float y,float z,float yaw,float hp,float maxHp,float spawned)
         {
             if(f==null||f.archetype!=NativeZoneBossRules.Ironworks)return IronworksBossView.None;
-            string action=f.cancelAt>=0?null:f.action;float at=f.actionAt;
+            string action=f.cancelAt>=0||string.IsNullOrEmpty(f.action)?null:f.action;float at=f.actionAt;
             if(f.cancelAt>=0&&(f.staggerCause=="choke"||f.staggerCause=="kneel"||f.staggerCause=="crash")){action=f.staggerCause;at=f.staggerAt;}
             return new IronworksBossView{live=true,hazards=f.hazards,x=x,y=y,z=z,yaw=yaw,hp=hp,maxHp=maxHp,spawned=spawned,action=action,actionAt=IronworksBossView.Time(at),actionYaw=f.actionYaw,targetX=f.targetX,targetZ=f.targetZ,targetSeat=f.action=="grab"?f.holdTarget:f.targetSeat,variant=f.variant,phase=f.phase,phaseAt=IronworksBossView.Time(f.phaseAt),parts=f.parts,partAt0=IronworksBossView.Time(f.partAt[0]),partAt1=IronworksBossView.Time(f.partAt[1]),partAt2=IronworksBossView.Time(f.partAt[2]),partAt3=IronworksBossView.Time(f.partAt[3]),partAt4=IronworksBossView.Time(f.partAt[4]),stagger=f.stagger,deathAt=IronworksBossView.Time(f.deathAt)};
         }
