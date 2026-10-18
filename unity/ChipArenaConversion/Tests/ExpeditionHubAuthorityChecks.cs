@@ -62,7 +62,13 @@ internal static class ExpeditionHubAuthorityChecks
         var input=new InputFrame{Attack=true,Shoot=true,AbilityQ=true,AbilityE=true,AbilityEHeld=true,AbilityEReleased=true,Hadoken=true,HadokenHeld=true,Uppercut=true,SirenAbility=4,Interact=true,Jump=true,Roll=true,Sprint=true,X=1};
         var held=ExpeditionHubRules.Holster(input);Check(!held.Attack&&!held.Shoot&&!held.AbilityQ&&!held.AbilityE&&!held.AbilityEHeld&&!held.Hadoken&&held.SirenAbility==0,"all weapon intents removed");
         Check(held.Interact&&held.Jump&&held.Roll&&held.Sprint&&held.X==1,"movement and interactions retained");
-        for(int n=0;n<=8;n++)Check(ExpeditionHubRules.Cap(n)==(n==0?0:Math.Min(32,4+4*n)),"living cap "+n);
+        for(int n=1;n<=8;n++)Check(ExpeditionHubRules.Cap(n,1)==Math.Min(96,16+12*n),"connected lobby cap "+n);
+        Check(ExpeditionHubRules.Cap(8,0)==0&&ExpeditionHubRules.Cap(0,0)==0,"city empty means no hub enemies regardless of lobby");
+        Check(ExpeditionHubRules.Cap(1,1)==28&&ExpeditionHubRules.Cap(2,1)==40&&ExpeditionHubRules.Cap(4,1)==64&&ExpeditionHubRules.Cap(8,1)==96,"hub population scales well above the previous eight-to-thirty-two limit");
+        Check(ExpeditionHubRules.Cap(8,8)==ExpeditionHubRules.Cap(8,1)&&ExpeditionHubRules.Cap(40,1)==96,"lobby is the population scale, not only the number of residents in the city");
+        Check(Math.Abs(ExpeditionHubRules.SpawnInterval-.75)<1e-6&&ExpeditionHubRules.SpawnBurst==2,"spawn rate ramps the larger city without unbounded single-tick bursts");
+        Check(runtime.Contains("Run.PartySnapshot().members.Count(m=>m.connected&&!m.extracted)")&&runtime.Contains("ExpeditionHubRules.Cap(lobby,hubLiving.Count)"),"split-area city population uses the whole lobby");
+        Check(runtime.Contains("Math.Min(8,excess.Length-Pve.Cap)")&&runtime.Contains("SpawnBurst"),"population trims and refill are tick-bounded");
         foreach(var row in new[]{("near",10f),("mid",15f),("far",20f)})Check(Math.Abs(25*ExpeditionHubRules.Reward(row.Item1)-row.Item2)<.001,"ring payout "+row.Item1);
         foreach(var ring in new[]{"near","mid","far"})Check(!ExpeditionHubRules.Kind(ring,"hulk",99999),"no hub Hulks");
         Check(!ExpeditionHubRules.Kind("near","spitter",999)&&!ExpeditionHubRules.Kind("far","brute",359)&&ExpeditionHubRules.Kind("far","brute",360),"ring roster and brute timer");

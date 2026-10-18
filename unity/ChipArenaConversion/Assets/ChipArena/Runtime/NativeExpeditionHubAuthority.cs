@@ -103,12 +103,14 @@ namespace ChipArena.UnityConversion
             if(state.phase!=ExpeditionPhase.Town)return;StepHubNoise();
             hubLiving.Clear();foreach(var member in state.members)if(member.alive&&member.connected&&!member.extracted)
             {var p=Pilots.Find(pilot=>pilot.Seat.id==Expedition.Session.Sources.Seat?.Invoke(member.account));if(p!=null&&p.Hp>0)hubLiving.Add(p);}
-            Pve.Cap=ExpeditionHubRules.Cap(hubLiving.Count);Pve.Rate=0;
+            int lobby=Expedition.Session.Run.PartySnapshot().members.Count(m=>m.connected&&!m.extracted);
+            Pve.Cap=ExpeditionHubRules.Cap(lobby,hubLiving.Count);Pve.Rate=0;
             if(Time>=hubMaintainAt)
             {
                 hubMaintainAt=Time+.5f;
                 var excess=Minions.Where(m=>hubMobs.ContainsKey(m.Id)).OrderByDescending(m=>hubLiving.Select(p=>(p.Body.position-m.Body.position).sqrMagnitude).DefaultIfEmpty(float.PositiveInfinity).Min()).ToArray();
-                for(int i=0;i<excess.Length-Pve.Cap;i++){hubMobs.Remove(excess[i].Id);RemoveMinion(excess[i],false);}
+                // Trim in batches when lobby size drops; never despawn dozens on one simulation frame.
+                for(int i=0;i<Math.Min(8,excess.Length-Pve.Cap);i++){hubMobs.Remove(excess[i].Id);RemoveMinion(excess[i],false);}
                 foreach(var m in Minions.ToArray())if(m.Pve!=null&&!m.DevMonster)
                 {
                     if(HubInside(m.Body.position)){hubMobs.Remove(m.Id);RemoveMinion(m,false);continue;}
@@ -124,6 +126,10 @@ namespace ChipArena.UnityConversion
             }
             if(Time<hubSpawnAt)return;hubSpawnAt=Time+(float)ExpeditionHubRules.SpawnInterval;
             if(hubLiving.Count==0||Minions.Count(m=>m.Hp>0&&m.Pve!=null&&!m.DevMonster)>=Pve.Cap)return;
+            // Rebuild candidates after each arrival: every zombie respects the same spawn clearance
+            // and entry queue limits, including during a two-at-a-time population ramp.
+            for(int spawned=0;spawned<ExpeditionHubRules.SpawnBurst&&Minions.Count(m=>m.Hp>0&&m.Pve!=null&&!m.DevMonster)<Pve.Cap;spawned++)
+            {
             var candidates=new List<(ExpeditionHubZone zone,PveEntry entry)>();
             foreach(var zone in hubAuthority.Layout.Zones)foreach(int id in zone.Spawns)
             {
@@ -133,17 +139,19 @@ namespace ChipArena.UnityConversion
                 if(HubInside(at)||Minions.Any(m=>(m.Body.position-at).sqrMagnitude<9)||hubLiving.Any(p=>(p.Body.position-at).sqrMagnitude<400||((p.Body.position-at).sqrMagnitude<900&&!SceneLinecast(p.Body.position,at,WorldMask))))continue;
                 candidates.Add((zone,entry));
             }
-            if(candidates.Count==0)return;
+            if(candidates.Count==0)break;
             var zones=candidates.Select(x=>x.zone).Distinct().ToArray();double roll=Pve.SpawnRandom.Next()*zones.Sum(z=>ExpeditionHubRules.Weight(z.Ring));var chosen=zones[zones.Length-1];
             foreach(var zone in zones){roll-=ExpeditionHubRules.Weight(zone.Ring);if(roll<0){chosen=zone;break;}}
             var exits=candidates.Where(x=>x.zone==chosen).ToArray();var selected=exits[Math.Min(exits.Length-1,(int)(Pve.SpawnRandom.Next()*exits.Length))];
-            var kinds=Pve.Content.adds.Where(a=>ExpeditionHubRules.Kind(chosen.Ring,a.id,state.elapsed)&&NativeWardEntries.Allows(selected.entry,a.id)&&(a.id!="spitter"||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")<NativeSpitterRules.Cap)).Select(a=>a.id).ToArray();if(kinds.Length==0)return;
+            var kinds=Pve.Content.adds.Where(a=>ExpeditionHubRules.Kind(chosen.Ring,a.id,state.elapsed)&&NativeWardEntries.Allows(selected.entry,a.id)&&(a.id!="spitter"||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")<NativeSpitterRules.Cap)).Select(a=>a.id).ToArray();if(kinds.Length==0)break;
             double kindRoll=Pve.SpawnRandom.Next()*kinds.Sum(k=>k=="brute"?.15:1);string kind=kinds[kinds.Length-1];
             foreach(string candidate in kinds){kindRoll-=candidate=="brute"?.15:1;if(kindRoll<0){kind=candidate;break;}}
             var mob=SpawnPveAdd(kind,true,selected.entry.e);
-            if(mob!=null){mob.Pve.HubRing=chosen.Ring;var home=Vec(selected.entry.@exit.Position(.85f));var brain=new HubZombieBrain(mob.Id,Time,Vec(home),mob.Yaw);
+            if(mob==null)break;
+            {mob.Pve.HubRing=chosen.Ring;var home=Vec(selected.entry.@exit.Position(.85f));var brain=new HubZombieBrain(mob.Id,Time,Vec(home),mob.Yaw);
                 var points=(Map.nav?.nodes??Array.Empty<MapNavNode>()).Where(n=>chosen.Volume.Contains(new V3(n.pos.x,chosen.Volume.y,n.pos.z))&&!HubInside(Vec(n.pos))).Select(n=>Vec(n.pos)).ToArray();
                 mob.Pve.Hub=brain.View;hubMobs[mob.Id]=new HubMob{Ring=chosen.Ring,Zone=chosen,Points=points,Brain=brain,Home=home,IdleAt=Time,SenseAt=Time+(mob.Id%5)*.04f};}
+            }
         }
     }
 }
