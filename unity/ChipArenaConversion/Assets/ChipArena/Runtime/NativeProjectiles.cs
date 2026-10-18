@@ -184,7 +184,7 @@ namespace ChipArena.UnityConversion
             {b.EffectsUsed=true;var w=Content.Weapon(b.Spec);if(w.blast>0)ChipBlast(owner,hit.Point,b.Radius>.2f?3:(float)w.blast,b.Damage*.38f,b.Impulse,effect:b.Spec);if(b.Direct&&!b.Pong)SplitBullet(owner,b,hit.Point,target?.Collider.GetInstanceID());}
             if(b.Pong)return true;
             if((target!=null||minion!=null)&&b.Pierces>0){b.Pierces--;b.Hit.Add(hit.Collider.GetInstanceID());b.Position+=b.Velocity.normalized*.08f;return false;}
-            if(prop!=null&&b.Bounces>0&&Props.Contains(prop)){Emit(EventKind.Ricochet,owner,0,hit.Point,b.Damage);b.Bounces--;b.Velocity=Vector3.Reflect(b.Velocity,hit.Normal);b.Position+=b.Velocity.normalized*(b.Radius+.06f);b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);return false;}
+            if(target==null&&minion==null&&b.Bounces>0&&hit.Collider.gameObject.layer==PropLayer){Emit(EventKind.Ricochet,owner,0,hit.Point,b.Damage);b.Bounces--;b.Velocity=Vector3.Reflect(b.Velocity,hit.Normal);b.Position+=b.Velocity.normalized*(b.Radius+.06f);b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);return false;}
             return true;
         }
         private void SplitBullet(NativePilot owner,NativeBullet parent,Vector3 point,int? skip)

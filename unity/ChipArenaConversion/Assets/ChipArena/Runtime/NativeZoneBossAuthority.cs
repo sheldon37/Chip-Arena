@@ -164,7 +164,7 @@ namespace ChipArena.UnityConversion
         private void BossWalk(NativePilot target,bool station)
         {
             var m=zoneBossActor;Vector3 at=m.Body.position,delta=target.Body.position-at;delta.y=0;
-            m.Yaw=Mathf.MoveTowardsAngle(m.Yaw,Mathf.Atan2(delta.x,delta.z)*Mathf.Rad2Deg,(station?(ZoneBoss.phase==3?95:70):(ZoneBoss.phase==3?65:35))/60f);
+            if(station||delta.magnitude<4)m.Yaw=Mathf.MoveTowardsAngle(m.Yaw,Mathf.Atan2(delta.x,delta.z)*Mathf.Rad2Deg,(station?(ZoneBoss.phase==3?95:70):(ZoneBoss.phase==3?65:35))/60f);
             m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);if(delta.magnitude<(station?6:4))return;
             if(station)
             {
@@ -178,15 +178,22 @@ namespace ChipArena.UnityConversion
                 if(Vector3.Distance(stationLanes[bossLane],new Vector3(at.x,0,at.z))<.15f)bossLane=step;
                 Vector3 waypoint=stationLanes[bossLane];waypoint.y=at.y;delta=waypoint-at;
             }
+            if(!station)
+            {
+                var goal=NativeIronworksBossRoute.Goal(new System.Numerics.Vector3(at.x,at.y,at.z),new System.Numerics.Vector3(target.Body.position.x,target.Body.position.y,target.Body.position.z));
+                delta=new Vector3(goal.X,goal.Y,goal.Z)-at;
+                m.Yaw=Mathf.MoveTowardsAngle(m.Yaw,Mathf.Atan2(delta.x,delta.z)*Mathf.Rad2Deg,(ZoneBoss.phase==3?65:35)/60f);
+                m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);
+            }
             Vector3 next=at+delta.normalized*Math.Min(delta.magnitude,(station?2.6f:1.6f)/60);
-            if(station){next.x=Mathf.Clamp(next.x,-20,20);next.z=Mathf.Clamp(next.z,ZoneBoss.phase>=2?-6.5f:1.5f,5);}else{next.x=Mathf.Clamp(next.x,-42,-28);next.z=Mathf.Clamp(next.z,-7,7);}
+            if(station){next.x=Mathf.Clamp(next.x,-20,20);next.z=Mathf.Clamp(next.z,ZoneBoss.phase>=2?-6.5f:1.5f,5);}else if(!NativeIronworksBossRoute.Contains(next.x,next.z))return;
             if(!BossPathBlocked(at,next,station))m.Body.position=next;
         }
         private bool BossPathBlocked(Vector3 from,Vector3 to,bool station)
         {
             var delta=to-from;if(delta.sqrMagnitude<.000001f)return false;
-            var half=station?new Vector3(1.43f,1.3f,4.9f):new Vector3(2.65f,3.4f,2.65f);
-            return PhysicsWorld.BoxCast(from+Vector3.up*(station?2.9f:3.5f),half,delta.normalized,out _,Quaternion.Euler(0,zoneBossActor.Yaw,0),delta.magnitude,WorldMask,QueryTriggerInteraction.Ignore);
+            var half=station?new Vector3(1.43f,1.3f,4.9f):new Vector3(4.2f,4.1f,3.3f);
+            return PhysicsWorld.BoxCast(from+Vector3.up*(station?2.9f:4.2f),half,delta.normalized,out _,Quaternion.Euler(0,zoneBossActor.Yaw,0),delta.magnitude,WorldMask,QueryTriggerInteraction.Ignore);
         }
         private void StepBossAction()
         {
@@ -217,7 +224,7 @@ namespace ChipArena.UnityConversion
                 if(second){var swap=center;center=end;end=swap;}
                 var next=Vector3.Lerp(center,end,Mathf.Clamp01(chargeTime/action.Strike));
                 bool station=z.archetype==NativeZoneBossRules.Station;
-                bool outside=station?Math.Abs(next.x)>24||next.z>6||next.z<(z.phase>=2?-7:0):next.x< -42||next.x> -28||Math.Abs(next.z)>7;
+                bool outside=station?Math.Abs(next.x)>24||next.z>6||next.z<(z.phase>=2?-7:0):!NativeIronworksBossRoute.Contains(next.x,next.z);
                 if(outside||BossPathBlocked(at,next,station)){BossStagger("crash",2.2f);return;}
                 m.Body.position=next;m.Yaw=z.actionYaw+(second?180:0);m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);
                 foreach(var p in Pilots)if(ZonePilot(p)){var d=p.Body.position-next;d.y=0;if(d.magnitude<(station?2.1f:3.2f))BossHurt(p,34,next,station?9:6,strike:second?1:0);}

@@ -1,5 +1,8 @@
 # CITY IRONWORKS BOSS: THE CONVERTER (design, concept model and Astra contract)
 
+**2026-10-18 owner change:** the hall-only retreat rule below is superseded. The Converter now pursues through an 11 m × 10 m shutter opening onto the casting floor, using the centre passage in both directions. The west catwalk is split and its crossing stair removed for full body/foreman/tong clearance; the shutter art follows the new aperture. Movement speed, attack timing and phase rules stay the same. The historic hall-only statements below describe the original design.
+
+
 Claude, 2026-10-17. Branch `claude/boss-city-ironworks`, based on shared `claude/sleepy-ritchie-g8ruhv` (`dfb8aac`,
 fast-forwarded to `02234ec`: Astra's PR #263 music, #264 and #265 zone gameplay, and #267).
 **Status: approved by the owner on 2026-10-17 (every recommended option in section 11) and merged into shared. Not live.** The concept model `Core/NativeIronworksBossModel.cs` is

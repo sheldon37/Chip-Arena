@@ -1,3 +1,10 @@
+## 2026-10-18 — Astra: zone arrivals, Converter passage and stage bounce
+
+- Branch `codex/zone-boss-arrival-camera`, base shared/builder `e13e610` (#276, published as 225b49d94c56). Owner still sees only the arrival text. #276 removed the Siren stage but left UpdateCamera following the pilot; neither live boss had a camera handoff.
+- Bind the replicated intro hold and boss song age to a view of the existing arrival: Station looks down T1 and follows the climb; Converter frames the pouring pit from inside the hall. Keep the live arena and authored rigs/effects/music. Suppress first-person weapon/ADS and gameplay camera modifiers while directed; restore the previous FOV and normal camera after the hold. Retain the archetype banner during the directed view. No hold duration, authored animation, hit timing or network schema changes.
+- Owner follow-ups: Converter stops at doorway (owner selected casting-floor pursuit), and bounce fails on new stages. Enlarge the boss-opened shutter to 11 × 10 m, clear the crossing catwalk/stair, route through its centre to the casting floor and back, and sweep the full body including foreman/tongs. Regenerate live navigation/content hashes. This supersedes the original hall-only rule. Bounce now accepts world-layer geometry, including static stage walls/floors, while actor hits keep their damage/pierce path and bounce count/retention stay unchanged.
+- Managed camera/route rules pass (11,005 checks); Ironworks visuals pass (158); all three Unity reference assemblies compile. Added real PhysX passage and static-surface bounce fixtures. Added real Unity camera ownership/first-person suppression/FOV restoration fixtures for both authority and decoded guests. Semantic compilation and hosted/native publication results will be recorded in the PR. In-game framing, occlusion and human multiplayer acceptance remain unrun; owner retest required.
+
 ## 2026-10-18 — Astra: route zone boss arrivals away from the Siren stage
 
 - Branch `codex/zone-boss-intros`, base shared/builder `797726c` (released as 6349f5ce; owner confirms both bosses spawn). Owner reports the Siren intro still plays for both.

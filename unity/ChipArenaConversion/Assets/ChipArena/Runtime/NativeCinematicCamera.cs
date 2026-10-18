@@ -27,19 +27,37 @@ namespace ChipArena.UnityConversion
         public bool Directing{get;private set;}
         /// <summary>The Raging Demon victim screen covers the arena this frame (no world-anchored HUD).</summary>
         public bool Private{get;private set;}
-        public void BeginFrame(){Directing=Private=false;bars=0;if(screen!=null)screen.enabled=false;}
+        public bool ZoneArrival{get;private set;}
+        private Camera arrivalCamera;private float arrivalFov;
+        public void BeginFrame(){if(arrivalCamera!=null){arrivalCamera.fieldOfView=arrivalFov;arrivalCamera=null;}ZoneArrival=Directing=Private=false;bars=0;if(screen!=null)screen.enabled=false;}
         /// <summary>Called first in UpdateCamera; true when the Last Laugh cutscene placed the arena camera.</summary>
         public bool Direct(NativeArena arena,ArenaPresentation presentation,Camera view,bool phaseOk)
         {
             int frame=Time.frameCount;bool continuous=lastFrame==frame-1;lastFrame=frame;
             if(arena==null||presentation==null||view==null){siren.Stop();return false;}
             if(!continuous||arena.Generation!=generation){generation=arena.Generation;siren.Stop();}
+            if(phaseOk&&ZoneBossArrival(arena,presentation,view)){siren.Stop();return true;}
             // arena.ViewPilot without its per-call lambda: the local pilot, or the one it controls (renderer.ts viewId).
             var local=Find(arena.Pilots,arena.LocalId);var me=local?.Controlling??local;if(me?.Seat==null){siren.Stop();return false;}
             VictimScreen(arena,presentation,view,me);
             // Kernel Panic's caster and victim (Core/KernelPanicCamera; NativeCyberLordPresentation.cs).
             if(phaseOk&&presentation.KernelPanicDirect(arena,view,presentation.CinematicClock(arena),presentation.CameraShake,presentation.WeaponEffectsQuality<.5f)){Directing=true;return true;}
             return Cutscene(arena,presentation,view,me,presentation.CinematicClock(arena),phaseOk);
+        }
+        private bool ZoneBossArrival(NativeArena arena,ArenaPresentation presentation,Camera view)
+        {
+            var z=arena.ZoneBoss;if(z==null)return false;
+            foreach(var actor in arena.Minions)if(actor.Id==z.actor)
+            {
+                var at=actor.Body.position;
+                if(!NativeZoneBossIntroCamera.Sample(z.archetype,arena.Pve?.Holding==true,arena.Pve?.Cinematic,arena.BossSongTime,
+                    new System.Numerics.Vector3(at.x,at.y,at.z),actor.Yaw,out var eye,out var look,out float fov))return false;
+                var e=new Vector3(eye.X,eye.Y,eye.Z);var target=new Vector3(look.X,look.Y,look.Z);
+                arrivalCamera=view;arrivalFov=view.fieldOfView;view.fieldOfView=fov;
+                view.transform.SetPositionAndRotation(e,Quaternion.LookRotation(target-e));
+                presentation.FirstPerson=false;presentation.AimHeld=false;ZoneArrival=Directing=true;return true;
+            }
+            return false;
         }
         private void VictimScreen(NativeArena arena,ArenaPresentation presentation,Camera view,NativePilot me)
         {

@@ -129,6 +129,7 @@ namespace ChipArena.UnityConversion.Editor
                         {
                             var packet=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=frame})).frame;
                             Check(packet.Valid(content),"zone boss packet accepted");guest.ApplyFrame(packet,packet.pilots.First(p=>p.id!=900).id);
+                            guest.ValidateZoneBossArrivalCamera();
                             Check(guest.ZoneBoss!=null&&guest.ZoneBoss.actor==packet.pve.zoneBoss.actor&&guest.ZoneBoss.hitAt==packet.pve.zoneBoss.hitAt,"guest applies boss identity and contact clock");
                             Check(packet.pve.zoneBoss.archetype==NativeZoneBossRules.Station?(packet.pve.zoneBoss.hitAt<0?float.IsNaN(guest.StationZoneBossView().hitAt):guest.StationZoneBossView().hitAt==packet.pve.zoneBoss.hitAt):guest.IronworksZoneBossView().phase==packet.pve.zoneBoss.phase,"guest binds the matching presentation record");
                         });
