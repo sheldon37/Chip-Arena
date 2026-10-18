@@ -4,6 +4,8 @@
 
 2026-10-18 Claude party loading indicator (`claude/party-loading-indicator`, merged into shared; presentation only): the stage loading screen shows a party panel for Expedition starts and area loads (YOU first, weapon icon, WAITING/LOADING/READY/IN WORLD/DROPPED chip, my real bar, indeterminate bars for others, "WAITING FOR n PLAYERS…" then "EVERYONE'S IN"). No per-member load state is replicated yet: Astra's relay contract is in DEV_LOG. Next: Astra binds `loadProgress`/`loadState`.
 
+2026-10-18 Claude last-enemy quota markers (`claude/quota-last-markers`, merged into shared; presentation only): with 1–5 kills left in an instance quota (Ward Zero, Central Station, City Ironworks) and no boss yet, the 8 nearest live hostile adds get a through-wall kite with metres, edge arrows when off screen or behind, LAST n · MARKED under the quota and one ping per quota. Wave Defense not covered (host-only budget). Managed checks, run5b and offline renders; Unity/Windows/two-client unrun. See DEV_LOG.
+
 2026-10-18 Astra activation candidate (PR #272): both zone bosses selected, authority hazard presentation bound; Expedition F-revive and immediate teammate spectate fixed. Includes shared 8f2e3a3 guest ticket fix. Local affected checks pass; hosted/native publication pending. See ZONE-BOSS-RULES-HANDOFF.md and PR receipt.
 
 2026-10-17 Claude THE CONVERTER in-game presentation (`claude/boss-ironworks-presentation`, merged into shared, not live until Astra binds it; presentation only): runtime model, motion, effects, arrival and death on Hydraulic Hell's beats, HUD name and cues behind `IronworksBossViewOf` (None until Astra binds the record), with a DEV preview. Next: review and merge; Astra binds.

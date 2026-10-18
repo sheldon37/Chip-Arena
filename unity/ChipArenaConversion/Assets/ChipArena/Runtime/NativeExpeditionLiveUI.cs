@@ -104,6 +104,8 @@ namespace ChipArena.UnityConversion
         {
             ExpeditionLiveSync();var v=expeditionLiveView;if(v==null||expeditionScreenOpen)return;
             ExpeditionWorldLabels();
+            // The last enemies of a kill quota, marked (NativeQuotaMarksPresentation.cs): under the HUD, over the world labels.
+            QuotaMarksHud(v,width,height);
             // Chips waiting: the Boss Test's CHIPS tag with its C key (ExpeditionChipsTag) in place of the minimal HUD's.
             E.Minimal(v,width,1,false);
             bool countdown=NativeExpeditionPresentation.Active(v).active;

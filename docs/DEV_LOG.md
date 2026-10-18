@@ -63,6 +63,61 @@
   - A solo load reads WAITING FOR 1 PLAYER… (the owner's wording, counting me).
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
 
+## 2026-10-18 — Claude: last enemies of a kill quota marked (merged into shared)
+
+- Branch `claude/quota-last-markers`, base shared `e13e610` (PR #276 merged). Merged into shared and the builder, no PR, nothing
+  published. Owner (2026-10-18): "We need some kind of indicator for the last enemies of a quota (Like maybe last 5?) In case
+  they get stuck so players know where to find them."
+- **What (presentation only):** `Core/NativeQuotaMarks.cs` holds every rule; `Runtime/NativeQuotaMarksPresentation.cs` draws;
+  `Runtime/NativeQuotaMarkAudio.cs` pings. Details in `docs/EXPEDITION-PRESENTATION.md` "Quota markers (the last enemies)".
+  - Trigger: 1–5 kills left (`NativeQuotaMarks.Threshold`) in the viewer's current instance (`instances[].current`,
+    `target - progress`), not cleared, no boss (`bosses[]` empty, no `bossArrivals[]` entry for the area). Off at 0, in the
+    boss phase, outside the area, while loading or frozen. Ward Zero, Central Station and City Ironworks all use these fields,
+    so one rule covers all three (checked on the real split-area run for each).
+  - Which: live hostile horde adds of the presented arena (a split area's arena holds only its own), the 8 nearest (`Cap`);
+    never corpses, hub/town zombies, the zone boss or its summons, DEV monsters or adds still queued at an entry. Positions are
+    the adds' presented roots (new read-only `ArenaPresentation.HordeDrawnRoot`), so guests mark what they draw.
+  - Marker: a downward kite 0.6 m over the kind's head (Hulk: 3.66 m above the floor), drawn over the scene (walls never hide
+    it), metres label, 28→15 UI px from 6 to 48 m, 1.2 s pulse; hidden within 4 m while in plain sight (camera ray through
+    `NativeArena.WorldMask`), .55 over the crosshair; a farther marker lined up behind a nearer one is lifted clear above it. Colour: the HUD's enemy tone Danger `#ff4d6d` (not hazard amber, not ally
+    cyan). Deviation: an IMGUI overlay anchored to the world point (on top by construction) instead of a depth-test-off world
+    mesh, so the label stays crisp and no shader is needed.
+  - Off screen / behind: edge darts with the distance on a rounded rectangle inset from the edges (clear of the objective and
+    LAST tags and the cooldown cards); behind the camera they lean to the bottom; close ones are spread apart.
+  - HUD: `LAST n · MARKED` under the objective tag, and under the J screen's KILL QUOTA bar.
+  - Cue: one soft ping per quota (run, loop, area), not on count changes or on returning to the same quota; key
+    `expedition.quota.mark` with a built-in synthesized ping as the fallback (never silent). Like the door keys, the key is not
+    yet registered in `NativeSoundKeys`, so the bank cannot carry an owner clip until it is.
+  - Tiers: Reduced effects no pulse or glow; low graphics no glow; no allocation per frame.
+- **Wave Defense: not covered.** Its waves end on a host-only spawn budget (`NativePveState.SpawnBudget`/`Spawned` and the live
+  count), not the replicated quota fields; guests do not receive it. Optional Astra handoff below.
+- **Shared-file lines:** `NativeExpeditionLiveUI.ExpeditionLiveHud` (one call after the world labels),
+  `NativeExpeditionHud.Building` (one line under the quota bar), `NativeAudio.OnDestroy` (releases the ping clip),
+  `Tests/Program.cs` (`--quota-marks` and the full run). No authority, rule, AI, spawn, director or network file changed.
+- **Animation impacts:** none. No hit timing, hitbox, damage, cooldown, movement or networking change.
+- **Checks (actual):**
+  - `QuotaMarkChecks` (`--quota-marks`, in the full run): 2,687 PASS: trigger at 8..0 left (on exactly for 5..1), boss
+    phase, boss arrival, hub/other area, cleared, loading/frozen; the live split-area run for all three instances (6/5/1/0
+    left, boss start, leaving, re-entry); selection (corpses, allies, hub, boss, queued, other area excluded; 8 nearest, ties by
+    id); heights for every kind and crawl, the Hulk; size bounds and monotony; close-range and crosshair fades; pulse and the
+    reduced tier; declutter of lined-up markers; edge arrows behind/left/right/above at 1920x1080, 3440x1440 and 2560x1080, inside the inset and spread
+    apart; the cue; the shapes and the ping; 0 bytes over 1,200 frames; source scans (hooks present, only presentation files
+    name the feature, authority files untouched, metas present).
+  - run5b on the final tree (base `e13e610` plus this change), every step exit 0: Unity 6000.3.24f1 runtime and editor build
+    OK; relay 787 PASS lines (quota marks 2,687 included); python 140 tests OK (1 skipped); package OK; diff-check clean.
+  - Offline proof frames (WebGL through the game's block shader; the HUD planned by the task's Core rules), not committed:
+    `/tmp/claude-0/-home-user/4cd8d659-77bb-56f7-9323-e1639fb4be49/scratchpad/renders-quota-markers/wardzero-corridor-1080.png`, `/tmp/claude-0/-home-user/4cd8d659-77bb-56f7-9323-e1639fb4be49/scratchpad/renders-quota-markers/station-concourse-1080.png`,
+    `/tmp/claude-0/-home-user/4cd8d659-77bb-56f7-9323-e1639fb4be49/scratchpad/renders-quota-markers/hud-arrows-1080.png`, `/tmp/claude-0/-home-user/4cd8d659-77bb-56f7-9323-e1639fb4be49/scratchpad/renders-quota-markers/hud-arrows-3440x1440.png`,
+    `/tmp/claude-0/-home-user/4cd8d659-77bb-56f7-9323-e1639fb4be49/scratchpad/renders-quota-markers/wardzero-corridor-reduced-1080.png` (and `-raw` frames without the HUD).
+  - Not run: Unity Editor play, a Windows build, two clients, a real run to the end of a quota.
+- **Risks:** visual quality judged from offline renders only; the overlay is drawn by the in-scene Expedition HUD, so it hides
+  with it (J screen, intros, killcam); the plain-sight ray tests the world only (another add or a pilot in between does not
+  count); an add still queued at an entry is unmarked until it spawns.
+- **Optional Astra handoff (Wave Defense only):** replicate the current wave's remaining kills on `NativePveFrame` (e.g. `int
+  waveLeft` = `NativePveRules.Remaining(SpawnBudget, Spawned, live adds)`, -1 outside a wave); Claude can then drive the same
+  markers from it with one more trigger in `NativeQuotaMarks`.
+- **Next:** owner review and merge; register `expedition.quota.mark` when the owner has a clip.
+
 ## 2026-10-18 — Astra: route zone boss arrivals away from the Siren stage
 
 - Branch `codex/zone-boss-intros`, base shared/builder `797726c` (released as 6349f5ce; owner confirms both bosses spawn). Owner reports the Siren intro still plays for both.
