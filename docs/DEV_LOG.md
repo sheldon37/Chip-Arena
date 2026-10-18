@@ -1,3 +1,10 @@
+## 2026-10-18 — Astra: positive/negative rows for runtime chip packs
+
+- Branch `codex/mod-chip-tones`, base shared #285 `a566672`. Owner requested the existing green/red text for the adapted chips. Runtime-only chips were absent from the pinned ChipText export and returned no stat rows. Add a Core formatter using the existing chip-stats semantics and cached fallback in NativeChipCard; keep exported rows and the renderer's exact good/bad/neutral colors.
+- Includes the 138 bundled adaptations, five movement chips and external schema-1 chips. Lower cooldowns/costs/incoming damage/reload time are beneficial; gravity/spread remain neutral. Switch mechanics and prose retain existing treatment. Per-copy rows come from actual effect data; no gameplay, content hash, networking, animation or attribution changes. Claude retains visual styling ownership.
+- Focused validation: 7631 ROUNDS adaptation checks, 714 movement/mod checks and existing jump simulation pass, including mixed benefits/penalties, units/fractions, culture, all dynamic chip rows, ordering and unchanged definitions. Native fixture now checks the actual renderer fallback and cached arrays. 2521-file source structure and diff checks pass; pinned Unity compile and hosted/publication receipts recorded in PR. Human Windows card-layout inspection unrun.
+- Prior #285 menu change released successfully from `a566672` at 20:05:06 UTC; remaining installed-pack adaptations are still pending.
+
 ## 2026-10-18 — Astra: main-menu Mods entry
 
 - Branch `codex/rounds-installed-packs`, base shared #284 `17c857b`. Owner could not find the pack controls and requested a separate main-menu selection. Add numbered MODS entry (5/keypad 5), dedicated scrollable pack screen, existing transitions, Done/Escape return and column fitting for five entries. Reuse current menu components; no gameplay, animation, hitbox or network changes.

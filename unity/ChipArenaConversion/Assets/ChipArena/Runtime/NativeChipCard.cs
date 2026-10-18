@@ -7,7 +7,6 @@ using U=ChipArena.UnityConversion.NativeUi;
 using Cart=ChipArena.UnityConversion.NativeChipCartridge;
 namespace ChipArena.UnityConversion
 {
-    [Serializable] public sealed class ChipStatText {public string text,tone;}
     [Serializable] public sealed class ChipTextEntry {public string id,description;public ChipStatText[] lines;}
     [Serializable] public sealed class ChipTextSet {public string commit;public ChipTextEntry[] chips;public ContentChip[] sirenTrack;}
     // How a card is being shown this frame. Hover is eased 0..1 by the caller. `Plain` drops the clipped card art (the traces,
@@ -40,7 +39,8 @@ namespace ChipArena.UnityConversion
         private static void Ensure(){if(set!=null)return;var asset=Resources.Load<TextAsset>("ChipText");if(asset==null)throw new InvalidOperationException("ChipText.json is missing");set=JsonUtility.FromJson<ChipTextSet>(asset.text);text=set.chips.ToDictionary(c=>c.id);}
         public static ChipTextSet Text{get{Ensure();return set;}}
         public static string Description(ContentChip c){Ensure();return text.TryGetValue(c.id,out var t)?t.description:c.description+(string.IsNullOrWhiteSpace(c.sourceCard)?"":" Adapted from "+c.sourcePack+" / "+c.sourceCard+".");}
-        public static ChipStatText[] Lines(ContentChip c){Ensure();return text.TryGetValue(c.id,out var t)&&t.lines!=null?t.lines:Array.Empty<ChipStatText>();}
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ContentChip,ChipStatText[]> dynamicLines=new System.Runtime.CompilerServices.ConditionalWeakTable<ContentChip,ChipStatText[]>();
+        public static ChipStatText[] Lines(ContentChip c){Ensure();return text.TryGetValue(c.id,out var t)&&t.lines!=null?t.lines:dynamicLines.GetValue(c,NativeChipStatText.Lines);}
         public static Color Rarity(string r)=>U.Hex(Cart.Rarity(r));
         public static string RarityName(string r)=>r=="l44t"?"L44T":string.IsNullOrEmpty(r)?"Common":char.ToUpperInvariant(r[0])+r.Substring(1);
         // The grade's label (constants, so a frame builds no string), its colour, tracking and glow.
