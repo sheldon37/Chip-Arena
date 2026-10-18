@@ -10,6 +10,8 @@ namespace ChipArena.UnityConversion.Editor
     {
         private static void CheckNetworkSerialization(NativeArena authority)
         {
+            var samplePack=new NativeChipPack{schema=1,id="fixture-pack",name="Fixture",version="1.0.0",chips=new[]{new ContentChip{id="hop-drive",name="Hop",description="+1 air jump",rarity="rare",max=2,tags=new[]{"all"},effects=new[]{NativeMovementContent.Effect("extraAirJumps","add",1)}}}};
+            NativeMods.Validate(JsonUtility.FromJson<NativeChipPack>(JsonUtility.ToJson(samplePack)),authority.Content);
             CheckAccountCompatibility();ConversionGame.ValidateLobbyPromotion(authority.Content);
             var expedition=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-public",expeditionPublic=new ExpeditionView
             {

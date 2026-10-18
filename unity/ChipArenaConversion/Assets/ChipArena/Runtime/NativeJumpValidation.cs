@@ -66,9 +66,14 @@ namespace ChipArena.UnityConversion
                     Check(acknowledgedAt==presentedAt,"corrected acknowledgement cannot replay the flip cue");
                     prediction.Grounded=true;prediction.AirJumps=0;predictor.Reconcile(prediction,2,null);PresentedJump(p,out grounded,out presentedAt);
                     Check(grounded&&presentedAt==-100,"landing releases the local cue latch");Replica=false;
-                    actor.AirJumps=2;Check(!frame.Valid(Content),"invalid air count rejected");actor.AirJumps=1;
+                    actor.AirJumps=NativeJumpSimulation.MaxAirJumps+1;Check(!frame.Valid(Content),"invalid air count rejected");actor.AirJumps=1;
                     actor.AirJumpAt=(float)frame.time+1;Check(!frame.Valid(Content),"future air timestamp rejected");
                 }
+                Setup("pistol",true);p.Stats["extraAirJumps"]=3;
+                for(int extra=1;extra<=3;extra++){Tick(true);Check(p.AirJumps==extra&&p.Body.linearVelocity.y>7,"chip air jump launches "+extra);}
+                Tick(true);Check(p.AirJumps==3,"chip air budget exhausted");
+                var chipFrame=NativeFrameCodec.Clone(NetworkFrame());Check(chipFrame.Valid(Content)&&chipFrame.snapshot.Actors.First(a=>a.Id==p.Seat.id).AirJumps==3,"multi-jump codec and validation");
+                var chipPrediction=PredictionState(chipFrame.pilots.First(a=>a.id==p.Seat.id));Check(chipPrediction.ExtraAirJumps==3&&NativePrediction.Step(chipPrediction,new InputFrame{Jump=true},null).AirJumps==3,"guest receives chip jump budget");
                 foreach(string lockedSpec in new[]{"daggers","bow","cyberlord"})
                 foreach(bool attack in new[]{false,true})
                 {

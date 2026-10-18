@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-18 Astra movement/mods candidate (`codex/movement-chips-mods`, base `5b93c11`): five native movement chips; extra air-jump stacks with authority/guest parity; Settings > Mods with three optional party rules and schema-1 local JSON chip packs. Restart and identical multiplayer selection required. Full managed suite and Unity API compile pass; native execution/publication pending. Contract: `unity/ChipArenaConversion/docs/MODS.md`.
+
 2026-10-18 Astra networking candidate (`codex/expedition-disconnect-wave-hud`, base `228f353`): atomic replaceable Expedition snapshots, guest Siren-HUD guard, room-scoped repeat reconnect and fresh readiness tickets, and lobby-only Make host with automatic room transfer. All clients need Expedition protocol 5. Full managed suite and Unity API compile pass; Windows native fixture/publication pending. Prior PR #280 wall/density build confirmed published at 15:43 UTC. See DEV_LOG.
 
 2026-10-18 Astra wall/density candidate (`codex/station-wall-city-density`, base `4cfa0ba`): collision-checked station turns and live obstacle routes; city spawning focused on occupied streets, cap 40/56/72/88 for 1–4 players. Managed affected checks and Unity API compile pass; Windows fixtures/publication pending. See DEV_LOG.

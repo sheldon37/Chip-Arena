@@ -76,6 +76,7 @@ namespace ChipArena.UnityConversion
     {
         private readonly Dictionary<string,double> values=new Dictionary<string,double>();
         public double this[string key] { get=>values[key];set=>values[key]=value; }
+        public double Get(string key,double fallback=0)=>values.TryGetValue(key,out var value)?value:fallback;
         public ChipStats(NumberValue[] defaults) { foreach(var v in defaults)values.Add(v.name,v.value); }
     }
     public static class NativeContentRules
@@ -88,8 +89,10 @@ namespace ChipArena.UnityConversion
             {
                 int count;held.TryGetValue(chip.id,out count);
                 for(int i=0;i<Math.Min(chip.max,Math.Max(0,count));i++)foreach(var e in chip.effects)
-                    s[e.stat]=e.op=="add"?s[e.stat]+e.value:e.op=="mul"?s[e.stat]*e.value:e.value;
+                    s[e.stat]=Clamp(e.op=="add"?s[e.stat]+e.value:e.op=="mul"?s[e.stat]*e.value:e.value,-1000000,1000000);
             }
+            s["playerGravity"]=Clamp(s["playerGravity"],.1,3);s["jumpPower"]=Clamp(s["jumpPower"],.1,2.5);
+            s["extraAirJumps"]=Clamp(Math.Floor(s.Get("extraAirJumps")),0,NativeJumpSimulation.MaxAirJumps);
             s["hp"]=Math.Max(15,s["hp"]);s["speed"]=Clamp(s["speed"],.25,2.5);s["attackRate"]=Clamp(s["attackRate"],.15,5);
             foreach(var pair in new[]{("extraProjectiles",11d),("extraStrikes",4d),("split",6d),("projectileSpeed",4d),("critical",.75),("lifeSteal",1d),("jumpPower",2.5),("impulse",12d),("blockForce",6d),("abilityPower",2d),("abilityCharges",2d),("qEmpower",1d),("manaSurge",1d),("abilityLeech",.6),("arcaneSurge",1d),("spellEcho",1d)})s[pair.Item1]=Math.Min(pair.Item2,s[pair.Item1]);
             s["projectileSize"]=Clamp(s["projectileSize"],.4,6);s["knockbackTaken"]=Clamp(s["knockbackTaken"],.04,3);

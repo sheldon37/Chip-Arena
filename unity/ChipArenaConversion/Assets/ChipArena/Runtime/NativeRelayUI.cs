@@ -27,6 +27,7 @@ namespace ChipArena.UnityConversion
         {if(UseManagedRelay){string origin=await ResolveOnlineOrigin(token);return await NativeRelayHost.Join(origin,code,content.sourceCommit,token);}return await NativeCloudflareHost.Join(code,s=>JsonUtility.FromJson<NativeDirectoryEntry>(s),token);}
         private void HostRelay()
         {
+            if(!ModsReady)return;
             if(relayConnecting!=null||connecting!=null)return;
             try{Time.timeScale=1;EndPreview();CloseNetwork();ClearReplay();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();if(!dedicated)Save();connectStop=new CancellationTokenSource();relayConnecting=CreateOnlineRoom(connectStop.Token);networkStatus="Creating online room…";}
             catch(ArgumentException e){networkStatus=e.Message;}

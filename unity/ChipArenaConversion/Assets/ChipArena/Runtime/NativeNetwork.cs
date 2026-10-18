@@ -39,12 +39,14 @@ namespace ChipArena.UnityConversion
         private NativeProfile Profile()=>new NativeProfile{name=prefs.name,@class=content.Weapon(prefs.weapon).@class,color=prefs.accentColor,cosmetics=new NativeCosmetics{lobbyPose=prefs.lobbyPose,lobbyBack=prefs.lobbyBack,hatColor=NativeHatLooks.Normalize(prefs.hatColor),backColor=NativeHatLooks.Normalize(prefs.backColor),weaponSkins=GatedSkins(),bodyColor=prefs.bodyColor,hat=prefs.hat,killEffect=prefs.killEffect,preferredSpec=prefs.weapon,intro=prefs.intro,introText=prefs.introText,overrideWeaponIntro=prefs.overrideIntro}};
         private void HostRoom()
         {
+            if(!ModsReady)return;
             Time.timeScale=1;EndPreview();
             try{if(!int.TryParse(portText,out int port)||port<1||port>65535)throw new ArgumentException("Choose a port between 1 and 65535.");CloseNetwork();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();listener=new NativeListener(port);roomCode=NativeRoomCodes.Create();try{lanDiscovery=new NativeLanDiscovery(roomCode,content.sourceCommit,port);}catch(System.Net.Sockets.SocketException){networkStatus="LAN discovery unavailable; join by address.";}LobbyBroadcast();networkStatus="Hosting · "+string.Join(", ",LanAddresses.Select(a=>a+":"+port))+" · Room "+roomCode;menu=true;}
             catch(Exception e)when(e is System.Net.Sockets.SocketException||e is ArgumentException){networkStatus=e.Message;}
         }
         private void JoinRoom()
         {
+            if(!ModsReady)return;
             Time.timeScale=1;EndPreview();
             if(connecting!=null||relayConnecting!=null)return;if((joinCode??"").Trim().StartsWith("CA-",StringComparison.OrdinalIgnoreCase)&&NativeRoomCodes.TryNormalize(joinCode.Trim().Substring(3),out var legacyCode)&&legacyCode.Length==8)internetRooms=true;try{joinCode=NativeRoomCodes.RawOnline(joinCode);}catch(ArgumentException e){networkStatus=e.Message;return;}int port=0;if(!internetRooms&&(!int.TryParse(portText,out port)||port<1||port>65535)){networkStatus="Invalid port.";return;}joinError="";if(resumeRoom!=ResumeRoomKey)resumeToken="";
             ResetDevNetwork();ResetExpeditionNetwork();server?.Dispose();server=null;receivedOptions=null;lobbySeats=Array.Empty<NativeSeatFrame>();prefs.pve=false;networkReady=false;networkId=0;frameOrder.Reset();connectStop?.Cancel();connectStop=new CancellationTokenSource();try{connecting=internetRooms?JoinOnlineRoom(joinCode,connectStop.Token):string.IsNullOrWhiteSpace(hostAddress)?NativeLanDiscovery.Connect(joinCode.Trim().ToUpperInvariant(),content.sourceCommit,connectStop.Token):NativeConnection.Connect(hostAddress.Trim(),port,connectStop.Token);}catch(ArgumentException e){networkStatus=e.Message;return;}networkStatus="Connecting…";
@@ -88,7 +90,7 @@ namespace ChipArena.UnityConversion
             var c=peer.Connection;if(message.type=="ping"){c.Send(NativeNetCodec.Encode(new NativeNetMessage{type="pong",id=message.id}));return;}if(message.type=="pong"){c.Metrics.Pong(message.id,NativeConnectionMetrics.Now);return;}
             if(peer.Seat==null)
             {
-                if(message.type!="hello"||!NativeMapRules.Compatible(message.version,message.source,message.contentRevision,content)||message.room!=roomCode){c.Reject(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="Room code or conversion version does not match."}));return;}
+                if(message.type!="hello"||!NativeMapRules.Compatible(message.version,message.source,message.contentRevision,content)||message.room!=roomCode){c.Reject(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="Room code, game content, or Mods selection does not match. Update and use identical rules and chip packs."}));return;}
                 peer.LobbyProtocol=message.lobbyProtocol;peer.ExpeditionProtocol=message.expeditionProtocol;
                 NativePeer previous=!string.IsNullOrEmpty(message.resume)?peers.Find(p=>p!=peer&&p.Resume==message.resume&&(p.Connection!=null||(DateTime.UtcNow-p.Disconnected).TotalSeconds<=90)):null;
                 if(previous!=null&&arena!=null&&(ExpeditionSplit?SplitPilotArena(previous.Seat.access?.AccountId)==null:match.Seat(previous.Seat.id)==null)){c.Send(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="This match started without your seat. Join after the host returns to the lobby."}));return;}
