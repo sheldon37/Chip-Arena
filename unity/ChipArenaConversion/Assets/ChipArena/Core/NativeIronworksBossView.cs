@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The converter crane's hook over the pit (its eye and its tip).</summary>
         public const float HookX=-35,HookZ=0,HookTop=10.4f,HookTip=9.05f;
         /// <summary>The converter shutter's opening in the east wall (x, z half width, height).</summary>
-        public const float ShutterX=-24,ShutterHalf=4,ShutterTop=5;
+        public const float ShutterX=-24,ShutterHalf=5.5f,ShutterTop=10;
         /// <summary>Vessel `i` (0 A north, 1 B south) mouth's z.</summary>
         public static float VesselMouthZ(int i)=>i==0?VesselZ:-VesselZ;
         /// <summary>The hall's floor (flat; the pit's crust sits flush with it).</summary>

@@ -155,7 +155,7 @@ namespace ChipArena.UnityConversion
         // runtime model, rig, effects, cues, preview, stage hook, the HUD's zone boss names and the runtime presenter): no rule,
         // authority, network or content file names it.
         private static readonly string[] Presentation={"NativeStationBossLook.cs","NativeStationBossMoves.cs","NativeStationBossRig.cs","NativeStationBossFx.cs","NativeStationBossCues.cs",
-            "NativeStationBossPreview.cs","NativeStationBossStage.cs","NativeStationBossView.cs","NativeZoneBossNames.cs","NativeStationBossPresentation.cs"};
+            "NativeStationBossPreview.cs","NativeStationBossStage.cs","NativeStationBossView.cs","NativeZoneBossNames.cs","NativeStationBossPresentation.cs","NativeZoneBossIntroCamera.cs"};
         private static void Inert(string root)
         {
             string self=Path.GetFullPath(Path.Combine(root,"Assets/ChipArena/Core/NativeStationBossModel.cs"));Check(File.Exists(self),"the model file");

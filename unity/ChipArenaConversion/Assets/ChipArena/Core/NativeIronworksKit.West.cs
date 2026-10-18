@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The coke battery's jammed-open oven door (x) and the door pitch along the bench.</summary>
         public const float CokeOpenX=-30.25f,CokePitch=1.84f;
         /// <summary>The converter shutter's opening in the converter hall's east wall (x, z half width, height).</summary>
-        public const float ShutterX=-24f,ShutterHalf=4f,ShutterTop=5f;
+        public const float ShutterX=-24f,ShutterHalf=5.5f,ShutterTop=10f;
 
         // ---------------- the coke oven battery ----------------
         private void Coke()
@@ -142,11 +142,11 @@ namespace ChipArena.UnityConversion
             foreach(double side in new[]{-1.0,1.0})
             {
                 double zj=side*(ShutterHalf+.22);foreach(double fx in new[]{-24.54,-23.7})Span(fx,fx+.24,0,ShutterTop+.45,zj-.16,zj+.16,guide);
-                for(double y=.3;y<4.6;y+=.8){double a=side*(ShutterHalf+.06),c=side*(ShutterHalf+.1);Span(-24.58,-24.54,y,y+.4,Math.Min(a,c),Math.Max(a,c),stripe);Span(-23.46,-23.42,y,y+.4,Math.Min(a,c),Math.Max(a,c),stripe);}
+                for(double y=.3;y<ShutterTop-.4;y+=.8){double a=side*(ShutterHalf+.06),c=side*(ShutterHalf+.1);Span(-24.58,-24.54,y,y+.4,Math.Min(a,c),Math.Max(a,c),stripe);Span(-23.46,-23.42,y,y+.4,Math.Min(a,c),Math.Max(a,c),stripe);}
             }
             Span(-24.95,-24.36,ShutterTop,ShutterTop+1.05,-ShutterHalf-.45,ShutterHalf+.45,Iron(0x2E2B28));RodZ(-ShutterHalf-.5,-ShutterHalf-.35,-24.62,ShutterTop+.52,.28,Iron(GreenDarkHex));
-            Text("CONVERTERS",0,5.08,-23.7,0,.1,.005,.015,P(NativeBlockLooks.Plain,0xC8C0AC,RoleSign));
-            Text("CONVERTER HALL",0,6.25,-24.3,1,.14,.005,.02,P(NativeBlockLooks.Plain,0xC8C0AC,RoleSign));
+            Text("CONVERTERS",0,ShutterTop+.08,-23.7,0,.1,.005,.015,P(NativeBlockLooks.Plain,0xC8C0AC,RoleSign));
+            Text("CONVERTER HALL",0,ShutterTop+1.25,-24.3,1,.14,.005,.02,P(NativeBlockLooks.Plain,0xC8C0AC,RoleSign));
             Breach("breach-conv-w");
         }
 

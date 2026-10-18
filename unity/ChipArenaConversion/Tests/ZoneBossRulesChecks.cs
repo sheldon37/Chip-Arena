@@ -16,6 +16,25 @@ namespace ChipArena.UnityConversion
                 Check(!NativeIntroRules.Staged(false,true,"intro",kind),"zone boss arrival renders inside its live arena");
                 Check(NativeIntroRules.Staged(true,false,null,kind),"match pilot entrances remain staged");
             }
+            foreach(var kind in new[]{NativeZoneBossRules.Station,NativeZoneBossRules.Ironworks})
+            {
+                var root=kind==NativeZoneBossRules.Station?new System.Numerics.Vector3(0,0,1.5f):new System.Numerics.Vector3(-35,0,0);
+                for(int i=0;i<=540;i++)
+                {
+                    Check(NativeZoneBossIntroCamera.Sample(kind,true,"intro",i/60d,root,0,out var eye,out var look,out float fov),"intro owns camera throughout hold");
+                    Check(float.IsFinite(eye.X)&&float.IsFinite(look.X)&&System.Numerics.Vector3.Distance(eye,look)>5&&fov>=60,"finite separated camera and target");
+                    if(kind==NativeZoneBossRules.Ironworks)Check(eye.X>-50&&eye.X< -24&&Math.Abs(eye.Z)<12&&eye.Y<18,"converter camera inside hall");
+                }
+                Check(!NativeZoneBossIntroCamera.Sample(kind,false,"intro",9.0678,root,0,out _,out _,out _),"fight restores gameplay camera immediately");
+                Check(!NativeZoneBossIntroCamera.Sample(kind,true,"victory",0,root,0,out _,out _,out _),"other holds do not take arrival camera");
+            }
+            Check(!NativeZoneBossIntroCamera.Sample("siren",true,"intro",0,default,0,out _,out _,out _),"Siren retains existing staged camera");
+            foreach(float targetX in new[]{-35f,12f})
+            {
+                var at=new System.Numerics.Vector3(targetX<0?12:-35,0,5);var target=new System.Numerics.Vector3(targetX,0,5);
+                for(int i=0;i<4000;i++){var goal=NativeConverterRoute.Goal(at,target);var d=goal-at;if(d.Length()>.01f)at+=System.Numerics.Vector3.Normalize(d)*Math.Min(d.Length(),1.6f/60);Check(NativeConverterRoute.Contains(at.X,at.Z),"door route stays inside boss travel area");}
+                Check(System.Numerics.Vector3.Distance(at,target)<.1f,"Converter crosses doorway in either direction");
+            }
             var options=new JsonSerializerOptions{IncludeFields=true};
             foreach(string boss in new[]{NativeZoneBossRules.Station,NativeZoneBossRules.Ironworks})
             {

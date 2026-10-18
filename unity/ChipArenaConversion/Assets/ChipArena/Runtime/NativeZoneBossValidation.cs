@@ -6,6 +6,29 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
+        public void ValidateZoneBossArrivalCamera()
+        {
+            if(ZoneBoss==null)return;
+            var go=new GameObject("Zone arrival camera fixture");var camera=go.AddComponent<Camera>();
+            var presenter=go.AddComponent<ArenaPresentation>();var director=new NativeCinematicCamera();
+            bool held=Pve.Holding;string cinematic=Pve.Cinematic;float songAt=BossSongAt,lead=BossSongLead;
+            float duration=Pve.HoldDuration,left=Pve.HoldLeft;
+            try
+            {
+                Pve.Holding=true;Pve.Cinematic="intro";Pve.HoldDuration=Pve.HoldLeft=9.0678f;BossSongAt=Time;BossSongLead=0;
+                camera.fieldOfView=91;presenter.FirstPerson=true;presenter.AimHeld=true;
+                director.BeginFrame();
+                if(!director.Direct(this,presenter,camera,true)||!director.ZoneArrival||presenter.FirstPerson||presenter.AimHeld)
+                    throw new Exception("Zone arrival must direct camera and hide first-person weapon");
+                Pve.HoldLeft-=4;director.BeginFrame();
+                if(Math.Abs(camera.fieldOfView-91)>.001f||!director.Direct(this,presenter,camera,true)||camera.transform.forward.sqrMagnitude<.99f)
+                    throw new Exception("Zone arrival camera restores FOV and remains valid mid-hold");
+                Pve.Holding=false;director.BeginFrame();
+                if(director.ZoneArrival||director.Directing||Math.Abs(camera.fieldOfView-91)>.001f)
+                    throw new Exception("Zone arrival camera must release without leaking FOV");
+            }
+            finally{director.BeginFrame();Pve.Holding=held;Pve.Cinematic=cinematic;Pve.HoldDuration=duration;Pve.HoldLeft=left;BossSongAt=songAt;BossSongLead=lead;UnityEngine.Object.DestroyImmediate(go);}
+        }
         // Runs in real Unity/PhysX on the Windows builder. The runtime feature gate does not bypass this fixture.
         public void ValidateZoneBossAuthority(Action<NativeGameFrame> replicaCheck=null)
         {
@@ -28,6 +51,26 @@ namespace ChipArena.UnityConversion
             var idle=NetworkFrame();idle.pve.zoneBoss.action=null;idle.pve.zoneBoss.actionAt=idle.pve.zoneBoss.hitAt=-100;idle.pve.zoneBoss.duration=0;
             var idleWire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=idle})).frame;
             Check(idleWire.Valid(Content),"Unity codec accepts idle with absent action and stagger");replicaCheck?.Invoke(idleWire);
+            ValidateZoneBossArrivalCamera();
+            foreach(var surface in StaticBlocks.Where(b=>b!=null&&b.GetComponent<Collider>()!=null).Take(3))
+            {
+                var shot=new NativeBullet{Spec="pistol",Bounces=1,Damage=10,BounceRetention=.8f,Velocity=Vector3.right*20,Radius=.1f,Mods=new System.Collections.Generic.Dictionary<string,int>()};
+                var contact=new NativeContact{Collider=surface.GetComponent<Collider>(),Point=surface.transform.position,Normal=Vector3.left};
+                Check(!BulletImpact(shot,p,contact)&&shot.Bounces==0&&shot.Velocity.x<0&&Math.Abs(shot.Damage-8)<.001,"bounce chip reflects static stage geometry once with retention");
+                Check(BulletImpact(shot,p,contact),"exhausted bounce is absorbed");
+            }
+            if(z.archetype==NativeZoneBossRules.Ironworks)
+            {
+                // Actual opening and catwalk clearance, with full boss sweep and the boss gate open.
+                var gates=root.GetComponentsInChildren<Collider>().Where(c=>c.name.Contains("gate:converter")&&c.enabled).ToArray();
+                float savedYaw=m.Yaw;
+                try
+                {
+                    foreach(var c in gates)c.enabled=false;m.Yaw=90;Physics.SyncTransforms();
+                    for(float x=-35;x< -13;x+=.25f)Check(!BossPathBlocked(new Vector3(x,0,0),new Vector3(x+.25f,0,0),false),"Converter passage clears body, foreman and tongs at x="+x);
+                }
+                finally{m.Yaw=savedYaw;foreach(var c in gates)c.enabled=true;Physics.SyncTransforms();}
+            }
             Pve.Holding=true;Check(HitMinion(m,p,100,Vector3.forward,0)==0,"intro cannot damage boss");Pve.Holding=false;
             p.Body.position=m.Body.position+new Vector3(0,.9f,2);p.Body.transform.position=p.Body.position;Physics.SyncTransforms();
             string attack=z.archetype==NativeZoneBossRules.Station?"buffer":"stomp";BossStart(attack,p);float hit=z.hitAt;

@@ -5,6 +5,15 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
+        private readonly ExpeditionBossModel zoneArrivalBanner=new ExpeditionBossModel();
+        private void ZoneBossArrivalHud(float width,float height)
+        {
+            var kind=arena?.ZoneBoss?.archetype;if(kind==null)return;
+            zoneArrivalBanner.Name=NativeZoneBossNames.Name(kind);
+            zoneArrivalBanner.Area=kind==NativeZoneBossRules.Station?"BOSS ARRIVAL · CENTRAL STATION":"BOSS ARRIVAL · CITY IRONWORKS";
+            float age=(float)(arena.BossSongTime-NativeZoneBossNames.BannerDelay(kind));
+            if(age>=0&&age<NativeExpeditionStates.IntroSeconds)NativeExpeditionStatesHud.BossIntro(zoneArrivalBanner,width,height,age,prefs.reducedEffects);
+        }
         private bool IntroActive=>NativeIntroRules.Staged(match?.Phase==NativePhase.Intro,arena?.Pve?.Holding==true,arena?.Pve?.Cinematic,arena?.ZoneBoss?.archetype);
         private NativePilot IntroPilot=>match.Phase==NativePhase.Intro?arena.Pilots.Find(p=>p.Seat.id==match.IntroSeat):arena.Pve.Boss;
         // The staged entrance (NativeIntroRules.Entrance): the replicated style, or the pilot's own weapon signature when this
