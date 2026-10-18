@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         {
             void Require(bool ok,string why){if(!ok)throw new ArgumentException("Chip pack: "+why);}
             Require(pack!=null,"missing manifest");Require(pack.schema==1,"unsupported schema (expected 1)");
-            Require(pack.id!=null&&Id.IsMatch(pack.id),"invalid pack id");Require(pack.version!=null&&Version.IsMatch(pack.version),"version must be major.minor.patch");
+            Require(pack.id!=null&&Id.IsMatch(pack.id)&&!pack.id.StartsWith("rounds-",StringComparison.Ordinal),"invalid or reserved pack id");Require(pack.version!=null&&Version.IsMatch(pack.version),"version must be major.minor.patch");
             Require(!string.IsNullOrWhiteSpace(pack.name)&&pack.name.Length<=48&&!pack.name.Any(char.IsControl),"invalid display name");
             Require(CreditValid(pack.author),"invalid pack author");
             Require(pack.chips!=null&&pack.chips.Length>0&&pack.chips.Length<=MaxChips,"expected 1–64 chips");

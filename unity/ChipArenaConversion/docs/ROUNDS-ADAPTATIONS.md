@@ -49,3 +49,7 @@ Bundled pack is trusted compiled content, outside the 64 external-chip budget. S
 Managed definition/eligibility/alias/stats/serialization tests and Unity semantic compilation are run for this change. A Windows gate exercises real Unity attribution serialization and authority block/fire/field/summon/satellite hooks. Windows execution, rendered byline placement, balance and human multiplayer require the builder/playtest; compilation alone is not gameplay acceptance.
 
 Remaining Booga packs are not implemented by this release. Continue per-pack license and exact-mechanic review before adapting WWC, CPC, Cosmic Rounds, PCE, GearUP, Root, Unstable Cards and the rest. Claude owns any new bespoke visuals; this pass uses existing effect presentation and adds only the requested functional byline.
+
+## Further packs
+
+See [ROUNDS-MORE-PACKS.md](ROUNDS-MORE-PACKS.md) for the next 118 adaptations, source commits, per-pack scope and outstanding families.

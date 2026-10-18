@@ -103,7 +103,7 @@ namespace ChipArena.UnityConversion
         {
             var weapon=data.Weapon(spec);var tags=new HashSet<string>{"all",weapon.@class};if(spec!="ansatsuken")tags.Add("roll");
             if(new[]{"leet","ansatsuken","emperor","siren"}.Contains(spec))tags.Add(spec);
-            if(weapon.@class!="melee")tags.Add("projectile");
+            if(weapon.@class!="melee")tags.Add("projectile");if(weapon.ammo>0)tags.Add("gun");
             if(!weapon.devOnly&&(weapon.@class=="ranged"||weapon.@class=="magic"))
             {tags.Add("ability");if(weapon.@class=="magic"){tags.Add("spellcraft");tags.Add("spell-"+spec);}else tags.Add("gunplay");}
             bool Has(string id)=>held.TryGetValue(id,out int n)&&n>0;

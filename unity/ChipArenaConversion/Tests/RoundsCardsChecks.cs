@@ -36,11 +36,43 @@ internal static class RoundsCardsChecks
         }
         Check(!NativeContentRules.Eligible(content,"sword",empty).Any(c=>c.id==NativeRoundsCards.Prefix+"excalibur"),"projectile adaptation not offered to melee");
         var statsHare=NativeContentRules.Stats(content,"pistol",new Dictionary<string,int>{{NativeRoundsCards.Prefix+"hare",1}});Check(Math.Abs(statsHare["speed"]-1.2)<1e-9&&Math.Abs(statsHare["reloadSpeed"]-.8)<1e-9,"hare tuning");
+        var more=Load();NativeRoundsCards.Apply(more);NativeRoundsPacks.Apply(more,NativeRoundsPacks.Ids);more.Validate();
+        var added=NativeRoundsPacks.Chips();Check(added.Length==118,"118 new reviewed adaptations");
+        var reverse=Load();NativeRoundsCards.Apply(reverse);NativeRoundsPacks.Apply(reverse,NativeRoundsPacks.Ids.Reverse());Check(reverse.contentRevision==more.contentRevision,"pack selection order canonical");
+        Check(more.chips.Select(c=>c.id).Distinct().Count()==more.chips.Length&&more.chips.Length+NativeMods.MaxChips<=NativeMods.MaxCatalog,"unique IDs and room for external packs");
+        foreach(var chip in added)
+        {
+            Check(NativeMods.CreditValid(chip.author)&&!string.IsNullOrEmpty(chip.author)&&!string.IsNullOrEmpty(chip.sourceCard),"new pack attribution");
+            foreach(var weapon in more.weapons)
+            {
+                var held=new Dictionary<string,int>{{chip.id,chip.max}};var stats=NativeContentRules.Stats(more,weapon.id,held);
+                Check(more.baseStats.All(stat=>!double.IsNaN(stats[stat.name])&&!double.IsInfinity(stats[stat.name])),"new effects finite");
+                Check(stats["ammoCapacity"]>0&&stats["hp"]>0&&stats["attackRate"]>0,"positive combat stats");
+                Check(!NativeContentRules.Eligible(more,weapon.id,held).Any(c=>c.id==chip.id),"new stack cap");
+            }
+            if(chip.mechanic!=null)
+            {
+                var held=new Dictionary<string,int>{{chip.id,1}};Check(NativeRoundsCards.Has(held,chip.mechanic),"new trusted mechanic alias");
+                foreach(var other in more.chips.Where(c=>c.id!=chip.id&&(c.id==chip.mechanic||c.mechanic==chip.mechanic)))
+                {
+                    Check(!NativeContentRules.Eligible(more,"pistol",held).Any(c=>c.id==other.id),"same mechanic excluded across packs");
+                    Check(!NativeContentRules.Eligible(more,"pistol",new Dictionary<string,int>{{other.id,1}}).Any(c=>c.id==chip.id),"reverse cross-pack exclusion");
+                }
+                held[chip.id]=-1;Check(!NativeRoundsCards.Has(held,chip.mechanic),"negative adaptation count inactive");
+            }
+        }
+        Check(!NativeContentRules.Eligible(more,"bow",empty).Any(c=>added.Any(n=>n.id==c.id&&n.tags.Contains("gun"))),"ammo-only adaptations never offered to bow");
+        Check(NativeContentRules.Eligible(more,"pistol",empty).Any(c=>c.id=="rounds-keys:mending-reload"),"gun adaptation offered to gun");
+        foreach(var selection in new[]{new[]{"missing"},new[]{"vecs","vecs"},new string[]{null}})
+        {var invalid=Load();string original=invalid.contentRevision;bool rejected=false;try{NativeRoundsPacks.Apply(invalid,selection);}catch(ArgumentException){rejected=true;}Check(rejected&&invalid.contentRevision==original,"invalid selection rejected before mutation");}
+        var noPacks=Load();NativeRoundsPacks.Apply(noPacks,null);Check(noPacks.contentRevision==revision,"null/default selection vanilla");
+        foreach(var id in NativeRoundsPacks.Ids){var one=Load();NativeRoundsPacks.Apply(one,new[]{id});Check(one.chips.Where(c=>c.id.StartsWith("rounds-",StringComparison.Ordinal)).All(c=>c.id.StartsWith("rounds-"+id+":",StringComparison.Ordinal)),"independent pack toggle");Check(one.contentRevision!=more.contentRevision,"different pack selection rejects peers");}
         Check(NativeMods.Credit(new ContentChip())==""&&NativeMods.CreditValid(null),"legacy no-credit compatibility");
         Check(!NativeMods.CreditValid("<size=99>bad")&&!NativeMods.CreditValid("a\nb")&&!NativeMods.CreditValid(new string('a',49)),"unsafe/oversized credit rejected");
         var pack=new NativeChipPack{schema=1,id="author-pack",name="Author pack",version="1.0.0",author="Pack author",chips=new[]{new ContentChip{id="step",name="Step",description="Speed",rarity="common",max=1,tags=new[]{"all"},effects=new[]{NativeMovementContent.Effect("speed","mul",1.1)}}}};
         var ext=Load();NativeMods.Apply(ext,0,new[]{new NativeLoadedPack{Pack=pack,Digest=NativeMapRules.Revision("author fixture")}});Check(ext.Chip("author-pack:step").author=="Pack author","pack credit inheritance");
         pack.chips[0].author="Individual";ext=Load();NativeMods.Apply(ext,0,new[]{new NativeLoadedPack{Pack=pack,Digest=NativeMapRules.Revision("individual fixture")}});Check(ext.Chip("author-pack:step").author=="Individual","chip credit override");
+        pack.id="rounds-vecs";bool reserved=false;try{NativeMods.Apply(Load(),0,new[]{new NativeLoadedPack{Pack=pack,Digest=NativeMapRules.Revision("reserved")}});}catch(ArgumentException){reserved=true;}Check(reserved,"external pack cannot impersonate trusted bundled mechanics");
         Console.WriteLine($"{checks} ROUNDS adaptation checks passed");
     }
 }
