@@ -11,12 +11,12 @@ namespace ChipArena.UnityConversion
     // lobby, Boss Test, Customize, Settings, Account, DEV Menu, Catalogue) and the in-match pause menu. Chrome, navigation
     // and actions are kit-drawn; each panel body is the existing GUILayout form, inside its own area and scroll view, so
     // every setting keeps its validation and save path. The home screen is the cyber redesign (owner 2026-10-12) over the
-    // rooftop (NativeRooftopPresentation.cs): the vector wordmark, constellation entries (keys 1-4), the Update Game circle,
+    // rooftop (NativeRooftopPresentation.cs): the vector wordmark, constellation entries (keys 1-5), the Update Game circle,
     // hexagon buttons, the Connection report pill and the pilot's nameplate; the panel screens keep the orbiting map behind
     // the cyan panel chrome (NativeCyberTheme).
     public sealed partial class ConversionGame
     {
-        private enum MenuScreen{Home,Play,Create,Join,Lobby,Boss,Customize,Settings,Account,Dev,Catalogue}
+        private enum MenuScreen{Home,Play,Create,Join,Lobby,Boss,Customize,Settings,Account,Dev,Catalogue,Mods}
         private enum PauseScreen{Menu,Settings,Sandbox}
         private MenuScreen menuScreen;private PauseScreen pauseScreen;private float menuScreenAt=-1,menuSeen=-1,screenContent=400;private Vector2 screenScroll;
         private bool updateOpen,menuFromMatch,menuBlockedNow,roomGuest,playSandbox;private MenuScreen afterMatch=MenuScreen.Home;private Rect updateCard;private GUIStyle fieldLabel,fine,codeField;
@@ -88,6 +88,7 @@ namespace ChipArena.UnityConversion
                 case MenuScreen.Account:AccountScreen(age);break;
                 case MenuScreen.Dev:DevScreen(age);break;
                 case MenuScreen.Catalogue:CatalogueScreen(age);break;
+                case MenuScreen.Mods:ModsScreen(age);break;
             }
             if(home)UpdateDropdown();
             MenuTransitionGui(now);homeSeen=now;
@@ -272,14 +273,14 @@ namespace ChipArena.UnityConversion
 
         // ---- Home screen ---------------------------------------------------------------------------------------------
         // The redesigned home (owner 2026-10-12, Duelyst-style reference) over the rooftop: the wordmark and its pin rule; the
-        // four numbered entries on a hairline divider with their constellation glyphs (keys 1-4); the quiet rows (Developer
+        // five numbered entries on a hairline divider with their constellation glyphs (keys 1-5); the quiet rows (Developer
         // Sandbox offline and the Catalogue for developers, Quit); the Update Game circle; the hexagon buttons at the top right
         // (Customize, Settings, Account and, for developers, DEV); the Connection report pill at the top centre; and the pilot's
         // nameplate under its seated pilot, which opens Customize. Short canvases scale the column to fit above the footer.
         private void HomeScreen(float age)
         {
             float W=U.W,H=U.H,x0=HomeX;bool dev=account.Developer;HomeKeys();float ce=In(age,0,.26f);
-            const float wy=86,gh=36,rh=58;float ry=wy+gh+16,top=ry+56,lastMain=top+rh*3;int quiet=(dev&&!Online?1:0)+(dev?1:0)+1;float bottom=lastMain+rh*.9f+6+34*(quiet-1)+18;
+            const float wy=86,gh=36,rh=58;float ry=wy+gh+16,top=ry+56,lastMain=top+rh*(HomeItems.Length-1);int quiet=(dev&&!Online?1:0)+(dev?1:0)+1;float bottom=lastMain+rh*.9f+6+34*(quiet-1)+18;
             float fit=Mathf.Clamp((H-70-wy+20)/(bottom-wy+20),.6f,1);U.Push(new Vector2(x0,wy-20),Vector2.zero,fit);
             float ww=Wordmark(x0,wy,gh,ce,age);
             // the chip-pin rule: a hairline with leg ticks, its first run in cyan and its last in magenta
@@ -409,14 +410,14 @@ namespace ChipArena.UnityConversion
         // A hairline from a to b (virtual px).
         private static void Line(Vector2 a,Vector2 b,Color c,float width=1)
         {var d=b-a;float len=d.magnitude;if(len<.5f||c.a<=0)return;U.Push(a,Vector2.zero,1,Mathf.Atan2(d.y,d.x)*Mathf.Rad2Deg);U.Fill(new Rect(a.x,a.y-width/2,len,width),c);U.Pop();}
-        // Keys 1-4 open the four numbered entries.
+        // Keys 1-5 open the five numbered entries.
         // The home entries in order (owner 2026-10-15: "Rename Boss Test on main menu to "Start Expedition" - Place this as
-        // top item on menu."): the PvE entry first, then the versus rooms; the 1-4 keys follow the order.
-        private static readonly (string,string,string,MenuScreen)[] HomeItems={("boss","START EXPEDITION","01",MenuScreen.Boss),("play","PLAY VS BOTS","02",MenuScreen.Play),("create","CREATE ROOM","03",MenuScreen.Create),("join","JOIN ROOM","04",MenuScreen.Join)};
+        // top item on menu."): the PvE entry first, then the versus rooms; the 1-5 keys follow the order.
+        private static readonly (string,string,string,MenuScreen)[] HomeItems={("boss","START EXPEDITION","01",MenuScreen.Boss),("play","PLAY VS BOTS","02",MenuScreen.Play),("create","CREATE ROOM","03",MenuScreen.Create),("join","JOIN ROOM","04",MenuScreen.Join),("catalogue","MODS","05",MenuScreen.Mods)};
         private void HomeKeys()
         {
             var e=Event.current;if(e.type!=EventType.KeyDown||GUIUtility.keyboardControl!=0||updateOpen)return;
-            int k=e.keyCode>=KeyCode.Alpha1&&e.keyCode<=KeyCode.Alpha4?e.keyCode-KeyCode.Alpha1:e.keyCode>=KeyCode.Keypad1&&e.keyCode<=KeyCode.Keypad4?e.keyCode-KeyCode.Keypad1:-1;if(k<0)return;
+            int k=e.keyCode>=KeyCode.Alpha1&&e.keyCode<=KeyCode.Alpha5?e.keyCode-KeyCode.Alpha1:e.keyCode>=KeyCode.Keypad1&&e.keyCode<=KeyCode.Keypad5?e.keyCode-KeyCode.Keypad1:-1;if(k<0)return;
             e.Use();Click();Go(HomeItems[k].Item4);
         }
         // .btn / .btn.primary in the cyber palette: icon, label and an optional mono key at the right; hover lifts 1 px and

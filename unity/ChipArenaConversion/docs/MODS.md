@@ -1,6 +1,6 @@
 # Movement chips and Mods (schema 1)
 
-Settings → Mods contains built-in gameplay modifiers and external chip packs.
+Main menu → Mods contains built-in gameplay modifiers and external chip packs.
 Choose before creating/joining a room, then restart. The active fingerprint is
 shown separately from the saved selection. Everyone must enable the same rules
 and have the exact same selected JSON files. The host chooses the intended setup;
@@ -104,7 +104,7 @@ expect them to reload; restart after changes.
 
 ## Bundled Cards+ adaptations and author credit
 
-Settings > Mods now has an optional 20-chip Cards+ adaptation pack, credited to original concept author willis81808. Restart required; same selection on all peers. See [ROUNDS-ADAPTATIONS.md](ROUNDS-ADAPTATIONS.md) for each original/adapted card and deliberate changes. Full MIT notice ships with the game.
+Main menu > Mods now has an optional 20-chip Cards+ adaptation pack, credited to original concept author willis81808. Restart required; same selection on all peers. See [ROUNDS-ADAPTATIONS.md](ROUNDS-ADAPTATIONS.md) for each original/adapted card and deliberate changes. Full MIT notice ships with the game.
 
 External packs may add optional `author` at pack level or on each chip (chip wins). Up to 48 plain-text characters, no control characters or angle brackets. A chip may also supply `sourceCard`; `sourcePack` is assigned from the pack display name. Author appears in its own bottom-left footer row. Legacy packs without attribution remain valid.
 
