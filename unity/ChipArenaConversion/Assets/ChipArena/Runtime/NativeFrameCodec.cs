@@ -68,11 +68,14 @@ namespace ChipArena.UnityConversion
         {public int version=NativeConnection.Protocol;public string type="expedition-reply";public ExpeditionCommandReply expeditionReply;}
         [Serializable] private sealed class ExpeditionAreaReadyEnvelope
         {public int version=NativeConnection.Protocol;public int epoch;public ExpeditionCohortTicket areaIdentity;public string type="expedition-area-ready";public ExpeditionAreaReadyRequest expeditionAreaReady;}
+        [Serializable] private sealed class ExpeditionLoadStatusEnvelope
+        {public int version=NativeConnection.Protocol;public string type="expedition-party-load";public ExpeditionLoadStatusFrame expeditionLoadStatus;}
         public static string Encode(NativeNetMessage message)
         {
             if(message.type=="dev-command")return JsonUtility.ToJson(new DevCommandEnvelope{epoch=message.epoch,generation=message.generation,devCommand=message.devCommand});
             if(message.type=="dev-reply")return JsonUtility.ToJson(new DevReplyEnvelope{epoch=message.epoch,devReply=message.devReply});
             if(message.type=="expedition-area-ready")return JsonUtility.ToJson(new ExpeditionAreaReadyEnvelope{epoch=message.epoch,areaIdentity=message.areaIdentity,expeditionAreaReady=message.expeditionAreaReady});
+            if(message.type=="expedition-party-load")return JsonUtility.ToJson(new ExpeditionLoadStatusEnvelope{expeditionLoadStatus=message.expeditionLoadStatus});
             if(message.type=="expedition-public")return JsonUtility.ToJson(new ExpeditionPublicEnvelope{epoch=message.epoch,generation=message.generation,expeditionPublic=message.expeditionPublic});
             if(message.type=="expedition-private")return JsonUtility.ToJson(new ExpeditionPrivateEnvelope{expeditionPrivate=message.expeditionPrivate});
             if(message.type=="expedition-command")return JsonUtility.ToJson(new ExpeditionCommandEnvelope{epoch=message.epoch,areaIdentity=message.areaIdentity,expeditionCommand=message.expeditionCommand});
@@ -89,6 +92,7 @@ namespace ChipArena.UnityConversion
             if(message?.type=="dev-command")message.devCommand=JsonUtility.FromJson<DevCommandEnvelope>(json).devCommand;
             if(message?.type=="dev-reply")message.devReply=JsonUtility.FromJson<DevReplyEnvelope>(json).devReply;
             if(message?.type=="expedition-area-ready")message.expeditionAreaReady=JsonUtility.FromJson<ExpeditionAreaReadyEnvelope>(json).expeditionAreaReady;
+            if(message?.type=="expedition-party-load")message.expeditionLoadStatus=JsonUtility.FromJson<ExpeditionLoadStatusEnvelope>(json).expeditionLoadStatus;
             if(message?.type=="expedition-public")message.expeditionPublic=JsonUtility.FromJson<ExpeditionPublicEnvelope>(json).expeditionPublic;
             if(message?.type=="expedition-private")message.expeditionPrivate=JsonUtility.FromJson<ExpeditionPrivateEnvelope>(json).expeditionPrivate;
             if(message?.type=="expedition-command")message.expeditionCommand=JsonUtility.FromJson<ExpeditionCommandEnvelope>(json).expeditionCommand;

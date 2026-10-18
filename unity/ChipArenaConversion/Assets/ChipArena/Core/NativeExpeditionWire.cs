@@ -39,6 +39,91 @@ namespace ChipArena.UnityConversion
                 director.Ready(authenticatedAccount,ticket.target,ticket.generation,ticket.layout);
         }
     }
+    // Public, ticket-scoped load reports: no account id from the wire is trusted as sender identity.
+    // Each packet carries no private inventory, reward, wallet or chip data.
+    [Serializable] public sealed class ExpeditionLoadStatusEntry
+    {
+        public string account,loadState;public float loadProgress=-1;
+    }
+    [Serializable] public sealed class ExpeditionLoadStatusFrame
+    {
+        public string run;public int epoch;
+        public ExpeditionLoadStatusEntry[] members=Array.Empty<ExpeditionLoadStatusEntry>();
+    }
+
+    public sealed class ExpeditionLoadReportStore
+    {
+        private sealed class Report
+        {
+            public ExpeditionCohortTicket Ticket;
+            public float Progress=-1;
+            public double LastAt=-1000;
+        }
+        private readonly Dictionary<string,Report> records=new Dictionary<string,Report>(StringComparer.Ordinal);
+        public void Clear()=>records.Clear();
+        public static bool ValidState(string state)=>state=="waiting"||state=="loading"||state=="ready"||state=="world"||state=="dropped";
+        // The caller obtains account and ticket from the authenticated host peer/cohort, never the report.
+        public bool Accept(string account,ExpeditionCohortTicket ticket,bool ready,bool connected,float progress,double now)
+        {
+            if(!ExpeditionValidation.Id(account)||!ExpeditionAreaChannel<ExpeditionView>.Valid(ticket)||ready||!connected||
+               float.IsNaN(progress)||float.IsInfinity(progress)||double.IsNaN(now)||double.IsInfinity(now))return false;
+            if(!records.TryGetValue(account,out var record)||!record.Ticket.Matches(ticket))
+            {record=new Report{Ticket=ticket.Copy()};records[account]=record;}
+            if(now-record.LastAt<.25)return false;
+            progress=Math.Max(0,Math.Min(1,progress));
+            if(record.Progress>=0&&progress<record.Progress)return false;
+            record.Progress=progress;record.LastAt=now;return true;
+        }
+        public void Apply(ExpeditionViewMember view,ExpeditionCohortMember cohort)
+        {
+            if(view==null||cohort==null)return;
+            if(!cohort.Connected){view.loadState="dropped";view.loadProgress=-1;return;}
+            if(cohort.Ready){view.loadState=cohort.Pending!=null?"ready":"world";view.loadProgress=1;return;}
+            var ticket=cohort.Ticket;
+            if(records.TryGetValue(cohort.Account,out var record)&&record.Ticket.Matches(ticket)&&record.Progress>=0)
+            {view.loadState="loading";view.loadProgress=record.Progress;}
+            else{view.loadState="waiting";view.loadProgress=-1;}
+        }
+        // Up to four entries per message, including an eight-member party in two chunks.
+        public ExpeditionLoadStatusFrame[] Frames(string run,int epoch,ExpeditionCohortMember[] cohorts)
+        {
+            if(cohorts==null||cohorts.Length==0)return Array.Empty<ExpeditionLoadStatusFrame>();
+            var frames=new ExpeditionLoadStatusFrame[(cohorts.Length+3)/4];
+            for(int i=0;i<frames.Length;i++)
+            {
+                var members=new ExpeditionLoadStatusEntry[Math.Min(4,cohorts.Length-i*4)];
+                for(int j=0;j<members.Length;j++)
+                {
+                    var member=cohorts[i*4+j];var view=new ExpeditionViewMember();
+                    Apply(view,member);
+                    members[j]=new ExpeditionLoadStatusEntry{account=member.Account,loadProgress=view.loadProgress,loadState=view.loadState};
+                }
+                frames[i]=new ExpeditionLoadStatusFrame{run=run,epoch=epoch,members=members};
+            }
+            return frames;
+        }
+        // A relay may only change the public per-member load columns of an existing matching run.
+        public static bool ApplyFrame(ExpeditionView view,ExpeditionLoadStatusFrame frame)
+        {
+            if(view==null||frame==null||frame.run!=view.run||frame.epoch!=view.epoch||
+               frame.members==null||frame.members.Length<1||frame.members.Length>4||view.members==null)return false;
+            var seen=new HashSet<string>(StringComparer.Ordinal);
+            foreach(var m in frame.members)
+            {
+                if(m==null||!seen.Add(m.account)||!ValidState(m.loadState)||float.IsNaN(m.loadProgress)||float.IsInfinity(m.loadProgress)||
+                   (m.loadProgress!=-1&&(m.loadProgress<0||m.loadProgress>1))||
+                   ((m.loadState=="ready"||m.loadState=="world")&&m.loadProgress!=1)||
+                   !view.members.Any(p=>p!=null&&p.account==m.account))return false;
+            }
+            foreach(var m in frame.members)
+            {
+                var to=view.members.First(p=>p.account==m.account);
+                to.loadProgress=m.loadProgress;to.loadState=m.loadState;
+            }
+            return true;
+        }
+    }
+
     public sealed class ExpeditionViewBatch
     {
         public ExpeditionView Public;public ExpeditionPrivateFrame[] Private;

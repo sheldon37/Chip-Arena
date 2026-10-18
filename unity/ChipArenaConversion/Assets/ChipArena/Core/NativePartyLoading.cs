@@ -193,10 +193,10 @@ namespace ChipArena.UnityConversion
         // ---- the replicated per-member load (Astra contract; unknown until the member view carries it) ---------------------------
         /// <summary>The member's replicated load progress (0..1), or -1 unknown. The member view carries none today. Binding the
         /// contract's members[].loadProgress is this one line: <c>=>m==null||ParseState(m.loadState)==null?Unknown:CleanProgress(m.loadProgress);</c></summary>
-        public static float ReplicatedProgress(ExpeditionViewMember m)=>Unknown;
+        public static float ReplicatedProgress(ExpeditionViewMember m)=>m==null||ParseState(m.loadState)==null?Unknown:CleanProgress(m.loadProgress);
         /// <summary>The member's replicated load state, or null unknown (today). Binding members[].loadState is this one line:
         /// <c>=>ParseState(m?.loadState);</c></summary>
-        public static PartyLoadState? ReplicatedState(ExpeditionViewMember m)=>null;
+        public static PartyLoadState? ReplicatedState(ExpeditionViewMember m)=>ParseState(m?.loadState);
         /// <summary>A replicated progress as the panel takes it: 0..1, anything else (negative, above 1, NaN) unknown.</summary>
         public static float CleanProgress(float raw)=>raw>=0&&raw<=1?raw:Unknown;
         /// <summary>The contract's loadState words ("waiting", "loading", "ready", "world", "dropped"); anything else (null, "", an

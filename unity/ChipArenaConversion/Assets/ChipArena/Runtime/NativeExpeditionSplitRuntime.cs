@@ -83,7 +83,11 @@ namespace ChipArena.UnityConversion
             string prefix=view.loop+":"+area+":";view.loot=view.loot.Where(r=>r.id.StartsWith(prefix,StringComparison.Ordinal)).ToArray();view.dice=view.dice.Where(d=>d.boss.StartsWith(prefix,StringComparison.Ordinal)).ToArray();
             var own=splitCohorts.Member(who);
             if(own!=null&&own.Area!=area)view.mine=NativeExpeditionView.Build(splitSessions[own.Area].Run,who,splitSessions[own.Area].Sources).mine;
-            view.members=splitCohorts.Members.Select(m=>NativeExpeditionView.Build(splitSessions[m.Area].Run,null,splitSessions[m.Area].Sources).Member(m.Account)).Where(m=>m!=null).ToArray();
+            view.members=splitCohorts.Members.Select(m=>
+            {
+                var projected=NativeExpeditionView.Build(splitSessions[m.Area].Run,null,splitSessions[m.Area].Sources).Member(m.Account);
+                expeditionLoadReports.Apply(projected,m);return projected;
+            }).Where(m=>m!=null).ToArray();
             return view;
         }
         private ExpeditionAreaRecipient SplitRecipient(string who)=>ExpeditionAreaProjection.Build(who,splitCohorts,AreaView,splitTransfers.Joins);
@@ -101,6 +105,8 @@ namespace ChipArena.UnityConversion
                 // Present the ticket destination while the actor remains reserved at source.
                 // Local readiness requires the same collision and presentation gate as a guest.
                 BindSplitLocal(own.Ticket.area);
+                if(!own.Ready&&StageLoadProgress>=0)
+                    expeditionLoadReports.Accept(own.Account,own.Ticket,false,own.Connected,StageLoadProgress,Time.unscaledTime);
                 if(!own.Ready&&splitAreas.Find(own.Ticket.area)?.Load==ExpeditionRuntimeLoad.Ready&&ReferenceEquals(stageSeen,arena)&&StagePresentationReady&&StagePresentation.Generation==arena.Generation)splitCohorts.Acknowledge(own.Account,own.Ticket);
                 var before=splitCohorts.Members;
                 splitTransfers.Step(splitRun.Elapsed,id=>splitRun.PartySnapshot().members.FirstOrDefault(m=>m.account==id),id=>splitRun.PartySnapshot().instances.Single(i=>i.id==id).cleared?ExpeditionJoinClosedReason.Cleared:ExpeditionJoinClosedReason.Open);
@@ -166,9 +172,14 @@ namespace ChipArena.UnityConversion
         {
             if(Time.unscaledTime<expeditionNextSend)return;expeditionNextSend=Time.unscaledTime+.05f;
             ExpeditionView=SplitView(account.Access.AccountId);
+            bool relay=Time.unscaledTime>=expeditionNextLoadBroadcast&&splitCohorts.Members.Any(m=>m.Connected&&!m.Ready);
+            var updates=relay?expeditionLoadReports.Frames(splitRun.PartySnapshot().run,splitRun.PartySnapshot().epoch,splitCohorts.Members):Array.Empty<ExpeditionLoadStatusFrame>();
+            if(relay)expeditionNextLoadBroadcast=Time.unscaledTime+.25f;
             foreach(var peer in peers.Where(p=>p.Connection?.Closed==false&&p.Seat?.access!=null))
             {
                 var who=peer.Seat.access.AccountId;var member=splitCohorts.Member(who);if(member==null)continue;
+                foreach(var update in updates)
+                    peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-party-load",expeditionLoadStatus=update}));
                 if(!member.Ready){var ticket=member.Ticket;peer.Loading.Begin(ticket.run+":"+ticket.epoch+":"+ticket.area+":"+ticket.serial,NetworkNow);if(!peer.Loading.Send(NetworkNow))continue;}else peer.Loading.Complete();
                 var view=SplitRecipient(who);var frame=SplitFrame(who);
                 peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-public",epoch=networkEpoch,generation=frame.generation,expeditionPublic=view.Public}));
@@ -179,6 +190,13 @@ namespace ChipArena.UnityConversion
         private bool SplitHostMessage(NativePeer peer,NativeNetMessage message)
         {
             var who=peer.Seat?.access?.AccountId;var member=splitCohorts.Member(who);
+            if(message.type=="expedition-load-progress")
+            {
+                if(member!=null&&peer.Seat.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()&&
+                   message.epoch==networkEpoch&&message.areaIdentity?.Matches(member.Ticket)==true)
+                    expeditionLoadReports.Accept(who,member.Ticket,member.Ready,member.Connected,message.loadProgress,Time.unscaledTime);
+                return true;
+            }
             if(message.type=="expedition-area-ready")
             {
                 var t=message.expeditionAreaReady;

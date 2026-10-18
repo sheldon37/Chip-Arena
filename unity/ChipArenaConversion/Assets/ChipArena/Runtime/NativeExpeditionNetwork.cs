@@ -11,6 +11,28 @@ namespace ChipArena.UnityConversion
         private string expeditionStamp;private float expeditionNextSend;private IExpeditionCommands expeditionLocal;
         private ExpeditionAreaReadyRequest expeditionLoadedTicket;private float expeditionNextReady;
         private ExpeditionView expeditionView;
+        private readonly ExpeditionLoadReportStore expeditionLoadReports=new ExpeditionLoadReportStore();
+        private ExpeditionCohortTicket expeditionProgressTicket;
+        private float expeditionLastProgress=-1,expeditionLastProgressAt=-1000,expeditionNextLoadBroadcast;
+        // Reports are rate-limited by ticket and by change; an eventual final 1.0 is always transmitted.
+        private void ExpeditionProgressTick()
+        {
+            var ticket=ExpeditionView?.areaIdentity;
+            var mine=ExpeditionView?.Member(account?.Access?.AccountId);
+            if(ticket==null||mine==null||!mine.connected||mine.extracted||
+               mine.loadState=="ready"||mine.loadState=="world"||mine.loadState=="dropped")return;
+            if(expeditionProgressTicket?.Matches(ticket)!=true)
+            {expeditionProgressTicket=ticket.Copy();expeditionLastProgress=-1;expeditionLastProgressAt=-1000;}
+            float progress=StageLoadProgress;
+            if(float.IsNaN(progress)||float.IsInfinity(progress)||progress<0)return;
+            progress=Mathf.Clamp01(progress);
+            if(expeditionLastProgress>=0&&progress<expeditionLastProgress)progress=expeditionLastProgress;
+            float now=Time.unscaledTime;
+            if(now-expeditionLastProgressAt<.25f)return;
+            if(progress<1&&expeditionLastProgress>=0&&progress-expeditionLastProgress<.02f&&now-expeditionLastProgressAt<1)return;
+            SendServer(new NativeNetMessage{type="expedition-load-progress",loadProgress=progress});
+            expeditionLastProgress=progress;expeditionLastProgressAt=now;
+        }
         public ExpeditionView ExpeditionView{get=>expeditionView;private set{expeditionView=value;NativeExpeditionHubLive.Authority=value?.hub;NativeExpeditionHubLive.AuthorityClock=value?.elapsed??0;}}
         public IExpeditionCommands ExpeditionCommands=>server!=null?(IExpeditionCommands)expeditionGuest:
             expeditionLocal;
@@ -68,12 +90,16 @@ namespace ChipArena.UnityConversion
         {
             if(expeditionLoadedTicket==null)return;
             if(!ExpeditionAreaReady.Matches(expeditionLoadedTicket,ExpeditionView)){expeditionLoadedTicket=null;return;}
+            // A terminal 100% report must leave before Ready is acknowledged. Otherwise the
+            // host may mark a peer ready between two rate-limited sends and never see 1.0.
+            if(ExpeditionView?.areaIdentity!=null&&
+               (expeditionProgressTicket?.Matches(ExpeditionView.areaIdentity)!=true||expeditionLastProgress<1))return;
             if(Time.unscaledTime<expeditionNextReady)return;
             expeditionNextReady=Time.unscaledTime+.5f;
             SendServer(new NativeNetMessage{type="expedition-area-ready",expeditionAreaReady=expeditionLoadedTicket});
         }
         private void ResetExpeditionNetwork()
-        {expeditionLoading.Reset();DisposeSplitAreas();expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
+        {expeditionLoading.Reset();expeditionLoadReports.Clear();expeditionProgressTicket=null;expeditionLastProgress=-1;expeditionLastProgressAt=-1000;expeditionNextLoadBroadcast=0;DisposeSplitAreas();expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
         private void ExpeditionNetworkTick()
         {
             try{ExpeditionNetworkStep();}
@@ -82,7 +108,7 @@ namespace ChipArena.UnityConversion
         private void ExpeditionNetworkStep()
         {
             if(ExpeditionSplit){SplitNetworkStep();return;}
-            if(server!=null){ExpeditionReplicaTick();ExpeditionReadyTick();return;}
+            if(server!=null){ExpeditionProgressTick();ExpeditionReplicaTick();ExpeditionReadyTick();return;}
             if(expeditionSession==null)return;
             if(ExpeditionM1&&expeditionDirector.Barrier.active&&expeditionLoadedGeneration!=expeditionDirector.Barrier.generation)return;
             if(!ExpeditionM1)expeditionSession.Tick(Time.unscaledDeltaTime);
@@ -126,6 +152,8 @@ namespace ChipArena.UnityConversion
         }
         private bool ExpeditionClientMessage(NativeNetMessage message)
         {
+            if(message.type=="expedition-party-load")
+            {ExpeditionLoadReportStore.ApplyFrame(ExpeditionView,message.expeditionLoadStatus);return true;}
             if(message.type!="expedition-public"&&message.type!="expedition-private"&&message.type!="expedition-reply")return false;
             string id=account?.Access.AccountId;if(string.IsNullOrEmpty(id)||networkId<1)return true;
             if(expeditionReceiver==null)

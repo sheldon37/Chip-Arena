@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             count=0;var R=new Func<string,string>(f=>File.ReadAllText(Path.Combine(root,f)));
-            States();Transfers();Order();Footer();Adapters();Local();
+            States();Transfers();Order();Footer();Adapters();Relay();Local();
             Layouts();Motion();Allocation();Wiring(R,root);
             Console.WriteLine("PASS party loading: "+count+" checks (states per source: first load, loop, transfer cohort and count, resident, elsewhere, dropped, extracted, mine; YOU first; footer counts; replicated adapters unknown today; layouts 720p @1.5 to 4K and 3440x1440 for 1-8; reduced tier; allocation-free; wiring, no authority or network file touched)");
         }
@@ -114,6 +114,37 @@ namespace ChipArena.UnityConversion
             // Returning to the city: the barrier's target is the world, my cohort comes back.
             m.Build(View("kestrel",target:City,ready:0,required:2,entered:true,edit:x=>{x.area=Ward;if(x.account=="kestrel"||x.account=="sheldon")x.pendingArea=City;}),.7f,false,4,15,labels);
             Check(Row(m,"sheldon").State==PartyLoadState.Loading&&Row(m,"sheldon").Counted&&Row(m,"nova").State==PartyLoadState.InWorld&&!Row(m,"nova").Counted&&Row(m,"nova").Place=="WARD ZERO","returning: the cohort loads the city, the rest stay in Ward Zero");
+        }
+
+        private static void Relay()
+        {
+            var ticket=new ExpeditionCohortTicket{run="relay",area=City,epoch=4,serial=1,layout=new string('a',64)};
+            var store=new ExpeditionLoadReportStore();
+            Check(!store.Accept("astra",ticket,false,true,float.NaN,1)&&!store.Accept("astra",ticket,true,true,.5f,1),"invalid and ready reports rejected");
+            Check(store.Accept("astra",ticket,false,true,.1f,1),"authenticated first sample");
+            Check(!store.Accept("astra",ticket,false,true,.2f,1.24)&&!store.Accept("astra",ticket,false,true,.09f,1.5),"rate and decreasing progress refused");
+            Check(store.Accept("astra",ticket,false,true,1.3f,1.5),"finite overrange clamped");
+            var member=new ExpeditionCohortMember{Account="astra",Area=City,Connected=true,ticket=ticket};
+            var row=new ExpeditionViewMember{account="astra"};
+            store.Apply(row,member);Check(row.loadState=="loading"&&row.loadProgress==1,"load sample shows progress but not readiness before the host acknowledges");
+            member.Ready=true;store.Apply(row,member);Check(row.loadState=="world"&&row.loadProgress==1,"host acknowledgement becomes IN WORLD");
+            member.Pending="cohort";store.Apply(row,member);Check(row.loadState=="ready"&&row.loadProgress==1,"pending cohort acknowledgement becomes READY");
+            member.Connected=false;store.Apply(row,member);Check(row.loadState=="dropped"&&row.loadProgress==-1,"disconnected member becomes DROPPED");
+            member.Connected=true;member.Ready=false;member.Pending=null;
+            var next=new ExpeditionCohortTicket{run="relay",area=Station,epoch=4,serial=2,layout=new string('a',64)};
+            member.ticket=next;store.Apply(row,member);Check(row.loadState=="waiting"&&row.loadProgress==-1,"new ticket cannot reuse previous progress");
+            Check(store.Accept("astra",next,false,true,.4f,2)&&store.Accept("astra",next,false,true,.5f,2.3),"new ticket accepts independent increasing progress");
+            var list=Enumerable.Range(0,8).Select(i=>new ExpeditionCohortMember{Account=Accounts[i],Area=City,Connected=true,ticket=ticket}).ToArray();
+            list[1]=member;
+            var frames=store.Frames("relay",4,list);Check(frames.Length==2&&frames.All(f=>f.members.Length==4)&&frames.SelectMany(f=>f.members).Select(m=>m.account).Distinct().Count()==8,"eight members relayed in two four-entry packets");
+            var view=View("nova",n:8);view.run="relay";view.epoch=4;
+            Check(ExpeditionLoadReportStore.ApplyFrame(view,frames[0])&&view.Member("astra").loadProgress==.5f,"authenticated public progress applies by account");
+            var duplicate=new ExpeditionLoadStatusFrame{run="relay",epoch=4,members=new[]{frames[0].members[0],frames[0].members[0]}};
+            Check(!ExpeditionLoadReportStore.ApplyFrame(view,duplicate),"duplicate members refused");
+            Check(!ExpeditionLoadReportStore.ApplyFrame(view,new ExpeditionLoadStatusFrame{run="old",epoch=4,members=frames[0].members}),"old-run relay refused");
+            Check(!ExpeditionLoadReportStore.ApplyFrame(view,new ExpeditionLoadStatusFrame{run="relay",epoch=3,members=frames[0].members}),"stale epoch refused");
+            Check(!ExpeditionLoadReportStore.ApplyFrame(view,new ExpeditionLoadStatusFrame{run="relay",epoch=4,members=new[]{new ExpeditionLoadStatusEntry{account="astra",loadProgress=float.PositiveInfinity,loadState="loading"}}}),"nonfinite progress refused");
+            Check(!ExpeditionLoadReportStore.ApplyFrame(view,new ExpeditionLoadStatusFrame{run="relay",epoch=4,members=new[]{new ExpeditionLoadStatusEntry{account="astra",loadProgress=.2f,loadState="hacked"}}}),"unrecognized state refused");
         }
 
         // ---- order: YOU first, then this load's members by seat, then the rest ------------------------------------------------------
@@ -314,7 +345,11 @@ namespace ChipArena.UnityConversion
             foreach(var f in new[]{"Runtime/NativeNetwork.cs","Runtime/NativeExpeditionNetwork.cs","Runtime/NativeExpeditionSplitRuntime.cs","Runtime/NativeStageGateNetwork.cs","Runtime/NativeExpeditionM1.cs","Runtime/NativeConnectionReport.cs",
                 "Core/ExpeditionCohorts.cs","Core/ExpeditionAreaProjection.cs","Core/NativeExpeditionView.cs","Core/NativeExpeditionWire.cs","Core/NativeExpeditionParty.cs","Core/NativeExpedition.cs","Core/NativeExpeditionDirectorState.cs"})
             {
-                var text=R("Assets/ChipArena/"+f);Check(!text.Contains("PartyLoad")&&!text.Contains("NativePartyLayout")&&!text.Contains("StageLoadProgress"),f+" is untouched by the party panel");
+                var text=R("Assets/ChipArena/"+f);
+                // Network authority may sample the loading scalar for the authenticated relay,
+                // but must not depend on the panel's state, layout or presentation model.
+                bool samplesLoad=f=="Runtime/NativeExpeditionNetwork.cs"||f=="Runtime/NativeExpeditionSplitRuntime.cs";
+                Check(!text.Contains("PartyLoad")&&!text.Contains("NativePartyLayout")&&(samplesLoad||!text.Contains("StageLoadProgress")),f+" cannot reach into the party panel");
             }
             Check(!Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories).Where(f=>!f.Contains("NativePartyLoading")&&!f.EndsWith("NativeStageLoading.cs")&&!f.EndsWith("NativeStageLoadingHud.cs")&&!f.EndsWith("NativeStageLoadingUI.cs")).Any(f=>File.ReadAllText(f).Contains("NativePartyLoad")),"only the loading screen's files use the panel");
             // Draw paths: constants only (no concatenation, formatting, arrays or lists per frame).
