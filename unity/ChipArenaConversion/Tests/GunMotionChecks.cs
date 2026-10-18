@@ -332,9 +332,13 @@ internal static class GunMotionChecks
     {
         foreach(var w in Guns)
         {
-            Action<float> none=_=>{};var d=new Driver();var a=Gun(w);Bout(d,a,80,60,none);var b=Gun(w);
-            long before=GC.GetAllocatedBytesForCurrentThread();Bout(d,b,95,60,none);long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
-            Check(bytes==0,w+" posing allocates "+bytes+" bytes over a bout");
+            // The exact sequence runs once on a throwaway driver first (a fresh bout, then a new pilot after a 7.5 s gap), as the
+            // gestures below skip their first: a one-time runtime cost on a path's first run is not per-frame allocation.
+            Action<float> none=_=>{};var warm=new Driver();Bout(warm,Gun(w),80,60,none);Bout(warm,Gun(w),95,60,none);
+            var d=new Driver();var a=Gun(w);Bout(d,a,80,60,none);var b=Gun(w);
+            long mark=0;int from=-1,frame=0;Action<float> probe=u=>{long now=GC.GetAllocatedBytesForCurrentThread();if(from<0&&now>mark)from=frame;mark=now;frame++;};
+            long before=GC.GetAllocatedBytesForCurrentThread();mark=before;Bout(d,b,95,60,probe);long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
+            Check(bytes==0,w+" posing allocates "+bytes+" bytes over a bout from frame "+from+" ("+(from/60f).ToString("0.00")+" s)");
             // The support-hand gestures (frag throw, Orbital Mark tap) and the rocket's recoil ride the gait without allocating.
             string[] abilities={"frag-grenade","frag-grenade","orbital-mark","rocket"};
             for(int i=0;i<abilities.Length;i++)

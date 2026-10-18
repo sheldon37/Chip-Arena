@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         {
             Tables();Build();Poses();Bounds();Tells();Glow();Allocation();Actions(root);Unreferenced(root);
             Console.WriteLine("PASS ironworks boss model ("+count+" checks: THE CONVERTER builds at three tiers within budget and deterministically, every joint drawn; "+NativeIronworksBossModel.Keys+" key poses solve inside the reach box, "
-                +"standing keys above the floor with planted feet; body and vessel in their bounds; cyan, cold-white and white tells; glow groups; no allocation posing; the doc's action table; referenced by nothing live)");
+                +"standing keys above the floor with planted feet; body and vessel in their bounds; cyan, cold-white and white tells; glow groups; no allocation posing; the doc's action table; referenced by nothing live but its presentation)");
         }
 
         // ---- the joint table ----
@@ -209,13 +209,18 @@ namespace ChipArena.UnityConversion
         /// <summary>The concept's type names (NativeIronworksBoss covers NativeIronworksBossModel).</summary>
         private static readonly string[] Names={"NativeIronworksBoss","IronworksBossPose","IronworksBossMesh"};
         private static readonly string[] TextKinds={".cs",".json",".shader",".cginc",".hlsl",".asset",".unity",".prefab",".mat",".asmdef",".txt",".md"};
+        // Presentation only: besides the model, THE CONVERTER's presentation (docs "Presentation build": the runtime model, rig,
+        // moves, effects, cues, preview, stage hook, view, the HUD's zone boss names, the runtime presenter and its audio) names it;
+        // no rule, authority, network or content file does.
+        private static readonly string[] Presentation={"NativeIronworksBossLook.cs","NativeIronworksBossMoves.cs","NativeIronworksBossRig.cs","NativeIronworksBossFx.cs","NativeIronworksBossCues.cs",
+            "NativeIronworksBossPreview.cs","NativeIronworksBossStage.cs","NativeIronworksBossView.cs","NativeZoneBossNames.cs","NativeIronworksBossPresentation.cs","NativeIronworksBossAudio.cs","NativeIronworksBossLifetime.cs"};
         private static void Unreferenced(string root)
         {
             string self=Path.Combine(root,"Assets/ChipArena/Core/NativeIronworksBossModel.cs");
             var hits=Directory.EnumerateFiles(Path.Combine(root,"Assets"),"*",SearchOption.AllDirectories)
-                .Where(p=>Path.GetFileName(p)!="NativeZoneBossRules.cs"&&TextKinds.Contains(Path.GetExtension(p))&&!p.Replace('\\','/').Contains("/LocalAssets/")&&Path.GetFullPath(p)!=Path.GetFullPath(self))
+                .Where(p=>Path.GetFileName(p)!="NativeZoneBossRules.cs"&&TextKinds.Contains(Path.GetExtension(p))&&!p.Replace('\\','/').Contains("/LocalAssets/")&&Path.GetFullPath(p)!=Path.GetFullPath(self)&&!Presentation.Contains(Path.GetFileName(p)))
                 .Where(p=>{var t=File.ReadAllText(p);return Names.Any(n=>t.Contains(n,StringComparison.Ordinal))||t.Contains(NativeIronworksBoss.Archetype,StringComparison.Ordinal);}).ToArray();
-            Check(hits.Length==0,"nothing under Assets/ but the model itself names the concept or its archetype ("+string.Join(", ",hits.Select(Path.GetFileName))+")");
+            Check(hits.Length==0,"nothing under Assets/ but the model and its presentation names the concept or its archetype ("+string.Join(", ",hits.Select(Path.GetFileName))+")");
         }
     }
 }

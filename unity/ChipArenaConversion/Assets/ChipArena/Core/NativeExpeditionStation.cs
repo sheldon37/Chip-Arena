@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
         public const byte ExpressIdle=0,ExpressWarn=1,ExpressPass=2,ExpressAfter=3,ExpressHalted=4;
         public const byte SignalRed=0,SignalGreen=1,SignalDark=2;
         /// <summary>The departure board's variants: row 0's status, row 4's status, the title.</summary>
-        public const byte Row0Delayed=0,Row0LastCall=1,Row0Cancelled=2,Row4NoStop=0,Row4Approaching=1,Row4Suspended=2,Row4Cancelled=3,TitleDepartures=0,TitleCancelled=1;
+        public const byte Row0Delayed=0,Row0LastCall=1,Row0Cancelled=2,Row0Arriving=3,Row0Departed=4,Row4NoStop=0,Row4Approaching=1,Row4Suspended=2,Row4Cancelled=3,TitleDepartures=0,TitleCancelled=1;
         public byte Express;public double ExpressAge;
         /// <summary>The warning's progress (0 at its start, 1 at the pass).</summary>
         public float Warn;
@@ -84,6 +84,10 @@ namespace ChipArena.UnityConversion
         /// (which clears it), Off before the boss arrives. During the boss intro hold the board's first row reads LAST CALL and
         /// lights on the song's pulses (the PA chimes); the stage's lights follow it (NativeExpeditionStationKit.MusicGain).</summary>
         public NativeZoneBossBeat Music;
+        /// <summary>THE 6:47's stage (its stage hook's Apply, after <see cref="Score"/>; presentation only; reset by <see cref="Evaluate"/>): what
+        /// every station clock's minute reads (47, 48 once the boss has departed), the barrier's and the departure board's falls
+        /// (0 standing .. 1 down) and the station's shudder (0..1).</summary>
+        public int ClockMinute=47;public float BarrierFall,BoardFall,Shake;
         /// <summary>Sets the song for this frame and its board text: LAST CALL on row 0 through the intro (the authority's boss flag
         /// turns the board to ALL SERVICES CANCELLED at the drop).</summary>
         public void Score(in NativeZoneBossBeat m){Music=m;if(m.On&&m.Intro&&Title!=TitleCancelled)Row0=Row0LastCall;}
@@ -91,7 +95,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Fills this state from `v` at arena time `t`.</summary>
         public void Evaluate(NativeStationView v,double t)
         {
-            v=v??Idle;Music=default;Line=v.TrainLine<1||v.TrainLine>3?1:v.TrainLine;
+            v=v??Idle;Music=default;Line=v.TrainLine<1||v.TrainLine>3?1:v.TrainLine;ClockMinute=47;BarrierFall=BoardFall=Shake=0;
             Levers=v.Levers&&!(t>=v.LeversUntil);double sinceLevers=t-v.LeversAt;LeverPose=Levers?(float)Clamp01(double.IsNaN(sinceLevers)?1:sinceLevers/NativeExpeditionStation.LeverThrowSeconds):0;
             // The express: halted while the levers hold (the schedule resumes after), else by the pass start.
             Express=ExpressIdle;ExpressAge=0;Warn=0;Headlight=0;Passing=0;Wake=0;Nose=NativeExpeditionStation.NoseStart;Danger=0;
@@ -119,7 +123,7 @@ namespace ChipArena.UnityConversion
             int g=0;for(int i=0;i<v.GlassCount&&i<v.Glass.Length;i++){double s=t-v.Glass[i].At;if(s>-NativeExpeditionStation.GlassTelegraph&&s<NativeExpeditionStation.GlassSettle)g++;}Glass=g;
         }
         /// <summary>Whether a board variant is lit this frame: blinking rows go dark on the blink's off beat.</summary>
-        public bool BoardRowLit(int row){if(row==0&&Row0==Row0LastCall)return Music.On&&Music.Intro&&Music.Mode!=NativeKitFlash.Calm?Music.Pulse>.18f:Blink;if(row==4&&Row4==Row4Approaching)return Blink;return true;}
+        public bool BoardRowLit(int row){if(row==0&&(Row0==Row0LastCall||Row0==Row0Arriving))return Music.On&&Music.Intro&&Music.Mode!=NativeKitFlash.Calm?Music.Pulse>.18f:Blink;if(row==4&&Row4==Row4Approaching)return Blink;return true;}
         private static readonly NativeStationView Idle=new NativeStationView();
         private static double Clamp01(double x)=>x<0?0:x>1?1:x;
         internal static double Frac(double x)=>x-Math.Floor(x);
@@ -162,7 +166,9 @@ namespace ChipArena.UnityConversion
         public const string BoardTitle="DEPARTURES",BoardCancelled="ALL SERVICES CANCELLED";
         public static readonly string[] RowTime={"6.47","7.02","7.15","7.30","--.--"},RowTo={"EVAC SPECIAL","HARBOUR","NORTH CAMP","ALL STATIONS","EXPRESS"},RowPlatform={"2","3","4","1","1"},RowStatus={"DELAYED","CANCELLED","CANCELLED","CANCELLED","DOES NOT STOP"};
         /// <summary>The rows that change with the game: row 0's variants (by NativeStationState.Row0*) and row 4's (Row4*).</summary>
-        public static readonly string[] Row0Status={"DELAYED","LAST CALL","CANCELLED"},Row4Status={"DOES NOT STOP","APPROACHING","SUSPENDED","CANCELLED"};
+        /// <summary>Row 0's platform while THE 6:47 is arriving (it comes in on P1).</summary>
+        public const string ArrivingPlatform="1";
+        public static readonly string[] Row0Status={"DELAYED","LAST CALL","CANCELLED","ARRIVING","DEPARTED"},Row4Status={"DOES NOT STOP","APPROACHING","SUSPENDED","CANCELLED"};
         public const string Ticker="SERVICE SUSPENDED - FOLLOW STAFF INSTRUCTIONS - DO NOT CROSS THE LINE";
         /// <summary>The ticker shown a page at a time (the message split at its dashes), each for <see cref="TickerPage"/> s.</summary>
         public static readonly string[] TickerPages={"SERVICE SUSPENDED","FOLLOW STAFF INSTRUCTIONS","DO NOT CROSS THE LINE"};

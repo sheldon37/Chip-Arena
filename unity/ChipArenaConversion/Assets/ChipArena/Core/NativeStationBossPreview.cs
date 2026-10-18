@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         public static StationBossView Shown=StationBossView.None;public static double ShownClock;
         /// <summary>The banner's eyebrow as the expedition HUD names the area (BOSS ARRIVAL · CENTRAL STATION).</summary>
         public static readonly string BannerArea=ExpeditionBossModel.Eyebrow+" · "+NativeExpeditionStates.AreaName(NativeStationBoss.Area);
-        public const float Loop=96,SpawnAt=.5f;
+        public const float Loop=108,SpawnAt=.5f;
         /// <summary>The preview's pilots (x, z): the look-at targets, Alteration's rings and the HUD's sense of scale.</summary>
         public static readonly Vector2[] Pilots={new Vector2(3.5f,10.5f),new Vector2(-8.5f,9.5f),new Vector2(9.5f,6.0f),new Vector2(-4.0f,14.0f)};
         private struct Act{public string Id;public float At,Hit,Dur;public int Target,HoldSide;public float LaneX0,LaneZ0,LaneX1,LaneZ1;}
@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
         private const byte Smooth=0,Charge=1,Knock=2;
         private static readonly Act[] acts;private static readonly Key[] keys;
         /// <summary>The script's moments the checks and the renders key on.</summary>
-        public static float ArrivalEnd,BufferAt,DoorsAt,DepartureAt,AlterationAt,Phase2At,ShuntAt,LiveAt,CrashAt,ExpressAt,LampAt,PantoAt,Phase3At,TerminusAt,SpillAt,DeathAt;
+        public static float ArrivalEnd,BufferAt,DoorsAt,DepartureAt,AlterationAt,Phase2At,ShuntAt,LiveAt,CrashAt,ExpressAt,LampAt,PantoAt,Phase3At,TerminusAt,DoubleAt,SpillAt,DeathAt;
         static NativeStationBossPreview()
         {
             var a=new System.Collections.Generic.List<Act>();var k=new System.Collections.Generic.List<Key>();
@@ -71,10 +71,17 @@ namespace ChipArena.UnityConversion
             LampAt=t+3.2f;PantoAt=LampAt+2.2f;t=PantoAt+1.4f;
             K(t,0,2.0f,-360);K(t+1.6f,0,3.5f,-360);
             Phase3At=t+1.8f;t=Phase3At+NativeStationBoss.PhaseChangeSeconds;
-            K(t+.3f,0,3.5f,-360);K(t+1.6f,0,2.5f,-350);
+            // Terminus a step back from the fallen board (its slam lands short of the booth).
+            K(t+.3f,0,3.5f,-360);K(t+1.6f,0,1.5f,-350);
             TerminusAt=t+1.8f;t=A("terminus",TerminusAt,0);
-            K(t+.2f,0,2.5f,-350);K(t+1.4f,0,2.5f,-370);
-            SpillAt=t+1.6f;t=A("passengers",SpillAt,0);
+            // TERMINUS's double charge: west along z 0 (clear of the benches and the barrier), a turn on the spot, back east.
+            K(t+.3f,0,1.5f,-350);K(t+1.9f,0,0,-450);
+            DoubleAt=t+2.1f;var dd=StationBossMoves.DepartureDouble;float dHit=DoubleAt+dm.Anticipation,second=dHit+StationBossMoves.SecondCharge;
+            K(dHit,0,0,-450);K(dHit+dm.Strike,-16,0,-452,Charge);K(second,-16,0,-270);K(second+dm.Strike+dm.Follow,6,0,-262,Charge);
+            a.Add(new Act{Id="departure",At=DoubleAt,Hit=dHit,Dur=dd.Seconds,Target=1,LaneX0=-.5f,LaneZ0=0,LaneX1=-16,LaneZ1=0});
+            t=DoubleAt+dd.Seconds;
+            K(t+.4f,6,0,-262);K(t+3.4f,0,2.5f,-360);
+            SpillAt=t+3.6f;K(SpillAt,0,2.5f,-370);t=A("passengers",SpillAt,0);
             DeathAt=t+1.5f;K(DeathAt,0,2.5f,-370);K(Loop,0,2.5f,-370);
             acts=a.ToArray();keys=k.ToArray();
         }
@@ -133,6 +140,20 @@ namespace ChipArena.UnityConversion
                 default:f=BossMath.Smoother(u);break;
             }
             x=a.X+(b.X-a.X)*f;z=a.Z+(b.Z-a.Z)*f;yaw=a.Yaw+(b.Yaw-a.Yaw)*BossMath.Smoother(u);
+        }
+        /// <summary>Where the express's nose meets THE 6:47 in Mind the Gap (the boss's rear on the platform edge, x).</summary>
+        public const float ExpressMeetX=-9f;
+        /// <summary>
+        /// The station's view while the preview runs (Runtime's station presentation draws it when the station's own preview is off):
+        /// the express called on T1 so its pass strikes the boss in Mind the Gap (the warning, the pass and the wake through the
+        /// existing express presentation), and the boss's arrival (the board's ALL SERVICES CANCELLED once the arrival ends). False
+        /// before the preview has started. Allocation free.
+        /// </summary>
+        public static bool Station(NativeStationView v,double t)
+        {
+            if(v==null||double.IsNaN(Start))return false;double since=t-Start,loops=Math.Floor(since/Loop),baseAt=Start+loops*Loop;float p=(float)(since-loops*Loop);
+            v.Reset();v.Preview=true;v.TrainLine=1;v.TrainAt=baseAt+ExpressAt-(ExpressMeetX-NativeExpeditionStation.NoseStart)/NativeExpeditionStation.Speed;
+            v.BossAt=baseAt+SpawnAt;v.Boss=p>=ArrivalEnd;return true;
         }
         /// <summary>Alteration's targets: one ring under each pilot (up to four), landing 1.8 s after the move starts.</summary>
         public static int Glass(in StationBossView v,float[] xz)

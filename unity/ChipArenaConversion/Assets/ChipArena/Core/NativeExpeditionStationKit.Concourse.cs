@@ -115,7 +115,8 @@ namespace ChipArena.UnityConversion
                 double a=(yaw+(sg<0?180:0))*Math.PI/180,nx=Math.Sin(a),nz=Math.Cos(a),rx=-nz,rz=nx,f=both?.11:.06;double fyaw=yaw+(sg<0?180:0);
                 Box(parent,x+nx*f,y,z+nz*f,r*2,r*2,.02,Glow(0xF0E8D0,.32f,RoleSign),fyaw);
                 for(int k=0;k<12;k++){double t=k*Math.PI/6;Box(parent,x+nx*(f+.02)+rx*Math.Sin(t)*r*.84,y+Math.Cos(t)*r*.84,z+nz*(f+.02)+rz*Math.Sin(t)*r*.84,.05,k%3==0?r*.22:r*.12,.01,With(L("plain",0x141210,RoleSign),detail:k%3!=0),fyaw,0,k*30);}
-                foreach(var (deg,len,w) in new[]{(203.5,.55,.07),(282.0,.82,.04)}){double t=deg*Math.PI/180,l=r*len;Box(parent,x+nx*(f+.03)+rx*Math.Sin(t)*l/2,y+Math.Cos(t)*l/2,z+nz*(f+.03)+rz*Math.Sin(t)*l/2,w,l,.012,L("plain",0x101010,RoleSign),fyaw,0,deg);}
+                // The hands at 6:47 and, for THE 6:47's departure, at 6:48 (DriveClock shows the one NativeStationState.ClockMinute reads).
+                for(int m=0;m<2;m++)foreach(var (deg,len,w) in m==0?new[]{(203.5,.55,.07),(282.0,.82,.04)}:new[]{(204.0,.55,.07),(288.0,.82,.04)}){double t=deg*Math.PI/180,l=r*len;Box(parent,x+nx*(f+.03)+rx*Math.Sin(t)*l/2,y+Math.Cos(t)*l/2,z+nz*(f+.03)+rz*Math.Sin(t)*l/2,w,l,.012,With(L("plain",0x101010,RoleSign),drive:DriveClock,tag:(short)m),fyaw,0,deg);}
             }
         }
         // The north clerestory over the gallery: a brick wall up to the vault with tall arched windows and the great clock; the
@@ -181,8 +182,10 @@ namespace ChipArena.UnityConversion
                 double y=BoardY+.86-i*.5;
                 BoardText(booth,yaw,half,NativeExpeditionStation.RowTime[i],left+ColTime*4*c,y,c,d,With(amber,tag:-1),-1);
                 BoardText(booth,yaw,half,NativeExpeditionStation.RowTo[i],left+ColTo*4*c,y,c,d,With(amber,tag:-1),-1);
-                BoardText(booth,yaw,half,NativeExpeditionStation.RowPlatform[i],left+ColPlatform*4*c,y,c,d,With(amber,tag:-1),-1);
-                if(i==0)for(int v=0;v<NativeExpeditionStation.Row0Status.Length;v++)BoardText(booth,yaw,half,NativeExpeditionStation.Row0Status[v],left+ColStatus*4*c,y,c,d,With(v==NativeStationState.Row0LastCall?white:v==NativeStationState.Row0Cancelled?red:amber,tag:(short)v),-1);
+                // Row 0's platform: its own, or platform 1 while THE 6:47 is arriving (tag row 7).
+                if(i==0){BoardText(booth,yaw,half,NativeExpeditionStation.RowPlatform[i],left+ColPlatform*4*c,y,c,d,With(amber,tag:7*16),-1);BoardText(booth,yaw,half,NativeExpeditionStation.ArrivingPlatform,left+ColPlatform*4*c,y,c,d,With(white,tag:7*16+1),-1);}
+                else BoardText(booth,yaw,half,NativeExpeditionStation.RowPlatform[i],left+ColPlatform*4*c,y,c,d,With(amber,tag:-1),-1);
+                if(i==0)for(int v=0;v<NativeExpeditionStation.Row0Status.Length;v++)BoardText(booth,yaw,half,NativeExpeditionStation.Row0Status[v],left+ColStatus*4*c,y,c,d,With(v==NativeStationState.Row0LastCall||v==NativeStationState.Row0Arriving?white:v==NativeStationState.Row0Cancelled?red:amber,tag:(short)v),-1);
                 else if(i==4)for(int v=0;v<NativeExpeditionStation.Row4Status.Length;v++)BoardText(booth,yaw,half,NativeExpeditionStation.Row4Status[v],left+ColStatus*4*c,y,c,d,With(v==NativeStationState.Row4Approaching?white:v==NativeStationState.Row4Cancelled?red:amber,tag:(short)(4*16+v)),-1);
                 else BoardText(booth,yaw,half,NativeExpeditionStation.RowStatus[i],left+ColStatus*4*c,y,c,d,With(red,tag:-1),-1);
             }

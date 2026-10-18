@@ -38,6 +38,17 @@ namespace ChipArena.UnityConversion
             h.converterMask=3;h.clock=13;Check(NativeIronworksHazards.At(NativeIronworksHazards.ConverterSouth,h.Ironworks).Live,"both vessels in phase three");Check(NativeIronworksHazards.At(NativeIronworksHazards.Ladle,h.Ironworks).Parked,"ladle remains parked");
             h.overflowAt=20;foreach(float t in new[]{0f,7.99f,8f,13.99f,14f}){h.clock=20+t;Check(NativeIronworksHazards.At(NativeIronworksHazards.PitOverflow,h.Ironworks).Live==(t%14<8),"overflow eight live / six cool");}
             for(int i=0;i<28;i++){NativeZoneBossRules.Droplet(7,i,3,out float x,out float z,out float delay);NativeZoneBossRules.Droplet(7,i,3,out float xx,out float zz,out float dd);Check(x==xx&&z==zz&&delay==dd&&x*x+z*z>=15.99f&&x*x+z*z<=110.26f&&delay>=2&&delay<3.8,"deterministic bounded rain");}
+            Check(NativeZoneBossRules.StompLeg(-1,1)==0&&NativeZoneBossRules.StompLeg(1,1)==1&&NativeZoneBossRules.StompLeg(-1,-1)==2&&NativeZoneBossRules.StompLeg(1,-1)==3,"four stomp quadrants");
+            var station=new NativeZoneBossFrame{archetype=NativeZoneBossRules.Station,actor=10001,phase=3,phaseAt=10,targetSeat=2,deathAt=80};
+            NativeZoneBossRules.Start(station,"departure",20,2,3,4,90);Check(Math.Abs(station.duration-6.1f)<.0001,"double charge duration");
+            Check(NativeZoneBossRules.DepartureLeg(3,-.01f,1.4f)==-1&&NativeZoneBossRules.DepartureLeg(3,0,1.4f)==0&&NativeZoneBossRules.DepartureLeg(3,1.5f,1.4f)==-1&&NativeZoneBossRules.DepartureLeg(3,2,1.4f)==1&&NativeZoneBossRules.DepartureLeg(2,2,1.4f)==-1,"two charge contacts with turn gap");
+            var sv=NativeZoneBossViews.Station(station,1,2,3,90,100,6000,8);
+            Check(sv.live&&sv.actionTarget==2&&sv.diedAt==80&&sv.hitAt==station.hitAt&&sv.duration==6.1f&&sv.spawned==8&&sv.x==1&&float.IsNaN(sv.cancelAt),"Station binding maps identity-independent state and sentinel");
+            var iron=new NativeZoneBossFrame{archetype=NativeZoneBossRules.Ironworks,actor=10002,phaseAt=10,action="grab",actionAt=20,hitAt=21,targetSeat=2,holdTarget=-1,parts=23,deathAt=80};iron.partAt[3]=70;
+            var iv=NativeZoneBossViews.Ironworks(iron,4,5,6,90,200,6000,9);
+            Check(iv.live&&iv.targetSeat==-1&&iv.deathAt==80&&iv.parts==23&&iv.partAt3==70&&float.IsNaN(iv.partAt0)&&iv.spawned==9,"Converter binding preserves early release, breaks and clock");
+            iron.cancelAt=22;iron.staggerAt=22;iron.staggerCause="choke";iv=NativeZoneBossViews.Ironworks(iron,4,5,6,90,200,6000,9);Check(iv.action=="choke"&&iv.actionAt==22,"cancelled blow binds choke moment");
+            Check(!NativeZoneBossViews.Station(iron,0,0,0,0,0,0,0).live&&!NativeZoneBossViews.Ironworks(station,0,0,0,0,0,0,0).live&&!NativeZoneBossViews.Station(null,0,0,0,0,0,0,0).live,"wrong or absent archetypes draw nothing");
             Console.WriteLine("PASS zone boss rules ("+count+" checks)");
         }
     }

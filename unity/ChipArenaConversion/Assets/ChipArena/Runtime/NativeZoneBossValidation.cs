@@ -18,6 +18,7 @@ namespace ChipArena.UnityConversion
             SpawnZoneBoss(NativeZoneBossRules.Archetype(MapId),new Vector3(1000,100,1000),0);var m=zoneBossActor;var z=ZoneBoss;
             Check(m!=null&&m.Pve==null&&!Pve.Boss.Seat.connected&&!Pve.Boss.Collider.enabled,"separate minion actor, reserved pilot has no collision or AI");
             Check(m.Body.GetComponentsInChildren<Collider>().Length>=6,"compound body and parts");
+            Check(z.archetype==NativeZoneBossRules.Station?StationZoneBossView().live&&!IronworksZoneBossView().live:IronworksZoneBossView().live&&!StationZoneBossView().live,"only matching actor presentation binds");
             Pve.Holding=true;Check(HitMinion(m,p,100,Vector3.forward,0)==0,"intro cannot damage boss");Pve.Holding=false;
             p.Body.position=m.Body.position+new Vector3(0,.9f,2);p.Body.transform.position=p.Body.position;Physics.SyncTransforms();
             string attack=z.archetype==NativeZoneBossRules.Station?"buffer":"stomp";BossStart(attack,p);float hit=z.hitAt;

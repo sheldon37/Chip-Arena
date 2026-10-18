@@ -122,6 +122,14 @@ namespace ChipArena.UnityConversion
             }
             sway.Reset(0);bank.Reset(0);dip.Reset(0);sink.Reset(0);Moving=false;Speed=Frequency=Stride=0;ready=true;
         }
+        /// <summary>Plants leg `i`'s foot at `foot` (world, at the ankle) facing `yaw` now: a rig's own step put it there (a stomp, a
+        /// reach coming back down), so the gait takes it over where it stands instead of where it last planted. Ignored before the
+        /// first step and while the leg swings. Opt-in: nothing calls it unless a rig does.</summary>
+        public void Plant(int i,Vector3 foot,float yaw)
+        {
+            if(!ready||i<0||i>=Legs||legs[i].Swing)return;ref var l=ref legs[i];
+            l.Foot=l.From=l.To=foot;l.Yaw=l.FromYaw=l.ToYaw=yaw;l.Pitch=0;Foot[i]=foot;Planted[i]=true;Swing[i]=-1;
+        }
         private bool CanLift(int i)
         {
             int swinging=0;for(int k=0;k<Legs;k++){if(!legs[k].Swing)continue;swinging++;if(legs[k].Group!=legs[i].Group)return false;}

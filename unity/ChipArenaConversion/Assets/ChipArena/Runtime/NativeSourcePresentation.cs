@@ -62,6 +62,7 @@ namespace ChipArena.UnityConversion
             CyberCityScenery(arena);
             ExpeditionCityScenery(arena);
             IronworksScenery(arena);
+            IronworksBossScenery(arena);
             if(revamp)WardZeroScenery(arena);
             // The hazard kit (NativeHazardKitPresentation.cs): the map's alarm placements, or the DEV preview gallery.
             HazardKitWorld(arena);
@@ -71,7 +72,7 @@ namespace ChipArena.UnityConversion
             BeginHordeFx(arena);HordeKindsBegin(arena);
             foreach(var m in arena.Minions)
             {
-                if(m.Hp<=0)continue;if(m.Kind=="slender"){SlenderModel(arena,m);continue;}if(!minionRigs.TryGetValue(m.Id,out var rig)){rig=captured.Create(transform,m.Id);minionRigs.Add(m.Id,rig);}Vector3 pos=m.Body.transform.position;int variant=m.Id%6;string kind="idle";float age=arena.Time,duration=0;
+                if(m.Hp<=0||m.Kind==NativeZoneBossRules.Station||m.Kind==NativeZoneBossRules.Ironworks)continue;if(m.Kind=="slender"){SlenderModel(arena,m);continue;}if(!minionRigs.TryGetValue(m.Id,out var rig)){rig=captured.Create(transform,m.Id);minionRigs.Add(m.Id,rig);}Vector3 pos=m.Body.transform.position;int variant=m.Id%6;string kind="idle";float age=arena.Time,duration=0;
                 var add=m.Pve;
                 // The Siren minion kinds (NativeHordeKindPresentation.cs): each add's kind model, tier, gait, attacks and felt hits.
                 if(add!=null&&HordeKindAdd(arena,m,rig,pos))continue;

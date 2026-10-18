@@ -42,6 +42,8 @@ namespace ChipArena.UnityConversion
         public const string Station="station-647",Ironworks="ironworks-converter";
         public const float IntroSeconds=9.0678f;
         public static bool RuntimeEnabled=>false; // Candidate: requires presentation binding and native combat acceptance.
+        public static int StompLeg(float x,float z)=>(x<0?0:1)+(z<0?2:0);
+        public static int DepartureLeg(int phase,float sinceHit,float strike)=>sinceHit<0?-1:sinceHit<=strike?0:phase>=3&&sinceHit>=2&&sinceHit<=2+strike?1:-1;
         public static bool Known(string id)=>id==Station||id==Ironworks;
         public static string Archetype(string map)=>NativeZoneCombat.Station(map)?Station:NativeZoneCombat.Ironworks(map)?Ironworks:null;
         public static int Phase(string id,float hp,float maxHp)=>hp<=maxHp*(id==Station?.30f:.35f)?3:hp<=maxHp*(id==Station?.65f:.70f)?2:1;
@@ -58,7 +60,8 @@ namespace ChipArena.UnityConversion
             f.action=action;f.actionId++;f.actionAt=now;f.hitAt=now+a.Wind;f.duration=a.Duration;f.cancelAt=-100;f.targetSeat=seat;f.targetX=x;f.targetZ=z;f.actionYaw=yaw;
             if(action=="alteration")f.hitAt=now+1.8f; // Pane contact follows the 0.6 s gesture and 1.2 s warning.
             if(action=="arrive"){f.hitAt=now+IntroSeconds;f.duration=IntroSeconds;}
-            if(action=="departure"&&f.lampBrokenAt>=0){f.hitAt+=.4f;f.duration+=.4f;}
+            if(action=="departure"&&f.phase==3)f.duration=6.1f;
+            if(action=="departure"&&f.lampBrokenAt>=0){f.hitAt+=.4f;if(f.phase<3)f.duration+=.4f;}
         }
         // Stable seeds avoid sending droplets as per-frame poses. Both authority and presentation use this layout.
         public static void Droplet(int actionId,int index,int phase,out float x,out float z,out float delay)
@@ -68,4 +71,21 @@ namespace ChipArena.UnityConversion
             delay=2+1.8f*index/(phase==3?28:14);
         }
     }
+    // Pure adapters shared by native host, replicas and managed contract tests.
+    public static class NativeZoneBossViews
+    {
+        public static StationBossView Station(NativeZoneBossFrame f,float x,float y,float z,float yaw,float hp,float maxHp,float spawned)
+        {
+            if(f==null||f.archetype!=NativeZoneBossRules.Station)return StationBossView.None;
+            return new StationBossView{live=true,x=x,y=y,z=z,yaw=yaw,hp=hp,maxHp=maxHp,spawned=spawned,phase=f.phase,phaseAt=StationBossView.Time(f.phaseAt),action=f.action,actionId=f.actionId,actionAt=StationBossView.Time(f.actionAt),hitAt=StationBossView.Time(f.hitAt),duration=f.duration,cancelAt=StationBossView.Time(f.cancelAt),laneX0=f.laneX0,laneZ0=f.laneZ0,laneX1=f.laneX1,laneZ1=f.laneZ1,holdTarget=f.holdTarget,holdSide=f.holdSide,holdUntil=StationBossView.Time(f.holdUntil),staggerAt=StationBossView.Time(f.staggerAt),staggerSeconds=f.staggerSeconds,staggerPushX=f.staggerPushX,staggerPushZ=f.staggerPushZ,staggerCause=f.staggerCause,lampBrokenAt=StationBossView.Time(f.lampBrokenAt),pantoBrokenAt=StationBossView.Time(f.pantoBrokenAt),expressHitAt=StationBossView.Time(f.expressHitAt),sideBroken=f.sideBroken,liveAt=StationBossView.Time(f.liveAt),liveUntil=StationBossView.Time(f.liveUntil),barrierDownAt=StationBossView.Time(f.barrierDownAt),boardDownAt=StationBossView.Time(f.boardDownAt),roofOpenAt=StationBossView.Time(f.roofOpenAt),spillAt=StationBossView.Time(f.spillAt),spillIds=f.spillIds,actionTarget=f.targetSeat,diedAt=StationBossView.Time(f.deathAt)};
+        }
+        public static IronworksBossView Ironworks(NativeZoneBossFrame f,float x,float y,float z,float yaw,float hp,float maxHp,float spawned)
+        {
+            if(f==null||f.archetype!=NativeZoneBossRules.Ironworks)return IronworksBossView.None;
+            string action=f.cancelAt>=0?null:f.action;float at=f.actionAt;
+            if(f.cancelAt>=0&&(f.staggerCause=="choke"||f.staggerCause=="kneel"||f.staggerCause=="crash")){action=f.staggerCause;at=f.staggerAt;}
+            return new IronworksBossView{live=true,x=x,y=y,z=z,yaw=yaw,hp=hp,maxHp=maxHp,spawned=spawned,action=action,actionAt=IronworksBossView.Time(at),actionYaw=f.actionYaw,targetX=f.targetX,targetZ=f.targetZ,targetSeat=f.action=="grab"?f.holdTarget:f.targetSeat,variant=f.variant,phase=f.phase,phaseAt=IronworksBossView.Time(f.phaseAt),parts=f.parts,partAt0=IronworksBossView.Time(f.partAt[0]),partAt1=IronworksBossView.Time(f.partAt[1]),partAt2=IronworksBossView.Time(f.partAt[2]),partAt3=IronworksBossView.Time(f.partAt[3]),partAt4=IronworksBossView.Time(f.partAt[4]),stagger=f.stagger,deathAt=IronworksBossView.Time(f.deathAt)};
+        }
+    }
+
 }

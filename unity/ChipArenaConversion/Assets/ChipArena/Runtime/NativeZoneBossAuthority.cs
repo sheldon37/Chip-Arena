@@ -7,6 +7,18 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         public NativeZoneBossFrame ZoneBoss {get;private set;}
+        public StationBossView StationZoneBossView()
+        {
+            var z=ZoneBoss;if(z?.archetype!=NativeZoneBossRules.Station)return StationBossView.None;
+            foreach(var m in Minions)if(m.Id==z.actor){var p=m.Body.position;return NativeZoneBossViews.Station(z,p.x,p.y,p.z,m.Yaw,m.Hp,m.MaxHp,BossSongAt);}
+            return StationBossView.None;
+        }
+        public IronworksBossView IronworksZoneBossView()
+        {
+            var z=ZoneBoss;if(z?.archetype!=NativeZoneBossRules.Ironworks)return IronworksBossView.None;
+            foreach(var m in Minions)if(m.Id==z.actor){var p=m.Body.position;return NativeZoneBossViews.Ironworks(z,p.x,p.y,p.z,m.Yaw,m.Hp,m.MaxHp,BossSongAt);}
+            return IronworksBossView.None;
+        }
         private NativeMinion zoneBossActor;
         private readonly Dictionary<string,float> bossReady=new Dictionary<string,float>();
         private readonly HashSet<long> bossHits=new HashSet<long>();
@@ -16,12 +28,12 @@ namespace ChipArena.UnityConversion
         private bool bossLadle,bossPileup,bossActionFired;private int bossPoolId=300;
         private static readonly Vector3[] stationLanes={new Vector3(-20,0,3.5f),new Vector3(-10,0,3),new Vector3(0,0,1.5f),new Vector3(10,0,3),new Vector3(20,0,3.5f),new Vector3(-12,0,5),new Vector3(12,0,5),new Vector3(-10,0,-6.5f),new Vector3(0,0,-6.5f),new Vector3(10,0,-6.5f)};
         private static readonly int[][] stationLinks={new[]{1,5},new[]{0,2,5,7},new[]{1,3,8},new[]{2,4,6,9},new[]{3,6},new[]{0,1},new[]{3,4},new[]{1,8},new[]{2,7,9},new[]{3,8}};
-        private BoxCollider bossBoard;
+        private BoxCollider bossBoard;private bool bossBarriers;
         private int bossLane=-1;
         private bool IsZoneBoss(NativeMinion m)=>m!=null&&NativeZoneBossRules.Known(m.Kind);
         private void ResetZoneBoss()
         {
-            ZoneBoss=null;zoneBossActor=null;bossBoard=null;bossLane=-1;bossReady.Clear();bossHits.Clear();bossPools.Clear();Array.Clear(bossPartDamage,0,5);
+            ZoneBoss=null;zoneBossActor=null;bossBoard=null;bossBarriers=false;bossLane=-1;bossReady.Clear();bossHits.Clear();bossPools.Clear();Array.Clear(bossPartDamage,0,5);
             bossGap=bossHoldDamage=bossSelfDamage=bossChokeDamage=bossStaggerDamage=bossStaggerWindow=bossStaggerImmune=0;bossBehindAt=bossShedAdds=-100;bossLadle=bossPileup=false;bossPoolId=300;
         }
         private void SpawnZoneBoss(string kind,Vector3 at,float yaw)
@@ -90,7 +102,7 @@ namespace ChipArena.UnityConversion
             z.laneX1=z.laneX0+aim.x*(z.archetype==NativeZoneBossRules.Station?22:14);z.laneZ1=z.laneZ0+aim.z*(z.archetype==NativeZoneBossRules.Station?22:14);
             if(id=="alteration"&&ZoneHazards!=null){var targets=Pilots.Where(ZonePilot).Take(4).ToArray();ZoneHazards.glassX=targets.Select(p=>p.Body.position.x).ToArray();ZoneHazards.glassZ=targets.Select(p=>p.Body.position.z).ToArray();ZoneHazards.glassAt=targets.Select(p=>z.hitAt).ToArray();}
             if(id=="doors")z.holdSide=BossLocal(target.Body.position).x<0?-1:1;
-            z.variant=id=="call"?(z.phase==3?3:((z.actionId&1)==0?1:2)):id=="stomp"?(BossLocal(target.Body.position).x<0?0:1):0;
+            z.variant=id=="call"?(z.phase==3?3:((z.actionId&1)==0?1:2)):id=="stomp"?NativeZoneBossRules.StompLeg(BossLocal(target.Body.position).x,BossLocal(target.Body.position).z):0;
             NativeZoneBossRules.Action(z.archetype,id,out var a);bossReady[id]=Time+a.Cooldown;bossGap=Time+z.duration+(z.phase==3?.5f:.8f);bossHits.Clear();bossActionFired=false;bossChokeDamage=0;
         }
         private bool BossAvailable(string id)=>!bossReady.TryGetValue(id,out float at)||Time>=at;
@@ -198,12 +210,17 @@ namespace ChipArena.UnityConversion
             }
             if(z.action=="departure"||z.action=="charge")
             {
-                if(t>action.Strike){if(z.action=="departure"&&z.phase==3&&z.variant==0){var second=Pilots.Find(p=>p.Seat.id==z.targetSeat);if(second!=null&&ZonePilot(second)){BossStart("departure",second);z.variant=1;z.hitAt=Time+.6f;z.duration=.6f+action.Strike+action.Follow+action.Recover;bossGap=Time+z.duration+.5f;}}return;}var end=new Vector3(z.laneX1,at.y,z.laneZ1);var next=Vector3.Lerp(center,end,Mathf.Clamp01(t/action.Strike));
+                int chargeLeg=z.action=="departure"?NativeZoneBossRules.DepartureLeg(z.phase,t,action.Strike):t<=action.Strike?0:-1;if(chargeLeg<0)return;
+                bool second=chargeLeg==1;
+                float chargeTime=second?t-2:t;if(chargeTime>action.Strike)return;
+                var end=new Vector3(z.laneX1,at.y,z.laneZ1);
+                if(second){var swap=center;center=end;end=swap;}
+                var next=Vector3.Lerp(center,end,Mathf.Clamp01(chargeTime/action.Strike));
                 bool station=z.archetype==NativeZoneBossRules.Station;
                 bool outside=station?Math.Abs(next.x)>24||next.z>6||next.z<(z.phase>=2?-7:0):next.x< -42||next.x> -28||Math.Abs(next.z)>7;
                 if(outside||BossPathBlocked(at,next,station)){BossStagger("crash",2.2f);return;}
-                m.Body.position=next;m.Yaw=z.actionYaw;m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);
-                foreach(var p in Pilots)if(ZonePilot(p)){var d=p.Body.position-next;d.y=0;if(d.magnitude<(station?2.1f:3.2f))BossHurt(p,34,next,station?9:6);}
+                m.Body.position=next;m.Yaw=z.actionYaw+(second?180:0);m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);
+                foreach(var p in Pilots)if(ZonePilot(p)){var d=p.Body.position-next;d.y=0;if(d.magnitude<(station?2.1f:3.2f))BossHurt(p,34,next,station?9:6,strike:second?1:0);}
                 if(!station&&ZoneTouch(m.Id,221,.2f))bossPools.Add((next,Time,Time+3,1.8f,0,bossPoolId++,null,"charge"));return;
             }
             if(z.action=="terminus"||z.action=="slam")
@@ -217,7 +234,7 @@ namespace ChipArena.UnityConversion
                 }return;
             }
             if(z.action=="live-rail"&&Time<z.liveUntil&&Time>=(ZoneHazards?.leverUntil??-100)&&z.pantoBrokenAt<0)
-            {foreach(var p in Pilots)if(ZonePilot(p)&&p.Body.position.y<2)for(int i=0;i<6;i++){var puddle=new Vector3(-20+i%3*20,0,i<3?2:9);if((new Vector2(p.Body.position.x-puddle.x,p.Body.position.z-puddle.z)).magnitude<2.2f)ZoneHazardPilot(p,230+i,2,.25f,"grid",stun:.35f);}return;}
+            {foreach(var p in Pilots)if(ZonePilot(p)&&p.Body.position.y<2)for(int i=0;i<6;i++){var puddle=new Vector3(NativeStationBossArena.Puddles[i*3],0,NativeStationBossArena.Puddles[i*3+1]);if((new Vector2(p.Body.position.x-puddle.x,p.Body.position.z-puddle.z)).magnitude<2.2f)ZoneHazardPilot(p,230+i,2,.25f,"grid",stun:.35f);}return;}
             if(t>action.Strike)return;
             foreach(var p in Pilots)if(ZonePilot(p))
             {
@@ -287,8 +304,27 @@ namespace ChipArena.UnityConversion
         private void SyncZoneBossArena()
         {
             var z=ZoneBoss;if(z?.archetype!=NativeZoneBossRules.Station)return;
-            if(z.barrierDownAt>=0)foreach(var prop in AllBlocks.Where(p=>p.Definition.id.EndsWith("barrier-1",StringComparison.Ordinal)||p.Definition.id.EndsWith("barrier-2",StringComparison.Ordinal)))foreach(var c in prop.GetComponentsInChildren<Collider>())c.enabled=false;
-            if(z.boardDownAt>=0&&bossBoard==null){var go=new GameObject("Station fallen departure board");go.layer=PropLayer;go.transform.SetParent(root.transform);go.transform.position=new Vector3(0,2.2f,12);go.transform.rotation=Quaternion.Euler(30,0,0);bossBoard=go.AddComponent<BoxCollider>();bossBoard.size=new Vector3(10.4f,4.4f,2.2f);}
+            if(z.barrierDownAt>=0&&!bossBarriers)
+            {
+                bossBarriers=true;
+                foreach(var prop in AllBlocks.Where(p=>p.Definition.id.EndsWith("barrier-1",StringComparison.Ordinal)||p.Definition.id.EndsWith("barrier-2",StringComparison.Ordinal)))
+                {
+                    NativeStationBossStage.BarrierPose(prop.transform.position.x<0?-1:1,1,out var pivot,out var rot,out var move);
+                    var q=new Quaternion(rot.X,rot.Y,rot.Z,rot.W);var origin=new Vector3(pivot.X,pivot.Y,pivot.Z);var offset=new Vector3(move.X,move.Y,move.Z);
+                    foreach(var c in prop.GetComponentsInChildren<Collider>())
+                    {
+                        if(c is BoxCollider box){var go=new GameObject("Station fallen barrier collision");go.layer=PropLayer;go.transform.SetParent(root.transform);go.transform.position=origin+q*(box.transform.TransformPoint(box.center)-origin)+offset;go.transform.rotation=q*box.transform.rotation;go.AddComponent<BoxCollider>().size=Vector3.Scale(box.size,box.transform.lossyScale);}
+                        c.enabled=false;
+                    }
+                }
+            }
+            if(z.boardDownAt>=0&&bossBoard==null)
+            {
+                NativeStationBossStage.BoardPose(1,out var rot,out var move);var pivot=NativeStationBossStage.BoardPivot;
+                var q=new Quaternion(rot.X,rot.Y,rot.Z,rot.W);var origin=new Vector3(pivot.X,pivot.Y,pivot.Z);
+                var go=new GameObject("Station fallen departure board");go.layer=PropLayer;go.transform.SetParent(root.transform);
+                go.transform.position=origin+q*(new Vector3(NativeStationBossArena.BoardX,NativeStationBossArena.BoardY,NativeStationBossArena.BoardZ)-origin)+new Vector3(move.X,move.Y,move.Z);go.transform.rotation=q;bossBoard=go.AddComponent<BoxCollider>();bossBoard.size=new Vector3(10.4f,4.4f,2.2f);
+            }
             if(Replica||zoneBossActor==null||ZoneHazards==null||z.phase<2||Time<ZoneHazards.leverUntil)return;
             if(NativeZoneHazardFrame.TrainSweep(ZoneHazards.trainAt,Time-1d/60,Time,out double left,out double right))
             {var p=zoneBossActor.Body.position;float extent=Math.Abs(Mathf.Cos(zoneBossActor.Yaw*Mathf.Deg2Rad))*4.95f+Math.Abs(Mathf.Sin(zoneBossActor.Yaw*Mathf.Deg2Rad))*1.45f;
