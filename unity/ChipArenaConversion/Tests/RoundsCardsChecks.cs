@@ -11,6 +11,28 @@ internal static class RoundsCardsChecks
         int checks=0;void Check(bool yes,string why){checks++;if(!yes)throw new Exception("Rounds adaptations: "+why);}
         var options=new JsonSerializerOptions{IncludeFields=true};
         ConversionContent Load(){var c=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);NativeMovementContent.Apply(c);return c;}
+        void Row(string stat,string op,double value,string text,string tone)
+        {var line=NativeChipStatText.Effect(NativeMovementContent.Effect(stat,op,value));Check(line!=null&&line.text==text&&line.tone==tone,"stat row "+stat+" "+value);}
+        Row("speed","mul",1.25,"+25% Move speed","good");Row("damage","mul",.75,"-25% Damage","bad");
+        Row("reloadSpeed","mul",.8,"-20% Reload time","good");Row("reloadSpeed","mul",1.2,"+20% Reload time","bad");
+        Row("damageTaken","mul",1.15,"+15% Damage taken","bad");Row("blockCooldown","mul",.8,"-20% Block cooldown","good");
+        Row("extraAirJumps","add",2,"+2 Air jumps","good");Row("blockWindow","add",.2,"+0.2 s Block window","good");
+        Row("lifeSteal","add",.15,"+15% Life steal","good");Row("fanDegrees","add",12,"+12° Spread","neutral");
+        Row("playerGravity","mul",.85,"-15% Gravity","neutral");Row("vacuum","add",700,"Hits pull enemies inward","good");
+        Check(NativeChipStatText.Effect(NativeMovementContent.Effect("boomerang","add",1))==null,"switch description is not a made-up stat");
+        Check(NativeChipStatText.Effect(NativeMovementContent.Effect("damage","mul",1))==null,"no zero delta row");
+        var rowChips=NativeMovementContent.Chips().Concat(NativeRoundsCards.Chips()).Concat(NativeRoundsPacks.Chips()).ToArray();
+        foreach(var c in rowChips)
+        {
+            string before=JsonSerializer.Serialize(c,options);var rows=NativeChipStatText.Lines(c);
+            Check(rows.All(x=>x.tone=="good"||x.tone=="bad"||x.tone=="neutral"),"valid tones "+c.id);
+            Check(rows.Length==c.effects.Count(f=>NativeChipStatText.Effect(f)!=null),"every numeric effect has a row "+c.id);
+            Check(before==JsonSerializer.Serialize(c,options),"display leaves chip gameplay and hash unchanged "+c.id);
+            Check(rows.Select(x=>x.tone=="good"?0:x.tone=="neutral"?1:2).SequenceEqual(rows.Select(x=>x.tone=="good"?0:x.tone=="neutral"?1:2).OrderBy(x=>x)),"benefits before penalties "+c.id);
+        }
+        var oldCulture=System.Globalization.CultureInfo.CurrentCulture;
+        try{System.Globalization.CultureInfo.CurrentCulture=new System.Globalization.CultureInfo("fr-FR");Row("blockWindow","add",.2,"+0.2 s Block window","good");}
+        finally{System.Globalization.CultureInfo.CurrentCulture=oldCulture;}
         var vanilla=Load();string revision=vanilla.contentRevision;var content=Load();NativeRoundsCards.Apply(content);content.Validate();
         var chips=NativeRoundsCards.Chips();Check(chips.Length==20&&chips.Select(c=>c.id).Distinct().Count()==20,"20 unique adaptations");
         Check(content.chips.Length==vanilla.chips.Length+20&&content.contentRevision!=revision,"optional catalog and handshake");

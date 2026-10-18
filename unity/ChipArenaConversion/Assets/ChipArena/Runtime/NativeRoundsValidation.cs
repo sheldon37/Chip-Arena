@@ -17,6 +17,8 @@ namespace ChipArena.UnityConversion
                 NativeRoundsCards.Apply(Content);NativeRoundsPacks.Apply(Content,NativeRoundsPacks.Ids);
                 foreach(var chip in NativeRoundsCards.Chips().Concat(NativeRoundsPacks.Chips()))
                 {
+                    var rows=NativeChipCard.Lines(chip);Check(rows.Length==NativeChipStatText.Lines(chip).Length,"adapted stat rows reach renderer");
+                    Check(ReferenceEquals(rows,NativeChipCard.Lines(chip)),"stat rows cached between draw passes");
                     Check(ImplementedChip(chip),"offered mechanics implemented: "+chip.id);
                     var copy=JsonUtility.FromJson<ContentChip>(JsonUtility.ToJson(chip));Check(copy.author==chip.author&&copy.sourceCard==chip.sourceCard,"Unity attribution round trip");
                 }

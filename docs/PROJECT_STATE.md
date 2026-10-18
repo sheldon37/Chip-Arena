@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-18 Astra chip stat-color fallback (`codex/mod-chip-tones`, base #285 `a566672`): runtime-added adaptations/movement/external chips now use the existing green benefit/red penalty/neutral stat rows. No gameplay changes. Focused checks pass; compile and publication receipts in PR. #285 main-menu Mods entry published successfully at 20:05:06 UTC.
+
 2026-10-18 Astra main-menu Mods entry candidate (`codex/rounds-installed-packs`, base #284 `17c857b`): numbered MODS selection opens the existing restart-gated pack controls on its own screen. Settings access retained. Additional installed-pack adaptations remain pending. Validation/publication receipts in PR.
 
 2026-10-18 Astra additional ROUNDS packs candidate (`codex/rounds-more-packs`, base merged #283 `b60ab39`): 118 new optional adaptations across VECs/RSC/Arcana/BSC/Keys/PCE/WWC/CPC, independent toggles, cross-pack mechanic exclusions and reserved external IDs. Seven packs are partial; the rest of Booga is not complete. Source version gaps and outstanding cards are recorded in `unity/ChipArenaConversion/docs/ROUNDS-MORE-PACKS.md`. Focused checks and Unity compile pass; full/native/publication receipts in PR. #283 passed hosted gates, merged, builder synced; publication not yet confirmed.
