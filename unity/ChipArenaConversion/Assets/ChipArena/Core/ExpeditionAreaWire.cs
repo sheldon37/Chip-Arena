@@ -30,8 +30,9 @@ namespace ChipArena.UnityConversion
             }
             expected=ticket.Copy();received=-1;sent=0;return true;
         }
+        // Unity JsonUtility decodes an absent optional cohort as an empty string. Matches treats both as absent.
         public static bool Valid(ExpeditionCohortTicket t)=>t!=null&&ExpeditionValidation.Id(t.run)&&ExpeditionValidation.Id(t.area)&&
-            t.epoch>0&&t.serial>0&&t.layout!=null&&t.layout.Length==64&&t.layout.All(Uri.IsHexDigit)&&(t.cohort==null||ExpeditionValidation.Id(t.cohort));
+            t.epoch>0&&t.serial>0&&t.layout!=null&&t.layout.Length==64&&t.layout.All(Uri.IsHexDigit)&&(string.IsNullOrEmpty(t.cohort)||ExpeditionValidation.Id(t.cohort));
         public ExpeditionAreaEnvelope<T> Frame(T payload)
         {
             if(expected==null||payload==null)throw new InvalidOperationException("Bound identity and payload required.");

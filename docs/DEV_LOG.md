@@ -1,3 +1,9 @@
+## 2026-10-18 — Astra: initial Expedition ticket rejected after Unity serialization
+
+- Branch `codex/expedition-initial-ticket`, base shared/builder `447b8ccb39ec` (#273, published as ca9403f0 at 01:31 UTC). Owner retest shows guest still in lobby, responsive 76 ms connection, LOADING EXPEDITION status; host is in city. Prior timeout protection did not fix the initial ticket rejection.
+- Root defect: initial cohorts have null cohort ids, which Unity JsonUtility decodes as empty strings. ExpeditionAreaChannel.Valid rejected the empty string, so ExpeditionViewReceiver.BindArea silently rejected the initial public view; subsequent world frames could never match a bound ticket. Accept empty optional cohort consistently with ExpeditionCohortTicket.Matches; malformed nonempty ids remain rejected.
+- Added managed regressions for null/empty initial tickets and whitespace rejection. Extended the real Unity activation fixture: round-trip initial public/private messages and a hub frame for each of four members, bind the receiver, capture readiness and acknowledge the decoded identity. Previous native fixture acknowledged initial tickets directly and only tested codec transfer tickets with nonempty cohort ids.
+- Verification/publication results recorded in the task PR after gates complete. Requires the native fixture to pass before publication; no claim of human host/guest acceptance yet.
 ## 2026-10-18 — Astra: protect multiplayer Expedition startup from loading stalls
 
 - Branch `codex/expedition-guest-start`, base shared `ffeee79c2c97`. Owner reports host enters city while guest stays in lobby with CONNECTION STALLED. Code inspection finds synchronous four-area construction without a loading notice, the normal 12 s disconnect deadline, and 20 Hz public/private/frame batches capable of overflowing a guest's 128-packet queue while loading.
