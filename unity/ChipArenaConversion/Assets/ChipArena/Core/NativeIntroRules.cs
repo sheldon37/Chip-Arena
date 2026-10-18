@@ -3,6 +3,9 @@ namespace ChipArena.UnityConversion
 {
     public static class NativeIntroRules
     {
+        // Zone bosses arrive inside their live arena; opening a pilot entrance stage hides that presentation.
+        public static bool Staged(bool matchIntro,bool holding,string cinematic,string zoneBoss)=>
+            matchIntro||holding&&cinematic=="intro"&&!NativeZoneBossRules.Known(zoneBoss);
         public static string Style(NativeSeat seat)
         {
             var access=seat.access??NativeAccess.Guest;double now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();if(seat.spec=="siren"&&(seat.AuthorityBoss||access.Allows("weapon:siren",now)))return "dev-siren";

@@ -9,6 +9,13 @@ namespace ChipArena.UnityConversion
         public static void Run()
         {
             int count=0;void Check(bool ok,string why){if(!ok)throw new Exception("Zone boss rules: "+why);count++;}
+            Check(NativeIntroRules.Staged(false,true,"intro",null),"Ward Zero retains the staged Siren entrance");
+            Check(!NativeIntroRules.Staged(false,false,"intro",null)&&!NativeIntroRules.Staged(false,true,"reveal",null),"only an active intro opens a staged entrance");
+            foreach(var kind in new[]{NativeZoneBossRules.Station,NativeZoneBossRules.Ironworks})
+            {
+                Check(!NativeIntroRules.Staged(false,true,"intro",kind),"zone boss arrival renders inside its live arena");
+                Check(NativeIntroRules.Staged(true,false,null,kind),"match pilot entrances remain staged");
+            }
             var options=new JsonSerializerOptions{IncludeFields=true};
             foreach(string boss in new[]{NativeZoneBossRules.Station,NativeZoneBossRules.Ironworks})
             {

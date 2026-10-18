@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
-        private bool IntroActive=>match?.Phase==NativePhase.Intro||arena?.Pve?.Holding==true&&arena.Pve.Cinematic=="intro";
+        private bool IntroActive=>NativeIntroRules.Staged(match?.Phase==NativePhase.Intro,arena?.Pve?.Holding==true,arena?.Pve?.Cinematic,arena?.ZoneBoss?.archetype);
         private NativePilot IntroPilot=>match.Phase==NativePhase.Intro?arena.Pilots.Find(p=>p.Seat.id==match.IntroSeat):arena.Pve.Boss;
         // The staged entrance (NativeIntroRules.Entrance): the replicated style, or the pilot's own weapon signature when this
         // client cannot stage it (a retired generic entrance from an older host, an unknown id).

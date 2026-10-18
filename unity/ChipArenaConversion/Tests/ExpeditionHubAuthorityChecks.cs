@@ -62,7 +62,7 @@ internal static class ExpeditionHubAuthorityChecks
         var input=new InputFrame{Attack=true,Shoot=true,AbilityQ=true,AbilityE=true,AbilityEHeld=true,AbilityEReleased=true,Hadoken=true,HadokenHeld=true,Uppercut=true,SirenAbility=4,Interact=true,Jump=true,Roll=true,Sprint=true,X=1};
         var held=ExpeditionHubRules.Holster(input);Check(!held.Attack&&!held.Shoot&&!held.AbilityQ&&!held.AbilityE&&!held.AbilityEHeld&&!held.Hadoken&&held.SirenAbility==0,"all weapon intents removed");
         Check(held.Interact&&held.Jump&&held.Roll&&held.Sprint&&held.X==1,"movement and interactions retained");
-        for(int n=0;n<=8;n++)Check(ExpeditionHubRules.Cap(n)==(n==0?0:Math.Min(16,2+2*n)),"living cap "+n);
+        for(int n=0;n<=8;n++)Check(ExpeditionHubRules.Cap(n)==(n==0?0:Math.Min(32,4+4*n)),"living cap "+n);
         foreach(var row in new[]{("near",10f),("mid",15f),("far",20f)})Check(Math.Abs(25*ExpeditionHubRules.Reward(row.Item1)-row.Item2)<.001,"ring payout "+row.Item1);
         foreach(var ring in new[]{"near","mid","far"})Check(!ExpeditionHubRules.Kind(ring,"hulk",99999),"no hub Hulks");
         Check(!ExpeditionHubRules.Kind("near","spitter",999)&&!ExpeditionHubRules.Kind("far","brute",359)&&ExpeditionHubRules.Kind("far","brute",360),"ring roster and brute timer");

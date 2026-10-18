@@ -48,8 +48,8 @@ namespace ChipArena.UnityConversion
     }
     public static class ExpeditionHubRules
     {
-        public const double HolsterDelay=.25,AggroDelay=1.5,SpawnInterval=3,FarSeconds=15,IdleSeconds=180,LostSeconds=30;
-        public static int Cap(int alive)=>alive<=0?0:Math.Min(16,2+2*alive);
+        public const double HolsterDelay=.25,AggroDelay=1.5,SpawnInterval=1.5,FarSeconds=15,IdleSeconds=180,LostSeconds=30;
+        public static int Cap(int alive)=>alive<=0?0:Math.Min(32,4+4*alive);
         public static float Reward(string ring)=>ring=="near"?.4f:ring=="mid"?.6f:ring=="far"?.8f:0;
         public static float Weight(string ring)=>ring=="near"?.35f:ring=="mid"?.7f:ring=="far"?1:0;
         public static bool Kind(string ring,string kind,double elapsed)=>kind=="shambler"||kind=="runner"||(ring=="mid"||ring=="far")&&kind=="spitter"||ring=="far"&&kind=="brute"&&elapsed>=360;
