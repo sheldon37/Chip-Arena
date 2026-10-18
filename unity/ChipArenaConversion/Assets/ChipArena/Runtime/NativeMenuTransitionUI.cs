@@ -23,9 +23,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The screen the menu is on, or going to while a transition covers the one it is leaving.</summary>
         private MenuScreen MenuTarget=>menuNext??menuScreen;
         // The transition's title and eyebrow per MenuScreen (Home, Play, Create, Join, Lobby, Boss, Customize, Settings,
-        // Account, Dev, Catalogue), constants.
-        private static readonly string[] MenuTitles={"MAIN MENU","PLAY VS BOTS","CREATE ROOM","JOIN ROOM","ROOM LOBBY","EXPEDITIONS","CUSTOMIZE","SETTINGS","ACCOUNT","DEV MENU","CATALOGUE"};
-        private static readonly string[] MenuEyebrows={"CHIP ARENA","LOCAL MATCH","PRIVATE ROOM","PRIVATE ROOM","PRIVATE ROOM","PVE","LOCKER","SYSTEM","PILOT","DEVELOPER","SOURCE REFERENCE"};
+        // Account, Dev, Catalogue, Mods), constants.
+        private static readonly string[] MenuTitles={"MAIN MENU","PLAY VS BOTS","CREATE ROOM","JOIN ROOM","ROOM LOBBY","EXPEDITIONS","CUSTOMIZE","SETTINGS","ACCOUNT","DEV MENU","CATALOGUE","MODS"};
+        private static readonly string[] MenuEyebrows={"CHIP ARENA","LOCAL MATCH","PRIVATE ROOM","PRIVATE ROOM","PRIVATE ROOM","PVE","LOCKER","SYSTEM","PILOT","DEVELOPER","SOURCE REFERENCE","CHIP PACKS"};
         private const string SandboxTitle="DEV SANDBOX",SandboxEyebrow="DEVELOPER";
 
         // Go's display half: through the transition, or at once.

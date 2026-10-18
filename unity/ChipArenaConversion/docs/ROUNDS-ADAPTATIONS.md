@@ -1,6 +1,6 @@
 # Cards+ adaptations — pack 1
 
-Owner selected adaptations on 2026-10-18. This release covers the 20 Cards+ concepts, not the full Booga profile. Enable Settings > Mods > Bundled adaptations > Cards+ adaptations, then restart. Off by default. All player-hosted peers must select the same pack and external files. Dedicated servers remain vanilla.
+Owner selected adaptations on 2026-10-18. This release covers the 20 Cards+ concepts, not the full Booga profile. Enable Main menu > Mods > Bundled adaptations > Cards+ adaptations, then restart. Off by default. All player-hosted peers must select the same pack and external files. Dedicated servers remain vanilla.
 
 Original concepts: willis81808 (Erick Willis), CardsPlus 1.8.12 in the supplied profile. Reference: https://thunderstore.io/c/rounds/p/willis81808/CardsPlus/ and https://github.com/willis81808/CardsPlus . Repository license observed 2026-10-18: MIT; full notice ships as Resources/CardsPlus-LICENSE.txt and is copied into the local Mods folder. No original DLLs, artwork or implementation code imported.
 

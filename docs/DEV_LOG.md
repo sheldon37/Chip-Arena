@@ -1,3 +1,9 @@
+## 2026-10-18 — Astra: main-menu Mods entry
+
+- Branch `codex/rounds-installed-packs`, base shared #284 `17c857b`. Owner could not find the pack controls and requested a separate main-menu selection. Add numbered MODS entry (5/keypad 5), dedicated scrollable pack screen, existing transitions, Done/Escape return and column fitting for five entries. Reuse current menu components; no gameplay, animation, hitbox or network changes.
+- Existing Settings controls remain available including while paused. Selections still save immediately, default off and apply after restart. Update help/docs to the main-menu route. Remaining installed-pack adaptation work is pending; this change does not claim further packs.
+- Source structure (2519 files) and diff checks pass; pinned Unity compilation and hosted gate results recorded in PR. Windows rendered menu/input verification and publication remain pending at this checkpoint.
+
 ## 2026-10-18 — Astra: additional ROUNDS adaptations, batch 2
 
 - Branch `codex/rounds-more-packs`, base merged #283 `b60ab39`. Owner authorized remaining packs. This candidate adds 118 reviewed adaptations across eight packs, bringing bundled total to 138. It does not complete the profile: VECs covers its 12 concepts; other toggles explicitly say partial. Detailed source commits, declared-version gaps, mappings and pending families are in `unity/ChipArenaConversion/docs/ROUNDS-MORE-PACKS.md`. No third-party executable code/art copied.

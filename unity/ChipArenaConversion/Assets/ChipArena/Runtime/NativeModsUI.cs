@@ -9,9 +9,9 @@ namespace ChipArena.UnityConversion
     {
         private bool activeRoundsCardsPlus;private string[] activeRoundsPacks=Array.Empty<string>();
         private string modsError="",modsFingerprint="Vanilla";private string[] modsFiles=Array.Empty<string>();private int activeModRules;private string[] activeChipPacks=Array.Empty<string>();
-        private const string ModsHelp="Chip Arena JSON chip packs, schema 1\nUse Settings > Mods > Create example chip pack. Enable the file and restart. Share the exact JSON with friends; they must enable the same rules and packs. No code, DLLs or automatic downloads.\nPack IDs beginning rounds- are reserved for bundled adaptations. Pack/chip IDs: 2-24 lowercase letters/digits/hyphens, starting with a letter. Version: major.minor.patch. Dependencies: requires [pack-id@version]. Runtime chip IDs: pack-id:chip-id.\n16 enabled packs, 64 external chips total, 128 KiB/file. Ordinary rarities; tags all/melee/ranged/magic/projectile/roll. 1-10 stacks, 1-6 effects/chip.\nStats: extraAirJumps, speed, jumpPower, playerGravity, rollDistance, rollSpeed, rollCost, staminaRegen, maxStamina, dashCooldown, bounces, impulse, projectileSpeed, projectileSize, attackRate, damage, hp, knockbackTaken.\nEffects: add 0-100, mul 0.25-3. extraAirJumps and bounces require add with a whole number 0-6. Optional author at pack or chip level (chip overrides pack), up to 48 plain-text characters. No set, mechanic or excludes. Names up to 48 characters; descriptions up to 240.\nAir jumps add to the weapon's natural budget, capped at 6. Speed caps at 2.5x; gravity at 0.1-3x; jump power at 0.1-2.5x. Invalid enabled packs block hosting/joining; disable and restart. Selections and packs persist across game updates.\n";
+        private const string ModsHelp="Chip Arena JSON chip packs, schema 1\nUse Main menu > Mods > Create example chip pack. Enable the file and restart. Share the exact JSON with friends; they must enable the same rules and packs. No code, DLLs or automatic downloads.\nPack IDs beginning rounds- are reserved for bundled adaptations. Pack/chip IDs: 2-24 lowercase letters/digits/hyphens, starting with a letter. Version: major.minor.patch. Dependencies: requires [pack-id@version]. Runtime chip IDs: pack-id:chip-id.\n16 enabled packs, 64 external chips total, 128 KiB/file. Ordinary rarities; tags all/melee/ranged/magic/projectile/roll. 1-10 stacks, 1-6 effects/chip.\nStats: extraAirJumps, speed, jumpPower, playerGravity, rollDistance, rollSpeed, rollCost, staminaRegen, maxStamina, dashCooldown, bounces, impulse, projectileSpeed, projectileSize, attackRate, damage, hp, knockbackTaken.\nEffects: add 0-100, mul 0.25-3. extraAirJumps and bounces require add with a whole number 0-6. Optional author at pack or chip level (chip overrides pack), up to 48 plain-text characters. No set, mechanic or excludes. Names up to 48 characters; descriptions up to 240.\nAir jumps add to the weapon's natural budget, capped at 6. Speed caps at 2.5x; gravity at 0.1-3x; jump power at 0.1-2.5x. Invalid enabled packs block hosting/joining; disable and restart. Selections and packs persist across game updates.\n";
         private string ModsDirectory=>Path.Combine(NativeUserDataPath,"Mods");
-        private bool ModsReady{get{if(modsError.Length==0)return true;networkStatus="Mods could not be loaded. Check Settings > Mods, then restart.";return false;}}
+        private bool ModsReady{get{if(modsError.Length==0)return true;networkStatus="Mods could not be loaded. Check Main menu > Mods, then restart.";return false;}}
         private void LoadMods()
         {
             activeRoundsCardsPlus=prefs.roundsCardsPlus;activeRoundsPacks=(prefs.roundsPacks??Array.Empty<string>()).ToArray();
@@ -37,6 +37,12 @@ namespace ChipArena.UnityConversion
             catch(Exception e)when(e is IOException||e is UnauthorizedAccessException||e is ArgumentException||e is InvalidOperationException){modsError=e.Message;Debug.LogWarning("Mods: "+modsError);}
         }
         private void ScanMods()=>modsFiles=Directory.GetFiles(ModsDirectory,"*.json",SearchOption.TopDirectoryOnly).Select(Path.GetFileName).OrderBy(x=>x,StringComparer.Ordinal).Take(64).ToArray();
+        private void ModsScreen(float age)
+        {
+            var l=BeginScreen("CHIP PACKS","Mods",760,age);if(l.Closed){Go(MenuScreen.Home);return;}
+            ScreenBody(l,ModsBody);
+            if(ScreenActions(l,("check","Done",true,true))==0)Go(MenuScreen.Home);
+        }
         private void ModsBody()
         {
             Field("Mods");Fine("Active: "+(modsFingerprint=="Vanilla"?"Vanilla":modsFingerprint.Substring(0,12))+". Players must use the same rules and exact chip-pack files to join.");
