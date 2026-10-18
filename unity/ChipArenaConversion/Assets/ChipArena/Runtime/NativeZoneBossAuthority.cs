@@ -180,13 +180,13 @@ namespace ChipArena.UnityConversion
             }
             if(!station)
             {
-                var goal=NativeIronworksBossRoute.Goal(new System.Numerics.Vector3(at.x,at.y,at.z),new System.Numerics.Vector3(target.Body.position.x,target.Body.position.y,target.Body.position.z));
+                var goal=NativeConverterRoute.Goal(new System.Numerics.Vector3(at.x,at.y,at.z),new System.Numerics.Vector3(target.Body.position.x,target.Body.position.y,target.Body.position.z));
                 delta=new Vector3(goal.X,goal.Y,goal.Z)-at;
                 m.Yaw=Mathf.MoveTowardsAngle(m.Yaw,Mathf.Atan2(delta.x,delta.z)*Mathf.Rad2Deg,(ZoneBoss.phase==3?65:35)/60f);
                 m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);
             }
             Vector3 next=at+delta.normalized*Math.Min(delta.magnitude,(station?2.6f:1.6f)/60);
-            if(station){next.x=Mathf.Clamp(next.x,-20,20);next.z=Mathf.Clamp(next.z,ZoneBoss.phase>=2?-6.5f:1.5f,5);}else if(!NativeIronworksBossRoute.Contains(next.x,next.z))return;
+            if(station){next.x=Mathf.Clamp(next.x,-20,20);next.z=Mathf.Clamp(next.z,ZoneBoss.phase>=2?-6.5f:1.5f,5);}else if(!NativeConverterRoute.Contains(next.x,next.z))return;
             if(!BossPathBlocked(at,next,station))m.Body.position=next;
         }
         private bool BossPathBlocked(Vector3 from,Vector3 to,bool station)
@@ -224,7 +224,7 @@ namespace ChipArena.UnityConversion
                 if(second){var swap=center;center=end;end=swap;}
                 var next=Vector3.Lerp(center,end,Mathf.Clamp01(chargeTime/action.Strike));
                 bool station=z.archetype==NativeZoneBossRules.Station;
-                bool outside=station?Math.Abs(next.x)>24||next.z>6||next.z<(z.phase>=2?-7:0):!NativeIronworksBossRoute.Contains(next.x,next.z);
+                bool outside=station?Math.Abs(next.x)>24||next.z>6||next.z<(z.phase>=2?-7:0):!NativeConverterRoute.Contains(next.x,next.z);
                 if(outside||BossPathBlocked(at,next,station)){BossStagger("crash",2.2f);return;}
                 m.Body.position=next;m.Yaw=z.actionYaw+(second?180:0);m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);
                 foreach(var p in Pilots)if(ZonePilot(p)){var d=p.Body.position-next;d.y=0;if(d.magnitude<(station?2.1f:3.2f))BossHurt(p,34,next,station?9:6,strike:second?1:0);}

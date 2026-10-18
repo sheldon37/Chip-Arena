@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
             foreach(float targetX in new[]{-35f,12f})
             {
                 var at=new System.Numerics.Vector3(targetX<0?12:-35,0,5);var target=new System.Numerics.Vector3(targetX,0,5);
-                for(int i=0;i<4000;i++){var goal=NativeIronworksBossRoute.Goal(at,target);var d=goal-at;if(d.Length()>.01f)at+=System.Numerics.Vector3.Normalize(d)*Math.Min(d.Length(),1.6f/60);Check(NativeIronworksBossRoute.Contains(at.X,at.Z),"door route stays inside boss travel area");}
+                for(int i=0;i<4000;i++){var goal=NativeConverterRoute.Goal(at,target);var d=goal-at;if(d.Length()>.01f)at+=System.Numerics.Vector3.Normalize(d)*Math.Min(d.Length(),1.6f/60);Check(NativeConverterRoute.Contains(at.X,at.Z),"door route stays inside boss travel area");}
                 Check(System.Numerics.Vector3.Distance(at,target)<.1f,"Converter crosses doorway in either direction");
             }
             var options=new JsonSerializerOptions{IncludeFields=true};

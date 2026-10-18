@@ -2,7 +2,7 @@ using System;
 using System.Numerics;
 namespace ChipArena.UnityConversion
 {
-    public static class NativeIronworksBossRoute
+    public static class NativeConverterRoute
     {
         // The hall and casting floor are joined by the enlarged, boss-opened shutter.
         public static bool Contains(float x,float z)=>x>=-42&&x<=-28&&Math.Abs(z)<=7
