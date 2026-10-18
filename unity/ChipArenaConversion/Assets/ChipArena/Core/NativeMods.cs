@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeChipPack
     {
-        public int schema;public string id,name,version;public string[] requires;public ContentChip[] chips;
+        public int schema;public string id,name,version,author;public string[] requires;public ContentChip[] chips;
     }
     public sealed class NativeLoadedPack {public NativeChipPack Pack;public string Digest;}
     public static class NativeMods
@@ -17,12 +17,15 @@ namespace ChipArena.UnityConversion
         private static readonly Regex Version=new Regex("^[0-9]{1,4}\\.[0-9]{1,4}\\.[0-9]{1,4}$",RegexOptions.CultureInvariant);
         private static readonly HashSet<string> Stats=new HashSet<string>{"extraAirJumps","speed","jumpPower","playerGravity","rollDistance","rollSpeed","rollCost","staminaRegen","maxStamina","dashCooldown","bounces","impulse","projectileSpeed","projectileSize","attackRate","damage","hp","knockbackTaken"};
         private static readonly HashSet<string> Tags=new HashSet<string>{"all","melee","ranged","magic","projectile","roll"};
+        public static bool CreditValid(string text)=>text==null||text.Length<=48&&!text.Any(c=>char.IsControl(c)||c=='<'||c=='>');
+        public static string Credit(ContentChip chip)=>string.IsNullOrWhiteSpace(chip?.author)?"":"By "+chip.author;
         public static void Validate(NativeChipPack pack,ConversionContent content)
         {
             void Require(bool ok,string why){if(!ok)throw new ArgumentException("Chip pack: "+why);}
             Require(pack!=null,"missing manifest");Require(pack.schema==1,"unsupported schema (expected 1)");
             Require(pack.id!=null&&Id.IsMatch(pack.id),"invalid pack id");Require(pack.version!=null&&Version.IsMatch(pack.version),"version must be major.minor.patch");
             Require(!string.IsNullOrWhiteSpace(pack.name)&&pack.name.Length<=48&&!pack.name.Any(char.IsControl),"invalid display name");
+            Require(CreditValid(pack.author),"invalid pack author");
             Require(pack.chips!=null&&pack.chips.Length>0&&pack.chips.Length<=MaxChips,"expected 1–64 chips");
             Require(pack.requires==null||pack.requires.Length<=MaxPacks&&pack.requires.All(x=>x!=null&&x.Length<=40),"invalid dependencies");
             var ids=new HashSet<string>();
@@ -30,6 +33,7 @@ namespace ChipArena.UnityConversion
             {
                 Require(c!=null&&c.id!=null&&Id.IsMatch(c.id)&&ids.Add(c.id),"invalid or duplicate chip id");
                 Require(!string.IsNullOrWhiteSpace(c.name)&&c.name.Length<=48&&!c.name.Any(char.IsControl),"invalid chip name");
+                Require(CreditValid(c.author)&&CreditValid(c.sourcePack)&&CreditValid(c.sourceCard),"invalid attribution");
                 Require(c.description!=null&&c.description.Length<=240&&!c.description.Any(char.IsControl),"invalid chip description");
                 Require(content.rarities.Any(r=>r.id==c.rarity&&r.weight>0),"unsupported rarity");
                 Require(c.max>=1&&c.max<=10,"stack limit must be 1–10");
@@ -56,7 +60,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in packs)foreach(var dependency in p.Pack.requires??Array.Empty<string>())if(!versions.Contains(dependency))throw new ArgumentException("Missing dependency "+dependency+" required by "+p.Pack.id);
             if(packs.Sum(p=>p.Pack.chips.Length)>MaxChips)throw new ArgumentException("At most 64 external chips may be enabled");
             var additions=packs.SelectMany(p=>p.Pack.chips.Select(c=>new ContentChip{id=p.Pack.id+":"+c.id,name=c.name,description=c.description,rarity=c.rarity,max=c.max,
-                icon="sparkles",tags=c.tags.ToArray(),excludes=Array.Empty<string>(),effects=c.effects.Select(e=>new ChipEffect{stat=e.stat,op=e.op,value=e.value}).ToArray()})).ToArray();
+                author=string.IsNullOrWhiteSpace(c.author)?p.Pack.author:c.author,sourcePack=p.Pack.name,sourceCard=c.sourceCard,icon="sparkles",tags=c.tags.ToArray(),excludes=Array.Empty<string>(),effects=c.effects.Select(e=>new ChipEffect{stat=e.stat,op=e.op,value=e.value}).ToArray()})).ToArray();
             if(content.chips.Length+additions.Length>MaxCatalog)throw new ArgumentException("Chip catalog exceeds 512 entries");
             if(additions.Any(c=>content.chips.Any(old=>old.id==c.id)))throw new ArgumentException("External chip ID collision");
             if(rules==0&&packs.Length==0)return "Vanilla";

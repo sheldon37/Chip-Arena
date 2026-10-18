@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class ChipEffect { public string stat,op;public double value; }
     [Serializable] public sealed class ContentChip
-    { public string id,name,description,rarity,icon,mechanic;public string[] tags,excludes;public int max;public ChipEffect[] effects; }
+    { public string id,name,description,rarity,icon,mechanic,author,sourcePack,sourceCard;public string[] tags,excludes;public int max;public ChipEffect[] effects; }
     [Serializable] public sealed class RarityData { public string id,name,color; public double weight,leetWeight; }
     [Serializable] public sealed class ExclusionData { public string spec; public string[] ids; }
     [Serializable] public sealed class ExclusiveOdds { public string spec;public int guaranteed;public double chance; }

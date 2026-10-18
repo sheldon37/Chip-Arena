@@ -26,8 +26,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<count;i++){var hit=shotSweeps[i];if(!accepts(hit.collider)||closest.HasValue&&hit.distance>=closest.Value.Distance)continue;closest=new NativeContact{Collider=hit.collider,Point=from+delta.normalized*hit.distance,Contact=hit.point,Normal=hit.normal,Distance=hit.distance};}
             return closest;
         }
-        private bool Has(NativePilot p,string chip)=>p!=null&&p.Seat.chips.TryGetValue(chip,out int count)&&count>0;
-        private bool Has(NativeBullet p,string chip)=>p.Mods.TryGetValue(chip,out int count)&&count!=0;
+        private bool Has(NativePilot p,string chip)=>p!=null&&NativeRoundsCards.Has(p.Seat.chips,chip);
+        private bool Has(NativeBullet p,string chip)=>p.Mods.TryGetValue(chip,out int count)&&count!=0||NativeRoundsCards.Has(p.Mods,chip);
         private void Fire(NativePilot p,bool fan=false,NativeBowShot bow=null)
         {
             var w=p.Weapon;bool pong=bow?.Detail!="rain"&&p.Stats["pong"]>0&&!w.devOnly&&p.VolleyIndex++%Math.Max(1,(int)Math.Ceiling(.24/w.interval))==0;
