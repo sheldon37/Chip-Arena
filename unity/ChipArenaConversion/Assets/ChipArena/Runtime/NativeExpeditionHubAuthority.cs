@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
             ResetHub();Expedition.Session.Sources.Hub=()=>HubOn?hubAuthority.View():null;
             if(expeditionArea.role!="world")return;
             var layout=ExpeditionHubLayout.Parse(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text,expeditionArea.id);if(layout==null)return;
-            hubAuthority=new ExpeditionHubAuthority(layout,HubClock);hubSpawnAt=Time+3;hubMaintainAt=Time;
+            hubAuthority=new ExpeditionHubAuthority(layout,HubClock);hubSpawnAt=Time+(float)ExpeditionHubRules.SpawnInterval;hubMaintainAt=Time;
             // Dedicated collision layer: only horde bodies collide, never pilots, scenery or previews.
             const int wardLayer=28;for(int layer=0;layer<32;layer++)Physics.IgnoreLayerCollision(wardLayer,layer,layer!=11);
             foreach(var gate in layout.Gates)
@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion
                     {hubMobs.Remove(m.Id);RemoveMinion(m,false);}
                 }
             }
-            if(Time<hubSpawnAt)return;hubSpawnAt=Time+3;
+            if(Time<hubSpawnAt)return;hubSpawnAt=Time+(float)ExpeditionHubRules.SpawnInterval;
             if(hubLiving.Count==0||Minions.Count(m=>m.Hp>0&&m.Pve!=null&&!m.DevMonster)>=Pve.Cap)return;
             var candidates=new List<(ExpeditionHubZone zone,PveEntry entry)>();
             foreach(var zone in hubAuthority.Layout.Zones)foreach(int id in zone.Spawns)

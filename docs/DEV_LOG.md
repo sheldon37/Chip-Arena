@@ -1,3 +1,10 @@
+## 2026-10-18 — Astra: route zone boss arrivals away from the Siren stage
+
+- Branch `codex/zone-boss-intros`, base shared/builder `797726c` (released as 6349f5ce; owner confirms both bosses spawn). Owner reports the Siren intro still plays for both.
+- Root cause: NativeIntros.IntroActive treated every PvE intro hold as the staged dev-siren entrance. LateFrame then hid the live arena and returned before either boss's authored in-world arrival could render. Route using the replicated pve.zoneBoss archetype: Station and Converter keep the arena render path, existing song-timed entrance rig, stage effects and cues; Ward Zero and match pilot entrances retain their staged scenes. Hold stays 9.0678 s; no hit, damage, movement, cooldown or music-clock changes.
+- Owner also requested substantially longer instances and more city zombies: live instance quota 12 → 36; city cap 2 + 2 per living player (maximum 16) → 4 + 4 (maximum 32), spawn interval 3 → 1.5 s. Runtime now consumes the shared interval instead of a duplicated literal. Existing quota-based roster progression, population safety and sanctuary rules remain intact; updated managed/native population expectations.
+- Added routing cases for both bosses, Ward Zero, match intros and non-intro states, a live call-site guard, and native decoded-arrival routing coverage. Verification and publication receipt will be recorded in the task PR; human visual acceptance remains needed.
+
 ## 2026-10-18 — Astra: native zone boss codec acceptance follow-up
 
 - Branch `codex/zone-boss-native-acceptance`, base shared/builder `c6beb6a` (#272 merged). First native build failed the Station arrival-frame assertion; no new update published. Existing test feed remains f9ed9c2a.

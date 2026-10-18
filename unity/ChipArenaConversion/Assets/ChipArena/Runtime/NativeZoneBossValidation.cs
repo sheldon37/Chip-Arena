@@ -21,6 +21,7 @@ namespace ChipArena.UnityConversion
             Check(z.archetype==NativeZoneBossRules.Station?StationZoneBossView().live&&!IronworksZoneBossView().live:IronworksZoneBossView().live&&!StationZoneBossView().live,"only matching actor presentation binds");
             var arrival=NetworkFrame();Check(arrival.Valid(Content),"authority arrival frame valid before codec");
             var arrivalWire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=arrival})).frame;
+            Check(!NativeIntroRules.Staged(false,true,"intro",arrivalWire.pve.zoneBoss.archetype),"replicated zone boss selects live arena entrance instead of Siren stage");
             Check(arrivalWire.minions.Single(x=>x.id==m.Id).addKind==null,"boss stays a non-horde actor through Unity codec");
             if(!arrivalWire.Valid(Content))Debug.Log("Zone boss codec diagnostic: record="+JsonUtility.ToJson(arrivalWire.pve.zoneBoss)+", actor="+JsonUtility.ToJson(arrivalWire.minions.Single(x=>x.id==m.Id)));
             Check(arrivalWire.Valid(Content),"Unity codec accepts arrival with absent stagger");
