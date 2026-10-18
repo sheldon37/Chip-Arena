@@ -107,3 +107,7 @@ expect them to reload; restart after changes.
 Settings > Mods now has an optional 20-chip Cards+ adaptation pack, credited to original concept author willis81808. Restart required; same selection on all peers. See [ROUNDS-ADAPTATIONS.md](ROUNDS-ADAPTATIONS.md) for each original/adapted card and deliberate changes. Full MIT notice ships with the game.
 
 External packs may add optional `author` at pack level or on each chip (chip wins). Up to 48 plain-text characters, no control characters or angle brackets. A chip may also supply `sourceCard`; `sourcePack` is assigned from the pack display name. Author appears in its own bottom-left footer row. Legacy packs without attribution remain valid.
+
+## Additional bundled adaptations
+
+Eight optional pack toggles add 118 reviewed adaptations. See [ROUNDS-MORE-PACKS.md](ROUNDS-MORE-PACKS.md) for exact scope and differences. Partial packs are labelled. Saved `roundsPacks` defaults to empty; the existing Cards+ toggle remains compatible. The `rounds-` pack-ID prefix is reserved. Invalid bundled selections block network play until disabled and restarted.

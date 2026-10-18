@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-18 Astra additional ROUNDS packs candidate (`codex/rounds-more-packs`, base merged #283 `b60ab39`): 118 new optional adaptations across VECs/RSC/Arcana/BSC/Keys/PCE/WWC/CPC, independent toggles, cross-pack mechanic exclusions and reserved external IDs. Seven packs are partial; the rest of Booga is not complete. Source version gaps and outstanding cards are recorded in `unity/ChipArenaConversion/docs/ROUNDS-MORE-PACKS.md`. Focused checks and Unity compile pass; full/native/publication receipts in PR. #283 passed hosted gates, merged, builder synced; publication not yet confirmed.
+
 2026-10-18 Astra Cards+ adaptations candidate (`codex/rounds-chip-adaptations`, base `2fd5f6a`): optional 20-chip bundled pack, original-author bottom-left credit and external pack author metadata. Focused checks and Unity compilation pass; full regression/build receipt in PR. Other Booga packs remain pending. Contract: `unity/ChipArenaConversion/docs/ROUNDS-ADAPTATIONS.md`.
 
 2026-10-18 Claude movement-chip visuals (`claude/movement-chip-visuals`, base `2fd5f6a`; merged into shared; presentation only): every weapon's air jump reads once per charge. Non-flip weapons get an alternating air step, a burst a little smaller and brighter per charge, and a soft jump sound a semitone up per charge. The daggers and Bow are unchanged; the Cyber Lord keeps its boost. The five movement chips get distinct card icons; the Mods panel was checked and is unchanged. run5b passes; Unity/Windows/two-client unrun. See DEV_LOG.

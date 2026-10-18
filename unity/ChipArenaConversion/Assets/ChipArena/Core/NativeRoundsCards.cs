@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
             new ContentChip{id=Prefix+"ram-upgrade",name="Reserve Bank",sourceCard="RAM Upgrade",sourcePack="Cards+ adaptations",author="willis81808",description="+25 maximum mana and +20 maximum stamina.",rarity="uncommon",icon="sparkles",max=3,tags=new[]{"all"},mechanic=null,excludes=new string[]{},effects=new ChipEffect[]{NativeMovementContent.Effect("maxMana","add",25),NativeMovementContent.Effect("maxStamina","add",20)}},
             new ContentChip{id=Prefix+"overclock",name="Fast Cache",sourceCard="Overclock",sourcePack="Cards+ adaptations",author="willis81808",description="+25% mana and stamina regeneration.",rarity="uncommon",icon="sparkles",max=3,tags=new[]{"all"},mechanic=null,excludes=new string[]{},effects=new ChipEffect[]{NativeMovementContent.Effect("manaRegen","mul",1.25),NativeMovementContent.Effect("staminaRegen","mul",1.25)}},
             new ContentChip{id=Prefix+"cyber-psychosis",name="Redline Kernel",sourceCard="Cyber Psychosis",sourcePack="Cards+ adaptations",author="willis81808",description="+25% damage, +15% attack rate and +10% movement speed; take 20% more damage.",rarity="legendary",icon="sparkles",max=1,tags=new[]{"all"},mechanic=null,excludes=new string[]{},effects=new ChipEffect[]{NativeMovementContent.Effect("damage","mul",1.25),NativeMovementContent.Effect("attackRate","mul",1.15),NativeMovementContent.Effect("speed","mul",1.1),NativeMovementContent.Effect("damageTaken","mul",1.2)}}};
-        private static readonly Dictionary<string,string[]> aliases=Chips().Where(c=>c.mechanic!=null&&!c.mechanic.StartsWith("rounds-",StringComparison.Ordinal)).GroupBy(c=>c.mechanic).ToDictionary(g=>g.Key,g=>g.Select(c=>c.id).ToArray());
+        private static readonly Dictionary<string,string[]> aliases=Chips().Concat(NativeRoundsPacks.Chips()).Where(c=>c.mechanic!=null&&!c.mechanic.StartsWith("rounds-",StringComparison.Ordinal)).GroupBy(c=>c.mechanic).ToDictionary(g=>g.Key,g=>g.Select(c=>c.id).ToArray());
         public static bool Has(IReadOnlyDictionary<string,int> held,string mechanic)
         {
             if(held==null)return false;
@@ -39,11 +39,15 @@ namespace ChipArena.UnityConversion
         }
         public static void Apply(ConversionContent content)
         {
-            var chips=Chips();if(content.chips.Any(c=>chips.Any(n=>n.id==c.id)))throw new ArgumentException("Cards+ adaptation ID collision");
+            Append(content,Chips(),"cardsplus-adaptations|"+Version);
+        }
+        internal static void Append(ConversionContent content,ContentChip[] chips,string key)
+        {
+            if(content.chips.Any(c=>chips.Any(n=>n.id==c.id)))throw new ArgumentException("Adaptation ID collision");
             if(content.chips.Length+chips.Length>NativeMods.MaxCatalog)throw new ArgumentException("Chip catalog exceeds capacity");
             // Include every gameplay and display field, invariantly, in peer compatibility.
             var receipt=string.Join("\n",chips.Select(c=>string.Join("|",new[]{c.id,c.name,c.description,c.rarity,c.author,c.sourcePack,c.sourceCard,c.mechanic,c.max.ToString(CultureInfo.InvariantCulture),string.Join(",",c.tags),string.Join(",",c.excludes),string.Join(",",c.effects.Select(e=>e.stat+":"+e.op+":"+e.value.ToString("R",CultureInfo.InvariantCulture)))})));
-            content.chips=content.chips.Concat(chips).ToArray();content.contentRevision=NativeMapRules.Revision(content.contentRevision+"|cardsplus-adaptations|"+Version+"|"+receipt);
+            content.chips=content.chips.Concat(chips).ToArray();content.contentRevision=NativeMapRules.Revision(content.contentRevision+"|"+key+"|"+receipt);
         }
     }
 }
