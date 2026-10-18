@@ -1,3 +1,10 @@
+## 2026-10-18 — Astra: protect multiplayer Expedition startup from loading stalls
+
+- Branch `codex/expedition-guest-start`, base shared `ffeee79c2c97`. Owner reports host enters city while guest stays in lobby with CONNECTION STALLED. Code inspection finds synchronous four-area construction without a loading notice, the normal 12 s disconnect deadline, and 20 Hz public/private/frame batches capable of overflowing a guest's 128-packet queue while loading.
+- Send a reliable Expedition startup notice before construction; protect each startup/area ticket with a fixed 60 s load deadline on both peers. Duplicate tickets cannot extend it; readiness restores normal timeouts. Loading guests receive a bootstrap batch at most every 5 s, preserving queue budget. UI reports LOADING EXPEDITION during the bounded window. Expedition protocol 4 requires both peers to update.
+- Verification: 48 co-op checks (including deadline/retry/queue-budget regressions), 103 director checks, 30 area-wire checks, 31 split-authority checks pass; Unity Player semantic compile passes. This container cannot reproduce the owner's two Windows clients; diagnosis is code-supported, not a confirmed trace of their session. Build/publication receipt pending.
+- No boss activation or unrelated pending candidate changes included. Next: normal hosted checks, shared/builder sync and desktop test publication, then confirm host/guest start on Windows.
+
 ## 2026-10-17 — Claude: THE CONVERTER in-game presentation (merged into shared, not live)
 
 - Branch `claude/boss-ironworks-presentation`, base shared `bc39790`, merged with shared `03dddab` (THE 6:47 presentation: zone boss names routed for both bosses, DEV panel and prewarm keep both), `97046f7` (zombie motion) and `a4d61ae` (THE 6:47 stage wiring, voxel zombies). Commits `73b951d` (the gait opt-ins, same change as `84cfbcf`), `53c243a` (presentation), `dd60261` (checks and the fixes they found), `77efc45` (no preview boss before its spawn), `96b60c9` (the two run5b findings), `40e562b` (the foreman's suit in aluminised grey, apart from the pilots' white).
