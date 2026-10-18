@@ -182,9 +182,10 @@ namespace ChipArena.UnityConversion
                     peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-party-load",expeditionLoadStatus=update}));
                 if(!member.Ready){var ticket=member.Ticket;peer.Loading.Begin(ticket.run+":"+ticket.epoch+":"+ticket.area+":"+ticket.serial,NetworkNow);if(!peer.Loading.Send(NetworkNow))continue;}else peer.Loading.Complete();
                 var view=SplitRecipient(who);var frame=SplitFrame(who);
-                peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-public",epoch=networkEpoch,generation=frame.generation,expeditionPublic=view.Public}));
-                peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-private",expeditionPrivate=view.Private}));
-                var packet=NativeFrameBudget.Encode(frame,networkEpoch);if(packet==null)throw new InvalidOperationException("Area snapshot exceeded its budget.");peer.Connection.SendEncoded(packet,true);
+                // One replaceable recipient snapshot keeps public/private/arena state coherent
+                // and cannot fill the reliable command queue during a slow write.
+                var packet=NativeFrameBudget.Encode(frame,networkEpoch,view.Public,view.Private);
+                if(packet==null)throw new InvalidOperationException("Area snapshot exceeded its budget.");peer.Connection.SendEncoded(packet,true);
             }
         }
         private bool SplitHostMessage(NativePeer peer,NativeNetMessage message)

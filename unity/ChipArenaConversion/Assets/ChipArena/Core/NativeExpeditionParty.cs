@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     {
         public const int Capacity=4;
         // v4 adds bounded startup/loading protection before synchronous area construction.
-        public const int Protocol=4;
+        public const int Protocol=5;
         public static string Validate(IEnumerable<string> accounts,bool authenticated,bool ready,bool supported=true)
         {
             if(!supported)return "Every player must update to a build with Expedition co-op support.";

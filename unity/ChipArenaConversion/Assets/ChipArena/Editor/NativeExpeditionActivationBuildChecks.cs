@@ -50,6 +50,8 @@ namespace ChipArena.UnityConversion.Editor
                     Check(receiver.Private(personal)&&ExpeditionAreaReady.Capture(receiver.View)!=null,"initial public/private wire pair produces guest readiness ticket");
                     var first=hub.Arena.NetworkFrame();first.areaIdentity=ticket;var decoded=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=first})).frame;
                     Check(decoded.Valid(content)&&receiver.View.areaIdentity.Matches(decoded.areaIdentity),"initial guest accepts matching world frame");
+                    var bundle=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-state",epoch=7,expeditionPublic=initialView,expeditionPrivate=personal,frame=first}));
+                    Check(bundle.epoch==7&&bundle.frame.Valid(content)&&bundle.expeditionPublic.areaIdentity.Matches(bundle.frame.areaIdentity)&&bundle.expeditionPrivate.viewer==who,"atomic state bundle retains area and private viewer");
                     Check(cohorts.Acknowledge(who,receiver.View.areaIdentity),"initial ready");
                 }
                 var transfers=new NativeExpeditionAreaTransfers(registry,layout,cohorts,Seat);

@@ -239,7 +239,7 @@ namespace ChipArena.UnityConversion
             if(compact<=0)ClassUnderline(new Rect(info.x,y+22,Mathf.Min(info.width,ww+22),2),w?.id,tone,al,now+index*.9f);
             // the foot: the ready pill in a room; offline, the pilot's loadout link and the bots' chip
             float fy=info.yMax-24;
-            if(room){ReadyPill(new Rect(info.x,fy,PillWidth(p),24),p,al,out _);}
+            if(room){if(CanPromote(p.id))PromotionButton(new Rect(info.x,fy,info.width,24),p,al);else ReadyPill(new Rect(info.x,fy,PillWidth(p),24),p,al,out _);}
             else if(p.you){if(ExpChipButton(new Rect(info.x,fy,Mathf.Min(info.width,128),24),"palette","LOADOUT",9420,al,live,false,true,9.5f))ExpToggleDrawer();}
             else{string d="BOT · "+DifficultyLabels[DifficultyIndex(prefs.botDifficulty)].ToUpperInvariant();var t=new Rect(info.x,fy,U.Measure(d,9.5f,true,true,.14f).x+24,24);H.Tag(t,C.Muted(),al);U.Text(new Rect(t.x+10,t.y,t.width-12,t.height),d,9.5f,C.Muted(al),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);}
             if(room&&p.bot){string d="BOT";var t=new Rect(info.x+PillWidth(p)+8,fy,U.Measure(d,9.5f,true,true,.14f).x+24,24);if(t.xMax<=info.xMax){H.Tag(t,C.Muted(),al);U.Text(new Rect(t.x+10,t.y,t.width-12,t.height),d,9.5f,C.Muted(al),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);}}

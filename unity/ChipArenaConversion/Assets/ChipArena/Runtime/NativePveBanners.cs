@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
         }
         private PveBannerSpec PveBannerNow()
         {
-            var v=arena.Pve;if(v==null)return null;if(bannerGeneration!=arena.Generation){bannerSeen.Clear();bannerGeneration=arena.Generation;lastNotice="";}
+            var v=arena.Pve;if(v==null||prefs.expedition||ExpeditionView!=null||ExpeditionM1)return null;if(bannerGeneration!=arena.Generation){bannerSeen.Clear();bannerGeneration=arena.Generation;lastNotice="";}
             float t=arena.Time;var list=new List<PveBannerSpec>();
             if(v.Holding&&(v.Cinematic=="victory"||v.Cinematic=="defeat"))
             {   // The outro holds the simulation clock, so it runs on the hold's own clock and stays .5 s past the hold.

@@ -108,11 +108,11 @@ namespace ChipArena.UnityConversion
             // The cards paint on repaint; the team pickers also take their clicks (the list opens in canvas space).
             U.Defer(()=>
             {
-                bool paint=Event.current.type==EventType.Repaint;if(!paint&&!teams)return;float cw=(grid.width-g*(cols-1))/cols;var toCanvas=area.position-lobbyRosterScroll;
+                bool paint=Event.current.type==EventType.Repaint;if(!paint&&!teams&&!Hosting)return;float cw=(grid.width-g*(cols-1))/cols;var toCanvas=area.position-lobbyRosterScroll;
                 for(int i=0;i<slots;i++)
                 {
                     var r=new Rect(grid.x+(i%cols)*(cw+g),grid.y+(i/cols)*(slotH+g),cw,cardH);
-                    if(i<count){var p=roster[i];if(paint)LobbyCard(r,p,i,portrait,topH,wrap,compact,e,t);if(teams)TeamPicker(new Rect(r.x+2,r.yMax+9,r.width-4,34),p,p.you||Hosting,e,toCanvas);}else if(paint)LobbyEmpty(new Rect(r.x,r.y,r.width,slotH),e);
+                    if(i<count){var p=roster[i];if(paint)LobbyCard(r,p,i,portrait,topH,wrap,compact,e,t);PromotionButton(new Rect(r.x+10,r.y+topH+portrait-28,r.width-20,26),p,e);if(teams)TeamPicker(new Rect(r.x+2,r.yMax+9,r.width-4,34),p,p.you||Hosting,e,toCanvas);}else if(paint)LobbyEmpty(new Rect(r.x,r.y,r.width,slotH),e);
                 }
             });
             ClassRow("Your class",ClassCardStyle.Lobby);WeaponCards("Your weapon");

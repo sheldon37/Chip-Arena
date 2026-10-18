@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 namespace ChipArena.UnityConversion
@@ -17,7 +18,9 @@ namespace ChipArena.UnityConversion
         public const int MaxFrame=2*1024*1024;
         private static readonly UTF8Encoding Utf8=new UTF8Encoding(false,true);
         private readonly TcpClient client;private readonly Stream stream;private readonly CancellationTokenSource stop=new CancellationTokenSource();
-        private readonly ConcurrentQueue<byte[]> reliable=new ConcurrentQueue<byte[]>();private readonly SemaphoreSlim ready=new SemaphoreSlim(0,1);private byte[] latest;
+        private readonly ConcurrentQueue<byte[]> reliable=new ConcurrentQueue<byte[]>();private readonly SemaphoreSlim ready=new SemaphoreSlim(0,1);private byte[] latest;private string receivedState;
+        // Only host-to-guest state is replaceable; commands and replies remain ordered.
+        private static readonly Regex StateEnvelope=new Regex(@"^\{""version"":7,""epoch"":-?[0-9]+,""type"":""(?:frame|expedition-state)"",",RegexOptions.CultureInvariant);
         public readonly NativeConnectionMetrics Metrics=new NativeConnectionMetrics();public readonly ConcurrentQueue<string> Received=new ConcurrentQueue<string>();public string Error{get;private set;}public bool Closed=>stop.IsCancellationRequested;public DateTime LastReceived{get;private set;}=DateTime.UtcNow;
         private readonly int receiveLimit;private int reliableCount,receivedCount;private readonly Task reader,writer;
         public NativeConnection(TcpClient socket,int inboundLimit=MaxFrame)
@@ -46,12 +49,14 @@ namespace ChipArena.UnityConversion
         public void ClearSnapshot()=>Interlocked.Exchange(ref latest,null);
         public void SendEncoded(byte[] packet,bool snapshot=false)
         {if(Closed)return;if(packet==null||packet.Length<2||packet.Length>MaxFrame+1)throw new InvalidDataException("Invalid encoded packet");if(snapshot)Interlocked.Exchange(ref latest,packet);else{if(Interlocked.Increment(ref reliableCount)>32){Fail("Reliable queue overflow");return;}reliable.Enqueue(packet);}if(ready.CurrentCount==0)try{ready.Release();}catch(SemaphoreFullException){}catch(ObjectDisposedException){}}
-        public bool TryReceive(out string json){if(!Received.TryDequeue(out json))return false;Interlocked.Decrement(ref receivedCount);return true;}
+        public bool TryReceive(out string json){if(Received.TryDequeue(out json)){Interlocked.Decrement(ref receivedCount);return true;}json=Interlocked.Exchange(ref receivedState,null);return json!=null;}
         private async Task Exact(byte[] buffer,int count)
         {int at=0;while(at<count){int n=await stream.ReadAsync(buffer,at,count-at,stop.Token).ConfigureAwait(false);if(n==0)throw new EndOfStreamException();at+=n;}}
         private async Task ReadLoop()
         {
-            try{var header=new byte[8];DateTime interval=DateTime.UtcNow;int rate=0;while(!Closed){await Exact(header,8).ConfigureAwait(false);if(header[0]!=67||header[1]!=65||header[2]!=85||header[3]!=Protocol)throw new InvalidDataException("Incompatible conversion protocol");int size=header[4]<<24|header[5]<<16|header[6]<<8|header[7];if(size<2||size>Math.Min(MaxFrame+1,receiveLimit+1024))throw new InvalidDataException("Invalid packet length");var data=new byte[size];await Exact(data,size).ConfigureAwait(false);var now=DateTime.UtcNow;if((now-interval).TotalSeconds>=1){interval=now;rate=0;}if(++rate>180||Interlocked.Increment(ref receivedCount)>128)throw new InvalidDataException("Peer exceeded message budget");string message=Decode(data,receiveLimit);Metrics.Received(Utf8.GetByteCount(message));Received.Enqueue(message);LastReceived=now;}}
+            try{var header=new byte[8];DateTime interval=DateTime.UtcNow;int rate=0;while(!Closed){await Exact(header,8).ConfigureAwait(false);if(header[0]!=67||header[1]!=65||header[2]!=85||header[3]!=Protocol)throw new InvalidDataException("Incompatible conversion protocol");int size=header[4]<<24|header[5]<<16|header[6]<<8|header[7];if(size<2||size>Math.Min(MaxFrame+1,receiveLimit+1024))throw new InvalidDataException("Invalid packet length");var data=new byte[size];await Exact(data,size).ConfigureAwait(false);var now=DateTime.UtcNow;if((now-interval).TotalSeconds>=1){interval=now;rate=0;}if(++rate>180)throw new InvalidDataException("Peer exceeded message rate");string message=Decode(data,receiveLimit);Metrics.Received(Utf8.GetByteCount(message));
+                if(receiveLimit==MaxFrame&&StateEnvelope.IsMatch(message))Interlocked.Exchange(ref receivedState,message);
+                else{if(Interlocked.Increment(ref receivedCount)>128)throw new InvalidDataException("Peer exceeded reliable receive budget");Received.Enqueue(message);}LastReceived=now;}}
             catch(Exception e)when(e is WebSocketException||e is InvalidDataException||e is IOException||e is SocketException||e is OperationCanceledException||e is ObjectDisposedException||e is ArgumentException){if(!Closed)Fail(e is EndOfStreamException?"Peer disconnected":e.Message);}
         }
         private async Task WriteLoop()

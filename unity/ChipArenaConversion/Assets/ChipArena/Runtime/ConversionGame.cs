@@ -87,6 +87,7 @@ namespace ChipArena.UnityConversion
         }
         private void StartMatch()
         {
+            if(PromotionBusy)return;
             if(prefs.pve&&prefs.expedition){StartExpeditionM1();return;}
             expeditionDirector=null;ResetExpeditionNetwork();Time.timeScale=1;sandboxSpeed=1;endFlow.Reset();
             if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);

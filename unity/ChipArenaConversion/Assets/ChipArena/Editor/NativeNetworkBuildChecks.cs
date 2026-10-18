@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion.Editor
     {
         private static void CheckNetworkSerialization(NativeArena authority)
         {
-            CheckAccountCompatibility();
+            CheckAccountCompatibility();ConversionGame.ValidateLobbyPromotion(authority.Content);
             var expedition=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-public",expeditionPublic=new ExpeditionView
             {
                 members=new[]{new ExpeditionViewMember{account="pilot",seat=7,safe=true}},

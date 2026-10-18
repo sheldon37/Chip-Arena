@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         private void RequestStage(StageLoadKind kind,Action action)
         {
-            if(action==null)return;if(dedicated||cameraView==null||error.Length>0){action();return;}
+            if(action==null||PromotionBusy)return;if(dedicated||cameraView==null||error.Length>0){action();return;}
             stageLoad.Request(kind,prefs.reducedEffects);stageAction=action;stageActed=false;StageBegan();
         }
         private StageLoadKind StageKindOf(NativeArena a)
