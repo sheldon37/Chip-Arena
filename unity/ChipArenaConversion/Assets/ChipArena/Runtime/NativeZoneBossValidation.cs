@@ -19,7 +19,10 @@ namespace ChipArena.UnityConversion
             Check(m!=null&&m.Pve==null&&!Pve.Boss.Seat.connected&&!Pve.Boss.Collider.enabled,"separate minion actor, reserved pilot has no collision or AI");
             Check(m.Body.GetComponentsInChildren<Collider>().Length>=6,"compound body and parts");
             Check(z.archetype==NativeZoneBossRules.Station?StationZoneBossView().live&&!IronworksZoneBossView().live:IronworksZoneBossView().live&&!StationZoneBossView().live,"only matching actor presentation binds");
-            var arrivalWire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=NetworkFrame()})).frame;
+            var arrival=NetworkFrame();Check(arrival.Valid(Content),"authority arrival frame valid before codec");
+            var arrivalWire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=arrival})).frame;
+            Check(arrivalWire.minions.Single(x=>x.id==m.Id).addKind==null,"boss stays a non-horde actor through Unity codec");
+            if(!arrivalWire.Valid(Content))Debug.Log("Zone boss codec diagnostic: record="+JsonUtility.ToJson(arrivalWire.pve.zoneBoss)+", actor="+JsonUtility.ToJson(arrivalWire.minions.Single(x=>x.id==m.Id)));
             Check(arrivalWire.Valid(Content),"Unity codec accepts arrival with absent stagger");
             var idle=NetworkFrame();idle.pve.zoneBoss.action=null;idle.pve.zoneBoss.actionAt=idle.pve.zoneBoss.hitAt=-100;idle.pve.zoneBoss.duration=0;
             var idleWire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=idle})).frame;

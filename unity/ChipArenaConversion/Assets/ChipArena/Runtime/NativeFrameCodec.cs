@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
             if(!hasPve)pve=null;
             if(pve!=null){if(!pve.hasZone)pve.zone=null;if(!pve.hasZoneBoss)pve.zoneBoss=null;else if(pve.zoneBoss!=null){if(string.IsNullOrEmpty(pve.zoneBoss.action))pve.zoneBoss.action=null;if(string.IsNullOrEmpty(pve.zoneBoss.staggerCause))pve.zoneBoss.staggerCause=null;}}
             if(pve?.zone!=null&&pve.zoneBoss==null){pve.zone.converterAt=pve.zone.overflowAt=-100;pve.zone.converterMask=0;}
-            if(minions!=null)foreach(var m in minions)if(m!=null){if(!m.hasZone)m.zone=null;else if(m.zone!=null)m.zone.attack=string.IsNullOrEmpty(m.zone.attack)?null:m.zone.attack;}
+            if(minions!=null)foreach(var m in minions)if(m!=null){m.addKind=string.IsNullOrEmpty(m.addKind)?null:m.addKind;if(!m.hasZone)m.zone=null;else if(m.zone!=null)m.zone.attack=string.IsNullOrEmpty(m.zone.attack)?null:m.zone.attack;}
             if(snapshot?.Actors!=null)foreach(var a in snapshot.Actors)if(a!=null){if(!a.HasKernel)a.Kernel=null;a.Cyber?.RestorePresence();}
             if(pve!=null){pve.cinematic=string.IsNullOrEmpty(pve.cinematic)?null:pve.cinematic;pve.outcome=string.IsNullOrEmpty(pve.outcome)?null:pve.outcome;pve.notice=string.IsNullOrEmpty(pve.notice)?null:pve.notice;}
             if(props!=null)foreach(var p in props)if(p!=null&&!p.hasDefinition)p.definition=null;
