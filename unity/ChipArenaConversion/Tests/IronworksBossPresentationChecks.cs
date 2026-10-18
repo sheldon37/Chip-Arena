@@ -21,9 +21,21 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             NonePin(root);Determinism(out string det);Contact(out string contact);Feet(out string feet);Pops(out string pops);Allocation(out string alloc);Tiers(out string tiers);
-            Names();Song(root,out string song);Cues(root);Death();Source(root);
-            Console.WriteLine("PASS ironworks boss presentation ("+count+" checks: normal play draws, lights, sounds and changes nothing (the view's binding is None; the Siren keeps its name); "+det+"; "+contact+"; "+feet+"; "+pops+"; "+alloc+"; "+tiers+"; "+song
+            AuthorityHazards();Names();Song(root,out string song);Cues(root);Death();Source(root);
+            Console.WriteLine("PASS ironworks boss presentation ("+count+" checks: normal play draws, lights, sounds and changes nothing (absent records draw nothing; the Siren keeps its name); "+det+"; "+contact+"; "+feet+"; "+pops+"; "+alloc+"; "+tiers+"; "+song
                 +"; the plate and banner read THE CONVERTER for ironworks-converter; the cue keys are the doc's table; the whistle and the foundry's stop fall inside the 4 s victory hold)");
+        }
+
+        private static void AuthorityHazards()
+        {
+            var v=Standing();v.action=null;v.hazards=new[]{new NativeZoneBossHazardFrame{id=7,kind="deslag",x=-25,y=0,z=3,radius=1.4f,hitAt=2,until=8}};
+            var rig=new IronworksBossRig();var fx=new NativeIronworksBossFx();
+            void Frame(float t){rig.Update(t,1/60f,v,IronworksBossGround.Hall,Vector3.Zero,false,true,Target,double.NaN,double.NaN);fx.Build(rig,v,t,-26,3,-6,1,0,0,0,1,0,1,false);}
+            Frame(1.5f);Check(fx.Telegraphs>0,"late guest receives authority landing warning without action history");
+            var cues=new IronworksBossCue[NativeIronworksBossCues.QueueSize];
+            Check(NativeIronworksBossCues.Collect(v,rig,fx,1.9f,2.1f,float.NaN,float.NaN,float.NaN,float.NaN,cues)==1,"authority landing cue survives action change");
+            Frame(3);Check(fx.Molten.Take(fx.MoltenCount).Any(m=>Math.Abs(m.At.X+25)<.001f&&Math.Abs(m.At.Z-3)<.001f&&Math.Abs(m.Half.X-1.4f)<.001f),"surviving pool uses exact authority target and radius after action ends");
+            Frame(9);Check(!fx.Molten.Take(fx.MoltenCount).Any(m=>Math.Abs(m.At.X+25)<.001f&&Math.Abs(m.At.Z-3)<.001f),"expired authority pool disappears");
         }
 
         // ---- normal play: the view is None, and None draws, lights, sounds and changes nothing ----
@@ -47,7 +59,7 @@ namespace ChipArena.UnityConversion
             Check(same.Mood.Heat==beat.Mood.Heat&&same.Mood.Light==beat.Mood.Light,"the music hook passes the song's beat through untouched without a boss");
             Check(!NativeIronworksBossPreview.On,"the DEV preview is off by default");
             string rt=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeIronworksBossPresentation.cs"));
-            Check(rt.Contains("internal static IronworksBossView IronworksBossViewOf(NativeArena arena)=>IronworksBossView.None;"),"the one binding point returns None until Astra's record exists (update this pin when it is bound)");
+            Check(rt.Contains("internal static IronworksBossView IronworksBossViewOf(NativeArena arena)=>arena?.IronworksZoneBossView()??IronworksBossView.None;"),"the binding reads the authority adapter and falls back to None without an arena");
             Check(NativeExpeditionStates.BossName("siren")=="SIREN"&&NativeZoneBossNames.BannerDelay("siren")==0&&NativeZoneBossNames.Name("siren")==null,"the Siren's plate name and banner timing are unchanged");
         }
 

@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             NonePin(root);Determinism(out string det);Contact(out string contact);Feet(out string feet);Pops(out string pops);Allocation(out string alloc);Tiers(out string tiers);Names();Cues(root);Source(root);Song(root,out string song);Stage(root,out string stage);Double(out string twice);Watch(out string watch);
-            Console.WriteLine("PASS station boss presentation ("+count+" checks: normal play draws, lights, sounds and changes nothing (the view's binding is None; the Siren keeps its name); "+det+"; "+contact+"; "+feet+"; "+pops+"; "+alloc+"; "+tiers+"; the plate and banner read THE 6:47 for station-647, the banner waits for the drop; "+song+"; "+stage+"; "+twice+"; "+watch+")");
+            Console.WriteLine("PASS station boss presentation ("+count+" checks: normal play draws, lights, sounds and changes nothing (absent records draw nothing; the Siren keeps its name); "+det+"; "+contact+"; "+feet+"; "+pops+"; "+alloc+"; "+tiers+"; the plate and banner read THE 6:47 for station-647, the banner waits for the drop; "+song+"; "+stage+"; "+twice+"; "+watch+")");
         }
 
         // ---- normal play: the view is None, and None draws, lights, sounds and changes nothing ----
@@ -34,9 +34,9 @@ namespace ChipArena.UnityConversion
                 "None leaves the station as it is (the board's own rows, the clocks at 6:47, the lights as authored, nothing falls)");
             Check(!NativeStationBossPreview.On,"the DEV preview is off by default");
             string rt=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeStationBossPresentation.cs"));
-            Check(rt.Contains("internal static StationBossView StationBossViewOf(NativeArena arena)=>StationBossView.None;"),"the one binding point returns None until Astra's record exists (update this pin when it is bound)");
+            Check(rt.Contains("internal static StationBossView StationBossViewOf(NativeArena arena)=>arena?.StationZoneBossView()??StationBossView.None;"),"the binding reads the authority adapter and falls back to None without an arena");
             string arena=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionM1Arena.cs"));
-            Check(arena.Contains("RecordBossArrival(id,\"siren\""),"the station still records the placeholder Siren's arrival (no rule changed)");
+            Check(NativeZoneBossRules.RuntimeEnabled&&arena.Contains("string archetype=NativeZoneBossRules.RuntimeEnabled?NativeZoneBossRules.Archetype(MapId)??\"siren\":\"siren\""),"enabled zones select their dedicated boss archetype");
             Check(NativeExpeditionStates.BossName("siren")=="SIREN"&&NativeZoneBossNames.BannerDelay("siren")==0&&NativeZoneBossNames.Name("siren")==null,"the Siren's plate name and banner timing are unchanged");
         }
 

@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
         // place, e.g.  internal static IronworksBossView IronworksBossViewOf(NativeArena a)=>a.Pve?.ZoneBoss?.Ironworks??IronworksBossView.None;
         // Until then every arena has none: nothing draws and the placeholder Siren fights as today.
         // ================================================================================================================
-        internal static IronworksBossView IronworksBossViewOf(NativeArena arena)=>IronworksBossView.None;
+        internal static IronworksBossView IronworksBossViewOf(NativeArena arena)=>arena?.IronworksZoneBossView()??IronworksBossView.None;
         /// <summary>The clocks the arrival and the death play on: the shared boss song clock (it runs through the intro hold, when the
         /// arena clock stands still) and the death's age (the record's deathAt on the arena clock plus the victory hold's elapsed).</summary>
         internal static void IronworksBossClocks(NativeArena arena,in IronworksBossView v,float now,out double arrival,out double death)

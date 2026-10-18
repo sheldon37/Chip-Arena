@@ -24,6 +24,11 @@ internal static class ExpeditionCoopChecks
         options.expedition=false;options.bots=3;options.Normalize(content);Check(options.bots==3,"wave bots preserved");
         var run=NativeExpedition.Create("coop-check","city",ids[0],"pistol",17,new[]{new ExpeditionInstance{id="ward",target=1}});
         foreach(string id in ids.Skip(1))Check(run.Join(id,"pistol"),"join "+id);
+        Check(run.Defeat(ids[1]),"revive fixture death");
+        Check(!run.Revive(ids[0],ids[1],150),"unfunded revive refused");
+        Check(run.Credit(ids[0],"revive-funds",300)&&run.Revive(ids[0],ids[1],150),"paid body revive restores run member");
+        Check(!run.Revive(ids[0],ids[1],150)&&run.Snapshot().members.Single(m=>m.account==ids[0]).wallet==150,"repeated revive does not charge twice");
+        Check(!run.Revive(ids[0],ids[1],0)&&!run.Revive("stranger",ids[1],150),"invalid payer and cost refused");
         var session=new ExpeditionSession(run,content,_=>{});
         var director=new ExpeditionDirector(session,layout,_=>new V3(0,0,0),(_,__)=>true,10,20,30);
         director.BindLayoutIdentity(new string('a',64));Check(director.BeginAreaLoad(),"initial load");

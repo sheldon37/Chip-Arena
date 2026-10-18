@@ -166,10 +166,10 @@ namespace ChipArena.UnityConversion
                 Check(kit.Parts.Count(p=>p.Role==NativeIronworksKit.RoleChain&&Math.Abs(p.X+NativeIronworksKit.FrameOrigin[p.Frame*3]-hx)<1.2&&Math.Abs(p.Z+NativeIronworksKit.FrameOrigin[p.Frame*3+2]-hz2)<1.2)>=8,"hang point at ("+hx+", "+hz2+") shows its hoist and chain");}
             Check(NativeIronworksKit.TrussX.Any(x=>Math.Abs(x+4)<.01)&&NativeIronworksKit.TrussX.Any(x=>Math.Abs(x-22)<.01)&&NativeIronworksKit.TrussX.Any(x=>Math.Abs(x-3.5)<1.5)&&NativeIronworksKit.TrussBottom==14.4f,"the roof trusses' bottom chords pass over the gantry hang points at 14.4 m (within 1.5 m)");
             // ---------------- hazards: definitions, cycles, schedule ----------------
-            var defs=NativeIronworksHazards.Defs;var hz=rec["hazards"].AsArray();Check(defs.Length==hz.Count&&defs.Length==NativeIronworksHazards.Count,"the eleven hazards of section 5");
-            for(int i=0;i<defs.Length;i++)
+            var defs=NativeIronworksHazards.Defs;var hz=rec["hazards"].AsArray();Check(defs.Length==hz.Count+2&&defs.Length==NativeIronworksHazards.Count,"the eleven hazards of section 5");
+            for(int i=0;i<hz.Count;i++)
             {
-                var h=hz[i];var v=h["volume"];var d=defs[i];
+                var h=hz[i];var v=h["volume"];var d=defs[i];if(i==NativeIronworksHazards.Converter){Check(d.Sx==5.4f&&d.Sz==2.4f&&d.Warn==2.5f&&d.Live==4,"boss converter lane contract");continue;}
                 Check(d.Id==(string)h["id"]&&Math.Abs(d.X-(float)v["x"])<1e-3&&Math.Abs(d.Y-(float)v["y"])<1e-3&&Math.Abs(d.Z-(float)v["z"])<1e-3&&Math.Abs(d.Sx-(float)v["sx"])<1e-3&&Math.Abs(d.Sy-(float)v["sy"])<1e-3&&Math.Abs(d.Sz-(float)v["sz"])<1e-3
                     &&Math.Abs(d.Warn-(float)h["warn"])<1e-3&&Math.Abs(d.Live-(float)h["live"])<1e-3&&Math.Abs(d.Period-(float)h["period"])<1e-3,d.Id+": volume and cycle equal the live record's");
                 // The schedule is the design record's (the live activation snapshot carries the volumes and cycles only).
@@ -182,9 +182,9 @@ namespace ChipArena.UnityConversion
                 &&Rate(NativeIronworksHazards.Steam,1,false)==NativeIronworksHazards.RateHalf&&Rate(NativeIronworksHazards.Hammer,1,false)==NativeIronworksHazards.RateFull&&Rate(NativeIronworksHazards.Slab,1,false)==0&&Rate(NativeIronworksHazards.Shear,1,false)==0
                 &&Rate(NativeIronworksHazards.Slag,1,false)==0&&Rate(NativeIronworksHazards.Pusher,1,false)==0,"Wave 1 runs light: runner r2 only, the pour and the steam at half rate, the hammer, nothing else");
             Check(Rate(NativeIronworksHazards.R1,2,false)!=0&&Rate(NativeIronworksHazards.Slab,2,false)!=0&&Rate(NativeIronworksHazards.Shear,2,false)!=0&&Rate(NativeIronworksHazards.Slag,2,false)==0&&Rate(NativeIronworksHazards.Slag,3,false)!=0&&Rate(NativeIronworksHazards.Pusher,3,false)!=0&&Rate(NativeIronworksHazards.Ladle,4,false)==NativeIronworksHazards.RateFull,"the runners, slab and shear join in Wave 2, the slag spill and the pusher in Wave 3, the pour runs full from Wave 2");
-            var bossLadle=NativeIronworksHazards.At(NativeIronworksHazards.Ladle,In(4,true,13));Check(bossLadle.Parked&&bossLadle.Phase==NativeHazardPhase.Idle&&Enumerable.Range(0,NativeIronworksHazards.Count).All(h=>h==NativeIronworksHazards.Ladle||h==NativeIronworksHazards.Converter||Rate(h,4,true)==NativeIronworksHazards.RateFull),"the boss encounter: the pour stops (the crane parks), everything else runs");
+            var bossLadle=NativeIronworksHazards.At(NativeIronworksHazards.Ladle,In(4,true,13));Check(bossLadle.Parked&&bossLadle.Phase==NativeHazardPhase.Idle&&Enumerable.Range(0,NativeIronworksHazards.Count).All(h=>h==NativeIronworksHazards.Ladle||defs[h].Boss==NativeIronworksHazards.BossDriven||Rate(h,4,true)==NativeIronworksHazards.RateFull),"the boss encounter: the pour stops (the crane parks), everything else runs");
             Check(Enumerable.Range(0,60).All(t=>NativeIronworksHazards.At(NativeIronworksHazards.Converter,In(3,true,t)).Phase==NativeHazardPhase.Idle)&&Enumerable.Range(0,NativeIronworksHazards.Count).All(h=>NativeIronworksHazards.At(h,default).Phase==NativeHazardPhase.Idle),"the converter tilt is the boss's (a stub); nothing runs without an input");
-            for(int h=0;h<NativeIronworksHazards.Count-1;h++)
+            for(int h=0;h<NativeIronworksHazards.Converter;h++)
             {
                 var d=defs[h];int wave=Math.Max(2,(int)d.From);double off=d.Offset;
                 var w=NativeIronworksHazards.At(h,In(wave,false,off+2*d.Period+d.Warn*.5));var a=NativeIronworksHazards.At(h,In(wave,false,off+2*d.Period+d.Warn+d.Live*.5));var c=NativeIronworksHazards.At(h,In(wave,false,off+2*d.Period+d.Warn+d.Live+Math.Max(.01,d.Cool*.5)));var i=NativeIronworksHazards.At(h,In(wave,false,off+3*d.Period-.05));

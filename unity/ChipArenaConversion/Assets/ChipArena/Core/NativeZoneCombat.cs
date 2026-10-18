@@ -21,6 +21,8 @@ namespace ChipArena.UnityConversion
             Mix("shambler,cinderling,stoker,slagback,rigger,brute,ladleman,hulk",.22,.28,.13,.15,.08,.05,.05,.04),
             Mix("shambler,cinderling,stoker,slagback,rigger,brute,ladleman,hulk",.18,.27,.13,.15,.1,.05,.07,.05)};
         private static readonly NumberValue[] IronBoss=Mix("cinderling,stoker,slagback,rigger,shambler",.45,.15,.2,.1,.1),StationBoss=Mix("shambler,runner,linesman,conductor",.5,.3,.1,.1);
+        private static readonly NumberValue[][] StationBossPhases={Mix("shambler,runner,conductor",.6,.3,.1),Mix("shambler,runner,linesman,conductor,undertow",.45,.25,.15,.1,.05),Mix("shambler,runner,linesman,conductor,undertow,pileup",.4,.3,.1,.1,.05,.05)};
+        public static NumberValue[] BossEncounter(string map,int phase)=>Station(map)?StationBossPhases[Math.Max(0,Math.Min(2,phase-1))]:IronBoss;
         public static NumberValue[] Encounter(string map,int wave,bool boss)=>Station(map)?boss?StationBoss:StationMix[Math.Max(0,Math.Min(3,wave-1))]:boss?IronBoss:IronMix[Math.Max(0,Math.Min(3,wave-1))];
         public static int Cap(string kind,int wave,bool boss)
         {switch(kind){case "linesman":case "undertow":return 2;case "conductor":return wave>=3||boss?2:1;case "pileup":case "hulk":return 1;case "rigger":return boss||wave>=3?2:wave==2?1:0;case "ladleman":return boss?0:wave>=4?2:wave==3?1:0;default:return 40;}}

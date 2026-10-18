@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
         private readonly NativeStationView zoneStation=new NativeStationView();
         private readonly Dictionary<long,float> zoneContact=new Dictionary<long,float>();
         private float zoneGlassAt,zoneLeverReady,zoneLastAt=-100;
-        private void ResetZoneCombat(){ZoneHazards=null;zoneContact.Clear();zoneGlassAt=zoneLeverReady=0;zoneLastAt=-100;zonePops.Clear();}
+        private void ResetZoneCombat(){ResetZoneBoss();ZoneHazards=null;zoneContact.Clear();zoneGlassAt=zoneLeverReady=0;zoneLastAt=-100;zonePops.Clear();}
         public void BindZonePresentation()
         {
             NativeIronworksLive.Bound=NativeZoneCombat.Ironworks(MapId)&&ZoneHazards!=null;
@@ -55,10 +55,10 @@ namespace ChipArena.UnityConversion
             // A bounded ledger prevents contact rate from depending on physics or frame rate.
             if(zoneContact.Count>4096)foreach(var key in zoneContact.Where(p=>p.Value<Time-2).Select(p=>p.Key).ToArray())zoneContact.Remove(key);
             if(NativeZoneCombat.Ironworks(MapId)){StepIronworksHazards(h);return;}
-            if(Time>h.trainAt+5)h.trainAt=Time+70+(float)Pve.SpawnRandom.Next()*40;
-            if(h.boss&&Time>=zoneGlassAt)
+            if(ZoneBoss?.archetype==NativeZoneBossRules.Station&&ZoneBoss.phase>=2){if(Time>h.trainAt+5)h.trainAt=Time+40;}else if(Time>h.trainAt+5)h.trainAt=Time+70+(float)Pve.SpawnRandom.Next()*40;
+            if(h.boss&&Time>=zoneGlassAt&&(ZoneBoss==null||ZoneBoss.phase>=2)&&!h.glassAt.Any(t=>Time<t+.1f))
             {
-                zoneGlassAt=Time+4;var targets=Pilots.Where(p=>ZonePilot(p)&&p.Body.position.y<3&&Math.Abs(p.Body.position.x)<30&&p.Body.position.z>=-1&&p.Body.position.z<=17).Take(4).ToArray();
+                zoneGlassAt=Time+(ZoneBoss==null?4:ZoneBoss.phase==2?9:6);var targets=Pilots.Where(p=>ZonePilot(p)&&p.Body.position.y<3&&Math.Abs(p.Body.position.x)<30&&p.Body.position.z>=-1&&p.Body.position.z<=17).Take(4).ToArray();
                 h.glassX=targets.Select(p=>p.Body.position.x).ToArray();h.glassZ=targets.Select(p=>p.Body.position.z).ToArray();h.glassAt=targets.Select(p=>Time+1.2f).ToArray();
             }
             h.floodGrounded=Minions.Any(m=>m.Pve?.Stats.id=="linesman"&&m.Hp>0&&StationFlood(m.Body.position));h.Fill(zoneStation,Time);

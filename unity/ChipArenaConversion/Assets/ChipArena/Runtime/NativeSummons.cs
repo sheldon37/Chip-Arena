@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false,int projectile=0,bool pierced=false,Vector3? from=null)
         {
             if(Expedition?.Session.Run.SplitAreas==true&&(!Minions.Contains(m)||owner!=null&&!Pilots.Contains(owner)))return 0;
-            if(m.Hp<=0||!CanHit(owner,m)||HubDamageBlocked(owner,m.Body.position,from,projectile))return 0;if(m.DevMonster)return HitDevMonster(m,owner,damage,direction,impulse,point,kind);if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head,projectile,pierced,from);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,from:from,projectile:projectile,pierced:pierced);MinionImpact(m,owner,actual,point,kind,direction);if(m.Hp<=0)RemoveMinion(m);return actual;
+            if(m.Hp<=0||!CanHit(owner,m)||HubDamageBlocked(owner,m.Body.position,from,projectile))return 0;if(IsZoneBoss(m))return HitZoneBoss(m,owner,damage,point,kind);if(m.DevMonster)return HitDevMonster(m,owner,damage,direction,impulse,point,kind);if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head,projectile,pierced,from);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,from:from,projectile:projectile,pierced:pierced);MinionImpact(m,owner,actual,point,kind,direction);if(m.Hp<=0)RemoveMinion(m);return actual;
         }
         private void MinionImpact(NativeMinion m,NativePilot owner,float actual,Vector3? point,string kind,Vector3 direction)
         {
@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
         {
             foreach(var m in Minions.ToArray())
             {
-                if(!Minions.Contains(m)||m.Pve!=null)continue;if(m.Owner.Hp<=0||Time>=m.Until||m.Body.position.y<(Map.bounds?.killY??-6)){RemoveMinion(m);continue;}
+                if(!Minions.Contains(m)||m.Pve!=null||IsZoneBoss(m))continue;if(m.Owner.Hp<=0||Time>=m.Until||m.Body.position.y<(Map.bounds?.killY??-6)){RemoveMinion(m);continue;}
                 foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time+1e-8&&d.Next<=d.Until+1e-8){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)(d.Dps*.25),Vector3.zero,0,kind:"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0||m.Kind=="slender")continue;
                 bool toy=m.Kind=="toy";float windup=toy?.45f:.42f,recover=toy?.55f:.48f;Vector3 at=m.Body.position,velocity=m.Body.linearVelocity;
                 if(HubInside(at)){m.StrikeAt=-1;continue;}

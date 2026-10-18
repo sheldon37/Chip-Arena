@@ -24,6 +24,11 @@ namespace ChipArena.UnityConversion
                 catch(Exception e){ReleaseReplayArena();Debug.LogWarning("Replay warm-up deferred: "+e.Message);}
                 finally{hitchReplayPrepare+=HitchMs(at);}
             }
+            if(prefs.expedition)
+            {
+                // Expedition deaths go directly to the live party, never a combat replay.
+                EndReplay();if(arena.Local.Hp>0)spectatorId=0;return;
+            }
             FinalKillWatch();
             var p=arena.Local;bool allowed=match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result||match.Phase==NativePhase.Match;if(!allowed){EndReplay();return;}
             if(p.Hp>0){if(!finalOn)EndReplay();spectatorId=0;}var d=p.Hp<=0?p.Death:null;bool fresh=d!=null&&replaySeen!=d.seed;
@@ -61,7 +66,7 @@ namespace ChipArena.UnityConversion
         {
             if(FinalSkipKey())return;
             if(arena?.Local==null||arena.Local.Hp>0||menu||BoardOpen)return;if(Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Escape))EndReplay();
-            var candidates=arena.Pilots.Where(p=>p!=arena.Local&&p.Hp>0&&p.Seat.connected&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)).OrderBy(p=>match.SameSide(arena.Local.Seat,p.Seat)?0:1).ThenBy(p=>p.Seat.id).ToArray();if(candidates.Length==0){spectatorId=0;return;}
+            var candidates=arena.Pilots.Where(p=>p!=arena.Local&&p.Hp>0&&p.Seat.connected&&(!prefs.expedition||!p.Seat.AuthorityBoss&&!p.ExpeditionTransferHeld)&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)).OrderBy(p=>match.SameSide(arena.Local.Seat,p.Seat)?0:1).ThenBy(p=>p.Seat.id).ToArray();if(candidates.Length==0){spectatorId=0;return;}
             int at=Array.FindIndex(candidates,p=>p.Seat.id==spectatorId);if(at<0)at=0;else if(Input.GetKeyDown(KeyCode.RightArrow))at=(at+1)%candidates.Length;else if(Input.GetKeyDown(KeyCode.LeftArrow))at=(at+candidates.Length-1)%candidates.Length;spectatorId=candidates[at].Seat.id;
             if(!replayRunning){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity;pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity,-70,70);}
         }
@@ -192,7 +197,7 @@ namespace ChipArena.UnityConversion
         }
         private void CycleSpectator(int step)
         {
-            var candidates=arena.Pilots.Where(p=>p!=arena.Local&&p.Hp>0&&p.Seat.connected&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)).OrderBy(p=>match.SameSide(arena.Local.Seat,p.Seat)?0:1).ThenBy(p=>p.Seat.id).ToArray();if(candidates.Length==0)return;
+            var candidates=arena.Pilots.Where(p=>p!=arena.Local&&p.Hp>0&&p.Seat.connected&&(!prefs.expedition||!p.Seat.AuthorityBoss&&!p.ExpeditionTransferHeld)&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)).OrderBy(p=>match.SameSide(arena.Local.Seat,p.Seat)?0:1).ThenBy(p=>p.Seat.id).ToArray();if(candidates.Length==0)return;
             int at=Math.Max(0,Array.FindIndex(candidates,p=>p.Seat.id==spectatorId));spectatorId=candidates[(at+step+candidates.Length)%candidates.Length].Seat.id;
         }
     }

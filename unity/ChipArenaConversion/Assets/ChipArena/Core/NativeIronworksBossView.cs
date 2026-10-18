@@ -33,6 +33,8 @@ namespace ChipArena.UnityConversion
         public int phase;public float phaseAt;
         public int parts;public float partAt0,partAt1,partAt2,partAt3,partAt4;
         public float stagger,deathAt;
+        // Null only in the DEV preview; live records carry even an empty event array.
+        public NativeZoneBossHazardFrame[] hazards;
 
         public const int PartFront=0,PartLeft=1,PartRight=2,PartBack=3,PartPulpit=4,Parts=5,AllParts=31;
         /// <summary>Every arena's view until the rules replicate the record: no boss.</summary>

@@ -6,10 +6,10 @@ namespace ChipArena.UnityConversion
     {
         public bool running,boss;public int wave=1;public float clock,start=-100,trainAt=-100,leverAt=-100,leverUntil=-100,lastCallAt=-100,bossAt=-100;
         public float[] glassX=Array.Empty<float>(),glassZ=Array.Empty<float>(),glassAt=Array.Empty<float>();
-        public bool floodGrounded;
+        public bool floodGrounded;public float converterAt=-100,overflowAt=-100;public int converterMask;
         public NativeZoneHazardFrame Copy(){var f=(NativeZoneHazardFrame)MemberwiseClone();f.glassX=(float[])glassX.Clone();f.glassZ=(float[])glassZ.Clone();f.glassAt=(float[])glassAt.Clone();return f;}
-        public bool Valid()=>wave>=1&&wave<=4&&new[]{clock,start,trainAt,leverAt,leverUntil,lastCallAt,bossAt}.All(NativeZoneCombat.Finite)&&clock>=0&&glassX!=null&&glassZ!=null&&glassAt!=null&&glassAt.Length<=8&&glassX.Length==glassAt.Length&&glassZ.Length==glassAt.Length&&glassX.All(NativeZoneCombat.Finite)&&glassZ.All(NativeZoneCombat.Finite)&&glassAt.All(NativeZoneCombat.Finite);
-        public IronworksHazardInput Ironworks=>new IronworksHazardInput{Running=running,Boss=boss,Wave=wave,Clock=clock};
+        public bool Valid()=>converterMask>=0&&converterMask<=3&&wave>=1&&wave<=4&&new[]{clock,start,trainAt,leverAt,leverUntil,lastCallAt,bossAt,converterAt,overflowAt}.All(NativeZoneCombat.Finite)&&clock>=0&&glassX!=null&&glassZ!=null&&glassAt!=null&&glassAt.Length<=8&&glassX.Length==glassAt.Length&&glassZ.Length==glassAt.Length&&glassX.All(NativeZoneCombat.Finite)&&glassZ.All(NativeZoneCombat.Finite)&&glassAt.All(NativeZoneCombat.Finite);
+        public IronworksHazardInput Ironworks=>new IronworksHazardInput{Running=running,Boss=boss,Wave=wave,Clock=clock,ConverterAt=converterAt,ConverterMask=converterMask,OverflowAt=overflowAt,Overflow=overflowAt>=0};
         // The union swept in one authority tick; clips to the station shell, like the drawn train.
         public static bool TrainSweep(double trainAt,double from,double now,out double left,out double right)
         {

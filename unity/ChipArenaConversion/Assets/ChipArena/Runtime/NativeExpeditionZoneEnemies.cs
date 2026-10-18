@@ -7,9 +7,9 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         private readonly List<(Vector3 at,float when)> zonePops=new List<(Vector3,float)>();
-        private bool ZoneMovementHeld(NativePilot p)=>Minions.Any(m=>m.Hp>0&&m.Pve!=null&&(m.Pve.Zone.grabTarget==p.Seat.id&&Time<m.Pve.Zone.releaseAt||m.Pve.Zone.pullTarget==p.Seat.id&&Time>=m.Pve.Zone.pullAt+.84f&&Time<m.Pve.Zone.pullAt+1.59f));
+        private bool ZoneMovementHeld(NativePilot p)=>(ZoneBoss!=null&&ZoneBoss.holdTarget==p.Seat.id&&Time<ZoneBoss.holdUntil)||Minions.Any(m=>m.Hp>0&&m.Pve!=null&&(m.Pve.Zone.grabTarget==p.Seat.id&&Time<m.Pve.Zone.releaseAt||m.Pve.Zone.pullTarget==p.Seat.id&&Time>=m.Pve.Zone.pullAt+.84f&&Time<m.Pve.Zone.pullAt+1.59f));
         private float ZoneTargetPriority(NativeMinion m,NativePilot p)=>m.Pve.Stats.id=="stoker"?Pilots.Count(q=>q!=p&&ZonePilot(q)&&Vector3.Distance(q.Body.position,p.Body.position)<5)*5:m.Pve.Stats.id=="ladleman"?-Pilots.Count(q=>q!=p&&ZonePilot(q)&&Vector3.Distance(q.Body.position,p.Body.position)<4)*3:0;
-        private bool ZoneKindRoom(string kind)=>!NativeZoneCombat.Active(MapId)||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id==kind)<NativeZoneCombat.Cap(kind,Pve?.Wave??1,Pve?.Stage=="boss");
+        private bool ZoneKindRoom(string kind)=>!NativeZoneCombat.Active(MapId)||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id==kind)<(bossScriptedLadle&&kind=="ladleman"?1:NativeZoneCombat.Cap(kind,Pve?.Wave??1,Pve?.Stage=="boss"));
         private bool ZoneEntryAllowed(PveEntry e,string kind)
         {
             if(!NativeWardEntries.Allows(e,kind))return false;

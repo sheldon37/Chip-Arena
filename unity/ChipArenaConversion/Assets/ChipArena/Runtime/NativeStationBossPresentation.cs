@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
         // place, e.g.  internal static StationBossView StationBossViewOf(NativeArena a)=>a.Pve?.ZoneBoss?.View??StationBossView.None;
         // Until then every arena has none: nothing draws and the placeholder Siren fights as today.
         // ================================================================================================================
-        internal static StationBossView StationBossViewOf(NativeArena arena)=>StationBossView.None;
+        internal static StationBossView StationBossViewOf(NativeArena arena)=>arena?.StationZoneBossView()??StationBossView.None;
 
         private readonly StationBossRig stationBoss=new StationBossRig();private readonly NativeStationBossFx stationBossFx=new NativeStationBossFx();
         private Mesh[][] stationBossMeshes;private int[][] stationBossJoints;private Material stationBossMaterial;private bool stationBossFailed;private NativeFxDraw stationBossDraw;

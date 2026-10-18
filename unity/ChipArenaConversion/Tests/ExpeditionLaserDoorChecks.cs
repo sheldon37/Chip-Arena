@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
 {
     // The instance exit's laser door (Claude, 2026-10-17; docs/EXPEDITION-PRESENTATION.md "The laser door"): the phase mapping
     // (stage, beam levels, charge, embers), the live split-area director driving each of the three instances' exits (sealed from
-    // the run's start, the arrival lock from this client's arrival, the unlock from the clear's `began`), beams and field sheet
+    // the first committed cohort, the lock from authority time, the unlock from the clear's `began`), beams and field sheet
     // standing exactly while the closure blocks, teammates' re-seal pulse, the DEV preview, the tiers, the hub's state pieces
     // untouched (a digest pinned from the base code), no allocation per frame and source scans (no collider, rule or randomness).
     internal static class ExpeditionLaserDoorChecks
@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
             var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),o);
             var layout=NativeExpeditionLayout.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ExpeditionLayout.json")));
             Mapping();Beams();Live(content,layout);Pulse(content,layout);Hub(layout);Preview(content,layout);Tiers(content,layout);NoAllocation(content,layout);Sources(root);
-            Console.WriteLine("PASS expedition laser door ("+count+" checks: the stage from the closure and the arrival; beams fired floor-up, put out top-down, the floor beam never out while it blocks; the live split director seals each exit from the run's start and opens it on the clear; beams and sheet exactly while blocking in Ward Zero, Central Station and City Ironworks; the zone palettes; teammates' re-seal; the DEV preview; low and reduced tiers; the hub's doors, gate and sanctuary byte-for-byte the base's; no per-frame allocation; no collider, rule or randomness)");
+            Console.WriteLine("PASS expedition laser door ("+count+" checks: the stage from the closure and the arrival; beams fired floor-up, put out top-down, the floor beam never out while it blocks; the live split director seals each exit at its first committed arrival and opens it on the clear; beams and sheet exactly while blocking in Ward Zero, Central Station and City Ironworks; the zone palettes; teammates' re-seal; the DEV preview; low and reduced tiers; the hub's doors, gate and sanctuary byte-for-byte the base's; no per-frame allocation; no collider, rule or randomness)");
         }
 
         // 1. The stage: sealing and opening follow `began` exactly; a sealed exit plays the arrival lock once; unknown states are sealed.
@@ -136,22 +136,22 @@ namespace ChipArena.UnityConversion
                 var area=layout.Area(id);var rig=ExpeditionStateRig.For(layout,id);var door=rig.Doors.Single();var f=door.Frame;var eye=EyeAt(f,4.5f);
                 Check(area.role=="instance"&&door.Exit&&door.Look==ExpeditionDoorLook.Laser&&door.Anchor==id+":door:exit"&&area.doors.Single().entries.Length>0,id+": its one exit is the laser door, the party placed at its entries");
                 foreach(var e in area.doors.Single().entries){float side=(e.x-f.Cx)*f.Fx+(e.z-f.Cz)*f.Fz,face=(float)(Math.Sin(e.yaw*Math.PI/180)*f.Fx+Math.Cos(e.yaw*Math.PI/180)*f.Fz);Check(side>.5f&&face>.9f,id+": the party arrives in front of the exit, facing away from it (the door behind us)");}
-                var exit=p.Exit(id);Check(exit.state=="sealed"&&exit.began==0&&exit.Blocking,id+": the live director holds the exit sealed from the run's start");
+                var exit=p.Exit(id);Check(exit.state=="open"&&!exit.Blocking,id+": an unused instance exit starts open");
                 Check(p.View(layout.world).closures.Single(c=>c.id==layout.world+":door:"+id).state=="open",id+": the hub's door to it stays open (the split hub never seals it)");
                 Check(p.Run.MoveMembers(layout.world,id,new[]{"host","guest"}),id+": the party transfers in");p.Tick(.25);
-                var v=p.View(id);exit=v.closures.Single(c=>c.id==door.Anchor);Check(v.area==id&&exit.state=="sealed"&&exit.began==0,id+": no closure transition marks the arrival (the lock is played from it)");
+                var v=p.View(id);exit=v.closures.Single(c=>c.id==door.Anchor);Check(v.area==id&&exit.state=="sealing"&&exit.began==v.elapsed,id+": committed arrival starts authority sealing");
                 // This client arrives (the runtime holds the arrival while its loading screen is up).
                 var cues=new ExpeditionStateCues();var hub=p.View(layout.world);cues.Observe(hub,v.elapsed-1);
                 cues.ArrivalHeld=true;cues.Observe(v,v.elapsed);Check(double.IsPositiveInfinity(cues.LockAt(id))&&double.IsNaN(cues.LockAt(layout.world)),id+": held behind the loading screen, the lock waits");
                 var scene=new NativeExpeditionStateScene();scene.Build(v,rig,cues,v.elapsed,eye,false,false);Blocks(scene,f,true,id+" waiting");Check(scene.LaserStage==ExpeditionLaserStage.Lock&&scene.LaserBeamsLit==1,id+": standing by: the floor beam and the sheet only");
-                double arrive=v.elapsed+.2;cues.ArrivalHeld=false;cues.Observe(v,arrive);Check(cues.ArrivedAt(id)==arrive&&cues.LockAt(id)==arrive+NativeExpeditionStates.ArriveDelay,id+": presented: the lock starts ArriveDelay after the arrival");
+                double sealStart=exit.began;double arrive=v.elapsed+.2;cues.ArrivalHeld=false;cues.Observe(v,arrive);Check(cues.ArrivedAt(id)==arrive&&cues.LockAt(id)==arrive+NativeExpeditionStates.ArriveDelay,id+": presented: the lock starts ArriveDelay after the arrival");
                 int lastLit=0;
                 for(double dt=.025;dt<=2.6;dt+=.05)
                 {
-                    double t=arrive+dt,age=dt-NativeExpeditionStates.ArriveDelay;scene.Build(v,rig,cues,t,eye,false,false);Blocks(scene,f,true,id+" arrival +"+dt.ToString("0.00"));
+                    p.Tick(.05);v=p.View(id);double t=v.elapsed,age=t-sealStart;scene.Build(v,rig,cues,t,eye,false,false);Blocks(scene,f,true,id+" arrival +"+dt.ToString("0.00"));
                     int want=age<0?1:age>=NativeExpeditionLaserDoor.LockSeconds?NativeExpeditionLaserDoor.Beams:Enumerable.Range(0,NativeExpeditionLaserDoor.Beams).Count(i=>NativeExpeditionLaserDoor.FireAt(i,NativeExpeditionLaserDoor.Beams)<=age);
                     Check(scene.LaserBeamsLit==want&&scene.LaserBeamsLit>=lastLit,id+": the beams fire one after another floor-up (+"+dt.ToString("0.00")+": "+scene.LaserBeamsLit+" of "+want+")");lastLit=scene.LaserBeamsLit;
-                    Check(scene.LaserStage==(age<NativeExpeditionLaserDoor.LockSeconds?ExpeditionLaserStage.Lock:ExpeditionLaserStage.Sealed)&&scene.LaserLockStart==arrive+NativeExpeditionStates.ArriveDelay,id+": lock, then sealed");
+                    Check(scene.LaserStage==(age<NativeExpeditionLaserDoor.LockSeconds?ExpeditionLaserStage.Lock:ExpeditionLaserStage.Sealed)&&Math.Abs(scene.LaserLockStart-sealStart)<1e-7,id+": lock, then sealed on the authority clock");
                 }
                 var pal=NativeExpeditionLaserDoor.Palette(id);Check(palettes.Add(pal.Beam)&&scene.Parts.Any(b=>b.Hex==pal.Beam&&b.Look==NativeCyberCityLooks.Tube),id+": the beams in the zone's own colour");
                 Check(!scene.Parts.Any(b=>Math.Abs((b.X-f.Cx)*f.Ux+(b.Z-f.Cz)*f.Uz)+b.Hx<f.W/2-1e-3f&&Math.Abs((b.X-f.Cx)*f.Fx+(b.Z-f.Cz)*f.Fz)<f.D/2&&b.Y-b.Hy>f.Cy+.05f&&b.Y+b.Hy<f.Cy+f.H),id+": nothing solid stands inside the closure face");
@@ -183,7 +183,7 @@ namespace ChipArena.UnityConversion
             cues.Observe(V(layout.world,id),t+.5);Check(!cues.DoorPulse(id,t+.5,out _),"a teammate still loading has not arrived");
             cues.Observe(V(id,null),t+.8);Check(!cues.DoorPulse(id,t+.8,out _),"arriving with the party (inside its lock) is not a re-seal");
             cues.Observe(V(layout.world,null),t+1);
-            var late=V(id,null);double at=t+6;cues.Observe(late,at);
+            for(int tick=0;tick<24;tick++)p.Tick(.25);var late=V(id,null);double at=t+6;cues.Observe(late,at);
             Check(cues.DoorPulse(id,at+.1,out double age)&&Math.Abs(age-.1)<1e-9&&!cues.DoorPulse(id,at+NativeExpeditionLaserDoor.PulseSeconds,out _)&&!cues.DoorPulse(layout.world,at+.1,out _),"a teammate arriving later: the re-seal pulse, in this area only");
             var scene=new NativeExpeditionStateScene();scene.Build(late,rig,cues,at+.1,eye,false,false);Blocks(scene,f,true,"re-seal");Check(scene.LaserStage==ExpeditionLaserStage.Sealed&&scene.LaserBeamsLit==NativeExpeditionLaserDoor.Beams,"the re-seal never darkens a beam");
         }
@@ -228,14 +228,14 @@ namespace ChipArena.UnityConversion
             NativeLaserDoorPreview.Fill(c,"x","a",20.2);Check(c.state=="open"&&c.began==19,"then open");
             var p=Start(content,layout);string id=layout.instances[1];var rig=ExpeditionStateRig.For(layout,id);var f=rig.Doors[0].Frame;var v=p.View(id);var record=v.closures.Single(x=>x.id==rig.Doors[0].Anchor);
             var scene=new NativeExpeditionStateScene{DoorPreview=c};NativeLaserDoorPreview.Fill(c,record.id,id,20.2);scene.Build(v,rig,null,20.2,EyeAt(f,4),false,false);
-            Check(scene.LaserStage==ExpeditionLaserStage.Open&&scene.LaserBeamsLit==0&&record.state=="sealed"&&p.Exit(id).state=="sealed","the preview draws its stand-in; the record and the director are untouched");
+            Check(scene.LaserStage==ExpeditionLaserStage.Open&&scene.LaserBeamsLit==0&&record.state=="open"&&p.Exit(id).state=="open","the preview draws its stand-in; the record and the director are untouched");
             Check(NativeDevActions.Find("preview-door-lock")?.Kind==NativeDevKind.Presentation,"the DEV panel's view tool");
         }
 
         // 7. Tiers: five beams on low graphics; no flash with reduced effects; fewer quads on low.
         private static void Tiers(ConversionContent content,ExpeditionLayout layout)
         {
-            var p=Start(content,layout);string id=layout.instances[2];var rig=ExpeditionStateRig.For(layout,id);var f=rig.Doors[0].Frame;var v=p.View(id);var eye=EyeAt(f,4);
+            var p=Start(content,layout);string id=layout.instances[2];Check(p.Run.MoveMembers(layout.world,id,new[]{"host"}),"tier fixture enters");for(int tick=0;tick<8;tick++)p.Tick(.25);var rig=ExpeditionStateRig.For(layout,id);var f=rig.Doors[0].Frame;var v=p.View(id);var eye=EyeAt(f,4);
             var full=new NativeExpeditionStateScene();full.Build(v,rig,null,30,eye,false,false);var low=new NativeExpeditionStateScene();low.Build(v,rig,null,30,eye,false,true);var calm=new NativeExpeditionStateScene();calm.Build(v,rig,null,30,eye,true,false);
             Check(full.LaserBeamsLit==9&&low.LaserBeamsLit==5&&calm.LaserBeamsLit==9,"nine beams, five on low");Check(low.Quads.Count<full.Quads.Count&&low.Parts.Count<full.Parts.Count&&calm.Quads.Count<=full.Quads.Count,"low graphics and reduced effects draw less");
             Blocks(low,f,true,"low");Blocks(calm,f,true,"reduced");
