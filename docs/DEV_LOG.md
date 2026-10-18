@@ -1,3 +1,9 @@
+## 2026-10-18 — Astra: native zone boss codec acceptance follow-up
+
+- Branch `codex/zone-boss-native-acceptance`, base shared/builder `c6beb6a` (#272 merged). First native build failed the Station arrival-frame assertion; no new update published. Existing test feed remains f9ed9c2a.
+- Unity serializes the dedicated boss actor's absent horde `addKind` as an empty string. Normalize it back to null at the same decode boundary as other optional fields, so generic/boss minions do not fail the horde-kind whitelist. Keep arrival-frame acceptance and add explicit non-horde identity check plus bounded fixture diagnostics. No validation bypass.
+- #272 hosted full managed/relay, semantic compilation, package and Windows updater gates passed (run 39090013547); native build caught this additional codec defect. Native rerun and publication pending. Includes requested body revive and immediate spectating; human multiplayer acceptance remains unrun.
+
 ## 2026-10-18 — Astra: enable zone bosses; Expedition body revive and immediate spectate
 
 - Branch `codex/zone-boss-authority`, PR #272, integrated shared `8f2e3a3` including both guest-loading fixes. Both dedicated zone bosses enabled in candidate; Ward Zero retains Siren, intro stays 9.0678 s. Converter persistent hazard targets/times now feed live warning, droplet and pool drawing, including late guests and action changes; DEV preview remains independent.
