@@ -66,6 +66,8 @@ namespace ChipArena.UnityConversion
                 lo=deathFrom;hi=deathTo;Add(DeathBuckle,0.001f,body,1.2f);Add(DeathPour,1.0f,mouth,1.0f);Add(Lamps,1.9f,rig.LampAtL,.6f);Add(Whistle,NativeIronworksBossStage.WhistleAt,rig.WhistleAt,1.3f);
             }
             lo=from;hi=to;if(!(hi>lo)){into=null;return n;}
+            if(v.hazards!=null&&float.IsNaN(rig.DeathAge))foreach(var h in v.hazards)
+                if(h.kind=="blow"||h.kind=="deslag")Add(h.kind=="blow"?Land:DeslagLand,h.hitAt,new Vector3(h.x,h.y,h.z),h.kind=="blow"?.6f:1);
             // ---- the action playing (its record) ----
             int ai=rig.ActIndex;
             if(ai>=0&&IronworksBossView.At(v.actionAt))
@@ -75,12 +77,12 @@ namespace ChipArena.UnityConversion
                 {
                     case "pour":Add(Lever,s,head);Add(GearTilt,s+.1f,body);Add(PourWindup,s+.2f,mouth);Add(PourSplash,hit+.3f,mouth,1.1f);Add(Slosh,hit+a.Strike+a.Follow+.2f,mouth,.7f);break;
                     case "blow":Add(Inhale,s,rig.GrateAt,1.1f);Add(Valve,s+.15f,head,.7f);Add(Roar,hit,mouth,1.3f);
-                        if(fx!=null)for(int i=0;i<fx.RainCount;i++)Add(Land,hit+2.0f+fx.Rain[i*4+3],new Vector3(fx.Rain[i*4],0,fx.Rain[i*4+1]),.6f);break;
+                        if(v.hazards==null&&fx!=null)for(int i=0;i<fx.RainCount;i++)Add(Land,hit+2.0f+fx.Rain[i*4+3],new Vector3(fx.Rain[i*4],0,fx.Rain[i*4+1]),.6f);break;
                     case "stomp":Add(StompLift,s,rig.Foot(Math.Max(0,Math.Min(3,v.variant))));Add(StompImpact,hit,rig.Foot(Math.Max(0,Math.Min(3,v.variant))),1.3f);break;
                     case "grab":Add(GrabReach,s,rig.TongTip[rig.ActLeg==0?0:1],1.0f);Add(GrabSnap,hit,rig.TongTip[rig.ActLeg==0?0:1],1.2f);Add(GrabSqueeze,hit+.4f,rig.TongTip[rig.ActLeg==0?0:1]);
                         if(v.targetSeat>=0)Add(GrabThrow,hit+a.Strike+a.Follow-.6f,rig.TongTip[rig.ActLeg==0?0:1]);break;
                     case "slam":Add(RearCreak,s,body,1.1f);Add(SlamImpact,hit,body,1.4f);Add(SlamWave,hit+.05f,body,1.1f);Add(Slosh,hit+.3f,mouth);break;
-                    case "deslag":Add(Lever,s,head);Add(DeslagRoll,s+.1f,body,1.0f);for(int i=0;i<3;i++){Add(DeslagLob,hit+i*.4f,mouth);if(fx!=null)Add(DeslagLand,hit+i*.4f+.9f,new Vector3(fx.Lumps[i*3],0,fx.Lumps[i*3+1]));}break;
+                    case "deslag":Add(Lever,s,head);Add(DeslagRoll,s+.1f,body,1.0f);for(int i=0;i<3;i++){Add(DeslagLob,hit+i*.4f,mouth);if(v.hazards==null&&fx!=null)Add(DeslagLand,hit+i*.4f+.9f,new Vector3(fx.Lumps[i*3],0,fx.Lumps[i*3+1]));}break;
                     case "call":Add(Bellow,hit,mouth,1.3f);break;
                     case "charge":Add(ChargeWindup,s,body,1.1f);Add(Skid,hit+a.Strike,body,1.1f);break;
                 }

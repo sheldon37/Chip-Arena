@@ -32,6 +32,8 @@ namespace ChipArena.UnityConversion
             var rig=new IronworksBossRig();var fx=new NativeIronworksBossFx();
             void Frame(float t){rig.Update(t,1/60f,v,IronworksBossGround.Hall,Vector3.Zero,false,true,Target,double.NaN,double.NaN);fx.Build(rig,v,t,-26,3,-6,1,0,0,0,1,0,1,false);}
             Frame(1.5f);Check(fx.Telegraphs>0,"late guest receives authority landing warning without action history");
+            var cues=new IronworksBossCue[NativeIronworksBossCues.QueueSize];
+            Check(NativeIronworksBossCues.Collect(v,rig,fx,1.9f,2.1f,float.NaN,float.NaN,float.NaN,float.NaN,cues)==1,"authority landing cue survives action change");
             Frame(3);Check(fx.Molten.Take(fx.MoltenCount).Any(m=>Math.Abs(m.At.X+25)<.001f&&Math.Abs(m.At.Z-3)<.001f&&Math.Abs(m.Half.X-1.4f)<.001f),"surviving pool uses exact authority target and radius after action ends");
             Frame(9);Check(!fx.Molten.Take(fx.MoltenCount).Any(m=>Math.Abs(m.At.X+25)<.001f&&Math.Abs(m.At.Z-3)<.001f),"expired authority pool disappears");
         }
