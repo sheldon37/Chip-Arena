@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-18 Astra Cards+ adaptations candidate (`codex/rounds-chip-adaptations`, base `2fd5f6a`): optional 20-chip bundled pack, original-author bottom-left credit and external pack author metadata. Focused checks and Unity compilation pass; full regression/build receipt in PR. Other Booga packs remain pending. Contract: `unity/ChipArenaConversion/docs/ROUNDS-ADAPTATIONS.md`.
+
 2026-10-18 Astra movement/mods candidate (`codex/movement-chips-mods`, base `5b93c11`): five native movement chips; extra air-jump stacks with authority/guest parity; Settings > Mods with three optional party rules and schema-1 local JSON chip packs. Restart and identical multiplayer selection required. Full managed suite and Unity API compile pass; native execution/publication pending. Contract: `unity/ChipArenaConversion/docs/MODS.md`.
 
 2026-10-18 Astra networking candidate (`codex/expedition-disconnect-wave-hud`, base `228f353`): atomic replaceable Expedition snapshots, guest Siren-HUD guard, room-scoped repeat reconnect and fresh readiness tickets, and lobby-only Make host with automatic room transfer. All clients need Expedition protocol 5. Full managed suite and Unity API compile pass; Windows native fixture/publication pending. Prior PR #280 wall/density build confirmed published at 15:43 UTC. See DEV_LOG.

@@ -93,7 +93,7 @@ namespace ChipArena.UnityConversion
             }
             Views.Add(v);colors.Add(color);
         }
-        private static bool Has(NativePilot p,string chip)=>p!=null&&p.Seat.chips.TryGetValue(chip,out int count)&&count>0;
+        private static bool Has(NativePilot p,string chip)=>p!=null&&NativeRoundsCards.Has(p.Seat.chips,chip);
         private bool world;private PhysicsScene physics;
         // The floor under a field (NativeBlastPresentation.FloorUnder); null (the source's floor) without a physics scene.
         private double? FloorOf(long id,Vector3 at)

@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
         private static ChipTextSet set;private static Dictionary<string,ChipTextEntry> text;
         private static void Ensure(){if(set!=null)return;var asset=Resources.Load<TextAsset>("ChipText");if(asset==null)throw new InvalidOperationException("ChipText.json is missing");set=JsonUtility.FromJson<ChipTextSet>(asset.text);text=set.chips.ToDictionary(c=>c.id);}
         public static ChipTextSet Text{get{Ensure();return set;}}
-        public static string Description(ContentChip c){Ensure();return text.TryGetValue(c.id,out var t)?t.description:c.description;}
+        public static string Description(ContentChip c){Ensure();return text.TryGetValue(c.id,out var t)?t.description:c.description+(string.IsNullOrWhiteSpace(c.sourceCard)?"":" Adapted from "+c.sourcePack+" / "+c.sourceCard+".");}
         public static ChipStatText[] Lines(ContentChip c){Ensure();return text.TryGetValue(c.id,out var t)&&t.lines!=null?t.lines:Array.Empty<ChipStatText>();}
         public static Color Rarity(string r)=>U.Hex(Cart.Rarity(r));
         public static string RarityName(string r)=>r=="l44t"?"L44T":string.IsNullOrEmpty(r)?"Common":char.ToUpperInvariant(r[0])+r.Substring(1);
@@ -84,7 +84,7 @@ namespace ChipArena.UnityConversion
             l.Desc=s.DescLines>0?U.Wrap(Description(c),s.Desc,w-2*s.Pad-6,false,s.DescLines):new List<string>();
             float y=l.Head+2;l.DescTop=y+7;if(l.Desc.Count>0)y+=7+l.Desc.Count*s.Desc*s.DescLine+8;else y+=8;
             var lines=Lines(c);l.StatsTop=y-3;if(lines.Length>0)y+=-3+lines.Length*(s.Stat*1.22f+1)+8;
-            l.FootTop=y;l.Height=y+6+1+Mathf.Max(8,s.Foot*1.2f)+s.Pad-2;return l;
+            l.FootTop=y;l.Height=y+6+1+Mathf.Max(8,s.Foot*1.2f)+s.Pad-2+(NativeMods.Credit(c).Length>0?s.Foot*1.3f+3:0);return l;
         }
         public static float Height(ContentChip c,float w,ChipSize s)=>Measure(c,w,s).Height;
         // Draw a card filling `r` (height from Height(), or the row's tallest card). `copies` already owned.
@@ -171,6 +171,11 @@ namespace ChipArena.UnityConversion
             if(c.max<=6){float sw=max*7-2,sx=foot.xMax-U.Measure(count,s.Foot,false,true,.06f).x-9-sw,sy=foot.center.y-4;
                 for(int i=0;i<max;i++){var slot=new Rect(sx+i*7,sy,5,8);if(i<have){U.Fill(slot,A(rare));U.Fill(new Rect(slot.x,slot.y,slot.width,p1),A(Color.white,.4f));}else{U.Fill(slot,A(new Color(1,1,1,.1f)));U.Fill(new Rect(slot.x,slot.yMax-p1,slot.width,p1),A(new Color(1,1,1,.14f)));}
                     if(i==have&&look.Enabled&&!look.Chosen){float pulse=.5f-.5f*Mathf.Cos(t*2*Mathf.PI/1.4f);U.Fill(slot,A(rare,.55f*pulse));U.Round(slot,Color.clear,1,A(rare),1);}}}
+            string credit=NativeMods.Credit(c);if(credit.Length>0)
+            {
+                var creditRect=new Rect(tx0,foot.yMax+3,txw,Mathf.Max(8,s.Foot*1.3f));
+                var wrapped=U.Wrap(credit,s.Foot,txw,false,1);if(wrapped.Count>0)U.Text(creditRect,wrapped[0],s.Foot,A(footC),TextAnchor.MiddleLeft,shadow:footShade);
+            }
             // Legendary's embers off the crest and Mythic's shards round the bezel.
             NativeChipArt.Embers(r,cart,t,calm||look.Plain,a);NativeChipArt.Shards(r,s.Radius,cart,t,calm||look.Plain,a);
             // Another card highlighted: this one recedes under a veil (kept under Reduced effects; the tray's badges stay over it).

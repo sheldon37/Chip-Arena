@@ -1,3 +1,11 @@
+## 2026-10-18 — Astra: Cards+ adaptation pack and chip author credits
+
+- Branch `codex/rounds-chip-adaptations`, base shared `2fd5f6a` (#282). Owner supplied Booga ROUNDS profile, requested optional chip adaptations and author at bottom-left, then selected adaptations over faithful ports. This first pack covers all 20 Cards+ concepts; other Booga packs remain unimplemented.
+- Add off-by-default Settings > Mods > Bundled adaptations toggle, persisted and restart-gated. Every peer must match the catalog fingerprint. Twenty original Chip Arena chip names/effects, source-card mapping and original-author credit (willis81808). Full reference/tuning and deliberate substitutions in `unity/ChipArenaConversion/docs/ROUNDS-ADAPTATIONS.md`. Existing native-only defaults and pinned legacy content retained; dedicated servers remain vanilla.
+- Use existing bounded native field/summon/satellite/resource/DoT effects via fixed trusted aliases, with counterpart exclusions in both directions. New Phase Reserve grants 0.6 s protection once per successful block activation; forced damage retains existing behavior. No imported third-party code/art or arbitrary scripts. Cards+ MIT notice ships in Resources and local Mods folder; no blanket reuse claim for other mods.
+- Add optional author/source metadata and an independent bottom-left credit row, preserving install count and normal card footer. Schema-1 external packs inherit a pack author or override per chip; controls/markup/oversized credit rejected. Original source appears in full description. Claude retains bespoke visual polish; no new effect assets or animation timing.
+- Focused managed checks: 758 adaptation checks plus 714 movement/mod checks and existing jump suite pass. All three pinned Unity assembly compiles and 2512-file source structure check pass. Full managed suite running at entry; result recorded in PR. Windows gate added for actual JsonUtility credit round trips and block/field/roll/summon/satellite behavior. Rendered layout, Windows execution, multi-machine play and balance remain unverified here; publication pending builder.
+
 ## 2026-10-18 — Astra: movement chips and initial Mods support
 
 - Branch `codex/movement-chips-mods`, shared base `5b93c11` (retains PR #281 networking/host promotion). Owner requested movement chips and confirmed both built-in modifiers and external mods.

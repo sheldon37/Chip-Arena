@@ -101,3 +101,9 @@ Changing any effect implementation requires a schema/revision bump. Save files
 store the selected filenames/rules; replay/network compatibility uses the final
 content revision. Do not enable or replace packs during a running session and
 expect them to reload; restart after changes.
+
+## Bundled Cards+ adaptations and author credit
+
+Settings > Mods now has an optional 20-chip Cards+ adaptation pack, credited to original concept author willis81808. Restart required; same selection on all peers. See [ROUNDS-ADAPTATIONS.md](ROUNDS-ADAPTATIONS.md) for each original/adapted card and deliberate changes. Full MIT notice ships with the game.
+
+External packs may add optional `author` at pack level or on each chip (chip wins). Up to 48 plain-text characters, no control characters or angle brackets. A chip may also supply `sourceCard`; `sourcePack` is assigned from the pack display name. Author appears in its own bottom-left footer row. Legacy packs without attribution remain valid.
