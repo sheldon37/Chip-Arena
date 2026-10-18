@@ -1,3 +1,11 @@
+## 2026-10-18 — Astra: station wall routing and occupied-city population
+
+- Branch `codex/station-wall-city-density`, base shared/builder `4cfa0ba` (#279). Owner reports THE 6:47 stuck against walls and sparse city zombies.
+- Station pursuit replaces unconditional target-facing and unchecked lane edges with a bounded 175-node footprint graph over the live physics scene. Turns test intermediate hull poses; each walk segment checks its destination and sweep. A blocked segment drops its route and replans. Departure validates its intended yaw before moving, preserving the crash stagger instead of rotating into a wall. Phase-one routes stay off the platform; subsequent routes include it. Existing hit timing, damage and movement speed remain unchanged; authority positions/yaw use existing replication. Claude retains animation/presentation.
+- City cap is now 24 + 16 per connected lobby member (40/56/72/88 for 1–4; hard maximum 96), with up to four arrivals every 0.5 s. Candidate selection favours nearby, less-crowded exits within 60 m instead of favouring distant rings. Safety exclusion is 12 m, or 18 m with clear line of sight. Existing sanctuary, gate apron, landing clearance, kind restrictions, rewards and no-Hulk rule remain. Remote idle population recycles after 8 s. Validate hazardous/blocked entries before weighted selection. No occupants still means no spawning.
+- Correct the stale real-Unity hub fixture that still asserted a cap of eight and one arrival despite earlier population increases. Add native booth-turn/route and local-spawn checks. Managed routing/phase/detour tests, city weights/caps and existing hub/perception checks pass; all three Unity reference assembly compilations pass. Full managed regression result follows in the PR.
+- Implemented on branch only at this entry. Windows/PhysX fixtures, rendered play, human multiplayer, frame-time acceptance and publication remain pending. No game/feed release claimed here.
+
 ## 2026-10-18 — Astra: zone arrivals, Converter passage and stage bounce
 
 - Branch `codex/zone-boss-arrival-camera`, base shared/builder `e13e610` (#276, published as 225b49d94c56). Owner still sees only the arrival text. #276 removed the Siren stage but left UpdateCamera following the pilot; neither live boss had a camera handoff.

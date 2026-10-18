@@ -9,6 +9,21 @@ namespace ChipArena.UnityConversion
         public static void Run()
         {
             int count=0;void Check(bool ok,string why){if(!ok)throw new Exception("Zone boss rules: "+why);count++;}
+            var route=new NativeStationRoute();
+            var start=new System.Numerics.Vector3(-18,0,0);var routeTarget=new System.Numerics.Vector3(18,0,0);
+            bool Clear(System.Numerics.Vector3 a,System.Numerics.Vector3 b)
+            {
+                // A wall occupying the direct lane; segment samples include both ends.
+                int steps=Math.Max(1,(int)Math.Ceiling(System.Numerics.Vector3.Distance(a,b)*20));
+                for(int k=0;k<=steps;k++){var q=System.Numerics.Vector3.Lerp(a,b,(float)k/steps);if(Math.Abs(q.X)<3&&q.Z<3)return false;}
+                return true;
+            }
+            Check(route.Plan(start,routeTarget,1,Clear),"blocked direct lane has an alternate route");
+            var cursor=start;bool detoured=false;int segments=0;
+            while(route.Next(cursor,out var goal)&&segments++<200){Check(Clear(cursor,goal),"every chosen segment avoids the wall");Check(NativeStationRoute.Contains(goal,1),"phase one stays on concourse");detoured|=goal.Z>=3;cursor=goal;}
+            Check(detoured&&cursor.X>8&&segments<200,"route goes around wall and reaches attack range");
+            Check(!route.Plan(cursor,routeTarget,1,(a,b)=>false)&&!route.Next(cursor,out _),"fully blocked rebuild discards stale waypoint");
+            Check(!NativeStationRoute.Contains(new System.Numerics.Vector3(0,0,-4),1)&&NativeStationRoute.Contains(new System.Numerics.Vector3(0,0,-4),2),"platform route opens only after barrier phase");
             Check(NativeIntroRules.Staged(false,true,"intro",null),"Ward Zero retains the staged Siren entrance");
             Check(!NativeIntroRules.Staged(false,false,"intro",null)&&!NativeIntroRules.Staged(false,true,"reveal",null),"only an active intro opens a staged entrance");
             foreach(var kind in new[]{NativeZoneBossRules.Station,NativeZoneBossRules.Ironworks})

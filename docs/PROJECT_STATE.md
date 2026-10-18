@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-18 Astra wall/density candidate (`codex/station-wall-city-density`, base `4cfa0ba`): collision-checked station turns and live obstacle routes; city spawning focused on occupied streets, cap 40/56/72/88 for 1–4 players. Managed affected checks and Unity API compile pass; Windows fixtures/publication pending. See DEV_LOG.
+
 2026-10-18 Astra follow-up candidate (`codex/zone-boss-arrival-camera`, base `e13e610`): directs live zone arrivals, opens Converter pursuit onto the casting floor with full passage clearance, and restores bounce on static stage geometry. Local camera/route and Ironworks visual checks plus Unity API compile pass; hosted/native verification and publication pending. See newest DEV_LOG entry.
 
 2026-10-18 Claude party loading indicator (`claude/party-loading-indicator`, merged into shared; presentation only): the stage loading screen shows a party panel for Expedition starts and area loads (YOU first, weapon icon, WAITING/LOADING/READY/IN WORLD/DROPPED chip, my real bar, indeterminate bars for others, "WAITING FOR n PLAYERS…" then "EVERYONE'S IN"). No per-member load state is replicated yet: Astra's relay contract is in DEV_LOG. Next: Astra binds `loadProgress`/`loadState`.
