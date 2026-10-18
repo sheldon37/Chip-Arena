@@ -59,6 +59,24 @@ namespace ChipArena.UnityConversion
                 Check(!BulletImpact(shot,p,contact)&&shot.Bounces==0&&shot.Velocity.x<0&&Math.Abs(shot.Damage-8)<.001,"bounce chip reflects static stage geometry once with retention");
                 Check(BulletImpact(shot,p,contact),"exhausted bounce is absorbed");
             }
+            if(z.archetype==NativeZoneBossRules.Station)
+            {
+                var savedPosition=m.Body.position;var pilotPosition=p.Body.position;float savedYaw=m.Yaw;int savedPhase=z.phase;
+                try
+                {
+                    z.phase=1;
+                    Check(StationPoseClear(new Vector3(0,0,5),90)&&!StationTurnClear(new Vector3(0,0,5),90,0),"booth blocks a turning hull before penetration");
+                    m.Body.position=new Vector3(-12,0,5);m.Yaw=0;m.Body.rotation=Quaternion.identity;
+                    p.Body.position=new Vector3(16,.9f,5);stationRoute.Clear();stationRouteAt=0;Physics.SyncTransforms();
+                    for(int tick=0;tick<900;tick++)
+                    {
+                        Match.SynchronizeExpeditionClock(Time+1f/60);StationBossWalk(p);
+                        Check(StationPoseClear(m.Body.position,m.Yaw),"wall route never embeds hull at tick "+tick);
+                    }
+                    Check(m.Body.position.x>0,"boss crosses concourse instead of retrying obstructed waypoint");
+                }
+                finally{m.Body.position=savedPosition;m.Yaw=savedYaw;m.Body.rotation=Quaternion.Euler(0,savedYaw,0);p.Body.position=pilotPosition;z.phase=savedPhase;stationRoute.Clear();stationRouteAt=0;Physics.SyncTransforms();}
+            }
             if(z.archetype==NativeZoneBossRules.Ironworks)
             {
                 // Actual opening and catwalk clearance, with full boss sweep and the boss gate open.

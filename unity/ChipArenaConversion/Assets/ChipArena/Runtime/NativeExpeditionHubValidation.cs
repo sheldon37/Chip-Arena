@@ -52,10 +52,11 @@ namespace ChipArena.UnityConversion
                 Local.Body.position=new Vector3(gate.Closure.x,.9f,gate.Closure.z);Physics.SyncTransforms();HubInteract(Local);Check(hubAuthority.View().Gates[0].Open&&!hubDoors[0].enabled,"cannot close on capsule");
                 Check(hubBlockedLinks.Count>0,"horde links through gates indexed");
                 Local.Body.position=new Vector3(0,.9f,0);hubSpawnAt=Time;StepHubPopulation();
-                int count=hubMobs.Count;Check(count==1&&Pve.Cap==8,"solo hub spawns one, cap eight");
+                int count=hubMobs.Count;Check(count>0&&count<=ExpeditionHubRules.SpawnBurst&&Pve.Cap==40,"solo hub fills a bounded burst, cap forty");
+                Check(Minions.Where(m=>hubMobs.ContainsKey(m.Id)).All(m=>(Vec(m.Pve.Entry.@exit.Position(.85f))-Local.Body.position).sqrMagnitude<=3600),"initial city arrivals stay within the occupied region");
                 StepHubPopulation();Check(hubMobs.Count==count,"no refill before the spawn interval");
                 for(int i=0;i<6;i++){for(int t=0;t<12;t++)Match.Tick(.25);StepHubPopulation();}
-                Check(hubMobs.Count<=8&&hubMobs.Count>0&&Minions.All(m=>m.Pve?.Stats.id!="hulk"),"bounded hub population without Hulks");
+                Check(hubMobs.Count<=40&&hubMobs.Count>0&&Minions.All(m=>m.Pve?.Stats.id!="hulk"),"bounded hub population without Hulks");
                 var mob=Minions.First(m=>hubMobs.ContainsKey(m.Id));mob.Pve.ExposedAt=0;mob.Pve.Travelling=false;
                 ValidateHubPerception(mob);
                 float hp=mob.Hp;Check(HitMinion(mob,Local,5,Vector3.zero,0)==0&&mob.Hp==hp,"inside damage cannot earn or hit outside");

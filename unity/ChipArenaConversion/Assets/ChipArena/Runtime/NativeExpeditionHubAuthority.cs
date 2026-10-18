@@ -127,22 +127,25 @@ namespace ChipArena.UnityConversion
             if(Time<hubSpawnAt)return;hubSpawnAt=Time+(float)ExpeditionHubRules.SpawnInterval;
             if(hubLiving.Count==0||Minions.Count(m=>m.Hp>0&&m.Pve!=null&&!m.DevMonster)>=Pve.Cap)return;
             // Rebuild candidates after each arrival: every zombie respects the same spawn clearance
-            // and entry queue limits, including during a two-at-a-time population ramp.
+            // and entry queue limits, including during a bounded population ramp.
             for(int spawned=0;spawned<ExpeditionHubRules.SpawnBurst&&Minions.Count(m=>m.Hp>0&&m.Pve!=null&&!m.DevMonster)<Pve.Cap;spawned++)
             {
-            var candidates=new List<(ExpeditionHubZone zone,PveEntry entry)>();
+            var candidates=new List<(ExpeditionHubZone zone,PveEntry entry,double weight)>();
             foreach(var zone in hubAuthority.Layout.Zones)foreach(int id in zone.Spawns)
             {
-                var entry=Pve.Content.entries.FirstOrDefault(e=>e.e==id);if(entry==null||!WardLandingClear(entry)||EntryQueue(id)>0)continue;
+                var entry=Pve.Content.entries.FirstOrDefault(e=>e.e==id);if(entry==null||!WardLandingClear(entry)||EntryQueue(id)>0||entry.kind=="vent"&&VentHazard(id)||entry.kind=="breach"&&!BreachAvailable(entry)||entry!=null&&UnsafeStagePath(Vec(entry.@exit.Position(.9f)),Vec(entry.@exit.Position(.9f))))continue;
                 if(!Pve.Content.adds.Any(a=>ExpeditionHubRules.Kind(zone.Ring,a.id,state.elapsed)&&NativeWardEntries.Allows(entry,a.id)&&(a.id!="spitter"||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")<NativeSpitterRules.Cap)))continue;
                 var at=Vec(entry.@exit.Position(.85f));
-                if(HubInside(at)||Minions.Any(m=>(m.Body.position-at).sqrMagnitude<9)||hubLiving.Any(p=>(p.Body.position-at).sqrMagnitude<400||((p.Body.position-at).sqrMagnitude<900&&!SceneLinecast(p.Body.position,at,WorldMask))))continue;
-                candidates.Add((zone,entry));
+                float nearest=hubLiving.Min(p=>(p.Body.position-at).sqrMagnitude);
+                if(HubInside(at)||Minions.Any(m=>m.Hp>0&&(m.Body.position-at).sqrMagnitude<9)||hubLiving.Any(p=>(p.Body.position-at).sqrMagnitude<144||((p.Body.position-at).sqrMagnitude<324&&!SceneLinecast(p.Body.position,at,WorldMask))))continue;
+                int nearby=Minions.Count(m=>m.Hp>0&&m.Pve!=null&&(m.Body.position-at).sqrMagnitude<144);
+                double weight=ExpeditionHubRules.SpawnWeight(nearest,nearby);
+                if(weight>0)candidates.Add((zone,entry,weight));
             }
             if(candidates.Count==0)break;
-            var zones=candidates.Select(x=>x.zone).Distinct().ToArray();double roll=Pve.SpawnRandom.Next()*zones.Sum(z=>ExpeditionHubRules.Weight(z.Ring));var chosen=zones[zones.Length-1];
-            foreach(var zone in zones){roll-=ExpeditionHubRules.Weight(zone.Ring);if(roll<0){chosen=zone;break;}}
-            var exits=candidates.Where(x=>x.zone==chosen).ToArray();var selected=exits[Math.Min(exits.Length-1,(int)(Pve.SpawnRandom.Next()*exits.Length))];
+            double roll=Pve.SpawnRandom.Next()*candidates.Sum(x=>x.weight);var selected=candidates[candidates.Count-1];
+            foreach(var candidate in candidates){roll-=candidate.weight;if(roll<0){selected=candidate;break;}}
+            var chosen=selected.zone;
             var kinds=Pve.Content.adds.Where(a=>ExpeditionHubRules.Kind(chosen.Ring,a.id,state.elapsed)&&NativeWardEntries.Allows(selected.entry,a.id)&&(a.id!="spitter"||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")<NativeSpitterRules.Cap)).Select(a=>a.id).ToArray();if(kinds.Length==0)break;
             double kindRoll=Pve.SpawnRandom.Next()*kinds.Sum(k=>k=="brute"?.15:1);string kind=kinds[kinds.Length-1];
             foreach(string candidate in kinds){kindRoll-=candidate=="brute"?.15:1;if(kindRoll<0){kind=candidate;break;}}
