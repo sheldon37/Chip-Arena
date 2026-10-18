@@ -302,6 +302,7 @@ namespace ChipArena.UnityConversion
             float y=Header(r,"BUILDING · "+row.name,b.cleared?"Door open":b.bosses.Length>0?"Boss fight · door sealed":"Door sealed",Tone(row.tone),a);
             var bar=Inner(r,y,20);bar.width-=110;U.Text(bar,"KILL QUOTA",11,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);U.Text(bar,b.progress+" / "+b.target,14,C.Ink(a),TextAnchor.MiddleRight,bold:true,mono:true);y+=22;
             var quota=Inner(r,y,10);quota.width-=110;H.Bar(quota,b.progress,b.target,20,Tone(row.tone,a),C.Void(.75f*a));y+=20;
+            y=NativeQuotaMarksHud.Building(r,y,v,a);
             if(b.bosses.Length>0)
             {
                 U.Text(Inner(r,y,16),"BOSSES",11,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);y+=20;

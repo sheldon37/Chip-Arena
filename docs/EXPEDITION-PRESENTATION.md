@@ -433,6 +433,39 @@ closure in place of the record; the record and its collider are untouched.
 For an exact, shared lock (optional, Astra): seal the exit at the arrival on the authority clock. Today each client times the
 lock from its own presentation; two clients arriving together see it within their view latency of each other.
 
+### Quota markers (the last enemies)
+
+Claude, `claude/quota-last-markers` (base shared `e13e610`), 2026-10-18. Owner: "We need some kind of indicator for the last
+enemies of a quota (Like maybe last 5?) In case they get stuck so players know where to find them." Presentation only
+(`Core/NativeQuotaMarks.cs` holds every rule, `Runtime/NativeQuotaMarksPresentation.cs` draws, `Runtime/NativeQuotaMarkAudio.cs`
+pings); nothing reaches the authority.
+
+- **When:** the viewer's current instance (`phase` Instance, `instances[].current`, its own `area`) is not cleared, has no boss
+  yet (`bosses[]` empty and no `bossArrivals[]` entry for the area) and 1–5 kills remain (`target - progress`,
+  `NativeQuotaMarks.Threshold`). Ward Zero, Central Station and City Ironworks all use these fields, so one rule covers them.
+  Off at 0 (quota met), in the boss phase, outside the instance (hub, another area), while loading or frozen for a host
+  transfer. Wave Defense is not covered: its waves end on a host-only spawn budget that guests do not receive.
+- **Which:** every live hostile horde add of the presented arena (a split area's arena holds only its own adds), the 8 nearest
+  the viewer (`Cap`). Never corpses, hub/town zombies, the zone boss or its summons, DEV monsters, or adds still queued at an
+  entry. Positions are the adds' presented roots (`ArenaPresentation.HordeDrawnRoot`, the smoothed root every peer poses).
+- **World marker:** a downward kite 0.6 m above the kind's head (the Hulk's 3.06 m capsule: 3.66 m above the floor; a
+  crawling add over its crawl capsule), in the HUD's enemy tone (Danger `#ff4d6d`, apart from the hazards' amber and the
+  allies' cyan), drawn over the scene so walls never hide it, with its distance in metres. 28 UI px within 6 m easing to 15 px
+  by 48 m; a 1.2 s pulse (alpha .72–1, size +12%). Hidden within 4 m while the add is in plain sight (a ray from the camera to
+  its chest through `NativeArena.WorldMask`), back by 6 m; behind a wall it keeps its marker at any range. Over the crosshair it
+  drops to .55. Adds lined up behind each other: the farther marker is lifted straight up clear of the nearer one (its
+  kite and label never overlap another's). It is an IMGUI overlay anchored to the world point (on top of the scene by construction) rather than a world
+  mesh with depth testing off, so the metres label stays crisp.
+- **Off screen:** an arrow with the distance for each marked add off screen or behind the camera, on a rounded rectangle inset
+  from the edges (sides .06, top .14 under the objective and LAST tags, bottom .18 over the cards, fractions of the height);
+  behind the camera it leans to the bottom (turn round); arrows closer than 0.16 rad are spread apart round their mean bearing.
+- **HUD:** `LAST n · MARKED` (n the kills left) under the objective tag in the scene, and under the KILL QUOTA bar on the J
+  screen's building panel.
+- **Cue:** one soft ping when the markers first turn on for a quota (run, loop, area); not on a count change, not on coming back
+  to the same quota. Key `expedition.quota.mark` (like the door keys it needs registering in `NativeSoundKeys` before the bank
+  can carry a clip); until then, and without LocalAssets, the built-in synthesized ping (`NativeQuotaMarks.PingSamples`).
+- **Tiers:** Reduced effects: no pulse, no glow. Low graphics: no glow. No allocation per frame.
+
 ## Dev preview
 
 Start the player with `--ca-expedition-preview` ("DEV ONLY · NOT A GAME MODE", in place of the main menu).
