@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
     {
         public string account, name, weapon, carriedBy, area, pendingArea;public int reprintCost, seat;
         public bool connected, alive, safe, extracted, choosing, host, exitVote, extractVote, atJoin;
+        // The state is required to distinguish an absent Unity JSON float (0) from a real 0% report.
+        public float loadProgress=-1;public string loadState;
     }
     [Serializable] public sealed class ExpeditionViewInstance
     {
@@ -248,7 +250,9 @@ namespace ChipArena.UnityConversion
             v.viewer=N(v.viewer);v.mine??=new ExpeditionViewPersonal();v.transfer??=new ExpeditionViewTransfer();v.difficulty??=new ExpeditionDifficulty();
             v.mine.rewards??=Array.Empty<ExpeditionViewReward>();v.mine.chips??=Array.Empty<ChipCount>();v.mine.perks??=Array.Empty<string>();v.mine.carrying??=Array.Empty<string>();
             v.mine.account=N(v.mine.account);v.mine.carriedBy=N(v.mine.carriedBy);
-            foreach(var m in v.members){m.carriedBy=N(m.carriedBy);m.pendingArea=N(m.pendingArea);m.name=N(m.name)??m.account;}
+            foreach(var m in v.members){m.carriedBy=N(m.carriedBy);m.pendingArea=N(m.pendingArea);m.name=N(m.name)??m.account;
+                m.loadState=N(m.loadState);if(!ExpeditionLoadReportStore.ValidState(m.loadState))m.loadState=null;
+                if(m.loadState==null||float.IsNaN(m.loadProgress)||float.IsInfinity(m.loadProgress)||m.loadProgress<0||m.loadProgress>1)m.loadProgress=-1;}
             foreach(var a in v.anchors)a.building=N(a.building);
             foreach(var l in v.loot){l.owner=N(l.owner);l.boss=N(l.boss);}
             foreach(var r in v.mine.rewards){r.boss=N(r.boss);r.selected=N(r.selected);r.offers??=Array.Empty<string>();}

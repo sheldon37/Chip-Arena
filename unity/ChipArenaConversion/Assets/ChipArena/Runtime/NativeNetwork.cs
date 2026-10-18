@@ -11,6 +11,7 @@ namespace ChipArena.UnityConversion
     {
         [NonSerialized] public NativeDevCommand devCommand;[NonSerialized] public NativeDevReply devReply;
         [NonSerialized] public ExpeditionView expeditionPublic;[NonSerialized] public ExpeditionPrivateFrame expeditionPrivate;[NonSerialized] public ExpeditionCommandRequest expeditionCommand;[NonSerialized] public ExpeditionCommandReply expeditionReply;[NonSerialized] public ExpeditionAreaReadyRequest expeditionAreaReady;
+        [NonSerialized] public ExpeditionLoadStatusFrame expeditionLoadStatus;public float loadProgress;
         public ExpeditionCohortTicket areaIdentity;
         public string stageMap;public int stageSerial,stageReady,stageRequired;public bool stageWaiting;public float remainingSeconds;
         public int expeditionProtocol;public int devProtocol;public int version=NativeConnection.Protocol,id,epoch,generation,pick,team;public string type,source,contentRevision,room,resume,token,chip,error;public bool ready;
