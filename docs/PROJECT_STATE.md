@@ -2,6 +2,7 @@
 
 2026-10-18 Astra follow-up candidate (`codex/zone-boss-arrival-camera`, base `e13e610`): directs live zone arrivals, opens Converter pursuit onto the casting floor with full passage clearance, and restores bounce on static stage geometry. Local camera/route and Ironworks visual checks plus Unity API compile pass; hosted/native verification and publication pending. See newest DEV_LOG entry.
 
+2026-10-18 Claude party loading indicator (`claude/party-loading-indicator`, merged into shared; presentation only): the stage loading screen shows a party panel for Expedition starts and area loads (YOU first, weapon icon, WAITING/LOADING/READY/IN WORLD/DROPPED chip, my real bar, indeterminate bars for others, "WAITING FOR n PLAYERS…" then "EVERYONE'S IN"). No per-member load state is replicated yet: Astra's relay contract is in DEV_LOG. Next: Astra binds `loadProgress`/`loadState`.
 
 2026-10-18 Astra activation candidate (PR #272): both zone bosses selected, authority hazard presentation bound; Expedition F-revive and immediate teammate spectate fixed. Includes shared 8f2e3a3 guest ticket fix. Local affected checks pass; hosted/native publication pending. See ZONE-BOSS-RULES-HANDOFF.md and PR receipt.
 

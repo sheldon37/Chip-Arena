@@ -11,11 +11,12 @@ namespace ChipArena.UnityConversion
     /// The stage loading screen (Core NativeStageLoading, StageLoadView, NativeLoadingLayout, NativeStageSchematic), in the cyber
     /// HUD kit over the menu transition's shutters (NativeScreenTransitionHud.Shutter): the bands slam shut, a cyan impact flash
     /// runs along their seams, and the screen's content comes up on them: the eyebrow, the stage's name typed on behind a
-    /// scanning cursor, the chip-pin rule, the mode tag and the map's tag line; the party's or pilots' readiness when the game
-    /// holds the stage; at the right a holographic scan of the stage's plan, its blocks lit as the preload's sweep passes them,
-    /// spawns and hazards marked; along the foot a spinner, the step, the percentage, a segmented bar and the tip. On the way
-    /// out the content fades first, then the bands run out over the stage. A return shows a compact centred variant. Reduced
-    /// effects: a fade through the void, no sweep, glitch or drift. Repaint only; nothing is allocated per frame.
+    /// scanning cursor, the chip-pin rule, the mode tag and the map's tag line; for an Expedition load the party panel under them
+    /// (NativePartyLoadingHud), else the pilots' readiness when the game holds the stage; at the right a holographic scan of the
+    /// stage's plan, its blocks lit as the preload's sweep passes them, spawns and hazards marked; along the foot a spinner, the
+    /// step, the percentage, a segmented bar and the tip. On the way out the content fades first, then the bands run out over the
+    /// stage. A return shows a compact centred variant. Reduced effects: a fade through the void, no sweep, glitch or drift.
+    /// Repaint only; nothing is allocated per frame.
     /// </summary>
     public static class NativeStageLoadingHud
     {
@@ -25,7 +26,7 @@ namespace ChipArena.UnityConversion
         private static readonly float[] PoolAt={0f,.4f,1f},PoolAlpha={1f,.5f,0f},WashAt={0f,.5f,1f},WashAlpha={1f,.4f,0f};
 
         public static void Draw(NativeStageLoading load,StageLoadView v,string step,string percent,float shown,float W,float Hh,float now,
-            string party,string partyCount,int ready,int required,bool waiting)
+            string party,string partyCount,int ready,int required,bool waiting,NativePartyLoadModel roster=null)
         {
             if(Event.current.type!=EventType.Repaint||!load.Visible)return;bool reduced=load.Reduced;
             // ---- the base: shutters (or the reduced fade) ----
@@ -48,12 +49,12 @@ namespace ChipArena.UnityConversion
                 }
             }
             if(a<=0)return;
-            var l0=NativeLoadingLayout.Measure(W,Hh,U.SafeX,U.SafeW,v.Kind!=StageLoadKind.Return);
+            var l0=NativeLoadingLayout.Measure(W,Hh,U.SafeX,U.SafeW,v.Kind!=StageLoadKind.Return,roster!=null?roster.Count:0);
             Frame(W,Hh,a,reduced,now);
             if(v.Kind==StageLoadKind.Return){Compact(v,step,percent,shown,W,Hh,now,a,reduced);return;}
             Backdrop(l0,v,a,reduced,now);
             TitleBlock(l0,v,a,now,reduced);
-            if(waiting&&party!=null)Party(l0,party,partyCount,ready,required,a);
+            if(roster!=null)NativePartyLoadingHud.Draw(l0.Roster,roster,a,now,reduced);else if(waiting&&party!=null)Party(l0,party,partyCount,ready,required,a);
             if(l0.Scan){if(v.Scan!=null)Scan(l0.Panel,v,shown,a,now,reduced);else ScanPending(l0.Panel,a,now,reduced);}
             ProgressRow(l0,step,percent,shown,a,now,reduced);
             if(v.Tip!=null)TipLine(l0.Tip,v.Tip,a);
@@ -107,7 +108,7 @@ namespace ChipArena.UnityConversion
             else
             {
                 if(v.TitleSize<=0){float fit=U.Measure(v.Title,l.TitleSize,true,false,.04f).x;v.TitleSize=fit>w?Mathf.Max(22,l.TitleSize*w/fit):l.TitleSize;}
-                float size=v.TitleSize,age=float.IsNaN(v.TitleAt)?9:now-v.TitleAt,type=reduced?1:Mathf.Clamp01(age/.42f);var line=new Rect(x,l.Title,w,size*1.2f);
+                float size=Mathf.Min(v.TitleSize,l.TitleSize),age=float.IsNaN(v.TitleAt)?9:now-v.TitleAt,type=reduced?1:Mathf.Clamp01(age/.42f);var line=new Rect(x,l.Title,w,size*1.2f);
                 float tw=Mathf.Min(w,U.Measure(v.Title,size,true,false,.04f).x+4),shown=tw*T.OutCubic(type);
                 U.BeginBand(new Rect(x-4,line.y-6,shown+4,line.height+12));
                 if(!reduced&&age<R.GlitchLife)H.Glitch(line,v.Title,size,age,a,TextAnchor.MiddleLeft,false,true,false,.04f);
@@ -121,7 +122,7 @@ namespace ChipArena.UnityConversion
             for(float p=x+48;p<x+rule-18;p+=9)U.Fill(new Rect(p,ry+H.Px,H.Px,3),C.CyanSoft(.28f*a));if(rule>60)U.Fill(new Rect(x+rule-14,ry-H.Px,14,H.Snap(2)),C.Magenta(.85f*a));
             // the mode tag
             if(v.Mode!=null){float mw=U.Measure(v.Mode,12,true,true,.18f).x+36;var tag=new Rect(x,l.Mode,mw,26);H.Tag(tag,C.Cyan(),a);U.Text(new Rect(tag.x+14,tag.y,mw-14,26),v.Mode,12,C.Cyan(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.18f);}
-            if(v.Tag!=null)U.Text(new Rect(x,l.Tag,w,40),v.Tag,15,C.Muted(.95f*a),TextAnchor.UpperLeft,wrap:true);
+            if(v.Tag!=null&&!l.TagHidden)U.Text(new Rect(x,l.Tag,w,40),v.Tag,15,C.Muted(.95f*a),TextAnchor.UpperLeft,wrap:true);
         }
         // The game's hold: one pip per client (at most eight), the line and the count.
         private static void Party(NativeLoadingLayout l,string line,string count,int ready,int required,float a)

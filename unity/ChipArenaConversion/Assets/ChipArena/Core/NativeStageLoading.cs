@@ -306,7 +306,10 @@ namespace ChipArena.UnityConversion
     public struct NativeLoadingLayout
     {
         public LoadingBox Text,Panel,Bar,Label,Tip,Spinner;public float Eyebrow,Title,TitleSize,Rule,Mode,Tag,Party;public bool Scan;
-        public static NativeLoadingLayout Measure(float width,float height,float safeX,float safeWidth,bool scan=true)
+        /// <summary>With a party (an Expedition load): its panel under the title block (Party is its top) and whether the map's tag
+        /// line made room for it (NativePartyLayout.Fit).</summary>
+        public NativePartyLayout Roster;public bool TagHidden;
+        public static NativeLoadingLayout Measure(float width,float height,float safeX,float safeWidth,bool scan=true,int party=0)
         {
             var l=new NativeLoadingLayout();float m=Math.Max(28,safeWidth*.055f),left=safeX+m,right=safeX+safeWidth-m,span=right-left;
             float foot=height-Math.Max(66,height*.1f);
@@ -326,6 +329,7 @@ namespace ChipArena.UnityConversion
             l.TitleSize=Math.Max(34,Math.Min(76,l.Text.W*.11f));
             float block=22+l.TitleSize*1.1f+18+30+26+40,y=l.Text.Y+Math.Max(0,(l.Text.H-block)/2);
             l.Eyebrow=y;l.Title=y+22;l.Rule=l.Title+l.TitleSize*1.1f+8;l.Mode=l.Rule+14;l.Tag=l.Mode+36;l.Party=l.Tag+28;
+            if(party>0)NativePartyLayout.Fit(ref l,party);
             return l;
         }
     }
