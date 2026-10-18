@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-18 Claude party loading indicator (`claude/party-loading-indicator`, on branch, not merged; presentation only): the stage loading screen shows a party panel for Expedition starts and area loads (YOU first, weapon icon, WAITING/LOADING/READY/IN WORLD/DROPPED chip, my real bar, indeterminate bars for others, "WAITING FOR n PLAYERS…" then "EVERYONE'S IN"). No per-member load state is replicated yet: Astra's relay contract is in DEV_LOG. Next: review and merge; Astra binds `loadProgress`/`loadState`.
+
 2026-10-18 Astra activation candidate (PR #272): both zone bosses selected, authority hazard presentation bound; Expedition F-revive and immediate teammate spectate fixed. Includes shared 8f2e3a3 guest ticket fix. Local affected checks pass; hosted/native publication pending. See ZONE-BOSS-RULES-HANDOFF.md and PR receipt.
 
 2026-10-17 Claude THE CONVERTER in-game presentation (`claude/boss-ironworks-presentation`, merged into shared, not live until Astra binds it; presentation only): runtime model, motion, effects, arrival and death on Hydraulic Hell's beats, HUD name and cues behind `IronworksBossViewOf` (None until Astra binds the record), with a DEV preview. Next: review and merge; Astra binds.

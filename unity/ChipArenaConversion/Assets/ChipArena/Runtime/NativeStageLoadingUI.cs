@@ -192,7 +192,7 @@ namespace ChipArena.UnityConversion
             string party=gate?NativeStageLabels.PilotsReady:barrier?expeditionTransfer.Ready:null,count=gate?NativeStageLabels.Count(StageGate.Ready,StageGate.Required):null;
             int ready=gate?StageGate.Ready:barrier?expeditionTransfer.ReadyCount:0,required=gate?StageGate.Required:barrier?expeditionTransfer.Required:0;
             float shown=stageLoad.Shown;
-            NativeStageLoadingHud.Draw(stageLoad,stageView,step,NativeStageLabels.Percent(shown),shown,U.W,U.H,Time.unscaledTime,party,count,ready,required,waiting);
+            NativeStageLoadingHud.Draw(stageLoad,stageView,step,NativeStageLabels.Percent(shown),shown,U.W,U.H,Time.unscaledTime,party,count,ready,required,waiting,PartyLoadingRoster());
             NoticeToast();BuildCorner();
         }
         private void StageLoadingRelease(){shaderWarm?.Dispose();shaderWarm=null;}

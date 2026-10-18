@@ -1,3 +1,61 @@
+## 2026-10-18 — Claude: party loading indicator on the stage loading screen (on branch, not merged)
+
+- **Branch:** `claude/party-loading-indicator`, based on shared `e13e610` (#276). Presentation only; not merged, not published.
+- **Owner request:** "Also, lets add a loading indicator for players (When starting expeditions, so we can see where each player is on loading screen)".
+- **What it shows:** for an Expedition start or area load, a party panel under the loading screen's title block (Core `NativePartyLoading.cs`; Runtime `NativePartyLoadingHud`, `NativePartyLoadingUI`):
+  - Header: PARTY · n and READY k / n. Footer: WAITING FOR n PLAYERS… while anyone in this load is still loading, then EVERYONE'S IN.
+  - One row per member: YOU first, then this load's members by seat, then everyone else. Each row has the weapon icon, the name (YOU or HOST), a chip (WAITING, LOADING, READY, IN WORLD, DROPPED, EXTRACTED) and a bar.
+  - Bars: mine is my real load (the screen's shown progress). Others show an indeterminate sweep while loading, then fill and tick when they arrive. A dashed track means dropped.
+  - Motion: rows rise in on a CSS curve, staggered. Reduced effects: no rise, sweep, fill or pop. No per-frame allocation.
+  - Layout: fits 720p @1.5 (compact rows, two columns from five members) through 3440×1440 and 4K, for 1–8 rows. The scan and the foot are unchanged. Expedition parties are capped at 4 (`NativeExpeditionParty.Capacity`); 8 is the room and view maximum.
+- **What drives each state (from the code):** no per-member load progress or readiness is replicated today.
+  - The view carries `members[]` (connected, extracted, area, pendingArea) and `areaBarrier` (active, target, ready of required: counts, no names).
+  - A loading guest receives the view at most every 5 s (Astra's bootstrap budget).
+  - DROPPED is `!connected`; EXTRACTED is `extracted`.
+  - First load or new loop (barrier target is the city, nothing entered): each client's barrier counts only itself. Every other member shows LOADING with no value, on the host and guests alike, so a guest cannot see that the host is already in the world.
+  - Area transfer: the cohort is every member whose pendingArea is my destination. They stay LOADING until the authority's count covers every other cohort member (READY), and show IN WORLD after the commit.
+    - A partial count names nobody: the rows stay LOADING, while the header and footer follow the count.
+    - My own report is taken off the count once I am locally ready, so no one is shown in early.
+  - A member already in the destination is IN WORLD and counted. Members elsewhere show IN WORLD at their place (or LOADING into their own pendingArea), dimmed and not counted.
+  - Me: LOADING with my real progress, READY when my presentation is ready while the barrier holds, then IN WORLD.
+  - WAITING comes only from a replicated `loadState` (none today). A guest waits for the host's build in the lobby (status "Host is loading Expedition…"); its loading screen covers when its first frame arrives. That flow is unchanged.
+- **PvP/PvE:** not shown there. The stage gate sends only Ready of Required; per-seat readiness stays in the host's `NativeStageBarrier`. The pilots' pips stay.
+- **Shared files (small hooks):**
+  - `NativeStageLoading.cs`: `Measure(..., party)`, plus `Roster` and `TagHidden`.
+  - `NativeStageLoadingHud.cs`: the roster parameter; the title block honours the panel's room.
+  - `NativeStageLoadingUI.cs`: one call.
+  - `Tests/Program.cs`: the run line and `--party-loading`.
+- **For Astra (contract, not implemented):**
+  1. Client to host: `expedition-load-progress {epoch, areaIdentity, loadProgress}`.
+     - The value comes from `ConversionGame.StageLoadProgress`: 0..1 while the loading screen is up, 1 once the stage's presentation is ready, -1 when no load is shown.
+     - Send while that member's ticket is not Ready, at most 4/s (≥0.25 s apart), only on a change of ≥0.02 or after 1 s, with a final 1.0.
+     - The host sets its own value locally.
+  2. Host validation:
+     - The sender comes from the verified peer seat, and `areaIdentity` must match the member's current ticket.
+     - The value must be finite; clamp it to 0..1 and never let it go down within one ticket.
+     - Drop anything over 4/s, and ignore reports once the member is Ready.
+  3. Relay in `ExpeditionViewMember`: `public float loadProgress=-1;` and `public string loadState;`.
+     - `loadState`: "waiting" (ticket issued, no report yet), "loading" (reports arriving, not Ready), "ready" (Ready, cohort still pending), "world" (Ready, no pending), "dropped" (disconnected or the load window expired). Null or "" means unknown (an older host).
+     - `loadProgress`: 0..1 for the current ticket (1 when Ready), -1 unknown. JsonUtility leaves an absent float at 0, so the adapter trusts `loadProgress` only when `loadState` is set.
+     - Add both to the managed codec and its validation (finite, -1 or 0..1, the five words).
+  4. Carrier: the public view reaches loading guests only every 5 s. While anyone is loading, also send a small `expedition-party-load {run, epoch, members:[{account, loadProgress, loadState}]}` (≤4 entries) to every connected member at ≤4 Hz. The receiver writes it into its current view's members.
+  5. Binding: `NativePartyLoadModel.ReplicatedProgress` and `ReplicatedState` are one line each (the bodies are in their summaries). Until then both return -1 and unknown. `PartyLoadingChecks` then requires the binding (a reflection tripwire).
+  - Optional: an `ExpeditionStartPending` flag (set by `expedition-starting`, cleared by the first view or a lobby at the same epoch) would let a guest's loading screen cover while the host builds, showing WAITING.
+- **Checks (run5b, all five steps exit 0):**
+  - Unity 6000.3.24f1 Runtime and Editor compile OK.
+  - Relay: 787 PASS, including the new `PartyLoadingChecks` (`--party-loading`, 3,601 checks) and `TransitionLoadingChecks` (3,613).
+    - The new checks cover the state per source, YOU first, the footer counts, the adapters at -1 today, and layouts at 1280×720 @1.5, 1920×1080, 3440×1440 and 3840×2160 for 1–8 members plus eight more resolutions and UI scales.
+    - They also cover the reduced tier, zero per-frame allocation, and scans showing that the authority and network files do not touch the panel.
+  - Python: 140 OK (1 skipped). Package OK. Diff-check OK.
+  - After the run, one doc comment in `NativeStageLoadingHud.cs` was rewrapped; the Runtime compile was rerun and passed.
+- **Not run:** Unity Editor play, Windows, two-client host/guest loads, real load timing. The renders are offline IMGUI emulation (scratchpad `renders-party-loading`). The "contract bound" renders use the checks' stand-in states.
+- **Risks:**
+  - Until Astra binds the contract, the first load shows every other member as LOADING (a guest sees the host loading even when the host is in the city).
+  - The transfer count reaches a loading guest only every 5 s.
+  - The panel is not on the Expedition transfer screen that remains after the loading screen's 20 s hold.
+  - A solo load reads WAITING FOR 1 PLAYER… (the owner's wording, counting me).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+
 ## 2026-10-18 — Astra: route zone boss arrivals away from the Siren stage
 
 - Branch `codex/zone-boss-intros`, base shared/builder `797726c` (released as 6349f5ce; owner confirms both bosses spawn). Owner reports the Siren intro still plays for both.
