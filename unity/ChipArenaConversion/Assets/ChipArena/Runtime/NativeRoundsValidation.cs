@@ -37,6 +37,27 @@ namespace ChipArena.UnityConversion
                 foreach(var test in new[]{("rounds-vecs:gravity-wells","black-hole"),("rounds-vecs:anti-gravity-wells","repulsion"),("rounds-arcana:the-tower","storm")})
                 {p.Seat.chips.Clear();p.Seat.chips[test.Item1]=1;p.Stats=NativeContentRules.Stats(Content,"pistol",p.Seat.chips);n=ChipFields.Count;ImpactChips(p,null,null,p.Body.position,Vector3.forward,nextAttack++,0);Check(ChipFields.Count==n+1&&ChipFields.Last().Kind==test.Item2,"cross-pack authority field "+test.Item1);}
                 p.Seat.chips.Clear();p.Seat.chips["rounds-pce:jetpack"]=1;p.Stats=NativeContentRules.Stats(Content,"pistol",p.Seat.chips);Check(p.Stats["extraAirJumps"]==4,"jetpack uses bounded jump budget");
+                var target=Pilots[1];target.Hp=100;target.Seat.connected=true;target.Seat.team=p.Seat.team+1;
+                foreach(string chip in new[]{"rounds-vecs:capture","rounds-wwc:dimensional-shuffle"})
+                {
+                    p.Seat.chips.Clear();p.Seat.chips[chip]=1;chipCooldowns.Remove(p.Seat.id+":swap");
+                    Vector3 from=new Vector3(1000,1000,1000),to=from+Vector3.right*5;
+                    p.Body.position=from;target.Body.position=to;Physics.SyncTransforms();
+                    ImpactChips(p,target,null,to,Vector3.right,nextAttack++,0);
+                    var swaps=Snapshot().Events.Where(e=>e.Kind==EventKind.Teleport&&e.Detail=="swap").ToArray();
+                    var swap=swaps.Last();Check(p.Body.position==to&&target.Body.position==from&&swap.Source==p.Seat.id&&swap.Target==target.Seat.id&&swap.Time==Time&&Vec(swap.From)==from&&Vec(swap.Position)==to,"swap event describes the actual authority move: "+chip);
+                    ImpactChips(p,target,null,from,Vector3.left,nextAttack++,0);
+                    Check(Snapshot().Events.Count(e=>e.Kind==EventKind.Teleport&&e.Detail=="swap")==swaps.Length,"cooldown emits no phantom swap");
+                    chipCooldowns.Remove(p.Seat.id+":swap");
+                    var obstacle=GameObject.CreatePrimitive(PrimitiveType.Cube);obstacle.layer=PropLayer;
+                    UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(obstacle,root.scene);
+                    obstacle.transform.position=target.Body.position;obstacle.transform.localScale=Vector3.one*4;
+                    try{Physics.SyncTransforms();ImpactChips(p,target,null,target.Body.position,Vector3.right,nextAttack++,0);Check(Snapshot().Events.Count(e=>e.Kind==EventKind.Teleport&&e.Detail=="swap")==swaps.Length,"blocked destination emits no phantom swap");}
+                    finally{UnityEngine.Object.DestroyImmediate(obstacle);Physics.SyncTransforms();}
+
+                }
+                var toy=Minions.First(m=>m.Kind=="toy"&&m.Owner==p);toy.Hp=0;RecordMinionDeath(toy);
+                Check(MinionDeaths.Last().owner==p.Seat.id,"dead summon retains its owner without live history");
                 var negative=new NativeBullet{Mods=new Dictionary<string,int>{{"corkscrew",-1}}};Check(Has(negative,"corkscrew"),"legacy negative shot modifier retained");
                 Debug.Log("PASS native ROUNDS adaptations: all 138 definitions, Unity credit codec, block phase, roll/impact fields, summon, satellites and legacy shot modifier");
             }
