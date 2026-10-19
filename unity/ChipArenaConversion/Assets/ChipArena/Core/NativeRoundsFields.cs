@@ -291,7 +291,7 @@ namespace ChipArena.UnityConversion
                     var ice=lattice?new Vector3(.62f,.66f,.72f):new Vector3(.45f,.62f,.78f);lit.Add(NativeRoundsMeshes.IceCrystal,m,ice,1.1f,look.Hot*(.35f+.25f*(float)Math.Sin(age*2+i)),.94f,look.Hot*1.6f);
                 }
                 // The shattering: each crystal bursts into shards that fly and fall.
-                if(age>life&&i%2==0)fx.RubbleBurst(age,at+new Vector3(0,.18f,0),new Vector3(0,1,0),.9f,2.6f,3,.9f,life,.05f,new Vector3(.6f,.75f,.88f),seed,3000+i,.4f,c.Y);
+                if(age>life&&i%2==0)fx.RubbleBurst(age,at+new Vector3(0,.18f,0),new Vector3(0,1,0),.9f,2.6f,3,.9f,life,.05f,new Vector3(.62f,.8f,.95f),seed,3000+i,0,c.Y);
             }
             // The forming front's bright crystalline edge.
             if(age<.3f){int m=fx.Scale(40);for(int i=0;i<m;i++){float a=i*6.2831853f/m;var p=new Vector3(c.X+(float)Math.Cos(a)*front,c.Y+.05f,c.Z+(float)Math.Sin(a)*front);fx.Glow(p,look.Core*(2.4f*(1-age/.3f)),.22f,NativeBossVfx.Mote);}}
