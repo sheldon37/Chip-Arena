@@ -1,3 +1,67 @@
+## 2026-10-19 — Claude: ROUNDS pack chip visuals (on branch, not merged)
+
+- **Branch:** `claude/rounds-chip-visuals`, based on shared `claude/sleepy-ritchie-g8ruhv` at `f1994f1`. Implementation commits `b7abcb5` and `7504080`. Presentation only. Not merged and not published.
+- **Owner request:** "Go ahead and do the visuals for this thing as well: Some effects may have no visuals of their own yet, such as Escort Array's orbiting satellites, Drone Nest's combat toys and the fire, frost and slow-time fields." The request covers the 138 optional ROUNDS adaptation chips (Cards+ and batch 2).
+- **Audit:** 50 of the 138 chips have a discrete effect. The other 88 are stat-only.
+  - Before: 12 had no look of their own and 38 reused a vanilla look. All 138 drew the cpu fallback icon.
+  - After: 43 are bespoke. 5 keep their vanilla look on purpose (poison, burn, vacuum, meteor strikes). Position Exchange and Dimensional Exchange still have none, because no swap event is replicated.
+- **Changes:**
+  - New Core files:
+    - `NativeRoundsLooks`: catalogue, icons and authority mirrors.
+    - `NativeRoundsFields`: the field looks.
+    - `NativeRoundsUnits`: satellites, homing trails and drones.
+    - `NativeRoundsProcs`: the proc looks.
+    - `NativeRoundsMeshes`: lit models.
+    - `NativeRoundsFx`: the frame and the DEV preview.
+  - New `Runtime/NativeRoundsFxPresentation.cs`, plus two shaders:
+    - `NativeRoundsField`: the ground and sphere surfaces.
+    - `NativeRoundsWarp`: grab-pass distortion, off on Low.
+  - **Fields:**
+    - The owner's seat chips pick the look. A holder of the vanilla chip keeps the vanilla look.
+    - The ground edge is the authority radius at a standing pilot's height. Slow-time and gravity fields also draw the authority sphere.
+    - The hazard look lasts exactly from born to until, then dissipates.
+    - Fire: the ground chars, with a flame front on the edge, flames, embers and soot.
+    - Frost: ice forms out to the edge, with crystals, cracks and mist, and shatters at expiry.
+    - Slow time: distortion, slowed motes with echoes, clock rings, and echoes on shots.
+    - The rest: repulsor and vent rings, an attractor's spiral and core, and violet storm arcs with pylons.
+  - **Satellites:** drawn exactly at the authority's homing-shot launch point, with a muzzle flash and a homing trail.
+  - **Drone Nest:** a drone replaces the toy soldier.
+    - It summons in, hovers, then winds up and recoils on the replicated bolt.
+    - It blinks in its last 0.9 s.
+    - It powers down on expiry, which leaves no death record, and breaks up on a death record.
+  - **Procs:** each look comes from its replicated event.
+  - **Card icons:** 138 pinned icons. The MODS entry has its own glyph.
+  - **DEV:** a ROUNDS pack effects preview on the Camera tab.
+  - **Shared files touched:**
+    - `ArenaPresentation`: the draw, clear and dispose hooks.
+    - `NativeFieldPresentation`: pack fields skip the vanilla view.
+    - `NativeSourcePresentation` and `NativeSummonPresentation`: drones are not drawn as toys.
+    - Also `NativeVfxDraw.LitPieces`, `NativeChipIcons`, `NativeHomeMenu`, `NativeDevPanel`, `NativeDevTools` and `NativeBuildChecks`.
+- **Gameplay impact:** none. Hit timing, hitboxes, damage, cooldowns, movement, networking and the wire are unchanged. The visuals mirror authority constants (the orbit, the toy's life and strike timing, the field rules), and the checks pin them as text.
+- **Checks (actual):**
+  - New `Tests/RoundsVisualChecks.cs` (`--rounds-visuals`, also in the full run): PASS, 286989 checks.
+    - Extent: the ground edge is within 0.000001 m of the radius, at 4 heights for all 13 looks.
+    - Lifetime: exact, including after the field leaves the replicated list.
+    - Determinism: identical at 144 Hz and at a jittered 30 Hz. A late joiner is identical up to the point where a drone whose summon it never saw would blink.
+    - Satellites: exactly at the launch point.
+    - Drones: every phase.
+    - Procs: 15 kinds.
+    - Tiers: particles 3470 on Full, 1468 on Reduced, 1958 on Low.
+    - Allocation: 0 bytes over 2640 frames.
+    - Source scan: 15 authority, rules and network files.
+  - Existing groups, all rc 0: `--move-visuals`, `--movement-mods` (7631 ROUNDS checks), `--dev-tools`, `--dev-abuse`, `--boss-vfx`, `--account-xp`, `--laser-door`, `--expeditions-menu`. Python `test_icons`: OK. Full managed run: rc 0.
+  - glslang HLSL check of both shaders: OK.
+  - Full run5b on `7504080` (shared unchanged at `f1994f1`): every step rc 0. Unity Runtime and Editor compile OK. Relay suite 805 PASS, 0 FAIL. Python: 140 tests OK (1 skipped). Source package OK. `git diff --check` clean.
+- **Renders:** offline WebGL emulation, not Unity. Scratch only, not in git: before and after MP4s and strips for each priority effect, the other fields, the tiers and an icon sheet.
+- **Not run:** Unity Editor play, a Windows build or package, two-client play, and an owner visual review.
+- **Risks:**
+  - The harness has no bloom or soft particles, so brightness in the engine may differ.
+  - The warp takes one screen grab per frame while a slow-time, gravity or repulsor field is up (none on Low).
+  - A late joiner cannot blink a drone it never saw summoned.
+  - The protection shells use the authority's fixed durations.
+- **Handoff to Astra:** four replicated fields: a swap event, an owner on minion death records, a toy `until` on the minion frame, and `shieldUntil`. Optionally, a Hit detail for pulls and steals.
+- **Next:** owner review in the Windows build, then merge into shared.
+
 ## 2026-10-19 — Claude: zombie locomotion, body cadence and shoulders on the chest (merged into shared)
 
 - **Branch:** `claude/zombie-locomotion`, based on shared `claude/sleepy-ritchie-g8ruhv`. It was fast-forwarded to `d345d2f` (the Stoker's props) and then to `7f4d89a` (boss effects realism and account XP) before the final checks. Presentation only. Merged into shared and the builder; not published.
