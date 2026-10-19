@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-19 Claude zombie gore (`claude/zombie-gore`, on branch, not merged; presentation only): the Siren lines, glow flicker, black-flame tongues and burn-away deaths are gone from the seven horde kinds (eyes, acid and boils still glow; grime and old blood added). Hits leave wounds, mist, flesh bits and blood sprays along the shot. Deaths leave corpses over spreading pools that sink after the tier's life. Blasts and heavy kills gib, rifle head kills burst the head, blades slice. Tier caps, deterministic, DEV preview. `docs/ZOMBIE-GORE.md`. Next: owner review of the renders and preview, then merge.
+
 2026-10-19 Astra ROUNDS replicated-state handoff: swap events, summon death owner/expiry, pilot protection clock implemented on `codex/rounds-state-handoff`; managed visual regression and Unity assembly compilation pass. Claude binding contract: `docs/ROUNDS-STATE-HANDOFF.md`. Native builder execution/publication pending. XP backend owner-approved and deployed successfully as Sites v67 at 22:52 UTC.
 
 2026-10-19 Astra account XP candidate (`codex/account-xp`, base `f1994f1`): service ledger/reward math, native match and Expedition receipts, durable retry outbox and all presentation bindings implemented. PR #287: full XP-base managed regression (804 PASS groups), relay gate and Unity compilation pass. Latest shared `0a8e6b9` integrated; combined XP/Expedition checks and compilation pass. Backend deployed as Sites v67 after owner approval; native publication still pending. Contract: `docs/ACCOUNT-XP-IMPLEMENTATION.md`.
