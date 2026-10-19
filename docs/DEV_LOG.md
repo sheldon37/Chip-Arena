@@ -1,3 +1,12 @@
+## 2026-10-19 — Claude: quieter footsteps (merged into shared)
+
+- **Branch:** `claude/quieter-footsteps`, based on shared `351c26f` (#286). Audio only; merged into shared and the builder by fast-forward, not published.
+- **Owner request:** "Lets also lower footstep sounds a little bit, they're currently too loud."
+- **Change:** one trim, `NativeFootsteps.StepTrim = 0.7` (about -3 dB), applied in `NativeStepMix.Loudness` to every footstep, pilots' (all gaits, first and third person) and zombies' (every kind and gait). Landings keep their own gain. The relative mix between gaits, kinds, my own steps and others' is unchanged; the trim also applies before the mixer's audibility choice, so the faintest distant steps drop out a little sooner.
+- **Checks:** a new FootfallAudioChecks line pins the trim (a walk step, a shambler step and a landing). Full run5b on the commit: Unity Runtime and Editor compile OK; relay suite 800 PASS, 0 FAIL (footfall audio 26172 checks, foot surfaces 68268); python OK; package OK; diff-check OK.
+- **Not run:** Unity Editor or Windows listening test. If -3 dB is not enough, the one constant is the knob.
+- **No impact** on hit timing, hitboxes, damage, cooldowns, movement or networking.
+
 ## 2026-10-18 — Astra: positive/negative rows for runtime chip packs
 
 - Branch `codex/mod-chip-tones`, base shared #285 `a566672`. Owner requested the existing green/red text for the adapted chips. Runtime-only chips were absent from the pinned ChipText export and returned no stat rows. Add a Core formatter using the existing chip-stats semantics and cached fallback in NativeChipCard; keep exported rows and the renderer's exact good/bad/neutral colors.

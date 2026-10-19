@@ -198,11 +198,12 @@ namespace ChipArena.UnityConversion
         public int Count{get;private set;}
         public Pick this[int i]=>picks[i];
         public void Reset(){pilots=zombies=Burst;Count=0;}
-        /// <summary>A footfall's loudness before the falloff (the gait, the landing, my own in first person quieter).</summary>
+        /// <summary>A footfall's loudness before the falloff (the gait, the landing, my own in first person quieter); every step,
+        /// a pilot's or a zombie's, under <see cref="NativeFootsteps.StepTrim"/>.</summary>
         public static float Loudness(in NativeFootfall f,bool mine)
         {
-            if(f.Zombie)return NativeZombieSteps.Gain(NativeZombieSteps.Key(f.Kind,f.Crawl,f.Run),f.Kind,f.Drag);
-            float g=f.Land?NativeFootsteps.LandGain(f.Air):NativeFootsteps.StepGain(NativeFootsteps.Gait(f.Speed,f.Sprint));
+            if(f.Zombie)return NativeZombieSteps.Gain(NativeZombieSteps.Key(f.Kind,f.Crawl,f.Run),f.Kind,f.Drag)*NativeFootsteps.StepTrim;
+            float g=f.Land?NativeFootsteps.LandGain(f.Air):NativeFootsteps.StepGain(NativeFootsteps.Gait(f.Speed,f.Sprint))*NativeFootsteps.StepTrim;
             return g*(f.View?NativeFootsteps.ViewGain:mine?NativeFootsteps.MineGain:1);
         }
         /// <summary>Picks the footfalls of `q` to play for a listener at (lx, ly, lz); `local` the local pilot's seat (0 none); `dt`

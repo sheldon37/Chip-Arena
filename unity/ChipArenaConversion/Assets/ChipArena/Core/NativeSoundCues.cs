@@ -392,6 +392,9 @@ namespace ChipArena.UnityConversion
         public static float StepGain(NativeStepGait g)=>g==NativeStepGait.Sprint?SprintGain:g==NativeStepGait.Run?.85f:g==NativeStepGait.Walk?.6f:.3f;
         public static float StepRate(NativeStepGait g)=>g==NativeStepGait.Sprint?SprintRate:g==NativeStepGait.Run?1:g==NativeStepGait.Walk?.96f:.92f;
         public const float ViewGain=.65f,MineGain=.85f;
+        /// <summary>Every footstep's trim, pilots' and zombies' alike, on top of the gait gains (owner 2026-10-19: "lower footstep
+        /// sounds a little bit, they're currently too loud"): about -3 dB. Landings keep their own gain.</summary>
+        public const float StepTrim=.7f;
         /// <summary>A landing's gain by its seconds airborne: a hop .5, a long fall up to .95.</summary>
         public static float LandGain(float air)=>.5f+.45f*Math.Max(0,Math.Min(1,(air-MinAir)/.9f));
         /// <summary>The landing's pitch: a long fall lands lower.</summary>

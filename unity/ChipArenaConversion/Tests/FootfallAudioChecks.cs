@@ -149,6 +149,12 @@ namespace ChipArena.UnityConversion
         // ---------- the crowd mix ----------
         private static void Mix(List<string> log)
         {
+            // Every step, a pilot's or a zombie's, sits under the step trim (owner 2026-10-19: quieter footsteps); landings keep theirs.
+            var walk=new NativeFootfall{Speed=2f};var hop=new NativeFootfall{Land=true,Air=1f};var shamble=new NativeFootfall{Zombie=true,Kind=NativeHordeKinds.Shambler,Speed=1.4f};
+            Check(NativeFootsteps.StepTrim>.5f&&NativeFootsteps.StepTrim<1&&Math.Abs(NativeStepMix.Loudness(walk,false)-NativeFootsteps.StepGain(NativeStepGait.Walk)*NativeFootsteps.StepTrim)<1e-5f
+                &&Math.Abs(NativeStepMix.Loudness(hop,false)-NativeFootsteps.LandGain(1f))<1e-5f
+                &&Math.Abs(NativeStepMix.Loudness(shamble,false)-NativeZombieSteps.Gain(NativeZombieSteps.Key(shamble.Kind,false,0),shamble.Kind,false)*NativeFootsteps.StepTrim)<1e-5f,
+                "steps sit "+NativeFootsteps.StepTrim.ToString("0.00")+"x under the step trim (pilots and zombies); landings keep their gain");
             var q=new NativeFootfallQueue();for(int i=0;i<NativeFootfallQueue.Capacity+2;i++)q.Push(new NativeFootfall{Id=i});Check(q.Count==NativeFootfallQueue.Capacity&&q.Dropped==2,"a full queue drops");q.Clear();
             var mix=new NativeStepMix();var other=new NativeStepMix();int frames=600,mine=0,mineSteps=0,zombiePicks=0,pilotPicks=0,maxOthers=0,far=0;bool sorted=true,same=true;
             for(int f=0;f<frames;f++)

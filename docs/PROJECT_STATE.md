@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-19 Claude quieter footsteps (`claude/quieter-footsteps`, base `351c26f`; merged into shared; audio only): every pilot and zombie step x0.7 (about -3 dB) through one trim, `NativeFootsteps.StepTrim`; landings unchanged. Next: owner listening test on the desktop build.
+
 2026-10-18 Astra chip stat-color fallback (`codex/mod-chip-tones`, base #285 `a566672`): runtime-added adaptations/movement/external chips now use the existing green benefit/red penalty/neutral stat rows. No gameplay changes. Focused checks pass; compile and publication receipts in PR. #285 main-menu Mods entry published successfully at 20:05:06 UTC.
 
 2026-10-18 Astra main-menu Mods entry candidate (`codex/rounds-installed-packs`, base #284 `17c857b`): numbered MODS selection opens the existing restart-gated pack controls on its own screen. Settings access retained. Additional installed-pack adaptations remain pending. Validation/publication receipts in PR.
