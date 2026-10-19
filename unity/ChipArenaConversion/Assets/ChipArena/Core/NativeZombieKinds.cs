@@ -7,15 +7,17 @@ namespace ChipArena.UnityConversion
     // exaggerates its own silhouette and each look keeps different pieces of the pilot's armour, so no two limbs match:
     //  - Shambler, the rank and file (three looks): the helmet cracked into shards, the armoured left arm against a bare right
     //    one, the chest plate broken off over a wound of ribs; the bare scalp under the hood's torn shawl; the split crown
-    //    spilling the Siren's light (the cracked look, NativeHordeModels.Crack).
+    //    crusted with blood over the bone (the cracked look, NativeHordeModels.Crack).
     //  - Runner: lanky, stripped to the waist, rows of starved ribs and a spine of bone blocks, long claws, the jaw thrown wide.
     //  - Brute: the big muscle version: stacked, offset blocks of muscle, a hump over a small sunken head, fists like rocks with
     //    knuckles of bone; shards of armour driven into the chest or spurs of bone blocks out of the back.
     //  - Spitter: thin and hunched round a throat sac of glowing voxels behind a torn web of skin, drool on its hinged jaw.
     //  - Crawler: emaciated, every rib and vertebra showing, long arms, wasted legs, bare feet.
     //  - Bloater: swollen round a voxel gut of stretched, bruised skin with glowing boils, the suit torn open over it.
-    //  - Hulk: a mountain of block muscle (drawn 1.8 times the rig): the hide split all over with the ink glowing in stepped
-    //    cracks, a tiny head sunk in the hump, a hinged roaring jaw, fists like boulders, shards or a ridge of bone spurs.
+    //  - Hulk: a mountain of block muscle (drawn 1.8 times the rig): the hide split all over in stepped tears onto raw muscle,
+    //    a tiny head sunk in the hump, a hinged roaring jaw, fists like boulders, shards or a ridge of bone spurs.
+    // Since 2026-10-19 (owner: "more standard zombies") no kind carries the Siren's glowing ink veins or black-flame tongues: the
+    // veins are dead and dark, the splits raw flesh; the eyes and the kinds' own glow (the acid, the boils) are kept, steady.
     public static partial class NativeHordeModels
     {
         private static Zb Body(K k){int b=NativeHordeKinds.Base(k.Kind);return new Zb{HeadW=HeadWidth[b],HeadDrop=HeadDrop[b]};}
@@ -56,7 +58,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The big kinds' block muscle over the voxel body: stacked, offset pecs, abs, serratus, deltoids, biceps and
         /// forearms; armour shards driven into the chest or spurs of bone blocks out of the back and shoulders; the suit burst
-        /// into rags round the waist; `cracks` the hide's stepped glowing splits (the Hulk). `m` scales to the kind (1 brute).</summary>
+        /// into rags round the waist; `cracks` the hide's stepped splits onto raw muscle (the Hulk). `m` scales to the kind (1 brute).</summary>
         private static void Burst(K k,Zb b,bool shards,bool spurs,float m,bool cracks)
         {
             float w=b.W,dp=b.Depth;bool far=k.Far;
@@ -131,8 +133,8 @@ namespace ChipArena.UnityConversion
             {
                 var v=Vox.Over(-.08f,.08f,-.03f,.1f,-.012f,.118f,.026f);var c=new Vector3(0,.035f,.053f);var r=new Vector3(.08f,.068f,.065f);
                 Part(k,v,(x,y,z)=>{var p=v.Centre(x,y,z)-c;return p.X*p.X/(r.X*r.X)+p.Y*p.Y/(r.Y*r.Y)+p.Z*p.Z/(r.Z*r.Z)<=1.05f;},
-                    (L,x,y,z,d)=>d>=1?L.Vein:(k.H(x*17+y*5+z*29,0xfb)<.42f?0:k.H(x*3+y*41+z*7,0xfc)<.35f?L.Rot:L.Dark),0xfd,.06f,1.25f);
-                // The glow the web lets through is the sac's own cells (the vein paint, one flicker cell).
+                    (L,x,y,z,d)=>d>=1?L.Juice:(k.H(x*17+y*5+z*29,0xfb)<.42f?0:k.H(x*3+y*41+z*7,0xfc)<.35f?L.Rot:L.Dark),0xfd,.06f,1.25f);
+                // The glow the web lets through is the sac's own acid (the juice paint: steady, the kind's colour).
             }
             // Acid drool strung from the upper teeth (a dangling part on the head), glowing in the gape.
             if(k.Mid)
@@ -172,7 +174,7 @@ namespace ChipArena.UnityConversion
                 if(d>=1)return L.Flesh;
                 if(y>=ny-3+Jag(k,x*3+z,0xd1))return y==ny-3?L.Fray:L.Suit;              // the suit torn open in a stepped line
                 if(y<=1)return L.Rot;if(!k.Fine)return L.Pale;
-                float h=k.H(x*19+y*7+z*31,0xd2);if(h<.06f&&z>=v.NZ/2)return L.Vein;    // the boils' glow
+                float h=k.H(x*19+y*7+z*31,0xd2);if(h<.06f&&z>=v.NZ/2)return L.Juice;   // the boils' glow (steady)
                 if(h<.12f)return L.Bruise;
                 return y%3==0&&k.H(x*5+z,0xd3)<.3f?L.Dark:(k.H((x>>1)*7+(y>>1)*13+(z>>1)*3,0xd4)<.3f?L.Pale:L.Skin);
             },0xd5,.08f,1.0f);

@@ -8,17 +8,21 @@ namespace ChipArena.UnityConversion
     // every kind, look and crowd tier ("minion-<kind>-<look>-<full|reduced|impostor>") is sculpted once when the bank loads, beside
     // the untouched bank horde-0..5 (the old death records and the classic look still name those). Each kind has one material on
     // ChipArena/ZombieLit (Resources/NativeZombieLit.shader: SourceLit's minion material with the zombie shading, docs/ZOMBIE-DESIGN.md;
-    // SourceLit if the shader cannot run): the minion glow (its ink veins flicker cell by cell and drop with the add's power,
-    // NativeMinionFx) and a faint touch of the Siren's ink rim and flow on the rotted skin, so the crowd keeps her lavender edge
-    // against the night without washing the zombies out. The models carry their shading data in uv0 (BodyMesh) and each add's
-    // variation rides the instanced body tint, so the batches are as before. The reduced and impostor tiers cast no shadows.
+    // SourceLit if the shader cannot run). Since 2026-10-19 (owner: "more standard zombies", docs/ZOMBIE-GORE.md) no kind draws
+    // the Siren's animated lines: no rising ink flow on any kind, and the Siren's seven no longer flicker (their veins are dead
+    // and dark; their eyes, acid and boils glow steady). The zone kinds keep the glow cells' flicker for their own heat and
+    // lights. Every kind keeps a faint neutral rim (ZombieLit) so the crowd still reads against the night. The models carry
+    // their shading data in uv0 (BodyMesh) and each add's variation rides the instanced body tint, so the batches are as before.
+    // The reduced and impostor tiers cast no shadows.
     public sealed partial class NativeSourceModels
     {
         /// <summary>The minion models built at load, and each one's triangles (the build checks hold them to the tier budgets).</summary>
         public int HordeKindModelCount{get;private set;}
         public readonly Dictionary<string,int> HordeKindTriangles=new Dictionary<string,int>();
-        /// <summary>The Siren's ink shading on the zombies: a soft rim (the skin and torn suit keep their colours), a faint rising flow.</summary>
-        public const float HordeInkRim=.16f,HordeInkFlow=.008f;
+        /// <summary>The zombies' rim (a faint neutral edge, ZombieLit) and the rising ink flow, off on every kind (no animated lines).</summary>
+        public const float HordeInkRim=.14f,HordeInkFlow=0;
+        /// <summary>Whether a kind's material flickers its glow cells: the zone kinds' own heat and lights only, never the Siren's seven.</summary>
+        public static bool HordeFlickers(int kind)=>kind>=NativeHordeKinds.Count;
         private void HordeKindModels()
         {
             var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null)throw new System.InvalidOperationException("Source material shader is missing");
@@ -26,7 +30,7 @@ namespace ChipArena.UnityConversion
             for(int kind=0;kind<NativeHordeKinds.All;kind++)
             {
                 var material=new Material(zombie){name="Native Siren minion / "+NativeHordeKinds.Ids[kind],enableInstancing=true};material.SetInt("_Cull",2);
-                material.SetFloat("_Ink",1);material.SetFloat(InkRimId,HordeInkRim);material.SetFloat(InkFlowId,HordeInkFlow);material.SetFloat(MinionGlowId,1);materials.Add(material);
+                material.SetFloat("_Ink",1);material.SetFloat(InkRimId,HordeInkRim);material.SetFloat(InkFlowId,HordeInkFlow);material.SetFloat(MinionGlowId,HordeFlickers(kind)?1:0);materials.Add(material);
                 for(int look=0;look<NativeHordeKinds.Looks[kind];look++)for(int tier=0;tier<NativeHordeModels.Tiers;tier++)
                 {
                     var built=NativeHordeModels.Build(kind,look,tier);string id=NativeHordeModels.Id(kind,look,tier);var parts=new List<Part>();

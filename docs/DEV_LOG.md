@@ -1,3 +1,58 @@
+## 2026-10-19 — Claude: zombie gore, standard zombies instead of the Siren lines and black flames (merged into shared)
+
+- **Branch:** `claude/zombie-gore`, from shared `claude/sleepy-ritchie-g8ruhv` at `f1994f1`. Shared was merged in at `eaf7382` (PR #288, which includes `dab15f3` and `0a8e6b9`) before the final checks. Presentation only. Merged into shared and the builder; not published.
+- **Owner request:** "Lets fix this animated lines thing on the zombies. I think it was when we were initially gearing the zombies for siren; But they've become more universal. I want them to be more "standard" zombies, that produce gore when shot / gibbed, not just black flames. High-quality design and fx please :)". Follow-up: "The glowing eyes are still fine :)".
+- **Removed from the Siren's seven kinds:**
+  - `ZombieLit`'s rising flow lines and lavender rim. A faint neutral rim is kept for the silhouette.
+  - Every flickering glow seam, crown crack and armour strip. They become dead veins, crusted blood and dead accents (`K.Seam`/`Crack`/`Accent`; `HordeFlickers` is now zone kinds only).
+  - The black-flame tongues, licks, haze and emergence cubes. The vent climb kicks up dust instead.
+  - The char and burn-away death, kept only for the Cinderling's crumble.
+  - The Siren ink spray on hits.
+  - The PvE gore's black-flame cubes, puffs and drips.
+- **Kept:**
+  - glowing eyes (owner);
+  - steady glow on the spitter's acid and the bloater's boils;
+  - the possession hint: seam, halo, grin and trail. It stays the Siren cue. The lines were on every add, so no new cue is needed;
+  - the Ironworks heat and embers, the Slagback crust and the zone kinds' glow;
+  - the Station designs;
+  - the spitter acid and the Hulk and brute effects;
+  - the boss effects and the bloater's gas.
+- **Added:**
+  - `ZombieStain`: grime and old blood on suits and skin.
+  - New `Core/NativeHordeGore.cs` (pure rules and fixed state) and `Runtime/NativeHordeGorePresentation.cs`:
+    - **Hits:** wounds on the struck part from the replicated hit: holes with torn flesh, gashes along the swing, blast scorch, blood runs and drips. Red mist and flesh bits. Blood-sim sprays out of the wound along the shot; head shots spray harder.
+    - **Deaths:** corpses that settle at the end of the take, lie over a spreading pool, then sink. Gibs throw limbs with raw caps and blood trails, plus chunks and splatter. Head gibs leave a neck stub and a fountain. Slices leave stumps, and severed limbs bleed.
+    - **Budgets:** tier caps (corpses 24/14/8, life 22/15/9 s, gibs 6/4/2 per 4 s). No allocation per frame. Seeded by add id and event time and index.
+  - `NativeVfxDraw.Block`, a lit voxel.
+  - DEV Previews: "Zombie gore preview", five lanes covering hit, head shot, gib, slice and death.
+  - `docs/ZOMBIE-GORE.md`, with a pointer in `docs/ZOMBIE-DESIGN.md`.
+- **Shared files touched:**
+  - Runtime: `NativeHordeKindPresentation.cs`, `NativeMinionFxPresentation.cs`, `NativeGorePresentation.cs`, `NativeHordeKindModels.cs`, `NativeIronworksKindsPresentation.cs`, `NativeBowPresentation.cs`, `NativeSummonPresentation.cs` (comment), `NativeHordeHulkGallery.cs`, `NativeVfxDraw.cs` (`Block`), `NativeDevPanel.cs`.
+  - Core: `NativeDevTools.cs`, `NativeHordeModels.cs`, `NativeZombieAnatomy.cs`, `NativeZombieKinds.cs`, `NativeZombieKit.cs`.
+  - `Resources/NativeZombieLit.shader`.
+- **Checks (actual, on the merged tree):**
+  - New `Tests/ZombieGoreChecks.cs` (full run and `--zombie-gore`, which also runs `MinionFxChecks` and `HordeKindChecks`): PASS, 289,425 checks. It covers no line or flame treatment on any kind (built models and source scans), 80 aimed shots on four kinds at four facings (the wound on the struck part at the hit, facing the shooter, the spray along the shot), head shots, gashes, blast wounds, stumps, caps and cleanup with 60 kills on each tier, host/guest/killcam determinism, tiers drawing less, zero allocation over 3,000 frames, and a presentation-only source scan.
+  - Groups rc 0: `--zombie-gore`, `--zombie-loco`, `--zombie-flow`, `--ironworks-props`, `--ironworks-kinds`, `--station-enemies`, `--hulk-charge`, `--hulk-motion`, `--horde-roam`, `--horde-drops`, `--boss-vfx`, `--wardzero-simulation`, `--footfalls`, `--boss-motion`, `--rounds-visuals`, `--gib`, `--move-visuals`.
+  - Changed on purpose, with re-measured expectations:
+    - `HordeKindChecks`: no flickering seams, no tongues, and hits bleed through the gore.
+    - `MinionFxChecks` hooks: no licks, flame cubes or ranking; vent dust and the hint instead.
+    - `IronworksKindChecks`: the seven grow no tongues.
+    - `station-enemies-baseline.txt`: 49 `tongues` and `tierN` lines rewritten with `StationBaseline.Measure`, noted in its header. Only the colour and emission sums changed; geometry is identical.
+  - Full run5b, every step rc 0: Unity Runtime and Editor compile OK; relay suite 807 PASS, 0 FAIL; Python 140 tests OK (1 skipped); source package OK; `git diff --check` clean.
+- **Renders:** offline WebGL emulation of `ZombieLit` and the gore in a night alley, not Unity. Scratch only, not in git: alley before/after still; MP4s of body shots, a head-shot kill, an explosive gib, a melee slice, a crowd gunned down, a corpse and pool time-lapse, and close-ups.
+- **Not run:** Unity Editor play, Windows build or package, two-client play, an owner visual review in Unity.
+- **Risks:**
+  - Wounds and caps are placed on capsule approximations of the voxel parts.
+  - The head and overkill are inferred: adds send no Headshot, and `Amount` is clamped.
+  - Mist and decals are tuned on the emulation; the Unity look may need a pass.
+  - A true mesh-plane bisect of zombies is not used; the joint slice is the cut.
+- **Astra (optional):** emit `EventKind.Headshot`, or a replicated head flag, for add hits whose shares include the head. Also replicate the pre-clamp damage (overkill) and the struck part. The presentation already maps `EventKind.Headshot` to the head. The full list is in the handoff.
+- **Impact on hit timing, hitboxes, damage, cooldowns, movement and networking:** none.
+  - Model geometry is unchanged (baseline: only colour and emission sums).
+  - The death take and its timing are unchanged.
+  - No authority, rules or network file changed (source scan in `--zombie-gore`).
+- **Next:** owner review of the renders and the DEV preview; merge into shared when approved; publish to the test channel with the next game update.
+
 ## 2026-10-19 — Astra: ROUNDS authority state handoff
 
 - Branch `codex/rounds-state-handoff`, based on the integrated XP candidate (#287; tree equivalent to `3765d04`) plus shared `0a8e6b9`.

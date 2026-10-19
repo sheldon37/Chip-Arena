@@ -4,11 +4,13 @@ using UnityEngine;
 using UnityEngine.Rendering;
 namespace ChipArena.UnityConversion
 {
-    // C17 (client/pve/gore.ts): a limb severed from a Ward Zero add is thrown as a tumbling chunk with a spray of black
-    // ink, and a directed hit on an add splashes ink (NativeGoreHits: field and burn ticks do not). Chunks and drops are
-    // pure in their event time (NativeGoreRules). This side only notices new losses in the replicated add state
-    // (NativePveAdd.Lost, and a corpse's `lost` when the blow killed), so the host, guests and killcam replays throw the
-    // same chunk. The body keeps hiding the lost limb as before (NativeSourcePresentation). Presentation only: no
+    // C17 (client/pve/gore.ts): a limb severed from a Ward Zero add is thrown as a tumbling chunk with a spray of blood, and a
+    // directed hit on an add splashes blood (NativeGoreHits: field and burn ticks do not). Chunks and drops are pure in their
+    // event time (NativeGoreRules). This side only notices new losses in the replicated add state (NativePveAdd.Lost, and a
+    // corpse's `lost` when the blow killed), so the host, guests and killcam replays throw the same chunk. The body keeps hiding
+    // the lost limb as before (NativeSourcePresentation). Since 2026-10-19 (owner: "standard zombies ... not just black flames")
+    // the Siren's black ink, black-flame puffs and stump drips are gone: an add drawn with its kind's model takes the horde gore
+    // (NativeHordeGorePresentation.cs: wounds, red blood, stumps), and the bank fallback's drops are blood. Presentation only: no
     // simulation, hit or network state is read back or changed.
     public sealed partial class ArenaPresentation
     {
@@ -34,8 +36,8 @@ namespace ChipArena.UnityConversion
             if(goreArena!=arena){ClearWardZero();goreArena=arena;}
             // A rewind re-learns the adds without throwing; the chunks themselves are rewind-safe (gore.ts:71).
             else if(now<goreTime-.35f){goreLost.Clear();goreSeen.Clear();goreSplash.Clear();}
-            float goreDt=float.IsNegativeInfinity(goreTime)?0:Mathf.Clamp(now-goreTime,0,.05f);goreTime=now;goreFrame++;float quality=Mathf.Clamp01(EffectsQuality);
-            // gore.ts:46-47 / horde-view.ts:211: a directed hit on an add, once per hit time, drops 6-10 ink drops at chest
+            goreTime=now;goreFrame++;float quality=Mathf.Clamp01(EffectsQuality);
+            // gore.ts:46-47 / horde-view.ts:211: a directed hit on an add, once per hit time, drops 6-10 blood drops at chest
             // height (a hit up to .5 s ahead of the presented clock waits in the pool, as chunks do). HitPveAdd replicates the
             // hit direction in ArenaEvent.Normal; field, zone and burn/poison ticks carry none and do not splash.
             int newest=goreEvent;
@@ -46,10 +48,9 @@ namespace ChipArena.UnityConversion
                 if(!aimed||!AddBody(arena,e.Target,e.Time,out Vector3 body,out bool crawl))continue;
                 if(!goreSplash.TryGetValue(e.Target,out double last))last=double.NegativeInfinity;
                 if(!NativeGoreHits.Splash(true,e.Normal,e.Time,last))continue;goreSplash[e.Target]=e.Time;
-                float ground=body.y-(crawl?.44f:.85f);
+                // An add drawn with its kind's model bleeds through the horde gore; the bank fallback splashes a few blood drops.
+                if(HordeKindDrawn(e.Target))continue;float ground=body.y-(crawl?.44f:.85f);
                 GoreInk(e.Time,NativeGoreRules.GibSeed(e.Time,NativeGoreRules.FnvDigits(e.Target),0x68697421u),new Vector3(body.x,ground+1.05f,body.z),NativeGoreRules.HitInk(quality),2.2f,quality);
-                // gore.ts hit: two black-flame cubes pushed along the hit direction (source frame: x mirrored).
-                NativeGoreFlames.Hit(WorldFlames(),-body.x,ground+1.05f,body.z,aimed?Math.Atan2(-e.Normal.x,e.Normal.z):0);
             }
             goreEvent=newest;
             // New LIMB bits on a living add, then on an add that died this frame (its corpse carries the final bits).
@@ -67,17 +68,7 @@ namespace ChipArena.UnityConversion
             }
             goreStale.Clear();foreach(var pair in goreSeen)if(pair.Value!=goreFrame)goreStale.Add(pair.Key);
             foreach(int id in goreStale){goreSeen.Remove(id);goreLost.Remove(id);for(int limb=0;limb<GoreLimbBones.Length;limb++)goreDrips.Remove((long)id*16+limb);}
-            // gore.ts drip / horde-view.ts:212: black flame drips off each stump of a living add within 12 m (about 6 a second).
-            var viewer=arena.ViewPilot;
-            if(goreDt>0&&viewer!=null)foreach(var m in arena.Minions)
-            {
-                var a=m.Pve;if(a==null||a.Lost==0||m.Hp<=0||(m.Body.position-viewer.Body.position).sqrMagnitude>12*12||!minionRigs.TryGetValue(m.Id,out var rig))continue;
-                for(int limb=0;limb<GoreLimbBones.Length;limb++)
-                {
-                    if(!NativeGoreRules.RootLimb(a.Lost,limb))continue;long key=(long)m.Id*16+limb;if(!goreDrips.TryGetValue(key,out double acc))acc=NativeGoreFlames.Phase(m.Id,limb);
-                    Vector3 stump=rig.Bones[GoreLimbBones[limb]].position;goreDrips[key]=NativeGoreFlames.Drip(WorldFlames(),-stump.x,stump.y-.04f,stump.z,goreDt,quality,acc);
-                }
-            }
+            // (The stumps bleed through the horde gore's stump wounds since 2026-10-19; the black-flame drips are gone.)
             goreStale.Clear();foreach(var pair in goreSplash)if(!goreSeen.ContainsKey(pair.Key))goreStale.Add(pair.Key);
             foreach(int id in goreStale)goreSplash.Remove(id);
             // gore.ts:69-76 pose the live chunks (slot colours by draw order) and the ink.
@@ -119,23 +110,21 @@ namespace ChipArena.UnityConversion
                 if(bone!=null&&(bone.position-body).sqrMagnitude<9)joint=bone.position;
                 else{NativeGoreRules.Joint(limb,-body.x,body.y,body.z,-yaw*Mathf.Deg2Rad,crawl,out double x,out double y,out double z);joint=new Vector3(-(float)x,(float)y,(float)z);}
                 uint seed=NativeGoreRules.GibSeed(at,target,NativeGoreRules.LimbHash(limb));
-                // A Siren minion kind throws its own part instead (NativeHordeKindPresentation.HordeSever); the ink and flames stay.
+                // A horde kind throws its own part instead (NativeHordeKindPresentation.HordeSever) and bleeds through the horde gore.
                 if(!HordeKindDrawn(id))goreChunks.Add(NativeGoreRules.Gib(at,seed,limb,-joint.x,joint.y,joint.z,hasFrom,-from.x,from.y,from.z));
-                GoreInk(at,seed^0x9e3779b9u,joint,NativeGoreRules.GibInk(quality),3.2f,quality);
-                // gore.ts gib: the soot spray cone along the blow and a black-flame puff at the joint.
-                NativeGoreFlames.Gib(WorldFlames(),seed,-joint.x,joint.y,joint.z,hasFrom,-from.x,from.y,from.z,quality);
+                if(!HordeKindDrawn(id))GoreInk(at,seed^0x9e3779b9u,joint,NativeGoreRules.GibInk(quality),3.2f,quality);
             }
         }
         private void GoreInk(double at,uint seed,Vector3 position,int count,float power,float quality)
         {int n=NativeGoreRules.Spawned(count,quality);for(int i=0;i<n;i++)goreDrops.Add(NativeGoreRules.MakeDrop(at,seed,i,-position.x,position.y,position.z,power));}
-        // gore.ts:36-38 lit chunks (rot olive, shell) without shadows; burst-pool.ts unlit ink (black albedo, ink emission).
+        // gore.ts:36-38 lit chunks (rot olive, shell) without shadows; the drops are blood (lit dark red; the Siren's glowing ink is gone).
         private bool EnsureGoreMaterials()
         {
             if(goreMaterials!=null)return true;var shader=Resources.Load<Shader>("NativeLit");if(shader==null)return false;goreMaterials=new Material[6];
             for(int i=0;i<6;i++)
             {
                 int kind=i%3;var m=new Material(shader){name="Ward Zero gore "+i,enableInstancing=i<3,color=kind==2?Color.black:NativeArena.ColorOf(kind==0?NativeGoreRules.ChunkOlive:NativeGoreRules.ChunkShell)};
-                if(kind==2)m.SetColor("_Emission",NativeArena.ColorOf(NativeGoreRules.Ink));goreMaterials[i]=m;
+                if(kind==2){m.color=NativeArena.ColorOf(NativeBloodRules.DropColor);m.SetColor("_Emission",Color.black);}goreMaterials[i]=m;
             }
             return true;
         }

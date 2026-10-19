@@ -71,9 +71,8 @@ namespace ChipArena.UnityConversion
             // poseSummonDeath's jitter before the break-up moves the rig group's x (source axes; Unity's x is mirrored).
             Vector3 at=summon?death.position-Vector3.right*NativeSummonBreak.Shake(age):death.position;
             rig.Root.transform.SetPositionAndRotation(at,Quaternion.Euler(0,death.yaw,0));rig.Root.transform.localScale=Vector3.one*(summon?(toy?NativeSummonBreak.ToyScale:NativeSummonBreak.ZombieScale):1);
-            // A horde add chars joint by joint and burns away by height (motion.ts dyingLook, replacing the first port's dithered
-            // fade), then its flames, ash and scorch outlast the body to DEATH_FX_SECONDS (NativeMinionFxPresentation.cs), on the
-            // presentation clock as the other death effects.
+            // A horde add the kinds never drew (the bank's fallback body) falls on the bank's death take and stays whole (no char or
+            // burn-away since 2026-10-19: owner, "standard zombies"); it is gone with its record's DEATH_SECONDS.
             if(horde){float fx=hordeClock-death.at;bool body=!NativeMinionFx.Gone(fx);if(body)HordeDeathBody(rig,death.model,death.id,death.lost,fx,b=>MinionPartVisible(death.lost,b));HordeAdd(rig,death.id,float.NaN,Mathf.Max(0,fx),death.position.y-.85f,death.position.y-.85f,float.NaN,Vector3.zero,death.lost,body);return true;}
             sourceModels.Queue(death.model,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,b=>MinionPartVisible(death.lost,b));return true;
         }

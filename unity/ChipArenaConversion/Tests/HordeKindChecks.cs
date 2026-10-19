@@ -97,12 +97,14 @@ namespace ChipArena.UnityConversion
                 Check(tiers[0].Triangles>tiers[1].Triangles&&tiers[1].Triangles>tiers[2].Triangles,NativeHordeModels.Id(k,l,0)+" thins out tier by tier");
                 var full=new SortedSet<int>(tiers[0].Mesh.Sections.Where(s=>s.Triangles>0).Select(s=>s.Bone));
                 for(int b=1;b<22;b++)Check(full.Contains(b),NativeHordeModels.Id(k,l,0)+" has a part on joint "+b);
-                for(int t=1;t<3;t++){var bones=new SortedSet<int>(tiers[t].Mesh.Sections.Where(s=>s.Triangles>0).Select(s=>s.Bone));Check(bones.SetEquals(full),NativeHordeModels.Id(k,l,t)+" keeps every joint (lost limbs, the char and the burn-away work on every tier)");}
+                for(int t=1;t<3;t++){var bones=new SortedSet<int>(tiers[t].Mesh.Sections.Where(s=>s.Triangles>0).Select(s=>s.Bone));Check(bones.SetEquals(full),NativeHordeModels.Id(k,l,t)+" keeps every joint (lost limbs, the gibs and the Cinderling's crumble work on every tier)");}
                 foreach(var m in tiers)foreach(var s in m.Mesh.Sections){Check(s.Positions.Count==s.Normals.Count&&s.Positions.Count==s.Colors.Count&&s.Positions.Count==s.Emission.Count&&s.Indices.All(i=>i>=0&&i<s.Positions.Count)&&s.Indices.Count%3==0,"section arrays agree");
                     foreach(var e in s.Emission){if(e.W>2.5f){NativeMinionFx.Decode(e.W,out int cls,out double cell);Check(cls>=0&&cls<=2&&cell>=0&&cell<=1&&e.X+e.Y+e.Z>.05f,"glow code decodes and glows");}else Check(e.W==0,"plain parts carry no tint code");}
                     foreach(var c in s.Colors)Check(Math.Max(c.X,Math.Max(c.Y,c.Z))<=1.0001f,"the glow never sits in the albedo (albedo at most 1)");}
-                int cells=tiers[0].Mesh.Sections.Sum(s=>s.Emission.Count(e=>e.W>2.5f));Check(cells>0,NativeHordeModels.Id(k,l,0)+" has flickering seams");
-                Check(NativeHordeModels.Tongues(k,l).Length>0&&NativeHordeModels.Tongues(k,l).All(g=>g.Joint>=0&&g.Joint<22&&(g.Layout==0||g.Layout==1)&&Math.Abs(g.Qx*g.Qx+g.Qy*g.Qy+g.Qz*g.Qz+g.Qw*g.Qw-1)<1e-6),"tongue anchors are valid");
+                // 2026-10-19 (owner: "standard" zombies, not the Siren's animated lines): no glow cell flickers on the seven; the seams
+                // are dead veins (ZombieGoreChecks holds what still glows: the eyes, the spitter's acid and the bloater's boils).
+                int cells=tiers[0].Mesh.Sections.Sum(s=>s.Emission.Count(e=>e.W>2.5f));Check(cells==0,NativeHordeModels.Id(k,l,0)+" has no flickering seams ("+cells+")");
+                Check(NativeHordeModels.Tongues(k,l).Length==0,NativeHordeModels.Id(k,l,0)+" grows no black-flame tongue (2026-10-19)");
             }
             Check(NativeHordeModels.Cracked(0,2)&&!NativeHordeModels.Cracked(0,0)&&!NativeHordeModels.Cracked(2,0),"only the cracked look keeps the crack haze");
         }
@@ -260,7 +262,7 @@ namespace ChipArena.UnityConversion
             Check(p.Contains("NativeHordeKinds.Interrupts(kind,attack,e.Amount,m.MaxHp,heavy)")&&p.Contains("s.CancelFor==m.LastAttack&&now>=s.CancelAt"),"a stagger in the wind-up cancels the shown blow as the authority cancels the real one");
             Check(p.Contains("NativeHordeKinds.Resolve(a.Stats?.id)"),"the kind keys off the replicated add kind");
             Check(p.Contains("HitFlashCode(m.Id,now)"),"the struck flash on the body");
-            Check(p.Contains("blood.Spray(")&&p.Contains(",kill,true);"),"hits spray the Siren's ink into the blood sim");
+            Check(p.Contains("HordeGoreHit(arena,m,s,e,at,dir,melee,spec,")&&!p.Contains(",kill,true);"),"hits bleed red through the horde gore (2026-10-19: no Siren ink; ZombieGoreChecks)");
             var source=R(root,"Assets/ChipArena/Runtime/NativeSourcePresentation.cs");Check(source.Contains("if(add!=null&&HordeKindAdd(arena,m,rig,pos))continue;")&&source.Contains("BeginHordeFx(arena);HordeKindsBegin(arena);")&&source.Contains("HordeKindsEnd(arena);PveGore(arena);"),"SourceWorld draws every horde add through the kinds");
             Check(R(root,"Assets/ChipArena/Runtime/NativeSummonPresentation.cs").Contains("if(horde&&HordeKindDeath(death,rig,age))return true;"),"deaths by kind");
             Check(R(root,"Assets/ChipArena/Runtime/NativeDevEffects.cs").Contains("DrawHordeFx(camera);DrawHordeKindFx(arena,camera);DrawHordeBursts(camera);"),"the effects with the minion effects");

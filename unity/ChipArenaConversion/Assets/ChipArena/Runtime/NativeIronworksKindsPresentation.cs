@@ -92,6 +92,11 @@ namespace ChipArena.UnityConversion
             sourceModels.Queue(IronworksCrustId(look,tier),rig.Root.transform.localToWorldMatrix,ironBone,hordeQueueVisible,glow:glow,hitFlash:flash);
         }
         private Func<int,Matrix4x4> ironBone;
+        /// <summary>HordeCorpsesDraw: a slagback corpse's crust (crust look `look`) on its kept pose.</summary>
+        private void IronworksCorpseCrust(int look,int tier,Matrix4x4 root,Func<int,Matrix4x4> bone,Func<int,bool> visible,Vector4 glow,float alpha)
+        {
+            string id=IronworksCrustId(look,tier);if(!sourceModels.Has(id))return;var body=Color.white;body.a=alpha;sourceModels.Queue(id,root,bone,visible,body:body,glow:glow);
+        }
         private void IronworksLamp(CapturedAnimation.Player rig)=>sourceModels.Queue(NativeHordeModels.PropId(NativeHordeModels.PropLamp,0),rig.Bones[CapturedRig.Head].localToWorldMatrix*Matrix4x4.Translate(new Vector3(0,.335f,.2f)));
         private static string[] ironCrustIds;
         private static string IronworksCrustId(int look,int tier){if(ironCrustIds==null){var a=new string[2*NativeHordeModels.Tiers];for(int l=0;l<2;l++)for(int t=0;t<NativeHordeModels.Tiers;t++)a[l*NativeHordeModels.Tiers+t]="iw-slagback-crust-"+l+"-"+NativeHordeModels.TierNames[t];ironCrustIds=a;}return ironCrustIds[Mathf.Clamp(look,0,1)*NativeHordeModels.Tiers+Mathf.Clamp(tier,0,NativeHordeModels.Tiers-1)];}
@@ -256,7 +261,9 @@ namespace ChipArena.UnityConversion
                 }
                 ironDropped[death.id]=drop;
             }
-            bool body=!NativeMinionFx.Gone(fx);if(!body)return;
+            // The corpse keeps the crust and what it dropped (NativeHordeGorePresentation.cs HordeCorpsesDraw), once it has settled.
+            var remains=hordeGore.RemainsOf(death.id);if(remains!=null&&Mathf.Abs(remains.At-death.at)<.05f){remains.Extra=drop.Crusted?drop.Look:-1;remains.Prop=drop.Prop;if(drop.Prop>=0)remains.PropMatrix=GoreN(Matrix4x4.TRS(drop.To,drop.ToRot,Vector3.one));}
+            bool body=!NativeMinionFx.Gone(fx)&&(remains==null||!remains.Posed||remains.Frame>=hordeKindFrame);if(!body)return;
             if(drop.Crusted){HordeDeathBody(rig,IronworksCrustId(drop.Look,NativeHordeModels.Full),death.id,death.lost,fx,hordeQueueVisible);}
             if(drop.Prop>=0){float u=Mathf.Clamp01(fx/.45f);float bounce=u<1?0:Mathf.Max(0,.06f*Mathf.Sin((fx-.45f)*18)*Mathf.Exp(-(fx-.45f)*6));
                 sourceModels.Queue(NativeHordeModels.PropId(drop.Prop,0),Matrix4x4.TRS(Vector3.Lerp(drop.From,drop.To,u*u)+Vector3.up*bounce,Quaternion.Slerp(drop.FromRot,drop.ToRot,Mathf.SmoothStep(0,1,u)),Vector3.one));}
@@ -292,7 +299,7 @@ namespace ChipArena.UnityConversion
                 if(fr.State==NativeIronworksGallery.State.Death)
                 {
                     NativeHordeGait.Death(minionPose,kind,seed,Mathf.Min(fr.DeathAge,2.3f),new System.Numerics.Vector2(0,-1));NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(slot+Vector3.up*NativeHordeKinds.DrawRoot(kind,false),Quaternion.Euler(0,yawToMe,0));rig.Root.transform.localScale=Vector3.one*sc;
-                    bool body=!NativeMinionFx.Gone(fr.DeathAge);if(body)HordeDeathBody(rig,NativeHordeModels.Id(kind,0,NativeHordeModels.Full),id,0,fr.DeathAge,null);HordeAdd(rig,id,float.NaN,fr.DeathAge,ground,ground,float.NaN,Vector3.zero,0,body,kind*8);
+                    bool body=!NativeMinionFx.Gone(fr.DeathAge);if(body)HordeDeathBody(rig,NativeHordeModels.Id(kind,0,NativeHordeModels.Full),id,0,fr.DeathAge,null,z==NativeIronworksKinds.Cinderling);HordeAdd(rig,id,float.NaN,fr.DeathAge,ground,ground,float.NaN,Vector3.zero,0,body,kind*8);
                     if(z==NativeIronworksKinds.Cinderling)IronworksLate(0,id,rig.Bones[CapturedRig.Chest].position,slot,Vector3.up,start+NativeIronworksGallery.DeathAt,seed,true);s.Gait.Reset();continue;
                 }
                 if(fr.State!=NativeIronworksGallery.State.Ground)

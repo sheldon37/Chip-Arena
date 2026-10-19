@@ -94,7 +94,8 @@ one wins.
     - the galleries: Siren minions, Cyber double jump, saw split, revive, chip selecting;
     - Preview Hazard Kit (every alarm, turret and saw cycling its states) and Lock Hazard Kit to music
       (`docs/HAZARD-KIT.md` 12);
-    - Preview DEV Reveal.
+    - Preview DEV Reveal;
+    - Zombie gore preview (five zombies looping a hit, a head shot, a gib, a slice and a death; `docs/ZOMBIE-GORE.md`).
   - **Camera**:
     - the fly camera and its speed, and snap to pilot;
     - the six read-only overlays;
