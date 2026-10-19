@@ -1,3 +1,11 @@
+## 2026-10-19 — Astra: ROUNDS authority state handoff
+
+- Branch `codex/rounds-state-handoff`, based on the integrated XP candidate (#287; tree equivalent to `3765d04`) plus shared `0a8e6b9`.
+- Added successful swap events, dead summon owner, summon expiry and pilot protection end to capture/apply/validation. Permanent horde lifetime maps to wire zero; old fields safely clear/default. No presentation changes or gameplay tuning.
+- Contract and Claude follow-up: `docs/ROUNDS-STATE-HANDOFF.md`. Optional pull/steal proc flags deferred.
+- Verification: ROUNDS managed visual suite 286,989 checks PASS; pinned Unity Player/Runtime/Editor compilation PASS. Native builder codec/PhysX checks added, not executed locally. Windows play/two clients unrun. Publication receipt pending.
+- Owner approved XP live migration/account Worker rollout on this turn. Sites v67 deployed successfully at 22:52:42 UTC: source `6d588a31318b2fe421fd072bb3b199f9d4f58514`, deployment `appgdep_6ad69f320ca481919714f2ebb01acdd3`. Only XP route/service/schema and generated Worker/migrations added to existing hosted source; browser assets preserved. Hosted-source account/XP/directory/party/relay tests: 34 PASS, Worker build PASS. Its pre-existing legacy client/shared TypeScript errors remain; integrated GitHub relay gate passes.
+
 ## 2026-10-19 — Claude: ROUNDS pack chip visuals (merged into shared)
 
 - **Branch:** `claude/rounds-chip-visuals`, based on shared `claude/sleepy-ritchie-g8ruhv` at `f1994f1`. Implementation commits `b7abcb5` and `7504080`. Presentation only. Merged into shared and the builder; not published.

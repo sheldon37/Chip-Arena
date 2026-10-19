@@ -91,6 +91,23 @@ namespace ChipArena.UnityConversion.Editor
                 if(replica.NetworkFrame().projectileEnds.Length!=0)throw new Exception("Old host or rewind retained stale projectile endpoint");
                 replica.ApplyFrame(copy,authority.LocalId);
                 Debug.Log("PASS projectile replay endpoints: real JsonUtility, validation, guest recapture and old-host clearing");
+                // Additive authority clocks must survive a late join and replay cloning, then clear on old frames.
+                var clocks=NativeFrameCodec.Clone(copy);int clockOwner=clocks.seats[0].id;
+                clocks.pilots[0].shieldUntil=(float)clocks.time+1.2f;
+                clocks.minions=new[]{new NativeMinionFrame{id=19001,owner=clockOwner,kind="toy",hp=10,maxHp=10,until=(float)clocks.time+3,position=clocks.pilots[0].position}};
+                clocks.corpses=new[]{new NativeDeath{id=19002,owner=clockOwner,model="summon-toy",at=(float)clocks.time,position=clocks.pilots[0].position}};
+                clocks=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=clocks})).frame;
+                if(!clocks.Valid(authority.Content))throw new Exception("Summon/protection clock frame invalid");
+                replica.ApplyFrame(clocks,authority.LocalId);var clockCopy=NativeFrameCodec.Clone(replica.NetworkFrame());
+                if(clockCopy.pilots[0].shieldUntil!=clocks.pilots[0].shieldUntil||clockCopy.minions[0].until!=clocks.minions[0].until||clockCopy.corpses[0].owner!=clockOwner)
+                    throw new Exception("Late join/replay lost protection, summon expiry or dead summon owner");
+                clocks.minions[0].until=float.NaN;if(clocks.Valid(authority.Content))throw new Exception("NaN summon expiry accepted");
+                clocks.minions[0].until=0;clocks.pilots[0].shieldUntil=float.PositiveInfinity;if(clocks.Valid(authority.Content))throw new Exception("Infinite protection clock accepted");
+                clocks.pilots[0].shieldUntil=0;replica.ApplyFrame(clocks,authority.LocalId);
+                if(replica.Pilots[0].ShieldUntil!=0||!float.IsPositiveInfinity(replica.Minions[0].Until)||replica.NetworkFrame().minions[0].until!=0)
+                    throw new Exception("Old clock defaults retained stale protection or invented an expiry");
+                replica.ApplyFrame(copy,authority.LocalId);
+                Debug.Log("PASS replicated summon/protection state: codec, late join, recapture, replay clone, finite validation and old-frame defaults");
                 var replayPilot=replica.Local;var beforeDeath=copy.pilots.First(p=>p.id==replayPilot.Seat.id);
                 float deathAt=(float)copy.time+.025f;
                 var afterDeath=new NativePilotFrame{hp=0,death=new NativeDeath{id=replayPilot.Seat.id,seed=987654,at=deathAt,position=beforeDeath.position+Vector3.right*.3f,yaw=beforeDeath.yaw,actor=replayPilot.Pose.ViewCopy()}};
