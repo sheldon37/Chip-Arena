@@ -116,6 +116,9 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<fields.Count;i++)
             {
                 var f=fields[i];
+                // A ROUNDS pack field (its owner holds the pack chip aliasing the mechanic) has its own look
+                // (NativeRoundsFxPresentation): no vanilla dome, core or emitters under it.
+                if(NativeRoundsLooks.FieldLook(f.Effect,f.Owner?.Seat.chips)>=0)continue;
                 Add(new NativeBlastField{Id=f.Id,Kind=f.Kind,Fx=Fx(f),X=f.Position.x,Y=f.Position.y,Z=f.Position.z,Radius=f.Radius,Born=f.Born,Until=f.Until,Floor=FloorOf(f.Id,f.Position)},f.Owner,viewer,pve,teams);
             }
             var zones=arena.AbilityZones;
