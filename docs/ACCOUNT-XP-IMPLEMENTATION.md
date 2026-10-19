@@ -1,6 +1,6 @@
 # Permanent account XP — Astra implementation, 2026-10-19
 
-Task branch: `codex/account-xp`, base shared `f1994f1`. Owner authorized the remaining implementation after Claude's presentation handoff. Initial balance below is an implementation default, not playtested progression tuning.
+Task branch: `codex/account-xp`, base shared `f1994f1`, subsequently integrated with shared `0a8e6b9` in PR #287. Owner authorized the remaining implementation after Claude's presentation handoff. Initial balance below is an implementation default, not playtested progression tuning.
 
 ## Rules
 
@@ -20,7 +20,7 @@ Level 1 starts at zero. Level L starts at `250 * (L-1) * L / 2`; the next level 
 
 `GET /api/accounts/xp` returns the authenticated account's saved summary. `POST /api/accounts/xp` accepts only a version-1 completion description: ID, mode, win flag, bot flag, elapsed seconds and cleared-instance count. The account ID comes from the existing bearer session. Client-supplied totals, XP values and other account IDs are ignored. The service computes all saved totals, levels and bands; client estimates are presentation-only and may change on confirmation. If the saved balance is unknown, pending details are unavailable rather than inventing a saved balance.
 
-Migration `drizzle/0005_account_xp.sql` adds `account_xp` and `account_xp_awards`; existing profile/grant rows and revisions are unchanged. Award uniqueness is `(account, completion)`. A transactional D1 batch inserts an immutable result, conditionally updates the balance only for that insertion's random marker, then reads the receipt and current summary. Identical retries return the original before/after totals; a conflicting result with the same ID gets 409. Concurrent distinct completions serialize their balances. Ledger entries must not be pruned without preserving deduplication tombstones.
+Migration `drizzle/0005_account_xp.sql` adds `account_xp` and `account_xp_awards`; existing profile/grant rows and revisions are unchanged. Award uniqueness is `(account, completion)`. A transactional [D1 batch](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch) inserts an immutable result, conditionally updates the balance only for that insertion's random marker, then reads the receipt and current summary. Identical retries return the original before/after totals; a conflicting result with the same ID gets 409. Concurrent distinct completions serialize their balances. Ledger entries must not be pruned without preserving deduplication tombstones.
 
 **Trust limit:** this is casual progression in a player-hosted game, not an anti-cheat service. An authenticated modified client or dishonest host can fabricate completion descriptions. Request validation, rate limits, server reward math and deduplication prevent malformed/cross-account/double writes, but do not prove gameplay. Do not attach competitive ranks, valuable unlocks or purchases without introducing trusted match registration/attestation.
 

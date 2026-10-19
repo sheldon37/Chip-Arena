@@ -48,7 +48,18 @@ Bundled pack is trusted compiled content, outside the 64 external-chip budget. S
 
 Managed definition/eligibility/alias/stats/serialization tests and Unity semantic compilation are run for this change. A Windows gate exercises real Unity attribution serialization and authority block/fire/field/summon/satellite hooks. Windows execution, rendered byline placement, balance and human multiplayer require the builder/playtest; compilation alone is not gameplay acceptance.
 
-Remaining Booga packs are not implemented by this release. Continue per-pack license and exact-mechanic review before adapting WWC, CPC, Cosmic Rounds, PCE, GearUP, Root, Unstable Cards and the rest. Claude owns any new bespoke visuals; this pass uses existing effect presentation and adds only the requested functional byline.
+Remaining Booga packs are not implemented by this release. Continue per-pack license and exact-mechanic review before adapting WWC, CPC, Cosmic Rounds, PCE, GearUP, Root, Unstable Cards and the rest. Claude owns the bespoke visuals; see Presentation below.
+
+## Presentation
+
+Presentation only (`Core/NativeRoundsLooks.cs`, `NativeRoundsFields.cs`, `NativeRoundsUnits.cs`, `NativeRoundsProcs.cs`, `NativeRoundsFx.cs`, `NativeRoundsMeshes.cs`; `Runtime/NativeRoundsFxPresentation.cs`; shaders `NativeRoundsField` and `NativeRoundsWarp`). It draws from replicated state only: seat chips, chip fields, minion frames, minion death records, events and pilot `frozenUntil`, aged on the presentation clock. Host, guests, killcam and the DEV preview draw the same. The owner's seat chips decide which pack chip made a vanilla mechanic's field, toy or satellites. A holder of the vanilla chip keeps the vanilla look.
+
+- **Fields:** the visible edge is the authority radius at a standing pilot's height. Slow-time and gravity fields also draw the authority sphere. The hazard look lasts exactly from `born` to `until`, then dissipates. Ember Footprint and Thornwake: charred, cracking ground with a flame front on the edge, flames, embers and soot. Cryo Snare and Binding Lattice: ice forms out to the edge, with crystals, cracks and mist, and shatters at expiry. Suppression Cloud, Temporal Sacrifice, Disruption Pulse, Lunar Interdict and Shadow Interdict: a distortion shell with slowed motes, clock rings and shot echoes. Repulsor Well and Emergency Vent: pressure rings. Attractor Well: a spiral inflow and a collapsing core. Storm Relay: violet ground arcs and relay pylons.
+- **Escort Array, Twin Escort, Manifest Array and Sentry Array:** two satellite models on the authority's launch orbit. Each homing shot flashes its satellite and draws a homing trail.
+- **Drone Nest:** a combat drone replaces the toy soldier. It summons in, hovers, winds up and recoils on the replicated bolt, blinks in its last second, powers down on expiry (no death record) and breaks up on a death record.
+- **Procs, pulses and buffs:** each look comes from its replicated event (Block, Hit, Freeze, Teleport, Field, BlockPulse, Explosion, Heal, ReloadEnd). Pulse rings are the blast's exact radius. Position Exchange and Dimensional Exchange have no look yet: no swap event is replicated.
+- **Card icons:** every pack chip has its own pinned icon, keeping its rarity colour. The MODS menu entry has its own glyph.
+- **Tiers and DEV:** Reduced and Low draw less, and Low has no distortion. The DEV panel's Camera tab has a ROUNDS pack effects preview. `--rounds-visuals` covers extent, lifetime, determinism, tiers, allocation and a source scan.
 
 ## Further packs
 
