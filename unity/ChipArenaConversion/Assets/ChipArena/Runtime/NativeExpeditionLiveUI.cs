@@ -64,6 +64,8 @@ namespace ChipArena.UnityConversion
             if(v.run!=expeditionLiveRun){expeditionIntents.Clear();expeditionLiveDice.Reset(v);expeditionLiveRun=v.run;expeditionVictoryLoop=v.phase==ExpeditionPhase.Victory?v.loop:-1;}
             expeditionLiveDice.Watch(v,expeditionLiveNow);
             if(v.phase==ExpeditionPhase.Victory&&expeditionVictoryLoop!=v.loop&&NativeExpeditionPresentation.Has(v.mine.account)&&!v.mine.extracted){expeditionVictoryLoop=v.loop;expeditionScreenOpen=true;}
+            // A completion's account XP opens the screen on its card, once, and again when it is confirmed (NativeAccountXpUI.cs).
+            AccountXpExpeditionSync();
         }
         private void ExpeditionLiveSubmit(ExpeditionCommand command)
         {
@@ -91,11 +93,13 @@ namespace ChipArena.UnityConversion
             U.Fill(new Rect(0,0,width,height),C.Void(arena!=null&&!menu?.78f:.94f));
             E.Minimal(v,width);
             var command=NativeExpeditionScreen.Panels(v,controls,width,120,height-64);
-            bool modal=expeditionLiveDice.Open;if(!modal)ExpeditionLiveSubmit(command);
+            bool modal=expeditionLiveDice.Open||AccountXpCardOpen;if(!modal)ExpeditionLiveSubmit(command);
             var foot=new Rect(24,height-48,width-48,32);NativeHudChrome.Tag(foot,C.Cyan(),1);
             U.Text(new Rect(foot.x+14,foot.y,foot.width-160,foot.height),"EXPEDITION · J OR ESC CLOSES · "+(v.ViewerIsHost()?"YOU ARE THE HOST":"GUEST · COMMANDS GO TO THE HOST"),11,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
+            AccountXpCardButton(new Rect(foot.xMax-266,foot.y+1,126,30),modal);
             if(U.Btn(new Rect(foot.xMax-130,foot.y+1,120,30),"Close",false,!modal,1,13)&&!modal)expeditionScreenOpen=false;
             NativeExpeditionScreen.DiceOverlay(expeditionLiveDice,v,controls,width,height,Time.unscaledTime,reduced);
+            AccountXpExpeditionCard(width,height);
             return true;
         }
 

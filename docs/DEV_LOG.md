@@ -1,3 +1,85 @@
+## 2026-10-19 — Claude: permanent account XP, presentation side and proposed contract (on branch, not merged)
+
+- **Branch:** `claude/account-xp-presentation`, based on shared `6bf4896` (`claude/sleepy-ritchie-g8ruhv`). Presentation only. Not merged and not published. The contract is proposed and awaits Astra; nothing is bound.
+- **Owner request (2026-10-19), summarised:**
+  - start the presentation side of permanent account XP (PvP and PvE completions, mainly from active playtime and objectives);
+  - a post-match XP panel (previous level and progress, the earned breakdown, the new progress with a level-up animation);
+  - a compact level in the main menu;
+  - pending, confirmed and failed (with retry) states;
+  - DEV fixtures with mock values.
+  The presentation must not calculate rewards, choose the curve, write account XP or grant unlocks. Animate each confirmed completion once and never show pending as saved. Keep XP apart from chips and currency, and propose the contract before wiring.
+- **Contract (proposed v1):** `docs/ACCOUNT-XP-PRESENTATION.md`, Core `NativeAccountXp.cs`.
+  - `AccountXpAward`:
+    - identity and state: `version`, `completionId`, `account`, `mode`, `status` (pending, confirmed or failed), `revision`;
+    - numbers: `lines[] {key,label,xp}`, `previousTotal`, `newTotal`, `previousLevel`, `newLevel`, `bands[] {level,start,next}`;
+    - failure: `attempt`, `retry` (auto, manual, later or none), `retryIn`, `reason`.
+  - `AccountXpSummary`: `known`, `total`, `level`, `levelStart`, `nextLevelAt`, `pending`.
+  - The same `completionId` is re-issued pending → confirmed (or failed → pending → confirmed), its `revision` rising.
+  - Every number is the authority's. The panel only interpolates inside the supplied bands.
+  - Validation degrades instead of guessing:
+    - an invalid id, status or version, or another account's award, is not shown;
+    - inconsistent totals show "details unavailable";
+    - bad bands show the numbers without a bar;
+    - a line sum ≠ the totals is shown as given and flagged in DEV.
+- **What it shows:**
+  - **PvP match end and PvE results:** an XP panel in its own column beside the results, the pair centred. The results narrow to make room (never below 480 / 420) and keep their old place when there is no award.
+  - **Expedition:** a card over the J screen. It opens by itself on a new completion's award and again at its confirmation; the footer's ACCOUNT XP button reopens it.
+  - **Home:** a third nameplate line: an XP hexagon with the level, LEVEL n, a thin saved-progress bar and PENDING.
+  - **Pending:** a hatched ghost gain, "CONFIRMING REWARD…" and "Not saved to your account yet."
+  - **Failed:** the authority's reason with RETRYING IN n s, TRY AGAIN, WILL RETRY WHEN YOU'RE BACK ONLINE or THIS REWARD WAS NOT SAVED; the gain is a red ghost marked NOT SAVED.
+  - **Confirmed:** the lines lock in, the bar fills band by band with a pop, burst and flash at every threshold (chained for several levels; 32 or more collapse into one "LEVEL UP ×n"), then SAVED TO YOUR ACCOUNT.
+  - **Separation:** XP has its own ultraviolet tone and its own words, never the wallet's gold, the chips' cyan, $ or chips.
+- **Animate once:** the first sight of a confirmed completion animates, and the completion is written to a local record at once.
+  - The record is `account-xp-celebrated-v1.txt` in the user data folder: the newest 200 keys (account and completionId). It is UI state only and DEV mock ids are never written.
+  - A reopened panel, another screen, a new session, a confirmed re-issue or reduced effects show the final state.
+  - Pending and failed awards are never recorded.
+- **Bindings for Astra:** `Runtime/NativeAccountXpUI.cs`, one line each; all three return null today.
+  1. `AccountXpAwardOf(AccountXpSurface)`: the viewer's award on PvP, PvE or Expedition results.
+  2. `AccountXpSummaryOf()`: the signed-in account's saved XP.
+  3. `AccountXpRetryOf()`: optional, a manual retry by completionId.
+  - The tripwire in `AccountXpChecks` fails once account XP data (`new AccountXpAward`, a `completionId` or `accountXp…` field, an `"account-xp"` message, an `xp` or `level` on `NativeAccountData`) appears outside the presentation while bindings 1 and 2 are unbound.
+- **Questions for Astra:** 14, in the doc. The main ones:
+  - Where are completions confirmed: the host, the account service or a server?
+  - How does a guest learn its award?
+  - Do offline, solo, sandbox and bot matches count?
+  - Is `completionId` stable across reconnects, seat reclaim, host promotion and rematch?
+  - Can the bands or totals change between pending and confirmed?
+  - What are the most levels per award, and the level cap?
+  - Can XP be zero or negative, and can the lines differ from the totals?
+  - What are the retry semantics, and the Expedition completion points?
+- **DEV preview:** DEV panel → Previews → ACCOUNT XP, developers only, banner "DEV PREVIEW · ACCOUNT XP · MOCK VALUES".
+  - Results fixtures: ZERO, PROGRESS, LEVEL UP, MULTI LEVEL, PENDING, FAILED · AUTO, FAILED · TRY AGAIN, LINE SUM OFF, NO THRESHOLDS.
+  - Mocked steps: MOCK CONFIRM, MOCK FAIL, REPLAY.
+  - Menu fixtures: UNKNOWN, ZERO, PROGRESS, PENDING, MAX LEVEL.
+  - Every value is a labelled mock (`NativeAccountXpFixtures`), not a proposed amount, curve, perk or unlock.
+- **Files:**
+  - New: Core `NativeAccountXp.cs`, `NativeAccountXpPanel.cs`, `NativeAccountXpFixtures.cs`; Runtime `NativeAccountXpHud.cs`, `NativeAccountXpUI.cs` (with metas); `Tests/AccountXpChecks.cs`; `docs/ACCOUNT-XP-PRESENTATION.md`.
+  - Small hooks: `NativeMatchOverlays.cs` (both result panels' width, x and one docked call), `NativeHomeMenu.cs` (one nameplate line), `NativeExpeditionLiveUI.cs` (sync, modal, footer button, card), `NativeDevPanel.cs`, Core `NativeDevTools.cs` (one view action), `Tests/Program.cs` (`--account-xp` and the full-run line).
+- **Checks (run5b, all five steps exit 0):**
+  - Unity 6000.3.24f1 Runtime and Editor compile OK.
+  - Relay: 801 PASS, 0 FAIL, including the new `AccountXpChecks` (`--account-xp`, 253,640 checks). They cover:
+    - validation, degradation and a fuzz;
+    - every fixture's sequence crossing exactly the supplied thresholds, single, chained and collapsed;
+    - pending never saved and never added to the menu; the failed retry states;
+    - animate once across reopen, restart, re-issue and pending → confirmed; the bounded record;
+    - the tone and wording separation; the unbound bindings and the tripwire (with a self-test);
+    - zero per-frame allocation (a mutation run confirmed it catches an allocation);
+    - layouts at 1280×720 @1.5, 1920×1080, 2560×1080, 3440×1440, 3840×2160 and 8 more;
+    - scans: only the four surfaces reach the presentation, and no authority, network or account file does.
+  - Python: 140 OK (1 skipped). Package OK. Diff-check OK.
+  - After the run, only this entry's check lines were filled in.
+- **Not run:**
+  - Unity Editor play and Windows;
+  - a live award (nothing produces one yet);
+  - two-client PvP or Expedition.
+  The renders are offline IMGUI emulation (scratchpad `renders-account-xp`, including MP4s of the multi level-up).
+- **Risks:**
+  - The contract may change with Astra's answers.
+  - The Expedition completion point is assumed (a card on the J screen).
+  - At UI scale 2 on 720p the panel falls back to a mini card over the results' corner.
+  - If the local record cannot be written, a completion could animate again next session (never re-awarded).
+- **No impact** on gameplay, rewards, accounts, saves, networking, hit timing, hitboxes, damage, cooldowns or movement.
+
 ## 2026-10-19 — Claude: quieter footsteps (merged into shared)
 
 - **Branch:** `claude/quieter-footsteps`, based on shared `351c26f` (#286). Audio only; merged into shared and the builder by fast-forward, not published.

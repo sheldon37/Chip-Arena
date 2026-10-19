@@ -405,6 +405,8 @@ namespace ChipArena.UnityConversion
             U.Text(new Rect(tx,ny-21,220,18),NativeCosmeticRules.Name(prefs.name).ToUpperInvariant(),11.5f,U.A(U.Mix(C.Ink(.94f),Color.white,h),alpha),TextAnchor.MiddleLeft,bold:true,tracking:.22f,shadow:C.Void(.8f*alpha));
             string cls=weapon.@class=="ranged"?"RANGED":weapon.@class=="magic"?"MAGIC":weapon.@class=="melee"?"MELEE":"DEV";
             U.Text(new Rect(tx,ny+4,220,16),weapon.name.ToUpperInvariant()+"  ·  "+cls,9.5f,U.A(lifted,alpha),TextAnchor.MiddleLeft,bold:true,tracking:.2f,shadow:C.Void(.8f*alpha));
+            // The account level under it (NativeAccountXpUI.cs): the saved level only, nothing while it is unknown.
+            AccountXpNameplate(nx,ny+26,alpha);
             if(!blocked&&alpha>.5f&&U.Button(hit)){Click();Go(MenuScreen.Customize);}
         }
         // A hairline from a to b (virtual px).

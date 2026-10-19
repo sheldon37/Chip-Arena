@@ -68,6 +68,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--machines"){MachineModelChecks.Run(ProjectRoot());MachinePlacementChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--transitions"){TransitionLoadingChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--party-loading"){PartyLoadingChecks.Run(ProjectRoot());TransitionLoadingChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--account-xp"){AccountXpChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--move-visuals"){MoveVisualChecks.Run(ProjectRoot());JumpMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expeditions-menu"){ExpeditionsMenuChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--weapon-sockets"){var socketRoot=ProjectRoot();var socketData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(socketRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});WeaponSocketChecks.Run(socketRoot,socketData);HitFeelChecks.Run(socketRoot,socketData);return 0;}
@@ -138,6 +139,7 @@ internal static class Program
             IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);IronworksBossPresentationChecks.Run(root);
             CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
             PartyLoadingChecks.Run(root);
+            AccountXpChecks.Run(root);
             MoveVisualChecks.Run(root);
             DevToolsChecks.Run(root);
             SpawnInChecks.Run(root,data);

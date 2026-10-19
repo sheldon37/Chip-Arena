@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-19 Claude account XP presentation (`claude/account-xp-presentation`, base `6bf4896`; on branch, not merged; presentation only): post-match XP panel (PvP, PvE, Expedition card), home level line, pending/confirmed/failed states, animate-once record, MOCK DEV fixtures. Contract proposed in `docs/ACCOUNT-XP-PRESENTATION.md`, awaiting Astra; bindings in `NativeAccountXpUI.cs` return null until then.
+
 2026-10-19 Claude quieter footsteps (`claude/quieter-footsteps`, base `351c26f`; merged into shared; audio only): every pilot and zombie step x0.7 (about -3 dB) through one trim, `NativeFootsteps.StepTrim`; landings unchanged. Next: owner listening test on the desktop build.
 
 2026-10-18 Astra chip stat-color fallback (`codex/mod-chip-tones`, base #285 `a566672`): runtime-added adaptations/movement/external chips now use the existing green benefit/red penalty/neutral stat rows. No gameplay changes. Focused checks pass; compile and publication receipts in PR. #285 main-menu Mods entry published successfully at 20:05:06 UTC.
