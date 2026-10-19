@@ -33,8 +33,14 @@ namespace ChipArena.UnityConversion
         {
             if(ready)return;
             int[] N(params string[] keys){var r=new int[keys.Length];for(int i=0;i<keys.Length;i++)r[i]=NativeZombieClips.Need(keys[i]);return r;}
-            walks=new[]{N("chase-1","chase-2","chase-5"),N("sprint-1","sprint-3"),N("walk-4","walk-6"),N("chase-1","walk-6"),new int[0],N("walk-6","walk-4"),N("walk-4","walk-6")};
-            runs=new[]{N("sprint-1","sprint-3"),N("sprint-3","sprint-4"),N("chase-5","chase-2"),N("chase-2","sprint-1"),new int[0],N("chase-1"),N("chase-5")};
+            // (The locomotion pass, docs/ZOMBIE-LOCOMOTION.md: the takes whose trunk and arms stay smoothest at each kind's cadence.
+            // The shambler reaches on the chases, the full chase loop among them, and runs on the clean sprint or lurches on its
+            // chase; the runner sprints reaching or low-armed (not sprint-4, which throws its shoulders furthest); the brute,
+            // spitter and bloater walk on the full loop of the heavy walk, the brute charging on the chases; the sprint the
+            // spitter ran on and the runner walked on (sprint-1, the jerkiest) and the shambler's bouncing chase-5 are left to
+            // the kinds that still name them.)
+            walks=new[]{N("chase-1","chase-2","chase-1-full"),N("sprint-3","sprint-2"),N("walk-6-full","walk-4"),N("chase-1","walk-6-full"),new int[0],N("walk-6-full","walk-4"),N("walk-4","walk-6")};
+            runs=new[]{N("sprint-3","chase-2"),N("sprint-3","sprint-2"),N("chase-2","chase-5-full"),N("chase-2","sprint-3"),new int[0],N("chase-1","chase-2"),N("chase-5")};
             idles=new[]{N("shamble-1","shamble-2","idle-3"),N("shamble-2","idle-3"),N("idle-3","shamble-1"),N("shamble-1","idle-3"),new int[0],N("idle-3"),N("idle-3","shamble-1")};
             // (The slow forward walk-4 is the take that plants cleanly at the wander's .4-1.1 m/s for every kind: the walk-6 and the
             // chases drag a planted ankle up to 5-7 cm there.)
@@ -46,6 +52,10 @@ namespace ChipArena.UnityConversion
             lands=N("jump-land");Wake=NativeZombieClips.Need("wake");CrawlStand=NativeZombieClips.Need("crawl-stand");StandCrawl=NativeZombieClips.Need("stand-crawl");
             JumpStart=NativeZombieClips.Need("jump-start");JumpAir=NativeZombieClips.Need("jump-air");SpitRear=NativeZombieClips.Need("knock-1");Roar=NativeZombieClips.Need("knock-3");
             for(int i=0;i<NativeZombieClips.Count;i++)NativeZombieClips.Clip(i).Decode();
+            // Each cycle's mean row (32 samples over its loop): the pose a calmed take swings about.
+            means=new float[NativeZombieClips.Count][];
+            {var sample=new float[NativeZombieClips.Channels];for(int i=0;i<means.Length;i++){var c=NativeZombieClips.Clip(i);if(!c.Loop)continue;var m=new float[NativeZombieClips.Channels];const int n=32;
+                for(int k=0;k<n;k++){c.Sample(c.Duration*k/n,sample);for(int ch=0;ch<m.Length;ch++)m[ch]+=sample[ch]/n;}means[i]=m;}}
             // Each clip's planted ankle height (rig frame, the root at the body): where its feet stand, for the swing's lift.
             ground=new float[NativeZombieClips.Count];var row=new float[NativeZombieClips.Channels];var p=new CapturedRig.Pose();
             for(int i=0;i<ground.Length;i++)
@@ -100,13 +110,21 @@ namespace ChipArena.UnityConversion
         // ---- following the add's ground speed ----
         /// <summary>A kind's tempo: the brute and the bloater take longer, heavier strides at a slower cadence, the Hulk slowest.</summary>
         public static readonly float[] Tempo={1,1,.9f,.95f,1,.85f,.62f};
-        public const float MinRate=.55f,MaxRate=2.8f,Exponent=.7f;
-        /// <summary>The playback rate of cycle `clip` at ground speed `v` (m/s) for `kind`.</summary>
+        public const float MinRate=.55f,MaxRate=2.8f;
+        /// <summary>
+        /// The playback rate of cycle `clip` at ground speed `v` (rig m/s) for `kind`: the body's cadence (NativeHordeGait.StepRate,
+        /// two steps a cycle) over the take's own, so each take is time-warped to the kind's step and the stride takes the rest of
+        /// the speed. (The shipped mapping scaled each take's own pace by the speed's .7 power, which played the pack's .3-.5 m/s
+        /// shambles at 2-2.8 times their speed at the authority's 1.3-1.6 m/s walks.)
+        /// </summary>
         public static float Rate(int clip,float v,int kind)
         {
-            float v0=Math.Max(.08f,NativeZombieClips.Speed(clip)),r=NativeHordeZones.Tempo(kind,Tempo)*(float)Math.Pow(Math.Max(.25f,v)/v0,Exponent);
+            float r=NativeHordeGait.StepRate(kind,Math.Max(.12f,v))*.5f*Math.Max(.1f,NativeZombieClips.Duration(clip));
             return r<MinRate?MinRate:r>MaxRate?MaxRate:r;
         }
+        /// <summary>A cycle's mean row over its loop (the pose it swings about; NativeHordeGait.Calm), null for a one-shot.</summary>
+        public static float[] Mean(int clip){Warm();return clip>=0&&clip<means.Length?means[clip]:null;}
+        private static float[][] means;
         /// <summary>A cycle's cadence at ground speed `v` (cycles per second).</summary>
         public static float Cadence(int clip,float v,int kind)=>Rate(clip,v,kind)/Math.Max(.1f,NativeZombieClips.Duration(clip));
         /// <summary>The share of the cycle a foot is planted (0 left, 1 right), kept in a range the planted feet can walk on.</summary>

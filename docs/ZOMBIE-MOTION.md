@@ -11,6 +11,9 @@ It covers every kind posed by the horde presentation: the Siren's seven (shamble
 bloater, Hulk) and the zone kinds that reuse their gait. Status: on branch `claude/zombie-motion`, not merged, not
 released.
 
+The locomotion pass (2026-10-19, `docs/ZOMBIE-LOCOMOTION.md`) builds on this pass. It sets the gait's cadence by the
+body instead of the take, calms the time-compressed takes and seats the shoulders on the chest.
+
 ## What was wrong (measured)
 
 The offline harness runs the same Core code under an emulated 60 Hz authority and a 20 Hz network with jitter and late

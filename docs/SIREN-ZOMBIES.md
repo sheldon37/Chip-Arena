@@ -67,15 +67,19 @@ Implemented locally on the merged presentation base `eaab6443`; the earlier pres
 
 | kind | walk takes | run takes | idles | blow | entrances and more |
 |---|---|---|---|---|---|
-| `shambler` | chase-1, chase-2, chase-5 | sprint-1, sprint-3 | shamble-1, shamble-2, idle-3 | swipe-r1/r2 (right arm), swipe-l1/l2 (left) | all upright kinds: knock-1..5 reel on a stagger; deaths back-1..3, front-1..3, left-1, right-1..2 by push; wake (door/cell), crawl-stand (vent climb), stand-crawl (dive) |
-| `runner` | sprint-1, sprint-3 | sprint-3, sprint-4 | shamble-2, idle-3 | lunge-1, lunge-2 | as above |
-| `brute` | walk-4, walk-6 | chase-5, chase-2 | idle-3, shamble-1 | smash-1, smash-2 | jump-start, jump-air, jump-land (the jump-down) |
-| `spitter` | chase-1, walk-6 | chase-2, sprint-1 | shamble-1, idle-3 | spit: rears back on the start of knock-1, then procedural (hinged jaw, from the mouth) | as above |
+| `shambler` | chase-1, chase-2, chase-1-full | sprint-3, chase-2 | shamble-1, shamble-2, idle-3 | swipe-r1/r2 (right arm), swipe-l1/l2 (left) | all upright kinds: knock-1..5 reel on a stagger; deaths back-1..3, front-1..3, left-1, right-1..2 by push; wake (door/cell), crawl-stand (vent climb), stand-crawl (dive) |
+| `runner` | sprint-3, sprint-2 | sprint-3, sprint-2 | shamble-2, idle-3 | lunge-1, lunge-2 | as above |
+| `brute` | walk-6-full, walk-4 | chase-2, chase-5-full | idle-3, shamble-1 | smash-1, smash-2 | jump-start, jump-air, jump-land (the jump-down) |
+| `spitter` | chase-1, walk-6-full | chase-2, sprint-3 | shamble-1, idle-3 | spit: rears back on the start of knock-1, then procedural (hinged jaw, from the mouth) | as above |
 | `crawler` | procedural four-limbed trot | - | - | pounce (procedural) | procedural deaths |
-| `bloater` | walk-6, walk-4 | chase-1 | idle-3 | belly (procedural) | procedural swell and burst |
+| `bloater` | walk-6-full, walk-4 | chase-1, chase-2 | idle-3 | belly (procedural) | procedural swell and burst |
 | `hulk` | walk-4, walk-6 (tempo .62) | chase-5 | idle-3, shamble-1 | smash-1, smash-2 (1.1 s wind-up) | roar on the start of knock-3 (hinged jaw); jump-start/air/land on the Hulk drop profile; knock-n only on a stagger (25% of max hp); deaths at 1.8x with a crash |
 
+Every take steps at its kind's cadence and is calmed when it plays faster than captured (the locomotion pass, 2026-10-19:
+docs/ZOMBIE-LOCOMOTION.md, which also gives the reasons for these sets).
+
 Sources (pack takes): walk-n `Zombie_Walk_F_n_Loop`, chase-n `Zombie_Chase_n_Loop`, sprint-n `Zombie_HyperChase_n_Loop`,
+walk-6-full, chase-1-full and chase-5-full the same takes' `_Full_Loop` (a cleaner cycle of the longer take),
 swipes `Zombie_Atk_Arm_1/2_R/L_SHORT_Loop`, smash-1/2 `Zombie_Atk_Arms_4/4A_SHORT_Loop`, lunge-1/2
 `Zombie_HyperAttack_3/1_SHORT_Loop`, knock-n `Zombie_Atk_KnockBack_n`, deaths `Zombie_Death_*`, wake
 `MOB_Stand_to_Zombie_Idle_1_v2`, vent `Zombie_Crawl_1_to_Stand` / `Zombie_Stand to_Crawl_1`, jump

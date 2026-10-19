@@ -58,11 +58,12 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// Builds a row into the rig: the body's height, pelvis (with its heading), spine, chest, neck, head, clavicles, hips,
         /// knees and ankles as captured, and both arms reached to their chest-space targets (CapturedRig.Arm). No floor lift: the
-        /// caller places the feet. `arms` false leaves the arms at rest.
+        /// caller places the feet. `arms` false leaves the arms at rest; `shoulders` sets the clavicles in by that much (rig metres,
+        /// NativeHordeGait.ShoulderInset) before the arms are solved.
         /// </summary>
-        public static void Pose(float[] f,CapturedRig.Pose p,bool arms=true)
+        public static void Pose(float[] f,CapturedRig.Pose p,bool arms=true,float shoulders=0)
         {
-            p.Reset();p.Position[CapturedRig.Body]=new Vector3(0,Hips(f),0);
+            p.Reset();p.Position[CapturedRig.Body]=new Vector3(0,Hips(f),0);NativeHordeGait.Shoulders(p,shoulders);
             p.Rotation[CapturedRig.Pelvis]=Quaternion.CreateFromAxisAngle(Vector3.UnitY,f[0])*Rotation(f,4);
             for(int i=0;i<Joints.Length;i++)p.Rotation[Joints[i]]=Rotation(f,7+i*3);
             p.Rotation[CapturedRig.LKnee]=CapturedRig.Rot(Vector3.UnitX,Math.Max(0,f[37]));p.Rotation[CapturedRig.RKnee]=CapturedRig.Rot(Vector3.UnitX,Math.Max(0,f[38]));

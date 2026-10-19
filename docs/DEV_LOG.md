@@ -1,3 +1,49 @@
+## 2026-10-19 — Claude: zombie locomotion, body cadence and shoulders on the chest (on branch, not merged)
+
+- **Branch:** `claude/zombie-locomotion`, based on shared `claude/sleepy-ritchie-g8ruhv`. It was fast-forwarded to `d345d2f` (the Stoker's props) and then to `7f4d89a` (boss effects realism and account XP) before the final checks. Presentation only. Not merged, not published.
+- **Owner request:** "I think I want to change the zombie animations for their movement, their arms also seem to detach slightly. Can you take a look into the movement for them again? Their may be a better animation to use. Also, it needs to be more fluid. Currently, it's still like rapid back and forth movement that doesn't look realistic."
+- **Root causes (measured on an offline harness):** it runs the Core code against an emulated 60 Hz authority with the crowd's separation, a 20 Hz network and 144 fps frames, and renders the built voxel meshes.
+  - **Rapid back and forth.**
+    - The pack's walks and chases were captured at 0.12 to 0.54 rig m/s. `NativeZombieMotion.Rate` played them at 2 to 2.8 times their pace to keep up with the authority's 1.1 to 1.6 m/s walks, so whole bodies were time-compressed.
+    - The walkers took 3.4 to 4.4 steps a second and the runs 5 to 6.9. The upper joints turned at 4.2 to 6.7 rad/s p95. The hands' jerk was 24,000 to 58,000 m/s³, with about half their motion above 4 Hz (shambler 54 %).
+    - In crowds, the separation jostle (±0.23 m/s, up to ±0.63) flipped the walk-to-run blend through a 0.08 s spring.
+  - **Arms detach.** The zombie chests are narrower than the rig's clavicles (±0.275). The shoulder blocks start at the clavicle, so the shoulder and arm hung 2 to 10 cm off the torso at rest, on 17 looks across 9 kinds (measured on the built meshes with the per-add proportions). The capture's shoulder motion widened the gap.
+- **Changes:**
+  - New `Core/NativeHordeLoco.cs` (a partial of `NativeHordeGait`):
+    - `StepRate`: the body's cadence, 2.56 x v^0.35 steps a second at the kind's tempo, the step capped at 0.5 m walking and 0.9 m by 2.6 m/s.
+    - `Calm`: the trunk and arms swing about the cycle's mean by rate^-0.6, with a per-kind steadiness and a 3-tap phase blur on the Full tier.
+    - `GaitSpeedStep`: a gait speed eased with a 0.18 s half-life, the run blend's slew limited to 2.2/s, and a setting-off hysteresis at 0.24 and 0.14 m/s.
+    - `Reachable`: the stance kept within the legs' reach.
+    - `ShoulderInset`: the clavicles set in per kind and look, before the arm IK.
+  - Hooks:
+    - `NativeZombieMotion.Rate` time-warps every take to the body's cadence. Each take's cycle mean is computed in `Warm`. The take sets were changed for the shambler, runner, brute, spitter and bloater.
+    - `NativeZombieClips.Pose` takes a `shoulders` argument.
+    - `NativeHordeMotion`: the gait, deaths, the vent climb (claw targets moved in), the dive and the crawler's trot. `NativeHordeRoamMotion`: the wander.
+  - Exporter: four new cycles as derived pose tracks only (`chase-1-full`, `chase-5-full`, `walk-6-full`, `sprint-2`; 50 tracks, provenance updated). No pack file is in git.
+  - Docs: `docs/ZOMBIE-LOCOMOTION.md` (measurements, knobs, results, limits), `docs/SIREN-ZOMBIES.md` clip table, `ANIMATIONS.md`, and a pointer in `docs/ZOMBIE-MOTION.md`.
+  - Shared horde files touched (minimal hooks): `NativeHordeMotion.cs`, `NativeZombieMotion.cs`, `NativeZombieClips.cs`, `NativeHordeRoamMotion.cs`. The Ironworks grip code (`NativeIronworksMotion.cs`) is not edited.
+- **Results (harness, shipped → branch):**
+  - Shambler walk: 4.24 → 3.05 steps a second; upper joints 4.2 → 1.3 rad/s p95; chest yaw 2.0 → 0.6 rad/s; hands' jerk 32,500 → 8,700 m/s³; hands above 4 Hz 54 → 21 %; shoulder gap 3.5 → 0.1 cm.
+  - Crowd of 32 on the guest: 4.08 → 3.20 steps a second; joints 7.3 → 3.9 rad/s; trunk 6.5 → 3.5 rad/s.
+  - Full tier gait cost: about 9.1 → 10.9 µs per add (managed .NET 8 on a loaded box, not Unity).
+- **Checks (actual, on the final tree at base `7f4d89a`):**
+  - New `Tests/ZombieLocoChecks.cs` (full run and `--zombie-loco`): PASS, 57302 checks. It covers the cadence, fluidity bounds, blend continuity and slew, planted feet, the arm gap on the built meshes for every kind and look, zero allocation, and a source scan (no authority, rules or network file reads the pass).
+  - Existing groups rc 0: `--zombie-loco`, `--zombie-flow`, `--wardzero-simulation`, `--hulk-charge`, `--hulk-motion`, `--horde-roam`, `--ironworks-kinds`, `--ironworks-props`, `--boss-vfx`, `--horde-drops`, `--footfalls`, `--station-enemies`, `--boss-motion`.
+  - Changed on purpose:
+    - `HordeRoamChecks`: a rolled foot is followed by its ball.
+    - `station-enemies-baseline.txt`: 21 lines of the Siren kinds' `takes`, `give`, `motion` and `death`, re-measured with `StationBaseline.Measure` and noted in its header.
+  - Full run5b, every step rc 0: Unity Runtime and Editor compile OK; relay suite 804 PASS, 0 FAIL; Python 140 tests OK (1 skipped); source package OK; `git diff --check` clean.
+- **Renders:** offline WebGL emulation of the ZombieLit vertex code, not Unity. Scratch only, not in git: before|after MP4s and contact sheets for each kind's walk, run, turn, stop and start, a 32-add crowd, a guest reel and the arm-gap rest pose.
+- **Not run:** Unity Editor play, Windows build or package, two-client play, an owner visual review.
+- **Risks:**
+  - The runner and sprinting shamblers keep the pack's sprint trunk swing (chest yaw 4.4 to 6.7 rad/s p95).
+  - Crowd separation bursts can still drag a planted foot 4 to 5 cm for a frame (pre-existing, up to 5.6 cm shipped).
+  - The Rigger's chain hang (`NativeIronworksMotion.RiggerHang`) and the station kinds' procedural deaths (`NativeStationMotion`) keep the rig's clavicles.
+  - The zone kinds keep their named takes; the cinderling still walks partly on sprint-1.
+  - The judgment of fluidity is from metrics and emulated renders; it needs the owner's look in Unity.
+- **Impact on hit timing, hitboxes, damage, cooldowns, movement and networking:** none. Strike contact frames are unchanged (zombie motion and flow checks), the clavicle inset only moves drawn shoulders inward within the hit volumes (`HordeKindChecks`), and no authority, rules or network file changed (source scan in `--zombie-loco`).
+- **Next:** owner review of the renders; merge into shared when approved; publish to the test channel with the next game update.
+
 ## 2026-10-19 — Claude: the zone bosses' effects made realistic, THE CONVERTER's pour flowing (merged into shared)
 
 - **Branch:** `claude/boss-vfx-realism`, based on shared `351c26f` and fast-forwarded to shared `d345d2f` (the Stoker's props) before the checks. Presentation only. Merged into shared and the builder; not published.
