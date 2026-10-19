@@ -913,3 +913,22 @@ legs unfold on the third (rear first), then it climbs and turns onto P1; it burs
   installed);
 - the owner's audio clips;
 - the Unity Editor, Windows and play: not run.
+
+### 13.1 Effects realism (Claude, 2026-10-19)
+
+Branch `claude/boss-vfx-realism` (with THE CONVERTER's pass, `EXPEDITION-BOSS-CITY-IRONWORKS.md` 14.1). Presentation only:
+the telegraphs (lanes, doors, glass rings, live puddles, Terminus, the horns' rings) and the cues are unchanged, pinned against
+a pre-pass baseline by `Tests/BossVfxRealismChecks.cs`. The atmosphere moves to `Core/NativeBossVfx.cs` particles drawn by the
+shared effects renderer:
+- **Sparks** (the wheels on the arrival's accents, the hands digging in through the chime and skidding after Departure, the
+  barrier, the board, the roof, the express, the pantograph, the torn cables): emitted with their own birth times on gravity
+  and drag, bouncing once off the floor, motion-stretched, cooling white to red (before: short strips re-scattered every
+  frame).
+- **Brake glow:** the skidding hands and the arrival's wheels glow orange and cool.
+- **Arcs** (the pantograph to the vault, the live puddles, the hands): branching midpoint-displaced bolts with a white-blue core
+  and a blue halo, re-struck at 12 Hz and flickering out within each strike.
+- **Dust and steam:** soft lit puffs that billow, slow and spread (the Terminus slam's ring of dust born where the lip passed,
+  the barrier and board crashes, footfalls, the doors' slam, stagger and death steam from the underframe).
+- **Debris:** lit tile, steel and glass chunks that fly, bounce and settle (the gate burst, the barrier, the board, the express,
+  the Terminus slam, the headlamp's glass, the preview's falling panes).
+- **Headlamp:** a glare core and bloom, the beam strips as before, dust motes drifting in the beam.

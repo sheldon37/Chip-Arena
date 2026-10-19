@@ -575,6 +575,9 @@ namespace ChipArena.UnityConversion
         /// <summary>A soft vapour puff (the mist's look: the base layer's lit atlas puff eroding over u) glowing a little in its own
         /// colour: acid fumes, fine dust sifting or pouring.</summary>
         public void Vapor(Vector3 at,Color albedo,float opacity,float size,float u,float seed,float floor,float glow)=>Puff(at,albedo,Mathf.Clamp01(opacity),size,SmokeMode,u,seed,floor,glow:glow);
+        /// <summary>A soft fireball puff (the base layer's fireball look: emissive in `tint`, linear HDR, darker at its thin edges and
+        /// brighter where it is dense and young, cooling over u into lit soot): the zone bosses' fire (THE CONVERTER's blow column).</summary>
+        public void Fireball(Vector3 at,Color tint,float opacity,float size,float u,float seed,float floor)=>Puff(at,tint,Mathf.Clamp01(opacity),size,FireballMode,u,seed,floor);
         /// <summary>The same vapour stretched upright by `aspect` (height over width) and kept unrolled: dust pouring in a sheet.</summary>
         public void Vapor(Vector3 at,Color albedo,float opacity,float size,float u,float seed,float floor,float glow,float aspect)=>Puff(at,albedo,Mathf.Clamp01(opacity),size,SmokeMode,u,seed,floor,aspect,true,glow);
 

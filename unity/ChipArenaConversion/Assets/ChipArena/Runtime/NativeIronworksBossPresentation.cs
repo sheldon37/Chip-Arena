@@ -18,10 +18,12 @@ namespace ChipArena.UnityConversion
     //    Ironworks' practical lights and light field through the actor-light path); each joint's emission from the rig (the mouth,
     //    the tuyères, the seams, the lamps, the visor, the crust's cracks). The chains' links, hooks and shackles instanced.
     //  - Motion: Core IronworksBossRig on the shared boss motion library.
-    //  - Molten metal (the spill strip, the pour, the pools, the lumps, the pit's cracks): Core NativeIronworksBossFx's surfaces
-    //    through the Ironworks' own NativeMolten material and cube (NativeIronworksPresentation's); its effects through one
-    //    NativeFxDraw; its heat haze through the Ironworks' haze material; up to three lights merged into the farthest warm slots of
-    //    the Ironworks' eight (the two cool mercury slots are never taken).
+    //  - Molten metal (the pour's stream, the pools, the splash crown, droplets and lumps, the spill strip, the pit's cracks): Core
+    //    NativeIronworksBossFx's NativeMoltenFlow mesh, one dynamic mesh through Resources/NativeMoltenFlow.shader (realism pass,
+    //    owner 2026-10-19: no more stacked molten cubes); its particles (sparks, spatter, smoke, steam, dust, fire, debris, glows)
+    //    through the shared effects renderer (a NativeVfxDraw of its own, NativeBossVfxSubmit); its telegraphs, beams and floor
+    //    glows through one NativeFxDraw; its heat haze through the Ironworks' haze material; up to three lights merged into the
+    //    farthest warm slots of the Ironworks' eight (the two cool mercury slots are never taken).
     //  - The stage: Core NativeIronworksBossStage on top of the music's choreography (the foundry stops in the death), read by
     //    NativeIronworksPresentation through IronworksBossMusic (one call); the music ducks under the blow's roar and the call's
     //    bellow and fades before the shift whistle (NativeIronworksBossAudio.cs: on the hazard kit's music level, this frame only).
@@ -55,7 +57,7 @@ namespace ChipArena.UnityConversion
         private IronworksBossClock iwbArrivalClock,iwbDeathClock;private double iwbArrivalLast=double.NaN,iwbDeathLast=double.NaN;private NVector iwbPrev;private float iwbLastBlow=float.NegativeInfinity;
         private readonly float[] iwbBlowAt=new float[8],iwbBlowSize=new float[8];private readonly NVector[] iwbBlowPush=new NVector[8];
         private readonly Matrix4x4[] iwbLinks=new Matrix4x4[160];private readonly Matrix4x4[] iwbEnds=new Matrix4x4[8];private int iwbLinkCount;
-        private IronMoltenBatch iwbMelt;private bool iwbLights;
+        private NativeMoltenFlowDraw iwbFlow;private NativeVfxDraw iwbVfx;private bool iwbFlowFailed,iwbVfxFailed,iwbLights;
         private readonly float[] iwbMergePos=new float[NativeMapLooks.MaxLights*4],iwbMergeRgb=new float[NativeMapLooks.MaxLights*3],iwbMergeBeam=new float[NativeMapLooks.MaxLights];
         private Mesh iwbHazeMesh;private readonly System.Collections.Generic.List<Vector3> iwbHazeV=new System.Collections.Generic.List<Vector3>(NativeIronworksBossFx.HeatMax*4);
         private readonly System.Collections.Generic.List<Color> iwbHazeC=new System.Collections.Generic.List<Color>(NativeIronworksBossFx.HeatMax*4);private readonly System.Collections.Generic.List<Vector2> iwbHazeUv=new System.Collections.Generic.List<Vector2>(NativeIronworksBossFx.HeatMax*4);
@@ -251,17 +253,12 @@ namespace ChipArena.UnityConversion
         {
             var d=new Vector3(down.X,down.Y,down.Z).normalized;var r=Quaternion.FromToRotation(Vector3.down,d);return Matrix4x4.TRS(new Vector3(at.X,at.Y,at.Z),r,Vector3.one);
         }
+        // The molten metal: one dynamic mesh (Core NativeMoltenFlow) through NativeMoltenFlow.shader, on the clock the Ironworks
+        // presentation sets (_MoltenClock) and the hall's lights.
         private void DrawIronworksBossMolten()
         {
-            var fx=ironworksBossFx;if(fx.MoltenCount==0||iwMolten==null||iwCube==null)return;var b=iwbMelt??=new IronMoltenBatch();b.Count=0;
-            for(int i=0;i<fx.MoltenCount&&b.Count<NativeBlockLooks.Chunk;i++)
-            {
-                var m=fx.Molten[i];int k=b.Count++;b.M[k]=Matrix4x4.TRS(new Vector3(m.At.X,m.At.Y,m.At.Z),new Quaternion(m.Rot.X,m.Rot.Y,m.Rot.Z,m.Rot.W),Vector3.one);
-                b.Size[k]=new Vector4(m.Half.X,m.Half.Y,m.Half.Z,0);b.Flow[k]=new Vector4(m.Speed,m.Seed,0,0);b.Heat[k]=new Vector4(m.HeatA,m.HeatB,m.Crust,m.Front);b.Style[k]=new Vector4(m.Kind,m.Axis,m.Live,m.Gain);
-            }
-            if(UsesInstancing){b.Block.Clear();b.Block.SetVectorArray(MoltenSizeId,b.Size);b.Block.SetVectorArray(MoltenFlowId,b.Flow);b.Block.SetVectorArray(MoltenHeatId,b.Heat);b.Block.SetVectorArray(MoltenStyleId,b.Style);Graphics.DrawMeshInstanced(iwCube,0,iwMolten,b.M,b.Count,b.Block,ShadowCastingMode.Off,true,0,null);IronworksBossDraws++;return;}
-            var one=iwOne??=new MaterialPropertyBlock();
-            for(int k=0;k<b.Count;k++){one.Clear();one.SetVector(MoltenSizeId,b.Size[k]);one.SetVector(MoltenFlowId,b.Flow[k]);one.SetVector(MoltenHeatId,b.Heat[k]);one.SetVector(MoltenStyleId,b.Style[k]);Graphics.DrawMesh(iwCube,b.M[k],iwMolten,0,null,0,one,ShadowCastingMode.Off,true);IronworksBossDraws++;}
+            if(iwbFlow==null&&!iwbFlowFailed){iwbFlow=NativeMoltenFlowDraw.Create();if(iwbFlow==null){iwbFlowFailed=true;Debug.LogWarning("THE CONVERTER: NativeMoltenFlow shader missing or unsupported; its molten metal is not drawn");}}
+            if(iwbFlow!=null&&iwbFlow.Draw(ironworksBossFx.Melt))IronworksBossDraws++;
         }
         private void DrawIronworksBossFx(Camera camera,float time)
         {
@@ -274,6 +271,9 @@ namespace ChipArena.UnityConversion
                 layer.Triangle(a,a+1,a+2);layer.Triangle(a,a+2,a+3);
             }
             iwbDraw.Draw(camera,null,time);
+            // The particles through the shared effects renderer (its own: the arena's is filled and submitted later in the frame).
+            if(iwbVfx==null&&!iwbVfxFailed){try{iwbVfx=new NativeVfxDraw();}catch(Exception e){iwbVfxFailed=true;Debug.LogWarning("THE CONVERTER: effects renderer unavailable ("+e.Message+")");}}
+            if(iwbVfx!=null&&ironworksBossFx.Vfx.Count>0){iwbVfx.Low=LowGraphics;iwbVfx.Begin();NativeBossVfxSubmit.Submit(ironworksBossFx.Vfx,iwbVfx);iwbVfx.Submit(camera);IronworksBossDraws+=2;}
         }
         // The boss's heat haze: its sources as camera-facing quads in one dynamic mesh through the Ironworks' haze material; none on
         // the low tier.
@@ -302,6 +302,7 @@ namespace ChipArena.UnityConversion
         {
             if(iwbMeshes!=null)foreach(var tier in iwbMeshes)if(tier!=null)foreach(var m in tier)if(m!=null)CapturedAnimation.Release(m);
             foreach(var m in new[]{iwbLink,iwbHook,iwbShackle,iwbHazeMesh})if(m!=null)CapturedAnimation.Release(m);
+            iwbFlow?.Dispose();iwbFlow=null;iwbFlowFailed=false;iwbVfx?.Dispose();iwbVfx=null;iwbVfxFailed=false;
             if(iwbMaterial!=null)CapturedAnimation.Release(iwbMaterial);iwbMeshes=null;iwbJoints=null;iwbMaterial=null;iwbLink=iwbHook=iwbShackle=iwbHazeMesh=null;iwbDraw?.Dispose();iwbDraw=null;
             iwbArena=null;iwbLast=-1;
         }

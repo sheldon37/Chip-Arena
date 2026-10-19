@@ -1,3 +1,45 @@
+## 2026-10-19 — Claude: the zone bosses' effects made realistic, THE CONVERTER's pour flowing (merged into shared)
+
+- **Branch:** `claude/boss-vfx-realism`, based on shared `351c26f` and fast-forwarded to shared `d345d2f` (the Stoker's props) before the checks. Presentation only. Merged into shared and the builder; not published.
+- **Owner request:** "Also, rework the Ironworks and Metro boss visual effects to look more realistic (When Ironworks "pours" it looks like minecraft lava right now. I want it to flow realistically."
+- **Why it looked like Minecraft lava:** the pour was ten molten cubes stacked along the arc and every authority pool was a square molten slab `radius` wide (`NativeMolten` cubes), with flat sprites for everything else.
+- **THE CONVERTER** (`Core/NativeIronworksBossFx.cs`, details in `docs/EXPEDITION-BOSS-CITY-IRONWORKS.md` 14.1):
+  - **Pour:** one continuous tube on a ballistic arc from the lip onto the authority's pool point (the hazard's x, z; the rule's point 6 m ahead in the preview). It narrows as the metal speeds up (flow conserved), necks in a varicose wave carried down at the flow's own speed, sways, has a rounded front while it first falls and a falling tail on the arc it left on once it stops. A splash crown, spatter droplets and sparks bouncing off the floor, fumes lit orange from below, a flickering light.
+  - **Pools** (pour, blow, deslag, charge): smooth puddles with a flat top and rounded meniscus, edges pulled inward only (farthest edge exactly on the radius, nearest within 6%), full radius from `hitAt` to `until` with a hot rim on the boundary. Liquid, then crusting from the edge into dark plates split by glowing fissures (still visibly molten at `until`), bubbles that swell and pop. They solidify dark within .35 s after `until` and sink away by 1.4 s. Floor glow, heat shimmer, fumes, spits of sparks, a splash and glassy slag shards on landing. The cream telegraph rings are unchanged.
+  - **Rest:** glowing droplets and crusted slag lumps in flight; flowing strips for the nose spill and the pit cracks; the blow's column as soft fire puffs with a luminous core and spark streams; buoyant lit smoke, steam and dust; lit debris (chips, glassy crust shards, bricks).
+- **THE 6:47** (`Core/NativeStationBossFx.cs`, `docs/EXPEDITION-BOSS-CENTRAL-STATION.md` 13.1):
+  - **Sparks:** wheels, hands, barrier, board, roof, express, pantograph and cables. They are emitted on gravity and drag, bounce once, stretch with motion and cool white to red (before: strips re-scattered every frame).
+  - **Brake glow** on the skidding hands and the arrival's wheels.
+  - **Arcs:** branching bolts with a white-blue core and blue halo, flickering within each 12 Hz strike.
+  - **Dust and steam:** soft lit puffs with a steady self-light for the dark station.
+  - **Debris:** lit tile, steel and glass chunks.
+  - **Headlamp:** a glare core and bloom, and dust motes in the beam.
+- **Shared code (additive):**
+  - New `Core/NativeBossVfx.cs` (particles and closed-form emitters), `Core/NativeMoltenFlow.cs` (molten mesh builder), `Resources/NativeMoltenFlow.shader` (+meta) and `Runtime/NativeBossVfxSubmit.cs` (particles to NativeVfxDraw, the molten mesh draw).
+  - `Runtime/NativeVfxDraw.cs`: one new public `Fireball` wrapper; nothing else changed.
+  - `Editor/NativeBuildChecks.cs`: compiles the new shader.
+  - Each boss owns a NativeVfxDraw. Draws: the Converter's molten metal is still 1 (mesh instead of instanced cubes), particles +2 per boss.
+  - Counts and mesh resolution scale with the effects quality and the low tier, never the telegraphs. Zero allocation per frame.
+- **Checks (actual):**
+  - New `Tests/BossVfxRealismChecks.cs` (full run and `--boss-vfx`): PASS, 22813 checks.
+    - Telegraph quads and cue events hash-identical to a baseline recorded on the pre-pass code: Converter preview 166089 quads and 303 cues over 8092 frames, its authority scenario 65378 and 15, the 6:47 preview 45120 and 354.
+    - 2292 pool samples over 12 authority hazards: centred to 0.1 mm, full radius from the hit, farthest edge on the radius, nearest within 5.3%, hot to `until`, gone 1.4 s after.
+    - The pour's stream ends on the authority's pool point (0.00 mm over 217 frames). Two builders and a late joiner draw the same frames.
+    - Reduced and low tiers draw fewer particles (Converter 46059 / 18363 / 16215, the 6:47 1489 / 829 / 661) with identical telegraphs.
+    - 0 bytes per frame. A source scan: presentation only, no authority/rules/network file names the new types.
+  - Existing checks PASS: `--ironworks-boss-presentation` (16161), `--station-boss-presentation` (22220), `--ironworks-props` (193, kinds 281252), `--ironworks-visuals`, `--station-visuals`, `--ironworks-boss`, `--station-boss`.
+    - `--ironworks-boss` first failed: new comments named the concept's type. They were reworded.
+  - `NativeMoltenFlow.shader`: glslang HLSL front end against Unity's CGIncludes, 10 variants OK.
+  - Full run5b on the final tree, every step rc 0: Unity Runtime and Editor compile OK; relay suite 802 PASS, 0 FAIL; Python 140 tests OK (1 skipped); source package OK; `git diff --check` clean.
+- **Renders** (offline WebGL emulation of the game's shaders through the scratch harnesses; not the Unity renderer): scratch only, `renders-boss-vfx/`, not in git. They cover the pour (gameplay distance, close-up, Low and Reduced), the pools close up, the blow, deslag, charge, stomp, slam, arrival, death and break, and the 6:47's arrival, departure, live rail, Terminus, breaks, express, barrier and death. There is a before|after side-by-side MP4 and contact sheet per clip.
+- **Not run:** Unity Editor play, Windows build, two clients, a real boss record in play. HLSL validated with glslang against Unity's CGIncludes, not FXC.
+- **Risks:**
+  - The pour stream assumes the authority's pour pool stays the rule `BossWorld(0,6)` from the strike + 1.6 s. The new check fails loudly if Astra changes it.
+  - The Low/Reduced GPU cost is not measured (CPU build ~0.1 ms a frame in the preview on a loaded 4-core box).
+  - Expired pools' fade relies on having seen the hazard: a late joiner after `until` sees no fade.
+- **Merge check:** run5b steps 1, 3, 4 and 5 passed; the first relay run stopped at the existing chip-select check ("the layer allocated 1856 bytes") while the box ran at load ~35 on 4 cores. Not reproduced: the chip-select check passed 5 times alone (default, tier-0 only, tiering off) and the full relay re-run passed 802/802. This merge does not touch chip select; cause not found. If it recurs, look at `ChipSelectChecks.Poses` (allocation counted after frame 200).
+- **No impact** on hit timing, hitboxes, damage, cooldowns, movement or networking. Telegraph quads and cue events are bit-identical to the pre-pass baseline. No authority, rules or network file changed.
+
 ## 2026-10-19 — Claude: quieter footsteps (merged into shared)
 
 - **Branch:** `claude/quieter-footsteps`, based on shared `351c26f` (#286). Audio only; merged into shared and the builder by fast-forward, not published.

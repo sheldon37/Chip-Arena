@@ -17,8 +17,10 @@ namespace ChipArena.UnityConversion
     //    practical lights through the actor-light path), each joint's light from the effects (the windows, the lamp, the Heart).
     //  - Motion: Core StationBossRig on the shared boss motion library (root follow, gait, actions on the record's hit, chains,
     //    second order, look-at, flinch, stagger, inertializer).
-    //  - Effects: Core NativeStationBossFx through one NativeFxDraw (a solid and an effects batch), up to three practical lights
-    //    merged into the station's slots (NativeLighting.KitLights).
+    //  - Effects: Core NativeStationBossFx: its telegraphs, beam and floor light through one NativeFxDraw (a solid and an effects
+    //    batch), its particles (realism pass 2026-10-19: sparks, arcs, dust, steam, debris, glows) through the shared effects
+    //    renderer (a NativeVfxDraw of its own, NativeBossVfxSubmit), up to three practical lights merged into the station's slots
+    //    (NativeLighting.KitLights).
     //  - The boss song (docs/ZONE-BOSS-MUSIC.md) times the arrival: its accents are the beats and NativeArena.BossSongTime the
     //    clock through the intro hold. The song's stage owns the house lights' cut and flare and the board's LAST CALL; the boss
     //    adds its own parts on top: the headlight in the west mouth, the brake sparks, the burst through the gate (its effects)
@@ -276,11 +278,15 @@ namespace ChipArena.UnityConversion
                 layer.Triangle(a,a+1,a+2);layer.Triangle(a,a+2,a+3);
             }
             stationBossDraw.Draw(camera,null,time);
+            // The particles (sparks, arcs, dust, steam, debris, glows) through the shared effects renderer (its own instance).
+            if(stationBossVfx==null&&!stationBossVfxFailed){try{stationBossVfx=new NativeVfxDraw();}catch(Exception e){stationBossVfxFailed=true;Debug.LogWarning("THE 6:47: effects renderer unavailable ("+e.Message+")");}}
+            if(stationBossVfx!=null&&stationBossFx.Vfx.Count>0){stationBossVfx.Low=LowGraphics;stationBossVfx.Begin();NativeBossVfxSubmit.Submit(stationBossFx.Vfx,stationBossVfx);stationBossVfx.Submit(camera);StationBossDraws+=2;}
         }
+        private NativeVfxDraw stationBossVfx;private bool stationBossVfxFailed;
         private void DisposeStationBoss()
         {
             if(stationBossMeshes!=null)foreach(var tier in stationBossMeshes)if(tier!=null)foreach(var m in tier)if(m!=null)CapturedAnimation.Release(m);
-            if(stationBossMaterial!=null)CapturedAnimation.Release(stationBossMaterial);stationBossMeshes=null;stationBossJoints=null;stationBossMaterial=null;stationBossDraw?.Dispose();stationBossDraw=null;
+            if(stationBossMaterial!=null)CapturedAnimation.Release(stationBossMaterial);stationBossMeshes=null;stationBossJoints=null;stationBossMaterial=null;stationBossDraw?.Dispose();stationBossDraw=null;stationBossVfx?.Dispose();stationBossVfx=null;stationBossVfxFailed=false;
             stationBossArena=null;stationBossLast=-1;
         }
     }

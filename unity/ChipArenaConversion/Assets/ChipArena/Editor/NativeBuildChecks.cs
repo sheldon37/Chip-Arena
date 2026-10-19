@@ -250,6 +250,8 @@ namespace ChipArena.UnityConversion.Editor
             // The holographic revive (NativeReviveHoloPresentation.cs): the hardlight and the first-person vignette.
             foreach(var name in new[]{"NativeReviveHolo","NativeReviveScreen"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             foreach(var name in new[]{"NativeMolten","NativeHeatHaze"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
+            // The zone bosses' realism pass: THE CONVERTER's molten metal mesh (NativeBossVfxSubmit.cs draws it).
+            foreach(var name in new[]{"NativeMoltenFlow"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             CheckVfx();
         }
     }
