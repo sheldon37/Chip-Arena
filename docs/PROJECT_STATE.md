@@ -2,6 +2,8 @@
 
 2026-10-19 Claude quieter footsteps (`claude/quieter-footsteps`, base `351c26f`; merged into shared; audio only): every pilot and zombie step x0.7 (about -3 dB) through one trim, `NativeFootsteps.StepTrim`; landings unchanged. Next: owner listening test on the desktop build.
 
+2026-10-19 Claude Ironworks props restored (`claude/stoker-hook-fix`, merged into shared; presentation only): the Stoker's rake and pull hook, the Ladleman's ladle, the Rigger's hook and chain, the Slagback's crust and the five kinds' effects draw again on the live map (host, guests, killcam, DEV preview). Cause: the zombie motion merge `97046f7` posed adds on the horde clock while the Ironworks hand-over still matched `arena.Time`. Both fists now stay on the rake and ladle.
+
 2026-10-18 Astra chip stat-color fallback (`codex/mod-chip-tones`, base #285 `a566672`): runtime-added adaptations/movement/external chips now use the existing green benefit/red penalty/neutral stat rows. No gameplay changes. Focused checks pass; compile and publication receipts in PR. #285 main-menu Mods entry published successfully at 20:05:06 UTC.
 
 2026-10-18 Astra main-menu Mods entry candidate (`codex/rounds-installed-packs`, base #284 `17c857b`): numbered MODS selection opens the existing restart-gated pack controls on its own screen. Settings access retained. Additional installed-pack adaptations remain pending. Validation/publication receipts in PR.

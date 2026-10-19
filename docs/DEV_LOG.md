@@ -7,6 +7,48 @@
 - **Not run:** Unity Editor or Windows listening test. If -3 dB is not enough, the one constant is the knob.
 - **No impact** on hit timing, hitboxes, damage, cooldowns, movement or networking.
 
+## 2026-10-19 — Claude: the Ironworks kinds' props on the live map again, the Stoker's rake first (merged into shared)
+
+- **Branch:** `claude/stoker-hook-fix`, based on shared `351c26f` (#286). Presentation only. Merged into shared and the builder; not published.
+- **Owner report (2026-10-19):** "The Forge enemy that has a prod thing too, (In the white suit) it seems to be missing that now for some reason". That is the City Ironworks Stoker and its rake (its pull hook flies from the rake's end).
+- **Root cause:** `a784379` (zombie motion: continuous horde clock), merged into shared by `97046f7` on 2026-10-17.
+  - `HordeKindAdd` now poses every horde add on the horde clock (`hordeNow`, "never arena.Time").
+  - `IronworksQueue` (from `aa320f6`) hands an add's props over only when the gait's input matches this frame. Its guard still compared the input's time with `arena.Time`.
+  - From that merge on, the guard returned early for every live add on the host, guests, the killcam and the Settings DEV preview. Bisect: the guard is identical at `97046f7^1` and `97046f7`; only HordeKindAdd's clock changed.
+- **What was lost, all five kinds:** the Stoker's rake, pull hook and chain; the Ladleman's ladle; the grounded Rigger's hook, chain and lamp lens; the Slagback's crust; every kind's effects job (telegraphs, the Slagback's slam impact, the pour, the hook line); and the carried prop dropping in a death.
+- **What kept working:** the hanging or dropping Rigger (`IronworksAdd` queues its own chain and hook) and the Dev Sandbox gallery (`IronworksGallery` queues its own props). That is why the gap went unseen.
+  - `IronworksKindChecks` only text-matched the `IronworksQueue(...)` call, and the Core gait still placed every prop.
+- **Station kinds:** they do not share the cause. `StationQueue` reads the per-add state `StationPosed` wrote that frame, with no clock-equality guard. `--station-enemies` passes.
+- **Changes:**
+  - `Runtime/NativeIronworksKindsPresentation.cs`: the guard compares the gait input with `hordeNow`, the clock HordeKindAdd poses on (one line).
+  - `Core/NativeIronworksMotion.cs`, the Ironworks arms stage (Ironworks file only; no shared horde or locomotion file touched):
+    - Before this fix (since `aa320f6`, not a regression), the Stoker's left fist fell up to 0.14 m short of the rake in the sweep and up to 0.16 m short in the pull. The Ladleman's back fist was up to 0.18 m off the shank in the pour. The cause was the arm solver's 0.515 m reach.
+    - Now the second fist goes onto the pole from where the first one really grips it. Where an arm cannot reach, the grip comes in: the rake moves at most 0.09 m when carried, 0.26 m in the sweep's wind-up and follow-through, and 0.17 m in the pull; the ladle at most 0.08 m when carried and 0.23 m in the pour. The Ladleman's back fist can also slide up the shank, from 0.30 m behind the front fist to 0.14 m.
+    - The Ladleman's smash-take swing still rides its front fist only (unchanged).
+  - `Tests/IronworksPropChecks.cs` (new; `--ironworks-props` and the full run), registered in `Tests/Program.cs`:
+    - HordeKindAdd's clock is parsed from the source and must be the guard's clock. The new checks fail on `351c26f`'s guard.
+    - The live clocks are run through the guard for a host and a guest (Core `HordeClock`). Matching `arena.Time` takes 117 of 600 host frames and 0 of 600 guest frames; `hordeNow` takes all 600.
+    - Every peer, the killcam and the DEV preview must draw through `HordeKindAdd`, and the gallery must queue its own props.
+    - Live-path poses (presented root, Full and Reduced tiers): idle, walk, run, turning, attack, attack while walking, the pull hooked and missed, and the pour. The DEV gallery's script is run over a whole loop.
+    - On every frame the prop must be there, its holding fist within 0.01 m, and the other fist within 0.03 m of the rake or 0.04 m of the ladle's shank. The Rigger's chain must start at its fist.
+    - The touched files must write no authority state.
+- **Checks:** run5b, all five steps exit 0:
+  - Unity 6000.3.24f1 Runtime and Editor compile OK.
+  - Relay/CoreTests: 801 PASS. That includes `ironworks props` (193 checks), `ironworks kinds` (281,252) and `station enemies` (154,365).
+  - Python: 140 OK (1 skipped).
+  - Package OK (2522 source files); diff-check OK.
+  - Focused flags also pass: `--ironworks-props`, `--ironworks-kinds` (with horde kinds, 565,218), `--station-enemies` (with zombie motion and hulk and spitter) and `--zombie-flow`.
+  - With `351c26f`'s guard put back, `--ironworks-props` fails four checks: the guard's clock, the `arena.Time` scan, the host clock run (117/600 frames) and the guest clock run (0/600).
+  - Text scan of the change set: two Ironworks presentation files, two test files and two docs. No authority, network, rules, content or shared horde file is touched.
+- **Renders:** before and after offline renders are in the scratchpad `renders-stoker-hook`, not in git. They cover the five kinds' lineups (idle, walk, wind-up, strike), Stoker close-ups (idle, walk, the sweep's wind-up, strike and follow-through, the pull's wind-up, throw and drag) and the DEV gallery.
+  - "Before" is shared `351c26f`'s Core, with the runtime guard read from its source. "After" is this branch.
+  - The live path is a Core harness of HordeKindAdd's gait branch plus the guard's clocks, not the Unity player.
+- **Not run:** Unity Editor play, Windows, a two-client session, the killcam in the engine.
+- **Risks:**
+  - The guard is a float equality between `hordeInput[0].Time` and `hordeNow`. It is the same value, written in the same frame. If HordeKindAdd's clock changes again (the locomotion rework in progress), `--ironworks-props` fails loudly.
+  - The effects that read the rake's tip and the ladle's lip move with the grips.
+- **Animation impact:** arms only, in the Ironworks arms stage; the trunk, legs, root and feet are unchanged. No change to hit timing, hitboxes, damage, cooldowns, movement or networking. The props are drawn models only and no authority or network file is touched.
+
 ## 2026-10-18 — Astra: positive/negative rows for runtime chip packs
 
 - Branch `codex/mod-chip-tones`, base shared #285 `a566672`. Owner requested the existing green/red text for the adapted chips. Runtime-only chips were absent from the pinned ChipText export and returned no stat rows. Add a Core formatter using the existing chip-stats semantics and cached fallback in NativeChipCard; keep exported rows and the renderer's exact good/bad/neutral colors.
