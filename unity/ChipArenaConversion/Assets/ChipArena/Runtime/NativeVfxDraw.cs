@@ -581,6 +581,16 @@ namespace ChipArena.UnityConversion
         /// <summary>The same vapour stretched upright by `aspect` (height over width) and kept unrolled: dust pouring in a sheet.</summary>
         public void Vapor(Vector3 at,Color albedo,float opacity,float size,float u,float seed,float floor,float glow,float aspect)=>Puff(at,albedo,Mathf.Clamp01(opacity),size,SmokeMode,u,seed,floor,aspect,true,glow);
 
+        /// <summary>Lit pieces built in Core (Core/NativeRoundsMeshes RoundsLit: the ROUNDS packs' satellites, combat drones,
+        /// crystals, thorns and pylons), laid out as this batch's own vertex (position, normal, albedo and specular, emission and
+        /// gloss, rim), appended as they are; `indices` count from 0. Allocation free once the batch has grown to fit.</summary>
+        public void LitPieces(VfxLitVertex[] v,int count,int[] indices,int indexCount)
+        {
+            if(v==null||indices==null||count<=0||indexCount<=0)return;int first=lit.Add(count,indexCount,out int ti);var verts=lit.Vertices;var tris=lit.Indices;
+            for(int k=0;k<count;k++){ref var s=ref v[k];verts[first+k]=new MeshVertex{Position=new Vector3(s.P.X,s.P.Y,s.P.Z),Normal=new Vector3(s.N.X,s.N.Y,s.N.Z),Color=new Color(s.Albedo.X,s.Albedo.Y,s.Albedo.Z,s.Albedo.W),A=new Vector4(s.Emit.X,s.Emit.Y,s.Emit.Z,s.Emit.W),B=new Vector4(s.Rim.X,s.Rim.Y,s.Rim.Z,s.Rim.W)};}
+            for(int k=0;k<indexCount;k++)tris[ti+k]=first+indices[k];
+        }
+
         // ---- submission ----
         private void Upload()
         {
