@@ -54,6 +54,8 @@ namespace ChipArena.UnityConversion
             if(w<1){target=Vector3.Lerp(p.WorldPosition[hand],target,w);wrist=Quaternion.Slerp(p.WorldRotation[hand],wrist,w);}
             CapturedRig.Arm(p,left,Vector3.Transform(target-cpos,inv),inv*wrist,Vector3.Transform(pole,inv));p.World();
         }
+        /// <summary>Where a posed fist grips (source frame; the pose's world current): its props hang from here.</summary>
+        private static Vector3 Fist(CapturedRig.Pose p,bool left){int h=left?CapturedRig.LHand:CapturedRig.RHand;return p.WorldPosition[h]+Vector3.Transform(new Vector3(0,-.075f,0),p.WorldRotation[h]);}
         /// <summary>The head turned back toward level by `k` (keeping where it looks): a hood, a mask or a hard hat sits straight,
         /// never at the Siren's crooked tilt, and stays inside the capsule.</summary>
         private static void Upright(CapturedRig.Pose p,float k)
@@ -64,6 +66,16 @@ namespace ChipArena.UnityConversion
         }
         private static Vector3 Yawed(float yaw,float dy){float c=(float)Math.Cos(yaw),s=(float)Math.Sin(yaw);return CapturedRig.Unit(new Vector3(s,dy,c),Vector3.UnitZ);}
         private static readonly Vector3 PoleL=new Vector3(1,-.8f,-.25f),PoleR=new Vector3(-1,-.7f,-.2f);
+        /// <summary>A fist kept on a pole: its wrist at most PoleReach from its shoulder (the arm solver's .515, kept short of it); the
+        /// Stoker's left fist at least RakeChoke along the rake from its right one, the Ladleman's back fist LadleBack behind its
+        /// front one, choked up to LadleChoke where it cannot reach that far (m, the rig's).</summary>
+        private const float PoleReach=.5f,RakeChoke=.14f,LadleBack=.3f,LadleChoke=.14f;
+        /// <summary>How far past its arm's reach a fist gripping a pole running along `pole` at `grip` would be: the pull that
+        /// brings the grip back into reach, toward the shoulder (zero within it).</summary>
+        private static Vector3 Short(CapturedRig.Pose p,bool left,Vector3 grip,Vector3 pole)
+        {
+            var d=grip+Vector3.Transform(new Vector3(0,.075f,0),Grip(pole))-p.WorldPosition[left?CapturedRig.LArm:CapturedRig.RArm];float l=d.Length(),over=l-PoleReach;return over>0?d*(over/l):Vector3.Zero;
+        }
 
         // ================================================================================================================
         // The trunk stage (before the legs are solved: a lowered body bends the knees over the planted feet)
@@ -161,9 +173,14 @@ namespace ChipArena.UnityConversion
                         grip=Vector3.Lerp(grip,g,k);dir=CapturedRig.Unit(Vector3.Lerp(dir,d,k),dir);
                     }
                     poleDir=dir;poleLength=NativeHordeModels.RakeTip;
-                    // The left fist takes the pole where it passes nearest its shoulder (within its reach).
-                    p.World();var shoulder=p.WorldPosition[CapturedRig.LArm];float along=Math.Max(.22f,Math.Min(.7f,Vector3.Dot(shoulder-grip,dir)));
-                    Hold(p,false,grip,dir,1,PoleR);Hold(p,true,grip+dir*along,dir,1,PoleL);Upright(p,.6f);
+                    // The left fist takes the pole where it passes nearest its shoulder. Where the pole runs past that arm's reach
+                    // (carried low across the hips, cocked for the sweep and following through, raised for the pull) the rake comes
+                    // in to it, the right fist with it, so both fists stay on the pole through the gait and every attack.
+                    p.World();var shoulder=p.WorldPosition[CapturedRig.LArm];float along=Math.Max(RakeChoke,Math.Min(.7f,Vector3.Dot(shoulder-grip,dir)));
+                    grip-=Short(p,true,grip+dir*along,dir);
+                    // (the left fist goes onto the pole from where the right one really holds it: the rake hangs from that fist)
+                    Hold(p,false,grip,dir,1,PoleR);var held=Fist(p,false);along=Math.Max(RakeChoke,Math.Min(.7f,Vector3.Dot(shoulder-held,dir)));
+                    Hold(p,true,held+dir*along,dir,1,PoleL);Upright(p,.6f);
                     break;
                 }
                 case NativeIronworksKinds.Ladleman:
@@ -193,8 +210,14 @@ namespace ChipArena.UnityConversion
                         Channels(f.AttackAge,f.Strike,f.Recover,f.Attack,out _,out _,out _,out _,out float w);dir=CapturedRig.Unit(Vector3.Lerp(dir,CapturedRig.Unit(d+Vector3.Transform(new Vector3(0,0,.35f),p.WorldRotation[CapturedRig.Chest]),dir),w),dir);
                         front=Vector3.Lerp(front,l,w);ladleLeft=front;poleDir=dir;poleLength=1;break;
                     }
+                    // Both fists on the shank: the front grip within the left arm's reach, the back one sliding up the shank to where
+                    // the right arm reaches, the ladle brought in to it where it cannot (raised, tipped and swept in the pour). The
+                    // back fist goes onto the shank from where the front one really holds it: the ladle hangs from that fist.
+                    p.World();front-=Short(p,true,front,dir);Hold(p,true,front,dir,1,PoleL);front=Fist(p,true);
+                    var rs=p.WorldPosition[CapturedRig.RArm];float back=LadleBack;if(Short(p,false,front-dir*back,dir)!=Vector3.Zero)back=Math.Max(LadleChoke,Math.Min(LadleBack,Vector3.Dot(front-rs,dir)));
+                    var reach=Short(p,false,front-dir*back,dir);if(reach!=Vector3.Zero){front-=reach;Hold(p,true,front,dir,1,PoleL);front=Fist(p,true);}
                     ladleLeft=front;poleDir=dir;poleLength=1;
-                    Hold(p,true,front,dir,1,PoleL);Hold(p,false,front-dir*.3f,dir,1,PoleR);Upright(p,.5f);
+                    Hold(p,false,front-dir*back,dir,1,PoleR);Upright(p,.5f);
                     break;
                 }
                 case NativeIronworksKinds.Rigger:
@@ -222,7 +245,7 @@ namespace ChipArena.UnityConversion
         public void PlaceProps(in HordeMotionInput f,CapturedRig.Pose p)
         {
             PropCount=0;ChainCount=0;int z=NativeIronworksKinds.Local(kind);if(z<0)return;p.World();float t=f.Time,floorY=f.Ground-f.Root.Y;var v=Iron;
-            Vector3 GripOf(bool left){int h=left?CapturedRig.LHand:CapturedRig.RHand;return p.WorldPosition[h]+Vector3.Transform(new Vector3(0,-.075f,0),p.WorldRotation[h]);}
+            Vector3 GripOf(bool left)=>Fist(p,left);
             switch(z)
             {
                 case NativeIronworksKinds.Stoker:

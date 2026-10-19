@@ -56,8 +56,10 @@ namespace ChipArena.UnityConversion
         /// <summary>HordeKindAdd, after the body is queued: the props on their matrices and the frame's effects job.</summary>
         private void IronworksQueue(NativeArena arena,CapturedAnimation.Player rig,HordeKindState s,NativeMinion m,float ground,Vector4 glow,float flash)
         {
-            // (only the gait's own frame of this add: an entrance pose has no props yet)
-            int z=NativeIronworksKinds.Local(s.Kind);ref var f=ref hordeInput[0];if(z<0||f.Id!=m.Id||f.Time!=arena.Time)return;
+            // (only the gait's own frame of this add: an entrance pose has no props yet. The gait's input carries the horde clock
+            // HordeKindAdd poses on, hordeNow; matched against arena.Time this skipped every live add on the host, guests and the
+            // killcam, which then drew no rake, ladle, hook, crust, lamp or effects.)
+            int z=NativeIronworksKinds.Local(s.Kind);ref var f=ref hordeInput[0];if(z<0||f.Id!=m.Id||f.Time!=hordeNow)return;
             s.Gait.PlaceProps(f,minionPose);IronworksProps(rig,s.Gait,s.Tier,glow,flash,s.Scale);bool crusted=z==NativeIronworksKinds.Slagback&&NativeIronworksKinds.Crusted(s.Gait.Iron.shedAt,f.Time);
             if(crusted)IronworksCrust(rig,s.Look,s.Tier,m.Pve?.Lost??0,glow,flash);
             // What it carries, for its death: the held prop where it is now, the crust still on.
