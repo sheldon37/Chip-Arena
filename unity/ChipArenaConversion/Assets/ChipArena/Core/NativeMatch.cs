@@ -16,9 +16,10 @@ namespace ChipArena.UnityConversion
         public string weaponSkins="";
     }
     [Serializable] public class NativeMatchFrame
-    {public bool hasFinalKillcam;public int finalVictim,finalSeed;public double resultAt;public int[] rematchVotes=Array.Empty<int>();public int rematchRequired;public float lobbyReturnSeconds;public int introSeat;public double introStarted;public string introStyle;public int round,set,winner,setWinner,draftSeat;public string result,chosen;public NativePhase phase;public double time,phaseEnd,fightAt,readyAt,chosenAt;public bool teams,cooperative;}
+    {public string completionId;public double completionStarted;public int completionSeconds;public bool hasFinalKillcam;public int finalVictim,finalSeed;public double resultAt;public int[] rematchVotes=Array.Empty<int>();public int rematchRequired;public float lobbyReturnSeconds;public int introSeat;public double introStarted;public string introStyle;public int round,set,winner,setWinner,draftSeat;public string result,chosen;public NativePhase phase;public double time,phaseEnd,fightAt,readyAt,chosenAt;public bool teams,cooperative;}
     public sealed class NativeMatch
     {
+        public string CompletionId{get;private set;}="";public double CompletionStarted{get;private set;}public int CompletionSeconds{get;private set;}
         public readonly List<NativeSeat> Seats=new List<NativeSeat>();
         public NativePhase Phase { get;private set; }=NativePhase.Lobby;
         public double Time { get;private set; }
@@ -53,7 +54,7 @@ namespace ChipArena.UnityConversion
         private readonly List<int> queue=new List<int>();private int turn;private double chosenAt;
         public static uint NewSeed(){var bytes=new byte[4];using(var rng=System.Security.Cryptography.RandomNumberGenerator.Create())rng.GetBytes(bytes);return BitConverter.ToUInt32(bytes,0);}
         public NativeMatch(ConversionContent data,uint? seed=null){this.data=data;random=new SourceRandom(seed??NewSeed());}
-        public void ApplyNetwork(NativeMatchFrame f){HasFinalKillcam=f.hasFinalKillcam;FinalVictim=f.hasFinalKillcam?f.finalVictim:0;FinalSeed=f.hasFinalKillcam?f.finalSeed:0;ResultAt=f.hasFinalKillcam?f.resultAt:0;IntroSeat=f.introSeat;IntroStarted=f.introStarted;IntroStyle=f.introStyle;Phase=f.phase;Time=f.time;PhaseEnd=f.phaseEnd;FightAt=f.fightAt;ReadyAt=f.readyAt;Round=f.round;Set=f.set;Winner=f.winner;SetWinner=f.setWinner;DraftSeat=f.draftSeat;Chosen=string.IsNullOrEmpty(f.chosen)?null:f.chosen;chosenAt=f.chosenAt;Result=f.result;Teams=f.teams;Cooperative=f.cooperative;}
+        public void ApplyNetwork(NativeMatchFrame f){CompletionId=f.completionId;CompletionStarted=f.completionStarted;CompletionSeconds=f.completionSeconds;HasFinalKillcam=f.hasFinalKillcam;FinalVictim=f.hasFinalKillcam?f.finalVictim:0;FinalSeed=f.hasFinalKillcam?f.finalSeed:0;ResultAt=f.hasFinalKillcam?f.resultAt:0;IntroSeat=f.introSeat;IntroStarted=f.introStarted;IntroStyle=f.introStyle;Phase=f.phase;Time=f.time;PhaseEnd=f.phaseEnd;FightAt=f.fightAt;ReadyAt=f.readyAt;Round=f.round;Set=f.set;Winner=f.winner;SetWinner=f.setWinner;DraftSeat=f.draftSeat;Chosen=string.IsNullOrEmpty(f.chosen)?null:f.chosen;chosenAt=f.chosenAt;Result=f.result;Teams=f.teams;Cooperative=f.cooperative;}
         public bool SameSide(NativeSeat a,NativeSeat b)=>a!=null&&b!=null&&(a.id==b.id||Teams&&a.team==b.team);
         public NativeSeat Seat(int id)=>Seats.Find(p=>p.id==id);
         public bool CanEarnProgression(int id)=>Seat(id)!=null&&!Seat(id).bot&&!Seat(id).devCommandsRan;
@@ -63,7 +64,7 @@ namespace ChipArena.UnityConversion
             if(Seats.Count<2||Seats.Count>8||Seats.Select(s=>s.id).Distinct().Count()!=Seats.Count)return false;
             if(Seats.Where(p=>p.connected).Select(p=>Teams?p.team:p.id).Distinct().Count()<2)return false;
             RoundsPerSet=Math.Max(1,Math.Min(10,RoundsPerSet));SetsToWin=Math.Max(1,Math.Min(20,SetsToWin));Choices=Math.Max(1,Math.Min(12,Choices));SelectionSeconds=Math.Max(5,Math.Min(120,Math.Round(SelectionSeconds)));
-            Round=Set=1;foreach(var p in Seats){data.Weapon(p.spec);p.chips.Clear();p.roundWins=p.score=0;p.offers.Clear();}BeginRound();if(ShowIntros){introIndex=0;NextIntro();}return true;
+            CompletionId=Guid.NewGuid().ToString("N");CompletionStarted=Time;CompletionSeconds=0;Round=Set=1;foreach(var p in Seats){data.Weapon(p.spec);p.chips.Clear();p.roundWins=p.score=0;p.offers.Clear();}BeginRound();if(ShowIntros){introIndex=0;NextIntro();}return true;
         }
         private void NextIntro(){var order=Seats.Where(p=>p.connected&&!p.AuthorityBoss&&(!p.bot||p.spec=="siren")).OrderBy(p=>p.spec=="siren").ToArray();if(introIndex>=order.Length){Phase=NativePhase.Countdown;PhaseEnd=Time+3;return;}var p=order[introIndex++];IntroSeat=p.id;IntroStarted=Time;IntroStyle=NativeIntroRules.Style(p);Phase=NativePhase.Intro;PhaseEnd=Time+NativeIntroRules.Duration(IntroStyle);}
         private void BeginRound()
@@ -80,14 +81,14 @@ namespace ChipArena.UnityConversion
             if(double.IsNaN(dt)||double.IsInfinity(dt)||dt<0||dt>.25)throw new ArgumentOutOfRangeException(nameof(dt));Time+=dt;
             foreach(var p in Seats)if(!p.connected&&p.disconnectedAt<0)p.disconnectedAt=Time;
             if(!Cooperative&&Phase!=NativePhase.Lobby&&Phase!=NativePhase.Match&&Seats.Any(p=>!p.connected)&&!DisconnectGrace)
-            {var live=Seats.Where(p=>p.connected).ToArray();if(live.Select(p=>Teams?p.team:p.id).Distinct().Count()<2){Winner=SetWinner=live.FirstOrDefault()?.id??0;foreach(var p in live)p.score=SetsToWin;Result=live.Length==0?"Room ended · all pilots disconnected":live[0].name+" wins by disconnect";Phase=NativePhase.Match;PhaseEnd=0;return;}}
+            {var live=Seats.Where(p=>p.connected).ToArray();if(live.Select(p=>Teams?p.team:p.id).Distinct().Count()<2){Winner=SetWinner=live.FirstOrDefault()?.id??0;foreach(var p in live)p.score=SetsToWin;Result=live.Length==0?"Room ended · all pilots disconnected":live[0].name+" wins by disconnect";CompletionSeconds=(int)Math.Min(604800,Time-CompletionStarted);Phase=NativePhase.Match;PhaseEnd=0;return;}}
 
             if(Phase==NativePhase.Intro&&Time>=PhaseEnd)NextIntro();
             else if(Phase==NativePhase.Countdown&&Time>=PhaseEnd){Phase=NativePhase.Fight;FightAt=Time;}
             else if(Phase==NativePhase.Fight)Resolve();
             else if(Phase==NativePhase.Result&&Time>=PhaseEnd)
             {
-                if(SetWinner!=0&&Seat(SetWinner).score>=SetsToWin){Phase=NativePhase.Match;PhaseEnd=0;return;}
+                if(SetWinner!=0&&Seat(SetWinner).score>=SetsToWin){CompletionSeconds=(int)Math.Min(604800,Time-CompletionStarted);Phase=NativePhase.Match;PhaseEnd=0;return;}
                 if(SetWinner==0){if(Winner!=0)Round++;BeginRound();return;}
                 queue.Clear();
                 foreach(var p in Seats.Where(p=>p.connected&&(BothDraft||!SameSide(p,Seat(SetWinner)))).OrderBy(p=>SameSide(p,Seat(SetWinner))))
@@ -139,7 +140,7 @@ namespace ChipArena.UnityConversion
         {if(Phase!=NativePhase.Fight)return;Winner=SetWinner=0;FinalVictim=FinalSeed=0;HasFinalKillcam=false;ResultAt=Time;Result="Round ended by developer";Phase=Cooperative?NativePhase.Match:NativePhase.Result;PhaseEnd=Cooperative?0:Time+5;}
         // shared/teams.ts order for the native integer teams.
         public static readonly string[] TeamNames={"Red","Blue","Green","Yellow","Purple","Orange","Cyan","Pink"};
-        public void FinishCooperative(bool victory){if(!Cooperative)return;Phase=NativePhase.Match;Result= victory?"The Siren has fallen — victory":"Party defeated";PhaseEnd=0;}
+        public void FinishCooperative(bool victory){if(!Cooperative)return;CompletionSeconds=(int)Math.Min(604800,Time-CompletionStarted);Phase=NativePhase.Match;Result= victory?"The Siren has fallen — victory":"Party defeated";PhaseEnd=0;}
         private static double RevealSeconds(string id)=>id.StartsWith("l44t-")?4.6:id.StartsWith("arcade-")||id.StartsWith("mishima-")?4.8:3.2;
         private void NextDraft()
         {

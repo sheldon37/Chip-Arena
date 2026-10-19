@@ -115,7 +115,7 @@ namespace ChipArena.UnityConversion
         private void UpdateFrame()
         {
             SyncDevelopmentConsole();
-            if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();
+            if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();AccountXpTick();
             if(SplitLocalLoading){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;

@@ -60,8 +60,8 @@ namespace ChipArena.UnityConversion
                 Accepted?.Invoke(Account,loadProfile);
             }
         }
-        private void Update(){if(Account==null||Busy)return;if(pendingProfile!=null){var profile=pendingProfile;pendingProfile=null;Save(profile);}else if(Time.unscaledTime>=refreshAt)Refresh();}
-        public void Clear(bool erase=true){pendingProfile=null;reloadProfile=false;Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status=OfflineStatus;if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){Status="Signed out; saved session could not be removed.";}}
+        private void Update(){TickXp();if(Account==null||Busy)return;if(pendingProfile!=null){var profile=pendingProfile;pendingProfile=null;Save(profile);}else if(Time.unscaledTime>=refreshAt)Refresh();}
+        public void Clear(bool erase=true){ResetXp();pendingProfile=null;reloadProfile=false;Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status=OfflineStatus;if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){Status="Signed out; saved session could not be removed.";}}
     }
     public static class NativeSessionVault
     {
