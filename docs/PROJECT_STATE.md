@@ -2,6 +2,8 @@
 
 2026-10-19 Claude boss effects realism (`claude/boss-vfx-realism`, merged into shared; presentation only): THE CONVERTER's pour is one continuous ballistic molten stream landing on the authority's pool point. Its pools are smooth, crusting puddles exactly the hazard's radius from `hitAt` to `until`. Both zone bosses' sparks, smoke, steam, dust, arcs and debris are physical particles through the shared effects renderer. Telegraphs and cues are bit-identical to before (`--boss-vfx`). Next: owner review of the offline renders; the Unity Editor/Windows look was not run.
 
+2026-10-19 Claude account XP presentation (`claude/account-xp-presentation`, merged into shared; presentation only, unbound): post-match XP panel (PvP, PvE, Expedition card), home level line, pending/confirmed/failed states, animate-once record, MOCK DEV fixtures. Contract proposed in `docs/ACCOUNT-XP-PRESENTATION.md`, awaiting Astra; bindings in `NativeAccountXpUI.cs` return null until then.
+
 2026-10-19 Claude quieter footsteps (`claude/quieter-footsteps`, base `351c26f`; merged into shared; audio only): every pilot and zombie step x0.7 (about -3 dB) through one trim, `NativeFootsteps.StepTrim`; landings unchanged. Next: owner listening test on the desktop build.
 
 2026-10-19 Claude Ironworks props restored (`claude/stoker-hook-fix`, merged into shared; presentation only): the Stoker's rake and pull hook, the Ladleman's ladle, the Rigger's hook and chain, the Slagback's crust and the five kinds' effects draw again on the live map (host, guests, killcam, DEV preview). Cause: the zombie motion merge `97046f7` posed adds on the horde clock while the Ironworks hand-over still matched `arena.Time`. Both fists now stay on the rake and ladle.

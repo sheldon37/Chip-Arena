@@ -156,7 +156,7 @@ namespace ChipArena.UnityConversion
         private void MatchEndPanel()
         {
             if(matchEndAt<0)matchEndAt=Time.unscaledTime;float enter=U.PanelIn(Time.unscaledTime-matchEndAt),W=U.W,H=U.H;var me=arena.Local.Seat;var winner=match.Seats.Find(s=>s.id==match.Winner);bool lost=HostLost;
-            var players=match.Seats.Where(s=>!s.AuthorityBoss).OrderByDescending(s=>s.score).ToList();float pw=Mathf.Min(640,W-32),ph=32+22+40+60+24+players.Count*68+40+24+48+32,px=(W-pw)/2,py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
+            var players=match.Seats.Where(s=>!s.AuthorityBoss).OrderByDescending(s=>s.score).ToList();float pw=Mathf.Min(640,AccountXpHostRoom(AccountXpSurface.Pvp,W,480)-32),ph=32+22+40+60+24+players.Count*68+40+24+48+32,px=AccountXpHostX(AccountXpSurface.Pvp,W,pw,480),py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
             // The in-match holographic panel (NativeHudChrome) rather than the menu .panel: the result in my side's tone (cyan
             // won, danger lost), the standings as chamfered rows (mine edged in cyan). The buttons stay the shared MenuButton.
             bool won=!lost&&OnMySide(winner),defeat=!lost&&!won&&winner!=null;Color tone=won?NativeCyberTheme.Cyan():defeat?NativeCyberTheme.Danger():NativeCyberTheme.CyanSoft();
@@ -177,6 +177,8 @@ namespace ChipArena.UnityConversion
                 if(MenuButton(new Rect(ix+bw+10,y,bw,48),"undo-2","Return to Lobby",null,false,(Hosting||!Online)&&LobbyReturnSeconds<=0,enter,15,true)){if(!Online)afterMatch=OfflineLobby();RequestLobbyReturn();}
             }
             U.Pop();
+            // Permanent account XP: its own panel beside the results, never inside them (NativeAccountXpUI.cs; nothing without an award).
+            AccountXpDocked(AccountXpSurface.Pvp,px,pw,py,480,enter);
         }
         // pve/results.ts: VICTORY / DEFEAT under the boss test eyebrow, the Siren's remaining health, a card per pilot (MVP by
         // boss damage) and Retry / Return to Menu.
@@ -190,14 +192,14 @@ namespace ChipArena.UnityConversion
             var v=arena.Pve;if(matchEndAt<0)matchEndAt=Time.unscaledTime;float enter=U.PanelIn(Time.unscaledTime-matchEndAt),W=U.W,H=U.H,t=Time.unscaledTime;bool victory=v.Outcome=="victory";
             var rows=v.Rows.Values.Where(r=>!r.Pilot.Seat.bot||r.Pilot.Seat.connected).OrderBy(r=>r.Pilot.Seat.id).ToList();var mvp=rows.OrderByDescending(r=>r.DamageBoss).ThenByDescending(r=>r.Kills).FirstOrDefault();
             // .panel:has(.pve-results): min(1180px, 100vw-32px); .pve-result-grid repeat(auto-fit, minmax(210px,1fr)), gap 14.
-            float pw=Mathf.Min(1180,W-32),iw=pw-64;int cols=Mathf.Clamp(Mathf.Min(rows.Count,Mathf.FloorToInt((iw+14)/(210+14))),1,4);float cw=(iw-(cols-1)*14)/cols;
+            float pw=Mathf.Min(1180,AccountXpHostRoom(AccountXpSurface.Pve,W,420)-32),iw=pw-64;int cols=Mathf.Clamp(Mathf.Min(rows.Count,Mathf.FloorToInt((iw+14)/(210+14))),1,4);float cw=(iw-(cols-1)*14)/cols;
             // Portrait clamp(80px,12vh,200px); when the cards would not fit the canvas, the source's short-screen rule
             // (max-height:480px) hides the portraits and lays the stats out in three columns.
             string bossLine=PveBossLine(v,victory);float head=32+16+8+46+6+20+(bossLine!=null?26:0)+16,foot=28+48+32;int lines=Mathf.CeilToInt(rows.Count/(float)cols),statCols=2;
             float chipsH=rows.Count>0?Mathf.Max(24,rows.Max(r=>ChipBadgeRows(r.Pilot.Seat,cw-20)*28-4)):24,portrait=Mathf.Clamp(H*.12f,80,200),topH=49;int stats=StatRows(rows.FirstOrDefault()).Length;
             float ResultH()=>10+(topH+portrait+4+21.6f+17)+10+chipsH+10+Mathf.CeilToInt(stats/(float)statCols)*25+10;
             if(head+lines*ResultH()+(lines-1)*14+foot>H-32){portrait=0;topH=36;if((cw-20-20)/3>=90)statCols=3;}
-            float resH=ResultH(),cardH=topH+portrait+4+21.6f+17,ph=Mathf.Min(H-32,head+lines*resH+(lines-1)*14+foot),px=(W-pw)/2,py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
+            float resH=ResultH(),cardH=topH+portrait+4+21.6f+17,ph=Mathf.Min(H-32,head+lines*resH+(lines-1)*14+foot),px=AccountXpHostX(AccountXpSurface.Pve,W,pw,420),py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
             // The in-match holographic panel (NativeHudChrome): victory in the gold warn tone, defeat in danger.
             var panel=new Rect(px,py,pw,ph);U.Glow(new Rect(px,py+30,pw,ph),new Color(0,0,0,.45f*enter),60);U.Backdrop(panel,0,16,enter);NativeHudChrome.Panel(panel,enter,victory?NativeCyberTheme.Warn():NativeCyberTheme.Danger(),14,NativeHudChrome.Corners.Diagonal,true,.94f);float y=py+32,ix=px+32;
             U.Text(new Rect(ix,y,iw,16),"BOSS TEST · THE SIREN",12,NativeCyberTheme.CyanSoft(enter),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.18f);y+=16+8;
@@ -216,6 +218,8 @@ namespace ChipArena.UnityConversion
             if(retry){if(MenuButton(new Rect(bx,y,bw,48),"rotate-cw","Retry",null,true,true,enter,15,true))VoteRematch();bx+=bw+12;}
             if(MenuButton(new Rect(bx,y,bw,48),"log-out","Return to Menu",null,true,true,enter,15,true)){if(HostLost)LeaveLostHost();else{afterMatch=MenuScreen.Home;ReturnMainMenu();}}
             if(ww>0)U.Text(new Rect(bx+bw+12,y,ww+4,48),waitingText,13,NativeCyberTheme.Muted(enter),TextAnchor.MiddleLeft);
+            // Permanent account XP beside the results, apart from the run's chips and money (NativeAccountXpUI.cs).
+            AccountXpDocked(AccountXpSurface.Pve,px,pw,py,420,enter);
         }
         private int waitingFor=-1;private string waitingText="";
         // .pve-result-boss on a defeat: the Siren's remaining health, or the wave the party fell on before she appeared.
