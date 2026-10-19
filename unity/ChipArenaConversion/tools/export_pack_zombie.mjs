@@ -80,6 +80,12 @@ const CLIPS=[
  {key:'crawl-2',file:'Zombie_Crawl_2_Loop',kind:'once',fps:15,range:[16,67]},
  // the Pileup's two-handed shove: the crouched brace, the push to full extension, the return; marks [start, braced, impact, settled]
  {key:'shove-1',file:'Zombie_Atk_Arms_4_SHORT_Loop',kind:'once',range:[18,50],marks:[0,.1,.7,1.0667]},
+ // ---- the locomotion pass (docs/ZOMBIE-LOCOMOTION.md): the smoothest cycles of the pack's full-length loops for the shambler's
+ // reaching walk, the brute's, spitter's and bloater's heavy walk and the brute's lurching charge, and the runner's low-armed sprint ----
+ {key:'chase-1-full',file:'Zombie_Chase_1_Full_Loop',kind:'cycle'},
+ {key:'chase-5-full',file:'Zombie_Chase_5_Full_Loop',kind:'cycle'},
+ {key:'walk-6-full',file:'Zombie_Walk_F_6_Full_Loop',kind:'cycle'},
+ {key:'sprint-2',file:'Zombie_HyperChase_2_Loop',kind:'cycle'},
 ];
 
 const file=f=>{const p=path.join(dir,f);if(!fs.existsSync(p))throw new Error('missing pack file '+f);return p;};

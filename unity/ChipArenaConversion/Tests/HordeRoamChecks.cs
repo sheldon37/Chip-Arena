@@ -217,7 +217,7 @@ namespace ChipArena.UnityConversion
                 foreach(int clip in NativeZombieMotion.Wanders(k))foreach(float speed in new[]{pace,pace*.55f})foreach(float turn in new[]{0f,30f})
                 {
                     int id=61000+k*1000;while(NativeZombieMotion.Wander(k,NativeHordeKinds.Seed(id))!=clip)id++;
-                    var g=new NativeHordeGait();var tr=new NativeHordeRoamTrack();var last=new Vector3[2];var air=new bool[2];float worst=0,worstDrawn=0;int steps=0,planted=0,off=0;var at=new Vector3(0,.85f,0);float yaw=0;
+                    var g=new NativeHordeGait();var tr=new NativeHordeRoamTrack();var last=new Vector3[2];var air=new bool[2];var rolled=new bool[2];var ballAt=new Vector3[2];float worst=0,worstDrawn=0;int steps=0,planted=0,off=0;var at=new Vector3(0,.85f,0);float yaw=0;
                     for(int i=0;i<600;i++)
                     {
                         float t=i/60f;yaw+=turn/60;float rr=yaw*(float)Math.PI/180;var v=new Vector3((float)Math.Sin(rr),0,(float)Math.Cos(rr))*speed;at+=v/60;
@@ -226,7 +226,16 @@ namespace ChipArena.UnityConversion
                         for(int j=0;j<2;j++)
                         {
                             var drawn=g.ToWorld(pose.WorldPosition[j==0?CapturedRig.LFoot:CapturedRig.RFoot],at);
-                            if(i>90&&!air[j]&&!g.FootAir[j]){worst=Math.Max(worst,Vector3.Distance(last[j],g.FootWorld[j]));float e=new Vector2(drawn.X-g.FootWorld[j].X,drawn.Z-g.FootWorld[j].Z).Length();worstDrawn=Math.Max(worstDrawn,e);if(e>.012f)off++;planted++;}
+                            // (The wander's strides at the body's cadence (Core/NativeHordeLoco) are long enough that a trailing foot
+                            // rolls onto its ball before it lifts: then the ball stays where it was when the heel began to peel.)
+                            if(i>90&&!air[j]&&!g.FootAir[j])
+                            {
+                                worst=Math.Max(worst,Vector3.Distance(last[j],g.FootWorld[j]));float e;
+                                if(g.Heel[j]>0){var ball=g.ToWorld(pose.WorldPosition[j==0?CapturedRig.LToe:CapturedRig.RToe],at);if(!rolled[j]){rolled[j]=true;ballAt[j]=ball;}e=new Vector2(ball.X-ballAt[j].X,ball.Z-ballAt[j].Z).Length();}
+                                else{rolled[j]=false;e=new Vector2(drawn.X-g.FootWorld[j].X,drawn.Z-g.FootWorld[j].Z).Length();}
+                                worstDrawn=Math.Max(worstDrawn,e);if(e>.012f)off++;planted++;
+                            }
+                            else rolled[j]=false;
                             if((g.Landed&(1<<j))!=0)steps++;last[j]=g.FootWorld[j];air[j]=g.FootAir[j];
                         }
                     }

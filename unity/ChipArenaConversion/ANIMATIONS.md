@@ -1,3 +1,14 @@
+# Zombie locomotion — 2026-10-19
+
+Owner request: "I think I want to change the zombie animations for their movement, their arms also seem to detach slightly. Can you take a look into the movement for them again? Their may be a better animation to use. Also, it needs to be more fluid. Currently, it's still like rapid back and forth movement that doesn't look realistic." `Core/NativeHordeLoco.cs` (a partial of `NativeHordeGait`) fixes the two measured causes:
+- **Rapid back and forth.** The pack's walks and chases were captured at 0.12 to 0.54 rig m/s. The shipped mapping played them at 2 to 2.8 times their pace to keep up with the authority's walks, so the trunk, arms and head were time-compressed (about 4 steps a second walking, 5 to 7 running). Now the cadence is the body's (`StepRate`: 2.56 x v^0.35 steps a second at the kind's tempo, the step capped by the legs' reach), and every take is time-warped to it. A take played faster than its capture swings its trunk and arms less about the cycle's mean (`Calm`), with a phase blur on the Full tier. The cadence and the walk-to-run blend read a gait speed eased off the presented root, with a slew limit and a setting-off hysteresis, so a crowd's jostle no longer flips the takes. The feet still land on the root's real speed.
+- **Arms detach.** The zombie chests are narrower than the rig's clavicles (±0.275), so the shoulder blocks hung 2 to 10 cm off the torso at rest. Each kind and look now sets its clavicles in before the arms are solved (`ShoulderInset`).
+- **Takes.** Smoother takes per kind, including four new cycles exported as derived pose tracks only (`chase-1-full`, `chase-5-full`, `walk-6-full`, `sprint-2`; 50 tracks).
+- **Results (harness).** Shambler walk: 4.2 to 3.0 steps a second, upper joints 4.2 to 1.3 rad/s p95, shoulder gap 3.5 to 0.1 cm.
+- **Impacts.** Presentation only: no change to hit timing, hitboxes, damage, cooldowns, movement or networking.
+
+Details: `docs/ZOMBIE-LOCOMOTION.md`. Checked by `Tests/ZombieLocoChecks.cs` (`--zombie-loco`). The Unity Editor and Windows play were not run.
+
 # Hulk zombie and the spitter's spit — 2026-10-13
 
 The Hulk (content-gated) reuses the brute's zombie takes on the shared rig at 1.8x. Its gait runs in rig metres and is scaled back:

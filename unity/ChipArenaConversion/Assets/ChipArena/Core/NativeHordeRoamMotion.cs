@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
         private float WalkDuty(int foot)=>roamTake>0?Lerp(NativeZombieMotion.Duty(walkClip,foot),NativeZombieMotion.Duty(wanderClip,foot),roamTake):NativeZombieMotion.Duty(walkClip,foot);
         private float WalkOffset()=>roamTake>0?Lerp(NativeZombieMotion.Offset(walkClip,1),NativeZombieMotion.Offset(wanderClip,1),roamTake):NativeZombieMotion.Offset(walkClip,1);
         private float WalkGround()=>roamTake>0?Lerp(NativeZombieMotion.Ground(walkClip),NativeZombieMotion.Ground(wanderClip),roamTake):NativeZombieMotion.Ground(walkClip);
-        private void RoamWalkRow(){if(roamTake>0){NativeZombieClips.SamplePhase(wanderClip,Phase,rowV);NativeZombieClips.Blend(rowW,rowV,roamTake,rowW);}}
+        private void RoamWalkRow(){if(roamTake>0){SampleCalm(wanderClip,Phase,rowV,RateOf(wanderClip,Math.Max(gaitSpeed,.8f*Speed)));NativeZombieClips.Blend(rowW,rowV,roamTake,rowW);}}
 
         // A Unity world yaw (degrees, +Z = 0, + to the right) as the rig's turn from the presented facing (rad, + toward its left).
         private float YawFrom(float worldYaw)=>-Math.Max(-1.2f,Math.Min(1.2f,Wrap(worldYaw-Yaw)/57.2958f));

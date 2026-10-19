@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-19 Claude zombie locomotion (`claude/zombie-locomotion`, merged into shared; presentation only): the horde steps at the body's cadence instead of time-compressing the takes (shambler walk 4.2 → 3.0 steps a second, upper joints 4.2 → 1.3 rad/s p95), with calmer trunk and arms, eased walk/run blends, smoother takes per kind (4 new derived cycles) and the clavicles set in so the arms meet the chest (gap up to 10 cm → under 1 cm). `docs/ZOMBIE-LOCOMOTION.md`. Next: owner review, then merge.
+
 2026-10-19 Claude boss effects realism (`claude/boss-vfx-realism`, merged into shared; presentation only): THE CONVERTER's pour is one continuous ballistic molten stream landing on the authority's pool point. Its pools are smooth, crusting puddles exactly the hazard's radius from `hitAt` to `until`. Both zone bosses' sparks, smoke, steam, dust, arcs and debris are physical particles through the shared effects renderer. Telegraphs and cues are bit-identical to before (`--boss-vfx`). Next: owner review of the offline renders; the Unity Editor/Windows look was not run.
 
 2026-10-19 Claude account XP presentation (`claude/account-xp-presentation`, merged into shared; presentation only, unbound): post-match XP panel (PvP, PvE, Expedition card), home level line, pending/confirmed/failed states, animate-once record, MOCK DEV fixtures. Contract proposed in `docs/ACCOUNT-XP-PRESENTATION.md`, awaiting Astra; bindings in `NativeAccountXpUI.cs` return null until then.
