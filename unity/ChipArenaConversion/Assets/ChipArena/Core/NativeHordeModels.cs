@@ -15,8 +15,8 @@ namespace ChipArena.UnityConversion
     /// The Siren's minions, sculpted in code (presentation only; the exported horde-0..5 bank bodies stay for the classic look
     /// and the old death records). Since 2026-10-12 every kind is a zombie built from the pilots (Core/NativeZombieModels.cs,
     /// the builders and the zombie palette): the Standard pilot's blocks rotted and torn, the armour cracked and half gone, the
-    /// jaw hanging open, the eyes glowing in the kind's colour and the Siren's ink running through the wounds as veins that
-    /// flicker cell by cell and drop out with the add's failing power (NativeMinionFx glow codes); the brute a big muscle
+    /// jaw hanging open, the eyes glowing in the kind's colour, dead dark veins and raw wounds (until 2026-10-19 the Siren's ink
+    /// ran through them as veins that flickered cell by cell: removed, owner "more standard zombies"); the brute a big muscle
     /// version. Each kind keeps its silhouette at 30 m and is built inside its hit volume (NativeHordeKinds.Radius/Height):
     /// Tests/HordeKindChecks poses them and holds every vertex to the capsule. This file keeps the shared kit.
     /// <list type="bullet">
@@ -24,8 +24,8 @@ namespace ChipArena.UnityConversion
     /// Reduced (the rest within 40 m) and Impostor (a dozen boxes per add, the far crowd), with the same joints, so lost limbs,
     /// the char and the burn-away work on all three.</item>
     /// <item>Looks: whole variants per kind (NativeHordeKinds.Looks), chosen by the add's id.</item>
-    /// <item>The black-flame tongues of the old bank (NativeMinionFx) grow from each kind's own anchors here
-    /// (<see cref="Tongues"/>), and a cracked look keeps the crack haze (<see cref="Crack"/>).</item>
+    /// <item>No kind grows the old bank's black-flame tongues any more (<see cref="Tongues"/> is empty since 2026-10-19); a cracked
+    /// look keeps its crack's place (<see cref="Crack"/>) for the possession hint's split.</item>
     /// </list>
     /// Built once when the source models load (Runtime/NativeHordeKindModels.cs); nothing here runs per frame.
     /// </summary>
@@ -106,10 +106,26 @@ namespace ChipArena.UnityConversion
             /// <summary>The right side's joint for a left one (clavicle to wrist, hip to toe).</summary>
             public static int Right(int bone)=>bone>=CapturedRig.LClav&&bone<=CapturedRig.LHand||bone>=CapturedRig.LHip&&bone<=CapturedRig.LToe?bone+4:bone;
             public float Side=>side;
-            /// <summary>The kind's seam glow: a new flicker cell per piece (NativeMinionFx glow code), `k` its strength.</summary>
-            public WeaponPaint Seam(float k=1,int hex=-1){var c=WeaponPaint.Linear(hex<0?SeamColor:hex);double h=NativeGoreRules.Hash01(seed,cell++,0x5e);return new WeaponPaint(c*.32f,c*(1.9f*k),(float)NativeMinionFx.Code(NativeHordeKinds.SeamClass[Kind],h));}
-            /// <summary>A glow piece on another flicker class (0 shell embers, 1 accent plates, 2 strips).</summary>
-            public WeaponPaint Glow(int cls,float k,int hex){var c=WeaponPaint.Linear(hex);double h=NativeGoreRules.Hash01(seed,cell++,0x5f);return new WeaponPaint(c*.3f,c*k,(float)NativeMinionFx.Code(cls,h));}
+            /// <summary>The Siren's seven kinds (the voxel zombies): since 2026-10-19 (owner: "more standard zombies") their veins are
+            /// dead and dark, their splits raw flesh and their armour strips dead, where they glowed with the Siren's ink. The zone
+            /// kinds keep their glowing seams (the Ironworks' heat and embers, the Station's own lights).</summary>
+            public bool Standard=>Kind<NativeHordeKinds.Count;
+            /// <summary>A seam: on the zone kinds the kind's glow, a new flicker cell per piece (NativeMinionFx glow code), `k` its
+            /// strength; on the Siren's seven a dark, dead vein (no glow, no flicker).</summary>
+            public WeaponPaint Seam(float k=1,int hex=-1)
+            {
+                if(Standard)return k>=1.15f?ZVeinDark:ZVein;
+                var c=WeaponPaint.Linear(hex<0?SeamColor:hex);double h=NativeGoreRules.Hash01(seed,cell++,0x5e);return new WeaponPaint(c*.32f,c*(1.9f*k),(float)NativeMinionFx.Code(NativeHordeKinds.SeamClass[Kind],h));
+            }
+            /// <summary>A kind's own steady glow in its colour (the spitter's acid sac, the bloater's boils): no flicker code.</summary>
+            public WeaponPaint Juice(float k=1){var c=WeaponPaint.Linear(SeamColor);return new WeaponPaint(c*.32f,c*(1.9f*k),0);}
+            /// <summary>The split crown's crack: dark crusted blood over the bone (the zone kinds' seam glow).</summary>
+            public WeaponPaint Crack(float k=1)=>Standard?ZFleshDeep:Seam(k);
+            /// <summary>The pilot's armour strip on a dead pilot: its dead accent (the zone kinds' seam glow).</summary>
+            public WeaponPaint Accent(float k=1)=>Standard?ZDeadAccent:Seam(k);
+            /// <summary>A glow piece on another flicker class (0 shell embers, 1 accent plates, 2 strips); on the Siren's seven (the
+            /// spitter's acid and drool, the bloater's boils) a steady glow in the kind's colour, no flicker code.</summary>
+            public WeaponPaint Glow(int cls,float k,int hex){var c=WeaponPaint.Linear(hex);double h=NativeGoreRules.Hash01(seed,cell++,0x5f);return new WeaponPaint(c*.3f,c*k,Standard?0:(float)NativeMinionFx.Code(cls,h));}
             private void Mirror(Action draw){if(side<0){S.Push(WeaponSculpt.S(-1,1,1));draw();S.Pop();}else draw();}
             /// <summary>A box by centre and full size (left-authored x), turned by Euler XYZ (radians) about its centre.</summary>
             public void Box(in WeaponPaint p,float x,float y,float z,float sx,float sy,float sz,float bevel=0,float rx=0,float ry=0,float rz=0)
@@ -229,60 +245,17 @@ namespace ChipArena.UnityConversion
         }
 
         // ================================================================================================================
-        // Black-flame tongues (NativeMinionFx.Tongue swells and sways them; the bank's horde-tongue pieces draw them) and the
-        // crack's light, per kind and look. Anchors are in the joint frame in source axes (+x the add's left), as the old bank's.
+        // Black-flame tongues: none (2026-10-19). The old bank's tongues and their licks were the Siren's minions' look; the horde
+        // kinds are standard zombies now (docs/ZOMBIE-GORE.md), so no kind grows them. The API stays for its callers.
         // ================================================================================================================
         /// <summary>One tongue: joint, the bank piece (0/1), anchor (source axes), base turn (quaternion xyzw), height, phase.</summary>
         public struct Tongue{public int Joint,Layout;public double X,Y,Z,Qx,Qy,Qz,Qw,Height,Phase;}
-        private static Tongue T(int joint,int layout,double x,double y,double z,double lean,double height,double phase)
-        {double h=lean*.5;return new Tongue{Joint=joint,Layout=layout,X=x,Y=y,Z=z,Qx=Math.Sin(h),Qy=0,Qz=0,Qw=Math.Cos(h),Height=height,Phase=phase};}
-        private static Tongue TZ(int joint,int layout,double x,double y,double z,double roll,double height,double phase)
-        {double h=roll*.5;return new Tongue{Joint=joint,Layout=layout,X=x,Y=y,Z=z,Qx=0,Qy=0,Qz=Math.Sin(h),Qw=Math.Cos(h),Height=height,Phase=phase};}
-        private static readonly Tongue[][][] tongues=MakeTongues();
-        /// <summary>The zone kinds grow none (the Siren's black flame is her minions' own).</summary>
         private static readonly Tongue[] NoTongues=new Tongue[0];
-        /// <summary>The tongues a kind's look grows (the same on every tier).</summary>
-        public static Tongue[] Tongues(int kind,int look){if(NativeHordeZones.Of(kind)!=null)return NoTongues;var k=tongues[Math.Max(0,Math.Min(NativeHordeKinds.Count-1,kind))];return k[Math.Max(0,Math.Min(k.Length-1,look))];}
-        public static int MostTongues{get{int n=0;foreach(var k in tongues)foreach(var l in k)n=Math.Max(n,l.Length);return n;}}
-        private static Tongue[][][] MakeTongues()
-        {
-            const int H=CapturedRig.Head,C=CapturedRig.Chest,S=CapturedRig.Spine,LC=CapturedRig.LClav,RC=CapturedRig.RClav,LE=CapturedRig.LElbow,RA=CapturedRig.RArm;
-            return new[]{
-                // shambler: collar, hood, crack
-                new[]{new[]{T(H,0,.02,.31,-.02,-.2,.9,.3),TZ(C,1,.12,.3,-.05,.5,.8,2.1),TZ(C,0,-.13,.3,-.04,-.5,.75,4.2),T(RA,1,.0,-.1,-.09,-.25,.7,5.3)},
-                      new[]{T(H,0,0,.33,-.1,-.6,1.0,1.1),T(S,1,.1,.12,-.13,-.4,.7,3.3),T(LE,0,.06,-.12,-.05,-.2,.6,5.9)},
-                      new[]{T(H,0,.04,.32,.03,-.1,1.2,.7),T(H,1,-.06,.31,-.05,-.3,.9,2.9),TZ(C,0,.14,.27,-.08,.6,.8,4.6),T(S,1,-.08,.12,-.13,-.4,.7,6.0)}},
-                // runner: crown fin flame and the shoulder blades
-                new[]{new[]{T(H,0,0,.26,-.1,-.9,1.0,.9),TZ(LC,1,.09,.06,-.04,.5,.7,2.4),TZ(RC,1,-.09,.06,-.04,-.5,.7,4.8)},
-                      new[]{T(H,1,.05,.25,-.06,-.8,.9,1.6),T(H,0,-.05,.25,-.06,-.8,.9,3.1),T(C,1,0,.24,-.12,-.6,.8,5.2)}},
-                // brute: the hump and the pauldrons
-                new[]{new[]{T(C,0,0,.36,-.12,-.3,1.2,.4),TZ(LC,1,.12,.1,0,.8,.95,2.2),TZ(RC,1,-.12,.1,0,-.8,.95,4.4),T(H,0,0,.22,0,-.2,.8,5.6)},
-                      new[]{T(C,0,.08,.36,-.12,-.3,1.1,1.2),T(C,1,-.08,.36,-.12,-.3,1.1,3.0),TZ(LC,0,.12,.1,0,.8,.9,4.1),TZ(RC,0,-.12,.1,0,-.8,.9,5.5)}},
-                // spitter: the back blisters and the crown
-                new[]{new[]{T(H,0,0,.3,-.04,-.3,.9,.2),T(C,1,.06,.2,-.16,-.8,.8,2.6),T(C,0,-.05,.12,-.16,-.9,.7,4.9)},
-                      new[]{T(H,1,.04,.3,-.02,-.2,.9,1.4),T(C,0,0,.24,-.15,-.7,.85,3.7)}},
-                // crawler: along the spine (it faces up in the pose)
-                new[]{new[]{T(C,0,0,.18,-.15,-1.4,.9,.5),T(S,1,0,.1,-.12,-1.4,.8,2.7),T(H,0,0,.22,-.06,-.9,.7,4.4)},
-                      new[]{T(C,1,.05,.2,-.14,-1.3,.85,1.9),T(C,0,-.05,.08,-.14,-1.3,.8,3.4),T(S,0,0,.14,-.12,-1.4,.75,5.8)}},
-                // bloater: the gut's vents and the crown
-                new[]{new[]{T(S,0,.12,.2,.32,.6,.8,.8),T(S,1,-.14,.12,.33,.5,.75,3.2),T(H,0,0,.21,0,-.2,.8,5.1)},
-                      new[]{T(S,1,0,.27,.3,.4,.85,1.7),T(H,0,0,.28,0,-.1,.9,4.3)}},
-                // hulk: out of the cracks in its hump and its shoulders
-                new[]{new[]{T(C,0,0,.47,-.15,-.3,1.3,.6),TZ(LC,1,.12,.12,0,.8,1.0,2.3),TZ(RC,1,-.12,.12,0,-.8,1.0,4.5),T(C,1,.18,.3,-.24,-.7,.9,5.7)},
-                      new[]{T(C,0,.1,.47,-.16,-.3,1.2,1.3),T(C,1,-.1,.47,-.16,-.3,1.2,3.4),TZ(LC,0,.13,.12,0,.8,.95,4.8)}}};
-        }
-        /// <summary>
-        /// Tongue k of a kind's look at clock t (NativeMinionFx.TongueMatrix with this kind's anchors): its joint, bank piece and
-        /// matrix in the joint's frame (row-major, source axes): T(anchor)·R(base·sway)·S(wide, tall, wide). False past its tongues.
-        /// </summary>
-        public static bool TongueMatrix(int kind,int look,int k,double t,double flare,double extraPhase,double[] m,out int joint,out int layout)
-        {
-            var list=Tongues(kind,look);joint=-1;layout=0;if(k<0||k>=list.Length)return false;var g=list[k];joint=g.Joint;layout=g.Layout;
-            NativeMinionFx.Tongue(t,g.Phase+extraPhase,g.Height,flare,out double wide,out double tall,out double rx,out double rz);
-            NativeFxMath.EulerQuaternion(rx,0,rz,out double sx,out double sy,out double sz,out double sw);double bx=g.Qx,by=g.Qy,bz=g.Qz,bw=g.Qw;
-            double qx=bw*sx+bx*sw+by*sz-bz*sy,qy=bw*sy-bx*sz+by*sw+bz*sx,qz=bw*sz+bx*sy-by*sx+bz*sw,qw=bw*sw-bx*sx-by*sy-bz*sz;
-            NativeMinionFx.Rotation(m,qx,qy,qz,qw,wide,tall,wide,g.X,g.Y,g.Z);return true;
-        }
+        /// <summary>The tongues a kind's look grows: none.</summary>
+        public static Tongue[] Tongues(int kind,int look)=>NoTongues;
+        public static int MostTongues=>0;
+        /// <summary>Tongue k of a kind's look: there are none (false).</summary>
+        public static bool TongueMatrix(int kind,int look,int k,double t,double flare,double extraPhase,double[] m,out int joint,out int layout){joint=-1;layout=0;return false;}
         /// <summary>Whether a look is cracked (the possession hint draws a split on its crown, NativeMinionFx.Hint) and the crack's
         /// light centre on the head (source axes), NaN without one.</summary>
         public static bool Cracked(int kind,int look)=>kind==NativeHordeKinds.Shambler&&look==2;

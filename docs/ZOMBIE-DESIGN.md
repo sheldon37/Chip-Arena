@@ -8,6 +8,11 @@ The task is the design half: models, materials, shading and detail. Motion (pose
 curves) is the separate `claude/zombie-motion` task. Presentation only: no hitbox, collider, timing, damage, movement or
 network change, and every vertex stays inside the kind's capsule (HordeKindChecks, HulkSpitterChecks).
 
+2026-10-19 (`claude/zombie-gore`, `docs/ZOMBIE-GORE.md`): the Siren-era treatment is gone from the seven kinds. The ink veins,
+crown cracks, armour strips and splits no longer glow or flicker, the rim's rising light lines and the black-flame tongues
+are removed, and deaths leave corpses with gore instead of burning away. The eyes, the spitter's acid and the bloater's
+boils still glow, steadily. Where this document says a seam or crack glows, read dead vein, crusted blood or raw flesh.
+
 ![The 40-add horde in the Ward Zero corridor, old blocky (top) and new voxel with the new motion (bottom)](zombie-design-crowd.jpg)
 
 ![Faces at close range, old blocky (top) and new voxel (bottom)](zombie-design-faces.jpg)

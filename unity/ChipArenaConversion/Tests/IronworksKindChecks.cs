@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
             Check(NativeHordeKinds.Default.Take(7).SequenceEqual(new[]{NativeHordeKinds.Attack.Swipe,NativeHordeKinds.Attack.Lunge,NativeHordeKinds.Attack.Smash,NativeHordeKinds.Attack.Spit,NativeHordeKinds.Attack.Pounce,NativeHordeKinds.Attack.Belly,NativeHordeKinds.Attack.Smash}),"their attacks");
             // Out-of-range indices clamp as they always did (0 below; the Hulk's tables past every kind).
             Check(NativeHordeKinds.Index(-2)==0&&NativeHordeKinds.Index(NativeHordeKinds.All)==NativeHordeKinds.Hulk&&NativeHordeKinds.Base(99)==NativeHordeKinds.Hulk&&NativeHordeKinds.Give(99)==NativeHordeKinds.Give(0),"indices out of range clamp as before");
-            for(int k=0;k<7;k++){Check(NativeHordeKinds.Base(k)==k&&NativeHordeKinds.Index(k)==k,"a Siren kind is its own base");Check(NativeHordeKinds.StepCue(k)==NativeZombieSteps.Key(k,k==NativeHordeKinds.Crawler,0),"step cue of "+k);Check(NativeHordeModels.Tongues(k,0).Length>0,"the Siren's kinds keep their tongues");}
+            for(int k=0;k<7;k++){Check(NativeHordeKinds.Base(k)==k&&NativeHordeKinds.Index(k)==k,"a Siren kind is its own base");Check(NativeHordeKinds.StepCue(k)==NativeZombieSteps.Key(k,k==NativeHordeKinds.Crawler,0),"step cue of "+k);Check(NativeHordeModels.Tongues(k,0).Length==0,"the Siren's kinds grow no black-flame tongues (2026-10-19, ZombieGoreChecks)");}
             // Every model of the seven: the base commit's triangle and vertex counts per kind, look and tier (and the jaws').
             int i=0;for(int k=0;k<7;k++)for(int l=0;l<NativeHordeKinds.Looks[k];l++)for(int t=0;t<3;t++)
             {

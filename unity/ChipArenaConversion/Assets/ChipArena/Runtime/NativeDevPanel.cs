@@ -180,6 +180,7 @@ namespace ChipArena.UnityConversion
                 case "preview-ironworks-boss":IronworksBossPreviewToggle();break;
                 case "preview-door-lock":NativeLaserDoorPreview.On=!NativeLaserDoorPreview.On;DevSay(NativeLaserDoorPreview.On?"Instance exit door preview · on (presentation only; the laser door cycles lock, sealed, unlock and open; the exit's collider is unchanged)":"Instance exit door preview · off",false);break;
                 case "preview-account-xp":AccountXpPreviewToggle();break;
+                case "preview-zombie-gore":ZombieGorePreviewToggle();break;
                 case "overlay-shots":devOverlayShots=!devOverlayShots;break;
                 case "log":devLogOn=!devLogOn;break;
                 case "graph":devGraphOn=!devGraphOn;break;
@@ -653,6 +654,7 @@ namespace ChipArena.UnityConversion
             y=DevNote(x,y,w,"Cyber Kit v2 ranged: as a Cyber Lord press 5 for ranged; the preview then loops Plasma Byte, Daisy Chain, Singularity, Packet Storm and Orbital Uplink on your pilot, locally. Move while it plays.",C.Muted());
             y=DevHead(x,y,w,"DEV REVEAL");DevAct(new Rect(x,y,w,32),"preview-reveal");y+=40;
             y=DevNote(x,y,w,"Plays the \"a developer is here\" moment on your pilot, locally. In a match it plays for the whole room once the host reveals you (DEV command reveal).",C.Muted());
+            y=ZombieGorePreviewPanel(x,y,w);
             y=AccountXpPreviewPanel(x,y,w);
             return y;
         }

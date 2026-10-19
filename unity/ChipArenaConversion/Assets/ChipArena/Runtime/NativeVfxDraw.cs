@@ -151,6 +151,8 @@ namespace ChipArena.UnityConversion
         // should read as a smooth circle, not a polygon. The dome is its upper half, open exactly on its floor.
         private static readonly NativeVfxMesh round=NativeVfxMeshes.Icosphere(3,"shock shell");
         private static readonly Shape shard=new Shape(NativeVfxMeshes.Shard),bomb=new Shape(NativeVfxMeshes.Bomb),shell=new Shape(round),dome=new Shape(NativeVfxMeshes.Hemisphere(round,"shock dome")),orb=new Shape(NativeVfxMeshes.Shell);
+        // The gore's voxel (Block): a unit box, flat-shaded (four corners a face), built once (BoxMesh, after the queueing).
+        private static readonly Shape box=new Shape(BoxMesh());
         // The slam wave's open cylinder: SlamSides around, unit radius, y from 0 (its foot) to 1 (its top), normals outward.
         private const int SlamSides=40;private const float SlamShock=1.5f;
         private static readonly Vector3[] slamP=SlamRing(false),slamN=SlamRing(true);private static readonly int[] slamT=SlamTriangles();
@@ -560,6 +562,13 @@ namespace ChipArena.UnityConversion
             if(!(size>1e-4f))return;var shape=chunks[(seed%NativeVfxMeshes.ChunkVariants+NativeVfxMeshes.ChunkVariants)%NativeVfxMeshes.ChunkVariants];
             LitMesh(shape,at,rotation,Vector3.one*(size*DebrisScale),albedo,.12f,.22f,emissive,albedo*.5f+new Color(.03f,.03f,.035f,0));
         }
+        /// <summary>A lit voxel (a flat-shaded box `size` m on its axes, turned by `rotation`): the horde's gore (Runtime/
+        /// NativeHordeGorePresentation.cs: wounds on the body, flesh bits, gib chunks, stumps) in the game's voxel style, with
+        /// its own specular strength, gloss (wet blood shines, dried does not), emission and rim (linear).</summary>
+        public void Block(Vector3 at,Quaternion rotation,Vector3 size,Color albedo,float spec,float gloss,Color emissive,Color rim)
+        {
+            if(!(size.x>1e-4f&&size.y>1e-4f&&size.z>1e-4f))return;LitMesh(box,at,rotation,size,albedo,spec,gloss,emissive,rim);
+        }
         /// <summary>An upright slam wave (Quake's look: an open cylinder on the floor at `centre`, bright at its foot, fading to its
         /// top, lit only at its silhouette): its radius and height (m), progress 0..1 (hot to cool), fade, its colours (linear,
         /// HDR) and seed.</summary>
@@ -643,6 +652,18 @@ namespace ChipArena.UnityConversion
             CapturedAnimation.Release(billboards.Mesh);CapturedAnimation.Release(lit.Mesh);CapturedAnimation.Release(shocks.Mesh);
             CapturedAnimation.Release(billboardMaterial);CapturedAnimation.Release(litMaterial);CapturedAnimation.Release(shockMaterial);
             if(atlas!=null)CapturedAnimation.Release(atlas);if(noise!=null)CapturedAnimation.Release(noise);if(toon!=null)CapturedAnimation.Release(toon);atlas=null;noise=null;toon=null;
+        }
+        /// <summary>The unit box Block draws: six faces of four corners each (their own normals), wound as the other lit meshes.</summary>
+        private static NativeVfxMesh BoxMesh()
+        {
+            var p=new double[72];var n=new double[72];var t=new int[36];int v=0,k=0;
+            for(int axis=0;axis<3;axis++)for(int s=-1;s<=1;s+=2)
+            {
+                int u=(axis+1)%3,w=(axis+2)%3;int first=v;
+                for(int c=0;c<4;c++){double cu=(c==1||c==2)?.5:-.5,cw=c>=2?.5:-.5;if(s<0)cu=-cu;p[v*3+axis]=.5*s;p[v*3+u]=cu;p[v*3+w]=cw;n[v*3+axis]=s;v++;}
+                t[k++]=first;t[k++]=first+2;t[k++]=first+1;t[k++]=first;t[k++]=first+3;t[k++]=first+2;
+            }
+            return new NativeVfxMesh("gore block",p,n,t,new double[24],new int[24]);
         }
     }
 }

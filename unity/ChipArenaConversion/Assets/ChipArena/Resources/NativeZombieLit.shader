@@ -1,8 +1,10 @@
 Shader "ChipArena/ZombieLit" {
  Properties { _SceneTint("Scene tint",Color)=(1,1,1,1) _BodyTint("Body tint",Color)=(1,1,1,1) _AccentTint("Accent tint",Color)=(1,1,1,1) _GlowTint("Emission tint (linear)",Vector)=(1,1,1,1) _Ink("Siren ink",Float)=0 _InkRim("Ink rim",Float)=.3 _InkFlow("Ink flow",Float)=.025 _InkFill("Ink fill",Float)=0 _InkColor("Ink colour",Color)=(.039,.031,.055,1) _Cull("Cull",Float)=2 _MinionGlow("Siren minion glow",Float)=0 }
- // The Siren's zombies in voxels (docs/ZOMBIE-DESIGN.md; Core/NativeZombieKit.cs builds the data this reads). ChipArena/SourceLit's minion
- // material, its every hook kept (the glow cells' flicker and drop, the char, the burn-away's dissolve, the ink rim and flow,
- // the entrance stage's lights and tone, Ward Zero's actor lights, the struck flash), with the zombie shading on top:
+ // The horde's zombies in voxels (docs/ZOMBIE-DESIGN.md, docs/ZOMBIE-GORE.md; Core/NativeZombieKit.cs builds the data this reads).
+ // ChipArena/SourceLit's minion material, its hooks kept (the glow cells' flicker for the zone kinds that still use it, the
+ // dithered fade a sinking corpse uses, the entrance stage's lights and tone, Ward Zero's actor lights, the struck flash), with
+ // the zombie shading on top. Since 2026-10-19 (owner: "more standard zombies") there are no animated Siren lines: the rising
+ // ink flow is gone and the rim is a faint neutral edge, not her lavender.
  //  - per vertex (uv0, the colour's alpha; NativeHordeModels.K.Pack): the surface class (skin, wet flesh, armour shell, cloth,
  //    bone, matte, wire) and the baked occlusion; the missing-piece variant and a dangling part's sway weight; the proportion
  //    region. Class 0 with no occlusion draws exactly as SourceLit (Lambert), as the zone kinds' bodies do.
@@ -13,7 +15,8 @@ Shader "ChipArena/ZombieLit" {
  //    corners and the parts over them) darkens the ambient, the lights and the sheen; the ink rim keeps the silhouette in the
  //    dark, less in the creases.
  //  - the skin mottles in stepped cells in the joint's frame (rot and bruise patches, a grain of two shades), offset by the
- //    add's seed, so a crowd never repeats.
+ //    add's seed, so a crowd never repeats; the suit, the armour and (lightly) the skin carry stepped patches of dirt and dried
+ //    blood (ZombieStain) by the same seed.
  // Nothing allocates; one material per kind as before, so the instanced batches are unchanged.
  SubShader { Tags { "RenderType"="Opaque" } Cull [_Cull]
  CGPROGRAM
@@ -143,6 +146,17 @@ Shader "ChipArena/ZombieLit" {
   float power=lerp(14.0,90.0,spec);float3 h=normalize(l+v);float s=pow(max(dot(n,h),0.0),power)*spec*step(0.0,ndl)*(0.5+power*0.012);
   return (diff+float3(s,s,s))*lightColor*atten;
  }
+ // Dirt and dried blood in stepped 7 cm patches (a 3.3 cm grain inside them) over the suit (class 4), the armour (3) and, lightly,
+ // the skin (1), offset by the add's seed: grime ground in brown, old blood near black-red.
+ float3 ZombieStain(float3 albedo,float3 local,float3 body,float cls)
+ {
+  float seed=body.g-1.0;float k=cls>3.5?1.0:cls>2.5?0.7:0.4;
+  float3 q=floor(local*14.0+float3(seed*13.0,seed*29.0,seed*5.0));
+  float h=ZombieHash(q+float3(3.1,7.7,1.3));float g=ZombieHash(floor(local*30.0)+q.yzx);
+  float3 c=lerp(albedo,albedo*float3(0.6,0.52,0.42),step(0.64,h)*0.7*k);
+  c=lerp(c,float3(0.15,0.02,0.022)*(0.8+0.4*g),step(0.9,h)*step(0.3,g)*0.85*k);
+  return c;
+ }
  // ---- ZOMBIE SHARED END ----
  half4 LightingZombie(SurfaceOutput s,half3 lightDir,half3 viewDir,half atten)
  {
@@ -161,12 +175,14 @@ Shader "ChipArena/ZombieLit" {
   float4 sceneTint=UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint);tint*=sceneTint.rgb;float4 glowTint=UNITY_ACCESS_INSTANCED_PROP(Props,_GlowTint);
   float cls=floor(i.zdata.x);float ao=1-ZombieValue(i.zdata.x);
   float3 albedo=i.color.rgb*tint;if(cls>.5&&cls<1.5)albedo=ZombieSkin(albedo,i.localPos,shell.rgb);
+  if(cls>.5&&cls<4.5&&(cls<1.5||cls>2.5))albedo=ZombieStain(albedo,i.localPos,shell.rgb,cls);
   o.Emission=i.emission.rgb*tint*glowTint.rgb;if(_MinionGlow>.5&&i.emission.w>2.5)o.Emission*=MinionFlicker(i.emission.w,glowTint.w,1-sceneTint.a);
   float3 k=ZombieClass(cls);
   if(_InkFill>.5){albedo=_InkColor.rgb;o.Emission=float3(0,0,0);k=float3(0,0,1);ao=1;}
   o.Albedo=albedo*ao;o.Gloss=k.x;o.Specular=k.y*ao;
-  float rim=pow(1-saturate(abs(dot(normalize(i.viewDir),normalize(i.worldNormal)))),3);float rise=sin(i.worldPos.y*23-_Time.y*6.5+sin(i.worldPos.x*13+_Time.y*1.7)*2.2+i.worldPos.z*9);
-  o.Emission+=_Ink*float3(.62,.56,.82)*(rim*_InkRim*k.z*lerp(.35,1,ao)+smoothstep(.7,1,rise)*_InkFlow);
+  // A faint neutral rim keeps the silhouette in the dark (less in the creases); no rising flow (_InkFlow is unused here).
+  float rim=pow(1-saturate(abs(dot(normalize(i.viewDir),normalize(i.worldNormal)))),3);
+  o.Emission+=_Ink*float3(.5,.53,.58)*(rim*_InkRim*k.z*lerp(.35,1,ao));
   if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=StageLight(o.Albedo,i.worldPos,normalize(i.worldNormal));
   if(_InkFill<.5&&_ArenaActorLit>.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ActorLights(i.worldPos,normalize(i.worldNormal));
   o.Alpha=shell.a;
