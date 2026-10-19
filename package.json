@@ -22,7 +22,16 @@
     "test:motion:network": "node tests/run-network.mjs motion",
     "package:windows": "node scripts/package-windows.mjs",
     "music:generate": "node scripts/generate-music.mjs",
-    "icons:generate": "node --import tsx scripts/generate-icons.mjs"
+    "icons:generate": "node --import tsx scripts/generate-icons.mjs",
+    "setup": "npm ci --no-audit --no-fund",
+    "check:types": "tsc --noEmit",
+    "build:check": "node --import tsx scripts/generate-icons.mjs && node scripts/generate-build-info.mjs && tsc --noEmit && node scripts/clean-build.mjs && vite build && node scripts/build-relay.mjs && npm run server:build",
+    "verify:fast": "node scripts/verify.mjs fast",
+    "verify": "node scripts/verify.mjs full",
+    "release:prepare": "npm run build",
+    "runtime:fetch": "node scripts/fetch-runtimes.mjs",
+    "package:desktop": "node scripts/package-desktop.mjs",
+    "verify:standard": "node scripts/verify.mjs standard"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",
@@ -41,5 +50,6 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vite": "^7.1.7"
-  }
+  },
+  "packageManager": "npm@11.9.0"
 }
