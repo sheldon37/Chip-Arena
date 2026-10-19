@@ -341,6 +341,9 @@ namespace ChipArena.UnityConversion
                 ["boss"]=("M12 3L21 19H3Z M9 13L12 10L15 13L12 16Z",new float[]{12,3,21,19,3,19,12,13}),
                 ["sandbox"]=("M10 3V9L5 19H19L14 9V3M7 15H17",new float[]{10,3,14,3,5,19,19,19,10,9,14,9}),
                 ["catalogue"]=("M12 6V20M12 6L4 4V18L12 20L20 18V4Z",new float[]{4,4,20,4,4,18,20,18,12,6,12,20}),
+                // MODS (the chip packs, 2026-10-19): a chip with its pins and an inset die, its own glyph instead of the catalogue's
+                // book.
+                ["mods"]=("M7 7H17V17H7Z M10 3V7M14 3V7M10 17V21M14 17V21M3 10H7M3 14H7M17 10H21M17 14H21 M10 10H14V14H10Z",new float[]{10,3,14,3,10,21,14,21,3,10,3,14,21,10,21,14,12,12}),
                 ["quit"]=("M10 4H4V20H10M9 12H20M16 8L20 12L16 16",new float[]{4,4,4,20,20,12,16,8,16,16}),
                 // The Expeditions screen's modes (NativeExpeditionsMenu.cs): the full run's route and Wave Defense's waves.
                 ["route"]=("M4 19L9 12L14 15L20 5M14 15V20",new float[]{4,19,9,12,14,15,20,5,14,20}),
@@ -415,7 +418,7 @@ namespace ChipArena.UnityConversion
         // Keys 1-5 open the five numbered entries.
         // The home entries in order (owner 2026-10-15: "Rename Boss Test on main menu to "Start Expedition" - Place this as
         // top item on menu."): the PvE entry first, then the versus rooms; the 1-5 keys follow the order.
-        private static readonly (string,string,string,MenuScreen)[] HomeItems={("boss","START EXPEDITION","01",MenuScreen.Boss),("play","PLAY VS BOTS","02",MenuScreen.Play),("create","CREATE ROOM","03",MenuScreen.Create),("join","JOIN ROOM","04",MenuScreen.Join),("catalogue","MODS","05",MenuScreen.Mods)};
+        private static readonly (string,string,string,MenuScreen)[] HomeItems={("boss","START EXPEDITION","01",MenuScreen.Boss),("play","PLAY VS BOTS","02",MenuScreen.Play),("create","CREATE ROOM","03",MenuScreen.Create),("join","JOIN ROOM","04",MenuScreen.Join),("mods","MODS","05",MenuScreen.Mods)};
         private void HomeKeys()
         {
             var e=Event.current;if(e.type!=EventType.KeyDown||GUIUtility.keyboardControl!=0||updateOpen)return;

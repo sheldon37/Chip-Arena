@@ -178,6 +178,7 @@ namespace ChipArena.UnityConversion
                 case "preview-ironworks":IronworksPreviewStep();break;
                 case "preview-station-boss":StationBossPreviewToggle();break;
                 case "preview-ironworks-boss":IronworksBossPreviewToggle();break;
+                case "preview-rounds-fx":RoundsPreviewToggle();break;
                 case "preview-door-lock":NativeLaserDoorPreview.On=!NativeLaserDoorPreview.On;DevSay(NativeLaserDoorPreview.On?"Instance exit door preview · on (presentation only; the laser door cycles lock, sealed, unlock and open; the exit's collider is unchanged)":"Instance exit door preview · off",false);break;
                 case "preview-account-xp":AccountXpPreviewToggle();break;
                 case "preview-zombie-gore":ZombieGorePreviewToggle();break;
@@ -218,7 +219,7 @@ namespace ChipArena.UnityConversion
             if(devLink.Status!=devLinkSeen){devLinkSeen=devLink.Status;if(devLinkSeen.Length>0)DevSay(devLinkSeen,devLink.StatusBad);}
             if(NativeDevGate.Indicator(devCtx))DevIndicator();
             if(devGraphOn)DevGraphPanel(W);if(devLogOn)DevLogPanel(W,Hh);if(devFly.On)DevFlyTag(W);ExpeditionHubPreviewHud(W);
-            IronworksPreviewHud(W);StationBossPreviewHud(W,Hh);IronworksBossPreviewHud(W,Hh);AccountXpPreviewHud(W,Hh);
+            IronworksPreviewHud(W);StationBossPreviewHud(W,Hh);IronworksBossPreviewHud(W,Hh);AccountXpPreviewHud(W,Hh);RoundsPreviewHud(W);
             if(devOpen)DevPanel(W,Hh);
         }
         private static Vector2 DevPointer(){var m=GUI.matrix;GUI.matrix=Matrix4x4.identity;var p=Event.current.mousePosition;GUI.matrix=m;return p/Mathf.Max(.01f,U.S);}
@@ -674,6 +675,7 @@ namespace ChipArena.UnityConversion
             y=StationBossPreviewPanel(x,y,w);
             y=IronworksPreviewPanel(x,y,w);
             y=IronworksBossPreviewPanel(x,y,w);
+            y=RoundsPreviewPanel(x,y,w);
             y=DevHead(x,y,w,"INSTANCE EXIT DOOR (DEV PREVIEW)");DevToggleAct(new Rect(x,y,w,32),"preview-door-lock",NativeLaserDoorPreview.On);y+=38;
             y=DevNote(x,y,w,"In an instance (or an instance map in the sandbox): the exit's laser door locks, holds sealed, unlocks and stands open on a 7 s cycle. Presentation only: the closure and its collider stay the director's.",C.Muted());
             y=DevHead(x,y,w,"EVENT LOG");DevToggleAct(new Rect(x,y,w,32),"log",devLogOn);y+=40;

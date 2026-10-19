@@ -30,9 +30,9 @@ namespace ChipArena.UnityConversion
         //  3. Optional: the player's retry of a failed award whose retry is "manual" (called with its completionId). Null: none. e.g.
         //       internal Action<string> AccountXpRetryOf()=>accountXpFeed!=null?accountXpFeed.Retry:null;
         // ================================================================================================================
-        internal AccountXpAward AccountXpAwardOf(AccountXpSurface surface)=>null;
-        internal AccountXpSummary AccountXpSummaryOf()=>null;
-        internal Action<string> AccountXpRetryOf()=>null;
+        internal AccountXpAward AccountXpAwardOf(AccountXpSurface surface)=>CurrentXpAward(surface);
+        internal AccountXpSummary AccountXpSummaryOf()=>account?.XpSummary;
+        internal Action<string> AccountXpRetryOf()=>account!=null?account.RetryXp:(Action<string>)null;
 
         private readonly NativeAccountXpPanel accountXp=new NativeAccountXpPanel();private readonly NativeAccountXpBadge accountXpBadge=new NativeAccountXpBadge();
         private NativeAccountXpSeen accountXpSeen;private int accountXpFrame=-1;private AccountXpSurface accountXpSurface;private bool accountXpShown;

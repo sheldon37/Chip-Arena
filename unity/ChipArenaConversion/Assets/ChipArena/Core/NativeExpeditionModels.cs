@@ -9,6 +9,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class ExpeditionMember
     {
         public string account, weapon, area;
+        public AccountXpCompletion xpCompletion;
         public bool transferring;
         public bool connected, alive=true, safe=true, extracted, choosing;
         public double choosingUntil; // Final Install time + wrist plant duration; cleared on lifecycle transitions.
@@ -18,7 +19,7 @@ namespace ChipArena.UnityConversion
         public ChipCount[] chips=Array.Empty<ChipCount>();
         public ExpeditionMember Copy()
         {
-            var p=(ExpeditionMember)MemberwiseClone();p.perks=(string[])perks.Clone();
+            var p=(ExpeditionMember)MemberwiseClone();p.xpCompletion=xpCompletion?.Copy();p.perks=(string[])perks.Clone();
             p.chips=chips.Select(c=>new ChipCount{id=c.id,count=c.count}).ToArray();return p;
         }
     }
@@ -46,7 +47,7 @@ namespace ChipArena.UnityConversion
         public uint seed;public string run, world, host, area;
         public ExpeditionPhase phase=ExpeditionPhase.Town;
         public double elapsed, exitAt=-1, extractAt=-1;
-        public bool loading;
+        public bool loading,xpDisabled;
         public ExpeditionWorldAnchor[] anchors=Array.Empty<ExpeditionWorldAnchor>();
         public ExpeditionChestOffer[] chests=Array.Empty<ExpeditionChestOffer>();
         public ExpeditionMember[] members=Array.Empty<ExpeditionMember>();
