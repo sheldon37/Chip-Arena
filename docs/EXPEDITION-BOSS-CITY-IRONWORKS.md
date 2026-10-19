@@ -895,3 +895,24 @@ name; the arrival's beats from the map; the cue keys as section 9's table; prese
 
 **Not done:** nothing has run in the Unity Editor, on Windows or with two clients; the audio clips are the owner's; Astra's
 record and the binding.
+
+### 14.1 Effects realism (Claude, 2026-10-19)
+
+Owner: "Also, rework the Ironworks and Metro boss visual effects to look more realistic (When Ironworks "pours" it looks like
+minecraft lava right now. I want it to flow realistically." Branch `claude/boss-vfx-realism`. Presentation only: telegraphs,
+cue times, hazard sizes and positions and the authority bindings are unchanged (`Tests/BossVfxRealismChecks.cs` pins the
+telegraph quads and cue events against a baseline recorded on the code before the pass).
+
+| Effect | Before | After |
+| --- | --- | --- |
+| The pour | ten molten cubes stacked on the arc, landing wherever the arc met the floor | one continuous tube (`Core/NativeMoltenFlow.cs` `Stream`) on a ballistic arc from the lip onto the authority's pool point (the rule's point in the preview); it narrows as the metal speeds up, necks in a varicose wave carried down at the flow's speed, sways, has a rounded front while it first falls and a falling tail once it stops (on the arc it left on); a splash crown, spatter droplets, sparks, fumes lit from below, a flickering light where it lands |
+| Pools (pour, blow, deslag, charge) | a square molten slab `radius` wide | a smooth puddle (`Pool`) with a flat top and a rounded meniscus, its edge pulled inward only (lobes, splash fingers: the farthest edge exactly on the radius, the nearest within 6%), full radius from the hit to `until` (the visible hot area is the damaging area) with a hot rim on the boundary; liquid, then crusting from the edge into dark plates split by glowing fissures, bubbles that swell and pop; it solidifies dark within .35 s after `until` and sinks away by 1.4 s; a floor glow, heat shimmer, fumes and spits of sparks; a splash and slag shards on landing |
+| Rain and slag in flight | a streak and a sprite | a stretched glowing droplet with a short trail; a knobbly crusted slag lump with glowing cracks on a smoke trail |
+| Spill strip, pit cracks, pit welling | rows of molten boxes | flowing strips (`Ribbon`) and a rounded square pool |
+| Sparks, smoke, steam, dust, fire | flat sprites re-placed each frame or re-born on a window | `Core/NativeBossVfx.cs` particles through the shared effects renderer: sparks on gravity and drag with one floor bounce, motion-stretched and cooling white to red; buoyant soft lit smoke and steam that slows, spreads and drifts (left behind as the boss walks); soft fire puffs for the blow's column; lit debris (concrete chips, glassy slag shards) |
+
+The molten mesh draws with `Resources/NativeMoltenFlow.shader` (new; NativeMolten's heat ramp and lighting, flow noise advected
+at the metal's own speed, crust plates, bubbles, a hot rim); the particles with the shared NativeVfxDraw (one additive public
+`Fireball` wrapper added). Costs: the molten mesh is one draw (it replaces the instanced cube draw), the particles two (a
+NativeVfxDraw of the boss's own); counts scale with the effects quality and the low tier (the low tier's molten mesh about a
+third of the vertices), never the telegraphs. Zero allocation per frame.

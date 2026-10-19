@@ -34,8 +34,8 @@ namespace ChipArena.UnityConversion
             Frame(1.5f);Check(fx.Telegraphs>0,"late guest receives authority landing warning without action history");
             var cues=new IronworksBossCue[NativeIronworksBossCues.QueueSize];
             Check(NativeIronworksBossCues.Collect(v,rig,fx,1.9f,2.1f,float.NaN,float.NaN,float.NaN,float.NaN,cues)==1,"authority landing cue survives action change");
-            Frame(3);Check(fx.Molten.Take(fx.MoltenCount).Any(m=>Math.Abs(m.At.X+25)<.001f&&Math.Abs(m.At.Z-3)<.001f&&Math.Abs(m.Half.X-1.4f)<.001f),"surviving pool uses exact authority target and radius after action ends");
-            Frame(9);Check(!fx.Molten.Take(fx.MoltenCount).Any(m=>Math.Abs(m.At.X+25)<.001f&&Math.Abs(m.At.Z-3)<.001f),"expired authority pool disappears");
+            Frame(3);Check(fx.Melt.Pools.Take(fx.Melt.PoolCount).Any(m=>m.Id==7&&Math.Abs(m.X+25)<.001f&&Math.Abs(m.Z-3)<.001f&&Math.Abs(m.Radius-1.4f)<.001f&&Math.Abs(m.EdgeMax-1.4f)<.001f),"surviving pool uses exact authority target and radius after action ends");
+            Frame(9);Check(!fx.Melt.Pools.Take(fx.Melt.PoolCount).Any(m=>m.Id==7&&m.Heat>.02f),"expired authority pool is no longer hot");Frame(8+NativeIronworksBossFx.SolidifySeconds+.05f);Check(!fx.Melt.Pools.Take(fx.Melt.PoolCount).Any(m=>m.Id==7),"expired authority pool disappears once solidified");
         }
 
         // ---- normal play: the view is None, and None draws, lights, sounds and changes nothing ----
@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
             {
                 float t=f/60f;rig.Update(t,1/60f,none,IronworksBossGround.Hall,Vector3.Zero,false,true,Target,double.NaN,double.NaN);fx.Build(rig,none,t,-26,3,-6,1,0,0,0,1,0,1,false);
                 NativeIronworksBossCues.Loops(none,rig,t,level);
-                Check(!rig.Visible&&fx.Quads.Count==0&&fx.LightCount==0&&fx.MoltenCount==0&&fx.HeatCount==0&&NativeIronworksBossCues.Collect(none,rig,fx,t-1/60f,t,t-1/60f,t,t-1/60f,t,cues)==0&&level.All(x=>x==0),
+                Check(!rig.Visible&&fx.Quads.Count==0&&fx.LightCount==0&&fx.Melt.VertexCount==0&&fx.Vfx.Count==0&&fx.HeatCount==0&&NativeIronworksBossCues.Collect(none,rig,fx,t-1/60f,t,t-1/60f,t,t-1/60f,t,cues)==0&&level.All(x=>x==0),
                     "None draws no boss, no effect, no light, no heat haze, no cue and no loop");
             }
             var st=NativeIronworksBossStage.Evaluate(none,50,float.NaN,rig);
