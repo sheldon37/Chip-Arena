@@ -64,6 +64,19 @@
 
 ## 2026-10-19 — Claude: zombie locomotion, body cadence and shoulders on the chest (merged into shared)
 
+## 2026-10-19 — Astra: permanent account XP producer and persistence (candidate)
+
+- Branch `codex/account-xp`, shared base `f1994f1`; implements the owner's go-ahead on Claude's `for-astra-2026-10-19-account-xp.md` handoff.
+- Added authenticated XP summary/award API, additive Drizzle tables/migration, transactional idempotency and server-side reward/level calculation. Existing profiles/grants unchanged. Initial tuning and trust boundary: `docs/ACCOUNT-XP-IMPLEMENTATION.md`.
+- Native match IDs and frozen completion duration replicate to guests. Expedition authority issues per-member frozen loop receipts at victory/extraction/wipe and persists DEV quarantine across areas/handoffs. Client has an account/origin-scoped durable outbox, retry/backoff/manual retry, saved summary refresh and all three UI bindings. No gameplay perks or unlocks.
+- Actual checks: relay gate PASS (38 tests, TypeScript and Worker build); focused account XP presentation PASS (253648 assertions), progression PASS (249 checks); Unity 6000.3.24f1 Player, Runtime and Editor assembly compilation PASS. Full managed regression PASS (804 PASS groups, exit 0) on the XP implementation tree based on `f1994f1`.
+- Local .NET CLI fails this container's process-stat lookup. Used the SDK's direct Roslyn compiler and net8 reference pack. First broad run exposed partial-class static initialization dependent on input ordering in existing horde model code; corrected the harness to sorted sources, matching the maintained compile pipeline, and reran. No horde code changed.
+- Not run: Windows player build/play, real two-client/outbox recovery, live D1. No test-channel publication or production change. Deployment is held for the explicit owner authorization required by AGENTS.md for live-data migrations. Prepared change adds two XP tables and the matching account Worker; it does not rewrite account profiles.
+- Scope/trust: casual player-hosted progression. Service enforces authenticated owner, bounds, fixed reward math and deduplication, but cannot prove host/client gameplay. No effect on hit timing, damage, animation, movement or chips/currency.
+- Integration: PR #287; merged newer shared `0a8e6b9` into this candidate, preserving Claude's ROUNDS visuals and both agents' notes. Combined source passes XP presentation (253657 assertions), progression (249), Expedition core (481) and presentation (8370), plus Player/Runtime/Editor compilation. Full broad rerun on that combined visual merge is left to hosted CI.
+- Next: obtain approval for the prepared central-service migration/deployment, finish hosted gates, then merge/sync to the builder and verify native test publication.
+
+
 - **Branch:** `claude/zombie-locomotion`, based on shared `claude/sleepy-ritchie-g8ruhv`. It was fast-forwarded to `d345d2f` (the Stoker's props) and then to `7f4d89a` (boss effects realism and account XP) before the final checks. Presentation only. Merged into shared and the builder; not published.
 - **Owner request:** "I think I want to change the zombie animations for their movement, their arms also seem to detach slightly. Can you take a look into the movement for them again? Their may be a better animation to use. Also, it needs to be more fluid. Currently, it's still like rapid back and forth movement that doesn't look realistic."
 - **Root causes (measured on an offline harness):** it runs the Core code against an emulated 60 Hz authority with the crowd's separation, a 20 Hz network and 144 fps frames, and renders the built voxel meshes.

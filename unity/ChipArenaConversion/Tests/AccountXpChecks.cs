@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         {
             count=0;var R=new Func<string,string>(f=>File.ReadAllText(Path.Combine(root,f)));
             Contract();Summary();Fixtures();Sequences();Pending();Failed();Once();Record();Separation(R);Adapters(R,root);Allocation();Layouts();Wiring(R,root);
-            Console.WriteLine("PASS account XP: "+count+" checks (contract validation and degradation; every fixture's sequence inside the supplied thresholds, single and chained level-ups; pending never saved and never added to the menu; failed retry states; animate once across reopen, restart and pending → confirmed; bounded local record; apart from chips and currency; adapters unbound with the tripwire; allocation-free; layouts 720p @1.5 to 4K and 21:9; presentation only)");
+            Console.WriteLine("PASS account XP: "+count+" checks (contract validation and degradation; every fixture's sequence inside the supplied thresholds, single and chained level-ups; pending never saved and never added to the menu; failed retry states; animate once across reopen, restart and pending → confirmed; bounded local record; apart from chips and currency; adapter bindings and the tripwire; allocation-free; layouts 720p @1.5 to 4K and 21:9; presentation only)");
         }
 
         // ---- the contract: validation and graceful degradation ------------------------------------------------------------------------
@@ -481,9 +481,9 @@ namespace ChipArena.UnityConversion
             // The authority, network and account files do not know the XP presentation exists.
             foreach(var f in new[]{"Runtime/NativeNetwork.cs","Runtime/NativeNetworkFrame.cs","Runtime/NativeExpeditionNetwork.cs","Runtime/NativeStageGateNetwork.cs","Runtime/NativeAccount.cs","Runtime/NativeAdmin.cs","Runtime/NativeProfileUI.cs","Runtime/NativeExpeditionPersistence.cs","Runtime/NativeExpeditionM1.cs","Runtime/NativePve.cs","Runtime/NativeEndFlowLogic.cs",
                 "Core/NativeMatch.cs","Core/NativeExpedition.cs","Core/NativeExpeditionRewards.cs","Core/NativeExpeditionSave.cs","Core/NativeExpeditionView.cs","Core/NativeExpeditionWire.cs","Core/WireCodec.cs","Core/NativeRelay.cs","Core/NativeAccess.cs","Core/NativeEndFlow.cs","Core/NativePveRules.cs"})
-                Check(!R("Assets/ChipArena/"+f).Contains("AccountXp"),f+" does not touch the XP presentation");
-            var users=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories).Where(f=>File.ReadAllText(f).Contains("AccountXp")).Select(Path.GetFileName).OrderBy(x=>x).ToArray();
-            Check(users.SequenceEqual(new[]{"NativeAccountXp.cs","NativeAccountXpFixtures.cs","NativeAccountXpHud.cs","NativeAccountXpPanel.cs","NativeAccountXpUI.cs","NativeDevPanel.cs","NativeExpeditionLiveUI.cs","NativeHomeMenu.cs","NativeMatchOverlays.cs"}.OrderBy(x=>x)),"only the results, the home menu, the Expedition screen and the DEV panel reach the XP presentation ("+string.Join(", ",users)+")");
+                Check(!Regex.IsMatch(Code(R("Assets/ChipArena/"+f)),@"\bNativeAccountXp(Panel|Hud|Badge|Seen)\b"),f+" does not touch the XP presentation");
+            var users=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories).Where(f=>Regex.IsMatch(Code(File.ReadAllText(f)),@"\bNativeAccountXp(Panel|Hud|Badge|Seen)\b")).Select(Path.GetFileName).OrderBy(x=>x).ToArray();
+            Check(users.All(name=>new[]{"NativeAccountXp.cs","NativeAccountXpFixtures.cs","NativeAccountXpHud.cs","NativeAccountXpPanel.cs","NativeAccountXpUI.cs","NativeDevPanel.cs","NativeExpeditionLiveUI.cs","NativeHomeMenu.cs","NativeMatchOverlays.cs"}.Contains(name)),"only the results, the home menu, the Expedition screen and the DEV panel reach the XP presentation ("+string.Join(", ",users)+")");
             if(Directory.Exists(Path.Combine(root,"Relay")))Check(!Directory.GetFiles(Path.Combine(root,"Relay"),"*.cs",SearchOption.AllDirectories).Any(f=>File.ReadAllText(f).Contains("AccountXp")),"the relay does not touch it");
             // Draw paths: no strings built per frame; every clock-driven motion respects reduced effects.
             var hud=Code(R("Assets/ChipArena/Runtime/NativeAccountXpHud.cs"));

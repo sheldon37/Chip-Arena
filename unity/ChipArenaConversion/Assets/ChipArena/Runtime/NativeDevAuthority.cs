@@ -59,6 +59,7 @@ namespace ChipArena.UnityConversion
             {if((ClampMap(point)-point).sqrMagnitude>.01f||point.y<(Map.bounds?.killY??-6)+1||point.y>(Map.bounds?.ceiling??100)-1)return "Destination is outside arena bounds.";}
             // Quarantine this account before mutations; even a partially failed action cannot earn receipts.
             foreach(var seat in Match.Seats.Where(s=>s==sender||!string.IsNullOrEmpty(sender.access.AccountId)&&s.access.AccountId==sender.access.AccountId))seat.devCommandsRan=true;
+            Expedition?.Session.Run.DisableAccountXp();
             Debug.Log("DEV_ACTION seat="+sender.id+" transaction="+c.transaction+" action="+c.action+" target="+target.Seat.id);
             switch(c.action)
             {

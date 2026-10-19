@@ -28,6 +28,15 @@ namespace ChipArena.UnityConversion
         private bool Live(ExpeditionMember p)=>p!=null&&p.connected&&p.alive&&!p.extracted&&InArea(p)&&!p.transferring;
         private string[] Living()=>s.members.Where(Live).Select(p=>p.account).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
         private ExpeditionInstance Current=>s.instances.FirstOrDefault(i=>i.id==Area);
+        public void DisableAccountXp(){s.xpDisabled=true;Changed();}
+        private void CompleteAccountXp(ExpeditionMember p,bool victory)
+        {
+            string id="exp_"+s.run+"_"+s.loop;
+            if(p==null||s.xpDisabled||p.extracted||!p.connected||p.xpCompletion?.completionId==id)return;
+            var completion=new AccountXpCompletion{completionId=id,mode="expedition",won=victory,seconds=(int)Math.Min(604800,s.elapsed),cleared=Math.Min(3,s.instances.Count(i=>i.cleared))};
+            // Freeze even ineligible short completions so waiting on a result cannot make them eligible.
+            p.xpCompletion=completion;
+        }
         private void Changed(){s.revision=checked(s.revision+1);}
         private static T[] Add<T>(T[] list,T value)=>list.Concat(new[]{value}).ToArray();
         private static bool Key(string id)=>ExpeditionValidation.Id(id);
@@ -92,7 +101,7 @@ namespace ChipArena.UnityConversion
         public bool FinishFinal(int drops=-1)
         {
             if(!Mutable||Phase!=ExpeditionPhase.FinalBoss||!IssueBossRewards(EventKey("final:boss"),drops))return false;
-            Phase=ExpeditionPhase.Victory;ResetVotes();Changed();return true;
+            Phase=ExpeditionPhase.Victory;foreach(var p in s.members)CompleteAccountXp(p,true);ResetVotes();Changed();return true;
         }
         public bool NextLoop()
         {
@@ -152,13 +161,13 @@ namespace ChipArena.UnityConversion
         }
         private void ExtractMember(string account)
         {
-            var p=Member(account);p.extracted=true;p.connected=p.alive=p.safe=p.choosing=false;p.choosingUntil=0;p.carriedBy=null;ReleaseCarried(account);
+            var p=Member(account);CompleteAccountXp(p,false);p.extracted=true;p.connected=p.alive=p.safe=p.choosing=false;p.choosingUntil=0;p.carriedBy=null;ReleaseCarried(account);
         }
         private void ReleaseCarried(string account){foreach(var p in s.members)if(p.carriedBy==account)p.carriedBy=null;}
         public bool Defeat(string account)
         {
             if(!Mutable||!Live(Member(account)))return false;var p=Member(account);p.alive=false;p.safe=false;p.choosing=false;p.choosingUntil=0;
-            ReleaseCarried(account);RefreshVotes();Changed();return true;
+            ReleaseCarried(account);if(!s.members.Any(m=>m.connected&&m.alive&&!m.extracted))foreach(var m in s.members)CompleteAccountXp(m,false);RefreshVotes();Changed();return true;
         }
         public bool Absorb(string carrier,string victim)
         {

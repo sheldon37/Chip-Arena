@@ -5,7 +5,7 @@ const mode=process.argv[2];
 if(!['fast','full','standard','relay','relay-full'].includes(mode))throw Error('Use fast, standard, full, relay, or relay-full.');
 // The relay serves the Unity client's accounts (/api/accounts/), room directory (/api/directory/) and rooms.
 // CI runs only these; the frozen Electron game's own suites stay available locally (standard/full).
-const relayTests=['tests/accounts.test.ts','tests/directory.test.ts','tests/local-host-invite.test.ts','tests/party.test.ts','tests/relay.test.ts'];
+const relayTests=['tests/account-xp.test.ts','tests/accounts.test.ts','tests/directory.test.ts','tests/local-host-invite.test.ts','tests/party.test.ts','tests/relay.test.ts'];
 mkdirSync('test-results',{recursive:true});
 const npm=process.env.npm_execpath;
 if(!npm)throw Error('Run this wrapper through npm.');
