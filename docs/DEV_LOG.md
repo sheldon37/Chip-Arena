@@ -1,3 +1,12 @@
+## 2026-10-20 — Astra: reduce allocation spikes from stacked chip effects
+
+- Branch/base: `codex/unity-chip-effect-perf`, shared/builder `ac94d722`. Owner requested fixes and test update publication.
+- Replace eight hot `ToArray()` iteration sites in projectiles, chip explosions, persistent fields and vampire dash with pooled snapshots. Each foreach rents its own buffer; recursive blasts cannot overwrite an outer iteration. Preserve snapshot order/membership and next-tick fragment processing. Dispose clears object references and returns buffers on normal, early and exceptional exits.
+- Skip the entire enemy snapshot/scan for non-damaging or healing fields, where every iteration previously did nothing. No damage, cooldown, collision, projectile limits, RNG, network schema or visual changes.
+- Focused managed checks PASS: mutations, deferred spawns, nested same-type effects, empty input, oversized pool buffers, early exits and exception cleanup. Warm 1,000 x 300-object snapshots: original 2,424,000 allocated bytes; pooled exercise (including nested early exits) 0 bytes. This is an allocation microbenchmark, not an FPS or Unity/Mono claim.
+- Full managed regression and pinned Unity Player/Runtime/Editor compilation are running; hosted/native builder gates and publication pending. Existing Windows combat gates remain required. No Windows GPU or multiplayer playtest performed here.
+- Claude follow-up: renderer already batches dynamic meshes; profile mesh rebuild/sort and transparency under dense overlapping impacts before changing VFX. This patch addresses simulation allocation only; remaining whole-world scans and projectile membership searches are unchanged.
+
 ## 2026-10-20 — Astra: PvP killcams after an Expedition
 
 - **Branch/base:** `codex/pvp-killcam-mode`, shared `f99b56f` (preserves Claude's wound/lighting fixes and #290).
