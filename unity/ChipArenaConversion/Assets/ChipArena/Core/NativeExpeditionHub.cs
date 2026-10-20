@@ -22,8 +22,10 @@ namespace ChipArena.UnityConversion
     /// the town spawn records (`e`) whose exits lie in it, and the walking distance (m) from the nearest gate to its nearest and
     /// farthest spawn.</summary>
     public sealed class ExpeditionHubZone {public string Id,Ring;public float Near,Far;public ExpeditionVolume Volume;public int[] Spawns=Array.Empty<int>();}
-    /// <summary>A route from a gate to an instance door's approach (or a reserved doorway's), walked on the floor.</summary>
-    public sealed class ExpeditionHubRoute {public string To,Gate;public bool Reserved;public float Path,Straight,Run,Sprint,X,Z,Yaw;public ExpeditionPoint Approach;}
+    /// <summary>A route from a gate to an instance door's approach (or a reserved doorway's), walked on the floor. `Via`: its
+    /// turning points down the streets (exp-layout-7, optional; empty means the straight line), the gate and the approach not
+    /// repeated: the presentation's markers and signs follow them.</summary>
+    public sealed class ExpeditionHubRoute {public string To,Gate;public bool Reserved;public float Path,Straight,Run,Sprint,X,Z,Yaw;public ExpeditionPoint Approach;public ExpeditionPoint[] Via=Array.Empty<ExpeditionPoint>();}
     /// <summary>A fence section block and its kind and gate.</summary>
     public sealed class ExpeditionHubFence {public string Block,Kind,Side,Gate;}
     /// <summary>A wilds district (darker, foggier; the far ring).</summary>
@@ -80,8 +82,9 @@ namespace ChipArena.UnityConversion
                 l.Zones=zones.ToArray();
                 var wilds=new List<ExpeditionHubWilds>();foreach(var wx in A(h,"wilds")){var w=O(wx);wilds.Add(new ExpeditionHubWilds{Id=S(w,"id"),Side=S(w,"side"),Volume=V(w["volume"])});}l.Wilds=wilds.ToArray();
                 var routes=new List<ExpeditionHubRoute>();
-                foreach(var rx in A(h,"routes")){var r=O(rx);var ap=P(r["approach"]);routes.Add(new ExpeditionHubRoute{To=S(r,"to"),Gate=S(r,"gate"),Path=F(r,"path"),Straight=F(r,"straight"),Run=F(r,"run"),Sprint=F(r,"sprint"),Approach=ap,X=ap.x,Z=ap.z});}
-                foreach(var rx in A(h,"reserved")){var r=O(rx);routes.Add(new ExpeditionHubRoute{To=S(r,"building"),Gate=S(r,"gate"),Reserved=true,Path=F(r,"path"),Straight=F(r,"straight"),Run=F(r,"run"),Sprint=F(r,"sprint"),Approach=P(r["approach"]),X=F(r,"x"),Z=F(r,"z"),Yaw=F(r,"yaw")});}
+                ExpeditionPoint[] Via(Dictionary<string,object> r){var via=new List<ExpeditionPoint>();foreach(var p in A(r,"via"))via.Add(P(p));return via.ToArray();}
+                foreach(var rx in A(h,"routes")){var r=O(rx);var ap=P(r["approach"]);routes.Add(new ExpeditionHubRoute{To=S(r,"to"),Gate=S(r,"gate"),Path=F(r,"path"),Straight=F(r,"straight"),Run=F(r,"run"),Sprint=F(r,"sprint"),Approach=ap,X=ap.x,Z=ap.z,Via=Via(r)});}
+                foreach(var rx in A(h,"reserved")){var r=O(rx);routes.Add(new ExpeditionHubRoute{To=S(r,"building"),Gate=S(r,"gate"),Reserved=true,Path=F(r,"path"),Straight=F(r,"straight"),Run=F(r,"run"),Sprint=F(r,"sprint"),Approach=P(r["approach"]),X=F(r,"x"),Z=F(r,"z"),Yaw=F(r,"yaw"),Via=Via(r)});}
                 l.Routes=routes.ToArray();return l;
             }
             return null;

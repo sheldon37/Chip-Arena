@@ -117,7 +117,7 @@ namespace ChipArena.UnityConversion
             var layout=NativeExpeditionLayout.Parse(composed.ToJsonString());var area=layout.Area("exp-transit");
             Check(area!=null&&area.role=="instance"&&area.map=="expedition-transit"&&area.spawnSource==null&&area.doors.Single().entries.Length==8&&area.bossPoints.Length==3,"Parse reads the station: an instance on its own map, its own spawns, one exit with 8 entries, 3 boss points");
             var hub=layout.Area("exp-city").doors.Single(d=>d.anchor=="exp-city:door:exp-transit");var res=ExpeditionHubLayout.Parse(liveText,"exp-city").Routes.Single(r=>r.To=="exp-transit");
-            Check(hub.returns.Length==8&&hub.join==null&&Math.Abs(res.X)<1e-4&&Math.Abs(res.Z+84)<1e-4&&layout.Area("exp-city").anchors.Single(a=>a.id==hub.anchor).building=="exp-transit","the hub door at the reserved doorway (0, -84) with 8 returns, building exp-transit");
+            Check(hub.returns.Length==8&&hub.join==null&&Math.Abs(res.X)<1e-4&&Math.Abs(res.Z+108)<1e-4&&layout.Area("exp-city").anchors.Single(a=>a.id==hub.anchor).building=="exp-transit","the hub door at the reserved doorway (0, -108; -84 before the city grew) with 8 returns, building exp-transit");
             var grids=new Dictionary<float,Grid>();Grid G(float r,float h){if(!grids.TryGetValue(r,out var g))grids[r]=g=new Grid(content.Map("expedition-transit"),r,h);return g;}
             bool Probe(string id,V3 p,float r,float h)=>ExpeditionLayoutChecks.Supported(content.Map(id),p,r,h);
             bool Reach(string id,V3 a,V3 b,float r,float h){if(id!="expedition-transit")return townReach(id,a,b,r,h);var g=G(r,h);int ca=g.At(a),cb=g.At(b);return ca>=0&&ca==cb;}

@@ -11,15 +11,17 @@ namespace ChipArena.UnityConversion
         internal static void Run(string root)
         {
             count=0;var layout=NativeExpeditionLayout.Parse(File.ReadAllText(Path.Combine(root,ExpeditionJoinDraftChecks.DraftPath)));
-            var rules=new ExpeditionJoinRules(layout);var a=new ExpeditionJoinMember{Account="a",Area=layout.world,Feet=new V3(79,0,0),Alive=true,Connected=true};
-            var b=new ExpeditionJoinMember{Account="b",Area=layout.world,Feet=new V3(90,0,0),Alive=true,Connected=true};
+            // Feet placed from the circle's centre (it moves with the town: x 79 until exp-layout-7, x 103 since).
+            var centre=layout.Area(layout.world).doors.Single().join;V3 J(float dx,float y)=>new V3(centre.x+dx,y,centre.z);
+            var rules=new ExpeditionJoinRules(layout);var a=new ExpeditionJoinMember{Account="a",Area=layout.world,Feet=J(0,0),Alive=true,Connected=true};
+            var b=new ExpeditionJoinMember{Account="b",Area=layout.world,Feet=J(11,0),Alive=true,Connected=true};
             string[] moved=null;int calls=0;
             bool Transfer(string door,string area,string[] cohort){calls++;moved=cohort;return true;}
             void Step(double t)=>rules.Step(t,new[]{a,b},_=>true,Transfer);
             Check(rules.Views.Single().h==4&&rules.Views.Single().deployedAt==-1&&rules.Views.Single().deployedAccounts.Length==0,"actual counted height and no initial deploy");
             Step(0);Check(rules.Views.Single().joinStartedAt==0&&rules.AtJoin("a")&&!rules.AtJoin("b"),"one starts; outside stays");
             Step(2.99);Check(calls==0,"full three seconds required");
-            a.Feet=new V3(90,0,0);b.Feet=new V3(79,2.84f,0);Step(3);
+            a.Feet=J(11,0);b.Feet=J(0,2.84f);Step(3);
             Check(calls==1&&moved.SequenceEqual(new[]{"b"}),"expiry captures current airborne member only");
             Check(!rules.AtJoin("b")&&rules.Views.Single().joinStartedAt==-1,"accepted transfer resets ring");
             var deploy=rules.Views.Single();
@@ -29,14 +31,14 @@ namespace ChipArena.UnityConversion
             var wire=JsonSerializer.Deserialize<ExpeditionJoinView>(JsonSerializer.Serialize(rules.Views.Single(),codec),codec);
             Check(wire.h==4&&wire.deployedAt==3&&wire.deployedAccounts.SequenceEqual(new[]{"b"})&&wire.closedReason==ExpeditionJoinClosedReason.Open,"deploy data survives field wire codec");
             Step(3);Check(calls==1,"same host tick cannot deploy twice");
-            rules.Reset();b.Feet=new V3(90,0,0);a.Feet=new V3(79,0,0);Step(4);a.Feet=new V3(90,0,0);Step(5);
-            Check(rules.Views.Single().joinStartedAt==-1,"empty cancels");a.Feet=new V3(79,0,0);Step(6);Step(8.99);Check(calls==1,"re-entry gets full countdown");Step(9);Check(calls==2,"re-entry expires");
-            rules.Reset();a.Feet=new V3(81.5f,-.85f,0);Step(10);Check(rules.AtJoin("a"),"radius and capsule-centre base inclusive");
-            a.Feet=new V3(81.51f,0,0);Step(11);Check(!rules.AtJoin("a"),"outside radius excluded");
-            a.Feet=new V3(79,3.15f,0);Step(12);Check(rules.AtJoin("a"),"top inclusive");
-            a.Feet=new V3(79,3.16f,0);Step(13);Check(!rules.AtJoin("a"),"above top excluded");
-            a.Feet=new V3(79,4.4f,0);Step(14);Check(!rules.AtJoin("a"),"canopy excluded");
-            a.Feet=new V3(79,0,0);a.Loading=true;Step(15);Check(!rules.AtJoin("a"),"loading excluded");a.Loading=false;
+            rules.Reset();b.Feet=J(11,0);a.Feet=J(0,0);Step(4);a.Feet=J(11,0);Step(5);
+            Check(rules.Views.Single().joinStartedAt==-1,"empty cancels");a.Feet=J(0,0);Step(6);Step(8.99);Check(calls==1,"re-entry gets full countdown");Step(9);Check(calls==2,"re-entry expires");
+            rules.Reset();a.Feet=J(2.5f,-.85f);Step(10);Check(rules.AtJoin("a"),"radius and capsule-centre base inclusive");
+            a.Feet=J(2.51f,0);Step(11);Check(!rules.AtJoin("a"),"outside radius excluded");
+            a.Feet=J(0,3.15f);Step(12);Check(rules.AtJoin("a"),"top inclusive");
+            a.Feet=J(0,3.16f);Step(13);Check(!rules.AtJoin("a"),"above top excluded");
+            a.Feet=J(0,4.4f);Step(14);Check(!rules.AtJoin("a"),"canopy excluded");
+            a.Feet=J(0,0);a.Loading=true;Step(15);Check(!rules.AtJoin("a"),"loading excluded");a.Loading=false;
             a.Carrying=true;Step(16);Check(!rules.AtJoin("a"),"carrying excluded");a.Carrying=false;
             a.Choosing=true;Step(17);Check(!rules.AtJoin("a"),"choosing excluded");a.Choosing=false;
             a.Connected=false;Step(18);Check(!rules.AtJoin("a"),"disconnected excluded");a.Connected=true;
@@ -50,9 +52,9 @@ namespace ChipArena.UnityConversion
             var snapshot=rules.Views;snapshot[0].joinInside=42;Check(rules.Views[0].joinInside==1,"view detached");
             bool stale=false;try{rules.Step(5,new[]{a},_=>true,Transfer);}catch(ArgumentException){stale=true;}Check(stale,"backward clock rejected");
             rules.Reset();Check(rules.Views.Single().deployedAt==-1&&rules.Views.Single().deployedAccounts.Length==0,"reset clears deploy record");
-            a.Feet=new V3(79,0,0);Step(0);Step(2.99);a.Feet=new V3(90,0,0);Step(3.01);
+            a.Feet=J(0,0);Step(0);Step(2.99);a.Feet=J(11,0);Step(3.01);
             Check(rules.Views.Single().deployedAt==-1&&rules.Views.Single().joinInside==0,"last-interval step-out after observed deadline is cancellation, not deploy");
-            a.Feet=new V3(79,0,0);rules.Reset();Step(0);
+            a.Feet=J(0,0);rules.Reset();Step(0);
             foreach(var reason in new[]{ExpeditionJoinClosedReason.Cleared,ExpeditionJoinClosedReason.Locked,ExpeditionJoinClosedReason.Reserved})
             {
                 rules.Step((int)reason,new[]{a},_=>reason,Transfer);

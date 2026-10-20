@@ -307,11 +307,12 @@ DROPS = [dict(id=f'{MAP}-drop-{nm}-{t}', a=v(x, 0, za), b=v(x, TB, zb)) for nm, 
          for t, za, zb in (('t1-n', -9.6, -12.0), ('t1-s', -15.4, -13.0), ('t3-n', -41.6, -44.0), ('t3-s', -47.4, -45.0))]
 
 # =====================================================================================================================
-# THE TOWN SIDE (the hub's frame): the door record the town needs at its reserved transit doorway (0, 0, -84), yaw 0 (out of
+# THE TOWN SIDE (the hub's frame): the door record the town needs at its reserved transit doorway (0, 0, -108 since the city grew
+# in exp-layout-7; -84 before), yaw 0 (out of
 # the doorway, north up Station Road), as Ward Zero's: the anchor 0.6 m out, interaction, closure on the boards, approach,
 # eight returns past the canopy. Not live: the live manifest keeps exp-transit in hub.reserved.
-TOWN_DOOR = (0.0, -84.0); TOWN_YAW = 0.0
-TOWN_RETURNS = [pt(x, 0, -84.0 + dz, TOWN_YAW) for dz in (4.4, 6.0) for x in (-3.0, -1.0, 1.0, 3.0)]
+TOWN_DOOR = (0.0, -108.0); TOWN_YAW = 0.0
+TOWN_RETURNS = [pt(x, 0, TOWN_DOOR[1] + dz, TOWN_YAW) for dz in (4.4, 6.0) for x in (-3.0, -1.0, 1.0, 3.0)]
 def town_door():
     fx, fz = forward(TOWN_YAW); cx, cz = TOWN_DOOR
     return dict(anchor=dict(id=f'{TOWN}:door:{AREA}', kind='door', building=AREA, **pt(cx + fx * 0.6, 0, cz + fz * 0.6, TOWN_YAW)),
@@ -654,7 +655,7 @@ def town_checks():
     res = next(r for r in tarea['hub']['reserved'] if r['building'] == AREA)
     out.append(f'live hub record: {AREA} reserved at ({res["x"]:g}, {res["y"]:g}, {res["z"]:g}) yaw {res["yaw"]:g}, {res["path"]:g} m walked from the {res["gate"].split(":")[-1]} gate ({res["run"]:.1f} s running)')
     ok &= (res['x'], res['z'], res['yaw']) == (TOWN_DOOR[0], TOWN_DOOR[1], TOWN_YAW)
-    win = dict(minX=-20.0, maxX=20.0, minZ=-96.0, maxZ=-66.0, ceiling=40.0, killY=-8.0)
+    win = dict(minX=-20.0, maxX=20.0, minZ=TOWN_DOOR[1] - 12.0, maxZ=TOWN_DOOR[1] + 18.0, ceiling=40.0, killY=-8.0)   # round the doorway
     tb = [b for b in town['blocks'] if b['id'] not in set(town['navHints'].get('collisionOff', []))]
     col = Collider(tb, town.get('ramps', []), win); col.build(lambda y: abs(y) < 0.05)
     hk = Collider(tb, town.get('ramps', []), win); hk.build(lambda y: abs(y) < 0.05, HULK_RADIUS, HULK_HEIGHT)

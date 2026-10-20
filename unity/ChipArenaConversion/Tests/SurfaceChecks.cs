@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Every box map `map` draws in play: its blocks and its dressing kit's parts, as the dressing and the kits draw
         /// them (`layers`: with NativeSurfaceLayers' lifts, as today; off: as before them).</summary>
-        internal static List<Box> Boxes(string root,ContentMap map,bool layers=true)
+        internal static List<Box> Boxes(string root,ContentMap map,bool layers=true,bool hub=false)
         {
             var o=new List<Box>();var blocks=map.blocks??Array.Empty<ContentBlock>();var options=new JsonSerializerOptions{IncludeFields=true};
             // Blocks look as the dressing draws them (NativeArenaDressing: the map look's block looks over the material colour).
@@ -60,8 +60,9 @@ namespace ChipArena.UnityConversion
             if(map.id==NativeExpeditionCityKit.MapId)
             {
                 // The town's dressing kit with its records (Resources/ExpeditionLayout.json): each part turned with its block, then by its own turn.
-                var layout=NativeExpeditionLayout.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ExpeditionLayout.json")));
-                var kit=NativeExpeditionCityKit.Build(blocks,layout.areas.First(a=>a.map==map.id),layers);
+                // `hub`: with the hub record and the map's bounds, as the runtime builds it (fence, headers, markers; ExpeditionCityChecks).
+                string text=File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ExpeditionLayout.json"));var layout=NativeExpeditionLayout.Parse(text);var townArea=layout.areas.First(a=>a.map==map.id);
+                var kit=hub?NativeExpeditionCityKit.Build(blocks,townArea,ExpeditionHubLayout.Parse(text,townArea.id),map.bounds,layers):NativeExpeditionCityKit.Build(blocks,townArea,layers);
                 for(int i=0;i<kit.Parts.Length;i++){var p=kit.Parts[i];var b=blocks[p.Parent];var q=Q(b.rotation);o.Add(Make(b.id+"#kit"+i,true,V(b.pos)+Vector3.Transform(new Vector3(p.X,p.Y,p.Z),q),new Vector3(p.Hx,p.Hy,p.Hz),Quaternion.Normalize(q*new Quaternion(p.Qx,p.Qy,p.Qz,p.Qw)),p.Look,p.Color));}
             }
             if(map.id=="siren")

@@ -19,7 +19,8 @@ def manifest():
             if 'yaw' in p:p['yaw']=(p['yaw']+90*turn)%360
             return p
         door['join']=rotate(hub['doors'][0]['join']);door['approach']={k:door['join'][k] for k in ('x','y','z')}
-        door['returns']=([dict(x=x,y=0,z=z,yaw=0) for z in (-72,-74) for x in (-3,-1,1,3)] if turn==1 else [dict(x=x,y=0,z=z,yaw=90) for x in (-79,-77) for z in (4,6,8,10)])
+        # Returns beside the circle, placed from its centre (they follow the doorway when the town grows).
+        door['returns']=([dict(x=x,y=0,z=door['join']['z']+dz,yaw=0) for dz in (7,5) for x in (-3,-1,1,3)] if turn==1 else [dict(x=door['join']['x']+dx,y=0,z=z,yaw=90) for dx in (0,2) for z in (4,6,8,10)])
         hub['anchors'].append(anchor);hub['doors'].append(door)
         area['machines']=[]
         for i,p in enumerate(machines):
@@ -42,7 +43,7 @@ def manifest():
     for route in hub['hub']['reserved']:
         route=copy.deepcopy(route);route['to']=route.pop('building');hub['hub']['routes'].append(route)
     hub['hub']['reserved']=[]
-    live['revision']='exp-layout-6'
+    live['revision']='exp-layout-7'
     return live
 if __name__=='__main__':
     out=ROOT/'Tests/expedition-live-layout.json';out.write_text(json.dumps(manifest(),separators=(',',':'))+'\n');print(out)

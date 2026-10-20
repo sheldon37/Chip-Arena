@@ -14,7 +14,8 @@ R=Path(__file__).resolve().parents[1];D=R.parents[1]/'docs/arenas/scripts';SCRIP
 F={k:R/'Tests'/n for k,n in (('city','expedition-city-draft.json'),('ward','expedition-ward-zero-draft.json'),('json','expedition-layout-draft.json'))}
 REGEN='regenerate: python3 docs/arenas/scripts/expedition_layout.py --fixtures (and bump REVISION there when a record or hash changes)'
 DRAFT=R/'Tests/expedition-layout-4-join-draft.json'
-PINNED=('exp-layout-3','5576eeee643bff748dfe01d291bf5fc7df687a411de72a1cbc951939a4e8001c','5063452a19a77b30b8bf3a30bc990119b932798fa7daabf023bf7340276efb90')
+# The base manifest keeps its stage name (exp-layout-3's records); its town is the grown one since exp-layout-7 (2026-10-20).
+PINNED=('exp-layout-3','ff7d922f5e17d699c144628e6fc0c4ceb9beef01c48e44aed0b9be57770ca740','5063452a19a77b30b8bf3a30bc990119b932798fa7daabf023bf7340276efb90')
 def load(k):return json.loads(F[k].read_text())
 def _i(x,k):return str(int(round(float(x)*k)))
 def block_hash(m):
@@ -45,7 +46,7 @@ class ExpeditionLayoutScripts(unittest.TestCase):
    self.assertIn(line,run.stdout)
   self.assertRegex(run.stdout,r'gate shut: final plaza \d+ standable cells, 0 reached')
   self.assertRegex(run.stdout,r'with the 4 gate closures solid the slots reach \d+ cells, 0 of them outside the sanctuary volume')
-  self.assertRegex(run.stdout,r'route to exp-ward-zero: .* (7\d|[89]\d)\.\d m walked from the gate')
+  self.assertRegex(run.stdout,r'route to exp-ward-zero: .* 1[01]\d\.\d m walked from the gate')
   self.assertNotIn('BAD ',run.stdout);self.assertNotIn('UNREACHED',run.stdout)
  def test_join_draft_is_the_scripts_output(self):
   with tempfile.TemporaryDirectory() as d:
@@ -110,13 +111,14 @@ class ExpeditionLayoutFixtures(unittest.TestCase):
   self.assertTrue(all(list(z)==['id','ring','volume','spawns','gateDistance'] and z['spawns'] for z in h['zones']),'no balance in the manifest: a zone is its ring, volume and spawns')
   final=[s['e'] for s in w['spawns'] if abs(s['exit']['x'])<22 and 39<s['exit']['z']<56]
   self.assertEqual(sorted(e for z in h['zones'] for e in z['spawns']),sorted(s['e'] for s in w['spawns'] if s['e'] not in final))
-  r=h['routes'][0];self.assertEqual((r['to'],r['gate']),('exp-ward-zero','exp-city:hub-gate:east'));self.assertGreaterEqual(r['path'],70);self.assertGreaterEqual(r['path'],r['straight'])
+  r=h['routes'][0];self.assertEqual((r['to'],r['gate']),('exp-ward-zero','exp-city:hub-gate:east'));self.assertGreaterEqual(r['path'],100);self.assertGreaterEqual(r['path'],r['straight'])
+  self.assertTrue(r['via'] and all(set(p)=={'x','y','z'} for p in r['via']),'the route\'s turning points down the streets (exp-layout-7)')
   self.assertEqual([x['building'] for x in h['reserved']],['exp-foundry','exp-transit'])
  def test_join_draft(self):
   # exp-layout-4 (docs/EXPEDITION-HUB.md "Join circle at the instance doors"): not live; the live manifest has no join.
   live,dr=load('json'),json.loads(DRAFT.read_text());self.assertEqual(live['revision'],'exp-layout-3');self.assertEqual(dr['revision'],'exp-layout-4')
   self.assertTrue(all('join' not in d for a in live['areas'] for d in a['doors']));self.assertTrue(all('join' not in d for d in dr['areas'][1]['doors']))
-  d=dr['areas'][0]['doors'][0];j=d['join'];self.assertEqual(list(d),['anchor','join','interact','closure','approach','returns']);self.assertEqual(j,dict(x=79.0,y=0.0,z=0.0,r=2.5,h=4.0))
+  d=dr['areas'][0]['doors'][0];j=d['join'];self.assertEqual(list(d),['anchor','join','interact','closure','approach','returns']);self.assertEqual(j,dict(x=103.0,y=0.0,z=0.0,r=2.5,h=4.0))
   self.assertEqual(d['approach'],dict(x=j['x'],y=j['y'],z=j['z']),'the approach is the circle centre')
   inside=lambda p:(p['x']-j['x'])**2+(p['z']-j['z'])**2<=j['r']**2
   self.assertEqual(sum(map(inside,live['areas'][0]['doors'][0]['returns'])),4,'exp-layout-3 had four returns in the circle')
@@ -135,11 +137,11 @@ class ExpeditionLayoutFixtures(unittest.TestCase):
    ids=[b['id'] for b in mp['blocks']];self.assertEqual(len(ids),len(set(ids)));self.assertFalse(mp['rotation'])
    self.assertEqual(len(mp['spawns']['ffa']),8);self.assertEqual([len(t['points']) for t in mp['spawns']['teams']],[4,4])
    if prefix:self.assertTrue(all(i.startswith(prefix) for i in ids))
-  self.assertEqual(town['bounds'],dict(minX=-96,maxX=96,minZ=-96,maxZ=60,ceiling=40,killY=-8));self.assertEqual(town['look'],'expedition-city')
+  self.assertEqual(town['bounds'],dict(minX=-120,maxX=120,minZ=-120,maxZ=60,ceiling=40,killY=-8));self.assertEqual(town['look'],'expedition-city')   # 240 x 180 m since exp-layout-7
   self.assertLessEqual(len(town['blocks']),400);self.assertTrue({b['material'] for b in town['blocks']}<={'stone','brick','metal','wood','foundation'})
   for b in town['blocks']:
    for k in 'xyz':self.assertGreater(b['size'][k],0,b['id'])
-   self.assertLessEqual(abs(b['pos']['x'])+b['size']['x']/2,98.001,b['id']);self.assertLessEqual(b['pos']['z']+b['size']['z']/2,62.001,b['id']);self.assertGreaterEqual(b['pos']['z']-b['size']['z']/2,-98.001,b['id'])
+   self.assertLessEqual(abs(b['pos']['x'])+b['size']['x']/2,122.001,b['id']);self.assertLessEqual(b['pos']['z']+b['size']['z']/2,62.001,b['id']);self.assertGreaterEqual(b['pos']['z']-b['size']['z']/2,-122.001,b['id'])
  def test_look_entry(self):
   looks=json.loads((R/'Assets/Conversion/Resources/MapLooks.json').read_text())['maps'];mine=[l for l in looks if l['id']=='expedition-city']
   self.assertEqual(len(mine),1);self.assertEqual([l['id'] for l in looks[-3:]],['expedition-city','expedition-transit','expedition-foundry']);self.assertEqual(sum(1 for l in looks if l['look']=='expedition-city'),1)

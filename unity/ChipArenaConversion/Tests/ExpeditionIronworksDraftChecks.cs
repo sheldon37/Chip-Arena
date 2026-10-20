@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
             Check(draft.revision=="exp-layout-3-ironworks-draft"&&draft.instances.SequenceEqual(new[]{"exp-ward-zero",AreaId})&&draft.areas.Length==3,"the draft manifest: exp-layout-3-ironworks-draft, instances Ward Zero and the foundry, three areas");
             var f=draft.Area(AreaId);var town=draft.Area(draft.world);var door=f.doors.Single();var tdoor=town.doors.Single(d=>town.anchors.Single(a=>a.id==d.anchor).building==AreaId);
             Check(f.role=="instance"&&f.map==MapId&&f.spawnSource==null&&f.spawns.Length>=36&&f.bossPoints.Length==3&&door.entries.Length==8&&door.returns.Length==0&&f.anchors.Count(a=>a.kind=="chest")==3&&f.interactions.Length==3,"the foundry area: its own "+f.spawns.Length+" spawns, 3 boss points, 8 entries, 3 caches with interactions");
-            Check(tdoor.returns.Length==8&&tdoor.join==null&&town.anchors.Single(a=>a.id==tdoor.anchor).x==-83.4f&&tdoor.anchor=="exp-city:door:exp-foundry","the town's foundry door at the reserved doorway, eight returns, no join (exp-layout-4's join stays a separate draft)");
+            Check(tdoor.returns.Length==8&&tdoor.join==null&&town.anchors.Single(a=>a.id==tdoor.anchor).x==-107.4f&&tdoor.anchor=="exp-city:door:exp-foundry","the town's foundry door at the reserved doorway, eight returns, no join (exp-layout-4's join stays a separate draft)");
             var searches=new Dictionary<string,NativeNavSearch>();var nodeClear=new Dictionary<string,bool>();var edgeClear=new Dictionary<string,bool>();
             bool Probe(string id,V3 p,float r,float h)=>supported(content.Map(id),p,r,h);
             bool Reach(string id,V3 from,V3 to,float radius,float height)

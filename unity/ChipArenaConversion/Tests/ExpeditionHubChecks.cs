@@ -26,7 +26,8 @@ namespace ChipArena.UnityConversion
     {
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Expedition hub: "+what);count++;}
-        public const double RouteMin=70;
+        // The run from a gate to an instance doorway: 70 m since the hub (exp-layout-3), 100 m since the city grew (exp-layout-7: 107.6 m).
+        public const double RouteMin=100;
         // A pilot-capsule grid over the map (0.25 m cells): a cell is free when no colliding block between the step and the
         // head (0.36..1.85 m) lies within the capsule's radius of its centre. Yaw-only blocks, as the generators model them.
         private sealed class Grid
@@ -256,7 +257,7 @@ namespace ChipArena.UnityConversion
             string manifest=R("Assets/Conversion/Resources/ExpeditionLayout.json");var town=JsonSerializer.Deserialize<UnityMapContent>(R("Assets/Conversion/Resources/UnityMaps.json"),o).maps.Single(m=>m.id=="expedition-city");
             // ---------------- the record ----------------
             var layout=NativeExpeditionLayout.Parse(manifest);var area=layout.Area("exp-city");var hub=ExpeditionHubLayout.Parse(manifest);
-            Check(layout.revision=="exp-layout-6"&&hub!=null&&hub.Area=="exp-city","exp-layout-6 carries the town's hub record");
+            Check(layout.revision=="exp-layout-7"&&hub!=null&&hub.Area=="exp-city","exp-layout-7 carries the town's hub record");
             Check(area.gates.Length==1&&area.gates[0].id=="exp-city:gate:final"&&area.spawns.Length>0&&area.slots.Length==8,"the loader's strict reader still reads the manifest: the final gate only, the spawns and slots");
             Check(ExpeditionHubLayout.Parse(R("Tests/expedition-layout-draft.json"))!=null&&ExpeditionHubLayout.Parse(manifest.Replace("\"hub\":","\"hubOld\":"))==null,"a manifest without the record has no hub (exp-layout-2 and earlier read as before)");
             Check(hub.Gates.Select(g=>g.Side).SequenceEqual(new[]{"north","east","south","west"})&&hub.Gates.Count(g=>g.Wood)==2&&hub.Gates.All(g=>g.Wood==(g.Motion=="swing"))&&hub.Gates.All(g=>Math.Abs(g.Width-4)<1e-4),"four 4 m gates: wooden swing (north, west), metal slide (east, south)");

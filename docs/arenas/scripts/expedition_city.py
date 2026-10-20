@@ -1,9 +1,11 @@
-# Expedition town blockout: `expedition-city`, a zombie city at dusk (one street level), now the hub of exp-layout-3.
+# Expedition town blockout: `expedition-city`, a zombie city at dusk (one street level), the hub of exp-layout-3, grown in
+# exp-layout-7 (2026-10-20: the east, west and south arms 24 m further out, an outer quarter in each; "THE CITY GROWN" below).
 # It emits a map entry in the UnityMaps.json shape (blocks, bounds, spawn tables, pilot exclusion columns) and the town's area
 # record for ExpeditionLayout.json (docs/EXPEDITION-LAYOUT.md, docs/EXPEDITION-HUB.md): door anchor, returns, interaction and
 # closure volumes, the reprint machine and caches, the sanctuary volume and its eight slots, the final gate, the enemy spawns
 # (PveEntry shape plus `allow`), the final boss trigger and points, and (exp-layout-3) the `hub` record: the sanctuary fence, its
-# four animated gates, the hub spawn zones by ring, the wilds, the instance routes and the reserved doorways.
+# four animated gates, the hub spawn zones by ring, the wilds, the instance routes (with their turning points, `via`) and the
+# reserved doorways.
 # It prints its checks: floor reachability from the sanctuary with the final gate shut and open, every record on walkable
 # floor at its own level with pilot clearance (Hulk clearance where Hulks are allowed), the final plaza reachable only
 # through the gate volume, no spawn inside or near the sanctuary; the fence closed except at its gates, every instance door
@@ -333,6 +335,107 @@ entries.sort(key=lambda e: e['id'])
 for i, e in enumerate(entries): e['e'] = i
 
 # =====================================================================================================================
+# THE CITY GROWN (exp-layout-7; docs/EXPEDITION-HUB.md "The city grown"). Owner, 2026-10-20: "make the expedition city still a
+# little bigger (I want players to walk further still.)". Everything authored above that lies beyond the city's edge (the
+# line |x| = CUT east and west, z = -CUT south) moves GROW m outward: the three wilds districts, the instance frontages and
+# their doors, the corner masses; a block that straddles the edge is stretched across the gap. A face exactly on the edge
+# belongs to the block on its side of it: a block's inner end stays, its outer end moves. The three bands this opens (x 44..68
+# east and west, z -68..-44 south) are the new outer quarters, built below in their final coordinates. The sanctuary, the
+# inner city, the ring road, the final plaza and the north edge do not move.
+CUT, GROW = 44.0, 24.0
+def grow_x(x, edge=0):
+    """x after the inflation: `edge` -1 a block's min end, +1 its max end, 0 a point (a point on the edge stays)."""
+    if x > CUT + 1e-6 or (edge < 0 and x > CUT - 1e-6): return x + GROW
+    if x < -CUT - 1e-6 or (edge > 0 and x < -CUT + 1e-6): return x - GROW
+    return x
+def grow_z(z, edge=0):
+    """z after the inflation (the south edge only; the north edge of the town stays)."""
+    if z < -CUT - 1e-6 or (edge > 0 and z < -CUT + 1e-6): return z - GROW
+    return z
+def grow_pt(p):
+    """A record point (x, y, z[, yaw]) after the inflation; none lies on the edge itself (checked)."""
+    assert abs(abs(p['x']) - CUT) > 1e-6 and abs(p['z'] + CUT) > 1e-6, ('a record on the city edge', p)
+    out = dict(p); out['x'] = r4(grow_x(p['x'])); out['z'] = r4(grow_z(p['z'])); return out
+def grow_block(b):
+    if b['rotation'] != q():
+        # Turned blocks (wrecks, the buses, a truck) move whole with their centre; none straddles the edge.
+        cs = corners(b); xs = [round(grow_x(x) - x, 6) for x, z in cs]; zs = [round(grow_z(z) - z, 6) for x, z in cs]
+        assert len(set(xs)) == 1 and len(set(zs)) == 1, ('a turned block straddles the city edge', b['id'])
+        b['pos'] = v(b['pos']['x'] + xs[0], b['pos']['y'], b['pos']['z'] + zs[0]); return
+    x0, x1, z0, z1 = footprint(b); nx0, nx1, nz0, nz1 = grow_x(x0, -1), grow_x(x1, 1), grow_z(z0, -1), grow_z(z1, 1)
+    b['pos'] = v((nx0 + nx1) / 2, b['pos']['y'], (nz0 + nz1) / 2); b['size'] = v(nx1 - nx0, b['size']['y'], nz1 - nz0)
+for b in blocks: grow_block(b)
+for e in entries:
+    e['from'] = v(**{k: val for k, val in grow_pt(e['from']).items() if k in 'xyz'}); e['exit'] = v(**{k: val for k, val in grow_pt(e['exit']).items() if k in 'xyz'})
+    if e['kind'] == 'breach':
+        blk = next(b for b in blocks if b['id'] == e['block']); e['center'] = v(blk['pos']['x'], blk['pos']['y'], blk['pos']['z']); e['size'] = v(blk['size']['x'], blk['size']['y'], blk['size']['z'])
+WZ_DOOR = (grow_x(WZ_DOOR[0]), WZ_DOOR[1])
+RESERVED = {k: grow_pt(p) for k, p in RESERVED.items()}
+WILDS = [(n, s, grow_x(x0, -1), grow_x(x1, 1), grow_z(z0, -1), grow_z(z1, 1)) for n, s, x0, x1, z0, z1 in WILDS]
+OLD_BOUNDS = dict(BOUNDS)
+BOUNDS = dict(minX=BOUNDS['minX'] - GROW, maxX=BOUNDS['maxX'] + GROW, minZ=BOUNDS['minZ'] - GROW, maxZ=BOUNDS['maxZ'])   # 240 x 180 m
+EX0, EX1, EZ0, EZ1 = EX0 - GROW, EX1 + GROW, EZ0 - GROW, EZ1                                                       # the perimeter masses, 2 m past
+
+# THE OUTER QUARTERS: one in each band, the city's last streets before the checkpoint and the wilds (lit like the city; the
+# wilds' darkness starts at the old line, now CUT + GROW). Authored once in an arm's own frame and laid on all three: `a` m
+# outward from the city's edge (0..GROW), `c` m across (+ to the left looking out: north on the east and west arms, east on
+# the south arm). The forecourt or the station square meets the band at |c| < 10 and the wilds leave it at |c| < 20, so:
+#   - a cross street (a 0..5) where the forecourt's axis ends against a landmark block's face (c -16..13, a 5..17.5): the
+#     party has to turn, left up the main lane (c 13..20, 7 m) or right down the back alley (c -20..-16, 4 m);
+#   - the lanes come out on a square (a 17.5..GROW) in front of the old checkpoint, where the instance's beacon shows down the
+#     wilds again;
+#   - the band beyond |c| 20 is closed by building rows (east and west; the south band's sides are the station blocks).
+# Cover in the cross street, the lane and the square (wrecks, barriers, crates, a dumpster); spawns: a door in the landmark's
+# front and in each row on its lane, a grate in the main lane, a brute drop off the landmark's roof into the cross street
+# (zone `<arm>-quarter`, ring mid: every one nearer the gates than the wilds' nearest).
+ARMS = {'east': (lambda a, c: (CUT + a, c)), 'west': (lambda a, c: (-CUT - a, c)), 'south': (lambda a, c: (c, -CUT - a))}
+ARM_OUT = {'east': (1, 0), 'west': (-1, 0), 'south': (0, -1)}   # the outward direction of each arm
+# (arm, prefix, landmark name and material, height, the rows' names and heights, the cars' yaws)
+QUARTERS = [('east', 'xq', 'exchange', 'stone', 17), ('west', 'fq', 'union-hall', 'brick', 15), ('south', 'tq', 'tram-depot', 'stone', 12)]
+LANE_IN, LANE_OUT, ALLEY_IN = 13.0, 20.0, -16.0        # the landmark's sides (c) and the lanes' outer side
+LM_A0, LM_A1 = 5.0, GROW - 6.5                        # the landmark's front and back (a): a 5 m cross street before it, a 6.5 m square after
+def qbox(arm, id, a0, a1, c0, c1, y0, y1, material='stone', ch='#', pilot=False):
+    """A block given in the arm's frame (a0..a1 out, c0..c1 across)."""
+    to = ARMS[arm]; (x0, z0), (x1, z1) = to(a0, c0), to(a1, c1)
+    return box(id, min(x0, x1), max(x0, x1), min(z0, z1), max(z0, z1), y0, y1, material=material, ch=ch, pilot=pilot)
+def qcar(arm, id, a, c, yaw, **kw):
+    """A wreck at (a, c), its yaw measured from the arm's outward direction."""
+    x, z = ARMS[arm](a, c); ox, oz = ARM_OUT[arm]; base = math.degrees(math.atan2(ox, oz)); car(id, x, z, base + yaw, **kw)
+def qface(arm, a, c, da, dc):
+    """World point and direction of an arm-frame point and direction."""
+    x, z = ARMS[arm](a, c); x1, z1 = ARMS[arm](a + da, c + dc); return x, z, x1 - x, z1 - z
+QUARTER_ZONES = []
+OLD_ENTRIES = len(entries)
+for arm, pre, landmark, mat, lh in QUARTERS:
+    G = GROW
+    # The landmark: its long front faces the forecourt across the cross street.
+    qbox(arm, f'bldg-{pre}-{landmark}', LM_A0, LM_A1, ALLEY_IN, LANE_IN, 0, lh, material=mat, pilot=True); HEIGHTS[f'{pre}-{landmark}'] = lh
+    if arm != 'south':
+        # The rows closing the band beyond the lanes (the south band's sides are the stretched station blocks).
+        qbox(arm, f'bldg-{pre}-row-l0', 0, 9.5, LANE_OUT, 30, 0, 12, material='brick', pilot=True); HEIGHTS[f'{pre}-row-l0'] = 12
+        qbox(arm, f'bldg-{pre}-row-l1', 9.5, G, LANE_OUT, 30, 0, 14, material='brick', pilot=True); HEIGHTS[f'{pre}-row-l1'] = 14
+        qbox(arm, f'bldg-{pre}-row-r0', 0, 10.5, -34, -LANE_OUT, 0, 11, material='brick', pilot=True); HEIGHTS[f'{pre}-row-r0'] = 11
+        qbox(arm, f'bldg-{pre}-row-r1', 10.5, G, -34, -LANE_OUT, 0, 13, material='stone', pilot=True); HEIGHTS[f'{pre}-row-r1'] = 13
+        qbox(arm, f'bldg-{pre}-back', 0, G, -62 - G, -34, 0, 14, material='brick', pilot=True); HEIGHTS[f'{pre}-back'] = 14
+    # Cover: a wreck and a barrier line in the cross street, wrecks, crates and a dumpster on the square.
+    qcar(arm, f'car-{pre}-0', 11.0, 18.9, 4); qcar(arm, f'car-{pre}-1', LM_A1 + 3.4, -12.6, -24); qcar(arm, f'car-{pre}-2', LM_A1 + 3.0, 10.4, 40)
+    qbox(arm, f'barrier-{pre}-0', 1.6, 2.2, -14.5, -10.5, 0, 1.0, ch='=')
+    for k, (a, c) in enumerate([(LM_A1 + 1.9, -1.6), (LM_A1 + 3.4, -2.2), (LM_A1 + 2.4, -3.2)]): qbox(arm, f'crate-{pre}-{k}', a - 0.75, a + 0.75, c - 0.75, c + 0.75, 0, 1.4, material='wood', ch='x')
+    qbox(arm, f'dumpster-{pre}', 2.5, 4.5, LANE_OUT - 1.3, LANE_OUT, 0, 1.3, material='metal', ch='u')
+    # Spawns: the landmark's front door on the cross street, a door in each row on its lane (the south arm's in the station
+    # blocks' faces), a grate in the main lane, a brute drop off the landmark's roof into the cross street.
+    def qdoor(name, a, c, da, dc, allow=SMALL, out=2.4):
+        x, z, dx, dz = qface(arm, a, c, da, dc); entry('door', f'{pre}-{name}', (x - dx * 0.6, 0, z - dz * 0.6), (x + dx * out, 0, z + dz * out), (dx, dz), allow)
+    qdoor('front', LM_A0, -6.0, -1, 0); qdoor('lane', 7.0, LANE_OUT, 0, -1, allow=BIG); qdoor('alley', 9.0, -LANE_OUT, 0, 1, out=1.75)
+    x, z, dx, dz = qface(arm, 10.5, LANE_IN + 2.2, 1, 0); entry('vent', f'{pre}-lane', (x, 0, z), (x + dx * 1.2, 0, z + dz * 1.2), (dx, dz), SMALL, surface='floor')
+    x, z, dx, dz = qface(arm, LM_A0 - 3.3, 4.0, -1, 0); entry('drop', f'{pre}-{landmark}', (x, 0, z), (x, 0, z), (dx, dz), ['brute'], height=lh, clear=2.8, hulk=False)
+    (x0, z0), (x1, z1) = ARMS[arm](0, -LANE_OUT), ARMS[arm](G, LANE_OUT)
+    QUARTER_ZONES.append((f'{arm}-quarter', 'mid', min(x0, x1), max(x0, x1), min(z0, z1), max(z0, z1)))
+# The new spawns follow the earlier ones (whose indices stay as they were), in id order.
+entries[OLD_ENTRIES:] = sorted(entries[OLD_ENTRIES:], key=lambda e: e['id'])
+for i, e in enumerate(entries): e['e'] = i
+
+# =====================================================================================================================
 # THE WARD ZERO DOORWAY (the town side). The door faces out of the doorway (-x, yaw 270). Its anchor is the clear floor
 # point 0.6 m in front of the doorway (the loader probes every anchor with a pilot capsule); the closure fills the doorway
 # just in front of the face; the interaction volume and the approach are in front; eight returns outside the portico,
@@ -367,8 +470,8 @@ DOOR_ANCHOR = f'{AREA}:door:exp-ward-zero'
 # on the canopy counts. Returns: 8 beside the portico, all outside the circle (capsule clear by 1.27 m or more), Hulk-clear,
 # 8 m or more from every spawn exit, and their shortest walk to the east gate never needs the circle; the first four (a
 # full party) stand at the pylons' town side and the portico's front corners.
-JOINS = {'exp-ward-zero': dict(x=79.0, y=0.0, z=0.0, r=2.5, h=4.0)}
-DRAFT_RETURNS = [pt(x, 0, z, WZ_YAW) for x, z in ((79.4, -4.2), (79.4, 4.2), (81.1, -6.0), (81.1, 6.0), (82.7, -6.0), (82.7, 6.0), (81.9, -7.6), (81.9, 7.6))]
+JOINS = {'exp-ward-zero': dict(x=WZ_DOOR[0] - 5.0, y=0.0, z=0.0, r=2.5, h=4.0)}
+DRAFT_RETURNS = [pt(WZ_DOOR[0] + dx, 0, z, WZ_YAW) for dx, z in ((-4.6, -4.2), (-4.6, 4.2), (-2.9, -6.0), (-2.9, 6.0), (-1.3, -6.0), (-1.3, 6.0), (-2.1, -7.6), (-2.1, 7.6))]
 CAPSULE_R, CAPSULE_HALF = 0.42, 0.85          # NativeLocomotionRules.Radius, HalfHeight: the native pilot capsule
 JUMP, GRAVITY, AIR_JUMP = 8.5, 23.0, 0.9       # Rules.JumpSpeed, Rules.Gravity, NativeJumpSimulation.AirMultiplier (jumpPower 1)
 JOIN_SPAWN_CLEAR = 8.0                         # spawn exits stay this far from the circle's edge and the returns (the doc's door rule)
@@ -379,7 +482,7 @@ JOIN_SPAWN_CLEAR = 8.0                         # spawn exits stay this far from 
 # outside threshold points), the hub spawn zones by ring (the ring's density, money and kinds are the doc's proposals), the
 # wilds districts, the instance routes measured on the walkable floor, and the reserved doorways. The loader ignores the field;
 # nothing here is read by today's runtime.
-ROUTE_MIN = 70.0               # m of running from a hub gate's threshold to an instance door's approach (target)
+ROUTE_MIN = 100.0              # m of running from a hub gate's threshold to an instance door's approach (target; 70 before exp-layout-7)
 RUN, SPRINT = 6.8, 6.8 * 1.35  # m/s: NativeArena's 6.8 x speed (1.0) and the 1.35 sprint multiplier
 GATE_APRON, ZONE_APRON = 10.0, 8.0   # no spawn exit / zone volume within this of a hub gate's threshold
 RINGS = ('near', 'mid', 'far')   # docs/EXPEDITION-HUB.md proposes each ring's density, money and kinds (balance stays out of the manifest)
@@ -387,6 +490,7 @@ RINGS = ('near', 'mid', 'far')   # docs/EXPEDITION-HUB.md proposes each ring's d
 ZONES = [('near-north', 'near', -28, 28, 20.5, 30), ('near-east', 'near', 20.5, 28, -20.5, 20.5), ('near-south', 'near', -28, 28, -30, -20.5), ('near-west', 'near', -28, -20.5, -20.5, 20.5),
          ('mid-north', 'mid', -36, 36, 30, 36), ('mid-east', 'mid', 28, 44, -34, 30), ('mid-south', 'mid', -28, 28, -44, -30), ('mid-west', 'mid', -44, -28, -34, 30),
          ('far-east', 'far', 44, 84, -30, 30), ('far-south', 'far', -30, 30, -84, -44), ('far-west', 'far', -84, -44, -30, 30)]
+ZONES = [(n, r, grow_x(x0, -1), grow_x(x1, 1), grow_z(z0, -1), grow_z(z1, 1)) for n, r, x0, x1, z0, z1 in ZONES] + QUARTER_ZONES   # the far ring moved out with the wilds
 _PATHS = {}
 def zone_of(e):
     """The hub zone a spawn belongs to: the first listed whose volume holds its exit (none for the final plaza's)."""
@@ -428,7 +532,50 @@ def gate_distance(x, z, gate=None):
 def door_gate_route(target, gate_side):
     gid = f'{AREA}:hub-gate:{gate_side}'; d, _ = gate_distance(target['x'], target['z'], gid)
     g = next(x for x in HUB_GATES if x['id'] == gid); straight = math.hypot(target['x'] - g['x'], target['z'] - g['z'])
-    return dict(gate=gid, path=d, straight=r4(straight), run=r4(d / RUN), sprint=r4(d / SPRINT))
+    return dict(gate=gid, path=d, straight=r4(straight), run=r4(d / RUN), sprint=r4(d / SPRINT), via=route_via(g, target))
+# The route as the street shows it (exp-layout-7; the presentation's markers and signs follow it, nothing else reads it): the
+# shortest walk from the gate's outer threshold to the target on a floor VIA_CLEAR m clear of every wall (down the middle of
+# the streets, round the outer quarters' landmarks), pulled straight between points that see each other on that floor; `via`
+# is its turning points, the gate and the target not repeated.
+VIA_CLEAR = 1.5
+_VIA = {}
+def via_graph():
+    if 'col' not in _VIA:
+        col = Collider(list(blocks), bounds=dict(BOUNDS)); col.build(keep=lambda y: abs(y) < 0.05, radius=VIA_CLEAR); _VIA['col'] = col
+    return _VIA['col']
+def walk_path(col, start, goal):
+    """The shortest 8-connected walk (no corner cutting) from `start` to `goal` over the collider's floor, as its nodes."""
+    import heapq
+    dist = {start: 0.0}; prev = {}; heap = [(0.0, start)]
+    while heap:
+        d, n = heapq.heappop(heap)
+        if n == goal: break
+        if d > dist.get(n, 1e18): continue
+        i, j, y = n
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                if not di and not dj: continue
+                if di and dj and not (col.by_cell.get((i + di, j)) and col.by_cell.get((i, j + dj))): continue
+                for m in col.by_cell.get((i + di, j + dj), ()):
+                    if abs(m[2] - y) > 0.36: continue
+                    nd = d + col.cell * (1.41421356 if di and dj else 1.0)
+                    if nd < dist.get(m, 1e18): dist[m] = nd; prev[m] = n; heapq.heappush(heap, (nd, m))
+    assert goal in dist, 'no walk to the route target'
+    out = [goal]
+    while out[-1] != start: out.append(prev[out[-1]])
+    return out[::-1]
+def route_via(g, target):
+    col = via_graph(); o = g['outside']; s = col.node_at(o['x'], 0, o['z'], 1.0); t = col.node_at(target['x'], 0, target['z'], 2.5)
+    pts = [col.cell_xz(n[0], n[1]) for n in walk_path(col, s, t)]
+    def sees(a, b):
+        n = max(1, int(math.hypot(b[0] - a[0], b[1] - a[1]) / 0.25))
+        return all((int((a[0] + (b[0] - a[0]) * k / n - col.bounds['minX']) / col.cell), int((a[1] + (b[1] - a[1]) * k / n - col.bounds['minZ']) / col.cell)) in col.by_cell for k in range(n + 1))
+    keep = [0]
+    while keep[-1] < len(pts) - 1:
+        i = keep[-1]; j = i + 1
+        while j + 1 < len(pts) and sees(pts[i], pts[j + 1]): j += 1
+        keep.append(j)
+    return [dict(x=r4(round(pts[k][0], 1)), y=0.0, z=r4(round(pts[k][1], 1))) for k in keep[1:-1]]
 def hub():
     fx, fz = forward(WZ_YAW); approach = pt(WZ_DOOR[0] + fx * 1.6, 0, WZ_DOOR[1] + fz * 1.6)
     zones = []
@@ -504,7 +651,7 @@ def look():
                         stars=0.22, crater=0, cloudSpeed=0.25, elevation=9, bearing=288, dir=dict(x=0, y=0, z=0)),
             'lights': [L('sanctuary-brazier', 0, 1.4, 0, 0xFF8A3C, 1.8, 13, 'fire', rate=5, depth=0.3),
                        L('sanctuary-lamp-ne', 9.5, 4.2, 9.5, 0xFFC27A, 1.2, 10), L('sanctuary-lamp-sw', -9.5, 4.2, -9.5, 0xFFC27A, 1.2, 10),
-                       L('meridian-portico', 82.4, 4.0, 0, 0x9FE8FF, 1.4, 12, 'stutter', period=9, length=0.2, depth=0.6),
+                       L('meridian-portico', WZ_DOOR[0] - 1.6, 4.0, 0, 0x9FE8FF, 1.4, 12, 'stutter', period=9, length=0.2, depth=0.6),
                        L('final-gate', 0, 9.0, 34.0, 0xFF3B30, 1.3, 16), L('wreck-fire-es', 22.6, 1.6, -3.9, 0xFF6A1E, 1.6, 9, 'fire', rate=6.5, depth=0.4, phase=0.4),
                        L('sodium-ring-e', 31.0, 5.5, -26.0, 0xFF9A3C, 1.1, 12), L('sodium-ring-w', -31.0, 5.5, 26.0, 0xFF9A3C, 1.1, 12)],
             'blockLooks': [BL('expedition-city-slab-*', 'asphalt', 0x3A3840, 'the street slab'),
@@ -566,12 +713,13 @@ def look_text():
     rows.append(f'   "blocks":{j(L["blocks"])}}}')
     return '\n'.join(rows)
 def write_maplooks(path=MAPLOOKS):
-    """Insert or replace this map's entry as the last entry of MapLooks.json's maps; every other byte stays as it is."""
+    """Replace this map's entry in MapLooks.json's maps where it stands (the zone looks follow it since their activation), or
+    insert it as the last entry; every other byte stays as it is."""
     text = open(path, encoding='utf-8').read(); entry = look_text(); start = text.find('\n {"id":"' + MAP + '",')
     tail = '\n],\n"preview":['
     if start >= 0:
-        end = text.index(tail, start); assert text.find('\n {"id":', start + 1, end) < 0, 'the expedition-city look must be the last entry'
-        text = text[:start] + '\n' + entry + text[end:]
+        end = text.index(tail, start); after = text.find('\n {"id":', start + 1, end)
+        text = text[:start] + '\n' + entry + (text[end:] if after < 0 else ',' + text[after:])
     else:
         end = text.index(tail); assert text[end - 2:end] == '}}', 'unexpected MapLooks.json layout'
         text = text[:end] + ',\n' + entry + text[end:]
@@ -966,7 +1114,7 @@ def plan(path, graphs, scale=6):
         fx, fz = e['from']['x'], e['from']['z']
         if e['kind'] in ('door', 'vent', 'breach'): cv.line(X(fx), Y(fz), X(x), Y(z), c, 2)
         cv.disc(X(x), Y(z), r, c)
-    # the hub: zones by ring, the gates (closure, threshold points), the routes as straight arrows with their walked length
+    # the hub: zones by ring, the gates (closure, threshold points), the routes along their `via` with their walked length
     RC = {'near': (120, 220, 140), 'mid': (240, 200, 90), 'far': (255, 110, 90)}
     for zn in H_['zones']:
         V = zn['volume']; cv.frame(X(V['x'] - V['sx'] / 2) + 2, Y(V['z'] + V['sz'] / 2) + 2, X(V['x'] + V['sx'] / 2) - 2, Y(V['z'] - V['sz'] / 2) - 2, RC[zn['ring']], 1)
@@ -975,12 +1123,14 @@ def plan(path, graphs, scale=6):
         cv.poly([(X(x), Y(z)) for x, z in corners(vol_block('', g['closure']))], (90, 255, 220) if g['kind'] == 'metal' else (255, 170, 60))
         for k_, c_ in (('inside', (90, 255, 140)), ('outside', (255, 120, 90))): cv.disc(X(g[k_]['x']), Y(g[k_]['z']), 3, c_)
     for r in H_['routes'] + H_['reserved']:
-        g = next(x for x in H_['gates'] if x['id'] == r['gate']); ap = r['approach']
-        for k_ in range(0, 100, 4): t0, t1 = k_ / 100, (k_ + 2) / 100; cv.line(X(g['x'] + (ap['x'] - g['x']) * t0), Y(g['z'] + (ap['z'] - g['z']) * t0), X(g['x'] + (ap['x'] - g['x']) * t1), Y(g['z'] + (ap['z'] - g['z']) * t1), (255, 255, 255), 2)
-        mx, mz = (g['x'] + ap['x']) / 2, (g['z'] + ap['z']) / 2; cv.text(X(mx) - 40, Y(mz) + 8, '%.0f M  %.1f S' % (r['path'], r['run']), (255, 255, 255))
+        g = next(x for x in H_['gates'] if x['id'] == r['gate']); ap = r['approach']; line = [(g['x'], g['z'])] + [(p_['x'], p_['z']) for p_ in r.get('via', [])] + [(ap['x'], ap['z'])]
+        for (ax, az), (bx, bz) in zip(line, line[1:]):
+            n_ = max(1, int(math.hypot(bx - ax, bz - az) / 1.0))
+            for k_ in range(0, n_, 2): t0, t1 = k_ / n_, min(1.0, (k_ + 1) / n_); cv.line(X(ax + (bx - ax) * t0), Y(az + (bz - az) * t0), X(ax + (bx - ax) * t1), Y(az + (bz - az) * t1), (255, 255, 255), 2)
+        mx, mz = line[len(line) // 2]; cv.text(X(mx) - 40, Y(mz) + 8, '%.0f M  %.1f S' % (r['path'], r['run']), (255, 255, 255))
     # legend
     lx = X(EX1) + 20; ly = 60
-    cv.text(M, 10, 'EXPEDITION CITY HUB (EXP-LAYOUT-3)  192 X 156 M  NORTH UP  1 PX = %d CM' % (100 // scale), (232, 251, 255))
+    cv.text(M, 10, 'EXPEDITION CITY HUB (EXP-LAYOUT-7)  %g X %g M  NORTH UP  1 PX = %d CM' % (BOUNDS['maxX'] - BOUNDS['minX'], BOUNDS['maxZ'] - BOUNDS['minZ'], 100 // scale), (232, 251, 255))
     for label, c in [('SANCTUARY VOLUME', (90, 255, 140)), ('SLOT  (FACING)', (255, 255, 255)), ('WARD ZERO DOOR', (0, 160, 255)), ('INTERACT VOLUME', (80, 220, 255)),
                      ('CLOSURE', (255, 255, 120)), ('RETURNS, APPROACH', (80, 220, 255)), ('FINAL GATE', (255, 60, 50)), ('BOSS TRIGGER', (230, 80, 230)),
                      ('BOSS POINT', (255, 90, 255)), ('MACHINE', (120, 255, 160)), ('CACHE', (255, 200, 40)), ('DOOR SPAWN', KC['door']), ('VENT SPAWN', KC['vent']),
@@ -990,7 +1140,8 @@ def plan(path, graphs, scale=6):
                      ('WILDS COVER', (120, 104, 96)), ('WILDS DISTRICT', (30, 26, 40)), ('ZONE: NEAR', RC['near']), ('ZONE: MID', RC['mid']), ('ZONE: FAR', RC['far']), ('ROUTE: WALKED M, RUN S', (255, 255, 255))]:
         cv.rect(lx, ly, lx + 14, ly + 10, c); cv.text(lx + 20, ly, label, (210, 214, 220)); ly += 22
     for label, x, z in (('SANCTUARY', -6.5, -9.0), ('FINAL PLAZA', -8.5, 55.5), ('FINAL GATE', -6.5, 34.2), ('AVENUE', -3.0, 18.0), ('RING ROAD', 28.6, -12.0),
-                        ('MERIDIAN', 85.0, -36.0), ('(WARD ZERO)', 85.0, -38.5), ('FORECOURT', -10.0, 31.6), ('MERIDIAN APPROACH', 50.0, -33.0), ('IRONWORKS YARD', -80.0, -33.0), ('STATION ROAD', -48.0, -86.0)):
+                        ('MERIDIAN', grow_x(85.0), -36.0), ('(WARD ZERO)', grow_x(85.0), -38.5), ('FORECOURT', -10.0, 31.6), ('MERIDIAN APPROACH', grow_x(50.0), -33.0), ('IRONWORKS YARD', grow_x(-80.0), -33.0),
+                        ('STATION ROAD', -48.0, grow_z(-86.0)), ('EXCHANGE', CUT + 5.5, -1.0), ('UNION HALL', -CUT - 18.5, -1.0), ('TRAM DEPOT', -9.0, -CUT - 9.5)):
         cv.text(X(x), Y(z), label, (240, 236, 220))
     cv.save(path)
 

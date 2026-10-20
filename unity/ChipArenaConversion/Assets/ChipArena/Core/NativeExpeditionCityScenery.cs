@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The Expedition town's skyline (docs/EXPEDITION-LAYOUT.md "Town dressing"): a dead city at dusk round the town (its blocks
-    /// run over x -98..98, z -98..62 since the hub's wilds, exp-layout-3), built once from integer hashes so every client and the
+    /// run over x -122..122, z -122..62 since the city grew, exp-layout-7), built once from integer hashes so every client and the
     /// killcam draw the same horizon. Nothing here is sim data and
     /// nothing collides: Runtime/NativeExpeditionCityPresentation.cs draws it as instanced NativeBlockLit boxes on
     /// NativeSceneryBuilder.BackdropLayer (no shadows cast) for map id "expedition-city" only.
@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
     public static class NativeExpeditionCityScenery
     {
         /// <summary>The town's edge (its perimeter blocks' outer faces) and how far beyond it the skyline starts.</summary>
-        public const double EdgeMinX=-98,EdgeMaxX=98,EdgeMinZ=-98,EdgeMaxZ=62,Margin=4,Ground=320,Reach=250;public const int MaxFires=7;
+        public const double EdgeMinX=-122,EdgeMaxX=122,EdgeMinZ=-122,EdgeMaxZ=62,Margin=4,Ground=320,Reach=250;public const int MaxFires=7;
         private const int Concrete=NativeBlockLooks.ConcreteBoard,Brick=NativeBlockLooks.BrickRed,Plain=NativeBlockLooks.Plain,Tube=NativeCyberCityLooks.Tube,Bank=NativeCyberCityLooks.Bank,Asphalt=NativeBlockLooks.Asphalt;
         private static readonly int[] Tones={0x34303A,0x3C3438,0x2E2E36,0x403634,0x36303C,0x463A36};
         private static readonly int[] Bricks={0x44282A,0x3A2624,0x4E3030};
