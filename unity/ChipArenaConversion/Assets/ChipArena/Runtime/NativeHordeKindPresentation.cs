@@ -217,7 +217,7 @@ namespace ChipArena.UnityConversion
             if(s.Lost>=0){int fresh=a.Lost&~s.Lost;if(fresh!=0)HordeSever(rig,s,fresh,now,pos.y-NativeHordeKinds.RootHeight(real,a.Crawl));}s.Lost=a.Lost;
             // The presented root, stepped every frame whatever the add is doing (so it is settled when the gait takes over).
             {var stF=a.Stats;float wa=now-m.LastAttack;HordeFlowStep(arena,m,s,kind,pos,now,stF!=null&&wa>=0&&wa<NativeHordeKinds.Strike(stF,a.Crawl,a.Lost));}
-            GoreWoundsJob(m.Id,rig);if(IronworksAdd(arena,m,rig,s,kind,now))return true;
+            GoreWoundsJob(m.Id,rig,s.Tier);if(IronworksAdd(arena,m,rig,s,kind,now))return true;
             // Where the rig stands, its velocity and facing: the presented root (smooth on every peer). The effects keep the
             // authority's yaw (their discs and lanes are where the authority's blows land).
             var fp=s.Flow.Position;pos=new Vector3(fp.X,fp.Y,fp.Z);Vector3 velocity=new Vector3(s.Flow.Velocity.X,s.Flow.Velocity.Y,s.Flow.Velocity.Z);float yaw=s.Flow.Yaw;int mode=0;

@@ -36,6 +36,7 @@ namespace ChipArena.UnityConversion
                     var built=NativeHordeModels.Build(kind,look,tier);string id=NativeHordeModels.Id(kind,look,tier);var parts=new List<Part>();
                     foreach(var s in built.Mesh.Sections){var mesh=BodyMesh(s,id+" / joint "+s.Bone);if(mesh!=null)parts.Add(new Part{Name=id,Bone=s.Bone,Mesh=mesh,Material=material,NoShadow=tier!=NativeHordeModels.Full});}
                     models[id]=parts.ToArray();HordeKindTriangles[id]=built.Triangles;HordeKindModelCount++;
+                    if(tier==NativeHordeModels.Full)NativeHordeGoreBody.Keep(built);// the gore's surface (no hit builds a model)
                     // A hinged kind's jaw: its own model on the head joint (the presentation turns it about NativeHordeModels.JawHinge).
                     if(built.Jaw!=null&&built.Jaw.Triangles>0)
                     {

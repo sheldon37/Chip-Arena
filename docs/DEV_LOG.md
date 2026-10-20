@@ -1,3 +1,54 @@
+## 2026-10-20 — Claude: zombie wounds on the drawn body, not on joint capsules (merged into shared)
+
+- **Branch/base:** `claude/zombie-wound-fix` from shared `claude/sleepy-ritchie-g8ruhv` at `f930684`, with shared `ce9e02f` (Astra's #290 and `claude/zombie-black-fix`) merged in at `1e4e99b`. Implementation `53b3a4e`; the DEV preview's vector type `85f0b67`. Presentation only. Merged into shared and the builder; not published.
+- **Owner report:** "Zombie wounds appear off their body (Happens to other zombies as well)". The Central Station recording (pistol) shows dark-red strips crossing as X's above and beside the big kinds' heads.
+- **Root cause.** It is in Core, which Unity and the managed checks share; it is not a Unity-only conversion:
+  1. `NativeHordeGore.Place` (`Core/NativeHordeGore.cs` lines 191–208 at `f930684`) put every wound on a capsule round its joint (`SegmentRadius × Girth(kind) × drawn scale`), never on the model. The head's capsule ran 0.3 rig-m above the joint (`TipOf`) and took the limb girth (brute 1.45, Hulk 1.6), although the big kinds' heads are narrow (`HeadWidth` 0.74 and 0.6). The Hulk's head capsule is 0.43 m against a drawn head of at most 0.24 m, the brute's 0.22 m against 0.18 m. Other parts were fatter or thinner than their capsules too.
+  2. `DrawWounds` (lines 609–611) drew the blood run as one straight strip in the wound's plane, moved down but laid along the frame's `b` axis, across the shot (median 51° off the surface's down), up to 5.6 wound sizes long. It stood off curved parts, and neighbouring runs crossed as X's.
+  - **The matrices are not the cause.** `GoreN` is an exact transpose. Unity's `localToWorldMatrix` chain converts to exactly the matrices the checks pose (new check). The old "worst 0.4 cm from the hit" measured the wound centre against the same capsules, never the drawn pieces against the model.
+  - `8740ceb`, `263cac2` and `f930684` measure identically.
+- **Measured.** Each drawn wound piece's farthest corner from its own drawn part, with ZombieLit's per-add proportions and missing pieces applied. The scratch probe covered all 16 kinds (look 0) with 13 aims, 4 causes and 3 facings, standing and walking, at 4 ages. Worst / p95, before → after:
+  - shambler 26.5 / 13.2 → 2.4 / 1.3 cm; runner 24.9 / 13.2 → 2.0 / 1.2;
+  - brute 31.7 / 14.4 → 2.1 / 1.4; spitter 21.5 / 12.3 → 2.3 / 1.3;
+  - crawler 24.9 / 14.4 → 1.7 / 1.2; bloater 29.8 / 16.5 → 1.9 / 1.4;
+  - Hulk 55.3 / 36.1 → 3.5 / 2.6;
+  - the nine zone kinds 17.9–41.4 / 7.7–21.5 → 1.8–2.5 / 1.2–1.8.
+  - Wound centres, p95: 3.5–22.6 cm → 0.0.
+- **Fix:**
+  - New `Core/NativeHordeGoreBody.cs` holds each joint's triangles of the kind's look at the Full tier, in the joint's own frame, with the add's proportions and missing pieces applied. It answers ray, nearest-point and near queries. The bank hands it the Full models it builds (31 bodies, 5.9 MB).
+  - `NativeHordeGore.PlaceOn`: the wound goes on the first drawn part the shot's ray enters. The ray is a projectile's own 3D travel (`e.Normal`, its velocity), within the authority's part. If the ray only grazed the authority's capsule, the wound goes on the nearest drawn point.
+  - `NativeHordeGoreState.OnBody` fits the footprint to the part, down to 0.38 of its size. It traces the run down the surface at the hit in three snapped steps. `DrawWounds` draws each stretch along itself, and drips leave the run's tip.
+  - `ShownJoints`: a lost limb is never wounded, on any frame, because `Lost` is the replicated `Pve.Lost`.
+  - `FromColumns` and `Column` hold the Unity joint conversion in Core.
+  - Runtime, `NativeHordeGorePresentation.cs`:
+    - `GoreN`/`GoreU` go through Core;
+    - the hit carries `Shot` and `Look`;
+    - a live add's wounds draw only while it is on the Full model, which matters only at the edge of the nearest-24 ranking.
+  - Also changed: `NativeHordeGoreGallery.cs` (`Look`, `Shot`). Minimal edits to shared files: `NativeHordeKindModels.cs` gains one line (`NativeHordeGoreBody.Keep(built)` for the Full tier), and `NativeHordeKindPresentation.cs` gains one argument (`GoreWoundsJob(m.Id,rig,s.Tier)`).
+  - Not touched: `NativeZombieLit.shader`, the colours, and the pose code.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The poses are read only through the rig's joint matrices.
+- **Checks (actual):**
+  - `--zombie-gore`, Release and Debug: PASS, 315,398 zombie-gore checks (14 PASS lines), digest `0xf8a1621b9ac8bba8` in both.
+  - New `OnBody` group, against the test's own drawn body (the shader's vert written out, not `NativeHordeGoreBody`): 1,106 hits on all 16 kinds and every look, walking and standing, 5 causes, 3 gore tiers, 17,032 pieces. Worst 3.7 cm (a Hulk piece); 95 % within 1.6 cm (wound), 0.8 cm (run) and 1.5 cm (drop); centres on the part.
+  - Regressions: Hulk and brute head shots are 22 and 6 cm off on the old capsule, 0.0 cm now. Runs go down the surface: half within 0°, 19 in 20 within 41°.
+  - Unity matrix conversion: exact.
+  - On the merged tree, rc 0: `--zombie-gore`, `--zombie-light`, `--station-visuals`, `--zombie-loco`, `--zombie-flow`, `--ironworks-props`, `--ironworks-kinds`, `--station-enemies`, `--hulk-charge`, `--hulk-motion`, `--horde-roam`, `--horde-drops`, `--boss-vfx`, `--wardzero-simulation`, `--footfalls`, `--boss-motion`, `--gib`, `--melee-bisect`, `--move-visuals`.
+  - run5b on the merged tree at `85f0b67`, rc1–rc5 all 0: Unity Runtime and Editor compile; relay and managed suite 809 PASS lines, 0 FAIL; 140 Python tests (1 skipped); package; diff-check. The first run5b's Unity compile caught the preview's UnityEngine vector in `GoreHit.Shot`, which the managed build does not compile. It was fixed in `85f0b67`, and run5b was rerun from scratch.
+  - Changed on purpose:
+    - placement is measured on the drawn model;
+    - "faces the shooter" is now > 0 (least 0.11), because the normal is the surface's;
+    - the old-frame digest is re-recorded (was `0x1a7d959dbc8e8969`);
+    - the stray-data check leaves out `Lost`.
+  - Cost: 60–75 µs a hit in .NET 8 Release, nothing per frame, zero allocation.
+- **Renders:** `renders-zombie-wounds/wounds-before.png` and `wounds-after.png` (scratch, not in git). A hulk, a brute and a shambler each take seven pistol shots. Offline WebGL (SwiftShader) emulation of ZombieLit's shared lighting in a neutral studio light, with the gore voxels from each Core; no blood sim, mist or decals. Not Unity.
+- **Not run:** Unity Editor play, the Windows build, two-client play, the in-engine killcam, the owner's look.
+- **Risks:**
+  - Not followed: a dangling part's sway (up to 2.4 cm) and the spit/belly swell of the neck and spine (transient, up to about 45 % of the neck).
+  - A hit may cost more on Unity's Mono than on .NET 8.
+  - A live add drawn Reduced shows no wounds; it is always past the nearest 24 (16 on low graphics).
+  - Up close, a fresh bullet wound (ring plus run) can read as a small "+". That is the old design, now on the body; it needs the owner's review.
+- **Next:** owner review in the Windows build at Central Station.
+
 ## 2026-10-20 — Claude: zombies near-black at Central Station: the station now lights bodies with its practical slots (merged into shared)
 
 - **Branch/base:** `claude/zombie-black-fix`, from shared `claude/sleepy-ritchie-g8ruhv` at `f930684`. Presentation only. Implementation commit `ffcaf05`. Merged into shared and the builder; not published.
