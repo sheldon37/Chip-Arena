@@ -108,6 +108,8 @@ rig's maths frame (+x is the rig's left); "Unity frame" is that frame mirrored o
   draft timeline.
 - Today the display wrist is the **free hand**: the left, or the right when the weapon rides the left hand (staffs,
   L33t H4x, bow).
+- On the PvP draft stage (`Core/NativeDraftStage.cs`) the reaching hand follows the card's side (`Left = card.X >= 0`),
+  and the plant goes into the other wrist, so either wrist can take the chip.
 
 **Binary assets.**
 - **What exists:** no FBX, Blender files, prefabs or `.mat` files are tracked. Every mesh is code-built or a JSON
@@ -198,7 +200,7 @@ So low poly is **not automatically cheaper**:
 - `tools/export_character.py`, run headless:
 
   ```
-  blender --background --factory-startup <file>.blend --python tools/export_character.py -- --out <dir>
+  blender --background --factory-startup <file>.blend --python-exit-code 1 --python tools/export_character.py -- --out <dir>
   ```
 
   `--python-exit-code 1` makes a script error fail the run.
@@ -266,7 +268,7 @@ Reasons:
 - Head centre at 1.50 ± .03 m.
 - Body and garments within the capsule radius (.42 m, plus .03 m tolerance) at rest. Headwear and back pieces may
   exceed it by at most .25 m.
-- Bind pose of joint *b* = inverse(world matrix of *b* in the modelling pose). The modelling pose is the rest pose, or
+- Bind pose of joint *b* = inverse(matrix of *b* relative to motion-root in the modelling pose). The modelling pose is the rest pose, or
   an A-pose with an exact recorded rotation on joints 7 and 11 (for example ±40° about z), which the exporter applies
   through the hierarchy.
 - Vertex groups are named exactly as the joints. No weight on joint 0.
@@ -396,7 +398,7 @@ combination: it picks a variant or hides a sub-part.
 
 | State | Driven by (unchanged authority data) |
 |---|---|
-| opening, open | `NativeChipSelectTrack`: a PvE row `open`, an Expedition `members[].choosing`, or the draft turn. The lid opens as the panel rises. |
+| opening, open | `NativeChipSelectTrack` (a PvE row `open`, an Expedition `members[].choosing`), or the draft stage's pick (`NativeDraftStage`, after the authoritative pick time). The lid opens as the panel rises. |
 | insertion | The `NativeChipPlant` / `NativeDraftPlant` timeline: the chip enters the cuff. |
 | accepted | The plant's seat and cuff pulse, in the chip's rarity colour. |
 | activated | The glow after accepted, decaying over about 1.5 s. Optionally a later binding to an active chip effect. |
@@ -409,6 +411,9 @@ combination: it picks a variant or hides a sub-part.
     inserts.
   - Staff, L33t H4x and bow pilots already have the right hand free.
   - First person uses the right display (`NativeChipSelectPose` already has a right-hand case).
+  - On the draft stage the left hand always carries the chip and the plant always goes into the right wrist
+    (`NativeDraftStage.Left` stops following the card's side).
+  - The held chip's size cap (.13 m, from the voxel palm's .145 m) follows the body type's palm width.
 
 ## f. Death compatibility
 
