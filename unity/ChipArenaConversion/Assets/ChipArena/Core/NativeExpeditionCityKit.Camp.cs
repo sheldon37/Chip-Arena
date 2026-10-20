@@ -112,7 +112,8 @@ namespace ChipArena.UnityConversion
                 sanctuaryOk=false;
             }
         }
-        /// <summary>Two work floods on each instance door's face, either side of and above its airlock unit, down on the join circle.</summary>
+        /// <summary>Two work floods on each instance door's face, either side of and above its airlock unit (past the station's
+        /// canopy there), down on the join circle.</summary>
         private void JoinFloods()
         {
             foreach(var d in area?.doors??Array.Empty<ExpeditionDoorLayout>())
@@ -123,7 +124,7 @@ namespace ChipArena.UnityConversion
                 double u0=U(f,d.closure.x,d.closure.z);
                 foreach(double s in new[]{-1.0,1.0})
                 {
-                    double u=double.NaN,y=4.75;foreach(double off in new[]{d.closure.sx/2+UnitWing+.7,d.closure.sx/2+UnitWing+1.6,d.closure.sx/2+UnitWing+2.6}){double cu=u0+s*off;if(Open(f,cu-.35,cu+.35,y-.3,y+.4,.02,false)){u=cu;break;}}if(double.IsNaN(u))continue;
+                    double u=double.NaN,y=4.75;foreach(double off in new[]{d.closure.sx/2+UnitWing+.7,d.closure.sx/2+UnitWing+1.6,d.closure.sx/2+UnitWing+2.6,d.closure.sx/2+UnitWing+3.6,d.closure.sx/2+UnitWing+4.4}){double cu=u0+s*off;if(Open(f,cu-.35,cu+.35,y-.3,y+.4,.02,false)){u=cu;break;}}if(double.IsNaN(u))continue;
                     Begin();FBox(f,u,y,.3,.08,.08,.6,P(NativeBlockLooks.SteelGreen,0x2A2E2A,RoleLandmark));FBox(f,u,y-.08,.62,.55,.38,.3,P(NativeBlockLooks.SteelGreen,0x1E2220,RoleLandmark),0,28);
                     FBox(f,u,y-.16,.79,.44,.28,.03,Glow(0xE8F0FF,2.0f,RoleLandmark),0,28);
                     if(End()){At(f,u,0,3.0,out double lx,out double lz);Light(lx,f.Base+3.2,lz,0xE8F0FF,.9,12,1.4,GlowFlood);}

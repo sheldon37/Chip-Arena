@@ -208,7 +208,7 @@ namespace ChipArena.UnityConversion
                 {
                     // A manhole: a round iron cover (four squares turned 22.5°), its rim.
                     Begin();for(int q=0;q<4;q++)Box(g,x,.006,z,.66,.012,.66,iron,AxisRot(0,1,0,q*22.5));Box(g,x,.014,z,.36,.004,.06,With(P(NativeBlockLooks.Plain,0x1A1816,RoleStreet),detail:true));
-                    if(End()){holes++;if(Hash("road",k,4)<.3){steam.Add((float)x);steam.Add(.05f);steam.Add((float)z);steam.Add((float)Hash("road",k,5));}}
+                    if(End()){holes++;if(Hash("road",k,4)<.55){steam.Add((float)x);steam.Add(.05f);steam.Add((float)z);steam.Add((float)Hash("road",k,5));}}
                 }
                 else if(t<.4&&cracks<90)
                 {
