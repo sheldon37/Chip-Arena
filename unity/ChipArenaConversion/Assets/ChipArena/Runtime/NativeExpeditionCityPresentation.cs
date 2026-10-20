@@ -16,7 +16,9 @@ namespace ChipArena.UnityConversion
     ///    (NativeArenaDressing.Hidden) hide with it and follow its knock (NativeArenaDressing.Nudged); parts between the camera
     ///    and the pilot that ask to fade are hidden; the low graphics tier and compatibility rendering leave the detail parts out;
     ///    far parts are left out by their size (NativeExpeditionCityKit.Range: what glows to the fog's end, the rest by size,
-    ///    squared once per map in townReach), so the bigger town (exp-layout-7) costs per frame what the camera can see.
+    ///    squared once per map in townReach), so the bigger town (exp-layout-7) costs per frame what the camera can see; parts on a
+    ///    building face its block hides from the camera are left out (NativeExpeditionCityKit.Hide, the back-face rule of the
+    ///    city detail pass: the face's ratio once per frame, one compare per part).
     ///    Instanced NativeBlockLit draws of 500 on layer 0, the big parts casting shadows, the rest not.
     ///  - Skyline (Core NativeExpeditionCityScenery): static instanced batches on NativeSceneryBuilder.BackdropLayer, no shadows
     ///    cast, uploaded once; left out under compatibility rendering.
@@ -32,7 +34,7 @@ namespace ChipArena.UnityConversion
     {
         private Material townMaterial;private Mesh townMesh;private bool townFailed;private NativeFxDraw townDraw;private NativeExpeditionCityFx townFx;
         private NativeCityBackdropBox[] townBackdrop;private NativeCityBackdropFire[] townFires;private readonly List<MetroBatch> townBack=new List<MetroBatch>(),townCast=new List<MetroBatch>(),townTrim=new List<MetroBatch>();private int townCastUsed,townTrimUsed;
-        private ContentMap townMap;private NativeExpeditionCityKit townKit;private NativeCityFxScene townScene;private NativeExpeditionCityLights townLights;private ExpeditionAreaLayout townArea;private bool townAreaRead;private float[] townReach=Array.Empty<float>();
+        private ContentMap townMap;private NativeExpeditionCityKit townKit;private NativeCityFxScene townScene;private NativeExpeditionCityLights townLights;private ExpeditionAreaLayout townArea;private bool townAreaRead;private float[] townReach=Array.Empty<float>(),townBehind=Array.Empty<float>();
         private NativePropBody[] townParents=Array.Empty<NativePropBody>();private bool[] townOut=Array.Empty<bool>();private Vector3[] townNudge=Array.Empty<Vector3>();private float[] townSeeds=Array.Empty<float>();
         private readonly Dictionary<string,int> townIndex=new Dictionary<string,int>();private MaterialPropertyBlock townOne;private float townLast=-1;private NativeArena townArena;private int townGeneration=-1;
         // The town's blocks are static: each part's matrix and steady colour at its block's rest pose, made once; a block that
@@ -94,6 +96,7 @@ namespace ChipArena.UnityConversion
             townParents=new NativePropBody[blocks.Length];townOut=new bool[blocks.Length];townNudge=new Vector3[blocks.Length];townIndex.Clear();for(int i=0;i<blocks.Length;i++)if(blocks[i]?.id!=null)townIndex[blocks[i].id]=i;
             townSeeds=new float[townKit.Parts.Length];for(int i=0;i<townSeeds.Length;i++)townSeeds[i]=NativeBlockLooks.Seed(blocks[townKit.Parts[i].Parent].id+"#"+i);
             float far=NativeExpeditionCityKit.FarRange(look);townReach=new float[townKit.Parts.Length];for(int i=0;i<townReach.Length;i++){float r=NativeExpeditionCityKit.Range(townKit.Parts[i],far);townReach[i]=r*r;}
+            townBehind=new float[townKit.FaceCulls.Length+1];
             townMoved=new bool[blocks.Length];var parts=townKit.Parts;townRestMatrix=new Matrix4x4[parts.Length];townRestSpot=new Vector4[parts.Length];townRestColor=new Vector4[parts.Length];
             for(int i=0;i<parts.Length;i++)
             {
@@ -111,11 +114,11 @@ namespace ChipArena.UnityConversion
         private void DrawTownKit(NativeArena arena,float now,Camera eye)
         {
             townCastUsed=townTrimUsed=0;Vector3 from=eye!=null?eye.transform.position:Vector3.zero,to=from;bool fade=eye!=null&&!FirstPerson&&arena.ViewPilot?.Body!=null;if(fade)to=arena.ViewPilot.Body.position+Vector3.up*.9f;
-            var parts=townKit.Parts;bool lean=LowGraphics||!UsesInstancing,near=eye!=null;Vector3 at=from;
+            var parts=townKit.Parts;bool lean=LowGraphics||!UsesInstancing,near=eye!=null;Vector3 at=from;if(near)townKit.Hide(at.x,at.y,at.z,townBehind);
             for(int i=0;i<parts.Length;i++)
             {
                 var part=parts[i];if(part.Detail&&lean)continue;var prop=townParents[part.Parent];if(prop==null||townOut[part.Parent])continue;
-                if(near){var spot=townRestSpot[i];float sx=spot.x-at.x,sy=spot.y-at.y,sz=spot.z-at.z;if(sx*sx+sy*sy+sz*sz>townReach[i])continue;}
+                if(near){var spot=townRestSpot[i];float sx=spot.x-at.x,sy=spot.y-at.y,sz=spot.z-at.z;if(sx*sx+sy*sy+sz*sz>townReach[i]||part.Face!=0&&townBehind[part.Face]<=part.Back)continue;}
                 Matrix4x4 m;if(townMoved[part.Parent]){var t=prop.transform;Quaternion q=t.rotation;m=Matrix4x4.TRS(t.position+townNudge[part.Parent]+q*new Vector3(part.X,part.Y,part.Z),q*new Quaternion(part.Qx,part.Qy,part.Qz,part.Qw),Vector3.one);}else m=townRestMatrix[i];
                 if(fade&&part.Fade&&MetroBetween(from,to,new Vector3(m.m03,m.m13,m.m23),new Vector3(part.Hx+.2f,part.Hy+.2f,part.Hz+.2f)))continue;
                 Vector4 color=townRestColor[i];if(part.Drive!=NativeExpeditionCityKit.DriveSteady){NativeExpeditionCityKit.Drive(part,now,out float r,out float g,out float bl,out float level);color=MetroColor(r,g,bl,level);}

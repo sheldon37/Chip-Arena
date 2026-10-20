@@ -19,6 +19,8 @@ namespace ChipArena.UnityConversion
         public readonly byte[] Wild=new byte[CellsX*CellsZ];
         public NativeCityGlow[] Fires=Array.Empty<NativeCityGlow>(),Halos=Array.Empty<NativeCityGlow>();public NativeCityBackdropFire[] Far=Array.Empty<NativeCityBackdropFire>();
         public float[] BulbX=Array.Empty<float>(),BulbY=Array.Empty<float>(),BulbZ=Array.Empty<float>(),BulbP=Array.Empty<float>();
+        /// <summary>The kit's steaming manholes (x, y, z, phase per source; the city detail pass).</summary>
+        public float[] Steam=Array.Empty<float>();
         public float FogR=.1f,FogG=.08f,FogB=.1f;
         public byte OpenAt(double x,double z){int i=(int)Math.Floor((x-OriginX)/Cell),j=(int)Math.Floor((z-OriginZ)/Cell);return i<0||j<0||i>=CellsX||j>=CellsZ?(byte)0:Open[j*CellsX+i];}
         public bool WildAt(double x,double z){int i=(int)Math.Floor((x-OriginX)/Cell),j=(int)Math.Floor((z-OriginZ)/Cell);return i>=0&&j>=0&&i<CellsX&&j<CellsZ&&Wild[j*CellsX+i]!=0;}
@@ -53,7 +55,7 @@ namespace ChipArena.UnityConversion
             s.Fires=fires.ToArray();s.Halos=halos.ToArray();
             var bx=new List<float>();var by=new List<float>();var bz=new List<float>();var bp=new List<float>();
             if(kit!=null&&blocks!=null)foreach(var p in kit.Parts){if(p.Drive!=NativeExpeditionCityKit.DriveBulbs||p.Parent<0||p.Parent>=blocks.Length)continue;var b=blocks[p.Parent];bx.Add(b.pos.x+p.X);by.Add(b.pos.y+p.Y);bz.Add(b.pos.z+p.Z);bp.Add(p.Param);}
-            s.BulbX=bx.ToArray();s.BulbY=by.ToArray();s.BulbZ=bz.ToArray();s.BulbP=bp.ToArray();
+            s.BulbX=bx.ToArray();s.BulbY=by.ToArray();s.BulbZ=bz.ToArray();s.BulbP=bp.ToArray();s.Steam=kit?.Steam??Array.Empty<float>();
             if(look?.fog!=null){s.FogR=(float)NativeSceneryBuilder.Channel(look.fog.color,16);s.FogG=(float)NativeSceneryBuilder.Channel(look.fog.color,8);s.FogB=(float)NativeSceneryBuilder.Channel(look.fog.color,0);}
             return s;
         }
@@ -67,7 +69,10 @@ namespace ChipArena.UnityConversion
     ///  - fires (the brazier, the bus, the burning windows): flames, a warm halo, rising embers and smoke;
     ///  - light: halos round the working lamps, floods, beacons, the police bar and neon, warm pools under the lamps and fires,
     ///    the sanctuary's bulbs;
-    ///  - ground fog: soft sheets lying in the streets round the eye (none inside blocks, smaller near walls), drifting; falling ash.
+    ///  - ground fog: soft sheets lying in the streets round the eye (none inside blocks, smaller near walls), drifting, and lower,
+    ///    denser pockets in the narrow alleys and lanes (the city detail pass); falling ash;
+    ///  - the city detail pass: steam breathing out of some manholes, and a soft shaft of light in the haze under each working
+    ///    lamp near the eye.
     /// Counts scale with the effects quality and the low tier (NativeBrickfallAtmosphere.Count's rule), except the fires' flames and
     /// the lamps' halos, which mark where light is. Pure: the same clock, camera, light, quality and scene give the same quads;
     /// premultiplied smoke and fog are sorted far to near within their kind. Allocation free.
@@ -76,7 +81,7 @@ namespace ChipArena.UnityConversion
     {
         public const int Capacity=2800,SortMax=320;
         public readonly NativeFxQuads Quads=new NativeFxQuads(Capacity);
-        public int Flames,Embers,Smoke,Halos,Pools,Fog,Ash,Bulbs,Columns,Heli;
+        public int Flames,Embers,Smoke,Halos,Pools,Fog,Ash,Bulbs,Columns,Heli,Steam,Shafts,Pockets;
         public const double FogRadius=40,WindX=.55,WindZ=.3;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz,hx,hz;private NativeFxLight light;
         private readonly double[] key=new double[SortMax],sx=new double[SortMax],sy=new double[SortMax],sz=new double[SortMax],ss=new double[SortMax],sr=new double[SortMax],sg=new double[SortMax],sb=new double[SortMax],sa=new double[SortMax];
@@ -91,12 +96,12 @@ namespace ChipArena.UnityConversion
         public void Build(NativeCityFxScene scene,double time,double camX,double camY,double camZ,double rightX,double rightY,double rightZ,double upX,double upY,double upZ,NativeFxLight sun,double quality,bool low)
         {
             Quads.Clear();ex=camX;ey=camY;ez=camZ;rx=rightX;ry=rightY;rz=rightZ;ux=upX;uy=upY;uz=upZ;light=sun;double hl=Math.Sqrt(rx*rx+rz*rz);hx=hl>1e-6?rx/hl:1;hz=hl>1e-6?rz/hl:0;
-            Flames=Embers=Smoke=Halos=Pools=Fog=Ash=Bulbs=Columns=Heli=0;if(scene==null)return;
+            Flames=Embers=Smoke=Halos=Pools=Fog=Ash=Bulbs=Columns=Heli=Steam=Shafts=Pockets=0;if(scene==null)return;
             // Premultiplied pieces first, each kind far to near: the far smoke columns, the ground fog, the near smoke; then the
             // additive pieces (order free).
             Begin();ColumnFx(scene,time,quality,low);Flush();
-            Begin();FogFx(scene,time,quality,low);Flush();
-            Begin();SmokeFx(scene,time,quality,low);AshFx(time,quality,low);Flush();
+            Begin();FogFx(scene,time,quality,low);PocketFx(scene,time,quality,low);Flush();
+            Begin();SmokeFx(scene,time,quality,low);SteamFx(scene,time,quality,low);AshFx(time,quality,low);Flush();
             FireFx(scene,time,quality,low);HaloFx(scene,time);BulbFx(scene,time);HeliFx(time,quality,low);
         }
 
@@ -250,7 +255,36 @@ namespace ChipArena.UnityConversion
                 double size=Math.Max(g.Size*(kind==NativeExpeditionCityKit.GlowNeon?1.3:kind==NativeExpeditionCityKit.GlowFlood?2.4:1.5),d*.012),a=(kind==NativeExpeditionCityKit.GlowNeon?.16:.26)*k;
                 Sprite(g.X,g.Y,g.Z,size,r,gg,b,a,true);Halos++;
                 // A warm pool on the street under the lamps (not the floods, beacons or signs).
-                if((kind==NativeExpeditionCityKit.GlowLamp||kind==NativeExpeditionCityKit.GlowLampFlicker)&&d<70){Flat(g.X,.025,g.Z,g.Range*.42,r*.5*k,gg*.5*k,b*.5*k,.22,true);Pools++;}
+                if((kind==NativeExpeditionCityKit.GlowLamp||kind==NativeExpeditionCityKit.GlowLampFlicker)&&d<70){Flat(g.X,.025,g.Z,g.Range*.42,r*.5*k,gg*.5*k,b*.5*k,.22,true);Pools++;
+                    // Its shaft in the haze (the city detail pass): a soft beam from the head to the street, near the eye only.
+                    if(d<40&&g.Y>2.5&&Shafts<ShaftMax){double fade=Math.Min(1,(40-d)/12);Beam(g.X,g.Y-.12,g.Z,g.X,.05,g.Z,.22,g.Range*.55,r,gg,b,.045*k*fade);Shafts++;}}
+            }
+        }
+        public const int ShaftMax=24,SteamMax=8,PocketMax=40;
+        // ---------------- the city detail pass: steam and fog pockets ----------------
+        private void SteamFx(NativeCityFxScene s,double time,double quality,bool low)
+        {
+            int per=Count(6,quality,low),n=0;var st=s.Steam;
+            for(int i=0;i+3<st.Length&&n<SteamMax;i+=4)
+            {
+                double x=st[i],y=st[i+1],z=st[i+2],p=st[i+3],d=Dist(x,y,z);if(d>50)continue;n++;
+                for(int k=0;k<per;k++)
+                {
+                    double life=3.5+H(i,k,91)*2,ph=Frac(time/life+H(i,k,92)+p),rise=ph*2.6,size=.35+ph*1.5,a=.16*(1-ph)*Math.Min(1,ph*6);
+                    SmokeColor(0,out double r,out double g,out double b);Queue(x+WindX*rise*.6+Math.Sin(ph*5+k)*.15,y+.2+rise,z+WindZ*rise*.6,size,r*2.2+.04,g*2.2+.04,b*2.2+.05,a,0);Steam++;
+                }
+            }
+        }
+        private void PocketFx(NativeCityFxScene s,double time,double quality,bool low)
+        {
+            // Narrow streets (2 m cells at most one cell from a wall on a 3 m lattice round the eye): a low, denser sheet.
+            int max=Count(PocketMax,quality,low);const double C=3;const double R=28;int i0=(int)Math.Floor((ex-R)/C),i1=(int)Math.Floor((ex+R)/C),j0=(int)Math.Floor((ez-R)/C),j1=(int)Math.Floor((ez+R)/C);
+            for(int j=j0;j<=j1;j++)for(int i=i0;i<=i1;i++)
+            {
+                if(Pockets>=max)return;double h=H(i+900,j+900,17);if(h<.35)continue;
+                double x=(i+.2+.6*H(i,j,18))*C+Math.Sin(time*.06+h*17)*.8,z=(j+.2+.6*H(i,j,19))*C+Math.Cos(time*.05+h*11)*.8;byte open=s.OpenAt(x,z);if(open==0||open>1||s.WildAt(x,z))continue;
+                double d=Math.Sqrt((x-ex)*(x-ex)+(z-ez)*(z-ez));if(d>R)continue;double fade=Math.Min(1,Math.Max(0,(d-2)/5))*Math.Min(1,(R-d)/8);
+                Queue(x,.18+.2*H(i,j,20),z,1.6+.8*H(i,j,21),s.FogR*1.2,s.FogG*1.15,s.FogB*1.25,.24*fade*(.6+.4*h),1);Pockets++;
             }
         }
         private void BulbFx(NativeCityFxScene s,double time)

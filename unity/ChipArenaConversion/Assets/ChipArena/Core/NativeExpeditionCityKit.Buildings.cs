@@ -18,10 +18,12 @@ namespace ChipArena.UnityConversion
                 // The hub's wilds (exp-layout-3): warehouses and yards, the Meridian and station annexes.
                 case "e-ware-n":case "e-ware-s":case "w-ware-n":case "w-ware-s":case "se-yard":case "sw-yard":case "foundry-annex-n":case "foundry-annex-s":return Depot;
                 case "meridian-annex-n":case "meridian-annex-s":case "transit-annex-e":case "transit-annex-w":return Civic;
-                // The outer quarters (exp-layout-7): each landmark that ends the forecourt's axis is a civic front, the rows on
-                // its main lane are shops; the rest are tenements (the generic facade).
-                case "xq-exchange":case "fq-union-hall":case "tq-tram-depot":return Civic;
-                case "xq-row-l0":case "xq-row-l1":case "fq-row-l0":case "fq-row-l1":return Shops;
+                // The outer quarters (exp-layout-7): each landmark that ends the forecourt's axis has its own front (the city
+                // detail pass, NativeExpeditionCityKit.Quarters.cs); on the main lanes the Roxy cinema, the Hotel Argo and shops;
+                // the rest are tenements (the generic facade).
+                case "xq-exchange":return Exchange;case "fq-union-hall":return UnionHall;case "tq-tram-depot":return TramDepot;
+                case "xq-row-l1":return Cinema;case "fq-row-l1":return Hotel;
+                case "xq-row-l0":case "fq-row-l0":return Shops;
                 default:return Residential;
             }
         }
@@ -48,10 +50,24 @@ namespace ChipArena.UnityConversion
                     case Foundry:FoundryFace(f);break;
                     case Stack:StackFace(f);break;
                     case Transit:TransitFace(f);break;
+                    case Exchange:ExchangeFace(f);break;
+                    case UnionHall:UnionHallFace(f);break;
+                    case TramDepot:TramDepotFace(f);break;
                     default:Facade(f,kind,name);break;
+                }
+                // The landmarks' fronts are whole compositions: no later wall piece lands on them.
+                if((kind==Exchange||kind==UnionHall||kind==TramDepot)&&TownFacing(f))Use(f,f.U0,f.U1,0,f.Top-f.Base);
+                // The main lanes' blade signs: the Hotel Argo (west), a bar (east), a pawnbroker (west).
+                if(f.Front==2&&!TownFacing(f)&&!OutFacing(f))
+                {
+                    double bu=f.U1-1.0;
+                    if(name=="fq-row-l1"){Blade(f,bu,5.0,5.4,"ARGO",0xFF3A40,true,-1);double cell=.07;if(Open(f,(f.U0+f.U1)/2-2.2,(f.U0+f.U1)/2+2.2,4.75,5.3,.02,false)){Begin();Text(f,"HOTEL ARGO",(f.U0+f.U1)/2,4.85,.08,cell,.02,P(NativeBlockLooks.Plain,0xD8C8A0,RoleSign));End();}}
+                    else if(name=="xq-row-l0")Blade(f,bu,4.7,3.4,"BAR",0x7DFF8A,true,-1);
+                    else if(name=="fq-row-l0")Blade(f,bu,4.7,3.8,"PAWN",0xFFB040,Hash(id,0,91)<.5,1);
                 }
             }
             if(kind!=Stack&&kind!=Clock)Roof(i,name,kind);
+            if(kind==Exchange)ExchangeRoof(i);else if(kind==UnionHall)UnionHallRoof(i);else if(kind==TramDepot)TramDepotRoof(i);
         }
 
         // ---------------- generic facades ----------------
@@ -66,7 +82,7 @@ namespace ChipArena.UnityConversion
         private void Facade(Face f,int kind,string name)
         {
             var b=blocks[f.Block];string id=b.id;double h=f.Top-f.Base;bool brick=b.material=="brick",stone=b.material=="stone";
-            double ground=kind==Shops?4.4:kind==Office||kind==Hotel||kind==Depot?4.6:kind==Kiosk?h:4.0;
+            double ground=kind==Shops?4.4:kind==Office||kind==Hotel||kind==Depot||kind==Cinema?4.6:kind==Kiosk?h:4.0;
             double top=h-.9,span=top-ground;double bay=kind==Office?2.0:kind==Civic?2.6:kind==Shops?2.6:2.4;
             int storeys=span<2.4?0:Math.Max(1,(int)Math.Round(span/(kind==Office?3.2:3.0)));double storey=storeys>0?span/storeys:0;
             double ww=kind==Office?1.5:kind==Civic?1.1:1.0,wh=kind==Office?Math.Min(2.0,storey-.9):Math.Min(kind==Civic?1.7:1.5,storey-1.0);
@@ -95,6 +111,7 @@ namespace ChipArena.UnityConversion
                     case Office:case Hotel:Lobby(f,run[0],run[1],ground,kind,name);break;
                     case Depot:RollerDoors(f,run[0],run[1],name);break;
                     case Kiosk:KioskFront(f,run[0],run[1],name);break;
+                    case Cinema:if(f.Front==2&&!OutFacing(f)&&run[1]-run[0]>=8)CinemaFront(f,run[0],run[1]);else Dwelling(f,run[0],run[1],brick);break;
                     default:Dwelling(f,run[0],run[1],brick);break;
                 }
             }
@@ -103,38 +120,40 @@ namespace ChipArena.UnityConversion
             // The hotel's blade sign over the forecourt (its north face).
             if(kind==Hotel&&f.Front>=1&&f.Axis==2&&f.Sign>0)HotelSign(f,ground,h);
         }
-        private void Window(Face f,double u,double y0,double w,double h,bool brick,int row,int col,bool burning)
+        /// <summary>A window on face f (pane, sill, lintel, its state), `lift` m further out of the face (over a landmark's skin).</summary>
+        private void Window(Face f,double u,double y0,double w,double h,bool brick,int row,int col,bool burning,double lift=0)
         {
             string id=blocks[f.Block].id;double s=Hash(id,f.Index*97+row,col);double y1=y0+h,yc=(y0+y1)/2;Use(f,u-w/2-.15,u+w/2+.15,y0-.15,y1+.25);
             // The wilds are dark: no lit window or television, more boarded and broken panes.
             if(WildFace(f,u))s=.1+s*.9;
             Begin();
-            if(row<2)FBox(f,u,y0-.05,.07,w+.22,.09,.14,With(P(NativeBlockLooks.ConcreteBoard,SillHex,RoleFacade),detail:row>0));
-            if(brick&&row==0)FBox(f,u,y1+.1,.04,w+.24,.2,.08,With(P(NativeBlockLooks.ConcreteBoard,LintelHex,RoleFacade),detail:true));
+            if(row<2)FBox(f,u,y0-.05,.07+lift,w+.22,.09,.14,With(P(NativeBlockLooks.ConcreteBoard,SillHex,RoleFacade),detail:row>0));
+            if(brick&&row==0)FBox(f,u,y1+.1,.04+lift,w+.24,.2,.08,With(P(NativeBlockLooks.ConcreteBoard,LintelHex,RoleFacade),detail:true));
             // Burning: one window of the top storey on three blocks, by hash.
             if(burning&&Hash(id,f.Index,row*131+col)<.22)
             {
-                FBox(f,u,yc,.02,w,h,.04,Glow(FireHex,1.7f,RoleFacade,DriveFire,(float)s));Soot(f,u,y1,w,1.3);
+                FBox(f,u,yc,.02+lift,w,h,.04,Glow(FireHex,1.7f,RoleFacade,DriveFire,(float)s));Soot(f,u,y1,w,1.3,lift);
                 At(f,u,0,.35,out double gx,out double gz);Light(gx,f.Base+y0+.05,gz,FireHex,1.4,8,w*.9,GlowWindowFire,s);End();return;
             }
-            if(s<.07){FBox(f,u,yc,.02,w,h,.04,Glow(Pick(new[]{WarmHex,0xFFC890,0xFF9A50},s*97),.55f+.4f*(float)(s*10),RoleFacade));FBox(f,u,y1-h*.18,.035,w,h*.36,.02,With(P(NativeBlockLooks.Plain,0x3A2A1E,RoleFacade),detail:true));}
-            else if(s<.1)FBox(f,u,yc,.02,w,h,.04,Glow(TvHex,.4f,RoleFacade,DriveTv,(float)s*13));
-            else if(s<.25){FBox(f,u,yc,.04,w+.12,h+.1,.06,P(NativeBlockLooks.Timber,BoardHex,RoleFacade));FBox(f,u,yc+h*.1,.08,w+.3,.16,.04,With(P(NativeBlockLooks.Timber,0x7A5A38,RoleFacade),detail:true),roll:(s-.175)*300);}
+            if(s<.07){FBox(f,u,yc,.02+lift,w,h,.04,Glow(Pick(new[]{WarmHex,0xFFC890,0xFF9A50},s*97),.55f+.4f*(float)(s*10),RoleFacade));FBox(f,u,y1-h*.18,.035+lift,w,h*.36,.02,With(P(NativeBlockLooks.Plain,0x3A2A1E,RoleFacade),detail:true));}
+            else if(s<.1)FBox(f,u,yc,.02+lift,w,h,.04,Glow(TvHex,.4f,RoleFacade,DriveTv,(float)s*13));
+            else if(s<.25){FBox(f,u,yc,.04+lift,w+.12,h+.1,.06,P(NativeBlockLooks.Timber,BoardHex,RoleFacade));FBox(f,u,yc+h*.1,.08+lift,w+.3,.16,.04,With(P(NativeBlockLooks.Timber,0x7A5A38,RoleFacade),detail:true),roll:(s-.175)*300);}
             else if(s<.42)
             {
-                FBox(f,u,yc,.02,w,h,.04,P(NativeBlockLooks.Plain,BlackHex,RoleFacade));
-                FBox(f,u+(s<.33?-1:1)*w*.38,y1-h*.2,.035,w*.16,h*.36,.02,With(P(NativeBlockLooks.Plain,0x3A4652,RoleFacade),detail:true),roll:(s<.33?-1:1)*14);
-                if(s<.3)Soot(f,u,y1,w,.9);
+                FBox(f,u,yc,.02+lift,w,h,.04,P(NativeBlockLooks.Plain,BlackHex,RoleFacade));
+                FBox(f,u+(s<.33?-1:1)*w*.38,y1-h*.2,.035+lift,w*.16,h*.36,.02,With(P(NativeBlockLooks.Plain,0x3A4652,RoleFacade),detail:true),roll:(s<.33?-1:1)*14);
+                if(s<.3)Soot(f,u,y1,w,.9,lift);
             }
             else
             {
                 // Dark glass catching the dusk sky (a faint violet sheen, stronger on the upper floors), a mullion on a third.
-                FBox(f,u,yc,.02,w,h,.04,Glow(s<.7?GlassSkyHex:GlassDuskHex,(float)(.1+.05*Math.Min(3,row)+.06*Hash(id,row,col+500)),RoleFacade));
-                if(s>.86)FBox(f,u,yc,.045,.06,h,.02,With(P(NativeBlockLooks.Plain,FrameHex,RoleFacade),detail:true));
+                FBox(f,u,yc,.02+lift,w,h,.04,Glow(s<.7?GlassSkyHex:GlassDuskHex,(float)(.1+.05*Math.Min(3,row)+.06*Hash(id,row,col+500)),RoleFacade));
+                if(s>.86)FBox(f,u,yc,.045+lift,.06,h,.02,With(P(NativeBlockLooks.Plain,FrameHex,RoleFacade),detail:true));
             }
-            End();
+            // The city detail pass frames, shutters and balconies the windows that stand (NativeExpeditionCityKit.Detail.cs).
+            if(End())windowRecs.Add(new WindowRec{F=f,U=u,Y0=y0,W=w,H=h,S=s,Row=row,Col=col,Lift=lift,Used=f.Used.Count-1});
         }
-        private void Soot(Face f,double u,double y,double w,double reach)=>FBox(f,u,y+reach*.4,.012,w*.9,reach*.8,.02,With(P(NativeBlockLooks.Plain,SootHex,RoleFacade),detail:true));
+        private void Soot(Face f,double u,double y,double w,double reach,double lift=0)=>FBox(f,u,y+reach*.4,.012+lift,w*.9,reach*.8,.02,With(P(NativeBlockLooks.Plain,SootHex,RoleFacade),detail:true));
         private static int Pick(int[] list,double h)=>list[Math.Min(list.Length-1,(int)(Math.Abs(h)%1*list.Length))];
         private static string PickName(string[] list,double h)=>list[Math.Min(list.Length-1,(int)(Math.Abs(h)%1*list.Length))];
 
@@ -335,9 +354,11 @@ namespace ChipArena.UnityConversion
         private int SlabAt(Face f,double u){At(f,u,0,.5,out double x,out double z);return GroundAt(x,z);}
         private int GroundAt(double x,double z)
         {
+            // On a seam between two ground blocks, the one whose id sorts first: the answer never depends on the blocks' order.
+            int best=-1;
             for(int i=0;i<blocks.Length;i++){var b=blocks[i];var s=Stem(b?.id);if(s==null||!(Starts(s,"slab-")||s=="sanctuary-paving"||s=="square-paving"))continue;
-                if(Math.Abs(x-b.pos.x)<=b.size.x/2&&Math.Abs(z-b.pos.z)<=b.size.z/2&&Math.Abs(b.pos.y+b.size.y/2)<.01)return i;}
-            return -1;
+                if(Math.Abs(x-b.pos.x)<=b.size.x/2&&Math.Abs(z-b.pos.z)<=b.size.z/2&&Math.Abs(b.pos.y+b.size.y/2)<.01&&(best<0||string.CompareOrdinal(b.id,blocks[best].id)<0))best=i;}
+            return best;
         }
 
         // ---------------- roofs ----------------

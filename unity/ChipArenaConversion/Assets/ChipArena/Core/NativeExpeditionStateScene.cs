@@ -103,6 +103,21 @@ namespace ChipArena.UnityConversion
             float uc=(u0+u1)/2,vc=(v0+v1)/2,dc=(d0+d1)/2;f.Point(uc,vc,dc,out float x,out float y,out float z);f.Point(uc-du,vc-dv,dc,out float rx,out float ry,out float rz);
             Parts.Add(new ExpeditionKitBox{X=x,Y=y,Z=z,Hx=Math.Abs(u1-u0)/2,Hy=Math.Abs(v1-v0)/2,Hz=Math.Abs(d1-d0)/2,Yaw=f.Yaw,Look=look,Flags=flags,Hex=hex,Gain=gain,Level=level,RestX=rx,RestY=ry,RestZ=rz,Seed=NativeExpeditionStates.Hash(seed,31)});
         }
+        /// <summary>
+        /// The status panels' hue band, pinned (Claude, 2026-10-20, the city detail pass). NativeBlockLit's holo look turns a screen's
+        /// colour toward its .gbr by a noise band (`smoothstep(.35, .75, BkNoise(uv.x * .22 + seed * 9, uv.y * .55))`) read in rest
+        /// space, so a panel's state colour followed where its door stood: Ward Zero's read amber once exp-layout-7 moved it 24 m.
+        /// The panel's rest point is set so that noise lands on <see cref="PinCellX"/>, <see cref="PinCellY"/> + .5 whatever its seed:
+        /// in that cell all four lattice values lie under .22 (ExpeditionCityChecks recomputes them with the shader's hash), and the
+        /// panel (.6 x .4 m, its faces within .07 and .11 of the cell's centre) never leaves it, so the band is 0 on every face of
+        /// every panel and the screen shows its state's colour alone (green open, red sealed, amber moving). Only the rest point
+        /// moves: the panel's place, size, look, colour, light and seed are as before.
+        /// </summary>
+        public const float PinCellX=24,PinCellY=0,BandScaleX=.22f,BandScaleY=.55f,BandSeed=9;
+        private void PinBand(int i)
+        {
+            var p=Parts[i];float rx=(PinCellX+.5f-p.Seed*BandSeed)/BandScaleX;p.RestX=rx;p.RestZ=rx;p.RestY=(PinCellY+.5f)/BandScaleY;Parts[i]=p;
+        }
         /// <summary>A quad in the closure plane at depth d (u0..u1 by v0..v1), linear colour of `hex` times `gain`.</summary>
         private void Rect(in ExpeditionFrame f,float u0,float u1,float v0,float v1,float d,int hex,float gain,float alpha,bool additive,int mode=0)
         {
@@ -163,7 +178,7 @@ namespace ChipArena.UnityConversion
                 float a=k*half,b=k*X;Box(f,Math.Min(a,b),Math.Max(a,b),0,H,dB,dF,Metal,Bank,SteelHex,1,1,s+k+1);
                 a=k*half;b=k*(half+.32f);Box(f,Math.Min(a,b),Math.Max(a,b),.15f,H-.2f,dF,dF+.015f,NativeBlockLooks.Demolition,0,0xF4B321,1,1,s+4+k);
                 a=k*(half+.53f);b=k*(half+.97f);Box(f,Math.Min(a,b),Math.Max(a,b),H+.12f,H+.26f,dF,dF+.03f,Tube,Bank,state,3,blink,s+7+k);
-                if(!low){a=k*(half+.6f);b=k*(half+1.2f);Box(f,Math.Min(a,b),Math.Max(a,b),2.05f,2.45f,dF,dF+.012f,Holo,Bank,state,1,.55f,s+10+k);}
+                if(!low){a=k*(half+.6f);b=k*(half+1.2f);int pin=Parts.Count;Box(f,Math.Min(a,b),Math.Max(a,b),2.05f,2.45f,dF,dF+.012f,Holo,Bank,state,1,.55f,s+10+k);if(Parts.Count>pin)PinBand(pin);}
             }
             Box(f,-X,X,H,H+.55f,dB,dF,Metal,Bank,SteelHex,1,1,s+13);
             Box(f,-(half+.3f),half+.3f,H+.08f,H+.3f,dF,dF+.015f,NativeBlockLooks.Demolition,0,0xF4B321,1,1,s+14);
