@@ -1,3 +1,63 @@
+## 2026-10-20 — Claude: zombies no longer twitch toward the pilot under fire (on branch, not merged)
+
+- **Branch/base:** `claude/zombie-twitch-fix`, from shared `claude/sleepy-ritchie-g8ruhv` at `f930684`. Shared `ce9e02f` (Astra's #290 and `claude/zombie-black-fix`) merged in at `ef88bae`, and `f99b56f` (`claude/zombie-wound-fix`) at `6832650`. Implementation `9163d5f`. Presentation only. Pushed; not merged, not published.
+- **Owner report:** "their movement still seems too fast (Not talking about their movement speed, rather their animations, they look like they're 'twitching' towards the player)". The recording is of Central Station: a pistol fired at shamblers running at the pilot. 18 of its 131 frames repeat.
+- **Measured causes.** A scratch lab emulated `StepPveHordeCore`, `HitPveAdd` and `StructureNavMoveCore` at 60 Hz on the real `expedition-transit` nav, and presented the add through the real Core code (host 144 fps on Unity's interpolated transform, 20 Hz guest, 30 fps). The pistol's 23 damage is a quarter of a shambler's or runner's health, so every hit is an authority stagger (.45 s stop) plus a 2.2 m/s knock-back. Ranked by the effect of removing each cause (shambler under fire, head and chest world turn rate while it chases):
+  1. The stagger's knockback reel started over on every hit: back to its start, in again within 54 ms, played at 2x its capture's pace. Without it, head p95 23.2 → 14.9 rad/s, p50 8.2 → 4.2, chest 10.2 → 5.2.
+  2. The stagger ends with an instant 3.4 m/s restart, and the take crossed from standing to the chase in 2–3 frames. Head max 55 → 22 once the blend was rate-limited.
+  3. The hurt sag (head droop, hunch, loose-head gain) stepped with the health at each hit. Head max 22 → 12 once eased.
+  4. The station's nav is a 1 m grid with four links a node, and the Unity maps' empty `hazards` array keeps `StructureNavMoveCore` off its straight line. The authority's facing therefore snaps up to 59° two to four times a second. Facing p95 3.0 rad/s against 0 on a straight chase.
+  5. Smaller onsets: hit envelopes started at full speed, the head snap landed in one frame, the head's lag read the root's acceleration at up to 9 m/s², and the twitch and tics ramped in 40–60 ms.
+- **Not offenders:**
+  - The cadence: 3.8 and 4.5–4.7 steps/s running, which fits Froude scaling for the 0.5 m legs. Unchanged.
+  - The host's interpolated transform: 2 mm.
+  - More root smoothing: tried and rejected. It costs 18 cm off the hit volume for a third less acceleration.
+  - Walking a backward slide as stagger steps: tried and rejected, head p95 10.9 → 12.3.
+- **Fix (Core only):**
+  - `NativeHordeReact.Stumble`: staggers are links eased in over .16 s and out over .38 s, scaled by the hit's weight (a pistol .5, a step .75, heavy 1). Overlapping links are one stumble with the largest link's weight. The knockback take plays at its own pace from the stumble's start and holds at .42 s. It is a pure function of the hits and the clock. The gait's reel take and the trunk and arms read it.
+  - The hit envelope rises from rest to the same peak and falls as before.
+  - `NativeHordeGait.MoveSlew` (3/s): the upright kinds' stand-to-move take blend.
+  - `HurtHalfLife` (.2 s): the health the sag reads.
+  - `LifeAccelEase`/`LifeAccelMost` (.06 s, 5 m/s²): the head, chest and hands' lag input.
+  - `HitSpread` (.035 s): the hit snap's impulse is fed in over a few frames.
+  - The twitch and tics are eased in (.14 s, .1 s).
+  - `HordeFlow.HeadingTau` (.26 s) through a new `BossRootFollow.HeadingTau`: the travelling facing's goal is eased. It is off through a wind-up, and off for every boss (default 0).
+  - Files: `NativeHordeReact.cs`, `NativeHordeMotion.cs`, `NativeHordeLife.cs`, `NativeHordeFlow.cs`, `NativeBossMotionFollow.cs`. Tests: new `ZombieTwitchChecks.cs` (`--zombie-twitch`, also in `--zombie-loco`, `--zombie-flow` and the full run) and `Program.cs`. Docs: `ZOMBIE-LOCOMOTION.md` "Twitching under fire".
+- **Results (lab, base → now; head p50/p95/max rad/s):**
+  - Shambler under pistol fire, host 144: 8.2/23.2/64.8 → 3.0/6.8/10.3. Chest p95 10.2 → 3.5. Upper joints 12.0 → 3.2. The largest one-frame joint turn near a hit 0.43 → 0.12 rad.
+  - Runner under fire: 24.5 → 7.4 p95, 59.8 → 13.8 max.
+  - 20 Hz guest under fire: 23.1 → 6.8.
+  - 30 fps under fire: 19.2 → 6.2.
+  - Plain chase on the grid route: facing p95 2.99 → 1.64 (runner 3.89 → 1.99), head p95 6.0 → 4.7.
+  - The brute, the bloater, the Hulk and the four station kinds measured equal or better.
+  - Unchanged: the drawn root's acceleration under fire (84 m/s² p95, the authority's), its distance from the body (11.6 cm p95), the step rate and the cadence.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+  - The contact frame still lands within a frame of `LastAttack + strike`, including a blow started as a stumble lets go.
+  - Posed bodies stay inside their hit volumes (`HordeKindChecks`).
+  - No authority, rules, nav or wire file is in the diff.
+  - The drawn facing can trail the authority's by about 6° on a grid route. The effects keep the authority's yaw.
+  - Guests and the killcam derive everything from the replicated hits, the clock and the presented root, as before.
+- **Checks (actual):**
+  - `--zombie-twitch`: PASS, 1,992 checks.
+    - In its own Central Station scene (grid route, a pistol hit every .42 s), base `f930684` → now, with the same scene code compiled against the base: shambler head 8.7/25.0/88.8 → 2.7/6.6/11.3, runner p95 25.9 → 7.6, guest 26.0 → 7.2, 30 fps 19.6 → 6.8.
+    - The worst trunk or head one-frame turn near a hit: 0.458 → 0.068 rad.
+    - Facing p95 chasing: 3.11 → 1.99.
+    - A restart's worst joint turn: 0.291 → 0.043 rad. A headshot's: 0.131 → 0.087 rad, and 0.131 → 0.019 in its first frames.
+    - Feet planted. The stumble is continuous where the old reel dropped 0.58 of its weight and threw its take back 1.15 s. Pure function, 0 bytes per frame, contact within a frame.
+  - On the merged tree `6832650`, rc 0: `--zombie-gore` (315,431 gore checks), `--zombie-twitch`, `--zombie-loco` (57,302), `--zombie-flow` (4,460), `--horde-roam` (13,275), `--station-enemies` (154,365), `--zombie-light`, `--station-visuals`, `--wardzero-simulation`, `--hulk-charge`, `--hulk-motion`, `--ironworks-kinds`, `--ironworks-props`, `--horde-drops`, `--footfalls`, `--boss-motion` (50,898) and `--boss-vfx`.
+  - run5b on the merged tree `6832650`, rc1–rc5 all 0: Unity Runtime and Editor compile; relay and managed suite 810 PASS lines, 0 FAIL (`zombie twitch` 1,992 checks among them); 140 Python tests (1 skipped); package; diff-check.
+  - Changed on purpose: the seven `kindN.motion` lines of `station-enemies-baseline.txt` were re-recorded. The scripted walk's stagger is now the stumble. Facing sums, deaths and every other line are unchanged.
+- **Renders:** offline WebGL (ZombieLit vertex code, not Unity), scratch only, not in git: side-by-side before/after mp4s of a shambler and a runner under pistol fire and a plain grid-route chase.
+- **Not run:** Unity Editor play, the Windows build, two-client play, the in-engine killcam, frame pacing on the owner's machine (the recording's repeated frames suggest under 30 fps).
+- **Risks:**
+  - The facing trails the authority's slightly while travelling. A wind-up turns at the old fast rate.
+  - The stumble plays half a reel for pistol staggers. Heavier weapons keep the full reel.
+  - In 60 s under fire, a runner's left wrist turned 0.38 rad in one frame once, from its sprint take (under the pop killer's 0.42).
+- **For Astra (not changed here):**
+  - The Unity maps' empty `hazards` array disables the straight-line steering shortcut, and the 4-connected grid zig-zags. The root keeps a sideways wobble (31 m/s² p95 against 4.9 straight). Suggest treating an empty list as none, or string-pulling the route.
+  - Each pistol hit stops a charging shambler dead and knocks it back at 2.2 m/s (a 5.6 m/s reversal in one tick), and the stagger ends with an instant 3.4 m/s restart. Suggest ramping the restart or the knock-back, or a lighter stagger for light weapons. See `docs/ZOMBIE-LOCOMOTION.md`.
+- **Next:** owner review of the renders and a Central Station play test on the desktop build; Astra's call on the two items above.
+
 ## 2026-10-20 — Claude: zombie wounds on the drawn body, not on joint capsules (merged into shared)
 
 - **Branch/base:** `claude/zombie-wound-fix` from shared `claude/sleepy-ritchie-g8ruhv` at `f930684`, with shared `ce9e02f` (Astra's #290 and `claude/zombie-black-fix`) merged in at `1e4e99b`. Implementation `53b3a4e`; the DEV preview's vector type `85f0b67`. Presentation only. Merged into shared and the builder; not published.
