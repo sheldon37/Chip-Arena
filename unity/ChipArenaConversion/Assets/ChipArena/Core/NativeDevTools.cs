@@ -175,6 +175,7 @@ namespace ChipArena.UnityConversion
             new NativeDevAction("gallery-cyber-kit2-melee",Pr,P,"Cyber Kit v2 melee"),
             new NativeDevAction("preview-reveal",Pr,P,"Preview DEV Reveal"),
             new NativeDevAction("preview-account-xp",Pr,V,"Account XP preview (MOCK)"),
+            new NativeDevAction("preview-zombie-gore",Pr,V,"Zombie gore preview"),
             // Camera and overlays (presentation only: live wherever the panel is).
             new NativeDevAction("fly",Ca,V,"Fly camera",key:"F10"),
             new NativeDevAction("fly-snap",Ca,V,"Snap to pilot",key:"Home"),

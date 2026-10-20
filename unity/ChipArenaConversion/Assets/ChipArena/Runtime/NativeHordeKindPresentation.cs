@@ -23,14 +23,17 @@ namespace ChipArena.UnityConversion
     //    over the rim, a door or cell walks it in on the gait after a waking twitch, a dive throws it into the shaft, and the
     //    brute's jump-down (NativeHordeDrop) leaps, falls and slams; all on the kind's own model, timed to the authority's entry.
     //  - Felt hits (Core/NativeHordeReact) from the replicated hits: directional recoil, the shove and stagger-back steps, the
-    //    authority's stagger reel, a hit-stop on melee blows and the struck flash (NativeHitFlash) on the body; Siren ink sprays
-    //    from the wound and lands as splats that stay (the felt hits' blood sim on its ink flag).
+    //    authority's stagger reel, a hit-stop on melee blows and the struck flash (NativeHitFlash) on the body; gore (2026-10-19,
+    //    Runtime/NativeHordeGorePresentation.cs): a wound on the part struck, blood out of it into the blood sim (red splats that
+    //    stay), mist and flesh bits, a head hit harder.
     //  - Telegraphs and effects (Core/NativeHordeFx), budgeted like the minion effects (24 adds' worth, halved past 24 m, none
     //    past 40 m; Reduced effects thin them): the glow flare of every wind-up, the brute's slam disc and shockwave, the runner's
     //    streaks, the shambler's claw crescent, the spitter's sac, glob and acid puddle, the bloater's swell, slam puff and burst.
-    //  - Deaths per kind (the body chars and burns away on NativeMinionFx's clock as before), melee kills that slice the add along
-    //    the killing swing (NativeMeleeSlice's plan; the severed parts tumble and burn away), and the authority's own severed
-    //    limbs thrown as the model's real parts instead of the old bank's olive cubes.
+    //  - Deaths per kind: the body falls on its kind's take and lies as a corpse over a pool of blood, then sinks away (no more
+    //    char and burn-away: owner 2026-10-19, "standard zombies"; the Cinderling keeps its own ember crumble); a blast, a crusher,
+    //    a heavy one-shot or a big gun's head shot gibs it (NativeHordeGorePresentation.cs); melee kills slice the add along the
+    //    killing swing (NativeMeleeSlice's plan; the severed parts tumble, bleed and stay), and the authority's own severed limbs
+    //    are thrown as the model's real parts instead of the old bank's olive cubes.
     // Allocation free in steady state: the per-add states, rigs, part and effect pools are made once and reused.
     public sealed partial class ArenaPresentation
     {
@@ -47,6 +50,9 @@ namespace ChipArena.UnityConversion
             /// <summary>The drawn scale (the Hulk's), the jaw's opening, the roar's age (NaN none), the mouth in the world, the sac's
             /// swell when a hit cut the spit off.</summary>
             public float Scale=1,Jaw,RoarAge=float.NaN,CancelSwell;public Vector3 Mouth;public bool MouthKnown;
+            /// <summary>The gore's read of the newest hit (NativeHordeGorePresentation: its cause, time, damage, a blast's distance, a
+            /// heavy blow, the head, the push) and the add's health, kept for its death's fate.</summary>
+            public float MaxHp=100,GoreAt=-100,GoreAmount,GoreBlast=99;public NativeHordeGore.Cause GoreCause;public bool GoreHead,GoreHeavy;public NVector2 GorePush;
             /// <summary>The add's roaming read (Runtime/NativeHordeRoamPresentation.cs).</summary>
             public readonly NativeHordeRoamTrack Roam=new NativeHordeRoamTrack();
             /// <summary>The presented root (Core/NativeHordeFlow), the pop killer (Core/NativeHordeBlend; handed to the death when the add
@@ -55,7 +61,7 @@ namespace ChipArena.UnityConversion
             /// <summary>The newest replicated LastAttack seen and the one before it (the blow a guest still plays out until its clock
             /// reaches the newer one).</summary>
             public float AttackSeen=-100,AttackBefore=-100;
-            public void Reset(int id){Id=id;Kind=-1;Tier=-1;Lost=-1;CancelAt=float.NaN;CancelFor=-100;HasBlow=false;BlowAt=-100;Push=NVector2.Zero;Spec=null;Gait.Reset();React.Clear();Possessed=false;Scale=1;Jaw=0;RoarAge=float.NaN;CancelSwell=0;MouthKnown=false;Roam.Reset();Flow.Reset();Blend.Reset();Mode=-1;AttackSeen=AttackBefore=-100;}
+            public void Reset(int id){Id=id;Kind=-1;Tier=-1;Lost=-1;CancelAt=float.NaN;CancelFor=-100;HasBlow=false;BlowAt=-100;Push=NVector2.Zero;Spec=null;Gait.Reset();React.Clear();Possessed=false;Scale=1;Jaw=0;RoarAge=float.NaN;CancelSwell=0;MouthKnown=false;Roam.Reset();Flow.Reset();Blend.Reset();Mode=-1;AttackSeen=AttackBefore=-100;MaxHp=100;GoreAt=-100;GoreAmount=0;GoreBlast=99;GoreCause=NativeHordeGore.Cause.None;GoreHead=GoreHeavy=false;GorePush=NVector2.Zero;}
         }
         private readonly Dictionary<int,HordeKindState> hordeKindStates=new Dictionary<int,HordeKindState>();private readonly Stack<HordeKindState> hordeKindSpare=new Stack<HordeKindState>();
         private readonly List<int> hordeKindStale=new List<int>();private int hordeKindFrame,hordeKindEvent,hordeKindGeneration=-1;private NativeArena hordeKindArena;private float hordeKindTime=float.NaN;
@@ -69,7 +75,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Full models for the nearest adds (horde-view.ts maxRigs: quality 24, performance 16), reduced to 40 m, impostors beyond.</summary>
         public const int HordeFullRigs=24,HordeFullRigsLow=16;public const float HordeReducedRange=40,HordeTierHysteresis=3;
         // ---- the dead: each add's kind, look and last blow, kept for its death (the authority's record names only horde-N) ----
-        private struct HordeDead{public int Kind,Look;public NVector2 Push;public bool Melee;public MeleeBlow Blow;public bool HasBlow;public float At;public uint Seed;public int Slice;public bool Planned;public HordePoseBlend Blend;public bool Handed;}
+        private struct HordeDead{public int Kind,Look;public NVector2 Push;public bool Melee;public MeleeBlow Blow;public bool HasBlow;public float At;public uint Seed;public int Slice;public bool Planned;public HordePoseBlend Blend;public bool Handed;
+            public NativeHordeGore.Cause GoreCause;public bool GoreHead,GoreHeavy;public float GoreAt,GoreAmount,GoreBlast,MaxHp;public NativeHordeGore.Fate Fate;public int Fountain;}
         private readonly Dictionary<int,HordeDead> hordeDead=new Dictionary<int,HordeDead>();private readonly List<int> hordeDeadStale=new List<int>();
         private readonly SlicePlan hordeSlicePlan=new SlicePlan();
 
@@ -88,14 +95,14 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private void HordeKindsBegin(NativeArena arena)
         {
-            hordeKindFrame++;IronworksZone(arena);if(!HordeKindsReady)return;float now=arena.Time;
+            hordeKindFrame++;HordeGoreBegin();IronworksZone(arena);if(!HordeKindsReady)return;float now=arena.Time;
             if(arena!=hordeKindArena||arena.Generation!=hordeKindGeneration||!float.IsNaN(hordeKindTime)&&now<hordeKindTime-.25f)ClearHordeKinds(arena);
             hordeKindTime=now;
             // The clock every add is posed on: the field clock (the replica render time on a guest, the visual clock on the host),
             // ridden smoothly through a guest's snapshot-clock stalls (Core/NativeHordeFlow: HordeClock); never arena.Time.
             double was=hordeTimeline.Time;hordeTimeline.Step(hordeClock,Mathf.Min(.1f,Time.unscaledDeltaTime*arena.DevTimeScale),arena.Replica,arena.Replica?arena.Time:double.PositiveInfinity);
             hordeNow=(float)hordeTimeline.Time;hordeDt=Mathf.Clamp((float)(hordeTimeline.Time-was),0,.1f);
-            // New hits on adds (each once): the felt hit, the ink, the last melee blow (a melee kill slices along it).
+            // New hits on adds (each once): the felt hit, the gore, the last melee blow (a melee kill slices along it).
             int newest=hordeKindEvent;var events=arena.Events;
             for(int i=0;i<events.Count;i++)
             {
@@ -183,14 +190,9 @@ namespace ChipArena.UnityConversion
                 if(melee&&actor!=null&&NativeHitRules.Standard(spec)){s.Spec=spec;s.HasBlow=true;s.BlowAt=e.Time;s.Blow=new MeleeBlow{At=e.Time,Source=e.Source,Spec=spec,CommitYaw=actor.CommitYaw,Index=actor.Combo+1,SwingAt=actor.SwingAt,SwingUntil=actor.SwingUntil,Air=actor.AirAttack,Special=actor.SpecialKind!=null&&e.Time>=actor.SpecialAt-.05f&&e.Time<=actor.SpecialUntil+.05f?actor.SpecialKind:null,Kit=e.Detail=="ability"&&actor.MeleeKit!=null&&!string.IsNullOrEmpty(actor.MeleeKit.Kind)?actor.MeleeKit.Kind:null,From=actor.Position,Yaw=actor.Yaw,Detail=e.Detail,Amount=e.Amount,Toward=e.Normal,Aimed=Mathf.Abs(e.Normal.x*e.Normal.x+e.Normal.y*e.Normal.y+e.Normal.z*e.Normal.z-1)<.19f};}
             }
             else if(hordeDead.TryGetValue(e.Target,out var dead)&&Math.Abs(dead.At-e.Time)<.1f){dead.Push=push;dead.Melee|=melee;hordeDead[e.Target]=dead;}
-            // The Siren's ink out of the wound, landing and staying as splats (directed hits within 30 m of the camera).
-            if(dir.sqrMagnitude>.5f&&(!hordeEyeKnown||(at-hordeEye).sqrMagnitude<30*30))
-            {
-                Vector3 origin=e.Position.x==0&&e.Position.z==0?at+Vector3.up*.3f:NativeArena.Vec(e.Position);if(origin.y<at.y-.6f)origin.y=at.y+.2f;
-                long key=((long)(e.Target&0xffffff)<<36)^((long)(BitConverter.SingleToInt32Bits(e.Time)&0xfffffff)<<4)^(1L<<62);bool stain=stainedWounds.Add(key);
-                uint seed=NativeGoreRules.FnvDigits(e.Target)^(uint)BitConverter.SingleToInt32Bits(e.Time);bool kill=m==null;
-                blood.Spray(melee?"cut":"puncture",Mathf.Clamp01(e.Amount/30f),seed,key,new NVector(origin.x,origin.y,origin.z),new NVector(-dir.x,.25f,-dir.z),new NVector(dir.x,0,dir.z),e.Time,BloodQuality*(melee?.8f:.5f),LowGraphics,stain,kill?6:0,e.Target,kill,true);
-            }
+            // The gore (NativeHordeGorePresentation.cs): the wound on the part struck, red blood out of it and along the shot into the
+            // blood sim (splats that stay), mist and flesh bits; the killing blow's facts kept for the death's fate.
+            HordeGoreHit(arena,m,s,e,at,dir,melee,spec,melee&&w==StaggerWeight.Heavy);
         }
         /// <summary>RenderGlow: the camera the next frame's tiers rank by.</summary>
         private void HordeKindsCamera(Camera camera){if(camera==null)return;hordeEye=camera.transform.position;hordeEyeKnown=true;}
@@ -206,7 +208,7 @@ namespace ChipArena.UnityConversion
         {
             var a=m.Pve;if(a==null||!HordeKindsReady)return false;var s=HordeState(m.Id);float now=hordeNow;
             int real=NativeHordeKinds.Resolve(a.Stats?.id),kind=HordeDrawKind(real,m.Id);
-            if(kind!=s.Kind){if(s.Kind>=0)s.Blend.Mark();s.Kind=kind;s.Look=NativeHordeKinds.Look(kind,m.Id);s.React.Bind(kind);s.Gait.Reset();}s.Real=real;
+            if(kind!=s.Kind){if(s.Kind>=0)s.Blend.Mark();s.Kind=kind;s.Look=NativeHordeKinds.Look(kind,m.Id);s.React.Bind(kind);s.Gait.Reset();}s.Real=real;s.MaxHp=m.MaxHp;
             if(s.Tier<0)s.Tier=NativeHordeModels.Reduced;
             // A big kind (the Hulk) is its rig drawn at its scale: the gait runs in the rig's metres (the world over the scale).
             float sc=NativeHordeKinds.Scale[kind];s.Scale=sc;
@@ -214,7 +216,7 @@ namespace ChipArena.UnityConversion
             if(s.Lost>=0){int fresh=a.Lost&~s.Lost;if(fresh!=0)HordeSever(rig,s,fresh,now,pos.y-NativeHordeKinds.RootHeight(real,a.Crawl));}s.Lost=a.Lost;
             // The presented root, stepped every frame whatever the add is doing (so it is settled when the gait takes over).
             {var stF=a.Stats;float wa=now-m.LastAttack;HordeFlowStep(arena,m,s,kind,pos,now,stF!=null&&wa>=0&&wa<NativeHordeKinds.Strike(stF,a.Crawl,a.Lost));}
-            if(IronworksAdd(arena,m,rig,s,kind,now))return true;
+            GoreWoundsJob(m.Id,rig);if(IronworksAdd(arena,m,rig,s,kind,now))return true;
             // Where the rig stands, its velocity and facing: the presented root (smooth on every peer). The effects keep the
             // authority's yaw (their discs and lanes are where the authority's blows land).
             var fp=s.Flow.Position;pos=new Vector3(fp.X,fp.Y,fp.Z);Vector3 velocity=new Vector3(s.Flow.Velocity.X,s.Flow.Velocity.Y,s.Flow.Velocity.Z);float yaw=s.Flow.Yaw;int mode=0;
@@ -484,7 +486,7 @@ namespace ChipArena.UnityConversion
             HordeAcidDraw(draw,arena,now,eye,right,up,quality);DrawHordeStomps(draw,now,low);DrawHordeBreachFx(draw,now,eye,right,up,low);
             // Footfall dust (toon puffs kicked round the foot).
             for(int i=0;i<hordeDust.Length;i++){var d=hordeDust[i];if(d.Power<=0)continue;float since=now-d.Born;if(since<0||since>.5f)continue;if(zfx.Within(Vector3.Distance(eye,d.At),d.Power>1.5f))zfx.Footfall(d.At,since,d.Power,d.Seed);}
-            HordePartsFx(draw,now,right,up);zfx.Submit(camera,now);
+            HordeGoreFx(zfx,eye,now);zfx.Submit(camera,now);
         }
         private readonly double[] hordeSlash=new double[16],hordeSlashA=new double[16],hordeSlashB=new double[16];
         // The Siren's claw crescent (NativeSirenFx.SlashMatrix shape) at a horde add's chest, smaller: source frame (x mirrored).
@@ -523,42 +525,51 @@ namespace ChipArena.UnityConversion
             if(newest<hordeSpitEvent)hordeSpitEvents.Clear();hordeSpitEvent=newest;
         }
         // ================================================================================================================
-        // Severed and sliced parts in flight (the model's own parts, tumbling, bouncing, burning away)
+        // Severed, sliced and gibbed parts (the model's own parts, tumbling, bouncing, bleeding, then lying with the corpses)
         // ================================================================================================================
-        private sealed class HordePart{public bool Live;public string Model;public int Joint,Id;public uint Seed;public float At,Kick,Floor;public NVector2 Push;public readonly Matrix4x4[] Bones=new Matrix4x4[22];public Matrix4x4 Root;}
+        private sealed class HordePart{public bool Live;public string Model;public int Kind,Joint,Id,Bled;public uint Seed;public float At,Kick,Floor;public NVector2 Push;public readonly Matrix4x4[] Bones=new Matrix4x4[22];public Matrix4x4 Root;}
         private readonly HordePart[] hordeParts=MakeHordeParts();private int hordePartNext;
-        private static HordePart[] MakeHordeParts(){var p=new HordePart[24];for(int i=0;i<p.Length;i++)p[i]=new HordePart();return p;}
-        public const float HordePartSeconds=2.6f;
-        private void HordeLaunch(CapturedAnimation.Player rig,string model,int id,int joint,float at,NVector2 push,float kick,float floor)
+        private static HordePart[] MakeHordeParts(){var p=new HordePart[HordePartMax];for(int i=0;i<p.Length;i++)p[i]=new HordePart();return p;}
+        /// <summary>The parts kept (the oldest goes first); each lies as long as a corpse on the tier (NativeHordeGore.CorpseLife).</summary>
+        public const int HordePartMax=48;
+        private void HordeLaunch(CapturedAnimation.Player rig,string model,int kind,int id,int joint,float at,NVector2 push,float kick,float floor)
         {
-            var p=hordeParts[hordePartNext++%hordeParts.Length];p.Live=true;p.Model=model;p.Joint=joint;p.Id=id;p.At=at;p.Push=push;p.Kick=kick;p.Floor=floor;p.Seed=NativeHordeKinds.Seed(id)^(uint)(joint*2654435761u);
+            var p=hordeParts[hordePartNext++%hordeParts.Length];p.Live=true;p.Model=model;p.Kind=kind;p.Joint=joint;p.Id=id;p.At=at;p.Bled=0;p.Push=push;p.Kick=kick;p.Floor=floor;p.Seed=NativeHordeKinds.Seed(id)^(uint)(joint*2654435761u);
             p.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22;b++)p.Bones[b]=rig.Bones[b].localToWorldMatrix;
         }
         // The authority's severed limbs (new LIMB bits on a living add): each root limb's part flies off along the newest blow.
         private void HordeSever(CapturedAnimation.Player rig,HordeKindState s,int fresh,float now,float ground)
         {
             if(rig==null||s.Kind<0)return;string model=NativeHordeModels.Id(s.Kind,s.Look,Math.Min(s.Tier<0?1:s.Tier,NativeHordeModels.Reduced));
-            for(int limb=0;limb<GoreLimbBones.Length;limb++)if(NativeGoreRules.RootLimb(fresh,limb)){int joint=GoreLimbBones[limb];HordeLaunch(rig,model,s.Id,joint,now,s.Push,1,Mathf.Max(.05f,rig.Bones[joint].position.y-ground));}
+            for(int limb=0;limb<GoreLimbBones.Length;limb++)if(NativeGoreRules.RootLimb(fresh,limb)){int joint=GoreLimbBones[limb];HordeGoreSever(rig,s.Id,s.Kind,joint,hordeClock,s.Push);HordeLaunch(rig,model,s.Kind,s.Id,joint,now,s.Push,1,Mathf.Max(.05f,rig.Bones[joint].position.y-ground));}
         }
-        private HordePart hordeDrawPart;private float hordeDrawAge;private Func<int,Matrix4x4> hordePartBone;private Func<int,bool> hordePartVisible;private Func<int,Color> hordePartTint;
-        private void HordePartsFx(NativeFxDraw draw,float now,Vector3 right,Vector3 up){}
-        /// <summary>SourceWorld: the parts in flight (queued with the frame's models).</summary>
+        private HordePart hordeDrawPart;private float hordeDrawAge,hordeDrawSink;private Func<int,Matrix4x4> hordePartBone;private Func<int,bool> hordePartVisible;
+        /// <summary>A part's joint matrix at `age`: thrown along its push, bouncing to rest (NativeHordeFx.Gib), whole.</summary>
+        private Matrix4x4 HordePartTurn(HordePart p,float age,out Vector3 joint)
+        {
+            var j=p.Bones[p.Joint].GetColumn(3);joint=new Vector3(j.x,j.y,j.z);
+            NativeHordeFx.Gib(p.Seed,p.Joint,age,p.Push,p.Kick,p.Floor,out var off,out var axis,out float angle,NativeHordeFx.Weight(p.Joint));
+            var to=joint+new Vector3(off.X,off.Y,off.Z);var turn=Matrix4x4.Translate(to)*Matrix4x4.Rotate(Quaternion.AngleAxis(angle*Mathf.Rad2Deg,new Vector3(axis.X,axis.Y,axis.Z)))*Matrix4x4.Translate(-joint);joint=to;return turn;
+        }
+        /// <summary>SourceWorld: the parts (queued with the frame's models): tumbling while they fly, a trail of blood off the cut
+        /// and a raw cap on it, then lying where they came to rest until the corpses' life on the tier ends and they sink away.</summary>
         private void HordePartsDraw(float now)
         {
-            hordePartBone??=b=>
-            {
-                var p=hordeDrawPart;var j=p.Bones[p.Joint].GetColumn(3);Vector3 joint=new Vector3(j.x,j.y,j.z);
-                NativeHordeFx.Gib(p.Seed,p.Joint,hordeDrawAge,p.Push,p.Kick,p.Floor,out var off,out var axis,out float angle,NativeHordeFx.Weight(p.Joint));
-                var turn=Matrix4x4.Translate(joint+new Vector3(off.X,off.Y,off.Z))*Matrix4x4.Rotate(Quaternion.AngleAxis(angle*Mathf.Rad2Deg,new Vector3(axis.X,axis.Y,axis.Z)))*Matrix4x4.Translate(-joint);
-                var m=turn*p.Bones[b];double v=hordeDrawAge>1.2f?NativeHordeFx.PartVanish(hordeDrawAge):0;if(v<=0)return m;float k=Mathf.Max(.001f,1-(float)v);
-                return Matrix4x4.Translate(joint+new Vector3(off.X,off.Y,off.Z))*Matrix4x4.Scale(Vector3.one*k)*Matrix4x4.Translate(-(joint+new Vector3(off.X,off.Y,off.Z)))*m;
-            };
+            hordePartBone??=b=>{var p=hordeDrawPart;var m=HordePartTurn(p,hordeDrawAge,out _)*p.Bones[b];m.m13-=hordeDrawSink;return m;};
             hordePartVisible??=b=>BoneWithin(b,hordeDrawPart.Joint);
-            hordePartTint??=b=>{float c=(float)NativeMinionFx.Charred(hordeDrawPart.Seed,b,hordeDrawAge),k=1-(1-(float)NativeMinionFx.CharScale)*c;return new Color(k,k,k,1-c);};
+            int tier=hordeGore.Tier<0?0:hordeGore.Tier>2?2:hordeGore.Tier;float life=NativeHordeGore.CorpseLife[tier];
             for(int i=0;i<hordeParts.Length;i++)
             {
-                var p=hordeParts[i];if(!p.Live)continue;float age=now-p.At;if(age<0||age>HordePartSeconds){p.Live=false;continue;}
-                hordeDrawPart=p;hordeDrawAge=age;sourceModels.Queue(p.Model,p.Root,hordePartBone,hordePartVisible,body:HordeVariation(p.Model,p.Id),partTint:hordePartTint,glow:HordeGlow(p.Id));
+                var p=hordeParts[i];if(!p.Live)continue;float age=now-p.At;if(age<-.5f||NativeHordeGore.Gone(age,life)){p.Live=false;continue;}if(age<0)continue;
+                NativeHordeGore.Sink(age,life,out float sink,out float alpha);hordeDrawPart=p;hordeDrawAge=age;hordeDrawSink=sink;var body=HordeVariation(p.Model,p.Id);body.a=alpha;
+                sourceModels.Queue(p.Model,p.Root,hordePartBone,hordePartVisible,body:body,glow:HordeGlow(p.Id));
+                // The cut: a raw cap on the part's root (its parent's side), and blood trailing off it while it flies.
+                var turn=HordePartTurn(p,age,out var stump);var m=turn*p.Bones[p.Joint];var cut=NativeHordeGore.CutOut(p.Joint);var along=m.MultiplyVector(new Vector3(cut.X,cut.Y,cut.Z)).normalized;stump.y-=sink;
+                float scale=m.MultiplyVector(Vector3.right).magnitude;hordeGore.Cap(GoreV(stump),GoreV(along),NativeHordeGore.PartCut(p.Kind,p.Joint)*scale,age,p.Seed,sink);
+                if(!Gore||age>NativeHordeGore.TrailSeconds+.1f)continue;int due=NativeHordeGore.TrailDue(age,tier);
+                if(p.Bled<due){HordePartTurn(p,Mathf.Max(0,age-.03f),out var was);var carry=(stump-was)/.03f;
+                    for(;p.Bled<due;p.Bled++){long key=((long)(p.Id&0xffffff)<<36)^((long)p.Joint<<30)^((long)(p.Bled+1)<<20)^(BitConverter.SingleToInt32Bits(p.At)&0xfffff)^(1L<<57);bool stain=stainedWounds.Add(key);
+                        blood.Spray("drip",1,p.Seed^unchecked((uint)(p.Bled+1)*0x9e3779b1u),key,GoreV(stump),GoreV(along),GoreV(-Vector3.up),hordeClock,BloodQuality,LowGraphics,stain,0,p.Id,true,false,GoreV(carry*.8f));}}
             }
         }
 
@@ -574,13 +585,17 @@ namespace ChipArena.UnityConversion
             {
                 var s=pair.Value;if(s.Frame==hordeKindFrame)continue;hordeKindStale.Add(pair.Key);
                 // Gone this frame: if it died, keep what its death needs.
-                var deaths=arena.MinionDeaths;for(int i=deaths.Count-1;i>=0;i--)if(deaths[i].id==pair.Key&&now-deaths[i].at<.5f&&s.Kind>=0)
-                {bool melee=s.HasBlow&&Math.Abs(s.BlowAt-deaths[i].at)<.06f;hordeDead[pair.Key]=new HordeDead{Kind=s.Kind,Look=s.Look,Push=s.Push,Melee=melee,Blow=s.Blow,HasBlow=melee,At=deaths[i].at,Seed=NativeHordeKinds.Seed(pair.Key)^(uint)deaths[i].seed,Blend=HordeHandBlend(s)};break;}
+                var deaths=arena.MinionDeaths;bool died=false;for(int i=deaths.Count-1;i>=0;i--)if(deaths[i].id==pair.Key&&now-deaths[i].at<.5f&&s.Kind>=0)
+                {bool melee=s.HasBlow&&Math.Abs(s.BlowAt-deaths[i].at)<.06f;hordeDead[pair.Key]=new HordeDead{Kind=s.Kind,Look=s.Look,Push=s.Push,Melee=melee,Blow=s.Blow,HasBlow=melee,At=deaths[i].at,Seed=NativeHordeKinds.Seed(pair.Key)^(uint)deaths[i].seed,Blend=HordeHandBlend(s),
+                    GoreCause=s.GoreCause,GoreHead=s.GoreHead,GoreHeavy=s.GoreHeavy,GoreAt=s.GoreAt,GoreAmount=s.GoreAmount,GoreBlast=s.GoreBlast,MaxHp=s.MaxHp};died=true;break;}
+                // An add gone without dying (a dive, a despawn): its wounds go with it.
+                if(!died)hordeGore.Forget(pair.Key);
             }
             foreach(int id in hordeKindStale){hordeKindSpare.Push(hordeKindStates[id]);hordeKindStates.Remove(id);}
             hordeDeadStale.Clear();foreach(var pair in hordeDead){bool listed=false;var deaths=arena.MinionDeaths;for(int i=0;i<deaths.Count;i++)if(deaths[i].id==pair.Key&&now-deaths[i].at<NativeMinionFx.DeathFxSeconds+.5f){listed=true;break;}if(!listed)hordeDeadStale.Add(pair.Key);}
             foreach(int id in hordeDeadStale){if(hordeDead.TryGetValue(id,out var gone)&&gone.Blend!=null)hordeBlendSpare.Push(gone.Blend);hordeDead.Remove(id);}
-            HordePartsDraw(now);
+            HordePartsDraw(now);HordeCorpsesDraw(hordeClock);
+            if(ZombieGoreGallery)GoreGallery(arena);else if(goreGalleryRigs[0]!=null)ClearGoreGallery();
             if(MinionGallery)HordeGallery(arena);else if(galleryRigs[0]!=null)ClearHordeGallery();
             if(MinionGallery)IronworksGallery(arena);else if(ironGalleryRigs[0]!=null)ClearIronworksGallery();
             HordeBreachFrames(arena);HordeBreachesDraw(now);HordeJoltsDraw(now);HordeTremblesDraw(now);
@@ -615,18 +630,26 @@ namespace ChipArena.UnityConversion
                 if(d.Melee&&d.HasBlow&&NativeMeleeSlice.Plan(d.Blow,true,d.Blow.Spec,null,NativeArena.Vec(death.position),death.yaw,death.seed,hordeSlicePlan))
                 {
                     var tr=hordeSlicePlan.Travel;var along=new NVector2(tr.X,tr.Z);if(along.LengthSquared()<1e-4f)along=d.Push;
-                    for(int i=0;i<hordeSlicePlan.Count;i++){int j=hordeSlicePlan.Joints[i];if(!HordeJointShown(death.lost,j))continue;d.Slice|=1<<j;HordeLaunch(rig,model,death.id,j,death.at,along,hordeSlicePlan.Kick*.35f,Mathf.Max(.05f,rig.Bones[j].position.y-(death.position.y-.85f)));}
+                    for(int i=0;i<hordeSlicePlan.Count;i++){int j=hordeSlicePlan.Joints[i];if(!HordeJointShown(death.lost,j))continue;d.Slice|=1<<j;HordeLaunch(rig,model,d.Kind,death.id,j,death.at,along,hordeSlicePlan.Kick*.35f,Mathf.Max(.05f,rig.Bones[j].position.y-(death.position.y-.85f)));}
                     if(hordeSlicePlan.Crush>=0&&HordeJointShown(death.lost,hordeSlicePlan.Crush))d.Slice|=1<<hordeSlicePlan.Crush;
                 }
+                // The gore (NativeHordeGorePresentation.cs): the fate from the killing blow (or a crushing hazard), the remains, a gib's
+                // limbs thrown and its body gone, a head burst's stump, the blade's stumps.
+                bool fresh=Math.Abs(d.GoreAt-death.at)<.2f;var cause=NativeHordeGore.Crushing(death.damageKind)?NativeHordeGore.Cause.Crush:fresh?d.GoreCause:NativeHordeGore.Cause.None;
+                int slice=d.Slice;d.Fate=HordeGoreDeath(death.id,d.Kind,d.Look,death.lost,death.at,death.seed,cause,fresh&&d.GoreHead,fresh?d.GoreAmount:0,d.MaxHp,fresh?d.GoreBlast:99,fresh&&d.GoreHeavy,new Vector3(d.Push.X,0,d.Push.Y),rig,floorY,ref slice,model,d.Slice);d.Slice=slice;
                 hordeDead[death.id]=d;
             }
-            bool body=!NativeMinionFx.Gone(fx)&&!(d.Kind==NativeHordeKinds.Bloater&&fx>=NativeHordeGait.BurstAt)&&!IronworksPopped(d.Kind,d.Melee,fx);
+            // The body falls and settles into a corpse that lies as long as the tier keeps corpses (HordeCorpsesDraw draws it from
+            // the frame after it settled); a gib has none; the Cinderling keeps its ember crumble (it chars and burns away).
+            bool burn=NativeIronworksKinds.Local(d.Kind)==NativeIronworksKinds.Cinderling,gib=d.Fate==NativeHordeGore.Fate.Gib||d.Fate==NativeHordeGore.Fate.Crush;
+            bool body=(!burn||!NativeMinionFx.Gone(fx))&&!gib&&!(d.Kind==NativeHordeKinds.Bloater&&fx>=NativeHordeGait.BurstAt)&&!IronworksPopped(d.Kind,d.Melee,fx);
             if(body)
             {
                 // The lost and sliced joints left out through the cached visibility test (no closure per frame).
                 hordeQueueLost=death.lost;hordeQueueHidden=d.Slice;hordeQueueVisible??=b=>HordeJointShown(hordeQueueLost,b)&&(hordeQueueHidden==0||!HordeHiddenJoint(hordeQueueHidden,b));
-                HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible);HordeDeathJaw(rig,d.Kind,d.Look,death.id,hordeQueueVisible);
+                if(burn||HordeGoreSettle(death.id,death.at,fall,rig,death.lost,d.Slice,floorY)){HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible,burn);HordeDeathJaw(rig,d.Kind,d.Look,death.id,hordeQueueVisible);GoreWoundsJob(death.id,rig);}
             }
+            if(d.Fate==NativeHordeGore.Fate.HeadGib){int f=d.Fountain;HordeGoreFountain(death.id,death.at,hordeClock,rig,ref f);if(f!=d.Fountain){d.Fountain=f;hordeDead[death.id]=d;}}
             HordeAdd(rig,death.id,float.NaN,Mathf.Max(0,fx),floorY,floorY,float.NaN,Vector3.zero,death.lost,body,d.Kind*8+d.Look);IronworksDeath(death,d.Kind,d.Melee,rig,fx,floorY);StationDeathFx(death,d.Kind,d.Seed,fx,rig,floorY);
             if(d.Kind==NativeHordeKinds.Bloater)HordeBurst(death,fx);
             return true;
@@ -634,7 +657,7 @@ namespace ChipArena.UnityConversion
         private struct HordeBurstJob{public Vector3 At;public float Since;public uint Seed;}
         private readonly HordeBurstJob[] hordeBursts=new HordeBurstJob[8];private int hordeBurstCount;
         private void HordeBurst(NativeDeath death,float fx){float since=fx-NativeHordeGait.BurstAt;if(since<0||since>1.5f||hordeBurstCount>=hordeBursts.Length)return;hordeBursts[hordeBurstCount++]=new HordeBurstJob{At=death.position+Vector3.up*.05f,Since=since,Seed=NativeGoreRules.FnvDigits(death.id)};}
-        /// <summary>DevEffects: the bloaters' bursts (ink chunks and amber gas), then cleared.</summary>
+        /// <summary>DevEffects: the bloaters' bursts (the amber gas; the flesh, bone and blood are its remains', NativeHordeGore), then cleared.</summary>
         private void DrawHordeBursts(Camera camera)
         {
             if(fxDraw==null||camera==null){hordeBurstCount=0;return;}var draw=fxDraw;Vector3 right=camera.transform.right,up=camera.transform.up;var gas=NativeArena.ColorOf(NativeHordeKinds.Seam[NativeHordeKinds.Bloater]);bool low=EffectsQuality<.5f;
@@ -642,7 +665,7 @@ namespace ChipArena.UnityConversion
             {
                 var job=hordeBursts[b];
                 for(int i=0;i<NativeHordeFx.BurstPieces;i+=low?2:1)if(NativeHordeFx.Burst(job.Seed,i,job.Since,out var o,out float sz,out float al,out bool isGas))
-                {Vector3 p=job.At+new Vector3(o.X,o.Y,o.Z);if(isGas)draw.Sprite(draw.Effects,p,right,up,sz*2.2f,Alpha(gas,al*.8f),NativeFxDraw.Authored+NativeFxDraw.Additive);else draw.Cube(draw.Solid,p,Quaternion.Euler(job.Since*500,i*40,0),Vector3.one*sz,new Color(.04f,.03f,.05f),NativeFxDraw.Authored);}
+                {Vector3 p=job.At+new Vector3(o.X,o.Y,o.Z);if(isGas)draw.Sprite(draw.Effects,p,right,up,sz*2.2f,Alpha(gas,al*.8f),NativeFxDraw.Authored+NativeFxDraw.Additive);}
                 if(job.Since<.25f)draw.Sprite(draw.Effects,job.At+Vector3.up*.2f,right,up,2.4f*(1-job.Since/.25f),Alpha(gas,.8f*(1-job.Since/.25f)),NativeFxDraw.Authored+NativeFxDraw.Additive);
             }
             hordeBurstCount=0;
@@ -736,7 +759,7 @@ namespace ChipArena.UnityConversion
         private void ClearHordeKinds(NativeArena arena)
         {
             foreach(var s in hordeKindStates.Values)hordeKindSpare.Push(s);hordeKindStates.Clear();foreach(var d in hordeDead.Values)if(d.Blend!=null)hordeBlendSpare.Push(d.Blend);hordeDead.Clear();hordeSnapshotAt=double.NegativeInfinity;ClearHordeHulkMoves();hordeKindArena=arena;hordeKindGeneration=arena?.Generation??-1;hordeKindEvent=0;hordeSpitEvent=0;hordeSpitEvents.Clear();hordeSpat.Clear();
-            for(int i=0;i<hordeParts.Length;i++)hordeParts[i].Live=false;ClearHordeAcid();ClearHordeBreaches();for(int i=0;i<hordeDust.Length;i++)hordeDust[i].Power=0;hordeJobCount=0;hordeBurstCount=0;ClearHordeZombieFx();ClearIronworks();ClearStationKinds();
+            for(int i=0;i<hordeParts.Length;i++)hordeParts[i].Live=false;ClearHordeGore();ClearHordeAcid();ClearHordeBreaches();for(int i=0;i<hordeDust.Length;i++)hordeDust[i].Power=0;hordeJobCount=0;hordeBurstCount=0;ClearHordeZombieFx();ClearIronworks();ClearStationKinds();
         }
     }
 

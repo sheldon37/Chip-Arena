@@ -12,7 +12,8 @@ namespace ChipArena.UnityConversion
     //  - Head voxels (3.2 cm on the pilot's cube): recessed sockets with glowing block pupils, a stepped brow, a broken block
     //    nose, gaunt cheekbones, a cheek torn open onto the teeth, a hanging block jaw with uneven block teeth.
     //  - Plates (the pilot's chunky slabs): cracked into tiles, offset and tilted, some gone; the helmet cracked into shards.
-    //  - Details (1-2 cm): teeth, pupils, claws, nails, knuckles, ink veins as glowing voxels, stepped glowing cracks.
+    //  - Details (1-2 cm): teeth, pupils, claws, nails, knuckles, dark dead veins, stepped raw splits (no Siren glow lines since
+    //    2026-10-19: the eyes and the kinds' own glow, the spitter's acid and the bloater's boils, stay).
     // Left limbs are authored at bank -x and mirrored for the right.
     public static partial class NativeHordeModels
     {
@@ -25,7 +26,9 @@ namespace ChipArena.UnityConversion
             ZSuit=Z(0x343d48,SurfCloth),ZSuitLight=Z(0x56616d,SurfCloth),ZSuitDark=Z(0x1d232a,SurfCloth),ZSuitFray=Z(0x5a5c58,SurfCloth),ZRag=Z(0x3a3832,SurfCloth),ZHood=Z(0x2a2433,SurfCloth),
             ZShell=Z(0xd0d3cf,SurfShell),ZShellDirty=Z(0xb9bdb8,SurfShell),ZShellDark=Z(0x5d6368,SurfShell),ZMetal=Z(0x8f969c,SurfWire),
             ZBoot=Z(0x2a3036,SurfCloth),ZSole=Z(0x15181b,SurfMatte),ZHair=Z(0x2a241c,SurfMatte),ZSocket=Z(0x0b0607,SurfMatte),ZWire=Z(0x24282c,SurfWire),ZVisor=Z(0x0f171b,SurfShell),
-            ZDeadAccent=Z(0x173230,SurfShell),ZSeamLine=Z(0x101215,SurfMatte);
+            ZDeadAccent=Z(0x173230,SurfShell),ZSeamLine=Z(0x101215,SurfMatte),
+            // The dead body's veins (2026-10-19, owner: standard zombies, no Siren lines): marbled dark under the rotted skin, no glow.
+            ZVein=Z(0x3d2c37,SurfSkin),ZVeinDark=Z(0x2a1f28,SurfSkin);
 
         /// <summary>A zombie body's proportions and choices (the kinds set them; NativeZombieKinds.cs).</summary>
         private sealed class Zb
@@ -55,13 +58,14 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         // Grid painting: the layers a part's cells take
         // ================================================================================================================
-        /// <summary>The paints of one grid (ids into its Paints), its ink vein one flicker cell.</summary>
-        private struct Layers{public int Skin,Pale,Dark,Rot,Bruise,Flesh,Deep,Bone,Suit,SuitDark,SuitLight,Fray,Socket,Mouth,Gum,Hair,Vein,Shell,ShellDark;}
+        /// <summary>The paints of one grid (ids into its Paints): its veins (dark, dead), and its kind's own glow where it has one
+        /// (the spitter's acid sac, the bloater's boils: Juice, steady).</summary>
+        private struct Layers{public int Skin,Pale,Dark,Rot,Bruise,Flesh,Deep,Bone,Suit,SuitDark,SuitLight,Fray,Socket,Mouth,Gum,Hair,Vein,Juice,Shell,ShellDark;}
         private static Layers Lay(K k,Vox v,float vein=1)
         {
             return new Layers{Skin=v.Add(ZSkin),Pale=v.Add(ZSkinPale),Dark=v.Add(ZSkinDark),Rot=v.Add(ZRotten),Bruise=v.Add(ZBruise),Flesh=v.Add(ZFlesh),Deep=v.Add(ZFleshDeep),Bone=v.Add(ZBone),
                 Suit=v.Add(ZSuit),SuitDark=v.Add(ZSuitDark),SuitLight=v.Add(ZSuitLight),Fray=v.Add(ZSuitFray),Socket=v.Add(ZSocket),Mouth=v.Add(ZMouth),Gum=v.Add(ZGum),Hair=v.Add(ZHair),
-                Vein=v.Add(k.Seam(vein)),Shell=v.Add(ZShellDirty),ShellDark=v.Add(ZShellDark)};
+                Vein=v.Add(k.Seam(vein)),Juice=v.Add(k.Juice(vein)),Shell=v.Add(ZShellDirty),ShellDark=v.Add(ZShellDark)};
         }
         /// <summary>Dead skin in blocky patches: two-cell clusters of rot, darker skin, bruise and pallor over the grey-green.</summary>
         private static int Mot(K k,in Layers L,int x,int y,int z,int salt)
@@ -118,7 +122,7 @@ namespace ChipArena.UnityConversion
                 return true;
             }
             g.Shape(Inside,1);
-            var L=Lay(k,g,1.1f);int glow=g.Add(k.Seam(1.4f)),browP=g.Add(ZSkinDark);
+            var L=Lay(k,g,1.1f);int glow=g.Add(k.Crack(1.4f)),browP=g.Add(ZSkinDark);
             bool Socket(int x,int y)=>y>=eye&&y<=eye+1&&(x==2||x==3||x==6||x==7||(x==1&&y==eye&&b.Top!=4));
             bool Cavity(int x,int y,int z)=>y<=1&&x>=2&&x<=7&&z>=7;
             bool TornCheek(int x,int y,int z)=>tear!=0&&y<=nose&&z>=5&&(tear<0?x<=2:x>=HeadNX-3)&&!(y==nose&&(tear<0?x==2:x==HeadNX-3));
@@ -150,7 +154,7 @@ namespace ChipArena.UnityConversion
             foreach(int x in new[]{1,HeadNX-2})if(!(tear<0&&x==1)&&!(tear>0&&x==HeadNX-2))g.Set(x,nose+1,10,L.Pale);
             g.Set(4,nose+1,10,L.Dark);
             Shades(k,g,0xe5);k.Voxels(g,.09f);
-            // An ink vein down the temple on the side away from the torn cheek: a stepped glowing strip.
+            // A dead vein down the temple on the side away from the torn cheek: a stepped dark strip.
             if(k.Mid){bool left=tear>0;var p=g.At(left?0:HeadNX,brow+.6f,6.5f);k.Zig(p,new Vector3(0,-1,.35f),left?-Vector3.UnitX:Vector3.UnitX,3,c*.9f,c*.22f,true,1.1f,false);}
             // The pupils: a glowing block deep in each socket (in the kind's colour).
             foreach(int s in new[]{-1,1}){var e=g.At(s<0?3f:7f,eye+1f,front-1f);k.Box(ZEye(k),e.X,e.Y-c*.1f,e.Z+.004f,c*.95f*b.Eye,c*.8f*b.Eye,c*.35f);}
@@ -175,7 +179,7 @@ namespace ChipArena.UnityConversion
             foreach(int s in new[]{-1,1}){float x0=s<0?2:6;B(ZSocket,x0,x0+2,4,6,9.96f,10.04f);var e=g.At(x0+1,5f,10f);k.Box(ZEye(k),e.X,e.Y-c*.1f,e.Z+.006f,c*1.1f*b.Eye,c*.9f*b.Eye,c*.3f);}
             for(int i=0;i<3;i++){var t=g.At(3+2f*i,2f,9.6f);float len=c*(.7f+.4f*k.H(i,0xe7));k.Box(ZTooth,t.X,t.Y-len*.5f,t.Z,c*1.1f,len,c*.7f);}
             if(b.Top==1){B(ZHair,1,6,ny-.2f,ny+.3f,1,6);B(ZHair,5,9,ny-.2f,ny+.25f,4,8);}
-            else if(b.Top==2){var p=k.Seam(1.4f);B(p,4.4f,5.4f,ny-.2f,ny+.15f,1,9);B(p,4.4f,5.4f,6.5f,ny,10,10.2f);}
+            else if(b.Top==2){var p=k.Crack(1.4f);B(p,4.4f,5.4f,ny-.2f,ny+.15f,1,9);B(p,4.4f,5.4f,6.5f,ny,10,10.2f);}
             else if(b.Top==3)B(ZBone,1,5,ny-.2f,ny+.15f,2,7);
             ZScalp(k,b,g);ZJaw(k,b,g);
         }
@@ -198,7 +202,7 @@ namespace ChipArena.UnityConversion
                         k.Tiles(ZShellDirty,K.PlateAt(new Vector3(lo.X-t*.3f,lo.Y+hh*.62f,lo.Z+hd*.4f),-Vector3.UnitX,Vector3.UnitY),hd*.72f,hh*.5f,t*.8f,2,2,.35f,.007f,.003f,.06f,.008f);
                         var ear=new Vector3(hi.X+.004f,lo.Y+hh*.5f,lo.Z+hd*.42f);k.Box(ZShellDark,ear.X,ear.Y,ear.Z,.022f,.06f,.08f,.005f);k.Box(ZDeadAccent,ear.X+.012f,ear.Y+.01f,ear.Z,.004f,.012f,.026f);
                         var vb=g.At(HeadNX*.5f,7.2f,10.6f);k.Box(ZVisor,vb.X-hw*.2f,vb.Y,vb.Z,hw*.42f,c*.8f,c*.7f,0,0,0,.05f);k.Box(ZVisor,vb.X+hw*.25f,vb.Y-.004f,vb.Z-.004f,hw*.34f,c*.75f,c*.65f,0,0,0,-.12f);
-                        if(k.Mid)k.Box(k.Seam(1.2f),vb.X+hw*.05f,vb.Y,vb.Z+c*.36f,.006f,c*.6f,.004f,0,0,0,.4f);
+                        if(k.Mid)k.Box(k.Accent(1.2f),vb.X+hw*.05f,vb.Y,vb.Z+c*.36f,.006f,c*.6f,.004f,0,0,0,.4f);
                     });
                     if(k.Mid)k.Piece(1,q=>Math.Max(0,(lo.Y+hh*.62f-q.Y)/.07f),()=>{var s=g.At(.6f,5.6f,10.5f);k.Box(ZVisor,s.X,s.Y-.022f,s.Z,.024f,.05f,.008f,0,0,0,-.2f);});
                     break;
@@ -274,7 +278,7 @@ namespace ChipArena.UnityConversion
             {
                 var pv=Vox.Over(-.21f*w,.21f*w,-.105f,.105f,-.135f*dp,.135f*dp,BodyCell(k,w,.035f));
                 Part(k,pv,(x,y,z)=>Chamfer(pv,x,z),(L,x,y,z,d)=>y==pv.NY-1?L.SuitDark:d>=1?L.Skin:L.Suit,0xf4,.05f);
-                k.Box(ZShellDark,0,.07f,.135f*dp+.006f,.07f,.045f,.014f,.004f);k.Box(k.Seam(.8f),0,.07f,.135f*dp+.014f,.03f,.012f,.004f);
+                k.Box(ZShellDark,0,.07f,.135f*dp+.006f,.07f,.045f,.014f,.004f);k.Box(k.Accent(.8f),0,.07f,.135f*dp+.014f,.03f,.012f,.004f);
                 if(b.Tatters>0&&k.Mid)for(int i=0;i<(k.Fine?5:2);i++){float a=(.15f+.7f*k.H(i,0xf5))*(float)Math.PI*2;var t=new Vector3((float)Math.Cos(a)*.2f*w,-.09f,(float)Math.Sin(a)*.13f*dp);
                     k.Strand(i%3==0?ZRag:ZSuitDark,t,new Vector3(0,-1,0),new Vector3((float)Math.Cos(a),0,(float)Math.Sin(a)),.08f+.06f*k.H(i,0xf6),.05f,.12f,2);}
             }
@@ -344,7 +348,7 @@ namespace ChipArena.UnityConversion
                 // The suit: its lighter chest band and its seams.
                 return y>=ny-4&&y<=ny-3&&z==nz-1?L.SuitLight:y==0?L.SuitDark:L.Suit;
             },0xfe,.07f);
-            // Veins of ink out of the wound over the skin it bared.
+            // Dark veins out of the wound over the skin it bared.
             if(torn!=0&&k.Mid){var a=v.At(torn<0?mid-3.5f:mid+3.5f,ny-3.4f,nz+.02f);k.Zig(a,new Vector3(torn<0?.3f:-.3f,1,0),Vector3.UnitZ,3,.03f,.007f,true,1.1f,false);}
         }
         /// <summary>The chest plate (cracked tiles either side of a sternum ridge carrying the pilot's centre strip; the wound's half
@@ -361,7 +365,7 @@ namespace ChipArena.UnityConversion
                     var at=K.PlateAt(new Vector3(s*.12f*w,.15f,.146f*dp+.016f),Vector3.Normalize(new Vector3(s*.22f,.05f,1)),Vector3.UnitY);
                     k.Tiles(ZShellDirty,at,.2f*w,.22f,.032f,2,2,hurt?.4f:.18f,.008f,.006f,.07f,.008f,null,true);
                 }
-                k.Tiles(ZShellDark,K.PlateAt(new Vector3(0,.15f,.146f*dp+.022f),Vector3.UnitZ,Vector3.UnitY),.034f,.2f,.026f,1,2,0,.006f,.002f,.03f,.004f,k.Seam(.9f));
+                k.Tiles(ZShellDark,K.PlateAt(new Vector3(0,.15f,.146f*dp+.022f),Vector3.UnitZ,Vector3.UnitY),.034f,.2f,.026f,1,2,0,.006f,.002f,.03f,.004f,k.Accent(.9f));
                 k.Tiles(ZShellDirty,K.PlateAt(new Vector3(0,.272f,.118f*dp+.012f),Vector3.Normalize(new Vector3(0,.7f,.7f)),Vector3.UnitY),.36f*w,.07f,.028f,3,1,b.Plate<0?.34f:.12f,.008f,.005f,.07f,.006f);
                 if(k.Mid)k.Chain(ZWire,new Vector3(b.Plate<0?-.03f:.03f,.06f,.16f*dp),new Vector3(b.Plate<0?.05f:-.05f,-.04f,.16f*dp),.02f);
             });
@@ -467,7 +471,7 @@ namespace ChipArena.UnityConversion
             if(brace)k.Piece(mirror?4:1,null,()=>
             {
                 // The forearm guard: cracked slabs round the outside and back, the pilot's strip down it (the ink on the right arm).
-                k.Tiles(ZShellDirty,K.PlateAt(new Vector3(-.068f*f,-.125f,0),-Vector3.UnitX,Vector3.UnitY),.13f*f,.18f,.03f,1,2,.1f,.007f,.005f,.07f,.007f,mirror?k.Seam(.8f):(WeaponPaint?)ZDeadAccent,true);
+                k.Tiles(ZShellDirty,K.PlateAt(new Vector3(-.068f*f,-.125f,0),-Vector3.UnitX,Vector3.UnitY),.13f*f,.18f,.03f,1,2,.1f,.007f,.005f,.07f,.007f,mirror?k.Accent(.8f):ZDeadAccent,true);
                 k.Tiles(ZShellDirty,K.PlateAt(new Vector3(0,-.13f,.066f*f),Vector3.UnitZ,Vector3.UnitY),.11f*f,.16f,.026f,1,2,.25f,.007f,.005f,.07f,.007f);
             });
             ZHand(k,b,mirror,glove);
@@ -538,7 +542,7 @@ namespace ChipArena.UnityConversion
             float sz=Math.Min(s,1.1f);
             if(pad)k.Piece(mirror?4:1,null,()=>k.Tiles(ZShellDark,K.PlateAt(new Vector3(0,-.01f,.1f*sz),Vector3.UnitZ,Vector3.UnitY),.14f*Math.Min(s,1.2f),.11f,.04f,2,1,.2f,.007f,.004f,.07f,.008f));
             else if(!k.Far&&!wasted)k.Box(ZSkinDark,0,-.005f,.085f*sz,.1f*Math.Min(s,1.2f),.07f,.03f);
-            if(plate)k.Piece(mirror?4:1,null,()=>k.Tiles(ZShellDirty,K.PlateAt(new Vector3(0,-.1f,.09f*sz+.006f),Vector3.UnitZ,Vector3.UnitY),.13f*Math.Min(s,1.2f),.12f,.024f,1,2,.15f,.007f,.002f,.05f,.007f,k.Seam(.7f),true));
+            if(plate)k.Piece(mirror?4:1,null,()=>k.Tiles(ZShellDirty,K.PlateAt(new Vector3(0,-.1f,.09f*sz+.006f),Vector3.UnitZ,Vector3.UnitY),.13f*Math.Min(s,1.2f),.12f,.024f,1,2,.15f,.007f,.002f,.05f,.007f,k.Accent(.7f),true));
             // ---- the foot ----
             k.On(CapturedRig.LFoot,mirror);float ft=b.Foot;
             if(b.Barefoot)

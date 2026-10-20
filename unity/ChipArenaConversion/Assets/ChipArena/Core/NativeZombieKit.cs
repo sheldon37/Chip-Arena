@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     //    taken away, the layer under them showing as inset voxels. Only the faces open to air are drawn, merged into larger
     //    quads where they match, each corner carrying its voxel occlusion (the cells round it);
     //  - the pilot's plates cracked into tiles, offset and tilted, some gone (Tiles); block rags and block cables that sway
-    //    (Strand, Chain); stepped glowing cracks (Zig);
+    //    (Strand, Chain); stepped cracks, veins and raw splits (Zig);
     //  - per-vertex shading data in WeaponSection.Data (uv0 on the mesh) for ChipArena/ZombieLit: x the surface class
     //    (Surf*: skin, wet flesh, armour shell, cloth, bone, matte, wire) plus .02 + .96 x the baked occlusion, y the missing-piece
     //    variant (1..4, hidden per add) plus .02 + .96 x the sway weight of a dangling part (K.Pack); the vertex colour's alpha names the
@@ -316,13 +316,14 @@ namespace ChipArena.UnityConversion
             }
             /// <summary>
             /// A stepped glowing crack across a face: `steps` axis-aligned blocks from `start` along `along`, each step shifted
-            /// sideways by a cell (`across`), a dark split under a glow core (the Siren's ink; `split` false for a vein: the core
-            /// only); `n` the face's outward normal.
+            /// sideways by a cell (`across`), a dark split under a core (`split` false for a vein: the core only); `n` the face's
+            /// outward normal. On the Siren's seven since 2026-10-19 a split's core is raw muscle and a vein's dead and dark (Seam);
+            /// the zone kinds keep their glowing seams (heat, embers).
             /// </summary>
             public void Zig(Vector3 start,Vector3 along,Vector3 n,int steps,float len,float width,bool glow,float k=1,bool split=true)
             {
                 if(!Mid)return;if(!Fine)steps=Math.Max(2,steps*2/3);along=Vector3.Normalize(along);n=Vector3.Normalize(n);var across=Vector3.Normalize(Vector3.Cross(n,along));
-                var p=start;var g=glow?Seam(k):SeamDark;
+                var p=start;var g=glow?(Standard&&split?RawFlesh:Seam(k)):SeamDark;
                 for(int i=0;i<steps;i++)
                 {
                     var c=p+along*len*.5f;var at=PlateAt(c,n,along);var core=g;
@@ -331,6 +332,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             private static WeaponPaint SeamDark=>new WeaponPaint(WeaponPaint.Linear(0x101215),Vector3.Zero,0,SurfMatte);
+            private static WeaponPaint RawFlesh=>new WeaponPaint(WeaponPaint.Linear(0x7a1e22),Vector3.Zero,0,SurfFlesh);
             private static WeaponPaint Socket=>new WeaponPaint(WeaponPaint.Linear(0x0b0607),Vector3.Zero,0,SurfMatte);
             private static WeaponPaint Copper=>new WeaponPaint(WeaponPaint.Linear(0xb36b3c),Vector3.Zero,0,SurfWire);
 
@@ -399,7 +401,7 @@ namespace ChipArena.UnityConversion
                     default:return 0;
                 }
             }
-            /// <summary>Blood (the Siren's dark ink-red) round the mouth, down the chin and the chest's front.</summary>
+            /// <summary>Dried blood round the mouth, down the chin and the chest's front, and on the hands.</summary>
             private float Blood(int bone,Vector3 p)
             {
                 if(bone==CapturedRig.Head)

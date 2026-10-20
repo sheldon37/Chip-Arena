@@ -144,6 +144,8 @@ namespace ChipArena.UnityConversion
         {
             world=NMatrix.Identity;
             if(corpses.TryGetValue(target,out var corpse)){var half=ArrowHalf(corpse,bone,local);if(!half.ShownBone(bone))return false;world=BowN(half.PresentedBone(bone));return true;}
+            // A horde add (NativeHordeGorePresentation.cs): its live or falling rig, then its corpse; none once gibbed or gone.
+            if(target>=10000)return HordeArrowBone(target,bone,out world);
             if(bowArena!=null){var p=PilotOf(bowArena,target);if(p==null||p.Hp<=0)return false;}
             if(rigs.TryGetValue(target,out var rig)&&rig?.Bones!=null){world=BowN(rig.Bones[bone].localToWorldMatrix);return true;}
             return false;
@@ -182,7 +184,9 @@ namespace ChipArena.UnityConversion
                 if(NativeBowWire.Lodges(e,source.Seat.spec)){bowStuck.AddWall(e.Id,BowN(at),BowN(dir),e.Time,draw,std,LowGraphics);continue;}
                 if(!NativeBowWire.Sticks(e,source.Seat.spec))continue;
                 var r=NativeBowWire.Of(source.Pose);if(NativeBowFx.RainHit(r,BowN(at),e.Time))bowSlow[e.Target]=e.Time;
-                if(e.Detail=="field"||!rigs.TryGetValue(e.Target,out var rig)||rig?.Bones==null)continue;
+                if(e.Detail=="field")continue;
+                // A pilot's rig, or a horde add drawn with its kind's model (the arrow lodges in the zombie and stays with its corpse).
+                if(!rigs.TryGetValue(e.Target,out var rig)||rig?.Bones==null){if(e.Target<10000||!HordeKindDrawn(e.Target)||!minionRigs.TryGetValue(e.Target,out rig)||rig?.Bones==null)continue;}
                 // The struck joint (nearest the replicated hit point on the posed rig) and the arrow in its frame.
                 bowJointRig=rig;bowJoint??=b=>BowN(bowJointRig.Bones[b].localToWorldMatrix);int bone=NativeBowStuck.Nearest(bowJoint,BowN(at));
                 // Lodged halfway into the part, or gone through it (NativeArrowGibPresentation.cs).
