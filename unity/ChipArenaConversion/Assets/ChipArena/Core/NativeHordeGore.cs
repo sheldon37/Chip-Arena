@@ -10,7 +10,8 @@ namespace ChipArena.UnityConversion
     /// direction, detail, amount and attacker; its death record: id, seed, time, position, yaw, lost limbs, damage kind), its seed
     /// and the presentation clock, so every peer draws the same wound, spurt, chunk and pool. Nothing here is read by a rule.
     /// <list type="bullet">
-    /// <item>Hits (<see cref="Cause"/>, <see cref="Place"/>): the struck joint is the drawn body's nearest to the hit point; the
+    /// <item>Hits (<see cref="Cause"/>, <see cref="Place"/>): the struck joint is the drawn body's nearest to the hit point, within
+    /// the authority's struck part when the hit carries its horde-hit data (<see cref="Struck"/>, <see cref="Strength"/>); the
     /// wound sits on that part's surface facing the shot and rides the joint (live, dying, then the corpse). A hit sprays blood
     /// out of the wound and along the shot (the blood sim, <see cref="Spray"/>), puffs a little red mist and throws flesh bits
     /// (<see cref="Bit"/>); a head hit sprays harder. Wounds stay on the add, a few per add (<see cref="WoundsShown"/>), wet then
@@ -72,7 +73,8 @@ namespace ChipArena.UnityConversion
         /// blast whose killing share was heavy (a third of the add's health, or within 1.4 m of its centre) gibs; a killing head hit
         /// by the rifle, a heavy melee blow or one that took half the add's health bursts the head; a one-shot that took four fifths
         /// of the add's health from a heavy cause gibs; the bloater always bursts (its own death); everything else is a corpse.
-        /// `amount` is the killing hit's replicated damage (clamped to the health left), `maxHp` the add's.
+        /// `amount` is the killing hit's strength (<see cref="Strength"/>: its replicated damage, clamped to the health left, or with
+        /// the authority's data the raw damage when larger), `maxHp` the add's.
         /// </summary>
         public static Fate Decide(int kind,Cause cause,bool head,float amount,float maxHp,float blastDistance,bool heavyMelee)
         {
@@ -85,6 +87,60 @@ namespace ChipArena.UnityConversion
             return Fate.Corpse;
         }
         public static bool Gibs(Fate f)=>f==Fate.HeadGib||f==Fate.Gib||f==Fate.Crush;
+
+        // ================================================================================================================
+        // The authority's horde-hit data (ArenaEvent HasHordeHit, Head, Raw, HasPart, Part; Astra 2026-10-20)
+        // ================================================================================================================
+        /// <summary>
+        /// How hard a hit was, as a damage amount, for the gore's fate (<see cref="Decide"/>) and spray (<see cref="Severity"/>, a
+        /// burst's power), both read over the add's max HP. Old frames: the replicated damage `amount`, clamped to the health left,
+        /// so a killing blow's overkill is lost. With the authority's data (`known`): the larger of that and `raw`, the damage the
+        /// hit brought before the zone's and the limb's modifiers and the clamp (a head share's 1.5 can make `amount` the larger).
+        /// Raw minus amount is not the overkill (the modifiers change it) and is never used. A blast's or a crusher's raw is the
+        /// damage at its centre, before the falloff the authority's shares apply over the distance, not what reached the add, so
+        /// those keep the replicated amount (and the blast's own distance rule).
+        /// </summary>
+        public static float Strength(Cause cause,bool known,float raw,float amount)=>known&&cause!=Cause.Blast&&cause!=Cause.Crush&&raw>amount?raw:amount;
+        /// <summary>The authority's LIMB bits (Core/NativeHordeDamage: 1 the head, 2/4 the upper arms, 8/16 the forearms, 32/64 the
+        /// thighs, 128/256 the shins; 0 the torso) and the drawn joint each part hangs from, the same joints the severed-limb gore
+        /// throws (NativeMinionFxPresentation.HordeLimbBones): the even bits on the rig's left.</summary>
+        public static readonly int[] PartBits={1,2,4,8,16,32,64,128,256},PartRoots={CapturedRig.Head,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow,CapturedRig.LHip,CapturedRig.RHip,CapturedRig.LKnee,CapturedRig.RKnee};
+        /// <summary>The trunk's drawn joints (the authority's torso, part 0): pelvis, spine, chest, neck and both clavicles.</summary>
+        public const int TorsoJoints=1<<CapturedRig.Pelvis|1<<CapturedRig.Spine|1<<CapturedRig.Chest|1<<CapturedRig.Neck|1<<CapturedRig.LClav|1<<CapturedRig.RClav;
+        /// <summary>The drawn joints (a mask of 1 &lt;&lt; joint) whose parts make up the authority's part `part`: the trunk for the
+        /// torso, the head, an upper arm or a thigh alone, a forearm with its hand, a shin with its foot and toe; 0 for no part.</summary>
+        public static int PartJoints(int part)
+        {
+            switch(part)
+            {
+                case 0:return TorsoJoints;
+                case 1:return 1<<CapturedRig.Head;
+                case 2:return 1<<CapturedRig.LArm;
+                case 4:return 1<<CapturedRig.RArm;
+                case 8:return 1<<CapturedRig.LElbow|1<<CapturedRig.LHand;
+                case 16:return 1<<CapturedRig.RElbow|1<<CapturedRig.RHand;
+                case 32:return 1<<CapturedRig.LHip;
+                case 64:return 1<<CapturedRig.RHip;
+                case 128:return 1<<CapturedRig.LKnee|1<<CapturedRig.LFoot|1<<CapturedRig.LToe;
+                case 256:return 1<<CapturedRig.RKnee|1<<CapturedRig.RFoot|1<<CapturedRig.RToe;
+                default:return 0;
+            }
+        }
+        /// <summary>The part a limb part hangs from: a forearm's upper arm, a shin's thigh; the torso (0) for the rest.</summary>
+        public static int PartParent(int part)=>part==8?2:part==16?4:part==128?32:part==256?64:0;
+        /// <summary>
+        /// The drawn joints a hit with the authority's data may wound, as a mask for <see cref="Place"/> (0: any, the nearest part,
+        /// as for old frames). The head when any share took the head (`head`, even when the torso's share was the larger); else
+        /// the known part (`part` when `hasPart`: the torso is a known part, not a missing one); else any. A part the add has
+        /// already lost (`lost`, its LIMB bits) is not drawn, and the authority names it before it moves the damage to the torso,
+        /// so that wound goes on the nearest of what is left of the limb (its stump: the upper arm under a lost forearm, the thigh
+        /// under a lost shin) and the trunk; a lost head's goes on the neck.
+        /// </summary>
+        public static int Struck(bool head,bool hasPart,int part,int lost)
+        {
+            int p=head?1:hasPart?part:-1;if(p<0)return 0;int mask=PartJoints(p);if(mask==0||p==0||(lost&p)==0)return mask;
+            int up=PartParent(p);return (up!=0&&(lost&up)==0?PartJoints(up):0)|TorsoJoints;
+        }
 
         // ================================================================================================================
         // Placing a wound: the drawn body's nearest part to the hit, on its surface, facing the shot
@@ -130,9 +186,11 @@ namespace ChipArena.UnityConversion
         /// `dir` the shot's travel (the push). For a blast the point is moved onto the body toward the blast. Picks the joint whose
         /// part (a capsule round its segment, the kind's girth) is nearest, and returns the surface point there facing the shot,
         /// its outward normal (out of the wound) and whether it is the head. `bones`: the 22 joint world matrices (System.Numerics).
+        /// `aimHead` keeps it to the head; `allow` (a mask of 1 &lt;&lt; joint, <see cref="Struck"/>; 0 any) to the joints given.
         /// </summary>
-        public static int Place(Matrix4x4[] bones,int kind,Vector3 point,Vector3 dir,bool blast,out Vector3 surface,out Vector3 normal,out bool head,bool aimHead=false)
+        public static int Place(Matrix4x4[] bones,int kind,Vector3 point,Vector3 dir,bool blast,out Vector3 surface,out Vector3 normal,out bool head,bool aimHead=false,int allow=0)
         {
+            if(aimHead)allow=1<<CapturedRig.Head;
             var root=Origin(bones[CapturedRig.Chest]);float scale=ScaleOf(bones[CapturedRig.Body]);
             dir=Unit(dir,Vector3.UnitZ);
             // A blast's point is its centre: the body's side facing it, at the chest's height or the floor-hugging parts for a low one.
@@ -141,7 +199,7 @@ namespace ChipArena.UnityConversion
             for(int j=1;j<22;j++)
             {
                 Segment(bones,j,out var a,out var b);var c=Closest(a,b,point);float r=SegmentRadius[j]*Girth(kind,Trunk(j))*scale,d=Vector3.Distance(c,point)-r;
-                if(d<bestD&&(!aimHead||j==CapturedRig.Head)){bestD=d;best=j;bestC=c;}
+                if(d<bestD&&(allow==0||(allow&1<<j)!=0)){bestD=d;best=j;bestC=c;}
             }
             float rad=SegmentRadius[best]*Girth(kind,Trunk(best))*scale;var off=point-bestC;
             // On the part's side facing the shot: the hit point's side, else back along the shot.
@@ -297,9 +355,14 @@ namespace ChipArena.UnityConversion
     public struct GoreHit
     {
         public int Id,Kind,Index;public float Time,Amount,MaxHp;public NativeHordeGore.Cause Cause;public bool Kill;
-        /// <summary>The authority called it a head shot (EventKind.Headshot; adds do not send it yet: the head is then the drawn
-        /// part nearest the hit).</summary>
+        /// <summary>A head hit. Old frames: the authority called it a head shot (EventKind.Headshot, which adds do not send), else
+        /// the drawn part nearest the hit decides. With the authority's data (`Known`): its head flag, and nothing else.</summary>
         public bool Head;
+        /// <summary>The hit carries the authority's horde-hit data (ArenaEvent.HasHordeHit): `Head` is its flag, `Raw` the damage
+        /// before the modifiers and the clamp (<see cref="NativeHordeGore.Strength"/>), `HasPart`/`Part` the struck part's LIMB bit
+        /// (0 a known torso) and `Lost` the add's lost LIMB bits at the hit (<see cref="NativeHordeGore.Struck"/>). False on old
+        /// frames, and then none of them is read.</summary>
+        public bool Known,HasPart;public float Raw;public int Part,Lost;
         /// <summary>The hit point, the shot's travel (world) and, for a melee blow, the blade's sweep across the body.</summary>
         public Vector3 Point,Dir,Sweep;
     }
@@ -369,18 +432,22 @@ namespace ChipArena.UnityConversion
         /// One replicated hit on an add drawn with `bones` (its 22 joint world matrices, System.Numerics) standing on `floor`:
         /// places the wound and keeps it on the struck joint, puffs the mist and throws the bits, and asks the blood sim for the
         /// spray. Returns the struck joint (-1 for a tick that never bleeds). A hit seen twice (the same add and time) is one.
+        /// With the authority's data (`h.Known`) the head is its flag, the wound goes on its part (<see cref="NativeHordeGore.Struck"/>)
+        /// and the spray and burst are as strong as <see cref="NativeHordeGore.Strength"/>; old frames infer all three as before.
         /// </summary>
         public int Hit(in GoreHit h,Matrix4x4[] bones,float floor,out bool head)
         {
             head=false;if(!Enabled||h.Cause==NativeHordeGore.Cause.None||bones==null)return -1;var g=Find(h.Id,true,h.Time);g.Seen=Math.Max(g.Seen,h.Time);
-            int bone=NativeHordeGore.Place(bones,h.Kind,h.Point,h.Dir,h.Cause==NativeHordeGore.Cause.Blast||h.Cause==NativeHordeGore.Cause.Crush,out var surface,out var n,out head,h.Head);
+            int allow=h.Known?NativeHordeGore.Struck(h.Head,h.HasPart,h.Part,h.Lost):0;
+            int bone=NativeHordeGore.Place(bones,h.Kind,h.Point,h.Dir,h.Cause==NativeHordeGore.Cause.Blast||h.Cause==NativeHordeGore.Cause.Crush,out var surface,out var n,out head,!h.Known&&h.Head,allow);if(h.Known)head=h.Head;
             uint seed=NativeHordeGore.HitSeed(h.Id,h.Time)^unchecked((uint)h.Index*0x9e3779b1u);var dir=NativeHordeGore.Unit(h.Dir,-n);
             AddWound(g,bones[bone],bone,surface,n,h.Cause==NativeHordeGore.Cause.Melee&&h.Sweep.LengthSquared()>1e-4f?h.Sweep:dir,h.Time,h.Cause,head,false,seed,NativeHordeGore.ScaleOf(bones[CapturedRig.Body]));
-            int t=Tier;float power=MeleeMath.Clamp((h.MaxHp>0?h.Amount/h.MaxHp:.3f)*1.5f+(head?.4f:0)+(h.Cause==NativeHordeGore.Cause.Heavy||h.Cause==NativeHordeGore.Cause.Blast?.3f:0),.15f,1);
+            float amount=NativeHordeGore.Strength(h.Cause,h.Known,h.Raw,h.Amount);
+            int t=Tier;float power=MeleeMath.Clamp((h.MaxHp>0?amount/h.MaxHp:.3f)*1.5f+(head?.4f:0)+(h.Cause==NativeHordeGore.Cause.Heavy||h.Cause==NativeHordeGore.Cause.Blast?.3f:0),.15f,1);
             int bits=NativeHordeGore.Bits[t]*(head?3:2)/3,mist=Math.Min(NativeHordeGore.Mist[t],head||power>.6f?3:h.Cause==NativeHordeGore.Cause.Melee?1:2);
             ref var b=ref Bursts[burstNext++%Bursts.Length];b=new NativeHordeGoreState.Burst{Live=true,At=surface,N=n,Dir=dir,Born=h.Time,Floor=floor,Power=power,Seed=seed,Bits=bits,Mist=mist};
             long key=((long)(h.Id&0xffffff)<<36)^((long)(BitConverter.SingleToInt32Bits(h.Time)&0xfffffff)<<4)^((long)(h.Index&15))^(1L<<62);
-            Spray(NativeHordeGore.SprayKind(h.Cause,head),NativeHordeGore.Severity(h.Cause,head,h.Amount,h.MaxHp),seed,key,surface+n*.01f,n,dir,h.Time,NativeHordeGore.Extra(h.Cause,head,h.Kill,t),h.Id,h.Kill);
+            Spray(NativeHordeGore.SprayKind(h.Cause,head),NativeHordeGore.Severity(h.Cause,head,amount,h.MaxHp),seed,key,surface+n*.01f,n,dir,h.Time,NativeHordeGore.Extra(h.Cause,head,h.Kill,t),h.Id,h.Kill);
             return bone;
         }
         /// <summary>

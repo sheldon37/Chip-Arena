@@ -11,9 +11,10 @@ namespace ChipArena.UnityConversion
     // every input is what host, guests and the killcam replay all hold (an add's replicated hits: time, point, direction, detail,
     // amount, attacker; its death record: id, seed, time, position, yaw, lost limbs, damage kind; PveGib's severed limbs) and the
     // field clock. No hit, collider, timing, damage, movement or network state is read back or changed.
-    //  - A hit (HordeHit -> HordeGoreHit): the wound on the drawn body's nearest part, facing the shot, kept on the joint; blood out
-    //    of it and along the shot into the blood sim (red, its splats stay on floors and walls); a puff of red mist and flesh bits;
-    //    a head hit harder. Wounds draw on the nearest adds (the tier's count) and drip while fresh.
+    //  - A hit (HordeHit -> HordeGoreHit): the wound on the drawn body's nearest part (within the authority's struck part when the
+    //    hit carries its horde-hit data), facing the shot, kept on the joint; blood out of it and along the shot into the blood sim
+    //    (red, its splats stay on floors and walls); a puff of red mist and flesh bits; a head hit harder. Wounds draw on the
+    //    nearest adds (the tier's count) and drip while fresh.
     //  - A death (HordeKindDeath -> HordeGoreDeath): the fate (a corpse, a head burst, a gib, a crush, the bloater's own burst);
     //    a gib throws the model's own limbs (HordeLaunch) and the trunk's chunks; a head burst leaves a fountaining neck stump; a
     //    blade's slice leaves stumps where it cut. The body falls on its kind's take and settles into a corpse (HordeGoreSettle)
@@ -61,7 +62,9 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// HordeHit: one replicated hit on a drawn add (`m` null for the blow that killed it this frame; `s` its state). `at` the add's
         /// body, `dir` the hit's push (flat; from a blast's centre for a blast). The cause and the killing blow's facts are kept on
-        /// the state for the death's fate.
+        /// the state for the death's fate. With the authority's horde-hit data (e.HasHordeHit; docs/ZOMBIE-GORE.md) the head is
+        /// e.Head, the wound goes on e.Part (NativeHordeGore.Struck, with the add's lost limbs) and the fate and spray read e.Raw
+        /// (NativeHordeGore.Strength); old frames keep the Headshot kind, the nearest drawn part and the clamped e.Amount.
         /// </summary>
         private void HordeGoreHit(NativeArena arena,NativeMinion m,HordeKindState s,in ArenaEvent e,Vector3 at,Vector3 dir,bool melee,string spec,bool heavy)
         {
@@ -71,13 +74,16 @@ namespace ChipArena.UnityConversion
             Vector3 point=e.Position.x==0&&e.Position.y==0&&e.Position.z==0?at+Vector3.up*.3f:NativeArena.Vec(e.Position);if(dir.sqrMagnitude<.5f)dir=(at-point).normalized;
             float blastDistance=blast?new Vector2(point.x-at.x,point.z-at.z).magnitude:99;
             if(id==goreHitTarget&&e.Time==goreHitTime)goreHitIndex++;else{goreHitTarget=id;goreHitTime=e.Time;goreHitIndex=0;}
-            if(s!=null){s.GoreCause=cause;s.GoreAt=e.Time;s.GoreAmount=e.Amount;s.GoreBlast=blastDistance;s.GoreHeavy=heavy;s.GoreHead=false;s.MaxHp=maxHp;s.GorePush=new NVector2(dir.x,dir.z);}
+            bool known=e.HasHordeHit;float strength=NativeHordeGore.Strength(cause,known,e.Raw,e.Amount);
+            if(s!=null){s.GoreCause=cause;s.GoreAt=e.Time;s.GoreAmount=strength;s.GoreBlast=blastDistance;s.GoreHeavy=heavy;s.GoreHead=known&&e.Head;s.MaxHp=maxHp;s.GorePush=new NVector2(dir.x,dir.z);}
             if(!minionRigs.TryGetValue(id,out var rig)||rig?.Bones==null||hordeEyeKnown&&(at-hordeEye).sqrMagnitude>60*60)return;
             float floor=at.y-NativeHordeKinds.RootHeight(s!=null?s.Real:kind,m?.Pve?.Crawl==true);
             // A blade's gash runs across the body: the blow's sweep, tilted by the swing (a diagonal stroke).
             var across=Vector3.Cross(Vector3.up,dir);var sweep=melee?(across.normalized+Vector3.up*(NativeHordeGore.H(NativeHordeGore.HitSeed(id,e.Time),0,9)-.5f)*1.1f).normalized:Vector3.zero;
-            var h=new GoreHit{Id=id,Kind=kind,Index=goreHitIndex,Time=e.Time,Amount=e.Amount,MaxHp=maxHp,Cause=cause,Kill=m==null,Head=e.Kind==EventKind.Headshot,Point=GoreV(point),Dir=GoreV(dir),Sweep=GoreV(sweep)};
-            hordeGore.Hit(h,GoreBones(rig),floor,out bool head);if(s!=null)s.GoreHead=head;
+            // The add's lost limbs at the hit (replicated; for the blow that killed it this frame, the last ones it was drawn with).
+            int lost=m?.Pve!=null?m.Pve.Lost:s!=null&&s.Lost>0?s.Lost:0;
+            var h=new GoreHit{Id=id,Kind=kind,Index=goreHitIndex,Time=e.Time,Amount=e.Amount,MaxHp=maxHp,Cause=cause,Kill=m==null,Head=known?e.Head:e.Kind==EventKind.Headshot,Known=known,Raw=e.Raw,HasPart=e.HasPart,Part=e.Part,Lost=lost,Point=GoreV(point),Dir=GoreV(dir),Sweep=GoreV(sweep)};
+            hordeGore.Hit(h,GoreBones(rig),floor,out bool head);if(s!=null)s.GoreHead=known?e.Head:head;
         }
         /// <summary>HordeSever: the authority severed a living add's limb (PveGib): a raw stump on the joint it hung from, a gush.</summary>
         private void HordeGoreSever(CapturedAnimation.Player rig,int id,int kind,int joint,float now,NVector2 push)
