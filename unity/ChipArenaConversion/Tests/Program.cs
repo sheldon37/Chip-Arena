@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            SnapshotChecks.Run();
+            if(args.Length==1&&args[0]=="--chip-perf")return 0;
             if(args.Length==1&&args[0]=="--killcam"){FinalKillcamChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--movement-mods"){MovementModsChecks.Run(ProjectRoot());RoundsCardsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zone-boss-rules"){ZoneBossRulesChecks.Run();return 0;}

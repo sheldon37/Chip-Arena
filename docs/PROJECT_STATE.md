@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-20 Astra chip-effect performance candidate (`codex/unity-chip-effect-perf`): pooled mutation-safe simulation snapshots replace eight hot array-copy sites; non-damaging fields skip enemy scans. Focused allocation/behavior checks pass (2,424,000 -> 0 warm allocated bytes for 1,000 x 300-item copies). Full regression, Unity compilation and test update publication pending; no FPS claim.
+
 2026-10-20 Astra PvP killcam mode fix (`codex/pvp-killcam-mode`, implemented): saved Expedition preferences could suppress PvP replay recording. Replay now follows the active match/session binding; 113 killcam checks pass. CI/build publication pending.
 
 2026-10-20 Claude zombies twitching toward the pilot (`claude/zombie-twitch-fix`, merged into shared; presentation only). Under pistol fire every hit staggered a shambler and restarted its knockback reel at 2x pace. Each restart also flipped the take in 2–3 frames, the hurt sag stepped, and the grid route's zig-zag swung the facing. Now the staggers play as one stumble and the blends ease; head p95 23 → 7 rad/s, max 65 → 10. run5b passes; Unity/Windows unrun. Astra: grid steering and the stagger's instant restart (DEV_LOG). Next: owner review.
