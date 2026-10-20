@@ -181,6 +181,7 @@ namespace ChipArena.UnityConversion
                 case "preview-rounds-fx":RoundsPreviewToggle();break;
                 case "preview-door-lock":NativeLaserDoorPreview.On=!NativeLaserDoorPreview.On;DevSay(NativeLaserDoorPreview.On?"Instance exit door preview · on (presentation only; the laser door cycles lock, sealed, unlock and open; the exit's collider is unchanged)":"Instance exit door preview · off",false);break;
                 case "preview-account-xp":AccountXpPreviewToggle();break;
+                case "preview-expedition-ui":ExpeditionUiPreviewToggle();break;
                 case "preview-zombie-gore":ZombieGorePreviewToggle();break;
                 case "overlay-shots":devOverlayShots=!devOverlayShots;break;
                 case "log":devLogOn=!devLogOn;break;
@@ -219,7 +220,7 @@ namespace ChipArena.UnityConversion
             if(devLink.Status!=devLinkSeen){devLinkSeen=devLink.Status;if(devLinkSeen.Length>0)DevSay(devLinkSeen,devLink.StatusBad);}
             if(NativeDevGate.Indicator(devCtx))DevIndicator();
             if(devGraphOn)DevGraphPanel(W);if(devLogOn)DevLogPanel(W,Hh);if(devFly.On)DevFlyTag(W);ExpeditionHubPreviewHud(W);
-            IronworksPreviewHud(W);StationBossPreviewHud(W,Hh);IronworksBossPreviewHud(W,Hh);AccountXpPreviewHud(W,Hh);RoundsPreviewHud(W);
+            IronworksPreviewHud(W);StationBossPreviewHud(W,Hh);IronworksBossPreviewHud(W,Hh);AccountXpPreviewHud(W,Hh);RoundsPreviewHud(W);ExpeditionUiPreviewHud(W,Hh);
             if(devOpen)DevPanel(W,Hh);
         }
         private static Vector2 DevPointer(){var m=GUI.matrix;GUI.matrix=Matrix4x4.identity;var p=Event.current.mousePosition;GUI.matrix=m;return p/Mathf.Max(.01f,U.S);}
@@ -657,6 +658,7 @@ namespace ChipArena.UnityConversion
             y=DevNote(x,y,w,"Plays the \"a developer is here\" moment on your pilot, locally. In a match it plays for the whole room once the host reveals you (DEV command reveal).",C.Muted());
             y=ZombieGorePreviewPanel(x,y,w);
             y=AccountXpPreviewPanel(x,y,w);
+            y=ExpeditionUiPreviewPanel(x,y,w);
             return y;
         }
         private float DevCameraTab(float x,float y,float w)
