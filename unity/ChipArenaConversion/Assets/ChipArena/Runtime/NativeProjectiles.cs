@@ -96,7 +96,7 @@ namespace ChipArena.UnityConversion
         {
             const float dt=1f/60;
             // A newly spawned fragment starts next tick, regardless of collection insertion order.
-            foreach(var b in Bullets.ToArray())
+            foreach(var b in NativeSnapshots.Capture(Bullets))
             {
                 if(!Bullets.Contains(b)||StepSirenShot(b))continue;var owner=Pilots.Find(p=>p.Seat.id==b.Owner);var original=Pilots.Find(p=>p.Seat.id==b.Original);
                 if(owner!=null&&Time-b.Born<dt&&HubInside(owner.Body.position)){EndBullet(b);continue;}

@@ -40,10 +40,10 @@ namespace ChipArena.UnityConversion
         private float ChipBlast(NativePilot owner,Vector3 at,float radius,float damage,float impulse,bool props=true,string effect="chip")
         {
             if(owner==null)return 0;float total=0;Emit(EventKind.Explosion,owner,0,at,damage,effect,radius);Fx(at,radius,owner.Pose.MagicVisual);
-            foreach(var target in Pilots.ToArray())
+            foreach(var target in NativeSnapshots.Capture(Pilots))
             {Vector3 delta=target.Body.position-at;float fall=NativeProjectileRules.Falloff(delta.magnitude,radius);if(target.Hp<=0||!CanHit(owner,target)||fall<=0||HubCross(at,target.Body.position)||!MeleeVisible(at+delta.normalized*.1f,target.Body.position,owner,target.Collider))continue;total+=Damage(target,owner,damage*fall,delta.normalized,impulse*fall,false,direct:false,primary:false,damageKind:"blast");}
-            foreach(var m in Minions.ToArray()){Vector3 d=m.Body.position-at;float f=NativeProjectileRules.Falloff(d.magnitude,radius);if(f>0&&CanHit(owner,m)&&!HubCross(at,m.Body.position)&&MeleeVisible(at,m.Body.position,owner,m.Collider))total+=HitMinion(m,owner,damage,d.normalized,impulse*f,at,"blast",radius,from:at);}
-            if(props)foreach(var prop in Props.ToArray())
+            foreach(var m in NativeSnapshots.Capture(Minions)){Vector3 d=m.Body.position-at;float f=NativeProjectileRules.Falloff(d.magnitude,radius);if(f>0&&CanHit(owner,m)&&!HubCross(at,m.Body.position)&&MeleeVisible(at,m.Body.position,owner,m.Collider))total+=HitMinion(m,owner,damage,d.normalized,impulse*f,at,"blast",radius,from:at);}
+            if(props)foreach(var prop in NativeSnapshots.Capture(Props))
             {if(prop==null||prop.Indestructible)continue;if(!string.IsNullOrEmpty(prop.Definition.role)){StructureBlast(prop,owner,at,radius,damage,impulse);continue;}Vector3 delta=prop.transform.position-at;float reach=radius+prop.Definition.size.Length*.35f;if(delta.magnitude>=reach||!MeleeVisible(at,prop.transform.position,owner,prop.GetComponent<Collider>()))continue;float fall=1-Mathf.Clamp(delta.magnitude/reach,0,.85f);DamageProp(prop,damage*fall*(float)owner.Stats["demolition"],(delta+Vector3.up*.3f).normalized*impulse*fall,at,owner);}
             return total;
         }
@@ -105,7 +105,7 @@ namespace ChipArena.UnityConversion
             Vector3 at=p.Body.position;if(p.Stats["dashBlast"]>0)ChipBlast(p,at,3,(float)p.Stats["dashBlast"],(float)p.Stats["dashBlast"]/14*380,effect:"dash-blast");
             if(Has(p,"bread-crumbs"))Field(p,"mine",at,2.8f,5,24,"bread-crumbs");if(Has(p,"hot-foot"))Field(p,"fire",at,3,3,15,"hot-foot");
             if(Has(p,"comet"))Field(p,"bomb",at,3.5f,.32f,45*(float)p.Stats["damage"],"comet",p);
-            if(Has(p,"vampire-dash")){foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q)&&Vector3.Distance(at,q.Body.position)<3&&MeleeVisible(at,q.Body.position,p,q.Collider))Heal(p,Damage(q,p,12,Vector3.zero,0,false,direct:false,primary:false));foreach(var m in Minions.ToArray())if(m.Hp>0&&CanHit(p,m)&&Vector3.Distance(at,m.Body.position)<3&&MeleeVisible(at,m.Body.position,p,m.Collider))Heal(p,HitMinion(m,p,12,Vector3.zero,0));}
+            if(Has(p,"vampire-dash")){foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q)&&Vector3.Distance(at,q.Body.position)<3&&MeleeVisible(at,q.Body.position,p,q.Collider))Heal(p,Damage(q,p,12,Vector3.zero,0,false,direct:false,primary:false));foreach(var m in NativeSnapshots.Capture(Minions))if(m.Hp>0&&CanHit(p,m)&&Vector3.Distance(at,m.Body.position)<3&&MeleeVisible(at,m.Body.position,p,m.Collider))Heal(p,HitMinion(m,p,12,Vector3.zero,0));}
             if(Has(p,"thunderstep")){var targets=Pilots.Where(q=>q.Hp>0&&Enemy(p,q)&&Vector3.Distance(at,q.Body.position)<12&&MeleeVisible(at+Vector3.up*.5f,q.Body.position,p,q.Collider)).OrderBy(q=>(at-q.Body.position).sqrMagnitude).Take(2).ToArray();if(targets.Length==0)Field(p,"bomb",at,4,.5f,35,"thunderstep");foreach(var q in targets)Field(p,"bomb",q.Body.position,2.5f,.35f,30*(float)p.Stats["damage"],"thunderstep",q);}
         }
         private void ChipJump(NativePilot p)
@@ -121,15 +121,15 @@ namespace ChipArena.UnityConversion
         private void StepChipFields()
         {
             const float dt=1f/60;
-            foreach(var f in ChipFields.ToArray())
+            foreach(var f in NativeSnapshots.Capture(ChipFields))
             {
                 if(f.Attached!=null&&f.Attached.Hp>0)f.Position=f.Attached.Body.position;else if(f.Minion?.Hp>0)f.Position=f.Minion.Body.position;else if(f.Prop!=null)f.Position=f.Prop.transform.position;
                 bool mine=f.Kind=="mine",trigger=mine&&Time>=f.Arm&&Pilots.Any(p=>p.Hp>0&&CanHit(f.Owner,p)&&Vector3.Distance(p.Body.position,f.Position)<f.Radius&&MeleeVisible(f.Position,p.Body.position,f.Owner,p.Collider));
                 if(Time>=f.Until||trigger){ChipFields.Remove(f);if(trigger||f.Kind=="bomb"||f.Kind=="implosion")ChipBlast(f.Owner,f.Position+Vector3.up*.15f,f.Radius,f.Damage,f.Kind=="implosion"?0:1100,effect:f.Effect??f.Kind);if(f.Kind=="implosion")Vacuum(f.Owner,f.Position+Vector3.up*.15f,1300);continue;}
                 if(mine||f.Kind=="bomb"||f.Kind=="implosion")continue;
                 foreach(var p in Pilots){Vector3 d=p.Body.position-f.Position;if(p.Hp<=0||d.magnitude>f.Radius)continue;if(f.Kind=="heal"){if(p==f.Owner)Heal(p,f.Damage*dt);continue;}if(!CanHit(f.Owner,p)||!MeleeVisible(f.Position+Vector3.up*.2f,p.Body.position,f.Owner,p.Collider))continue;if(f.Damage>0)Damage(p,f.Owner,f.Damage*dt,Vector3.zero,0,false,direct:false,primary:false,damageKind:"field");if(!SirenArmor(p)&&(f.Kind=="black-hole"||f.Kind=="repulsion"))p.Knockback+=d.normalized*(f.Kind=="black-hole"?-35:65)*dt*(float)p.Stats["knockbackTaken"];}
-                foreach(var m in Minions.ToArray())if(f.Damage>0&&f.Kind!="heal"&&CanHit(f.Owner,m)&&Vector3.Distance(m.Body.position,f.Position)<f.Radius)HitMinion(m,f.Owner,f.Damage*dt,Vector3.zero,0,kind:"field");
-                if(f.Kind=="black-hole"||f.Kind=="repulsion"||f.Kind=="fire"||f.Kind=="acid")foreach(var prop in Props.ToArray())
+                if(f.Damage>0&&f.Kind!="heal")foreach(var m in NativeSnapshots.Capture(Minions))if(CanHit(f.Owner,m)&&Vector3.Distance(m.Body.position,f.Position)<f.Radius)HitMinion(m,f.Owner,f.Damage*dt,Vector3.zero,0,kind:"field");
+                if(f.Kind=="black-hole"||f.Kind=="repulsion"||f.Kind=="fire"||f.Kind=="acid")foreach(var prop in NativeSnapshots.Capture(Props))
                 {if(prop==null||prop.Indestructible||Vector3.Distance(prop.transform.position,f.Position)>f.Radius||!MeleeVisible(f.Position+Vector3.up*.2f,prop.transform.position,f.Owner,prop.GetComponent<Collider>()))continue;Vector3 d=prop.transform.position-f.Position;if(f.Kind=="fire"||f.Kind=="acid")DamageProp(prop,f.Damage*dt,Vector3.zero,prop.transform.position,f.Owner);else if(prop.Body!=null&&!prop.Body.isKinematic)prop.Body.AddForce(d.normalized*(f.Kind=="black-hole"?-1:1)*prop.Body.mass*20*dt,ForceMode.Impulse);}
             }
         }
