@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-20 Claude zombie gore metadata binding (`claude/zombie-gore-bind`, on branch, not merged; presentation only): with `HasHordeHit`, the gore reads Astra's fields. `Head` alone decides the head. The wound goes on `Part`, and a part already lost goes on its stump or the trunk. The larger of `Raw` and `Amount` drives gibs, head bursts and sprays; blasts keep `Amount`. Old frames draw bit for bit as before (digest). run5b passes; Unity/Windows/two-client unrun. Next: owner review, merge.
+
 2026-10-20 Astra zombie gore authority metadata (`codex/zombie-gore-state`, implemented): optional ArenaEvent `HasHordeHit/Head/Raw/HasPart/Part`; existing Hit kind and damage/RNG preserved. Focused metadata and gore checks plus Unity compilation pass; full regression and native builder pending. Claude binding contract: `docs/ZOMBIE-GORE.md`.
 
 2026-10-20 Claude allocation-check CI fix (`claude/alloc-check-bgc`, merged into shared; test project only): the zero-allocation checks could read up to 8 KB a background gen2 GC adds to `GC.GetAllocatedBytesForCurrentThread` (red `native-source` at `f94fa98`, SpawnIn 8088 bytes). `CoreTests` now runs blocking GC only; every check keeps `== 0`. See DEV_LOG.

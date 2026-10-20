@@ -1,3 +1,32 @@
+## 2026-10-20 — Claude: zombie gore bound to the authority hit metadata (on branch, not merged)
+
+- **Branch/base:** `claude/zombie-gore-bind`, from shared `claude/sleepy-ritchie-g8ruhv` at `8740ceb` (Astra's PR #289 `codex/zombie-gore-state` merged). Presentation only. Implementation commit `da3f812`. On branch, not merged, not published.
+- **Bound, per the contract in `docs/ZOMBIE-GORE.md` ("Authority hit metadata", new "Binding" table):**
+  - `Head` (with `HasHordeHit`) decides the head on its own. It puts the wound on the head even when the torso's share was larger, and gives the cavity spray, the head's bits, the death's head burst and the existing headshot head snap (`NativeHordeReact`, 2.2x). `Head` false means no head hit, even when the nearest drawn part is the head.
+  - `HasPart`/`Part` place the wound at the nearest point of the drawn joints that make up that part (`NativeHordeGore.PartJoints`). The map is the severed-limb gore's own (even bits on the rig's left). The checks confirm it against the authority's `NativeHordeDamage.Part` on posed bodies. Part 0 with `HasPart` is a known torso; with `HasPart` false the nearest drawn part is kept.
+  - **Lost parts:** the authority names the part before moving the damage to the torso, and a lost part is not drawn. The wound goes on what is left of the limb: the upper arm under a lost forearm, the thigh under a lost shin. Otherwise it goes on the trunk (a lost head: the neck). It never lands on a hidden joint. The lost bits are the replicated `Pve.Lost`; for the killing blow, the last ones the add was drawn with.
+  - `Raw`: the hit's strength is the larger of `Raw` and `Amount`. It drives the gib (80 % of max HP, heavy round or heavy blow), the head burst (50 %, not an arrow), the spray's severity and the burst's power. Blasts and crushes keep `Amount`, because a blast's `Raw` is its centre damage before the shares' falloff. `Raw - Amount` is never used.
+  - Old frames (`HasHordeHit` false) read none of these fields and draw bit for bit as before.
+- **Files:**
+  - Core `NativeHordeGore.cs`: `Strength`, the part tables and `Struck`, a joint mask for `Place`, the `GoreHit` fields and `Hit`.
+  - Runtime `NativeHordeGorePresentation.cs` (`HordeGoreHit`) and `NativeHordeKindPresentation.cs` (the head flag for the reaction).
+  - Tests `ZombieGoreChecks.cs`; docs `ZOMBIE-GORE.md`.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The only motion change is that the existing head-snap strength also follows `Head`. No authority, rules, network or wire file is in the diff (checked with `git diff` against shared).
+- **Checks (actual):**
+  - `--zombie-gore`: PASS, 295,135 zombie-gore checks, plus minion fx 51,140, horde kinds 565,218 and Astra's horde hit metadata 35. Run in Release and Debug, and again inside run5b. The old-frame digest is `0x1a7d959dbc8e8969` in all three, the same as on `8740ceb`.
+  - The new metadata checks cover: present vs absent (and stray fields ignored without `HasHordeHit`); the head flag over a torso-largest share; every LIMB bit on four kinds at four facings; the authority's `NativeHordeDamage.Part` against the drawn body (125 limb hits agree on the side, 126 of 160 on the exact part); known torso vs unknown part; all 162 closed sets of lost limbs; the raw gib, head-burst and blast thresholds; spray and burst strength; host/guest/killcam with the metadata; zero allocation with metadata hits.
+  - Mutation runs, by hand and not kept: left/right swapped, raw ignored, lost parts ignored, the head flag ignored, blast raw used, the old path altered, and the test's authority frame unmirrored. Each made `--zombie-gore` fail.
+  - run5b on the uncommitted tree before the implementation commit, rc1–rc5 all 0: Unity Runtime and Editor compile; relay and managed suite with 808 PASS lines; 140 Python tests (1 skipped); package; diff-check.
+- **Renders:** offline WebGL emulation, not Unity; scratch only, not in git. A forearm hit placed by `Part` vs inferred, and a rifle overkill (clamped corpse vs `Raw` gib).
+- **Not run:** Unity Editor play, the Windows build, two-client play, the in-engine killcam, and the new fields through Unity's JsonUtility in a live session (Astra's native gate is compiled only).
+- **Risks:**
+  - The old-frame digest is the exact IEEE bits of x64 with hardware vector intrinsics (here and CI ubuntu-24.04). A runner without those intrinsics would need it re-recorded; that is not a behaviour change.
+  - The authority's anatomy is a coarse box round the body centre, and the drawn zombie reaches forward. A known part can therefore put the wound some way from the replicated point (the part's nearest point). In the checks, 126 of 160 aimed shots agree with the authority's own classifier on the exact part, and 125 limb hits agree on the side.
+  - `Raw` drives the fate even where zone armour cut the actual damage (by contract).
+  - On a blast whose random shares took the head, the wound goes on the head.
+  - A presented frame's lost bits can include a sever from a later authority tick in the same frame, which moves that hit to the stump.
+- **Next:** owner review of the renders; merge into shared when approved. Optional for Astra: a post-falloff blast strength, if blasts should gib on raw damage too.
+
 ## 2026-10-20 — Astra: optional zombie gore authority metadata (implemented on branch)
 
 - **Branch/base:** `codex/zombie-gore-state`, shared `claude/sleepy-ritchie-g8ruhv` at `263cac2`. Implements Claude's October 19 handoff; presentation binding remains Claude's follow-up in `docs/ZOMBIE-GORE.md`.
