@@ -37,6 +37,9 @@ Shader "ChipArena/SourceLit" {
  // on every other map, on an entrance stage (_StageLit), for unlit parts and the Siren's ink fill.
  float _ArenaActorLit;float4 _ArenaLightPos[8];float4 _ArenaLightColor[8];
  #include "NativeWardLight.cginc"
+ // The guns' muzzle lights (NativeMuzzleLight.cginc): on every map, a lit part takes them as emission (wrapped like the
+ // actor lights), never on an entrance stage, an unlit part or the ink; nothing while no muzzle light is live.
+ #include "NativeMuzzleLight.cginc"
  // StageTone (finalcolor, before fog as three tone-maps before fog): renderer.ts's ACES filmic tone mapping at exposure .92
  // (three r180 ACESFilmicToneMapping) on an entrance's lit parts, as the source tone-maps every lit material; unlit parts
  // (glows, toneMapped false in the source) stay raw. Skipped in additive light passes, which only directional key lights add.
@@ -112,6 +115,7 @@ Shader "ChipArena/SourceLit" {
  {
   surf(i,o);if(_InkFill>.5)return;
   if(_ArenaActorLit>.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ActorLights(i.worldPos,normalize(i.worldNormal));
+  if(_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*MuzzleLights(i.worldPos,normalize(i.worldNormal),.35);
   float3 accent=UNITY_ACCESS_INSTANCED_PROP(Props,_AccentTint).rgb;float4 glow=UNITY_ACCESS_INSTANCED_PROP(Props,_GlowTint);
   ArmorLight(o,i.emission.w,i.worldPos,i.worldNormal,i.viewDir,accent,_ArmorExportEmber.rgb*accent*UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint).rgb*glow.rgb,glow.w,_StageLit);
  }

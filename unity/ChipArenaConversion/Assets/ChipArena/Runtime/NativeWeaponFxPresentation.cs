@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
     }
 
     // The weapons milestone's arena hooks (Core/NativeWeaponFx.cs for the rules, NativeWeaponFxDraw.cs for the geometry): muzzle
-    // stars (WeaponDressing), slash crescents and roll afterimages (after the rigs are posed, RenderMeleeTrails), the hit flash
+    // flashes and their lights (WeaponDressing; Core/NativeMuzzleFlash.cs and NativeMuzzleLight.cs), slash crescents and roll afterimages (after the rigs are posed, RenderMeleeTrails), the hit flash
     // (SourceCharacter), the spell charge streaks and rings (BodyDressing), and the tracers, energy trails and impacts
     // (RenderGlow, which submits the drawer). Everything reads the replicated actors, shots, events and seat stats every peer
     // holds, on the presentation clocks the other effects use; hit timing, hitboxes, damage, cooldowns, movement, animation
@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Called first in Render: an empty drawer queue for the frame and this frame's hit events for the flash.</summary>
         private void BeginWeaponFx(Snapshot s)
         {
-            weaponFx?.Begin();weaponSnapshot=s;weaponFrame++;if(s?.Events==null)return;
+            weaponFx?.Begin();muzzleLights.Begin();weaponSnapshot=s;weaponFrame++;if(s?.Events==null)return;
             int newest=0;foreach(var e in s.Events)newest=Math.Max(newest,e.Id);if(newest<hitFlashEvent){hitFlashEvent=0;hitFlashes.Clear();}
             foreach(var e in s.Events)
             {
@@ -77,19 +77,33 @@ namespace ChipArena.UnityConversion
         /// <summary>The struck pilot's flash code for its body parts this frame (1: none). Third-person rigs only.</summary>
         private float HitFlashCode(int id,float time)=>hitFlashes.TryGetValue(id,out var h)?NativeHitFlash.Code(time-h.At,h.Head,WeaponEffectsQuality):1;
 
+        // The guns' muzzle lights this frame (Core NativeMuzzleLight): every gun rig's flash offers its shooter's light, the
+        // nearest the budget allows get the four slots (WeaponFx), and NativeMuzzleLights uploads them for the lit shaders.
+        private readonly NativeMuzzleLightPicker muzzleLights=new NativeMuzzleLightPicker();private readonly float[] muzzleShots=new float[NativeMuzzleLight.History];
         /// <summary>
-        /// One gun rig's muzzle star at the 'muzzle' socket of its right hand (the source flash's frame), on the rig's camera
-        /// (first person: the view-model camera, sized with the view weapon). Dims with the rig's block cooldown, as the source
-        /// flash did. Each live star offers a light pulse to the combat glow's free projectile lights.
+        /// One gun rig's muzzle flash (Core/NativeMuzzleFx, owner 2026-10-20) at its drawn crown (the skin's muzzle face) in the
+        /// right hand's barrel frame, on the rig's camera (first person: the view-model camera, sized with the view weapon), and
+        /// its light. The rounds come from the replicated Shot events of the frame and Actor.LastShot (NativeMuzzleLight.Shots):
+        /// the newest flashes, the older ones of a burst keep smoking, and the shooter offers one merged light. The flash takes
+        /// the seat's skin, its chip modules (vents a module covers stay shut, multishot pods flash), the Q kit the round was
+        /// fired under and the model's detail tier; it dims with the rig's block cooldown, as the source flash did.
         /// </summary>
         private void MuzzleFx(CapturedAnimation.Player rig,Actor a,float time,bool first)
         {
-            var draw=WeaponFxDraw;if(draw==null||!NativeMuzzleFx.Look(a.SourceSpec,out var look))return;double age=time-a.LastShot;if(!(age>=0&&age<NativeMuzzleFx.Span))return;
+            var draw=WeaponFxDraw;if(draw==null||!NativeWeaponDressing.Gun(a.SourceSpec))return;
+            int n=NativeMuzzleLight.Shots(weaponSnapshot?.Events,a.Id,a.LastShot,time,muzzleShots);if(n==0)return;
+            float shot=muzzleShots[0];double age=time-shot;if(!(age>=0&&age<NativeMuzzleFx.Span))return;
             var hand=rig.Bones[CapturedRig.RHand].localToWorldMatrix;Vector3 forward=hand.MultiplyVector(Vector3.forward);float scale=forward.magnitude;if(!(scale>1e-4f))return;
             Vector3 z=forward/scale,x=hand.MultiplyVector(Vector3.right).normalized,y=Vector3.Cross(z,x).normalized;
-            Vector3 muzzle=hand.MultiplyPoint3x4(new Vector3(0,0,NativeWeaponDressing.MuzzleZ(a.SourceSpec)+.02f));
-            float pulse=NativeWeaponFxShapes.Muzzle(draw,first,muzzle,x,y,z,scale,look,NativeWeaponFx.Seed(a.LastShot,a.Id),age,WeaponEffectsQuality,LowGraphics,rigFactor);
-            if(pulse>0)combatGlow?.Pulse(muzzle,pulse);
+            int skin=WeaponSkin(a);var pilot=skin==NativeWeaponSkins.StandardIndex?LoadoutPilot(a.Id):null;
+            var chips=pilot?.Stats!=null&&pilot.Seat?.chips!=null?NativeChipModules.Kinds(pilot.Seat.chips,pilot.Stats):default;
+            float distance=0;var eye=WorldEye;if(!first&&eye!=null&&rig.Root!=null)distance=Vector3.Distance(eye.transform.position,rig.Root.transform.position);
+            var kit=NativeMuzzleFx.KitOf(a,shot,time,out float heat);
+            if(!NativeMuzzleFx.Look(a.SourceSpec,skin,chips,kit,NativeWeaponSkins.Tier(LowGraphics,WeaponEffectsQuality,distance,first),heat,out var look))return;
+            Vector3 crown=hand.MultiplyPoint3x4(new Vector3(0,0,look.Crown));
+            NativeWeaponFxShapes.Muzzle(draw,first,crown,x,y,z,scale,look,NativeWeaponFx.Seed(shot,a.Id),age,WeaponEffectsQuality,LowGraphics,rigFactor,a.SourceSpec,first?ViewCamera:null);
+            for(int i=1;i<n&&i<=NativeMuzzleFx.MaxWisps;i++){double older=time-muzzleShots[i];if(older<NativeMuzzleFx.WispLife+.1)NativeWeaponFxShapes.Wisps(draw,first,crown,x,y,z,scale,look,NativeWeaponFx.Seed(muzzleShots[i],a.Id),older,WeaponEffectsQuality,LowGraphics,rigFactor);}
+            if(NativeMuzzleLight.Look(a.SourceSpec,kit,out var light)){var at=crown+z*(NativeMuzzleLight.Lead*scale);muzzleLights.Offer(a.Id,new NVector3(at.x,at.y,at.z),light,NativeMuzzleLight.Level(light,muzzleShots,n,time,a.Id,KitFlash),first);}
         }
 
         /// <summary>
@@ -243,6 +257,8 @@ namespace ChipArena.UnityConversion
             GunKitFx();BowFx(arena,now);
             ImpactFx(draw,arena,now,q,low);
             draw.Submit(camera,FirstPerson&&!ScopeActive?ViewCamera:null);
+            // The muzzle lights: the nearest shooters the tier, Combat glow, Reduced effects and Alarm lights allow.
+            NativeMuzzleLight.Budget(GlowQuality,WeaponEffectsQuality,LowGraphics,KitFlash,out int lights,out float gain);muzzleLights.Resolve(new NVector3(eye.x,eye.y,eye.z),lights,gain);NativeMuzzleLights.Upload(muzzleLights);
         }
         private void ShotFx(NativeWeaponFxDraw draw,in NativeShotView v,float now,float q,bool low,bool trails,Vector3 eye,NativeTracerLook look=default)
         {
@@ -302,7 +318,7 @@ namespace ChipArena.UnityConversion
         private void ClearEmitters(){foreach(var e in emitters.Values)spareEmitters.Push(e);emitters.Clear();trailSpriteCount=0;emitterClock=-1;}
         private void ClearWeaponFx()
         {
-            weaponFx?.Begin();weaponSnapshot=null;ClearEmitters();emitterArena=null;emitterGeneration=-1;
+            weaponFx?.Begin();weaponSnapshot=null;ClearEmitters();emitterArena=null;emitterGeneration=-1;muzzleLights.Clear();NativeMuzzleLights.Off();
             foreach(var st in slashes.Values)spareSlashes.Push(st);slashes.Clear();hitFlashes.Clear();hitFlashEvent=0;afterimages.Clear();
             impactArena=null;impactGeneration=-1;impactEvent=0;for(int i=0;i<impactMarks.Length;i++)impactMarks[i].Born=-100;
         }

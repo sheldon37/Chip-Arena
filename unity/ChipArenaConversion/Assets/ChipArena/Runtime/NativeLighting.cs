@@ -39,8 +39,9 @@ namespace ChipArena.UnityConversion
         }
         public static void EndIntro(ContentMap map,Camera camera){if(!introActive)return;introActive=false;foreach(var light in stageLights)if(light!=null)light.enabled=false;if(moon!=null){moon.enabled=true;moon.intensity=.9f;}if(rim!=null){rim.enabled=true;rim.intensity=.24f;}Ambient();WriteFog(stageFog);Apply(map,camera);}
         // An entrance or the draft takes the screen: it keeps the fog it found for EndIntro (all of it, the density included).
-        // Each stage frame first turns the Ward light field and actor lighting off (the draft stage stands at the map's origin).
-        private static void EnterStage(){if(introActive)return;introActive=true;stageFog=ReadFog();}
+        // Each stage frame first turns the Ward light field and actor lighting off (the draft stage stands at the map's origin),
+        // and the guns' muzzle lights (no arena flash lights a stage).
+        private static void EnterStage(){NativeMuzzleLights.Off();if(introActive)return;introActive=true;stageFog=ReadFog();}
         private static MapFogState ReadFog(){var c=RenderSettings.fogColor;return new MapFogState{On=RenderSettings.fog,Mode=(MapFogMode)(int)RenderSettings.fogMode,WritesDensity=true,Density=RenderSettings.fogDensity,Color=new MapLookColor{r=c.r,g=c.g,b=c.b,a=c.a},Start=RenderSettings.fogStartDistance,End=RenderSettings.fogEndDistance};}
         private static void WriteFog(in MapFogState f){RenderSettings.fog=f.On;RenderSettings.fogMode=(FogMode)(int)f.Mode;if(f.WritesDensity)RenderSettings.fogDensity=f.Density;RenderSettings.fogColor=C(f.Color);RenderSettings.fogStartDistance=f.Start;RenderSettings.fogEndDistance=f.End;}
         // The stages' shadows (NativeMapLooks.StageCascades and StageShadowDistance: every old map's own), written only on a change.
@@ -198,6 +199,7 @@ namespace ChipArena.UnityConversion
             // No shadow maps: the city's shaders take none, and the pilots' own would only fall on each other.
             if(moon!=null){moon.color=new Color(.85f,.25f,.75f);moon.intensity=.55f;moon.shadows=LightShadows.None;moon.transform.rotation=Quaternion.LookRotation(new Vector3(.3f,-.4f,.85f));}
             if(rim!=null){rim.color=new Color(.25f,.85f,1f);rim.intensity=.6f;rim.shadows=LightShadows.None;rim.transform.rotation=Quaternion.LookRotation(new Vector3(-.5f,-.2f,.84f));}
+            NativeMuzzleLights.Off();
         }
         /// <summary>Resources/MapLooks.json, loaded and validated once.</summary>
         public static MapLookSet LookSet()
@@ -243,7 +245,7 @@ namespace ChipArena.UnityConversion
                 RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=C(s.AmbientSky);RenderSettings.ambientEquatorColor=C(s.AmbientEquator);RenderSettings.ambientGroundColor=C(s.AmbientGround);
                 if(moon!=null)moon.intensity=s.KeyIntensity;if(rim!=null){rim.intensity=s.RimIntensity;if(s.RimAim.Has)Aim(rim,s.RimAim);else rim.transform.SetPositionAndRotation(rimFrom,rimHome);}
             }
-            PracticalLights(look,Time.unscaledTime);
+            PracticalLights(look,Time.unscaledTime);NativeMuzzleLights.Off();
         }
         /// <summary>
         /// The zone boss song's house light (Core NativeZoneBossBeat.House; presentation only): scales the look's ambient and key

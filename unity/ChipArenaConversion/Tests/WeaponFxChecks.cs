@@ -9,7 +9,8 @@ namespace ChipArena.UnityConversion
 {
     // Effects overhaul, weapons milestone (owner 2026-10-11): Unity-owned looks with no source fixture (the source drew a single
     // glow cone, flat trails and blade ribbons), so these pin the Unity rules in Core/NativeWeaponFx.cs and scan the Runtime
-    // hooks, drawer and shaders: muzzle stars (timing, petals, sparks, wisps, the light pulse), tracers, hard-surface impacts
+    // hooks, drawer and shaders: muzzle flashes (timing, petals, sparks, wisps, the light pulse; since 2026-10-20 the layered
+    // flash and its own light, held in full by MuzzleFlashChecks), tracers, hard-surface impacts
     // (the cooling ramp, the hemisphere, the floor bounce), energy trails, slash crescents (driven by NativeMeleeRules.Angle over
     // the hit window), roll afterimages, the hit flash code and colour, and the charge streaks and rings; plus determinism
     // (pinned seeded values), the quality tiers, the GLSL-compatible shared blocks and the build gate. No Unity render, GPU or
@@ -26,36 +27,41 @@ namespace ChipArena.UnityConversion
             count=0;
             Muzzle();Tracers();Impacts();Trails();Slashes(content);Afterimages();HitFlash();Charge();
             Text(root);
-            Console.WriteLine("PASS weapon effects ("+count+" checks: muzzle stars, tracers, impacts and their cooling ramp, energy trails, slash crescents on the swing rules, roll afterimages, hit flash code and colour, charge orb, determinism, quality tiers, hooks, shaders and the build gate; text scans, no Unity render)");
+            Console.WriteLine("PASS weapon effects ("+count+" checks: muzzle flashes, tracers, impacts and their cooling ramp, energy trails, slash crescents on the swing rules, roll afterimages, hit flash code and colour, charge orb, determinism, quality tiers, hooks, shaders and the build gate; text scans, no Unity render)");
         }
         private static void Muzzle()
         {
+            // Owner 2026-10-20: the three-petal star became the layered flash of Core/NativeMuzzleFlash.cs (core, fireball, plume,
+            // device petals and vents, pods, seeded sparks, wisps) and its light NativeMuzzleLight's own shader slots;
+            // MuzzleFlashChecks holds them in full (anchors, variation, the light's envelope, cap, determinism, reach). Here the
+            // milestone's timing rules, re-measured on the new looks: the flash lasts 40-90 ms, the petals keep full opacity to
+            // two thirds of it and shrink to .35, the sparks leave in a 6 degree cone and follow the tiers, the wisps too.
             foreach(var gun in new[]{"pistol","rifle","machinegun"})
             {
-                Check(NativeMuzzleFx.Look(gun,out var look),gun+" has a muzzle star");
-                Check(look.Life>=.06f&&look.Life<=.1f,gun+" flash lasts 60-100 ms ("+look.Life+")");
+                Check(NativeMuzzleFx.Look(gun,NativeWeaponSkins.StandardIndex,default,MuzzleKit.None,0,0,out var look),gun+" has a muzzle flash");
+                Check(look.Life>=.04f&&look.Life<=.09f,gun+" flash lasts 40-90 ms ("+look.Life+")");
                 long seed=NativeWeaponFx.Seed(12.5,3);
-                for(int k=0;k<NativeMuzzleFx.Petals;k++)
+                for(int k=0;k<look.Petals;k++)
                 {
                     Check(!NativeMuzzleFx.Petal(look,seed,k,-.001,out _,out _,out _,out _)&&!NativeMuzzleFx.Petal(look,seed,k,look.Life,out _,out _,out _,out _),gun+" petal only inside the flash");
-                    Check(NativeMuzzleFx.Petal(look,seed,k,0,out float r0,out float l0,out float w0,out float a0)&&a0==1&&l0>=look.Star*.8f-1e-5f&&l0<=look.Star*1.2f+1e-5f&&Near(w0,l0*.55f),gun+" petal at the shot");
+                    Check(NativeMuzzleFx.Petal(look,seed,k,0,out float r0,out float l0,out float w0,out float a0)&&a0==1&&l0>=look.Star*.75f-1e-5f&&l0<=look.Star*1.25f+1e-5f&&Near(w0,l0*look.StarWidth),gun+" petal at the shot");
                     Check(NativeMuzzleFx.Petal(look,seed,k,look.Life*.6,out _,out _,out _,out float am)&&am==1,gun+" petals keep full opacity to two thirds");
                     Check(NativeMuzzleFx.Petal(look,seed,k,look.Life*.999,out _,out float l1,out _,out float a1)&&a1<.01f&&l1<l0*.36f,gun+" petals shrink to .35 and fade");
                     NativeMuzzleFx.Petal(look,seed,k,0,out float again,out _,out _,out _);Check(again==r0,gun+" petals are a pure function of the shot");
                 }
-                // Three petals spread round the barrel: consecutive rolls about a third of a turn apart (the jitter is +-.35 rad).
+                // The petals spread round the barrel: consecutive rolls a share of a turn apart (seeded jitter at most +-.35 rad each).
                 NativeMuzzleFx.Petal(look,seed,0,0,out float p0,out _,out _,out _);NativeMuzzleFx.Petal(look,seed,1,0,out float p1,out _,out _,out _);
-                Check(Math.Abs((p1-p0)-Math.PI*2/3)<.71,gun+" petals form a star");
-                Check(NativeMuzzleFx.Side(look,seed,0,out float side,out float sideWidth,out _)&&side>look.Star&&sideWidth<side,gun+" side flame runs along the barrel, longer than a petal");
-                Check(NativeMuzzleFx.Glow(look,0,out float glow,out var gc)&&glow<=.45f&&gc.Max>1&&!NativeMuzzleFx.Glow(look,look.Life*1.5,out _,out _),gun+" core glow is HDR, modest and short");
-                Check(NativeMuzzleFx.SparkCount(look,1,false)==look.Sparks&&NativeMuzzleFx.SparkCount(look,.3f,false)<look.Sparks&&NativeMuzzleFx.SparkCount(look,.3f,false)>=1&&NativeMuzzleFx.SparkCount(look,1,true)<=2,gun+" sparks follow the quality tiers");
+                Check(Math.Abs(Math.IEEERemainder((p1-p0)-Math.PI*2/look.Petals,Math.PI*2))<.71,gun+" petals form a star");
+                Check(NativeMuzzleFx.Plume(look,seed,0,out float plume,out float plumeWidth,out _)&&plume>look.Star&&plumeWidth<plume,gun+" the plume runs along the barrel, longer than a petal");
+                Check(NativeMuzzleFx.Core(look,seed,0,out float core,out var gc)&&core<=.25f&&gc.Max>1&&!NativeMuzzleFx.Core(look,seed,look.Life,out _,out _),gun+" core glow is HDR, modest and short");
+                int full=NativeMuzzleFx.SparkCount(look,seed,1,false);Check(full<=look.Sparks&&NativeMuzzleFx.SparkCount(look,seed,.3f,false)<=1&&NativeMuzzleFx.SparkCount(look,seed,1,true)<=1,gun+" sparks follow the quality tiers");
                 for(int k=0;k<look.Sparks;k++)for(double age=.012;age<.25;age+=.03)
                     if(NativeMuzzleFx.Spark(seed,k,age,out var local,out var velocity,out _,out _))Check(local.Z>0&&Math.Atan2(Math.Sqrt(local.X*local.X+local.Y*local.Y),local.Z)<=.106,gun+" sparks leave forward in a 6 degree cone");
+                Check(NativeMuzzleFx.WispCount(look,1,false)==look.Wisps&&NativeMuzzleFx.WispCount(look,.3f,false)==1&&NativeMuzzleFx.WispCount(look,.3f,true)==0,gun+" smoke wisps follow the tiers");
+                Check(NativeMuzzleLight.Look(gun,MuzzleKit.None,out var light)&&NativeMuzzleLight.Pulse(light,0)==0&&NativeMuzzleLight.Pulse(light,light.Attack)>.99f&&NativeMuzzleLight.Pulse(light,.08)<.6f&&NativeMuzzleLight.Pulse(light,light.Attack+NativeMuzzleLight.Tail*light.Decay)==0,gun+" the light pulse rises in under 5 ms and is gone after its tail");
             }
-            Check(!NativeMuzzleFx.Look("sword",out _)&&!NativeMuzzleFx.Look("fire",out _),"melee and staffs have no muzzle star");
-            Check(NativeMuzzleFx.WispCount(1,false)==2&&NativeMuzzleFx.WispCount(.3f,false)==1&&NativeMuzzleFx.WispCount(.3f,true)==0,"smoke wisps follow the tiers");
+            Check(!NativeMuzzleFx.Look("sword",out _)&&!NativeMuzzleFx.Look("fire",out _),"melee and staffs have no muzzle flash");
             Check(NativeMuzzleFx.Wisp(5,0,.1,out _,out float rise,out float size,out float cover)&&rise>0&&size>.07f&&cover>0&&cover<=.2f&&!NativeMuzzleFx.Wisp(5,0,NativeMuzzleFx.WispLife,out _,out _,out _,out _),"a light wisp rises and is gone after its life");
-            Check(NativeMuzzleFx.Light(0)==0&&NativeMuzzleFx.Light(.0054)>.99f&&NativeMuzzleFx.Light(.08)<.6f&&NativeMuzzleFx.Light(NativeMuzzleFx.LightLife)==0,"the light pulse rises in 5 ms and is gone by .15 s");
             Check(NativeMuzzleFx.Span>=NativeMuzzleFx.WispLife+.03,"the span covers the last wisp");
             // Network round trip: a timestamp that moved by a float rounding still seeds the same star.
             Check(NativeWeaponFx.Seed(12.3456789,2)==NativeWeaponFx.Seed((float)12.3456789,2)&&NativeWeaponFx.Seed(1,2)!=NativeWeaponFx.Seed(1.01,2)&&NativeWeaponFx.Seed(1,2)!=NativeWeaponFx.Seed(1,3),"seeds survive a float round trip and differ per shot and owner");
@@ -179,13 +185,14 @@ namespace ChipArena.UnityConversion
             string source=Code(R("Runtime/NativeSourcePresentation.cs")),models=Code(R("Runtime/NativeSourceModels.cs")),body=Code(R("Runtime/NativeBodyChipPresentation.cs")),glow=Code(R("Runtime/NativeCombatGlow.cs"));
             string fx=R("Resources/NativeWeaponFx.shader"),ghost=R("Resources/NativeWeaponGhost.shader"),lit=R("Resources/NativeSourceLit.shader"),gate=R("Editor/NativeBuildChecks.cs");
             // Hooks.
-            Check(weapon.Contains("MuzzleFx(rig,a,time,first);")&&!weapon.Contains("NativeWeaponDressing.MuzzleFlash("),"the muzzle star replaces the source cone on the same socket, layer and camera");
+            Check(weapon.Contains("MuzzleFx(rig,a,time,first);")&&!weapon.Contains("NativeWeaponDressing.MuzzleFlash("),"the muzzle flash replaces the source cone on the same socket, layer and camera");
             Check(weapon.Contains("NativeSlashFx.Replaces(a,time)")&&weapon.Contains("WeaponFxFrame(time);")&&weapon.Contains("ClearWeaponFx();")&&weapon.Contains("DisposeWeaponFx();"),"crescents replace the standard ribbon; the frame, clear and dispose hooks");
             Check(arena.Contains("ObserveHits(s);BeginWeaponFx(s);")&&arena.Contains("meleeFlash?.Render(arena,camera,fields,WeaponEffectsQuality);WeaponFx(arena,camera,fields);"),"Render begins the drawer; RenderGlow queues the projectile effects and submits on both paths");
             Check(source.Contains("float flash=dressed&&!first?HitFlashCode(a.Id,time):1;")&&source.Contains("look:look,hitFlash:flash);")&&source.Contains("hitFlash:flash);"),"the hit flash on arena rigs' bodies and hats, never the first-person arms");
             Check(models.Contains("float hitFlash=1)")&&models.Contains("d.Accents.Add(new Vector4(ac.r,ac.g,ac.b,hitFlash));"),"the flash code rides the accent tint's w: no new per-instance array, batches unchanged");
             Check(body.Contains("ChargeFx(socket,a,color,time,first);"),"the charge streaks follow the orb's socket, layer and camera");
-            Check(glow.Contains("public void Pulse(Vector3 at,float intensity)")&&glow.Contains("for(int i=lit,k=0;i<projectileLights.Length&&k<pulseCount;i++,k++)SetLight(projectileLights[i],")&&glow.Contains("int pulseCount=pulses;pulses=0;"),"muzzle pulses take only projectile lights left free (no new lights)");
+            // Owner 2026-10-20: the muzzle light left the Unity light pool for its own shader slots (MuzzleFlashChecks); the pool keeps its seven.
+            Check(!Regex.IsMatch(glow,@"\bPulse\(")&&!glow.Contains("NativeMuzzleFx")&&weapon.Length>0,"no muzzle pulse takes a projectile light (the muzzle light has its own shader slots)");
             Check(glow.Contains("projectileLights=new Light[3],impactLights=new Light[2],armorLights=new Light[2];")&&Regex.Matches(glow,@"AddComponent<Light>").Count==1&&!present.Contains("Light>")&&!draw.Contains("Light>"),"no light beyond the seven pooled ones");
             Check(present.Contains("NativeMeleeRules.Begin(w,pilot.Stats,a.AttackAt,index,yaw)")&&present.Contains("sw.HitAt=a.SwingAt;sw.HitUntil=a.SwingUntil;")&&present.Contains("float yaw=a.CommitYaw*Mathf.Deg2Rad;int index=a.Combo+1;"),"slashes from the replicated swing window, committed yaw and attack index");
             Check(present.Contains("NativeAfterimages.Eligible(a,time)")&&present.Contains("afterimages.Due(a.Id,at,a.RollAt,time,q)")&&present.Contains("FirstPerson&&a.Id==LocalId"),"afterimages on the replicated roll, not the first-person self");
