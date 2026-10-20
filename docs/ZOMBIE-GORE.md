@@ -68,9 +68,9 @@ Code:
   - a bow is an arrow;
   - a rifle or plasma overflow is heavy;
   - anything else is a bullet.
-- **Where.** The drawn body's nearest part capsule to the replicated hit point (kind girth applied), on its surface facing the shot. With the authority's hit metadata (below) the nearest is taken within the part it names, and its head flag decides the head. Old frames keep the inference: a Headshot event forces the head, otherwise the nearest part decides.
+- **Where (on the drawn body, since 2026-10-20).** Where the shot enters the drawn model: see "On the drawn body" below. With the authority's hit metadata (below), only the part it names is a candidate, and its head flag decides the head. Old frames keep the inference: a Headshot event forces the head, otherwise the first drawn part the shot enters decides. A lost limb is never a candidate on any frame, because it is not drawn.
 - **Wound.** Up to 8 per add, kept in bone space so they ride the animation. The Full tier shows the newest 8, Reduced 5, Low 3.
-  - Bullet: a recessed dark hole, torn flesh round it (a bone fleck on a head shot) and a blood run down the body that lengthens as it bleeds.
+  - Bullet: a recessed dark hole, torn flesh round it (a bone fleck on a head shot) and a blood run down the body's surface that lengthens as it bleeds.
   - Blade: a gash along the swing.
   - Blast: a scorched patch.
   - Wounds stay glossy while wet and darken as they dry.
@@ -79,7 +79,19 @@ Code:
   - puncture for a bullet; cavity (more and faster drops) for a head shot or a heavy round;
   - cut for a blade; crush for a blast.
   - It stains floors and walls.
-- **Drips.** A decaying trickle out of each wound for 4.5 s (5 a wound on Full).
+- **Drips.** A decaying trickle for 4.5 s (5 a wound on Full), from the run's tip as it is then.
+
+### On the drawn body (2026-10-20, owner: "Zombie wounds appear off their body")
+
+Until 2026-10-20 a wound went on a capsule round its joint: the Standard pilot's radius, times a per-kind girth, times the drawn scale. The capsules did not match the zombie models. The big kinds' heads were worst: the Hulk's head capsule had a 0.43 m radius against a drawn head of at most 0.25 m, because the head took the limb girth (1.6) while the Hulk's head is 0.6 wide. The blood run was one straight strip in the wound's plane, laid across the shot rather than down, up to 5.6 times the wound's size. Neighbouring runs crossed as X's beside the body. Measured against the drawn model, wound pieces stood up to 0.27 m off the shambler and 0.55 m off the Hulk (`Tests/ZombieGoreChecks.cs` `OnBody`; DEV_LOG has the per-kind table).
+
+Now (`Core/NativeHordeGoreBody.cs`, `NativeHordeGore.PlaceOn`, `NativeHordeGoreState.OnBody`):
+- **The surface.** Each joint's triangles of the kind's look at the Full tier, in the joint's own frame: the frame the runtime draws each part in. The add's own look applies as ZombieLit's vert draws it: head, torso and limb proportions, and missing pieces folded away. The hinged jaw is included, closed. The bank's loader hands over the Full models it builds (`NativeHordeGoreBody.Keep`, 31 bodies, about 6 MB), so no hit builds a model. A dangling part's sway (at most 2.4 cm) and the spit and belly swell are not followed.
+- **The place.** The first drawn part the shot's ray enters. The ray is a projectile's own 3D travel (the event's `Normal`, its velocity) through the replicated point, else the flat push; a blast's ray runs in from the body's side facing it. If the ray misses every drawn part (it only grazed the authority's capsule), the wound goes on the nearest drawn point of the part the old rule picks. The wound lies on the surface, with its normal the face's.
+- **The footprint.** The torn ring, the gash's length and the scorch are made smaller, down to 0.38 of their size, until every edge lies within 1.2 cm (rig) of the part. A wound on a thin part or at a box's edge is therefore a smaller wound.
+- **The run.** Traced at the hit in three steps down the part's surface from under the wound, each step put back on the surface. It stops where the surface faces up or down, where a stretch's middle would leave the part, or where a step jumps. Each stretch is drawn along itself, with the drop at the tip.
+- **Model tier.** Wounds sit on the Full model. A live add drawn Reduced shows none: it is past the nearest 24 adds (16 on low graphics), and the gore's own cap is 24, 14 or 8 adds. Falling bodies, corpses within the wounds' 24 m and the DEV preview are drawn Full.
+- **Cost.** About 60–75 µs a hit in the managed checks (.NET 8 Release), nothing per frame: the placement and the run are traced once, at the hit.
 
 ### A death (`HordeKindDeath` → `HordeGoreDeath`)
 
@@ -171,7 +183,9 @@ Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or n
 
 `--zombie-gore` runs `ZombieGoreChecks`, `MinionFxChecks` and `HordeKindChecks`. `ZombieGoreChecks` is also in the full run. It checks:
 - **No treatment left:** no glow code on the seven, only eyes, acid and boils glow in the kind's colour, no tongues, and source scans.
-- **Placement:** 80 shots on four kinds at four facings wound the part struck, at the hit, facing the shooter, with the spray along the shot. Head shots spray harder. Gashes run along the sweep. A blast wound faces the blast. Stubs stand out of the cut.
+- **Placement:** 80 shots on four kinds at four facings wound the drawn part the shot enters first, at the entry and on the part, facing the shooter, with the spray along the shot. The authority's point comes from its capsule. Head shots spray harder. Gashes run along the sweep. A blast wound faces the blast. Stubs stand out of the cut.
+- **On the drawn body (`OnBody`):** 1,106 hits on all 16 kinds and every look, standing and walking (drawn on the pose 1.6 and 4.5 s later), five causes and three gore tiers. Every wound piece (hole, torn flesh, gash, scorch, run stretch, drop) must be within 3.5 cm × max(1, scale) of its own drawn part; the worst is 3.7 cm, a Hulk piece. 95 % are within 2 cm (wound, run and drop), and every centre is on the part. The test's drawn body is its own: the model posed as the runtime draws it, with the shader's vert written out from the shader, not the gore's `NativeHordeGoreBody`. Regressions for the cause: a head shot on the brute and the Hulk is on the drawn head (the old capsule placement is 6 and 22 cm off it), and the runs go down the surface (the old strip lay a median 51° off). Also checked: an old frame never wounds a lost limb, live wounds draw only on the Full model, and the bank hands over its models.
+- **Joint matrices:** Unity's `localToWorldMatrix` chain, written out as column-major products, converts through `NativeHordeGore.FromColumns` (which the runtime's `GoreN` calls) to exactly the matrices the checks pose. `Column` takes them back (`GoreU`).
 - **Caps and cleanup:** 60 kills over 30 s on each tier.
 - **Determinism:** host, guest and killcam.
 - **Tiers:** each lower tier draws less.
@@ -185,7 +199,7 @@ Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or n
   - known torso vs unknown part;
   - lost parts over every closed set of lost limbs;
   - raw gib, head-burst and blast thresholds, and the spray and burst strength;
-  - the old-frame digest (bit for bit as before);
+  - the old-frame digest (bit for bit; re-recorded on purpose for the on-the-body placement, `0xf8a1621b9ac8bba8`; the binding's own was `0x1a7d959dbc8e8969`);
   - host/guest/killcam with the metadata;
   - zero allocation with metadata hits.
 
@@ -194,6 +208,11 @@ Changed on purpose:
 - `MinionFxChecks` hooks (no licks, flame cubes or ranking; vent dust and hint);
 - `IronworksKindChecks` (the seven grow no tongues);
 - `station-enemies-baseline.txt` (49 `tongues` and `tierN` lines: colour and emission sums only).
+- 2026-10-20 wound fix, `ZombieGoreChecks`:
+  - placement is measured on the drawn model instead of capsules;
+  - a wound's normal is now the surface's, so "faces the shooter" means only the side facing the shot (> 0, least 0.11), where before it was > 0.15 on a tilted normal;
+  - the old-frame digest is re-recorded;
+  - `Lost` is read on every frame, because a lost limb is not drawn; the stray-data check no longer treats it as authority data.
 
 ## Not verified here
 
