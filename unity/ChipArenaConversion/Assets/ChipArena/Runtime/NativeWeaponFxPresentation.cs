@@ -95,13 +95,12 @@ namespace ChipArena.UnityConversion
             float shot=muzzleShots[0];double age=time-shot;if(!(age>=0&&age<NativeMuzzleFx.Span))return;
             var hand=rig.Bones[CapturedRig.RHand].localToWorldMatrix;Vector3 forward=hand.MultiplyVector(Vector3.forward);float scale=forward.magnitude;if(!(scale>1e-4f))return;
             Vector3 z=forward/scale,x=hand.MultiplyVector(Vector3.right).normalized,y=Vector3.Cross(z,x).normalized;
-            int skin=WeaponSkin(a);var pilot=skin==NativeWeaponSkins.StandardIndex?LoadoutPilot(a.Id):null;
-            var chips=pilot?.Stats!=null&&pilot.Seat?.chips!=null?NativeChipModules.Kinds(pilot.Seat.chips,pilot.Stats):default;
+            int skin=WeaponSkin(a);ChipKinds chips=default;var sockets=skin==NativeWeaponSkins.StandardIndex?MuzzleChips(a,out chips):null;
             float distance=0;var eye=WorldEye;if(!first&&eye!=null&&rig.Root!=null)distance=Vector3.Distance(eye.transform.position,rig.Root.transform.position);
             var kit=NativeMuzzleFx.KitOf(a,shot,time,out float heat);
-            if(!NativeMuzzleFx.Look(a.SourceSpec,skin,chips,kit,NativeWeaponSkins.Tier(LowGraphics,WeaponEffectsQuality,distance,first),heat,out var look))return;
+            if(!NativeMuzzleFx.Look(a.SourceSpec,skin,chips,sockets,kit,NativeWeaponSkins.Tier(LowGraphics,WeaponEffectsQuality,distance,first),heat,out var look))return;
             Vector3 crown=hand.MultiplyPoint3x4(new Vector3(0,0,look.Crown));
-            NativeWeaponFxShapes.Muzzle(draw,first,crown,x,y,z,scale,look,NativeWeaponFx.Seed(shot,a.Id),age,WeaponEffectsQuality,LowGraphics,rigFactor,a.SourceSpec,first?ViewCamera:null);
+            NativeWeaponFxShapes.Muzzle(draw,first,crown,x,y,z,scale,look,NativeWeaponFx.Seed(shot,a.Id),age,WeaponEffectsQuality,LowGraphics,rigFactor,first?ViewCamera:null);
             for(int i=1;i<n&&i<=NativeMuzzleFx.MaxWisps;i++){double older=time-muzzleShots[i];if(older<NativeMuzzleFx.WispLife+.1)NativeWeaponFxShapes.Wisps(draw,first,crown,x,y,z,scale,look,NativeWeaponFx.Seed(muzzleShots[i],a.Id),older,WeaponEffectsQuality,LowGraphics,rigFactor);}
             if(NativeMuzzleLight.Look(a.SourceSpec,kit,out var light)){var at=crown+z*(NativeMuzzleLight.Lead*scale);muzzleLights.Offer(a.Id,new NVector3(at.x,at.y,at.z),light,NativeMuzzleLight.Level(light,muzzleShots,n,time,a.Id,KitFlash),first);}
         }

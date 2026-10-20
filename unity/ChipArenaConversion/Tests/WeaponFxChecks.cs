@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
             // two thirds of it and shrink to .35, the sparks leave in a 6 degree cone and follow the tiers, the wisps too.
             foreach(var gun in new[]{"pistol","rifle","machinegun"})
             {
-                Check(NativeMuzzleFx.Look(gun,NativeWeaponSkins.StandardIndex,default,MuzzleKit.None,0,0,out var look),gun+" has a muzzle flash");
+                Check(NativeMuzzleFx.Look(gun,NativeWeaponSkins.StandardIndex,default,null,MuzzleKit.None,0,0,out var look),gun+" has a muzzle flash");
                 Check(look.Life>=.04f&&look.Life<=.09f,gun+" flash lasts 40-90 ms ("+look.Life+")");
                 long seed=NativeWeaponFx.Seed(12.5,3);
                 for(int k=0;k<look.Petals;k++)

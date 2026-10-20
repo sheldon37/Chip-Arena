@@ -131,10 +131,10 @@ namespace ChipArena.UnityConversion
         /// x the hand's right, the source frame's -x) and z (along), `scale` the weapon's world scale (the view model's size in
         /// first person), `age` since the shot and `dim` the rig's block-cooldown factor: the fireball and the white-hot core, the
         /// forward plume, the star's petals, the device's open vents' jets, the multishot pods' small flashes, the seeded sparks
-        /// and the smoke wisps. `spec` places the pods; `view` (first person only, the view-model camera) holds every glow under
+        /// and the smoke wisps. The look's module sockets place the pods; `view` (first person only, the view-model camera) holds every glow under
         /// NativeMuzzleFx.ViewShare of its height and the flash at ViewScale and ViewGain, so the view weapon stays readable.
         /// </summary>
-        public static void Muzzle(NativeWeaponFxDraw draw,bool first,Vector3 crown,Vector3 x,Vector3 y,Vector3 z,float scale,in MuzzleLook look,long seed,double age,float quality,bool low,float dim,string spec=null,Camera view=null)
+        public static void Muzzle(NativeWeaponFxDraw draw,bool first,Vector3 crown,Vector3 x,Vector3 y,Vector3 z,float scale,in MuzzleLook look,long seed,double age,float quality,bool low,float dim,Camera view=null)
         {
             if(!(age>=0&&age<NativeMuzzleFx.Span))return;
             float size=scale*(first?NativeMuzzleFx.ViewScale:1),gain=dim*(first?NativeMuzzleFx.ViewGain:1),tanHalf=view!=null?Mathf.Tan(view.fieldOfView*.5f*Mathf.Deg2Rad):0;
@@ -170,9 +170,9 @@ namespace ChipArena.UnityConversion
                 draw.Axis(first,from,from+dir*(jet*size),c,jetWidth*size,NativeWeaponFxDraw.FlameMode,(float)NativeWeaponFx.Hash(seed,130+k));
             }
             // Multishot pods: a small core and plume at each pod's mouth.
-            if(spec!=null)for(int i=0;i<look.Pods;i++)
+            if(look.Sockets!=null)for(int i=0;i<look.Pods;i++)
             {
-                if(!NativeMuzzleFx.PodMouth(spec,i,out var mouth)||!NativeMuzzleFx.Pod(look,seed,i,age,out float podCore,out float podPlume,out float podAlpha))continue;
+                if(!NativeMuzzleFx.PodMouth(look.Sockets,i,out var mouth)||!NativeMuzzleFx.Pod(look,seed,i,age,out float podCore,out float podPlume,out float podAlpha))continue;
                 var at=Weapon(crown,x,y,z,size,look.Crown,mouth);
                 draw.Glow(first,at+z*(.01f*size),Lin(NativeMuzzleFx.CoreColor,2.4f*look.Gain*gain*podAlpha),ViewCap(view,at,podCore*size,eye,forward,tanHalf),NativeWeaponFxDraw.HotCore);
                 draw.Axis(first,at,at+z*(podPlume*size),Add(Lin(NativeMuzzleFx.PlumeColor,2f*look.Gain*gain*podAlpha)),look.PlumeWidth*.35f*size,NativeWeaponFxDraw.FlameMode,(float)NativeWeaponFx.Hash(seed,140+i));

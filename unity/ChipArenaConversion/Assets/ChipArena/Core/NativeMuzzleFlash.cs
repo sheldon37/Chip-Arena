@@ -37,6 +37,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The device's vents still open (bit k for NativeMuzzleFx.Ports(Device)[k]: cut at this detail tier and not
         /// covered by a chip module) and the multishot pods that flash beside the bore.</summary>
         public int PortMask,Pods;
+        /// <summary>The gun's chip-module sockets (the Standard skin's, handed over by the module presentation), which place the
+        /// pods; null when no module is fitted.</summary>
+        public ChipSockets Sockets;
         /// <summary>Overdrive's barrel heat (0..1): a hotter, whiter, larger flash as the barrels heat.</summary>
         public float Heat;
     }
@@ -87,7 +90,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The Prototype Series' block muzzle faces (z, the bank's 'weapon-' boxes): the pistol's, the rifle's, the
         /// machine gun's. The Standard crowns are the models' own (NativeWeaponModels Design.Muzzle).</summary>
         public const float PrototypePistolFace=.48f,PrototypeRifleFace=1.21f,PrototypeMachineGunFace=.9f;
-        /// <summary>The chip modules that wrap a device (NativeChipModules.Parts.cs): a ricochet collar's half length, the vacuum
+        /// <summary>The chip modules that wrap a device (the module parts): a ricochet collar's half length, the vacuum
         /// bell's length behind its face, a boomerang vane's foot (from and to, along the barrel, at size 1).</summary>
         public const float CollarHalf=.0065f,BellLength=.024f,VaneFoot0=-.003f,VaneFoot1=.027f;
 
@@ -130,13 +133,14 @@ namespace ChipArena.UnityConversion
         }
 
         /// <summary>A plain look (the Prototype Series' block face, no kit, no vents): the hazard kit's turrets and old callers.</summary>
-        public static bool Look(string spec,out MuzzleLook look)=>Look(spec,NativeWeaponSkins.PrototypeIndex,default,MuzzleKit.None,NativeWeaponModels.Low,0,out look);
+        public static bool Look(string spec,out MuzzleLook look)=>Look(spec,NativeWeaponSkins.PrototypeIndex,default,null,MuzzleKit.None,NativeWeaponModels.Low,0,out look);
         /// <summary>
-        /// The flash of `spec` in `skin` with the seat's chip modules (NativeChipModules.Kinds; Standard only), under `kit` (at
-        /// Overdrive `heat`), at the weapon model detail `tier` the rig draws (NativeWeaponSkins.Tier: a vent the tier does not
-        /// cut shows no jet). False for weapons without a muzzle flash.
+        /// The flash of `spec` in `skin` with the seat's chip modules (their kinds and the gun's sockets, which the module
+        /// presentation hands over: Core leaves the modules to their own files; Standard only), under `kit` (at Overdrive `heat`),
+        /// at the weapon model detail `tier` the rig draws (NativeWeaponSkins.Tier: a vent the tier does not cut shows no jet).
+        /// False for weapons without a muzzle flash.
         /// </summary>
-        public static bool Look(string spec,int skin,in ChipKinds chips,MuzzleKit kit,int tier,float heat,out MuzzleLook look)
+        public static bool Look(string spec,int skin,in ChipKinds chips,ChipSockets sockets,MuzzleKit kit,int tier,float heat,out MuzzleLook look)
         {
             switch(spec)
             {
@@ -153,7 +157,7 @@ namespace ChipArena.UnityConversion
             else if(kit==MuzzleKit.Overdrive){float h=Math.Max(0,Math.Min(1,heat));look.Heat=h;Grow(ref look,1.1f+.15f*h);look.Gain*=1.2f+.3f*h;look.Life*=1.05f;}
             if(standard)
             {
-                look.PortMask=OpenPorts(spec,look.Device,chips,tier);look.Pods=Math.Min(Math.Max(0,chips.Extra),PodCount(spec));
+                look.Sockets=sockets;look.PortMask=OpenPorts(sockets,look.Device,chips,tier);look.Pods=Math.Min(Math.Max(0,chips.Extra),PodCount(sockets));
                 // The vacuum intake's bell throttles the star round it.
                 if(chips.Vacuum)look.Star*=.85f;
             }
@@ -162,9 +166,9 @@ namespace ChipArena.UnityConversion
         private static void Grow(ref MuzzleLook l,float k){l.Core*=k;l.Fireball*=k;l.Plume*=k;l.Star*=k;l.JetScale*=k;}
         /// <summary>The vents left open (bit k): cut at `tier` and not covered by a ricochet collar, the vacuum bell or a boomerang
         /// vane's foot (more than half the vent's length under the module).</summary>
-        public static int OpenPorts(string spec,MuzzleDevice device,in ChipKinds chips,int tier)
+        public static int OpenPorts(ChipSockets s,MuzzleDevice device,in ChipKinds chips,int tier)
         {
-            var ports=Ports(device);var s=NativeChipModules.Sockets(spec);int mask=0;
+            var ports=Ports(device);int mask=0;
             for(int k=0;k<ports.Length;k++){if(tier>ports[k].Tier||s!=null&&Covered(s,chips,ports[k]))continue;mask|=1<<k;}
             return mask;
         }
@@ -178,13 +182,13 @@ namespace ChipArena.UnityConversion
             {float k=s.VaneMount.Size*(s.PartScale>0?s.PartScale:1);if(Over(p,s.VaneMount.At.Z+VaneFoot0*k,s.VaneMount.At.Z+VaneFoot1*k))return true;}
             return false;
         }
-        /// <summary>How many multishot pods a gun mounts (two per pod slot, NativeChipModules.Layout.cs Gun).</summary>
-        public static int PodCount(string spec){var s=NativeChipModules.Sockets(spec);return s?.Pods==null?0:s.Pods.Length*2;}
+        /// <summary>How many multishot pods a gun's sockets mount (two per pod slot, the module layout's Gun).</summary>
+        public static int PodCount(ChipSockets s)=>s?.Pods==null?0:s.Pods.Length*2;
         /// <summary>Multishot pod i's mouth (source weapon frame): its slot round the bore, out along the slot's radial by the
         /// pod's standoff (PodGap + PodR), at the pod's front (PodZ + PodLength / 2); odd pods mirrored across x = 0.</summary>
-        public static bool PodMouth(string spec,int i,out Vector3 at)
+        public static bool PodMouth(ChipSockets s,int i,out Vector3 at)
         {
-            at=default;var s=NativeChipModules.Sockets(spec);if(s?.Pods==null||i<0||i>=s.Pods.Length*2)return false;var slot=s.Pods[i/2];
+            at=default;if(s?.Pods==null||i<0||i>=s.Pods.Length*2)return false;var slot=s.Pods[i/2];
             float r=s.PodGap+s.PodR;var p=new Vector3(slot.X+r*(float)Math.Cos(slot.Z),slot.Y+r*(float)Math.Sin(slot.Z),s.PodZ+s.PodLength*.5f);
             if(i%2==1)p.X=-p.X;at=p;return true;
         }

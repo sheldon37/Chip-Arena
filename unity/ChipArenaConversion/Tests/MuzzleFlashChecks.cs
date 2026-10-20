@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
                     float face=pts.Where(p=>Math.Abs(p.X)<.012f&&Math.Abs(p.Y)<.012f).Max(p=>p.Z);
                     Check(std-face>=0&&std-face<=.006f,gun+" tier "+tier+": the flash leaves from the drawn crown (face "+face+", crown "+std+")");
                     Check(!pts.Any(p=>p.Z>std+.002f&&new Vector2(p.X,p.Y).Length()<.08f),gun+" tier "+tier+": nothing of the model ahead of the crown");
-                    Check(NativeMuzzleFx.Look(gun,NativeWeaponSkins.StandardIndex,default,MuzzleKit.None,tier,0,out var look)&&look.Crown==std,gun+" tier "+tier+" Standard look");
+                    Check(NativeMuzzleFx.Look(gun,NativeWeaponSkins.StandardIndex,default,null,MuzzleKit.None,tier,0,out var look)&&look.Crown==std,gun+" tier "+tier+" Standard look");
                     var ports=NativeMuzzleFx.Ports(look.Device);Check(ports.Length>0,gun+" Standard device has vents");
                     for(int k=0;k<ports.Length;k++)
                     {
@@ -105,12 +105,12 @@ namespace ChipArena.UnityConversion
                 var pp=Prototype(bank,gun);float pface=pp.Where(p=>Math.Abs(p.X)<.06f&&Math.Abs(p.Y)<.06f).Max(p=>p.Z);// the front box's corners (boxes have no centre vertex)
                 Check(Math.Abs(proto-NativeMuzzleFx.CrownLead-pface)<.001f,gun+" Prototype crown just ahead of its block face ("+proto+" / "+pface+")");
                 Check(!pp.Any(p=>p.Z>proto+.002f&&new Vector2(p.X,p.Y).Length()<.08f),gun+" Prototype: nothing ahead of the crown");
-                Check(NativeMuzzleFx.Look(gun,NativeWeaponSkins.PrototypeIndex,new ChipKinds{Extra=2,Vacuum=true},MuzzleKit.None,0,0,out var pl)&&pl.Device==MuzzleDevice.Plain&&pl.PortMask==0&&pl.Pods==0&&pl.Petals==4&&pl.FixedRoll,gun+" Prototype: a plain face with a four-petal cross, no vents, no pods (its modules are the old boxes)");
+                Check(NativeMuzzleFx.Look(gun,NativeWeaponSkins.PrototypeIndex,new ChipKinds{Extra=2,Vacuum=true},NativeChipModules.Sockets(gun),MuzzleKit.None,0,0,out var pl)&&pl.Device==MuzzleDevice.Plain&&pl.PortMask==0&&pl.Pods==0&&pl.Petals==4&&pl.FixedRoll,gun+" Prototype: a plain face with a four-petal cross, no vents, no pods (its modules are the old boxes)");
                 old.Add(gun+" "+F((NativeWeaponDressing.MuzzleZ(gun)+.02f-d.Muzzle.Z)*100,"F1")+"/"+F((NativeWeaponDressing.MuzzleZ(gun)+.02f-pface)*100,"F1")+" cm");
             }
             facts.Add("crowns on the drawn faces of 3 guns x 2 skins x 3 tiers, vents within "+F(worstPort*1000,"F1")+" mm of their slots' surfaces (the old flash sat ahead of the face by "+string.Join(", ",old)+", Standard/Prototype)");
             // The hider's star rides its four slots.
-            NativeMuzzleFx.Look("machinegun",NativeWeaponSkins.StandardIndex,default,MuzzleKit.None,0,0,out var mg);var slots=NativeMuzzleFx.Ports(MuzzleDevice.Hider);
+            NativeMuzzleFx.Look("machinegun",NativeWeaponSkins.StandardIndex,default,null,MuzzleKit.None,0,0,out var mg);var slots=NativeMuzzleFx.Ports(MuzzleDevice.Hider);
             Check(mg.Petals==4&&mg.FixedRoll&&slots.Length==4,"the machine gun's four petals sit on its hider's four slots");
             for(int s=0;s<60;s++)for(int k=0;k<4;k++)
             {
@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
                 double slot=Math.Atan2(slots[k].At.Y,slots[k].At.X),diff=Math.IEEERemainder(roll-slot,Math.PI*2);Check(Math.Abs(diff)<=mg.RollJitter*.5f+1e-4,"hider petal "+k+" on its slot ("+F(diff,"F3")+" rad)");
             }
             // Chip modules shut the vents they cover (NativeChipModules sockets: collars, the intake bell, a vane's foot).
-            int Open(string spec,ChipKinds k)=>NativeMuzzleFx.OpenPorts(spec,NativeMuzzleFx.Device(spec,true),k,0);
+            int Open(string spec,ChipKinds k)=>NativeMuzzleFx.OpenPorts(NativeChipModules.Sockets(spec),NativeMuzzleFx.Device(spec,true),k,0);
             Check(Open("pistol",default)==3&&Open("pistol",new ChipKinds{Ricochet=1})==1&&Open("pistol",new ChipKinds{Ricochet=2})==0&&Open("pistol",new ChipKinds{Vacuum=true})==1&&Open("pistol",new ChipKinds{Pong=true,Boomerang=true})==3,
                 "pistol: a ricochet collar shuts the front top port, two shut both, the vacuum bell the front one; the pong gimbal and the vanes leave them");
             Check(Open("rifle",default)==127&&Open("rifle",new ChipKinds{Vacuum=true})==(127&~(16|32))&&Open("rifle",new ChipKinds{Boomerang=true})==(127&~(16|32))&&Open("rifle",new ChipKinds{Ricochet=3})==127,
@@ -127,9 +127,9 @@ namespace ChipArena.UnityConversion
             // Multishot pods flash at their own mouths, behind the crown, in mirrored pairs.
             foreach(var gun in Guns)
             {
-                int n=NativeMuzzleFx.PodCount(gun);var s=NativeChipModules.Sockets(gun);Check(n==s.Pods.Length*2&&n>0,gun+" pods");
-                Check(NativeMuzzleFx.Look(gun,NativeWeaponSkins.StandardIndex,new ChipKinds{Extra=9},MuzzleKit.None,0,0,out var lp)&&lp.Pods==n,gun+" the flash takes every pod");
-                for(int i=0;i<n;i++){Check(NativeMuzzleFx.PodMouth(gun,i,out var a)&&a.Z<NativeMuzzleFx.Crown(gun,true)&&Math.Abs(a.Z-(s.PodZ+s.PodLength*.5f))<1e-6f,gun+" pod "+i+" mouth");if(i%2==1){NativeMuzzleFx.PodMouth(gun,i-1,out var b);Check(a.X==-b.X&&a.Y==b.Y,gun+" pods mirrored");}}
+                var s=NativeChipModules.Sockets(gun);int n=NativeMuzzleFx.PodCount(s);Check(n==s.Pods.Length*2&&n>0,gun+" pods");
+                Check(NativeMuzzleFx.Look(gun,NativeWeaponSkins.StandardIndex,new ChipKinds{Extra=9},s,MuzzleKit.None,0,0,out var lp)&&lp.Pods==n&&lp.Sockets==s,gun+" the flash takes every pod");
+                for(int i=0;i<n;i++){Check(NativeMuzzleFx.PodMouth(s,i,out var a)&&a.Z<NativeMuzzleFx.Crown(gun,true)&&Math.Abs(a.Z-(s.PodZ+s.PodLength*.5f))<1e-6f,gun+" pod "+i+" mouth");if(i%2==1){NativeMuzzleFx.PodMouth(s,i-1,out var b);Check(a.X==-b.X&&a.Y==b.Y,gun+" pods mirrored");}}
             }
         }
 
@@ -139,7 +139,7 @@ namespace ChipArena.UnityConversion
             var looks=new Dictionary<string,MuzzleLook>();
             foreach(var gun in Guns)
             {
-                Check(NativeMuzzleFx.Look(gun,NativeWeaponSkins.StandardIndex,default,MuzzleKit.None,0,0,out var l),gun+" look");looks[gun]=l;
+                Check(NativeMuzzleFx.Look(gun,NativeWeaponSkins.StandardIndex,default,null,MuzzleKit.None,0,0,out var l),gun+" look");looks[gun]=l;
                 Check(l.Life>=.04f&&l.Life<=.09f,gun+" flash lasts 40-90 ms ("+l.Life+")");
                 var seen=new HashSet<(float,float,float,float,float)>();
                 for(int i=0;i<300;i++)
@@ -164,7 +164,7 @@ namespace ChipArena.UnityConversion
             var p=looks["pistol"];var r=looks["rifle"];var m=looks["machinegun"];
             Check(p.Plume<m.Plume&&m.Plume<r.Plume&&p.Fireball<m.Fireball&&m.Fireball<r.Fireball&&r.Life>p.Life&&p.Life>m.Life,"the pistol short and punchy, the machine gun fast, the rifle biggest and longest");
             Check(m.Flicker>p.Flicker&&m.Flicker>r.Flicker,"the machine gun's per-shot spread is widest, so its strobe reads as flicker");
-            NativeMuzzleFx.Look("pistol",NativeWeaponSkins.StandardIndex,default,MuzzleKit.Fan,0,0,out var fan);NativeMuzzleFx.Look("machinegun",NativeWeaponSkins.StandardIndex,default,MuzzleKit.Overdrive,0,0,out var cold);NativeMuzzleFx.Look("machinegun",NativeWeaponSkins.StandardIndex,default,MuzzleKit.Overdrive,0,1,out var hotDrive);
+            NativeMuzzleFx.Look("pistol",NativeWeaponSkins.StandardIndex,default,null,MuzzleKit.Fan,0,0,out var fan);NativeMuzzleFx.Look("machinegun",NativeWeaponSkins.StandardIndex,default,null,MuzzleKit.Overdrive,0,0,out var cold);NativeMuzzleFx.Look("machinegun",NativeWeaponSkins.StandardIndex,default,null,MuzzleKit.Overdrive,0,1,out var hotDrive);
             Check(fan.Plume>p.Plume&&fan.Gain>p.Gain&&cold.Plume>m.Plume&&hotDrive.Plume>cold.Plume&&hotDrive.Gain>cold.Gain,"Fan the Hammer flashes larger and hotter; Overdrive grows and whitens as the barrels heat");
             Check(NativeMuzzleFx.Fireball(hotDrive,1,0,out _,out var white)&&NativeMuzzleFx.Fireball(cold,1,0,out _,out var orange)&&white.B/white.R>orange.B/orange.R,"Overdrive's heat whitens the fireball");
             Check(!NativeMuzzleFx.Look("sword",out _)&&!NativeMuzzleFx.Look("fire",out _)&&!NativeMuzzleFx.Look("bow",out _)&&NativeMuzzleFx.Look("machinegun",out var turret)&&turret.Device==MuzzleDevice.Plain,"melee, staffs and the bow have no muzzle flash; the plain look (the hazard kit's turrets) has no vents");
@@ -359,7 +359,7 @@ namespace ChipArena.UnityConversion
             B(1,1,false,NativeKitFlash.Full,4,1);B(1,1,true,NativeKitFlash.Full,1,1);B(.4f,1,false,NativeKitFlash.Full,2,.8f);B(1,.3f,false,NativeKitFlash.Reduced,2,.7f*.75f);B(0,1,false,NativeKitFlash.Full,0,.8f);B(1,1,false,NativeKitFlash.Calm,2,.5f);B(.3f,.3f,true,NativeKitFlash.Reduced,1,.7f*.8f*.75f);
             foreach(var gun in Guns)
             {
-                NativeMuzzleFx.Look(gun,NativeWeaponSkins.StandardIndex,default,MuzzleKit.None,0,0,out var l);int hits=0,most=0;
+                NativeMuzzleFx.Look(gun,NativeWeaponSkins.StandardIndex,default,null,MuzzleKit.None,0,0,out var l);int hits=0,most=0;
                 for(int s=0;s<4000;s++){long seed=NativeWeaponFx.Seed(s*.0311,2);int n=NativeMuzzleFx.SparkCount(l,seed,1,false);if(n>0)hits++;most=Math.Max(most,n);Check(n<=l.Sparks&&NativeMuzzleFx.SparkCount(l,seed,.3f,false)<=1&&NativeMuzzleFx.SparkCount(l,seed,1,true)<=1,gun+" sparks follow the tiers");}
                 Check(Math.Abs(hits/4000.0-l.SparkChance)<.03&&most==l.Sparks,gun+": sparks on "+F(hits/40.0,"F0")+"% of shots (chance "+l.SparkChance+"), up to "+most);
                 Check(NativeMuzzleFx.WispCount(l,1,false)==l.Wisps&&NativeMuzzleFx.WispCount(l,.3f,false)==1&&NativeMuzzleFx.WispCount(l,.3f,true)==0,gun+" wisps follow the tiers");
@@ -388,11 +388,11 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<8;i++)
                 {
                     var a=actors[i];string spec=i%3==0?"pistol":i%3==1?"rifle":"machinegun";int n=NativeMuzzleLight.Shots(events,a.Id,a.LastShot,t,buf);if(n==0)continue;
-                    var kit=NativeMuzzleFx.KitOf(a,buf[0],(float)t,out float heat);NativeMuzzleFx.Look(spec,i%2,chips,kit,i%3,heat,out var l);long seed=NativeWeaponFx.Seed(buf[0],a.Id);double age=t-buf[0];
+                    var kit=NativeMuzzleFx.KitOf(a,buf[0],(float)t,out float heat);NativeMuzzleFx.Look(spec,i%2,chips,NativeChipModules.Sockets(spec),kit,i%3,heat,out var l);long seed=NativeWeaponFx.Seed(buf[0],a.Id);double age=t-buf[0];
                     NativeMuzzleFx.Core(l,seed,age,out float s,out var c);NativeMuzzleFx.Fireball(l,seed,age,out float s2,out _);NativeMuzzleFx.Plume(l,seed,age,out float p,out _,out _);acc+=s+s2+p+c.R;
                     for(int k=0;k<l.Petals;k++){NativeMuzzleFx.Petal(l,seed,k,age,out float r,out _,out _,out _);acc+=r;}
                     for(int k=0;k<NativeMuzzleFx.Ports(l.Device).Length;k++)if(NativeMuzzleFx.Jet(l,seed,k,age,out var port,out float jl,out _,out _))acc+=jl+port.At.Z;
-                    for(int k=0;k<l.Pods;k++)if(NativeMuzzleFx.PodMouth(spec,k,out var m)&&NativeMuzzleFx.Pod(l,seed,k,age,out float ps,out _,out _))acc+=ps+m.Z;
+                    for(int k=0;k<l.Pods;k++)if(NativeMuzzleFx.PodMouth(l.Sockets,k,out var m)&&NativeMuzzleFx.Pod(l,seed,k,age,out float ps,out _,out _))acc+=ps+m.Z;
                     for(int k=0;k<NativeMuzzleFx.SparkCount(l,seed,1,false);k++)if(NativeMuzzleFx.Spark(seed,k,age,out var sl,out _,out _,out _))acc+=sl.Z;
                     for(int k=0;k<NativeMuzzleFx.WispCount(l,1,false);k++)if(NativeMuzzleFx.Wisp(seed,k,age,out var wl,out _,out _,out _))acc+=wl.Z;
                     if(NativeMuzzleLight.Look(spec,kit,out var ll))picker.Offer(a.Id,new Vector3(i,1.4f,2),ll,NativeMuzzleLight.Level(ll,buf,n,t,a.Id,NativeKitFlash.Full),i==0);
@@ -433,16 +433,20 @@ namespace ChipArena.UnityConversion
             var up=Code(R("Runtime/NativeMuzzleLights.cs"));
             Check(up.Contains("Shader.PropertyToID(\"_MuzzleLightPos\")")&&up.Contains("Shader.PropertyToID(\"_MuzzleLightColor\")")&&up.Contains("Shader.PropertyToID(\"_MuzzleLightCount\")")&&Count(up,"Shader.SetGlobalVectorArray(")==4&&up.Contains("new Vector4[NativeMuzzleLight.Slots]"),"NativeMuzzleLights uploads the four slots by cached id");
             var upload=Between(up,"public static void Upload(","public static void Off()");var made=Regex.Matches(upload,@"new\s+(\w+)").Cast<Match>().Select(m=>m.Groups[1].Value).Where(v=>v!="Vector4"&&v!="Color").ToList();Check(made.Count==0,"the upload allocates nothing ("+string.Join(", ",made)+")");
-            var fx=Code(R("Runtime/NativeWeaponFxPresentation.cs"));var mfx=Between(fx,"private void MuzzleFx(","private void MuzzleRecord(");
-            Check(mfx.Contains("NativeMuzzleLight.Shots(weaponSnapshot?.Events,a.Id,a.LastShot,time,muzzleShots)")&&mfx.Contains("NativeMuzzleFx.Look(a.SourceSpec,skin,chips,kit,NativeWeaponSkins.Tier(LowGraphics,WeaponEffectsQuality,distance,first),heat,out var look)")&&mfx.Contains("NativeChipModules.Kinds(pilot.Seat.chips,pilot.Stats)")&&mfx.Contains("NativeMuzzleFx.KitOf(a,shot,time,out float heat)"),"the flash reads the replicated rounds, the seat's skin and chips, the kit and the model tier");
-            Check(mfx.Contains("Vector3 crown=hand.MultiplyPoint3x4(new Vector3(0,0,look.Crown));")&&mfx.Contains("NativeWeaponFxShapes.Muzzle(draw,first,crown,x,y,z,scale,look,NativeWeaponFx.Seed(shot,a.Id),age,WeaponEffectsQuality,LowGraphics,rigFactor,a.SourceSpec,first?ViewCamera:null);"),"the flash leaves from the drawn crown in the right hand's barrel frame, seeded by the round");
+            var fxRaw=R("Runtime/NativeWeaponFxPresentation.cs");var fx=Code(fxRaw);var mfx=Between(fx,"private void MuzzleFx(","private void MuzzleRecord(");
+            Check(mfx.Contains("NativeMuzzleLight.Shots(weaponSnapshot?.Events,a.Id,a.LastShot,time,muzzleShots)")&&mfx.Contains("NativeMuzzleFx.Look(a.SourceSpec,skin,chips,sockets,kit,NativeWeaponSkins.Tier(LowGraphics,WeaponEffectsQuality,distance,first),heat,out var look)")&&mfx.Contains("var sockets=skin==NativeWeaponSkins.StandardIndex?MuzzleChips(a,out chips):null;")&&mfx.Contains("NativeMuzzleFx.KitOf(a,shot,time,out float heat)"),"the flash reads the replicated rounds, the seat's skin and chips, the kit and the model tier");
+            // ChipModuleChecks' rule: in Core only the module files, in Runtime only the module bank and presentation name them;
+            // the module presentation hands the flash its kinds and sockets.
+            var modules=Code(R("Runtime/NativeChipModulePresentation.cs"));
+            Check(!R("Core/NativeMuzzleFlash.cs").Contains("NativeChipModules")&&!fxRaw.Contains("NativeChipModules")&&!R("Runtime/NativeWeaponFxDraw.cs").Contains("NativeChipModules")&&modules.Contains("private ChipSockets MuzzleChips(Actor a,out ChipKinds chips)")&&modules.Contains("chips=NativeChipModules.Kinds(pilot.Seat.chips,pilot.Stats);return NativeChipModules.Sockets(a.SourceSpec);"),"the flash reads the modules only through the module presentation (kinds and sockets)");
+            Check(mfx.Contains("Vector3 crown=hand.MultiplyPoint3x4(new Vector3(0,0,look.Crown));")&&mfx.Contains("NativeWeaponFxShapes.Muzzle(draw,first,crown,x,y,z,scale,look,NativeWeaponFx.Seed(shot,a.Id),age,WeaponEffectsQuality,LowGraphics,rigFactor,first?ViewCamera:null);"),"the flash leaves from the drawn crown in the right hand's barrel frame, seeded by the round");
             Check(mfx.Contains("muzzleLights.Offer(a.Id,")&&mfx.Contains("NativeMuzzleLight.Level(light,muzzleShots,n,time,a.Id,KitFlash),first)"),"each shooter offers one merged light, honouring Alarm lights");
             var wfx=Between(fx,"private void WeaponFx(","private void ShotFx(");int submit=wfx.IndexOf("draw.Submit(",StringComparison.Ordinal),resolve=wfx.IndexOf("muzzleLights.Resolve(",StringComparison.Ordinal);
             Check(fx.Contains("weaponFx?.Begin();muzzleLights.Begin();")&&submit>0&&resolve>submit&&wfx.Contains("NativeMuzzleLight.Budget(GlowQuality,WeaponEffectsQuality,LowGraphics,KitFlash,out int lights,out float gain);")&&wfx.Contains("NativeMuzzleLights.Upload(muzzleLights);")&&fx.Contains("muzzleLights.Clear();NativeMuzzleLights.Off();"),"the frame begins the offers, resolves and uploads them after every rig fired, a reset clears them");
             var glow=Code(R("Runtime/NativeCombatGlow.cs"));Check(!Regex.IsMatch(glow,@"\bPulse\(")&&!glow.Contains("NativeMuzzleFx")&&glow.Contains("projectileLights=new Light[3],impactLights=new Light[2],armorLights=new Light[2];")&&Regex.Matches(glow,@"AddComponent<Light>").Count==1,"the old muzzle pulse into a free projectile light is gone; still seven pooled Unity lights, none for muzzles");
             var lighting=Code(R("Runtime/NativeLighting.cs"));Check(lighting.Contains("private static void EnterStage(){NativeMuzzleLights.Off();")&&Between(lighting,"public static void Rooftop(","public static MapLookSet LookSet()").Contains("NativeMuzzleLights.Off();")&&Between(lighting,"public static void Apply(","public static void ZoneHouse(").Contains("NativeMuzzleLights.Off();"),"an entrance, the draft, the rooftop and a map change clear the muzzle lights");
             var draw=Code(R("Runtime/NativeWeaponFxDraw.cs"));var shapes=Between(draw,"public static void Muzzle(","public static bool Swept(");
-            Check(shapes.Contains("NativeMuzzleFx.Ports(look.Device)")&&shapes.Contains("NativeMuzzleFx.Jet(look,seed,k,age,")&&shapes.Contains("NativeMuzzleFx.PodMouth(spec,i,out var mouth)")&&shapes.Contains("NativeMuzzleFx.ViewSize(")&&shapes.Contains("first?NativeMuzzleFx.ViewScale:1")&&shapes.Contains("first?NativeMuzzleFx.ViewGain:1")&&shapes.Contains("first?NativeMuzzleFx.ViewGlow:1"),"the geometry draws the vents, the pods and the first-person limits");
+            Check(shapes.Contains("NativeMuzzleFx.Ports(look.Device)")&&shapes.Contains("NativeMuzzleFx.Jet(look,seed,k,age,")&&shapes.Contains("NativeMuzzleFx.PodMouth(look.Sockets,i,out var mouth)")&&shapes.Contains("NativeMuzzleFx.ViewSize(")&&shapes.Contains("first?NativeMuzzleFx.ViewScale:1")&&shapes.Contains("first?NativeMuzzleFx.ViewGain:1")&&shapes.Contains("first?NativeMuzzleFx.ViewGlow:1"),"the geometry draws the vents, the pods and the first-person limits");
             Check(!Regex.IsMatch(shapes,@"new\s+(?!Vector2|Vector3|Color)\w+"),"the flash geometry allocates nothing");
             var kit=Code(R("Runtime/NativeHazardKitPresentation.cs"));Check(kit.Contains("NativeMuzzleFx.Look(\"machinegun\",out var look);")&&kit.Contains("NativeWeaponFxShapes.Muzzle(kitWeapon,false,m,side,up,f,1.2f,look,seed,age,q,low,1);"),"the hazard kit's turrets keep the plain flash");
             // Presentation only.
