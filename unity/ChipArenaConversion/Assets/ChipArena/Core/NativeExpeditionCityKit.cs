@@ -61,6 +61,25 @@ namespace ChipArena.UnityConversion
         /// <summary>How far below 3 m a part may stand out from a block (m), the most flat paint may rise (m), and the height under
         /// which the wall band applies (a Hulk is 3.06 m tall).</summary>
         public const float WallBand=.25f,Flat=.06f,Low=3.1f;
+        /// <summary>How far from the camera the runtime draws a part (m; exp-layout-7, the city grown 24 m out on three arms), by its
+        /// size L (its largest full extent), so the per-frame cost follows what the camera can see rather than the town's size:
+        /// anything that glows (the tube look of the light bank, or any animated drive: lit windows, neon, lamps, fires, beacons)
+        /// to `far`; other parts to <see cref="PartBase"/> + <see cref="PerMetre"/> L (a 0.5 m lamp head 92 m, a 1 m window 105 m,
+        /// 4.8 m and longer to `far`); fine detail (`Detail`, which the low tier never draws) to <see cref="DetailBase"/> +
+        /// <see cref="PerMetre"/> L, at most <see cref="DetailRange"/> (a 0.2 m sill 55 m, a 1 m poster 75 m). Every range stops at
+        /// `far`, the look's linear fog end plus <see cref="FarMargin"/> (<see cref="FarRange"/>), where the fog covers a part and
+        /// its block alike. Below about 3-6 pixels at 1080p when it goes, under the dusk fog's first 40-60%.</summary>
+        public const float PartBase=80,DetailBase=50,PerMetre=25,DetailRange=110,FarMargin=25,FarDefault=200;
+        public static float FarRange(MapLook look)=>look?.fog!=null&&look.fog.mode=="linear"&&look.fog.end>0?look.fog.end+FarMargin:FarDefault;
+        /// <summary>The distance (m) to which part p is drawn, with <see cref="FarRange"/> `far`.</summary>
+        public static float Range(in NativeCityPart p,float far)
+        {
+            if(p.Drive!=DriveSteady||p.Look==NativeCyberCityLooks.Tube&&(p.Flags&NativeCyberCityLooks.Bank)!=0)return far;
+            float size=2*Math.Max(p.Hx,Math.Max(p.Hy,p.Hz));
+            return p.Detail?Math.Min(Math.Min(DetailRange,far),DetailBase+PerMetre*size):Math.Min(far,PartBase+PerMetre*size);
+        }
+        /// <summary>Whether part p is drawn `distanceSquared` m² from the camera (its rest spot), with <see cref="FarRange"/> `far`.</summary>
+        public static bool Drawn(in NativeCityPart p,float distanceSquared,float far){float r=Range(p,far);return distanceSquared<=r*r;}
         public NativeCityPart[] Parts=Array.Empty<NativeCityPart>();public NativeCityGlow[] Glows=Array.Empty<NativeCityGlow>();
         /// <summary>The keep-out boxes the kit honoured (world AABBs and their owner spawn, -1 none), for the checks.</summary>
         public NativeCityKeep[] Keeps=Array.Empty<NativeCityKeep>();

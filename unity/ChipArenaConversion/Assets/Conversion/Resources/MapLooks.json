@@ -499,7 +499,7 @@
     {"id":"sanctuary-brazier","flicker":"fire","pos":{"x":0,"y":1.4,"z":0},"color":16747068,"intensity":1.8,"range":13,"rate":5,"period":0,"length":0,"depth":0.3,"phase":0},
     {"id":"sanctuary-lamp-ne","flicker":"","pos":{"x":9.5,"y":4.2,"z":9.5},"color":16761466,"intensity":1.2,"range":10,"rate":0,"period":0,"length":0,"depth":0,"phase":0},
     {"id":"sanctuary-lamp-sw","flicker":"","pos":{"x":-9.5,"y":4.2,"z":-9.5},"color":16761466,"intensity":1.2,"range":10,"rate":0,"period":0,"length":0,"depth":0,"phase":0},
-    {"id":"meridian-portico","flicker":"stutter","pos":{"x":82.4,"y":4.0,"z":0},"color":10479871,"intensity":1.4,"range":12,"rate":0,"period":9,"length":0.2,"depth":0.6,"phase":0},
+    {"id":"meridian-portico","flicker":"stutter","pos":{"x":106.4,"y":4.0,"z":0},"color":10479871,"intensity":1.4,"range":12,"rate":0,"period":9,"length":0.2,"depth":0.6,"phase":0},
     {"id":"final-gate","flicker":"","pos":{"x":0,"y":9.0,"z":34.0},"color":16726832,"intensity":1.3,"range":16,"rate":0,"period":0,"length":0,"depth":0,"phase":0},
     {"id":"wreck-fire-es","flicker":"fire","pos":{"x":22.6,"y":1.6,"z":-3.9},"color":16738846,"intensity":1.6,"range":9,"rate":6.5,"period":0,"length":0,"depth":0.4,"phase":0.4},
     {"id":"sodium-ring-e","flicker":"","pos":{"x":31.0,"y":5.5,"z":-26.0},"color":16751164,"intensity":1.1,"range":12,"rate":0,"period":0,"length":0,"depth":0,"phase":0},

@@ -11,6 +11,94 @@ I think players need to run a bit further to get to their instances. Also, for t
 area, and use animated wooden / metal gates that players can open. Prevent zombies from entering safe area. Implement
 some kind of mechanic so players can't just sit in the safe zone and kill zombies."
 
+## The city grown (exp-layout-7, Claude, 2026-10-20)
+
+Branch `claude/expedition-city-bigger` (base shared `d555363`, merged with `b0e0a12`); on the branch, not merged. Owner
+(verbatim): "I will also like to make the expedition city still a little bigger (I want players to walk further still.)
+Afterwards, lets begin improving the design quality of the city". This is the first part only; the graphics pass is next.
+The numbers in the sections below this one are exp-layout-3's unless they say otherwise.
+
+**How.** `expedition_city.py` ("THE CITY GROWN") moves everything beyond the city's edge (the line |x| = 44 east and west,
+z = -44 south) 24 m outward: the three wilds districts, the instance frontages and their doors, the corner masses. A block
+that straddles the edge is stretched across the gap; a face on the edge stays with its own block. The sanctuary, the inner
+city, the ring road, the forecourts, the final plaza and the north edge do not move. Each 24 m band holds an **outer
+quarter**, the city's last lit streets before the old checkpoint (authored once in an arm's frame and laid on all three):
+
+| a (m out from the edge) | What |
+| --- | --- |
+| 0-5 | a cross street: the forecourt's (or the station square's) axis ends against the landmark's face, so the party turns |
+| 5-17.5 | the landmark (c -16..13): the Exchange (east), the Union Hall (west), the Tram Depot (south); the main lane round it on the left (c 13..20, 7 m), the back alley on the right (c -20..-16, 4 m) |
+| 17.5-24 | a square before the old checkpoint, where the instance's beacon shows down the wilds again |
+| beyond c ±20 | building rows close the band (east and west: two on each side and a back mass; the south band's sides are the stretched station blocks) |
+
+Cover (a wreck in the lane, two on the square, crates, a barrier, a dumpster) and five spawns per quarter: the landmark's
+front door on the cross street, a door on each lane, a grate in the main lane, a brute drop off the landmark's roof into the
+cross street. Each quarter is its own hub zone (`<arm>-quarter`, ring mid). The hub record's routes now carry `via`, their
+turning points down the streets (the presentation's chevrons, metres and wall signs follow them; nothing else reads them).
+
+| | exp-layout-6 (before) | exp-layout-7 (after) |
+| --- | --- | --- |
+| Town bounds | 192 x 156 m, 29,952 m² | 240 x 180 m, 43,200 m² (+44%) |
+| Street (outside the final plaza, 0.5 m pilot floor) | 7,978 m² | 9,386 m² |
+| Navigation | 9,505 nodes, 17,602 links | 11,040 nodes, 20,372 links (all reached from slot 0) |
+| Blocks / spawns / zones | 203 / 84 / 11 | 240 / 99 / 14 |
+| Doors (Ward Zero, station, foundry) | x 84, z -84, x -84 | x 108, z -108, x -108 |
+| Join circles | (79, 0), (0, -79), (-79, 0) | (103, 0), (0, -103), (-103, 0); r 2.5, h 4 unchanged |
+| Walk, slots to the circle (mean of the 8; nav graph, any-angle) | 81.0 / 79.0 / 80.2 m (11.9 s running) | 111.8 / 109.2 / 111.3 m (16.4 s running, 12.2 s sprinting): x1.38 / 1.38 / 1.39 |
+| Walk, route gate to the circle | 67.1 / 65.1 / 66.3 m | 97.9 / 95.2 / 97.4 m: x1.46 / 1.46 / 1.47 |
+| Walk, slots to the doorway | 83.6 / 82.9 / 83.6 m | 114.7 / 112.8 / 114.5 m |
+| Route record, gate to the doorway (0.5 m grid) | 72.9 / 71.7 / 72.9 m | 107.0 m each |
+| Circle to circle (Ward Zero-station, station-foundry) | 135.8 / 136.5 m | 197.3 / 200.2 m |
+
+The 24 m is what lands both walks in the requested +35-50%: 20 m gave x1.33 from the slots on the any-angle measure; the
+quarter's turn adds about 6 m over the straight push.
+
+**Per-frame cost.** The kit grew to 15,382 parts (12,783; 8,955 low tier, 7,711; 580 casting, 462). The runtime now leaves
+far parts out by size (`NativeExpeditionCityKit.Range`, squared once per map): anything that glows (lit windows, neon, lamps,
+fires, beacons) to the fog's end plus 25 m (200 m); other parts to 80 + 25 L m (L their largest extent); detail to
+50 + 25 L m, at most 110 m. Drawn per frame, from the east gate, 25/50/75% along the Ward Zero route, its circle and the
+sanctuary: 12,524 / 11,850 / 10,367 / 8,327 / 6,888 / 12,519 parts in at most 26 draws (exp-layout-6 drew all 12,783 in 26
+from everywhere), 2.71 M vertices at most (2.76 M); low tier at most 8,159 (7,711). Blocks 240 (203). Skyline 1,572 boxes
+(1,809), atmosphere at most 662 quads (684), 91 light sources for the picker (79).
+
+**What the authority reads that changed (old → new).** All formats are unchanged; Astra's code is untouched.
+
+| Data | Change |
+| --- | --- |
+| `UnityMaps.json` `expedition-city` | bounds x ±96 → ±120, z -96..60 → -120..60; blocks 203 → 240 (37 new, the moved and stretched ones); pilot exclusion columns 68 → 81; navigation regenerated |
+| Doors (`exp-city:door:*`) | anchors 83.4 → 107.4 out (x or -z); interact, closure, approach and returns moved with them (24 m along the arm) |
+| `doors[].join` | centres 79 → 103 m out; r, h unchanged |
+| Town spawns | 84 → 99: the 84 keep their `e` and ids (those beyond the edge moved 24 m with their walls); 15 new `*-xq-*`, `*-fq-*`, `*-tq-*` at e 84-98 |
+| Hub zones | far zones moved out with the wilds (`far-east` x 44..84 → 68..108 and so on); new `east-quarter`, `west-quarter`, `south-quarter` (mid, 5 spawns each); near and mid unchanged |
+| Hub `wilds`, `routes` | wilds moved out 24 m; routes' path 72.9 → 107.0 m, plus the presentation-only `via` |
+| Revision | the live manifest exp-layout-6 → exp-layout-7 (fresh runs only; old clients are refused by the fingerprint) |
+
+Unchanged: the sanctuary, its fence, gates, slots, machine and caches, the final gate, plaza and boss records, the instance
+areas (byte for byte), every rule. The hub population needs no retuning for the size: it spawns 12-60 m from living pilots
+and despawns 8 s past 60 m, so the density round a party is what it was; the three quarters add 15 mid-ring spawn points
+in the new streets, so a party crossing them meets the same pressure as on the ring road.
+
+**Regenerating.** `expedition_layout.py --fixtures` (town, base manifest, join draft), then the town doors in
+`Tests/expedition-central-station-activation.json` and `Tests/expedition-ironworks-layout-activation.json` (moved 24 m with
+the doorways), then the live manifest's town area from `tools/generate_expedition_live.py` (its returns now follow the
+circle) with the instance areas kept as they are (the composer no longer reproduces the foundry area edited after it, see
+DEV_LOG), then `expedition_city.py --maplooks`, `tools/generate_expedition.py`, `expedition_central_station.py --fixture`
+and `expedition_ironworks.py --fixtures`.
+
+**Seams for the graphics pass.**
+- The landmarks (`bldg-xq-exchange`, `bldg-fq-union-hall`, `bldg-tq-tram-depot`) are the generic civic front; each wants its
+  own face (`NativeExpeditionCityKit.KindOf`, `Building`), as the city hall and Meridian have.
+- The quarter rows are generic shops and tenements; the back masses (`bldg-*-back`) and the corner masses show only roofs.
+- The squares and cross streets carry only cover; the plan leaves room for a monument, a kiosk or market stalls on each
+  square (keep 2.8 m round the drop and clear of the route's `via`).
+- The range constants (`PartBase`, `DetailBase`, `PerMetre`, `DetailRange`) are the budget lever: new detail can be paid for
+  there, and a part that must read from far (a landmark's lettering) can glow or be made larger.
+- The route's `via` points are the street's centre line for wayfinding (markers, signs, light pools).
+- The distant ambience cues still sit 150-230 m out; the bigger town's corners reach 170 m.
+
+Checks: `CoreTests --expedition-city` (`Tests/ExpeditionCityChecks.cs`), with the re-measured pins in the layout, join,
+station, ironworks, hub, laser-door and dressing checks (DEV_LOG lists them).
+
 ## The plan in numbers
 
 | | exp-layout-2 (before) | exp-layout-3 (this branch) |

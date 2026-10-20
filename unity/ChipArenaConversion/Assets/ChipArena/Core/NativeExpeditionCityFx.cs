@@ -11,8 +11,8 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeCityFxScene
     {
-        /// <summary>The grid over the town's blocks (x -98..98, z -98..62 since the hub's wilds), 2 m cells.</summary>
-        public const int CellsX=98,CellsZ=80;public const float OriginX=-98,OriginZ=-98,Cell=2;
+        /// <summary>The grid over the town's blocks (x -122..122, z -122..62 since the city grew, exp-layout-7), 2 m cells.</summary>
+        public const int CellsX=122,CellsZ=92;public const float OriginX=-122,OriginZ=-122,Cell=2;
         /// <summary>Per 2 m cell: 0 inside a block, else the distance in cells to the nearest blocked cell (1..4).</summary>
         public readonly byte[] Open=new byte[CellsX*CellsZ];
         /// <summary>Per 2 m cell: 1 in a wilds district of the hub record (thicker, darker fog), else 0.</summary>
@@ -156,7 +156,8 @@ namespace ChipArena.UnityConversion
             Sprite(x,y,z,3.2,.02,.02,.025,1,false,0);Sprite(x+hx*2.2,y+.2,z+hz*2.2,1.6,.02,.02,.025,1,false,0);
             if(Frac(time*1.1)<.12)Sprite(x,y-1,z,Math.Max(.8,Dist(x,y,z)*.006),1,.1,.08,1,true);if(Frac(time*1.1+.5)<.06)Sprite(x,y+1.2,z,Math.Max(.7,Dist(x,y,z)*.005),1,1,1,1,true);
             double sweep=time*.35,tx=x*.62+Math.Sin(sweep)*28,tz=z*.62+Math.Cos(sweep*1.3)*28,ty=0;
-            if(Math.Abs(tx)<104&&Math.Abs(tz)<104){double k=104/Math.Max(Math.Abs(tx),Math.Abs(tz));tx*=k;tz*=k;}
+            // Out past the town's edge (122 m since exp-layout-7; 98 before), by 6 m.
+            if(Math.Abs(tx)<128&&Math.Abs(tz)<128){double k=128/Math.Max(Math.Abs(tx),Math.Abs(tz));tx*=k;tz*=k;}
             Beam(x,y-1.5,z,tx,ty,tz,1.2,16,.85,.92,1,.06);Flat(tx,.12,tz,11,.1,.11,.12,1,true);Heli++;
         }
         // An additive beam from a to b, its width growing from w0 to w1, turned about its axis to face the camera.

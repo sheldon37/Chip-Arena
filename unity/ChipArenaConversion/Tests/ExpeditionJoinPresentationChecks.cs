@@ -195,7 +195,7 @@ namespace ChipArena.UnityConversion
                 Check(r.Phase==phase&&r.Status==word&&r.Detail==NativeExpeditionJoinModel.NoDeploy&&r.Seconds==0&&r.Charge==0&&r.Pilots==0&&r.Inside==0&&la==0&&NativeExpeditionJoinScene.Light(r)==hex,why+": "+word+", no countdown, curtain or counted pilots");
                 Check(Cues(lk,ExpeditionJoinCueKind.Charge)==0&&!lk.Party[nova].Deploying&&lk.Viewer==ExpeditionJoinViewer.Closed&&lk.Flash==0,why+": no charge, nobody deploying, the viewer at a closed circle");
                 var ls=new NativeExpeditionJoinScene();var leye=new ExpeditionEye{X=st.x+3,Y=1.8f,Z=st.z+9,Rx=-1,Ry=0,Rz=0,Ux=0,Uy=1,Uz=0};ls.Build(lk,101.5,leye,false,false);
-                Check(ls.PilotsMarked==0&&Curtain(ls.Quads,r)==0&&ls.Glyphs>0&&ls.PadsDrawn==3,why+": the pad drawn with its hologram, no lock columns or curtain");
+                Check(ls.PilotsMarked==0&&Curtain(ls.Quads,r)==0&&ls.Glyphs>0&&ls.PadsDrawn==Within(lk,leye),why+": the pad drawn with its hologram, no lock columns or curtain");
                 var allShut=new Dictionary<string,ExpeditionJoinClosedReason>{{St,why},{Iw,why},{Wz,why}};var lf=new NativeExpeditionJoinModel();lf.Build(View(100,"kestrel",null,null,null,null,null,null,allShut),100,pilots,labels);
                 ls.Build(lf,100,new ExpeditionEye{X=0,Y=1.8f,Z=140,Rx=1,Uy=1},false,false);Check(ls.PadsDrawn==0&&ls.Quads.Count==0,why+": no sky beacon leads to a closed circle");
             }
@@ -230,7 +230,7 @@ namespace ChipArena.UnityConversion
             foreach(var (name,model) in new[]{("idle",Idle()),("charging",m2()),("deploying",watcherAt(103.1)),("cleared",cl)})
             {
                 scene.Build(model,model==cl?100:101.5,eye,false,false);var q=scene.Quads;int ring=Ring(model,St);var rr=model.Rings[ring];
-                Check(scene.PadsDrawn==3&&scene.Parts.Count>=Posts(3)&&q.Count>0,name+": three pads drawn ("+scene.Parts.Count+" parts, "+q.Count+" quads)");
+                int near=Within(model,eye);Check(near>=2&&scene.PadsDrawn==near&&scene.Parts.Count>=Posts(near)&&q.Count>0,name+": every pad within "+NativeExpeditionJoinScene.CullDistance+" m drawn ("+near+" of 3; "+scene.Parts.Count+" parts, "+q.Count+" quads)");
                 if(rr.Phase!=ExpeditionJoinPhase.Cleared){NativeExpeditionJoinScene.CurtainOf(rr,out float want,out _);float top=CurtainTop(q,rr);Check(Math.Abs(top-(rr.Y+.02f+want))<2e-3f&&want<=rr.H+1e-4f,name+": the curtain's top is its height, never over the counted column ("+top+" for "+want+", h "+rr.H+")");}
                 // No flat painted outline: whatever lies flat on the floor near a pad is a soft radial fill or inside the emitter
                 // plate, except the deploy's shock ring (an event).
@@ -295,6 +295,9 @@ namespace ChipArena.UnityConversion
         }
         private static IEnumerable<string> P(string[] s)=>s;
         private static int Posts(int pads)=>pads*NativeExpeditionJoinScene.Posts*4;
+        // The pads within the scene's cull distance of the eye (since the city grew, exp-layout-7, the circles stand 146 m apart:
+        // from beside the station's, the foundry's is past it).
+        private static int Within(NativeExpeditionJoinModel m,in ExpeditionEye e){int n=0;for(int i=0;i<m.RingCount;i++){float dx=m.Rings[i].X-e.X,dz=m.Rings[i].Z-e.Z;if(Math.Sqrt(dx*dx+dz*dz)<=NativeExpeditionJoinScene.CullDistance)n++;}return n;}
         private sealed class PieceCount:IExpeditionWorldSink{public int Vertices;public int Vertex(float x,float y,float z,float u,float v,float flat,ExpeditionTone tone,float level,float alpha)=>Vertices++;public void Triangle(int a,int b,int c){}}
         private static bool Flat(NativeFxQuads q,int i,float top){int o=i*12;float y0=q.Corners[o+1];for(int k=0;k<4;k++){float y=q.Corners[o+k*3+1];if(Math.Abs(y-y0)>1e-4f||y>top)return false;}return true;}
         private static float Reach(NativeFxQuads q,int i,float cx,float cz){int o=i*12;float best=0;for(int k=0;k<4;k++){float dx=q.Corners[o+k*3]-cx,dz=q.Corners[o+k*3+2]-cz;best=Math.Max(best,(float)Math.Sqrt(dx*dx+dz*dz));}return best;}

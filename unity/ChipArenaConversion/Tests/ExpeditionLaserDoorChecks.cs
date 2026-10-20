@@ -189,7 +189,9 @@ namespace ChipArena.UnityConversion
         }
 
         // 5. The hub: its doors, gate and sanctuary are exactly the base code's (digest pinned from dfb8aac's Core), no laser door.
-        private const double HubDigestBase=45418637975.04724;
+        //    Re-measured on exp-layout-7 (2026-10-20: the town's three doorways moved 24 m out; the state-piece code unchanged; it
+        //    was 45418637975.04724 on exp-layout-6's doors).
+        private const double HubDigestBase=45418413071.04724;
         private static void Hub(ExpeditionLayout layout)
         {
             foreach(var a in layout.areas){var rig=ExpeditionStateRig.For(layout,a.id);foreach(var d in rig.Doors)Check((d.Look==ExpeditionDoorLook.Laser)==(a.role=="instance")&&d.Exit==(a.role=="instance"),a.id+": only an instance's exit is a laser door");}

@@ -26,9 +26,10 @@ namespace ChipArena.UnityConversion
     internal static class ExpeditionJoinDraftChecks
     {
         internal const string DraftPath="Tests/expedition-layout-4-join-draft.json",LivePath="Tests/expedition-layout-draft.json";
-        /// <summary>SHA-256 of the live manifest's bytes (exp-layout-3). A deliberate live layout change updates it together with
-        /// PINNED in Tests/test_expedition_layout_draft.py; the join draft never changes it.</summary>
-        internal const string LiveSha256="3c1a259f400c3ff6cfd6fe5fd920c67f4dcd3777b956927067045786770e144a";
+        /// <summary>SHA-256 of the historical baseline manifest's bytes (exp-layout-3's records; since exp-layout-7 on the grown town,
+        /// whose map it must match). A deliberate town layout change updates it together with PINNED in
+        /// Tests/test_expedition_layout_draft.py; the join draft never changes it.</summary>
+        internal const string LiveSha256="958e4958a5cbd04819135486bedc6214e59bddf3d97b97fca16e11d191840760";
         private static readonly string[] TextKinds={".cs",".json",".shader",".cginc",".hlsl",".asset",".unity",".prefab",".mat",".asmdef",".txt",".md"};
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Expedition join draft: "+what);count++;}
@@ -60,7 +61,7 @@ namespace ChipArena.UnityConversion
             var town=draft.Area(draft.world);var door=town.doors.Single();var j=door.join;
             Check(j!=null&&town.anchors.Single(a=>a.id==door.anchor).building=="exp-ward-zero"&&draft.areas.Where(a=>a.id!=draft.world).All(a=>a.doors.All(d=>d.join==null)),"the join is at the hub entry into Ward Zero; the instance exit has none");
             NativeExpeditionLayout.ValidateGeometry(draft,content,pve,probe,reach);count++;
-            Check(j.x==79&&j.y==0&&j.z==0&&j.r==2.5f&&j.h==4,"the join: centre (79, 0, 0), r 2.5 m, base y 0, h 4 m");
+            Check(j.x==103&&j.y==0&&j.z==0&&j.r==2.5f&&j.h==4,"the join: centre (103, 0, 0) since the city grew (exp-layout-7; 79 before), r 2.5 m, base y 0, h 4 m");
             // Exactly the join, the approach, the returns and the revision differ from the live manifest.
             var dn=JsonNode.Parse(draftText);var ln=JsonNode.Parse(liveText);var dd=dn["areas"][0]["doors"][0].AsObject();var ld=ln["areas"][0]["doors"][0];
             dd.Remove("join");dd["approach"]=ld["approach"].DeepClone();dd["returns"]=ld["returns"].DeepClone();dn["revision"]=ln["revision"].DeepClone();
@@ -107,7 +108,7 @@ namespace ChipArena.UnityConversion
             Check(hits.Length==0,"nothing under Assets/ names the draft ("+string.Join(", ",hits.Select(Path.GetFileName))+")");
             Check(!DraftPath.StartsWith("Assets/",StringComparison.Ordinal)&&NativeExpeditionLayout.ResourceName=="ExpeditionLayout"&&!R("tools/generate_expedition.py").Contains("join-draft"),"the draft sits outside Assets/; the runtime loads Resources/ExpeditionLayout and the importer imports the live fixture only");
             Console.WriteLine("PASS expedition join draft ("+count+" checks: exp-layout-4 at "+DraftPath+", not live and named nowhere under Assets/; the historical exp-layout-3 baseline byte-identical, without a join and still accepted; "
-                +"Astra's parser and geometry gate accept the draft: join (79, 0, 0) r 2.5 h 4 at the Ward Zero door, approach at its centre, returns out of it (exp-layout-3 had 4 inside), F volume unchanged; "
+                +"Astra's parser and geometry gate accept the draft: join (103, 0, 0) r 2.5 h 4 at the Ward Zero door, approach at its centre, returns out of it (exp-layout-3 had 4 inside), F volume unchanged; "
                 +"base-y capsule-centre membership inclusive at radius, base and top; standing and jumping pilots inside; dressing: "+flat+" flat parts and nothing standing in the cylinder, "+around+" parts within 4 m of it)");
         }
     }

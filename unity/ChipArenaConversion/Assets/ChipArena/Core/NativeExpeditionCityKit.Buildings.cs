@@ -18,6 +18,10 @@ namespace ChipArena.UnityConversion
                 // The hub's wilds (exp-layout-3): warehouses and yards, the Meridian and station annexes.
                 case "e-ware-n":case "e-ware-s":case "w-ware-n":case "w-ware-s":case "se-yard":case "sw-yard":case "foundry-annex-n":case "foundry-annex-s":return Depot;
                 case "meridian-annex-n":case "meridian-annex-s":case "transit-annex-e":case "transit-annex-w":return Civic;
+                // The outer quarters (exp-layout-7): each landmark that ends the forecourt's axis is a civic front, the rows on
+                // its main lane are shops; the rest are tenements (the generic facade).
+                case "xq-exchange":case "fq-union-hall":case "tq-tram-depot":return Civic;
+                case "xq-row-l0":case "xq-row-l1":case "fq-row-l0":case "fq-row-l1":return Shops;
                 default:return Residential;
             }
         }

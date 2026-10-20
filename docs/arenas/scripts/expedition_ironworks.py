@@ -1,7 +1,7 @@
 # Expedition CITY IRONWORKS instance, blockout DRAFT (owner-approved design 2026-10-16, NOT LIVE): map `expedition-ironworks`
 # (the id tools/generate_expedition.py's draft table, NativeMapRules.ExpeditionInstance and NativeMachineRules use since PR #254;
 # docs/EXPEDITION-LAYOUT.md first reserved `expedition-foundry`), area `exp-foundry` (the reserved area id and the town's sealed
-# foundry plot at (-84, 0, 0)). Design: docs/EXPEDITION-CITY-IRONWORKS.md. Nothing at runtime reads this script's outputs:
+# foundry plot at (-84, 0, 0); -108 since exp-layout-7). Design: docs/EXPEDITION-CITY-IRONWORKS.md. Nothing at runtime reads this script's outputs:
 #   Tests/expedition-ironworks-draft.json         the map entry (UnityMaps.json shape, nav left to the importer)
 #   Tests/expedition-ironworks-layout-draft.json  a manifest draft: the live exp-layout-3 manifest plus the town's foundry door
 #                                                 and the exp-foundry area (Astra's parser needs the paired town door)
@@ -474,9 +474,10 @@ def area():
             'gates': [GATE], 'spawns': entries, 'boss': {'points': BOSS_POINTS}, 'ironworks': ironworks()}
 
 # =====================================================================================================================
-# THE TOWN SIDE (the draft manifest only): the foundry door at the reserved doorway (-84, 0, 0), yaw 90, built exactly as the
+# THE TOWN SIDE (the draft manifest only): the foundry door at the reserved doorway (-108, 0, 0 since the city grew in
+# exp-layout-7; -84 before), yaw 90, built exactly as the
 # town's Ward Zero door mirrored (expedition_city.door_record), its eight returns outside the shutter facing the town.
-TOWN_DOOR = (-84.0, 0.0); TOWN_YAW = 90.0
+TOWN_DOOR = (-108.0, 0.0); TOWN_YAW = 90.0
 TOWN_RETURNS = [pt(TOWN_DOOR[0] + dx, 0, z, TOWN_YAW) for dx in (4.4, 6.0) for z in (-3.0, -1.0, 1.0, 3.0)]
 def live_manifest():
     return json.load(open(os.path.join(TESTS, 'expedition-layout-draft.json')))
@@ -829,7 +830,7 @@ def town_checks():
         n = col.node_at(p['x'], 0, p['z']); hn = hulk.node_at(p['x'], 0, p['z'], 0.36)
         c = col.clearance(p['x'], p['z'], 0.35, (HULK_HEIGHT if heavy else HEIGHT) + 0.05)
         if n not in rp or (heavy and hn not in rh) or c < need: bad.append(f"{name} ({p['x']:g}, {p['z']:g}) routed {n in rp}/{hn in rh} clear {c:.2f}")
-    out.append(f'town foundry door (-84, 0, 0) yaw 90: anchor, approach and 8 returns on the live town street, routed from sanctuary slot 0 (returns and approach for a Hulk too), returns Hulk-clear: {10 - len(bad)} of 10' + ''.join('\n   BAD ' + s for s in bad))
+    out.append(f'town foundry door ({TOWN_DOOR[0]:g}, 0, {TOWN_DOOR[1]:g}) yaw {TOWN_YAW:g}: anchor, approach and 8 returns on the live town street, routed from sanctuary slot 0 (returns and approach for a Hulk too), returns Hulk-clear: {10 - len(bad)} of 10' + ''.join('\n   BAD ' + s for s in bad))
     ok &= not bad
     vb = all(vol_in_bounds(V, city['bounds']) for V in (rec['interact'], rec['closure'])) and col.floor_under(rec['interact']['x'], rec['interact']['z'], 0.0)
     out.append(f'town door volumes inside the town bounds and on its floor: {vb}'); ok &= vb

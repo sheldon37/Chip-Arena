@@ -10,9 +10,9 @@ namespace ChipArena.UnityConversion
     // of the kit (NativeExpeditionCityKit.cs): the gates' leaves are NativeExpeditionHubGates', drawn each frame from their state.
     public sealed partial class NativeExpeditionCityKit
     {
-        /// <summary>The town's bounds in exp-layout-3 (the map's own are passed in when known): the faces beyond them that look
-        /// out of the town are never seen, and the faces' spans stop at them.</summary>
-        public const float TownMinX=-96,TownMaxX=96,TownMinZ=-96,TownMaxZ=60;
+        /// <summary>The town's bounds (exp-layout-7, the city grown 24 m out on its east, west and south arms; the map's own are
+        /// passed in when known): the faces beyond them that look out of the town are never seen, and the faces' spans stop at them.</summary>
+        public const float TownMinX=-120,TownMaxX=120,TownMinZ=-120,TownMaxZ=60;
         private double bx0=TownMinX,bx1=TownMaxX,bz0=TownMinZ,bz1=TownMaxZ;
         private ExpeditionHubLayout hub;
         public const int PalisadeHex=0x6E5236,PalisadeDarkHex=0x4E3A26,ScrapHex=0x5E625E,WarnHex=0xE8C830,WardSignHex=0x8AE89A;
@@ -300,7 +300,8 @@ namespace ChipArena.UnityConversion
                 {
                     double x=x0+v.sx*Hash(w.Id,k,1),z=z0+v.sz*Hash(w.Id,k,2);int g=GroundAt(x,z);if(g<0||InBlock(x,z,.15))continue;double s=Hash(w.Id,k,3),size=1.2+3*Hash(w.Id,k,4);
                     int hex=s<.55?Pick(new[]{0x2A2420,0x241E1C,0x302A24},s*5):s<.8?0x1C1A1A:0x3A3228;
-                    Box(g,x,.004+.001*(k%4),z,size,.008,size*(.5+.5*Hash(w.Id,k,5)),With(P(NativeBlockLooks.Plain,hex,RoleGround),detail:true),AxisRot(0,1,0,s*360));placed++;
+                    // Four heights in whole NativeSurfaceLayers steps (2 mm; they were 1 mm apart, so two overlapping patches' faces shared a plane).
+                    Box(g,x,.004+NativeSurfaceLayers.Step*(k%4),z,size,.008,size*(.5+.5*Hash(w.Id,k,5)),With(P(NativeBlockLooks.Plain,hex,RoleGround),detail:true),AxisRot(0,1,0,s*360));placed++;
                 }
                 if(w.Side=="west")for(int track=0;track<2;track++)
                 {
@@ -312,18 +313,20 @@ namespace ChipArena.UnityConversion
                     }
                 }
                 if(w.Side=="east")GroundText("QUARANTINE ZONE",v.x-13,0,1,0,.26,0xC8B040);
-                if(w.Side=="south")for(int k=0;k<3;k++){double x=-24+k*8;int g=GroundAt(x,-58);if(g>=0&&!InBlock(x,-58,.2))GroundText("BUS",x,-58,0,1,.22,0xD8B040);}
+                // The bus bays 14 m into Station Road from its north end.
+                if(w.Side=="south")for(int k=0;k<3;k++){double x=-24+k*8,bz=v.z+v.sz/2-14;int g=GroundAt(x,bz);if(g>=0&&!InBlock(x,bz,.2))GroundText("BUS",x,bz,0,1,.22,0xD8B040);}
             }
-            // Distance markers along each route to an instance door: painted chevrons and the walked metres left, every 15 m.
+            // Distance markers along each route to an instance door: painted chevrons and the walked metres left, every 15 m,
+            // down the route's streets (its `via` turning points: round the outer quarters' landmarks).
             foreach(var r in hub.Routes)
             {
-                if(r.Reserved)continue;var g=hub.Gate(r.Gate);if(g==null)continue;double dx=r.Approach.x-g.X,dz=r.Approach.z-g.Z,len=Math.Sqrt(dx*dx+dz*dz);if(len<1)continue;dx/=len;dz/=len;
+                if(r.Reserved)continue;var g=hub.Gate(r.Gate);if(g==null)continue;var line=RouteLine(r,g);double len=line.Length;if(len<1)continue;
                 string name=RouteSign(r,true);
                 for(double at0=15;at0<len-6;at0+=15)
                 {
                     // A marker that would land on cover (the rubble heap on the axis) slides along the route to clear ground.
-                    double at=at0;foreach(double sh in MarkerShifts){double sa=at0+sh,cx=g.X+dx*sa,cz=g.Z+dz*sa;if(sa<len-6&&!InBlock(cx,cz,.6)&&!InBlock(cx-dx*1.6,cz-dz*1.6,.6)){at=sa;break;}}
-                    double x=g.X+dx*at,z=g.Z+dz*at,left=r.Path*(1-at/len);
+                    double at=at0;foreach(double sh in MarkerShifts){double sa=at0+sh;if(sa>=len-6)continue;line.At(sa,out double cx,out double cz,out double sdx,out double sdz);if(!InBlock(cx,cz,.6)&&!InBlock(cx-sdx*1.6,cz-sdz*1.6,.6)){at=sa;break;}}
+                    line.At(at,out double x,out double z,out double dx,out double dz);double left=r.Path*(1-at/len);
                     for(double side=-1.6;side<=1.6;side+=1.6){double px=x+(-dz)*side,pz=z+dx*side;if(InBlock(px,pz,.3))continue;int gg=GroundAt(px,pz);if(gg<0)continue;
                         Chevron(gg,px,pz,dx,dz,Wild(px,pz)?0x7AD8E8:0xD8D0C0);}
                     double tx=x-dx*1.6,tz=z-dz*1.6;if(((int)Math.Round(at0/15)&1)==0&&!InBlock(tx,tz,.6))GroundText(name+" "+Metres(left)+"M",tx,tz,dx,dz,.12,Wild(tx,tz)?0x7AD8E8:0xD8D0C0);
@@ -337,10 +340,10 @@ namespace ChipArena.UnityConversion
                 if(f.Front==0)continue;At(f,(f.U0+f.U1)/2,0,0,out double cx,out double cz);string id=blocks[f.Block].id;
                 foreach(var r in hub.Routes)
                 {
-                    var g=hub.Gate(r.Gate);if(g==null)continue;signs.TryGetValue(r.To,out int made);if(made>=2)continue;double dx=r.Approach.x-g.X,dz=r.Approach.z-g.Z,len=Math.Sqrt(dx*dx+dz*dz);dx/=len;dz/=len;
+                    var g=hub.Gate(r.Gate);if(g==null)continue;signs.TryGetValue(r.To,out int made);if(made>=2)continue;var line=RouteLine(r,g);double len=line.Length;if(len<1)continue;
                     // A face along the route (its normal across it), beside the route's last stretch through the city's edge or the wilds.
-                    double along=(cx-g.X)*dx+(cz-g.Z)*dz,across=Math.Abs(-(cx-g.X)*dz+(cz-g.Z)*dx);if(Math.Abs(Nx(f)*dx+Nz(f)*dz)>.2||along<24||along>len-10||across>21)continue;
-                    double u=U(f,g.X+dx*Math.Min(len-12,Math.Max(26,along)),g.Z+dz*Math.Min(len-12,Math.Max(26,along)));if(u<f.U0+2.5||u>f.U1-2.5)continue;
+                    double along=line.Project(cx,cz,out double across,out double dx,out double dz);if(Math.Abs(Nx(f)*dx+Nz(f)*dz)>.2||along<24||along>len-10||across>21)continue;
+                    line.At(Math.Min(len-12,Math.Max(26,along)),out double sx,out double sz,out _,out _);double u=U(f,sx,sz);if(u<f.U0+2.5||u>f.U1-2.5)continue;
                     double ahead=Tx(f)*dx+Tz(f)*dz;string to=r.Reserved?RouteSign(r,true):RouteSign(r,true)+" "+Metres(r.Path*(1-along/len))+" M";
                     string word=ahead>0?to+" >":"< "+to;double cell=.075;if(!Open(f,u-TextWidth(word,cell)/2-.3,u+TextWidth(word,cell)/2+.3,2.0,2.9,.05))continue;
                     Begin();FBox(f,u,2.45,.04,TextWidth(word,cell)+.4,.6,.04,P(NativeBlockLooks.Plain,r.Reserved?0x2A2622:0x14303A,RoleSign));Text(f,word,u,2.45-2.5*cell,.07,cell,.01,P(NativeBlockLooks.Plain,r.Reserved?0xB8B0A0:0xD8F4FF,RoleSign));if(End())signs[r.To]=made+1;
@@ -348,6 +351,35 @@ namespace ChipArena.UnityConversion
                     break;
                 }
             }
+        }
+        /// <summary>A route as a line on the street: the gate's centre, the record's turning points, the approach (build time only).</summary>
+        public sealed class RoutePath
+        {
+            public readonly double[] X,Z,S;public double Length=>S[S.Length-1];
+            public RoutePath(double[] x,double[] z){X=x;Z=z;S=new double[x.Length];for(int i=1;i<x.Length;i++)S[i]=S[i-1]+Math.Sqrt((x[i]-x[i-1])*(x[i]-x[i-1])+(z[i]-z[i-1])*(z[i]-z[i-1]));}
+            /// <summary>The point `s` metres along the line and the line's direction there.</summary>
+            public void At(double s,out double x,out double z,out double dx,out double dz)
+            {
+                int i=1;while(i<S.Length-1&&S[i]<s)i++;double l=S[i]-S[i-1],t=l>1e-9?Math.Max(0,Math.Min(1,(s-S[i-1])/l)):0;
+                dx=l>1e-9?(X[i]-X[i-1])/l:1;dz=l>1e-9?(Z[i]-Z[i-1])/l:0;x=X[i-1]+(X[i]-X[i-1])*t;z=Z[i-1]+(Z[i]-Z[i-1])*t;
+            }
+            /// <summary>How far along the line (x, z)'s nearest point lies, its distance off the line and the line's direction there.</summary>
+            public double Project(double x,double z,out double across,out double dx,out double dz)
+            {
+                double best=double.MaxValue,along=0;dx=1;dz=0;
+                for(int i=1;i<X.Length;i++)
+                {
+                    double ex=X[i]-X[i-1],ez=Z[i]-Z[i-1],l2=ex*ex+ez*ez;if(l2<1e-12)continue;double t=Math.Max(0,Math.Min(1,((x-X[i-1])*ex+(z-Z[i-1])*ez)/l2));
+                    double px=X[i-1]+ex*t-x,pz=Z[i-1]+ez*t-z,d=Math.Sqrt(px*px+pz*pz);if(d<best){best=d;double l=Math.Sqrt(l2);along=S[i-1]+l*t;dx=ex/l;dz=ez/l;}
+                }
+                across=best;return along;
+            }
+        }
+        /// <summary>Route `r` from gate `g` along its turning points to its approach.</summary>
+        public static RoutePath RouteLine(ExpeditionHubRoute r,ExpeditionHubGate g)
+        {
+            var via=r.Via??Array.Empty<ExpeditionPoint>();var x=new double[via.Length+2];var z=new double[via.Length+2];x[0]=g.X;z[0]=g.Z;
+            for(int i=0;i<via.Length;i++){x[i+1]=via[i].x;z[i+1]=via[i].z;}x[x.Length-1]=r.Approach.x;z[z.Length-1]=r.Approach.z;return new RoutePath(x,z);
         }
         /// <summary>Metres to the nearest 5 (invariant digits).</summary>
         private static string Metres(double m)=>((int)(Math.Round(m/5)*5)).ToString(System.Globalization.CultureInfo.InvariantCulture);

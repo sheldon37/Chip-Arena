@@ -27,6 +27,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition-layout"){ExpeditionLayoutChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-dressing"){ExpeditionDressingChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-hub"){ExpeditionHubChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--expedition-city"){ExpeditionCityChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-join-view"){ExpeditionJoinPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-visuals"){ExpeditionStationVisualChecks.Run(ProjectRoot());ZombieLightChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-light"){ZombieLightChecks.Run(ProjectRoot());return 0;}
@@ -151,7 +152,7 @@ internal static class Program
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
             StructureFxChecks.Run(root);
             IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);IronworksBossPresentationChecks.Run(root);BossVfxRealismChecks.Run(root);
-            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
+            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionCityChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
             PartyLoadingChecks.Run(root);
             AccountXpChecks.Run(root);AccountXpProgressionChecks.RunChecks(root);
             MoveVisualChecks.Run(root);
