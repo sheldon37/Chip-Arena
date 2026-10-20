@@ -54,6 +54,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--station-boss"){StationBossModelChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-boss-presentation"){StationBossPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--boss-motion"){BossMotionChecks.Run(ProjectRoot());return 0;}
+            HordeHitChecks.Run();
+            if(args.Length==1&&args[0]=="--horde-hit")return 0;
             if(args.Length==1&&args[0]=="--zombie-gore"){ZombieGoreChecks.Run(ProjectRoot());MinionFxChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-loco"){ZombieLocoChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());ZombieFlowChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-flow"){ZombieFlowChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}

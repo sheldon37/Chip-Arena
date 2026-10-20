@@ -137,14 +137,21 @@ DEV panel > Previews > **Zombie gore preview**. It plays five lanes, looping eve
 | 4 | Shambler (look 1) | Blade hits, then a greatsword kill | Slice |
 | 5 | Spitter | SMG burst kill | Corpse |
 
-## Data the authority could add (Astra)
+## Authority hit metadata (Astra, 2026-10-20)
 
-See the handoff. None of it is required.
-- `HitPveAdd` knows `head` but emits `EventKind.Hit`.
-- `Amount` is clamped to the remaining health, so overkill is unknown.
-- The struck part is not sent.
+`ArenaEvent` now carries optional horde-hit data. Events remain `EventKind.Hit`, so pilot Headshot announcers, hit sounds and statistics keep their existing behavior. Claude's presentation binding is still a follow-up.
 
-The presentation infers the head from the nearest drawn part, and decides gibs from the cause and the clamped share.
+| Field | Contract |
+| --- | --- |
+| `HasHordeHit` | Metadata is present. Old frames default false; retain the existing visual inference. |
+| `Head` | Any positive damage share selected head (part 1), even when torso is the largest share. |
+| `Raw` | Original `amount` passed to `HitPveAdd`, before zone modifiers, limb multipliers and HP clamping. `Amount` retains actual damage. |
+| `HasPart` | `Part` is known; distinguishes known torso from missing anatomy. |
+| `Part` | Largest positive original share's LIMB bit: 0 torso, 1 head, 2/4 upper arms, 8/16 forearms, 32/64 thighs, 128/256 shins. Ties keep the first share. Recorded before already-lost parts are redirected to torso. |
+
+Use `Raw` for the requested raw-damage/max-HP gore decision; `Raw - Amount` is not exact overkill because zone and limb modifiers can change damage. Normal hits inspect the existing shares with no extra random draws. The `Pve == null` direct-hit path resolves deterministic anatomy without changing its flat damage. Its blast path has no authority shares: `HasPart` is false and `Head` retains the supplied flag.
+
+For `HordeGoreHit`, prefer `e.Head` when `HasHordeHit`; otherwise keep the existing Headshot/inferred fallback. Bind raw damage and the known part in the presentation's decision/wound placement separately. This authority change does not alter timing, hitboxes, damage, cooldowns or movement; networking gains these optional fields and validation.
 
 ## Checks
 

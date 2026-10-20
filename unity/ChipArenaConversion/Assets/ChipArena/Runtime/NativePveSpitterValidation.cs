@@ -32,9 +32,16 @@ namespace ChipArena.UnityConversion
                 CorrodePve(record,.6f,10);Check(Math.Abs(prop.Health-90)<.002f,"direct corrosion uses destructible damage");CorrodePve(record,1.3f,6);Check(Math.Abs(prop.Health-84)<.002f,"puddle corrosion");prop.Indestructible=true;CorrodePve(record,1.3f,6);Check(Math.Abs(prop.Health-84)<.002f,"protected geometry is not corroded");
                 spit.LastAttack=Time-.2f;spit.StrikeAt=spit.LastAttack+.8f;spit.Pve.Struck=false;spit.Hp=spit.MaxHp=1000;spit.Pve.Parts.Clear();
                 HitPveAdd(spit,p,1,Vector3.forward,0,null,"projectile",0,false);Check(spit.Pve.Struck&&spit.Pve.SpitCancelAt==Time&&Math.Abs(spit.Pve.RecoverAt-Time-1.56f)<.002f,"small damaging hit cancels with partial cooldown");
+                var hitEvent=Events.Last(e=>e.Kind==EventKind.Hit&&e.Target==spit.Id);
+                Check(hitEvent.HasHordeHit&&hitEvent.Raw==1&&hitEvent.Amount==1&&hitEvent.HasPart&&hitEvent.Part==0&&!hitEvent.Head,"authority torso metadata preserves damage");
+                HitPveAdd(spit,p,1,Vector3.forward,0,null,"projectile",0,true);
+                hitEvent=Events.Last(e=>e.Kind==EventKind.Hit&&e.Target==spit.Id);
+                Check(hitEvent.Head&&hitEvent.Part==1&&hitEvent.Raw==1&&hitEvent.Amount==1.5f,"head share metadata preserves the 1.5 multiplier");
                 // Skip the entrance with a coherent completed timeline, then validate before serialization.
                 var source=NetworkFrame();Check(source.Valid(Content),"source frame is valid before JsonUtility");
                 var frame=NativeFrameCodec.Clone(source);Check(frame.Valid(Content),"JsonUtility clone remains valid");
+                var hitCopy=frame.snapshot.Events.Last(e=>e.Kind==EventKind.Hit&&e.Target==spit.Id);
+                Check(hitCopy.HasHordeHit&&hitCopy.Head&&hitCopy.HasPart&&hitCopy.Part==1&&hitCopy.Raw==1&&hitCopy.Amount==1.5f,"real JsonUtility retains horde hit payload");
                 Check(frame.pve.acid.Length==1,"real JsonUtility carries acid");
                 Check(frame.minions.Single(m=>m.id==spit.Id).spitCancelAt==Time,"real JsonUtility carries cancellation");
                 var guest=new NativeArena(Content,new NativeMatch(Content),MapId){Replica=true,ReplicaScene=root.scene};
@@ -44,6 +51,16 @@ namespace ChipArena.UnityConversion
                 StepPveHorde();Check(!spit.Pve.Struck,"spitter starts a real attack at 18 m");
                 Clock(spit.StrikeAt+.001);StepPveHorde();Check(pveAcid.Count==1&&pveAcid[0].Record.to.z>1017&&pveAcid[0].Record.flight<=3,"extended attack launches a valid long-range arc");
                 p.Body.position=new Vector3(0,p.Collider.height/2+.025f,1019);spit.Pve.Struck=true;spit.Pve.RecoverAt=0;Physics.SyncTransforms();StepPveHorde();Check(spit.Pve.Struck,"does not initiate outside 18 m");
+                spit.Hp=10;spit.Pve.Travelling=false;spit.Pve.ExposedAt=Time-1;
+                float killed=HitPveAdd(spit,p,300,Vector3.forward,0,null,"projectile",0,false);
+                var lethal=Events.Last(e=>e.Kind==EventKind.Hit&&e.Target==spit.Id);
+                Check(killed==10&&lethal.Amount==10&&lethal.Raw==300&&lethal.HasPart&&lethal.Part==0,"lethal overkill preserves pre-clamp raw and actual HP damage");
+                var fallback=SpawnPveAdd("shambler",true,0);fallback.Hp=10;fallback.Pve.Travelling=false;fallback.Pve.ExposedAt=Time-1;
+                var savedPve=Pve;
+                try{Pve=null;killed=HitPveAdd(fallback,p,300,Vector3.forward,0,null,"projectile",0,true);}
+                finally{Pve=savedPve;}
+                lethal=Events.Last(e=>e.Kind==EventKind.Hit&&e.Target==fallback.Id);
+                Check(killed==10&&lethal.Amount==10&&lethal.Raw==300&&lethal.Head&&lethal.HasPart&&lethal.Part==1,"fallback head overkill remains flat damage with explicit anatomy");
                 Debug.Log("PASS native spitter arc/landing/DoT/nonstacking/corrosion/interrupt/JsonUtility/guest state");
             }
             finally{Pve.Content.entries=entries;Map.bounds=bounds;Reset();}
