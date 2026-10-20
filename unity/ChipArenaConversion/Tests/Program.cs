@@ -7,6 +7,7 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--killcam"){FinalKillcamChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--movement-mods"){MovementModsChecks.Run(ProjectRoot());RoundsCardsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zone-boss-rules"){ZoneBossRulesChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--zone-combat"){ZoneCombatChecks.Run(ProjectRoot());return 0;}

@@ -1,3 +1,11 @@
+## 2026-10-20 — Astra: PvP killcams after an Expedition
+
+- **Branch/base:** `codex/pvp-killcam-mode`, shared `f99b56f` (preserves Claude's wound/lighting fixes and #290).
+- **Cause:** `ObserveReplay` returned before recording history and final-kill detection whenever saved `prefs.expedition` was true. The Play menu clears `prefs.pve` but retains that preference, so an actual PvP match could silently use Expedition's no-killcam path.
+- **Fix:** replay suppression and both spectator-candidate paths use the current cooperative match plus a bound host Expedition director or replicated Expedition view. They never read the saved lobby preference. PvP history/final and normal killcams are restored; active Expedition deaths still spectate, and death/reward/timing rules are unchanged.
+- **Checks:** focused final killcam suite passes 113 checks; added regressions for active-session mode selection and all three replay/spectator call sites, plus `--killcam` runner. Unity Player/Runtime/Editor semantic compilation passes; hosted CI pending. No interactive Windows/two-client replay claim.
+- **Next:** merge verified source and sync builder, then owner checks a PvP kill after leaving Expedition (host and guest).
+
 ## 2026-10-20 — Claude: zombie wounds on the drawn body, not on joint capsules (merged into shared)
 
 - **Branch/base:** `claude/zombie-wound-fix` from shared `claude/sleepy-ritchie-g8ruhv` at `f930684`, with shared `ce9e02f` (Astra's #290 and `claude/zombie-black-fix`) merged in at `1e4e99b`. Implementation `53b3a4e`; the DEV preview's vector type `85f0b67`. Presentation only. Merged into shared and the builder; not published.
