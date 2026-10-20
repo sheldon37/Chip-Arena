@@ -30,6 +30,7 @@
   - Mutations: removing the station's call fails the contract. Skipping the contract leaves skin at 3/255 and fails the emulation. A darkened town look fails the dark-look rule.
   - Groups rc 0: `--zombie-light`, `--station-visuals`, `--zombie-gore`, `--ward-lighting`, `--ironworks-visuals`, `--station-enemies`, `--station-boss-presentation`.
   - run5b on the branch's code (`ffcaf05` plus this docs commit, before this line was filled in), rc1–rc5 all 0: Unity Runtime and Editor compile; relay and managed suite with 809 PASS lines, 0 FAIL (the new zombie light line included); 140 Python tests (1 skipped); package; diff-check.
+  - After merging shared `6828647` (#290, Astra's Expedition death input fix) without a rebase: run5b again on the merged tree, rc1–rc5 all 0, 809 PASS, 0 FAIL. The groups above pass again, plus `--dev-tools` and `--expedition-pick`.
 - **Renders:** a scratch CPU emulation, not in git (`renders-zombie-black/`). It runs ZombieLit's and NativeBlockLit's maths with the live look, kit and picked slots, in the concourse, ticket hall and P2, before and after. The ticket hall's before frame is close to the recording: floor 77/255 against about 100, bodies 6/255 against 4–5. Not emulated: shadow maps (the key is shadowed everywhere), the kit and walls, shafts, haze, bloom and post.
 - **Not run:** Unity Editor or Windows play (not available here), so the look in the engine and its per-frame cost are unverified.
 - **Risks:**
