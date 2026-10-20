@@ -30,8 +30,8 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             Treatment(root,out string models);Placement(out string place);Caps(out string caps);Determinism(out string same);Tiers(out string tiers);Allocation();Source(root);
-            Fallback(out string old);Metadata(root,out string meta);
-            Console.WriteLine("PASS zombie gore ("+count+" checks: "+models+"; "+place+"; "+caps+"; "+same+"; "+tiers+"; no allocation; presentation only; "+old+"; "+meta+")");
+            Fallback(out string old);Metadata(root,out string meta);OnBody(root,out string body);Conversion(out string joints);
+            Console.WriteLine("PASS zombie gore ("+count+" checks: "+models+"; "+place+"; "+caps+"; "+same+"; "+tiers+"; no allocation; presentation only; "+old+"; "+meta+"; "+body+"; "+joints+")");
         }
 
         // ---- a posed zombie's joints (System.Numerics, row vectors: what the runtime hands the gore from its rig) ----
@@ -45,11 +45,11 @@ namespace ChipArena.UnityConversion
             }
             return world;
         }
-        private static Matrix4x4[] Posed(int kind,int id,Vector3 at,float yawDeg,float t=1)
+        private static Matrix4x4[] Posed(int kind,int id,Vector3 at,float yawDeg,float t=1,float speed=0)
         {
             var pose=new CapturedRig.Pose();var gait=new NativeHordeGait();var st=NativeHordeKinds.ProposedRow(kind);float sc=NativeHordeKinds.Scale[kind];
-            var root=new Vector3(at.X,at.Y+NativeHordeKinds.DrawRoot(kind,false),at.Z);
-            var f=new HordeMotionInput{Kind=kind,Id=id,Seed=NativeHordeKinds.Seed(id),Time=t,Yaw=yawDeg,Ground=at.Y/sc,Root=root/sc,Health=1,AttackAge=float.NaN,Strike=NativeHordeKinds.Strike(st,false,0),Recover=NativeHordeKinds.Recover(st,false,0),Attack=NativeHordeKinds.Default[kind],Side=1};
+            var root=new Vector3(at.X,at.Y+NativeHordeKinds.DrawRoot(kind,false),at.Z);float yr=yawDeg*(float)Math.PI/180;var v=new Vector3((float)Math.Sin(yr),0,(float)Math.Cos(yr))*speed;
+            var f=new HordeMotionInput{Kind=kind,Id=id,Seed=NativeHordeKinds.Seed(id),Time=t,Yaw=yawDeg,Ground=at.Y/sc,Root=root/sc,Velocity=v/sc,Health=1,AttackAge=float.NaN,Strike=NativeHordeKinds.Strike(st,false,0),Recover=NativeHordeKinds.Recover(st,false,0),Attack=NativeHordeKinds.Default[kind],Side=1};
             gait.Pose(f,pose,new NativeHordeReact());return Bones(pose,root,gait.Yaw,sc);
         }
 
@@ -92,27 +92,35 @@ namespace ChipArena.UnityConversion
         // ---- gore lands at the hit and goes along the shot ----
         private static void Placement(out string summary)
         {
-            var st=new NativeHordeGoreState();int checks=0,aimed=0,onAim=0;float worstGap=0;
+            var st=new NativeHordeGoreState();int checks=0,aimed=0,onAim=0,beside=0;float worstGap=0,worstOn=0,leastFacing=1;
             var aims=new[]{(CapturedRig.Head,"head"),(CapturedRig.Chest,"chest"),(CapturedRig.LElbow,"left forearm"),(CapturedRig.RKnee,"right shin"),(CapturedRig.Spine,"gut")};
             foreach(int kind in new[]{NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Brute,NativeHordeKinds.Hulk})
             for(int yaw=0;yaw<360;yaw+=90)
             {
-                st.Clear();int id=70000+kind*10+yaw/90;var at=new Vector3(3,0,-2);var bones=Posed(kind,id,at,yaw);float scale=NativeHordeKinds.Scale[kind];
+                st.Clear();int id=70000+kind*10+yaw/90;var at=new Vector3(3,0,-2);var bones=Posed(kind,id,at,yaw);float scale=NativeHordeKinds.Scale[kind];var drawn=new Drawn(kind,0,id,bones);
                 foreach(var (bone,name) in aims)
                 {
-                    // The shooter 6 m in front of the add's facing, a little high.
+                    // The shooter 6 m in front of the add's facing, a little high, aiming at the part's middle. The authority's hit point
+                    // is where that ray meets its capsule (the hit volume); the shot's own travel rides the hit (ArenaEvent.Normal).
                     float r=yaw*(float)Math.PI/180;var fwd=new Vector3((float)Math.Sin(r),0,(float)Math.Cos(r));NativeHordeGore.Segment(bones,bone,out var a,out var b);var part=(a+b)*.5f;
-                    // The shot's ray from the shooter through the aimed part: the authority's hit point is where it first meets the body.
-                    var shooter=new Vector3(at.X,1.5f*scale,at.Z)+fwd*6;var dir=Vector3.Normalize(part-shooter);if(!First(bones,kind,shooter,dir,out var point,out int first))continue;
-                    float time=1+bone*.1f;var h=new GoreHit{Id=id,Kind=kind,Time=time,Amount=20,MaxHp=60,Cause=NativeHordeGore.Cause.Bullet,Point=point,Dir=dir};
+                    var shooter=new Vector3(at.X,1.5f*scale,at.Z)+fwd*6;var dir=Vector3.Normalize(part-shooter);if(!Authority(kind,at,shooter,dir,out var point))continue;
+                    bool entered=drawn.Ray(shooter,dir,14,-1,out float te,out int first,out _);var entry=shooter+dir*te;
+                    float time=1+bone*.1f;var h=new GoreHit{Id=id,Kind=kind,Time=time,Amount=20,MaxHp=60,Cause=NativeHordeGore.Cause.Bullet,Point=point,Dir=dir,Shot=dir};
                     int sprays=st.SprayCount;int hit=st.Hit(h,bones,at.Y,out bool head);
-                    Check(Inside(bones,kind,hit,point)<.025f*scale,NativeHordeKinds.Ids[kind]+" yaw "+yaw+": the "+name+" shot wounds the part it struck (joint "+hit+", first "+first+")");
-                    if(first==bone||CapturedRig.Bones[first].Parent==bone||CapturedRig.Bones[bone].Parent==first)onAim++;aimed++;
-                    if(first==CapturedRig.Head)Check(head,NativeHordeKinds.Ids[kind]+": a shot into the head is a head shot");else if(first!=CapturedRig.Neck)Check(!head,NativeHordeKinds.Ids[kind]+": a shot into the "+name+" is no head shot");
                     var g=st.Find(id,false);var w=g.W[g.Count-1];var wp=Vector3.Transform(w.P,bones[w.Bone]);var wn=Vector3.Normalize(Vector3.TransformNormal(w.N,bones[w.Bone]));
-                    float gap=Vector3.Distance(wp,point);worstGap=Math.Max(worstGap,gap);
-                    Check(gap<.06f*scale,NativeHordeKinds.Ids[kind]+": the "+name+" wound sits at the hit ("+gap.ToString("0.000")+" m)");
-                    Check(Vector3.Dot(wn,-dir)>.15f,NativeHordeKinds.Ids[kind]+" yaw "+yaw+": the "+name+" wound faces the shooter ("+Vector3.Dot(wn,-dir).ToString("0.00")+")");
+                    // On the drawn part, where the shot enters it (the authority's capsule is not the body: wider than a thin kind,
+                    // narrower than a reaching arm); a shot that only grazed the capsule goes on the nearest drawn part.
+                    float on=drawn.Off(hit,wp);worstOn=Math.Max(worstOn,on);Check(on<.004f*scale,NativeHordeKinds.Ids[kind]+" yaw "+yaw+": the "+name+" wound is on the drawn part ("+on.ToString("0.000")+" m off joint "+hit+")");
+                    if(entered)
+                    {
+                        Check(hit==first,NativeHordeKinds.Ids[kind]+" yaw "+yaw+": the "+name+" shot wounds the drawn part it enters first (joint "+hit+", first "+first+")");
+                        float gap=Vector3.Distance(wp,entry);worstGap=Math.Max(worstGap,gap);Check(gap<.005f*scale,NativeHordeKinds.Ids[kind]+": the "+name+" wound sits where the shot enters the drawn body ("+gap.ToString("0.000")+" m)");
+                        if(first==bone||CapturedRig.Bones[first].Parent==bone||CapturedRig.Bones[bone].Parent==first)onAim++;aimed++;
+                        if(first==CapturedRig.Head)Check(head,NativeHordeKinds.Ids[kind]+": a shot into the head is a head shot");else if(first!=CapturedRig.Neck)Check(!head,NativeHordeKinds.Ids[kind]+": a shot into the "+name+" is no head shot");
+                    }
+                    else beside++;
+                    // It lies on the surface the shot struck, the side facing the shooter.
+                    float facing=Vector3.Dot(wn,-dir);leastFacing=Math.Min(leastFacing,facing);Check(facing>0,NativeHordeKinds.Ids[kind]+" yaw "+yaw+": the "+name+" wound faces the shooter ("+facing.ToString("0.00")+")");
                     Check(st.SprayCount==sprays+1,"one spray per hit");var sp=st.Sprays[st.SprayCount-1];
                     Check(Vector3.Distance(sp.Origin,wp)<.03f&&Vector3.Dot(sp.Along,dir)>.99f&&Vector3.Dot(sp.Normal,wn)>.99f,"the spray leaves the wound, out of it and along the shot");
                     Check(sp.Kind==(head?"cavity":"puncture")&&sp.Target==id,"a head shot sprays a cavity, a body shot a puncture");
@@ -155,18 +163,221 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<st.BlockCount;i++){float d=Vector3.Dot(st.Blocks[i].At-at,up);Check(d>-.01f*sc&&d<z*1.2f,NativeHordeKinds.Ids[kind]+": the stub stands out of the cut along the neck ("+(d/z).ToString("0.00")+" of its radius)");}
             }
             Check(NativeHordeGore.CutOut(CapturedRig.Head).Y<0&&NativeHordeGore.CutOut(CapturedRig.LElbow).Y>0&&NativeHordeGore.PartCut(0,CapturedRig.Head)==NativeHordeGore.CutRadius(0,CapturedRig.Neck),"a thrown head's cap is its neck end, facing down; a limb's faces up out of its root");
-            summary=checks+" shots on four kinds at four facings wound the part they struck ("+onAim+" the part aimed at; worst "+(worstGap*100).ToString("0.0")+" cm from the hit), face the shooter and spray along the shot";
+            summary=checks+" shots on four kinds at four facings wound the drawn part they enter ("+onAim+" of "+aimed+" the part aimed at; worst "+(worstGap*100).ToString("0.0")+" cm from the entry, "+(worstOn*100).ToString("0.0")+" cm off the part; "+beside+" grazing the capsule on the nearest part), face the shooter (least "+leastFacing.ToString("0.00")+") and spray along the shot";
         }
-        // A part's signed distance from `p` (its capsule, the kind's girth), and the ray's first contact with the body.
-        private static float Inside(Matrix4x4[] bones,int kind,int j,Vector3 p)
+        // ---- the drawn body: the kind's model on the posed joints as the runtime draws it ----
+        // Each part on its joint's world matrix (sourceModels.Queue: bone(part.Bone)), the add's proportions and missing pieces as
+        // ZombieLit's vert draws them (written out here from Resources/NativeZombieLit.shader ZombieVert, not from the gore's own
+        // NativeHordeGoreBody), the hinged jaw closed. Every triangle faces the way its vertex normals do.
+        private static readonly Dictionary<(int,int,int),HordeModel> built=new Dictionary<(int,int,int),HordeModel>();
+        private static HordeModel Model(int kind,int look,int tier){lock(built){if(!built.TryGetValue((kind,look,tier),out var m))built[(kind,look,tier)]=m=NativeHordeModels.Build(kind,look,tier);return m;}}
+        private sealed class Drawn
         {
-            NativeHordeGore.Segment(bones,j,out var a,out var b);float s=NativeHordeGore.ScaleOf(bones[CapturedRig.Body]);
-            return Vector3.Distance(NativeHordeGore.Closest(a,b,p),p)-NativeHordeGore.SegmentRadius[j]*NativeHordeGore.Girth(kind,j>=CapturedRig.Pelvis&&j<=CapturedRig.Chest)*s;
+            public readonly List<Vector3>[] Tri=new List<Vector3>[22];// a, b, c per triangle, world
+            public Drawn(int kind,int look,int id,Matrix4x4[] bones,int tier=NativeHordeModels.Full)
+            {
+                var model=Model(kind,look,tier);var body=NativeHordeModels.Varies(NativeHordeModels.Id(kind,look,tier))?NativeHordeModels.Variation(id):Vector4.One;
+                for(int j=0;j<22;j++)Tri[j]=new List<Vector3>();
+                foreach(var mesh in model.Jaw!=null?new[]{model.Mesh,model.Jaw}:new[]{model.Mesh})foreach(var s in mesh.Sections)
+                {
+                    if(s.Bone<=0||s.Bone>=22)continue;var m=bones[s.Bone];
+                    Vector3 V(int i,out bool gone){var v=Vert(s.Positions[i],i<s.Colors.Count?s.Colors[i].W:1,i<s.Data.Count?s.Data[i].Y:0,body,out gone);return Vector3.Transform(v,m);}
+                    for(int i=0;i+2<s.Indices.Count;i+=3)
+                    {
+                        int ia=s.Indices[i],ib=s.Indices[i+1],ic=s.Indices[i+2];var a=V(ia,out bool gone);if(gone)continue;var b=V(ib,out _);var c=V(ic,out _);
+                        var nn=Vector3.TransformNormal(s.Normals[ia]+s.Normals[ib]+s.Normals[ic],m);if(Vector3.Dot(Vector3.Cross(b-a,c-a),nn)<0){var x=b;b=c;c=x;}
+                        Tri[s.Bone].Add(a);Tri[s.Bone].Add(b);Tri[s.Bone].Add(c);
+                    }
+                }
+            }
+            // ZombieVert: the proportions by region about the joint, a missing piece folded to the joint.
+            private static Vector3 Vert(Vector3 p,float region,float data,Vector4 body,out bool gone)
+            {
+                var pr=NativeHordeModels.Proportions(body.Y-1);gone=false;
+                if(region>.62f&&region<.88f)p*=pr.X;else if(region>.37f&&region<.63f)p.X*=pr.Y;else if(region>.12f&&region<.38f){p.X*=pr.Z;p.Z*=pr.Z;}
+                float variant=(float)Math.Floor(data),mask=(float)Math.Floor((body.Z-1)*16+.5f);
+                if(variant>.5f&&variant<4.5f){float bit=(float)Math.Pow(2,variant-1),half=(float)Math.Floor(mask/bit)*.5f;gone=half-(float)Math.Floor(half)>.25f;}
+                return p;
+            }
+            /// <summary>The first outward face a ray enters (joints in `mask`): its parameter, joint and normal.</summary>
+            public bool Ray(Vector3 o,Vector3 d,float most,int mask,out float t,out int joint,out Vector3 normal)
+            {
+                t=most;joint=-1;normal=Vector3.Zero;
+                for(int j=1;j<22;j++)
+                {
+                    if((mask&1<<j)==0)continue;var l=Tri[j];
+                    for(int i=0;i<l.Count;i+=3)
+                    {
+                        var a=l[i];var e1=l[i+1]-a;var e2=l[i+2]-a;var f=Vector3.Cross(e1,e2);if(!(Vector3.Dot(f,d)<0))continue;
+                        var pv=Vector3.Cross(d,e2);float det=Vector3.Dot(e1,pv);if(Math.Abs(det)<1e-12f)continue;var tv=o-a;float u=Vector3.Dot(tv,pv)/det;if(u<0||u>1)continue;
+                        var qv=Vector3.Cross(tv,e1);float v=Vector3.Dot(d,qv)/det;if(v<0||u+v>1)continue;float tt=Vector3.Dot(e2,qv)/det;if(tt>=0&&tt<t){t=tt;joint=j;normal=Vector3.Normalize(f);}
+                    }
+                }
+                return joint>0;
+            }
+            /// <summary>A point's distance from joint `joint`'s drawn part (-1: the whole body).</summary>
+            public float Off(int joint,Vector3 p)
+            {
+                float best=float.MaxValue;
+                for(int j=joint<0?1:joint;j<=(joint<0?21:joint);j++)
+                {
+                    var l=Tri[j];
+                    for(int i=0;i<l.Count;i+=3)
+                    {
+                        var a=l[i];var b=l[i+1];var c=l[i+2];
+                        // A box round the triangle first.
+                        float bx=Math.Max(0,Math.Max(Math.Min(a.X,Math.Min(b.X,c.X))-p.X,p.X-Math.Max(a.X,Math.Max(b.X,c.X)))),by=Math.Max(0,Math.Max(Math.Min(a.Y,Math.Min(b.Y,c.Y))-p.Y,p.Y-Math.Max(a.Y,Math.Max(b.Y,c.Y)))),bz=Math.Max(0,Math.Max(Math.Min(a.Z,Math.Min(b.Z,c.Z))-p.Z,p.Z-Math.Max(a.Z,Math.Max(b.Z,c.Z))));
+                        if(bx*bx+by*by+bz*bz>=best)continue;float d=Vector3.DistanceSquared(NativeHordeGoreBody.ClosestOnTriangle(p,a,b,c),p);if(d<best)best=d;
+                    }
+                }
+                return (float)Math.Sqrt(best);
+            }
+            /// <summary>How far a drawn voxel reaches off joint `joint`'s part: the farthest of its eight corners.</summary>
+            public float Off(int joint,in GoreBlock b){float worst=0;for(int k=0;k<8;k++){var c=new Vector3((k&1)==0?-.5f:.5f,(k&2)==0?-.5f:.5f,(k&4)==0?-.5f:.5f)*b.Size;worst=Math.Max(worst,Off(joint,b.At+Vector3.Transform(c,b.Turn)));}return worst;}
         }
-        private static bool First(Matrix4x4[] bones,int kind,Vector3 from,Vector3 dir,out Vector3 point,out int joint)
+        /// <summary>The authority's hit point: where a ray meets the add's capsule (its hit volume, upright round the body).</summary>
+        private static bool Authority(int kind,Vector3 ground,Vector3 from,Vector3 dir,out Vector3 point)
         {
-            for(float t=0;t<12;t+=.004f){var p=from+dir*t;for(int j=1;j<22;j++)if(Inside(bones,kind,j,p)<=0){point=p;joint=j;return true;}}
-            point=from;joint=-1;return false;
+            float r=NativeHordeKinds.WorldRadius(kind),h=NativeHordeKinds.WorldHeight(kind),half=Math.Max(0,h*.5f-r);var c=new Vector3(ground.X,ground.Y+NativeHordeKinds.RootHeight(kind,false),ground.Z);
+            for(float t=0;t<14;t+=.002f){var p=from+dir*t;if(Vector3.Distance(NativeHordeGore.Closest(c-Vector3.UnitY*half,c+Vector3.UnitY*half,p),p)<=r){point=p;return true;}}
+            point=from;return false;
+        }
+        /// <summary>A ray's first contact with the drawn body (add `id`'s look 0 of `kind`).</summary>
+        private static bool First(Matrix4x4[] bones,int kind,int id,Vector3 from,Vector3 dir,out Vector3 point,out int joint)
+        {
+            bool hit=new Drawn(kind,0,id,bones).Ray(from,dir,14,-1,out float t,out joint,out _);point=from+dir*t;return hit;
+        }
+
+        // ---- every drawn wound piece on the drawn body (owner 2026-10-20: "Zombie wounds appear off their body (Happens to other
+        //      zombies as well)") ----
+        // The wounds had gone on a capsule round each joint (the Standard pilot's radii, a per-kind girth, the drawn scale), not on
+        // the drawn model: on the big kinds' heads the capsule is near twice the head, and every wound on a part thinner or fatter
+        // than its capsule floated or sank. Their blood run was one straight strip laid across the shot (the wound frame's b axis),
+        // up to 5.6 times the wound's size, standing off a curved part, so neighbouring runs crossed as X's beside the body. Now
+        // the wound is where the shot enters the drawn model, its footprint fitted to the part and its run traced down the part's
+        // surface. Measured here against the drawn body (Drawn: the model posed as the runtime draws it, the add's own look), on
+        // every kind and look, standing and walking (drawn on the pose 1.6 and 4.5 s after the hit), each gore tier, five causes.
+        private static void OnBody(string root,out string summary)
+        {
+            var causes=new[]{NativeHordeGore.Cause.Bullet,NativeHordeGore.Cause.Heavy,NativeHordeGore.Cause.Melee,NativeHordeGore.Cause.Blast,NativeHordeGore.Cause.Arrow};
+            var aims=new[]{CapturedRig.Head,CapturedRig.Neck,CapturedRig.Chest,CapturedRig.Spine,CapturedRig.Pelvis,CapturedRig.LArm,CapturedRig.RElbow,CapturedRig.LHip,CapturedRig.RKnee};
+            var core=new List<float>();var run=new List<float>();var drop=new List<float>();var centre=new List<float>();var downs=new List<float>();var acrossOld=new List<float>();
+            float worstSeven=0,worstZone=0,worstAll=0;int hits=0,blocks=0,moving=0;var tierWorst=new float[3];string worstWhat="";
+            for(int kind=0;kind<NativeHordeKinds.All;kind++)for(int look=0;look<NativeHordeKinds.Looks[kind];look++)for(int yi=0;yi<2;yi++)for(int walk=0;walk<2;walk++)
+            {
+                int id=81000+kind*40+look*8+yi*2+walk;float sc=NativeHordeKinds.Scale[kind],yaw=(yi==0?20:200)+kind*7,speed=walk==1?1.3f:0;var at=new Vector3(1,0,2);
+                float yr=yaw*(float)Math.PI/180;var fwd=new Vector3((float)Math.Sin(yr),0,(float)Math.Cos(yr));var side=new Vector3(fwd.Z,0,-fwd.X);
+                var bones=Posed(kind,id,at,yaw,1,speed);var drawn=new Drawn(kind,look,id,bones);var body=new Vector3(at.X,at.Y+NativeHordeKinds.RootHeight(kind,false),at.Z);
+                for(int ai=0;ai<aims.Length;ai++)
+                {
+                    var cause=causes[(ai+look+yi+walk+kind)%causes.Length];var st=new NativeHordeGoreState{Tier=(ai+kind+walk)%3};
+                    NativeHordeGore.Segment(bones,aims[ai],out var a0,out var a1);var aim=(a0+a1)*.5f;Vector3 point,dir,shot=Vector3.Zero,sweep=Vector3.Zero;
+                    if(cause==NativeHordeGore.Cause.Blast){point=body+fwd*1.3f*sc-Vector3.UnitY*.6f*sc;dir=-fwd;}
+                    else
+                    {
+                        var from=cause==NativeHordeGore.Cause.Melee?body+fwd*1.4f*sc+side*.3f:new Vector3(at.X,1.55f*sc,at.Z)+fwd*6+side*(ai%3-1)*1.1f;
+                        var ray=Vector3.Normalize(aim-from);if(!Authority(kind,at,from,ray,out point))continue;
+                        dir=Vector3.Normalize(new Vector3(ray.X,0,ray.Z));if(cause==NativeHordeGore.Cause.Melee)sweep=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,dir)+Vector3.UnitY*(ai%2==0?.35f:-.4f));else shot=ray;
+                    }
+                    int j=st.Hit(new GoreHit{Id=id,Kind=kind,Look=look,Time=1,Amount=25,MaxHp=80,Cause=cause,Point=point,Dir=dir,Shot=shot,Sweep=sweep},bones,at.Y,out _);
+                    Check(j>0,"kind "+kind+": a hit wounds a drawn part");if(j<=0)continue;hits++;if(walk==1)moving++;
+                    var w=st.Find(id,false).W[0];var wp=Vector3.Transform(w.P,bones[j]);float cd=drawn.Off(j,wp);centre.Add(cd);
+                    Check(cd<.004f*sc,NativeHordeKinds.Ids[kind]+" look "+look+" joint "+j+" "+cause+": the wound's centre is on the drawn part ("+cd.ToString("0.000")+" m)");
+                    // The run goes down the part's surface where the wound was struck (the strip it replaced lay across the shot).
+                    for(int k=0;k+1<w.RunN;k++)
+                    {
+                        var ra=Vector3.Transform(w.Run(k),bones[j]);var rb=Vector3.Transform(w.Run(k+1),bones[j]);var rn=Vector3.Normalize(Vector3.TransformNormal(w.RunNormal(k),bones[j]));
+                        var fall=-Vector3.UnitY-rn*Vector3.Dot(-Vector3.UnitY,rn);if(fall.Length()<.3f)continue;downs.Add(Vector3.Dot(Vector3.Normalize(rb-ra),Vector3.Normalize(fall)));
+                        if(k==0){var wn=Vector3.Normalize(Vector3.TransformNormal(w.N,bones[j]));var wt=Vector3.TransformNormal(w.T,bones[j]);var across=NativeHordeGore.Unit(Vector3.Cross(wn,wt),Vector3.UnitY);var fw=-Vector3.UnitY-wn*Vector3.Dot(-Vector3.UnitY,wn);if(fw.Length()>.3f)acrossOld.Add(Math.Abs(Vector3.Dot(across,Vector3.Normalize(fw))));}
+                    }
+                    foreach(float age in new[]{1.6f,4.5f})
+                    {
+                        var pose=walk==1?Posed(kind,id,at+fwd*speed*age,yaw,1+age,speed):bones;var surface=walk==1?new Drawn(kind,look,id,pose):drawn;
+                        st.Begin();st.DrawWounds(id,pose,1+age);bool hasRun=w.RunN>=2&&w.RunLength*MeleeMath.Smooth(age/1.6f+.15f)>w.Size*.4f;int runs=hasRun?w.RunN-1:0;
+                        for(int i=0;i<st.BlockCount;i++)
+                        {
+                            float d=surface.Off(j,st.Blocks[i]);blocks++;(hasRun&&i==st.BlockCount-1?drop:hasRun&&i>=st.BlockCount-1-runs?run:core).Add(d);
+                            if(kind<NativeHordeKinds.Count)worstSeven=Math.Max(worstSeven,d);else worstZone=Math.Max(worstZone,d);tierWorst[st.Tier]=Math.Max(tierWorst[st.Tier],d);
+                            if(d>worstAll){worstAll=d;worstWhat=(kind<NativeHordeKinds.Count?NativeHordeKinds.Ids[kind]:"zone kind "+kind)+" joint "+j+" "+cause;}
+                            Check(d<=.035f*Math.Max(1,sc),NativeHordeKinds.Ids[Math.Min(kind,NativeHordeKinds.Ids.Length-1)]+" kind "+kind+" look "+look+(walk==1?" walking":" standing")+" joint "+j+" "+cause+" at "+age+" s: wound piece "+i+" of "+st.BlockCount+" sits on the drawn part ("+d.ToString("0.000")+" m off)");
+                        }
+                    }
+                }
+            }
+            float P(List<float> l,float q){if(l.Count==0)return 0;l.Sort();return l[Math.Min(l.Count-1,(int)(l.Count*q))];}
+            Check(hits>=NativeHordeKinds.All*2*4*aims.Length*8/10,"the shots land ("+hits+")");
+            Check(P(core,.95f)<.02f&&P(run,.95f)<.02f&&P(drop,.95f)<.025f,"nineteen in twenty wound pieces sit within 2 cm of the drawn part (wound "+P(core,.95f).ToString("0.000")+", run "+P(run,.95f).ToString("0.000")+", drop "+P(drop,.95f).ToString("0.000")+" m)");
+            // The regression: the run runs down the surface (its stretch along the surface's own down), where the old strip lay across.
+            string Deg(float c)=>(Math.Acos(Math.Max(-1,Math.Min(1,c)))*180/Math.PI).ToString("0");
+            Check(downs.Count>hits/2&&P(downs,.5f)>.95f&&P(downs,.05f)>.6f&&P(downs,0)>0,"the blood run runs down the drawn surface (half its stretches within "+Deg(P(downs,.5f))+" degrees of the surface's down, 19 in 20 within "+Deg(P(downs,.05f))+", every one downward: worst "+Deg(P(downs,0))+"; "+downs.Count+" stretches)");
+            Check(P(acrossOld,.5f)<.75f,"the old run's axis (the wound frame's b, across the shot) was not down the surface (median |cos| "+P(acrossOld,.5f).ToString("0.00")+")");
+            // The regression: a head shot on the big kinds is on the drawn head; the capsule the wound went on is far wider.
+            var notes=new List<string>();
+            foreach(int kind in new[]{NativeHordeKinds.Brute,NativeHordeKinds.Hulk})
+            {
+                int id=82000+kind;var at=Vector3.Zero;var bones=Posed(kind,id,at,0);var drawn=new Drawn(kind,0,id,bones);float sc=NativeHordeKinds.Scale[kind];
+                NativeHordeGore.Segment(bones,CapturedRig.Head,out var h0,out var h1);float capsule=NativeHordeGore.SegmentRadius[CapturedRig.Head]*NativeHordeGore.Girth(kind,false)*sc,widest=0;
+                foreach(var v in drawn.Tri[CapturedRig.Head])widest=Math.Max(widest,Vector3.Distance(NativeHordeGore.Closest(h0,h1,v),v));
+                var from=new Vector3(.2f,1.6f,7);var ray=Vector3.Normalize((h0+h1)*.5f-from);Check(Authority(kind,at,from,ray,out var point),"the head shot meets the hit volume");
+                var st=new NativeHordeGoreState();int j=st.Hit(new GoreHit{Id=id,Kind=kind,Time=1,Amount=20,MaxHp=80,Cause=NativeHordeGore.Cause.Bullet,Point=point,Dir=Vector3.Normalize(new Vector3(ray.X,0,ray.Z)),Shot=ray},bones,0,out bool head);
+                var w=st.Find(id,false).W[0];float now=drawn.Off(CapturedRig.Head,Vector3.Transform(w.P,bones[w.Bone]));
+                NativeHordeGore.Place(bones,kind,point,ray,false,out var old,out _,out _);float was=drawn.Off(CapturedRig.Head,old);
+                Check(capsule>widest*1.2f,NativeHordeKinds.Ids[kind]+": the head's capsule ("+capsule.ToString("0.000")+" m) is wider than the drawn head ("+widest.ToString("0.000")+" m)");
+                Check(j==CapturedRig.Head&&head&&now<.004f*sc&&was>.04f*sc,NativeHordeKinds.Ids[kind]+": the head shot wounds the drawn head ("+now.ToString("0.000")+" m off it), not the capsule ("+was.ToString("0.000")+" m off)");
+                notes.Add(NativeHordeKinds.Ids[kind]+" head capsule "+capsule.ToString("0.00")+" m vs drawn "+widest.ToString("0.00")+" m: a head shot "+(was*100).ToString("0")+" cm off on the capsule, "+(now*100).ToString("0.0")+" cm on the model");
+            }
+            // An old frame (no horde-hit data) never wounds a lost limb (it is not drawn); the replicated lost bits are on every frame.
+            {
+                var bones=Posed(NativeHordeKinds.Shambler,82100,Vector3.Zero,0);var st=new NativeHordeGoreState();
+                var arm=First(bones,0,82100,new Vector3(-.4f,1.1f,6),Vector3.Normalize(NativeHordeGore.Origin(bones[CapturedRig.LElbow])-new Vector3(-.4f,1.1f,6)),out var ap,out int aj)?ap:Vector3.Zero;
+                int j=st.Hit(new GoreHit{Id=82100,Kind=0,Time=1,Amount=10,MaxHp=60,Cause=NativeHordeGore.Cause.Bullet,Lost=2|8,Point=arm,Dir=-Vector3.UnitZ},bones,0,out _);
+                Check((NativeHordeGore.ShownJoints(2|8)&1<<j)!=0&&j!=CapturedRig.LArm&&j!=CapturedRig.LElbow&&j!=CapturedRig.LHand,"an old frame's hit where a lost arm was wounds a drawn part (joint "+j+", the arm's "+aj+")");
+                Check(NativeHordeGore.ShownJoints(0)==(((1<<22)-1)&~1)&&NativeHordeGore.ShownJoints(2|8)==((((1<<22)-1)&~1)&~(1<<CapturedRig.LArm|1<<CapturedRig.LElbow|1<<CapturedRig.LHand))&&NativeHordeGore.ShownJoints(1)==((((1<<22)-1)&~1)&~(1<<CapturedRig.Head)),"the drawn joints are the runtime's (a lost part's whole subtree hidden)");
+            }
+            // The runtime: wounds only on the Full model they were placed on; the Full models handed over as the bank loads.
+            {
+                var p=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHordeGorePresentation.cs"));var k=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs"));var m=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHordeKindModels.cs"));
+                Check(p.Contains("if(rig==null||tier!=NativeHordeModels.Full||hordeGore.Wounds(id)==0)return;")&&k.Contains("GoreWoundsJob(m.Id,rig,s.Tier);"),"a live add's wounds draw only on the Full model (the surface they are on)");
+                Check(m.Contains("if(tier==NativeHordeModels.Full)NativeHordeGoreBody.Keep(built);"),"the bank hands the gore its Full models as it loads (no hit builds one)");
+                Check(p.Contains("Look=look,")&&p.Contains("Shot=GoreV(shot)")&&p.Contains("var shot=projectile&&travel.sqrMagnitude>.5f?travel.normalized:Vector3.zero;"),"a hit carries the drawn look and a projectile's own travel");
+            }
+            summary=hits+" hits on all "+NativeHordeKinds.All+" kinds and every look ("+moving+" walking, drawn on the later pose), five causes and three gore tiers draw "+blocks+" wound pieces on the drawn part: worst "+(worstSeven*100).ToString("0.0")+" cm on the seven, "+(worstZone*100).ToString("0.0")+" cm on the zone kinds ("+worstWhat+"), tiers "+string.Join("/",tierWorst.Select(x=>(x*100).ToString("0.0")))+" cm, 95% within "+(P(core,.95f)*100).ToString("0.0")+" (wound) / "+(P(run,.95f)*100).ToString("0.0")+" (run) / "+(P(drop,.95f)*100).ToString("0.0")+" (drop) cm, centres within "+(P(centre,1)*100).ToString("0.00")+" cm; runs down the surface (half within "+Deg(P(downs,.5f))+" degrees, 19 in 20 within "+Deg(P(downs,.05f))+"; the old strip across it, median "+Deg(P(acrossOld,.5f))+" degrees off); "+string.Join("; ",notes);
+        }
+
+        // ---- the joints the runtime hands the gore are the joints the checks pose ----
+        // Unity's Transform.localToWorldMatrix (column vectors: the parent's times its own translation, rotation, scale), written out
+        // here as column-major products, through NativeHordeGore.FromColumns (what NativeHordeGorePresentation.GoreN calls), equals
+        // the System.Numerics row-vector chain the checks use (Posed/Bones); and Column takes it back (GoreU, the corpses' joints).
+        private static void Conversion(out string summary)
+        {
+            float worst=0;int n=0;
+            static float[] Mul(float[] a,float[] b){var r=new float[16];for(int i=0;i<4;i++)for(int j=0;j<4;j++){float s=0;for(int k=0;k<4;k++)s+=a[i+4*k]*b[k+4*j];r[i+4*j]=s;}return r;}
+            static float[] Trs(Vector3 t,Quaternion q,float s)
+            {
+                float x=q.X,y=q.Y,z=q.Z,w=q.W;var m=new float[16];
+                m[0]=(1-2*(y*y+z*z))*s;m[1]=2*(x*y+w*z)*s;m[2]=2*(x*z-w*y)*s;m[4]=2*(x*y-w*z)*s;m[5]=(1-2*(x*x+z*z))*s;m[6]=2*(y*z+w*x)*s;m[8]=2*(x*z+w*y)*s;m[9]=2*(y*z-w*x)*s;m[10]=(1-2*(x*x+y*y))*s;
+                m[12]=t.X;m[13]=t.Y;m[14]=t.Z;m[15]=1;return m;
+            }
+            foreach(int kind in new[]{NativeHordeKinds.Shambler,NativeHordeKinds.Hulk})foreach(float yaw in new[]{0f,37,250})
+            {
+                var pose=new CapturedRig.Pose();var gait=new NativeHordeGait();var st=NativeHordeKinds.ProposedRow(kind);float sc=NativeHordeKinds.Scale[kind];var at=new Vector3(2,0,-1);
+                var root=new Vector3(at.X,NativeHordeKinds.DrawRoot(kind,false),at.Z);
+                gait.Pose(new HordeMotionInput{Kind=kind,Id=83000,Seed=NativeHordeKinds.Seed(83000),Time=1.3f,Yaw=yaw,Root=root/sc,Velocity=new Vector3(0,0,.8f),Health=1,AttackAge=float.NaN,Strike=NativeHordeKinds.Strike(st,false,0),Recover=NativeHordeKinds.Recover(st,false,0),Attack=NativeHordeKinds.Default[kind],Side=1},pose,new NativeHordeReact());
+                var rows=Bones(pose,root,gait.Yaw,sc);
+                // The rig root: SetPositionAndRotation(pos, Euler(0, yaw, 0)), localScale = the kind's scale; each joint its local pose.
+                float half=gait.Yaw*(float)Math.PI/360;var unity=new float[22][];var rootM=Trs(root,new Quaternion(0,(float)Math.Sin(half),0,(float)Math.Cos(half)),sc);
+                for(int i=0;i<22;i++)
+                {
+                    int parent=CapturedRig.Bones[i].Parent;var local=Trs(CapturedRig.Mirror(pose.Position[i]),Quaternion.Normalize(CapturedRig.Mirror(pose.Rotation[i])),1);
+                    unity[i]=Mul(parent<0?rootM:unity[parent],local);
+                    var c=unity[i];var g=NativeHordeGore.FromColumns(new Vector4(c[0],c[1],c[2],c[3]),new Vector4(c[4],c[5],c[6],c[7]),new Vector4(c[8],c[9],c[10],c[11]),new Vector4(c[12],c[13],c[14],c[15]));
+                    var r=rows[i];float d=Math.Max(Math.Max(Math.Max(Math.Abs(g.M11-r.M11),Math.Abs(g.M12-r.M12)),Math.Max(Math.Abs(g.M13-r.M13),Math.Abs(g.M21-r.M21))),Math.Max(Math.Max(Math.Abs(g.M22-r.M22),Math.Abs(g.M23-r.M23)),Math.Max(Math.Max(Math.Abs(g.M31-r.M31),Math.Abs(g.M32-r.M32)),Math.Max(Math.Abs(g.M33-r.M33),(NativeHordeGore.Origin(g)-NativeHordeGore.Origin(r)).Length()))));
+                    worst=Math.Max(worst,d);n++;
+                    for(int col=0;col<4;col++){var back=NativeHordeGore.Column(g,col);Check(back==new Vector4(c[col*4],c[col*4+1],c[col*4+2],c[col*4+3]),"Column takes a joint back to Unity's column "+col);}
+                }
+            }
+            Check(worst<2e-5f,"the Unity joints through FromColumns are the checks' joints (worst element "+worst.ToString("0.0e0")+")");
+            summary=n+" Unity joint matrices (shambler and Hulk, three facings) convert to the checks' own within "+worst.ToString("0.0e0");
         }
 
         // ---- caps and cleanup in a big horde ----
@@ -340,18 +551,24 @@ namespace ChipArena.UnityConversion
             for(int t=0;t<3;t++){var st=new NativeHordeGoreState{Tier=t};for(int i=0;i<24;i++)I((int)st.Fate(0,10+i*.3f,causes[i%6],i%3==0,10+i*4,60,i%2==0?1:2,i%5==0));}
             return h;
         }
-        /// <summary>The digest on the code before the binding (shared 8740ceb), Debug and Release alike.</summary>
-        private const ulong FallbackBefore=0x1a7d959dbc8e8969UL;
+        /// <summary>The digest of an old frame's hits, Debug and Release alike. Re-recorded on purpose on 2026-10-20 (the wound fix,
+        /// "Zombie wounds appear off their body"): the wounds go where the shot enters the drawn model, fitted to it, with their
+        /// run traced down it, instead of on a capsule round the joint, so every wound's place, normal, size and run changed (and
+        /// with them the bursts and sprays that leave the wound). The binding's own digest on shared 8740ceb..f930684 was
+        /// 0x1a7d959dbc8e8969; the binding still leaves old frames alone (the stray-data check below).</summary>
+        private const ulong FallbackBefore=0xf8a1621b9ac8bba8UL;
         private static void Fallback(out string summary)
         {
             ulong d=FallbackDigest();
-            Check(d==FallbackBefore,"an old frame's hits (no horde-hit data) make bit for bit the wounds, bursts, sprays and fates they made before the binding (digest 0x"+d.ToString("x16")+", before 0x"+FallbackBefore.ToString("x16")+")");
+            Check(d==FallbackBefore,"an old frame's hits (no horde-hit data) make bit for bit the wounds, bursts, sprays and fates they made (digest 0x"+d.ToString("x16")+", recorded 0x"+FallbackBefore.ToString("x16")+")");
             // The data's fields are not read without HasHordeHit: the same hits with stray values in them make the same bits.
             var bones=Posed(NativeHordeKinds.Shambler,77000,Vector3.Zero,0);var a=new NativeHordeGoreState();var b=new NativeHordeGoreState();int same=0;
             for(int i=0;i<40;i++)
             {
                 var h=new GoreHit{Id=77000+i%3,Kind=0,Index=i%2,Time=1+i*.11f,Amount=4+i*2,MaxHp=60,Cause=i%5==0?NativeHordeGore.Cause.Heavy:i%7==0?NativeHordeGore.Cause.Blast:NativeHordeGore.Cause.Bullet,Kill=i%6==5,Head=i%9==0,Point=new Vector3(((i%5)-2)*.12f,.3f+(i%8)*.2f,.4f),Dir=-Vector3.UnitZ};
-                var stray=h;stray.Raw=999;stray.HasPart=true;stray.Part=NativeHordeGore.PartBits[i%9];stray.Lost=8|128;
+                // (The lost limbs are the replicated Pve.Lost on every frame, not the data: a lost part is not drawn, so no frame
+                // wounds it; OnBody holds that.)
+                var stray=h;stray.Raw=999;stray.HasPart=true;stray.Part=NativeHordeGore.PartBits[i%9];
                 int ja=a.Hit(h,bones,0,out bool ha),jb=b.Hit(stray,bones,0,out bool hb);
                 var wa=a.Find(h.Id,false);var wb=b.Find(h.Id,false);var x=wa.W[(wa.Next-1+8)%8];var y=wb.W[(wb.Next-1+8)%8];var sa=a.Sprays[a.SprayCount-1];var sb=b.Sprays[b.SprayCount-1];
                 Check(ja==jb&&ha==hb&&x.P==y.P&&x.N==y.N&&x.Size==y.Size&&x.Head==y.Head&&sa.Kind==sb.Kind&&sa.Severity==sb.Severity&&sa.Origin==sb.Origin,"hit "+i+": without HasHordeHit the data's fields are not read");same++;
@@ -375,7 +592,7 @@ namespace ChipArena.UnityConversion
                 int id=78000+kind*10+yaw/90;var at=new Vector3(-2,0,3);var bones=Posed(kind,id,at,yaw);float sc=NativeHordeKinds.Scale[kind];
                 float r=yaw*(float)Math.PI/180;var fwd=new Vector3((float)Math.Sin(r),0,(float)Math.Cos(r));var shooter=new Vector3(at.X,1.4f*sc,at.Z)+fwd*6;
                 // A shot into the chest that the authority says struck part p: the wound is on p (the torso a known part).
-                NativeHordeGore.Segment(bones,CapturedRig.Chest,out var c0,out var c1);var chestDir=Vector3.Normalize((c0+c1)*.5f-shooter);First(bones,kind,shooter,chestDir,out var chest,out _);
+                NativeHordeGore.Segment(bones,CapturedRig.Chest,out var c0,out var c1);var chestDir=Vector3.Normalize((c0+c1)*.5f-shooter);First(bones,kind,id,shooter,chestDir,out var chest,out _);
                 foreach(int p in new[]{0,1,2,4,8,16,32,64,128,256})
                 {
                     st.Clear();var h=new GoreHit{Id=id,Kind=kind,Time=1,Amount=12,MaxHp=60,Cause=NativeHordeGore.Cause.Bullet,Known=true,Head=p==1,HasPart=true,Part=p,Raw=12,Point=chest,Dir=chestDir};
@@ -387,7 +604,7 @@ namespace ChipArena.UnityConversion
                 var body=new Vector3(at.X,at.Y+NativeHordeKinds.RootHeight(kind,false),at.Z);
                 foreach(int aim in new[]{CapturedRig.Head,CapturedRig.Chest,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow,CapturedRig.LHip,CapturedRig.RHip,CapturedRig.LKnee,CapturedRig.RKnee})
                 {
-                    NativeHordeGore.Segment(bones,aim,out var a0,out var a1);var dir=Vector3.Normalize((a0+a1)*.5f-shooter);if(!First(bones,kind,shooter,dir,out var point,out int first))continue;
+                    NativeHordeGore.Segment(bones,aim,out var a0,out var a1);var dir=Vector3.Normalize((a0+a1)*.5f-shooter);if(!First(bones,kind,id,shooter,dir,out var point,out int first))continue;
                     int part=NativeHordeDamage.Part(new V3(-body.X,body.Y,body.Z),-yaw,false,new V3(-point.X,point.Y,point.Z),false);
                     st.Clear();int j=st.Hit(new GoreHit{Id=id,Kind=kind,Time=2,Amount=10,MaxHp=60,Cause=NativeHordeGore.Cause.Bullet,Known=true,Head=part==1,HasPart=true,Part=part,Raw=10,Point=point,Dir=dir},bones,at.Y,out _);
                     Check((NativeHordeGore.PartJoints(part)&1<<j)!=0,NativeHordeKinds.Ids[kind]+" yaw "+yaw+": the shot at joint "+aim+" (first "+first+") the authority calls part "+part+" wounds that part (joint "+j+")");
@@ -399,7 +616,7 @@ namespace ChipArena.UnityConversion
             }
             Check(sides>=110&&agree>=placed*7/10,"the authority's anatomy and the drawn body agree on the sides of "+sides+" limb hits ("+agree+" on the very part)");
             var bonesS=Posed(NativeHordeKinds.Shambler,79000,Vector3.Zero,0);
-            Vector3 Surface(int joint,out Vector3 dir){NativeHordeGore.Segment(bonesS,joint,out var a0,out var a1);var sh=new Vector3(0,1.4f,6);dir=Vector3.Normalize((a0+a1)*.5f-sh);First(bonesS,0,sh,dir,out var p,out _);return p;}
+            Vector3 Surface(int joint,out Vector3 dir){NativeHordeGore.Segment(bonesS,joint,out var a0,out var a1);var sh=new Vector3(0,1.4f,6);dir=Vector3.Normalize((a0+a1)*.5f-sh);First(bonesS,0,79000,sh,dir,out var p,out _);return p;}
             int Wound(GoreHit h,out bool head,out GoreSpray spray){st.Clear();h.Id=79000;h.Kind=0;h.MaxHp=60;if(h.Amount==0)h.Amount=12;if(h.Cause==NativeHordeGore.Cause.None)h.Cause=NativeHordeGore.Cause.Bullet;int j=st.Hit(h,bonesS,0,out head);spray=st.Sprays[st.SprayCount-1];return j;}
             // Present against absent: a hit with no new fact draws as the inference; old frames infer the head and the part.
             {
@@ -508,16 +725,16 @@ namespace ChipArena.UnityConversion
         private static void Source(string root)
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
-            var core=R("Core/NativeHordeGore.cs");
-            Check(!core.Contains("UnityEngine")&&!core.Contains("System.Linq")&&!core.Contains("new Random(")&&!core.Contains("DateTime"),"the gore rules are pure Core (no engine, no LINQ, no clock-free randomness)");
-            foreach(var f in new[]{"Core/NativeHordeGore.cs","Runtime/NativeHordeGorePresentation.cs","Runtime/NativeHordeGoreGallery.cs"})
+            foreach(var f in new[]{"Core/NativeHordeGore.cs","Core/NativeHordeGoreBody.cs"}){var core=R(f);Check(!core.Contains("UnityEngine")&&!core.Contains("System.Linq")&&!core.Contains("new Random(")&&!core.Contains("DateTime"),f+": the gore rules are pure Core (no engine, no LINQ, no clock-free randomness)");}
+            foreach(var f in new[]{"Core/NativeHordeGore.cs","Core/NativeHordeGoreBody.cs","Runtime/NativeHordeGorePresentation.cs","Runtime/NativeHordeGoreGallery.cs"})
             {
                 var s=R(f);foreach(var bad in new[]{".Hp=",".Hp-=","Damage(","Emit(","StaggerAt=","RecoverAt=","LastAttack=","Body.position=","linearVelocity=",".Lost=a","Collider.","isKinematic=","Pve.Lost|=","SendFrame","Network"})Check(!s.Contains(bad),f+" never writes authority or network state (`"+bad+"`)");
             }
             // No authority, rules or network file reads the gore; every file that does is presentation.
             var dir=Path.Combine(root,"Assets/ChipArena");var readers=new List<string>();
             foreach(var f in Directory.GetFiles(dir,"*.cs",SearchOption.AllDirectories)){var s=Code(File.ReadAllText(f));if(s.Contains("NativeHordeGore")||s.Contains("HordeGore"))readers.Add(Path.GetFileName(f));}
-            var allowed=new HashSet<string>{"NativeHordeGore.cs","NativeHordeGorePresentation.cs","NativeHordeGoreGallery.cs","NativeHordeKindPresentation.cs","NativeMinionFxPresentation.cs","NativeIronworksKindsPresentation.cs","NativeBowPresentation.cs"};
+            // (NativeHordeKindModels.cs: the bank's loader hands the gore the Full models it builds, NativeHordeGoreBody.Keep.)
+            var allowed=new HashSet<string>{"NativeHordeGore.cs","NativeHordeGoreBody.cs","NativeHordeGorePresentation.cs","NativeHordeGoreGallery.cs","NativeHordeKindPresentation.cs","NativeHordeKindModels.cs","NativeMinionFxPresentation.cs","NativeIronworksKindsPresentation.cs","NativeBowPresentation.cs"};
             foreach(var f in readers)Check(allowed.Contains(f),"only presentation files use the gore ("+f+")");
             foreach(var f in new[]{"Runtime/NativePveHorde.cs","Runtime/NativeArena.cs","Runtime/NativeNetwork.cs","Runtime/NativeNetworkFrame.cs","Runtime/NativeDeaths.cs","Runtime/NativeSummons.cs","Core/NativeHordeDamage.cs","Core/NativeHordeKinds.cs","Core/ArenaModel.cs"})
                 if(File.Exists(Path.Combine(dir,f)))Check(!Code(R(f)).Contains("HordeGore"),f+" (authority, rules or network) never reads the gore");

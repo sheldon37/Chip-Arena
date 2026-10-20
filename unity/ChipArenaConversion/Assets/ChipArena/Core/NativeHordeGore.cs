@@ -10,9 +10,11 @@ namespace ChipArena.UnityConversion
     /// direction, detail, amount and attacker; its death record: id, seed, time, position, yaw, lost limbs, damage kind), its seed
     /// and the presentation clock, so every peer draws the same wound, spurt, chunk and pool. Nothing here is read by a rule.
     /// <list type="bullet">
-    /// <item>Hits (<see cref="Cause"/>, <see cref="Place"/>): the struck joint is the drawn body's nearest to the hit point, within
-    /// the authority's struck part when the hit carries its horde-hit data (<see cref="Struck"/>, <see cref="Strength"/>); the
-    /// wound sits on that part's surface facing the shot and rides the joint (live, dying, then the corpse). A hit sprays blood
+    /// <item>Hits (<see cref="Cause"/>, <see cref="PlaceOn"/>): the wound goes where the shot enters the drawn model (the kind's
+    /// own triangles, NativeHordeGoreBody; until 2026-10-20 a capsule round the joint, which floated it off the big kinds),
+    /// within the authority's struck part when the hit carries its horde-hit data (<see cref="Struck"/>, <see cref="Strength"/>);
+    /// it lies on that surface, fitted to the part, its blood run traced down it, and rides the joint (live, dying, then the
+    /// corpse). A hit sprays blood
     /// out of the wound and along the shot (the blood sim, <see cref="Spray"/>), puffs a little red mist and throws flesh bits
     /// (<see cref="Bit"/>); a head hit sprays harder. Wounds stay on the add, a few per add (<see cref="WoundsShown"/>), wet then
     /// drying, and drip (<see cref="Drips"/>).</item>
@@ -208,6 +210,56 @@ namespace ChipArena.UnityConversion
         }
         public static Vector3 Closest(Vector3 a,Vector3 b,Vector3 p){var ab=b-a;float l=ab.LengthSquared();if(l<1e-10f)return a;float t=Math.Max(0,Math.Min(1,Vector3.Dot(p-a,ab)/l));return a+ab*t;}
         public static Vector3 Unit(Vector3 v,Vector3 fallback){float l=v.Length();return l>1e-5f&&l<1e6f?v/l:fallback;}
+        /// <summary>
+        /// A joint's world matrix as the gore reads it (System.Numerics, row vectors) from a Unity matrix's four columns (column
+        /// vectors: the axes and the translation). The runtime hands every Transform.localToWorldMatrix through this, so the
+        /// checks can hold the same conversion against the rig's own composition.
+        /// </summary>
+        public static Matrix4x4 FromColumns(Vector4 c0,Vector4 c1,Vector4 c2,Vector4 c3)=>new Matrix4x4(c0.X,c0.Y,c0.Z,c0.W,c1.X,c1.Y,c1.Z,c1.W,c2.X,c2.Y,c2.Z,c2.W,c3.X,c3.Y,c3.Z,c3.W);
+        /// <summary>Column i of a row-vector matrix as a Unity matrix holds it (the inverse of <see cref="FromColumns"/>).</summary>
+        public static Vector4 Column(in Matrix4x4 m,int i)=>i==0?new Vector4(m.M11,m.M12,m.M13,m.M14):i==1?new Vector4(m.M21,m.M22,m.M23,m.M24):i==2?new Vector4(m.M31,m.M32,m.M33,m.M34):new Vector4(m.M41,m.M42,m.M43,m.M44);
+        /// <summary>The drawn joints (a mask of 1 &lt;&lt; joint) of a body with the LIMB bits `lost` gone: a lost part's whole
+        /// subtree is not drawn (NativeMinionFxPresentation.HordeJointShown); the body root has no part.</summary>
+        public static int ShownJoints(int lost)
+        {
+            int mask=((1<<22)-1)&~1;if(lost==0)return mask;
+            for(int j=1;j<22;j++)for(int i=0;i<PartBits.Length;i++)if((lost&PartBits[i])!=0){bool within=false;for(int b=j;b>=0;b=CapturedRig.Bones[b].Parent)if(b==PartRoots[i]){within=true;break;}if(within){mask&=~(1<<j);break;}}
+            return mask;
+        }
+        /// <summary>
+        /// Where a hit lands on the drawn body itself (<see cref="NativeHordeGoreBody"/>, the add's own look and shape): the
+        /// first place its ray enters a drawn part. The ray is the shot's own travel `shot` (3D; zero: the push `dir`) through the
+        /// replicated point, started well outside the body; a blast's runs in from the body's side facing it, at the height
+        /// <see cref="Place"/> picks. Only the joints in `allow` (0: any) that are drawn (`lost`) are candidates. A ray that misses
+        /// every drawn part (the authority's capsule is wider than a thin kind, and narrower than a reaching arm) takes the nearest
+        /// part as <see cref="Place"/> picks it and the nearest drawn point of it. Writes the surface point, its outward normal
+        /// and whether it is the head.
+        /// </summary>
+        public static int PlaceOn(Matrix4x4[] bones,NativeHordeGoreBody body,in NativeHordeGoreBody.Shape shape,int kind,Vector3 point,Vector3 dir,Vector3 shot,bool blast,int allow,int lost,out Vector3 surface,out Vector3 normal,out bool head)
+        {
+            float scale=ScaleOf(bones[CapturedRig.Body]);dir=Unit(dir,Vector3.UnitZ);var ray=Unit(shot,dir);var through=point;
+            if(blast)
+            {
+                var root=Origin(bones[CapturedRig.Chest]);var toward=Unit(new Vector3(point.X-root.X,0,point.Z-root.Z),-dir);float y=Math.Max(Origin(bones[CapturedRig.Pelvis]).Y-.3f*scale,Math.Min(root.Y+.25f*scale,point.Y+.6f*scale));
+                through=new Vector3(root.X,y,root.Z);ray=-toward;
+            }
+            int shown=ShownJoints(lost),cand=(allow!=0?allow:-1)&shown;if(cand==0)cand=shown;
+            float reach=1.6f*scale;var o=through-ray*reach;float bestT=2*reach;int best=-1;Vector3 bestN=Vector3.Zero;
+            for(int j=1;j<22&&body!=null;j++)
+            {
+                if((cand&1<<j)==0||body.Triangles(j)==0||!Matrix4x4.Invert(bones[j],out var inv))continue;
+                var lo=Vector3.Transform(o,inv);var ld=Vector3.TransformNormal(ray,inv);
+                if(body.Passes(j,lo,ld,bestT,shape)&&body.Ray(j,lo,ld,bestT,shape,out float t,out var ln)&&t<bestT){bestT=t;best=j;bestN=Vector3.TransformNormal(ln,bones[j]);}
+            }
+            if(best>=0){surface=o+ray*bestT;normal=Unit(bestN,-ray);}
+            else
+            {
+                best=Place(bones,kind,blast?through+(-ray)*.5f*scale:point,dir,false,out surface,out normal,out _,false,cand);
+                if(body!=null&&body.Triangles(best)>0&&Matrix4x4.Invert(bones[best],out var inv)&&body.Closest(best,Vector3.Transform(surface,inv),shape,out var at,out var ln)<float.MaxValue)
+                {surface=Vector3.Transform(at,bones[best]);normal=Unit(Vector3.TransformNormal(ln,bones[best]),normal);}
+            }
+            head=best==CapturedRig.Head||best==CapturedRig.Neck&&surface.Y>Origin(bones[CapturedRig.Head]).Y;return best;
+        }
 
         // ================================================================================================================
         // Hashes, palette
@@ -361,10 +413,16 @@ namespace ChipArena.UnityConversion
         /// <summary>The hit carries the authority's horde-hit data (ArenaEvent.HasHordeHit): `Head` is its flag, `Raw` the damage
         /// before the modifiers and the clamp (<see cref="NativeHordeGore.Strength"/>), `HasPart`/`Part` the struck part's LIMB bit
         /// (0 a known torso) and `Lost` the add's lost LIMB bits at the hit (<see cref="NativeHordeGore.Struck"/>). False on old
-        /// frames, and then none of them is read.</summary>
+        /// frames, and then none of the data is read; `Lost` (the replicated Pve.Lost, on every frame) still keeps every wound off
+        /// the parts that are not drawn (<see cref="NativeHordeGore.ShownJoints"/>).</summary>
         public bool Known,HasPart;public float Raw;public int Part,Lost;
         /// <summary>The hit point, the shot's travel (world) and, for a melee blow, the blade's sweep across the body.</summary>
         public Vector3 Point,Dir,Sweep;
+        /// <summary>The shot's own travel in 3D (a projectile's velocity, ArenaEvent.Normal; zero: `Dir`), the ray the wound is
+        /// found along on the drawn body (<see cref="NativeHordeGore.PlaceOn"/>).</summary>
+        public Vector3 Shot;
+        /// <summary>The add's drawn look (HordeKindState.Look): whose model's surface the wound goes on.</summary>
+        public int Look;
     }
     /// <summary>One lit voxel the gore draws (world; linear colours): a wound's block, a flesh bit, a chunk, a stump.</summary>
     public struct GoreBlock{public Vector3 At,Size,Albedo,Emit;public Quaternion Turn;public float Spec,Gloss;}
@@ -385,7 +443,19 @@ namespace ChipArena.UnityConversion
     {
         public int Tier=NativeHordeGore.Full;public bool Enabled=true;
         // ---- wounds ----
-        public struct Wound{public int Bone,Bled;public Vector3 P,N,T,Down;public float Size,At;public NativeHordeGore.Cause Cause;public bool Head,Stump;public uint Seed;}
+        /// <summary>A wound on joint `Bone`, in that joint's own frame: its centre `P` on the drawn surface, the surface's normal
+        /// `N`, the cut's run `T`, down the body `Down`, its size (rig m, fitted to the part it is on). Its blood run follows the
+        /// drawn surface down from under it: `RunN` points `R0`.. with their normals `M0`.., `RunLength` long.</summary>
+        public struct Wound{public int Bone,Bled,RunN;public Vector3 P,N,T,Down,R0,R1,R2,R3,M0,M1,M2,M3;public float Size,At,RunLength;public NativeHordeGore.Cause Cause;public bool Head,Stump;public uint Seed;
+            public Vector3 Run(int k)=>k==0?R0:k==1?R1:k==2?R2:R3;public Vector3 RunNormal(int k)=>k==0?M0:k==1?M1:k==2?M2:M3;
+            public void SetRun(int k,Vector3 p,Vector3 n){switch(k){case 0:R0=p;M0=n;break;case 1:R1=p;M1=n;break;case 2:R2=p;M2=n;break;default:R3=p;M3=n;break;}}
+            /// <summary>The run's tip `length` (its own frame) along its path, and the surface's normal there.</summary>
+            public void Tip(float length,out Vector3 at,out Vector3 n)
+            {
+                at=R0;n=M0;float left=Math.Max(0,length);
+                for(int k=0;k+1<RunN;k++){var a=Run(k);var b=Run(k+1);float d=Vector3.Distance(a,b);if(left<=d){at=d>1e-6f?a+(b-a)*(left/d):a;n=NativeHordeGore.Unit(RunNormal(k)+RunNormal(k+1),RunNormal(k));return;}left-=d;at=b;n=RunNormal(k+1);}
+            }
+        }
         public sealed class AddGore{public int Id=-1;public float Seen;public readonly Wound[] W=new Wound[NativeHordeGore.WoundMax];public int Count,Next;}
         public readonly AddGore[] Adds=new AddGore[NativeHordeGore.AddMax];
         // ---- the hits' mist and bits ----
@@ -438,10 +508,12 @@ namespace ChipArena.UnityConversion
         public int Hit(in GoreHit h,Matrix4x4[] bones,float floor,out bool head)
         {
             head=false;if(!Enabled||h.Cause==NativeHordeGore.Cause.None||bones==null)return -1;var g=Find(h.Id,true,h.Time);g.Seen=Math.Max(g.Seen,h.Time);
-            int allow=h.Known?NativeHordeGore.Struck(h.Head,h.HasPart,h.Part,h.Lost):0;
-            int bone=NativeHordeGore.Place(bones,h.Kind,h.Point,h.Dir,h.Cause==NativeHordeGore.Cause.Blast||h.Cause==NativeHordeGore.Cause.Crush,out var surface,out var n,out head,!h.Known&&h.Head,allow);if(h.Known)head=h.Head;
+            int allow=h.Known?NativeHordeGore.Struck(h.Head,h.HasPart,h.Part,h.Lost):!h.Known&&h.Head?1<<CapturedRig.Head:0;
+            // On the drawn body (its own look and shape), not a capsule round the joint: docs/ZOMBIE-GORE.md "On the drawn body".
+            var body=NativeHordeGoreBody.Of(h.Kind,h.Look);var shape=NativeHordeGoreBody.ShapeOf(h.Kind,h.Look,h.Id);
+            int bone=NativeHordeGore.PlaceOn(bones,body,shape,h.Kind,h.Point,h.Dir,h.Shot,h.Cause==NativeHordeGore.Cause.Blast||h.Cause==NativeHordeGore.Cause.Crush,allow,h.Lost,out var surface,out var n,out head);if(h.Known)head=h.Head;
             uint seed=NativeHordeGore.HitSeed(h.Id,h.Time)^unchecked((uint)h.Index*0x9e3779b1u);var dir=NativeHordeGore.Unit(h.Dir,-n);
-            AddWound(g,bones[bone],bone,surface,n,h.Cause==NativeHordeGore.Cause.Melee&&h.Sweep.LengthSquared()>1e-4f?h.Sweep:dir,h.Time,h.Cause,head,false,seed,NativeHordeGore.ScaleOf(bones[CapturedRig.Body]));
+            AddWound(g,bones[bone],bone,surface,n,h.Cause==NativeHordeGore.Cause.Melee&&h.Sweep.LengthSquared()>1e-4f?h.Sweep:dir,h.Time,h.Cause,head,false,seed,NativeHordeGore.ScaleOf(bones[CapturedRig.Body]),0,body,shape);
             float amount=NativeHordeGore.Strength(h.Cause,h.Known,h.Raw,h.Amount);
             int t=Tier;float power=MeleeMath.Clamp((h.MaxHp>0?amount/h.MaxHp:.3f)*1.5f+(head?.4f:0)+(h.Cause==NativeHordeGore.Cause.Heavy||h.Cause==NativeHordeGore.Cause.Blast?.3f:0),.15f,1);
             int bits=NativeHordeGore.Bits[t]*(head?3:2)/3,mist=Math.Min(NativeHordeGore.Mist[t],head||power>.6f?3:h.Cause==NativeHordeGore.Cause.Melee?1:2);
@@ -473,16 +545,56 @@ namespace ChipArena.UnityConversion
             long key=((long)(id&0xffffff)<<36)^((long)(BitConverter.SingleToInt32Bits(time)&0xfffffff)<<4)^((long)joint<<30)^(1L<<61);
             Spray("sever",.8f,seed,key,at,axis,NativeHordeGore.Unit(along,axis),time,joint==CapturedRig.Head?10:4,id,false);
         }
-        private void AddWound(AddGore g,in Matrix4x4 bone,int joint,Vector3 surface,Vector3 n,Vector3 along,float time,NativeHordeGore.Cause cause,bool head,bool stump,uint seed,float scale,float cut=0)
+        private void AddWound(AddGore g,in Matrix4x4 bone,int joint,Vector3 surface,Vector3 n,Vector3 along,float time,NativeHordeGore.Cause cause,bool head,bool stump,uint seed,float scale,float cut=0,NativeHordeGoreBody body=null,NativeHordeGoreBody.Shape shape=default)
         {
             if(!Matrix4x4.Invert(bone,out var inv))return;
             var p=Vector3.Transform(surface,inv);var ln=NativeHordeGore.Unit(Vector3.TransformNormal(n,inv),Vector3.UnitZ);
-            var down=Vector3.TransformNormal(-Vector3.UnitY,inv);down=NativeHordeGore.Unit(down-ln*Vector3.Dot(down,ln),Vector3.Cross(ln,Vector3.UnitX));
+            var fall=NativeHordeGore.Unit(Vector3.TransformNormal(-Vector3.UnitY,inv),-Vector3.UnitY);
+            var down=fall;down=NativeHordeGore.Unit(down-ln*Vector3.Dot(down,ln),Vector3.Cross(ln,Vector3.UnitX));
             var t=Vector3.TransformNormal(along,inv);t=NativeHordeGore.Unit(t-ln*Vector3.Dot(t,ln),Vector3.Cross(ln,down));
             float size=(cause==NativeHordeGore.Cause.Melee?.03f:cause==NativeHordeGore.Cause.Blast||cause==NativeHordeGore.Cause.Crush?.05f:cause==NativeHordeGore.Cause.Heavy?.036f:.026f)*(head&&!stump?1.25f:1)*(.85f+.3f*NativeHordeGore.H(seed,0,51));
             if(stump)size=cut>0?cut:NativeHordeGore.CutRadius(-1,joint);
             var w=new Wound{Bone=joint,P=p,N=ln,T=t,Down=down,Size=size,At=time,Cause=cause,Head=head,Stump=stump,Seed=seed};
+            if(!stump)OnBody(ref w,fall,body,shape);
             if(g.Count<g.W.Length){g.W[g.Count++]=w;g.Next=g.Count%g.W.Length;}else{g.W[g.Next]=w;g.Next=(g.Next+1)%g.W.Length;}
+        }
+        /// <summary>How far (rig m, the joint's own frame) a wound's footprint may stand off the drawn part before it is made
+        /// smaller, and the fewest of its size it keeps.</summary>
+        public const float FitTolerance=.012f,FitLeast=.38f;
+        /// <summary>
+        /// A wound on the drawn part (<see cref="NativeHordeGoreBody"/>): its footprint (the torn ring, the gash's length and
+        /// width, the blast's scorch, laid flat on the surface) made smaller until every edge of it sits on the part (a wound on a
+        /// thin finger or at a box's edge is a smaller one), and its blood run traced down the part's surface from under it in
+        /// three steps, each put back on the surface (it stops where the surface turns to face down or up, or at the part's end).
+        /// Without the body (no model) the run runs straight down the wound's plane.
+        /// </summary>
+        private static void OnBody(ref Wound w,Vector3 fall,NativeHordeGoreBody body,in NativeHordeGoreBody.Shape shape)
+        {
+            bool has=body!=null&&body.Triangles(w.Bone)>0;var b=NativeHordeGore.Unit(Vector3.Cross(w.N,w.T),w.Down);var t=Vector3.Cross(b,w.N);
+            if(has)
+            {
+                // Each edge of the footprint from the size it has down, the wound as large as its worst edge allows.
+                bool gash=w.Cause==NativeHordeGore.Cause.Melee,burn=w.Cause==NativeHordeGore.Cause.Blast||w.Cause==NativeHordeGore.Cause.Crush;float fit=1;
+                for(int k=0;k<8&&fit>FitLeast;k++)
+                {
+                    Vector3 o;
+                    if(gash){float u=k<4?(k%2==0?1.75f:-1.75f):k<6?.9f*(k==4?1:-1):0;float v=k<4?(k<2?.6f:-.6f):k<6?0:(k==6?.7f:-.7f);o=t*u+b*v;}
+                    else{float a=k*.7853982f;o=(t*(float)Math.Cos(a)+b*(float)Math.Sin(a))*(burn?1.1f:1.05f);}
+                    while(fit>FitLeast&&!body.Near(w.Bone,w.P+o*(w.Size*fit),shape,FitTolerance))fit*=.85f;
+                }
+                w.Size*=Math.Max(fit,FitLeast);
+            }
+            // The run: from under the wound, down the part (each step down the surface where it is, put back on it).
+            float length=w.Size*(2.2f+3.4f*NativeHordeGore.H(w.Seed,1,66)),step=length/3;var c=w.P-w.Down*w.Size*.4f;var cn=w.N;
+            if(has&&body.Closest(w.Bone,c,shape,out var at,out var an,w.Size*2)<float.MaxValue){c=at;cn=an;}
+            w.RunN=1;w.R0=c;w.M0=cn;w.RunLength=0;
+            for(int k=1;k<4;k++)
+            {
+                var d=fall-cn*Vector3.Dot(fall,cn);if(!has){d=w.Down;cn=w.N;}else if(d.Length()<.25f)break;d=Vector3.Normalize(d);
+                var q=c+d*step;var qn=cn;if(has){if(!(body.Closest(w.Bone,q,shape,out var qa,out var qan,step*1.6f)<float.MaxValue))break;q=qa;qn=qan;}
+                // A stretch whose middle leaves the part (it bridged a gap between two of its pieces) or that jumped ends the run.
+                float moved=Vector3.Distance(q,c);if(moved<step*.35f||moved>step*1.6f||has&&!body.Near(w.Bone,(c+q)*.5f,shape,FitTolerance))break;w.SetRun(k,q,qn);w.RunN=k+1;w.RunLength+=moved;c=q;cn=qn;
+            }
         }
         private void Spray(string kind,float severity,uint seed,long key,Vector3 origin,Vector3 normal,Vector3 along,float time,int extra,int target,bool kill)
         {
@@ -546,9 +658,13 @@ namespace ChipArena.UnityConversion
                 ref var x=ref w[i];float age=now-x.At;if(age<0||age>NativeHordeGore.DripSeconds+.2f||x.Bone<0||x.Bone>=22)continue;int due=NativeHordeGore.Drips(age,x.Stump?most*2:most);
                 for(;x.Bled<due&&SprayCount<Sprays.Length;x.Bled++)
                 {
-                    var m=bones[x.Bone];var p=Vector3.Transform(x.P,m);p.Y-=sink;var n=NativeHordeGore.Unit(Vector3.TransformNormal(x.N,m),Vector3.UnitY);var down=NativeHordeGore.Unit(Vector3.TransformNormal(x.Down,m),-Vector3.UnitY);
+                    // Out of the run's tip as it is then (on the drawn surface), else under the wound.
+                    var m=bones[x.Bone];var down=NativeHordeGore.Unit(Vector3.TransformNormal(x.Down,m),-Vector3.UnitY);Vector3 p,n;
+                    if(x.RunN>=2){x.Tip(x.RunLength*MeleeMath.Smooth(age/1.6f+.15f),out var tl,out var tn);p=Vector3.Transform(tl,m);n=NativeHordeGore.Unit(Vector3.TransformNormal(tn,m),Vector3.UnitY);}
+                    else{p=Vector3.Transform(x.P,m);n=NativeHordeGore.Unit(Vector3.TransformNormal(x.N,m),Vector3.UnitY);p+=down*x.Size*.6f*NativeHordeGore.ScaleOf(m);}
+                    p.Y-=sink;
                     long key=((long)(target&0xffffff)<<36)^((long)(BitConverter.SingleToInt32Bits(x.At)&0xfffffff)<<4)^((long)(x.Bled+1)<<30)^((long)x.Bone<<24)^(1L<<60);
-                    Spray("drip",1,x.Seed^unchecked((uint)(x.Bled+1)*0x9e3779b1u),key,p+n*.012f+down*x.Size*.6f,n,down,x.At+age,0,target,false);
+                    Spray("drip",1,x.Seed^unchecked((uint)(x.Bled+1)*0x9e3779b1u),key,p+n*.012f,n,down,x.At+age,0,target,false);
                 }
             }
         }
@@ -605,10 +721,23 @@ namespace ChipArena.UnityConversion
                     for(int r=0;r<torn;r++){float a=r*6.283f/torn+NativeHordeGore.H(x.Seed,r,64)*1.2f,d=z*(.55f+.25f*NativeHordeGore.H(x.Seed,r,65));Block(p+(t*(float)Math.Cos(a)+b*(float)Math.Sin(a))*d+n*z*.05f,turn,new Vector3(z*.55f,z*.45f,z*.36f),r%2==0?NativeHordeGore.Flesh:NativeHordeGore.FleshDark,wet,dry);}
                     if(x.Head&&z>.02f)Block(p+t*z*.3f+n*z*.12f,turn,new Vector3(z*.35f,z*.3f,z*.25f),NativeHordeGore.Bone,.3f);
                 }
-                // The run: blood down the body from the wound, longer the fresher the wound bled, a drop swelling at its end.
-                float run=z*(2.2f+3.4f*NativeHordeGore.H(x.Seed,1,66))*MeleeMath.Smooth(age/1.6f+.15f);
-                if(run>z*.4f){var r0=p-down*z*.4f+n*z*.02f;Block(r0-down*run*.5f,turn,new Vector3(z*.38f,run,z*.18f),NativeHordeGore.BloodWet,wet,dry);
-                    Block(r0-down*run+n*z*.03f,turn,new Vector3(z*.5f,z*.5f,z*.3f),NativeHordeGore.BloodWet,wet,dry);}
+                // The run: blood down the drawn surface from under the wound (its traced path, each stretch laid along itself on the
+                // surface), longer the fresher the wound bled, a drop swelling at its tip.
+                float run=x.RunLength*MeleeMath.Smooth(age/1.6f+.15f);
+                if(x.RunN>=2&&run>x.Size*.4f)
+                {
+                    float left=run;var a=Vector3.Transform(x.R0,m);a.Y-=sink;var an=NativeHordeGore.Unit(Vector3.TransformNormal(x.M0,m),n);
+                    for(int q=0;q+1<x.RunN&&left>1e-5f;q++)
+                    {
+                        var lb=x.Run(q+1);float d=Vector3.Distance(x.Run(q),lb);if(d<1e-6f)continue;float f=Math.Min(1,left/d);left-=d*f;
+                        var bw=Vector3.Transform(x.Run(q)+(lb-x.Run(q))*f,m);bw.Y-=sink;var bn=NativeHordeGore.Unit(Vector3.TransformNormal(x.RunNormal(q+1),m),an);
+                        var axis=NativeHordeGore.Unit(bw-a,down);var sn=NativeHordeGore.Unit(an+bn,n);sn=NativeHordeGore.Unit(sn-axis*Vector3.Dot(sn,axis),n);var width=Vector3.Cross(axis,sn);
+                        Block((a+bw)*.5f+sn*z*.02f,Basis(width,axis,sn),new Vector3(z*.38f,Vector3.Distance(a,bw)+z*.12f,z*.18f),NativeHordeGore.BloodWet,wet,dry);
+                        a=bw;an=bn;
+                    }
+                    var dropTurn=Basis(NativeHordeGore.Unit(Vector3.Cross(down,an),t),NativeHordeGore.Unit(Vector3.Cross(an,NativeHordeGore.Unit(Vector3.Cross(down,an),t)),down),an);
+                    Block(a+an*z*.03f,dropTurn,new Vector3(z*.5f,z*.5f,z*.3f),NativeHordeGore.BloodWet,wet,dry);
+                }
             }
         }
         /// <summary>

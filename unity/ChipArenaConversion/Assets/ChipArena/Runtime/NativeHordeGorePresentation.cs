@@ -3,6 +3,7 @@ using UnityEngine;
 using NVector=System.Numerics.Vector3;
 using NVector2=System.Numerics.Vector2;
 using NMatrix=System.Numerics.Matrix4x4;
+using NVector4=System.Numerics.Vector4;
 
 namespace ChipArena.UnityConversion
 {
@@ -11,8 +12,8 @@ namespace ChipArena.UnityConversion
     // every input is what host, guests and the killcam replay all hold (an add's replicated hits: time, point, direction, detail,
     // amount, attacker; its death record: id, seed, time, position, yaw, lost limbs, damage kind; PveGib's severed limbs) and the
     // field clock. No hit, collider, timing, damage, movement or network state is read back or changed.
-    //  - A hit (HordeHit -> HordeGoreHit): the wound on the drawn body's nearest part (within the authority's struck part when the
-    //    hit carries its horde-hit data), facing the shot, kept on the joint; blood out of it and along the shot into the blood sim
+    //  - A hit (HordeHit -> HordeGoreHit): the wound where the shot enters the drawn model (Core/NativeHordeGoreBody; within the
+    //    authority's struck part when the hit carries its horde-hit data), on its surface, kept on the joint; blood out of it and along the shot into the blood sim
     //    (red, its splats stay on floors and walls); a puff of red mist and flesh bits; a head hit harder. Wounds draw on the
     //    nearest adds (the tier's count) and drip while fresh.
     //  - A death (HordeKindDeath -> HordeGoreDeath): the fate (a corpse, a head burst, a gib, a crush, the bloater's own burst);
@@ -33,12 +34,11 @@ namespace ChipArena.UnityConversion
         private int goreHitTarget=-1,goreHitIndex;private float goreHitTime=float.NaN;
         private static readonly int[] GoreGibJoints={CapturedRig.Head,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LHip,CapturedRig.RHip};
 
-        private static NMatrix GoreN(in Matrix4x4 m)=>new NMatrix(m.m00,m.m10,m.m20,m.m30,m.m01,m.m11,m.m21,m.m31,m.m02,m.m12,m.m22,m.m32,m.m03,m.m13,m.m23,m.m33);
-        private static Matrix4x4 GoreU(in NMatrix n)
-        {
-            var m=new Matrix4x4();m.m00=n.M11;m.m10=n.M12;m.m20=n.M13;m.m30=n.M14;m.m01=n.M21;m.m11=n.M22;m.m21=n.M23;m.m31=n.M24;
-            m.m02=n.M31;m.m12=n.M32;m.m22=n.M33;m.m32=n.M34;m.m03=n.M41;m.m13=n.M42;m.m23=n.M43;m.m33=n.M44;return m;
-        }
+        // A Unity matrix (column vectors) to and from the gore's (System.Numerics, row vectors), column by column through the Core
+        // conversion the checks hold against the rig's own composition (NativeHordeGore.FromColumns / Column).
+        private static NMatrix GoreN(in Matrix4x4 m)=>NativeHordeGore.FromColumns(new NVector4(m.m00,m.m10,m.m20,m.m30),new NVector4(m.m01,m.m11,m.m21,m.m31),new NVector4(m.m02,m.m12,m.m22,m.m32),new NVector4(m.m03,m.m13,m.m23,m.m33));
+        private static Vector4 GoreU(NVector4 v)=>new Vector4(v.X,v.Y,v.Z,v.W);
+        private static Matrix4x4 GoreU(in NMatrix n)=>new Matrix4x4(GoreU(NativeHordeGore.Column(n,0)),GoreU(NativeHordeGore.Column(n,1)),GoreU(NativeHordeGore.Column(n,2)),GoreU(NativeHordeGore.Column(n,3)));
         private static NVector GoreV(Vector3 v)=>new NVector(v.x,v.y,v.z);
         private static Vector3 GoreU(NVector v)=>new Vector3(v.X,v.Y,v.Z);
         private NMatrix[] GoreBones(CapturedAnimation.Player rig){for(int b=0;b<22;b++)goreBones[b]=GoreN(rig.Bones[b].localToWorldMatrix);return goreBones;}
@@ -48,10 +48,13 @@ namespace ChipArena.UnityConversion
         {
             hordeGore.Tier=NativeHordeGore.Tier(LowGraphics,Mathf.Clamp01(EffectsQuality));hordeGore.Enabled=Gore;hordeGore.Begin();goreJobCount=0;goreHitTarget=-1;hordeGore.Expire(hordeClock);
         }
-        /// <summary>A posed body whose wounds may draw this frame (its rig's joints are final by the effects pass).</summary>
-        private void GoreWoundsJob(int id,CapturedAnimation.Player rig)
+        /// <summary>A posed body whose wounds may draw this frame (its rig's joints are final by the effects pass). `tier` the model
+        /// tier it is drawn with: the wounds sit on the Full model's surface (NativeHordeGoreBody), so a live add drawn reduced (past
+        /// the nearest 24, 16 on the low graphics tier: the gore's own nearest-adds cap is no more) shows none until it is near
+        /// again. Falling bodies, corpses within the wounds' range and the DEV preview draw the Full model.</summary>
+        private void GoreWoundsJob(int id,CapturedAnimation.Player rig,int tier=NativeHordeModels.Full)
         {
-            if(rig==null||hordeGore.Wounds(id)==0)return;
+            if(rig==null||tier!=NativeHordeModels.Full||hordeGore.Wounds(id)==0)return;
             if(goreJobCount==goreJobs.Length){Array.Resize(ref goreJobs,goreJobCount*2);Array.Resize(ref goreRank,goreJobCount*2);Array.Resize(ref goreOrder,goreJobCount*2);}
             goreJobs[goreJobCount++]=new GoreJob{Id=id,Rig=rig};
         }
@@ -82,7 +85,11 @@ namespace ChipArena.UnityConversion
             var across=Vector3.Cross(Vector3.up,dir);var sweep=melee?(across.normalized+Vector3.up*(NativeHordeGore.H(NativeHordeGore.HitSeed(id,e.Time),0,9)-.5f)*1.1f).normalized:Vector3.zero;
             // The add's lost limbs at the hit (replicated; for the blow that killed it this frame, the last ones it was drawn with).
             int lost=m?.Pve!=null?m.Pve.Lost:s!=null&&s.Lost>0?s.Lost:0;
-            var h=new GoreHit{Id=id,Kind=kind,Index=goreHitIndex,Time=e.Time,Amount=e.Amount,MaxHp=maxHp,Cause=cause,Kill=m==null,Head=known?e.Head:e.Kind==EventKind.Headshot,Known=known,Raw=e.Raw,HasPart=e.HasPart,Part=e.Part,Lost=lost,Point=GoreV(point),Dir=GoreV(dir),Sweep=GoreV(sweep)};
+            // The ray the wound is found along on the drawn body: a projectile's own travel (its velocity, ArenaEvent.Normal, 3D),
+            // else the flat push. The look is the one drawn (the body whose surface it goes on).
+            var travel=NativeArena.Vec(e.Normal);bool projectile=cause==NativeHordeGore.Cause.Bullet||cause==NativeHordeGore.Cause.Heavy||cause==NativeHordeGore.Cause.Arrow;
+            var shot=projectile&&travel.sqrMagnitude>.5f?travel.normalized:Vector3.zero;int look=s!=null&&s.Kind==kind?s.Look:NativeHordeKinds.Look(kind,id);
+            var h=new GoreHit{Id=id,Kind=kind,Look=look,Index=goreHitIndex,Time=e.Time,Amount=e.Amount,MaxHp=maxHp,Cause=cause,Kill=m==null,Head=known?e.Head:e.Kind==EventKind.Headshot,Known=known,Raw=e.Raw,HasPart=e.HasPart,Part=e.Part,Lost=lost,Point=GoreV(point),Dir=GoreV(dir),Sweep=GoreV(sweep),Shot=GoreV(shot)};
             hordeGore.Hit(h,GoreBones(rig),floor,out bool head);if(s!=null)s.GoreHead=known?e.Head:head;
         }
         /// <summary>HordeSever: the authority severed a living add's limb (PveGib): a raw stump on the joint it hung from, a gush.</summary>

@@ -91,7 +91,7 @@ namespace ChipArena.UnityConversion
             bool melee=b.Cause==NativeHordeGore.Cause.Melee;var w=melee?(b.Heavy?StaggerWeight.Heavy:StaggerWeight.Step):StaggerWeight.Flinch;
             if(!b.Kill)s.React.Add(at,new NVector2(dir.x,dir.z),w,b.Amount,melee,b.Aim==1,b.Amount>=maxHp*.25f,st.stagger);
             var sweep=melee?(Vector3.Cross(Vector3.up,dir).normalized+Vector3.up*(b.Heavy?-.4f:.35f)).normalized:Vector3.zero;
-            var h=new GoreHit{Id=id,Kind=kind,Index=0,Time=at,Amount=b.Amount,MaxHp=maxHp,Cause=b.Cause,Kill=b.Kill,Point=GoreV(point),Dir=GoreV(dir),Sweep=GoreV(sweep)};
+            var h=new GoreHit{Id=id,Kind=kind,Look=s.Look,Index=0,Time=at,Amount=b.Amount,MaxHp=maxHp,Cause=b.Cause,Kill=b.Kill,Point=GoreV(point),Dir=GoreV(dir),Sweep=GoreV(sweep),Shot=GoreV(blast||melee?Vector3.zero:(target-shooter).normalized)};
             hordeGore.Hit(h,GoreBones(rig),ground,out bool head);
             if(!b.Kill)return;
             // The kill: a blade's planned slice (its joints thrown as the model's own parts), else the gore's fate.
