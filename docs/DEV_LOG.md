@@ -1,3 +1,45 @@
+## 2026-10-20 — Claude: zombies near-black at Central Station: the station now lights bodies with its practical slots (merged into shared)
+
+- **Branch/base:** `claude/zombie-black-fix`, from shared `claude/sleepy-ritchie-g8ruhv` at `f930684`. Presentation only. Implementation commit `ffcaf05`. Merged into shared and the builder; not published.
+- **Owner report:** "Seems the zombies are appearing almost completely black a lot of the time?" This was in the Windows build, Expedition, Central Station. The owner added: "The glowing eyes are still fine". In the recording, the bodies are about 4–5/255 next to a floor at about 100/255.
+- **Root cause (from the code):**
+  - The project is Built-in and Linear: no SRP package, `m_ColorSpace: 1`.
+  - The station's practical lights are not Unity lights. `StationScenery` gives the eight that matter to the camera to `NativeLighting.PickedLights`. These go to `NativeBlockLit`'s own light block (`NativeBlockLit.shader:602`, `BlockLights`), so they light the floor, the walls and the kit.
+  - `ZombieLit` adds those same slots only while the global `_ArenaActorLit` is on (`NativeZombieLit.shader:187`, `NativeWardLight.cginc` `ActorLights`). `SourceLit` (pilots) does the same.
+  - `NativeLighting.Apply` turns the switch off for every map (`NativeLighting.cs:232`). Ward Zero (`NativeWardZeroPresentation.cs:255`) and the Ironworks (`NativeIronworksPresentation.cs:253`) turn it on every frame. The station never did. The station boss (THE 6:47) set it on its own material only (`NativeStationBossPresentation.cs:232`).
+  - So a station zombie had only Unity's lights:
+    - the `central-station` look's moon key (.5, soft shadows at strength .9 under the roofs and the vault's glazing);
+    - a .14 rim;
+    - a trilight ambient of about .001 (scales .085/.065/.055).
+  - That puts the skin at about 3/255 and the suit at 0.
+  - The first-person gun is drawn by the view-model camera, which only draws layer 10 (`ConversionGame.cs:79`). That is why the roof does not shadow it.
+  - **Why it showed after 10-19:** the gore pass took off the glowing seams, cracks and accents, the rising flow and the lavender rim. That cut the bodies' emission by about 60% (emissive area 0.25 → 0.065 m² over the seven kinds' first looks), and at the station the emission was all that carried them.
+  - **Albedo is not the cause.** Against `dab15f3` the skin moved -6% and the suit -8% in luminance (the stain). Vertex colours are linear and go to the shader raw, with no double sRGB conversion. They are uploaded. The shader keeps Unity's ambient, vertex lights, add pass and shadows.
+- **Fix:** `Runtime/NativeExpeditionStationPresentation.cs` now calls `NativeLighting.ActorLights(true)` every frame in `StationScenery`. The call comes after the map gate and the slot pick, and outside the eye test, so the killcam gets it too. This is the same as the Ironworks.
+  - No change to shaders, models, colours, rules, timing, hitboxes or networking. No allocation: two global writes by cached id.
+  - The eyes are emission and are unchanged.
+  - Bodies take the lamps the floor takes and stay dark where the floor is dark, so the moody look and the grime and blood remain.
+  - No readability floor (extra ambient or rim): the emulation already puts bodies at the floor's light, and an extra floor would make them glow in an unlit station.
+  - Also affected at the station: pilots, the station's kinds and the view-model gun now take the slots, as on Ward Zero and the Ironworks.
+- **Checks (actual):**
+  - New `Tests/ZombieLightChecks.cs`: `--zombie-light`, also in `--station-visuals` and the full run, 64 checks. It covers:
+    - the contract: `ZombieLit`'s pragma and passes, its lighting and surf lines as emulated, the hook and the wrap, `NativeLighting.ActorLights`, and the switch in the station, Ironworks and Ward Zero;
+    - every look with practicals whose body base is under .02 lights its bodies. Only `quarantine` .003, `central-station` .0055 and `ironworks` .0095 qualify. The town and the arenas read by their own fill;
+    - an albedo floor: skin .171, suit .028;
+    - the station emulated at 4,808 walkable nodes, key in shadow. The floor median is 29/255. Skin is 27/255 with actor lights against 3/255 before. The median skin/floor ratio is .67. Under lamps, skin is 41/255 and suit 12/255, and the skin is greener than the suit. Nothing allocates.
+  - Mutations: removing the station's call fails the contract. Skipping the contract leaves skin at 3/255 and fails the emulation. A darkened town look fails the dark-look rule.
+  - Groups rc 0: `--zombie-light`, `--station-visuals`, `--zombie-gore`, `--ward-lighting`, `--ironworks-visuals`, `--station-enemies`, `--station-boss-presentation`.
+  - run5b on the branch's code (`ffcaf05` plus this docs commit, before this line was filled in), rc1–rc5 all 0: Unity Runtime and Editor compile; relay and managed suite with 809 PASS lines, 0 FAIL (the new zombie light line included); 140 Python tests (1 skipped); package; diff-check.
+  - After merging shared `6828647` (#290, Astra's Expedition death input fix) without a rebase: run5b again on the merged tree, rc1–rc5 all 0, 809 PASS, 0 FAIL. The groups above pass again, plus `--dev-tools` and `--expedition-pick`.
+- **Renders:** a scratch CPU emulation, not in git (`renders-zombie-black/`). It runs ZombieLit's and NativeBlockLit's maths with the live look, kit and picked slots, in the concourse, ticket hall and P2, before and after. The ticket hall's before frame is close to the recording: floor 77/255 against about 100, bodies 6/255 against 4–5. Not emulated: shadow maps (the key is shadowed everywhere), the kit and walls, shafts, haze, bloom and post.
+- **Not run:** Unity Editor or Windows play (not available here), so the look in the engine and its per-frame cost are unverified.
+- **Risks:**
+  - At the station, pilots, the station's kinds and the view-model gun are brighter under lamps, as on the other zone maps.
+  - A body with a lamp behind it is still a silhouette (about 1 spot in 10 under lamps).
+  - Gore chunks on `NativeVfxLit` still take only the key and ambient (same on every map).
+  - `Tests/Program.cs` gains a group line, which may conflict trivially with a parallel branch.
+- **Next:** owner review in the Windows build at Central Station.
+
 ## 2026-10-20 — Astra: Expedition death screen cursor ownership
 
 - **Branch/base:** `codex/expedition-death-input`, shared `f930684` (includes Claude's gore bindings).

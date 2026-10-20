@@ -136,6 +136,11 @@ eased as the town's picker does:
 
 The beacons turn as rotating beams.
 
+The same slots light the bodies (zombies, pilots, the station's kinds): the presentation turns actor lighting on each frame
+(`NativeLighting.ActorLights`), as Ward Zero and the Ironworks do, and `ZombieLit`/`SourceLit` add the slots wrapped. Unity's
+own lights cannot carry a body here: the key is shadowed under the roofs and the glazing and the ambient is about .001, so
+before 2026-10-20 the zombies drew near-black beside lit floors. `Tests/ZombieLightChecks.cs` (`--zombie-light`) emulates it.
+
 **Atmosphere** (`NativeExpeditionStationFx`; ranked gaps 2, 3 and 5). This adds two draws.
 - **Moonlight and lamps.**
   - Moon shafts: chains of overlapping radial sprites, soft across and along their length; the design asked for a

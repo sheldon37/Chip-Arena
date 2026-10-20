@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-20 Claude zombies near-black at Central Station (`claude/zombie-black-fix`, merged into shared; presentation only): the station never turned actor lighting on, so bodies had only the shadowed moon key and an ambient of about .001 while its lamps lit only the blocks. It now does, as Ward Zero and the Ironworks do. `--zombie-light` emulates and holds it. Unity/Windows unrun. Next: owner review in the Windows build.
+
 2026-10-20 Astra Expedition death input fix (`codex/expedition-death-input`, implemented): progress/XP screen takes the cursor from the dead-pilot spectator path; automatic screen sync runs before input. Unity compilation and 256 cursor-state checks pass; hosted CI and publication pending.
 
 2026-10-20 Claude zombie gore metadata binding (`claude/zombie-gore-bind`, merged into shared; presentation only): with `HasHordeHit`, the gore reads Astra's fields. `Head` alone decides the head. The wound goes on `Part`, and a part already lost goes on its stump or the trunk. The larger of `Raw` and `Amount` drives gibs, head bursts and sprays; blasts keep `Amount`. Old frames draw bit for bit as before (digest). run5b passes; Unity/Windows/two-client unrun. Next: owner review.
