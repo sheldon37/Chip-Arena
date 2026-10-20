@@ -10,7 +10,8 @@ Writes, deterministically (two runs are byte-identical):
                            hide and death regions, paint channel per vertex; layout in male_base.manifest.json
   male_base.manifest.json  bones (the 22 CapturedRig joints + optional secondary bones), bind poses, pieces, paints,
                            channels, regions, counts, hair springs, device hinge and states, attachment points
-  male_base.fbx            preview/owner FBX (-Z forward, Y up, metres, transforms applied)
+  male_base.fbx            preview/owner FBX (-Z forward, Y up, metres, transforms applied), written to the git-ignored
+                           <repo>/.cache/characters/male-base/ (never inside the Unity project; see FBX_OUT)
   male_base.glb            preview/owner glTF binary (custom attributes _HIDE and _DEATH)
 Nothing here is imported by Unity: Phase D copies the binary and manifest into Resources/Characters.
 """
@@ -31,6 +32,10 @@ import build_male_base as M  # noqa: E402  (tables and constants only; its main(
 
 ARGV = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 OUT = os.path.abspath(ARGV[ARGV.index('--out') + 1]) if '--out' in ARGV else os.path.join(HERE, 'exports')
+# The FBX never goes in the Unity project: the CoreTests pack guards (ZombieMotion, JumpMotion, PackReaction checks) reject
+# any .fbx there. It goes to the git-ignored .cache/ at the repository root unless --fbx-out names another folder.
+REPO = os.path.abspath(os.path.join(HERE, '..', '..', '..', '..', '..'))
+FBX_OUT = os.path.abspath(ARGV[ARGV.index('--fbx-out') + 1]) if '--fbx-out' in ARGV else os.path.join(REPO, '.cache', 'characters', 'male-base')
 PIECES = [('body', 'CA_Body'), ('hair', 'CA_Hair'), ('core', 'CA_Core'), ('device', 'CA_WristDevice'),
           ('device-lid', 'CA_WristLid'), ('device-chip', 'CA_WristChip')]
 Q = 1e-5        # position quantum: 0.01 mm
@@ -340,11 +345,11 @@ def main():
     with open(os.path.join(OUT, 'male_base.manifest.json'), 'w', newline='\n') as f:
         json.dump(doc, f, indent=1, sort_keys=False)
         f.write('\n')
-    export_fbx(os.path.join(OUT, 'male_base.fbx'))
+    os.makedirs(FBX_OUT, exist_ok=True)
+    export_fbx(os.path.join(FBX_OUT, 'male_base.fbx'))
     export_glb(os.path.join(OUT, 'male_base.glb'))
-    for n in ('male_base.bytes', 'male_base.manifest.json', 'male_base.fbx', 'male_base.glb'):
-        p = os.path.join(OUT, n)
-        print('EXPORT', n, os.path.getsize(p), sha(p))
+    for p in [os.path.join(OUT, n) for n in ('male_base.bytes', 'male_base.manifest.json', 'male_base.glb')] + [os.path.join(FBX_OUT, 'male_base.fbx')]:
+        print('EXPORT', p, os.path.getsize(p), sha(p))
     print('TRIANGLES', doc['counts']['total']['triangles'], {k: v['triangles'] for k, v in doc['counts']['pieces'].items()})
 
 

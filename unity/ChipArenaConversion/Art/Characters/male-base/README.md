@@ -14,7 +14,8 @@ is imported by Unity, and nothing is wired into the runtime: Phase D copies the 
 | `export_male_base.py` | It writes everything under `exports/`. Two runs are byte-identical. |
 | `exports/male_base.bytes` | The runtime mesh library, `CALP` v1 (layout in the manifest's `binary.layout`). |
 | `exports/male_base.manifest.json` | Bones, bind poses, pieces, paints, channels, regions, counts, hair springs, device hinge and states. |
-| `exports/male_base.fbx`, `.glb` | Previews for the owner (-Z forward, Y up, metres, transforms applied). |
+| `exports/male_base.glb` | A preview for the owner (glTF binary, with the custom attributes `_HIDE` and `_DEATH`). |
+| `<repo>/.cache/characters/male-base/male_base.fbx` | A preview FBX (-Z forward, Y up, metres, transforms applied). It is written outside the Unity project and not committed: the CoreTests pack guards reject any `.fbx` in the project. |
 
 Rebuild and export from the repository root, with Blender 4.2 LTS:
 

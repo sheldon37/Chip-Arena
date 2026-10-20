@@ -37,7 +37,8 @@
 - **Exports** (`export_male_base.py`, byte-identical across runs and independent rebuilds):
   - `male_base.bytes`: the doc's `CALP` v1 binary, 518 KB;
   - `male_base.manifest.json`: bones, bind poses, pieces, paints, regions, springs, device hinge and states, severs;
-  - FBX (408 KB) and GLB (951 KB) previews. The FBX writer's timestamps and hash-based ids are pinned.
+  - a GLB preview (951 KB);
+  - an FBX preview (408 KB) with the writer's timestamps and hash-based ids pinned. The FBX goes to the git-ignored `.cache/characters/male-base/` and is not committed, because three CoreTests pack guards (ZombieMotion, JumpMotion, PackReaction) reject any `.fbx` in the Unity project.
 - **Secondary motion:** six chains tuned for stiff spiky clumps (8–10 Hz, damping .36–.42, 12–16°).
   - The preview solver is a jiggle offset per joint driven by the target's acceleration, with air drag and limits.
   - Mean swing: run 4–10°, melee cut 7–11°, roll 11–16°, idle under 1°.

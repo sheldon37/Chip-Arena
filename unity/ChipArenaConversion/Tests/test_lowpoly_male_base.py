@@ -133,9 +133,12 @@ class LowPolyMaleBase(unittest.TestCase):
         self.assertEqual([p['name'] for p in m['pieces']], [p['name'] for p in doc['pieces']])
         for p, q in zip(m['pieces'], doc['pieces']):
             self.assertEqual((p['vn'], p['tn']), (q['vertices'], q['triangles']), p['name'])
-        for f in ('male_base.fbx', 'male_base.glb'):
-            self.assertTrue((EXPORTS / f).is_file(), f)
-            self.assertLess((EXPORTS / f).stat().st_size, 2 * 1024 * 1024, f)
+        glb = EXPORTS / 'male_base.glb'
+        self.assertTrue(glb.is_file())
+        self.assertLess(glb.stat().st_size, 2 * 1024 * 1024)
+        self.assertEqual(glb.read_bytes()[:4], b'glTF')
+        # the preview FBX is written outside the Unity project (the pack guards reject any .fbx in it)
+        self.assertEqual(list(ART.rglob('*.fbx')), [])
 
     def test_first_22_bones_are_captured_rig(self):
         rig = captured_rig_bones()
