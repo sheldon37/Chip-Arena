@@ -225,12 +225,16 @@ namespace ChipArena.UnityConversion
         private float HitPveAdd(NativeMinion m,NativePilot source,float amount,Vector3 dir,float impulse,Vector3? point,string kind,float radius,bool head,int projectile=0,bool pierced=false,Vector3? from=null)
         {
             var a=m.Pve;if(HubDamageBlocked(source,m.Body.position,from,projectile))return 0;if(source==null||a.Travelling||Time<a.ExposedAt||Pve?.Holding==true)return 0;
-            if(Pve==null){float hit=Math.Min(m.Hp,amount);m.Hp-=hit;m.LastHitAt=Time;CancelHulkWind(m,hit);if(!a.Charging&&NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),hit,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;}Emit(EventKind.Hit,source,m.Id,m.Body.position,hit,kind,from:from,projectile:projectile,pierced:pierced);if(m.Hp<=0)RemoveMinion(m);return hit;}float actual=0;amount=ZoneIncoming(m,source,amount,dir,point,head,impulse,kind);if(a.ZoneSelfDamage>0){actual=Math.Min(m.Hp,a.ZoneSelfDamage);m.Hp-=actual;a.ZoneSelfDamage=0;}
+            var hitData=new NativeHordeHit(amount);
+            // The fallback has no limb damage or blast-share rolls. Resolve only deterministic direct-hit anatomy.
+            if(Pve==null&&kind!="blast")hitData.Share(NativeHordeDamage.Part(new V3(-m.Body.position.x,m.Body.position.y,m.Body.position.z),-m.Yaw,a.Crawl,point.HasValue?(V3?)new V3(-point.Value.x,point.Value.y,point.Value.z):null,head),amount);
+            if(Pve==null&&kind=="blast")hitData.Head=head;
+            if(Pve==null){float hit=Math.Min(m.Hp,amount);m.Hp-=hit;m.LastHitAt=Time;CancelHulkWind(m,hit);if(!a.Charging&&NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),hit,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;}Emit(EventKind.Hit,source,m.Id,m.Body.position,hit,kind,from:from,projectile:projectile,pierced:pierced,hordeHit:hitData);if(m.Hp<=0)RemoveMinion(m);return hit;}float actual=0;amount=ZoneIncoming(m,source,amount,dir,point,head,impulse,kind);if(a.ZoneSelfDamage>0){actual=Math.Min(m.Hp,a.ZoneSelfDamage);m.Hp-=actual;a.ZoneSelfDamage=0;}
             foreach(var share in NativeHordeDamage.Shares(amount,new V3(-m.Body.position.x,m.Body.position.y,m.Body.position.z),-m.Yaw,a.Crawl,point.HasValue?(V3?)new V3(-point.Value.x,point.Value.y,point.Value.z):null,kind,radius>0?radius:3,head,Pve.SpawnRandom.Next))
             {
+                hitData.Share(share.part,share.damage);
                 int limb=(a.Lost&share.part)!=0?0:share.part;float applied=share.damage*(limb==1?1.5f:limb==0?1:.9f),taken=Math.Max(0,Math.Min(m.Hp,applied));m.Hp-=taken;actual+=taken;
-                // A severed limb shows the source's gore only (pve/gore.ts gib: ink spray, black puff, limb chunk; NativeGorePresentation
-                // draws it from PveGib). The first port also recorded a fire-school ability effect here, which drew a fireball on
+                // A severed limb leaves a red stump and a thrown limb (NativeGorePresentation / horde gore, from PveGib). The first port also recorded a fire-school ability effect here, which drew a fireball on
                 // every gun kill of a Siren add (owner playtest 2026-10-10). Presentation feed only; damage and limbs are unchanged.
                 if(limb>0){a.Parts.TryGetValue(limb,out float pool);pool+=taken;a.Parts[limb]=pool;if(pool>=m.MaxHp*(limb==1?a.Stats.headFrac:a.Stats.limbFrac)){a.Lost|=NativeHordeDamage.Descendants(limb);Emit(EventKind.PveGib,source,m.Id,point??m.Body.position,limb);if(limb==1)m.Hp=0;bool l=(a.Lost&(32|128))!=0,r=(a.Lost&(64|256))!=0;a.Crawl=(a.Lost&(32|64))!=0||l&&r;a.Limp=!a.Crawl&&(l||r);if(a.Crawl){m.Collider.height=.88f;m.Collider.radius=.32f;}}}
             }
@@ -240,7 +244,7 @@ namespace ChipArena.UnityConversion
             float zoneStagger=a.StaggerAt;CancelHulkWind(m,actual>0?amount:0);
             if(!a.Charging)if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;if(a.Stats.id!="spitter"||actual<=0)a.RecoverAt=Time;}if(Time>=a.ExposedAt)a.External=Vector3.ClampMagnitude(a.External+new Vector3(dir.x,0,dir.z)*NativePveParity.AddImpulse(impulse),6);
             if(NativeZoneCombat.Active(MapId))a.StaggerAt=Math.Max(a.StaggerAt,zoneStagger);
-            m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,normal:dir.x*dir.x+dir.z*dir.z>1e-12f?dir:Vector3.zero,from:from,projectile:projectile,pierced:pierced);
+            m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,normal:dir.x*dir.x+dir.z*dir.z>1e-12f?dir:Vector3.zero,from:from,projectile:projectile,pierced:pierced,hordeHit:hitData);
             MinionImpact(m,source,actual,point,kind,dir);
             if(m.Hp<=0){Vector3 at=m.Body.position;ZoneEnemyDeath(m,source,kind=="melee"||kind=="slash"||kind=="blunt");PveAddKilled(m,source);RemoveMinion(m,false);if(a.Possessed)FoundPveBoss(at);}return actual;
         }

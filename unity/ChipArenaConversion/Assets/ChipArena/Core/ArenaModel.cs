@@ -103,6 +103,8 @@ namespace ChipArena.UnityConversion
         public EventKind Kind;
         public V3 Position;
         public float Amount,Draw;
+        // Optional horde-hit authority data; old frames leave HasHordeHit false. Part 0 is a known torso only when HasPart.
+        public bool HasHordeHit,Head,HasPart;public float Raw;public int Part;
         // Native surface FX payload; the retained lab wire format is unchanged.
         public bool Pierced; // Authoritative pass-through on this Hit; false on older frames.
         public bool WallSlam;public string Detail,DamageKind;public float Radius;public V3 From;public float Time;public V3 Normal;public string SurfaceId;public int Color,Projectile;

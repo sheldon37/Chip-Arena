@@ -1,3 +1,10 @@
+## 2026-10-20 — Astra: optional zombie gore authority metadata (implemented on branch)
+
+- **Branch/base:** `codex/zombie-gore-state`, shared `claude/sleepy-ritchie-g8ruhv` at `263cac2`. Implements Claude's October 19 handoff; presentation binding remains Claude's follow-up in `docs/ZOMBIE-GORE.md`.
+- **Payload:** add `HasHordeHit`, `Head`, `Raw`, `HasPart`, `Part` to ArenaEvent. Preserve Hit kind and all applied damage; inspect existing shares without additional RNG. Raw is the original input before zone/limb/HP modifiers, part is the largest positive original share, ties first. Fallback direct hits resolve anatomy; fallback blasts leave part unknown. Old frames default to inference. Invalid metadata is rejected by frame validation. Updated stale severed-limb comment.
+- **Checks:** 35 new managed metadata/anatomy/serialization checks pass; existing zombie gore, minion FX and horde-kind suites pass; Unity Player/Runtime/Editor semantic compilation passes. Full managed suite running. Added real Unity JsonUtility and HitPveAdd torso/head/overkill/fallback checks to the native spitter gate; compiled, not executed here.
+- **Impact/status:** no animation, timing, hitbox, damage, cooldown or movement changes. Networking gains optional fields. Not yet merged or published at this entry; Windows/two-client visual verification unrun. Next: merge after regression gates, sync builder, Claude binds the fields.
+
 ## 2026-10-20 — Claude: allocation checks read bytes a background GC added (CI fix, merged into shared)
 
 - **Branch:** `claude/alloc-check-bgc`, from shared `claude/sleepy-ritchie-g8ruhv` at `f94fa98`. Test project only; no game, Runtime or Core change. Merged into shared and the builder; not published.
