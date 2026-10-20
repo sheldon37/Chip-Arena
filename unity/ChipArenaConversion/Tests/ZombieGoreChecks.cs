@@ -19,7 +19,10 @@ namespace ChipArena.UnityConversion
     //    the killcam's replay;
     //  - the tiers draw less (corpses, life, wounds, bits, chunks, mist, gibs, drops);
     //  - nothing allocates per frame;
-    //  - presentation only: the gore files write no authority state, and no authority, network or rules file reads them.
+    //  - presentation only: the gore files write no authority state, and no authority, network or rules file reads them;
+    //  - the authority's horde-hit data (Astra 2026-10-20: ArenaEvent HasHordeHit, Head, Raw, HasPart, Part) binds: its head flag
+    //    wins, the wound goes on its part (a lost part's on the stump or the trunk), its raw damage drives the gib, the head burst
+    //    and the spray; an old frame without it draws bit for bit as before.
     internal static class ZombieGoreChecks
     {
         private static int count;
@@ -27,7 +30,8 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             Treatment(root,out string models);Placement(out string place);Caps(out string caps);Determinism(out string same);Tiers(out string tiers);Allocation();Source(root);
-            Console.WriteLine("PASS zombie gore ("+count+" checks: "+models+"; "+place+"; "+caps+"; "+same+"; "+tiers+"; no allocation; presentation only)");
+            Fallback(out string old);Metadata(root,out string meta);
+            Console.WriteLine("PASS zombie gore ("+count+" checks: "+models+"; "+place+"; "+caps+"; "+same+"; "+tiers+"; no allocation; presentation only; "+old+"; "+meta+")");
         }
 
         // ---- a posed zombie's joints (System.Numerics, row vectors: what the runtime hands the gore from its rig) ----
@@ -202,38 +206,53 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- the same gore on every peer ----
-        private sealed class Feed{public float At;public GoreHit Hit;public bool Death;public int Id;public NativeHordeGore.Cause Cause;}
+        private sealed class Feed{public float At;public GoreHit Hit;public bool Death;public int Id;public NativeHordeGore.Cause Cause;public bool Head;public float Strength=120;}
         private static void Determinism(out string summary)
         {
-            var bones=Posed(NativeHordeKinds.Brute,73000,new Vector3(1,0,1),30);var feed=new List<Feed>();uint s=12345;float R(){s=s*1664525+1013904223;return (s>>8)/16777216f;}
-            for(int i=0;i<40;i++){int id=73000+i%6;float at=i*.23f;var c=i%7==0?NativeHordeGore.Cause.Melee:i%11==0?NativeHordeGore.Cause.Blast:NativeHordeGore.Cause.Bullet;
-                feed.Add(new Feed{At=at,Hit=new GoreHit{Id=id,Kind=2,Time=at,Amount=10+30*R(),MaxHp=240,Cause=c,Point=new Vector3(1+R()-.5f,.4f+1.2f*R(),1.6f),Dir=Vector3.Normalize(new Vector3(R()-.5f,-.1f,-1)),Sweep=new Vector3(1,.3f,0)}});}
-            for(int i=0;i<6;i++)feed.Add(new Feed{At=6+i*.4f,Death=true,Id=73000+i,Cause=i%2==0?NativeHordeGore.Cause.Blast:NativeHordeGore.Cause.Bullet});
-            feed=feed.OrderBy(f=>f.At).ToList();
-            // The host sees every event the frame it happens (60 fps); a guest in 20 Hz batches, each batch in arrival order; the
-            // killcam rewinds (Clear) and replays the whole window.
-            NativeHordeGoreState Run(float step,bool rewind)
+            var bones=Posed(NativeHordeKinds.Brute,73000,new Vector3(1,0,1),30);int frames=0;
+            // Old frames, then frames with the authority's horde-hit data (head flags, parts with lost limbs, raw damage driving the
+            // deaths' fates through the same strength the runtime keeps).
+            for(int pass=0;pass<2;pass++)
             {
-                var st=new NativeHordeGoreState();int next=0;
-                for(float now=0;now<10;now+=step)
+                bool meta=pass==1;var feed=new List<Feed>();uint s=12345;float R(){s=s*1664525+1013904223;return (s>>8)/16777216f;}
+                for(int i=0;i<40;i++){int id=73000+i%6;float at=i*.23f;var c=i%7==0?NativeHordeGore.Cause.Melee:i%11==0?NativeHordeGore.Cause.Blast:NativeHordeGore.Cause.Bullet;
+                    var hit=new GoreHit{Id=id,Kind=2,Time=at,Amount=10+30*R(),MaxHp=240,Cause=c,Point=new Vector3(1+R()-.5f,.4f+1.2f*R(),1.6f),Dir=Vector3.Normalize(new Vector3(R()-.5f,-.1f,-1)),Sweep=new Vector3(1,.3f,0)};
+                    if(meta&&i%4!=3){hit.Known=true;hit.Head=i%5==0;hit.HasPart=i%6!=5;hit.Part=i%10==0?0:NativeHordeGore.PartBits[i%9];hit.Raw=hit.Amount*(1+R()*3);hit.Lost=i%8==0?8|32:0;}
+                    feed.Add(new Feed{At=at,Hit=hit});}
+                for(int i=0;i<6;i++)
                 {
-                    if(rewind&&now>=4&&now<4+step){st.Clear();next=0;}
-                    while(next<feed.Count&&feed[next].At<=now){var f=feed[next++];if(f.Death){var fate=st.Fate(2,f.At,f.Cause,false,120,240,.6f,false);var r=st.Die(f.Id,2,f.At,NativeHordeGore.DeathSeed(f.Id,next),fate);r.PoolMost=NativeHordeGore.PoolMost(2,fate,st.Wounds(f.Id),1);r.ChunkAt=new Vector3(1,1,1);r.Push=Vector3.UnitZ;if(r.Body){for(int b=0;b<22;b++)r.Bones[b]=bones[b];st.Pose(r,next);}}else st.Hit(f.Hit,bones,0,out _);}
-                    st.Sprayed();
+                    var c=i%2==0?NativeHordeGore.Cause.Blast:meta&&i%3==1?NativeHordeGore.Cause.Heavy:NativeHordeGore.Cause.Bullet;
+                    feed.Add(new Feed{At=6+i*.4f,Death=true,Id=73000+i,Cause=c,Head=meta&&i%3!=0,Strength=meta?NativeHordeGore.Strength(c,true,60+i*60,20):120});
                 }
-                return st;
+                feed=feed.OrderBy(f=>f.At).ToList();
+                // The host sees every event the frame it happens (60 fps); a guest in 20 Hz batches, each batch in arrival order; the
+                // killcam rewinds (Clear) and replays the whole window.
+                NativeHordeGoreState Run(float step,bool rewind)
+                {
+                    var st=new NativeHordeGoreState();int next=0;
+                    for(float now=0;now<10;now+=step)
+                    {
+                        if(rewind&&now>=4&&now<4+step){st.Clear();next=0;}
+                        while(next<feed.Count&&feed[next].At<=now){var f=feed[next++];if(f.Death){var fate=st.Fate(2,f.At,f.Cause,f.Head,f.Strength,240,.6f,false);var r=st.Die(f.Id,2,f.At,NativeHordeGore.DeathSeed(f.Id,next),fate);r.PoolMost=NativeHordeGore.PoolMost(2,fate,st.Wounds(f.Id),1);r.ChunkAt=new Vector3(1,1,1);r.Push=Vector3.UnitZ;if(r.Body){for(int b=0;b<22;b++)r.Bones[b]=bones[b];st.Pose(r,next);}}else st.Hit(f.Hit,bones,0,out _);}
+                        st.Sprayed();
+                    }
+                    return st;
+                }
+                var host=Run(1/60f,false);var guest=Run(1/20f,false);var killcam=Run(1/30f,true);
+                foreach(float now in new[]{2.5f,6.3f,7.1f,8.9f})
+                {
+                    foreach(var st in new[]{host,guest,killcam}){st.Begin();st.Collect(now,Vector3.Zero);for(int i=0;i<6;i++)st.DrawWounds(73000+i,bones,now);}
+                    string tag=meta?" (horde-hit data)":"";
+                    Check(host.BlockCount>0&&host.BlockCount==guest.BlockCount&&host.BlockCount==killcam.BlockCount,"the same voxels at "+now+" s on the host, a guest and the killcam"+tag+" ("+host.BlockCount+", "+guest.BlockCount+", "+killcam.BlockCount+")");
+                    for(int i=0;i<host.BlockCount;i++){var a=host.Blocks[i];foreach(var o in new[]{guest,killcam}){var b=o.Blocks[i];Check(a.At==b.At&&a.Size==b.Size&&a.Turn==b.Turn&&a.Albedo==b.Albedo,"voxel "+i+" is the same everywhere"+tag);}}
+                    Check(host.MistCount==guest.MistCount&&host.PoolCount==guest.PoolCount&&host.PoolCount==killcam.PoolCount,"the same mist and pools"+tag);
+                    for(int i=0;i<host.PoolCount;i++)Check(host.Pools[i].At==guest.Pools[i].At&&host.Pools[i].Radius==killcam.Pools[i].Radius,"pool "+i+" is the same everywhere"+tag);
+                    for(int i=0;i<6;i++){var a=host.RemainsOf(73000+i);foreach(var o in new[]{guest,killcam}){var b=o.RemainsOf(73000+i);Check(a==null==(b==null)&&(a==null||a.Fate==b.Fate),"add "+i+"'s fate is the same everywhere"+tag);}}
+                    frames++;
+                }
+                if(meta)Check(host.RemainsOf(73001)?.Fate==NativeHordeGore.Fate.HeadGib&&host.RemainsOf(73005)?.Fate==NativeHordeGore.Fate.HeadGib&&host.RemainsOf(73003)?.Fate==NativeHordeGore.Fate.Corpse,"the raw damage's fates hold on every peer (a rifle's and a bullet's head kills burst the head, a bullet's body kill is a corpse)");
             }
-            var host=Run(1/60f,false);var guest=Run(1/20f,false);var killcam=Run(1/30f,true);int frames=0;
-            foreach(float now in new[]{2.5f,6.3f,7.1f,8.9f})
-            {
-                foreach(var st in new[]{host,guest,killcam}){st.Begin();st.Collect(now,Vector3.Zero);for(int i=0;i<6;i++)st.DrawWounds(73000+i,bones,now);}
-                Check(host.BlockCount>0&&host.BlockCount==guest.BlockCount&&host.BlockCount==killcam.BlockCount,"the same voxels at "+now+" s on the host, a guest and the killcam ("+host.BlockCount+", "+guest.BlockCount+", "+killcam.BlockCount+")");
-                for(int i=0;i<host.BlockCount;i++){var a=host.Blocks[i];foreach(var o in new[]{guest,killcam}){var b=o.Blocks[i];Check(a.At==b.At&&a.Size==b.Size&&a.Turn==b.Turn&&a.Albedo==b.Albedo,"voxel "+i+" is the same everywhere");}}
-                Check(host.MistCount==guest.MistCount&&host.PoolCount==guest.PoolCount&&host.PoolCount==killcam.PoolCount,"the same mist and pools");
-                for(int i=0;i<host.PoolCount;i++)Check(host.Pools[i].At==guest.Pools[i].At&&host.Pools[i].Radius==killcam.Pools[i].Radius,"pool "+i+" is the same everywhere");
-                frames++;
-            }
-            summary="40 hits and 6 deaths draw identically on the host (60 fps), a guest (20 Hz batches) and the killcam (rewound) at "+frames+" moments";
+            summary="40 hits and 6 deaths draw identically on the host (60 fps), a guest (20 Hz batches) and the killcam (rewound) at "+frames+" moments, old frames and with the horde-hit data";
         }
 
         // ---- the tiers draw less ----
@@ -263,6 +282,8 @@ namespace ChipArena.UnityConversion
             {
                 float now=i/60f;int id=75000+(i/90)%20;st.Expire(now);
                 if(i%9==0)st.Hit(new GoreHit{Id=id,Kind=0,Index=0,Time=now,Amount=10,MaxHp=60,Cause=i%27==0?NativeHordeGore.Cause.Melee:NativeHordeGore.Cause.Bullet,Point=new Vector3(0,.4f+(i%5)*.25f,.5f),Dir=-Vector3.UnitZ,Sweep=Vector3.UnitX},bones,0,out _);
+                // Hits with the authority's horde-hit data: head flags, every part, lost limbs, raw damage.
+                if(i%9==4)st.Hit(new GoreHit{Id=id,Kind=0,Index=1,Time=now,Amount=10,MaxHp=60,Cause=i%36==4?NativeHordeGore.Cause.Heavy:NativeHordeGore.Cause.Bullet,Known=true,Head=i%45==4,HasPart=i%63!=4,Part=i%10==4?0:NativeHordeGore.PartBits[(i/9)%9],Raw=10+i%70,Lost=i%54==4?8|128:0,Point=new Vector3(0,.4f+(i%5)*.25f,.5f),Dir=-Vector3.UnitZ},bones,0,out _);
                 if(i%90==89){var r=st.Die(id,0,now,NativeHordeGore.DeathSeed(id,i),st.Fate(0,now,i%180==89?NativeHordeGore.Cause.Blast:NativeHordeGore.Cause.Bullet,false,60,60,.5f,false));r.PoolMost=.5f;if(r.Body){for(int b=0;b<22;b++)r.Bones[b]=bones[b];st.Pose(r,i);}}
                 st.Begin();st.Collect(now,Vector3.Zero);st.DrawWounds(id,bones,now);st.Drip(id,bones,now);st.Cap(Vector3.UnitY,Vector3.UnitY,.05f,now%2,7);
                 for(int k=0;k<st.SprayCount;k++){var s=st.Sprays[k];blood.Spray(s.Kind,s.Severity,s.Seed,s.Key,s.Origin,s.Normal,s.Along,s.Time,1,false,false,s.Extra,s.Target,s.Kill);}st.Sprayed();
@@ -270,6 +291,215 @@ namespace ChipArena.UnityConversion
             }
             for(int i=0;i<600;i++)Frame(i);long before=GC.GetAllocatedBytesForCurrentThread();for(int i=600;i<3600;i++)Frame(i);long used=GC.GetAllocatedBytesForCurrentThread()-before;
             Check(used==0,"hits, deaths, corpses, wounds, drips, chunks, pools and sprays allocate nothing per frame ("+used+" bytes over 3000 frames)");
+        }
+
+        // ---- an old frame (no horde-hit data) draws bit for bit as before the binding ----
+        // A body in the rig's rest pose (arms down) at `at`, turned `quarter` quarter turns and scaled `scale`, built from exact
+        // matrices only (no sine or cosine): its joints are the same bits on every machine.
+        private static Matrix4x4[] Rest(Vector3 at,int quarter,float scale)
+        {
+            float c=quarter==0?1:quarter==2?-1:0,s=quarter==1?1:quarter==3?-1:0;
+            var root=Matrix4x4.CreateScale(scale)*new Matrix4x4(c,0,-s,0,0,1,0,0,s,0,c,0,0,0,0,1)*Matrix4x4.CreateTranslation(at);var world=new Matrix4x4[22];
+            for(int i=0;i<22;i++){int parent=CapturedRig.Bones[i].Parent;world[i]=Matrix4x4.CreateTranslation(CapturedRig.Mirror(CapturedRig.Bones[i].Position))*(parent<0?root:world[parent]);}
+            return world;
+        }
+        /// <summary>
+        /// A digest of everything an old frame's hits make (no horde-hit data): each hit's struck joint, head, wound, burst and
+        /// sprays on four kinds at four facings, and every fate, severity and extra-drop rule over a grid. Only exact arithmetic
+        /// and square roots, so the bits are the machine's IEEE results (x64 with hardware vector intrinsics, as CI runs).
+        /// </summary>
+        private static ulong FallbackDigest()
+        {
+            ulong h=14695981039346656037UL;
+            void I(int v){unchecked{h=(h^(uint)v)*1099511628211UL;}}
+            void F(float v)=>I(BitConverter.SingleToInt32Bits(v));
+            void V(Vector3 v){F(v.X);F(v.Y);F(v.Z);}
+            void T(string s){if(s!=null)foreach(char ch in s)I(ch);I(-1);}
+            var causes=new[]{NativeHordeGore.Cause.Bullet,NativeHordeGore.Cause.Heavy,NativeHordeGore.Cause.Melee,NativeHordeGore.Cause.Arrow,NativeHordeGore.Cause.Blast,NativeHordeGore.Cause.Crush};
+            foreach(int kind in new[]{NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Brute,NativeHordeKinds.Hulk})
+            for(int q=0;q<4;q++)
+            {
+                var st=new NativeHordeGoreState{Tier=q%3};float sc=NativeHordeKinds.Scale[kind];var at=new Vector3(1,1.1f*sc,-2);var bones=Rest(at,q,sc);
+                for(int i=0;i<30;i++)
+                {
+                    int id=76000+kind*100+q*10+i%4;var cause=causes[i%6];
+                    var point=at+new Vector3(((i%5)-2)*.12f,-.95f+(i%9)*.21f,((i/5)%3-1)*.14f)*sc;var dir=Vector3.Normalize(new Vector3((i%4)-1.5f,-.1f*(i%3),-1+(i%2)*2.2f));
+                    var hit=new GoreHit{Id=id,Kind=kind,Index=i%3,Time=1+i*.07f,Amount=3+i*3.5f,MaxHp=40+kind*20,Cause=cause,Kill=i%4==3,Head=i%7==0,Point=point,Dir=dir,Sweep=i%2==0?new Vector3(1,.3f,0):Vector3.Zero};
+                    int bone=st.Hit(hit,bones,0,out bool head);I(bone);I(head?1:0);
+                    var g=st.Find(id,false);if(g!=null&&g.Count>0){var w=g.W[(g.Next-1+g.W.Length)%g.W.Length];I(w.Bone);V(w.P);V(w.N);V(w.T);V(w.Down);F(w.Size);F(w.At);I((int)w.Cause);I(w.Head?1:0);I(w.Stump?1:0);I((int)w.Seed);I(g.Count);}
+                }
+                foreach(var b in st.Bursts){I(b.Live?1:0);if(!b.Live)continue;V(b.At);V(b.N);V(b.Dir);F(b.Born);F(b.Floor);F(b.Power);I((int)b.Seed);I(b.Bits);I(b.Mist);}
+                for(int k=0;k<st.SprayCount;k++){var s=st.Sprays[k];T(s.Kind);F(s.Severity);F(s.Time);I((int)s.Seed);I((int)s.Key);I((int)(s.Key>>32));V(s.Origin);V(s.Normal);V(s.Along);I(s.Extra);I(s.Target);I(s.Kill?1:0);}
+                st.Sprayed();
+            }
+            foreach(int kind in new[]{NativeHordeKinds.Shambler,NativeHordeKinds.Bloater})foreach(var c in causes)for(int hd=0;hd<2;hd++)foreach(float amount in new[]{0f,10,19.8f,20,29.9f,30,47.9f,48,50,60,100})foreach(float d in new[]{.5f,1.4f,2})for(int hv=0;hv<2;hv++)
+            {
+                I((int)NativeHordeGore.Decide(kind,c,hd==1,amount,60,d,hv==1));F(NativeHordeGore.Severity(c,hd==1,amount,60));
+            }
+            foreach(var c in causes)for(int hd=0;hd<2;hd++)for(int kill=0;kill<2;kill++)for(int t=0;t<3;t++){I(NativeHordeGore.Extra(c,hd==1,kill==1,t));T(NativeHordeGore.SprayKind(c,hd==1));}
+            for(int t=0;t<3;t++){var st=new NativeHordeGoreState{Tier=t};for(int i=0;i<24;i++)I((int)st.Fate(0,10+i*.3f,causes[i%6],i%3==0,10+i*4,60,i%2==0?1:2,i%5==0));}
+            return h;
+        }
+        /// <summary>The digest on the code before the binding (shared 8740ceb), Debug and Release alike.</summary>
+        private const ulong FallbackBefore=0x1a7d959dbc8e8969UL;
+        private static void Fallback(out string summary)
+        {
+            ulong d=FallbackDigest();
+            Check(d==FallbackBefore,"an old frame's hits (no horde-hit data) make bit for bit the wounds, bursts, sprays and fates they made before the binding (digest 0x"+d.ToString("x16")+", before 0x"+FallbackBefore.ToString("x16")+")");
+            // The data's fields are not read without HasHordeHit: the same hits with stray values in them make the same bits.
+            var bones=Posed(NativeHordeKinds.Shambler,77000,Vector3.Zero,0);var a=new NativeHordeGoreState();var b=new NativeHordeGoreState();int same=0;
+            for(int i=0;i<40;i++)
+            {
+                var h=new GoreHit{Id=77000+i%3,Kind=0,Index=i%2,Time=1+i*.11f,Amount=4+i*2,MaxHp=60,Cause=i%5==0?NativeHordeGore.Cause.Heavy:i%7==0?NativeHordeGore.Cause.Blast:NativeHordeGore.Cause.Bullet,Kill=i%6==5,Head=i%9==0,Point=new Vector3(((i%5)-2)*.12f,.3f+(i%8)*.2f,.4f),Dir=-Vector3.UnitZ};
+                var stray=h;stray.Raw=999;stray.HasPart=true;stray.Part=NativeHordeGore.PartBits[i%9];stray.Lost=8|128;
+                int ja=a.Hit(h,bones,0,out bool ha),jb=b.Hit(stray,bones,0,out bool hb);
+                var wa=a.Find(h.Id,false);var wb=b.Find(h.Id,false);var x=wa.W[(wa.Next-1+8)%8];var y=wb.W[(wb.Next-1+8)%8];var sa=a.Sprays[a.SprayCount-1];var sb=b.Sprays[b.SprayCount-1];
+                Check(ja==jb&&ha==hb&&x.P==y.P&&x.N==y.N&&x.Size==y.Size&&x.Head==y.Head&&sa.Kind==sb.Kind&&sa.Severity==sb.Severity&&sa.Origin==sb.Origin,"hit "+i+": without HasHordeHit the data's fields are not read");same++;
+            }
+            summary="an old frame draws bit for bit as before (digest 0x"+d.ToString("x16")+"; "+same+" hits ignore stray data)";
+        }
+
+        // ---- the authority's horde-hit data ----
+        private static void Metadata(string root,out string summary)
+        {
+            var st=new NativeHordeGoreState();int placed=0,sides=0,agree=0;
+            // The part map is the severed-limb map (the same LIMB bit throws and wounds the same joint).
+            var fx=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeMinionFxPresentation.cs"));
+            Check(fx.Contains("HordeLimbBits={1,2,4,8,16,32,64,128,256},HordeLimbBones={5,7,11,8,12,14,18,15,19}")&&string.Join(",",NativeHordeGore.PartBits)=="1,2,4,8,16,32,64,128,256"&&string.Join(",",NativeHordeGore.PartRoots)=="5,7,11,8,12,14,18,15,19","the wound's part map is the severed limbs' map (LIMB bit to joint)");
+            for(int i=0;i<9;i++)Check((NativeHordeGore.PartJoints(NativeHordeGore.PartBits[i])&1<<NativeHordeGore.PartRoots[i])!=0&&(NativeHordeGore.PartJoints(NativeHordeGore.PartBits[i])&NativeHordeGore.TorsoJoints)==0,"part "+NativeHordeGore.PartBits[i]+" holds its own joint and none of the trunk's");
+            {int all=NativeHordeGore.TorsoJoints;for(int i=0;i<9;i++){Check((all&NativeHordeGore.PartJoints(NativeHordeGore.PartBits[i]))==0,"parts do not overlap");all|=NativeHordeGore.PartJoints(NativeHordeGore.PartBits[i]);}Check(all==(((1<<22)-1)&~1),"the torso and the nine parts cover every drawn joint but the root");}
+            Check(NativeHordeGore.PartJoints(3)==0&&NativeHordeGore.PartJoints(512)==0&&NativeHordeGore.Struck(false,true,3,0)==0&&NativeHordeGore.Struck(false,false,8,0)==0,"no part, an unknown part: any joint (the nearest, as before)");
+            foreach(int kind in new[]{NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Brute,NativeHordeKinds.Hulk})
+            for(int yaw=0;yaw<360;yaw+=90)
+            {
+                int id=78000+kind*10+yaw/90;var at=new Vector3(-2,0,3);var bones=Posed(kind,id,at,yaw);float sc=NativeHordeKinds.Scale[kind];
+                float r=yaw*(float)Math.PI/180;var fwd=new Vector3((float)Math.Sin(r),0,(float)Math.Cos(r));var shooter=new Vector3(at.X,1.4f*sc,at.Z)+fwd*6;
+                // A shot into the chest that the authority says struck part p: the wound is on p (the torso a known part).
+                NativeHordeGore.Segment(bones,CapturedRig.Chest,out var c0,out var c1);var chestDir=Vector3.Normalize((c0+c1)*.5f-shooter);First(bones,kind,shooter,chestDir,out var chest,out _);
+                foreach(int p in new[]{0,1,2,4,8,16,32,64,128,256})
+                {
+                    st.Clear();var h=new GoreHit{Id=id,Kind=kind,Time=1,Amount=12,MaxHp=60,Cause=NativeHordeGore.Cause.Bullet,Known=true,Head=p==1,HasPart=true,Part=p,Raw=12,Point=chest,Dir=chestDir};
+                    int j=st.Hit(h,bones,at.Y,out bool head);Check(j>0&&(NativeHordeGore.PartJoints(p)&1<<j)!=0,NativeHordeKinds.Ids[kind]+" yaw "+yaw+": a chest hit the authority puts on part "+p+" wounds that part (joint "+j+")");
+                    Check(head==(p==1)&&st.Sprays[st.SprayCount-1].Kind==(p==1?"cavity":"puncture"),"part "+p+": the head only when the authority says so");placed++;
+                }
+                // A shot aimed at each drawn part, its part taken from the authority's own anatomy (NativeHordeDamage.Part, in its
+                // mirrored frame round the body's centre): the wound is on that part at the hit, and the sides agree.
+                var body=new Vector3(at.X,at.Y+NativeHordeKinds.RootHeight(kind,false),at.Z);
+                foreach(int aim in new[]{CapturedRig.Head,CapturedRig.Chest,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow,CapturedRig.LHip,CapturedRig.RHip,CapturedRig.LKnee,CapturedRig.RKnee})
+                {
+                    NativeHordeGore.Segment(bones,aim,out var a0,out var a1);var dir=Vector3.Normalize((a0+a1)*.5f-shooter);if(!First(bones,kind,shooter,dir,out var point,out int first))continue;
+                    int part=NativeHordeDamage.Part(new V3(-body.X,body.Y,body.Z),-yaw,false,new V3(-point.X,point.Y,point.Z),false);
+                    st.Clear();int j=st.Hit(new GoreHit{Id=id,Kind=kind,Time=2,Amount=10,MaxHp=60,Cause=NativeHordeGore.Cause.Bullet,Known=true,Head=part==1,HasPart=true,Part=part,Raw=10,Point=point,Dir=dir},bones,at.Y,out _);
+                    Check((NativeHordeGore.PartJoints(part)&1<<j)!=0,NativeHordeKinds.Ids[kind]+" yaw "+yaw+": the shot at joint "+aim+" (first "+first+") the authority calls part "+part+" wounds that part (joint "+j+")");
+                    bool left(int x)=>x==CapturedRig.LArm||x==CapturedRig.LElbow||x==CapturedRig.LHand||x==CapturedRig.LHip||x==CapturedRig.LKnee||x==CapturedRig.LFoot||x==CapturedRig.LToe||x==CapturedRig.LClav;
+                    bool right(int x)=>x==CapturedRig.RArm||x==CapturedRig.RElbow||x==CapturedRig.RHand||x==CapturedRig.RHip||x==CapturedRig.RKnee||x==CapturedRig.RFoot||x==CapturedRig.RToe||x==CapturedRig.RClav;
+                    if(part>1&&(left(first)||right(first))){Check(left(first)==((part&(2|8|32|128))!=0),NativeHordeKinds.Ids[kind]+" yaw "+yaw+": the authority's side of a limb hit is the drawn side (joint "+first+", part "+part+")");sides++;}
+                    if((NativeHordeGore.PartJoints(part)&1<<first)!=0){agree++;var g=st.Find(id,false);var w=g.W[g.Count-1];Check(Vector3.Distance(Vector3.Transform(w.P,bones[w.Bone]),point)<.06f*sc,"a known part's wound sits at the hit");}
+                }
+            }
+            Check(sides>=110&&agree>=placed*7/10,"the authority's anatomy and the drawn body agree on the sides of "+sides+" limb hits ("+agree+" on the very part)");
+            var bonesS=Posed(NativeHordeKinds.Shambler,79000,Vector3.Zero,0);
+            Vector3 Surface(int joint,out Vector3 dir){NativeHordeGore.Segment(bonesS,joint,out var a0,out var a1);var sh=new Vector3(0,1.4f,6);dir=Vector3.Normalize((a0+a1)*.5f-sh);First(bonesS,0,sh,dir,out var p,out _);return p;}
+            int Wound(GoreHit h,out bool head,out GoreSpray spray){st.Clear();h.Id=79000;h.Kind=0;h.MaxHp=60;if(h.Amount==0)h.Amount=12;if(h.Cause==NativeHordeGore.Cause.None)h.Cause=NativeHordeGore.Cause.Bullet;int j=st.Hit(h,bonesS,0,out head);spray=st.Sprays[st.SprayCount-1];return j;}
+            // Present against absent: a hit with no new fact draws as the inference; old frames infer the head and the part.
+            {
+                var arm=Surface(CapturedRig.LElbow,out var d);var old=new GoreHit{Time=1,Point=arm,Dir=d};var meta=old;meta.Known=true;meta.Raw=12;
+                int jo=Wound(old,out bool ho,out var so),jm=Wound(meta,out bool hm,out var sm);
+                Check(jo==jm&&ho==hm&&!ho&&so.Severity==sm.Severity&&so.Kind==sm.Kind,"the data with no part, no head and raw equal to the damage draws as the old frame's inference (joint "+jo+")");
+                var headPoint=Surface(CapturedRig.Head,out var hd);old.Point=headPoint;old.Dir=hd;meta=old;meta.Known=true;meta.Raw=12;meta.HasPart=true;meta.Part=0;
+                jo=Wound(old,out ho,out so);jm=Wound(meta,out hm,out sm);
+                Check(jo==CapturedRig.Head&&ho&&so.Kind=="cavity","an old frame's shot into the head infers a head shot");
+                Check((NativeHordeGore.TorsoJoints&1<<jm)!=0&&!hm&&sm.Kind=="puncture","the authority's torso and no head win over the inference: the wound goes on the trunk, no head shot (joint "+jm+")");
+            }
+            // The head flag wins over a larger torso share; the head is still the head on a torso-largest blast.
+            {
+                var chestP=Surface(CapturedRig.Chest,out var d);
+                int j=Wound(new GoreHit{Time=1,Point=chestP,Dir=d,Known=true,Head=true,HasPart=true,Part=0,Raw=12},out bool hd,out var sp);
+                Check(j==CapturedRig.Head&&hd&&sp.Kind=="cavity"&&st.Find(79000,false).W[0].Head,"the authority's head flag wins over a larger torso share: the head is wounded and sprays a cavity");
+                j=Wound(new GoreHit{Time=1,Point=chestP,Dir=d,Known=true,Head=false,HasPart=true,Part=0,Raw=12},out hd,out sp);
+                Check((NativeHordeGore.TorsoJoints&1<<j)!=0&&!hd&&sp.Kind=="puncture","the same hit with no head share stays on the torso");
+                j=Wound(new GoreHit{Time=1,Point=new Vector3(2,.1f,0),Dir=-Vector3.UnitX,Cause=NativeHordeGore.Cause.Blast,Amount=20,Known=true,Head=true,HasPart=true,Part=0,Raw=60},out hd,out sp);
+                Check(j==CapturedRig.Head&&hd&&sp.Kind=="crush","a blast whose shares took the head wounds the head (a crush spray)");
+                Check(NativeHordeGore.Decide(0,NativeHordeGore.Cause.Heavy,true,10,60,99,false)==NativeHordeGore.Fate.HeadGib&&NativeHordeGore.Decide(0,NativeHordeGore.Cause.Heavy,false,10,60,99,false)==NativeHordeGore.Fate.Corpse,"a rifle kill the authority calls a head hit bursts the head; without it a corpse");
+            }
+            // Known torso against an unknown part: the forearm's hit point, the torso known; the same hit, its part unknown.
+            {
+                var arm=Surface(CapturedRig.LElbow,out var d);
+                int jt=Wound(new GoreHit{Time=1,Point=arm,Dir=d,Known=true,HasPart=true,Part=0,Raw=12},out bool ht,out _);
+                int ju=Wound(new GoreHit{Time=1,Point=arm,Dir=d,Known=true,HasPart=false,Part=0,Raw=12},out bool hu,out _);
+                int jo=Wound(new GoreHit{Time=1,Point=arm,Dir=d},out _,out _);
+                Check((NativeHordeGore.TorsoJoints&1<<jt)!=0&&!ht,"a known torso (part 0 with HasPart) wounds the trunk, not the forearm by it (joint "+jt+")");
+                Check(ju==jo&&(NativeHordeGore.PartJoints(8)&1<<ju)!=0&&!hu,"an unknown part (HasPart false) keeps the nearest drawn part, the forearm (joint "+ju+")");
+            }
+            // A part the add already lost: the authority names it, then moved the damage to the torso. The wound goes on what is left
+            // of the limb (the stump) or the trunk, never on the lost part's hidden joints; a part not lost is unaffected.
+            {
+                var fore=Surface(CapturedRig.LElbow,out var d);var shin=Surface(CapturedRig.LKnee,out var ds);var head=Surface(CapturedRig.Head,out var dh);
+                int j=Wound(new GoreHit{Time=1,Point=fore,Dir=d,Known=true,HasPart=true,Part=8,Raw=12,Lost=8},out _,out _);
+                Check(j==CapturedRig.LArm,"a hit on a lost forearm wounds its stump, the upper arm (joint "+j+")");
+                j=Wound(new GoreHit{Time=1,Point=fore,Dir=d,Known=true,HasPart=true,Part=8,Raw=12,Lost=2|8},out _,out _);
+                Check((NativeHordeGore.TorsoJoints&1<<j)!=0,"a hit on a forearm whose whole arm is lost wounds the trunk (joint "+j+")");
+                j=Wound(new GoreHit{Time=1,Point=fore,Dir=d,Known=true,HasPart=true,Part=2,Raw=12,Lost=2|8},out _,out _);
+                Check((NativeHordeGore.TorsoJoints&1<<j)!=0,"a hit on a lost upper arm wounds the trunk (joint "+j+")");
+                j=Wound(new GoreHit{Time=1,Point=shin,Dir=ds,Known=true,HasPart=true,Part=128,Raw=12,Lost=128},out _,out _);
+                Check(j==CapturedRig.LHip||(NativeHordeGore.TorsoJoints&1<<j)!=0,"a hit on a lost shin wounds its stump, the thigh, or the trunk (joint "+j+")");
+                j=Wound(new GoreHit{Time=1,Point=head,Dir=dh,Known=true,Head=true,HasPart=true,Part=1,Raw=12,Lost=1},out bool hd,out _);
+                Check((NativeHordeGore.TorsoJoints&1<<j)!=0&&hd,"a head hit on a lost head wounds the neck's stump and stays a head hit (joint "+j+")");
+                j=Wound(new GoreHit{Time=1,Point=Surface(CapturedRig.RElbow,out var dr),Dir=dr,Known=true,HasPart=true,Part=16,Raw=12,Lost=8},out _,out _);
+                Check((NativeHordeGore.PartJoints(16)&1<<j)!=0,"a lost left forearm does not move a right forearm hit (joint "+j+")");
+                // Every set of lost limbs the authority can hold (each severed part takes its descendants) and every part.
+                int sets=0;
+                for(int set=0;set<512;set++)
+                {
+                    int lost=0;for(int i=0;i<9;i++)if((set&1<<i)!=0)lost|=NativeHordeDamage.Descendants(NativeHordeGore.PartBits[i]);if(lost!=set)continue;sets++;
+                    int hidden=0;for(int i=0;i<9;i++)if((lost&NativeHordeGore.PartBits[i])!=0)hidden|=NativeHordeGore.PartJoints(NativeHordeGore.PartBits[i]);
+                    foreach(int p in new[]{0,1,2,4,8,16,32,64,128,256})
+                    {
+                        int mask=NativeHordeGore.Struck(p==1,true,p,lost);
+                        Check(mask!=0&&(mask&hidden)==0,"lost "+lost+", part "+p+": the wound may land only on joints still drawn");
+                        if(p==0||(lost&p)==0)Check(mask==NativeHordeGore.PartJoints(p),"lost "+lost+": part "+p+", not lost, keeps its own joints");
+                        else Check((mask&NativeHordeGore.TorsoJoints)==NativeHordeGore.TorsoJoints&&(mask&~(NativeHordeGore.TorsoJoints|NativeHordeGore.PartJoints(NativeHordeGore.PartParent(p))))==0,"lost "+lost+": lost part "+p+" goes to its stump and the trunk");
+                    }
+                }
+                Check(sets==162,"every closed set of lost limbs: the head's two states, three for each arm and leg ("+sets+")");
+            }
+            // Raw damage drives the gib, the head burst and the spray; a blast's raw (its centre's, before the falloff) does not.
+            {
+                float S(NativeHordeGore.Cause c,bool known,float raw,float amount)=>NativeHordeGore.Strength(c,known,raw,amount);
+                Check(S(NativeHordeGore.Cause.Heavy,true,300,10)==300&&S(NativeHordeGore.Cause.Heavy,false,300,10)==10&&S(NativeHordeGore.Cause.Bullet,true,10,15)==15&&S(NativeHordeGore.Cause.Bullet,true,float.NaN,10)==10,"the strength: raw when known and larger, else the replicated damage");
+                Check(S(NativeHordeGore.Cause.Blast,true,300,10)==10&&S(NativeHordeGore.Cause.Crush,true,300,10)==10,"a blast's or a crusher's raw is not what reached the add: the replicated damage");
+                NativeHordeGore.Fate F(NativeHordeGore.Cause c,bool head,bool known,float raw,float amount,float blast=99,bool heavy=false)=>NativeHordeGore.Decide(0,c,head,S(c,known,raw,amount),60,blast,heavy);
+                // Gib: a heavy round's (or a heavy blow's) raw at four fifths of the add's health.
+                Check(F(NativeHordeGore.Cause.Heavy,false,true,300,10)==NativeHordeGore.Fate.Gib&&F(NativeHordeGore.Cause.Heavy,false,false,300,10)==NativeHordeGore.Fate.Corpse,"a rifle kill's raw overkill gibs the body; the old frame's clamped damage left a corpse");
+                Check(F(NativeHordeGore.Cause.Heavy,false,true,48,10)==NativeHordeGore.Fate.Gib&&F(NativeHordeGore.Cause.Heavy,false,true,47.9f,10)==NativeHordeGore.Fate.Corpse,"the gib's raw threshold is four fifths of max HP (48 of 60)");
+                Check(F(NativeHordeGore.Cause.Melee,false,true,48,10,99,true)==NativeHordeGore.Fate.Gib&&F(NativeHordeGore.Cause.Melee,false,true,300,10,99,false)==NativeHordeGore.Fate.Corpse,"a heavy blow's raw gibs at the same share; a light blow never does");
+                Check(F(NativeHordeGore.Cause.Bullet,false,true,300,10)==NativeHordeGore.Fate.Corpse,"a bullet's body kill is a corpse whatever its raw");
+                // Head burst: a head kill whose raw is half the add's health (any cause but the arrow).
+                Check(F(NativeHordeGore.Cause.Bullet,true,true,30,8)==NativeHordeGore.Fate.HeadGib&&F(NativeHordeGore.Cause.Bullet,true,true,29.9f,8)==NativeHordeGore.Fate.Corpse&&F(NativeHordeGore.Cause.Bullet,true,false,30,8)==NativeHordeGore.Fate.Corpse,"the head burst's raw threshold is half of max HP (30 of 60); the old frame's clamped 8 left a corpse");
+                Check(F(NativeHordeGore.Cause.Arrow,true,true,300,8)==NativeHordeGore.Fate.Corpse,"an arrow's head kill never bursts the head");
+                // Blasts keep their own rule: a third of the add's health reaching it, or the blast within 1.4 m.
+                Check(F(NativeHordeGore.Cause.Blast,false,true,300,10,2)==NativeHordeGore.Fate.Corpse&&F(NativeHordeGore.Cause.Blast,false,true,300,20,2)==NativeHordeGore.Fate.Gib&&F(NativeHordeGore.Cause.Blast,false,true,300,10,1.2f)==NativeHordeGore.Fate.Gib,"a blast gibs on the damage that reached the add or its distance, not its centre's raw");
+                // The spray and the burst: a killing hit's raw sprays harder than its clamped damage; a hit without overkill is unchanged.
+                var chestP=Surface(CapturedRig.Chest,out var d);
+                Wound(new GoreHit{Time=1,Point=chestP,Dir=d,Amount=10,Kill=true,Cause=NativeHordeGore.Cause.Heavy},out _,out var so);float po=st.Bursts.First(b=>b.Live).Power;
+                Wound(new GoreHit{Time=1,Point=chestP,Dir=d,Amount=10,Kill=true,Cause=NativeHordeGore.Cause.Heavy,Known=true,HasPart=true,Raw=300},out _,out var sk);float pk=st.Bursts.First(b=>b.Live).Power;
+                Check(sk.Severity>so.Severity&&sk.Severity==NativeHordeGore.Severity(NativeHordeGore.Cause.Heavy,false,300,60)&&pk>po,"a kill's raw overkill sprays and bursts harder ("+so.Severity.ToString("0.00")+" to "+sk.Severity.ToString("0.00")+", power "+po.ToString("0.00")+" to "+pk.ToString("0.00")+")");
+                Wound(new GoreHit{Time=1,Point=chestP,Dir=d,Amount=10,Known=true,HasPart=true,Raw=10},out _,out var sn);
+                Check(sn.Severity==NativeHordeGore.Severity(NativeHordeGore.Cause.Bullet,false,10,60),"raw equal to the damage sprays as before");
+                // Under the gib cap, the state's fate with the strength.
+                var cap=new NativeHordeGoreState();Check(cap.Fate(0,1,NativeHordeGore.Cause.Heavy,false,S(NativeHordeGore.Cause.Heavy,true,300,10),60,99,false)==NativeHordeGore.Fate.Gib&&cap.Fate(0,1.1f,NativeHordeGore.Cause.Bullet,true,S(NativeHordeGore.Cause.Bullet,true,40,8),60,99,false)==NativeHordeGore.Fate.HeadGib,"the state's capped fate reads the raw strength");
+            }
+            // The runtime binds only the replicated fields, keeps the fallback, and keeps the killing hit's strength for the fate.
+            {
+                var p=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHordeGorePresentation.cs"));
+                Check(p.Contains("bool known=e.HasHordeHit;float strength=NativeHordeGore.Strength(cause,known,e.Raw,e.Amount);")&&p.Contains("s.GoreAmount=strength;")&&p.Contains("s.GoreHead=known&&e.Head;"),"the killing hit's strength and head flag are kept for the death's fate (even with no rig drawn)");
+                Check(p.Contains("Time=e.Time,Amount=e.Amount,MaxHp=maxHp,Cause=cause,Kill=m==null,Head=known?e.Head:e.Kind==EventKind.Headshot,Known=known,Raw=e.Raw,HasPart=e.HasPart,Part=e.Part,Lost=lost,")&&p.Contains("if(s!=null)s.GoreHead=known?e.Head:head;"),"the hit binds Head, Raw, HasPart and Part when HasHordeHit, else the Headshot kind and the inference");
+                Check(p.Contains("int lost=m?.Pve!=null?m.Pve.Lost:s!=null&&s.Lost>0?s.Lost:0;"),"the lost limbs are the replicated ones");
+                var k=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs"));
+                Check(k.Contains("s.React.Add(e.Time,push,w,e.Amount,melee,e.HasHordeHit?e.Head:e.Kind==EventKind.Headshot,stagger,"),"the head's snap reads the authority's head flag too, else Headshot");
+                var react=new NativeHordeReact();react.Bind(0);react.Add(1,Vector2.UnitX,StaggerWeight.Flinch,10,false,true,false,.4f);Check(react.NewestHit(out _,out _,out bool rh)&&rh,"a head hit snaps the head harder");
+            }
+            summary=placed+" known-part chest hits on four kinds at four facings wound the part named, "+sides+" limb hits agree on the side with the authority's anatomy ("+agree+" on the very part); the head flag, a known torso, lost parts, raw gib and head-burst thresholds and the spray bind";
         }
 
         /// <summary>A source's code without its comment lines.</summary>

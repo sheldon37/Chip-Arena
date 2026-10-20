@@ -174,7 +174,8 @@ namespace ChipArena.UnityConversion
             {
                 var stats=m?.Pve?.Stats;int kind=s.Kind>=0?s.Kind:NativeHordeKinds.Resolve(stats?.id);bool heavy=melee&&w==StaggerWeight.Heavy;
                 bool stagger=m!=null&&NativeHordeKinds.Staggers(kind,e.Amount,m.MaxHp,heavy);
-                s.React.Bind(kind);s.React.Add(e.Time,push,w,e.Amount,melee,e.Kind==EventKind.Headshot,stagger,stats?.stagger??.45f);
+                // A head hit snaps the head harder: the authority's head flag when the hit carries its horde-hit data, else Headshot.
+                s.React.Bind(kind);s.React.Add(e.Time,push,w,e.Amount,melee,e.HasHordeHit?e.Head:e.Kind==EventKind.Headshot,stagger,stats?.stagger??.45f);
                 // A stagger in the wind-up cancels the blow (StepPveHorde: StaggerAt, Struck=true), so the shown one stops too; any
                 // damaging hit interrupts a spitter's spit (the proposed rule): the sac deflates and the acid fizzles at its feet.
                 if(m!=null&&stats!=null&&s.CancelFor!=m.LastAttack)

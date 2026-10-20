@@ -68,7 +68,7 @@ Code:
   - a bow is an arrow;
   - a rifle or plasma overflow is heavy;
   - anything else is a bullet.
-- **Where.** The drawn body's nearest part capsule to the replicated hit point (kind girth applied), on its surface facing the shot. A Headshot event, which adds do not send yet, forces the head.
+- **Where.** The drawn body's nearest part capsule to the replicated hit point (kind girth applied), on its surface facing the shot. With the authority's hit metadata (below) the nearest is taken within the part it names, and its head flag decides the head. Old frames keep the inference: a Headshot event forces the head, otherwise the nearest part decides.
 - **Wound.** Up to 8 per add, kept in bone space so they ride the animation. The Full tier shows the newest 8, Reduced 5, Low 3.
   - Bullet: a recessed dark hole, torn flesh round it (a bone fleck on a head shot) and a blood run down the body that lengthens as it bleeds.
   - Blade: a gash along the swing.
@@ -83,7 +83,7 @@ Code:
 
 ### A death (`HordeKindDeath` → `HordeGoreDeath`)
 
-The fate comes from the killing blow:
+The fate comes from the killing blow. "Health" below is the hit's strength over the add's max HP: the replicated damage, clamped to the health left, or with the metadata the larger of that and `Raw` (blasts and crushes keep the replicated damage, see below).
 
 | Fate | When |
 |---|---|
@@ -139,7 +139,7 @@ DEV panel > Previews > **Zombie gore preview**. It plays five lanes, looping eve
 
 ## Authority hit metadata (Astra, 2026-10-20)
 
-`ArenaEvent` now carries optional horde-hit data. Events remain `EventKind.Hit`, so pilot Headshot announcers, hit sounds and statistics keep their existing behavior. Claude's presentation binding is still a follow-up.
+`ArenaEvent` now carries optional horde-hit data. Events remain `EventKind.Hit`, so pilot Headshot announcers, hit sounds and statistics keep their existing behavior. The presentation binding is done (Claude, 2026-10-20, `claude/zombie-gore-bind`; see "Binding" below).
 
 | Field | Contract |
 | --- | --- |
@@ -153,6 +153,20 @@ Use `Raw` for the requested raw-damage/max-HP gore decision; `Raw - Amount` is n
 
 For `HordeGoreHit`, prefer `e.Head` when `HasHordeHit`; otherwise keep the existing Headshot/inferred fallback. Bind raw damage and the known part in the presentation's decision/wound placement separately. This authority change does not alter timing, hitboxes, damage, cooldowns or movement; networking gains these optional fields and validation.
 
+### Binding (Claude, 2026-10-20)
+
+`HordeGoreHit` reads only the replicated event and the add's replicated lost limbs. When `HasHordeHit` is false, every field below is ignored and the gore is bit for bit what it was (checked by a digest recorded on `8740ceb`).
+
+| Field | Drives |
+| --- | --- |
+| `Head` | The head, alone: the wound goes on the head (even when the torso's share was larger), the spray is a cavity, the bits and mist are the head's, the head snaps harder (`NativeHordeReact`), and the death can burst the head. `Head` false means no head hit, even when the nearest drawn part is the head. |
+| `HasPart`/`Part` | Where the wound goes: the nearest point of the drawn joints that make up the part (`NativeHordeGore.PartJoints`). Torso: pelvis, spine, chest, neck and clavicles. Head: the head. Upper arm or thigh: that joint. Forearm: the elbow joint and hand. Shin: the knee joint, foot and toe. The even bits are the rig's left, the same LIMB-bit-to-joint map the severed-limb gore uses. Part 0 with `HasPart` is a known torso. `HasPart` false keeps the nearest drawn part. |
+| Lost parts | The authority names a part it has already severed, then moves the damage to the torso. A lost part is not drawn, so its wound goes on the nearest of what is left of the limb and the trunk (`NativeHordeGore.Struck`). For a lost forearm, that is the upper arm's stump; for a lost shin, the thigh's stump. For a lost upper arm or thigh, it is the trunk; for a lost head, the neck. A wound never lands on a hidden joint. The lost bits are the add's replicated ones, or for the killing blow the last ones it was drawn with. |
+| `Raw` | The hit's strength (`NativeHordeGore.Strength`) is the larger of `Raw` and `Amount`. It drives the gib (a heavy round or heavy blow at 80 % of max HP), the head burst (a head kill at 50 %, not an arrow), the blood spray's severity and the burst's power. `Raw - Amount` is never used. A head share's 1.5 can make `Amount` the larger. |
+| Blasts and crushes | Keep `Amount`. A blast's `Raw` is the damage at its centre, before the falloff the authority's shares apply over the distance, so it is not what reached the add. The blast keeps its rule: 33 % of max HP reaching it, or within 1.4 m. |
+
+Animation impact: none on hit timing, hitboxes, damage, cooldowns, movement or networking. The only motion change is the head snap's existing headshot strength (2.2x) on a metadata head hit.
+
 ## Checks
 
 `--zombie-gore` runs `ZombieGoreChecks`, `MinionFxChecks` and `HordeKindChecks`. `ZombieGoreChecks` is also in the full run. It checks:
@@ -163,6 +177,17 @@ For `HordeGoreHit`, prefer `e.Head` when `HasHordeHit`; otherwise keep the exist
 - **Tiers:** each lower tier draws less.
 - **Allocation:** zero per frame.
 - **Presentation only:** source scan.
+- **Authority metadata:**
+  - present vs absent;
+  - the head flag over a torso-largest share (and no head flag over a head-nearest point);
+  - known placement for every LIMB bit on four kinds at four facings;
+  - the authority's own anatomy (`NativeHordeDamage.Part`) agreeing with the drawn sides;
+  - known torso vs unknown part;
+  - lost parts over every closed set of lost limbs;
+  - raw gib, head-burst and blast thresholds, and the spray and burst strength;
+  - the old-frame digest (bit for bit as before);
+  - host/guest/killcam with the metadata;
+  - zero allocation with metadata hits.
 
 Changed on purpose:
 - `HordeKindChecks` (no flickering seams, no tongues, hits bleed through the gore);
